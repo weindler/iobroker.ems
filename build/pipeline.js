@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseInbox = exports.runDryrunPipeline = void 0;
+exports.runDryrunPipeline = void 0;
 /**
  * v0.0.1: dryrun-only pipeline — no device writes.
  * Full chain: see EMS docs mapping_concept.md §5 (later versions).
@@ -31,15 +31,3 @@ exports.runDryrunPipeline = runDryrunPipeline;
 function fail(result, reason, checks_passed, checks_failed) {
     return { result, reason, checks_passed, checks_failed };
 }
-function parseInbox(raw) {
-    try {
-        const data = JSON.parse(raw);
-        if (typeof data !== "object" || data === null)
-            return null;
-        return data;
-    }
-    catch {
-        return null;
-    }
-}
-exports.parseInbox = parseInbox;

@@ -24,6 +24,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const utils = __importStar(require("@iobroker/adapter-core"));
+const inbox_1 = require("./inbox");
 const pipeline_1 = require("./pipeline");
 const states_1 = require("./states");
 class Ems extends utils.Adapter {
@@ -40,7 +41,13 @@ class Ems extends utils.Adapter {
     async onReady() {
         try {
             await this.ensureBaseStates();
-            this.log.info("EMS adapter v0.0.5 ready — dryrun/audit only, no device writes");
+            await this.subscribeStatesAsync(states_1.STATE.command.inbox);
+            this.log.info("EMS adapter v0.0.6 ready — dryrun/audit only, no device writes");
+            const inbox = await this.getStateAsync(states_1.STATE.command.inbox);
+            if (inbox && !inbox.ack && inbox.val != null) {
+                this.log.info("Processing pending command.inbox on start");
+                await this.processInbox(inbox.val, inbox.ack);
+            }
         }
         catch (e) {
             this.log.error(`onReady failed: ${e}`);
@@ -54,21 +61,28 @@ class Ems extends utils.Adapter {
         return parts[1] ?? "0";
     }
     async onStateChange(id, state) {
-        // Inbox: process only incoming commands (ack=false from Admin/EMS)
         const inboxId = `${this.namespace}.${states_1.STATE.command.inbox}`;
         if (id !== inboxId || !state)
             return;
-        if (state.ack)
+        await this.processInbox(state.val, state.ack);
+    }
+    /** Process inbox when ack=false (new command). Ignore ack=true. */
+    async processInbox(val, ack) {
+        if (ack)
             return;
         if (this.processingInbox)
             return;
-        const raw = state.val;
-        if (typeof raw !== "string" || !raw.trim())
+        if (val === null || val === undefined || val === "") {
             return;
+        }
         this.processingInbox = true;
         try {
-            await this.handleInbox(raw);
-            await this.setStateAsync(states_1.STATE.command.inbox, { val: raw, ack: true });
+            this.log.info(`command.inbox received: ${typeof val === "object" ? JSON.stringify(val) : String(val)}`);
+            await this.handleInbox(val);
+            await this.setStateAsync(states_1.STATE.command.inbox, {
+                val: val,
+                ack: true,
+            });
         }
         catch (e) {
             this.log.error(`handleInbox: ${e}`);
@@ -77,15 +91,22 @@ class Ems extends utils.Adapter {
             this.processingInbox = false;
         }
     }
-    async handleInbox(raw) {
-        const intent = (0, pipeline_1.parseInbox)(raw);
+    async handleInbox(val) {
+        const intent = (0, inbox_1.parseInboxValue)(val);
         const iid = this.instanceId();
         if (!intent) {
-            await this.writeAudit(iid, {
+            const outcome = {
                 result: "invalid_command",
                 reason: "json_parse",
-                intent: null,
+                checks_passed: [],
+                checks_failed: ["parse"],
+            };
+            await this.writeAudit(iid, { ...outcome, intent: null });
+            await this.setStateAsync(states_1.STATE.command.lastResult, {
+                val: JSON.stringify(outcome),
+                ack: true,
             });
+            this.log.warn("command.inbox: invalid JSON");
             return;
         }
         const outcome = (0, pipeline_1.runDryrunPipeline)(intent);
@@ -100,6 +121,7 @@ class Ems extends utils.Adapter {
             val: JSON.stringify(outcome),
             ack: true,
         });
+        this.log.info(`command.inbox done: ${outcome.result}`);
     }
     async writeAudit(iid, payload) {
         const event = {

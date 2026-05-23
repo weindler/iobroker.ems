@@ -40,12 +40,3 @@ function fail(
 	return { result, reason, checks_passed, checks_failed };
 }
 
-export function parseInbox(raw: string): CommandIntent | null {
-	try {
-		const data = JSON.parse(raw) as CommandIntent;
-		if (typeof data !== "object" || data === null) return null;
-		return data;
-	} catch {
-		return null;
-	}
-}

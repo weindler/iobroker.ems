@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.0.5",
+		"version": "0.0.6",
 		"news": {
+			"0.0.6": {
+				"en": "Subscribe command.inbox; accept json object; log + last_result on errors",
+				"de": "Subscribe command.inbox; JSON-Objekt; Log + last_result bei Fehlern"
+			},
 			"0.0.5": {
 				"en": "Fix inbox: process state changes with ack=false (Admin/EMS commands)",
 				"de": "Inbox-Fix: Befehle mit ack=false verarbeiten (Admin/EMS)"

@@ -1,0 +1,41 @@
+{
+	"common": {
+		"name": "ems",
+		"version": "0.0.1",
+		"news": {
+			"0.0.1": {
+				"en": "Initial: ems.0 states, command inbox, dryrun-only pipeline",
+				"de": "Erstversion: ems.0 States, Befehlseingang, nur Dryrun"
+			}
+		},
+		"title": {
+			"en": "EMS V2",
+			"de": "EMS V2"
+		},
+		"desc": {
+			"en": "Execution gateway for EMS V2. v0.0.1: dryrun + audit only, no device writes.",
+			"de": "Ausführungs-Gateway für EMS V2. v0.0.1: nur Dryrun + Audit, keine Geräte-Writes."
+		},
+		"authors": ["weindler"],
+		"license": "MIT",
+		"platform": "All",
+		"mode": "daemon",
+		"type": "adapter",
+		"category": "energy",
+		"connectionType": "local",
+		"dataSource": "poll",
+		"enabled": true,
+		"compact": true,
+		"dependencies": [
+			{
+				"js-controller": ">=5.0.19"
+			}
+		],
+		"adminUI": {
+			"enabled": "basic"
+		}
+	},
+	"native": {},
+	"objects": [],
+	"instanceObjects": []
+}

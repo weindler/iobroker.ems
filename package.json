@@ -1,0 +1,39 @@
+{
+	"name": "iobroker.ems",
+	"version": "0.0.1",
+	"description": "EMS V2 execution gateway for ioBroker (dryrun/live, audit)",
+	"author": {
+		"name": "weindler"
+	},
+	"homepage": "https://github.com/weindler/iobroker.ems",
+	"bugs": {
+		"url": "https://github.com/weindler/iobroker.ems/issues"
+	},
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/weindler/iobroker.ems.git"
+	},
+	"engines": {
+		"node": ">=18"
+	},
+	"dependencies": {
+		"@iobroker/adapter-core": "^3.3.2"
+	},
+	"devDependencies": {
+		"@types/node": "^18.19.0",
+		"typescript": "~5.4.5"
+	},
+	"main": "build/main.js",
+	"files": [
+		"build/",
+		"io-package.json",
+		"LICENSE",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"watch": "tsc -p tsconfig.build.json --watch",
+		"check": "tsc --noEmit -p tsconfig.json"
+	}
+}

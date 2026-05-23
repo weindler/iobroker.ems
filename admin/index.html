@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>EMS V2 Adapter</title>
+	<style>
+		body { font-family: system-ui, sans-serif; margin: 1.5rem; line-height: 1.5; max-width: 42rem; }
+		code { background: #f0f0f0; padding: 0.1em 0.35em; border-radius: 3px; }
+		pre { background: #f5f5f5; padding: 0.75rem; overflow: auto; font-size: 0.85rem; }
+	</style>
+</head>
+<body>
+	<h1>EMS V2 Adapter</h1>
+	<p>v0.0.4 — Konfiguration über <strong>Objekte</strong> (<code>ems.0.*</code>), nicht über diese Seite.</p>
+	<p>Standard: <code>config.execution_enabled</code> = false, nur Dryrun + Audit.</p>
+	<h2>Test</h2>
+	<p>State <code>command.inbox</code> (JSON, ack):</p>
+	<pre>{
+  "intent_id": "test-1",
+  "addon_id": "wallbox",
+  "command": "set_charge_power_w",
+  "value": 4200,
+  "source": "manual"
+}</pre>
+	<p>Ergebnis: <code>command.last_result</code>, <code>audit.&lt;addon&gt;.last_event</code></p>
+</body>
+</html>

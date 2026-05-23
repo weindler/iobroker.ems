@@ -9,7 +9,7 @@ Concept docs: [EMS repo `docs/iobroker_adapter/`](https://github.com/weindler/io
 ## Install (ioBroker host)
 
 ```bash
-iobroker url install github:weindler/iobroker.ems#v0.0.1
+iobroker url install github:weindler/iobroker.ems#v0.0.2
 ```
 
 Or from git checkout:

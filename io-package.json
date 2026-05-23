@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.0.1",
+		"version": "0.0.2",
 		"news": {
+			"0.0.2": {
+				"en": "Ship prebuilt build/ — fixes ioBroker install without tsconfig in npm pack",
+				"de": "Vorkompiliertes build/ — Install auf ioBroker ohne postinstall-Build"
+			},
 			"0.0.1": {
 				"en": "Initial: ems.0 states, command inbox, dryrun-only pipeline",
 				"de": "Erstversion: ems.0 States, Befehlseingang, nur Dryrun"

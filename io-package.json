@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.0.2",
+		"version": "0.0.3",
 		"news": {
+			"0.0.3": {
+				"en": "Disable custom admin UI until admin/ exists (fixes 404 index.html)",
+				"de": "Admin-UI aus bis admin/ vorhanden (behebt 404 index.html)"
+			},
 			"0.0.2": {
 				"en": "Ship prebuilt build/ — fixes ioBroker install without tsconfig in npm pack",
 				"de": "Vorkompiliertes build/ — Install auf ioBroker ohne postinstall-Build"
@@ -36,7 +40,7 @@
 			}
 		],
 		"adminUI": {
-			"enabled": "basic"
+			"enabled": false
 		}
 	},
 	"native": {},

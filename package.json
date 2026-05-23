@@ -33,6 +33,7 @@
 	],
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",
+		"postinstall": "npm run build",
 		"watch": "tsc -p tsconfig.build.json --watch",
 		"check": "tsc --noEmit -p tsconfig.json"
 	}

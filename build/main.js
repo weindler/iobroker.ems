@@ -40,7 +40,7 @@ class Ems extends utils.Adapter {
     async onReady() {
         try {
             await this.ensureBaseStates();
-            this.log.info("EMS adapter v0.0.1 ready — dryrun/audit only, no device writes");
+            this.log.info("EMS adapter v0.0.5 ready — dryrun/audit only, no device writes");
         }
         catch (e) {
             this.log.error(`onReady failed: ${e}`);
@@ -54,10 +54,11 @@ class Ems extends utils.Adapter {
         return parts[1] ?? "0";
     }
     async onStateChange(id, state) {
-        if (!state?.ack)
-            return;
+        // Inbox: process only incoming commands (ack=false from Admin/EMS)
         const inboxId = `${this.namespace}.${states_1.STATE.command.inbox}`;
-        if (id !== inboxId)
+        if (id !== inboxId || !state)
+            return;
+        if (state.ack)
             return;
         if (this.processingInbox)
             return;
@@ -67,6 +68,7 @@ class Ems extends utils.Adapter {
         this.processingInbox = true;
         try {
             await this.handleInbox(raw);
+            await this.setStateAsync(states_1.STATE.command.inbox, { val: raw, ack: true });
         }
         catch (e) {
             this.log.error(`handleInbox: ${e}`);

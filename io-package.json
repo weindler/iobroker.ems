@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.0.4",
+		"version": "0.0.5",
 		"news": {
+			"0.0.5": {
+				"en": "Fix inbox: process state changes with ack=false (Admin/EMS commands)",
+				"de": "Inbox-Fix: Befehle mit ack=false verarbeiten (Admin/EMS)"
+			},
 			"0.0.4": {
 				"en": "Minimal admin/index.html (fixes 404 in instance settings)",
 				"de": "Minimale admin/index.html (behebt 404 in Instanzeinstellungen)"

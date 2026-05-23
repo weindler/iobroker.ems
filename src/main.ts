@@ -19,7 +19,7 @@ class Ems extends utils.Adapter {
 	private async onReady(): Promise<void> {
 		try {
 			await this.ensureBaseStates();
-			this.log.info("EMS adapter v0.0.1 ready — dryrun/audit only, no device writes");
+			this.log.info("EMS adapter v0.0.5 ready — dryrun/audit only, no device writes");
 		} catch (e) {
 			this.log.error(`onReady failed: ${e}`);
 		}
@@ -35,9 +35,10 @@ class Ems extends utils.Adapter {
 	}
 
 	private async onStateChange(id: string, state: ioBroker.State | null): Promise<void> {
-		if (!state?.ack) return;
+		// Inbox: process only incoming commands (ack=false from Admin/EMS)
 		const inboxId = `${this.namespace}.${STATE.command.inbox}`;
-		if (id !== inboxId) return;
+		if (id !== inboxId || !state) return;
+		if (state.ack) return;
 		if (this.processingInbox) return;
 
 		const raw = state.val;
@@ -46,6 +47,7 @@ class Ems extends utils.Adapter {
 		this.processingInbox = true;
 		try {
 			await this.handleInbox(raw);
+			await this.setStateAsync(STATE.command.inbox, { val: raw, ack: true });
 		} catch (e) {
 			this.log.error(`handleInbox: ${e}`);
 		} finally {

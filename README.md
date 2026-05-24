@@ -2,9 +2,11 @@
 
 Execution gateway between **EMS V2** and **ioBroker** (dryrun/live, mapping, audit).
 
-**v0.0.8:** Dryrun **flat states** under `dryrun.<addon>.*` (target_state, planned_ampere, …) — readable in Admin without parsing JSON. Still no device writes.
+**v0.0.9:** Instanz-Admin: Wallbox-Mapping per **State wählen** (keine festen go-e-Pfade beim Start). Optional Button „go-e Vorlage“.
 
-**v0.0.7:** Full dryrun check chain, wallbox → go-e mapping defaults.
+**v0.0.8:** Dryrun flat states under `dryrun.<addon>.*`. Still no device writes.
+
+**v0.0.7:** Full dryrun check chain.
 
 Concept docs: EMS project `docs/iobroker_adapter/`.
 
@@ -33,14 +35,7 @@ iobroker update ems
 
 ## Wallbox test (go-e)
 
-After start, defaults are created under `ems.0.mapping.wallbox.*`:
-
-| Command | Default target |
-|---------|----------------|
-| `set_enabled` | `go-e.0.allow_charging` |
-| `set_current_a` | `go-e.0.ampere` |
-| `set_charge_power_w` | `go-e.0.ampere` (W→A in dryrun) |
-| `set_phase_switch_enabled` | `go-e.0.phaseSwitchModeEnabled` |
+Configure mapping in **instance settings** (tab Wallbox): pick target states or use optional **go-e template** button. After save + adapter restart, values appear under `ems.0.mapping.wallbox.*`.
 
 Set `ems.0.command.inbox` with **ack = false** (Admin „set value“):
 

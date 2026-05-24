@@ -2,23 +2,11 @@ import * as utils from "@iobroker/adapter-core";
 import { EMS_ADDON_IDS } from "./addons/registry";
 import { writeDryrunMirror } from "./dryrun_mirror";
 import { parseInboxValue } from "./inbox";
+import { WALLBOX_MAPPING_COMMANDS } from "./mapping_config";
+import { ensureAddonMappingStates, syncNativeMappingToStates } from "./mapping_sync";
 import { runCommandPipeline } from "./pipeline";
 import { STATE } from "./states";
 import type { CommandIntent } from "./types";
-
-/** go-e wallbox default mapping (instance prefix added at runtime). */
-const WALLBOX_MAPPING_DEFAULTS: Record<
-	string,
-	{ target: string; allowed_values?: string }
-> = {
-	set_enabled: { target: "go-e.0.allow_charging", allowed_values: "[true,false,0,1]" },
-	set_current_a: { target: "go-e.0.ampere" },
-	set_charge_power_w: { target: "go-e.0.ampere" },
-	set_phase_switch_enabled: {
-		target: "go-e.0.phaseSwitchModeEnabled",
-		allowed_values: "[true,false]",
-	},
-};
 
 class Ems extends utils.Adapter {
 	private processingInbox = false;
@@ -37,9 +25,9 @@ class Ems extends utils.Adapter {
 		try {
 			await this.ensureBaseStates();
 			await this.ensureAddonStates();
-			await this.ensureWallboxMappingDefaults();
+			await this.ensureWallboxMapping();
 			await this.subscribeStatesAsync(STATE.command.inbox);
-			this.log.info("EMS adapter v0.0.8 ready — dryrun flat states + mapping, no device writes");
+			this.log.info("EMS adapter v0.0.9 ready — configurable mapping (admin), dryrun, no device writes");
 
 			const inbox = await this.getStateAsync(STATE.command.inbox);
 			if (inbox && !inbox.ack && inbox.val != null) {
@@ -253,45 +241,9 @@ class Ems extends utils.Adapter {
 		}
 	}
 
-	private async ensureWallboxMappingDefaults(): Promise<void> {
-		for (const [cmd, cfg] of Object.entries(WALLBOX_MAPPING_DEFAULTS)) {
-			const base = `mapping.wallbox.${cmd}`;
-			await this.ensureState(`${base}.enabled`, {
-				name: `wallbox ${cmd} mapping enabled`,
-				type: "boolean",
-				role: "switch",
-				read: true,
-				write: true,
-				def: true,
-			}, true);
-			await this.ensureState(`${base}.target_state`, {
-				name: `wallbox ${cmd} target state id`,
-				type: "string",
-				role: "text",
-				read: true,
-				write: true,
-			});
-			const cur = await this.getStateAsync(`${base}.target_state`);
-			if (!cur?.val || String(cur.val).trim() === "") {
-				await this.setStateAsync(`${base}.target_state`, { val: cfg.target, ack: true });
-			}
-			if (cfg.allowed_values) {
-				await this.ensureState(`${base}.allowed_values`, {
-					name: `wallbox ${cmd} allowed values (JSON array)`,
-					type: "string",
-					role: "json",
-					read: true,
-					write: true,
-				});
-				const av = await this.getStateAsync(`${base}.allowed_values`);
-				if (!av?.val || String(av.val).trim() === "") {
-					await this.setStateAsync(`${base}.allowed_values`, {
-						val: cfg.allowed_values,
-						ack: true,
-					});
-				}
-			}
-		}
+	private async ensureWallboxMapping(): Promise<void> {
+		await ensureAddonMappingStates(this, "wallbox", WALLBOX_MAPPING_COMMANDS);
+		await syncNativeMappingToStates(this, "wallbox");
 	}
 
 	private async ensureState(

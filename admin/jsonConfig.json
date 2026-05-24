@@ -201,6 +201,224 @@
 					"xl": 12
 				}
 			}
+		},
+		"batteryTab": {
+			"type": "panel",
+			"label": "Batterie / Sonnen",
+			"items": {
+				"batIntro": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Profil Sonnen: Verbrauch/PV/SOC lesen, Battery charging schreiben (v0.0.16 nur Dryrun-Tick). EMS schreibt ems_mirror.* (Rest-PV, Schnee, grid_balance). Später weitere battery_profile."
+				},
+				"battery_profile": {
+					"type": "select",
+					"label": "Batterie-Profil",
+					"options": [
+						["sonnen", "Sonnen (EM-Adapter)"]
+					],
+					"default": "sonnen",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"bat_tick_interval_sec": {
+					"type": "number",
+					"label": "Tick-Intervall (Sek.)",
+					"min": 15,
+					"max": 300,
+					"default": 45,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"bat_capacity_wh_const": {
+					"type": "number",
+					"label": "Kapazität (Wh, optional Konstante)",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"bat_active_months": {
+					"type": "text",
+					"label": "Aktive Monate (JSON oder CSV, 1–12)",
+					"default": "[3,4,5,6,7,8,9,10]",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"hBatConsumption": {
+					"type": "header",
+					"size": 2,
+					"text": "consumption_w — Verbrauch",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"bat_consumption_target": {
+					"type": "objectId",
+					"label": "Ziel-State",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"bat_consumption_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hBatPv": {
+					"type": "header",
+					"size": 2,
+					"text": "pv_ac_power_w — PV AC-Leistung",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"bat_pv_ac_target": {
+					"type": "objectId",
+					"label": "Ziel-State",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"bat_pv_ac_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hBatCharging": {
+					"type": "header",
+					"size": 2,
+					"text": "battery_charging_w — Battery charging (Schreiben)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"helpBatCharging": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Netzausgleich setzt Soll-Leistung (Dryrun: dryrun.battery.grid_balance.*). Live erst wenn BATTERY_LIVE_WRITES_ENABLED wie bei Wallbox."
+				},
+				"bat_battery_charging_target": {
+					"type": "objectId",
+					"label": "Ziel-State",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"bat_battery_charging_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hBatSoc": {
+					"type": "header",
+					"size": 2,
+					"text": "soc_pct — SOC",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"bat_soc_target": {
+					"type": "objectId",
+					"label": "Ziel-State",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"bat_soc_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hBatCapacity": {
+					"type": "header",
+					"size": 2,
+					"text": "capacity_wh — Kapazität (optional State)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"bat_capacity_target": {
+					"type": "objectId",
+					"label": "Ziel-State",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"bat_capacity_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				}
+			}
 		}
 	}
 }

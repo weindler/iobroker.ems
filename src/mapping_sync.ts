@@ -54,19 +54,21 @@ export async function ensureAddonMappingStates(
 	}
 }
 
+export type MappingFromConfigFn = (
+	config: Record<string, unknown>,
+) => Record<string, NativeMappingEntry>;
+
 /** Instanz-native (jsonConfig) → mapping.* States nach Adapter-Start. */
 export async function syncNativeMappingToStates(
 	host: MappingHost,
 	addonId: string,
+	fromConfig: MappingFromConfigFn,
 ): Promise<void> {
-	if (addonId !== "wallbox") {
-		return;
-	}
 	const cfg = host.config;
 	if (!cfg || typeof cfg !== "object") {
 		return;
 	}
-	const entries = wallboxMappingFromConfig(cfg as Record<string, unknown>);
+	const entries = fromConfig(cfg as Record<string, unknown>);
 	for (const [cmd, entry] of Object.entries(entries)) {
 		await applyMappingEntry(host, addonId, cmd, entry);
 	}

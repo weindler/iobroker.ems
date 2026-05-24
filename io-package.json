@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.0.15",
+		"version": "0.0.16",
 		"news": {
+			"0.0.16": {
+				"en": "Battery addon (Sonnen profile): mapping tab, grid_balance tick, ems_mirror states, dryrun only",
+				"de": "Batterie-Addon (Sonnen): Mapping-Tab, Netzausgleich-Tick, ems_mirror-States, nur Dryrun"
+			},
 			"0.0.15": {
 				"en": "status.wallbox.* states for EMS charging mode and vehicle SOC (display only)",
 				"de": "status.wallbox.* für Lademodus und Fahrzeug-SOC (nur Anzeige, EMS schreibt)"

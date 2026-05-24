@@ -24,6 +24,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const utils = __importStar(require("@iobroker/adapter-core"));
+const battery_1 = require("./addons/battery");
 const registry_1 = require("./addons/registry");
 const dryrun_mirror_1 = require("./dryrun_mirror");
 const inbox_1 = require("./inbox");
@@ -34,6 +35,7 @@ const status_wallbox_1 = require("./status_wallbox");
 const states_1 = require("./states");
 class Ems extends utils.Adapter {
     processingInbox = false;
+    batteryTickTimer = null;
     constructor(options = {}) {
         super({
             ...options,
@@ -57,8 +59,9 @@ class Ems extends utils.Adapter {
             await this.ensureAddonStates();
             await this.ensureWallboxMapping();
             await (0, status_wallbox_1.ensureWallboxStatusStates)(this);
+            this.batteryTickTimer = await (0, battery_1.initBatteryModule)(this);
             await this.subscribeStatesAsync(states_1.STATE.command.inbox);
-            this.log.info("EMS adapter v0.0.15 ready — status mirror, jsonConfig mapping, dryrun");
+            this.log.info("EMS adapter v0.0.16 ready — wallbox inbox dryrun, battery Sonnen grid_balance tick (dryrun)");
             const inbox = await this.getStateAsync(states_1.STATE.command.inbox);
             if (inbox && !inbox.ack && inbox.val != null) {
                 this.log.info("Processing pending command.inbox on start");
@@ -70,6 +73,8 @@ class Ems extends utils.Adapter {
         }
     }
     onUnload(callback) {
+        (0, battery_1.stopBatteryModule)(this.batteryTickTimer);
+        this.batteryTickTimer = null;
         callback();
     }
     async onStateChange(id, state) {
@@ -261,7 +266,7 @@ class Ems extends utils.Adapter {
     }
     async ensureWallboxMapping() {
         await (0, mapping_sync_1.ensureAddonMappingStates)(this, "wallbox", mapping_config_1.WALLBOX_MAPPING_COMMANDS);
-        await (0, mapping_sync_1.syncNativeMappingToStates)(this, "wallbox");
+        await (0, mapping_sync_1.syncNativeMappingToStates)(this, "wallbox", mapping_config_1.wallboxMappingFromConfig);
     }
     async ensureState(relativeId, common, defaultVal) {
         await this.setObjectNotExistsAsync(relativeId, {

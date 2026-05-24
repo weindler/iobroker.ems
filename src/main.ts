@@ -1,8 +1,9 @@
 import * as utils from "@iobroker/adapter-core";
+import { initBatteryModule, stopBatteryModule } from "./addons/battery";
 import { EMS_ADDON_IDS } from "./addons/registry";
 import { writeDryrunMirror } from "./dryrun_mirror";
 import { parseInboxValue } from "./inbox";
-import { goeWallboxTemplateFlat, WALLBOX_MAPPING_COMMANDS } from "./mapping_config";
+import { goeWallboxTemplateFlat, wallboxMappingFromConfig, WALLBOX_MAPPING_COMMANDS } from "./mapping_config";
 import { ensureAddonMappingStates, syncNativeMappingToStates } from "./mapping_sync";
 import { runCommandPipeline } from "./pipeline";
 import { ensureWallboxStatusStates } from "./status_wallbox";
@@ -11,6 +12,7 @@ import type { CommandIntent } from "./types";
 
 class Ems extends utils.Adapter {
 	private processingInbox = false;
+	private batteryTickTimer: NodeJS.Timeout | null = null;
 
 	public constructor(options: Partial<utils.AdapterOptions> = {}) {
 		super({
@@ -40,8 +42,11 @@ class Ems extends utils.Adapter {
 			await this.ensureAddonStates();
 			await this.ensureWallboxMapping();
 			await ensureWallboxStatusStates(this);
+			this.batteryTickTimer = await initBatteryModule(this);
 			await this.subscribeStatesAsync(STATE.command.inbox);
-			this.log.info("EMS adapter v0.0.15 ready — status mirror, jsonConfig mapping, dryrun");
+			this.log.info(
+				"EMS adapter v0.0.16 ready — wallbox inbox dryrun, battery Sonnen grid_balance tick (dryrun)",
+			);
 
 			const inbox = await this.getStateAsync(STATE.command.inbox);
 			if (inbox && !inbox.ack && inbox.val != null) {
@@ -54,6 +59,8 @@ class Ems extends utils.Adapter {
 	}
 
 	private onUnload(callback: () => void): void {
+		stopBatteryModule(this.batteryTickTimer);
+		this.batteryTickTimer = null;
 		callback();
 	}
 
@@ -257,7 +264,7 @@ class Ems extends utils.Adapter {
 
 	private async ensureWallboxMapping(): Promise<void> {
 		await ensureAddonMappingStates(this, "wallbox", WALLBOX_MAPPING_COMMANDS);
-		await syncNativeMappingToStates(this, "wallbox");
+		await syncNativeMappingToStates(this, "wallbox", wallboxMappingFromConfig);
 	}
 
 	private async ensureState(

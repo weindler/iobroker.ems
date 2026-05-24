@@ -48,7 +48,7 @@ class Ems extends utils.Adapter {
             await this.ensureAddonStates();
             await this.ensureWallboxMapping();
             await this.subscribeStatesAsync(states_1.STATE.command.inbox);
-            this.log.info("EMS adapter v0.0.9 ready — configurable mapping (admin), dryrun, no device writes");
+            this.log.info("EMS adapter v0.0.10 ready — configurable mapping (admin), dryrun, no device writes");
             const inbox = await this.getStateAsync(states_1.STATE.command.inbox);
             if (inbox && !inbox.ack && inbox.val != null) {
                 this.log.info("Processing pending command.inbox on start");

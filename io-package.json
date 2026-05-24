@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.0.13",
+		"version": "0.0.14",
 		"news": {
+			"0.0.14": {
+				"en": "go-e template: use amperePV (amx) not ampere (amp) for EMS regulation",
+				"de": "go-e-Vorlage: amperePV (amx) statt ampere (amp) für EMS-Regelung"
+			},
 			"0.0.13": {
 				"en": "Fix jsonConfig schema: header elements require size (h1-h5)",
 				"de": "jsonConfig-Schema: header braucht size (Überschriftenebene 1-5)"

@@ -21,9 +21,10 @@ function goeWallboxTemplateFlat() {
         wb_set_enabled_target: "go-e.0.allow_charging",
         wb_set_enabled_enabled: true,
         wb_set_enabled_allowed: "[true,false,0,1]",
-        wb_set_current_a_target: "go-e.0.ampere",
+        // amx (amperePV): RAM, für häufige Änderungen — nicht amp (Flash, ~100k Zyklen)
+        wb_set_current_a_target: "go-e.0.amperePV",
         wb_set_current_a_enabled: true,
-        wb_set_charge_power_w_target: "go-e.0.ampere",
+        wb_set_charge_power_w_target: "go-e.0.amperePV",
         wb_set_charge_power_w_enabled: true,
         wb_set_phase_switch_target: "go-e.0.phaseSwitchModeEnabled",
         wb_set_phase_switch_enabled: true,

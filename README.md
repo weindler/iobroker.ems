@@ -52,7 +52,7 @@ Set `ems.0.command.inbox` with **ack = false** (Admin „set value“):
 Expected in `ems.0.command.last_result`:
 
 - `result`: `dryrun_only`
-- `target_state`: `go-e.0.ampere`
+- `target_state`: `go-e.0.amperePV` (go-e API `amx`; not `ampere`/`amp` — Flash wear)
 - `planned_value`: `{ "watts": 4200, "ampere": 18, ... }`
 
 Also check flat dryrun states, e.g. `ems.0.dryrun.wallbox.target_state`, `planned_ampere`, `result`, and `audit.wallbox.last_event`.

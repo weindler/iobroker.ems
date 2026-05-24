@@ -91,7 +91,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Direkte Vorgabe des Ladestroms in Ampere. go-e: ampere."
+					"text": "Direkte Vorgabe des Ladestroms in Ampere. go-e: amperePV (API amx) — für EMS-Regelung, weil ampere (amp) ins Flash schreibt. ampere nur für seltene manuelle Limits."
 				},
 				"wb_set_current_a_target": {
 					"type": "objectId",
@@ -130,7 +130,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "EMS rechnet Watt in Ampere um (230 V). go-e: meist ebenfalls ampere (gleicher State wie Strom)."
+					"text": "EMS rechnet Watt in Ampere um (230 V). go-e: gleicher Ziel-State wie Strom — amperePV (amx), nicht ampere (amp)."
 				},
 				"wb_set_charge_power_w_target": {
 					"type": "objectId",

@@ -30,6 +30,7 @@ const inbox_1 = require("./inbox");
 const mapping_config_1 = require("./mapping_config");
 const mapping_sync_1 = require("./mapping_sync");
 const pipeline_1 = require("./pipeline");
+const status_wallbox_1 = require("./status_wallbox");
 const states_1 = require("./states");
 class Ems extends utils.Adapter {
     processingInbox = false;
@@ -55,8 +56,9 @@ class Ems extends utils.Adapter {
             await this.ensureBaseStates();
             await this.ensureAddonStates();
             await this.ensureWallboxMapping();
+            await (0, status_wallbox_1.ensureWallboxStatusStates)(this);
             await this.subscribeStatesAsync(states_1.STATE.command.inbox);
-            this.log.info("EMS adapter v0.0.13 ready — jsonConfig objectId mapping, dryrun, no device writes");
+            this.log.info("EMS adapter v0.0.15 ready — status mirror, jsonConfig mapping, dryrun");
             const inbox = await this.getStateAsync(states_1.STATE.command.inbox);
             if (inbox && !inbox.ack && inbox.val != null) {
                 this.log.info("Processing pending command.inbox on start");

@@ -5,6 +5,7 @@ import { parseInboxValue } from "./inbox";
 import { goeWallboxTemplateFlat, WALLBOX_MAPPING_COMMANDS } from "./mapping_config";
 import { ensureAddonMappingStates, syncNativeMappingToStates } from "./mapping_sync";
 import { runCommandPipeline } from "./pipeline";
+import { ensureWallboxStatusStates } from "./status_wallbox";
 import { STATE } from "./states";
 import type { CommandIntent } from "./types";
 
@@ -38,8 +39,9 @@ class Ems extends utils.Adapter {
 			await this.ensureBaseStates();
 			await this.ensureAddonStates();
 			await this.ensureWallboxMapping();
+			await ensureWallboxStatusStates(this);
 			await this.subscribeStatesAsync(STATE.command.inbox);
-			this.log.info("EMS adapter v0.0.13 ready — jsonConfig objectId mapping, dryrun, no device writes");
+			this.log.info("EMS adapter v0.0.15 ready — status mirror, jsonConfig mapping, dryrun");
 
 			const inbox = await this.getStateAsync(STATE.command.inbox);
 			if (inbox && !inbox.ack && inbox.val != null) {

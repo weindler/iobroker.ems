@@ -115,8 +115,9 @@ export function resolveController(params: {
 	emsGridBalanceEnabled: boolean;
 	adapterFeatureEnabled: boolean;
 	batteryAddonEnabled: boolean;
+	gridBalancePaused: boolean;
 }): BatteryController {
-	if (params.emsBatteryIntentActive) {
+	if (params.emsBatteryIntentActive || params.gridBalancePaused) {
 		return "ems";
 	}
 	if (params.emsGridBalanceEnabled && params.adapterFeatureEnabled && params.batteryAddonEnabled) {

@@ -6,6 +6,8 @@ exports.BATTERY_STATUS_STATES = {
     controller: "status.battery.controller",
     gridBalanceEnabled: "status.battery.grid_balance_enabled",
     updatedAt: "status.battery.updated_at",
+    modeSequenceStatus: "status.battery.mode_sequence_status",
+    modeSequenceDetail: "status.battery.mode_sequence_detail",
 };
 async function ensureBatteryStatusStates(adapter) {
     const defs = [
@@ -39,6 +41,28 @@ async function ensureBatteryStatusStates(adapter) {
                 name: "Batterie-Status zuletzt aktualisiert",
                 type: "string",
                 role: "date",
+                read: true,
+                write: false,
+            },
+        },
+        {
+            _id: exports.BATTERY_STATUS_STATES.modeSequenceStatus,
+            common: {
+                name: "Modus-Sequenz Status",
+                type: "string",
+                role: "text",
+                read: true,
+                write: false,
+                def: "idle",
+            },
+            defVal: "idle",
+        },
+        {
+            _id: exports.BATTERY_STATUS_STATES.modeSequenceDetail,
+            common: {
+                name: "Modus-Sequenz Detail",
+                type: "string",
+                role: "text",
                 read: true,
                 write: false,
             },

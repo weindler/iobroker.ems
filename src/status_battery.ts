@@ -4,6 +4,8 @@ export const BATTERY_STATUS_STATES = {
 	controller: "status.battery.controller",
 	gridBalanceEnabled: "status.battery.grid_balance_enabled",
 	updatedAt: "status.battery.updated_at",
+	modeSequenceStatus: "status.battery.mode_sequence_status",
+	modeSequenceDetail: "status.battery.mode_sequence_detail",
 } as const;
 
 export async function ensureBatteryStatusStates(adapter: ioBroker.Adapter): Promise<void> {
@@ -38,6 +40,28 @@ export async function ensureBatteryStatusStates(adapter: ioBroker.Adapter): Prom
 				name: "Batterie-Status zuletzt aktualisiert",
 				type: "string",
 				role: "date",
+				read: true,
+				write: false,
+			},
+		},
+		{
+			_id: BATTERY_STATUS_STATES.modeSequenceStatus,
+			common: {
+				name: "Modus-Sequenz Status",
+				type: "string",
+				role: "text",
+				read: true,
+				write: false,
+				def: "idle",
+			},
+			defVal: "idle",
+		},
+		{
+			_id: BATTERY_STATUS_STATES.modeSequenceDetail,
+			common: {
+				name: "Modus-Sequenz Detail",
+				type: "string",
+				role: "text",
 				read: true,
 				write: false,
 			},

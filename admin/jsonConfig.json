@@ -474,6 +474,49 @@
 					"lg": 4,
 					"xl": 4
 				},
+				"hBatModeSwitch": {
+					"type": "header",
+					"size": 2,
+					"text": "Modus-Umschaltung (EMS ↔ Sonnen)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"helpBatModeSwitch": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Modus 1 (EMS): Netzausgleich pausieren → warten → Modus setzen → warten → charge. Modus 2: sofort ohne Wartezeit, danach Netzausgleich wieder möglich. Steuerung über ems_mirror.mode_request_id."
+				},
+				"bat_mode_pause_grid_balance_sec": {
+					"type": "number",
+					"label": "Pause Netzausgleich vor Modus 1 (Sek.)",
+					"min": 0,
+					"max": 120,
+					"default": 10,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"bat_mode_wait_after_mode_sec": {
+					"type": "number",
+					"label": "Wartezeit nach Modus 1 vor charge (Sek.)",
+					"min": 0,
+					"max": 120,
+					"default": 5,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
 				"hBatWinter": {
 					"type": "header",
 					"size": 2,

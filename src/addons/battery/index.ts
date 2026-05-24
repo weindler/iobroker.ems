@@ -7,6 +7,11 @@ import {
 	setupConsumptionWatch,
 } from "./consumption_watch";
 import { ensureBatteryEmsMirrorStates } from "./ems_mirror";
+import {
+	handleEmsMirrorStateChange,
+	isEmsMirrorStateId,
+	setupEmsMirrorWatch,
+} from "./ems_mirror_watch";
 import { runGridBalanceOnConsumptionChange, type BatteryTickHost } from "./grid_balance_runner";
 import {
 	BATTERY_SONNEN_MAPPING_ROLES,
@@ -27,6 +32,7 @@ export async function initBatteryModule(adapter: ioBroker.Adapter): Promise<null
 
 	const host = adapter as BatteryTickHost;
 	await setupConsumptionWatch(host);
+	await setupEmsMirrorWatch(host);
 	void runGridBalanceOnConsumptionChange(host, "startup");
 
 	const cfg =
@@ -51,9 +57,24 @@ export function stopBatteryModule(_timer: NodeJS.Timeout | null): void {
 	clearConsumptionWatch();
 }
 
-export function handleBatteryForeignStateChange(adapter: ioBroker.Adapter, stateId: string): void {
-	if (!isWatchedConsumptionState(stateId)) {
+export function handleBatteryAdapterStateChange(
+	adapter: ioBroker.Adapter,
+	stateId: string,
+): void {
+	const host = adapter as BatteryTickHost;
+	const ns = `${adapter.namespace}.`;
+
+	if (isWatchedConsumptionState(stateId)) {
+		onConsumptionStateChange(host);
 		return;
 	}
-	onConsumptionStateChange(adapter as BatteryTickHost);
+
+	if (isEmsMirrorStateId(stateId, ns)) {
+		void handleEmsMirrorStateChange(host).catch((e) => adapter.log.error(`battery ems_mirror: ${e}`));
+	}
+}
+
+/** @deprecated use handleBatteryAdapterStateChange */
+export function handleBatteryForeignStateChange(adapter: ioBroker.Adapter, stateId: string): void {
+	handleBatteryAdapterStateChange(adapter, stateId);
 }

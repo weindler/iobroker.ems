@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.0.18",
+		"version": "0.0.19",
 		"news": {
+			"0.0.19": {
+				"en": "EMS mode switch sequence: pause grid balance, delays configurable, mode 2 immediate",
+				"de": "EMS-Modus-Sequenz: Netzausgleich pausieren, Wartezeiten konfigurierbar, Modus 2 sofort"
+			},
 			"0.0.18": {
 				"en": "Sonnen grid balance: opt-in UI, EMS capacity mirror, consumption_w trigger, mode mapping",
 				"de": "Sonnen Netzausgleich: Opt-in, Kapazität vom EMS, Trigger consumption_w, Modus-Mapping"

@@ -7,6 +7,7 @@ import {
 	gridBalanceOffsetsFromConfig,
 } from "./mapping_config";
 import { readBool, readMappedRole, readNumber, mappedTargetId, writeForeignIfLive } from "./io";
+import { isGridBalancePaused, isModeSequenceRunning } from "./mode_orchestrator";
 import { ensureOperatingMode, SONNEN_OPERATING_MODE_AUTO, SONNEN_OPERATING_MODE_MANUAL } from "./mode_control";
 
 export const BATTERY_LIVE_WRITES_ENABLED = false;
@@ -32,6 +33,10 @@ export async function runGridBalanceOnConsumptionChange(
 		return;
 	}
 
+	if (isModeSequenceRunning()) {
+		return;
+	}
+
 	const addonEn = await readBool(adapter, `addons.${ADDON_ID}.enabled`);
 	const adapterFeature = featureGridBalanceFromConfig(cfg);
 	const emsGb = await readBool(adapter, EMS_MIRROR_BATTERY.gridBalanceEnabled);
@@ -40,11 +45,14 @@ export async function runGridBalanceOnConsumptionChange(
 	const effectiveRestKwh = (await readNumber(adapter, EMS_MIRROR_BATTERY.effectivePvRestOfDayKwh)) ?? 0;
 	const capacityWh = (await readNumber(adapter, EMS_MIRROR_BATTERY.capacityWh)) ?? 0;
 
+	const gbPaused = isGridBalancePaused();
+
 	const controller = resolveController({
 		emsBatteryIntentActive: batteryIntentActive,
 		emsGridBalanceEnabled: emsGb,
 		adapterFeatureEnabled: adapterFeature,
 		batteryAddonEnabled: addonEn,
+		gridBalancePaused: gbPaused,
 	});
 
 	const offsets = gridBalanceOffsetsFromConfig(cfg);
@@ -88,7 +96,7 @@ export async function runGridBalanceOnConsumptionChange(
 
 	const live = BATTERY_LIVE_WRITES_ENABLED;
 
-	if (controller === "grid_balance" && result.gatePassed && chargeMap.targetId) {
+	if (controller === "grid_balance" && result.gatePassed && chargeMap.targetId && !gbPaused) {
 		await ensureOperatingMode(adapter, SONNEN_OPERATING_MODE_MANUAL, live);
 		const wrote = await writeForeignIfLive(
 			adapter,

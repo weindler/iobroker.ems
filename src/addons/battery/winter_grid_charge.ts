@@ -1,7 +1,8 @@
+import { handleEmsMirrorStateChange } from "./ems_mirror_watch";
 import type { BatteryTickHost } from "./grid_balance_runner";
 
-/** Platzhalter: Winter-Netzladen (Modus 1, einmal charge) — folgt in separatem Schritt. */
+/** Poll-Fallback: EMS-Spiegel (Modus-Sequenz) auch ohne stateChange. */
 
-export async function runWinterGridChargeTick(_adapter: BatteryTickHost): Promise<void> {
-	/* no-op v0.0.18 */
+export async function runWinterGridChargeTick(adapter: BatteryTickHost): Promise<void> {
+	await handleEmsMirrorStateChange(adapter);
 }

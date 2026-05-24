@@ -68,7 +68,7 @@ function inactive(reasonDe, checksPassed, checksFailed) {
     };
 }
 function resolveController(params) {
-    if (params.emsBatteryIntentActive) {
+    if (params.emsBatteryIntentActive || params.gridBalancePaused) {
         return "ems";
     }
     if (params.emsGridBalanceEnabled && params.adapterFeatureEnabled && params.batteryAddonEnabled) {

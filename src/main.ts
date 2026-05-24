@@ -1,5 +1,5 @@
 import * as utils from "@iobroker/adapter-core";
-import { handleBatteryForeignStateChange, initBatteryModule, stopBatteryModule } from "./addons/battery";
+import { handleBatteryAdapterStateChange, initBatteryModule, stopBatteryModule } from "./addons/battery";
 import { EMS_ADDON_IDS } from "./addons/registry";
 import { writeDryrunMirror } from "./dryrun_mirror";
 import { parseInboxValue } from "./inbox";
@@ -44,7 +44,7 @@ class Ems extends utils.Adapter {
 			await initBatteryModule(this);
 			await this.subscribeStatesAsync(STATE.command.inbox);
 			this.log.info(
-				"EMS adapter v0.0.18 ready — battery grid_balance on consumption_w change (dryrun)",
+				"EMS adapter v0.0.19 ready — battery grid_balance + EMS mode sequence (dryrun)",
 			);
 
 			const inbox = await this.getStateAsync(STATE.command.inbox);
@@ -64,7 +64,7 @@ class Ems extends utils.Adapter {
 
 	private async onStateChange(id: string, state: ioBroker.State | null): Promise<void> {
 		if (state) {
-			handleBatteryForeignStateChange(this, id);
+			handleBatteryAdapterStateChange(this, id);
 		}
 		const inboxId = `${this.namespace}.${STATE.command.inbox}`;
 		if (id !== inboxId || !state) return;

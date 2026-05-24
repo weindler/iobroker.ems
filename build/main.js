@@ -60,7 +60,7 @@ class Ems extends utils.Adapter {
             await (0, status_wallbox_1.ensureWallboxStatusStates)(this);
             await (0, battery_1.initBatteryModule)(this);
             await this.subscribeStatesAsync(states_1.STATE.command.inbox);
-            this.log.info("EMS adapter v0.0.18 ready — battery grid_balance on consumption_w change (dryrun)");
+            this.log.info("EMS adapter v0.0.19 ready — battery grid_balance + EMS mode sequence (dryrun)");
             const inbox = await this.getStateAsync(states_1.STATE.command.inbox);
             if (inbox && !inbox.ack && inbox.val != null) {
                 this.log.info("Processing pending command.inbox on start");
@@ -77,7 +77,7 @@ class Ems extends utils.Adapter {
     }
     async onStateChange(id, state) {
         if (state) {
-            (0, battery_1.handleBatteryForeignStateChange)(this, id);
+            (0, battery_1.handleBatteryAdapterStateChange)(this, id);
         }
         const inboxId = `${this.namespace}.${states_1.STATE.command.inbox}`;
         if (id !== inboxId || !state)

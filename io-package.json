@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.0.11",
+		"version": "0.0.12",
 		"news": {
+			"0.0.12": {
+				"en": "Admin: json-only UI (no placeholder HTML page); open instance config directly",
+				"de": "Admin: nur jsonConfig (keine Hinweis-HTML-Seite); Instanz-Konfiguration öffnet Mapping direkt"
+			},
 			"0.0.11": {
 				"en": "jsonConfig: objectId picker from object tree + help text per command",
 				"de": "jsonConfig: objectId aus Objektbaum + Beschreibung pro Befehl"
@@ -71,9 +75,13 @@
 				"js-controller": ">=5.0.19"
 			}
 		],
+		"globalDependencies": [
+			{
+				"admin": ">=6.0.0"
+			}
+		],
 		"adminUI": {
-			"enabled": true,
-			"jsonConfig": true
+			"config": "json"
 		}
 	},
 	"native": {},

@@ -2,30 +2,45 @@
 
 Execution gateway between **EMS V2** and **ioBroker** (dryrun/live, mapping, audit).
 
-**v0.0.1:** Creates `ems.<instance>.` states, accepts JSON commands on `command.inbox`, runs **dryrun-only** pipeline (no writes to device states).
+**v0.0.7:** Full **dryrun** check chain (capabilities, mapping, target_state), default **wallbox → go-e** mapping states, still **no writes** to device states.
 
-Concept docs: [EMS repo `docs/iobroker_adapter/`](https://github.com/weindler/iobroker.ems) (in your EMS project).
+Concept docs: EMS project `docs/iobroker_adapter/`.
 
 ## Install (ioBroker host)
 
 ```bash
-iobroker url install github:weindler/iobroker.ems#v0.0.2
+iobroker url install github:weindler/iobroker.ems#v0.0.7
 ```
 
 Or from git checkout:
 
 ```bash
-cd /opt/iobroker.ems   # or your clone path
+cd /path/to/iobroker.ems
 npm ci
 npm run build
 iobroker dev install .
 ```
 
-Then: **Adapters → EMS V2 → add instance** (default instance `0` → namespace `ems.0`).
+Then: **Adapters → EMS V2 → add instance** (default `0` → namespace `ems.0`).
 
-## Test command (Admin → States)
+Update existing instance:
 
-Set `ems.0.command.inbox` (ack = true) to:
+```bash
+iobroker update ems
+```
+
+## Wallbox test (go-e)
+
+After start, defaults are created under `ems.0.mapping.wallbox.*`:
+
+| Command | Default target |
+|---------|----------------|
+| `set_enabled` | `go-e.0.allow_charging` |
+| `set_current_a` | `go-e.0.ampere` |
+| `set_charge_power_w` | `go-e.0.ampere` (W→A in dryrun) |
+| `set_phase_switch_enabled` | `go-e.0.phaseSwitchModeEnabled` |
+
+Set `ems.0.command.inbox` with **ack = false** (Admin „set value“):
 
 ```json
 {
@@ -37,12 +52,18 @@ Set `ems.0.command.inbox` (ack = true) to:
 }
 ```
 
-Check `ems.0.command.last_result` and `ems.0.audit.wallbox.last_event`.
+Expected in `ems.0.command.last_result`:
+
+- `result`: `dryrun_only`
+- `target_state`: `go-e.0.ampere`
+- `planned_value`: `{ "watts": 4200, "ampere": 18, ... }`
+
+Also check `ems.0.audit.wallbox.last_event` and `ems.0.dryrun.wallbox.last_command`.
 
 ## Safety defaults
 
 - `ems.0.config.execution_enabled` = `false` on first start
-- No mapping / no live writes in v0.0.1
+- `ems.0.addons.<id>.mode` = `dryrun` (live does not write in v0.0.7)
 
 ## Development
 

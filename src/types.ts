@@ -26,4 +26,8 @@ export interface PipelineOutcome {
 	reason: string;
 	checks_passed: string[];
 	checks_failed: string[];
+	mapping_id?: string;
+	target_state?: string;
+	planned_value?: unknown;
+	addon_mode?: string;
 }

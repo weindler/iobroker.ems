@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.0.6",
+		"version": "0.0.7",
 		"news": {
+			"0.0.7": {
+				"en": "Addon registry, wallbox→go-e mapping states, full dryrun pipeline (no live writes)",
+				"de": "Addon-Registry, Wallbox→go-e Mapping, vollständige Dryrun-Pipeline (keine Live-Writes)"
+			},
 			"0.0.6": {
 				"en": "Subscribe command.inbox; accept json object; log + last_result on errors",
 				"de": "Subscribe command.inbox; JSON-Objekt; Log + last_result bei Fehlern"
@@ -33,8 +37,8 @@
 			"de": "EMS V2"
 		},
 		"desc": {
-			"en": "Execution gateway for EMS V2. v0.0.1: dryrun + audit only, no device writes.",
-			"de": "Ausführungs-Gateway für EMS V2. v0.0.1: nur Dryrun + Audit, keine Geräte-Writes."
+			"en": "Execution gateway for EMS V2. v0.0.7: dryrun pipeline + mapping, no device writes yet.",
+			"de": "Ausführungs-Gateway für EMS V2. v0.0.7: Dryrun-Pipeline + Mapping, noch keine Geräte-Writes."
 		},
 		"authors": ["weindler"],
 		"license": "MIT",

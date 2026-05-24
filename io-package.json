@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.0.12",
+		"version": "0.0.13",
 		"news": {
+			"0.0.13": {
+				"en": "Fix jsonConfig schema: header elements require size (h1-h5)",
+				"de": "jsonConfig-Schema: header braucht size (Überschriftenebene 1-5)"
+			},
 			"0.0.12": {
 				"en": "Admin: json-only UI (no placeholder HTML page); open instance config directly",
 				"de": "Admin: nur jsonConfig (keine Hinweis-HTML-Seite); Instanz-Konfiguration öffnet Mapping direkt"

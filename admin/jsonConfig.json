@@ -28,6 +28,7 @@
 				},
 				"hEnabled": {
 					"type": "header",
+					"size": 2,
 					"text": "set_enabled — Ladung erlauben",
 					"xs": 12,
 					"sm": 12,
@@ -75,6 +76,7 @@
 				},
 				"hCurrent": {
 					"type": "header",
+					"size": 2,
 					"text": "set_current_a — Ladestrom (Ampere)",
 					"xs": 12,
 					"sm": 12,
@@ -113,6 +115,7 @@
 				},
 				"hPower": {
 					"type": "header",
+					"size": 2,
 					"text": "set_charge_power_w — Leistung (Watt)",
 					"xs": 12,
 					"sm": 12,
@@ -151,6 +154,7 @@
 				},
 				"hPhase": {
 					"type": "header",
+					"size": 2,
 					"text": "set_phase_switch_enabled — Phasenumschaltung",
 					"xs": 12,
 					"sm": 12,

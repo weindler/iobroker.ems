@@ -39,7 +39,7 @@ class Ems extends utils.Adapter {
 			await this.ensureAddonStates();
 			await this.ensureWallboxMapping();
 			await this.subscribeStatesAsync(STATE.command.inbox);
-			this.log.info("EMS adapter v0.0.12 ready — jsonConfig objectId mapping, dryrun, no device writes");
+			this.log.info("EMS adapter v0.0.13 ready — jsonConfig objectId mapping, dryrun, no device writes");
 
 			const inbox = await this.getStateAsync(STATE.command.inbox);
 			if (inbox && !inbox.ack && inbox.val != null) {

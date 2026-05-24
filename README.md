@@ -2,14 +2,16 @@
 
 Execution gateway between **EMS V2** and **ioBroker** (dryrun/live, mapping, audit).
 
-**v0.0.7:** Full **dryrun** check chain (capabilities, mapping, target_state), default **wallbox → go-e** mapping states, still **no writes** to device states.
+**v0.0.8:** Dryrun **flat states** under `dryrun.<addon>.*` (target_state, planned_ampere, …) — readable in Admin without parsing JSON. Still no device writes.
+
+**v0.0.7:** Full dryrun check chain, wallbox → go-e mapping defaults.
 
 Concept docs: EMS project `docs/iobroker_adapter/`.
 
 ## Install (ioBroker host)
 
 ```bash
-iobroker url install github:weindler/iobroker.ems#v0.0.7
+iobroker url install github:weindler/iobroker.ems#v0.0.8
 ```
 
 Or from git checkout:
@@ -58,7 +60,7 @@ Expected in `ems.0.command.last_result`:
 - `target_state`: `go-e.0.ampere`
 - `planned_value`: `{ "watts": 4200, "ampere": 18, ... }`
 
-Also check `ems.0.audit.wallbox.last_event` and `ems.0.dryrun.wallbox.last_command`.
+Also check flat dryrun states, e.g. `ems.0.dryrun.wallbox.target_state`, `planned_ampere`, `result`, and `audit.wallbox.last_event`.
 
 ## Safety defaults
 

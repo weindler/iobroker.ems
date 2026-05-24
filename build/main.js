@@ -25,6 +25,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const utils = __importStar(require("@iobroker/adapter-core"));
 const registry_1 = require("./addons/registry");
+const dryrun_mirror_1 = require("./dryrun_mirror");
 const inbox_1 = require("./inbox");
 const pipeline_1 = require("./pipeline");
 const states_1 = require("./states");
@@ -55,7 +56,7 @@ class Ems extends utils.Adapter {
             await this.ensureAddonStates();
             await this.ensureWallboxMappingDefaults();
             await this.subscribeStatesAsync(states_1.STATE.command.inbox);
-            this.log.info("EMS adapter v0.0.7 ready — dryrun pipeline + mapping, no device writes");
+            this.log.info("EMS adapter v0.0.8 ready — dryrun flat states + mapping, no device writes");
             const inbox = await this.getStateAsync(states_1.STATE.command.inbox);
             if (inbox && !inbox.ack && inbox.val != null) {
                 this.log.info("Processing pending command.inbox on start");
@@ -135,25 +136,7 @@ class Ems extends utils.Adapter {
             ack: true,
         });
         if (intent.addon_id) {
-            await this.setObjectNotExistsAsync(`dryrun.${intent.addon_id}.last_command`, {
-                type: "state",
-                common: {
-                    name: `Last dryrun command (${intent.addon_id})`,
-                    type: "string",
-                    role: "json",
-                    read: true,
-                    write: false,
-                },
-                native: {},
-            });
-            await this.setStateAsync(`dryrun.${intent.addon_id}.last_command`, {
-                val: JSON.stringify({
-                    timestamp: new Date().toISOString(),
-                    intent,
-                    outcome,
-                }),
-                ack: true,
-            });
+            await (0, dryrun_mirror_1.writeDryrunMirror)(this, intent.addon_id, intent, outcome);
         }
         this.log.info(`command.inbox done: ${outcome.result}` +
             (outcome.target_state ? ` → ${outcome.target_state}` : ""));

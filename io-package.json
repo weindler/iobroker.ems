@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.0.7",
+		"version": "0.0.8",
 		"news": {
+			"0.0.8": {
+				"en": "Dryrun: flat states per addon (target_state, planned_ampere, …) plus JSON last_command",
+				"de": "Dryrun: einzelne States pro Addon (target_state, planned_ampere, …) plus JSON last_command"
+			},
 			"0.0.7": {
 				"en": "Addon registry, wallbox→go-e mapping states, full dryrun pipeline (no live writes)",
 				"de": "Addon-Registry, Wallbox→go-e Mapping, vollständige Dryrun-Pipeline (keine Live-Writes)"

@@ -1,5 +1,6 @@
 import * as utils from "@iobroker/adapter-core";
 import { EMS_ADDON_IDS } from "./addons/registry";
+import { writeDryrunMirror } from "./dryrun_mirror";
 import { parseInboxValue } from "./inbox";
 import { runCommandPipeline } from "./pipeline";
 import { STATE } from "./states";
@@ -38,7 +39,7 @@ class Ems extends utils.Adapter {
 			await this.ensureAddonStates();
 			await this.ensureWallboxMappingDefaults();
 			await this.subscribeStatesAsync(STATE.command.inbox);
-			this.log.info("EMS adapter v0.0.7 ready — dryrun pipeline + mapping, no device writes");
+			this.log.info("EMS adapter v0.0.8 ready — dryrun flat states + mapping, no device writes");
 
 			const inbox = await this.getStateAsync(STATE.command.inbox);
 			if (inbox && !inbox.ack && inbox.val != null) {
@@ -123,25 +124,7 @@ class Ems extends utils.Adapter {
 		});
 
 		if (intent.addon_id) {
-			await this.setObjectNotExistsAsync(`dryrun.${intent.addon_id}.last_command`, {
-				type: "state",
-				common: {
-					name: `Last dryrun command (${intent.addon_id})`,
-					type: "string",
-					role: "json",
-					read: true,
-					write: false,
-				},
-				native: {},
-			});
-			await this.setStateAsync(`dryrun.${intent.addon_id}.last_command`, {
-				val: JSON.stringify({
-					timestamp: new Date().toISOString(),
-					intent,
-					outcome,
-				}),
-				ack: true,
-			});
+			await writeDryrunMirror(this, intent.addon_id, intent, outcome);
 		}
 
 		this.log.info(

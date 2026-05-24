@@ -219,7 +219,10 @@
 					"type": "select",
 					"label": "Batterie-Profil",
 					"options": [
-						["sonnen", "Sonnen (EM-Adapter)"]
+						{
+							"label": "Sonnen (EM-Adapter)",
+							"value": "sonnen"
+						}
 					],
 					"default": "sonnen",
 					"xs": 12,

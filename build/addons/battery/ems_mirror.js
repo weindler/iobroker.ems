@@ -7,6 +7,7 @@ exports.EMS_MIRROR_BATTERY = {
     effectivePvRestOfDayKwh: "ems_mirror.effective_pv_rest_of_day_kwh",
     snowCoverSuspected: "ems_mirror.snow_cover_suspected",
     batteryIntentActive: "ems_mirror.battery_intent_active",
+    capacityWh: "ems_mirror.capacity_wh",
 };
 async function ensureBatteryEmsMirrorStates(adapter) {
     const defs = [
@@ -56,6 +57,17 @@ async function ensureBatteryEmsMirrorStates(adapter) {
                 def: false,
             },
             defVal: false,
+        },
+        {
+            _id: exports.EMS_MIRROR_BATTERY.capacityWh,
+            common: {
+                name: "EMS: Batteriekapazität (Wh)",
+                type: "number",
+                role: "value",
+                unit: "Wh",
+                read: true,
+                write: true,
+            },
         },
     ];
     for (const def of defs) {

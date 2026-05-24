@@ -1,5 +1,5 @@
 import * as utils from "@iobroker/adapter-core";
-import { initBatteryModule, stopBatteryModule } from "./addons/battery";
+import { handleBatteryForeignStateChange, initBatteryModule, stopBatteryModule } from "./addons/battery";
 import { EMS_ADDON_IDS } from "./addons/registry";
 import { writeDryrunMirror } from "./dryrun_mirror";
 import { parseInboxValue } from "./inbox";
@@ -12,7 +12,6 @@ import type { CommandIntent } from "./types";
 
 class Ems extends utils.Adapter {
 	private processingInbox = false;
-	private batteryTickTimer: NodeJS.Timeout | null = null;
 
 	public constructor(options: Partial<utils.AdapterOptions> = {}) {
 		super({
@@ -42,10 +41,10 @@ class Ems extends utils.Adapter {
 			await this.ensureAddonStates();
 			await this.ensureWallboxMapping();
 			await ensureWallboxStatusStates(this);
-			this.batteryTickTimer = await initBatteryModule(this);
+			await initBatteryModule(this);
 			await this.subscribeStatesAsync(STATE.command.inbox);
 			this.log.info(
-				"EMS adapter v0.0.16 ready — wallbox inbox dryrun, battery Sonnen grid_balance tick (dryrun)",
+				"EMS adapter v0.0.18 ready — battery grid_balance on consumption_w change (dryrun)",
 			);
 
 			const inbox = await this.getStateAsync(STATE.command.inbox);
@@ -59,12 +58,14 @@ class Ems extends utils.Adapter {
 	}
 
 	private onUnload(callback: () => void): void {
-		stopBatteryModule(this.batteryTickTimer);
-		this.batteryTickTimer = null;
+		stopBatteryModule(null);
 		callback();
 	}
 
 	private async onStateChange(id: string, state: ioBroker.State | null): Promise<void> {
+		if (state) {
+			handleBatteryForeignStateChange(this, id);
+		}
 		const inboxId = `${this.namespace}.${STATE.command.inbox}`;
 		if (id !== inboxId || !state) return;
 		await this.processInbox(state.val, state.ack);

@@ -35,7 +35,6 @@ const status_wallbox_1 = require("./status_wallbox");
 const states_1 = require("./states");
 class Ems extends utils.Adapter {
     processingInbox = false;
-    batteryTickTimer = null;
     constructor(options = {}) {
         super({
             ...options,
@@ -59,9 +58,9 @@ class Ems extends utils.Adapter {
             await this.ensureAddonStates();
             await this.ensureWallboxMapping();
             await (0, status_wallbox_1.ensureWallboxStatusStates)(this);
-            this.batteryTickTimer = await (0, battery_1.initBatteryModule)(this);
+            await (0, battery_1.initBatteryModule)(this);
             await this.subscribeStatesAsync(states_1.STATE.command.inbox);
-            this.log.info("EMS adapter v0.0.16 ready — wallbox inbox dryrun, battery Sonnen grid_balance tick (dryrun)");
+            this.log.info("EMS adapter v0.0.18 ready — battery grid_balance on consumption_w change (dryrun)");
             const inbox = await this.getStateAsync(states_1.STATE.command.inbox);
             if (inbox && !inbox.ack && inbox.val != null) {
                 this.log.info("Processing pending command.inbox on start");
@@ -73,11 +72,13 @@ class Ems extends utils.Adapter {
         }
     }
     onUnload(callback) {
-        (0, battery_1.stopBatteryModule)(this.batteryTickTimer);
-        this.batteryTickTimer = null;
+        (0, battery_1.stopBatteryModule)(null);
         callback();
     }
     async onStateChange(id, state) {
+        if (state) {
+            (0, battery_1.handleBatteryForeignStateChange)(this, id);
+        }
         const inboxId = `${this.namespace}.${states_1.STATE.command.inbox}`;
         if (id !== inboxId || !state)
             return;

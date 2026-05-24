@@ -1,20 +1,20 @@
 "use strict";
 /** Sonnen-Profil: logische Rollen → ioBroker-States (jsonConfig / objectId-Picker). */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.activeMonthsFromConfig = exports.capacityWhFromConfig = exports.tickIntervalSecFromConfig = exports.batteryProfileFromConfig = exports.sonnenBatteryMappingFromConfig = exports.BATTERY_SONNEN_FLAT_PREFIX = exports.BATTERY_SONNEN_MAPPING_ROLES = void 0;
+exports.winterTickIntervalSecFromConfig = exports.gridBalanceOffsetsFromConfig = exports.featureGridBalanceFromConfig = exports.batteryProfileFromConfig = exports.sonnenBatteryMappingFromConfig = exports.BATTERY_SONNEN_FLAT_PREFIX = exports.BATTERY_SONNEN_MAPPING_ROLES = void 0;
 exports.BATTERY_SONNEN_MAPPING_ROLES = [
     "consumption_w",
     "pv_ac_power_w",
     "battery_charging_w",
     "soc_pct",
-    "capacity_wh",
+    "operating_mode",
 ];
 exports.BATTERY_SONNEN_FLAT_PREFIX = {
     consumption_w: "bat_consumption",
     pv_ac_power_w: "bat_pv_ac",
     battery_charging_w: "bat_battery_charging",
     soc_pct: "bat_soc",
-    capacity_wh: "bat_capacity",
+    operating_mode: "bat_operating_mode",
 };
 function sonnenBatteryMappingFromConfig(config) {
     const nested = config.mapping?.battery;
@@ -54,44 +54,27 @@ function batteryProfileFromConfig(config) {
     return "sonnen";
 }
 exports.batteryProfileFromConfig = batteryProfileFromConfig;
-function tickIntervalSecFromConfig(config) {
-    const v = config.bat_tick_interval_sec;
+function featureGridBalanceFromConfig(config) {
+    return config.bat_feature_grid_balance_enabled === true;
+}
+exports.featureGridBalanceFromConfig = featureGridBalanceFromConfig;
+function gridBalanceOffsetsFromConfig(config) {
+    const c = config;
+    const high = c.bat_offset_high_soc_w;
+    const low = c.bat_offset_low_soc_w;
+    const thr = c.bat_offset_soc_threshold_pct;
+    return {
+        offsetHighSocW: typeof high === "number" && high >= 0 ? Math.round(high) : 25,
+        offsetLowSocW: typeof low === "number" && low >= 0 ? Math.round(low) : 10,
+        socThresholdPct: typeof thr === "number" && thr > 0 ? thr : 20,
+    };
+}
+exports.gridBalanceOffsetsFromConfig = gridBalanceOffsetsFromConfig;
+function winterTickIntervalSecFromConfig(config) {
+    const v = config.bat_winter_tick_interval_sec;
     if (typeof v === "number" && Number.isFinite(v) && v >= 15) {
         return Math.min(300, Math.floor(v));
     }
     return 45;
 }
-exports.tickIntervalSecFromConfig = tickIntervalSecFromConfig;
-function capacityWhFromConfig(config) {
-    const v = config.bat_capacity_wh_const;
-    if (typeof v === "number" && Number.isFinite(v) && v > 0) {
-        return v;
-    }
-    return null;
-}
-exports.capacityWhFromConfig = capacityWhFromConfig;
-/** Kalendermonate 1–12 für Sommer-Gate (Blockly-Äquivalent). */
-function activeMonthsFromConfig(config) {
-    const raw = config.bat_active_months;
-    const def = [3, 4, 5, 6, 7, 8, 9, 10];
-    if (typeof raw !== "string" || !raw.trim()) {
-        return def;
-    }
-    const s = raw.trim();
-    try {
-        const parsed = JSON.parse(s);
-        if (Array.isArray(parsed)) {
-            return parsed
-                .map((x) => Number(x))
-                .filter((m) => Number.isFinite(m) && m >= 1 && m <= 12);
-        }
-    }
-    catch {
-        /* CSV fallback */
-    }
-    return s
-        .split(/[,;\s]+/)
-        .map((x) => Number(x.trim()))
-        .filter((m) => Number.isFinite(m) && m >= 1 && m <= 12);
-}
-exports.activeMonthsFromConfig = activeMonthsFromConfig;
+exports.winterTickIntervalSecFromConfig = winterTickIntervalSecFromConfig;

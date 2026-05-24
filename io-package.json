@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.0.17",
+		"version": "0.0.18",
 		"news": {
+			"0.0.18": {
+				"en": "Sonnen grid balance: opt-in UI, EMS capacity mirror, consumption_w trigger, mode mapping",
+				"de": "Sonnen Netzausgleich: Opt-in, Kapazität vom EMS, Trigger consumption_w, Modus-Mapping"
+			},
 			"0.0.17": {
 				"en": "Fix jsonConfig: battery_profile select options must be {label, value} objects",
 				"de": "jsonConfig: battery_profile select-Optionen als {label, value}-Objekte (Schema-Fix)"

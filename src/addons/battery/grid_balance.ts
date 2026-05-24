@@ -1,21 +1,20 @@
-/** Netzausgleich-Logik (ersetzt Blockly) — rein, ohne ioBroker. */
+/** Netzausgleich-Logik — rein, ohne ioBroker. */
 
-export type BatteryController = "idle" | "grid_balance" | "ems";
+export type BatteryController = "idle" | "grid_balance" | "grid_charge_winter" | "ems";
 
 export interface GridBalanceInputs {
-	month: number;
-	activeMonths: number[];
 	effectiveRestOfDayKwh: number;
 	capacityWh: number;
 	snowCoverSuspected: boolean;
 	consumptionW: number;
 	pvAcPowerW: number;
 	socPct: number | null;
-	gridBalanceEnabled: boolean;
+	emsGridBalanceEnabled: boolean;
+	adapterFeatureEnabled: boolean;
 	controller: BatteryController;
-	offsetHighSocW?: number;
-	offsetLowSocW?: number;
-	socThresholdPct?: number;
+	offsetHighSocW: number;
+	offsetLowSocW: number;
+	socThresholdPct: number;
 }
 
 export interface GridBalanceResult {
@@ -30,9 +29,6 @@ export interface GridBalanceResult {
 export function computeGridBalanceTarget(inputs: GridBalanceInputs): GridBalanceResult {
 	const checksPassed: string[] = [];
 	const checksFailed: string[] = [];
-	const offsetHigh = inputs.offsetHighSocW ?? 25;
-	const offsetLow = inputs.offsetLowSocW ?? 10;
-	const socThr = inputs.socThresholdPct ?? 20;
 
 	if (inputs.controller !== "grid_balance") {
 		checksFailed.push("controller_not_grid_balance");
@@ -40,11 +36,17 @@ export function computeGridBalanceTarget(inputs: GridBalanceInputs): GridBalance
 	}
 	checksPassed.push("controller_grid_balance");
 
-	if (!inputs.gridBalanceEnabled) {
-		checksFailed.push("grid_balance_disabled");
-		return inactive("grid_balance_enabled=false", checksPassed, checksFailed);
+	if (!inputs.adapterFeatureEnabled) {
+		checksFailed.push("adapter_feature_disabled");
+		return inactive("Netzausgleich im Adapter deaktiviert", checksPassed, checksFailed);
 	}
-	checksPassed.push("grid_balance_enabled");
+	checksPassed.push("adapter_feature_enabled");
+
+	if (!inputs.emsGridBalanceEnabled) {
+		checksFailed.push("ems_grid_balance_disabled");
+		return inactive("EMS: grid_balance_enabled=false", checksPassed, checksFailed);
+	}
+	checksPassed.push("ems_grid_balance_enabled");
 
 	if (inputs.snowCoverSuspected) {
 		checksFailed.push("snow_cover_suspected");
@@ -52,16 +54,10 @@ export function computeGridBalanceTarget(inputs: GridBalanceInputs): GridBalance
 	}
 	checksPassed.push("no_snow");
 
-	if (!inputs.activeMonths.includes(inputs.month)) {
-		checksFailed.push("month_outside_active");
-		return inactive(`Monat ${inputs.month} außerhalb aktiver Monate`, checksPassed, checksFailed);
-	}
-	checksPassed.push("month_active");
-
 	const cap = inputs.capacityWh;
 	if (!(cap > 0)) {
 		checksFailed.push("capacity_missing");
-		return inactive("capacity_wh fehlt", checksPassed, checksFailed);
+		return inactive("ems_mirror.capacity_wh fehlt", checksPassed, checksFailed);
 	}
 	checksPassed.push("capacity_ok");
 
@@ -83,7 +79,9 @@ export function computeGridBalanceTarget(inputs: GridBalanceInputs): GridBalance
 	checksPassed.push("consumption_gt_pv");
 
 	const offset =
-		inputs.socPct != null && inputs.socPct > socThr ? offsetHigh : offsetLow;
+		inputs.socPct != null && inputs.socPct > inputs.socThresholdPct
+			? inputs.offsetHighSocW
+			: inputs.offsetLowSocW;
 	checksPassed.push(`offset_${offset}w`);
 
 	const target = Math.max(0, Math.round(inputs.consumptionW - inputs.pvAcPowerW + offset));
@@ -114,13 +112,14 @@ function inactive(
 
 export function resolveController(params: {
 	emsBatteryIntentActive: boolean;
-	gridBalanceEnabled: boolean;
+	emsGridBalanceEnabled: boolean;
+	adapterFeatureEnabled: boolean;
 	batteryAddonEnabled: boolean;
 }): BatteryController {
 	if (params.emsBatteryIntentActive) {
 		return "ems";
 	}
-	if (params.gridBalanceEnabled && params.batteryAddonEnabled) {
+	if (params.emsGridBalanceEnabled && params.adapterFeatureEnabled && params.batteryAddonEnabled) {
 		return "grid_balance";
 	}
 	return "idle";

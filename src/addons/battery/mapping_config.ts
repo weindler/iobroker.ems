@@ -5,7 +5,7 @@ export const BATTERY_SONNEN_MAPPING_ROLES = [
 	"pv_ac_power_w",
 	"battery_charging_w",
 	"soc_pct",
-	"capacity_wh",
+	"operating_mode",
 ] as const;
 
 export type BatterySonnenMappingRole = (typeof BATTERY_SONNEN_MAPPING_ROLES)[number];
@@ -15,7 +15,7 @@ export const BATTERY_SONNEN_FLAT_PREFIX: Record<BatterySonnenMappingRole, string
 	pv_ac_power_w: "bat_pv_ac",
 	battery_charging_w: "bat_battery_charging",
 	soc_pct: "bat_soc",
-	capacity_wh: "bat_capacity",
+	operating_mode: "bat_operating_mode",
 };
 
 export interface NativeMappingEntry {
@@ -25,11 +25,12 @@ export interface NativeMappingEntry {
 }
 
 export interface BatteryNativeConfig extends Record<string, unknown> {
-	/** Profil für spätere Systeme (z. B. andere Batterie-APIs). */
 	battery_profile?: string;
-	bat_tick_interval_sec?: number;
-	bat_capacity_wh_const?: number;
-	bat_active_months?: string;
+	bat_feature_grid_balance_enabled?: boolean;
+	bat_offset_high_soc_w?: number;
+	bat_offset_low_soc_w?: number;
+	bat_offset_soc_threshold_pct?: number;
+	bat_winter_tick_interval_sec?: number;
 	mapping?: Record<string, Record<string, NativeMappingEntry>>;
 }
 
@@ -77,42 +78,32 @@ export function batteryProfileFromConfig(config: Record<string, unknown>): strin
 	return "sonnen";
 }
 
-export function tickIntervalSecFromConfig(config: Record<string, unknown>): number {
-	const v = (config as BatteryNativeConfig).bat_tick_interval_sec;
+export function featureGridBalanceFromConfig(config: Record<string, unknown>): boolean {
+	return (config as BatteryNativeConfig).bat_feature_grid_balance_enabled === true;
+}
+
+export interface GridBalanceOffsetConfig {
+	offsetHighSocW: number;
+	offsetLowSocW: number;
+	socThresholdPct: number;
+}
+
+export function gridBalanceOffsetsFromConfig(config: Record<string, unknown>): GridBalanceOffsetConfig {
+	const c = config as BatteryNativeConfig;
+	const high = c.bat_offset_high_soc_w;
+	const low = c.bat_offset_low_soc_w;
+	const thr = c.bat_offset_soc_threshold_pct;
+	return {
+		offsetHighSocW: typeof high === "number" && high >= 0 ? Math.round(high) : 25,
+		offsetLowSocW: typeof low === "number" && low >= 0 ? Math.round(low) : 10,
+		socThresholdPct: typeof thr === "number" && thr > 0 ? thr : 20,
+	};
+}
+
+export function winterTickIntervalSecFromConfig(config: Record<string, unknown>): number {
+	const v = (config as BatteryNativeConfig).bat_winter_tick_interval_sec;
 	if (typeof v === "number" && Number.isFinite(v) && v >= 15) {
 		return Math.min(300, Math.floor(v));
 	}
 	return 45;
-}
-
-export function capacityWhFromConfig(config: Record<string, unknown>): number | null {
-	const v = (config as BatteryNativeConfig).bat_capacity_wh_const;
-	if (typeof v === "number" && Number.isFinite(v) && v > 0) {
-		return v;
-	}
-	return null;
-}
-
-/** Kalendermonate 1–12 für Sommer-Gate (Blockly-Äquivalent). */
-export function activeMonthsFromConfig(config: Record<string, unknown>): number[] {
-	const raw = (config as BatteryNativeConfig).bat_active_months;
-	const def = [3, 4, 5, 6, 7, 8, 9, 10];
-	if (typeof raw !== "string" || !raw.trim()) {
-		return def;
-	}
-	const s = raw.trim();
-	try {
-		const parsed = JSON.parse(s) as unknown;
-		if (Array.isArray(parsed)) {
-			return parsed
-				.map((x) => Number(x))
-				.filter((m) => Number.isFinite(m) && m >= 1 && m <= 12);
-		}
-	} catch {
-		/* CSV fallback */
-	}
-	return s
-		.split(/[,;\s]+/)
-		.map((x) => Number(x.trim()))
-		.filter((m) => Number.isFinite(m) && m >= 1 && m <= 12);
 }

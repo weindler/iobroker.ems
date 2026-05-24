@@ -5,6 +5,7 @@ export const EMS_MIRROR_BATTERY = {
 	effectivePvRestOfDayKwh: "ems_mirror.effective_pv_rest_of_day_kwh",
 	snowCoverSuspected: "ems_mirror.snow_cover_suspected",
 	batteryIntentActive: "ems_mirror.battery_intent_active",
+	capacityWh: "ems_mirror.capacity_wh",
 } as const;
 
 export async function ensureBatteryEmsMirrorStates(adapter: ioBroker.Adapter): Promise<void> {
@@ -55,6 +56,17 @@ export async function ensureBatteryEmsMirrorStates(adapter: ioBroker.Adapter): P
 				def: false,
 			},
 			defVal: false,
+		},
+		{
+			_id: EMS_MIRROR_BATTERY.capacityWh,
+			common: {
+				name: "EMS: Batteriekapazität (Wh)",
+				type: "number",
+				role: "value",
+				unit: "Wh",
+				read: true,
+				write: true,
+			},
 		},
 	];
 

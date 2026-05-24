@@ -33,6 +33,7 @@ export async function writeBatteryGridBalanceDryrun(
 		socPct: number | null;
 		effectiveRestKwh: number | null;
 		targetStateId: string;
+		trigger?: string;
 	},
 ): Promise<void> {
 	const base = "dryrun.battery.grid_balance";

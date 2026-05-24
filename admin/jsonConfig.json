@@ -213,7 +213,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Profil Sonnen: Verbrauch/PV/SOC lesen, Battery charging schreiben (v0.0.16 nur Dryrun-Tick). EMS schreibt ems_mirror.* (Rest-PV, Schnee, grid_balance). Später weitere battery_profile."
+					"text": "Kapazität und ob Netzausgleich strategisch sinnvoll ist, kommt vom EMS (ems_mirror.*). Netzausgleich läuft bei Änderung von consumption_w — nicht per Intervall. Winter-Netzladen: separates Intervall (später)."
 				},
 				"battery_profile": {
 					"type": "select",
@@ -231,31 +231,10 @@
 					"lg": 4,
 					"xl": 4
 				},
-				"bat_tick_interval_sec": {
-					"type": "number",
-					"label": "Tick-Intervall (Sek.)",
-					"min": 15,
-					"max": 300,
-					"default": 45,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"bat_capacity_wh_const": {
-					"type": "number",
-					"label": "Kapazität (Wh, optional Konstante)",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"bat_active_months": {
-					"type": "text",
-					"label": "Aktive Monate (JSON oder CSV, 1–12)",
-					"default": "[3,4,5,6,7,8,9,10]",
+				"hBatMapping": {
+					"type": "header",
+					"size": 2,
+					"text": "Datenpunkt-Mapping (ioBroker)",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -391,17 +370,26 @@
 					"lg": 3,
 					"xl": 3
 				},
-				"hBatCapacity": {
+				"hBatMode": {
 					"type": "header",
 					"size": 2,
-					"text": "capacity_wh — Kapazität (optional State)",
+					"text": "operating_mode — Sonnen EM_OperatingMode (Schreiben)",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
 					"lg": 12,
 					"xl": 12
 				},
-				"bat_capacity_target": {
+				"helpBatMode": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "z. B. sonnen.0.configurations.EM_OperatingMode — 1 = Manuell (Netzausgleich/Winterladen), 2 = Eigenverbrauch (Normal)."
+				},
+				"bat_operating_mode_target": {
 					"type": "objectId",
 					"label": "Ziel-State",
 					"types": ["state"],
@@ -411,7 +399,7 @@
 					"lg": 9,
 					"xl": 9
 				},
-				"bat_capacity_enabled": {
+				"bat_operating_mode_enabled": {
 					"type": "checkbox",
 					"label": "Mapping aktiv",
 					"default": false,
@@ -420,6 +408,93 @@
 					"md": 3,
 					"lg": 3,
 					"xl": 3
+				},
+				"hBatGridBalance": {
+					"type": "header",
+					"size": 2,
+					"text": "Optional: Netzausgleich (ersetzt Blockly-Sommer-Script)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"helpBatGridBalance": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Benötigt Mapping: consumption_w, pv_ac_power_w, battery_charging_w, soc_pct. Trigger: jede Änderung consumption_w. EMS muss ems_mirror.grid_balance_enabled setzen."
+				},
+				"bat_feature_grid_balance_enabled": {
+					"type": "checkbox",
+					"label": "Netzausgleich aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"bat_offset_high_soc_w": {
+					"type": "number",
+					"label": "Zusatz-Watt bei SOC über Schwellwert",
+					"min": 0,
+					"max": 500,
+					"default": 25,
+					"xs": 12,
+					"sm": 4,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"bat_offset_low_soc_w": {
+					"type": "number",
+					"label": "Zusatz-Watt sonst",
+					"min": 0,
+					"max": 500,
+					"default": 10,
+					"xs": 12,
+					"sm": 4,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"bat_offset_soc_threshold_pct": {
+					"type": "number",
+					"label": "SOC-Schwellwert (%)",
+					"min": 1,
+					"max": 100,
+					"default": 20,
+					"xs": 12,
+					"sm": 4,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"hBatWinter": {
+					"type": "header",
+					"size": 2,
+					"text": "Winter-Netzladen (Vorbereitung)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"bat_winter_tick_interval_sec": {
+					"type": "number",
+					"label": "Tick-Intervall Winter-Netzladen (Sek.)",
+					"min": 15,
+					"max": 300,
+					"default": 45,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				}
 			}
 		}

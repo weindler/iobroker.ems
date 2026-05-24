@@ -1,4 +1,4 @@
-import type { EmsNativeConfig, NativeMappingEntry } from "./mapping_config";
+import { WALLBOX_MAPPING_COMMANDS, wallboxMappingFromConfig, type NativeMappingEntry } from "./mapping_config";
 
 type MappingHost = {
 	config: unknown;
@@ -54,18 +54,20 @@ export async function ensureAddonMappingStates(
 	}
 }
 
-/** Instanz-native (Admin) → mapping.* States; überschreibt nicht, wenn native leer. */
+/** Instanz-native (jsonConfig) → mapping.* States nach Adapter-Start. */
 export async function syncNativeMappingToStates(
 	host: MappingHost,
 	addonId: string,
 ): Promise<void> {
-	const native = host.config as EmsNativeConfig;
-	const block = native.mapping?.[addonId];
-	if (!block || typeof block !== "object") {
+	if (addonId !== "wallbox") {
 		return;
 	}
-	for (const [cmd, entry] of Object.entries(block)) {
-		if (!entry || typeof entry !== "object") continue;
+	const cfg = host.config;
+	if (!cfg || typeof cfg !== "object") {
+		return;
+	}
+	const entries = wallboxMappingFromConfig(cfg as Record<string, unknown>);
+	for (const [cmd, entry] of Object.entries(entries)) {
 		await applyMappingEntry(host, addonId, cmd, entry);
 	}
 }
@@ -89,3 +91,5 @@ async function applyMappingEntry(
 		await host.setStateAsync(`${base}.allowed_values`, { val: av.trim(), ack: true });
 	}
 }
+
+export { WALLBOX_MAPPING_COMMANDS };

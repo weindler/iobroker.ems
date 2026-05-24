@@ -2,44 +2,17 @@
 <html lang="de">
 <head>
 	<meta charset="utf-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title>EMS V2 Adapter</title>
-	<link rel="stylesheet" type="text/css" href="../../css/adapter.css" />
+	<title>EMS V2</title>
 	<style>
-		.mapping-row { margin: 0.75rem 0; padding: 0.5rem 0; border-bottom: 1px solid rgba(127,127,127,0.2); }
-		.mapping-row label { display: block; font-weight: 600; margin-bottom: 0.25rem; }
-		.mapping-target { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
-		.mapping-target input[type="text"] { flex: 1; min-width: 12rem; }
-		.hint { font-size: 0.88rem; opacity: 0.85; margin: 0.35rem 0 0.75rem; }
-		.btn-row { margin: 0.5rem 0 1rem; }
-		.fallback { background: rgba(255, 200, 0, 0.12); padding: 0.5rem 0.75rem; border-radius: 4px; }
+		body { font-family: system-ui, sans-serif; margin: 1.5rem; line-height: 1.5; max-width: 40rem; }
 	</style>
 </head>
 <body>
-	<h1>EMS V2 — Ausführung</h1>
-	<p class="hint">
-		Mapping-Ziele (ioBroker State-ID). Nach <strong>Speichern</strong> und <strong>Instanz-Neustart</strong> unter
-		<code>ems.&lt;instanz&gt;.mapping.wallbox.*</code>.
+	<h1>EMS V2 Adapter</h1>
+	<p>
+		Die Wallbox-Mapping-Konfiguration liegt im Tab <strong>Wallbox</strong> der Instanz-Einstellungen
+		(ioBroker jsonConfig mit Objektbaum-Auswahl).
 	</p>
-
-	<h2>Wallbox — Mapping</h2>
-	<div class="btn-row">
-		<button type="button" class="btn" id="btn-goe-template">go-e Vorlage übernehmen (optional)</button>
-	</div>
-	<div id="wallbox-mapping">
-		<p class="fallback">Lade Formular … (wenn leer bleibt: siehe Objekte-Fallback unten)</p>
-	</div>
-
-	<p class="hint fallback">
-		<strong>Objekte-Fallback:</strong> Unter <code>ems.0.mapping.wallbox</code> je Befehl
-		<code>set_enabled</code>, <code>set_charge_power_w</code>, … die States
-		<code>target_state</code>, <code>enabled</code>, <code>allowed_values</code> setzen — funktioniert immer.
-	</p>
-
-	<p class="hint">
-		Dryrun/Live: <code>addons.wallbox.mode</code>. Test: <code>command.inbox</code> mit ack=false.
-	</p>
-
-	<script type="text/javascript" src="mapping.js"></script>
+	<p>Bitte die Instanz-Einstellungen über das Zahnrad öffnen — nicht diese Seite.</p>
 </body>
 </html>

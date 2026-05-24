@@ -2,7 +2,7 @@ import * as utils from "@iobroker/adapter-core";
 import { EMS_ADDON_IDS } from "./addons/registry";
 import { writeDryrunMirror } from "./dryrun_mirror";
 import { parseInboxValue } from "./inbox";
-import { WALLBOX_MAPPING_COMMANDS } from "./mapping_config";
+import { goeWallboxTemplateFlat, WALLBOX_MAPPING_COMMANDS } from "./mapping_config";
 import { ensureAddonMappingStates, syncNativeMappingToStates } from "./mapping_sync";
 import { runCommandPipeline } from "./pipeline";
 import { STATE } from "./states";
@@ -19,6 +19,18 @@ class Ems extends utils.Adapter {
 		this.on("ready", () => void this.onReady());
 		this.on("stateChange", (id, state) => void this.onStateChange(id, state ?? null));
 		this.on("unload", (callback) => void this.onUnload(callback));
+		this.on("message", (obj) => this.onMessage(obj));
+	}
+
+	private onMessage(obj: ioBroker.Message): void {
+		const msg = obj as ioBroker.Message & {
+			command?: string;
+			callback?: (result: Record<string, string | boolean>) => void;
+		};
+		if (msg.command !== "applyGoeTemplate") {
+			return;
+		}
+		msg.callback?.(goeWallboxTemplateFlat());
 	}
 
 	private async onReady(): Promise<void> {
@@ -27,7 +39,7 @@ class Ems extends utils.Adapter {
 			await this.ensureAddonStates();
 			await this.ensureWallboxMapping();
 			await this.subscribeStatesAsync(STATE.command.inbox);
-			this.log.info("EMS adapter v0.0.10 ready — configurable mapping (admin), dryrun, no device writes");
+			this.log.info("EMS adapter v0.0.11 ready — jsonConfig objectId mapping, dryrun, no device writes");
 
 			const inbox = await this.getStateAsync(STATE.command.inbox);
 			if (inbox && !inbox.ack && inbox.val != null) {

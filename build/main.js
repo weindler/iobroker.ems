@@ -41,6 +41,14 @@ class Ems extends utils.Adapter {
         this.on("ready", () => void this.onReady());
         this.on("stateChange", (id, state) => void this.onStateChange(id, state ?? null));
         this.on("unload", (callback) => void this.onUnload(callback));
+        this.on("message", (obj) => this.onMessage(obj));
+    }
+    onMessage(obj) {
+        const msg = obj;
+        if (msg.command !== "applyGoeTemplate") {
+            return;
+        }
+        msg.callback?.((0, mapping_config_1.goeWallboxTemplateFlat)());
     }
     async onReady() {
         try {
@@ -48,7 +56,7 @@ class Ems extends utils.Adapter {
             await this.ensureAddonStates();
             await this.ensureWallboxMapping();
             await this.subscribeStatesAsync(states_1.STATE.command.inbox);
-            this.log.info("EMS adapter v0.0.10 ready — configurable mapping (admin), dryrun, no device writes");
+            this.log.info("EMS adapter v0.0.11 ready — jsonConfig objectId mapping, dryrun, no device writes");
             const inbox = await this.getStateAsync(states_1.STATE.command.inbox);
             if (inbox && !inbox.ack && inbox.val != null) {
                 this.log.info("Processing pending command.inbox on start");

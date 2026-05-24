@@ -1,0 +1,202 @@
+{
+	"i18n": true,
+	"type": "tabs",
+	"items": {
+		"wallboxTab": {
+			"type": "panel",
+			"label": "Wallbox",
+			"items": {
+				"intro": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Pro Zeile: Ziel-State aus dem ioBroker-Objektbaum wählen (Klick auf die Zeile → Baum-Dialog). Gespeichert in der Instanz und nach Neustart unter ems.&lt;instanz&gt;.mapping.wallbox.*."
+				},
+				"btnGoe": {
+					"type": "sendTo",
+					"label": "go-e Vorlage übernehmen (optional)",
+					"command": "applyGoeTemplate",
+					"variant": "outlined",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"hEnabled": {
+					"type": "header",
+					"text": "set_enabled — Ladung erlauben",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"helpEnabled": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Schaltet, ob die Wallbox Strom an das Fahrzeug abgeben darf. go-e: allow_charging (true/false oder 0/1)."
+				},
+				"wb_set_enabled_target": {
+					"type": "objectId",
+					"label": "Ziel-State",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"wb_set_enabled_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"wb_set_enabled_allowed": {
+					"type": "text",
+					"label": "Erlaubte Werte (JSON, optional)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"hCurrent": {
+					"type": "header",
+					"text": "set_current_a — Ladestrom (Ampere)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"helpCurrent": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Direkte Vorgabe des Ladestroms in Ampere. go-e: ampere."
+				},
+				"wb_set_current_a_target": {
+					"type": "objectId",
+					"label": "Ziel-State",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"wb_set_current_a_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hPower": {
+					"type": "header",
+					"text": "set_charge_power_w — Leistung (Watt)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"helpPower": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "EMS rechnet Watt in Ampere um (230 V). go-e: meist ebenfalls ampere (gleicher State wie Strom)."
+				},
+				"wb_set_charge_power_w_target": {
+					"type": "objectId",
+					"label": "Ziel-State",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"wb_set_charge_power_w_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hPhase": {
+					"type": "header",
+					"text": "set_phase_switch_enabled — Phasenumschaltung",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"helpPhase": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Automatische Umschaltung 1↔3 Phasen (nur wenn EMS-Policy das erlaubt). go-e: phaseSwitchModeEnabled."
+				},
+				"wb_set_phase_switch_target": {
+					"type": "objectId",
+					"label": "Ziel-State",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"wb_set_phase_switch_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"wb_set_phase_switch_allowed": {
+					"type": "text",
+					"label": "Erlaubte Werte (JSON, optional)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				}
+			}
+		}
+	}
+}

@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.0.10",
+		"version": "0.0.11",
 		"news": {
+			"0.0.11": {
+				"en": "jsonConfig: objectId picker from object tree + help text per command",
+				"de": "jsonConfig: objectId aus Objektbaum + Beschreibung pro Befehl"
+			},
 			"0.0.10": {
 				"en": "Fix admin mapping form (external mapping.js, rows on load)",
 				"de": "Admin-Mapping-Formular repariert (mapping.js, Zeilen beim Laden)"
@@ -68,7 +72,8 @@
 			}
 		],
 		"adminUI": {
-			"enabled": true
+			"enabled": true,
+			"jsonConfig": true
 		}
 	},
 	"native": {},

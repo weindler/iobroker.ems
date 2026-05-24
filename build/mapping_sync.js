@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.syncNativeMappingToStates = exports.ensureAddonMappingStates = void 0;
+exports.WALLBOX_MAPPING_COMMANDS = exports.syncNativeMappingToStates = exports.ensureAddonMappingStates = void 0;
+const mapping_config_1 = require("./mapping_config");
+Object.defineProperty(exports, "WALLBOX_MAPPING_COMMANDS", { enumerable: true, get: function () { return mapping_config_1.WALLBOX_MAPPING_COMMANDS; } });
 async function ensureAddonMappingStates(host, addonId, commands) {
     for (const cmd of commands) {
         const base = `mapping.${addonId}.${cmd}`;
@@ -41,16 +43,17 @@ async function ensureAddonMappingStates(host, addonId, commands) {
     }
 }
 exports.ensureAddonMappingStates = ensureAddonMappingStates;
-/** Instanz-native (Admin) → mapping.* States; überschreibt nicht, wenn native leer. */
+/** Instanz-native (jsonConfig) → mapping.* States nach Adapter-Start. */
 async function syncNativeMappingToStates(host, addonId) {
-    const native = host.config;
-    const block = native.mapping?.[addonId];
-    if (!block || typeof block !== "object") {
+    if (addonId !== "wallbox") {
         return;
     }
-    for (const [cmd, entry] of Object.entries(block)) {
-        if (!entry || typeof entry !== "object")
-            continue;
+    const cfg = host.config;
+    if (!cfg || typeof cfg !== "object") {
+        return;
+    }
+    const entries = (0, mapping_config_1.wallboxMappingFromConfig)(cfg);
+    for (const [cmd, entry] of Object.entries(entries)) {
         await applyMappingEntry(host, addonId, cmd, entry);
     }
 }

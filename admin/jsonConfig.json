@@ -612,6 +612,108 @@
 					"xl": 4
 				}
 			}
+		},
+		"immersionHeaterTab": {
+			"type": "panel",
+			"label": "Heizstab",
+			"items": {
+				"ihIntro": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Nur Aktor: Steckdose ein/aus. Messdose (power_w, running) und Puffer-Temp bleiben im EMS (Messgrößen). Mapping: addons.immersion_heater.mapping.set_enabled.* — Failsafe nur bei Live: EMS &gt;300 s weg → Relais aus."
+				},
+				"ih_addon_mode": {
+					"type": "select",
+					"label": "Heizstab Ausführung",
+					"options": [
+						{ "label": "Dryrun", "value": "dryrun" },
+						{ "label": "Live", "value": "live" }
+					],
+					"default": "dryrun",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"hIhEnabled": {
+					"type": "header",
+					"size": 2,
+					"text": "set_enabled — Steckdose / Relais",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ih_set_enabled_target": {
+					"type": "objectId",
+					"label": "Ziel-State (Relais ON/OFF)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ih_set_enabled_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hIhFailsafe": {
+					"type": "header",
+					"size": 2,
+					"text": "Failsafe (nur Live)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"helpIhFailsafe": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "EMS-Lebenszeichen: jede Aktivität an ems_mirror.* oder command.inbox. Optional EMS schreibt ems_mirror.alive_at (1×/60 s). Nach Timeout Relais aus — Dryrun schaltet nicht."
+				},
+				"ih_ems_unreachable_timeout_sec": {
+					"type": "number",
+					"label": "EMS weg (Sek.) → Relais AUS",
+					"min": 60,
+					"max": 900,
+					"default": 300,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ih_failsafe_check_interval_sec": {
+					"type": "number",
+					"label": "Prüf-Intervall (Sek.)",
+					"min": 10,
+					"max": 120,
+					"default": 30,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				}
+			}
 		}
 	}
 }

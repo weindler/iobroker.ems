@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.0",
+		"version": "0.1.1",
 		"news": {
+			"0.1.1": {
+				"en": "Immersion heater: set_enabled mapping, EMS unreachable failsafe (live only, 300s default)",
+				"de": "Heizstab: set_enabled-Mapping, Failsafe EMS weg → Relais aus (nur Live, Standard 300 s)"
+			},
 			"0.1.0": {
 				"en": "Breaking: object tree under addons.* (mapping, dryrun, status), global/addon execution_mode, live writes when global∧addon live",
 				"de": "Breaking: Objektbaum unter addons.* (mapping, dryrun, status), global/addon execution_mode, Live-Schreiben bei global∧addon live"

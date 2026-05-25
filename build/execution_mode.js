@@ -42,6 +42,8 @@ async function syncExecutionModesFromConfig(host, config) {
     await host.setStateAsync((0, tree_paths_1.addonMode)("wallbox"), { val: wb, ack: true });
     const bat = parseMode(c.bat_addon_mode ?? "dryrun");
     await host.setStateAsync((0, tree_paths_1.addonMode)("battery"), { val: bat, ack: true });
+    const ih = parseMode(c.ih_addon_mode ?? "dryrun");
+    await host.setStateAsync((0, tree_paths_1.addonMode)("immersion_heater"), { val: ih, ack: true });
 }
 exports.syncExecutionModesFromConfig = syncExecutionModesFromConfig;
 async function ensureChannelTree(setObjectNotExistsAsync) {
@@ -53,6 +55,7 @@ async function ensureChannelTree(setObjectNotExistsAsync) {
         { id: "addons", name: "Addons" },
         { id: "addons.wallbox", name: "Wallbox" },
         { id: "addons.battery", name: "Batterie" },
+        { id: "addons.immersion_heater", name: "Heizstab" },
     ];
     for (const ch of channels) {
         await setObjectNotExistsAsync(ch.id, {

@@ -51,4 +51,5 @@ exports.CHANNEL_IDS = [
     "addons",
     "addons.wallbox",
     "addons.battery",
+    "addons.immersion_heater",
 ];

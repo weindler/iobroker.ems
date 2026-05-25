@@ -25,6 +25,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const utils = __importStar(require("@iobroker/adapter-core"));
 const battery_1 = require("./addons/battery");
+const immersion_heater_1 = require("./addons/immersion_heater");
+const ems_activity_1 = require("./ems_activity");
 const registry_1 = require("./addons/registry");
 const dryrun_mirror_1 = require("./dryrun_mirror");
 const execution_mode_1 = require("./execution_mode");
@@ -63,8 +65,9 @@ class Ems extends utils.Adapter {
             await this.ensureWallboxMapping();
             await (0, status_wallbox_1.ensureWallboxStatusStates)(this);
             await (0, battery_1.initBatteryModule)(this);
+            await (0, immersion_heater_1.initImmersionHeaterModule)(this);
             await this.subscribeStatesAsync(states_1.STATE.command.inbox);
-            this.log.info("EMS adapter v0.1.0 ready — Objektbaum addons.*, global/addon execution_mode");
+            this.log.info("EMS adapter v0.1.1 ready — Heizstab set_enabled + EMS-Failsafe (nur Live)");
             const inbox = await this.getStateAsync(states_1.STATE.command.inbox);
             if (inbox && !inbox.ack && inbox.val != null) {
                 this.log.info("Processing pending command.inbox on start");
@@ -77,11 +80,13 @@ class Ems extends utils.Adapter {
     }
     onUnload(callback) {
         (0, battery_1.stopBatteryModule)(null);
+        (0, immersion_heater_1.stopImmersionHeaterModule)();
         callback();
     }
     async onStateChange(id, state) {
         if (state) {
             (0, battery_1.handleBatteryAdapterStateChange)(this, id);
+            (0, immersion_heater_1.handleImmersionHeaterStateChange)(this, id);
         }
         const inboxId = `${this.namespace}.${states_1.STATE.command.inbox}`;
         if (id !== inboxId || !state)
@@ -129,6 +134,7 @@ class Ems extends utils.Adapter {
             this.log.warn("command.inbox: invalid JSON");
             return;
         }
+        (0, ems_activity_1.touchEmsActivity)();
         const outcome = await (0, pipeline_1.runCommandPipeline)(intent, {
             getState: (relativeId) => this.getStateAsync(relativeId),
             setForeignState: async (stateId, value) => {

@@ -12,6 +12,7 @@ export interface GlobalExecutionConfig {
 	global_execution_mode?: string;
 	wb_addon_mode?: string;
 	bat_addon_mode?: string;
+	ih_addon_mode?: string;
 }
 
 export function parseMode(raw: unknown): ExecutionMode {
@@ -63,6 +64,9 @@ export async function syncExecutionModesFromConfig(
 
 	const bat = parseMode(c.bat_addon_mode ?? "dryrun");
 	await host.setStateAsync(addonMode("battery"), { val: bat, ack: true });
+
+	const ih = parseMode(c.ih_addon_mode ?? "dryrun");
+	await host.setStateAsync(addonMode("immersion_heater"), { val: ih, ack: true });
 }
 
 export async function ensureChannelTree(
@@ -76,6 +80,7 @@ export async function ensureChannelTree(
 		{ id: "addons", name: "Addons" },
 		{ id: "addons.wallbox", name: "Wallbox" },
 		{ id: "addons.battery", name: "Batterie" },
+		{ id: "addons.immersion_heater", name: "Heizstab" },
 	];
 	for (const ch of channels) {
 		await setObjectNotExistsAsync(ch.id, {

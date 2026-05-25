@@ -1,5 +1,11 @@
 import * as utils from "@iobroker/adapter-core";
 import { handleBatteryAdapterStateChange, initBatteryModule, stopBatteryModule } from "./addons/battery";
+import {
+	handleImmersionHeaterStateChange,
+	initImmersionHeaterModule,
+	stopImmersionHeaterModule,
+} from "./addons/immersion_heater";
+import { touchEmsActivity } from "./ems_activity";
 import { EMS_ADDON_IDS } from "./addons/registry";
 import { writeDryrunMirror } from "./dryrun_mirror";
 import {
@@ -54,9 +60,10 @@ class Ems extends utils.Adapter {
 			await this.ensureWallboxMapping();
 			await ensureWallboxStatusStates(this);
 			await initBatteryModule(this);
+			await initImmersionHeaterModule(this);
 			await this.subscribeStatesAsync(STATE.command.inbox);
 			this.log.info(
-				"EMS adapter v0.1.0 ready — Objektbaum addons.*, global/addon execution_mode",
+				"EMS adapter v0.1.1 ready — Heizstab set_enabled + EMS-Failsafe (nur Live)",
 			);
 
 			const inbox = await this.getStateAsync(STATE.command.inbox);
@@ -71,12 +78,14 @@ class Ems extends utils.Adapter {
 
 	private onUnload(callback: () => void): void {
 		stopBatteryModule(null);
+		stopImmersionHeaterModule();
 		callback();
 	}
 
 	private async onStateChange(id: string, state: ioBroker.State | null): Promise<void> {
 		if (state) {
 			handleBatteryAdapterStateChange(this, id);
+			handleImmersionHeaterStateChange(this, id);
 		}
 		const inboxId = `${this.namespace}.${STATE.command.inbox}`;
 		if (id !== inboxId || !state) return;
@@ -123,6 +132,8 @@ class Ems extends utils.Adapter {
 			this.log.warn("command.inbox: invalid JSON");
 			return;
 		}
+
+		touchEmsActivity();
 
 		const outcome = await runCommandPipeline(intent, {
 			getState: (relativeId) => this.getStateAsync(relativeId),

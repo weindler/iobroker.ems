@@ -3,18 +3,18 @@ import {
 	commandNeedsCapability,
 	isReadOnlyAddon,
 } from "./addons/registry";
+import { isLiveWriteAllowed } from "./execution_mode";
 import { isValueAllowed, loadMapping, resolvePlannedValue } from "./mapping";
 import type { CommandIntent, PipelineOutcome } from "./types";
 
 export interface PipelineContext {
 	getState: (relativeId: string) => Promise<ioBroker.State | null | undefined>;
+	setForeignState?: (stateId: string, value: ioBroker.StateValue) => Promise<void>;
+	isLiveAllowed?: (addonId: string) => Promise<boolean>;
 }
 
-const LIVE_WRITES_ENABLED = false;
-
 /**
- * Canonical dryrun pipeline — see EMS docs mapping_concept.md §5.
- * v0.0.7: no live writes to target_state.
+ * Canonical pipeline — dryrun mirror always; live write wenn global.live ∧ addon.live.
  */
 export async function runCommandPipeline(
 	intent: CommandIntent,
@@ -41,13 +41,6 @@ export async function runCommandPipeline(
 	if (isReadOnlyAddon(addonId)) {
 		checks_failed.push("read_only_addon");
 		return fail("blocked", "read_only_addon", checks_passed, checks_failed, { addon_mode: "read_only" });
-	}
-
-	const execEn = await ctx.getState("config.execution_enabled");
-	if (execEn?.val !== true) {
-		checks_passed.push("execution_disabled_ok_for_dryrun");
-	} else {
-		checks_passed.push("execution_enabled");
 	}
 
 	const available = await ctx.getState(`addons.${addonId}.available`);
@@ -113,29 +106,44 @@ export async function runCommandPipeline(
 		});
 	}
 	checks_passed.push("value_allowed");
-
 	checks_passed.push("safety_ok");
 
-	if (mode === "live" && execEn?.val === true && LIVE_WRITES_ENABLED) {
-		return {
-			result: "success",
-			reason: "live_write",
-			checks_passed,
-			checks_failed,
-			mapping_id: mappingId,
-			target_state: mapping.targetState,
-			planned_value: plannedValue,
-			addon_mode: mode,
-		};
+	const liveAllowed =
+		(await ctx.isLiveAllowed?.(addonId)) ?? (await isLiveWriteAllowed(ctx.getState, addonId));
+
+	if (mode === "live" && liveAllowed && ctx.setForeignState) {
+		const writeVal = scalarForForeignWrite(command, plannedValue, intent.value);
+		try {
+			await ctx.setForeignState(mapping.targetState, writeVal);
+			checks_passed.push("live_write_ok");
+			return {
+				result: "success",
+				reason: "live_write",
+				checks_passed,
+				checks_failed,
+				mapping_id: mappingId,
+				target_state: mapping.targetState,
+				planned_value: plannedValue,
+				addon_mode: mode,
+			};
+		} catch {
+			checks_failed.push("live_write_failed");
+			return fail("blocked", "live_write_failed", checks_passed, checks_failed, {
+				mapping_id: mappingId,
+				target_state: mapping.targetState,
+				planned_value: plannedValue,
+				addon_mode: mode,
+			});
+		}
 	}
 
-	if (mode === "live" && execEn?.val === true) {
-		checks_passed.push("live_blocked_v0.0.7");
+	if (mode === "live" && !liveAllowed) {
+		checks_passed.push("live_blocked_global_or_addon");
 	}
 
 	return {
 		result: "dryrun_only",
-		reason: mode === "live" ? "live_not_implemented_v0.0.7" : "dryrun_no_device_write",
+		reason: mode === "live" && !liveAllowed ? "live_blocked_global_or_addon" : "dryrun_no_device_write",
 		checks_passed,
 		checks_failed,
 		mapping_id: mappingId,
@@ -143,6 +151,33 @@ export async function runCommandPipeline(
 		planned_value: plannedValue,
 		addon_mode: mode,
 	};
+}
+
+function scalarForForeignWrite(
+	command: string,
+	plannedValue: unknown,
+	requestValue: unknown,
+): ioBroker.StateValue {
+	if (command === "set_charge_power_w") {
+		if (typeof plannedValue === "object" && plannedValue !== null) {
+			const ampere = (plannedValue as { ampere?: number }).ampere;
+			if (typeof ampere === "number" && Number.isFinite(ampere)) {
+				return ampere;
+			}
+		}
+	}
+	if (command === "set_enabled") {
+		if (typeof requestValue === "boolean") {
+			return requestValue;
+		}
+		if (requestValue === 1 || requestValue === "1" || requestValue === "true") {
+			return true;
+		}
+		if (requestValue === 0 || requestValue === "0" || requestValue === "false") {
+			return false;
+		}
+	}
+	return (plannedValue ?? requestValue) as ioBroker.StateValue;
 }
 
 function fail(

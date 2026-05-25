@@ -1,13 +1,15 @@
 "use strict";
-/** Batterie-Status (Controller + Spiegel für Vis). */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ensureBatteryStatusStates = exports.BATTERY_STATUS_STATES = void 0;
+const tree_paths_1 = require("./tree_paths");
+/** Batterie-Status (Controller + Spiegel für Vis). */
+const STATUS = (0, tree_paths_1.addonStatusBase)("battery");
 exports.BATTERY_STATUS_STATES = {
-    controller: "status.battery.controller",
-    gridBalanceEnabled: "status.battery.grid_balance_enabled",
-    updatedAt: "status.battery.updated_at",
-    modeSequenceStatus: "status.battery.mode_sequence_status",
-    modeSequenceDetail: "status.battery.mode_sequence_detail",
+    controller: `${STATUS}.controller`,
+    gridBalanceEnabled: `${STATUS}.grid_balance_enabled`,
+    updatedAt: `${STATUS}.updated_at`,
+    modeSequenceStatus: `${STATUS}.mode_sequence_status`,
+    modeSequenceDetail: `${STATUS}.mode_sequence_detail`,
 };
 async function ensureBatteryStatusStates(adapter) {
     const defs = [

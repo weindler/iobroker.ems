@@ -2,6 +2,12 @@ import * as utils from "@iobroker/adapter-core";
 import { handleBatteryAdapterStateChange, initBatteryModule, stopBatteryModule } from "./addons/battery";
 import { EMS_ADDON_IDS } from "./addons/registry";
 import { writeDryrunMirror } from "./dryrun_mirror";
+import {
+	ensureChannelTree,
+	ensureGlobalExecutionStates,
+	isLiveWriteAllowed,
+	syncExecutionModesFromConfig,
+} from "./execution_mode";
 import { parseInboxValue } from "./inbox";
 import { goeWallboxTemplateFlat, wallboxMappingFromConfig, WALLBOX_MAPPING_COMMANDS } from "./mapping_config";
 import { ensureAddonMappingStates, syncNativeMappingToStates } from "./mapping_sync";
@@ -37,14 +43,20 @@ class Ems extends utils.Adapter {
 
 	private async onReady(): Promise<void> {
 		try {
+			await ensureChannelTree(this.setObjectNotExistsAsync.bind(this));
 			await this.ensureBaseStates();
+			await ensureGlobalExecutionStates(this);
 			await this.ensureAddonStates();
+			await syncExecutionModesFromConfig(
+				this,
+				(this.config && typeof this.config === "object" ? this.config : {}) as Record<string, unknown>,
+			);
 			await this.ensureWallboxMapping();
 			await ensureWallboxStatusStates(this);
 			await initBatteryModule(this);
 			await this.subscribeStatesAsync(STATE.command.inbox);
 			this.log.info(
-				"EMS adapter v0.0.19 ready — battery grid_balance + EMS mode sequence (dryrun)",
+				"EMS adapter v0.1.0 ready — Objektbaum addons.*, global/addon execution_mode",
 			);
 
 			const inbox = await this.getStateAsync(STATE.command.inbox);
@@ -114,6 +126,10 @@ class Ems extends utils.Adapter {
 
 		const outcome = await runCommandPipeline(intent, {
 			getState: (relativeId) => this.getStateAsync(relativeId),
+			setForeignState: async (stateId, value) => {
+				await this.setForeignStateAsync(stateId, { val: value, ack: true });
+			},
+			isLiveAllowed: (addonId) => isLiveWriteAllowed((id) => this.getStateAsync(id), addonId),
 		});
 
 		await this.writeAudit({
@@ -174,18 +190,6 @@ class Ems extends utils.Adapter {
 
 	private async ensureBaseStates(): Promise<void> {
 		const defs: Array<{ _id: string; common: ioBroker.StateCommon; defVal?: ioBroker.StateValue }> = [
-			{
-				_id: STATE.config.executionEnabled,
-				common: {
-					name: "Global execution enabled",
-					type: "boolean",
-					role: "switch",
-					read: true,
-					write: true,
-					def: false,
-				},
-				defVal: false,
-			},
 			{
 				_id: STATE.command.inbox,
 				common: {
@@ -253,7 +257,7 @@ class Ems extends utils.Adapter {
 				def: true,
 			}, true);
 			await this.ensureState(`${base}.mode`, {
-				name: `${addonId} mode (dryrun|live|disabled)`,
+				name: `${addonId} Ausführung (dryrun|live)`,
 				type: "string",
 				role: "text",
 				read: true,

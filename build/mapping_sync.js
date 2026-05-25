@@ -3,9 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.WALLBOX_MAPPING_COMMANDS = exports.syncNativeMappingToStates = exports.ensureAddonMappingStates = void 0;
 const mapping_config_1 = require("./mapping_config");
 Object.defineProperty(exports, "WALLBOX_MAPPING_COMMANDS", { enumerable: true, get: function () { return mapping_config_1.WALLBOX_MAPPING_COMMANDS; } });
+const tree_paths_1 = require("./tree_paths");
 async function ensureAddonMappingStates(host, addonId, commands) {
     for (const cmd of commands) {
-        const base = `mapping.${addonId}.${cmd}`;
+        const base = (0, tree_paths_1.mappingBase)(addonId, cmd);
         await host.setObjectNotExistsAsync(`${base}.enabled`, {
             type: "state",
             common: {
@@ -56,7 +57,7 @@ async function syncNativeMappingToStates(host, addonId, fromConfig) {
 }
 exports.syncNativeMappingToStates = syncNativeMappingToStates;
 async function applyMappingEntry(host, addonId, cmd, entry) {
-    const base = `mapping.${addonId}.${cmd}`;
+    const base = (0, tree_paths_1.mappingBase)(addonId, cmd);
     if (typeof entry.enabled === "boolean") {
         await host.setStateAsync(`${base}.enabled`, { val: entry.enabled, ack: true });
     }

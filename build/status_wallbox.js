@@ -1,12 +1,14 @@
 "use strict";
-/** Read-only EMS status mirror for ioBroker Vis (filled by EMS via Simple API). */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ensureWallboxStatusStates = exports.WALLBOX_STATUS_STATES = void 0;
+const tree_paths_1 = require("./tree_paths");
+/** Read-only EMS status mirror for ioBroker Vis (filled by EMS via Simple API). */
+const STATUS = (0, tree_paths_1.addonStatusBase)("wallbox");
 exports.WALLBOX_STATUS_STATES = {
-    chargingMode: "status.wallbox.charging_mode",
-    chargingModeLabel: "status.wallbox.charging_mode_label",
-    vehicleSocPct: "status.wallbox.vehicle_soc_pct",
-    updatedAt: "status.wallbox.updated_at",
+    chargingMode: `${STATUS}.charging_mode`,
+    chargingModeLabel: `${STATUS}.charging_mode_label`,
+    vehicleSocPct: `${STATUS}.vehicle_soc_pct`,
+    updatedAt: `${STATUS}.updated_at`,
 };
 async function ensureWallboxStatusStates(adapter) {
     const defs = [

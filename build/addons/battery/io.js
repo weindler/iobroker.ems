@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.writeForeignIfLive = exports.readMappedRole = exports.mappedTargetId = exports.readForeignNumber = exports.readNumber = exports.readBool = void 0;
+const tree_paths_1 = require("../../tree_paths");
 const ADDON_ID = "battery";
 async function readBool(adapter, relativeId) {
     const st = await adapter.getStateAsync(relativeId);
@@ -32,7 +33,7 @@ async function readForeignNumber(adapter, stateId) {
 }
 exports.readForeignNumber = readForeignNumber;
 async function mappedTargetId(adapter, role) {
-    const base = `mapping.${ADDON_ID}.${role}`;
+    const base = (0, tree_paths_1.mappingBase)(ADDON_ID, role);
     const en = await adapter.getStateAsync(`${base}.enabled`);
     if (en?.val === false) {
         return { enabled: false, targetId: "" };

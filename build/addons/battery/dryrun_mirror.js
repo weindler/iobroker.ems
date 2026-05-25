@@ -16,7 +16,7 @@ exports.BATTERY_GRID_BALANCE_DRYRUN_SUFFIXES = [
     { suffix: "last_tick_json", common: { name: "Last tick JSON", type: "string", role: "json", read: true, write: false } },
 ];
 async function writeBatteryGridBalanceDryrun(writer, payload) {
-    const base = "dryrun.battery.grid_balance";
+    const base = "addons.battery.dryrun.grid_balance";
     const ts = new Date().toISOString();
     for (const def of exports.BATTERY_GRID_BALANCE_DRYRUN_SUFFIXES) {
         await writer.setObjectNotExistsAsync(`${base}.${def.suffix}`, {

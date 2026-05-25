@@ -36,7 +36,7 @@ export async function writeBatteryGridBalanceDryrun(
 		trigger?: string;
 	},
 ): Promise<void> {
-	const base = "dryrun.battery.grid_balance";
+	const base = "addons.battery.dryrun.grid_balance";
 	const ts = new Date().toISOString();
 
 	for (const def of BATTERY_GRID_BALANCE_DRYRUN_SUFFIXES) {

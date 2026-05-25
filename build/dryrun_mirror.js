@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.writeDryrunMirror = exports.plannedValueScalars = exports.formatValueForState = exports.DRYRUN_FLAT_STATE_SUFFIXES = void 0;
-/** Flat dryrun states under dryrun.<addon_id>.* (readable in ioBroker Admin). */
+const tree_paths_1 = require("./tree_paths");
+/** Dryrun-Spiegel unter addons.<addon_id>.dryrun.* */
 exports.DRYRUN_FLAT_STATE_SUFFIXES = [
     {
         suffix: "timestamp",
@@ -91,7 +92,7 @@ function plannedValueScalars(planned) {
 }
 exports.plannedValueScalars = plannedValueScalars;
 async function writeDryrunMirror(writer, addonId, intent, outcome) {
-    const base = `dryrun.${addonId}`;
+    const base = (0, tree_paths_1.addonDryrunBase)(addonId);
     const ts = new Date().toISOString();
     const planned = plannedValueScalars(outcome.planned_value);
     for (const def of exports.DRYRUN_FLAT_STATE_SUFFIXES) {

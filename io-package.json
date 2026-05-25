@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.0.19",
+		"version": "0.1.0",
 		"news": {
+			"0.1.0": {
+				"en": "Breaking: object tree under addons.* (mapping, dryrun, status), global/addon execution_mode, live writes when global∧addon live",
+				"de": "Breaking: Objektbaum unter addons.* (mapping, dryrun, status), global/addon execution_mode, Live-Schreiben bei global∧addon live"
+			},
 			"0.0.19": {
 				"en": "EMS mode switch sequence: pause grid balance, delays configurable, mode 2 immediate",
 				"de": "EMS-Modus-Sequenz: Netzausgleich pausieren, Wartezeiten konfigurierbar, Modus 2 sofort"
@@ -20,8 +24,8 @@
 				"de": "Batterie-Addon (Sonnen): Mapping-Tab, Netzausgleich-Tick, ems_mirror-States, nur Dryrun"
 			},
 			"0.0.15": {
-				"en": "status.wallbox.* states for EMS charging mode and vehicle SOC (display only)",
-				"de": "status.wallbox.* für Lademodus und Fahrzeug-SOC (nur Anzeige, EMS schreibt)"
+				"en": "addons.wallbox.status.* for EMS charging mode and vehicle SOC (display only)",
+				"de": "addons.wallbox.status.* für Lademodus und Fahrzeug-SOC (nur Anzeige, EMS schreibt)"
 			},
 			"0.0.14": {
 				"en": "go-e template: use amperePV (amx) not ampere (amp) for EMS regulation",

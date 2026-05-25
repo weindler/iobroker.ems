@@ -1,3 +1,5 @@
+import { isLiveWriteAllowed } from "../../execution_mode";
+import { BATTERY_STATUS_STATES } from "../../status_battery";
 import { EMS_MIRROR_BATTERY } from "./ems_mirror";
 import { mappedTargetId, readBool, readNumber, writeForeignIfLive } from "./io";
 import { modeSwitchDelaysFromConfig } from "./mode_delays";
@@ -7,7 +9,6 @@ import {
 	SONNEN_OPERATING_MODE_MANUAL,
 } from "./mode_control";
 import type { BatteryTickHost } from "./grid_balance_runner";
-import { BATTERY_LIVE_WRITES_ENABLED } from "./grid_balance_runner";
 
 const sleep = (ms: number): Promise<void> =>
 	new Promise((resolve) => {
@@ -27,9 +28,9 @@ export function isModeSequenceRunning(): boolean {
 }
 
 async function setSequenceStatus(adapter: BatteryTickHost, status: string, detail?: string): Promise<void> {
-	await adapter.setStateAsync("status.battery.mode_sequence_status", { val: status, ack: true });
+	await adapter.setStateAsync(BATTERY_STATUS_STATES.modeSequenceStatus, { val: status, ack: true });
 	if (detail !== undefined) {
-		await adapter.setStateAsync("status.battery.mode_sequence_detail", { val: detail, ack: true });
+		await adapter.setStateAsync(BATTERY_STATUS_STATES.modeSequenceDetail, { val: detail, ack: true });
 	}
 }
 
@@ -61,7 +62,7 @@ export async function handleEmsModeRequest(adapter: BatteryTickHost): Promise<vo
 			? (adapter.config as Record<string, unknown>)
 			: {};
 	const delays = modeSwitchDelaysFromConfig(cfg);
-	const live = BATTERY_LIVE_WRITES_ENABLED;
+	const live = await isLiveWriteAllowed((id) => adapter.getStateAsync(id), "battery");
 
 	try {
 		if (mode === 2) {

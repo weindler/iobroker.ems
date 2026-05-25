@@ -1,4 +1,5 @@
 import { WALLBOX_MAPPING_COMMANDS, wallboxMappingFromConfig, type NativeMappingEntry } from "./mapping_config";
+import { mappingBase } from "./tree_paths";
 
 type MappingHost = {
 	config: unknown;
@@ -16,7 +17,7 @@ export async function ensureAddonMappingStates(
 	commands: readonly string[],
 ): Promise<void> {
 	for (const cmd of commands) {
-		const base = `mapping.${addonId}.${cmd}`;
+		const base = mappingBase(addonId, cmd);
 		await host.setObjectNotExistsAsync(`${base}.enabled`, {
 			type: "state",
 			common: {
@@ -80,7 +81,7 @@ async function applyMappingEntry(
 	cmd: string,
 	entry: NativeMappingEntry,
 ): Promise<void> {
-	const base = `mapping.${addonId}.${cmd}`;
+	const base = mappingBase(addonId, cmd);
 	if (typeof entry.enabled === "boolean") {
 		await host.setStateAsync(`${base}.enabled`, { val: entry.enabled, ack: true });
 	}

@@ -27,6 +27,7 @@ const utils = __importStar(require("@iobroker/adapter-core"));
 const battery_1 = require("./addons/battery");
 const registry_1 = require("./addons/registry");
 const dryrun_mirror_1 = require("./dryrun_mirror");
+const execution_mode_1 = require("./execution_mode");
 const inbox_1 = require("./inbox");
 const mapping_config_1 = require("./mapping_config");
 const mapping_sync_1 = require("./mapping_sync");
@@ -54,13 +55,16 @@ class Ems extends utils.Adapter {
     }
     async onReady() {
         try {
+            await (0, execution_mode_1.ensureChannelTree)(this.setObjectNotExistsAsync.bind(this));
             await this.ensureBaseStates();
+            await (0, execution_mode_1.ensureGlobalExecutionStates)(this);
             await this.ensureAddonStates();
+            await (0, execution_mode_1.syncExecutionModesFromConfig)(this, (this.config && typeof this.config === "object" ? this.config : {}));
             await this.ensureWallboxMapping();
             await (0, status_wallbox_1.ensureWallboxStatusStates)(this);
             await (0, battery_1.initBatteryModule)(this);
             await this.subscribeStatesAsync(states_1.STATE.command.inbox);
-            this.log.info("EMS adapter v0.0.19 ready — battery grid_balance + EMS mode sequence (dryrun)");
+            this.log.info("EMS adapter v0.1.0 ready — Objektbaum addons.*, global/addon execution_mode");
             const inbox = await this.getStateAsync(states_1.STATE.command.inbox);
             if (inbox && !inbox.ack && inbox.val != null) {
                 this.log.info("Processing pending command.inbox on start");
@@ -127,6 +131,10 @@ class Ems extends utils.Adapter {
         }
         const outcome = await (0, pipeline_1.runCommandPipeline)(intent, {
             getState: (relativeId) => this.getStateAsync(relativeId),
+            setForeignState: async (stateId, value) => {
+                await this.setForeignStateAsync(stateId, { val: value, ack: true });
+            },
+            isLiveAllowed: (addonId) => (0, execution_mode_1.isLiveWriteAllowed)((id) => this.getStateAsync(id), addonId),
         });
         await this.writeAudit({
             result: outcome.result,
@@ -179,18 +187,6 @@ class Ems extends utils.Adapter {
     }
     async ensureBaseStates() {
         const defs = [
-            {
-                _id: states_1.STATE.config.executionEnabled,
-                common: {
-                    name: "Global execution enabled",
-                    type: "boolean",
-                    role: "switch",
-                    read: true,
-                    write: true,
-                    def: false,
-                },
-                defVal: false,
-            },
             {
                 _id: states_1.STATE.command.inbox,
                 common: {
@@ -256,7 +252,7 @@ class Ems extends utils.Adapter {
                 def: true,
             }, true);
             await this.ensureState(`${base}.mode`, {
-                name: `${addonId} mode (dryrun|live|disabled)`,
+                name: `${addonId} Ausführung (dryrun|live)`,
                 type: "string",
                 role: "text",
                 read: true,

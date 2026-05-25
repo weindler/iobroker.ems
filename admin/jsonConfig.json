@@ -2,6 +2,35 @@
 	"i18n": true,
 	"type": "tabs",
 	"items": {
+		"globalTab": {
+			"type": "panel",
+			"label": "Global",
+			"items": {
+				"introGlobal": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Globale Ausführung für alle Addons. Live-Schreiben nur wenn hier und beim Addon „Live“ steht (effektiv: global.live ∧ addon.live). States: ems.&lt;instanz&gt;.global.execution_mode"
+				},
+				"global_execution_mode": {
+					"type": "select",
+					"label": "Ausführung (alle Addons)",
+					"options": [
+						{ "label": "Dryrun", "value": "dryrun" },
+						{ "label": "Live", "value": "live" }
+					],
+					"default": "dryrun",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				}
+			}
+		},
 		"wallboxTab": {
 			"type": "panel",
 			"label": "Wallbox",
@@ -13,7 +42,21 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Pro Zeile: Ziel-State aus dem ioBroker-Objektbaum wählen (Klick auf die Zeile → Baum-Dialog). Gespeichert in der Instanz und nach Neustart unter ems.&lt;instanz&gt;.mapping.wallbox.*."
+					"text": "Pro Zeile: Ziel-State aus dem ioBroker-Objektbaum wählen. Nach Neustart unter ems.&lt;instanz&gt;.addons.wallbox.mapping.*"
+				},
+				"wb_addon_mode": {
+					"type": "select",
+					"label": "Wallbox Ausführung",
+					"options": [
+						{ "label": "Dryrun", "value": "dryrun" },
+						{ "label": "Live", "value": "live" }
+					],
+					"default": "dryrun",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				},
 				"btnGoe": {
 					"type": "sendTo",
@@ -64,15 +107,6 @@
 					"md": 3,
 					"lg": 3,
 					"xl": 3
-				},
-				"wb_set_enabled_allowed": {
-					"type": "text",
-					"label": "Erlaubte Werte (JSON, optional)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
 				},
 				"hCurrent": {
 					"type": "header",
@@ -191,14 +225,38 @@
 					"lg": 3,
 					"xl": 3
 				},
-				"wb_set_phase_switch_allowed": {
-					"type": "text",
-					"label": "Erlaubte Werte (JSON, optional)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
+				"advancedWallbox": {
+					"type": "panel",
+					"label": "Erweitert",
+					"items": {
+						"helpAdvanced": {
+							"type": "staticText",
+							"xs": 12,
+							"sm": 12,
+							"md": 12,
+							"lg": 12,
+							"xl": 12,
+							"text": "Optionale JSON-Listen erlaubter Werte pro Befehl (leer = alle Werte erlaubt)."
+						},
+						"wb_set_enabled_allowed": {
+							"type": "text",
+							"label": "set_enabled — erlaubte Werte (JSON)",
+							"xs": 12,
+							"sm": 12,
+							"md": 12,
+							"lg": 12,
+							"xl": 12
+						},
+						"wb_set_phase_switch_allowed": {
+							"type": "text",
+							"label": "set_phase_switch — erlaubte Werte (JSON)",
+							"xs": 12,
+							"sm": 12,
+							"md": 12,
+							"lg": 12,
+							"xl": 12
+						}
+					}
 				}
 			}
 		},
@@ -225,6 +283,20 @@
 						}
 					],
 					"default": "sonnen",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"bat_addon_mode": {
+					"type": "select",
+					"label": "Batterie Ausführung",
+					"options": [
+						{ "label": "Dryrun", "value": "dryrun" },
+						{ "label": "Live", "value": "live" }
+					],
+					"default": "dryrun",
 					"xs": 12,
 					"sm": 6,
 					"md": 4,
@@ -318,7 +390,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Netzausgleich setzt Soll-Leistung (Dryrun: dryrun.battery.grid_balance.*). Live erst wenn BATTERY_LIVE_WRITES_ENABLED wie bei Wallbox."
+					"text": "Netzausgleich setzt Soll-Leistung. Dryrun: addons.battery.dryrun.grid_balance.*. Live wenn global.live ∧ Batterie.live (und Netzausgleich-Checkbox aktiv)."
 				},
 				"bat_battery_charging_target": {
 					"type": "objectId",

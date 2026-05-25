@@ -1,11 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.onEmsIntentReleased = exports.handleEmsModeRequest = exports.isModeSequenceRunning = exports.isGridBalancePaused = void 0;
+const execution_mode_1 = require("../../execution_mode");
+const status_battery_1 = require("../../status_battery");
 const ems_mirror_1 = require("./ems_mirror");
 const io_1 = require("./io");
 const mode_delays_1 = require("./mode_delays");
 const mode_control_1 = require("./mode_control");
-const grid_balance_runner_1 = require("./grid_balance_runner");
 const sleep = (ms) => new Promise((resolve) => {
     setTimeout(resolve, ms);
 });
@@ -21,9 +22,9 @@ function isModeSequenceRunning() {
 }
 exports.isModeSequenceRunning = isModeSequenceRunning;
 async function setSequenceStatus(adapter, status, detail) {
-    await adapter.setStateAsync("status.battery.mode_sequence_status", { val: status, ack: true });
+    await adapter.setStateAsync(status_battery_1.BATTERY_STATUS_STATES.modeSequenceStatus, { val: status, ack: true });
     if (detail !== undefined) {
-        await adapter.setStateAsync("status.battery.mode_sequence_detail", { val: detail, ack: true });
+        await adapter.setStateAsync(status_battery_1.BATTERY_STATUS_STATES.modeSequenceDetail, { val: detail, ack: true });
     }
 }
 async function handleEmsModeRequest(adapter) {
@@ -49,7 +50,7 @@ async function handleEmsModeRequest(adapter) {
         ? adapter.config
         : {};
     const delays = (0, mode_delays_1.modeSwitchDelaysFromConfig)(cfg);
-    const live = grid_balance_runner_1.BATTERY_LIVE_WRITES_ENABLED;
+    const live = await (0, execution_mode_1.isLiveWriteAllowed)((id) => adapter.getStateAsync(id), "battery");
     try {
         if (mode === 2) {
             await setSequenceStatus(adapter, "running", "mode_2_immediate");

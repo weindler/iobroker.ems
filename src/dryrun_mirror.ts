@@ -1,6 +1,7 @@
+import { addonDryrunBase } from "./tree_paths";
 import type { CommandIntent, PipelineOutcome } from "./types";
 
-/** Flat dryrun states under dryrun.<addon_id>.* (readable in ioBroker Admin). */
+/** Dryrun-Spiegel unter addons.<addon_id>.dryrun.* */
 export const DRYRUN_FLAT_STATE_SUFFIXES: Array<{
 	suffix: string;
 	common: ioBroker.StateCommon;
@@ -112,7 +113,7 @@ export async function writeDryrunMirror(
 	intent: CommandIntent,
 	outcome: PipelineOutcome,
 ): Promise<void> {
-	const base = `dryrun.${addonId}`;
+	const base = addonDryrunBase(addonId);
 	const ts = new Date().toISOString();
 	const planned = plannedValueScalars(outcome.planned_value);
 

@@ -1,3 +1,4 @@
+import { mappingBase } from "../../tree_paths";
 import type { BatteryTickHost } from "./grid_balance_runner";
 
 const ADDON_ID = "battery";
@@ -31,7 +32,7 @@ export async function mappedTargetId(
 	adapter: BatteryTickHost,
 	role: string,
 ): Promise<{ enabled: boolean; targetId: string }> {
-	const base = `mapping.${ADDON_ID}.${role}`;
+	const base = mappingBase(ADDON_ID, role);
 	const en = await adapter.getStateAsync(`${base}.enabled`);
 	if (en?.val === false) {
 		return { enabled: false, targetId: "" };

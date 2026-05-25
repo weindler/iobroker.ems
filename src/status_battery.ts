@@ -1,11 +1,15 @@
+import { addonStatusBase } from "./tree_paths";
+
 /** Batterie-Status (Controller + Spiegel für Vis). */
 
+const STATUS = addonStatusBase("battery");
+
 export const BATTERY_STATUS_STATES = {
-	controller: "status.battery.controller",
-	gridBalanceEnabled: "status.battery.grid_balance_enabled",
-	updatedAt: "status.battery.updated_at",
-	modeSequenceStatus: "status.battery.mode_sequence_status",
-	modeSequenceDetail: "status.battery.mode_sequence_detail",
+	controller: `${STATUS}.controller`,
+	gridBalanceEnabled: `${STATUS}.grid_balance_enabled`,
+	updatedAt: `${STATUS}.updated_at`,
+	modeSequenceStatus: `${STATUS}.mode_sequence_status`,
+	modeSequenceDetail: `${STATUS}.mode_sequence_detail`,
 } as const;
 
 export async function ensureBatteryStatusStates(adapter: ioBroker.Adapter): Promise<void> {

@@ -1,3 +1,5 @@
+import { isLiveWriteAllowed } from "../../execution_mode";
+import { BATTERY_STATUS_STATES } from "../../status_battery";
 import { EMS_MIRROR_BATTERY } from "./ems_mirror";
 import { computeGridBalanceTarget, resolveController } from "./grid_balance";
 import { writeBatteryGridBalanceDryrun } from "./dryrun_mirror";
@@ -9,8 +11,6 @@ import {
 import { readBool, readMappedRole, readNumber, mappedTargetId, writeForeignIfLive } from "./io";
 import { isGridBalancePaused, isModeSequenceRunning } from "./mode_orchestrator";
 import { ensureOperatingMode, SONNEN_OPERATING_MODE_AUTO, SONNEN_OPERATING_MODE_MANUAL } from "./mode_control";
-
-export const BATTERY_LIVE_WRITES_ENABLED = false;
 
 const ADDON_ID = "battery";
 
@@ -76,12 +76,12 @@ export async function runGridBalanceOnConsumptionChange(
 	const chargeMap = await mappedTargetId(adapter, "battery_charging_w");
 	const ts = new Date().toISOString();
 
-	await adapter.setStateAsync("status.battery.controller", { val: controller, ack: true });
-	await adapter.setStateAsync("status.battery.grid_balance_enabled", {
+	await adapter.setStateAsync(BATTERY_STATUS_STATES.controller, { val: controller, ack: true });
+	await adapter.setStateAsync(BATTERY_STATUS_STATES.gridBalanceEnabled, {
 		val: emsGb && adapterFeature,
 		ack: true,
 	});
-	await adapter.setStateAsync("status.battery.updated_at", { val: ts, ack: true });
+	await adapter.setStateAsync(BATTERY_STATUS_STATES.updatedAt, { val: ts, ack: true });
 
 	await writeBatteryGridBalanceDryrun(adapter, {
 		controller,
@@ -94,7 +94,7 @@ export async function runGridBalanceOnConsumptionChange(
 		trigger,
 	});
 
-	const live = BATTERY_LIVE_WRITES_ENABLED;
+	const live = await isLiveWriteAllowed((id) => adapter.getStateAsync(id), ADDON_ID);
 
 	if (controller === "grid_balance" && result.gatePassed && chargeMap.targetId && !gbPaused) {
 		await ensureOperatingMode(adapter, SONNEN_OPERATING_MODE_MANUAL, live);

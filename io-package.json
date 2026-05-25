@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.2",
+		"version": "0.1.3",
 		"news": {
+			"0.1.3": {
+				"en": "Wallbox failsafe: feedback power unit W or kW (go-e energy.neutral.power)",
+				"de": "Wallbox-Failsafe: Feedback-Leistung Einheit W oder kW (z. B. go-e energy.neutral.power)"
+			},
 			"0.1.2": {
 				"en": "Failsafe: battery (mode 2 safe), wallbox (verify/off), shared runner; status.addon_dead",
 				"de": "Failsafe: Batterie (Safe Modus 2), Wallbox (Verifikation/AUS), zentraler Runner; status.addon_dead"

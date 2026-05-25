@@ -288,17 +288,31 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "EMS weg oder Befehl schlägt fehl → allow_charging AUS. Leistungs-Verifikation optional über Feedback-State; bei dauerhaft Max-Ladung (volle Sonne) kein Fehlalarm."
+					"text": "EMS weg oder Befehl schlägt fehl → allow_charging AUS. Feedback z. B. go-e.0.energy.neutral.power — bei go-e oft kW: Einheit „Kilowatt (kW)“ wählen. Soll-Leistung vom EMS bleibt in W."
 				},
 				"wb_feedback_power_target": {
 					"type": "objectId",
-					"label": "Feedback Leistung (W) — optional",
+					"label": "Feedback Leistung — optional",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 8,
 					"lg": 8,
 					"xl": 8
+				},
+				"wb_feedback_power_unit": {
+					"type": "select",
+					"label": "Einheit Feedback-Leistung",
+					"options": [
+						{ "label": "Watt (W)", "value": "w" },
+						{ "label": "Kilowatt (kW)", "value": "kw" }
+					],
+					"default": "w",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				},
 				"wb_max_charge_w": {
 					"type": "number",

@@ -51,6 +51,23 @@ function powerFeedbackIdFromConfig(config: Record<string, unknown>): string {
 	return typeof t === "string" ? t.trim() : "";
 }
 
+/** Feedback-State kann W oder kW liefern (go-e: energy.neutral.power oft kW). */
+function feedbackPowerToWatts(raw: number, config: Record<string, unknown>): number {
+	const unit = String(config.wb_feedback_power_unit ?? "w").toLowerCase();
+	if (unit === "kw" || unit === "kwh") {
+		return raw * 1000;
+	}
+	return raw;
+}
+
+async function readFeedbackPowerW(adapter: ioBroker.Adapter, cfg: Record<string, unknown>): Promise<number | null> {
+	const id = powerFeedbackIdFromConfig(cfg);
+	if (!id) return null;
+	const raw = await readForeignNumber(adapter, id);
+	if (raw == null) return null;
+	return feedbackPowerToWatts(raw, cfg);
+}
+
 export function recordWallboxPipelineResult(
 	_config: Record<string, unknown>,
 	intent: CommandIntent,
@@ -143,7 +160,7 @@ async function verifyPending(adapter: ioBroker.Adapter, cfg: Record<string, unkn
 		return true;
 	}
 
-	const actualW = await readForeignNumber(adapter, feedbackId);
+	const actualW = await readFeedbackPowerW(adapter, cfg);
 	if (actualW == null) {
 		return false;
 	}

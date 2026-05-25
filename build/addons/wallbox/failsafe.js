@@ -25,6 +25,23 @@ function powerFeedbackIdFromConfig(config) {
     const t = config.wb_feedback_power_target;
     return typeof t === "string" ? t.trim() : "";
 }
+/** Feedback-State kann W oder kW liefern (go-e: energy.neutral.power oft kW). */
+function feedbackPowerToWatts(raw, config) {
+    const unit = String(config.wb_feedback_power_unit ?? "w").toLowerCase();
+    if (unit === "kw" || unit === "kwh") {
+        return raw * 1000;
+    }
+    return raw;
+}
+async function readFeedbackPowerW(adapter, cfg) {
+    const id = powerFeedbackIdFromConfig(cfg);
+    if (!id)
+        return null;
+    const raw = await (0, failsafe_common_1.readForeignNumber)(adapter, id);
+    if (raw == null)
+        return null;
+    return feedbackPowerToWatts(raw, cfg);
+}
 function recordWallboxPipelineResult(_config, intent, outcome) {
     lastImmediateFail = false;
     if (intent.addon_id !== ADDON_ID) {
@@ -109,7 +126,7 @@ async function verifyPending(adapter, cfg) {
     if (!feedbackId) {
         return true;
     }
-    const actualW = await (0, failsafe_common_1.readForeignNumber)(adapter, feedbackId);
+    const actualW = await readFeedbackPowerW(adapter, cfg);
     if (actualW == null) {
         return false;
     }

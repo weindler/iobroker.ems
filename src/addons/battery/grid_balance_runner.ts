@@ -9,6 +9,7 @@ import {
 	gridBalanceOffsetsFromConfig,
 } from "./mapping_config";
 import { readBool, readMappedRole, readNumber, mappedTargetId, writeForeignIfLive } from "./io";
+import { isBatteryAddonDead } from "./failsafe";
 import { isGridBalancePaused, isModeSequenceRunning } from "./mode_orchestrator";
 import { ensureOperatingMode, SONNEN_OPERATING_MODE_AUTO, SONNEN_OPERATING_MODE_MANUAL } from "./mode_control";
 
@@ -30,6 +31,10 @@ export async function runGridBalanceOnConsumptionChange(
 			: {};
 
 	if (batteryProfileFromConfig(cfg) !== "sonnen") {
+		return;
+	}
+
+	if (await isBatteryAddonDead(adapter)) {
 		return;
 	}
 

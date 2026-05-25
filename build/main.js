@@ -26,7 +26,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const utils = __importStar(require("@iobroker/adapter-core"));
 const battery_1 = require("./addons/battery");
 const immersion_heater_1 = require("./addons/immersion_heater");
+const failsafe_1 = require("./addons/wallbox/failsafe");
 const ems_activity_1 = require("./ems_activity");
+const failsafe_runner_1 = require("./failsafe_runner");
 const registry_1 = require("./addons/registry");
 const dryrun_mirror_1 = require("./dryrun_mirror");
 const execution_mode_1 = require("./execution_mode");
@@ -66,8 +68,9 @@ class Ems extends utils.Adapter {
             await (0, status_wallbox_1.ensureWallboxStatusStates)(this);
             await (0, battery_1.initBatteryModule)(this);
             await (0, immersion_heater_1.initImmersionHeaterModule)(this);
+            (0, failsafe_runner_1.startFailsafeRunner)(this);
             await this.subscribeStatesAsync(states_1.STATE.command.inbox);
-            this.log.info("EMS adapter v0.1.1 ready — Heizstab set_enabled + EMS-Failsafe (nur Live)");
+            this.log.info("EMS adapter v0.1.2 ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
             const inbox = await this.getStateAsync(states_1.STATE.command.inbox);
             if (inbox && !inbox.ack && inbox.val != null) {
                 this.log.info("Processing pending command.inbox on start");
@@ -81,6 +84,7 @@ class Ems extends utils.Adapter {
     onUnload(callback) {
         (0, battery_1.stopBatteryModule)(null);
         (0, immersion_heater_1.stopImmersionHeaterModule)();
+        (0, failsafe_runner_1.stopFailsafeRunner)();
         callback();
     }
     async onStateChange(id, state) {
@@ -160,6 +164,10 @@ class Ems extends utils.Adapter {
         if (intent.addon_id) {
             await (0, dryrun_mirror_1.writeDryrunMirror)(this, intent.addon_id, intent, outcome);
         }
+        const cfg = this.config && typeof this.config === "object"
+            ? this.config
+            : {};
+        (0, failsafe_1.recordWallboxPipelineResult)(cfg, intent, outcome);
         this.log.info(`command.inbox done: ${outcome.result}` +
             (outcome.target_state ? ` → ${outcome.target_state}` : ""));
     }

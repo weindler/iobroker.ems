@@ -8,6 +8,7 @@ const grid_balance_1 = require("./grid_balance");
 const dryrun_mirror_1 = require("./dryrun_mirror");
 const mapping_config_1 = require("./mapping_config");
 const io_1 = require("./io");
+const failsafe_1 = require("./failsafe");
 const mode_orchestrator_1 = require("./mode_orchestrator");
 const mode_control_1 = require("./mode_control");
 const ADDON_ID = "battery";
@@ -17,6 +18,9 @@ async function runGridBalanceOnConsumptionChange(adapter, trigger) {
         ? adapter.config
         : {};
     if ((0, mapping_config_1.batteryProfileFromConfig)(cfg) !== "sonnen") {
+        return;
+    }
+    if (await (0, failsafe_1.isBatteryAddonDead)(adapter)) {
         return;
     }
     if ((0, mode_orchestrator_1.isModeSequenceRunning)()) {

@@ -1,3 +1,4 @@
+import { noteBatteryModeDesired } from "./failsafe";
 import { EMS_MIRROR_BATTERY, EMS_MIRROR_BATTERY_IDS } from "./ems_mirror";
 import { handleEmsModeRequest, onEmsIntentReleased } from "./mode_orchestrator";
 import { readBool, readNumber } from "./io";
@@ -17,6 +18,7 @@ export async function setupEmsMirrorWatch(adapter: BatteryTickHost): Promise<voi
 }
 
 export async function handleEmsMirrorStateChange(adapter: BatteryTickHost): Promise<void> {
+	await noteBatteryModeDesired(adapter);
 	const reqId = await readNumber(adapter, EMS_MIRROR_BATTERY.modeRequestId);
 	if (reqId != null && reqId > 0) {
 		await handleEmsModeRequest(adapter);

@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.1",
+		"version": "0.1.2",
 		"news": {
+			"0.1.2": {
+				"en": "Failsafe: battery (mode 2 safe), wallbox (verify/off), shared runner; status.addon_dead",
+				"de": "Failsafe: Batterie (Safe Modus 2), Wallbox (Verifikation/AUS), zentraler Runner; status.addon_dead"
+			},
 			"0.1.1": {
 				"en": "Immersion heater: set_enabled mapping, EMS unreachable failsafe (live only, 300s default)",
 				"de": "Heizstab: set_enabled-Mapping, Failsafe EMS weg → Relais aus (nur Live, Standard 300 s)"

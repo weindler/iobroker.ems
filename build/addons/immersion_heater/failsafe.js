@@ -2,19 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runImmersionFailsafeCheck = exports.forceImmersionHeaterOff = void 0;
 const execution_mode_1 = require("../../execution_mode");
-const ems_activity_1 = require("../../ems_activity");
+const failsafe_common_1 = require("../../failsafe_common");
 const tree_paths_1 = require("../../tree_paths");
-const mapping_config_1 = require("./mapping_config");
 const status_1 = require("./status");
 const ADDON_ID = "immersion_heater";
 let lastEmsReachable = null;
-async function setEdgeBool(adapter, stateId, value) {
-    const cur = await adapter.getStateAsync(stateId);
-    if (cur?.val === value) {
-        return;
-    }
-    await adapter.setStateAsync(stateId, { val: value, ack: true });
-}
 async function mappedEnableTarget(adapter) {
     const base = (0, tree_paths_1.mappingBase)(ADDON_ID, "set_enabled");
     const en = await adapter.getStateAsync(`${base}.enabled`);
@@ -49,16 +41,14 @@ async function runImmersionFailsafeCheck(adapter) {
     const cfg = adapter.config && typeof adapter.config === "object"
         ? adapter.config
         : {};
-    const { emsUnreachableTimeoutSec } = (0, mapping_config_1.immersionFailsafeConfig)(cfg);
     const liveAllowed = await (0, execution_mode_1.isLiveWriteAllowed)((id) => adapter.getStateAsync(id), ADDON_ID);
-    const msSilent = (0, ems_activity_1.msSinceEmsActivity)();
-    const emsReachable = msSilent < emsUnreachableTimeoutSec * 1000;
+    const emsReachable = !(0, failsafe_common_1.isEmsUnreachable)(cfg, "ih");
     const wouldTrip = !emsReachable;
-    await setEdgeBool(adapter, status_1.IMMERSION_STATUS_STATES.emsReachable, emsReachable);
-    await setEdgeBool(adapter, status_1.IMMERSION_STATUS_STATES.failsafeWouldTrip, wouldTrip && !liveAllowed);
+    await (0, failsafe_common_1.setEdgeBool)(adapter, status_1.IMMERSION_STATUS_STATES.emsReachable, emsReachable);
+    await (0, failsafe_common_1.setEdgeBool)(adapter, status_1.IMMERSION_STATUS_STATES.failsafeWouldTrip, wouldTrip && !liveAllowed);
     if (lastEmsReachable !== emsReachable) {
         lastEmsReachable = emsReachable;
-        adapter.log.info(`immersion_heater: ems_reachable=${emsReachable} (silent ${Math.round(msSilent / 1000)}s)`);
+        adapter.log.info(`immersion_heater: ems_reachable=${emsReachable}`);
     }
     const ts = new Date().toISOString();
     await adapter.setStateAsync(status_1.IMMERSION_STATUS_STATES.updatedAt, { val: ts, ack: true });

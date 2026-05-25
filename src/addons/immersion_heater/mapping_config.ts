@@ -41,15 +41,3 @@ export function immersionHeaterMappingFromConfig(
 
 	return out;
 }
-
-export function immersionFailsafeConfig(config: Record<string, unknown>): {
-	emsUnreachableTimeoutSec: number;
-	failsafeCheckIntervalSec: number;
-} {
-	const t = Number(config.ih_ems_unreachable_timeout_sec);
-	const c = Number(config.ih_failsafe_check_interval_sec);
-	return {
-		emsUnreachableTimeoutSec: Number.isFinite(t) && t >= 60 ? Math.min(t, 900) : 300,
-		failsafeCheckIntervalSec: Number.isFinite(c) && c >= 10 ? Math.min(c, 120) : 30,
-	};
-}

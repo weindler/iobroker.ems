@@ -8,6 +8,7 @@ import {
 	SONNEN_OPERATING_MODE_AUTO,
 	SONNEN_OPERATING_MODE_MANUAL,
 } from "./mode_control";
+import { isBatteryAddonDead } from "./failsafe";
 import type { BatteryTickHost } from "./grid_balance_runner";
 
 const sleep = (ms: number): Promise<void> =>
@@ -35,6 +36,9 @@ async function setSequenceStatus(adapter: BatteryTickHost, status: string, detai
 }
 
 export async function handleEmsModeRequest(adapter: BatteryTickHost): Promise<void> {
+	if (await isBatteryAddonDead(adapter)) {
+		return;
+	}
 	const reqId = await readNumber(adapter, EMS_MIRROR_BATTERY.modeRequestId);
 	const target = await readNumber(adapter, EMS_MIRROR_BATTERY.operatingModeTarget);
 	const chargeW = await readNumber(adapter, EMS_MIRROR_BATTERY.chargePowerWRequest);

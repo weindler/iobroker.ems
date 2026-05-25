@@ -7,6 +7,7 @@ const ems_mirror_1 = require("./ems_mirror");
 const io_1 = require("./io");
 const mode_delays_1 = require("./mode_delays");
 const mode_control_1 = require("./mode_control");
+const failsafe_1 = require("./failsafe");
 const sleep = (ms) => new Promise((resolve) => {
     setTimeout(resolve, ms);
 });
@@ -28,6 +29,9 @@ async function setSequenceStatus(adapter, status, detail) {
     }
 }
 async function handleEmsModeRequest(adapter) {
+    if (await (0, failsafe_1.isBatteryAddonDead)(adapter)) {
+        return;
+    }
     const reqId = await (0, io_1.readNumber)(adapter, ems_mirror_1.EMS_MIRROR_BATTERY.modeRequestId);
     const target = await (0, io_1.readNumber)(adapter, ems_mirror_1.EMS_MIRROR_BATTERY.operatingModeTarget);
     const chargeW = await (0, io_1.readNumber)(adapter, ems_mirror_1.EMS_MIRROR_BATTERY.chargePowerWRequest);

@@ -5,7 +5,9 @@ import {
 	initImmersionHeaterModule,
 	stopImmersionHeaterModule,
 } from "./addons/immersion_heater";
+import { recordWallboxPipelineResult } from "./addons/wallbox/failsafe";
 import { touchEmsActivity } from "./ems_activity";
+import { startFailsafeRunner, stopFailsafeRunner } from "./failsafe_runner";
 import { EMS_ADDON_IDS } from "./addons/registry";
 import { writeDryrunMirror } from "./dryrun_mirror";
 import {
@@ -61,9 +63,10 @@ class Ems extends utils.Adapter {
 			await ensureWallboxStatusStates(this);
 			await initBatteryModule(this);
 			await initImmersionHeaterModule(this);
+			startFailsafeRunner(this);
 			await this.subscribeStatesAsync(STATE.command.inbox);
 			this.log.info(
-				"EMS adapter v0.1.1 ready — Heizstab set_enabled + EMS-Failsafe (nur Live)",
+				"EMS adapter v0.1.2 ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)",
 			);
 
 			const inbox = await this.getStateAsync(STATE.command.inbox);
@@ -79,6 +82,7 @@ class Ems extends utils.Adapter {
 	private onUnload(callback: () => void): void {
 		stopBatteryModule(null);
 		stopImmersionHeaterModule();
+		stopFailsafeRunner();
 		callback();
 	}
 
@@ -163,6 +167,12 @@ class Ems extends utils.Adapter {
 		if (intent.addon_id) {
 			await writeDryrunMirror(this, intent.addon_id, intent, outcome);
 		}
+
+		const cfg =
+			this.config && typeof this.config === "object"
+				? (this.config as Record<string, unknown>)
+				: {};
+		recordWallboxPipelineResult(cfg, intent, outcome);
 
 		this.log.info(
 			`command.inbox done: ${outcome.result}` +

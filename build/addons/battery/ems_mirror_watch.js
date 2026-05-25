@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleEmsMirrorStateChange = exports.setupEmsMirrorWatch = exports.isEmsMirrorStateId = void 0;
+const failsafe_1 = require("./failsafe");
 const ems_mirror_1 = require("./ems_mirror");
 const mode_orchestrator_1 = require("./mode_orchestrator");
 const io_1 = require("./io");
@@ -18,6 +19,7 @@ async function setupEmsMirrorWatch(adapter) {
 }
 exports.setupEmsMirrorWatch = setupEmsMirrorWatch;
 async function handleEmsMirrorStateChange(adapter) {
+    await (0, failsafe_1.noteBatteryModeDesired)(adapter);
     const reqId = await (0, io_1.readNumber)(adapter, ems_mirror_1.EMS_MIRROR_BATTERY.modeRequestId);
     if (reqId != null && reqId > 0) {
         await (0, mode_orchestrator_1.handleEmsModeRequest)(adapter);

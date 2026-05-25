@@ -1,17 +1,10 @@
 import { touchEmsActivity, isEmsActivityStateId } from "../../ems_activity";
 import { ensureEmsMirrorAliveState } from "../../ems_mirror_alive";
 import { ensureAddonMappingStates, syncNativeMappingToStates } from "../../mapping_sync";
-import {
-	IMMERSION_HEATER_MAPPING_COMMANDS,
-	immersionFailsafeConfig,
-	immersionHeaterMappingFromConfig,
-} from "./mapping_config";
-import { runImmersionFailsafeCheck } from "./failsafe";
+import { IMMERSION_HEATER_MAPPING_COMMANDS, immersionHeaterMappingFromConfig } from "./mapping_config";
 import { ensureImmersionStatusStates } from "./status";
 
 export const IMMERSION_ADDON_ID = "immersion_heater";
-
-let failsafeTimer: NodeJS.Timeout | null = null;
 
 export async function initImmersionHeaterModule(adapter: ioBroker.Adapter): Promise<null> {
 	await ensureEmsMirrorAliveState(adapter);
@@ -20,31 +13,12 @@ export async function initImmersionHeaterModule(adapter: ioBroker.Adapter): Prom
 	await ensureImmersionStatusStates(adapter);
 
 	touchEmsActivity();
-
-	const cfg =
-		adapter.config && typeof adapter.config === "object"
-			? (adapter.config as Record<string, unknown>)
-			: {};
-	const { failsafeCheckIntervalSec } = immersionFailsafeConfig(cfg);
-
-	failsafeTimer = setInterval(() => {
-		void runImmersionFailsafeCheck(adapter).catch((e) => {
-			adapter.log.error(`immersion failsafe tick: ${e}`);
-		});
-	}, failsafeCheckIntervalSec * 1000);
-
-	adapter.log.info(
-		`immersion_heater: mapping set_enabled, failsafe check ${failsafeCheckIntervalSec}s`,
-	);
-
+	adapter.log.info("immersion_heater: mapping set_enabled (failsafe via central runner)");
 	return null;
 }
 
 export function stopImmersionHeaterModule(): void {
-	if (failsafeTimer) {
-		clearInterval(failsafeTimer);
-		failsafeTimer = null;
-	}
+	/* failsafe timer in failsafe_runner */
 }
 
 export function handleImmersionHeaterStateChange(adapter: ioBroker.Adapter, stateId: string): void {

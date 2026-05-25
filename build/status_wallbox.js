@@ -9,6 +9,12 @@ exports.WALLBOX_STATUS_STATES = {
     chargingModeLabel: `${STATUS}.charging_mode_label`,
     vehicleSocPct: `${STATUS}.vehicle_soc_pct`,
     updatedAt: `${STATUS}.updated_at`,
+    emsReachable: `${STATUS}.ems_reachable`,
+    actuatorReachable: `${STATUS}.actuator_reachable`,
+    addonDead: `${STATUS}.addon_dead`,
+    failsafeActive: `${STATUS}.failsafe_active`,
+    failsafeWouldTrip: `${STATUS}.failsafe_would_trip`,
+    lastFailsafeAt: `${STATUS}.last_failsafe_at`,
 };
 async function ensureWallboxStatusStates(adapter) {
     const defs = [
@@ -56,6 +62,63 @@ async function ensureWallboxStatusStates(adapter) {
                 read: true,
                 write: false,
             },
+        },
+        {
+            _id: exports.WALLBOX_STATUS_STATES.emsReachable,
+            common: { name: "EMS erreichbar", type: "boolean", role: "state", read: true, write: false, def: true },
+            defVal: true,
+        },
+        {
+            _id: exports.WALLBOX_STATUS_STATES.actuatorReachable,
+            common: {
+                name: "Wallbox-Aktor erreichbar",
+                type: "boolean",
+                role: "state",
+                read: true,
+                write: false,
+                def: true,
+            },
+            defVal: true,
+        },
+        {
+            _id: exports.WALLBOX_STATUS_STATES.addonDead,
+            common: {
+                name: "Wallbox tot — EMS soll keine Writes senden",
+                type: "boolean",
+                role: "state",
+                read: true,
+                write: false,
+                def: false,
+            },
+            defVal: false,
+        },
+        {
+            _id: exports.WALLBOX_STATUS_STATES.failsafeActive,
+            common: {
+                name: "Failsafe Ladung gestoppt",
+                type: "boolean",
+                role: "state",
+                read: true,
+                write: false,
+                def: false,
+            },
+            defVal: false,
+        },
+        {
+            _id: exports.WALLBOX_STATUS_STATES.failsafeWouldTrip,
+            common: {
+                name: "Failsafe würde auslösen (Dryrun)",
+                type: "boolean",
+                role: "state",
+                read: true,
+                write: false,
+                def: false,
+            },
+            defVal: false,
+        },
+        {
+            _id: exports.WALLBOX_STATUS_STATES.lastFailsafeAt,
+            common: { name: "Letzter Failsafe (ISO)", type: "string", role: "date", read: true, write: false },
         },
     ];
     for (const def of defs) {

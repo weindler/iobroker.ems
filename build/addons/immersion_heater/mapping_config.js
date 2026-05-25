@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.immersionFailsafeConfig = exports.immersionHeaterMappingFromConfig = exports.IMMERSION_FLAT_PREFIX = exports.IMMERSION_HEATER_MAPPING_COMMANDS = void 0;
+exports.immersionHeaterMappingFromConfig = exports.IMMERSION_FLAT_PREFIX = exports.IMMERSION_HEATER_MAPPING_COMMANDS = void 0;
 exports.IMMERSION_HEATER_MAPPING_COMMANDS = ["set_enabled"];
 exports.IMMERSION_FLAT_PREFIX = {
     set_enabled: "ih_set_enabled",
@@ -29,12 +29,3 @@ function immersionHeaterMappingFromConfig(config) {
     return out;
 }
 exports.immersionHeaterMappingFromConfig = immersionHeaterMappingFromConfig;
-function immersionFailsafeConfig(config) {
-    const t = Number(config.ih_ems_unreachable_timeout_sec);
-    const c = Number(config.ih_failsafe_check_interval_sec);
-    return {
-        emsUnreachableTimeoutSec: Number.isFinite(t) && t >= 60 ? Math.min(t, 900) : 300,
-        failsafeCheckIntervalSec: Number.isFinite(c) && c >= 10 ? Math.min(c, 120) : 30,
-    };
-}
-exports.immersionFailsafeConfig = immersionFailsafeConfig;

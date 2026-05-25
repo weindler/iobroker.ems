@@ -1,7 +1,6 @@
 import { isLiveWriteAllowed } from "../../execution_mode";
-import { msSinceEmsActivity } from "../../ems_activity";
+import { failsafeTimeoutsFromConfig, isEmsUnreachable, setEdgeBool } from "../../failsafe_common";
 import { mappingBase } from "../../tree_paths";
-import { immersionFailsafeConfig } from "./mapping_config";
 import { IMMERSION_STATUS_STATES } from "./status";
 
 const ADDON_ID = "immersion_heater";
@@ -11,18 +10,6 @@ export type ImmersionFailsafeHost = ioBroker.Adapter & {
 };
 
 let lastEmsReachable: boolean | null = null;
-
-async function setEdgeBool(
-	adapter: ImmersionFailsafeHost,
-	stateId: string,
-	value: boolean,
-): Promise<void> {
-	const cur = await adapter.getStateAsync(stateId);
-	if (cur?.val === value) {
-		return;
-	}
-	await adapter.setStateAsync(stateId, { val: value, ack: true });
-}
 
 async function mappedEnableTarget(adapter: ImmersionFailsafeHost): Promise<string> {
 	const base = mappingBase(ADDON_ID, "set_enabled");
@@ -62,11 +49,8 @@ export async function runImmersionFailsafeCheck(adapter: ImmersionFailsafeHost):
 		adapter.config && typeof adapter.config === "object"
 			? (adapter.config as Record<string, unknown>)
 			: {};
-	const { emsUnreachableTimeoutSec } = immersionFailsafeConfig(cfg);
 	const liveAllowed = await isLiveWriteAllowed((id) => adapter.getStateAsync(id), ADDON_ID);
-
-	const msSilent = msSinceEmsActivity();
-	const emsReachable = msSilent < emsUnreachableTimeoutSec * 1000;
+	const emsReachable = !isEmsUnreachable(cfg, "ih");
 	const wouldTrip = !emsReachable;
 
 	await setEdgeBool(adapter, IMMERSION_STATUS_STATES.emsReachable, emsReachable);
@@ -75,7 +59,7 @@ export async function runImmersionFailsafeCheck(adapter: ImmersionFailsafeHost):
 	if (lastEmsReachable !== emsReachable) {
 		lastEmsReachable = emsReachable;
 		adapter.log.info(
-			`immersion_heater: ems_reachable=${emsReachable} (silent ${Math.round(msSilent / 1000)}s)`,
+			`immersion_heater: ems_reachable=${emsReachable}`,
 		);
 	}
 

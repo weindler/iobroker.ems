@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.15",
+		"version": "0.1.16",
 		"news": {
+			"0.1.16": {
+				"en": "Price Learning admin: clarify Tibber €/kWh vs live.price ct/kWh",
+				"de": "Price Learning Admin: Tibber €/kWh vs. live.price ct/kWh in Hilfetexten klargestellt"
+			},
 			"0.1.15": {
 				"en": "EMS-Light Phase 2D: Price Learning V1 — historical tariff patterns under learning.price_learning.*",
 				"de": "EMS-Light Phase 2D: Price Learning V1 — historische Preismuster unter learning.price_learning.*"

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.stopEmsLightPhase1 = exports.initEmsLightPhase1 = void 0;
+const pv_bias_1 = require("../learning/pv_bias");
 const ensure_states_1 = require("./ensure_states");
 const tick_1 = require("./tick");
 const DEFAULT_TICK_SEC = 60;
@@ -20,6 +21,7 @@ async function initEmsLightPhase1(adapter) {
     const version = String(adapter.common?.version ?? "0.0.0");
     const host = adapter;
     await (0, ensure_states_1.ensureEmsLightStates)(host, version);
+    await (0, pv_bias_1.initPvBiasLearning)(adapter);
     await (0, tick_1.runEmsLightPhase1Tick)(host);
     const sec = tickIntervalSec(adapter.config);
     stopEmsLightPhase1();
@@ -32,6 +34,7 @@ async function initEmsLightPhase1(adapter) {
 }
 exports.initEmsLightPhase1 = initEmsLightPhase1;
 function stopEmsLightPhase1() {
+    (0, pv_bias_1.stopPvBiasLearning)();
     if (tickTimer) {
         clearInterval(tickTimer);
         tickTimer = null;

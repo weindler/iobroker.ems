@@ -41,7 +41,6 @@ async function ensureEmsLightStates(host, adapterVersion) {
         numState("live.thermal.buffer_temp_c", "Live Puffer-Temperatur", "°C"),
         numState("live.pv.power_w", "Live PV-Leistung", "W"),
         numState("live.price.now_ct_per_kwh", "Live Strompreis jetzt", "ct/kWh"),
-        strState("learning.pv_bias.status", "Learning PV-Bias Status", "not_initialized"),
         strState("learning.house_load.status", "Learning Hauslast Status", "not_initialized"),
         strState("learning.battery_runtime.status", "Learning Batterie Runtime Status", "not_initialized"),
         strState("learning.thermal_runtime.status", "Learning Thermik Runtime Status", "not_initialized"),

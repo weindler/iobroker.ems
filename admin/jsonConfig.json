@@ -996,6 +996,133 @@
 					"xl": 3
 				}
 			}
+		},
+		"emsLightLearningTab": {
+			"type": "panel",
+			"label": "EMS-Light Learning",
+			"items": {
+				"elIntro": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Phase 2A: PV-Bias Learning (read-only). Bias nur gegen eingefrorenen Forecast-Snapshot — Live-Forecast bleibt dynamisch unter forecast.pv.*"
+				},
+				"learning_pv_bias_enabled": {
+					"type": "checkbox",
+					"label": "PV-Bias Learning aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_pv_bias_interval_sec": {
+					"type": "number",
+					"label": "Update-Intervall (Sek.)",
+					"min": 300,
+					"max": 86400,
+					"default": 3600,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"hPvBiasFreeze": {
+					"type": "header",
+					"size": 2,
+					"text": "Forecast Freeze — Snapshot für reproduzierbaren Bias",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_pv_bias_forecast_freeze_enabled": {
+					"type": "checkbox",
+					"label": "Forecast-Freeze aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_pv_bias_forecast_freeze_time": {
+					"type": "text",
+					"label": "Freeze-Zeit (HH:MM, z. B. 06:00)",
+					"default": "06:00",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"hPvBiasHistory": {
+					"type": "header",
+					"size": 2,
+					"text": "Historie — PV-Ist (pv_actual_kwh); Forecast-Historie nur wenn Freeze aus",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_pv_bias_history_actual_state": {
+					"type": "objectId",
+					"label": "PV-Ist Tageswert (Historie)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_pv_bias_history_forecast_state": {
+					"type": "objectId",
+					"label": "PV-Rohforecast Tageswert (Historie, nur ohne Freeze)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"hPvBiasRaw": {
+					"type": "header",
+					"size": 2,
+					"text": "Live-Rohforecast zum Freeze-Zeitpunkt (optional — Fallback: forecast.pv.today_kwh / tomorrow_kwh)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_pv_bias_raw_today_state": {
+					"type": "objectId",
+					"label": "Rohforecast heute (kWh)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_pv_bias_raw_tomorrow_state": {
+					"type": "objectId",
+					"label": "Rohforecast morgen (kWh)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				}
+			}
 		}
 	}
 }

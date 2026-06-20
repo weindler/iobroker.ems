@@ -1,8 +1,16 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.6",
+		"version": "0.1.8",
 		"news": {
+			"0.1.8": {
+				"en": "EMS-Light PV-Bias: forecast freeze snapshot at configured time for reproducible bias",
+				"de": "EMS-Light PV-Bias: Forecast-Freeze zum konfigurierten Zeitpunkt für reproduzierbaren Bias"
+			},
+			"0.1.7": {
+				"en": "EMS-Light Phase 2A: PV-Bias learning (history vs forecast, corrected outputs, confidence)",
+				"de": "EMS-Light Phase 2A: PV-Bias Learning (Historie vs. Forecast, korrigierte Werte, Confidence)"
+			},
 			"0.1.6": {
 				"en": "EMS-Light live cache: convert Tibber price from EUR/kWh to ct/kWh (×100)",
 				"de": "EMS-Light Live-Cache: Tibber-Preis von €/kWh nach ct/kWh umrechnen (×100)"

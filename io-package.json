@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.4",
+		"version": "0.1.5",
 		"news": {
+			"0.1.5": {
+				"en": "EMS-Light mapping: capacity_kwh, buffer_temp_c, vehicle_soc_pct, price_now_ct_per_kwh (read-only, admin + states)",
+				"de": "EMS-Light Mapping: capacity_kwh, buffer_temp_c, vehicle_soc_pct, price_now_ct_per_kwh (read-only, Admin + States)"
+			},
 			"0.1.4": {
 				"en": "EMS-Light Phase 1: read-only channels (live, learning, planner, operator, economics), live cache from addon mapping, safety mirror",
 				"de": "EMS-Light Phase 1: read-only Kanäle (live, learning, planner, operator, economics), Live-Cache aus Addon-Mapping, Safety-Spiegel"

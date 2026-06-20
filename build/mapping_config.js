@@ -1,12 +1,19 @@
 "use strict";
 /** Wallbox-Befehle mit Mapping (logischer command = mapping_id). */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.wallboxMappingFromConfig = exports.goeWallboxTemplateFlat = exports.WALLBOX_FLAT_PREFIX = exports.WALLBOX_MAPPING_COMMANDS = void 0;
+exports.wallboxMappingFromConfig = exports.goeWallboxTemplateFlat = exports.WALLBOX_FLAT_PREFIX_READ = exports.WALLBOX_FLAT_PREFIX = exports.WALLBOX_ALL_MAPPING_IDS = exports.WALLBOX_READ_MAPPING_ROLES = exports.WALLBOX_MAPPING_COMMANDS = void 0;
 exports.WALLBOX_MAPPING_COMMANDS = [
     "set_enabled",
     "set_current_a",
     "set_charge_power_w",
     "set_phase_switch_enabled",
+];
+/** Read-only Mess-Mapping (kein Pipeline-Befehl). */
+exports.WALLBOX_READ_MAPPING_ROLES = ["vehicle_soc_pct"];
+/** Alle Wallbox-Mapping-States unter addons.wallbox.mapping.* */
+exports.WALLBOX_ALL_MAPPING_IDS = [
+    ...exports.WALLBOX_MAPPING_COMMANDS,
+    ...exports.WALLBOX_READ_MAPPING_ROLES,
 ];
 /** Native-Keys in Instanz-Konfiguration (jsonConfig / objectId-Picker). */
 exports.WALLBOX_FLAT_PREFIX = {
@@ -14,6 +21,9 @@ exports.WALLBOX_FLAT_PREFIX = {
     set_current_a: "wb_set_current_a",
     set_charge_power_w: "wb_set_charge_power_w",
     set_phase_switch_enabled: "wb_set_phase_switch",
+};
+exports.WALLBOX_FLAT_PREFIX_READ = {
+    vehicle_soc_pct: "wb_vehicle_soc",
 };
 /** go-e-Vorlage für Admin-Button applyGoeTemplate (flache Native-Keys). */
 function goeWallboxTemplateFlat() {
@@ -64,6 +74,30 @@ function wallboxMappingFromConfig(config) {
         }
         if (entry.target_state || entry.allowed_values || typeof entry.enabled === "boolean") {
             out[cmd] = entry;
+        }
+    }
+    for (const role of exports.WALLBOX_READ_MAPPING_ROLES) {
+        const prefix = exports.WALLBOX_FLAT_PREFIX_READ[role];
+        const entry = {};
+        const t = config[`${prefix}_target`];
+        if (typeof t === "string" && t.trim()) {
+            entry.target_state = t.trim();
+        }
+        const en = config[`${prefix}_enabled`];
+        if (typeof en === "boolean") {
+            entry.enabled = en;
+        }
+        const nest = nested?.[role];
+        if (nest && typeof nest === "object") {
+            if (typeof nest.target_state === "string" && nest.target_state.trim()) {
+                entry.target_state = nest.target_state.trim();
+            }
+            if (typeof nest.enabled === "boolean") {
+                entry.enabled = nest.enabled;
+            }
+        }
+        if (entry.target_state || typeof entry.enabled === "boolean") {
+            out[role] = entry;
         }
     }
     return out;

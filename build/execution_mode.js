@@ -56,6 +56,7 @@ async function ensureChannelTree(setObjectNotExistsAsync) {
         { id: "addons.wallbox", name: "Wallbox" },
         { id: "addons.battery", name: "Batterie" },
         { id: "addons.immersion_heater", name: "Heizstab" },
+        { id: "addons.dynamic_tariff", name: "Dynamischer Tarif" },
     ];
     for (const ch of channels) {
         await setObjectNotExistsAsync(ch.id, {

@@ -26,6 +26,12 @@ const BATTERY_SLOTS: MappingSlot[] = [
 		liveId: "live.battery.house_load_w",
 		labelDe: "Hauslast",
 	},
+	{
+		addonId: "battery",
+		role: "capacity_kwh",
+		liveId: "live.battery.capacity_kwh",
+		labelDe: "Batteriekapazität",
+	},
 ];
 
 const WALLBOX_SLOTS: MappingSlot[] = [
@@ -35,28 +41,24 @@ const WALLBOX_SLOTS: MappingSlot[] = [
 		liveId: "live.wallbox.enabled",
 		labelDe: "Wallbox Freigabe",
 	},
-];
-
-/** Optional: falls später als Mapping-Rolle angelegt. */
-const OPTIONAL_SLOTS: MappingSlot[] = [
-	{
-		addonId: "battery",
-		role: "capacity_kwh",
-		liveId: "live.battery.capacity_kwh",
-		labelDe: "Batteriekapazität",
-	},
-	{
-		addonId: "immersion_heater",
-		role: "buffer_temp_c",
-		liveId: "live.thermal.buffer_temp_c",
-		labelDe: "Puffer-Temperatur",
-	},
 	{
 		addonId: "wallbox",
 		role: "vehicle_soc_pct",
 		liveId: "live.wallbox.vehicle_soc_pct",
 		labelDe: "Fahrzeug-SOC",
 	},
+];
+
+const IMMERSION_SLOTS: MappingSlot[] = [
+	{
+		addonId: "immersion_heater",
+		role: "buffer_temp_c",
+		liveId: "live.thermal.buffer_temp_c",
+		labelDe: "Puffer-Temperatur",
+	},
+];
+
+const TARIFF_SLOTS: MappingSlot[] = [
 	{
 		addonId: "dynamic_tariff",
 		role: "price_now_ct_per_kwh",
@@ -149,7 +151,7 @@ async function mirrorPvPower(host: LiveCacheHost, result: LiveCacheResult): Prom
 export async function refreshLiveCache(host: LiveCacheHost): Promise<LiveCacheResult> {
 	const result: LiveCacheResult = { updated: [], missing: [], errors: [] };
 
-	for (const slot of [...BATTERY_SLOTS, ...WALLBOX_SLOTS, ...OPTIONAL_SLOTS]) {
+	for (const slot of [...BATTERY_SLOTS, ...WALLBOX_SLOTS, ...IMMERSION_SLOTS, ...TARIFF_SLOTS]) {
 		await applySlot(host, slot, result);
 	}
 

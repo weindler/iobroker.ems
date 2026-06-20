@@ -5,6 +5,7 @@ import {
 	initImmersionHeaterModule,
 	stopImmersionHeaterModule,
 } from "./addons/immersion_heater";
+import { initDynamicTariffModule } from "./addons/dynamic_tariff";
 import { recordWallboxPipelineResult } from "./addons/wallbox/failsafe";
 import { touchEmsActivity } from "./ems_activity";
 import { startFailsafeRunner, stopFailsafeRunner } from "./failsafe_runner";
@@ -17,7 +18,7 @@ import {
 	syncExecutionModesFromConfig,
 } from "./execution_mode";
 import { parseInboxValue } from "./inbox";
-import { goeWallboxTemplateFlat, wallboxMappingFromConfig, WALLBOX_MAPPING_COMMANDS } from "./mapping_config";
+import { goeWallboxTemplateFlat, wallboxMappingFromConfig, WALLBOX_ALL_MAPPING_IDS } from "./mapping_config";
 import { ensureAddonMappingStates, syncNativeMappingToStates } from "./mapping_sync";
 import { initEmsLightPhase1, stopEmsLightPhase1 } from "./ems_light";
 import { runCommandPipeline } from "./pipeline";
@@ -64,6 +65,7 @@ class Ems extends utils.Adapter {
 			await ensureWallboxStatusStates(this);
 			await initBatteryModule(this);
 			await initImmersionHeaterModule(this);
+			await initDynamicTariffModule(this);
 			startFailsafeRunner(this);
 			await initEmsLightPhase1(this);
 			await this.subscribeStatesAsync(STATE.command.inbox);
@@ -292,7 +294,7 @@ class Ems extends utils.Adapter {
 	}
 
 	private async ensureWallboxMapping(): Promise<void> {
-		await ensureAddonMappingStates(this, "wallbox", WALLBOX_MAPPING_COMMANDS);
+		await ensureAddonMappingStates(this, "wallbox", WALLBOX_ALL_MAPPING_IDS);
 		await syncNativeMappingToStates(this, "wallbox", wallboxMappingFromConfig);
 	}
 

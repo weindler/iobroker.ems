@@ -26,6 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const utils = __importStar(require("@iobroker/adapter-core"));
 const battery_1 = require("./addons/battery");
 const immersion_heater_1 = require("./addons/immersion_heater");
+const dynamic_tariff_1 = require("./addons/dynamic_tariff");
 const failsafe_1 = require("./addons/wallbox/failsafe");
 const ems_activity_1 = require("./ems_activity");
 const failsafe_runner_1 = require("./failsafe_runner");
@@ -69,6 +70,7 @@ class Ems extends utils.Adapter {
             await (0, status_wallbox_1.ensureWallboxStatusStates)(this);
             await (0, battery_1.initBatteryModule)(this);
             await (0, immersion_heater_1.initImmersionHeaterModule)(this);
+            await (0, dynamic_tariff_1.initDynamicTariffModule)(this);
             (0, failsafe_runner_1.startFailsafeRunner)(this);
             await (0, ems_light_1.initEmsLightPhase1)(this);
             await this.subscribeStatesAsync(states_1.STATE.command.inbox);
@@ -279,7 +281,7 @@ class Ems extends utils.Adapter {
         }
     }
     async ensureWallboxMapping() {
-        await (0, mapping_sync_1.ensureAddonMappingStates)(this, "wallbox", mapping_config_1.WALLBOX_MAPPING_COMMANDS);
+        await (0, mapping_sync_1.ensureAddonMappingStates)(this, "wallbox", mapping_config_1.WALLBOX_ALL_MAPPING_IDS);
         await (0, mapping_sync_1.syncNativeMappingToStates)(this, "wallbox", mapping_config_1.wallboxMappingFromConfig);
     }
     async ensureState(relativeId, common, defaultVal) {

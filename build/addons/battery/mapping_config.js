@@ -7,6 +7,7 @@ exports.BATTERY_SONNEN_MAPPING_ROLES = [
     "pv_ac_power_w",
     "battery_charging_w",
     "soc_pct",
+    "capacity_kwh",
     "operating_mode",
 ];
 exports.BATTERY_SONNEN_FLAT_PREFIX = {
@@ -14,6 +15,7 @@ exports.BATTERY_SONNEN_FLAT_PREFIX = {
     pv_ac_power_w: "bat_pv_ac",
     battery_charging_w: "bat_battery_charging",
     soc_pct: "bat_soc",
+    capacity_kwh: "bat_capacity_kwh",
     operating_mode: "bat_operating_mode",
 };
 function sonnenBatteryMappingFromConfig(config) {

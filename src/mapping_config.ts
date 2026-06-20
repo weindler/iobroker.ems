@@ -7,7 +7,18 @@ export const WALLBOX_MAPPING_COMMANDS = [
 	"set_phase_switch_enabled",
 ] as const;
 
+/** Read-only Mess-Mapping (kein Pipeline-Befehl). */
+export const WALLBOX_READ_MAPPING_ROLES = ["vehicle_soc_pct"] as const;
+
+/** Alle Wallbox-Mapping-States unter addons.wallbox.mapping.* */
+export const WALLBOX_ALL_MAPPING_IDS = [
+	...WALLBOX_MAPPING_COMMANDS,
+	...WALLBOX_READ_MAPPING_ROLES,
+] as const;
+
 export type WallboxMappingCommand = (typeof WALLBOX_MAPPING_COMMANDS)[number];
+export type WallboxReadMappingRole = (typeof WALLBOX_READ_MAPPING_ROLES)[number];
+export type WallboxMappingStateId = (typeof WALLBOX_ALL_MAPPING_IDS)[number];
 
 /** Native-Keys in Instanz-Konfiguration (jsonConfig / objectId-Picker). */
 export const WALLBOX_FLAT_PREFIX: Record<WallboxMappingCommand, string> = {
@@ -15,6 +26,10 @@ export const WALLBOX_FLAT_PREFIX: Record<WallboxMappingCommand, string> = {
 	set_current_a: "wb_set_current_a",
 	set_charge_power_w: "wb_set_charge_power_w",
 	set_phase_switch_enabled: "wb_set_phase_switch",
+};
+
+export const WALLBOX_FLAT_PREFIX_READ: Record<WallboxReadMappingRole, string> = {
+	vehicle_soc_pct: "wb_vehicle_soc",
 };
 
 export interface NativeMappingEntry {
@@ -80,6 +95,34 @@ export function wallboxMappingFromConfig(config: Record<string, unknown>): Recor
 
 		if (entry.target_state || entry.allowed_values || typeof entry.enabled === "boolean") {
 			out[cmd] = entry;
+		}
+	}
+
+	for (const role of WALLBOX_READ_MAPPING_ROLES) {
+		const prefix = WALLBOX_FLAT_PREFIX_READ[role];
+		const entry: NativeMappingEntry = {};
+
+		const t = config[`${prefix}_target`];
+		if (typeof t === "string" && t.trim()) {
+			entry.target_state = t.trim();
+		}
+		const en = config[`${prefix}_enabled`];
+		if (typeof en === "boolean") {
+			entry.enabled = en;
+		}
+
+		const nest = nested?.[role];
+		if (nest && typeof nest === "object") {
+			if (typeof nest.target_state === "string" && nest.target_state.trim()) {
+				entry.target_state = nest.target_state.trim();
+			}
+			if (typeof nest.enabled === "boolean") {
+				entry.enabled = nest.enabled;
+			}
+		}
+
+		if (entry.target_state || typeof entry.enabled === "boolean") {
+			out[role] = entry;
 		}
 	}
 	return out;

@@ -1,9 +1,10 @@
-export const IMMERSION_HEATER_MAPPING_COMMANDS = ["set_enabled"] as const;
+export const IMMERSION_HEATER_MAPPING_COMMANDS = ["set_enabled", "buffer_temp_c"] as const;
 
 export type ImmersionMappingCommand = (typeof IMMERSION_HEATER_MAPPING_COMMANDS)[number];
 
 export const IMMERSION_FLAT_PREFIX: Record<ImmersionMappingCommand, string> = {
 	set_enabled: "ih_set_enabled",
+	buffer_temp_c: "ih_buffer_temp_c",
 };
 
 export interface NativeMappingEntry {

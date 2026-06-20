@@ -271,6 +271,45 @@
 					"lg": 3,
 					"xl": 3
 				},
+				"hWbVehicleSoc": {
+					"type": "header",
+					"size": 2,
+					"text": "vehicle_soc_pct — Fahrzeug-SOC (Lesen)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"helpWbVehicleSoc": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "EMS-Light live.wallbox.vehicle_soc_pct — z. B. EVCC, go-e oder anderer Fahrzeug-SOC-State."
+				},
+				"wb_vehicle_soc_target": {
+					"type": "objectId",
+					"label": "Ziel-State",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"wb_vehicle_soc_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
 				"hWbFailsafe": {
 					"type": "header",
 					"size": 2,
@@ -555,6 +594,45 @@
 					"lg": 3,
 					"xl": 3
 				},
+				"hBatCapacity": {
+					"type": "header",
+					"size": 2,
+					"text": "capacity_kwh — Batteriekapazität (Lesen)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"helpBatCapacity": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "EMS-Light live.battery.capacity_kwh — z. B. sonnen-Konfiguration oder fester kWh-Wert im Objektbaum."
+				},
+				"bat_capacity_kwh_target": {
+					"type": "objectId",
+					"label": "Ziel-State",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"bat_capacity_kwh_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
 				"hBatMode": {
 					"type": "header",
 					"size": 2,
@@ -756,7 +834,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Nur Aktor: Steckdose ein/aus. Messdose (power_w, running) und Puffer-Temp bleiben im EMS (Messgrößen). Mapping: addons.immersion_heater.mapping.set_enabled.* — Failsafe nur bei Live: EMS &gt;300 s weg → Relais aus."
+					"text": "Aktor: Steckdose ein/aus (set_enabled). Lesen: Puffer-Temperatur (buffer_temp_c). Mapping unter addons.immersion_heater.mapping.* — Failsafe nur bei Live: EMS &gt;300 s weg → Relais aus."
 				},
 				"ih_addon_mode": {
 					"type": "select",
@@ -793,6 +871,36 @@
 					"xl": 9
 				},
 				"ih_set_enabled_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hIhBufferTemp": {
+					"type": "header",
+					"size": 2,
+					"text": "buffer_temp_c — Puffer-Temperatur (Lesen)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ih_buffer_temp_c_target": {
+					"type": "objectId",
+					"label": "Ziel-State",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ih_buffer_temp_c_enabled": {
 					"type": "checkbox",
 					"label": "Mapping aktiv",
 					"default": true,
@@ -841,6 +949,51 @@
 					"md": 4,
 					"lg": 4,
 					"xl": 4
+				}
+			}
+		},
+		"dynamicTariffTab": {
+			"type": "panel",
+			"label": "Dynamischer Tarif",
+			"items": {
+				"dtIntro": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Read-only Preis-Mapping für EMS-Light live.price.now_ct_per_kwh. Z. B. Tibber-Adapter oder eigener Preis-State (ct/kWh)."
+				},
+				"hDtPrice": {
+					"type": "header",
+					"size": 2,
+					"text": "price_now_ct_per_kwh — Strompreis jetzt (Lesen)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"dt_price_now_target": {
+					"type": "objectId",
+					"label": "Ziel-State",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"dt_price_now_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
 				}
 			}
 		}

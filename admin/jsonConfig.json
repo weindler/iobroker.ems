@@ -1284,7 +1284,7 @@
 				},
 				"learning_weather_forecast_wind_state": {
 					"type": "objectId",
-					"label": "Forecast Wind (m/s, optional)",
+					"label": "Forecast Wind (km/h, optional)",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
@@ -1334,7 +1334,7 @@
 				},
 				"learning_weather_actual_wind_state": {
 					"type": "objectId",
-					"label": "Ist Wind (m/s, optional)",
+					"label": "Ist Wind (km/h, optional)",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,

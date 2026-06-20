@@ -38,7 +38,7 @@ export function dayResultToPersist(
 			temp_bias_c: day.metrics.temp?.bias ?? null,
 			cloud_bias_pct: day.metrics.cloud?.bias ?? null,
 			rain_bias_mm: day.metrics.rain?.bias ?? null,
-			wind_bias_ms: day.metrics.wind?.bias ?? null,
+			wind_bias_kmh: day.metrics.wind?.bias ?? null,
 		},
 		missing: {
 			forecast: day.missingForecast,

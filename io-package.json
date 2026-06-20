@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.13",
+		"version": "0.1.14",
 		"news": {
+			"0.1.14": {
+				"en": "Weather Learning: wind bias in km/h (Bright Sky + station use km/h)",
+				"de": "Weather Learning: Wind-Bias in km/h (Bright Sky + Station nutzen km/h)"
+			},
 			"0.1.13": {
 				"en": "EMS-Light Phase 2C: Weather Learning V1 — forecast vs station bias under learning.weather.*",
 				"de": "EMS-Light Phase 2C: Weather Learning V1 — Forecast↔Ist-Bias unter learning.weather.*"

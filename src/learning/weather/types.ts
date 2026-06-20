@@ -39,7 +39,7 @@ export type WeatherComputeResult = {
 	tempBiasC: number | null;
 	cloudBiasPct: number | null;
 	rainBiasMm: number | null;
-	windBiasMs: number | null;
+	windBiasKmh: number | null;
 	sampleDays7d: number;
 	sampleDays30d: number;
 	validFields: WeatherMetricKey[];
@@ -61,7 +61,7 @@ export type WeatherPersistDay = {
 		temp_bias_c: number | null;
 		cloud_bias_pct: number | null;
 		rain_bias_mm: number | null;
-		wind_bias_ms: number | null;
+		wind_bias_kmh: number | null;
 	};
 	missing: {
 		forecast: string[];

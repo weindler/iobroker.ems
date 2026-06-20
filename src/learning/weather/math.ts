@@ -75,7 +75,7 @@ export function buildSummaryYesterday(day: WeatherDayResult | null): string {
 		parts.push(`Regen ${day.metrics.rain.bias >= 0 ? "+" : ""}${round(day.metrics.rain.bias, 2)}mm`);
 	}
 	if (day.metrics.wind?.bias !== null && day.metrics.wind?.bias !== undefined) {
-		parts.push(`Wind ${day.metrics.wind.bias >= 0 ? "+" : ""}${round(day.metrics.wind.bias, 2)}m/s`);
+		parts.push(`Wind ${day.metrics.wind.bias >= 0 ? "+" : ""}${round(day.metrics.wind.bias, 2)} km/h`);
 	}
 	if (parts.length === 0) {
 		return `Gestern ${day.validHours}h vergleichbar, aber keine Metrik-Bias berechenbar.`;
@@ -146,7 +146,7 @@ export function computeWeatherLearning(
 		tempBiasC: aggregateBias("temp"),
 		cloudBiasPct: aggregateBias("cloud"),
 		rainBiasMm: aggregateBias("rain"),
-		windBiasMs: aggregateBias("wind"),
+		windBiasKmh: aggregateBias("wind"),
 		sampleDays7d: validDays7.length,
 		sampleDays30d: validDays30.length,
 		validFields,
@@ -174,7 +174,7 @@ function emptyResult(
 		tempBiasC: null,
 		cloudBiasPct: null,
 		rainBiasMm: null,
-		windBiasMs: null,
+		windBiasKmh: null,
 		sampleDays7d: 0,
 		sampleDays30d: 0,
 		validFields: [],

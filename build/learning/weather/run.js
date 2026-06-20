@@ -17,7 +17,7 @@ async function writeWeatherResult(host, result) {
     await setNumIfValid(host, "learning.weather.temp_bias_c", result.tempBiasC);
     await setNumIfValid(host, "learning.weather.cloud_bias_pct", result.cloudBiasPct);
     await setNumIfValid(host, "learning.weather.rain_bias_mm", result.rainBiasMm);
-    await setNumIfValid(host, "learning.weather.wind_bias_ms", result.windBiasMs);
+    await setNumIfValid(host, "learning.weather.wind_bias_kmh", result.windBiasKmh);
     await setNumIfValid(host, "learning.weather.confidence_pct", result.confidencePct);
     await setNumIfValid(host, "learning.weather.sample_days_7d", result.sampleDays7d);
     await setNumIfValid(host, "learning.weather.sample_days_30d", result.sampleDays30d);

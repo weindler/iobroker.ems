@@ -27,7 +27,7 @@ export const PLAUSIBILITY: Record<
 	temp: { min: -60, max: 60 },
 	cloud: { min: 0, max: 100 },
 	rain: { min: 0, max: 500 },
-	wind: { min: 0, max: 80 },
+	wind: { min: 0, max: 250 },
 };
 
 export const CONFIDENCE_PCT: Record<string, number> = {

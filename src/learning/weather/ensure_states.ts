@@ -33,7 +33,7 @@ export async function ensureWeatherLearningStates(host: StateHost): Promise<void
 		numState("learning.weather.temp_bias_c", "Wetter Temp-Bias", "°C"),
 		numState("learning.weather.cloud_bias_pct", "Wetter Wolken-Bias", "%"),
 		numState("learning.weather.rain_bias_mm", "Wetter Regen-Bias", "mm"),
-		numState("learning.weather.wind_bias_ms", "Wetter Wind-Bias", "m/s"),
+		numState("learning.weather.wind_bias_kmh", "Wetter Wind-Bias", "km/h"),
 		numState("learning.weather.confidence_pct", "Weather-Learning Confidence", "%"),
 		numState("learning.weather.sample_days_7d", "Weather-Learning gültige Tage 7d"),
 		numState("learning.weather.sample_days_30d", "Weather-Learning gültige Tage 30d"),

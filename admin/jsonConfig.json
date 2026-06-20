@@ -1008,7 +1008,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Phase 2A: PV-Bias Learning (read-only). Bias nur gegen eingefrorenen Forecast-Snapshot — Live-Forecast bleibt dynamisch unter forecast.pv.*"
+					"text": "Phase 2A/2B: PV-Bias + 7-Tage-Horizon (read-only). Rohforecast unter forecast.pv.* bleibt unverändert — Ausgabe unter learning.pv_bias.* und learning.pv_horizon.*"
 				},
 				"learning_pv_bias_enabled": {
 					"type": "checkbox",
@@ -1115,6 +1115,96 @@
 				"learning_pv_bias_raw_tomorrow_state": {
 					"type": "objectId",
 					"label": "Rohforecast morgen (kWh)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"hPvHorizon": {
+					"type": "header",
+					"size": 2,
+					"text": "Phase 2B — PV-Horizon 7 Tage (bias-korrigiert)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_pv_horizon_enabled": {
+					"type": "checkbox",
+					"label": "PV-Horizon 7d aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_pv_horizon_day1_raw_state": {
+					"type": "objectId",
+					"label": "Tag 1 Rohforecast (kWh) — Fallback: PV-Bias raw today",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_pv_horizon_day2_raw_state": {
+					"type": "objectId",
+					"label": "Tag 2 Rohforecast (kWh) — Fallback: PV-Bias raw tomorrow",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_pv_horizon_day3_raw_state": {
+					"type": "objectId",
+					"label": "Tag 3 Rohforecast (kWh)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_pv_horizon_day4_raw_state": {
+					"type": "objectId",
+					"label": "Tag 4 Rohforecast (kWh)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_pv_horizon_day5_raw_state": {
+					"type": "objectId",
+					"label": "Tag 5 Rohforecast (kWh)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_pv_horizon_day6_raw_state": {
+					"type": "objectId",
+					"label": "Tag 6 Rohforecast (kWh)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_pv_horizon_day7_raw_state": {
+					"type": "objectId",
+					"label": "Tag 7 Rohforecast (kWh)",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,

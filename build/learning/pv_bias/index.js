@@ -4,22 +4,27 @@ exports.stopPvBiasLearning = exports.initPvBiasLearning = void 0;
 const ensure_states_1 = require("./ensure_states");
 const run_1 = require("./run");
 const config_1 = require("./config");
+const pv_horizon_1 = require("../pv_horizon");
 let pvBiasTimer = null;
+async function runLearningTick(host) {
+    await (0, run_1.runPvBiasLearning)(host);
+    await (0, pv_horizon_1.runPvHorizon)(host);
+}
 async function initPvBiasLearning(adapter) {
     const host = adapter;
     await (0, ensure_states_1.ensurePvBiasStates)(host);
+    await (0, pv_horizon_1.ensurePvHorizonLearningStates)(host);
     const cfg = (0, config_1.pvBiasConfigFromAdapter)(adapter.config);
     stopPvBiasLearning();
-    // Erster Lauf im Hintergrund — blockiert Adapter-Start nicht bei langsamer Historie.
-    void (0, run_1.runPvBiasLearning)(host).catch((e) => {
-        adapter.log.error(`PV-Bias initial run: ${e}`);
+    void runLearningTick(host).catch((e) => {
+        adapter.log.error(`PV-Bias/Horizon initial run: ${e}`);
     });
     pvBiasTimer = setInterval(() => {
-        void (0, run_1.runPvBiasLearning)(host).catch((e) => {
-            adapter.log.error(`PV-Bias tick: ${e}`);
+        void runLearningTick(host).catch((e) => {
+            adapter.log.error(`PV-Bias/Horizon tick: ${e}`);
         });
     }, cfg.intervalSec * 1000);
-    adapter.log.info(`EMS-Light PV-Bias Learning ready (read-only, interval ${cfg.intervalSec}s)`);
+    adapter.log.info(`EMS-Light PV-Bias + PV-Horizon ready (read-only, interval ${cfg.intervalSec}s)`);
 }
 exports.initPvBiasLearning = initPvBiasLearning;
 function stopPvBiasLearning() {

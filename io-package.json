@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.10",
+		"version": "0.1.11",
 		"news": {
+			"0.1.11": {
+				"en": "EMS-Light Phase 2B: 7-day PV horizon with bias-damped correction under learning.pv_horizon.*",
+				"de": "EMS-Light Phase 2B: 7-Tage-PV-Horizon mit bias-abgeschwächter Korrektur unter learning.pv_horizon.*"
+			},
 			"0.1.10": {
 				"en": "PV-Bias: fix live read for own states (frozen_today_kwh) vs foreign alias IDs",
 				"de": "PV-Bias: Live-Lesen eigener States (frozen_today_kwh) vs. Fremd-Alias korrigiert"

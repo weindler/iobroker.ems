@@ -1125,7 +1125,16 @@
 				"hPvHorizon": {
 					"type": "header",
 					"size": 2,
-					"text": "Phase 2B — PV-Horizon 7 Tage (bias-korrigiert)",
+					"text": "Phase 2B — PV-Horizon Erweiterung (Tag 3–7)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"hPvHorizonHelp": {
+					"type": "staticText",
+					"text": "Heute und morgen liefert Phase 2A (PV-Bias) unter learning.pv_bias.* — Horizon dupliziert diese Tage nicht, wenn oben Rohforecast heute/morgen konfiguriert sind. Hier nur die Erweiterung Tag 3–7 (kWh, z. B. Bright Sky: Tag3=brightsky.0.daily.02.solar_estimate … Tag7=brightsky.0.daily.06.solar_estimate). Ohne Tag-3–7-Quellen läuft PV-Bias normal weiter; Horizon status=no_extended_days.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -1134,7 +1143,7 @@
 				},
 				"learning_pv_horizon_enabled": {
 					"type": "checkbox",
-					"label": "PV-Horizon 7d aktiv",
+					"label": "PV-Horizon Erweiterung (Tag 3–7) aktiv",
 					"default": true,
 					"xs": 12,
 					"sm": 6,
@@ -1142,29 +1151,9 @@
 					"lg": 4,
 					"xl": 4
 				},
-				"learning_pv_horizon_day1_raw_state": {
-					"type": "objectId",
-					"label": "Tag 1 Rohforecast (kWh) — Fallback: PV-Bias raw today",
-					"types": ["state"],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"learning_pv_horizon_day2_raw_state": {
-					"type": "objectId",
-					"label": "Tag 2 Rohforecast (kWh) — Fallback: PV-Bias raw tomorrow",
-					"types": ["state"],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
 				"learning_pv_horizon_day3_raw_state": {
 					"type": "objectId",
-					"label": "Tag 3 Rohforecast (kWh)",
+					"label": "Tag 3 (+2 Tage) Roh-Schätzung kWh — z. B. brightsky.0.daily.02.solar_estimate",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
@@ -1174,7 +1163,7 @@
 				},
 				"learning_pv_horizon_day4_raw_state": {
 					"type": "objectId",
-					"label": "Tag 4 Rohforecast (kWh)",
+					"label": "Tag 4 (+3 Tage) — z. B. brightsky.0.daily.03.solar_estimate",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
@@ -1184,7 +1173,7 @@
 				},
 				"learning_pv_horizon_day5_raw_state": {
 					"type": "objectId",
-					"label": "Tag 5 Rohforecast (kWh)",
+					"label": "Tag 5 (+4 Tage) — z. B. brightsky.0.daily.04.solar_estimate",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
@@ -1194,7 +1183,7 @@
 				},
 				"learning_pv_horizon_day6_raw_state": {
 					"type": "objectId",
-					"label": "Tag 6 Rohforecast (kWh)",
+					"label": "Tag 6 (+5 Tage) — z. B. brightsky.0.daily.05.solar_estimate",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
@@ -1204,7 +1193,7 @@
 				},
 				"learning_pv_horizon_day7_raw_state": {
 					"type": "objectId",
-					"label": "Tag 7 Rohforecast (kWh)",
+					"label": "Tag 7 (+6 Tage) — z. B. brightsky.0.daily.06.solar_estimate",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,

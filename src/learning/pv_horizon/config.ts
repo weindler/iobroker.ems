@@ -29,35 +29,35 @@ const DAY_RAW_CONFIG_KEYS = [
 	"learning_pv_horizon_day7_raw_state",
 ] as const;
 
-const DEFAULT_RAW_BY_DAY = [
-	"", // day1 filled from pv_bias raw today below
-	"", // day2 from pv_bias raw tomorrow
-	"",
-	"",
-	"",
-	"",
-	"",
-];
+/** PV-Forecast für heute und morgen in Phase 2A konfiguriert → Horizon dupliziert diese Tage nicht. */
+export function hasPvForecastTodayTomorrow(config: unknown): boolean {
+	const biasCfg = pvBiasConfigFromAdapter(config);
+	return Boolean(biasCfg.rawTodayStateId && biasCfg.rawTomorrowStateId);
+}
 
 export function pvHorizonConfigFromAdapter(config: unknown): PvHorizonConfig {
 	const c =
 		config && typeof config === "object" ? (config as Record<string, unknown>) : {};
 	const biasCfg = pvBiasConfigFromAdapter(config);
+	const skipTodayTomorrow = hasPvForecastTodayTomorrow(config);
 
 	const rawStateIds: string[] = [];
 	for (let i = 0; i < PV_HORIZON_DAY_COUNT; i++) {
 		let id = strField(c, DAY_RAW_CONFIG_KEYS[i]);
-		if (!id && i === 0) {
-			id = biasCfg.rawTodayStateId;
+		if (!skipTodayTomorrow) {
+			if (!id && i === 0) {
+				id = biasCfg.rawTodayStateId;
+			}
+			if (!id && i === 1) {
+				id = biasCfg.rawTomorrowStateId;
+			}
 		}
-		if (!id && i === 1) {
-			id = biasCfg.rawTomorrowStateId;
-		}
-		rawStateIds.push(id || DEFAULT_RAW_BY_DAY[i]);
+		rawStateIds.push(id);
 	}
 
 	return {
 		enabled: boolField(c, "learning_pv_horizon_enabled", true),
 		rawStateIds,
+		skipTodayTomorrowFromPvBias: skipTodayTomorrow,
 	};
 }

@@ -25,6 +25,8 @@ const DAY2_FALLBACK_STATE_IDS = [
 	"forecast.pv.tomorrow_kwh",
 ] as const;
 
+const PV_BIAS_SHORT_HORIZON_SKIP_DAYS = [1, 2] as const;
+
 async function readFirstNum(host: PvHorizonRunHost, ids: readonly string[]): Promise<number | null> {
 	for (const id of ids) {
 		const n = await readStateNum(host, id);
@@ -48,9 +50,15 @@ async function readBiasPct(host: PvHorizonRunHost): Promise<number | null> {
 async function resolveRawKwhByDay(
 	host: PvHorizonRunHost,
 	rawStateIds: string[],
+	skipTodayTomorrow: boolean,
 ): Promise<Array<number | null>> {
 	const values: Array<number | null> = [];
 	for (let i = 0; i < PV_HORIZON_DAY_COUNT; i++) {
+		if (skipTodayTomorrow && i < 2) {
+			values.push(null);
+			continue;
+		}
+
 		let raw: number | null = null;
 		const configured = rawStateIds[i];
 		if (configured) {
@@ -73,9 +81,21 @@ async function setNumIfValid(host: PvHorizonRunHost, id: string, value: number |
 	}
 }
 
+async function clearHorizonDay(host: PvHorizonRunHost, dayIndex: number): Promise<void> {
+	const prefix = `learning.pv_horizon.day${dayIndex}`;
+	for (const suffix of ["raw_kwh", "corrected_kwh", "confidence_pct"] as const) {
+		await host.setStateAsync(`${prefix}.${suffix}`, { val: null, ack: true });
+	}
+}
+
 async function writePvHorizonResult(host: PvHorizonRunHost, result: PvHorizonComputeResult): Promise<void> {
+	const skipped = new Set(result.skippedDayIndices);
 	for (const day of result.days) {
 		const prefix = `learning.pv_horizon.day${day.dayIndex}`;
+		if (skipped.has(day.dayIndex)) {
+			await clearHorizonDay(host, day.dayIndex);
+			continue;
+		}
 		await setNumIfValid(host, `${prefix}.raw_kwh`, day.rawKwh);
 		await setNumIfValid(host, `${prefix}.corrected_kwh`, day.correctedKwh);
 		await setNumIfValid(host, `${prefix}.confidence_pct`, day.confidencePct);
@@ -98,14 +118,19 @@ export async function runPvHorizon(host: PvHorizonRunHost): Promise<void> {
 		return;
 	}
 
-	const rawByDay = await resolveRawKwhByDay(host, cfg.rawStateIds);
+	const skipDayIndices = cfg.skipTodayTomorrowFromPvBias ? [...PV_BIAS_SHORT_HORIZON_SKIP_DAYS] : [];
+	const rawByDay = await resolveRawKwhByDay(host, cfg.rawStateIds, cfg.skipTodayTomorrowFromPvBias);
 	const biasPct = await readBiasPct(host);
 	const baseConfidence = await readStateNum(host, "learning.pv_bias.confidence_pct");
 
-	const result = computePvHorizon(rawByDay, biasPct, baseConfidence);
+	const result = computePvHorizon(rawByDay, biasPct, baseConfidence, { skipDayIndices });
 	await writePvHorizonResult(host, result);
 
+	const scope =
+		cfg.skipTodayTomorrowFromPvBias
+			? "Tag3-7 (heute/morgen via PV-Bias)"
+			: "Tag1-7";
 	host.log.info(
-		`PV-Horizon: days=${result.daysAvailable}/${PV_HORIZON_DAY_COUNT} status=${result.status} total_corr=${result.total7dCorrectedKwh ?? "—"} kWh`,
+		`PV-Horizon [${scope}]: days=${result.daysAvailable}/${result.expectedDays} status=${result.status} total_corr=${result.total7dCorrectedKwh ?? "—"} kWh`,
 	);
 }

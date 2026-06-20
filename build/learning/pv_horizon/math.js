@@ -20,7 +20,10 @@ function horizonDayConfidencePct(baseConfidencePct, dayIndex) {
     return Math.round(Math.max(0, Math.min(95, baseConfidencePct - decay)));
 }
 exports.horizonDayConfidencePct = horizonDayConfidencePct;
-function computePvHorizon(rawKwhByDay, biasPct, baseConfidencePct) {
+function computePvHorizon(rawKwhByDay, biasPct, baseConfidencePct, options) {
+    const skipDayIndices = [...(options?.skipDayIndices ?? [])].sort((a, b) => a - b);
+    const skipSet = new Set(skipDayIndices);
+    const expectedDays = constants_1.PV_HORIZON_DAY_COUNT - skipSet.size;
     const days = [];
     let totalRaw = 0;
     let totalCorrected = 0;
@@ -29,6 +32,10 @@ function computePvHorizon(rawKwhByDay, biasPct, baseConfidencePct) {
     let daysAvailable = 0;
     for (let i = 0; i < constants_1.PV_HORIZON_DAY_COUNT; i++) {
         const dayIndex = i + 1;
+        if (skipSet.has(dayIndex)) {
+            days.push({ dayIndex, rawKwh: null, correctedKwh: null, confidencePct: null });
+            continue;
+        }
         const raw = rawKwhByDay[i] ?? null;
         let corrected = null;
         let confidence = null;
@@ -49,12 +56,12 @@ function computePvHorizon(rawKwhByDay, biasPct, baseConfidencePct) {
     }
     let status = "no_data";
     if (daysAvailable === 0) {
-        status = "no_data";
+        status = skipSet.size > 0 ? "no_extended_days" : "no_data";
     }
     else if (biasPct === null || !Number.isFinite(biasPct)) {
         status = "no_bias";
     }
-    else if (daysAvailable === constants_1.PV_HORIZON_DAY_COUNT) {
+    else if (daysAvailable === expectedDays) {
         status = "ready";
     }
     else {
@@ -65,6 +72,8 @@ function computePvHorizon(rawKwhByDay, biasPct, baseConfidencePct) {
         total7dRawKwh: hasRawSum ? totalRaw : null,
         total7dCorrectedKwh: hasCorrectedSum ? totalCorrected : null,
         daysAvailable,
+        expectedDays,
+        skippedDayIndices: skipDayIndices,
         status,
     };
 }

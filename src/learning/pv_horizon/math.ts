@@ -3,7 +3,7 @@ import {
 	PV_HORIZON_CONFIDENCE_DECAY_PP_PER_DAY,
 	PV_HORIZON_DAY_COUNT,
 } from "./constants";
-import type { PvHorizonComputeResult, PvHorizonDayResult } from "./types";
+import type { PvHorizonComputeOptions, PvHorizonComputeResult, PvHorizonDayResult } from "./types";
 
 /** Effektiver Bias in % nach Tages-Gewichtung (Day1 = Index 1). */
 export function effectiveBiasPct(biasPct: number, dayIndex: number): number {
@@ -27,7 +27,12 @@ export function computePvHorizon(
 	rawKwhByDay: Array<number | null>,
 	biasPct: number | null,
 	baseConfidencePct: number | null,
+	options?: PvHorizonComputeOptions,
 ): PvHorizonComputeResult {
+	const skipDayIndices = [...(options?.skipDayIndices ?? [])].sort((a, b) => a - b);
+	const skipSet = new Set(skipDayIndices);
+	const expectedDays = PV_HORIZON_DAY_COUNT - skipSet.size;
+
 	const days: PvHorizonDayResult[] = [];
 	let totalRaw = 0;
 	let totalCorrected = 0;
@@ -37,6 +42,11 @@ export function computePvHorizon(
 
 	for (let i = 0; i < PV_HORIZON_DAY_COUNT; i++) {
 		const dayIndex = i + 1;
+		if (skipSet.has(dayIndex)) {
+			days.push({ dayIndex, rawKwh: null, correctedKwh: null, confidencePct: null });
+			continue;
+		}
+
 		const raw = rawKwhByDay[i] ?? null;
 		let corrected: number | null = null;
 		let confidence: number | null = null;
@@ -60,10 +70,10 @@ export function computePvHorizon(
 
 	let status: PvHorizonComputeResult["status"] = "no_data";
 	if (daysAvailable === 0) {
-		status = "no_data";
+		status = skipSet.size > 0 ? "no_extended_days" : "no_data";
 	} else if (biasPct === null || !Number.isFinite(biasPct)) {
 		status = "no_bias";
-	} else if (daysAvailable === PV_HORIZON_DAY_COUNT) {
+	} else if (daysAvailable === expectedDays) {
 		status = "ready";
 	} else {
 		status = "partial";
@@ -74,6 +84,8 @@ export function computePvHorizon(
 		total7dRawKwh: hasRawSum ? totalRaw : null,
 		total7dCorrectedKwh: hasCorrectedSum ? totalCorrected : null,
 		daysAvailable,
+		expectedDays,
+		skippedDayIndices: skipDayIndices,
 		status,
 	};
 }

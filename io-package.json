@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.11",
+		"version": "0.1.12",
 		"news": {
+			"0.1.12": {
+				"en": "PV-Horizon: extension days 3–7 only when PV-Bias covers today/tomorrow; clearer admin labels (Bright Sky)",
+				"de": "PV-Horizon: Erweiterung Tag 3–7 wenn PV-Bias heute/morgen liefert; klarere Admin-Labels (Bright Sky)"
+			},
 			"0.1.11": {
 				"en": "EMS-Light Phase 2B: 7-day PV horizon with bias-damped correction under learning.pv_horizon.*",
 				"de": "EMS-Light Phase 2B: 7-Tage-PV-Horizon mit bias-abgeschwächter Korrektur unter learning.pv_horizon.*"

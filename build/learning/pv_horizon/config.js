@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.pvHorizonConfigFromAdapter = void 0;
+exports.pvHorizonConfigFromAdapter = exports.hasPvForecastTodayTomorrow = void 0;
 const constants_1 = require("./constants");
 const config_1 = require("../pv_bias/config");
 function strField(config, key) {
@@ -31,32 +31,33 @@ const DAY_RAW_CONFIG_KEYS = [
     "learning_pv_horizon_day6_raw_state",
     "learning_pv_horizon_day7_raw_state",
 ];
-const DEFAULT_RAW_BY_DAY = [
-    "", // day1 filled from pv_bias raw today below
-    "", // day2 from pv_bias raw tomorrow
-    "",
-    "",
-    "",
-    "",
-    "",
-];
+/** PV-Forecast für heute und morgen in Phase 2A konfiguriert → Horizon dupliziert diese Tage nicht. */
+function hasPvForecastTodayTomorrow(config) {
+    const biasCfg = (0, config_1.pvBiasConfigFromAdapter)(config);
+    return Boolean(biasCfg.rawTodayStateId && biasCfg.rawTomorrowStateId);
+}
+exports.hasPvForecastTodayTomorrow = hasPvForecastTodayTomorrow;
 function pvHorizonConfigFromAdapter(config) {
     const c = config && typeof config === "object" ? config : {};
     const biasCfg = (0, config_1.pvBiasConfigFromAdapter)(config);
+    const skipTodayTomorrow = hasPvForecastTodayTomorrow(config);
     const rawStateIds = [];
     for (let i = 0; i < constants_1.PV_HORIZON_DAY_COUNT; i++) {
         let id = strField(c, DAY_RAW_CONFIG_KEYS[i]);
-        if (!id && i === 0) {
-            id = biasCfg.rawTodayStateId;
+        if (!skipTodayTomorrow) {
+            if (!id && i === 0) {
+                id = biasCfg.rawTodayStateId;
+            }
+            if (!id && i === 1) {
+                id = biasCfg.rawTomorrowStateId;
+            }
         }
-        if (!id && i === 1) {
-            id = biasCfg.rawTomorrowStateId;
-        }
-        rawStateIds.push(id || DEFAULT_RAW_BY_DAY[i]);
+        rawStateIds.push(id);
     }
     return {
         enabled: boolField(c, "learning_pv_horizon_enabled", true),
         rawStateIds,
+        skipTodayTomorrowFromPvBias: skipTodayTomorrow,
     };
 }
 exports.pvHorizonConfigFromAdapter = pvHorizonConfigFromAdapter;

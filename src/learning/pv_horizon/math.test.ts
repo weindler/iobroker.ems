@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
 	PV_HORIZON_BIAS_WEIGHT_BY_DAY,
 	PV_HORIZON_CONFIDENCE_DECAY_PP_PER_DAY,
+	PV_HORIZON_EXTENDED_DAY_COUNT,
 } from "./constants";
 import {
 	computePvHorizon,
@@ -24,10 +25,11 @@ describe("pv_horizon math", () => {
 		assert.equal(correctHorizonKwh(100, 20, 7), 108);
 	});
 
-	it("computes full 7 days", () => {
+	it("computes full 7 days without skip", () => {
 		const raws = [10, 11, 12, 13, 14, 15, 16];
 		const result = computePvHorizon(raws, -10, 70);
 		assert.equal(result.daysAvailable, 7);
+		assert.equal(result.expectedDays, 7);
 		assert.equal(result.status, "ready");
 		assert.equal(result.total7dRawKwh, 91);
 		assert.ok(result.total7dCorrectedKwh !== null && result.total7dCorrectedKwh < 91);
@@ -35,14 +37,33 @@ describe("pv_horizon math", () => {
 		assert.equal(result.days[6].confidencePct, 70 - 6 * PV_HORIZON_CONFIDENCE_DECAY_PP_PER_DAY);
 	});
 
-	it("handles only 3 days available", () => {
-		const raws: Array<number | null> = [20, 21, 22, null, null, null, null];
-		const result = computePvHorizon(raws, -10, 50);
+	it("skips day1+2 when pv forecast covers short horizon", () => {
+		const raws: Array<number | null> = [99, 99, 30, 31, 32, 33, 34];
+		const result = computePvHorizon(raws, -10, 50, { skipDayIndices: [1, 2] });
+		assert.deepEqual(result.skippedDayIndices, [1, 2]);
+		assert.equal(result.days[0].rawKwh, null);
+		assert.equal(result.days[1].rawKwh, null);
+		assert.equal(result.days[2].rawKwh, 30);
+		assert.equal(result.daysAvailable, 5);
+		assert.equal(result.expectedDays, PV_HORIZON_EXTENDED_DAY_COUNT);
+		assert.equal(result.status, "ready");
+		assert.equal(result.total7dRawKwh, 160);
+	});
+
+	it("reports no_extended_days when only short horizon is configured", () => {
+		const raws: Array<number | null> = [10, 11, null, null, null, null, null];
+		const result = computePvHorizon(raws, -10, 50, { skipDayIndices: [1, 2] });
+		assert.equal(result.daysAvailable, 0);
+		assert.equal(result.status, "no_extended_days");
+		assert.equal(result.total7dRawKwh, null);
+	});
+
+	it("handles partial extended days (3 of 5)", () => {
+		const raws: Array<number | null> = [null, null, 20, 21, 22, null, null];
+		const result = computePvHorizon(raws, -10, 50, { skipDayIndices: [1, 2] });
 		assert.equal(result.daysAvailable, 3);
 		assert.equal(result.status, "partial");
 		assert.equal(result.total7dRawKwh, 63);
-		assert.equal(result.days[3].rawKwh, null);
-		assert.equal(result.days[3].correctedKwh, null);
 	});
 
 	it("skips missing forecast without zero", () => {

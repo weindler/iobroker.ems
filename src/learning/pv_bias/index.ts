@@ -8,10 +8,15 @@ let pvBiasTimer: NodeJS.Timeout | null = null;
 export async function initPvBiasLearning(adapter: ioBroker.Adapter): Promise<void> {
 	const host = adapter as unknown as PvBiasRunHost & StateHost;
 	await ensurePvBiasStates(host);
-	await runPvBiasLearning(host);
 
 	const cfg = pvBiasConfigFromAdapter(adapter.config);
 	stopPvBiasLearning();
+
+	// Erster Lauf im Hintergrund — blockiert Adapter-Start nicht bei langsamer Historie.
+	void runPvBiasLearning(host).catch((e) => {
+		adapter.log.error(`PV-Bias initial run: ${e}`);
+	});
+
 	pvBiasTimer = setInterval(() => {
 		void runPvBiasLearning(host).catch((e) => {
 			adapter.log.error(`PV-Bias tick: ${e}`);

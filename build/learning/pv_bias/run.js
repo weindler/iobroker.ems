@@ -75,7 +75,9 @@ async function runPvBiasLearning(host) {
         const forecastHistoryStateId = cfg.freezeEnabled
             ? freeze_1.FROZEN_TODAY_STATE_ID
             : cfg.historyForecastStateId;
+        host.log.info("PV-Bias: loading history (max 30 days, timeout per query)…");
         const pairs = await (0, history_1.fetchPvBiasDayPairs)(host, cfg.historyActualStateId, forecastHistoryStateId);
+        host.log.info(`PV-Bias: history loaded, ${pairs.length} valid day pair(s)`);
         const rawTodayKwh = await readLiveRawForecast(host, cfg.rawTodayStateId, "forecast.pv.today_kwh");
         const rawTomorrowKwh = await readLiveRawForecast(host, cfg.rawTomorrowStateId, "forecast.pv.tomorrow_kwh");
         const frozen = cfg.freezeEnabled ? await (0, freeze_1.readFrozenForecast)(host) : { today: null, tomorrow: null };

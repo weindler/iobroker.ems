@@ -98,11 +98,13 @@ export async function runPvBiasLearning(host: PvBiasRunHost): Promise<void> {
 			? FROZEN_TODAY_STATE_ID
 			: cfg.historyForecastStateId;
 
+		host.log.info("PV-Bias: loading history (max 30 days, timeout per query)…");
 		const pairs = await fetchPvBiasDayPairs(
 			host,
 			cfg.historyActualStateId,
 			forecastHistoryStateId,
 		);
+		host.log.info(`PV-Bias: history loaded, ${pairs.length} valid day pair(s)`);
 
 		const rawTodayKwh = await readLiveRawForecast(
 			host,

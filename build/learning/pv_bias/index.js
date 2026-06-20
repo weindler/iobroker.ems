@@ -8,9 +8,12 @@ let pvBiasTimer = null;
 async function initPvBiasLearning(adapter) {
     const host = adapter;
     await (0, ensure_states_1.ensurePvBiasStates)(host);
-    await (0, run_1.runPvBiasLearning)(host);
     const cfg = (0, config_1.pvBiasConfigFromAdapter)(adapter.config);
     stopPvBiasLearning();
+    // Erster Lauf im Hintergrund — blockiert Adapter-Start nicht bei langsamer Historie.
+    void (0, run_1.runPvBiasLearning)(host).catch((e) => {
+        adapter.log.error(`PV-Bias initial run: ${e}`);
+    });
     pvBiasTimer = setInterval(() => {
         void (0, run_1.runPvBiasLearning)(host).catch((e) => {
             adapter.log.error(`PV-Bias tick: ${e}`);

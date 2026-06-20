@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.8",
+		"version": "0.1.9",
 		"news": {
+			"0.1.9": {
+				"en": "PV-Bias: history query timeout, today live fallback, non-blocking init",
+				"de": "PV-Bias: Historie-Timeout, Live-Fallback heute, Init blockiert nicht mehr"
+			},
 			"0.1.8": {
 				"en": "EMS-Light PV-Bias: forecast freeze snapshot at configured time for reproducible bias",
 				"de": "EMS-Light PV-Bias: Forecast-Freeze zum konfigurierten Zeitpunkt für reproduzierbaren Bias"

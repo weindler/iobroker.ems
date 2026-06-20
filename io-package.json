@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.12",
+		"version": "0.1.13",
 		"news": {
+			"0.1.13": {
+				"en": "EMS-Light Phase 2C: Weather Learning V1 — forecast vs station bias under learning.weather.*",
+				"de": "EMS-Light Phase 2C: Weather Learning V1 — Forecast↔Ist-Bias unter learning.weather.*"
+			},
 			"0.1.12": {
 				"en": "PV-Horizon: extension days 3–7 only when PV-Bias covers today/tomorrow; clearer admin labels (Bright Sky)",
 				"de": "PV-Horizon: Erweiterung Tag 3–7 wenn PV-Bias heute/morgen liefert; klarere Admin-Labels (Bright Sky)"

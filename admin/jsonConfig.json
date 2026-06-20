@@ -1008,7 +1008,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Phase 2A/2B: PV-Bias + 7-Tage-Horizon (read-only). Rohforecast unter forecast.pv.* bleibt unverändert — Ausgabe unter learning.pv_bias.* und learning.pv_horizon.*"
+					"text": "Phase 2A/2B/2C: PV-Bias, PV-Horizon (Tag 3–7), Weather-Learning (read-only). Ausgabe unter learning.pv_bias.*, learning.pv_horizon.* und learning.weather.*"
 				},
 				"learning_pv_bias_enabled": {
 					"type": "checkbox",
@@ -1194,6 +1194,147 @@
 				"learning_pv_horizon_day7_raw_state": {
 					"type": "objectId",
 					"label": "Tag 7 (+6 Tage) — z. B. brightsky.0.daily.06.solar_estimate",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"hWeatherLearning": {
+					"type": "header",
+					"size": 2,
+					"text": "Phase 2C — Weather Learning V1 (Forecast ↔ Ist)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"hWeatherLearningHelp": {
+					"type": "staticText",
+					"text": "Vergleicht BrightSky-Forecast mit Wetterstation (Kalendertag 00:00–23:59). Fehlende Werte ≠ 0. Alle Felder optional — fehlende Mappings stoppen das Modul nicht. Persistenz: data/learning/weather/YYYY-MM-DD.json",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_weather_enabled": {
+					"type": "checkbox",
+					"label": "Weather Learning aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_weather_interval_sec": {
+					"type": "number",
+					"label": "Update-Intervall (Sek.)",
+					"min": 300,
+					"max": 86400,
+					"default": 3600,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"hWeatherForecast": {
+					"type": "header",
+					"size": 3,
+					"text": "Forecast (BrightSky o. ä.)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_weather_forecast_temp_state": {
+					"type": "objectId",
+					"label": "Forecast Temperatur (°C)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_weather_forecast_cloud_state": {
+					"type": "objectId",
+					"label": "Forecast Bewölkung (%)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_weather_forecast_rain_state": {
+					"type": "objectId",
+					"label": "Forecast Niederschlag (mm)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_weather_forecast_wind_state": {
+					"type": "objectId",
+					"label": "Forecast Wind (m/s, optional)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"hWeatherActual": {
+					"type": "header",
+					"size": 3,
+					"text": "Ist (Wetterstation)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_weather_actual_temp_state": {
+					"type": "objectId",
+					"label": "Ist Temperatur (°C)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_weather_actual_cloud_state": {
+					"type": "objectId",
+					"label": "Ist Bewölkung (%)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_weather_actual_rain_state": {
+					"type": "objectId",
+					"label": "Ist Niederschlag (mm)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_weather_actual_wind_state": {
+					"type": "objectId",
+					"label": "Ist Wind (m/s, optional)",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,

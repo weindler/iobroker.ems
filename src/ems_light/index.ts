@@ -1,4 +1,5 @@
 import { initPvBiasLearning, stopPvBiasLearning } from "../learning/pv_bias";
+import { initWeatherLearning, stopWeatherLearning } from "../learning/weather";
 import { ensureEmsLightStates } from "./ensure_states";
 import { runEmsLightPhase1Tick } from "./tick";
 import type { LiveCacheHost } from "./live_cache";
@@ -24,6 +25,7 @@ export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<voi
 
 	await ensureEmsLightStates(host, version);
 	await initPvBiasLearning(adapter);
+	await initWeatherLearning(adapter);
 	await runEmsLightPhase1Tick(host);
 
 	const sec = tickIntervalSec(adapter.config);
@@ -39,6 +41,7 @@ export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<voi
 
 export function stopEmsLightPhase1(): void {
 	stopPvBiasLearning();
+	stopWeatherLearning();
 	if (tickTimer) {
 		clearInterval(tickTimer);
 		tickTimer = null;

@@ -19,6 +19,7 @@ import {
 import { parseInboxValue } from "./inbox";
 import { goeWallboxTemplateFlat, wallboxMappingFromConfig, WALLBOX_MAPPING_COMMANDS } from "./mapping_config";
 import { ensureAddonMappingStates, syncNativeMappingToStates } from "./mapping_sync";
+import { initEmsLightPhase1, stopEmsLightPhase1 } from "./ems_light";
 import { runCommandPipeline } from "./pipeline";
 import { ensureWallboxStatusStates } from "./status_wallbox";
 import { STATE } from "./states";
@@ -64,6 +65,7 @@ class Ems extends utils.Adapter {
 			await initBatteryModule(this);
 			await initImmersionHeaterModule(this);
 			startFailsafeRunner(this);
+			await initEmsLightPhase1(this);
 			await this.subscribeStatesAsync(STATE.command.inbox);
 			this.log.info(
 				"EMS adapter v0.1.2 ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)",
@@ -80,6 +82,7 @@ class Ems extends utils.Adapter {
 	}
 
 	private onUnload(callback: () => void): void {
+		stopEmsLightPhase1();
 		stopBatteryModule(null);
 		stopImmersionHeaterModule();
 		stopFailsafeRunner();

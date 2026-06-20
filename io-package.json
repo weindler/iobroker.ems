@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.3",
+		"version": "0.1.4",
 		"news": {
+			"0.1.4": {
+				"en": "EMS-Light Phase 1: read-only channels (live, learning, planner, operator, economics), live cache from addon mapping, safety mirror",
+				"de": "EMS-Light Phase 1: read-only Kanäle (live, learning, planner, operator, economics), Live-Cache aus Addon-Mapping, Safety-Spiegel"
+			},
 			"0.1.3": {
 				"en": "Wallbox failsafe: feedback power unit W or kW (go-e energy.neutral.power)",
 				"de": "Wallbox-Failsafe: Feedback-Leistung Einheit W oder kW (z. B. go-e energy.neutral.power)"

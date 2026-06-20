@@ -35,6 +35,7 @@ const execution_mode_1 = require("./execution_mode");
 const inbox_1 = require("./inbox");
 const mapping_config_1 = require("./mapping_config");
 const mapping_sync_1 = require("./mapping_sync");
+const ems_light_1 = require("./ems_light");
 const pipeline_1 = require("./pipeline");
 const status_wallbox_1 = require("./status_wallbox");
 const states_1 = require("./states");
@@ -69,6 +70,7 @@ class Ems extends utils.Adapter {
             await (0, battery_1.initBatteryModule)(this);
             await (0, immersion_heater_1.initImmersionHeaterModule)(this);
             (0, failsafe_runner_1.startFailsafeRunner)(this);
+            await (0, ems_light_1.initEmsLightPhase1)(this);
             await this.subscribeStatesAsync(states_1.STATE.command.inbox);
             this.log.info("EMS adapter v0.1.2 ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
             const inbox = await this.getStateAsync(states_1.STATE.command.inbox);
@@ -82,6 +84,7 @@ class Ems extends utils.Adapter {
         }
     }
     onUnload(callback) {
+        (0, ems_light_1.stopEmsLightPhase1)();
         (0, battery_1.stopBatteryModule)(null);
         (0, immersion_heater_1.stopImmersionHeaterModule)();
         (0, failsafe_runner_1.stopFailsafeRunner)();

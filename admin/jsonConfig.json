@@ -1008,7 +1008,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Phase 2A/2B/2C: PV-Bias, PV-Horizon (Tag 3–7), Weather-Learning (read-only). Ausgabe unter learning.pv_bias.*, learning.pv_horizon.* und learning.weather.*"
+					"text": "Phase 2A/2B/2C/2D: PV-Bias, PV-Horizon (Tag 3–7), Weather-Learning, Price-Learning (read-only). Ausgabe unter learning.pv_bias.*, learning.pv_horizon.*, learning.weather.* und learning.price_learning.*"
 				},
 				"learning_pv_bias_enabled": {
 					"type": "checkbox",
@@ -1341,6 +1341,48 @@
 					"md": 6,
 					"lg": 6,
 					"xl": 6
+				},
+				"hPriceLearning": {
+					"type": "header",
+					"size": 5,
+					"text": "Phase 2D — Price Learning (historische Strompreise)"
+				},
+				"hPriceLearningHelp": {
+					"type": "staticText",
+					"class": "m",
+					"text": "Liest historische Preise (Standard: live.price.now_ct_per_kwh, ct/kWh). history.0 am Preis-State erforderlich. Kein zusätzlicher Timer — läuft im PV-Bias-Lernzyklus."
+				},
+				"learning_price_enabled": {
+					"type": "checkbox",
+					"label": "Price Learning aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_price_lookback_days": {
+					"type": "number",
+					"label": "Lookback (Tage)",
+					"min": 7,
+					"max": 365,
+					"default": 90,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_price_source_state": {
+					"type": "objectId",
+					"label": "Preis-State (optional, Standard live.price.now_ct_per_kwh)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				}
 			}
 		}

@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.14",
+		"version": "0.1.15",
 		"news": {
+			"0.1.15": {
+				"en": "EMS-Light Phase 2D: Price Learning V1 — historical tariff patterns under learning.price_learning.*",
+				"de": "EMS-Light Phase 2D: Price Learning V1 — historische Preismuster unter learning.price_learning.*"
+			},
 			"0.1.14": {
 				"en": "Weather Learning: wind bias in km/h (Bright Sky + station use km/h)",
 				"de": "Weather Learning: Wind-Bias in km/h (Bright Sky + Station nutzen km/h)"

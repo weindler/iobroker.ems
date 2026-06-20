@@ -1,6 +1,6 @@
 {
 	"name": "iobroker.ems",
-	"version": "0.1.14",
+	"version": "0.1.15",
 	"description": "EMS V2 execution gateway for ioBroker (dryrun/live, audit)",
 	"author": {
 		"name": "weindler"
@@ -36,6 +36,6 @@
 		"build": "tsc -p tsconfig.build.json",
 		"watch": "tsc -p tsconfig.build.json --watch",
 		"check": "tsc --noEmit -p tsconfig.json",
-		"test": "npm run build && node --test build/learning/pv_bias/math.test.js build/learning/pv_bias/freeze.test.js build/learning/pv_bias/history.test.js build/learning/pv_horizon/math.test.js build/learning/weather/math.test.js"
+		"test": "npm run build && node --test build/learning/pv_bias/math.test.js build/learning/pv_bias/freeze.test.js build/learning/pv_bias/history.test.js build/learning/pv_horizon/math.test.js build/learning/weather/math.test.js build/learning/price_learning/math.test.js"
 	}
 }

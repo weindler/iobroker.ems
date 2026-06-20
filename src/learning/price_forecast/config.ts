@@ -1,5 +1,9 @@
 import { normalizeFreezeTime, parseFreezeTimeHHMM } from "../pv_bias/config";
-import { DEFAULT_FREEZE_TIME, DEFAULT_LOOKBACK_DAYS } from "./constants";
+import {
+	DEFAULT_LOOKBACK_DAYS,
+	DEFAULT_TODAY_FREEZE_TIME,
+	DEFAULT_TOMORROW_FREEZE_TIME,
+} from "./constants";
 import type { PriceForecastConfig } from "./types";
 
 function strField(config: Record<string, unknown>, key: string): string {
@@ -30,13 +34,19 @@ export function priceForecastConfigFromAdapter(config: unknown): PriceForecastCo
 			? Math.round(lookbackN)
 			: DEFAULT_LOOKBACK_DAYS;
 
-	const freezeTimeRaw =
-		strField(c, "learning_price_forecast_freeze_time") || DEFAULT_FREEZE_TIME;
+	const tomorrowFreezeRaw =
+		strField(c, "learning_price_forecast_freeze_time") ||
+		strField(c, "learning_price_forecast_tomorrow_freeze_time") ||
+		DEFAULT_TOMORROW_FREEZE_TIME;
+	const todayFreezeRaw =
+		strField(c, "learning_price_forecast_today_freeze_time") || DEFAULT_TODAY_FREEZE_TIME;
 
 	return {
 		enabled: boolField(c, "learning_price_forecast_enabled", true),
 		freezeEnabled: boolField(c, "learning_price_forecast_freeze_enabled", true),
-		freezeTime: normalizeFreezeTime(freezeTimeRaw),
+		tomorrowFreezeTime: normalizeFreezeTime(tomorrowFreezeRaw),
+		todayFreezeEnabled: boolField(c, "learning_price_forecast_today_freeze_enabled", true),
+		todayFreezeTime: normalizeFreezeTime(todayFreezeRaw),
 		todayJsonStateId: strField(c, "learning_price_forecast_today_json_state"),
 		tomorrowJsonStateId: strField(c, "learning_price_forecast_tomorrow_json_state"),
 		actualStateId: strField(c, "learning_price_forecast_actual_state"),
@@ -45,7 +55,9 @@ export function priceForecastConfigFromAdapter(config: unknown): PriceForecastCo
 }
 
 export function priceForecastConfigReady(cfg: PriceForecastConfig): boolean {
-	return Boolean(cfg.tomorrowJsonStateId && cfg.actualStateId);
+	return Boolean(
+		cfg.actualStateId && (cfg.tomorrowJsonStateId || cfg.todayJsonStateId),
+	);
 }
 
 export function sourceLabelFromStateId(stateId: string): string {

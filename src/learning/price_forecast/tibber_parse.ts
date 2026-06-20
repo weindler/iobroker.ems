@@ -85,4 +85,10 @@ export function targetDateForTomorrowFreeze(ref: Date): string {
 	return tomorrowDateKey(ref);
 }
 
+export function targetDateForTodayFreeze(ref: Date): string {
+	const d = new Date(ref);
+	d.setHours(12, 0, 0, 0);
+	return dateKeyFromMs(d.getTime());
+}
+
 export { dateKeyFromMs };

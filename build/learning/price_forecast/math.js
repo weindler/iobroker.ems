@@ -146,7 +146,7 @@ function disabledResult() {
 }
 exports.disabledResult = disabledResult;
 function missingForecastResult() {
-    return emptyResult("missing_forecast", "", "", "Forecast- und Ist-State konfigurieren (PricesTomorrow.json + CurrentPrice.total).");
+    return emptyResult("missing_forecast", "", "", "Forecast- und Ist-State konfigurieren (PricesToday/PricesTomorrow.json + CurrentPrice.total).");
 }
 exports.missingForecastResult = missingForecastResult;
 function errorResult(forecastSource, actualSource, message) {

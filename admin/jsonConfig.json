@@ -1395,7 +1395,7 @@
 				},
 				"hPriceForecastLearningHelp": {
 					"type": "staticText",
-					"text": "Friert täglich Tibber PricesTomorrow.json ein (Standard-Freeze 14:00, nach Tibber-Morgenpreisen). Vergleicht eingefrorene Stunden mit Ist (CurrentPrice.total + history.0). Kein zusätzlicher Timer.",
+					"text": "Zwei Freezes: PricesToday.json (heute, Standard 06:00) und PricesTomorrow.json (morgen, Standard 14:00). Vergleicht eingefrorene Stunden mit Ist (CurrentPrice.total + history.0). Kein zusätzlicher Timer.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -1424,8 +1424,28 @@
 				},
 				"learning_price_forecast_freeze_time": {
 					"type": "text",
-					"label": "Freeze-Zeit (HH:MM, Standard 14:00)",
+					"label": "Morgen-Freeze (HH:MM, Standard 14:00)",
 					"default": "14:00",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_price_forecast_today_freeze_enabled": {
+					"type": "checkbox",
+					"label": "Heute-Freeze aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_price_forecast_today_freeze_time": {
+					"type": "text",
+					"label": "Heute-Freeze (HH:MM, Standard 06:00)",
+					"default": "06:00",
 					"xs": 12,
 					"sm": 6,
 					"md": 4,
@@ -1447,6 +1467,16 @@
 				"learning_price_forecast_tomorrow_json_state": {
 					"type": "objectId",
 					"label": "Forecast morgen — PricesTomorrow.json",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_price_forecast_today_json_state": {
+					"type": "objectId",
+					"label": "Forecast heute — PricesToday.json",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,

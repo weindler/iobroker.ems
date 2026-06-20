@@ -30,11 +30,16 @@ function priceForecastConfigFromAdapter(config) {
     const lookbackDays = Number.isFinite(lookbackN) && lookbackN >= 7 && lookbackN <= 365
         ? Math.round(lookbackN)
         : constants_1.DEFAULT_LOOKBACK_DAYS;
-    const freezeTimeRaw = strField(c, "learning_price_forecast_freeze_time") || constants_1.DEFAULT_FREEZE_TIME;
+    const tomorrowFreezeRaw = strField(c, "learning_price_forecast_freeze_time") ||
+        strField(c, "learning_price_forecast_tomorrow_freeze_time") ||
+        constants_1.DEFAULT_TOMORROW_FREEZE_TIME;
+    const todayFreezeRaw = strField(c, "learning_price_forecast_today_freeze_time") || constants_1.DEFAULT_TODAY_FREEZE_TIME;
     return {
         enabled: boolField(c, "learning_price_forecast_enabled", true),
         freezeEnabled: boolField(c, "learning_price_forecast_freeze_enabled", true),
-        freezeTime: (0, config_1.normalizeFreezeTime)(freezeTimeRaw),
+        tomorrowFreezeTime: (0, config_1.normalizeFreezeTime)(tomorrowFreezeRaw),
+        todayFreezeEnabled: boolField(c, "learning_price_forecast_today_freeze_enabled", true),
+        todayFreezeTime: (0, config_1.normalizeFreezeTime)(todayFreezeRaw),
         todayJsonStateId: strField(c, "learning_price_forecast_today_json_state"),
         tomorrowJsonStateId: strField(c, "learning_price_forecast_tomorrow_json_state"),
         actualStateId: strField(c, "learning_price_forecast_actual_state"),
@@ -43,7 +48,7 @@ function priceForecastConfigFromAdapter(config) {
 }
 exports.priceForecastConfigFromAdapter = priceForecastConfigFromAdapter;
 function priceForecastConfigReady(cfg) {
-    return Boolean(cfg.tomorrowJsonStateId && cfg.actualStateId);
+    return Boolean(cfg.actualStateId && (cfg.tomorrowJsonStateId || cfg.todayJsonStateId));
 }
 exports.priceForecastConfigReady = priceForecastConfigReady;
 function sourceLabelFromStateId(stateId) {

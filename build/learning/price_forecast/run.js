@@ -10,7 +10,7 @@ async function setNumIfValid(host, id, value) {
         await host.setStateAsync(id, { val: Math.round(value * 1000) / 1000, ack: true });
     }
 }
-async function writeResult(host, result, lastRun, freezeTime) {
+async function writeResult(host, result, lastRun, cfg) {
     await setNumIfValid(host, "learning.price_forecast.forecast_confidence", result.forecastConfidence);
     await setNumIfValid(host, "learning.price_forecast.sample_days", result.sampleDays);
     await setNumIfValid(host, "learning.price_forecast.coverage_pct", result.coveragePct);
@@ -31,26 +31,45 @@ async function writeResult(host, result, lastRun, freezeTime) {
     await host.setStateAsync("learning.price_forecast.actual_source", { val: result.actualSource, ack: true });
     await host.setStateAsync("learning.price_forecast.error", { val: result.error, ack: true });
     await host.setStateAsync("learning.price_forecast.last_run", { val: lastRun, ack: true });
-    await host.setStateAsync("learning.price_forecast.freeze_time", { val: freezeTime, ack: true });
+    await host.setStateAsync("learning.price_forecast.freeze_time", {
+        val: `${cfg.todayFreezeTime}/${cfg.tomorrowFreezeTime}`,
+        ack: true,
+    });
+    await host.setStateAsync("learning.price_forecast.today_freeze_time", {
+        val: cfg.todayFreezeTime,
+        ack: true,
+    });
+    await host.setStateAsync("learning.price_forecast.tomorrow_freeze_time", {
+        val: cfg.tomorrowFreezeTime,
+        ack: true,
+    });
+}
+function resolveForecastSource(cfg) {
+    const parts = [];
+    if (cfg.todayJsonStateId)
+        parts.push((0, config_1.sourceLabelFromStateId)(cfg.todayJsonStateId));
+    if (cfg.tomorrowJsonStateId)
+        parts.push((0, config_1.sourceLabelFromStateId)(cfg.tomorrowJsonStateId));
+    return parts.join("+") || "unknown";
 }
 async function runPriceForecastLearning(host) {
     const cfg = (0, config_1.priceForecastConfigFromAdapter)(host.config);
     const lastRun = new Date().toISOString();
     if (!cfg.enabled) {
-        await writeResult(host, (0, math_1.disabledResult)(), lastRun, cfg.freezeTime);
+        await writeResult(host, (0, math_1.disabledResult)(), lastRun, cfg);
         return;
     }
     if (!(0, config_1.priceForecastConfigReady)(cfg)) {
-        await writeResult(host, (0, math_1.missingForecastResult)(), lastRun, cfg.freezeTime);
+        await writeResult(host, (0, math_1.missingForecastResult)(), lastRun, cfg);
         return;
     }
-    const forecastSource = (0, config_1.sourceLabelFromStateId)(cfg.tomorrowJsonStateId);
+    const forecastSource = resolveForecastSource(cfg);
     const actualSource = (0, config_1.sourceLabelFromStateId)(cfg.actualStateId);
     try {
         await (0, compare_1.runPriceForecastFreeze)(host, cfg);
         const pairs = await (0, compare_1.buildMatchedPairs)(host, cfg);
         const result = (0, math_1.computePriceForecastLearning)(pairs, cfg.lookbackDays, forecastSource, actualSource, new Date());
-        await writeResult(host, result, lastRun, cfg.freezeTime);
+        await writeResult(host, result, lastRun, cfg);
         if (host.getAbsolutePath) {
             const baseDir = host.getAbsolutePath("learning/price_forecast");
             await (0, persist_1.writePriceForecastPersist)(baseDir, result, lastRun);
@@ -66,7 +85,7 @@ async function runPriceForecastLearning(host) {
     catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         host.log.error(`Price Forecast Learning: ${msg}`);
-        await writeResult(host, (0, math_1.errorResult)(forecastSource, actualSource, msg), lastRun, cfg.freezeTime);
+        await writeResult(host, (0, math_1.errorResult)(forecastSource, actualSource, msg), lastRun, cfg);
     }
 }
 exports.runPriceForecastLearning = runPriceForecastLearning;

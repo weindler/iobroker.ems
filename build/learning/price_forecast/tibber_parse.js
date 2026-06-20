@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.dateKeyFromMs = exports.targetDateForTomorrowFreeze = exports.parseTibberPriceJsonToHourlySlots = void 0;
+exports.dateKeyFromMs = exports.targetDateForTodayFreeze = exports.targetDateForTomorrowFreeze = exports.parseTibberPriceJsonToHourlySlots = void 0;
 function asNum(v) {
     if (v === null || v === undefined || v === "")
         return null;
@@ -76,3 +76,9 @@ function targetDateForTomorrowFreeze(ref) {
     return tomorrowDateKey(ref);
 }
 exports.targetDateForTomorrowFreeze = targetDateForTomorrowFreeze;
+function targetDateForTodayFreeze(ref) {
+    const d = new Date(ref);
+    d.setHours(12, 0, 0, 0);
+    return dateKeyFromMs(d.getTime());
+}
+exports.targetDateForTodayFreeze = targetDateForTodayFreeze;

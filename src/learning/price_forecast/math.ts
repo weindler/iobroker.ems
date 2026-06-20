@@ -167,7 +167,7 @@ export function missingForecastResult(): PriceForecastResult {
 		"missing_forecast",
 		"",
 		"",
-		"Forecast- und Ist-State konfigurieren (PricesTomorrow.json + CurrentPrice.total).",
+		"Forecast- und Ist-State konfigurieren (PricesToday/PricesTomorrow.json + CurrentPrice.total).",
 	);
 }
 

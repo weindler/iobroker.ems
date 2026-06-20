@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.18",
+		"version": "0.1.19",
 		"news": {
+			"0.1.19": {
+				"en": "Price Forecast Learning: add today freeze from PricesToday.json (default 06:00)",
+				"de": "Price Forecast Learning: Heute-Freeze aus PricesToday.json ergänzt (Standard 06:00)"
+			},
 			"0.1.18": {
 				"en": "EMS-Light Phase 2E: Price Forecast Learning V1 — frozen Tibber forecast vs actual under learning.price_forecast.*",
 				"de": "EMS-Light Phase 2E: Price Forecast Learning V1 — eingefrorener Tibber-Forecast vs. Ist unter learning.price_forecast.*"

@@ -42,7 +42,7 @@ async function writeResult(
 	host: PriceForecastRunHost,
 	result: PriceForecastResult,
 	lastRun: string,
-	freezeTime: string,
+	cfg: ReturnType<typeof priceForecastConfigFromAdapter>,
 ): Promise<void> {
 	await setNumIfValid(host, "learning.price_forecast.forecast_confidence", result.forecastConfidence);
 	await setNumIfValid(host, "learning.price_forecast.sample_days", result.sampleDays);
@@ -64,7 +64,25 @@ async function writeResult(
 	await host.setStateAsync("learning.price_forecast.actual_source", { val: result.actualSource, ack: true });
 	await host.setStateAsync("learning.price_forecast.error", { val: result.error, ack: true });
 	await host.setStateAsync("learning.price_forecast.last_run", { val: lastRun, ack: true });
-	await host.setStateAsync("learning.price_forecast.freeze_time", { val: freezeTime, ack: true });
+	await host.setStateAsync("learning.price_forecast.freeze_time", {
+		val: `${cfg.todayFreezeTime}/${cfg.tomorrowFreezeTime}`,
+		ack: true,
+	});
+	await host.setStateAsync("learning.price_forecast.today_freeze_time", {
+		val: cfg.todayFreezeTime,
+		ack: true,
+	});
+	await host.setStateAsync("learning.price_forecast.tomorrow_freeze_time", {
+		val: cfg.tomorrowFreezeTime,
+		ack: true,
+	});
+}
+
+function resolveForecastSource(cfg: ReturnType<typeof priceForecastConfigFromAdapter>): string {
+	const parts: string[] = [];
+	if (cfg.todayJsonStateId) parts.push(sourceLabelFromStateId(cfg.todayJsonStateId));
+	if (cfg.tomorrowJsonStateId) parts.push(sourceLabelFromStateId(cfg.tomorrowJsonStateId));
+	return parts.join("+") || "unknown";
 }
 
 export async function runPriceForecastLearning(host: PriceForecastRunHost): Promise<void> {
@@ -72,16 +90,16 @@ export async function runPriceForecastLearning(host: PriceForecastRunHost): Prom
 	const lastRun = new Date().toISOString();
 
 	if (!cfg.enabled) {
-		await writeResult(host, disabledResult(), lastRun, cfg.freezeTime);
+		await writeResult(host, disabledResult(), lastRun, cfg);
 		return;
 	}
 
 	if (!priceForecastConfigReady(cfg)) {
-		await writeResult(host, missingForecastResult(), lastRun, cfg.freezeTime);
+		await writeResult(host, missingForecastResult(), lastRun, cfg);
 		return;
 	}
 
-	const forecastSource = sourceLabelFromStateId(cfg.tomorrowJsonStateId);
+	const forecastSource = resolveForecastSource(cfg);
 	const actualSource = sourceLabelFromStateId(cfg.actualStateId);
 
 	try {
@@ -94,7 +112,7 @@ export async function runPriceForecastLearning(host: PriceForecastRunHost): Prom
 			actualSource,
 			new Date(),
 		);
-		await writeResult(host, result, lastRun, cfg.freezeTime);
+		await writeResult(host, result, lastRun, cfg);
 
 		if (host.getAbsolutePath) {
 			const baseDir = host.getAbsolutePath("learning/price_forecast");
@@ -119,6 +137,6 @@ export async function runPriceForecastLearning(host: PriceForecastRunHost): Prom
 	} catch (e) {
 		const msg = e instanceof Error ? e.message : String(e);
 		host.log.error(`Price Forecast Learning: ${msg}`);
-		await writeResult(host, errorResult(forecastSource, actualSource, msg), lastRun, cfg.freezeTime);
+		await writeResult(host, errorResult(forecastSource, actualSource, msg), lastRun, cfg);
 	}
 }

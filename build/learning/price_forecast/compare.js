@@ -72,39 +72,30 @@ async function fetchActualCtAtHour(host, stateId, unit, hourStartMs) {
     return Math.round((0, units_1.toCtPerKwh)((0, units_1.toEurPerKwh)(best.val, unit)) * 1000) / 1000;
 }
 exports.fetchActualCtAtHour = fetchActualCtAtHour;
-async function runPriceForecastFreeze(host, cfg) {
-    if (!cfg.freezeEnabled || !host.getAbsolutePath) {
-        return;
+async function runFreezeTrack(host, cfg, track) {
+    if (!track.jsonStateId || !host.getAbsolutePath) {
+        return false;
     }
     const now = new Date();
-    const frozenAtSt = await host.getStateAsync("learning.price_forecast.frozen_at_ts");
+    const frozenAtSt = await host.getStateAsync(track.frozenAtStateId);
     const frozenAtTs = typeof frozenAtSt?.val === "string" ? frozenAtSt.val : null;
-    const decision = (0, freeze_1.decideForecastFreeze)(now, cfg.freezeEnabled, cfg.freezeTime, frozenAtTs);
-    await host.setStateAsync("learning.price_forecast.freeze_status", {
-        val: decision.status,
-        ack: true,
-    });
-    await host.setStateAsync("learning.price_forecast.freeze_reason", {
-        val: decision.reason,
-        ack: true,
-    });
+    const decision = (0, freeze_1.decideForecastFreeze)(now, cfg.freezeEnabled, track.freezeTime, frozenAtTs);
+    await host.setStateAsync(track.statusStateId, { val: decision.status, ack: true });
+    await host.setStateAsync(track.reasonStateId, { val: decision.reason, ack: true });
     if (!decision.shouldFreeze) {
-        return;
+        return false;
     }
-    const tomorrowRaw = await readForeignVal(host, cfg.tomorrowJsonStateId);
-    const targetDate = (0, tibber_parse_1.targetDateForTomorrowFreeze)(now);
-    const slots = (0, tibber_parse_1.parseTibberPriceJsonToHourlySlots)(tomorrowRaw, targetDate);
+    const raw = await readForeignVal(host, track.jsonStateId);
+    const targetDate = track.targetDate(now);
+    const slots = (0, tibber_parse_1.parseTibberPriceJsonToHourlySlots)(raw, targetDate);
     if (slots.length === 0) {
-        host.log.warn(`Price Forecast Freeze: keine Slots für ${targetDate} in ${cfg.tomorrowJsonStateId}`);
-        await host.setStateAsync("learning.price_forecast.freeze_status", {
-            val: "error",
+        host.log.warn(`Price Forecast Freeze (${track.label}): keine Slots für ${targetDate}`);
+        await host.setStateAsync(track.statusStateId, { val: "error", ack: true });
+        await host.setStateAsync(track.reasonStateId, {
+            val: `Keine Forecast-Slots für ${targetDate} (${track.label}).`,
             ack: true,
         });
-        await host.setStateAsync("learning.price_forecast.freeze_reason", {
-            val: `Keine Forecast-Slots für ${targetDate} — evtl. Tibber-Morgenpreise noch nicht da (ca. 13:00).`,
-            ack: true,
-        });
-        return;
+        return false;
     }
     const baseDir = host.getAbsolutePath("learning/price_forecast");
     const payload = {
@@ -112,27 +103,48 @@ async function runPriceForecastFreeze(host, cfg) {
         frozen_at: now.toISOString(),
         freeze_date: (0, freeze_1.localDateKey)(now),
         target_date: targetDate,
-        forecast_source: cfg.tomorrowJsonStateId,
+        forecast_source: track.jsonStateId,
         slots,
     };
     await (0, persist_1.writeForecastFreezeFile)(baseDir, payload);
-    await host.setStateAsync("learning.price_forecast.frozen_at_ts", {
-        val: now.toISOString(),
+    await host.setStateAsync(track.frozenAtStateId, { val: now.toISOString(), ack: true });
+    await host.setStateAsync(track.targetDateStateId, { val: targetDate, ack: true });
+    await host.setStateAsync(track.statusStateId, { val: "ready", ack: true });
+    await host.setStateAsync(track.reasonStateId, {
+        val: `${track.label}: Forecast für ${targetDate} eingefroren (${slots.length}h).`,
         ack: true,
     });
-    await host.setStateAsync("learning.price_forecast.frozen_target_date", {
-        val: targetDate,
-        ack: true,
-    });
-    await host.setStateAsync("learning.price_forecast.freeze_status", {
-        val: "ready",
-        ack: true,
-    });
-    await host.setStateAsync("learning.price_forecast.freeze_reason", {
-        val: `Forecast für ${targetDate} eingefroren (${slots.length}h).`,
-        ack: true,
-    });
-    host.log.info(`Price Forecast Freeze: ${targetDate} ${slots.length} Stunden`);
+    host.log.info(`Price Forecast Freeze (${track.label}): ${targetDate} ${slots.length} Stunden`);
+    return true;
+}
+async function runPriceForecastFreeze(host, cfg) {
+    if (!cfg.freezeEnabled || !host.getAbsolutePath) {
+        return;
+    }
+    if (cfg.todayFreezeEnabled && cfg.todayJsonStateId) {
+        await runFreezeTrack(host, cfg, {
+            label: "heute",
+            jsonStateId: cfg.todayJsonStateId,
+            freezeTime: cfg.todayFreezeTime,
+            frozenAtStateId: "learning.price_forecast.frozen_today_at_ts",
+            targetDateStateId: "learning.price_forecast.frozen_today_target_date",
+            statusStateId: "learning.price_forecast.freeze_today_status",
+            reasonStateId: "learning.price_forecast.freeze_today_reason",
+            targetDate: tibber_parse_1.targetDateForTodayFreeze,
+        });
+    }
+    if (cfg.tomorrowJsonStateId) {
+        await runFreezeTrack(host, cfg, {
+            label: "morgen",
+            jsonStateId: cfg.tomorrowJsonStateId,
+            freezeTime: cfg.tomorrowFreezeTime,
+            frozenAtStateId: "learning.price_forecast.frozen_at_ts",
+            targetDateStateId: "learning.price_forecast.frozen_target_date",
+            statusStateId: "learning.price_forecast.freeze_status",
+            reasonStateId: "learning.price_forecast.freeze_reason",
+            targetDate: tibber_parse_1.targetDateForTomorrowFreeze,
+        });
+    }
 }
 exports.runPriceForecastFreeze = runPriceForecastFreeze;
 async function buildMatchedPairs(host, cfg) {

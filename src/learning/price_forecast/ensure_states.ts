@@ -44,11 +44,17 @@ export async function ensurePriceForecastLearningStates(host: StateHost): Promis
 		strState("learning.price_forecast.forecast_source", "Price-Forecast Quelle"),
 		strState("learning.price_forecast.actual_source", "Price-Forecast Ist-Quelle"),
 		strState("learning.price_forecast.error", "Price-Forecast Fehler"),
-		strState("learning.price_forecast.frozen_at_ts", "Price-Forecast eingefroren um (ISO)"),
-		strState("learning.price_forecast.frozen_target_date", "Price-Forecast Freeze-Zieldatum"),
-		strState("learning.price_forecast.freeze_status", "Price-Forecast Freeze-Status", "waiting"),
-		strState("learning.price_forecast.freeze_reason", "Price-Forecast Freeze-Grund"),
-		strState("learning.price_forecast.freeze_time", "Price-Forecast Freeze-Zeit (HH:MM)"),
+		strState("learning.price_forecast.frozen_at_ts", "Price-Forecast Morgen eingefroren um (ISO)"),
+		strState("learning.price_forecast.frozen_target_date", "Price-Forecast Morgen Freeze-Zieldatum"),
+		strState("learning.price_forecast.freeze_status", "Price-Forecast Morgen Freeze-Status", "waiting"),
+		strState("learning.price_forecast.freeze_reason", "Price-Forecast Morgen Freeze-Grund"),
+		strState("learning.price_forecast.frozen_today_at_ts", "Price-Forecast Heute eingefroren um (ISO)"),
+		strState("learning.price_forecast.frozen_today_target_date", "Price-Forecast Heute Freeze-Zieldatum"),
+		strState("learning.price_forecast.freeze_today_status", "Price-Forecast Heute Freeze-Status", "waiting"),
+		strState("learning.price_forecast.freeze_today_reason", "Price-Forecast Heute Freeze-Grund"),
+		strState("learning.price_forecast.freeze_time", "Price-Forecast Freeze-Zeiten (heute/morgen)"),
+		strState("learning.price_forecast.today_freeze_time", "Price-Forecast Heute Freeze (HH:MM)"),
+		strState("learning.price_forecast.tomorrow_freeze_time", "Price-Forecast Morgen Freeze (HH:MM)"),
 	];
 
 	await ensureStates(host, defs);

@@ -11,7 +11,11 @@ export type ForecastStability = "stable" | "normal" | "volatile" | "unknown";
 export type PriceForecastConfig = {
 	enabled: boolean;
 	freezeEnabled: boolean;
-	freezeTime: string;
+	/** Morgen-Freeze (PricesTomorrow.json), Standard 14:00 */
+	tomorrowFreezeTime: string;
+	/** Heute-Freeze (PricesToday.json), Standard 06:00 */
+	todayFreezeEnabled: boolean;
+	todayFreezeTime: string;
 	todayJsonStateId: string;
 	tomorrowJsonStateId: string;
 	actualStateId: string;

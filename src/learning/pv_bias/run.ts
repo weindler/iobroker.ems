@@ -1,7 +1,7 @@
 import { asNum } from "../../ems_light/state_util";
 import { pvBiasConfigFromAdapter, pvBiasConfigReady } from "./config";
 import { FROZEN_TODAY_STATE_ID, readFrozenForecast, runForecastFreeze } from "./freeze";
-import { fetchPvBiasDayPairs } from "./history";
+import { fetchPvBiasDayPairs, readStateNum } from "./history";
 import { computePvBias } from "./math";
 import type { PvBiasComputeResult } from "./types";
 
@@ -18,16 +18,7 @@ export type PvBiasRunHost = {
 };
 
 async function readForeignNum(host: PvBiasRunHost, stateId: string): Promise<number | null> {
-	if (!stateId) {
-		return null;
-	}
-	try {
-		const read = host.getForeignStateAsync ?? host.getStateAsync;
-		const st = await read.call(host, stateId);
-		return asNum(st?.val);
-	} catch {
-		return null;
-	}
+	return readStateNum(host, stateId);
 }
 
 async function readLiveRawForecast(
@@ -105,6 +96,13 @@ export async function runPvBiasLearning(host: PvBiasRunHost): Promise<void> {
 			forecastHistoryStateId,
 		);
 		host.log.info(`PV-Bias: history loaded, ${pairs.length} valid day pair(s)`);
+		if (pairs.length === 0) {
+			const todayActual = await readStateNum(host, cfg.historyActualStateId);
+			const todayForecast = await readStateNum(host, forecastHistoryStateId);
+			host.log.warn(
+				`PV-Bias: no pairs — today live actual=${todayActual ?? "—"} forecast=${todayForecast ?? "—"} (Historie am Alias + frozen_today_kwh empfohlen)`,
+			);
+		}
 
 		const rawTodayKwh = await readLiveRawForecast(
 			host,

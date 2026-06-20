@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchPvBiasDayPairs = exports.fetchDayLastValue = exports.dayBoundsMs = exports.HISTORY_QUERY_TIMEOUT_MS = void 0;
+exports.fetchPvBiasDayPairs = exports.fetchDayLastValue = exports.readStateNum = exports.isForeignStateId = exports.dayBoundsMs = exports.HISTORY_QUERY_TIMEOUT_MS = void 0;
 const state_util_1 = require("../../ems_light/state_util");
 exports.HISTORY_QUERY_TIMEOUT_MS = 8000;
 const MS_PER_DAY = 86_400_000;
@@ -33,21 +33,43 @@ async function withHistoryTimeout(promise, timeoutMs) {
     }
 }
 async function readLiveValue(host, stateId) {
+    return readStateNum(host, stateId);
+}
+/** Vollqualifizierte ID z. B. alias.0.x — nicht relative ems-eigene IDs wie learning.pv_bias.* */
+function isForeignStateId(stateId) {
+    return /^[a-z0-9_-]+\.\d+\./i.test(stateId);
+}
+exports.isForeignStateId = isForeignStateId;
+async function readStateNum(host, stateId) {
     if (!stateId) {
         return null;
     }
-    const read = host.getForeignStateAsync ?? host.getStateAsync;
-    if (!read) {
-        return null;
+    const tryRead = async (fn) => {
+        if (!fn) {
+            return null;
+        }
+        try {
+            const st = await fn.call(host, stateId);
+            return (0, state_util_1.asNum)(st?.val);
+        }
+        catch {
+            return null;
+        }
+    };
+    if (isForeignStateId(stateId)) {
+        const foreign = await tryRead(host.getForeignStateAsync);
+        if (foreign !== null) {
+            return foreign;
+        }
+        return tryRead(host.getStateAsync);
     }
-    try {
-        const st = await read.call(host, stateId);
-        return (0, state_util_1.asNum)(st?.val);
+    const own = await tryRead(host.getStateAsync);
+    if (own !== null) {
+        return own;
     }
-    catch {
-        return null;
-    }
+    return tryRead(host.getForeignStateAsync);
 }
+exports.readStateNum = readStateNum;
 /** Letzter gültiger Zahlenwert im Tagesfenster; fehlende Historie → null (nicht 0). */
 async function fetchDayLastValue(host, stateId, startMs, endMs) {
     if (!stateId) {

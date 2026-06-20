@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.9",
+		"version": "0.1.10",
 		"news": {
+			"0.1.10": {
+				"en": "PV-Bias: fix live read for own states (frozen_today_kwh) vs foreign alias IDs",
+				"de": "PV-Bias: Live-Lesen eigener States (frozen_today_kwh) vs. Fremd-Alias korrigiert"
+			},
 			"0.1.9": {
 				"en": "PV-Bias: history query timeout, today live fallback, non-blocking init",
 				"de": "PV-Bias: Historie-Timeout, Live-Fallback heute, Init blockiert nicht mehr"

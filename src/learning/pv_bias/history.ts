@@ -42,19 +42,46 @@ async function withHistoryTimeout<T>(promise: Promise<T>, timeoutMs: number): Pr
 }
 
 async function readLiveValue(host: HistoryHost, stateId: string): Promise<number | null> {
+	return readStateNum(host, stateId);
+}
+
+/** Vollqualifizierte ID z. B. alias.0.x — nicht relative ems-eigene IDs wie learning.pv_bias.* */
+export function isForeignStateId(stateId: string): boolean {
+	return /^[a-z0-9_-]+\.\d+\./i.test(stateId);
+}
+
+export async function readStateNum(host: HistoryHost, stateId: string): Promise<number | null> {
 	if (!stateId) {
 		return null;
 	}
-	const read = host.getForeignStateAsync ?? host.getStateAsync;
-	if (!read) {
-		return null;
+
+	const tryRead = async (
+		fn?: (id: string) => Promise<ioBroker.State | null | undefined>,
+	): Promise<number | null> => {
+		if (!fn) {
+			return null;
+		}
+		try {
+			const st = await fn.call(host, stateId);
+			return asNum(st?.val);
+		} catch {
+			return null;
+		}
+	};
+
+	if (isForeignStateId(stateId)) {
+		const foreign = await tryRead(host.getForeignStateAsync);
+		if (foreign !== null) {
+			return foreign;
+		}
+		return tryRead(host.getStateAsync);
 	}
-	try {
-		const st = await read.call(host, stateId);
-		return asNum(st?.val);
-	} catch {
-		return null;
+
+	const own = await tryRead(host.getStateAsync);
+	if (own !== null) {
+		return own;
 	}
+	return tryRead(host.getForeignStateAsync);
 }
 
 /** Letzter gültiger Zahlenwert im Tagesfenster; fehlende Historie → null (nicht 0). */

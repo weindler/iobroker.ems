@@ -963,7 +963,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Read-only Preis-Mapping für EMS-Light live.price.now_ct_per_kwh. Z. B. Tibber-Adapter oder eigener Preis-State (ct/kWh)."
+					"text": "Read-only Preis-Mapping für EMS-Light live.price.now_ct_per_kwh. Tibber liefert €/kWh (z. B. 0.1576); der Live-Cache speichert ct/kWh (15.76)."
 				},
 				"hDtPrice": {
 					"type": "header",

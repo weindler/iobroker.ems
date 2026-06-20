@@ -84,6 +84,14 @@ function normalizeLiveValue(liveId, raw) {
         const b = (0, state_util_1.asBool)(raw);
         return b === null ? null : b ? 1 : 0;
     }
+    if (liveId === "live.price.now_ct_per_kwh") {
+        const eurPerKwh = (0, state_util_1.asNum)(raw);
+        if (eurPerKwh === null) {
+            return null;
+        }
+        // Quelle z. B. Tibber: €/kWh (0.1576) → EMS-Light ct/kWh (15.76)
+        return eurPerKwh * 100;
+    }
     const n = (0, state_util_1.asNum)(raw);
     return n;
 }

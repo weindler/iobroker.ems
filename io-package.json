@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.5",
+		"version": "0.1.6",
 		"news": {
+			"0.1.6": {
+				"en": "EMS-Light live cache: convert Tibber price from EUR/kWh to ct/kWh (×100)",
+				"de": "EMS-Light Live-Cache: Tibber-Preis von €/kWh nach ct/kWh umrechnen (×100)"
+			},
 			"0.1.5": {
 				"en": "EMS-Light mapping: capacity_kwh, buffer_temp_c, vehicle_soc_pct, price_now_ct_per_kwh (read-only, admin + states)",
 				"de": "EMS-Light Mapping: capacity_kwh, buffer_temp_c, vehicle_soc_pct, price_now_ct_per_kwh (read-only, Admin + States)"

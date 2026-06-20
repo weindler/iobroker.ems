@@ -1349,8 +1349,12 @@
 				},
 				"hPriceLearningHelp": {
 					"type": "staticText",
-					"class": "m",
-					"text": "Liest historische Preise aus history.0. Quelle frei wählbar — Tibber CurrentPrice.total (€/kWh, empfohlen) oder live.price.now_ct_per_kwh (ct/kWh). Einheit wird automatisch erkannt; Ausgabe learning.price_learning.* immer in €/kWh. Kein zusätzlicher Timer — läuft im PV-Bias-Lernzyklus."
+					"text": "Liest historische Preise aus history.0. Quelle frei wählbar — Tibber CurrentPrice.total (€/kWh, empfohlen) oder live.price.now_ct_per_kwh (ct/kWh). Einheit wird automatisch erkannt; Ausgabe learning.price_learning.* immer in €/kWh. Kein zusätzlicher Timer — läuft im PV-Bias-Lernzyklus.",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
 				"learning_price_enabled": {
 					"type": "checkbox",

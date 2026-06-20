@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.16",
+		"version": "0.1.17",
 		"news": {
+			"0.1.17": {
+				"en": "Fix jsonConfig schema: remove invalid class on Price Learning help text",
+				"de": "jsonConfig-Schema-Fix: ungültiges class-Feld beim Price-Learning-Hilfetext entfernt"
+			},
 			"0.1.16": {
 				"en": "Price Learning admin: clarify Tibber €/kWh vs live.price ct/kWh",
 				"de": "Price Learning Admin: Tibber €/kWh vs. live.price ct/kWh in Hilfetexten klargestellt"

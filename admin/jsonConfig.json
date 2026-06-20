@@ -1008,7 +1008,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Phase 2A/2B/2C/2D: PV-Bias, PV-Horizon (Tag 3–7), Weather-Learning, Price-Learning (read-only). Ausgabe unter learning.pv_bias.*, learning.pv_horizon.*, learning.weather.* und learning.price_learning.*"
+					"text": "Phase 2A–2E: PV-Bias, PV-Horizon, Weather-, Price-Statistics- und Price-Forecast-Learning (read-only). Ausgabe unter learning.pv_bias.*, learning.pv_horizon.*, learning.weather.*, learning.price_learning.* und learning.price_forecast.*"
 				},
 				"learning_pv_bias_enabled": {
 					"type": "checkbox",
@@ -1381,6 +1381,82 @@
 				"learning_price_source_state": {
 					"type": "objectId",
 					"label": "Preis-State (optional, z. B. tibberlink.…CurrentPrice.total in €/kWh)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"hPriceForecastLearning": {
+					"type": "header",
+					"size": 5,
+					"text": "Phase 2E — Price Forecast Learning (Forecast ↔ Realität)"
+				},
+				"hPriceForecastLearningHelp": {
+					"type": "staticText",
+					"text": "Friert täglich Tibber PricesTomorrow.json ein (Standard-Freeze 14:00, nach Tibber-Morgenpreisen). Vergleicht eingefrorene Stunden mit Ist (CurrentPrice.total + history.0). Kein zusätzlicher Timer.",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_price_forecast_enabled": {
+					"type": "checkbox",
+					"label": "Price Forecast Learning aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_price_forecast_freeze_enabled": {
+					"type": "checkbox",
+					"label": "Forecast-Freeze aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_price_forecast_freeze_time": {
+					"type": "text",
+					"label": "Freeze-Zeit (HH:MM, Standard 14:00)",
+					"default": "14:00",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_price_forecast_lookback_days": {
+					"type": "number",
+					"label": "Lookback (Tage)",
+					"min": 7,
+					"max": 365,
+					"default": 90,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_price_forecast_tomorrow_json_state": {
+					"type": "objectId",
+					"label": "Forecast morgen — PricesTomorrow.json",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_price_forecast_actual_state": {
+					"type": "objectId",
+					"label": "Ist-Preis — CurrentPrice.total (€/kWh)",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,

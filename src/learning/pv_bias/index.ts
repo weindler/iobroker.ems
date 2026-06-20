@@ -2,6 +2,7 @@ import { ensurePvBiasStates } from "./ensure_states";
 import { runPvBiasLearning, type PvBiasRunHost } from "./run";
 import { pvBiasConfigFromAdapter } from "./config";
 import { ensurePriceLearningStates, runPriceLearning } from "../price_learning";
+import { ensurePriceForecastLearningStates, runPriceForecastLearning } from "../price_forecast";
 import { ensurePvHorizonLearningStates, runPvHorizon } from "../pv_horizon";
 import type { StateHost } from "../../ems_light/state_util";
 
@@ -11,6 +12,7 @@ async function runLearningTick(host: PvBiasRunHost & StateHost): Promise<void> {
 	await runPvBiasLearning(host);
 	await runPvHorizon(host);
 	await runPriceLearning(host);
+	await runPriceForecastLearning(host);
 }
 
 export async function initPvBiasLearning(adapter: ioBroker.Adapter): Promise<void> {
@@ -18,6 +20,7 @@ export async function initPvBiasLearning(adapter: ioBroker.Adapter): Promise<voi
 	await ensurePvBiasStates(host);
 	await ensurePvHorizonLearningStates(host);
 	await ensurePriceLearningStates(host);
+	await ensurePriceForecastLearningStates(host);
 
 	const cfg = pvBiasConfigFromAdapter(adapter.config);
 	stopPvBiasLearning();
@@ -33,7 +36,7 @@ export async function initPvBiasLearning(adapter: ioBroker.Adapter): Promise<voi
 	}, cfg.intervalSec * 1000);
 
 	adapter.log.info(
-		`EMS-Light PV-Bias + PV-Horizon + Price-Learning ready (read-only, interval ${cfg.intervalSec}s)`,
+		`EMS-Light PV-Bias + PV-Horizon + Price-Learning + Price-Forecast ready (read-only, interval ${cfg.intervalSec}s)`,
 	);
 }
 

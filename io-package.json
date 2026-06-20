@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.17",
+		"version": "0.1.18",
 		"news": {
+			"0.1.18": {
+				"en": "EMS-Light Phase 2E: Price Forecast Learning V1 — frozen Tibber forecast vs actual under learning.price_forecast.*",
+				"de": "EMS-Light Phase 2E: Price Forecast Learning V1 — eingefrorener Tibber-Forecast vs. Ist unter learning.price_forecast.*"
+			},
 			"0.1.17": {
 				"en": "Fix jsonConfig schema: remove invalid class on Price Learning help text",
 				"de": "jsonConfig-Schema-Fix: ungültiges class-Feld beim Price-Learning-Hilfetext entfernt"

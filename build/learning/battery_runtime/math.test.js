@@ -48,6 +48,9 @@ function cfg() {
         topoffIntervalDays: 20,
         nightStart: "22:00",
         nightEnd: "06:00",
+        nightAstroEnabled: false,
+        nightStartStateId: "",
+        nightEndStateId: "",
     };
 }
 function socAt(dateKey, hour, socPct) {
@@ -110,6 +113,29 @@ function socAt(dateKey, hour, socPct) {
             capacityKwh: null,
         });
         strict_1.default.equal(r.avgKwh, null);
+    });
+    (0, node_test_1.it)("uses per-day astro times with fixed fallback", () => {
+        const points = [
+            socAt("2026-06-20", 22, 80),
+            socAt("2026-06-21", 5, 72),
+        ];
+        const astroDaily = (0, history_1.mergeDailyAstroTimes)([{ ts: Date.parse("2026-06-20T08:00:00"), dateKey: "2026-06-20", hour: 23, minute: 0 }], [{ ts: Date.parse("2026-06-21T08:00:00"), dateKey: "2026-06-21", hour: 4, minute: 30 }]);
+        const r = (0, math_1.computeNightDischarges)({
+            socPoints: points,
+            nightStart: "22:00",
+            nightEnd: "06:00",
+            astroDaily,
+            capacityKwh: null,
+        });
+        strict_1.default.equal(r.validNights, 1);
+        strict_1.default.equal(r.avgPct, 8);
+    });
+});
+(0, node_test_1.describe)("battery runtime astro parse", () => {
+    (0, node_test_1.it)("parses HH:MM:SS astro strings", () => {
+        strict_1.default.deepEqual((0, history_1.parseAstroTimeValue)("22:03:12"), { hour: 22, minute: 3 });
+        strict_1.default.deepEqual((0, history_1.parseAstroTimeValue)("04:22:52"), { hour: 4, minute: 22 });
+        strict_1.default.equal((0, history_1.parseAstroTimeValue)(""), null);
     });
 });
 (0, node_test_1.describe)("battery runtime rates and power", () => {

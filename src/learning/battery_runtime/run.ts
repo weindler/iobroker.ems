@@ -1,11 +1,14 @@
 import {
 	batteryRuntimeConfigFromAdapter,
+	nightAstroConfigReady,
 	sourceLabelFromStateId,
 } from "./config";
 import {
 	distinctSocSampleDays,
+	fetchAstroTimeHistory,
 	fetchPowerHistory,
 	fetchSocHistory,
+	mergeDailyAstroTimes,
 	readLiveCapacityKwh,
 	readLiveSoc,
 } from "./history";
@@ -100,13 +103,19 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 	}
 
 	try {
-		const [socHist, powerHist, capacityKwh, currentSocPct] = await Promise.all([
+		const [socHist, powerHist, capacityKwh, currentSocPct, astroDaily] = await Promise.all([
 			fetchSocHistory(host, sources.socStateId, cfg.lookbackDays),
 			sources.powerStateId
 				? fetchPowerHistory(host, sources.powerStateId, cfg.lookbackDays, cfg.powerInvert)
 				: Promise.resolve({ points: [], lastValidTs: null }),
 			readLiveCapacityKwh(host, sources.capacityStateId),
 			readLiveSoc(host, sources.socStateId),
+			nightAstroConfigReady(cfg)
+				? Promise.all([
+						fetchAstroTimeHistory(host, cfg.nightStartStateId, cfg.lookbackDays),
+						fetchAstroTimeHistory(host, cfg.nightEndStateId, cfg.lookbackDays),
+					]).then(([startPts, endPts]) => mergeDailyAstroTimes(startPts, endPts))
+				: Promise.resolve(null),
 		]);
 
 		const sampleDays = distinctSocSampleDays(socHist.points);
@@ -120,6 +129,7 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 			sourcePowerStateId: sources.powerStateId,
 			now,
 			sampleDays,
+			astroDaily,
 		});
 
 		if (host.getAbsolutePath) {

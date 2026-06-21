@@ -3,6 +3,7 @@ import { parseTimeHHMM, timestampAtLocalTime, localDateKey } from "./time";
 import type {
 	BatteryRuntimeComputeResult,
 	BatteryRuntimeConfig,
+	DailyAstroTimes,
 	PowerPoint,
 	SocPoint,
 } from "./types";
@@ -38,11 +39,12 @@ export function computeNightDischarges(params: {
 	socPoints: SocPoint[];
 	nightStart: string;
 	nightEnd: string;
+	astroDaily?: DailyAstroTimes | null;
 	capacityKwh: number | null;
 }): { avgPct: number | null; avgKwh: number | null; validNights: number } {
-	const start = parseTimeHHMM(params.nightStart);
-	const end = parseTimeHHMM(params.nightEnd);
-	if (!start || !end || params.socPoints.length === 0) {
+	const fixedStart = parseTimeHHMM(params.nightStart);
+	const fixedEnd = parseTimeHHMM(params.nightEnd);
+	if (!fixedStart || !fixedEnd || params.socPoints.length === 0) {
 		return { avgPct: null, avgKwh: null, validNights: 0 };
 	}
 
@@ -54,8 +56,10 @@ export function computeNightDischarges(params: {
 	for (let i = 0; i < dateKeys.length - 1; i++) {
 		const dayKey = dateKeys[i];
 		const nextKey = dateKeys[i + 1];
-		const startTs = timestampAtLocalTime(dayKey, start.hour, start.minute);
-		const endTs = timestampAtLocalTime(nextKey, end.hour, end.minute);
+		const startTime = params.astroDaily?.startByDate.get(dayKey) ?? fixedStart;
+		const endTime = params.astroDaily?.endByDate.get(nextKey) ?? fixedEnd;
+		const startTs = timestampAtLocalTime(dayKey, startTime.hour, startTime.minute);
+		const endTs = timestampAtLocalTime(nextKey, endTime.hour, endTime.minute);
 		if (endTs <= startTs) continue;
 
 		const socStart = findNearestSoc(params.socPoints, startTs, maxDelta);
@@ -190,11 +194,13 @@ export function computeBatteryRuntimeLearning(params: {
 	sourcePowerStateId: string;
 	now: Date;
 	sampleDays: number;
+	astroDaily?: DailyAstroTimes | null;
 }): BatteryRuntimeComputeResult {
 	const night = computeNightDischarges({
 		socPoints: params.socPoints,
 		nightStart: params.cfg.nightStart,
 		nightEnd: params.cfg.nightEnd,
+		astroDaily: params.astroDaily,
 		capacityKwh: params.capacityKwh,
 	});
 	const rates = computeSocRates(params.socPoints);

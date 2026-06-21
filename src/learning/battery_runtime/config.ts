@@ -72,7 +72,14 @@ export function batteryRuntimeConfigFromAdapter(config: unknown): BatteryRuntime
 		),
 		nightStart: timeField(c, "learning_battery_runtime_night_start", DEFAULT_NIGHT_START),
 		nightEnd: timeField(c, "learning_battery_runtime_night_end", DEFAULT_NIGHT_END),
+		nightAstroEnabled: boolField(c, "learning_battery_runtime_night_astro_enabled", false),
+		nightStartStateId: strField(c, "learning_battery_runtime_night_start_state"),
+		nightEndStateId: strField(c, "learning_battery_runtime_night_end_state"),
 	};
+}
+
+export function nightAstroConfigReady(cfg: BatteryRuntimeConfig): boolean {
+	return cfg.nightAstroEnabled && Boolean(cfg.nightStartStateId && cfg.nightEndStateId);
 }
 
 export function sourceLabelFromStateId(stateId: string): string {

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sourceLabelFromStateId = exports.batteryRuntimeConfigFromAdapter = void 0;
+exports.sourceLabelFromStateId = exports.nightAstroConfigReady = exports.batteryRuntimeConfigFromAdapter = void 0;
 const constants_1 = require("./constants");
 function strField(config, key) {
     const v = config[key];
@@ -45,9 +45,16 @@ function batteryRuntimeConfigFromAdapter(config) {
         topoffIntervalDays: Math.round(numField(c, "learning_battery_runtime_topoff_interval_days", constants_1.DEFAULT_TOPOFF_INTERVAL_DAYS, 1, 90)),
         nightStart: timeField(c, "learning_battery_runtime_night_start", constants_1.DEFAULT_NIGHT_START),
         nightEnd: timeField(c, "learning_battery_runtime_night_end", constants_1.DEFAULT_NIGHT_END),
+        nightAstroEnabled: boolField(c, "learning_battery_runtime_night_astro_enabled", false),
+        nightStartStateId: strField(c, "learning_battery_runtime_night_start_state"),
+        nightEndStateId: strField(c, "learning_battery_runtime_night_end_state"),
     };
 }
 exports.batteryRuntimeConfigFromAdapter = batteryRuntimeConfigFromAdapter;
+function nightAstroConfigReady(cfg) {
+    return cfg.nightAstroEnabled && Boolean(cfg.nightStartStateId && cfg.nightEndStateId);
+}
+exports.nightAstroConfigReady = nightAstroConfigReady;
 function sourceLabelFromStateId(stateId) {
     if (!stateId)
         return "none";

@@ -8,7 +8,80 @@ import {
 	SOC_MAX,
 	SOC_MIN,
 } from "./constants";
-import type { PowerPoint, SocPoint } from "./types";
+import { localDateKey } from "./time";
+import type { AstroTimePoint, DailyAstroTimes, PowerPoint, SocPoint } from "./types";
+
+export function parseAstroTimeValue(raw: unknown): { hour: number; minute: number } | null {
+	if (raw === null || raw === undefined) return null;
+	const text = String(raw).trim();
+	const m = text.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+	if (!m) return null;
+	const hour = parseInt(m[1], 10);
+	const minute = parseInt(m[2], 10);
+	if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+	return { hour, minute };
+}
+
+export async function fetchAstroTimeHistory(
+	host: BatteryHistoryHost,
+	stateId: string,
+	lookbackDays: number,
+): Promise<AstroTimePoint[]> {
+	const end = Date.now();
+	const start = end - lookbackDays * MS_PER_DAY;
+	const points: AstroTimePoint[] = [];
+
+	const res = await withHistoryTimeout(
+		host.getHistoryAsync(stateId, {
+			start,
+			end,
+			aggregate: "onchange",
+			ignoreNull: true,
+			count: 10_000,
+			returnNewestEntries: true,
+			removeBorderValues: true,
+		}),
+		HISTORY_QUERY_TIMEOUT_MS,
+	);
+
+	if (!res?.result || !Array.isArray(res.result)) {
+		return points;
+	}
+
+	for (const row of res.result) {
+		const ts = typeof row?.ts === "number" ? row.ts : null;
+		const parsed = parseAstroTimeValue(row?.val);
+		if (ts === null || !parsed) continue;
+		points.push({
+			ts,
+			dateKey: localDateKey(new Date(ts)),
+			hour: parsed.hour,
+			minute: parsed.minute,
+		});
+	}
+
+	points.sort((a, b) => a.ts - b.ts);
+	return points;
+}
+
+/** Pro Kalendertag die zuletzt geschriebene Astro-Zeit (tägliches JS-Update). */
+export function buildDailyAstroTimes(points: AstroTimePoint[]): DailyAstroTimes {
+	const startByDate = new Map<string, { hour: number; minute: number }>();
+	const endByDate = new Map<string, { hour: number; minute: number }>();
+	for (const p of points) {
+		startByDate.set(p.dateKey, { hour: p.hour, minute: p.minute });
+	}
+	return { startByDate, endByDate };
+}
+
+export function mergeDailyAstroTimes(
+	startPoints: AstroTimePoint[],
+	endPoints: AstroTimePoint[],
+): DailyAstroTimes {
+	const start = buildDailyAstroTimes(startPoints);
+	const end = buildDailyAstroTimes(endPoints);
+	return { startByDate: start.startByDate, endByDate: end.endByDate };
+}
 
 export type BatteryHistoryHost = {
 	getHistoryAsync: (

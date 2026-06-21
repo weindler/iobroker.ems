@@ -1,8 +1,71 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.distinctSocSampleDays = exports.readLiveSoc = exports.readLiveCapacityKwh = exports.fetchPowerHistory = exports.fetchSocHistory = exports.normalizeBatteryPowerW = exports.isValidCapacityKwh = exports.isValidSoc = void 0;
+exports.distinctSocSampleDays = exports.readLiveSoc = exports.readLiveCapacityKwh = exports.fetchPowerHistory = exports.fetchSocHistory = exports.normalizeBatteryPowerW = exports.isValidCapacityKwh = exports.isValidSoc = exports.mergeDailyAstroTimes = exports.buildDailyAstroTimes = exports.fetchAstroTimeHistory = exports.parseAstroTimeValue = void 0;
 const state_util_1 = require("../../ems_light/state_util");
 const constants_1 = require("./constants");
+const time_1 = require("./time");
+function parseAstroTimeValue(raw) {
+    if (raw === null || raw === undefined)
+        return null;
+    const text = String(raw).trim();
+    const m = text.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (!m)
+        return null;
+    const hour = parseInt(m[1], 10);
+    const minute = parseInt(m[2], 10);
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59)
+        return null;
+    return { hour, minute };
+}
+exports.parseAstroTimeValue = parseAstroTimeValue;
+async function fetchAstroTimeHistory(host, stateId, lookbackDays) {
+    const end = Date.now();
+    const start = end - lookbackDays * constants_1.MS_PER_DAY;
+    const points = [];
+    const res = await withHistoryTimeout(host.getHistoryAsync(stateId, {
+        start,
+        end,
+        aggregate: "onchange",
+        ignoreNull: true,
+        count: 10_000,
+        returnNewestEntries: true,
+        removeBorderValues: true,
+    }), constants_1.HISTORY_QUERY_TIMEOUT_MS);
+    if (!res?.result || !Array.isArray(res.result)) {
+        return points;
+    }
+    for (const row of res.result) {
+        const ts = typeof row?.ts === "number" ? row.ts : null;
+        const parsed = parseAstroTimeValue(row?.val);
+        if (ts === null || !parsed)
+            continue;
+        points.push({
+            ts,
+            dateKey: (0, time_1.localDateKey)(new Date(ts)),
+            hour: parsed.hour,
+            minute: parsed.minute,
+        });
+    }
+    points.sort((a, b) => a.ts - b.ts);
+    return points;
+}
+exports.fetchAstroTimeHistory = fetchAstroTimeHistory;
+/** Pro Kalendertag die zuletzt geschriebene Astro-Zeit (tägliches JS-Update). */
+function buildDailyAstroTimes(points) {
+    const startByDate = new Map();
+    const endByDate = new Map();
+    for (const p of points) {
+        startByDate.set(p.dateKey, { hour: p.hour, minute: p.minute });
+    }
+    return { startByDate, endByDate };
+}
+exports.buildDailyAstroTimes = buildDailyAstroTimes;
+function mergeDailyAstroTimes(startPoints, endPoints) {
+    const start = buildDailyAstroTimes(startPoints);
+    const end = buildDailyAstroTimes(endPoints);
+    return { startByDate: start.startByDate, endByDate: end.endByDate };
+}
+exports.mergeDailyAstroTimes = mergeDailyAstroTimes;
 async function withHistoryTimeout(promise, timeoutMs) {
     let timer = null;
     try {

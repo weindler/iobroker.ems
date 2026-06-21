@@ -28,9 +28,9 @@ function findNearestSoc(points, targetTs, maxDeltaMs) {
 }
 /** Nachtentladung: SOC-Abfall zwischen nightStart (Tag D) und nightEnd (Tag D+1). */
 function computeNightDischarges(params) {
-    const start = (0, time_1.parseTimeHHMM)(params.nightStart);
-    const end = (0, time_1.parseTimeHHMM)(params.nightEnd);
-    if (!start || !end || params.socPoints.length === 0) {
+    const fixedStart = (0, time_1.parseTimeHHMM)(params.nightStart);
+    const fixedEnd = (0, time_1.parseTimeHHMM)(params.nightEnd);
+    if (!fixedStart || !fixedEnd || params.socPoints.length === 0) {
         return { avgPct: null, avgKwh: null, validNights: 0 };
     }
     const dateKeys = [...new Set(params.socPoints.map((p) => (0, time_1.localDateKey)(new Date(p.ts))))].sort();
@@ -40,8 +40,10 @@ function computeNightDischarges(params) {
     for (let i = 0; i < dateKeys.length - 1; i++) {
         const dayKey = dateKeys[i];
         const nextKey = dateKeys[i + 1];
-        const startTs = (0, time_1.timestampAtLocalTime)(dayKey, start.hour, start.minute);
-        const endTs = (0, time_1.timestampAtLocalTime)(nextKey, end.hour, end.minute);
+        const startTime = params.astroDaily?.startByDate.get(dayKey) ?? fixedStart;
+        const endTime = params.astroDaily?.endByDate.get(nextKey) ?? fixedEnd;
+        const startTs = (0, time_1.timestampAtLocalTime)(dayKey, startTime.hour, startTime.minute);
+        const endTs = (0, time_1.timestampAtLocalTime)(nextKey, endTime.hour, endTime.minute);
         if (endTs <= startTs)
             continue;
         const socStart = findNearestSoc(params.socPoints, startTs, maxDelta);
@@ -145,6 +147,7 @@ function computeBatteryRuntimeLearning(params) {
         socPoints: params.socPoints,
         nightStart: params.cfg.nightStart,
         nightEnd: params.cfg.nightEnd,
+        astroDaily: params.astroDaily,
         capacityKwh: params.capacityKwh,
     });
     const rates = computeSocRates(params.socPoints);

@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.26",
+		"version": "0.1.27",
 		"news": {
+			"0.1.27": {
+				"en": "Battery Runtime Learning: optional astro night window from dusk/dawn history (javascript.0.variables.astro)",
+				"de": "Battery Runtime Learning: optionales Astro-Nachtfenster aus dusk/dawn-History (javascript.0.variables.astro)"
+			},
 			"0.1.26": {
 				"en": "Battery Runtime Learning: optional power sign invert for sources like Sonnen pacTotal",
 				"de": "Battery Runtime Learning: optionale Leistungs-Invertierung (z. B. Sonnen pacTotal)"

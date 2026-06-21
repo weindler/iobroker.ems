@@ -1,5 +1,6 @@
 export function parseTimeHHMM(value: string): { hour: number; minute: number } | null {
-	const m = value.match(/^(\d{1,2}):(\d{2})$/);
+	const trimmed = value.trim();
+	const m = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
 	if (!m) return null;
 	const hour = parseInt(m[1], 10);
 	const minute = parseInt(m[2], 10);

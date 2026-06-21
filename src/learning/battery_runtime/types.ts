@@ -10,6 +10,22 @@ export type BatteryRuntimeConfig = {
 	topoffIntervalDays: number;
 	nightStart: string;
 	nightEnd: string;
+	/** Nachtfenster aus Astro-History (z. B. javascript.0.variables.astro.dusk/dawn). */
+	nightAstroEnabled: boolean;
+	nightStartStateId: string;
+	nightEndStateId: string;
+};
+
+export type AstroTimePoint = {
+	ts: number;
+	dateKey: string;
+	hour: number;
+	minute: number;
+};
+
+export type DailyAstroTimes = {
+	startByDate: Map<string, { hour: number; minute: number }>;
+	endByDate: Map<string, { hour: number; minute: number }>;
 };
 
 export type SocPoint = {

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { isValidSoc, normalizeBatteryPowerW } from "./history";
+import { isValidSoc, normalizeBatteryPowerW, parseAstroTimeValue, mergeDailyAstroTimes } from "./history";
 import {
 	computeBatteryRuntimeLearning,
 	computeNightDischarges,
@@ -32,6 +32,9 @@ function cfg() {
 		topoffIntervalDays: 20,
 		nightStart: "22:00",
 		nightEnd: "06:00",
+		nightAstroEnabled: false,
+		nightStartStateId: "",
+		nightEndStateId: "",
 	};
 }
 
@@ -100,6 +103,34 @@ describe("battery runtime night discharge", () => {
 			capacityKwh: null,
 		});
 		assert.equal(r.avgKwh, null);
+	});
+
+	it("uses per-day astro times with fixed fallback", () => {
+		const points = [
+			socAt("2026-06-20", 22, 80),
+			socAt("2026-06-21", 5, 72),
+		];
+		const astroDaily = mergeDailyAstroTimes(
+			[{ ts: Date.parse("2026-06-20T08:00:00"), dateKey: "2026-06-20", hour: 23, minute: 0 }],
+			[{ ts: Date.parse("2026-06-21T08:00:00"), dateKey: "2026-06-21", hour: 4, minute: 30 }],
+		);
+		const r = computeNightDischarges({
+			socPoints: points,
+			nightStart: "22:00",
+			nightEnd: "06:00",
+			astroDaily,
+			capacityKwh: null,
+		});
+		assert.equal(r.validNights, 1);
+		assert.equal(r.avgPct, 8);
+	});
+});
+
+describe("battery runtime astro parse", () => {
+	it("parses HH:MM:SS astro strings", () => {
+		assert.deepEqual(parseAstroTimeValue("22:03:12"), { hour: 22, minute: 3 });
+		assert.deepEqual(parseAstroTimeValue("04:22:52"), { hour: 4, minute: 22 });
+		assert.equal(parseAstroTimeValue(""), null);
 	});
 });
 

@@ -56,13 +56,19 @@ async function runBatteryRuntimeLearning(host) {
         return;
     }
     try {
-        const [socHist, powerHist, capacityKwh, currentSocPct] = await Promise.all([
+        const [socHist, powerHist, capacityKwh, currentSocPct, astroDaily] = await Promise.all([
             (0, history_1.fetchSocHistory)(host, sources.socStateId, cfg.lookbackDays),
             sources.powerStateId
                 ? (0, history_1.fetchPowerHistory)(host, sources.powerStateId, cfg.lookbackDays, cfg.powerInvert)
                 : Promise.resolve({ points: [], lastValidTs: null }),
             (0, history_1.readLiveCapacityKwh)(host, sources.capacityStateId),
             (0, history_1.readLiveSoc)(host, sources.socStateId),
+            (0, config_1.nightAstroConfigReady)(cfg)
+                ? Promise.all([
+                    (0, history_1.fetchAstroTimeHistory)(host, cfg.nightStartStateId, cfg.lookbackDays),
+                    (0, history_1.fetchAstroTimeHistory)(host, cfg.nightEndStateId, cfg.lookbackDays),
+                ]).then(([startPts, endPts]) => (0, history_1.mergeDailyAstroTimes)(startPts, endPts))
+                : Promise.resolve(null),
         ]);
         const sampleDays = (0, history_1.distinctSocSampleDays)(socHist.points);
         const result = (0, math_1.computeBatteryRuntimeLearning)({
@@ -75,6 +81,7 @@ async function runBatteryRuntimeLearning(host) {
             sourcePowerStateId: sources.powerStateId,
             now,
             sampleDays,
+            astroDaily,
         });
         if (host.getAbsolutePath) {
             await (0, persist_1.writeBatteryRuntimePersist)(host.getAbsolutePath("learning/battery_runtime"), result, lastRun);

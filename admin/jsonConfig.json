@@ -1641,7 +1641,7 @@
 				},
 				"hBatteryRuntimeLearningHelp": {
 					"type": "staticText",
-					"text": "Lernt Nachtentladung, Lade-/Entladeraten und Vollladung aus History. SOC-Standard: addons.battery.mapping.soc_pct. Leistung optional per Admin — intern + laden / − entladen; bei Sonnen pacTotal Haken „Leistung invertieren“. Top-Off-Intervall ist Konfig/Policy. Read-only.",
+					"text": "Lernt Nachtentladung, Lade-/Entladeraten und Vollladung aus History. Nachtfenster optional aus Astro-History (dusk/dawn + history.0), sonst Fallback HH:MM. SOC-Standard: addons.battery.mapping.soc_pct. Leistung optional — intern + laden / − entladen; bei Sonnen pacTotal „Leistung invertieren“. Read-only.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -1736,7 +1736,7 @@
 				},
 				"learning_battery_runtime_night_start": {
 					"type": "text",
-					"label": "Nachtfenster Start (HH:MM)",
+					"label": "Nacht Fallback Start (HH:MM)",
 					"default": "22:00",
 					"xs": 12,
 					"sm": 6,
@@ -1746,13 +1746,43 @@
 				},
 				"learning_battery_runtime_night_end": {
 					"type": "text",
-					"label": "Nachtfenster Ende (HH:MM)",
+					"label": "Nacht Fallback Ende (HH:MM)",
 					"default": "06:00",
 					"xs": 12,
 					"sm": 6,
 					"md": 3,
 					"lg": 3,
 					"xl": 3
+				},
+				"learning_battery_runtime_night_astro_enabled": {
+					"type": "checkbox",
+					"label": "Nachtfenster aus Astro-History",
+					"default": false,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_battery_runtime_night_start_state": {
+					"type": "objectId",
+					"label": "Astro Nachtbeginn (z. B. javascript.0.variables.astro.dusk)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_battery_runtime_night_end_state": {
+					"type": "objectId",
+					"label": "Astro Nachtende (z. B. javascript.0.variables.astro.dawn)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
 				}
 			}
 		}

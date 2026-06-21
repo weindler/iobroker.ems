@@ -2,7 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.timestampAtLocalTime = exports.isInNightWindow = exports.localDateKey = exports.parseTimeHHMM = void 0;
 function parseTimeHHMM(value) {
-    const m = value.match(/^(\d{1,2}):(\d{2})$/);
+    const trimmed = value.trim();
+    const m = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
     if (!m)
         return null;
     const hour = parseInt(m[1], 10);

@@ -1,0 +1,186 @@
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { configIsValid, thermalRuntimeConfigFromAdapter } from "./config";
+import { isValidTempC } from "./history";
+import {
+	computeThermalRuntimeLearning,
+	detectRuntimeCycles,
+	estimateRemainingHours,
+	invalidConfigResult,
+	noSourceResult,
+} from "./math";
+import { readThermalRuntimePersist, writeThermalRuntimePersist } from "./persist";
+import type { TempPoint, ThermalRuntimeConfig } from "./types";
+import * as fs from "node:fs/promises";
+import * as os from "node:os";
+import * as path from "node:path";
+
+const MS_H = 3_600_000;
+
+function cfg(overrides: Partial<ThermalRuntimeConfig> = {}): ThermalRuntimeConfig {
+	return {
+		enabled: true,
+		lookbackDays: 90,
+		temperatureStateId: "",
+		fullThresholdC: 60,
+		emptyThresholdC: 48,
+		minRuntimeHours: 0.5,
+		maxRuntimeHours: 72,
+		...overrides,
+	};
+}
+
+function coolingCurve(
+	startMs: number,
+	startTemp: number,
+	endTemp: number,
+	hours: number,
+	steps = 6,
+): TempPoint[] {
+	const out: TempPoint[] = [];
+	for (let i = 0; i <= steps; i++) {
+		const frac = i / steps;
+		out.push({
+			ts: startMs + frac * hours * MS_H,
+			tempC: startTemp + (endTemp - startTemp) * frac,
+		});
+	}
+	return out;
+}
+
+describe("thermal runtime validation", () => {
+	it("rejects null and NaN temperatures", () => {
+		assert.equal(isValidTempC(null), false);
+		assert.equal(isValidTempC(Number.NaN), false);
+		assert.equal(isValidTempC(55.2), true);
+	});
+
+	it("rejects full <= empty config", () => {
+		const c = cfg({ fullThresholdC: 48, emptyThresholdC: 60 });
+		assert.equal(configIsValid(c), false);
+		const r = invalidConfigResult("alias.0.temp");
+		assert.equal(r.status, "invalid_config");
+		assert.equal(r.health, "invalid_config");
+	});
+});
+
+describe("thermal runtime cycle detection", () => {
+	it("detects a full-to-empty cooling cycle", () => {
+		const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
+		const points = coolingCurve(base, 62, 47, 10);
+		const cycles = detectRuntimeCycles(points, cfg());
+		assert.equal(cycles.length, 1);
+		assert.equal(cycles[0].startTempC, 62);
+		assert.equal(cycles[0].endTempC, 47);
+		assert.ok(cycles[0].runtimeHours >= 9.9 && cycles[0].runtimeHours <= 10.1);
+		assert.ok(cycles[0].coolingRateCPerH > 1);
+	});
+
+	it("ignores incomplete cycles without reaching empty", () => {
+		const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
+		const points = coolingCurve(base, 62, 52, 5);
+		const cycles = detectRuntimeCycles(points, cfg());
+		assert.equal(cycles.length, 0);
+	});
+
+	it("ignores cycles shorter than min_runtime_hours", () => {
+		const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
+		const points = coolingCurve(base, 62, 47, 0.2);
+		const cycles = detectRuntimeCycles(points, cfg({ minRuntimeHours: 0.5 }));
+		assert.equal(cycles.length, 0);
+	});
+});
+
+describe("thermal runtime remaining estimate", () => {
+	it("returns 0 when at or below empty threshold", () => {
+		assert.equal(estimateRemainingHours({
+			currentTempC: 48,
+			fullThresholdC: 60,
+			emptyThresholdC: 48,
+			typicalRuntimeHours: 12,
+			coolingRateCPerHAvg: 1.2,
+		}), 0);
+	});
+
+	it("uses typical runtime when at or above full threshold", () => {
+		assert.equal(estimateRemainingHours({
+			currentTempC: 62,
+			fullThresholdC: 60,
+			emptyThresholdC: 48,
+			typicalRuntimeHours: 14,
+			coolingRateCPerHAvg: 1.2,
+		}), 14);
+	});
+
+	it("interpolates via cooling rate between thresholds", () => {
+		const h = estimateRemainingHours({
+			currentTempC: 54,
+			fullThresholdC: 60,
+			emptyThresholdC: 48,
+			typicalRuntimeHours: 14,
+			coolingRateCPerHAvg: 2,
+		});
+		assert.equal(h, 3);
+	});
+
+	it("returns null without sufficient learned rate", () => {
+		assert.equal(estimateRemainingHours({
+			currentTempC: 54,
+			fullThresholdC: 60,
+			emptyThresholdC: 48,
+			typicalRuntimeHours: null,
+			coolingRateCPerHAvg: null,
+		}), null);
+	});
+});
+
+describe("thermal runtime compute", () => {
+	it("reports no_samples without cycles", () => {
+		const r = computeThermalRuntimeLearning({
+			cycles: [],
+			currentTempC: 55,
+			cfg: cfg(),
+			sourceStateId: "alias.0.temp",
+			now: new Date("2026-06-21T10:00:00"),
+		});
+		assert.equal(r.status, "insufficient_data");
+		assert.equal(r.health, "no_samples");
+		assert.equal(r.samples, 0);
+		assert.equal(r.estimatedRemainingHours, null);
+	});
+
+	it("no_source result", () => {
+		const r = noSourceResult();
+		assert.equal(r.health, "no_source");
+		assert.equal(r.samples, 0);
+	});
+});
+
+describe("thermal runtime config", () => {
+	it("reads admin defaults", () => {
+		const c = thermalRuntimeConfigFromAdapter({});
+		assert.equal(c.fullThresholdC, 60);
+		assert.equal(c.emptyThresholdC, 48);
+		assert.equal(c.enabled, true);
+	});
+});
+
+describe("thermal runtime persist", () => {
+	it("roundtrips persist file", async () => {
+		const dir = await fs.mkdtemp(path.join(os.tmpdir(), "tr-"));
+		const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
+		const cycles = detectRuntimeCycles(coolingCurve(base, 62, 47, 10), cfg());
+		const result = computeThermalRuntimeLearning({
+			cycles,
+			currentTempC: 55,
+			cfg: cfg(),
+			sourceStateId: "alias.0.temp",
+			now: new Date("2026-06-21T10:00:00"),
+		});
+		await writeThermalRuntimePersist(dir, result, "2026-06-21T10:00:00.000Z");
+		const read = await readThermalRuntimePersist(dir);
+		assert.ok(read);
+		assert.equal(read?.module, "thermal_runtime_learning_v1");
+		assert.equal(read?.samples, 1);
+	});
+});

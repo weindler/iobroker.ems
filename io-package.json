@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.23",
+		"version": "0.1.24",
 		"news": {
+			"0.1.24": {
+				"en": "EMS-Light Phase 2G: Thermal Runtime Learning V1 — buffer cool-down cycles under learning.thermal_runtime.*",
+				"de": "EMS-Light Phase 2G: Thermal Runtime Learning V1 — Puffer-Kühlzyklen unter learning.thermal_runtime.*"
+			},
 			"0.1.23": {
 				"en": "EMS-Light Phase 2F: House Load Learning V1 — season/weekday/segment profiles under learning.house_load.*",
 				"de": "EMS-Light Phase 2F: House Load Learning V1 — Saison/Wochentag/Segment-Profile unter learning.house_load.*"

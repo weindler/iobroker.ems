@@ -1539,6 +1539,100 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12
+				},
+				"hThermalRuntimeLearning": {
+					"type": "header",
+					"size": 5,
+					"text": "Phase 2G — Thermal Runtime Learning (Puffer-Laufzeit)"
+				},
+				"hThermalRuntimeLearningHelp": {
+					"type": "staticText",
+					"text": "Lernt Kühlzyklen von voll (≥ Schwellwert) bis leer (≤ Schwellwert) aus Temperatur-History. Standard-Quelle: addons.immersion_heater.mapping.buffer_temp_c. Read-only — kein Heizstab/Planner. history.0 am Temperatur-State empfohlen.",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_thermal_runtime_enabled": {
+					"type": "checkbox",
+					"label": "Thermal Runtime Learning aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_thermal_runtime_lookback_days": {
+					"type": "number",
+					"label": "Lookback (Tage)",
+					"min": 7,
+					"max": 365,
+					"default": 90,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_thermal_runtime_temperature_state": {
+					"type": "objectId",
+					"label": "Temperatur-State (optional, z. B. Puffer Mitte °C)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_thermal_runtime_full_threshold_c": {
+					"type": "number",
+					"label": "Schwellwert voll (°C)",
+					"min": 1,
+					"max": 110,
+					"default": 60,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"learning_thermal_runtime_empty_threshold_c": {
+					"type": "number",
+					"label": "Schwellwert leer (°C)",
+					"min": 0,
+					"max": 109,
+					"default": 48,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"learning_thermal_runtime_min_runtime_hours": {
+					"type": "number",
+					"label": "Min. Laufzeit (h)",
+					"min": 0.1,
+					"max": 24,
+					"default": 0.5,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"learning_thermal_runtime_max_runtime_hours": {
+					"type": "number",
+					"label": "Max. Laufzeit (h)",
+					"min": 1,
+					"max": 168,
+					"default": 72,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
 				}
 			}
 		}

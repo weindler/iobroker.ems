@@ -1,6 +1,6 @@
 {
 	"name": "iobroker.ems",
-	"version": "0.1.21",
+	"version": "0.1.22",
 	"description": "EMS V2 execution gateway for ioBroker (dryrun/live, audit)",
 	"author": {
 		"name": "weindler"

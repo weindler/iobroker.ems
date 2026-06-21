@@ -17,6 +17,10 @@ async function ensureStates(host, defs) {
             common: def.common,
             native: {},
         });
+        if (def.alwaysUpdate && def.defaultVal !== undefined) {
+            await host.setStateAsync(def.id, { val: def.defaultVal, ack: true });
+            continue;
+        }
         if (def.defaultVal === undefined || def.setDefaultIfEmpty === false) {
             continue;
         }

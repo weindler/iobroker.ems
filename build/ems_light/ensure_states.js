@@ -4,12 +4,13 @@ exports.ensureEmsLightStates = void 0;
 const channels_1 = require("./channels");
 const state_util_1 = require("./state_util");
 const OPERATOR_BRIEFING_DEFAULT = "EMS-Light Phase 1 aktiv. Planner noch nicht initialisiert.";
-function strState(id, name, def) {
+function strState(id, name, def, opts) {
     return {
         id,
         common: { name, type: "string", role: "text", read: true, write: false, def },
         defaultVal: def,
-        setDefaultIfEmpty: true,
+        setDefaultIfEmpty: !opts?.alwaysUpdate,
+        alwaysUpdate: opts?.alwaysUpdate,
     };
 }
 function numState(id, name, unit) {
@@ -28,7 +29,7 @@ function numState(id, name, unit) {
 async function ensureEmsLightStates(host, adapterVersion) {
     await (0, channels_1.ensureEmsLightChannels)(host);
     const defs = [
-        strState("system.version", "EMS-Light Adapter-Version", adapterVersion),
+        strState("system.version", "EMS-Light Adapter-Version", adapterVersion, { alwaysUpdate: true }),
         strState("system.mode", "EMS-Light Modus", "ems_light"),
         strState("system.last_tick_at", "EMS-Light letzter Tick (ISO)"),
         strState("system.health", "EMS-Light Health", "initializing"),

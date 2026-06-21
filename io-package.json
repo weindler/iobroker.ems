@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.21",
+		"version": "0.1.22",
 		"news": {
+			"0.1.22": {
+				"en": "Fix: system.version state now updates on every adapter start",
+				"de": "Fix: system.version wird bei jedem Adapter-Start auf die aktuelle Version gesetzt"
+			},
 			"0.1.21": {
 				"en": "Fix: Price Forecast freeze/persist used non-existent getAbsolutePath — now uses getAbsoluteInstanceDataDir",
 				"de": "Fix: Price-Forecast-Freeze/Persist nutzte getAbsolutePath (existiert nicht) — jetzt getAbsoluteInstanceDataDir"

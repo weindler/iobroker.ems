@@ -24,6 +24,8 @@ export type StateDef = {
 	defaultVal?: ioBroker.StateValue;
 	/** Default nur setzen wenn State noch nie beschrieben (val undefined/null/""). */
 	setDefaultIfEmpty?: boolean;
+	/** Wert bei jedem ensureStates-Lauf setzen (z. B. Adapter-Version). */
+	alwaysUpdate?: boolean;
 };
 
 export async function ensureStates(host: StateHost, defs: StateDef[]): Promise<void> {
@@ -33,6 +35,10 @@ export async function ensureStates(host: StateHost, defs: StateDef[]): Promise<v
 			common: def.common,
 			native: {},
 		} as ioBroker.Object);
+		if (def.alwaysUpdate && def.defaultVal !== undefined) {
+			await host.setStateAsync(def.id, { val: def.defaultVal, ack: true });
+			continue;
+		}
 		if (def.defaultVal === undefined || def.setDefaultIfEmpty === false) {
 			continue;
 		}

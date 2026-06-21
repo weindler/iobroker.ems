@@ -4,12 +4,18 @@ import { ensureStates, type StateDef, type StateHost } from "./state_util";
 const OPERATOR_BRIEFING_DEFAULT =
 	"EMS-Light Phase 1 aktiv. Planner noch nicht initialisiert.";
 
-function strState(id: string, name: string, def?: string): StateDef {
+function strState(
+	id: string,
+	name: string,
+	def?: string,
+	opts?: { alwaysUpdate?: boolean },
+): StateDef {
 	return {
 		id,
 		common: { name, type: "string", role: "text", read: true, write: false, def },
 		defaultVal: def,
-		setDefaultIfEmpty: true,
+		setDefaultIfEmpty: !opts?.alwaysUpdate,
+		alwaysUpdate: opts?.alwaysUpdate,
 	};
 }
 
@@ -31,7 +37,7 @@ export async function ensureEmsLightStates(host: StateHost, adapterVersion: stri
 	await ensureEmsLightChannels(host);
 
 	const defs: StateDef[] = [
-		strState("system.version", "EMS-Light Adapter-Version", adapterVersion),
+		strState("system.version", "EMS-Light Adapter-Version", adapterVersion, { alwaysUpdate: true }),
 		strState("system.mode", "EMS-Light Modus", "ems_light"),
 		strState("system.last_tick_at", "EMS-Light letzter Tick (ISO)"),
 		strState("system.health", "EMS-Light Health", "initializing"),

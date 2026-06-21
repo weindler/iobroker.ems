@@ -1493,6 +1493,52 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12
+				},
+				"hHouseLoadLearning": {
+					"type": "header",
+					"size": 5,
+					"text": "Phase 2F — House Load Learning (Hauslast-Profile)"
+				},
+				"hHouseLoadLearningHelp": {
+					"type": "staticText",
+					"text": "Lernt reale Hauslast aus History (Standard: addons.battery.mapping.consumption_w). Profile: Saison → Wochentag → Tagessegment. Read-only — kein Planner/Operator. history.0 am Quell-State empfohlen.",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_house_load_enabled": {
+					"type": "checkbox",
+					"label": "House Load Learning aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_house_load_lookback_days": {
+					"type": "number",
+					"label": "Lookback (Tage)",
+					"min": 7,
+					"max": 365,
+					"default": 90,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_house_load_power_state": {
+					"type": "objectId",
+					"label": "Hauslast-State (optional, z. B. sonnen.0.status.consumption in W)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				}
 			}
 		}

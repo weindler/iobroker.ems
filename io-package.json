@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.22",
+		"version": "0.1.23",
 		"news": {
+			"0.1.23": {
+				"en": "EMS-Light Phase 2F: House Load Learning V1 — season/weekday/segment profiles under learning.house_load.*",
+				"de": "EMS-Light Phase 2F: House Load Learning V1 — Saison/Wochentag/Segment-Profile unter learning.house_load.*"
+			},
 			"0.1.22": {
 				"en": "Fix: system.version state now updates on every adapter start",
 				"de": "Fix: system.version wird bei jedem Adapter-Start auf die aktuelle Version gesetzt"

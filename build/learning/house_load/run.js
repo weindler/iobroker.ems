@@ -1,0 +1,113 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.runHouseLoadLearning = void 0;
+const config_1 = require("./config");
+const history_1 = require("./history");
+const mapping_1 = require("./mapping");
+const math_1 = require("./math");
+const persist_1 = require("./persist");
+const JSON_STATE_LIMIT = 12_000;
+function truncateJson(obj) {
+    const raw = JSON.stringify(obj);
+    if (raw.length <= JSON_STATE_LIMIT) {
+        return raw;
+    }
+    return `${raw.slice(0, JSON_STATE_LIMIT - 20)}…truncated"}`;
+}
+async function setNumIfValid(host, id, value) {
+    if (value !== null && Number.isFinite(value)) {
+        await host.setStateAsync(id, { val: value, ack: true });
+    }
+}
+async function writeResult(host, result) {
+    const lastRun = new Date().toISOString();
+    await setNumIfValid(host, "learning.house_load.sample_count", result.sampleCount);
+    await setNumIfValid(host, "learning.house_load.sample_days", result.sampleDays);
+    await setNumIfValid(host, "learning.house_load.confidence", result.confidence);
+    await host.setStateAsync("learning.house_load.status", { val: result.status, ack: true });
+    await host.setStateAsync("learning.house_load.current_segment", {
+        val: result.currentSegment,
+        ack: true,
+    });
+    await host.setStateAsync("learning.house_load.current_season", {
+        val: result.currentSeason,
+        ack: true,
+    });
+    await host.setStateAsync("learning.house_load.current_weekday", {
+        val: result.currentWeekday,
+        ack: true,
+    });
+    await host.setStateAsync("learning.house_load.current_day_type", {
+        val: result.currentDayType,
+        ack: true,
+    });
+    await host.setStateAsync("learning.house_load.profile_json", {
+        val: truncateJson(result.profileJson),
+        ack: true,
+    });
+    await host.setStateAsync("learning.house_load.forecast_today_json", {
+        val: truncateJson(result.forecastTodayJson),
+        ack: true,
+    });
+    await host.setStateAsync("learning.house_load.forecast_tomorrow_json", {
+        val: truncateJson(result.forecastTomorrowJson),
+        ack: true,
+    });
+    await host.setStateAsync("learning.house_load.health_json", {
+        val: truncateJson(result.healthJson),
+        ack: true,
+    });
+    await host.setStateAsync("learning.house_load.source_state", {
+        val: result.sourceStateId,
+        ack: true,
+    });
+    await host.setStateAsync("learning.house_load.error", { val: result.error, ack: true });
+    await host.setStateAsync("learning.house_load.last_update", { val: lastRun, ack: true });
+}
+async function runHouseLoadLearning(host) {
+    const cfg = (0, config_1.houseLoadConfigFromAdapter)(host.config);
+    const now = new Date();
+    if (!cfg.enabled) {
+        await writeResult(host, (0, math_1.disabledResult)());
+        return;
+    }
+    const resolved = await (0, mapping_1.resolveHouseLoadPowerStateId)(host, cfg.powerStateId);
+    if (!resolved.stateId) {
+        await writeResult(host, (0, math_1.noSourceResult)(resolved.stateId, now));
+        return;
+    }
+    let lastPersistAt = null;
+    if (host.getAbsolutePath) {
+        const existing = await (0, persist_1.readHouseLoadPersist)(host.getAbsolutePath("learning/house_load"));
+        lastPersistAt = existing?.generated_at ?? null;
+    }
+    try {
+        const { samples, lastValidTs } = await (0, history_1.fetchHouseLoadSamples)(host, resolved.stateId, cfg.lookbackDays);
+        const sampleDays = (0, history_1.distinctSampleDays)(samples);
+        const result = (0, math_1.computeHouseLoadLearning)({
+            samples,
+            sampleDays,
+            lastValidTs,
+            sourceStateId: resolved.stateId,
+            now,
+            lastPersistAt,
+        });
+        if (host.getAbsolutePath) {
+            const baseDir = host.getAbsolutePath("learning/house_load");
+            const lastRun = new Date().toISOString();
+            await (0, persist_1.writeHouseLoadPersist)(baseDir, result, lastRun);
+            result.healthJson.last_persist_at = lastRun;
+        }
+        await writeResult(host, result);
+        host.log.info(`House-Load-Learning: status=${result.status} health=${result.healthStatus} samples=${result.sampleCount} days=${result.sampleDays} source=${(0, config_1.sourceLabelFromStateId)(resolved.stateId)}`);
+        if (result.status === "insufficient_data") {
+            host.log.warn(`House Load Learning: ungenügende Historie (sample_days=${result.sampleDays}, samples=${result.sampleCount})`);
+        }
+    }
+    catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        host.log.error(`House Load Learning: ${msg}`);
+        await writeResult(host, (0, math_1.errorResult)(msg, resolved.stateId, now));
+    }
+}
+exports.runHouseLoadLearning = runHouseLoadLearning;

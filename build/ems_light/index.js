@@ -26,7 +26,7 @@ async function initEmsLightPhase1(adapter) {
     await (0, weather_1.initWeatherLearning)(adapter);
     await (0, tick_1.runEmsLightPhase1Tick)(host);
     const sec = tickIntervalSec(adapter.config);
-    stopEmsLightPhase1();
+    stopEmsLightTick();
     tickTimer = setInterval(() => {
         void (0, tick_1.runEmsLightPhase1Tick)(host).catch((e) => {
             adapter.log.error(`EMS-Light tick: ${e}`);
@@ -35,12 +35,16 @@ async function initEmsLightPhase1(adapter) {
     adapter.log.info(`EMS-Light Phase 1 ready (read-only, tick ${sec}s)`);
 }
 exports.initEmsLightPhase1 = initEmsLightPhase1;
-function stopEmsLightPhase1() {
-    (0, pv_bias_1.stopPvBiasLearning)();
-    (0, weather_1.stopWeatherLearning)();
+/** Nur Live-Tick-Timer stoppen (Learning-Intervalle laufen weiter). */
+function stopEmsLightTick() {
     if (tickTimer) {
         clearInterval(tickTimer);
         tickTimer = null;
     }
+}
+function stopEmsLightPhase1() {
+    (0, pv_bias_1.stopPvBiasLearning)();
+    (0, weather_1.stopWeatherLearning)();
+    stopEmsLightTick();
 }
 exports.stopEmsLightPhase1 = stopEmsLightPhase1;

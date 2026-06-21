@@ -29,7 +29,7 @@ export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<voi
 	await runEmsLightPhase1Tick(host);
 
 	const sec = tickIntervalSec(adapter.config);
-	stopEmsLightPhase1();
+	stopEmsLightTick();
 	tickTimer = setInterval(() => {
 		void runEmsLightPhase1Tick(host).catch((e) => {
 			adapter.log.error(`EMS-Light tick: ${e}`);
@@ -39,11 +39,16 @@ export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<voi
 	adapter.log.info(`EMS-Light Phase 1 ready (read-only, tick ${sec}s)`);
 }
 
-export function stopEmsLightPhase1(): void {
-	stopPvBiasLearning();
-	stopWeatherLearning();
+/** Nur Live-Tick-Timer stoppen (Learning-Intervalle laufen weiter). */
+function stopEmsLightTick(): void {
 	if (tickTimer) {
 		clearInterval(tickTimer);
 		tickTimer = null;
 	}
+}
+
+export function stopEmsLightPhase1(): void {
+	stopPvBiasLearning();
+	stopWeatherLearning();
+	stopEmsLightTick();
 }

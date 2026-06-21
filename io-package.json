@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.19",
+		"version": "0.1.20",
 		"news": {
+			"0.1.20": {
+				"en": "Fix: Learning hourly timers were stopped on adapter start — PV/Weather/Price learning now runs on interval",
+				"de": "Fix: Learning-Stunden-Timer wurden beim Start abgeschaltet — PV/Wetter/Preis-Learning läuft wieder im Intervall"
+			},
 			"0.1.19": {
 				"en": "Price Forecast Learning: add today freeze from PricesToday.json (default 06:00)",
 				"de": "Price Forecast Learning: Heute-Freeze aus PricesToday.json ergänzt (Standard 06:00)"

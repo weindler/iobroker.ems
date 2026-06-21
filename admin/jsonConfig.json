@@ -1641,7 +1641,7 @@
 				},
 				"hBatteryRuntimeLearningHelp": {
 					"type": "staticText",
-					"text": "Lernt Nachtentladung, Lade-/Entladeraten und Vollladung aus History. SOC-Standard: addons.battery.mapping.soc_pct. Leistung nur per Admin (positiv=laden, negativ=entladen). Top-Off-Intervall ist Konfig/Policy — Learning leitet nur Status ab. Read-only.",
+					"text": "Lernt Nachtentladung, Lade-/Entladeraten und Vollladung aus History. SOC-Standard: addons.battery.mapping.soc_pct. Leistung optional per Admin — intern + laden / − entladen; bei Sonnen pacTotal Haken „Leistung invertieren“. Top-Off-Intervall ist Konfig/Policy. Read-only.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -1682,13 +1682,23 @@
 				},
 				"learning_battery_runtime_power_state": {
 					"type": "objectId",
-					"label": "Batterie-Leistung W (optional, + laden / − entladen)",
+					"label": "Batterie-Leistung W (optional, intern + laden / − entladen)",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"learning_battery_runtime_power_invert": {
+					"type": "checkbox",
+					"label": "Leistung invertieren",
+					"default": false,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
 				},
 				"learning_battery_runtime_capacity_state": {
 					"type": "objectId",

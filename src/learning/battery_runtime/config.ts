@@ -52,6 +52,7 @@ export function batteryRuntimeConfigFromAdapter(config: unknown): BatteryRuntime
 		),
 		socStateId: strField(c, "learning_battery_runtime_soc_state"),
 		powerStateId: strField(c, "learning_battery_runtime_power_state"),
+		powerInvert: boolField(c, "learning_battery_runtime_power_invert", false),
 		capacityStateId: strField(c, "learning_battery_runtime_capacity_state"),
 		fullChargeSoc: numField(
 			c,

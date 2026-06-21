@@ -42,6 +42,7 @@ function cfg() {
         lookbackDays: 90,
         socStateId: "",
         powerStateId: "",
+        powerInvert: false,
         capacityStateId: "",
         fullChargeSoc: 95,
         topoffIntervalDays: 20,
@@ -64,6 +65,10 @@ function socAt(dateKey, hour, socPct) {
         strict_1.default.equal((0, history_1.normalizeBatteryPowerW)(10), null);
         strict_1.default.equal((0, history_1.normalizeBatteryPowerW)(500), 500);
         strict_1.default.equal((0, history_1.normalizeBatteryPowerW)(-800), -800);
+    });
+    (0, node_test_1.it)("inverts power sign for sources like Sonnen pacTotal", () => {
+        strict_1.default.equal((0, history_1.normalizeBatteryPowerW)(2000, true), -2000);
+        strict_1.default.equal((0, history_1.normalizeBatteryPowerW)(-1500, true), 1500);
     });
 });
 (0, node_test_1.describe)("battery runtime night discharge", () => {

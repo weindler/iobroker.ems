@@ -103,7 +103,7 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 		const [socHist, powerHist, capacityKwh, currentSocPct] = await Promise.all([
 			fetchSocHistory(host, sources.socStateId, cfg.lookbackDays),
 			sources.powerStateId
-				? fetchPowerHistory(host, sources.powerStateId, cfg.lookbackDays)
+				? fetchPowerHistory(host, sources.powerStateId, cfg.lookbackDays, cfg.powerInvert)
 				: Promise.resolve({ points: [], lastValidTs: null }),
 			readLiveCapacityKwh(host, sources.capacityStateId),
 			readLiveSoc(host, sources.socStateId),

@@ -3,6 +3,8 @@ export type BatteryRuntimeConfig = {
 	lookbackDays: number;
 	socStateId: string;
 	powerStateId: string;
+	/** Quell-Vorzeichen umdrehen (+ laden / − entladen nach Normalisierung). */
+	powerInvert: boolean;
 	capacityStateId: string;
 	fullChargeSoc: number;
 	topoffIntervalDays: number;

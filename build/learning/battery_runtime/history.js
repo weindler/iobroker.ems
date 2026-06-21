@@ -36,15 +36,19 @@ function isValidCapacityKwh(value) {
     return value > 0 && value <= 500;
 }
 exports.isValidCapacityKwh = isValidCapacityKwh;
-/** positiv = laden, negativ = entladen — siehe constants.ts */
-function normalizeBatteryPowerW(raw) {
+/**
+ * Nach Normalisierung: positiv = laden, negativ = entladen.
+ * @param invert Quell-Vorzeichen umdrehen (z. B. Sonnen pacTotal: + entladen, − laden).
+ */
+function normalizeBatteryPowerW(raw, invert = false) {
     if (raw === null || !Number.isFinite(raw))
         return null;
-    if (Math.abs(raw) > constants_1.PLAUSIBLE_POWER_W_MAX)
+    const signed = invert ? -raw : raw;
+    if (Math.abs(signed) > constants_1.PLAUSIBLE_POWER_W_MAX)
         return null;
-    if (Math.abs(raw) < constants_1.POWER_DEADBAND_W)
+    if (Math.abs(signed) < constants_1.POWER_DEADBAND_W)
         return null;
-    return Math.round(raw);
+    return Math.round(signed);
 }
 exports.normalizeBatteryPowerW = normalizeBatteryPowerW;
 async function fetchHistoryPoints(host, stateId, lookbackDays, parseVal) {
@@ -92,10 +96,10 @@ async function fetchSocHistory(host, stateId, lookbackDays) {
     };
 }
 exports.fetchSocHistory = fetchSocHistory;
-async function fetchPowerHistory(host, stateId, lookbackDays) {
+async function fetchPowerHistory(host, stateId, lookbackDays, powerInvert = false) {
     const { points, lastValidTs } = await fetchHistoryPoints(host, stateId, lookbackDays, (raw) => {
         const n = (0, state_util_1.asNum)(raw);
-        return normalizeBatteryPowerW(n);
+        return normalizeBatteryPowerW(n, powerInvert);
     });
     return {
         points: points.map((p) => ({ ts: p.ts, powerW: p.value })),

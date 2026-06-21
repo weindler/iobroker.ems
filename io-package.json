@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.25",
+		"version": "0.1.26",
 		"news": {
+			"0.1.26": {
+				"en": "Battery Runtime Learning: optional power sign invert for sources like Sonnen pacTotal",
+				"de": "Battery Runtime Learning: optionale Leistungs-Invertierung (z. B. Sonnen pacTotal)"
+			},
 			"0.1.25": {
 				"en": "EMS-Light Phase 2H: Battery Runtime Learning V1 — night discharge, charge/discharge rates, top-off status under learning.battery_runtime.*",
 				"de": "EMS-Light Phase 2H: Battery Runtime Learning V1 — Nachtentladung, Lade/Entlade-Raten, Top-Off-Status unter learning.battery_runtime.*"

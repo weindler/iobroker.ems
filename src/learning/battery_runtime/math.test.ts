@@ -26,6 +26,7 @@ function cfg() {
 		lookbackDays: 90,
 		socStateId: "",
 		powerStateId: "",
+		powerInvert: false,
 		capacityStateId: "",
 		fullChargeSoc: 95,
 		topoffIntervalDays: 20,
@@ -50,6 +51,11 @@ describe("battery runtime validation", () => {
 		assert.equal(normalizeBatteryPowerW(10), null);
 		assert.equal(normalizeBatteryPowerW(500), 500);
 		assert.equal(normalizeBatteryPowerW(-800), -800);
+	});
+
+	it("inverts power sign for sources like Sonnen pacTotal", () => {
+		assert.equal(normalizeBatteryPowerW(2000, true), -2000);
+		assert.equal(normalizeBatteryPowerW(-1500, true), 1500);
 	});
 });
 

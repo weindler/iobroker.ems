@@ -49,12 +49,16 @@ export function isValidCapacityKwh(value: number | null): value is number {
 	return value > 0 && value <= 500;
 }
 
-/** positiv = laden, negativ = entladen — siehe constants.ts */
-export function normalizeBatteryPowerW(raw: number | null): number | null {
+/**
+ * Nach Normalisierung: positiv = laden, negativ = entladen.
+ * @param invert Quell-Vorzeichen umdrehen (z. B. Sonnen pacTotal: + entladen, − laden).
+ */
+export function normalizeBatteryPowerW(raw: number | null, invert = false): number | null {
 	if (raw === null || !Number.isFinite(raw)) return null;
-	if (Math.abs(raw) > PLAUSIBLE_POWER_W_MAX) return null;
-	if (Math.abs(raw) < POWER_DEADBAND_W) return null;
-	return Math.round(raw);
+	const signed = invert ? -raw : raw;
+	if (Math.abs(signed) > PLAUSIBLE_POWER_W_MAX) return null;
+	if (Math.abs(signed) < POWER_DEADBAND_W) return null;
+	return Math.round(signed);
 }
 
 async function fetchHistoryPoints(
@@ -122,10 +126,11 @@ export async function fetchPowerHistory(
 	host: BatteryHistoryHost,
 	stateId: string,
 	lookbackDays: number,
+	powerInvert = false,
 ): Promise<{ points: PowerPoint[]; lastValidTs: number | null }> {
 	const { points, lastValidTs } = await fetchHistoryPoints(host, stateId, lookbackDays, (raw) => {
 		const n = asNum(raw);
-		return normalizeBatteryPowerW(n);
+		return normalizeBatteryPowerW(n, powerInvert);
 	});
 	return {
 		points: points.map((p) => ({ ts: p.ts, powerW: p.value })),

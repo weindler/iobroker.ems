@@ -5,6 +5,7 @@ import { ensurePriceLearningStates, runPriceLearning } from "../price_learning";
 import { ensurePriceForecastLearningStates, runPriceForecastLearning } from "../price_forecast";
 import { ensureHouseLoadLearningStates, runHouseLoadLearning } from "../house_load";
 import { ensureThermalRuntimeLearningStates, runThermalRuntimeLearning } from "../thermal_runtime";
+import { ensureBatteryRuntimeLearningStates, runBatteryRuntimeLearning } from "../battery_runtime";
 import { ensurePvHorizonLearningStates, runPvHorizon } from "../pv_horizon";
 import { withLearningDataPath } from "../data_dir";
 import type { StateHost } from "../../ems_light/state_util";
@@ -18,6 +19,7 @@ async function runLearningTick(host: PvBiasRunHost & StateHost): Promise<void> {
 	await runPriceForecastLearning(host);
 	await runHouseLoadLearning(host);
 	await runThermalRuntimeLearning(host);
+	await runBatteryRuntimeLearning(host);
 }
 
 export async function initPvBiasLearning(adapter: ioBroker.Adapter): Promise<void> {
@@ -28,6 +30,7 @@ export async function initPvBiasLearning(adapter: ioBroker.Adapter): Promise<voi
 	await ensurePriceForecastLearningStates(host);
 	await ensureHouseLoadLearningStates(host);
 	await ensureThermalRuntimeLearningStates(host);
+	await ensureBatteryRuntimeLearningStates(host);
 
 	const cfg = pvBiasConfigFromAdapter(adapter.config);
 	stopPvBiasLearning();
@@ -43,7 +46,7 @@ export async function initPvBiasLearning(adapter: ioBroker.Adapter): Promise<voi
 	}, cfg.intervalSec * 1000);
 
 	adapter.log.info(
-		`EMS-Light PV-Bias + PV-Horizon + Price-Learning + Price-Forecast + House-Load + Thermal-Runtime ready (read-only, interval ${cfg.intervalSec}s)`,
+		`EMS-Light PV-Bias + PV-Horizon + Price + House-Load + Thermal + Battery-Runtime ready (read-only, interval ${cfg.intervalSec}s)`,
 	);
 }
 

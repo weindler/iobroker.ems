@@ -1633,6 +1633,116 @@
 					"md": 3,
 					"lg": 3,
 					"xl": 3
+				},
+				"hBatteryRuntimeLearning": {
+					"type": "header",
+					"size": 5,
+					"text": "Phase 2H — Battery Runtime Learning (Batterie-Ist-Verhalten)"
+				},
+				"hBatteryRuntimeLearningHelp": {
+					"type": "staticText",
+					"text": "Lernt Nachtentladung, Lade-/Entladeraten und Vollladung aus History. SOC-Standard: addons.battery.mapping.soc_pct. Leistung nur per Admin (positiv=laden, negativ=entladen). Top-Off-Intervall ist Konfig/Policy — Learning leitet nur Status ab. Read-only.",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_battery_runtime_enabled": {
+					"type": "checkbox",
+					"label": "Battery Runtime Learning aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_battery_runtime_lookback_days": {
+					"type": "number",
+					"label": "Lookback (Tage)",
+					"min": 7,
+					"max": 365,
+					"default": 90,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_battery_runtime_soc_state": {
+					"type": "objectId",
+					"label": "SOC-State (optional, z. B. sonnen.0.status.userSoc)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_battery_runtime_power_state": {
+					"type": "objectId",
+					"label": "Batterie-Leistung W (optional, + laden / − entladen)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_battery_runtime_capacity_state": {
+					"type": "objectId",
+					"label": "Kapazität kWh (optional, für Nacht-kWh)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_battery_runtime_full_charge_soc": {
+					"type": "number",
+					"label": "Vollladung SOC (%)",
+					"min": 80,
+					"max": 100,
+					"default": 95,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"learning_battery_runtime_topoff_interval_days": {
+					"type": "number",
+					"label": "Top-Off Intervall (Tage, Policy)",
+					"min": 1,
+					"max": 90,
+					"default": 20,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"learning_battery_runtime_night_start": {
+					"type": "text",
+					"label": "Nachtfenster Start (HH:MM)",
+					"default": "22:00",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"learning_battery_runtime_night_end": {
+					"type": "text",
+					"label": "Nachtfenster Ende (HH:MM)",
+					"default": "06:00",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
 				}
 			}
 		}

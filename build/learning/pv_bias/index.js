@@ -8,6 +8,7 @@ const price_learning_1 = require("../price_learning");
 const price_forecast_1 = require("../price_forecast");
 const house_load_1 = require("../house_load");
 const thermal_runtime_1 = require("../thermal_runtime");
+const battery_runtime_1 = require("../battery_runtime");
 const pv_horizon_1 = require("../pv_horizon");
 const data_dir_1 = require("../data_dir");
 let pvBiasTimer = null;
@@ -18,6 +19,7 @@ async function runLearningTick(host) {
     await (0, price_forecast_1.runPriceForecastLearning)(host);
     await (0, house_load_1.runHouseLoadLearning)(host);
     await (0, thermal_runtime_1.runThermalRuntimeLearning)(host);
+    await (0, battery_runtime_1.runBatteryRuntimeLearning)(host);
 }
 async function initPvBiasLearning(adapter) {
     const host = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
@@ -27,6 +29,7 @@ async function initPvBiasLearning(adapter) {
     await (0, price_forecast_1.ensurePriceForecastLearningStates)(host);
     await (0, house_load_1.ensureHouseLoadLearningStates)(host);
     await (0, thermal_runtime_1.ensureThermalRuntimeLearningStates)(host);
+    await (0, battery_runtime_1.ensureBatteryRuntimeLearningStates)(host);
     const cfg = (0, config_1.pvBiasConfigFromAdapter)(adapter.config);
     stopPvBiasLearning();
     void runLearningTick(host).catch((e) => {
@@ -37,7 +40,7 @@ async function initPvBiasLearning(adapter) {
             adapter.log.error(`PV-Bias/Horizon tick: ${e}`);
         });
     }, cfg.intervalSec * 1000);
-    adapter.log.info(`EMS-Light PV-Bias + PV-Horizon + Price-Learning + Price-Forecast + House-Load + Thermal-Runtime ready (read-only, interval ${cfg.intervalSec}s)`);
+    adapter.log.info(`EMS-Light PV-Bias + PV-Horizon + Price + House-Load + Thermal + Battery-Runtime ready (read-only, interval ${cfg.intervalSec}s)`);
 }
 exports.initPvBiasLearning = initPvBiasLearning;
 function stopPvBiasLearning() {

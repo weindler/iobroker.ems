@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.24",
+		"version": "0.1.25",
 		"news": {
+			"0.1.25": {
+				"en": "EMS-Light Phase 2H: Battery Runtime Learning V1 — night discharge, charge/discharge rates, top-off status under learning.battery_runtime.*",
+				"de": "EMS-Light Phase 2H: Battery Runtime Learning V1 — Nachtentladung, Lade/Entlade-Raten, Top-Off-Status unter learning.battery_runtime.*"
+			},
 			"0.1.24": {
 				"en": "EMS-Light Phase 2G: Thermal Runtime Learning V1 — buffer cool-down cycles under learning.thermal_runtime.*",
 				"de": "EMS-Light Phase 2G: Thermal Runtime Learning V1 — Puffer-Kühlzyklen unter learning.thermal_runtime.*"

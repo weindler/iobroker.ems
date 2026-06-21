@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.20",
+		"version": "0.1.21",
 		"news": {
+			"0.1.21": {
+				"en": "Fix: Price Forecast freeze/persist used non-existent getAbsolutePath — now uses getAbsoluteInstanceDataDir",
+				"de": "Fix: Price-Forecast-Freeze/Persist nutzte getAbsolutePath (existiert nicht) — jetzt getAbsoluteInstanceDataDir"
+			},
 			"0.1.20": {
 				"en": "Fix: Learning hourly timers were stopped on adapter start — PV/Weather/Price learning now runs on interval",
 				"de": "Fix: Learning-Stunden-Timer wurden beim Start abgeschaltet — PV/Wetter/Preis-Learning läuft wieder im Intervall"

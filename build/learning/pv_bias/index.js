@@ -7,6 +7,7 @@ const config_1 = require("./config");
 const price_learning_1 = require("../price_learning");
 const price_forecast_1 = require("../price_forecast");
 const pv_horizon_1 = require("../pv_horizon");
+const data_dir_1 = require("../data_dir");
 let pvBiasTimer = null;
 async function runLearningTick(host) {
     await (0, run_1.runPvBiasLearning)(host);
@@ -15,7 +16,7 @@ async function runLearningTick(host) {
     await (0, price_forecast_1.runPriceForecastLearning)(host);
 }
 async function initPvBiasLearning(adapter) {
-    const host = adapter;
+    const host = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
     await (0, ensure_states_1.ensurePvBiasStates)(host);
     await (0, pv_horizon_1.ensurePvHorizonLearningStates)(host);
     await (0, price_learning_1.ensurePriceLearningStates)(host);

@@ -1,7 +1,7 @@
 "use strict";
 /**
  * History-Abfragen für Learning-Module.
- * Bulk-Fenster via getHistoryAsync (defaultHistory-Instanz), begrenzter Tages-Fallback.
+ * sendTo('history.0','getHistory') wie im JS-Test; getHistoryAsync als Fallback.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchHistoryRowsLookback = exports.fetchHistoryRowsInRange = exports.withHistoryTimeout = exports.historyStateCandidates = exports.dayBoundsMs = exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_AGGREGATES = exports.PER_DAY_FALLBACK_MAX_DAYS = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_BULK_TIMEOUT_MS = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
@@ -11,7 +11,7 @@ exports.HISTORY_BULK_TIMEOUT_MS = 120_000;
 exports.HISTORY_DAY_CONCURRENCY = 4;
 /** Nach leerem Bulk: max. so viele Tage einzeln — 90d×2 Aggregate würde den Tick blockieren. */
 exports.PER_DAY_FALLBACK_MAX_DAYS = 7;
-exports.HISTORY_AGGREGATES = ["onchange", "none"];
+exports.HISTORY_AGGREGATES = ["none", "onchange"];
 exports.HISTORY_QUERY_OPTIONS = {
     ignoreNull: true,
     returnNewestEntries: false,
@@ -100,9 +100,7 @@ function rowsFromHistoryMessage(res) {
     }
     return Array.isArray(payload.result) ? payload.result : [];
 }
-/** getHistoryAsync nutzt system.defaultHistory — sendTo('history.0') kann leer liefern und blockierte 0.1.32. */
-async function invokeGetHistory(host, stateId, options, timeoutMs) {
-    const res = await withHistoryTimeout(host.getHistoryAsync(stateId, options), timeoutMs);
+function parseHistoryResponse(res) {
     if (res === null) {
         return { rows: [], timedOut: true, error: false };
     }
@@ -112,6 +110,19 @@ async function invokeGetHistory(host, stateId, options, timeoutMs) {
         return { rows: [], timedOut: false, error: true };
     }
     return { rows, timedOut: false, error: false };
+}
+/** sendTo history.0 (JS-Test: 288 rows) vor getHistoryAsync. */
+async function invokeGetHistory(host, stateId, options, timeoutMs) {
+    const message = { id: stateId, options };
+    if (host.sendToAsync) {
+        const viaSendTo = await withHistoryTimeout(host.sendToAsync("history.0", "getHistory", message), timeoutMs);
+        const parsed = parseHistoryResponse(viaSendTo);
+        if (parsed.rows.length > 0 || parsed.timedOut || parsed.error) {
+            return parsed;
+        }
+    }
+    const viaAsync = await withHistoryTimeout(host.getHistoryAsync(stateId, options), timeoutMs);
+    return parseHistoryResponse(viaAsync);
 }
 function mergeStats(a, b) {
     return {

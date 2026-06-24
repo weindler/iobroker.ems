@@ -1,6 +1,6 @@
 /**
  * History-Abfragen für Learning-Module.
- * Bulk-Fenster via getHistoryAsync (defaultHistory-Instanz), begrenzter Tages-Fallback.
+ * sendTo('history.0','getHistory') wie im JS-Test; getHistoryAsync als Fallback.
  */
 
 export type HistoryQueryHost = {
@@ -8,6 +8,11 @@ export type HistoryQueryHost = {
 		id: string,
 		options?: ioBroker.GetHistoryOptions,
 	) => Promise<{ result?: ioBroker.GetHistoryResult; step?: number; sessionId?: number }>;
+	sendToAsync?: (
+		instanceName: string,
+		command: string,
+		message: unknown,
+	) => Promise<unknown>;
 	getObjectAsync?: (id: string) => Promise<ioBroker.Object | null | undefined>;
 	log?: { info?: (msg: string) => void; warn?: (msg: string) => void; debug?: (msg: string) => void };
 };
@@ -19,7 +24,7 @@ export const HISTORY_DAY_CONCURRENCY = 4;
 /** Nach leerem Bulk: max. so viele Tage einzeln — 90d×2 Aggregate würde den Tick blockieren. */
 export const PER_DAY_FALLBACK_MAX_DAYS = 7;
 
-export const HISTORY_AGGREGATES = ["onchange", "none"] as const;
+export const HISTORY_AGGREGATES = ["none", "onchange"] as const;
 export type HistoryAggregate = (typeof HISTORY_AGGREGATES)[number];
 
 export const HISTORY_QUERY_OPTIONS: ioBroker.GetHistoryOptions = {
@@ -131,26 +136,44 @@ function rowsFromHistoryMessage(res: unknown): ioBroker.GetHistoryResult {
 	return Array.isArray(payload.result) ? payload.result : [];
 }
 
-/** getHistoryAsync nutzt system.defaultHistory — sendTo('history.0') kann leer liefern und blockierte 0.1.32. */
+function parseHistoryResponse(res: unknown): {
+	rows: ioBroker.GetHistoryResult;
+	timedOut: boolean;
+	error: boolean;
+} {
+	if (res === null) {
+		return { rows: [], timedOut: true, error: false };
+	}
+	const rows = rowsFromHistoryMessage(res);
+	const err = (res as { error?: unknown }).error;
+	if (err && rows.length === 0) {
+		return { rows: [], timedOut: false, error: true };
+	}
+	return { rows, timedOut: false, error: false };
+}
+
+/** sendTo history.0 (JS-Test: 288 rows) vor getHistoryAsync. */
 async function invokeGetHistory(
 	host: HistoryQueryHost,
 	stateId: string,
 	options: ioBroker.GetHistoryOptions,
 	timeoutMs: number,
 ): Promise<{ rows: ioBroker.GetHistoryResult; timedOut: boolean; error: boolean }> {
-	const res = await withHistoryTimeout(host.getHistoryAsync(stateId, options), timeoutMs);
+	const message = { id: stateId, options };
 
-	if (res === null) {
-		return { rows: [], timedOut: true, error: false };
+	if (host.sendToAsync) {
+		const viaSendTo = await withHistoryTimeout(
+			host.sendToAsync("history.0", "getHistory", message),
+			timeoutMs,
+		);
+		const parsed = parseHistoryResponse(viaSendTo);
+		if (parsed.rows.length > 0 || parsed.timedOut || parsed.error) {
+			return parsed;
+		}
 	}
 
-	const rows = rowsFromHistoryMessage(res);
-	const err = (res as { error?: unknown }).error;
-	if (err && rows.length === 0) {
-		return { rows: [], timedOut: false, error: true };
-	}
-
-	return { rows, timedOut: false, error: false };
+	const viaAsync = await withHistoryTimeout(host.getHistoryAsync(stateId, options), timeoutMs);
+	return parseHistoryResponse(viaAsync);
 }
 
 function mergeStats(a: HistoryFetchStats, b: HistoryFetchStats): HistoryFetchStats {

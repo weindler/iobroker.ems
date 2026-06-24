@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.34",
+		"version": "0.1.35",
 		"news": {
+			"0.1.35": {
+				"en": "History via sendTo history.0 (matches working JS test), aggregate none first, getHistoryAsync fallback",
+				"de": "History via sendTo history.0 (wie JS-Test), aggregate none zuerst, getHistoryAsync Fallback"
+			},
 			"0.1.34": {
 				"en": "History bulk: try 7d then 30d then full lookback, 120s timeout, clearer timeout logs",
 				"de": "History-Bulk: zuerst 7d dann 30d dann voll, 120s Timeout, klarere Timeout-Logs"

@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.38",
+		"version": "0.1.39",
 		"news": {
+			"0.1.39": {
+				"en": "House load and PV-Bias use history.0 hourly/daily aggregate when raw onChange timestamps span only minutes",
+				"de": "House-Load und PV-Bias nutzen history.0 Stunden/Tages-Aggregate wenn onChange-Roh-timestamps nur Minuten span"
+			},
 			"0.1.38": {
 				"en": "Normalize history timestamps from seconds to ms — fixes 840 rows collapsing to 2 hour buckets",
 				"de": "History-Timestamps Sekunden→ms normalisieren — behebt 840 Zeilen in 2 Stunden-Buckets"

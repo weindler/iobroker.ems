@@ -132,7 +132,7 @@ export async function runHouseLoadLearning(host: HouseLoadRunHost): Promise<void
 		await writeResult(host, result);
 
 		host.log.info(
-			`House-Load-Learning: status=${result.status} health=${result.healthStatus} samples=${result.sampleCount} days=${result.sampleDays} source=${sourceLabelFromStateId(resolved.stateId)} (history=${stats.rowsTotal} rows → ${stats.hourlySamples} h, valid=${stats.validRows}, span=${stats.tsSpanHours ?? "?"}h)`,
+			`House-Load-Learning: status=${result.status} health=${result.healthStatus} samples=${result.sampleCount} days=${result.sampleDays} source=${sourceLabelFromStateId(resolved.stateId)} (history=${stats.historySource}, ${stats.rowsTotal} rows → ${stats.hourlySamples} h, span=${stats.tsSpanHours ?? "?"}h)`,
 		);
 
 		if (stats.rowsTotal > 50 && stats.hourlySamples < 10) {

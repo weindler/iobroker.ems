@@ -35,43 +35,68 @@ function mockRowsPerDay(baseMs, days, hoursPerDay, powerW) {
     (0, node_test_1.it)("aggregates one sample per hour across multiple days", async () => {
         const base = Date.UTC(2026, 5, 20, 0, 0, 0);
         const host = {
-            getHistoryAsync: async () => ({ result: mockRowsPerDay(base, 4, 24, 2000) }),
+            getHistoryAsync: async (_id, options) => {
+                if (options?.aggregate === "average" && options.step === 3_600_000) {
+                    return { result: mockRowsPerDay(base, 4, 24, 2000) };
+                }
+                return { result: [] };
+            },
         };
         const { samples, stats } = await (0, history_1.fetchHouseLoadSamples)(host, "sonnen.0.status.consumption", 90);
-        strict_1.default.equal(stats.rowsTotal, 96);
+        strict_1.default.equal(stats.historySource, "aggregate_hourly");
         strict_1.default.equal(stats.hourlySamples, 96);
         strict_1.default.ok((0, history_1.distinctSampleDays)(samples) >= 4);
     });
     (0, node_test_1.it)("uses latest row per hour bucket (descending history order)", async () => {
         const hour = Date.UTC(2026, 5, 24, 10, 0, 0);
         const host = {
-            getHistoryAsync: async () => ({
-                result: [
-                    { ts: hour + 3_000_000, val: 4000, ack: true, lc: 0, from: "test" },
-                    { ts: hour + 1_000_000, val: 2000, ack: true, lc: 0, from: "test" },
-                    { ts: hour + 2_000_000, val: 3000, ack: true, lc: 0, from: "test" },
-                ],
-            }),
+            getHistoryAsync: async (_id, options) => {
+                if (options?.aggregate === "average" && options.step === 3_600_000) {
+                    return { result: [] };
+                }
+                return {
+                    result: [
+                        { ts: hour + 3_000_000, val: 4000, ack: true, lc: 0, from: "test" },
+                        { ts: hour + 1_000_000, val: 2000, ack: true, lc: 0, from: "test" },
+                        { ts: hour + 2_000_000, val: 3000, ack: true, lc: 0, from: "test" },
+                    ],
+                };
+            },
         };
-        const { samples } = await (0, history_1.fetchHouseLoadSamples)(host, "sonnen.0.status.consumption", 7);
+        const { samples, stats } = await (0, history_1.fetchHouseLoadSamples)(host, "sonnen.0.status.consumption", 7);
+        strict_1.default.equal(stats.historySource, "onchange_raw");
         strict_1.default.equal(samples.length, 1);
         strict_1.default.equal(samples[0].powerW, 4000);
     });
     (0, node_test_1.it)("spreads second-based history timestamps across hours", async () => {
         const baseSec = 1_782_000_000;
         const host = {
-            getHistoryAsync: async () => ({
-                result: Array.from({ length: 96 }, (_, i) => ({
-                    ts: baseSec + i * 3600,
-                    val: 2500,
-                    ack: true,
-                    lc: 0,
-                    from: "test",
-                })),
-            }),
+            getHistoryAsync: async (_id, options) => {
+                if (options?.aggregate === "average" && options.step === 3_600_000) {
+                    return {
+                        result: Array.from({ length: 96 }, (_, i) => ({
+                            ts: (baseSec + i * 3600) * 1000,
+                            val: 2500,
+                            ack: true,
+                            lc: 0,
+                            from: "test",
+                        })),
+                    };
+                }
+                return {
+                    result: Array.from({ length: 96 }, (_, i) => ({
+                        ts: baseSec + i * 3600,
+                        val: 2500,
+                        ack: true,
+                        lc: 0,
+                        from: "test",
+                    })),
+                };
+            },
         };
         const { samples, stats } = await (0, history_1.fetchHouseLoadSamples)(host, "sonnen.0.status.consumption", 7);
         strict_1.default.equal(stats.hourlySamples, 96);
         strict_1.default.ok((stats.tsSpanHours ?? 0) >= 95);
+        strict_1.default.equal(samples.length, 96);
     });
 });

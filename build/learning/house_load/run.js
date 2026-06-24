@@ -102,7 +102,7 @@ async function runHouseLoadLearning(host) {
             result.healthJson.last_persist_at = lastRun;
         }
         await writeResult(host, result);
-        host.log.info(`House-Load-Learning: status=${result.status} health=${result.healthStatus} samples=${result.sampleCount} days=${result.sampleDays} source=${(0, config_1.sourceLabelFromStateId)(resolved.stateId)} (history=${stats.rowsTotal} rows → ${stats.hourlySamples} h, valid=${stats.validRows}, span=${stats.tsSpanHours ?? "?"}h)`);
+        host.log.info(`House-Load-Learning: status=${result.status} health=${result.healthStatus} samples=${result.sampleCount} days=${result.sampleDays} source=${(0, config_1.sourceLabelFromStateId)(resolved.stateId)} (history=${stats.historySource}, ${stats.rowsTotal} rows → ${stats.hourlySamples} h, span=${stats.tsSpanHours ?? "?"}h)`);
         if (stats.rowsTotal > 50 && stats.hourlySamples < 10) {
             host.log.warn(`House Load Learning: ${stats.rowsTotal} History-Zeilen aber nur ${stats.hourlySamples} Stunden-Samples (invalid=${stats.skippedInvalid}, negative=${stats.skippedNegative}, span=${stats.tsSpanHours ?? "?"}h) — Timestamps/Einheit prüfen`);
         }

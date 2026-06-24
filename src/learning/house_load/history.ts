@@ -1,11 +1,12 @@
 import { asNum } from "../../ems_light/state_util";
 import {
+	fetchHistoryRowsAggregated,
 	fetchHistoryRowsLookback,
 	HISTORY_CHUNK_TIMEOUT_MS,
 	HISTORY_ROWS_PER_DAY,
 	type HistoryQueryHost,
 } from "../history_query";
-import { MS_PER_HOUR, PLAUSIBLE_W_MAX, PLAUSIBLE_W_MIN } from "./constants";
+import { MS_PER_DAY, MS_PER_HOUR, PLAUSIBLE_W_MAX, PLAUSIBLE_W_MIN } from "./constants";
 import { calendarContext } from "./time";
 import type { HouseLoadSample } from "./types";
 
@@ -20,6 +21,7 @@ export type HouseLoadHistoryStats = {
 	skippedInvalid: number;
 	skippedNegative: number;
 	tsSpanHours: number | null;
+	historySource: "aggregate_hourly" | "onchange_raw";
 };
 
 function hourStartMs(ts: number): number {
@@ -76,7 +78,6 @@ export function normalizeHouseLoadPowerW(raw: number, unit: "W" | "kW"): number 
 	if (unit === "kW") {
 		watts = raw * 1000;
 	} else if (Math.abs(raw) > 0 && Math.abs(raw) < 100) {
-		// Sonnen/Alias oft kW numerisch ohne korrekte common.unit
 		watts = raw * 1000;
 	}
 	if (!isValidHouseLoadW(watts)) {
@@ -99,37 +100,28 @@ export function filterOutliers(values: number[]): number[] {
 	return values.filter((v) => v >= low && v <= high);
 }
 
-export async function fetchHouseLoadSamples(
-	host: HouseLoadHistoryHost,
-	stateId: string,
-	lookbackDays: number,
-): Promise<{ samples: HouseLoadSample[]; lastValidTs: number | null; stats: HouseLoadHistoryStats }> {
+function buildSamplesFromRows(
+	rows: ioBroker.GetHistoryResult,
+	powerUnit: "W" | "kW",
+	historySource: HouseLoadHistoryStats["historySource"],
+	preBinnedHourly: boolean,
+): { samples: HouseLoadSample[]; lastValidTs: number | null; stats: HouseLoadHistoryStats } {
 	const samples: HouseLoadSample[] = [];
 	let lastValidTs: number | null = null;
 	const stats: HouseLoadHistoryStats = {
-		rowsTotal: 0,
+		rowsTotal: rows.length,
 		validRows: 0,
 		hourlySamples: 0,
 		skippedInvalid: 0,
 		skippedNegative: 0,
 		tsSpanHours: null,
+		historySource,
 	};
 
-	const powerUnit = await resolveHouseLoadPowerUnit(host, stateId);
-
-	const rows = await fetchHistoryRowsLookback(
-		host,
-		stateId,
-		lookbackDays,
-		HISTORY_ROWS_PER_DAY,
-		HISTORY_CHUNK_TIMEOUT_MS,
-	);
-	stats.rowsTotal = rows.length;
-
-	/** Pro Stunde letzter gültiger Wert — wie battery_runtime/history.ts */
 	const byHour = new Map<number, { ts: number; powerW: number }>();
 	let tsMin: number | null = null;
 	let tsMax: number | null = null;
+
 	for (const row of rows) {
 		const ts = typeof row?.ts === "number" ? row.ts : null;
 		const raw = asNum(row?.val);
@@ -149,30 +141,50 @@ export async function fetchHouseLoadSamples(
 		stats.validRows++;
 		if (tsMin === null || ts < tsMin) tsMin = ts;
 		if (tsMax === null || ts > tsMax) tsMax = ts;
+		if (lastValidTs === null || ts > lastValidTs) {
+			lastValidTs = ts;
+		}
+
+		if (preBinnedHourly) {
+			const d = new Date(ts);
+			const ctx = calendarContext(d);
+			samples.push({
+				ts,
+				hourStartMs: hourStartMs(ts),
+				dateKey: ctx.dateKey,
+				hourOfDay: ctx.hourOfDay,
+				segment: ctx.segment,
+				season: ctx.season,
+				weekday: ctx.weekday,
+				dayType: ctx.dayType,
+				powerW: Math.round(powerW),
+			});
+			continue;
+		}
+
 		const bucket = hourStartMs(ts);
 		const existing = byHour.get(bucket);
 		if (!existing || ts > existing.ts) {
 			byHour.set(bucket, { ts, powerW });
 		}
-		if (lastValidTs === null || ts > lastValidTs) {
-			lastValidTs = ts;
-		}
 	}
 
-	for (const { ts, powerW } of byHour.values()) {
-		const d = new Date(ts);
-		const ctx = calendarContext(d);
-		samples.push({
-			ts,
-			hourStartMs: hourStartMs(ts),
-			dateKey: ctx.dateKey,
-			hourOfDay: ctx.hourOfDay,
-			segment: ctx.segment,
-			season: ctx.season,
-			weekday: ctx.weekday,
-			dayType: ctx.dayType,
-			powerW: Math.round(powerW),
-		});
+	if (!preBinnedHourly) {
+		for (const { ts, powerW } of byHour.values()) {
+			const d = new Date(ts);
+			const ctx = calendarContext(d);
+			samples.push({
+				ts,
+				hourStartMs: hourStartMs(ts),
+				dateKey: ctx.dateKey,
+				hourOfDay: ctx.hourOfDay,
+				segment: ctx.segment,
+				season: ctx.season,
+				weekday: ctx.weekday,
+				dayType: ctx.dayType,
+				powerW: Math.round(powerW),
+			});
+		}
 	}
 
 	samples.sort((a, b) => a.hourStartMs - b.hourStartMs);
@@ -181,6 +193,51 @@ export async function fetchHouseLoadSamples(
 		stats.tsSpanHours = Math.round((tsMax - tsMin) / MS_PER_HOUR);
 	}
 	return { samples, lastValidTs, stats };
+}
+
+export async function fetchHouseLoadSamples(
+	host: HouseLoadHistoryHost,
+	stateId: string,
+	lookbackDays: number,
+): Promise<{ samples: HouseLoadSample[]; lastValidTs: number | null; stats: HouseLoadHistoryStats }> {
+	const powerUnit = await resolveHouseLoadPowerUnit(host, stateId);
+	const endMs = Date.now();
+	const startMs = endMs - lookbackDays * MS_PER_DAY;
+
+	const aggregateRows = await fetchHistoryRowsAggregated(
+		host,
+		stateId,
+		startMs,
+		endMs,
+		lookbackDays * 24 + 48,
+		HISTORY_CHUNK_TIMEOUT_MS,
+		"average",
+		MS_PER_HOUR,
+	);
+	const fromAggregate = buildSamplesFromRows(
+		aggregateRows,
+		powerUnit,
+		"aggregate_hourly",
+		true,
+	);
+
+	if (fromAggregate.stats.hourlySamples >= Math.min(lookbackDays, 7)) {
+		return fromAggregate;
+	}
+
+	const rawRows = await fetchHistoryRowsLookback(
+		host,
+		stateId,
+		lookbackDays,
+		HISTORY_ROWS_PER_DAY,
+		HISTORY_CHUNK_TIMEOUT_MS,
+	);
+	const fromRaw = buildSamplesFromRows(rawRows, powerUnit, "onchange_raw", false);
+
+	if (fromRaw.stats.hourlySamples > fromAggregate.stats.hourlySamples) {
+		return fromRaw;
+	}
+	return fromAggregate;
 }
 
 export function distinctSampleDays(samples: HouseLoadSample[]): number {

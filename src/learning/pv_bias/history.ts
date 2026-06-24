@@ -1,5 +1,6 @@
 import { asNum } from "../../ems_light/state_util";
 import {
+	fetchHistoryRowsAggregated,
 	fetchHistoryRowsInRange,
 	HISTORY_CHUNK_TIMEOUT_MS,
 	type HistoryQueryHost,
@@ -20,6 +21,14 @@ export function dayBoundsMs(dayOffset: number): { start: number; end: number } {
 	d.setDate(d.getDate() - dayOffset);
 	const start = d.getTime();
 	return { start, end: start + MS_PER_DAY };
+}
+
+function localDateKey(ts: number): string {
+	const d = new Date(ts);
+	const y = d.getFullYear();
+	const m = String(d.getMonth() + 1).padStart(2, "0");
+	const day = String(d.getDate()).padStart(2, "0");
+	return `${y}-${m}-${day}`;
 }
 
 async function readLiveValue(host: HistoryHost, stateId: string): Promise<number | null> {
@@ -100,8 +109,93 @@ export async function fetchDayLastValue(
 	return lastValidValueFromRows(rows);
 }
 
+/** Tagesmaximum via history.0 aggregate — robuster als onChange-Roh-timestamps. */
+async function fetchDailyMaxMap(
+	host: HistoryHost,
+	stateId: string,
+	startMs: number,
+	endMs: number,
+	maxDays: number,
+): Promise<Map<string, number>> {
+	const map = new Map<string, number>();
+	if (!stateId) {
+		return map;
+	}
+
+	const rows = await fetchHistoryRowsAggregated(
+		host,
+		stateId,
+		startMs,
+		endMs,
+		maxDays + 5,
+		HISTORY_CHUNK_TIMEOUT_MS,
+		"max",
+		MS_PER_DAY,
+	);
+
+	for (const row of rows) {
+		const ts = typeof row?.ts === "number" ? row.ts : null;
+		const n = asNum(row?.val);
+		if (ts === null || n === null || n <= 0) {
+			continue;
+		}
+		map.set(localDateKey(ts), n);
+	}
+	return map;
+}
+
 /** Sammelt gültige Tagespaare für die letzten 30 Tage (inkl. heute). Fehlende Tage werden übersprungen. */
-async function fetchDayPair(
+export async function fetchPvBiasDayPairs(
+	host: HistoryHost,
+	actualStateId: string,
+	forecastStateId: string,
+	maxDays = 30,
+): Promise<PvBiasDayPair[]> {
+	const endMs = Date.now();
+	const startMs = endMs - maxDays * MS_PER_DAY;
+
+	const [actualByDay, forecastByDay] = await Promise.all([
+		fetchDailyMaxMap(host, actualStateId, startMs, endMs, maxDays),
+		fetchDailyMaxMap(host, forecastStateId, startMs, endMs, maxDays),
+	]);
+
+	const pairs: PvBiasDayPair[] = [];
+	for (let dayOffset = 0; dayOffset < maxDays; dayOffset++) {
+		const { start } = dayBoundsMs(dayOffset);
+		const dateKey = localDateKey(start);
+
+		let actualKwh = actualByDay.get(dateKey) ?? null;
+		let forecastKwh = forecastByDay.get(dateKey) ?? null;
+
+		if (dayOffset === 0) {
+			if (actualKwh === null) {
+				actualKwh = await readLiveValue(host, actualStateId);
+			}
+			if (forecastKwh === null) {
+				forecastKwh = await readLiveValue(host, forecastStateId);
+			}
+		}
+
+		if (actualKwh === null || forecastKwh === null || forecastKwh <= 0) {
+			continue;
+		}
+		pairs.push({ dayOffset, actualKwh, forecastKwh });
+	}
+
+	if (pairs.length >= Math.min(maxDays, 7)) {
+		return pairs;
+	}
+
+	// Fallback: Tages-Fenster einzeln (z. B. wenn aggregate leer)
+	const fallback = await Promise.all(
+		Array.from({ length: maxDays }, (_, dayOffset) =>
+			fetchDayPairFallback(host, dayOffset, actualStateId, forecastStateId),
+		),
+	);
+	return fallback.filter((p): p is PvBiasDayPair => p !== null);
+}
+
+async function fetchDayPairFallback(
 	host: HistoryHost,
 	dayOffset: number,
 	actualStateId: string,
@@ -124,18 +218,4 @@ async function fetchDayPair(
 		return null;
 	}
 	return { dayOffset, actualKwh, forecastKwh };
-}
-
-export async function fetchPvBiasDayPairs(
-	host: HistoryHost,
-	actualStateId: string,
-	forecastStateId: string,
-	maxDays = 30,
-): Promise<PvBiasDayPair[]> {
-	const results = await Promise.all(
-		Array.from({ length: maxDays }, (_, dayOffset) =>
-			fetchDayPair(host, dayOffset, actualStateId, forecastStateId),
-		),
-	);
-	return results.filter((p): p is PvBiasDayPair => p !== null);
 }

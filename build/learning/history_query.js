@@ -5,7 +5,7 @@
  * getHistoryAsync nur wenn kein sendToAsync am Host.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchHistoryRowsLookback = exports.fetchHistoryRowsInRange = exports.withHistoryTimeout = exports.historyStateCandidates = exports.dayBoundsMs = exports.normalizeHistoryRows = exports.normalizeHistoryTs = exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_AGGREGATES = exports.PER_DAY_FALLBACK_MAX_DAYS = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_BULK_TIMEOUT_MS = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
+exports.fetchHistoryRowsLookback = exports.fetchHistoryRowsAggregated = exports.fetchHistoryRowsInRange = exports.withHistoryTimeout = exports.historyStateCandidates = exports.dayBoundsMs = exports.normalizeHistoryRows = exports.normalizeHistoryTs = exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_AGGREGATES = exports.PER_DAY_FALLBACK_MAX_DAYS = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_BULK_TIMEOUT_MS = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
 exports.HISTORY_ROWS_PER_DAY = 500;
 exports.HISTORY_CHUNK_TIMEOUT_MS = 45_000;
 exports.HISTORY_BULK_TIMEOUT_MS = 45_000;
@@ -173,6 +173,25 @@ async function fetchHistoryRowsInRange(host, stateId, startMs, endMs, count = ex
     return result.rows;
 }
 exports.fetchHistoryRowsInRange = fetchHistoryRowsInRange;
+/** Stündlich/täglich aggregiert — umgeht kaputte onChange-Timestamps in Rohdaten. */
+async function fetchHistoryRowsAggregated(host, stateId, startMs, endMs, count, timeoutMs, aggregate, stepMs) {
+    if (!stateId || stepMs <= 0) {
+        return [];
+    }
+    const { rows, timedOut, error } = await invokeGetHistory(host, stateId, {
+        ...exports.HISTORY_QUERY_OPTIONS,
+        aggregate,
+        step: stepMs,
+        start: startMs,
+        end: endMs,
+        count,
+    }, timeoutMs);
+    if (timedOut || error) {
+        return [];
+    }
+    return normalizeHistoryRows(rows);
+}
+exports.fetchHistoryRowsAggregated = fetchHistoryRowsAggregated;
 async function fetchHistoryRowsInRangeDetailed(host, stateId, startMs, endMs, count, timeoutMs, aggregate) {
     if (!stateId) {
         return { rows: [], stats: emptyStats() };

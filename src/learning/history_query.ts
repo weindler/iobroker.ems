@@ -27,6 +27,7 @@ export const PER_DAY_FALLBACK_MAX_DAYS = 7;
 
 export const HISTORY_AGGREGATES = ["none", "onchange"] as const;
 export type HistoryAggregate = (typeof HISTORY_AGGREGATES)[number];
+export type HistoryStepAggregate = "average" | "max" | "min" | "minmax";
 
 export const HISTORY_QUERY_OPTIONS: ioBroker.GetHistoryOptions = {
 	ignoreNull: true,
@@ -242,6 +243,41 @@ export async function fetchHistoryRowsInRange(
 		aggregate,
 	);
 	return result.rows;
+}
+
+/** Stündlich/täglich aggregiert — umgeht kaputte onChange-Timestamps in Rohdaten. */
+export async function fetchHistoryRowsAggregated(
+	host: HistoryQueryHost,
+	stateId: string,
+	startMs: number,
+	endMs: number,
+	count: number,
+	timeoutMs: number,
+	aggregate: HistoryStepAggregate,
+	stepMs: number,
+): Promise<ioBroker.GetHistoryResult> {
+	if (!stateId || stepMs <= 0) {
+		return [];
+	}
+
+	const { rows, timedOut, error } = await invokeGetHistory(
+		host,
+		stateId,
+		{
+			...HISTORY_QUERY_OPTIONS,
+			aggregate,
+			step: stepMs,
+			start: startMs,
+			end: endMs,
+			count,
+		},
+		timeoutMs,
+	);
+
+	if (timedOut || error) {
+		return [];
+	}
+	return normalizeHistoryRows(rows);
 }
 
 async function fetchHistoryRowsInRangeDetailed(

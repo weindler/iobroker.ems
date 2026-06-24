@@ -106,6 +106,7 @@ export async function runHouseLoadLearning(host: HouseLoadRunHost): Promise<void
 	}
 
 	try {
+		host.log.info(`House-Load-Learning: loading history (${cfg.lookbackDays}d, ${sourceLabelFromStateId(resolved.stateId)})…`);
 		const { samples, lastValidTs } = await fetchHouseLoadSamples(
 			host,
 			resolved.stateId,

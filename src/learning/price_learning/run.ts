@@ -83,6 +83,7 @@ export async function runPriceLearning(host: PriceLearningRunHost): Promise<void
 	const priceSource = sourceLabelFromStateId(cfg.priceStateId);
 
 	try {
+		host.log.info(`Price Learning: loading history (${cfg.lookbackDays}d, ${cfg.priceStateId.split(".").slice(-2).join(".")})…`);
 		const { samples } = await fetchPriceSamples(host, cfg.priceStateId, cfg.lookbackDays);
 		const daySummaries = summarizeDays(samples, cfg.lookbackDays);
 		const result = computePriceLearning(samples, daySummaries, cfg.lookbackDays, priceSource);

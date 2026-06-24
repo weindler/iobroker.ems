@@ -7,7 +7,7 @@ const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
 const history_query_1 = require("./history_query");
 (0, node_test_1.describe)("history_query", () => {
-    (0, node_test_1.it)("merges per-day chunks with bounded concurrency", async () => {
+    (0, node_test_1.it)("loads lookback via bulk window first", async () => {
         let calls = 0;
         const host = {
             getHistoryAsync: async (_id, options) => {
@@ -17,8 +17,25 @@ const history_query_1 = require("./history_query");
             },
         };
         const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, "alias.0.test", 3);
+        strict_1.default.equal(rows.length, 1);
+        strict_1.default.ok(calls <= 2, "bulk tries onchange then none at most");
+    });
+    (0, node_test_1.it)("falls back to per-day chunks when bulk is empty", async () => {
+        let calls = 0;
+        const host = {
+            getHistoryAsync: async (_id, options) => {
+                calls++;
+                const start = options?.start ?? 0;
+                const end = options?.end ?? 0;
+                if (end - start > 86_400_000) {
+                    return { result: [] };
+                }
+                return { result: [{ ts: start + 1000, val: calls, ack: true, lc: 0, from: "test" }] };
+            },
+        };
+        const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, "alias.0.test", 3);
         strict_1.default.equal(rows.length, 3);
-        strict_1.default.equal(calls, 3);
+        strict_1.default.ok(calls > 2);
     });
     (0, node_test_1.it)("returns empty for missing state id", async () => {
         const host = {

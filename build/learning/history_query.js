@@ -1,18 +1,18 @@
 "use strict";
 /**
- * History-Abfragen in Tagesfenstern (wie PV-Bias).
- * Große 90-Tage-Bulk-Queries liefern in der Praxis oft leer — Tages-Chunks zuverlässiger.
+ * History-Abfragen für Learning-Module.
+ * Bulk-Fenster zuerst (1× history.0), Tages-Chunks als Fallback.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchHistoryRowsLookback = exports.fetchHistoryRowsInRange = exports.withHistoryTimeout = exports.historyStateCandidates = exports.dayBoundsMs = exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
-/** Wie PV-Bias fetchDayLastValue — ausreichend für onchange-Tagesfenster. */
+exports.fetchHistoryRowsLookback = exports.fetchHistoryRowsInRange = exports.withHistoryTimeout = exports.historyStateCandidates = exports.dayBoundsMs = exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_AGGREGATES = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_BULK_TIMEOUT_MS = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
 exports.HISTORY_ROWS_PER_DAY = 500;
-exports.HISTORY_CHUNK_TIMEOUT_MS = 10_000;
-/** Zu viele parallele getHistoryAsync-Calls überlasten history.0 (90× parallel → oft leer). */
-exports.HISTORY_DAY_CONCURRENCY = 8;
+/** history.0 antwortet auf belasteten Hosts oft erst nach >10 s — kurzer Timeout → leere Arrays. */
+exports.HISTORY_CHUNK_TIMEOUT_MS = 45_000;
+exports.HISTORY_BULK_TIMEOUT_MS = 60_000;
+exports.HISTORY_DAY_CONCURRENCY = 4;
+exports.HISTORY_AGGREGATES = ["onchange", "none"];
 /** history.0: returnNewestEntries + count kann Tagesfenster leeren (ioBroker/history#238). */
 exports.HISTORY_QUERY_OPTIONS = {
-    aggregate: "onchange",
     ignoreNull: true,
     returnNewestEntries: false,
     removeBorderValues: false,
@@ -39,10 +39,6 @@ function uniqueIds(ids) {
     }
     return out;
 }
-/**
- * Alias ohne eigene Historie → Quell-State (z. B. sonnen.0.status.userSoc).
- * Alias mit Historie → zuerst Alias, dann Quell-State als Fallback.
- */
 async function historyStateCandidates(host, stateId) {
     if (!stateId) {
         return [];
@@ -95,51 +91,151 @@ async function mapInBatches(items, batchSize, fn) {
     }
     return out;
 }
-async function fetchHistoryRowsInRange(host, stateId, startMs, endMs, count = exports.HISTORY_ROWS_PER_DAY, timeoutMs = exports.HISTORY_CHUNK_TIMEOUT_MS) {
-    if (!stateId) {
+function rowsFromHistoryMessage(res) {
+    if (!res || typeof res !== "object") {
         return [];
     }
-    const res = await withHistoryTimeout(host.getHistoryAsync(stateId, {
+    const payload = res;
+    if (payload.error) {
+        return [];
+    }
+    return Array.isArray(payload.result) ? payload.result : [];
+}
+async function invokeGetHistory(host, stateId, options, timeoutMs) {
+    const res = await withHistoryTimeout((async () => {
+        if (host.sendToAsync) {
+            try {
+                return await host.sendToAsync("history.0", "getHistory", { id: stateId, options });
+            }
+            catch {
+                // getHistoryAsync versucht defaultHistory-Instanz
+            }
+        }
+        return host.getHistoryAsync(stateId, options);
+    })(), timeoutMs);
+    if (res === null) {
+        return { rows: [], timedOut: true, error: false };
+    }
+    const rows = rowsFromHistoryMessage(res);
+    if (!Array.isArray(res.result) && rows.length === 0) {
+        const err = res.error;
+        if (err) {
+            return { rows: [], timedOut: false, error: true };
+        }
+    }
+    return { rows, timedOut: false, error: false };
+}
+function mergeStats(a, b) {
+    return {
+        timedOut: a.timedOut + b.timedOut,
+        empty: a.empty + b.empty,
+        errors: a.errors + b.errors,
+    };
+}
+function emptyStats() {
+    return { timedOut: 0, empty: 0, errors: 0 };
+}
+async function fetchHistoryRowsInRange(host, stateId, startMs, endMs, count = exports.HISTORY_ROWS_PER_DAY, timeoutMs = exports.HISTORY_CHUNK_TIMEOUT_MS, aggregate = "onchange") {
+    const result = await fetchHistoryRowsInRangeDetailed(host, stateId, startMs, endMs, count, timeoutMs, aggregate);
+    return result.rows;
+}
+exports.fetchHistoryRowsInRange = fetchHistoryRowsInRange;
+async function fetchHistoryRowsInRangeDetailed(host, stateId, startMs, endMs, count, timeoutMs, aggregate) {
+    if (!stateId) {
+        return { rows: [], stats: emptyStats() };
+    }
+    const { rows, timedOut, error } = await invokeGetHistory(host, stateId, {
         ...exports.HISTORY_QUERY_OPTIONS,
+        aggregate,
         start: startMs,
         end: endMs,
         count,
-    }), timeoutMs);
-    if (!res?.result || !Array.isArray(res.result)) {
-        return [];
-    }
-    return res.result;
+    }, timeoutMs);
+    const stats = emptyStats();
+    if (timedOut)
+        stats.timedOut = 1;
+    else if (error)
+        stats.errors = 1;
+    else if (rows.length === 0)
+        stats.empty = 1;
+    return { rows, stats };
 }
-exports.fetchHistoryRowsInRange = fetchHistoryRowsInRange;
-async function fetchHistoryRowsLookbackForId(host, stateId, lookbackDays, countPerDay, timeoutMs) {
+async function fetchHistoryWithAggregates(host, stateId, startMs, endMs, count, timeoutMs) {
+    let stats = emptyStats();
+    for (const aggregate of exports.HISTORY_AGGREGATES) {
+        const attempt = await fetchHistoryRowsInRangeDetailed(host, stateId, startMs, endMs, count, timeoutMs, aggregate);
+        stats = mergeStats(stats, attempt.stats);
+        if (attempt.rows.length > 0) {
+            return { rows: attempt.rows, stats };
+        }
+    }
+    return { rows: [], stats };
+}
+/** Ein Fenster für den gesamten Lookback — weniger Roundtrips, höheres Timeout. */
+async function fetchHistoryBulkForId(host, stateId, lookbackDays) {
+    const endMs = Date.now();
+    const startMs = endMs - lookbackDays * MS_PER_DAY;
+    const count = Math.min(Math.max(lookbackDays * 120, 500), 20_000);
+    return fetchHistoryWithAggregates(host, stateId, startMs, endMs, count, exports.HISTORY_BULK_TIMEOUT_MS);
+}
+async function fetchHistoryPerDayForId(host, stateId, lookbackDays, countPerDay, timeoutMs) {
     const dayOffsets = Array.from({ length: lookbackDays }, (_, dayOffset) => dayOffset);
+    let stats = emptyStats();
     const chunks = await mapInBatches(dayOffsets, exports.HISTORY_DAY_CONCURRENCY, async (dayOffset) => {
         const { start, end } = dayBoundsMs(dayOffset);
-        return fetchHistoryRowsInRange(host, stateId, start, end, countPerDay, timeoutMs);
+        const attempt = await fetchHistoryWithAggregates(host, stateId, start, end, countPerDay, timeoutMs);
+        stats = mergeStats(stats, attempt.stats);
+        return attempt.rows;
     });
     const merged = chunks.flat();
     merged.sort((a, b) => (typeof a?.ts === "number" ? a.ts : 0) - (typeof b?.ts === "number" ? b.ts : 0));
-    return merged;
+    return { rows: merged, stats };
 }
-/** Lookback in Tages-Chunks mit begrenzter Parallelität; Alias→Quell-Fallback. */
+async function fetchHistoryRowsLookbackForId(host, stateId, lookbackDays, countPerDay, timeoutMs) {
+    const bulk = await fetchHistoryBulkForId(host, stateId, lookbackDays);
+    if (bulk.rows.length > 0) {
+        return bulk;
+    }
+    const perDay = await fetchHistoryPerDayForId(host, stateId, lookbackDays, countPerDay, timeoutMs);
+    return {
+        rows: perDay.rows,
+        stats: mergeStats(bulk.stats, perDay.stats),
+    };
+}
+function formatHistoryStats(stats) {
+    const parts = [];
+    if (stats.timedOut > 0)
+        parts.push(`${stats.timedOut}× timeout`);
+    if (stats.empty > 0)
+        parts.push(`${stats.empty}× leer`);
+    if (stats.errors > 0)
+        parts.push(`${stats.errors}× Fehler`);
+    return parts.length > 0 ? parts.join(", ") : "keine Antwort";
+}
+/** Lookback: Bulk zuerst, dann Tages-Chunks; Alias→Quell-Fallback. */
 async function fetchHistoryRowsLookback(host, stateId, lookbackDays, countPerDay = exports.HISTORY_ROWS_PER_DAY, timeoutMs = exports.HISTORY_CHUNK_TIMEOUT_MS) {
     if (!stateId || lookbackDays <= 0) {
         return [];
     }
     const candidates = await historyStateCandidates(host, stateId);
+    let combinedStats = emptyStats();
     for (let i = 0; i < candidates.length; i++) {
         const candidateId = candidates[i];
-        const rows = await fetchHistoryRowsLookbackForId(host, candidateId, lookbackDays, countPerDay, timeoutMs);
-        if (rows.length > 0) {
+        const attempt = await fetchHistoryRowsLookbackForId(host, candidateId, lookbackDays, countPerDay, timeoutMs);
+        combinedStats = mergeStats(combinedStats, attempt.stats);
+        if (attempt.rows.length > 0) {
             if (i > 0 && host.log?.warn) {
-                host.log.warn(`History query: Daten über Fallback-State ${candidateId} (${rows.length} Zeilen, konfiguriert: ${stateId})`);
+                host.log.warn(`History query: Daten über Fallback-State ${candidateId} (${attempt.rows.length} Zeilen, konfiguriert: ${stateId})`);
             }
-            return rows;
+            if (host.log?.debug) {
+                host.log.debug(`History query: ${attempt.rows.length} rows for ${candidateId} (${lookbackDays}d)`);
+            }
+            return attempt.rows;
         }
     }
     if (host.log?.warn) {
         const tried = candidates.join(" → ");
-        host.log.warn(`History query: 0 rows for ${stateId} (${lookbackDays}d, tried: ${tried}) — history.0 am State prüfen`);
+        host.log.warn(`History query: 0 rows for ${stateId} (${lookbackDays}d, tried: ${tried}, ${formatHistoryStats(combinedStats)}) — history.0/langsame Antwort?`);
     }
     return [];
 }

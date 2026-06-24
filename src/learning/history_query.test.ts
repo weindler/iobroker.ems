@@ -7,7 +7,7 @@ import {
 } from "./history_query";
 
 describe("history_query", () => {
-	it("merges per-day chunks with bounded concurrency", async () => {
+	it("loads lookback via bulk window first", async () => {
 		let calls = 0;
 		const host: HistoryQueryHost = {
 			getHistoryAsync: async (_id, options) => {
@@ -17,8 +17,26 @@ describe("history_query", () => {
 			},
 		};
 		const rows = await fetchHistoryRowsLookback(host, "alias.0.test", 3);
+		assert.equal(rows.length, 1);
+		assert.ok(calls <= 2, "bulk tries onchange then none at most");
+	});
+
+	it("falls back to per-day chunks when bulk is empty", async () => {
+		let calls = 0;
+		const host: HistoryQueryHost = {
+			getHistoryAsync: async (_id, options) => {
+				calls++;
+				const start = options?.start ?? 0;
+				const end = options?.end ?? 0;
+				if (end - start > 86_400_000) {
+					return { result: [] };
+				}
+				return { result: [{ ts: start + 1000, val: calls, ack: true, lc: 0, from: "test" }] };
+			},
+		};
+		const rows = await fetchHistoryRowsLookback(host, "alias.0.test", 3);
 		assert.equal(rows.length, 3);
-		assert.equal(calls, 3);
+		assert.ok(calls > 2);
 	});
 
 	it("returns empty for missing state id", async () => {

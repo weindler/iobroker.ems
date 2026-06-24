@@ -56,6 +56,7 @@ async function runBatteryRuntimeLearning(host) {
         return;
     }
     try {
+        host.log.info(`Battery-Runtime-Learning: loading history (${cfg.lookbackDays}d, soc=${(0, config_1.sourceLabelFromStateId)(sources.socStateId)})…`);
         const [socHist, powerHist, capacityKwh, currentSocPct, astroDaily] = await Promise.all([
             (0, history_1.fetchSocHistory)(host, sources.socStateId, cfg.lookbackDays),
             sources.powerStateId

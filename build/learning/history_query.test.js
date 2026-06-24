@@ -81,4 +81,40 @@ const history_query_1 = require("./history_query");
         const ids = await (0, history_query_1.historyStateCandidates)(host, "alias.0.soc");
         strict_1.default.deepEqual(ids, ["alias.0.soc", "sonnen.0.status.userSoc"]);
     });
+    (0, node_test_1.it)("unwraps sendToAsync Message wrapper for history rows", async () => {
+        const host = {
+            sendToAsync: async () => ({
+                _id: 1,
+                command: "getHistory",
+                message: {
+                    result: [{ ts: 1_700_000_000_000, val: 0.28, ack: true, lc: 0, from: "test" }],
+                },
+                from: "history.0",
+            }),
+            getHistoryAsync: async () => {
+                throw new Error("getHistoryAsync must not be called when sendToAsync is set");
+            },
+        };
+        const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, "tibberlink.0.price", 7);
+        strict_1.default.equal(rows.length, 1);
+        strict_1.default.equal(rows[0].val, 0.28);
+    });
+    (0, node_test_1.it)("does not fall through to getHistoryAsync when sendTo returns empty", async () => {
+        let asyncCalls = 0;
+        const host = {
+            sendToAsync: async () => ({
+                _id: 1,
+                command: "getHistory",
+                message: { result: [] },
+                from: "history.0",
+            }),
+            getHistoryAsync: async () => {
+                asyncCalls++;
+                return { result: [{ ts: 1, val: 1, ack: true, lc: 0, from: "test" }] };
+            },
+        };
+        const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, "alias.0.test", 1);
+        strict_1.default.equal(rows.length, 0);
+        strict_1.default.equal(asyncCalls, 0);
+    });
 });

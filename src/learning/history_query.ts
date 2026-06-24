@@ -1,6 +1,7 @@
 /**
  * History-Abfragen für Learning-Module.
- * sendTo('history.0','getHistory') wie im JS-Test; getHistoryAsync als Fallback.
+ * sendTo('history.0','getHistory') via Callback-Bridge (wie javascript.0).
+ * getHistoryAsync nur wenn kein sendToAsync am Host.
  */
 
 export type HistoryQueryHost = {
@@ -19,7 +20,7 @@ export type HistoryQueryHost = {
 
 export const HISTORY_ROWS_PER_DAY = 500;
 export const HISTORY_CHUNK_TIMEOUT_MS = 45_000;
-export const HISTORY_BULK_TIMEOUT_MS = 120_000;
+export const HISTORY_BULK_TIMEOUT_MS = 45_000;
 export const HISTORY_DAY_CONCURRENCY = 4;
 /** Nach leerem Bulk: max. so viele Tage einzeln — 90d×2 Aggregate würde den Tick blockieren. */
 export const PER_DAY_FALLBACK_MAX_DAYS = 7;
@@ -125,11 +126,26 @@ async function mapInBatches<T, R>(
 	return out;
 }
 
-function rowsFromHistoryMessage(res: unknown): ioBroker.GetHistoryResult {
+function unwrapHistoryPayload(res: unknown): { result?: unknown; error?: unknown } {
 	if (!res || typeof res !== "object") {
-		return [];
+		return {};
 	}
-	const payload = res as { result?: unknown; error?: unknown };
+	const obj = res as Record<string, unknown>;
+	if ("result" in obj || "error" in obj) {
+		return obj as { result?: unknown; error?: unknown };
+	}
+	// adapter.sendToAsync liefert ioBroker.Message — Payload liegt in .message
+	if (obj.message && typeof obj.message === "object") {
+		const msg = obj.message as Record<string, unknown>;
+		if ("result" in msg || "error" in msg) {
+			return msg as { result?: unknown; error?: unknown };
+		}
+	}
+	return {};
+}
+
+function rowsFromHistoryMessage(res: unknown): ioBroker.GetHistoryResult {
+	const payload = unwrapHistoryPayload(res);
 	if (payload.error) {
 		return [];
 	}
@@ -145,14 +161,14 @@ function parseHistoryResponse(res: unknown): {
 		return { rows: [], timedOut: true, error: false };
 	}
 	const rows = rowsFromHistoryMessage(res);
-	const err = (res as { error?: unknown }).error;
+	const err = unwrapHistoryPayload(res).error;
 	if (err && rows.length === 0) {
 		return { rows: [], timedOut: false, error: true };
 	}
 	return { rows, timedOut: false, error: false };
 }
 
-/** sendTo history.0 (JS-Test: 288 rows) vor getHistoryAsync. */
+/** sendTo history.0 (Callback-Bridge); kein getHistoryAsync-Fallback bei leerem sendTo. */
 async function invokeGetHistory(
 	host: HistoryQueryHost,
 	stateId: string,
@@ -166,10 +182,7 @@ async function invokeGetHistory(
 			host.sendToAsync("history.0", "getHistory", message),
 			timeoutMs,
 		);
-		const parsed = parseHistoryResponse(viaSendTo);
-		if (parsed.rows.length > 0 || parsed.timedOut || parsed.error) {
-			return parsed;
-		}
+		return parseHistoryResponse(viaSendTo);
 	}
 
 	const viaAsync = await withHistoryTimeout(host.getHistoryAsync(stateId, options), timeoutMs);

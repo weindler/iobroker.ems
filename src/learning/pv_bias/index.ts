@@ -8,6 +8,7 @@ import { ensureThermalRuntimeLearningStates, runThermalRuntimeLearning } from ".
 import { ensureBatteryRuntimeLearningStates, runBatteryRuntimeLearning } from "../battery_runtime";
 import { ensurePvHorizonLearningStates, runPvHorizon } from "../pv_horizon";
 import { withLearningDataPath } from "../data_dir";
+import { withHistoryBridge } from "../history_bridge";
 import type { StateHost } from "../../ems_light/state_util";
 
 let pvBiasTimer: NodeJS.Timeout | null = null;
@@ -24,7 +25,10 @@ async function runLearningTick(host: PvBiasRunHost & StateHost): Promise<void> {
 }
 
 export async function initPvBiasLearning(adapter: ioBroker.Adapter): Promise<void> {
-	const host = withLearningDataPath(adapter, adapter as unknown as PvBiasRunHost & StateHost);
+	const host = withHistoryBridge(
+		adapter,
+		withLearningDataPath(adapter, adapter as unknown as PvBiasRunHost & StateHost),
+	);
 	await ensurePvBiasStates(host);
 	await ensurePvHorizonLearningStates(host);
 	await ensurePriceLearningStates(host);

@@ -5,9 +5,10 @@ const config_1 = require("./config");
 const ensure_states_1 = require("./ensure_states");
 const run_1 = require("./run");
 const data_dir_1 = require("../data_dir");
+const history_bridge_1 = require("../history_bridge");
 let weatherTimer = null;
 async function initWeatherLearning(adapter) {
-    const host = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
+    const host = (0, history_bridge_1.withHistoryBridge)(adapter, (0, data_dir_1.withLearningDataPath)(adapter, adapter));
     await (0, ensure_states_1.ensureWeatherLearningStates)(host);
     const cfg = (0, config_1.weatherConfigFromAdapter)(adapter.config);
     stopWeatherLearning();

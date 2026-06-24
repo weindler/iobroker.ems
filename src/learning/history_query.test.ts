@@ -87,4 +87,44 @@ describe("history_query", () => {
 		const ids = await historyStateCandidates(host, "alias.0.soc");
 		assert.deepEqual(ids, ["alias.0.soc", "sonnen.0.status.userSoc"]);
 	});
+
+	it("unwraps sendToAsync Message wrapper for history rows", async () => {
+		const host: HistoryQueryHost = {
+			sendToAsync: async () =>
+				({
+					_id: 1,
+					command: "getHistory",
+					message: {
+						result: [{ ts: 1_700_000_000_000, val: 0.28, ack: true, lc: 0, from: "test" }],
+					},
+					from: "history.0",
+				}) as ioBroker.Message,
+			getHistoryAsync: async () => {
+				throw new Error("getHistoryAsync must not be called when sendToAsync is set");
+			},
+		};
+		const rows = await fetchHistoryRowsLookback(host, "tibberlink.0.price", 7);
+		assert.equal(rows.length, 1);
+		assert.equal(rows[0].val, 0.28);
+	});
+
+	it("does not fall through to getHistoryAsync when sendTo returns empty", async () => {
+		let asyncCalls = 0;
+		const host: HistoryQueryHost = {
+			sendToAsync: async () =>
+				({
+					_id: 1,
+					command: "getHistory",
+					message: { result: [] },
+					from: "history.0",
+				}) as ioBroker.Message,
+			getHistoryAsync: async () => {
+				asyncCalls++;
+				return { result: [{ ts: 1, val: 1, ack: true, lc: 0, from: "test" }] };
+			},
+		};
+		const rows = await fetchHistoryRowsLookback(host, "alias.0.test", 1);
+		assert.equal(rows.length, 0);
+		assert.equal(asyncCalls, 0);
+	});
 });

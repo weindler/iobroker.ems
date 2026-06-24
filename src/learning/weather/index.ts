@@ -2,12 +2,16 @@ import { weatherConfigFromAdapter } from "./config";
 import { ensureWeatherLearningStates } from "./ensure_states";
 import { runWeatherLearning, type WeatherRunHost } from "./run";
 import { withLearningDataPath } from "../data_dir";
+import { withHistoryBridge } from "../history_bridge";
 import type { StateHost } from "../../ems_light/state_util";
 
 let weatherTimer: NodeJS.Timeout | null = null;
 
 export async function initWeatherLearning(adapter: ioBroker.Adapter): Promise<void> {
-	const host = withLearningDataPath(adapter, adapter as unknown as WeatherRunHost & StateHost);
+	const host = withHistoryBridge(
+		adapter,
+		withLearningDataPath(adapter, adapter as unknown as WeatherRunHost & StateHost),
+	);
 	await ensureWeatherLearningStates(host);
 
 	const cfg = weatherConfigFromAdapter(adapter.config);

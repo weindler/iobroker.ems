@@ -1,9 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { fetchHistoryRowsLookback, type HistoryQueryHost } from "./history_query";
+import {
+	fetchHistoryRowsLookback,
+	historyStateCandidates,
+	type HistoryQueryHost,
+} from "./history_query";
 
 describe("history_query", () => {
-	it("merges per-day chunks", async () => {
+	it("merges per-day chunks with bounded concurrency", async () => {
 		let calls = 0;
 		const host: HistoryQueryHost = {
 			getHistoryAsync: async (_id, options) => {
@@ -24,5 +28,45 @@ describe("history_query", () => {
 			}),
 		};
 		assert.deepEqual(await fetchHistoryRowsLookback(host, "", 7), []);
+	});
+
+	it("prefers native alias target when alias history is disabled", async () => {
+		const host: HistoryQueryHost = {
+			getObjectAsync: async (id) => {
+				if (id === "alias.0.soc") {
+					return {
+						common: {
+							alias: { id: "sonnen.0.status.userSoc" },
+							history: { enabled: false },
+						},
+					} as ioBroker.Object;
+				}
+				return null;
+			},
+			getHistoryAsync: async (id) => ({
+				result:
+					id === "sonnen.0.status.userSoc"
+						? [{ ts: 1_700_000_000_000, val: 80, ack: true, lc: 0, from: "test" }]
+						: [],
+			}),
+		};
+		const rows = await fetchHistoryRowsLookback(host, "alias.0.soc", 1);
+		assert.equal(rows.length, 1);
+		assert.equal(rows[0].val, 80);
+	});
+
+	it("historyStateCandidates lists alias then native when alias history enabled", async () => {
+		const host: HistoryQueryHost = {
+			getHistoryAsync: async () => ({ result: [] }),
+			getObjectAsync: async () =>
+				({
+					common: {
+						alias: { id: "sonnen.0.status.userSoc" },
+						history: { enabled: true },
+					},
+				}) as ioBroker.Object,
+		};
+		const ids = await historyStateCandidates(host, "alias.0.soc");
+		assert.deepEqual(ids, ["alias.0.soc", "sonnen.0.status.userSoc"]);
 	});
 });

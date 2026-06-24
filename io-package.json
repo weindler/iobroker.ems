@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.29",
+		"version": "0.1.30",
 		"news": {
+			"0.1.30": {
+				"en": "History queries: bounded concurrency, alias→native fallback, clearer empty-history warnings",
+				"de": "History-Abfragen: begrenzte Parallelität, Alias→Quell-Fallback, Warnung bei leerer Historie"
+			},
 			"0.1.29": {
 				"en": "Learning tick: House/Thermal/Battery before Price Forecast; batch forecast actual history by day",
 				"de": "Learning-Tick: House/Thermal/Battery vor Price Forecast; Forecast-Ist-History batched pro Tag"

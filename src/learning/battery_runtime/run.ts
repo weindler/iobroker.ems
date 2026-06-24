@@ -111,10 +111,11 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 			readLiveCapacityKwh(host, sources.capacityStateId),
 			readLiveSoc(host, sources.socStateId),
 			nightAstroConfigReady(cfg)
-				? Promise.all([
-						fetchAstroTimeHistory(host, cfg.nightStartStateId, cfg.lookbackDays),
-						fetchAstroTimeHistory(host, cfg.nightEndStateId, cfg.lookbackDays),
-					]).then(([startPts, endPts]) => mergeDailyAstroTimes(startPts, endPts))
+				? (async () => {
+						const startPts = await fetchAstroTimeHistory(host, cfg.nightStartStateId, cfg.lookbackDays);
+						const endPts = await fetchAstroTimeHistory(host, cfg.nightEndStateId, cfg.lookbackDays);
+						return mergeDailyAstroTimes(startPts, endPts);
+					})()
 				: Promise.resolve(null),
 		]);
 

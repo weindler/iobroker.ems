@@ -64,10 +64,11 @@ async function runBatteryRuntimeLearning(host) {
             (0, history_1.readLiveCapacityKwh)(host, sources.capacityStateId),
             (0, history_1.readLiveSoc)(host, sources.socStateId),
             (0, config_1.nightAstroConfigReady)(cfg)
-                ? Promise.all([
-                    (0, history_1.fetchAstroTimeHistory)(host, cfg.nightStartStateId, cfg.lookbackDays),
-                    (0, history_1.fetchAstroTimeHistory)(host, cfg.nightEndStateId, cfg.lookbackDays),
-                ]).then(([startPts, endPts]) => (0, history_1.mergeDailyAstroTimes)(startPts, endPts))
+                ? (async () => {
+                    const startPts = await (0, history_1.fetchAstroTimeHistory)(host, cfg.nightStartStateId, cfg.lookbackDays);
+                    const endPts = await (0, history_1.fetchAstroTimeHistory)(host, cfg.nightEndStateId, cfg.lookbackDays);
+                    return (0, history_1.mergeDailyAstroTimes)(startPts, endPts);
+                })()
                 : Promise.resolve(null),
         ]);
         const sampleDays = (0, history_1.distinctSocSampleDays)(socHist.points);

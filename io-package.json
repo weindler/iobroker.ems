@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.36",
+		"version": "0.1.37",
 		"news": {
+			"0.1.37": {
+				"en": "Fix house load hourly aggregation and kW unit; PV-Bias uses shared history bridge",
+				"de": "House-Load Stunden-Aggregation + kW-Einheit; PV-Bias nutzt gemeinsame History-Bridge"
+			},
 			"0.1.36": {
 				"en": "Fix history: callback sendTo bridge, unwrap sendToAsync Message payload, no getHistoryAsync fallback on empty sendTo",
 				"de": "History-Fix: Callback-sendTo-Bridge, sendToAsync-Message auspacken, kein getHistoryAsync bei leerem sendTo"

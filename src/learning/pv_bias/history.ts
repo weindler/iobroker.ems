@@ -1,17 +1,15 @@
 import { asNum } from "../../ems_light/state_util";
-import { HISTORY_QUERY_OPTIONS } from "../history_query";
+import {
+	fetchHistoryRowsInRange,
+	HISTORY_CHUNK_TIMEOUT_MS,
+	type HistoryQueryHost,
+} from "../history_query";
 import type { PvBiasDayPair } from "./types";
 
-export type HistoryHost = {
-	getHistoryAsync: (
-		id: string,
-		options?: ioBroker.GetHistoryOptions,
-	) => Promise<{ result?: ioBroker.GetHistoryResult; step?: number; sessionId?: number }>;
+export type HistoryHost = HistoryQueryHost & {
 	getStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
 	getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
 };
-
-export const HISTORY_QUERY_TIMEOUT_MS = 8000;
 
 const MS_PER_DAY = 86_400_000;
 
@@ -22,24 +20,6 @@ export function dayBoundsMs(dayOffset: number): { start: number; end: number } {
 	d.setDate(d.getDate() - dayOffset);
 	const start = d.getTime();
 	return { start, end: start + MS_PER_DAY };
-}
-
-async function withHistoryTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
-	let timer: NodeJS.Timeout | null = null;
-	try {
-		return await Promise.race([
-			promise,
-			new Promise<null>((resolve) => {
-				timer = setTimeout(() => resolve(null), timeoutMs);
-			}),
-		]);
-	} catch {
-		return null;
-	} finally {
-		if (timer) {
-			clearTimeout(timer);
-		}
-	}
 }
 
 async function readLiveValue(host: HistoryHost, stateId: string): Promise<number | null> {
@@ -85,6 +65,19 @@ export async function readStateNum(host: HistoryHost, stateId: string): Promise<
 	return tryRead(host.getForeignStateAsync);
 }
 
+function lastValidValueFromRows(rows: ioBroker.GetHistoryResult): number | null {
+	if (!Array.isArray(rows) || rows.length === 0) {
+		return null;
+	}
+	for (let i = rows.length - 1; i >= 0; i--) {
+		const n = asNum(rows[i]?.val);
+		if (n !== null) {
+			return n;
+		}
+	}
+	return null;
+}
+
 /** Letzter gültiger Zahlenwert im Tagesfenster; fehlende Historie → null (nicht 0). */
 export async function fetchDayLastValue(
 	host: HistoryHost,
@@ -95,34 +88,16 @@ export async function fetchDayLastValue(
 	if (!stateId) {
 		return null;
 	}
-	const res = await withHistoryTimeout(
-		host.getHistoryAsync(stateId, {
-			...HISTORY_QUERY_OPTIONS,
-			start: startMs,
-			end: endMs,
-			count: 500,
-		}),
-		HISTORY_QUERY_TIMEOUT_MS,
+	const rows = await fetchHistoryRowsInRange(
+		host,
+		stateId,
+		startMs,
+		endMs,
+		500,
+		HISTORY_CHUNK_TIMEOUT_MS,
+		"none",
 	);
-	if (res === null) {
-		return null;
-	}
-	try {
-		const rows = res.result;
-		if (!Array.isArray(rows) || rows.length === 0) {
-			return null;
-		}
-		for (let i = rows.length - 1; i >= 0; i--) {
-			const row = rows[i];
-			const n = asNum(row?.val);
-			if (n !== null) {
-				return n;
-			}
-		}
-		return null;
-	} catch {
-		return null;
-	}
+	return lastValidValueFromRows(rows);
 }
 
 /** Sammelt gültige Tagespaare für die letzten 30 Tage (inkl. heute). Fehlende Tage werden übersprungen. */

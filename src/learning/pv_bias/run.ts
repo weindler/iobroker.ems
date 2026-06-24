@@ -3,14 +3,11 @@ import { pvBiasConfigFromAdapter, pvBiasConfigReady } from "./config";
 import { FROZEN_TODAY_STATE_ID, readFrozenForecast, runForecastFreeze } from "./freeze";
 import { fetchPvBiasDayPairs, readStateNum } from "./history";
 import { computePvBias } from "./math";
+import type { HistoryQueryHost } from "../history_query";
 import type { PvBiasComputeResult } from "./types";
 
-export type PvBiasRunHost = {
+export type PvBiasRunHost = HistoryQueryHost & {
 	config: unknown;
-	getHistoryAsync: (
-		id: string,
-		options?: ioBroker.GetHistoryOptions,
-	) => Promise<{ result?: ioBroker.GetHistoryResult; step?: number; sessionId?: number }>;
 	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
 	getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
 	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;

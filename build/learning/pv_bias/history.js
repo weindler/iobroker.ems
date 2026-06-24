@@ -1,9 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchPvBiasDayPairs = exports.fetchDayLastValue = exports.readStateNum = exports.isForeignStateId = exports.dayBoundsMs = exports.HISTORY_QUERY_TIMEOUT_MS = void 0;
+exports.fetchPvBiasDayPairs = exports.fetchDayLastValue = exports.readStateNum = exports.isForeignStateId = exports.dayBoundsMs = void 0;
 const state_util_1 = require("../../ems_light/state_util");
 const history_query_1 = require("../history_query");
-exports.HISTORY_QUERY_TIMEOUT_MS = 8000;
 const MS_PER_DAY = 86_400_000;
 /** Lokale Mitternachtsgrenzen für einen Tag (dayOffset 0 = heute). */
 function dayBoundsMs(dayOffset) {
@@ -14,25 +13,6 @@ function dayBoundsMs(dayOffset) {
     return { start, end: start + MS_PER_DAY };
 }
 exports.dayBoundsMs = dayBoundsMs;
-async function withHistoryTimeout(promise, timeoutMs) {
-    let timer = null;
-    try {
-        return await Promise.race([
-            promise,
-            new Promise((resolve) => {
-                timer = setTimeout(() => resolve(null), timeoutMs);
-            }),
-        ]);
-    }
-    catch {
-        return null;
-    }
-    finally {
-        if (timer) {
-            clearTimeout(timer);
-        }
-    }
-}
 async function readLiveValue(host, stateId) {
     return readStateNum(host, stateId);
 }
@@ -71,37 +51,25 @@ async function readStateNum(host, stateId) {
     return tryRead(host.getForeignStateAsync);
 }
 exports.readStateNum = readStateNum;
+function lastValidValueFromRows(rows) {
+    if (!Array.isArray(rows) || rows.length === 0) {
+        return null;
+    }
+    for (let i = rows.length - 1; i >= 0; i--) {
+        const n = (0, state_util_1.asNum)(rows[i]?.val);
+        if (n !== null) {
+            return n;
+        }
+    }
+    return null;
+}
 /** Letzter gültiger Zahlenwert im Tagesfenster; fehlende Historie → null (nicht 0). */
 async function fetchDayLastValue(host, stateId, startMs, endMs) {
     if (!stateId) {
         return null;
     }
-    const res = await withHistoryTimeout(host.getHistoryAsync(stateId, {
-        ...history_query_1.HISTORY_QUERY_OPTIONS,
-        start: startMs,
-        end: endMs,
-        count: 500,
-    }), exports.HISTORY_QUERY_TIMEOUT_MS);
-    if (res === null) {
-        return null;
-    }
-    try {
-        const rows = res.result;
-        if (!Array.isArray(rows) || rows.length === 0) {
-            return null;
-        }
-        for (let i = rows.length - 1; i >= 0; i--) {
-            const row = rows[i];
-            const n = (0, state_util_1.asNum)(row?.val);
-            if (n !== null) {
-                return n;
-            }
-        }
-        return null;
-    }
-    catch {
-        return null;
-    }
+    const rows = await (0, history_query_1.fetchHistoryRowsInRange)(host, stateId, startMs, endMs, 500, history_query_1.HISTORY_CHUNK_TIMEOUT_MS, "none");
+    return lastValidValueFromRows(rows);
 }
 exports.fetchDayLastValue = fetchDayLastValue;
 /** Sammelt gültige Tagespaare für die letzten 30 Tage (inkl. heute). Fehlende Tage werden übersprungen. */

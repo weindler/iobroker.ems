@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runHouseLoadLearning = void 0;
 const config_1 = require("./config");
+const constants_1 = require("./constants");
 const history_1 = require("./history");
 const mapping_1 = require("./mapping");
 const math_1 = require("./math");
@@ -83,8 +84,9 @@ async function runHouseLoadLearning(host) {
     }
     try {
         host.log.info(`House-Load-Learning: loading history (${cfg.lookbackDays}d, ${(0, config_1.sourceLabelFromStateId)(resolved.stateId)})…`);
-        const { samples, lastValidTs } = await (0, history_1.fetchHouseLoadSamples)(host, resolved.stateId, cfg.lookbackDays);
+        const { samples, lastValidTs, stats } = await (0, history_1.fetchHouseLoadSamples)(host, resolved.stateId, cfg.lookbackDays);
         const sampleDays = (0, history_1.distinctSampleDays)(samples);
+        const sampleDaysMinHours = (0, history_1.distinctSampleDaysWithMinHours)(samples, constants_1.MIN_DAY_HOURS);
         const result = (0, math_1.computeHouseLoadLearning)({
             samples,
             sampleDays,
@@ -100,7 +102,13 @@ async function runHouseLoadLearning(host) {
             result.healthJson.last_persist_at = lastRun;
         }
         await writeResult(host, result);
-        host.log.info(`House-Load-Learning: status=${result.status} health=${result.healthStatus} samples=${result.sampleCount} days=${result.sampleDays} source=${(0, config_1.sourceLabelFromStateId)(resolved.stateId)}`);
+        host.log.info(`House-Load-Learning: status=${result.status} health=${result.healthStatus} samples=${result.sampleCount} days=${result.sampleDays} source=${(0, config_1.sourceLabelFromStateId)(resolved.stateId)} (history=${stats.rowsTotal} rows → ${stats.hourlySamples} h, valid=${stats.validRows}, skipped=${stats.skippedInvalid + stats.skippedNegative})`);
+        if (stats.rowsTotal > 50 && stats.hourlySamples < 10) {
+            host.log.warn(`House Load Learning: ${stats.rowsTotal} History-Zeilen aber nur ${stats.hourlySamples} Stunden-Samples (invalid=${stats.skippedInvalid}, negative=${stats.skippedNegative}) — Einheit/State prüfen`);
+        }
+        if (sampleDaysMinHours < sampleDays && result.status === "insufficient_data") {
+            host.log.info(`House Load Learning: ${sampleDays} Kalendertage mit Daten, ${sampleDaysMinHours} mit ≥${constants_1.MIN_DAY_HOURS}h/Tag`);
+        }
         if (result.status === "insufficient_data") {
             host.log.warn(`House Load Learning: ungenügende Historie (sample_days=${result.sampleDays}, samples=${result.sampleCount})`);
         }

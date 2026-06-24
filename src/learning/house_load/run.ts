@@ -1,5 +1,6 @@
 import { sourceLabelFromStateId, houseLoadConfigFromAdapter } from "./config";
-import { distinctSampleDays, fetchHouseLoadSamples } from "./history";
+import { MIN_DAY_HOURS } from "./constants";
+import { distinctSampleDays, distinctSampleDaysWithMinHours, fetchHouseLoadSamples } from "./history";
 import { resolveHouseLoadPowerStateId } from "./mapping";
 import {
 	computeHouseLoadLearning,
@@ -10,12 +11,10 @@ import {
 import { readHouseLoadPersist, writeHouseLoadPersist } from "./persist";
 import type { HouseLoadComputeResult } from "./types";
 
-export type HouseLoadRunHost = {
+import type { HistoryQueryHost } from "../history_query";
+
+export type HouseLoadRunHost = HistoryQueryHost & {
 	config: unknown;
-	getHistoryAsync: (
-		id: string,
-		options?: ioBroker.GetHistoryOptions,
-	) => Promise<{ result?: ioBroker.GetHistoryResult; step?: number; sessionId?: number }>;
 	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
 	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
 	getAbsolutePath?: (category?: string) => string;
@@ -107,12 +106,13 @@ export async function runHouseLoadLearning(host: HouseLoadRunHost): Promise<void
 
 	try {
 		host.log.info(`House-Load-Learning: loading history (${cfg.lookbackDays}d, ${sourceLabelFromStateId(resolved.stateId)})…`);
-		const { samples, lastValidTs } = await fetchHouseLoadSamples(
+		const { samples, lastValidTs, stats } = await fetchHouseLoadSamples(
 			host,
 			resolved.stateId,
 			cfg.lookbackDays,
 		);
 		const sampleDays = distinctSampleDays(samples);
+		const sampleDaysMinHours = distinctSampleDaysWithMinHours(samples, MIN_DAY_HOURS);
 		const result = computeHouseLoadLearning({
 			samples,
 			sampleDays,
@@ -132,8 +132,20 @@ export async function runHouseLoadLearning(host: HouseLoadRunHost): Promise<void
 		await writeResult(host, result);
 
 		host.log.info(
-			`House-Load-Learning: status=${result.status} health=${result.healthStatus} samples=${result.sampleCount} days=${result.sampleDays} source=${sourceLabelFromStateId(resolved.stateId)}`,
+			`House-Load-Learning: status=${result.status} health=${result.healthStatus} samples=${result.sampleCount} days=${result.sampleDays} source=${sourceLabelFromStateId(resolved.stateId)} (history=${stats.rowsTotal} rows → ${stats.hourlySamples} h, valid=${stats.validRows}, skipped=${stats.skippedInvalid + stats.skippedNegative})`,
 		);
+
+		if (stats.rowsTotal > 50 && stats.hourlySamples < 10) {
+			host.log.warn(
+				`House Load Learning: ${stats.rowsTotal} History-Zeilen aber nur ${stats.hourlySamples} Stunden-Samples (invalid=${stats.skippedInvalid}, negative=${stats.skippedNegative}) — Einheit/State prüfen`,
+			);
+		}
+
+		if (sampleDaysMinHours < sampleDays && result.status === "insufficient_data") {
+			host.log.info(
+				`House Load Learning: ${sampleDays} Kalendertage mit Daten, ${sampleDaysMinHours} mit ≥${MIN_DAY_HOURS}h/Tag`,
+			);
+		}
 
 		if (result.status === "insufficient_data") {
 			host.log.warn(

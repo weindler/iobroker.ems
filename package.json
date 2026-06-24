@@ -1,6 +1,6 @@
 {
 	"name": "iobroker.ems",
-	"version": "0.1.36",
+	"version": "0.1.37",
 	"description": "EMS V2 execution gateway for ioBroker (dryrun/live, audit)",
 	"author": {
 		"name": "weindler"
@@ -36,6 +36,6 @@
 		"build": "tsc -p tsconfig.build.json",
 		"watch": "tsc -p tsconfig.build.json --watch",
 		"check": "tsc --noEmit -p tsconfig.json",
-		"test": "npm run build && node --test build/learning/history_query.test.js build/learning/pv_bias/math.test.js build/learning/pv_bias/freeze.test.js build/learning/pv_bias/history.test.js build/learning/pv_horizon/math.test.js build/learning/weather/math.test.js build/learning/price_learning/math.test.js build/learning/price_forecast/math.test.js build/learning/price_forecast/compare.test.js build/learning/house_load/math.test.js build/learning/thermal_runtime/math.test.js build/learning/battery_runtime/math.test.js"
+		"test": "npm run build && node --test build/learning/history_query.test.js build/learning/pv_bias/math.test.js build/learning/pv_bias/freeze.test.js build/learning/pv_bias/history.test.js build/learning/pv_horizon/math.test.js build/learning/weather/math.test.js build/learning/price_learning/math.test.js build/learning/price_forecast/math.test.js build/learning/price_forecast/compare.test.js build/learning/house_load/history.test.js build/learning/house_load/math.test.js build/learning/thermal_runtime/math.test.js build/learning/battery_runtime/math.test.js"
 	}
 }

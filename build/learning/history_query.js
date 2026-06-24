@@ -4,12 +4,19 @@
  * Große 90-Tage-Bulk-Queries liefern in der Praxis oft leer — Tages-Chunks zuverlässiger.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchHistoryRowsLookback = exports.fetchHistoryRowsInRange = exports.withHistoryTimeout = exports.historyStateCandidates = exports.dayBoundsMs = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
+exports.fetchHistoryRowsLookback = exports.fetchHistoryRowsInRange = exports.withHistoryTimeout = exports.historyStateCandidates = exports.dayBoundsMs = exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
 /** Wie PV-Bias fetchDayLastValue — ausreichend für onchange-Tagesfenster. */
 exports.HISTORY_ROWS_PER_DAY = 500;
 exports.HISTORY_CHUNK_TIMEOUT_MS = 10_000;
 /** Zu viele parallele getHistoryAsync-Calls überlasten history.0 (90× parallel → oft leer). */
 exports.HISTORY_DAY_CONCURRENCY = 8;
+/** history.0: returnNewestEntries + count kann Tagesfenster leeren (ioBroker/history#238). */
+exports.HISTORY_QUERY_OPTIONS = {
+    aggregate: "onchange",
+    ignoreNull: true,
+    returnNewestEntries: false,
+    removeBorderValues: false,
+};
 const MS_PER_DAY = 86_400_000;
 /** Lokale Mitternachtsgrenzen (dayOffset 0 = heute). */
 function dayBoundsMs(dayOffset) {
@@ -93,13 +100,10 @@ async function fetchHistoryRowsInRange(host, stateId, startMs, endMs, count = ex
         return [];
     }
     const res = await withHistoryTimeout(host.getHistoryAsync(stateId, {
+        ...exports.HISTORY_QUERY_OPTIONS,
         start: startMs,
         end: endMs,
-        aggregate: "onchange",
-        ignoreNull: true,
         count,
-        returnNewestEntries: true,
-        removeBorderValues: true,
     }), timeoutMs);
     if (!res?.result || !Array.isArray(res.result)) {
         return [];

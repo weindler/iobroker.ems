@@ -1,4 +1,5 @@
 import { asNum } from "../../ems_light/state_util";
+import { HISTORY_QUERY_OPTIONS } from "../history_query";
 import type { PvBiasDayPair } from "./types";
 
 export type HistoryHost = {
@@ -96,13 +97,10 @@ export async function fetchDayLastValue(
 	}
 	const res = await withHistoryTimeout(
 		host.getHistoryAsync(stateId, {
+			...HISTORY_QUERY_OPTIONS,
 			start: startMs,
 			end: endMs,
-			aggregate: "onchange",
-			ignoreNull: true,
 			count: 500,
-			returnNewestEntries: true,
-			removeBorderValues: true,
 		}),
 		HISTORY_QUERY_TIMEOUT_MS,
 	);

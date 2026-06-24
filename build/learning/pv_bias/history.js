@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchPvBiasDayPairs = exports.fetchDayLastValue = exports.readStateNum = exports.isForeignStateId = exports.dayBoundsMs = exports.HISTORY_QUERY_TIMEOUT_MS = void 0;
 const state_util_1 = require("../../ems_light/state_util");
+const history_query_1 = require("../history_query");
 exports.HISTORY_QUERY_TIMEOUT_MS = 8000;
 const MS_PER_DAY = 86_400_000;
 /** Lokale Mitternachtsgrenzen für einen Tag (dayOffset 0 = heute). */
@@ -76,13 +77,10 @@ async function fetchDayLastValue(host, stateId, startMs, endMs) {
         return null;
     }
     const res = await withHistoryTimeout(host.getHistoryAsync(stateId, {
+        ...history_query_1.HISTORY_QUERY_OPTIONS,
         start: startMs,
         end: endMs,
-        aggregate: "onchange",
-        ignoreNull: true,
         count: 500,
-        returnNewestEntries: true,
-        removeBorderValues: true,
     }), exports.HISTORY_QUERY_TIMEOUT_MS);
     if (res === null) {
         return null;

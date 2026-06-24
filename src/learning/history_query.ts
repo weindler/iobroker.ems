@@ -17,6 +17,13 @@ export const HISTORY_ROWS_PER_DAY = 500;
 export const HISTORY_CHUNK_TIMEOUT_MS = 10_000;
 /** Zu viele parallele getHistoryAsync-Calls überlasten history.0 (90× parallel → oft leer). */
 export const HISTORY_DAY_CONCURRENCY = 8;
+/** history.0: returnNewestEntries + count kann Tagesfenster leeren (ioBroker/history#238). */
+export const HISTORY_QUERY_OPTIONS: ioBroker.GetHistoryOptions = {
+	aggregate: "onchange",
+	ignoreNull: true,
+	returnNewestEntries: false,
+	removeBorderValues: false,
+};
 const MS_PER_DAY = 86_400_000;
 
 /** Lokale Mitternachtsgrenzen (dayOffset 0 = heute). */
@@ -116,13 +123,10 @@ export async function fetchHistoryRowsInRange(
 	}
 	const res = await withHistoryTimeout(
 		host.getHistoryAsync(stateId, {
+			...HISTORY_QUERY_OPTIONS,
 			start: startMs,
 			end: endMs,
-			aggregate: "onchange",
-			ignoreNull: true,
 			count,
-			returnNewestEntries: true,
-			removeBorderValues: true,
 		}),
 		timeoutMs,
 	);

@@ -102,9 +102,9 @@ async function runHouseLoadLearning(host) {
             result.healthJson.last_persist_at = lastRun;
         }
         await writeResult(host, result);
-        host.log.info(`House-Load-Learning: status=${result.status} health=${result.healthStatus} samples=${result.sampleCount} days=${result.sampleDays} source=${(0, config_1.sourceLabelFromStateId)(resolved.stateId)} (history=${stats.rowsTotal} rows → ${stats.hourlySamples} h, valid=${stats.validRows}, skipped=${stats.skippedInvalid + stats.skippedNegative})`);
+        host.log.info(`House-Load-Learning: status=${result.status} health=${result.healthStatus} samples=${result.sampleCount} days=${result.sampleDays} source=${(0, config_1.sourceLabelFromStateId)(resolved.stateId)} (history=${stats.rowsTotal} rows → ${stats.hourlySamples} h, valid=${stats.validRows}, span=${stats.tsSpanHours ?? "?"}h)`);
         if (stats.rowsTotal > 50 && stats.hourlySamples < 10) {
-            host.log.warn(`House Load Learning: ${stats.rowsTotal} History-Zeilen aber nur ${stats.hourlySamples} Stunden-Samples (invalid=${stats.skippedInvalid}, negative=${stats.skippedNegative}) — Einheit/State prüfen`);
+            host.log.warn(`House Load Learning: ${stats.rowsTotal} History-Zeilen aber nur ${stats.hourlySamples} Stunden-Samples (invalid=${stats.skippedInvalid}, negative=${stats.skippedNegative}, span=${stats.tsSpanHours ?? "?"}h) — Timestamps/Einheit prüfen`);
         }
         if (sampleDaysMinHours < sampleDays && result.status === "insufficient_data") {
             host.log.info(`House Load Learning: ${sampleDays} Kalendertage mit Daten, ${sampleDaysMinHours} mit ≥${constants_1.MIN_DAY_HOURS}h/Tag`);

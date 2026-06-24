@@ -117,4 +117,8 @@ const history_query_1 = require("./history_query");
         strict_1.default.equal(rows.length, 0);
         strict_1.default.equal(asyncCalls, 0);
     });
+    (0, node_test_1.it)("normalizes Unix-second timestamps to milliseconds", () => {
+        strict_1.default.equal((0, history_query_1.normalizeHistoryTs)(1_782_000_000), 1_782_000_000_000);
+        strict_1.default.equal((0, history_query_1.normalizeHistoryTs)(1_782_000_000_000), 1_782_000_000_000);
+    });
 });

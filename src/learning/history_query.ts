@@ -36,6 +36,28 @@ export const HISTORY_QUERY_OPTIONS: ioBroker.GetHistoryOptions = {
 
 const MS_PER_DAY = 86_400_000;
 
+/** history.0 / manche Adapter liefern Unix-Sekunden — dann landen 840 Zeilen in 1–2 h-Buckets. */
+export function normalizeHistoryTs(ts: number): number {
+	if (!Number.isFinite(ts) || ts <= 0) {
+		return ts;
+	}
+	// 2026 ms ≈ 1.78e12; Sekunden ≈ 1.78e9 — Grenze weit unter beiden ms-Werten
+	if (ts < 100_000_000_000) {
+		return ts * 1000;
+	}
+	return ts;
+}
+
+export function normalizeHistoryRows(rows: ioBroker.GetHistoryResult): ioBroker.GetHistoryResult {
+	return rows.map((row) => {
+		if (!row || typeof row.ts !== "number") {
+			return row;
+		}
+		const ts = normalizeHistoryTs(row.ts);
+		return ts === row.ts ? row : { ...row, ts };
+	});
+}
+
 type HistoryFetchStats = {
 	timedOut: number;
 	empty: number;
@@ -248,12 +270,14 @@ async function fetchHistoryRowsInRangeDetailed(
 		timeoutMs,
 	);
 
+	const normalized = normalizeHistoryRows(rows);
+
 	const stats = emptyStats();
 	if (timedOut) stats.timedOut = 1;
 	else if (error) stats.errors = 1;
-	else if (rows.length === 0) stats.empty = 1;
+	else if (normalized.length === 0) stats.empty = 1;
 
-	return { rows, stats };
+	return { rows: normalized, stats };
 }
 
 async function fetchHistoryWithAggregates(

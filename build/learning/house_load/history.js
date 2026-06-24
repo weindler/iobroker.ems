@@ -88,12 +88,15 @@ async function fetchHouseLoadSamples(host, stateId, lookbackDays) {
         hourlySamples: 0,
         skippedInvalid: 0,
         skippedNegative: 0,
+        tsSpanHours: null,
     };
     const powerUnit = await resolveHouseLoadPowerUnit(host, stateId);
     const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, stateId, lookbackDays, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
     stats.rowsTotal = rows.length;
     /** Pro Stunde letzter gültiger Wert — wie battery_runtime/history.ts */
     const byHour = new Map();
+    let tsMin = null;
+    let tsMax = null;
     for (const row of rows) {
         const ts = typeof row?.ts === "number" ? row.ts : null;
         const raw = (0, state_util_1.asNum)(row?.val);
@@ -111,6 +114,10 @@ async function fetchHouseLoadSamples(host, stateId, lookbackDays) {
             continue;
         }
         stats.validRows++;
+        if (tsMin === null || ts < tsMin)
+            tsMin = ts;
+        if (tsMax === null || ts > tsMax)
+            tsMax = ts;
         const bucket = hourStartMs(ts);
         const existing = byHour.get(bucket);
         if (!existing || ts > existing.ts) {
@@ -137,6 +144,9 @@ async function fetchHouseLoadSamples(host, stateId, lookbackDays) {
     }
     samples.sort((a, b) => a.hourStartMs - b.hourStartMs);
     stats.hourlySamples = samples.length;
+    if (tsMin !== null && tsMax !== null && tsMax > tsMin) {
+        stats.tsSpanHours = Math.round((tsMax - tsMin) / constants_1.MS_PER_HOUR);
+    }
     return { samples, lastValidTs, stats };
 }
 exports.fetchHouseLoadSamples = fetchHouseLoadSamples;

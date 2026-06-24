@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
 	fetchHistoryRowsLookback,
 	historyStateCandidates,
+	normalizeHistoryTs,
 	type HistoryQueryHost,
 } from "./history_query";
 
@@ -126,5 +127,10 @@ describe("history_query", () => {
 		const rows = await fetchHistoryRowsLookback(host, "alias.0.test", 1);
 		assert.equal(rows.length, 0);
 		assert.equal(asyncCalls, 0);
+	});
+
+	it("normalizes Unix-second timestamps to milliseconds", () => {
+		assert.equal(normalizeHistoryTs(1_782_000_000), 1_782_000_000_000);
+		assert.equal(normalizeHistoryTs(1_782_000_000_000), 1_782_000_000_000);
 	});
 });

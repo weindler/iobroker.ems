@@ -57,4 +57,21 @@ function mockRowsPerDay(baseMs, days, hoursPerDay, powerW) {
         strict_1.default.equal(samples.length, 1);
         strict_1.default.equal(samples[0].powerW, 4000);
     });
+    (0, node_test_1.it)("spreads second-based history timestamps across hours", async () => {
+        const baseSec = 1_782_000_000;
+        const host = {
+            getHistoryAsync: async () => ({
+                result: Array.from({ length: 96 }, (_, i) => ({
+                    ts: baseSec + i * 3600,
+                    val: 2500,
+                    ack: true,
+                    lc: 0,
+                    from: "test",
+                })),
+            }),
+        };
+        const { samples, stats } = await (0, history_1.fetchHouseLoadSamples)(host, "sonnen.0.status.consumption", 7);
+        strict_1.default.equal(stats.hourlySamples, 96);
+        strict_1.default.ok((stats.tsSpanHours ?? 0) >= 95);
+    });
 });

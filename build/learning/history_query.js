@@ -5,7 +5,7 @@
  * getHistoryAsync nur wenn kein sendToAsync am Host.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchHistoryRowsLookback = exports.fetchHistoryRowsInRange = exports.withHistoryTimeout = exports.historyStateCandidates = exports.dayBoundsMs = exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_AGGREGATES = exports.PER_DAY_FALLBACK_MAX_DAYS = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_BULK_TIMEOUT_MS = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
+exports.fetchHistoryRowsLookback = exports.fetchHistoryRowsInRange = exports.withHistoryTimeout = exports.historyStateCandidates = exports.dayBoundsMs = exports.normalizeHistoryRows = exports.normalizeHistoryTs = exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_AGGREGATES = exports.PER_DAY_FALLBACK_MAX_DAYS = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_BULK_TIMEOUT_MS = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
 exports.HISTORY_ROWS_PER_DAY = 500;
 exports.HISTORY_CHUNK_TIMEOUT_MS = 45_000;
 exports.HISTORY_BULK_TIMEOUT_MS = 45_000;
@@ -19,6 +19,28 @@ exports.HISTORY_QUERY_OPTIONS = {
     removeBorderValues: false,
 };
 const MS_PER_DAY = 86_400_000;
+/** history.0 / manche Adapter liefern Unix-Sekunden — dann landen 840 Zeilen in 1–2 h-Buckets. */
+function normalizeHistoryTs(ts) {
+    if (!Number.isFinite(ts) || ts <= 0) {
+        return ts;
+    }
+    // 2026 ms ≈ 1.78e12; Sekunden ≈ 1.78e9 — Grenze weit unter beiden ms-Werten
+    if (ts < 100_000_000_000) {
+        return ts * 1000;
+    }
+    return ts;
+}
+exports.normalizeHistoryTs = normalizeHistoryTs;
+function normalizeHistoryRows(rows) {
+    return rows.map((row) => {
+        if (!row || typeof row.ts !== "number") {
+            return row;
+        }
+        const ts = normalizeHistoryTs(row.ts);
+        return ts === row.ts ? row : { ...row, ts };
+    });
+}
+exports.normalizeHistoryRows = normalizeHistoryRows;
 function dayBoundsMs(dayOffset) {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -162,14 +184,15 @@ async function fetchHistoryRowsInRangeDetailed(host, stateId, startMs, endMs, co
         end: endMs,
         count,
     }, timeoutMs);
+    const normalized = normalizeHistoryRows(rows);
     const stats = emptyStats();
     if (timedOut)
         stats.timedOut = 1;
     else if (error)
         stats.errors = 1;
-    else if (rows.length === 0)
+    else if (normalized.length === 0)
         stats.empty = 1;
-    return { rows, stats };
+    return { rows: normalized, stats };
 }
 async function fetchHistoryWithAggregates(host, stateId, startMs, endMs, count, timeoutMs) {
     let stats = emptyStats();

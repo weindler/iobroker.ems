@@ -132,12 +132,12 @@ export async function runHouseLoadLearning(host: HouseLoadRunHost): Promise<void
 		await writeResult(host, result);
 
 		host.log.info(
-			`House-Load-Learning: status=${result.status} health=${result.healthStatus} samples=${result.sampleCount} days=${result.sampleDays} source=${sourceLabelFromStateId(resolved.stateId)} (history=${stats.rowsTotal} rows → ${stats.hourlySamples} h, valid=${stats.validRows}, skipped=${stats.skippedInvalid + stats.skippedNegative})`,
+			`House-Load-Learning: status=${result.status} health=${result.healthStatus} samples=${result.sampleCount} days=${result.sampleDays} source=${sourceLabelFromStateId(resolved.stateId)} (history=${stats.rowsTotal} rows → ${stats.hourlySamples} h, valid=${stats.validRows}, span=${stats.tsSpanHours ?? "?"}h)`,
 		);
 
 		if (stats.rowsTotal > 50 && stats.hourlySamples < 10) {
 			host.log.warn(
-				`House Load Learning: ${stats.rowsTotal} History-Zeilen aber nur ${stats.hourlySamples} Stunden-Samples (invalid=${stats.skippedInvalid}, negative=${stats.skippedNegative}) — Einheit/State prüfen`,
+				`House Load Learning: ${stats.rowsTotal} History-Zeilen aber nur ${stats.hourlySamples} Stunden-Samples (invalid=${stats.skippedInvalid}, negative=${stats.skippedNegative}, span=${stats.tsSpanHours ?? "?"}h) — Timestamps/Einheit prüfen`,
 			);
 		}
 

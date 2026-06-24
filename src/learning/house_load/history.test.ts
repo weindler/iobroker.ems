@@ -68,4 +68,22 @@ describe("house_load history", () => {
 		assert.equal(samples.length, 1);
 		assert.equal(samples[0].powerW, 4000);
 	});
+
+	it("spreads second-based history timestamps across hours", async () => {
+		const baseSec = 1_782_000_000;
+		const host: HistoryQueryHost = {
+			getHistoryAsync: async () => ({
+				result: Array.from({ length: 96 }, (_, i) => ({
+					ts: baseSec + i * 3600,
+					val: 2500,
+					ack: true,
+					lc: 0,
+					from: "test",
+				})),
+			}),
+		};
+		const { samples, stats } = await fetchHouseLoadSamples(host, "sonnen.0.status.consumption", 7);
+		assert.equal(stats.hourlySamples, 96);
+		assert.ok((stats.tsSpanHours ?? 0) >= 95);
+	});
 });

@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.37",
+		"version": "0.1.38",
 		"news": {
+			"0.1.38": {
+				"en": "Normalize history timestamps from seconds to ms — fixes 840 rows collapsing to 2 hour buckets",
+				"de": "History-Timestamps Sekunden→ms normalisieren — behebt 840 Zeilen in 2 Stunden-Buckets"
+			},
 			"0.1.37": {
 				"en": "Fix house load hourly aggregation and kW unit; PV-Bias uses shared history bridge",
 				"de": "House-Load Stunden-Aggregation + kW-Einheit; PV-Bias nutzt gemeinsame History-Bridge"

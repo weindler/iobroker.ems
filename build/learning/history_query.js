@@ -7,7 +7,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchHistoryRowsLookback = exports.fetchHistoryRowsInRange = exports.withHistoryTimeout = exports.historyStateCandidates = exports.dayBoundsMs = exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_AGGREGATES = exports.PER_DAY_FALLBACK_MAX_DAYS = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_BULK_TIMEOUT_MS = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
 exports.HISTORY_ROWS_PER_DAY = 500;
 exports.HISTORY_CHUNK_TIMEOUT_MS = 45_000;
-exports.HISTORY_BULK_TIMEOUT_MS = 60_000;
+exports.HISTORY_BULK_TIMEOUT_MS = 120_000;
 exports.HISTORY_DAY_CONCURRENCY = 4;
 /** Nach leerem Bulk: max. so viele Tage einzeln — 90d×2 Aggregate würde den Tick blockieren. */
 exports.PER_DAY_FALLBACK_MAX_DAYS = 7;
@@ -159,11 +159,34 @@ async function fetchHistoryWithAggregates(host, stateId, startMs, endMs, count, 
     }
     return { rows: [], stats };
 }
+function bulkWindowDays(lookbackDays) {
+    const windows = [];
+    for (const days of [7, 30, lookbackDays]) {
+        if (days > 0 && days <= lookbackDays && !windows.includes(days)) {
+            windows.push(days);
+        }
+    }
+    return windows.sort((a, b) => a - b);
+}
 async function fetchHistoryBulkForId(host, stateId, lookbackDays) {
-    const endMs = Date.now();
-    const startMs = endMs - lookbackDays * MS_PER_DAY;
-    const count = Math.min(Math.max(lookbackDays * 120, 500), 20_000);
-    return fetchHistoryWithAggregates(host, stateId, startMs, endMs, count, exports.HISTORY_BULK_TIMEOUT_MS);
+    let combinedStats = emptyStats();
+    for (const days of bulkWindowDays(lookbackDays)) {
+        if (host.log?.info) {
+            host.log.info(`History query: bulk ${days}d für ${stateId}…`);
+        }
+        const endMs = Date.now();
+        const startMs = endMs - days * MS_PER_DAY;
+        const count = Math.min(Math.max(days * 120, 500), 20_000);
+        const attempt = await fetchHistoryWithAggregates(host, stateId, startMs, endMs, count, exports.HISTORY_BULK_TIMEOUT_MS);
+        combinedStats = mergeStats(combinedStats, attempt.stats);
+        if (attempt.rows.length > 0) {
+            return attempt;
+        }
+        if (host.log?.warn) {
+            host.log.warn(`History query: bulk ${days}d ohne Treffer (${formatHistoryStats(attempt.stats)}) für ${stateId}`);
+        }
+    }
+    return { rows: [], stats: combinedStats };
 }
 async function fetchHistoryPerDayForId(host, stateId, lookbackDays, countPerDay, timeoutMs) {
     const dayOffsets = Array.from({ length: lookbackDays }, (_, dayOffset) => dayOffset);
@@ -184,8 +207,8 @@ async function fetchHistoryRowsLookbackForId(host, stateId, lookbackDays, countP
         return bulk;
     }
     const fallbackDays = Math.min(lookbackDays, exports.PER_DAY_FALLBACK_MAX_DAYS);
-    if (host.log?.info && fallbackDays < lookbackDays) {
-        host.log.info(`History query: bulk leer für ${stateId}, Tages-Fallback nur ${fallbackDays}d (max ${exports.PER_DAY_FALLBACK_MAX_DAYS})`);
+    if (host.log?.info) {
+        host.log.info(`History query: Tages-Fallback ${fallbackDays}d für ${stateId} (${formatHistoryStats(bulk.stats)})`);
     }
     const perDay = await fetchHistoryPerDayForId(host, stateId, fallbackDays, countPerDay, timeoutMs);
     return {
@@ -211,9 +234,6 @@ async function fetchHistoryRowsLookback(host, stateId, lookbackDays, countPerDay
     let combinedStats = emptyStats();
     for (let i = 0; i < candidates.length; i++) {
         const candidateId = candidates[i];
-        if (host.log?.info) {
-            host.log.info(`History query: bulk ${lookbackDays}d für ${candidateId}…`);
-        }
         const attempt = await fetchHistoryRowsLookbackForId(host, candidateId, lookbackDays, countPerDay, timeoutMs);
         combinedStats = mergeStats(combinedStats, attempt.stats);
         if (attempt.rows.length > 0) {

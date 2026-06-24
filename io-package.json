@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.32",
+		"version": "0.1.33",
 		"news": {
+			"0.1.33": {
+				"en": "Fix history: getHistoryAsync only (not sendTo history.0 first), cap per-day fallback to 7d",
+				"de": "History-Fix: nur getHistoryAsync (nicht sendTo history.0 zuerst), Tages-Fallback max. 7d"
+			},
 			"0.1.32": {
 				"en": "History: 60s bulk query, 45s timeout, sendTo history.0, aggregate none fallback, timeout stats in log",
 				"de": "History: 60s-Bulk-Abfrage, 45s Timeout, sendTo history.0, aggregate-none-Fallback, Timeout-Statistik im Log"

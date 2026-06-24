@@ -1,6 +1,6 @@
 /**
  * History-Abfragen für Learning-Module.
- * Bulk-Fenster zuerst (1× history.0), Tages-Chunks als Fallback.
+ * Bulk-Fenster via getHistoryAsync (defaultHistory-Instanz), begrenzter Tages-Fallback.
  */
 
 export type HistoryQueryHost = {
@@ -8,25 +8,20 @@ export type HistoryQueryHost = {
 		id: string,
 		options?: ioBroker.GetHistoryOptions,
 	) => Promise<{ result?: ioBroker.GetHistoryResult; step?: number; sessionId?: number }>;
-	sendToAsync?: (
-		instanceName: string,
-		command: string,
-		message: unknown,
-	) => Promise<unknown>;
 	getObjectAsync?: (id: string) => Promise<ioBroker.Object | null | undefined>;
-	log?: { warn?: (msg: string) => void; debug?: (msg: string) => void };
+	log?: { info?: (msg: string) => void; warn?: (msg: string) => void; debug?: (msg: string) => void };
 };
 
 export const HISTORY_ROWS_PER_DAY = 500;
-/** history.0 antwortet auf belasteten Hosts oft erst nach >10 s — kurzer Timeout → leere Arrays. */
 export const HISTORY_CHUNK_TIMEOUT_MS = 45_000;
 export const HISTORY_BULK_TIMEOUT_MS = 60_000;
 export const HISTORY_DAY_CONCURRENCY = 4;
+/** Nach leerem Bulk: max. so viele Tage einzeln — 90d×2 Aggregate würde den Tick blockieren. */
+export const PER_DAY_FALLBACK_MAX_DAYS = 7;
 
 export const HISTORY_AGGREGATES = ["onchange", "none"] as const;
 export type HistoryAggregate = (typeof HISTORY_AGGREGATES)[number];
 
-/** history.0: returnNewestEntries + count kann Tagesfenster leeren (ioBroker/history#238). */
 export const HISTORY_QUERY_OPTIONS: ioBroker.GetHistoryOptions = {
 	ignoreNull: true,
 	returnNewestEntries: false,
@@ -46,7 +41,6 @@ type HistoryFetchResult = {
 	stats: HistoryFetchStats;
 };
 
-/** Lokale Mitternachtsgrenzen (dayOffset 0 = heute). */
 export function dayBoundsMs(dayOffset: number): { start: number; end: number } {
 	const d = new Date();
 	d.setHours(0, 0, 0, 0);
@@ -137,36 +131,23 @@ function rowsFromHistoryMessage(res: unknown): ioBroker.GetHistoryResult {
 	return Array.isArray(payload.result) ? payload.result : [];
 }
 
+/** getHistoryAsync nutzt system.defaultHistory — sendTo('history.0') kann leer liefern und blockierte 0.1.32. */
 async function invokeGetHistory(
 	host: HistoryQueryHost,
 	stateId: string,
 	options: ioBroker.GetHistoryOptions,
 	timeoutMs: number,
 ): Promise<{ rows: ioBroker.GetHistoryResult; timedOut: boolean; error: boolean }> {
-	const res = await withHistoryTimeout(
-		(async () => {
-			if (host.sendToAsync) {
-				try {
-					return await host.sendToAsync("history.0", "getHistory", { id: stateId, options });
-				} catch {
-					// getHistoryAsync versucht defaultHistory-Instanz
-				}
-			}
-			return host.getHistoryAsync(stateId, options);
-		})(),
-		timeoutMs,
-	);
+	const res = await withHistoryTimeout(host.getHistoryAsync(stateId, options), timeoutMs);
 
 	if (res === null) {
 		return { rows: [], timedOut: true, error: false };
 	}
 
 	const rows = rowsFromHistoryMessage(res);
-	if (!Array.isArray((res as { result?: unknown }).result) && rows.length === 0) {
-		const err = (res as { error?: unknown }).error;
-		if (err) {
-			return { rows: [], timedOut: false, error: true };
-		}
+	const err = (res as { error?: unknown }).error;
+	if (err && rows.length === 0) {
+		return { rows: [], timedOut: false, error: true };
 	}
 
 	return { rows, timedOut: false, error: false };
@@ -266,7 +247,6 @@ async function fetchHistoryWithAggregates(
 	return { rows: [], stats };
 }
 
-/** Ein Fenster für den gesamten Lookback — weniger Roundtrips, höheres Timeout. */
 async function fetchHistoryBulkForId(
 	host: HistoryQueryHost,
 	stateId: string,
@@ -317,7 +297,14 @@ async function fetchHistoryRowsLookbackForId(
 		return bulk;
 	}
 
-	const perDay = await fetchHistoryPerDayForId(host, stateId, lookbackDays, countPerDay, timeoutMs);
+	const fallbackDays = Math.min(lookbackDays, PER_DAY_FALLBACK_MAX_DAYS);
+	if (host.log?.info && fallbackDays < lookbackDays) {
+		host.log.info(
+			`History query: bulk leer für ${stateId}, Tages-Fallback nur ${fallbackDays}d (max ${PER_DAY_FALLBACK_MAX_DAYS})`,
+		);
+	}
+
+	const perDay = await fetchHistoryPerDayForId(host, stateId, fallbackDays, countPerDay, timeoutMs);
 	return {
 		rows: perDay.rows,
 		stats: mergeStats(bulk.stats, perDay.stats),
@@ -332,7 +319,6 @@ function formatHistoryStats(stats: HistoryFetchStats): string {
 	return parts.length > 0 ? parts.join(", ") : "keine Antwort";
 }
 
-/** Lookback: Bulk zuerst, dann Tages-Chunks; Alias→Quell-Fallback. */
 export async function fetchHistoryRowsLookback(
 	host: HistoryQueryHost,
 	stateId: string,
@@ -349,6 +335,10 @@ export async function fetchHistoryRowsLookback(
 
 	for (let i = 0; i < candidates.length; i++) {
 		const candidateId = candidates[i];
+		if (host.log?.info) {
+			host.log.info(`History query: bulk ${lookbackDays}d für ${candidateId}…`);
+		}
+
 		const attempt = await fetchHistoryRowsLookbackForId(
 			host,
 			candidateId,
@@ -363,9 +353,8 @@ export async function fetchHistoryRowsLookback(
 				host.log.warn(
 					`History query: Daten über Fallback-State ${candidateId} (${attempt.rows.length} Zeilen, konfiguriert: ${stateId})`,
 				);
-			}
-			if (host.log?.debug) {
-				host.log.debug(`History query: ${attempt.rows.length} rows for ${candidateId} (${lookbackDays}d)`);
+			} else if (host.log?.info) {
+				host.log.info(`History query: ${attempt.rows.length} Zeilen für ${candidateId} (${lookbackDays}d)`);
 			}
 			return attempt.rows;
 		}
@@ -374,7 +363,7 @@ export async function fetchHistoryRowsLookback(
 	if (host.log?.warn) {
 		const tried = candidates.join(" → ");
 		host.log.warn(
-			`History query: 0 rows for ${stateId} (${lookbackDays}d, tried: ${tried}, ${formatHistoryStats(combinedStats)}) — history.0/langsame Antwort?`,
+			`History query: 0 rows for ${stateId} (${lookbackDays}d, tried: ${tried}, ${formatHistoryStats(combinedStats)})`,
 		);
 	}
 	return [];

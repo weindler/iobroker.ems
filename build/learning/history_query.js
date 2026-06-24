@@ -1,24 +1,23 @@
 "use strict";
 /**
  * History-Abfragen für Learning-Module.
- * Bulk-Fenster zuerst (1× history.0), Tages-Chunks als Fallback.
+ * Bulk-Fenster via getHistoryAsync (defaultHistory-Instanz), begrenzter Tages-Fallback.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchHistoryRowsLookback = exports.fetchHistoryRowsInRange = exports.withHistoryTimeout = exports.historyStateCandidates = exports.dayBoundsMs = exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_AGGREGATES = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_BULK_TIMEOUT_MS = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
+exports.fetchHistoryRowsLookback = exports.fetchHistoryRowsInRange = exports.withHistoryTimeout = exports.historyStateCandidates = exports.dayBoundsMs = exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_AGGREGATES = exports.PER_DAY_FALLBACK_MAX_DAYS = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_BULK_TIMEOUT_MS = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
 exports.HISTORY_ROWS_PER_DAY = 500;
-/** history.0 antwortet auf belasteten Hosts oft erst nach >10 s — kurzer Timeout → leere Arrays. */
 exports.HISTORY_CHUNK_TIMEOUT_MS = 45_000;
 exports.HISTORY_BULK_TIMEOUT_MS = 60_000;
 exports.HISTORY_DAY_CONCURRENCY = 4;
+/** Nach leerem Bulk: max. so viele Tage einzeln — 90d×2 Aggregate würde den Tick blockieren. */
+exports.PER_DAY_FALLBACK_MAX_DAYS = 7;
 exports.HISTORY_AGGREGATES = ["onchange", "none"];
-/** history.0: returnNewestEntries + count kann Tagesfenster leeren (ioBroker/history#238). */
 exports.HISTORY_QUERY_OPTIONS = {
     ignoreNull: true,
     returnNewestEntries: false,
     removeBorderValues: false,
 };
 const MS_PER_DAY = 86_400_000;
-/** Lokale Mitternachtsgrenzen (dayOffset 0 = heute). */
 function dayBoundsMs(dayOffset) {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -101,27 +100,16 @@ function rowsFromHistoryMessage(res) {
     }
     return Array.isArray(payload.result) ? payload.result : [];
 }
+/** getHistoryAsync nutzt system.defaultHistory — sendTo('history.0') kann leer liefern und blockierte 0.1.32. */
 async function invokeGetHistory(host, stateId, options, timeoutMs) {
-    const res = await withHistoryTimeout((async () => {
-        if (host.sendToAsync) {
-            try {
-                return await host.sendToAsync("history.0", "getHistory", { id: stateId, options });
-            }
-            catch {
-                // getHistoryAsync versucht defaultHistory-Instanz
-            }
-        }
-        return host.getHistoryAsync(stateId, options);
-    })(), timeoutMs);
+    const res = await withHistoryTimeout(host.getHistoryAsync(stateId, options), timeoutMs);
     if (res === null) {
         return { rows: [], timedOut: true, error: false };
     }
     const rows = rowsFromHistoryMessage(res);
-    if (!Array.isArray(res.result) && rows.length === 0) {
-        const err = res.error;
-        if (err) {
-            return { rows: [], timedOut: false, error: true };
-        }
+    const err = res.error;
+    if (err && rows.length === 0) {
+        return { rows: [], timedOut: false, error: true };
     }
     return { rows, timedOut: false, error: false };
 }
@@ -171,7 +159,6 @@ async function fetchHistoryWithAggregates(host, stateId, startMs, endMs, count, 
     }
     return { rows: [], stats };
 }
-/** Ein Fenster für den gesamten Lookback — weniger Roundtrips, höheres Timeout. */
 async function fetchHistoryBulkForId(host, stateId, lookbackDays) {
     const endMs = Date.now();
     const startMs = endMs - lookbackDays * MS_PER_DAY;
@@ -196,7 +183,11 @@ async function fetchHistoryRowsLookbackForId(host, stateId, lookbackDays, countP
     if (bulk.rows.length > 0) {
         return bulk;
     }
-    const perDay = await fetchHistoryPerDayForId(host, stateId, lookbackDays, countPerDay, timeoutMs);
+    const fallbackDays = Math.min(lookbackDays, exports.PER_DAY_FALLBACK_MAX_DAYS);
+    if (host.log?.info && fallbackDays < lookbackDays) {
+        host.log.info(`History query: bulk leer für ${stateId}, Tages-Fallback nur ${fallbackDays}d (max ${exports.PER_DAY_FALLBACK_MAX_DAYS})`);
+    }
+    const perDay = await fetchHistoryPerDayForId(host, stateId, fallbackDays, countPerDay, timeoutMs);
     return {
         rows: perDay.rows,
         stats: mergeStats(bulk.stats, perDay.stats),
@@ -212,7 +203,6 @@ function formatHistoryStats(stats) {
         parts.push(`${stats.errors}× Fehler`);
     return parts.length > 0 ? parts.join(", ") : "keine Antwort";
 }
-/** Lookback: Bulk zuerst, dann Tages-Chunks; Alias→Quell-Fallback. */
 async function fetchHistoryRowsLookback(host, stateId, lookbackDays, countPerDay = exports.HISTORY_ROWS_PER_DAY, timeoutMs = exports.HISTORY_CHUNK_TIMEOUT_MS) {
     if (!stateId || lookbackDays <= 0) {
         return [];
@@ -221,21 +211,24 @@ async function fetchHistoryRowsLookback(host, stateId, lookbackDays, countPerDay
     let combinedStats = emptyStats();
     for (let i = 0; i < candidates.length; i++) {
         const candidateId = candidates[i];
+        if (host.log?.info) {
+            host.log.info(`History query: bulk ${lookbackDays}d für ${candidateId}…`);
+        }
         const attempt = await fetchHistoryRowsLookbackForId(host, candidateId, lookbackDays, countPerDay, timeoutMs);
         combinedStats = mergeStats(combinedStats, attempt.stats);
         if (attempt.rows.length > 0) {
             if (i > 0 && host.log?.warn) {
                 host.log.warn(`History query: Daten über Fallback-State ${candidateId} (${attempt.rows.length} Zeilen, konfiguriert: ${stateId})`);
             }
-            if (host.log?.debug) {
-                host.log.debug(`History query: ${attempt.rows.length} rows for ${candidateId} (${lookbackDays}d)`);
+            else if (host.log?.info) {
+                host.log.info(`History query: ${attempt.rows.length} Zeilen für ${candidateId} (${lookbackDays}d)`);
             }
             return attempt.rows;
         }
     }
     if (host.log?.warn) {
         const tried = candidates.join(" → ");
-        host.log.warn(`History query: 0 rows for ${stateId} (${lookbackDays}d, tried: ${tried}, ${formatHistoryStats(combinedStats)}) — history.0/langsame Antwort?`);
+        host.log.warn(`History query: 0 rows for ${stateId} (${lookbackDays}d, tried: ${tried}, ${formatHistoryStats(combinedStats)})`);
     }
     return [];
 }

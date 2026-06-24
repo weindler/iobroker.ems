@@ -82,6 +82,7 @@ async function runHouseLoadLearning(host) {
         lastPersistAt = existing?.generated_at ?? null;
     }
     try {
+        host.log.info(`House-Load-Learning: loading history (${cfg.lookbackDays}d, ${(0, config_1.sourceLabelFromStateId)(resolved.stateId)})…`);
         const { samples, lastValidTs } = await (0, history_1.fetchHouseLoadSamples)(host, resolved.stateId, cfg.lookbackDays);
         const sampleDays = (0, history_1.distinctSampleDays)(samples);
         const result = (0, math_1.computeHouseLoadLearning)({

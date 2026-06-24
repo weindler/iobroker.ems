@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.28",
+		"version": "0.1.29",
 		"news": {
+			"0.1.29": {
+				"en": "Learning tick: House/Thermal/Battery before Price Forecast; batch forecast actual history by day",
+				"de": "Learning-Tick: House/Thermal/Battery vor Price Forecast; Forecast-Ist-History batched pro Tag"
+			},
 			"0.1.28": {
 				"en": "Learning: history queries in per-day chunks (fixes empty sample_days with active history.0)",
 				"de": "Learning: History-Abfragen in Tages-Chunks (behebt leere sample_days trotz aktivem history.0)"

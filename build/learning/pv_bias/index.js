@@ -16,10 +16,11 @@ async function runLearningTick(host) {
     await (0, run_1.runPvBiasLearning)(host);
     await (0, pv_horizon_1.runPvHorizon)(host);
     await (0, price_learning_1.runPriceLearning)(host);
-    await (0, price_forecast_1.runPriceForecastLearning)(host);
+    // House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
     await (0, house_load_1.runHouseLoadLearning)(host);
     await (0, thermal_runtime_1.runThermalRuntimeLearning)(host);
     await (0, battery_runtime_1.runBatteryRuntimeLearning)(host);
+    await (0, price_forecast_1.runPriceForecastLearning)(host);
 }
 async function initPvBiasLearning(adapter) {
     const host = (0, data_dir_1.withLearningDataPath)(adapter, adapter);

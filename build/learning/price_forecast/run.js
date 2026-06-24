@@ -67,6 +67,7 @@ async function runPriceForecastLearning(host) {
     const actualSource = (0, config_1.sourceLabelFromStateId)(cfg.actualStateId);
     try {
         await (0, compare_1.runPriceForecastFreeze)(host, cfg);
+        host.log.info(`Price Forecast Learning: matching freeze files (lookback ${cfg.lookbackDays}d)…`);
         const pairs = await (0, compare_1.buildMatchedPairs)(host, cfg);
         const result = (0, math_1.computePriceForecastLearning)(pairs, cfg.lookbackDays, forecastSource, actualSource, new Date());
         await writeResult(host, result, lastRun, cfg);

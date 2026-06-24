@@ -3,6 +3,7 @@ import { decideForecastFreeze, localDateKey } from "../pv_bias/freeze";
 import {
 	fetchHistoryRowsInRange,
 	HISTORY_CHUNK_TIMEOUT_MS,
+	HISTORY_ROWS_PER_DAY,
 } from "../history_query";
 import {
 	isValidPriceValue,
@@ -10,14 +11,14 @@ import {
 	toCtPerKwh,
 	toEurPerKwh,
 } from "../price_common/units";
-import { MODULE_TAG, MS_PER_HOUR } from "./constants";
+import { MODULE_TAG, MS_PER_DAY, MS_PER_HOUR } from "./constants";
 import {
 	parseTibberPriceJsonToHourlySlots,
 	targetDateForTodayFreeze,
 	targetDateForTomorrowFreeze,
 } from "./tibber_parse";
 import { readForecastFreezeFiles, writeForecastFreezeFile } from "./persist";
-import type { MatchedHourPair, PriceForecastConfig, PriceForecastFreezeFile } from "./types";
+import type { FrozenHourSlot, MatchedHourPair, PriceForecastConfig, PriceForecastFreezeFile } from "./types";
 import type { PriceUnit } from "../price_common/units";
 
 export type PriceForecastHost = {
@@ -51,6 +52,34 @@ async function readForeignVal(host: PriceForecastHost, stateId: string): Promise
 	return tryRead(host.getStateAsync);
 }
 
+function dayStartMs(ts: number): number {
+	const d = new Date(ts);
+	d.setHours(0, 0, 0, 0);
+	return d.getTime();
+}
+
+/** Nächsten gültigen Ist-Wert zur Stundenmarke aus bereits geladenen Tageszeilen. */
+export function pickActualCtForHour(
+	rows: ioBroker.GetHistoryResult,
+	unit: PriceUnit,
+	hourStartMs: number,
+): number | null {
+	const hourEndMs = hourStartMs + MS_PER_HOUR;
+	let best: { ts: number; val: number } | null = null;
+	for (const row of rows) {
+		const ts = typeof row?.ts === "number" ? row.ts : null;
+		const raw = asNum(row?.val);
+		if (ts === null || ts < hourStartMs || ts >= hourEndMs || !isValidPriceValue(raw, unit)) {
+			continue;
+		}
+		if (!best || Math.abs(ts - hourStartMs) < Math.abs(best.ts - hourStartMs)) {
+			best = { ts, val: raw };
+		}
+	}
+	if (!best) return null;
+	return Math.round(toCtPerKwh(toEurPerKwh(best.val, unit)) * 1000) / 1000;
+}
+
 export async function fetchActualCtAtHour(
 	host: PriceForecastHost,
 	stateId: string,
@@ -65,20 +94,49 @@ export async function fetchActualCtAtHour(
 		20,
 		HISTORY_CHUNK_TIMEOUT_MS,
 	);
-	if (rows.length === 0) {
-		return null;
+	return pickActualCtForHour(rows, unit, hourStartMs);
+}
+
+/** Ist-Preise pro Stunde — ein History-Call pro Kalendertag statt pro Slot. */
+export async function fetchActualCtByHourMap(
+	host: PriceForecastHost,
+	stateId: string,
+	unit: PriceUnit,
+	hourStarts: number[],
+): Promise<Map<number, number>> {
+	const map = new Map<number, number>();
+	if (hourStarts.length === 0) {
+		return map;
 	}
-	let best: { ts: number; val: number } | null = null;
-	for (const row of rows) {
-		const ts = typeof row?.ts === "number" ? row.ts : null;
-		const raw = asNum(row?.val);
-		if (ts === null || !isValidPriceValue(raw, unit)) continue;
-		if (!best || Math.abs(ts - hourStartMs) < Math.abs(best.ts - hourStartMs)) {
-			best = { ts, val: raw };
-		}
+
+	const hoursByDay = new Map<number, number[]>();
+	for (const hourStartMs of hourStarts) {
+		const dayStart = dayStartMs(hourStartMs);
+		const list = hoursByDay.get(dayStart) ?? [];
+		list.push(hourStartMs);
+		hoursByDay.set(dayStart, list);
 	}
-	if (!best) return null;
-	return Math.round(toCtPerKwh(toEurPerKwh(best.val, unit)) * 1000) / 1000;
+
+	await Promise.all(
+		[...hoursByDay.entries()].map(async ([dayStart, hours]) => {
+			const rows = await fetchHistoryRowsInRange(
+				host,
+				stateId,
+				dayStart,
+				dayStart + MS_PER_DAY,
+				HISTORY_ROWS_PER_DAY,
+				HISTORY_CHUNK_TIMEOUT_MS,
+			);
+			for (const hourStartMs of hours) {
+				const actualCt = pickActualCtForHour(rows, unit, hourStartMs);
+				if (actualCt !== null) {
+					map.set(hourStartMs, actualCt);
+				}
+			}
+		}),
+	);
+
+	return map;
 }
 
 type FreezeTrack = {
@@ -196,29 +254,36 @@ export async function buildMatchedPairs(
 	const unit = await resolvePriceUnit(host, cfg.actualStateId);
 
 	const nowMs = Date.now();
-	const pairs: MatchedHourPair[] = [];
+	const pendingSlots: { file: PriceForecastFreezeFile; slot: FrozenHourSlot }[] = [];
 
 	for (const file of freezeFiles) {
 		for (const slot of file.slots) {
 			if (slot.hourStartMs + MS_PER_HOUR > nowMs) {
 				continue;
 			}
-			const actualCt = await fetchActualCtAtHour(
-				host,
-				cfg.actualStateId,
-				unit,
-				slot.hourStartMs,
-			);
-			if (actualCt === null) continue;
-			const absErrorCt = Math.abs(slot.forecastCtPerKwh - actualCt);
-			pairs.push({
-				targetDate: file.target_date,
-				hourStartMs: slot.hourStartMs,
-				forecastCt: slot.forecastCtPerKwh,
-				actualCt,
-				absErrorCt: Math.round(absErrorCt * 1000) / 1000,
-			});
+			pendingSlots.push({ file, slot });
 		}
+	}
+
+	const actualByHour = await fetchActualCtByHourMap(
+		host,
+		cfg.actualStateId,
+		unit,
+		pendingSlots.map(({ slot }) => slot.hourStartMs),
+	);
+
+	const pairs: MatchedHourPair[] = [];
+	for (const { file, slot } of pendingSlots) {
+		const actualCt = actualByHour.get(slot.hourStartMs);
+		if (actualCt === undefined) continue;
+		const absErrorCt = Math.abs(slot.forecastCtPerKwh - actualCt);
+		pairs.push({
+			targetDate: file.target_date,
+			hourStartMs: slot.hourStartMs,
+			forecastCt: slot.forecastCtPerKwh,
+			actualCt,
+			absErrorCt: Math.round(absErrorCt * 1000) / 1000,
+		});
 	}
 	return pairs;
 }

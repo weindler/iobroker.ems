@@ -104,6 +104,7 @@ export async function runPriceForecastLearning(host: PriceForecastRunHost): Prom
 
 	try {
 		await runPriceForecastFreeze(host, cfg);
+		host.log.info(`Price Forecast Learning: matching freeze files (lookback ${cfg.lookbackDays}d)…`);
 		const pairs = await buildMatchedPairs(host, cfg);
 		const result = computePriceForecastLearning(
 			pairs,

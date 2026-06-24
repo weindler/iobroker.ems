@@ -1,7 +1,11 @@
 import { asNum } from "../../ems_light/state_util";
 import {
-	HISTORY_QUERY_TIMEOUT_MS,
-	MS_PER_DAY,
+	fetchHistoryRowsInRange,
+	fetchHistoryRowsLookback,
+	HISTORY_CHUNK_TIMEOUT_MS,
+	HISTORY_ROWS_PER_DAY,
+} from "../history_query";
+import {
 	MS_PER_HOUR,
 	PLAUSIBLE_POWER_W_MAX,
 	POWER_DEADBAND_W,
@@ -27,28 +31,16 @@ export async function fetchAstroTimeHistory(
 	stateId: string,
 	lookbackDays: number,
 ): Promise<AstroTimePoint[]> {
-	const end = Date.now();
-	const start = end - lookbackDays * MS_PER_DAY;
 	const points: AstroTimePoint[] = [];
-
-	const res = await withHistoryTimeout(
-		host.getHistoryAsync(stateId, {
-			start,
-			end,
-			aggregate: "onchange",
-			ignoreNull: true,
-			count: 10_000,
-			returnNewestEntries: true,
-			removeBorderValues: true,
-		}),
-		HISTORY_QUERY_TIMEOUT_MS,
+	const rows = await fetchHistoryRowsLookback(
+		host,
+		stateId,
+		lookbackDays,
+		HISTORY_ROWS_PER_DAY,
+		HISTORY_CHUNK_TIMEOUT_MS,
 	);
 
-	if (!res?.result || !Array.isArray(res.result)) {
-		return points;
-	}
-
-	for (const row of res.result) {
+	for (const row of rows) {
 		const ts = typeof row?.ts === "number" ? row.ts : null;
 		const parsed = parseAstroTimeValue(row?.val);
 		if (ts === null || !parsed) continue;
@@ -92,22 +84,6 @@ export type BatteryHistoryHost = {
 	getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
 };
 
-async function withHistoryTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
-	let timer: NodeJS.Timeout | null = null;
-	try {
-		return await Promise.race([
-			promise,
-			new Promise<null>((resolve) => {
-				timer = setTimeout(() => resolve(null), timeoutMs);
-			}),
-		]);
-	} catch {
-		return null;
-	} finally {
-		if (timer) clearTimeout(timer);
-	}
-}
-
 function hourBucket(ts: number): number {
 	return Math.floor(ts / MS_PER_HOUR) * MS_PER_HOUR;
 }
@@ -140,29 +116,18 @@ async function fetchHistoryPoints(
 	lookbackDays: number,
 	parseVal: (raw: unknown) => number | null,
 ): Promise<{ points: { ts: number; value: number }[]; lastValidTs: number | null }> {
-	const end = Date.now();
-	const start = end - lookbackDays * MS_PER_DAY;
 	const byHour = new Map<number, { ts: number; value: number }>();
 	let lastValidTs: number | null = null;
 
-	const res = await withHistoryTimeout(
-		host.getHistoryAsync(stateId, {
-			start,
-			end,
-			aggregate: "onchange",
-			ignoreNull: true,
-			count: 40_000,
-			returnNewestEntries: true,
-			removeBorderValues: true,
-		}),
-		HISTORY_QUERY_TIMEOUT_MS,
+	const rows = await fetchHistoryRowsLookback(
+		host,
+		stateId,
+		lookbackDays,
+		HISTORY_ROWS_PER_DAY,
+		HISTORY_CHUNK_TIMEOUT_MS,
 	);
 
-	if (!res?.result || !Array.isArray(res.result)) {
-		return { points: [], lastValidTs };
-	}
-
-	for (const row of res.result) {
+	for (const row of rows) {
 		const ts = typeof row?.ts === "number" ? row.ts : null;
 		const value = parseVal(row?.val);
 		if (ts === null || value === null) continue;

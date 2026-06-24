@@ -1,5 +1,6 @@
 import { asNum } from "../../ems_light/state_util";
-import { HISTORY_QUERY_TIMEOUT_MS, MS_PER_DAY } from "./constants";
+import { fetchHistoryRowsInRange, HISTORY_CHUNK_TIMEOUT_MS, HISTORY_ROWS_PER_DAY } from "../history_query";
+import { MS_PER_DAY } from "./constants";
 import type { WeatherMetricKey } from "./constants";
 import { isValidMetricValue, metricBias, confidenceFromValidHours, healthFromValidHours } from "./math";
 import type { WeatherDayResult, WeatherMetricMapping } from "./types";
@@ -61,22 +62,6 @@ export function dateKeyFromOffset(dayOffset: number): string {
 	return `${y}-${m}-${day}`;
 }
 
-async function withHistoryTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
-	let timer: NodeJS.Timeout | null = null;
-	try {
-		return await Promise.race([
-			promise,
-			new Promise<null>((resolve) => {
-				timer = setTimeout(() => resolve(null), timeoutMs);
-			}),
-		]);
-	} catch {
-		return null;
-	} finally {
-		if (timer) clearTimeout(timer);
-	}
-}
-
 function hourBucketMs(ts: number): number {
 	return Math.floor(ts / 3_600_000) * 3_600_000;
 }
@@ -91,22 +76,15 @@ export async function fetchHourlyMap(
 	const map = new Map<number, number>();
 	if (!stateId) return map;
 
-	const res = await withHistoryTimeout(
-		host.getHistoryAsync(stateId, {
-			start: startMs,
-			end: endMs,
-			aggregate: "onchange",
-			ignoreNull: true,
-			count: 500,
-			returnNewestEntries: true,
-			removeBorderValues: true,
-		}),
-		HISTORY_QUERY_TIMEOUT_MS,
+	const rows = await fetchHistoryRowsInRange(
+		host,
+		stateId,
+		startMs,
+		endMs,
+		HISTORY_ROWS_PER_DAY,
+		HISTORY_CHUNK_TIMEOUT_MS,
 	);
-	if (!res?.result || !Array.isArray(res.result)) {
-		return map;
-	}
-	for (const row of res.result) {
+	for (const row of rows) {
 		const ts = typeof row?.ts === "number" ? row.ts : null;
 		const n = asNum(row?.val);
 		if (ts === null || n === null) continue;

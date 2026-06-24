@@ -1,11 +1,10 @@
 import { asNum } from "../../ems_light/state_util";
 import {
-	HISTORY_QUERY_TIMEOUT_MS,
-	MS_PER_DAY,
-	MS_PER_HOUR,
-	PLAUSIBLE_W_MAX,
-	PLAUSIBLE_W_MIN,
-} from "./constants";
+	fetchHistoryRowsLookback,
+	HISTORY_CHUNK_TIMEOUT_MS,
+	HISTORY_ROWS_PER_DAY,
+} from "../history_query";
+import { MS_PER_HOUR, PLAUSIBLE_W_MAX, PLAUSIBLE_W_MIN } from "./constants";
 import { calendarContext } from "./time";
 import type { HouseLoadSample } from "./types";
 
@@ -15,22 +14,6 @@ export type HouseLoadHistoryHost = {
 		options?: ioBroker.GetHistoryOptions,
 	) => Promise<{ result?: ioBroker.GetHistoryResult; step?: number; sessionId?: number }>;
 };
-
-async function withHistoryTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
-	let timer: NodeJS.Timeout | null = null;
-	try {
-		return await Promise.race([
-			promise,
-			new Promise<null>((resolve) => {
-				timer = setTimeout(() => resolve(null), timeoutMs);
-			}),
-		]);
-	} catch {
-		return null;
-	} finally {
-		if (timer) clearTimeout(timer);
-	}
-}
 
 function hourStartMs(ts: number): number {
 	return Math.floor(ts / MS_PER_HOUR) * MS_PER_HOUR;
@@ -63,30 +46,19 @@ export async function fetchHouseLoadSamples(
 	stateId: string,
 	lookbackDays: number,
 ): Promise<{ samples: HouseLoadSample[]; lastValidTs: number | null }> {
-	const end = Date.now();
-	const start = end - lookbackDays * MS_PER_DAY;
 	const samples: HouseLoadSample[] = [];
 	let lastValidTs: number | null = null;
 
-	const res = await withHistoryTimeout(
-		host.getHistoryAsync(stateId, {
-			start,
-			end,
-			aggregate: "onchange",
-			ignoreNull: true,
-			count: 30_000,
-			returnNewestEntries: true,
-			removeBorderValues: true,
-		}),
-		HISTORY_QUERY_TIMEOUT_MS,
+	const rows = await fetchHistoryRowsLookback(
+		host,
+		stateId,
+		lookbackDays,
+		HISTORY_ROWS_PER_DAY,
+		HISTORY_CHUNK_TIMEOUT_MS,
 	);
 
-	if (!res?.result || !Array.isArray(res.result)) {
-		return { samples, lastValidTs };
-	}
-
 	const byHour = new Map<number, number>();
-	for (const row of res.result) {
+	for (const row of rows) {
 		const ts = typeof row?.ts === "number" ? row.ts : null;
 		const raw = asNum(row?.val);
 		if (ts === null || !isValidHouseLoadW(raw)) {

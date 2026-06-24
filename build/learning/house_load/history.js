@@ -2,26 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.distinctSampleDays = exports.fetchHouseLoadSamples = exports.filterOutliers = exports.isValidHouseLoadW = void 0;
 const state_util_1 = require("../../ems_light/state_util");
+const history_query_1 = require("../history_query");
 const constants_1 = require("./constants");
 const time_1 = require("./time");
-async function withHistoryTimeout(promise, timeoutMs) {
-    let timer = null;
-    try {
-        return await Promise.race([
-            promise,
-            new Promise((resolve) => {
-                timer = setTimeout(() => resolve(null), timeoutMs);
-            }),
-        ]);
-    }
-    catch {
-        return null;
-    }
-    finally {
-        if (timer)
-            clearTimeout(timer);
-    }
-}
 function hourStartMs(ts) {
     return Math.floor(ts / constants_1.MS_PER_HOUR) * constants_1.MS_PER_HOUR;
 }
@@ -48,24 +31,11 @@ function filterOutliers(values) {
 }
 exports.filterOutliers = filterOutliers;
 async function fetchHouseLoadSamples(host, stateId, lookbackDays) {
-    const end = Date.now();
-    const start = end - lookbackDays * constants_1.MS_PER_DAY;
     const samples = [];
     let lastValidTs = null;
-    const res = await withHistoryTimeout(host.getHistoryAsync(stateId, {
-        start,
-        end,
-        aggregate: "onchange",
-        ignoreNull: true,
-        count: 30_000,
-        returnNewestEntries: true,
-        removeBorderValues: true,
-    }), constants_1.HISTORY_QUERY_TIMEOUT_MS);
-    if (!res?.result || !Array.isArray(res.result)) {
-        return { samples, lastValidTs };
-    }
+    const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, stateId, lookbackDays, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
     const byHour = new Map();
-    for (const row of res.result) {
+    for (const row of rows) {
         const ts = typeof row?.ts === "number" ? row.ts : null;
         const raw = (0, state_util_1.asNum)(row?.val);
         if (ts === null || !isValidHouseLoadW(raw)) {

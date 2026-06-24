@@ -1,20 +1,23 @@
 import { asNum } from "../../ems_light/state_util";
 import { decideForecastFreeze, localDateKey } from "../pv_bias/freeze";
 import {
+	fetchHistoryRowsInRange,
+	HISTORY_CHUNK_TIMEOUT_MS,
+} from "../history_query";
+import {
 	isValidPriceValue,
 	resolvePriceUnit,
 	toCtPerKwh,
 	toEurPerKwh,
 } from "../price_common/units";
-import { HISTORY_QUERY_TIMEOUT_MS, MODULE_TAG, MS_PER_HOUR } from "./constants";
-import type { PriceForecastConfig } from "./types";
+import { MODULE_TAG, MS_PER_HOUR } from "./constants";
 import {
 	parseTibberPriceJsonToHourlySlots,
 	targetDateForTodayFreeze,
 	targetDateForTomorrowFreeze,
 } from "./tibber_parse";
 import { readForecastFreezeFiles, writeForecastFreezeFile } from "./persist";
-import type { MatchedHourPair, PriceForecastFreezeFile } from "./types";
+import type { MatchedHourPair, PriceForecastConfig, PriceForecastFreezeFile } from "./types";
 import type { PriceUnit } from "../price_common/units";
 
 export type PriceForecastHost = {
@@ -48,45 +51,25 @@ async function readForeignVal(host: PriceForecastHost, stateId: string): Promise
 	return tryRead(host.getStateAsync);
 }
 
-async function withHistoryTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
-	let timer: NodeJS.Timeout | null = null;
-	try {
-		return await Promise.race([
-			promise,
-			new Promise<null>((resolve) => {
-				timer = setTimeout(() => resolve(null), timeoutMs);
-			}),
-		]);
-	} catch {
-		return null;
-	} finally {
-		if (timer) clearTimeout(timer);
-	}
-}
-
 export async function fetchActualCtAtHour(
 	host: PriceForecastHost,
 	stateId: string,
 	unit: PriceUnit,
 	hourStartMs: number,
 ): Promise<number | null> {
-	const res = await withHistoryTimeout(
-		host.getHistoryAsync(stateId, {
-			start: hourStartMs,
-			end: hourStartMs + MS_PER_HOUR,
-			aggregate: "onchange",
-			ignoreNull: true,
-			count: 20,
-			returnNewestEntries: true,
-			removeBorderValues: true,
-		}),
-		HISTORY_QUERY_TIMEOUT_MS,
+	const rows = await fetchHistoryRowsInRange(
+		host,
+		stateId,
+		hourStartMs,
+		hourStartMs + MS_PER_HOUR,
+		20,
+		HISTORY_CHUNK_TIMEOUT_MS,
 	);
-	if (!res?.result || !Array.isArray(res.result) || res.result.length === 0) {
+	if (rows.length === 0) {
 		return null;
 	}
 	let best: { ts: number; val: number } | null = null;
-	for (const row of res.result) {
+	for (const row of rows) {
 		const ts = typeof row?.ts === "number" ? row.ts : null;
 		const raw = asNum(row?.val);
 		if (ts === null || !isValidPriceValue(raw, unit)) continue;

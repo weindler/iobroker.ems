@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchWeatherDayResults = exports.evaluateWeatherDay = exports.fetchHourlyMap = exports.dateKeyFromOffset = exports.dayBoundsMs = exports.readStateNum = void 0;
 const state_util_1 = require("../../ems_light/state_util");
+const history_query_1 = require("../history_query");
 const constants_1 = require("./constants");
 const math_1 = require("./math");
 function isForeignStateId(stateId) {
@@ -53,24 +54,6 @@ function dateKeyFromOffset(dayOffset) {
     return `${y}-${m}-${day}`;
 }
 exports.dateKeyFromOffset = dateKeyFromOffset;
-async function withHistoryTimeout(promise, timeoutMs) {
-    let timer = null;
-    try {
-        return await Promise.race([
-            promise,
-            new Promise((resolve) => {
-                timer = setTimeout(() => resolve(null), timeoutMs);
-            }),
-        ]);
-    }
-    catch {
-        return null;
-    }
-    finally {
-        if (timer)
-            clearTimeout(timer);
-    }
-}
 function hourBucketMs(ts) {
     return Math.floor(ts / 3_600_000) * 3_600_000;
 }
@@ -79,19 +62,8 @@ async function fetchHourlyMap(host, stateId, startMs, endMs) {
     const map = new Map();
     if (!stateId)
         return map;
-    const res = await withHistoryTimeout(host.getHistoryAsync(stateId, {
-        start: startMs,
-        end: endMs,
-        aggregate: "onchange",
-        ignoreNull: true,
-        count: 500,
-        returnNewestEntries: true,
-        removeBorderValues: true,
-    }), constants_1.HISTORY_QUERY_TIMEOUT_MS);
-    if (!res?.result || !Array.isArray(res.result)) {
-        return map;
-    }
-    for (const row of res.result) {
+    const rows = await (0, history_query_1.fetchHistoryRowsInRange)(host, stateId, startMs, endMs, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
+    for (const row of rows) {
         const ts = typeof row?.ts === "number" ? row.ts : null;
         const n = (0, state_util_1.asNum)(row?.val);
         if (ts === null || n === null)

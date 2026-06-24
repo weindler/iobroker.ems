@@ -1,11 +1,15 @@
 import { asNum } from "../../ems_light/state_util";
 import {
-	HISTORY_QUERY_TIMEOUT_MS,
-	MS_PER_DAY,
+	fetchHistoryRowsLookback,
+	HISTORY_CHUNK_TIMEOUT_MS,
+	HISTORY_ROWS_PER_DAY,
+} from "../history_query";
+import {
 	PLAUSIBLE_CT_MAX,
 	PLAUSIBLE_CT_MIN,
 	PLAUSIBLE_EUR_MAX,
 	PLAUSIBLE_EUR_MIN,
+	MS_PER_DAY,
 } from "./constants";
 import type { PriceDaySummary, PriceUnit } from "./types";
 
@@ -27,22 +31,6 @@ export type PriceSample = {
 
 function isForeignStateId(stateId: string): boolean {
 	return /^[a-z0-9_-]+\.\d+\./i.test(stateId);
-}
-
-async function withHistoryTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
-	let timer: NodeJS.Timeout | null = null;
-	try {
-		return await Promise.race([
-			promise,
-			new Promise<null>((resolve) => {
-				timer = setTimeout(() => resolve(null), timeoutMs);
-			}),
-		]);
-	} catch {
-		return null;
-	} finally {
-		if (timer) clearTimeout(timer);
-	}
 }
 
 function hourBucketMs(ts: number): number {
@@ -120,29 +108,18 @@ export async function fetchPriceSamples(
 	lookbackDays: number,
 ): Promise<{ samples: PriceSample[]; unit: PriceUnit }> {
 	const unit = await resolvePriceUnit(host, stateId);
-	const end = Date.now();
-	const start = end - lookbackDays * MS_PER_DAY;
 	const samples: PriceSample[] = [];
 
-	const res = await withHistoryTimeout(
-		host.getHistoryAsync(stateId, {
-			start,
-			end,
-			aggregate: "onchange",
-			ignoreNull: true,
-			count: 20_000,
-			returnNewestEntries: true,
-			removeBorderValues: true,
-		}),
-		HISTORY_QUERY_TIMEOUT_MS,
+	const rows = await fetchHistoryRowsLookback(
+		host,
+		stateId,
+		lookbackDays,
+		HISTORY_ROWS_PER_DAY,
+		HISTORY_CHUNK_TIMEOUT_MS,
 	);
 
-	if (!res?.result || !Array.isArray(res.result)) {
-		return { samples, unit };
-	}
-
 	const seen = new Set<number>();
-	for (const row of res.result) {
+	for (const row of rows) {
 		const ts = typeof row?.ts === "number" ? row.ts : null;
 		const raw = asNum(row?.val);
 		if (ts === null || !isValidPriceValue(raw, unit)) {

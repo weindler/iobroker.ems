@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildMatchedPairs = exports.runPriceForecastFreeze = exports.fetchActualCtAtHour = void 0;
 const state_util_1 = require("../../ems_light/state_util");
 const freeze_1 = require("../pv_bias/freeze");
+const history_query_1 = require("../history_query");
 const units_1 = require("../price_common/units");
 const constants_1 = require("./constants");
 const tibber_parse_1 = require("./tibber_parse");
@@ -26,39 +27,13 @@ async function readForeignVal(host, stateId) {
         return foreign;
     return tryRead(host.getStateAsync);
 }
-async function withHistoryTimeout(promise, timeoutMs) {
-    let timer = null;
-    try {
-        return await Promise.race([
-            promise,
-            new Promise((resolve) => {
-                timer = setTimeout(() => resolve(null), timeoutMs);
-            }),
-        ]);
-    }
-    catch {
-        return null;
-    }
-    finally {
-        if (timer)
-            clearTimeout(timer);
-    }
-}
 async function fetchActualCtAtHour(host, stateId, unit, hourStartMs) {
-    const res = await withHistoryTimeout(host.getHistoryAsync(stateId, {
-        start: hourStartMs,
-        end: hourStartMs + constants_1.MS_PER_HOUR,
-        aggregate: "onchange",
-        ignoreNull: true,
-        count: 20,
-        returnNewestEntries: true,
-        removeBorderValues: true,
-    }), constants_1.HISTORY_QUERY_TIMEOUT_MS);
-    if (!res?.result || !Array.isArray(res.result) || res.result.length === 0) {
+    const rows = await (0, history_query_1.fetchHistoryRowsInRange)(host, stateId, hourStartMs, hourStartMs + constants_1.MS_PER_HOUR, 20, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
+    if (rows.length === 0) {
         return null;
     }
     let best = null;
-    for (const row of res.result) {
+    for (const row of rows) {
         const ts = typeof row?.ts === "number" ? row.ts : null;
         const raw = (0, state_util_1.asNum)(row?.val);
         if (ts === null || !(0, units_1.isValidPriceValue)(raw, unit))

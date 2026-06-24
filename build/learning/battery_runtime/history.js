@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.distinctSocSampleDays = exports.readLiveSoc = exports.readLiveCapacityKwh = exports.fetchPowerHistory = exports.fetchSocHistory = exports.normalizeBatteryPowerW = exports.isValidCapacityKwh = exports.isValidSoc = exports.mergeDailyAstroTimes = exports.buildDailyAstroTimes = exports.fetchAstroTimeHistory = exports.parseAstroTimeValue = void 0;
 const state_util_1 = require("../../ems_light/state_util");
+const history_query_1 = require("../history_query");
 const constants_1 = require("./constants");
 const time_1 = require("./time");
 function parseAstroTimeValue(raw) {
@@ -19,22 +20,9 @@ function parseAstroTimeValue(raw) {
 }
 exports.parseAstroTimeValue = parseAstroTimeValue;
 async function fetchAstroTimeHistory(host, stateId, lookbackDays) {
-    const end = Date.now();
-    const start = end - lookbackDays * constants_1.MS_PER_DAY;
     const points = [];
-    const res = await withHistoryTimeout(host.getHistoryAsync(stateId, {
-        start,
-        end,
-        aggregate: "onchange",
-        ignoreNull: true,
-        count: 10_000,
-        returnNewestEntries: true,
-        removeBorderValues: true,
-    }), constants_1.HISTORY_QUERY_TIMEOUT_MS);
-    if (!res?.result || !Array.isArray(res.result)) {
-        return points;
-    }
-    for (const row of res.result) {
+    const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, stateId, lookbackDays, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
+    for (const row of rows) {
         const ts = typeof row?.ts === "number" ? row.ts : null;
         const parsed = parseAstroTimeValue(row?.val);
         if (ts === null || !parsed)
@@ -66,24 +54,6 @@ function mergeDailyAstroTimes(startPoints, endPoints) {
     return { startByDate: start.startByDate, endByDate: end.endByDate };
 }
 exports.mergeDailyAstroTimes = mergeDailyAstroTimes;
-async function withHistoryTimeout(promise, timeoutMs) {
-    let timer = null;
-    try {
-        return await Promise.race([
-            promise,
-            new Promise((resolve) => {
-                timer = setTimeout(() => resolve(null), timeoutMs);
-            }),
-        ]);
-    }
-    catch {
-        return null;
-    }
-    finally {
-        if (timer)
-            clearTimeout(timer);
-    }
-}
 function hourBucket(ts) {
     return Math.floor(ts / constants_1.MS_PER_HOUR) * constants_1.MS_PER_HOUR;
 }
@@ -115,23 +85,10 @@ function normalizeBatteryPowerW(raw, invert = false) {
 }
 exports.normalizeBatteryPowerW = normalizeBatteryPowerW;
 async function fetchHistoryPoints(host, stateId, lookbackDays, parseVal) {
-    const end = Date.now();
-    const start = end - lookbackDays * constants_1.MS_PER_DAY;
     const byHour = new Map();
     let lastValidTs = null;
-    const res = await withHistoryTimeout(host.getHistoryAsync(stateId, {
-        start,
-        end,
-        aggregate: "onchange",
-        ignoreNull: true,
-        count: 40_000,
-        returnNewestEntries: true,
-        removeBorderValues: true,
-    }), constants_1.HISTORY_QUERY_TIMEOUT_MS);
-    if (!res?.result || !Array.isArray(res.result)) {
-        return { points: [], lastValidTs };
-    }
-    for (const row of res.result) {
+    const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, stateId, lookbackDays, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
+    for (const row of rows) {
         const ts = typeof row?.ts === "number" ? row.ts : null;
         const value = parseVal(row?.val);
         if (ts === null || value === null)

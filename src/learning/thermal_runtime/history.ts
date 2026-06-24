@@ -1,10 +1,10 @@
 import { asNum } from "../../ems_light/state_util";
 import {
-	HISTORY_QUERY_TIMEOUT_MS,
-	MS_PER_DAY,
-	PLAUSIBLE_TEMP_MAX_C,
-	PLAUSIBLE_TEMP_MIN_C,
-} from "./constants";
+	fetchHistoryRowsLookback,
+	HISTORY_CHUNK_TIMEOUT_MS,
+	HISTORY_ROWS_PER_DAY,
+} from "../history_query";
+import { PLAUSIBLE_TEMP_MAX_C, PLAUSIBLE_TEMP_MIN_C } from "./constants";
 import type { TempPoint } from "./types";
 
 export type ThermalHistoryHost = {
@@ -13,22 +13,6 @@ export type ThermalHistoryHost = {
 		options?: ioBroker.GetHistoryOptions,
 	) => Promise<{ result?: ioBroker.GetHistoryResult; step?: number; sessionId?: number }>;
 };
-
-async function withHistoryTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
-	let timer: NodeJS.Timeout | null = null;
-	try {
-		return await Promise.race([
-			promise,
-			new Promise<null>((resolve) => {
-				timer = setTimeout(() => resolve(null), timeoutMs);
-			}),
-		]);
-	} catch {
-		return null;
-	} finally {
-		if (timer) clearTimeout(timer);
-	}
-}
 
 /** missing ≠ 0 — nur endliche, plausible °C-Werte. */
 export function isValidTempC(value: number | null): value is number {
@@ -43,29 +27,18 @@ export async function fetchTemperatureHistory(
 	stateId: string,
 	lookbackDays: number,
 ): Promise<{ points: TempPoint[]; lastValidTs: number | null }> {
-	const end = Date.now();
-	const start = end - lookbackDays * MS_PER_DAY;
 	const points: TempPoint[] = [];
 	let lastValidTs: number | null = null;
 
-	const res = await withHistoryTimeout(
-		host.getHistoryAsync(stateId, {
-			start,
-			end,
-			aggregate: "onchange",
-			ignoreNull: true,
-			count: 50_000,
-			returnNewestEntries: true,
-			removeBorderValues: true,
-		}),
-		HISTORY_QUERY_TIMEOUT_MS,
+	const rows = await fetchHistoryRowsLookback(
+		host,
+		stateId,
+		lookbackDays,
+		HISTORY_ROWS_PER_DAY,
+		HISTORY_CHUNK_TIMEOUT_MS,
 	);
 
-	if (!res?.result || !Array.isArray(res.result)) {
-		return { points, lastValidTs };
-	}
-
-	for (const row of res.result) {
+	for (const row of rows) {
 		const ts = typeof row?.ts === "number" ? row.ts : null;
 		const tempC = asNum(row?.val);
 		if (ts === null || !isValidTempC(tempC)) {

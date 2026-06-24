@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.27",
+		"version": "0.1.28",
 		"news": {
+			"0.1.28": {
+				"en": "Learning: history queries in per-day chunks (fixes empty sample_days with active history.0)",
+				"de": "Learning: History-Abfragen in Tages-Chunks (behebt leere sample_days trotz aktivem history.0)"
+			},
 			"0.1.27": {
 				"en": "Battery Runtime Learning: optional astro night window from dusk/dawn history (javascript.0.variables.astro)",
 				"de": "Battery Runtime Learning: optionales Astro-Nachtfenster aus dusk/dawn-History (javascript.0.variables.astro)"

@@ -2,27 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.summarizeDays = exports.fetchPriceSamples = exports.resolvePriceUnit = exports.toEurPerKwh = exports.isValidPriceValue = exports.detectPriceUnit = exports.dayBoundsMs = exports.dateKeyFromOffset = exports.dateKeyFromTs = void 0;
 const state_util_1 = require("../../ems_light/state_util");
+const history_query_1 = require("../history_query");
 const constants_1 = require("./constants");
 function isForeignStateId(stateId) {
     return /^[a-z0-9_-]+\.\d+\./i.test(stateId);
-}
-async function withHistoryTimeout(promise, timeoutMs) {
-    let timer = null;
-    try {
-        return await Promise.race([
-            promise,
-            new Promise((resolve) => {
-                timer = setTimeout(() => resolve(null), timeoutMs);
-            }),
-        ]);
-    }
-    catch {
-        return null;
-    }
-    finally {
-        if (timer)
-            clearTimeout(timer);
-    }
 }
 function hourBucketMs(ts) {
     return Math.floor(ts / 3_600_000) * 3_600_000;
@@ -92,23 +75,10 @@ async function resolvePriceUnit(host, stateId) {
 exports.resolvePriceUnit = resolvePriceUnit;
 async function fetchPriceSamples(host, stateId, lookbackDays) {
     const unit = await resolvePriceUnit(host, stateId);
-    const end = Date.now();
-    const start = end - lookbackDays * constants_1.MS_PER_DAY;
     const samples = [];
-    const res = await withHistoryTimeout(host.getHistoryAsync(stateId, {
-        start,
-        end,
-        aggregate: "onchange",
-        ignoreNull: true,
-        count: 20_000,
-        returnNewestEntries: true,
-        removeBorderValues: true,
-    }), constants_1.HISTORY_QUERY_TIMEOUT_MS);
-    if (!res?.result || !Array.isArray(res.result)) {
-        return { samples, unit };
-    }
+    const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, stateId, lookbackDays, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
     const seen = new Set();
-    for (const row of res.result) {
+    for (const row of rows) {
         const ts = typeof row?.ts === "number" ? row.ts : null;
         const raw = (0, state_util_1.asNum)(row?.val);
         if (ts === null || !isValidPriceValue(raw, unit)) {

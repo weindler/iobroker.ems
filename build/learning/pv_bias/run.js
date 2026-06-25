@@ -62,20 +62,31 @@ async function runPvBiasLearning(host) {
     }
     try {
         await (0, freeze_1.runForecastFreeze)(host, cfg);
-        const forecastHistoryStateId = cfg.freezeEnabled
-            ? freeze_1.FROZEN_TODAY_STATE_ID
-            : cfg.historyForecastStateId;
-        host.log.info("PV-Bias: loading history (max 30 days, timeout per query)…");
-        const pairs = await (0, history_1.fetchPvBiasDayPairs)(host, cfg.historyActualStateId, forecastHistoryStateId);
-        host.log.info(`PV-Bias: history loaded, ${pairs.length} valid day pair(s)`);
-        if (pairs.length === 0) {
-            const todayActual = await (0, history_1.readStateNum)(host, cfg.historyActualStateId);
-            const todayForecast = await (0, history_1.readStateNum)(host, forecastHistoryStateId);
-            host.log.warn(`PV-Bias: no pairs — today live actual=${todayActual ?? "—"} forecast=${todayForecast ?? "—"} (Historie am Alias + frozen_today_kwh empfohlen)`);
-        }
         const rawTodayKwh = await readLiveRawForecast(host, cfg.rawTodayStateId, "forecast.pv.today_kwh");
         const rawTomorrowKwh = await readLiveRawForecast(host, cfg.rawTomorrowStateId, "forecast.pv.tomorrow_kwh");
         const frozen = cfg.freezeEnabled ? await (0, freeze_1.readFrozenForecast)(host) : { today: null, tomorrow: null };
+        // Forecast-History für vergangene Tage: echte Provider-History (mehrtägig).
+        // Der ems-interne Freeze-State hat keine Tiefe → nur als Heute-Override nutzen.
+        const forecastHistoryStateId = cfg.historyForecastStateId || cfg.rawTodayStateId || freeze_1.FROZEN_TODAY_STATE_ID;
+        const todayForecastOverride = cfg.freezeEnabled ? frozen.today : null;
+        host.log.info(`PV-Bias: loading history (30d, actual=${cfg.historyActualStateId || "—"} forecast=${forecastHistoryStateId})…`);
+        const dayPairs = await (0, history_1.fetchPvBiasDayPairs)(host, cfg.historyActualStateId, forecastHistoryStateId, {
+            maxDays: 30,
+            todayForecastOverride,
+        });
+        const pairs = dayPairs.pairs;
+        host.log.info(`PV-Bias: history loaded, ${pairs.length} valid pair(s) (actual_days=${dayPairs.actualDays}, forecast_days=${dayPairs.forecastDays})`);
+        if (pairs.length < Math.min(7, dayPairs.actualDays || 7)) {
+            const thinSide = dayPairs.forecastDays < dayPairs.actualDays
+                ? `Forecast-History dünn (${forecastHistoryStateId} → ${dayPairs.forecastDays}d) — history.0 auf diesem State aktivieren`
+                : `Ist-History dünn (${cfg.historyActualStateId} → ${dayPairs.actualDays}d) — history.0 prüfen`;
+            host.log.warn(`PV-Bias: nur ${pairs.length} Paar(e) — ${thinSide}.`);
+        }
+        if (pairs.length === 0) {
+            const todayActual = await (0, history_1.readStateNum)(host, cfg.historyActualStateId);
+            const todayForecast = await (0, history_1.readStateNum)(host, forecastHistoryStateId);
+            host.log.warn(`PV-Bias: no pairs — today live actual=${todayActual ?? "—"} forecast=${todayForecast ?? "—"} (Historie am Alias + Provider-Forecast empfohlen)`);
+        }
         const forecastForCorrection = cfg.freezeEnabled
             ? { today: frozen.today, tomorrow: frozen.tomorrow }
             : { today: rawTodayKwh, tomorrow: rawTomorrowKwh };

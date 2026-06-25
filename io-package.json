@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.39",
+		"version": "0.1.40",
 		"news": {
+			"0.1.40": {
+				"en": "PV-Bias uses multi-day provider forecast history (frozen value only pins today); weather computes each metric over its own hours so rain bias works; added diagnostics",
+				"de": "PV-Bias nutzt mehrtägige Provider-Forecast-History (Freeze pinnt nur heute); Wetter berechnet jede Metrik über eigene Stunden → Regen-Bias funktioniert; Diagnose-Logs ergänzt"
+			},
 			"0.1.39": {
 				"en": "House load and PV-Bias use history.0 hourly/daily aggregate when raw onChange timestamps span only minutes",
 				"de": "House-Load und PV-Bias nutzen history.0 Stunden/Tages-Aggregate wenn onChange-Roh-timestamps nur Minuten span"

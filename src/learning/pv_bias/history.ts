@@ -144,13 +144,33 @@ async function fetchDailyMaxMap(
 	return map;
 }
 
-/** Sammelt gültige Tagespaare für die letzten 30 Tage (inkl. heute). Fehlende Tage werden übersprungen. */
+export type PvBiasDayPairsResult = {
+	pairs: PvBiasDayPair[];
+	/** Diagnose: Kalendertage mit gültigem Ist- bzw. Forecast-Wert (vor Paarbildung). */
+	actualDays: number;
+	forecastDays: number;
+	forecastSourceUsed: string;
+};
+
+export type FetchPvBiasOptions = {
+	maxDays?: number;
+	/** Eingefrorener Forecast für heute (Anti-Drift) — überschreibt History nur für dayOffset 0. */
+	todayForecastOverride?: number | null;
+};
+
+/**
+ * Sammelt gültige Tagespaare (Ist vs. Forecast) der letzten 30 Tage.
+ * Forecast kommt aus der **Provider-History** (mehrtägig); der eingefrorene
+ * Wert pinnt nur heute, weil der ems-interne Freeze-State keine Tiefe hat.
+ */
 export async function fetchPvBiasDayPairs(
 	host: HistoryHost,
 	actualStateId: string,
 	forecastStateId: string,
-	maxDays = 30,
-): Promise<PvBiasDayPair[]> {
+	options: FetchPvBiasOptions = {},
+): Promise<PvBiasDayPairsResult> {
+	const maxDays = options.maxDays ?? 30;
+	const todayForecastOverride = options.todayForecastOverride ?? null;
 	const endMs = Date.now();
 	const startMs = endMs - maxDays * MS_PER_DAY;
 
@@ -160,6 +180,9 @@ export async function fetchPvBiasDayPairs(
 	]);
 
 	const pairs: PvBiasDayPair[] = [];
+	let actualDays = 0;
+	let forecastDays = 0;
+
 	for (let dayOffset = 0; dayOffset < maxDays; dayOffset++) {
 		const { start } = dayBoundsMs(dayOffset);
 		const dateKey = localDateKey(start);
@@ -168,6 +191,10 @@ export async function fetchPvBiasDayPairs(
 		let forecastKwh = forecastByDay.get(dateKey) ?? null;
 
 		if (dayOffset === 0) {
+			// Heute: Freeze-Wert hat Vorrang (Anti-Drift), sonst Live-Lesung.
+			if (todayForecastOverride !== null && todayForecastOverride > 0) {
+				forecastKwh = todayForecastOverride;
+			}
 			if (actualKwh === null) {
 				actualKwh = await readLiveValue(host, actualStateId);
 			}
@@ -176,6 +203,9 @@ export async function fetchPvBiasDayPairs(
 			}
 		}
 
+		if (actualKwh !== null) actualDays++;
+		if (forecastKwh !== null && forecastKwh > 0) forecastDays++;
+
 		if (actualKwh === null || forecastKwh === null || forecastKwh <= 0) {
 			continue;
 		}
@@ -183,16 +213,25 @@ export async function fetchPvBiasDayPairs(
 	}
 
 	if (pairs.length >= Math.min(maxDays, 7)) {
-		return pairs;
+		return { pairs, actualDays, forecastDays, forecastSourceUsed: forecastStateId };
 	}
 
 	// Fallback: Tages-Fenster einzeln (z. B. wenn aggregate leer)
 	const fallback = await Promise.all(
 		Array.from({ length: maxDays }, (_, dayOffset) =>
-			fetchDayPairFallback(host, dayOffset, actualStateId, forecastStateId),
+			fetchDayPairFallback(host, dayOffset, actualStateId, forecastStateId, todayForecastOverride),
 		),
 	);
-	return fallback.filter((p): p is PvBiasDayPair => p !== null);
+	const fbPairs = fallback.filter((p): p is PvBiasDayPair => p !== null);
+	if (fbPairs.length > pairs.length) {
+		return {
+			pairs: fbPairs,
+			actualDays: Math.max(actualDays, fbPairs.length),
+			forecastDays: Math.max(forecastDays, fbPairs.length),
+			forecastSourceUsed: forecastStateId,
+		};
+	}
+	return { pairs, actualDays, forecastDays, forecastSourceUsed: forecastStateId };
 }
 
 async function fetchDayPairFallback(
@@ -200,12 +239,16 @@ async function fetchDayPairFallback(
 	dayOffset: number,
 	actualStateId: string,
 	forecastStateId: string,
+	todayForecastOverride: number | null = null,
 ): Promise<PvBiasDayPair | null> {
 	const { start, end } = dayBoundsMs(dayOffset);
 	let actualKwh = await fetchDayLastValue(host, actualStateId, start, end);
 	let forecastKwh = await fetchDayLastValue(host, forecastStateId, start, end);
 
 	if (dayOffset === 0) {
+		if (todayForecastOverride !== null && todayForecastOverride > 0) {
+			forecastKwh = todayForecastOverride;
+		}
 		if (actualKwh === null) {
 			actualKwh = await readLiveValue(host, actualStateId);
 		}

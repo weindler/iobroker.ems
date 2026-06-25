@@ -94,38 +94,21 @@ async function evaluateWeatherDay(host, metrics, dayOffset) {
             missingActual.push(key);
         hourlyByMetric[key] = { forecast: forecastMap, actual: actualMap };
     }
-    const hourSets = keys
-        .map((key) => {
-        const pair = hourlyByMetric[key];
-        if (!pair)
-            return new Set();
-        const hours = new Set();
-        for (const h of pair.forecast.keys()) {
-            if (pair.actual.has(h))
-                hours.add(h);
-        }
-        return hours;
-    })
-        .filter((s) => s.size > 0);
-    let comparableHours = [];
-    if (hourSets.length > 0) {
-        const intersection = new Set(hourSets[0]);
-        for (let i = 1; i < hourSets.length; i++) {
-            for (const h of [...intersection]) {
-                if (!hourSets[i].has(h))
-                    intersection.delete(h);
-            }
-        }
-        comparableHours = [...intersection].sort((a, b) => a - b);
-    }
+    // Jede Metrik wird über ihre EIGENE Forecast∩Ist-Schnittmenge bewertet.
+    // (Früher: globale Schnittmenge über alle Metriken — dadurch fiel z. B. Regen
+    // weg, sobald seine Stunden nicht exakt mit Temp/Wind übereinstimmten.)
     const metricResults = {};
+    let validHours = 0;
     for (const key of keys) {
         const pair = hourlyByMetric[key];
-        if (!pair)
+        if (!pair) {
+            metricResults[key] = { bias: null, validHours: 0 };
             continue;
+        }
         const diffs = [];
-        for (const h of comparableHours) {
-            const f = pair.forecast.get(h) ?? null;
+        for (const [h, f] of pair.forecast) {
+            if (!pair.actual.has(h))
+                continue;
             const a = pair.actual.get(h) ?? null;
             if (!(0, math_1.isValidMetricValue)(key, f) || !(0, math_1.isValidMetricValue)(key, a))
                 continue;
@@ -135,8 +118,9 @@ async function evaluateWeatherDay(host, metrics, dayOffset) {
             bias: diffs.length > 0 ? diffs.reduce((s, v) => s + v, 0) / diffs.length : null,
             validHours: diffs.length,
         };
+        if (diffs.length > validHours)
+            validHours = diffs.length;
     }
-    const validHours = comparableHours.length;
     return {
         dateKey,
         dayOffset,

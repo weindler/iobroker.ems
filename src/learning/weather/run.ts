@@ -112,6 +112,21 @@ export async function runWeatherLearning(host: WeatherRunHost): Promise<void> {
 		host.log.info(
 			`Weather-Learning: status=${result.status} health=${result.health} confidence=${result.confidence} samples7d=${result.sampleDays7d}`,
 		);
+
+		if (result.missingFields.length > 0) {
+			const recent = dayResults.filter((d) => d.dayOffset <= 6);
+			for (const key of result.missingFields) {
+				const noForecast = recent.filter((d) => d.missingForecast.includes(key)).length;
+				const noActual = recent.filter((d) => d.missingActual.includes(key)).length;
+				const fc = cfg.metrics[key]?.forecastStateId ?? "—";
+				const act = cfg.metrics[key]?.actualStateId ?? "—";
+				const side =
+					noForecast >= noActual
+						? `Forecast fehlt (${fc}, ${noForecast}/7 Tage ohne Stundenwerte)`
+						: `Ist fehlt (${act}, ${noActual}/7 Tage ohne Stundenwerte)`;
+				host.log.warn(`Weather-Learning: '${key}' ohne Bias — ${side}; history.0 auf dem State prüfen.`);
+			}
+		}
 	} catch (e) {
 		const msg = e instanceof Error ? e.message : String(e);
 		host.log.error(`Weather-Learning: ${msg}`);

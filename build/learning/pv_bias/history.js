@@ -96,8 +96,14 @@ async function fetchDailyMaxMap(host, stateId, startMs, endMs, maxDays) {
     }
     return map;
 }
-/** Sammelt gültige Tagespaare für die letzten 30 Tage (inkl. heute). Fehlende Tage werden übersprungen. */
-async function fetchPvBiasDayPairs(host, actualStateId, forecastStateId, maxDays = 30) {
+/**
+ * Sammelt gültige Tagespaare (Ist vs. Forecast) der letzten 30 Tage.
+ * Forecast kommt aus der **Provider-History** (mehrtägig); der eingefrorene
+ * Wert pinnt nur heute, weil der ems-interne Freeze-State keine Tiefe hat.
+ */
+async function fetchPvBiasDayPairs(host, actualStateId, forecastStateId, options = {}) {
+    const maxDays = options.maxDays ?? 30;
+    const todayForecastOverride = options.todayForecastOverride ?? null;
     const endMs = Date.now();
     const startMs = endMs - maxDays * MS_PER_DAY;
     const [actualByDay, forecastByDay] = await Promise.all([
@@ -105,12 +111,18 @@ async function fetchPvBiasDayPairs(host, actualStateId, forecastStateId, maxDays
         fetchDailyMaxMap(host, forecastStateId, startMs, endMs, maxDays),
     ]);
     const pairs = [];
+    let actualDays = 0;
+    let forecastDays = 0;
     for (let dayOffset = 0; dayOffset < maxDays; dayOffset++) {
         const { start } = dayBoundsMs(dayOffset);
         const dateKey = localDateKey(start);
         let actualKwh = actualByDay.get(dateKey) ?? null;
         let forecastKwh = forecastByDay.get(dateKey) ?? null;
         if (dayOffset === 0) {
+            // Heute: Freeze-Wert hat Vorrang (Anti-Drift), sonst Live-Lesung.
+            if (todayForecastOverride !== null && todayForecastOverride > 0) {
+                forecastKwh = todayForecastOverride;
+            }
             if (actualKwh === null) {
                 actualKwh = await readLiveValue(host, actualStateId);
             }
@@ -118,24 +130,40 @@ async function fetchPvBiasDayPairs(host, actualStateId, forecastStateId, maxDays
                 forecastKwh = await readLiveValue(host, forecastStateId);
             }
         }
+        if (actualKwh !== null)
+            actualDays++;
+        if (forecastKwh !== null && forecastKwh > 0)
+            forecastDays++;
         if (actualKwh === null || forecastKwh === null || forecastKwh <= 0) {
             continue;
         }
         pairs.push({ dayOffset, actualKwh, forecastKwh });
     }
     if (pairs.length >= Math.min(maxDays, 7)) {
-        return pairs;
+        return { pairs, actualDays, forecastDays, forecastSourceUsed: forecastStateId };
     }
     // Fallback: Tages-Fenster einzeln (z. B. wenn aggregate leer)
-    const fallback = await Promise.all(Array.from({ length: maxDays }, (_, dayOffset) => fetchDayPairFallback(host, dayOffset, actualStateId, forecastStateId)));
-    return fallback.filter((p) => p !== null);
+    const fallback = await Promise.all(Array.from({ length: maxDays }, (_, dayOffset) => fetchDayPairFallback(host, dayOffset, actualStateId, forecastStateId, todayForecastOverride)));
+    const fbPairs = fallback.filter((p) => p !== null);
+    if (fbPairs.length > pairs.length) {
+        return {
+            pairs: fbPairs,
+            actualDays: Math.max(actualDays, fbPairs.length),
+            forecastDays: Math.max(forecastDays, fbPairs.length),
+            forecastSourceUsed: forecastStateId,
+        };
+    }
+    return { pairs, actualDays, forecastDays, forecastSourceUsed: forecastStateId };
 }
 exports.fetchPvBiasDayPairs = fetchPvBiasDayPairs;
-async function fetchDayPairFallback(host, dayOffset, actualStateId, forecastStateId) {
+async function fetchDayPairFallback(host, dayOffset, actualStateId, forecastStateId, todayForecastOverride = null) {
     const { start, end } = dayBoundsMs(dayOffset);
     let actualKwh = await fetchDayLastValue(host, actualStateId, start, end);
     let forecastKwh = await fetchDayLastValue(host, forecastStateId, start, end);
     if (dayOffset === 0) {
+        if (todayForecastOverride !== null && todayForecastOverride > 0) {
+            forecastKwh = todayForecastOverride;
+        }
         if (actualKwh === null) {
             actualKwh = await readLiveValue(host, actualStateId);
         }

@@ -74,7 +74,7 @@ function coolingCurve(startMs, startTemp, endTemp, hours, steps = 6) {
     });
 });
 (0, node_test_1.describe)("thermal runtime cycle detection", () => {
-    (0, node_test_1.it)("detects a full-to-empty cooling cycle", () => {
+    (0, node_test_1.it)("detects cooling from local peak down to floor (classic high start)", () => {
         const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
         const points = coolingCurve(base, 62, 47, 10);
         const cycles = (0, math_1.detectRuntimeCycles)(points, cfg());
@@ -84,9 +84,17 @@ function coolingCurve(startMs, startTemp, endTemp, hours, steps = 6) {
         strict_1.default.ok(cycles[0].runtimeHours >= 9.9 && cycles[0].runtimeHours <= 10.1);
         strict_1.default.ok(cycles[0].coolingRateCPerH > 1);
     });
-    (0, node_test_1.it)("ignores incomplete cycles without reaching empty", () => {
+    (0, node_test_1.it)("detects cooling when start is in band without reaching full threshold", () => {
         const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
-        const points = coolingCurve(base, 62, 52, 5);
+        const points = coolingCurve(base, 55, 47, 8);
+        const cycles = (0, math_1.detectRuntimeCycles)(points, cfg({ fullThresholdC: 60, emptyThresholdC: 48 }));
+        strict_1.default.equal(cycles.length, 1);
+        strict_1.default.equal(cycles[0].startTempC, 55);
+        strict_1.default.ok(cycles[0].endTempC <= 48);
+    });
+    (0, node_test_1.it)("ignores incomplete segments that never reach floor", () => {
+        const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
+        const points = coolingCurve(base, 59, 52, 5);
         const cycles = (0, math_1.detectRuntimeCycles)(points, cfg());
         strict_1.default.equal(cycles.length, 0);
     });
@@ -107,14 +115,15 @@ function coolingCurve(startMs, startTemp, endTemp, hours, steps = 6) {
             coolingRateCPerHAvg: 1.2,
         }), 0);
     });
-    (0, node_test_1.it)("uses typical runtime when at or above full threshold", () => {
-        strict_1.default.equal((0, math_1.estimateRemainingHours)({
-            currentTempC: 62,
+    (0, node_test_1.it)("uses cooling rate from current temp (not fixed full threshold)", () => {
+        const h = (0, math_1.estimateRemainingHours)({
+            currentTempC: 59,
             fullThresholdC: 60,
             emptyThresholdC: 48,
             typicalRuntimeHours: 14,
-            coolingRateCPerHAvg: 1.2,
-        }), 14);
+            coolingRateCPerHAvg: 2,
+        });
+        strict_1.default.equal(h, 5.5);
     });
     (0, node_test_1.it)("interpolates via cooling rate between thresholds", () => {
         const h = (0, math_1.estimateRemainingHours)({

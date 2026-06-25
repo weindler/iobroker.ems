@@ -80,6 +80,7 @@ async function runThermalRuntimeLearning(host) {
     try {
         const currentTempC = await readCurrentTemp(host, resolved.stateId);
         const { points } = await (0, history_1.fetchTemperatureHistory)(host, resolved.stateId, cfg.lookbackDays);
+        const histSummary = (0, math_1.summarizeTempHistory)(points, cfg.emptyThresholdC);
         const cycles = (0, math_1.detectRuntimeCycles)(points, cfg);
         const result = (0, math_1.computeThermalRuntimeLearning)({
             cycles,
@@ -94,7 +95,7 @@ async function runThermalRuntimeLearning(host) {
         await writeResult(host, result, lastRun);
         host.log.info(`Thermal-Runtime-Learning: status=${result.status} health=${result.health} cycles=${result.samples} source=${(0, config_1.sourceLabelFromStateId)(resolved.stateId)}`);
         if (result.status === "insufficient_data") {
-            host.log.warn(`Thermal Runtime Learning: ungenügende Zyklen (samples=${result.samples}, history_points=${points.length})`);
+            host.log.warn(`Thermal Runtime Learning: ungenügende Zyklen (samples=${result.samples}, history_points=${points.length}, temp=${histSummary.minC ?? "—"}–${histSummary.maxC ?? "—"}°C, floor=${cfg.emptyThresholdC}°C, above_floor=${histSummary.pointsAboveFloor})`);
         }
     }
     catch (e) {

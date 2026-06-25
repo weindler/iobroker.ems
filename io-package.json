@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.40",
+		"version": "0.1.41",
 		"news": {
+			"0.1.41": {
+				"en": "Thermal runtime: detect cooling from local peak to floor (no fixed full-at-60°C start); band-aligned with surplus immersion heating",
+				"de": "Thermal-Runtime: Abkühlung vom lokalen Peak bis Untergrenze (kein fester Start bei 60 °C); passt zum Überschuss-Heizstab-Betriebsband"
+			},
 			"0.1.40": {
 				"en": "PV-Bias uses multi-day provider forecast history (frozen value only pins today); weather computes each metric over its own hours so rain bias works; added diagnostics",
 				"de": "PV-Bias nutzt mehrtägige Provider-Forecast-History (Freeze pinnt nur heute); Wetter berechnet jede Metrik über eigene Stunden → Regen-Bias funktioniert; Diagnose-Logs ergänzt"

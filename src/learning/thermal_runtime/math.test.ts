@@ -65,7 +65,7 @@ describe("thermal runtime validation", () => {
 });
 
 describe("thermal runtime cycle detection", () => {
-	it("detects a full-to-empty cooling cycle", () => {
+	it("detects cooling from local peak down to floor (classic high start)", () => {
 		const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
 		const points = coolingCurve(base, 62, 47, 10);
 		const cycles = detectRuntimeCycles(points, cfg());
@@ -76,9 +76,18 @@ describe("thermal runtime cycle detection", () => {
 		assert.ok(cycles[0].coolingRateCPerH > 1);
 	});
 
-	it("ignores incomplete cycles without reaching empty", () => {
+	it("detects cooling when start is in band without reaching full threshold", () => {
 		const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
-		const points = coolingCurve(base, 62, 52, 5);
+		const points = coolingCurve(base, 55, 47, 8);
+		const cycles = detectRuntimeCycles(points, cfg({ fullThresholdC: 60, emptyThresholdC: 48 }));
+		assert.equal(cycles.length, 1);
+		assert.equal(cycles[0].startTempC, 55);
+		assert.ok(cycles[0].endTempC <= 48);
+	});
+
+	it("ignores incomplete segments that never reach floor", () => {
+		const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
+		const points = coolingCurve(base, 59, 52, 5);
 		const cycles = detectRuntimeCycles(points, cfg());
 		assert.equal(cycles.length, 0);
 	});
@@ -102,14 +111,15 @@ describe("thermal runtime remaining estimate", () => {
 		}), 0);
 	});
 
-	it("uses typical runtime when at or above full threshold", () => {
-		assert.equal(estimateRemainingHours({
-			currentTempC: 62,
+	it("uses cooling rate from current temp (not fixed full threshold)", () => {
+		const h = estimateRemainingHours({
+			currentTempC: 59,
 			fullThresholdC: 60,
 			emptyThresholdC: 48,
 			typicalRuntimeHours: 14,
-			coolingRateCPerHAvg: 1.2,
-		}), 14);
+			coolingRateCPerHAvg: 2,
+		});
+		assert.equal(h, 5.5);
 	});
 
 	it("interpolates via cooling rate between thresholds", () => {

@@ -13,6 +13,7 @@ import {
 	errorResult,
 	invalidConfigResult,
 	noSourceResult,
+	summarizeTempHistory,
 } from "./math";
 import { writeThermalRuntimePersist } from "./persist";
 import type { ThermalRuntimeComputeResult } from "./types";
@@ -138,6 +139,7 @@ export async function runThermalRuntimeLearning(host: ThermalRuntimeRunHost): Pr
 	try {
 		const currentTempC = await readCurrentTemp(host, resolved.stateId);
 		const { points } = await fetchTemperatureHistory(host, resolved.stateId, cfg.lookbackDays);
+		const histSummary = summarizeTempHistory(points, cfg.emptyThresholdC);
 		const cycles = detectRuntimeCycles(points, cfg);
 		const result = computeThermalRuntimeLearning({
 			cycles,
@@ -163,7 +165,7 @@ export async function runThermalRuntimeLearning(host: ThermalRuntimeRunHost): Pr
 
 		if (result.status === "insufficient_data") {
 			host.log.warn(
-				`Thermal Runtime Learning: ungenügende Zyklen (samples=${result.samples}, history_points=${points.length})`,
+				`Thermal Runtime Learning: ungenügende Zyklen (samples=${result.samples}, history_points=${points.length}, temp=${histSummary.minC ?? "—"}–${histSummary.maxC ?? "—"}°C, floor=${cfg.emptyThresholdC}°C, above_floor=${histSummary.pointsAboveFloor})`,
 			);
 		}
 	} catch (e) {

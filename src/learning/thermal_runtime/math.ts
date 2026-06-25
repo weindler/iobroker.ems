@@ -39,7 +39,39 @@ export function median(values: number[]): number | null {
 	return round2(sorted[mid]);
 }
 
-/** Erkennt Kühlzyklen: Start >= full, Ende <= empty. Keine 0-Füllung bei Lücken. */
+const MIN_COOLING_DROP_C = 1;
+/** Temperatur steigt wieder über Peak → Überschuss-/Nachheizen, Segment abbrechen. */
+const HEATING_RESUME_MARGIN_C = 0.5;
+
+export type TempHistorySummary = {
+	minC: number | null;
+	maxC: number | null;
+	pointsAboveFloor: number;
+	pointsAtOrBelowFloor: number;
+};
+
+/** Kurzdiagnose für Logs — warum keine Zyklen erkannt wurden. */
+export function summarizeTempHistory(
+	points: TempPoint[],
+	emptyThresholdC: number,
+): TempHistorySummary {
+	let minC: number | null = null;
+	let maxC: number | null = null;
+	let pointsAboveFloor = 0;
+	let pointsAtOrBelowFloor = 0;
+	for (const p of points) {
+		if (minC === null || p.tempC < minC) minC = p.tempC;
+		if (maxC === null || p.tempC > maxC) maxC = p.tempC;
+		if (p.tempC > emptyThresholdC) pointsAboveFloor++;
+		else pointsAtOrBelowFloor++;
+	}
+	return { minC, maxC, pointsAboveFloor, pointsAtOrBelowFloor };
+}
+
+/**
+ * Erkennt Abkühl-Segmente: lokaler Peak (Überschuss-/Pufferstand) → Betriebs-Untergrenze.
+ * Kein fester „Voll bei 60 °C“-Start — Start kann überall im Betriebsband liegen (z. B. 52–59 °C).
+ */
 export function detectRuntimeCycles(
 	points: TempPoint[],
 	cfg: Pick<
@@ -48,31 +80,67 @@ export function detectRuntimeCycles(
 	>,
 ): RuntimeCycle[] {
 	const cycles: RuntimeCycle[] = [];
-	let active: { startTs: number; startTempC: number } | null = null;
+	const floor = cfg.emptyThresholdC;
+	if (points.length < 2) {
+		return cycles;
+	}
 
-	for (const p of points) {
-		if (!active) {
-			if (p.tempC >= cfg.fullThresholdC) {
-				active = { startTs: p.ts, startTempC: p.tempC };
+	let i = 0;
+	while (i < points.length - 1) {
+		while (i < points.length && points[i].tempC <= floor) {
+			i++;
+		}
+		if (i >= points.length - 1) {
+			break;
+		}
+
+		let peakIdx = i;
+		let peakTemp = points[i].tempC;
+		while (i + 1 < points.length && points[i + 1].tempC >= points[i].tempC - 0.05) {
+			i++;
+			if (points[i].tempC > peakTemp) {
+				peakTemp = points[i].tempC;
+				peakIdx = i;
 			}
+		}
+
+		if (peakTemp <= floor + 0.1) {
+			i++;
 			continue;
 		}
 
-		if (p.tempC <= cfg.emptyThresholdC) {
-			const runtimeHours = (p.ts - active.startTs) / MS_PER_HOUR;
+		let endIdx = -1;
+		let resumeIdx = -1;
+		for (let j = peakIdx + 1; j < points.length; j++) {
+			const t = points[j].tempC;
+			if (t <= floor) {
+				endIdx = j;
+				break;
+			}
+			if (t > peakTemp + HEATING_RESUME_MARGIN_C) {
+				resumeIdx = j;
+				break;
+			}
+		}
+
+		if (endIdx > peakIdx) {
+			const startP = points[peakIdx];
+			const endP = points[endIdx];
+			const runtimeHours = (endP.ts - startP.ts) / MS_PER_HOUR;
+			const dropC = startP.tempC - endP.tempC;
 			if (
 				runtimeHours >= cfg.minRuntimeHours &&
 				runtimeHours <= cfg.maxRuntimeHours &&
-				active.startTempC > p.tempC
+				dropC >= MIN_COOLING_DROP_C
 			) {
-				const coolingRateCPerH = (active.startTempC - p.tempC) / runtimeHours;
+				const coolingRateCPerH = dropC / runtimeHours;
 				if (Number.isFinite(coolingRateCPerH) && coolingRateCPerH > 0) {
-					const startDate = new Date(active.startTs);
+					const startDate = new Date(startP.ts);
 					cycles.push({
-						startTs: active.startTs,
-						endTs: p.ts,
-						startTempC: round2(active.startTempC),
-						endTempC: round2(p.tempC),
+						startTs: startP.ts,
+						endTs: endP.ts,
+						startTempC: round2(startP.tempC),
+						endTempC: round2(endP.tempC),
 						runtimeHours: round3(runtimeHours),
 						coolingRateCPerH: round3(coolingRateCPerH),
 						season: seasonFromDate(startDate) as ThermalSeason,
@@ -80,7 +148,11 @@ export function detectRuntimeCycles(
 					});
 				}
 			}
-			active = null;
+			i = endIdx + 1;
+		} else if (resumeIdx >= 0) {
+			i = resumeIdx;
+		} else {
+			i = peakIdx + 1;
 		}
 	}
 
@@ -140,11 +212,17 @@ export function estimateRemainingHours(params: {
 	if (currentTempC <= emptyThresholdC) {
 		return 0;
 	}
-	if (currentTempC >= fullThresholdC) {
-		return typicalRuntimeHours !== null ? round3(typicalRuntimeHours) : null;
-	}
 	if (coolingRateCPerHAvg !== null && coolingRateCPerHAvg > 0) {
 		return round3((currentTempC - emptyThresholdC) / coolingRateCPerHAvg);
+	}
+	// Fallback: lineare Skalierung im Betriebsband, wenn nur Median-Laufzeit bekannt
+	if (
+		typicalRuntimeHours !== null &&
+		fullThresholdC > emptyThresholdC &&
+		currentTempC > emptyThresholdC
+	) {
+		const frac = (currentTempC - emptyThresholdC) / (fullThresholdC - emptyThresholdC);
+		return round3(typicalRuntimeHours * Math.min(1, Math.max(0, frac)));
 	}
 	return null;
 }

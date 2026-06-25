@@ -1547,7 +1547,7 @@
 				},
 				"hThermalRuntimeLearningHelp": {
 					"type": "staticText",
-					"text": "Lernt Kühlzyklen von voll (≥ Schwellwert) bis leer (≤ Schwellwert) aus Temperatur-History. Standard-Quelle: addons.immersion_heater.mapping.buffer_temp_c. Read-only — kein Heizstab/Planner. history.0 am Temperatur-State empfohlen.",
+					"text": "Lernt Abkühl-Segmente (lokaler Peak → Nachheizen-Schwelle) aus Temperatur-History — kein fester Start bei „voll“. Überschuss kann den Puffer überall im Betriebsband (z. B. 48–60 °C) aufheizen. Standard-Quelle: addons.immersion_heater.mapping.buffer_temp_c. Read-only. history.0 empfohlen.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -1588,7 +1588,7 @@
 				},
 				"learning_thermal_runtime_full_threshold_c": {
 					"type": "number",
-					"label": "Schwellwert voll (°C)",
+					"label": "Oberes Betriebsband (°C, Schätz-Fallback)",
 					"min": 1,
 					"max": 110,
 					"default": 60,
@@ -1600,7 +1600,7 @@
 				},
 				"learning_thermal_runtime_empty_threshold_c": {
 					"type": "number",
-					"label": "Schwellwert leer (°C)",
+					"label": "Nachheizen ab (°C, Untergrenze)",
 					"min": 0,
 					"max": 109,
 					"default": 48,

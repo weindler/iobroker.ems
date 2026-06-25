@@ -11,6 +11,7 @@ import {
 	detectRuntimeCycles,
 	disabledResult,
 	errorResult,
+	estimateActiveCoolingRateCPerH,
 	invalidConfigResult,
 	noSourceResult,
 	summarizeTempHistory,
@@ -141,12 +142,14 @@ export async function runThermalRuntimeLearning(host: ThermalRuntimeRunHost): Pr
 		const { points } = await fetchTemperatureHistory(host, resolved.stateId, cfg.lookbackDays);
 		const histSummary = summarizeTempHistory(points, cfg.emptyThresholdC);
 		const cycles = detectRuntimeCycles(points, cfg);
+		const activeCoolingRateCPerH = estimateActiveCoolingRateCPerH(points, cfg);
 		const result = computeThermalRuntimeLearning({
 			cycles,
 			currentTempC,
 			cfg,
 			sourceStateId: resolved.stateId,
 			now,
+			activeCoolingRateCPerH,
 		});
 
 		if (host.getAbsolutePath) {
@@ -160,7 +163,7 @@ export async function runThermalRuntimeLearning(host: ThermalRuntimeRunHost): Pr
 		await writeResult(host, result, lastRun);
 
 		host.log.info(
-			`Thermal-Runtime-Learning: status=${result.status} health=${result.health} cycles=${result.samples} source=${sourceLabelFromStateId(resolved.stateId)}`,
+			`Thermal-Runtime-Learning: status=${result.status} health=${result.health} cycles=${result.samples} source=${sourceLabelFromStateId(resolved.stateId)} active_rate=${activeCoolingRateCPerH ?? "—"}°C/h`,
 		);
 
 		if (result.status === "insufficient_data") {

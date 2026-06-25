@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.errorResult = exports.invalidConfigResult = exports.disabledResult = exports.noSourceResult = exports.computeThermalRuntimeLearning = exports.estimatedEmptyAtIso = exports.estimateRemainingHours = exports.groupByDayType = exports.groupBySeason = exports.detectRuntimeCycles = exports.summarizeTempHistory = exports.median = exports.average = void 0;
+exports.errorResult = exports.invalidConfigResult = exports.disabledResult = exports.noSourceResult = exports.computeThermalRuntimeLearning = exports.estimatedEmptyAtIso = exports.estimateRemainingHours = exports.groupByDayType = exports.groupBySeason = exports.estimateActiveCoolingRateCPerH = exports.detectRuntimeCycles = exports.summarizeTempHistory = exports.median = exports.average = void 0;
 const time_1 = require("../house_load/time");
 const constants_1 = require("./constants");
 function round2(n) {
@@ -27,6 +27,7 @@ function median(values) {
 }
 exports.median = median;
 const MIN_COOLING_DROP_C = 1;
+const MIN_ACTIVE_COOLING_DROP_C = 0.5;
 /** Temperatur steigt wieder über Peak → Überschuss-/Nachheizen, Segment abbrechen. */
 const HEATING_RESUME_MARGIN_C = 0.5;
 /** Kurzdiagnose für Logs — warum keine Zyklen erkannt wurden. */
@@ -127,6 +128,37 @@ function detectRuntimeCycles(points, cfg) {
     return cycles;
 }
 exports.detectRuntimeCycles = detectRuntimeCycles;
+/** Vorläufige Kühlrate des laufenden Segments, bevor die Untergrenze erreicht wurde. */
+function estimateActiveCoolingRateCPerH(points, cfg) {
+    if (points.length < 2) {
+        return null;
+    }
+    const floor = cfg.emptyThresholdC;
+    let peak = null;
+    let last = null;
+    for (const p of points) {
+        if (p.tempC <= floor) {
+            peak = null;
+            last = p;
+            continue;
+        }
+        if (!peak || p.tempC > peak.tempC + HEATING_RESUME_MARGIN_C) {
+            peak = p;
+        }
+        last = p;
+    }
+    if (!peak || !last || last.ts <= peak.ts || last.tempC <= floor) {
+        return null;
+    }
+    const runtimeHours = (last.ts - peak.ts) / constants_1.MS_PER_HOUR;
+    const dropC = peak.tempC - last.tempC;
+    if (runtimeHours < cfg.minRuntimeHours || dropC < MIN_ACTIVE_COOLING_DROP_C) {
+        return null;
+    }
+    const rate = dropC / runtimeHours;
+    return Number.isFinite(rate) && rate > 0 ? round3(rate) : null;
+}
+exports.estimateActiveCoolingRateCPerH = estimateActiveCoolingRateCPerH;
 function summarizeGroup(cycles) {
     const runtimes = cycles.map((c) => c.runtimeHours);
     const rates = cycles.map((c) => c.coolingRateCPerH);
@@ -200,7 +232,7 @@ function deriveHealth(samples, hasSource, configValid) {
     return "ok";
 }
 function computeThermalRuntimeLearning(params) {
-    const { cycles, currentTempC, cfg, sourceStateId, now } = params;
+    const { cycles, currentTempC, cfg, sourceStateId, now, activeCoolingRateCPerH = null } = params;
     const configValid = cfg.fullThresholdC > cfg.emptyThresholdC;
     if (!configValid) {
         return invalidConfigResult(sourceStateId);
@@ -210,12 +242,13 @@ function computeThermalRuntimeLearning(params) {
     const runtimeHoursAvg = average(runtimes);
     const runtimeHoursMedian = median(runtimes);
     const coolingRateCPerHAvg = average(rates);
+    const coolingRateForEstimate = coolingRateCPerHAvg ?? activeCoolingRateCPerH;
     const remaining = estimateRemainingHours({
         currentTempC,
         fullThresholdC: cfg.fullThresholdC,
         emptyThresholdC: cfg.emptyThresholdC,
         typicalRuntimeHours: runtimeHoursMedian ?? runtimeHoursAvg,
-        coolingRateCPerHAvg,
+        coolingRateCPerHAvg: coolingRateForEstimate,
     });
     const health = deriveHealth(cycles.length, Boolean(sourceStateId), configValid);
     let status = "ready";

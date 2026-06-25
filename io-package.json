@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.41",
+		"version": "0.1.42",
 		"news": {
+			"0.1.42": {
+				"en": "Thermal runtime: add provisional remaining-time estimate from active cooling trend before the first completed floor crossing",
+				"de": "Thermal-Runtime: vorläufige Restlaufzeit aus laufendem Abkühltrend, bevor der erste abgeschlossene Untergrenzen-Zyklus erreicht ist"
+			},
 			"0.1.41": {
 				"en": "Thermal runtime: detect cooling from local peak to floor (no fixed full-at-60°C start); band-aligned with surplus immersion heating",
 				"de": "Thermal-Runtime: Abkühlung vom lokalen Peak bis Untergrenze (kein fester Start bei 60 °C); passt zum Überschuss-Heizstab-Betriebsband"

@@ -40,6 +40,7 @@ export function median(values: number[]): number | null {
 }
 
 const MIN_COOLING_DROP_C = 1;
+const MIN_ACTIVE_COOLING_DROP_C = 0.5;
 /** Temperatur steigt wieder über Peak → Überschuss-/Nachheizen, Segment abbrechen. */
 const HEATING_RESUME_MARGIN_C = 0.5;
 
@@ -159,6 +160,45 @@ export function detectRuntimeCycles(
 	return cycles;
 }
 
+/** Vorläufige Kühlrate des laufenden Segments, bevor die Untergrenze erreicht wurde. */
+export function estimateActiveCoolingRateCPerH(
+	points: TempPoint[],
+	cfg: Pick<ThermalRuntimeConfig, "emptyThresholdC" | "minRuntimeHours">,
+): number | null {
+	if (points.length < 2) {
+		return null;
+	}
+
+	const floor = cfg.emptyThresholdC;
+	let peak: TempPoint | null = null;
+	let last: TempPoint | null = null;
+
+	for (const p of points) {
+		if (p.tempC <= floor) {
+			peak = null;
+			last = p;
+			continue;
+		}
+		if (!peak || p.tempC > peak.tempC + HEATING_RESUME_MARGIN_C) {
+			peak = p;
+		}
+		last = p;
+	}
+
+	if (!peak || !last || last.ts <= peak.ts || last.tempC <= floor) {
+		return null;
+	}
+
+	const runtimeHours = (last.ts - peak.ts) / MS_PER_HOUR;
+	const dropC = peak.tempC - last.tempC;
+	if (runtimeHours < cfg.minRuntimeHours || dropC < MIN_ACTIVE_COOLING_DROP_C) {
+		return null;
+	}
+
+	const rate = dropC / runtimeHours;
+	return Number.isFinite(rate) && rate > 0 ? round3(rate) : null;
+}
+
 function summarizeGroup(cycles: RuntimeCycle[]): GroupSummary {
 	const runtimes = cycles.map((c) => c.runtimeHours);
 	const rates = cycles.map((c) => c.coolingRateCPerH);
@@ -252,8 +292,9 @@ export function computeThermalRuntimeLearning(params: {
 	cfg: ThermalRuntimeConfig;
 	sourceStateId: string;
 	now: Date;
+	activeCoolingRateCPerH?: number | null;
 }): ThermalRuntimeComputeResult {
-	const { cycles, currentTempC, cfg, sourceStateId, now } = params;
+	const { cycles, currentTempC, cfg, sourceStateId, now, activeCoolingRateCPerH = null } = params;
 	const configValid = cfg.fullThresholdC > cfg.emptyThresholdC;
 
 	if (!configValid) {
@@ -265,13 +306,14 @@ export function computeThermalRuntimeLearning(params: {
 	const runtimeHoursAvg = average(runtimes);
 	const runtimeHoursMedian = median(runtimes);
 	const coolingRateCPerHAvg = average(rates);
+	const coolingRateForEstimate = coolingRateCPerHAvg ?? activeCoolingRateCPerH;
 
 	const remaining = estimateRemainingHours({
 		currentTempC,
 		fullThresholdC: cfg.fullThresholdC,
 		emptyThresholdC: cfg.emptyThresholdC,
 		typicalRuntimeHours: runtimeHoursMedian ?? runtimeHoursAvg,
-		coolingRateCPerHAvg,
+		coolingRateCPerHAvg: coolingRateForEstimate,
 	});
 
 	const health = deriveHealth(cycles.length, Boolean(sourceStateId), configValid);

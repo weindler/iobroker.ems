@@ -104,6 +104,14 @@ function coolingCurve(startMs, startTemp, endTemp, hours, steps = 6) {
         const cycles = (0, math_1.detectRuntimeCycles)(points, cfg({ minRuntimeHours: 0.5 }));
         strict_1.default.equal(cycles.length, 0);
     });
+    (0, node_test_1.it)("estimates an active cooling rate before the floor is reached", () => {
+        const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
+        // Läuft noch: 59 -> 55 °C in 48h, Untergrenze 48 °C noch nicht erreicht.
+        const points = coolingCurve(base, 59, 55, 48, 8);
+        const rate = (0, math_1.estimateActiveCoolingRateCPerH)(points, cfg());
+        strict_1.default.equal(rate, 0.083);
+        strict_1.default.equal((0, math_1.detectRuntimeCycles)(points, cfg()).length, 0);
+    });
 });
 (0, node_test_1.describe)("thermal runtime remaining estimate", () => {
     (0, node_test_1.it)("returns 0 when at or below empty threshold", () => {
@@ -158,6 +166,21 @@ function coolingCurve(startMs, startTemp, endTemp, hours, steps = 6) {
         strict_1.default.equal(r.health, "no_samples");
         strict_1.default.equal(r.samples, 0);
         strict_1.default.equal(r.estimatedRemainingHours, null);
+    });
+    (0, node_test_1.it)("uses active cooling rate for provisional remaining estimate without completed cycles", () => {
+        const r = (0, math_1.computeThermalRuntimeLearning)({
+            cycles: [],
+            currentTempC: 55,
+            cfg: cfg(),
+            sourceStateId: "alias.0.temp",
+            now: new Date("2026-06-21T10:00:00"),
+            activeCoolingRateCPerH: 0.1,
+        });
+        strict_1.default.equal(r.status, "insufficient_data");
+        strict_1.default.equal(r.health, "no_samples");
+        strict_1.default.equal(r.samples, 0);
+        strict_1.default.equal(r.estimatedRemainingHours, 70);
+        strict_1.default.equal(r.estimatedEmptyAt, "2026-06-24T06:00:00.000Z");
     });
     (0, node_test_1.it)("no_source result", () => {
         const r = (0, math_1.noSourceResult)();

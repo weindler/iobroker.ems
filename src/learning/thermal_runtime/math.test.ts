@@ -6,6 +6,7 @@ import {
 	computeThermalRuntimeLearning,
 	detectRuntimeCycles,
 	estimateRemainingHours,
+	estimateActiveCoolingRateCPerH,
 	invalidConfigResult,
 	noSourceResult,
 } from "./math";
@@ -98,6 +99,15 @@ describe("thermal runtime cycle detection", () => {
 		const cycles = detectRuntimeCycles(points, cfg({ minRuntimeHours: 0.5 }));
 		assert.equal(cycles.length, 0);
 	});
+
+	it("estimates an active cooling rate before the floor is reached", () => {
+		const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
+		// Läuft noch: 59 -> 55 °C in 48h, Untergrenze 48 °C noch nicht erreicht.
+		const points = coolingCurve(base, 59, 55, 48, 8);
+		const rate = estimateActiveCoolingRateCPerH(points, cfg());
+		assert.equal(rate, 0.083);
+		assert.equal(detectRuntimeCycles(points, cfg()).length, 0);
+	});
 });
 
 describe("thermal runtime remaining estimate", () => {
@@ -157,6 +167,22 @@ describe("thermal runtime compute", () => {
 		assert.equal(r.health, "no_samples");
 		assert.equal(r.samples, 0);
 		assert.equal(r.estimatedRemainingHours, null);
+	});
+
+	it("uses active cooling rate for provisional remaining estimate without completed cycles", () => {
+		const r = computeThermalRuntimeLearning({
+			cycles: [],
+			currentTempC: 55,
+			cfg: cfg(),
+			sourceStateId: "alias.0.temp",
+			now: new Date("2026-06-21T10:00:00"),
+			activeCoolingRateCPerH: 0.1,
+		});
+		assert.equal(r.status, "insufficient_data");
+		assert.equal(r.health, "no_samples");
+		assert.equal(r.samples, 0);
+		assert.equal(r.estimatedRemainingHours, 70);
+		assert.equal(r.estimatedEmptyAt, "2026-06-24T06:00:00.000Z");
 	});
 
 	it("no_source result", () => {

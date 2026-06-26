@@ -116,7 +116,7 @@ function daySummary(dayOffset, validHours, avg) {
     (0, node_test_1.it)("maps health from sample coverage", () => {
         strict_1.default.equal((0, math_1.healthFromMetrics)(40, 85), "ok");
         strict_1.default.equal((0, math_1.healthFromMetrics)(10, 60), "warning");
-        strict_1.default.equal((0, math_1.healthFromMetrics)(2, 10), "error");
+        strict_1.default.equal((0, math_1.healthFromMetrics)(2, 10), "degraded");
     });
     (0, node_test_1.it)("writes persist file", async () => {
         const dir = await fs.mkdtemp(path.join(os.tmpdir(), "price-learning-"));

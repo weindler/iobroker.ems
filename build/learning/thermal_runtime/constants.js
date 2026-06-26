@@ -1,12 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DAY_TYPES = exports.SEASONS = exports.MAX_HISTORY_JSON_CYCLES = exports.MIN_CYCLES_OK = exports.PLAUSIBLE_TEMP_MAX_C = exports.PLAUSIBLE_TEMP_MIN_C = exports.MS_PER_DAY = exports.MS_PER_HOUR = exports.HISTORY_QUERY_TIMEOUT_MS = exports.DEFAULT_MAX_RUNTIME_HOURS = exports.DEFAULT_MIN_RUNTIME_HOURS = exports.DEFAULT_EMPTY_THRESHOLD_C = exports.DEFAULT_FULL_THRESHOLD_C = exports.DEFAULT_LOOKBACK_DAYS = exports.MODULE_TAG = void 0;
+exports.DAY_TYPES = exports.SEASONS = exports.MAX_HISTORY_JSON_CYCLES = exports.MIN_CYCLES_OK = exports.PLAUSIBLE_TEMP_MAX_C = exports.PLAUSIBLE_TEMP_MIN_C = exports.MS_PER_DAY = exports.MS_PER_HOUR = exports.HISTORY_QUERY_TIMEOUT_MS = exports.DEFAULT_AMBIENT_C = exports.DEFAULT_MAX_RUNTIME_HOURS = exports.DEFAULT_MIN_RUNTIME_HOURS = exports.DEFAULT_EMPTY_THRESHOLD_C = exports.DEFAULT_FULL_THRESHOLD_C = exports.DEFAULT_LOOKBACK_DAYS = exports.MODULE_TAG = void 0;
 exports.MODULE_TAG = "thermal_runtime_learning_v1";
 exports.DEFAULT_LOOKBACK_DAYS = 90;
 exports.DEFAULT_FULL_THRESHOLD_C = 60;
 exports.DEFAULT_EMPTY_THRESHOLD_C = 48;
 exports.DEFAULT_MIN_RUNTIME_HOURS = 0.5;
 exports.DEFAULT_MAX_RUNTIME_HOURS = 72;
+/**
+ * Umgebungstemperatur am Pufferstandort (Heizraum). Bezugspunkt für die
+ * Newton'sche Abkühlung: Ein Schichtspeicher kühlt nahe der Umgebungstemperatur
+ * deutlich langsamer ab als kurz nach dem Aufheizen ("erst 3°/h, dann 2°/h, dann 1°/h").
+ */
+exports.DEFAULT_AMBIENT_C = 18;
 exports.HISTORY_QUERY_TIMEOUT_MS = 45_000;
 exports.MS_PER_HOUR = 3_600_000;
 exports.MS_PER_DAY = 86_400_000;

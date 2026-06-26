@@ -84,6 +84,7 @@ async function runThermalRuntimeLearning(host) {
         const cycles = (0, math_1.detectRuntimeCycles)(points, cfg);
         const coolingSegments = (0, math_1.collectCoolingSegments)(points, cfg.minRuntimeHours);
         const activeCoolingRateCPerH = (0, math_1.estimateActiveCoolingRateCPerH)(points, cfg);
+        const coolingConstantPerH = (0, math_1.estimateCoolingConstantPerH)(points, cfg);
         const result = (0, math_1.computeThermalRuntimeLearning)({
             cycles,
             currentTempC,
@@ -91,12 +92,13 @@ async function runThermalRuntimeLearning(host) {
             sourceStateId: resolved.stateId,
             now,
             activeCoolingRateCPerH,
+            coolingConstantPerH,
         });
         if (host.getAbsolutePath) {
             await (0, persist_1.writeThermalRuntimePersist)(host.getAbsolutePath("learning/thermal_runtime"), result, lastRun);
         }
         await writeResult(host, result, lastRun);
-        host.log.info(`Thermal-Runtime-Learning: status=${result.status} health=${result.health} cycles=${result.samples} source=${(0, config_1.sourceLabelFromStateId)(resolved.stateId)} active_rate=${activeCoolingRateCPerH ?? "—"}°C/h (cooling_segments=${coolingSegments.length})`);
+        host.log.info(`Thermal-Runtime-Learning: status=${result.status} health=${result.health} cycles=${result.samples} source=${(0, config_1.sourceLabelFromStateId)(resolved.stateId)} k=${coolingConstantPerH ?? "—"}/h active_rate=${activeCoolingRateCPerH ?? "—"}°C/h (cooling_segments=${coolingSegments.length}) remaining=${result.estimatedRemainingHours ?? "—"}h`);
         if (result.status === "insufficient_data") {
             host.log.warn(`Thermal Runtime Learning: ungenügende Zyklen (samples=${result.samples}, history_points=${points.length}, temp=${histSummary.minC ?? "—"}–${histSummary.maxC ?? "—"}°C, floor=${cfg.emptyThresholdC}°C, above_floor=${histSummary.pointsAboveFloor})`);
         }

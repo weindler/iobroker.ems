@@ -27,7 +27,7 @@ async function ensurePriceLearningStates(host) {
     await (0, state_util_1.ensureChannel)(host, "learning.price_learning", "EMS-Light Learning Price");
     const defs = [
         strState("learning.price_learning.status", "Price-Learning Status", "not_initialized"),
-        strState("learning.price_learning.health", "Price-Learning Health", "error"),
+        strState("learning.price_learning.health", "Price-Learning Health", "degraded"),
         strState("learning.price_learning.last_run", "Price-Learning letzter Lauf (ISO)"),
         numState("learning.price_learning.confidence", "Price-Learning Confidence", "%"),
         numState("learning.price_learning.sample_days", "Price-Learning gültige Tage"),

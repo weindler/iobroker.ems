@@ -5,7 +5,7 @@ export type PriceForecastStatus =
 	| "error"
 	| "disabled";
 
-export type PriceForecastHealth = "ok" | "warning" | "error";
+export type PriceForecastHealth = "ok" | "warning" | "degraded" | "error";
 export type ForecastStability = "stable" | "normal" | "volatile" | "unknown";
 
 export type PriceForecastConfig = {

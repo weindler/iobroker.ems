@@ -84,7 +84,8 @@ export function computeForecastConfidence(params: {
 export function healthFromMetrics(sampleDays: number, coveragePct: number): PriceForecastHealth {
 	if (sampleDays >= 30 && coveragePct >= 80) return "ok";
 	if (sampleDays >= 7 && coveragePct >= 50) return "warning";
-	return "error";
+	// Zu wenig/zu junge Historie ist kein Fehler — "error" bleibt echten Störungen vorbehalten.
+	return "degraded";
 }
 
 export function computePriceForecastLearning(

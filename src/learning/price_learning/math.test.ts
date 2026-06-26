@@ -107,7 +107,7 @@ describe("price learning math", () => {
 	it("maps health from sample coverage", () => {
 		assert.equal(healthFromMetrics(40, 85), "ok");
 		assert.equal(healthFromMetrics(10, 60), "warning");
-		assert.equal(healthFromMetrics(2, 10), "error");
+		assert.equal(healthFromMetrics(2, 10), "degraded");
 	});
 
 	it("writes persist file", async () => {

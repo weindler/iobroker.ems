@@ -80,7 +80,8 @@ function healthFromMetrics(sampleDays, coveragePct) {
         return "ok";
     if (sampleDays >= 7 && coveragePct >= 50)
         return "warning";
-    return "error";
+    // Zu wenig/zu junge Historie ist kein Fehler — "error" bleibt echten Störungen vorbehalten.
+    return "degraded";
 }
 exports.healthFromMetrics = healthFromMetrics;
 function computePriceForecastLearning(allPairs, lookbackDays, forecastSource, actualSource, now) {

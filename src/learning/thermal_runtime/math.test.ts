@@ -8,6 +8,7 @@ import {
 	detectRuntimeCycles,
 	estimateRemainingHours,
 	estimateActiveCoolingRateCPerH,
+	estimateCoolingConstantPerH,
 	invalidConfigResult,
 	noSourceResult,
 } from "./math";
@@ -183,6 +184,51 @@ describe("thermal runtime remaining estimate", () => {
 			typicalRuntimeHours: null,
 			coolingRateCPerHAvg: null,
 		}), null);
+	});
+
+	it("uses Newtonian cooling when a cooling constant is provided", () => {
+		// t = ln((58-18)/(48-18)) / k = ln(40/30)/0.05 = 5.754 h
+		const h = estimateRemainingHours({
+			currentTempC: 58,
+			fullThresholdC: 60,
+			emptyThresholdC: 48,
+			typicalRuntimeHours: null,
+			coolingRateCPerHAvg: null,
+			coolingConstantPerH: 0.05,
+			ambientC: 18,
+		});
+		assert.ok(h !== null && Math.abs(h - 5.754) < 0.01, `h=${h}`);
+	});
+
+	it("Newtonian: cooling slows as the buffer approaches ambient", () => {
+		const common = {
+			fullThresholdC: 60,
+			emptyThresholdC: 48,
+			typicalRuntimeHours: null,
+			coolingRateCPerHAvg: null,
+			coolingConstantPerH: 0.05,
+			ambientC: 18,
+		};
+		const r58 = estimateRemainingHours({ ...common, currentTempC: 58 })!;
+		const r53 = estimateRemainingHours({ ...common, currentTempC: 53 })!;
+		// Die ersten 5 °C (58→53) gehen schneller als die letzten 5 °C (53→48).
+		assert.ok(r58 - r53 < r53, `first5=${r58 - r53} last5=${r53}`);
+	});
+});
+
+describe("thermal newtonian cooling constant", () => {
+	it("derives a positive cooling constant from a falling segment", () => {
+		const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
+		// 58 → 48 °C über 10 h → k = ln((58-18)/(48-18))/10 ≈ 0.02877 /h
+		const points = coolingCurve(base, 58, 48, 10, 10);
+		const k = estimateCoolingConstantPerH(points, cfg(), 18);
+		assert.ok(k !== null && Math.abs(k - 0.02877) < 0.002, `k=${k}`);
+	});
+
+	it("returns null when no falling segment qualifies", () => {
+		const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
+		const points = coolingCurve(base, 55, 54.5, 5, 5); // <2 °C Abfall
+		assert.equal(estimateCoolingConstantPerH(points, cfg(), 18), null);
 	});
 });
 

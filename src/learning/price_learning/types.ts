@@ -7,7 +7,7 @@ export type PriceLearningStatus =
 	| "error"
 	| "disabled";
 
-export type PriceHealthLevel = "ok" | "warning" | "error";
+export type PriceHealthLevel = "ok" | "warning" | "degraded" | "error";
 
 export type PriceDaySummary = {
 	dateKey: string;

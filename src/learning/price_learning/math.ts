@@ -125,7 +125,9 @@ export function healthFromMetrics(
 	if (sampleDays >= 7 && coveragePct >= 50) {
 		return "warning";
 	}
-	return "error";
+	// Zu wenig/zu junge Historie ist kein Fehler — "error" bleibt echten Störungen
+	// (keine Quelle, Exception, deaktiviert) vorbehalten.
+	return "degraded";
 }
 
 export function computeConfidence(params: {

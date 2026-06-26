@@ -181,6 +181,47 @@ function coolingCurve(startMs, startTemp, endTemp, hours, steps = 6) {
             coolingRateCPerHAvg: null,
         }), null);
     });
+    (0, node_test_1.it)("uses Newtonian cooling when a cooling constant is provided", () => {
+        // t = ln((58-18)/(48-18)) / k = ln(40/30)/0.05 = 5.754 h
+        const h = (0, math_1.estimateRemainingHours)({
+            currentTempC: 58,
+            fullThresholdC: 60,
+            emptyThresholdC: 48,
+            typicalRuntimeHours: null,
+            coolingRateCPerHAvg: null,
+            coolingConstantPerH: 0.05,
+            ambientC: 18,
+        });
+        strict_1.default.ok(h !== null && Math.abs(h - 5.754) < 0.01, `h=${h}`);
+    });
+    (0, node_test_1.it)("Newtonian: cooling slows as the buffer approaches ambient", () => {
+        const common = {
+            fullThresholdC: 60,
+            emptyThresholdC: 48,
+            typicalRuntimeHours: null,
+            coolingRateCPerHAvg: null,
+            coolingConstantPerH: 0.05,
+            ambientC: 18,
+        };
+        const r58 = (0, math_1.estimateRemainingHours)({ ...common, currentTempC: 58 });
+        const r53 = (0, math_1.estimateRemainingHours)({ ...common, currentTempC: 53 });
+        // Die ersten 5 °C (58→53) gehen schneller als die letzten 5 °C (53→48).
+        strict_1.default.ok(r58 - r53 < r53, `first5=${r58 - r53} last5=${r53}`);
+    });
+});
+(0, node_test_1.describe)("thermal newtonian cooling constant", () => {
+    (0, node_test_1.it)("derives a positive cooling constant from a falling segment", () => {
+        const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
+        // 58 → 48 °C über 10 h → k = ln((58-18)/(48-18))/10 ≈ 0.02877 /h
+        const points = coolingCurve(base, 58, 48, 10, 10);
+        const k = (0, math_1.estimateCoolingConstantPerH)(points, cfg(), 18);
+        strict_1.default.ok(k !== null && Math.abs(k - 0.02877) < 0.002, `k=${k}`);
+    });
+    (0, node_test_1.it)("returns null when no falling segment qualifies", () => {
+        const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
+        const points = coolingCurve(base, 55, 54.5, 5, 5); // <2 °C Abfall
+        strict_1.default.equal((0, math_1.estimateCoolingConstantPerH)(points, cfg(), 18), null);
+    });
 });
 (0, node_test_1.describe)("thermal runtime compute", () => {
     (0, node_test_1.it)("reports no_samples without cycles", () => {

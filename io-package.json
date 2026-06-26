@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.43",
+		"version": "0.1.44",
 		"news": {
+			"0.1.44": {
+				"en": "Thermal runtime: Newtonian cooling model (rate decreases as the stratified buffer approaches ambient); price learning/forecast report 'degraded' instead of 'error' when data is just young",
+				"de": "Thermal-Runtime: Newton'sches Abkühlmodell (Rate sinkt, je näher der Schichtspeicher an die Umgebung kommt); Price-Learning/-Forecast melden 'degraded' statt 'error', wenn die Historie nur jung ist"
+			},
 			"0.1.43": {
 				"en": "Thermal runtime: active cooling rate from real falling segments (median), ignoring reheating/sun plateaus — no longer too optimistic",
 				"de": "Thermal-Runtime: aktive Kühlrate aus echten Fall-Segmenten (Median), Nachheiz-/Sonnen-Plateaus ignoriert — nicht mehr zu optimistisch"

@@ -1,5 +1,6 @@
 import { seasonFromDate, dayTypeFromWeekday, weekdayFromDate } from "../house_load/time";
 import {
+	DEFAULT_AMBIENT_C,
 	MAX_HISTORY_JSON_CYCLES,
 	MIN_CYCLES_OK,
 	MS_PER_HOUR,
@@ -163,7 +164,13 @@ export function detectRuntimeCycles(
 	return cycles;
 }
 
-type CoolingSegment = { dropC: number; hours: number; rateCPerH: number };
+type CoolingSegment = {
+	dropC: number;
+	hours: number;
+	rateCPerH: number;
+	startTempC: number;
+	endTempC: number;
+};
 
 /**
  * Sammelt echte Abkühl-Segmente (Peak → Tal) aus dem Verlauf.
@@ -193,7 +200,13 @@ export function collectCoolingSegments(
 		}
 		const rateCPerH = dropC / hours;
 		if (Number.isFinite(rateCPerH) && rateCPerH > 0) {
-			segments.push({ dropC: round2(dropC), hours: round3(hours), rateCPerH: round3(rateCPerH) });
+			segments.push({
+				dropC: round2(dropC),
+				hours: round3(hours),
+				rateCPerH: round3(rateCPerH),
+				startTempC: round2(points[pIdx].tempC),
+				endTempC: round2(points[tIdx].tempC),
+			});
 		}
 	};
 
@@ -241,6 +254,39 @@ export function estimateActiveCoolingRateCPerH(
 	return rate > 0 ? round3(rate) : null;
 }
 
+/**
+ * Newton'sche Abkühlkonstante k (1/h) aus echten Fall-Segmenten.
+ * Modell: T(t) = T_amb + (T0 − T_amb)·e^(−k·t) → die Abkühlung pro Stunde ist
+ * proportional zur Differenz zur Umgebung. Damit kühlt ein voller Speicher schnell,
+ * ein fast leerer langsam ab — genau das Verhalten eines Schichtspeichers.
+ *
+ * Pro Segment: k = ln((T_start − T_amb)/(T_end − T_amb)) / Stunden.
+ * Der Median über alle Segmente ist robust gegen einzelne Warmwasser-Entnahmen.
+ */
+export function estimateCoolingConstantPerH(
+	points: TempPoint[],
+	cfg: Pick<ThermalRuntimeConfig, "minRuntimeHours">,
+	ambientC: number = DEFAULT_AMBIENT_C,
+): number | null {
+	const segments = collectCoolingSegments(points, cfg.minRuntimeHours);
+	const ks: number[] = [];
+	for (const s of segments) {
+		if (s.startTempC > ambientC && s.endTempC > ambientC && s.hours > 0) {
+			const k = Math.log((s.startTempC - ambientC) / (s.endTempC - ambientC)) / s.hours;
+			if (Number.isFinite(k) && k > 0) {
+				ks.push(k);
+			}
+		}
+	}
+	if (ks.length === 0) {
+		return null;
+	}
+	ks.sort((a, b) => a - b);
+	const mid = Math.floor(ks.length / 2);
+	const k = ks.length % 2 === 0 ? (ks[mid - 1] + ks[mid]) / 2 : ks[mid];
+	return k > 0 ? Math.round(k * 1e5) / 1e5 : null;
+}
+
 function summarizeGroup(cycles: RuntimeCycle[]): GroupSummary {
 	const runtimes = cycles.map((c) => c.runtimeHours);
 	const rates = cycles.map((c) => c.coolingRateCPerH);
@@ -284,15 +330,32 @@ export function estimateRemainingHours(params: {
 	emptyThresholdC: number;
 	typicalRuntimeHours: number | null;
 	coolingRateCPerHAvg: number | null;
+	coolingConstantPerH?: number | null;
+	ambientC?: number;
 }): number | null {
 	const { currentTempC, fullThresholdC, emptyThresholdC, typicalRuntimeHours, coolingRateCPerHAvg } =
 		params;
+	const coolingConstantPerH = params.coolingConstantPerH ?? null;
+	const ambientC = params.ambientC ?? DEFAULT_AMBIENT_C;
 
 	if (currentTempC === null || !Number.isFinite(currentTempC)) {
 		return null;
 	}
 	if (currentTempC <= emptyThresholdC) {
 		return 0;
+	}
+	// Bevorzugt: Newton'sche Abkühlung — Rate sinkt mit Annäherung an die Umgebung.
+	if (
+		coolingConstantPerH !== null &&
+		coolingConstantPerH > 0 &&
+		currentTempC > ambientC &&
+		emptyThresholdC > ambientC
+	) {
+		const hours =
+			Math.log((currentTempC - ambientC) / (emptyThresholdC - ambientC)) / coolingConstantPerH;
+		if (Number.isFinite(hours) && hours >= 0) {
+			return round3(hours);
+		}
 	}
 	if (coolingRateCPerHAvg !== null && coolingRateCPerHAvg > 0) {
 		return round3((currentTempC - emptyThresholdC) / coolingRateCPerHAvg);
@@ -335,8 +398,19 @@ export function computeThermalRuntimeLearning(params: {
 	sourceStateId: string;
 	now: Date;
 	activeCoolingRateCPerH?: number | null;
+	coolingConstantPerH?: number | null;
+	ambientC?: number;
 }): ThermalRuntimeComputeResult {
-	const { cycles, currentTempC, cfg, sourceStateId, now, activeCoolingRateCPerH = null } = params;
+	const {
+		cycles,
+		currentTempC,
+		cfg,
+		sourceStateId,
+		now,
+		activeCoolingRateCPerH = null,
+		coolingConstantPerH = null,
+		ambientC = DEFAULT_AMBIENT_C,
+	} = params;
 	const configValid = cfg.fullThresholdC > cfg.emptyThresholdC;
 
 	if (!configValid) {
@@ -356,6 +430,8 @@ export function computeThermalRuntimeLearning(params: {
 		emptyThresholdC: cfg.emptyThresholdC,
 		typicalRuntimeHours: runtimeHoursMedian ?? runtimeHoursAvg,
 		coolingRateCPerHAvg: coolingRateForEstimate,
+		coolingConstantPerH,
+		ambientC,
 	});
 
 	const health = deriveHealth(cycles.length, Boolean(sourceStateId), configValid);

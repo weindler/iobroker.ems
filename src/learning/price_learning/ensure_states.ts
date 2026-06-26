@@ -28,7 +28,7 @@ export async function ensurePriceLearningStates(host: StateHost): Promise<void> 
 
 	const defs: StateDef[] = [
 		strState("learning.price_learning.status", "Price-Learning Status", "not_initialized"),
-		strState("learning.price_learning.health", "Price-Learning Health", "error"),
+		strState("learning.price_learning.health", "Price-Learning Health", "degraded"),
 		strState("learning.price_learning.last_run", "Price-Learning letzter Lauf (ISO)"),
 		numState("learning.price_learning.confidence", "Price-Learning Confidence", "%"),
 		numState("learning.price_learning.sample_days", "Price-Learning gültige Tage"),

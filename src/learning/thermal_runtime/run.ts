@@ -7,6 +7,7 @@ import {
 import { fetchTemperatureHistory, isValidTempC } from "./history";
 import { resolveThermalTemperatureStateId } from "./mapping";
 import {
+	collectCoolingSegments,
 	computeThermalRuntimeLearning,
 	detectRuntimeCycles,
 	disabledResult,
@@ -142,6 +143,7 @@ export async function runThermalRuntimeLearning(host: ThermalRuntimeRunHost): Pr
 		const { points } = await fetchTemperatureHistory(host, resolved.stateId, cfg.lookbackDays);
 		const histSummary = summarizeTempHistory(points, cfg.emptyThresholdC);
 		const cycles = detectRuntimeCycles(points, cfg);
+		const coolingSegments = collectCoolingSegments(points, cfg.minRuntimeHours);
 		const activeCoolingRateCPerH = estimateActiveCoolingRateCPerH(points, cfg);
 		const result = computeThermalRuntimeLearning({
 			cycles,
@@ -163,7 +165,7 @@ export async function runThermalRuntimeLearning(host: ThermalRuntimeRunHost): Pr
 		await writeResult(host, result, lastRun);
 
 		host.log.info(
-			`Thermal-Runtime-Learning: status=${result.status} health=${result.health} cycles=${result.samples} source=${sourceLabelFromStateId(resolved.stateId)} active_rate=${activeCoolingRateCPerH ?? "—"}°C/h`,
+			`Thermal-Runtime-Learning: status=${result.status} health=${result.health} cycles=${result.samples} source=${sourceLabelFromStateId(resolved.stateId)} active_rate=${activeCoolingRateCPerH ?? "—"}°C/h (cooling_segments=${coolingSegments.length})`,
 		);
 
 		if (result.status === "insufficient_data") {

@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.42",
+		"version": "0.1.43",
 		"news": {
+			"0.1.43": {
+				"en": "Thermal runtime: active cooling rate from real falling segments (median), ignoring reheating/sun plateaus — no longer too optimistic",
+				"de": "Thermal-Runtime: aktive Kühlrate aus echten Fall-Segmenten (Median), Nachheiz-/Sonnen-Plateaus ignoriert — nicht mehr zu optimistisch"
+			},
 			"0.1.42": {
 				"en": "Thermal runtime: add provisional remaining-time estimate from active cooling trend before the first completed floor crossing",
 				"de": "Thermal-Runtime: vorläufige Restlaufzeit aus laufendem Abkühltrend, bevor der erste abgeschlossene Untergrenzen-Zyklus erreicht ist"

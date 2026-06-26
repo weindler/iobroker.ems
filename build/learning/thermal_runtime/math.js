@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.errorResult = exports.invalidConfigResult = exports.disabledResult = exports.noSourceResult = exports.computeThermalRuntimeLearning = exports.estimatedEmptyAtIso = exports.estimateRemainingHours = exports.groupByDayType = exports.groupBySeason = exports.estimateActiveCoolingRateCPerH = exports.detectRuntimeCycles = exports.summarizeTempHistory = exports.median = exports.average = void 0;
+exports.errorResult = exports.invalidConfigResult = exports.disabledResult = exports.noSourceResult = exports.computeThermalRuntimeLearning = exports.estimatedEmptyAtIso = exports.estimateRemainingHours = exports.groupByDayType = exports.groupBySeason = exports.estimateActiveCoolingRateCPerH = exports.collectCoolingSegments = exports.detectRuntimeCycles = exports.summarizeTempHistory = exports.median = exports.average = void 0;
 const time_1 = require("../house_load/time");
 const constants_1 = require("./constants");
 function round2(n) {
@@ -27,7 +27,10 @@ function median(values) {
 }
 exports.median = median;
 const MIN_COOLING_DROP_C = 1;
-const MIN_ACTIVE_COOLING_DROP_C = 0.5;
+/** Mindest-Abkühlung eines echten Fall-Segments — schließt Plateaus/Nachheizen aus. */
+const MIN_ACTIVE_SEGMENT_DROP_C = 2;
+/** Rausch-Toleranz: kleiner Anstieg fragmentiert ein Fall-Segment nicht. */
+const ACTIVE_NOISE_C = 0.3;
 /** Temperatur steigt wieder über Peak → Überschuss-/Nachheizen, Segment abbrechen. */
 const HEATING_RESUME_MARGIN_C = 0.5;
 /** Kurzdiagnose für Logs — warum keine Zyklen erkannt wurden. */
@@ -128,35 +131,69 @@ function detectRuntimeCycles(points, cfg) {
     return cycles;
 }
 exports.detectRuntimeCycles = detectRuntimeCycles;
-/** Vorläufige Kühlrate des laufenden Segments, bevor die Untergrenze erreicht wurde. */
-function estimateActiveCoolingRateCPerH(points, cfg) {
+/**
+ * Sammelt echte Abkühl-Segmente (Peak → Tal) aus dem Verlauf.
+ * Plateaus und Wiederaufheizen (Sonne/Überschuss) trennen Segmente und zählen NICHT
+ * als Kühlung — so entsteht die natürliche No-Heat-Rate statt eines gemischten Trends.
+ */
+function collectCoolingSegments(points, minRuntimeHours) {
+    const segments = [];
     if (points.length < 2) {
-        return null;
+        return segments;
     }
-    const floor = cfg.emptyThresholdC;
-    let peak = null;
-    let last = null;
-    for (const p of points) {
-        if (p.tempC <= floor) {
-            peak = null;
-            last = p;
+    let peakIdx = 0;
+    let troughIdx = 0;
+    const tryPush = (pIdx, tIdx) => {
+        if (tIdx <= pIdx) {
+            return;
+        }
+        const dropC = points[pIdx].tempC - points[tIdx].tempC;
+        const hours = (points[tIdx].ts - points[pIdx].ts) / constants_1.MS_PER_HOUR;
+        if (dropC < MIN_ACTIVE_SEGMENT_DROP_C || hours < minRuntimeHours) {
+            return;
+        }
+        const rateCPerH = dropC / hours;
+        if (Number.isFinite(rateCPerH) && rateCPerH > 0) {
+            segments.push({ dropC: round2(dropC), hours: round3(hours), rateCPerH: round3(rateCPerH) });
+        }
+    };
+    for (let i = 1; i < points.length; i++) {
+        const t = points[i].tempC;
+        if (troughIdx === peakIdx && t >= points[peakIdx].tempC) {
+            // Noch am Aufheizen vor dem ersten Abfall → Peak nachziehen
+            peakIdx = i;
+            troughIdx = i;
             continue;
         }
-        if (!peak || p.tempC > peak.tempC + HEATING_RESUME_MARGIN_C) {
-            peak = p;
+        if (t <= points[troughIdx].tempC) {
+            troughIdx = i;
+            continue;
         }
-        last = p;
+        if (t > points[troughIdx].tempC + ACTIVE_NOISE_C) {
+            // Wiederaufheizen → aktuelles Fall-Segment abschließen, neuer Peak
+            tryPush(peakIdx, troughIdx);
+            peakIdx = i;
+            troughIdx = i;
+        }
     }
-    if (!peak || !last || last.ts <= peak.ts || last.tempC <= floor) {
+    tryPush(peakIdx, troughIdx);
+    return segments;
+}
+exports.collectCoolingSegments = collectCoolingSegments;
+/**
+ * Natürliche Kühlrate (°C/h) aus echten Fall-Segmenten — Median, robust gegen
+ * Plateaus und einzelne Ausreißer. Untergrenze wird hier nicht gebraucht, da nur
+ * die Steigung der Abkühlung zählt (nicht das absolute Niveau).
+ */
+function estimateActiveCoolingRateCPerH(points, cfg) {
+    const segments = collectCoolingSegments(points, cfg.minRuntimeHours);
+    if (segments.length === 0) {
         return null;
     }
-    const runtimeHours = (last.ts - peak.ts) / constants_1.MS_PER_HOUR;
-    const dropC = peak.tempC - last.tempC;
-    if (runtimeHours < cfg.minRuntimeHours || dropC < MIN_ACTIVE_COOLING_DROP_C) {
-        return null;
-    }
-    const rate = dropC / runtimeHours;
-    return Number.isFinite(rate) && rate > 0 ? round3(rate) : null;
+    const sorted = segments.map((s) => s.rateCPerH).sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const rate = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+    return rate > 0 ? round3(rate) : null;
 }
 exports.estimateActiveCoolingRateCPerH = estimateActiveCoolingRateCPerH;
 function summarizeGroup(cycles) {

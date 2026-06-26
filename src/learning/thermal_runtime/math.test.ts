@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { configIsValid, thermalRuntimeConfigFromAdapter } from "./config";
 import { isValidTempC } from "./history";
 import {
+	collectCoolingSegments,
 	computeThermalRuntimeLearning,
 	detectRuntimeCycles,
 	estimateRemainingHours,
@@ -107,6 +108,37 @@ describe("thermal runtime cycle detection", () => {
 		const rate = estimateActiveCoolingRateCPerH(points, cfg());
 		assert.equal(rate, 0.083);
 		assert.equal(detectRuntimeCycles(points, cfg()).length, 0);
+	});
+
+	it("ignores reheating plateaus — rate stays the natural cooldown, not the mixed trend", () => {
+		const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
+		// Echtes Abkühlen 58->54 in 8h (0.5 °C/h), dann Nachheizen zurück auf 58,
+		// dann langes Plateau. Mischtrend wäre viel flacher als 0.5.
+		const cooling = coolingCurve(base, 58, 54, 8, 8);
+		const reheatStart = cooling[cooling.length - 1].ts;
+		const reheat = coolingCurve(reheatStart, 54, 58, 4, 4);
+		const plateauStart = reheat[reheat.length - 1].ts;
+		const plateau: TempPoint[] = [];
+		for (let h = 1; h <= 40; h++) {
+			plateau.push({ ts: plateauStart + h * MS_H, tempC: 58 - 0.1 });
+		}
+		const points = [...cooling, ...reheat, ...plateau];
+		const rate = estimateActiveCoolingRateCPerH(points, cfg());
+		assert.ok(rate !== null && rate >= 0.45 && rate <= 0.55, `rate=${rate}`);
+	});
+
+	it("collects multiple cooling segments and uses their median rate", () => {
+		const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
+		const seg1 = coolingCurve(base, 58, 53, 10, 10); // 0.5 °C/h
+		const gapStart = seg1[seg1.length - 1].ts;
+		const reheat = coolingCurve(gapStart, 53, 59, 3, 6); // Nachheizen
+		const seg2Start = reheat[reheat.length - 1].ts;
+		const seg2 = coolingCurve(seg2Start, 59, 51, 8, 8); // 1.0 °C/h
+		const points = [...seg1, ...reheat, ...seg2];
+		const segments = collectCoolingSegments(points, cfg().minRuntimeHours);
+		assert.equal(segments.length, 2);
+		const rate = estimateActiveCoolingRateCPerH(points, cfg());
+		assert.ok(rate !== null && rate >= 0.7 && rate <= 0.8, `rate=${rate}`);
 	});
 });
 

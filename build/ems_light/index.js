@@ -5,11 +5,13 @@ const pv_bias_1 = require("../learning/pv_bias");
 const weather_1 = require("../learning/weather");
 const data_dir_1 = require("../learning/data_dir");
 const policy_1 = require("../policy");
+const intent_1 = require("../intent");
 const global_modes_1 = require("../global_modes");
 const ensure_states_1 = require("./ensure_states");
 const tick_1 = require("./tick");
 const DEFAULT_TICK_SEC = 60;
 const GLOBAL_MODES_REQUESTED_STATE = "global_modes.requested";
+const INTENT_WALLBOX_REQUEST_STATE = "user_intent.inputs.iobroker.wallbox.request_json";
 let tickTimer = null;
 let policyAdapter = null;
 function tickIntervalSec(config) {
@@ -31,14 +33,31 @@ async function initEmsLightPhase1(adapter) {
     await (0, weather_1.initWeatherLearning)(adapter);
     const policyHost = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
     await (0, policy_1.initPolicyEngine)(policyHost);
+    const intentHost = {
+        ...(0, data_dir_1.withLearningDataPath)(adapter, adapter),
+        namespace: adapter.namespace,
+        config: adapter.config,
+        log: adapter.log,
+        setObjectNotExistsAsync: adapter.setObjectNotExistsAsync.bind(adapter),
+        getStateAsync: adapter.getStateAsync.bind(adapter),
+        setStateAsync: adapter.setStateAsync.bind(adapter),
+        extendObjectAsync: adapter.extendObjectAsync?.bind(adapter),
+        getForeignStateAsync: adapter.getForeignStateAsync.bind(adapter),
+        subscribeStatesAsync: adapter.subscribeStatesAsync.bind(adapter),
+        unsubscribeStatesAsync: adapter.unsubscribeStatesAsync.bind(adapter),
+        subscribeForeignStatesAsync: adapter.subscribeForeignStatesAsync.bind(adapter),
+        unsubscribeForeignStatesAsync: adapter.unsubscribeForeignStatesAsync.bind(adapter),
+    };
+    await (0, intent_1.initIntentEngine)(intentHost);
     // Verbindliche ioBroker-Subscription auf dem echten Adapter (stateChange-Routing
     // erfolgt in main.ts onStateChange -> handleGlobalModesStateChange).
     policyAdapter = adapter;
     try {
         await adapter.subscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE);
+        await adapter.subscribeStatesAsync(INTENT_WALLBOX_REQUEST_STATE);
     }
     catch (e) {
-        adapter.log.warn(`global_modes.requested subscribe: ${e}`);
+        adapter.log.warn(`EMS-Light state subscribe: ${e}`);
     }
     await (0, tick_1.runEmsLightPhase1Tick)(host);
     const sec = tickIntervalSec(adapter.config);
@@ -63,7 +82,9 @@ function stopEmsLightPhase1() {
         const adapter = policyAdapter;
         policyAdapter = null;
         void Promise.resolve(adapter.unsubscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE)).catch((e) => adapter.log.debug?.(`global_modes.requested unsubscribe: ${e}`));
+        void Promise.resolve(adapter.unsubscribeStatesAsync(INTENT_WALLBOX_REQUEST_STATE)).catch((e) => adapter.log.debug?.(`intent wallbox request unsubscribe: ${e}`));
     }
+    (0, intent_1.stopIntentEngine)();
     (0, policy_1.stopPolicyEngine)();
     (0, global_modes_1.resetGlobalModesRuntime)();
     (0, pv_bias_1.stopPvBiasLearning)();

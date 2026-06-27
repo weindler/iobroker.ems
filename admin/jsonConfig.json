@@ -1885,6 +1885,140 @@
 					"xl": 12
 				}
 			}
+		},
+		"emsLightIntentTab": {
+			"type": "panel",
+			"label": "EMS-Light User Intent",
+			"items": {
+				"intentIntro": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Phase 3B: Benutzeraufträge erfassen und normalisieren (read-only). Keine Planner- oder Geräteentscheidungen. Laufzeit-Eingabe: user_intent.inputs.iobroker.wallbox.request_json. Ausgabe: user_intent.wallbox.* (read-only)."
+				},
+				"hIntentEvcc": {
+					"type": "header",
+					"size": 2,
+					"text": "EVCC Intent-Mapping (optional, read-only)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"intent_evcc_mode_state": {
+					"type": "objectId",
+					"label": "EVCC Lademodus",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"intent_evcc_target_soc_state": {
+					"type": "objectId",
+					"label": "EVCC Ziel-SOC (%)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"intent_evcc_deadline_state": {
+					"type": "objectId",
+					"label": "EVCC Abfahrtszeit / Deadline",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"intent_evcc_immediate_state": {
+					"type": "objectId",
+					"label": "EVCC Sofortladen (optional, Diagnose)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"intent_evcc_source_timestamp_state": {
+					"type": "objectId",
+					"label": "EVCC Quell-Zeitstempel (optional)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"hIntentDefaults": {
+					"type": "header",
+					"size": 2,
+					"text": "Intent-Defaults (nur wenn keine höherwertige Quelle)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"intent_default_charge_strategy": {
+					"type": "select",
+					"label": "Default Ladestrategie (optional)",
+					"options": [
+						{ "label": "(kein Default)", "value": "" },
+						{ "label": "Off", "value": "off" },
+						{ "label": "Min+PV", "value": "min_pv" },
+						{ "label": "PV", "value": "pv" },
+						{ "label": "Sofort", "value": "immediate" }
+					],
+					"default": "",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"intent_default_target_soc_pct": {
+					"type": "number",
+					"label": "Default Ziel-SOC % (optional)",
+					"min": 0,
+					"max": 100,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"intent_timezone": {
+					"type": "text",
+					"label": "Zeitzone für Deadlines",
+					"default": "Europe/Berlin",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"intent_manual_override_max_minutes": {
+					"type": "number",
+					"label": "Max. Manual-Override-Dauer (Min., optional)",
+					"min": 1,
+					"max": 10080,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				}
+			}
 		}
 	}
 }

@@ -2,6 +2,7 @@ import { initPvBiasLearning, stopPvBiasLearning } from "../learning/pv_bias";
 import { initWeatherLearning, stopWeatherLearning } from "../learning/weather";
 import { withLearningDataPath } from "../learning/data_dir";
 import { initPolicyEngine, stopPolicyEngine, type PolicyEngineHost } from "../policy";
+import { initIntentEngine, stopIntentEngine, type IntentEngineHost } from "../intent";
 import { resetGlobalModesRuntime } from "../global_modes";
 import { ensureEmsLightStates } from "./ensure_states";
 import { runEmsLightPhase1Tick } from "./tick";
@@ -9,6 +10,7 @@ import type { LiveCacheHost } from "./live_cache";
 
 const DEFAULT_TICK_SEC = 60;
 const GLOBAL_MODES_REQUESTED_STATE = "global_modes.requested";
+const INTENT_WALLBOX_REQUEST_STATE = "user_intent.inputs.iobroker.wallbox.request_json";
 let tickTimer: NodeJS.Timeout | null = null;
 let policyAdapter: ioBroker.Adapter | null = null;
 
@@ -33,13 +35,30 @@ export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<voi
 	await initWeatherLearning(adapter);
 	const policyHost = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & PolicyEngineHost);
 	await initPolicyEngine(policyHost);
+	const intentHost = {
+		...withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & IntentEngineHost),
+		namespace: adapter.namespace,
+		config: adapter.config,
+		log: adapter.log,
+		setObjectNotExistsAsync: adapter.setObjectNotExistsAsync.bind(adapter),
+		getStateAsync: adapter.getStateAsync.bind(adapter),
+		setStateAsync: adapter.setStateAsync.bind(adapter),
+		extendObjectAsync: adapter.extendObjectAsync?.bind(adapter),
+		getForeignStateAsync: adapter.getForeignStateAsync.bind(adapter),
+		subscribeStatesAsync: adapter.subscribeStatesAsync.bind(adapter),
+		unsubscribeStatesAsync: adapter.unsubscribeStatesAsync.bind(adapter),
+		subscribeForeignStatesAsync: adapter.subscribeForeignStatesAsync.bind(adapter),
+		unsubscribeForeignStatesAsync: adapter.unsubscribeForeignStatesAsync.bind(adapter),
+	};
+	await initIntentEngine(intentHost);
 	// Verbindliche ioBroker-Subscription auf dem echten Adapter (stateChange-Routing
 	// erfolgt in main.ts onStateChange -> handleGlobalModesStateChange).
 	policyAdapter = adapter;
 	try {
 		await adapter.subscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE);
+		await adapter.subscribeStatesAsync(INTENT_WALLBOX_REQUEST_STATE);
 	} catch (e) {
-		adapter.log.warn(`global_modes.requested subscribe: ${e}`);
+		adapter.log.warn(`EMS-Light state subscribe: ${e}`);
 	}
 	await runEmsLightPhase1Tick(host);
 
@@ -69,7 +88,11 @@ export function stopEmsLightPhase1(): void {
 		void Promise.resolve(adapter.unsubscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE)).catch((e) =>
 			adapter.log.debug?.(`global_modes.requested unsubscribe: ${e}`),
 		);
+		void Promise.resolve(adapter.unsubscribeStatesAsync(INTENT_WALLBOX_REQUEST_STATE)).catch((e) =>
+			adapter.log.debug?.(`intent wallbox request unsubscribe: ${e}`),
+		);
 	}
+	stopIntentEngine();
 	stopPolicyEngine();
 	resetGlobalModesRuntime();
 	stopPvBiasLearning();

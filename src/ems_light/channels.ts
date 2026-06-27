@@ -15,6 +15,7 @@ export const EMS_LIGHT_CHANNEL_IDS: Array<{ id: string; nameDe: string }> = [
 	{ id: "economics", nameDe: "EMS-Light Economics (Reporting)" },
 	{ id: "global_modes", nameDe: "EMS-Light Global Modes" },
 	{ id: "policy", nameDe: "EMS-Light Policy" },
+	{ id: "user_intent", nameDe: "EMS-Light User Intent" },
 ];
 
 export async function ensureEmsLightChannels(host: StateHost): Promise<void> {

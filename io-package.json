@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.50",
+		"version": "0.1.51",
 		"news": {
+			"0.1.51": {
+				"en": "Phase 3B: User Intent Foundation — read-only capture and normalization of wallbox user intent from EVCC, ioBroker JSON requests, and admin defaults (no planner, no device writes)",
+				"de": "Phase 3B: User Intent Foundation — read-only Erfassung und Normalisierung von Wallbox-Benutzeraufträgen aus EVCC, ioBroker-JSON-Requests und Admin-Defaults (kein Planner, keine Geräte-Writes)"
+			},
 			"0.1.50": {
 				"en": "global_modes.requested now has a dropdown (off/eco/balanced/comfort/forced) in the object tree and a manual change is acknowledged (no longer shown as unconfirmed/yellow)",
 				"de": "global_modes.requested zeigt im Objektbaum jetzt ein Auswahl-Dropdown (off/eco/balanced/comfort/forced) und eine manuelle Änderung wird bestätigt (nicht mehr gelb/unbestätigt)"

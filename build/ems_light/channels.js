@@ -17,6 +17,7 @@ exports.EMS_LIGHT_CHANNEL_IDS = [
     { id: "economics", nameDe: "EMS-Light Economics (Reporting)" },
     { id: "global_modes", nameDe: "EMS-Light Global Modes" },
     { id: "policy", nameDe: "EMS-Light Policy" },
+    { id: "user_intent", nameDe: "EMS-Light User Intent" },
 ];
 async function ensureEmsLightChannels(host) {
     for (const ch of exports.EMS_LIGHT_CHANNEL_IDS) {

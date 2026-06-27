@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.54",
+		"version": "0.1.55",
 		"news": {
+			"0.1.55": {
+				"en": "Robust User Intent init: state creation always runs first and is isolated from persistence/subscription errors; init failures are now logged at error level and no longer block the rest of the adapter. Added clear init log lines for diagnostics.",
+				"de": "Robuste User-Intent-Initialisierung: State-Erzeugung läuft immer zuerst und ist von Persistenz-/Subscription-Fehlern isoliert; Init-Fehler werden jetzt als Error geloggt und blockieren den restlichen Adapter nicht mehr. Klare Init-Logzeilen zur Diagnose ergänzt."
+			},
 			"0.1.54": {
 				"en": "Fix: User Intent Engine init no longer aborts on adapter installations without async foreign-state subscription helpers; the user_intent state tree including request_json is now created reliably",
 				"de": "Fix: User Intent Engine Init bricht auf Adapter-Installationen ohne Async-Foreign-State-Subscription-Helper nicht mehr ab; der user_intent-State-Baum inklusive request_json wird jetzt zuverlässig angelegt"

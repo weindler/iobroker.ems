@@ -31,7 +31,12 @@ export type IntentEngineHost = StateHost &
 		config?: unknown;
 		namespace?: string;
 		getAbsolutePath?: (category?: string) => string;
-		log: { info: (msg: string) => void; warn: (msg: string) => void; debug?: (msg: string) => void };
+		log: {
+			info: (msg: string) => void;
+			warn: (msg: string) => void;
+			error?: (msg: string) => void;
+			debug?: (msg: string) => void;
+		};
 		subscribeStatesAsync?: (pattern: string, callback?: () => void) => Promise<void>;
 		unsubscribeStatesAsync?: (pattern: string) => Promise<void>;
 		subscribeForeignStatesAsync?: (pattern: string, callback?: () => void) => Promise<void>;
@@ -168,57 +173,78 @@ export async function initIntentEngine(host: IntentEngineHost): Promise<void> {
 		return;
 	}
 
-	host.log.info(`User Intent Engine initialized (${INTENT_ENGINE_VERSION})`);
+	host.log.info(`User Intent Engine init start (${INTENT_ENGINE_VERSION})`);
 	engineActive = true;
 	subscribedHost = host;
 
 	const now = new Date();
-	await ensureIntentStates(host);
 
-	const dataDir = host.getAbsolutePath?.("intent");
-	if (dataDir) {
-		const persisted = await readIntentPersist(dataDir);
-		if (persisted) {
-			lastResolved = persisted.resolved;
-			lastRequestId = persisted.lastRequestId;
-			iobrokerSnapshot = persisted.iobrokerSnapshot;
+	// Schritt 1 (verbindlich): States anlegen. Muss als Erstes und unabhängig von
+	// allem Weiteren passieren, damit der user_intent-Baum immer existiert.
+	await ensureIntentStates(host);
+	host.log.info("User Intent states ensured");
+
+	// Schritt 2: persistierten Zustand laden (Fehler nicht fatal).
+	try {
+		const dataDir = host.getAbsolutePath?.("intent");
+		if (dataDir) {
+			const persisted = await readIntentPersist(dataDir);
+			if (persisted) {
+				lastResolved = persisted.resolved;
+				lastRequestId = persisted.lastRequestId;
+				iobrokerSnapshot = persisted.iobrokerSnapshot;
+			}
 		}
+	} catch (e) {
+		host.log.warn(`Intent persist load failed: ${e}`);
 	}
 
 	if (!lastResolved) {
 		lastResolved = emptyResolvedWallboxIntent(now);
 	}
 
-	await runIntentEngine(host);
+	// Schritt 3: erste Auflösung (Fehler nicht fatal — States existieren bereits).
+	try {
+		await runIntentEngine(host);
+	} catch (e) {
+		(host.log.error ?? host.log.warn)(`User Intent first resolution failed: ${e}`);
+	}
 
-	const evccCfg = intentEvccConfigFromAdapter(host.config);
-	const foreignIds = configuredEvccStateIds(evccCfg);
-	for (const id of foreignIds) {
-		if (subscribedForeignIds.includes(id)) continue;
-		if (host.subscribeForeignStatesAsync) {
-			try {
-				await host.subscribeForeignStatesAsync(id, () => scheduleEvccRerun(host));
-				subscribedForeignIds.push(id);
-			} catch (e) {
-				host.log.debug?.(`Intent EVCC subscribe ${id}: ${e}`);
+	// Schritt 4: Subscriptions (jede isoliert; Fehler dürfen den Init nicht abbrechen).
+	try {
+		const evccCfg = intentEvccConfigFromAdapter(host.config);
+		const foreignIds = configuredEvccStateIds(evccCfg);
+		for (const id of foreignIds) {
+			if (subscribedForeignIds.includes(id)) continue;
+			if (typeof host.subscribeForeignStatesAsync === "function") {
+				try {
+					await host.subscribeForeignStatesAsync(id, () => scheduleEvccRerun(host));
+					subscribedForeignIds.push(id);
+				} catch (e) {
+					host.log.debug?.(`Intent EVCC subscribe ${id}: ${e}`);
+				}
 			}
 		}
+
+		const requestPattern = IOBROKER_WALLBOX_REQUEST_STATE;
+		if (!subscribedPatterns.includes(requestPattern) && typeof host.subscribeStatesAsync === "function") {
+			patternSubscribed = true;
+			await host.subscribeStatesAsync(requestPattern);
+			subscribedPatterns.push(requestPattern);
+		}
+	} catch (e) {
+		host.log.warn(`Intent subscriptions failed: ${e}`);
 	}
 
-	const requestPattern = IOBROKER_WALLBOX_REQUEST_STATE;
-	if (!subscribedPatterns.includes(requestPattern) && host.subscribeStatesAsync) {
-		patternSubscribed = true;
-		await host.subscribeStatesAsync(requestPattern, () => {
-			void (async () => {
-				const st = await host.getStateAsync(requestPattern);
-				await processPendingIobrokerRequest(host, st ?? null);
-			})().catch((e) => host.log.warn(`Intent request handler: ${e}`));
-		});
-		subscribedPatterns.push(requestPattern);
+	// Schritt 5: evtl. anstehenden Request verarbeiten (Fehler nicht fatal).
+	try {
+		const pending = await host.getStateAsync(IOBROKER_WALLBOX_REQUEST_STATE);
+		await processPendingIobrokerRequest(host, pending ?? null);
+	} catch (e) {
+		host.log.warn(`Intent pending request handling failed: ${e}`);
 	}
 
-	const pending = await host.getStateAsync(IOBROKER_WALLBOX_REQUEST_STATE);
-	await processPendingIobrokerRequest(host, pending ?? null);
+	host.log.info("User Intent Engine initialized");
 }
 
 export function handleIntentStateChange(namespace: string, id: string, state: ioBroker.State | null): void {

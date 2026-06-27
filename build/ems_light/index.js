@@ -53,7 +53,14 @@ async function initEmsLightPhase1(adapter) {
             ? adapterAny.unsubscribeForeignStatesAsync.bind(adapter)
             : undefined,
     };
-    await (0, intent_1.initIntentEngine)(intentHost);
+    // Intent Engine isoliert initialisieren: ein Fehler darf weder still bleiben
+    // noch den restlichen Adapterstart (Tick, Subscriptions) blockieren.
+    try {
+        await (0, intent_1.initIntentEngine)(intentHost);
+    }
+    catch (e) {
+        adapter.log.error(`User Intent Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
+    }
     // Verbindliche ioBroker-Subscription auf dem echten Adapter (stateChange-Routing
     // erfolgt in main.ts onStateChange -> handleGlobalModesStateChange).
     policyAdapter = adapter;

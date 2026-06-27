@@ -72,4 +72,17 @@ describe("wallbox intent normalize", () => {
 		const r = normalizeDeadline("2026-06-27T08:00:00Z", TZ, now);
 		assert.equal(r.status, "expired");
 	});
+	it("null sentinel deadline is missing", () => {
+		const now = new Date("2026-06-27T12:00:00Z");
+		for (const raw of [null, "null", "undefined", "", "   "]) {
+			const r = normalizeDeadline(raw, TZ, now);
+			assert.equal(r.status, "missing", String(raw));
+			assert.equal(r.value, null);
+		}
+	});
+	it("future plan time is valid", () => {
+		const now = new Date("2026-06-27T10:00:00Z");
+		const r = normalizeDeadline("2026-06-27T18:00:00+02:00", TZ, now);
+		assert.equal(r.status, "valid");
+	});
 });

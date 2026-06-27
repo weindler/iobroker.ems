@@ -75,4 +75,17 @@ const TZ = "Europe/Berlin";
         const r = (0, normalize_js_1.normalizeDeadline)("2026-06-27T08:00:00Z", TZ, now);
         strict_1.default.equal(r.status, "expired");
     });
+    (0, node_test_1.it)("null sentinel deadline is missing", () => {
+        const now = new Date("2026-06-27T12:00:00Z");
+        for (const raw of [null, "null", "undefined", "", "   "]) {
+            const r = (0, normalize_js_1.normalizeDeadline)(raw, TZ, now);
+            strict_1.default.equal(r.status, "missing", String(raw));
+            strict_1.default.equal(r.value, null);
+        }
+    });
+    (0, node_test_1.it)("future plan time is valid", () => {
+        const now = new Date("2026-06-27T10:00:00Z");
+        const r = (0, normalize_js_1.normalizeDeadline)("2026-06-27T18:00:00+02:00", TZ, now);
+        strict_1.default.equal(r.status, "valid");
+    });
 });

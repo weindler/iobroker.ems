@@ -1,4 +1,5 @@
 import { EVCC_MODE_MAP } from "../core/constants";
+import { isEmptySentinel } from "../core/sentinel";
 import type { IntentFieldStatus, WallboxChargeStrategy, WallboxDeadlineType } from "../core/types";
 import type { WallboxDeadlineValue } from "../core/types";
 import { parseOptionalSoc } from "../core/validation";
@@ -10,7 +11,7 @@ export interface NormalizeModeResult {
 }
 
 export function normalizeEvccMode(raw: unknown): NormalizeModeResult {
-	if (raw === null || raw === undefined || raw === "") {
+	if (isEmptySentinel(raw)) {
 		return { strategy: "unknown", status: "missing", raw };
 	}
 	const s = String(raw).trim().toLowerCase();
@@ -45,7 +46,7 @@ export function normalizeDeadline(
 	now: Date,
 	deadlineType: WallboxDeadlineType = "departure",
 ): NormalizeDeadlineResult {
-	if (raw === null || raw === undefined || raw === "") {
+	if (isEmptySentinel(raw)) {
 		return { value: null, status: "missing", raw };
 	}
 

@@ -1,9 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CHARGE_STRATEGY_LABELS = exports.EVCC_MODE_MAP = exports.IOBROKER_WALLBOX_RESULT_STATE = exports.IOBROKER_WALLBOX_REQUEST_STATE = exports.ADMIN_INTENT_MANUAL_OVERRIDE_MAX_MINUTES = exports.ADMIN_INTENT_TIMEZONE = exports.ADMIN_INTENT_DEFAULT_TARGET_SOC_PCT = exports.ADMIN_INTENT_DEFAULT_CHARGE_STRATEGY = exports.ADMIN_INTENT_EVCC_SOURCE_TIMESTAMP_STATE = exports.ADMIN_INTENT_EVCC_IMMEDIATE_STATE = exports.ADMIN_INTENT_EVCC_DEADLINE_STATE = exports.ADMIN_INTENT_EVCC_TARGET_SOC_STATE = exports.ADMIN_INTENT_EVCC_MODE_STATE = exports.WALLBOX_TARGET_ID = exports.EVCC_INTENT_DEBOUNCE_MS = exports.DEFAULT_TIMEZONE = exports.INTENT_CONTRACT_VERSION = exports.INTENT_ENGINE_VERSION = exports.INTENT_SCHEMA_VERSION = void 0;
+exports.CHARGE_STRATEGY_LABELS = exports.EVCC_MODE_MAP = exports.IOBROKER_BATTERY_RESULT_STATE = exports.IOBROKER_BATTERY_REQUEST_STATE = exports.IOBROKER_THERMAL_RESULT_STATE = exports.IOBROKER_THERMAL_REQUEST_STATE = exports.IOBROKER_WALLBOX_RESULT_STATE = exports.IOBROKER_WALLBOX_REQUEST_STATE = exports.ADMIN_INTENT_MANUAL_OVERRIDE_MAX_MINUTES = exports.ADMIN_INTENT_TIMEZONE = exports.ADMIN_INTENT_DEFAULT_TARGET_SOC_PCT = exports.ADMIN_INTENT_DEFAULT_CHARGE_STRATEGY = exports.ADMIN_INTENT_EVCC_SOURCE_TIMESTAMP_STATE = exports.ADMIN_INTENT_EVCC_IMMEDIATE_STATE = exports.ADMIN_INTENT_EVCC_DEADLINE_STATE = exports.ADMIN_INTENT_EVCC_TARGET_SOC_STATE = exports.ADMIN_INTENT_EVCC_MODE_STATE = exports.WALLBOX_TARGET_ID = exports.EVCC_INTENT_DEBOUNCE_MS = exports.DEFAULT_TIMEZONE = exports.BATTERY_TARGET_ID = exports.THERMAL_TARGET_ID = exports.SUPPORTED_INTENT_DOMAINS = exports.INTENT_CONTRACT_VERSION = exports.INTENT_ENGINE_VERSION = exports.INTENT_SCHEMA_VERSION = void 0;
 exports.INTENT_SCHEMA_VERSION = 1;
-exports.INTENT_ENGINE_VERSION = "0.1.56";
+exports.INTENT_ENGINE_VERSION = "0.1.57";
 exports.INTENT_CONTRACT_VERSION = "1";
+exports.SUPPORTED_INTENT_DOMAINS = ["wallbox", "thermal", "battery"];
+exports.THERMAL_TARGET_ID = "immersion_heater";
+exports.BATTERY_TARGET_ID = "main";
 exports.DEFAULT_TIMEZONE = "Europe/Berlin";
 /** Kleiner deterministischer Debounce für EVCC-State-Bündel (ms). */
 exports.EVCC_INTENT_DEBOUNCE_MS = 300;
@@ -20,6 +23,10 @@ exports.ADMIN_INTENT_TIMEZONE = "intent_timezone";
 exports.ADMIN_INTENT_MANUAL_OVERRIDE_MAX_MINUTES = "intent_manual_override_max_minutes";
 exports.IOBROKER_WALLBOX_REQUEST_STATE = "user_intent.inputs.iobroker.wallbox.request_json";
 exports.IOBROKER_WALLBOX_RESULT_STATE = "user_intent.inputs.iobroker.wallbox.result_json";
+exports.IOBROKER_THERMAL_REQUEST_STATE = "user_intent.inputs.iobroker.thermal.request_json";
+exports.IOBROKER_THERMAL_RESULT_STATE = "user_intent.inputs.iobroker.thermal.result_json";
+exports.IOBROKER_BATTERY_REQUEST_STATE = "user_intent.inputs.iobroker.battery.request_json";
+exports.IOBROKER_BATTERY_RESULT_STATE = "user_intent.inputs.iobroker.battery.result_json";
 exports.EVCC_MODE_MAP = {
     off: "off",
     minpv: "min_pv",

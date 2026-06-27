@@ -73,6 +73,7 @@ function resolveWallboxIntent(input) {
         charge_strategy: chargeRes.field,
         target_soc_pct: socRes.field,
         deadline: deadlineRes.field,
+        external_planner_plan: (0, validation_2.buildExternalWallboxPlan)(deadlineRes.field, socRes.field, now.toISOString()),
         manual_override: manualOverride,
         source_summary: sourceSummary,
     };

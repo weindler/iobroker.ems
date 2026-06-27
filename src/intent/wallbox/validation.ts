@@ -1,5 +1,5 @@
 import type { IntentField, IntentState } from "../core/types";
-import type { ResolvedWallboxIntent } from "./types";
+import type { ExternalWallboxPlan, ResolvedWallboxIntent } from "./types";
 
 export function deriveIntentState(intent: Omit<ResolvedWallboxIntent, "intent_state">): IntentState {
 	const fields = [intent.charge_strategy, intent.target_soc_pct, intent.deadline];
@@ -29,6 +29,35 @@ export function deriveIntentState(intent: Omit<ResolvedWallboxIntent, "intent_st
 		return "available";
 	}
 	return "none";
+}
+
+export function buildExternalWallboxPlan(
+	deadline: IntentField<import("../core/types").WallboxDeadlineValue>,
+	targetSoc: IntentField<number>,
+	observedAt: string,
+): ExternalWallboxPlan {
+	const base: ExternalWallboxPlan = {
+		state: "none",
+		plan_type: "soc",
+		target_soc_pct: targetSoc.status === "valid" ? targetSoc.value : null,
+		target_energy_kwh: null,
+		ready_at: deadline.status === "valid" && deadline.value ? deadline.value.at : null,
+		source: "evcc",
+		observed_at: observedAt,
+	};
+	if (deadline.status === "missing") {
+		return { ...base, state: "none" };
+	}
+	if (deadline.status === "expired") {
+		return { ...base, state: "expired" };
+	}
+	if (deadline.status === "invalid") {
+		return { ...base, state: "invalid" };
+	}
+	if (deadline.status === "valid" && deadline.value) {
+		return { ...base, state: "active" };
+	}
+	return base;
 }
 
 export function lastChangedAt(intent: ResolvedWallboxIntent): string {

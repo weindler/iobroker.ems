@@ -2,6 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.resetIntentEngineForTest = exports.getLastResolvedWallboxIntentForTest = exports.stopIntentEngine = exports.handleIntentStateChange = exports.initIntentEngine = exports.runIntentEngine = void 0;
 const state_write_1 = require("../policy/core/state_write");
+const addon_active_1 = require("./core/addon_active");
+const aggregate_1 = require("./core/aggregate");
+const expiry_1 = require("./core/expiry");
 const revision_1 = require("./core/revision");
 const constants_1 = require("./core/constants");
 const config_1 = require("./config");
@@ -10,22 +13,42 @@ const persist_1 = require("./persist");
 const evcc_1 = require("./sources/evcc");
 const admin_1 = require("./sources/admin");
 const iobroker_1 = require("./sources/iobroker");
+const iobroker_thermal_1 = require("./sources/iobroker_thermal");
+const iobroker_battery_1 = require("./sources/iobroker_battery");
 const resolve_1 = require("./wallbox/resolve");
 const validation_1 = require("./wallbox/validation");
 const types_1 = require("./wallbox/types");
+const resolve_2 = require("./thermal/resolve");
+const validation_2 = require("./thermal/validation");
+const types_2 = require("./thermal/types");
+const resolve_3 = require("./battery/resolve");
+const validation_3 = require("./battery/validation");
+const types_3 = require("./battery/types");
+const index_1 = require("../addons/immersion_heater/index");
 let engineActive = false;
-let patternSubscribed = false;
 let subscribedHost = null;
-let lastResolved = null;
-let iobrokerSnapshot = null;
-let lastRequestId = null;
+let lastWallbox = null;
+let lastThermal = null;
+let lastBattery = null;
+let lastResolvedAll = null;
+let wallboxSnapshot = null;
+let thermalSnapshot = null;
+let batterySnapshot = null;
+let lastRequestIds = { wallbox: null, thermal: null, battery: null };
 let evccDebounceTimer = null;
+let expiryTimer = null;
 const subscribedPatterns = [];
 const subscribedForeignIds = [];
 function clearEvccDebounce() {
     if (evccDebounceTimer) {
         clearTimeout(evccDebounceTimer);
         evccDebounceTimer = null;
+    }
+}
+function clearExpiryTimer() {
+    if (expiryTimer) {
+        clearTimeout(expiryTimer);
+        expiryTimer = null;
     }
 }
 function scheduleEvccRerun(host) {
@@ -39,15 +62,48 @@ function scheduleEvccRerun(host) {
         void runIntentEngine(host).catch((e) => host.log.warn(`Intent Engine EVCC re-run: ${e}`));
     }, constants_1.EVCC_INTENT_DEBOUNCE_MS);
 }
-async function writeMirrorStates(host, intent) {
-    const summaryJson = JSON.stringify(intent.source_summary);
+function scheduleExpiryRerun(host, now) {
+    clearExpiryTimer();
+    if (!engineActive)
+        return;
+    const times = (0, expiry_1.collectExpiryTimes)(now, [
+        (0, iobroker_1.snapshotToManualOverride)(wallboxSnapshot),
+        (0, iobroker_thermal_1.snapshotToThermalManualOverride)(thermalSnapshot),
+        (0, iobroker_battery_1.snapshotToBatteryManualOverride)(batterySnapshot),
+    ]);
+    const delay = (0, expiry_1.nextExpiryDelayMs)(now, times);
+    if (delay === null)
+        return;
+    expiryTimer = setTimeout(() => {
+        expiryTimer = null;
+        if (!engineActive)
+            return;
+        void runIntentEngine(host).catch((e) => host.log.warn(`Intent Engine expiry re-run: ${e}`));
+    }, delay);
+}
+async function writeWallboxMirror(host, intent) {
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.resolved_json", JSON.stringify(intent));
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.revision", intent.revision);
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.intent_state", intent.intent_state);
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.last_changed", (0, validation_1.lastChangedAt)(intent));
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.manual_override_active", intent.manual_override.active);
-    await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.source_summary", summaryJson);
-    await (0, state_write_1.setStateIfChanged)(host, "user_intent.status", "ready");
+    await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.source_summary", JSON.stringify(intent.source_summary));
+}
+async function writeThermalMirror(host, intent) {
+    await (0, state_write_1.setStateIfChanged)(host, "user_intent.thermal.resolved_json", JSON.stringify(intent));
+    await (0, state_write_1.setStateIfChanged)(host, "user_intent.thermal.revision", intent.revision);
+    await (0, state_write_1.setStateIfChanged)(host, "user_intent.thermal.intent_state", intent.intent_state);
+    await (0, state_write_1.setStateIfChanged)(host, "user_intent.thermal.last_changed", (0, validation_2.lastThermalChangedAt)(intent));
+    await (0, state_write_1.setStateIfChanged)(host, "user_intent.thermal.manual_override_active", intent.manual_override.active);
+    await (0, state_write_1.setStateIfChanged)(host, "user_intent.thermal.source_summary", JSON.stringify(intent.source_summary));
+}
+async function writeBatteryMirror(host, intent) {
+    await (0, state_write_1.setStateIfChanged)(host, "user_intent.battery.resolved_json", JSON.stringify(intent));
+    await (0, state_write_1.setStateIfChanged)(host, "user_intent.battery.revision", intent.revision);
+    await (0, state_write_1.setStateIfChanged)(host, "user_intent.battery.intent_state", intent.intent_state);
+    await (0, state_write_1.setStateIfChanged)(host, "user_intent.battery.last_changed", (0, validation_3.lastBatteryChangedAt)(intent));
+    await (0, state_write_1.setStateIfChanged)(host, "user_intent.battery.manual_override_active", intent.manual_override.active);
+    await (0, state_write_1.setStateIfChanged)(host, "user_intent.battery.source_summary", JSON.stringify(intent.source_summary));
 }
 async function writeSourceSnapshots(host, evcc, admin) {
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.sources.evcc.snapshot_json", JSON.stringify(evcc));
@@ -60,62 +116,171 @@ async function runIntentEngine(host) {
     await (0, ensure_states_1.ensureIntentStates)(host);
     const adminCfg = (0, config_1.intentAdminConfigFromAdapter)(host.config);
     const evccCfg = (0, config_1.intentEvccConfigFromAdapter)(host.config);
-    const evcc = await (0, evcc_1.readEvccIntentSnapshot)(host, evccCfg, adminCfg.timezone, now);
+    const [evcc, thermalActive, batteryActive] = await Promise.all([
+        (0, evcc_1.readEvccIntentSnapshot)(host, evccCfg, adminCfg.timezone, now),
+        (0, addon_active_1.isAddonIntentActive)(host, index_1.IMMERSION_ADDON_ID),
+        (0, addon_active_1.isAddonIntentActive)(host, "battery"),
+    ]);
     const admin = (0, admin_1.buildAdminIntentSnapshot)(adminCfg, now);
-    const override = (0, iobroker_1.snapshotToManualOverride)(iobrokerSnapshot);
-    const resolved = (0, resolve_1.resolveWallboxIntent)({
+    const wallboxOverride = (0, iobroker_1.snapshotToManualOverride)(wallboxSnapshot);
+    const thermalOverride = (0, iobroker_thermal_1.snapshotToThermalManualOverride)(thermalSnapshot);
+    const batteryOverride = (0, iobroker_battery_1.snapshotToBatteryManualOverride)(batterySnapshot);
+    const wallbox = (0, resolve_1.resolveWallboxIntent)({
         now,
-        previous: lastResolved,
+        previous: lastWallbox,
         evcc,
-        iobroker: iobrokerSnapshot,
+        iobroker: wallboxSnapshot,
         admin,
-        override,
+        override: wallboxOverride,
     });
-    const changed = (0, revision_1.semanticIntentChanged)(lastResolved, resolved);
-    if (changed) {
-        host.log.info(`User Intent revision: ${lastResolved?.revision ?? 0} -> ${resolved.revision} (${resolved.intent_state})`);
+    const thermal = (0, resolve_2.resolveThermalIntent)({
+        now,
+        previous: lastThermal,
+        iobroker: thermalSnapshot,
+        override: thermalOverride,
+        active: thermalActive,
+    });
+    const battery = (0, resolve_3.resolveBatteryIntent)({
+        now,
+        previous: lastBattery,
+        iobroker: batterySnapshot,
+        override: batteryOverride,
+        active: batteryActive,
+    });
+    const domains = {
+        wallbox,
+        thermal,
+        battery,
+    };
+    const resolvedAll = (0, aggregate_1.buildResolvedAllIntent)(lastResolvedAll, domains, now);
+    const wallboxChanged = (0, revision_1.semanticIntentChanged)(lastWallbox, wallbox);
+    const thermalChanged = lastThermal?.revision !== thermal.revision;
+    const batteryChanged = lastBattery?.revision !== battery.revision;
+    const aggregateChanged = lastResolvedAll?.revision !== resolvedAll.revision;
+    if (wallboxChanged) {
+        host.log.info(`User Intent wallbox revision: ${lastWallbox?.revision ?? 0} -> ${wallbox.revision} (${wallbox.intent_state})`);
     }
-    lastResolved = resolved;
-    await writeMirrorStates(host, resolved);
+    if (thermalChanged) {
+        host.log.info(`User Intent thermal revision: ${lastThermal?.revision ?? 0} -> ${thermal.revision} (${thermal.intent_state})`);
+    }
+    if (batteryChanged) {
+        host.log.info(`User Intent battery revision: ${lastBattery?.revision ?? 0} -> ${battery.revision} (${battery.intent_state})`);
+    }
+    if (aggregateChanged && !wallboxChanged && !thermalChanged && !batteryChanged) {
+        host.log.debug?.(`User Intent aggregate revision: ${lastResolvedAll?.revision ?? 0} -> ${resolvedAll.revision}`);
+    }
+    lastWallbox = wallbox;
+    lastThermal = thermal;
+    lastBattery = battery;
+    lastResolvedAll = resolvedAll;
+    await writeWallboxMirror(host, wallbox);
+    await writeThermalMirror(host, thermal);
+    await writeBatteryMirror(host, battery);
+    await (0, state_write_1.setStateIfChanged)(host, "user_intent.resolved_all_json", JSON.stringify(resolvedAll));
+    await (0, state_write_1.setStateIfChanged)(host, "user_intent.resolved_all.revision", resolvedAll.revision);
     await writeSourceSnapshots(host, evcc, admin);
-    await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.diagnostics.last_resolution_json", JSON.stringify({ revision: resolved.revision, intent_state: resolved.intent_state, at: now.toISOString() }));
+    await (0, state_write_1.setStateIfChanged)(host, "user_intent.status", "ready");
+    const diag = {
+        revision: resolvedAll.revision,
+        wallbox: wallbox.intent_state,
+        thermal: thermal.intent_state,
+        battery: battery.intent_state,
+        at: now.toISOString(),
+    };
+    await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.diagnostics.last_resolution_json", JSON.stringify(diag));
     const dataDir = host.getAbsolutePath?.("intent");
-    if (dataDir && changed) {
+    const anyChanged = wallboxChanged || thermalChanged || batteryChanged || aggregateChanged;
+    if (dataDir && anyChanged) {
         await (0, persist_1.writeIntentPersist)(dataDir, {
-            revision: resolved.revision,
-            resolved,
-            lastRequestId,
-            iobrokerSnapshot,
+            wallbox,
+            thermal,
+            battery,
+            resolvedAll,
+            lastRequestIds,
+            wallboxSnapshot,
+            thermalSnapshot,
+            batterySnapshot,
         });
     }
-    return resolved;
+    scheduleExpiryRerun(host, now);
+    return { wallbox, thermal, battery, resolvedAll };
 }
 exports.runIntentEngine = runIntentEngine;
-async function processPendingIobrokerRequest(host, state) {
-    if (!state || state.ack === true) {
+async function processDomainRequest(host, domain, state, requestState, resultState) {
+    if (!state || state.ack === true)
+        return;
+    const adminCfg = (0, config_1.intentAdminConfigFromAdapter)(host.config);
+    const now = new Date();
+    if (domain === "wallbox") {
+        const out = (0, iobroker_1.processIobrokerWallboxRequest)({
+            raw: state.val,
+            ack: state.ack,
+            now,
+            admin: adminCfg,
+            lastRequestId: lastRequestIds.wallbox,
+            currentRevision: lastWallbox?.revision ?? 0,
+            existingSnapshot: wallboxSnapshot,
+        });
+        await (0, state_write_1.setStateIfChanged)(host, resultState, JSON.stringify(out.result));
+        if (out.accepted && out.snapshot) {
+            wallboxSnapshot = out.snapshot;
+            lastRequestIds.wallbox = out.result.request_id;
+            host.log.info(`User Intent wallbox request ${out.result.status}: ${out.result.request_id}`);
+            await host.setStateAsync(requestState, { val: state.val, ack: true });
+            await runIntentEngine(host);
+        }
+        else if (out.result.status === "duplicate") {
+            await host.setStateAsync(requestState, { val: state.val, ack: true });
+            host.log.debug?.(`User Intent wallbox duplicate: ${out.result.request_id}`);
+        }
         return;
     }
-    const adminCfg = (0, config_1.intentAdminConfigFromAdapter)(host.config);
-    const out = (0, iobroker_1.processIobrokerWallboxRequest)({
-        raw: state.val,
-        ack: state.ack,
-        now: new Date(),
-        admin: adminCfg,
-        lastRequestId,
-        currentRevision: lastResolved?.revision ?? 0,
-        existingSnapshot: iobrokerSnapshot,
-    });
-    await (0, state_write_1.setStateIfChanged)(host, constants_1.IOBROKER_WALLBOX_RESULT_STATE, JSON.stringify(out.result));
-    if (out.accepted && out.snapshot) {
-        iobrokerSnapshot = out.snapshot;
-        lastRequestId = out.result.request_id;
-        host.log.info(`User Intent request ${out.result.status}: ${out.result.request_id}`);
-        await host.setStateAsync(constants_1.IOBROKER_WALLBOX_REQUEST_STATE, { val: state.val, ack: true });
-        await runIntentEngine(host);
+    if (domain === "thermal") {
+        const out = (0, iobroker_thermal_1.processIobrokerThermalRequest)({
+            raw: state.val,
+            ack: state.ack,
+            now,
+            admin: adminCfg,
+            lastRequestId: lastRequestIds.thermal,
+            currentRevision: lastThermal?.revision ?? 0,
+            existingSnapshot: thermalSnapshot,
+        });
+        await (0, state_write_1.setStateIfChanged)(host, resultState, JSON.stringify(out.result));
+        if (out.accepted && out.snapshot) {
+            thermalSnapshot = out.snapshot;
+            lastRequestIds.thermal = out.result.request_id;
+            host.log.info(`User Intent thermal request ${out.result.status}: ${out.result.request_id}`);
+            await host.setStateAsync(requestState, { val: state.val, ack: true });
+            await runIntentEngine(host);
+        }
+        else if (out.result.status === "duplicate") {
+            await host.setStateAsync(requestState, { val: state.val, ack: true });
+            host.log.debug?.(`User Intent thermal duplicate: ${out.result.request_id}`);
+        }
+        return;
     }
-    else if (out.result.status === "duplicate") {
-        await host.setStateAsync(constants_1.IOBROKER_WALLBOX_REQUEST_STATE, { val: state.val, ack: true });
-        host.log.debug?.(`User Intent duplicate request: ${out.result.request_id}`);
+    if (domain === "battery") {
+        const out = (0, iobroker_battery_1.processIobrokerBatteryRequest)({
+            raw: state.val,
+            ack: state.ack,
+            now,
+            admin: adminCfg,
+            lastRequestId: lastRequestIds.battery,
+            currentRevision: lastBattery?.revision ?? 0,
+            existingSnapshot: batterySnapshot,
+        });
+        await (0, state_write_1.setStateIfChanged)(host, resultState, JSON.stringify(out.result));
+        if (out.accepted && out.snapshot) {
+            batterySnapshot = out.snapshot;
+            lastRequestIds.battery = out.result.request_id;
+            host.log.info(`User Intent battery request ${out.result.status}: ${out.result.request_id}`);
+            await host.setStateAsync(requestState, { val: state.val, ack: true });
+            await runIntentEngine(host);
+        }
+        else if (out.result.status === "duplicate") {
+            await host.setStateAsync(requestState, { val: state.val, ack: true });
+            host.log.debug?.(`User Intent battery duplicate: ${out.result.request_id}`);
+        }
     }
 }
 async function initIntentEngine(host) {
@@ -126,36 +291,39 @@ async function initIntentEngine(host) {
     engineActive = true;
     subscribedHost = host;
     const now = new Date();
-    // Schritt 1 (verbindlich): States anlegen. Muss als Erstes und unabhängig von
-    // allem Weiteren passieren, damit der user_intent-Baum immer existiert.
     await (0, ensure_states_1.ensureIntentStates)(host);
     host.log.info("User Intent states ensured");
-    // Schritt 2: persistierten Zustand laden (Fehler nicht fatal).
     try {
         const dataDir = host.getAbsolutePath?.("intent");
         if (dataDir) {
             const persisted = await (0, persist_1.readIntentPersist)(dataDir);
             if (persisted) {
-                lastResolved = persisted.resolved;
-                lastRequestId = persisted.lastRequestId;
-                iobrokerSnapshot = persisted.iobrokerSnapshot;
+                lastWallbox = persisted.wallbox;
+                lastThermal = persisted.thermal;
+                lastBattery = persisted.battery;
+                lastResolvedAll = persisted.resolvedAll;
+                lastRequestIds = persisted.lastRequestIds;
+                wallboxSnapshot = persisted.wallboxSnapshot;
+                thermalSnapshot = persisted.thermalSnapshot;
+                batterySnapshot = persisted.batterySnapshot;
             }
         }
     }
     catch (e) {
         host.log.warn(`Intent persist load failed: ${e}`);
     }
-    if (!lastResolved) {
-        lastResolved = (0, types_1.emptyResolvedWallboxIntent)(now);
-    }
-    // Schritt 3: erste Auflösung (Fehler nicht fatal — States existieren bereits).
+    if (!lastWallbox)
+        lastWallbox = (0, types_1.emptyResolvedWallboxIntent)(now);
+    if (!lastThermal)
+        lastThermal = (0, types_2.emptyResolvedThermalIntent)(now, constants_1.THERMAL_TARGET_ID);
+    if (!lastBattery)
+        lastBattery = (0, types_3.emptyResolvedBatteryIntent)(now, "main");
     try {
         await runIntentEngine(host);
     }
     catch (e) {
         (host.log.error ?? host.log.warn)(`User Intent first resolution failed: ${e}`);
     }
-    // Schritt 4: Subscriptions (jede isoliert; Fehler dürfen den Init nicht abbrechen).
     try {
         const evccCfg = (0, config_1.intentEvccConfigFromAdapter)(host.config);
         const foreignIds = (0, config_1.configuredEvccStateIds)(evccCfg);
@@ -172,20 +340,27 @@ async function initIntentEngine(host) {
                 }
             }
         }
-        const requestPattern = constants_1.IOBROKER_WALLBOX_REQUEST_STATE;
-        if (!subscribedPatterns.includes(requestPattern) && typeof host.subscribeStatesAsync === "function") {
-            patternSubscribed = true;
-            await host.subscribeStatesAsync(requestPattern);
-            subscribedPatterns.push(requestPattern);
+        const requestPatterns = [
+            constants_1.IOBROKER_WALLBOX_REQUEST_STATE,
+            constants_1.IOBROKER_THERMAL_REQUEST_STATE,
+            constants_1.IOBROKER_BATTERY_REQUEST_STATE,
+        ];
+        if (typeof host.subscribeStatesAsync === "function") {
+            for (const pattern of requestPatterns) {
+                if (subscribedPatterns.includes(pattern))
+                    continue;
+                await host.subscribeStatesAsync(pattern);
+                subscribedPatterns.push(pattern);
+            }
         }
     }
     catch (e) {
         host.log.warn(`Intent subscriptions failed: ${e}`);
     }
-    // Schritt 5: evtl. anstehenden Request verarbeiten (Fehler nicht fatal).
     try {
-        const pending = await host.getStateAsync(constants_1.IOBROKER_WALLBOX_REQUEST_STATE);
-        await processPendingIobrokerRequest(host, pending ?? null);
+        await processDomainRequest(host, "wallbox", (await host.getStateAsync(constants_1.IOBROKER_WALLBOX_REQUEST_STATE)) ?? null, constants_1.IOBROKER_WALLBOX_REQUEST_STATE, constants_1.IOBROKER_WALLBOX_RESULT_STATE);
+        await processDomainRequest(host, "thermal", (await host.getStateAsync(constants_1.IOBROKER_THERMAL_REQUEST_STATE)) ?? null, constants_1.IOBROKER_THERMAL_REQUEST_STATE, constants_1.IOBROKER_THERMAL_RESULT_STATE);
+        await processDomainRequest(host, "battery", (await host.getStateAsync(constants_1.IOBROKER_BATTERY_REQUEST_STATE)) ?? null, constants_1.IOBROKER_BATTERY_REQUEST_STATE, constants_1.IOBROKER_BATTERY_RESULT_STATE);
     }
     catch (e) {
         host.log.warn(`Intent pending request handling failed: ${e}`);
@@ -193,15 +368,32 @@ async function initIntentEngine(host) {
     host.log.info("User Intent Engine initialized");
 }
 exports.initIntentEngine = initIntentEngine;
+const REQUEST_HANDLERS = {
+    [constants_1.IOBROKER_WALLBOX_REQUEST_STATE]: {
+        domain: "wallbox",
+        request: constants_1.IOBROKER_WALLBOX_REQUEST_STATE,
+        result: constants_1.IOBROKER_WALLBOX_RESULT_STATE,
+    },
+    [constants_1.IOBROKER_THERMAL_REQUEST_STATE]: {
+        domain: "thermal",
+        request: constants_1.IOBROKER_THERMAL_REQUEST_STATE,
+        result: constants_1.IOBROKER_THERMAL_RESULT_STATE,
+    },
+    [constants_1.IOBROKER_BATTERY_REQUEST_STATE]: {
+        domain: "battery",
+        request: constants_1.IOBROKER_BATTERY_REQUEST_STATE,
+        result: constants_1.IOBROKER_BATTERY_RESULT_STATE,
+    },
+};
 function handleIntentStateChange(namespace, id, state) {
-    if (!engineActive || !subscribedHost) {
+    if (!engineActive || !subscribedHost)
         return;
-    }
     const host = subscribedHost;
-    const fullRequest = `${namespace}.${constants_1.IOBROKER_WALLBOX_REQUEST_STATE}`;
-    if (id === fullRequest) {
-        void processPendingIobrokerRequest(host, state).catch((e) => host.log.warn(`Intent request: ${e}`));
-        return;
+    for (const [suffix, cfg] of Object.entries(REQUEST_HANDLERS)) {
+        if (id === `${namespace}.${suffix}`) {
+            void processDomainRequest(host, cfg.domain, state, cfg.request, cfg.result).catch((e) => host.log.warn(`Intent request ${cfg.domain}: ${e}`));
+            return;
+        }
     }
     const evccCfg = (0, config_1.intentEvccConfigFromAdapter)(host.config);
     const foreignIds = (0, config_1.configuredEvccStateIds)(evccCfg);
@@ -213,6 +405,7 @@ exports.handleIntentStateChange = handleIntentStateChange;
 function stopIntentEngine() {
     const host = subscribedHost;
     clearEvccDebounce();
+    clearExpiryTimer();
     if (host?.unsubscribeStatesAsync) {
         for (const pattern of subscribedPatterns) {
             void host.unsubscribeStatesAsync(pattern).catch((e) => host.log.debug?.(`Intent unsubscribe ${pattern}: ${e}`));
@@ -223,18 +416,22 @@ function stopIntentEngine() {
             void host.unsubscribeForeignStatesAsync(id).catch((e) => host.log.debug?.(`Intent foreign unsubscribe ${id}: ${e}`));
         }
     }
-    patternSubscribed = false;
     engineActive = false;
     subscribedHost = null;
-    lastResolved = null;
-    iobrokerSnapshot = null;
-    lastRequestId = null;
+    lastWallbox = null;
+    lastThermal = null;
+    lastBattery = null;
+    lastResolvedAll = null;
+    wallboxSnapshot = null;
+    thermalSnapshot = null;
+    batterySnapshot = null;
+    lastRequestIds = { wallbox: null, thermal: null, battery: null };
     subscribedPatterns.length = 0;
     subscribedForeignIds.length = 0;
 }
 exports.stopIntentEngine = stopIntentEngine;
 function getLastResolvedWallboxIntentForTest() {
-    return lastResolved;
+    return lastWallbox;
 }
 exports.getLastResolvedWallboxIntentForTest = getLastResolvedWallboxIntentForTest;
 function resetIntentEngineForTest() {

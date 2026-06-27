@@ -57,18 +57,20 @@ describe("intent engine lifecycle", () => {
 		resetIntentEngineForTest();
 	});
 
-	it("subscribes request state once on init", async () => {
+	it("subscribes request states once on init", async () => {
 		const host = mockHost();
 		await initIntentEngine(host);
-		assert.equal(host.subscribeCount, 1);
+		assert.equal(host.subscribeCount, 3);
 		assert.ok(host.patterns.includes("user_intent.inputs.iobroker.wallbox.request_json"));
+		assert.ok(host.patterns.includes("user_intent.inputs.iobroker.thermal.request_json"));
+		assert.ok(host.patterns.includes("user_intent.inputs.iobroker.battery.request_json"));
 	});
 
 	it("does not double-subscribe on repeated init", async () => {
 		const host = mockHost();
 		await initIntentEngine(host);
 		await initIntentEngine(host);
-		assert.equal(host.subscribeCount, 1);
+		assert.equal(host.subscribeCount, 3);
 	});
 
 	it("unsubscribes on stop", async () => {
@@ -76,7 +78,7 @@ describe("intent engine lifecycle", () => {
 		await initIntentEngine(host);
 		stopIntentEngine();
 		await Promise.resolve();
-		assert.equal(host.unsubscribeCount, 1);
+		assert.equal(host.unsubscribeCount, 3);
 	});
 
 	it("re-init after stop works", async () => {
@@ -84,7 +86,7 @@ describe("intent engine lifecycle", () => {
 		await initIntentEngine(host);
 		stopIntentEngine();
 		await initIntentEngine(host);
-		assert.equal(host.subscribeCount, 2);
+		assert.equal(host.subscribeCount, 6);
 	});
 
 	it("handleIntentStateChange processes unacked request", async () => {

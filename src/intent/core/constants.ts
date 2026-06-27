@@ -1,8 +1,15 @@
 import type { WallboxChargeStrategy } from "./types";
 
 export const INTENT_SCHEMA_VERSION = 1;
-export const INTENT_ENGINE_VERSION = "0.1.56";
+export const INTENT_ENGINE_VERSION = "0.1.57";
 export const INTENT_CONTRACT_VERSION = "1";
+
+export type IntentDomainId = "wallbox" | "thermal" | "battery";
+
+export const SUPPORTED_INTENT_DOMAINS: IntentDomainId[] = ["wallbox", "thermal", "battery"];
+
+export const THERMAL_TARGET_ID = "immersion_heater";
+export const BATTERY_TARGET_ID = "main";
 
 export const DEFAULT_TIMEZONE = "Europe/Berlin";
 
@@ -24,6 +31,10 @@ export const ADMIN_INTENT_MANUAL_OVERRIDE_MAX_MINUTES = "intent_manual_override_
 
 export const IOBROKER_WALLBOX_REQUEST_STATE = "user_intent.inputs.iobroker.wallbox.request_json";
 export const IOBROKER_WALLBOX_RESULT_STATE = "user_intent.inputs.iobroker.wallbox.result_json";
+export const IOBROKER_THERMAL_REQUEST_STATE = "user_intent.inputs.iobroker.thermal.request_json";
+export const IOBROKER_THERMAL_RESULT_STATE = "user_intent.inputs.iobroker.thermal.result_json";
+export const IOBROKER_BATTERY_REQUEST_STATE = "user_intent.inputs.iobroker.battery.request_json";
+export const IOBROKER_BATTERY_RESULT_STATE = "user_intent.inputs.iobroker.battery.result_json";
 
 export const EVCC_MODE_MAP: Record<string, WallboxChargeStrategy> = {
 	off: "off",

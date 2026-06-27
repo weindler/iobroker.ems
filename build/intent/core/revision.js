@@ -38,6 +38,7 @@ function semanticIntentPayload(intent) {
         charge_strategy: fieldForHash(intent.charge_strategy),
         target_soc_pct: fieldForHash(intent.target_soc_pct),
         deadline: fieldForHash(intent.deadline),
+        external_planner_plan: intent.external_planner_plan,
         manual_override: manualOverrideForHash(intent.manual_override),
         intent_state: intent.intent_state,
         source_summary: [...intent.source_summary].sort(),

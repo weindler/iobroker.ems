@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.56",
+		"version": "0.1.57",
 		"news": {
+			"0.1.57": {
+				"en": "Phase 3C: Add-on Intent Binding — thermal (immersion heater) and battery user intent domains with ioBroker JSON requests, aggregate contract user_intent.resolved_all_json, EVCC planner summary and null-sentinel deadline handling (no planner, no device writes)",
+				"de": "Phase 3C: Add-on Intent Binding — Thermal- (Heizstab) und Batterie-User-Intent-Domains mit ioBroker-JSON-Requests, Gesamtvertrag user_intent.resolved_all_json, EVCC-Planner-Zusammenfassung und Null-Sentinel-Deadline-Handling (kein Planner, keine Geräte-Writes)"
+			},
 			"0.1.56": {
 				"en": "Startup fix: Policy Engine initialization now has a bounded startup wait; if the first policy run stalls, the adapter continues and User Intent states are still created. Added warning log for this condition.",
 				"de": "Startup-Fix: Policy-Engine-Initialisierung hat jetzt eine begrenzte Wartezeit; falls der erste Policy-Lauf hängt, startet der Adapter weiter und User-Intent-States werden trotzdem angelegt. Warn-Log für diesen Zustand ergänzt."

@@ -1,6 +1,6 @@
 /** Phase 3B — User Intent Foundation (read-only capture, no planner decisions). */
 
-export type IntentSource = "evcc" | "iobroker" | "admin" | "ems_ui" | "unknown";
+export type IntentSource = "evcc" | "iobroker" | "admin" | "ems_ui" | "addon" | "unknown";
 
 export type IntentOwner =
 	| "user"
@@ -8,6 +8,7 @@ export type IntentOwner =
 	| "admin_config"
 	| "iobroker_automation"
 	| "external_automation"
+	| "device"
 	| "unknown";
 
 export type ChangeKind =
@@ -20,7 +21,15 @@ export type ChangeKind =
 
 export type WallboxChargeStrategy = "off" | "min_pv" | "pv" | "immediate" | "unknown";
 
-export type IntentState = "available" | "partial" | "none" | "invalid" | "expired" | "conflict";
+export type IntentState =
+	| "available"
+	| "partial"
+	| "none"
+	| "invalid"
+	| "expired"
+	| "conflict"
+	| "disabled"
+	| "not_configured";
 
 export type IntentFieldStatus = "valid" | "missing" | "invalid" | "expired";
 
@@ -49,11 +58,9 @@ export interface WallboxDeadlineValue {
 	timezone: string;
 }
 
-export type ManualOverrideScope = "charge_strategy" | "target_soc_pct" | "deadline" | "all";
-
 export interface ManualOverrideState {
 	active: boolean;
-	scope: ManualOverrideScope[];
+	scope: string[];
 	source: IntentSource;
 	owner: IntentOwner;
 	owner_id?: string;

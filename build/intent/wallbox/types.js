@@ -25,6 +25,15 @@ function emptyResolvedWallboxIntent(now) {
         charge_strategy: emptyField(),
         target_soc_pct: emptyField(),
         deadline: emptyField(),
+        external_planner_plan: {
+            state: "none",
+            plan_type: "unknown",
+            target_soc_pct: null,
+            target_energy_kwh: null,
+            ready_at: null,
+            source: "evcc",
+            observed_at: iso,
+        },
         manual_override: {
             active: false,
             scope: [],

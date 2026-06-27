@@ -2,9 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.immediateFromBool = exports.normalizeDeadline = exports.normalizeTargetSoc = exports.normalizeChargeStrategyFromString = exports.normalizeEvccMode = void 0;
 const constants_1 = require("../core/constants");
+const sentinel_1 = require("../core/sentinel");
 const validation_1 = require("../core/validation");
 function normalizeEvccMode(raw) {
-    if (raw === null || raw === undefined || raw === "") {
+    if ((0, sentinel_1.isEmptySentinel)(raw)) {
         return { strategy: "unknown", status: "missing", raw };
     }
     const s = String(raw).trim().toLowerCase();
@@ -28,7 +29,7 @@ function normalizeTargetSoc(raw) {
 }
 exports.normalizeTargetSoc = normalizeTargetSoc;
 function normalizeDeadline(raw, defaultTimezone, now, deadlineType = "departure") {
-    if (raw === null || raw === undefined || raw === "") {
+    if ((0, sentinel_1.isEmptySentinel)(raw)) {
         return { value: null, status: "missing", raw };
     }
     let ms = null;

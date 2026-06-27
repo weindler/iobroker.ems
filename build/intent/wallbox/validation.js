@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.lastChangedAt = exports.deriveIntentState = void 0;
+exports.lastChangedAt = exports.buildExternalWallboxPlan = exports.deriveIntentState = void 0;
 function deriveIntentState(intent) {
     const fields = [intent.charge_strategy, intent.target_soc_pct, intent.deadline];
     const hasConflict = false; // set by resolver if needed
@@ -29,6 +29,31 @@ function deriveIntentState(intent) {
     return "none";
 }
 exports.deriveIntentState = deriveIntentState;
+function buildExternalWallboxPlan(deadline, targetSoc, observedAt) {
+    const base = {
+        state: "none",
+        plan_type: "soc",
+        target_soc_pct: targetSoc.status === "valid" ? targetSoc.value : null,
+        target_energy_kwh: null,
+        ready_at: deadline.status === "valid" && deadline.value ? deadline.value.at : null,
+        source: "evcc",
+        observed_at: observedAt,
+    };
+    if (deadline.status === "missing") {
+        return { ...base, state: "none" };
+    }
+    if (deadline.status === "expired") {
+        return { ...base, state: "expired" };
+    }
+    if (deadline.status === "invalid") {
+        return { ...base, state: "invalid" };
+    }
+    if (deadline.status === "valid" && deadline.value) {
+        return { ...base, state: "active" };
+    }
+    return base;
+}
+exports.buildExternalWallboxPlan = buildExternalWallboxPlan;
 function lastChangedAt(intent) {
     const times = [];
     for (const f of [intent.charge_strategy, intent.target_soc_pct, intent.deadline]) {

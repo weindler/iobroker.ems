@@ -85,6 +85,6 @@ function emptyField<T>(now: Date): IntentField<T> {
 	};
 }
 
-export function scopeIncludes(scope: string[], field: "charge_strategy" | "target_soc_pct" | "deadline"): boolean {
+export function scopeIncludes(scope: string[], field: string): boolean {
 	return scope.includes("all") || scope.includes(field);
 }

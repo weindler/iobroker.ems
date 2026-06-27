@@ -11,8 +11,21 @@ export interface ResolvedWallboxIntent {
 	charge_strategy: IntentField<import("../core/types").WallboxChargeStrategy>;
 	target_soc_pct: IntentField<number>;
 	deadline: IntentField<import("../core/types").WallboxDeadlineValue>;
+	external_planner_plan: ExternalWallboxPlan;
 	manual_override: ManualOverrideState;
 	source_summary: string[];
+}
+
+export type ExternalWallboxPlanState = "active" | "none" | "expired" | "invalid";
+
+export interface ExternalWallboxPlan {
+	state: ExternalWallboxPlanState;
+	plan_type: "soc" | "energy" | "unknown";
+	target_soc_pct: number | null;
+	target_energy_kwh: number | null;
+	ready_at: string | null;
+	source: "evcc";
+	observed_at: string;
 }
 
 export interface EvccIntentSnapshot {
@@ -63,6 +76,15 @@ export function emptyResolvedWallboxIntent(now: Date): ResolvedWallboxIntent {
 		charge_strategy: emptyField(),
 		target_soc_pct: emptyField(),
 		deadline: emptyField(),
+		external_planner_plan: {
+			state: "none",
+			plan_type: "unknown",
+			target_soc_pct: null,
+			target_energy_kwh: null,
+			ready_at: null,
+			source: "evcc",
+			observed_at: iso,
+		},
 		manual_override: {
 			active: false,
 			scope: [],

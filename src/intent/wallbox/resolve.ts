@@ -1,4 +1,4 @@
-import type { FieldCandidate, IntentField, ManualOverrideScope } from "../core/types";
+import type { FieldCandidate, IntentField } from "../core/types";
 import { resolveFieldFromCandidates, scopeIncludes } from "../core/resolver";
 import { nextRevision, semanticIntentChanged } from "../core/revision";
 import { isExpiredAt } from "../core/validation";
@@ -8,7 +8,7 @@ import type {
 	IobrokerIntentSnapshot,
 	ResolvedWallboxIntent,
 } from "./types";
-import { deriveIntentState, lastChangedAt } from "./validation";
+import { deriveIntentState, lastChangedAt, buildExternalWallboxPlan } from "./validation";
 import { emptyResolvedWallboxIntent } from "./types";
 
 const PRIORITY_OVERRIDE = 1;
@@ -104,6 +104,7 @@ export function resolveWallboxIntent(input: ResolveWallboxInput): ResolvedWallbo
 		charge_strategy: chargeRes.field,
 		target_soc_pct: socRes.field,
 		deadline: deadlineRes.field,
+		external_planner_plan: buildExternalWallboxPlan(deadlineRes.field, socRes.field, now.toISOString()),
 		manual_override: manualOverride,
 		source_summary: sourceSummary,
 	};
@@ -171,5 +172,3 @@ export function applyClearFields(
 	}
 	return out;
 }
-
-export type { ManualOverrideScope };

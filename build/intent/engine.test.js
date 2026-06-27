@@ -48,31 +48,33 @@ function mockHost() {
     (0, node_test_1.beforeEach)(() => {
         (0, engine_js_1.resetIntentEngineForTest)();
     });
-    (0, node_test_1.it)("subscribes request state once on init", async () => {
+    (0, node_test_1.it)("subscribes request states once on init", async () => {
         const host = mockHost();
         await (0, engine_js_1.initIntentEngine)(host);
-        strict_1.default.equal(host.subscribeCount, 1);
+        strict_1.default.equal(host.subscribeCount, 3);
         strict_1.default.ok(host.patterns.includes("user_intent.inputs.iobroker.wallbox.request_json"));
+        strict_1.default.ok(host.patterns.includes("user_intent.inputs.iobroker.thermal.request_json"));
+        strict_1.default.ok(host.patterns.includes("user_intent.inputs.iobroker.battery.request_json"));
     });
     (0, node_test_1.it)("does not double-subscribe on repeated init", async () => {
         const host = mockHost();
         await (0, engine_js_1.initIntentEngine)(host);
         await (0, engine_js_1.initIntentEngine)(host);
-        strict_1.default.equal(host.subscribeCount, 1);
+        strict_1.default.equal(host.subscribeCount, 3);
     });
     (0, node_test_1.it)("unsubscribes on stop", async () => {
         const host = mockHost();
         await (0, engine_js_1.initIntentEngine)(host);
         (0, engine_js_1.stopIntentEngine)();
         await Promise.resolve();
-        strict_1.default.equal(host.unsubscribeCount, 1);
+        strict_1.default.equal(host.unsubscribeCount, 3);
     });
     (0, node_test_1.it)("re-init after stop works", async () => {
         const host = mockHost();
         await (0, engine_js_1.initIntentEngine)(host);
         (0, engine_js_1.stopIntentEngine)();
         await (0, engine_js_1.initIntentEngine)(host);
-        strict_1.default.equal(host.subscribeCount, 2);
+        strict_1.default.equal(host.subscribeCount, 6);
     });
     (0, node_test_1.it)("handleIntentStateChange processes unacked request", async () => {
         const host = mockHost();

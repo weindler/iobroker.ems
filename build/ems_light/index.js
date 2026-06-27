@@ -12,6 +12,7 @@ const tick_1 = require("./tick");
 const DEFAULT_TICK_SEC = 60;
 const GLOBAL_MODES_REQUESTED_STATE = "global_modes.requested";
 const INTENT_WALLBOX_REQUEST_STATE = "user_intent.inputs.iobroker.wallbox.request_json";
+const POLICY_STARTUP_TIMEOUT_MS = 8000;
 let tickTimer = null;
 let policyAdapter = null;
 function tickIntervalSec(config) {
@@ -25,6 +26,25 @@ function tickIntervalSec(config) {
     }
     return Math.round(n);
 }
+async function waitWithStartupTimeout(promise, timeoutMs, onTimeout) {
+    let timer = null;
+    try {
+        await Promise.race([
+            promise,
+            new Promise((resolve) => {
+                timer = setTimeout(() => {
+                    onTimeout();
+                    resolve();
+                }, timeoutMs);
+            }),
+        ]);
+    }
+    finally {
+        if (timer) {
+            clearTimeout(timer);
+        }
+    }
+}
 async function initEmsLightPhase1(adapter) {
     const version = String(adapter.common?.version ?? "0.0.0");
     const host = adapter;
@@ -33,7 +53,12 @@ async function initEmsLightPhase1(adapter) {
     await (0, pv_bias_1.initPvBiasLearning)(adapter);
     await (0, weather_1.initWeatherLearning)(adapter);
     const policyHost = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
-    await (0, policy_1.initPolicyEngine)(policyHost);
+    const policyInit = (0, policy_1.initPolicyEngine)(policyHost).catch((e) => {
+        adapter.log.error(`Policy Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
+    });
+    await waitWithStartupTimeout(policyInit, POLICY_STARTUP_TIMEOUT_MS, () => {
+        adapter.log.warn(`Policy Engine init still running after ${POLICY_STARTUP_TIMEOUT_MS}ms; continuing adapter startup`);
+    });
     const intentHost = {
         ...(0, data_dir_1.withLearningDataPath)(adapter, adapter),
         namespace: adapter.namespace,

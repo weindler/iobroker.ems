@@ -11,6 +11,7 @@ import type { LiveCacheHost } from "./live_cache";
 const DEFAULT_TICK_SEC = 60;
 const GLOBAL_MODES_REQUESTED_STATE = "global_modes.requested";
 const INTENT_WALLBOX_REQUEST_STATE = "user_intent.inputs.iobroker.wallbox.request_json";
+const POLICY_STARTUP_TIMEOUT_MS = 8000;
 let tickTimer: NodeJS.Timeout | null = null;
 let policyAdapter: ioBroker.Adapter | null = null;
 
@@ -26,6 +27,29 @@ function tickIntervalSec(config: unknown): number {
 	return Math.round(n);
 }
 
+async function waitWithStartupTimeout(
+	promise: Promise<void>,
+	timeoutMs: number,
+	onTimeout: () => void,
+): Promise<void> {
+	let timer: NodeJS.Timeout | null = null;
+	try {
+		await Promise.race([
+			promise,
+			new Promise<void>((resolve) => {
+				timer = setTimeout(() => {
+					onTimeout();
+					resolve();
+				}, timeoutMs);
+			}),
+		]);
+	} finally {
+		if (timer) {
+			clearTimeout(timer);
+		}
+	}
+}
+
 export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<void> {
 	const version = String(adapter.common?.version ?? "0.0.0");
 	const host = adapter as unknown as LiveCacheHost;
@@ -35,7 +59,14 @@ export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<voi
 	await initPvBiasLearning(adapter);
 	await initWeatherLearning(adapter);
 	const policyHost = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & PolicyEngineHost);
-	await initPolicyEngine(policyHost);
+	const policyInit = initPolicyEngine(policyHost).catch((e) => {
+		adapter.log.error(`Policy Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
+	});
+	await waitWithStartupTimeout(policyInit, POLICY_STARTUP_TIMEOUT_MS, () => {
+		adapter.log.warn(
+			`Policy Engine init still running after ${POLICY_STARTUP_TIMEOUT_MS}ms; continuing adapter startup`,
+		);
+	});
 	const intentHost = {
 		...withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & IntentEngineHost),
 		namespace: adapter.namespace,

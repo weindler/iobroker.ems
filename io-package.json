@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.55",
+		"version": "0.1.56",
 		"news": {
+			"0.1.56": {
+				"en": "Startup fix: Policy Engine initialization now has a bounded startup wait; if the first policy run stalls, the adapter continues and User Intent states are still created. Added warning log for this condition.",
+				"de": "Startup-Fix: Policy-Engine-Initialisierung hat jetzt eine begrenzte Wartezeit; falls der erste Policy-Lauf hängt, startet der Adapter weiter und User-Intent-States werden trotzdem angelegt. Warn-Log für diesen Zustand ergänzt."
+			},
 			"0.1.55": {
 				"en": "Robust User Intent init: state creation always runs first and is isolated from persistence/subscription errors; init failures are now logged at error level and no longer block the rest of the adapter. Added clear init log lines for diagnostics.",
 				"de": "Robuste User-Intent-Initialisierung: State-Erzeugung läuft immer zuerst und ist von Persistenz-/Subscription-Fehlern isoliert; Init-Fehler werden jetzt als Error geloggt und blockieren den restlichen Adapter nicht mehr. Klare Init-Logzeilen zur Diagnose ergänzt."

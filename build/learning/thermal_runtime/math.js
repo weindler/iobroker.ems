@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.errorResult = exports.invalidConfigResult = exports.disabledResult = exports.noSourceResult = exports.computeThermalRuntimeLearning = exports.estimatedEmptyAtIso = exports.estimateRemainingHours = exports.groupByDayType = exports.groupBySeason = exports.estimateCoolingConstantPerH = exports.estimateActiveCoolingRateCPerH = exports.collectCoolingSegments = exports.detectRuntimeCycles = exports.summarizeTempHistory = exports.median = exports.average = void 0;
+exports.errorResult = exports.invalidConfigResult = exports.disabledResult = exports.noSourceResult = exports.computeThermalRuntimeLearning = exports.estimatedEmptyAtIso = exports.estimateRemainingHours = exports.groupByDayType = exports.groupBySeason = exports.estimateCoolingConstantPerH = exports.estimateCoolingModel = exports.estimateActiveCoolingRateCPerH = exports.collectCoolingSegments = exports.detectRuntimeCycles = exports.summarizeTempHistory = exports.median = exports.average = void 0;
 const time_1 = require("../house_load/time");
 const constants_1 = require("./constants");
 function round2(n) {
@@ -33,6 +33,64 @@ const MIN_ACTIVE_SEGMENT_DROP_C = 2;
 const ACTIVE_NOISE_C = 0.3;
 /** Temperatur steigt wieder über Peak → Überschuss-/Nachheizen, Segment abbrechen. */
 const HEATING_RESUME_MARGIN_C = 0.5;
+/** Mindest-Temperaturspreizung für Asymptoten-Fit (°C). */
+const MIN_ASYMPTOTE_TEMP_SPREAD_C = 3;
+/** Sicherheitsabstand Asymptote zur Untergrenze (°C). */
+const ASYMPTOTE_FLOOR_MARGIN_C = 0.5;
+function medianRaw(values) {
+    if (values.length === 0)
+        return null;
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
+function linearRegression(xs, ys) {
+    if (xs.length < 2 || xs.length !== ys.length) {
+        return null;
+    }
+    const n = xs.length;
+    const meanX = xs.reduce((a, b) => a + b, 0) / n;
+    const meanY = ys.reduce((a, b) => a + b, 0) / n;
+    let num = 0;
+    let den = 0;
+    for (let i = 0; i < n; i++) {
+        num += (xs[i] - meanX) * (ys[i] - meanY);
+        den += (xs[i] - meanX) ** 2;
+    }
+    if (den <= 0) {
+        return null;
+    }
+    const slope = num / den;
+    const intercept = meanY - slope * meanX;
+    if (!Number.isFinite(slope) || !Number.isFinite(intercept)) {
+        return null;
+    }
+    return { slope, intercept };
+}
+function clampAsymptoteC(asymptoteC, emptyThresholdC) {
+    const maxAsym = emptyThresholdC - ASYMPTOTE_FLOOR_MARGIN_C;
+    const minAsym = constants_1.DEFAULT_AMBIENT_C;
+    return Math.min(maxAsym, Math.max(minAsym, asymptoteC));
+}
+function coolingConstantsFromSegments(segments, asymptoteC) {
+    const ks = [];
+    for (const s of segments) {
+        if (s.startTempC > asymptoteC && s.endTempC > asymptoteC && s.hours > 0) {
+            const k = Math.log((s.startTempC - asymptoteC) / (s.endTempC - asymptoteC)) / s.hours;
+            if (Number.isFinite(k) && k > 0) {
+                ks.push(k);
+            }
+        }
+    }
+    return ks;
+}
+function medianCoolingConstant(ks) {
+    const k = medianRaw(ks);
+    if (k === null || k <= 0) {
+        return null;
+    }
+    return Math.round(k * 1e5) / 1e5;
+}
 /** Kurzdiagnose für Logs — warum keine Zyklen erkannt wurden. */
 function summarizeTempHistory(points, emptyThresholdC) {
     let minC = null;
@@ -203,32 +261,59 @@ function estimateActiveCoolingRateCPerH(points, cfg) {
 }
 exports.estimateActiveCoolingRateCPerH = estimateActiveCoolingRateCPerH;
 /**
- * Newton'sche Abkühlkonstante k (1/h) aus echten Fall-Segmenten.
- * Modell: T(t) = T_amb + (T0 − T_amb)·e^(−k·t) → die Abkühlung pro Stunde ist
- * proportional zur Differenz zur Umgebung. Damit kühlt ein voller Speicher schnell,
- * ein fast leerer langsam ab — genau das Verhalten eines Schichtspeichers.
- *
- * Pro Segment: k = ln((T_start − T_amb)/(T_end − T_amb)) / Stunden.
- * Der Median über alle Segmente ist robust gegen einzelne Warmwasser-Entnahmen.
+ * Schätzt Newton-Modell (k, effektive Asymptote) aus Fall-Segmenten.
+ * rate ≈ k·(T − T_asym): Regression liefert T_asym (wo die Rate → 0 geht),
+ * k als Median der segmentweisen Newton-Konstanten bei dieser Asymptote.
+ */
+function estimateCoolingModel(points, cfg) {
+    const segments = collectCoolingSegments(points, cfg.minRuntimeHours);
+    const fallback = {
+        coolingConstantPerH: medianCoolingConstant(coolingConstantsFromSegments(segments, constants_1.DEFAULT_AMBIENT_C)),
+        asymptoteC: constants_1.DEFAULT_AMBIENT_C,
+        asymptoteSource: "default",
+    };
+    if (segments.length === 0) {
+        return { ...fallback, coolingConstantPerH: null };
+    }
+    const temps = segments.map((s) => (s.startTempC + s.endTempC) / 2);
+    const rates = segments.map((s) => s.rateCPerH);
+    const tempSpread = Math.max(...temps) - Math.min(...temps);
+    if (segments.length < 2 || tempSpread < MIN_ASYMPTOTE_TEMP_SPREAD_C) {
+        return fallback;
+    }
+    const reg = linearRegression(temps, rates);
+    if (!reg || reg.slope <= 0) {
+        return fallback;
+    }
+    const rawAsymptote = -reg.intercept / reg.slope;
+    if (!Number.isFinite(rawAsymptote)) {
+        return fallback;
+    }
+    const asymptoteC = round2(clampAsymptoteC(rawAsymptote, cfg.emptyThresholdC));
+    const ks = coolingConstantsFromSegments(segments, asymptoteC);
+    const coolingConstantPerH = medianCoolingConstant(ks) ??
+        (reg.slope > 0 ? Math.round(reg.slope * 1e5) / 1e5 : null);
+    if (coolingConstantPerH === null) {
+        return fallback;
+    }
+    return {
+        coolingConstantPerH,
+        asymptoteC,
+        asymptoteSource: "fitted",
+    };
+}
+exports.estimateCoolingModel = estimateCoolingModel;
+/**
+ * Newton'sche Abkühlkonstante k (1/h) — Kompatibilitäts-Wrapper um estimateCoolingModel.
  */
 function estimateCoolingConstantPerH(points, cfg, ambientC = constants_1.DEFAULT_AMBIENT_C) {
+    const model = estimateCoolingModel(points, cfg);
+    if (model.asymptoteSource === "fitted") {
+        return model.coolingConstantPerH;
+    }
+    // Explizit angeforderte Umgebung (Tests/Legacy)
     const segments = collectCoolingSegments(points, cfg.minRuntimeHours);
-    const ks = [];
-    for (const s of segments) {
-        if (s.startTempC > ambientC && s.endTempC > ambientC && s.hours > 0) {
-            const k = Math.log((s.startTempC - ambientC) / (s.endTempC - ambientC)) / s.hours;
-            if (Number.isFinite(k) && k > 0) {
-                ks.push(k);
-            }
-        }
-    }
-    if (ks.length === 0) {
-        return null;
-    }
-    ks.sort((a, b) => a - b);
-    const mid = Math.floor(ks.length / 2);
-    const k = ks.length % 2 === 0 ? (ks[mid - 1] + ks[mid]) / 2 : ks[mid];
-    return k > 0 ? Math.round(k * 1e5) / 1e5 : null;
+    return medianCoolingConstant(coolingConstantsFromSegments(segments, ambientC));
 }
 exports.estimateCoolingConstantPerH = estimateCoolingConstantPerH;
 function summarizeGroup(cycles) {
@@ -316,7 +401,7 @@ function deriveHealth(samples, hasSource, configValid) {
     return "ok";
 }
 function computeThermalRuntimeLearning(params) {
-    const { cycles, currentTempC, cfg, sourceStateId, now, activeCoolingRateCPerH = null, coolingConstantPerH = null, ambientC = constants_1.DEFAULT_AMBIENT_C, } = params;
+    const { cycles, currentTempC, cfg, sourceStateId, now, activeCoolingRateCPerH = null, coolingConstantPerH = null, asymptoteC = constants_1.DEFAULT_AMBIENT_C, asymptoteSource = "default", } = params;
     const configValid = cfg.fullThresholdC > cfg.emptyThresholdC;
     if (!configValid) {
         return invalidConfigResult(sourceStateId);
@@ -334,7 +419,7 @@ function computeThermalRuntimeLearning(params) {
         typicalRuntimeHours: runtimeHoursMedian ?? runtimeHoursAvg,
         coolingRateCPerHAvg: coolingRateForEstimate,
         coolingConstantPerH,
-        ambientC,
+        ambientC: asymptoteC,
     });
     const health = deriveHealth(cycles.length, Boolean(sourceStateId), configValid);
     let status = "ready";
@@ -356,6 +441,9 @@ function computeThermalRuntimeLearning(params) {
         runtimeHoursAvg,
         runtimeHoursMedian,
         coolingRateCPerHAvg,
+        coolingConstantPerH,
+        coolingAsymptoteC: coolingConstantPerH !== null ? asymptoteC : null,
+        coolingAsymptoteSource: coolingConstantPerH !== null ? asymptoteSource : null,
         currentTemperatureC: currentTempC !== null ? round2(currentTempC) : null,
         estimatedRemainingHours: remaining,
         estimatedEmptyAt: estimatedEmptyAtIso(now, remaining),
@@ -375,6 +463,9 @@ function noSourceResult() {
         runtimeHoursAvg: null,
         runtimeHoursMedian: null,
         coolingRateCPerHAvg: null,
+        coolingConstantPerH: null,
+        coolingAsymptoteC: null,
+        coolingAsymptoteSource: null,
         currentTemperatureC: null,
         estimatedRemainingHours: null,
         estimatedEmptyAt: null,
@@ -402,6 +493,9 @@ function invalidConfigResult(sourceStateId) {
         runtimeHoursAvg: null,
         runtimeHoursMedian: null,
         coolingRateCPerHAvg: null,
+        coolingConstantPerH: null,
+        coolingAsymptoteC: null,
+        coolingAsymptoteSource: null,
         currentTemperatureC: null,
         estimatedRemainingHours: null,
         estimatedEmptyAt: null,

@@ -29,6 +29,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
 const config_1 = require("./config");
+const constants_1 = require("./constants");
 const history_1 = require("./history");
 const math_1 = require("./math");
 const persist_1 = require("./persist");
@@ -221,6 +222,38 @@ function coolingCurve(startMs, startTemp, endTemp, hours, steps = 6) {
         const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
         const points = coolingCurve(base, 55, 54.5, 5, 5); // <2 °C Abfall
         strict_1.default.equal((0, math_1.estimateCoolingConstantPerH)(points, cfg(), 18), null);
+    });
+    (0, node_test_1.it)("fits a higher asymptote from segments at different temperatures", () => {
+        const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
+        const hot = coolingCurve(base, 62, 54, 4, 8); // ~2 °C/h bei ~58 °C
+        const reheat = coolingCurve(hot[hot.length - 1].ts, 54, 59, 2, 4);
+        const cool = coolingCurve(reheat[reheat.length - 1].ts, 59, 48, 12, 8); // ~0.92 °C/h bei ~53 °C
+        const points = [...hot, ...reheat, ...cool];
+        const model = (0, math_1.estimateCoolingModel)(points, cfg({ emptyThresholdC: 48 }));
+        strict_1.default.equal(model.asymptoteSource, "fitted");
+        strict_1.default.ok(model.asymptoteC > constants_1.DEFAULT_AMBIENT_C + 10, `asym=${model.asymptoteC}`);
+        strict_1.default.ok(model.coolingConstantPerH !== null && model.coolingConstantPerH > 0);
+    });
+    (0, node_test_1.it)("extends remaining time with a fitted high asymptote vs fixed ambient", () => {
+        const withAmbient = (0, math_1.estimateRemainingHours)({
+            currentTempC: 55,
+            fullThresholdC: 60,
+            emptyThresholdC: 48,
+            typicalRuntimeHours: null,
+            coolingRateCPerHAvg: null,
+            coolingConstantPerH: 0.03,
+            ambientC: 18,
+        });
+        const withAsymptote = (0, math_1.estimateRemainingHours)({
+            currentTempC: 55,
+            fullThresholdC: 60,
+            emptyThresholdC: 48,
+            typicalRuntimeHours: null,
+            coolingRateCPerHAvg: null,
+            coolingConstantPerH: 0.03,
+            ambientC: 42,
+        });
+        strict_1.default.ok(withAsymptote !== null && withAmbient !== null && withAsymptote > withAmbient, `asym=${withAsymptote} amb=${withAmbient}`);
     });
 });
 (0, node_test_1.describe)("thermal runtime compute", () => {

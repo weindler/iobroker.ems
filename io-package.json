@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.44",
+		"version": "0.1.45",
 		"news": {
+			"0.1.45": {
+				"en": "Thermal runtime: data-driven cooling asymptote (fitted from segment rate vs temperature) extends remaining-time estimate for stratified buffers",
+				"de": "Thermal-Runtime: datengetriebene Kühl-Asymptote (Fit aus Segment-Rate vs. Temperatur) verlängert Restlaufzeit-Schätzung für Schichtspeicher"
+			},
 			"0.1.44": {
 				"en": "Thermal runtime: Newtonian cooling model (rate decreases as the stratified buffer approaches ambient); price learning/forecast report 'degraded' instead of 'error' when data is just young",
 				"de": "Thermal-Runtime: Newton'sches Abkühlmodell (Rate sinkt, je näher der Schichtspeicher an die Umgebung kommt); Price-Learning/-Forecast melden 'degraded' statt 'error', wenn die Historie nur jung ist"

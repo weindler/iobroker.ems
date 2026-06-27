@@ -55,6 +55,9 @@ export type ThermalRuntimeComputeResult = {
 	runtimeHoursAvg: number | null;
 	runtimeHoursMedian: number | null;
 	coolingRateCPerHAvg: number | null;
+	coolingConstantPerH: number | null;
+	coolingAsymptoteC: number | null;
+	coolingAsymptoteSource: "fitted" | "default" | null;
 	currentTemperatureC: number | null;
 	estimatedRemainingHours: number | null;
 	estimatedEmptyAt: string | null;

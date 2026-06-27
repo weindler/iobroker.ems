@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { configIsValid, thermalRuntimeConfigFromAdapter } from "./config";
+import { DEFAULT_AMBIENT_C } from "./constants";
 import { isValidTempC } from "./history";
 import {
 	collectCoolingSegments,
@@ -9,6 +10,7 @@ import {
 	estimateRemainingHours,
 	estimateActiveCoolingRateCPerH,
 	estimateCoolingConstantPerH,
+	estimateCoolingModel,
 	invalidConfigResult,
 	noSourceResult,
 } from "./math";
@@ -229,6 +231,43 @@ describe("thermal newtonian cooling constant", () => {
 		const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
 		const points = coolingCurve(base, 55, 54.5, 5, 5); // <2 °C Abfall
 		assert.equal(estimateCoolingConstantPerH(points, cfg(), 18), null);
+	});
+
+	it("fits a higher asymptote from segments at different temperatures", () => {
+		const base = new Date(2026, 0, 6, 8, 0, 0).getTime();
+		const hot = coolingCurve(base, 62, 54, 4, 8); // ~2 °C/h bei ~58 °C
+		const reheat = coolingCurve(hot[hot.length - 1].ts, 54, 59, 2, 4);
+		const cool = coolingCurve(reheat[reheat.length - 1].ts, 59, 48, 12, 8); // ~0.92 °C/h bei ~53 °C
+		const points = [...hot, ...reheat, ...cool];
+		const model = estimateCoolingModel(points, cfg({ emptyThresholdC: 48 }));
+		assert.equal(model.asymptoteSource, "fitted");
+		assert.ok(model.asymptoteC > DEFAULT_AMBIENT_C + 10, `asym=${model.asymptoteC}`);
+		assert.ok(model.coolingConstantPerH !== null && model.coolingConstantPerH > 0);
+	});
+
+	it("extends remaining time with a fitted high asymptote vs fixed ambient", () => {
+		const withAmbient = estimateRemainingHours({
+			currentTempC: 55,
+			fullThresholdC: 60,
+			emptyThresholdC: 48,
+			typicalRuntimeHours: null,
+			coolingRateCPerHAvg: null,
+			coolingConstantPerH: 0.03,
+			ambientC: 18,
+		});
+		const withAsymptote = estimateRemainingHours({
+			currentTempC: 55,
+			fullThresholdC: 60,
+			emptyThresholdC: 48,
+			typicalRuntimeHours: null,
+			coolingRateCPerHAvg: null,
+			coolingConstantPerH: 0.03,
+			ambientC: 42,
+		});
+		assert.ok(
+			withAsymptote !== null && withAmbient !== null && withAsymptote > withAmbient,
+			`asym=${withAsymptote} amb=${withAmbient}`,
+		);
 	});
 });
 

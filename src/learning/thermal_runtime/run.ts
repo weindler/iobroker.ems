@@ -13,7 +13,7 @@ import {
 	disabledResult,
 	errorResult,
 	estimateActiveCoolingRateCPerH,
-	estimateCoolingConstantPerH,
+	estimateCoolingModel,
 	invalidConfigResult,
 	noSourceResult,
 	summarizeTempHistory,
@@ -90,6 +90,12 @@ async function writeResult(
 		"learning.thermal_runtime.cooling_rate_c_per_h_avg",
 		result.coolingRateCPerHAvg,
 	);
+	await setNumIfValid(host, "learning.thermal_runtime.cooling_k_per_h", result.coolingConstantPerH);
+	await setNumIfValid(host, "learning.thermal_runtime.cooling_asymptote_c", result.coolingAsymptoteC);
+	await host.setStateAsync("learning.thermal_runtime.cooling_asymptote_source", {
+		val: result.coolingAsymptoteSource ?? "",
+		ack: true,
+	});
 	await setNumIfValid(
 		host,
 		"learning.thermal_runtime.current_temperature_c",
@@ -146,7 +152,7 @@ export async function runThermalRuntimeLearning(host: ThermalRuntimeRunHost): Pr
 		const cycles = detectRuntimeCycles(points, cfg);
 		const coolingSegments = collectCoolingSegments(points, cfg.minRuntimeHours);
 		const activeCoolingRateCPerH = estimateActiveCoolingRateCPerH(points, cfg);
-		const coolingConstantPerH = estimateCoolingConstantPerH(points, cfg);
+		const coolingModel = estimateCoolingModel(points, cfg);
 		const result = computeThermalRuntimeLearning({
 			cycles,
 			currentTempC,
@@ -154,7 +160,9 @@ export async function runThermalRuntimeLearning(host: ThermalRuntimeRunHost): Pr
 			sourceStateId: resolved.stateId,
 			now,
 			activeCoolingRateCPerH,
-			coolingConstantPerH,
+			coolingConstantPerH: coolingModel.coolingConstantPerH,
+			asymptoteC: coolingModel.asymptoteC,
+			asymptoteSource: coolingModel.asymptoteSource,
 		});
 
 		if (host.getAbsolutePath) {
@@ -168,7 +176,7 @@ export async function runThermalRuntimeLearning(host: ThermalRuntimeRunHost): Pr
 		await writeResult(host, result, lastRun);
 
 		host.log.info(
-			`Thermal-Runtime-Learning: status=${result.status} health=${result.health} cycles=${result.samples} source=${sourceLabelFromStateId(resolved.stateId)} k=${coolingConstantPerH ?? "—"}/h active_rate=${activeCoolingRateCPerH ?? "—"}°C/h (cooling_segments=${coolingSegments.length}) remaining=${result.estimatedRemainingHours ?? "—"}h`,
+			`Thermal-Runtime-Learning: status=${result.status} health=${result.health} cycles=${result.samples} source=${sourceLabelFromStateId(resolved.stateId)} k=${coolingModel.coolingConstantPerH ?? "—"}/h asym=${coolingModel.asymptoteC}°C(${coolingModel.asymptoteSource}) active_rate=${activeCoolingRateCPerH ?? "—"}°C/h (cooling_segments=${coolingSegments.length}) remaining=${result.estimatedRemainingHours ?? "—"}h`,
 		);
 
 		if (result.status === "insufficient_data") {

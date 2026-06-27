@@ -39,6 +39,13 @@ export async function ensureThermalRuntimeLearningStates(host: StateHost): Promi
 			"Thermal-Runtime Ø Kühlrate",
 			"°C/h",
 		),
+		numState("learning.thermal_runtime.cooling_k_per_h", "Thermal-Runtime Newton-k", "1/h"),
+		numState(
+			"learning.thermal_runtime.cooling_asymptote_c",
+			"Thermal-Runtime effektive Asymptote",
+			"°C",
+		),
+		strState("learning.thermal_runtime.cooling_asymptote_source", "Thermal-Runtime Asymptote-Quelle"),
 		numState("learning.thermal_runtime.current_temperature_c", "Thermal-Runtime aktuelle Temperatur", "°C"),
 		numState("learning.thermal_runtime.estimated_remaining_hours", "Thermal-Runtime Restlaufzeit", "h"),
 		strState("learning.thermal_runtime.estimated_empty_at", "Thermal-Runtime geschätzt leer um (ISO)"),

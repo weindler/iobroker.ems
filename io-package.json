@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.47",
+		"version": "0.1.48",
 		"news": {
+			"0.1.48": {
+				"en": "Fix: register the global_modes.requested subscription on the real adapter and keep the policy engine active flag independent, so switching the global mode actually re-runs the engine and updates policy states",
+				"de": "Fix: Subscription auf global_modes.requested am echten Adapter registriert und Engine-Aktiv-Flag unabhängig gemacht — Umschalten des Global Mode löst die Engine jetzt tatsächlich aus und aktualisiert die Policy-States"
+			},
 			"0.1.47": {
 				"en": "Fix: switching global_modes.requested now re-runs the policy engine immediately (routed via central stateChange); active mode no longer stuck until restart",
 				"de": "Fix: Umschalten von global_modes.requested löst die Policy Engine jetzt sofort neu aus (über zentrales stateChange); aktiver Modus hängt nicht mehr bis zum Neustart"

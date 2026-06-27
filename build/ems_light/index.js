@@ -9,7 +9,9 @@ const global_modes_1 = require("../global_modes");
 const ensure_states_1 = require("./ensure_states");
 const tick_1 = require("./tick");
 const DEFAULT_TICK_SEC = 60;
+const GLOBAL_MODES_REQUESTED_STATE = "global_modes.requested";
 let tickTimer = null;
+let policyAdapter = null;
 function tickIntervalSec(config) {
     if (!config || typeof config !== "object") {
         return DEFAULT_TICK_SEC;
@@ -29,6 +31,15 @@ async function initEmsLightPhase1(adapter) {
     await (0, weather_1.initWeatherLearning)(adapter);
     const policyHost = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
     await (0, policy_1.initPolicyEngine)(policyHost);
+    // Verbindliche ioBroker-Subscription auf dem echten Adapter (stateChange-Routing
+    // erfolgt in main.ts onStateChange -> handleGlobalModesStateChange).
+    policyAdapter = adapter;
+    try {
+        await adapter.subscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE);
+    }
+    catch (e) {
+        adapter.log.warn(`global_modes.requested subscribe: ${e}`);
+    }
     await (0, tick_1.runEmsLightPhase1Tick)(host);
     const sec = tickIntervalSec(adapter.config);
     stopEmsLightTick();
@@ -48,6 +59,11 @@ function stopEmsLightTick() {
     }
 }
 function stopEmsLightPhase1() {
+    if (policyAdapter) {
+        const adapter = policyAdapter;
+        policyAdapter = null;
+        void Promise.resolve(adapter.unsubscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE)).catch((e) => adapter.log.debug?.(`global_modes.requested unsubscribe: ${e}`));
+    }
     (0, policy_1.stopPolicyEngine)();
     (0, global_modes_1.resetGlobalModesRuntime)();
     (0, pv_bias_1.stopPvBiasLearning)();

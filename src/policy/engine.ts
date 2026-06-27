@@ -36,7 +36,10 @@ export interface PolicyEngineRunResult {
 }
 
 let lastSystemRevision: string | null = null;
+/** Engine ist aktiv und darf auf stateChange reagieren (unabhängig von der ioBroker-Subscription). */
 let subscribed = false;
+/** Ob wir über den Host selbst subscribed haben (v. a. für Tests / Standalone). */
+let patternSubscribed = false;
 let subscribedHost: PolicyEngineHost | null = null;
 
 const REQUESTED_PATTERN = "global_modes.requested";
@@ -236,13 +239,19 @@ export async function runPolicyEngine(host: PolicyEngineHost): Promise<PolicyEng
 
 export async function initPolicyEngine(host: PolicyEngineHost): Promise<void> {
 	host.log.info("Policy Engine initialized");
+	// Engine immer als aktiv markieren — die eigentliche ioBroker-Subscription auf
+	// global_modes.requested registriert die Adapterschicht auf dem echten Adapter
+	// (siehe ems_light/index.ts). handleGlobalModesStateChange darf nicht davon
+	// abhängen, ob der hier übergebene Host ein subscribeStatesAsync besitzt.
+	subscribedHost = host;
+	subscribed = true;
+
 	await runPolicyEngine(host);
 
-	if (!subscribed && host.subscribeStatesAsync) {
-		subscribed = true;
-		subscribedHost = host;
-		// ioBroker liefert State-Änderungen über das zentrale stateChange-Event
-		// (siehe handleGlobalModesStateChange), nicht über diesen Subscribe-Callback.
+	// Optionaler Selbst-Subscribe (Standalone / Unit-Tests). Im Adapterbetrieb
+	// werden State-Änderungen über das zentrale stateChange-Event geliefert.
+	if (!patternSubscribed && host.subscribeStatesAsync) {
+		patternSubscribed = true;
 		await host.subscribeStatesAsync(REQUESTED_PATTERN, () => {
 			void runPolicyEngine(host).catch((e) => {
 				host.log.warn(`Policy Engine re-run: ${e}`);
@@ -271,11 +280,12 @@ export function handleGlobalModesStateChange(namespace: string, id: string): voi
 
 export function stopPolicyEngine(): void {
 	const host = subscribedHost;
-	if (subscribed && host?.unsubscribeStatesAsync) {
+	if (patternSubscribed && host?.unsubscribeStatesAsync) {
 		void host
 			.unsubscribeStatesAsync(REQUESTED_PATTERN)
 			.catch((e) => host.log.debug?.(`Policy Engine unsubscribe: ${e}`));
 	}
+	patternSubscribed = false;
 	subscribed = false;
 	subscribedHost = null;
 	lastSystemRevision = null;

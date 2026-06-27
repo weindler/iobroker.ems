@@ -51,6 +51,13 @@ export async function runGlobalModes(host: GlobalModesHost): Promise<GlobalModeR
 		hasPersistedRequested: requestedRaw != null && String(requestedRaw).trim() !== "",
 	});
 
+	// Benutzer-Kommando bestätigen: ein manueller Write auf requested kommt mit
+	// ack=false (im Objektbaum gelb). Wir bestätigen den gültigen Wert, ohne ihn
+	// zu verändern. Bei ungültigem Wert bleibt er unbestätigt sichtbar.
+	if (decision.writeRequested === null && resolution.valid && requestedSt?.ack === false) {
+		await host.setStateAsync("global_modes.requested", { val: resolution.requested, ack: true });
+	}
+
 	const ts = new Date().toISOString();
 	const issuesJson = JSON.stringify(resolution.issues);
 	const profileJson = JSON.stringify(profileForMode(resolution.active));

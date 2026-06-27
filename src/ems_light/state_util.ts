@@ -4,6 +4,7 @@ export type StateHost = {
 	setObjectNotExistsAsync: (id: string, obj: ioBroker.Object) => Promise<unknown>;
 	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
 	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
+	extendObjectAsync?: (id: string, obj: Partial<ioBroker.Object>) => Promise<unknown>;
 };
 
 export async function ensureChannel(
@@ -26,6 +27,8 @@ export type StateDef = {
 	setDefaultIfEmpty?: boolean;
 	/** Wert bei jedem ensureStates-Lauf setzen (z. B. Adapter-Version). */
 	alwaysUpdate?: boolean;
+	/** common auch bei bereits existierenden Objekten aktualisieren (z. B. states/role). */
+	extendCommon?: boolean;
 };
 
 export async function ensureStates(host: StateHost, defs: StateDef[]): Promise<void> {
@@ -35,6 +38,9 @@ export async function ensureStates(host: StateHost, defs: StateDef[]): Promise<v
 			common: def.common,
 			native: {},
 		} as ioBroker.Object);
+		if (def.extendCommon && typeof host.extendObjectAsync === "function") {
+			await host.extendObjectAsync(def.id, { common: def.common } as Partial<ioBroker.Object>);
+		}
 		if (def.alwaysUpdate && def.defaultVal !== undefined) {
 			await host.setStateAsync(def.id, { val: def.defaultVal, ack: true });
 			continue;

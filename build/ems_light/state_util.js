@@ -17,6 +17,9 @@ async function ensureStates(host, defs) {
             common: def.common,
             native: {},
         });
+        if (def.extendCommon && typeof host.extendObjectAsync === "function") {
+            await host.extendObjectAsync(def.id, { common: def.common });
+        }
         if (def.alwaysUpdate && def.defaultVal !== undefined) {
             await host.setStateAsync(def.id, { val: def.defaultVal, ack: true });
             continue;

@@ -1,18 +1,42 @@
 import { ensureChannel, ensureStates, type StateDef, type StateHost } from "../ems_light/state_util";
+import { GLOBAL_MODES } from "./constants";
 
-function strState(id: string, name: string, def?: string, write = false): StateDef {
+const GLOBAL_MODE_STATE_LABELS: Record<string, string> = {
+	off: "Off (Optimierung aus)",
+	eco: "Eco",
+	balanced: "Balanced (Standard)",
+	comfort: "Comfort",
+	forced: "Forced",
+};
+
+const GLOBAL_MODE_STATES: Record<string, string> = Object.fromEntries(
+	GLOBAL_MODES.map((m) => [m, GLOBAL_MODE_STATE_LABELS[m] ?? m]),
+);
+
+function strState(
+	id: string,
+	name: string,
+	def?: string,
+	write = false,
+	states?: Record<string, string>,
+): StateDef {
+	const common: ioBroker.StateCommon = {
+		name,
+		type: "string",
+		role: states ? "value" : "text",
+		read: !write,
+		write,
+		def,
+	};
+	if (states) {
+		common.states = states;
+	}
 	return {
 		id,
-		common: {
-			name,
-			type: "string",
-			role: "text",
-			read: !write,
-			write,
-			def,
-		},
+		common,
 		defaultVal: def,
 		setDefaultIfEmpty: !write,
+		extendCommon: states ? true : undefined,
 	};
 }
 
@@ -41,7 +65,7 @@ export async function ensureGlobalModesStates(host: StateHost, adminDefault: str
 	await ensureGlobalModesChannels(host);
 
 	const defs: StateDef[] = [
-		strState("global_modes.requested", "Global Mode (Benutzerwunsch)", adminDefault, true),
+		strState("global_modes.requested", "Global Mode (Benutzerwunsch)", adminDefault, true, GLOBAL_MODE_STATES),
 		strState("global_modes.admin_default", "Global Mode Admin-Default (zuletzt gesehen)"),
 		strState("global_modes.active", "Global Mode aktiv", adminDefault),
 		strState("global_modes.available_json", "Global Modes verfügbar (JSON)", "[]"),

@@ -2,19 +2,33 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ensureGlobalModesStates = exports.ensureGlobalModesChannels = exports.GLOBAL_MODES_CHANNEL = void 0;
 const state_util_1 = require("../ems_light/state_util");
-function strState(id, name, def, write = false) {
+const constants_1 = require("./constants");
+const GLOBAL_MODE_STATE_LABELS = {
+    off: "Off (Optimierung aus)",
+    eco: "Eco",
+    balanced: "Balanced (Standard)",
+    comfort: "Comfort",
+    forced: "Forced",
+};
+const GLOBAL_MODE_STATES = Object.fromEntries(constants_1.GLOBAL_MODES.map((m) => [m, GLOBAL_MODE_STATE_LABELS[m] ?? m]));
+function strState(id, name, def, write = false, states) {
+    const common = {
+        name,
+        type: "string",
+        role: states ? "value" : "text",
+        read: !write,
+        write,
+        def,
+    };
+    if (states) {
+        common.states = states;
+    }
     return {
         id,
-        common: {
-            name,
-            type: "string",
-            role: "text",
-            read: !write,
-            write,
-            def,
-        },
+        common,
         defaultVal: def,
         setDefaultIfEmpty: !write,
+        extendCommon: states ? true : undefined,
     };
 }
 function boolState(id, name, def) {
@@ -39,7 +53,7 @@ exports.ensureGlobalModesChannels = ensureGlobalModesChannels;
 async function ensureGlobalModesStates(host, adminDefault) {
     await ensureGlobalModesChannels(host);
     const defs = [
-        strState("global_modes.requested", "Global Mode (Benutzerwunsch)", adminDefault, true),
+        strState("global_modes.requested", "Global Mode (Benutzerwunsch)", adminDefault, true, GLOBAL_MODE_STATES),
         strState("global_modes.admin_default", "Global Mode Admin-Default (zuletzt gesehen)"),
         strState("global_modes.active", "Global Mode aktiv", adminDefault),
         strState("global_modes.available_json", "Global Modes verfügbar (JSON)", "[]"),

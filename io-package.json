@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.49",
+		"version": "0.1.50",
 		"news": {
+			"0.1.50": {
+				"en": "global_modes.requested now has a dropdown (off/eco/balanced/comfort/forced) in the object tree and a manual change is acknowledged (no longer shown as unconfirmed/yellow)",
+				"de": "global_modes.requested zeigt im Objektbaum jetzt ein Auswahl-Dropdown (off/eco/balanced/comfort/forced) und eine manuelle Änderung wird bestätigt (nicht mehr gelb/unbestätigt)"
+			},
 			"0.1.49": {
 				"en": "Global mode: changing the admin default dropdown is now applied as an explicit choice (written to global_modes.requested on restart); plain restarts no longer ignore it while still not clobbering a direct datapoint change",
 				"de": "Global Mode: Eine Änderung des Admin-Dropdowns wird jetzt als bewusste Wahl übernommen (beim Neustart nach global_modes.requested geschrieben); reine Neustarts ignorieren sie nicht mehr, eine direkte Datenpunkt-Änderung wird weiterhin nicht überschrieben"

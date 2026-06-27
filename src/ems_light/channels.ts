@@ -13,6 +13,8 @@ export const EMS_LIGHT_CHANNEL_IDS: Array<{ id: string; nameDe: string }> = [
 	{ id: "execution.safety", nameDe: "EMS-Light Execution Safety" },
 	{ id: "system", nameDe: "EMS-Light System" },
 	{ id: "economics", nameDe: "EMS-Light Economics (Reporting)" },
+	{ id: "global_modes", nameDe: "EMS-Light Global Modes" },
+	{ id: "policy", nameDe: "EMS-Light Policy" },
 ];
 
 export async function ensureEmsLightChannels(host: StateHost): Promise<void> {

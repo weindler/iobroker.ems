@@ -74,6 +74,42 @@
 					"md": 4,
 					"lg": 4,
 					"xl": 4
+				},
+				"hGlobalModes": {
+					"type": "header",
+					"size": 2,
+					"text": "EMS-Light Global Modes (Phase 3A)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"global_mode_default": {
+					"type": "select",
+					"label": "Global Mode Standard (Erstinitialisierung)",
+					"options": [
+						{ "label": "Off", "value": "off" },
+						{ "label": "Eco", "value": "eco" },
+						{ "label": "Balanced", "value": "balanced" },
+						{ "label": "Comfort", "value": "comfort" },
+						{ "label": "Forced", "value": "forced" }
+					],
+					"default": "balanced",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"globalModeHint": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Laufzeit-State global_modes.requested hat Vorrang. Admin-Default nur bei fehlendem Benutzerwert. Ausgabe: global_modes.* und policy.* (read-only, keine Geräteaktion)."
 				}
 			}
 		},
@@ -1783,6 +1819,70 @@
 					"md": 6,
 					"lg": 6,
 					"xl": 6
+				}
+			}
+		},
+		"emsLightPolicyTab": {
+			"type": "panel",
+			"label": "EMS-Light Policy",
+			"items": {
+				"policyIntro": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Phase 3A: Globale Policy-Grundlage (read-only). Keine Geräteentscheidungen. Leere Felder bleiben unbekannt — kein stiller Fallback auf 0."
+				},
+				"global_policy_house_fuse_limit_w": {
+					"type": "number",
+					"label": "Haus-Sicherung (W, optional)",
+					"min": 0,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"global_policy_max_grid_import_w": {
+					"type": "number",
+					"label": "Max. Netzbezug (W, optional)",
+					"min": 0,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"global_policy_grid_import_allowed": {
+					"type": "checkbox",
+					"label": "Netzbezug grundsätzlich erlaubt (optional)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"global_policy_energy_priority_json": {
+					"type": "text",
+					"label": "Energie-Priorität (JSON-Array, optional)",
+					"default": "",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"global_policy_mutual_exclusions_json": {
+					"type": "text",
+					"label": "Mutual Exclusions (JSON-Array, optional)",
+					"default": "",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				}
 			}
 		}

@@ -15,6 +15,8 @@ exports.EMS_LIGHT_CHANNEL_IDS = [
     { id: "execution.safety", nameDe: "EMS-Light Execution Safety" },
     { id: "system", nameDe: "EMS-Light System" },
     { id: "economics", nameDe: "EMS-Light Economics (Reporting)" },
+    { id: "global_modes", nameDe: "EMS-Light Global Modes" },
+    { id: "policy", nameDe: "EMS-Light Policy" },
 ];
 async function ensureEmsLightChannels(host) {
     for (const ch of exports.EMS_LIGHT_CHANNEL_IDS) {

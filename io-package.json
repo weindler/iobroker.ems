@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.45",
+		"version": "0.1.46",
 		"news": {
+			"0.1.46": {
+				"en": "Phase 3A: Global Modes (off/eco/balanced/comfort/forced) and Policy Engine foundation — configured/effective policy, merge, validation, provenance, revision; no device actions",
+				"de": "Phase 3A: Global Modes (off/eco/balanced/comfort/forced) und Policy-Engine-Grundlage — configured/effective Policy, Merge, Validierung, Herkunft, Revision; keine Geräteaktionen"
+			},
 			"0.1.45": {
 				"en": "Thermal runtime: data-driven cooling asymptote (fitted from segment rate vs temperature) extends remaining-time estimate for stratified buffers",
 				"de": "Thermal-Runtime: datengetriebene Kühl-Asymptote (Fit aus Segment-Rate vs. Temperatur) verlängert Restlaufzeit-Schätzung für Schichtspeicher"

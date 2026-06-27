@@ -1,5 +1,8 @@
 import { initPvBiasLearning, stopPvBiasLearning } from "../learning/pv_bias";
 import { initWeatherLearning, stopWeatherLearning } from "../learning/weather";
+import { withLearningDataPath } from "../learning/data_dir";
+import { initPolicyEngine, stopPolicyEngine, type PolicyEngineHost } from "../policy";
+import { resetGlobalModesRuntime } from "../global_modes";
 import { ensureEmsLightStates } from "./ensure_states";
 import { runEmsLightPhase1Tick } from "./tick";
 import type { LiveCacheHost } from "./live_cache";
@@ -26,6 +29,8 @@ export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<voi
 	await ensureEmsLightStates(host, version);
 	await initPvBiasLearning(adapter);
 	await initWeatherLearning(adapter);
+	const policyHost = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & PolicyEngineHost);
+	await initPolicyEngine(policyHost);
 	await runEmsLightPhase1Tick(host);
 
 	const sec = tickIntervalSec(adapter.config);
@@ -48,6 +53,8 @@ function stopEmsLightTick(): void {
 }
 
 export function stopEmsLightPhase1(): void {
+	stopPolicyEngine();
+	resetGlobalModesRuntime();
 	stopPvBiasLearning();
 	stopWeatherLearning();
 	stopEmsLightTick();

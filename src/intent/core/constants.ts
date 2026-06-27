@@ -1,7 +1,7 @@
 import type { WallboxChargeStrategy } from "./types";
 
 export const INTENT_SCHEMA_VERSION = 1;
-export const INTENT_ENGINE_VERSION = "0.1.51";
+export const INTENT_ENGINE_VERSION = "0.1.52";
 export const INTENT_CONTRACT_VERSION = "1";
 
 export const DEFAULT_TIMEZONE = "Europe/Berlin";

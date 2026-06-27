@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.51",
+		"version": "0.1.52",
 		"news": {
+			"0.1.52": {
+				"en": "Fix: optional intent number fields (default target SOC, max manual-override minutes) can be cleared again — removed min/max schema bounds that blocked saving an empty value (range is still validated in code)",
+				"de": "Fix: optionale Intent-Zahlenfelder (Default Ziel-SOC, max. Manual-Override-Minuten) lassen sich wieder leeren — min/max-Schemagrenzen entfernt, die das Speichern eines leeren Werts blockierten (Bereich wird weiterhin im Code geprüft)"
+			},
 			"0.1.51": {
 				"en": "Phase 3B: User Intent Foundation — read-only capture and normalization of wallbox user intent from EVCC, ioBroker JSON requests, and admin defaults (no planner, no device writes)",
 				"de": "Phase 3B: User Intent Foundation — read-only Erfassung und Normalisierung von Wallbox-Benutzeraufträgen aus EVCC, ioBroker-JSON-Requests und Admin-Defaults (kein Planner, keine Geräte-Writes)"

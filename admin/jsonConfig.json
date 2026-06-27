@@ -1988,9 +1988,7 @@
 				},
 				"intent_default_target_soc_pct": {
 					"type": "number",
-					"label": "Default Ziel-SOC % (optional)",
-					"min": 0,
-					"max": 100,
+					"label": "Default Ziel-SOC % (optional, leer = kein Default)",
 					"xs": 12,
 					"sm": 6,
 					"md": 4,
@@ -2009,9 +2007,7 @@
 				},
 				"intent_manual_override_max_minutes": {
 					"type": "number",
-					"label": "Max. Manual-Override-Dauer (Min., optional)",
-					"min": 1,
-					"max": 10080,
+					"label": "Max. Manual-Override-Dauer (Min., optional, leer = unbegrenzt)",
 					"xs": 12,
 					"sm": 6,
 					"md": 4,

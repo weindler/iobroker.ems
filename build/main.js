@@ -37,6 +37,7 @@ const inbox_1 = require("./inbox");
 const mapping_config_1 = require("./mapping_config");
 const mapping_sync_1 = require("./mapping_sync");
 const ems_light_1 = require("./ems_light");
+const policy_1 = require("./policy");
 const pipeline_1 = require("./pipeline");
 const status_wallbox_1 = require("./status_wallbox");
 const states_1 = require("./states");
@@ -96,6 +97,7 @@ class Ems extends utils.Adapter {
         if (state) {
             (0, battery_1.handleBatteryAdapterStateChange)(this, id);
             (0, immersion_heater_1.handleImmersionHeaterStateChange)(this, id);
+            (0, policy_1.handleGlobalModesStateChange)(this.namespace, id);
         }
         const inboxId = `${this.namespace}.${states_1.STATE.command.inbox}`;
         if (id !== inboxId || !state)

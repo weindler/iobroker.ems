@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.46",
+		"version": "0.1.47",
 		"news": {
+			"0.1.47": {
+				"en": "Fix: switching global_modes.requested now re-runs the policy engine immediately (routed via central stateChange); active mode no longer stuck until restart",
+				"de": "Fix: Umschalten von global_modes.requested löst die Policy Engine jetzt sofort neu aus (über zentrales stateChange); aktiver Modus hängt nicht mehr bis zum Neustart"
+			},
 			"0.1.46": {
 				"en": "Phase 3A: Global Modes (off/eco/balanced/comfort/forced) and Policy Engine foundation — configured/effective policy, merge, validation, provenance, revision; no device actions",
 				"de": "Phase 3A: Global Modes (off/eco/balanced/comfort/forced) und Policy-Engine-Grundlage — configured/effective Policy, Merge, Validierung, Herkunft, Revision; keine Geräteaktionen"

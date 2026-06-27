@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.policyProviderRegistry = exports.stopPolicyEngine = exports.initPolicyEngine = exports.runPolicyEngine = void 0;
+exports.policyProviderRegistry = exports.stopPolicyEngine = exports.handleGlobalModesStateChange = exports.initPolicyEngine = exports.runPolicyEngine = void 0;
 const run_1 = require("../global_modes/run");
 const constants_1 = require("./core/constants");
 const hash_1 = require("./core/hash");
@@ -171,6 +171,8 @@ async function initPolicyEngine(host) {
     if (!subscribed && host.subscribeStatesAsync) {
         subscribed = true;
         subscribedHost = host;
+        // ioBroker liefert State-Änderungen über das zentrale stateChange-Event
+        // (siehe handleGlobalModesStateChange), nicht über diesen Subscribe-Callback.
         await host.subscribeStatesAsync(REQUESTED_PATTERN, () => {
             void runPolicyEngine(host).catch((e) => {
                 host.log.warn(`Policy Engine re-run: ${e}`);
@@ -179,6 +181,24 @@ async function initPolicyEngine(host) {
     }
 }
 exports.initPolicyEngine = initPolicyEngine;
+/**
+ * Aus dem zentralen Adapter-stateChange aufrufen. Triggert die Policy Engine neu,
+ * wenn sich global_modes.requested geändert hat. Erwartet die voll qualifizierte
+ * State-ID (ems.<instanz>.global_modes.requested) und den Adapter-Namespace.
+ */
+function handleGlobalModesStateChange(namespace, id) {
+    if (!subscribed || !subscribedHost) {
+        return;
+    }
+    if (id !== `${namespace}.${REQUESTED_PATTERN}`) {
+        return;
+    }
+    const host = subscribedHost;
+    void runPolicyEngine(host).catch((e) => {
+        host.log.warn(`Policy Engine re-run: ${e}`);
+    });
+}
+exports.handleGlobalModesStateChange = handleGlobalModesStateChange;
 function stopPolicyEngine() {
     const host = subscribedHost;
     if (subscribed && host?.unsubscribeStatesAsync) {

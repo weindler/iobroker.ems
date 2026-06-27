@@ -1,18 +1,25 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { initPolicyEngine, stopPolicyEngine, policyProviderRegistry } from "./engine.js";
+import {
+	initPolicyEngine,
+	stopPolicyEngine,
+	handleGlobalModesStateChange,
+	policyProviderRegistry,
+} from "./engine.js";
 import type { PolicyEngineHost } from "./engine.js";
 
 function mockHost(): PolicyEngineHost & {
 	subscribeCount: number;
 	unsubscribeCount: number;
 	subscribedPatterns: string[];
+	store: Map<string, ioBroker.StateValue>;
 } {
 	const store = new Map<string, ioBroker.StateValue>();
 	return {
 		subscribeCount: 0,
 		unsubscribeCount: 0,
 		subscribedPatterns: [],
+		store,
 		config: {},
 		log: {
 			info() {},
@@ -89,5 +96,26 @@ describe("policy engine lifecycle", () => {
 		await initPolicyEngine(host);
 		assert.doesNotThrow(() => stopPolicyEngine());
 		await Promise.resolve();
+	});
+
+	it("re-runs and updates active mode on global_modes.requested change", async () => {
+		const host = mockHost();
+		await initPolicyEngine(host);
+		assert.equal(host.store.get("global_modes.active"), "balanced");
+
+		host.store.set("global_modes.requested", "eco");
+		handleGlobalModesStateChange("ems.0", "ems.0.global_modes.requested");
+		await new Promise((r) => setTimeout(r, 5));
+
+		assert.equal(host.store.get("global_modes.active"), "eco");
+	});
+
+	it("ignores unrelated state changes", async () => {
+		const host = mockHost();
+		await initPolicyEngine(host);
+		host.store.set("global_modes.requested", "comfort");
+		handleGlobalModesStateChange("ems.0", "ems.0.live.battery.soc_pct");
+		await new Promise((r) => setTimeout(r, 5));
+		assert.equal(host.store.get("global_modes.active"), "balanced");
 	});
 });

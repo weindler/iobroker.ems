@@ -12,6 +12,7 @@ function mockHost() {
         subscribeCount: 0,
         unsubscribeCount: 0,
         subscribedPatterns: [],
+        store,
         config: {},
         log: {
             info() { },
@@ -82,5 +83,22 @@ function mockHost() {
         await (0, engine_js_1.initPolicyEngine)(host);
         strict_1.default.doesNotThrow(() => (0, engine_js_1.stopPolicyEngine)());
         await Promise.resolve();
+    });
+    (0, node_test_1.it)("re-runs and updates active mode on global_modes.requested change", async () => {
+        const host = mockHost();
+        await (0, engine_js_1.initPolicyEngine)(host);
+        strict_1.default.equal(host.store.get("global_modes.active"), "balanced");
+        host.store.set("global_modes.requested", "eco");
+        (0, engine_js_1.handleGlobalModesStateChange)("ems.0", "ems.0.global_modes.requested");
+        await new Promise((r) => setTimeout(r, 5));
+        strict_1.default.equal(host.store.get("global_modes.active"), "eco");
+    });
+    (0, node_test_1.it)("ignores unrelated state changes", async () => {
+        const host = mockHost();
+        await (0, engine_js_1.initPolicyEngine)(host);
+        host.store.set("global_modes.requested", "comfort");
+        (0, engine_js_1.handleGlobalModesStateChange)("ems.0", "ems.0.live.battery.soc_pct");
+        await new Promise((r) => setTimeout(r, 5));
+        strict_1.default.equal(host.store.get("global_modes.active"), "balanced");
     });
 });

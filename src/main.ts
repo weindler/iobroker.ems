@@ -21,6 +21,7 @@ import { parseInboxValue } from "./inbox";
 import { goeWallboxTemplateFlat, wallboxMappingFromConfig, WALLBOX_ALL_MAPPING_IDS } from "./mapping_config";
 import { ensureAddonMappingStates, syncNativeMappingToStates } from "./mapping_sync";
 import { initEmsLightPhase1, stopEmsLightPhase1 } from "./ems_light";
+import { handleGlobalModesStateChange } from "./policy";
 import { runCommandPipeline } from "./pipeline";
 import { ensureWallboxStatusStates } from "./status_wallbox";
 import { STATE } from "./states";
@@ -95,6 +96,7 @@ class Ems extends utils.Adapter {
 		if (state) {
 			handleBatteryAdapterStateChange(this, id);
 			handleImmersionHeaterStateChange(this, id);
+			handleGlobalModesStateChange(this.namespace, id);
 		}
 		const inboxId = `${this.namespace}.${STATE.command.inbox}`;
 		if (id !== inboxId || !state) return;

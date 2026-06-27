@@ -241,12 +241,32 @@ export async function initPolicyEngine(host: PolicyEngineHost): Promise<void> {
 	if (!subscribed && host.subscribeStatesAsync) {
 		subscribed = true;
 		subscribedHost = host;
+		// ioBroker liefert State-Änderungen über das zentrale stateChange-Event
+		// (siehe handleGlobalModesStateChange), nicht über diesen Subscribe-Callback.
 		await host.subscribeStatesAsync(REQUESTED_PATTERN, () => {
 			void runPolicyEngine(host).catch((e) => {
 				host.log.warn(`Policy Engine re-run: ${e}`);
 			});
 		});
 	}
+}
+
+/**
+ * Aus dem zentralen Adapter-stateChange aufrufen. Triggert die Policy Engine neu,
+ * wenn sich global_modes.requested geändert hat. Erwartet die voll qualifizierte
+ * State-ID (ems.<instanz>.global_modes.requested) und den Adapter-Namespace.
+ */
+export function handleGlobalModesStateChange(namespace: string, id: string): void {
+	if (!subscribed || !subscribedHost) {
+		return;
+	}
+	if (id !== `${namespace}.${REQUESTED_PATTERN}`) {
+		return;
+	}
+	const host = subscribedHost;
+	void runPolicyEngine(host).catch((e) => {
+		host.log.warn(`Policy Engine re-run: ${e}`);
+	});
 }
 
 export function stopPolicyEngine(): void {

@@ -20,7 +20,7 @@ function strField(config: Record<string, unknown>, key: string): string {
 function numField(config: Record<string, unknown>, key: string): number | null {
 	const v = config[key];
 	if (v === null || v === undefined || v === "") return null;
-	const n = typeof v === "number" ? v : parseFloat(String(v));
+	const n = typeof v === "number" ? v : parseFloat(String(v).replace(",", ".").trim());
 	return Number.isFinite(n) ? n : null;
 }
 

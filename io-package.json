@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.52",
+		"version": "0.1.53",
 		"news": {
+			"0.1.53": {
+				"en": "Fix: optional intent number fields (default target SOC, max manual-override minutes) are now text fields so they can actually be cleared and saved (ioBroker number fields block empty values); values are parsed and range-validated in code",
+				"de": "Fix: optionale Intent-Zahlenfelder (Default Ziel-SOC, max. Manual-Override-Minuten) sind jetzt Textfelder, damit sie wirklich geleert und gespeichert werden können (ioBroker-Zahlenfelder blockieren leere Werte); Werte werden im Code geparst und bereichsgeprüft"
+			},
 			"0.1.52": {
 				"en": "Fix: optional intent number fields (default target SOC, max manual-override minutes) can be cleared again — removed min/max schema bounds that blocked saving an empty value (range is still validated in code)",
 				"de": "Fix: optionale Intent-Zahlenfelder (Default Ziel-SOC, max. Manual-Override-Minuten) lassen sich wieder leeren — min/max-Schemagrenzen entfernt, die das Speichern eines leeren Werts blockierten (Bereich wird weiterhin im Code geprüft)"

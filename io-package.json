@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.53",
+		"version": "0.1.54",
 		"news": {
+			"0.1.54": {
+				"en": "Fix: User Intent Engine init no longer aborts on adapter installations without async foreign-state subscription helpers; the user_intent state tree including request_json is now created reliably",
+				"de": "Fix: User Intent Engine Init bricht auf Adapter-Installationen ohne Async-Foreign-State-Subscription-Helper nicht mehr ab; der user_intent-State-Baum inklusive request_json wird jetzt zuverlässig angelegt"
+			},
 			"0.1.53": {
 				"en": "Fix: optional intent number fields (default target SOC, max manual-override minutes) are now text fields so they can actually be cleared and saved (ioBroker number fields block empty values); values are parsed and range-validated in code",
 				"de": "Fix: optionale Intent-Zahlenfelder (Default Ziel-SOC, max. Manual-Override-Minuten) sind jetzt Textfelder, damit sie wirklich geleert und gespeichert werden können (ioBroker-Zahlenfelder blockieren leere Werte); Werte werden im Code geparst und bereichsgeprüft"

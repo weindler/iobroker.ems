@@ -28,6 +28,7 @@ function tickIntervalSec(config) {
 async function initEmsLightPhase1(adapter) {
     const version = String(adapter.common?.version ?? "0.0.0");
     const host = adapter;
+    const adapterAny = adapter;
     await (0, ensure_states_1.ensureEmsLightStates)(host, version);
     await (0, pv_bias_1.initPvBiasLearning)(adapter);
     await (0, weather_1.initWeatherLearning)(adapter);
@@ -45,8 +46,12 @@ async function initEmsLightPhase1(adapter) {
         getForeignStateAsync: adapter.getForeignStateAsync.bind(adapter),
         subscribeStatesAsync: adapter.subscribeStatesAsync.bind(adapter),
         unsubscribeStatesAsync: adapter.unsubscribeStatesAsync.bind(adapter),
-        subscribeForeignStatesAsync: adapter.subscribeForeignStatesAsync.bind(adapter),
-        unsubscribeForeignStatesAsync: adapter.unsubscribeForeignStatesAsync.bind(adapter),
+        subscribeForeignStatesAsync: typeof adapterAny.subscribeForeignStatesAsync === "function"
+            ? adapterAny.subscribeForeignStatesAsync.bind(adapter)
+            : undefined,
+        unsubscribeForeignStatesAsync: typeof adapterAny.unsubscribeForeignStatesAsync === "function"
+            ? adapterAny.unsubscribeForeignStatesAsync.bind(adapter)
+            : undefined,
     };
     await (0, intent_1.initIntentEngine)(intentHost);
     // Verbindliche ioBroker-Subscription auf dem echten Adapter (stateChange-Routing

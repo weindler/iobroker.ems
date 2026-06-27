@@ -100,6 +100,7 @@ export async function ensureIntentChannels(host: StateHost): Promise<void> {
 	await ensureChannel(host, "user_intent.wallbox.sources.evcc", "EMS-Light EVCC Intent Source");
 	await ensureChannel(host, "user_intent.wallbox.sources.admin", "EMS-Light Admin Intent Defaults");
 	await ensureChannel(host, "user_intent.thermal.diagnostics", "EMS-Light Thermal Intent Diagnostics");
+	await ensureChannel(host, "user_intent.thermal.control", "EMS-Light Thermal Control");
 	await ensureChannel(host, "user_intent.battery.diagnostics", "EMS-Light Battery Intent Diagnostics");
 }
 
@@ -119,6 +120,19 @@ export async function ensureIntentStates(host: StateHost): Promise<void> {
 		strState("user_intent.wallbox.sources.admin.snapshot_json", "Admin Intent Defaults (JSON)", "{}"),
 		...domainMirrorStates("user_intent.thermal", "Thermal"),
 		...domainMirrorStates("user_intent.battery", "Battery"),
+		strState("user_intent.thermal.control.requested_mode", "Thermal Modus (off|auto|force)", "auto", true, true),
+		{
+			id: "user_intent.thermal.control.force_target_temp_c",
+			common: {
+				name: "Thermal Force-Ziel °C",
+				type: "number",
+				role: "value.temperature",
+				read: true,
+				write: true,
+			},
+		},
+		strState("user_intent.thermal.control.force_until", "Thermal Force bis (ISO)", "", true),
+		strState("user_intent.thermal.control.last_result_json", "Thermal Control Ergebnis (JSON)", "{}"),
 		...domainRequestStates("user_intent.inputs.iobroker.wallbox", "Wallbox"),
 		...domainRequestStates("user_intent.inputs.iobroker.thermal", "Thermal"),
 		...domainRequestStates("user_intent.inputs.iobroker.battery", "Battery"),

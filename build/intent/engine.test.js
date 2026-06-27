@@ -51,7 +51,7 @@ function mockHost() {
     (0, node_test_1.it)("subscribes request states once on init", async () => {
         const host = mockHost();
         await (0, engine_js_1.initIntentEngine)(host);
-        strict_1.default.equal(host.subscribeCount, 3);
+        strict_1.default.equal(host.subscribeCount, 6);
         strict_1.default.ok(host.patterns.includes("user_intent.inputs.iobroker.wallbox.request_json"));
         strict_1.default.ok(host.patterns.includes("user_intent.inputs.iobroker.thermal.request_json"));
         strict_1.default.ok(host.patterns.includes("user_intent.inputs.iobroker.battery.request_json"));
@@ -60,28 +60,29 @@ function mockHost() {
         const host = mockHost();
         await (0, engine_js_1.initIntentEngine)(host);
         await (0, engine_js_1.initIntentEngine)(host);
-        strict_1.default.equal(host.subscribeCount, 3);
+        strict_1.default.equal(host.subscribeCount, 6);
     });
     (0, node_test_1.it)("unsubscribes on stop", async () => {
         const host = mockHost();
         await (0, engine_js_1.initIntentEngine)(host);
         (0, engine_js_1.stopIntentEngine)();
         await Promise.resolve();
-        strict_1.default.equal(host.unsubscribeCount, 3);
+        strict_1.default.equal(host.unsubscribeCount, 6);
     });
     (0, node_test_1.it)("re-init after stop works", async () => {
         const host = mockHost();
         await (0, engine_js_1.initIntentEngine)(host);
         (0, engine_js_1.stopIntentEngine)();
         await (0, engine_js_1.initIntentEngine)(host);
-        strict_1.default.equal(host.subscribeCount, 6);
+        strict_1.default.equal(host.subscribeCount, 12);
     });
     (0, node_test_1.it)("handleIntentStateChange processes unacked request", async () => {
         const host = mockHost();
         await (0, engine_js_1.initIntentEngine)(host);
+        const requestId = `lifecycle-${Date.now()}`;
         const req = {
             schema_version: 1,
-            request_id: "lifecycle-1",
+            request_id: requestId,
             issued_at: new Date().toISOString(),
             owner: { type: "user" },
             values: { charge_strategy: "pv" },
@@ -94,10 +95,18 @@ function mockHost() {
             val: JSON.stringify(req),
             ack: false,
         });
-        await new Promise((r) => setTimeout(r, 20));
-        const result = host.store.get("user_intent.inputs.iobroker.wallbox.result_json");
-        strict_1.default.ok(result);
-        const parsed = JSON.parse(String(result.val));
+        let parsed = null;
+        for (let i = 0; i < 20; i++) {
+            await new Promise((r) => setTimeout(r, 25));
+            const result = host.store.get("user_intent.inputs.iobroker.wallbox.result_json");
+            if (result?.val) {
+                const p = JSON.parse(String(result.val));
+                parsed = p;
+                if (p.status === "accepted")
+                    break;
+            }
+        }
+        strict_1.default.ok(parsed);
         strict_1.default.equal(parsed.status, "accepted");
     });
 });

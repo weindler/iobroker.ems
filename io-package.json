@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.57",
+		"version": "0.1.58",
 		"news": {
+			"0.1.58": {
+				"en": "Phase 3C.1: Immersion heater complete binding — thermal config, off/auto/force control states, runtime FSM, multi-stage execution, power/relay safety, fault lockout (live writes only; no EMS planner)",
+				"de": "Phase 3C.1: Heizstab vollständige Anbindung — Thermik-Konfiguration, off/auto/force-Control-States, Runtime-FSM, Mehrstufen-Ausführung, Leistungs-/Relais-Sicherheit, Fault-Lockout (nur Live-Writes; kein EMS-Planner)"
+			},
 			"0.1.57": {
 				"en": "Phase 3C: Add-on Intent Binding — thermal (immersion heater) and battery user intent domains with ioBroker JSON requests, aggregate contract user_intent.resolved_all_json, EVCC planner summary and null-sentinel deadline handling (no planner, no device writes)",
 				"de": "Phase 3C: Add-on Intent Binding — Thermal- (Heizstab) und Batterie-User-Intent-Domains mit ioBroker-JSON-Requests, Gesamtvertrag user_intent.resolved_all_json, EVCC-Planner-Zusammenfassung und Null-Sentinel-Deadline-Handling (kein Planner, keine Geräte-Writes)"

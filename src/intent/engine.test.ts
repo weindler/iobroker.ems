@@ -60,7 +60,7 @@ describe("intent engine lifecycle", () => {
 	it("subscribes request states once on init", async () => {
 		const host = mockHost();
 		await initIntentEngine(host);
-		assert.equal(host.subscribeCount, 3);
+		assert.equal(host.subscribeCount, 6);
 		assert.ok(host.patterns.includes("user_intent.inputs.iobroker.wallbox.request_json"));
 		assert.ok(host.patterns.includes("user_intent.inputs.iobroker.thermal.request_json"));
 		assert.ok(host.patterns.includes("user_intent.inputs.iobroker.battery.request_json"));
@@ -70,7 +70,7 @@ describe("intent engine lifecycle", () => {
 		const host = mockHost();
 		await initIntentEngine(host);
 		await initIntentEngine(host);
-		assert.equal(host.subscribeCount, 3);
+		assert.equal(host.subscribeCount, 6);
 	});
 
 	it("unsubscribes on stop", async () => {
@@ -78,7 +78,7 @@ describe("intent engine lifecycle", () => {
 		await initIntentEngine(host);
 		stopIntentEngine();
 		await Promise.resolve();
-		assert.equal(host.unsubscribeCount, 3);
+		assert.equal(host.unsubscribeCount, 6);
 	});
 
 	it("re-init after stop works", async () => {
@@ -86,15 +86,16 @@ describe("intent engine lifecycle", () => {
 		await initIntentEngine(host);
 		stopIntentEngine();
 		await initIntentEngine(host);
-		assert.equal(host.subscribeCount, 6);
+		assert.equal(host.subscribeCount, 12);
 	});
 
 	it("handleIntentStateChange processes unacked request", async () => {
 		const host = mockHost();
 		await initIntentEngine(host);
+		const requestId = `lifecycle-${Date.now()}`;
 		const req = {
 			schema_version: 1,
-			request_id: "lifecycle-1",
+			request_id: requestId,
 			issued_at: new Date().toISOString(),
 			owner: { type: "user" },
 			values: { charge_strategy: "pv" },
@@ -107,10 +108,17 @@ describe("intent engine lifecycle", () => {
 			val: JSON.stringify(req),
 			ack: false,
 		} as ioBroker.State);
-		await new Promise((r) => setTimeout(r, 20));
-		const result = host.store.get("user_intent.inputs.iobroker.wallbox.result_json");
-		assert.ok(result);
-		const parsed = JSON.parse(String(result!.val));
-		assert.equal(parsed.status, "accepted");
+		let parsed: { status: string } | null = null;
+		for (let i = 0; i < 20; i++) {
+			await new Promise((r) => setTimeout(r, 25));
+			const result = host.store.get("user_intent.inputs.iobroker.wallbox.result_json");
+			if (result?.val) {
+				const p = JSON.parse(String(result.val)) as { status: string };
+				parsed = p;
+				if (p.status === "accepted") break;
+			}
+		}
+		assert.ok(parsed);
+		assert.equal(parsed!.status, "accepted");
 	});
 });

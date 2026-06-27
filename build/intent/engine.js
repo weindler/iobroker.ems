@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resetIntentEngineForTest = exports.getLastResolvedWallboxIntentForTest = exports.stopIntentEngine = exports.handleIntentStateChange = exports.initIntentEngine = exports.runIntentEngine = void 0;
+exports.resetIntentEngineForTest = exports.getLastResolvedWallboxIntentForTest = exports.stopIntentEngine = exports.handleIntentStateChange = exports.initIntentEngine = exports.submitThermalControlFromRuntime = exports.runIntentEngine = void 0;
 const state_write_1 = require("../policy/core/state_write");
 const addon_active_1 = require("./core/addon_active");
 const aggregate_1 = require("./core/aggregate");
@@ -25,6 +25,7 @@ const resolve_3 = require("./battery/resolve");
 const validation_3 = require("./battery/validation");
 const types_3 = require("./battery/types");
 const index_1 = require("../addons/immersion_heater/index");
+const control_1 = require("./thermal/control");
 let engineActive = false;
 let subscribedHost = null;
 let lastWallbox = null;
@@ -283,6 +284,72 @@ async function processDomainRequest(host, domain, state, requestState, resultSta
         }
     }
 }
+async function processThermalControlChange(host, triggerId, state) {
+    if (!state || state.ack === true)
+        return;
+    const relTrigger = triggerId.includes(".") ? triggerId.split(".").slice(-4).join(".") : triggerId;
+    const isModeChange = relTrigger === control_1.THERMAL_CONTROL_REQUESTED_MODE || triggerId.endsWith(control_1.THERMAL_CONTROL_REQUESTED_MODE);
+    const modeSt = await host.getStateAsync(control_1.THERMAL_CONTROL_REQUESTED_MODE);
+    const mode = isModeChange ? (0, control_1.parseControlMode)(state.val) : (0, control_1.parseControlMode)(modeSt?.val);
+    if (!mode) {
+        await (0, state_write_1.setStateIfChanged)(host, control_1.THERMAL_CONTROL_LAST_RESULT, JSON.stringify((0, control_1.controlResult)("rejected_invalid", ["invalid_mode"], "")));
+        if (triggerId.endsWith(control_1.THERMAL_CONTROL_REQUESTED_MODE)) {
+            await host.setStateAsync(control_1.THERMAL_CONTROL_REQUESTED_MODE, { val: state.val, ack: true });
+        }
+        return;
+    }
+    const forceTargetSt = await host.getStateAsync(control_1.THERMAL_CONTROL_FORCE_TARGET);
+    const forceUntilSt = await host.getStateAsync(control_1.THERMAL_CONTROL_FORCE_UNTIL);
+    const targetVal = (0, control_1.validateForceTarget)(forceTargetSt?.val, host.config);
+    if (!targetVal.ok) {
+        await (0, state_write_1.setStateIfChanged)(host, control_1.THERMAL_CONTROL_LAST_RESULT, JSON.stringify((0, control_1.controlResult)("rejected_invalid", [targetVal.error], "")));
+        await host.setStateAsync(triggerId.replace(`${host.namespace}.`, ""), { val: state.val, ack: true });
+        return;
+    }
+    const now = new Date();
+    const issuedAt = now.toISOString();
+    const requestId = `control-${issuedAt}-${Math.random().toString(36).slice(2, 8)}`;
+    const raw = (0, control_1.buildControlThermalRequest)({
+        mode,
+        forceTargetTempC: mode === "force" ? targetVal.value : null,
+        forceUntil: typeof forceUntilSt?.val === "string" && forceUntilSt.val.trim() ? forceUntilSt.val.trim() : null,
+        config: host.config,
+        issuedAt,
+    });
+    raw.request_id = requestId;
+    const adminCfg = (0, config_1.intentAdminConfigFromAdapter)(host.config);
+    const out = (0, iobroker_thermal_1.processIobrokerThermalRequest)({
+        raw,
+        ack: false,
+        now,
+        admin: adminCfg,
+        lastRequestId: lastRequestIds.thermal,
+        currentRevision: lastThermal?.revision ?? 0,
+        existingSnapshot: thermalSnapshot,
+    });
+    await (0, state_write_1.setStateIfChanged)(host, control_1.THERMAL_CONTROL_LAST_RESULT, JSON.stringify(out.result));
+    if (out.accepted && out.snapshot) {
+        thermalSnapshot = out.snapshot;
+        lastRequestIds.thermal = out.result.request_id;
+        await host.setStateAsync(control_1.THERMAL_CONTROL_REQUESTED_MODE, { val: mode, ack: true });
+        if (mode === "force" && targetVal.value !== null) {
+            await host.setStateAsync(control_1.THERMAL_CONTROL_FORCE_TARGET, { val: targetVal.value, ack: true });
+        }
+        if (forceUntilSt?.val) {
+            await host.setStateAsync(control_1.THERMAL_CONTROL_FORCE_UNTIL, { val: forceUntilSt.val, ack: true });
+        }
+        await runIntentEngine(host);
+    }
+}
+/** Runtime auto-revert (Force → Auto) mit Intent-Revision. */
+async function submitThermalControlFromRuntime(host, mode) {
+    await host.setStateAsync(control_1.THERMAL_CONTROL_REQUESTED_MODE, { val: mode, ack: false });
+    await processThermalControlChange(host, control_1.THERMAL_CONTROL_REQUESTED_MODE, {
+        val: mode,
+        ack: false,
+    });
+}
+exports.submitThermalControlFromRuntime = submitThermalControlFromRuntime;
 async function initIntentEngine(host) {
     if (engineActive && subscribedHost === host) {
         return;
@@ -344,6 +411,9 @@ async function initIntentEngine(host) {
             constants_1.IOBROKER_WALLBOX_REQUEST_STATE,
             constants_1.IOBROKER_THERMAL_REQUEST_STATE,
             constants_1.IOBROKER_BATTERY_REQUEST_STATE,
+            control_1.THERMAL_CONTROL_REQUESTED_MODE,
+            control_1.THERMAL_CONTROL_FORCE_TARGET,
+            control_1.THERMAL_CONTROL_FORCE_UNTIL,
         ];
         if (typeof host.subscribeStatesAsync === "function") {
             for (const pattern of requestPatterns) {
@@ -399,6 +469,14 @@ function handleIntentStateChange(namespace, id, state) {
     const foreignIds = (0, config_1.configuredEvccStateIds)(evccCfg);
     if (foreignIds.includes(id)) {
         scheduleEvccRerun(host);
+        return;
+    }
+    const controlSuffixes = [control_1.THERMAL_CONTROL_REQUESTED_MODE, control_1.THERMAL_CONTROL_FORCE_TARGET, control_1.THERMAL_CONTROL_FORCE_UNTIL];
+    for (const suffix of controlSuffixes) {
+        if (id === `${namespace}.${suffix}`) {
+            void processThermalControlChange(host, id, state).catch((e) => host.log.warn(`Intent thermal control: ${e}`));
+            return;
+        }
     }
 }
 exports.handleIntentStateChange = handleIntentStateChange;

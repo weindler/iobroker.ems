@@ -946,6 +946,338 @@
 					"lg": 3,
 					"xl": 3
 				},
+				"hIhThermalPlanning": {
+					"type": "header",
+					"size": 2,
+					"text": "Temperatur und Planungsfenster",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ih_planning_min_temp_c": {
+					"type": "number",
+					"label": "Planungsuntergrenze (°C)",
+					"min": 0,
+					"max": 110,
+					"default": 48,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ih_planning_max_temp_c": {
+					"type": "number",
+					"label": "Planungsobergrenze / Force-Default (°C)",
+					"min": 1,
+					"max": 110,
+					"default": 60,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ih_temperature_hysteresis_k": {
+					"type": "number",
+					"label": "Hysterese (K)",
+					"min": 0,
+					"max": 20,
+					"default": 2,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ih_temperature_max_age_sec": {
+					"type": "number",
+					"label": "Temperatur max. Alter (s)",
+					"min": 30,
+					"max": 3600,
+					"default": 300,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ih_temperature_plausible_min_c": {
+					"type": "number",
+					"label": "Plausibilität min (°C)",
+					"default": 0,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ih_temperature_plausible_max_c": {
+					"type": "number",
+					"label": "Plausibilität max (°C)",
+					"default": 110,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"hIhElectrical": {
+					"type": "header",
+					"size": 2,
+					"text": "Elektrische Ausführung und Leistungsstufen",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ih_phase_count": {
+					"type": "select",
+					"label": "Phasen",
+					"options": [
+						{ "label": "1-phasig", "value": 1 },
+						{ "label": "3-phasig", "value": 3 }
+					],
+					"default": 1,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ih_stage_count": {
+					"type": "select",
+					"label": "Leistungsstufen",
+					"options": [
+						{ "label": "1 Stufe", "value": 1 },
+						{ "label": "2 Stufen", "value": 2 },
+						{ "label": "3 Stufen", "value": 3 }
+					],
+					"default": 1,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ih_force_default_stage": {
+					"type": "number",
+					"label": "Force-Standardstufe",
+					"min": 1,
+					"max": 3,
+					"default": 1,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ih_actual_power_state": {
+					"type": "objectId",
+					"label": "Ist-Leistung gesamt (W, optional)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"hIhStage1": {
+					"type": "header",
+					"size": 3,
+					"text": "Stufe 1 (set_enabled Migration)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ih_stage_1_enabled": {
+					"type": "checkbox",
+					"label": "Stufe 1 aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ih_stage_1_name": {
+					"type": "text",
+					"label": "Name",
+					"default": "Stufe 1",
+					"xs": 12,
+					"sm": 8,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ih_stage_1_nominal_power_w": {
+					"type": "number",
+					"label": "Nennleistung (W)",
+					"min": 0,
+					"default": 0,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ih_stage_1_set_state": {
+					"type": "objectId",
+					"label": "Schaltausgang (leer = set_enabled)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"ih_stage_1_feedback_state": {
+					"type": "objectId",
+					"label": "Rückmeldung (optional)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"hIhRuntimeLimits": {
+					"type": "header",
+					"size": 2,
+					"text": "Laufzeit und Schaltpausen",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ih_minimum_runtime_sec": {
+					"type": "number",
+					"label": "Mindestlaufzeit (s)",
+					"min": 0,
+					"default": 60,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ih_minimum_pause_sec": {
+					"type": "number",
+					"label": "Mindestpause (s)",
+					"min": 0,
+					"default": 60,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"hIhPowerCheck": {
+					"type": "header",
+					"size": 2,
+					"text": "Leistungsprüfung",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ih_power_on_threshold_w": {
+					"type": "number",
+					"label": "Ein-Schwelle (W)",
+					"default": 50,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ih_power_off_threshold_w": {
+					"type": "number",
+					"label": "Aus-Schwelle (W)",
+					"default": 20,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ih_power_tolerance_pct": {
+					"type": "number",
+					"label": "Toleranz (%)",
+					"default": 20,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ih_switch_on_check_delay_sec": {
+					"type": "number",
+					"label": "Prüfverzögerung Ein (s)",
+					"default": 30,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ih_switch_off_check_delay_sec": {
+					"type": "number",
+					"label": "Prüfverzögerung Aus (s)",
+					"default": 30,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ih_power_mismatch_duration_sec": {
+					"type": "number",
+					"label": "Mismatch-Dauer (s)",
+					"default": 60,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hIhRelayChatter": {
+					"type": "header",
+					"size": 2,
+					"text": "Relaisüberwachung",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ih_relay_chatter_window_sec": {
+					"type": "number",
+					"label": "Flatter-Fenster (s)",
+					"default": 300,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ih_relay_chatter_max_changes": {
+					"type": "number",
+					"label": "Max. Wechsel im Fenster",
+					"default": 6,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
 				"hIhFailsafe": {
 					"type": "header",
 					"size": 2,

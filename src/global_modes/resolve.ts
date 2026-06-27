@@ -36,6 +36,46 @@ export interface ResolveGlobalModesInput {
 	hasPersistedRequested: boolean;
 }
 
+export type RequestedDecisionReason = "first_init" | "admin_changed" | "keep";
+
+export interface RequestedWriteDecisionInput {
+	/** Aktueller Wert von global_modes.requested (Roh). */
+	currentRequestedRaw: unknown;
+	/** Normalisierter Admin-Default aus der Konfiguration. */
+	adminDefault: GlobalMode;
+	/** Zuletzt gemerkter Admin-Default (global_modes.admin_default) oder null. */
+	lastAdminSeen: string | null;
+}
+
+export interface RequestedWriteDecision {
+	/** Wenn gesetzt: dieser Wert soll nach global_modes.requested geschrieben werden. */
+	writeRequested: GlobalMode | null;
+	reason: RequestedDecisionReason;
+}
+
+/**
+ * Entscheidet, ob global_modes.requested überschrieben werden soll.
+ * - Erstinitialisierung (kein Laufzeitwert): Admin-Default übernehmen.
+ * - Admin-Default wurde aktiv geändert (≠ zuletzt gemerkt): als explizite
+ *   Benutzerwahl übernehmen.
+ * - Sonst: bestehenden Laufzeitwert beibehalten (z. B. Datenpunkt-Steuerung).
+ *
+ * Ein bloßer Adapter-Neustart ohne geänderten Admin-Default überschreibt den
+ * Laufzeitwert nicht.
+ */
+export function decideRequestedWrite(input: RequestedWriteDecisionInput): RequestedWriteDecision {
+	const cur = input.currentRequestedRaw;
+	const hasRequested = cur !== undefined && cur !== null && String(cur).trim() !== "";
+
+	if (!hasRequested) {
+		return { writeRequested: input.adminDefault, reason: "first_init" };
+	}
+	if (input.lastAdminSeen !== null && input.lastAdminSeen !== input.adminDefault) {
+		return { writeRequested: input.adminDefault, reason: "admin_changed" };
+	}
+	return { writeRequested: null, reason: "keep" };
+}
+
 export function resolveGlobalModes(input: ResolveGlobalModesInput): GlobalModeResolution {
 	const issues: PolicyIssue[] = [];
 	const validated = validateRequestedMode(input.requestedRaw);

@@ -64,3 +64,37 @@ const config_js_1 = require("./config.js");
         strict_1.default.ok(v.issue);
     });
 });
+(0, node_test_1.describe)("global modes admin-default decision", () => {
+    (0, node_test_1.it)("first init without runtime value adopts admin default", () => {
+        const d = (0, resolve_js_1.decideRequestedWrite)({ currentRequestedRaw: "", adminDefault: "eco", lastAdminSeen: null });
+        strict_1.default.equal(d.writeRequested, "eco");
+        strict_1.default.equal(d.reason, "first_init");
+    });
+    (0, node_test_1.it)("keeps runtime value on plain restart (admin default unchanged)", () => {
+        const d = (0, resolve_js_1.decideRequestedWrite)({
+            currentRequestedRaw: "forced",
+            adminDefault: "balanced",
+            lastAdminSeen: "balanced",
+        });
+        strict_1.default.equal(d.writeRequested, null);
+        strict_1.default.equal(d.reason, "keep");
+    });
+    (0, node_test_1.it)("applies admin default when it actively changed", () => {
+        const d = (0, resolve_js_1.decideRequestedWrite)({
+            currentRequestedRaw: "balanced",
+            adminDefault: "eco",
+            lastAdminSeen: "balanced",
+        });
+        strict_1.default.equal(d.writeRequested, "eco");
+        strict_1.default.equal(d.reason, "admin_changed");
+    });
+    (0, node_test_1.it)("does not clobber existing runtime value when no admin default was seen yet", () => {
+        const d = (0, resolve_js_1.decideRequestedWrite)({
+            currentRequestedRaw: "comfort",
+            adminDefault: "balanced",
+            lastAdminSeen: null,
+        });
+        strict_1.default.equal(d.writeRequested, null);
+        strict_1.default.equal(d.reason, "keep");
+    });
+});

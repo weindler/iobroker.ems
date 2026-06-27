@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveGlobalModes = exports.validateRequestedMode = void 0;
+exports.resolveGlobalModes = exports.decideRequestedWrite = exports.validateRequestedMode = void 0;
 const node_crypto_1 = require("node:crypto");
 const normalize_1 = require("../policy/core/normalize");
 const hash_1 = require("../policy/core/hash");
@@ -29,6 +29,28 @@ function validateRequestedMode(raw) {
     };
 }
 exports.validateRequestedMode = validateRequestedMode;
+/**
+ * Entscheidet, ob global_modes.requested überschrieben werden soll.
+ * - Erstinitialisierung (kein Laufzeitwert): Admin-Default übernehmen.
+ * - Admin-Default wurde aktiv geändert (≠ zuletzt gemerkt): als explizite
+ *   Benutzerwahl übernehmen.
+ * - Sonst: bestehenden Laufzeitwert beibehalten (z. B. Datenpunkt-Steuerung).
+ *
+ * Ein bloßer Adapter-Neustart ohne geänderten Admin-Default überschreibt den
+ * Laufzeitwert nicht.
+ */
+function decideRequestedWrite(input) {
+    const cur = input.currentRequestedRaw;
+    const hasRequested = cur !== undefined && cur !== null && String(cur).trim() !== "";
+    if (!hasRequested) {
+        return { writeRequested: input.adminDefault, reason: "first_init" };
+    }
+    if (input.lastAdminSeen !== null && input.lastAdminSeen !== input.adminDefault) {
+        return { writeRequested: input.adminDefault, reason: "admin_changed" };
+    }
+    return { writeRequested: null, reason: "keep" };
+}
+exports.decideRequestedWrite = decideRequestedWrite;
 function resolveGlobalModes(input) {
     const issues = [];
     const validated = validateRequestedMode(input.requestedRaw);

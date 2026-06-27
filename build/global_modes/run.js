@@ -13,16 +13,29 @@ async function runGlobalModes(host) {
     const adminDefault = (0, config_1.globalModeDefaultFromConfig)(host.config);
     await (0, ensure_states_1.ensureGlobalModesStates)(host, adminDefault);
     const requestedSt = await host.getStateAsync("global_modes.requested");
-    const hasPersistedRequested = requestedSt?.val !== undefined && requestedSt.val !== null && String(requestedSt.val).trim() !== "";
+    const adminSeenSt = await host.getStateAsync("global_modes.admin_default");
+    const lastAdminSeen = adminSeenSt?.val != null && String(adminSeenSt.val).trim() !== "" ? String(adminSeenSt.val).trim() : null;
+    const decision = (0, resolve_1.decideRequestedWrite)({
+        currentRequestedRaw: requestedSt?.val,
+        adminDefault,
+        lastAdminSeen,
+    });
     let requestedRaw = requestedSt?.val;
-    if (!hasPersistedRequested) {
-        await host.setStateAsync("global_modes.requested", { val: adminDefault, ack: true });
-        requestedRaw = adminDefault;
+    if (decision.writeRequested !== null) {
+        await host.setStateAsync("global_modes.requested", { val: decision.writeRequested, ack: true });
+        requestedRaw = decision.writeRequested;
+        if (decision.reason === "admin_changed") {
+            host.log.info(`Global Mode set from admin default: ${lastAdminSeen ?? "?"} -> ${decision.writeRequested}`);
+        }
+    }
+    // Admin-Default merken (für Erkennung künftiger Admin-Änderungen).
+    if (lastAdminSeen !== adminDefault) {
+        await host.setStateAsync("global_modes.admin_default", { val: adminDefault, ack: true });
     }
     const resolution = (0, resolve_1.resolveGlobalModes)({
         requestedRaw,
         adminDefault,
-        hasPersistedRequested,
+        hasPersistedRequested: requestedRaw != null && String(requestedRaw).trim() !== "",
     });
     const ts = new Date().toISOString();
     const issuesJson = JSON.stringify(resolution.issues);

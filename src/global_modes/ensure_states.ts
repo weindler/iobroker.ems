@@ -42,6 +42,7 @@ export async function ensureGlobalModesStates(host: StateHost, adminDefault: str
 
 	const defs: StateDef[] = [
 		strState("global_modes.requested", "Global Mode (Benutzerwunsch)", adminDefault, true),
+		strState("global_modes.admin_default", "Global Mode Admin-Default (zuletzt gesehen)"),
 		strState("global_modes.active", "Global Mode aktiv", adminDefault),
 		strState("global_modes.available_json", "Global Modes verfügbar (JSON)", "[]"),
 		strState("global_modes.effective_profile_json", "Global Mode Profil (JSON)", "{}"),

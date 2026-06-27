@@ -109,7 +109,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Laufzeit-State global_modes.requested hat Vorrang. Admin-Default nur bei fehlendem Benutzerwert. Ausgabe: global_modes.* und policy.* (read-only, keine Geräteaktion)."
+					"text": "Eine Änderung hier wird beim Speichern (Adapter-Neustart) als bewusste Wahl übernommen und nach global_modes.requested geschrieben. Alternativ kann global_modes.requested direkt im Objektbaum gesetzt werden (wirkt sofort). Ausgabe: global_modes.* und policy.* (read-only, keine Geräteaktion)."
 				}
 			}
 		},

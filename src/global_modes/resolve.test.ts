@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { GLOBAL_MODES, DEFAULT_GLOBAL_MODE } from "./constants.js";
-import { resolveGlobalModes, validateRequestedMode } from "./resolve.js";
+import { decideRequestedWrite, resolveGlobalModes, validateRequestedMode } from "./resolve.js";
 import { globalModeDefaultFromConfig } from "./config.js";
 
 describe("global modes resolve", () => {
@@ -64,5 +64,43 @@ describe("global modes resolve", () => {
 		const v = validateRequestedMode("xyz");
 		assert.equal(v.mode, null);
 		assert.ok(v.issue);
+	});
+});
+
+describe("global modes admin-default decision", () => {
+	it("first init without runtime value adopts admin default", () => {
+		const d = decideRequestedWrite({ currentRequestedRaw: "", adminDefault: "eco", lastAdminSeen: null });
+		assert.equal(d.writeRequested, "eco");
+		assert.equal(d.reason, "first_init");
+	});
+
+	it("keeps runtime value on plain restart (admin default unchanged)", () => {
+		const d = decideRequestedWrite({
+			currentRequestedRaw: "forced",
+			adminDefault: "balanced",
+			lastAdminSeen: "balanced",
+		});
+		assert.equal(d.writeRequested, null);
+		assert.equal(d.reason, "keep");
+	});
+
+	it("applies admin default when it actively changed", () => {
+		const d = decideRequestedWrite({
+			currentRequestedRaw: "balanced",
+			adminDefault: "eco",
+			lastAdminSeen: "balanced",
+		});
+		assert.equal(d.writeRequested, "eco");
+		assert.equal(d.reason, "admin_changed");
+	});
+
+	it("does not clobber existing runtime value when no admin default was seen yet", () => {
+		const d = decideRequestedWrite({
+			currentRequestedRaw: "comfort",
+			adminDefault: "balanced",
+			lastAdminSeen: null,
+		});
+		assert.equal(d.writeRequested, null);
+		assert.equal(d.reason, "keep");
 	});
 });

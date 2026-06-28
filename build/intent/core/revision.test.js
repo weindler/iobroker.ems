@@ -33,6 +33,17 @@ function baseIntent(now) {
         const b = { ...baseIntent(now), charge_strategy: { ...a.charge_strategy, observed_at: "2026-06-28T00:00:00Z" } };
         strict_1.default.equal((0, revision_js_1.semanticIntentChanged)(a, b), false);
     });
+    (0, node_test_1.it)("external plan observed_at change alone does not bump revision (no per-poll flapping)", () => {
+        const now = new Date("2026-06-27T10:00:00Z");
+        const prev = baseIntent(now);
+        const next = baseIntent(now);
+        next.external_planner_plan = {
+            ...next.external_planner_plan,
+            observed_at: "2026-06-28T08:00:00Z",
+        };
+        strict_1.default.equal((0, revision_js_1.semanticIntentChanged)(prev, next), false);
+        strict_1.default.equal((0, revision_js_1.nextRevision)(prev, next), prev.revision);
+    });
     (0, node_test_1.it)("value change bumps revision", () => {
         const now = new Date("2026-06-27T10:00:00Z");
         const prev = baseIntent(now);

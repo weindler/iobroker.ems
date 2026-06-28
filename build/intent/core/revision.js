@@ -38,13 +38,24 @@ function semanticIntentPayload(intent) {
         charge_strategy: fieldForHash(intent.charge_strategy),
         target_soc_pct: fieldForHash(intent.target_soc_pct),
         deadline: fieldForHash(intent.deadline),
-        external_planner_plan: intent.external_planner_plan,
+        external_planner_plan: externalPlanForHash(intent.external_planner_plan),
         manual_override: manualOverrideForHash(intent.manual_override),
         intent_state: intent.intent_state,
         source_summary: [...intent.source_summary].sort(),
     };
 }
 exports.semanticIntentPayload = semanticIntentPayload;
+/** Plan ohne das pro Lauf neu gesetzte `observed_at` (sonst Revision-Flapping bei jedem Poll). */
+function externalPlanForHash(plan) {
+    return {
+        state: plan.state,
+        plan_type: plan.plan_type,
+        target_soc_pct: plan.target_soc_pct,
+        target_energy_kwh: plan.target_energy_kwh,
+        ready_at: plan.ready_at,
+        source: plan.source,
+    };
+}
 function manualOverrideForHash(mo) {
     return {
         active: mo.active,

@@ -31,6 +31,17 @@ describe("intent revision", () => {
 		const b = { ...baseIntent(now), charge_strategy: { ...a.charge_strategy, observed_at: "2026-06-28T00:00:00Z" } };
 		assert.equal(semanticIntentChanged(a, b), false);
 	});
+	it("external plan observed_at change alone does not bump revision (no per-poll flapping)", () => {
+		const now = new Date("2026-06-27T10:00:00Z");
+		const prev = baseIntent(now);
+		const next = baseIntent(now);
+		next.external_planner_plan = {
+			...next.external_planner_plan,
+			observed_at: "2026-06-28T08:00:00Z",
+		};
+		assert.equal(semanticIntentChanged(prev, next), false);
+		assert.equal(nextRevision(prev, next), prev.revision);
+	});
 	it("value change bumps revision", () => {
 		const now = new Date("2026-06-27T10:00:00Z");
 		const prev = baseIntent(now);

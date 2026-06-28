@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.59",
+		"version": "0.1.60",
 		"news": {
+			"0.1.60": {
+				"en": "Fix: wallbox user intent no longer bumps its revision on every poll — the volatile external-plan observed_at timestamp is excluded from the semantic hash, stopping the ~20s revision log spam when nothing changed",
+				"de": "Fix: Wallbox-User-Intent zählt die Revision nicht mehr bei jedem Poll hoch — der ständig neu gesetzte external_plan observed_at-Zeitstempel fließt nicht mehr in den semantischen Hash ein, dadurch kein ~20s-Revision-Log-Spam ohne echte Änderung"
+			},
 			"0.1.59": {
 				"en": "Fix: Thermal runtime learning now treats learned cooling segments/Newton model as sufficient data even without full floor-crossing cycles, avoiding misleading insufficient-cycle warnings",
 				"de": "Fix: Thermal-Runtime-Learning wertet gelernte Abkühlsegmente/Newton-Modell jetzt auch ohne volle Untergrenzen-Zyklen als ausreichende Datenbasis und vermeidet irreführende Zyklen-Warnungen"

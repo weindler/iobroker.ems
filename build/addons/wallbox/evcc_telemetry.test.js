@@ -54,6 +54,28 @@ function mockHost(states) {
         strict_1.default.equal(snap.charging.value, true);
         strict_1.default.equal(snap.charge_power_w.value, 3500);
     });
+    (0, node_test_1.it)("converts EVCC session energy from Wh to kWh", async () => {
+        const snap = await (0, evcc_telemetry_1.readEvccTelemetrySnapshot)(mockHost({
+            "evcc.0.status.sessionEnergy": 8200,
+        }), {
+            enabledStateId: "",
+            connectedStateId: "",
+            chargingStateId: "",
+            chargePowerWStateId: "",
+            sessionEnergyKwhStateId: "evcc.0.status.sessionEnergy",
+            vehicleSocStateId: "",
+            planActiveStateId: "",
+            planSocStateId: "",
+            planTimeStateId: "",
+            effectivePlanTimeStateId: "",
+            activePhasesStateId: "",
+            configuredPhasesStateId: "",
+            minCurrentAStateId: "",
+            maxCurrentAStateId: "",
+        }, now);
+        strict_1.default.equal(snap.session_energy_kwh.status, "valid");
+        strict_1.default.equal(snap.session_energy_kwh.value, 8.2);
+    });
     (0, node_test_1.it)("reads effectivePlanTime as ISO string", async () => {
         const snap = await (0, evcc_telemetry_1.readEvccTelemetrySnapshot)(mockHost({
             "evcc.0.status.effectivePlanTime": 1_751_107_200,

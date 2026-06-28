@@ -45,7 +45,7 @@ const ROLE_NORMALIZER: Record<
 	evcc_connected: normalizeOptionalBool,
 	evcc_charging: normalizeOptionalBool,
 	evcc_charge_power_w: normalizeOptionalNumber,
-	evcc_session_energy_kwh: normalizeOptionalNumber,
+	evcc_session_energy_kwh: normalizeSessionEnergyKwh,
 	evcc_vehicle_soc: normalizeOptionalSoc,
 	evcc_plan_active: normalizeOptionalBool,
 	evcc_plan_soc: normalizeOptionalSoc,
@@ -56,6 +56,15 @@ const ROLE_NORMALIZER: Record<
 	evcc_min_current_a: normalizeOptionalNumber,
 	evcc_max_current_a: normalizeOptionalNumber,
 };
+
+/** EVCC liefert die Sitzungsenergie in Wh; EMS-Light speichert kWh. */
+function normalizeSessionEnergyKwh(raw: unknown): TelemetryField<number> {
+	const wh = normalizeOptionalNumber(raw);
+	if (wh.status !== "valid" || wh.value === null) {
+		return wh;
+	}
+	return { value: wh.value / 1000, status: "valid", raw };
+}
 
 function normalizePlanTime(raw: unknown): TelemetryField<string> {
 	if (raw === null || raw === undefined || raw === "") {

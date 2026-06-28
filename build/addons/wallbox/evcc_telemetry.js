@@ -8,7 +8,7 @@ const ROLE_NORMALIZER = {
     evcc_connected: normalize_1.normalizeOptionalBool,
     evcc_charging: normalize_1.normalizeOptionalBool,
     evcc_charge_power_w: normalize_1.normalizeOptionalNumber,
-    evcc_session_energy_kwh: normalize_1.normalizeOptionalNumber,
+    evcc_session_energy_kwh: normalizeSessionEnergyKwh,
     evcc_vehicle_soc: normalize_1.normalizeOptionalSoc,
     evcc_plan_active: normalize_1.normalizeOptionalBool,
     evcc_plan_soc: normalize_1.normalizeOptionalSoc,
@@ -19,6 +19,14 @@ const ROLE_NORMALIZER = {
     evcc_min_current_a: normalize_1.normalizeOptionalNumber,
     evcc_max_current_a: normalize_1.normalizeOptionalNumber,
 };
+/** EVCC liefert die Sitzungsenergie in Wh; EMS-Light speichert kWh. */
+function normalizeSessionEnergyKwh(raw) {
+    const wh = (0, normalize_1.normalizeOptionalNumber)(raw);
+    if (wh.status !== "valid" || wh.value === null) {
+        return wh;
+    }
+    return { value: wh.value / 1000, status: "valid", raw };
+}
 function normalizePlanTime(raw) {
     if (raw === null || raw === undefined || raw === "") {
         return (0, normalize_1.missingField)();

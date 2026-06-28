@@ -55,6 +55,33 @@ describe("wallbox evcc telemetry", () => {
 		assert.equal(snap.charge_power_w.value, 3500);
 	});
 
+	it("converts EVCC session energy from Wh to kWh", async () => {
+		const snap = await readEvccTelemetrySnapshot(
+			mockHost({
+				"evcc.0.status.sessionEnergy": 8200,
+			}),
+			{
+				enabledStateId: "",
+				connectedStateId: "",
+				chargingStateId: "",
+				chargePowerWStateId: "",
+				sessionEnergyKwhStateId: "evcc.0.status.sessionEnergy",
+				vehicleSocStateId: "",
+				planActiveStateId: "",
+				planSocStateId: "",
+				planTimeStateId: "",
+				effectivePlanTimeStateId: "",
+				activePhasesStateId: "",
+				configuredPhasesStateId: "",
+				minCurrentAStateId: "",
+				maxCurrentAStateId: "",
+			},
+			now,
+		);
+		assert.equal(snap.session_energy_kwh.status, "valid");
+		assert.equal(snap.session_energy_kwh.value, 8.2);
+	});
+
 	it("reads effectivePlanTime as ISO string", async () => {
 		const snap = await readEvccTelemetrySnapshot(
 			mockHost({

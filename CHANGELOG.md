@@ -6,6 +6,18 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.66] – 2026-06-28
+
+### Fixed
+
+- Adapter-Start ist robust: Jeder Modul-Init (Wallbox, Batterie, Heizstab, Tarif, Learning) läuft isoliert — ein Fehler in einem Add-on blockiert nicht mehr das Anlegen des Learning-Objektbaums oder anderer Module.
+
+### Added
+
+- Backup-Spiegel der Learning-Zusammenfassungen als JSON-States unter `learning.persistence.*` (in ioBroker-Backups enthalten). Fehlt die Persist-Datei im Instanzordner (z. B. nach Adapter-Neuanlage), wird sie beim Start aus dem Spiegel-State wiederhergestellt.
+
+---
+
 ## [0.1.65] – 2026-06-28
 
 ### Changed

@@ -63,35 +63,45 @@ class Ems extends utils.Adapter {
         }
         msg.callback?.((0, mapping_config_1.goeWallboxTemplateFlat)());
     }
-    async onReady() {
+    /**
+     * Init-Schritt isoliert ausführen: Ein Fehler in einem Modul (z. B. einem
+     * Add-on) darf nie die übrigen Module oder das Learning blockieren.
+     */
+    async step(label, fn) {
         try {
-            await (0, execution_mode_1.ensureChannelTree)(this.setObjectNotExistsAsync.bind(this));
-            await this.ensureBaseStates();
-            await (0, execution_mode_1.ensureGlobalExecutionStates)(this);
-            await this.ensureAddonStates();
-            await (0, governance_1.ensureAddonGovernanceStates)(this);
-            const adapterConfig = this.config && typeof this.config === "object" ? this.config : {};
-            await (0, governance_1.syncAddonGovernanceFromConfig)(this, adapterConfig);
-            await (0, execution_mode_1.syncExecutionModesFromConfig)(this, adapterConfig);
-            await this.ensureWallboxMapping();
-            await (0, status_wallbox_1.ensureWallboxStatusStates)(this);
-            await (0, wallbox_1.initWallboxModule)(this);
-            await (0, battery_1.initBatteryModule)(this);
-            await (0, immersion_heater_1.initImmersionHeaterModule)(this);
-            await (0, dynamic_tariff_1.initDynamicTariffModule)(this);
-            (0, failsafe_runner_1.startFailsafeRunner)(this);
-            await (0, ems_light_1.initEmsLightPhase1)(this);
-            await this.subscribeStatesAsync(states_1.STATE.command.inbox);
-            this.log.info("EMS adapter v0.1.2 ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
+            await fn();
+        }
+        catch (e) {
+            this.log.error(`init step '${label}' failed: ${e instanceof Error ? (e.stack ?? e.message) : e}`);
+        }
+    }
+    async onReady() {
+        const adapterConfig = this.config && typeof this.config === "object" ? this.config : {};
+        await this.step("channel tree", () => (0, execution_mode_1.ensureChannelTree)(this.setObjectNotExistsAsync.bind(this)));
+        await this.step("base states", () => this.ensureBaseStates());
+        await this.step("global execution states", () => (0, execution_mode_1.ensureGlobalExecutionStates)(this));
+        await this.step("addon states", () => this.ensureAddonStates());
+        await this.step("governance states", () => (0, governance_1.ensureAddonGovernanceStates)(this));
+        await this.step("sync governance", () => (0, governance_1.syncAddonGovernanceFromConfig)(this, adapterConfig));
+        await this.step("sync execution modes", () => (0, execution_mode_1.syncExecutionModesFromConfig)(this, adapterConfig));
+        await this.step("wallbox mapping", () => this.ensureWallboxMapping());
+        await this.step("wallbox status states", () => (0, status_wallbox_1.ensureWallboxStatusStates)(this));
+        await this.step("wallbox module", () => (0, wallbox_1.initWallboxModule)(this));
+        await this.step("battery module", () => (0, battery_1.initBatteryModule)(this));
+        await this.step("immersion heater module", () => (0, immersion_heater_1.initImmersionHeaterModule)(this));
+        await this.step("dynamic tariff module", () => (0, dynamic_tariff_1.initDynamicTariffModule)(this));
+        await this.step("failsafe runner", async () => (0, failsafe_runner_1.startFailsafeRunner)(this));
+        // EMS-Light/Learning explizit isoliert: muss unabhängig von Add-on-Fehlern laufen.
+        await this.step("ems-light phase 1 (learning)", () => (0, ems_light_1.initEmsLightPhase1)(this));
+        await this.step("subscribe command inbox", () => this.subscribeStatesAsync(states_1.STATE.command.inbox));
+        this.log.info("EMS adapter ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
+        await this.step("process pending inbox", async () => {
             const inbox = await this.getStateAsync(states_1.STATE.command.inbox);
             if (inbox && !inbox.ack && inbox.val != null) {
                 this.log.info("Processing pending command.inbox on start");
                 await this.processInbox(inbox.val, inbox.ack);
             }
-        }
-        catch (e) {
-            this.log.error(`onReady failed: ${e}`);
-        }
+        });
     }
     onUnload(callback) {
         (0, ems_light_1.stopEmsLightPhase1)();

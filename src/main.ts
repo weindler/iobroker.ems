@@ -64,38 +64,49 @@ class Ems extends utils.Adapter {
 		msg.callback?.(goeWallboxTemplateFlat());
 	}
 
-	private async onReady(): Promise<void> {
+	/**
+	 * Init-Schritt isoliert ausführen: Ein Fehler in einem Modul (z. B. einem
+	 * Add-on) darf nie die übrigen Module oder das Learning blockieren.
+	 */
+	private async step(label: string, fn: () => Promise<unknown>): Promise<void> {
 		try {
-			await ensureChannelTree(this.setObjectNotExistsAsync.bind(this));
-			await this.ensureBaseStates();
-			await ensureGlobalExecutionStates(this);
-			await this.ensureAddonStates();
-			await ensureAddonGovernanceStates(this);
-			const adapterConfig =
-				this.config && typeof this.config === "object" ? (this.config as Record<string, unknown>) : {};
-			await syncAddonGovernanceFromConfig(this, adapterConfig);
-			await syncExecutionModesFromConfig(this, adapterConfig);
-			await this.ensureWallboxMapping();
-			await ensureWallboxStatusStates(this);
-			await initWallboxModule(this);
-			await initBatteryModule(this);
-			await initImmersionHeaterModule(this);
-			await initDynamicTariffModule(this);
-			startFailsafeRunner(this);
-			await initEmsLightPhase1(this);
-			await this.subscribeStatesAsync(STATE.command.inbox);
-			this.log.info(
-				"EMS adapter v0.1.2 ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)",
-			);
+			await fn();
+		} catch (e) {
+			this.log.error(`init step '${label}' failed: ${e instanceof Error ? (e.stack ?? e.message) : e}`);
+		}
+	}
 
+	private async onReady(): Promise<void> {
+		const adapterConfig =
+			this.config && typeof this.config === "object" ? (this.config as Record<string, unknown>) : {};
+
+		await this.step("channel tree", () => ensureChannelTree(this.setObjectNotExistsAsync.bind(this)));
+		await this.step("base states", () => this.ensureBaseStates());
+		await this.step("global execution states", () => ensureGlobalExecutionStates(this));
+		await this.step("addon states", () => this.ensureAddonStates());
+		await this.step("governance states", () => ensureAddonGovernanceStates(this));
+		await this.step("sync governance", () => syncAddonGovernanceFromConfig(this, adapterConfig));
+		await this.step("sync execution modes", () => syncExecutionModesFromConfig(this, adapterConfig));
+		await this.step("wallbox mapping", () => this.ensureWallboxMapping());
+		await this.step("wallbox status states", () => ensureWallboxStatusStates(this));
+		await this.step("wallbox module", () => initWallboxModule(this));
+		await this.step("battery module", () => initBatteryModule(this));
+		await this.step("immersion heater module", () => initImmersionHeaterModule(this));
+		await this.step("dynamic tariff module", () => initDynamicTariffModule(this));
+		await this.step("failsafe runner", async () => startFailsafeRunner(this));
+		// EMS-Light/Learning explizit isoliert: muss unabhängig von Add-on-Fehlern laufen.
+		await this.step("ems-light phase 1 (learning)", () => initEmsLightPhase1(this));
+		await this.step("subscribe command inbox", () => this.subscribeStatesAsync(STATE.command.inbox));
+
+		this.log.info("EMS adapter ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
+
+		await this.step("process pending inbox", async () => {
 			const inbox = await this.getStateAsync(STATE.command.inbox);
 			if (inbox && !inbox.ack && inbox.val != null) {
 				this.log.info("Processing pending command.inbox on start");
 				await this.processInbox(inbox.val, inbox.ack);
 			}
-		} catch (e) {
-			this.log.error(`onReady failed: ${e}`);
-		}
+		});
 	}
 
 	private onUnload(callback: () => void): void {

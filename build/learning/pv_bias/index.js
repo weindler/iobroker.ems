@@ -12,6 +12,7 @@ const battery_runtime_1 = require("../battery_runtime");
 const pv_horizon_1 = require("../pv_horizon");
 const data_dir_1 = require("../data_dir");
 const history_bridge_1 = require("../history_bridge");
+const persistence_mirror_1 = require("../persistence_mirror");
 let pvBiasTimer = null;
 async function runLearningTick(host) {
     await (0, run_1.runPvBiasLearning)(host);
@@ -22,6 +23,7 @@ async function runLearningTick(host) {
     await (0, thermal_runtime_1.runThermalRuntimeLearning)(host);
     await (0, battery_runtime_1.runBatteryRuntimeLearning)(host);
     await (0, price_forecast_1.runPriceForecastLearning)(host);
+    await (0, persistence_mirror_1.mirrorLearningPersistenceToStates)(host);
 }
 async function initPvBiasLearning(adapter) {
     const host = (0, history_bridge_1.withHistoryBridge)(adapter, (0, data_dir_1.withLearningDataPath)(adapter, adapter));
@@ -32,6 +34,9 @@ async function initPvBiasLearning(adapter) {
     await (0, house_load_1.ensureHouseLoadLearningStates)(host);
     await (0, thermal_runtime_1.ensureThermalRuntimeLearningStates)(host);
     await (0, battery_runtime_1.ensureBatteryRuntimeLearningStates)(host);
+    await (0, persistence_mirror_1.ensureLearningPersistenceStates)(host);
+    // Vor dem ersten Lauf: fehlende Persist-Dateien aus den Backup-States wiederherstellen.
+    await (0, persistence_mirror_1.restoreLearningPersistenceFromStates)(host);
     const cfg = (0, config_1.pvBiasConfigFromAdapter)(adapter.config);
     stopPvBiasLearning();
     void runLearningTick(host).catch((e) => {

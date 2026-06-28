@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.65",
+		"version": "0.1.66",
 		"news": {
 			"0.1.65": {
 				"en": "Rebuilt battery integration: profile-based architecture (generic_readonly, sonnen_em) with full read-only, dryrun and live support sharing one FSM; normalized telemetry/capacity/limits/capabilities; neutral battery intent; central gated write function; feedback check; ownership protection; safe restore; fault/lockout; grid balance via the same gates; battery runtime learning and central governance preserved; global mode stays dryrun, no real device writes",

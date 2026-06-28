@@ -37,7 +37,7 @@ EMS-Light muss jederzeit ohne KI vollständig und sicher arbeiten. Die KI-Freiga
 Auf einem ioBroker-Host:
 
 ```bash
-iobroker url install github:weindler/iobroker.ems#v0.1.65
+iobroker url install github:weindler/iobroker.ems#v0.1.66
 ```
 
 Oder aus Git-Checkout:

@@ -9,6 +9,12 @@ import { ensureBatteryRuntimeLearningStates, runBatteryRuntimeLearning } from ".
 import { ensurePvHorizonLearningStates, runPvHorizon } from "../pv_horizon";
 import { withLearningDataPath } from "../data_dir";
 import { withHistoryBridge } from "../history_bridge";
+import {
+	ensureLearningPersistenceStates,
+	mirrorLearningPersistenceToStates,
+	restoreLearningPersistenceFromStates,
+	type PersistenceMirrorHost,
+} from "../persistence_mirror";
 import type { StateHost } from "../../ems_light/state_util";
 
 let pvBiasTimer: NodeJS.Timeout | null = null;
@@ -22,6 +28,7 @@ async function runLearningTick(host: PvBiasRunHost & StateHost): Promise<void> {
 	await runThermalRuntimeLearning(host);
 	await runBatteryRuntimeLearning(host);
 	await runPriceForecastLearning(host);
+	await mirrorLearningPersistenceToStates(host as unknown as PersistenceMirrorHost);
 }
 
 export async function initPvBiasLearning(adapter: ioBroker.Adapter): Promise<void> {
@@ -36,6 +43,9 @@ export async function initPvBiasLearning(adapter: ioBroker.Adapter): Promise<voi
 	await ensureHouseLoadLearningStates(host);
 	await ensureThermalRuntimeLearningStates(host);
 	await ensureBatteryRuntimeLearningStates(host);
+	await ensureLearningPersistenceStates(host as unknown as PersistenceMirrorHost);
+	// Vor dem ersten Lauf: fehlende Persist-Dateien aus den Backup-States wiederherstellen.
+	await restoreLearningPersistenceFromStates(host as unknown as PersistenceMirrorHost);
 
 	const cfg = pvBiasConfigFromAdapter(adapter.config);
 	stopPvBiasLearning();

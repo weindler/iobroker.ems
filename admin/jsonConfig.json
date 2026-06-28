@@ -110,6 +110,153 @@
 					"lg": 12,
 					"xl": 12,
 					"text": "Eine Änderung hier wird beim Speichern (Adapter-Neustart) als bewusste Wahl übernommen und nach global_modes.requested geschrieben. Alternativ kann global_modes.requested direkt im Objektbaum gesetzt werden (wirkt sofort). Ausgabe: global_modes.* und policy.* (read-only, keine Geräteaktion)."
+				},
+				"hAddonGovernance": {
+					"type": "header",
+					"size": 2,
+					"text": "Add-on-Steuerung",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"addonGovernanceIntro": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "EMS-Light funktioniert vollständig ohne KI. Für jedes Add-on kann getrennt festgelegt werden, ob es vom EMS gesteuert und später durch KI optimiert werden darf."
+				},
+				"hGovWallbox": {
+					"type": "header",
+					"size": 3,
+					"text": "Wallbox",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"wallbox_enabled": {
+					"type": "checkbox",
+					"label": "Aktiv",
+					"default": true,
+					"help": "Erlaubt Policies, Planung und Steuerung dieses Add-ons. Messwerte und Learning dürfen auch bei deaktivierter Steuerung weiterlaufen.",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"wallbox_ai_optimization_allowed": {
+					"type": "checkbox",
+					"label": "KI-Optimierung erlaubt",
+					"default": false,
+					"help": "Erlaubt einer späteren KI, den Fahrplan dieses Add-ons innerhalb aller Policies und Sicherheitsgrenzen zu optimieren. Ohne Freigabe arbeitet das Add-on weiterhin vollständig deterministisch.",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hGovImmersion": {
+					"type": "header",
+					"size": 3,
+					"text": "Heizstab",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"immersion_heater_enabled": {
+					"type": "checkbox",
+					"label": "Aktiv",
+					"default": true,
+					"help": "Erlaubt Policies, Planung und Steuerung dieses Add-ons. Messwerte und Learning dürfen auch bei deaktivierter Steuerung weiterlaufen.",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"immersion_heater_ai_optimization_allowed": {
+					"type": "checkbox",
+					"label": "KI-Optimierung erlaubt",
+					"default": false,
+					"help": "Erlaubt einer späteren KI, den Fahrplan dieses Add-ons innerhalb aller Policies und Sicherheitsgrenzen zu optimieren. Ohne Freigabe arbeitet das Add-on weiterhin vollständig deterministisch.",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hGovBattery": {
+					"type": "header",
+					"size": 3,
+					"text": "Batterie",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"battery_enabled": {
+					"type": "checkbox",
+					"label": "Aktiv",
+					"default": true,
+					"help": "Erlaubt Policies, Planung und Steuerung dieses Add-ons. Messwerte und Learning dürfen auch bei deaktivierter Steuerung weiterlaufen.",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"battery_ai_optimization_allowed": {
+					"type": "checkbox",
+					"label": "KI-Optimierung erlaubt",
+					"default": false,
+					"help": "Erlaubt einer späteren KI, den Fahrplan dieses Add-ons innerhalb aller Policies und Sicherheitsgrenzen zu optimieren. Ohne Freigabe arbeitet das Add-on weiterhin vollständig deterministisch.",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hGovClimate": {
+					"type": "header",
+					"size": 3,
+					"text": "Klimaanlage",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"climate_enabled": {
+					"type": "checkbox",
+					"label": "Aktiv",
+					"default": true,
+					"help": "Erlaubt Policies, Planung und Steuerung dieses Add-ons. Messwerte und Learning dürfen auch bei deaktivierter Steuerung weiterlaufen.",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"climate_ai_optimization_allowed": {
+					"type": "checkbox",
+					"label": "KI-Optimierung erlaubt",
+					"default": false,
+					"help": "Erlaubt einer späteren KI, den Fahrplan dieses Add-ons innerhalb aller Policies und Sicherheitsgrenzen zu optimieren. Ohne Freigabe arbeitet das Add-on weiterhin vollständig deterministisch.",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
 				}
 			}
 		},
@@ -125,6 +272,15 @@
 					"lg": 12,
 					"xl": 12,
 					"text": "EMS-Light liest die Wallbox ausschließlich über EVCC (read-only). Die konkrete Wallbox wird in EVCC konfiguriert. Ziel-States aus dem ioBroker-Objektbaum wählen — typischer Präfix evcc.&lt;instanz&gt;.status.*. Ausgabe: addons.wallbox.evcc.* und live.wallbox.*"
+				},
+				"wallboxGovernanceHint": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Dieses Add-on wird zentral unter GLOBAL aktiviert."
 				},
 				"wb_addon_mode": {
 					"type": "select",
@@ -401,6 +557,15 @@
 					"lg": 12,
 					"xl": 12,
 					"text": "Kapazität und ob Netzausgleich strategisch sinnvoll ist, kommt vom EMS (ems_mirror.*). Netzausgleich läuft bei Änderung von consumption_w — nicht per Intervall. Winter-Netzladen: separates Intervall (später)."
+				},
+				"batteryGovernanceHint": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Dieses Add-on wird zentral unter GLOBAL aktiviert."
 				},
 				"battery_profile": {
 					"type": "select",
@@ -812,6 +977,15 @@
 					"lg": 12,
 					"xl": 12,
 					"text": "Aktor: Steckdose ein/aus (set_enabled). Lesen: Puffer-Temperatur (buffer_temp_c). Mapping unter addons.immersion_heater.mapping.* — Failsafe nur bei Live: EMS &gt;300 s weg → Relais aus."
+				},
+				"immersionGovernanceHint": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Dieses Add-on wird zentral unter GLOBAL aktiviert."
 				},
 				"ih_addon_mode": {
 					"type": "select",

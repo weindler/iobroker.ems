@@ -1,4 +1,5 @@
 import { isLiveWriteAllowed } from "../../../execution_mode";
+import { isAddonGovernanceEnabledFromState } from "../../../addons/governance";
 import { setStateIfChanged } from "../../../policy/core/state_write";
 import { INTENT_SCHEMA_VERSION, IOBROKER_THERMAL_REQUEST_STATE } from "../../../intent/core/constants";
 import { addonAvailable, addonEnabled } from "../../../tree_paths";
@@ -155,6 +156,11 @@ async function readBool(host: ImmersionRuntimeHost, id: string): Promise<boolean
 async function applyStageWrites(host: ImmersionRuntimeHost, stageIndex: number, live: boolean): Promise<void> {
 	// Dryrun: EMS besitzt das Relais nicht — keine physischen Writes.
 	if (!live) return;
+	const governanceEnabled = await isAddonGovernanceEnabledFromState(
+		(id) => host.getStateAsync(id),
+		"immersion_heater",
+	);
+	if (!governanceEnabled) return;
 	const config = immersionDeviceConfigFromAdapter(host.config);
 	for (const stage of config.stages) {
 		if (!stage.setStateId) continue;

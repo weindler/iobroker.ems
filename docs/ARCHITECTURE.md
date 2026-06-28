@@ -182,7 +182,27 @@ Vier Ebenen:
 
 ---
 
-## 10. Ausführungs-Gates (Dryrun / Live)
+## 10. Add-on-Governance (implementiert)
+
+**Pfad:** `src/addons/governance/`
+
+- Zentrale Registry für Wallbox, Heizstab, Batterie, Klima (`GOVERNED_ADDON_REGISTRY`)
+- Konfigurationsquelle: Admin-Reiter **GLOBAL** (`*_enabled`, `*_ai_optimization_allowed`)
+- Runtime-Spiegel (read-only): `addons.<id>.governance.enabled`, `addons.<id>.governance.ai_optimization_allowed`
+- Legacy-Sync: `addons.<runtimeId>.enabled` wird aus der Governance-Konfiguration gespiegelt (Pipeline/FSM)
+
+**Steuerungs-Gates:**
+
+1. **Früh** — Intent-Resolver und FSM prüfen Governance/Aktiv-Status (keine ausführbaren Planner-Intents bei deaktiviertem Add-on)
+2. **Final** — Pipeline und Heizstab-`applyStageWrites` prüfen unmittelbar vor Live-Write erneut
+
+**Trennung:** Telemetrie, Mirror, Mapping und Learning laufen bei `enabled = false` weiter (z. B. EVCC-Telemetrie, Battery Runtime Learning).
+
+Die KI-Freigabe ist nur gespeicherte Opt-in-Freigabe — **keine KI-Aufrufe** in v0.1.64.
+
+---
+
+## 11. Ausführungs-Gates (Dryrun / Live)
 
 **Pfad:** `src/execution_mode.ts`, `src/pipeline.ts`
 
@@ -191,7 +211,7 @@ Live-Writes nur wenn:
 ```text
 global.execution_mode = live
 AND addons.<id>.mode = live
-AND Add-on enabled
+AND Add-on governance enabled
 AND Mapping vorhanden
 AND Add-on nicht read-only (Wallbox blockiert)
 AND Safety/Fault erlaubt
@@ -203,7 +223,7 @@ Dryrun schreibt nur Dryrun-Mirror-States (`addons.<id>.dryrun.*`).
 
 ---
 
-## 11. State-Verträge (Auswahl)
+## 12. State-Verträge (Auswahl)
 
 | Bereich | Beispiel-Pfad | Beschreibung |
 |---------|---------------|--------------|
@@ -213,6 +233,7 @@ Dryrun schreibt nur Dryrun-Mirror-States (`addons.<id>.dryrun.*`).
 | Intent | `user_intent.resolved_all_json` | Aggregierter Intent |
 | Wallbox EVCC | `addons.wallbox.evcc.snapshot_json` | EVCC-Telemetrie |
 | Heizstab | `addons.immersion_heater.runtime.snapshot_json` | Runtime-Snapshot |
+| Governance | `addons.wallbox.governance.enabled` | Add-on aktiv (Spiegel aus Config) |
 | Command | `command.inbox` | Legacy-Befehlseingang |
 | System | `system.health` | Tick-Gesundheit |
 
@@ -220,7 +241,7 @@ Vollständige Pfad-Konventionen: `src/tree_paths.ts`.
 
 ---
 
-## 12. Teststruktur
+## 13. Teststruktur
 
 Tests liegen neben dem Quellcode (`*.test.ts`) und werden nach `build/` kompiliert.
 
@@ -228,25 +249,25 @@ Tests liegen neben dem Quellcode (`*.test.ts`) und werden nach `build/` kompilie
 npm test    # build + node --test auf alle *.test.js
 ```
 
-290 Tests (Stand v0.1.63), u. a.:
+290+ Tests (Stand v0.1.64), u. a.:
 
 - Global Modes, Policy Engine, Intent Engine
 - Wallbox EVCC-Telemetrie und Mirror-States
-- Heizstab FSM, Safety, Feedback
+- Heizstab FSM, Safety, Feedback, Governance-Gates
+- Add-on-Governance (Config, Runtime-States, Pipeline)
 - Learning-Mathematik (PV, Wetter, Preis, Hauslast, Thermal, Battery)
 
 Keine externen Snapshot-Fixtures im Repository — Tests nutzen Mock-Hosts.
 
 ---
 
-## 13. Geplant, nicht implementiert
+## 14. Geplant, nicht implementiert
 
-- Zentrale Add-on-Governance (`GLOBAL`: aktiv + KI-Freigabe)
 - Modus `observe`
 - Deterministischer Planner / General Operator
 - KI-Integration und Kostenkontrolle
 - Batterie-Geräteprofile (Generic Read-only, Sonnen EM, …)
-- Einheitliche Runtime-States (`decision_source`, `ai_optimization_allowed`, …)
+- Einheitliche Runtime-States (`decision_source`, `planner_status`, …) über Governance hinaus
 - EVCC-Writes / Wallbox-Steuerung
 
 Details und verbindliche Zielarchitektur: `docs/EMS_LIGHT_MASTERPLAN.md`.

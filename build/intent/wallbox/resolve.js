@@ -11,7 +11,12 @@ const PRIORITY_IOBROKER = 2;
 const PRIORITY_EVCC = 3;
 const PRIORITY_ADMIN = 4;
 function resolveWallboxIntent(input) {
-    const { now, previous, evcc, iobroker, admin, override } = input;
+    const { now, previous, evcc, iobroker, admin, override, active } = input;
+    if (!active) {
+        const empty = (0, types_1.emptyResolvedWallboxIntent)(now);
+        empty.intent_state = "disabled";
+        return { ...empty, revision: previous?.revision ?? 0 };
+    }
     const base = previous ?? (0, types_1.emptyResolvedWallboxIntent)(now);
     const activeOverride = override?.active && (!override.valid_until || !(0, validation_1.isExpiredAt)(override.valid_until, now)) ? override : null;
     const chargeCandidates = [];

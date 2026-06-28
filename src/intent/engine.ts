@@ -192,8 +192,9 @@ export async function runIntentEngine(host: IntentEngineHost): Promise<IntentEng
 	const adminCfg = intentAdminConfigFromAdapter(host.config);
 	const evccCfg = intentEvccConfigFromAdapter(host.config);
 
-	const [evcc, thermalActive, batteryActive] = await Promise.all([
+	const [evcc, wallboxActive, thermalActive, batteryActive] = await Promise.all([
 		readEvccIntentSnapshot(host, evccCfg, adminCfg.timezone, now),
+		isAddonIntentActive(host, "wallbox"),
 		isAddonIntentActive(host, IMMERSION_ADDON_ID),
 		isAddonIntentActive(host, "battery"),
 	]);
@@ -210,6 +211,7 @@ export async function runIntentEngine(host: IntentEngineHost): Promise<IntentEng
 		iobroker: wallboxSnapshot,
 		admin,
 		override: wallboxOverride,
+		active: wallboxActive,
 	});
 
 	const thermal = resolveThermalIntent({

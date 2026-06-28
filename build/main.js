@@ -32,6 +32,7 @@ const wallbox_1 = require("./addons/wallbox");
 const ems_activity_1 = require("./ems_activity");
 const failsafe_runner_1 = require("./failsafe_runner");
 const registry_1 = require("./addons/registry");
+const governance_1 = require("./addons/governance");
 const dryrun_mirror_1 = require("./dryrun_mirror");
 const execution_mode_1 = require("./execution_mode");
 const inbox_1 = require("./inbox");
@@ -68,7 +69,10 @@ class Ems extends utils.Adapter {
             await this.ensureBaseStates();
             await (0, execution_mode_1.ensureGlobalExecutionStates)(this);
             await this.ensureAddonStates();
-            await (0, execution_mode_1.syncExecutionModesFromConfig)(this, (this.config && typeof this.config === "object" ? this.config : {}));
+            await (0, governance_1.ensureAddonGovernanceStates)(this);
+            const adapterConfig = this.config && typeof this.config === "object" ? this.config : {};
+            await (0, governance_1.syncAddonGovernanceFromConfig)(this, adapterConfig);
+            await (0, execution_mode_1.syncExecutionModesFromConfig)(this, adapterConfig);
             await this.ensureWallboxMapping();
             await (0, status_wallbox_1.ensureWallboxStatusStates)(this);
             await (0, wallbox_1.initWallboxModule)(this);
@@ -262,12 +266,13 @@ class Ems extends utils.Adapter {
     async ensureAddonStates() {
         for (const addonId of registry_1.EMS_ADDON_IDS) {
             const base = `addons.${addonId}`;
+            const governed = (0, governance_1.governedAddonByRuntimeId)(addonId);
             await this.ensureState(`${base}.enabled`, {
                 name: `${addonId} enabled`,
                 type: "boolean",
                 role: "switch",
                 read: true,
-                write: true,
+                write: !governed,
                 def: true,
             }, true);
             await this.ensureState(`${base}.available`, {

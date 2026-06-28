@@ -50,7 +50,7 @@ describe("wallbox intent resolver", () => {
 			manual_override: null,
 			request_id: "r1",
 		};
-		const r = resolveWallboxIntent({ now: NOW, previous: null, evcc, iobroker, admin: null, override: null });
+		const r = resolveWallboxIntent({ now: NOW, previous: null, evcc, iobroker, admin: null, override: null, active: true });
 		assert.equal(r.charge_strategy.value, "immediate");
 		assert.equal(r.charge_strategy.origin.source, "iobroker");
 	});
@@ -67,7 +67,7 @@ describe("wallbox intent resolver", () => {
 			target_soc_pct: null,
 			timezone: "Europe/Berlin",
 		};
-		const r = resolveWallboxIntent({ now: NOW, previous: null, evcc, iobroker: null, admin, override: null });
+		const r = resolveWallboxIntent({ now: NOW, previous: null, evcc, iobroker: null, admin, override: null, active: true });
 		assert.equal(r.charge_strategy.value, "min_pv");
 	});
 	it("admin fills only missing fields", () => {
@@ -87,7 +87,7 @@ describe("wallbox intent resolver", () => {
 			},
 			timezone: "Europe/Berlin",
 		};
-		const r = resolveWallboxIntent({ now: NOW, previous: null, evcc: null, iobroker: null, admin, override: null });
+		const r = resolveWallboxIntent({ now: NOW, previous: null, evcc: null, iobroker: null, admin, override: null, active: true });
 		assert.equal(r.charge_strategy.value, "pv");
 		assert.equal(r.target_soc_pct.value, 80);
 	});
@@ -120,6 +120,7 @@ describe("wallbox intent resolver", () => {
 			iobroker,
 			admin: null,
 			override: iobroker.manual_override,
+			active: true,
 		});
 		assert.equal(r.charge_strategy.value, "immediate");
 		assert.equal(r.target_soc_pct.value, 90);
@@ -133,7 +134,21 @@ describe("wallbox intent resolver", () => {
 			iobroker: null,
 			admin: null,
 			override: null,
+			active: true,
 		});
 		assert.equal(r.charge_strategy.origin.change_kind, "unknown");
+	});
+
+	it("inactive addon -> disabled intent", () => {
+		const r = resolveWallboxIntent({
+			now: NOW,
+			previous: null,
+			evcc: evccSnapshot("pv"),
+			iobroker: null,
+			admin: null,
+			override: null,
+			active: false,
+		});
+		assert.equal(r.intent_state, "disabled");
 	});
 });

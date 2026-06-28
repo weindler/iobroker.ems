@@ -1,5 +1,12 @@
 {
 	"ems adapter": "EMS-Light",
 	"Wallbox": "Wallbox",
-	"Batterie / Sonnen": "Batterie / Sonnen"
+	"Batterie / Sonnen": "Batterie / Sonnen",
+	"Global": "Global",
+	"Add-on-Steuerung": "Add-on-Steuerung",
+	"Aktiv": "Aktiv",
+	"KI-Optimierung erlaubt": "KI-Optimierung erlaubt",
+	"Heizstab": "Heizstab",
+	"Klimaanlage": "Klimaanlage",
+	"Dieses Add-on wird zentral unter GLOBAL aktiviert.": "Dieses Add-on wird zentral unter GLOBAL aktiviert."
 }

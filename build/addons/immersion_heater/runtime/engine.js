@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getImmersionPersistForTest = exports.resetImmersionRuntimeForTest = exports.stopImmersionRuntimeEngine = exports.initImmersionRuntimeEngine = exports.handleImmersionFaultReset = exports.runImmersionRuntimeTick = exports.immersionRuntimeWatchedForeignIds = void 0;
 const execution_mode_1 = require("../../../execution_mode");
+const governance_1 = require("../../../addons/governance");
 const state_write_1 = require("../../../policy/core/state_write");
 const constants_1 = require("../../../intent/core/constants");
 const tree_paths_1 = require("../../../tree_paths");
@@ -113,6 +114,9 @@ async function readBool(host, id) {
 async function applyStageWrites(host, stageIndex, live) {
     // Dryrun: EMS besitzt das Relais nicht — keine physischen Writes.
     if (!live)
+        return;
+    const governanceEnabled = await (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "immersion_heater");
+    if (!governanceEnabled)
         return;
     const config = (0, device_config_1.immersionDeviceConfigFromAdapter)(host.config);
     for (const stage of config.stages) {

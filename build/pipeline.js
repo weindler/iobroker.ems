@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runCommandPipeline = void 0;
+const governance_1 = require("./addons/governance");
 const registry_1 = require("./addons/registry");
 const execution_mode_1 = require("./execution_mode");
 const mapping_1 = require("./mapping");
@@ -39,6 +40,12 @@ async function runCommandPipeline(intent, ctx) {
         return fail("blocked", "addon_disabled", checks_passed, checks_failed);
     }
     checks_passed.push("addon_enabled");
+    const governanceEnabled = await (0, governance_1.isAddonGovernanceEnabledFromState)(ctx.getState, addonId);
+    if (!governanceEnabled) {
+        checks_failed.push("addon_governance_disabled");
+        return fail("blocked", "addon_governance_disabled", checks_passed, checks_failed);
+    }
+    checks_passed.push("addon_governance_enabled");
     const modeRaw = await ctx.getState(`addons.${addonId}.mode`);
     const mode = String(modeRaw?.val ?? "dryrun").toLowerCase();
     if (mode === "disabled") {
@@ -86,6 +93,11 @@ async function runCommandPipeline(intent, ctx) {
     checks_passed.push("safety_ok");
     const liveAllowed = (await ctx.isLiveAllowed?.(addonId)) ?? (await (0, execution_mode_1.isLiveWriteAllowed)(ctx.getState, addonId));
     if (mode === "live" && liveAllowed && ctx.setForeignState) {
+        const writeGovernanceOk = await (0, governance_1.isAddonGovernanceEnabledFromState)(ctx.getState, addonId);
+        if (!writeGovernanceOk) {
+            checks_failed.push("addon_governance_disabled");
+            return fail("blocked", "addon_governance_disabled", checks_passed, checks_failed);
+        }
         const writeVal = scalarForForeignWrite(command, plannedValue, intent.value);
         try {
             await ctx.setForeignState(mapping.targetState, writeVal);

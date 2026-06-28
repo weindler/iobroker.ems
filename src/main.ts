@@ -15,6 +15,7 @@ import {
 import { touchEmsActivity } from "./ems_activity";
 import { startFailsafeRunner, stopFailsafeRunner } from "./failsafe_runner";
 import { EMS_ADDON_IDS } from "./addons/registry";
+import { ensureAddonGovernanceStates, governedAddonByRuntimeId, syncAddonGovernanceFromConfig } from "./addons/governance";
 import { writeDryrunMirror } from "./dryrun_mirror";
 import {
 	ensureChannelTree,
@@ -64,10 +65,11 @@ class Ems extends utils.Adapter {
 			await this.ensureBaseStates();
 			await ensureGlobalExecutionStates(this);
 			await this.ensureAddonStates();
-			await syncExecutionModesFromConfig(
-				this,
-				(this.config && typeof this.config === "object" ? this.config : {}) as Record<string, unknown>,
-			);
+			await ensureAddonGovernanceStates(this);
+			const adapterConfig =
+				this.config && typeof this.config === "object" ? (this.config as Record<string, unknown>) : {};
+			await syncAddonGovernanceFromConfig(this, adapterConfig);
+			await syncExecutionModesFromConfig(this, adapterConfig);
 			await this.ensureWallboxMapping();
 			await ensureWallboxStatusStates(this);
 			await initWallboxModule(this);
@@ -278,12 +280,13 @@ class Ems extends utils.Adapter {
 	private async ensureAddonStates(): Promise<void> {
 		for (const addonId of EMS_ADDON_IDS) {
 			const base = `addons.${addonId}`;
+			const governed = governedAddonByRuntimeId(addonId);
 			await this.ensureState(`${base}.enabled`, {
 				name: `${addonId} enabled`,
 				type: "boolean",
 				role: "switch",
 				read: true,
-				write: true,
+				write: !governed,
 				def: true,
 			}, true);
 			await this.ensureState(`${base}.available`, {

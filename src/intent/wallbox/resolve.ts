@@ -23,10 +23,17 @@ export interface ResolveWallboxInput {
 	iobroker: IobrokerIntentSnapshot | null;
 	admin: AdminIntentSnapshot | null;
 	override: import("../core/types").ManualOverrideState | null;
+	active: boolean;
 }
 
 export function resolveWallboxIntent(input: ResolveWallboxInput): ResolvedWallboxIntent {
-	const { now, previous, evcc, iobroker, admin, override } = input;
+	const { now, previous, evcc, iobroker, admin, override, active } = input;
+	if (!active) {
+		const empty = emptyResolvedWallboxIntent(now);
+		empty.intent_state = "disabled";
+		return { ...empty, revision: previous?.revision ?? 0 };
+	}
+
 	const base = previous ?? emptyResolvedWallboxIntent(now);
 
 	const activeOverride =

@@ -6,6 +6,17 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.64] – 2026-06-28
+
+### Added
+
+- Zentrale Add-on-Governance unter Admin-Reiter **GLOBAL** (Aktiv + KI-Optimierung erlaubt) für Wallbox, Heizstab, Batterie und Klima
+- Governance-Modul (`src/addons/governance/`) mit Registry, Konfigurationslesern und Runtime-States `addons.<id>.governance.*`
+- Frühe Steuerungs-Gates (Intent/FSM) und finales Live-Write-Gate in Pipeline und Heizstab-Runtime
+- KI-Freigabe standardmäßig aus (opt-in, noch ohne KI-Wirkung)
+
+---
+
 ## [0.1.63] – 2026-06-28
 
 ### Fixed

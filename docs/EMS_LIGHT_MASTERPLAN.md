@@ -35,7 +35,7 @@ Dies gilt übergreifend für:
 
 Diese Schalter werden nicht auf jeder Add-on-Seite dupliziert.
 
-> **Stand 28.06.2026:** Die zentralen GLOBAL-Schalter sind noch nicht implementiert. Add-on-Aktivierung und Ausführungsmodus laufen derzeit über die bestehende Konfiguration (`addons.<id>.enabled`, `global.execution_mode`, `addons.<id>.mode`).
+> **Stand 28.06.2026:** Die zentralen GLOBAL-Schalter sind für Wallbox, Heizstab, Batterie und Klima implementiert (`src/addons/governance/`). Konfigurationsschlüssel: `wallbox_enabled`, `immersion_heater_enabled`, `battery_enabled`, `climate_enabled` sowie `*_ai_optimization_allowed` (Standard `false`). Runtime-Spiegel: `addons.<id>.governance.enabled` und `addons.<id>.governance.ai_optimization_allowed`. Der globale Ausführungsmodus (`global.execution_mode`, `addons.<id>.mode`) bleibt unabhängig davon.
 
 ---
 
@@ -263,7 +263,7 @@ policy_fallback
 safety
 ```
 
-> **Stand 28.06.2026:** Einheitliche Runtime-States sind noch nicht für alle Add-ons umgesetzt. Heizstab und Wallbox haben add-on-spezifische Status-States (siehe `docs/ARCHITECTURE.md`).
+> **Stand 28.06.2026:** Governance-States `enabled` und `ai_optimization_allowed` sind für Wallbox, Heizstab, Batterie und Klima unter `addons.<id>.governance.*` implementiert. Weitere einheitliche Runtime-States (`decision_source`, `planner_status`, …) folgen später.
 
 ---
 

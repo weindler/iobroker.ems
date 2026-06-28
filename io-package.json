@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.63",
+		"version": "0.1.64",
 		"news": {
+			"0.1.64": {
+				"en": "Centralized add-on governance under GLOBAL: per-addon Active and AI optimization allowed switches for wallbox, immersion heater, battery, and climate; governance runtime states; early intent/planner gates and final live-write gates; AI flag is opt-in storage only (no AI calls yet)",
+				"de": "Zentrale Add-on-Governance unter GLOBAL: je Add-on Schalter Aktiv und KI-Optimierung erlaubt für Wallbox, Heizstab, Batterie und Klima; Governance-Runtime-States; frühe Intent-/Planner-Gates und finales Live-Write-Gate; KI-Freigabe nur gespeicherte Opt-in-Freigabe (noch keine KI-Aufrufe)"
+			},
 			"0.1.63": {
 				"en": "Fix: EVCC plan_time and effective_plan_time mirror states are now explicitly cleared (set to \"\") whenever the normalized time is null or invalid, so a stale EVCC deadline can no longer linger; added Go zero-time sentinel handling (0001-01-01) and mirror tests; no EVCC or wallbox writes added",
 				"de": "Fix: EVCC plan_time und effective_plan_time Spiegelstates werden jetzt ausdrücklich geleert (auf \"\" gesetzt), sobald der normalisierte Zeitwert null oder ungültig ist, damit keine alte EVCC-Deadline stale stehen bleibt; Go-Null-Zeit-Sentinel (0001-01-01) wird behandelt; Mirror-Tests ergänzt; keine EVCC- oder Wallbox-Writes ergänzt"

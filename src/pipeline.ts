@@ -1,3 +1,4 @@
+import { isAddonGovernanceEnabledFromState } from "./addons/governance";
 import {
 	addonHasCapability,
 	commandNeedsCapability,
@@ -57,6 +58,13 @@ export async function runCommandPipeline(
 	}
 	checks_passed.push("addon_enabled");
 
+	const governanceEnabled = await isAddonGovernanceEnabledFromState(ctx.getState, addonId);
+	if (!governanceEnabled) {
+		checks_failed.push("addon_governance_disabled");
+		return fail("blocked", "addon_governance_disabled", checks_passed, checks_failed);
+	}
+	checks_passed.push("addon_governance_enabled");
+
 	const modeRaw = await ctx.getState(`addons.${addonId}.mode`);
 	const mode = String(modeRaw?.val ?? "dryrun").toLowerCase();
 	if (mode === "disabled") {
@@ -112,6 +120,11 @@ export async function runCommandPipeline(
 		(await ctx.isLiveAllowed?.(addonId)) ?? (await isLiveWriteAllowed(ctx.getState, addonId));
 
 	if (mode === "live" && liveAllowed && ctx.setForeignState) {
+		const writeGovernanceOk = await isAddonGovernanceEnabledFromState(ctx.getState, addonId);
+		if (!writeGovernanceOk) {
+			checks_failed.push("addon_governance_disabled");
+			return fail("blocked", "addon_governance_disabled", checks_passed, checks_failed);
+		}
 		const writeVal = scalarForForeignWrite(command, plannedValue, intent.value);
 		try {
 			await ctx.setForeignState(mapping.targetState, writeVal);

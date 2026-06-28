@@ -49,7 +49,7 @@ function evccSnapshot(strategy) {
             manual_override: null,
             request_id: "r1",
         };
-        const r = (0, resolve_js_1.resolveWallboxIntent)({ now: NOW, previous: null, evcc, iobroker, admin: null, override: null });
+        const r = (0, resolve_js_1.resolveWallboxIntent)({ now: NOW, previous: null, evcc, iobroker, admin: null, override: null, active: true });
         strict_1.default.equal(r.charge_strategy.value, "immediate");
         strict_1.default.equal(r.charge_strategy.origin.source, "iobroker");
     });
@@ -66,7 +66,7 @@ function evccSnapshot(strategy) {
             target_soc_pct: null,
             timezone: "Europe/Berlin",
         };
-        const r = (0, resolve_js_1.resolveWallboxIntent)({ now: NOW, previous: null, evcc, iobroker: null, admin, override: null });
+        const r = (0, resolve_js_1.resolveWallboxIntent)({ now: NOW, previous: null, evcc, iobroker: null, admin, override: null, active: true });
         strict_1.default.equal(r.charge_strategy.value, "min_pv");
     });
     (0, node_test_1.it)("admin fills only missing fields", () => {
@@ -86,7 +86,7 @@ function evccSnapshot(strategy) {
             },
             timezone: "Europe/Berlin",
         };
-        const r = (0, resolve_js_1.resolveWallboxIntent)({ now: NOW, previous: null, evcc: null, iobroker: null, admin, override: null });
+        const r = (0, resolve_js_1.resolveWallboxIntent)({ now: NOW, previous: null, evcc: null, iobroker: null, admin, override: null, active: true });
         strict_1.default.equal(r.charge_strategy.value, "pv");
         strict_1.default.equal(r.target_soc_pct.value, 80);
     });
@@ -119,6 +119,7 @@ function evccSnapshot(strategy) {
             iobroker,
             admin: null,
             override: iobroker.manual_override,
+            active: true,
         });
         strict_1.default.equal(r.charge_strategy.value, "immediate");
         strict_1.default.equal(r.target_soc_pct.value, 90);
@@ -132,7 +133,20 @@ function evccSnapshot(strategy) {
             iobroker: null,
             admin: null,
             override: null,
+            active: true,
         });
         strict_1.default.equal(r.charge_strategy.origin.change_kind, "unknown");
+    });
+    (0, node_test_1.it)("inactive addon -> disabled intent", () => {
+        const r = (0, resolve_js_1.resolveWallboxIntent)({
+            now: NOW,
+            previous: null,
+            evcc: evccSnapshot("pv"),
+            iobroker: null,
+            admin: null,
+            override: null,
+            active: false,
+        });
+        strict_1.default.equal(r.intent_state, "disabled");
     });
 });

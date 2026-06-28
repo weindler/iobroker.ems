@@ -2,7 +2,7 @@
 
 Eigenständiger ioBroker-Adapter für sicheres Energiemanagement — ohne Abhängigkeit von einem externen EMS-Server.
 
-**Aktuelle Version:** v0.1.63
+**Aktuelle Version:** v0.1.64
 
 ---
 
@@ -10,7 +10,7 @@ Eigenständiger ioBroker-Adapter für sicheres Energiemanagement — ohne Abhän
 
 EMS-Light liest Messwerte, lernt aus historischen Daten, wendet Betreiber-Policies an und steuert Add-ons (Wallbox, Heizstab, …) über einen sicheren Dryrun/Live-Gate.
 
-Die KI ist **optional** und wird später als Optimierungsschicht ergänzt. EMS-Light muss jederzeit ohne KI vollständig und sicher arbeiten.
+EMS-Light muss jederzeit ohne KI vollständig und sicher arbeiten. Die KI-Freigabe je Add-on ist eine gespeicherte Opt-in-Einstellung für eine spätere Optimierungsschicht — **noch ohne KI-Implementierung**.
 
 ---
 
@@ -25,6 +25,7 @@ Die KI ist **optional** und wird später als Optimierungsschicht ergänzt. EMS-L
 | Wallbox via EVCC | read-only Telemetrie |
 | Heizstab (Immersion Heater) | Runtime, FSM, Safety, Live-Writes |
 | Command Pipeline (Dryrun/Live) | implementiert |
+| Add-on-Governance (GLOBAL: aktiv + KI-Freigabe) | implementiert |
 | KI / General Operator | *geplant* |
 | Batterie-Geräteprofile | *geplant* |
 
@@ -35,7 +36,7 @@ Die KI ist **optional** und wird später als Optimierungsschicht ergänzt. EMS-L
 Auf einem ioBroker-Host:
 
 ```bash
-iobroker url install github:weindler/iobroker.ems#v0.1.63
+iobroker url install github:weindler/iobroker.ems#v0.1.64
 ```
 
 Oder aus Git-Checkout:
@@ -61,7 +62,7 @@ iobroker update ems
 
 Instanz-Einstellungen in der ioBroker-Admin-Oberfläche:
 
-- **Global** — Ausführungsmodus, Global Mode, Tick-Intervall
+- **Global** — Ausführungsmodus, Global Mode, **Add-on-Steuerung** (Aktiv + optionale KI-Freigabe je Add-on), Tick-Intervall
 - **Wallbox** — EVCC-Telemetrie-Mappings (read-only)
 - **Heizstab** — Stufen, Temperatur, Safety-Parameter
 - **EMS-Light User Intent** — Defaults und ioBroker-Request-Einstellungen

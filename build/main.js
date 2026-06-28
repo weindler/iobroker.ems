@@ -67,11 +67,39 @@ class Ems extends utils.Adapter {
      * Init-Schritt isoliert ausführen: Ein Fehler in einem Modul (z. B. einem
      * Add-on) darf nie die übrigen Module oder das Learning blockieren.
      */
-    async step(label, fn) {
+    async step(label, fn, timeoutMs = 30_000) {
+        const started = Date.now();
+        this.log.info(`init step '${label}' starting`);
+        let timedOut = false;
+        let timer = null;
         try {
-            await fn();
+            await Promise.race([
+                fn().catch((e) => {
+                    if (timedOut) {
+                        this.log.error(`init step '${label}' failed after timeout: ${e instanceof Error ? (e.stack ?? e.message) : e}`);
+                        return;
+                    }
+                    throw e;
+                }),
+                new Promise((resolve) => {
+                    timer = setTimeout(() => {
+                        timedOut = true;
+                        this.log.warn(`init step '${label}' timed out after ${timeoutMs}ms; continuing adapter startup`);
+                        resolve();
+                    }, timeoutMs);
+                }),
+            ]);
+            if (timer) {
+                clearTimeout(timer);
+            }
+            if (!timedOut) {
+                this.log.info(`init step '${label}' ok (${Date.now() - started}ms)`);
+            }
         }
         catch (e) {
+            if (timer) {
+                clearTimeout(timer);
+            }
             this.log.error(`init step '${label}' failed: ${e instanceof Error ? (e.stack ?? e.message) : e}`);
         }
     }
@@ -92,7 +120,7 @@ class Ems extends utils.Adapter {
         await this.step("dynamic tariff module", () => (0, dynamic_tariff_1.initDynamicTariffModule)(this));
         await this.step("failsafe runner", async () => (0, failsafe_runner_1.startFailsafeRunner)(this));
         // EMS-Light/Learning explizit isoliert: muss unabhängig von Add-on-Fehlern laufen.
-        await this.step("ems-light phase 1 (learning)", () => (0, ems_light_1.initEmsLightPhase1)(this));
+        await this.step("ems-light phase 1 (learning)", () => (0, ems_light_1.initEmsLightPhase1)(this), 45_000);
         await this.step("subscribe command inbox", () => this.subscribeStatesAsync(states_1.STATE.command.inbox));
         this.log.info("EMS adapter ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
         await this.step("process pending inbox", async () => {

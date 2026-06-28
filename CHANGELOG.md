@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.67] – 2026-06-28
+
+### Fixed
+
+- Adapter-Startdiagnose erweitert: Jeder Init-Schritt loggt Start/OK und bekommt einen Timeout. Hängende ioBroker-Aufrufe blockieren den restlichen Start nicht mehr; im Log ist der betroffene Schritt sichtbar.
+
+---
+
 ## [0.1.66] – 2026-06-28
 
 ### Fixed

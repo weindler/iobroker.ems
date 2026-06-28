@@ -270,7 +270,7 @@ function coolingCurve(startMs, startTemp, endTemp, hours, steps = 6) {
         strict_1.default.equal(r.samples, 0);
         strict_1.default.equal(r.estimatedRemainingHours, null);
     });
-    (0, node_test_1.it)("uses active cooling rate for provisional remaining estimate without completed cycles", () => {
+    (0, node_test_1.it)("is ready with active cooling rate even without completed floor cycles", () => {
         const r = (0, math_1.computeThermalRuntimeLearning)({
             cycles: [],
             currentTempC: 55,
@@ -279,11 +279,29 @@ function coolingCurve(startMs, startTemp, endTemp, hours, steps = 6) {
             now: new Date("2026-06-21T10:00:00"),
             activeCoolingRateCPerH: 0.1,
         });
-        strict_1.default.equal(r.status, "insufficient_data");
-        strict_1.default.equal(r.health, "no_samples");
+        strict_1.default.equal(r.status, "ready");
+        strict_1.default.equal(r.health, "ok");
         strict_1.default.equal(r.samples, 0);
         strict_1.default.equal(r.estimatedRemainingHours, 70);
         strict_1.default.equal(r.estimatedEmptyAt, "2026-06-24T06:00:00.000Z");
+    });
+    (0, node_test_1.it)("is ready with Newton cooling model even without completed floor cycles", () => {
+        const r = (0, math_1.computeThermalRuntimeLearning)({
+            cycles: [],
+            currentTempC: 55,
+            cfg: cfg(),
+            sourceStateId: "alias.0.temp",
+            now: new Date("2026-06-21T10:00:00"),
+            coolingConstantPerH: 0.03,
+            asymptoteC: 18,
+            asymptoteSource: "default",
+        });
+        strict_1.default.equal(r.status, "ready");
+        strict_1.default.equal(r.health, "ok");
+        strict_1.default.equal(r.samples, 0);
+        strict_1.default.equal(r.coolingConstantPerH, 0.03);
+        strict_1.default.equal(r.coolingAsymptoteC, 18);
+        strict_1.default.ok(r.estimatedRemainingHours !== null);
     });
     (0, node_test_1.it)("no_source result", () => {
         const r = (0, math_1.noSourceResult)();

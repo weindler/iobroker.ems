@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.58",
+		"version": "0.1.59",
 		"news": {
+			"0.1.59": {
+				"en": "Fix: Thermal runtime learning now treats learned cooling segments/Newton model as sufficient data even without full floor-crossing cycles, avoiding misleading insufficient-cycle warnings",
+				"de": "Fix: Thermal-Runtime-Learning wertet gelernte Abkühlsegmente/Newton-Modell jetzt auch ohne volle Untergrenzen-Zyklen als ausreichende Datenbasis und vermeidet irreführende Zyklen-Warnungen"
+			},
 			"0.1.58": {
 				"en": "Phase 3C.1: Immersion heater complete binding — thermal config, off/auto/force control states, runtime FSM, multi-stage execution, power/relay safety, fault lockout (live writes only; no EMS planner)",
 				"de": "Phase 3C.1: Heizstab vollständige Anbindung — Thermik-Konfiguration, off/auto/force-Control-States, Runtime-FSM, Mehrstufen-Ausführung, Leistungs-/Relais-Sicherheit, Fault-Lockout (nur Live-Writes; kein EMS-Planner)"

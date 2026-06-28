@@ -389,11 +389,13 @@ function estimatedEmptyAtIso(now, remainingHours) {
     return new Date(ms).toISOString();
 }
 exports.estimatedEmptyAtIso = estimatedEmptyAtIso;
-function deriveHealth(samples, hasSource, configValid) {
+function deriveHealth(samples, hasSource, configValid, hasCoolingModel) {
     if (!configValid)
         return "invalid_config";
     if (!hasSource)
         return "no_source";
+    if (hasCoolingModel)
+        return "ok";
     if (samples === 0)
         return "no_samples";
     if (samples < constants_1.MIN_CYCLES_OK)
@@ -421,12 +423,11 @@ function computeThermalRuntimeLearning(params) {
         coolingConstantPerH,
         ambientC: asymptoteC,
     });
-    const health = deriveHealth(cycles.length, Boolean(sourceStateId), configValid);
+    const hasCoolingModel = (coolingConstantPerH !== null && coolingConstantPerH > 0) ||
+        (activeCoolingRateCPerH !== null && activeCoolingRateCPerH > 0);
+    const health = deriveHealth(cycles.length, Boolean(sourceStateId), configValid, hasCoolingModel);
     let status = "ready";
-    if (cycles.length === 0) {
-        status = "insufficient_data";
-    }
-    else if (cycles.length < constants_1.MIN_CYCLES_OK) {
+    if (!hasCoolingModel && cycles.length < constants_1.MIN_CYCLES_OK) {
         status = "insufficient_data";
     }
     const historyJson = cycles.slice(-constants_1.MAX_HISTORY_JSON_CYCLES).map((c) => ({

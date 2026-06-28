@@ -498,9 +498,15 @@ export function estimatedEmptyAtIso(
 	return new Date(ms).toISOString();
 }
 
-function deriveHealth(samples: number, hasSource: boolean, configValid: boolean): ThermalRuntimeHealth {
+function deriveHealth(
+	samples: number,
+	hasSource: boolean,
+	configValid: boolean,
+	hasCoolingModel: boolean,
+): ThermalRuntimeHealth {
 	if (!configValid) return "invalid_config";
 	if (!hasSource) return "no_source";
+	if (hasCoolingModel) return "ok";
 	if (samples === 0) return "no_samples";
 	if (samples < MIN_CYCLES_OK) return "degraded";
 	return "ok";
@@ -551,11 +557,12 @@ export function computeThermalRuntimeLearning(params: {
 		ambientC: asymptoteC,
 	});
 
-	const health = deriveHealth(cycles.length, Boolean(sourceStateId), configValid);
+	const hasCoolingModel =
+		(coolingConstantPerH !== null && coolingConstantPerH > 0) ||
+		(activeCoolingRateCPerH !== null && activeCoolingRateCPerH > 0);
+	const health = deriveHealth(cycles.length, Boolean(sourceStateId), configValid, hasCoolingModel);
 	let status: ThermalRuntimeComputeResult["status"] = "ready";
-	if (cycles.length === 0) {
-		status = "insufficient_data";
-	} else if (cycles.length < MIN_CYCLES_OK) {
+	if (!hasCoolingModel && cycles.length < MIN_CYCLES_OK) {
 		status = "insufficient_data";
 	}
 

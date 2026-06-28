@@ -1,6 +1,5 @@
 import { INTENT_SCHEMA_VERSION } from "./constants";
 import type { IntentField, IntentOwner, IobrokerRequestResult, IobrokerRequestStatus, ManualOverrideState } from "./types";
-import { isExpiredAt } from "./validation";
 import type { IntentAdminConfig } from "../config";
 
 export interface BaseIobrokerRequest {
@@ -181,20 +180,10 @@ export function gateIobrokerRequest(input: RequestGateInput): RequestGateResult 
 		};
 	}
 
-	if (isExpiredAt(req.issued_at, now)) {
-		return {
-			proceed: false,
-			result: {
-				request_id: req.request_id,
-				status: "rejected_expired",
-				processed_at: processedAt,
-				revision: currentRevision,
-				errors: ["issued_at_expired"],
-			},
-			accepted: false,
-		};
-	}
-
+	// `issued_at` ist die Erstellungszeit (Provenance), KEIN Ablaufdatum: Es liegt per
+	// Definition in der Vergangenheit, daher darf es nicht zu `rejected_expired` führen
+	// (sonst Sub-Millisekunden-Race bei jeder realen Anfrage). Echte Befristung läuft über
+	// `manual_override.valid_until` (capOverrideValidUntil + candidateUsable).
 	return { proceed: true, req, processedAt };
 }
 

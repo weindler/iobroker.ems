@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.finalizeRequestResult = exports.gateIobrokerRequest = exports.buildManualOverrideFromRequest = exports.capOverrideValidUntil = exports.fieldFromUser = exports.parseBaseIobrokerRequest = void 0;
 const constants_1 = require("./constants");
-const validation_1 = require("./validation");
 function parseBaseIobrokerRequest(raw) {
     const errors = [];
     if (raw === null || raw === undefined || raw === "") {
@@ -137,19 +136,10 @@ function gateIobrokerRequest(input) {
             accepted: false,
         };
     }
-    if ((0, validation_1.isExpiredAt)(req.issued_at, now)) {
-        return {
-            proceed: false,
-            result: {
-                request_id: req.request_id,
-                status: "rejected_expired",
-                processed_at: processedAt,
-                revision: currentRevision,
-                errors: ["issued_at_expired"],
-            },
-            accepted: false,
-        };
-    }
+    // `issued_at` ist die Erstellungszeit (Provenance), KEIN Ablaufdatum: Es liegt per
+    // Definition in der Vergangenheit, daher darf es nicht zu `rejected_expired` führen
+    // (sonst Sub-Millisekunden-Race bei jeder realen Anfrage). Echte Befristung läuft über
+    // `manual_override.valid_until` (capOverrideValidUntil + candidateUsable).
     return { proceed: true, req, processedAt };
 }
 exports.gateIobrokerRequest = gateIobrokerRequest;

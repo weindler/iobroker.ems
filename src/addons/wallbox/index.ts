@@ -8,7 +8,7 @@ import type { TelemetryField } from "./normalize";
 
 type WallboxHost = EvccTelemetryReadHost &
 	ioBroker.Adapter & {
-		subscribeForeignStatesAsync?: (id: string, cb: () => void) => Promise<void>;
+		subscribeForeignStatesAsync?: (id: string) => Promise<void>;
 		unsubscribeForeignStatesAsync?: (id: string) => Promise<void>;
 	};
 
@@ -93,7 +93,10 @@ export async function initWallboxModule(host: WallboxHost): Promise<void> {
 		if (subscribedIds.includes(id)) continue;
 		if (typeof host.subscribeForeignStatesAsync === "function") {
 			try {
-				await host.subscribeForeignStatesAsync(id, () => scheduleRefresh(host));
+				// Kein Callback übergeben: ioBroker interpretiert eine Funktion als
+				// internen Completion-Callback, wodurch das Promise nie auflöst.
+				// Foreign-Änderungen laufen über onStateChange -> handleWallboxForeignStateChange.
+				await host.subscribeForeignStatesAsync(id);
 				subscribedIds.push(id);
 			} catch (e) {
 				host.log.debug?.(`wallbox evcc subscribe ${id}: ${e}`);

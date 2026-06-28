@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.68] – 2026-06-28
+
+### Fixed
+
+- Adapter-Start blockierte ~30s, weil `subscribeForeignStatesAsync` mit einem Callback-Argument aufgerufen wurde — ioBroker interpretierte die Funktion als internen Completion-Callback, sodass das Promise nie auflöste. Betraf Wallbox-EVCC- und User-Intent-EVCC-Subscriptions. Foreign-Änderungen laufen weiterhin über `onStateChange`.
+
+---
+
 ## [0.1.67] – 2026-06-28
 
 ### Fixed

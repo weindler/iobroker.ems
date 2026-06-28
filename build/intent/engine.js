@@ -401,7 +401,10 @@ async function initIntentEngine(host) {
                 continue;
             if (typeof host.subscribeForeignStatesAsync === "function") {
                 try {
-                    await host.subscribeForeignStatesAsync(id, () => scheduleEvccRerun(host));
+                    // Kein Callback übergeben: ioBroker interpretiert eine Funktion als
+                    // internen Completion-Callback, wodurch das Promise nie auflöst.
+                    // EVCC-Änderungen laufen über onStateChange -> handleIntentStateChange.
+                    await host.subscribeForeignStatesAsync(id);
                     subscribedForeignIds.push(id);
                 }
                 catch (e) {

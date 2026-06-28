@@ -74,7 +74,7 @@ export type IntentEngineHost = StateHost &
 		};
 		subscribeStatesAsync?: (pattern: string, callback?: () => void) => Promise<void>;
 		unsubscribeStatesAsync?: (pattern: string) => Promise<void>;
-		subscribeForeignStatesAsync?: (pattern: string, callback?: () => void) => Promise<void>;
+		subscribeForeignStatesAsync?: (pattern: string) => Promise<void>;
 		unsubscribeForeignStatesAsync?: (pattern: string) => Promise<void>;
 	};
 
@@ -508,7 +508,10 @@ export async function initIntentEngine(host: IntentEngineHost): Promise<void> {
 			if (subscribedForeignIds.includes(id)) continue;
 			if (typeof host.subscribeForeignStatesAsync === "function") {
 				try {
-					await host.subscribeForeignStatesAsync(id, () => scheduleEvccRerun(host));
+					// Kein Callback übergeben: ioBroker interpretiert eine Funktion als
+					// internen Completion-Callback, wodurch das Promise nie auflöst.
+					// EVCC-Änderungen laufen über onStateChange -> handleIntentStateChange.
+					await host.subscribeForeignStatesAsync(id);
 					subscribedForeignIds.push(id);
 				} catch (e) {
 					host.log.debug?.(`Intent EVCC subscribe ${id}: ${e}`);

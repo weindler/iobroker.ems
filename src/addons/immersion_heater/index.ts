@@ -5,11 +5,13 @@ import { IMMERSION_HEATER_MAPPING_COMMANDS, immersionHeaterMappingFromConfig } f
 import { ensureImmersionStatusStates } from "./status";
 import {
 	handleImmersionFaultReset,
+	immersionRuntimeWatchedForeignIds,
 	initImmersionRuntimeEngine,
 	runImmersionRuntimeTick,
 	stopImmersionRuntimeEngine,
 	type ImmersionRuntimeHost,
 } from "./runtime/engine";
+import { immersionDeviceConfigFromAdapter } from "./device_config";
 import { IMMERSION_RUNTIME_STATES } from "./runtime/types";
 
 export const IMMERSION_ADDON_ID = "immersion_heater";
@@ -65,6 +67,11 @@ export function handleImmersionHeaterStateChange(adapter: ioBroker.Adapter, stat
 		stateId === `${ns}user_intent.thermal.resolved_json` ||
 		stateId.endsWith(".user_intent.thermal.resolved_json")
 	) {
+		void runImmersionRuntimeTick(host).catch((e) => adapter.log.warn(`immersion runtime tick: ${e}`));
+		return;
+	}
+	const config = immersionDeviceConfigFromAdapter(adapter.config);
+	if (immersionRuntimeWatchedForeignIds(config).includes(stateId)) {
 		void runImmersionRuntimeTick(host).catch((e) => adapter.log.warn(`immersion runtime tick: ${e}`));
 	}
 }

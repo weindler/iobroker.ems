@@ -7,6 +7,7 @@ const mapping_sync_1 = require("../../mapping_sync");
 const mapping_config_1 = require("./mapping_config");
 const status_1 = require("./status");
 const engine_1 = require("./runtime/engine");
+const device_config_1 = require("./device_config");
 const types_1 = require("./runtime/types");
 exports.IMMERSION_ADDON_ID = "immersion_heater";
 function runtimeHost(adapter) {
@@ -56,6 +57,11 @@ function handleImmersionHeaterStateChange(adapter, stateId) {
     }
     if (stateId === `${ns}user_intent.thermal.resolved_json` ||
         stateId.endsWith(".user_intent.thermal.resolved_json")) {
+        void (0, engine_1.runImmersionRuntimeTick)(host).catch((e) => adapter.log.warn(`immersion runtime tick: ${e}`));
+        return;
+    }
+    const config = (0, device_config_1.immersionDeviceConfigFromAdapter)(adapter.config);
+    if ((0, engine_1.immersionRuntimeWatchedForeignIds)(config).includes(stateId)) {
         void (0, engine_1.runImmersionRuntimeTick)(host).catch((e) => adapter.log.warn(`immersion runtime tick: ${e}`));
     }
 }

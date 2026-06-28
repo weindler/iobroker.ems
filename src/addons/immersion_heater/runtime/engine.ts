@@ -25,6 +25,12 @@ import {
 	writeRuntimePersist,
 } from "./persist";
 import { forceTargetFromIntent, forceUntilFromIntent, parseResolvedIntentJson, resolvedModeFromIntent } from "./intent_read";
+import {
+	externalOnStatus,
+	feedbackStageFromReadings,
+	normalizeFeedbackActive,
+	type StageFeedbackReading,
+} from "./feedback";
 
 export type ImmersionRuntimeHost = {
 	config?: unknown;
@@ -52,9 +58,12 @@ let hostRef: ImmersionRuntimeHost | null = null;
 let persist: RuntimePersistData = emptyPersist();
 let tickTimer: ReturnType<typeof setTimeout> | null = null;
 let mismatchSinceMs: number | null = null;
-let switchCommandAtMs: number | null = null;
+/** Zeitpunkte, zu denen EMS im Live-Modus selbst EIN/AUS auf das Relais geschrieben hat. */
+let emsOnWriteAtMs: number | null = null;
+let emsOffWriteAtMs: number | null = null;
 let chatter: ChatterTracker = { timestampsMs: [] };
-let lastCommandedStage = 0;
+/** -1 = noch nie geschrieben → erster Tick stellt EMS-Besitz her (Live schreibt aktuellen Stand). */
+let lastCommandedStage = -1;
 const subscribedIds: string[] = [];
 const TICK_MS = 5_000;
 
@@ -88,6 +97,43 @@ async function readForeignNum(host: ImmersionRuntimeHost, id: string): Promise<{
 	}
 }
 
+async function readForeignRaw(host: ImmersionRuntimeHost, id: string): Promise<unknown> {
+	try {
+		const reader = host.getForeignStateAsync ?? host.getStateAsync;
+		const st = await reader(id);
+		return st ? st.val : null;
+	} catch {
+		return null;
+	}
+}
+
+/** Liest die konfigurierten Stage-Feedback-States aktiv und normalisiert sie. */
+async function readFeedbackReadings(
+	host: ImmersionRuntimeHost,
+	config: ReturnType<typeof immersionDeviceConfigFromAdapter>,
+): Promise<StageFeedbackReading[]> {
+	const readings: StageFeedbackReading[] = [];
+	for (const stage of config.stages) {
+		if (!stage.feedbackStateId) continue;
+		const raw = await readForeignRaw(host, stage.feedbackStateId);
+		readings.push({ index: stage.index, active: normalizeFeedbackActive(raw) });
+	}
+	return readings;
+}
+
+/** Konfigurierte Fremd-States, deren Änderung einen Runtime-Tick auslösen soll. */
+export function immersionRuntimeWatchedForeignIds(
+	config: ReturnType<typeof immersionDeviceConfigFromAdapter>,
+): string[] {
+	const ids = new Set<string>();
+	if (config.bufferTempStateId) ids.add(config.bufferTempStateId);
+	if (config.actualPowerStateId) ids.add(config.actualPowerStateId);
+	for (const stage of config.stages) {
+		if (stage.feedbackStateId) ids.add(stage.feedbackStateId);
+	}
+	return [...ids];
+}
+
 async function submitAutoRevertToAuto(host: ImmersionRuntimeHost, now: Date): Promise<void> {
 	const issuedAt = now.toISOString();
 	const raw = {
@@ -107,10 +153,12 @@ async function readBool(host: ImmersionRuntimeHost, id: string): Promise<boolean
 }
 
 async function applyStageWrites(host: ImmersionRuntimeHost, stageIndex: number, live: boolean): Promise<void> {
+	// Dryrun: EMS besitzt das Relais nicht — keine physischen Writes.
+	if (!live) return;
 	const config = immersionDeviceConfigFromAdapter(host.config);
 	for (const stage of config.stages) {
 		if (!stage.setStateId) continue;
-		const on = live && stage.index === stageIndex;
+		const on = stage.index === stageIndex;
 		if (!host.setForeignStateAsync) continue;
 		try {
 			await host.setForeignStateAsync(stage.setStateId, { val: on, ack: true });
@@ -181,17 +229,24 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 	}
 
 	const commandedStage = fsm.faultLockout ? 0 : fsm.commandedStage;
-	const commandedOn = commandedStage > 0;
+	const effectiveStage = persist.faultLockout || failsafeActive || resolvedMode === "off" ? 0 : commandedStage;
+	const commandedOn = effectiveStage > 0;
 
-	if (commandedStage !== lastCommandedStage) {
-		switchCommandAtMs = nowMs;
-		if (commandedStage === 0) {
+	// Realer Relais-Übergang → Buchhaltung, Chatter, physischer Write (nur Live) + Write-Zeitstempel.
+	if (effectiveStage !== lastCommandedStage) {
+		if (effectiveStage === 0) {
 			persist.lastOffAtMs = nowMs;
 			persist.pauseUntilMs = nowMs + config.minimumPauseSec * 1000;
 		} else {
 			persist.lastSwitchAtMs = nowMs;
 		}
 		chatter = recordChatterEvent(chatter, nowMs, config.relayChatterWindowSec);
+		await applyStageWrites(host, effectiveStage, live);
+		if (live) {
+			if (effectiveStage === 0) emsOffWriteAtMs = nowMs;
+			else emsOnWriteAtMs = nowMs;
+		}
+		lastCommandedStage = effectiveStage;
 	}
 
 	if (isRelayChatter(chatter, config.relayChatterMaxChanges)) {
@@ -200,14 +255,23 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 		persist.faultSince = now.toISOString();
 	}
 
+	const feedbackReadings = await readFeedbackReadings(host, config);
+	const hasFeedbackConfig = config.stages.some((s) => Boolean(s.feedbackStateId));
+	const feedbackStage = hasFeedbackConfig ? feedbackStageFromReadings(feedbackReadings) : effectiveStage;
+	const feedbackActive = feedbackStage > 0;
+	const powerActive = hasPower && measuredPower !== null && measuredPower > config.powerOnThresholdW;
+
 	const powerCheck = checkPowerFault({
 		nowMs,
+		executionLive: live,
 		commandedOn,
-		commandedStage,
+		commandedStage: effectiveStage,
 		nominalPowerW: fsm.commandedPowerW,
 		measuredPowerW: measuredPower,
 		hasPowerMeasurement: hasPower,
-		switchCommandAtMs,
+		feedbackActive,
+		emsOnWriteAtMs,
+		emsOffWriteAtMs,
 		mismatchSinceMs,
 		config,
 	});
@@ -218,10 +282,10 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 		persist.faultSince = now.toISOString();
 	}
 
-	const effectiveStage = persist.faultLockout || failsafeActive || resolvedMode === "off" ? 0 : commandedStage;
-	if (effectiveStage !== lastCommandedStage) {
-		await applyStageWrites(host, effectiveStage, live);
-		lastCommandedStage = effectiveStage;
+	let powerVerificationStatus = persist.faultLockout ? "fault" : fsm.powerVerificationStatus;
+	const externalStatus = externalOnStatus({ commandedStage: effectiveStage, feedbackActive, powerActive });
+	if (externalStatus && !persist.faultLockout) {
+		powerVerificationStatus = externalStatus;
 	}
 
 	persist.commandedStage = effectiveStage;
@@ -246,11 +310,11 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 		planning_max_temp_c: config.planningMaxTempC,
 		force_target_temp_c: forceTarget,
 		force_until: forceUntil,
-		commanded_stage: effectiveStage,
-		commanded_power_w: effectiveStage > 0 ? fsm.commandedPowerW : 0,
-		feedback_stage: effectiveStage,
+		commanded_stage: persist.faultLockout ? 0 : effectiveStage,
+		commanded_power_w: !persist.faultLockout && effectiveStage > 0 ? fsm.commandedPowerW : 0,
+		feedback_stage: feedbackStage,
 		measured_power_w: measuredPower,
-		power_verification_status: fsm.powerVerificationStatus,
+		power_verification_status: powerVerificationStatus,
 		minimum_runtime_remaining_sec: minRuntimeRem,
 		minimum_pause_remaining_sec: minPauseRem,
 		last_switch_at: persist.lastSwitchAtMs ? new Date(persist.lastSwitchAtMs).toISOString() : null,
@@ -306,7 +370,7 @@ export async function handleImmersionFaultReset(host: ImmersionRuntimeHost, ack:
 	const validation = validateImmersionDeviceConfig(config);
 	const measured = config.actualPowerStateId ? (await readForeignNum(host, config.actualPowerStateId)).value : null;
 	const reset = canResetFault({
-		allStagesOff: lastCommandedStage === 0,
+		allStagesOff: lastCommandedStage <= 0,
 		measuredPowerW: measured,
 		hasPowerMeasurement: Boolean(config.actualPowerStateId),
 		powerOffThresholdW: config.powerOffThresholdW,
@@ -398,7 +462,10 @@ export function stopImmersionRuntimeEngine(): void {
 	engineActive = false;
 	hostRef = null;
 	persist = emptyPersist();
-	lastCommandedStage = 0;
+	lastCommandedStage = -1;
+	emsOnWriteAtMs = null;
+	emsOffWriteAtMs = null;
+	mismatchSinceMs = null;
 	subscribedIds.length = 0;
 	chatter = { timestampsMs: [] };
 }

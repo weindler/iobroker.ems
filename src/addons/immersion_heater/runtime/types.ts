@@ -28,7 +28,13 @@ export type ImmersionFaultCode =
 
 export type TemperatureStatus = "valid" | "missing" | "stale" | "implausible";
 
-export type PowerVerificationStatus = "verified" | "unverified" | "unavailable" | "fault";
+export type PowerVerificationStatus =
+	| "verified"
+	| "unverified"
+	| "unavailable"
+	| "fault"
+	| "external_on"
+	| "unexpected_external_on";
 
 export interface ImmersionStageConfig {
 	index: number;

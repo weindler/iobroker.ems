@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.60",
+		"version": "0.1.61",
 		"news": {
+			"0.1.61": {
+				"en": "Fix: immersion heater reads real stage feedback states (boolean/number/string normalized) instead of mirroring the command; dryrun shows external operation (feedback_stage, external_on) without faults; power_when_off only in live after EMS itself wrote off and the check delay elapsed. Fix: ioBroker intent requests are no longer rejected as expired based on issued_at (creation time is not a deadline).",
+				"de": "Fix: Heizstab liest echte Stage-Feedback-States (boolean/number/string normalisiert) statt den Befehl zu spiegeln; Dryrun zeigt Fremdbetrieb (feedback_stage, external_on) ohne Fault; power_when_off nur im Live-Modus, nachdem EMS selbst AUS geschrieben hat und die Prüfverzögerung abgelaufen ist. Fix: ioBroker-Intent-Requests werden nicht mehr anhand von issued_at als abgelaufen abgewiesen (Erstellungszeit ist kein Ablaufdatum)."
+			},
 			"0.1.60": {
 				"en": "Fix: wallbox user intent no longer bumps its revision on every poll — the volatile external-plan observed_at timestamp is excluded from the semantic hash, stopping the ~20s revision log spam when nothing changed",
 				"de": "Fix: Wallbox-User-Intent zählt die Revision nicht mehr bei jedem Poll hoch — der ständig neu gesetzte external_plan observed_at-Zeitstempel fließt nicht mehr in den semantischen Hash ein, dadurch kein ~20s-Revision-Log-Spam ohne echte Änderung"

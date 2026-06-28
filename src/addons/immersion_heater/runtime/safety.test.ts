@@ -14,12 +14,15 @@ describe("immersion safety", () => {
 	it("no measurement yields no fault", () => {
 		const r = checkPowerFault({
 			nowMs: 100_000,
+			executionLive: true,
 			commandedOn: true,
 			commandedStage: 1,
 			nominalPowerW: 3000,
 			measuredPowerW: null,
 			hasPowerMeasurement: false,
-			switchCommandAtMs: 0,
+			feedbackActive: false,
+			emsOnWriteAtMs: 0,
+			emsOffWriteAtMs: null,
 			mismatchSinceMs: null,
 			config: CFG,
 		});
@@ -29,31 +32,117 @@ describe("immersion safety", () => {
 	it("no_power_when_on after delay", () => {
 		const r = checkPowerFault({
 			nowMs: 100_000,
+			executionLive: true,
 			commandedOn: true,
 			commandedStage: 1,
 			nominalPowerW: 3000,
 			measuredPowerW: 5,
 			hasPowerMeasurement: true,
-			switchCommandAtMs: 0,
+			feedbackActive: false,
+			emsOnWriteAtMs: 0,
+			emsOffWriteAtMs: null,
 			mismatchSinceMs: null,
 			config: CFG,
 		});
 		assert.equal(r.faultCode, "no_power_when_on");
 	});
 
-	it("power_when_off detects stuck relay", () => {
+	it("power_when_off detects stuck relay after EMS wrote off", () => {
 		const r = checkPowerFault({
 			nowMs: 100_000,
+			executionLive: true,
 			commandedOn: false,
 			commandedStage: 0,
 			nominalPowerW: 0,
 			measuredPowerW: 500,
 			hasPowerMeasurement: true,
-			switchCommandAtMs: 0,
+			feedbackActive: false,
+			emsOnWriteAtMs: null,
+			emsOffWriteAtMs: 0,
 			mismatchSinceMs: null,
 			config: CFG,
 		});
 		assert.equal(r.faultCode, "power_when_off");
+	});
+
+	it("power_when_off also fires on stuck feedback without power measurement", () => {
+		const r = checkPowerFault({
+			nowMs: 100_000,
+			executionLive: true,
+			commandedOn: false,
+			commandedStage: 0,
+			nominalPowerW: 0,
+			measuredPowerW: null,
+			hasPowerMeasurement: false,
+			feedbackActive: true,
+			emsOnWriteAtMs: null,
+			emsOffWriteAtMs: 0,
+			mismatchSinceMs: null,
+			config: CFG,
+		});
+		assert.equal(r.faultCode, "power_when_off");
+	});
+
+	it("dryrun never raises a power fault (EMS does not own the relay)", () => {
+		const r = checkPowerFault({
+			nowMs: 100_000,
+			executionLive: false,
+			commandedOn: false,
+			commandedStage: 0,
+			nominalPowerW: 0,
+			measuredPowerW: 500,
+			hasPowerMeasurement: true,
+			feedbackActive: true,
+			emsOnWriteAtMs: null,
+			emsOffWriteAtMs: 0,
+			mismatchSinceMs: null,
+			config: CFG,
+		});
+		assert.equal(r.faultCode, "none");
+		assert.equal(r.lockout, false);
+	});
+
+	it("power_when_off does not fire before EMS itself wrote off", () => {
+		const r = checkPowerFault({
+			nowMs: 100_000,
+			executionLive: true,
+			commandedOn: false,
+			commandedStage: 0,
+			nominalPowerW: 0,
+			measuredPowerW: 500,
+			hasPowerMeasurement: true,
+			feedbackActive: true,
+			emsOnWriteAtMs: null,
+			emsOffWriteAtMs: null,
+			mismatchSinceMs: null,
+			config: CFG,
+		});
+		assert.equal(r.faultCode, "none");
+	});
+
+	it("power_when_off waits for the off-check delay", () => {
+		const cfg = immersionDeviceConfigFromAdapter({
+			ih_set_enabled_target: "r",
+			ih_buffer_temp_c_target: "t",
+			ih_actual_power_state: "p",
+			ih_stage_1_nominal_power_w: 3000,
+			ih_switch_off_check_delay_sec: 30,
+		});
+		const r = checkPowerFault({
+			nowMs: 10_000,
+			executionLive: true,
+			commandedOn: false,
+			commandedStage: 0,
+			nominalPowerW: 0,
+			measuredPowerW: 500,
+			hasPowerMeasurement: true,
+			feedbackActive: false,
+			emsOnWriteAtMs: null,
+			emsOffWriteAtMs: 0,
+			mismatchSinceMs: null,
+			config: cfg,
+		});
+		assert.equal(r.faultCode, "none");
 	});
 
 	it("relay chatter detection", () => {

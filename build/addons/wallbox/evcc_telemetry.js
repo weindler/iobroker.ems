@@ -27,13 +27,23 @@ function normalizeSessionEnergyKwh(raw) {
     }
     return { value: wh.value / 1000, status: "valid", raw };
 }
+/** Gos Null-Zeit (EVCC effectivePlanTime ohne Plan) ist keine gültige Deadline. */
+function isZeroTimeSentinel(iso) {
+    return iso.startsWith("0001-01-01T00:00:00");
+}
+function planTimeFromIso(iso, raw) {
+    if (isZeroTimeSentinel(iso)) {
+        return { value: null, status: "invalid", raw };
+    }
+    return { value: iso, status: "valid", raw };
+}
 function normalizePlanTime(raw) {
     if (raw === null || raw === undefined || raw === "") {
         return (0, normalize_1.missingField)();
     }
     if (typeof raw === "number" && Number.isFinite(raw)) {
         const ms = raw > 1e12 ? raw : raw * 1000;
-        return { value: new Date(ms).toISOString(), status: "valid", raw };
+        return planTimeFromIso(new Date(ms).toISOString(), raw);
     }
     const s = String(raw).trim();
     if (!s)
@@ -41,11 +51,11 @@ function normalizePlanTime(raw) {
     const asNum = parseFloat(s);
     if (/^\d+(\.\d+)?$/.test(s) && Number.isFinite(asNum)) {
         const ms = asNum > 1e12 ? asNum : asNum * 1000;
-        return { value: new Date(ms).toISOString(), status: "valid", raw };
+        return planTimeFromIso(new Date(ms).toISOString(), raw);
     }
     const parsed = Date.parse(s);
     if (Number.isFinite(parsed)) {
-        return { value: new Date(parsed).toISOString(), status: "valid", raw };
+        return planTimeFromIso(new Date(parsed).toISOString(), raw);
     }
     return { value: null, status: "invalid", raw };
 }

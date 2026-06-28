@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.62",
+		"version": "0.1.63",
 		"news": {
+			"0.1.63": {
+				"en": "Fix: EVCC plan_time and effective_plan_time mirror states are now explicitly cleared (set to \"\") whenever the normalized time is null or invalid, so a stale EVCC deadline can no longer linger; added Go zero-time sentinel handling (0001-01-01) and mirror tests; no EVCC or wallbox writes added",
+				"de": "Fix: EVCC plan_time und effective_plan_time Spiegelstates werden jetzt ausdrücklich geleert (auf \"\" gesetzt), sobald der normalisierte Zeitwert null oder ungültig ist, damit keine alte EVCC-Deadline stale stehen bleibt; Go-Null-Zeit-Sentinel (0001-01-01) wird behandelt; Mirror-Tests ergänzt; keine EVCC- oder Wallbox-Writes ergänzt"
+			},
 			"0.1.62": {
 				"en": "Phase 3B.1: Wallbox fully on EVCC read-only mappings — admin shows EVCC telemetry groups only; legacy go-e write mappings preserved in config but no longer used by runtime; new addons.wallbox.evcc.* states and live cache from EVCC; no EVCC or wallbox writes in this phase",
 				"de": "Phase 3B.1: Wallbox vollständig auf EVCC-Read-Mappings — Admin zeigt nur EVCC-Telemetrie-Gruppen; Legacy-go-e-Write-Mappings bleiben in der Config erhalten, werden von der Runtime nicht mehr genutzt; neue addons.wallbox.evcc.*-States und Live-Cache aus EVCC; in dieser Phase keine EVCC- oder Wallbox-Writes"

@@ -15,6 +15,15 @@ async function writeField(host, stateId, field) {
     const val = field.value;
     await host.setStateAsync(stateId, { val, ack: true });
 }
+/**
+ * Spiegelt einen Planzeit-Feld in einen String-State (role: date).
+ * Anders als writeField wird der State bei null/ungültig ausdrücklich auf ""
+ * gesetzt, damit kein alter EVCC-Deadline-Zeitstempel stale stehen bleibt.
+ */
+async function writeTimeField(host, stateId, field) {
+    const val = field.status === "valid" && typeof field.value === "string" ? field.value : "";
+    await host.setStateAsync(stateId, { val, ack: true });
+}
 async function refreshWallboxEvccTelemetry(host) {
     const cfg = (0, evcc_config_1.wallboxEvccTelemetryConfigFromAdapter)(host.config);
     const snap = await (0, evcc_telemetry_1.readEvccTelemetrySnapshot)(host, cfg, new Date());
@@ -31,8 +40,8 @@ async function refreshWallboxEvccTelemetry(host) {
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.vehicleSocPct, snap.vehicle_soc_pct);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.planActive, snap.plan_active);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.planSocPct, snap.plan_soc_pct);
-    await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.planTime, snap.plan_time);
-    await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.effectivePlanTime, snap.effective_plan_time);
+    await writeTimeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.planTime, snap.plan_time);
+    await writeTimeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.effectivePlanTime, snap.effective_plan_time);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.activePhases, snap.active_phases);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.configuredPhases, snap.configured_phases);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.minCurrentA, snap.min_current_a);

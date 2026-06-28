@@ -2,7 +2,7 @@
 
 Eigenständiger ioBroker-Adapter für sicheres Energiemanagement — ohne Abhängigkeit von einem externen EMS-Server.
 
-**Aktuelle Version:** v0.1.64
+**Aktuelle Version:** v0.1.65
 
 ---
 
@@ -26,8 +26,9 @@ EMS-Light muss jederzeit ohne KI vollständig und sicher arbeiten. Die KI-Freiga
 | Heizstab (Immersion Heater) | Runtime, FSM, Safety, Live-Writes |
 | Command Pipeline (Dryrun/Live) | implementiert |
 | Add-on-Governance (GLOBAL: aktiv + KI-Freigabe) | implementiert |
+| Batterie: Profile `generic_readonly` + `sonnen_em` (Read-only/Dryrun/Live) | implementiert |
 | KI / General Operator | *geplant* |
-| Batterie-Geräteprofile | *geplant* |
+| Weitere Batterie-Steuerprofile (Fronius, Victron, …) | *geplant* |
 
 ---
 
@@ -36,7 +37,7 @@ EMS-Light muss jederzeit ohne KI vollständig und sicher arbeiten. Die KI-Freiga
 Auf einem ioBroker-Host:
 
 ```bash
-iobroker url install github:weindler/iobroker.ems#v0.1.64
+iobroker url install github:weindler/iobroker.ems#v0.1.65
 ```
 
 Oder aus Git-Checkout:
@@ -64,6 +65,7 @@ Instanz-Einstellungen in der ioBroker-Admin-Oberfläche:
 
 - **Global** — Ausführungsmodus, Global Mode, **Add-on-Steuerung** (Aktiv + optionale KI-Freigabe je Add-on), Tick-Intervall
 - **Wallbox** — EVCC-Telemetrie-Mappings (read-only)
+- **Batterie** — Hardware (Hersteller/Modell/Kapazität), Steuerprofil (`generic_readonly` / `sonnen_em`), Telemetrie-Mapping, Hardwaregrenzen, Sonnen-Mapping/Sequenz/Netzausgleich, Diagnose
 - **Heizstab** — Stufen, Temperatur, Safety-Parameter
 - **EMS-Light User Intent** — Defaults und ioBroker-Request-Einstellungen
 
@@ -82,6 +84,12 @@ EVCC-Mappings unter Tab „Wallbox"; Intent-relevante EVCC-Felder dort konfiguri
 Sicherheitsdefaults: alles auf `dryrun`.
 
 Wallbox ist aktuell **vollständig read-only** (keine EVCC- oder Wallbox-Writes).
+
+### Batterie
+
+- **Generic Read-only** — liest und normalisiert Telemetrie, keinerlei Geräte-Writes.
+- **Sonnen EM** — vollständige Steuerung (Modus 1/2, Ladeleistung, Feedback, Safe Restore, optionaler Netzausgleich) über eine gemeinsame FSM; Dryrun simuliert exakt den Live-Ablauf.
+- Live nur nach bewusster globaler Freigabe (`global.execution_mode = live`) und allen Safety-/Ownership-Gates. Im aktuellen Betrieb bleibt der globale Modus `dryrun` — es finden **keine** realen Batterie-Writes statt.
 
 ---
 

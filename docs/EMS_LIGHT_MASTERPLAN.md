@@ -366,7 +366,7 @@ BYD ist grundsätzlich Batterie-Hardware.
 
 Die Steuerung kann beispielsweise über Fronius oder Victron erfolgen.
 
-> **Stand 28.06.2026:** Batterie-Intent-Binding (read-only) ist implementiert. Geräteprofile und Live-Steuerung sind noch nicht umgesetzt.
+> **Stand 28.06.2026 (v0.1.65):** Batterie-Grundmodell, Trennung von Hardware und Steuerprofil, normalisierte Telemetrie, Netto-Kapazität, Hardwaregrenzen, Capability-Modell, neutraler Batterie-Intent sowie die Profile `generic_readonly` und `sonnen_em` sind implementiert. Read-only, Dryrun und Live nutzen **eine gemeinsame FSM** mit zentraler, gegateter Write-Funktion, Feedbackprüfung, Ownership-Schutz, Safe Restore und Fault/Lockout; der optionale Sonnen-Netzausgleich läuft über dieselben Gates. Battery Runtime Learning bleibt erhalten. Weitere Profile (Sonnen Performance, Fronius, Victron) sowie eine KI-Optimierung sind weiterhin geplant. Der globale Ausführungsmodus bleibt `dryrun` (keine realen Geräte-Writes).
 
 ---
 

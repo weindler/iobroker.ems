@@ -38,7 +38,7 @@ src/
 ├── addons/
 │   ├── wallbox/            EVCC-Telemetrie (read-only)
 │   ├── immersion_heater/   Heizstab-Runtime, FSM, Safety
-│   ├── battery/            Batterie-Modul (Stub/Binding)
+│   ├── battery/            Batterie: core/ profiles/ runtime/ (FSM, zentrale Write-Funktion)
 │   └── dynamic_tariff/     Tarif-Modul
 └── tree_paths.ts           Zentrale State-Pfad-Konventionen
 ```
@@ -198,7 +198,7 @@ Vier Ebenen:
 
 **Trennung:** Telemetrie, Mirror, Mapping und Learning laufen bei `enabled = false` weiter (z. B. EVCC-Telemetrie, Battery Runtime Learning).
 
-Die KI-Freigabe ist nur gespeicherte Opt-in-Freigabe — **keine KI-Aufrufe** in v0.1.64.
+Die KI-Freigabe ist nur gespeicherte Opt-in-Freigabe — weiterhin **keine KI-Aufrufe** (Stand v0.1.65).
 
 ---
 
@@ -233,11 +233,30 @@ Dryrun schreibt nur Dryrun-Mirror-States (`addons.<id>.dryrun.*`).
 | Intent | `user_intent.resolved_all_json` | Aggregierter Intent |
 | Wallbox EVCC | `addons.wallbox.evcc.snapshot_json` | EVCC-Telemetrie |
 | Heizstab | `addons.immersion_heater.runtime.snapshot_json` | Runtime-Snapshot |
+| Batterie | `addons.battery.status.*`, `addons.battery.telemetry.*` | Profil/Bereitschaft, normalisierte Telemetrie |
+| Batterie | `addons.battery.runtime.*`, `addons.battery.dryrun.*` | FSM-Zustand, Ownership, geplante Writes |
+| Batterie | `addons.battery.capabilities.*`, `addons.battery.diagnostics.*` | Capability-Matrix, Fault/Lockout, letzter Write |
+| Batterie | `addons.battery.control.fault_reset` | Fault/Lockout zurücksetzen (Schreib-State) |
 | Governance | `addons.wallbox.governance.enabled` | Add-on aktiv (Spiegel aus Config) |
 | Command | `command.inbox` | Legacy-Befehlseingang |
 | System | `system.health` | Tick-Gesundheit |
 
 Vollständige Pfad-Konventionen: `src/tree_paths.ts`.
+
+---
+
+## 12a. Batterie-Architektur
+
+**Pfad:** `src/addons/battery/` (`core/`, `profiles/`, `runtime/`)
+
+- **Hardware ↔ Controller getrennt:** Batterie-Hardware (Hersteller/Modell/Kapazität) und Steuerprofil sind entkoppelt (z. B. BYD-Hardware, Fronius-Controller).
+- **Datenvertrag (`core/`):** `BatteryIdentity`, `BatteryTelemetry` (normalisierte Vorzeichenkonvention), Kapazitäts-/Energieableitung, `BatteryHardwareLimits`, normalisierte `BatteryOperatingMode`, neutraler `BatteryDeviceIntent`.
+- **Capability-Modell:** je Fähigkeit `supported / configured / available` (`core/capabilities.ts`); `set_discharge_power` ist bewusst nicht freigegeben.
+- **Profile (`profiles/`):** `generic_readonly` (nur Lesen, nie Live), `sonnen_em` (volle Steuerung). Herstellerspezifische Moduswerte existieren nur im Profil.
+- **FSM (`runtime/fsm.ts`):** eine gemeinsame Zustandsmaschine für Dryrun und Live (idle → validate → prepare → pause_grid_balance → set_manual_mode → verify → set_charge_power → verify → active → stop_charge → restore_self_consumption → restore_grid_balance → completed / fault / lockout). Dryrun simuliert Rückmeldungen, Live prüft echte.
+- **Zentrale Write-Funktion (`runtime/execute.ts`):** alle realen Batterie-Writes laufen über `executeBatteryWrite`; das finale Gate prüft unmittelbar vor `setForeignState` global Live, Governance, Profilbereitschaft, Intent, Telemetrie, Fault/Lockout, Mapping und Ownership.
+- **Ownership & Safe Restore:** EMS führt Safe Restore nur aus, wenn es die Batterie selbst in den manuellen Modus versetzt hat; fremde manuelle Steuerung wird nicht überschrieben.
+- **Verhältnis zu Governance/Learning:** `battery_enabled = false` stoppt Steuerung kontrolliert, Telemetrie und Battery Runtime Learning laufen weiter.
 
 ---
 
@@ -249,12 +268,13 @@ Tests liegen neben dem Quellcode (`*.test.ts`) und werden nach `build/` kompilie
 npm test    # build + node --test auf alle *.test.js
 ```
 
-290+ Tests (Stand v0.1.64), u. a.:
+360+ Tests (Stand v0.1.65), u. a.:
 
 - Global Modes, Policy Engine, Intent Engine
 - Wallbox EVCC-Telemetrie und Mirror-States
 - Heizstab FSM, Safety, Feedback, Governance-Gates
 - Add-on-Governance (Config, Runtime-States, Pipeline)
+- Batterie: Core (Telemetrie/Kapazität/Grenzen/Validierung), Profile, FSM, zentrale Write-Gates, Dryrun-Tick (keine realen Writes), Ownership
 - Learning-Mathematik (PV, Wetter, Preis, Hauslast, Thermal, Battery)
 
 Keine externen Snapshot-Fixtures im Repository — Tests nutzen Mock-Hosts.
@@ -266,7 +286,7 @@ Keine externen Snapshot-Fixtures im Repository — Tests nutzen Mock-Hosts.
 - Modus `observe`
 - Deterministischer Planner / General Operator
 - KI-Integration und Kostenkontrolle
-- Batterie-Geräteprofile (Generic Read-only, Sonnen EM, …)
+- Weitere Batterie-Steuerprofile (Sonnen Performance, Fronius, Victron, …) und bestätigte Entladesteuerung
 - Einheitliche Runtime-States (`decision_source`, `planner_status`, …) über Governance hinaus
 - EVCC-Writes / Wallbox-Steuerung
 

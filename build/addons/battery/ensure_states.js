@@ -1,0 +1,243 @@
+"use strict";
+/** Runtime-, Status- und Diagnose-States der neuen Batteriearchitektur. */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ensureBatteryArchitectureStates = exports.BAT = exports.BATTERY_BASE = void 0;
+exports.BATTERY_BASE = "addons.battery";
+exports.BAT = {
+    identity: {
+        manufacturer: `${exports.BATTERY_BASE}.identity.manufacturer`,
+        model: `${exports.BATTERY_BASE}.identity.model`,
+        controllerProfile: `${exports.BATTERY_BASE}.identity.controller_profile`,
+        capacityNetKwh: `${exports.BATTERY_BASE}.identity.capacity_net_kwh`,
+        capacitySource: `${exports.BATTERY_BASE}.identity.capacity_source`,
+    },
+    telemetry: {
+        socPct: `${exports.BATTERY_BASE}.telemetry.soc_pct`,
+        powerW: `${exports.BATTERY_BASE}.telemetry.power_w`,
+        chargingPowerW: `${exports.BATTERY_BASE}.telemetry.charging_power_w`,
+        dischargingPowerW: `${exports.BATTERY_BASE}.telemetry.discharging_power_w`,
+        capacityEffectiveKwh: `${exports.BATTERY_BASE}.telemetry.capacity_effective_kwh`,
+        operatingMode: `${exports.BATTERY_BASE}.telemetry.operating_mode`,
+        online: `${exports.BATTERY_BASE}.telemetry.online`,
+        valid: `${exports.BATTERY_BASE}.telemetry.valid`,
+        stale: `${exports.BATTERY_BASE}.telemetry.stale`,
+        lastUpdate: `${exports.BATTERY_BASE}.telemetry.last_update`,
+    },
+    status: {
+        profile: `${exports.BATTERY_BASE}.status.profile`,
+        profileLoaded: `${exports.BATTERY_BASE}.status.profile_loaded`,
+        telemetryReady: `${exports.BATTERY_BASE}.status.telemetry_ready`,
+        controlReady: `${exports.BATTERY_BASE}.status.control_ready`,
+        dryrunReady: `${exports.BATTERY_BASE}.status.dryrun_ready`,
+        liveReady: `${exports.BATTERY_BASE}.status.live_ready`,
+        effectiveExecutionMode: `${exports.BATTERY_BASE}.status.effective_execution_mode`,
+        state: `${exports.BATTERY_BASE}.status.state`,
+        reason: `${exports.BATTERY_BASE}.status.reason`,
+        fault: `${exports.BATTERY_BASE}.status.fault`,
+        lockout: `${exports.BATTERY_BASE}.status.lockout`,
+    },
+    capabilities: {
+        readSoc: `${exports.BATTERY_BASE}.capabilities.read_soc`,
+        readPower: `${exports.BATTERY_BASE}.capabilities.read_power`,
+        setOperatingMode: `${exports.BATTERY_BASE}.capabilities.set_operating_mode`,
+        setChargePower: `${exports.BATTERY_BASE}.capabilities.set_charge_power`,
+        setDischargePower: `${exports.BATTERY_BASE}.capabilities.set_discharge_power`,
+        controlGridBalance: `${exports.BATTERY_BASE}.capabilities.control_grid_balance`,
+        safeRestore: `${exports.BATTERY_BASE}.capabilities.safe_restore`,
+        liveControl: `${exports.BATTERY_BASE}.capabilities.live_control`,
+    },
+    limits: {
+        hardwareMaxChargeW: `${exports.BATTERY_BASE}.limits.hardware_max_charge_w`,
+        hardwareMaxDischargeW: `${exports.BATTERY_BASE}.limits.hardware_max_discharge_w`,
+        hardwareMinSocPct: `${exports.BATTERY_BASE}.limits.hardware_min_soc_pct`,
+        hardwareMaxSocPct: `${exports.BATTERY_BASE}.limits.hardware_max_soc_pct`,
+        effectiveMaxChargeW: `${exports.BATTERY_BASE}.limits.effective_max_charge_w`,
+        effectiveMaxDischargeW: `${exports.BATTERY_BASE}.limits.effective_max_discharge_w`,
+        effectiveReason: `${exports.BATTERY_BASE}.limits.effective_reason`,
+    },
+    runtime: {
+        requestId: `${exports.BATTERY_BASE}.runtime.request_id`,
+        action: `${exports.BATTERY_BASE}.runtime.action`,
+        state: `${exports.BATTERY_BASE}.runtime.state`,
+        step: `${exports.BATTERY_BASE}.runtime.step`,
+        requestedPowerW: `${exports.BATTERY_BASE}.runtime.requested_power_w`,
+        effectivePowerW: `${exports.BATTERY_BASE}.runtime.effective_power_w`,
+        targetSocPct: `${exports.BATTERY_BASE}.runtime.target_soc_pct`,
+        startedAt: `${exports.BATTERY_BASE}.runtime.started_at`,
+        lastTransitionAt: `${exports.BATTERY_BASE}.runtime.last_transition_at`,
+        reason: `${exports.BATTERY_BASE}.runtime.reason`,
+        ownershipActive: `${exports.BATTERY_BASE}.runtime.ownership_active`,
+    },
+    dryrun: {
+        wouldWrite: `${exports.BATTERY_BASE}.dryrun.would_write`,
+        wouldWriteState: `${exports.BATTERY_BASE}.dryrun.would_write_state`,
+        wouldWriteValue: `${exports.BATTERY_BASE}.dryrun.would_write_value`,
+        sequenceStep: `${exports.BATTERY_BASE}.dryrun.sequence_step`,
+        requestedAction: `${exports.BATTERY_BASE}.dryrun.requested_action`,
+        requestedPowerW: `${exports.BATTERY_BASE}.dryrun.requested_power_w`,
+        effectivePowerW: `${exports.BATTERY_BASE}.dryrun.effective_power_w`,
+        wouldRestore: `${exports.BATTERY_BASE}.dryrun.would_restore`,
+        reason: `${exports.BATTERY_BASE}.dryrun.reason`,
+        updatedAt: `${exports.BATTERY_BASE}.dryrun.updated_at`,
+    },
+    diagnostics: {
+        missingMappings: `${exports.BATTERY_BASE}.diagnostics.missing_mappings`,
+        lastWriteState: `${exports.BATTERY_BASE}.diagnostics.last_write_state`,
+        lastWriteValue: `${exports.BATTERY_BASE}.diagnostics.last_write_value`,
+        lastWriteAt: `${exports.BATTERY_BASE}.diagnostics.last_write_at`,
+        lastWriteSuccess: `${exports.BATTERY_BASE}.diagnostics.last_write_success`,
+        lastFeedbackAt: `${exports.BATTERY_BASE}.diagnostics.last_feedback_at`,
+        expectedFeedback: `${exports.BATTERY_BASE}.diagnostics.expected_feedback`,
+        actualFeedback: `${exports.BATTERY_BASE}.diagnostics.actual_feedback`,
+        faultCode: `${exports.BATTERY_BASE}.diagnostics.fault_code`,
+        faultReason: `${exports.BATTERY_BASE}.diagnostics.fault_reason`,
+    },
+    control: {
+        faultReset: `${exports.BATTERY_BASE}.control.fault_reset`,
+    },
+};
+const bool = (name) => ({
+    name,
+    type: "boolean",
+    role: "indicator",
+    read: true,
+    write: false,
+    def: false,
+});
+const numS = (name, unit) => ({
+    name,
+    type: "number",
+    role: "value",
+    read: true,
+    write: false,
+    ...(unit ? { unit } : {}),
+});
+const txt = (name) => ({
+    name,
+    type: "string",
+    role: "text",
+    read: true,
+    write: false,
+});
+function batteryStateDefs() {
+    return [
+        { id: exports.BAT.identity.manufacturer, common: txt("Hersteller"), defVal: "" },
+        { id: exports.BAT.identity.model, common: txt("Modell"), defVal: "" },
+        { id: exports.BAT.identity.controllerProfile, common: txt("Steuerprofil"), defVal: "" },
+        { id: exports.BAT.identity.capacityNetKwh, common: numS("Netto-Kapazität", "kWh") },
+        { id: exports.BAT.identity.capacitySource, common: txt("Kapazitätsquelle"), defVal: "unknown" },
+        { id: exports.BAT.telemetry.socPct, common: numS("SOC", "%") },
+        { id: exports.BAT.telemetry.powerW, common: numS("Batterieleistung (norm.)", "W") },
+        { id: exports.BAT.telemetry.chargingPowerW, common: numS("Ladeleistung", "W") },
+        { id: exports.BAT.telemetry.dischargingPowerW, common: numS("Entladeleistung", "W") },
+        { id: exports.BAT.telemetry.capacityEffectiveKwh, common: numS("Effektive Kapazität", "kWh") },
+        { id: exports.BAT.telemetry.operatingMode, common: txt("Normalisierter Betriebsmodus"), defVal: "unknown" },
+        { id: exports.BAT.telemetry.online, common: bool("Online/Kommunikation") },
+        { id: exports.BAT.telemetry.valid, common: bool("Telemetrie gültig") },
+        { id: exports.BAT.telemetry.stale, common: bool("Telemetrie veraltet") },
+        { id: exports.BAT.telemetry.lastUpdate, common: txt("Telemetrie zuletzt aktualisiert") },
+        { id: exports.BAT.status.profile, common: txt("Profil"), defVal: "" },
+        { id: exports.BAT.status.profileLoaded, common: bool("Profil geladen") },
+        { id: exports.BAT.status.telemetryReady, common: bool("Telemetrie bereit") },
+        { id: exports.BAT.status.controlReady, common: bool("Steuerung bereit") },
+        { id: exports.BAT.status.dryrunReady, common: bool("Dryrun bereit") },
+        { id: exports.BAT.status.liveReady, common: bool("Live bereit") },
+        { id: exports.BAT.status.effectiveExecutionMode, common: txt("Effektiver Ausführungsmodus"), defVal: "dryrun" },
+        { id: exports.BAT.status.state, common: txt("FSM-Zustand"), defVal: "idle" },
+        { id: exports.BAT.status.reason, common: txt("Status-Grund"), defVal: "" },
+        { id: exports.BAT.status.fault, common: bool("Fault") },
+        { id: exports.BAT.status.lockout, common: bool("Lockout") },
+        { id: exports.BAT.capabilities.readSoc, common: bool("Capability read_soc") },
+        { id: exports.BAT.capabilities.readPower, common: bool("Capability read_power") },
+        { id: exports.BAT.capabilities.setOperatingMode, common: bool("Capability set_operating_mode") },
+        { id: exports.BAT.capabilities.setChargePower, common: bool("Capability set_charge_power") },
+        { id: exports.BAT.capabilities.setDischargePower, common: bool("Capability set_discharge_power") },
+        { id: exports.BAT.capabilities.controlGridBalance, common: bool("Capability control_grid_balance") },
+        { id: exports.BAT.capabilities.safeRestore, common: bool("Capability safe_restore") },
+        { id: exports.BAT.capabilities.liveControl, common: bool("Capability live_control") },
+        { id: exports.BAT.limits.hardwareMaxChargeW, common: numS("HW max. Ladeleistung", "W") },
+        { id: exports.BAT.limits.hardwareMaxDischargeW, common: numS("HW max. Entladeleistung", "W") },
+        { id: exports.BAT.limits.hardwareMinSocPct, common: numS("HW Mindest-SOC", "%") },
+        { id: exports.BAT.limits.hardwareMaxSocPct, common: numS("HW Maximal-SOC", "%") },
+        { id: exports.BAT.limits.effectiveMaxChargeW, common: numS("Effektive max. Ladeleistung", "W") },
+        { id: exports.BAT.limits.effectiveMaxDischargeW, common: numS("Effektive max. Entladeleistung", "W") },
+        { id: exports.BAT.limits.effectiveReason, common: txt("Grenzen-Grund"), defVal: "" },
+        { id: exports.BAT.runtime.requestId, common: txt("Request-ID"), defVal: "" },
+        { id: exports.BAT.runtime.action, common: txt("Aktion"), defVal: "" },
+        { id: exports.BAT.runtime.state, common: txt("FSM-Zustand"), defVal: "idle" },
+        { id: exports.BAT.runtime.step, common: txt("FSM-Schritt"), defVal: "" },
+        { id: exports.BAT.runtime.requestedPowerW, common: numS("Angeforderte Leistung", "W") },
+        { id: exports.BAT.runtime.effectivePowerW, common: numS("Effektive Leistung", "W") },
+        { id: exports.BAT.runtime.targetSocPct, common: numS("Ziel-SOC", "%") },
+        { id: exports.BAT.runtime.startedAt, common: txt("Gestartet"), defVal: "" },
+        { id: exports.BAT.runtime.lastTransitionAt, common: txt("Letzter Übergang"), defVal: "" },
+        { id: exports.BAT.runtime.reason, common: txt("Grund"), defVal: "" },
+        { id: exports.BAT.runtime.ownershipActive, common: bool("Ownership aktiv") },
+        { id: exports.BAT.dryrun.wouldWrite, common: bool("Würde schreiben") },
+        { id: exports.BAT.dryrun.wouldWriteState, common: txt("Würde-Write Ziel-State"), defVal: "" },
+        { id: exports.BAT.dryrun.wouldWriteValue, common: numS("Würde-Write Wert") },
+        { id: exports.BAT.dryrun.sequenceStep, common: txt("Sequenz-Schritt"), defVal: "" },
+        { id: exports.BAT.dryrun.requestedAction, common: txt("Angeforderte Aktion"), defVal: "" },
+        { id: exports.BAT.dryrun.requestedPowerW, common: numS("Angeforderte Leistung", "W") },
+        { id: exports.BAT.dryrun.effectivePowerW, common: numS("Effektive Leistung", "W") },
+        { id: exports.BAT.dryrun.wouldRestore, common: bool("Würde Restore ausführen") },
+        { id: exports.BAT.dryrun.reason, common: txt("Grund"), defVal: "" },
+        { id: exports.BAT.dryrun.updatedAt, common: txt("Aktualisiert"), defVal: "" },
+        { id: exports.BAT.diagnostics.missingMappings, common: txt("Fehlende Pflicht-Mappings"), defVal: "" },
+        { id: exports.BAT.diagnostics.lastWriteState, common: txt("Letzter Write Ziel-State"), defVal: "" },
+        { id: exports.BAT.diagnostics.lastWriteValue, common: numS("Letzter Write Wert") },
+        { id: exports.BAT.diagnostics.lastWriteAt, common: txt("Letzter Write"), defVal: "" },
+        { id: exports.BAT.diagnostics.lastWriteSuccess, common: bool("Letzter Write erfolgreich") },
+        { id: exports.BAT.diagnostics.lastFeedbackAt, common: txt("Letzte Rückmeldung"), defVal: "" },
+        { id: exports.BAT.diagnostics.expectedFeedback, common: numS("Erwartete Rückmeldung") },
+        { id: exports.BAT.diagnostics.actualFeedback, common: numS("Tatsächliche Rückmeldung") },
+        { id: exports.BAT.diagnostics.faultCode, common: txt("Fault-Code"), defVal: "" },
+        { id: exports.BAT.diagnostics.faultReason, common: txt("Fault-Grund"), defVal: "" },
+        {
+            id: exports.BAT.control.faultReset,
+            common: {
+                name: "Fault/Lockout zurücksetzen",
+                type: "boolean",
+                role: "button",
+                read: true,
+                write: true,
+                def: false,
+            },
+            defVal: false,
+        },
+    ];
+}
+async function ensureBatteryArchitectureStates(adapter) {
+    const channels = [
+        "identity",
+        "telemetry",
+        "status",
+        "capabilities",
+        "limits",
+        "runtime",
+        "dryrun",
+        "diagnostics",
+        "control",
+    ];
+    for (const ch of channels) {
+        await adapter.setObjectNotExistsAsync(`${exports.BATTERY_BASE}.${ch}`, {
+            type: "channel",
+            common: { name: `battery ${ch}` },
+            native: {},
+        });
+    }
+    for (const def of batteryStateDefs()) {
+        await adapter.setObjectNotExistsAsync(def.id, {
+            type: "state",
+            common: def.common,
+            native: {},
+        });
+        if (def.defVal !== undefined) {
+            const cur = await adapter.getStateAsync(def.id);
+            if (cur?.val === undefined || cur.val === null) {
+                await adapter.setStateAsync(def.id, { val: def.defVal, ack: true });
+            }
+        }
+    }
+}
+exports.ensureBatteryArchitectureStates = ensureBatteryArchitectureStates;

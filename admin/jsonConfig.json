@@ -546,425 +546,738 @@
 			}
 		},
 		"batteryTab": {
-			"type": "panel",
-			"label": "Batterie / Sonnen",
-			"items": {
-				"batIntro": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "Kapazität und ob Netzausgleich strategisch sinnvoll ist, kommt vom EMS (ems_mirror.*). Netzausgleich läuft bei Änderung von consumption_w — nicht per Intervall. Winter-Netzladen: separates Intervall (später)."
-				},
-				"batteryGovernanceHint": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "Dieses Add-on wird zentral unter GLOBAL aktiviert."
-				},
-				"battery_profile": {
-					"type": "select",
-					"label": "Batterie-Profil",
-					"options": [
-						{
-							"label": "Sonnen (EM-Adapter)",
-							"value": "sonnen"
-						}
-					],
-					"default": "sonnen",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"bat_addon_mode": {
-					"type": "select",
-					"label": "Batterie Ausführung",
-					"options": [
-						{ "label": "Dryrun", "value": "dryrun" },
-						{ "label": "Live", "value": "live" }
-					],
-					"default": "dryrun",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"hBatMapping": {
-					"type": "header",
-					"size": 2,
-					"text": "Datenpunkt-Mapping (ioBroker)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"hBatConsumption": {
-					"type": "header",
-					"size": 2,
-					"text": "consumption_w — Verbrauch",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"bat_consumption_target": {
-					"type": "objectId",
-					"label": "Ziel-State",
-					"types": ["state"],
-					"xs": 12,
-					"sm": 12,
-					"md": 9,
-					"lg": 9,
-					"xl": 9
-				},
-				"bat_consumption_enabled": {
-					"type": "checkbox",
-					"label": "Mapping aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 12,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"hBatPv": {
-					"type": "header",
-					"size": 2,
-					"text": "pv_ac_power_w — PV AC-Leistung",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"bat_pv_ac_target": {
-					"type": "objectId",
-					"label": "Ziel-State",
-					"types": ["state"],
-					"xs": 12,
-					"sm": 12,
-					"md": 9,
-					"lg": 9,
-					"xl": 9
-				},
-				"bat_pv_ac_enabled": {
-					"type": "checkbox",
-					"label": "Mapping aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 12,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"hBatCharging": {
-					"type": "header",
-					"size": 2,
-					"text": "battery_charging_w — Battery charging (Schreiben)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"helpBatCharging": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "Netzausgleich setzt Soll-Leistung. Dryrun: addons.battery.dryrun.grid_balance.*. Live wenn global.live ∧ Batterie.live (und Netzausgleich-Checkbox aktiv)."
-				},
-				"bat_battery_charging_target": {
-					"type": "objectId",
-					"label": "Ziel-State",
-					"types": ["state"],
-					"xs": 12,
-					"sm": 12,
-					"md": 9,
-					"lg": 9,
-					"xl": 9
-				},
-				"bat_battery_charging_enabled": {
-					"type": "checkbox",
-					"label": "Mapping aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 12,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"hBatSoc": {
-					"type": "header",
-					"size": 2,
-					"text": "soc_pct — SOC",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"bat_soc_target": {
-					"type": "objectId",
-					"label": "Ziel-State",
-					"types": ["state"],
-					"xs": 12,
-					"sm": 12,
-					"md": 9,
-					"lg": 9,
-					"xl": 9
-				},
-				"bat_soc_enabled": {
-					"type": "checkbox",
-					"label": "Mapping aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 12,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"hBatCapacity": {
-					"type": "header",
-					"size": 2,
-					"text": "capacity_kwh — Batteriekapazität (Lesen)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"helpBatCapacity": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "EMS-Light live.battery.capacity_kwh — z. B. sonnen-Konfiguration oder fester kWh-Wert im Objektbaum."
-				},
-				"bat_capacity_kwh_target": {
-					"type": "objectId",
-					"label": "Ziel-State",
-					"types": ["state"],
-					"xs": 12,
-					"sm": 12,
-					"md": 9,
-					"lg": 9,
-					"xl": 9
-				},
-				"bat_capacity_kwh_enabled": {
-					"type": "checkbox",
-					"label": "Mapping aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 12,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"hBatMode": {
-					"type": "header",
-					"size": 2,
-					"text": "operating_mode — Sonnen EM_OperatingMode (Schreiben)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"helpBatMode": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "z. B. sonnen.0.configurations.EM_OperatingMode — 1 = Manuell (Netzausgleich/Winterladen), 2 = Eigenverbrauch (Normal)."
-				},
-				"bat_operating_mode_target": {
-					"type": "objectId",
-					"label": "Ziel-State",
-					"types": ["state"],
-					"xs": 12,
-					"sm": 12,
-					"md": 9,
-					"lg": 9,
-					"xl": 9
-				},
-				"bat_operating_mode_enabled": {
-					"type": "checkbox",
-					"label": "Mapping aktiv",
-					"default": false,
-					"xs": 12,
-					"sm": 12,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"hBatGridBalance": {
-					"type": "header",
-					"size": 2,
-					"text": "Optional: Netzausgleich (ersetzt Blockly-Sommer-Script)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"helpBatGridBalance": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "Benötigt Mapping: consumption_w, pv_ac_power_w, battery_charging_w, soc_pct. Trigger: jede Änderung consumption_w. EMS muss ems_mirror.grid_balance_enabled setzen."
-				},
-				"bat_feature_grid_balance_enabled": {
-					"type": "checkbox",
-					"label": "Netzausgleich aktiv",
-					"default": false,
-					"xs": 12,
-					"sm": 12,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"bat_offset_high_soc_w": {
-					"type": "number",
-					"label": "Zusatz-Watt bei SOC über Schwellwert",
-					"min": 0,
-					"max": 500,
-					"default": 25,
-					"xs": 12,
-					"sm": 4,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"bat_offset_low_soc_w": {
-					"type": "number",
-					"label": "Zusatz-Watt sonst",
-					"min": 0,
-					"max": 500,
-					"default": 10,
-					"xs": 12,
-					"sm": 4,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"bat_offset_soc_threshold_pct": {
-					"type": "number",
-					"label": "SOC-Schwellwert (%)",
-					"min": 1,
-					"max": 100,
-					"default": 20,
-					"xs": 12,
-					"sm": 4,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"hBatModeSwitch": {
-					"type": "header",
-					"size": 2,
-					"text": "Modus-Umschaltung (EMS ↔ Sonnen)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"helpBatModeSwitch": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "Modus 1 (EMS): Netzausgleich pausieren → warten → Modus setzen → warten → charge. Modus 2: sofort ohne Wartezeit, danach Netzausgleich wieder möglich. Steuerung über ems_mirror.mode_request_id."
-				},
-				"bat_mode_pause_grid_balance_sec": {
-					"type": "number",
-					"label": "Pause Netzausgleich vor Modus 1 (Sek.)",
-					"min": 0,
-					"max": 120,
-					"default": 10,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"bat_mode_wait_after_mode_sec": {
-					"type": "number",
-					"label": "Wartezeit nach Modus 1 vor charge (Sek.)",
-					"min": 0,
-					"max": 120,
-					"default": 5,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"hBatWinter": {
-					"type": "header",
-					"size": 2,
-					"text": "Winter-Netzladen (Vorbereitung)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"bat_winter_tick_interval_sec": {
-					"type": "number",
-					"label": "Tick-Intervall Winter-Netzladen (Sek.)",
-					"min": 15,
-					"max": 300,
-					"default": 45,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"hBatFailsafe": {
-					"type": "header",
-					"size": 2,
-					"text": "Failsafe (nur Live)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"helpBatFailsafe": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "EMS weg oder Modus 1 hängt &gt;300 s → Modus 2 (Eigenverbrauch). addons.battery.status.addon_dead=true — EMS soll dann keine Writes senden (später im EMS-Tick)."
-				}
-			}
+	"type": "panel",
+	"label": "Batterie / Sonnen",
+	"items": {
+		"batteryGovernanceHint": {
+			"type": "staticText",
+			"text": "Aktivierung und KI-Freigabe werden zentral unter GLOBAL verwaltet.",
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12
 		},
+		"hBatHardware": {
+			"type": "header",
+			"size": 2,
+			"text": "Batterie-Hardware",
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12
+		},
+		"battery_manufacturer": {
+			"type": "text",
+			"label": "Batteriehersteller",
+			"xs": 12,
+			"sm": 12,
+			"md": 4,
+			"lg": 4,
+			"xl": 4
+		},
+		"battery_model": {
+			"type": "text",
+			"label": "Batteriemodell",
+			"xs": 12,
+			"sm": 12,
+			"md": 4,
+			"lg": 4,
+			"xl": 4
+		},
+		"battery_capacity_source": {
+			"type": "select",
+			"label": "Kapazitätsquelle",
+			"options": [
+				{
+					"label": "Manuell",
+					"value": "manual"
+				},
+				{
+					"label": "Gemappt",
+					"value": "mapped"
+				}
+			],
+			"default": "manual",
+			"xs": 12,
+			"sm": 12,
+			"md": 4,
+			"lg": 4,
+			"xl": 4
+		},
+		"battery_capacity_net_kwh": {
+			"type": "number",
+			"label": "Nutzbare Netto-Kapazität (kWh)",
+			"min": 0,
+			"max": 1000,
+			"xs": 12,
+			"sm": 12,
+			"md": 4,
+			"lg": 4,
+			"xl": 4
+		},
+		"hBatProfile": {
+			"type": "header",
+			"size": 2,
+			"text": "Steuerprofil",
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12
+		},
+		"battery_profile": {
+			"type": "select",
+			"label": "Steuerprofil",
+			"options": [
+				{
+					"label": "Generisch – nur lesen",
+					"value": "generic_readonly"
+				},
+				{
+					"label": "Sonnen – EM-Steuerung",
+					"value": "sonnen_em"
+				}
+			],
+			"default": "sonnen_em",
+			"xs": 12,
+			"sm": 12,
+			"md": 6,
+			"lg": 6,
+			"xl": 6
+		},
+		"batProfileStatusHint": {
+			"type": "staticText",
+			"text": "Anzeigen (Profil bereit, Dryrun/Live bereit, effektiver Ausführungsmodus) siehe addons.battery.status.*. Der globale Ausführungsmodus ist maßgeblich; es gibt keinen separaten Batterie-Live-Schalter.",
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12
+		},
+		"hBatTelemetry": {
+			"type": "header",
+			"size": 2,
+			"text": "Gemeinsames Telemetrie-Mapping",
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12
+		},
+		"battery_power_sign_convention": {
+			"type": "select",
+			"label": "Vorzeichen der Batterieleistung",
+			"options": [
+				{
+					"label": "Positiv = Laden",
+					"value": "positive_charge"
+				},
+				{
+					"label": "Positiv = Entladen",
+					"value": "positive_discharge"
+				}
+			],
+			"default": "positive_charge",
+			"xs": 12,
+			"sm": 12,
+			"md": 6,
+			"lg": 6,
+			"xl": 6
+		},
+		"bat_soc_target": {
+			"type": "objectId",
+			"label": "SOC (%) – Ziel-State",
+			"types": [
+				"state"
+			],
+			"xs": 12,
+			"sm": 12,
+			"md": 9,
+			"lg": 9,
+			"xl": 9
+		},
+		"bat_soc_enabled": {
+			"type": "checkbox",
+			"label": "Mapping aktiv",
+			"default": true,
+			"xs": 12,
+			"sm": 12,
+			"md": 3,
+			"lg": 3,
+			"xl": 3
+		},
+		"bat_power_target": {
+			"type": "objectId",
+			"label": "Batterieleistung (W) – Ziel-State",
+			"types": [
+				"state"
+			],
+			"xs": 12,
+			"sm": 12,
+			"md": 9,
+			"lg": 9,
+			"xl": 9
+		},
+		"bat_power_enabled": {
+			"type": "checkbox",
+			"label": "Mapping aktiv",
+			"default": true,
+			"xs": 12,
+			"sm": 12,
+			"md": 3,
+			"lg": 3,
+			"xl": 3
+		},
+		"bat_charging_power_target": {
+			"type": "objectId",
+			"label": "Ladeleistung (W), optional – Ziel-State",
+			"types": [
+				"state"
+			],
+			"xs": 12,
+			"sm": 12,
+			"md": 9,
+			"lg": 9,
+			"xl": 9
+		},
+		"bat_charging_power_enabled": {
+			"type": "checkbox",
+			"label": "Mapping aktiv",
+			"default": false,
+			"xs": 12,
+			"sm": 12,
+			"md": 3,
+			"lg": 3,
+			"xl": 3
+		},
+		"bat_discharging_power_target": {
+			"type": "objectId",
+			"label": "Entladeleistung (W), optional – Ziel-State",
+			"types": [
+				"state"
+			],
+			"xs": 12,
+			"sm": 12,
+			"md": 9,
+			"lg": 9,
+			"xl": 9
+		},
+		"bat_discharging_power_enabled": {
+			"type": "checkbox",
+			"label": "Mapping aktiv",
+			"default": false,
+			"xs": 12,
+			"sm": 12,
+			"md": 3,
+			"lg": 3,
+			"xl": 3
+		},
+		"bat_capacity_kwh_target": {
+			"type": "objectId",
+			"label": "Kapazität (kWh), optional – Ziel-State",
+			"types": [
+				"state"
+			],
+			"xs": 12,
+			"sm": 12,
+			"md": 9,
+			"lg": 9,
+			"xl": 9
+		},
+		"bat_capacity_kwh_enabled": {
+			"type": "checkbox",
+			"label": "Mapping aktiv",
+			"default": false,
+			"xs": 12,
+			"sm": 12,
+			"md": 3,
+			"lg": 3,
+			"xl": 3
+		},
+		"bat_operating_mode_read_target": {
+			"type": "objectId",
+			"label": "Betriebsmodus (Lesen), optional – Ziel-State",
+			"types": [
+				"state"
+			],
+			"xs": 12,
+			"sm": 12,
+			"md": 9,
+			"lg": 9,
+			"xl": 9
+		},
+		"bat_operating_mode_read_enabled": {
+			"type": "checkbox",
+			"label": "Mapping aktiv",
+			"default": false,
+			"xs": 12,
+			"sm": 12,
+			"md": 3,
+			"lg": 3,
+			"xl": 3
+		},
+		"bat_online_target": {
+			"type": "objectId",
+			"label": "Online-/Kommunikationsstatus, optional – Ziel-State",
+			"types": [
+				"state"
+			],
+			"xs": 12,
+			"sm": 12,
+			"md": 9,
+			"lg": 9,
+			"xl": 9
+		},
+		"bat_online_enabled": {
+			"type": "checkbox",
+			"label": "Mapping aktiv",
+			"default": false,
+			"xs": 12,
+			"sm": 12,
+			"md": 3,
+			"lg": 3,
+			"xl": 3
+		},
+		"bat_consumption_target": {
+			"type": "objectId",
+			"label": "Hausverbrauch (W), für Netzausgleich – Ziel-State",
+			"types": [
+				"state"
+			],
+			"xs": 12,
+			"sm": 12,
+			"md": 9,
+			"lg": 9,
+			"xl": 9
+		},
+		"bat_consumption_enabled": {
+			"type": "checkbox",
+			"label": "Mapping aktiv",
+			"default": true,
+			"xs": 12,
+			"sm": 12,
+			"md": 3,
+			"lg": 3,
+			"xl": 3
+		},
+		"bat_pv_ac_target": {
+			"type": "objectId",
+			"label": "PV-AC-Leistung (W), für Netzausgleich – Ziel-State",
+			"types": [
+				"state"
+			],
+			"xs": 12,
+			"sm": 12,
+			"md": 9,
+			"lg": 9,
+			"xl": 9
+		},
+		"bat_pv_ac_enabled": {
+			"type": "checkbox",
+			"label": "Mapping aktiv",
+			"default": true,
+			"xs": 12,
+			"sm": 12,
+			"md": 3,
+			"lg": 3,
+			"xl": 3
+		},
+		"hBatLimits": {
+			"type": "header",
+			"size": 2,
+			"text": "Technische Hardwaregrenzen",
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12
+		},
+		"bat_hw_max_charge_w": {
+			"type": "number",
+			"label": "Maximale Ladeleistung (W)",
+			"min": 0,
+			"max": 50000,
+			"xs": 12,
+			"sm": 12,
+			"md": 3,
+			"lg": 3,
+			"xl": 3
+		},
+		"bat_hw_max_discharge_w": {
+			"type": "number",
+			"label": "Maximale Entladeleistung (W)",
+			"min": 0,
+			"max": 50000,
+			"xs": 12,
+			"sm": 12,
+			"md": 3,
+			"lg": 3,
+			"xl": 3
+		},
+		"bat_hw_min_soc_pct": {
+			"type": "number",
+			"label": "Technischer Mindest-SOC (%)",
+			"min": 0,
+			"max": 100,
+			"xs": 12,
+			"sm": 12,
+			"md": 3,
+			"lg": 3,
+			"xl": 3
+		},
+		"bat_hw_max_soc_pct": {
+			"type": "number",
+			"label": "Technischer Maximal-SOC (%)",
+			"min": 0,
+			"max": 100,
+			"xs": 12,
+			"sm": 12,
+			"md": 3,
+			"lg": 3,
+			"xl": 3
+		},
+		"hBatSonnen": {
+			"type": "header",
+			"size": 2,
+			"text": "Sonnen-EM-Mapping (Schreiben)",
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"helpBatSonnen": {
+			"type": "staticText",
+			"text": "Keine realen Writes allein durch das Speichern. Schreiben erfolgt nur bei globalem Live.",
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_operating_mode_target": {
+			"type": "objectId",
+			"label": "EM_OperatingMode – Ziel-State",
+			"types": [
+				"state"
+			],
+			"xs": 12,
+			"sm": 12,
+			"md": 9,
+			"lg": 9,
+			"xl": 9,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_operating_mode_enabled": {
+			"type": "checkbox",
+			"label": "Mapping aktiv",
+			"default": false,
+			"xs": 12,
+			"sm": 12,
+			"md": 3,
+			"lg": 3,
+			"xl": 3,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_battery_charging_target": {
+			"type": "objectId",
+			"label": "control.charge – Ziel-State",
+			"types": [
+				"state"
+			],
+			"xs": 12,
+			"sm": 12,
+			"md": 9,
+			"lg": 9,
+			"xl": 9,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_battery_charging_enabled": {
+			"type": "checkbox",
+			"label": "Mapping aktiv",
+			"default": false,
+			"xs": 12,
+			"sm": 12,
+			"md": 3,
+			"lg": 3,
+			"xl": 3,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_sonnen_manual_mode_value": {
+			"type": "number",
+			"label": "Manueller Modus (Wert)",
+			"min": 0,
+			"max": 99,
+			"default": 1,
+			"xs": 12,
+			"sm": 12,
+			"md": 6,
+			"lg": 6,
+			"xl": 6,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_sonnen_self_consumption_mode_value": {
+			"type": "number",
+			"label": "Eigenverbrauch / Safe Default (Wert)",
+			"min": 0,
+			"max": 99,
+			"default": 2,
+			"xs": 12,
+			"sm": 12,
+			"md": 6,
+			"lg": 6,
+			"xl": 6,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"hBatSequence": {
+			"type": "header",
+			"size": 2,
+			"text": "Sonnen-Umschaltsequenz",
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_mode_pause_grid_balance_sec": {
+			"type": "number",
+			"label": "Pause vor Wechsel in manuellen Modus (s)",
+			"min": 0,
+			"max": 120,
+			"default": 10,
+			"xs": 12,
+			"sm": 12,
+			"md": 4,
+			"lg": 4,
+			"xl": 4,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_mode_wait_after_mode_sec": {
+			"type": "number",
+			"label": "Wartezeit nach Moduswechsel (s)",
+			"min": 0,
+			"max": 120,
+			"default": 5,
+			"xs": 12,
+			"sm": 12,
+			"md": 4,
+			"lg": 4,
+			"xl": 4,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_feedback_timeout_mode_sec": {
+			"type": "number",
+			"label": "Feedback-Timeout Betriebsmodus (s)",
+			"min": 5,
+			"max": 300,
+			"default": 30,
+			"xs": 12,
+			"sm": 12,
+			"md": 4,
+			"lg": 4,
+			"xl": 4,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_feedback_timeout_charge_sec": {
+			"type": "number",
+			"label": "Feedback-Timeout Ladeleistung (s)",
+			"min": 5,
+			"max": 300,
+			"default": 30,
+			"xs": 12,
+			"sm": 12,
+			"md": 4,
+			"lg": 4,
+			"xl": 4,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_max_manual_mode_sec": {
+			"type": "number",
+			"label": "Max. Dauer im manuellen Modus ohne Intent (s)",
+			"min": 60,
+			"max": 86400,
+			"default": 1800,
+			"xs": 12,
+			"sm": 12,
+			"md": 4,
+			"lg": 4,
+			"xl": 4,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_restore_delay_sec": {
+			"type": "number",
+			"label": "Restore-Verzögerung (s)",
+			"min": 0,
+			"max": 120,
+			"default": 2,
+			"xs": 12,
+			"sm": 12,
+			"md": 4,
+			"lg": 4,
+			"xl": 4,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_charge_tolerance_w": {
+			"type": "number",
+			"label": "Feedback-Toleranz absolut (W)",
+			"min": 0,
+			"max": 10000,
+			"default": 500,
+			"xs": 12,
+			"sm": 12,
+			"md": 6,
+			"lg": 6,
+			"xl": 6,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_charge_tolerance_pct": {
+			"type": "number",
+			"label": "Feedback-Toleranz relativ (%)",
+			"min": 0,
+			"max": 100,
+			"default": 15,
+			"xs": 12,
+			"sm": 12,
+			"md": 6,
+			"lg": 6,
+			"xl": 6,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"hBatGrid": {
+			"type": "header",
+			"size": 2,
+			"text": "Optionaler Sonnen-Netzausgleich",
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_feature_grid_balance_enabled": {
+			"type": "checkbox",
+			"label": "Netzausgleich aktiviert",
+			"default": false,
+			"xs": 12,
+			"sm": 12,
+			"md": 4,
+			"lg": 4,
+			"xl": 4,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_offset_high_soc_w": {
+			"type": "number",
+			"label": "Zusatzleistung oberhalb SOC-Schwelle (W)",
+			"min": 0,
+			"max": 500,
+			"default": 25,
+			"xs": 12,
+			"sm": 12,
+			"md": 4,
+			"lg": 4,
+			"xl": 4,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_offset_low_soc_w": {
+			"type": "number",
+			"label": "Zusatzleistung unterhalb SOC-Schwelle (W)",
+			"min": 0,
+			"max": 500,
+			"default": 10,
+			"xs": 12,
+			"sm": 12,
+			"md": 4,
+			"lg": 4,
+			"xl": 4,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_offset_soc_threshold_pct": {
+			"type": "number",
+			"label": "SOC-Schwelle (%)",
+			"min": 1,
+			"max": 100,
+			"default": 20,
+			"xs": 12,
+			"sm": 12,
+			"md": 4,
+			"lg": 4,
+			"xl": 4,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_grid_balance_min_change_w": {
+			"type": "number",
+			"label": "Mindeständerung vor Neuberechnung (W)",
+			"min": 0,
+			"max": 5000,
+			"default": 50,
+			"xs": 12,
+			"sm": 12,
+			"md": 4,
+			"lg": 4,
+			"xl": 4,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_grid_balance_max_w": {
+			"type": "number",
+			"label": "Maximale Sollleistung (W)",
+			"min": 0,
+			"max": 50000,
+			"default": 5000,
+			"xs": 12,
+			"sm": 12,
+			"md": 4,
+			"lg": 4,
+			"xl": 4,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"bat_grid_balance_update_interval_sec": {
+			"type": "number",
+			"label": "Aktualisierungsintervall (s)",
+			"min": 15,
+			"max": 600,
+			"default": 45,
+			"xs": 12,
+			"sm": 12,
+			"md": 4,
+			"lg": 4,
+			"xl": 4,
+			"hidden": "data.battery_profile !== 'sonnen_em'"
+		},
+		"hBatDiagnostics": {
+			"type": "header",
+			"size": 2,
+			"text": "Diagnose",
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12
+		},
+		"batDiagnosticsHint": {
+			"type": "staticText",
+			"text": "Diagnose-Anzeigen (Profil, Telemetrie/Steuerung/Dryrun/Live bereit, Capability-Matrix, fehlende Pflicht-Mappings, letzter/geplanter Write, Rückmeldung, Fault, Lockout, Restore erforderlich, Ownership) siehe addons.battery.status.*, addons.battery.capabilities.*, addons.battery.limits.*, addons.battery.runtime.*, addons.battery.dryrun.* und addons.battery.diagnostics.*.",
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12
+		},
+		"batFaultResetHint": {
+			"type": "staticText",
+			"text": "Fault/Lockout zurücksetzen über den State addons.battery.control.fault_reset.",
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12
+		}
+	}
+},
 		"immersionHeaterTab": {
 			"type": "panel",
 			"label": "Heizstab",

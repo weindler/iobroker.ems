@@ -95,6 +95,7 @@ class Ems extends utils.Adapter {
     }
     onUnload(callback) {
         (0, ems_light_1.stopEmsLightPhase1)();
+        void (0, battery_1.batteryUnloadRestore)(this).catch(() => undefined);
         (0, battery_1.stopBatteryModule)(null);
         (0, immersion_heater_1.stopImmersionHeaterModule)();
         (0, wallbox_1.stopWallboxModule)();

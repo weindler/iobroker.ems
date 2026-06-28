@@ -1,5 +1,10 @@
 import * as utils from "@iobroker/adapter-core";
-import { handleBatteryAdapterStateChange, initBatteryModule, stopBatteryModule } from "./addons/battery";
+import {
+	batteryUnloadRestore,
+	handleBatteryAdapterStateChange,
+	initBatteryModule,
+	stopBatteryModule,
+} from "./addons/battery";
 import {
 	handleImmersionHeaterStateChange,
 	initImmersionHeaterModule,
@@ -95,6 +100,7 @@ class Ems extends utils.Adapter {
 
 	private onUnload(callback: () => void): void {
 		stopEmsLightPhase1();
+		void batteryUnloadRestore(this as ioBroker.Adapter & { config: unknown }).catch(() => undefined);
 		stopBatteryModule(null);
 		stopImmersionHeaterModule();
 		stopWallboxModule();

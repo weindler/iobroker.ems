@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.64",
+		"version": "0.1.65",
 		"news": {
+			"0.1.65": {
+				"en": "Rebuilt battery integration: profile-based architecture (generic_readonly, sonnen_em) with full read-only, dryrun and live support sharing one FSM; normalized telemetry/capacity/limits/capabilities; neutral battery intent; central gated write function; feedback check; ownership protection; safe restore; fault/lockout; grid balance via the same gates; battery runtime learning and central governance preserved; global mode stays dryrun, no real device writes",
+				"de": "Batterieintegration neu aufgebaut: profilbasierte Architektur (generic_readonly, sonnen_em) mit vollständigem Read-only-, Dryrun- und Live-Support über eine gemeinsame FSM; normalisierte Telemetrie/Kapazität/Grenzen/Capabilities; neutraler Batterie-Intent; zentrale gegatete Write-Funktion; Feedbackprüfung; Ownership-Schutz; Safe Restore; Fault/Lockout; Netzausgleich über dieselben Gates; Battery Runtime Learning und zentrale Governance bleiben erhalten; globaler Modus bleibt Dryrun, keine realen Geräte-Writes"
+			},
 			"0.1.64": {
 				"en": "Centralized add-on governance under GLOBAL: per-addon Active and AI optimization allowed switches for wallbox, immersion heater, battery, and climate; governance runtime states; early intent/planner gates and final live-write gates; AI flag is opt-in storage only (no AI calls yet)",
 				"de": "Zentrale Add-on-Governance unter GLOBAL: je Add-on Schalter Aktiv und KI-Optimierung erlaubt für Wallbox, Heizstab, Batterie und Klima; Governance-Runtime-States; frühe Intent-/Planner-Gates und finales Live-Write-Gate; KI-Freigabe nur gespeicherte Opt-in-Freigabe (noch keine KI-Aufrufe)"

@@ -6,6 +6,26 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.65] – 2026-06-28
+
+### Changed
+
+- Batterieintegration vollständig neu aufgebaut: profilbasierte Architektur (`generic_readonly`, `sonnen_em`) mit Read-only, Dryrun und Live über **eine gemeinsame FSM**
+- Neuer Batterie-Core: normalisierte Telemetrie (Vorzeichenkonvention), Kapazitäts-/Energieableitung, technische Hardwaregrenzen, Capability-Modell, neutraler Batterie-Intent
+- Genau **eine** zentrale, gegatete Write-Funktion für alle realen Batterie-Writes; Feedbackprüfung, Ownership-Schutz, Safe Restore, Fault/Lockout
+- Optionaler Sonnen-Netzausgleich läuft über dieselben Ausführungs- und Safety-Gates (Dryrun simuliert, Live nur nach allen Gates)
+- Neue Admin-Seite Batterie (Hardware, Steuerprofil, Telemetrie-Mapping, Hardwaregrenzen, Sonnen-Mapping/Sequenz/Netzausgleich, Diagnose); Aktivierung/KI-Freigabe weiterhin nur unter GLOBAL
+
+### Removed
+
+- Alte herstellerspezifische Batterie-Geräteanbindung (Modus-Orchestrator, direkte Modus-/Charge-Writes, verstreute Gates, alte Failsafe-/Status-Module)
+
+### Preserved
+
+- Battery Runtime Learning und zentrale Add-on-Governance bleiben unverändert; globaler Ausführungsmodus bleibt `dryrun` (keine realen Geräte-Writes)
+
+---
+
 ## [0.1.64] – 2026-06-28
 
 ### Added

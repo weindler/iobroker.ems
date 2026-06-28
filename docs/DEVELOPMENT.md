@@ -32,7 +32,9 @@ npm test         # build + alle Unit-Tests (node --test)
 
 `npm run lint` ist Alias für `npm run check`.
 
-Tests liegen als `*.test.ts` neben dem Quellcode und werden nach `build/` kompiliert. Die Testliste steht in `package.json` unter `scripts.test`.
+Tests liegen als `*.test.ts` neben dem Quellcode und werden nach `build/` kompiliert. Die Testliste steht in `package.json` unter `scripts.test` — **neue Testdateien dort ergänzen**, sonst werden sie nicht ausgeführt.
+
+Batterie-Hinweis: Reale Geräte-Writes laufen ausschließlich über `executeBatteryWrite` (`src/addons/battery/runtime/execute.ts`). Tests dürfen keine echten Geräte-Datenpunkte beschreiben; sie nutzen Mock-Hosts und prüfen im Dryrun, dass kein `setForeignState` auf Zielgeräte erfolgt.
 
 ---
 

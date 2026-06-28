@@ -337,12 +337,12 @@
 			}
 		},
 		"title": {
-			"en": "EMS V2",
-			"de": "EMS V2"
+			"en": "EMS-Light",
+			"de": "EMS-Light"
 		},
 		"desc": {
-			"en": "Execution gateway for EMS V2. v0.0.7: dryrun pipeline + mapping, no device writes yet.",
-			"de": "Ausführungs-Gateway für EMS V2. v0.0.7: Dryrun-Pipeline + Mapping, noch keine Geräte-Writes."
+			"en": "Standalone ioBroker energy management adapter — learning, policies, global modes, safe dryrun/live execution. KI optional.",
+			"de": "Eigenständiger ioBroker-Energiemanagement-Adapter — Learning, Policies, Global Modes, sicheres Dryrun/Live. KI optional."
 		},
 		"authors": ["weindler"],
 		"license": "MIT",

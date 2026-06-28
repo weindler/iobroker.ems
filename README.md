@@ -1,75 +1,113 @@
-# ioBroker EMS V2 Adapter (`iobroker.ems`)
+# EMS-Light (`iobroker.ems`)
 
-Execution gateway between **EMS V2** and **ioBroker** (dryrun/live, mapping, audit).
+Eigenständiger ioBroker-Adapter für sicheres Energiemanagement — ohne Abhängigkeit von einem externen EMS-Server.
 
-**v0.1.0 (breaking):** Object tree under `addons.<id>.mapping|dryrun|status`, global `execution_mode`, live writes when `global.live ∧ addon.live`. Delete old `ems.0` tree before upgrade.
+**Aktuelle Version:** v0.1.63
 
-**v0.0.9:** Instanz-Admin: Wallbox-Mapping per **State wählen**. Optional Button „go-e Vorlage“.
+---
 
-**v0.0.7:** Full dryrun check chain.
+## Was ist EMS-Light?
 
-Concept docs: EMS project `docs/iobroker_adapter/`.
+EMS-Light liest Messwerte, lernt aus historischen Daten, wendet Betreiber-Policies an und steuert Add-ons (Wallbox, Heizstab, …) über einen sicheren Dryrun/Live-Gate.
 
-## Install (ioBroker host)
+Die KI ist **optional** und wird später als Optimierungsschicht ergänzt. EMS-Light muss jederzeit ohne KI vollständig und sicher arbeiten.
+
+---
+
+## Aktueller Funktionsumfang
+
+| Bereich | Status |
+|---------|--------|
+| Global Modes (`off`/`eco`/`balanced`/`comfort`/`forced`) | implementiert |
+| Policy Engine (configured/effective) | implementiert |
+| User Intent (Wallbox, Thermal, Battery) | read-only |
+| Learning (PV-Bias, Wetter, Preis, Hauslast, Thermal/Battery Runtime) | implementiert |
+| Wallbox via EVCC | read-only Telemetrie |
+| Heizstab (Immersion Heater) | Runtime, FSM, Safety, Live-Writes |
+| Command Pipeline (Dryrun/Live) | implementiert |
+| KI / General Operator | *geplant* |
+| Batterie-Geräteprofile | *geplant* |
+
+---
+
+## Installation
+
+Auf einem ioBroker-Host:
 
 ```bash
-iobroker url install github:weindler/iobroker.ems#v0.1.0
+iobroker url install github:weindler/iobroker.ems#v0.1.63
 ```
 
-Or from git checkout:
+Oder aus Git-Checkout:
 
 ```bash
-cd /path/to/iobroker.ems
-npm ci
-npm run build
+git clone git@github.com:weindler/iobroker.ems.git
+cd iobroker.ems
+npm ci && npm run build
 iobroker dev install .
 ```
 
-Then: **Adapters → EMS V2 → add instance** (default `0` → namespace `ems.0`).
+Danach: **Adapters → EMS-Light → Instanz hinzufügen** (Standard-Namespace: `ems.0`).
 
-Update existing instance:
+Update:
 
 ```bash
 iobroker update ems
 ```
 
-## Wallbox test (go-e)
+---
 
-Configure mapping in **instance settings** (tabs Global / Wallbox): pick target states or use optional **go-e template** button. After save + adapter restart, values appear under `ems.0.addons.wallbox.mapping.*`.
+## Konfiguration
 
-Set `ems.0.command.inbox` with **ack = false** (Admin „set value“):
+Instanz-Einstellungen in der ioBroker-Admin-Oberfläche:
 
-```json
-{
-  "intent_id": "test-1",
-  "addon_id": "wallbox",
-  "command": "set_charge_power_w",
-  "value": 4200,
-  "source": "manual"
-}
-```
+- **Global** — Ausführungsmodus, Global Mode, Tick-Intervall
+- **Wallbox** — EVCC-Telemetrie-Mappings (read-only)
+- **Heizstab** — Stufen, Temperatur, Safety-Parameter
+- **EMS-Light User Intent** — Defaults und ioBroker-Request-Einstellungen
 
-Expected in `ems.0.command.last_result`:
+EVCC-Mappings unter Tab „Wallbox"; Intent-relevante EVCC-Felder dort konfigurieren.
 
-- `result`: `dryrun_only`
-- `target_state`: `go-e.0.amperePV` (go-e API `amx`; not `ampere`/`amp` — Flash wear)
-- `planned_value`: `{ "watts": 4200, "ampere": 18, ... }`
+---
 
-Also check dryrun states, e.g. `ems.0.addons.wallbox.dryrun.target_state`, `planned_ampere`, `result`, and `audit.wallbox.last_event`.
+## Observe / Dryrun / Live
 
-## Safety defaults
+| Modus | Verhalten |
+|-------|-----------|
+| **Dryrun** (Standard) | Intents und Dryrun-States werden erzeugt; **keine** Geräte-Writes |
+| **Live** | Echte Geräte-Writes nur wenn `global.execution_mode = live` **und** `addons.<id>.mode = live` und Safety/Fault erlauben |
+| **Observe** | *geplant* — lesen, lernen, planen, keine Ausführung |
 
-- `ems.0.global.execution_mode` = `dryrun`
-- `ems.0.addons.<id>.mode` = `dryrun` — live device writes only when both are `live`
+Sicherheitsdefaults: alles auf `dryrun`.
 
-## Development
+Wallbox ist aktuell **vollständig read-only** (keine EVCC- oder Wallbox-Writes).
+
+---
+
+## Entwicklung
 
 ```bash
 npm ci
-npm run build
 npm run check
+npm test
+npm run build
 ```
 
-## License
+Details: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
 
-MIT
+---
+
+## Dokumentation
+
+| Dokument | Inhalt |
+|----------|--------|
+| [docs/EMS_LIGHT_MASTERPLAN.md](docs/EMS_LIGHT_MASTERPLAN.md) | Verbindlicher Fahrplan und Architekturentscheidungen |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Implementierte technische Architektur (Ist-Stand) |
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Build, Tests, Release, Git- und Dokumentationsregeln |
+| [CHANGELOG.md](CHANGELOG.md) | Veröffentlichte Änderungen |
+
+---
+
+## Lizenz
+
+MIT — siehe [LICENSE](LICENSE).

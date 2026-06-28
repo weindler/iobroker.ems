@@ -1,6 +1,6 @@
 /**
  * Bias-Gewicht pro Horizon-Tag (Day1 = heute/nächster Tag, 100 % Bias).
- * Zentral dokumentiert — Änderungen nur hier und in EMS_LIGHT_PHASE_2B_PV_HORIZON.md.
+ * Zentral dokumentiert — Änderungen nur hier und in docs/ARCHITECTURE.md.
  */
 export const PV_HORIZON_BIAS_WEIGHT_BY_DAY: readonly number[] = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4];
 

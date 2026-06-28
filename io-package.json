@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.61",
+		"version": "0.1.62",
 		"news": {
+			"0.1.62": {
+				"en": "Phase 3B.1: Wallbox fully on EVCC read-only mappings — admin shows EVCC telemetry groups only; legacy go-e write mappings preserved in config but no longer used by runtime; new addons.wallbox.evcc.* states and live cache from EVCC; no EVCC or wallbox writes in this phase",
+				"de": "Phase 3B.1: Wallbox vollständig auf EVCC-Read-Mappings — Admin zeigt nur EVCC-Telemetrie-Gruppen; Legacy-go-e-Write-Mappings bleiben in der Config erhalten, werden von der Runtime nicht mehr genutzt; neue addons.wallbox.evcc.*-States und Live-Cache aus EVCC; in dieser Phase keine EVCC- oder Wallbox-Writes"
+			},
 			"0.1.61": {
 				"en": "Fix: immersion heater reads real stage feedback states (boolean/number/string normalized) instead of mirroring the command; dryrun shows external operation (feedback_stage, external_on) without faults; power_when_off only in live after EMS itself wrote off and the check delay elapsed. Fix: ioBroker intent requests are no longer rejected as expired based on issued_at (creation time is not a deadline).",
 				"de": "Fix: Heizstab liest echte Stage-Feedback-States (boolean/number/string normalisiert) statt den Befehl zu spiegeln; Dryrun zeigt Fremdbetrieb (feedback_stage, external_on) ohne Fault; power_when_off nur im Live-Modus, nachdem EMS selbst AUS geschrieben hat und die Prüfverzögerung abgelaufen ist. Fix: ioBroker-Intent-Requests werden nicht mehr anhand von issued_at als abgelaufen abgewiesen (Erstellungszeit ist kein Ablaufdatum)."

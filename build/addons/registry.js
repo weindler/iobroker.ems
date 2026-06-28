@@ -42,11 +42,7 @@ const IMMERSION_COMMANDS = {
 };
 /** Default capabilities per addon (no device-specific logic). */
 exports.ADDON_DEFAULT_CAPABILITIES = {
-    wallbox: [
-        "supports_enable_disable",
-        "supports_power_limit",
-        "supports_phase_switch_mode",
-    ],
+    wallbox: ["supports_read_only"],
     battery: [
         "supports_enable_disable",
         "supports_power_limit",

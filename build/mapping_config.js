@@ -1,18 +1,23 @@
 "use strict";
-/** Wallbox-Befehle mit Mapping (logischer command = mapping_id). */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.wallboxMappingFromConfig = exports.goeWallboxTemplateFlat = exports.WALLBOX_FLAT_PREFIX_READ = exports.WALLBOX_FLAT_PREFIX = exports.WALLBOX_ALL_MAPPING_IDS = exports.WALLBOX_READ_MAPPING_ROLES = exports.WALLBOX_MAPPING_COMMANDS = void 0;
-exports.WALLBOX_MAPPING_COMMANDS = [
+exports.wallboxMappingFromConfig = exports.legacyWallboxMappingFromConfig = exports.goeWallboxTemplateFlat = exports.WALLBOX_FLAT_PREFIX_READ = exports.WALLBOX_FLAT_PREFIX = exports.WALLBOX_ALL_MAPPING_IDS = exports.WALLBOX_EVCC_TELEMETRY_ROLES = exports.WALLBOX_READ_MAPPING_ROLES = exports.WALLBOX_MAPPING_COMMANDS = exports.WALLBOX_LEGACY_MAPPING_COMMANDS = void 0;
+const evcc_config_1 = require("./addons/wallbox/evcc_config");
+Object.defineProperty(exports, "WALLBOX_EVCC_TELEMETRY_ROLES", { enumerable: true, get: function () { return evcc_config_1.WALLBOX_EVCC_TELEMETRY_ROLES; } });
+/** @deprecated Legacy go-e write mappings — config keys preserved, not used by EVCC runtime. */
+exports.WALLBOX_LEGACY_MAPPING_COMMANDS = [
     "set_enabled",
     "set_current_a",
     "set_charge_power_w",
     "set_phase_switch_enabled",
 ];
-/** Read-only Mess-Mapping (kein Pipeline-Befehl). */
+/** @deprecated Alias for legacy pipeline commands. */
+exports.WALLBOX_MAPPING_COMMANDS = exports.WALLBOX_LEGACY_MAPPING_COMMANDS;
+/** @deprecated Legacy read mapping — use evcc_vehicle_soc instead. */
 exports.WALLBOX_READ_MAPPING_ROLES = ["vehicle_soc_pct"];
 /** Alle Wallbox-Mapping-States unter addons.wallbox.mapping.* */
 exports.WALLBOX_ALL_MAPPING_IDS = [
-    ...exports.WALLBOX_MAPPING_COMMANDS,
+    ...evcc_config_1.WALLBOX_EVCC_TELEMETRY_ROLES,
+    ...exports.WALLBOX_LEGACY_MAPPING_COMMANDS,
     ...exports.WALLBOX_READ_MAPPING_ROLES,
 ];
 /** Native-Keys in Instanz-Konfiguration (jsonConfig / objectId-Picker). */
@@ -42,10 +47,10 @@ function goeWallboxTemplateFlat() {
     };
 }
 exports.goeWallboxTemplateFlat = goeWallboxTemplateFlat;
-function wallboxMappingFromConfig(config) {
+function legacyWallboxMappingFromConfig(config) {
     const nested = config.mapping?.wallbox;
     const out = {};
-    for (const cmd of exports.WALLBOX_MAPPING_COMMANDS) {
+    for (const cmd of exports.WALLBOX_LEGACY_MAPPING_COMMANDS) {
         const prefix = exports.WALLBOX_FLAT_PREFIX[cmd];
         const entry = {};
         const t = config[`${prefix}_target`];
@@ -101,5 +106,12 @@ function wallboxMappingFromConfig(config) {
         }
     }
     return out;
+}
+exports.legacyWallboxMappingFromConfig = legacyWallboxMappingFromConfig;
+/** EVCC telemetry + legacy mappings (config keys preserved for backward compatibility). */
+function wallboxMappingFromConfig(config) {
+    const evcc = (0, evcc_config_1.wallboxEvccTelemetryMappingFromConfig)(config);
+    const legacy = legacyWallboxMappingFromConfig(config);
+    return { ...evcc, ...legacy };
 }
 exports.wallboxMappingFromConfig = wallboxMappingFromConfig;

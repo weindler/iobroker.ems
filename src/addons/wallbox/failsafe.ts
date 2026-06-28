@@ -1,3 +1,4 @@
+import { hasLegacyWallboxWriteMapping } from "./evcc_config";
 import { isLiveWriteAllowed } from "../../execution_mode";
 import {
 	failsafeTimeoutsFromConfig,
@@ -179,6 +180,9 @@ export async function runWallboxFailsafeCheck(adapter: ioBroker.Adapter): Promis
 		adapter.config && typeof adapter.config === "object"
 			? (adapter.config as Record<string, unknown>)
 			: {};
+	if (!hasLegacyWallboxWriteMapping(cfg)) {
+		return;
+	}
 	const liveAllowed = await isLiveWriteAllowed((id) => adapter.getStateAsync(id), ADDON_ID);
 	const emsReachable = !isEmsUnreachable(cfg, "wb");
 

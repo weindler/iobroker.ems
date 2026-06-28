@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runWallboxFailsafeCheck = exports.recordWallboxPipelineResult = void 0;
+const evcc_config_1 = require("./evcc_config");
 const execution_mode_1 = require("../../execution_mode");
 const failsafe_common_1 = require("../../failsafe_common");
 const tree_paths_1 = require("../../tree_paths");
@@ -142,6 +143,9 @@ async function runWallboxFailsafeCheck(adapter) {
     const cfg = adapter.config && typeof adapter.config === "object"
         ? adapter.config
         : {};
+    if (!(0, evcc_config_1.hasLegacyWallboxWriteMapping)(cfg)) {
+        return;
+    }
     const liveAllowed = await (0, execution_mode_1.isLiveWriteAllowed)((id) => adapter.getStateAsync(id), ADDON_ID);
     const emsReachable = !(0, failsafe_common_1.isEmsUnreachable)(cfg, "wb");
     await (0, failsafe_common_1.setEdgeBool)(adapter, status_wallbox_1.WALLBOX_STATUS_STATES.emsReachable, emsReachable);

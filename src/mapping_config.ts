@@ -1,18 +1,29 @@
-/** Wallbox-Befehle mit Mapping (logischer command = mapping_id). */
+import {
+	WALLBOX_EVCC_TELEMETRY_ROLES,
+	wallboxEvccTelemetryMappingFromConfig,
+} from "./addons/wallbox/evcc_config";
 
-export const WALLBOX_MAPPING_COMMANDS = [
+/** @deprecated Legacy go-e write mappings — config keys preserved, not used by EVCC runtime. */
+export const WALLBOX_LEGACY_MAPPING_COMMANDS = [
 	"set_enabled",
 	"set_current_a",
 	"set_charge_power_w",
 	"set_phase_switch_enabled",
 ] as const;
 
-/** Read-only Mess-Mapping (kein Pipeline-Befehl). */
+/** @deprecated Alias for legacy pipeline commands. */
+export const WALLBOX_MAPPING_COMMANDS = WALLBOX_LEGACY_MAPPING_COMMANDS;
+
+/** @deprecated Legacy read mapping — use evcc_vehicle_soc instead. */
 export const WALLBOX_READ_MAPPING_ROLES = ["vehicle_soc_pct"] as const;
+
+/** EVCC telemetry roles (read-only, Phase 3B.1). */
+export { WALLBOX_EVCC_TELEMETRY_ROLES };
 
 /** Alle Wallbox-Mapping-States unter addons.wallbox.mapping.* */
 export const WALLBOX_ALL_MAPPING_IDS = [
-	...WALLBOX_MAPPING_COMMANDS,
+	...WALLBOX_EVCC_TELEMETRY_ROLES,
+	...WALLBOX_LEGACY_MAPPING_COMMANDS,
 	...WALLBOX_READ_MAPPING_ROLES,
 ] as const;
 
@@ -59,11 +70,13 @@ export function goeWallboxTemplateFlat(): Record<string, string | boolean> {
 	};
 }
 
-export function wallboxMappingFromConfig(config: Record<string, unknown>): Record<string, NativeMappingEntry> {
+export function legacyWallboxMappingFromConfig(
+	config: Record<string, unknown>,
+): Record<string, NativeMappingEntry> {
 	const nested = (config as EmsNativeConfig).mapping?.wallbox;
 	const out: Record<string, NativeMappingEntry> = {};
 
-	for (const cmd of WALLBOX_MAPPING_COMMANDS) {
+	for (const cmd of WALLBOX_LEGACY_MAPPING_COMMANDS) {
 		const prefix = WALLBOX_FLAT_PREFIX[cmd];
 		const entry: NativeMappingEntry = {};
 
@@ -126,4 +139,11 @@ export function wallboxMappingFromConfig(config: Record<string, unknown>): Recor
 		}
 	}
 	return out;
+}
+
+/** EVCC telemetry + legacy mappings (config keys preserved for backward compatibility). */
+export function wallboxMappingFromConfig(config: Record<string, unknown>): Record<string, NativeMappingEntry> {
+	const evcc = wallboxEvccTelemetryMappingFromConfig(config);
+	const legacy = legacyWallboxMappingFromConfig(config);
+	return { ...evcc, ...legacy };
 }

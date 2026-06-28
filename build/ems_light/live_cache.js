@@ -27,15 +27,27 @@ const BATTERY_SLOTS = [
 const WALLBOX_SLOTS = [
     {
         addonId: "wallbox",
-        role: "set_enabled",
+        role: "evcc_enabled",
         liveId: "live.wallbox.enabled",
-        labelDe: "Wallbox Freigabe",
+        labelDe: "Wallbox Freigabe (EVCC)",
     },
     {
         addonId: "wallbox",
-        role: "vehicle_soc_pct",
+        role: "evcc_vehicle_soc",
         liveId: "live.wallbox.vehicle_soc_pct",
-        labelDe: "Fahrzeug-SOC",
+        labelDe: "Fahrzeug-SOC (EVCC)",
+    },
+    {
+        addonId: "wallbox",
+        role: "evcc_charging",
+        liveId: "live.wallbox.charging",
+        labelDe: "Laden aktiv (EVCC)",
+    },
+    {
+        addonId: "wallbox",
+        role: "evcc_charge_power_w",
+        liveId: "live.wallbox.charge_power_w",
+        labelDe: "Ladeleistung (EVCC)",
     },
 ];
 const IMMERSION_SLOTS = [
@@ -80,7 +92,7 @@ function normalizeLiveValue(liveId, raw) {
     if (raw === null || raw === undefined) {
         return null;
     }
-    if (liveId === "live.wallbox.enabled") {
+    if (liveId === "live.wallbox.enabled" || liveId === "live.wallbox.charging") {
         const b = (0, state_util_1.asBool)(raw);
         return b === null ? null : b ? 1 : 0;
     }

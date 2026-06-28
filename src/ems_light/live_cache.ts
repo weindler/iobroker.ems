@@ -37,15 +37,27 @@ const BATTERY_SLOTS: MappingSlot[] = [
 const WALLBOX_SLOTS: MappingSlot[] = [
 	{
 		addonId: "wallbox",
-		role: "set_enabled",
+		role: "evcc_enabled",
 		liveId: "live.wallbox.enabled",
-		labelDe: "Wallbox Freigabe",
+		labelDe: "Wallbox Freigabe (EVCC)",
 	},
 	{
 		addonId: "wallbox",
-		role: "vehicle_soc_pct",
+		role: "evcc_vehicle_soc",
 		liveId: "live.wallbox.vehicle_soc_pct",
-		labelDe: "Fahrzeug-SOC",
+		labelDe: "Fahrzeug-SOC (EVCC)",
+	},
+	{
+		addonId: "wallbox",
+		role: "evcc_charging",
+		liveId: "live.wallbox.charging",
+		labelDe: "Laden aktiv (EVCC)",
+	},
+	{
+		addonId: "wallbox",
+		role: "evcc_charge_power_w",
+		liveId: "live.wallbox.charge_power_w",
+		labelDe: "Ladeleistung (EVCC)",
 	},
 ];
 
@@ -103,7 +115,7 @@ function normalizeLiveValue(liveId: string, raw: unknown): ioBroker.StateValue |
 	if (raw === null || raw === undefined) {
 		return null;
 	}
-	if (liveId === "live.wallbox.enabled") {
+	if (liveId === "live.wallbox.enabled" || liveId === "live.wallbox.charging") {
 		const b = asBool(raw);
 		return b === null ? null : b ? 1 : 0;
 	}

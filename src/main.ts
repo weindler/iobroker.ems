@@ -7,6 +7,11 @@ import {
 } from "./addons/immersion_heater";
 import { initDynamicTariffModule } from "./addons/dynamic_tariff";
 import { recordWallboxPipelineResult } from "./addons/wallbox/failsafe";
+import {
+	handleWallboxForeignStateChange,
+	initWallboxModule,
+	stopWallboxModule,
+} from "./addons/wallbox";
 import { touchEmsActivity } from "./ems_activity";
 import { startFailsafeRunner, stopFailsafeRunner } from "./failsafe_runner";
 import { EMS_ADDON_IDS } from "./addons/registry";
@@ -65,6 +70,7 @@ class Ems extends utils.Adapter {
 			);
 			await this.ensureWallboxMapping();
 			await ensureWallboxStatusStates(this);
+			await initWallboxModule(this);
 			await initBatteryModule(this);
 			await initImmersionHeaterModule(this);
 			await initDynamicTariffModule(this);
@@ -89,6 +95,7 @@ class Ems extends utils.Adapter {
 		stopEmsLightPhase1();
 		stopBatteryModule(null);
 		stopImmersionHeaterModule();
+		stopWallboxModule();
 		stopFailsafeRunner();
 		callback();
 	}
@@ -99,6 +106,7 @@ class Ems extends utils.Adapter {
 			handleImmersionHeaterStateChange(this, id);
 			handleGlobalModesStateChange(this.namespace, id);
 			handleIntentStateChange(this.namespace, id, state);
+			handleWallboxForeignStateChange(this.namespace, id);
 		}
 		const inboxId = `${this.namespace}.${STATE.command.inbox}`;
 		if (id !== inboxId || !state) return;

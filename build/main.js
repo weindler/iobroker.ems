@@ -28,6 +28,7 @@ const battery_1 = require("./addons/battery");
 const immersion_heater_1 = require("./addons/immersion_heater");
 const dynamic_tariff_1 = require("./addons/dynamic_tariff");
 const failsafe_1 = require("./addons/wallbox/failsafe");
+const wallbox_1 = require("./addons/wallbox");
 const ems_activity_1 = require("./ems_activity");
 const failsafe_runner_1 = require("./failsafe_runner");
 const registry_1 = require("./addons/registry");
@@ -70,6 +71,7 @@ class Ems extends utils.Adapter {
             await (0, execution_mode_1.syncExecutionModesFromConfig)(this, (this.config && typeof this.config === "object" ? this.config : {}));
             await this.ensureWallboxMapping();
             await (0, status_wallbox_1.ensureWallboxStatusStates)(this);
+            await (0, wallbox_1.initWallboxModule)(this);
             await (0, battery_1.initBatteryModule)(this);
             await (0, immersion_heater_1.initImmersionHeaterModule)(this);
             await (0, dynamic_tariff_1.initDynamicTariffModule)(this);
@@ -91,6 +93,7 @@ class Ems extends utils.Adapter {
         (0, ems_light_1.stopEmsLightPhase1)();
         (0, battery_1.stopBatteryModule)(null);
         (0, immersion_heater_1.stopImmersionHeaterModule)();
+        (0, wallbox_1.stopWallboxModule)();
         (0, failsafe_runner_1.stopFailsafeRunner)();
         callback();
     }
@@ -100,6 +103,7 @@ class Ems extends utils.Adapter {
             (0, immersion_heater_1.handleImmersionHeaterStateChange)(this, id);
             (0, policy_1.handleGlobalModesStateChange)(this.namespace, id);
             (0, intent_1.handleIntentStateChange)(this.namespace, id, state);
+            (0, wallbox_1.handleWallboxForeignStateChange)(this.namespace, id);
         }
         const inboxId = `${this.namespace}.${states_1.STATE.command.inbox}`;
         if (id !== inboxId || !state)

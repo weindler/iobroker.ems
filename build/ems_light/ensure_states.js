@@ -38,6 +38,8 @@ async function ensureEmsLightStates(host, adapterVersion) {
         numState("live.battery.pv_ac_power_w", "Live PV AC Leistung", "W"),
         numState("live.battery.house_load_w", "Live Hauslast (Verbrauch)", "W"),
         numState("live.wallbox.enabled", "Live Wallbox freigegeben (0/1)"),
+        numState("live.wallbox.charging", "Live Wallbox laden aktiv (0/1)"),
+        numState("live.wallbox.charge_power_w", "Live Wallbox Ladeleistung", "W"),
         numState("live.wallbox.vehicle_soc_pct", "Live Fahrzeug-SOC", "%"),
         numState("live.thermal.buffer_temp_c", "Live Puffer-Temperatur", "°C"),
         numState("live.pv.power_w", "Live PV-Leistung", "W"),

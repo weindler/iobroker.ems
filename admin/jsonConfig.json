@@ -124,7 +124,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Pro Zeile: Ziel-State aus dem ioBroker-Objektbaum wählen. Nach Neustart unter ems.&lt;instanz&gt;.addons.wallbox.mapping.*"
+					"text": "EMS-Light liest die Wallbox ausschließlich über EVCC (read-only). Die konkrete Wallbox wird in EVCC konfiguriert. Ziel-States aus dem ioBroker-Objektbaum wählen — typischer Präfix evcc.&lt;instanz&gt;.status.*. Ausgabe: addons.wallbox.evcc.* und live.wallbox.*"
 				},
 				"wb_addon_mode": {
 					"type": "select",
@@ -140,311 +140,252 @@
 					"lg": 4,
 					"xl": 4
 				},
-				"btnGoe": {
-					"type": "sendTo",
-					"label": "go-e Vorlage übernehmen (optional)",
-					"command": "applyGoeTemplate",
-					"variant": "outlined",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"hEnabled": {
+				"hEvccOps": {
 					"type": "header",
 					"size": 2,
-					"text": "set_enabled — Ladung erlauben",
+					"text": "EVCC — Betriebsdaten",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
 					"lg": 12,
 					"xl": 12
 				},
-				"helpEnabled": {
+				"helpEvccOps": {
 					"type": "staticText",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Schaltet, ob die Wallbox Strom an das Fahrzeug abgeben darf. go-e: allow_charging (true/false oder 0/1)."
+					"text": "Lademodus, Freigabe, Verbindung und aktuelle Ladeleistung aus EVCC."
 				},
-				"wb_set_enabled_target": {
+				"intent_evcc_mode_state": {
 					"type": "objectId",
-					"label": "Ziel-State",
+					"label": "EVCC Modus",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
-					"md": 9,
-					"lg": 9,
-					"xl": 9
+					"md": 6,
+					"lg": 6,
+					"xl": 6
 				},
-				"wb_set_enabled_enabled": {
-					"type": "checkbox",
-					"label": "Mapping aktiv",
-					"default": true,
+				"wb_evcc_enabled_state": {
+					"type": "objectId",
+					"label": "EVCC Ladefreigabe / enabled",
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
+					"md": 6,
+					"lg": 6,
+					"xl": 6
 				},
-				"hCurrent": {
+				"wb_evcc_connected_state": {
+					"type": "objectId",
+					"label": "Fahrzeug angeschlossen / connected",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_charging_state": {
+					"type": "objectId",
+					"label": "Laden aktiv / charging",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_charge_power_w_state": {
+					"type": "objectId",
+					"label": "Aktuelle Ladeleistung (W)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_session_energy_kwh_state": {
+					"type": "objectId",
+					"label": "Geladene Energie der Sitzung (kWh)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"hEvccVehicle": {
 					"type": "header",
 					"size": 2,
-					"text": "set_current_a — Ladestrom (Ampere)",
+					"text": "EVCC — Fahrzeug und Ladeziel",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
 					"lg": 12,
 					"xl": 12
 				},
-				"helpCurrent": {
+				"helpEvccVehicle": {
 					"type": "staticText",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Direkte Vorgabe des Ladestroms in Ampere. go-e: amperePV (API amx) — für EMS-Regelung, weil ampere (amp) ins Flash schreibt. ampere nur für seltene manuelle Limits."
+					"text": "Fahrzeug-SOC, Ziel-SOC und Ladeplan aus EVCC. Modus und Ziel-SOC fließen auch in den Wallbox-Intent ein."
 				},
-				"wb_set_current_a_target": {
+				"wb_evcc_vehicle_soc_state": {
 					"type": "objectId",
-					"label": "Ziel-State",
+					"label": "Fahrzeug-SOC (%)",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
-					"md": 9,
-					"lg": 9,
-					"xl": 9
+					"md": 6,
+					"lg": 6,
+					"xl": 6
 				},
-				"wb_set_current_a_enabled": {
-					"type": "checkbox",
-					"label": "Mapping aktiv",
-					"default": true,
+				"intent_evcc_target_soc_state": {
+					"type": "objectId",
+					"label": "Ziel-SOC / EVCC-Ladelimit (%)",
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
+					"md": 6,
+					"lg": 6,
+					"xl": 6
 				},
-				"hPower": {
+				"wb_evcc_plan_active_state": {
+					"type": "objectId",
+					"label": "Plan aktiv",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_plan_soc_state": {
+					"type": "objectId",
+					"label": "Plan-Ziel-SOC (%)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_plan_time_state": {
+					"type": "objectId",
+					"label": "Gewünschte Planzeit",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_effective_plan_time_state": {
+					"type": "objectId",
+					"label": "effectivePlanTime",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"intent_evcc_deadline_state": {
+					"type": "objectId",
+					"label": "Intent-Deadline (optional, z. B. gleich wie effectivePlanTime)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"intent_evcc_immediate_state": {
+					"type": "objectId",
+					"label": "EVCC Sofortladen (optional, Intent-Diagnose)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"intent_evcc_source_timestamp_state": {
+					"type": "objectId",
+					"label": "EVCC Quell-Zeitstempel (optional)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"hEvccLoadpoint": {
 					"type": "header",
 					"size": 2,
-					"text": "set_charge_power_w — Leistung (Watt)",
+					"text": "EVCC — Ladepunktdaten",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
 					"lg": 12,
 					"xl": 12
 				},
-				"helpPower": {
+				"helpEvccLoadpoint": {
 					"type": "staticText",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "EMS rechnet Watt in Ampere um (230 V). go-e: gleicher Ziel-State wie Strom — amperePV (amx), nicht ampere (amp)."
+					"text": "Phasen und Stromgrenzen des Ladepunkts aus EVCC."
 				},
-				"wb_set_charge_power_w_target": {
+				"wb_evcc_active_phases_state": {
 					"type": "objectId",
-					"label": "Ziel-State",
+					"label": "Aktive Phasen",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
-					"md": 9,
-					"lg": 9,
-					"xl": 9
+					"md": 6,
+					"lg": 6,
+					"xl": 6
 				},
-				"wb_set_charge_power_w_enabled": {
-					"type": "checkbox",
-					"label": "Mapping aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 12,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"hPhase": {
-					"type": "header",
-					"size": 2,
-					"text": "set_phase_switch_enabled — Phasenumschaltung",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"helpPhase": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "Automatische Umschaltung 1↔3 Phasen (nur wenn EMS-Policy das erlaubt). go-e: phaseSwitchModeEnabled."
-				},
-				"wb_set_phase_switch_target": {
+				"wb_evcc_configured_phases_state": {
 					"type": "objectId",
-					"label": "Ziel-State",
+					"label": "Konfigurierte Phasen",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
-					"md": 9,
-					"lg": 9,
-					"xl": 9
+					"md": 6,
+					"lg": 6,
+					"xl": 6
 				},
-				"wb_set_phase_switch_enabled": {
-					"type": "checkbox",
-					"label": "Mapping aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 12,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"hWbVehicleSoc": {
-					"type": "header",
-					"size": 2,
-					"text": "vehicle_soc_pct — Fahrzeug-SOC (Lesen)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"helpWbVehicleSoc": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "EMS-Light live.wallbox.vehicle_soc_pct — z. B. EVCC, go-e oder anderer Fahrzeug-SOC-State."
-				},
-				"wb_vehicle_soc_target": {
+				"wb_evcc_min_current_a_state": {
 					"type": "objectId",
-					"label": "Ziel-State",
+					"label": "Minimaler Ladestrom (A)",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
-					"md": 9,
-					"lg": 9,
-					"xl": 9
+					"md": 6,
+					"lg": 6,
+					"xl": 6
 				},
-				"wb_vehicle_soc_enabled": {
-					"type": "checkbox",
-					"label": "Mapping aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 12,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"hWbFailsafe": {
-					"type": "header",
-					"size": 2,
-					"text": "Failsafe (nur Live)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"helpWbFailsafe": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "EMS weg oder Befehl schlägt fehl → allow_charging AUS. Feedback z. B. go-e.0.energy.neutral.power — bei go-e oft kW: Einheit „Kilowatt (kW)“ wählen. Soll-Leistung vom EMS bleibt in W."
-				},
-				"wb_feedback_power_target": {
+				"wb_evcc_max_current_a_state": {
 					"type": "objectId",
-					"label": "Feedback Leistung — optional",
+					"label": "Maximaler Ladestrom (A)",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
-					"md": 8,
-					"lg": 8,
-					"xl": 8
-				},
-				"wb_feedback_power_unit": {
-					"type": "select",
-					"label": "Einheit Feedback-Leistung",
-					"options": [
-						{ "label": "Watt (W)", "value": "w" },
-						{ "label": "Kilowatt (kW)", "value": "kw" }
-					],
-					"default": "w",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"wb_max_charge_w": {
-					"type": "number",
-					"label": "Max-Ladung (W) für steady-max-Ausnahme",
-					"min": 1000,
-					"max": 22000,
-					"default": 11000,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"wb_verification_tolerance_pct": {
-					"type": "number",
-					"label": "Toleranz Leistungs-Abgleich (%)",
-					"min": 5,
-					"max": 50,
-					"default": 15,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"advancedWallbox": {
-					"type": "panel",
-					"label": "Erweitert",
-					"items": {
-						"helpAdvanced": {
-							"type": "staticText",
-							"xs": 12,
-							"sm": 12,
-							"md": 12,
-							"lg": 12,
-							"xl": 12,
-							"text": "Optionale JSON-Listen erlaubter Werte pro Befehl (leer = alle Werte erlaubt)."
-						},
-						"wb_set_enabled_allowed": {
-							"type": "text",
-							"label": "set_enabled — erlaubte Werte (JSON)",
-							"xs": 12,
-							"sm": 12,
-							"md": 12,
-							"lg": 12,
-							"xl": 12
-						},
-						"wb_set_phase_switch_allowed": {
-							"type": "text",
-							"label": "set_phase_switch — erlaubte Werte (JSON)",
-							"xs": 12,
-							"sm": 12,
-							"md": 12,
-							"lg": 12,
-							"xl": 12
-						}
-					}
+					"md": 6,
+					"lg": 6,
+					"xl": 6
 				}
 			}
 		},
@@ -2231,65 +2172,14 @@
 					"xl": 12,
 					"text": "Phase 3B: Benutzeraufträge erfassen und normalisieren (read-only). Keine Planner- oder Geräteentscheidungen. Laufzeit-Eingabe: user_intent.inputs.iobroker.wallbox.request_json. Ausgabe: user_intent.wallbox.* (read-only)."
 				},
-				"hIntentEvcc": {
-					"type": "header",
-					"size": 2,
-					"text": "EVCC Intent-Mapping (optional, read-only)",
+				"intentEvccHint": {
+					"type": "staticText",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
 					"lg": 12,
-					"xl": 12
-				},
-				"intent_evcc_mode_state": {
-					"type": "objectId",
-					"label": "EVCC Lademodus",
-					"types": ["state"],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"intent_evcc_target_soc_state": {
-					"type": "objectId",
-					"label": "EVCC Ziel-SOC (%)",
-					"types": ["state"],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"intent_evcc_deadline_state": {
-					"type": "objectId",
-					"label": "EVCC Abfahrtszeit / Deadline",
-					"types": ["state"],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"intent_evcc_immediate_state": {
-					"type": "objectId",
-					"label": "EVCC Sofortladen (optional, Diagnose)",
-					"types": ["state"],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"intent_evcc_source_timestamp_state": {
-					"type": "objectId",
-					"label": "EVCC Quell-Zeitstempel (optional)",
-					"types": ["state"],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
+					"xl": 12,
+					"text": "EVCC-Datenpunkt-Mappings für Wallbox und Intent: Tab „Wallbox“. Dieser Tab enthält nur Intent-Defaults und ioBroker-Request-Einstellungen."
 				},
 				"hIntentDefaults": {
 					"type": "header",

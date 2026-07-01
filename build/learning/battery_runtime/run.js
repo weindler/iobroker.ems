@@ -57,21 +57,17 @@ async function runBatteryRuntimeLearning(host) {
     }
     try {
         host.log.info(`Battery-Runtime-Learning: loading history (${cfg.lookbackDays}d, soc=${(0, config_1.sourceLabelFromStateId)(sources.socStateId)})…`);
-        const [socHist, powerHist, capacityKwh, currentSocPct, astroDaily] = await Promise.all([
+        const [socHist, powerHist, capacityKwh, currentSocPct] = await Promise.all([
             (0, history_1.fetchSocHistory)(host, sources.socStateId, cfg.lookbackDays),
             sources.powerStateId
                 ? (0, history_1.fetchPowerHistory)(host, sources.powerStateId, cfg.lookbackDays, cfg.powerInvert)
                 : Promise.resolve({ points: [], lastValidTs: null }),
             (0, history_1.readLiveCapacityKwh)(host, sources.capacityStateId),
             (0, history_1.readLiveSoc)(host, sources.socStateId),
-            (0, config_1.nightAstroConfigReady)(cfg)
-                ? (async () => {
-                    const startPts = await (0, history_1.fetchAstroTimeHistory)(host, cfg.nightStartStateId, cfg.lookbackDays);
-                    const endPts = await (0, history_1.fetchAstroTimeHistory)(host, cfg.nightEndStateId, cfg.lookbackDays);
-                    return (0, history_1.mergeDailyAstroTimes)(startPts, endPts);
-                })()
-                : Promise.resolve(null),
         ]);
+        const astroDaily = (0, config_1.nightAstroConfigReady)(cfg)
+            ? (0, history_1.mergeDailyAstroTimes)(await (0, history_1.fetchAstroTimeHistory)(host, cfg.nightStartStateId, cfg.lookbackDays), await (0, history_1.fetchAstroTimeHistory)(host, cfg.nightEndStateId, cfg.lookbackDays))
+            : null;
         const sampleDays = (0, history_1.distinctSocSampleDays)(socHist.points);
         const result = (0, math_1.computeBatteryRuntimeLearning)({
             socPoints: socHist.points,

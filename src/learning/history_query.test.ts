@@ -4,11 +4,13 @@ import {
 	fetchHistoryRowsLookback,
 	historyStateCandidates,
 	normalizeHistoryTs,
+	resetHistoryQueryQueueForTests,
 	type HistoryQueryHost,
 } from "./history_query";
 
 describe("history_query", () => {
 	it("loads lookback via bulk window first", async () => {
+		resetHistoryQueryQueueForTests();
 		let calls = 0;
 		const host: HistoryQueryHost = {
 			getHistoryAsync: async (_id, options) => {
@@ -19,10 +21,11 @@ describe("history_query", () => {
 		};
 		const rows = await fetchHistoryRowsLookback(host, "alias.0.test", 3);
 		assert.equal(rows.length, 1);
-		assert.ok(calls <= 2, "bulk tries onchange then none at most");
+		assert.ok(calls <= 2, "bulk tries none then onchange at most");
 	});
 
 	it("falls back to per-day chunks when bulk is empty", async () => {
+		resetHistoryQueryQueueForTests();
 		let calls = 0;
 		const host: HistoryQueryHost = {
 			getHistoryAsync: async (_id, options) => {

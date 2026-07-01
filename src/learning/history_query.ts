@@ -198,18 +198,27 @@ async function invokeGetHistory(
 	options: ioBroker.GetHistoryOptions,
 	timeoutMs: number,
 ): Promise<{ rows: ioBroker.GetHistoryResult; timedOut: boolean; error: boolean }> {
-	const message = { id: stateId, options };
+	return enqueueHistoryQuery(async () => {
+		const message = { id: stateId, options };
 
-	if (host.sendToAsync) {
-		const viaSendTo = await withHistoryTimeout(
-			host.sendToAsync("history.0", "getHistory", message),
-			timeoutMs,
-		);
-		return parseHistoryResponse(viaSendTo);
-	}
+		try {
+			if (host.sendToAsync) {
+				const viaSendTo = await withHistoryTimeout(
+					host.sendToAsync("history.0", "getHistory", message),
+					timeoutMs,
+				);
+				return parseHistoryResponse(viaSendTo);
+			}
 
-	const viaAsync = await withHistoryTimeout(host.getHistoryAsync(stateId, options), timeoutMs);
-	return parseHistoryResponse(viaAsync);
+			const viaAsync = await withHistoryTimeout(host.getHistoryAsync(stateId, options), timeoutMs);
+			return parseHistoryResponse(viaAsync);
+		} catch (e) {
+			host.log?.warn?.(
+				`History query: Exception für ${stateId} (${String(options.aggregate ?? "default")}): ${e instanceof Error ? e.message : String(e)}`,
+			);
+			return { rows: [], timedOut: false, error: true };
+		}
+	});
 }
 
 function mergeStats(a: HistoryFetchStats, b: HistoryFetchStats): HistoryFetchStats {
@@ -222,6 +231,20 @@ function mergeStats(a: HistoryFetchStats, b: HistoryFetchStats): HistoryFetchSta
 
 function emptyStats(): HistoryFetchStats {
 	return { timedOut: 0, empty: 0, errors: 0 };
+}
+
+/** history.0 verträgt keine parallelen getHistory — sonst UNCAUGHT_EXCEPTION im Adapter. */
+let historyQueryChain: Promise<unknown> = Promise.resolve();
+
+function enqueueHistoryQuery<T>(fn: () => Promise<T>): Promise<T> {
+	const run = historyQueryChain.then(fn, fn);
+	historyQueryChain = run.catch(() => undefined);
+	return run;
+}
+
+/** Nur für Tests: Warteschlange zurücksetzen. */
+export function resetHistoryQueryQueueForTests(): void {
+	historyQueryChain = Promise.resolve();
 }
 
 export async function fetchHistoryRowsInRange(
@@ -365,7 +388,7 @@ async function fetchHistoryBulkForId(
 		}
 		const endMs = Date.now();
 		const startMs = endMs - days * MS_PER_DAY;
-		const count = Math.min(Math.max(days * 120, 500), 20_000);
+		const count = Math.min(Math.max(days * 120, 500), 8_000);
 		const attempt = await fetchHistoryWithAggregates(
 			host,
 			stateId,

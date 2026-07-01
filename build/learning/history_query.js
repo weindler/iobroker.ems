@@ -5,7 +5,7 @@
  * getHistoryAsync nur wenn kein sendToAsync am Host.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchHistoryRowsLookback = exports.fetchHistoryRowsAggregated = exports.fetchHistoryRowsInRange = exports.withHistoryTimeout = exports.historyStateCandidates = exports.dayBoundsMs = exports.normalizeHistoryRows = exports.normalizeHistoryTs = exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_AGGREGATES = exports.PER_DAY_FALLBACK_MAX_DAYS = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_BULK_TIMEOUT_MS = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
+exports.fetchHistoryRowsLookback = exports.fetchHistoryRowsAggregated = exports.fetchHistoryRowsInRange = exports.resetHistoryQueryQueueForTests = exports.withHistoryTimeout = exports.historyStateCandidates = exports.dayBoundsMs = exports.normalizeHistoryRows = exports.normalizeHistoryTs = exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_AGGREGATES = exports.PER_DAY_FALLBACK_MAX_DAYS = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_BULK_TIMEOUT_MS = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
 exports.HISTORY_ROWS_PER_DAY = 500;
 exports.HISTORY_CHUNK_TIMEOUT_MS = 45_000;
 exports.HISTORY_BULK_TIMEOUT_MS = 45_000;
@@ -150,13 +150,21 @@ function parseHistoryResponse(res) {
 }
 /** sendTo history.0 (Callback-Bridge); kein getHistoryAsync-Fallback bei leerem sendTo. */
 async function invokeGetHistory(host, stateId, options, timeoutMs) {
-    const message = { id: stateId, options };
-    if (host.sendToAsync) {
-        const viaSendTo = await withHistoryTimeout(host.sendToAsync("history.0", "getHistory", message), timeoutMs);
-        return parseHistoryResponse(viaSendTo);
-    }
-    const viaAsync = await withHistoryTimeout(host.getHistoryAsync(stateId, options), timeoutMs);
-    return parseHistoryResponse(viaAsync);
+    return enqueueHistoryQuery(async () => {
+        const message = { id: stateId, options };
+        try {
+            if (host.sendToAsync) {
+                const viaSendTo = await withHistoryTimeout(host.sendToAsync("history.0", "getHistory", message), timeoutMs);
+                return parseHistoryResponse(viaSendTo);
+            }
+            const viaAsync = await withHistoryTimeout(host.getHistoryAsync(stateId, options), timeoutMs);
+            return parseHistoryResponse(viaAsync);
+        }
+        catch (e) {
+            host.log?.warn?.(`History query: Exception für ${stateId} (${String(options.aggregate ?? "default")}): ${e instanceof Error ? e.message : String(e)}`);
+            return { rows: [], timedOut: false, error: true };
+        }
+    });
 }
 function mergeStats(a, b) {
     return {
@@ -168,6 +176,18 @@ function mergeStats(a, b) {
 function emptyStats() {
     return { timedOut: 0, empty: 0, errors: 0 };
 }
+/** history.0 verträgt keine parallelen getHistory — sonst UNCAUGHT_EXCEPTION im Adapter. */
+let historyQueryChain = Promise.resolve();
+function enqueueHistoryQuery(fn) {
+    const run = historyQueryChain.then(fn, fn);
+    historyQueryChain = run.catch(() => undefined);
+    return run;
+}
+/** Nur für Tests: Warteschlange zurücksetzen. */
+function resetHistoryQueryQueueForTests() {
+    historyQueryChain = Promise.resolve();
+}
+exports.resetHistoryQueryQueueForTests = resetHistoryQueryQueueForTests;
 async function fetchHistoryRowsInRange(host, stateId, startMs, endMs, count = exports.HISTORY_ROWS_PER_DAY, timeoutMs = exports.HISTORY_CHUNK_TIMEOUT_MS, aggregate = "onchange") {
     const result = await fetchHistoryRowsInRangeDetailed(host, stateId, startMs, endMs, count, timeoutMs, aggregate);
     return result.rows;
@@ -241,7 +261,7 @@ async function fetchHistoryBulkForId(host, stateId, lookbackDays) {
         }
         const endMs = Date.now();
         const startMs = endMs - days * MS_PER_DAY;
-        const count = Math.min(Math.max(days * 120, 500), 20_000);
+        const count = Math.min(Math.max(days * 120, 500), 8_000);
         const attempt = await fetchHistoryWithAggregates(host, stateId, startMs, endMs, count, exports.HISTORY_BULK_TIMEOUT_MS);
         combinedStats = mergeStats(combinedStats, attempt.stats);
         if (attempt.rows.length > 0) {

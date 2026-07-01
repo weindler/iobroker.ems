@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.70] – 2026-07-01
+
+### Fixed
+
+- `history.0`-Absturz bei parallelen EMS-`getHistory`-Anfragen: History-Queries laufen jetzt **serialisiert** (eine nach der other), Aggregate-Reihenfolge `none` vor `onchange`, kleineres Bulk-`count`-Limit, Exceptions werden abgefangen statt den history-Adapter zu reißen.
+
+---
+
 ## [0.1.69] – 2026-07-01
 
 ### Fixed

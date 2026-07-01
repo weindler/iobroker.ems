@@ -8,6 +8,7 @@ const strict_1 = __importDefault(require("node:assert/strict"));
 const history_query_1 = require("./history_query");
 (0, node_test_1.describe)("history_query", () => {
     (0, node_test_1.it)("loads lookback via bulk window first", async () => {
+        (0, history_query_1.resetHistoryQueryQueueForTests)();
         let calls = 0;
         const host = {
             getHistoryAsync: async (_id, options) => {
@@ -18,9 +19,10 @@ const history_query_1 = require("./history_query");
         };
         const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, "alias.0.test", 3);
         strict_1.default.equal(rows.length, 1);
-        strict_1.default.ok(calls <= 2, "bulk tries onchange then none at most");
+        strict_1.default.ok(calls <= 2, "bulk tries none then onchange at most");
     });
     (0, node_test_1.it)("falls back to per-day chunks when bulk is empty", async () => {
+        (0, history_query_1.resetHistoryQueryQueueForTests)();
         let calls = 0;
         const host = {
             getHistoryAsync: async (_id, options) => {

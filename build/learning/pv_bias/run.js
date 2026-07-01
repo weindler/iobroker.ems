@@ -6,6 +6,7 @@ const config_1 = require("./config");
 const freeze_1 = require("./freeze");
 const history_1 = require("./history");
 const math_1 = require("./math");
+const snapshot_1 = require("./snapshot");
 async function readForeignNum(host, stateId) {
     return (0, history_1.readStateNum)(host, stateId);
 }
@@ -62,6 +63,8 @@ async function runPvBiasLearning(host) {
     }
     try {
         await (0, freeze_1.runForecastFreeze)(host, cfg);
+        await (0, snapshot_1.backfillDailyPersist)(host, cfg);
+        await (0, snapshot_1.runActualDailySnapshot)(host, cfg);
         const rawTodayKwh = await readLiveRawForecast(host, cfg.rawTodayStateId, "forecast.pv.today_kwh");
         const rawTomorrowKwh = await readLiveRawForecast(host, cfg.rawTomorrowStateId, "forecast.pv.tomorrow_kwh");
         const frozen = cfg.freezeEnabled ? await (0, freeze_1.readFrozenForecast)(host) : { today: null, tomorrow: null };
@@ -70,9 +73,11 @@ async function runPvBiasLearning(host) {
         const forecastHistoryStateId = cfg.historyForecastStateId || cfg.rawTodayStateId || freeze_1.FROZEN_TODAY_STATE_ID;
         const todayForecastOverride = cfg.freezeEnabled ? frozen.today : null;
         host.log.info(`PV-Bias: loading history (30d, actual=${cfg.historyActualStateId || "—"} forecast=${forecastHistoryStateId})…`);
+        const dailyPersist = await (0, snapshot_1.loadDailyPersist)(host);
         const dayPairs = await (0, history_1.fetchPvBiasDayPairs)(host, cfg.historyActualStateId, forecastHistoryStateId, {
             maxDays: 30,
             todayForecastOverride,
+            dailyPersist,
         });
         const pairs = dayPairs.pairs;
         host.log.info(`PV-Bias: history loaded, ${pairs.length} valid pair(s) (actual_days=${dayPairs.actualDays}, forecast_days=${dayPairs.forecastDays})`);

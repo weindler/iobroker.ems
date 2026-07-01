@@ -1,29 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readFrozenForecast = exports.runForecastFreeze = exports.buildFreezeSnapshot = exports.decideForecastFreeze = exports.freezeInstantMs = exports.localDateKey = exports.FROZEN_TOMORROW_STATE_ID = exports.FROZEN_TODAY_STATE_ID = void 0;
+exports.readFrozenForecast = exports.runForecastFreeze = exports.buildFreezeSnapshot = exports.decideForecastFreeze = exports.localDateKey = exports.freezeInstantMs = exports.FROZEN_TOMORROW_STATE_ID = exports.FROZEN_TODAY_STATE_ID = void 0;
 const state_util_1 = require("../../ems_light/state_util");
-const config_1 = require("./config");
+const snapshot_1 = require("./snapshot");
+const dates_1 = require("./dates");
 exports.FROZEN_TODAY_STATE_ID = "learning.pv_bias.frozen_today_kwh";
 exports.FROZEN_TOMORROW_STATE_ID = "learning.pv_bias.frozen_tomorrow_kwh";
-/** Lokales Kalenderdatum YYYY-MM-DD. */
-function localDateKey(d) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-}
-exports.localDateKey = localDateKey;
-/** Zeitpunkt des Freeze heute (lokale Zeit) in ms. */
-function freezeInstantMs(freezeTime, ref) {
-    const parsed = (0, config_1.parseFreezeTimeHHMM)(freezeTime);
-    if (!parsed) {
-        return null;
-    }
-    const d = new Date(ref);
-    d.setHours(parsed.hours, parsed.minutes, 0, 0);
-    return d.getTime();
-}
-exports.freezeInstantMs = freezeInstantMs;
+var dates_2 = require("./dates");
+Object.defineProperty(exports, "freezeInstantMs", { enumerable: true, get: function () { return dates_2.freezeInstantMs; } });
+Object.defineProperty(exports, "localDateKey", { enumerable: true, get: function () { return dates_2.localDateKey; } });
 /**
  * Entscheidet, ob ein neuer Forecast-Snapshot erstellt werden soll.
  * Maximal ein Freeze pro Kalendertag; Neustart ändert nichts, wenn heute bereits eingefroren.
@@ -36,7 +21,7 @@ function decideForecastFreeze(now, freezeEnabled, configuredFreezeTime, frozenAt
             reason: "Forecast-Freeze in Admin deaktiviert.",
         };
     }
-    const freezeMs = freezeInstantMs(configuredFreezeTime, now);
+    const freezeMs = (0, dates_1.freezeInstantMs)(configuredFreezeTime, now);
     if (freezeMs === null) {
         return {
             shouldFreeze: false,
@@ -53,7 +38,7 @@ function decideForecastFreeze(now, freezeEnabled, configuredFreezeTime, frozenAt
     }
     if (frozenAtTs) {
         const frozenAt = new Date(frozenAtTs);
-        if (!Number.isNaN(frozenAt.getTime()) && localDateKey(frozenAt) === localDateKey(now)) {
+        if (!Number.isNaN(frozenAt.getTime()) && (0, dates_1.localDateKey)(frozenAt) === (0, dates_1.localDateKey)(now)) {
             return {
                 shouldFreeze: false,
                 status: "ready",
@@ -159,6 +144,7 @@ async function runForecastFreeze(host, cfg) {
     await host.setStateAsync("learning.pv_bias.frozen_source", { val: snap.frozenSource, ack: true });
     await writeFreezeMeta(host, "ready", `Forecast-Snapshot um ${snap.frozenAtTs} erstellt.`);
     host.log.info(`PV-Bias Freeze: today=${snap.frozenTodayKwh} kWh source=${snap.frozenSource}`);
+    await (0, snapshot_1.recordForecastDailySnapshot)(host, cfg, snap.frozenTodayKwh, snap.frozenSource);
 }
 exports.runForecastFreeze = runForecastFreeze;
 async function readFrozenForecast(host) {

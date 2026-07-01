@@ -1858,6 +1858,36 @@
 					"lg": 4,
 					"xl": 4
 				},
+				"hPvBiasActualSnapshot": {
+					"type": "header",
+					"size": 2,
+					"text": "Ist-Snapshot — Tagesertrag DAY_ENERGY (verhindert MAX-Fehler bei Morgen-Reset)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_pv_bias_actual_snapshot_enabled": {
+					"type": "checkbox",
+					"label": "Ist-Snapshot aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"learning_pv_bias_actual_snapshot_time": {
+					"type": "text",
+					"label": "Ist-Snapshot-Zeit (HH:MM, z. B. 23:58)",
+					"default": "23:58",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
 				"hPvBiasHistory": {
 					"type": "header",
 					"size": 2,

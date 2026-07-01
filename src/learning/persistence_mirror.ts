@@ -61,6 +61,12 @@ const ARTIFACTS: readonly ArtifactDef[] = [
 		fileName: "price_forecast_learning_v1.json",
 		nameDe: "Preis-Forecast-Learning (Backup-Spiegel)",
 	},
+	{
+		key: "pv_bias_daily",
+		category: "learning/pv_bias",
+		fileName: "pv_bias_daily_v1.json",
+		nameDe: "PV-Bias Tages-Snapshots (Backup-Spiegel)",
+	},
 ] as const;
 
 const BASE = "learning.persistence";

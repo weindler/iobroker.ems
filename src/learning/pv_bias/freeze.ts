@@ -1,35 +1,20 @@
 import { asNum } from "../../ems_light/state_util";
 import type { ForecastFreezeDecision, ForecastFreezeSnapshot, PvBiasConfig } from "./types";
 import { parseFreezeTimeHHMM } from "./config";
+import { recordForecastDailySnapshot, type SnapshotHost } from "./snapshot";
+import { freezeInstantMs, localDateKey } from "./dates";
 
 export const FROZEN_TODAY_STATE_ID = "learning.pv_bias.frozen_today_kwh";
 export const FROZEN_TOMORROW_STATE_ID = "learning.pv_bias.frozen_tomorrow_kwh";
 
-export type ForecastFreezeHost = {
+export { freezeInstantMs, localDateKey } from "./dates";
+
+export type ForecastFreezeHost = SnapshotHost & {
 	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
 	getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
 	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
 	log: { info: (msg: string) => void; warn: (msg: string) => void };
 };
-
-/** Lokales Kalenderdatum YYYY-MM-DD. */
-export function localDateKey(d: Date): string {
-	const y = d.getFullYear();
-	const m = String(d.getMonth() + 1).padStart(2, "0");
-	const day = String(d.getDate()).padStart(2, "0");
-	return `${y}-${m}-${day}`;
-}
-
-/** Zeitpunkt des Freeze heute (lokale Zeit) in ms. */
-export function freezeInstantMs(freezeTime: string, ref: Date): number | null {
-	const parsed = parseFreezeTimeHHMM(freezeTime);
-	if (!parsed) {
-		return null;
-	}
-	const d = new Date(ref);
-	d.setHours(parsed.hours, parsed.minutes, 0, 0);
-	return d.getTime();
-}
 
 /**
  * Entscheidet, ob ein neuer Forecast-Snapshot erstellt werden soll.
@@ -205,6 +190,7 @@ export async function runForecastFreeze(host: ForecastFreezeHost, cfg: PvBiasCon
 	await host.setStateAsync("learning.pv_bias.frozen_source", { val: snap.frozenSource, ack: true });
 	await writeFreezeMeta(host, "ready", `Forecast-Snapshot um ${snap.frozenAtTs} erstellt.`);
 	host.log.info(`PV-Bias Freeze: today=${snap.frozenTodayKwh} kWh source=${snap.frozenSource}`);
+	await recordForecastDailySnapshot(host, cfg, snap.frozenTodayKwh, snap.frozenSource);
 }
 
 export async function readFrozenForecast(

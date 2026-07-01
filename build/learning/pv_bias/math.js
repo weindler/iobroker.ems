@@ -89,8 +89,9 @@ function correctForecastKwh(rawKwh, biasPct) {
 exports.correctForecastKwh = correctForecastKwh;
 function computePvBias(pairs, rawTodayKwh, rawTomorrowKwh) {
     const todayPairs = pairs.filter((p) => p.dayOffset === 0);
-    const last7 = pairs.filter((p) => p.dayOffset >= 0 && p.dayOffset <= 6);
-    const last30 = pairs.filter((p) => p.dayOffset >= 0 && p.dayOffset <= 29);
+    // Unvollständiger heutiger Tag verfälscht Mittelwerte — nur abgestellte Tage zählen.
+    const last7 = pairs.filter((p) => p.dayOffset >= 1 && p.dayOffset <= 7);
+    const last30 = pairs.filter((p) => p.dayOffset >= 1 && p.dayOffset <= 30);
     const todayBias = meanBiasPct(todayPairs);
     const bias7 = meanBiasPct(last7);
     const bias30 = meanBiasPct(last30);
@@ -104,9 +105,10 @@ function computePvBias(pairs, rawTodayKwh, rawTomorrowKwh) {
     const spread = stdDevPct(biasValues30);
     const conf = confidencePct(bias30.sampleDays, bias7.sampleDays, spread);
     const biasForToday = todayBias.biasPct;
+    const biasForCorrection = bias7.biasPct ?? bias30.biasPct;
     const biasForTomorrow = bias7.biasPct ?? bias30.biasPct;
-    const correctedToday = biasForToday !== null && rawTodayKwh !== null
-        ? correctForecastKwh(rawTodayKwh, biasForToday)
+    const correctedToday = biasForCorrection !== null && rawTodayKwh !== null
+        ? correctForecastKwh(rawTodayKwh, biasForCorrection)
         : null;
     const correctedTomorrow = biasForTomorrow !== null && rawTomorrowKwh !== null
         ? correctForecastKwh(rawTomorrowKwh, biasForTomorrow)

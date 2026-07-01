@@ -49,15 +49,33 @@ const math_1 = require("./math");
     });
     (0, node_test_1.it)("tomorrow correction prefers 7d bias over 30d", () => {
         const pairs = [];
-        for (let i = 0; i < 7; i++) {
+        for (let i = 1; i <= 7; i++) {
             pairs.push({ dayOffset: i, actualKwh: 24, forecastKwh: 30 });
         }
-        for (let i = 7; i < 30; i++) {
+        for (let i = 8; i < 30; i++) {
             pairs.push({ dayOffset: i, actualKwh: 30, forecastKwh: 30 });
         }
         const r = (0, math_1.computePvBias)(pairs, null, 100);
         strict_1.default.equal(r.bias7dPct !== null && Math.round(r.bias7dPct), -20);
         strict_1.default.equal(r.correctedTomorrowKwh, 80);
+    });
+    (0, node_test_1.it)("corrected today uses 7d bias, not poisoned intraday today pair", () => {
+        const pairs = [
+            { dayOffset: 0, actualKwh: 44, forecastKwh: 13.2 },
+            { dayOffset: 1, actualKwh: 24, forecastKwh: 30 },
+            { dayOffset: 2, actualKwh: 24, forecastKwh: 30 },
+            { dayOffset: 3, actualKwh: 24, forecastKwh: 30 },
+        ];
+        const r = (0, math_1.computePvBias)(pairs, 13.2, null);
+        strict_1.default.equal(r.biasTodayPct !== null && Math.round(r.biasTodayPct), 233);
+        strict_1.default.equal(r.bias7dPct !== null && Math.round(r.bias7dPct), -20);
+        strict_1.default.equal(r.correctedTodayKwh, 10.56);
+    });
+    (0, node_test_1.it)("excludes incomplete today from 7d sample", () => {
+        const pairs = [{ dayOffset: 0, actualKwh: 5, forecastKwh: 20 }];
+        const r = (0, math_1.computePvBias)(pairs, 20, 25);
+        strict_1.default.equal(r.sampleDays7d, 0);
+        strict_1.default.equal(r.bias7dPct, null);
     });
     (0, node_test_1.it)("confidence scales with sample days", () => {
         strict_1.default.equal((0, math_1.confidencePct)(0, 0, null), 0);

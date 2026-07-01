@@ -14,6 +14,8 @@ export type PvBiasConfig = {
 	intervalSec: number;
 	freezeEnabled: boolean;
 	freezeTime: string;
+	actualSnapshotEnabled: boolean;
+	actualSnapshotTime: string;
 };
 
 export type PvBiasComputeResult = {

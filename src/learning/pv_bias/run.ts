@@ -3,16 +3,23 @@ import { pvBiasConfigFromAdapter, pvBiasConfigReady } from "./config";
 import { FROZEN_TODAY_STATE_ID, readFrozenForecast, runForecastFreeze } from "./freeze";
 import { fetchPvBiasDayPairs, readStateNum } from "./history";
 import { computePvBias } from "./math";
+import {
+	backfillDailyPersist,
+	loadDailyPersist,
+	runActualDailySnapshot,
+	type SnapshotHost,
+} from "./snapshot";
 import type { HistoryQueryHost } from "../history_query";
 import type { PvBiasComputeResult } from "./types";
 
-export type PvBiasRunHost = HistoryQueryHost & {
-	config: unknown;
-	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
-	getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
-	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
-	log: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
-};
+export type PvBiasRunHost = SnapshotHost &
+	HistoryQueryHost & {
+		config: unknown;
+		getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
+		getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
+		setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
+		log: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
+	};
 
 async function readForeignNum(host: PvBiasRunHost, stateId: string): Promise<number | null> {
 	return readStateNum(host, stateId);
@@ -81,6 +88,8 @@ export async function runPvBiasLearning(host: PvBiasRunHost): Promise<void> {
 
 	try {
 		await runForecastFreeze(host, cfg);
+		await backfillDailyPersist(host, cfg);
+		await runActualDailySnapshot(host, cfg);
 
 		const rawTodayKwh = await readLiveRawForecast(
 			host,
@@ -104,9 +113,11 @@ export async function runPvBiasLearning(host: PvBiasRunHost): Promise<void> {
 		host.log.info(
 			`PV-Bias: loading history (30d, actual=${cfg.historyActualStateId || "—"} forecast=${forecastHistoryStateId})…`,
 		);
+		const dailyPersist = await loadDailyPersist(host);
 		const dayPairs = await fetchPvBiasDayPairs(host, cfg.historyActualStateId, forecastHistoryStateId, {
 			maxDays: 30,
 			todayForecastOverride,
+			dailyPersist,
 		});
 		const pairs = dayPairs.pairs;
 		host.log.info(

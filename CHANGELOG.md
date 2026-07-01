@@ -6,6 +6,23 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.69] – 2026-07-01
+
+### Fixed
+
+- **PV-Bias:** `DAY_ENERGY` wurde fälschlich als Tages-**Maximum** aus der Historie gelesen. Nach dem Morgen-Reset des Zählers blieben alte Werte im Fenster und verfälschten Ist/Forecast-Paare (z. B. +141 % Bias bei ~7 kWh statt ~32 kWh).
+- Vergangene Tage werden beim Start aus der Historie nachgezogen (**letzter Tageswert**, kein MAX).
+- **`corrected_today_kwh`** nutzt jetzt den **7-Tage-Bias** (Fallback 30d), nicht den intraday `bias_today`.
+- Unvollständiger heutiger Tag fließt nicht mehr in 7d/30d-Mittelwerte ein.
+
+### Added
+
+- Täglicher **Ist-Snapshot** um **23:58** (konfigurierbar): speichert `DAY_ENERGY` in `pv_bias_daily_v1.json`.
+- Forecast wird beim **Freeze** (~06:00) zusätzlich in derselben Tagesdatei persistiert.
+- Admin: Ist-Snapshot aktiv + Zeit; Backup-Spiegel unter `learning.persistence.pv_bias_daily_json`.
+
+---
+
 ## [0.1.68] – 2026-06-28
 
 ### Fixed

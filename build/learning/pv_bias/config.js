@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.pvBiasConfigReady = exports.pvBiasConfigFromAdapter = exports.normalizeFreezeTime = exports.parseFreezeTimeHHMM = void 0;
 const DEFAULT_INTERVAL_SEC = 3600;
 const DEFAULT_FREEZE_TIME = "06:00";
+const DEFAULT_ACTUAL_SNAPSHOT_TIME = "23:58";
 function strField(config, key) {
     const v = config[key];
     return typeof v === "string" ? v.trim() : "";
@@ -56,6 +57,7 @@ function pvBiasConfigFromAdapter(config) {
         ? Math.round(intervalN)
         : DEFAULT_INTERVAL_SEC;
     const freezeTimeRaw = strField(c, "learning_pv_bias_forecast_freeze_time") || DEFAULT_FREEZE_TIME;
+    const snapshotTimeRaw = strField(c, "learning_pv_bias_actual_snapshot_time") || DEFAULT_ACTUAL_SNAPSHOT_TIME;
     return {
         enabled: boolField(c, "learning_pv_bias_enabled", true),
         historyActualStateId: strField(c, "learning_pv_bias_history_actual_state"),
@@ -65,6 +67,8 @@ function pvBiasConfigFromAdapter(config) {
         intervalSec,
         freezeEnabled: boolField(c, "learning_pv_bias_forecast_freeze_enabled", true),
         freezeTime: normalizeFreezeTime(freezeTimeRaw),
+        actualSnapshotEnabled: boolField(c, "learning_pv_bias_actual_snapshot_enabled", true),
+        actualSnapshotTime: normalizeFreezeTime(snapshotTimeRaw),
     };
 }
 exports.pvBiasConfigFromAdapter = pvBiasConfigFromAdapter;
@@ -73,7 +77,13 @@ function pvBiasConfigReady(cfg) {
         return false;
     }
     if (cfg.freezeEnabled) {
-        return parseFreezeTimeHHMM(cfg.freezeTime) !== null;
+        if (parseFreezeTimeHHMM(cfg.freezeTime) === null) {
+            return false;
+        }
+        if (cfg.actualSnapshotEnabled && parseFreezeTimeHHMM(cfg.actualSnapshotTime) === null) {
+            return false;
+        }
+        return true;
     }
     return Boolean(cfg.historyForecastStateId);
 }

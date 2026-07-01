@@ -25,7 +25,7 @@ async function resolveMappedRole(
 	return typeof targetSt?.val === "string" ? targetSt.val.trim() : "";
 }
 
-/** Admin-States oder addons.battery.mapping (soc_pct, capacity_kwh) — keine harten Pfade. */
+/** Admin-States oder addons.battery.mapping — keine harten Geräte-Pfade. */
 export async function resolveBatteryRuntimeSources(
 	host: BatteryMappingHost,
 	configured: {
@@ -40,6 +40,9 @@ export async function resolveBatteryRuntimeSources(
 	const capacityStateId =
 		configured.capacityStateId ||
 		(await resolveMappedRole(host, "battery", "capacity_kwh"));
+	const secondsSinceFullStateId =
+		configured.secondsSinceFullStateId ||
+		(await resolveMappedRole(host, "battery", "seconds_since_full_charge"));
 	// Leistung: nur Admin — kein Fallback auf battery_charging_w (Schreib-Sollwert, kein Ist).
 	const powerStateId = configured.powerStateId;
 
@@ -47,6 +50,6 @@ export async function resolveBatteryRuntimeSources(
 		socStateId,
 		powerStateId,
 		capacityStateId,
-		secondsSinceFullStateId: configured.secondsSinceFullStateId,
+		secondsSinceFullStateId,
 	};
 }

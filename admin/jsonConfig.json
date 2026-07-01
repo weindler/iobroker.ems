@@ -796,6 +796,28 @@
 			"lg": 3,
 			"xl": 3
 		},
+		"bat_seconds_since_full_target": {
+			"type": "objectId",
+			"label": "Sekunden seit Vollladung (s), optional – Ziel-State",
+			"types": [
+				"state"
+			],
+			"xs": 12,
+			"sm": 12,
+			"md": 9,
+			"lg": 9,
+			"xl": 9
+		},
+		"bat_seconds_since_full_enabled": {
+			"type": "checkbox",
+			"label": "Mapping aktiv",
+			"default": false,
+			"xs": 12,
+			"sm": 12,
+			"md": 3,
+			"lg": 3,
+			"xl": 3
+		},
 		"bat_operating_mode_read_target": {
 			"type": "objectId",
 			"label": "Betriebsmodus (Lesen), optional – Ziel-State",
@@ -2467,7 +2489,7 @@
 				},
 				"hBatteryRuntimeLearningHelp": {
 					"type": "staticText",
-					"text": "Lernt Nachtentladung, Lade-/Entladeraten und Vollladung aus History. Nachtfenster optional aus Astro-History (dusk/dawn + history.0), sonst Fallback HH:MM. SOC-Standard: addons.battery.mapping.soc_pct. Leistung optional — intern + laden / − entladen; bei Sonnen pacTotal „Leistung invertieren“. Read-only.",
+					"text": "Lernt Nachtentladung, Lade-/Entladeraten und Vollladung aus History. Vollladung/Top-Off: addons.battery.mapping.seconds_since_full_charge (z. B. Sonnen secondsSinceFullCharge). Nachtfenster optional Astro. SOC: mapping.soc_pct. Leistung optional; bei Sonnen pacTotal „Leistung invertieren“. Read-only.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -2538,7 +2560,7 @@
 				},
 				"learning_battery_runtime_seconds_since_full_state": {
 					"type": "objectId",
-					"label": "Sekunden seit Vollladung (Sonnen: latestData.secondsSinceFullCharge)",
+					"label": "Sekunden seit Vollladung (optional — überschreibt battery.mapping)",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,

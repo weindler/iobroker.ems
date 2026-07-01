@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.72] – 2026-07-01
+
+### Fixed
+
+- **Battery-Runtime:** `secondsSinceFullCharge` nicht mehr hardcodiert — neue Mapping-Rolle `addons.battery.mapping.seconds_since_full_charge` (`bat_seconds_since_full_*` in Admin). Learning nutzt Mapping; optionaler Override im Learning-Tab.
+
+---
+
 ## [0.1.71] – 2026-07-01
 
 ### Fixed

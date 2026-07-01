@@ -24,4 +24,13 @@ describe("battery mapping", () => {
 		const t = batteryMappingFromConfig({ bat_soc_target: "x.soc", bat_soc_enabled: false });
 		assert.equal(isMappingConfigured(t, "soc_pct"), false);
 	});
+
+	it("parses seconds_since_full_charge mapping", () => {
+		const t = batteryMappingFromConfig({
+			bat_seconds_since_full_target: "sonnen.0.latestData.secondsSinceFullCharge",
+			bat_seconds_since_full_enabled: true,
+		});
+		assert.equal(t.seconds_since_full_charge.targetState, "sonnen.0.latestData.secondsSinceFullCharge");
+		assert.equal(isMappingConfigured(t, "seconds_since_full_charge"), true);
+	});
 });

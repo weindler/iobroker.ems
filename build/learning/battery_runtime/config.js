@@ -41,8 +41,7 @@ function batteryRuntimeConfigFromAdapter(config) {
         powerStateId: strField(c, "learning_battery_runtime_power_state"),
         powerInvert: boolField(c, "learning_battery_runtime_power_invert", false),
         capacityStateId: strField(c, "learning_battery_runtime_capacity_state"),
-        secondsSinceFullStateId: strField(c, "learning_battery_runtime_seconds_since_full_state") ||
-            constants_1.DEFAULT_SECONDS_SINCE_FULL_STATE,
+        secondsSinceFullStateId: strField(c, "learning_battery_runtime_seconds_since_full_state"),
         fullChargeSoc: numField(c, "learning_battery_runtime_full_charge_soc", constants_1.DEFAULT_FULL_CHARGE_SOC, 99, 100),
         topoffIntervalDays: Math.round(numField(c, "learning_battery_runtime_topoff_interval_days", constants_1.DEFAULT_TOPOFF_INTERVAL_DAYS, 1, 90)),
         nightStart: timeField(c, "learning_battery_runtime_night_start", constants_1.DEFAULT_NIGHT_START),

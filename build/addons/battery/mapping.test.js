@@ -25,4 +25,12 @@ const mapping_js_1 = require("./mapping.js");
         const t = (0, mapping_js_1.batteryMappingFromConfig)({ bat_soc_target: "x.soc", bat_soc_enabled: false });
         strict_1.default.equal((0, mapping_js_1.isMappingConfigured)(t, "soc_pct"), false);
     });
+    (0, node_test_1.it)("parses seconds_since_full_charge mapping", () => {
+        const t = (0, mapping_js_1.batteryMappingFromConfig)({
+            bat_seconds_since_full_target: "sonnen.0.latestData.secondsSinceFullCharge",
+            bat_seconds_since_full_enabled: true,
+        });
+        strict_1.default.equal(t.seconds_since_full_charge.targetState, "sonnen.0.latestData.secondsSinceFullCharge");
+        strict_1.default.equal((0, mapping_js_1.isMappingConfigured)(t, "seconds_since_full_charge"), true);
+    });
 });

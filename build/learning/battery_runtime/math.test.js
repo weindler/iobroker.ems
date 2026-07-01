@@ -44,6 +44,7 @@ function cfg() {
         powerStateId: "",
         powerInvert: false,
         capacityStateId: "",
+        secondsSinceFullStateId: "",
         fullChargeSoc: 100,
         topoffIntervalDays: 20,
         nightStart: "22:00",
@@ -51,7 +52,6 @@ function cfg() {
         nightAstroEnabled: false,
         nightStartStateId: "",
         nightEndStateId: "",
-        secondsSinceFullStateId: "sonnen.0.latestData.secondsSinceFullCharge",
     };
 }
 function socAt(dateKey, hour, socPct) {

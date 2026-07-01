@@ -120,7 +120,7 @@ async function runBatteryRuntimeLearning(host) {
             result.powerRawChargeSamples === 0 &&
             result.powerRawDischargeSamples !== null &&
             result.powerRawDischargeSamples > 0) {
-            host.log.warn(`Battery Runtime Learning: keine Lade-Samples in Leistungs-History (raw_charge=0, raw_discharge=${result.powerRawDischargeSamples}, invert=${result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? " auto" : ""}) — Sonnen pacTotal? „Leistung invertieren“ prüfen oder history.0 auf pacTotal aktivieren`);
+            host.log.warn(`Battery Runtime Learning: keine Lade-Samples in Leistungs-History (raw_charge=0, raw_discharge=${result.powerRawDischargeSamples}, invert=${result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? " auto" : ""}) — pacTotal-History prüfen (negative Werte beim Laden?)`);
         }
         if (result.status === "insufficient_data") {
             host.log.warn(`Battery Runtime Learning: ungenügende Historie (sample_days=${result.sampleDays}, soc_points=${socHist.points.length})`);

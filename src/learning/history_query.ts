@@ -22,22 +22,33 @@ export const HISTORY_ROWS_PER_DAY = 500;
 export const HISTORY_CHUNK_TIMEOUT_MS = 45_000;
 export const HISTORY_BULK_TIMEOUT_MS = 45_000;
 export const HISTORY_DAY_CONCURRENCY = 4;
-/** Nach leerem Bulk: max. so viele Tage einzeln — 90d×2 Aggregate würde den Tick blockieren. */
-export const PER_DAY_FALLBACK_MAX_DAYS = 7;
+/** Kurzer Lookback: Bulk ok. Länger → Tages-Chunks (Bulk mit count-Limit liefert nur einen Zeit-Slice). */
+export const BULK_LOOKBACK_MAX_DAYS = 7;
 
 export const HISTORY_AGGREGATES = ["none", "onchange"] as const;
 export type HistoryAggregate = (typeof HISTORY_AGGREGATES)[number];
 export type HistoryStepAggregate = "average" | "max" | "min" | "minmax";
 
-export const HISTORY_QUERY_OPTIONS: ioBroker.GetHistoryOptions = {
+/** Tages-Fenster: älteste Einträge zuerst (history.0 liefert sonst leere Tagesfenster). */
+export const HISTORY_QUERY_PER_DAY_OPTIONS: ioBroker.GetHistoryOptions = {
 	ignoreNull: true,
 	returnNewestEntries: false,
 	removeBorderValues: false,
 };
 
+/** Mehr-Tage-Bulk: neueste Einträge — sonst nur ältester Slice (z. B. 840× +W Nacht, 0× −W Laden). */
+export const HISTORY_QUERY_BULK_OPTIONS: ioBroker.GetHistoryOptions = {
+	ignoreNull: true,
+	returnNewestEntries: true,
+	removeBorderValues: false,
+};
+
+/** @deprecated Präferiere HISTORY_QUERY_PER_DAY_OPTIONS oder HISTORY_QUERY_BULK_OPTIONS. */
+export const HISTORY_QUERY_OPTIONS = HISTORY_QUERY_PER_DAY_OPTIONS;
+
 const MS_PER_DAY = 86_400_000;
 
-/** history.0 / manche Adapter liefern Unix-Sekunden — dann landen 840 Zeilen in 1–2 h-Buckets. */
+/** history.0 / manche Adapter liefern Unix-Sekunden — ms-Normalisierung für Stunden-Buckets. */
 export function normalizeHistoryTs(ts: number): number {
 	if (!Number.isFinite(ts) || ts <= 0) {
 		return ts;
@@ -303,6 +314,10 @@ export async function fetchHistoryRowsAggregated(
 	return normalizeHistoryRows(rows);
 }
 
+function bulkCountForDays(days: number): number {
+	return Math.min(Math.max(days * 500, 500), 8_000);
+}
+
 async function fetchHistoryRowsInRangeDetailed(
 	host: HistoryQueryHost,
 	stateId: string,
@@ -311,6 +326,7 @@ async function fetchHistoryRowsInRangeDetailed(
 	count: number,
 	timeoutMs: number,
 	aggregate: HistoryAggregate,
+	queryOptions: ioBroker.GetHistoryOptions = HISTORY_QUERY_PER_DAY_OPTIONS,
 ): Promise<HistoryFetchResult> {
 	if (!stateId) {
 		return { rows: [], stats: emptyStats() };
@@ -320,7 +336,7 @@ async function fetchHistoryRowsInRangeDetailed(
 		host,
 		stateId,
 		{
-			...HISTORY_QUERY_OPTIONS,
+			...queryOptions,
 			aggregate,
 			start: startMs,
 			end: endMs,
@@ -346,6 +362,7 @@ async function fetchHistoryWithAggregates(
 	endMs: number,
 	count: number,
 	timeoutMs: number,
+	queryOptions: ioBroker.GetHistoryOptions = HISTORY_QUERY_PER_DAY_OPTIONS,
 ): Promise<HistoryFetchResult> {
 	let stats = emptyStats();
 	for (const aggregate of HISTORY_AGGREGATES) {
@@ -357,6 +374,7 @@ async function fetchHistoryWithAggregates(
 			count,
 			timeoutMs,
 			aggregate,
+			queryOptions,
 		);
 		stats = mergeStats(stats, attempt.stats);
 		if (attempt.rows.length > 0) {
@@ -388,7 +406,7 @@ async function fetchHistoryBulkForId(
 		}
 		const endMs = Date.now();
 		const startMs = endMs - days * MS_PER_DAY;
-		const count = Math.min(Math.max(days * 120, 500), 8_000);
+		const count = bulkCountForDays(days);
 		const attempt = await fetchHistoryWithAggregates(
 			host,
 			stateId,
@@ -396,6 +414,7 @@ async function fetchHistoryBulkForId(
 			endMs,
 			count,
 			HISTORY_BULK_TIMEOUT_MS,
+			HISTORY_QUERY_BULK_OPTIONS,
 		);
 		combinedStats = mergeStats(combinedStats, attempt.stats);
 		if (attempt.rows.length > 0) {
@@ -444,19 +463,25 @@ async function fetchHistoryRowsLookbackForId(
 	countPerDay: number,
 	timeoutMs: number,
 ): Promise<HistoryFetchResult> {
+	if (lookbackDays > BULK_LOOKBACK_MAX_DAYS) {
+		if (host.log?.info) {
+			host.log.info(`History query: Tages-Modus ${lookbackDays}d für ${stateId}…`);
+		}
+		return fetchHistoryPerDayForId(host, stateId, lookbackDays, countPerDay, timeoutMs);
+	}
+
 	const bulk = await fetchHistoryBulkForId(host, stateId, lookbackDays);
 	if (bulk.rows.length > 0) {
 		return bulk;
 	}
 
-	const fallbackDays = Math.min(lookbackDays, PER_DAY_FALLBACK_MAX_DAYS);
 	if (host.log?.info) {
 		host.log.info(
-			`History query: Tages-Fallback ${fallbackDays}d für ${stateId} (${formatHistoryStats(bulk.stats)})`,
+			`History query: Tages-Fallback ${lookbackDays}d für ${stateId} (${formatHistoryStats(bulk.stats)})`,
 		);
 	}
 
-	const perDay = await fetchHistoryPerDayForId(host, stateId, fallbackDays, countPerDay, timeoutMs);
+	const perDay = await fetchHistoryPerDayForId(host, stateId, lookbackDays, countPerDay, timeoutMs);
 	return {
 		rows: perDay.rows,
 		stats: mergeStats(bulk.stats, perDay.stats),

@@ -5,21 +5,30 @@
  * getHistoryAsync nur wenn kein sendToAsync am Host.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchHistoryRowsLookback = exports.fetchHistoryRowsAggregated = exports.fetchHistoryRowsInRange = exports.resetHistoryQueryQueueForTests = exports.withHistoryTimeout = exports.historyStateCandidates = exports.dayBoundsMs = exports.normalizeHistoryRows = exports.normalizeHistoryTs = exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_AGGREGATES = exports.PER_DAY_FALLBACK_MAX_DAYS = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_BULK_TIMEOUT_MS = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
+exports.fetchHistoryRowsLookback = exports.fetchHistoryRowsAggregated = exports.fetchHistoryRowsInRange = exports.resetHistoryQueryQueueForTests = exports.withHistoryTimeout = exports.historyStateCandidates = exports.dayBoundsMs = exports.normalizeHistoryRows = exports.normalizeHistoryTs = exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_QUERY_BULK_OPTIONS = exports.HISTORY_QUERY_PER_DAY_OPTIONS = exports.HISTORY_AGGREGATES = exports.BULK_LOOKBACK_MAX_DAYS = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_BULK_TIMEOUT_MS = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
 exports.HISTORY_ROWS_PER_DAY = 500;
 exports.HISTORY_CHUNK_TIMEOUT_MS = 45_000;
 exports.HISTORY_BULK_TIMEOUT_MS = 45_000;
 exports.HISTORY_DAY_CONCURRENCY = 4;
-/** Nach leerem Bulk: max. so viele Tage einzeln — 90d×2 Aggregate würde den Tick blockieren. */
-exports.PER_DAY_FALLBACK_MAX_DAYS = 7;
+/** Kurzer Lookback: Bulk ok. Länger → Tages-Chunks (Bulk mit count-Limit liefert nur einen Zeit-Slice). */
+exports.BULK_LOOKBACK_MAX_DAYS = 7;
 exports.HISTORY_AGGREGATES = ["none", "onchange"];
-exports.HISTORY_QUERY_OPTIONS = {
+/** Tages-Fenster: älteste Einträge zuerst (history.0 liefert sonst leere Tagesfenster). */
+exports.HISTORY_QUERY_PER_DAY_OPTIONS = {
     ignoreNull: true,
     returnNewestEntries: false,
     removeBorderValues: false,
 };
+/** Mehr-Tage-Bulk: neueste Einträge — sonst nur ältester Slice (z. B. 840× +W Nacht, 0× −W Laden). */
+exports.HISTORY_QUERY_BULK_OPTIONS = {
+    ignoreNull: true,
+    returnNewestEntries: true,
+    removeBorderValues: false,
+};
+/** @deprecated Präferiere HISTORY_QUERY_PER_DAY_OPTIONS oder HISTORY_QUERY_BULK_OPTIONS. */
+exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_QUERY_PER_DAY_OPTIONS;
 const MS_PER_DAY = 86_400_000;
-/** history.0 / manche Adapter liefern Unix-Sekunden — dann landen 840 Zeilen in 1–2 h-Buckets. */
+/** history.0 / manche Adapter liefern Unix-Sekunden — ms-Normalisierung für Stunden-Buckets. */
 function normalizeHistoryTs(ts) {
     if (!Number.isFinite(ts) || ts <= 0) {
         return ts;
@@ -212,12 +221,15 @@ async function fetchHistoryRowsAggregated(host, stateId, startMs, endMs, count, 
     return normalizeHistoryRows(rows);
 }
 exports.fetchHistoryRowsAggregated = fetchHistoryRowsAggregated;
-async function fetchHistoryRowsInRangeDetailed(host, stateId, startMs, endMs, count, timeoutMs, aggregate) {
+function bulkCountForDays(days) {
+    return Math.min(Math.max(days * 500, 500), 8_000);
+}
+async function fetchHistoryRowsInRangeDetailed(host, stateId, startMs, endMs, count, timeoutMs, aggregate, queryOptions = exports.HISTORY_QUERY_PER_DAY_OPTIONS) {
     if (!stateId) {
         return { rows: [], stats: emptyStats() };
     }
     const { rows, timedOut, error } = await invokeGetHistory(host, stateId, {
-        ...exports.HISTORY_QUERY_OPTIONS,
+        ...queryOptions,
         aggregate,
         start: startMs,
         end: endMs,
@@ -233,10 +245,10 @@ async function fetchHistoryRowsInRangeDetailed(host, stateId, startMs, endMs, co
         stats.empty = 1;
     return { rows: normalized, stats };
 }
-async function fetchHistoryWithAggregates(host, stateId, startMs, endMs, count, timeoutMs) {
+async function fetchHistoryWithAggregates(host, stateId, startMs, endMs, count, timeoutMs, queryOptions = exports.HISTORY_QUERY_PER_DAY_OPTIONS) {
     let stats = emptyStats();
     for (const aggregate of exports.HISTORY_AGGREGATES) {
-        const attempt = await fetchHistoryRowsInRangeDetailed(host, stateId, startMs, endMs, count, timeoutMs, aggregate);
+        const attempt = await fetchHistoryRowsInRangeDetailed(host, stateId, startMs, endMs, count, timeoutMs, aggregate, queryOptions);
         stats = mergeStats(stats, attempt.stats);
         if (attempt.rows.length > 0) {
             return { rows: attempt.rows, stats };
@@ -261,8 +273,8 @@ async function fetchHistoryBulkForId(host, stateId, lookbackDays) {
         }
         const endMs = Date.now();
         const startMs = endMs - days * MS_PER_DAY;
-        const count = Math.min(Math.max(days * 120, 500), 8_000);
-        const attempt = await fetchHistoryWithAggregates(host, stateId, startMs, endMs, count, exports.HISTORY_BULK_TIMEOUT_MS);
+        const count = bulkCountForDays(days);
+        const attempt = await fetchHistoryWithAggregates(host, stateId, startMs, endMs, count, exports.HISTORY_BULK_TIMEOUT_MS, exports.HISTORY_QUERY_BULK_OPTIONS);
         combinedStats = mergeStats(combinedStats, attempt.stats);
         if (attempt.rows.length > 0) {
             return attempt;
@@ -287,15 +299,20 @@ async function fetchHistoryPerDayForId(host, stateId, lookbackDays, countPerDay,
     return { rows: merged, stats };
 }
 async function fetchHistoryRowsLookbackForId(host, stateId, lookbackDays, countPerDay, timeoutMs) {
+    if (lookbackDays > exports.BULK_LOOKBACK_MAX_DAYS) {
+        if (host.log?.info) {
+            host.log.info(`History query: Tages-Modus ${lookbackDays}d für ${stateId}…`);
+        }
+        return fetchHistoryPerDayForId(host, stateId, lookbackDays, countPerDay, timeoutMs);
+    }
     const bulk = await fetchHistoryBulkForId(host, stateId, lookbackDays);
     if (bulk.rows.length > 0) {
         return bulk;
     }
-    const fallbackDays = Math.min(lookbackDays, exports.PER_DAY_FALLBACK_MAX_DAYS);
     if (host.log?.info) {
-        host.log.info(`History query: Tages-Fallback ${fallbackDays}d für ${stateId} (${formatHistoryStats(bulk.stats)})`);
+        host.log.info(`History query: Tages-Fallback ${lookbackDays}d für ${stateId} (${formatHistoryStats(bulk.stats)})`);
     }
-    const perDay = await fetchHistoryPerDayForId(host, stateId, fallbackDays, countPerDay, timeoutMs);
+    const perDay = await fetchHistoryPerDayForId(host, stateId, lookbackDays, countPerDay, timeoutMs);
     return {
         rows: perDay.rows,
         stats: mergeStats(bulk.stats, perDay.stats),

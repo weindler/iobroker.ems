@@ -123,4 +123,47 @@ const history_query_1 = require("./history_query");
         strict_1.default.equal((0, history_query_1.normalizeHistoryTs)(1_782_000_000), 1_782_000_000_000);
         strict_1.default.equal((0, history_query_1.normalizeHistoryTs)(1_782_000_000_000), 1_782_000_000_000);
     });
+    (0, node_test_1.it)("bulk lookback uses returnNewestEntries true", async () => {
+        (0, history_query_1.resetHistoryQueryQueueForTests)();
+        let bulkOptions;
+        const MS_DAY = 86_400_000;
+        const host = {
+            getHistoryAsync: async (_id, options) => {
+                const start = options?.start ?? 0;
+                const end = options?.end ?? 0;
+                if (end - start > MS_DAY) {
+                    bulkOptions = options;
+                    return { result: [{ ts: end - 1000, val: -100, ack: true, lc: 0, from: "test" }] };
+                }
+                return { result: [] };
+            },
+        };
+        await (0, history_query_1.fetchHistoryRowsLookback)(host, "alias.0.test", 7);
+        strict_1.default.equal(bulkOptions?.returnNewestEntries, true);
+    });
+    (0, node_test_1.it)("uses per-day mode for lookback > 7d instead of capped bulk slice", async () => {
+        (0, history_query_1.resetHistoryQueryQueueForTests)();
+        let bulkCalls = 0;
+        let dayCalls = 0;
+        const MS_DAY = 86_400_000;
+        const host = {
+            getHistoryAsync: async (_id, options) => {
+                const start = options?.start ?? 0;
+                const end = options?.end ?? 0;
+                const span = end - start;
+                if (span > MS_DAY * 2) {
+                    bulkCalls++;
+                    return {
+                        result: [{ ts: start + 1000, val: 250, ack: true, lc: 0, from: "test" }],
+                    };
+                }
+                dayCalls++;
+                return { result: [{ ts: start + 1000, val: -500, ack: true, lc: 0, from: "test" }] };
+            },
+        };
+        const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, "alias.0.pacTotal", 90);
+        strict_1.default.equal(bulkCalls, 0, "must not use multi-day bulk for 90d lookback");
+        strict_1.default.ok(dayCalls >= 90);
+        strict_1.default.ok(rows.some((r) => typeof r.val === "number" && r.val < 0));
+    });
 });

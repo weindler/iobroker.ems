@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.73",
+		"version": "0.1.74",
 		"news": {
+			"0.1.74": {
+				"en": "Fix history.0 lookback: bulk uses returnNewestEntries=true and higher count; lookback >7d uses per-day chunks instead of oldest 840-row slice (fixes empty pacTotal charge stats)",
+				"de": "Fix history.0-Lookback: Bulk mit returnNewestEntries=true und höherem count; Lookback >7d per Tages-Chunks statt ältestem 840-Zeilen-Slice (leere pacTotal-Ladeleistung behoben)"
+			},
 			"0.1.73": {
 				"en": "Battery Runtime Learning: fix charge power stats lost by hourly last-value dedup (max charge/discharge per hour); auto-detect Sonnen pacTotal sign invert; power_w mapping fallback; diagnostic states for raw/hourly charge samples",
 				"de": "Battery Runtime Learning: Ladeleistungs-Statistik fix (Stunden-Max statt letzter Wert); Auto-Erkennung Sonnen-pacTotal-Vorzeichen; power_w-Mapping-Fallback; Diagnose-States für Roh-/Stunden-Lade-Samples"

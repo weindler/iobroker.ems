@@ -205,7 +205,7 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 			result.powerRawDischargeSamples > 0
 		) {
 			host.log.warn(
-				`Battery Runtime Learning: keine Lade-Samples in Leistungs-History (raw_charge=0, raw_discharge=${result.powerRawDischargeSamples}, invert=${result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? " auto" : ""}) — Sonnen pacTotal? „Leistung invertieren“ prüfen oder history.0 auf pacTotal aktivieren`,
+				`Battery Runtime Learning: keine Lade-Samples in Leistungs-History (raw_charge=0, raw_discharge=${result.powerRawDischargeSamples}, invert=${result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? " auto" : ""}) — pacTotal-History prüfen (negative Werte beim Laden?)`,
 			);
 		}
 

@@ -72,6 +72,22 @@ export type BatteryRuntimeComputeResult = {
 	sourceSocStateId: string;
 	sourcePowerStateId: string;
 	lastError: string;
+	/** Diagnose: History-Zeilen gesamt (pacTotal o. ä.). */
+	powerHistoryRawRows: number | null;
+	/** Diagnose: gültige Zeilen nach Deadband/Plausibilität. */
+	powerHistoryNormalizedRows: number | null;
+	/** Diagnose: Roh-Samples mit positiver Ladeleistung (nach Normalisierung). */
+	powerRawChargeSamples: number | null;
+	/** Diagnose: Roh-Samples mit Entladeleistung. */
+	powerRawDischargeSamples: number | null;
+	/** Diagnose: Stunden-Buckets mit Lade-Peak. */
+	powerHourlyChargePoints: number | null;
+	/** Diagnose: Stunden-Buckets mit Entlade-Peak. */
+	powerHourlyDischargePoints: number | null;
+	/** Diagnose: 1 = Vorzeichen invertiert (Sonnen pacTotal). */
+	powerInvertApplied: boolean | null;
+	/** Diagnose: 1 = Invert automatisch erkannt. */
+	powerInvertAuto: boolean | null;
 };
 
 export type BatteryRuntimePersist = {

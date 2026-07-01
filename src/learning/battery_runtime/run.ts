@@ -20,6 +20,7 @@ import {
 	disabledResult,
 	errorResult,
 	noSourceResult,
+	withPowerDiagnostics,
 } from "./math";
 import { writeBatteryRuntimePersist } from "./persist";
 import type { BatteryRuntimeComputeResult } from "./types";
@@ -86,6 +87,36 @@ async function writeResult(
 		});
 	}
 	await setNumIfValid(host, "learning.battery_runtime.estimated_runtime_days", result.estimatedRuntimeDays);
+	await setNumIfValid(host, "learning.battery_runtime.power_history_raw_rows", result.powerHistoryRawRows);
+	await setNumIfValid(
+		host,
+		"learning.battery_runtime.power_history_normalized_rows",
+		result.powerHistoryNormalizedRows,
+	);
+	await setNumIfValid(host, "learning.battery_runtime.power_raw_charge_samples", result.powerRawChargeSamples);
+	await setNumIfValid(
+		host,
+		"learning.battery_runtime.power_raw_discharge_samples",
+		result.powerRawDischargeSamples,
+	);
+	await setNumIfValid(host, "learning.battery_runtime.power_hourly_charge_points", result.powerHourlyChargePoints);
+	await setNumIfValid(
+		host,
+		"learning.battery_runtime.power_hourly_discharge_points",
+		result.powerHourlyDischargePoints,
+	);
+	if (result.powerInvertApplied !== null) {
+		await host.setStateAsync("learning.battery_runtime.power_invert_applied", {
+			val: result.powerInvertApplied ? 1 : 0,
+			ack: true,
+		});
+	}
+	if (result.powerInvertAuto !== null) {
+		await host.setStateAsync("learning.battery_runtime.power_invert_auto", {
+			val: result.powerInvertAuto ? 1 : 0,
+			ack: true,
+		});
+	}
 }
 
 export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Promise<void> {
@@ -126,7 +157,7 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 				: [];
 		const powerHist = sources.powerStateId
 			? await fetchPowerHistory(host, sources.powerStateId, cfg.lookbackDays, cfg.powerInvert)
-			: { points: [], lastValidTs: null };
+			: { points: [], lastValidTs: null, meta: null };
 		const astroDaily = nightAstroConfigReady(cfg)
 			? mergeDailyAstroTimes(
 					await fetchAstroTimeHistory(host, cfg.nightStartStateId, cfg.lookbackDays),
@@ -135,20 +166,23 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 			: null;
 
 		const sampleDays = distinctSocSampleDays(socHist.points);
-		const result = computeBatteryRuntimeLearning({
-			socPoints: socHist.points,
-			socPointsForFullCharge: socRaw,
-			secondsSinceFull,
-			powerPoints: powerHist.points,
-			capacityKwh,
-			currentSocPct,
-			cfg,
-			sourceSocStateId: sources.socStateId,
-			sourcePowerStateId: sources.powerStateId,
-			now,
-			sampleDays,
-			astroDaily,
-		});
+		const result = withPowerDiagnostics(
+			computeBatteryRuntimeLearning({
+				socPoints: socHist.points,
+				socPointsForFullCharge: socRaw,
+				secondsSinceFull,
+				powerPoints: powerHist.points,
+				capacityKwh,
+				currentSocPct,
+				cfg,
+				sourceSocStateId: sources.socStateId,
+				sourcePowerStateId: sources.powerStateId,
+				now,
+				sampleDays,
+				astroDaily,
+			}),
+			powerHist.meta,
+		);
 
 		if (host.getAbsolutePath) {
 			await writeBatteryRuntimePersist(
@@ -161,8 +195,19 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 		await writeResult(host, result, lastRun);
 
 		host.log.info(
-			`Battery-Runtime-Learning: status=${result.status} nights=${result.avgNightDischargePct ?? "n/a"}% samples=${result.sampleDays} full_src=${result.fullChargeSource ?? "—"} sec_since_full=${result.secondsSinceFullCharge ?? "—"} days_since_full=${result.daysSinceFull ?? "—"} last_full=${result.lastFullCharge ?? "—"} soc=${sourceLabelFromStateId(sources.socStateId)}`,
+			`Battery-Runtime-Learning: status=${result.status} nights=${result.avgNightDischargePct ?? "n/a"}% samples=${result.sampleDays} full_src=${result.fullChargeSource ?? "—"} sec_since_full=${result.secondsSinceFullCharge ?? "—"} days_since_full=${result.daysSinceFull ?? "—"} last_full=${result.lastFullCharge ?? "—"} soc=${sourceLabelFromStateId(sources.socStateId)} power=${sourceLabelFromStateId(sources.powerStateId)} invert=${result.powerInvertApplied === null ? "—" : result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? "(auto)" : ""} pwr_raw=${result.powerRawChargeSamples ?? "—"}/${result.powerRawDischargeSamples ?? "—"} pwr_hr=${result.powerHourlyChargePoints ?? "—"}/${result.powerHourlyDischargePoints ?? "—"} avg_chg_w=${result.avgChargePowerW ?? "—"}`,
 		);
+
+		if (
+			sources.powerStateId &&
+			result.powerRawChargeSamples === 0 &&
+			result.powerRawDischargeSamples !== null &&
+			result.powerRawDischargeSamples > 0
+		) {
+			host.log.warn(
+				`Battery Runtime Learning: keine Lade-Samples in Leistungs-History (raw_charge=0, raw_discharge=${result.powerRawDischargeSamples}, invert=${result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? " auto" : ""}) — Sonnen pacTotal? „Leistung invertieren“ prüfen oder history.0 auf pacTotal aktivieren`,
+			);
+		}
 
 		if (result.status === "insufficient_data") {
 			host.log.warn(

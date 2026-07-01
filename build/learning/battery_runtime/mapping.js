@@ -18,8 +18,8 @@ async function resolveBatteryRuntimeSources(host, configured) {
         (await resolveMappedRole(host, "battery", "capacity_kwh"));
     const secondsSinceFullStateId = configured.secondsSinceFullStateId ||
         (await resolveMappedRole(host, "battery", "seconds_since_full_charge"));
-    // Leistung: nur Admin — kein Fallback auf battery_charging_w (Schreib-Sollwert, kein Ist).
-    const powerStateId = configured.powerStateId;
+    // Leistung: Admin oder addons.battery.mapping.power_w (kein charging_power_w — oft Sollwert).
+    const powerStateId = configured.powerStateId || (await resolveMappedRole(host, "battery", "power_w"));
     return {
         socStateId,
         powerStateId,

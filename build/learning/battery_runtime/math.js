@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.errorResult = exports.disabledResult = exports.noSourceResult = exports.computeBatteryRuntimeLearning = exports.estimateRuntimeDays = exports.computeTopoffStatus = exports.calendarDaysSince = exports.findLastFullCharge = exports.resolveLastFullCharge = exports.fullChargeFromSecondsSince = exports.computePowerStats = exports.computeSocRates = exports.computeNightDischarges = void 0;
+exports.errorResult = exports.disabledResult = exports.noSourceResult = exports.withPowerDiagnostics = exports.computeBatteryRuntimeLearning = exports.estimateRuntimeDays = exports.computeTopoffStatus = exports.calendarDaysSince = exports.findLastFullCharge = exports.resolveLastFullCharge = exports.fullChargeFromSecondsSince = exports.computePowerStats = exports.computeSocRates = exports.computeNightDischarges = void 0;
 const constants_1 = require("./constants");
 const time_1 = require("./time");
 function round2(n) {
@@ -245,9 +245,43 @@ function computeBatteryRuntimeLearning(params) {
         sourceSocStateId: params.sourceSocStateId,
         sourcePowerStateId: params.sourcePowerStateId,
         lastError: "",
+        powerHistoryRawRows: null,
+        powerHistoryNormalizedRows: null,
+        powerRawChargeSamples: null,
+        powerRawDischargeSamples: null,
+        powerHourlyChargePoints: null,
+        powerHourlyDischargePoints: null,
+        powerInvertApplied: null,
+        powerInvertAuto: null,
     };
 }
 exports.computeBatteryRuntimeLearning = computeBatteryRuntimeLearning;
+const EMPTY_POWER_DIAGNOSTICS = {
+    powerHistoryRawRows: null,
+    powerHistoryNormalizedRows: null,
+    powerRawChargeSamples: null,
+    powerRawDischargeSamples: null,
+    powerHourlyChargePoints: null,
+    powerHourlyDischargePoints: null,
+    powerInvertApplied: null,
+    powerInvertAuto: null,
+};
+function withPowerDiagnostics(result, meta) {
+    if (!meta)
+        return result;
+    return {
+        ...result,
+        powerHistoryRawRows: meta.rawRows,
+        powerHistoryNormalizedRows: meta.normalizedRows,
+        powerRawChargeSamples: meta.rawChargeSamples,
+        powerRawDischargeSamples: meta.rawDischargeSamples,
+        powerHourlyChargePoints: meta.hourlyChargePoints,
+        powerHourlyDischargePoints: meta.hourlyDischargePoints,
+        powerInvertApplied: meta.powerInvert,
+        powerInvertAuto: meta.powerInvertAuto,
+    };
+}
+exports.withPowerDiagnostics = withPowerDiagnostics;
 function noSourceResult(cfg) {
     return {
         status: "no_source",
@@ -273,6 +307,7 @@ function noSourceResult(cfg) {
         sourceSocStateId: "",
         sourcePowerStateId: "",
         lastError: "Keine SOC-Quelle — Admin-State oder addons.battery.mapping.soc_pct konfigurieren.",
+        ...EMPTY_POWER_DIAGNOSTICS,
     };
 }
 exports.noSourceResult = noSourceResult;

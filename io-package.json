@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.72",
+		"version": "0.1.73",
 		"news": {
+			"0.1.73": {
+				"en": "Battery Runtime Learning: fix charge power stats lost by hourly last-value dedup (max charge/discharge per hour); auto-detect Sonnen pacTotal sign invert; power_w mapping fallback; diagnostic states for raw/hourly charge samples",
+				"de": "Battery Runtime Learning: Ladeleistungs-Statistik fix (Stunden-Max statt letzter Wert); Auto-Erkennung Sonnen-pacTotal-Vorzeichen; power_w-Mapping-Fallback; Diagnose-States für Roh-/Stunden-Lade-Samples"
+			},
 			"0.1.65": {
 				"en": "Rebuilt battery integration: profile-based architecture (generic_readonly, sonnen_em) with full read-only, dryrun and live support sharing one FSM; normalized telemetry/capacity/limits/capabilities; neutral battery intent; central gated write function; feedback check; ownership protection; safe restore; fault/lockout; grid balance via the same gates; battery runtime learning and central governance preserved; global mode stays dryrun, no real device writes",
 				"de": "Batterieintegration neu aufgebaut: profilbasierte Architektur (generic_readonly, sonnen_em) mit vollständigem Read-only-, Dryrun- und Live-Support über eine gemeinsame FSM; normalisierte Telemetrie/Kapazität/Grenzen/Capabilities; neutraler Batterie-Intent; zentrale gegatete Write-Funktion; Feedbackprüfung; Ownership-Schutz; Safe Restore; Fault/Lockout; Netzausgleich über dieselben Gates; Battery Runtime Learning und zentrale Governance bleiben erhalten; globaler Modus bleibt Dryrun, keine realen Geräte-Writes"

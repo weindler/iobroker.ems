@@ -45,6 +45,14 @@ async function ensureBatteryRuntimeLearningStates(host) {
         numState("learning.battery_runtime.topoff_days_remaining", "Battery-Runtime Top-Off Tage verbleibend"),
         numState("learning.battery_runtime.topoff_due", "Battery-Runtime Top-Off fällig (0/1)"),
         numState("learning.battery_runtime.estimated_runtime_days", "Battery-Runtime geschätzte Laufzeit", "Tage"),
+        numState("learning.battery_runtime.power_history_raw_rows", "Battery-Runtime Power-History Zeilen gesamt"),
+        numState("learning.battery_runtime.power_history_normalized_rows", "Battery-Runtime Power-History gültige Zeilen"),
+        numState("learning.battery_runtime.power_raw_charge_samples", "Battery-Runtime Power Roh-Lade-Samples"),
+        numState("learning.battery_runtime.power_raw_discharge_samples", "Battery-Runtime Power Roh-Entlade-Samples"),
+        numState("learning.battery_runtime.power_hourly_charge_points", "Battery-Runtime Power Stunden-Lade-Peaks"),
+        numState("learning.battery_runtime.power_hourly_discharge_points", "Battery-Runtime Power Stunden-Entlade-Peaks"),
+        numState("learning.battery_runtime.power_invert_applied", "Battery-Runtime Power-Invert aktiv (0/1)"),
+        numState("learning.battery_runtime.power_invert_auto", "Battery-Runtime Power-Invert auto (0/1)"),
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }

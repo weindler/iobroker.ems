@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.distinctSocSampleDays = exports.readSecondsSinceFullCharge = exports.readLiveSoc = exports.readLiveCapacityKwh = exports.fetchPowerHistory = exports.fetchSocHistoryRaw = exports.fetchSocHistory = exports.normalizeBatteryPowerW = exports.isValidCapacityKwh = exports.isValidSoc = exports.mergeDailyAstroTimes = exports.buildDailyAstroTimes = exports.fetchAstroTimeHistory = exports.parseAstroTimeValue = void 0;
+exports.distinctSocSampleDays = exports.readSecondsSinceFullCharge = exports.readLiveSoc = exports.readLiveCapacityKwh = exports.fetchPowerHistory = exports.aggregatePowerPointsByHour = exports.resolveEffectivePowerInvert = exports.fetchSocHistoryRaw = exports.fetchSocHistory = exports.normalizeBatteryPowerW = exports.isValidCapacityKwh = exports.isValidSoc = exports.mergeDailyAstroTimes = exports.buildDailyAstroTimes = exports.fetchAstroTimeHistory = exports.parseAstroTimeValue = void 0;
 const state_util_1 = require("../../ems_light/state_util");
 const history_query_1 = require("../history_query");
 const constants_1 = require("./constants");
@@ -131,14 +131,103 @@ async function fetchSocHistoryRaw(host, stateId, lookbackDays) {
     return points;
 }
 exports.fetchSocHistoryRaw = fetchSocHistoryRaw;
-async function fetchPowerHistory(host, stateId, lookbackDays, powerInvert = false) {
-    const { points, lastValidTs } = await fetchHistoryPoints(host, stateId, lookbackDays, (raw) => {
-        const n = (0, state_util_1.asNum)(raw);
-        return normalizeBatteryPowerW(n, powerInvert);
-    });
+/** Sonnen pacTotal: + entladen dominiert, − laden — Auto-Invert wenn Admin-Checkbox aus. */
+function resolveEffectivePowerInvert(configuredInvert, rawRows) {
+    if (configuredInvert) {
+        return { invert: true, autoDetected: false };
+    }
+    let positive = 0;
+    let negative = 0;
+    for (const row of rawRows) {
+        const n = (0, state_util_1.asNum)(row?.val);
+        if (n === null || Math.abs(n) < constants_1.POWER_DEADBAND_W || Math.abs(n) > constants_1.PLAUSIBLE_POWER_W_MAX) {
+            continue;
+        }
+        if (n > 0)
+            positive++;
+        else
+            negative++;
+    }
+    // Typisches Sonnen-Muster: mehr positive Nacht-Entladewerte als negative Lade-Spitzen.
+    if (positive >= 3 && negative >= 1 && positive > negative) {
+        return { invert: true, autoDetected: true };
+    }
+    return { invert: false, autoDetected: false };
+}
+exports.resolveEffectivePowerInvert = resolveEffectivePowerInvert;
+/**
+ * Pro Stunde max. Lade- und max. Entladeleistung behalten (nicht nur letzter Wert).
+ * Kurze PV-Ladespitzen gehen sonst verloren, wenn die Stunde mit Standby/Entladen endet.
+ */
+function aggregatePowerPointsByHour(rows, powerInvert) {
+    const byHour = new Map();
+    let normalizedRows = 0;
+    let rawChargeSamples = 0;
+    let rawDischargeSamples = 0;
+    let lastValidTs = null;
+    for (const row of rows) {
+        const ts = typeof row?.ts === "number" ? row.ts : null;
+        const w = normalizeBatteryPowerW((0, state_util_1.asNum)(row?.val), powerInvert);
+        if (ts === null || w === null)
+            continue;
+        normalizedRows++;
+        if (w > 0)
+            rawChargeSamples++;
+        else
+            rawDischargeSamples++;
+        const bucket = hourBucket(ts);
+        const existing = byHour.get(bucket) ?? { ts, maxChargeW: null, maxDischargeW: null };
+        if (w > 0) {
+            existing.maxChargeW =
+                existing.maxChargeW === null ? w : Math.max(existing.maxChargeW, w);
+        }
+        else {
+            const magnitude = Math.abs(w);
+            existing.maxDischargeW =
+                existing.maxDischargeW === null ? magnitude : Math.max(existing.maxDischargeW, magnitude);
+        }
+        if (ts > existing.ts)
+            existing.ts = ts;
+        byHour.set(bucket, existing);
+        if (lastValidTs === null || ts > lastValidTs)
+            lastValidTs = ts;
+    }
+    const points = [];
+    let hourlyChargePoints = 0;
+    let hourlyDischargePoints = 0;
+    for (const bucket of byHour.values()) {
+        if (bucket.maxChargeW !== null) {
+            points.push({ ts: bucket.ts, powerW: bucket.maxChargeW });
+            hourlyChargePoints++;
+        }
+        if (bucket.maxDischargeW !== null) {
+            points.push({ ts: bucket.ts, powerW: -bucket.maxDischargeW });
+            hourlyDischargePoints++;
+        }
+    }
+    points.sort((a, b) => a.ts - b.ts);
     return {
-        points: points.map((p) => ({ ts: p.ts, powerW: p.value })),
+        points,
         lastValidTs,
+        meta: {
+            rawRows: rows.length,
+            normalizedRows,
+            rawChargeSamples,
+            rawDischargeSamples,
+            hourlyChargePoints,
+            hourlyDischargePoints,
+        },
+    };
+}
+exports.aggregatePowerPointsByHour = aggregatePowerPointsByHour;
+async function fetchPowerHistory(host, stateId, lookbackDays, powerInvert = false) {
+    const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, stateId, lookbackDays, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
+    const { invert, autoDetected } = resolveEffectivePowerInvert(powerInvert, rows);
+    const { points, lastValidTs, meta } = aggregatePowerPointsByHour(rows, invert);
+    return {
+        points,
+        lastValidTs,
+        meta: { ...meta, powerInvert: invert, powerInvertAuto: autoDetected },
     };
 }
 exports.fetchPowerHistory = fetchPowerHistory;

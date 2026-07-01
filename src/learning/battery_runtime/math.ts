@@ -1,4 +1,5 @@
 import { MS_PER_DAY, MS_PER_HOUR, MIN_RATE_SAMPLES, MIN_VALID_NIGHTS } from "./constants";
+import type { PowerHistoryMeta } from "./history";
 import { parseTimeHHMM, timestampAtLocalTime, localDateKey } from "./time";
 import type {
 	BatteryRuntimeComputeResult,
@@ -324,6 +325,43 @@ export function computeBatteryRuntimeLearning(params: {
 		sourceSocStateId: params.sourceSocStateId,
 		sourcePowerStateId: params.sourcePowerStateId,
 		lastError: "",
+		powerHistoryRawRows: null,
+		powerHistoryNormalizedRows: null,
+		powerRawChargeSamples: null,
+		powerRawDischargeSamples: null,
+		powerHourlyChargePoints: null,
+		powerHourlyDischargePoints: null,
+		powerInvertApplied: null,
+		powerInvertAuto: null,
+	};
+}
+
+const EMPTY_POWER_DIAGNOSTICS = {
+	powerHistoryRawRows: null,
+	powerHistoryNormalizedRows: null,
+	powerRawChargeSamples: null,
+	powerRawDischargeSamples: null,
+	powerHourlyChargePoints: null,
+	powerHourlyDischargePoints: null,
+	powerInvertApplied: null,
+	powerInvertAuto: null,
+} as const;
+
+export function withPowerDiagnostics(
+	result: BatteryRuntimeComputeResult,
+	meta: PowerHistoryMeta | null,
+): BatteryRuntimeComputeResult {
+	if (!meta) return result;
+	return {
+		...result,
+		powerHistoryRawRows: meta.rawRows,
+		powerHistoryNormalizedRows: meta.normalizedRows,
+		powerRawChargeSamples: meta.rawChargeSamples,
+		powerRawDischargeSamples: meta.rawDischargeSamples,
+		powerHourlyChargePoints: meta.hourlyChargePoints,
+		powerHourlyDischargePoints: meta.hourlyDischargePoints,
+		powerInvertApplied: meta.powerInvert,
+		powerInvertAuto: meta.powerInvertAuto,
 	};
 }
 
@@ -353,6 +391,7 @@ export function noSourceResult(cfg: BatteryRuntimeConfig): BatteryRuntimeCompute
 		sourcePowerStateId: "",
 		lastError:
 			"Keine SOC-Quelle — Admin-State oder addons.battery.mapping.soc_pct konfigurieren.",
+		...EMPTY_POWER_DIAGNOSTICS,
 	};
 }
 

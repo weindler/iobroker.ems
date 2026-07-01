@@ -184,19 +184,136 @@ export async function fetchSocHistoryRaw(
 	return points;
 }
 
+export type PowerHistoryMeta = {
+	rawRows: number;
+	normalizedRows: number;
+	rawChargeSamples: number;
+	rawDischargeSamples: number;
+	hourlyChargePoints: number;
+	hourlyDischargePoints: number;
+	powerInvert: boolean;
+	powerInvertAuto: boolean;
+};
+
+type HistoryRow = { ts?: number; val?: unknown };
+
+/** Sonnen pacTotal: + entladen dominiert, − laden — Auto-Invert wenn Admin-Checkbox aus. */
+export function resolveEffectivePowerInvert(
+	configuredInvert: boolean,
+	rawRows: HistoryRow[],
+): { invert: boolean; autoDetected: boolean } {
+	if (configuredInvert) {
+		return { invert: true, autoDetected: false };
+	}
+
+	let positive = 0;
+	let negative = 0;
+	for (const row of rawRows) {
+		const n = asNum(row?.val);
+		if (n === null || Math.abs(n) < POWER_DEADBAND_W || Math.abs(n) > PLAUSIBLE_POWER_W_MAX) {
+			continue;
+		}
+		if (n > 0) positive++;
+		else negative++;
+	}
+
+	// Typisches Sonnen-Muster: mehr positive Nacht-Entladewerte als negative Lade-Spitzen.
+	if (positive >= 3 && negative >= 1 && positive > negative) {
+		return { invert: true, autoDetected: true };
+	}
+
+	return { invert: false, autoDetected: false };
+}
+
+/**
+ * Pro Stunde max. Lade- und max. Entladeleistung behalten (nicht nur letzter Wert).
+ * Kurze PV-Ladespitzen gehen sonst verloren, wenn die Stunde mit Standby/Entladen endet.
+ */
+export function aggregatePowerPointsByHour(
+	rows: HistoryRow[],
+	powerInvert: boolean,
+): { points: PowerPoint[]; lastValidTs: number | null; meta: Omit<PowerHistoryMeta, "powerInvert" | "powerInvertAuto"> } {
+	const byHour = new Map<
+		number,
+		{ ts: number; maxChargeW: number | null; maxDischargeW: number | null }
+	>();
+	let normalizedRows = 0;
+	let rawChargeSamples = 0;
+	let rawDischargeSamples = 0;
+	let lastValidTs: number | null = null;
+
+	for (const row of rows) {
+		const ts = typeof row?.ts === "number" ? row.ts : null;
+		const w = normalizeBatteryPowerW(asNum(row?.val), powerInvert);
+		if (ts === null || w === null) continue;
+
+		normalizedRows++;
+		if (w > 0) rawChargeSamples++;
+		else rawDischargeSamples++;
+
+		const bucket = hourBucket(ts);
+		const existing = byHour.get(bucket) ?? { ts, maxChargeW: null, maxDischargeW: null };
+		if (w > 0) {
+			existing.maxChargeW =
+				existing.maxChargeW === null ? w : Math.max(existing.maxChargeW, w);
+		} else {
+			const magnitude = Math.abs(w);
+			existing.maxDischargeW =
+				existing.maxDischargeW === null ? magnitude : Math.max(existing.maxDischargeW, magnitude);
+		}
+		if (ts > existing.ts) existing.ts = ts;
+		byHour.set(bucket, existing);
+		if (lastValidTs === null || ts > lastValidTs) lastValidTs = ts;
+	}
+
+	const points: PowerPoint[] = [];
+	let hourlyChargePoints = 0;
+	let hourlyDischargePoints = 0;
+	for (const bucket of byHour.values()) {
+		if (bucket.maxChargeW !== null) {
+			points.push({ ts: bucket.ts, powerW: bucket.maxChargeW });
+			hourlyChargePoints++;
+		}
+		if (bucket.maxDischargeW !== null) {
+			points.push({ ts: bucket.ts, powerW: -bucket.maxDischargeW });
+			hourlyDischargePoints++;
+		}
+	}
+	points.sort((a, b) => a.ts - b.ts);
+
+	return {
+		points,
+		lastValidTs,
+		meta: {
+			rawRows: rows.length,
+			normalizedRows,
+			rawChargeSamples,
+			rawDischargeSamples,
+			hourlyChargePoints,
+			hourlyDischargePoints,
+		},
+	};
+}
+
 export async function fetchPowerHistory(
 	host: BatteryHistoryHost,
 	stateId: string,
 	lookbackDays: number,
 	powerInvert = false,
-): Promise<{ points: PowerPoint[]; lastValidTs: number | null }> {
-	const { points, lastValidTs } = await fetchHistoryPoints(host, stateId, lookbackDays, (raw) => {
-		const n = asNum(raw);
-		return normalizeBatteryPowerW(n, powerInvert);
-	});
+): Promise<{ points: PowerPoint[]; lastValidTs: number | null; meta: PowerHistoryMeta }> {
+	const rows = await fetchHistoryRowsLookback(
+		host,
+		stateId,
+		lookbackDays,
+		HISTORY_ROWS_PER_DAY,
+		HISTORY_CHUNK_TIMEOUT_MS,
+	);
+	const { invert, autoDetected } = resolveEffectivePowerInvert(powerInvert, rows);
+	const { points, lastValidTs, meta } = aggregatePowerPointsByHour(rows, invert);
 	return {
-		points: points.map((p) => ({ ts: p.ts, powerW: p.value })),
+		points,
 		lastValidTs,
+		meta: { ...meta, powerInvert: invert, powerInvertAuto: autoDetected },
 	};
 }
 

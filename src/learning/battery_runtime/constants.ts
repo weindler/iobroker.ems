@@ -1,7 +1,8 @@
 export const MODULE_TAG = "battery_runtime_learning_v1";
 
 export const DEFAULT_LOOKBACK_DAYS = 90;
-export const DEFAULT_FULL_CHARGE_SOC = 95;
+export const DEFAULT_FULL_CHARGE_SOC = 100;
+export const DEFAULT_SECONDS_SINCE_FULL_STATE = "sonnen.0.latestData.secondsSinceFullCharge";
 export const DEFAULT_TOPOFF_INTERVAL_DAYS = 20;
 export const DEFAULT_NIGHT_START = "22:00";
 export const DEFAULT_NIGHT_END = "06:00";

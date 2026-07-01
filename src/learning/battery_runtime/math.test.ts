@@ -9,6 +9,8 @@ import {
 	computeTopoffStatus,
 	estimateRuntimeDays,
 	findLastFullCharge,
+	fullChargeFromSecondsSince,
+	resolveLastFullCharge,
 	noSourceResult,
 } from "./math";
 import { readBatteryRuntimePersist, writeBatteryRuntimePersist } from "./persist";
@@ -28,13 +30,14 @@ function cfg() {
 		powerStateId: "",
 		powerInvert: false,
 		capacityStateId: "",
-		fullChargeSoc: 95,
+		fullChargeSoc: 100,
 		topoffIntervalDays: 20,
 		nightStart: "22:00",
 		nightEnd: "06:00",
 		nightAstroEnabled: false,
 		nightStartStateId: "",
 		nightEndStateId: "",
+		secondsSinceFullStateId: "sonnen.0.latestData.secondsSinceFullCharge",
 	};
 }
 
@@ -161,13 +164,75 @@ describe("battery runtime rates and power", () => {
 });
 
 describe("battery runtime full charge and topoff", () => {
-	it("detects last full charge", () => {
+	it("detects last full charge at 100%", () => {
 		const points: SocPoint[] = [
 			{ ts: Date.parse("2026-01-01T10:00:00Z"), socPct: 90 },
-			{ ts: Date.parse("2026-01-10T10:00:00Z"), socPct: 96 },
+			{ ts: Date.parse("2026-01-10T10:00:00Z"), socPct: 100 },
 			{ ts: Date.parse("2026-01-11T10:00:00Z"), socPct: 92 },
 		];
-		assert.equal(findLastFullCharge(points, 95), "2026-01-10T10:00:00.000Z");
+		assert.equal(findLastFullCharge(points, 100), "2026-01-10T10:00:00.000Z");
+	});
+
+	it("does not treat 95% as full when threshold is 100%", () => {
+		const points: SocPoint[] = [{ ts: Date.parse("2026-06-30T10:00:00Z"), socPct: 95 }];
+		assert.equal(findLastFullCharge(points, 100), null);
+	});
+
+	it("detects full charge peak missed by hourly dedup", () => {
+		const hourly: SocPoint[] = [
+			{ ts: Date.parse("2026-06-30T09:00:00Z"), socPct: 88 },
+			{ ts: Date.parse("2026-06-30T10:00:00Z"), socPct: 91 },
+		];
+		const raw: SocPoint[] = [
+			...hourly,
+			{ ts: Date.parse("2026-06-30T09:45:00Z"), socPct: 100 },
+		];
+		assert.equal(findLastFullCharge(hourly, 100), null);
+		assert.equal(findLastFullCharge(raw, 100), "2026-06-30T09:45:00.000Z");
+	});
+
+	it("prefers live soc when currently full", () => {
+		const points: SocPoint[] = [{ ts: Date.parse("2026-06-29T10:00:00Z"), socPct: 100 }];
+		const liveTs = Date.parse("2026-06-30T14:00:00Z");
+		assert.equal(
+			findLastFullCharge(points, 100, { socPct: 100, ts: liveTs }),
+			"2026-06-30T14:00:00.000Z",
+		);
+	});
+
+	it("uses Sonnen secondsSinceFullCharge when available", () => {
+		const now = new Date("2026-07-01T12:00:00.000Z");
+		const seconds = 86_400;
+		const resolved = resolveLastFullCharge({
+			secondsSinceFull: seconds,
+			socPointsForFullCharge: [],
+			fullChargeSoc: 100,
+			currentSocPct: 80,
+			now,
+		});
+		assert.equal(resolved.fullChargeSource, "device");
+		assert.equal(resolved.lastFullCharge, fullChargeFromSecondsSince(seconds, now));
+		const topoff = computeTopoffStatus({
+			lastFullCharge: resolved.lastFullCharge,
+			topoffIntervalDays: 20,
+			now,
+		});
+		assert.equal(topoff.daysSinceFull, 1);
+	});
+
+	it("falls back to soc history when device counter missing", () => {
+		const now = new Date("2026-07-01T12:00:00.000Z");
+		const resolved = resolveLastFullCharge({
+			secondsSinceFull: null,
+			socPointsForFullCharge: [
+				{ ts: Date.parse("2026-06-30T10:00:00Z"), socPct: 100 },
+			],
+			fullChargeSoc: 100,
+			currentSocPct: 80,
+			now,
+		});
+		assert.equal(resolved.fullChargeSource, "soc_history");
+		assert.equal(resolved.lastFullCharge, "2026-06-30T10:00:00.000Z");
 	});
 
 	it("computes topoff remaining and due", () => {
@@ -180,6 +245,16 @@ describe("battery runtime full charge and topoff", () => {
 		assert.equal(r.daysSinceFull, 24);
 		assert.equal(r.topoffDaysRemaining, 0);
 		assert.equal(r.topoffDue, true);
+	});
+
+	it("counts calendar days since full charge (yesterday = 1)", () => {
+		const r = computeTopoffStatus({
+			lastFullCharge: "2026-06-30T20:00:00.000Z",
+			topoffIntervalDays: 20,
+			now: new Date("2026-07-01T15:00:00.000Z"),
+		});
+		assert.equal(r.daysSinceFull, 1);
+		assert.equal(r.topoffDaysRemaining, 19);
 	});
 
 	it("returns null topoff without full charge history", () => {
@@ -213,6 +288,7 @@ describe("battery runtime persist", () => {
 		const result = computeBatteryRuntimeLearning({
 			socPoints: points,
 			powerPoints: [],
+			secondsSinceFull: null,
 			capacityKwh: 10,
 			currentSocPct: 75,
 			cfg: cfg(),

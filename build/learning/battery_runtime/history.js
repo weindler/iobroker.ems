@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.distinctSocSampleDays = exports.readLiveSoc = exports.readLiveCapacityKwh = exports.fetchPowerHistory = exports.fetchSocHistory = exports.normalizeBatteryPowerW = exports.isValidCapacityKwh = exports.isValidSoc = exports.mergeDailyAstroTimes = exports.buildDailyAstroTimes = exports.fetchAstroTimeHistory = exports.parseAstroTimeValue = void 0;
+exports.distinctSocSampleDays = exports.readSecondsSinceFullCharge = exports.readLiveSoc = exports.readLiveCapacityKwh = exports.fetchPowerHistory = exports.fetchSocHistoryRaw = exports.fetchSocHistory = exports.normalizeBatteryPowerW = exports.isValidCapacityKwh = exports.isValidSoc = exports.mergeDailyAstroTimes = exports.buildDailyAstroTimes = exports.fetchAstroTimeHistory = exports.parseAstroTimeValue = void 0;
 const state_util_1 = require("../../ems_light/state_util");
 const history_query_1 = require("../history_query");
 const constants_1 = require("./constants");
@@ -116,6 +116,21 @@ async function fetchSocHistory(host, stateId, lookbackDays) {
     };
 }
 exports.fetchSocHistory = fetchSocHistory;
+/** Alle gültigen SOC-Punkte ohne Stunden-Dedup — für Vollladungs-Erkennung (Peaks zwischen Stunden). */
+async function fetchSocHistoryRaw(host, stateId, lookbackDays) {
+    const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, stateId, lookbackDays, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
+    const points = [];
+    for (const row of rows) {
+        const ts = typeof row?.ts === "number" ? row.ts : null;
+        const n = (0, state_util_1.asNum)(row?.val);
+        if (ts === null || !isValidSoc(n))
+            continue;
+        points.push({ ts, socPct: Math.round(n * 100) / 100 });
+    }
+    points.sort((a, b) => a.ts - b.ts);
+    return points;
+}
+exports.fetchSocHistoryRaw = fetchSocHistoryRaw;
 async function fetchPowerHistory(host, stateId, lookbackDays, powerInvert = false) {
     const { points, lastValidTs } = await fetchHistoryPoints(host, stateId, lookbackDays, (raw) => {
         const n = (0, state_util_1.asNum)(raw);
@@ -157,6 +172,26 @@ async function readLiveSoc(host, stateId) {
     }
 }
 exports.readLiveSoc = readLiveSoc;
+/** Geräte-State: Sekunden seit letzter Vollladung (Sonnen: latestData.secondsSinceFullCharge). */
+async function readSecondsSinceFullCharge(host, stateId) {
+    if (!stateId) {
+        return null;
+    }
+    try {
+        const st = host.getForeignStateAsync
+            ? await host.getForeignStateAsync(stateId)
+            : await host.getStateAsync(stateId);
+        const n = (0, state_util_1.asNum)(st?.val);
+        if (n === null || !Number.isFinite(n) || n < 0) {
+            return null;
+        }
+        return Math.round(n);
+    }
+    catch {
+        return null;
+    }
+}
+exports.readSecondsSinceFullCharge = readSecondsSinceFullCharge;
 function distinctSocSampleDays(points) {
     return new Set(points.map((p) => new Date(p.ts).toISOString().slice(0, 10))).size;
 }

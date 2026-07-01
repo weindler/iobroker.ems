@@ -160,6 +160,30 @@ export async function fetchSocHistory(
 	};
 }
 
+/** Alle gültigen SOC-Punkte ohne Stunden-Dedup — für Vollladungs-Erkennung (Peaks zwischen Stunden). */
+export async function fetchSocHistoryRaw(
+	host: BatteryHistoryHost,
+	stateId: string,
+	lookbackDays: number,
+): Promise<SocPoint[]> {
+	const rows = await fetchHistoryRowsLookback(
+		host,
+		stateId,
+		lookbackDays,
+		HISTORY_ROWS_PER_DAY,
+		HISTORY_CHUNK_TIMEOUT_MS,
+	);
+	const points: SocPoint[] = [];
+	for (const row of rows) {
+		const ts = typeof row?.ts === "number" ? row.ts : null;
+		const n = asNum(row?.val);
+		if (ts === null || !isValidSoc(n)) continue;
+		points.push({ ts, socPct: Math.round(n * 100) / 100 });
+	}
+	points.sort((a, b) => a.ts - b.ts);
+	return points;
+}
+
 export async function fetchPowerHistory(
 	host: BatteryHistoryHost,
 	stateId: string,
@@ -203,6 +227,28 @@ export async function readLiveSoc(
 			: await host.getStateAsync(stateId);
 		const n = asNum(st?.val);
 		return isValidSoc(n) ? Math.round(n * 100) / 100 : null;
+	} catch {
+		return null;
+	}
+}
+
+/** Geräte-State: Sekunden seit letzter Vollladung (Sonnen: latestData.secondsSinceFullCharge). */
+export async function readSecondsSinceFullCharge(
+	host: BatteryHistoryHost,
+	stateId: string,
+): Promise<number | null> {
+	if (!stateId) {
+		return null;
+	}
+	try {
+		const st = host.getForeignStateAsync
+			? await host.getForeignStateAsync(stateId)
+			: await host.getStateAsync(stateId);
+		const n = asNum(st?.val);
+		if (n === null || !Number.isFinite(n) || n < 0) {
+			return null;
+		}
+		return Math.round(n);
 	} catch {
 		return null;
 	}

@@ -6,6 +6,8 @@ export type BatteryRuntimeConfig = {
 	/** Quell-Vorzeichen umdrehen (+ laden / − entladen nach Normalisierung). */
 	powerInvert: boolean;
 	capacityStateId: string;
+	/** Sonnen o. ä.: Sekunden seit echter Vollladung (Zelloptimierung). */
+	secondsSinceFullStateId: string;
 	fullChargeSoc: number;
 	topoffIntervalDays: number;
 	nightStart: string;
@@ -57,6 +59,10 @@ export type BatteryRuntimeComputeResult = {
 	maxDischargePowerW: number | null;
 	lastFullCharge: string | null;
 	daysSinceFull: number | null;
+	/** Live-Wert vom Geräte-State (Sekunden seit Vollladung). */
+	secondsSinceFullCharge: number | null;
+	/** device = Geräte-State; soc_history = SOC-History-Fallback. */
+	fullChargeSource: "device" | "soc_history" | null;
 	topoffIntervalDays: number;
 	topoffDaysRemaining: number | null;
 	topoffDue: boolean | null;

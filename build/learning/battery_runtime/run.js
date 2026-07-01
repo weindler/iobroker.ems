@@ -28,6 +28,11 @@ async function writeResult(host, result, lastRun) {
         ack: true,
     });
     await setNumIfValid(host, "learning.battery_runtime.days_since_full", result.daysSinceFull);
+    await setNumIfValid(host, "learning.battery_runtime.seconds_since_full_charge", result.secondsSinceFullCharge);
+    await host.setStateAsync("learning.battery_runtime.full_charge_source", {
+        val: result.fullChargeSource ?? "",
+        ack: true,
+    });
     await setNumIfValid(host, "learning.battery_runtime.topoff_interval_days", result.topoffIntervalDays);
     await setNumIfValid(host, "learning.battery_runtime.topoff_days_remaining", result.topoffDaysRemaining);
     if (result.topoffDue !== null) {
@@ -50,6 +55,7 @@ async function runBatteryRuntimeLearning(host) {
         socStateId: cfg.socStateId,
         powerStateId: cfg.powerStateId,
         capacityStateId: cfg.capacityStateId,
+        secondsSinceFullStateId: cfg.secondsSinceFullStateId,
     });
     if (!sources.socStateId) {
         await writeResult(host, (0, math_1.noSourceResult)(cfg), lastRun);
@@ -57,20 +63,26 @@ async function runBatteryRuntimeLearning(host) {
     }
     try {
         host.log.info(`Battery-Runtime-Learning: loading history (${cfg.lookbackDays}d, soc=${(0, config_1.sourceLabelFromStateId)(sources.socStateId)})…`);
-        const [socHist, powerHist, capacityKwh, currentSocPct] = await Promise.all([
+        const [socHist, secondsSinceFull, capacityKwh, currentSocPct] = await Promise.all([
             (0, history_1.fetchSocHistory)(host, sources.socStateId, cfg.lookbackDays),
-            sources.powerStateId
-                ? (0, history_1.fetchPowerHistory)(host, sources.powerStateId, cfg.lookbackDays, cfg.powerInvert)
-                : Promise.resolve({ points: [], lastValidTs: null }),
+            (0, history_1.readSecondsSinceFullCharge)(host, sources.secondsSinceFullStateId),
             (0, history_1.readLiveCapacityKwh)(host, sources.capacityStateId),
             (0, history_1.readLiveSoc)(host, sources.socStateId),
         ]);
+        const socRaw = secondsSinceFull === null
+            ? await (0, history_1.fetchSocHistoryRaw)(host, sources.socStateId, cfg.lookbackDays)
+            : [];
+        const powerHist = sources.powerStateId
+            ? await (0, history_1.fetchPowerHistory)(host, sources.powerStateId, cfg.lookbackDays, cfg.powerInvert)
+            : { points: [], lastValidTs: null };
         const astroDaily = (0, config_1.nightAstroConfigReady)(cfg)
             ? (0, history_1.mergeDailyAstroTimes)(await (0, history_1.fetchAstroTimeHistory)(host, cfg.nightStartStateId, cfg.lookbackDays), await (0, history_1.fetchAstroTimeHistory)(host, cfg.nightEndStateId, cfg.lookbackDays))
             : null;
         const sampleDays = (0, history_1.distinctSocSampleDays)(socHist.points);
         const result = (0, math_1.computeBatteryRuntimeLearning)({
             socPoints: socHist.points,
+            socPointsForFullCharge: socRaw,
+            secondsSinceFull,
             powerPoints: powerHist.points,
             capacityKwh,
             currentSocPct,
@@ -85,7 +97,7 @@ async function runBatteryRuntimeLearning(host) {
             await (0, persist_1.writeBatteryRuntimePersist)(host.getAbsolutePath("learning/battery_runtime"), result, lastRun);
         }
         await writeResult(host, result, lastRun);
-        host.log.info(`Battery-Runtime-Learning: status=${result.status} nights=${result.avgNightDischargePct ?? "n/a"}% samples=${result.sampleDays} soc=${(0, config_1.sourceLabelFromStateId)(sources.socStateId)}`);
+        host.log.info(`Battery-Runtime-Learning: status=${result.status} nights=${result.avgNightDischargePct ?? "n/a"}% samples=${result.sampleDays} full_src=${result.fullChargeSource ?? "—"} sec_since_full=${result.secondsSinceFullCharge ?? "—"} days_since_full=${result.daysSinceFull ?? "—"} last_full=${result.lastFullCharge ?? "—"} soc=${(0, config_1.sourceLabelFromStateId)(sources.socStateId)}`);
         if (result.status === "insufficient_data") {
             host.log.warn(`Battery Runtime Learning: ungenügende Historie (sample_days=${result.sampleDays}, soc_points=${socHist.points.length})`);
         }

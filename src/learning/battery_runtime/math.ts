@@ -131,9 +131,42 @@ export function computePowerStats(powerPoints: PowerPoint[]): {
 	};
 }
 
+/** Zeitpunkt der letzten Vollladung aus Geräte-Counter (Sekunden seit Voll). */
+export function fullChargeFromSecondsSince(seconds: number, now: Date): string {
+	return new Date(now.getTime() - seconds * 1000).toISOString();
+}
+
+export function resolveLastFullCharge(params: {
+	secondsSinceFull: number | null;
+	socPointsForFullCharge: SocPoint[];
+	fullChargeSoc: number;
+	currentSocPct: number | null;
+	now: Date;
+}): { lastFullCharge: string | null; fullChargeSource: "device" | "soc_history" | null } {
+	if (params.secondsSinceFull !== null) {
+		return {
+			lastFullCharge: fullChargeFromSecondsSince(params.secondsSinceFull, params.now),
+			fullChargeSource: "device",
+		};
+	}
+	const live =
+		params.currentSocPct !== null
+			? { socPct: params.currentSocPct, ts: params.now.getTime() }
+			: null;
+	return {
+		lastFullCharge: findLastFullCharge(
+			params.socPointsForFullCharge,
+			params.fullChargeSoc,
+			live,
+		),
+		fullChargeSource: params.socPointsForFullCharge.length > 0 || live ? "soc_history" : null,
+	};
+}
+
 export function findLastFullCharge(
 	socPoints: SocPoint[],
 	fullChargeSoc: number,
+	live?: { socPct: number; ts: number } | null,
 ): string | null {
 	let lastTs: number | null = null;
 	for (const p of socPoints) {
@@ -141,7 +174,23 @@ export function findLastFullCharge(
 			lastTs = p.ts;
 		}
 	}
+	if (live && live.socPct >= fullChargeSoc && (lastTs === null || live.ts >= lastTs)) {
+		lastTs = live.ts;
+	}
 	return lastTs !== null ? new Date(lastTs).toISOString() : null;
+}
+
+/** Kalendertage (lokal) zwischen Vollladung und jetzt — „gestern voll“ = 1. */
+export function calendarDaysSince(isoTs: string, now: Date): number | null {
+	const lastMs = Date.parse(isoTs);
+	if (!Number.isFinite(lastMs)) {
+		return null;
+	}
+	const lastDay = new Date(lastMs);
+	lastDay.setHours(0, 0, 0, 0);
+	const nowDay = new Date(now);
+	nowDay.setHours(0, 0, 0, 0);
+	return Math.round((nowDay.getTime() - lastDay.getTime()) / MS_PER_DAY);
 }
 
 export function computeTopoffStatus(params: {
@@ -156,11 +205,10 @@ export function computeTopoffStatus(params: {
 	if (!params.lastFullCharge) {
 		return { daysSinceFull: null, topoffDaysRemaining: null, topoffDue: null };
 	}
-	const lastMs = Date.parse(params.lastFullCharge);
-	if (!Number.isFinite(lastMs)) {
+	const daysSinceFull = calendarDaysSince(params.lastFullCharge, params.now);
+	if (daysSinceFull === null) {
 		return { daysSinceFull: null, topoffDaysRemaining: null, topoffDue: null };
 	}
-	const daysSinceFull = Math.floor((params.now.getTime() - lastMs) / MS_PER_DAY);
 	const topoffDaysRemaining = Math.max(0, params.topoffIntervalDays - daysSinceFull);
 	return {
 		daysSinceFull,
@@ -186,6 +234,10 @@ export function estimateRuntimeDays(
 
 export function computeBatteryRuntimeLearning(params: {
 	socPoints: SocPoint[];
+	/** Roh-SOC ohne Stunden-Dedup — Vollladungs-Peaks (optional, sonst socPoints). */
+	socPointsForFullCharge?: SocPoint[];
+	/** Sekunden seit Vollladung vom Gerät (Sonnen) — hat Vorrang vor SOC-History. */
+	secondsSinceFull: number | null;
 	powerPoints: PowerPoint[];
 	capacityKwh: number | null;
 	currentSocPct: number | null;
@@ -214,7 +266,14 @@ export function computeBatteryRuntimeLearning(params: {
 					maxDischargePowerW: null,
 				};
 
-	const lastFullCharge = findLastFullCharge(params.socPoints, params.cfg.fullChargeSoc);
+	const fullChargePoints = params.socPointsForFullCharge ?? params.socPoints;
+	const { lastFullCharge, fullChargeSource } = resolveLastFullCharge({
+		secondsSinceFull: params.secondsSinceFull,
+		socPointsForFullCharge: fullChargePoints,
+		fullChargeSoc: params.cfg.fullChargeSoc,
+		currentSocPct: params.currentSocPct,
+		now: params.now,
+	});
 	const topoff = computeTopoffStatus({
 		lastFullCharge,
 		topoffIntervalDays: params.cfg.topoffIntervalDays,
@@ -254,6 +313,8 @@ export function computeBatteryRuntimeLearning(params: {
 		maxDischargePowerW: powerStats.maxDischargePowerW,
 		lastFullCharge,
 		daysSinceFull: topoff.daysSinceFull,
+		secondsSinceFullCharge: params.secondsSinceFull,
+		fullChargeSource,
 		topoffIntervalDays: params.cfg.topoffIntervalDays,
 		topoffDaysRemaining: topoff.topoffDaysRemaining,
 		topoffDue: topoff.topoffDue,
@@ -280,6 +341,8 @@ export function noSourceResult(cfg: BatteryRuntimeConfig): BatteryRuntimeCompute
 		maxDischargePowerW: null,
 		lastFullCharge: null,
 		daysSinceFull: null,
+		secondsSinceFullCharge: null,
+		fullChargeSource: null,
 		topoffIntervalDays: cfg.topoffIntervalDays,
 		topoffDaysRemaining: null,
 		topoffDue: null,

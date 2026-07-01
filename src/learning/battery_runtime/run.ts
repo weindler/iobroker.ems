@@ -8,9 +8,11 @@ import {
 	fetchAstroTimeHistory,
 	fetchPowerHistory,
 	fetchSocHistory,
+	fetchSocHistoryRaw,
 	mergeDailyAstroTimes,
 	readLiveCapacityKwh,
 	readLiveSoc,
+	readSecondsSinceFullCharge,
 } from "./history";
 import { resolveBatteryRuntimeSources } from "./mapping";
 import {
@@ -70,6 +72,11 @@ async function writeResult(
 		ack: true,
 	});
 	await setNumIfValid(host, "learning.battery_runtime.days_since_full", result.daysSinceFull);
+	await setNumIfValid(host, "learning.battery_runtime.seconds_since_full_charge", result.secondsSinceFullCharge);
+	await host.setStateAsync("learning.battery_runtime.full_charge_source", {
+		val: result.fullChargeSource ?? "",
+		ack: true,
+	});
 	await setNumIfValid(host, "learning.battery_runtime.topoff_interval_days", result.topoffIntervalDays);
 	await setNumIfValid(host, "learning.battery_runtime.topoff_days_remaining", result.topoffDaysRemaining);
 	if (result.topoffDue !== null) {
@@ -95,6 +102,7 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 		socStateId: cfg.socStateId,
 		powerStateId: cfg.powerStateId,
 		capacityStateId: cfg.capacityStateId,
+		secondsSinceFullStateId: cfg.secondsSinceFullStateId,
 	});
 
 	if (!sources.socStateId) {
@@ -106,14 +114,19 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 		host.log.info(
 			`Battery-Runtime-Learning: loading history (${cfg.lookbackDays}d, soc=${sourceLabelFromStateId(sources.socStateId)})…`,
 		);
-		const [socHist, powerHist, capacityKwh, currentSocPct] = await Promise.all([
+		const [socHist, secondsSinceFull, capacityKwh, currentSocPct] = await Promise.all([
 			fetchSocHistory(host, sources.socStateId, cfg.lookbackDays),
-			sources.powerStateId
-				? fetchPowerHistory(host, sources.powerStateId, cfg.lookbackDays, cfg.powerInvert)
-				: Promise.resolve({ points: [], lastValidTs: null }),
+			readSecondsSinceFullCharge(host, sources.secondsSinceFullStateId),
 			readLiveCapacityKwh(host, sources.capacityStateId),
 			readLiveSoc(host, sources.socStateId),
 		]);
+		const socRaw =
+			secondsSinceFull === null
+				? await fetchSocHistoryRaw(host, sources.socStateId, cfg.lookbackDays)
+				: [];
+		const powerHist = sources.powerStateId
+			? await fetchPowerHistory(host, sources.powerStateId, cfg.lookbackDays, cfg.powerInvert)
+			: { points: [], lastValidTs: null };
 		const astroDaily = nightAstroConfigReady(cfg)
 			? mergeDailyAstroTimes(
 					await fetchAstroTimeHistory(host, cfg.nightStartStateId, cfg.lookbackDays),
@@ -124,6 +137,8 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 		const sampleDays = distinctSocSampleDays(socHist.points);
 		const result = computeBatteryRuntimeLearning({
 			socPoints: socHist.points,
+			socPointsForFullCharge: socRaw,
+			secondsSinceFull,
 			powerPoints: powerHist.points,
 			capacityKwh,
 			currentSocPct,
@@ -146,7 +161,7 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 		await writeResult(host, result, lastRun);
 
 		host.log.info(
-			`Battery-Runtime-Learning: status=${result.status} nights=${result.avgNightDischargePct ?? "n/a"}% samples=${result.sampleDays} soc=${sourceLabelFromStateId(sources.socStateId)}`,
+			`Battery-Runtime-Learning: status=${result.status} nights=${result.avgNightDischargePct ?? "n/a"}% samples=${result.sampleDays} full_src=${result.fullChargeSource ?? "—"} sec_since_full=${result.secondsSinceFullCharge ?? "—"} days_since_full=${result.daysSinceFull ?? "—"} last_full=${result.lastFullCharge ?? "—"} soc=${sourceLabelFromStateId(sources.socStateId)}`,
 		);
 
 		if (result.status === "insufficient_data") {

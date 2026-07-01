@@ -44,13 +44,14 @@ function cfg() {
         powerStateId: "",
         powerInvert: false,
         capacityStateId: "",
-        fullChargeSoc: 95,
+        fullChargeSoc: 100,
         topoffIntervalDays: 20,
         nightStart: "22:00",
         nightEnd: "06:00",
         nightAstroEnabled: false,
         nightStartStateId: "",
         nightEndStateId: "",
+        secondsSinceFullStateId: "sonnen.0.latestData.secondsSinceFullCharge",
     };
 }
 function socAt(dateKey, hour, socPct) {
@@ -163,13 +164,67 @@ function socAt(dateKey, hour, socPct) {
     });
 });
 (0, node_test_1.describe)("battery runtime full charge and topoff", () => {
-    (0, node_test_1.it)("detects last full charge", () => {
+    (0, node_test_1.it)("detects last full charge at 100%", () => {
         const points = [
             { ts: Date.parse("2026-01-01T10:00:00Z"), socPct: 90 },
-            { ts: Date.parse("2026-01-10T10:00:00Z"), socPct: 96 },
+            { ts: Date.parse("2026-01-10T10:00:00Z"), socPct: 100 },
             { ts: Date.parse("2026-01-11T10:00:00Z"), socPct: 92 },
         ];
-        strict_1.default.equal((0, math_1.findLastFullCharge)(points, 95), "2026-01-10T10:00:00.000Z");
+        strict_1.default.equal((0, math_1.findLastFullCharge)(points, 100), "2026-01-10T10:00:00.000Z");
+    });
+    (0, node_test_1.it)("does not treat 95% as full when threshold is 100%", () => {
+        const points = [{ ts: Date.parse("2026-06-30T10:00:00Z"), socPct: 95 }];
+        strict_1.default.equal((0, math_1.findLastFullCharge)(points, 100), null);
+    });
+    (0, node_test_1.it)("detects full charge peak missed by hourly dedup", () => {
+        const hourly = [
+            { ts: Date.parse("2026-06-30T09:00:00Z"), socPct: 88 },
+            { ts: Date.parse("2026-06-30T10:00:00Z"), socPct: 91 },
+        ];
+        const raw = [
+            ...hourly,
+            { ts: Date.parse("2026-06-30T09:45:00Z"), socPct: 100 },
+        ];
+        strict_1.default.equal((0, math_1.findLastFullCharge)(hourly, 100), null);
+        strict_1.default.equal((0, math_1.findLastFullCharge)(raw, 100), "2026-06-30T09:45:00.000Z");
+    });
+    (0, node_test_1.it)("prefers live soc when currently full", () => {
+        const points = [{ ts: Date.parse("2026-06-29T10:00:00Z"), socPct: 100 }];
+        const liveTs = Date.parse("2026-06-30T14:00:00Z");
+        strict_1.default.equal((0, math_1.findLastFullCharge)(points, 100, { socPct: 100, ts: liveTs }), "2026-06-30T14:00:00.000Z");
+    });
+    (0, node_test_1.it)("uses Sonnen secondsSinceFullCharge when available", () => {
+        const now = new Date("2026-07-01T12:00:00.000Z");
+        const seconds = 86_400;
+        const resolved = (0, math_1.resolveLastFullCharge)({
+            secondsSinceFull: seconds,
+            socPointsForFullCharge: [],
+            fullChargeSoc: 100,
+            currentSocPct: 80,
+            now,
+        });
+        strict_1.default.equal(resolved.fullChargeSource, "device");
+        strict_1.default.equal(resolved.lastFullCharge, (0, math_1.fullChargeFromSecondsSince)(seconds, now));
+        const topoff = (0, math_1.computeTopoffStatus)({
+            lastFullCharge: resolved.lastFullCharge,
+            topoffIntervalDays: 20,
+            now,
+        });
+        strict_1.default.equal(topoff.daysSinceFull, 1);
+    });
+    (0, node_test_1.it)("falls back to soc history when device counter missing", () => {
+        const now = new Date("2026-07-01T12:00:00.000Z");
+        const resolved = (0, math_1.resolveLastFullCharge)({
+            secondsSinceFull: null,
+            socPointsForFullCharge: [
+                { ts: Date.parse("2026-06-30T10:00:00Z"), socPct: 100 },
+            ],
+            fullChargeSoc: 100,
+            currentSocPct: 80,
+            now,
+        });
+        strict_1.default.equal(resolved.fullChargeSource, "soc_history");
+        strict_1.default.equal(resolved.lastFullCharge, "2026-06-30T10:00:00.000Z");
     });
     (0, node_test_1.it)("computes topoff remaining and due", () => {
         const now = new Date("2026-01-25T12:00:00Z");
@@ -181,6 +236,15 @@ function socAt(dateKey, hour, socPct) {
         strict_1.default.equal(r.daysSinceFull, 24);
         strict_1.default.equal(r.topoffDaysRemaining, 0);
         strict_1.default.equal(r.topoffDue, true);
+    });
+    (0, node_test_1.it)("counts calendar days since full charge (yesterday = 1)", () => {
+        const r = (0, math_1.computeTopoffStatus)({
+            lastFullCharge: "2026-06-30T20:00:00.000Z",
+            topoffIntervalDays: 20,
+            now: new Date("2026-07-01T15:00:00.000Z"),
+        });
+        strict_1.default.equal(r.daysSinceFull, 1);
+        strict_1.default.equal(r.topoffDaysRemaining, 19);
     });
     (0, node_test_1.it)("returns null topoff without full charge history", () => {
         const r = (0, math_1.computeTopoffStatus)({
@@ -210,6 +274,7 @@ function socAt(dateKey, hour, socPct) {
         const result = (0, math_1.computeBatteryRuntimeLearning)({
             socPoints: points,
             powerPoints: [],
+            secondsSinceFull: null,
             capacityKwh: 10,
             currentSocPct: 75,
             cfg: cfg(),

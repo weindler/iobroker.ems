@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.errorResult = exports.disabledResult = exports.noSourceResult = exports.computeBatteryRuntimeLearning = exports.estimateRuntimeDays = exports.computeTopoffStatus = exports.findLastFullCharge = exports.computePowerStats = exports.computeSocRates = exports.computeNightDischarges = void 0;
+exports.errorResult = exports.disabledResult = exports.noSourceResult = exports.computeBatteryRuntimeLearning = exports.estimateRuntimeDays = exports.computeTopoffStatus = exports.calendarDaysSince = exports.findLastFullCharge = exports.resolveLastFullCharge = exports.fullChargeFromSecondsSince = exports.computePowerStats = exports.computeSocRates = exports.computeNightDischarges = void 0;
 const constants_1 = require("./constants");
 const time_1 = require("./time");
 function round2(n) {
@@ -105,25 +105,61 @@ function computePowerStats(powerPoints) {
     };
 }
 exports.computePowerStats = computePowerStats;
-function findLastFullCharge(socPoints, fullChargeSoc) {
+/** Zeitpunkt der letzten Vollladung aus Geräte-Counter (Sekunden seit Voll). */
+function fullChargeFromSecondsSince(seconds, now) {
+    return new Date(now.getTime() - seconds * 1000).toISOString();
+}
+exports.fullChargeFromSecondsSince = fullChargeFromSecondsSince;
+function resolveLastFullCharge(params) {
+    if (params.secondsSinceFull !== null) {
+        return {
+            lastFullCharge: fullChargeFromSecondsSince(params.secondsSinceFull, params.now),
+            fullChargeSource: "device",
+        };
+    }
+    const live = params.currentSocPct !== null
+        ? { socPct: params.currentSocPct, ts: params.now.getTime() }
+        : null;
+    return {
+        lastFullCharge: findLastFullCharge(params.socPointsForFullCharge, params.fullChargeSoc, live),
+        fullChargeSource: params.socPointsForFullCharge.length > 0 || live ? "soc_history" : null,
+    };
+}
+exports.resolveLastFullCharge = resolveLastFullCharge;
+function findLastFullCharge(socPoints, fullChargeSoc, live) {
     let lastTs = null;
     for (const p of socPoints) {
         if (p.socPct >= fullChargeSoc) {
             lastTs = p.ts;
         }
     }
+    if (live && live.socPct >= fullChargeSoc && (lastTs === null || live.ts >= lastTs)) {
+        lastTs = live.ts;
+    }
     return lastTs !== null ? new Date(lastTs).toISOString() : null;
 }
 exports.findLastFullCharge = findLastFullCharge;
+/** Kalendertage (lokal) zwischen Vollladung und jetzt — „gestern voll“ = 1. */
+function calendarDaysSince(isoTs, now) {
+    const lastMs = Date.parse(isoTs);
+    if (!Number.isFinite(lastMs)) {
+        return null;
+    }
+    const lastDay = new Date(lastMs);
+    lastDay.setHours(0, 0, 0, 0);
+    const nowDay = new Date(now);
+    nowDay.setHours(0, 0, 0, 0);
+    return Math.round((nowDay.getTime() - lastDay.getTime()) / constants_1.MS_PER_DAY);
+}
+exports.calendarDaysSince = calendarDaysSince;
 function computeTopoffStatus(params) {
     if (!params.lastFullCharge) {
         return { daysSinceFull: null, topoffDaysRemaining: null, topoffDue: null };
     }
-    const lastMs = Date.parse(params.lastFullCharge);
-    if (!Number.isFinite(lastMs)) {
+    const daysSinceFull = calendarDaysSince(params.lastFullCharge, params.now);
+    if (daysSinceFull === null) {
         return { daysSinceFull: null, topoffDaysRemaining: null, topoffDue: null };
     }
-    const daysSinceFull = Math.floor((params.now.getTime() - lastMs) / constants_1.MS_PER_DAY);
     const topoffDaysRemaining = Math.max(0, params.topoffIntervalDays - daysSinceFull);
     return {
         daysSinceFull,
@@ -159,7 +195,14 @@ function computeBatteryRuntimeLearning(params) {
             maxChargePowerW: null,
             maxDischargePowerW: null,
         };
-    const lastFullCharge = findLastFullCharge(params.socPoints, params.cfg.fullChargeSoc);
+    const fullChargePoints = params.socPointsForFullCharge ?? params.socPoints;
+    const { lastFullCharge, fullChargeSource } = resolveLastFullCharge({
+        secondsSinceFull: params.secondsSinceFull,
+        socPointsForFullCharge: fullChargePoints,
+        fullChargeSoc: params.cfg.fullChargeSoc,
+        currentSocPct: params.currentSocPct,
+        now: params.now,
+    });
     const topoff = computeTopoffStatus({
         lastFullCharge,
         topoffIntervalDays: params.cfg.topoffIntervalDays,
@@ -191,6 +234,8 @@ function computeBatteryRuntimeLearning(params) {
         maxDischargePowerW: powerStats.maxDischargePowerW,
         lastFullCharge,
         daysSinceFull: topoff.daysSinceFull,
+        secondsSinceFullCharge: params.secondsSinceFull,
+        fullChargeSource,
         topoffIntervalDays: params.cfg.topoffIntervalDays,
         topoffDaysRemaining: topoff.topoffDaysRemaining,
         topoffDue: topoff.topoffDue,
@@ -217,6 +262,8 @@ function noSourceResult(cfg) {
         maxDischargePowerW: null,
         lastFullCharge: null,
         daysSinceFull: null,
+        secondsSinceFullCharge: null,
+        fullChargeSource: null,
         topoffIntervalDays: cfg.topoffIntervalDays,
         topoffDaysRemaining: null,
         topoffDue: null,

@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.71] – 2026-07-01
+
+### Fixed
+
+- **Battery-Runtime:** Vollladung/Top-Off nutzt primär **Sonnen `secondsSinceFullCharge`** (Geräte-Counter, echte Zelloptimierung bei 100 %). SOC-History nur Fallback. `days_since_full` zählt Kalendertage; neue States `seconds_since_full_charge`, `full_charge_source`.
+
+---
+
 ## [0.1.70] – 2026-07-01
 
 ### Fixed

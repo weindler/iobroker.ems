@@ -40,6 +40,8 @@ export async function ensureBatteryRuntimeLearningStates(host: StateHost): Promi
 		numState("learning.battery_runtime.max_discharge_power_w", "Battery-Runtime max. Entladeleistung (Ist)", "W"),
 		strState("learning.battery_runtime.last_full_charge", "Battery-Runtime letzte Vollladung (ISO)"),
 		numState("learning.battery_runtime.days_since_full", "Battery-Runtime Tage seit Vollladung"),
+		numState("learning.battery_runtime.seconds_since_full_charge", "Sekunden seit Vollladung (Gerät)", "s"),
+		strState("learning.battery_runtime.full_charge_source", "Vollladung Quelle (device|soc_history)"),
 		numState("learning.battery_runtime.topoff_interval_days", "Battery-Runtime Top-Off Intervall (Konfig)"),
 		numState("learning.battery_runtime.topoff_days_remaining", "Battery-Runtime Top-Off Tage verbleibend"),
 		numState("learning.battery_runtime.topoff_due", "Battery-Runtime Top-Off fällig (0/1)"),

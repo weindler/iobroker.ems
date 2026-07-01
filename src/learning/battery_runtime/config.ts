@@ -3,6 +3,7 @@ import {
 	DEFAULT_LOOKBACK_DAYS,
 	DEFAULT_NIGHT_END,
 	DEFAULT_NIGHT_START,
+	DEFAULT_SECONDS_SINCE_FULL_STATE,
 	DEFAULT_TOPOFF_INTERVAL_DAYS,
 } from "./constants";
 import type { BatteryRuntimeConfig } from "./types";
@@ -54,11 +55,14 @@ export function batteryRuntimeConfigFromAdapter(config: unknown): BatteryRuntime
 		powerStateId: strField(c, "learning_battery_runtime_power_state"),
 		powerInvert: boolField(c, "learning_battery_runtime_power_invert", false),
 		capacityStateId: strField(c, "learning_battery_runtime_capacity_state"),
+		secondsSinceFullStateId:
+			strField(c, "learning_battery_runtime_seconds_since_full_state") ||
+			DEFAULT_SECONDS_SINCE_FULL_STATE,
 		fullChargeSoc: numField(
 			c,
 			"learning_battery_runtime_full_charge_soc",
 			DEFAULT_FULL_CHARGE_SOC,
-			80,
+			99,
 			100,
 		),
 		topoffIntervalDays: Math.round(

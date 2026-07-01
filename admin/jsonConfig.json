@@ -2536,12 +2536,22 @@
 					"lg": 12,
 					"xl": 12
 				},
+				"learning_battery_runtime_seconds_since_full_state": {
+					"type": "objectId",
+					"label": "Sekunden seit Vollladung (Sonnen: latestData.secondsSinceFullCharge)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
 				"learning_battery_runtime_full_charge_soc": {
 					"type": "number",
-					"label": "Vollladung SOC (%)",
-					"min": 80,
+					"label": "Vollladung SOC-Fallback (%) — nur wenn Geräte-State fehlt",
+					"min": 99,
 					"max": 100,
-					"default": 95,
+					"default": 100,
 					"xs": 12,
 					"sm": 6,
 					"md": 3,

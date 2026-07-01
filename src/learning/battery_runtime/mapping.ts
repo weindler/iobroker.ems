@@ -8,6 +8,7 @@ export type ResolvedBatterySources = {
 	socStateId: string;
 	powerStateId: string;
 	capacityStateId: string;
+	secondsSinceFullStateId: string;
 };
 
 async function resolveMappedRole(
@@ -31,6 +32,7 @@ export async function resolveBatteryRuntimeSources(
 		socStateId: string;
 		powerStateId: string;
 		capacityStateId: string;
+		secondsSinceFullStateId: string;
 	},
 ): Promise<ResolvedBatterySources> {
 	const socStateId =
@@ -41,5 +43,10 @@ export async function resolveBatteryRuntimeSources(
 	// Leistung: nur Admin — kein Fallback auf battery_charging_w (Schreib-Sollwert, kein Ist).
 	const powerStateId = configured.powerStateId;
 
-	return { socStateId, powerStateId, capacityStateId };
+	return {
+		socStateId,
+		powerStateId,
+		capacityStateId,
+		secondsSinceFullStateId: configured.secondsSinceFullStateId,
+	};
 }

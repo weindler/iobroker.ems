@@ -1,7 +1,7 @@
 "use strict";
 /** EVCC read-only telemetry config (Phase 3B.1). Intent fields stay on intent_evcc_* keys. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.hasLegacyWallboxWriteMapping = exports.wallboxEvccTelemetryMappingFromConfig = exports.stateIdForRole = exports.configuredEvccTelemetryStateIds = exports.wallboxEvccTelemetryConfigFromAdapter = exports.WB_LEGACY_VEHICLE_SOC = exports.WALLBOX_EVCC_TELEMETRY_ROLES = exports.WB_EVCC_MAX_CURRENT_A = exports.WB_EVCC_MIN_CURRENT_A = exports.WB_EVCC_CONFIGURED_PHASES = exports.WB_EVCC_ACTIVE_PHASES = exports.WB_EVCC_EFFECTIVE_PLAN_TIME = exports.WB_EVCC_PLAN_TIME = exports.WB_EVCC_PLAN_SOC = exports.WB_EVCC_PLAN_ACTIVE = exports.WB_EVCC_VEHICLE_SOC = exports.WB_EVCC_SESSION_ENERGY_KWH = exports.WB_EVCC_CHARGE_POWER_W = exports.WB_EVCC_CHARGING = exports.WB_EVCC_CONNECTED = exports.WB_EVCC_ENABLED = void 0;
+exports.hasLegacyWallboxWriteMapping = exports.wallboxEvccTelemetryMappingFromConfig = exports.stateIdForRole = exports.configuredEvccTelemetryStateIds = exports.wallboxEvccTelemetryConfigFromAdapter = exports.WB_LEGACY_VEHICLE_SOC = exports.WALLBOX_EVCC_TELEMETRY_ROLES = exports.WB_EVCC_BATTERY_DISCHARGE_CONTROL = exports.WB_EVCC_BATTERY_MODE = exports.WB_EVCC_MAX_CURRENT_A = exports.WB_EVCC_MIN_CURRENT_A = exports.WB_EVCC_CONFIGURED_PHASES = exports.WB_EVCC_ACTIVE_PHASES = exports.WB_EVCC_EFFECTIVE_PLAN_TIME = exports.WB_EVCC_PLAN_TIME = exports.WB_EVCC_PLAN_SOC = exports.WB_EVCC_PLAN_ACTIVE = exports.WB_EVCC_VEHICLE_SOC = exports.WB_EVCC_SESSION_ENERGY_KWH = exports.WB_EVCC_CHARGE_POWER_W = exports.WB_EVCC_CHARGING = exports.WB_EVCC_CONNECTED = exports.WB_EVCC_ENABLED = void 0;
 exports.WB_EVCC_ENABLED = "wb_evcc_enabled_state";
 exports.WB_EVCC_CONNECTED = "wb_evcc_connected_state";
 exports.WB_EVCC_CHARGING = "wb_evcc_charging_state";
@@ -16,6 +16,8 @@ exports.WB_EVCC_ACTIVE_PHASES = "wb_evcc_active_phases_state";
 exports.WB_EVCC_CONFIGURED_PHASES = "wb_evcc_configured_phases_state";
 exports.WB_EVCC_MIN_CURRENT_A = "wb_evcc_min_current_a_state";
 exports.WB_EVCC_MAX_CURRENT_A = "wb_evcc_max_current_a_state";
+exports.WB_EVCC_BATTERY_MODE = "wb_evcc_battery_mode_state";
+exports.WB_EVCC_BATTERY_DISCHARGE_CONTROL = "wb_evcc_battery_discharge_control_state";
 /** Synced to addons.wallbox.mapping.<role>.target_state */
 exports.WALLBOX_EVCC_TELEMETRY_ROLES = [
     "evcc_enabled",
@@ -32,6 +34,8 @@ exports.WALLBOX_EVCC_TELEMETRY_ROLES = [
     "evcc_configured_phases",
     "evcc_min_current_a",
     "evcc_max_current_a",
+    "evcc_battery_mode",
+    "evcc_battery_discharge_control",
 ];
 /** @deprecated Legacy read mapping — compat only, not shown in admin. */
 exports.WB_LEGACY_VEHICLE_SOC = "wb_vehicle_soc_target";
@@ -57,6 +61,8 @@ function wallboxEvccTelemetryConfigFromAdapter(config) {
         configuredPhasesStateId: strField(c, exports.WB_EVCC_CONFIGURED_PHASES),
         minCurrentAStateId: strField(c, exports.WB_EVCC_MIN_CURRENT_A),
         maxCurrentAStateId: strField(c, exports.WB_EVCC_MAX_CURRENT_A),
+        batteryModeStateId: strField(c, exports.WB_EVCC_BATTERY_MODE),
+        batteryDischargeControlStateId: strField(c, exports.WB_EVCC_BATTERY_DISCHARGE_CONTROL),
     };
 }
 exports.wallboxEvccTelemetryConfigFromAdapter = wallboxEvccTelemetryConfigFromAdapter;
@@ -100,6 +106,10 @@ function stateIdForRole(cfg, role) {
             return cfg.minCurrentAStateId;
         case "evcc_max_current_a":
             return cfg.maxCurrentAStateId;
+        case "evcc_battery_mode":
+            return cfg.batteryModeStateId;
+        case "evcc_battery_discharge_control":
+            return cfg.batteryDischargeControlStateId;
         default:
             return "";
     }

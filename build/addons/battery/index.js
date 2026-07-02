@@ -18,6 +18,7 @@ const fsm_1 = require("./runtime/fsm");
 const execute_1 = require("./runtime/execute");
 const ownership_1 = require("./runtime/ownership");
 const safety_1 = require("./runtime/safety");
+const intent_read_1 = require("./runtime/intent_read");
 exports.BATTERY_ADDON_ID = "battery";
 const CONTROL_INTERVAL_MS = 5000;
 let controlTimer = null;
@@ -196,26 +197,46 @@ async function controlTickInner(host) {
         governanceEnabled,
         requiredValues: ["soc", "power"],
     });
-    // EMS-mirror device intent.
-    const intentActive = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.batteryIntentActive);
-    const modeTarget = await readRelNumber(host, ems_mirror_1.EMS_MIRROR_BATTERY.operatingModeTarget);
-    const chargeReq = await readRelNumber(host, ems_mirror_1.EMS_MIRROR_BATTERY.chargePowerWRequest);
-    const wantsCharge = intentActive && modeTarget === 1 && (chargeReq ?? 0) > 0;
-    const action = wantsCharge ? "charge" : "self_consumption";
-    const requestId = `bat-${(await readRelNumber(host, ems_mirror_1.EMS_MIRROR_BATTERY.modeRequestId)) ?? 0}`;
-    const deviceIntent = {
-        requestId,
-        action,
-        targetSocPct: null,
-        maxChargeW: chargeReq,
-        maxDischargeW: null,
-        energySource: "any",
-        validFrom: null,
-        validUntil: null,
-        issuedAt: new Date(nowMs).toISOString(),
-        reason: `mirror intent_active=${intentActive} mode=${modeTarget}`,
-        source: "ems_mirror",
-    };
+    // Device intent: user_intent.battery first, EMS-mirror legacy fallback.
+    const resolvedRaw = await host.getStateAsync("user_intent.battery.resolved_json");
+    const resolvedIntent = (0, intent_read_1.parseResolvedBatteryIntentJson)(resolvedRaw?.val);
+    const fromResolved = resolvedIntent && (0, intent_read_1.resolvedIntentHasConstraint)(resolvedIntent)
+        ? (0, intent_read_1.deviceIntentFromResolvedBattery)(resolvedIntent)
+        : null;
+    let deviceIntent;
+    let wantsCharge;
+    let requestId;
+    if (fromResolved?.intent) {
+        deviceIntent = fromResolved.intent;
+        wantsCharge = fromResolved.wantsCharge;
+        requestId = deviceIntent.requestId;
+        if (wantsCharge && (deviceIntent.maxChargeW ?? 0) <= 0) {
+            const mirrorW = await readRelNumber(host, ems_mirror_1.EMS_MIRROR_BATTERY.chargePowerWRequest);
+            if (mirrorW != null && mirrorW > 0) {
+                deviceIntent = { ...deviceIntent, maxChargeW: mirrorW };
+            }
+        }
+    }
+    else {
+        const intentActive = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.batteryIntentActive);
+        const modeTarget = await readRelNumber(host, ems_mirror_1.EMS_MIRROR_BATTERY.operatingModeTarget);
+        const chargeReq = await readRelNumber(host, ems_mirror_1.EMS_MIRROR_BATTERY.chargePowerWRequest);
+        wantsCharge = intentActive && modeTarget === 1 && (chargeReq ?? 0) > 0;
+        requestId = `bat-${(await readRelNumber(host, ems_mirror_1.EMS_MIRROR_BATTERY.modeRequestId)) ?? 0}`;
+        deviceIntent = {
+            requestId,
+            action: wantsCharge ? "charge" : "self_consumption",
+            targetSocPct: null,
+            maxChargeW: chargeReq,
+            maxDischargeW: null,
+            energySource: "any",
+            validFrom: null,
+            validUntil: null,
+            issuedAt: new Date(nowMs).toISOString(),
+            reason: `mirror intent_active=${intentActive} mode=${modeTarget}`,
+            source: "ems_mirror",
+        };
+    }
     const telemetryFresh = !snapshot.telemetry.stale && snapshot.quality.socValid && snapshot.quality.powerValid;
     const validation = (0, validation_1.validateBatteryIntent)({
         intent: deviceIntent,
@@ -229,11 +250,13 @@ async function controlTickInner(host) {
     });
     const intentValid = validation.accepted && wantsCharge && profile.supportsLive;
     const effectiveChargeW = validation.effectiveChargeW ?? 0;
+    const emsMirrorIntentActive = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.batteryIntentActive);
+    const emsBatteryIntentActive = fromResolved ? wantsCharge : emsMirrorIntentActive && wantsCharge;
     // Grid balance controller.
     const adapterFeature = snapshot.capabilities.control_grid_balance.available;
     const emsGb = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.gridBalanceEnabled);
     const controller = (0, grid_balance_1.resolveController)({
-        emsBatteryIntentActive: intentActive,
+        emsBatteryIntentActive,
         emsGridBalanceEnabled: emsGb,
         adapterFeatureEnabled: adapterFeature,
         batteryAddonEnabled: governanceEnabled,
@@ -365,9 +388,9 @@ async function controlTickInner(host) {
         lastWrite,
         gb: { wouldWrite: gbWouldWrite, target: gbTarget, state: gbState },
         clamps: validation.clamps,
-        requestedPowerW: chargeReq ?? 0,
+        requestedPowerW: deviceIntent.maxChargeW ?? 0,
         effectiveChargeW,
-        action,
+        action: deviceIntent.action,
         actualMode: modeRead.val,
         actualChargingW: snapshot.telemetry.chargingPowerW,
     });

@@ -6,19 +6,23 @@ import { deriveBatteryIntentState, nextBatteryRevision } from "./validation";
 import { emptyResolvedBatteryIntent } from "./types";
 import { BATTERY_TARGET_ID } from "../core/constants";
 
+import type { EvccBatteryIntentSnapshot } from "../sources/evcc_battery";
+
 const PRIORITY_OVERRIDE = 1;
-const PRIORITY_IOBROKER = 2;
+const PRIORITY_EVCC = 2;
+const PRIORITY_IOBROKER = 3;
 
 export interface ResolveBatteryInput {
 	now: Date;
 	previous: ResolvedBatteryIntent | null;
 	iobroker: IobrokerBatterySnapshot | null;
+	evcc: EvccBatteryIntentSnapshot | null;
 	override: ManualOverrideState | null;
 	active: boolean;
 }
 
 export function resolveBatteryIntent(input: ResolveBatteryInput): ResolvedBatteryIntent {
-	const { now, previous, iobroker, override, active } = input;
+	const { now, previous, iobroker, evcc, override, active } = input;
 	if (!active) {
 		const empty = emptyResolvedBatteryIntent(now, BATTERY_TARGET_ID);
 		empty.intent_state = "disabled";
@@ -40,6 +44,10 @@ export function resolveBatteryIntent(input: ResolveBatteryInput): ResolvedBatter
 	addFieldCandidate(iobroker?.grid_charge_request, "grid_charge_request", gridCands, activeOverride);
 	addFieldCandidate(iobroker?.ev_discharge_allowed, "ev_discharge_allowed", evDisCands, activeOverride);
 	addFieldCandidate(iobroker?.top_off_requested, "top_off_requested", topOffCands, activeOverride);
+
+	addEvccFieldCandidate(evcc?.operating_request, "operating_request", opCands, activeOverride);
+	addEvccFieldCandidate(evcc?.grid_charge_request, "grid_charge_request", gridCands, activeOverride);
+	addEvccFieldCandidate(evcc?.ev_discharge_allowed, "ev_discharge_allowed", evDisCands, activeOverride);
 
 	const opRes = resolveFieldFromCandidates(opCands, now);
 	const socRes = resolveFieldFromCandidates(socCands, now);
@@ -77,6 +85,17 @@ function addFieldCandidate<T>(
 	} else if (!activeOverride || !scopeIncludes(activeOverride.scope, scope)) {
 		list.push(fieldToCandidate(field, PRIORITY_IOBROKER));
 	}
+}
+
+function addEvccFieldCandidate<T>(
+	field: IntentField<T> | null | undefined,
+	scope: string,
+	list: FieldCandidate<T>[],
+	activeOverride: ManualOverrideState | null,
+): void {
+	if (!field || field.status !== "valid") return;
+	if (activeOverride && scopeIncludes(activeOverride.scope, scope)) return;
+	list.push(fieldToCandidate(field, PRIORITY_EVCC));
 }
 
 function fieldToCandidate<T>(field: IntentField<T>, priority: number): FieldCandidate<T> {

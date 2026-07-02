@@ -18,6 +18,8 @@ const ROLE_NORMALIZER = {
     evcc_configured_phases: normalize_1.normalizeOptionalPhases,
     evcc_min_current_a: normalize_1.normalizeOptionalNumber,
     evcc_max_current_a: normalize_1.normalizeOptionalNumber,
+    evcc_battery_mode: normalize_1.normalizeOptionalBatteryMode,
+    evcc_battery_discharge_control: normalize_1.normalizeOptionalBool,
 };
 /** EVCC liefert die Sitzungsenergie in Wh; EMS-Light speichert kWh. */
 function normalizeSessionEnergyKwh(raw) {
@@ -91,6 +93,8 @@ function emptySnapshot(observedAt) {
         configured_phases: m(),
         min_current_a: m(),
         max_current_a: m(),
+        battery_mode: m(),
+        battery_discharge_control: m(),
     };
 }
 async function readEvccTelemetrySnapshot(host, cfg, now) {
@@ -129,6 +133,8 @@ async function readEvccTelemetrySnapshot(host, cfg, now) {
         configured_phases: fields.evcc_configured_phases,
         min_current_a: fields.evcc_min_current_a,
         max_current_a: fields.evcc_max_current_a,
+        battery_mode: fields.evcc_battery_mode,
+        battery_discharge_control: fields.evcc_battery_discharge_control,
     };
 }
 exports.readEvccTelemetrySnapshot = readEvccTelemetrySnapshot;

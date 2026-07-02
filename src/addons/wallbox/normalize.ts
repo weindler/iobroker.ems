@@ -54,3 +54,18 @@ export function normalizeOptionalPhases(raw: unknown): TelemetryField<number> {
 	if (n.value < 0 || n.value > 3) return { value: null, status: "invalid", raw };
 	return n;
 }
+
+const EVCC_BATTERY_MODES = new Set(["normal", "hold", "charge", "holdcharge", "unknown"]);
+
+export function normalizeOptionalBatteryMode(raw: unknown): TelemetryField<string> {
+	if (isEmptySentinel(raw)) return missingField();
+	if (typeof raw === "number" && Number.isFinite(raw)) {
+		const map: Record<number, string> = { 0: "unknown", 1: "normal", 2: "hold", 3: "charge", 4: "holdcharge" };
+		const mode = map[raw];
+		return mode ? { value: mode, status: "valid", raw } : { value: null, status: "invalid", raw };
+	}
+	const s = String(raw).trim().toLowerCase();
+	if (!s) return missingField();
+	if (EVCC_BATTERY_MODES.has(s)) return { value: s, status: "valid", raw };
+	return { value: null, status: "invalid", raw };
+}

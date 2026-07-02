@@ -7,9 +7,10 @@ const validation_2 = require("./validation");
 const types_1 = require("./types");
 const constants_1 = require("../core/constants");
 const PRIORITY_OVERRIDE = 1;
-const PRIORITY_IOBROKER = 2;
+const PRIORITY_EVCC = 2;
+const PRIORITY_IOBROKER = 3;
 function resolveBatteryIntent(input) {
-    const { now, previous, iobroker, override, active } = input;
+    const { now, previous, iobroker, evcc, override, active } = input;
     if (!active) {
         const empty = (0, types_1.emptyResolvedBatteryIntent)(now, constants_1.BATTERY_TARGET_ID);
         empty.intent_state = "disabled";
@@ -27,6 +28,9 @@ function resolveBatteryIntent(input) {
     addFieldCandidate(iobroker?.grid_charge_request, "grid_charge_request", gridCands, activeOverride);
     addFieldCandidate(iobroker?.ev_discharge_allowed, "ev_discharge_allowed", evDisCands, activeOverride);
     addFieldCandidate(iobroker?.top_off_requested, "top_off_requested", topOffCands, activeOverride);
+    addEvccFieldCandidate(evcc?.operating_request, "operating_request", opCands, activeOverride);
+    addEvccFieldCandidate(evcc?.grid_charge_request, "grid_charge_request", gridCands, activeOverride);
+    addEvccFieldCandidate(evcc?.ev_discharge_allowed, "ev_discharge_allowed", evDisCands, activeOverride);
     const opRes = (0, resolver_1.resolveFieldFromCandidates)(opCands, now);
     const socRes = (0, resolver_1.resolveFieldFromCandidates)(socCands, now);
     const gridRes = (0, resolver_1.resolveFieldFromCandidates)(gridCands, now);
@@ -59,6 +63,13 @@ function addFieldCandidate(field, scope, list, activeOverride) {
     else if (!activeOverride || !(0, resolver_1.scopeIncludes)(activeOverride.scope, scope)) {
         list.push(fieldToCandidate(field, PRIORITY_IOBROKER));
     }
+}
+function addEvccFieldCandidate(field, scope, list, activeOverride) {
+    if (!field || field.status !== "valid")
+        return;
+    if (activeOverride && (0, resolver_1.scopeIncludes)(activeOverride.scope, scope))
+        return;
+    list.push(fieldToCandidate(field, PRIORITY_EVCC));
 }
 function fieldToCandidate(field, priority) {
     return {

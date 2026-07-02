@@ -23,6 +23,8 @@ import {
 import { ensureIntentStates } from "./ensure_states";
 import { readIntentPersist, writeIntentPersist } from "./persist";
 import { readEvccIntentSnapshot, type EvccReadHost } from "./sources/evcc";
+import { readEvccBatteryIntentSnapshot } from "./sources/evcc_battery";
+import { wallboxEvccTelemetryConfigFromAdapter, configuredEvccTelemetryStateIds } from "../addons/wallbox/evcc_config";
 import { buildAdminIntentSnapshot } from "./sources/admin";
 import {
 	processIobrokerWallboxRequest,
@@ -191,9 +193,11 @@ export async function runIntentEngine(host: IntentEngineHost): Promise<IntentEng
 
 	const adminCfg = intentAdminConfigFromAdapter(host.config);
 	const evccCfg = intentEvccConfigFromAdapter(host.config);
+	const evccTelemetryCfg = wallboxEvccTelemetryConfigFromAdapter(host.config);
 
-	const [evcc, wallboxActive, thermalActive, batteryActive] = await Promise.all([
+	const [evcc, evccBattery, wallboxActive, thermalActive, batteryActive] = await Promise.all([
 		readEvccIntentSnapshot(host, evccCfg, adminCfg.timezone, now),
+		readEvccBatteryIntentSnapshot(host, evccTelemetryCfg, now),
 		isAddonIntentActive(host, "wallbox"),
 		isAddonIntentActive(host, IMMERSION_ADDON_ID),
 		isAddonIntentActive(host, "battery"),
@@ -226,6 +230,7 @@ export async function runIntentEngine(host: IntentEngineHost): Promise<IntentEng
 		now,
 		previous: lastBattery,
 		iobroker: batterySnapshot,
+		evcc: evccBattery,
 		override: batteryOverride,
 		active: batteryActive,
 	});
@@ -503,7 +508,10 @@ export async function initIntentEngine(host: IntentEngineHost): Promise<void> {
 
 	try {
 		const evccCfg = intentEvccConfigFromAdapter(host.config);
-		const foreignIds = configuredEvccStateIds(evccCfg);
+		const evccTelemetryCfg = wallboxEvccTelemetryConfigFromAdapter(host.config);
+		const foreignIds = [
+			...new Set([...configuredEvccStateIds(evccCfg), ...configuredEvccTelemetryStateIds(evccTelemetryCfg)]),
+		];
 		for (const id of foreignIds) {
 			if (subscribedForeignIds.includes(id)) continue;
 			if (typeof host.subscribeForeignStatesAsync === "function") {

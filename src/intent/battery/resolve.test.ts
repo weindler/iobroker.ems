@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { resolveBatteryIntent } from "./resolve.js";
 import type { IobrokerBatterySnapshot } from "./types.js";
+import type { EvccBatteryIntentSnapshot } from "../sources/evcc_battery.js";
 
 const NOW = new Date("2026-06-27T12:00:00Z");
 const ISO = NOW.toISOString();
@@ -18,7 +19,7 @@ function iobrokerField<T>(value: T) {
 
 describe("battery intent resolver", () => {
 	it("disabled when addon inactive", () => {
-		const r = resolveBatteryIntent({ now: NOW, previous: null, iobroker: null, override: null, active: false });
+		const r = resolveBatteryIntent({ now: NOW, previous: null, iobroker: null, evcc: null, override: null, active: false });
 		assert.equal(r.intent_state, "disabled");
 	});
 
@@ -34,7 +35,7 @@ describe("battery intent resolver", () => {
 				manual_override: null,
 				request_id: `b-${soc}`,
 			};
-			const r = resolveBatteryIntent({ now: NOW, previous: null, iobroker, override: null, active: true });
+			const r = resolveBatteryIntent({ now: NOW, previous: null, iobroker, evcc: null, override: null, active: true });
 			assert.equal(r.target_soc_pct.value, soc);
 		}
 	});
@@ -50,7 +51,7 @@ describe("battery intent resolver", () => {
 			manual_override: null,
 			request_id: "b1",
 		};
-		const r = resolveBatteryIntent({ now: NOW, previous: null, iobroker, override: null, active: true });
+		const r = resolveBatteryIntent({ now: NOW, previous: null, iobroker, evcc: null, override: null, active: true });
 		assert.equal(r.grid_charge_request.value, "deny");
 		assert.equal(r.ev_discharge_allowed.value, false);
 		assert.equal(r.top_off_requested.value, true);
@@ -71,10 +72,44 @@ describe("battery intent resolver", () => {
 			now: NOW,
 			previous: null,
 			iobroker,
+			evcc: null,
 			override: { active: true, scope: ["target_soc_pct"], source: "iobroker", owner: "user" },
 			active: true,
 		});
 		assert.equal(r.operating_request.value, "charge");
 		assert.equal(r.target_soc_pct.value, 80);
+	});
+
+	it("evcc hold beats iobroker charge", () => {
+		const iobroker: IobrokerBatterySnapshot = {
+			observed_at: ISO,
+			operating_request: iobrokerField("charge"),
+			target_soc_pct: null,
+			grid_charge_request: null,
+			ev_discharge_allowed: null,
+			top_off_requested: null,
+			manual_override: null,
+			request_id: "b3",
+		};
+		const evcc: EvccBatteryIntentSnapshot = {
+			observed_at: ISO,
+			operating_request: {
+				value: "hold",
+				status: "valid",
+				origin: { source: "evcc", owner: "evcc", change_kind: "unknown" },
+				observed_at: ISO,
+			},
+			ev_discharge_allowed: {
+				value: false,
+				status: "valid",
+				origin: { source: "evcc", owner: "evcc", change_kind: "unknown" },
+				observed_at: ISO,
+			},
+			grid_charge_request: null,
+		};
+		const r = resolveBatteryIntent({ now: NOW, previous: null, iobroker, evcc, override: null, active: true });
+		assert.equal(r.operating_request.value, "hold");
+		assert.equal(r.ev_discharge_allowed.value, false);
+		assert.ok(r.source_summary.includes("evcc:evcc"));
 	});
 });

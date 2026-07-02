@@ -11,6 +11,8 @@ const config_1 = require("./config");
 const ensure_states_1 = require("./ensure_states");
 const persist_1 = require("./persist");
 const evcc_1 = require("./sources/evcc");
+const evcc_battery_1 = require("./sources/evcc_battery");
+const evcc_config_1 = require("../addons/wallbox/evcc_config");
 const admin_1 = require("./sources/admin");
 const iobroker_1 = require("./sources/iobroker");
 const iobroker_thermal_1 = require("./sources/iobroker_thermal");
@@ -117,8 +119,10 @@ async function runIntentEngine(host) {
     await (0, ensure_states_1.ensureIntentStates)(host);
     const adminCfg = (0, config_1.intentAdminConfigFromAdapter)(host.config);
     const evccCfg = (0, config_1.intentEvccConfigFromAdapter)(host.config);
-    const [evcc, wallboxActive, thermalActive, batteryActive] = await Promise.all([
+    const evccTelemetryCfg = (0, evcc_config_1.wallboxEvccTelemetryConfigFromAdapter)(host.config);
+    const [evcc, evccBattery, wallboxActive, thermalActive, batteryActive] = await Promise.all([
         (0, evcc_1.readEvccIntentSnapshot)(host, evccCfg, adminCfg.timezone, now),
+        (0, evcc_battery_1.readEvccBatteryIntentSnapshot)(host, evccTelemetryCfg, now),
         (0, addon_active_1.isAddonIntentActive)(host, "wallbox"),
         (0, addon_active_1.isAddonIntentActive)(host, index_1.IMMERSION_ADDON_ID),
         (0, addon_active_1.isAddonIntentActive)(host, "battery"),
@@ -147,6 +151,7 @@ async function runIntentEngine(host) {
         now,
         previous: lastBattery,
         iobroker: batterySnapshot,
+        evcc: evccBattery,
         override: batteryOverride,
         active: batteryActive,
     });
@@ -395,7 +400,10 @@ async function initIntentEngine(host) {
     }
     try {
         const evccCfg = (0, config_1.intentEvccConfigFromAdapter)(host.config);
-        const foreignIds = (0, config_1.configuredEvccStateIds)(evccCfg);
+        const evccTelemetryCfg = (0, evcc_config_1.wallboxEvccTelemetryConfigFromAdapter)(host.config);
+        const foreignIds = [
+            ...new Set([...(0, config_1.configuredEvccStateIds)(evccCfg), ...(0, evcc_config_1.configuredEvccTelemetryStateIds)(evccTelemetryCfg)]),
+        ];
         for (const id of foreignIds) {
             if (subscribedForeignIds.includes(id))
                 continue;

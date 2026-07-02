@@ -14,6 +14,8 @@ export const WB_EVCC_ACTIVE_PHASES = "wb_evcc_active_phases_state";
 export const WB_EVCC_CONFIGURED_PHASES = "wb_evcc_configured_phases_state";
 export const WB_EVCC_MIN_CURRENT_A = "wb_evcc_min_current_a_state";
 export const WB_EVCC_MAX_CURRENT_A = "wb_evcc_max_current_a_state";
+export const WB_EVCC_BATTERY_MODE = "wb_evcc_battery_mode_state";
+export const WB_EVCC_BATTERY_DISCHARGE_CONTROL = "wb_evcc_battery_discharge_control_state";
 
 /** Synced to addons.wallbox.mapping.<role>.target_state */
 export const WALLBOX_EVCC_TELEMETRY_ROLES = [
@@ -31,6 +33,8 @@ export const WALLBOX_EVCC_TELEMETRY_ROLES = [
 	"evcc_configured_phases",
 	"evcc_min_current_a",
 	"evcc_max_current_a",
+	"evcc_battery_mode",
+	"evcc_battery_discharge_control",
 ] as const;
 
 export type WallboxEvccTelemetryRole = (typeof WALLBOX_EVCC_TELEMETRY_ROLES)[number];
@@ -53,6 +57,8 @@ export interface WallboxEvccTelemetryConfig {
 	configuredPhasesStateId: string;
 	minCurrentAStateId: string;
 	maxCurrentAStateId: string;
+	batteryModeStateId: string;
+	batteryDischargeControlStateId: string;
 }
 
 function strField(c: Record<string, unknown>, key: string): string {
@@ -79,6 +85,8 @@ export function wallboxEvccTelemetryConfigFromAdapter(config: unknown): WallboxE
 		configuredPhasesStateId: strField(c, WB_EVCC_CONFIGURED_PHASES),
 		minCurrentAStateId: strField(c, WB_EVCC_MIN_CURRENT_A),
 		maxCurrentAStateId: strField(c, WB_EVCC_MAX_CURRENT_A),
+		batteryModeStateId: strField(c, WB_EVCC_BATTERY_MODE),
+		batteryDischargeControlStateId: strField(c, WB_EVCC_BATTERY_DISCHARGE_CONTROL),
 	};
 }
 
@@ -121,6 +129,10 @@ export function stateIdForRole(cfg: WallboxEvccTelemetryConfig, role: WallboxEvc
 			return cfg.minCurrentAStateId;
 		case "evcc_max_current_a":
 			return cfg.maxCurrentAStateId;
+		case "evcc_battery_mode":
+			return cfg.batteryModeStateId;
+		case "evcc_battery_discharge_control":
+			return cfg.batteryDischargeControlStateId;
 		default:
 			return "";
 	}

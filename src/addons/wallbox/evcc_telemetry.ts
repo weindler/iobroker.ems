@@ -12,6 +12,7 @@ import {
 	normalizeOptionalNumber,
 	normalizeOptionalPhases,
 	normalizeOptionalSoc,
+	normalizeOptionalBatteryMode,
 	type TelemetryField,
 } from "./normalize";
 
@@ -35,6 +36,8 @@ export interface EvccTelemetrySnapshot {
 	configured_phases: TelemetryField<number>;
 	min_current_a: TelemetryField<number>;
 	max_current_a: TelemetryField<number>;
+	battery_mode: TelemetryField<string>;
+	battery_discharge_control: TelemetryField<boolean>;
 }
 
 const ROLE_NORMALIZER: Record<
@@ -55,6 +58,8 @@ const ROLE_NORMALIZER: Record<
 	evcc_configured_phases: normalizeOptionalPhases,
 	evcc_min_current_a: normalizeOptionalNumber,
 	evcc_max_current_a: normalizeOptionalNumber,
+	evcc_battery_mode: normalizeOptionalBatteryMode,
+	evcc_battery_discharge_control: normalizeOptionalBool,
 };
 
 /** EVCC liefert die Sitzungsenergie in Wh; EMS-Light speichert kWh. */
@@ -133,6 +138,8 @@ function emptySnapshot(observedAt: string): EvccTelemetrySnapshot {
 		configured_phases: m(),
 		min_current_a: m(),
 		max_current_a: m(),
+		battery_mode: m(),
+		battery_discharge_control: m(),
 	};
 }
 
@@ -179,6 +186,8 @@ export async function readEvccTelemetrySnapshot(
 		configured_phases: fields.evcc_configured_phases as TelemetryField<number>,
 		min_current_a: fields.evcc_min_current_a as TelemetryField<number>,
 		max_current_a: fields.evcc_max_current_a as TelemetryField<number>,
+		battery_mode: fields.evcc_battery_mode as TelemetryField<string>,
+		battery_discharge_control: fields.evcc_battery_discharge_control as TelemetryField<boolean>,
 	};
 }
 

@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.78",
+		"version": "0.1.79",
 		"news": {
+			"0.1.79": {
+				"en": "EVCC home battery bridge: map batteryMode and batteryDischargeControl; feed hold/charge constraints into user_intent.battery; battery FSM reads user_intent first with ems_mirror fallback",
+				"de": "EVCC-Hausbatterie-Brücke: batteryMode und batteryDischargeControl mappen; hold/charge-Vorgaben in user_intent.battery; Batterie-FSM liest user_intent zuerst mit ems_mirror-Fallback"
+			},
 			"0.1.78": {
 				"en": "Daily energy rollup for monotonic counters (PV DAY_ENERGY): one kWh value per calendar day via live sampling; PV-Bias reads rollup first — no dense history.0 needed for day counter",
 				"de": "Tages-Energy-Rollup für monotone Zähler (PV DAY_ENERGY): ein kWh-Wert pro Kalendertag per Live-Sampling; PV-Bias nutzt Rollup zuerst — keine dichte history.0 für Tageszähler nötig"

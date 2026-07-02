@@ -1,6 +1,29 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { readEvccTelemetrySnapshot, type EvccTelemetryReadHost } from "./evcc_telemetry";
+import type { WallboxEvccTelemetryConfig } from "./evcc_config";
+
+function cfg(over: Partial<WallboxEvccTelemetryConfig> = {}): WallboxEvccTelemetryConfig {
+	return {
+		enabledStateId: "",
+		connectedStateId: "",
+		chargingStateId: "",
+		chargePowerWStateId: "",
+		sessionEnergyKwhStateId: "",
+		vehicleSocStateId: "",
+		planActiveStateId: "",
+		planSocStateId: "",
+		planTimeStateId: "",
+		effectivePlanTimeStateId: "",
+		activePhasesStateId: "",
+		configuredPhasesStateId: "",
+		minCurrentAStateId: "",
+		maxCurrentAStateId: "",
+		batteryModeStateId: "",
+		batteryDischargeControlStateId: "",
+		...over,
+	};
+}
 
 function mockHost(states: Record<string, unknown>): EvccTelemetryReadHost {
 	return {
@@ -32,22 +55,11 @@ describe("wallbox evcc telemetry", () => {
 				"evcc.0.status.charging": true,
 				"evcc.0.status.chargePower": 3500,
 			}),
-			{
-				enabledStateId: "",
+			cfg({
 				connectedStateId: "evcc.0.status.connected",
 				chargingStateId: "evcc.0.status.charging",
 				chargePowerWStateId: "evcc.0.status.chargePower",
-				sessionEnergyKwhStateId: "",
-				vehicleSocStateId: "",
-				planActiveStateId: "",
-				planSocStateId: "",
-				planTimeStateId: "",
-				effectivePlanTimeStateId: "",
-				activePhasesStateId: "",
-				configuredPhasesStateId: "",
-				minCurrentAStateId: "",
-				maxCurrentAStateId: "",
-			},
+			}),
 			now,
 		);
 		assert.equal(snap.connected.value, true);
@@ -60,22 +72,9 @@ describe("wallbox evcc telemetry", () => {
 			mockHost({
 				"evcc.0.status.sessionEnergy": 8200,
 			}),
-			{
-				enabledStateId: "",
-				connectedStateId: "",
-				chargingStateId: "",
-				chargePowerWStateId: "",
+			cfg({
 				sessionEnergyKwhStateId: "evcc.0.status.sessionEnergy",
-				vehicleSocStateId: "",
-				planActiveStateId: "",
-				planSocStateId: "",
-				planTimeStateId: "",
-				effectivePlanTimeStateId: "",
-				activePhasesStateId: "",
-				configuredPhasesStateId: "",
-				minCurrentAStateId: "",
-				maxCurrentAStateId: "",
-			},
+			}),
 			now,
 		);
 		assert.equal(snap.session_energy_kwh.status, "valid");
@@ -87,22 +86,9 @@ describe("wallbox evcc telemetry", () => {
 			mockHost({
 				"evcc.0.status.effectivePlanTime": 1_751_107_200,
 			}),
-			{
-				enabledStateId: "",
-				connectedStateId: "",
-				chargingStateId: "",
-				chargePowerWStateId: "",
-				sessionEnergyKwhStateId: "",
-				vehicleSocStateId: "",
-				planActiveStateId: "",
-				planSocStateId: "",
-				planTimeStateId: "",
+			cfg({
 				effectivePlanTimeStateId: "evcc.0.status.effectivePlanTime",
-				activePhasesStateId: "",
-				configuredPhasesStateId: "",
-				minCurrentAStateId: "",
-				maxCurrentAStateId: "",
-			},
+			}),
 			now,
 		);
 		assert.equal(snap.effective_plan_time.status, "valid");
@@ -114,22 +100,11 @@ describe("wallbox evcc telemetry", () => {
 			mockHost({
 				"evcc.0.status.connected": "__missing__",
 			}),
-			{
+			cfg({
 				enabledStateId: "evcc.0.status.enabled",
 				connectedStateId: "evcc.0.status.connected",
 				chargingStateId: "evcc.0.status.charging",
-				chargePowerWStateId: "",
-				sessionEnergyKwhStateId: "",
-				vehicleSocStateId: "",
-				planActiveStateId: "",
-				planSocStateId: "",
-				planTimeStateId: "",
-				effectivePlanTimeStateId: "",
-				activePhasesStateId: "",
-				configuredPhasesStateId: "",
-				minCurrentAStateId: "",
-				maxCurrentAStateId: "",
-			},
+			}),
 			now,
 		);
 		assert.equal(snap.enabled.status, "missing");
@@ -146,22 +121,9 @@ describe("wallbox evcc telemetry", () => {
 				"go-e.0.amperePV": 16,
 				"evcc.0.status.charging": false,
 			}),
-			{
-				enabledStateId: "",
-				connectedStateId: "",
+			cfg({
 				chargingStateId: "evcc.0.status.charging",
-				chargePowerWStateId: "",
-				sessionEnergyKwhStateId: "",
-				vehicleSocStateId: "",
-				planActiveStateId: "",
-				planSocStateId: "",
-				planTimeStateId: "",
-				effectivePlanTimeStateId: "",
-				activePhasesStateId: "",
-				configuredPhasesStateId: "",
-				minCurrentAStateId: "",
-				maxCurrentAStateId: "",
-			},
+			}),
 			now,
 		);
 		assert.equal(snap.charging.value, false);

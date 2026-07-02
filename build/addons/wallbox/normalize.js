@@ -1,7 +1,7 @@
 "use strict";
 /** EVCC telemetry value normalization — missing stays missing, never invent 0/false. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.normalizeOptionalPhases = exports.normalizeOptionalSoc = exports.normalizeOptionalNumber = exports.normalizeOptionalBool = exports.missingField = void 0;
+exports.normalizeOptionalBatteryMode = exports.normalizeOptionalPhases = exports.normalizeOptionalSoc = exports.normalizeOptionalNumber = exports.normalizeOptionalBool = exports.missingField = void 0;
 const sentinel_1 = require("../../intent/core/sentinel");
 const validation_1 = require("../../intent/core/validation");
 function missingField() {
@@ -61,3 +61,20 @@ function normalizeOptionalPhases(raw) {
     return n;
 }
 exports.normalizeOptionalPhases = normalizeOptionalPhases;
+const EVCC_BATTERY_MODES = new Set(["normal", "hold", "charge", "holdcharge", "unknown"]);
+function normalizeOptionalBatteryMode(raw) {
+    if ((0, sentinel_1.isEmptySentinel)(raw))
+        return missingField();
+    if (typeof raw === "number" && Number.isFinite(raw)) {
+        const map = { 0: "unknown", 1: "normal", 2: "hold", 3: "charge", 4: "holdcharge" };
+        const mode = map[raw];
+        return mode ? { value: mode, status: "valid", raw } : { value: null, status: "invalid", raw };
+    }
+    const s = String(raw).trim().toLowerCase();
+    if (!s)
+        return missingField();
+    if (EVCC_BATTERY_MODES.has(s))
+        return { value: s, status: "valid", raw };
+    return { value: null, status: "invalid", raw };
+}
+exports.normalizeOptionalBatteryMode = normalizeOptionalBatteryMode;

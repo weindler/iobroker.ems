@@ -68,6 +68,8 @@ export async function refreshWallboxEvccTelemetry(host: WallboxHost): Promise<vo
 	await writeField(host, WALLBOX_EVCC_STATES.configuredPhases, snap.configured_phases);
 	await writeField(host, WALLBOX_EVCC_STATES.minCurrentA, snap.min_current_a);
 	await writeField(host, WALLBOX_EVCC_STATES.maxCurrentA, snap.max_current_a);
+	await writeField(host, WALLBOX_EVCC_STATES.batteryMode, snap.battery_mode);
+	await writeField(host, WALLBOX_EVCC_STATES.batteryDischargeControl, snap.battery_discharge_control);
 }
 
 function scheduleRefresh(host: WallboxHost): void {

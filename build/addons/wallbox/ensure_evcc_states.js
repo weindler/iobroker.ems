@@ -21,6 +21,8 @@ exports.WALLBOX_EVCC_STATES = {
     configuredPhases: `${EVCC_BASE}.configured_phases`,
     minCurrentA: `${EVCC_BASE}.min_current_a`,
     maxCurrentA: `${EVCC_BASE}.max_current_a`,
+    batteryMode: `${EVCC_BASE}.battery_mode`,
+    batteryDischargeControl: `${EVCC_BASE}.battery_discharge_control`,
 };
 async function ensureWallboxEvccStates(host) {
     const defs = [
@@ -132,6 +134,26 @@ async function ensureWallboxEvccStates(host) {
                 type: "number",
                 role: "value.current",
                 unit: "A",
+                read: true,
+                write: false,
+            },
+        },
+        {
+            id: exports.WALLBOX_EVCC_STATES.batteryMode,
+            common: {
+                name: "EVCC Hausbatterie-Modus",
+                type: "string",
+                role: "state",
+                read: true,
+                write: false,
+            },
+        },
+        {
+            id: exports.WALLBOX_EVCC_STATES.batteryDischargeControl,
+            common: {
+                name: "EVCC Entladesteuerung aktiv",
+                type: "boolean",
+                role: "state",
                 read: true,
                 write: false,
             },

@@ -542,6 +542,45 @@
 					"md": 6,
 					"lg": 6,
 					"xl": 6
+				},
+				"hEvccHomeBattery": {
+					"type": "header",
+					"size": 2,
+					"text": "EVCC — Hausbatterie",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"helpEvccHomeBattery": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "EVCC-Batteriesperre (hold) und Entladesteuerung für User Intent battery. Typisch: evcc.&lt;instanz&gt;.status.batteryMode und batteryDischargeControl. Loadpoint oft .loadpoint.1 statt .0."
+				},
+				"wb_evcc_battery_mode_state": {
+					"type": "objectId",
+					"label": "Hausbatterie-Modus (batteryMode)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_battery_discharge_control_state": {
+					"type": "objectId",
+					"label": "Entladesteuerung aktiv (batteryDischargeControl)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
 				}
 			}
 		},

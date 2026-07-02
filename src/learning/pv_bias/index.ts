@@ -24,10 +24,11 @@ async function runLearningTick(host: PvBiasRunHost & StateHost): Promise<void> {
 	await runPvBiasLearning(host);
 	await runPvHorizon(host);
 	await runPriceLearning(host);
+	// Rollup-Backfill vor House-Load/Battery — sonst fällt der erste Lauf auf history.0 zurück.
+	await ensurePowerRollupForLearning(host);
 	// House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
 	await runHouseLoadLearning(host);
 	await runThermalRuntimeLearning(host);
-	await ensurePowerRollupForLearning(host);
 	await runBatteryRuntimeLearning(host);
 	await runPriceForecastLearning(host);
 	await mirrorLearningPersistenceToStates(host as unknown as PersistenceMirrorHost);

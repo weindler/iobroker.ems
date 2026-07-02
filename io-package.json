@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.76",
+		"version": "0.1.77",
 		"news": {
+			"0.1.77": {
+				"en": "Fix learning tick order: power rollup backfill runs before House Load and Battery Runtime so the first cycle uses ems_rollup instead of history.0 fallback",
+				"de": "Fix Lernzyklus-Reihenfolge: Power-Rollup-Backfill vor House-Load und Battery-Runtime, damit der erste Lauf ems_rollup statt history.0-Fallback nutzt"
+			},
 			"0.1.76": {
 				"en": "Power rollup extended to battery consumption_w (hourly averages); House Load Learning reads EMS rollup first — history.0 no longer required for dense consumption states",
 				"de": "Power-Rollup um battery consumption_w erweitert (Stunden-Mittelwerte); House-Load-Learning nutzt EMS-Rollup zuerst — history.0 für dichte consumption-States nicht mehr nötig"

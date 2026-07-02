@@ -2,6 +2,12 @@ import { initPvBiasLearning, stopPvBiasLearning } from "../learning/pv_bias";
 import { initWeatherLearning, stopWeatherLearning } from "../learning/weather";
 import { withLearningDataPath } from "../learning/data_dir";
 import {
+	initEnergyDailyRollup,
+	stopEnergyDailyRollup,
+	tickEnergyDailyRollup,
+	type EnergyDailyRollupHost,
+} from "../learning/energy_daily_rollup";
+import {
 	initPowerRollup,
 	stopPowerRollup,
 	tickPowerRollup,
@@ -21,8 +27,9 @@ const POLICY_STARTUP_TIMEOUT_MS = 8000;
 let tickTimer: NodeJS.Timeout | null = null;
 let policyAdapter: ioBroker.Adapter | null = null;
 let powerRollupHost: PowerRollupHost | null = null;
+let energyDailyRollupHost: EnergyDailyRollupHost | null = null;
 
-function buildPowerRollupHost(adapter: ioBroker.Adapter): PowerRollupHost {
+function buildRollupHost(adapter: ioBroker.Adapter): PowerRollupHost & EnergyDailyRollupHost {
 	const adapterAny = adapter as unknown as Record<string, unknown>;
 	return {
 		...withLearningDataPath(adapter, adapter as unknown as LiveCacheHost),
@@ -85,7 +92,9 @@ export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<voi
 	const adapterAny = adapter as unknown as Record<string, unknown>;
 
 	await ensureEmsLightStates(host, version);
-	powerRollupHost = buildPowerRollupHost(adapter);
+	energyDailyRollupHost = buildRollupHost(adapter);
+	powerRollupHost = energyDailyRollupHost;
+	await initEnergyDailyRollup(energyDailyRollupHost);
 	await initPowerRollup(powerRollupHost);
 	await initPvBiasLearning(adapter);
 	await initWeatherLearning(adapter);
@@ -136,19 +145,28 @@ export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<voi
 		adapter.log.warn(`EMS-Light state subscribe: ${e}`);
 	}
 	await runEmsLightPhase1Tick(host);
+	if (energyDailyRollupHost) {
+		await tickEnergyDailyRollup(energyDailyRollupHost);
+	}
 	if (powerRollupHost) {
 		await tickPowerRollup(powerRollupHost);
 	}
 
 	const sec = tickIntervalSec(adapter.config);
 	stopEmsLightTick();
-	const rollupHostForTick = powerRollupHost;
+	const dailyHostForTick = energyDailyRollupHost;
+	const powerHostForTick = powerRollupHost;
 	tickTimer = setInterval(() => {
 		void runEmsLightPhase1Tick(host).catch((e) => {
 			adapter.log.error(`EMS-Light tick: ${e}`);
 		});
-		if (rollupHostForTick) {
-			void tickPowerRollup(rollupHostForTick).catch((e) => {
+		if (dailyHostForTick) {
+			void tickEnergyDailyRollup(dailyHostForTick).catch((e) => {
+				adapter.log.error(`Energy-Daily-Rollup tick: ${e}`);
+			});
+		}
+		if (powerHostForTick) {
+			void tickPowerRollup(powerHostForTick).catch((e) => {
 				adapter.log.error(`Power-Rollup tick: ${e}`);
 			});
 		}
@@ -182,6 +200,8 @@ export function stopEmsLightPhase1(): void {
 	stopPvBiasLearning();
 	stopWeatherLearning();
 	stopPowerRollup();
+	stopEnergyDailyRollup();
 	powerRollupHost = null;
+	energyDailyRollupHost = null;
 	stopEmsLightTick();
 }

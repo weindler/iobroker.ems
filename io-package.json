@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.77",
+		"version": "0.1.78",
 		"news": {
+			"0.1.78": {
+				"en": "Daily energy rollup for monotonic counters (PV DAY_ENERGY): one kWh value per calendar day via live sampling; PV-Bias reads rollup first — no dense history.0 needed for day counter",
+				"de": "Tages-Energy-Rollup für monotone Zähler (PV DAY_ENERGY): ein kWh-Wert pro Kalendertag per Live-Sampling; PV-Bias nutzt Rollup zuerst — keine dichte history.0 für Tageszähler nötig"
+			},
 			"0.1.77": {
 				"en": "Fix learning tick order: power rollup backfill runs before House Load and Battery Runtime so the first cycle uses ems_rollup instead of history.0 fallback",
 				"de": "Fix Lernzyklus-Reihenfolge: Power-Rollup-Backfill vor House-Load und Battery-Runtime, damit der erste Lauf ems_rollup statt history.0-Fallback nutzt"

@@ -9,6 +9,7 @@ const price_forecast_1 = require("../price_forecast");
 const house_load_1 = require("../house_load");
 const thermal_runtime_1 = require("../thermal_runtime");
 const battery_runtime_1 = require("../battery_runtime");
+const energy_daily_rollup_1 = require("../energy_daily_rollup");
 const power_rollup_1 = require("../power_rollup");
 const pv_horizon_1 = require("../pv_horizon");
 const data_dir_1 = require("../data_dir");
@@ -16,6 +17,7 @@ const history_bridge_1 = require("../history_bridge");
 const persistence_mirror_1 = require("../persistence_mirror");
 let pvBiasTimer = null;
 async function runLearningTick(host) {
+    await (0, energy_daily_rollup_1.ensureEnergyDailyRollupForLearning)(host);
     await (0, run_1.runPvBiasLearning)(host);
     await (0, pv_horizon_1.runPvHorizon)(host);
     await (0, price_learning_1.runPriceLearning)(host);

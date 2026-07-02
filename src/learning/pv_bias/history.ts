@@ -1,4 +1,5 @@
 import { asNum } from "../../ems_light/state_util";
+import { fetchRollupDayKwh } from "../energy_daily_rollup/read";
 import {
 	fetchHistoryRowsInRange,
 	HISTORY_CHUNK_TIMEOUT_MS,
@@ -11,6 +12,7 @@ import type { PvBiasDayPair } from "./types";
 export type HistoryHost = HistoryQueryHost & {
 	getStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
 	getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
+	getAbsolutePath?: (category?: string) => string;
 };
 
 const MS_PER_DAY = 86_400_000;
@@ -190,6 +192,9 @@ export async function fetchPvBiasDayPairs(
 		} else {
 			actualKwh = stored?.actualKwh ?? null;
 			forecastKwh = stored?.forecastKwh ?? null;
+			if (actualKwh === null) {
+				actualKwh = await fetchRollupDayKwh(host, actualStateId, dateKey);
+			}
 			if (actualKwh === null) {
 				actualKwh = await fetchDayLastValue(host, actualStateId, start, end);
 			}

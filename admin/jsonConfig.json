@@ -1913,7 +1913,7 @@
 				"hPvBiasHistory": {
 					"type": "header",
 					"size": 2,
-					"text": "Historie — PV-Ist (pv_actual_kwh); Forecast-Historie nur wenn Freeze aus",
+					"text": "Historie — PV-Ist (DAY_ENERGY): EMS speichert einen kWh-Wert pro Tag (60s-Tick + onChange) in energy_daily_v1.json — history.0 für den Zähler nicht nötig. Forecast-Historie nur wenn Freeze aus.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,

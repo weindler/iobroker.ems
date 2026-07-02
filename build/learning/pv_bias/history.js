@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchPvBiasDayPairs = exports.fetchDayValueNearTime = exports.fetchDayLastValue = exports.readStateNum = exports.isForeignStateId = exports.dayBoundsMs = void 0;
 const state_util_1 = require("../../ems_light/state_util");
+const read_1 = require("../energy_daily_rollup/read");
 const history_query_1 = require("../history_query");
 const dates_1 = require("./dates");
 const MS_PER_DAY = 86_400_000;
@@ -124,6 +125,9 @@ async function fetchPvBiasDayPairs(host, actualStateId, forecastStateId, options
         else {
             actualKwh = stored?.actualKwh ?? null;
             forecastKwh = stored?.forecastKwh ?? null;
+            if (actualKwh === null) {
+                actualKwh = await (0, read_1.fetchRollupDayKwh)(host, actualStateId, dateKey);
+            }
             if (actualKwh === null) {
                 actualKwh = await fetchDayLastValue(host, actualStateId, start, end);
             }

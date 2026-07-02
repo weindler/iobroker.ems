@@ -73,6 +73,12 @@ const ARTIFACTS: readonly ArtifactDef[] = [
 		fileName: "power_hourly_v1.json",
 		nameDe: "Power-Stunden-Rollup (Backup-Spiegel)",
 	},
+	{
+		key: "energy_daily",
+		category: "learning/energy_daily_rollup",
+		fileName: "energy_daily_v1.json",
+		nameDe: "Energy-Tages-Rollup (Backup-Spiegel)",
+	},
 ] as const;
 
 const BASE = "learning.persistence";

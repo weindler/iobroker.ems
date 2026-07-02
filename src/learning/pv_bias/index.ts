@@ -6,6 +6,7 @@ import { ensurePriceForecastLearningStates, runPriceForecastLearning } from "../
 import { ensureHouseLoadLearningStates, runHouseLoadLearning } from "../house_load";
 import { ensureThermalRuntimeLearningStates, runThermalRuntimeLearning } from "../thermal_runtime";
 import { ensureBatteryRuntimeLearningStates, runBatteryRuntimeLearning } from "../battery_runtime";
+import { ensureEnergyDailyRollupForLearning } from "../energy_daily_rollup";
 import { ensurePowerRollupForLearning } from "../power_rollup";
 import { ensurePvHorizonLearningStates, runPvHorizon } from "../pv_horizon";
 import { withLearningDataPath } from "../data_dir";
@@ -21,6 +22,7 @@ import type { StateHost } from "../../ems_light/state_util";
 let pvBiasTimer: NodeJS.Timeout | null = null;
 
 async function runLearningTick(host: PvBiasRunHost & StateHost): Promise<void> {
+	await ensureEnergyDailyRollupForLearning(host);
 	await runPvBiasLearning(host);
 	await runPvHorizon(host);
 	await runPriceLearning(host);

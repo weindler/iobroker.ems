@@ -32,6 +32,7 @@ import { parseInboxValue } from "./inbox";
 import { goeWallboxTemplateFlat, wallboxMappingFromConfig, WALLBOX_ALL_MAPPING_IDS } from "./mapping_config";
 import { ensureAddonMappingStates, syncNativeMappingToStates } from "./mapping_sync";
 import { initEmsLightPhase1, stopEmsLightPhase1 } from "./ems_light";
+import { handleEnergyDailyRollupStateChange } from "./learning/energy_daily_rollup";
 import { handlePowerRollupStateChange } from "./learning/power_rollup";
 import { handleGlobalModesStateChange } from "./policy";
 import { handleIntentStateChange } from "./intent";
@@ -156,6 +157,7 @@ class Ems extends utils.Adapter {
 			handleIntentStateChange(this.namespace, id, state);
 			handleWallboxForeignStateChange(this.namespace, id);
 			handlePowerRollupStateChange(id, state);
+			handleEnergyDailyRollupStateChange(id, state);
 		}
 		const inboxId = `${this.namespace}.${STATE.command.inbox}`;
 		if (id !== inboxId || !state) return;

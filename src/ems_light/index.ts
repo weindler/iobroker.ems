@@ -1,6 +1,12 @@
 import { initPvBiasLearning, stopPvBiasLearning } from "../learning/pv_bias";
 import { initWeatherLearning, stopWeatherLearning } from "../learning/weather";
 import { withLearningDataPath } from "../learning/data_dir";
+import {
+	initPowerRollup,
+	stopPowerRollup,
+	tickPowerRollup,
+	type PowerRollupHost,
+} from "../learning/power_rollup";
 import { initPolicyEngine, stopPolicyEngine, type PolicyEngineHost } from "../policy";
 import { initIntentEngine, stopIntentEngine, type IntentEngineHost } from "../intent";
 import { resetGlobalModesRuntime } from "../global_modes";
@@ -14,6 +20,28 @@ const INTENT_WALLBOX_REQUEST_STATE = "user_intent.inputs.iobroker.wallbox.reques
 const POLICY_STARTUP_TIMEOUT_MS = 8000;
 let tickTimer: NodeJS.Timeout | null = null;
 let policyAdapter: ioBroker.Adapter | null = null;
+let powerRollupHost: PowerRollupHost | null = null;
+
+function buildPowerRollupHost(adapter: ioBroker.Adapter): PowerRollupHost {
+	const adapterAny = adapter as unknown as Record<string, unknown>;
+	return {
+		...withLearningDataPath(adapter, adapter as unknown as LiveCacheHost),
+		namespace: adapter.namespace,
+		config: adapter.config,
+		log: adapter.log,
+		getHistoryAsync: adapter.getHistoryAsync.bind(adapter),
+		getStateAsync: adapter.getStateAsync.bind(adapter),
+		getForeignStateAsync: adapter.getForeignStateAsync.bind(adapter),
+		subscribeForeignStatesAsync:
+			typeof adapterAny.subscribeForeignStatesAsync === "function"
+				? adapterAny.subscribeForeignStatesAsync.bind(adapter)
+				: undefined,
+		unsubscribeForeignStatesAsync:
+			typeof adapterAny.unsubscribeForeignStatesAsync === "function"
+				? adapterAny.unsubscribeForeignStatesAsync.bind(adapter)
+				: undefined,
+	};
+}
 
 function tickIntervalSec(config: unknown): number {
 	if (!config || typeof config !== "object") {
@@ -56,6 +84,8 @@ export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<voi
 	const adapterAny = adapter as unknown as Record<string, unknown>;
 
 	await ensureEmsLightStates(host, version);
+	powerRollupHost = buildPowerRollupHost(adapter);
+	await initPowerRollup(powerRollupHost);
 	await initPvBiasLearning(adapter);
 	await initWeatherLearning(adapter);
 	const policyHost = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & PolicyEngineHost);
@@ -105,13 +135,22 @@ export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<voi
 		adapter.log.warn(`EMS-Light state subscribe: ${e}`);
 	}
 	await runEmsLightPhase1Tick(host);
+	if (powerRollupHost) {
+		await tickPowerRollup(powerRollupHost);
+	}
 
 	const sec = tickIntervalSec(adapter.config);
 	stopEmsLightTick();
+	const rollupHostForTick = powerRollupHost;
 	tickTimer = setInterval(() => {
 		void runEmsLightPhase1Tick(host).catch((e) => {
 			adapter.log.error(`EMS-Light tick: ${e}`);
 		});
+		if (rollupHostForTick) {
+			void tickPowerRollup(rollupHostForTick).catch((e) => {
+				adapter.log.error(`Power-Rollup tick: ${e}`);
+			});
+		}
 	}, sec * 1000);
 
 	adapter.log.info(`EMS-Light Phase 1 ready (read-only, tick ${sec}s)`);
@@ -141,5 +180,7 @@ export function stopEmsLightPhase1(): void {
 	resetGlobalModesRuntime();
 	stopPvBiasLearning();
 	stopWeatherLearning();
+	stopPowerRollup();
+	powerRollupHost = null;
 	stopEmsLightTick();
 }

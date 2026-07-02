@@ -4,6 +4,7 @@ exports.stopEmsLightPhase1 = exports.initEmsLightPhase1 = void 0;
 const pv_bias_1 = require("../learning/pv_bias");
 const weather_1 = require("../learning/weather");
 const data_dir_1 = require("../learning/data_dir");
+const power_rollup_1 = require("../learning/power_rollup");
 const policy_1 = require("../policy");
 const intent_1 = require("../intent");
 const global_modes_1 = require("../global_modes");
@@ -15,6 +16,25 @@ const INTENT_WALLBOX_REQUEST_STATE = "user_intent.inputs.iobroker.wallbox.reques
 const POLICY_STARTUP_TIMEOUT_MS = 8000;
 let tickTimer = null;
 let policyAdapter = null;
+let powerRollupHost = null;
+function buildPowerRollupHost(adapter) {
+    const adapterAny = adapter;
+    return {
+        ...(0, data_dir_1.withLearningDataPath)(adapter, adapter),
+        namespace: adapter.namespace,
+        config: adapter.config,
+        log: adapter.log,
+        getHistoryAsync: adapter.getHistoryAsync.bind(adapter),
+        getStateAsync: adapter.getStateAsync.bind(adapter),
+        getForeignStateAsync: adapter.getForeignStateAsync.bind(adapter),
+        subscribeForeignStatesAsync: typeof adapterAny.subscribeForeignStatesAsync === "function"
+            ? adapterAny.subscribeForeignStatesAsync.bind(adapter)
+            : undefined,
+        unsubscribeForeignStatesAsync: typeof adapterAny.unsubscribeForeignStatesAsync === "function"
+            ? adapterAny.unsubscribeForeignStatesAsync.bind(adapter)
+            : undefined,
+    };
+}
 function tickIntervalSec(config) {
     if (!config || typeof config !== "object") {
         return DEFAULT_TICK_SEC;
@@ -50,6 +70,8 @@ async function initEmsLightPhase1(adapter) {
     const host = adapter;
     const adapterAny = adapter;
     await (0, ensure_states_1.ensureEmsLightStates)(host, version);
+    powerRollupHost = buildPowerRollupHost(adapter);
+    await (0, power_rollup_1.initPowerRollup)(powerRollupHost);
     await (0, pv_bias_1.initPvBiasLearning)(adapter);
     await (0, weather_1.initWeatherLearning)(adapter);
     const policyHost = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
@@ -97,12 +119,21 @@ async function initEmsLightPhase1(adapter) {
         adapter.log.warn(`EMS-Light state subscribe: ${e}`);
     }
     await (0, tick_1.runEmsLightPhase1Tick)(host);
+    if (powerRollupHost) {
+        await (0, power_rollup_1.tickPowerRollup)(powerRollupHost);
+    }
     const sec = tickIntervalSec(adapter.config);
     stopEmsLightTick();
+    const rollupHostForTick = powerRollupHost;
     tickTimer = setInterval(() => {
         void (0, tick_1.runEmsLightPhase1Tick)(host).catch((e) => {
             adapter.log.error(`EMS-Light tick: ${e}`);
         });
+        if (rollupHostForTick) {
+            void (0, power_rollup_1.tickPowerRollup)(rollupHostForTick).catch((e) => {
+                adapter.log.error(`Power-Rollup tick: ${e}`);
+            });
+        }
     }, sec * 1000);
     adapter.log.info(`EMS-Light Phase 1 ready (read-only, tick ${sec}s)`);
 }
@@ -126,6 +157,8 @@ function stopEmsLightPhase1() {
     (0, global_modes_1.resetGlobalModesRuntime)();
     (0, pv_bias_1.stopPvBiasLearning)();
     (0, weather_1.stopWeatherLearning)();
+    (0, power_rollup_1.stopPowerRollup)();
+    powerRollupHost = null;
     stopEmsLightTick();
 }
 exports.stopEmsLightPhase1 = stopEmsLightPhase1;

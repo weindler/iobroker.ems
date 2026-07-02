@@ -5,6 +5,7 @@ import {
 	HISTORY_CHUNK_TIMEOUT_MS,
 	HISTORY_ROWS_PER_DAY,
 } from "../history_query";
+import { fetchRollupPowerHistory } from "../power_rollup";
 import {
 	MS_PER_HOUR,
 	PLAUSIBLE_POWER_W_MAX,
@@ -82,6 +83,7 @@ export type BatteryHistoryHost = {
 	) => Promise<{ result?: ioBroker.GetHistoryResult; step?: number; sessionId?: number }>;
 	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
 	getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
+	getAbsolutePath?: (category?: string) => string;
 };
 
 function hourBucket(ts: number): number {
@@ -184,6 +186,8 @@ export async function fetchSocHistoryRaw(
 	return points;
 }
 
+export type PowerHistoryMode = "ems_rollup" | "history_fallback";
+
 export type PowerHistoryMeta = {
 	rawRows: number;
 	normalizedRows: number;
@@ -193,6 +197,7 @@ export type PowerHistoryMeta = {
 	hourlyDischargePoints: number;
 	powerInvert: boolean;
 	powerInvertAuto: boolean;
+	powerHistoryMode: PowerHistoryMode;
 };
 
 type HistoryRow = { ts?: number; val?: unknown };
@@ -232,7 +237,7 @@ export function resolveEffectivePowerInvert(
 export function aggregatePowerPointsByHour(
 	rows: HistoryRow[],
 	powerInvert: boolean,
-): { points: PowerPoint[]; lastValidTs: number | null; meta: Omit<PowerHistoryMeta, "powerInvert" | "powerInvertAuto"> } {
+): { points: PowerPoint[]; lastValidTs: number | null; meta: Omit<PowerHistoryMeta, "powerInvert" | "powerInvertAuto" | "powerHistoryMode"> } {
 	const byHour = new Map<
 		number,
 		{ ts: number; maxChargeW: number | null; maxDischargeW: number | null }
@@ -301,6 +306,15 @@ export async function fetchPowerHistory(
 	lookbackDays: number,
 	powerInvert = false,
 ): Promise<{ points: PowerPoint[]; lastValidTs: number | null; meta: PowerHistoryMeta }> {
+	const rollup = await fetchRollupPowerHistory(host, stateId, lookbackDays);
+	if (rollup) {
+		return {
+			points: rollup.points,
+			lastValidTs: rollup.lastValidTs,
+			meta: rollup.meta,
+		};
+	}
+
 	const rows = await fetchHistoryRowsLookback(
 		host,
 		stateId,
@@ -313,7 +327,12 @@ export async function fetchPowerHistory(
 	return {
 		points,
 		lastValidTs,
-		meta: { ...meta, powerInvert: invert, powerInvertAuto: autoDetected },
+		meta: {
+			...meta,
+			powerInvert: invert,
+			powerInvertAuto: autoDetected,
+			powerHistoryMode: "history_fallback",
+		},
 	};
 }
 

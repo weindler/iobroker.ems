@@ -88,6 +88,8 @@ export type BatteryRuntimeComputeResult = {
 	powerInvertApplied: boolean | null;
 	/** Diagnose: 1 = Invert automatisch erkannt. */
 	powerInvertAuto: boolean | null;
+	/** Diagnose: ems_rollup oder history_fallback. */
+	powerHistoryMode: string;
 };
 
 export type BatteryRuntimePersist = {

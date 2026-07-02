@@ -9,6 +9,7 @@ const price_forecast_1 = require("../price_forecast");
 const house_load_1 = require("../house_load");
 const thermal_runtime_1 = require("../thermal_runtime");
 const battery_runtime_1 = require("../battery_runtime");
+const power_rollup_1 = require("../power_rollup");
 const pv_horizon_1 = require("../pv_horizon");
 const data_dir_1 = require("../data_dir");
 const history_bridge_1 = require("../history_bridge");
@@ -21,6 +22,7 @@ async function runLearningTick(host) {
     // House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
     await (0, house_load_1.runHouseLoadLearning)(host);
     await (0, thermal_runtime_1.runThermalRuntimeLearning)(host);
+    await (0, power_rollup_1.ensurePowerRollupForLearning)(host);
     await (0, battery_runtime_1.runBatteryRuntimeLearning)(host);
     await (0, price_forecast_1.runPriceForecastLearning)(host);
     await (0, persistence_mirror_1.mirrorLearningPersistenceToStates)(host);

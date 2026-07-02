@@ -67,6 +67,12 @@ const ARTIFACTS: readonly ArtifactDef[] = [
 		fileName: "pv_bias_daily_v1.json",
 		nameDe: "PV-Bias Tages-Snapshots (Backup-Spiegel)",
 	},
+	{
+		key: "power_hourly",
+		category: "learning/power_rollup",
+		fileName: "power_hourly_v1.json",
+		nameDe: "Power-Stunden-Rollup (Backup-Spiegel)",
+	},
 ] as const;
 
 const BASE = "learning.persistence";

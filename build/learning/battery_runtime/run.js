@@ -60,6 +60,10 @@ async function writeResult(host, result, lastRun) {
             ack: true,
         });
     }
+    await host.setStateAsync("learning.battery_runtime.power_history_mode", {
+        val: result.powerHistoryMode ?? "",
+        ack: true,
+    });
 }
 async function runBatteryRuntimeLearning(host) {
     const cfg = (0, config_1.batteryRuntimeConfigFromAdapter)(host.config);

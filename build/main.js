@@ -39,6 +39,7 @@ const inbox_1 = require("./inbox");
 const mapping_config_1 = require("./mapping_config");
 const mapping_sync_1 = require("./mapping_sync");
 const ems_light_1 = require("./ems_light");
+const power_rollup_1 = require("./learning/power_rollup");
 const policy_1 = require("./policy");
 const intent_1 = require("./intent");
 const pipeline_1 = require("./pipeline");
@@ -147,6 +148,7 @@ class Ems extends utils.Adapter {
             (0, policy_1.handleGlobalModesStateChange)(this.namespace, id);
             (0, intent_1.handleIntentStateChange)(this.namespace, id, state);
             (0, wallbox_1.handleWallboxForeignStateChange)(this.namespace, id);
+            (0, power_rollup_1.handlePowerRollupStateChange)(id, state);
         }
         const inboxId = `${this.namespace}.${states_1.STATE.command.inbox}`;
         if (id !== inboxId || !state)

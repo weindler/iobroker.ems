@@ -333,6 +333,7 @@ export function computeBatteryRuntimeLearning(params: {
 		powerHourlyDischargePoints: null,
 		powerInvertApplied: null,
 		powerInvertAuto: null,
+		powerHistoryMode: "",
 	};
 }
 
@@ -345,6 +346,7 @@ const EMPTY_POWER_DIAGNOSTICS = {
 	powerHourlyDischargePoints: null,
 	powerInvertApplied: null,
 	powerInvertAuto: null,
+	powerHistoryMode: "",
 } as const;
 
 export function withPowerDiagnostics(
@@ -362,6 +364,7 @@ export function withPowerDiagnostics(
 		powerHourlyDischargePoints: meta.hourlyDischargePoints,
 		powerInvertApplied: meta.powerInvert,
 		powerInvertAuto: meta.powerInvertAuto,
+		powerHistoryMode: meta.powerHistoryMode,
 	};
 }
 

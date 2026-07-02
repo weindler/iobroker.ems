@@ -6,6 +6,7 @@ import { ensurePriceForecastLearningStates, runPriceForecastLearning } from "../
 import { ensureHouseLoadLearningStates, runHouseLoadLearning } from "../house_load";
 import { ensureThermalRuntimeLearningStates, runThermalRuntimeLearning } from "../thermal_runtime";
 import { ensureBatteryRuntimeLearningStates, runBatteryRuntimeLearning } from "../battery_runtime";
+import { ensurePowerRollupForLearning } from "../power_rollup";
 import { ensurePvHorizonLearningStates, runPvHorizon } from "../pv_horizon";
 import { withLearningDataPath } from "../data_dir";
 import { withHistoryBridge } from "../history_bridge";
@@ -26,6 +27,7 @@ async function runLearningTick(host: PvBiasRunHost & StateHost): Promise<void> {
 	// House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
 	await runHouseLoadLearning(host);
 	await runThermalRuntimeLearning(host);
+	await ensurePowerRollupForLearning(host);
 	await runBatteryRuntimeLearning(host);
 	await runPriceForecastLearning(host);
 	await mirrorLearningPersistenceToStates(host as unknown as PersistenceMirrorHost);

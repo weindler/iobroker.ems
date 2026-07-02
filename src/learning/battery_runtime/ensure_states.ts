@@ -54,6 +54,7 @@ export async function ensureBatteryRuntimeLearningStates(host: StateHost): Promi
 		numState("learning.battery_runtime.power_hourly_discharge_points", "Battery-Runtime Power Stunden-Entlade-Peaks"),
 		numState("learning.battery_runtime.power_invert_applied", "Battery-Runtime Power-Invert aktiv (0/1)"),
 		numState("learning.battery_runtime.power_invert_auto", "Battery-Runtime Power-Invert auto (0/1)"),
+		strState("learning.battery_runtime.power_history_mode", "Battery-Runtime Power-Quelle (ems_rollup|history_fallback)"),
 	];
 
 	await ensureStates(host, defs);

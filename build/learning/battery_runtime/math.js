@@ -253,6 +253,7 @@ function computeBatteryRuntimeLearning(params) {
         powerHourlyDischargePoints: null,
         powerInvertApplied: null,
         powerInvertAuto: null,
+        powerHistoryMode: "",
     };
 }
 exports.computeBatteryRuntimeLearning = computeBatteryRuntimeLearning;
@@ -265,6 +266,7 @@ const EMPTY_POWER_DIAGNOSTICS = {
     powerHourlyDischargePoints: null,
     powerInvertApplied: null,
     powerInvertAuto: null,
+    powerHistoryMode: "",
 };
 function withPowerDiagnostics(result, meta) {
     if (!meta)
@@ -279,6 +281,7 @@ function withPowerDiagnostics(result, meta) {
         powerHourlyDischargePoints: meta.hourlyDischargePoints,
         powerInvertApplied: meta.powerInvert,
         powerInvertAuto: meta.powerInvertAuto,
+        powerHistoryMode: meta.powerHistoryMode,
     };
 }
 exports.withPowerDiagnostics = withPowerDiagnostics;

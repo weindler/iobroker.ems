@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.distinctSocSampleDays = exports.readSecondsSinceFullCharge = exports.readLiveSoc = exports.readLiveCapacityKwh = exports.fetchPowerHistory = exports.aggregatePowerPointsByHour = exports.resolveEffectivePowerInvert = exports.fetchSocHistoryRaw = exports.fetchSocHistory = exports.normalizeBatteryPowerW = exports.isValidCapacityKwh = exports.isValidSoc = exports.mergeDailyAstroTimes = exports.buildDailyAstroTimes = exports.fetchAstroTimeHistory = exports.parseAstroTimeValue = void 0;
 const state_util_1 = require("../../ems_light/state_util");
 const history_query_1 = require("../history_query");
+const power_rollup_1 = require("../power_rollup");
 const constants_1 = require("./constants");
 const time_1 = require("./time");
 function parseAstroTimeValue(raw) {
@@ -221,13 +222,26 @@ function aggregatePowerPointsByHour(rows, powerInvert) {
 }
 exports.aggregatePowerPointsByHour = aggregatePowerPointsByHour;
 async function fetchPowerHistory(host, stateId, lookbackDays, powerInvert = false) {
+    const rollup = await (0, power_rollup_1.fetchRollupPowerHistory)(host, stateId, lookbackDays);
+    if (rollup) {
+        return {
+            points: rollup.points,
+            lastValidTs: rollup.lastValidTs,
+            meta: rollup.meta,
+        };
+    }
     const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, stateId, lookbackDays, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
     const { invert, autoDetected } = resolveEffectivePowerInvert(powerInvert, rows);
     const { points, lastValidTs, meta } = aggregatePowerPointsByHour(rows, invert);
     return {
         points,
         lastValidTs,
-        meta: { ...meta, powerInvert: invert, powerInvertAuto: autoDetected },
+        meta: {
+            ...meta,
+            powerInvert: invert,
+            powerInvertAuto: autoDetected,
+            powerHistoryMode: "history_fallback",
+        },
     };
 }
 exports.fetchPowerHistory = fetchPowerHistory;

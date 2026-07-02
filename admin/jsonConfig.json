@@ -2489,7 +2489,7 @@
 				},
 				"hBatteryRuntimeLearningHelp": {
 					"type": "staticText",
-					"text": "Lernt Nachtentladung, Lade-/Entladeraten und Vollladung aus History. Vollladung/Top-Off: addons.battery.mapping.seconds_since_full_charge (z. B. Sonnen secondsSinceFullCharge). Nachtfenster optional Astro. SOC: mapping.soc_pct. Leistung optional; bei Sonnen pacTotal „Leistung invertieren“. Read-only.",
+					"text": "Lernt Nachtentladung, Lade-/Entladeraten und Vollladung. SOC und Astro: history.0 onChange empfohlen. Batterieleistung (pacTotal): EMS sammelt stündliche Maxima selbst (60s-Tick + onChange) — history.0 für Leistung nicht nötig. Vollladung/Top-Off: mapping.seconds_since_full_charge. Bei Sonnen pacTotal „Leistung invertieren“. Diagnose: learning.battery_runtime.power_history_mode = ems_rollup. Read-only.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,

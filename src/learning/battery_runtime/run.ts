@@ -117,6 +117,10 @@ async function writeResult(
 			ack: true,
 		});
 	}
+	await host.setStateAsync("learning.battery_runtime.power_history_mode", {
+		val: result.powerHistoryMode ?? "",
+		ack: true,
+	});
 }
 
 export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Promise<void> {

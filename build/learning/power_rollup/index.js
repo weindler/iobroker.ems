@@ -1,9 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopPowerRollup = exports.fetchRollupPowerHistory = exports.ensurePowerRollupForLearning = exports.handlePowerRollupStateChange = exports.tickPowerRollup = exports.initPowerRollup = void 0;
+exports.stopPowerRollup = exports.fetchRollupHouseLoadSamples = exports.fetchRollupPowerHistory = exports.ensurePowerRollupForLearning = exports.handlePowerRollupStateChange = exports.tickPowerRollup = exports.initPowerRollup = void 0;
 const state_util_1 = require("../../ems_light/state_util");
-const constants_1 = require("../battery_runtime/constants");
-const config_1 = require("../battery_runtime/config");
 const backfill_1 = require("./backfill");
 const buffer_1 = require("./buffer");
 const hour_1 = require("./hour");
@@ -45,15 +43,30 @@ function initBufferFromPersist(source, persist, nowMs) {
     const src = persist.sources[source.sourceKey];
     const rec = src?.hours[hourKey];
     if (!rec) {
-        return (0, buffer_1.emptyHourBuffer)(hourKey);
+        return (0, buffer_1.emptyHourBuffer)(hourKey, source.rollupMode);
+    }
+    if (source.rollupMode === "unidirectional_avg") {
+        return {
+            hourKey,
+            rollupMode: "unidirectional_avg",
+            sampleCount: rec.sampleCount,
+            chargeSamples: 0,
+            dischargeSamples: 0,
+            maxChargeW: null,
+            maxDischargeW: null,
+            sumPowerW: rec.sumPowerW ?? 0,
+            lastSampleTs: rec.lastSampleTs,
+        };
     }
     return {
         hourKey,
+        rollupMode: "bidirectional_max",
         sampleCount: rec.sampleCount,
         chargeSamples: rec.chargeSamples,
         dischargeSamples: rec.dischargeSamples,
         maxChargeW: rec.maxChargeW,
         maxDischargeW: rec.maxDischargeW,
+        sumPowerW: 0,
         lastSampleTs: rec.lastSampleTs,
     };
 }
@@ -76,16 +89,20 @@ function finalizeHourBuffer(persist, source, buffer) {
     const existing = persist.sources[source.sourceKey] ?? {
         sourceKey: source.sourceKey,
         stateId: source.stateId,
+        rollupMode: source.rollupMode,
         powerInvert: source.powerInvert,
+        powerUnit: source.powerUnit,
         backfillDone: false,
         hours: {},
     };
     const hours = { ...existing.hours };
-    hours[record.hourKey] = (0, persist_1.mergeHourRecord)(hours[record.hourKey], record);
+    hours[record.hourKey] = (0, persist_1.mergeHourRecord)(hours[record.hourKey], record, source.rollupMode);
     return (0, persist_1.upsertSourcePersist)(persist, {
         ...existing,
         stateId: source.stateId,
+        rollupMode: source.rollupMode,
         powerInvert: source.powerInvert,
+        powerUnit: source.powerUnit,
         hours,
     });
 }
@@ -105,9 +122,9 @@ async function processSample(host, source, ts, rawW) {
         const persist = await loadPersist(host);
         persistCache = finalizeHourBuffer(persist, source, runtime.buffer);
         persistDirty = true;
-        runtime.buffer = (0, buffer_1.emptyHourBuffer)(newHourKey);
+        runtime.buffer = (0, buffer_1.emptyHourBuffer)(newHourKey, source.rollupMode);
     }
-    runtime.buffer = (0, buffer_1.ingestPowerSample)(runtime.buffer, ts, rawW, source.powerInvert);
+    runtime.buffer = (0, buffer_1.ingestRollupSample)(runtime.buffer, ts, rawW, source.rollupMode, source.powerInvert, source.powerUnit);
 }
 async function refreshSubscriptions(host, sources) {
     const needed = new Set(sources.map((s) => s.stateId));
@@ -198,7 +215,7 @@ async function tickPowerRollup(host) {
             const persist = await loadPersist(host);
             persistCache = finalizeHourBuffer(persist, source, runtime.buffer);
             persistDirty = true;
-            runtime.buffer = (0, buffer_1.emptyHourBuffer)(currentHourKey);
+            runtime.buffer = (0, buffer_1.emptyHourBuffer)(currentHourKey, source.rollupMode);
         }
         const rawW = await readLiveRawW(host, source.stateId);
         if (rawW !== null) {
@@ -244,10 +261,8 @@ async function ensurePowerRollupForLearning(host) {
     if (!baseDir(host)) {
         return;
     }
-    const cfg = (0, config_1.batteryRuntimeConfigFromAdapter)(host.config);
-    const lookback = cfg.lookbackDays > 0 ? cfg.lookbackDays : constants_1.DEFAULT_LOOKBACK_DAYS;
     const sources = await (0, registry_1.resolveDensePowerSources)(host);
-    await (0, backfill_1.ensurePowerRollupBackfill)(host, sources, lookback);
+    await (0, backfill_1.ensurePowerRollupBackfill)(host, sources);
     persistCache = null;
 }
 exports.ensurePowerRollupForLearning = ensurePowerRollupForLearning;
@@ -258,7 +273,7 @@ async function fetchRollupPowerHistory(host, stateId, lookbackDays) {
     }
     const persist = await (0, persist_1.readPowerHourlyPersist)(dir);
     const source = (0, rollup_points_1.findSourceByStateId)(persist, stateId);
-    if (!source) {
+    if (!source || !(0, rollup_points_1.isBidirectionalRollupSource)(source)) {
         return null;
     }
     const result = (0, rollup_points_1.rollupSourceToPowerPoints)(source, lookbackDays);
@@ -268,6 +283,23 @@ async function fetchRollupPowerHistory(host, stateId, lookbackDays) {
     return result;
 }
 exports.fetchRollupPowerHistory = fetchRollupPowerHistory;
+async function fetchRollupHouseLoadSamples(host, stateId, lookbackDays) {
+    const dir = host.getAbsolutePath?.(PERSIST_CATEGORY);
+    if (!dir || !stateId) {
+        return null;
+    }
+    const persist = await (0, persist_1.readPowerHourlyPersist)(dir);
+    const source = (0, rollup_points_1.findSourceByStateId)(persist, stateId);
+    if (!source || source.rollupMode !== "unidirectional_avg") {
+        return null;
+    }
+    const result = (0, rollup_points_1.rollupSourceToHouseLoadSamples)(source, lookbackDays);
+    if (result.samples.length === 0) {
+        return null;
+    }
+    return result;
+}
+exports.fetchRollupHouseLoadSamples = fetchRollupHouseLoadSamples;
 function stopPowerRollup() {
     rollupHost = null;
     persistCache = null;

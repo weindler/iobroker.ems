@@ -38,7 +38,7 @@ async function readPowerHourlyPersist(baseDir) {
         const raw = await fs.readFile(path.join(baseDir, types_1.POWER_HOURLY_FILENAME), "utf8");
         const parsed = JSON.parse(raw);
         if (parsed?.version === 1 && parsed.sources && typeof parsed.sources === "object") {
-            return parsed;
+            return normalizePersist(parsed);
         }
     }
     catch {
@@ -47,6 +47,17 @@ async function readPowerHourlyPersist(baseDir) {
     return emptyPowerHourlyPersist();
 }
 exports.readPowerHourlyPersist = readPowerHourlyPersist;
+function normalizePersist(persist) {
+    const sources = {};
+    for (const [key, source] of Object.entries(persist.sources)) {
+        sources[key] = {
+            ...source,
+            rollupMode: (0, types_1.effectiveRollupMode)(source),
+            powerUnit: source.powerUnit ?? "W",
+        };
+    }
+    return { ...persist, sources };
+}
 async function writePowerHourlyPersist(baseDir, persist) {
     await fs.mkdir(baseDir, { recursive: true });
     const next = {
@@ -66,12 +77,11 @@ function upsertSourcePersist(persist, source) {
     };
 }
 exports.upsertSourcePersist = upsertSourcePersist;
-function mergeHourRecord(existing, incoming) {
-    if (!existing)
-        return incoming;
+function mergeBidirectional(existing, incoming) {
     return {
         hourKey: incoming.hourKey,
         sampleCount: existing.sampleCount + incoming.sampleCount,
+        lastSampleTs: Math.max(existing.lastSampleTs, incoming.lastSampleTs),
         chargeSamples: existing.chargeSamples + incoming.chargeSamples,
         dischargeSamples: existing.dischargeSamples + incoming.dischargeSamples,
         maxChargeW: existing.maxChargeW === null
@@ -84,8 +94,31 @@ function mergeHourRecord(existing, incoming) {
             : incoming.maxDischargeW === null
                 ? existing.maxDischargeW
                 : Math.max(existing.maxDischargeW, incoming.maxDischargeW),
-        lastSampleTs: Math.max(existing.lastSampleTs, incoming.lastSampleTs),
     };
+}
+function mergeUnidirectionalAvg(existing, incoming) {
+    const sampleCount = existing.sampleCount + incoming.sampleCount;
+    const sumPowerW = (existing.sumPowerW ?? 0) + (incoming.sumPowerW ?? 0);
+    return {
+        hourKey: incoming.hourKey,
+        sampleCount,
+        lastSampleTs: Math.max(existing.lastSampleTs, incoming.lastSampleTs),
+        chargeSamples: 0,
+        dischargeSamples: 0,
+        maxChargeW: null,
+        maxDischargeW: null,
+        sumPowerW,
+        avgPowerW: sampleCount > 0 ? Math.round(sumPowerW / sampleCount) : null,
+    };
+}
+function mergeHourRecord(existing, incoming, mode) {
+    if (!existing) {
+        return incoming;
+    }
+    if (mode === "unidirectional_avg") {
+        return mergeUnidirectionalAvg(existing, incoming);
+    }
+    return mergeBidirectional(existing, incoming);
 }
 exports.mergeHourRecord = mergeHourRecord;
 function pruneSourceHours(source, retainDays = types_1.DEFAULT_RETENTION_DAYS, nowMs = Date.now()) {

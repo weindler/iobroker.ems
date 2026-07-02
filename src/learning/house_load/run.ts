@@ -1,6 +1,6 @@
 import { sourceLabelFromStateId, houseLoadConfigFromAdapter } from "./config";
 import { MIN_DAY_HOURS } from "./constants";
-import { distinctSampleDays, distinctSampleDaysWithMinHours, fetchHouseLoadSamples } from "./history";
+import { distinctSampleDays, distinctSampleDaysWithMinHours, fetchHouseLoadSamples, type HouseLoadHistoryStats } from "./history";
 import { resolveHouseLoadPowerStateId } from "./mapping";
 import {
 	computeHouseLoadLearning,
@@ -37,7 +37,11 @@ async function setNumIfValid(host: HouseLoadRunHost, id: string, value: number |
 	}
 }
 
-async function writeResult(host: HouseLoadRunHost, result: HouseLoadComputeResult): Promise<void> {
+async function writeResult(
+	host: HouseLoadRunHost,
+	result: HouseLoadComputeResult,
+	historyMode?: HouseLoadHistoryStats["historySource"],
+): Promise<void> {
 	const lastRun = new Date().toISOString();
 	await setNumIfValid(host, "learning.house_load.sample_count", result.sampleCount);
 	await setNumIfValid(host, "learning.house_load.sample_days", result.sampleDays);
@@ -77,6 +81,10 @@ async function writeResult(host: HouseLoadRunHost, result: HouseLoadComputeResul
 	});
 	await host.setStateAsync("learning.house_load.source_state", {
 		val: result.sourceStateId,
+		ack: true,
+	});
+	await host.setStateAsync("learning.house_load.history_mode", {
+		val: historyMode ?? "",
 		ack: true,
 	});
 	await host.setStateAsync("learning.house_load.error", { val: result.error, ack: true });
@@ -129,7 +137,7 @@ export async function runHouseLoadLearning(host: HouseLoadRunHost): Promise<void
 			result.healthJson.last_persist_at = lastRun;
 		}
 
-		await writeResult(host, result);
+		await writeResult(host, result, stats.historySource);
 
 		host.log.info(
 			`House-Load-Learning: status=${result.status} health=${result.healthStatus} samples=${result.sampleCount} days=${result.sampleDays} source=${sourceLabelFromStateId(resolved.stateId)} (history=${stats.historySource}, ${stats.rowsTotal} rows → ${stats.hourlySamples} h, span=${stats.tsSpanHours ?? "?"}h)`,

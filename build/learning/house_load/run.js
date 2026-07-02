@@ -20,7 +20,7 @@ async function setNumIfValid(host, id, value) {
         await host.setStateAsync(id, { val: value, ack: true });
     }
 }
-async function writeResult(host, result) {
+async function writeResult(host, result, historyMode) {
     const lastRun = new Date().toISOString();
     await setNumIfValid(host, "learning.house_load.sample_count", result.sampleCount);
     await setNumIfValid(host, "learning.house_load.sample_days", result.sampleDays);
@@ -62,6 +62,10 @@ async function writeResult(host, result) {
         val: result.sourceStateId,
         ack: true,
     });
+    await host.setStateAsync("learning.house_load.history_mode", {
+        val: historyMode ?? "",
+        ack: true,
+    });
     await host.setStateAsync("learning.house_load.error", { val: result.error, ack: true });
     await host.setStateAsync("learning.house_load.last_update", { val: lastRun, ack: true });
 }
@@ -101,7 +105,7 @@ async function runHouseLoadLearning(host) {
             await (0, persist_1.writeHouseLoadPersist)(baseDir, result, lastRun);
             result.healthJson.last_persist_at = lastRun;
         }
-        await writeResult(host, result);
+        await writeResult(host, result, stats.historySource);
         host.log.info(`House-Load-Learning: status=${result.status} health=${result.healthStatus} samples=${result.sampleCount} days=${result.sampleDays} source=${(0, config_1.sourceLabelFromStateId)(resolved.stateId)} (history=${stats.historySource}, ${stats.rowsTotal} rows → ${stats.hourlySamples} h, span=${stats.tsSpanHours ?? "?"}h)`);
         if (stats.rowsTotal > 50 && stats.hourlySamples < 10) {
             host.log.warn(`House Load Learning: ${stats.rowsTotal} History-Zeilen aber nur ${stats.hourlySamples} Stunden-Samples (invalid=${stats.skippedInvalid}, negative=${stats.skippedNegative}, span=${stats.tsSpanHours ?? "?"}h) — Timestamps/Einheit prüfen`);

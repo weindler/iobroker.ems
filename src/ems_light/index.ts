@@ -32,6 +32,7 @@ function buildPowerRollupHost(adapter: ioBroker.Adapter): PowerRollupHost {
 		getHistoryAsync: adapter.getHistoryAsync.bind(adapter),
 		getStateAsync: adapter.getStateAsync.bind(adapter),
 		getForeignStateAsync: adapter.getForeignStateAsync.bind(adapter),
+		getObjectAsync: adapter.getObjectAsync.bind(adapter),
 		subscribeForeignStatesAsync:
 			typeof adapterAny.subscribeForeignStatesAsync === "function"
 				? adapterAny.subscribeForeignStatesAsync.bind(adapter)

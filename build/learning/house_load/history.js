@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.distinctSampleDaysWithMinHours = exports.distinctSampleDays = exports.fetchHouseLoadSamples = exports.filterOutliers = exports.normalizeHouseLoadPowerW = exports.resolveHouseLoadPowerUnit = exports.detectPowerUnit = exports.isValidHouseLoadW = void 0;
 const state_util_1 = require("../../ems_light/state_util");
 const history_query_1 = require("../history_query");
+const power_rollup_1 = require("../power_rollup");
 const constants_1 = require("./constants");
 const time_1 = require("./time");
 function hourStartMs(ts) {
@@ -164,6 +165,10 @@ function buildSamplesFromRows(rows, powerUnit, historySource, preBinnedHourly) {
     return { samples, lastValidTs, stats };
 }
 async function fetchHouseLoadSamples(host, stateId, lookbackDays) {
+    const rollup = await (0, power_rollup_1.fetchRollupHouseLoadSamples)(host, stateId, lookbackDays);
+    if (rollup && rollup.samples.length > 0) {
+        return rollup;
+    }
     const powerUnit = await resolveHouseLoadPowerUnit(host, stateId);
     const endMs = Date.now();
     const startMs = endMs - lookbackDays * constants_1.MS_PER_DAY;

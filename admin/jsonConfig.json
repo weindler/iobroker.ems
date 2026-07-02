@@ -2349,7 +2349,7 @@
 				},
 				"hHouseLoadLearningHelp": {
 					"type": "staticText",
-					"text": "Lernt reale Hauslast aus History (Standard: addons.battery.mapping.consumption_w). Profile: Saison → Wochentag → Tagessegment. Read-only — kein Planner/Operator. history.0 am Quell-State empfohlen.",
+					"text": "Lernt reale Hauslast-Profile (Saison → Wochentag → Tagessegment). Standard: addons.battery.mapping.consumption_w. EMS sammelt stündliche Mittelwerte selbst (60s-Tick + onChange) — history.0 für consumption_w nicht nötig. Diagnose: learning.house_load.history_mode = ems_rollup. Read-only.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,

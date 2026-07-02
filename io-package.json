@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.75",
+		"version": "0.1.76",
 		"news": {
+			"0.1.76": {
+				"en": "Power rollup extended to battery consumption_w (hourly averages); House Load Learning reads EMS rollup first — history.0 no longer required for dense consumption states",
+				"de": "Power-Rollup um battery consumption_w erweitert (Stunden-Mittelwerte); House-Load-Learning nutzt EMS-Rollup zuerst — history.0 für dichte consumption-States nicht mehr nötig"
+			},
 			"0.1.75": {
 				"en": "EMS hourly power rollup for dense states (battery power_w): live sampling on 60s tick + onChange, persisted power_hourly_v1.json; Battery Runtime Learning reads rollup first (no history.0 required for pacTotal); one-time history backfill on learning tick",
 				"de": "EMS-Stunden-Rollup für dichte Leistungs-States (battery power_w): Live-Sampling per 60s-Tick + onChange, Persistenz power_hourly_v1.json; Battery Runtime Learning nutzt Rollup zuerst (history.0 für pacTotal nicht nötig); einmaliger History-Backfill im Lernzyklus"

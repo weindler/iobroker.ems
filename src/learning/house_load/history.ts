@@ -6,12 +6,14 @@ import {
 	HISTORY_ROWS_PER_DAY,
 	type HistoryQueryHost,
 } from "../history_query";
+import { fetchRollupHouseLoadSamples } from "../power_rollup";
 import { MS_PER_DAY, MS_PER_HOUR, PLAUSIBLE_W_MAX, PLAUSIBLE_W_MIN } from "./constants";
 import { calendarContext } from "./time";
 import type { HouseLoadSample } from "./types";
 
 export type HouseLoadHistoryHost = HistoryQueryHost & {
 	getObjectAsync?: (id: string) => Promise<ioBroker.Object | null | undefined>;
+	getAbsolutePath?: (category?: string) => string;
 };
 
 export type HouseLoadHistoryStats = {
@@ -21,7 +23,7 @@ export type HouseLoadHistoryStats = {
 	skippedInvalid: number;
 	skippedNegative: number;
 	tsSpanHours: number | null;
-	historySource: "aggregate_hourly" | "onchange_raw";
+	historySource: "aggregate_hourly" | "onchange_raw" | "ems_rollup";
 };
 
 function hourStartMs(ts: number): number {
@@ -51,7 +53,7 @@ export function detectPowerUnit(stateId: string, unit?: string): "W" | "kW" {
 }
 
 export async function resolveHouseLoadPowerUnit(
-	host: HouseLoadHistoryHost,
+	host: { getObjectAsync?: (id: string) => Promise<ioBroker.Object | null | undefined> },
 	stateId: string,
 ): Promise<"W" | "kW"> {
 	if (!host.getObjectAsync) {
@@ -200,6 +202,11 @@ export async function fetchHouseLoadSamples(
 	stateId: string,
 	lookbackDays: number,
 ): Promise<{ samples: HouseLoadSample[]; lastValidTs: number | null; stats: HouseLoadHistoryStats }> {
+	const rollup = await fetchRollupHouseLoadSamples(host, stateId, lookbackDays);
+	if (rollup && rollup.samples.length > 0) {
+		return rollup;
+	}
+
 	const powerUnit = await resolveHouseLoadPowerUnit(host, stateId);
 	const endMs = Date.now();
 	const startMs = endMs - lookbackDays * MS_PER_DAY;

@@ -5,8 +5,10 @@ import { hourKeyToStartTs } from "./hour";
 import {
 	DEFAULT_RETENTION_DAYS,
 	POWER_HOURLY_FILENAME,
+	effectiveRollupMode,
 	type PowerHourlyPersist,
 	type PowerHourlyRecord,
+	type PowerRollupMode,
 	type PowerSourcePersist,
 } from "./types";
 
@@ -19,12 +21,24 @@ export async function readPowerHourlyPersist(baseDir: string): Promise<PowerHour
 		const raw = await fs.readFile(path.join(baseDir, POWER_HOURLY_FILENAME), "utf8");
 		const parsed = JSON.parse(raw) as PowerHourlyPersist;
 		if (parsed?.version === 1 && parsed.sources && typeof parsed.sources === "object") {
-			return parsed;
+			return normalizePersist(parsed);
 		}
 	} catch {
 		// neue Datei beim ersten Schreiben
 	}
 	return emptyPowerHourlyPersist();
+}
+
+function normalizePersist(persist: PowerHourlyPersist): PowerHourlyPersist {
+	const sources: Record<string, PowerSourcePersist> = {};
+	for (const [key, source] of Object.entries(persist.sources)) {
+		sources[key] = {
+			...source,
+			rollupMode: effectiveRollupMode(source),
+			powerUnit: source.powerUnit ?? "W",
+		};
+	}
+	return { ...persist, sources };
 }
 
 export async function writePowerHourlyPersist(
@@ -56,14 +70,14 @@ export function upsertSourcePersist(
 	};
 }
 
-export function mergeHourRecord(
-	existing: PowerHourlyRecord | undefined,
+function mergeBidirectional(
+	existing: PowerHourlyRecord,
 	incoming: PowerHourlyRecord,
 ): PowerHourlyRecord {
-	if (!existing) return incoming;
 	return {
 		hourKey: incoming.hourKey,
 		sampleCount: existing.sampleCount + incoming.sampleCount,
+		lastSampleTs: Math.max(existing.lastSampleTs, incoming.lastSampleTs),
 		chargeSamples: existing.chargeSamples + incoming.chargeSamples,
 		dischargeSamples: existing.dischargeSamples + incoming.dischargeSamples,
 		maxChargeW:
@@ -78,8 +92,40 @@ export function mergeHourRecord(
 				: incoming.maxDischargeW === null
 					? existing.maxDischargeW
 					: Math.max(existing.maxDischargeW, incoming.maxDischargeW),
-		lastSampleTs: Math.max(existing.lastSampleTs, incoming.lastSampleTs),
 	};
+}
+
+function mergeUnidirectionalAvg(
+	existing: PowerHourlyRecord,
+	incoming: PowerHourlyRecord,
+): PowerHourlyRecord {
+	const sampleCount = existing.sampleCount + incoming.sampleCount;
+	const sumPowerW = (existing.sumPowerW ?? 0) + (incoming.sumPowerW ?? 0);
+	return {
+		hourKey: incoming.hourKey,
+		sampleCount,
+		lastSampleTs: Math.max(existing.lastSampleTs, incoming.lastSampleTs),
+		chargeSamples: 0,
+		dischargeSamples: 0,
+		maxChargeW: null,
+		maxDischargeW: null,
+		sumPowerW,
+		avgPowerW: sampleCount > 0 ? Math.round(sumPowerW / sampleCount) : null,
+	};
+}
+
+export function mergeHourRecord(
+	existing: PowerHourlyRecord | undefined,
+	incoming: PowerHourlyRecord,
+	mode: PowerRollupMode,
+): PowerHourlyRecord {
+	if (!existing) {
+		return incoming;
+	}
+	if (mode === "unidirectional_avg") {
+		return mergeUnidirectionalAvg(existing, incoming);
+	}
+	return mergeBidirectional(existing, incoming);
 }
 
 export function pruneSourceHours(

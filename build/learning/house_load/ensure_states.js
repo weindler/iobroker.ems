@@ -40,6 +40,7 @@ async function ensureHouseLoadLearningStates(host) {
         strState("learning.house_load.forecast_tomorrow_json", "House-Load Forecast morgen (JSON)"),
         strState("learning.house_load.health_json", "House-Load Health (JSON)"),
         strState("learning.house_load.source_state", "House-Load Quell-State"),
+        strState("learning.house_load.history_mode", "House-Load Datenquelle (ems_rollup|aggregate_hourly|onchange_raw)"),
         strState("learning.house_load.error", "House-Load Fehler"),
     ];
     await (0, state_util_1.ensureStates)(host, defs);

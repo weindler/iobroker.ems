@@ -35,7 +35,7 @@ async function initImmersionHeaterModule(adapter) {
     await (0, status_1.ensureImmersionStatusStates)(adapter);
     await (0, engine_1.initImmersionRuntimeEngine)(runtimeHost(adapter));
     (0, ems_activity_1.touchEmsActivity)();
-    adapter.log.info("immersion_heater: runtime engine + mapping (failsafe via central runner)");
+    adapter.log.debug("immersion_heater: runtime engine + mapping (failsafe via central runner)");
     return null;
 }
 exports.initImmersionHeaterModule = initImmersionHeaterModule;

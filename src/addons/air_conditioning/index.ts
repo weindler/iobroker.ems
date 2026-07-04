@@ -34,7 +34,7 @@ export async function initAirConditioningModule(adapter: ioBroker.Adapter): Prom
 	await syncNativeMappingToStates(adapter, AC_ADDON_ID, acMappingFromConfig);
 	await initAcRuntimeEngine(runtimeHost(adapter));
 	touchEmsActivity();
-	adapter.log.info("air_conditioning: runtime engine initialized");
+	adapter.log.debug("air_conditioning: runtime engine initialized");
 	return null;
 }
 

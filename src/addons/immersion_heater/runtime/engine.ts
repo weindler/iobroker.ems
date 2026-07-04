@@ -192,7 +192,7 @@ async function applyStageWrites(host: ImmersionRuntimeHost, stageIndex: number, 
 						await host.setForeignStateAsync!(id, { val: (state as ioBroker.StateValue) ?? null, ack: false });
 					},
 					log: {
-						info: (m) => host.log.info?.(m),
+						info: (m) => host.log.debug?.(m),
 						warn: (m) => host.log.warn?.(m),
 						error: (m) => host.log.error?.(m),
 						debug: (m) => host.log.debug?.(m),
@@ -515,7 +515,7 @@ export async function initImmersionRuntimeEngine(host: ImmersionRuntimeHost): Pr
 	}
 
 	await runImmersionRuntimeTick(host);
-	host.log.info("immersion_heater: runtime engine initialized");
+	host.log.debug?.("immersion_heater: runtime engine initialized");
 }
 
 export function stopImmersionRuntimeEngine(): void {

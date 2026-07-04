@@ -17,7 +17,8 @@ import { ensureChannel, ensureStates, type StateDef, type StateHost } from "../e
  */
 export type PersistenceMirrorHost = StateHost & {
 	getAbsolutePath?: (category?: string) => string;
-	log: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
+	log: { info: (msg: string) => void;
+		debug?: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
 };
 
 interface ArtifactDef {
@@ -168,7 +169,7 @@ export async function restoreLearningPersistenceFromStates(host: PersistenceMirr
 			await fs.mkdir(dir, { recursive: true });
 			await fs.writeFile(filePath, val.endsWith("\n") ? val : `${val}\n`, "utf8");
 			restored++;
-			host.log.info(`Learning-Persistenz: ${a.fileName} aus Backup-State wiederhergestellt`);
+			host.log.debug?.(`Learning-Persistenz: ${a.fileName} aus Backup-State wiederhergestellt`);
 		} catch (e) {
 			host.log.warn(`Learning-Persistenz restore ${a.key}: ${e instanceof Error ? e.message : e}`);
 		}

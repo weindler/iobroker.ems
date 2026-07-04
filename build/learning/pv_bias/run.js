@@ -72,7 +72,7 @@ async function runPvBiasLearning(host) {
         // Der ems-interne Freeze-State hat keine Tiefe → nur als Heute-Override nutzen.
         const forecastHistoryStateId = cfg.historyForecastStateId || cfg.rawTodayStateId || freeze_1.FROZEN_TODAY_STATE_ID;
         const todayForecastOverride = cfg.freezeEnabled ? frozen.today : null;
-        host.log.info(`PV-Bias: loading history (30d, actual=${cfg.historyActualStateId || "—"} forecast=${forecastHistoryStateId})…`);
+        host.log.debug?.(`PV-Bias: loading history (30d, actual=${cfg.historyActualStateId || "—"} forecast=${forecastHistoryStateId})…`);
         const dailyPersist = await (0, snapshot_1.loadDailyPersist)(host);
         const dayPairs = await (0, history_1.fetchPvBiasDayPairs)(host, cfg.historyActualStateId, forecastHistoryStateId, {
             maxDays: 30,
@@ -80,7 +80,7 @@ async function runPvBiasLearning(host) {
             dailyPersist,
         });
         const pairs = dayPairs.pairs;
-        host.log.info(`PV-Bias: history loaded, ${pairs.length} valid pair(s) (actual_days=${dayPairs.actualDays}, forecast_days=${dayPairs.forecastDays})`);
+        host.log.debug?.(`PV-Bias: history loaded, ${pairs.length} valid pair(s) (actual_days=${dayPairs.actualDays}, forecast_days=${dayPairs.forecastDays})`);
         if (pairs.length < Math.min(7, dayPairs.actualDays || 7)) {
             const thinSide = dayPairs.forecastDays < dayPairs.actualDays
                 ? `Forecast-History dünn (${forecastHistoryStateId} → ${dayPairs.forecastDays}d) — history.0 auf diesem State aktivieren`
@@ -103,7 +103,7 @@ async function runPvBiasLearning(host) {
             result.reason = "Eingefrorener Forecast fehlt — Bias/Korrektur warten auf Freeze-Snapshot.";
         }
         await writePvBiasResult(host, result);
-        host.log.info(`PV-Bias: 7d=${result.bias7dPct ?? "—"}% 30d=${result.bias30dPct ?? "—"}% conf=${result.confidencePct}% samples=${result.sampleDays30d} freeze=${cfg.freezeEnabled}`);
+        host.log.debug?.(`PV-Bias: 7d=${result.bias7dPct ?? "—"}% 30d=${result.bias30dPct ?? "—"}% conf=${result.confidencePct}% samples=${result.sampleDays30d} freeze=${cfg.freezeEnabled}`);
     }
     catch (e) {
         const msg = e instanceof Error ? e.message : String(e);

@@ -82,7 +82,7 @@ async function initWallboxModule(host) {
             }
         }
     }
-    host.log.info("Wallbox EVCC telemetry module initialized (read-only)");
+    host.log.debug("Wallbox EVCC telemetry module initialized (read-only)");
 }
 exports.initWallboxModule = initWallboxModule;
 function stopWallboxModule() {

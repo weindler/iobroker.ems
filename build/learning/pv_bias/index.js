@@ -52,7 +52,7 @@ async function initPvBiasLearning(adapter) {
             adapter.log.error(`PV-Bias/Horizon tick: ${e}`);
         });
     }, cfg.intervalSec * 1000);
-    adapter.log.info(`EMS-Light PV-Bias + PV-Horizon + Price + House-Load + Thermal + Battery-Runtime ready (read-only, interval ${cfg.intervalSec}s)`);
+    adapter.log.debug?.(`EMS-Light PV-Bias + PV-Horizon + Price + House-Load + Thermal + Battery-Runtime ready (read-only, interval ${cfg.intervalSec}s)`);
 }
 exports.initPvBiasLearning = initPvBiasLearning;
 function stopPvBiasLearning() {

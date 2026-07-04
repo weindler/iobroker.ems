@@ -18,7 +18,8 @@ export type HouseLoadRunHost = HistoryQueryHost & {
 	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
 	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
 	getAbsolutePath?: (category?: string) => string;
-	log: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
+	log: { info: (msg: string) => void;
+		debug?: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
 };
 
 const JSON_STATE_LIMIT = 12_000;
@@ -113,7 +114,7 @@ export async function runHouseLoadLearning(host: HouseLoadRunHost): Promise<void
 	}
 
 	try {
-		host.log.info(`House-Load-Learning: loading history (${cfg.lookbackDays}d, ${sourceLabelFromStateId(resolved.stateId)})…`);
+		host.log.debug?.(`House-Load-Learning: loading history (${cfg.lookbackDays}d, ${sourceLabelFromStateId(resolved.stateId)})…`);
 		const { samples, lastValidTs, stats } = await fetchHouseLoadSamples(
 			host,
 			resolved.stateId,
@@ -139,7 +140,7 @@ export async function runHouseLoadLearning(host: HouseLoadRunHost): Promise<void
 
 		await writeResult(host, result, stats.historySource);
 
-		host.log.info(
+		host.log.debug?.(
 			`House-Load-Learning: status=${result.status} health=${result.healthStatus} samples=${result.sampleCount} days=${result.sampleDays} source=${sourceLabelFromStateId(resolved.stateId)} (history=${stats.historySource}, ${stats.rowsTotal} rows → ${stats.hourlySamples} h, span=${stats.tsSpanHours ?? "?"}h)`,
 		);
 
@@ -150,7 +151,7 @@ export async function runHouseLoadLearning(host: HouseLoadRunHost): Promise<void
 		}
 
 		if (sampleDaysMinHours < sampleDays && result.status === "insufficient_data") {
-			host.log.info(
+			host.log.debug?.(
 				`House Load Learning: ${sampleDays} Kalendertage mit Daten, ${sampleDaysMinHours} mit ≥${MIN_DAY_HOURS}h/Tag`,
 			);
 		}

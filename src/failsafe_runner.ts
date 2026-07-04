@@ -17,7 +17,7 @@ export function startFailsafeRunner(adapter: ioBroker.Adapter): void {
 		void runWallboxFailsafeCheck(adapter).catch((e) => adapter.log.error(`failsafe wallbox: ${e}`));
 	}, failsafeCheckIntervalSec * 1000);
 
-	adapter.log.info(`failsafe runner: interval ${failsafeCheckIntervalSec}s (immersion, wallbox)`);
+	adapter.log.debug(`failsafe runner: interval ${failsafeCheckIntervalSec}s (immersion, wallbox)`);
 }
 
 export function stopFailsafeRunner(): void {

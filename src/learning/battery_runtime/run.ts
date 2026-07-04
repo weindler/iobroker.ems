@@ -35,7 +35,8 @@ export type BatteryRuntimeRunHost = {
 	getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
 	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
 	getAbsolutePath?: (category?: string) => string;
-	log: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
+	log: { info: (msg: string) => void;
+		debug?: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
 };
 
 async function setNumIfValid(
@@ -146,7 +147,7 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 	}
 
 	try {
-		host.log.info(
+		host.log.debug?.(
 			`Battery-Runtime-Learning: loading history (${cfg.lookbackDays}d, soc=${sourceLabelFromStateId(sources.socStateId)})…`,
 		);
 		const [socHist, secondsSinceFull, capacityKwh, currentSocPct] = await Promise.all([
@@ -198,7 +199,7 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 
 		await writeResult(host, result, lastRun);
 
-		host.log.info(
+		host.log.debug?.(
 			`Battery-Runtime-Learning: status=${result.status} nights=${result.avgNightDischargePct ?? "n/a"}% samples=${result.sampleDays} full_src=${result.fullChargeSource ?? "—"} sec_since_full=${result.secondsSinceFullCharge ?? "—"} days_since_full=${result.daysSinceFull ?? "—"} last_full=${result.lastFullCharge ?? "—"} soc=${sourceLabelFromStateId(sources.socStateId)} power=${sourceLabelFromStateId(sources.powerStateId)} invert=${result.powerInvertApplied === null ? "—" : result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? "(auto)" : ""} pwr_raw=${result.powerRawChargeSamples ?? "—"}/${result.powerRawDischargeSamples ?? "—"} pwr_hr=${result.powerHourlyChargePoints ?? "—"}/${result.powerHourlyDischargePoints ?? "—"} avg_chg_w=${result.avgChargePowerW ?? "—"}`,
 		);
 

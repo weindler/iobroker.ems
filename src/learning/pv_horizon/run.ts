@@ -6,7 +6,8 @@ import type { PvHorizonComputeResult } from "./types";
 import { PV_HORIZON_DAY_COUNT } from "./constants";
 
 export type PvHorizonRunHost = PvBiasRunHost & {
-	log: { info: (msg: string) => void; warn: (msg: string) => void };
+	log: { info: (msg: string) => void;
+		debug?: (msg: string) => void; warn: (msg: string) => void };
 };
 
 const BIAS_STATE_IDS = [
@@ -130,7 +131,7 @@ export async function runPvHorizon(host: PvHorizonRunHost): Promise<void> {
 		cfg.skipTodayTomorrowFromPvBias
 			? "Tag3-7 (heute/morgen via PV-Bias)"
 			: "Tag1-7";
-	host.log.info(
+	host.log.debug?.(
 		`PV-Horizon [${scope}]: days=${result.daysAvailable}/${result.expectedDays} status=${result.status} total_corr=${result.total7dCorrectedKwh ?? "—"} kWh`,
 	);
 }

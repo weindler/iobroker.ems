@@ -26,9 +26,9 @@ export type PriceForecastRunHost = {
 	getAbsolutePath?: (category?: string) => string;
 	log: {
 		info: (msg: string) => void;
+		debug?: (msg: string) => void;
 		warn: (msg: string) => void;
 		error: (msg: string) => void;
-		debug?: (msg: string) => void;
 	};
 };
 
@@ -104,7 +104,7 @@ export async function runPriceForecastLearning(host: PriceForecastRunHost): Prom
 
 	try {
 		await runPriceForecastFreeze(host, cfg);
-		host.log.info(`Price Forecast Learning: matching freeze files (lookback ${cfg.lookbackDays}d)…`);
+		host.log.debug?.(`Price Forecast Learning: matching freeze files (lookback ${cfg.lookbackDays}d)…`);
 		const pairs = await buildMatchedPairs(host, cfg);
 		const result = computePriceForecastLearning(
 			pairs,
@@ -120,12 +120,12 @@ export async function runPriceForecastLearning(host: PriceForecastRunHost): Prom
 			await writePriceForecastPersist(baseDir, result, lastRun);
 		}
 
-		host.log.info(
+		host.log.debug?.(
 			`Price Forecast Learning completed: status=${result.status} confidence=${result.forecastConfidence}`,
 		);
 
 		if (host.log.debug) {
-			host.log.debug(
+			host.log.debug?.(
 				`Price Forecast: pairs=${pairs.length} accuracy7d=${result.forecastAccuracy7d} avgError7d=${result.avgErrorCt7d}`,
 			);
 		}

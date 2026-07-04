@@ -18,7 +18,8 @@ export type PvBiasRunHost = SnapshotHost &
 		getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
 		getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
 		setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
-		log: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
+		log: { info: (msg: string) => void;
+		debug?: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
 	};
 
 async function readForeignNum(host: PvBiasRunHost, stateId: string): Promise<number | null> {
@@ -110,7 +111,7 @@ export async function runPvBiasLearning(host: PvBiasRunHost): Promise<void> {
 			cfg.historyForecastStateId || cfg.rawTodayStateId || FROZEN_TODAY_STATE_ID;
 		const todayForecastOverride = cfg.freezeEnabled ? frozen.today : null;
 
-		host.log.info(
+		host.log.debug?.(
 			`PV-Bias: loading history (30d, actual=${cfg.historyActualStateId || "—"} forecast=${forecastHistoryStateId})…`,
 		);
 		const dailyPersist = await loadDailyPersist(host);
@@ -120,7 +121,7 @@ export async function runPvBiasLearning(host: PvBiasRunHost): Promise<void> {
 			dailyPersist,
 		});
 		const pairs = dayPairs.pairs;
-		host.log.info(
+		host.log.debug?.(
 			`PV-Bias: history loaded, ${pairs.length} valid pair(s) (actual_days=${dayPairs.actualDays}, forecast_days=${dayPairs.forecastDays})`,
 		);
 		if (pairs.length < Math.min(7, dayPairs.actualDays || 7)) {
@@ -151,7 +152,7 @@ export async function runPvBiasLearning(host: PvBiasRunHost): Promise<void> {
 		}
 
 		await writePvBiasResult(host, result);
-		host.log.info(
+		host.log.debug?.(
 			`PV-Bias: 7d=${result.bias7dPct ?? "—"}% 30d=${result.bias30dPct ?? "—"}% conf=${result.confidencePct}% samples=${result.sampleDays30d} freeze=${cfg.freezeEnabled}`,
 		);
 	} catch (e) {

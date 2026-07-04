@@ -141,7 +141,7 @@ async function backfillDensePowerSource(host, source) {
     if (existing?.backfillDone && Object.keys(existing.hours).length >= MIN_BACKFILL_HOURS) {
         return false;
     }
-    host.log.info(`Power-Rollup backfill: ${source.sourceKey} (${lookbackDays}d, ${source.stateId})…`);
+    host.log.debug?.(`Power-Rollup backfill: ${source.sourceKey} (${lookbackDays}d, ${source.stateId})…`);
     let mergedHours;
     if (source.rollupMode === "unidirectional_avg") {
         const result = await backfillUnidirectionalAvg(host, source, lookbackDays);
@@ -159,7 +159,7 @@ async function backfillDensePowerSource(host, source) {
             hours: mergedHours,
         });
         await (0, persist_1.writePowerHourlyPersist)(baseDir, persist);
-        host.log.info(`Power-Rollup backfill done: ${source.sourceKey} history_rows=${result.rows} hourly_avg=${result.hourlyAvg} persisted_hours=${Object.keys(mergedHours).length}`);
+        host.log.debug?.(`Power-Rollup backfill done: ${source.sourceKey} history_rows=${result.rows} hourly_avg=${result.hourlyAvg} persisted_hours=${Object.keys(mergedHours).length}`);
         return true;
     }
     const result = await backfillBidirectional(host, source, lookbackDays);
@@ -177,7 +177,7 @@ async function backfillDensePowerSource(host, source) {
         hours: mergedHours,
     });
     await (0, persist_1.writePowerHourlyPersist)(baseDir, persist);
-    host.log.info(`Power-Rollup backfill done: ${source.sourceKey} history_rows=${result.rows} hourly_chg=${result.hourlyChg} hourly_dis=${result.hourlyDis} persisted_hours=${Object.keys(mergedHours).length}`);
+    host.log.debug?.(`Power-Rollup backfill done: ${source.sourceKey} history_rows=${result.rows} hourly_chg=${result.hourlyChg} hourly_dis=${result.hourlyDis} persisted_hours=${Object.keys(mergedHours).length}`);
     return true;
 }
 exports.backfillDensePowerSource = backfillDensePowerSource;

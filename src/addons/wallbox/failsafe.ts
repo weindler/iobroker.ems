@@ -135,7 +135,7 @@ async function forceWallboxSafeOff(adapter: ioBroker.Adapter, reason: string): P
 			reason: `wallbox failsafe: ${reason}`,
 		});
 		if (r.skipped) {
-			adapter.log.info(`wallbox failsafe (${reason}): already disabled → ${targetId}`);
+			adapter.log.debug(`wallbox failsafe (${reason}): already disabled → ${targetId}`);
 			return true;
 		}
 		adapter.log.warn(`wallbox failsafe (${reason}): charging disabled → ${targetId}`);
@@ -199,7 +199,7 @@ export async function runWallboxFailsafeCheck(adapter: ioBroker.Adapter): Promis
 
 	if (lastEmsReachable !== emsReachable) {
 		lastEmsReachable = emsReachable;
-		adapter.log.info(`wallbox: ems_reachable=${emsReachable}`);
+		adapter.log.debug(`wallbox: ems_reachable=${emsReachable}`);
 	}
 
 	const verifyOk = lastImmediateFail ? false : await verifyPending(adapter, cfg);

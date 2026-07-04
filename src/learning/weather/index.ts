@@ -27,7 +27,7 @@ export async function initWeatherLearning(adapter: ioBroker.Adapter): Promise<vo
 		});
 	}, cfg.intervalSec * 1000);
 
-	adapter.log.info(
+	adapter.log.debug?.(
 		`EMS-Light Weather-Learning ready (read-only, interval ${cfg.intervalSec}s)`,
 	);
 }

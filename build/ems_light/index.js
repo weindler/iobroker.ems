@@ -151,7 +151,7 @@ async function initEmsLightPhase1(adapter) {
             });
         }
     }, sec * 1000);
-    adapter.log.info(`EMS-Light Phase 1 ready (read-only, tick ${sec}s)`);
+    adapter.log.debug(`EMS-Light Phase 1 ready (read-only, tick ${sec}s)`);
 }
 exports.initEmsLightPhase1 = initEmsLightPhase1;
 /** Nur Live-Tick-Timer stoppen (Learning-Intervalle laufen weiter). */

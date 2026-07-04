@@ -153,7 +153,7 @@ async function alignAdminConfigWithRuntimeStates(host, config) {
         val: executionModesConfigFingerprint(base),
         ack: true,
     });
-    host.log?.info?.("Ausführungsmodi: Admin-Config an Objektbaum angeglichen");
+    host.log?.debug?.("Ausführungsmodi: Admin-Config an Objektbaum angeglichen");
 }
 /**
  * Admin-Config ↔ Objektbaum:
@@ -172,7 +172,7 @@ async function syncExecutionModesFromConfig(host, config) {
         await host.setStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT, { val: fingerprint, ack: true });
         await alignAdminConfigWithRuntimeStates(host, config);
         await mirrorGlobalExecutionSafety(host);
-        host.log?.info?.("Ausführungsmodi: Laufzeitwerte beibehalten (Admin-Fingerprint initialisiert)");
+        host.log?.debug?.("Ausführungsmodi: Laufzeitwerte beibehalten (Admin-Fingerprint initialisiert)");
         return;
     }
     if (empty || fingerprint !== prevFingerprint) {
@@ -183,7 +183,7 @@ async function syncExecutionModesFromConfig(host, config) {
             : "Ausführungsmodi aus Admin übernommen (Config geändert)");
     }
     else {
-        host.log?.info?.("Ausführungsmodi: Laufzeitwerte beibehalten (Admin unverändert)");
+        host.log?.debug?.("Ausführungsmodi: Laufzeitwerte beibehalten (Admin unverändert)");
         await alignAdminConfigWithRuntimeStates(host, config);
     }
     await mirrorGlobalExecutionSafety(host);

@@ -42,7 +42,7 @@ export async function forceImmersionHeaterOff(
 			reason: `immersion failsafe: ${reason}`,
 		});
 		if (r.skipped) {
-			adapter.log.info(`immersion failsafe (${reason}): already OFF → ${targetId}`);
+			adapter.log.debug(`immersion failsafe (${reason}): already OFF → ${targetId}`);
 			return true;
 		}
 		adapter.log.warn(`immersion failsafe (${reason}): OFF → ${targetId}`);
@@ -67,7 +67,7 @@ export async function runImmersionFailsafeCheck(adapter: ImmersionFailsafeHost):
 
 	if (lastEmsReachable !== emsReachable) {
 		lastEmsReachable = emsReachable;
-		adapter.log.info(
+		adapter.log.debug(
 			`immersion_heater: ems_reachable=${emsReachable}`,
 		);
 	}

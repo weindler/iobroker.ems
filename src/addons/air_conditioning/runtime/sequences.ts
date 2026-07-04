@@ -106,7 +106,7 @@ export function scheduleToggleMirrorReset(
 	}
 	setTimeout(() => {
 		void resetToggleMirrorsNow(host, unique, log).then(() => {
-			log?.info?.(
+			log?.debug?.(
 				`ac toggle mirror reset (${Math.round(delayMs / 1000)}s after sequence): ${unique.length} state(s) → false`,
 			);
 		});
@@ -160,7 +160,7 @@ export async function executeAcWriteSteps(
 			continue;
 		}
 		if (!live) {
-			log?.info?.(`ac dryrun unit ${unitIndex}: ${step.kind} ${role} → ${stateId}`);
+			log?.debug?.(`ac dryrun unit ${unitIndex}: ${step.kind} ${role} → ${stateId}`);
 			continue;
 		}
 		if (step.kind === "toggle") {

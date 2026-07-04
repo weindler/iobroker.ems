@@ -105,7 +105,7 @@ export async function initWallboxModule(host: WallboxHost): Promise<void> {
 			}
 		}
 	}
-	host.log.info("Wallbox EVCC telemetry module initialized (read-only)");
+	host.log.debug("Wallbox EVCC telemetry module initialized (read-only)");
 }
 
 export function stopWallboxModule(): void {

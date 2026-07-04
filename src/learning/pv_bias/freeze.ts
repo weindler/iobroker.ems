@@ -13,7 +13,8 @@ export type ForecastFreezeHost = SnapshotHost & {
 	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
 	getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
 	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
-	log: { info: (msg: string) => void; warn: (msg: string) => void };
+	log: { info: (msg: string) => void;
+		debug?: (msg: string) => void; warn: (msg: string) => void };
 };
 
 /**
@@ -189,7 +190,7 @@ export async function runForecastFreeze(host: ForecastFreezeHost, cfg: PvBiasCon
 	await host.setStateAsync("learning.pv_bias.frozen_at_ts", { val: snap.frozenAtTs, ack: true });
 	await host.setStateAsync("learning.pv_bias.frozen_source", { val: snap.frozenSource, ack: true });
 	await writeFreezeMeta(host, "ready", `Forecast-Snapshot um ${snap.frozenAtTs} erstellt.`);
-	host.log.info(`PV-Bias Freeze: today=${snap.frozenTodayKwh} kWh source=${snap.frozenSource}`);
+	host.log.debug?.(`PV-Bias Freeze: today=${snap.frozenTodayKwh} kWh source=${snap.frozenSource}`);
 	await recordForecastDailySnapshot(host, cfg, snap.frozenTodayKwh, snap.frozenSource);
 }
 

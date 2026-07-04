@@ -73,7 +73,7 @@ class Ems extends utils.Adapter {
      */
     async step(label, fn, timeoutMs = 30_000) {
         const started = Date.now();
-        this.log.info(`init step '${label}' starting`);
+        this.log.debug(`init step '${label}' starting`);
         let timedOut = false;
         let timer = null;
         try {
@@ -97,7 +97,7 @@ class Ems extends utils.Adapter {
                 clearTimeout(timer);
             }
             if (!timedOut) {
-                this.log.info(`init step '${label}' ok (${Date.now() - started}ms)`);
+                this.log.debug(`init step '${label}' ok (${Date.now() - started}ms)`);
             }
         }
         catch (e) {
@@ -138,7 +138,7 @@ class Ems extends utils.Adapter {
         await this.step("process pending inbox", async () => {
             const inbox = await this.getStateAsync(states_1.STATE.command.inbox);
             if (inbox && !inbox.ack && inbox.val != null) {
-                this.log.info("Processing pending command.inbox on start");
+                this.log.debug("Processing pending command.inbox on start");
                 await this.processInbox(inbox.val, inbox.ack);
             }
         });
@@ -180,7 +180,7 @@ class Ems extends utils.Adapter {
         }
         this.processingInbox = true;
         try {
-            this.log.info(`command.inbox received: ${typeof val === "object" ? JSON.stringify(val) : String(val)}`);
+            this.log.debug(`command.inbox received: ${typeof val === "object" ? JSON.stringify(val) : String(val)}`);
             await this.handleInbox(val);
             await this.setStateAsync(states_1.STATE.command.inbox, {
                 val: val,
@@ -242,7 +242,7 @@ class Ems extends utils.Adapter {
             ? this.config
             : {};
         (0, failsafe_1.recordWallboxPipelineResult)(cfg, intent, outcome);
-        this.log.info(`command.inbox done: ${outcome.result}` +
+        this.log.debug(`command.inbox done: ${outcome.result}` +
             (outcome.target_state ? ` → ${outcome.target_state}` : ""));
     }
     async writeAudit(payload) {

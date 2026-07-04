@@ -85,7 +85,7 @@ async function executeBatteryWrite(host, params) {
             numericTolerance: params.numericTolerance ?? 0,
         });
         if (writeResult.skipped) {
-            host.log.info(`battery write skipped (already at target) ${params.kind}=${params.value} → ${params.stateId} (${params.reason})`);
+            host.log.debug(`battery write skipped (already at target) ${params.kind}=${params.value} → ${params.stateId} (${params.reason})`);
             return {
                 ...base,
                 executed: true,
@@ -96,7 +96,7 @@ async function executeBatteryWrite(host, params) {
                 rejectCode: null,
             };
         }
-        host.log.info(`battery LIVE write ${params.kind}=${params.value} → ${params.stateId} (${params.reason})`);
+        host.log.debug(`battery LIVE write ${params.kind}=${params.value} → ${params.stateId} (${params.reason})`);
         return {
             ...base,
             executed: true,

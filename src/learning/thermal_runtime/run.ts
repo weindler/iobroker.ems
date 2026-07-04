@@ -31,7 +31,8 @@ export type ThermalRuntimeRunHost = {
 	getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
 	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
 	getAbsolutePath?: (category?: string) => string;
-	log: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
+	log: { info: (msg: string) => void;
+		debug?: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
 };
 
 const JSON_STATE_LIMIT = 10_000;
@@ -175,7 +176,7 @@ export async function runThermalRuntimeLearning(host: ThermalRuntimeRunHost): Pr
 
 		await writeResult(host, result, lastRun);
 
-		host.log.info(
+		host.log.debug?.(
 			`Thermal-Runtime-Learning: status=${result.status} health=${result.health} cycles=${result.samples} source=${sourceLabelFromStateId(resolved.stateId)} k=${coolingModel.coolingConstantPerH ?? "—"}/h asym=${coolingModel.asymptoteC}°C(${coolingModel.asymptoteSource}) active_rate=${activeCoolingRateCPerH ?? "—"}°C/h (cooling_segments=${coolingSegments.length}) remaining=${result.estimatedRemainingHours ?? "—"}h`,
 		);
 

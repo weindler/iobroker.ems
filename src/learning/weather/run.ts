@@ -15,7 +15,8 @@ export type WeatherRunHost = {
 	getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
 	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
 	getAbsolutePath?: (category?: string) => string;
-	log: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
+	log: { info: (msg: string) => void;
+		debug?: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
 };
 
 async function setNumIfValid(host: WeatherRunHost, id: string, value: number | null): Promise<void> {
@@ -109,7 +110,7 @@ export async function runWeatherLearning(host: WeatherRunHost): Promise<void> {
 			await writeWeatherDayPersist(baseDir, dayResultToPersist(yesterday, forecastSource, actualSource));
 		}
 
-		host.log.info(
+		host.log.debug?.(
 			`Weather-Learning: status=${result.status} health=${result.health} confidence=${result.confidence} samples7d=${result.sampleDays7d}`,
 		);
 

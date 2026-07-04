@@ -173,7 +173,7 @@ async function initEnergyDailyRollup(host) {
             await processSample(host, source, nowMs, rawKwh);
         }
     }
-    host.log.info(`Energy-Daily-Rollup ready (${sources.length} source(s))`);
+    host.log.debug?.(`Energy-Daily-Rollup ready (${sources.length} source(s))`);
 }
 exports.initEnergyDailyRollup = initEnergyDailyRollup;
 async function tickEnergyDailyRollup(host) {

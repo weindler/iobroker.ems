@@ -15,7 +15,7 @@ async function backfillDailyEnergySource(host, source) {
     if (existing?.backfillDone && Object.keys(existing.days).length >= MIN_BACKFILL_DAYS) {
         return false;
     }
-    host.log.info(`Energy-Daily-Rollup backfill: ${source.sourceKey} (${source.lookbackDays}d, ${source.stateId})…`);
+    host.log.debug?.(`Energy-Daily-Rollup backfill: ${source.sourceKey} (${source.lookbackDays}d, ${source.stateId})…`);
     const mergedDays = { ...(existing?.days ?? {}) };
     for (let dayOffset = 1; dayOffset < source.lookbackDays; dayOffset++) {
         const { start, end } = (0, history_1.dayBoundsMs)(dayOffset);
@@ -42,7 +42,7 @@ async function backfillDailyEnergySource(host, source) {
         days: mergedDays,
     });
     await (0, persist_1.writeEnergyDailyPersist)(baseDir, persist);
-    host.log.info(`Energy-Daily-Rollup backfill done: ${source.sourceKey} persisted_days=${Object.keys(mergedDays).length}`);
+    host.log.debug?.(`Energy-Daily-Rollup backfill done: ${source.sourceKey} persisted_days=${Object.keys(mergedDays).length}`);
     return true;
 }
 exports.backfillDailyEnergySource = backfillDailyEnergySource;

@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.105] – 2026-07-04
+
+### Changed
+
+- **Logging:** ioBroker-konforme Level — `info` nur noch für relevante Betriebsereignisse; Init-Schritte, Learning, History, Intent, Dryrun und Skip-Meldungen auf `debug`.
+
+---
+
 ## [0.1.104] – 2026-07-04
 
 ### Fixed

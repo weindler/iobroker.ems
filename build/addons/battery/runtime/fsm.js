@@ -113,7 +113,7 @@ function stepSonnenFsm(prev, ctx) {
                 rt.ownership.requestId = rt.requestId;
                 rt.ownership.startedAt = new Date(ctx.nowMs).toISOString();
                 log = {
-                    level: "info",
+                    level: "debug",
                     msg: `battery already in manual mode (${rt.action}) — skip mode write`,
                 };
                 enter("set_charge_power");
@@ -164,7 +164,7 @@ function stepSonnenFsm(prev, ctx) {
         case "set_charge_power":
             if (ctx.actualChargingW !== null &&
                 (0, feedback_1.chargeWithinTolerance)(rt.effectivePowerW, ctx.actualChargingW, ctx.tolerance)) {
-                log = { level: "info", msg: "battery charge power already at target — skip write" };
+                log = { level: "debug", msg: "battery charge power already at target — skip write" };
                 enter("active");
             }
             else {
@@ -204,7 +204,7 @@ function stepSonnenFsm(prev, ctx) {
             break;
         case "stop_charge":
             if (ctx.actualChargingW !== null && (0, feedback_1.chargeWithinTolerance)(0, ctx.actualChargingW, ctx.tolerance)) {
-                log = { level: "info", msg: "battery charge already stopped — skip write" };
+                log = { level: "debug", msg: "battery charge already stopped — skip write" };
                 enter("restore_self_consumption");
             }
             else {
@@ -229,7 +229,7 @@ function stepSonnenFsm(prev, ctx) {
         }
         case "restore_self_consumption":
             if (ctx.actualMode === ctx.modeValues.selfConsumption) {
-                log = { level: "info", msg: "battery already in self consumption — skip mode write" };
+                log = { level: "debug", msg: "battery already in self consumption — skip mode write" };
                 enter("restore_grid_balance");
             }
             else {

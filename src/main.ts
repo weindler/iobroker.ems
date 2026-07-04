@@ -81,7 +81,7 @@ class Ems extends utils.Adapter {
 	 */
 	private async step(label: string, fn: () => Promise<unknown>, timeoutMs = 30_000): Promise<void> {
 		const started = Date.now();
-		this.log.info(`init step '${label}' starting`);
+		this.log.debug(`init step '${label}' starting`);
 		let timedOut = false;
 		let timer: NodeJS.Timeout | null = null;
 		try {
@@ -105,7 +105,7 @@ class Ems extends utils.Adapter {
 				clearTimeout(timer);
 			}
 			if (!timedOut) {
-				this.log.info(`init step '${label}' ok (${Date.now() - started}ms)`);
+				this.log.debug(`init step '${label}' ok (${Date.now() - started}ms)`);
 			}
 		} catch (e) {
 			if (timer) {
@@ -150,7 +150,7 @@ class Ems extends utils.Adapter {
 		await this.step("process pending inbox", async () => {
 			const inbox = await this.getStateAsync(STATE.command.inbox);
 			if (inbox && !inbox.ack && inbox.val != null) {
-				this.log.info("Processing pending command.inbox on start");
+				this.log.debug("Processing pending command.inbox on start");
 				await this.processInbox(inbox.val, inbox.ack);
 			}
 		});
@@ -193,7 +193,7 @@ class Ems extends utils.Adapter {
 
 		this.processingInbox = true;
 		try {
-			this.log.info(`command.inbox received: ${typeof val === "object" ? JSON.stringify(val) : String(val)}`);
+			this.log.debug(`command.inbox received: ${typeof val === "object" ? JSON.stringify(val) : String(val)}`);
 			await this.handleInbox(val);
 			await this.setStateAsync(STATE.command.inbox, {
 				val: val as ioBroker.State["val"],
@@ -263,7 +263,7 @@ class Ems extends utils.Adapter {
 				: {};
 		recordWallboxPipelineResult(cfg, intent, outcome);
 
-		this.log.info(
+		this.log.debug(
 			`command.inbox done: ${outcome.result}` +
 				(outcome.target_state ? ` → ${outcome.target_state}` : ""),
 		);

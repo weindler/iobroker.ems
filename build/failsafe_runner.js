@@ -15,7 +15,7 @@ function startFailsafeRunner(adapter) {
         void (0, failsafe_1.runImmersionFailsafeCheck)(adapter).catch((e) => adapter.log.error(`failsafe immersion: ${e}`));
         void (0, failsafe_2.runWallboxFailsafeCheck)(adapter).catch((e) => adapter.log.error(`failsafe wallbox: ${e}`));
     }, failsafeCheckIntervalSec * 1000);
-    adapter.log.info(`failsafe runner: interval ${failsafeCheckIntervalSec}s (immersion, wallbox)`);
+    adapter.log.debug(`failsafe runner: interval ${failsafeCheckIntervalSec}s (immersion, wallbox)`);
 }
 exports.startFailsafeRunner = startFailsafeRunner;
 function stopFailsafeRunner() {

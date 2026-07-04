@@ -103,8 +103,9 @@ async function stopUnit(
 		if (refreshId) {
 			await executeAcWriteSteps(host, unit.index, table, [{ kind: "toggle", role: "cmd_refresh" }], true, host.log);
 		}
+		host.log.info(`ac unit ${unit.index}: stop (live)`);
 	} else if (!live) {
-		host.log.info(`ac dryrun unit ${unit.index}: stop`);
+		host.log.debug(`ac dryrun unit ${unit.index}: stop`);
 	}
 	up.running = false;
 	up.lastStopAtMs = Date.now();
@@ -218,7 +219,7 @@ export async function runAcRuntimeTick(host: AcRuntimeHost): Promise<void> {
 				const cooledDown = !up.lastStartAtMs || nowMs - up.lastStartAtMs >= AC_START_RETRY_MS;
 				if (cooledDown) {
 					if (up.lastStartAtMs) {
-						host.log.info(
+						host.log.debug(
 							`ac unit ${unit.index}: retry start (${Math.round((nowMs - up.lastStartAtMs) / 1000)}s since last attempt)`,
 						);
 					}
@@ -306,7 +307,7 @@ export async function initAcRuntimeEngine(host: AcRuntimeHost): Promise<void> {
 		}
 	}
 	await runAcRuntimeTick(host);
-	host.log.info("air_conditioning: runtime engine initialized");
+	host.log.debug("air_conditioning: runtime engine initialized");
 }
 
 export function stopAcRuntimeEngine(): void {

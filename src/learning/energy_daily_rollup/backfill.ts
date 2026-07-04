@@ -12,7 +12,8 @@ const MIN_BACKFILL_DAYS = 7;
 
 export type EnergyDailyBackfillHost = HistoryHost & {
 	getAbsolutePath?: (category?: string) => string;
-	log: { info: (msg: string) => void; warn: (msg: string) => void };
+	log: { info: (msg: string) => void;
+		debug?: (msg: string) => void; warn: (msg: string) => void };
 };
 
 export async function backfillDailyEnergySource(
@@ -30,7 +31,7 @@ export async function backfillDailyEnergySource(
 		return false;
 	}
 
-	host.log.info(
+	host.log.debug?.(
 		`Energy-Daily-Rollup backfill: ${source.sourceKey} (${source.lookbackDays}d, ${source.stateId})…`,
 	);
 
@@ -62,7 +63,7 @@ export async function backfillDailyEnergySource(
 	});
 	await writeEnergyDailyPersist(baseDir, persist);
 
-	host.log.info(
+	host.log.debug?.(
 		`Energy-Daily-Rollup backfill done: ${source.sourceKey} persisted_days=${Object.keys(mergedDays).length}`,
 	);
 	return true;

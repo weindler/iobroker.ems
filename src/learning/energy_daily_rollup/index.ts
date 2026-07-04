@@ -224,7 +224,7 @@ export async function initEnergyDailyRollup(host: EnergyDailyRollupHost): Promis
 		}
 	}
 
-	host.log.info(`Energy-Daily-Rollup ready (${sources.length} source(s))`);
+	host.log.debug?.(`Energy-Daily-Rollup ready (${sources.length} source(s))`);
 }
 
 export async function tickEnergyDailyRollup(host: EnergyDailyRollupHost): Promise<void> {

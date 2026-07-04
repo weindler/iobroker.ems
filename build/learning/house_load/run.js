@@ -87,7 +87,7 @@ async function runHouseLoadLearning(host) {
         lastPersistAt = existing?.generated_at ?? null;
     }
     try {
-        host.log.info(`House-Load-Learning: loading history (${cfg.lookbackDays}d, ${(0, config_1.sourceLabelFromStateId)(resolved.stateId)})…`);
+        host.log.debug?.(`House-Load-Learning: loading history (${cfg.lookbackDays}d, ${(0, config_1.sourceLabelFromStateId)(resolved.stateId)})…`);
         const { samples, lastValidTs, stats } = await (0, history_1.fetchHouseLoadSamples)(host, resolved.stateId, cfg.lookbackDays);
         const sampleDays = (0, history_1.distinctSampleDays)(samples);
         const sampleDaysMinHours = (0, history_1.distinctSampleDaysWithMinHours)(samples, constants_1.MIN_DAY_HOURS);
@@ -106,12 +106,12 @@ async function runHouseLoadLearning(host) {
             result.healthJson.last_persist_at = lastRun;
         }
         await writeResult(host, result, stats.historySource);
-        host.log.info(`House-Load-Learning: status=${result.status} health=${result.healthStatus} samples=${result.sampleCount} days=${result.sampleDays} source=${(0, config_1.sourceLabelFromStateId)(resolved.stateId)} (history=${stats.historySource}, ${stats.rowsTotal} rows → ${stats.hourlySamples} h, span=${stats.tsSpanHours ?? "?"}h)`);
+        host.log.debug?.(`House-Load-Learning: status=${result.status} health=${result.healthStatus} samples=${result.sampleCount} days=${result.sampleDays} source=${(0, config_1.sourceLabelFromStateId)(resolved.stateId)} (history=${stats.historySource}, ${stats.rowsTotal} rows → ${stats.hourlySamples} h, span=${stats.tsSpanHours ?? "?"}h)`);
         if (stats.rowsTotal > 50 && stats.hourlySamples < 10) {
             host.log.warn(`House Load Learning: ${stats.rowsTotal} History-Zeilen aber nur ${stats.hourlySamples} Stunden-Samples (invalid=${stats.skippedInvalid}, negative=${stats.skippedNegative}, span=${stats.tsSpanHours ?? "?"}h) — Timestamps/Einheit prüfen`);
         }
         if (sampleDaysMinHours < sampleDays && result.status === "insufficient_data") {
-            host.log.info(`House Load Learning: ${sampleDays} Kalendertage mit Daten, ${sampleDaysMinHours} mit ≥${constants_1.MIN_DAY_HOURS}h/Tag`);
+            host.log.debug?.(`House Load Learning: ${sampleDays} Kalendertage mit Daten, ${sampleDaysMinHours} mit ≥${constants_1.MIN_DAY_HOURS}h/Tag`);
         }
         if (result.status === "insufficient_data") {
             host.log.warn(`House Load Learning: ungenügende Historie (sample_days=${result.sampleDays}, samples=${result.sampleCount})`);

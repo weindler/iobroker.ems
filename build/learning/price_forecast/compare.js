@@ -123,7 +123,7 @@ async function runFreezeTrack(host, cfg, track) {
         val: `${track.label}: Forecast für ${targetDate} eingefroren (${slots.length}h).`,
         ack: true,
     });
-    host.log.info(`Price Forecast Freeze (${track.label}): ${targetDate} ${slots.length} Stunden`);
+    host.log.debug?.(`Price Forecast Freeze (${track.label}): ${targetDate} ${slots.length} Stunden`);
     return true;
 }
 async function runPriceForecastFreeze(host, cfg) {

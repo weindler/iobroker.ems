@@ -23,7 +23,8 @@ const MIN_BACKFILL_HOURS = 24;
 
 export type PowerRollupBackfillHost = BatteryHistoryHost & {
 	getAbsolutePath?: (category?: string) => string;
-	log: { info: (msg: string) => void; warn: (msg: string) => void };
+	log: { info: (msg: string) => void;
+		debug?: (msg: string) => void; warn: (msg: string) => void };
 };
 
 function hourRecordFromBidirectional(
@@ -209,7 +210,7 @@ export async function backfillDensePowerSource(
 		return false;
 	}
 
-	host.log.info(
+	host.log.debug?.(
 		`Power-Rollup backfill: ${source.sourceKey} (${lookbackDays}d, ${source.stateId})…`,
 	);
 
@@ -230,7 +231,7 @@ export async function backfillDensePowerSource(
 			hours: mergedHours,
 		});
 		await writePowerHourlyPersist(baseDir, persist);
-		host.log.info(
+		host.log.debug?.(
 			`Power-Rollup backfill done: ${source.sourceKey} history_rows=${result.rows} hourly_avg=${result.hourlyAvg} persisted_hours=${Object.keys(mergedHours).length}`,
 		);
 		return true;
@@ -252,7 +253,7 @@ export async function backfillDensePowerSource(
 	});
 	await writePowerHourlyPersist(baseDir, persist);
 
-	host.log.info(
+	host.log.debug?.(
 		`Power-Rollup backfill done: ${source.sourceKey} history_rows=${result.rows} hourly_chg=${result.hourlyChg} hourly_dis=${result.hourlyDis} persisted_hours=${Object.keys(mergedHours).length}`,
 	);
 	return true;

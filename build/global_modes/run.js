@@ -25,7 +25,7 @@ async function runGlobalModes(host) {
         await host.setStateAsync("global_modes.requested", { val: decision.writeRequested, ack: true });
         requestedRaw = decision.writeRequested;
         if (decision.reason === "admin_changed") {
-            host.log.info(`Global Mode set from admin default: ${lastAdminSeen ?? "?"} -> ${decision.writeRequested}`);
+            host.log.debug?.(`Global Mode set from admin default: ${lastAdminSeen ?? "?"} -> ${decision.writeRequested}`);
         }
     }
     // Admin-Default merken (für Erkennung künftiger Admin-Änderungen).

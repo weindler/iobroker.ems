@@ -74,7 +74,7 @@ async function runWeatherLearning(host) {
             const baseDir = host.getAbsolutePath("learning/weather");
             await (0, persist_1.writeWeatherDayPersist)(baseDir, (0, persist_1.dayResultToPersist)(yesterday, forecastSource, actualSource));
         }
-        host.log.info(`Weather-Learning: status=${result.status} health=${result.health} confidence=${result.confidence} samples7d=${result.sampleDays7d}`);
+        host.log.debug?.(`Weather-Learning: status=${result.status} health=${result.health} confidence=${result.confidence} samples7d=${result.sampleDays7d}`);
         if (result.missingFields.length > 0) {
             const recent = dayResults.filter((d) => d.dayOffset <= 6);
             for (const key of result.missingFields) {

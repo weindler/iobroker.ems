@@ -48,7 +48,7 @@ async function runPriceLearning(host) {
     }
     const priceSource = (0, config_1.sourceLabelFromStateId)(cfg.priceStateId);
     try {
-        host.log.info(`Price Learning: loading history (${cfg.lookbackDays}d, ${cfg.priceStateId.split(".").slice(-2).join(".")})…`);
+        host.log.debug?.(`Price Learning: loading history (${cfg.lookbackDays}d, ${cfg.priceStateId.split(".").slice(-2).join(".")})…`);
         const { samples } = await (0, history_1.fetchPriceSamples)(host, cfg.priceStateId, cfg.lookbackDays);
         const daySummaries = (0, history_1.summarizeDays)(samples, cfg.lookbackDays);
         const result = (0, math_1.computePriceLearning)(samples, daySummaries, cfg.lookbackDays, priceSource);
@@ -57,9 +57,9 @@ async function runPriceLearning(host) {
             const baseDir = host.getAbsolutePath("learning/price_learning");
             await (0, persist_1.writePriceLearningPersist)(baseDir, result, lastRun);
         }
-        host.log.info(`Price Learning completed: status=${result.status} confidence=${result.confidence}`);
+        host.log.debug?.(`Price Learning completed: status=${result.status} confidence=${result.confidence}`);
         if (host.log.debug) {
-            host.log.debug(`Price Learning: samples=${samples.length} avg7d=${result.avgPrice7d} avg30d=${result.avgPrice30d} volatility30d=${result.volatility30d}`);
+            host.log.debug?.(`Price Learning: samples=${samples.length} avg7d=${result.avgPrice7d} avg30d=${result.avgPrice30d} volatility30d=${result.volatility30d}`);
         }
         if (result.status === "insufficient_data") {
             host.log.warn(`Price Learning: ungenügende Historie (sample_days=${result.sampleDays}, coverage=${result.coveragePct}%)`);

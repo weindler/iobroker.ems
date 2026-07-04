@@ -78,7 +78,7 @@ function scheduleToggleMirrorReset(host, stateIds, delayMs = constants_1.AC_TOGG
     }
     setTimeout(() => {
         void resetToggleMirrorsNow(host, unique, log).then(() => {
-            log?.info?.(`ac toggle mirror reset (${Math.round(delayMs / 1000)}s after sequence): ${unique.length} state(s) → false`);
+            log?.debug?.(`ac toggle mirror reset (${Math.round(delayMs / 1000)}s after sequence): ${unique.length} state(s) → false`);
         });
     }, delayMs);
 }
@@ -115,7 +115,7 @@ async function executeAcWriteSteps(host, unitIndex, table, steps, live, log) {
             continue;
         }
         if (!live) {
-            log?.info?.(`ac dryrun unit ${unitIndex}: ${step.kind} ${role} → ${stateId}`);
+            log?.debug?.(`ac dryrun unit ${unitIndex}: ${step.kind} ${role} → ${stateId}`);
             continue;
         }
         if (step.kind === "toggle") {

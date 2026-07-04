@@ -104,7 +104,7 @@ async function forceWallboxSafeOff(adapter, reason) {
             reason: `wallbox failsafe: ${reason}`,
         });
         if (r.skipped) {
-            adapter.log.info(`wallbox failsafe (${reason}): already disabled → ${targetId}`);
+            adapter.log.debug(`wallbox failsafe (${reason}): already disabled → ${targetId}`);
             return true;
         }
         adapter.log.warn(`wallbox failsafe (${reason}): charging disabled → ${targetId}`);
@@ -160,7 +160,7 @@ async function runWallboxFailsafeCheck(adapter) {
     await (0, failsafe_common_1.setEdgeBool)(adapter, status_wallbox_1.WALLBOX_STATUS_STATES.emsReachable, emsReachable);
     if (lastEmsReachable !== emsReachable) {
         lastEmsReachable = emsReachable;
-        adapter.log.info(`wallbox: ems_reachable=${emsReachable}`);
+        adapter.log.debug(`wallbox: ems_reachable=${emsReachable}`);
     }
     const verifyOk = lastImmediateFail ? false : await verifyPending(adapter, cfg);
     const shouldTrip = !emsReachable || !verifyOk || lastImmediateFail;

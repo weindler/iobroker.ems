@@ -24,9 +24,9 @@ export type PriceLearningRunHost = {
 	getAbsolutePath?: (category?: string) => string;
 	log: {
 		info: (msg: string) => void;
+		debug?: (msg: string) => void;
 		warn: (msg: string) => void;
 		error: (msg: string) => void;
-		debug?: (msg: string) => void;
 	};
 };
 
@@ -83,7 +83,7 @@ export async function runPriceLearning(host: PriceLearningRunHost): Promise<void
 	const priceSource = sourceLabelFromStateId(cfg.priceStateId);
 
 	try {
-		host.log.info(`Price Learning: loading history (${cfg.lookbackDays}d, ${cfg.priceStateId.split(".").slice(-2).join(".")})…`);
+		host.log.debug?.(`Price Learning: loading history (${cfg.lookbackDays}d, ${cfg.priceStateId.split(".").slice(-2).join(".")})…`);
 		const { samples } = await fetchPriceSamples(host, cfg.priceStateId, cfg.lookbackDays);
 		const daySummaries = summarizeDays(samples, cfg.lookbackDays);
 		const result = computePriceLearning(samples, daySummaries, cfg.lookbackDays, priceSource);
@@ -94,10 +94,10 @@ export async function runPriceLearning(host: PriceLearningRunHost): Promise<void
 			await writePriceLearningPersist(baseDir, result, lastRun);
 		}
 
-		host.log.info(`Price Learning completed: status=${result.status} confidence=${result.confidence}`);
+		host.log.debug?.(`Price Learning completed: status=${result.status} confidence=${result.confidence}`);
 
 		if (host.log.debug) {
-			host.log.debug(
+			host.log.debug?.(
 				`Price Learning: samples=${samples.length} avg7d=${result.avgPrice7d} avg30d=${result.avgPrice30d} volatility30d=${result.volatility30d}`,
 			);
 		}

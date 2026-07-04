@@ -65,7 +65,7 @@ export async function initPvBiasLearning(adapter: ioBroker.Adapter): Promise<voi
 		});
 	}, cfg.intervalSec * 1000);
 
-	adapter.log.info(
+	adapter.log.debug?.(
 		`EMS-Light PV-Bias + PV-Horizon + Price + House-Load + Thermal + Battery-Runtime ready (read-only, interval ${cfg.intervalSec}s)`,
 	);
 }

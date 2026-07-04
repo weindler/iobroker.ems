@@ -177,7 +177,7 @@ async function alignAdminConfigWithRuntimeStates(
 	host: ExecutionModeHost & {
 		config?: unknown;
 		updateConfig?: (newConfig: Record<string, unknown>) => Promise<unknown>;
-		log?: { info?: (msg: string) => void };
+		log?: { info?: (msg: string) => void; debug?: (msg: string) => void };
 	},
 	config: Record<string, unknown>,
 ): Promise<void> {
@@ -215,7 +215,7 @@ async function alignAdminConfigWithRuntimeStates(
 		val: executionModesConfigFingerprint(base),
 		ack: true,
 	});
-	host.log?.info?.("Ausführungsmodi: Admin-Config an Objektbaum angeglichen");
+	host.log?.debug?.("Ausführungsmodi: Admin-Config an Objektbaum angeglichen");
 }
 
 /**
@@ -226,7 +226,7 @@ async function alignAdminConfigWithRuntimeStates(
  */
 export async function syncExecutionModesFromConfig(
 	host: ExecutionModeHost & {
-		log?: { info?: (msg: string) => void };
+		log?: { info?: (msg: string) => void; debug?: (msg: string) => void };
 		config?: unknown;
 		updateConfig?: (newConfig: Record<string, unknown>) => Promise<unknown>;
 	},
@@ -243,7 +243,7 @@ export async function syncExecutionModesFromConfig(
 		await host.setStateAsync(EXECUTION_MODE_CONFIG_FINGERPRINT, { val: fingerprint, ack: true });
 		await alignAdminConfigWithRuntimeStates(host, config);
 		await mirrorGlobalExecutionSafety(host);
-		host.log?.info?.("Ausführungsmodi: Laufzeitwerte beibehalten (Admin-Fingerprint initialisiert)");
+		host.log?.debug?.("Ausführungsmodi: Laufzeitwerte beibehalten (Admin-Fingerprint initialisiert)");
 		return;
 	}
 
@@ -256,7 +256,7 @@ export async function syncExecutionModesFromConfig(
 				: "Ausführungsmodi aus Admin übernommen (Config geändert)",
 		);
 	} else {
-		host.log?.info?.("Ausführungsmodi: Laufzeitwerte beibehalten (Admin unverändert)");
+		host.log?.debug?.("Ausführungsmodi: Laufzeitwerte beibehalten (Admin unverändert)");
 		await alignAdminConfigWithRuntimeStates(host, config);
 	}
 

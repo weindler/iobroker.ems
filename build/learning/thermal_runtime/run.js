@@ -106,7 +106,7 @@ async function runThermalRuntimeLearning(host) {
             await (0, persist_1.writeThermalRuntimePersist)(host.getAbsolutePath("learning/thermal_runtime"), result, lastRun);
         }
         await writeResult(host, result, lastRun);
-        host.log.info(`Thermal-Runtime-Learning: status=${result.status} health=${result.health} cycles=${result.samples} source=${(0, config_1.sourceLabelFromStateId)(resolved.stateId)} k=${coolingModel.coolingConstantPerH ?? "—"}/h asym=${coolingModel.asymptoteC}°C(${coolingModel.asymptoteSource}) active_rate=${activeCoolingRateCPerH ?? "—"}°C/h (cooling_segments=${coolingSegments.length}) remaining=${result.estimatedRemainingHours ?? "—"}h`);
+        host.log.debug?.(`Thermal-Runtime-Learning: status=${result.status} health=${result.health} cycles=${result.samples} source=${(0, config_1.sourceLabelFromStateId)(resolved.stateId)} k=${coolingModel.coolingConstantPerH ?? "—"}/h asym=${coolingModel.asymptoteC}°C(${coolingModel.asymptoteSource}) active_rate=${activeCoolingRateCPerH ?? "—"}°C/h (cooling_segments=${coolingSegments.length}) remaining=${result.estimatedRemainingHours ?? "—"}h`);
         if (result.status === "insufficient_data") {
             host.log.warn(`Thermal Runtime Learning: ungenügende Zyklen (samples=${result.samples}, history_points=${points.length}, temp=${histSummary.minC ?? "—"}–${histSummary.maxC ?? "—"}°C, floor=${cfg.emptyThresholdC}°C, above_floor=${histSummary.pointsAboveFloor})`);
         }

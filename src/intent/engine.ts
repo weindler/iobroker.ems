@@ -248,13 +248,13 @@ export async function runIntentEngine(host: IntentEngineHost): Promise<IntentEng
 	const aggregateChanged = lastResolvedAll?.revision !== resolvedAll.revision;
 
 	if (wallboxChanged) {
-		host.log.info(`User Intent wallbox revision: ${lastWallbox?.revision ?? 0} -> ${wallbox.revision} (${wallbox.intent_state})`);
+		host.log.debug?.(`User Intent wallbox revision: ${lastWallbox?.revision ?? 0} -> ${wallbox.revision} (${wallbox.intent_state})`);
 	}
 	if (thermalChanged) {
-		host.log.info(`User Intent thermal revision: ${lastThermal?.revision ?? 0} -> ${thermal.revision} (${thermal.intent_state})`);
+		host.log.debug?.(`User Intent thermal revision: ${lastThermal?.revision ?? 0} -> ${thermal.revision} (${thermal.intent_state})`);
 	}
 	if (batteryChanged) {
-		host.log.info(`User Intent battery revision: ${lastBattery?.revision ?? 0} -> ${battery.revision} (${battery.intent_state})`);
+		host.log.debug?.(`User Intent battery revision: ${lastBattery?.revision ?? 0} -> ${battery.revision} (${battery.intent_state})`);
 	}
 	if (aggregateChanged && !wallboxChanged && !thermalChanged && !batteryChanged) {
 		host.log.debug?.(`User Intent aggregate revision: ${lastResolvedAll?.revision ?? 0} -> ${resolvedAll.revision}`);
@@ -326,7 +326,7 @@ async function processDomainRequest(
 		if (out.accepted && out.snapshot) {
 			wallboxSnapshot = out.snapshot;
 			lastRequestIds.wallbox = out.result.request_id;
-			host.log.info(`User Intent wallbox request ${out.result.status}: ${out.result.request_id}`);
+			host.log.debug?.(`User Intent wallbox request ${out.result.status}: ${out.result.request_id}`);
 			await host.setStateAsync(requestState, { val: state.val as ioBroker.StateValue, ack: true });
 			await runIntentEngine(host);
 		} else if (out.result.status === "duplicate") {
@@ -350,7 +350,7 @@ async function processDomainRequest(
 		if (out.accepted && out.snapshot) {
 			thermalSnapshot = out.snapshot;
 			lastRequestIds.thermal = out.result.request_id;
-			host.log.info(`User Intent thermal request ${out.result.status}: ${out.result.request_id}`);
+			host.log.debug?.(`User Intent thermal request ${out.result.status}: ${out.result.request_id}`);
 			await host.setStateAsync(requestState, { val: state.val as ioBroker.StateValue, ack: true });
 			await runIntentEngine(host);
 		} else if (out.result.status === "duplicate") {
@@ -374,7 +374,7 @@ async function processDomainRequest(
 		if (out.accepted && out.snapshot) {
 			batterySnapshot = out.snapshot;
 			lastRequestIds.battery = out.result.request_id;
-			host.log.info(`User Intent battery request ${out.result.status}: ${out.result.request_id}`);
+			host.log.debug?.(`User Intent battery request ${out.result.status}: ${out.result.request_id}`);
 			await host.setStateAsync(requestState, { val: state.val as ioBroker.StateValue, ack: true });
 			await runIntentEngine(host);
 		} else if (out.result.status === "duplicate") {
@@ -468,14 +468,14 @@ export async function initIntentEngine(host: IntentEngineHost): Promise<void> {
 		return;
 	}
 
-	host.log.info(`User Intent Engine init start (${INTENT_ENGINE_VERSION})`);
+	host.log.debug?.(`User Intent Engine init start (${INTENT_ENGINE_VERSION})`);
 	engineActive = true;
 	subscribedHost = host;
 
 	const now = new Date();
 
 	await ensureIntentStates(host);
-	host.log.info("User Intent states ensured");
+	host.log.debug?.("User Intent states ensured");
 
 	try {
 		const dataDir = host.getAbsolutePath?.("intent");
@@ -554,7 +554,7 @@ export async function initIntentEngine(host: IntentEngineHost): Promise<void> {
 		host.log.warn(`Intent pending request handling failed: ${e}`);
 	}
 
-	host.log.info("User Intent Engine initialized");
+	host.log.debug?.("User Intent Engine initialized");
 }
 
 const REQUEST_HANDLERS: Record<string, { domain: keyof DomainRequestIds; request: string; result: string }> = {

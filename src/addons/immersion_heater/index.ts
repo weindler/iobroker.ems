@@ -43,7 +43,7 @@ export async function initImmersionHeaterModule(adapter: ioBroker.Adapter): Prom
 	await initImmersionRuntimeEngine(runtimeHost(adapter));
 
 	touchEmsActivity();
-	adapter.log.info("immersion_heater: runtime engine + mapping (failsafe via central runner)");
+	adapter.log.debug("immersion_heater: runtime engine + mapping (failsafe via central runner)");
 	return null;
 }
 

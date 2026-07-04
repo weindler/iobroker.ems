@@ -199,7 +199,7 @@ async function initPowerRollup(host) {
             await processSample(host, source, nowMs, rawW);
         }
     }
-    host.log.info(`Power-Rollup ready (${sources.length} source(s))`);
+    host.log.debug?.(`Power-Rollup ready (${sources.length} source(s))`);
 }
 exports.initPowerRollup = initPowerRollup;
 async function tickPowerRollup(host) {

@@ -267,7 +267,7 @@ export async function initPowerRollup(host: PowerRollupHost): Promise<void> {
 		}
 	}
 
-	host.log.info(`Power-Rollup ready (${sources.length} source(s))`);
+	host.log.debug?.(`Power-Rollup ready (${sources.length} source(s))`);
 }
 
 export async function tickPowerRollup(host: PowerRollupHost): Promise<void> {

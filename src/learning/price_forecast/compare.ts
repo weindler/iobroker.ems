@@ -31,7 +31,8 @@ export type PriceForecastHost = {
 	getObjectAsync?: (id: string) => Promise<ioBroker.Object | null | undefined>;
 	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
 	getAbsolutePath?: (category?: string) => string;
-	log: { info: (msg: string) => void; warn: (msg: string) => void };
+	log: { info: (msg: string) => void;
+		debug?: (msg: string) => void; warn: (msg: string) => void };
 };
 
 async function readForeignVal(host: PriceForecastHost, stateId: string): Promise<unknown> {
@@ -203,7 +204,7 @@ async function runFreezeTrack(
 		val: `${track.label}: Forecast für ${targetDate} eingefroren (${slots.length}h).`,
 		ack: true,
 	});
-	host.log.info(`Price Forecast Freeze (${track.label}): ${targetDate} ${slots.length} Stunden`);
+	host.log.debug?.(`Price Forecast Freeze (${track.label}): ${targetDate} ${slots.length} Stunden`);
 	return true;
 }
 

@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.104",
+		"version": "0.1.105",
 		"news": {
+			"0.1.105": {
+				"en": "Reduce log noise at info level: init steps, learning, intent, dryrun and skip messages move to debug; keep user-relevant events (mode changes, AC start/stop, failsafe, faults) on info/warn/error",
+				"de": "Weniger Log-Lärm auf info: Init, Learning, Intent, Dryrun und Skip-Meldungen nach debug; relevante Ereignisse (Modus, Klima Ein/Aus, Failsafe, Störungen) bleiben info/warn/error"
+			},
 			"0.1.104": {
 				"en": "AC live: force SmartThings switch-on/off/refresh, reset stuck toggle mirrors after sequence; Josef OG unit 2 mapping defaults; start retry if feedback stays off",
 				"de": "Klima live: SmartThings switch-on/off/refresh erzwingen, hängende Toggle-Spiegel nach Sequenz zurücksetzen; Josef OG Unit-2-Mapping; Start-Retry wenn Feedback off bleibt"

@@ -89,7 +89,7 @@ async function writeSystemStates(host, providers, engineIssues, valid) {
     ];
     await (0, state_write_1.setStatesIfRevisionChanged)(host, "policy.system.revision", hash, writes, "policy.system.updated_at", ts);
     if (lastSystemRevision !== null && lastSystemRevision !== hash) {
-        host.log.info("Policy revision changed");
+        host.log.debug?.("Policy revision changed");
     }
     lastSystemRevision = hash;
     return hash;
@@ -169,7 +169,7 @@ async function runPolicyEngine(host) {
 }
 exports.runPolicyEngine = runPolicyEngine;
 async function initPolicyEngine(host) {
-    host.log.info("Policy Engine initialized");
+    host.log.debug?.("Policy Engine initialized");
     // Engine immer als aktiv markieren — die eigentliche ioBroker-Subscription auf
     // global_modes.requested registriert die Adapterschicht auf dem echten Adapter
     // (siehe ems_light/index.ts). handleGlobalModesStateChange darf nicht davon

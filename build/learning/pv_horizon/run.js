@@ -106,6 +106,6 @@ async function runPvHorizon(host) {
     const scope = cfg.skipTodayTomorrowFromPvBias
         ? "Tag3-7 (heute/morgen via PV-Bias)"
         : "Tag1-7";
-    host.log.info(`PV-Horizon [${scope}]: days=${result.daysAvailable}/${result.expectedDays} status=${result.status} total_corr=${result.total7dCorrectedKwh ?? "—"} kWh`);
+    host.log.debug?.(`PV-Horizon [${scope}]: days=${result.daysAvailable}/${result.expectedDays} status=${result.status} total_corr=${result.total7dCorrectedKwh ?? "—"} kWh`);
 }
 exports.runPvHorizon = runPvHorizon;

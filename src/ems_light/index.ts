@@ -174,7 +174,7 @@ export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<voi
 		}
 	}, sec * 1000);
 
-	adapter.log.info(`EMS-Light Phase 1 ready (read-only, tick ${sec}s)`);
+	adapter.log.debug(`EMS-Light Phase 1 ready (read-only, tick ${sec}s)`);
 }
 
 /** Nur Live-Tick-Timer stoppen (Learning-Intervalle laufen weiter). */

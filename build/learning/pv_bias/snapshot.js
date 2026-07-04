@@ -77,7 +77,7 @@ async function runActualDailySnapshot(host, cfg, now = new Date()) {
         forecastSource: (0, daily_persist_1.dailyRecord)(persist, todayKey)?.forecastSource,
     });
     await (0, daily_persist_1.writeDailyPersist)(dir, updated);
-    host.log.info(`PV-Bias Snapshot: Ist ${actualKwh} kWh für ${todayKey} um ${now.toISOString()} gespeichert.`);
+    host.log.debug?.(`PV-Bias Snapshot: Ist ${actualKwh} kWh für ${todayKey} um ${now.toISOString()} gespeichert.`);
     return true;
 }
 exports.runActualDailySnapshot = runActualDailySnapshot;
@@ -130,7 +130,7 @@ async function backfillDailyPersist(host, cfg, maxDays = 30) {
     }
     if (filled > 0) {
         await (0, daily_persist_1.writeDailyPersist)(dir, persist);
-        host.log.info(`PV-Bias: ${filled} Tages-Snapshot(s) aus History nachgezogen (letzter Tageswert).`);
+        host.log.debug?.(`PV-Bias: ${filled} Tages-Snapshot(s) aus History nachgezogen (letzter Tageswert).`);
     }
     return filled;
 }

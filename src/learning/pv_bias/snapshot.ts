@@ -21,7 +21,8 @@ export type SnapshotHost = HistoryHost &
 	HistoryQueryHost & {
 		getAbsolutePath?: (category?: string) => string;
 		setStateAsync?: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
-		log: { info: (msg: string) => void; warn: (msg: string) => void; error?: (msg: string) => void };
+		log: { info: (msg: string) => void;
+		debug?: (msg: string) => void; warn: (msg: string) => void; error?: (msg: string) => void };
 	};
 
 function persistDir(host: SnapshotHost): string | null {
@@ -114,7 +115,7 @@ export async function runActualDailySnapshot(
 		forecastSource: dailyRecord(persist, todayKey)?.forecastSource,
 	});
 	await writeDailyPersist(dir, updated);
-	host.log.info(`PV-Bias Snapshot: Ist ${actualKwh} kWh für ${todayKey} um ${now.toISOString()} gespeichert.`);
+	host.log.debug?.(`PV-Bias Snapshot: Ist ${actualKwh} kWh für ${todayKey} um ${now.toISOString()} gespeichert.`);
 	return true;
 }
 
@@ -181,7 +182,7 @@ export async function backfillDailyPersist(host: SnapshotHost, cfg: PvBiasConfig
 
 	if (filled > 0) {
 		await writeDailyPersist(dir, persist);
-		host.log.info(`PV-Bias: ${filled} Tages-Snapshot(s) aus History nachgezogen (letzter Tageswert).`);
+		host.log.debug?.(`PV-Bias: ${filled} Tages-Snapshot(s) aus History nachgezogen (letzter Tageswert).`);
 	}
 	return filled;
 }

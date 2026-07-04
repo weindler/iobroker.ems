@@ -84,7 +84,7 @@ async function runBatteryRuntimeLearning(host) {
         return;
     }
     try {
-        host.log.info(`Battery-Runtime-Learning: loading history (${cfg.lookbackDays}d, soc=${(0, config_1.sourceLabelFromStateId)(sources.socStateId)})…`);
+        host.log.debug?.(`Battery-Runtime-Learning: loading history (${cfg.lookbackDays}d, soc=${(0, config_1.sourceLabelFromStateId)(sources.socStateId)})…`);
         const [socHist, secondsSinceFull, capacityKwh, currentSocPct] = await Promise.all([
             (0, history_1.fetchSocHistory)(host, sources.socStateId, cfg.lookbackDays),
             (0, history_1.readSecondsSinceFullCharge)(host, sources.secondsSinceFullStateId),
@@ -119,7 +119,7 @@ async function runBatteryRuntimeLearning(host) {
             await (0, persist_1.writeBatteryRuntimePersist)(host.getAbsolutePath("learning/battery_runtime"), result, lastRun);
         }
         await writeResult(host, result, lastRun);
-        host.log.info(`Battery-Runtime-Learning: status=${result.status} nights=${result.avgNightDischargePct ?? "n/a"}% samples=${result.sampleDays} full_src=${result.fullChargeSource ?? "—"} sec_since_full=${result.secondsSinceFullCharge ?? "—"} days_since_full=${result.daysSinceFull ?? "—"} last_full=${result.lastFullCharge ?? "—"} soc=${(0, config_1.sourceLabelFromStateId)(sources.socStateId)} power=${(0, config_1.sourceLabelFromStateId)(sources.powerStateId)} invert=${result.powerInvertApplied === null ? "—" : result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? "(auto)" : ""} pwr_raw=${result.powerRawChargeSamples ?? "—"}/${result.powerRawDischargeSamples ?? "—"} pwr_hr=${result.powerHourlyChargePoints ?? "—"}/${result.powerHourlyDischargePoints ?? "—"} avg_chg_w=${result.avgChargePowerW ?? "—"}`);
+        host.log.debug?.(`Battery-Runtime-Learning: status=${result.status} nights=${result.avgNightDischargePct ?? "n/a"}% samples=${result.sampleDays} full_src=${result.fullChargeSource ?? "—"} sec_since_full=${result.secondsSinceFullCharge ?? "—"} days_since_full=${result.daysSinceFull ?? "—"} last_full=${result.lastFullCharge ?? "—"} soc=${(0, config_1.sourceLabelFromStateId)(sources.socStateId)} power=${(0, config_1.sourceLabelFromStateId)(sources.powerStateId)} invert=${result.powerInvertApplied === null ? "—" : result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? "(auto)" : ""} pwr_raw=${result.powerRawChargeSamples ?? "—"}/${result.powerRawDischargeSamples ?? "—"} pwr_hr=${result.powerHourlyChargePoints ?? "—"}/${result.powerHourlyDischargePoints ?? "—"} avg_chg_w=${result.avgChargePowerW ?? "—"}`);
         if (sources.powerStateId &&
             result.powerRawChargeSamples === 0 &&
             result.powerRawDischargeSamples !== null &&

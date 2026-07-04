@@ -268,8 +268,8 @@ function bulkWindowDays(lookbackDays) {
 async function fetchHistoryBulkForId(host, stateId, lookbackDays) {
     let combinedStats = emptyStats();
     for (const days of bulkWindowDays(lookbackDays)) {
-        if (host.log?.info) {
-            host.log.info(`History query: bulk ${days}d für ${stateId}…`);
+        if (host.log?.debug) {
+            host.log.debug?.(`History query: bulk ${days}d für ${stateId}…`);
         }
         const endMs = Date.now();
         const startMs = endMs - days * MS_PER_DAY;
@@ -300,8 +300,8 @@ async function fetchHistoryPerDayForId(host, stateId, lookbackDays, countPerDay,
 }
 async function fetchHistoryRowsLookbackForId(host, stateId, lookbackDays, countPerDay, timeoutMs) {
     if (lookbackDays > exports.BULK_LOOKBACK_MAX_DAYS) {
-        if (host.log?.info) {
-            host.log.info(`History query: Tages-Modus ${lookbackDays}d für ${stateId}…`);
+        if (host.log?.debug) {
+            host.log.debug?.(`History query: Tages-Modus ${lookbackDays}d für ${stateId}…`);
         }
         return fetchHistoryPerDayForId(host, stateId, lookbackDays, countPerDay, timeoutMs);
     }
@@ -309,8 +309,8 @@ async function fetchHistoryRowsLookbackForId(host, stateId, lookbackDays, countP
     if (bulk.rows.length > 0) {
         return bulk;
     }
-    if (host.log?.info) {
-        host.log.info(`History query: Tages-Fallback ${lookbackDays}d für ${stateId} (${formatHistoryStats(bulk.stats)})`);
+    if (host.log?.debug) {
+        host.log.debug?.(`History query: Tages-Fallback ${lookbackDays}d für ${stateId} (${formatHistoryStats(bulk.stats)})`);
     }
     const perDay = await fetchHistoryPerDayForId(host, stateId, lookbackDays, countPerDay, timeoutMs);
     return {
@@ -342,8 +342,8 @@ async function fetchHistoryRowsLookback(host, stateId, lookbackDays, countPerDay
             if (i > 0 && host.log?.warn) {
                 host.log.warn(`History query: Daten über Fallback-State ${candidateId} (${attempt.rows.length} Zeilen, konfiguriert: ${stateId})`);
             }
-            else if (host.log?.info) {
-                host.log.info(`History query: ${attempt.rows.length} Zeilen für ${candidateId} (${lookbackDays}d)`);
+            else if (host.log?.debug) {
+                host.log.debug?.(`History query: ${attempt.rows.length} Zeilen für ${candidateId} (${lookbackDays}d)`);
             }
             return attempt.rows;
         }

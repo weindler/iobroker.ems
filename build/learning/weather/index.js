@@ -20,7 +20,7 @@ async function initWeatherLearning(adapter) {
             adapter.log.error(`Weather-Learning tick: ${e}`);
         });
     }, cfg.intervalSec * 1000);
-    adapter.log.info(`EMS-Light Weather-Learning ready (read-only, interval ${cfg.intervalSec}s)`);
+    adapter.log.debug?.(`EMS-Light Weather-Learning ready (read-only, interval ${cfg.intervalSec}s)`);
 }
 exports.initWeatherLearning = initWeatherLearning;
 function stopWeatherLearning() {

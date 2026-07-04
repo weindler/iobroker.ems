@@ -34,7 +34,7 @@ async function forceImmersionHeaterOff(adapter, reason) {
             reason: `immersion failsafe: ${reason}`,
         });
         if (r.skipped) {
-            adapter.log.info(`immersion failsafe (${reason}): already OFF → ${targetId}`);
+            adapter.log.debug(`immersion failsafe (${reason}): already OFF → ${targetId}`);
             return true;
         }
         adapter.log.warn(`immersion failsafe (${reason}): OFF → ${targetId}`);
@@ -57,7 +57,7 @@ async function runImmersionFailsafeCheck(adapter) {
     await (0, failsafe_common_1.setEdgeBool)(adapter, status_1.IMMERSION_STATUS_STATES.failsafeWouldTrip, wouldTrip && !liveAllowed);
     if (lastEmsReachable !== emsReachable) {
         lastEmsReachable = emsReachable;
-        adapter.log.info(`immersion_heater: ems_reachable=${emsReachable}`);
+        adapter.log.debug(`immersion_heater: ems_reachable=${emsReachable}`);
     }
     const ts = new Date().toISOString();
     await adapter.setStateAsync(status_1.IMMERSION_STATUS_STATES.updatedAt, { val: ts, ack: true });

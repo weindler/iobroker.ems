@@ -6,6 +6,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
 const execution_mode_js_1 = require("./execution_mode.js");
+const DRYRUN_FP = (0, execution_mode_js_1.executionModesConfigFingerprint)({
+    global_execution_mode: "dryrun",
+    wb_addon_mode: "dryrun",
+    bat_addon_mode: "dryrun",
+    ih_addon_mode: "dryrun",
+});
+const LIVE_IH_FP = (0, execution_mode_js_1.executionModesConfigFingerprint)({
+    global_execution_mode: "live",
+    wb_addon_mode: "dryrun",
+    bat_addon_mode: "dryrun",
+    ih_addon_mode: "live",
+});
 (0, node_test_1.describe)("execution mode", () => {
     (0, node_test_1.it)("parseMode accepts live and defaults unknown to dryrun", () => {
         strict_1.default.equal((0, execution_mode_js_1.parseMode)("live"), "live");
@@ -54,11 +66,13 @@ const execution_mode_js_1 = require("./execution_mode.js");
         strict_1.default.equal(store.get("addons.immersion_heater.mode")?.val, "live");
         strict_1.default.equal(store.get("addons.immersion_heater.mode")?.ack, true);
     });
-    (0, node_test_1.it)("syncExecutionModesFromConfig preserves existing runtime modes on restart", async () => {
+    (0, node_test_1.it)("syncExecutionModesFromConfig preserves runtime modes when admin unchanged", async () => {
         const store = new Map([
             ["global.execution_mode", { val: "live", ack: true }],
             ["addons.immersion_heater.mode", { val: "live", ack: true }],
             ["addons.battery.mode", { val: "dryrun", ack: true }],
+            ["addons.wallbox.mode", { val: "dryrun", ack: true }],
+            [execution_mode_js_1.EXECUTION_MODE_CONFIG_FINGERPRINT, { val: DRYRUN_FP, ack: true }],
         ]);
         const host = {
             getStateAsync: async (id) => store.get(id) ?? null,
@@ -70,12 +84,37 @@ const execution_mode_js_1 = require("./execution_mode.js");
         await (0, execution_mode_js_1.syncExecutionModesFromConfig)(host, {
             global_execution_mode: "dryrun",
             ih_addon_mode: "dryrun",
-            bat_addon_mode: "live",
+            bat_addon_mode: "dryrun",
+            wb_addon_mode: "dryrun",
         });
         strict_1.default.equal(store.get("global.execution_mode")?.val, "live");
         strict_1.default.equal(store.get("addons.immersion_heater.mode")?.val, "live");
-        strict_1.default.equal(store.get("addons.battery.mode")?.val, "dryrun");
         strict_1.default.equal(store.get("execution.safety.global_execution_mode")?.val, "live");
+    });
+    (0, node_test_1.it)("syncExecutionModesFromConfig applies admin when config changed", async () => {
+        const store = new Map([
+            ["global.execution_mode", { val: "dryrun", ack: true }],
+            ["addons.immersion_heater.mode", { val: "dryrun", ack: true }],
+            ["addons.battery.mode", { val: "dryrun", ack: true }],
+            ["addons.wallbox.mode", { val: "dryrun", ack: true }],
+            [execution_mode_js_1.EXECUTION_MODE_CONFIG_FINGERPRINT, { val: DRYRUN_FP, ack: true }],
+        ]);
+        const host = {
+            getStateAsync: async (id) => store.get(id) ?? null,
+            setStateAsync: async (id, st) => {
+                store.set(id, { val: st.val, ack: st.ack ?? false });
+            },
+            setObjectNotExistsAsync: async () => undefined,
+        };
+        await (0, execution_mode_js_1.syncExecutionModesFromConfig)(host, {
+            global_execution_mode: "live",
+            ih_addon_mode: "live",
+            bat_addon_mode: "dryrun",
+            wb_addon_mode: "dryrun",
+        });
+        strict_1.default.equal(store.get("global.execution_mode")?.val, "live");
+        strict_1.default.equal(store.get("addons.immersion_heater.mode")?.val, "live");
+        strict_1.default.equal(store.get(execution_mode_js_1.EXECUTION_MODE_CONFIG_FINGERPRINT)?.val, LIVE_IH_FP);
     });
     (0, node_test_1.it)("syncExecutionModesFromConfig seeds empty states from admin config", async () => {
         const store = new Map();
@@ -95,5 +134,6 @@ const execution_mode_js_1 = require("./execution_mode.js");
         strict_1.default.equal(store.get("global.execution_mode")?.val, "live");
         strict_1.default.equal(store.get("addons.immersion_heater.mode")?.val, "live");
         strict_1.default.equal(store.get("addons.battery.mode")?.val, "dryrun");
+        strict_1.default.equal(store.get(execution_mode_js_1.EXECUTION_MODE_CONFIG_FINGERPRINT)?.val, LIVE_IH_FP);
     });
 });

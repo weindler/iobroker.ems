@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureChannelTree = exports.handleExecutionModeStateChange = exports.isExecutionModeStateRelativeId = exports.syncExecutionModesFromConfig = exports.ensureAddonExecutionModeStates = exports.ensureGlobalExecutionStates = exports.isLiveWriteAllowed = exports.executionModeCommon = exports.parseMode = exports.EXECUTION_MODE_ADDON_IDS = exports.EXECUTION_MODE_STATES = exports.EXECUTION_MODE_STATE_LABELS = exports.EXECUTION_MODES = void 0;
+exports.ensureChannelTree = exports.handleExecutionModeStateChange = exports.isExecutionModeStateRelativeId = exports.syncExecutionModesFromConfig = exports.ensureAddonExecutionModeStates = exports.ensureGlobalExecutionStates = exports.isLiveWriteAllowed = exports.executionModeCommon = exports.parseMode = exports.executionModesConfigFingerprint = exports.executionModesFromConfig = exports.EXECUTION_MODE_CONFIG_FINGERPRINT = exports.EXECUTION_MODE_ADDON_IDS = exports.EXECUTION_MODE_STATES = exports.EXECUTION_MODE_STATE_LABELS = exports.EXECUTION_MODES = void 0;
 const tree_paths_1 = require("./tree_paths");
 exports.EXECUTION_MODES = ["dryrun", "live"];
 exports.EXECUTION_MODE_STATE_LABELS = {
@@ -18,6 +18,22 @@ const ADDON_EXECUTION_MODE_NAMES = {
     battery: "Batterie: Ausführung (dryrun|live)",
     immersion_heater: "Heizstab: Ausführung (dryrun|live)",
 };
+/** Interner Fingerabdruck der zuletzt synchronisierten Admin-Config (nicht manuell setzen). */
+exports.EXECUTION_MODE_CONFIG_FINGERPRINT = "global.execution_mode_config_fingerprint";
+function executionModesFromConfig(config) {
+    const c = config;
+    return {
+        global: parseMode(c.global_execution_mode ?? "dryrun"),
+        wallbox: parseMode(c.wb_addon_mode ?? "dryrun"),
+        battery: parseMode(c.bat_addon_mode ?? "dryrun"),
+        immersion_heater: parseMode(c.ih_addon_mode ?? "dryrun"),
+    };
+}
+exports.executionModesFromConfig = executionModesFromConfig;
+function executionModesConfigFingerprint(config) {
+    return JSON.stringify(executionModesFromConfig(config));
+}
+exports.executionModesConfigFingerprint = executionModesConfigFingerprint;
 function parseMode(raw) {
     return String(raw ?? "dryrun").toLowerCase() === "live" ? "live" : "dryrun";
 }
@@ -57,15 +73,41 @@ function hasExecutionModeValue(val) {
     const s = String(val ?? "").trim().toLowerCase();
     return s === "dryrun" || s === "live";
 }
-async function seedExecutionModeIfEmpty(host, id, mode) {
-    const cur = await host.getStateAsync(id);
-    if (hasExecutionModeValue(cur?.val)) {
-        return;
+async function applyExecutionModesFromConfig(host, modes) {
+    await host.setStateAsync(tree_paths_1.GLOBAL.executionMode, { val: modes.global, ack: true });
+    await host.setStateAsync((0, tree_paths_1.addonMode)("wallbox"), { val: modes.wallbox, ack: true });
+    await host.setStateAsync((0, tree_paths_1.addonMode)("battery"), { val: modes.battery, ack: true });
+    await host.setStateAsync((0, tree_paths_1.addonMode)("immersion_heater"), { val: modes.immersion_heater, ack: true });
+}
+async function anyExecutionModeEmpty(host) {
+    const ids = [
+        tree_paths_1.GLOBAL.executionMode,
+        ...exports.EXECUTION_MODE_ADDON_IDS.map((addonId) => (0, tree_paths_1.addonMode)(addonId)),
+    ];
+    for (const id of ids) {
+        const cur = await host.getStateAsync(id);
+        if (!hasExecutionModeValue(cur?.val)) {
+            return true;
+        }
     }
-    await host.setStateAsync(id, { val: mode, ack: true });
+    return false;
+}
+async function mirrorGlobalExecutionSafety(host) {
+    const global = await host.getStateAsync(tree_paths_1.GLOBAL.executionMode);
+    await host.setStateAsync("execution.safety.global_execution_mode", {
+        val: parseMode(global?.val),
+        ack: true,
+    });
 }
 async function ensureGlobalExecutionStates(host) {
     await ensureExecutionModeObject(host, tree_paths_1.GLOBAL.executionMode, executionModeCommon("Global: Ausführung (dryrun|live)"));
+    await ensureExecutionModeObject(host, exports.EXECUTION_MODE_CONFIG_FINGERPRINT, {
+        name: "Intern: Admin-Fingerprint Ausführungsmodi",
+        type: "string",
+        role: "text",
+        read: true,
+        write: false,
+    });
 }
 exports.ensureGlobalExecutionStates = ensureGlobalExecutionStates;
 async function ensureAddonExecutionModeStates(host) {
@@ -74,18 +116,36 @@ async function ensureAddonExecutionModeStates(host) {
     }
 }
 exports.ensureAddonExecutionModeStates = ensureAddonExecutionModeStates;
-/** Admin-Defaults nur wenn State noch nie gesetzt — Laufzeitwerte aus Objektbaum bleiben erhalten. */
+/**
+ * Admin-Config ↔ Objektbaum:
+ * - Admin geändert + Speichern → Config wird auf States geschrieben
+ * - Neustart ohne Admin-Änderung → Laufzeitwerte aus Objektbaum bleiben
+ * - Erststart / leere States → Admin-Defaults
+ */
 async function syncExecutionModesFromConfig(host, config) {
-    const c = config;
-    await seedExecutionModeIfEmpty(host, tree_paths_1.GLOBAL.executionMode, parseMode(c.global_execution_mode ?? "dryrun"));
-    await seedExecutionModeIfEmpty(host, (0, tree_paths_1.addonMode)("wallbox"), parseMode(c.wb_addon_mode ?? "dryrun"));
-    await seedExecutionModeIfEmpty(host, (0, tree_paths_1.addonMode)("battery"), parseMode(c.bat_addon_mode ?? "dryrun"));
-    await seedExecutionModeIfEmpty(host, (0, tree_paths_1.addonMode)("immersion_heater"), parseMode(c.ih_addon_mode ?? "dryrun"));
-    const global = await host.getStateAsync(tree_paths_1.GLOBAL.executionMode);
-    await host.setStateAsync("execution.safety.global_execution_mode", {
-        val: parseMode(global?.val),
-        ack: true,
-    });
+    const modes = executionModesFromConfig(config);
+    const fingerprint = executionModesConfigFingerprint(config);
+    const prevRaw = await host.getStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT);
+    const prevFingerprint = String(prevRaw?.val ?? "");
+    const empty = await anyExecutionModeEmpty(host);
+    if (!prevFingerprint && !empty) {
+        // Upgrade: Laufzeitwerte schon gesetzt, Fingerabdruck fehlt — nicht überschreiben
+        await host.setStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT, { val: fingerprint, ack: true });
+        await mirrorGlobalExecutionSafety(host);
+        host.log?.info?.("Ausführungsmodi: Laufzeitwerte beibehalten (Admin-Fingerprint initialisiert)");
+        return;
+    }
+    if (empty || fingerprint !== prevFingerprint) {
+        await applyExecutionModesFromConfig(host, modes);
+        await host.setStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT, { val: fingerprint, ack: true });
+        host.log?.info?.(empty
+            ? "Ausführungsmodi aus Admin übernommen (Erststart)"
+            : "Ausführungsmodi aus Admin übernommen (Config geändert)");
+    }
+    else {
+        host.log?.info?.("Ausführungsmodi: Laufzeitwerte beibehalten (Admin unverändert)");
+    }
+    await mirrorGlobalExecutionSafety(host);
 }
 exports.syncExecutionModesFromConfig = syncExecutionModesFromConfig;
 function isExecutionModeStateRelativeId(relativeId) {

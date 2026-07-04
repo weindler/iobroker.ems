@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.86",
+		"version": "0.1.87",
 		"news": {
+			"0.1.87": {
+				"en": "Execution modes: admin config applies when saved/changed; object-tree runtime values persist across restart when admin unchanged",
+				"de": "Ausführungsmodi: Admin-Config gilt bei Speichern/Änderung; Laufzeitwerte aus Objektbaum bleiben bei Neustart erhalten wenn Admin unverändert"
+			},
 			"0.1.86": {
 				"en": "Execution modes persist across adapter restart: object-tree dryrun/live values are kept; admin config only seeds empty states on first run",
 				"de": "Ausführungsmodi bleiben nach Adapter-Neustart erhalten: dryrun/live aus dem Objektbaum bleiben; Admin-Config befüllt nur leere States beim Erststart"

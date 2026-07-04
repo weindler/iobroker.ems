@@ -60,6 +60,13 @@ async function pulseSmartThingsToggle(
 	role: AcMappingRole,
 	stateId: string,
 ): Promise<void> {
+	// Impuls-States hängen oft auf true — ioBroker-Spiegel zurück (ack:true, kein Gerätebefehl),
+	// damit der folgende ack:false-Impuls beim SmartThings-Adapter ankommt.
+	try {
+		await host.setForeignStateAsync(stateId, { val: false, ack: true });
+	} catch {
+		// best-effort
+	}
 	await writeForeignIfChanged(host, {
 		stateId,
 		value: true,

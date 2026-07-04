@@ -45,6 +45,14 @@ function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 async function pulseSmartThingsToggle(host, unitIndex, role, stateId) {
+    // Impuls-States hängen oft auf true — ioBroker-Spiegel zurück (ack:true, kein Gerätebefehl),
+    // damit der folgende ack:false-Impuls beim SmartThings-Adapter ankommt.
+    try {
+        await host.setForeignStateAsync(stateId, { val: false, ack: true });
+    }
+    catch {
+        // best-effort
+    }
     await (0, device_write_1.writeForeignIfChanged)(host, {
         stateId,
         value: true,

@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.107",
+		"version": "0.1.108",
 		"news": {
+			"0.1.108": {
+				"en": "AC SmartThings toggle: ack:true mirror reset before pulse when stuck ON; wait 3s before feedback check",
+				"de": "Klima SmartThings: Spiegel-Reset vor Toggle-Impuls wenn ON hängt; 3 s warten vor Feedback-Prüfung"
+			},
 			"0.1.107": {
 				"en": "Fix admin jsonConfig validation: immersion heater help fields use help not helpText",
 				"de": "Admin jsonConfig: Heizstab-Hilfetexte korrigiert (help statt helpText)"

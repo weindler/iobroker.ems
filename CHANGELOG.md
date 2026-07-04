@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.108] – 2026-07-04
+
+### Fixed
+
+- **Klima / SmartThings:** Toggle-Impuls — vor `switch-on`/`refresh` ioBroker-Spiegel per `ack:true` auf `false` (kein Gerätebefehl), damit hängende `ON`-States den Impuls nicht schlucken; 3 s Wartezeit vor Feedback-Prüfung nach Startsequenz.
+
+---
+
 ## [0.1.107] – 2026-07-04
 
 ### Fixed

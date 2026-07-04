@@ -5,6 +5,8 @@ export const AC_WRITE_SETPOINT_DELAY_MS = 5_000;
 export const AC_WRITE_REFRESH_DELAY_MS = 5_000;
 /** Live: volle Start-Sequenz frühestens wieder nach … ms, wenn Feedback noch off. */
 export const AC_START_RETRY_MS = 120_000;
+/** Nach Startsequenz kurz warten, bis SmartThings feedback_switch aktualisiert. */
+export const AC_FEEDBACK_SETTLE_MS = 3_000;
 
 export const AC_PROFILE_IDS = ["generic", "samsung_smartthings"] as const;
 export type AcProfileId = (typeof AC_PROFILE_IDS)[number];

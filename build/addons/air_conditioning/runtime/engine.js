@@ -93,6 +93,7 @@ async function startUnit(host, unit, table, live, up, modePurpose) {
         up.running = true;
         return;
     }
+    await new Promise((resolve) => setTimeout(resolve, constants_1.AC_FEEDBACK_SETTLE_MS));
     const fbId = (0, sequences_1.resolveAcMappingTarget)(table, unit.index, "feedback_switch");
     const fb = await readForeign(host, fbId);
     if ((0, time_1.switchIsOn)(fb.value)) {

@@ -7,7 +7,7 @@ const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
 const sequences_1 = require("./sequences");
 (0, node_test_1.describe)("ac sequences write steps", () => {
-    (0, node_test_1.it)("toggle step uses force write even when state already true", async () => {
+    (0, node_test_1.it)("toggle step resets mirror ack:true then force pulse ack:false", async () => {
         const writes = [];
         const host = {
             getForeignStateAsync: async () => ({ val: true, ack: true, ts: 0, lc: 0, from: "test" }),
@@ -21,9 +21,9 @@ const sequences_1 = require("./sequences");
             unit_2_cmd_switch_on: { enabled: true, targetStateId: "st.on" },
         };
         await (0, sequences_1.executeAcWriteSteps)(host, 2, table, [{ kind: "toggle", role: "cmd_switch_on" }], true);
-        strict_1.default.equal(writes.length, 1);
-        strict_1.default.equal(writes[0].val, true);
-        strict_1.default.equal(writes[0].ack, false);
+        strict_1.default.equal(writes.length, 2);
+        strict_1.default.deepEqual(writes[0], { id: "st.on", val: false, ack: true });
+        strict_1.default.deepEqual(writes[1], { id: "st.on", val: true, ack: false });
     });
     (0, node_test_1.it)("dryrun does not write", async () => {
         let wrote = false;

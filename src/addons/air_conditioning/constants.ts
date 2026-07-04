@@ -5,6 +5,8 @@ export const AC_WRITE_SETPOINT_DELAY_MS = 5_000;
 export const AC_WRITE_REFRESH_DELAY_MS = 5_000;
 /** Live: volle Start-Sequenz frühestens wieder nach … ms, wenn Feedback noch off. */
 export const AC_START_RETRY_MS = 120_000;
+/** Live: volle Stop-Sequenz frühestens wieder nach … ms, wenn Feedback noch on. */
+export const AC_STOP_RETRY_MS = 60_000;
 /** Nach Startsequenz kurz warten, bis SmartThings feedback_switch aktualisiert. */
 export const AC_FEEDBACK_POLL_MS = 3_000;
 export const AC_FEEDBACK_POLL_ATTEMPTS = 6;

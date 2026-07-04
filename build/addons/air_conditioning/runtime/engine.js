@@ -65,6 +65,9 @@ function allocatedPowerW(runningCount, outdoorMax, unitEstimated) {
         return unitEstimated;
     return Math.min(unitEstimated, Math.round(outdoorMax / runningCount));
 }
+function stopRetryReady(up, nowMs) {
+    return !up.lastStopAtMs || nowMs - up.lastStopAtMs >= constants_1.AC_STOP_RETRY_MS;
+}
 async function stopUnit(host, unit, table, live, up) {
     const offId = (0, sequences_1.resolveAcMappingTarget)(table, unit.index, "cmd_switch_off");
     const refreshId = (0, sequences_1.resolveAcMappingTarget)(table, unit.index, "cmd_refresh");
@@ -172,7 +175,7 @@ async function runAcRuntimeTickBody(host) {
         if ((0, time_1.switchIsOn)(fb.value))
             runningCount += 1;
         await tickCleaning(host, unit, mappingTable, live, up, nowMs);
-        if (!addonEnabledVal && (0, time_1.switchIsOn)(fb.value)) {
+        if (!addonEnabledVal && (0, time_1.switchIsOn)(fb.value) && stopRetryReady(up, nowMs)) {
             await stopUnit(host, unit, mappingTable, live, up);
         }
         const fsm = (0, fsm_1.evaluateAcUnitFsm)({
@@ -186,7 +189,12 @@ async function runAcRuntimeTickBody(host) {
         });
         if (fsm.demandStop) {
             if ((0, time_1.switchIsOn)(fb.value)) {
-                await stopUnit(host, unit, mappingTable, live, up);
+                if (stopRetryReady(up, nowMs)) {
+                    if (up.lastStopAtMs) {
+                        host.log.info(`ac unit ${unit.index}: retry stop (${Math.round((nowMs - up.lastStopAtMs) / 1000)}s since last attempt)`);
+                    }
+                    await stopUnit(host, unit, mappingTable, live, up);
+                }
             }
             else {
                 up.running = false;

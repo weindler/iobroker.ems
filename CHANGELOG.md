@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.111] – 2026-07-04
+
+### Fixed
+
+- **Klima Stopp:** Stop-Sequenz maximal einmal pro 60 s, solange `feedback_switch` noch `on` (SmartThings braucht Zeit wie beim Start).
+
+---
+
 ## [0.1.110] – 2026-07-04
 
 ### Fixed

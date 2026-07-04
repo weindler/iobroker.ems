@@ -10,7 +10,7 @@ import {
 	resetConsumerStatsCache,
 } from "../../../learning/consumer_stats";
 import type { DeviceWriteHost } from "../../../device_write";
-import { acUnitConsumerKey, AC_ADDON_ID, AC_FEEDBACK_POLL_ATTEMPTS, AC_FEEDBACK_POLL_MS, AC_START_RETRY_MS, AC_TICK_MS, AC_WATCH_MAPPING_ROLES } from "../constants";
+import { acUnitConsumerKey, AC_ADDON_ID, AC_FEEDBACK_POLL_ATTEMPTS, AC_FEEDBACK_POLL_MS, AC_START_RETRY_MS, AC_STOP_RETRY_MS, AC_TICK_MS, AC_WATCH_MAPPING_ROLES } from "../constants";
 import { acGlobalConfigFromAdapter } from "../config";
 import type { AcUnitConfig } from "../types";
 import { getAcProfile } from "../profiles/registry";
@@ -88,6 +88,10 @@ function allocatedPowerW(runningCount: number, outdoorMax: number, unitEstimated
 	if (runningCount <= 0) return 0;
 	if (runningCount === 1) return unitEstimated;
 	return Math.min(unitEstimated, Math.round(outdoorMax / runningCount));
+}
+
+function stopRetryReady(up: AcUnitPersist, nowMs: number): boolean {
+	return !up.lastStopAtMs || nowMs - up.lastStopAtMs >= AC_STOP_RETRY_MS;
 }
 
 async function stopUnit(
@@ -225,7 +229,7 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 
 		await tickCleaning(host, unit, mappingTable, live, up, nowMs);
 
-		if (!addonEnabledVal && switchIsOn(fb.value)) {
+		if (!addonEnabledVal && switchIsOn(fb.value) && stopRetryReady(up, nowMs)) {
 			await stopUnit(host, unit, mappingTable, live, up);
 		}
 
@@ -241,7 +245,14 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 
 		if (fsm.demandStop) {
 			if (switchIsOn(fb.value)) {
-				await stopUnit(host, unit, mappingTable, live, up);
+				if (stopRetryReady(up, nowMs)) {
+					if (up.lastStopAtMs) {
+						host.log.info(
+							`ac unit ${unit.index}: retry stop (${Math.round((nowMs - up.lastStopAtMs) / 1000)}s since last attempt)`,
+						);
+					}
+					await stopUnit(host, unit, mappingTable, live, up);
+				}
 			} else {
 				up.running = false;
 			}

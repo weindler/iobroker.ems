@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.controlModeToOperatingRequest = exports.operatingRequestToControlMode = exports.evaluateTemperature = exports.runImmersionFsm = void 0;
 const device_config_1 = require("../device_config");
 function runImmersionFsm(input) {
-    const { nowMs, addonEnabled, addonAvailable, configValid, failsafeActive, resolvedMode, forceTargetTempC, forceUntilMs, plannerCommandedStage, temperature, measuredPowerW, hasPowerMeasurement, persist, config, faultLockout, faultCode, } = input;
+    const { nowMs, addonEnabled, addonAvailable, configValid, failsafeActive, resolvedMode, forceTargetTempC, forceUntilMs, plannerCommandedStage, plannerTargetTempC, temperature, measuredPowerW, hasPowerMeasurement, persist, config, faultLockout, faultCode, } = input;
     const base = {
         state: "off",
         available: false,
@@ -63,6 +63,9 @@ function runImmersionFsm(input) {
     }
     if (resolvedMode === "auto") {
         const temp = temperature.valueC;
+        const autoTargetC = Math.min(config.planningMaxTempC, plannerTargetTempC !== null && Number.isFinite(plannerTargetTempC)
+            ? plannerTargetTempC
+            : config.planningMaxTempC);
         if (temp >= config.planningMaxTempC) {
             const minRuntimeActive = persist.minRuntimeUntilMs !== null && nowMs < persist.minRuntimeUntilMs;
             if (minRuntimeActive && persist.commandedStage > 0) {
@@ -85,6 +88,31 @@ function runImmersionFsm(input) {
                 state: "auto_ready",
                 available: true,
                 reason: "auto_planning_max_temp_reached",
+                commandedStage: 0,
+            };
+        }
+        if (temp >= autoTargetC) {
+            const minRuntimeActive = persist.minRuntimeUntilMs !== null && nowMs < persist.minRuntimeUntilMs;
+            if (minRuntimeActive && persist.commandedStage > 0) {
+                const activeStage = config.stages.find((s) => s.index === persist.commandedStage);
+                if (activeStage?.enabled && activeStage.nominalPowerW > 0) {
+                    return {
+                        ...base,
+                        state: "auto_heating",
+                        available: true,
+                        reason: "auto_minimum_runtime",
+                        commandedStage: persist.commandedStage,
+                        commandedPowerW: activeStage.nominalPowerW,
+                        minRuntimeUntilMs: persist.minRuntimeUntilMs,
+                        powerVerificationStatus: evaluatePower(hasPowerMeasurement, measuredPowerW, activeStage.nominalPowerW, true, config),
+                    };
+                }
+            }
+            return {
+                ...base,
+                state: "auto_ready",
+                available: true,
+                reason: "auto_planning_target_reached",
                 commandedStage: 0,
             };
         }

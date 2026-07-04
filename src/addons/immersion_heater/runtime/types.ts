@@ -70,6 +70,12 @@ export interface ImmersionDeviceConfig {
 	relayChatterMaxChanges: number;
 	bufferTempStateId: string;
 	bufferTempEnabled: boolean;
+	forecastModeEnabled: boolean;
+	forecastLowTomorrowRatio: number;
+	forecastHighTomorrowRatio: number;
+	forecastTargetFractionModerate: number;
+	forecastTargetFractionDefault: number;
+	forecastNoDataOffsetC: number;
 }
 
 export interface ConfigValidationResult {

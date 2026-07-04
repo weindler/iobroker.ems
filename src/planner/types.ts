@@ -1,7 +1,7 @@
 /** Deterministic EMS planner — Phase 1 MVP (dryrun-first). */
 
 export const PLANNER_SCHEMA_VERSION = 1;
-export const PLANNER_ENGINE_VERSION = "0.2.0";
+export const PLANNER_ENGINE_VERSION = "0.3.0";
 
 export type PlannerBatteryAction = "none" | "charge" | "self_consumption" | "hold";
 
@@ -14,6 +14,9 @@ export interface PlannerThermalDecision {
 	commanded_stage: number;
 	commanded_power_w: number;
 	reason_de: string;
+	target_temp_c: number;
+	target_reason_de: string;
+	forecast_active: boolean;
 }
 
 export interface PlannerBatteryDecision {
@@ -66,7 +69,14 @@ export function emptyPlannerIntent(now: Date): PlannerIntent {
 		},
 		global_mode: { active: "balanced", policy_label_de: "" },
 		deficit_w: null,
-		thermal: { commanded_stage: 0, commanded_power_w: 0, reason_de: "Kein Heizstab-Auftrag." },
+		thermal: {
+			commanded_stage: 0,
+			commanded_power_w: 0,
+			reason_de: "Kein Heizstab-Auftrag.",
+			target_temp_c: 60,
+			target_reason_de: "",
+			forecast_active: false,
+		},
 		battery: { action: "none", max_charge_w: 0, target_soc_pct: null, reason_de: "Kein Batterie-Auftrag." },
 	};
 }

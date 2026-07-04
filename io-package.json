@@ -1,8 +1,16 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.92",
+		"version": "0.1.94",
 		"news": {
+			"0.1.94": {
+				"en": "Immersion power_when_off: wait for fresh reading after switch-off (stale meter fix); default off-check delay 90s; includes Phase B forecast daily target (v0.1.93)",
+				"de": "Heizstab power_when_off: frischer Leistungswert nach EMS-AUS abwarten; Standard Prüfverzögerung Aus 90 s; inkl. Phase B Forecast-Tagesziel (v0.1.93)"
+			},
+			"0.1.93": {
+				"en": "Immersion heater Phase B: rule-based daily target from PV forecast (pv_bias); planner.intent.thermal.target_temp_c; stops below hard max when tomorrow has similar PV",
+				"de": "Heizstab Phase B: regelbasiertes Tagesziel aus PV-Prognose (pv_bias); planner.intent.thermal.target_temp_c; Stopp unter Hard-Max bei ähnlich viel PV morgen"
+			},
 			"0.1.92": {
 				"en": "Failsafe fix: refresh EMS activity heartbeat on immersion, battery, and EMS-Light ticks so ems_unreachable does not trip during normal heating",
 				"de": "Failsafe-Fix: EMS-Lebenszeichen bei Heizstab-, Batterie- und EMS-Light-Ticks aktualisieren — kein ems_unreachable während normalem Betrieb"

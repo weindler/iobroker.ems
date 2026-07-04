@@ -166,6 +166,24 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
         });
         strict_1.default.equal(r.faultCode, "none");
     });
+    (0, node_test_1.it)("power_when_off waits for power reading updated after EMS switch-off", () => {
+        const r = (0, safety_js_1.checkPowerFault)({
+            nowMs: 80_000,
+            executionLive: true,
+            commandedOn: false,
+            commandedStage: 0,
+            nominalPowerW: 0,
+            measuredPowerW: 1700,
+            hasPowerMeasurement: true,
+            feedbackActive: false,
+            emsOnWriteAtMs: 0,
+            emsOffWriteAtMs: 50_000,
+            powerObservedAtMs: 40_000,
+            mismatchSinceMs: null,
+            config: CFG,
+        });
+        strict_1.default.equal(r.faultCode, "none");
+    });
     (0, node_test_1.it)("relay chatter detection", () => {
         let t = { timestampsMs: [] };
         for (let i = 0; i < 8; i++) {

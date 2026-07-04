@@ -171,6 +171,25 @@ describe("immersion safety", () => {
 		assert.equal(r.faultCode, "none");
 	});
 
+	it("power_when_off waits for power reading updated after EMS switch-off", () => {
+		const r = checkPowerFault({
+			nowMs: 80_000,
+			executionLive: true,
+			commandedOn: false,
+			commandedStage: 0,
+			nominalPowerW: 0,
+			measuredPowerW: 1700,
+			hasPowerMeasurement: true,
+			feedbackActive: false,
+			emsOnWriteAtMs: 0,
+			emsOffWriteAtMs: 50_000,
+			powerObservedAtMs: 40_000,
+			mismatchSinceMs: null,
+			config: CFG,
+		});
+		assert.equal(r.faultCode, "none");
+	});
+
 	it("relay chatter detection", () => {
 		let t: ReturnType<typeof recordChatterEvent> = { timestampsMs: [] };
 		for (let i = 0; i < 8; i++) {

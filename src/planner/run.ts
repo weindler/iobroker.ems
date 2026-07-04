@@ -29,6 +29,11 @@ export function runPlanner(inputs: PlannerInputs): PlannerIntent {
 		governanceEnabled: inputs.thermalGovernanceEnabled,
 		config: inputs.immersionConfig,
 		modePolicy: inputs.modePolicy,
+		pvTodayKwh: inputs.pvTodayKwh,
+		pvTomorrowKwh: inputs.pvTomorrowKwh,
+		pvBiasStatus: inputs.pvBiasStatus,
+		forecastModeEnabled: inputs.forecastModeEnabled,
+		aiOptimizationAllowed: inputs.aiOptimizationAllowed,
 	});
 
 	const thermalAllocatedW = thermal.commanded_stage > 0 ? thermal.commanded_power_w : 0;
@@ -55,6 +60,8 @@ export function runPlanner(inputs: PlannerInputs): PlannerIntent {
 	}
 	if (thermal.commanded_stage > 0) {
 		reasonParts.push(`Heizstab Stufe ${thermal.commanded_stage}`);
+	} else if (thermal.forecast_active && inputs.bufferTempC !== null && inputs.bufferTempC >= thermal.target_temp_c) {
+		reasonParts.push(`Heizstab Tagesziel ${thermal.target_temp_c} °C erreicht`);
 	}
 	if (battery.action === "charge") {
 		reasonParts.push(`Batterie +${battery.max_charge_w} W`);
@@ -93,6 +100,8 @@ function formatBriefing(intent: PlannerIntent): string {
 	];
 	if (intent.thermal.commanded_stage > 0) {
 		lines.push(intent.thermal.reason_de);
+	} else if (intent.thermal.forecast_active && intent.thermal.target_reason_de) {
+		lines.push(`Heizstab-Ziel ${intent.thermal.target_temp_c} °C: ${intent.thermal.target_reason_de}`);
 	} else if (
 		intent.thermal.reason_de &&
 		!intent.thermal.reason_de.startsWith("Heizstab-Modus")
@@ -122,6 +131,9 @@ export async function runPlannerTick(host: PlannerHost): Promise<PlannerIntent> 
 		await setStateIfChanged(host, "planner.intent.thermal.commanded_stage", intent.thermal.commanded_stage);
 		await setStateIfChanged(host, "planner.intent.thermal.commanded_power_w", intent.thermal.commanded_power_w);
 		await setStateIfChanged(host, "planner.intent.thermal.reason_de", intent.thermal.reason_de);
+		await setStateIfChanged(host, "planner.intent.thermal.target_temp_c", intent.thermal.target_temp_c);
+		await setStateIfChanged(host, "planner.intent.thermal.target_reason_de", intent.thermal.target_reason_de);
+		await setStateIfChanged(host, "planner.intent.thermal.forecast_active", intent.thermal.forecast_active);
 		await setStateIfChanged(host, "planner.intent.battery.action", intent.battery.action);
 		await setStateIfChanged(host, "planner.intent.battery.max_charge_w", intent.battery.max_charge_w);
 		await setStateIfChanged(host, "planner.intent.battery.reason_de", intent.battery.reason_de);

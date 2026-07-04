@@ -20,6 +20,7 @@ export interface FsmInput {
 	forceTargetTempC: number | null;
 	forceUntilMs: number | null;
 	plannerCommandedStage: number;
+	plannerTargetTempC: number | null;
 	temperature: TemperatureReading;
 	measuredPowerW: number | null;
 	hasPowerMeasurement: boolean;
@@ -56,6 +57,7 @@ export function runImmersionFsm(input: FsmInput): FsmOutput {
 		forceTargetTempC,
 		forceUntilMs,
 		plannerCommandedStage,
+		plannerTargetTempC,
 		temperature,
 		measuredPowerW,
 		hasPowerMeasurement,
@@ -128,6 +130,13 @@ export function runImmersionFsm(input: FsmInput): FsmOutput {
 
 	if (resolvedMode === "auto") {
 		const temp = temperature.valueC!;
+		const autoTargetC = Math.min(
+			config.planningMaxTempC,
+			plannerTargetTempC !== null && Number.isFinite(plannerTargetTempC)
+				? plannerTargetTempC
+				: config.planningMaxTempC,
+		);
+
 		if (temp >= config.planningMaxTempC) {
 			const minRuntimeActive = persist.minRuntimeUntilMs !== null && nowMs < persist.minRuntimeUntilMs;
 			if (minRuntimeActive && persist.commandedStage > 0) {
@@ -156,6 +165,38 @@ export function runImmersionFsm(input: FsmInput): FsmOutput {
 				state: "auto_ready",
 				available: true,
 				reason: "auto_planning_max_temp_reached",
+				commandedStage: 0,
+			};
+		}
+
+		if (temp >= autoTargetC) {
+			const minRuntimeActive = persist.minRuntimeUntilMs !== null && nowMs < persist.minRuntimeUntilMs;
+			if (minRuntimeActive && persist.commandedStage > 0) {
+				const activeStage = config.stages.find((s) => s.index === persist.commandedStage);
+				if (activeStage?.enabled && activeStage.nominalPowerW > 0) {
+					return {
+						...base,
+						state: "auto_heating",
+						available: true,
+						reason: "auto_minimum_runtime",
+						commandedStage: persist.commandedStage,
+						commandedPowerW: activeStage.nominalPowerW,
+						minRuntimeUntilMs: persist.minRuntimeUntilMs,
+						powerVerificationStatus: evaluatePower(
+							hasPowerMeasurement,
+							measuredPowerW,
+							activeStage.nominalPowerW,
+							true,
+							config,
+						),
+					};
+				}
+			}
+			return {
+				...base,
+				state: "auto_ready",
+				available: true,
+				reason: "auto_planning_target_reached",
 				commandedStage: 0,
 			};
 		}

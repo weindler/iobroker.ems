@@ -27,7 +27,7 @@ import {
 	readRuntimePersist,
 	writeRuntimePersist,
 } from "./persist";
-import { readPlannerThermalStage } from "../../../planner/inputs";
+import { readPlannerThermalStage, readPlannerThermalTargetTemp } from "../../../planner/inputs";
 import {
 	forceTargetFromIntent,
 	forceUntilFromIntent,
@@ -254,6 +254,7 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 		}
 	}
 	const plannerCommandedStage = resolvedMode === "auto" ? await readPlannerThermalStage(host) : 0;
+	const plannerTargetTempC = resolvedMode === "auto" ? await readPlannerThermalTargetTemp(host) : null;
 
 	const fsm = runImmersionFsm({
 		nowMs,
@@ -266,6 +267,7 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 		forceTargetTempC: forceTarget,
 		forceUntilMs: forceUntil ? Date.parse(forceUntil) : null,
 		plannerCommandedStage,
+		plannerTargetTempC,
 		temperature,
 		measuredPowerW: measuredPower,
 		hasPowerMeasurement: hasPower,

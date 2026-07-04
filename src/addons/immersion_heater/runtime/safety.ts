@@ -49,6 +49,13 @@ export function checkPowerFault(input: PowerCheckInput): PowerCheckResult {
 			return { ...none, mismatchSinceMs: null };
 		}
 		const powerStillOn = hasMeasurement && (measuredPowerW as number) > config.powerOffThresholdW;
+		// Träge Messung: hohe W können noch vom Heizbetrieb stammen — erst Wert mit ts nach EMS-AUS zählt.
+		const readingBeforeOff =
+			input.powerObservedAtMs !== null && input.powerObservedAtMs < input.emsOffWriteAtMs;
+		const maxWaitMs = delayMs * 2;
+		if (powerStillOn && readingBeforeOff && nowMs - input.emsOffWriteAtMs < maxWaitMs) {
+			return { ...none, mismatchSinceMs: null };
+		}
 		if (powerStillOn || input.feedbackActive) {
 			const detail = powerStillOn
 				? `${measuredPowerW}W > ${config.powerOffThresholdW}W`

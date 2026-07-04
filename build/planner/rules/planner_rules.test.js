@@ -18,29 +18,34 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
     ih_stage_2_nominal_power_w: 3000,
     ih_stage_count: 2,
     ih_planning_max_temp_c: 60,
+    ih_planning_min_temp_c: 48,
 });
-(0, node_test_1.describe)("planner surplus", () => {
-    (0, node_test_1.it)("computes positive surplus", () => {
-        strict_1.default.equal((0, surplus_js_1.computePvSurplusW)(5000, 2000), 3000);
-    });
-    (0, node_test_1.it)("never negative", () => {
-        strict_1.default.equal((0, surplus_js_1.computePvSurplusW)(1000, 2000), 0);
-    });
-});
+function thermalInput(overrides = {}) {
+    return {
+        surplusW: 1800,
+        bufferTempC: 50,
+        thermalMode: "auto",
+        governanceEnabled: true,
+        config: CFG,
+        modePolicy: BALANCED,
+        pvTodayKwh: 15,
+        pvTomorrowKwh: 15,
+        pvBiasStatus: "ready",
+        forecastModeEnabled: false,
+        aiOptimizationAllowed: false,
+        ...overrides,
+    };
+}
 (0, node_test_1.describe)("planner thermal", () => {
     (0, node_test_1.it)("single on/off turns on when surplus covers nominal", () => {
         const cfg = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
             ih_set_enabled_target: "r",
             ih_stage_1_nominal_power_w: 1700,
         });
-        const r = (0, thermal_js_1.planThermal)({
+        const r = (0, thermal_js_1.planThermal)(thermalInput({
             surplusW: 1800,
-            bufferTempC: 50,
-            thermalMode: "auto",
-            governanceEnabled: true,
             config: cfg,
-            modePolicy: BALANCED,
-        });
+        }));
         strict_1.default.equal(r.commanded_stage, 1);
         strict_1.default.match(r.reason_de, /Ein \(1700 W\)/);
     });
@@ -49,14 +54,10 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
             ih_set_enabled_target: "r",
             ih_stage_1_nominal_power_w: 1700,
         });
-        const r = (0, thermal_js_1.planThermal)({
+        const r = (0, thermal_js_1.planThermal)(thermalInput({
             surplusW: 1270,
-            bufferTempC: 50,
-            thermalMode: "auto",
-            governanceEnabled: true,
             config: cfg,
-            modePolicy: BALANCED,
-        });
+        }));
         strict_1.default.equal(r.commanded_stage, 0);
         strict_1.default.match(r.reason_de, /Ein\/Aus/);
     });
@@ -65,25 +66,17 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
             ih_set_enabled_target: "r",
             ih_stage_1_nominal_power_w: 1700,
         });
-        const r = (0, thermal_js_1.planThermal)({
+        const r = (0, thermal_js_1.planThermal)(thermalInput({
             surplusW: 5000,
-            bufferTempC: 50,
-            thermalMode: "auto",
-            governanceEnabled: true,
             config: cfg,
             modePolicy: (0, mode_policy_js_1.plannerModePolicyFromGlobalMode)("off"),
-        });
+        }));
         strict_1.default.equal(r.commanded_stage, 0);
     });
     (0, node_test_1.it)("multi-stage picks highest affordable stage", () => {
-        const r = (0, thermal_js_1.planThermal)({
+        const r = (0, thermal_js_1.planThermal)(thermalInput({
             surplusW: 2500,
-            bufferTempC: 50,
-            thermalMode: "auto",
-            governanceEnabled: true,
-            config: CFG,
-            modePolicy: BALANCED,
-        });
+        }));
         strict_1.default.equal(r.commanded_stage, 1);
         strict_1.default.equal(r.commanded_power_w, 2000);
     });
@@ -93,15 +86,40 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
             ih_stage_1_nominal_power_w: 1700,
             ih_planning_max_temp_c: 60,
         });
-        const r = (0, thermal_js_1.planThermal)({
+        const r = (0, thermal_js_1.planThermal)(thermalInput({
             surplusW: 5000,
             bufferTempC: 60,
-            thermalMode: "auto",
-            governanceEnabled: true,
             config: cfg,
-            modePolicy: BALANCED,
-        });
+        }));
         strict_1.default.equal(r.commanded_stage, 0);
+    });
+    (0, node_test_1.it)("respects forecast daily target below hard max", () => {
+        const cfg = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
+            ih_set_enabled_target: "r",
+            ih_stage_1_nominal_power_w: 1700,
+            ih_planning_min_temp_c: 48,
+            ih_planning_max_temp_c: 63,
+            ih_forecast_mode_enabled: true,
+        });
+        const r = (0, thermal_js_1.planThermal)(thermalInput({
+            surplusW: 5000,
+            bufferTempC: 61,
+            config: cfg,
+            forecastModeEnabled: true,
+            pvTodayKwh: 20,
+            pvTomorrowKwh: 18,
+        }));
+        strict_1.default.equal(r.target_temp_c, 54);
+        strict_1.default.equal(r.commanded_stage, 0);
+        strict_1.default.match(r.reason_de, /Tagesziel 54/);
+    });
+});
+(0, node_test_1.describe)("planner surplus", () => {
+    (0, node_test_1.it)("computes positive surplus", () => {
+        strict_1.default.equal((0, surplus_js_1.computePvSurplusW)(5000, 2000), 3000);
+    });
+    (0, node_test_1.it)("never negative", () => {
+        strict_1.default.equal((0, surplus_js_1.computePvSurplusW)(1000, 2000), 0);
     });
 });
 (0, node_test_1.describe)("planner battery", () => {

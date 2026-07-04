@@ -26,6 +26,7 @@ describe("immersion fsm", () => {
 			forceTargetTempC: null,
 			forceUntilMs: null,
 			plannerCommandedStage: 0,
+			plannerTargetTempC: null,
 			temperature: { valueC: 40, status: "valid", observedAtMs: NOW },
 			measuredPowerW: 0,
 			hasPowerMeasurement: false,
@@ -50,6 +51,7 @@ describe("immersion fsm", () => {
 			forceTargetTempC: 60,
 			forceUntilMs: null,
 			plannerCommandedStage: 0,
+			plannerTargetTempC: null,
 			temperature: { valueC: 50, status: "valid", observedAtMs: NOW },
 			measuredPowerW: 0,
 			hasPowerMeasurement: false,
@@ -73,6 +75,7 @@ describe("immersion fsm", () => {
 			forceTargetTempC: 60,
 			forceUntilMs: null,
 			plannerCommandedStage: 0,
+			plannerTargetTempC: null,
 			temperature: { valueC: 61, status: "valid", observedAtMs: NOW },
 			measuredPowerW: 0,
 			hasPowerMeasurement: false,
@@ -96,6 +99,7 @@ describe("immersion fsm", () => {
 			forceTargetTempC: 60,
 			forceUntilMs: null,
 			plannerCommandedStage: 0,
+			plannerTargetTempC: null,
 			temperature: evaluateTemperature(50, NOW - 600_000, NOW, CFG),
 			measuredPowerW: 0,
 			hasPowerMeasurement: false,
@@ -120,6 +124,7 @@ describe("immersion fsm", () => {
 			forceTargetTempC: null,
 			forceUntilMs: null,
 			plannerCommandedStage: 1,
+			plannerTargetTempC: null,
 			temperature: { valueC: 50, status: "valid", observedAtMs: NOW },
 			measuredPowerW: 0,
 			hasPowerMeasurement: false,
@@ -131,6 +136,32 @@ describe("immersion fsm", () => {
 		assert.equal(r.state, "auto_heating");
 		assert.equal(r.commandedStage, 1);
 		assert.equal(r.commandedPowerW, 3000);
+	});
+
+	it("auto planner target stops heating below hard max", () => {
+		const r = runImmersionFsm({
+			nowMs: NOW,
+			addonEnabled: true,
+			addonAvailable: true,
+			configValid: true,
+			executionLive: false,
+			failsafeActive: false,
+			resolvedMode: "auto",
+			forceTargetTempC: null,
+			forceUntilMs: null,
+			plannerCommandedStage: 1,
+			plannerTargetTempC: 54,
+			temperature: { valueC: 55, status: "valid", observedAtMs: NOW },
+			measuredPowerW: 0,
+			hasPowerMeasurement: false,
+			persist: emptyPersist(),
+			config: CFG,
+			faultLockout: false,
+			faultCode: "none",
+		});
+		assert.equal(r.state, "auto_ready");
+		assert.equal(r.reason, "auto_planning_target_reached");
+		assert.equal(r.commandedStage, 0);
 	});
 
 	it("control mode maps to operating_request", () => {

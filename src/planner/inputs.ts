@@ -3,6 +3,7 @@ import { immersionDeviceConfigFromAdapter } from "../addons/immersion_heater/dev
 import { parseResolvedIntentJson, resolvedModeFromIntent } from "../addons/immersion_heater/runtime/intent_read";
 import { WALLBOX_EVCC_STATES } from "../addons/wallbox/ensure_evcc_states";
 import { isAddonGovernanceEnabledFromState } from "../addons/governance";
+import { addonGovernanceAiAllowedState } from "../addons/governance/ensure_states";
 import { parseResolvedBatteryIntentJson } from "../addons/battery/runtime/intent_read";
 import type { StateHost } from "../ems_light/state_util";
 import { asNum } from "../ems_light/state_util";
@@ -31,6 +32,11 @@ export interface PlannerInputs {
 	userIntentBatteryHold: boolean;
 	userIntentBatteryCharge: boolean;
 	immersionConfig: ImmersionDeviceConfig;
+	pvTodayKwh: number | null;
+	pvTomorrowKwh: number | null;
+	pvBiasStatus: string | null;
+	forecastModeEnabled: boolean;
+	aiOptimizationAllowed: boolean;
 }
 
 export type PlannerHost = StateHost & {
@@ -93,15 +99,22 @@ export async function readPlannerInputs(host: PlannerHost): Promise<PlannerInput
 	const globalModeRaw = await readStr(host, "global_modes.active");
 	const modePolicy = plannerModePolicyFromGlobalMode(globalModeRaw);
 
-	const [thermalGov, batteryGov, houseLoadW, socPct, bufferTempC, evccMode, evccDischarge] = await Promise.all([
-		isAddonGovernanceEnabledFromState((id) => host.getStateAsync(id), "immersion_heater"),
-		isAddonGovernanceEnabledFromState((id) => host.getStateAsync(id), "battery"),
-		readNum(host, "live.battery.house_load_w"),
-		readNum(host, "live.battery.soc_pct"),
-		readNum(host, "live.thermal.buffer_temp_c"),
-		readStr(host, WALLBOX_EVCC_STATES.batteryMode),
-		readBool(host, WALLBOX_EVCC_STATES.batteryDischargeControl),
-	]);
+	const immersionConfig = immersionDeviceConfigFromAdapter(host.config);
+
+	const [thermalGov, batteryGov, houseLoadW, socPct, bufferTempC, evccMode, evccDischarge, pvTodayKwh, pvTomorrowKwh, pvBiasStatus, aiAllowed] =
+		await Promise.all([
+			isAddonGovernanceEnabledFromState((id) => host.getStateAsync(id), "immersion_heater"),
+			isAddonGovernanceEnabledFromState((id) => host.getStateAsync(id), "battery"),
+			readNum(host, "live.battery.house_load_w"),
+			readNum(host, "live.battery.soc_pct"),
+			readNum(host, "live.thermal.buffer_temp_c"),
+			readStr(host, WALLBOX_EVCC_STATES.batteryMode),
+			readBool(host, WALLBOX_EVCC_STATES.batteryDischargeControl),
+			readNum(host, "learning.pv_bias.corrected_today_kwh"),
+			readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
+			readStr(host, "learning.pv_bias.status"),
+			readBool(host, addonGovernanceAiAllowedState("immersion_heater")),
+		]);
 
 	return {
 		now,
@@ -118,7 +131,12 @@ export async function readPlannerInputs(host: PlannerHost): Promise<PlannerInput
 		evccBatteryDischargeControl: evccDischarge,
 		userIntentBatteryHold,
 		userIntentBatteryCharge,
-		immersionConfig: immersionDeviceConfigFromAdapter(host.config),
+		immersionConfig,
+		pvTodayKwh,
+		pvTomorrowKwh,
+		pvBiasStatus,
+		forecastModeEnabled: immersionConfig.forecastModeEnabled,
+		aiOptimizationAllowed: aiAllowed === true,
 	};
 }
 
@@ -126,4 +144,8 @@ export async function readPlannerThermalStage(host: StateHost): Promise<number> 
 	const n = await readNum(host, "planner.intent.thermal.commanded_stage");
 	if (n === null || !Number.isFinite(n)) return 0;
 	return Math.max(0, Math.round(n));
+}
+
+export async function readPlannerThermalTargetTemp(host: StateHost): Promise<number | null> {
+	return readNum(host, "planner.intent.thermal.target_temp_c");
 }

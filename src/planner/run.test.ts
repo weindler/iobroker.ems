@@ -29,6 +29,11 @@ function baseInputs(overrides: Partial<PlannerInputs> = {}): PlannerInputs {
 			ih_stage_1_nominal_power_w: 2000,
 			ih_planning_max_temp_c: 60,
 		}),
+		pvTodayKwh: 12,
+		pvTomorrowKwh: 12,
+		pvBiasStatus: "ready",
+		forecastModeEnabled: false,
+		aiOptimizationAllowed: false,
 		...overrides,
 	};
 }

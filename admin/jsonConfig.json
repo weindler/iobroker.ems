@@ -1492,6 +1492,79 @@
 					"lg": 4,
 					"xl": 4
 				},
+				"hIhForecast": {
+					"type": "header",
+					"size": 2,
+					"text": "Forecast-Planung (regelbasiert, ohne KI)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ih_forecast_mode_enabled": {
+					"type": "checkbox",
+					"label": "Forecast-Modus aktiv",
+					"default": true,
+					"help": "Regelbasiertes Tagesziel aus PV-Prognose (pv_bias). Deaktiviert wenn KI-Optimierung erlaubt ist.",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ih_forecast_low_tomorrow_ratio": {
+					"type": "number",
+					"label": "Morgen wenig PV (Ratio)",
+					"default": 0.5,
+					"help": "Wenn PV morgen < heute × Ratio → Ziel = Planungsobergrenze.",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ih_forecast_high_tomorrow_ratio": {
+					"type": "number",
+					"label": "Morgen viel PV (Ratio)",
+					"default": 0.8,
+					"help": "Wenn PV morgen ≥ heute × Ratio → moderates Tagesziel.",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ih_forecast_target_fraction_moderate": {
+					"type": "number",
+					"label": "Ziel-Anteil moderat",
+					"default": 0.4,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ih_forecast_target_fraction_default": {
+					"type": "number",
+					"label": "Ziel-Anteil Standard",
+					"default": 0.7,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ih_forecast_no_data_offset_c": {
+					"type": "number",
+					"label": "Keine Prognose: Offset unter Max (K)",
+					"default": 2,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
 				"ih_temperature_hysteresis_k": {
 					"type": "number",
 					"label": "Hysterese (K)",
@@ -1746,7 +1819,8 @@
 				"ih_switch_off_check_delay_sec": {
 					"type": "number",
 					"label": "Prüfverzögerung Aus (s)",
-					"default": 30,
+					"default": 90,
+					"help": "Wartezeit nach EMS-AUS bevor power_when_off geprüft wird. Bei träger Leistungsmessung wie bei Ein mindestens 90 s.",
 					"xs": 12,
 					"sm": 6,
 					"md": 3,

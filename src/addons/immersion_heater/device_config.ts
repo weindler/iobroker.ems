@@ -76,12 +76,18 @@ export function immersionDeviceConfigFromAdapter(config: unknown): ImmersionDevi
 		powerOffThresholdW: numField(c, "ih_power_off_threshold_w", 20),
 		powerTolerancePct: numField(c, "ih_power_tolerance_pct", 20),
 		switchOnCheckDelaySec: numField(c, "ih_switch_on_check_delay_sec", 90),
-		switchOffCheckDelaySec: numField(c, "ih_switch_off_check_delay_sec", 30),
+		switchOffCheckDelaySec: numField(c, "ih_switch_off_check_delay_sec", 90),
 		powerMismatchDurationSec: numField(c, "ih_power_mismatch_duration_sec", 60),
 		relayChatterWindowSec: numField(c, "ih_relay_chatter_window_sec", 300),
 		relayChatterMaxChanges: numField(c, "ih_relay_chatter_max_changes", 6),
 		bufferTempStateId: strField(c, "ih_buffer_temp_c_target"),
 		bufferTempEnabled: boolField(c, "ih_buffer_temp_c_enabled", true),
+		forecastModeEnabled: boolField(c, "ih_forecast_mode_enabled", true),
+		forecastLowTomorrowRatio: numField(c, "ih_forecast_low_tomorrow_ratio", 0.5),
+		forecastHighTomorrowRatio: numField(c, "ih_forecast_high_tomorrow_ratio", 0.8),
+		forecastTargetFractionModerate: numField(c, "ih_forecast_target_fraction_moderate", 0.4),
+		forecastTargetFractionDefault: numField(c, "ih_forecast_target_fraction_default", 0.7),
+		forecastNoDataOffsetC: numField(c, "ih_forecast_no_data_offset_c", 2),
 	};
 }
 

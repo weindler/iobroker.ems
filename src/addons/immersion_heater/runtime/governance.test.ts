@@ -26,6 +26,7 @@ describe("immersion governance fsm", () => {
 			forceTargetTempC: 60,
 			forceUntilMs: null,
 			plannerCommandedStage: 0,
+			plannerTargetTempC: null,
 			temperature: { valueC: 40, status: "valid", observedAtMs: NOW },
 			measuredPowerW: 0,
 			hasPowerMeasurement: false,

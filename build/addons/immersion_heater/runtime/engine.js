@@ -202,6 +202,7 @@ async function runImmersionRuntimeTick(host) {
         }
     }
     const plannerCommandedStage = resolvedMode === "auto" ? await (0, inputs_1.readPlannerThermalStage)(host) : 0;
+    const plannerTargetTempC = resolvedMode === "auto" ? await (0, inputs_1.readPlannerThermalTargetTemp)(host) : null;
     const fsm = (0, fsm_1.runImmersionFsm)({
         nowMs,
         addonEnabled: enabled,
@@ -213,6 +214,7 @@ async function runImmersionRuntimeTick(host) {
         forceTargetTempC: forceTarget,
         forceUntilMs: forceUntil ? Date.parse(forceUntil) : null,
         plannerCommandedStage,
+        plannerTargetTempC,
         temperature,
         measuredPowerW: measuredPower,
         hasPowerMeasurement: hasPower,

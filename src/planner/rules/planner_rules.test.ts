@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { immersionDeviceConfigFromAdapter } from "../../addons/immersion_heater/device_config.js";
 import { plannerModePolicyFromGlobalMode } from "../mode_policy.js";
 import { computePvSurplusW } from "./surplus.js";
-import { planThermal } from "./thermal.js";
+import { planThermal, type ThermalPlanInput } from "./thermal.js";
 import { buildPlannerConstraints, planBattery } from "./battery.js";
 
 const BALANCED = plannerModePolicyFromGlobalMode("balanced");
@@ -15,16 +15,25 @@ const CFG = immersionDeviceConfigFromAdapter({
 	ih_stage_2_nominal_power_w: 3000,
 	ih_stage_count: 2,
 	ih_planning_max_temp_c: 60,
+	ih_planning_min_temp_c: 48,
 });
 
-describe("planner surplus", () => {
-	it("computes positive surplus", () => {
-		assert.equal(computePvSurplusW(5000, 2000), 3000);
-	});
-	it("never negative", () => {
-		assert.equal(computePvSurplusW(1000, 2000), 0);
-	});
-});
+function thermalInput(overrides: Partial<ThermalPlanInput> = {}): ThermalPlanInput {
+	return {
+		surplusW: 1800,
+		bufferTempC: 50,
+		thermalMode: "auto",
+		governanceEnabled: true,
+		config: CFG,
+		modePolicy: BALANCED,
+		pvTodayKwh: 15,
+		pvTomorrowKwh: 15,
+		pvBiasStatus: "ready",
+		forecastModeEnabled: false,
+		aiOptimizationAllowed: false,
+		...overrides,
+	};
+}
 
 describe("planner thermal", () => {
 	it("single on/off turns on when surplus covers nominal", () => {
@@ -32,14 +41,12 @@ describe("planner thermal", () => {
 			ih_set_enabled_target: "r",
 			ih_stage_1_nominal_power_w: 1700,
 		});
-		const r = planThermal({
-			surplusW: 1800,
-			bufferTempC: 50,
-			thermalMode: "auto",
-			governanceEnabled: true,
-			config: cfg,
-			modePolicy: BALANCED,
-		});
+		const r = planThermal(
+			thermalInput({
+				surplusW: 1800,
+				config: cfg,
+			}),
+		);
 		assert.equal(r.commanded_stage, 1);
 		assert.match(r.reason_de, /Ein \(1700 W\)/);
 	});
@@ -49,14 +56,12 @@ describe("planner thermal", () => {
 			ih_set_enabled_target: "r",
 			ih_stage_1_nominal_power_w: 1700,
 		});
-		const r = planThermal({
-			surplusW: 1270,
-			bufferTempC: 50,
-			thermalMode: "auto",
-			governanceEnabled: true,
-			config: cfg,
-			modePolicy: BALANCED,
-		});
+		const r = planThermal(
+			thermalInput({
+				surplusW: 1270,
+				config: cfg,
+			}),
+		);
 		assert.equal(r.commanded_stage, 0);
 		assert.match(r.reason_de, /Ein\/Aus/);
 	});
@@ -66,26 +71,22 @@ describe("planner thermal", () => {
 			ih_set_enabled_target: "r",
 			ih_stage_1_nominal_power_w: 1700,
 		});
-		const r = planThermal({
-			surplusW: 5000,
-			bufferTempC: 50,
-			thermalMode: "auto",
-			governanceEnabled: true,
-			config: cfg,
-			modePolicy: plannerModePolicyFromGlobalMode("off"),
-		});
+		const r = planThermal(
+			thermalInput({
+				surplusW: 5000,
+				config: cfg,
+				modePolicy: plannerModePolicyFromGlobalMode("off"),
+			}),
+		);
 		assert.equal(r.commanded_stage, 0);
 	});
 
 	it("multi-stage picks highest affordable stage", () => {
-		const r = planThermal({
-			surplusW: 2500,
-			bufferTempC: 50,
-			thermalMode: "auto",
-			governanceEnabled: true,
-			config: CFG,
-			modePolicy: BALANCED,
-		});
+		const r = planThermal(
+			thermalInput({
+				surplusW: 2500,
+			}),
+		);
 		assert.equal(r.commanded_stage, 1);
 		assert.equal(r.commanded_power_w, 2000);
 	});
@@ -96,15 +97,46 @@ describe("planner thermal", () => {
 			ih_stage_1_nominal_power_w: 1700,
 			ih_planning_max_temp_c: 60,
 		});
-		const r = planThermal({
-			surplusW: 5000,
-			bufferTempC: 60,
-			thermalMode: "auto",
-			governanceEnabled: true,
-			config: cfg,
-			modePolicy: BALANCED,
-		});
+		const r = planThermal(
+			thermalInput({
+				surplusW: 5000,
+				bufferTempC: 60,
+				config: cfg,
+			}),
+		);
 		assert.equal(r.commanded_stage, 0);
+	});
+
+	it("respects forecast daily target below hard max", () => {
+		const cfg = immersionDeviceConfigFromAdapter({
+			ih_set_enabled_target: "r",
+			ih_stage_1_nominal_power_w: 1700,
+			ih_planning_min_temp_c: 48,
+			ih_planning_max_temp_c: 63,
+			ih_forecast_mode_enabled: true,
+		});
+		const r = planThermal(
+			thermalInput({
+				surplusW: 5000,
+				bufferTempC: 61,
+				config: cfg,
+				forecastModeEnabled: true,
+				pvTodayKwh: 20,
+				pvTomorrowKwh: 18,
+			}),
+		);
+		assert.equal(r.target_temp_c, 54);
+		assert.equal(r.commanded_stage, 0);
+		assert.match(r.reason_de, /Tagesziel 54/);
+	});
+});
+
+describe("planner surplus", () => {
+	it("computes positive surplus", () => {
+		assert.equal(computePvSurplusW(5000, 2000), 3000);
+	});
+	it("never negative", () => {
+		assert.equal(computePvSurplusW(1000, 2000), 0);
 	});
 });
 

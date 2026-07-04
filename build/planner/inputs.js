@@ -1,10 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readPlannerThermalStage = exports.readPlannerInputs = exports.PLANNER_BATTERY_MIN_SURPLUS_W = exports.PLANNER_BATTERY_TARGET_SOC_PCT = exports.PLANNER_SURPLUS_MIN_W = void 0;
+exports.readPlannerThermalTargetTemp = exports.readPlannerThermalStage = exports.readPlannerInputs = exports.PLANNER_BATTERY_MIN_SURPLUS_W = exports.PLANNER_BATTERY_TARGET_SOC_PCT = exports.PLANNER_SURPLUS_MIN_W = void 0;
 const device_config_1 = require("../addons/immersion_heater/device_config");
 const intent_read_1 = require("../addons/immersion_heater/runtime/intent_read");
 const ensure_evcc_states_1 = require("../addons/wallbox/ensure_evcc_states");
 const governance_1 = require("../addons/governance");
+const ensure_states_1 = require("../addons/governance/ensure_states");
 const intent_read_2 = require("../addons/battery/runtime/intent_read");
 const state_util_1 = require("../ems_light/state_util");
 const mode_policy_1 = require("./mode_policy");
@@ -65,7 +66,8 @@ async function readPlannerInputs(host) {
         batteryIntent.operating_request.value === "charge";
     const globalModeRaw = await readStr(host, "global_modes.active");
     const modePolicy = (0, mode_policy_1.plannerModePolicyFromGlobalMode)(globalModeRaw);
-    const [thermalGov, batteryGov, houseLoadW, socPct, bufferTempC, evccMode, evccDischarge] = await Promise.all([
+    const immersionConfig = (0, device_config_1.immersionDeviceConfigFromAdapter)(host.config);
+    const [thermalGov, batteryGov, houseLoadW, socPct, bufferTempC, evccMode, evccDischarge, pvTodayKwh, pvTomorrowKwh, pvBiasStatus, aiAllowed] = await Promise.all([
         (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "immersion_heater"),
         (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "battery"),
         readNum(host, "live.battery.house_load_w"),
@@ -73,6 +75,10 @@ async function readPlannerInputs(host) {
         readNum(host, "live.thermal.buffer_temp_c"),
         readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryMode),
         readBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryDischargeControl),
+        readNum(host, "learning.pv_bias.corrected_today_kwh"),
+        readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
+        readStr(host, "learning.pv_bias.status"),
+        readBool(host, (0, ensure_states_1.addonGovernanceAiAllowedState)("immersion_heater")),
     ]);
     return {
         now,
@@ -89,7 +95,12 @@ async function readPlannerInputs(host) {
         evccBatteryDischargeControl: evccDischarge,
         userIntentBatteryHold,
         userIntentBatteryCharge,
-        immersionConfig: (0, device_config_1.immersionDeviceConfigFromAdapter)(host.config),
+        immersionConfig,
+        pvTodayKwh,
+        pvTomorrowKwh,
+        pvBiasStatus,
+        forecastModeEnabled: immersionConfig.forecastModeEnabled,
+        aiOptimizationAllowed: aiAllowed === true,
     };
 }
 exports.readPlannerInputs = readPlannerInputs;
@@ -100,3 +111,7 @@ async function readPlannerThermalStage(host) {
     return Math.max(0, Math.round(n));
 }
 exports.readPlannerThermalStage = readPlannerThermalStage;
+async function readPlannerThermalTargetTemp(host) {
+    return readNum(host, "planner.intent.thermal.target_temp_c");
+}
+exports.readPlannerThermalTargetTemp = readPlannerThermalTargetTemp;

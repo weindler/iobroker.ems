@@ -1,5 +1,6 @@
 /** Generates repetitive AC admin jsonConfig fields for units 1..5. */
 const UNIT_COUNT = 5;
+const TEMP_NUM = '"min": 10, "max": 45, "step": 0.1, "help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."';
 const roles = [
 	["room_temp", "Raumtemperatur"],
 	["room_humidity", "Raumfeuchte"],
@@ -24,10 +25,10 @@ function unitFields(n) {
 	lines.push(`\t\t\t\t"${p}enabled": { "type": "checkbox", "label": "Aktiv", "default": ${n <= 2}, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
 	lines.push(`\t\t\t\t"${p}name": { "type": "text", "label": "Name", "default": ${n === 1 ? '"Wohnzimmer EG"' : n === 2 ? '"Josef Zimmer OG"' : '""'}, "xs": 12, "sm": 8, "md": 6, "lg": 6, "xl": 6 }`);
 	lines.push(`\t\t\t\t"${p}profile": { "type": "select", "label": "Geräteprofil", "options": [{ "label": "Generic", "value": "generic" }, { "label": "Samsung SmartThings", "value": "samsung_smartthings" }], "default": "samsung_smartthings", "xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4 }`);
-	lines.push(`\t\t\t\t"${p}on_temp_c": { "type": "number", "label": "Einschalttemperatur (°C)", "default": ${n === 1 ? 25.5 : n === 2 ? 24.5 : 26}, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
-	lines.push(`\t\t\t\t"${p}off_temp_c": { "type": "number", "label": "Ausschalttemperatur (°C)", "default": ${n === 1 ? 24 : n === 2 ? 23 : 24}, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
+	lines.push(`\t\t\t\t"${p}on_temp_c": { "type": "number", "label": "Einschalttemperatur (°C)", "default": ${n === 1 ? 25.5 : n === 2 ? 24.5 : 26}, ${TEMP_NUM}, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
+	lines.push(`\t\t\t\t"${p}off_temp_c": { "type": "number", "label": "Ausschalttemperatur (°C)", "default": ${n === 1 ? 24 : n === 2 ? 23 : 24}, ${TEMP_NUM}, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
 	lines.push(`\t\t\t\t"${p}max_humidity_pct": { "type": "number", "label": "Max. Feuchte (%) — optional", "help": "0 = Feuchte nur anzeigen, nicht steuern. Wert > 0: bei Überschreitung Entfeuchten (wenn Raumfeuchte gemappt).", "min": 0, "max": 100, "default": 0, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
-	lines.push(`\t\t\t\t"${p}cooling_setpoint_c": { "type": "number", "label": "Kühl-Sollwert (°C)", "default": 17, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
+	lines.push(`\t\t\t\t"${p}cooling_setpoint_c": { "type": "number", "label": "Kühl-Sollwert (°C)", "default": 17, ${TEMP_NUM}, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
 	lines.push(`\t\t\t\t"${p}mode_when_cooling": { "type": "text", "label": "Modus Kühlen", "default": "cool", "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
 	lines.push(`\t\t\t\t"${p}fan_mode_when_cooling": { "type": "text", "label": "Lüftermodus Kühlen", "default": "auto", "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
 	lines.push(`\t\t\t\t"${p}fan_speed_when_cooling": { "type": "text", "label": "Lüfterstärke Kühlen (optional)", "default": "", "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);

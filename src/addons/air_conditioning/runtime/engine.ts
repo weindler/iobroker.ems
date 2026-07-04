@@ -195,9 +195,13 @@ export async function runAcRuntimeTick(host: AcRuntimeHost): Promise<void> {
 			cleaningActive: up.cleaningActive,
 		});
 
-		if (fsm.demandStop && switchIsOn(fb.value)) {
-			await stopUnit(host, unit, mappingTable, live, up);
-		} else if (fsm.demandStart && switchIsOff(fb.value)) {
+		if (fsm.demandStop) {
+			if (switchIsOn(fb.value)) {
+				await stopUnit(host, unit, mappingTable, live, up);
+			} else {
+				up.running = false;
+			}
+		} else if (fsm.demandStart && switchIsOff(fb.value) && !up.running) {
 			await startUnit(host, unit, mappingTable, live, up, fsm.modePurpose);
 		}
 

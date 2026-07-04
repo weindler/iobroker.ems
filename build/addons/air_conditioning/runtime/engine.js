@@ -143,10 +143,15 @@ async function runAcRuntimeTick(host) {
             feedbackSwitchRaw: fb.value,
             cleaningActive: up.cleaningActive,
         });
-        if (fsm.demandStop && (0, time_1.switchIsOn)(fb.value)) {
-            await stopUnit(host, unit, mappingTable, live, up);
+        if (fsm.demandStop) {
+            if ((0, time_1.switchIsOn)(fb.value)) {
+                await stopUnit(host, unit, mappingTable, live, up);
+            }
+            else {
+                up.running = false;
+            }
         }
-        else if (fsm.demandStart && (0, time_1.switchIsOff)(fb.value)) {
+        else if (fsm.demandStart && (0, time_1.switchIsOff)(fb.value) && !up.running) {
             await startUnit(host, unit, mappingTable, live, up, fsm.modePurpose);
         }
         const ids = (0, ensure_states_1.acUnitRuntimeStates)(unit.index);

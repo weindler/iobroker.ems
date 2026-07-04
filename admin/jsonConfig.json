@@ -2208,7 +2208,11 @@
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"min": 10,
+					"max": 45,
+					"step": 0.1,
+					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
 				},
 				"ac_u1_off_temp_c": {
 					"type": "number",
@@ -2218,7 +2222,11 @@
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"min": 10,
+					"max": 45,
+					"step": 0.1,
+					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
 				},
 				"ac_u1_max_humidity_pct": {
 					"type": "number",
@@ -2241,7 +2249,11 @@
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"min": 10,
+					"max": 45,
+					"step": 0.1,
+					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
 				},
 				"ac_u1_mode_when_cooling": {
 					"type": "text",
@@ -2816,7 +2828,11 @@
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"min": 10,
+					"max": 45,
+					"step": 0.1,
+					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
 				},
 				"ac_u2_off_temp_c": {
 					"type": "number",
@@ -2826,7 +2842,11 @@
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"min": 10,
+					"max": 45,
+					"step": 0.1,
+					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
 				},
 				"ac_u2_max_humidity_pct": {
 					"type": "number",
@@ -2849,7 +2869,11 @@
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"min": 10,
+					"max": 45,
+					"step": 0.1,
+					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
 				},
 				"ac_u2_mode_when_cooling": {
 					"type": "text",
@@ -3412,7 +3436,11 @@
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"min": 10,
+					"max": 45,
+					"step": 0.1,
+					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
 				},
 				"ac_u3_off_temp_c": {
 					"type": "number",
@@ -3422,7 +3450,11 @@
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"min": 10,
+					"max": 45,
+					"step": 0.1,
+					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
 				},
 				"ac_u3_max_humidity_pct": {
 					"type": "number",
@@ -3445,7 +3477,11 @@
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"min": 10,
+					"max": 45,
+					"step": 0.1,
+					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
 				},
 				"ac_u3_mode_when_cooling": {
 					"type": "text",
@@ -4008,7 +4044,11 @@
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"min": 10,
+					"max": 45,
+					"step": 0.1,
+					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
 				},
 				"ac_u4_off_temp_c": {
 					"type": "number",
@@ -4018,7 +4058,11 @@
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"min": 10,
+					"max": 45,
+					"step": 0.1,
+					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
 				},
 				"ac_u4_max_humidity_pct": {
 					"type": "number",
@@ -4041,7 +4085,11 @@
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"min": 10,
+					"max": 45,
+					"step": 0.1,
+					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
 				},
 				"ac_u4_mode_when_cooling": {
 					"type": "text",
@@ -4604,7 +4652,11 @@
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"min": 10,
+					"max": 45,
+					"step": 0.1,
+					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
 				},
 				"ac_u5_off_temp_c": {
 					"type": "number",
@@ -4614,7 +4666,11 @@
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"min": 10,
+					"max": 45,
+					"step": 0.1,
+					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
 				},
 				"ac_u5_max_humidity_pct": {
 					"type": "number",
@@ -4637,7 +4693,11 @@
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"min": 10,
+					"max": 45,
+					"step": 0.1,
+					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
 				},
 				"ac_u5_mode_when_cooling": {
 					"type": "text",

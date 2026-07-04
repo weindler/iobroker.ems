@@ -1,8 +1,16 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.101",
+		"version": "0.1.103",
 		"news": {
+			"0.1.103": {
+				"en": "AC admin temperature fields accept decimals (step 0.1); fix dryrun log repeat",
+				"de": "Klima-Temperaturfelder im Admin mit Dezimalwerten (step 0.1); Dryrun-Log-Wiederholung behoben"
+			},
+			"0.1.102": {
+				"en": "Fix AC dryrun log spam: start sequence logged once until stop condition, not every 10s tick",
+				"de": "Klima-Dryrun: Start-Sequenz wird nur einmal geloggt bis Stopp-Bedingung, nicht alle 10 s erneut"
+			},
 			"0.1.101": {
 				"en": "AC admin: clearer setup hints (GLOBAL, mapping picker, humidity threshold, dryrun first)",
 				"de": "Klima-Admin: klarere Einrichtungshinweise (GLOBAL, Mapping-Auswahl, Feuchte-Schwelle, erst dryrun)"

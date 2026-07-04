@@ -326,7 +326,8 @@ async function runImmersionRuntimeTick(host) {
     await (0, consumer_stats_1.tickConsumerStats)(host, {
         consumerKey: "immersion_heater",
         nowMs,
-        active: effectiveStage > 0 && !persist.faultLockout,
+        deviceActive: effectiveStage > 0 && !persist.faultLockout,
+        countable: live && effectiveStage > 0 && !persist.faultLockout,
         measuredPowerW: measuredPower,
         commandedPowerW: !persist.faultLockout && effectiveStage > 0 ? fsm.commandedPowerW : 0,
         powerOnThresholdW: config.powerOnThresholdW,

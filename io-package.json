@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.95",
+		"version": "0.1.96",
 		"news": {
+			"0.1.96": {
+				"en": "Consumer stats: only count runtime and kWh in live mode, not during dryrun",
+				"de": "Verbraucher-Statistik: Laufzeit und kWh nur im Live-Modus zählen, nicht im Dryrun"
+			},
 			"0.1.95": {
 				"en": "Consumer stats Phase C: per-device runtime and kWh tracking for EMS-controlled consumers (immersion heater pilot); admin offsets and enable toggles",
 				"de": "Verbraucher-Statistik Phase C: Laufzeit und kWh pro EMS-Verbraucher (Heizstab Pilot); Admin-Offsets und Ein/Aus-Schalter"

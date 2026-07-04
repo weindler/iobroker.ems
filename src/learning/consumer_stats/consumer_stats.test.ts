@@ -10,58 +10,53 @@ import {
 import { immersionConsumerStatsFromConfig } from "./config";
 import { localDateKey } from "../energy_daily_rollup/day";
 
+function tick(
+	entry: ReturnType<typeof emptyConsumerEntry>,
+	nowMs: number,
+	opts: { deviceActive: boolean; countable: boolean; power?: number },
+	config = immersionConsumerStatsFromConfig({}),
+) {
+	return ingestConsumerStatsTick(
+		entry,
+		{
+			consumerKey: "immersion_heater",
+			nowMs,
+			deviceActive: opts.deviceActive,
+			countable: opts.countable,
+			measuredPowerW: opts.power ?? 1700,
+			commandedPowerW: opts.power ?? 1700,
+		},
+		config,
+	);
+}
+
 describe("consumer stats", () => {
-	it("accumulates runtime and energy while active", () => {
+	it("accumulates runtime and energy while active in live mode", () => {
 		const base = Date.parse("2026-07-04T10:00:00");
 		let entry = emptyConsumerEntry("immersion_heater", base);
-		const config = immersionConsumerStatsFromConfig({});
-		entry = ingestConsumerStatsTick(
-			entry,
-			{
-				consumerKey: "immersion_heater",
-				nowMs: base,
-				active: true,
-				measuredPowerW: 1700,
-				commandedPowerW: 1700,
-			},
-			config,
-		);
-		entry = ingestConsumerStatsTick(
-			entry,
-			{
-				consumerKey: "immersion_heater",
-				nowMs: base + 5000,
-				active: true,
-				measuredPowerW: 1700,
-				commandedPowerW: 1700,
-			},
-			config,
-		);
+		entry = tick(entry, base, { deviceActive: true, countable: true });
+		entry = tick(entry, base + 5000, { deviceActive: true, countable: true });
 		assert.equal(entry.totalRuntimeSec, 5);
 		assert.equal(entry.todayRuntimeSec, 5);
 		assert.equal(entry.totalEnergyKwh, 0.002);
 	});
 
+	it("does not accumulate during dryrun even when device would run", () => {
+		const base = Date.parse("2026-07-04T10:00:00");
+		let entry = emptyConsumerEntry("immersion_heater", base);
+		entry = tick(entry, base, { deviceActive: true, countable: false });
+		entry = tick(entry, base + 5000, { deviceActive: true, countable: false });
+		assert.equal(entry.totalRuntimeSec, 0);
+		assert.equal(entry.totalEnergyKwh, 0);
+		const snap = snapshotFromEntry(entry, immersionConsumerStatsFromConfig({}), base + 5000, true);
+		assert.equal(snap.deviceActive, true);
+	});
+
 	it("finalizes session when device turns off", () => {
 		const base = Date.parse("2026-07-04T10:00:00");
 		let entry = emptyConsumerEntry("immersion_heater", base);
-		const config = immersionConsumerStatsFromConfig({});
-		entry = ingestConsumerStatsTick(
-			entry,
-			{ consumerKey: "immersion_heater", nowMs: base, active: true, measuredPowerW: 1000, commandedPowerW: 1000 },
-			config,
-		);
-		entry = ingestConsumerStatsTick(
-			entry,
-			{
-				consumerKey: "immersion_heater",
-				nowMs: base + 10_000,
-				active: false,
-				measuredPowerW: 0,
-				commandedPowerW: 0,
-			},
-			config,
-		);
+		entry = tick(entry, base, { deviceActive: true, countable: true, power: 1000 });
+		entry = tick(entry, base + 10_000, { deviceActive: false, countable: false, power: 0 });
 		assert.equal(entry.lastSessionRuntimeSec, 10);
 		assert.equal(entry.sessionRuntimeSec, 0);
 		assert.equal(entry.wasActive, false);
@@ -85,17 +80,12 @@ describe("consumer stats", () => {
 		const day1 = Date.parse("2026-07-04T23:59:58");
 		const day2 = Date.parse("2026-07-05T00:00:03");
 		let entry = emptyConsumerEntry("immersion_heater", day1);
-		const config = immersionConsumerStatsFromConfig({});
 		entry.totalRuntimeSec = 100;
 		entry.todayRuntimeSec = 100;
 		entry.todayDateKey = localDateKey(new Date(day1));
 		entry.wasActive = true;
 		entry.lastTickMs = day1;
-		entry = ingestConsumerStatsTick(
-			entry,
-			{ consumerKey: "immersion_heater", nowMs: day2, active: true, measuredPowerW: 1000, commandedPowerW: 1000 },
-			config,
-		);
+		entry = tick(entry, day2, { deviceActive: true, countable: true, power: 1000 });
 		assert.equal(entry.todayDateKey, localDateKey(new Date(day2)));
 		assert.equal(entry.todayRuntimeSec, 5);
 		assert.equal(entry.totalRuntimeSec, 105);

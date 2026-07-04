@@ -87,7 +87,7 @@ function ingestConsumerStatsTick(entry, input, config) {
         return {
             ...next,
             lastTickMs: input.nowMs,
-            wasActive: input.active,
+            wasActive: input.countable,
         };
     }
     const deltaSec = computeTickDeltaSec(input.nowMs, next.lastTickMs);
@@ -115,24 +115,24 @@ function ingestConsumerStatsTick(entry, input, config) {
             };
         }
     }
-    if (!input.active && next.wasActive) {
+    if (!input.countable && next.wasActive) {
         next = finalizeSession(next);
     }
-    if (input.active && !next.wasActive) {
+    if (input.countable && !next.wasActive) {
         next = startSession(next);
     }
     return {
         ...next,
         lastTickMs: input.nowMs,
-        wasActive: input.active,
+        wasActive: input.countable,
     };
 }
 exports.ingestConsumerStatsTick = ingestConsumerStatsTick;
-function snapshotFromEntry(entry, config, nowMs) {
+function snapshotFromEntry(entry, config, nowMs, deviceActive = false) {
     return {
         consumerKey: entry.consumerKey,
         tracking: config.enabled,
-        deviceActive: entry.wasActive,
+        deviceActive,
         todayRuntimeSec: entry.todayRuntimeSec,
         todayEnergyKwh: entry.todayEnergyKwh,
         totalRuntimeSec: entry.totalRuntimeSec + config.runtimeOffsetSec,

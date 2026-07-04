@@ -43,7 +43,10 @@ export type ConsumerStatsConfig = {
 export type ConsumerStatsTickInput = {
 	consumerKey: string;
 	nowMs: number;
-	active: boolean;
+	/** EMS führt das Gerät (Anzeige device_active). */
+	deviceActive: boolean;
+	/** Nur Live: Laufzeit/Verbrauch mitzählen. */
+	countable: boolean;
 	measuredPowerW: number | null;
 	commandedPowerW: number;
 	powerOnThresholdW?: number;

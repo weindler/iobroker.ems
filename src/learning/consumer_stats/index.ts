@@ -93,7 +93,7 @@ export async function tickConsumerStats(
 	persistCache = persist;
 	persistDirty = true;
 
-	const snapshot = snapshotFromEntry(entry, config, input.nowMs);
+	const snapshot = snapshotFromEntry(entry, config, input.nowMs, input.deviceActive);
 	await publishConsumerStats(host, input.consumerKey, snapshot);
 	await flushPersist(host);
 	return snapshot;

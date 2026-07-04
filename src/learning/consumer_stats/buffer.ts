@@ -98,7 +98,7 @@ export function ingestConsumerStatsTick(
 		return {
 			...next,
 			lastTickMs: input.nowMs,
-			wasActive: input.active,
+			wasActive: input.countable,
 		};
 	}
 
@@ -129,18 +129,18 @@ export function ingestConsumerStatsTick(
 		}
 	}
 
-	if (!input.active && next.wasActive) {
+	if (!input.countable && next.wasActive) {
 		next = finalizeSession(next);
 	}
 
-	if (input.active && !next.wasActive) {
+	if (input.countable && !next.wasActive) {
 		next = startSession(next);
 	}
 
 	return {
 		...next,
 		lastTickMs: input.nowMs,
-		wasActive: input.active,
+		wasActive: input.countable,
 	};
 }
 
@@ -148,11 +148,12 @@ export function snapshotFromEntry(
 	entry: ConsumerPersistEntry,
 	config: ConsumerStatsConfig,
 	nowMs: number,
+	deviceActive = false,
 ): import("./types").ConsumerStatsSnapshot {
 	return {
 		consumerKey: entry.consumerKey,
 		tracking: config.enabled,
-		deviceActive: entry.wasActive,
+		deviceActive,
 		todayRuntimeSec: entry.todayRuntimeSec,
 		todayEnergyKwh: entry.todayEnergyKwh,
 		totalRuntimeSec: entry.totalRuntimeSec + config.runtimeOffsetSec,

@@ -75,7 +75,7 @@ export function immersionDeviceConfigFromAdapter(config: unknown): ImmersionDevi
 		powerOnThresholdW: numField(c, "ih_power_on_threshold_w", 50),
 		powerOffThresholdW: numField(c, "ih_power_off_threshold_w", 20),
 		powerTolerancePct: numField(c, "ih_power_tolerance_pct", 20),
-		switchOnCheckDelaySec: numField(c, "ih_switch_on_check_delay_sec", 30),
+		switchOnCheckDelaySec: numField(c, "ih_switch_on_check_delay_sec", 90),
 		switchOffCheckDelaySec: numField(c, "ih_switch_off_check_delay_sec", 30),
 		powerMismatchDurationSec: numField(c, "ih_power_mismatch_duration_sec", 60),
 		relayChatterWindowSec: numField(c, "ih_relay_chatter_window_sec", 300),

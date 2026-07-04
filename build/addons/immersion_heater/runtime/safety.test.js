@@ -26,6 +26,7 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
             feedbackActive: false,
             emsOnWriteAtMs: 0,
             emsOffWriteAtMs: null,
+            powerObservedAtMs: 100_000,
             mismatchSinceMs: null,
             config: CFG,
         });
@@ -43,10 +44,29 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
             feedbackActive: false,
             emsOnWriteAtMs: 0,
             emsOffWriteAtMs: null,
+            powerObservedAtMs: 100_000,
             mismatchSinceMs: null,
             config: CFG,
         });
         strict_1.default.equal(r.faultCode, "no_power_when_on");
+    });
+    (0, node_test_1.it)("no_power_when_on waits for power reading updated after EMS switch-on", () => {
+        const r = (0, safety_js_1.checkPowerFault)({
+            nowMs: 50_000,
+            executionLive: true,
+            commandedOn: true,
+            commandedStage: 1,
+            nominalPowerW: 3000,
+            measuredPowerW: 0,
+            hasPowerMeasurement: true,
+            feedbackActive: false,
+            emsOnWriteAtMs: 10_000,
+            emsOffWriteAtMs: null,
+            powerObservedAtMs: 5_000,
+            mismatchSinceMs: null,
+            config: CFG,
+        });
+        strict_1.default.equal(r.faultCode, "none");
     });
     (0, node_test_1.it)("power_when_off detects stuck relay after EMS wrote off", () => {
         const r = (0, safety_js_1.checkPowerFault)({
@@ -60,6 +80,7 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
             feedbackActive: false,
             emsOnWriteAtMs: null,
             emsOffWriteAtMs: 0,
+            powerObservedAtMs: null,
             mismatchSinceMs: null,
             config: CFG,
         });
@@ -77,6 +98,7 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
             feedbackActive: true,
             emsOnWriteAtMs: null,
             emsOffWriteAtMs: 0,
+            powerObservedAtMs: null,
             mismatchSinceMs: null,
             config: CFG,
         });
@@ -94,6 +116,7 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
             feedbackActive: true,
             emsOnWriteAtMs: null,
             emsOffWriteAtMs: 0,
+            powerObservedAtMs: null,
             mismatchSinceMs: null,
             config: CFG,
         });
@@ -112,6 +135,7 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
             feedbackActive: true,
             emsOnWriteAtMs: null,
             emsOffWriteAtMs: null,
+            powerObservedAtMs: null,
             mismatchSinceMs: null,
             config: CFG,
         });
@@ -136,6 +160,7 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
             feedbackActive: false,
             emsOnWriteAtMs: null,
             emsOffWriteAtMs: 0,
+            powerObservedAtMs: null,
             mismatchSinceMs: null,
             config: cfg,
         });

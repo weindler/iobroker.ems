@@ -1735,7 +1735,8 @@
 				"ih_switch_on_check_delay_sec": {
 					"type": "number",
 					"label": "Prüfverzögerung Ein (s)",
-					"default": 30,
+					"default": 90,
+					"help": "Wartezeit nach EMS-EIN bevor no_power_when_on geprüft wird. Bei trägen Leistungsmessungen (z. B. 30–60 s Update) mindestens 90 s wählen.",
 					"xs": 12,
 					"sm": 6,
 					"md": 3,

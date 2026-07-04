@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.89",
+		"version": "0.1.90",
 		"news": {
+			"0.1.90": {
+				"en": "Immersion heater: wait for fresh power reading after switch-on before no_power_when_on fault; default on-check delay raised to 90s",
+				"de": "Heizstab: no_power_when_on erst nach frischem Leistungswert nach EMS-EIN; Standard-Prüfverzögerung Ein auf 90 s erhöht"
+			},
 			"0.1.89": {
 				"en": "Immersion heater fault_reset fix: relay_chatter lockout can be cleared again; reset triggers on val=true regardless of ack",
 				"de": "Heizstab fault_reset: relay_chatter-Sperre lässt sich wieder zurücksetzen; Reset bei val=true unabhängig von ack"

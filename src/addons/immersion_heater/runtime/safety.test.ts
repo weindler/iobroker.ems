@@ -23,6 +23,7 @@ describe("immersion safety", () => {
 			feedbackActive: false,
 			emsOnWriteAtMs: 0,
 			emsOffWriteAtMs: null,
+			powerObservedAtMs: 100_000,
 			mismatchSinceMs: null,
 			config: CFG,
 		});
@@ -41,10 +42,30 @@ describe("immersion safety", () => {
 			feedbackActive: false,
 			emsOnWriteAtMs: 0,
 			emsOffWriteAtMs: null,
+			powerObservedAtMs: 100_000,
 			mismatchSinceMs: null,
 			config: CFG,
 		});
 		assert.equal(r.faultCode, "no_power_when_on");
+	});
+
+	it("no_power_when_on waits for power reading updated after EMS switch-on", () => {
+		const r = checkPowerFault({
+			nowMs: 50_000,
+			executionLive: true,
+			commandedOn: true,
+			commandedStage: 1,
+			nominalPowerW: 3000,
+			measuredPowerW: 0,
+			hasPowerMeasurement: true,
+			feedbackActive: false,
+			emsOnWriteAtMs: 10_000,
+			emsOffWriteAtMs: null,
+			powerObservedAtMs: 5_000,
+			mismatchSinceMs: null,
+			config: CFG,
+		});
+		assert.equal(r.faultCode, "none");
 	});
 
 	it("power_when_off detects stuck relay after EMS wrote off", () => {
@@ -59,6 +80,7 @@ describe("immersion safety", () => {
 			feedbackActive: false,
 			emsOnWriteAtMs: null,
 			emsOffWriteAtMs: 0,
+			powerObservedAtMs: null,
 			mismatchSinceMs: null,
 			config: CFG,
 		});
@@ -77,6 +99,7 @@ describe("immersion safety", () => {
 			feedbackActive: true,
 			emsOnWriteAtMs: null,
 			emsOffWriteAtMs: 0,
+			powerObservedAtMs: null,
 			mismatchSinceMs: null,
 			config: CFG,
 		});
@@ -95,6 +118,7 @@ describe("immersion safety", () => {
 			feedbackActive: true,
 			emsOnWriteAtMs: null,
 			emsOffWriteAtMs: 0,
+			powerObservedAtMs: null,
 			mismatchSinceMs: null,
 			config: CFG,
 		});
@@ -114,6 +138,7 @@ describe("immersion safety", () => {
 			feedbackActive: true,
 			emsOnWriteAtMs: null,
 			emsOffWriteAtMs: null,
+			powerObservedAtMs: null,
 			mismatchSinceMs: null,
 			config: CFG,
 		});
@@ -139,6 +164,7 @@ describe("immersion safety", () => {
 			feedbackActive: false,
 			emsOnWriteAtMs: null,
 			emsOffWriteAtMs: 0,
+			powerObservedAtMs: null,
 			mismatchSinceMs: null,
 			config: cfg,
 		});

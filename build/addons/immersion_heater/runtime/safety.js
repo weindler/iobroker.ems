@@ -43,6 +43,12 @@ function checkPowerFault(input) {
     if (nowMs - input.emsOnWriteAtMs < delayMs) {
         return { ...none, mismatchSinceMs: null };
     }
+    // Träge Messung: 0 W kann noch der alte Stand sein — erst nach EMS-EIN aktualisierter Wert zählt.
+    const readingBeforeSwitch = input.powerObservedAtMs !== null && input.powerObservedAtMs < input.emsOnWriteAtMs;
+    const maxWaitMs = delayMs * 2;
+    if (readingBeforeSwitch && nowMs - input.emsOnWriteAtMs < maxWaitMs) {
+        return { ...none, mismatchSinceMs: null };
+    }
     const measured = measuredPowerW;
     if (measured < config.powerOnThresholdW) {
         return {

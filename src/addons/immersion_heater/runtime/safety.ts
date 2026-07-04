@@ -16,6 +16,8 @@ export interface PowerCheckInput {
 	/** Zeitpunkt, zu dem EMS selbst AUS geschrieben hat (Live). */
 	emsOffWriteAtMs: number | null;
 	mismatchSinceMs: number | null;
+	/** Zeitstempel des Leistungs-States (null = kein ts am State). */
+	powerObservedAtMs: number | null;
 	config: ImmersionDeviceConfig;
 }
 
@@ -71,6 +73,14 @@ export function checkPowerFault(input: PowerCheckInput): PowerCheckResult {
 	}
 	const delayMs = config.switchOnCheckDelaySec * 1000;
 	if (nowMs - input.emsOnWriteAtMs < delayMs) {
+		return { ...none, mismatchSinceMs: null };
+	}
+
+	// Träge Messung: 0 W kann noch der alte Stand sein — erst nach EMS-EIN aktualisierter Wert zählt.
+	const readingBeforeSwitch =
+		input.powerObservedAtMs !== null && input.powerObservedAtMs < input.emsOnWriteAtMs;
+	const maxWaitMs = delayMs * 2;
+	if (readingBeforeSwitch && nowMs - input.emsOnWriteAtMs < maxWaitMs) {
 		return { ...none, mismatchSinceMs: null };
 	}
 

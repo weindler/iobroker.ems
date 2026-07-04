@@ -187,6 +187,17 @@ async function runImmersionRuntimeTick(host) {
     const powerRead = config.actualPowerStateId ? await readForeignNum(host, config.actualPowerStateId) : { value: null, tsMs: null };
     const measuredPower = powerRead.value;
     const hasPower = Boolean(config.actualPowerStateId);
+    let powerObservedAtMs = null;
+    if (config.actualPowerStateId) {
+        try {
+            const reader = host.getForeignStateAsync ?? host.getStateAsync;
+            const powerSt = await reader(config.actualPowerStateId);
+            powerObservedAtMs = powerSt?.ts ? new Date(powerSt.ts).getTime() : null;
+        }
+        catch {
+            powerObservedAtMs = null;
+        }
+    }
     const plannerCommandedStage = resolvedMode === "auto" ? await (0, inputs_1.readPlannerThermalStage)(host) : 0;
     const fsm = (0, fsm_1.runImmersionFsm)({
         nowMs,
@@ -254,6 +265,7 @@ async function runImmersionRuntimeTick(host) {
         feedbackActive,
         emsOnWriteAtMs,
         emsOffWriteAtMs,
+        powerObservedAtMs,
         mismatchSinceMs,
         config,
     });

@@ -249,7 +249,11 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		}
 
 		const ids = acUnitRuntimeStates(unit.index);
-		const estPower = allocatedPowerW(runningCount || (switchIsOn(fb.value) ? 1 : 0), config.outdoorMaxPowerW, unit.estimatedPowerW);
+		const deviceActive = switchIsOn(fb.value) || (!live && up.running);
+		const estPower =
+			deviceActive && unit.estimatedPowerW > 0
+				? allocatedPowerW(runningCount || (deviceActive ? 1 : 0), config.outdoorMaxPowerW, unit.estimatedPowerW)
+				: 0;
 		await setStateIfChanged(host, ids.state, fsm.state);
 		await setStateIfChanged(host, ids.reasonDe, fsm.reasonDe);
 		await setStateIfChanged(host, ids.roomTempC, temp.num ?? "");
@@ -260,13 +264,11 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		await setStateIfChanged(host, ids.modePurpose, fsm.modePurpose);
 		await setStateIfChanged(host, ids.estimatedPowerW, estPower);
 
-		const deviceActive = switchIsOn(fb.value);
-		const countable = live && deviceActive;
 		await tickConsumerStats(host, {
 			consumerKey: acUnitConsumerKey(unit.index),
 			nowMs,
 			deviceActive,
-			countable,
+			countable: deviceActive,
 			measuredPowerW: null,
 			commandedPowerW: estPower,
 		});

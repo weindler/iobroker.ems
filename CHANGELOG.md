@@ -6,6 +6,15 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.109] – 2026-07-04
+
+### Fixed
+
+- **Klima / SmartThings 422:** Startsequenz schickt kein `cmd_cleaning_mode` mehr an Odor-Controller; Reinigung über `setAutoCleaningMode` mit gültigen Werten (`off`, `speedClean`) statt `autoClean`.
+- **Statistik:** Laufzeit/kWh für Klima und Heizstab zählen bei aktivem Gerät auch im Dryrun (nicht nur live + Feedback).
+
+---
+
 ## [0.1.108] – 2026-07-04
 
 ### Fixed

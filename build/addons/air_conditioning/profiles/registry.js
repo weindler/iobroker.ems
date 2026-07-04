@@ -6,7 +6,8 @@ const types_1 = require("./types");
 function samsungCoolingStart(unit, purpose) {
     const { mode, fanMode, fanSpeed } = (0, types_1.modeStringsForPurpose)(unit, purpose);
     const steps = [
-        { kind: "set", role: "cmd_cleaning_mode", value: "off" },
+        // setAutoCleaningMode: gültige Werte on|speedClean|quietClean|timedClean|off — kein autoClean, kein Odor-Controller
+        ...(0, types_1.optionalStep)("cmd_cleaning_start", "off"),
         { kind: "set", role: "cmd_set_cool_setpoint", value: unit.coolingSetpointC },
         { kind: "delay_ms", ms: constants_1.AC_WRITE_SETPOINT_DELAY_MS },
         { kind: "set", role: "cmd_set_mode", value: mode },
@@ -32,11 +33,10 @@ exports.GENERIC_AC_PROFILE = {
         ];
     },
     cleaningStartSequence: () => [
-        { kind: "set", role: "cmd_cleaning_start", value: "autoClean" },
-        { kind: "set", role: "cmd_cleaning_mode", value: "on" },
+        { kind: "set", role: "cmd_cleaning_start", value: "speedClean" },
     ],
     cleaningStopSequence: () => [
-        { kind: "set", role: "cmd_cleaning_mode", value: "off" },
+        { kind: "set", role: "cmd_cleaning_start", value: "off" },
         { kind: "toggle", role: "cmd_refresh" },
     ],
 };
@@ -46,11 +46,10 @@ exports.SAMSUNG_SMARTTHINGS_PROFILE = {
     coolingStartSequence: samsungCoolingStart,
     cleaningStartSequence: () => [
         { kind: "toggle", role: "cmd_refresh" },
-        { kind: "set", role: "cmd_cleaning_start", value: "autoClean" },
-        { kind: "set", role: "cmd_cleaning_mode", value: "on" },
+        { kind: "set", role: "cmd_cleaning_start", value: "speedClean" },
     ],
     cleaningStopSequence: () => [
-        { kind: "set", role: "cmd_cleaning_mode", value: "off" },
+        { kind: "set", role: "cmd_cleaning_start", value: "off" },
         { kind: "toggle", role: "cmd_refresh" },
     ],
 };

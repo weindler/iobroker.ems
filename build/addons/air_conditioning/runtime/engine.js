@@ -200,7 +200,10 @@ async function runAcRuntimeTickBody(host) {
             up.running = false;
         }
         const ids = (0, ensure_states_1.acUnitRuntimeStates)(unit.index);
-        const estPower = allocatedPowerW(runningCount || ((0, time_1.switchIsOn)(fb.value) ? 1 : 0), config.outdoorMaxPowerW, unit.estimatedPowerW);
+        const deviceActive = (0, time_1.switchIsOn)(fb.value) || (!live && up.running);
+        const estPower = deviceActive && unit.estimatedPowerW > 0
+            ? allocatedPowerW(runningCount || (deviceActive ? 1 : 0), config.outdoorMaxPowerW, unit.estimatedPowerW)
+            : 0;
         await (0, state_write_1.setStateIfChanged)(host, ids.state, fsm.state);
         await (0, state_write_1.setStateIfChanged)(host, ids.reasonDe, fsm.reasonDe);
         await (0, state_write_1.setStateIfChanged)(host, ids.roomTempC, temp.num ?? "");
@@ -210,13 +213,11 @@ async function runAcRuntimeTickBody(host) {
         await (0, state_write_1.setStateIfChanged)(host, ids.cleaningActive, up.cleaningActive);
         await (0, state_write_1.setStateIfChanged)(host, ids.modePurpose, fsm.modePurpose);
         await (0, state_write_1.setStateIfChanged)(host, ids.estimatedPowerW, estPower);
-        const deviceActive = (0, time_1.switchIsOn)(fb.value);
-        const countable = live && deviceActive;
         await (0, consumer_stats_1.tickConsumerStats)(host, {
             consumerKey: (0, constants_1.acUnitConsumerKey)(unit.index),
             nowMs,
             deviceActive,
-            countable,
+            countable: deviceActive,
             measuredPowerW: null,
             commandedPowerW: estPower,
         });

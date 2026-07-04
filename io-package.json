@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.108",
+		"version": "0.1.109",
 		"news": {
+			"0.1.109": {
+				"en": "Fix SmartThings cleaning 422 (valid autoCleaningMode values); consumer stats count when device active (incl. dryrun)",
+				"de": "SmartThings Reinigung 422 behoben (gültige autoCleaningMode-Werte); Verbrauchsstatistik bei aktivem Gerät (auch dryrun)"
+			},
 			"0.1.108": {
 				"en": "AC SmartThings toggle: ack:true mirror reset before pulse when stuck ON; wait 3s before feedback check",
 				"de": "Klima SmartThings: Spiegel-Reset vor Toggle-Impuls wenn ON hängt; 3 s warten vor Feedback-Prüfung"

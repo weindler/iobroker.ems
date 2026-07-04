@@ -1,5 +1,6 @@
 import { hasLegacyWallboxWriteMapping } from "./evcc_config";
 import { isLiveWriteAllowed } from "../../execution_mode";
+import { writeForeignIfChanged } from "../../device_write";
 import {
 	failsafeTimeoutsFromConfig,
 	isEmsUnreachable,
@@ -128,7 +129,15 @@ async function forceWallboxSafeOff(adapter: ioBroker.Adapter, reason: string): P
 		return false;
 	}
 	try {
-		await adapter.setForeignStateAsync(targetId, { val: false, ack: true });
+		const r = await writeForeignIfChanged(adapter, {
+			stateId: targetId,
+			value: false,
+			reason: `wallbox failsafe: ${reason}`,
+		});
+		if (r.skipped) {
+			adapter.log.info(`wallbox failsafe (${reason}): already disabled → ${targetId}`);
+			return true;
+		}
 		adapter.log.warn(`wallbox failsafe (${reason}): charging disabled → ${targetId}`);
 		return true;
 	} catch (e) {

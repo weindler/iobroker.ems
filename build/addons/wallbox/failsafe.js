@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.runWallboxFailsafeCheck = exports.recordWallboxPipelineResult = void 0;
 const evcc_config_1 = require("./evcc_config");
 const execution_mode_1 = require("../../execution_mode");
+const device_write_1 = require("../../device_write");
 const failsafe_common_1 = require("../../failsafe_common");
 const tree_paths_1 = require("../../tree_paths");
 const status_wallbox_1 = require("../../status_wallbox");
@@ -97,7 +98,15 @@ async function forceWallboxSafeOff(adapter, reason) {
         return false;
     }
     try {
-        await adapter.setForeignStateAsync(targetId, { val: false, ack: true });
+        const r = await (0, device_write_1.writeForeignIfChanged)(adapter, {
+            stateId: targetId,
+            value: false,
+            reason: `wallbox failsafe: ${reason}`,
+        });
+        if (r.skipped) {
+            adapter.log.info(`wallbox failsafe (${reason}): already disabled → ${targetId}`);
+            return true;
+        }
         adapter.log.warn(`wallbox failsafe (${reason}): charging disabled → ${targetId}`);
         return true;
     }

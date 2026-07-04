@@ -4,6 +4,7 @@ exports.runCommandPipeline = void 0;
 const governance_1 = require("./addons/governance");
 const registry_1 = require("./addons/registry");
 const execution_mode_1 = require("./execution_mode");
+const device_write_1 = require("./device_write");
 const mapping_1 = require("./mapping");
 /**
  * Canonical pipeline — dryrun mirror always; live write wenn global.live ∧ addon.live.
@@ -100,8 +101,34 @@ async function runCommandPipeline(intent, ctx) {
         }
         const writeVal = scalarForForeignWrite(command, plannedValue, intent.value);
         try {
-            await ctx.setForeignState(mapping.targetState, writeVal);
-            checks_passed.push("live_write_ok");
+            if (ctx.getForeignState && ctx.setForeignState) {
+                const writeHost = {
+                    getForeignStateAsync: ctx.getForeignState,
+                    setForeignStateAsync: async (id, state) => {
+                        const val = state && typeof state === "object" && "val" in state
+                            ? state.val
+                            : state;
+                        if (val !== null && val !== undefined) {
+                            await ctx.setForeignState(id, val);
+                        }
+                    },
+                };
+                const writeResult = await (0, device_write_1.writeForeignIfChanged)(writeHost, {
+                    stateId: mapping.targetState,
+                    value: writeVal,
+                    reason: `pipeline:${addonId}.${command}`,
+                });
+                if (writeResult.skipped) {
+                    checks_passed.push("live_write_skipped_already_at_target");
+                }
+                else {
+                    checks_passed.push("live_write_ok");
+                }
+            }
+            else {
+                await ctx.setForeignState(mapping.targetState, writeVal);
+                checks_passed.push("live_write_ok");
+            }
             return {
                 result: "success",
                 reason: "live_write",

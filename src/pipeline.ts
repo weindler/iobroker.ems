@@ -5,11 +5,13 @@ import {
 	isReadOnlyAddon,
 } from "./addons/registry";
 import { isLiveWriteAllowed } from "./execution_mode";
+import { writeForeignIfChanged } from "./device_write";
 import { isValueAllowed, loadMapping, resolvePlannedValue } from "./mapping";
 import type { CommandIntent, PipelineOutcome } from "./types";
 
 export interface PipelineContext {
 	getState: (relativeId: string) => Promise<ioBroker.State | null | undefined>;
+	getForeignState?: (stateId: string) => Promise<ioBroker.State | null | undefined>;
 	setForeignState?: (stateId: string, value: ioBroker.StateValue) => Promise<void>;
 	isLiveAllowed?: (addonId: string) => Promise<boolean>;
 }
@@ -127,8 +129,33 @@ export async function runCommandPipeline(
 		}
 		const writeVal = scalarForForeignWrite(command, plannedValue, intent.value);
 		try {
-			await ctx.setForeignState(mapping.targetState, writeVal);
-			checks_passed.push("live_write_ok");
+			if (ctx.getForeignState && ctx.setForeignState) {
+				const writeHost = {
+					getForeignStateAsync: ctx.getForeignState,
+					setForeignStateAsync: async (id: string, state: ioBroker.SettableState | ioBroker.StateValue) => {
+						const val =
+							state && typeof state === "object" && "val" in state
+								? (state as ioBroker.SettableState).val
+								: (state as ioBroker.StateValue);
+						if (val !== null && val !== undefined) {
+							await ctx.setForeignState!(id, val);
+						}
+					},
+				};
+				const writeResult = await writeForeignIfChanged(writeHost, {
+					stateId: mapping.targetState,
+					value: writeVal,
+					reason: `pipeline:${addonId}.${command}`,
+				});
+				if (writeResult.skipped) {
+					checks_passed.push("live_write_skipped_already_at_target");
+				} else {
+					checks_passed.push("live_write_ok");
+				}
+			} else {
+				await ctx.setForeignState!(mapping.targetState, writeVal);
+				checks_passed.push("live_write_ok");
+			}
 			return {
 				result: "success",
 				reason: "live_write",

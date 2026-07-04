@@ -75,6 +75,33 @@ describe("executeBatteryWrite", () => {
 		assert.equal(writes[0].id, "x.mode");
 		assert.equal(writes[0].val, 1);
 		assert.equal(r.executed, true);
+		assert.equal(r.written, true);
+		assert.equal(r.skipped, false);
+	});
+
+	it("skips live write when device already at target", async () => {
+		const writes: Array<{ id: string; val: ioBroker.StateValue }> = [];
+		const host: BatteryWriteHost = {
+			getForeignStateAsync: async () => ({ val: 2, ack: true } as ioBroker.State),
+			setForeignStateAsync: async (id, state) => {
+				const val = state && typeof state === "object" && "val" in state ? (state as ioBroker.SettableState).val : (state as ioBroker.StateValue);
+				writes.push({ id, val: val ?? null });
+			},
+			log: { info: () => undefined, warn: () => undefined, error: () => undefined, debug: () => undefined },
+		};
+		const r = await executeBatteryWrite(host, {
+			kind: "operating_mode",
+			stateId: "x.mode",
+			value: 2,
+			requestId: "r",
+			reason: "restore",
+			dryrun: false,
+			gate: okGate(),
+		});
+		assert.equal(writes.length, 0);
+		assert.equal(r.executed, true);
+		assert.equal(r.skipped, true);
+		assert.equal(r.written, false);
 	});
 
 	it("live blocked when gate fails (battery disabled)", async () => {

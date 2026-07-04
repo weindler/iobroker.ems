@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.84",
+		"version": "0.1.85",
 		"news": {
+			"0.1.85": {
+				"en": "Read-before-write for all device paths: skip writes when target already active (battery mode/power, immersion relay, pipeline, failsafe)",
+				"de": "Read-before-write für alle Geräte-Pfade: Writes überspringen wenn Ziel bereits aktiv (Batterie Modus/Leistung, Heizstab-Relais, Pipeline, Failsafe)"
+			},
 			"0.1.84": {
 				"en": "Battery live gate fix: requires addons.battery.mode live (not global alone); restart FSM on dryrun→live switch; safe-restore writes no longer blocked by intent_invalid",
 				"de": "Batterie-Live-Gate: addons.battery.mode muss live sein (nicht nur global); FSM-Neustart bei Dryrun→Live; Safe-Restore-Writes werden nicht mehr durch intent_invalid blockiert"

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.executeBatteryWrite = exports.evaluateFinalWriteGate = void 0;
+const device_write_1 = require("../../../device_write");
 function evaluateFinalWriteGate(gate) {
     if (!gate.globalLive)
         return { passed: false, rejectCode: "execution_gate_closed" };
@@ -42,26 +43,77 @@ async function executeBatteryWrite(host, params) {
     };
     if (params.dryrun) {
         host.log.debug(`battery dryrun would_write ${params.kind}=${params.value} → ${params.stateId} (${params.reason})`);
-        return { ...base, executed: false, simulated: true, gatePassed: true, rejectCode: null };
+        return {
+            ...base,
+            executed: false,
+            written: false,
+            skipped: false,
+            simulated: true,
+            gatePassed: true,
+            rejectCode: null,
+        };
     }
     const gate = evaluateFinalWriteGate(params.gate);
     if (!gate.passed) {
         host.log.warn(`battery write blocked (${gate.rejectCode}) ${params.kind}=${params.value} → ${params.stateId}`);
-        return { ...base, executed: false, simulated: false, gatePassed: false, rejectCode: gate.rejectCode };
+        return {
+            ...base,
+            executed: false,
+            written: false,
+            skipped: false,
+            simulated: false,
+            gatePassed: false,
+            rejectCode: gate.rejectCode,
+        };
     }
     if (!params.stateId) {
-        return { ...base, executed: false, simulated: false, gatePassed: false, rejectCode: "missing_mapping" };
+        return {
+            ...base,
+            executed: false,
+            written: false,
+            skipped: false,
+            simulated: false,
+            gatePassed: false,
+            rejectCode: "missing_mapping",
+        };
     }
     try {
-        await host.setForeignStateAsync(params.stateId, { val: params.value, ack: false });
+        const writeResult = await (0, device_write_1.writeForeignIfChanged)(host, {
+            stateId: params.stateId,
+            value: params.value,
+            reason: `battery ${params.kind}: ${params.reason}`,
+            numericTolerance: params.numericTolerance ?? 0,
+        });
+        if (writeResult.skipped) {
+            host.log.info(`battery write skipped (already at target) ${params.kind}=${params.value} → ${params.stateId} (${params.reason})`);
+            return {
+                ...base,
+                executed: true,
+                written: false,
+                skipped: true,
+                simulated: false,
+                gatePassed: true,
+                rejectCode: null,
+            };
+        }
         host.log.info(`battery LIVE write ${params.kind}=${params.value} → ${params.stateId} (${params.reason})`);
-        return { ...base, executed: true, simulated: false, gatePassed: true, rejectCode: null };
+        return {
+            ...base,
+            executed: true,
+            written: true,
+            skipped: false,
+            simulated: false,
+            gatePassed: true,
+            rejectCode: null,
+        };
     }
     catch (e) {
         host.log.error(`battery write failed ${params.stateId}: ${String(e)}`);
         return {
             ...base,
             executed: false,
+            written: false,
+            skipped: false,
             simulated: false,
             gatePassed: true,
             rejectCode: params.kind === "operating_mode" ? "mode_write_failed" : "charge_write_failed",

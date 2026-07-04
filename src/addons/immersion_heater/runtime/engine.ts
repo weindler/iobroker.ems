@@ -1,4 +1,5 @@
 import { isLiveWriteAllowed } from "../../../execution_mode";
+import { writeForeignIfChanged } from "../../../device_write";
 import { isAddonGovernanceEnabledFromState } from "../../../addons/governance";
 import { setStateIfChanged } from "../../../policy/core/state_write";
 import { INTENT_SCHEMA_VERSION, IOBROKER_THERMAL_REQUEST_STATE } from "../../../intent/core/constants";
@@ -173,7 +174,32 @@ async function applyStageWrites(host: ImmersionRuntimeHost, stageIndex: number, 
 		const on = stage.index === stageIndex;
 		if (!host.setForeignStateAsync) continue;
 		try {
-			await host.setForeignStateAsync(stage.setStateId, { val: on, ack: true });
+			const writeResult = await writeForeignIfChanged(
+				{
+					getForeignStateAsync: (id) => host.getForeignStateAsync!(id),
+					setForeignStateAsync: async (id, state) => {
+						const val =
+							state && typeof state === "object" && "val" in state
+								? (state as ioBroker.SettableState).val
+								: (state as ioBroker.StateValue);
+						await host.setForeignStateAsync!(id, { val: val ?? null, ack: true });
+					},
+					log: {
+						info: (m) => host.log.info?.(m),
+						warn: (m) => host.log.warn?.(m),
+						error: (m) => host.log.error?.(m),
+						debug: (m) => host.log.debug?.(m),
+					},
+				},
+				{
+					stateId: stage.setStateId,
+					value: on,
+					reason: `immersion stage ${stage.index}`,
+				},
+			);
+			if (writeResult.skipped) {
+				host.log.debug?.(`immersion stage ${stage.index} already ${on ? "ON" : "OFF"} — skip`);
+			}
 		} catch (e) {
 			host.log.error?.(`immersion write stage ${stage.index}: ${e}`);
 			persist.faultLockout = true;

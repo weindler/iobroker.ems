@@ -1,10 +1,9 @@
 import type { BatteryProfileId } from "../core/types";
+import { writeForeignIfChanged, type DeviceWriteHost } from "../../../device_write";
 
 export type BatteryWriteKind = "operating_mode" | "charge_power";
 
-export interface BatteryWriteHost {
-	getForeignStateAsync(id: string): Promise<ioBroker.State | null | undefined>;
-	setForeignStateAsync(id: string, state: ioBroker.SettableState | ioBroker.StateValue): Promise<unknown>;
+export interface BatteryWriteHost extends DeviceWriteHost {
 	log: Pick<ioBroker.Logger, "info" | "warn" | "error" | "debug">;
 }
 
@@ -53,6 +52,7 @@ export interface ExecuteBatteryWriteParams {
 	/** true = globaler Modus != live → niemals real schreiben. */
 	dryrun: boolean;
 	gate: FinalWriteGate;
+	numericTolerance?: number;
 }
 
 export interface BatteryWriteResult {
@@ -60,6 +60,10 @@ export interface BatteryWriteResult {
 	stateId: string;
 	value: number;
 	executed: boolean;
+	/** Geräte-Write tatsächlich gesendet (false wenn skipped). */
+	written: boolean;
+	/** Zielwert war bereits aktiv — kein Write nötig. */
+	skipped: boolean;
 	simulated: boolean;
 	gatePassed: boolean;
 	rejectCode: string | null;
@@ -76,7 +80,7 @@ export async function executeBatteryWrite(
 	params: ExecuteBatteryWriteParams,
 ): Promise<BatteryWriteResult> {
 	const at = new Date().toISOString();
-	const base: Omit<BatteryWriteResult, "executed" | "simulated" | "gatePassed" | "rejectCode"> = {
+	const base: Omit<BatteryWriteResult, "executed" | "written" | "skipped" | "simulated" | "gatePassed" | "rejectCode"> = {
 		kind: params.kind,
 		stateId: params.stateId,
 		value: params.value,
@@ -88,7 +92,15 @@ export async function executeBatteryWrite(
 		host.log.debug(
 			`battery dryrun would_write ${params.kind}=${params.value} → ${params.stateId} (${params.reason})`,
 		);
-		return { ...base, executed: false, simulated: true, gatePassed: true, rejectCode: null };
+		return {
+			...base,
+			executed: false,
+			written: false,
+			skipped: false,
+			simulated: true,
+			gatePassed: true,
+			rejectCode: null,
+		};
 	}
 
 	const gate = evaluateFinalWriteGate(params.gate);
@@ -96,22 +108,67 @@ export async function executeBatteryWrite(
 		host.log.warn(
 			`battery write blocked (${gate.rejectCode}) ${params.kind}=${params.value} → ${params.stateId}`,
 		);
-		return { ...base, executed: false, simulated: false, gatePassed: false, rejectCode: gate.rejectCode };
+		return {
+			...base,
+			executed: false,
+			written: false,
+			skipped: false,
+			simulated: false,
+			gatePassed: false,
+			rejectCode: gate.rejectCode,
+		};
 	}
 
 	if (!params.stateId) {
-		return { ...base, executed: false, simulated: false, gatePassed: false, rejectCode: "missing_mapping" };
+		return {
+			...base,
+			executed: false,
+			written: false,
+			skipped: false,
+			simulated: false,
+			gatePassed: false,
+			rejectCode: "missing_mapping",
+		};
 	}
 
 	try {
-		await host.setForeignStateAsync(params.stateId, { val: params.value, ack: false });
+		const writeResult = await writeForeignIfChanged(host, {
+			stateId: params.stateId,
+			value: params.value,
+			reason: `battery ${params.kind}: ${params.reason}`,
+			numericTolerance: params.numericTolerance ?? 0,
+		});
+		if (writeResult.skipped) {
+			host.log.info(
+				`battery write skipped (already at target) ${params.kind}=${params.value} → ${params.stateId} (${params.reason})`,
+			);
+			return {
+				...base,
+				executed: true,
+				written: false,
+				skipped: true,
+				simulated: false,
+				gatePassed: true,
+				rejectCode: null,
+			};
+		}
 		host.log.info(`battery LIVE write ${params.kind}=${params.value} → ${params.stateId} (${params.reason})`);
-		return { ...base, executed: true, simulated: false, gatePassed: true, rejectCode: null };
+		return {
+			...base,
+			executed: true,
+			written: true,
+			skipped: false,
+			simulated: false,
+			gatePassed: true,
+			rejectCode: null,
+		};
 	} catch (e) {
 		host.log.error(`battery write failed ${params.stateId}: ${String(e)}`);
 		return {
 			...base,
 			executed: false,
+			written: false,
+			skipped: false,
 			simulated: false,
 			gatePassed: true,
 			rejectCode: params.kind === "operating_mode" ? "mode_write_failed" : "charge_write_failed",

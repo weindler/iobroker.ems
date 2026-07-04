@@ -1,7 +1,7 @@
 import type { SonnenFeedbackTolerance, SonnenModeValues, SonnenSequenceConfig } from "../config";
 import type { BatteryAction } from "../core/types";
 import type { BatteryWriteKind } from "./execute";
-import { checkChargeFeedback, checkModeFeedback } from "./feedback";
+import { checkChargeFeedback, checkModeFeedback, chargeWithinTolerance } from "./feedback";
 import { emptyOwnership, type OwnershipState } from "./ownership";
 
 export type SonnenFsmState =
@@ -194,22 +194,34 @@ export function stepSonnenFsm(prev: SonnenRuntime, ctx: SonnenFsmContext): Sonne
 			break;
 
 		case "set_manual_mode":
-			writes.push({
-				kind: "operating_mode",
-				value: ctx.modeValues.manual,
-				expectedFeedback: ctx.modeValues.manual,
-			});
-			rt.ownership.active = true;
-			rt.ownership.manualModeWritten = true;
-			rt.ownership.requestId = rt.requestId;
-			rt.ownership.startedAt = new Date(ctx.nowMs).toISOString();
-			log = {
-				level: "info",
-				msg: ctx.simulateFeedback
-					? `battery charge sequence started (dryrun, ${rt.action})`
-					: `battery live action started (${rt.action})`,
-			};
-			enter("wait_after_manual_mode");
+			if (ctx.actualMode === ctx.modeValues.manual) {
+				rt.ownership.active = true;
+				rt.ownership.manualModeWritten = true;
+				rt.ownership.requestId = rt.requestId;
+				rt.ownership.startedAt = new Date(ctx.nowMs).toISOString();
+				log = {
+					level: "info",
+					msg: `battery already in manual mode (${rt.action}) — skip mode write`,
+				};
+				enter("set_charge_power");
+			} else {
+				writes.push({
+					kind: "operating_mode",
+					value: ctx.modeValues.manual,
+					expectedFeedback: ctx.modeValues.manual,
+				});
+				rt.ownership.active = true;
+				rt.ownership.manualModeWritten = true;
+				rt.ownership.requestId = rt.requestId;
+				rt.ownership.startedAt = new Date(ctx.nowMs).toISOString();
+				log = {
+					level: "info",
+					msg: ctx.simulateFeedback
+						? `battery charge sequence started (dryrun, ${rt.action})`
+						: `battery live action started (${rt.action})`,
+				};
+				enter("wait_after_manual_mode");
+			}
 			break;
 
 		case "wait_after_manual_mode":
@@ -238,12 +250,20 @@ export function stepSonnenFsm(prev: SonnenRuntime, ctx: SonnenFsmContext): Sonne
 		}
 
 		case "set_charge_power":
-			writes.push({
-				kind: "charge_power",
-				value: rt.effectivePowerW,
-				expectedFeedback: rt.effectivePowerW,
-			});
-			enter("verify_charge_power");
+			if (
+				ctx.actualChargingW !== null &&
+				chargeWithinTolerance(rt.effectivePowerW, ctx.actualChargingW, ctx.tolerance)
+			) {
+				log = { level: "info", msg: "battery charge power already at target — skip write" };
+				enter("active");
+			} else {
+				writes.push({
+					kind: "charge_power",
+					value: rt.effectivePowerW,
+					expectedFeedback: rt.effectivePowerW,
+				});
+				enter("verify_charge_power");
+			}
 			break;
 
 		case "verify_charge_power": {
@@ -274,8 +294,13 @@ export function stepSonnenFsm(prev: SonnenRuntime, ctx: SonnenFsmContext): Sonne
 			break;
 
 		case "stop_charge":
-			writes.push({ kind: "charge_power", value: 0, expectedFeedback: 0 });
-			enter("verify_charge_stopped");
+			if (ctx.actualChargingW !== null && chargeWithinTolerance(0, ctx.actualChargingW, ctx.tolerance)) {
+				log = { level: "info", msg: "battery charge already stopped — skip write" };
+				enter("restore_self_consumption");
+			} else {
+				writes.push({ kind: "charge_power", value: 0, expectedFeedback: 0 });
+				enter("verify_charge_stopped");
+			}
 			break;
 
 		case "verify_charge_stopped": {
@@ -295,12 +320,17 @@ export function stepSonnenFsm(prev: SonnenRuntime, ctx: SonnenFsmContext): Sonne
 		}
 
 		case "restore_self_consumption":
-			writes.push({
-				kind: "operating_mode",
-				value: ctx.modeValues.selfConsumption,
-				expectedFeedback: ctx.modeValues.selfConsumption,
-			});
-			enter("verify_self_consumption");
+			if (ctx.actualMode === ctx.modeValues.selfConsumption) {
+				log = { level: "info", msg: "battery already in self consumption — skip mode write" };
+				enter("restore_grid_balance");
+			} else {
+				writes.push({
+					kind: "operating_mode",
+					value: ctx.modeValues.selfConsumption,
+					expectedFeedback: ctx.modeValues.selfConsumption,
+				});
+				enter("verify_self_consumption");
+			}
 			break;
 
 		case "verify_self_consumption": {

@@ -210,6 +210,7 @@ class Ems extends utils.Adapter {
         (0, ems_activity_1.touchEmsActivity)();
         const outcome = await (0, pipeline_1.runCommandPipeline)(intent, {
             getState: (relativeId) => this.getStateAsync(relativeId),
+            getForeignState: (stateId) => this.getForeignStateAsync(stateId),
             setForeignState: async (stateId, value) => {
                 await this.setForeignStateAsync(stateId, { val: value, ack: true });
             },

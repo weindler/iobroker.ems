@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runImmersionFailsafeCheck = exports.forceImmersionHeaterOff = void 0;
 const execution_mode_1 = require("../../execution_mode");
+const device_write_1 = require("../../device_write");
 const failsafe_common_1 = require("../../failsafe_common");
 const tree_paths_1 = require("../../tree_paths");
 const status_1 = require("./status");
@@ -27,7 +28,15 @@ async function forceImmersionHeaterOff(adapter, reason) {
         return false;
     }
     try {
-        await adapter.setForeignStateAsync(targetId, { val: false, ack: true });
+        const r = await (0, device_write_1.writeForeignIfChanged)(adapter, {
+            stateId: targetId,
+            value: false,
+            reason: `immersion failsafe: ${reason}`,
+        });
+        if (r.skipped) {
+            adapter.log.info(`immersion failsafe (${reason}): already OFF → ${targetId}`);
+            return true;
+        }
         adapter.log.warn(`immersion failsafe (${reason}): OFF → ${targetId}`);
         return true;
     }

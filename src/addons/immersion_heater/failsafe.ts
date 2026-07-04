@@ -1,4 +1,5 @@
 import { isLiveWriteAllowed } from "../../execution_mode";
+import { writeForeignIfChanged } from "../../device_write";
 import { failsafeTimeoutsFromConfig, isEmsUnreachable, setEdgeBool } from "../../failsafe_common";
 import { mappingBase } from "../../tree_paths";
 import { IMMERSION_STATUS_STATES } from "./status";
@@ -35,7 +36,15 @@ export async function forceImmersionHeaterOff(
 		return false;
 	}
 	try {
-		await adapter.setForeignStateAsync(targetId, { val: false, ack: true });
+		const r = await writeForeignIfChanged(adapter, {
+			stateId: targetId,
+			value: false,
+			reason: `immersion failsafe: ${reason}`,
+		});
+		if (r.skipped) {
+			adapter.log.info(`immersion failsafe (${reason}): already OFF → ${targetId}`);
+			return true;
+		}
 		adapter.log.warn(`immersion failsafe (${reason}): OFF → ${targetId}`);
 		return true;
 	} catch (e) {

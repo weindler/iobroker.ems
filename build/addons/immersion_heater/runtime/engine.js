@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getImmersionPersistForTest = exports.resetImmersionRuntimeForTest = exports.stopImmersionRuntimeEngine = exports.initImmersionRuntimeEngine = exports.handleImmersionFaultReset = exports.runImmersionRuntimeTick = exports.immersionRuntimeWatchedForeignIds = void 0;
 const execution_mode_1 = require("../../../execution_mode");
+const device_write_1 = require("../../../device_write");
 const governance_1 = require("../../../addons/governance");
 const state_write_1 = require("../../../policy/core/state_write");
 const constants_1 = require("../../../intent/core/constants");
@@ -127,7 +128,28 @@ async function applyStageWrites(host, stageIndex, live) {
         if (!host.setForeignStateAsync)
             continue;
         try {
-            await host.setForeignStateAsync(stage.setStateId, { val: on, ack: true });
+            const writeResult = await (0, device_write_1.writeForeignIfChanged)({
+                getForeignStateAsync: (id) => host.getForeignStateAsync(id),
+                setForeignStateAsync: async (id, state) => {
+                    const val = state && typeof state === "object" && "val" in state
+                        ? state.val
+                        : state;
+                    await host.setForeignStateAsync(id, { val: val ?? null, ack: true });
+                },
+                log: {
+                    info: (m) => host.log.info?.(m),
+                    warn: (m) => host.log.warn?.(m),
+                    error: (m) => host.log.error?.(m),
+                    debug: (m) => host.log.debug?.(m),
+                },
+            }, {
+                stateId: stage.setStateId,
+                value: on,
+                reason: `immersion stage ${stage.index}`,
+            });
+            if (writeResult.skipped) {
+                host.log.debug?.(`immersion stage ${stage.index} already ${on ? "ON" : "OFF"} — skip`);
+            }
         }
         catch (e) {
             host.log.error?.(`immersion write stage ${stage.index}: ${e}`);

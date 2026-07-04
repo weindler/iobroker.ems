@@ -448,6 +448,7 @@ async function controlTickInner(host: Host): Promise<void> {
 			reason: `fsm:${runtime.state}`,
 			expectedFeedback: w.expectedFeedback,
 			dryrun: !effectiveLive,
+			numericTolerance: w.kind === "charge_power" ? config.feedbackTolerance.absoluteW : 0,
 			gate: { ...gate, targetMappingConfigured: stateId.length > 0 },
 		});
 		lastWrite = { state: stateId, value: w.value, success: result.executed, expected: result.expectedFeedback };

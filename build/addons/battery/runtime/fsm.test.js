@@ -55,7 +55,12 @@ function drive(rt, overFor, steps, startMs) {
 (0, node_test_1.describe)("sonnen FSM", () => {
     (0, node_test_1.it)("runs full live charge sequence in correct write order", () => {
         const rt = (0, fsm_js_1.initialSonnenRuntime)(0);
-        const res = drive(rt, () => ({}), 12, 0);
+        const res = drive(rt, (cur) => ({
+            actualMode: cur.state === "verify_manual_mode" || cur.state === "set_charge_power" || cur.state === "verify_charge_power" || cur.state === "active"
+                ? MODE.manual
+                : MODE.selfConsumption,
+            actualChargingW: cur.state === "verify_charge_power" || cur.state === "active" ? 2000 : 0,
+        }), 12, 0);
         strict_1.default.equal(res.rt.state, "active");
         strict_1.default.equal(res.writes.length, 2);
         strict_1.default.equal(res.writes[0].kind, "operating_mode");
@@ -64,6 +69,17 @@ function drive(rt, overFor, steps, startMs) {
         strict_1.default.equal(res.writes[1].value, 2000);
         strict_1.default.ok(res.gb.includes("pause"));
         strict_1.default.equal(res.rt.ownership.active, true);
+    });
+    (0, node_test_1.it)("skips manual mode write when device already in manual", () => {
+        const rt = (0, fsm_js_1.initialSonnenRuntime)(0);
+        const res = drive(rt, (cur) => ({
+            actualMode: MODE.manual,
+            actualChargingW: cur.state === "verify_charge_power" || cur.state === "active" ? 2000 : 0,
+        }), 14, 0);
+        strict_1.default.equal(res.rt.state, "active");
+        const modeWrites = res.writes.filter((w) => w.kind === "operating_mode");
+        strict_1.default.equal(modeWrites.length, 0);
+        strict_1.default.ok(res.writes.some((w) => w.kind === "charge_power"));
     });
     (0, node_test_1.it)("dryrun simulates feedback to reach active", () => {
         const rt = (0, fsm_js_1.initialSonnenRuntime)(0);
@@ -74,7 +90,15 @@ function drive(rt, overFor, steps, startMs) {
         let rt = (0, fsm_js_1.initialSonnenRuntime)(0);
         rt = drive(rt, () => ({ gridBalanceActive: true }), 12, 0).rt;
         strict_1.default.equal(rt.state, "active");
-        const res = drive(rt, () => ({ chargingActionRequested: false, intentValid: false, stopReason: "intent_revoked", actualChargingW: 0, actualMode: MODE.selfConsumption }), 8, 20_000);
+        const res = drive(rt, (cur) => ({
+            chargingActionRequested: false,
+            intentValid: false,
+            stopReason: "intent_revoked",
+            actualChargingW: 0,
+            actualMode: cur.state === "verify_self_consumption" || cur.state === "restore_grid_balance" || cur.state === "completed"
+                ? MODE.selfConsumption
+                : MODE.manual,
+        }), 8, 20_000);
         strict_1.default.equal(res.rt.state, "completed");
         strict_1.default.equal(res.rt.ownership.active, false);
         const modeWrites = res.writes.filter((w) => w.kind === "operating_mode");

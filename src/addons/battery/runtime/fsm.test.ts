@@ -64,7 +64,19 @@ function drive(
 describe("sonnen FSM", () => {
 	it("runs full live charge sequence in correct write order", () => {
 		const rt = initialSonnenRuntime(0);
-		const res = drive(rt, () => ({}), 12, 0);
+		const res = drive(
+			rt,
+			(cur) => ({
+				actualMode:
+					cur.state === "verify_manual_mode" || cur.state === "set_charge_power" || cur.state === "verify_charge_power" || cur.state === "active"
+						? MODE.manual
+						: MODE.selfConsumption,
+				actualChargingW:
+					cur.state === "verify_charge_power" || cur.state === "active" ? 2000 : 0,
+			}),
+			12,
+			0,
+		);
 		assert.equal(res.rt.state, "active");
 		assert.equal(res.writes.length, 2);
 		assert.equal(res.writes[0].kind, "operating_mode");
@@ -73,6 +85,23 @@ describe("sonnen FSM", () => {
 		assert.equal(res.writes[1].value, 2000);
 		assert.ok(res.gb.includes("pause"));
 		assert.equal(res.rt.ownership.active, true);
+	});
+
+	it("skips manual mode write when device already in manual", () => {
+		const rt = initialSonnenRuntime(0);
+		const res = drive(
+			rt,
+			(cur) => ({
+				actualMode: MODE.manual,
+				actualChargingW: cur.state === "verify_charge_power" || cur.state === "active" ? 2000 : 0,
+			}),
+			14,
+			0,
+		);
+		assert.equal(res.rt.state, "active");
+		const modeWrites = res.writes.filter((w) => w.kind === "operating_mode");
+		assert.equal(modeWrites.length, 0);
+		assert.ok(res.writes.some((w) => w.kind === "charge_power"));
 	});
 
 	it("dryrun simulates feedback to reach active", () => {
@@ -87,7 +116,16 @@ describe("sonnen FSM", () => {
 		assert.equal(rt.state, "active");
 		const res = drive(
 			rt,
-			() => ({ chargingActionRequested: false, intentValid: false, stopReason: "intent_revoked", actualChargingW: 0, actualMode: MODE.selfConsumption }),
+			(cur) => ({
+				chargingActionRequested: false,
+				intentValid: false,
+				stopReason: "intent_revoked",
+				actualChargingW: 0,
+				actualMode:
+					cur.state === "verify_self_consumption" || cur.state === "restore_grid_balance" || cur.state === "completed"
+						? MODE.selfConsumption
+						: MODE.manual,
+			}),
 			8,
 			20_000,
 		);

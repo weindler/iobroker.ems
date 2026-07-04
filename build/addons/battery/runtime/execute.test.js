@@ -75,6 +75,32 @@ function mockHost() {
         strict_1.default.equal(writes[0].id, "x.mode");
         strict_1.default.equal(writes[0].val, 1);
         strict_1.default.equal(r.executed, true);
+        strict_1.default.equal(r.written, true);
+        strict_1.default.equal(r.skipped, false);
+    });
+    (0, node_test_1.it)("skips live write when device already at target", async () => {
+        const writes = [];
+        const host = {
+            getForeignStateAsync: async () => ({ val: 2, ack: true }),
+            setForeignStateAsync: async (id, state) => {
+                const val = state && typeof state === "object" && "val" in state ? state.val : state;
+                writes.push({ id, val: val ?? null });
+            },
+            log: { info: () => undefined, warn: () => undefined, error: () => undefined, debug: () => undefined },
+        };
+        const r = await (0, execute_js_1.executeBatteryWrite)(host, {
+            kind: "operating_mode",
+            stateId: "x.mode",
+            value: 2,
+            requestId: "r",
+            reason: "restore",
+            dryrun: false,
+            gate: okGate(),
+        });
+        strict_1.default.equal(writes.length, 0);
+        strict_1.default.equal(r.executed, true);
+        strict_1.default.equal(r.skipped, true);
+        strict_1.default.equal(r.written, false);
     });
     (0, node_test_1.it)("live blocked when gate fails (battery disabled)", async () => {
         const { host, writes } = mockHost();

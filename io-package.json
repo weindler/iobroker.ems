@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.105",
+		"version": "0.1.106",
 		"news": {
+			"0.1.106": {
+				"en": "Fix SmartThings 429 rate limit storm: stop subscribing to command/toggle states, remove toggle mirror resets, guard concurrent AC ticks",
+				"de": "SmartThings 429-Fix: keine Abos mehr auf Schreib-/Toggle-States, Toggle-Spiegel-Reset entfernt, parallele AC-Ticks abgefangen"
+			},
 			"0.1.105": {
 				"en": "Reduce log noise at info level: init steps, learning, intent, dryrun and skip messages move to debug; keep user-relevant events (mode changes, AC start/stop, failsafe, faults) on info/warn/error",
 				"de": "Weniger Log-Lärm auf info: Init, Learning, Intent, Dryrun und Skip-Meldungen nach debug; relevante Ereignisse (Modus, Klima Ein/Aus, Failsafe, Störungen) bleiben info/warn/error"

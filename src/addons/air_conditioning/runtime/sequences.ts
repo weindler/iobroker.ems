@@ -1,23 +1,10 @@
 import { writeForeignIfChanged, type DeviceWriteHost } from "../../../device_write";
 import { mappingBase } from "../../../tree_paths";
-import {
-	AC_ADDON_ID,
-	acUnitMappingCommand,
-	AC_TOGGLE_STATE_RESET_MS,
-	type AcMappingRole,
-} from "../constants";
+import { AC_ADDON_ID, acUnitMappingCommand, type AcMappingRole } from "../constants";
 import { acMappingFromConfig } from "../mapping_config";
 import type { AcWriteStep } from "../profiles/types";
 
 export type AcMappingTable = Partial<Record<string, { enabled: boolean; targetStateId: string }>>;
-
-const SAMSUNG_TOGGLE_ROLES: AcMappingRole[] = ["cmd_switch_on", "cmd_switch_off", "cmd_refresh"];
-
-/** Nach switch-off auch switch-on zurücksetzen (und umgekehrt) — hängen sonst auf ON. */
-const TOGGLE_CROSS_RESET: Partial<Record<AcMappingRole, AcMappingRole[]>> = {
-	cmd_switch_on: ["cmd_switch_off"],
-	cmd_switch_off: ["cmd_switch_on"],
-};
 
 export function resolveAcMappingTarget(
 	table: AcMappingTable,
@@ -30,12 +17,6 @@ export function resolveAcMappingTarget(
 		return "";
 	}
 	return entry.targetStateId.trim();
-}
-
-export function collectToggleMirrorIds(table: AcMappingTable, unitIndex: number): string[] {
-	return SAMSUNG_TOGGLE_ROLES.map((role) => resolveAcMappingTarget(table, unitIndex, role)).filter(
-		(id) => id.length > 0,
-	);
 }
 
 export function buildAcMappingTableFromConfig(config: Record<string, unknown>): AcMappingTable {
@@ -73,62 +54,12 @@ function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function uniqueStateIds(stateIds: string[]): string[] {
-	return [...new Set(stateIds.map((id) => id.trim()).filter(Boolean))];
-}
-
-/** Nur ioBroker-Spiegel — kein SmartThings-Befehl (ack:true). */
-export async function resetToggleMirrorsNow(
-	host: DeviceWriteHost,
-	stateIds: string[],
-	log?: { info?: (m: string) => void; debug?: (m: string) => void },
-): Promise<void> {
-	for (const stateId of uniqueStateIds(stateIds)) {
-		try {
-			await host.setForeignStateAsync(stateId, { val: false, ack: true });
-			log?.debug?.(`ac toggle mirror reset now: ${stateId} → false`);
-		} catch {
-			// best-effort
-		}
-	}
-}
-
-/** Verzögert nach Sequenzende — SmartThings-Adapter überschreibt oft kurz nach refresh. */
-export function scheduleToggleMirrorReset(
-	host: DeviceWriteHost,
-	stateIds: string[],
-	delayMs = AC_TOGGLE_STATE_RESET_MS,
-	log?: { info?: (m: string) => void; debug?: (m: string) => void },
-): void {
-	const unique = uniqueStateIds(stateIds);
-	if (unique.length === 0) {
-		return;
-	}
-	setTimeout(() => {
-		void resetToggleMirrorsNow(host, unique, log).then(() => {
-			log?.debug?.(
-				`ac toggle mirror reset (${Math.round(delayMs / 1000)}s after sequence): ${unique.length} state(s) → false`,
-			);
-		});
-	}, delayMs);
-}
-
 async function pulseSmartThingsToggle(
 	host: DeviceWriteHost,
 	unitIndex: number,
-	table: AcMappingTable,
 	role: AcMappingRole,
 	stateId: string,
-	log?: { info?: (m: string) => void; debug?: (m: string) => void },
 ): Promise<void> {
-	const resetIds = [stateId];
-	for (const crossRole of TOGGLE_CROSS_RESET[role] ?? []) {
-		const crossId = resolveAcMappingTarget(table, unitIndex, crossRole);
-		if (crossId) {
-			resetIds.push(crossId);
-		}
-	}
-	await resetToggleMirrorsNow(host, resetIds, log);
 	await writeForeignIfChanged(host, {
 		stateId,
 		value: true,
@@ -145,7 +76,6 @@ export async function executeAcWriteSteps(
 	live: boolean,
 	log?: { info?: (m: string) => void; debug?: (m: string) => void },
 ): Promise<void> {
-	let usedLiveToggle = false;
 	for (const step of steps) {
 		if (step.kind === "delay_ms") {
 			if (live) {
@@ -164,8 +94,7 @@ export async function executeAcWriteSteps(
 			continue;
 		}
 		if (step.kind === "toggle") {
-			usedLiveToggle = true;
-			await pulseSmartThingsToggle(host, unitIndex, table, role, stateId, log);
+			await pulseSmartThingsToggle(host, unitIndex, role, stateId);
 			continue;
 		}
 		await writeForeignIfChanged(host, {
@@ -173,12 +102,5 @@ export async function executeAcWriteSteps(
 			value: step.value,
 			reason: `ac unit ${unitIndex} ${role}`,
 		});
-	}
-
-	if (live && usedLiveToggle) {
-		const toggleIds = collectToggleMirrorIds(table, unitIndex);
-		// Nach refresh oft erneut ON — zweimal zurücksetzen (10 s + 25 s nach Sequenzende).
-		scheduleToggleMirrorReset(host, toggleIds, AC_TOGGLE_STATE_RESET_MS, log);
-		scheduleToggleMirrorReset(host, toggleIds, AC_TOGGLE_STATE_RESET_MS * 2 + 5_000, log);
 	}
 }

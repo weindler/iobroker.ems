@@ -3,8 +3,6 @@ export const AC_UNIT_COUNT = 5;
 export const AC_TICK_MS = 10_000;
 export const AC_WRITE_SETPOINT_DELAY_MS = 5_000;
 export const AC_WRITE_REFRESH_DELAY_MS = 5_000;
-/** SmartThings switch-on/off/refresh: ioBroker-Spiegel nach Impuls zurücksetzen (ack:true, kein Gerätebefehl). */
-export const AC_TOGGLE_STATE_RESET_MS = 10_000;
 /** Live: volle Start-Sequenz frühestens wieder nach … ms, wenn Feedback noch off. */
 export const AC_START_RETRY_MS = 120_000;
 
@@ -29,6 +27,14 @@ export const AC_MAPPING_ROLES = [
 ] as const;
 
 export type AcMappingRole = (typeof AC_MAPPING_ROLES)[number];
+
+/** Fremde States, deren Änderung einen Tick auslöst (keine Schreib-/Impuls-States). */
+export const AC_WATCH_MAPPING_ROLES: AcMappingRole[] = [
+	"room_temp",
+	"room_humidity",
+	"feedback_switch",
+	"feedback_mode",
+];
 
 export function acUnitMappingCommand(unitIndex: number, role: AcMappingRole): string {
 	return `unit_${unitIndex}_${role}`;

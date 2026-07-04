@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.106] – 2026-07-04
+
+### Fixed
+
+- **Klima / SmartThings:** 429 Too Many Requests — keine State-Change-Abos mehr auf Schreib-/Impuls-States (`switch-on`, `refresh`, …); Toggle-Spiegel-Reset entfernt (nur noch `force`-Impuls); parallele Runtime-Ticks abgefangen.
+
+---
+
 ## [0.1.105] – 2026-07-04
 
 ### Changed

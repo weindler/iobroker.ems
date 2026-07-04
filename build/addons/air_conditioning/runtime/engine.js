@@ -20,6 +20,7 @@ let engineActive = false;
 let hostRef = null;
 let persist = { version: 1, units: {} };
 let tickTimer = null;
+let tickRunning = false;
 const subscribedIds = [];
 let cleaningPendingUntilMs = {};
 function clearTick() {
@@ -75,7 +76,7 @@ async function stopUnit(host, unit, table, live, up) {
         host.log.info(`ac unit ${unit.index}: stop (live)`);
     }
     else if (!live) {
-        host.log.debug(`ac dryrun unit ${unit.index}: stop`);
+        host.log.debug?.(`ac dryrun unit ${unit.index}: stop`);
     }
     up.running = false;
     up.lastStopAtMs = Date.now();
@@ -123,6 +124,18 @@ async function tickCleaning(host, unit, table, live, up, nowMs) {
     }
 }
 async function runAcRuntimeTick(host) {
+    if (tickRunning)
+        return;
+    tickRunning = true;
+    try {
+        await runAcRuntimeTickBody(host);
+    }
+    finally {
+        tickRunning = false;
+    }
+}
+exports.runAcRuntimeTick = runAcRuntimeTick;
+async function runAcRuntimeTickBody(host) {
     (0, ems_activity_1.touchEmsActivity)();
     const now = new Date();
     const nowMs = now.getTime();
@@ -170,7 +183,7 @@ async function runAcRuntimeTick(host) {
                 const cooledDown = !up.lastStartAtMs || nowMs - up.lastStartAtMs >= constants_1.AC_START_RETRY_MS;
                 if (cooledDown) {
                     if (up.lastStartAtMs) {
-                        host.log.debug(`ac unit ${unit.index}: retry start (${Math.round((nowMs - up.lastStartAtMs) / 1000)}s since last attempt)`);
+                        host.log.info(`ac unit ${unit.index}: retry start (${Math.round((nowMs - up.lastStartAtMs) / 1000)}s since last attempt)`);
                     }
                     await startUnit(host, unit, mappingTable, live, up, fsm.modePurpose);
                 }
@@ -214,7 +227,6 @@ async function runAcRuntimeTick(host) {
     }
     scheduleTick();
 }
-exports.runAcRuntimeTick = runAcRuntimeTick;
 async function initAcRuntimeEngine(host) {
     if (engineActive && hostRef === host)
         return;
@@ -241,7 +253,7 @@ async function initAcRuntimeEngine(host) {
         }
     }
     for (const unit of cfg.units.filter((u) => u.enabled)) {
-        for (const role of constants_1.AC_MAPPING_ROLES) {
+        for (const role of constants_1.AC_WATCH_MAPPING_ROLES) {
             const id = (0, sequences_1.resolveAcMappingTarget)(mappingTable, unit.index, role);
             if (id)
                 subs.add(id);
@@ -258,7 +270,7 @@ async function initAcRuntimeEngine(host) {
         }
     }
     await runAcRuntimeTick(host);
-    host.log.debug("air_conditioning: runtime engine initialized");
+    host.log.info("air_conditioning: runtime engine initialized");
 }
 exports.initAcRuntimeEngine = initAcRuntimeEngine;
 function stopAcRuntimeEngine() {
@@ -288,7 +300,7 @@ function acRuntimeWatchedForeignIds(config) {
     const cfg = (0, config_1.acGlobalConfigFromAdapter)(config);
     const ids = [];
     for (const unit of cfg.units.filter((u) => u.enabled)) {
-        for (const role of constants_1.AC_MAPPING_ROLES) {
+        for (const role of constants_1.AC_WATCH_MAPPING_ROLES) {
             const id = (0, sequences_1.resolveAcMappingTarget)(mappingTable, unit.index, role);
             if (id)
                 ids.push(id);

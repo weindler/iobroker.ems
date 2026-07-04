@@ -1,13 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.acUnitConsumerKey = exports.acUnitMappingCommands = exports.acUnitMappingCommand = exports.AC_MAPPING_ROLES = exports.AC_PROFILE_IDS = exports.AC_START_RETRY_MS = exports.AC_TOGGLE_STATE_RESET_MS = exports.AC_WRITE_REFRESH_DELAY_MS = exports.AC_WRITE_SETPOINT_DELAY_MS = exports.AC_TICK_MS = exports.AC_UNIT_COUNT = exports.AC_ADDON_ID = void 0;
+exports.acUnitConsumerKey = exports.acUnitMappingCommands = exports.acUnitMappingCommand = exports.AC_WATCH_MAPPING_ROLES = exports.AC_MAPPING_ROLES = exports.AC_PROFILE_IDS = exports.AC_START_RETRY_MS = exports.AC_WRITE_REFRESH_DELAY_MS = exports.AC_WRITE_SETPOINT_DELAY_MS = exports.AC_TICK_MS = exports.AC_UNIT_COUNT = exports.AC_ADDON_ID = void 0;
 exports.AC_ADDON_ID = "air_conditioning";
 exports.AC_UNIT_COUNT = 5;
 exports.AC_TICK_MS = 10_000;
 exports.AC_WRITE_SETPOINT_DELAY_MS = 5_000;
 exports.AC_WRITE_REFRESH_DELAY_MS = 5_000;
-/** SmartThings switch-on/off/refresh: ioBroker-Spiegel nach Impuls zurücksetzen (ack:true, kein Gerätebefehl). */
-exports.AC_TOGGLE_STATE_RESET_MS = 10_000;
 /** Live: volle Start-Sequenz frühestens wieder nach … ms, wenn Feedback noch off. */
 exports.AC_START_RETRY_MS = 120_000;
 exports.AC_PROFILE_IDS = ["generic", "samsung_smartthings"];
@@ -26,6 +24,13 @@ exports.AC_MAPPING_ROLES = [
     "cmd_cleaning_start",
     "cmd_cleaning_mode",
     "cmd_refresh",
+];
+/** Fremde States, deren Änderung einen Tick auslöst (keine Schreib-/Impuls-States). */
+exports.AC_WATCH_MAPPING_ROLES = [
+    "room_temp",
+    "room_humidity",
+    "feedback_switch",
+    "feedback_mode",
 ];
 function acUnitMappingCommand(unitIndex, role) {
     return `unit_${unitIndex}_${role}`;

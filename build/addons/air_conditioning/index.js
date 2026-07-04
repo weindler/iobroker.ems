@@ -29,7 +29,6 @@ async function initAirConditioningModule(adapter) {
     await (0, mapping_sync_1.syncNativeMappingToStates)(adapter, constants_1.AC_ADDON_ID, mapping_config_1.acMappingFromConfig);
     await (0, engine_1.initAcRuntimeEngine)(runtimeHost(adapter));
     (0, ems_activity_1.touchEmsActivity)();
-    adapter.log.debug("air_conditioning: runtime engine initialized");
     return null;
 }
 exports.initAirConditioningModule = initAirConditioningModule;

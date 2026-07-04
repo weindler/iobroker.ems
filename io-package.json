@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.85",
+		"version": "0.1.86",
 		"news": {
+			"0.1.86": {
+				"en": "Execution modes persist across adapter restart: object-tree dryrun/live values are kept; admin config only seeds empty states on first run",
+				"de": "Ausführungsmodi bleiben nach Adapter-Neustart erhalten: dryrun/live aus dem Objektbaum bleiben; Admin-Config befüllt nur leere States beim Erststart"
+			},
 			"0.1.85": {
 				"en": "Read-before-write for all device paths: skip writes when target already active (battery mode/power, immersion relay, pipeline, failsafe)",
 				"de": "Read-before-write für alle Geräte-Pfade: Writes überspringen wenn Ziel bereits aktiv (Batterie Modus/Leistung, Heizstab-Relais, Pipeline, Failsafe)"

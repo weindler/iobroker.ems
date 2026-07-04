@@ -4,6 +4,7 @@ import {
 	handleExecutionModeStateChange,
 	isExecutionModeStateRelativeId,
 	parseMode,
+	syncExecutionModesFromConfig,
 } from "./execution_mode.js";
 
 describe("execution mode", () => {
@@ -56,5 +57,49 @@ describe("execution mode", () => {
 		} as ioBroker.State);
 		assert.equal(store.get("addons.immersion_heater.mode")?.val, "live");
 		assert.equal(store.get("addons.immersion_heater.mode")?.ack, true);
+	});
+
+	it("syncExecutionModesFromConfig preserves existing runtime modes on restart", async () => {
+		const store = new Map<string, ioBroker.State>([
+			["global.execution_mode", { val: "live", ack: true } as ioBroker.State],
+			["addons.immersion_heater.mode", { val: "live", ack: true } as ioBroker.State],
+			["addons.battery.mode", { val: "dryrun", ack: true } as ioBroker.State],
+		]);
+		const host = {
+			getStateAsync: async (id: string) => store.get(id) ?? null,
+			setStateAsync: async (id: string, st: ioBroker.SettableState) => {
+				store.set(id, { val: st.val, ack: st.ack ?? false } as ioBroker.State);
+			},
+			setObjectNotExistsAsync: async () => undefined,
+		};
+		await syncExecutionModesFromConfig(host, {
+			global_execution_mode: "dryrun",
+			ih_addon_mode: "dryrun",
+			bat_addon_mode: "live",
+		});
+		assert.equal(store.get("global.execution_mode")?.val, "live");
+		assert.equal(store.get("addons.immersion_heater.mode")?.val, "live");
+		assert.equal(store.get("addons.battery.mode")?.val, "dryrun");
+		assert.equal(store.get("execution.safety.global_execution_mode")?.val, "live");
+	});
+
+	it("syncExecutionModesFromConfig seeds empty states from admin config", async () => {
+		const store = new Map<string, ioBroker.State>();
+		const host = {
+			getStateAsync: async (id: string) => store.get(id) ?? null,
+			setStateAsync: async (id: string, st: ioBroker.SettableState) => {
+				store.set(id, { val: st.val, ack: st.ack ?? false } as ioBroker.State);
+			},
+			setObjectNotExistsAsync: async () => undefined,
+		};
+		await syncExecutionModesFromConfig(host, {
+			global_execution_mode: "live",
+			ih_addon_mode: "live",
+			bat_addon_mode: "dryrun",
+			wb_addon_mode: "dryrun",
+		});
+		assert.equal(store.get("global.execution_mode")?.val, "live");
+		assert.equal(store.get("addons.immersion_heater.mode")?.val, "live");
+		assert.equal(store.get("addons.battery.mode")?.val, "dryrun");
 	});
 });

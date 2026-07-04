@@ -71,7 +71,6 @@ async function ensureExecutionModeObject(
 	host: ExecutionModeHost,
 	id: string,
 	common: ioBroker.StateCommon,
-	defaultVal: ExecutionMode,
 ): Promise<void> {
 	await host.setObjectNotExistsAsync(id, {
 		type: "state",
@@ -81,10 +80,23 @@ async function ensureExecutionModeObject(
 	if (host.extendObjectAsync) {
 		await host.extendObjectAsync(id, { common });
 	}
+}
+
+function hasExecutionModeValue(val: unknown): boolean {
+	const s = String(val ?? "").trim().toLowerCase();
+	return s === "dryrun" || s === "live";
+}
+
+async function seedExecutionModeIfEmpty(
+	host: ExecutionModeHost,
+	id: string,
+	mode: ExecutionMode,
+): Promise<void> {
 	const cur = await host.getStateAsync(id);
-	if (cur?.val === undefined || cur.val === null || cur.val === "") {
-		await host.setStateAsync(id, { val: defaultVal, ack: true });
+	if (hasExecutionModeValue(cur?.val)) {
+		return;
 	}
+	await host.setStateAsync(id, { val: mode, ack: true });
 }
 
 export async function ensureGlobalExecutionStates(host: ExecutionModeHost): Promise<void> {
@@ -92,7 +104,6 @@ export async function ensureGlobalExecutionStates(host: ExecutionModeHost): Prom
 		host,
 		GLOBAL.executionMode,
 		executionModeCommon("Global: Ausführung (dryrun|live)"),
-		"dryrun",
 	);
 }
 
@@ -102,27 +113,26 @@ export async function ensureAddonExecutionModeStates(host: ExecutionModeHost): P
 			host,
 			addonMode(addonId),
 			executionModeCommon(ADDON_EXECUTION_MODE_NAMES[addonId]),
-			"dryrun",
 		);
 	}
 }
 
+/** Admin-Defaults nur wenn State noch nie gesetzt — Laufzeitwerte aus Objektbaum bleiben erhalten. */
 export async function syncExecutionModesFromConfig(
 	host: ExecutionModeHost,
 	config: Record<string, unknown>,
 ): Promise<void> {
 	const c = config as GlobalExecutionConfig;
-	const globalMode = parseMode(c.global_execution_mode ?? "dryrun");
-	await host.setStateAsync(GLOBAL.executionMode, { val: globalMode, ack: true });
+	await seedExecutionModeIfEmpty(host, GLOBAL.executionMode, parseMode(c.global_execution_mode ?? "dryrun"));
+	await seedExecutionModeIfEmpty(host, addonMode("wallbox"), parseMode(c.wb_addon_mode ?? "dryrun"));
+	await seedExecutionModeIfEmpty(host, addonMode("battery"), parseMode(c.bat_addon_mode ?? "dryrun"));
+	await seedExecutionModeIfEmpty(host, addonMode("immersion_heater"), parseMode(c.ih_addon_mode ?? "dryrun"));
 
-	const wb = parseMode(c.wb_addon_mode ?? "dryrun");
-	await host.setStateAsync(addonMode("wallbox"), { val: wb, ack: true });
-
-	const bat = parseMode(c.bat_addon_mode ?? "dryrun");
-	await host.setStateAsync(addonMode("battery"), { val: bat, ack: true });
-
-	const ih = parseMode(c.ih_addon_mode ?? "dryrun");
-	await host.setStateAsync(addonMode("immersion_heater"), { val: ih, ack: true });
+	const global = await host.getStateAsync(GLOBAL.executionMode);
+	await host.setStateAsync("execution.safety.global_execution_mode", {
+		val: parseMode(global?.val),
+		ack: true,
+	});
 }
 
 export function isExecutionModeStateRelativeId(relativeId: string): boolean {

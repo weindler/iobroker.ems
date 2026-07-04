@@ -43,7 +43,7 @@ async function isLiveWriteAllowed(getState, addonId) {
     return parseMode(addon?.val) === "live";
 }
 exports.isLiveWriteAllowed = isLiveWriteAllowed;
-async function ensureExecutionModeObject(host, id, common, defaultVal) {
+async function ensureExecutionModeObject(host, id, common) {
     await host.setObjectNotExistsAsync(id, {
         type: "state",
         common,
@@ -52,31 +52,40 @@ async function ensureExecutionModeObject(host, id, common, defaultVal) {
     if (host.extendObjectAsync) {
         await host.extendObjectAsync(id, { common });
     }
+}
+function hasExecutionModeValue(val) {
+    const s = String(val ?? "").trim().toLowerCase();
+    return s === "dryrun" || s === "live";
+}
+async function seedExecutionModeIfEmpty(host, id, mode) {
     const cur = await host.getStateAsync(id);
-    if (cur?.val === undefined || cur.val === null || cur.val === "") {
-        await host.setStateAsync(id, { val: defaultVal, ack: true });
+    if (hasExecutionModeValue(cur?.val)) {
+        return;
     }
+    await host.setStateAsync(id, { val: mode, ack: true });
 }
 async function ensureGlobalExecutionStates(host) {
-    await ensureExecutionModeObject(host, tree_paths_1.GLOBAL.executionMode, executionModeCommon("Global: Ausführung (dryrun|live)"), "dryrun");
+    await ensureExecutionModeObject(host, tree_paths_1.GLOBAL.executionMode, executionModeCommon("Global: Ausführung (dryrun|live)"));
 }
 exports.ensureGlobalExecutionStates = ensureGlobalExecutionStates;
 async function ensureAddonExecutionModeStates(host) {
     for (const addonId of exports.EXECUTION_MODE_ADDON_IDS) {
-        await ensureExecutionModeObject(host, (0, tree_paths_1.addonMode)(addonId), executionModeCommon(ADDON_EXECUTION_MODE_NAMES[addonId]), "dryrun");
+        await ensureExecutionModeObject(host, (0, tree_paths_1.addonMode)(addonId), executionModeCommon(ADDON_EXECUTION_MODE_NAMES[addonId]));
     }
 }
 exports.ensureAddonExecutionModeStates = ensureAddonExecutionModeStates;
+/** Admin-Defaults nur wenn State noch nie gesetzt — Laufzeitwerte aus Objektbaum bleiben erhalten. */
 async function syncExecutionModesFromConfig(host, config) {
     const c = config;
-    const globalMode = parseMode(c.global_execution_mode ?? "dryrun");
-    await host.setStateAsync(tree_paths_1.GLOBAL.executionMode, { val: globalMode, ack: true });
-    const wb = parseMode(c.wb_addon_mode ?? "dryrun");
-    await host.setStateAsync((0, tree_paths_1.addonMode)("wallbox"), { val: wb, ack: true });
-    const bat = parseMode(c.bat_addon_mode ?? "dryrun");
-    await host.setStateAsync((0, tree_paths_1.addonMode)("battery"), { val: bat, ack: true });
-    const ih = parseMode(c.ih_addon_mode ?? "dryrun");
-    await host.setStateAsync((0, tree_paths_1.addonMode)("immersion_heater"), { val: ih, ack: true });
+    await seedExecutionModeIfEmpty(host, tree_paths_1.GLOBAL.executionMode, parseMode(c.global_execution_mode ?? "dryrun"));
+    await seedExecutionModeIfEmpty(host, (0, tree_paths_1.addonMode)("wallbox"), parseMode(c.wb_addon_mode ?? "dryrun"));
+    await seedExecutionModeIfEmpty(host, (0, tree_paths_1.addonMode)("battery"), parseMode(c.bat_addon_mode ?? "dryrun"));
+    await seedExecutionModeIfEmpty(host, (0, tree_paths_1.addonMode)("immersion_heater"), parseMode(c.ih_addon_mode ?? "dryrun"));
+    const global = await host.getStateAsync(tree_paths_1.GLOBAL.executionMode);
+    await host.setStateAsync("execution.safety.global_execution_mode", {
+        val: parseMode(global?.val),
+        ack: true,
+    });
 }
 exports.syncExecutionModesFromConfig = syncExecutionModesFromConfig;
 function isExecutionModeStateRelativeId(relativeId) {

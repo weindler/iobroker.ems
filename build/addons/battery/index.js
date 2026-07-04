@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.batteryUnloadRestore = exports.runBatteryControlTick = exports.handleBatteryForeignStateChange = exports.handleBatteryAdapterStateChange = exports.stopBatteryModule = exports.initBatteryModule = exports.__resetBatteryRuntimeForTest = exports.BATTERY_ADDON_ID = void 0;
 const governance_1 = require("../governance");
+const ems_activity_1 = require("../../ems_activity");
 const execution_mode_1 = require("../../execution_mode");
 const mapping_sync_1 = require("../../mapping_sync");
 const config_1 = require("./config");
@@ -170,6 +171,7 @@ async function runBatteryControlTick(host) {
 }
 exports.runBatteryControlTick = runBatteryControlTick;
 async function controlTickInner(host) {
+    (0, ems_activity_1.touchEmsActivity)();
     const nowMs = Date.now();
     const config = (0, config_1.batteryConfigFromAdapter)(host.config);
     const profile = (0, registry_1.getBatteryProfile)(config.profile);

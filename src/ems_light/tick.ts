@@ -1,8 +1,10 @@
+import { touchEmsActivity } from "../ems_activity";
 import { GLOBAL } from "../tree_paths";
 import { deriveHealth, formatLiveCacheSummary, refreshLiveCache, type LiveCacheHost } from "./live_cache";
 import { runPlannerTick, type PlannerHost } from "../planner";
 
 export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): Promise<void> {
+	touchEmsActivity();
 	const ts = new Date().toISOString();
 	const hints: string[] = [];
 

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getImmersionPersistForTest = exports.resetImmersionRuntimeForTest = exports.stopImmersionRuntimeEngine = exports.initImmersionRuntimeEngine = exports.handleImmersionFaultReset = exports.runImmersionRuntimeTick = exports.immersionRuntimeWatchedForeignIds = void 0;
+const ems_activity_1 = require("../../../ems_activity");
 const execution_mode_1 = require("../../../execution_mode");
 const device_write_1 = require("../../../device_write");
 const governance_1 = require("../../../addons/governance");
@@ -161,6 +162,7 @@ async function applyStageWrites(host, stageIndex, live) {
     }
 }
 async function runImmersionRuntimeTick(host) {
+    (0, ems_activity_1.touchEmsActivity)();
     const now = new Date();
     const nowMs = now.getTime();
     const config = (0, device_config_1.immersionDeviceConfigFromAdapter)(host.config);

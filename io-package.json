@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.91",
+		"version": "0.1.92",
 		"news": {
+			"0.1.92": {
+				"en": "Failsafe fix: refresh EMS activity heartbeat on immersion, battery, and EMS-Light ticks so ems_unreachable does not trip during normal heating",
+				"de": "Failsafe-Fix: EMS-Lebenszeichen bei Heizstab-, Batterie- und EMS-Light-Ticks aktualisieren — kein ems_unreachable während normalem Betrieb"
+			},
 			"0.1.91": {
 				"en": "Immersion heater live relay writes use ack:false so Shelly/smart plugs actually switch (was ack:true, state-only update)",
 				"de": "Heizstab Live-Schaltung mit ack:false — Shelly/Steckdose schaltet wirklich (vorher ack:true, nur State-Update)"

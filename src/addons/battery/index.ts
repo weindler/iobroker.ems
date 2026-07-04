@@ -1,4 +1,5 @@
 import { isAddonGovernanceEnabledFromState } from "../governance";
+import { touchEmsActivity } from "../../ems_activity";
 import { isLiveWriteAllowed, isExecutionModeStateRelativeId } from "../../execution_mode";
 import { ensureAddonMappingStates, syncNativeMappingToStates } from "../../mapping_sync";
 import { batteryConfigFromAdapter, type BatteryConfig } from "./config";
@@ -219,6 +220,7 @@ export async function runBatteryControlTick(host: Host): Promise<void> {
 }
 
 async function controlTickInner(host: Host): Promise<void> {
+	touchEmsActivity();
 	const nowMs = Date.now();
 	const config = batteryConfigFromAdapter(host.config);
 	const profile = getBatteryProfile(config.profile);

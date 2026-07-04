@@ -1,10 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runEmsLightPhase1Tick = void 0;
+const ems_activity_1 = require("../ems_activity");
 const tree_paths_1 = require("../tree_paths");
 const live_cache_1 = require("./live_cache");
 const planner_1 = require("../planner");
 async function runEmsLightPhase1Tick(host) {
+    (0, ems_activity_1.touchEmsActivity)();
     const ts = new Date().toISOString();
     const hints = [];
     let executionMode = "dryrun";

@@ -1,3 +1,4 @@
+import { touchEmsActivity } from "../../../ems_activity";
 import { isLiveWriteAllowed } from "../../../execution_mode";
 import { writeForeignIfChanged } from "../../../device_write";
 import { isAddonGovernanceEnabledFromState } from "../../../addons/governance";
@@ -210,6 +211,7 @@ async function applyStageWrites(host: ImmersionRuntimeHost, stageIndex: number, 
 }
 
 export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promise<void> {
+	touchEmsActivity();
 	const now = new Date();
 	const nowMs = now.getTime();
 	const config = immersionDeviceConfigFromAdapter(host.config);

@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.110] – 2026-07-04
+
+### Fixed
+
+- **Klima-Start:** Nach SmartThings-Sequenz `feedback_switch` bis zu 18 s pollen (refresh → Status kommt oft verzögert); Warnung erst danach inkl. letztem Feedback-Wert.
+
+---
+
 ## [0.1.109] – 2026-07-04
 
 ### Fixed

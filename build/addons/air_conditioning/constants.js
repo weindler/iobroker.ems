@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.acUnitConsumerKey = exports.acUnitMappingCommands = exports.acUnitMappingCommand = exports.AC_WATCH_MAPPING_ROLES = exports.AC_MAPPING_ROLES = exports.AC_PROFILE_IDS = exports.AC_FEEDBACK_SETTLE_MS = exports.AC_START_RETRY_MS = exports.AC_WRITE_REFRESH_DELAY_MS = exports.AC_WRITE_SETPOINT_DELAY_MS = exports.AC_TICK_MS = exports.AC_UNIT_COUNT = exports.AC_ADDON_ID = void 0;
+exports.acUnitConsumerKey = exports.acUnitMappingCommands = exports.acUnitMappingCommand = exports.AC_WATCH_MAPPING_ROLES = exports.AC_MAPPING_ROLES = exports.AC_PROFILE_IDS = exports.AC_FEEDBACK_POLL_ATTEMPTS = exports.AC_FEEDBACK_POLL_MS = exports.AC_START_RETRY_MS = exports.AC_WRITE_REFRESH_DELAY_MS = exports.AC_WRITE_SETPOINT_DELAY_MS = exports.AC_TICK_MS = exports.AC_UNIT_COUNT = exports.AC_ADDON_ID = void 0;
 exports.AC_ADDON_ID = "air_conditioning";
 exports.AC_UNIT_COUNT = 5;
 exports.AC_TICK_MS = 10_000;
@@ -9,7 +9,8 @@ exports.AC_WRITE_REFRESH_DELAY_MS = 5_000;
 /** Live: volle Start-Sequenz frühestens wieder nach … ms, wenn Feedback noch off. */
 exports.AC_START_RETRY_MS = 120_000;
 /** Nach Startsequenz kurz warten, bis SmartThings feedback_switch aktualisiert. */
-exports.AC_FEEDBACK_SETTLE_MS = 3_000;
+exports.AC_FEEDBACK_POLL_MS = 3_000;
+exports.AC_FEEDBACK_POLL_ATTEMPTS = 6;
 exports.AC_PROFILE_IDS = ["generic", "samsung_smartthings"];
 exports.AC_MAPPING_ROLES = [
     "room_temp",

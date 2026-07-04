@@ -10,7 +10,7 @@ import {
 	resetConsumerStatsCache,
 } from "../../../learning/consumer_stats";
 import type { DeviceWriteHost } from "../../../device_write";
-import { acUnitConsumerKey, AC_ADDON_ID, AC_FEEDBACK_SETTLE_MS, AC_START_RETRY_MS, AC_TICK_MS, AC_WATCH_MAPPING_ROLES } from "../constants";
+import { acUnitConsumerKey, AC_ADDON_ID, AC_FEEDBACK_POLL_ATTEMPTS, AC_FEEDBACK_POLL_MS, AC_START_RETRY_MS, AC_TICK_MS, AC_WATCH_MAPPING_ROLES } from "../constants";
 import { acGlobalConfigFromAdapter } from "../config";
 import type { AcUnitConfig } from "../types";
 import { getAcProfile } from "../profiles/registry";
@@ -115,6 +115,24 @@ async function stopUnit(
 	}
 }
 
+async function waitForFeedbackOn(
+	host: AcRuntimeHost,
+	fbId: string,
+): Promise<{ on: boolean; value: unknown }> {
+	if (!fbId) {
+		return { on: false, value: null };
+	}
+	for (let attempt = 0; attempt < AC_FEEDBACK_POLL_ATTEMPTS; attempt++) {
+		await new Promise((resolve) => setTimeout(resolve, AC_FEEDBACK_POLL_MS));
+		const fb = await readForeign(host, fbId);
+		if (switchIsOn(fb.value)) {
+			return { on: true, value: fb.value };
+		}
+	}
+	const fb = await readForeign(host, fbId);
+	return { on: switchIsOn(fb.value), value: fb.value };
+}
+
 async function startUnit(
 	host: AcRuntimeHost,
 	unit: AcUnitConfig,
@@ -131,15 +149,16 @@ async function startUnit(
 		up.running = true;
 		return;
 	}
-	await new Promise((resolve) => setTimeout(resolve, AC_FEEDBACK_SETTLE_MS));
 	const fbId = resolveAcMappingTarget(table, unit.index, "feedback_switch");
-	const fb = await readForeign(host, fbId);
-	if (switchIsOn(fb.value)) {
+	const fb = await waitForFeedbackOn(host, fbId);
+	if (fb.on) {
 		up.running = true;
 		host.log.info(`ac unit ${unit.index}: started — feedback on`);
 	} else {
 		up.running = false;
-		host.log.warn(`ac unit ${unit.index}: start sequence sent but feedback still off`);
+		host.log.warn(
+			`ac unit ${unit.index}: start sequence sent but feedback still off after ${Math.round((AC_FEEDBACK_POLL_MS * AC_FEEDBACK_POLL_ATTEMPTS) / 1000)}s (last=${String(fb.value ?? "")})`,
+		);
 	}
 }
 

@@ -84,6 +84,20 @@ async function stopUnit(host, unit, table, live, up) {
         cleaningPendingUntilMs[unit.index] = Date.now() + unit.cleaningDelayMin * 60_000;
     }
 }
+async function waitForFeedbackOn(host, fbId) {
+    if (!fbId) {
+        return { on: false, value: null };
+    }
+    for (let attempt = 0; attempt < constants_1.AC_FEEDBACK_POLL_ATTEMPTS; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, constants_1.AC_FEEDBACK_POLL_MS));
+        const fb = await readForeign(host, fbId);
+        if ((0, time_1.switchIsOn)(fb.value)) {
+            return { on: true, value: fb.value };
+        }
+    }
+    const fb = await readForeign(host, fbId);
+    return { on: (0, time_1.switchIsOn)(fb.value), value: fb.value };
+}
 async function startUnit(host, unit, table, live, up, modePurpose) {
     const profile = (0, registry_1.getAcProfile)(unit.profileId);
     const steps = profile.coolingStartSequence(unit, modePurpose);
@@ -93,16 +107,15 @@ async function startUnit(host, unit, table, live, up, modePurpose) {
         up.running = true;
         return;
     }
-    await new Promise((resolve) => setTimeout(resolve, constants_1.AC_FEEDBACK_SETTLE_MS));
     const fbId = (0, sequences_1.resolveAcMappingTarget)(table, unit.index, "feedback_switch");
-    const fb = await readForeign(host, fbId);
-    if ((0, time_1.switchIsOn)(fb.value)) {
+    const fb = await waitForFeedbackOn(host, fbId);
+    if (fb.on) {
         up.running = true;
         host.log.info(`ac unit ${unit.index}: started — feedback on`);
     }
     else {
         up.running = false;
-        host.log.warn(`ac unit ${unit.index}: start sequence sent but feedback still off`);
+        host.log.warn(`ac unit ${unit.index}: start sequence sent but feedback still off after ${Math.round((constants_1.AC_FEEDBACK_POLL_MS * constants_1.AC_FEEDBACK_POLL_ATTEMPTS) / 1000)}s (last=${String(fb.value ?? "")})`);
     }
 }
 async function tickCleaning(host, unit, table, live, up, nowMs) {

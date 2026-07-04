@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.109",
+		"version": "0.1.110",
 		"news": {
+			"0.1.110": {
+				"en": "AC start: poll feedback_switch up to 18s after refresh before warning (SmartThings sync delay)",
+				"de": "Klima-Start: feedback_switch bis 18s nach refresh abfragen bevor Warnung (SmartThings Sync-Verzögerung)"
+			},
 			"0.1.109": {
 				"en": "Fix SmartThings cleaning 422 (valid autoCleaningMode values); consumer stats count when device active (incl. dryrun)",
 				"de": "SmartThings Reinigung 422 behoben (gültige autoCleaningMode-Werte); Verbrauchsstatistik bei aktivem Gerät (auch dryrun)"

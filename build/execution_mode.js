@@ -1,11 +1,39 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureChannelTree = exports.syncExecutionModesFromConfig = exports.ensureGlobalExecutionStates = exports.isLiveWriteAllowed = exports.parseMode = void 0;
+exports.ensureChannelTree = exports.handleExecutionModeStateChange = exports.isExecutionModeStateRelativeId = exports.syncExecutionModesFromConfig = exports.ensureAddonExecutionModeStates = exports.ensureGlobalExecutionStates = exports.isLiveWriteAllowed = exports.executionModeCommon = exports.parseMode = exports.EXECUTION_MODE_ADDON_IDS = exports.EXECUTION_MODE_STATES = exports.EXECUTION_MODE_STATE_LABELS = exports.EXECUTION_MODES = void 0;
 const tree_paths_1 = require("./tree_paths");
+exports.EXECUTION_MODES = ["dryrun", "live"];
+exports.EXECUTION_MODE_STATE_LABELS = {
+    dryrun: "Dryrun (kein Schreiben)",
+    live: "Live (Schreiben erlaubt)",
+};
+exports.EXECUTION_MODE_STATES = {
+    dryrun: exports.EXECUTION_MODE_STATE_LABELS.dryrun,
+    live: exports.EXECUTION_MODE_STATE_LABELS.live,
+};
+/** Addons mit dryrun/live-Schalter (Admin + Objektbaum). */
+exports.EXECUTION_MODE_ADDON_IDS = ["wallbox", "battery", "immersion_heater"];
+const ADDON_EXECUTION_MODE_NAMES = {
+    wallbox: "Wallbox: Ausführung (dryrun|live)",
+    battery: "Batterie: Ausführung (dryrun|live)",
+    immersion_heater: "Heizstab: Ausführung (dryrun|live)",
+};
 function parseMode(raw) {
     return String(raw ?? "dryrun").toLowerCase() === "live" ? "live" : "dryrun";
 }
 exports.parseMode = parseMode;
+function executionModeCommon(name, def = "dryrun") {
+    return {
+        name,
+        type: "string",
+        role: "value",
+        read: true,
+        write: true,
+        def,
+        states: exports.EXECUTION_MODE_STATES,
+    };
+}
+exports.executionModeCommon = executionModeCommon;
 async function isLiveWriteAllowed(getState, addonId) {
     const global = await getState(tree_paths_1.GLOBAL.executionMode);
     if (parseMode(global?.val) !== "live") {
@@ -15,25 +43,30 @@ async function isLiveWriteAllowed(getState, addonId) {
     return parseMode(addon?.val) === "live";
 }
 exports.isLiveWriteAllowed = isLiveWriteAllowed;
-async function ensureGlobalExecutionStates(host) {
-    await host.setObjectNotExistsAsync(tree_paths_1.GLOBAL.executionMode, {
+async function ensureExecutionModeObject(host, id, common, defaultVal) {
+    await host.setObjectNotExistsAsync(id, {
         type: "state",
-        common: {
-            name: "Global: Ausführung (dryrun|live)",
-            type: "string",
-            role: "text",
-            read: true,
-            write: true,
-            def: "dryrun",
-        },
+        common,
         native: {},
     });
-    const cur = await host.getStateAsync(tree_paths_1.GLOBAL.executionMode);
+    if (host.extendObjectAsync) {
+        await host.extendObjectAsync(id, { common });
+    }
+    const cur = await host.getStateAsync(id);
     if (cur?.val === undefined || cur.val === null || cur.val === "") {
-        await host.setStateAsync(tree_paths_1.GLOBAL.executionMode, { val: "dryrun", ack: true });
+        await host.setStateAsync(id, { val: defaultVal, ack: true });
     }
 }
+async function ensureGlobalExecutionStates(host) {
+    await ensureExecutionModeObject(host, tree_paths_1.GLOBAL.executionMode, executionModeCommon("Global: Ausführung (dryrun|live)"), "dryrun");
+}
 exports.ensureGlobalExecutionStates = ensureGlobalExecutionStates;
+async function ensureAddonExecutionModeStates(host) {
+    for (const addonId of exports.EXECUTION_MODE_ADDON_IDS) {
+        await ensureExecutionModeObject(host, (0, tree_paths_1.addonMode)(addonId), executionModeCommon(ADDON_EXECUTION_MODE_NAMES[addonId]), "dryrun");
+    }
+}
+exports.ensureAddonExecutionModeStates = ensureAddonExecutionModeStates;
 async function syncExecutionModesFromConfig(host, config) {
     const c = config;
     const globalMode = parseMode(c.global_execution_mode ?? "dryrun");
@@ -46,6 +79,37 @@ async function syncExecutionModesFromConfig(host, config) {
     await host.setStateAsync((0, tree_paths_1.addonMode)("immersion_heater"), { val: ih, ack: true });
 }
 exports.syncExecutionModesFromConfig = syncExecutionModesFromConfig;
+function isExecutionModeStateRelativeId(relativeId) {
+    if (relativeId === tree_paths_1.GLOBAL.executionMode) {
+        return true;
+    }
+    return exports.EXECUTION_MODE_ADDON_IDS.some((addonId) => relativeId === (0, tree_paths_1.addonMode)(addonId));
+}
+exports.isExecutionModeStateRelativeId = isExecutionModeStateRelativeId;
+async function handleExecutionModeStateChange(adapter, id, state) {
+    if (!state || state.ack) {
+        return;
+    }
+    const prefix = `${adapter.namespace}.`;
+    if (!id.startsWith(prefix)) {
+        return;
+    }
+    const relativeId = id.slice(prefix.length);
+    if (!isExecutionModeStateRelativeId(relativeId)) {
+        return;
+    }
+    const requested = String(state.val ?? "").trim().toLowerCase();
+    const mode = parseMode(state.val);
+    if (requested !== "" && requested !== "dryrun" && requested !== "live") {
+        adapter.log.warn?.(`${relativeId}: ungültiger Wert „${state.val}“ — Fallback auf ${mode}`);
+    }
+    await adapter.setStateAsync(relativeId, { val: mode, ack: true });
+    if (relativeId === tree_paths_1.GLOBAL.executionMode) {
+        await adapter.setStateAsync("execution.safety.global_execution_mode", { val: mode, ack: true });
+    }
+    adapter.log.info(`${relativeId} → ${mode} (Objektbaum)`);
+}
+exports.handleExecutionModeStateChange = handleExecutionModeStateChange;
 async function ensureChannelTree(setObjectNotExistsAsync) {
     const channels = [
         { id: "global", name: "Global" },

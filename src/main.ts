@@ -25,9 +25,13 @@ import { writeDryrunMirror } from "./dryrun_mirror";
 import {
 	ensureChannelTree,
 	ensureGlobalExecutionStates,
+	ensureAddonExecutionModeStates,
+	EXECUTION_MODE_ADDON_IDS,
+	handleExecutionModeStateChange,
 	isLiveWriteAllowed,
 	syncExecutionModesFromConfig,
 } from "./execution_mode";
+import { GLOBAL, addonMode } from "./tree_paths";
 import { parseInboxValue } from "./inbox";
 import { goeWallboxTemplateFlat, wallboxMappingFromConfig, WALLBOX_ALL_MAPPING_IDS } from "./mapping_config";
 import { ensureAddonMappingStates, syncNativeMappingToStates } from "./mapping_sync";
@@ -113,6 +117,7 @@ class Ems extends utils.Adapter {
 		await this.step("channel tree", () => ensureChannelTree(this.setObjectNotExistsAsync.bind(this)));
 		await this.step("base states", () => this.ensureBaseStates());
 		await this.step("global execution states", () => ensureGlobalExecutionStates(this));
+		await this.step("addon execution mode states", () => ensureAddonExecutionModeStates(this));
 		await this.step("addon states", () => this.ensureAddonStates());
 		await this.step("governance states", () => ensureAddonGovernanceStates(this));
 		await this.step("sync governance", () => syncAddonGovernanceFromConfig(this, adapterConfig));
@@ -127,6 +132,12 @@ class Ems extends utils.Adapter {
 		// EMS-Light/Learning explizit isoliert: muss unabhängig von Add-on-Fehlern laufen.
 		await this.step("ems-light phase 1 (learning)", () => initEmsLightPhase1(this), 45_000);
 		await this.step("subscribe command inbox", () => this.subscribeStatesAsync(STATE.command.inbox));
+		await this.step("subscribe execution modes", async () => {
+			await this.subscribeStatesAsync(GLOBAL.executionMode);
+			for (const addonId of EXECUTION_MODE_ADDON_IDS) {
+				await this.subscribeStatesAsync(addonMode(addonId));
+			}
+		});
 
 		this.log.info("EMS adapter ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
 
@@ -151,6 +162,7 @@ class Ems extends utils.Adapter {
 
 	private async onStateChange(id: string, state: ioBroker.State | null): Promise<void> {
 		if (state) {
+			await handleExecutionModeStateChange(this, id, state);
 			handleBatteryAdapterStateChange(this, id);
 			handleImmersionHeaterStateChange(this, id);
 			handleGlobalModesStateChange(this.namespace, id);
@@ -346,14 +358,6 @@ class Ems extends utils.Adapter {
 				write: true,
 				def: true,
 			}, true);
-			await this.ensureState(`${base}.mode`, {
-				name: `${addonId} Ausführung (dryrun|live)`,
-				type: "string",
-				role: "text",
-				read: true,
-				write: true,
-				def: "dryrun",
-			}, "dryrun");
 		}
 	}
 

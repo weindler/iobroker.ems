@@ -35,6 +35,7 @@ const registry_1 = require("./addons/registry");
 const governance_1 = require("./addons/governance");
 const dryrun_mirror_1 = require("./dryrun_mirror");
 const execution_mode_1 = require("./execution_mode");
+const tree_paths_1 = require("./tree_paths");
 const inbox_1 = require("./inbox");
 const mapping_config_1 = require("./mapping_config");
 const mapping_sync_1 = require("./mapping_sync");
@@ -110,6 +111,7 @@ class Ems extends utils.Adapter {
         await this.step("channel tree", () => (0, execution_mode_1.ensureChannelTree)(this.setObjectNotExistsAsync.bind(this)));
         await this.step("base states", () => this.ensureBaseStates());
         await this.step("global execution states", () => (0, execution_mode_1.ensureGlobalExecutionStates)(this));
+        await this.step("addon execution mode states", () => (0, execution_mode_1.ensureAddonExecutionModeStates)(this));
         await this.step("addon states", () => this.ensureAddonStates());
         await this.step("governance states", () => (0, governance_1.ensureAddonGovernanceStates)(this));
         await this.step("sync governance", () => (0, governance_1.syncAddonGovernanceFromConfig)(this, adapterConfig));
@@ -124,6 +126,12 @@ class Ems extends utils.Adapter {
         // EMS-Light/Learning explizit isoliert: muss unabhängig von Add-on-Fehlern laufen.
         await this.step("ems-light phase 1 (learning)", () => (0, ems_light_1.initEmsLightPhase1)(this), 45_000);
         await this.step("subscribe command inbox", () => this.subscribeStatesAsync(states_1.STATE.command.inbox));
+        await this.step("subscribe execution modes", async () => {
+            await this.subscribeStatesAsync(tree_paths_1.GLOBAL.executionMode);
+            for (const addonId of execution_mode_1.EXECUTION_MODE_ADDON_IDS) {
+                await this.subscribeStatesAsync((0, tree_paths_1.addonMode)(addonId));
+            }
+        });
         this.log.info("EMS adapter ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
         await this.step("process pending inbox", async () => {
             const inbox = await this.getStateAsync(states_1.STATE.command.inbox);
@@ -144,6 +152,7 @@ class Ems extends utils.Adapter {
     }
     async onStateChange(id, state) {
         if (state) {
+            await (0, execution_mode_1.handleExecutionModeStateChange)(this, id, state);
             (0, battery_1.handleBatteryAdapterStateChange)(this, id);
             (0, immersion_heater_1.handleImmersionHeaterStateChange)(this, id);
             (0, policy_1.handleGlobalModesStateChange)(this.namespace, id);
@@ -326,14 +335,6 @@ class Ems extends utils.Adapter {
                 write: true,
                 def: true,
             }, true);
-            await this.ensureState(`${base}.mode`, {
-                name: `${addonId} Ausführung (dryrun|live)`,
-                type: "string",
-                role: "text",
-                read: true,
-                write: true,
-                def: "dryrun",
-            }, "dryrun");
         }
     }
     async ensureWallboxMapping() {

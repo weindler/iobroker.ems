@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.82",
+		"version": "0.1.83",
 		"news": {
+			"0.1.83": {
+				"en": "Execution mode dropdown in object tree: global.execution_mode and addons (wallbox/battery/immersion_heater).mode as dryrun|live selectors — switchable from objects or scripts without opening admin",
+				"de": "Ausführungsmodus als Dropdown im Objektbaum: global.execution_mode und addons (Wallbox/Batterie/Heizstab).mode als dryrun|live-Auswahl — umschaltbar aus Objekten oder Skripten ohne Admin"
+			},
 			"0.1.82": {
 				"en": "Planner respects all Global Modes (off/eco/balanced/comfort/forced): mode policy drives thermal and battery intents; comfort/forced support battery on PV deficit; hold from EVCC or user_intent blocks forced use",
 				"de": "Planner berücksichtigt alle Global Modes (off/eco/balanced/comfort/forced): Modus-Policy steuert Heizstab und Batterie; comfort/forced nutzen Batterie bei PV-Unterdeckung; Hold via EVCC oder user_intent blockiert erzwungene Nutzung"

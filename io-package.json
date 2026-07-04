@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.87",
+		"version": "0.1.88",
 		"news": {
+			"0.1.88": {
+				"en": "Admin battery execution mode (bat_addon_mode) restored; object-tree dryrun/live changes sync back to admin config so both views stay aligned",
+				"de": "Batterie-Ausführungsmodus (bat_addon_mode) im Admin wieder verfügbar; Objektbaum-Änderungen dryrun/live werden in Admin-Config zurückgeschrieben"
+			},
 			"0.1.87": {
 				"en": "Execution modes: admin config applies when saved/changed; object-tree runtime values persist across restart when admin unchanged",
 				"de": "Ausführungsmodi: Admin-Config gilt bei Speichern/Änderung; Laufzeitwerte aus Objektbaum bleiben bei Neustart erhalten wenn Admin unverändert"

@@ -168,14 +168,62 @@ export async function ensureAddonExecutionModeStates(host: ExecutionModeHost): P
 	}
 }
 
+async function alignAdminConfigWithRuntimeStates(
+	host: ExecutionModeHost & {
+		config?: unknown;
+		updateConfig?: (newConfig: Record<string, unknown>) => Promise<unknown>;
+		log?: { info?: (msg: string) => void };
+	},
+	config: Record<string, unknown>,
+): Promise<void> {
+	if (typeof host.updateConfig !== "function") {
+		return;
+	}
+	const base =
+		host.config && typeof host.config === "object"
+			? ({ ...(host.config as Record<string, unknown>) } as Record<string, unknown>)
+			: { ...config };
+	let changed = false;
+	const pairs: Array<[string, keyof GlobalExecutionConfig]> = [
+		[GLOBAL.executionMode, "global_execution_mode"],
+		[addonMode("wallbox"), "wb_addon_mode"],
+		[addonMode("battery"), "bat_addon_mode"],
+		[addonMode("immersion_heater"), "ih_addon_mode"],
+	];
+	for (const [stateId, configKey] of pairs) {
+		const st = await host.getStateAsync(stateId);
+		if (!st || !hasExecutionModeValue(st.val)) {
+			continue;
+		}
+		const mode = parseMode(st.val);
+		if (parseMode(base[configKey]) !== mode) {
+			base[configKey] = mode;
+			changed = true;
+		}
+	}
+	if (!changed) {
+		return;
+	}
+	await host.updateConfig(base);
+	await host.setStateAsync(EXECUTION_MODE_CONFIG_FINGERPRINT, {
+		val: executionModesConfigFingerprint(base),
+		ack: true,
+	});
+	host.log?.info?.("Ausführungsmodi: Admin-Config an Objektbaum angeglichen");
+}
+
 /**
  * Admin-Config ↔ Objektbaum:
  * - Admin geändert + Speichern → Config wird auf States geschrieben
- * - Neustart ohne Admin-Änderung → Laufzeitwerte aus Objektbaum bleiben
+ * - Neustart ohne Admin-Änderung → Laufzeitwerte aus Objektbaum bleiben, Admin wird nachgezogen
  * - Erststart / leere States → Admin-Defaults
  */
 export async function syncExecutionModesFromConfig(
-	host: ExecutionModeHost & { log?: { info?: (msg: string) => void } },
+	host: ExecutionModeHost & {
+		log?: { info?: (msg: string) => void };
+		config?: unknown;
+		updateConfig?: (newConfig: Record<string, unknown>) => Promise<unknown>;
+	},
 	config: Record<string, unknown>,
 ): Promise<void> {
 	const modes = executionModesFromConfig(config);
@@ -187,6 +235,7 @@ export async function syncExecutionModesFromConfig(
 	if (!prevFingerprint && !empty) {
 		// Upgrade: Laufzeitwerte schon gesetzt, Fingerabdruck fehlt — nicht überschreiben
 		await host.setStateAsync(EXECUTION_MODE_CONFIG_FINGERPRINT, { val: fingerprint, ack: true });
+		await alignAdminConfigWithRuntimeStates(host, config);
 		await mirrorGlobalExecutionSafety(host);
 		host.log?.info?.("Ausführungsmodi: Laufzeitwerte beibehalten (Admin-Fingerprint initialisiert)");
 		return;
@@ -202,9 +251,57 @@ export async function syncExecutionModesFromConfig(
 		);
 	} else {
 		host.log?.info?.("Ausführungsmodi: Laufzeitwerte beibehalten (Admin unverändert)");
+		await alignAdminConfigWithRuntimeStates(host, config);
 	}
 
 	await mirrorGlobalExecutionSafety(host);
+}
+
+export function executionModeConfigKeyForRelativeId(relativeId: string): keyof GlobalExecutionConfig | null {
+	switch (relativeId) {
+		case GLOBAL.executionMode:
+			return "global_execution_mode";
+		case addonMode("wallbox"):
+			return "wb_addon_mode";
+		case addonMode("battery"):
+			return "bat_addon_mode";
+		case addonMode("immersion_heater"):
+			return "ih_addon_mode";
+		default:
+			return null;
+	}
+}
+
+export async function persistExecutionModeToAdminConfig(
+	adapter: ExecutionModeHost & {
+		config?: unknown;
+		updateConfig?: (newConfig: Record<string, unknown>) => Promise<unknown>;
+	},
+	relativeId: string,
+	mode: ExecutionMode,
+): Promise<boolean> {
+	const configKey = executionModeConfigKeyForRelativeId(relativeId);
+	if (!configKey || typeof adapter.updateConfig !== "function") {
+		return false;
+	}
+	const base =
+		adapter.config && typeof adapter.config === "object"
+			? ({ ...(adapter.config as Record<string, unknown>) } as Record<string, unknown>)
+			: {};
+	if (parseMode(base[configKey]) === mode) {
+		await adapter.setStateAsync(EXECUTION_MODE_CONFIG_FINGERPRINT, {
+			val: executionModesConfigFingerprint(base),
+			ack: true,
+		});
+		return false;
+	}
+	base[configKey] = mode;
+	await adapter.updateConfig(base);
+	await adapter.setStateAsync(EXECUTION_MODE_CONFIG_FINGERPRINT, {
+		val: executionModesConfigFingerprint(base),
+		ack: true,
+	});
+	return true;
 }
 
 export function isExecutionModeStateRelativeId(relativeId: string): boolean {
@@ -218,6 +315,8 @@ export async function handleExecutionModeStateChange(
 	adapter: ExecutionModeHost & {
 		namespace: string;
 		log: { info: (msg: string) => void; warn?: (msg: string) => void };
+		config?: unknown;
+		updateConfig?: (newConfig: Record<string, unknown>) => Promise<unknown>;
 	},
 	id: string,
 	state: ioBroker.State | null,
@@ -246,7 +345,12 @@ export async function handleExecutionModeStateChange(
 	if (relativeId === GLOBAL.executionMode) {
 		await adapter.setStateAsync("execution.safety.global_execution_mode", { val: mode, ack: true });
 	}
-	adapter.log.info(`${relativeId} → ${mode} (Objektbaum)`);
+	const adminUpdated = await persistExecutionModeToAdminConfig(adapter, relativeId, mode);
+	adapter.log.info(
+		adminUpdated
+			? `${relativeId} → ${mode} (Objektbaum, Admin übernommen)`
+			: `${relativeId} → ${mode} (Objektbaum)`,
+	);
 }
 
 export async function ensureChannelTree(

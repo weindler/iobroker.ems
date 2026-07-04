@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureChannelTree = exports.handleExecutionModeStateChange = exports.isExecutionModeStateRelativeId = exports.syncExecutionModesFromConfig = exports.ensureAddonExecutionModeStates = exports.ensureGlobalExecutionStates = exports.isLiveWriteAllowed = exports.executionModeCommon = exports.parseMode = exports.executionModesConfigFingerprint = exports.executionModesFromConfig = exports.EXECUTION_MODE_CONFIG_FINGERPRINT = exports.EXECUTION_MODE_ADDON_IDS = exports.EXECUTION_MODE_STATES = exports.EXECUTION_MODE_STATE_LABELS = exports.EXECUTION_MODES = void 0;
+exports.ensureChannelTree = exports.handleExecutionModeStateChange = exports.isExecutionModeStateRelativeId = exports.persistExecutionModeToAdminConfig = exports.executionModeConfigKeyForRelativeId = exports.syncExecutionModesFromConfig = exports.ensureAddonExecutionModeStates = exports.ensureGlobalExecutionStates = exports.isLiveWriteAllowed = exports.executionModeCommon = exports.parseMode = exports.executionModesConfigFingerprint = exports.executionModesFromConfig = exports.EXECUTION_MODE_CONFIG_FINGERPRINT = exports.EXECUTION_MODE_ADDON_IDS = exports.EXECUTION_MODE_STATES = exports.EXECUTION_MODE_STATE_LABELS = exports.EXECUTION_MODES = void 0;
 const tree_paths_1 = require("./tree_paths");
 exports.EXECUTION_MODES = ["dryrun", "live"];
 exports.EXECUTION_MODE_STATE_LABELS = {
@@ -116,10 +116,45 @@ async function ensureAddonExecutionModeStates(host) {
     }
 }
 exports.ensureAddonExecutionModeStates = ensureAddonExecutionModeStates;
+async function alignAdminConfigWithRuntimeStates(host, config) {
+    if (typeof host.updateConfig !== "function") {
+        return;
+    }
+    const base = host.config && typeof host.config === "object"
+        ? { ...host.config }
+        : { ...config };
+    let changed = false;
+    const pairs = [
+        [tree_paths_1.GLOBAL.executionMode, "global_execution_mode"],
+        [(0, tree_paths_1.addonMode)("wallbox"), "wb_addon_mode"],
+        [(0, tree_paths_1.addonMode)("battery"), "bat_addon_mode"],
+        [(0, tree_paths_1.addonMode)("immersion_heater"), "ih_addon_mode"],
+    ];
+    for (const [stateId, configKey] of pairs) {
+        const st = await host.getStateAsync(stateId);
+        if (!st || !hasExecutionModeValue(st.val)) {
+            continue;
+        }
+        const mode = parseMode(st.val);
+        if (parseMode(base[configKey]) !== mode) {
+            base[configKey] = mode;
+            changed = true;
+        }
+    }
+    if (!changed) {
+        return;
+    }
+    await host.updateConfig(base);
+    await host.setStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT, {
+        val: executionModesConfigFingerprint(base),
+        ack: true,
+    });
+    host.log?.info?.("Ausführungsmodi: Admin-Config an Objektbaum angeglichen");
+}
 /**
  * Admin-Config ↔ Objektbaum:
  * - Admin geändert + Speichern → Config wird auf States geschrieben
- * - Neustart ohne Admin-Änderung → Laufzeitwerte aus Objektbaum bleiben
+ * - Neustart ohne Admin-Änderung → Laufzeitwerte aus Objektbaum bleiben, Admin wird nachgezogen
  * - Erststart / leere States → Admin-Defaults
  */
 async function syncExecutionModesFromConfig(host, config) {
@@ -131,6 +166,7 @@ async function syncExecutionModesFromConfig(host, config) {
     if (!prevFingerprint && !empty) {
         // Upgrade: Laufzeitwerte schon gesetzt, Fingerabdruck fehlt — nicht überschreiben
         await host.setStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT, { val: fingerprint, ack: true });
+        await alignAdminConfigWithRuntimeStates(host, config);
         await mirrorGlobalExecutionSafety(host);
         host.log?.info?.("Ausführungsmodi: Laufzeitwerte beibehalten (Admin-Fingerprint initialisiert)");
         return;
@@ -144,10 +180,50 @@ async function syncExecutionModesFromConfig(host, config) {
     }
     else {
         host.log?.info?.("Ausführungsmodi: Laufzeitwerte beibehalten (Admin unverändert)");
+        await alignAdminConfigWithRuntimeStates(host, config);
     }
     await mirrorGlobalExecutionSafety(host);
 }
 exports.syncExecutionModesFromConfig = syncExecutionModesFromConfig;
+function executionModeConfigKeyForRelativeId(relativeId) {
+    switch (relativeId) {
+        case tree_paths_1.GLOBAL.executionMode:
+            return "global_execution_mode";
+        case (0, tree_paths_1.addonMode)("wallbox"):
+            return "wb_addon_mode";
+        case (0, tree_paths_1.addonMode)("battery"):
+            return "bat_addon_mode";
+        case (0, tree_paths_1.addonMode)("immersion_heater"):
+            return "ih_addon_mode";
+        default:
+            return null;
+    }
+}
+exports.executionModeConfigKeyForRelativeId = executionModeConfigKeyForRelativeId;
+async function persistExecutionModeToAdminConfig(adapter, relativeId, mode) {
+    const configKey = executionModeConfigKeyForRelativeId(relativeId);
+    if (!configKey || typeof adapter.updateConfig !== "function") {
+        return false;
+    }
+    const base = adapter.config && typeof adapter.config === "object"
+        ? { ...adapter.config }
+        : {};
+    if (parseMode(base[configKey]) === mode) {
+        await adapter.setStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT, {
+            val: executionModesConfigFingerprint(base),
+            ack: true,
+        });
+        return false;
+    }
+    base[configKey] = mode;
+    await adapter.updateConfig(base);
+    await adapter.setStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT, {
+        val: executionModesConfigFingerprint(base),
+        ack: true,
+    });
+    return true;
+}
+exports.persistExecutionModeToAdminConfig = persistExecutionModeToAdminConfig;
 function isExecutionModeStateRelativeId(relativeId) {
     if (relativeId === tree_paths_1.GLOBAL.executionMode) {
         return true;
@@ -176,7 +252,10 @@ async function handleExecutionModeStateChange(adapter, id, state) {
     if (relativeId === tree_paths_1.GLOBAL.executionMode) {
         await adapter.setStateAsync("execution.safety.global_execution_mode", { val: mode, ack: true });
     }
-    adapter.log.info(`${relativeId} → ${mode} (Objektbaum)`);
+    const adminUpdated = await persistExecutionModeToAdminConfig(adapter, relativeId, mode);
+    adapter.log.info(adminUpdated
+        ? `${relativeId} → ${mode} (Objektbaum, Admin übernommen)`
+        : `${relativeId} → ${mode} (Objektbaum)`);
 }
 exports.handleExecutionModeStateChange = handleExecutionModeStateChange;
 async function ensureChannelTree(setObjectNotExistsAsync) {

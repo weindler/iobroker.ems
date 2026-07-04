@@ -136,4 +136,27 @@ const LIVE_IH_FP = (0, execution_mode_js_1.executionModesConfigFingerprint)({
         strict_1.default.equal(store.get("addons.battery.mode")?.val, "dryrun");
         strict_1.default.equal(store.get(execution_mode_js_1.EXECUTION_MODE_CONFIG_FINGERPRINT)?.val, LIVE_IH_FP);
     });
+    (0, node_test_1.it)("persistExecutionModeToAdminConfig maps state ids to config keys", () => {
+        strict_1.default.equal((0, execution_mode_js_1.executionModeConfigKeyForRelativeId)("global.execution_mode"), "global_execution_mode");
+        strict_1.default.equal((0, execution_mode_js_1.executionModeConfigKeyForRelativeId)("addons.battery.mode"), "bat_addon_mode");
+        strict_1.default.equal((0, execution_mode_js_1.executionModeConfigKeyForRelativeId)("addons.immersion_heater.mode"), "ih_addon_mode");
+    });
+    (0, node_test_1.it)("persistExecutionModeToAdminConfig writes back to admin native", async () => {
+        const store = new Map();
+        let config = { ih_addon_mode: "dryrun" };
+        const adapter = {
+            config,
+            getStateAsync: async (id) => store.get(id) ?? null,
+            setStateAsync: async (id, st) => {
+                store.set(id, { val: st.val, ack: st.ack ?? false });
+            },
+            setObjectNotExistsAsync: async () => undefined,
+            updateConfig: async (next) => {
+                config = next;
+            },
+        };
+        const updated = await (0, execution_mode_js_1.persistExecutionModeToAdminConfig)(adapter, "addons.immersion_heater.mode", "live");
+        strict_1.default.equal(updated, true);
+        strict_1.default.equal(config.ih_addon_mode, "live");
+    });
 });

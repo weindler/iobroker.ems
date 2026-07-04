@@ -13,7 +13,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Globale Ausführung für alle Addons. Live-Schreiben nur wenn hier und beim Addon „Live“ steht (effektiv: global.live ∧ addon.live). States: ems.&lt;instanz&gt;.global.execution_mode"
+					"text": "Globale Ausführung für alle Addons. Live-Schreiben nur wenn hier und beim Addon „Live“ steht (effektiv: global.live ∧ addon.live). Objektbaum: global.execution_mode — Admin und Objektbaum bleiben synchron."
 				},
 				"global_execution_mode": {
 					"type": "select",
@@ -597,6 +597,29 @@
 			"lg": 12,
 			"xl": 12
 		},
+		"bat_addon_mode": {
+			"type": "select",
+			"label": "Batterie Ausführung",
+			"options": [
+				{ "label": "Dryrun", "value": "dryrun" },
+				{ "label": "Live", "value": "live" }
+			],
+			"default": "dryrun",
+			"xs": 12,
+			"sm": 6,
+			"md": 4,
+			"lg": 4,
+			"xl": 4
+		},
+		"batExecutionHint": {
+			"type": "staticText",
+			"text": "Live-Schreiben nur wenn GLOBAL und hier „Live“ steht. Objektbaum: addons.battery.mode — Änderungen in Admin oder Objektbaum werden synchron gehalten.",
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12
+		},
 		"hBatHardware": {
 			"type": "header",
 			"size": 2,
@@ -688,7 +711,7 @@
 		},
 		"batProfileStatusHint": {
 			"type": "staticText",
-			"text": "Anzeigen (Profil bereit, Dryrun/Live bereit, effektiver Ausführungsmodus) siehe addons.battery.status.*. Der globale Ausführungsmodus ist maßgeblich; es gibt keinen separaten Batterie-Live-Schalter.",
+			"text": "Diagnose-Anzeigen (Profil bereit, Dryrun/Live bereit, effektiver Ausführungsmodus) siehe addons.battery.status.*. Ausführungsmodus oben und unter GLOBAL.",
 			"xs": 12,
 			"sm": 12,
 			"md": 12,
@@ -1350,7 +1373,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Aktor: Steckdose ein/aus (set_enabled). Lesen: Puffer-Temperatur (buffer_temp_c). Mapping unter addons.immersion_heater.mapping.* — Failsafe nur bei Live: EMS &gt;300 s weg → Relais aus."
+					"text": "Aktor: Steckdose ein/aus (set_enabled). Lesen: Puffer-Temperatur (buffer_temp_c). Ausführung unten und unter GLOBAL — Admin und Objektbaum (addons.immersion_heater.mode) bleiben synchron. Failsafe nur bei Live: EMS &gt;300 s weg → Relais aus."
 				},
 				"immersionGovernanceHint": {
 					"type": "staticText",

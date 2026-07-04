@@ -2,10 +2,12 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
 	EXECUTION_MODE_CONFIG_FINGERPRINT,
+	executionModeConfigKeyForRelativeId,
 	executionModesConfigFingerprint,
 	handleExecutionModeStateChange,
 	isExecutionModeStateRelativeId,
 	parseMode,
+	persistExecutionModeToAdminConfig,
 	syncExecutionModesFromConfig,
 } from "./execution_mode.js";
 
@@ -146,5 +148,34 @@ describe("execution mode", () => {
 		assert.equal(store.get("addons.immersion_heater.mode")?.val, "live");
 		assert.equal(store.get("addons.battery.mode")?.val, "dryrun");
 		assert.equal(store.get(EXECUTION_MODE_CONFIG_FINGERPRINT)?.val, LIVE_IH_FP);
+	});
+
+	it("persistExecutionModeToAdminConfig maps state ids to config keys", () => {
+		assert.equal(executionModeConfigKeyForRelativeId("global.execution_mode"), "global_execution_mode");
+		assert.equal(executionModeConfigKeyForRelativeId("addons.battery.mode"), "bat_addon_mode");
+		assert.equal(executionModeConfigKeyForRelativeId("addons.immersion_heater.mode"), "ih_addon_mode");
+	});
+
+	it("persistExecutionModeToAdminConfig writes back to admin native", async () => {
+		const store = new Map<string, ioBroker.State>();
+		let config: Record<string, unknown> = { ih_addon_mode: "dryrun" };
+		const adapter = {
+			config,
+			getStateAsync: async (id: string) => store.get(id) ?? null,
+			setStateAsync: async (id: string, st: ioBroker.SettableState) => {
+				store.set(id, { val: st.val, ack: st.ack ?? false } as ioBroker.State);
+			},
+			setObjectNotExistsAsync: async () => undefined,
+			updateConfig: async (next: Record<string, unknown>) => {
+				config = next;
+			},
+		};
+		const updated = await persistExecutionModeToAdminConfig(
+			adapter,
+			"addons.immersion_heater.mode",
+			"live",
+		);
+		assert.equal(updated, true);
+		assert.equal(config.ih_addon_mode, "live");
 	});
 });

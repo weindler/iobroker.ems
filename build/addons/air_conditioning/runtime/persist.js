@@ -8,6 +8,7 @@ function emptyUnitPersist(index) {
         running: false,
         cleaningActive: false,
         cleaningStartedAtMs: null,
+        cleaningPendingUntilMs: null,
         lastStartAtMs: null,
         lastStopAtMs: null,
     };

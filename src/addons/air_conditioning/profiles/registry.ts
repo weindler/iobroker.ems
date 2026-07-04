@@ -33,7 +33,7 @@ export const GENERIC_AC_PROFILE: AcProfile = {
 		];
 	},
 	cleaningStartSequence: () => [
-		{ kind: "set", role: "cmd_cleaning_start", value: "speedClean" },
+		{ kind: "set", role: "cmd_cleaning_start", value: "on" },
 	],
 	cleaningStopSequence: () => [
 		{ kind: "set", role: "cmd_cleaning_start", value: "off" },
@@ -47,7 +47,7 @@ export const SAMSUNG_SMARTTHINGS_PROFILE: AcProfile = {
 	coolingStartSequence: samsungCoolingStart,
 	cleaningStartSequence: () => [
 		{ kind: "toggle", role: "cmd_refresh" },
-		{ kind: "set", role: "cmd_cleaning_start", value: "speedClean" },
+		{ kind: "set", role: "cmd_cleaning_start", value: "on" },
 	],
 	cleaningStopSequence: () => [
 		{ kind: "set", role: "cmd_cleaning_start", value: "off" },

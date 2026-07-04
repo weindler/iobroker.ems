@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.112] – 2026-07-04
+
+### Fixed
+
+- **Klima Reinigung:** Timer in Persistenz (überlebt Neustart), nur einmal planen (nicht bei jedem Stop-Retry), Info-Logs (`cleaning scheduled/started/finished`); Samsung `setAutoCleaningMode` → `on` (wie Blockly autoClean).
+
+---
+
 ## [0.1.111] – 2026-07-04
 
 ### Fixed

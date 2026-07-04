@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.111",
+		"version": "0.1.112",
 		"news": {
+			"0.1.112": {
+				"en": "AC cleaning: persist schedule, info logs, no timer reset on repeat stop; Samsung cleaning uses on",
+				"de": "Klima Reinigung: Timer persistieren, Info-Logs, kein Timer-Reset bei Stop-Spam; Samsung Reinigung mit on"
+			},
 			"0.1.111": {
 				"en": "AC stop: 60s retry cooldown while feedback still on — no stop spam every tick",
 				"de": "Klima Stopp: 60s Retry-Cooldown solange Feedback noch on — kein Stop-Spam alle 10s"

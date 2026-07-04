@@ -3,6 +3,7 @@ export type AcUnitPersist = {
 	running: boolean;
 	cleaningActive: boolean;
 	cleaningStartedAtMs: number | null;
+	cleaningPendingUntilMs: number | null;
 	lastStartAtMs: number | null;
 	lastStopAtMs: number | null;
 };
@@ -20,6 +21,7 @@ export function emptyUnitPersist(index: number): AcUnitPersist {
 		running: false,
 		cleaningActive: false,
 		cleaningStartedAtMs: null,
+		cleaningPendingUntilMs: null,
 		lastStartAtMs: null,
 		lastStopAtMs: null,
 	};

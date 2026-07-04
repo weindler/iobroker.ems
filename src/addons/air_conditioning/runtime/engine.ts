@@ -47,7 +47,6 @@ let persist: AcRuntimePersist = { version: 1, units: {} };
 let tickTimer: ReturnType<typeof setTimeout> | null = null;
 let tickRunning = false;
 const subscribedIds: string[] = [];
-let cleaningPendingUntilMs: Record<number, number> = {};
 
 function clearTick(): void {
 	if (tickTimer) {
@@ -94,6 +93,23 @@ function stopRetryReady(up: AcUnitPersist, nowMs: number): boolean {
 	return !up.lastStopAtMs || nowMs - up.lastStopAtMs >= AC_STOP_RETRY_MS;
 }
 
+function scheduleCleaningAfterStop(
+	host: AcRuntimeHost,
+	unit: AcUnitConfig,
+	up: AcUnitPersist,
+	nowMs: number,
+): void {
+	if (!unit.cleaningAfterRun || up.cleaningActive) {
+		return;
+	}
+	if (up.cleaningPendingUntilMs && up.cleaningPendingUntilMs > nowMs) {
+		return;
+	}
+	up.cleaningPendingUntilMs = nowMs + unit.cleaningDelayMin * 60_000;
+	const at = new Date(up.cleaningPendingUntilMs).toLocaleTimeString("de-AT", { hour: "2-digit", minute: "2-digit" });
+	host.log.info(`ac unit ${unit.index}: cleaning scheduled in ${unit.cleaningDelayMin} min (at ~${at})`);
+}
+
 async function stopUnit(
 	host: AcRuntimeHost,
 	unit: AcUnitConfig,
@@ -114,9 +130,7 @@ async function stopUnit(
 	}
 	up.running = false;
 	up.lastStopAtMs = Date.now();
-	if (unit.cleaningAfterRun) {
-		cleaningPendingUntilMs[unit.index] = Date.now() + unit.cleaningDelayMin * 60_000;
-	}
+	scheduleCleaningAfterStop(host, unit, up, up.lastStopAtMs);
 }
 
 async function waitForFeedbackOn(
@@ -174,11 +188,16 @@ async function tickCleaning(
 	up: AcUnitPersist,
 	nowMs: number,
 ): Promise<void> {
-	const pending = cleaningPendingUntilMs[unit.index];
+	const pending = up.cleaningPendingUntilMs;
 	if (pending && nowMs >= pending && !up.cleaningActive) {
-		delete cleaningPendingUntilMs[unit.index];
+		up.cleaningPendingUntilMs = null;
 		const profile = getAcProfile(unit.profileId);
-		await executeAcWriteSteps(host, unit.index, table, profile.cleaningStartSequence(), live, host.log);
+		if (live) {
+			await executeAcWriteSteps(host, unit.index, table, profile.cleaningStartSequence(), true, host.log);
+			host.log.info(`ac unit ${unit.index}: cleaning started (live)`);
+		} else {
+			host.log.info(`ac unit ${unit.index}: cleaning started (dryrun)`);
+		}
 		up.cleaningActive = true;
 		up.cleaningStartedAtMs = nowMs;
 	}
@@ -186,9 +205,12 @@ async function tickCleaning(
 		const endMs = up.cleaningStartedAtMs + unit.cleaningDurationMin * 60_000;
 		if (nowMs >= endMs) {
 			const profile = getAcProfile(unit.profileId);
-			await executeAcWriteSteps(host, unit.index, table, profile.cleaningStopSequence(), live, host.log);
+			if (live) {
+				await executeAcWriteSteps(host, unit.index, table, profile.cleaningStopSequence(), true, host.log);
+			}
 			up.cleaningActive = false;
 			up.cleaningStartedAtMs = null;
+			host.log.info(`ac unit ${unit.index}: cleaning finished (${unit.cleaningDurationMin} min)`);
 		}
 	}
 }
@@ -372,7 +394,6 @@ export function stopAcRuntimeEngine(): void {
 	hostRef = null;
 	persist = { version: 1, units: {} };
 	subscribedIds.length = 0;
-	cleaningPendingUntilMs = {};
 }
 
 export function acRuntimeWatchedForeignIds(config: unknown): string[] {

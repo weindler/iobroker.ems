@@ -25,7 +25,37 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
     });
 });
 (0, node_test_1.describe)("planner thermal", () => {
-    (0, node_test_1.it)("picks highest affordable stage", () => {
+    (0, node_test_1.it)("single on/off turns on when surplus covers nominal", () => {
+        const cfg = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
+            ih_set_enabled_target: "r",
+            ih_stage_1_nominal_power_w: 1700,
+        });
+        const r = (0, thermal_js_1.planThermal)({
+            surplusW: 1800,
+            bufferTempC: 50,
+            thermalMode: "auto",
+            governanceEnabled: true,
+            config: cfg,
+        });
+        strict_1.default.equal(r.commanded_stage, 1);
+        strict_1.default.match(r.reason_de, /Ein \(1700 W\)/);
+    });
+    (0, node_test_1.it)("single on/off stays off below nominal", () => {
+        const cfg = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
+            ih_set_enabled_target: "r",
+            ih_stage_1_nominal_power_w: 1700,
+        });
+        const r = (0, thermal_js_1.planThermal)({
+            surplusW: 1270,
+            bufferTempC: 50,
+            thermalMode: "auto",
+            governanceEnabled: true,
+            config: cfg,
+        });
+        strict_1.default.equal(r.commanded_stage, 0);
+        strict_1.default.match(r.reason_de, /Ein\/Aus/);
+    });
+    (0, node_test_1.it)("multi-stage picks highest affordable stage", () => {
         const r = (0, thermal_js_1.planThermal)({
             surplusW: 2500,
             bufferTempC: 50,
@@ -37,12 +67,17 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
         strict_1.default.equal(r.commanded_power_w, 2000);
     });
     (0, node_test_1.it)("respects max temp", () => {
+        const cfg = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
+            ih_set_enabled_target: "r",
+            ih_stage_1_nominal_power_w: 1700,
+            ih_planning_max_temp_c: 60,
+        });
         const r = (0, thermal_js_1.planThermal)({
             surplusW: 5000,
             bufferTempC: 60,
             thermalMode: "auto",
             governanceEnabled: true,
-            config: CFG,
+            config: cfg,
         });
         strict_1.default.equal(r.commanded_stage, 0);
     });

@@ -1540,6 +1540,7 @@
 				"ih_stage_count": {
 					"type": "select",
 					"label": "Leistungsstufen",
+					"helpText": "1 Stufe = Ein/Aus (typisch ~1700 W). 2–3 Stufen = gestufte Leistung (jede Stufe mit eigener Nennleistung).",
 					"options": [
 						{ "label": "1 Stufe", "value": 1 },
 						{ "label": "2 Stufen", "value": 2 },
@@ -1577,7 +1578,7 @@
 				"hIhStage1": {
 					"type": "header",
 					"size": 3,
-					"text": "Stufe 1 (set_enabled Migration)",
+					"text": "Stufe 1 / Ein-Aus",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -1597,7 +1598,7 @@
 				"ih_stage_1_name": {
 					"type": "text",
 					"label": "Name",
-					"default": "Stufe 1",
+					"default": "Ein/Aus",
 					"xs": 12,
 					"sm": 8,
 					"md": 3,
@@ -1607,8 +1608,9 @@
 				"ih_stage_1_nominal_power_w": {
 					"type": "number",
 					"label": "Nennleistung (W)",
+					"helpText": "Ein/Aus: gemessene Leistung im Betrieb (z. B. 1700 W). Planner schaltet nur Ein, wenn PV-Überschuss ≥ dieser Wert. Mehrstufen: Leistung pro Stufe.",
 					"min": 0,
-					"default": 0,
+					"default": 1700,
 					"xs": 12,
 					"sm": 6,
 					"md": 3,

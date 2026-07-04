@@ -15,7 +15,20 @@ const device_config_js_1 = require("./device_config.js");
         });
         strict_1.default.equal(cfg.stages[0].setStateId, "mqtt.0.heater.switch");
         strict_1.default.equal(cfg.stageCount, 1);
+        strict_1.default.equal(cfg.stages[0].nominalPowerW, 1700);
+        strict_1.default.equal(cfg.stages[0].name, "Ein/Aus");
         strict_1.default.equal(cfg.planningMinTempC, 48);
         strict_1.default.equal(cfg.planningMaxTempC, 60);
+    });
+    (0, node_test_1.it)("multi-stage requires explicit nominal on stage 2", () => {
+        const cfg = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
+            ih_stage_count: 2,
+            ih_stage_1_set_state: "a.0.s1",
+            ih_stage_1_nominal_power_w: 2000,
+            ih_stage_2_set_state: "a.0.s2",
+            ih_buffer_temp_c_target: "a.0.temp",
+            ih_buffer_temp_c_enabled: true,
+        });
+        strict_1.default.equal(cfg.stages[1].nominalPowerW, 0);
     });
 });

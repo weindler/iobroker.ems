@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.80",
+		"version": "0.1.81",
 		"news": {
+			"0.1.81": {
+				"en": "Immersion heater: single ON/OFF vs multi-stage planner paths; default 1700 W nominal for 1-stage; clearer admin help and German planner reasons",
+				"de": "Heizstab: Ein/Aus vs. Mehrstufen getrennt im Planner; Default 1700 W Nennleistung bei 1 Stufe; Admin-Hilfe und Planner-Begründungen klarer"
+			},
 			"0.1.80": {
 				"en": "Phase 1 Planner MVP: PV surplus drives immersion heater (auto) then battery charge; EVCC hold as hard constraint; planner states + operator briefing; dryrun-safe",
 				"de": "Phase-1-Planner-MVP: PV-Überschuss steuert Heizstab (auto) dann Batterie-Laden; EVCC-Hold als harte Grenze; Planner-States + Operator-Briefing; dryrun-tauglich"

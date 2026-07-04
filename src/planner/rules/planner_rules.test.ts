@@ -23,7 +23,39 @@ describe("planner surplus", () => {
 });
 
 describe("planner thermal", () => {
-	it("picks highest affordable stage", () => {
+	it("single on/off turns on when surplus covers nominal", () => {
+		const cfg = immersionDeviceConfigFromAdapter({
+			ih_set_enabled_target: "r",
+			ih_stage_1_nominal_power_w: 1700,
+		});
+		const r = planThermal({
+			surplusW: 1800,
+			bufferTempC: 50,
+			thermalMode: "auto",
+			governanceEnabled: true,
+			config: cfg,
+		});
+		assert.equal(r.commanded_stage, 1);
+		assert.match(r.reason_de, /Ein \(1700 W\)/);
+	});
+
+	it("single on/off stays off below nominal", () => {
+		const cfg = immersionDeviceConfigFromAdapter({
+			ih_set_enabled_target: "r",
+			ih_stage_1_nominal_power_w: 1700,
+		});
+		const r = planThermal({
+			surplusW: 1270,
+			bufferTempC: 50,
+			thermalMode: "auto",
+			governanceEnabled: true,
+			config: cfg,
+		});
+		assert.equal(r.commanded_stage, 0);
+		assert.match(r.reason_de, /Ein\/Aus/);
+	});
+
+	it("multi-stage picks highest affordable stage", () => {
 		const r = planThermal({
 			surplusW: 2500,
 			bufferTempC: 50,
@@ -36,12 +68,17 @@ describe("planner thermal", () => {
 	});
 
 	it("respects max temp", () => {
+		const cfg = immersionDeviceConfigFromAdapter({
+			ih_set_enabled_target: "r",
+			ih_stage_1_nominal_power_w: 1700,
+			ih_planning_max_temp_c: 60,
+		});
 		const r = planThermal({
 			surplusW: 5000,
 			bufferTempC: 60,
 			thermalMode: "auto",
 			governanceEnabled: true,
-			config: CFG,
+			config: cfg,
 		});
 		assert.equal(r.commanded_stage, 0);
 	});

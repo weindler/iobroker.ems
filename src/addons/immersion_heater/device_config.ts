@@ -1,5 +1,8 @@
 import type { ImmersionDeviceConfig, ImmersionStageConfig } from "./runtime/types";
 
+/** Typische Nennleistung Ein/Aus-Heizstab (1-phasig), wenn Admin-Wert fehlt. */
+export const SINGLE_STAGE_DEFAULT_NOMINAL_W = 1700;
+
 function numField(c: Record<string, unknown>, key: string, fallback: number): number {
 	const v = c[key];
 	if (v === null || v === undefined || v === "") return fallback;
@@ -27,16 +30,21 @@ function parsePhaseCount(raw: number): 1 | 3 {
 	return raw >= 3 ? 3 : 1;
 }
 
-function stageFromConfig(c: Record<string, unknown>, index: number): ImmersionStageConfig {
+function stageFromConfig(c: Record<string, unknown>, index: number, stageCount: 1 | 2 | 3): ImmersionStageConfig {
 	const p = `ih_stage_${index}`;
 	const legacySet = index === 1 ? strField(c, "ih_set_enabled_target") : "";
 	const setState = strField(c, `${p}_set_state`) || legacySet;
 	const nominal = numField(c, `${p}_nominal_power_w`, 0);
+	let nominalPowerW = nominal > 0 ? nominal : 0;
+	// Ein/Aus (1 Stufe): fehlende Nennleistung → typisch ~1700 W. Mehrstufen: explizit konfigurieren.
+	if (nominalPowerW <= 0 && stageCount === 1 && index === 1) {
+		nominalPowerW = SINGLE_STAGE_DEFAULT_NOMINAL_W;
+	}
 	return {
 		index,
 		enabled: boolField(c, `${p}_enabled`, index === 1),
-		name: strField(c, `${p}_name`) || `Stufe ${index}`,
-		nominalPowerW: nominal > 0 ? nominal : 0,
+		name: strField(c, `${p}_name`) || (stageCount === 1 ? "Ein/Aus" : `Stufe ${index}`),
+		nominalPowerW,
 		setStateId: setState,
 		feedbackStateId: strField(c, `${p}_feedback_state`),
 	};
@@ -47,7 +55,7 @@ export function immersionDeviceConfigFromAdapter(config: unknown): ImmersionDevi
 	const stageCount = parseStageCount(numField(c, "ih_stage_count", 1));
 	const stages: ImmersionStageConfig[] = [];
 	for (let i = 1; i <= stageCount; i++) {
-		stages.push(stageFromConfig(c, i));
+		stages.push(stageFromConfig(c, i, stageCount));
 	}
 
 	return {

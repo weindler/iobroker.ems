@@ -10,6 +10,13 @@ export interface ThermalPlanInput {
 	config: ImmersionDeviceConfig;
 }
 
+function enabledStages(config: ImmersionDeviceConfig) {
+	return config.stages
+		.filter((s) => s.enabled && s.nominalPowerW > 0 && s.setStateId)
+		.sort((a, b) => b.nominalPowerW - a.nominalPowerW);
+}
+
+/** Ein/Aus: voller Überschuss muss Nennleistung tragen (kein Netzbezug). Mehrstufen: höchste passende Stufe. */
 export function planThermal(input: ThermalPlanInput): PlannerThermalDecision {
 	const none = (reason: string): PlannerThermalDecision => ({
 		commanded_stage: 0,
@@ -35,11 +42,28 @@ export function planThermal(input: ThermalPlanInput): PlannerThermalDecision {
 		return none(`PV-Überschuss ${input.surplusW} W unter Minimum ${PLANNER_SURPLUS_MIN_W} W.`);
 	}
 
-	const enabledStages = input.config.stages
-		.filter((s) => s.enabled && s.nominalPowerW > 0 && s.setStateId)
-		.sort((a, b) => b.nominalPowerW - a.nominalPowerW);
+	const stages = enabledStages(input.config);
+	if (stages.length === 0) {
+		return none("Keine Heizstab-Stufe mit Schaltausgang und Nennleistung konfiguriert.");
+	}
 
-	for (const stage of enabledStages) {
+	// Ein/Aus (1 Stufe): binär — Überschuss muss die (konfigurierte) Nennleistung decken.
+	if (input.config.stageCount === 1) {
+		const stage = stages[0];
+		if (input.surplusW >= stage.nominalPowerW) {
+			return {
+				commanded_stage: stage.index,
+				commanded_power_w: stage.nominalPowerW,
+				reason_de: `PV-Überschuss ${input.surplusW} W → Heizstab Ein (${stage.nominalPowerW} W).`,
+			};
+		}
+		return none(
+			`PV-Überschuss ${input.surplusW} W unter ${stage.nominalPowerW} W für Ein/Aus — kein Einschalten (nur PV).`,
+		);
+	}
+
+	// Mehrstufen: höchste Stufe wählen, die der Überschuss trägt.
+	for (const stage of stages) {
 		if (input.surplusW >= stage.nominalPowerW) {
 			return {
 				commanded_stage: stage.index,
@@ -49,5 +73,8 @@ export function planThermal(input: ThermalPlanInput): PlannerThermalDecision {
 		}
 	}
 
-	return none(`PV-Überschuss ${input.surplusW} W reicht für keine Heizstab-Stufe.`);
+	const minRequired = stages[stages.length - 1]?.nominalPowerW ?? 0;
+	return none(
+		`PV-Überschuss ${input.surplusW} W reicht nicht für eine Stufe (kleinste Stufe ${minRequired} W).`,
+	);
 }

@@ -1,7 +1,8 @@
 /**
  * Reorganize admin top-level tabs:
- * - Move Klima right after Heizstab (visible without horizontal overflow)
- * - Nest EMS-Light Learning / Policy / Intent under one "EMS-Light" tab
+ * - Klima right after Heizstab
+ * - EMS-Light as flat tabs (nested tabs are not rendered by ioBroker admin)
+ * - Shorter labels to reduce horizontal overflow
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -13,42 +14,44 @@ const configPath = path.join(__dirname, "..", "admin", "jsonConfig.json");
 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 const items = config.items;
 
+function extractEmsLightTabs(source) {
+	if (source.emsLightTab?.items?.emsLightInnerTabs?.items) {
+		const inner = source.emsLightTab.items.emsLightInnerTabs.items;
+		return {
+			emsLightLearningTab: inner.emsLightLearningTab,
+			emsLightPolicyTab: inner.emsLightPolicyTab,
+			emsLightIntentTab: inner.emsLightIntentTab,
+		};
+	}
+	return {
+		emsLightLearningTab: source.emsLightLearningTab,
+		emsLightPolicyTab: source.emsLightPolicyTab,
+		emsLightIntentTab: source.emsLightIntentTab,
+	};
+}
+
 const {
 	globalTab,
 	wallboxTab,
 	batteryTab,
 	immersionHeaterTab,
 	dynamicTariffTab,
-	emsLightLearningTab,
-	emsLightPolicyTab,
-	emsLightIntentTab,
 	climateTab,
+	emsLightTab,
 	...rest
 } = items;
+
+const { emsLightLearningTab, emsLightPolicyTab, emsLightIntentTab } = extractEmsLightTabs(items);
 
 if (Object.keys(rest).length > 0) {
 	console.warn("Unexpected extra tabs:", Object.keys(rest));
 }
 
-climateTab.label = "Klima";
+if (climateTab) climateTab.label = "Klima";
+if (dynamicTariffTab) dynamicTariffTab.label = "Tarif";
 emsLightLearningTab.label = "Learning";
 emsLightPolicyTab.label = "Policy";
 emsLightIntentTab.label = "Intent";
-
-const emsLightTab = {
-	type: "panel",
-	label: "EMS-Light",
-	items: {
-		emsLightInnerTabs: {
-			type: "tabs",
-			items: {
-				emsLightLearningTab,
-				emsLightPolicyTab,
-				emsLightIntentTab,
-			},
-		},
-	},
-};
 
 config.items = {
 	globalTab,
@@ -57,7 +60,9 @@ config.items = {
 	immersionHeaterTab,
 	climateTab,
 	dynamicTariffTab,
-	emsLightTab,
+	emsLightLearningTab,
+	emsLightPolicyTab,
+	emsLightIntentTab,
 };
 
 fs.writeFileSync(configPath, `${JSON.stringify(config, null, "\t")}\n`);

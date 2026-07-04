@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.98",
+		"version": "0.1.99",
 		"news": {
+			"0.1.99": {
+				"en": "Fix empty EMS-Light admin tab (flat tabs); pre-fill Wohnzimmer EG SmartThings mapping defaults for AC unit 1",
+				"de": "Leeren EMS-Light-Admin-Tab behoben (flache Tabs); SmartThings-Mapping-Vorgaben für Wohnzimmer EG (Unit 1) vorbefüllt"
+			},
 			"0.1.98": {
 				"en": "Admin menu: Klima tab visible after Heizstab; EMS-Light Learning/Policy/Intent grouped under one tab",
 				"de": "Admin-Menü: Klima-Tab direkt nach Heizstab sichtbar; EMS-Light Learning/Policy/Intent unter einem Tab gruppiert"

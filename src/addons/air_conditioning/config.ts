@@ -41,6 +41,11 @@ function parseOptionalHumidity(c: Record<string, unknown>, key: string): number 
 	return v > 0 ? v : null;
 }
 
+function effectiveEstimatedPowerW(c: Record<string, unknown>, key: string, def: number): number {
+	const n = numField(c, key, def);
+	return n > 0 ? n : def;
+}
+
 export function acUnitConfigFromAdapter(config: unknown, index: number): AcUnitConfig {
 	const c = configRecord(config);
 	const p = `ac_u${index}_`;
@@ -67,7 +72,7 @@ export function acUnitConfigFromAdapter(config: unknown, index: number): AcUnitC
 		activeFrom: strField(c, `${p}active_from`, "08:00"),
 		activeUntil: strField(c, `${p}active_until`, "20:00"),
 		hardOffAt: strField(c, `${p}hard_off_at`, "20:00"),
-		estimatedPowerW: Math.max(0, numField(c, `${p}estimated_power_w`, 700)),
+		estimatedPowerW: effectiveEstimatedPowerW(c, `${p}estimated_power_w`, 700),
 		cleaningAfterRun: boolField(c, `${p}cleaning_after_run`, true),
 		cleaningDelayMin: Math.max(0, numField(c, `${p}cleaning_delay_min`, 1)),
 		cleaningDurationMin: Math.max(0, numField(c, `${p}cleaning_duration_min`, 30)),

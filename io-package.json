@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.112",
+		"version": "0.1.113",
 		"news": {
+			"0.1.113": {
+				"en": "AC stats: count live session while feedback catches up; fix estimated power W=0 blocking kWh",
+				"de": "Klima-Statistik: live zählen auch bei Feedback-Verzögerung; Nennleistung 0 blockiert kWh nicht mehr"
+			},
 			"0.1.112": {
 				"en": "AC cleaning: persist schedule, info logs, no timer reset on repeat stop; Samsung cleaning uses on",
 				"de": "Klima Reinigung: Timer persistieren, Info-Logs, kein Timer-Reset bei Stop-Spam; Samsung Reinigung mit on"

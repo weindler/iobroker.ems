@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.113] – 2026-07-04
+
+### Fixed
+
+- **Klima-Statistik:** Laufzeit/kWh zählen live ab Start-Sequenz (nicht erst wenn `feedback_switch` nachzieht); Nennleistung 0 im Admin → Fallback 700 W für Verbrauchsberechnung.
+
+---
+
 ## [0.1.112] – 2026-07-04
 
 ### Fixed

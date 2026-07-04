@@ -67,6 +67,17 @@ function allocatedPowerW(runningCount, outdoorMax, unitEstimated) {
 function stopRetryReady(up, nowMs) {
     return !up.lastStopAtMs || nowMs - up.lastStopAtMs >= constants_1.AC_STOP_RETRY_MS;
 }
+/** Statistik: auch live zählen wenn Start gesendet, Feedback noch nachzieht (bis Stopp bestätigt). */
+function acStatsDeviceActive(up, live, fbOn, upRunning) {
+    if (fbOn)
+        return true;
+    if (!live && upRunning)
+        return true;
+    if (!live || !up.lastStartAtMs)
+        return false;
+    const stoppedAfterStart = up.lastStopAtMs != null && up.lastStopAtMs >= up.lastStartAtMs;
+    return !stoppedAfterStart;
+}
 function scheduleCleaningAfterStop(host, unit, up, nowMs) {
     if (!unit.cleaningAfterRun || up.cleaningActive) {
         return;
@@ -238,16 +249,17 @@ async function runAcRuntimeTickBody(host) {
             up.running = false;
         }
         const ids = (0, ensure_states_1.acUnitRuntimeStates)(unit.index);
-        const deviceActive = (0, time_1.switchIsOn)(fb.value) || (!live && up.running);
-        const estPower = deviceActive && unit.estimatedPowerW > 0
-            ? allocatedPowerW(runningCount || (deviceActive ? 1 : 0), config.outdoorMaxPowerW, unit.estimatedPowerW)
+        const fbOn = (0, time_1.switchIsOn)(fb.value);
+        const deviceActive = acStatsDeviceActive(up, live, fbOn, up.running);
+        const estPower = deviceActive
+            ? allocatedPowerW(runningCount || 1, config.outdoorMaxPowerW, unit.estimatedPowerW)
             : 0;
         await (0, state_write_1.setStateIfChanged)(host, ids.state, fsm.state);
         await (0, state_write_1.setStateIfChanged)(host, ids.reasonDe, fsm.reasonDe);
         await (0, state_write_1.setStateIfChanged)(host, ids.roomTempC, temp.num ?? "");
         await (0, state_write_1.setStateIfChanged)(host, ids.roomHumidityPct, hum.num ?? "");
         await (0, state_write_1.setStateIfChanged)(host, ids.feedbackSwitch, fb.value == null ? "" : String(fb.value));
-        await (0, state_write_1.setStateIfChanged)(host, ids.running, (0, time_1.switchIsOn)(fb.value));
+        await (0, state_write_1.setStateIfChanged)(host, ids.running, fbOn);
         await (0, state_write_1.setStateIfChanged)(host, ids.cleaningActive, up.cleaningActive);
         await (0, state_write_1.setStateIfChanged)(host, ids.modePurpose, fsm.modePurpose);
         await (0, state_write_1.setStateIfChanged)(host, ids.estimatedPowerW, estPower);

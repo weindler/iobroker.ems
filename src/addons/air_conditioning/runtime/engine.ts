@@ -93,6 +93,15 @@ function stopRetryReady(up: AcUnitPersist, nowMs: number): boolean {
 	return !up.lastStopAtMs || nowMs - up.lastStopAtMs >= AC_STOP_RETRY_MS;
 }
 
+/** Statistik: auch live zählen wenn Start gesendet, Feedback noch nachzieht (bis Stopp bestätigt). */
+function acStatsDeviceActive(up: AcUnitPersist, live: boolean, fbOn: boolean, upRunning: boolean): boolean {
+	if (fbOn) return true;
+	if (!live && upRunning) return true;
+	if (!live || !up.lastStartAtMs) return false;
+	const stoppedAfterStart = up.lastStopAtMs != null && up.lastStopAtMs >= up.lastStartAtMs;
+	return !stoppedAfterStart;
+}
+
 function scheduleCleaningAfterStop(
 	host: AcRuntimeHost,
 	unit: AcUnitConfig,
@@ -301,17 +310,17 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		}
 
 		const ids = acUnitRuntimeStates(unit.index);
-		const deviceActive = switchIsOn(fb.value) || (!live && up.running);
-		const estPower =
-			deviceActive && unit.estimatedPowerW > 0
-				? allocatedPowerW(runningCount || (deviceActive ? 1 : 0), config.outdoorMaxPowerW, unit.estimatedPowerW)
-				: 0;
+		const fbOn = switchIsOn(fb.value);
+		const deviceActive = acStatsDeviceActive(up, live, fbOn, up.running);
+		const estPower = deviceActive
+			? allocatedPowerW(runningCount || 1, config.outdoorMaxPowerW, unit.estimatedPowerW)
+			: 0;
 		await setStateIfChanged(host, ids.state, fsm.state);
 		await setStateIfChanged(host, ids.reasonDe, fsm.reasonDe);
 		await setStateIfChanged(host, ids.roomTempC, temp.num ?? "");
 		await setStateIfChanged(host, ids.roomHumidityPct, hum.num ?? "");
 		await setStateIfChanged(host, ids.feedbackSwitch, fb.value == null ? "" : String(fb.value));
-		await setStateIfChanged(host, ids.running, switchIsOn(fb.value));
+		await setStateIfChanged(host, ids.running, fbOn);
 		await setStateIfChanged(host, ids.cleaningActive, up.cleaningActive);
 		await setStateIfChanged(host, ids.modePurpose, fsm.modePurpose);
 		await setStateIfChanged(host, ids.estimatedPowerW, estPower);

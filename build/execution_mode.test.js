@@ -11,12 +11,14 @@ const DRYRUN_FP = (0, execution_mode_js_1.executionModesConfigFingerprint)({
     wb_addon_mode: "dryrun",
     bat_addon_mode: "dryrun",
     ih_addon_mode: "dryrun",
+    ac_addon_mode: "dryrun",
 });
 const LIVE_IH_FP = (0, execution_mode_js_1.executionModesConfigFingerprint)({
     global_execution_mode: "live",
     wb_addon_mode: "dryrun",
     bat_addon_mode: "dryrun",
     ih_addon_mode: "live",
+    ac_addon_mode: "dryrun",
 });
 (0, node_test_1.describe)("execution mode", () => {
     (0, node_test_1.it)("parseMode accepts live and defaults unknown to dryrun", () => {
@@ -70,6 +72,7 @@ const LIVE_IH_FP = (0, execution_mode_js_1.executionModesConfigFingerprint)({
         const store = new Map([
             ["global.execution_mode", { val: "live", ack: true }],
             ["addons.immersion_heater.mode", { val: "live", ack: true }],
+            ["addons.air_conditioning.mode", { val: "dryrun", ack: true }],
             ["addons.battery.mode", { val: "dryrun", ack: true }],
             ["addons.wallbox.mode", { val: "dryrun", ack: true }],
             [execution_mode_js_1.EXECUTION_MODE_CONFIG_FINGERPRINT, { val: DRYRUN_FP, ack: true }],
@@ -84,6 +87,7 @@ const LIVE_IH_FP = (0, execution_mode_js_1.executionModesConfigFingerprint)({
         await (0, execution_mode_js_1.syncExecutionModesFromConfig)(host, {
             global_execution_mode: "dryrun",
             ih_addon_mode: "dryrun",
+            ac_addon_mode: "dryrun",
             bat_addon_mode: "dryrun",
             wb_addon_mode: "dryrun",
         });
@@ -109,6 +113,7 @@ const LIVE_IH_FP = (0, execution_mode_js_1.executionModesConfigFingerprint)({
         await (0, execution_mode_js_1.syncExecutionModesFromConfig)(host, {
             global_execution_mode: "live",
             ih_addon_mode: "live",
+            ac_addon_mode: "dryrun",
             bat_addon_mode: "dryrun",
             wb_addon_mode: "dryrun",
         });
@@ -128,6 +133,7 @@ const LIVE_IH_FP = (0, execution_mode_js_1.executionModesConfigFingerprint)({
         await (0, execution_mode_js_1.syncExecutionModesFromConfig)(host, {
             global_execution_mode: "live",
             ih_addon_mode: "live",
+            ac_addon_mode: "dryrun",
             bat_addon_mode: "dryrun",
             wb_addon_mode: "dryrun",
         });

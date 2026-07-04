@@ -25,6 +25,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const utils = __importStar(require("@iobroker/adapter-core"));
 const battery_1 = require("./addons/battery");
+const air_conditioning_1 = require("./addons/air_conditioning");
 const immersion_heater_1 = require("./addons/immersion_heater");
 const dynamic_tariff_1 = require("./addons/dynamic_tariff");
 const failsafe_1 = require("./addons/wallbox/failsafe");
@@ -121,6 +122,7 @@ class Ems extends utils.Adapter {
         await this.step("wallbox module", () => (0, wallbox_1.initWallboxModule)(this));
         await this.step("battery module", () => (0, battery_1.initBatteryModule)(this));
         await this.step("immersion heater module", () => (0, immersion_heater_1.initImmersionHeaterModule)(this));
+        await this.step("air conditioning module", () => (0, air_conditioning_1.initAirConditioningModule)(this));
         await this.step("dynamic tariff module", () => (0, dynamic_tariff_1.initDynamicTariffModule)(this));
         await this.step("failsafe runner", async () => (0, failsafe_runner_1.startFailsafeRunner)(this));
         // EMS-Light/Learning explizit isoliert: muss unabhängig von Add-on-Fehlern laufen.
@@ -146,6 +148,7 @@ class Ems extends utils.Adapter {
         void (0, battery_1.batteryUnloadRestore)(this).catch(() => undefined);
         (0, battery_1.stopBatteryModule)(null);
         (0, immersion_heater_1.stopImmersionHeaterModule)();
+        (0, air_conditioning_1.stopAirConditioningModule)();
         (0, wallbox_1.stopWallboxModule)();
         (0, failsafe_runner_1.stopFailsafeRunner)();
         callback();
@@ -155,6 +158,7 @@ class Ems extends utils.Adapter {
             await (0, execution_mode_1.handleExecutionModeStateChange)(this, id, state);
             (0, battery_1.handleBatteryAdapterStateChange)(this, id);
             (0, immersion_heater_1.handleImmersionHeaterStateChange)(this, id);
+            (0, air_conditioning_1.handleAirConditioningStateChange)(this, id);
             (0, policy_1.handleGlobalModesStateChange)(this.namespace, id);
             (0, intent_1.handleIntentStateChange)(this.namespace, id, state);
             (0, wallbox_1.handleWallboxForeignStateChange)(this.namespace, id);

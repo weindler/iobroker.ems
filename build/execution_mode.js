@@ -12,11 +12,12 @@ exports.EXECUTION_MODE_STATES = {
     live: exports.EXECUTION_MODE_STATE_LABELS.live,
 };
 /** Addons mit dryrun/live-Schalter (Admin + Objektbaum). */
-exports.EXECUTION_MODE_ADDON_IDS = ["wallbox", "battery", "immersion_heater"];
+exports.EXECUTION_MODE_ADDON_IDS = ["wallbox", "battery", "immersion_heater", "air_conditioning"];
 const ADDON_EXECUTION_MODE_NAMES = {
     wallbox: "Wallbox: Ausführung (dryrun|live)",
     battery: "Batterie: Ausführung (dryrun|live)",
     immersion_heater: "Heizstab: Ausführung (dryrun|live)",
+    air_conditioning: "Klima: Ausführung (dryrun|live)",
 };
 /** Interner Fingerabdruck der zuletzt synchronisierten Admin-Config (nicht manuell setzen). */
 exports.EXECUTION_MODE_CONFIG_FINGERPRINT = "global.execution_mode_config_fingerprint";
@@ -27,6 +28,7 @@ function executionModesFromConfig(config) {
         wallbox: parseMode(c.wb_addon_mode ?? "dryrun"),
         battery: parseMode(c.bat_addon_mode ?? "dryrun"),
         immersion_heater: parseMode(c.ih_addon_mode ?? "dryrun"),
+        air_conditioning: parseMode(c.ac_addon_mode ?? "dryrun"),
     };
 }
 exports.executionModesFromConfig = executionModesFromConfig;
@@ -78,6 +80,7 @@ async function applyExecutionModesFromConfig(host, modes) {
     await host.setStateAsync((0, tree_paths_1.addonMode)("wallbox"), { val: modes.wallbox, ack: true });
     await host.setStateAsync((0, tree_paths_1.addonMode)("battery"), { val: modes.battery, ack: true });
     await host.setStateAsync((0, tree_paths_1.addonMode)("immersion_heater"), { val: modes.immersion_heater, ack: true });
+    await host.setStateAsync((0, tree_paths_1.addonMode)("air_conditioning"), { val: modes.air_conditioning, ack: true });
 }
 async function anyExecutionModeEmpty(host) {
     const ids = [
@@ -129,6 +132,7 @@ async function alignAdminConfigWithRuntimeStates(host, config) {
         [(0, tree_paths_1.addonMode)("wallbox"), "wb_addon_mode"],
         [(0, tree_paths_1.addonMode)("battery"), "bat_addon_mode"],
         [(0, tree_paths_1.addonMode)("immersion_heater"), "ih_addon_mode"],
+        [(0, tree_paths_1.addonMode)("air_conditioning"), "ac_addon_mode"],
     ];
     for (const [stateId, configKey] of pairs) {
         const st = await host.getStateAsync(stateId);
@@ -195,6 +199,8 @@ function executionModeConfigKeyForRelativeId(relativeId) {
             return "bat_addon_mode";
         case (0, tree_paths_1.addonMode)("immersion_heater"):
             return "ih_addon_mode";
+        case (0, tree_paths_1.addonMode)("air_conditioning"):
+            return "ac_addon_mode";
         default:
             return null;
     }

@@ -2077,1103 +2077,9 @@
 				}
 			}
 		},
-		"dynamicTariffTab": {
-			"type": "panel",
-			"label": "Dynamischer Tarif",
-			"items": {
-				"dtIntro": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "Read-only Preis-Mapping für EMS-Light live.price.now_ct_per_kwh. Tibber liefert €/kWh (z. B. 0.1576); der Live-Cache speichert ct/kWh (15.76)."
-				},
-				"hDtPrice": {
-					"type": "header",
-					"size": 2,
-					"text": "price_now_ct_per_kwh — Strompreis jetzt (Lesen)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"dt_price_now_target": {
-					"type": "objectId",
-					"label": "Ziel-State",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 9,
-					"lg": 9,
-					"xl": 9
-				},
-				"dt_price_now_enabled": {
-					"type": "checkbox",
-					"label": "Mapping aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 12,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				}
-			}
-		},
-		"emsLightLearningTab": {
-			"type": "panel",
-			"label": "EMS-Light Learning",
-			"items": {
-				"elIntro": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "Phase 2A–2E: PV-Bias, PV-Horizon, Weather-, Price-Statistics- und Price-Forecast-Learning (read-only). Ausgabe unter learning.pv_bias.*, learning.pv_horizon.*, learning.weather.*, learning.price_learning.* und learning.price_forecast.*"
-				},
-				"learning_pv_bias_enabled": {
-					"type": "checkbox",
-					"label": "PV-Bias Learning aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_pv_bias_interval_sec": {
-					"type": "number",
-					"label": "Update-Intervall (Sek.)",
-					"min": 300,
-					"max": 86400,
-					"default": 3600,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"hPvBiasFreeze": {
-					"type": "header",
-					"size": 2,
-					"text": "Forecast Freeze — Snapshot für reproduzierbaren Bias",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_pv_bias_forecast_freeze_enabled": {
-					"type": "checkbox",
-					"label": "Forecast-Freeze aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_pv_bias_forecast_freeze_time": {
-					"type": "text",
-					"label": "Freeze-Zeit (HH:MM, z. B. 06:00)",
-					"default": "06:00",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"hPvBiasActualSnapshot": {
-					"type": "header",
-					"size": 2,
-					"text": "Ist-Snapshot — Tagesertrag DAY_ENERGY (verhindert MAX-Fehler bei Morgen-Reset)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_pv_bias_actual_snapshot_enabled": {
-					"type": "checkbox",
-					"label": "Ist-Snapshot aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_pv_bias_actual_snapshot_time": {
-					"type": "text",
-					"label": "Ist-Snapshot-Zeit (HH:MM, z. B. 23:58)",
-					"default": "23:58",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"hPvBiasHistory": {
-					"type": "header",
-					"size": 2,
-					"text": "Historie — PV-Ist (DAY_ENERGY): EMS speichert einen kWh-Wert pro Tag (60s-Tick + onChange) in energy_daily_v1.json — history.0 für den Zähler nicht nötig. Forecast-Historie nur wenn Freeze aus.",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_pv_bias_history_actual_state": {
-					"type": "objectId",
-					"label": "PV-Ist Tageswert (Historie)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"learning_pv_bias_history_forecast_state": {
-					"type": "objectId",
-					"label": "PV-Rohforecast Tageswert (Historie, nur ohne Freeze)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"hPvBiasRaw": {
-					"type": "header",
-					"size": 2,
-					"text": "Live-Rohforecast zum Freeze-Zeitpunkt (optional — Fallback: forecast.pv.today_kwh / tomorrow_kwh)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_pv_bias_raw_today_state": {
-					"type": "objectId",
-					"label": "Rohforecast heute (kWh)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"learning_pv_bias_raw_tomorrow_state": {
-					"type": "objectId",
-					"label": "Rohforecast morgen (kWh)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"hPvHorizon": {
-					"type": "header",
-					"size": 2,
-					"text": "Phase 2B — PV-Horizon Erweiterung (Tag 3–7)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"hPvHorizonHelp": {
-					"type": "staticText",
-					"text": "Heute und morgen liefert Phase 2A (PV-Bias) unter learning.pv_bias.* — Horizon dupliziert diese Tage nicht, wenn oben Rohforecast heute/morgen konfiguriert sind. Hier nur die Erweiterung Tag 3–7 (kWh, z. B. Bright Sky: Tag3=brightsky.0.daily.02.solar_estimate … Tag7=brightsky.0.daily.06.solar_estimate). Ohne Tag-3–7-Quellen läuft PV-Bias normal weiter; Horizon status=no_extended_days.",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_pv_horizon_enabled": {
-					"type": "checkbox",
-					"label": "PV-Horizon Erweiterung (Tag 3–7) aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_pv_horizon_day3_raw_state": {
-					"type": "objectId",
-					"label": "Tag 3 (+2 Tage) Roh-Schätzung kWh — z. B. brightsky.0.daily.02.solar_estimate",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"learning_pv_horizon_day4_raw_state": {
-					"type": "objectId",
-					"label": "Tag 4 (+3 Tage) — z. B. brightsky.0.daily.03.solar_estimate",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"learning_pv_horizon_day5_raw_state": {
-					"type": "objectId",
-					"label": "Tag 5 (+4 Tage) — z. B. brightsky.0.daily.04.solar_estimate",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"learning_pv_horizon_day6_raw_state": {
-					"type": "objectId",
-					"label": "Tag 6 (+5 Tage) — z. B. brightsky.0.daily.05.solar_estimate",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"learning_pv_horizon_day7_raw_state": {
-					"type": "objectId",
-					"label": "Tag 7 (+6 Tage) — z. B. brightsky.0.daily.06.solar_estimate",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"hWeatherLearning": {
-					"type": "header",
-					"size": 2,
-					"text": "Phase 2C — Weather Learning V1 (Forecast ↔ Ist)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"hWeatherLearningHelp": {
-					"type": "staticText",
-					"text": "Vergleicht BrightSky-Forecast mit Wetterstation (Kalendertag 00:00–23:59). Fehlende Werte ≠ 0. Alle Felder optional — fehlende Mappings stoppen das Modul nicht. Persistenz: data/learning/weather/YYYY-MM-DD.json",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_weather_enabled": {
-					"type": "checkbox",
-					"label": "Weather Learning aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_weather_interval_sec": {
-					"type": "number",
-					"label": "Update-Intervall (Sek.)",
-					"min": 300,
-					"max": 86400,
-					"default": 3600,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"hWeatherForecast": {
-					"type": "header",
-					"size": 3,
-					"text": "Forecast (BrightSky o. ä.)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_weather_forecast_temp_state": {
-					"type": "objectId",
-					"label": "Forecast Temperatur (°C)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"learning_weather_forecast_cloud_state": {
-					"type": "objectId",
-					"label": "Forecast Bewölkung (%)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"learning_weather_forecast_rain_state": {
-					"type": "objectId",
-					"label": "Forecast Niederschlag (mm)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"learning_weather_forecast_wind_state": {
-					"type": "objectId",
-					"label": "Forecast Wind (km/h, optional)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"hWeatherActual": {
-					"type": "header",
-					"size": 3,
-					"text": "Ist (Wetterstation)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_weather_actual_temp_state": {
-					"type": "objectId",
-					"label": "Ist Temperatur (°C)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"learning_weather_actual_cloud_state": {
-					"type": "objectId",
-					"label": "Ist Bewölkung (%)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"learning_weather_actual_rain_state": {
-					"type": "objectId",
-					"label": "Ist Niederschlag (mm)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"learning_weather_actual_wind_state": {
-					"type": "objectId",
-					"label": "Ist Wind (km/h, optional)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"hPriceLearning": {
-					"type": "header",
-					"size": 5,
-					"text": "Phase 2D — Price Learning (historische Strompreise)"
-				},
-				"hPriceLearningHelp": {
-					"type": "staticText",
-					"text": "Liest historische Preise aus history.0. Quelle frei wählbar — Tibber CurrentPrice.total (€/kWh, empfohlen) oder live.price.now_ct_per_kwh (ct/kWh). Einheit wird automatisch erkannt; Ausgabe learning.price_learning.* immer in €/kWh. Kein zusätzlicher Timer — läuft im PV-Bias-Lernzyklus.",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_price_enabled": {
-					"type": "checkbox",
-					"label": "Price Learning aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_price_lookback_days": {
-					"type": "number",
-					"label": "Lookback (Tage)",
-					"min": 7,
-					"max": 365,
-					"default": 90,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_price_source_state": {
-					"type": "objectId",
-					"label": "Preis-State (optional, z. B. tibberlink.…CurrentPrice.total in €/kWh)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"hPriceForecastLearning": {
-					"type": "header",
-					"size": 5,
-					"text": "Phase 2E — Price Forecast Learning (Forecast ↔ Realität)"
-				},
-				"hPriceForecastLearningHelp": {
-					"type": "staticText",
-					"text": "Zwei Freezes: PricesToday.json (heute, Standard 06:00) und PricesTomorrow.json (morgen, Standard 14:00). Vergleicht eingefrorene Stunden mit Ist (CurrentPrice.total + history.0). Kein zusätzlicher Timer.",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_price_forecast_enabled": {
-					"type": "checkbox",
-					"label": "Price Forecast Learning aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_price_forecast_freeze_enabled": {
-					"type": "checkbox",
-					"label": "Forecast-Freeze aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_price_forecast_freeze_time": {
-					"type": "text",
-					"label": "Morgen-Freeze (HH:MM, Standard 14:00)",
-					"default": "14:00",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_price_forecast_today_freeze_enabled": {
-					"type": "checkbox",
-					"label": "Heute-Freeze aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_price_forecast_today_freeze_time": {
-					"type": "text",
-					"label": "Heute-Freeze (HH:MM, Standard 06:00)",
-					"default": "06:00",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_price_forecast_lookback_days": {
-					"type": "number",
-					"label": "Lookback (Tage)",
-					"min": 7,
-					"max": 365,
-					"default": 90,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_price_forecast_tomorrow_json_state": {
-					"type": "objectId",
-					"label": "Forecast morgen — PricesTomorrow.json",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_price_forecast_today_json_state": {
-					"type": "objectId",
-					"label": "Forecast heute — PricesToday.json",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_price_forecast_actual_state": {
-					"type": "objectId",
-					"label": "Ist-Preis — CurrentPrice.total (€/kWh)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"hHouseLoadLearning": {
-					"type": "header",
-					"size": 5,
-					"text": "Phase 2F — House Load Learning (Hauslast-Profile)"
-				},
-				"hHouseLoadLearningHelp": {
-					"type": "staticText",
-					"text": "Lernt reale Hauslast-Profile (Saison → Wochentag → Tagessegment). Standard: addons.battery.mapping.consumption_w. EMS sammelt stündliche Mittelwerte selbst (60s-Tick + onChange) — history.0 für consumption_w nicht nötig. Diagnose: learning.house_load.history_mode = ems_rollup. Read-only.",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_house_load_enabled": {
-					"type": "checkbox",
-					"label": "House Load Learning aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_house_load_lookback_days": {
-					"type": "number",
-					"label": "Lookback (Tage)",
-					"min": 7,
-					"max": 365,
-					"default": 90,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_house_load_power_state": {
-					"type": "objectId",
-					"label": "Hauslast-State (optional, z. B. sonnen.0.status.consumption in W)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"hThermalRuntimeLearning": {
-					"type": "header",
-					"size": 5,
-					"text": "Phase 2G — Thermal Runtime Learning (Puffer-Laufzeit)"
-				},
-				"hThermalRuntimeLearningHelp": {
-					"type": "staticText",
-					"text": "Lernt Abkühl-Segmente (lokaler Peak → Nachheizen-Schwelle) aus Temperatur-History — kein fester Start bei „voll“. Überschuss kann den Puffer überall im Betriebsband (z. B. 48–60 °C) aufheizen. Standard-Quelle: addons.immersion_heater.mapping.buffer_temp_c. Read-only. history.0 empfohlen.",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_thermal_runtime_enabled": {
-					"type": "checkbox",
-					"label": "Thermal Runtime Learning aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_thermal_runtime_lookback_days": {
-					"type": "number",
-					"label": "Lookback (Tage)",
-					"min": 7,
-					"max": 365,
-					"default": 90,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_thermal_runtime_temperature_state": {
-					"type": "objectId",
-					"label": "Temperatur-State (optional, z. B. Puffer Mitte °C)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_thermal_runtime_full_threshold_c": {
-					"type": "number",
-					"label": "Oberes Betriebsband (°C, Schätz-Fallback)",
-					"min": 1,
-					"max": 110,
-					"default": 60,
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"learning_thermal_runtime_empty_threshold_c": {
-					"type": "number",
-					"label": "Nachheizen ab (°C, Untergrenze)",
-					"min": 0,
-					"max": 109,
-					"default": 48,
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"learning_thermal_runtime_min_runtime_hours": {
-					"type": "number",
-					"label": "Min. Laufzeit (h)",
-					"min": 0.1,
-					"max": 24,
-					"default": 0.5,
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"learning_thermal_runtime_max_runtime_hours": {
-					"type": "number",
-					"label": "Max. Laufzeit (h)",
-					"min": 1,
-					"max": 168,
-					"default": 72,
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"hBatteryRuntimeLearning": {
-					"type": "header",
-					"size": 5,
-					"text": "Phase 2H — Battery Runtime Learning (Batterie-Ist-Verhalten)"
-				},
-				"hBatteryRuntimeLearningHelp": {
-					"type": "staticText",
-					"text": "Lernt Nachtentladung, Lade-/Entladeraten und Vollladung. SOC und Astro: history.0 onChange empfohlen. Batterieleistung (pacTotal): EMS sammelt stündliche Maxima selbst (60s-Tick + onChange) — history.0 für Leistung nicht nötig. Vollladung/Top-Off: mapping.seconds_since_full_charge. Bei Sonnen pacTotal „Leistung invertieren“. Diagnose: learning.battery_runtime.power_history_mode = ems_rollup. Read-only.",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_battery_runtime_enabled": {
-					"type": "checkbox",
-					"label": "Battery Runtime Learning aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_battery_runtime_lookback_days": {
-					"type": "number",
-					"label": "Lookback (Tage)",
-					"min": 7,
-					"max": 365,
-					"default": 90,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"learning_battery_runtime_soc_state": {
-					"type": "objectId",
-					"label": "SOC-State (optional, z. B. sonnen.0.status.userSoc)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_battery_runtime_power_state": {
-					"type": "objectId",
-					"label": "Batterie-Leistung W (optional, intern + laden / − entladen)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 9,
-					"lg": 9,
-					"xl": 9
-				},
-				"learning_battery_runtime_power_invert": {
-					"type": "checkbox",
-					"label": "Leistung invertieren",
-					"default": false,
-					"xs": 12,
-					"sm": 12,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"learning_battery_runtime_capacity_state": {
-					"type": "objectId",
-					"label": "Kapazität kWh (optional, für Nacht-kWh)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_battery_runtime_seconds_since_full_state": {
-					"type": "objectId",
-					"label": "Sekunden seit Vollladung (optional — überschreibt battery.mapping)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_battery_runtime_full_charge_soc": {
-					"type": "number",
-					"label": "Vollladung SOC-Fallback (%) — nur wenn Geräte-State fehlt",
-					"min": 99,
-					"max": 100,
-					"default": 100,
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"learning_battery_runtime_topoff_interval_days": {
-					"type": "number",
-					"label": "Top-Off Intervall (Tage, Policy)",
-					"min": 1,
-					"max": 90,
-					"default": 20,
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"learning_battery_runtime_night_start": {
-					"type": "text",
-					"label": "Nacht Fallback Start (HH:MM)",
-					"default": "22:00",
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"learning_battery_runtime_night_end": {
-					"type": "text",
-					"label": "Nacht Fallback Ende (HH:MM)",
-					"default": "06:00",
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"learning_battery_runtime_night_astro_enabled": {
-					"type": "checkbox",
-					"label": "Nachtfenster aus Astro-History",
-					"default": false,
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"learning_battery_runtime_night_start_state": {
-					"type": "objectId",
-					"label": "Astro Nachtbeginn (z. B. javascript.0.variables.astro.dusk)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"learning_battery_runtime_night_end_state": {
-					"type": "objectId",
-					"label": "Astro Nachtende (z. B. javascript.0.variables.astro.dawn)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				}
-			}
-		},
-		"emsLightPolicyTab": {
-			"type": "panel",
-			"label": "EMS-Light Policy",
-			"items": {
-				"policyIntro": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "Phase 3A: Globale Policy-Grundlage (read-only). Keine Geräteentscheidungen. Leere Felder bleiben unbekannt — kein stiller Fallback auf 0."
-				},
-				"global_policy_house_fuse_limit_w": {
-					"type": "number",
-					"label": "Haus-Sicherung (W, optional)",
-					"min": 0,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"global_policy_max_grid_import_w": {
-					"type": "number",
-					"label": "Max. Netzbezug (W, optional)",
-					"min": 0,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"global_policy_grid_import_allowed": {
-					"type": "checkbox",
-					"label": "Netzbezug grundsätzlich erlaubt (optional)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"global_policy_energy_priority_json": {
-					"type": "text",
-					"label": "Energie-Priorität (JSON-Array, optional)",
-					"default": "",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"global_policy_mutual_exclusions_json": {
-					"type": "text",
-					"label": "Mutual Exclusions (JSON-Array, optional)",
-					"default": "",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				}
-			}
-		},
-		"emsLightIntentTab": {
-			"type": "panel",
-			"label": "EMS-Light User Intent",
-			"items": {
-				"intentIntro": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "Phase 3B: Benutzeraufträge erfassen und normalisieren (read-only). Keine Planner- oder Geräteentscheidungen. Laufzeit-Eingabe: user_intent.inputs.iobroker.wallbox.request_json. Ausgabe: user_intent.wallbox.* (read-only)."
-				},
-				"intentEvccHint": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "EVCC-Datenpunkt-Mappings für Wallbox und Intent: Tab „Wallbox“. Dieser Tab enthält nur Intent-Defaults und ioBroker-Request-Einstellungen."
-				},
-				"hIntentDefaults": {
-					"type": "header",
-					"size": 2,
-					"text": "Intent-Defaults (nur wenn keine höherwertige Quelle)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"intent_default_charge_strategy": {
-					"type": "select",
-					"label": "Default Ladestrategie (optional)",
-					"options": [
-						{
-							"label": "(kein Default)",
-							"value": ""
-						},
-						{
-							"label": "Off",
-							"value": "off"
-						},
-						{
-							"label": "Min+PV",
-							"value": "min_pv"
-						},
-						{
-							"label": "PV",
-							"value": "pv"
-						},
-						{
-							"label": "Sofort",
-							"value": "immediate"
-						}
-					],
-					"default": "",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"intent_default_target_soc_pct": {
-					"type": "text",
-					"label": "Default Ziel-SOC % (optional, leer = kein Default)",
-					"placeholder": "z. B. 80",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"intent_timezone": {
-					"type": "text",
-					"label": "Zeitzone für Deadlines",
-					"default": "Europe/Berlin",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"intent_manual_override_max_minutes": {
-					"type": "text",
-					"label": "Max. Manual-Override-Dauer (Min., optional, leer = unbegrenzt)",
-					"placeholder": "z. B. 120",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				}
-			}
-		},
 		"climateTab": {
 			"type": "panel",
-			"label": "Klimaanlage",
+			"label": "Klima",
 			"items": {
 				"introAc": {
 					"type": "staticText",
@@ -6069,6 +4975,1111 @@
 					"md": 9,
 					"lg": 9,
 					"xl": 9
+				}
+			}
+		},
+		"dynamicTariffTab": {
+			"type": "panel",
+			"label": "Dynamischer Tarif",
+			"items": {
+				"dtIntro": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Read-only Preis-Mapping für EMS-Light live.price.now_ct_per_kwh. Tibber liefert €/kWh (z. B. 0.1576); der Live-Cache speichert ct/kWh (15.76)."
+				},
+				"hDtPrice": {
+					"type": "header",
+					"size": 2,
+					"text": "price_now_ct_per_kwh — Strompreis jetzt (Lesen)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"dt_price_now_target": {
+					"type": "objectId",
+					"label": "Ziel-State",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"dt_price_now_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				}
+			}
+		},
+		"emsLightTab": {
+			"type": "panel",
+			"label": "EMS-Light",
+			"items": {
+				"emsLightInnerTabs": {
+					"type": "tabs",
+					"items": {
+						"emsLightLearningTab": {
+							"type": "panel",
+							"label": "Learning",
+							"items": {
+								"elIntro": {
+									"type": "staticText",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12,
+									"text": "Phase 2A–2E: PV-Bias, PV-Horizon, Weather-, Price-Statistics- und Price-Forecast-Learning (read-only). Ausgabe unter learning.pv_bias.*, learning.pv_horizon.*, learning.weather.*, learning.price_learning.* und learning.price_forecast.*"
+								},
+								"learning_pv_bias_enabled": {
+									"type": "checkbox",
+									"label": "PV-Bias Learning aktiv",
+									"default": true,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_pv_bias_interval_sec": {
+									"type": "number",
+									"label": "Update-Intervall (Sek.)",
+									"min": 300,
+									"max": 86400,
+									"default": 3600,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"hPvBiasFreeze": {
+									"type": "header",
+									"size": 2,
+									"text": "Forecast Freeze — Snapshot für reproduzierbaren Bias",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_pv_bias_forecast_freeze_enabled": {
+									"type": "checkbox",
+									"label": "Forecast-Freeze aktiv",
+									"default": true,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_pv_bias_forecast_freeze_time": {
+									"type": "text",
+									"label": "Freeze-Zeit (HH:MM, z. B. 06:00)",
+									"default": "06:00",
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"hPvBiasActualSnapshot": {
+									"type": "header",
+									"size": 2,
+									"text": "Ist-Snapshot — Tagesertrag DAY_ENERGY (verhindert MAX-Fehler bei Morgen-Reset)",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_pv_bias_actual_snapshot_enabled": {
+									"type": "checkbox",
+									"label": "Ist-Snapshot aktiv",
+									"default": true,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_pv_bias_actual_snapshot_time": {
+									"type": "text",
+									"label": "Ist-Snapshot-Zeit (HH:MM, z. B. 23:58)",
+									"default": "23:58",
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"hPvBiasHistory": {
+									"type": "header",
+									"size": 2,
+									"text": "Historie — PV-Ist (DAY_ENERGY): EMS speichert einen kWh-Wert pro Tag (60s-Tick + onChange) in energy_daily_v1.json — history.0 für den Zähler nicht nötig. Forecast-Historie nur wenn Freeze aus.",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_pv_bias_history_actual_state": {
+									"type": "objectId",
+									"label": "PV-Ist Tageswert (Historie)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								},
+								"learning_pv_bias_history_forecast_state": {
+									"type": "objectId",
+									"label": "PV-Rohforecast Tageswert (Historie, nur ohne Freeze)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								},
+								"hPvBiasRaw": {
+									"type": "header",
+									"size": 2,
+									"text": "Live-Rohforecast zum Freeze-Zeitpunkt (optional — Fallback: forecast.pv.today_kwh / tomorrow_kwh)",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_pv_bias_raw_today_state": {
+									"type": "objectId",
+									"label": "Rohforecast heute (kWh)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								},
+								"learning_pv_bias_raw_tomorrow_state": {
+									"type": "objectId",
+									"label": "Rohforecast morgen (kWh)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								},
+								"hPvHorizon": {
+									"type": "header",
+									"size": 2,
+									"text": "Phase 2B — PV-Horizon Erweiterung (Tag 3–7)",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"hPvHorizonHelp": {
+									"type": "staticText",
+									"text": "Heute und morgen liefert Phase 2A (PV-Bias) unter learning.pv_bias.* — Horizon dupliziert diese Tage nicht, wenn oben Rohforecast heute/morgen konfiguriert sind. Hier nur die Erweiterung Tag 3–7 (kWh, z. B. Bright Sky: Tag3=brightsky.0.daily.02.solar_estimate … Tag7=brightsky.0.daily.06.solar_estimate). Ohne Tag-3–7-Quellen läuft PV-Bias normal weiter; Horizon status=no_extended_days.",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_pv_horizon_enabled": {
+									"type": "checkbox",
+									"label": "PV-Horizon Erweiterung (Tag 3–7) aktiv",
+									"default": true,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_pv_horizon_day3_raw_state": {
+									"type": "objectId",
+									"label": "Tag 3 (+2 Tage) Roh-Schätzung kWh — z. B. brightsky.0.daily.02.solar_estimate",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								},
+								"learning_pv_horizon_day4_raw_state": {
+									"type": "objectId",
+									"label": "Tag 4 (+3 Tage) — z. B. brightsky.0.daily.03.solar_estimate",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								},
+								"learning_pv_horizon_day5_raw_state": {
+									"type": "objectId",
+									"label": "Tag 5 (+4 Tage) — z. B. brightsky.0.daily.04.solar_estimate",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								},
+								"learning_pv_horizon_day6_raw_state": {
+									"type": "objectId",
+									"label": "Tag 6 (+5 Tage) — z. B. brightsky.0.daily.05.solar_estimate",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								},
+								"learning_pv_horizon_day7_raw_state": {
+									"type": "objectId",
+									"label": "Tag 7 (+6 Tage) — z. B. brightsky.0.daily.06.solar_estimate",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								},
+								"hWeatherLearning": {
+									"type": "header",
+									"size": 2,
+									"text": "Phase 2C — Weather Learning V1 (Forecast ↔ Ist)",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"hWeatherLearningHelp": {
+									"type": "staticText",
+									"text": "Vergleicht BrightSky-Forecast mit Wetterstation (Kalendertag 00:00–23:59). Fehlende Werte ≠ 0. Alle Felder optional — fehlende Mappings stoppen das Modul nicht. Persistenz: data/learning/weather/YYYY-MM-DD.json",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_weather_enabled": {
+									"type": "checkbox",
+									"label": "Weather Learning aktiv",
+									"default": true,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_weather_interval_sec": {
+									"type": "number",
+									"label": "Update-Intervall (Sek.)",
+									"min": 300,
+									"max": 86400,
+									"default": 3600,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"hWeatherForecast": {
+									"type": "header",
+									"size": 3,
+									"text": "Forecast (BrightSky o. ä.)",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_weather_forecast_temp_state": {
+									"type": "objectId",
+									"label": "Forecast Temperatur (°C)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								},
+								"learning_weather_forecast_cloud_state": {
+									"type": "objectId",
+									"label": "Forecast Bewölkung (%)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								},
+								"learning_weather_forecast_rain_state": {
+									"type": "objectId",
+									"label": "Forecast Niederschlag (mm)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								},
+								"learning_weather_forecast_wind_state": {
+									"type": "objectId",
+									"label": "Forecast Wind (km/h, optional)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								},
+								"hWeatherActual": {
+									"type": "header",
+									"size": 3,
+									"text": "Ist (Wetterstation)",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_weather_actual_temp_state": {
+									"type": "objectId",
+									"label": "Ist Temperatur (°C)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								},
+								"learning_weather_actual_cloud_state": {
+									"type": "objectId",
+									"label": "Ist Bewölkung (%)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								},
+								"learning_weather_actual_rain_state": {
+									"type": "objectId",
+									"label": "Ist Niederschlag (mm)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								},
+								"learning_weather_actual_wind_state": {
+									"type": "objectId",
+									"label": "Ist Wind (km/h, optional)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								},
+								"hPriceLearning": {
+									"type": "header",
+									"size": 5,
+									"text": "Phase 2D — Price Learning (historische Strompreise)"
+								},
+								"hPriceLearningHelp": {
+									"type": "staticText",
+									"text": "Liest historische Preise aus history.0. Quelle frei wählbar — Tibber CurrentPrice.total (€/kWh, empfohlen) oder live.price.now_ct_per_kwh (ct/kWh). Einheit wird automatisch erkannt; Ausgabe learning.price_learning.* immer in €/kWh. Kein zusätzlicher Timer — läuft im PV-Bias-Lernzyklus.",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_price_enabled": {
+									"type": "checkbox",
+									"label": "Price Learning aktiv",
+									"default": true,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_price_lookback_days": {
+									"type": "number",
+									"label": "Lookback (Tage)",
+									"min": 7,
+									"max": 365,
+									"default": 90,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_price_source_state": {
+									"type": "objectId",
+									"label": "Preis-State (optional, z. B. tibberlink.…CurrentPrice.total in €/kWh)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"hPriceForecastLearning": {
+									"type": "header",
+									"size": 5,
+									"text": "Phase 2E — Price Forecast Learning (Forecast ↔ Realität)"
+								},
+								"hPriceForecastLearningHelp": {
+									"type": "staticText",
+									"text": "Zwei Freezes: PricesToday.json (heute, Standard 06:00) und PricesTomorrow.json (morgen, Standard 14:00). Vergleicht eingefrorene Stunden mit Ist (CurrentPrice.total + history.0). Kein zusätzlicher Timer.",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_price_forecast_enabled": {
+									"type": "checkbox",
+									"label": "Price Forecast Learning aktiv",
+									"default": true,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_price_forecast_freeze_enabled": {
+									"type": "checkbox",
+									"label": "Forecast-Freeze aktiv",
+									"default": true,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_price_forecast_freeze_time": {
+									"type": "text",
+									"label": "Morgen-Freeze (HH:MM, Standard 14:00)",
+									"default": "14:00",
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_price_forecast_today_freeze_enabled": {
+									"type": "checkbox",
+									"label": "Heute-Freeze aktiv",
+									"default": true,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_price_forecast_today_freeze_time": {
+									"type": "text",
+									"label": "Heute-Freeze (HH:MM, Standard 06:00)",
+									"default": "06:00",
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_price_forecast_lookback_days": {
+									"type": "number",
+									"label": "Lookback (Tage)",
+									"min": 7,
+									"max": 365,
+									"default": 90,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_price_forecast_tomorrow_json_state": {
+									"type": "objectId",
+									"label": "Forecast morgen — PricesTomorrow.json",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_price_forecast_today_json_state": {
+									"type": "objectId",
+									"label": "Forecast heute — PricesToday.json",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_price_forecast_actual_state": {
+									"type": "objectId",
+									"label": "Ist-Preis — CurrentPrice.total (€/kWh)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"hHouseLoadLearning": {
+									"type": "header",
+									"size": 5,
+									"text": "Phase 2F — House Load Learning (Hauslast-Profile)"
+								},
+								"hHouseLoadLearningHelp": {
+									"type": "staticText",
+									"text": "Lernt reale Hauslast-Profile (Saison → Wochentag → Tagessegment). Standard: addons.battery.mapping.consumption_w. EMS sammelt stündliche Mittelwerte selbst (60s-Tick + onChange) — history.0 für consumption_w nicht nötig. Diagnose: learning.house_load.history_mode = ems_rollup. Read-only.",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_house_load_enabled": {
+									"type": "checkbox",
+									"label": "House Load Learning aktiv",
+									"default": true,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_house_load_lookback_days": {
+									"type": "number",
+									"label": "Lookback (Tage)",
+									"min": 7,
+									"max": 365,
+									"default": 90,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_house_load_power_state": {
+									"type": "objectId",
+									"label": "Hauslast-State (optional, z. B. sonnen.0.status.consumption in W)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"hThermalRuntimeLearning": {
+									"type": "header",
+									"size": 5,
+									"text": "Phase 2G — Thermal Runtime Learning (Puffer-Laufzeit)"
+								},
+								"hThermalRuntimeLearningHelp": {
+									"type": "staticText",
+									"text": "Lernt Abkühl-Segmente (lokaler Peak → Nachheizen-Schwelle) aus Temperatur-History — kein fester Start bei „voll“. Überschuss kann den Puffer überall im Betriebsband (z. B. 48–60 °C) aufheizen. Standard-Quelle: addons.immersion_heater.mapping.buffer_temp_c. Read-only. history.0 empfohlen.",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_thermal_runtime_enabled": {
+									"type": "checkbox",
+									"label": "Thermal Runtime Learning aktiv",
+									"default": true,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_thermal_runtime_lookback_days": {
+									"type": "number",
+									"label": "Lookback (Tage)",
+									"min": 7,
+									"max": 365,
+									"default": 90,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_thermal_runtime_temperature_state": {
+									"type": "objectId",
+									"label": "Temperatur-State (optional, z. B. Puffer Mitte °C)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_thermal_runtime_full_threshold_c": {
+									"type": "number",
+									"label": "Oberes Betriebsband (°C, Schätz-Fallback)",
+									"min": 1,
+									"max": 110,
+									"default": 60,
+									"xs": 12,
+									"sm": 6,
+									"md": 3,
+									"lg": 3,
+									"xl": 3
+								},
+								"learning_thermal_runtime_empty_threshold_c": {
+									"type": "number",
+									"label": "Nachheizen ab (°C, Untergrenze)",
+									"min": 0,
+									"max": 109,
+									"default": 48,
+									"xs": 12,
+									"sm": 6,
+									"md": 3,
+									"lg": 3,
+									"xl": 3
+								},
+								"learning_thermal_runtime_min_runtime_hours": {
+									"type": "number",
+									"label": "Min. Laufzeit (h)",
+									"min": 0.1,
+									"max": 24,
+									"default": 0.5,
+									"xs": 12,
+									"sm": 6,
+									"md": 3,
+									"lg": 3,
+									"xl": 3
+								},
+								"learning_thermal_runtime_max_runtime_hours": {
+									"type": "number",
+									"label": "Max. Laufzeit (h)",
+									"min": 1,
+									"max": 168,
+									"default": 72,
+									"xs": 12,
+									"sm": 6,
+									"md": 3,
+									"lg": 3,
+									"xl": 3
+								},
+								"hBatteryRuntimeLearning": {
+									"type": "header",
+									"size": 5,
+									"text": "Phase 2H — Battery Runtime Learning (Batterie-Ist-Verhalten)"
+								},
+								"hBatteryRuntimeLearningHelp": {
+									"type": "staticText",
+									"text": "Lernt Nachtentladung, Lade-/Entladeraten und Vollladung. SOC und Astro: history.0 onChange empfohlen. Batterieleistung (pacTotal): EMS sammelt stündliche Maxima selbst (60s-Tick + onChange) — history.0 für Leistung nicht nötig. Vollladung/Top-Off: mapping.seconds_since_full_charge. Bei Sonnen pacTotal „Leistung invertieren“. Diagnose: learning.battery_runtime.power_history_mode = ems_rollup. Read-only.",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_battery_runtime_enabled": {
+									"type": "checkbox",
+									"label": "Battery Runtime Learning aktiv",
+									"default": true,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_battery_runtime_lookback_days": {
+									"type": "number",
+									"label": "Lookback (Tage)",
+									"min": 7,
+									"max": 365,
+									"default": 90,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"learning_battery_runtime_soc_state": {
+									"type": "objectId",
+									"label": "SOC-State (optional, z. B. sonnen.0.status.userSoc)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_battery_runtime_power_state": {
+									"type": "objectId",
+									"label": "Batterie-Leistung W (optional, intern + laden / − entladen)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 9,
+									"lg": 9,
+									"xl": 9
+								},
+								"learning_battery_runtime_power_invert": {
+									"type": "checkbox",
+									"label": "Leistung invertieren",
+									"default": false,
+									"xs": 12,
+									"sm": 12,
+									"md": 3,
+									"lg": 3,
+									"xl": 3
+								},
+								"learning_battery_runtime_capacity_state": {
+									"type": "objectId",
+									"label": "Kapazität kWh (optional, für Nacht-kWh)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_battery_runtime_seconds_since_full_state": {
+									"type": "objectId",
+									"label": "Sekunden seit Vollladung (optional — überschreibt battery.mapping)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_battery_runtime_full_charge_soc": {
+									"type": "number",
+									"label": "Vollladung SOC-Fallback (%) — nur wenn Geräte-State fehlt",
+									"min": 99,
+									"max": 100,
+									"default": 100,
+									"xs": 12,
+									"sm": 6,
+									"md": 3,
+									"lg": 3,
+									"xl": 3
+								},
+								"learning_battery_runtime_topoff_interval_days": {
+									"type": "number",
+									"label": "Top-Off Intervall (Tage, Policy)",
+									"min": 1,
+									"max": 90,
+									"default": 20,
+									"xs": 12,
+									"sm": 6,
+									"md": 3,
+									"lg": 3,
+									"xl": 3
+								},
+								"learning_battery_runtime_night_start": {
+									"type": "text",
+									"label": "Nacht Fallback Start (HH:MM)",
+									"default": "22:00",
+									"xs": 12,
+									"sm": 6,
+									"md": 3,
+									"lg": 3,
+									"xl": 3
+								},
+								"learning_battery_runtime_night_end": {
+									"type": "text",
+									"label": "Nacht Fallback Ende (HH:MM)",
+									"default": "06:00",
+									"xs": 12,
+									"sm": 6,
+									"md": 3,
+									"lg": 3,
+									"xl": 3
+								},
+								"learning_battery_runtime_night_astro_enabled": {
+									"type": "checkbox",
+									"label": "Nachtfenster aus Astro-History",
+									"default": false,
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"learning_battery_runtime_night_start_state": {
+									"type": "objectId",
+									"label": "Astro Nachtbeginn (z. B. javascript.0.variables.astro.dusk)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								},
+								"learning_battery_runtime_night_end_state": {
+									"type": "objectId",
+									"label": "Astro Nachtende (z. B. javascript.0.variables.astro.dawn)",
+									"types": [
+										"state"
+									],
+									"xs": 12,
+									"sm": 12,
+									"md": 6,
+									"lg": 6,
+									"xl": 6
+								}
+							}
+						},
+						"emsLightPolicyTab": {
+							"type": "panel",
+							"label": "Policy",
+							"items": {
+								"policyIntro": {
+									"type": "staticText",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12,
+									"text": "Phase 3A: Globale Policy-Grundlage (read-only). Keine Geräteentscheidungen. Leere Felder bleiben unbekannt — kein stiller Fallback auf 0."
+								},
+								"global_policy_house_fuse_limit_w": {
+									"type": "number",
+									"label": "Haus-Sicherung (W, optional)",
+									"min": 0,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"global_policy_max_grid_import_w": {
+									"type": "number",
+									"label": "Max. Netzbezug (W, optional)",
+									"min": 0,
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"global_policy_grid_import_allowed": {
+									"type": "checkbox",
+									"label": "Netzbezug grundsätzlich erlaubt (optional)",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"global_policy_energy_priority_json": {
+									"type": "text",
+									"label": "Energie-Priorität (JSON-Array, optional)",
+									"default": "",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"global_policy_mutual_exclusions_json": {
+									"type": "text",
+									"label": "Mutual Exclusions (JSON-Array, optional)",
+									"default": "",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								}
+							}
+						},
+						"emsLightIntentTab": {
+							"type": "panel",
+							"label": "Intent",
+							"items": {
+								"intentIntro": {
+									"type": "staticText",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12,
+									"text": "Phase 3B: Benutzeraufträge erfassen und normalisieren (read-only). Keine Planner- oder Geräteentscheidungen. Laufzeit-Eingabe: user_intent.inputs.iobroker.wallbox.request_json. Ausgabe: user_intent.wallbox.* (read-only)."
+								},
+								"intentEvccHint": {
+									"type": "staticText",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12,
+									"text": "EVCC-Datenpunkt-Mappings für Wallbox und Intent: Tab „Wallbox“. Dieser Tab enthält nur Intent-Defaults und ioBroker-Request-Einstellungen."
+								},
+								"hIntentDefaults": {
+									"type": "header",
+									"size": 2,
+									"text": "Intent-Defaults (nur wenn keine höherwertige Quelle)",
+									"xs": 12,
+									"sm": 12,
+									"md": 12,
+									"lg": 12,
+									"xl": 12
+								},
+								"intent_default_charge_strategy": {
+									"type": "select",
+									"label": "Default Ladestrategie (optional)",
+									"options": [
+										{
+											"label": "(kein Default)",
+											"value": ""
+										},
+										{
+											"label": "Off",
+											"value": "off"
+										},
+										{
+											"label": "Min+PV",
+											"value": "min_pv"
+										},
+										{
+											"label": "PV",
+											"value": "pv"
+										},
+										{
+											"label": "Sofort",
+											"value": "immediate"
+										}
+									],
+									"default": "",
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"intent_default_target_soc_pct": {
+									"type": "text",
+									"label": "Default Ziel-SOC % (optional, leer = kein Default)",
+									"placeholder": "z. B. 80",
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"intent_timezone": {
+									"type": "text",
+									"label": "Zeitzone für Deadlines",
+									"default": "Europe/Berlin",
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								},
+								"intent_manual_override_max_minutes": {
+									"type": "text",
+									"label": "Max. Manual-Override-Dauer (Min., optional, leer = unbegrenzt)",
+									"placeholder": "z. B. 120",
+									"xs": 12,
+									"sm": 6,
+									"md": 4,
+									"lg": 4,
+									"xl": 4
+								}
+							}
+						}
+					}
 				}
 			}
 		}

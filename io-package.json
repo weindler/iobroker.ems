@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.97",
+		"version": "0.1.98",
 		"news": {
+			"0.1.98": {
+				"en": "Admin menu: Klima tab visible after Heizstab; EMS-Light Learning/Policy/Intent grouped under one tab",
+				"de": "Admin-Menü: Klima-Tab direkt nach Heizstab sichtbar; EMS-Light Learning/Policy/Intent unter einem Tab gruppiert"
+			},
 			"0.1.97": {
 				"en": "Air conditioning addon Phase A: up to 5 indoor units, Samsung SmartThings profile, configurable thresholds/modes/fan, per-unit stats, dryrun/live",
 				"de": "Klimaanlage Phase A: bis 5 Innengeräte, Samsung-SmartThings-Profil, konfigurierbare Schwellwerte/Modi/Lüfter, Statistik pro Gerät, dryrun/live"

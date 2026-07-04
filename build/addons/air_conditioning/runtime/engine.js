@@ -86,8 +86,21 @@ async function startUnit(host, unit, table, live, up, modePurpose) {
     const profile = (0, registry_1.getAcProfile)(unit.profileId);
     const steps = profile.coolingStartSequence(unit, modePurpose);
     await (0, sequences_1.executeAcWriteSteps)(host, unit.index, table, steps, live, host.log);
-    up.running = true;
     up.lastStartAtMs = Date.now();
+    if (!live) {
+        up.running = true;
+        return;
+    }
+    const fbId = (0, sequences_1.resolveAcMappingTarget)(table, unit.index, "feedback_switch");
+    const fb = await readForeign(host, fbId);
+    if ((0, time_1.switchIsOn)(fb.value)) {
+        up.running = true;
+        host.log.info(`ac unit ${unit.index}: started — feedback on`);
+    }
+    else {
+        up.running = false;
+        host.log.warn(`ac unit ${unit.index}: start sequence sent but feedback still off`);
+    }
 }
 async function tickCleaning(host, unit, table, live, up, nowMs) {
     const pending = cleaningPendingUntilMs[unit.index];
@@ -151,8 +164,25 @@ async function runAcRuntimeTick(host) {
                 up.running = false;
             }
         }
-        else if (fsm.demandStart && (0, time_1.switchIsOff)(fb.value) && !up.running) {
-            await startUnit(host, unit, mappingTable, live, up, fsm.modePurpose);
+        else if (fsm.demandStart && (0, time_1.switchIsOff)(fb.value)) {
+            if (live) {
+                const cooledDown = !up.lastStartAtMs || nowMs - up.lastStartAtMs >= constants_1.AC_START_RETRY_MS;
+                if (cooledDown) {
+                    if (up.lastStartAtMs) {
+                        host.log.info(`ac unit ${unit.index}: retry start (${Math.round((nowMs - up.lastStartAtMs) / 1000)}s since last attempt)`);
+                    }
+                    await startUnit(host, unit, mappingTable, live, up, fsm.modePurpose);
+                }
+            }
+            else if (!up.running) {
+                await startUnit(host, unit, mappingTable, live, up, fsm.modePurpose);
+            }
+        }
+        if (live && (0, time_1.switchIsOn)(fb.value)) {
+            up.running = true;
+        }
+        else if ((0, time_1.switchIsOff)(fb.value)) {
+            up.running = false;
         }
         const ids = (0, ensure_states_1.acUnitRuntimeStates)(unit.index);
         const estPower = allocatedPowerW(runningCount || ((0, time_1.switchIsOn)(fb.value) ? 1 : 0), config.outdoorMaxPowerW, unit.estimatedPowerW);

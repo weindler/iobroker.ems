@@ -10,7 +10,7 @@ import {
 	resetConsumerStatsCache,
 } from "../../../learning/consumer_stats";
 import type { DeviceWriteHost } from "../../../device_write";
-import { acUnitConsumerKey, AC_ADDON_ID, AC_MAPPING_ROLES, AC_TICK_MS } from "../constants";
+import { acUnitConsumerKey, AC_ADDON_ID, AC_MAPPING_ROLES, AC_START_RETRY_MS, AC_TICK_MS } from "../constants";
 import { acGlobalConfigFromAdapter } from "../config";
 import type { AcUnitConfig } from "../types";
 import { getAcProfile } from "../profiles/registry";
@@ -124,8 +124,20 @@ async function startUnit(
 	const profile = getAcProfile(unit.profileId);
 	const steps = profile.coolingStartSequence(unit, modePurpose);
 	await executeAcWriteSteps(host, unit.index, table, steps, live, host.log);
-	up.running = true;
 	up.lastStartAtMs = Date.now();
+	if (!live) {
+		up.running = true;
+		return;
+	}
+	const fbId = resolveAcMappingTarget(table, unit.index, "feedback_switch");
+	const fb = await readForeign(host, fbId);
+	if (switchIsOn(fb.value)) {
+		up.running = true;
+		host.log.info(`ac unit ${unit.index}: started — feedback on`);
+	} else {
+		up.running = false;
+		host.log.warn(`ac unit ${unit.index}: start sequence sent but feedback still off`);
+	}
 }
 
 async function tickCleaning(
@@ -201,8 +213,26 @@ export async function runAcRuntimeTick(host: AcRuntimeHost): Promise<void> {
 			} else {
 				up.running = false;
 			}
-		} else if (fsm.demandStart && switchIsOff(fb.value) && !up.running) {
-			await startUnit(host, unit, mappingTable, live, up, fsm.modePurpose);
+		} else if (fsm.demandStart && switchIsOff(fb.value)) {
+			if (live) {
+				const cooledDown = !up.lastStartAtMs || nowMs - up.lastStartAtMs >= AC_START_RETRY_MS;
+				if (cooledDown) {
+					if (up.lastStartAtMs) {
+						host.log.info(
+							`ac unit ${unit.index}: retry start (${Math.round((nowMs - up.lastStartAtMs) / 1000)}s since last attempt)`,
+						);
+					}
+					await startUnit(host, unit, mappingTable, live, up, fsm.modePurpose);
+				}
+			} else if (!up.running) {
+				await startUnit(host, unit, mappingTable, live, up, fsm.modePurpose);
+			}
+		}
+
+		if (live && switchIsOn(fb.value)) {
+			up.running = true;
+		} else if (switchIsOff(fb.value)) {
+			up.running = false;
 		}
 
 		const ids = acUnitRuntimeStates(unit.index);

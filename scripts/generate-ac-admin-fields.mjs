@@ -22,7 +22,7 @@ function unitFields(n) {
 	const p = `ac_u${n}_`;
 	const lines = [];
 	lines.push(`\t\t\t\t"hAcU${n}": { "type": "header", "size": 2, "text": "Innengerät ${n}", "xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12 }`);
-	lines.push(`\t\t\t\t"${p}enabled": { "type": "checkbox", "label": "Aktiv", "default": ${n <= 2}, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
+	lines.push(`\t\t\t\t"${p}enabled": { "type": "checkbox", "label": "Aktiv", "default": ${n === 2}, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
 	lines.push(`\t\t\t\t"${p}name": { "type": "text", "label": "Name", "default": ${n === 1 ? '"Wohnzimmer EG"' : n === 2 ? '"Josef Zimmer OG"' : '""'}, "xs": 12, "sm": 8, "md": 6, "lg": 6, "xl": 6 }`);
 	lines.push(`\t\t\t\t"${p}profile": { "type": "select", "label": "Geräteprofil", "options": [{ "label": "Generic", "value": "generic" }, { "label": "Samsung SmartThings", "value": "samsung_smartthings" }], "default": "samsung_smartthings", "xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4 }`);
 	lines.push(`\t\t\t\t"${p}on_temp_c": { "type": "number", "label": "Einschalttemperatur (°C)", "default": ${n === 1 ? 25.5 : n === 2 ? 24.5 : 26}, ${TEMP_NUM}, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);

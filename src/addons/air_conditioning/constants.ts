@@ -3,6 +3,10 @@ export const AC_UNIT_COUNT = 5;
 export const AC_TICK_MS = 10_000;
 export const AC_WRITE_SETPOINT_DELAY_MS = 5_000;
 export const AC_WRITE_REFRESH_DELAY_MS = 5_000;
+/** SmartThings switch-on/off/refresh: ioBroker-Spiegel nach Impuls zurücksetzen (ack:true, kein Gerätebefehl). */
+export const AC_TOGGLE_STATE_RESET_MS = 10_000;
+/** Live: volle Start-Sequenz frühestens wieder nach … ms, wenn Feedback noch off. */
+export const AC_START_RETRY_MS = 120_000;
 
 export const AC_PROFILE_IDS = ["generic", "samsung_smartthings"] as const;
 export type AcProfileId = (typeof AC_PROFILE_IDS)[number];

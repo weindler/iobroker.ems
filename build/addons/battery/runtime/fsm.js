@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.clearBatteryFault = exports.stepSonnenFsm = exports.initialSonnenRuntime = void 0;
+exports.clearBatteryFault = exports.stepSonnenFsm = exports.isBatterySimulatedProgressState = exports.isBatterySafetyWriteState = exports.initialSonnenRuntime = void 0;
 const feedback_1 = require("./feedback");
 const ownership_1 = require("./ownership");
 function initialSonnenRuntime(nowMs) {
@@ -28,6 +28,19 @@ const STOPPABLE_STATES = new Set([
     "verify_charge_power",
     "active",
 ]);
+function isBatterySafetyWriteState(state) {
+    return (state === "stop_charge" ||
+        state === "verify_charge_stopped" ||
+        state === "restore_self_consumption" ||
+        state === "verify_self_consumption" ||
+        state === "restore_grid_balance");
+}
+exports.isBatterySafetyWriteState = isBatterySafetyWriteState;
+/** FSM-Zustände, in denen nur simuliertes Feedback lief — bei Live-Start neu beginnen. */
+function isBatterySimulatedProgressState(state) {
+    return state !== "idle" && state !== "completed" && state !== "rejected" && state !== "lockout" && state !== "fault";
+}
+exports.isBatterySimulatedProgressState = isBatterySimulatedProgressState;
 /** Reine FSM-Transition. Dieselbe Logik wird in Dryrun und Live verwendet. */
 function stepSonnenFsm(prev, ctx) {
     const rt = { ...prev, ownership: { ...prev.ownership } };
@@ -103,7 +116,12 @@ function stepSonnenFsm(prev, ctx) {
             rt.ownership.manualModeWritten = true;
             rt.ownership.requestId = rt.requestId;
             rt.ownership.startedAt = new Date(ctx.nowMs).toISOString();
-            log = { level: "info", msg: `battery live action started (${rt.action})` };
+            log = {
+                level: "info",
+                msg: ctx.simulateFeedback
+                    ? `battery charge sequence started (dryrun, ${rt.action})`
+                    : `battery live action started (${rt.action})`,
+            };
             enter("wait_after_manual_mode");
             break;
         case "wait_after_manual_mode":

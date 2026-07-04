@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.batteryUnloadRestore = exports.runBatteryControlTick = exports.handleBatteryForeignStateChange = exports.handleBatteryAdapterStateChange = exports.stopBatteryModule = exports.initBatteryModule = exports.__resetBatteryRuntimeForTest = exports.BATTERY_ADDON_ID = void 0;
 const governance_1 = require("../governance");
-const tree_paths_1 = require("../../tree_paths");
 const execution_mode_1 = require("../../execution_mode");
 const mapping_sync_1 = require("../../mapping_sync");
 const config_1 = require("./config");
@@ -26,12 +25,14 @@ let controlTimer = null;
 let runtime = (0, fsm_1.initialSonnenRuntime)(Date.now());
 let gridBalancePausedByFsm = false;
 let ownershipLive = false;
+let prevLiveWriteAllowed = false;
 let ticking = false;
 /** Nur für Tests: internen Laufzeitzustand zurücksetzen. */
 function __resetBatteryRuntimeForTest(now = Date.now()) {
     runtime = (0, fsm_1.initialSonnenRuntime)(now);
     gridBalancePausedByFsm = false;
     ownershipLive = false;
+    prevLiveWriteAllowed = false;
 }
 exports.__resetBatteryRuntimeForTest = __resetBatteryRuntimeForTest;
 async function initBatteryModule(adapter) {
@@ -42,6 +43,7 @@ async function initBatteryModule(adapter) {
     runtime = (0, fsm_1.initialSonnenRuntime)(Date.now());
     gridBalancePausedByFsm = false;
     ownershipLive = false;
+    prevLiveWriteAllowed = false;
     const host = adapter;
     for (const relId of ems_mirror_1.EMS_MIRROR_BATTERY_IDS) {
         await adapter.subscribeStatesAsync(relId);
@@ -65,7 +67,9 @@ exports.stopBatteryModule = stopBatteryModule;
 function handleBatteryAdapterStateChange(adapter, stateId) {
     const ns = `${adapter.namespace}.`;
     const rel = stateId.startsWith(ns) ? stateId.slice(ns.length) : stateId;
-    if (rel === ensure_states_1.BAT.control.faultReset || ems_mirror_1.EMS_MIRROR_BATTERY_IDS.includes(rel)) {
+    if (rel === ensure_states_1.BAT.control.faultReset ||
+        (0, execution_mode_1.isExecutionModeStateRelativeId)(rel) ||
+        ems_mirror_1.EMS_MIRROR_BATTERY_IDS.includes(rel)) {
         void runBatteryControlTick(adapter).catch((e) => adapter.log.error(`battery state change tick: ${e}`));
     }
 }
@@ -171,8 +175,16 @@ async function controlTickInner(host) {
     const profile = (0, registry_1.getBatteryProfile)(config.profile);
     const table = (0, mapping_1.batteryMappingFromConfig)(host.config);
     const governanceEnabled = await (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), exports.BATTERY_ADDON_ID);
-    const globalStateRaw = await host.getStateAsync(tree_paths_1.GLOBAL.executionMode);
-    const globalLive = (0, execution_mode_1.parseMode)(globalStateRaw?.val) === "live";
+    const liveWriteAllowed = await (0, execution_mode_1.isLiveWriteAllowed)((id) => host.getStateAsync(id), exports.BATTERY_ADDON_ID);
+    if (liveWriteAllowed &&
+        !prevLiveWriteAllowed &&
+        !ownershipLive &&
+        (0, fsm_1.isBatterySimulatedProgressState)(runtime.state)) {
+        host.log.info("battery: live write enabled — restarting charge sequence (prior dryrun progress discarded)");
+        runtime = (0, fsm_1.initialSonnenRuntime)(nowMs);
+        gridBalancePausedByFsm = false;
+    }
+    prevLiveWriteAllowed = liveWriteAllowed;
     // Fault reset button.
     if (await readRelBool(host, ensure_states_1.BAT.control.faultReset)) {
         runtime = (0, fsm_1.clearBatteryFault)(runtime, nowMs);
@@ -194,7 +206,7 @@ async function controlTickInner(host) {
         reading,
         mappedCapacityKwh: capacityMapped.val,
         nowMs,
-        globalLive,
+        globalLive: liveWriteAllowed,
         governanceEnabled,
         requiredValues: ["soc", "power"],
     });
@@ -282,8 +294,8 @@ async function controlTickInner(host) {
         batteryAddonEnabled: governanceEnabled,
         gridBalancePaused: gridBalancePausedByFsm || runtime.ownership.active,
     });
-    const safetyOverride = ownershipLive && !globalLive;
-    const effectiveLive = globalLive || safetyOverride;
+    const safetyOverride = ownershipLive && !liveWriteAllowed;
+    const effectiveLive = liveWriteAllowed || safetyOverride;
     const targetSocReached = deviceIntent.targetSocPct != null &&
         snapshot.telemetry.socPct != null &&
         snapshot.telemetry.socPct >= deviceIntent.targetSocPct;
@@ -292,7 +304,7 @@ async function controlTickInner(host) {
         intentExpired: false,
         intentRevoked: runtime.ownership.active && !wantsCharge,
         addonDisabled: !governanceEnabled,
-        globalLeftLive: ownershipLive && !globalLive,
+        globalLeftLive: ownershipLive && !liveWriteAllowed,
         safetyBlocked: false,
         telemetryStale: runtime.ownership.active && snapshot.telemetry.stale,
         communicationLost: runtime.ownership.active && online === false,
@@ -327,13 +339,14 @@ async function controlTickInner(host) {
     if (step.log)
         host.log[step.log.level](step.log.msg);
     // Apply FSM writes through the single central write function.
+    const safetyWrite = (0, fsm_1.isBatterySafetyWriteState)(runtime.state) && runtime.ownership.active;
     const gate = {
         globalLive: effectiveLive,
         governanceEnabled,
         profileId: config.profile,
         profileLiveControlAvailable: snapshot.capabilities.live_control.available,
         profileReady: snapshot.readiness.liveReady,
-        intentValid: intentValid || safetyOverride,
+        intentValid: intentValid || safetyOverride || safetyWrite,
         telemetryReady: snapshot.readiness.telemetryReady,
         fault: false,
         lockout: false,
@@ -396,14 +409,14 @@ async function controlTickInner(host) {
                 requestId: "grid_balance",
                 reason: "grid_balance",
                 expectedFeedback: gbTarget,
-                dryrun: !globalLive,
+                dryrun: !liveWriteAllowed,
                 gate: { ...gate, targetMappingConfigured: gbWouldWrite },
             });
         }
     }
     await persist(host, snapshot, {
         nowMs,
-        globalLive,
+        globalLive: liveWriteAllowed,
         controller,
         lastWrite,
         gb: { wouldWrite: gbWouldWrite, target: gbTarget, state: gbState },

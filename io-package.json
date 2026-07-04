@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.83",
+		"version": "0.1.84",
 		"news": {
+			"0.1.84": {
+				"en": "Battery live gate fix: requires addons.battery.mode live (not global alone); restart FSM on dryrun→live switch; safe-restore writes no longer blocked by intent_invalid",
+				"de": "Batterie-Live-Gate: addons.battery.mode muss live sein (nicht nur global); FSM-Neustart bei Dryrun→Live; Safe-Restore-Writes werden nicht mehr durch intent_invalid blockiert"
+			},
 			"0.1.83": {
 				"en": "Execution mode dropdown in object tree: global.execution_mode and addons (wallbox/battery/immersion_heater).mode as dryrun|live selectors — switchable from objects or scripts without opening admin",
 				"de": "Ausführungsmodus als Dropdown im Objektbaum: global.execution_mode und addons (Wallbox/Batterie/Heizstab).mode als dryrun|live-Auswahl — umschaltbar aus Objekten oder Skripten ohne Admin"

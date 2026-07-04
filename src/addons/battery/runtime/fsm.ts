@@ -105,6 +105,21 @@ const STOPPABLE_STATES = new Set<SonnenFsmState>([
 	"active",
 ]);
 
+export function isBatterySafetyWriteState(state: SonnenFsmState): boolean {
+	return (
+		state === "stop_charge" ||
+		state === "verify_charge_stopped" ||
+		state === "restore_self_consumption" ||
+		state === "verify_self_consumption" ||
+		state === "restore_grid_balance"
+	);
+}
+
+/** FSM-Zustände, in denen nur simuliertes Feedback lief — bei Live-Start neu beginnen. */
+export function isBatterySimulatedProgressState(state: SonnenFsmState): boolean {
+	return state !== "idle" && state !== "completed" && state !== "rejected" && state !== "lockout" && state !== "fault";
+}
+
 /** Reine FSM-Transition. Dieselbe Logik wird in Dryrun und Live verwendet. */
 export function stepSonnenFsm(prev: SonnenRuntime, ctx: SonnenFsmContext): SonnenFsmStep {
 	const rt: SonnenRuntime = { ...prev, ownership: { ...prev.ownership } };
@@ -188,7 +203,12 @@ export function stepSonnenFsm(prev: SonnenRuntime, ctx: SonnenFsmContext): Sonne
 			rt.ownership.manualModeWritten = true;
 			rt.ownership.requestId = rt.requestId;
 			rt.ownership.startedAt = new Date(ctx.nowMs).toISOString();
-			log = { level: "info", msg: `battery live action started (${rt.action})` };
+			log = {
+				level: "info",
+				msg: ctx.simulateFeedback
+					? `battery charge sequence started (dryrun, ${rt.action})`
+					: `battery live action started (${rt.action})`,
+			};
 			enter("wait_after_manual_mode");
 			break;
 

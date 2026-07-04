@@ -59,9 +59,10 @@ class MockAdapter {
         this.foreign.set(id, val);
     }
 }
-function setupCharge(global, govEnabled = true) {
+function setupCharge(global, govEnabled = true, addonMode = global) {
     const a = new MockAdapter(CONFIG);
     a.rel.set("global.execution_mode", global);
+    a.rel.set("addons.battery.mode", addonMode);
     a.rel.set("addons.battery.governance.enabled", govEnabled);
     a.rel.set("ems_mirror.battery_intent_active", true);
     a.rel.set("ems_mirror.operating_mode_target", 1);
@@ -106,7 +107,7 @@ async function runTicks(a, n, simulateDevice) {
 (0, node_test_1.describe)("battery control tick — live", () => {
     (0, node_test_1.it)("writes mode then charge in order through central function", async () => {
         (0, index_js_1.__resetBatteryRuntimeForTest)();
-        const a = setupCharge("live");
+        const a = setupCharge("live", true, "live");
         await runTicks(a, 14, true);
         const deviceWrites = a.foreignWrites.filter((w) => DEVICE_TARGETS.has(w.id));
         strict_1.default.ok(deviceWrites.length >= 2);
@@ -123,5 +124,25 @@ async function runTicks(a, n, simulateDevice) {
         const deviceWrites = a.foreignWrites.filter((w) => DEVICE_TARGETS.has(w.id));
         strict_1.default.equal(deviceWrites.length, 0);
         strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.telemetry.socPct), 50);
+    });
+    (0, node_test_1.it)("global live but addon dryrun → no device writes", async () => {
+        (0, index_js_1.__resetBatteryRuntimeForTest)();
+        const a = setupCharge("live", true, "dryrun");
+        await runTicks(a, 14, true);
+        const deviceWrites = a.foreignWrites.filter((w) => DEVICE_TARGETS.has(w.id));
+        strict_1.default.equal(deviceWrites.length, 0);
+        strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.status.effectiveExecutionMode), "dryrun");
+    });
+    (0, node_test_1.it)("dryrun progress discarded when live write becomes allowed", async () => {
+        (0, index_js_1.__resetBatteryRuntimeForTest)();
+        const a = setupCharge("dryrun", true, "dryrun");
+        await runTicks(a, 14, false);
+        strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.runtime.state), "active");
+        a.rel.set("global.execution_mode", "live");
+        a.rel.set("addons.battery.mode", "live");
+        await runTicks(a, 14, true);
+        const modeWrites = a.foreignWrites.filter((w) => w.id === "dev.mode");
+        strict_1.default.ok(modeWrites.length >= 1);
+        strict_1.default.equal(modeWrites[0].val, 1);
     });
 });

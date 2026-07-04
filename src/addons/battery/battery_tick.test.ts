@@ -59,9 +59,14 @@ class MockAdapter {
 	}
 }
 
-function setupCharge(global: "dryrun" | "live", govEnabled = true): MockAdapter {
+function setupCharge(
+	global: "dryrun" | "live",
+	govEnabled = true,
+	addonMode: "dryrun" | "live" = global,
+): MockAdapter {
 	const a = new MockAdapter(CONFIG);
 	a.rel.set("global.execution_mode", global);
+	a.rel.set("addons.battery.mode", addonMode);
 	a.rel.set("addons.battery.governance.enabled", govEnabled);
 	a.rel.set("ems_mirror.battery_intent_active", true);
 	a.rel.set("ems_mirror.operating_mode_target", 1);
@@ -110,7 +115,7 @@ describe("battery control tick — dryrun", () => {
 describe("battery control tick — live", () => {
 	it("writes mode then charge in order through central function", async () => {
 		__resetBatteryRuntimeForTest();
-		const a = setupCharge("live");
+		const a = setupCharge("live", true, "live");
 		await runTicks(a, 14, true);
 		const deviceWrites = a.foreignWrites.filter((w) => DEVICE_TARGETS.has(w.id));
 		assert.ok(deviceWrites.length >= 2);
@@ -128,5 +133,27 @@ describe("battery control tick — live", () => {
 		const deviceWrites = a.foreignWrites.filter((w) => DEVICE_TARGETS.has(w.id));
 		assert.equal(deviceWrites.length, 0);
 		assert.equal(a.rel.get(BAT.telemetry.socPct), 50);
+	});
+
+	it("global live but addon dryrun → no device writes", async () => {
+		__resetBatteryRuntimeForTest();
+		const a = setupCharge("live", true, "dryrun");
+		await runTicks(a, 14, true);
+		const deviceWrites = a.foreignWrites.filter((w) => DEVICE_TARGETS.has(w.id));
+		assert.equal(deviceWrites.length, 0);
+		assert.equal(a.rel.get(BAT.status.effectiveExecutionMode), "dryrun");
+	});
+
+	it("dryrun progress discarded when live write becomes allowed", async () => {
+		__resetBatteryRuntimeForTest();
+		const a = setupCharge("dryrun", true, "dryrun");
+		await runTicks(a, 14, false);
+		assert.equal(a.rel.get(BAT.runtime.state), "active");
+		a.rel.set("global.execution_mode", "live");
+		a.rel.set("addons.battery.mode", "live");
+		await runTicks(a, 14, true);
+		const modeWrites = a.foreignWrites.filter((w) => w.id === "dev.mode");
+		assert.ok(modeWrites.length >= 1);
+		assert.equal(modeWrites[0].val, 1);
 	});
 });

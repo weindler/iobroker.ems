@@ -26,7 +26,7 @@ function unitFields(n) {
 	lines.push(`\t\t\t\t"${p}profile": { "type": "select", "label": "Geräteprofil", "options": [{ "label": "Generic", "value": "generic" }, { "label": "Samsung SmartThings", "value": "samsung_smartthings" }], "default": "samsung_smartthings", "xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4 }`);
 	lines.push(`\t\t\t\t"${p}on_temp_c": { "type": "number", "label": "Einschalttemperatur (°C)", "default": ${n === 1 ? 25.5 : n === 2 ? 24.5 : 26}, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
 	lines.push(`\t\t\t\t"${p}off_temp_c": { "type": "number", "label": "Ausschalttemperatur (°C)", "default": ${n === 1 ? 24 : n === 2 ? 23 : 24}, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
-	lines.push(`\t\t\t\t"${p}max_humidity_pct": { "type": "number", "label": "Max. Feuchte (%) — optional", "min": 0, "max": 100, "default": 0, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
+	lines.push(`\t\t\t\t"${p}max_humidity_pct": { "type": "number", "label": "Max. Feuchte (%) — optional", "help": "0 = Feuchte nur anzeigen, nicht steuern. Wert > 0: bei Überschreitung Entfeuchten (wenn Raumfeuchte gemappt).", "min": 0, "max": 100, "default": 0, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
 	lines.push(`\t\t\t\t"${p}cooling_setpoint_c": { "type": "number", "label": "Kühl-Sollwert (°C)", "default": 17, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
 	lines.push(`\t\t\t\t"${p}mode_when_cooling": { "type": "text", "label": "Modus Kühlen", "default": "cool", "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
 	lines.push(`\t\t\t\t"${p}fan_mode_when_cooling": { "type": "text", "label": "Lüftermodus Kühlen", "default": "auto", "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);

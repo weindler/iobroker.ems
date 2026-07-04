@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.100",
+		"version": "0.1.101",
 		"news": {
+			"0.1.101": {
+				"en": "AC admin: clearer setup hints (GLOBAL, mapping picker, humidity threshold, dryrun first)",
+				"de": "Klima-Admin: klarere Einrichtungshinweise (GLOBAL, Mapping-Auswahl, Feuchte-Schwelle, erst dryrun)"
+			},
 			"0.1.100": {
 				"en": "AC admin mapping fields use objectId picker (selectable states) like battery and immersion heater",
 				"de": "Klima-Mapping im Admin als objectId-Auswahl (States auswählbar) wie Batterie und Heizstab"

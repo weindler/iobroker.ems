@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.106",
+		"version": "0.1.107",
 		"news": {
+			"0.1.107": {
+				"en": "Fix admin jsonConfig validation: immersion heater help fields use help not helpText",
+				"de": "Admin jsonConfig: Heizstab-Hilfetexte korrigiert (help statt helpText)"
+			},
 			"0.1.106": {
 				"en": "Fix SmartThings 429 rate limit storm: stop subscribing to command/toggle states, remove toggle mirror resets, guard concurrent AC ticks",
 				"de": "SmartThings 429-Fix: keine Abos mehr auf Schreib-/Toggle-States, Toggle-Spiegel-Reset entfernt, parallele AC-Ticks abgefangen"

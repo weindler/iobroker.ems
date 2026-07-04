@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.107] – 2026-07-04
+
+### Fixed
+
+- **Admin:** `jsonConfig` — Heizstab-Felder `ih_stage_count` / `ih_stage_1_nominal_power_w`: `helpText` → `help` (Schema-Validierung).
+
+---
+
 ## [0.1.106] – 2026-07-04
 
 ### Fixed

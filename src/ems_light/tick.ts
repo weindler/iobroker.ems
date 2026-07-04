@@ -1,12 +1,8 @@
 import { GLOBAL } from "../tree_paths";
-import {
-	deriveHealth,
-	formatLiveCacheSummary,
-	refreshLiveCache,
-	type LiveCacheHost,
-} from "./live_cache";
+import { deriveHealth, formatLiveCacheSummary, refreshLiveCache, type LiveCacheHost } from "./live_cache";
+import { runPlannerTick, type PlannerHost } from "../planner";
 
-export async function runEmsLightPhase1Tick(host: LiveCacheHost): Promise<void> {
+export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): Promise<void> {
 	const ts = new Date().toISOString();
 	const hints: string[] = [];
 
@@ -37,6 +33,12 @@ export async function runEmsLightPhase1Tick(host: LiveCacheHost): Promise<void> 
 	} catch (e) {
 		hints.push(`live_cache: ${String(e)}`);
 		liveResult.errors.push(String(e));
+	}
+
+	try {
+		await runPlannerTick(host);
+	} catch (e) {
+		hints.push(`planner: ${String(e)}`);
 	}
 
 	const health = deriveHealth(liveResult, !hints.some((h) => h.includes("global.execution_mode nicht")));

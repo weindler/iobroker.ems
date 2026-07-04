@@ -15,6 +15,7 @@ import {
 } from "../learning/power_rollup";
 import { initPolicyEngine, stopPolicyEngine, type PolicyEngineHost } from "../policy";
 import { initIntentEngine, stopIntentEngine, type IntentEngineHost } from "../intent";
+import { initPlanner, stopPlanner, type PlannerHost } from "../planner";
 import { resetGlobalModesRuntime } from "../global_modes";
 import { ensureEmsLightStates } from "./ensure_states";
 import { runEmsLightPhase1Tick } from "./tick";
@@ -92,6 +93,7 @@ export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<voi
 	const adapterAny = adapter as unknown as Record<string, unknown>;
 
 	await ensureEmsLightStates(host, version);
+	await initPlanner(host as unknown as PlannerHost & LiveCacheHost);
 	energyDailyRollupHost = buildRollupHost(adapter);
 	powerRollupHost = energyDailyRollupHost;
 	await initEnergyDailyRollup(energyDailyRollupHost);
@@ -201,6 +203,7 @@ export function stopEmsLightPhase1(): void {
 	stopWeatherLearning();
 	stopPowerRollup();
 	stopEnergyDailyRollup();
+	stopPlanner();
 	powerRollupHost = null;
 	energyDailyRollupHost = null;
 	stopEmsLightTick();

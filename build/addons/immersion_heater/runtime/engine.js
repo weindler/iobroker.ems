@@ -14,6 +14,7 @@ const fsm_1 = require("./fsm");
 const safety_1 = require("./safety");
 const types_1 = require("./types");
 const persist_1 = require("./persist");
+const inputs_1 = require("../../../planner/inputs");
 const intent_read_1 = require("./intent_read");
 const feedback_1 = require("./feedback");
 let engineActive = false;
@@ -164,6 +165,7 @@ async function runImmersionRuntimeTick(host) {
     const powerRead = config.actualPowerStateId ? await readForeignNum(host, config.actualPowerStateId) : { value: null, tsMs: null };
     const measuredPower = powerRead.value;
     const hasPower = Boolean(config.actualPowerStateId);
+    const plannerCommandedStage = resolvedMode === "auto" ? await (0, inputs_1.readPlannerThermalStage)(host) : 0;
     const fsm = (0, fsm_1.runImmersionFsm)({
         nowMs,
         addonEnabled: enabled,
@@ -174,6 +176,7 @@ async function runImmersionRuntimeTick(host) {
         resolvedMode,
         forceTargetTempC: forceTarget,
         forceUntilMs: forceUntil ? Date.parse(forceUntil) : null,
+        plannerCommandedStage,
         temperature,
         measuredPowerW: measuredPower,
         hasPowerMeasurement: hasPower,

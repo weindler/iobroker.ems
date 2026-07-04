@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.controlModeToOperatingRequest = exports.operatingRequestToControlMode = exports.evaluateTemperature = exports.runImmersionFsm = void 0;
 const device_config_1 = require("../device_config");
 function runImmersionFsm(input) {
-    const { nowMs, addonEnabled, addonAvailable, configValid, failsafeActive, resolvedMode, forceTargetTempC, forceUntilMs, temperature, measuredPowerW, hasPowerMeasurement, persist, config, faultLockout, faultCode, } = input;
+    const { nowMs, addonEnabled, addonAvailable, configValid, failsafeActive, resolvedMode, forceTargetTempC, forceUntilMs, plannerCommandedStage, temperature, measuredPowerW, hasPowerMeasurement, persist, config, faultLockout, faultCode, } = input;
     const base = {
         state: "off",
         available: false,
@@ -62,11 +62,84 @@ function runImmersionFsm(input) {
         return { ...base, state: "off", reason: "user_off", commandedStage: 0, available: false };
     }
     if (resolvedMode === "auto") {
+        const temp = temperature.valueC;
+        if (temp >= config.planningMaxTempC) {
+            const minRuntimeActive = persist.minRuntimeUntilMs !== null && nowMs < persist.minRuntimeUntilMs;
+            if (minRuntimeActive && persist.commandedStage > 0) {
+                const activeStage = config.stages.find((s) => s.index === persist.commandedStage);
+                if (activeStage?.enabled && activeStage.nominalPowerW > 0) {
+                    return {
+                        ...base,
+                        state: "auto_heating",
+                        available: true,
+                        reason: "auto_minimum_runtime",
+                        commandedStage: persist.commandedStage,
+                        commandedPowerW: activeStage.nominalPowerW,
+                        minRuntimeUntilMs: persist.minRuntimeUntilMs,
+                        powerVerificationStatus: evaluatePower(hasPowerMeasurement, measuredPowerW, activeStage.nominalPowerW, true, config),
+                    };
+                }
+            }
+            return {
+                ...base,
+                state: "auto_ready",
+                available: true,
+                reason: "auto_planning_max_temp_reached",
+                commandedStage: 0,
+            };
+        }
+        const desiredStage = Math.max(0, Math.round(plannerCommandedStage));
+        const desiredCfg = config.stages.find((s) => s.index === desiredStage && s.enabled);
+        if (desiredStage > 0 && desiredCfg && desiredCfg.nominalPowerW > 0 && desiredCfg.setStateId) {
+            if (persist.commandedStage <= 0 && persist.pauseUntilMs !== null && nowMs < persist.pauseUntilMs) {
+                return {
+                    ...base,
+                    state: "auto_ready",
+                    available: true,
+                    reason: "auto_minimum_pause",
+                    commandedStage: 0,
+                    pauseUntilMs: persist.pauseUntilMs,
+                };
+            }
+            const minRuntimeActive = persist.minRuntimeUntilMs !== null && nowMs < persist.minRuntimeUntilMs;
+            const stageIdx = minRuntimeActive && persist.commandedStage > 0 ? persist.commandedStage : desiredStage;
+            const stageCfg = config.stages.find((s) => s.index === stageIdx && s.enabled);
+            if (stageCfg && stageCfg.nominalPowerW > 0) {
+                return {
+                    ...base,
+                    state: "auto_heating",
+                    available: true,
+                    reason: minRuntimeActive ? "auto_minimum_runtime" : "auto_planner_heating",
+                    commandedStage: stageCfg.index,
+                    commandedPowerW: stageCfg.nominalPowerW,
+                    minRuntimeUntilMs: minRuntimeActive
+                        ? persist.minRuntimeUntilMs
+                        : nowMs + config.minimumRuntimeSec * 1000,
+                    powerVerificationStatus: evaluatePower(hasPowerMeasurement, measuredPowerW, stageCfg.nominalPowerW, true, config),
+                };
+            }
+        }
+        const minRuntimeActive = persist.minRuntimeUntilMs !== null && nowMs < persist.minRuntimeUntilMs;
+        if (minRuntimeActive && persist.commandedStage > 0) {
+            const activeStage = config.stages.find((s) => s.index === persist.commandedStage);
+            if (activeStage?.enabled && activeStage.nominalPowerW > 0) {
+                return {
+                    ...base,
+                    state: "auto_heating",
+                    available: true,
+                    reason: "auto_minimum_runtime",
+                    commandedStage: persist.commandedStage,
+                    commandedPowerW: activeStage.nominalPowerW,
+                    minRuntimeUntilMs: persist.minRuntimeUntilMs,
+                    powerVerificationStatus: evaluatePower(hasPowerMeasurement, measuredPowerW, activeStage.nominalPowerW, true, config),
+                };
+            }
+        }
         return {
             ...base,
             state: "auto_ready",
             available: true,
-            reason: "auto_ready_for_planner",
+            reason: desiredStage > 0 ? "auto_planner_stage_unavailable" : "auto_ready_no_surplus",
             commandedStage: 0,
         };
     }

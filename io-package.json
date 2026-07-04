@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.79",
+		"version": "0.1.80",
 		"news": {
+			"0.1.80": {
+				"en": "Phase 1 Planner MVP: PV surplus drives immersion heater (auto) then battery charge; EVCC hold as hard constraint; planner states + operator briefing; dryrun-safe",
+				"de": "Phase-1-Planner-MVP: PV-Überschuss steuert Heizstab (auto) dann Batterie-Laden; EVCC-Hold als harte Grenze; Planner-States + Operator-Briefing; dryrun-tauglich"
+			},
 			"0.1.79": {
 				"en": "EVCC home battery bridge: map batteryMode and batteryDischargeControl; feed hold/charge constraints into user_intent.battery; battery FSM reads user_intent first with ems_mirror fallback",
 				"de": "EVCC-Hausbatterie-Brücke: batteryMode und batteryDischargeControl mappen; hold/charge-Vorgaben in user_intent.battery; Batterie-FSM liest user_intent zuerst mit ems_mirror-Fallback"

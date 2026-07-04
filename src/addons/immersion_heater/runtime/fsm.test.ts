@@ -25,6 +25,7 @@ describe("immersion fsm", () => {
 			resolvedMode: "off",
 			forceTargetTempC: null,
 			forceUntilMs: null,
+			plannerCommandedStage: 0,
 			temperature: { valueC: 40, status: "valid", observedAtMs: NOW },
 			measuredPowerW: 0,
 			hasPowerMeasurement: false,
@@ -48,6 +49,7 @@ describe("immersion fsm", () => {
 			resolvedMode: "force",
 			forceTargetTempC: 60,
 			forceUntilMs: null,
+			plannerCommandedStage: 0,
 			temperature: { valueC: 50, status: "valid", observedAtMs: NOW },
 			measuredPowerW: 0,
 			hasPowerMeasurement: false,
@@ -70,6 +72,7 @@ describe("immersion fsm", () => {
 			resolvedMode: "force",
 			forceTargetTempC: 60,
 			forceUntilMs: null,
+			plannerCommandedStage: 0,
 			temperature: { valueC: 61, status: "valid", observedAtMs: NOW },
 			measuredPowerW: 0,
 			hasPowerMeasurement: false,
@@ -92,6 +95,7 @@ describe("immersion fsm", () => {
 			resolvedMode: "force",
 			forceTargetTempC: 60,
 			forceUntilMs: null,
+			plannerCommandedStage: 0,
 			temperature: evaluateTemperature(50, NOW - 600_000, NOW, CFG),
 			measuredPowerW: 0,
 			hasPowerMeasurement: false,
@@ -102,6 +106,31 @@ describe("immersion fsm", () => {
 		});
 		assert.equal(r.commandedStage, 0);
 		assert.match(r.reason, /stale/);
+	});
+
+	it("auto planner stage starts heating", () => {
+		const r = runImmersionFsm({
+			nowMs: NOW,
+			addonEnabled: true,
+			addonAvailable: true,
+			configValid: true,
+			executionLive: false,
+			failsafeActive: false,
+			resolvedMode: "auto",
+			forceTargetTempC: null,
+			forceUntilMs: null,
+			plannerCommandedStage: 1,
+			temperature: { valueC: 50, status: "valid", observedAtMs: NOW },
+			measuredPowerW: 0,
+			hasPowerMeasurement: false,
+			persist: emptyPersist(),
+			config: CFG,
+			faultLockout: false,
+			faultCode: "none",
+		});
+		assert.equal(r.state, "auto_heating");
+		assert.equal(r.commandedStage, 1);
+		assert.equal(r.commandedPowerW, 3000);
 	});
 
 	it("control mode maps to operating_request", () => {

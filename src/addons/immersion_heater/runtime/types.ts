@@ -6,6 +6,7 @@ export type ImmersionRuntimeState =
 	| "disabled"
 	| "off"
 	| "auto_ready"
+	| "auto_heating"
 	| "force_waiting_for_pause"
 	| "force_heating"
 	| "force_target_reached"

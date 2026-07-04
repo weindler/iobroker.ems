@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.runEmsLightPhase1Tick = void 0;
 const tree_paths_1 = require("../tree_paths");
 const live_cache_1 = require("./live_cache");
+const planner_1 = require("../planner");
 async function runEmsLightPhase1Tick(host) {
     const ts = new Date().toISOString();
     const hints = [];
@@ -35,6 +36,12 @@ async function runEmsLightPhase1Tick(host) {
     catch (e) {
         hints.push(`live_cache: ${String(e)}`);
         liveResult.errors.push(String(e));
+    }
+    try {
+        await (0, planner_1.runPlannerTick)(host);
+    }
+    catch (e) {
+        hints.push(`planner: ${String(e)}`);
     }
     const health = (0, live_cache_1.deriveHealth)(liveResult, !hints.some((h) => h.includes("global.execution_mode nicht")));
     const summaryParts = [

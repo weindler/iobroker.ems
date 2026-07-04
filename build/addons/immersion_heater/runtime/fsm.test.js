@@ -28,6 +28,7 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
             resolvedMode: "off",
             forceTargetTempC: null,
             forceUntilMs: null,
+            plannerCommandedStage: 0,
             temperature: { valueC: 40, status: "valid", observedAtMs: NOW },
             measuredPowerW: 0,
             hasPowerMeasurement: false,
@@ -50,6 +51,7 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
             resolvedMode: "force",
             forceTargetTempC: 60,
             forceUntilMs: null,
+            plannerCommandedStage: 0,
             temperature: { valueC: 50, status: "valid", observedAtMs: NOW },
             measuredPowerW: 0,
             hasPowerMeasurement: false,
@@ -71,6 +73,7 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
             resolvedMode: "force",
             forceTargetTempC: 60,
             forceUntilMs: null,
+            plannerCommandedStage: 0,
             temperature: { valueC: 61, status: "valid", observedAtMs: NOW },
             measuredPowerW: 0,
             hasPowerMeasurement: false,
@@ -92,6 +95,7 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
             resolvedMode: "force",
             forceTargetTempC: 60,
             forceUntilMs: null,
+            plannerCommandedStage: 0,
             temperature: (0, fsm_js_1.evaluateTemperature)(50, NOW - 600_000, NOW, CFG),
             measuredPowerW: 0,
             hasPowerMeasurement: false,
@@ -102,6 +106,30 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
         });
         strict_1.default.equal(r.commandedStage, 0);
         strict_1.default.match(r.reason, /stale/);
+    });
+    (0, node_test_1.it)("auto planner stage starts heating", () => {
+        const r = (0, fsm_js_1.runImmersionFsm)({
+            nowMs: NOW,
+            addonEnabled: true,
+            addonAvailable: true,
+            configValid: true,
+            executionLive: false,
+            failsafeActive: false,
+            resolvedMode: "auto",
+            forceTargetTempC: null,
+            forceUntilMs: null,
+            plannerCommandedStage: 1,
+            temperature: { valueC: 50, status: "valid", observedAtMs: NOW },
+            measuredPowerW: 0,
+            hasPowerMeasurement: false,
+            persist: (0, persist_js_1.emptyPersist)(),
+            config: CFG,
+            faultLockout: false,
+            faultCode: "none",
+        });
+        strict_1.default.equal(r.state, "auto_heating");
+        strict_1.default.equal(r.commandedStage, 1);
+        strict_1.default.equal(r.commandedPowerW, 3000);
     });
     (0, node_test_1.it)("control mode maps to operating_request", () => {
         strict_1.default.equal((0, fsm_js_1.controlModeToOperatingRequest)("force"), "force_on");

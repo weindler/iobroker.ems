@@ -8,6 +8,7 @@ const energy_daily_rollup_1 = require("../learning/energy_daily_rollup");
 const power_rollup_1 = require("../learning/power_rollup");
 const policy_1 = require("../policy");
 const intent_1 = require("../intent");
+const planner_1 = require("../planner");
 const global_modes_1 = require("../global_modes");
 const ensure_states_1 = require("./ensure_states");
 const tick_1 = require("./tick");
@@ -73,6 +74,7 @@ async function initEmsLightPhase1(adapter) {
     const host = adapter;
     const adapterAny = adapter;
     await (0, ensure_states_1.ensureEmsLightStates)(host, version);
+    await (0, planner_1.initPlanner)(host);
     energyDailyRollupHost = buildRollupHost(adapter);
     powerRollupHost = energyDailyRollupHost;
     await (0, energy_daily_rollup_1.initEnergyDailyRollup)(energyDailyRollupHost);
@@ -173,6 +175,7 @@ function stopEmsLightPhase1() {
     (0, weather_1.stopWeatherLearning)();
     (0, power_rollup_1.stopPowerRollup)();
     (0, energy_daily_rollup_1.stopEnergyDailyRollup)();
+    (0, planner_1.stopPlanner)();
     powerRollupHost = null;
     energyDailyRollupHost = null;
     stopEmsLightTick();

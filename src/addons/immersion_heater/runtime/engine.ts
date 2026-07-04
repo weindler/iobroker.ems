@@ -25,7 +25,13 @@ import {
 	readRuntimePersist,
 	writeRuntimePersist,
 } from "./persist";
-import { forceTargetFromIntent, forceUntilFromIntent, parseResolvedIntentJson, resolvedModeFromIntent } from "./intent_read";
+import { readPlannerThermalStage } from "../../../planner/inputs";
+import {
+	forceTargetFromIntent,
+	forceUntilFromIntent,
+	parseResolvedIntentJson,
+	resolvedModeFromIntent,
+} from "./intent_read";
 import {
 	externalOnStatus,
 	feedbackStageFromReadings,
@@ -209,6 +215,7 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 	const powerRead = config.actualPowerStateId ? await readForeignNum(host, config.actualPowerStateId) : { value: null, tsMs: null };
 	const measuredPower = powerRead.value;
 	const hasPower = Boolean(config.actualPowerStateId);
+	const plannerCommandedStage = resolvedMode === "auto" ? await readPlannerThermalStage(host) : 0;
 
 	const fsm = runImmersionFsm({
 		nowMs,
@@ -220,6 +227,7 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 		resolvedMode,
 		forceTargetTempC: forceTarget,
 		forceUntilMs: forceUntil ? Date.parse(forceUntil) : null,
+		plannerCommandedStage,
 		temperature,
 		measuredPowerW: measuredPower,
 		hasPowerMeasurement: hasPower,

@@ -404,8 +404,11 @@ async function publishRuntime(host: ImmersionRuntimeHost, s: RuntimeSnapshot): P
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.snapshotJson, JSON.stringify(s));
 }
 
-export async function handleImmersionFaultReset(host: ImmersionRuntimeHost, ack: boolean | undefined): Promise<void> {
-	if (ack === true) return;
+export async function handleImmersionFaultReset(
+	host: ImmersionRuntimeHost,
+	state: ioBroker.State | null | undefined,
+): Promise<void> {
+	if (!state || state.val !== true) return;
 	const config = immersionDeviceConfigFromAdapter(host.config);
 	const validation = validateImmersionDeviceConfig(config);
 	const measured = config.actualPowerStateId ? (await readForeignNum(host, config.actualPowerStateId)).value : null;
@@ -417,6 +420,7 @@ export async function handleImmersionFaultReset(host: ImmersionRuntimeHost, ack:
 		configValid: validation.valid,
 		temperatureValid: true,
 		chatterActive: isRelayChatter(chatter, config.relayChatterMaxChanges),
+		faultCode: persist.faultCode,
 	});
 	if (reset.ok) {
 		persist.faultLockout = false;

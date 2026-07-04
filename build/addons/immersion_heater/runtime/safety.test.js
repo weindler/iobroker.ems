@@ -160,4 +160,31 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
         });
         strict_1.default.equal(r.ok, false);
     });
+    (0, node_test_1.it)("relay_chatter fault reset allowed while chatter tracker still active", () => {
+        const r = (0, safety_js_1.canResetFault)({
+            allStagesOff: true,
+            measuredPowerW: 0,
+            hasPowerMeasurement: true,
+            powerOffThresholdW: 20,
+            configValid: true,
+            temperatureValid: true,
+            chatterActive: true,
+            faultCode: "relay_chatter",
+        });
+        strict_1.default.equal(r.ok, true);
+    });
+    (0, node_test_1.it)("fault reset blocked while relay chatter active for other faults", () => {
+        const r = (0, safety_js_1.canResetFault)({
+            allStagesOff: true,
+            measuredPowerW: 0,
+            hasPowerMeasurement: true,
+            powerOffThresholdW: 20,
+            configValid: true,
+            temperatureValid: true,
+            chatterActive: true,
+            faultCode: "power_when_off",
+        });
+        strict_1.default.equal(r.ok, false);
+        strict_1.default.equal(r.reason, "relay_chatter_active");
+    });
 });

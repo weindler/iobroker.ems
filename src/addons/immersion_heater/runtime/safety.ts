@@ -127,11 +127,15 @@ export function canResetFault(input: {
 	configValid: boolean;
 	temperatureValid: boolean;
 	chatterActive: boolean;
+	/** Bei relay_chatter darf Reset trotz aktivem Chatter-Tracker (wird geleert). */
+	faultCode?: ImmersionFaultCode;
 }): { ok: boolean; reason: string } {
 	if (!input.configValid) return { ok: false, reason: "invalid_config" };
 	if (!input.temperatureValid) return { ok: false, reason: "temperature_invalid" };
 	if (!input.allStagesOff) return { ok: false, reason: "stages_not_off" };
-	if (input.chatterActive) return { ok: false, reason: "relay_chatter_active" };
+	if (input.chatterActive && input.faultCode !== "relay_chatter") {
+		return { ok: false, reason: "relay_chatter_active" };
+	}
 	if (input.hasPowerMeasurement && input.measuredPowerW !== null && input.measuredPowerW > input.powerOffThresholdW) {
 		return { ok: false, reason: "power_still_present" };
 	}

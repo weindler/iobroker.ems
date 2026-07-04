@@ -165,4 +165,33 @@ describe("immersion safety", () => {
 		});
 		assert.equal(r.ok, false);
 	});
+
+	it("relay_chatter fault reset allowed while chatter tracker still active", () => {
+		const r = canResetFault({
+			allStagesOff: true,
+			measuredPowerW: 0,
+			hasPowerMeasurement: true,
+			powerOffThresholdW: 20,
+			configValid: true,
+			temperatureValid: true,
+			chatterActive: true,
+			faultCode: "relay_chatter",
+		});
+		assert.equal(r.ok, true);
+	});
+
+	it("fault reset blocked while relay chatter active for other faults", () => {
+		const r = canResetFault({
+			allStagesOff: true,
+			measuredPowerW: 0,
+			hasPowerMeasurement: true,
+			powerOffThresholdW: 20,
+			configValid: true,
+			temperatureValid: true,
+			chatterActive: true,
+			faultCode: "power_when_off",
+		});
+		assert.equal(r.ok, false);
+		assert.equal(r.reason, "relay_chatter_active");
+	});
 });

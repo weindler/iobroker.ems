@@ -89,8 +89,9 @@ function canResetFault(input) {
         return { ok: false, reason: "temperature_invalid" };
     if (!input.allStagesOff)
         return { ok: false, reason: "stages_not_off" };
-    if (input.chatterActive)
+    if (input.chatterActive && input.faultCode !== "relay_chatter") {
         return { ok: false, reason: "relay_chatter_active" };
+    }
     if (input.hasPowerMeasurement && input.measuredPowerW !== null && input.measuredPowerW > input.powerOffThresholdW) {
         return { ok: false, reason: "power_still_present" };
     }

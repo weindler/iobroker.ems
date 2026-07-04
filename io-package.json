@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.88",
+		"version": "0.1.89",
 		"news": {
+			"0.1.89": {
+				"en": "Immersion heater fault_reset fix: relay_chatter lockout can be cleared again; reset triggers on val=true regardless of ack",
+				"de": "Heizstab fault_reset: relay_chatter-Sperre lässt sich wieder zurücksetzen; Reset bei val=true unabhängig von ack"
+			},
 			"0.1.88": {
 				"en": "Admin battery execution mode (bat_addon_mode) restored; object-tree dryrun/live changes sync back to admin config so both views stay aligned",
 				"de": "Batterie-Ausführungsmodus (bat_addon_mode) im Admin wieder verfügbar; Objektbaum-Änderungen dryrun/live werden in Admin-Config zurückgeschrieben"

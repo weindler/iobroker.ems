@@ -59,7 +59,7 @@ export function handleImmersionHeaterStateChange(adapter: ioBroker.Adapter, stat
 	const host = runtimeHost(adapter);
 	if (stateId === `${ns}${IMMERSION_RUNTIME_STATES.faultReset}`) {
 		void adapter.getStateAsync(IMMERSION_RUNTIME_STATES.faultReset).then((st) => {
-			void handleImmersionFaultReset(host, st?.ack);
+			void handleImmersionFaultReset(host, st);
 		});
 		return;
 	}

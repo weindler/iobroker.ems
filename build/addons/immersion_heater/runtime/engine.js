@@ -338,8 +338,8 @@ async function publishRuntime(host, s) {
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.reason, s.reason);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.snapshotJson, JSON.stringify(s));
 }
-async function handleImmersionFaultReset(host, ack) {
-    if (ack === true)
+async function handleImmersionFaultReset(host, state) {
+    if (!state || state.val !== true)
         return;
     const config = (0, device_config_1.immersionDeviceConfigFromAdapter)(host.config);
     const validation = (0, validate_config_1.validateImmersionDeviceConfig)(config);
@@ -352,6 +352,7 @@ async function handleImmersionFaultReset(host, ack) {
         configValid: validation.valid,
         temperatureValid: true,
         chatterActive: (0, safety_1.isRelayChatter)(chatter, config.relayChatterMaxChanges),
+        faultCode: persist.faultCode,
     });
     if (reset.ok) {
         persist.faultLockout = false;

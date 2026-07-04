@@ -51,7 +51,7 @@ function handleImmersionHeaterStateChange(adapter, stateId) {
     const host = runtimeHost(adapter);
     if (stateId === `${ns}${types_1.IMMERSION_RUNTIME_STATES.faultReset}`) {
         void adapter.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.faultReset).then((st) => {
-            void (0, engine_1.handleImmersionFaultReset)(host, st?.ack);
+            void (0, engine_1.handleImmersionFaultReset)(host, st);
         });
         return;
     }

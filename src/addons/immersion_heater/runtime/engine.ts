@@ -40,6 +40,12 @@ import {
 	normalizeFeedbackActive,
 	type StageFeedbackReading,
 } from "./feedback";
+import {
+	flushConsumerStatsPersist,
+	initConsumerStatsForAddon,
+	resetConsumerStatsCache,
+	tickConsumerStats,
+} from "../../../learning/consumer_stats";
 
 export type ImmersionRuntimeHost = {
 	config?: unknown;
@@ -384,6 +390,15 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 
 	await publishRuntime(host, snapshot);
 
+	await tickConsumerStats(host, {
+		consumerKey: "immersion_heater",
+		nowMs,
+		active: effectiveStage > 0 && !persist.faultLockout,
+		measuredPowerW: measuredPower,
+		commandedPowerW: !persist.faultLockout && effectiveStage > 0 ? fsm.commandedPowerW : 0,
+		powerOnThresholdW: config.powerOnThresholdW,
+	});
+
 	const dataDir = host.getAbsolutePath?.("immersion_heater");
 	if (dataDir) {
 		await writeRuntimePersist(dataDir, persist);
@@ -455,6 +470,7 @@ export async function initImmersionRuntimeEngine(host: ImmersionRuntimeHost): Pr
 	engineActive = true;
 	hostRef = host;
 	await ensureImmersionRuntimeStates(host);
+	await initConsumerStatsForAddon(host, "immersion_heater");
 	const dataDir = host.getAbsolutePath?.("immersion_heater");
 	if (dataDir) {
 		const loaded = await readRuntimePersist(dataDir);
@@ -504,6 +520,10 @@ export async function initImmersionRuntimeEngine(host: ImmersionRuntimeHost): Pr
 export function stopImmersionRuntimeEngine(): void {
 	const host = hostRef;
 	clearTick();
+	if (host) {
+		void flushConsumerStatsPersist(host).catch((e) => host.log.debug?.(`immersion stats flush: ${e}`));
+	}
+	resetConsumerStatsCache();
 	if (host?.unsubscribeStatesAsync) {
 		for (const id of subscribedIds) {
 			if (id.startsWith("user_intent") || id.startsWith("addons.")) {

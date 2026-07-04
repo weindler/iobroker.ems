@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.94",
+		"version": "0.1.95",
 		"news": {
+			"0.1.95": {
+				"en": "Consumer stats Phase C: per-device runtime and kWh tracking for EMS-controlled consumers (immersion heater pilot); admin offsets and enable toggles",
+				"de": "Verbraucher-Statistik Phase C: Laufzeit und kWh pro EMS-Verbraucher (Heizstab Pilot); Admin-Offsets und Ein/Aus-Schalter"
+			},
 			"0.1.94": {
 				"en": "Immersion power_when_off: wait for fresh reading after switch-off (stale meter fix); default off-check delay 90s; includes Phase B forecast daily target (v0.1.93)",
 				"de": "Heizstab power_when_off: frischer Leistungswert nach EMS-AUS abwarten; Standard Prüfverzögerung Aus 90 s; inkl. Phase B Forecast-Tagesziel (v0.1.93)"

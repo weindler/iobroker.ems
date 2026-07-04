@@ -19,6 +19,7 @@ const persist_1 = require("./persist");
 const inputs_1 = require("../../../planner/inputs");
 const intent_read_1 = require("./intent_read");
 const feedback_1 = require("./feedback");
+const consumer_stats_1 = require("../../../learning/consumer_stats");
 let engineActive = false;
 let hostRef = null;
 let persist = (0, persist_1.emptyPersist)();
@@ -322,6 +323,14 @@ async function runImmersionRuntimeTick(host) {
         updated_at: now.toISOString(),
     };
     await publishRuntime(host, snapshot);
+    await (0, consumer_stats_1.tickConsumerStats)(host, {
+        consumerKey: "immersion_heater",
+        nowMs,
+        active: effectiveStage > 0 && !persist.faultLockout,
+        measuredPowerW: measuredPower,
+        commandedPowerW: !persist.faultLockout && effectiveStage > 0 ? fsm.commandedPowerW : 0,
+        powerOnThresholdW: config.powerOnThresholdW,
+    });
     const dataDir = host.getAbsolutePath?.("immersion_heater");
     if (dataDir) {
         await (0, persist_1.writeRuntimePersist)(dataDir, persist);
@@ -391,6 +400,7 @@ async function initImmersionRuntimeEngine(host) {
     engineActive = true;
     hostRef = host;
     await (0, ensure_states_1.ensureImmersionRuntimeStates)(host);
+    await (0, consumer_stats_1.initConsumerStatsForAddon)(host, "immersion_heater");
     const dataDir = host.getAbsolutePath?.("immersion_heater");
     if (dataDir) {
         const loaded = await (0, persist_1.readRuntimePersist)(dataDir);
@@ -444,6 +454,10 @@ exports.initImmersionRuntimeEngine = initImmersionRuntimeEngine;
 function stopImmersionRuntimeEngine() {
     const host = hostRef;
     clearTick();
+    if (host) {
+        void (0, consumer_stats_1.flushConsumerStatsPersist)(host).catch((e) => host.log.debug?.(`immersion stats flush: ${e}`));
+    }
+    (0, consumer_stats_1.resetConsumerStatsCache)();
     if (host?.unsubscribeStatesAsync) {
         for (const id of subscribedIds) {
             if (id.startsWith("user_intent") || id.startsWith("addons.")) {

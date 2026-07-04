@@ -1565,6 +1565,68 @@
 					"lg": 3,
 					"xl": 3
 				},
+				"hIhStats": {
+					"type": "header",
+					"size": 2,
+					"text": "Statistik (Laufzeit & Verbrauch)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ih_stats_enabled": {
+					"type": "checkbox",
+					"label": "Statistik aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ih_stats_track_runtime": {
+					"type": "checkbox",
+					"label": "Laufzeit mitloggen",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ih_stats_track_energy": {
+					"type": "checkbox",
+					"label": "Verbrauch (kWh) mitloggen",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ih_stats_runtime_offset_h": {
+					"type": "number",
+					"label": "Offset Laufzeit (h)",
+					"min": 0,
+					"default": 0,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ih_stats_energy_offset_kwh": {
+					"type": "number",
+					"label": "Offset Verbrauch (kWh)",
+					"min": 0,
+					"default": 0,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
 				"ih_temperature_hysteresis_k": {
 					"type": "number",
 					"label": "Hysterese (K)",

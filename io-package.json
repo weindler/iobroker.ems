@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.103",
+		"version": "0.1.104",
 		"news": {
+			"0.1.104": {
+				"en": "AC live: force SmartThings switch-on/off/refresh, reset stuck toggle mirrors after sequence; Josef OG unit 2 mapping defaults; start retry if feedback stays off",
+				"de": "Klima live: SmartThings switch-on/off/refresh erzwingen, hängende Toggle-Spiegel nach Sequenz zurücksetzen; Josef OG Unit-2-Mapping; Start-Retry wenn Feedback off bleibt"
+			},
 			"0.1.103": {
 				"en": "AC admin temperature fields accept decimals (step 0.1); fix dryrun log repeat",
 				"de": "Klima-Temperaturfelder im Admin mit Dezimalwerten (step 0.1); Dryrun-Log-Wiederholung behoben"

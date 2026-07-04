@@ -6,6 +6,15 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.104] – 2026-07-04
+
+### Fixed
+
+- **Klima live (SmartThings):** `switch-on`/`switch-off`/`refresh` immer senden (`force`), hängende Toggle-States im Objektbaum nach Sequenz zurücksetzen, Start-Retry wenn Feedback noch `off`.
+- **Klima Admin:** Josef Zimmer OG (Unit 2) Mapping vorbefüllt; Wohnzimmer Unit 1 für Live-Test standardmäßig deaktiviert.
+
+---
+
 ## [0.1.72] – 2026-07-01
 
 ### Fixed

@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.90",
+		"version": "0.1.91",
 		"news": {
+			"0.1.91": {
+				"en": "Immersion heater live relay writes use ack:false so Shelly/smart plugs actually switch (was ack:true, state-only update)",
+				"de": "Heizstab Live-Schaltung mit ack:false — Shelly/Steckdose schaltet wirklich (vorher ack:true, nur State-Update)"
+			},
 			"0.1.90": {
 				"en": "Immersion heater: wait for fresh power reading after switch-on before no_power_when_on fault; default on-check delay raised to 90s",
 				"de": "Heizstab: no_power_when_on erst nach frischem Leistungswert nach EMS-EIN; Standard-Prüfverzögerung Ein auf 90 s erhöht"

@@ -131,10 +131,11 @@ async function applyStageWrites(host, stageIndex, live) {
             const writeResult = await (0, device_write_1.writeForeignIfChanged)({
                 getForeignStateAsync: (id) => host.getForeignStateAsync(id),
                 setForeignStateAsync: async (id, state) => {
-                    const val = state && typeof state === "object" && "val" in state
-                        ? state.val
-                        : state;
-                    await host.setForeignStateAsync(id, { val: val ?? null, ack: true });
+                    if (state && typeof state === "object" && "val" in state) {
+                        await host.setForeignStateAsync(id, state);
+                        return;
+                    }
+                    await host.setForeignStateAsync(id, { val: state ?? null, ack: false });
                 },
                 log: {
                     info: (m) => host.log.info?.(m),

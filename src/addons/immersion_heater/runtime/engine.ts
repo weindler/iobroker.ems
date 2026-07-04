@@ -178,11 +178,11 @@ async function applyStageWrites(host: ImmersionRuntimeHost, stageIndex: number, 
 				{
 					getForeignStateAsync: (id) => host.getForeignStateAsync!(id),
 					setForeignStateAsync: async (id, state) => {
-						const val =
-							state && typeof state === "object" && "val" in state
-								? (state as ioBroker.SettableState).val
-								: (state as ioBroker.StateValue);
-						await host.setForeignStateAsync!(id, { val: val ?? null, ack: true });
+						if (state && typeof state === "object" && "val" in state) {
+							await host.setForeignStateAsync!(id, state as ioBroker.SettableState);
+							return;
+						}
+						await host.setForeignStateAsync!(id, { val: (state as ioBroker.StateValue) ?? null, ack: false });
 					},
 					log: {
 						info: (m) => host.log.info?.(m),

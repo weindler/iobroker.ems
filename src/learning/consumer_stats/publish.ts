@@ -1,14 +1,14 @@
 import { setStateIfChanged } from "../../policy/core/state_write";
 import type { StateHost } from "../../ems_light/state_util";
-import { consumerStatsStateIds } from "./ensure_states";
+import { consumerStatsStateIdsForKey } from "./ensure_states";
 import type { ConsumerStatsSnapshot } from "./types";
 
 export async function publishConsumerStats(
 	host: StateHost,
-	addonId: string,
+	consumerKey: string,
 	snapshot: ConsumerStatsSnapshot,
 ): Promise<void> {
-	const ids = consumerStatsStateIds(addonId);
+	const ids = consumerStatsStateIdsForKey(consumerKey);
 	await setStateIfChanged(host, ids.tracking, snapshot.tracking);
 	await setStateIfChanged(host, ids.deviceActive, snapshot.deviceActive);
 	await setStateIfChanged(host, ids.todayRuntimeSec, snapshot.todayRuntimeSec);

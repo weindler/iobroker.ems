@@ -6,6 +6,11 @@ import {
 	stopBatteryModule,
 } from "./addons/battery";
 import {
+	handleAirConditioningStateChange,
+	initAirConditioningModule,
+	stopAirConditioningModule,
+} from "./addons/air_conditioning";
+import {
 	handleImmersionHeaterStateChange,
 	initImmersionHeaterModule,
 	stopImmersionHeaterModule,
@@ -127,6 +132,7 @@ class Ems extends utils.Adapter {
 		await this.step("wallbox module", () => initWallboxModule(this));
 		await this.step("battery module", () => initBatteryModule(this));
 		await this.step("immersion heater module", () => initImmersionHeaterModule(this));
+		await this.step("air conditioning module", () => initAirConditioningModule(this));
 		await this.step("dynamic tariff module", () => initDynamicTariffModule(this));
 		await this.step("failsafe runner", async () => startFailsafeRunner(this));
 		// EMS-Light/Learning explizit isoliert: muss unabhängig von Add-on-Fehlern laufen.
@@ -155,6 +161,7 @@ class Ems extends utils.Adapter {
 		void batteryUnloadRestore(this as ioBroker.Adapter & { config: unknown }).catch(() => undefined);
 		stopBatteryModule(null);
 		stopImmersionHeaterModule();
+		stopAirConditioningModule();
 		stopWallboxModule();
 		stopFailsafeRunner();
 		callback();
@@ -165,6 +172,7 @@ class Ems extends utils.Adapter {
 			await handleExecutionModeStateChange(this, id, state);
 			handleBatteryAdapterStateChange(this, id);
 			handleImmersionHeaterStateChange(this, id);
+			handleAirConditioningStateChange(this, id);
 			handleGlobalModesStateChange(this.namespace, id);
 			handleIntentStateChange(this.namespace, id, state);
 			handleWallboxForeignStateChange(this.namespace, id);

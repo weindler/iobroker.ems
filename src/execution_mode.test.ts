@@ -16,6 +16,7 @@ const DRYRUN_FP = executionModesConfigFingerprint({
 	wb_addon_mode: "dryrun",
 	bat_addon_mode: "dryrun",
 	ih_addon_mode: "dryrun",
+	ac_addon_mode: "dryrun",
 });
 
 const LIVE_IH_FP = executionModesConfigFingerprint({
@@ -23,6 +24,7 @@ const LIVE_IH_FP = executionModesConfigFingerprint({
 	wb_addon_mode: "dryrun",
 	bat_addon_mode: "dryrun",
 	ih_addon_mode: "live",
+	ac_addon_mode: "dryrun",
 });
 
 describe("execution mode", () => {
@@ -81,6 +83,7 @@ describe("execution mode", () => {
 		const store = new Map<string, ioBroker.State>([
 			["global.execution_mode", { val: "live", ack: true } as ioBroker.State],
 			["addons.immersion_heater.mode", { val: "live", ack: true } as ioBroker.State],
+			["addons.air_conditioning.mode", { val: "dryrun", ack: true } as ioBroker.State],
 			["addons.battery.mode", { val: "dryrun", ack: true } as ioBroker.State],
 			["addons.wallbox.mode", { val: "dryrun", ack: true } as ioBroker.State],
 			[EXECUTION_MODE_CONFIG_FINGERPRINT, { val: DRYRUN_FP, ack: true } as ioBroker.State],
@@ -95,6 +98,7 @@ describe("execution mode", () => {
 		await syncExecutionModesFromConfig(host, {
 			global_execution_mode: "dryrun",
 			ih_addon_mode: "dryrun",
+			ac_addon_mode: "dryrun",
 			bat_addon_mode: "dryrun",
 			wb_addon_mode: "dryrun",
 		});
@@ -121,6 +125,7 @@ describe("execution mode", () => {
 		await syncExecutionModesFromConfig(host, {
 			global_execution_mode: "live",
 			ih_addon_mode: "live",
+			ac_addon_mode: "dryrun",
 			bat_addon_mode: "dryrun",
 			wb_addon_mode: "dryrun",
 		});
@@ -141,6 +146,7 @@ describe("execution mode", () => {
 		await syncExecutionModesFromConfig(host, {
 			global_execution_mode: "live",
 			ih_addon_mode: "live",
+			ac_addon_mode: "dryrun",
 			bat_addon_mode: "dryrun",
 			wb_addon_mode: "dryrun",
 		});

@@ -55,12 +55,17 @@ async function flushPersist(host: ConsumerStatsHost): Promise<void> {
 	persistDirty = false;
 }
 
-export async function initConsumerStatsForAddon(host: ConsumerStatsHost, addonId: string): Promise<void> {
-	if (!consumerStatsConfigFor(addonId, host.config)) {
+export async function initConsumerStatsForKey(host: ConsumerStatsHost, consumerKey: string): Promise<void> {
+	if (!consumerStatsConfigFor(consumerKey, host.config)) {
 		return;
 	}
-	await ensureConsumerStatsStates(host, addonId);
+	await ensureConsumerStatsStates(host, consumerKey);
 	await loadPersist(host);
+}
+
+/** @deprecated use initConsumerStatsForKey */
+export async function initConsumerStatsForAddon(host: ConsumerStatsHost, addonId: string): Promise<void> {
+	await initConsumerStatsForKey(host, addonId);
 }
 
 export async function tickConsumerStats(

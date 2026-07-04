@@ -15,7 +15,7 @@ export const EXECUTION_MODE_STATES: Record<string, string> = {
 };
 
 /** Addons mit dryrun/live-Schalter (Admin + Objektbaum). */
-export const EXECUTION_MODE_ADDON_IDS = ["wallbox", "battery", "immersion_heater"] as const;
+export const EXECUTION_MODE_ADDON_IDS = ["wallbox", "battery", "immersion_heater", "air_conditioning"] as const;
 
 export type ExecutionModeAddonId = (typeof EXECUTION_MODE_ADDON_IDS)[number];
 
@@ -23,6 +23,7 @@ const ADDON_EXECUTION_MODE_NAMES: Record<ExecutionModeAddonId, string> = {
 	wallbox: "Wallbox: Ausführung (dryrun|live)",
 	battery: "Batterie: Ausführung (dryrun|live)",
 	immersion_heater: "Heizstab: Ausführung (dryrun|live)",
+	air_conditioning: "Klima: Ausführung (dryrun|live)",
 };
 
 export interface ExecutionModeHost {
@@ -40,6 +41,7 @@ export interface ExecutionModeConfigModes {
 	wallbox: ExecutionMode;
 	battery: ExecutionMode;
 	immersion_heater: ExecutionMode;
+	air_conditioning: ExecutionMode;
 }
 
 export function executionModesFromConfig(config: Record<string, unknown>): ExecutionModeConfigModes {
@@ -49,6 +51,7 @@ export function executionModesFromConfig(config: Record<string, unknown>): Execu
 		wallbox: parseMode(c.wb_addon_mode ?? "dryrun"),
 		battery: parseMode(c.bat_addon_mode ?? "dryrun"),
 		immersion_heater: parseMode(c.ih_addon_mode ?? "dryrun"),
+		air_conditioning: parseMode(c.ac_addon_mode ?? "dryrun"),
 	};
 }
 
@@ -61,6 +64,7 @@ export interface GlobalExecutionConfig {
 	wb_addon_mode?: string;
 	bat_addon_mode?: string;
 	ih_addon_mode?: string;
+	ac_addon_mode?: string;
 }
 
 export function parseMode(raw: unknown): ExecutionMode {
@@ -119,6 +123,7 @@ async function applyExecutionModesFromConfig(
 	await host.setStateAsync(addonMode("wallbox"), { val: modes.wallbox, ack: true });
 	await host.setStateAsync(addonMode("battery"), { val: modes.battery, ack: true });
 	await host.setStateAsync(addonMode("immersion_heater"), { val: modes.immersion_heater, ack: true });
+	await host.setStateAsync(addonMode("air_conditioning"), { val: modes.air_conditioning, ack: true });
 }
 
 async function anyExecutionModeEmpty(host: ExecutionModeHost): Promise<boolean> {
@@ -189,6 +194,7 @@ async function alignAdminConfigWithRuntimeStates(
 		[addonMode("wallbox"), "wb_addon_mode"],
 		[addonMode("battery"), "bat_addon_mode"],
 		[addonMode("immersion_heater"), "ih_addon_mode"],
+		[addonMode("air_conditioning"), "ac_addon_mode"],
 	];
 	for (const [stateId, configKey] of pairs) {
 		const st = await host.getStateAsync(stateId);
@@ -267,6 +273,8 @@ export function executionModeConfigKeyForRelativeId(relativeId: string): keyof G
 			return "bat_addon_mode";
 		case addonMode("immersion_heater"):
 			return "ih_addon_mode";
+		case addonMode("air_conditioning"):
+			return "ac_addon_mode";
 		default:
 			return null;
 	}

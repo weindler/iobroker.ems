@@ -3,8 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.publishConsumerStats = void 0;
 const state_write_1 = require("../../policy/core/state_write");
 const ensure_states_1 = require("./ensure_states");
-async function publishConsumerStats(host, addonId, snapshot) {
-    const ids = (0, ensure_states_1.consumerStatsStateIds)(addonId);
+async function publishConsumerStats(host, consumerKey, snapshot) {
+    const ids = (0, ensure_states_1.consumerStatsStateIdsForKey)(consumerKey);
     await (0, state_write_1.setStateIfChanged)(host, ids.tracking, snapshot.tracking);
     await (0, state_write_1.setStateIfChanged)(host, ids.deviceActive, snapshot.deviceActive);
     await (0, state_write_1.setStateIfChanged)(host, ids.todayRuntimeSec, snapshot.todayRuntimeSec);

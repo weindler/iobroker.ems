@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.consumerStatsConfigFor = exports.CONSUMER_STATS_CONFIG_READERS = exports.immersionConsumerStatsFromConfig = void 0;
+exports.consumerStatsConfigFor = exports.acUnitStatsFromConfig = exports.immersionConsumerStatsFromConfig = void 0;
 function configRecord(config) {
     return config && typeof config === "object" ? config : {};
 }
@@ -35,11 +35,27 @@ function immersionConsumerStatsFromConfig(config) {
     };
 }
 exports.immersionConsumerStatsFromConfig = immersionConsumerStatsFromConfig;
-exports.CONSUMER_STATS_CONFIG_READERS = {
-    immersion_heater: immersionConsumerStatsFromConfig,
-};
-function consumerStatsConfigFor(addonId, config) {
-    const reader = exports.CONSUMER_STATS_CONFIG_READERS[addonId];
-    return reader ? reader(config) : null;
+function acUnitStatsFromConfig(config, unitIndex) {
+    const c = configRecord(config);
+    const p = `ac_u${unitIndex}_stats_`;
+    const unitEnabled = boolField(c, `ac_u${unitIndex}_enabled`, false);
+    return {
+        enabled: unitEnabled && boolField(c, `${p}enabled`, true),
+        trackRuntime: boolField(c, `${p}track_runtime`, true),
+        trackEnergy: boolField(c, `${p}track_energy`, true),
+        runtimeOffsetSec: Math.max(0, numField(c, `${p}runtime_offset_h`, 0) * 3600),
+        energyOffsetKwh: Math.max(0, numField(c, `${p}energy_offset_kwh`, 0)),
+    };
+}
+exports.acUnitStatsFromConfig = acUnitStatsFromConfig;
+function consumerStatsConfigFor(consumerKey, config) {
+    if (consumerKey === "immersion_heater") {
+        return immersionConsumerStatsFromConfig(config);
+    }
+    const unitMatch = /^air_conditioning\.unit_(\d+)$/.exec(consumerKey);
+    if (unitMatch) {
+        return acUnitStatsFromConfig(config, parseInt(unitMatch[1], 10));
+    }
+    return null;
 }
 exports.consumerStatsConfigFor = consumerStatsConfigFor;

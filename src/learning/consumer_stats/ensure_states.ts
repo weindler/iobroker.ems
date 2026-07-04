@@ -25,12 +25,21 @@ function strState(id: string, name: string, def?: string): StateDef {
 	};
 }
 
-export function consumerStatsBase(addonId: string): string {
-	return `${addonBase(addonId)}.stats`;
+export function consumerStatsBaseFromKey(consumerKey: string): string {
+	const unitMatch = /^air_conditioning\.unit_(\d+)$/.exec(consumerKey);
+	if (unitMatch) {
+		return `addons.air_conditioning.units.unit_${unitMatch[1]}.stats`;
+	}
+	return `${addonBase(consumerKey)}.stats`;
 }
 
-export function consumerStatsStateIds(addonId: string): Record<string, string> {
-	const base = consumerStatsBase(addonId);
+/** @deprecated use consumerStatsBaseFromKey */
+export function consumerStatsBase(addonId: string): string {
+	return consumerStatsBaseFromKey(addonId);
+}
+
+export function consumerStatsStateIdsForKey(consumerKey: string): Record<string, string> {
+	const base = consumerStatsBaseFromKey(consumerKey);
 	return {
 		tracking: `${base}.tracking`,
 		deviceActive: `${base}.device_active`,
@@ -46,14 +55,26 @@ export function consumerStatsStateIds(addonId: string): Record<string, string> {
 	};
 }
 
+export function consumerStatsStateIds(addonId: string): Record<string, string> {
+	return consumerStatsStateIdsForKey(addonId);
+}
+
 const CONSUMER_LABELS: Record<string, string> = {
 	immersion_heater: "Heizstab",
 };
 
-export async function ensureConsumerStatsStates(host: StateHost, addonId: string): Promise<void> {
-	const label = CONSUMER_LABELS[addonId] ?? addonId;
-	const base = consumerStatsBase(addonId);
-	const ids = consumerStatsStateIds(addonId);
+function labelForConsumerKey(consumerKey: string): string {
+	const unitMatch = /^air_conditioning\.unit_(\d+)$/.exec(consumerKey);
+	if (unitMatch) {
+		return `Klima Unit ${unitMatch[1]}`;
+	}
+	return CONSUMER_LABELS[consumerKey] ?? consumerKey;
+}
+
+export async function ensureConsumerStatsStates(host: StateHost, consumerKey: string): Promise<void> {
+	const label = labelForConsumerKey(consumerKey);
+	const base = consumerStatsBaseFromKey(consumerKey);
+	const ids = consumerStatsStateIdsForKey(consumerKey);
 	await ensureChannel(host, base, `${label} Statistik`);
 	const defs: StateDef[] = [
 		boolState(ids.tracking, `${label} Statistik aktiv`, false),

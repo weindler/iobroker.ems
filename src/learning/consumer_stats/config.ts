@@ -32,13 +32,26 @@ export function immersionConsumerStatsFromConfig(config: unknown): ConsumerStats
 	};
 }
 
-export type ConsumerStatsConfigReader = (config: unknown) => ConsumerStatsConfig;
+export function acUnitStatsFromConfig(config: unknown, unitIndex: number): ConsumerStatsConfig {
+	const c = configRecord(config);
+	const p = `ac_u${unitIndex}_stats_`;
+	const unitEnabled = boolField(c, `ac_u${unitIndex}_enabled`, false);
+	return {
+		enabled: unitEnabled && boolField(c, `${p}enabled`, true),
+		trackRuntime: boolField(c, `${p}track_runtime`, true),
+		trackEnergy: boolField(c, `${p}track_energy`, true),
+		runtimeOffsetSec: Math.max(0, numField(c, `${p}runtime_offset_h`, 0) * 3600),
+		energyOffsetKwh: Math.max(0, numField(c, `${p}energy_offset_kwh`, 0)),
+	};
+}
 
-export const CONSUMER_STATS_CONFIG_READERS: Record<string, ConsumerStatsConfigReader> = {
-	immersion_heater: immersionConsumerStatsFromConfig,
-};
-
-export function consumerStatsConfigFor(addonId: string, config: unknown): ConsumerStatsConfig | null {
-	const reader = CONSUMER_STATS_CONFIG_READERS[addonId];
-	return reader ? reader(config) : null;
+export function consumerStatsConfigFor(consumerKey: string, config: unknown): ConsumerStatsConfig | null {
+	if (consumerKey === "immersion_heater") {
+		return immersionConsumerStatsFromConfig(config);
+	}
+	const unitMatch = /^air_conditioning\.unit_(\d+)$/.exec(consumerKey);
+	if (unitMatch) {
+		return acUnitStatsFromConfig(config, parseInt(unitMatch[1], 10));
+	}
+	return null;
 }

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureConsumerStatsStates = exports.consumerStatsStateIds = exports.consumerStatsBase = void 0;
+exports.ensureConsumerStatsStates = exports.consumerStatsStateIds = exports.consumerStatsStateIdsForKey = exports.consumerStatsBase = exports.consumerStatsBaseFromKey = void 0;
 const state_util_1 = require("../../ems_light/state_util");
 const tree_paths_1 = require("../../tree_paths");
 function numState(id, name, def) {
@@ -24,12 +24,21 @@ function strState(id, name, def) {
         defaultVal: def,
     };
 }
+function consumerStatsBaseFromKey(consumerKey) {
+    const unitMatch = /^air_conditioning\.unit_(\d+)$/.exec(consumerKey);
+    if (unitMatch) {
+        return `addons.air_conditioning.units.unit_${unitMatch[1]}.stats`;
+    }
+    return `${(0, tree_paths_1.addonBase)(consumerKey)}.stats`;
+}
+exports.consumerStatsBaseFromKey = consumerStatsBaseFromKey;
+/** @deprecated use consumerStatsBaseFromKey */
 function consumerStatsBase(addonId) {
-    return `${(0, tree_paths_1.addonBase)(addonId)}.stats`;
+    return consumerStatsBaseFromKey(addonId);
 }
 exports.consumerStatsBase = consumerStatsBase;
-function consumerStatsStateIds(addonId) {
-    const base = consumerStatsBase(addonId);
+function consumerStatsStateIdsForKey(consumerKey) {
+    const base = consumerStatsBaseFromKey(consumerKey);
     return {
         tracking: `${base}.tracking`,
         deviceActive: `${base}.device_active`,
@@ -44,14 +53,25 @@ function consumerStatsStateIds(addonId) {
         lastUpdated: `${base}.last_updated`,
     };
 }
+exports.consumerStatsStateIdsForKey = consumerStatsStateIdsForKey;
+function consumerStatsStateIds(addonId) {
+    return consumerStatsStateIdsForKey(addonId);
+}
 exports.consumerStatsStateIds = consumerStatsStateIds;
 const CONSUMER_LABELS = {
     immersion_heater: "Heizstab",
 };
-async function ensureConsumerStatsStates(host, addonId) {
-    const label = CONSUMER_LABELS[addonId] ?? addonId;
-    const base = consumerStatsBase(addonId);
-    const ids = consumerStatsStateIds(addonId);
+function labelForConsumerKey(consumerKey) {
+    const unitMatch = /^air_conditioning\.unit_(\d+)$/.exec(consumerKey);
+    if (unitMatch) {
+        return `Klima Unit ${unitMatch[1]}`;
+    }
+    return CONSUMER_LABELS[consumerKey] ?? consumerKey;
+}
+async function ensureConsumerStatsStates(host, consumerKey) {
+    const label = labelForConsumerKey(consumerKey);
+    const base = consumerStatsBaseFromKey(consumerKey);
+    const ids = consumerStatsStateIdsForKey(consumerKey);
     await (0, state_util_1.ensureChannel)(host, base, `${label} Statistik`);
     const defs = [
         boolState(ids.tracking, `${label} Statistik aktiv`, false),

@@ -19,8 +19,14 @@
 					"type": "select",
 					"label": "Ausführung (alle Addons)",
 					"options": [
-						{ "label": "Dryrun", "value": "dryrun" },
-						{ "label": "Live", "value": "live" }
+						{
+							"label": "Dryrun",
+							"value": "dryrun"
+						},
+						{
+							"label": "Live",
+							"value": "live"
+						}
 					],
 					"default": "dryrun",
 					"xs": 12,
@@ -89,11 +95,26 @@
 					"type": "select",
 					"label": "Global Mode Standard (Erstinitialisierung)",
 					"options": [
-						{ "label": "Off", "value": "off" },
-						{ "label": "Eco", "value": "eco" },
-						{ "label": "Balanced", "value": "balanced" },
-						{ "label": "Comfort", "value": "comfort" },
-						{ "label": "Forced", "value": "forced" }
+						{
+							"label": "Off",
+							"value": "off"
+						},
+						{
+							"label": "Eco",
+							"value": "eco"
+						},
+						{
+							"label": "Balanced",
+							"value": "balanced"
+						},
+						{
+							"label": "Comfort",
+							"value": "comfort"
+						},
+						{
+							"label": "Forced",
+							"value": "forced"
+						}
 					],
 					"default": "balanced",
 					"xs": 12,
@@ -286,8 +307,14 @@
 					"type": "select",
 					"label": "Wallbox Ausführung",
 					"options": [
-						{ "label": "Dryrun", "value": "dryrun" },
-						{ "label": "Live", "value": "live" }
+						{
+							"label": "Dryrun",
+							"value": "dryrun"
+						},
+						{
+							"label": "Live",
+							"value": "live"
+						}
 					],
 					"default": "dryrun",
 					"xs": 12,
@@ -318,7 +345,9 @@
 				"intent_evcc_mode_state": {
 					"type": "objectId",
 					"label": "EVCC Modus",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -328,7 +357,9 @@
 				"wb_evcc_enabled_state": {
 					"type": "objectId",
 					"label": "EVCC Ladefreigabe / enabled",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -338,7 +369,9 @@
 				"wb_evcc_connected_state": {
 					"type": "objectId",
 					"label": "Fahrzeug angeschlossen / connected",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -348,7 +381,9 @@
 				"wb_evcc_charging_state": {
 					"type": "objectId",
 					"label": "Laden aktiv / charging",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -358,7 +393,9 @@
 				"wb_evcc_charge_power_w_state": {
 					"type": "objectId",
 					"label": "Aktuelle Ladeleistung (W)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -368,7 +405,9 @@
 				"wb_evcc_session_energy_kwh_state": {
 					"type": "objectId",
 					"label": "Geladene Energie der Sitzung (kWh)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -397,7 +436,9 @@
 				"wb_evcc_vehicle_soc_state": {
 					"type": "objectId",
 					"label": "Fahrzeug-SOC (%)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -407,7 +448,9 @@
 				"intent_evcc_target_soc_state": {
 					"type": "objectId",
 					"label": "Ziel-SOC / EVCC-Ladelimit (%)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -417,7 +460,9 @@
 				"wb_evcc_plan_active_state": {
 					"type": "objectId",
 					"label": "Plan aktiv",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -427,7 +472,9 @@
 				"wb_evcc_plan_soc_state": {
 					"type": "objectId",
 					"label": "Plan-Ziel-SOC (%)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -437,7 +484,9 @@
 				"wb_evcc_plan_time_state": {
 					"type": "objectId",
 					"label": "Gewünschte Planzeit",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -447,7 +496,9 @@
 				"wb_evcc_effective_plan_time_state": {
 					"type": "objectId",
 					"label": "effectivePlanTime",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -457,7 +508,9 @@
 				"intent_evcc_deadline_state": {
 					"type": "objectId",
 					"label": "Intent-Deadline (optional, z. B. gleich wie effectivePlanTime)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -467,7 +520,9 @@
 				"intent_evcc_immediate_state": {
 					"type": "objectId",
 					"label": "EVCC Sofortladen (optional, Intent-Diagnose)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -477,7 +532,9 @@
 				"intent_evcc_source_timestamp_state": {
 					"type": "objectId",
 					"label": "EVCC Quell-Zeitstempel (optional)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -506,7 +563,9 @@
 				"wb_evcc_active_phases_state": {
 					"type": "objectId",
 					"label": "Aktive Phasen",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -516,7 +575,9 @@
 				"wb_evcc_configured_phases_state": {
 					"type": "objectId",
 					"label": "Konfigurierte Phasen",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -526,7 +587,9 @@
 				"wb_evcc_min_current_a_state": {
 					"type": "objectId",
 					"label": "Minimaler Ladestrom (A)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -536,7 +599,9 @@
 				"wb_evcc_max_current_a_state": {
 					"type": "objectId",
 					"label": "Maximaler Ladestrom (A)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -565,7 +630,9 @@
 				"wb_evcc_battery_mode_state": {
 					"type": "objectId",
 					"label": "Hausbatterie-Modus (batteryMode)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -575,7 +642,9 @@
 				"wb_evcc_battery_discharge_control_state": {
 					"type": "objectId",
 					"label": "Entladesteuerung aktiv (batteryDischargeControl)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -585,783 +654,789 @@
 			}
 		},
 		"batteryTab": {
-	"type": "panel",
-	"label": "Batterie / Sonnen",
-	"items": {
-		"batteryGovernanceHint": {
-			"type": "staticText",
-			"text": "Aktivierung und KI-Freigabe werden zentral unter GLOBAL verwaltet.",
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12
-		},
-		"bat_addon_mode": {
-			"type": "select",
-			"label": "Batterie Ausführung",
-			"options": [
-				{ "label": "Dryrun", "value": "dryrun" },
-				{ "label": "Live", "value": "live" }
-			],
-			"default": "dryrun",
-			"xs": 12,
-			"sm": 6,
-			"md": 4,
-			"lg": 4,
-			"xl": 4
-		},
-		"batExecutionHint": {
-			"type": "staticText",
-			"text": "Live-Schreiben nur wenn GLOBAL und hier „Live“ steht. Objektbaum: addons.battery.mode — Änderungen in Admin oder Objektbaum werden synchron gehalten.",
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12
-		},
-		"hBatHardware": {
-			"type": "header",
-			"size": 2,
-			"text": "Batterie-Hardware",
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12
-		},
-		"battery_manufacturer": {
-			"type": "text",
-			"label": "Batteriehersteller",
-			"xs": 12,
-			"sm": 12,
-			"md": 4,
-			"lg": 4,
-			"xl": 4
-		},
-		"battery_model": {
-			"type": "text",
-			"label": "Batteriemodell",
-			"xs": 12,
-			"sm": 12,
-			"md": 4,
-			"lg": 4,
-			"xl": 4
-		},
-		"battery_capacity_source": {
-			"type": "select",
-			"label": "Kapazitätsquelle",
-			"options": [
-				{
-					"label": "Manuell",
-					"value": "manual"
+			"type": "panel",
+			"label": "Batterie / Sonnen",
+			"items": {
+				"batteryGovernanceHint": {
+					"type": "staticText",
+					"text": "Aktivierung und KI-Freigabe werden zentral unter GLOBAL verwaltet.",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
-				{
-					"label": "Gemappt",
-					"value": "mapped"
-				}
-			],
-			"default": "manual",
-			"xs": 12,
-			"sm": 12,
-			"md": 4,
-			"lg": 4,
-			"xl": 4
-		},
-		"battery_capacity_net_kwh": {
-			"type": "number",
-			"label": "Nutzbare Netto-Kapazität (kWh)",
-			"min": 0,
-			"max": 1000,
-			"xs": 12,
-			"sm": 12,
-			"md": 4,
-			"lg": 4,
-			"xl": 4
-		},
-		"hBatProfile": {
-			"type": "header",
-			"size": 2,
-			"text": "Steuerprofil",
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12
-		},
-		"battery_profile": {
-			"type": "select",
-			"label": "Steuerprofil",
-			"options": [
-				{
-					"label": "Generisch – nur lesen",
-					"value": "generic_readonly"
+				"bat_addon_mode": {
+					"type": "select",
+					"label": "Batterie Ausführung",
+					"options": [
+						{
+							"label": "Dryrun",
+							"value": "dryrun"
+						},
+						{
+							"label": "Live",
+							"value": "live"
+						}
+					],
+					"default": "dryrun",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				},
-				{
-					"label": "Sonnen – EM-Steuerung",
-					"value": "sonnen_em"
-				}
-			],
-			"default": "sonnen_em",
-			"xs": 12,
-			"sm": 12,
-			"md": 6,
-			"lg": 6,
-			"xl": 6
-		},
-		"batProfileStatusHint": {
-			"type": "staticText",
-			"text": "Diagnose-Anzeigen (Profil bereit, Dryrun/Live bereit, effektiver Ausführungsmodus) siehe addons.battery.status.*. Ausführungsmodus oben und unter GLOBAL.",
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12
-		},
-		"hBatTelemetry": {
-			"type": "header",
-			"size": 2,
-			"text": "Gemeinsames Telemetrie-Mapping",
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12
-		},
-		"battery_power_sign_convention": {
-			"type": "select",
-			"label": "Vorzeichen der Batterieleistung",
-			"options": [
-				{
-					"label": "Positiv = Laden",
-					"value": "positive_charge"
+				"batExecutionHint": {
+					"type": "staticText",
+					"text": "Live-Schreiben nur wenn GLOBAL und hier „Live“ steht. Objektbaum: addons.battery.mode — Änderungen in Admin oder Objektbaum werden synchron gehalten.",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
-				{
-					"label": "Positiv = Entladen",
-					"value": "positive_discharge"
+				"hBatHardware": {
+					"type": "header",
+					"size": 2,
+					"text": "Batterie-Hardware",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"battery_manufacturer": {
+					"type": "text",
+					"label": "Batteriehersteller",
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"battery_model": {
+					"type": "text",
+					"label": "Batteriemodell",
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"battery_capacity_source": {
+					"type": "select",
+					"label": "Kapazitätsquelle",
+					"options": [
+						{
+							"label": "Manuell",
+							"value": "manual"
+						},
+						{
+							"label": "Gemappt",
+							"value": "mapped"
+						}
+					],
+					"default": "manual",
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"battery_capacity_net_kwh": {
+					"type": "number",
+					"label": "Nutzbare Netto-Kapazität (kWh)",
+					"min": 0,
+					"max": 1000,
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"hBatProfile": {
+					"type": "header",
+					"size": 2,
+					"text": "Steuerprofil",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"battery_profile": {
+					"type": "select",
+					"label": "Steuerprofil",
+					"options": [
+						{
+							"label": "Generisch – nur lesen",
+							"value": "generic_readonly"
+						},
+						{
+							"label": "Sonnen – EM-Steuerung",
+							"value": "sonnen_em"
+						}
+					],
+					"default": "sonnen_em",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"batProfileStatusHint": {
+					"type": "staticText",
+					"text": "Diagnose-Anzeigen (Profil bereit, Dryrun/Live bereit, effektiver Ausführungsmodus) siehe addons.battery.status.*. Ausführungsmodus oben und unter GLOBAL.",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"hBatTelemetry": {
+					"type": "header",
+					"size": 2,
+					"text": "Gemeinsames Telemetrie-Mapping",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"battery_power_sign_convention": {
+					"type": "select",
+					"label": "Vorzeichen der Batterieleistung",
+					"options": [
+						{
+							"label": "Positiv = Laden",
+							"value": "positive_charge"
+						},
+						{
+							"label": "Positiv = Entladen",
+							"value": "positive_discharge"
+						}
+					],
+					"default": "positive_charge",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"bat_soc_target": {
+					"type": "objectId",
+					"label": "SOC (%) – Ziel-State",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"bat_soc_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"bat_power_target": {
+					"type": "objectId",
+					"label": "Batterieleistung (W) – Ziel-State",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"bat_power_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"bat_charging_power_target": {
+					"type": "objectId",
+					"label": "Ladeleistung (W), optional – Ziel-State",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"bat_charging_power_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"bat_discharging_power_target": {
+					"type": "objectId",
+					"label": "Entladeleistung (W), optional – Ziel-State",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"bat_discharging_power_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"bat_capacity_kwh_target": {
+					"type": "objectId",
+					"label": "Kapazität (kWh), optional – Ziel-State",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"bat_capacity_kwh_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"bat_seconds_since_full_target": {
+					"type": "objectId",
+					"label": "Sekunden seit Vollladung (s), optional – Ziel-State",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"bat_seconds_since_full_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"bat_operating_mode_read_target": {
+					"type": "objectId",
+					"label": "Betriebsmodus (Lesen), optional – Ziel-State",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"bat_operating_mode_read_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"bat_online_target": {
+					"type": "objectId",
+					"label": "Online-/Kommunikationsstatus, optional – Ziel-State",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"bat_online_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"bat_consumption_target": {
+					"type": "objectId",
+					"label": "Hausverbrauch (W), für Netzausgleich – Ziel-State",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"bat_consumption_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"bat_pv_ac_target": {
+					"type": "objectId",
+					"label": "PV-AC-Leistung (W), für Netzausgleich – Ziel-State",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"bat_pv_ac_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hBatLimits": {
+					"type": "header",
+					"size": 2,
+					"text": "Technische Hardwaregrenzen",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"bat_hw_max_charge_w": {
+					"type": "number",
+					"label": "Maximale Ladeleistung (W)",
+					"min": 0,
+					"max": 50000,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"bat_hw_max_discharge_w": {
+					"type": "number",
+					"label": "Maximale Entladeleistung (W)",
+					"min": 0,
+					"max": 50000,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"bat_hw_min_soc_pct": {
+					"type": "number",
+					"label": "Technischer Mindest-SOC (%)",
+					"min": 0,
+					"max": 100,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"bat_hw_max_soc_pct": {
+					"type": "number",
+					"label": "Technischer Maximal-SOC (%)",
+					"min": 0,
+					"max": 100,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hBatSonnen": {
+					"type": "header",
+					"size": 2,
+					"text": "Sonnen-EM-Mapping (Schreiben)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"helpBatSonnen": {
+					"type": "staticText",
+					"text": "Keine realen Writes allein durch das Speichern. Schreiben erfolgt nur bei globalem Live.",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_operating_mode_target": {
+					"type": "objectId",
+					"label": "EM_OperatingMode – Ziel-State",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_operating_mode_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_battery_charging_target": {
+					"type": "objectId",
+					"label": "control.charge – Ziel-State",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_battery_charging_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_sonnen_manual_mode_value": {
+					"type": "number",
+					"label": "Manueller Modus (Wert)",
+					"min": 0,
+					"max": 99,
+					"default": 1,
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_sonnen_self_consumption_mode_value": {
+					"type": "number",
+					"label": "Eigenverbrauch / Safe Default (Wert)",
+					"min": 0,
+					"max": 99,
+					"default": 2,
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"hBatSequence": {
+					"type": "header",
+					"size": 2,
+					"text": "Sonnen-Umschaltsequenz",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_mode_pause_grid_balance_sec": {
+					"type": "number",
+					"label": "Pause vor Wechsel in manuellen Modus (s)",
+					"min": 0,
+					"max": 120,
+					"default": 10,
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_mode_wait_after_mode_sec": {
+					"type": "number",
+					"label": "Wartezeit nach Moduswechsel (s)",
+					"min": 0,
+					"max": 120,
+					"default": 5,
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_feedback_timeout_mode_sec": {
+					"type": "number",
+					"label": "Feedback-Timeout Betriebsmodus (s)",
+					"min": 5,
+					"max": 300,
+					"default": 30,
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_feedback_timeout_charge_sec": {
+					"type": "number",
+					"label": "Feedback-Timeout Ladeleistung (s)",
+					"min": 5,
+					"max": 300,
+					"default": 30,
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_max_manual_mode_sec": {
+					"type": "number",
+					"label": "Max. Dauer im manuellen Modus ohne Intent (s)",
+					"min": 60,
+					"max": 86400,
+					"default": 1800,
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_restore_delay_sec": {
+					"type": "number",
+					"label": "Restore-Verzögerung (s)",
+					"min": 0,
+					"max": 120,
+					"default": 2,
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_charge_tolerance_w": {
+					"type": "number",
+					"label": "Feedback-Toleranz absolut (W)",
+					"min": 0,
+					"max": 10000,
+					"default": 500,
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_charge_tolerance_pct": {
+					"type": "number",
+					"label": "Feedback-Toleranz relativ (%)",
+					"min": 0,
+					"max": 100,
+					"default": 15,
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"hBatGrid": {
+					"type": "header",
+					"size": 2,
+					"text": "Optionaler Sonnen-Netzausgleich",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_feature_grid_balance_enabled": {
+					"type": "checkbox",
+					"label": "Netzausgleich aktiviert",
+					"default": false,
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_offset_high_soc_w": {
+					"type": "number",
+					"label": "Zusatzleistung oberhalb SOC-Schwelle (W)",
+					"min": 0,
+					"max": 500,
+					"default": 25,
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_offset_low_soc_w": {
+					"type": "number",
+					"label": "Zusatzleistung unterhalb SOC-Schwelle (W)",
+					"min": 0,
+					"max": 500,
+					"default": 10,
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_offset_soc_threshold_pct": {
+					"type": "number",
+					"label": "SOC-Schwelle (%)",
+					"min": 1,
+					"max": 100,
+					"default": 20,
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_grid_balance_min_change_w": {
+					"type": "number",
+					"label": "Mindeständerung vor Neuberechnung (W)",
+					"min": 0,
+					"max": 5000,
+					"default": 50,
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_grid_balance_max_w": {
+					"type": "number",
+					"label": "Maximale Sollleistung (W)",
+					"min": 0,
+					"max": 50000,
+					"default": 5000,
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_grid_balance_update_interval_sec": {
+					"type": "number",
+					"label": "Aktualisierungsintervall (s)",
+					"min": 15,
+					"max": 600,
+					"default": 45,
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"hBatDiagnostics": {
+					"type": "header",
+					"size": 2,
+					"text": "Diagnose",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"batDiagnosticsHint": {
+					"type": "staticText",
+					"text": "Diagnose-Anzeigen (Profil, Telemetrie/Steuerung/Dryrun/Live bereit, Capability-Matrix, fehlende Pflicht-Mappings, letzter/geplanter Write, Rückmeldung, Fault, Lockout, Restore erforderlich, Ownership) siehe addons.battery.status.*, addons.battery.capabilities.*, addons.battery.limits.*, addons.battery.runtime.*, addons.battery.dryrun.* und addons.battery.diagnostics.*.",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"batFaultResetHint": {
+					"type": "staticText",
+					"text": "Fault/Lockout zurücksetzen über den State addons.battery.control.fault_reset.",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				}
-			],
-			"default": "positive_charge",
-			"xs": 12,
-			"sm": 12,
-			"md": 6,
-			"lg": 6,
-			"xl": 6
+			}
 		},
-		"bat_soc_target": {
-			"type": "objectId",
-			"label": "SOC (%) – Ziel-State",
-			"types": [
-				"state"
-			],
-			"xs": 12,
-			"sm": 12,
-			"md": 9,
-			"lg": 9,
-			"xl": 9
-		},
-		"bat_soc_enabled": {
-			"type": "checkbox",
-			"label": "Mapping aktiv",
-			"default": true,
-			"xs": 12,
-			"sm": 12,
-			"md": 3,
-			"lg": 3,
-			"xl": 3
-		},
-		"bat_power_target": {
-			"type": "objectId",
-			"label": "Batterieleistung (W) – Ziel-State",
-			"types": [
-				"state"
-			],
-			"xs": 12,
-			"sm": 12,
-			"md": 9,
-			"lg": 9,
-			"xl": 9
-		},
-		"bat_power_enabled": {
-			"type": "checkbox",
-			"label": "Mapping aktiv",
-			"default": true,
-			"xs": 12,
-			"sm": 12,
-			"md": 3,
-			"lg": 3,
-			"xl": 3
-		},
-		"bat_charging_power_target": {
-			"type": "objectId",
-			"label": "Ladeleistung (W), optional – Ziel-State",
-			"types": [
-				"state"
-			],
-			"xs": 12,
-			"sm": 12,
-			"md": 9,
-			"lg": 9,
-			"xl": 9
-		},
-		"bat_charging_power_enabled": {
-			"type": "checkbox",
-			"label": "Mapping aktiv",
-			"default": false,
-			"xs": 12,
-			"sm": 12,
-			"md": 3,
-			"lg": 3,
-			"xl": 3
-		},
-		"bat_discharging_power_target": {
-			"type": "objectId",
-			"label": "Entladeleistung (W), optional – Ziel-State",
-			"types": [
-				"state"
-			],
-			"xs": 12,
-			"sm": 12,
-			"md": 9,
-			"lg": 9,
-			"xl": 9
-		},
-		"bat_discharging_power_enabled": {
-			"type": "checkbox",
-			"label": "Mapping aktiv",
-			"default": false,
-			"xs": 12,
-			"sm": 12,
-			"md": 3,
-			"lg": 3,
-			"xl": 3
-		},
-		"bat_capacity_kwh_target": {
-			"type": "objectId",
-			"label": "Kapazität (kWh), optional – Ziel-State",
-			"types": [
-				"state"
-			],
-			"xs": 12,
-			"sm": 12,
-			"md": 9,
-			"lg": 9,
-			"xl": 9
-		},
-		"bat_capacity_kwh_enabled": {
-			"type": "checkbox",
-			"label": "Mapping aktiv",
-			"default": false,
-			"xs": 12,
-			"sm": 12,
-			"md": 3,
-			"lg": 3,
-			"xl": 3
-		},
-		"bat_seconds_since_full_target": {
-			"type": "objectId",
-			"label": "Sekunden seit Vollladung (s), optional – Ziel-State",
-			"types": [
-				"state"
-			],
-			"xs": 12,
-			"sm": 12,
-			"md": 9,
-			"lg": 9,
-			"xl": 9
-		},
-		"bat_seconds_since_full_enabled": {
-			"type": "checkbox",
-			"label": "Mapping aktiv",
-			"default": false,
-			"xs": 12,
-			"sm": 12,
-			"md": 3,
-			"lg": 3,
-			"xl": 3
-		},
-		"bat_operating_mode_read_target": {
-			"type": "objectId",
-			"label": "Betriebsmodus (Lesen), optional – Ziel-State",
-			"types": [
-				"state"
-			],
-			"xs": 12,
-			"sm": 12,
-			"md": 9,
-			"lg": 9,
-			"xl": 9
-		},
-		"bat_operating_mode_read_enabled": {
-			"type": "checkbox",
-			"label": "Mapping aktiv",
-			"default": false,
-			"xs": 12,
-			"sm": 12,
-			"md": 3,
-			"lg": 3,
-			"xl": 3
-		},
-		"bat_online_target": {
-			"type": "objectId",
-			"label": "Online-/Kommunikationsstatus, optional – Ziel-State",
-			"types": [
-				"state"
-			],
-			"xs": 12,
-			"sm": 12,
-			"md": 9,
-			"lg": 9,
-			"xl": 9
-		},
-		"bat_online_enabled": {
-			"type": "checkbox",
-			"label": "Mapping aktiv",
-			"default": false,
-			"xs": 12,
-			"sm": 12,
-			"md": 3,
-			"lg": 3,
-			"xl": 3
-		},
-		"bat_consumption_target": {
-			"type": "objectId",
-			"label": "Hausverbrauch (W), für Netzausgleich – Ziel-State",
-			"types": [
-				"state"
-			],
-			"xs": 12,
-			"sm": 12,
-			"md": 9,
-			"lg": 9,
-			"xl": 9
-		},
-		"bat_consumption_enabled": {
-			"type": "checkbox",
-			"label": "Mapping aktiv",
-			"default": true,
-			"xs": 12,
-			"sm": 12,
-			"md": 3,
-			"lg": 3,
-			"xl": 3
-		},
-		"bat_pv_ac_target": {
-			"type": "objectId",
-			"label": "PV-AC-Leistung (W), für Netzausgleich – Ziel-State",
-			"types": [
-				"state"
-			],
-			"xs": 12,
-			"sm": 12,
-			"md": 9,
-			"lg": 9,
-			"xl": 9
-		},
-		"bat_pv_ac_enabled": {
-			"type": "checkbox",
-			"label": "Mapping aktiv",
-			"default": true,
-			"xs": 12,
-			"sm": 12,
-			"md": 3,
-			"lg": 3,
-			"xl": 3
-		},
-		"hBatLimits": {
-			"type": "header",
-			"size": 2,
-			"text": "Technische Hardwaregrenzen",
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12
-		},
-		"bat_hw_max_charge_w": {
-			"type": "number",
-			"label": "Maximale Ladeleistung (W)",
-			"min": 0,
-			"max": 50000,
-			"xs": 12,
-			"sm": 12,
-			"md": 3,
-			"lg": 3,
-			"xl": 3
-		},
-		"bat_hw_max_discharge_w": {
-			"type": "number",
-			"label": "Maximale Entladeleistung (W)",
-			"min": 0,
-			"max": 50000,
-			"xs": 12,
-			"sm": 12,
-			"md": 3,
-			"lg": 3,
-			"xl": 3
-		},
-		"bat_hw_min_soc_pct": {
-			"type": "number",
-			"label": "Technischer Mindest-SOC (%)",
-			"min": 0,
-			"max": 100,
-			"xs": 12,
-			"sm": 12,
-			"md": 3,
-			"lg": 3,
-			"xl": 3
-		},
-		"bat_hw_max_soc_pct": {
-			"type": "number",
-			"label": "Technischer Maximal-SOC (%)",
-			"min": 0,
-			"max": 100,
-			"xs": 12,
-			"sm": 12,
-			"md": 3,
-			"lg": 3,
-			"xl": 3
-		},
-		"hBatSonnen": {
-			"type": "header",
-			"size": 2,
-			"text": "Sonnen-EM-Mapping (Schreiben)",
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"helpBatSonnen": {
-			"type": "staticText",
-			"text": "Keine realen Writes allein durch das Speichern. Schreiben erfolgt nur bei globalem Live.",
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_operating_mode_target": {
-			"type": "objectId",
-			"label": "EM_OperatingMode – Ziel-State",
-			"types": [
-				"state"
-			],
-			"xs": 12,
-			"sm": 12,
-			"md": 9,
-			"lg": 9,
-			"xl": 9,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_operating_mode_enabled": {
-			"type": "checkbox",
-			"label": "Mapping aktiv",
-			"default": false,
-			"xs": 12,
-			"sm": 12,
-			"md": 3,
-			"lg": 3,
-			"xl": 3,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_battery_charging_target": {
-			"type": "objectId",
-			"label": "control.charge – Ziel-State",
-			"types": [
-				"state"
-			],
-			"xs": 12,
-			"sm": 12,
-			"md": 9,
-			"lg": 9,
-			"xl": 9,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_battery_charging_enabled": {
-			"type": "checkbox",
-			"label": "Mapping aktiv",
-			"default": false,
-			"xs": 12,
-			"sm": 12,
-			"md": 3,
-			"lg": 3,
-			"xl": 3,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_sonnen_manual_mode_value": {
-			"type": "number",
-			"label": "Manueller Modus (Wert)",
-			"min": 0,
-			"max": 99,
-			"default": 1,
-			"xs": 12,
-			"sm": 12,
-			"md": 6,
-			"lg": 6,
-			"xl": 6,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_sonnen_self_consumption_mode_value": {
-			"type": "number",
-			"label": "Eigenverbrauch / Safe Default (Wert)",
-			"min": 0,
-			"max": 99,
-			"default": 2,
-			"xs": 12,
-			"sm": 12,
-			"md": 6,
-			"lg": 6,
-			"xl": 6,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"hBatSequence": {
-			"type": "header",
-			"size": 2,
-			"text": "Sonnen-Umschaltsequenz",
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_mode_pause_grid_balance_sec": {
-			"type": "number",
-			"label": "Pause vor Wechsel in manuellen Modus (s)",
-			"min": 0,
-			"max": 120,
-			"default": 10,
-			"xs": 12,
-			"sm": 12,
-			"md": 4,
-			"lg": 4,
-			"xl": 4,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_mode_wait_after_mode_sec": {
-			"type": "number",
-			"label": "Wartezeit nach Moduswechsel (s)",
-			"min": 0,
-			"max": 120,
-			"default": 5,
-			"xs": 12,
-			"sm": 12,
-			"md": 4,
-			"lg": 4,
-			"xl": 4,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_feedback_timeout_mode_sec": {
-			"type": "number",
-			"label": "Feedback-Timeout Betriebsmodus (s)",
-			"min": 5,
-			"max": 300,
-			"default": 30,
-			"xs": 12,
-			"sm": 12,
-			"md": 4,
-			"lg": 4,
-			"xl": 4,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_feedback_timeout_charge_sec": {
-			"type": "number",
-			"label": "Feedback-Timeout Ladeleistung (s)",
-			"min": 5,
-			"max": 300,
-			"default": 30,
-			"xs": 12,
-			"sm": 12,
-			"md": 4,
-			"lg": 4,
-			"xl": 4,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_max_manual_mode_sec": {
-			"type": "number",
-			"label": "Max. Dauer im manuellen Modus ohne Intent (s)",
-			"min": 60,
-			"max": 86400,
-			"default": 1800,
-			"xs": 12,
-			"sm": 12,
-			"md": 4,
-			"lg": 4,
-			"xl": 4,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_restore_delay_sec": {
-			"type": "number",
-			"label": "Restore-Verzögerung (s)",
-			"min": 0,
-			"max": 120,
-			"default": 2,
-			"xs": 12,
-			"sm": 12,
-			"md": 4,
-			"lg": 4,
-			"xl": 4,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_charge_tolerance_w": {
-			"type": "number",
-			"label": "Feedback-Toleranz absolut (W)",
-			"min": 0,
-			"max": 10000,
-			"default": 500,
-			"xs": 12,
-			"sm": 12,
-			"md": 6,
-			"lg": 6,
-			"xl": 6,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_charge_tolerance_pct": {
-			"type": "number",
-			"label": "Feedback-Toleranz relativ (%)",
-			"min": 0,
-			"max": 100,
-			"default": 15,
-			"xs": 12,
-			"sm": 12,
-			"md": 6,
-			"lg": 6,
-			"xl": 6,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"hBatGrid": {
-			"type": "header",
-			"size": 2,
-			"text": "Optionaler Sonnen-Netzausgleich",
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_feature_grid_balance_enabled": {
-			"type": "checkbox",
-			"label": "Netzausgleich aktiviert",
-			"default": false,
-			"xs": 12,
-			"sm": 12,
-			"md": 4,
-			"lg": 4,
-			"xl": 4,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_offset_high_soc_w": {
-			"type": "number",
-			"label": "Zusatzleistung oberhalb SOC-Schwelle (W)",
-			"min": 0,
-			"max": 500,
-			"default": 25,
-			"xs": 12,
-			"sm": 12,
-			"md": 4,
-			"lg": 4,
-			"xl": 4,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_offset_low_soc_w": {
-			"type": "number",
-			"label": "Zusatzleistung unterhalb SOC-Schwelle (W)",
-			"min": 0,
-			"max": 500,
-			"default": 10,
-			"xs": 12,
-			"sm": 12,
-			"md": 4,
-			"lg": 4,
-			"xl": 4,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_offset_soc_threshold_pct": {
-			"type": "number",
-			"label": "SOC-Schwelle (%)",
-			"min": 1,
-			"max": 100,
-			"default": 20,
-			"xs": 12,
-			"sm": 12,
-			"md": 4,
-			"lg": 4,
-			"xl": 4,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_grid_balance_min_change_w": {
-			"type": "number",
-			"label": "Mindeständerung vor Neuberechnung (W)",
-			"min": 0,
-			"max": 5000,
-			"default": 50,
-			"xs": 12,
-			"sm": 12,
-			"md": 4,
-			"lg": 4,
-			"xl": 4,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_grid_balance_max_w": {
-			"type": "number",
-			"label": "Maximale Sollleistung (W)",
-			"min": 0,
-			"max": 50000,
-			"default": 5000,
-			"xs": 12,
-			"sm": 12,
-			"md": 4,
-			"lg": 4,
-			"xl": 4,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"bat_grid_balance_update_interval_sec": {
-			"type": "number",
-			"label": "Aktualisierungsintervall (s)",
-			"min": 15,
-			"max": 600,
-			"default": 45,
-			"xs": 12,
-			"sm": 12,
-			"md": 4,
-			"lg": 4,
-			"xl": 4,
-			"hidden": "data.battery_profile !== 'sonnen_em'"
-		},
-		"hBatDiagnostics": {
-			"type": "header",
-			"size": 2,
-			"text": "Diagnose",
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12
-		},
-		"batDiagnosticsHint": {
-			"type": "staticText",
-			"text": "Diagnose-Anzeigen (Profil, Telemetrie/Steuerung/Dryrun/Live bereit, Capability-Matrix, fehlende Pflicht-Mappings, letzter/geplanter Write, Rückmeldung, Fault, Lockout, Restore erforderlich, Ownership) siehe addons.battery.status.*, addons.battery.capabilities.*, addons.battery.limits.*, addons.battery.runtime.*, addons.battery.dryrun.* und addons.battery.diagnostics.*.",
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12
-		},
-		"batFaultResetHint": {
-			"type": "staticText",
-			"text": "Fault/Lockout zurücksetzen über den State addons.battery.control.fault_reset.",
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12
-		}
-	}
-},
 		"immersionHeaterTab": {
 			"type": "panel",
 			"label": "Heizstab",
@@ -1388,8 +1463,14 @@
 					"type": "select",
 					"label": "Heizstab Ausführung",
 					"options": [
-						{ "label": "Dryrun", "value": "dryrun" },
-						{ "label": "Live", "value": "live" }
+						{
+							"label": "Dryrun",
+							"value": "dryrun"
+						},
+						{
+							"label": "Live",
+							"value": "live"
+						}
 					],
 					"default": "dryrun",
 					"xs": 12,
@@ -1411,7 +1492,9 @@
 				"ih_set_enabled_target": {
 					"type": "objectId",
 					"label": "Ziel-State (Relais ON/OFF)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -1441,7 +1524,9 @@
 				"ih_buffer_temp_c_target": {
 					"type": "objectId",
 					"label": "Ziel-State",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -1685,8 +1770,14 @@
 					"type": "select",
 					"label": "Phasen",
 					"options": [
-						{ "label": "1-phasig", "value": 1 },
-						{ "label": "3-phasig", "value": 3 }
+						{
+							"label": "1-phasig",
+							"value": 1
+						},
+						{
+							"label": "3-phasig",
+							"value": 3
+						}
 					],
 					"default": 1,
 					"xs": 12,
@@ -1700,9 +1791,18 @@
 					"label": "Leistungsstufen",
 					"helpText": "1 Stufe = Ein/Aus (typisch ~1700 W). 2–3 Stufen = gestufte Leistung (jede Stufe mit eigener Nennleistung).",
 					"options": [
-						{ "label": "1 Stufe", "value": 1 },
-						{ "label": "2 Stufen", "value": 2 },
-						{ "label": "3 Stufen", "value": 3 }
+						{
+							"label": "1 Stufe",
+							"value": 1
+						},
+						{
+							"label": "2 Stufen",
+							"value": 2
+						},
+						{
+							"label": "3 Stufen",
+							"value": 3
+						}
 					],
 					"default": 1,
 					"xs": 12,
@@ -1726,7 +1826,9 @@
 				"ih_actual_power_state": {
 					"type": "objectId",
 					"label": "Ist-Leistung gesamt (W, optional)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -1778,7 +1880,9 @@
 				"ih_stage_1_set_state": {
 					"type": "objectId",
 					"label": "Schaltausgang (leer = set_enabled)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1788,7 +1892,9 @@
 				"ih_stage_1_feedback_state": {
 					"type": "objectId",
 					"label": "Rückmeldung (optional)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1997,7 +2103,9 @@
 				"dt_price_now_target": {
 					"type": "objectId",
 					"label": "Ziel-State",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -2124,7 +2232,9 @@
 				"learning_pv_bias_history_actual_state": {
 					"type": "objectId",
 					"label": "PV-Ist Tageswert (Historie)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2134,7 +2244,9 @@
 				"learning_pv_bias_history_forecast_state": {
 					"type": "objectId",
 					"label": "PV-Rohforecast Tageswert (Historie, nur ohne Freeze)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2154,7 +2266,9 @@
 				"learning_pv_bias_raw_today_state": {
 					"type": "objectId",
 					"label": "Rohforecast heute (kWh)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2164,7 +2278,9 @@
 				"learning_pv_bias_raw_tomorrow_state": {
 					"type": "objectId",
 					"label": "Rohforecast morgen (kWh)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2203,7 +2319,9 @@
 				"learning_pv_horizon_day3_raw_state": {
 					"type": "objectId",
 					"label": "Tag 3 (+2 Tage) Roh-Schätzung kWh — z. B. brightsky.0.daily.02.solar_estimate",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2213,7 +2331,9 @@
 				"learning_pv_horizon_day4_raw_state": {
 					"type": "objectId",
 					"label": "Tag 4 (+3 Tage) — z. B. brightsky.0.daily.03.solar_estimate",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2223,7 +2343,9 @@
 				"learning_pv_horizon_day5_raw_state": {
 					"type": "objectId",
 					"label": "Tag 5 (+4 Tage) — z. B. brightsky.0.daily.04.solar_estimate",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2233,7 +2355,9 @@
 				"learning_pv_horizon_day6_raw_state": {
 					"type": "objectId",
 					"label": "Tag 6 (+5 Tage) — z. B. brightsky.0.daily.05.solar_estimate",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2243,7 +2367,9 @@
 				"learning_pv_horizon_day7_raw_state": {
 					"type": "objectId",
 					"label": "Tag 7 (+6 Tage) — z. B. brightsky.0.daily.06.solar_estimate",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2304,7 +2430,9 @@
 				"learning_weather_forecast_temp_state": {
 					"type": "objectId",
 					"label": "Forecast Temperatur (°C)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2314,7 +2442,9 @@
 				"learning_weather_forecast_cloud_state": {
 					"type": "objectId",
 					"label": "Forecast Bewölkung (%)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2324,7 +2454,9 @@
 				"learning_weather_forecast_rain_state": {
 					"type": "objectId",
 					"label": "Forecast Niederschlag (mm)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2334,7 +2466,9 @@
 				"learning_weather_forecast_wind_state": {
 					"type": "objectId",
 					"label": "Forecast Wind (km/h, optional)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2354,7 +2488,9 @@
 				"learning_weather_actual_temp_state": {
 					"type": "objectId",
 					"label": "Ist Temperatur (°C)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2364,7 +2500,9 @@
 				"learning_weather_actual_cloud_state": {
 					"type": "objectId",
 					"label": "Ist Bewölkung (%)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2374,7 +2512,9 @@
 				"learning_weather_actual_rain_state": {
 					"type": "objectId",
 					"label": "Ist Niederschlag (mm)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2384,7 +2524,9 @@
 				"learning_weather_actual_wind_state": {
 					"type": "objectId",
 					"label": "Ist Wind (km/h, optional)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2430,7 +2572,9 @@
 				"learning_price_source_state": {
 					"type": "objectId",
 					"label": "Preis-State (optional, z. B. tibberlink.…CurrentPrice.total in €/kWh)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -2516,7 +2660,9 @@
 				"learning_price_forecast_tomorrow_json_state": {
 					"type": "objectId",
 					"label": "Forecast morgen — PricesTomorrow.json",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -2526,7 +2672,9 @@
 				"learning_price_forecast_today_json_state": {
 					"type": "objectId",
 					"label": "Forecast heute — PricesToday.json",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -2536,7 +2684,9 @@
 				"learning_price_forecast_actual_state": {
 					"type": "objectId",
 					"label": "Ist-Preis — CurrentPrice.total (€/kWh)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -2582,7 +2732,9 @@
 				"learning_house_load_power_state": {
 					"type": "objectId",
 					"label": "Hauslast-State (optional, z. B. sonnen.0.status.consumption in W)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -2628,7 +2780,9 @@
 				"learning_thermal_runtime_temperature_state": {
 					"type": "objectId",
 					"label": "Temperatur-State (optional, z. B. Puffer Mitte °C)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -2722,7 +2876,9 @@
 				"learning_battery_runtime_soc_state": {
 					"type": "objectId",
 					"label": "SOC-State (optional, z. B. sonnen.0.status.userSoc)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -2732,7 +2888,9 @@
 				"learning_battery_runtime_power_state": {
 					"type": "objectId",
 					"label": "Batterie-Leistung W (optional, intern + laden / − entladen)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -2752,7 +2910,9 @@
 				"learning_battery_runtime_capacity_state": {
 					"type": "objectId",
 					"label": "Kapazität kWh (optional, für Nacht-kWh)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -2762,7 +2922,9 @@
 				"learning_battery_runtime_seconds_since_full_state": {
 					"type": "objectId",
 					"label": "Sekunden seit Vollladung (optional — überschreibt battery.mapping)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -2826,7 +2988,9 @@
 				"learning_battery_runtime_night_start_state": {
 					"type": "objectId",
 					"label": "Astro Nachtbeginn (z. B. javascript.0.variables.astro.dusk)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2836,7 +3000,9 @@
 				"learning_battery_runtime_night_end_state": {
 					"type": "objectId",
 					"label": "Astro Nachtende (z. B. javascript.0.variables.astro.dawn)",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -2945,11 +3111,26 @@
 					"type": "select",
 					"label": "Default Ladestrategie (optional)",
 					"options": [
-						{ "label": "(kein Default)", "value": "" },
-						{ "label": "Off", "value": "off" },
-						{ "label": "Min+PV", "value": "min_pv" },
-						{ "label": "PV", "value": "pv" },
-						{ "label": "Sofort", "value": "immediate" }
+						{
+							"label": "(kein Default)",
+							"value": ""
+						},
+						{
+							"label": "Off",
+							"value": "off"
+						},
+						{
+							"label": "Min+PV",
+							"value": "min_pv"
+						},
+						{
+							"label": "PV",
+							"value": "pv"
+						},
+						{
+							"label": "Sofort",
+							"value": "immediate"
+						}
 					],
 					"default": "",
 					"xs": 12,
@@ -2987,6 +3168,2907 @@
 					"md": 4,
 					"lg": 4,
 					"xl": 4
+				}
+			}
+		},
+		"climateTab": {
+			"type": "panel",
+			"label": "Klimaanlage",
+			"items": {
+				"introAc": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Klimaanlage: bis zu 5 Innengeräte. Profile, Schwellwerte, Modi, Mapping und Statistik pro Gerät."
+				},
+				"ac_addon_mode": {
+					"type": "select",
+					"label": "Ausführung (dryrun/live)",
+					"options": [
+						{
+							"label": "Dryrun",
+							"value": "dryrun"
+						},
+						{
+							"label": "Live",
+							"value": "live"
+						}
+					],
+					"default": "dryrun",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ac_outdoor_max_power_w": {
+					"type": "number",
+					"label": "Max. Außengerät-Leistung (W)",
+					"default": 1300,
+					"min": 0,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ac_default_profile": {
+					"type": "select",
+					"label": "Standard-Profil",
+					"options": [
+						{
+							"label": "Generic",
+							"value": "generic"
+						},
+						{
+							"label": "Samsung SmartThings",
+							"value": "samsung_smartthings"
+						}
+					],
+					"default": "samsung_smartthings",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"hAcU1": {
+					"type": "header",
+					"size": 2,
+					"text": "Innengerät 1",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u1_enabled": {
+					"type": "checkbox",
+					"label": "Aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_name": {
+					"type": "text",
+					"label": "Name",
+					"default": "Wohnzimmer EG",
+					"xs": 12,
+					"sm": 8,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"ac_u1_profile": {
+					"type": "select",
+					"label": "Geräteprofil",
+					"options": [
+						{
+							"label": "Generic",
+							"value": "generic"
+						},
+						{
+							"label": "Samsung SmartThings",
+							"value": "samsung_smartthings"
+						}
+					],
+					"default": "samsung_smartthings",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ac_u1_on_temp_c": {
+					"type": "number",
+					"label": "Einschalttemperatur (°C)",
+					"default": 25.5,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_off_temp_c": {
+					"type": "number",
+					"label": "Ausschalttemperatur (°C)",
+					"default": 24,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_max_humidity_pct": {
+					"type": "number",
+					"label": "Max. Feuchte (%) — optional",
+					"min": 0,
+					"max": 100,
+					"default": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_cooling_setpoint_c": {
+					"type": "number",
+					"label": "Kühl-Sollwert (°C)",
+					"default": 17,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_mode_when_cooling": {
+					"type": "text",
+					"label": "Modus Kühlen",
+					"default": "cool",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_fan_mode_when_cooling": {
+					"type": "text",
+					"label": "Lüftermodus Kühlen",
+					"default": "auto",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_fan_speed_when_cooling": {
+					"type": "text",
+					"label": "Lüfterstärke Kühlen (optional)",
+					"default": "",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_mode_when_dehumidify": {
+					"type": "text",
+					"label": "Modus Entfeuchten",
+					"default": "dry",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_fan_mode_when_dehumidify": {
+					"type": "text",
+					"label": "Lüftermodus Entfeuchten",
+					"default": "auto",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_active_from": {
+					"type": "text",
+					"label": "Aktiv ab (HH:MM)",
+					"default": "08:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_active_until": {
+					"type": "text",
+					"label": "Aktiv bis (HH:MM)",
+					"default": "20:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_hard_off_at": {
+					"type": "text",
+					"label": "Hard-Off (HH:MM)",
+					"default": "20:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_estimated_power_w": {
+					"type": "number",
+					"label": "Geschätzte Leistung (W)",
+					"default": 800,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_cleaning_after_run": {
+					"type": "checkbox",
+					"label": "Reinigung nach Lauf",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_cleaning_delay_min": {
+					"type": "number",
+					"label": "Reinigung Verzögerung (min)",
+					"default": 1,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_cleaning_duration_min": {
+					"type": "number",
+					"label": "Reinigung Dauer (min)",
+					"default": 35,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hAcU1Stats": {
+					"type": "header",
+					"size": 3,
+					"text": "Statistik Innengerät 1",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u1_stats_enabled": {
+					"type": "checkbox",
+					"label": "Statistik aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_stats_track_runtime": {
+					"type": "checkbox",
+					"label": "Laufzeit mitloggen",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_stats_track_energy": {
+					"type": "checkbox",
+					"label": "Verbrauch mitloggen",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_stats_runtime_offset_h": {
+					"type": "number",
+					"label": "Offset Laufzeit (h)",
+					"default": 0,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_stats_energy_offset_kwh": {
+					"type": "number",
+					"label": "Offset Verbrauch (kWh)",
+					"default": 0,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hAcU1Map": {
+					"type": "header",
+					"size": 3,
+					"text": "Mapping Innengerät 1",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u1_room_temp_enabled": {
+					"type": "checkbox",
+					"label": "Raumtemperatur aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_room_temp_target": {
+					"type": "text",
+					"label": "Raumtemperatur State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u1_room_humidity_enabled": {
+					"type": "checkbox",
+					"label": "Raumfeuchte aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_room_humidity_target": {
+					"type": "text",
+					"label": "Raumfeuchte State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u1_feedback_switch_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Ein/Aus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_feedback_switch_target": {
+					"type": "text",
+					"label": "Rückmeldung Ein/Aus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u1_feedback_mode_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Modus aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_feedback_mode_target": {
+					"type": "text",
+					"label": "Rückmeldung Modus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u1_cmd_switch_on_enabled": {
+					"type": "checkbox",
+					"label": "Befehl EIN aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_cmd_switch_on_target": {
+					"type": "text",
+					"label": "Befehl EIN State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u1_cmd_switch_off_enabled": {
+					"type": "checkbox",
+					"label": "Befehl AUS aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_cmd_switch_off_target": {
+					"type": "text",
+					"label": "Befehl AUS State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u1_cmd_set_mode_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Modus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_cmd_set_mode_target": {
+					"type": "text",
+					"label": "Befehl Modus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u1_cmd_set_fan_mode_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Lüftermodus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_cmd_set_fan_mode_target": {
+					"type": "text",
+					"label": "Befehl Lüftermodus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u1_cmd_set_fan_speed_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Lüfterstärke aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_cmd_set_fan_speed_target": {
+					"type": "text",
+					"label": "Befehl Lüfterstärke State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u1_cmd_set_cool_setpoint_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Kühl-Sollwert aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_cmd_set_cool_setpoint_target": {
+					"type": "text",
+					"label": "Befehl Kühl-Sollwert State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u1_cmd_set_heat_setpoint_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Heiz-Sollwert aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_cmd_set_heat_setpoint_target": {
+					"type": "text",
+					"label": "Befehl Heiz-Sollwert State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u1_cmd_cleaning_start_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Reinigung start aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_cmd_cleaning_start_target": {
+					"type": "text",
+					"label": "Befehl Reinigung start State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u1_cmd_cleaning_mode_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Reinigungsmodus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_cmd_cleaning_mode_target": {
+					"type": "text",
+					"label": "Befehl Reinigungsmodus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u1_cmd_refresh_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Refresh aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_cmd_refresh_target": {
+					"type": "text",
+					"label": "Befehl Refresh State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"hAcU2": {
+					"type": "header",
+					"size": 2,
+					"text": "Innengerät 2",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u2_enabled": {
+					"type": "checkbox",
+					"label": "Aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_name": {
+					"type": "text",
+					"label": "Name",
+					"default": "Josef Zimmer OG",
+					"xs": 12,
+					"sm": 8,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"ac_u2_profile": {
+					"type": "select",
+					"label": "Geräteprofil",
+					"options": [
+						{
+							"label": "Generic",
+							"value": "generic"
+						},
+						{
+							"label": "Samsung SmartThings",
+							"value": "samsung_smartthings"
+						}
+					],
+					"default": "samsung_smartthings",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ac_u2_on_temp_c": {
+					"type": "number",
+					"label": "Einschalttemperatur (°C)",
+					"default": 24.5,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_off_temp_c": {
+					"type": "number",
+					"label": "Ausschalttemperatur (°C)",
+					"default": 23,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_max_humidity_pct": {
+					"type": "number",
+					"label": "Max. Feuchte (%) — optional",
+					"min": 0,
+					"max": 100,
+					"default": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_cooling_setpoint_c": {
+					"type": "number",
+					"label": "Kühl-Sollwert (°C)",
+					"default": 17,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_mode_when_cooling": {
+					"type": "text",
+					"label": "Modus Kühlen",
+					"default": "cool",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_fan_mode_when_cooling": {
+					"type": "text",
+					"label": "Lüftermodus Kühlen",
+					"default": "auto",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_fan_speed_when_cooling": {
+					"type": "text",
+					"label": "Lüfterstärke Kühlen (optional)",
+					"default": "",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_mode_when_dehumidify": {
+					"type": "text",
+					"label": "Modus Entfeuchten",
+					"default": "dry",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_fan_mode_when_dehumidify": {
+					"type": "text",
+					"label": "Lüftermodus Entfeuchten",
+					"default": "auto",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_active_from": {
+					"type": "text",
+					"label": "Aktiv ab (HH:MM)",
+					"default": "08:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_active_until": {
+					"type": "text",
+					"label": "Aktiv bis (HH:MM)",
+					"default": "19:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_hard_off_at": {
+					"type": "text",
+					"label": "Hard-Off (HH:MM)",
+					"default": "19:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_estimated_power_w": {
+					"type": "number",
+					"label": "Geschätzte Leistung (W)",
+					"default": 650,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_cleaning_after_run": {
+					"type": "checkbox",
+					"label": "Reinigung nach Lauf",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_cleaning_delay_min": {
+					"type": "number",
+					"label": "Reinigung Verzögerung (min)",
+					"default": 1,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_cleaning_duration_min": {
+					"type": "number",
+					"label": "Reinigung Dauer (min)",
+					"default": 30,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hAcU2Stats": {
+					"type": "header",
+					"size": 3,
+					"text": "Statistik Innengerät 2",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u2_stats_enabled": {
+					"type": "checkbox",
+					"label": "Statistik aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_stats_track_runtime": {
+					"type": "checkbox",
+					"label": "Laufzeit mitloggen",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_stats_track_energy": {
+					"type": "checkbox",
+					"label": "Verbrauch mitloggen",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_stats_runtime_offset_h": {
+					"type": "number",
+					"label": "Offset Laufzeit (h)",
+					"default": 0,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_stats_energy_offset_kwh": {
+					"type": "number",
+					"label": "Offset Verbrauch (kWh)",
+					"default": 0,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hAcU2Map": {
+					"type": "header",
+					"size": 3,
+					"text": "Mapping Innengerät 2",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u2_room_temp_enabled": {
+					"type": "checkbox",
+					"label": "Raumtemperatur aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_room_temp_target": {
+					"type": "text",
+					"label": "Raumtemperatur State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u2_room_humidity_enabled": {
+					"type": "checkbox",
+					"label": "Raumfeuchte aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_room_humidity_target": {
+					"type": "text",
+					"label": "Raumfeuchte State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u2_feedback_switch_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Ein/Aus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_feedback_switch_target": {
+					"type": "text",
+					"label": "Rückmeldung Ein/Aus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u2_feedback_mode_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Modus aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_feedback_mode_target": {
+					"type": "text",
+					"label": "Rückmeldung Modus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u2_cmd_switch_on_enabled": {
+					"type": "checkbox",
+					"label": "Befehl EIN aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_cmd_switch_on_target": {
+					"type": "text",
+					"label": "Befehl EIN State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u2_cmd_switch_off_enabled": {
+					"type": "checkbox",
+					"label": "Befehl AUS aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_cmd_switch_off_target": {
+					"type": "text",
+					"label": "Befehl AUS State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u2_cmd_set_mode_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Modus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_cmd_set_mode_target": {
+					"type": "text",
+					"label": "Befehl Modus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u2_cmd_set_fan_mode_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Lüftermodus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_cmd_set_fan_mode_target": {
+					"type": "text",
+					"label": "Befehl Lüftermodus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u2_cmd_set_fan_speed_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Lüfterstärke aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_cmd_set_fan_speed_target": {
+					"type": "text",
+					"label": "Befehl Lüfterstärke State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u2_cmd_set_cool_setpoint_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Kühl-Sollwert aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_cmd_set_cool_setpoint_target": {
+					"type": "text",
+					"label": "Befehl Kühl-Sollwert State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u2_cmd_set_heat_setpoint_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Heiz-Sollwert aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_cmd_set_heat_setpoint_target": {
+					"type": "text",
+					"label": "Befehl Heiz-Sollwert State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u2_cmd_cleaning_start_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Reinigung start aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_cmd_cleaning_start_target": {
+					"type": "text",
+					"label": "Befehl Reinigung start State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u2_cmd_cleaning_mode_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Reinigungsmodus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_cmd_cleaning_mode_target": {
+					"type": "text",
+					"label": "Befehl Reinigungsmodus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u2_cmd_refresh_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Refresh aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_cmd_refresh_target": {
+					"type": "text",
+					"label": "Befehl Refresh State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"hAcU3": {
+					"type": "header",
+					"size": 2,
+					"text": "Innengerät 3",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u3_enabled": {
+					"type": "checkbox",
+					"label": "Aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_name": {
+					"type": "text",
+					"label": "Name",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"ac_u3_profile": {
+					"type": "select",
+					"label": "Geräteprofil",
+					"options": [
+						{
+							"label": "Generic",
+							"value": "generic"
+						},
+						{
+							"label": "Samsung SmartThings",
+							"value": "samsung_smartthings"
+						}
+					],
+					"default": "samsung_smartthings",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ac_u3_on_temp_c": {
+					"type": "number",
+					"label": "Einschalttemperatur (°C)",
+					"default": 26,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_off_temp_c": {
+					"type": "number",
+					"label": "Ausschalttemperatur (°C)",
+					"default": 24,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_max_humidity_pct": {
+					"type": "number",
+					"label": "Max. Feuchte (%) — optional",
+					"min": 0,
+					"max": 100,
+					"default": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_cooling_setpoint_c": {
+					"type": "number",
+					"label": "Kühl-Sollwert (°C)",
+					"default": 17,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_mode_when_cooling": {
+					"type": "text",
+					"label": "Modus Kühlen",
+					"default": "cool",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_fan_mode_when_cooling": {
+					"type": "text",
+					"label": "Lüftermodus Kühlen",
+					"default": "auto",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_fan_speed_when_cooling": {
+					"type": "text",
+					"label": "Lüfterstärke Kühlen (optional)",
+					"default": "",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_mode_when_dehumidify": {
+					"type": "text",
+					"label": "Modus Entfeuchten",
+					"default": "dry",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_fan_mode_when_dehumidify": {
+					"type": "text",
+					"label": "Lüftermodus Entfeuchten",
+					"default": "auto",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_active_from": {
+					"type": "text",
+					"label": "Aktiv ab (HH:MM)",
+					"default": "08:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_active_until": {
+					"type": "text",
+					"label": "Aktiv bis (HH:MM)",
+					"default": "19:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_hard_off_at": {
+					"type": "text",
+					"label": "Hard-Off (HH:MM)",
+					"default": "19:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_estimated_power_w": {
+					"type": "number",
+					"label": "Geschätzte Leistung (W)",
+					"default": 700,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_cleaning_after_run": {
+					"type": "checkbox",
+					"label": "Reinigung nach Lauf",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_cleaning_delay_min": {
+					"type": "number",
+					"label": "Reinigung Verzögerung (min)",
+					"default": 1,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_cleaning_duration_min": {
+					"type": "number",
+					"label": "Reinigung Dauer (min)",
+					"default": 30,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hAcU3Stats": {
+					"type": "header",
+					"size": 3,
+					"text": "Statistik Innengerät 3",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u3_stats_enabled": {
+					"type": "checkbox",
+					"label": "Statistik aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_stats_track_runtime": {
+					"type": "checkbox",
+					"label": "Laufzeit mitloggen",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_stats_track_energy": {
+					"type": "checkbox",
+					"label": "Verbrauch mitloggen",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_stats_runtime_offset_h": {
+					"type": "number",
+					"label": "Offset Laufzeit (h)",
+					"default": 0,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_stats_energy_offset_kwh": {
+					"type": "number",
+					"label": "Offset Verbrauch (kWh)",
+					"default": 0,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hAcU3Map": {
+					"type": "header",
+					"size": 3,
+					"text": "Mapping Innengerät 3",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u3_room_temp_enabled": {
+					"type": "checkbox",
+					"label": "Raumtemperatur aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_room_temp_target": {
+					"type": "text",
+					"label": "Raumtemperatur State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u3_room_humidity_enabled": {
+					"type": "checkbox",
+					"label": "Raumfeuchte aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_room_humidity_target": {
+					"type": "text",
+					"label": "Raumfeuchte State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u3_feedback_switch_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Ein/Aus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_feedback_switch_target": {
+					"type": "text",
+					"label": "Rückmeldung Ein/Aus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u3_feedback_mode_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Modus aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_feedback_mode_target": {
+					"type": "text",
+					"label": "Rückmeldung Modus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u3_cmd_switch_on_enabled": {
+					"type": "checkbox",
+					"label": "Befehl EIN aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_cmd_switch_on_target": {
+					"type": "text",
+					"label": "Befehl EIN State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u3_cmd_switch_off_enabled": {
+					"type": "checkbox",
+					"label": "Befehl AUS aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_cmd_switch_off_target": {
+					"type": "text",
+					"label": "Befehl AUS State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u3_cmd_set_mode_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Modus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_cmd_set_mode_target": {
+					"type": "text",
+					"label": "Befehl Modus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u3_cmd_set_fan_mode_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Lüftermodus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_cmd_set_fan_mode_target": {
+					"type": "text",
+					"label": "Befehl Lüftermodus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u3_cmd_set_fan_speed_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Lüfterstärke aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_cmd_set_fan_speed_target": {
+					"type": "text",
+					"label": "Befehl Lüfterstärke State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u3_cmd_set_cool_setpoint_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Kühl-Sollwert aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_cmd_set_cool_setpoint_target": {
+					"type": "text",
+					"label": "Befehl Kühl-Sollwert State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u3_cmd_set_heat_setpoint_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Heiz-Sollwert aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_cmd_set_heat_setpoint_target": {
+					"type": "text",
+					"label": "Befehl Heiz-Sollwert State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u3_cmd_cleaning_start_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Reinigung start aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_cmd_cleaning_start_target": {
+					"type": "text",
+					"label": "Befehl Reinigung start State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u3_cmd_cleaning_mode_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Reinigungsmodus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_cmd_cleaning_mode_target": {
+					"type": "text",
+					"label": "Befehl Reinigungsmodus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u3_cmd_refresh_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Refresh aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_cmd_refresh_target": {
+					"type": "text",
+					"label": "Befehl Refresh State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"hAcU4": {
+					"type": "header",
+					"size": 2,
+					"text": "Innengerät 4",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u4_enabled": {
+					"type": "checkbox",
+					"label": "Aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_name": {
+					"type": "text",
+					"label": "Name",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"ac_u4_profile": {
+					"type": "select",
+					"label": "Geräteprofil",
+					"options": [
+						{
+							"label": "Generic",
+							"value": "generic"
+						},
+						{
+							"label": "Samsung SmartThings",
+							"value": "samsung_smartthings"
+						}
+					],
+					"default": "samsung_smartthings",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ac_u4_on_temp_c": {
+					"type": "number",
+					"label": "Einschalttemperatur (°C)",
+					"default": 26,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_off_temp_c": {
+					"type": "number",
+					"label": "Ausschalttemperatur (°C)",
+					"default": 24,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_max_humidity_pct": {
+					"type": "number",
+					"label": "Max. Feuchte (%) — optional",
+					"min": 0,
+					"max": 100,
+					"default": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_cooling_setpoint_c": {
+					"type": "number",
+					"label": "Kühl-Sollwert (°C)",
+					"default": 17,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_mode_when_cooling": {
+					"type": "text",
+					"label": "Modus Kühlen",
+					"default": "cool",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_fan_mode_when_cooling": {
+					"type": "text",
+					"label": "Lüftermodus Kühlen",
+					"default": "auto",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_fan_speed_when_cooling": {
+					"type": "text",
+					"label": "Lüfterstärke Kühlen (optional)",
+					"default": "",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_mode_when_dehumidify": {
+					"type": "text",
+					"label": "Modus Entfeuchten",
+					"default": "dry",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_fan_mode_when_dehumidify": {
+					"type": "text",
+					"label": "Lüftermodus Entfeuchten",
+					"default": "auto",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_active_from": {
+					"type": "text",
+					"label": "Aktiv ab (HH:MM)",
+					"default": "08:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_active_until": {
+					"type": "text",
+					"label": "Aktiv bis (HH:MM)",
+					"default": "19:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_hard_off_at": {
+					"type": "text",
+					"label": "Hard-Off (HH:MM)",
+					"default": "19:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_estimated_power_w": {
+					"type": "number",
+					"label": "Geschätzte Leistung (W)",
+					"default": 700,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_cleaning_after_run": {
+					"type": "checkbox",
+					"label": "Reinigung nach Lauf",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_cleaning_delay_min": {
+					"type": "number",
+					"label": "Reinigung Verzögerung (min)",
+					"default": 1,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_cleaning_duration_min": {
+					"type": "number",
+					"label": "Reinigung Dauer (min)",
+					"default": 30,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hAcU4Stats": {
+					"type": "header",
+					"size": 3,
+					"text": "Statistik Innengerät 4",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u4_stats_enabled": {
+					"type": "checkbox",
+					"label": "Statistik aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_stats_track_runtime": {
+					"type": "checkbox",
+					"label": "Laufzeit mitloggen",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_stats_track_energy": {
+					"type": "checkbox",
+					"label": "Verbrauch mitloggen",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_stats_runtime_offset_h": {
+					"type": "number",
+					"label": "Offset Laufzeit (h)",
+					"default": 0,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_stats_energy_offset_kwh": {
+					"type": "number",
+					"label": "Offset Verbrauch (kWh)",
+					"default": 0,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hAcU4Map": {
+					"type": "header",
+					"size": 3,
+					"text": "Mapping Innengerät 4",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u4_room_temp_enabled": {
+					"type": "checkbox",
+					"label": "Raumtemperatur aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_room_temp_target": {
+					"type": "text",
+					"label": "Raumtemperatur State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u4_room_humidity_enabled": {
+					"type": "checkbox",
+					"label": "Raumfeuchte aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_room_humidity_target": {
+					"type": "text",
+					"label": "Raumfeuchte State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u4_feedback_switch_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Ein/Aus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_feedback_switch_target": {
+					"type": "text",
+					"label": "Rückmeldung Ein/Aus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u4_feedback_mode_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Modus aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_feedback_mode_target": {
+					"type": "text",
+					"label": "Rückmeldung Modus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u4_cmd_switch_on_enabled": {
+					"type": "checkbox",
+					"label": "Befehl EIN aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_cmd_switch_on_target": {
+					"type": "text",
+					"label": "Befehl EIN State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u4_cmd_switch_off_enabled": {
+					"type": "checkbox",
+					"label": "Befehl AUS aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_cmd_switch_off_target": {
+					"type": "text",
+					"label": "Befehl AUS State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u4_cmd_set_mode_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Modus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_cmd_set_mode_target": {
+					"type": "text",
+					"label": "Befehl Modus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u4_cmd_set_fan_mode_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Lüftermodus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_cmd_set_fan_mode_target": {
+					"type": "text",
+					"label": "Befehl Lüftermodus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u4_cmd_set_fan_speed_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Lüfterstärke aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_cmd_set_fan_speed_target": {
+					"type": "text",
+					"label": "Befehl Lüfterstärke State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u4_cmd_set_cool_setpoint_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Kühl-Sollwert aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_cmd_set_cool_setpoint_target": {
+					"type": "text",
+					"label": "Befehl Kühl-Sollwert State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u4_cmd_set_heat_setpoint_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Heiz-Sollwert aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_cmd_set_heat_setpoint_target": {
+					"type": "text",
+					"label": "Befehl Heiz-Sollwert State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u4_cmd_cleaning_start_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Reinigung start aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_cmd_cleaning_start_target": {
+					"type": "text",
+					"label": "Befehl Reinigung start State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u4_cmd_cleaning_mode_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Reinigungsmodus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_cmd_cleaning_mode_target": {
+					"type": "text",
+					"label": "Befehl Reinigungsmodus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u4_cmd_refresh_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Refresh aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_cmd_refresh_target": {
+					"type": "text",
+					"label": "Befehl Refresh State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"hAcU5": {
+					"type": "header",
+					"size": 2,
+					"text": "Innengerät 5",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u5_enabled": {
+					"type": "checkbox",
+					"label": "Aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_name": {
+					"type": "text",
+					"label": "Name",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"ac_u5_profile": {
+					"type": "select",
+					"label": "Geräteprofil",
+					"options": [
+						{
+							"label": "Generic",
+							"value": "generic"
+						},
+						{
+							"label": "Samsung SmartThings",
+							"value": "samsung_smartthings"
+						}
+					],
+					"default": "samsung_smartthings",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"ac_u5_on_temp_c": {
+					"type": "number",
+					"label": "Einschalttemperatur (°C)",
+					"default": 26,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_off_temp_c": {
+					"type": "number",
+					"label": "Ausschalttemperatur (°C)",
+					"default": 24,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_max_humidity_pct": {
+					"type": "number",
+					"label": "Max. Feuchte (%) — optional",
+					"min": 0,
+					"max": 100,
+					"default": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_cooling_setpoint_c": {
+					"type": "number",
+					"label": "Kühl-Sollwert (°C)",
+					"default": 17,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_mode_when_cooling": {
+					"type": "text",
+					"label": "Modus Kühlen",
+					"default": "cool",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_fan_mode_when_cooling": {
+					"type": "text",
+					"label": "Lüftermodus Kühlen",
+					"default": "auto",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_fan_speed_when_cooling": {
+					"type": "text",
+					"label": "Lüfterstärke Kühlen (optional)",
+					"default": "",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_mode_when_dehumidify": {
+					"type": "text",
+					"label": "Modus Entfeuchten",
+					"default": "dry",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_fan_mode_when_dehumidify": {
+					"type": "text",
+					"label": "Lüftermodus Entfeuchten",
+					"default": "auto",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_active_from": {
+					"type": "text",
+					"label": "Aktiv ab (HH:MM)",
+					"default": "08:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_active_until": {
+					"type": "text",
+					"label": "Aktiv bis (HH:MM)",
+					"default": "19:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_hard_off_at": {
+					"type": "text",
+					"label": "Hard-Off (HH:MM)",
+					"default": "19:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_estimated_power_w": {
+					"type": "number",
+					"label": "Geschätzte Leistung (W)",
+					"default": 700,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_cleaning_after_run": {
+					"type": "checkbox",
+					"label": "Reinigung nach Lauf",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_cleaning_delay_min": {
+					"type": "number",
+					"label": "Reinigung Verzögerung (min)",
+					"default": 1,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_cleaning_duration_min": {
+					"type": "number",
+					"label": "Reinigung Dauer (min)",
+					"default": 30,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hAcU5Stats": {
+					"type": "header",
+					"size": 3,
+					"text": "Statistik Innengerät 5",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u5_stats_enabled": {
+					"type": "checkbox",
+					"label": "Statistik aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_stats_track_runtime": {
+					"type": "checkbox",
+					"label": "Laufzeit mitloggen",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_stats_track_energy": {
+					"type": "checkbox",
+					"label": "Verbrauch mitloggen",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_stats_runtime_offset_h": {
+					"type": "number",
+					"label": "Offset Laufzeit (h)",
+					"default": 0,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_stats_energy_offset_kwh": {
+					"type": "number",
+					"label": "Offset Verbrauch (kWh)",
+					"default": 0,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hAcU5Map": {
+					"type": "header",
+					"size": 3,
+					"text": "Mapping Innengerät 5",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u5_room_temp_enabled": {
+					"type": "checkbox",
+					"label": "Raumtemperatur aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_room_temp_target": {
+					"type": "text",
+					"label": "Raumtemperatur State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u5_room_humidity_enabled": {
+					"type": "checkbox",
+					"label": "Raumfeuchte aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_room_humidity_target": {
+					"type": "text",
+					"label": "Raumfeuchte State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u5_feedback_switch_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Ein/Aus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_feedback_switch_target": {
+					"type": "text",
+					"label": "Rückmeldung Ein/Aus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u5_feedback_mode_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Modus aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_feedback_mode_target": {
+					"type": "text",
+					"label": "Rückmeldung Modus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u5_cmd_switch_on_enabled": {
+					"type": "checkbox",
+					"label": "Befehl EIN aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_cmd_switch_on_target": {
+					"type": "text",
+					"label": "Befehl EIN State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u5_cmd_switch_off_enabled": {
+					"type": "checkbox",
+					"label": "Befehl AUS aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_cmd_switch_off_target": {
+					"type": "text",
+					"label": "Befehl AUS State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u5_cmd_set_mode_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Modus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_cmd_set_mode_target": {
+					"type": "text",
+					"label": "Befehl Modus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u5_cmd_set_fan_mode_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Lüftermodus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_cmd_set_fan_mode_target": {
+					"type": "text",
+					"label": "Befehl Lüftermodus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u5_cmd_set_fan_speed_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Lüfterstärke aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_cmd_set_fan_speed_target": {
+					"type": "text",
+					"label": "Befehl Lüfterstärke State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u5_cmd_set_cool_setpoint_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Kühl-Sollwert aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_cmd_set_cool_setpoint_target": {
+					"type": "text",
+					"label": "Befehl Kühl-Sollwert State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u5_cmd_set_heat_setpoint_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Heiz-Sollwert aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_cmd_set_heat_setpoint_target": {
+					"type": "text",
+					"label": "Befehl Heiz-Sollwert State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u5_cmd_cleaning_start_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Reinigung start aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_cmd_cleaning_start_target": {
+					"type": "text",
+					"label": "Befehl Reinigung start State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u5_cmd_cleaning_mode_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Reinigungsmodus aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_cmd_cleaning_mode_target": {
+					"type": "text",
+					"label": "Befehl Reinigungsmodus State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u5_cmd_refresh_enabled": {
+					"type": "checkbox",
+					"label": "Befehl Refresh aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_cmd_refresh_target": {
+					"type": "text",
+					"label": "Befehl Refresh State-ID",
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
 				}
 			}
 		}

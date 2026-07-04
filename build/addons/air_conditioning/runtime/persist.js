@@ -1,0 +1,19 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.emptyAcRuntimePersist = exports.emptyUnitPersist = exports.AC_RUNTIME_FILENAME = void 0;
+exports.AC_RUNTIME_FILENAME = "air_conditioning_runtime_v1.json";
+function emptyUnitPersist(index) {
+    return {
+        index,
+        running: false,
+        cleaningActive: false,
+        cleaningStartedAtMs: null,
+        lastStartAtMs: null,
+        lastStopAtMs: null,
+    };
+}
+exports.emptyUnitPersist = emptyUnitPersist;
+function emptyAcRuntimePersist() {
+    return { version: 1, units: {} };
+}
+exports.emptyAcRuntimePersist = emptyAcRuntimePersist;

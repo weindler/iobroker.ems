@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.96",
+		"version": "0.1.97",
 		"news": {
+			"0.1.97": {
+				"en": "Air conditioning addon Phase A: up to 5 indoor units, Samsung SmartThings profile, configurable thresholds/modes/fan, per-unit stats, dryrun/live",
+				"de": "Klimaanlage Phase A: bis 5 Innengeräte, Samsung-SmartThings-Profil, konfigurierbare Schwellwerte/Modi/Lüfter, Statistik pro Gerät, dryrun/live"
+			},
 			"0.1.96": {
 				"en": "Consumer stats: only count runtime and kWh in live mode, not during dryrun",
 				"de": "Verbraucher-Statistik: Laufzeit und kWh nur im Live-Modus zählen, nicht im Dryrun"

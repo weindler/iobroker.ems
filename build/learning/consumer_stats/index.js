@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureConsumerStatsStates = exports.consumerStatsStateIds = exports.consumerStatsBase = exports.consumerStatsConfigFor = exports.resetConsumerStatsCache = exports.flushConsumerStatsPersist = exports.tickConsumerStats = exports.initConsumerStatsForAddon = exports.PERSIST_CATEGORY = void 0;
+exports.ensureConsumerStatsStates = exports.consumerStatsStateIds = exports.consumerStatsBase = exports.consumerStatsConfigFor = exports.resetConsumerStatsCache = exports.flushConsumerStatsPersist = exports.tickConsumerStats = exports.initConsumerStatsForAddon = exports.initConsumerStatsForKey = exports.PERSIST_CATEGORY = void 0;
 const buffer_1 = require("./buffer");
 const config_1 = require("./config");
 const ensure_states_1 = require("./ensure_states");
@@ -33,12 +33,17 @@ async function flushPersist(host) {
     await (0, persist_1.writeConsumerStatsPersist)(dir, persistCache);
     persistDirty = false;
 }
-async function initConsumerStatsForAddon(host, addonId) {
-    if (!(0, config_1.consumerStatsConfigFor)(addonId, host.config)) {
+async function initConsumerStatsForKey(host, consumerKey) {
+    if (!(0, config_1.consumerStatsConfigFor)(consumerKey, host.config)) {
         return;
     }
-    await (0, ensure_states_1.ensureConsumerStatsStates)(host, addonId);
+    await (0, ensure_states_1.ensureConsumerStatsStates)(host, consumerKey);
     await loadPersist(host);
+}
+exports.initConsumerStatsForKey = initConsumerStatsForKey;
+/** @deprecated use initConsumerStatsForKey */
+async function initConsumerStatsForAddon(host, addonId) {
+    await initConsumerStatsForKey(host, addonId);
 }
 exports.initConsumerStatsForAddon = initConsumerStatsForAddon;
 async function tickConsumerStats(host, input) {

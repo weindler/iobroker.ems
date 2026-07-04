@@ -1,4 +1,5 @@
 import type { ImmersionDeviceConfig } from "../../addons/immersion_heater/runtime/types";
+import type { PlannerModePolicy } from "../mode_policy";
 import type { PlannerThermalDecision } from "../types";
 import { PLANNER_SURPLUS_MIN_W } from "../inputs";
 
@@ -8,6 +9,7 @@ export interface ThermalPlanInput {
 	thermalMode: "off" | "auto" | "force";
 	governanceEnabled: boolean;
 	config: ImmersionDeviceConfig;
+	modePolicy: PlannerModePolicy;
 }
 
 function enabledStages(config: ImmersionDeviceConfig) {
@@ -26,6 +28,9 @@ export function planThermal(input: ThermalPlanInput): PlannerThermalDecision {
 
 	if (!input.governanceEnabled) {
 		return none("Heizstab-Governance deaktiviert.");
+	}
+	if (!input.modePolicy.allowOptimization || !input.modePolicy.allowThermalAuto) {
+		return none(`${input.modePolicy.labelDe} — kein Heizstab-Auftrag.`);
 	}
 	if (input.thermalMode !== "auto") {
 		return none(`Heizstab-Modus „${input.thermalMode}“ — Planner greift nur bei auto.`);

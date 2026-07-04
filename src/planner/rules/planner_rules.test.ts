@@ -1,9 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { immersionDeviceConfigFromAdapter } from "../../addons/immersion_heater/device_config.js";
+import { plannerModePolicyFromGlobalMode } from "../mode_policy.js";
 import { computePvSurplusW } from "./surplus.js";
 import { planThermal } from "./thermal.js";
 import { buildPlannerConstraints, planBattery } from "./battery.js";
+
+const BALANCED = plannerModePolicyFromGlobalMode("balanced");
+const COMFORT = plannerModePolicyFromGlobalMode("comfort");
 
 const CFG = immersionDeviceConfigFromAdapter({
 	ih_set_enabled_target: "r",
@@ -34,6 +38,7 @@ describe("planner thermal", () => {
 			thermalMode: "auto",
 			governanceEnabled: true,
 			config: cfg,
+			modePolicy: BALANCED,
 		});
 		assert.equal(r.commanded_stage, 1);
 		assert.match(r.reason_de, /Ein \(1700 W\)/);
@@ -50,9 +55,26 @@ describe("planner thermal", () => {
 			thermalMode: "auto",
 			governanceEnabled: true,
 			config: cfg,
+			modePolicy: BALANCED,
 		});
 		assert.equal(r.commanded_stage, 0);
 		assert.match(r.reason_de, /Ein\/Aus/);
+	});
+
+	it("off global mode blocks thermal", () => {
+		const cfg = immersionDeviceConfigFromAdapter({
+			ih_set_enabled_target: "r",
+			ih_stage_1_nominal_power_w: 1700,
+		});
+		const r = planThermal({
+			surplusW: 5000,
+			bufferTempC: 50,
+			thermalMode: "auto",
+			governanceEnabled: true,
+			config: cfg,
+			modePolicy: plannerModePolicyFromGlobalMode("off"),
+		});
+		assert.equal(r.commanded_stage, 0);
 	});
 
 	it("multi-stage picks highest affordable stage", () => {
@@ -62,6 +84,7 @@ describe("planner thermal", () => {
 			thermalMode: "auto",
 			governanceEnabled: true,
 			config: CFG,
+			modePolicy: BALANCED,
 		});
 		assert.equal(r.commanded_stage, 1);
 		assert.equal(r.commanded_power_w, 2000);
@@ -79,13 +102,14 @@ describe("planner thermal", () => {
 			thermalMode: "auto",
 			governanceEnabled: true,
 			config: cfg,
+			modePolicy: BALANCED,
 		});
 		assert.equal(r.commanded_stage, 0);
 	});
 });
 
 describe("planner battery", () => {
-	it("blocks on evcc hold", () => {
+	it("returns hold on evcc hold", () => {
 		const constraints = buildPlannerConstraints({
 			evccBatteryMode: "hold",
 			evccBatteryDischargeControl: true,
@@ -93,12 +117,14 @@ describe("planner battery", () => {
 		});
 		const r = planBattery({
 			surplusW: 3000,
+			deficitW: 0,
 			socPct: 80,
 			governanceEnabled: true,
 			constraints,
 			thermalAllocatedW: 2000,
+			modePolicy: BALANCED,
 		});
-		assert.equal(r.action, "none");
+		assert.equal(r.action, "hold");
 	});
 
 	it("charges from remaining surplus", () => {
@@ -109,12 +135,50 @@ describe("planner battery", () => {
 		});
 		const r = planBattery({
 			surplusW: 3000,
+			deficitW: 0,
 			socPct: 80,
 			governanceEnabled: true,
 			constraints,
 			thermalAllocatedW: 2000,
+			modePolicy: BALANCED,
 		});
 		assert.equal(r.action, "charge");
 		assert.equal(r.max_charge_w, 1000);
+	});
+
+	it("comfort supports deficit self consumption", () => {
+		const constraints = buildPlannerConstraints({
+			evccBatteryMode: "normal",
+			evccBatteryDischargeControl: false,
+			userIntentBatteryHold: false,
+		});
+		const r = planBattery({
+			surplusW: 0,
+			deficitW: 1200,
+			socPct: 55,
+			governanceEnabled: true,
+			constraints,
+			thermalAllocatedW: 0,
+			modePolicy: COMFORT,
+		});
+		assert.equal(r.action, "self_consumption");
+	});
+
+	it("forced respects user_intent hold for cheap price", () => {
+		const constraints = buildPlannerConstraints({
+			evccBatteryMode: "normal",
+			evccBatteryDischargeControl: false,
+			userIntentBatteryHold: true,
+		});
+		const r = planBattery({
+			surplusW: 0,
+			deficitW: 1500,
+			socPct: 80,
+			governanceEnabled: true,
+			constraints,
+			thermalAllocatedW: 0,
+			modePolicy: plannerModePolicyFromGlobalMode("forced"),
+		});
+		assert.equal(r.action, "hold");
 	});
 });

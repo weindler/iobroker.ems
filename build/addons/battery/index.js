@@ -221,12 +221,12 @@ async function controlTickInner(host) {
     else {
         const plannerRaw = await host.getStateAsync("planner.intent.last_json");
         const plannerParsed = (0, battery_bridge_1.parsePlannerIntentJson)(plannerRaw?.val);
-        const fromPlanner = plannerParsed && plannerParsed.battery.action === "charge"
+        const fromPlanner = plannerParsed && (0, battery_bridge_1.plannerWantsActiveBatteryIntent)(plannerParsed.battery)
             ? (0, battery_bridge_1.deviceIntentFromPlannerDecision)(plannerParsed.battery, plannerParsed.revision, plannerParsed.resolved_at)
             : null;
         if (fromPlanner) {
             deviceIntent = fromPlanner;
-            wantsCharge = true;
+            wantsCharge = (0, intent_1.isChargingAction)(fromPlanner.action);
             requestId = fromPlanner.requestId;
         }
         else {
@@ -264,10 +264,13 @@ async function controlTickInner(host) {
     const intentValid = validation.accepted && wantsCharge && profile.supportsLive;
     const effectiveChargeW = validation.effectiveChargeW ?? 0;
     const emsMirrorIntentActive = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.batteryIntentActive);
+    const plannerDriven = deviceIntent.source === "planner";
     const emsBatteryIntentActive = fromResolved
         ? wantsCharge
-        : deviceIntent.source === "planner"
-            ? wantsCharge
+        : plannerDriven
+            ? deviceIntent.action === "charge"
+                ? wantsCharge
+                : deviceIntent.action === "self_consumption" || deviceIntent.action === "hold"
             : emsMirrorIntentActive && wantsCharge;
     // Grid balance controller.
     const adapterFeature = snapshot.capabilities.control_grid_balance.available;

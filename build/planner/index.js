@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopPlanner = exports.initPlanner = exports.deviceIntentFromPlannerDecision = exports.computePvSurplusW = exports.buildPlannerConstraints = exports.planBattery = exports.planThermal = exports.resetPlannerRevisionForTest = exports.runPlannerTick = exports.runPlanner = exports.readPlannerInputs = exports.readPlannerThermalStage = void 0;
+exports.stopPlanner = exports.initPlanner = exports.deviceIntentFromPlannerDecision = exports.plannerModePolicyFromGlobalMode = exports.buildPlannerConstraints = exports.planBattery = exports.planThermal = exports.resetPlannerRevisionForTest = exports.runPlannerTick = exports.runPlanner = exports.readPlannerInputs = exports.readPlannerThermalStage = void 0;
 const ensure_states_1 = require("./ensure_states");
 const run_1 = require("./run");
 var inputs_1 = require("./inputs");
@@ -15,8 +15,8 @@ Object.defineProperty(exports, "planThermal", { enumerable: true, get: function 
 var battery_1 = require("./rules/battery");
 Object.defineProperty(exports, "planBattery", { enumerable: true, get: function () { return battery_1.planBattery; } });
 Object.defineProperty(exports, "buildPlannerConstraints", { enumerable: true, get: function () { return battery_1.buildPlannerConstraints; } });
-var surplus_1 = require("./rules/surplus");
-Object.defineProperty(exports, "computePvSurplusW", { enumerable: true, get: function () { return surplus_1.computePvSurplusW; } });
+var mode_policy_1 = require("./mode_policy");
+Object.defineProperty(exports, "plannerModePolicyFromGlobalMode", { enumerable: true, get: function () { return mode_policy_1.plannerModePolicyFromGlobalMode; } });
 var battery_bridge_1 = require("./battery_bridge");
 Object.defineProperty(exports, "deviceIntentFromPlannerDecision", { enumerable: true, get: function () { return battery_bridge_1.deviceIntentFromPlannerDecision; } });
 async function initPlanner(host) {

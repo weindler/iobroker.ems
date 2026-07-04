@@ -8,7 +8,7 @@ export { readPlannerThermalStage, readPlannerInputs } from "./inputs";
 export { runPlanner, runPlannerTick, resetPlannerRevisionForTest } from "./run";
 export { planThermal } from "./rules/thermal";
 export { planBattery, buildPlannerConstraints } from "./rules/battery";
-export { computePvSurplusW } from "./rules/surplus";
+export { plannerModePolicyFromGlobalMode } from "./mode_policy";
 export { deviceIntentFromPlannerDecision } from "./battery_bridge";
 
 export async function initPlanner(host: PlannerHost): Promise<void> {

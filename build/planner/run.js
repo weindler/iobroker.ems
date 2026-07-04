@@ -14,6 +14,7 @@ function resetPlannerRevisionForTest() {
 exports.resetPlannerRevisionForTest = resetPlannerRevisionForTest;
 function runPlanner(inputs) {
     const surplusW = (0, surplus_1.computePvSurplusW)(inputs.pvPowerW, inputs.houseLoadW);
+    const deficitW = (0, battery_1.computeDeficitW)(inputs.pvPowerW, inputs.houseLoadW);
     const constraints = (0, battery_1.buildPlannerConstraints)({
         evccBatteryMode: inputs.evccBatteryMode,
         evccBatteryDischargeControl: inputs.evccBatteryDischargeControl,
@@ -25,22 +26,28 @@ function runPlanner(inputs) {
         thermalMode: inputs.thermalMode,
         governanceEnabled: inputs.thermalGovernanceEnabled,
         config: inputs.immersionConfig,
+        modePolicy: inputs.modePolicy,
     });
     const thermalAllocatedW = thermal.commanded_stage > 0 ? thermal.commanded_power_w : 0;
     const battery = (0, battery_1.planBattery)({
         surplusW,
+        deficitW,
         socPct: inputs.socPct,
         governanceEnabled: inputs.batteryGovernanceEnabled,
         constraints,
         thermalAllocatedW,
+        modePolicy: inputs.modePolicy,
     });
     revision += 1;
-    const reasonParts = [];
-    if (surplusW !== null) {
+    const reasonParts = [
+        `Global Mode ${inputs.globalMode}`,
+        inputs.modePolicy.labelDe,
+    ];
+    if (surplusW !== null && surplusW > 0) {
         reasonParts.push(`PV-Überschuss ${surplusW} W`);
     }
-    else {
-        reasonParts.push("PV-Überschuss unbekannt");
+    if (deficitW !== null && deficitW > 0) {
+        reasonParts.push(`PV-Unterdeckung ${deficitW} W`);
     }
     if (thermal.commanded_stage > 0) {
         reasonParts.push(`Heizstab Stufe ${thermal.commanded_stage}`);
@@ -48,15 +55,26 @@ function runPlanner(inputs) {
     if (battery.action === "charge") {
         reasonParts.push(`Batterie +${battery.max_charge_w} W`);
     }
-    if (constraints.evcc_battery_hold) {
-        reasonParts.push("EVCC-Hold aktiv");
+    else if (battery.action === "self_consumption") {
+        reasonParts.push("Batterie Eigenverbrauch");
+    }
+    else if (battery.action === "hold") {
+        reasonParts.push("Batterie Hold");
+    }
+    if (constraints.battery_hold_active) {
+        reasonParts.push("Hold-Sperre aktiv");
     }
     return {
         schema_version: 1,
         revision,
         resolved_at: inputs.now.toISOString(),
         reason_de: reasonParts.join(". ") + ".",
+        global_mode: {
+            active: inputs.globalMode,
+            policy_label_de: inputs.modePolicy.labelDe,
+        },
         surplus_w: surplusW,
+        deficit_w: deficitW,
         pv_power_w: inputs.pvPowerW,
         house_load_w: inputs.houseLoadW,
         constraints,
@@ -67,19 +85,20 @@ function runPlanner(inputs) {
 exports.runPlanner = runPlanner;
 function formatBriefing(intent) {
     const lines = [
-        `Planner v${types_1.PLANNER_ENGINE_VERSION} (dryrun-tauglich).`,
+        `Planner v${types_1.PLANNER_ENGINE_VERSION}. Mode: ${intent.global_mode.active}.`,
         intent.reason_de,
     ];
     if (intent.thermal.commanded_stage > 0) {
         lines.push(intent.thermal.reason_de);
     }
-    else if (intent.thermal.reason_de && !intent.thermal.reason_de.startsWith("Heizstab-Modus")) {
+    else if (intent.thermal.reason_de &&
+        !intent.thermal.reason_de.startsWith("Heizstab-Modus")) {
         lines.push(`Heizstab: ${intent.thermal.reason_de}`);
     }
-    if (intent.battery.action === "charge") {
+    if (intent.battery.action === "charge" || intent.battery.action === "self_consumption") {
         lines.push(intent.battery.reason_de);
     }
-    else if (intent.constraints.evcc_battery_hold) {
+    else if (intent.battery.action === "hold" || intent.constraints.battery_hold_active) {
         lines.push(intent.battery.reason_de);
     }
     return lines.join(" ").slice(0, 480);
@@ -89,8 +108,10 @@ async function runPlannerTick(host) {
     const intent = runPlanner(inputs);
     try {
         await (0, state_write_1.setStateIfChanged)(host, "planner.status", "ready");
+        await (0, state_write_1.setStateIfChanged)(host, "planner.global_mode.active", intent.global_mode.active);
         await (0, state_write_1.setStateIfChanged)(host, "planner.last_run_at", intent.resolved_at);
         await (0, state_write_1.setStateIfChanged)(host, "planner.surplus_w", intent.surplus_w);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.deficit_w", intent.deficit_w);
         await (0, state_write_1.setStateIfChanged)(host, "planner.intent.last_json", JSON.stringify(intent));
         await (0, state_write_1.setStateIfChanged)(host, "planner.intent.last_reason_de", intent.reason_de);
         await (0, state_write_1.setStateIfChanged)(host, "planner.intent.thermal.commanded_stage", intent.thermal.commanded_stage);
@@ -100,6 +121,7 @@ async function runPlannerTick(host) {
         await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.max_charge_w", intent.battery.max_charge_w);
         await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.reason_de", intent.battery.reason_de);
         await (0, state_write_1.setStateIfChanged)(host, "planner.constraints.evcc_battery_hold", intent.constraints.evcc_battery_hold);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.constraints.battery_hold_active", intent.constraints.battery_hold_active);
         await (0, state_write_1.setStateIfChanged)(host, "operator.briefing_de", formatBriefing(intent));
     }
     catch (e) {

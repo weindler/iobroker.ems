@@ -32,7 +32,7 @@ import {
 	parseResolvedBatteryIntentJson,
 	resolvedIntentHasConstraint,
 } from "./runtime/intent_read";
-import { deviceIntentFromPlannerDecision, parsePlannerIntentJson } from "../../planner/battery_bridge";
+import { deviceIntentFromPlannerDecision, parsePlannerIntentJson, plannerWantsActiveBatteryIntent } from "../../planner/battery_bridge";
 import type { RawBatteryReading } from "./core/telemetry";
 
 export const BATTERY_ADDON_ID = "battery";
@@ -284,7 +284,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		const plannerRaw = await host.getStateAsync("planner.intent.last_json");
 		const plannerParsed = parsePlannerIntentJson(plannerRaw?.val);
 		const fromPlanner =
-			plannerParsed && plannerParsed.battery.action === "charge"
+			plannerParsed && plannerWantsActiveBatteryIntent(plannerParsed.battery)
 				? deviceIntentFromPlannerDecision(
 						plannerParsed.battery,
 						plannerParsed.revision,
@@ -293,7 +293,7 @@ async function controlTickInner(host: Host): Promise<void> {
 				: null;
 		if (fromPlanner) {
 			deviceIntent = fromPlanner;
-			wantsCharge = true;
+			wantsCharge = isChargingAction(fromPlanner.action);
 			requestId = fromPlanner.requestId;
 		} else {
 			const intentActive = await readRelBool(host, EMS_MIRROR_BATTERY.batteryIntentActive);
@@ -333,10 +333,13 @@ async function controlTickInner(host: Host): Promise<void> {
 	const effectiveChargeW = validation.effectiveChargeW ?? 0;
 
 	const emsMirrorIntentActive = await readRelBool(host, EMS_MIRROR_BATTERY.batteryIntentActive);
+	const plannerDriven = deviceIntent.source === "planner";
 	const emsBatteryIntentActive = fromResolved
 		? wantsCharge
-		: deviceIntent.source === "planner"
-			? wantsCharge
+		: plannerDriven
+			? deviceIntent.action === "charge"
+				? wantsCharge
+				: deviceIntent.action === "self_consumption" || deviceIntent.action === "hold"
 			: emsMirrorIntentActive && wantsCharge;
 
 	// Grid balance controller.

@@ -1,25 +1,42 @@
 import type { PlannerBatteryDecision } from "./types";
 import type { BatteryDeviceIntent } from "../addons/battery/core/types";
+import { isChargingAction } from "../addons/battery/core/intent";
 
 export function deviceIntentFromPlannerDecision(
 	decision: PlannerBatteryDecision,
 	revision: number,
 	resolvedAt: string,
 ): BatteryDeviceIntent | null {
-	if (decision.action !== "charge") return null;
+	if (decision.action === "none") return null;
+
+	let action: BatteryDeviceIntent["action"];
+	if (decision.action === "charge") {
+		action = "charge";
+	} else if (decision.action === "hold") {
+		action = "hold";
+	} else {
+		action = "self_consumption";
+	}
+
 	return {
 		requestId: `planner-${revision}`,
-		action: "charge",
+		action,
 		targetSocPct: decision.target_soc_pct,
-		maxChargeW: decision.max_charge_w > 0 ? decision.max_charge_w : null,
+		maxChargeW: decision.action === "charge" && decision.max_charge_w > 0 ? decision.max_charge_w : null,
 		maxDischargeW: null,
-		energySource: "pv",
+		energySource: decision.action === "charge" ? "pv" : "any",
 		validFrom: null,
 		validUntil: null,
 		issuedAt: resolvedAt,
 		reason: decision.reason_de,
 		source: "planner",
 	};
+}
+
+export function plannerWantsActiveBatteryIntent(decision: PlannerBatteryDecision): boolean {
+	if (decision.action === "none") return false;
+	if (decision.action === "charge") return isChargingAction("charge");
+	return decision.action === "self_consumption" || decision.action === "hold";
 }
 
 export function parsePlannerIntentJson(raw: unknown): {

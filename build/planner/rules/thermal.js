@@ -17,6 +17,9 @@ function planThermal(input) {
     if (!input.governanceEnabled) {
         return none("Heizstab-Governance deaktiviert.");
     }
+    if (!input.modePolicy.allowOptimization || !input.modePolicy.allowThermalAuto) {
+        return none(`${input.modePolicy.labelDe} — kein Heizstab-Auftrag.`);
+    }
     if (input.thermalMode !== "auto") {
         return none(`Heizstab-Modus „${input.thermalMode}“ — Planner greift nur bei auto.`);
     }

@@ -7,6 +7,7 @@ const ensure_evcc_states_1 = require("../addons/wallbox/ensure_evcc_states");
 const governance_1 = require("../addons/governance");
 const intent_read_2 = require("../addons/battery/runtime/intent_read");
 const state_util_1 = require("../ems_light/state_util");
+const mode_policy_1 = require("./mode_policy");
 exports.PLANNER_SURPLUS_MIN_W = 400;
 exports.PLANNER_BATTERY_TARGET_SOC_PCT = 95;
 exports.PLANNER_BATTERY_MIN_SURPLUS_W = 500;
@@ -60,6 +61,10 @@ async function readPlannerInputs(host) {
     const batteryIntent = (0, intent_read_2.parseResolvedBatteryIntentJson)(batteryRaw?.val);
     const userIntentBatteryHold = batteryIntent?.operating_request.status === "valid" &&
         batteryIntent.operating_request.value === "hold";
+    const userIntentBatteryCharge = batteryIntent?.operating_request.status === "valid" &&
+        batteryIntent.operating_request.value === "charge";
+    const globalModeRaw = await readStr(host, "global_modes.active");
+    const modePolicy = (0, mode_policy_1.plannerModePolicyFromGlobalMode)(globalModeRaw);
     const [thermalGov, batteryGov, houseLoadW, socPct, bufferTempC, evccMode, evccDischarge] = await Promise.all([
         (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "immersion_heater"),
         (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "battery"),
@@ -71,6 +76,8 @@ async function readPlannerInputs(host) {
     ]);
     return {
         now,
+        globalMode: modePolicy.mode,
+        modePolicy,
         pvPowerW,
         houseLoadW,
         socPct,
@@ -81,6 +88,7 @@ async function readPlannerInputs(host) {
         evccBatteryMode: evccMode,
         evccBatteryDischargeControl: evccDischarge,
         userIntentBatteryHold,
+        userIntentBatteryCharge,
         immersionConfig: (0, device_config_1.immersionDeviceConfigFromAdapter)(host.config),
     };
 }

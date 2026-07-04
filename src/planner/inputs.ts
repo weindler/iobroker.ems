@@ -7,12 +7,18 @@ import { parseResolvedBatteryIntentJson } from "../addons/battery/runtime/intent
 import type { StateHost } from "../ems_light/state_util";
 import { asNum } from "../ems_light/state_util";
 
+import type { GlobalMode } from "../global_modes/constants";
+import type { PlannerModePolicy } from "./mode_policy";
+import { plannerModePolicyFromGlobalMode } from "./mode_policy";
+
 export const PLANNER_SURPLUS_MIN_W = 400;
 export const PLANNER_BATTERY_TARGET_SOC_PCT = 95;
 export const PLANNER_BATTERY_MIN_SURPLUS_W = 500;
 
 export interface PlannerInputs {
 	now: Date;
+	globalMode: GlobalMode;
+	modePolicy: PlannerModePolicy;
 	pvPowerW: number | null;
 	houseLoadW: number | null;
 	socPct: number | null;
@@ -23,6 +29,7 @@ export interface PlannerInputs {
 	evccBatteryMode: string | null;
 	evccBatteryDischargeControl: boolean | null;
 	userIntentBatteryHold: boolean;
+	userIntentBatteryCharge: boolean;
 	immersionConfig: ImmersionDeviceConfig;
 }
 
@@ -79,6 +86,12 @@ export async function readPlannerInputs(host: PlannerHost): Promise<PlannerInput
 	const userIntentBatteryHold =
 		batteryIntent?.operating_request.status === "valid" &&
 		batteryIntent.operating_request.value === "hold";
+	const userIntentBatteryCharge =
+		batteryIntent?.operating_request.status === "valid" &&
+		batteryIntent.operating_request.value === "charge";
+
+	const globalModeRaw = await readStr(host, "global_modes.active");
+	const modePolicy = plannerModePolicyFromGlobalMode(globalModeRaw);
 
 	const [thermalGov, batteryGov, houseLoadW, socPct, bufferTempC, evccMode, evccDischarge] = await Promise.all([
 		isAddonGovernanceEnabledFromState((id) => host.getStateAsync(id), "immersion_heater"),
@@ -92,6 +105,8 @@ export async function readPlannerInputs(host: PlannerHost): Promise<PlannerInput
 
 	return {
 		now,
+		globalMode: modePolicy.mode,
+		modePolicy,
 		pvPowerW,
 		houseLoadW,
 		socPct,
@@ -102,6 +117,7 @@ export async function readPlannerInputs(host: PlannerHost): Promise<PlannerInput
 		evccBatteryMode: evccMode,
 		evccBatteryDischargeControl: evccDischarge,
 		userIntentBatteryHold,
+		userIntentBatteryCharge,
 		immersionConfig: immersionDeviceConfigFromAdapter(host.config),
 	};
 }

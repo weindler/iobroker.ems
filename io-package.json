@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.81",
+		"version": "0.1.82",
 		"news": {
+			"0.1.82": {
+				"en": "Planner respects all Global Modes (off/eco/balanced/comfort/forced): mode policy drives thermal and battery intents; comfort/forced support battery on PV deficit; hold from EVCC or user_intent blocks forced use",
+				"de": "Planner berücksichtigt alle Global Modes (off/eco/balanced/comfort/forced): Modus-Policy steuert Heizstab und Batterie; comfort/forced nutzen Batterie bei PV-Unterdeckung; Hold via EVCC oder user_intent blockiert erzwungene Nutzung"
+			},
 			"0.1.81": {
 				"en": "Immersion heater: single ON/OFF vs multi-stage planner paths; default 1700 W nominal for 1-stage; clearer admin help and German planner reasons",
 				"de": "Heizstab: Ein/Aus vs. Mehrstufen getrennt im Planner; Default 1700 W Nennleistung bei 1 Stufe; Admin-Hilfe und Planner-Begründungen klarer"

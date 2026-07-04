@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.99",
+		"version": "0.1.100",
 		"news": {
+			"0.1.100": {
+				"en": "AC admin mapping fields use objectId picker (selectable states) like battery and immersion heater",
+				"de": "Klima-Mapping im Admin als objectId-Auswahl (States auswählbar) wie Batterie und Heizstab"
+			},
 			"0.1.99": {
 				"en": "Fix empty EMS-Light admin tab (flat tabs); pre-fill Wohnzimmer EG SmartThings mapping defaults for AC unit 1",
 				"de": "Leeren EMS-Light-Admin-Tab behoben (flache Tabs); SmartThings-Mapping-Vorgaben für Wohnzimmer EG (Unit 1) vorbefüllt"

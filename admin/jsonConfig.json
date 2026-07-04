@@ -2439,14 +2439,17 @@
 					"xl": 3
 				},
 				"ac_u1_room_temp_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Raumtemperatur State-ID",
 					"default": "alias.0.Wohnzimmer_EG.Sensoren.Temp_Feucht.Temperatur",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u1_room_humidity_enabled": {
 					"type": "checkbox",
@@ -2459,14 +2462,17 @@
 					"xl": 3
 				},
 				"ac_u1_room_humidity_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Raumfeuchte State-ID",
 					"default": "alias.0.Wohnzimmer_EG.Sensoren.Temp_Feucht.Luftfeuchtigkeit",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u1_feedback_switch_enabled": {
 					"type": "checkbox",
@@ -2479,14 +2485,17 @@
 					"xl": 3
 				},
 				"ac_u1_feedback_switch_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Rückmeldung Ein/Aus State-ID",
 					"default": "smartthings.0.40472197-070b-26fc-f422-69cdd84d6aa8.status.switch.switch.value",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u1_feedback_mode_enabled": {
 					"type": "checkbox",
@@ -2499,14 +2508,17 @@
 					"xl": 3
 				},
 				"ac_u1_feedback_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Rückmeldung Modus State-ID",
 					"default": "smartthings.0.40472197-070b-26fc-f422-69cdd84d6aa8.status.airConditionerMode.airConditionerMode.value",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u1_cmd_switch_on_enabled": {
 					"type": "checkbox",
@@ -2519,14 +2531,17 @@
 					"xl": 3
 				},
 				"ac_u1_cmd_switch_on_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl EIN State-ID",
 					"default": "smartthings.0.40472197-070b-26fc-f422-69cdd84d6aa8.capabilities.switch-on",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u1_cmd_switch_off_enabled": {
 					"type": "checkbox",
@@ -2539,14 +2554,17 @@
 					"xl": 3
 				},
 				"ac_u1_cmd_switch_off_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl AUS State-ID",
 					"default": "smartthings.0.40472197-070b-26fc-f422-69cdd84d6aa8.capabilities.switch-off",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u1_cmd_set_mode_enabled": {
 					"type": "checkbox",
@@ -2559,14 +2577,17 @@
 					"xl": 3
 				},
 				"ac_u1_cmd_set_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Modus State-ID",
 					"default": "smartthings.0.40472197-070b-26fc-f422-69cdd84d6aa8.capabilities.airConditionerMode-setAirConditionerMode",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u1_cmd_set_fan_mode_enabled": {
 					"type": "checkbox",
@@ -2579,14 +2600,17 @@
 					"xl": 3
 				},
 				"ac_u1_cmd_set_fan_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Lüftermodus State-ID",
 					"default": "smartthings.0.40472197-070b-26fc-f422-69cdd84d6aa8.capabilities.airConditionerFanMode-setFanMode",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u1_cmd_set_fan_speed_enabled": {
 					"type": "checkbox",
@@ -2599,14 +2623,16 @@
 					"xl": 3
 				},
 				"ac_u1_cmd_set_fan_speed_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Lüfterstärke State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u1_cmd_set_cool_setpoint_enabled": {
 					"type": "checkbox",
@@ -2619,14 +2645,17 @@
 					"xl": 3
 				},
 				"ac_u1_cmd_set_cool_setpoint_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Kühl-Sollwert State-ID",
 					"default": "smartthings.0.40472197-070b-26fc-f422-69cdd84d6aa8.capabilities.thermostatCoolingSetpoint-setCoolingSetpoint",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u1_cmd_set_heat_setpoint_enabled": {
 					"type": "checkbox",
@@ -2639,14 +2668,16 @@
 					"xl": 3
 				},
 				"ac_u1_cmd_set_heat_setpoint_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Heiz-Sollwert State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u1_cmd_cleaning_start_enabled": {
 					"type": "checkbox",
@@ -2659,14 +2690,17 @@
 					"xl": 3
 				},
 				"ac_u1_cmd_cleaning_start_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Reinigung start State-ID",
 					"default": "smartthings.0.40472197-070b-26fc-f422-69cdd84d6aa8.capabilities.custom.autoCleaningMode-setAutoCleaningMode",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u1_cmd_cleaning_mode_enabled": {
 					"type": "checkbox",
@@ -2679,14 +2713,17 @@
 					"xl": 3
 				},
 				"ac_u1_cmd_cleaning_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Reinigungsmodus State-ID",
 					"default": "smartthings.0.40472197-070b-26fc-f422-69cdd84d6aa8.capabilities.custom.airConditionerOdorController-setAirConditionerOdorControllerState",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u1_cmd_refresh_enabled": {
 					"type": "checkbox",
@@ -2699,14 +2736,17 @@
 					"xl": 3
 				},
 				"ac_u1_cmd_refresh_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Refresh State-ID",
 					"default": "smartthings.0.40472197-070b-26fc-f422-69cdd84d6aa8.capabilities.refresh-refresh",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"hAcU2": {
 					"type": "header",
@@ -3006,14 +3046,16 @@
 					"xl": 3
 				},
 				"ac_u2_room_temp_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Raumtemperatur State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u2_room_humidity_enabled": {
 					"type": "checkbox",
@@ -3026,14 +3068,16 @@
 					"xl": 3
 				},
 				"ac_u2_room_humidity_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Raumfeuchte State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u2_feedback_switch_enabled": {
 					"type": "checkbox",
@@ -3046,14 +3090,16 @@
 					"xl": 3
 				},
 				"ac_u2_feedback_switch_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Rückmeldung Ein/Aus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u2_feedback_mode_enabled": {
 					"type": "checkbox",
@@ -3066,14 +3112,16 @@
 					"xl": 3
 				},
 				"ac_u2_feedback_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Rückmeldung Modus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u2_cmd_switch_on_enabled": {
 					"type": "checkbox",
@@ -3086,14 +3134,16 @@
 					"xl": 3
 				},
 				"ac_u2_cmd_switch_on_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl EIN State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u2_cmd_switch_off_enabled": {
 					"type": "checkbox",
@@ -3106,14 +3156,16 @@
 					"xl": 3
 				},
 				"ac_u2_cmd_switch_off_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl AUS State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u2_cmd_set_mode_enabled": {
 					"type": "checkbox",
@@ -3126,14 +3178,16 @@
 					"xl": 3
 				},
 				"ac_u2_cmd_set_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Modus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u2_cmd_set_fan_mode_enabled": {
 					"type": "checkbox",
@@ -3146,14 +3200,16 @@
 					"xl": 3
 				},
 				"ac_u2_cmd_set_fan_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Lüftermodus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u2_cmd_set_fan_speed_enabled": {
 					"type": "checkbox",
@@ -3166,14 +3222,16 @@
 					"xl": 3
 				},
 				"ac_u2_cmd_set_fan_speed_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Lüfterstärke State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u2_cmd_set_cool_setpoint_enabled": {
 					"type": "checkbox",
@@ -3186,14 +3244,16 @@
 					"xl": 3
 				},
 				"ac_u2_cmd_set_cool_setpoint_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Kühl-Sollwert State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u2_cmd_set_heat_setpoint_enabled": {
 					"type": "checkbox",
@@ -3206,14 +3266,16 @@
 					"xl": 3
 				},
 				"ac_u2_cmd_set_heat_setpoint_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Heiz-Sollwert State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u2_cmd_cleaning_start_enabled": {
 					"type": "checkbox",
@@ -3226,14 +3288,16 @@
 					"xl": 3
 				},
 				"ac_u2_cmd_cleaning_start_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Reinigung start State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u2_cmd_cleaning_mode_enabled": {
 					"type": "checkbox",
@@ -3246,14 +3310,16 @@
 					"xl": 3
 				},
 				"ac_u2_cmd_cleaning_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Reinigungsmodus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u2_cmd_refresh_enabled": {
 					"type": "checkbox",
@@ -3266,14 +3332,16 @@
 					"xl": 3
 				},
 				"ac_u2_cmd_refresh_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Refresh State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"hAcU3": {
 					"type": "header",
@@ -3573,14 +3641,16 @@
 					"xl": 3
 				},
 				"ac_u3_room_temp_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Raumtemperatur State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u3_room_humidity_enabled": {
 					"type": "checkbox",
@@ -3593,14 +3663,16 @@
 					"xl": 3
 				},
 				"ac_u3_room_humidity_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Raumfeuchte State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u3_feedback_switch_enabled": {
 					"type": "checkbox",
@@ -3613,14 +3685,16 @@
 					"xl": 3
 				},
 				"ac_u3_feedback_switch_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Rückmeldung Ein/Aus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u3_feedback_mode_enabled": {
 					"type": "checkbox",
@@ -3633,14 +3707,16 @@
 					"xl": 3
 				},
 				"ac_u3_feedback_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Rückmeldung Modus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u3_cmd_switch_on_enabled": {
 					"type": "checkbox",
@@ -3653,14 +3729,16 @@
 					"xl": 3
 				},
 				"ac_u3_cmd_switch_on_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl EIN State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u3_cmd_switch_off_enabled": {
 					"type": "checkbox",
@@ -3673,14 +3751,16 @@
 					"xl": 3
 				},
 				"ac_u3_cmd_switch_off_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl AUS State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u3_cmd_set_mode_enabled": {
 					"type": "checkbox",
@@ -3693,14 +3773,16 @@
 					"xl": 3
 				},
 				"ac_u3_cmd_set_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Modus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u3_cmd_set_fan_mode_enabled": {
 					"type": "checkbox",
@@ -3713,14 +3795,16 @@
 					"xl": 3
 				},
 				"ac_u3_cmd_set_fan_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Lüftermodus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u3_cmd_set_fan_speed_enabled": {
 					"type": "checkbox",
@@ -3733,14 +3817,16 @@
 					"xl": 3
 				},
 				"ac_u3_cmd_set_fan_speed_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Lüfterstärke State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u3_cmd_set_cool_setpoint_enabled": {
 					"type": "checkbox",
@@ -3753,14 +3839,16 @@
 					"xl": 3
 				},
 				"ac_u3_cmd_set_cool_setpoint_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Kühl-Sollwert State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u3_cmd_set_heat_setpoint_enabled": {
 					"type": "checkbox",
@@ -3773,14 +3861,16 @@
 					"xl": 3
 				},
 				"ac_u3_cmd_set_heat_setpoint_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Heiz-Sollwert State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u3_cmd_cleaning_start_enabled": {
 					"type": "checkbox",
@@ -3793,14 +3883,16 @@
 					"xl": 3
 				},
 				"ac_u3_cmd_cleaning_start_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Reinigung start State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u3_cmd_cleaning_mode_enabled": {
 					"type": "checkbox",
@@ -3813,14 +3905,16 @@
 					"xl": 3
 				},
 				"ac_u3_cmd_cleaning_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Reinigungsmodus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u3_cmd_refresh_enabled": {
 					"type": "checkbox",
@@ -3833,14 +3927,16 @@
 					"xl": 3
 				},
 				"ac_u3_cmd_refresh_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Refresh State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"hAcU4": {
 					"type": "header",
@@ -4140,14 +4236,16 @@
 					"xl": 3
 				},
 				"ac_u4_room_temp_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Raumtemperatur State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u4_room_humidity_enabled": {
 					"type": "checkbox",
@@ -4160,14 +4258,16 @@
 					"xl": 3
 				},
 				"ac_u4_room_humidity_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Raumfeuchte State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u4_feedback_switch_enabled": {
 					"type": "checkbox",
@@ -4180,14 +4280,16 @@
 					"xl": 3
 				},
 				"ac_u4_feedback_switch_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Rückmeldung Ein/Aus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u4_feedback_mode_enabled": {
 					"type": "checkbox",
@@ -4200,14 +4302,16 @@
 					"xl": 3
 				},
 				"ac_u4_feedback_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Rückmeldung Modus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u4_cmd_switch_on_enabled": {
 					"type": "checkbox",
@@ -4220,14 +4324,16 @@
 					"xl": 3
 				},
 				"ac_u4_cmd_switch_on_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl EIN State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u4_cmd_switch_off_enabled": {
 					"type": "checkbox",
@@ -4240,14 +4346,16 @@
 					"xl": 3
 				},
 				"ac_u4_cmd_switch_off_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl AUS State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u4_cmd_set_mode_enabled": {
 					"type": "checkbox",
@@ -4260,14 +4368,16 @@
 					"xl": 3
 				},
 				"ac_u4_cmd_set_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Modus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u4_cmd_set_fan_mode_enabled": {
 					"type": "checkbox",
@@ -4280,14 +4390,16 @@
 					"xl": 3
 				},
 				"ac_u4_cmd_set_fan_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Lüftermodus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u4_cmd_set_fan_speed_enabled": {
 					"type": "checkbox",
@@ -4300,14 +4412,16 @@
 					"xl": 3
 				},
 				"ac_u4_cmd_set_fan_speed_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Lüfterstärke State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u4_cmd_set_cool_setpoint_enabled": {
 					"type": "checkbox",
@@ -4320,14 +4434,16 @@
 					"xl": 3
 				},
 				"ac_u4_cmd_set_cool_setpoint_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Kühl-Sollwert State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u4_cmd_set_heat_setpoint_enabled": {
 					"type": "checkbox",
@@ -4340,14 +4456,16 @@
 					"xl": 3
 				},
 				"ac_u4_cmd_set_heat_setpoint_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Heiz-Sollwert State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u4_cmd_cleaning_start_enabled": {
 					"type": "checkbox",
@@ -4360,14 +4478,16 @@
 					"xl": 3
 				},
 				"ac_u4_cmd_cleaning_start_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Reinigung start State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u4_cmd_cleaning_mode_enabled": {
 					"type": "checkbox",
@@ -4380,14 +4500,16 @@
 					"xl": 3
 				},
 				"ac_u4_cmd_cleaning_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Reinigungsmodus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u4_cmd_refresh_enabled": {
 					"type": "checkbox",
@@ -4400,14 +4522,16 @@
 					"xl": 3
 				},
 				"ac_u4_cmd_refresh_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Refresh State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"hAcU5": {
 					"type": "header",
@@ -4707,14 +4831,16 @@
 					"xl": 3
 				},
 				"ac_u5_room_temp_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Raumtemperatur State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u5_room_humidity_enabled": {
 					"type": "checkbox",
@@ -4727,14 +4853,16 @@
 					"xl": 3
 				},
 				"ac_u5_room_humidity_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Raumfeuchte State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u5_feedback_switch_enabled": {
 					"type": "checkbox",
@@ -4747,14 +4875,16 @@
 					"xl": 3
 				},
 				"ac_u5_feedback_switch_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Rückmeldung Ein/Aus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u5_feedback_mode_enabled": {
 					"type": "checkbox",
@@ -4767,14 +4897,16 @@
 					"xl": 3
 				},
 				"ac_u5_feedback_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Rückmeldung Modus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u5_cmd_switch_on_enabled": {
 					"type": "checkbox",
@@ -4787,14 +4919,16 @@
 					"xl": 3
 				},
 				"ac_u5_cmd_switch_on_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl EIN State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u5_cmd_switch_off_enabled": {
 					"type": "checkbox",
@@ -4807,14 +4941,16 @@
 					"xl": 3
 				},
 				"ac_u5_cmd_switch_off_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl AUS State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u5_cmd_set_mode_enabled": {
 					"type": "checkbox",
@@ -4827,14 +4963,16 @@
 					"xl": 3
 				},
 				"ac_u5_cmd_set_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Modus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u5_cmd_set_fan_mode_enabled": {
 					"type": "checkbox",
@@ -4847,14 +4985,16 @@
 					"xl": 3
 				},
 				"ac_u5_cmd_set_fan_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Lüftermodus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u5_cmd_set_fan_speed_enabled": {
 					"type": "checkbox",
@@ -4867,14 +5007,16 @@
 					"xl": 3
 				},
 				"ac_u5_cmd_set_fan_speed_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Lüfterstärke State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u5_cmd_set_cool_setpoint_enabled": {
 					"type": "checkbox",
@@ -4887,14 +5029,16 @@
 					"xl": 3
 				},
 				"ac_u5_cmd_set_cool_setpoint_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Kühl-Sollwert State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u5_cmd_set_heat_setpoint_enabled": {
 					"type": "checkbox",
@@ -4907,14 +5051,16 @@
 					"xl": 3
 				},
 				"ac_u5_cmd_set_heat_setpoint_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Heiz-Sollwert State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u5_cmd_cleaning_start_enabled": {
 					"type": "checkbox",
@@ -4927,14 +5073,16 @@
 					"xl": 3
 				},
 				"ac_u5_cmd_cleaning_start_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Reinigung start State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u5_cmd_cleaning_mode_enabled": {
 					"type": "checkbox",
@@ -4947,14 +5095,16 @@
 					"xl": 3
 				},
 				"ac_u5_cmd_cleaning_mode_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Reinigungsmodus State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				},
 				"ac_u5_cmd_refresh_enabled": {
 					"type": "checkbox",
@@ -4967,14 +5117,16 @@
 					"xl": 3
 				},
 				"ac_u5_cmd_refresh_target": {
-					"type": "text",
+					"type": "objectId",
 					"label": "Befehl Refresh State-ID",
-					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9
+					"xl": 9,
+					"types": [
+						"state"
+					]
 				}
 			}
 		},

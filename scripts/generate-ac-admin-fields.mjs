@@ -49,7 +49,7 @@ function unitFields(n) {
 	lines.push(`\t\t\t\t"hAcU${n}Map": { "type": "header", "size": 3, "text": "Mapping Innengerät ${n}", "xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12 }`);
 	for (const [role, label] of roles) {
 		lines.push(`\t\t\t\t"${p}${role}_enabled": { "type": "checkbox", "label": "${label} aktiv", "default": ${["room_temp", "feedback_switch", "cmd_switch_on", "cmd_switch_off", "cmd_set_mode", "cmd_set_fan_mode", "cmd_set_cool_setpoint", "cmd_cleaning_start", "cmd_cleaning_mode", "cmd_refresh"].includes(role)}, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
-		lines.push(`\t\t\t\t"${p}${role}_target": { "type": "text", "label": "${label} State-ID", "default": "", "xs": 12, "sm": 8, "md": 9, "lg": 9, "xl": 9 }`);
+		lines.push(`\t\t\t\t"${p}${role}_target": { "type": "objectId", "label": "${label} State-ID", "types": ["state"], "default": "", "xs": 12, "sm": 8, "md": 9, "lg": 9, "xl": 9 }`);
 	}
 	return lines.join(",\n");
 }

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopPlanner = exports.initPlanner = exports.deviceIntentFromPlannerDecision = exports.plannerModePolicyFromGlobalMode = exports.buildPlannerConstraints = exports.planBattery = exports.coolingReserveW = exports.planCooling = exports.resetPlannerRevisionForTest = exports.runPlannerTick = exports.runPlanner = exports.readPlannerInputs = exports.readPlannerThermalStage = void 0;
+exports.stopPlanner = exports.initPlanner = exports.batteryWinterPlanConfigFromAdapter = exports.dailyKwhFromHouseLoadForecast = exports.planBatteryWinter = exports.plannerModePolicyFromGlobalMode = exports.buildPlannerConstraints = exports.planBattery = exports.coolingReserveW = exports.planCooling = exports.resetPlannerRevisionForTest = exports.runPlannerTick = exports.runPlanner = exports.readPlannerInputs = exports.readPlannerThermalStage = void 0;
 const ensure_states_1 = require("./ensure_states");
 const run_1 = require("./run");
 var inputs_1 = require("./inputs");
@@ -18,8 +18,11 @@ Object.defineProperty(exports, "planBattery", { enumerable: true, get: function 
 Object.defineProperty(exports, "buildPlannerConstraints", { enumerable: true, get: function () { return battery_1.buildPlannerConstraints; } });
 var mode_policy_1 = require("./mode_policy");
 Object.defineProperty(exports, "plannerModePolicyFromGlobalMode", { enumerable: true, get: function () { return mode_policy_1.plannerModePolicyFromGlobalMode; } });
-var battery_bridge_1 = require("./battery_bridge");
-Object.defineProperty(exports, "deviceIntentFromPlannerDecision", { enumerable: true, get: function () { return battery_bridge_1.deviceIntentFromPlannerDecision; } });
+var battery_winter_1 = require("./rules/battery_winter");
+Object.defineProperty(exports, "planBatteryWinter", { enumerable: true, get: function () { return battery_winter_1.planBatteryWinter; } });
+Object.defineProperty(exports, "dailyKwhFromHouseLoadForecast", { enumerable: true, get: function () { return battery_winter_1.dailyKwhFromHouseLoadForecast; } });
+var battery_winter_config_1 = require("./battery_winter_config");
+Object.defineProperty(exports, "batteryWinterPlanConfigFromAdapter", { enumerable: true, get: function () { return battery_winter_config_1.batteryWinterPlanConfigFromAdapter; } });
 async function initPlanner(host) {
     await (0, ensure_states_1.ensurePlannerStates)(host);
     await (0, run_1.runPlannerTick)(host);

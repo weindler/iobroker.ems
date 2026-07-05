@@ -4,6 +4,7 @@ import { immersionDeviceConfigFromAdapter } from "../addons/immersion_heater/dev
 import { plannerModePolicyFromGlobalMode } from "./mode_policy.js";
 import { resetPlannerRevisionForTest, runPlanner } from "./run.js";
 import type { PlannerInputs } from "./inputs.js";
+import { defaultBatteryWinterConfig, defaultBatteryWinterDays } from "./battery_winter_test_util.js";
 
 const NOW = new Date("2026-07-04T08:00:00Z");
 const BALANCED = plannerModePolicyFromGlobalMode("balanced");
@@ -43,6 +44,10 @@ function baseInputs(overrides: Partial<PlannerInputs> = {}): PlannerInputs {
 		coolingGovernanceEnabled: false,
 		outdoorTempC: null,
 		coolingUnits: [],
+		batteryWinterConfig: defaultBatteryWinterConfig(),
+		batteryWinterDays: defaultBatteryWinterDays(),
+		snowCoverSuspected: false,
+		batteryAiAllowed: false,
 		...overrides,
 	};
 }

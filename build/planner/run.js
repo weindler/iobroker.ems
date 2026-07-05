@@ -4,6 +4,7 @@ exports.runPlannerTick = exports.runPlanner = exports.resetPlannerRevisionForTes
 const state_write_1 = require("../policy/core/state_write");
 const inputs_1 = require("./inputs");
 const battery_1 = require("./rules/battery");
+const battery_winter_1 = require("./rules/battery_winter");
 const surplus_1 = require("./rules/surplus");
 const thermal_1 = require("./rules/thermal");
 const cooling_1 = require("./rules/cooling");
@@ -59,6 +60,34 @@ function runPlanner(inputs) {
         consumerAllocatedW,
         modePolicy: inputs.modePolicy,
     });
+    const batteryWinterRaw = (0, battery_winter_1.planBatteryWinter)({
+        now: inputs.now,
+        socPct: inputs.socPct,
+        snowCoverSuspected: inputs.snowCoverSuspected,
+        config: inputs.batteryWinterConfig,
+        modePolicy: inputs.modePolicy,
+        batteryGovernanceEnabled: inputs.batteryGovernanceEnabled,
+        batteryAiAllowed: inputs.batteryAiAllowed,
+        days: inputs.batteryWinterDays,
+    });
+    const battery_winter = {
+        active: batteryWinterRaw.active,
+        forecast_active: batteryWinterRaw.forecast_active,
+        horizon_days: batteryWinterRaw.horizon_days,
+        bridge_until_iso: batteryWinterRaw.bridge_until_iso,
+        pv_recovery_day: batteryWinterRaw.pv_recovery_day,
+        energy_stored_kwh: batteryWinterRaw.energy_stored_kwh,
+        energy_deficit_kwh: batteryWinterRaw.energy_deficit_kwh,
+        energy_reserve_kwh: batteryWinterRaw.energy_reserve_kwh,
+        energy_target_kwh: batteryWinterRaw.energy_target_kwh,
+        soc_target_pct: batteryWinterRaw.soc_target_pct,
+        charge_energy_kwh: batteryWinterRaw.charge_energy_kwh,
+        charge_duration_h: batteryWinterRaw.charge_duration_h,
+        charge_slots_15m: batteryWinterRaw.charge_slots_15m,
+        confidence_min_pct: batteryWinterRaw.confidence_min_pct,
+        windows_json: JSON.stringify(batteryWinterRaw.windows),
+        reason_de: batteryWinterRaw.reason_de,
+    };
     revision += 1;
     const reasonParts = [
         `Global Mode ${inputs.globalMode}`,
@@ -91,6 +120,9 @@ function runPlanner(inputs) {
     if (constraints.battery_hold_active) {
         reasonParts.push("Hold-Sperre aktiv");
     }
+    if (batteryWinterRaw.forecast_active) {
+        reasonParts.push(`Winter-Netz: ${batteryWinterRaw.soc_target_pct ?? "—"} % Ziel`);
+    }
     return {
         schema_version: 1,
         revision,
@@ -108,6 +140,7 @@ function runPlanner(inputs) {
         thermal,
         cooling,
         battery,
+        battery_winter,
     };
 }
 exports.runPlanner = runPlanner;
@@ -131,6 +164,9 @@ function formatBriefing(intent) {
     }
     else if (intent.battery.action === "hold" || intent.constraints.battery_hold_active) {
         lines.push(intent.battery.reason_de);
+    }
+    if (intent.battery_winter.forecast_active) {
+        lines.push(`Winter-Netz: ${intent.battery_winter.reason_de}`);
     }
     if (intent.cooling.likely_active) {
         lines.push(`Klima: ${intent.cooling.reason_de}`);
@@ -162,6 +198,23 @@ async function runPlannerTick(host) {
         await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.action", intent.battery.action);
         await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.max_charge_w", intent.battery.max_charge_w);
         await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.reason_de", intent.battery.reason_de);
+        const w = intent.battery_winter;
+        await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.winter.active", w.active);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.winter.forecast_active", w.forecast_active);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.winter.horizon_days", w.horizon_days);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.winter.bridge_until_iso", w.bridge_until_iso ?? "");
+        await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.winter.pv_recovery_day", w.pv_recovery_day ?? -1);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.winter.energy_stored_kwh", w.energy_stored_kwh ?? -1);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.winter.energy_deficit_kwh", w.energy_deficit_kwh ?? -1);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.winter.energy_reserve_kwh", w.energy_reserve_kwh ?? -1);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.winter.energy_target_kwh", w.energy_target_kwh ?? -1);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.winter.soc_target_pct", w.soc_target_pct ?? -1);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.winter.charge_energy_kwh", w.charge_energy_kwh ?? -1);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.winter.charge_duration_h", w.charge_duration_h ?? -1);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.winter.charge_slots_15m", w.charge_slots_15m ?? -1);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.winter.confidence_min_pct", w.confidence_min_pct ?? -1);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.winter.windows_json", w.windows_json);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.winter.reason_de", w.reason_de);
         await (0, state_write_1.setStateIfChanged)(host, "planner.constraints.evcc_battery_hold", intent.constraints.evcc_battery_hold);
         await (0, state_write_1.setStateIfChanged)(host, "planner.constraints.battery_hold_active", intent.constraints.battery_hold_active);
         await (0, state_write_1.setStateIfChanged)(host, "operator.briefing_de", formatBriefing(intent));

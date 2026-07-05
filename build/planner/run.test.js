@@ -8,6 +8,7 @@ const strict_1 = __importDefault(require("node:assert/strict"));
 const device_config_js_1 = require("../addons/immersion_heater/device_config.js");
 const mode_policy_js_1 = require("./mode_policy.js");
 const run_js_1 = require("./run.js");
+const battery_winter_test_util_js_1 = require("./battery_winter_test_util.js");
 const NOW = new Date("2026-07-04T08:00:00Z");
 const BALANCED = (0, mode_policy_js_1.plannerModePolicyFromGlobalMode)("balanced");
 function baseInputs(overrides = {}) {
@@ -45,6 +46,10 @@ function baseInputs(overrides = {}) {
         coolingGovernanceEnabled: false,
         outdoorTempC: null,
         coolingUnits: [],
+        batteryWinterConfig: (0, battery_winter_test_util_js_1.defaultBatteryWinterConfig)(),
+        batteryWinterDays: (0, battery_winter_test_util_js_1.defaultBatteryWinterDays)(),
+        snowCoverSuspected: false,
+        batteryAiAllowed: false,
         ...overrides,
     };
 }

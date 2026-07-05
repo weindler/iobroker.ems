@@ -9,6 +9,8 @@ const device_config_1 = require("../addons/immersion_heater/device_config");
 const intent_read_1 = require("../addons/immersion_heater/runtime/intent_read");
 const ensure_evcc_states_1 = require("../addons/wallbox/ensure_evcc_states");
 const ensure_states_2 = require("../addons/governance/ensure_states");
+const battery_winter_config_1 = require("./battery_winter_config");
+const battery_winter_inputs_1 = require("./battery_winter_inputs");
 const intent_read_2 = require("../addons/battery/runtime/intent_read");
 const persist_1 = require("../learning/consumer_stats/persist");
 const consumer_stats_1 = require("../learning/consumer_stats");
@@ -115,7 +117,8 @@ async function readPlannerInputs(host) {
     const modePolicy = (0, mode_policy_1.plannerModePolicyFromGlobalMode)(globalModeRaw);
     const immersionConfig = (0, device_config_1.immersionDeviceConfigFromAdapter)(host.config);
     const consumerStatsPersist = await readConsumerStatsForPlanner(host);
-    const [thermalGov, batteryGov, coolingGov, houseLoadW, socPct, bufferTempC, evccMode, evccDischarge, pvTodayKwh, pvTomorrowKwh, pvBiasStatus, aiAllowed, outdoorTempC, coolingUnits] = await Promise.all([
+    const batteryWinterConfig = (0, battery_winter_config_1.batteryWinterPlanConfigFromAdapter)(host.config);
+    const [thermalGov, batteryGov, coolingGov, houseLoadW, socPct, bufferTempC, evccMode, evccDischarge, pvTodayKwh, pvTomorrowKwh, pvBiasStatus, aiThermalAllowed, batteryAiAllowed, snowCover, outdoorTempC, coolingUnits, batteryWinterDays] = await Promise.all([
         (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "immersion_heater"),
         (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "battery"),
         (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "climate"),
@@ -128,8 +131,11 @@ async function readPlannerInputs(host) {
         readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
         readStr(host, "learning.pv_bias.status"),
         readBool(host, (0, ensure_states_2.addonGovernanceAiAllowedState)("immersion_heater")),
+        readBool(host, (0, ensure_states_2.addonGovernanceAiAllowedState)("battery")),
+        readBool(host, "ems_mirror.snow_cover_suspected"),
         readOutdoorTempC(host),
         readCoolingUnitInputs(host, acConfig, consumerStatsPersist),
+        (0, battery_winter_inputs_1.readBatteryWinterDays)(host, batteryWinterConfig.horizonDays),
     ]);
     return {
         now,
@@ -151,11 +157,15 @@ async function readPlannerInputs(host) {
         pvTomorrowKwh,
         pvBiasStatus,
         forecastModeEnabled: immersionConfig.forecastModeEnabled,
-        aiOptimizationAllowed: aiAllowed === true,
+        aiOptimizationAllowed: aiThermalAllowed === true,
         acConfig,
         coolingGovernanceEnabled: coolingGov,
         outdoorTempC,
         coolingUnits,
+        batteryWinterConfig,
+        batteryWinterDays,
+        snowCoverSuspected: snowCover === true,
+        batteryAiAllowed: batteryAiAllowed === true,
     };
 }
 exports.readPlannerInputs = readPlannerInputs;

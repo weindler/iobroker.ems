@@ -1,7 +1,7 @@
 /** Deterministic EMS planner — Phase 1 MVP (dryrun-first). */
 
 export const PLANNER_SCHEMA_VERSION = 1;
-export const PLANNER_ENGINE_VERSION = "0.3.0";
+export const PLANNER_ENGINE_VERSION = "0.4.0";
 
 export type PlannerBatteryAction = "none" | "charge" | "self_consumption" | "hold";
 
@@ -23,6 +23,25 @@ export interface PlannerBatteryDecision {
 	action: PlannerBatteryAction;
 	max_charge_w: number;
 	target_soc_pct: number | null;
+	reason_de: string;
+}
+
+export interface PlannerBatteryWinterDecision {
+	active: boolean;
+	forecast_active: boolean;
+	horizon_days: number;
+	bridge_until_iso: string | null;
+	pv_recovery_day: number | null;
+	energy_stored_kwh: number | null;
+	energy_deficit_kwh: number | null;
+	energy_reserve_kwh: number | null;
+	energy_target_kwh: number | null;
+	soc_target_pct: number | null;
+	charge_energy_kwh: number | null;
+	charge_duration_h: number | null;
+	charge_slots_15m: number | null;
+	confidence_min_pct: number | null;
+	windows_json: string;
 	reason_de: string;
 }
 
@@ -57,6 +76,7 @@ export interface PlannerIntent {
 	thermal: PlannerThermalDecision;
 	cooling: PlannerCoolingDecision;
 	battery: PlannerBatteryDecision;
+	battery_winter: PlannerBatteryWinterDecision;
 }
 
 export function emptyPlannerIntent(now: Date): PlannerIntent {
@@ -94,5 +114,23 @@ export function emptyPlannerIntent(now: Date): PlannerIntent {
 			forecast_active: false,
 		},
 		battery: { action: "none", max_charge_w: 0, target_soc_pct: null, reason_de: "Kein Batterie-Auftrag." },
+		battery_winter: {
+			active: false,
+			forecast_active: false,
+			horizon_days: 0,
+			bridge_until_iso: null,
+			pv_recovery_day: null,
+			energy_stored_kwh: null,
+			energy_deficit_kwh: null,
+			energy_reserve_kwh: null,
+			energy_target_kwh: null,
+			soc_target_pct: null,
+			charge_energy_kwh: null,
+			charge_duration_h: null,
+			charge_slots_15m: null,
+			confidence_min_pct: null,
+			windows_json: "[]",
+			reason_de: "Winter-Netzplanung nicht aktiv.",
+		},
 	};
 }

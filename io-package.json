@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.119",
+		"version": "0.1.120",
 		"news": {
+			"0.1.120": {
+				"en": "Read-only battery winter grid plan: 7-day PV/house-load horizon, dynamic SOC target, charge duration (no FSM writes)",
+				"de": "Read-only Winter-Netzplanung Batterie: 7-Tage PV/Hauslast-Horizont, dynamisches SOC-Ziel, Ladedauer (keine FSM-Writes)"
+			},
 			"0.1.119": {
 				"en": "Planner cooling forecast: config/learned W, expected kWh today, battery reserves consumer load",
 				"de": "Planner Klima-Prognose: Config/gelernte W, erwartete kWh heute, Batterie reserviert Verbraucher-Last"

@@ -9,7 +9,8 @@ export { runPlanner, runPlannerTick, resetPlannerRevisionForTest } from "./run";
 export { planCooling, coolingReserveW } from "./rules/cooling";
 export { planBattery, buildPlannerConstraints } from "./rules/battery";
 export { plannerModePolicyFromGlobalMode } from "./mode_policy";
-export { deviceIntentFromPlannerDecision } from "./battery_bridge";
+export { planBatteryWinter, dailyKwhFromHouseLoadForecast } from "./rules/battery_winter";
+export { batteryWinterPlanConfigFromAdapter } from "./battery_winter_config";
 
 export async function initPlanner(host: PlannerHost): Promise<void> {
 	await ensurePlannerStates(host);

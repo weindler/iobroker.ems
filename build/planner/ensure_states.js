@@ -30,6 +30,7 @@ async function ensurePlannerStates(host) {
     await (0, state_util_1.ensureChannel)(host, "planner.intent.thermal", "Planner Heizstab");
     await (0, state_util_1.ensureChannel)(host, "planner.intent.cooling", "Planner Klima");
     await (0, state_util_1.ensureChannel)(host, "planner.intent.battery", "Planner Batterie");
+    await (0, state_util_1.ensureChannel)(host, "planner.intent.battery.winter", "Planner Batterie Winter-Netz");
     await (0, state_util_1.ensureChannel)(host, "planner.constraints", "Planner Constraints");
     const defs = [
         strState("planner.status", "Planner Status", "initializing"),
@@ -53,6 +54,22 @@ async function ensurePlannerStates(host) {
         strState("planner.intent.battery.action", "Planner Batterie Aktion", "none"),
         numState("planner.intent.battery.max_charge_w", "Planner Batterie max. Ladeleistung W", 0),
         strState("planner.intent.battery.reason_de", "Planner Batterie Begründung", ""),
+        boolState("planner.intent.battery.winter.active", "Planner Winter-Netz aktiv", false),
+        boolState("planner.intent.battery.winter.forecast_active", "Planner Winter-Netz Forecast aktiv", false),
+        numState("planner.intent.battery.winter.horizon_days", "Planner Winter Horizont Tage", 0),
+        strState("planner.intent.battery.winter.bridge_until_iso", "Planner Winter Brücke bis (ISO)"),
+        numState("planner.intent.battery.winter.pv_recovery_day", "Planner Winter PV-Recovery Tag"),
+        numState("planner.intent.battery.winter.energy_stored_kwh", "Planner Winter Energie gespeichert kWh"),
+        numState("planner.intent.battery.winter.energy_deficit_kwh", "Planner Winter Energielücke kWh"),
+        numState("planner.intent.battery.winter.energy_reserve_kwh", "Planner Winter Reserve kWh"),
+        numState("planner.intent.battery.winter.energy_target_kwh", "Planner Winter Energieziel kWh"),
+        numState("planner.intent.battery.winter.soc_target_pct", "Planner Winter SOC-Ziel %"),
+        numState("planner.intent.battery.winter.charge_energy_kwh", "Planner Winter Netzladung kWh"),
+        numState("planner.intent.battery.winter.charge_duration_h", "Planner Winter Ladedauer h"),
+        numState("planner.intent.battery.winter.charge_slots_15m", "Planner Winter 15-min-Slots"),
+        numState("planner.intent.battery.winter.confidence_min_pct", "Planner Winter min. PV-Confidence %"),
+        strState("planner.intent.battery.winter.windows_json", "Planner Winter Preisfenster (JSON)", "[]"),
+        strState("planner.intent.battery.winter.reason_de", "Planner Winter Begründung", ""),
         boolState("planner.constraints.evcc_battery_hold", "Planner EVCC Batterie-Hold", false),
         boolState("planner.constraints.battery_hold_active", "Planner Batterie-Hold gesamt", false),
     ];

@@ -6,6 +6,8 @@ import { immersionDeviceConfigFromAdapter } from "../addons/immersion_heater/dev
 import { parseResolvedIntentJson, resolvedModeFromIntent } from "../addons/immersion_heater/runtime/intent_read";
 import { WALLBOX_EVCC_STATES } from "../addons/wallbox/ensure_evcc_states";
 import { addonGovernanceAiAllowedState } from "../addons/governance/ensure_states";
+import { batteryWinterPlanConfigFromAdapter } from "./battery_winter_config";
+import { readBatteryWinterDays } from "./battery_winter_inputs";
 import { parseResolvedBatteryIntentJson } from "../addons/battery/runtime/intent_read";
 import type { ImmersionDeviceConfig } from "../addons/immersion_heater/runtime/types";
 import { readConsumerStatsPersist } from "../learning/consumer_stats/persist";
@@ -20,6 +22,8 @@ import type { GlobalMode } from "../global_modes/constants";
 import type { PlannerModePolicy } from "./mode_policy";
 import { plannerModePolicyFromGlobalMode } from "./mode_policy";
 import type { CoolingUnitPlanInput } from "./rules/cooling";
+import type { BatteryWinterDayInput } from "./rules/battery_winter";
+import type { BatteryWinterPlanConfig } from "./battery_winter_config";
 
 export const PLANNER_SURPLUS_MIN_W = 400;
 export const PLANNER_BATTERY_TARGET_SOC_PCT = 95;
@@ -50,6 +54,10 @@ export interface PlannerInputs {
 	coolingGovernanceEnabled: boolean;
 	outdoorTempC: number | null;
 	coolingUnits: CoolingUnitPlanInput[];
+	batteryWinterConfig: BatteryWinterPlanConfig;
+	batteryWinterDays: BatteryWinterDayInput[];
+	snowCoverSuspected: boolean;
+	batteryAiAllowed: boolean;
 }
 
 export type PlannerHost = StateHost & {
@@ -163,7 +171,9 @@ export async function readPlannerInputs(host: PlannerHost): Promise<PlannerInput
 	const immersionConfig = immersionDeviceConfigFromAdapter(host.config);
 	const consumerStatsPersist = await readConsumerStatsForPlanner(host);
 
-	const [thermalGov, batteryGov, coolingGov, houseLoadW, socPct, bufferTempC, evccMode, evccDischarge, pvTodayKwh, pvTomorrowKwh, pvBiasStatus, aiAllowed, outdoorTempC, coolingUnits] =
+	const batteryWinterConfig = batteryWinterPlanConfigFromAdapter(host.config);
+
+	const [thermalGov, batteryGov, coolingGov, houseLoadW, socPct, bufferTempC, evccMode, evccDischarge, pvTodayKwh, pvTomorrowKwh, pvBiasStatus, aiThermalAllowed, batteryAiAllowed, snowCover, outdoorTempC, coolingUnits, batteryWinterDays] =
 		await Promise.all([
 			isAddonGovernanceEnabledFromState((id) => host.getStateAsync(id), "immersion_heater"),
 			isAddonGovernanceEnabledFromState((id) => host.getStateAsync(id), "battery"),
@@ -177,8 +187,11 @@ export async function readPlannerInputs(host: PlannerHost): Promise<PlannerInput
 			readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
 			readStr(host, "learning.pv_bias.status"),
 			readBool(host, addonGovernanceAiAllowedState("immersion_heater")),
+			readBool(host, addonGovernanceAiAllowedState("battery")),
+			readBool(host, "ems_mirror.snow_cover_suspected"),
 			readOutdoorTempC(host),
 			readCoolingUnitInputs(host, acConfig, consumerStatsPersist),
+			readBatteryWinterDays(host, batteryWinterConfig.horizonDays),
 		]);
 
 	return {
@@ -201,11 +214,15 @@ export async function readPlannerInputs(host: PlannerHost): Promise<PlannerInput
 		pvTomorrowKwh,
 		pvBiasStatus,
 		forecastModeEnabled: immersionConfig.forecastModeEnabled,
-		aiOptimizationAllowed: aiAllowed === true,
+		aiOptimizationAllowed: aiThermalAllowed === true,
 		acConfig,
 		coolingGovernanceEnabled: coolingGov,
 		outdoorTempC,
 		coolingUnits,
+		batteryWinterConfig,
+		batteryWinterDays,
+		snowCoverSuspected: snowCover === true,
+		batteryAiAllowed: batteryAiAllowed === true,
 	};
 }
 

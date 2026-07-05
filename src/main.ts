@@ -2,6 +2,7 @@ import * as utils from "@iobroker/adapter-core";
 import {
 	batteryUnloadRestore,
 	handleBatteryAdapterStateChange,
+	handleBatteryGridBalanceForeignStateChange,
 	initBatteryModule,
 	stopBatteryModule,
 } from "./addons/battery";
@@ -171,6 +172,7 @@ class Ems extends utils.Adapter {
 		if (state) {
 			await handleExecutionModeStateChange(this, id, state);
 			handleBatteryAdapterStateChange(this, id);
+			handleBatteryGridBalanceForeignStateChange(this, id);
 			handleImmersionHeaterStateChange(this, id);
 			handleAirConditioningStateChange(this, id);
 			handleGlobalModesStateChange(this.namespace, id);

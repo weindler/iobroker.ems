@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.batteryUnloadRestore = exports.runBatteryControlTick = exports.handleBatteryForeignStateChange = exports.handleBatteryAdapterStateChange = exports.stopBatteryModule = exports.initBatteryModule = exports.__resetBatteryRuntimeForTest = exports.BATTERY_ADDON_ID = void 0;
+exports.batteryUnloadRestore = exports.runBatteryControlTick = exports.handleBatteryForeignStateChange = exports.handleBatteryGridBalanceForeignStateChange = exports.handleBatteryAdapterStateChange = exports.stopBatteryModule = exports.initBatteryModule = exports.__resetBatteryRuntimeForTest = exports.BATTERY_ADDON_ID = void 0;
 const governance_1 = require("../governance");
 const ems_activity_1 = require("../../ems_activity");
 const execution_mode_1 = require("../../execution_mode");
@@ -22,20 +22,26 @@ const safety_1 = require("./runtime/safety");
 const intent_read_1 = require("./runtime/intent_read");
 const battery_bridge_1 = require("../../planner/battery_bridge");
 const winter_intent_1 = require("./runtime/winter_intent");
+const grid_balance_watch_1 = require("./runtime/grid_balance_watch");
 exports.BATTERY_ADDON_ID = "battery";
-const CONTROL_INTERVAL_MS = 5000;
+function batteryControlIntervalMs(config) {
+    const sec = config.gridBalance.updateIntervalSec;
+    return Math.min(15_000, Math.max(3000, sec * 1000));
+}
 let controlTimer = null;
 let runtime = (0, fsm_1.initialSonnenRuntime)(Date.now());
 let gridBalancePausedByFsm = false;
 let ownershipLive = false;
 let prevLiveWriteAllowed = false;
 let ticking = false;
+let lastGridBalanceWriteW = null;
 /** Nur für Tests: internen Laufzeitzustand zurücksetzen. */
 function __resetBatteryRuntimeForTest(now = Date.now()) {
     runtime = (0, fsm_1.initialSonnenRuntime)(now);
     gridBalancePausedByFsm = false;
     ownershipLive = false;
     prevLiveWriteAllowed = false;
+    lastGridBalanceWriteW = null;
 }
 exports.__resetBatteryRuntimeForTest = __resetBatteryRuntimeForTest;
 async function initBatteryModule(adapter) {
@@ -53,9 +59,15 @@ async function initBatteryModule(adapter) {
     }
     await adapter.subscribeStatesAsync(ensure_states_1.BAT.control.faultReset);
     await detectForeignOwnershipOnStart(host);
+    const config = (0, config_1.batteryConfigFromAdapter)(host.config);
+    const table = (0, mapping_1.batteryMappingFromConfig)(host.config);
+    if (config.gridBalance.enabled) {
+        await (0, grid_balance_watch_1.setupGridBalanceWatch)(adapter, table);
+    }
+    const intervalMs = batteryControlIntervalMs(config);
     controlTimer = setInterval(() => {
         void runBatteryControlTick(host).catch((e) => adapter.log.error(`battery tick: ${e}`));
-    }, CONTROL_INTERVAL_MS);
+    }, intervalMs);
     void runBatteryControlTick(host).catch((e) => adapter.log.error(`battery tick (startup): ${e}`));
     return null;
 }
@@ -65,6 +77,8 @@ function stopBatteryModule(_timer) {
         clearInterval(controlTimer);
         controlTimer = null;
     }
+    (0, grid_balance_watch_1.clearGridBalanceWatch)();
+    lastGridBalanceWriteW = null;
 }
 exports.stopBatteryModule = stopBatteryModule;
 function handleBatteryAdapterStateChange(adapter, stateId) {
@@ -77,6 +91,14 @@ function handleBatteryAdapterStateChange(adapter, stateId) {
     }
 }
 exports.handleBatteryAdapterStateChange = handleBatteryAdapterStateChange;
+/** Reagiert auf Änderungen an gemapptem consumption_w / pv_ac_power_w (Netzausgleich on-change). */
+function handleBatteryGridBalanceForeignStateChange(adapter, stateId) {
+    if (!(0, grid_balance_watch_1.isGridBalanceWatchState)(stateId)) {
+        return;
+    }
+    (0, grid_balance_watch_1.scheduleGridBalanceTick)(adapter, runBatteryControlTick);
+}
+exports.handleBatteryGridBalanceForeignStateChange = handleBatteryGridBalanceForeignStateChange;
 /** @deprecated use handleBatteryAdapterStateChange */
 function handleBatteryForeignStateChange(adapter, stateId) {
     handleBatteryAdapterStateChange(adapter, stateId);
@@ -456,17 +478,26 @@ async function controlTickInner(host) {
         if (result.gatePassed) {
             gbTarget = Math.min(config.gridBalance.maxTargetW, result.targetBatteryChargingW);
             gbState = table.set_charge_power.targetState;
-            gbWouldWrite = gbState.length > 0;
-            await (0, execute_1.executeBatteryWrite)(host, {
-                kind: "charge_power",
-                stateId: gbState,
-                value: gbTarget,
-                requestId: "grid_balance",
-                reason: "grid_balance",
-                expectedFeedback: gbTarget,
-                dryrun: !liveWriteAllowed,
-                gate: { ...gate, targetMappingConfigured: gbWouldWrite },
-            });
+            const minChange = config.gridBalance.minChangeW;
+            const delta = lastGridBalanceWriteW === null ? Number.POSITIVE_INFINITY : Math.abs(gbTarget - lastGridBalanceWriteW);
+            const shouldWrite = gbState.length > 0 && delta >= minChange;
+            gbWouldWrite = shouldWrite;
+            if (shouldWrite) {
+                await (0, execute_1.executeBatteryWrite)(host, {
+                    kind: "charge_power",
+                    stateId: gbState,
+                    value: gbTarget,
+                    requestId: "grid_balance",
+                    reason: "grid_balance",
+                    expectedFeedback: gbTarget,
+                    dryrun: !liveWriteAllowed,
+                    gate: { ...gate, targetMappingConfigured: true },
+                });
+                lastGridBalanceWriteW = gbTarget;
+            }
+        }
+        else {
+            lastGridBalanceWriteW = null;
         }
     }
     await persist(host, snapshot, {

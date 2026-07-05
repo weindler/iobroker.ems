@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.123",
+		"version": "0.1.124",
 		"news": {
+			"0.1.124": {
+				"en": "Grid balance: on-change trigger on consumption/pv (debounced), 5 s heartbeat default, min-change gate wired",
+				"de": "Netzausgleich: on-change bei consumption/pv (debounced), Standard-Takt 5 s, Mindeständerung aktiv"
+			},
 			"0.1.123": {
 				"en": "Grid balance price gate (absolute/median), EVCC/hold/winter blockers; winter planner states use null instead of -1",
 				"de": "Netzausgleich Preisgate (absolut/Median), Sperren EVCC/Hold/Winter; Winter-Planner-States mit null statt -1"

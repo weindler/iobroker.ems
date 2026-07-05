@@ -139,7 +139,7 @@ export function batteryConfigFromAdapter(config: unknown): BatteryConfig {
 			socThresholdPct: intIn(c, "bat_offset_soc_threshold_pct", 20, 1, 100),
 			minChangeW: intIn(c, "bat_grid_balance_min_change_w", 50, 0, 5000),
 			maxTargetW: intIn(c, "bat_grid_balance_max_w", 5000, 0, 50_000),
-			updateIntervalSec: intIn(c, "bat_grid_balance_update_interval_sec", 45, 15, 600),
+			updateIntervalSec: intIn(c, "bat_grid_balance_update_interval_sec", 5, 3, 15),
 			priceGateEnabled: bool(c, "bat_grid_balance_price_gate_enabled", true),
 			maxPriceCtPerKwh: num(c, "bat_grid_balance_max_price_ct_per_kwh"),
 			priceMedianFactor: floatIn(c, "bat_grid_balance_price_median_factor", 1.05, 0, 3),

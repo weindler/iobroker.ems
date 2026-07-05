@@ -157,6 +157,7 @@ class Ems extends utils.Adapter {
         if (state) {
             await (0, execution_mode_1.handleExecutionModeStateChange)(this, id, state);
             (0, battery_1.handleBatteryAdapterStateChange)(this, id);
+            (0, battery_1.handleBatteryGridBalanceForeignStateChange)(this, id);
             (0, immersion_heater_1.handleImmersionHeaterStateChange)(this, id);
             (0, air_conditioning_1.handleAirConditioningStateChange)(this, id);
             (0, policy_1.handleGlobalModesStateChange)(this.namespace, id);

@@ -45,11 +45,20 @@ import {
 	parseWinterWindowsJson,
 	winterNumOrNull,
 } from "./runtime/winter_intent";
+import {
+	clearGridBalanceWatch,
+	isGridBalanceWatchState,
+	scheduleGridBalanceTick,
+	setupGridBalanceWatch,
+} from "./runtime/grid_balance_watch";
 import type { RawBatteryReading } from "./core/telemetry";
 
 export const BATTERY_ADDON_ID = "battery";
 
-const CONTROL_INTERVAL_MS = 5000;
+function batteryControlIntervalMs(config: BatteryConfig): number {
+	const sec = config.gridBalance.updateIntervalSec;
+	return Math.min(15_000, Math.max(3000, sec * 1000));
+}
 
 type Host = ioBroker.Adapter & { config: unknown };
 
@@ -59,6 +68,7 @@ let gridBalancePausedByFsm = false;
 let ownershipLive = false;
 let prevLiveWriteAllowed = false;
 let ticking = false;
+let lastGridBalanceWriteW: number | null = null;
 
 /** Nur für Tests: internen Laufzeitzustand zurücksetzen. */
 export function __resetBatteryRuntimeForTest(now = Date.now()): void {
@@ -66,6 +76,7 @@ export function __resetBatteryRuntimeForTest(now = Date.now()): void {
 	gridBalancePausedByFsm = false;
 	ownershipLive = false;
 	prevLiveWriteAllowed = false;
+	lastGridBalanceWriteW = null;
 }
 
 export async function initBatteryModule(adapter: ioBroker.Adapter): Promise<null> {
@@ -87,9 +98,16 @@ export async function initBatteryModule(adapter: ioBroker.Adapter): Promise<null
 
 	await detectForeignOwnershipOnStart(host);
 
+	const config = batteryConfigFromAdapter(host.config);
+	const table = batteryMappingFromConfig(host.config);
+	if (config.gridBalance.enabled) {
+		await setupGridBalanceWatch(adapter, table);
+	}
+
+	const intervalMs = batteryControlIntervalMs(config);
 	controlTimer = setInterval(() => {
 		void runBatteryControlTick(host).catch((e) => adapter.log.error(`battery tick: ${e}`));
-	}, CONTROL_INTERVAL_MS);
+	}, intervalMs);
 
 	void runBatteryControlTick(host).catch((e) => adapter.log.error(`battery tick (startup): ${e}`));
 	return null;
@@ -100,6 +118,8 @@ export function stopBatteryModule(_timer: NodeJS.Timeout | null): void {
 		clearInterval(controlTimer);
 		controlTimer = null;
 	}
+	clearGridBalanceWatch();
+	lastGridBalanceWriteW = null;
 }
 
 export function handleBatteryAdapterStateChange(adapter: ioBroker.Adapter, stateId: string): void {
@@ -114,6 +134,14 @@ export function handleBatteryAdapterStateChange(adapter: ioBroker.Adapter, state
 			adapter.log.error(`battery state change tick: ${e}`),
 		);
 	}
+}
+
+/** Reagiert auf Änderungen an gemapptem consumption_w / pv_ac_power_w (Netzausgleich on-change). */
+export function handleBatteryGridBalanceForeignStateChange(adapter: ioBroker.Adapter, stateId: string): void {
+	if (!isGridBalanceWatchState(stateId)) {
+		return;
+	}
+	scheduleGridBalanceTick(adapter as Host, runBatteryControlTick);
 }
 
 /** @deprecated use handleBatteryAdapterStateChange */
@@ -553,17 +581,26 @@ async function controlTickInner(host: Host): Promise<void> {
 		if (result.gatePassed) {
 			gbTarget = Math.min(config.gridBalance.maxTargetW, result.targetBatteryChargingW);
 			gbState = table.set_charge_power.targetState;
-			gbWouldWrite = gbState.length > 0;
-			await executeBatteryWrite(host as unknown as BatteryWriteHost, {
-				kind: "charge_power",
-				stateId: gbState,
-				value: gbTarget,
-				requestId: "grid_balance",
-				reason: "grid_balance",
-				expectedFeedback: gbTarget,
-				dryrun: !liveWriteAllowed,
-				gate: { ...gate, targetMappingConfigured: gbWouldWrite },
-			});
+			const minChange = config.gridBalance.minChangeW;
+			const delta =
+				lastGridBalanceWriteW === null ? Number.POSITIVE_INFINITY : Math.abs(gbTarget - lastGridBalanceWriteW);
+			const shouldWrite = gbState.length > 0 && delta >= minChange;
+			gbWouldWrite = shouldWrite;
+			if (shouldWrite) {
+				await executeBatteryWrite(host as unknown as BatteryWriteHost, {
+					kind: "charge_power",
+					stateId: gbState,
+					value: gbTarget,
+					requestId: "grid_balance",
+					reason: "grid_balance",
+					expectedFeedback: gbTarget,
+					dryrun: !liveWriteAllowed,
+					gate: { ...gate, targetMappingConfigured: true },
+				});
+				lastGridBalanceWriteW = gbTarget;
+			}
+		} else {
+			lastGridBalanceWriteW = null;
 		}
 	}
 

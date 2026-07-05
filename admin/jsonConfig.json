@@ -1485,10 +1485,10 @@
 				},
 				"bat_grid_balance_update_interval_sec": {
 					"type": "number",
-					"label": "Aktualisierungsintervall (s)",
-					"min": 15,
-					"max": 600,
-					"default": 45,
+					"label": "Steuerungs-Takt (s, Herzschlag)",
+					"min": 3,
+					"max": 15,
+					"default": 5,
 					"xs": 12,
 					"sm": 12,
 					"md": 4,
@@ -1534,7 +1534,7 @@
 				},
 				"batGridBalancePriceHint": {
 					"type": "staticText",
-					"text": "Netzausgleich nur in Mode 2 (control.charge-Tweak). Blockiert bei EVCC-Laden, Hold, Winter-Netzplan oder Mode 1. Preisgate: absolut ODER Median×Faktor (Tibber-JSON wie Winter-Plan).",
+					"text": "Netzausgleich nur in Mode 2 (control.charge-Tweak). Schreibt bei Änderung von consumption/pv sofort (Debounce ~0,5 s) und zusätzlich im Steuerungs-Takt (Standard 5 s). Mindeständerung vor Neuwrite: bat_grid_balance_min_change_w. Blockiert bei EVCC-Laden, Hold, Winter-Netzplan oder Mode 1.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,

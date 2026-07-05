@@ -6,6 +6,15 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.116] – 2026-07-05
+
+### Changed
+
+- **Klima-Reinigung:** Ende über SmartThings-Feedback (`operatingState = ready` oder `autoCleaningMode = off` nach `autoClean`); `cleaning_duration_min` nur noch Timeout-Fallback; Refresh alle 30 s während Reinigung.
+- **Admin/Mapping:** Odor-Controller (`cmd_cleaning_mode`) entfernt; neue Rückmeldungen `feedback_cleaning_state`, `feedback_cleaning_mode`, `feedback_cleaning_progress` (Josef/Wohnzimmer vorbefüllt).
+
+---
+
 ## [0.1.115] – 2026-07-05
 
 ### Fixed

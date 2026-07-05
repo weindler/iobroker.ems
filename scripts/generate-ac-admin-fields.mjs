@@ -6,6 +6,9 @@ const roles = [
 	["room_humidity", "Raumfeuchte"],
 	["feedback_switch", "Rückmeldung Ein/Aus"],
 	["feedback_mode", "Rückmeldung Modus"],
+	["feedback_cleaning_state", "Rückmeldung Reinigung operatingState"],
+	["feedback_cleaning_mode", "Rückmeldung Reinigung autoCleaningMode"],
+	["feedback_cleaning_progress", "Rückmeldung Reinigung Fortschritt"],
 	["cmd_switch_on", "Befehl EIN"],
 	["cmd_switch_off", "Befehl AUS"],
 	["cmd_set_mode", "Befehl Modus"],
@@ -14,7 +17,6 @@ const roles = [
 	["cmd_set_cool_setpoint", "Befehl Kühl-Sollwert"],
 	["cmd_set_heat_setpoint", "Befehl Heiz-Sollwert"],
 	["cmd_cleaning_start", "Befehl Reinigung start"],
-	["cmd_cleaning_mode", "Befehl Reinigungsmodus"],
 	["cmd_refresh", "Befehl Refresh"],
 ];
 
@@ -40,7 +42,7 @@ function unitFields(n) {
 	lines.push(`\t\t\t\t"${p}estimated_power_w": { "type": "number", "label": "Geschätzte Leistung (W)", "default": ${n === 1 ? 800 : n === 2 ? 650 : 700}, "min": 0, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
 	lines.push(`\t\t\t\t"${p}cleaning_after_run": { "type": "checkbox", "label": "Reinigung nach Lauf", "default": true, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
 	lines.push(`\t\t\t\t"${p}cleaning_delay_min": { "type": "number", "label": "Reinigung Verzögerung (min)", "default": 1, "min": 0, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
-	lines.push(`\t\t\t\t"${p}cleaning_duration_min": { "type": "number", "label": "Reinigung Dauer (min)", "default": ${n === 1 ? 35 : 30}, "min": 0, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
+	lines.push(`\t\t\t\t"${p}cleaning_duration_min": { "type": "number", "label": "Reinigung Timeout (min)", "help": "Fallback wenn SmartThings-Feedback ausbleibt. Ende normalerweise über operatingState=ready.", "default": ${n === 1 ? 35 : 45}, "min": 0, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
 	lines.push(`\t\t\t\t"hAcU${n}Stats": { "type": "header", "size": 3, "text": "Statistik Innengerät ${n}", "xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12 }`);
 	lines.push(`\t\t\t\t"${p}stats_enabled": { "type": "checkbox", "label": "Statistik aktiv", "default": true, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
 	lines.push(`\t\t\t\t"${p}stats_track_runtime": { "type": "checkbox", "label": "Laufzeit mitloggen", "default": true, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
@@ -49,7 +51,7 @@ function unitFields(n) {
 	lines.push(`\t\t\t\t"${p}stats_energy_offset_kwh": { "type": "number", "label": "Offset Verbrauch (kWh)", "default": 0, "min": 0, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
 	lines.push(`\t\t\t\t"hAcU${n}Map": { "type": "header", "size": 3, "text": "Mapping Innengerät ${n}", "xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12 }`);
 	for (const [role, label] of roles) {
-		lines.push(`\t\t\t\t"${p}${role}_enabled": { "type": "checkbox", "label": "${label} aktiv", "default": ${["room_temp", "feedback_switch", "cmd_switch_on", "cmd_switch_off", "cmd_set_mode", "cmd_set_fan_mode", "cmd_set_cool_setpoint", "cmd_cleaning_start", "cmd_cleaning_mode", "cmd_refresh"].includes(role)}, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
+		lines.push(`\t\t\t\t"${p}${role}_enabled": { "type": "checkbox", "label": "${label} aktiv", "default": ${["room_temp", "feedback_switch", "feedback_cleaning_state", "feedback_cleaning_mode", "cmd_switch_on", "cmd_switch_off", "cmd_set_mode", "cmd_set_fan_mode", "cmd_set_cool_setpoint", "cmd_cleaning_start", "cmd_refresh"].includes(role)}, "xs": 12, "sm": 4, "md": 3, "lg": 3, "xl": 3 }`);
 		lines.push(`\t\t\t\t"${p}${role}_target": { "type": "objectId", "label": "${label} State-ID", "types": ["state"], "default": "", "xs": 12, "sm": 8, "md": 9, "lg": 9, "xl": 9 }`);
 	}
 	return lines.join(",\n");

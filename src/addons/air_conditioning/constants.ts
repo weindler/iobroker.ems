@@ -10,6 +10,8 @@ export const AC_STOP_RETRY_MS = 60_000;
 /** Nach Startsequenz kurz warten, bis SmartThings feedback_switch aktualisiert. */
 export const AC_FEEDBACK_POLL_MS = 3_000;
 export const AC_FEEDBACK_POLL_ATTEMPTS = 6;
+/** Während Reinigung SmartThings-Status per refresh aktualisieren. */
+export const AC_CLEANING_REFRESH_MS = 30_000;
 
 export const AC_PROFILE_IDS = ["generic", "samsung_smartthings"] as const;
 export type AcProfileId = (typeof AC_PROFILE_IDS)[number];
@@ -19,6 +21,9 @@ export const AC_MAPPING_ROLES = [
 	"room_humidity",
 	"feedback_switch",
 	"feedback_mode",
+	"feedback_cleaning_state",
+	"feedback_cleaning_mode",
+	"feedback_cleaning_progress",
 	"cmd_switch_on",
 	"cmd_switch_off",
 	"cmd_set_mode",
@@ -27,7 +32,6 @@ export const AC_MAPPING_ROLES = [
 	"cmd_set_cool_setpoint",
 	"cmd_set_heat_setpoint",
 	"cmd_cleaning_start",
-	"cmd_cleaning_mode",
 	"cmd_refresh",
 ] as const;
 
@@ -39,6 +43,9 @@ export const AC_WATCH_MAPPING_ROLES: AcMappingRole[] = [
 	"room_humidity",
 	"feedback_switch",
 	"feedback_mode",
+	"feedback_cleaning_state",
+	"feedback_cleaning_mode",
+	"feedback_cleaning_progress",
 ];
 
 export function acUnitMappingCommand(unitIndex: number, role: AcMappingRole): string {

@@ -17,6 +17,9 @@ export function acUnitRuntimeStates(unitIndex: number): Record<string, string> {
 		feedbackSwitch: `${base}.feedback_switch`,
 		running: `${base}.running`,
 		cleaningActive: `${base}.cleaning_active`,
+		feedbackCleaningState: `${base}.feedback_cleaning_state`,
+		feedbackCleaningMode: `${base}.feedback_cleaning_mode`,
+		feedbackCleaningProgressPct: `${base}.feedback_cleaning_progress_pct`,
 		modePurpose: `${base}.mode_purpose`,
 		estimatedPowerW: `${base}.estimated_power_w`,
 	};
@@ -64,6 +67,9 @@ export async function ensureAcRuntimeStates(host: {
 			{ id: ids.feedbackSwitch, common: { name: `Klima ${i} Rückmeldung`, type: "string", role: "text", read: true, write: false, def: "" } },
 			{ id: ids.running, common: { name: `Klima ${i} läuft`, type: "boolean", role: "state", read: true, write: false, def: false } },
 			{ id: ids.cleaningActive, common: { name: `Klima ${i} Reinigung`, type: "boolean", role: "state", read: true, write: false, def: false } },
+			{ id: ids.feedbackCleaningState, common: { name: `Klima ${i} Reinigung operatingState`, type: "string", role: "text", read: true, write: false, def: "" } },
+			{ id: ids.feedbackCleaningMode, common: { name: `Klima ${i} Reinigung autoCleaningMode`, type: "string", role: "text", read: true, write: false, def: "" } },
+			{ id: ids.feedbackCleaningProgressPct, common: { name: `Klima ${i} Reinigung Fortschritt %`, type: "number", role: "value", read: true, write: false, def: 0 } },
 			{ id: ids.modePurpose, common: { name: `Klima ${i} Modus-Zweck`, type: "string", role: "text", read: true, write: false, def: "cooling" } },
 			{ id: ids.estimatedPowerW, common: { name: `Klima ${i} geschätzte Leistung W`, type: "number", role: "value", read: true, write: false, def: 0 } },
 		];

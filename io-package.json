@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.115",
+		"version": "0.1.116",
 		"news": {
+			"0.1.116": {
+				"en": "AC cleaning ends on SmartThings operatingState ready; remove odor mapping; progress mirror",
+				"de": "Klima-Reinigung endet bei SmartThings operatingState=ready; Odor-Mapping entfernt; Fortschritt gespiegelt"
+			},
 			"0.1.115": {
 				"en": "Fix consumer stats stuck at 0: AC/immersion runtime hosts now provide getAbsolutePath for persistence",
 				"de": "Consumer-Statistik-Fix: Klima/Heizstab-Runtime mit getAbsolutePath — session_runtime_sec zählt wieder"

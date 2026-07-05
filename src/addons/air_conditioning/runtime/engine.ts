@@ -10,7 +10,7 @@ import {
 	resetConsumerStatsCache,
 } from "../../../learning/consumer_stats";
 import type { DeviceWriteHost } from "../../../device_write";
-import { acUnitConsumerKey, AC_ADDON_ID, AC_FEEDBACK_POLL_ATTEMPTS, AC_FEEDBACK_POLL_MS, AC_START_RETRY_MS, AC_STOP_RETRY_MS, AC_TICK_MS, AC_WATCH_MAPPING_ROLES } from "../constants";
+import { acUnitConsumerKey, AC_ADDON_ID, AC_CLEANING_REFRESH_MS, AC_FEEDBACK_POLL_ATTEMPTS, AC_FEEDBACK_POLL_MS, AC_START_RETRY_MS, AC_STOP_RETRY_MS, AC_TICK_MS, AC_WATCH_MAPPING_ROLES } from "../constants";
 import { acGlobalConfigFromAdapter } from "../config";
 import type { AcUnitConfig } from "../types";
 import { getAcProfile } from "../profiles/registry";
@@ -26,6 +26,7 @@ import {
 	type AcMappingTable,
 } from "./sequences";
 import { acStatsDeviceActive } from "./stats_active";
+import { isCleaningFinishedByFeedback, isCleaningOperatingActive } from "./cleaning";
 import { switchIsOff, switchIsOn } from "./time";
 
 export type AcRuntimeHost = DeviceWriteHost & {
@@ -181,6 +182,26 @@ async function startUnit(
 	}
 }
 
+async function finishCleaning(
+	host: AcRuntimeHost,
+	unit: AcUnitConfig,
+	table: AcMappingTable,
+	live: boolean,
+	up: AcUnitPersist,
+	reason: string,
+	sendStop: boolean,
+): Promise<void> {
+	if (sendStop && live) {
+		const profile = getAcProfile(unit.profileId);
+		await executeAcWriteSteps(host, unit.index, table, profile.cleaningStopSequence(), true, host.log);
+	}
+	up.cleaningActive = false;
+	up.cleaningStartedAtMs = null;
+	up.cleaningSawOperatingActive = false;
+	up.cleaningLastRefreshAtMs = null;
+	host.log.info(`ac unit ${unit.index}: cleaning finished — ${reason}`);
+}
+
 async function tickCleaning(
 	host: AcRuntimeHost,
 	unit: AcUnitConfig,
@@ -188,6 +209,9 @@ async function tickCleaning(
 	live: boolean,
 	up: AcUnitPersist,
 	nowMs: number,
+	cleaningStateRaw: unknown,
+	cleaningModeRaw: unknown,
+	cleaningProgressPct: number | null,
 ): Promise<void> {
 	const pending = up.cleaningPendingUntilMs;
 	if (pending && nowMs >= pending && !up.cleaningActive) {
@@ -195,24 +219,70 @@ async function tickCleaning(
 		const profile = getAcProfile(unit.profileId);
 		if (live) {
 			await executeAcWriteSteps(host, unit.index, table, profile.cleaningStartSequence(), true, host.log);
+			const refreshId = resolveAcMappingTarget(table, unit.index, "cmd_refresh");
+			if (refreshId) {
+				await executeAcWriteSteps(host, unit.index, table, [{ kind: "toggle", role: "cmd_refresh" }], true, host.log);
+			}
 			host.log.info(`ac unit ${unit.index}: cleaning started (live)`);
 		} else {
 			host.log.info(`ac unit ${unit.index}: cleaning started (dryrun)`);
 		}
 		up.cleaningActive = true;
 		up.cleaningStartedAtMs = nowMs;
+		up.cleaningSawOperatingActive = false;
+		up.cleaningLastRefreshAtMs = nowMs;
 	}
-	if (up.cleaningActive && up.cleaningStartedAtMs) {
-		const endMs = up.cleaningStartedAtMs + unit.cleaningDurationMin * 60_000;
-		if (nowMs >= endMs) {
-			const profile = getAcProfile(unit.profileId);
-			if (live) {
-				await executeAcWriteSteps(host, unit.index, table, profile.cleaningStopSequence(), true, host.log);
-			}
-			up.cleaningActive = false;
-			up.cleaningStartedAtMs = null;
-			host.log.info(`ac unit ${unit.index}: cleaning finished (${unit.cleaningDurationMin} min)`);
+
+	if (!up.cleaningActive || !up.cleaningStartedAtMs) {
+		return;
+	}
+
+	const stateFbId = resolveAcMappingTarget(table, unit.index, "feedback_cleaning_state");
+	const modeFbId = resolveAcMappingTarget(table, unit.index, "feedback_cleaning_mode");
+	const hasCleaningFeedback = Boolean(stateFbId || modeFbId);
+	const refreshId = resolveAcMappingTarget(table, unit.index, "cmd_refresh");
+	const lastRefresh = up.cleaningLastRefreshAtMs ?? up.cleaningStartedAtMs;
+	if (live && refreshId && nowMs - lastRefresh >= AC_CLEANING_REFRESH_MS) {
+		await executeAcWriteSteps(host, unit.index, table, [{ kind: "toggle", role: "cmd_refresh" }], true, host.log);
+		up.cleaningLastRefreshAtMs = nowMs;
+	}
+
+	if (hasCleaningFeedback) {
+		if (isCleaningOperatingActive(cleaningStateRaw)) {
+			up.cleaningSawOperatingActive = true;
 		}
+		if (
+			isCleaningFinishedByFeedback({
+				operatingStateRaw: cleaningStateRaw,
+				modeRaw: cleaningModeRaw,
+				sawOperatingActive: up.cleaningSawOperatingActive,
+			})
+		) {
+			const elapsedSec = Math.round((nowMs - up.cleaningStartedAtMs) / 1000);
+			await finishCleaning(
+				host,
+				unit,
+				table,
+				live,
+				up,
+				`feedback ready (${elapsedSec}s)`,
+				true,
+			);
+			return;
+		}
+	}
+
+	const timeoutMs = unit.cleaningDurationMin * 60_000;
+	if (unit.cleaningDurationMin > 0 && nowMs >= up.cleaningStartedAtMs + timeoutMs) {
+		await finishCleaning(
+			host,
+			unit,
+			table,
+			live,
+			up,
+			`timeout (${unit.cleaningDurationMin} min)`,
+			true,
+		);
 	}
 }
 
@@ -244,13 +314,29 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		const tempId = resolveAcMappingTarget(mappingTable, unit.index, "room_temp");
 		const humId = resolveAcMappingTarget(mappingTable, unit.index, "room_humidity");
 		const fbId = resolveAcMappingTarget(mappingTable, unit.index, "feedback_switch");
+		const cleaningStateId = resolveAcMappingTarget(mappingTable, unit.index, "feedback_cleaning_state");
+		const cleaningModeId = resolveAcMappingTarget(mappingTable, unit.index, "feedback_cleaning_mode");
+		const cleaningProgressId = resolveAcMappingTarget(mappingTable, unit.index, "feedback_cleaning_progress");
 		const temp = await readForeign(host, tempId);
 		const hum = await readForeign(host, humId);
 		const fb = await readForeign(host, fbId);
+		const cleaningState = await readForeign(host, cleaningStateId);
+		const cleaningMode = await readForeign(host, cleaningModeId);
+		const cleaningProgress = await readForeign(host, cleaningProgressId);
 		const up = unitPersist(unit.index);
 		if (switchIsOn(fb.value)) runningCount += 1;
 
-		await tickCleaning(host, unit, mappingTable, live, up, nowMs);
+		await tickCleaning(
+			host,
+			unit,
+			mappingTable,
+			live,
+			up,
+			nowMs,
+			cleaningState.value,
+			cleaningMode.value,
+			cleaningProgress.num,
+		);
 
 		if (!addonEnabledVal && switchIsOn(fb.value) && stopRetryReady(up, nowMs)) {
 			await stopUnit(host, unit, mappingTable, live, up);
@@ -314,6 +400,9 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		await setStateIfChanged(host, ids.feedbackSwitch, fb.value == null ? "" : String(fb.value));
 		await setStateIfChanged(host, ids.running, fbOn);
 		await setStateIfChanged(host, ids.cleaningActive, up.cleaningActive);
+		await setStateIfChanged(host, ids.feedbackCleaningState, cleaningState.value == null ? "" : String(cleaningState.value));
+		await setStateIfChanged(host, ids.feedbackCleaningMode, cleaningMode.value == null ? "" : String(cleaningMode.value));
+		await setStateIfChanged(host, ids.feedbackCleaningProgressPct, cleaningProgress.num ?? "");
 		await setStateIfChanged(host, ids.modePurpose, fsm.modePurpose);
 		await setStateIfChanged(host, ids.estimatedPowerW, estPower);
 

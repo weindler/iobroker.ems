@@ -2369,14 +2369,15 @@
 				},
 				"ac_u1_cleaning_duration_min": {
 					"type": "number",
-					"label": "Reinigung Dauer (min)",
+					"label": "Reinigung Timeout (min)",
 					"default": 35,
 					"min": 0,
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Fallback wenn SmartThings-Feedback ausbleibt. Ende normalerweise über operatingState=ready."
 				},
 				"hAcU1Stats": {
 					"type": "header",
@@ -2724,9 +2725,9 @@
 						"state"
 					]
 				},
-				"ac_u1_cmd_cleaning_mode_enabled": {
+				"ac_u1_feedback_cleaning_state_enabled": {
 					"type": "checkbox",
-					"label": "Befehl Reinigungsmodus aktiv",
+					"label": "Rückmeldung Reinigung operatingState aktiv",
 					"default": true,
 					"xs": 12,
 					"sm": 4,
@@ -2734,18 +2735,64 @@
 					"lg": 3,
 					"xl": 3
 				},
-				"ac_u1_cmd_cleaning_mode_target": {
+				"ac_u1_feedback_cleaning_state_target": {
 					"type": "objectId",
-					"label": "Befehl Reinigungsmodus State-ID",
-					"default": "smartthings.0.40472197-070b-26fc-f422-69cdd84d6aa8.capabilities.custom.airConditionerOdorController-setAirConditionerOdorControllerState",
+					"label": "Rückmeldung Reinigung operatingState State-ID",
+					"types": [
+						"state"
+					],
+					"default": "smartthings.0.40472197-070b-26fc-f422-69cdd84d6aa8.status.custom.autoCleaningMode.operatingState.value",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9,
+					"xl": 9
+				},
+				"ac_u1_feedback_cleaning_mode_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Reinigung autoCleaningMode aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_feedback_cleaning_mode_target": {
+					"type": "objectId",
+					"label": "Rückmeldung Reinigung autoCleaningMode State-ID",
 					"types": [
 						"state"
-					]
+					],
+					"default": "smartthings.0.40472197-070b-26fc-f422-69cdd84d6aa8.status.custom.autoCleaningMode.autoCleaningMode.value",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u1_feedback_cleaning_progress_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Reinigung Fortschritt aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_feedback_cleaning_progress_target": {
+					"type": "objectId",
+					"label": "Rückmeldung Reinigung Fortschritt State-ID",
+					"types": [
+						"state"
+					],
+					"default": "smartthings.0.40472197-070b-26fc-f422-69cdd84d6aa8.status.custom.autoCleaningMode.progress.value",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
 				},
 				"ac_u1_cmd_refresh_enabled": {
 					"type": "checkbox",
@@ -2989,14 +3036,15 @@
 				},
 				"ac_u2_cleaning_duration_min": {
 					"type": "number",
-					"label": "Reinigung Dauer (min)",
-					"default": 30,
+					"label": "Reinigung Timeout (min)",
+					"default": 45,
 					"min": 0,
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Fallback wenn SmartThings-Feedback ausbleibt. Ende normalerweise über operatingState=ready."
 				},
 				"hAcU2Stats": {
 					"type": "header",
@@ -3344,9 +3392,9 @@
 					],
 					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.capabilities.custom.autoCleaningMode-setAutoCleaningMode"
 				},
-				"ac_u2_cmd_cleaning_mode_enabled": {
+				"ac_u2_feedback_cleaning_state_enabled": {
 					"type": "checkbox",
-					"label": "Befehl Reinigungsmodus aktiv",
+					"label": "Rückmeldung Reinigung operatingState aktiv",
 					"default": true,
 					"xs": 12,
 					"sm": 4,
@@ -3354,18 +3402,64 @@
 					"lg": 3,
 					"xl": 3
 				},
-				"ac_u2_cmd_cleaning_mode_target": {
+				"ac_u2_feedback_cleaning_state_target": {
 					"type": "objectId",
-					"label": "Befehl Reinigungsmodus State-ID",
+					"label": "Rückmeldung Reinigung operatingState State-ID",
+					"types": [
+						"state"
+					],
+					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.status.custom.autoCleaningMode.operatingState.value",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9,
+					"xl": 9
+				},
+				"ac_u2_feedback_cleaning_mode_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Reinigung autoCleaningMode aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_feedback_cleaning_mode_target": {
+					"type": "objectId",
+					"label": "Rückmeldung Reinigung autoCleaningMode State-ID",
 					"types": [
 						"state"
 					],
-					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.capabilities.custom.airConditionerOdorController-setAirConditionerOdorControllerState"
+					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.status.custom.autoCleaningMode.autoCleaningMode.value",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u2_feedback_cleaning_progress_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Reinigung Fortschritt aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_feedback_cleaning_progress_target": {
+					"type": "objectId",
+					"label": "Rückmeldung Reinigung Fortschritt State-ID",
+					"types": [
+						"state"
+					],
+					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.status.custom.autoCleaningMode.progress.value",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
 				},
 				"ac_u2_cmd_refresh_enabled": {
 					"type": "checkbox",
@@ -3609,14 +3703,15 @@
 				},
 				"ac_u3_cleaning_duration_min": {
 					"type": "number",
-					"label": "Reinigung Dauer (min)",
-					"default": 30,
+					"label": "Reinigung Timeout (min)",
+					"default": 45,
 					"min": 0,
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Fallback wenn SmartThings-Feedback ausbleibt. Ende normalerweise über operatingState=ready."
 				},
 				"hAcU3Stats": {
 					"type": "header",
@@ -3954,27 +4049,74 @@
 						"state"
 					]
 				},
-				"ac_u3_cmd_cleaning_mode_enabled": {
+				"ac_u3_feedback_cleaning_state_enabled": {
 					"type": "checkbox",
-					"label": "Befehl Reinigungsmodus aktiv",
-					"default": true,
+					"label": "Rückmeldung Reinigung operatingState aktiv",
+					"default": false,
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
 					"xl": 3
 				},
-				"ac_u3_cmd_cleaning_mode_target": {
+				"ac_u3_feedback_cleaning_state_target": {
 					"type": "objectId",
-					"label": "Befehl Reinigungsmodus State-ID",
+					"label": "Rückmeldung Reinigung operatingState State-ID",
+					"types": [
+						"state"
+					],
+					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9,
+					"xl": 9
+				},
+				"ac_u3_feedback_cleaning_mode_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Reinigung autoCleaningMode aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_feedback_cleaning_mode_target": {
+					"type": "objectId",
+					"label": "Rückmeldung Reinigung autoCleaningMode State-ID",
 					"types": [
 						"state"
-					]
+					],
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u3_feedback_cleaning_progress_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Reinigung Fortschritt aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_feedback_cleaning_progress_target": {
+					"type": "objectId",
+					"label": "Rückmeldung Reinigung Fortschritt State-ID",
+					"types": [
+						"state"
+					],
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
 				},
 				"ac_u3_cmd_refresh_enabled": {
 					"type": "checkbox",
@@ -4217,14 +4359,15 @@
 				},
 				"ac_u4_cleaning_duration_min": {
 					"type": "number",
-					"label": "Reinigung Dauer (min)",
-					"default": 30,
+					"label": "Reinigung Timeout (min)",
+					"default": 45,
 					"min": 0,
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Fallback wenn SmartThings-Feedback ausbleibt. Ende normalerweise über operatingState=ready."
 				},
 				"hAcU4Stats": {
 					"type": "header",
@@ -4562,27 +4705,74 @@
 						"state"
 					]
 				},
-				"ac_u4_cmd_cleaning_mode_enabled": {
+				"ac_u4_feedback_cleaning_state_enabled": {
 					"type": "checkbox",
-					"label": "Befehl Reinigungsmodus aktiv",
-					"default": true,
+					"label": "Rückmeldung Reinigung operatingState aktiv",
+					"default": false,
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
 					"xl": 3
 				},
-				"ac_u4_cmd_cleaning_mode_target": {
+				"ac_u4_feedback_cleaning_state_target": {
 					"type": "objectId",
-					"label": "Befehl Reinigungsmodus State-ID",
+					"label": "Rückmeldung Reinigung operatingState State-ID",
+					"types": [
+						"state"
+					],
+					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9,
+					"xl": 9
+				},
+				"ac_u4_feedback_cleaning_mode_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Reinigung autoCleaningMode aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_feedback_cleaning_mode_target": {
+					"type": "objectId",
+					"label": "Rückmeldung Reinigung autoCleaningMode State-ID",
 					"types": [
 						"state"
-					]
+					],
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u4_feedback_cleaning_progress_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Reinigung Fortschritt aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_feedback_cleaning_progress_target": {
+					"type": "objectId",
+					"label": "Rückmeldung Reinigung Fortschritt State-ID",
+					"types": [
+						"state"
+					],
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
 				},
 				"ac_u4_cmd_refresh_enabled": {
 					"type": "checkbox",
@@ -4825,14 +5015,15 @@
 				},
 				"ac_u5_cleaning_duration_min": {
 					"type": "number",
-					"label": "Reinigung Dauer (min)",
-					"default": 30,
+					"label": "Reinigung Timeout (min)",
+					"default": 45,
 					"min": 0,
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Fallback wenn SmartThings-Feedback ausbleibt. Ende normalerweise über operatingState=ready."
 				},
 				"hAcU5Stats": {
 					"type": "header",
@@ -5170,27 +5361,74 @@
 						"state"
 					]
 				},
-				"ac_u5_cmd_cleaning_mode_enabled": {
+				"ac_u5_feedback_cleaning_state_enabled": {
 					"type": "checkbox",
-					"label": "Befehl Reinigungsmodus aktiv",
-					"default": true,
+					"label": "Rückmeldung Reinigung operatingState aktiv",
+					"default": false,
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
 					"xl": 3
 				},
-				"ac_u5_cmd_cleaning_mode_target": {
+				"ac_u5_feedback_cleaning_state_target": {
 					"type": "objectId",
-					"label": "Befehl Reinigungsmodus State-ID",
+					"label": "Rückmeldung Reinigung operatingState State-ID",
+					"types": [
+						"state"
+					],
+					"default": "",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
 					"lg": 9,
-					"xl": 9,
+					"xl": 9
+				},
+				"ac_u5_feedback_cleaning_mode_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Reinigung autoCleaningMode aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_feedback_cleaning_mode_target": {
+					"type": "objectId",
+					"label": "Rückmeldung Reinigung autoCleaningMode State-ID",
 					"types": [
 						"state"
-					]
+					],
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ac_u5_feedback_cleaning_progress_enabled": {
+					"type": "checkbox",
+					"label": "Rückmeldung Reinigung Fortschritt aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_feedback_cleaning_progress_target": {
+					"type": "objectId",
+					"label": "Rückmeldung Reinigung Fortschritt State-ID",
+					"types": [
+						"state"
+					],
+					"default": "",
+					"xs": 12,
+					"sm": 8,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
 				},
 				"ac_u5_cmd_refresh_enabled": {
 					"type": "checkbox",

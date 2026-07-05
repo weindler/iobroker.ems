@@ -25,7 +25,9 @@ const AC_U1_DEFAULTS = {
 	ac_u1_cmd_set_fan_mode_target: `${ST_WZ}.capabilities.airConditionerFanMode-setFanMode`,
 	ac_u1_cmd_set_cool_setpoint_target: `${ST_WZ}.capabilities.thermostatCoolingSetpoint-setCoolingSetpoint`,
 	ac_u1_cmd_cleaning_start_target: `${ST_WZ}.capabilities.custom.autoCleaningMode-setAutoCleaningMode`,
-	ac_u1_cmd_cleaning_mode_target: `${ST_WZ}.capabilities.custom.airConditionerOdorController-setAirConditionerOdorControllerState`,
+	ac_u1_feedback_cleaning_state_target: `${ST_WZ}.status.custom.autoCleaningMode.operatingState.value`,
+	ac_u1_feedback_cleaning_mode_target: `${ST_WZ}.status.custom.autoCleaningMode.autoCleaningMode.value`,
+	ac_u1_feedback_cleaning_progress_target: `${ST_WZ}.status.custom.autoCleaningMode.progress.value`,
 	ac_u1_cmd_refresh_target: `${ST_WZ}.capabilities.refresh-refresh`,
 };
 
@@ -41,7 +43,9 @@ const AC_U2_DEFAULTS = {
 	ac_u2_cmd_set_fan_mode_target: `${ST_JOSEF}.capabilities.airConditionerFanMode-setFanMode`,
 	ac_u2_cmd_set_cool_setpoint_target: `${ST_JOSEF}.capabilities.thermostatCoolingSetpoint-setCoolingSetpoint`,
 	ac_u2_cmd_cleaning_start_target: `${ST_JOSEF}.capabilities.custom.autoCleaningMode-setAutoCleaningMode`,
-	ac_u2_cmd_cleaning_mode_target: `${ST_JOSEF}.capabilities.custom.airConditionerOdorController-setAirConditionerOdorControllerState`,
+	ac_u2_feedback_cleaning_state_target: `${ST_JOSEF}.status.custom.autoCleaningMode.operatingState.value`,
+	ac_u2_feedback_cleaning_mode_target: `${ST_JOSEF}.status.custom.autoCleaningMode.autoCleaningMode.value`,
+	ac_u2_feedback_cleaning_progress_target: `${ST_JOSEF}.status.custom.autoCleaningMode.progress.value`,
 	ac_u2_cmd_refresh_target: `${ST_JOSEF}.capabilities.refresh-refresh`,
 };
 

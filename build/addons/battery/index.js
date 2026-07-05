@@ -20,6 +20,7 @@ const ownership_1 = require("./runtime/ownership");
 const safety_1 = require("./runtime/safety");
 const intent_read_1 = require("./runtime/intent_read");
 const battery_bridge_1 = require("../../planner/battery_bridge");
+const winter_intent_1 = require("./runtime/winter_intent");
 exports.BATTERY_ADDON_ID = "battery";
 const CONTROL_INTERVAL_MS = 5000;
 let controlTimer = null;
@@ -233,35 +234,60 @@ async function controlTickInner(host) {
         }
     }
     else {
-        const plannerRaw = await host.getStateAsync("planner.intent.last_json");
-        const plannerParsed = (0, battery_bridge_1.parsePlannerIntentJson)(plannerRaw?.val);
-        const fromPlanner = plannerParsed && (0, battery_bridge_1.plannerWantsActiveBatteryIntent)(plannerParsed.battery)
-            ? (0, battery_bridge_1.deviceIntentFromPlannerDecision)(plannerParsed.battery, plannerParsed.revision, plannerParsed.resolved_at)
-            : null;
-        if (fromPlanner) {
-            deviceIntent = fromPlanner;
-            wantsCharge = (0, intent_1.isChargingAction)(fromPlanner.action);
-            requestId = fromPlanner.requestId;
+        const winterIntent = await resolveWinterGridChargeIntent(host, config, nowMs);
+        if (winterIntent) {
+            deviceIntent = winterIntent;
+            wantsCharge = true;
+            requestId = winterIntent.requestId;
         }
-        else {
-            const intentActive = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.batteryIntentActive);
-            const modeTarget = await readRelNumber(host, ems_mirror_1.EMS_MIRROR_BATTERY.operatingModeTarget);
-            const chargeReq = await readRelNumber(host, ems_mirror_1.EMS_MIRROR_BATTERY.chargePowerWRequest);
-            wantsCharge = intentActive && modeTarget === 1 && (chargeReq ?? 0) > 0;
-            requestId = `bat-${(await readRelNumber(host, ems_mirror_1.EMS_MIRROR_BATTERY.modeRequestId)) ?? 0}`;
+        else if (runtime.ownership.active && runtime.requestId?.startsWith("winter-planner")) {
+            requestId = runtime.requestId ?? `winter-planner-${nowMs}`;
+            wantsCharge = false;
             deviceIntent = {
                 requestId,
-                action: wantsCharge ? "charge" : "self_consumption",
+                action: "self_consumption",
                 targetSocPct: null,
-                maxChargeW: chargeReq,
+                maxChargeW: null,
                 maxDischargeW: null,
                 energySource: "any",
                 validFrom: null,
                 validUntil: null,
                 issuedAt: new Date(nowMs).toISOString(),
-                reason: `mirror intent_active=${intentActive} mode=${modeTarget}`,
-                source: "ems_mirror",
+                reason: "Winter-Preisfenster beendet — Rückkehr Mode 2",
+                source: "winter_planner",
             };
+        }
+        else {
+            const plannerRaw = await host.getStateAsync("planner.intent.last_json");
+            const plannerParsed = (0, battery_bridge_1.parsePlannerIntentJson)(plannerRaw?.val);
+            const fromPlanner = plannerParsed && (0, battery_bridge_1.plannerWantsActiveBatteryIntent)(plannerParsed.battery)
+                ? (0, battery_bridge_1.deviceIntentFromPlannerDecision)(plannerParsed.battery, plannerParsed.revision, plannerParsed.resolved_at)
+                : null;
+            if (fromPlanner) {
+                deviceIntent = fromPlanner;
+                wantsCharge = (0, intent_1.isChargingAction)(fromPlanner.action);
+                requestId = fromPlanner.requestId;
+            }
+            else {
+                const intentActive = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.batteryIntentActive);
+                const modeTarget = await readRelNumber(host, ems_mirror_1.EMS_MIRROR_BATTERY.operatingModeTarget);
+                const chargeReq = await readRelNumber(host, ems_mirror_1.EMS_MIRROR_BATTERY.chargePowerWRequest);
+                wantsCharge = intentActive && modeTarget === 1 && (chargeReq ?? 0) > 0;
+                requestId = `bat-${(await readRelNumber(host, ems_mirror_1.EMS_MIRROR_BATTERY.modeRequestId)) ?? 0}`;
+                deviceIntent = {
+                    requestId,
+                    action: wantsCharge ? "charge" : "self_consumption",
+                    targetSocPct: null,
+                    maxChargeW: chargeReq,
+                    maxDischargeW: null,
+                    energySource: "any",
+                    validFrom: null,
+                    validUntil: null,
+                    issuedAt: new Date(nowMs).toISOString(),
+                    reason: `mirror intent_active=${intentActive} mode=${modeTarget}`,
+                    source: "ems_mirror",
+                };
+            }
         }
     }
     const telemetryFresh = !snapshot.telemetry.stale && snapshot.quality.socValid && snapshot.quality.powerValid;
@@ -279,13 +305,16 @@ async function controlTickInner(host) {
     const effectiveChargeW = validation.effectiveChargeW ?? 0;
     const emsMirrorIntentActive = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.batteryIntentActive);
     const plannerDriven = deviceIntent.source === "planner";
+    const winterDriven = deviceIntent.source === "winter_planner";
     const emsBatteryIntentActive = fromResolved
         ? wantsCharge
-        : plannerDriven
-            ? deviceIntent.action === "charge"
-                ? wantsCharge
-                : deviceIntent.action === "self_consumption" || deviceIntent.action === "hold"
-            : emsMirrorIntentActive && wantsCharge;
+        : winterDriven
+            ? wantsCharge || runtime.ownership.active
+            : plannerDriven
+                ? deviceIntent.action === "charge"
+                    ? wantsCharge
+                    : deviceIntent.action === "self_consumption" || deviceIntent.action === "hold"
+                : emsMirrorIntentActive && wantsCharge;
     // Grid balance controller.
     const adapterFeature = snapshot.capabilities.control_grid_balance.available;
     const emsGb = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.gridBalanceEnabled);
@@ -303,7 +332,7 @@ async function controlTickInner(host) {
         snapshot.telemetry.socPct >= deviceIntent.targetSocPct;
     const stopReason = (0, safety_1.evaluateStopCondition)({
         targetSocReached,
-        intentExpired: false,
+        intentExpired: deviceIntent.validUntil != null && Date.parse(deviceIntent.validUntil) <= nowMs,
         intentRevoked: runtime.ownership.active && !wantsCharge,
         addonDisabled: !governanceEnabled,
         globalLeftLive: ownershipLive && !liveWriteAllowed,
@@ -556,3 +585,35 @@ async function batteryUnloadRestore(host) {
     }
 }
 exports.batteryUnloadRestore = batteryUnloadRestore;
+async function resolveWinterGridChargeIntent(host, config, nowMs) {
+    const [winterActive, holdActive, evccCharging, windowsRaw, socTargetRaw, reasonDe, plannerJson] = await Promise.all([
+        readRelBool(host, "planner.intent.battery.winter.active"),
+        readRelBool(host, "planner.constraints.battery_hold_active"),
+        readRelBool(host, "live.wallbox.charging"),
+        host.getStateAsync("planner.intent.battery.winter.windows_json"),
+        host.getStateAsync("planner.intent.battery.winter.soc_target_pct"),
+        host.getStateAsync("planner.intent.battery.winter.reason_de"),
+        host.getStateAsync("planner.intent.last_json"),
+    ]);
+    if (!winterActive || holdActive || evccCharging) {
+        return null;
+    }
+    let revision = 0;
+    try {
+        const parsed = plannerJson?.val ? JSON.parse(String(plannerJson.val)) : null;
+        if (parsed && typeof parsed.revision === "number")
+            revision = parsed.revision;
+    }
+    catch {
+        /* ignore */
+    }
+    const snap = {
+        active: true,
+        socTargetPct: (0, winter_intent_1.winterNumOrNull)(socTargetRaw?.val),
+        maxChargeW: config.limits.maxChargeW ?? 0,
+        windows: (0, winter_intent_1.parseWinterWindowsJson)(windowsRaw?.val),
+        reasonDe: String(reasonDe?.val ?? "Winter-Netzplanung"),
+        revision,
+    };
+    return (0, winter_intent_1.deviceIntentFromWinterPlanner)(snap, nowMs);
+}

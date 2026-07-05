@@ -50,6 +50,7 @@ function baseInputs(overrides = {}) {
         batteryWinterDays: (0, battery_winter_test_util_js_1.defaultBatteryWinterDays)(),
         snowCoverSuspected: false,
         batteryAiAllowed: false,
+        batteryWinterPriceSlots: [],
         ...overrides,
     };
 }

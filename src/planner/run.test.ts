@@ -48,6 +48,7 @@ function baseInputs(overrides: Partial<PlannerInputs> = {}): PlannerInputs {
 		batteryWinterDays: defaultBatteryWinterDays(),
 		snowCoverSuspected: false,
 		batteryAiAllowed: false,
+		batteryWinterPriceSlots: [],
 		...overrides,
 	};
 }

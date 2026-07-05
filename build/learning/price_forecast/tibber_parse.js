@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.dateKeyFromMs = exports.targetDateForTodayFreeze = exports.targetDateForTomorrowFreeze = exports.parseTibberPriceJsonToHourlySlots = void 0;
+exports.dateKeyFromMs = exports.targetDateForTodayFreeze = exports.targetDateForTomorrowFreeze = exports.parseTibberPriceJsonToHourlySlots = exports.parseTibberPriceJsonTo15MinSlots = exports.MS_PER_15MIN = void 0;
+exports.MS_PER_15MIN = 15 * 60 * 1000;
 function asNum(v) {
     if (v === null || v === undefined || v === "")
         return null;
@@ -30,8 +31,7 @@ function tomorrowDateKey(ref) {
     d.setDate(d.getDate() + 1);
     return dateKeyFromMs(d.getTime());
 }
-/** Parse Tibber PricesToday/Tomorrow JSON → stündliche Forecast-Slots in ct/kWh. */
-function parseTibberPriceJsonToHourlySlots(raw, targetDateKey) {
+function parseTibberPriceEntries(raw) {
     let parsed = raw;
     if (typeof raw === "string") {
         try {
@@ -44,11 +44,37 @@ function parseTibberPriceJsonToHourlySlots(raw, targetDateKey) {
     if (!Array.isArray(parsed)) {
         return [];
     }
-    const byHour = new Map();
-    for (const entry of parsed) {
-        if (!entry || typeof entry !== "object")
+    return parsed.filter((entry) => entry != null && typeof entry === "object");
+}
+/** Parse Tibber PricesToday/Tomorrow JSON → 15-min-Slots in ct/kWh (keine Stundenaggregation). */
+function parseTibberPriceJsonTo15MinSlots(raw, options = {}) {
+    const slots = [];
+    const seen = new Set();
+    for (const row of parseTibberPriceEntries(raw)) {
+        const totalEur = asNum(row.total);
+        const startsMs = parseStartsAtMs(row.startsAt ?? row.starts_at);
+        if (totalEur === null || startsMs === null || totalEur < 0 || totalEur > 5) {
             continue;
-        const row = entry;
+        }
+        if (options.minStartMs != null && startsMs < options.minStartMs)
+            continue;
+        if (options.maxStartMs != null && startsMs > options.maxStartMs)
+            continue;
+        if (seen.has(startsMs))
+            continue;
+        seen.add(startsMs);
+        slots.push({
+            slotStartMs: startsMs,
+            priceCtPerKwh: Math.round(totalEur * 100 * 1000) / 1000,
+        });
+    }
+    return slots.sort((a, b) => a.slotStartMs - b.slotStartMs);
+}
+exports.parseTibberPriceJsonTo15MinSlots = parseTibberPriceJsonTo15MinSlots;
+/** Parse Tibber PricesToday/Tomorrow JSON → stündliche Forecast-Slots in ct/kWh. */
+function parseTibberPriceJsonToHourlySlots(raw, targetDateKey) {
+    const byHour = new Map();
+    for (const row of parseTibberPriceEntries(raw)) {
         const totalEur = asNum(row.total);
         const startsMs = parseStartsAtMs(row.startsAt ?? row.starts_at);
         if (totalEur === null || startsMs === null || totalEur < 0 || totalEur > 5) {

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopPlanner = exports.initPlanner = exports.batteryWinterPlanConfigFromAdapter = exports.dailyKwhFromHouseLoadForecast = exports.planBatteryWinter = exports.plannerModePolicyFromGlobalMode = exports.buildPlannerConstraints = exports.planBattery = exports.coolingReserveW = exports.planCooling = exports.resetPlannerRevisionForTest = exports.runPlannerTick = exports.runPlanner = exports.readPlannerInputs = exports.readPlannerThermalStage = void 0;
+exports.stopPlanner = exports.initPlanner = exports.batteryWinterPlanConfigFromAdapter = exports.readTibber15MinPriceSlots = exports.isNowInWinterChargeWindow = exports.planBatteryWinterPriceWindows = exports.dailyKwhFromHouseLoadForecast = exports.planBatteryWinter = exports.plannerModePolicyFromGlobalMode = exports.buildPlannerConstraints = exports.planBattery = exports.coolingReserveW = exports.planCooling = exports.resetPlannerRevisionForTest = exports.runPlannerTick = exports.runPlanner = exports.readPlannerInputs = exports.readPlannerThermalStage = void 0;
 const ensure_states_1 = require("./ensure_states");
 const run_1 = require("./run");
 var inputs_1 = require("./inputs");
@@ -21,6 +21,11 @@ Object.defineProperty(exports, "plannerModePolicyFromGlobalMode", { enumerable: 
 var battery_winter_1 = require("./rules/battery_winter");
 Object.defineProperty(exports, "planBatteryWinter", { enumerable: true, get: function () { return battery_winter_1.planBatteryWinter; } });
 Object.defineProperty(exports, "dailyKwhFromHouseLoadForecast", { enumerable: true, get: function () { return battery_winter_1.dailyKwhFromHouseLoadForecast; } });
+var battery_winter_windows_1 = require("./rules/battery_winter_windows");
+Object.defineProperty(exports, "planBatteryWinterPriceWindows", { enumerable: true, get: function () { return battery_winter_windows_1.planBatteryWinterPriceWindows; } });
+Object.defineProperty(exports, "isNowInWinterChargeWindow", { enumerable: true, get: function () { return battery_winter_windows_1.isNowInWinterChargeWindow; } });
+var battery_winter_price_inputs_1 = require("./battery_winter_price_inputs");
+Object.defineProperty(exports, "readTibber15MinPriceSlots", { enumerable: true, get: function () { return battery_winter_price_inputs_1.readTibber15MinPriceSlots; } });
 var battery_winter_config_1 = require("./battery_winter_config");
 Object.defineProperty(exports, "batteryWinterPlanConfigFromAdapter", { enumerable: true, get: function () { return battery_winter_config_1.batteryWinterPlanConfigFromAdapter; } });
 async function initPlanner(host) {

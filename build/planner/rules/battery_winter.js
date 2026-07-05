@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.planBatteryWinter = exports.dailyKwhFromHouseLoadForecast = void 0;
 const constants_1 = require("../../learning/house_load/constants");
+const battery_winter_windows_1 = require("./battery_winter_windows");
 function round3(n) {
     return Math.round(n * 1000) / 1000;
 }
@@ -153,6 +154,17 @@ function planBatteryWinter(input) {
         chargeSlots = Math.max(1, Math.ceil(chargeDurationH * 4));
     }
     const recoveryDayHuman = recoveryIndex !== null ? recoveryIndex + 1 : null;
+    let windows = [];
+    if (chargeEnergy > 0 && chargeSlots !== null && chargeSlots > 0) {
+        const deadlineMs = bridgeEnd.getTime();
+        windows = (0, battery_winter_windows_1.planBatteryWinterPriceWindows)({
+            nowMs: input.now.getTime(),
+            slots: input.priceSlots,
+            slotsNeeded: chargeSlots,
+            deadlineMs,
+            globalMode: input.modePolicy.mode,
+        });
+    }
     const parts = [
         `Horizont ${scanDays} Tag(e)`,
         recoveryDayHuman
@@ -164,6 +176,16 @@ function planBatteryWinter(input) {
         parts.push(`Netz-Ziel +${chargeEnergy.toFixed(1)} kWh → ${socTarget.toFixed(0)} %`);
         if (chargeDurationH !== null && chargeSlots !== null) {
             parts.push(`~${chargeDurationH.toFixed(1)} h (${chargeSlots}×15 min @ ${maxChargeW} W)`);
+        }
+        if (windows.length > 0) {
+            const strategy = windows[0]?.strategy ?? "none";
+            parts.push(`${windows.length} Preisfenster (${strategy})`);
+        }
+        else if (chargeSlots !== null && chargeSlots > 0 && input.priceSlots.length === 0) {
+            parts.push("keine Tibber-15-min-Preise konfiguriert");
+        }
+        else if (chargeSlots !== null && chargeSlots > 0) {
+            parts.push("kein passendes Preisfenster im Horizont");
         }
     }
     else {
@@ -190,7 +212,7 @@ function planBatteryWinter(input) {
         charge_duration_h: chargeDurationH,
         charge_slots_15m: chargeSlots,
         confidence_min_pct: minConfidence,
-        windows: [],
+        windows,
         reason_de: parts.join("; ") + ".",
     };
 }

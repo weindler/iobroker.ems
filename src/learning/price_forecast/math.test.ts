@@ -9,7 +9,7 @@ import {
 	stabilityFromDailyAccuracy,
 } from "./math";
 import { writeForecastFreezeFile, writePriceForecastPersist } from "./persist";
-import { parseTibberPriceJsonToHourlySlots } from "./tibber_parse";
+import { parseTibberPriceJsonToHourlySlots, parseTibberPriceJsonTo15MinSlots } from "./tibber_parse";
 import type { MatchedHourPair } from "./types";
 
 function slotJson(targetDate: string, hour: number, totalEur: number): string {
@@ -34,6 +34,18 @@ describe("price forecast learning", () => {
 		const slots = parseTibberPriceJsonToHourlySlots(slotJson(target, 18, 0.25), target);
 		assert.equal(slots.length, 1);
 		assert.equal(slots[0].forecastCtPerKwh, 25);
+	});
+
+	it("parses Tibber JSON to 15-min slots", () => {
+		const target = "2026-06-21";
+		const raw = JSON.stringify([
+			{ total: 0.2, startsAt: `${target}T18:00:00.000Z` },
+			{ total: 0.22, startsAt: `${target}T18:15:00.000Z` },
+		]);
+		const slots = parseTibberPriceJsonTo15MinSlots(raw);
+		assert.equal(slots.length, 2);
+		assert.equal(slots[0].priceCtPerKwh, 20);
+		assert.equal(slots[1].priceCtPerKwh, 22);
 	});
 
 	it("computes absolute error accuracy", () => {

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseTibberPriceJsonToHourlySlots = exports.stabilityFromDailyAccuracy = exports.accuracyFromAvgErrorCt = exports.computePriceForecastLearning = exports.runPriceForecastLearning = exports.ensurePriceForecastLearningStates = void 0;
+exports.parseTibberPriceJsonTo15MinSlots = exports.parseTibberPriceJsonToHourlySlots = exports.stabilityFromDailyAccuracy = exports.accuracyFromAvgErrorCt = exports.computePriceForecastLearning = exports.runPriceForecastLearning = exports.ensurePriceForecastLearningStates = void 0;
 var ensure_states_1 = require("./ensure_states");
 Object.defineProperty(exports, "ensurePriceForecastLearningStates", { enumerable: true, get: function () { return ensure_states_1.ensurePriceForecastLearningStates; } });
 var run_1 = require("./run");
@@ -11,3 +11,4 @@ Object.defineProperty(exports, "accuracyFromAvgErrorCt", { enumerable: true, get
 Object.defineProperty(exports, "stabilityFromDailyAccuracy", { enumerable: true, get: function () { return math_1.stabilityFromDailyAccuracy; } });
 var tibber_parse_1 = require("./tibber_parse");
 Object.defineProperty(exports, "parseTibberPriceJsonToHourlySlots", { enumerable: true, get: function () { return tibber_parse_1.parseTibberPriceJsonToHourlySlots; } });
+Object.defineProperty(exports, "parseTibberPriceJsonTo15MinSlots", { enumerable: true, get: function () { return tibber_parse_1.parseTibberPriceJsonTo15MinSlots; } });

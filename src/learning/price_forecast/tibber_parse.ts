@@ -1,5 +1,12 @@
 import type { FrozenHourSlot } from "./types";
 
+export interface Price15MinSlot {
+	slotStartMs: number;
+	priceCtPerKwh: number;
+}
+
+export const MS_PER_15MIN = 15 * 60 * 1000;
+
 type TibberSlotRaw = {
 	total?: unknown;
 	startsAt?: unknown;
@@ -37,11 +44,7 @@ function tomorrowDateKey(ref: Date): string {
 	return dateKeyFromMs(d.getTime());
 }
 
-/** Parse Tibber PricesToday/Tomorrow JSON → stündliche Forecast-Slots in ct/kWh. */
-export function parseTibberPriceJsonToHourlySlots(
-	raw: unknown,
-	targetDateKey: string,
-): FrozenHourSlot[] {
+function parseTibberPriceEntries(raw: unknown): TibberSlotRaw[] {
 	let parsed: unknown = raw;
 	if (typeof raw === "string") {
 		try {
@@ -53,11 +56,43 @@ export function parseTibberPriceJsonToHourlySlots(
 	if (!Array.isArray(parsed)) {
 		return [];
 	}
+	return parsed.filter((entry): entry is TibberSlotRaw => entry != null && typeof entry === "object");
+}
 
+/** Parse Tibber PricesToday/Tomorrow JSON → 15-min-Slots in ct/kWh (keine Stundenaggregation). */
+export function parseTibberPriceJsonTo15MinSlots(
+	raw: unknown,
+	options: { minStartMs?: number; maxStartMs?: number } = {},
+): Price15MinSlot[] {
+	const slots: Price15MinSlot[] = [];
+	const seen = new Set<number>();
+
+	for (const row of parseTibberPriceEntries(raw)) {
+		const totalEur = asNum(row.total);
+		const startsMs = parseStartsAtMs(row.startsAt ?? row.starts_at);
+		if (totalEur === null || startsMs === null || totalEur < 0 || totalEur > 5) {
+			continue;
+		}
+		if (options.minStartMs != null && startsMs < options.minStartMs) continue;
+		if (options.maxStartMs != null && startsMs > options.maxStartMs) continue;
+		if (seen.has(startsMs)) continue;
+		seen.add(startsMs);
+		slots.push({
+			slotStartMs: startsMs,
+			priceCtPerKwh: Math.round(totalEur * 100 * 1000) / 1000,
+		});
+	}
+
+	return slots.sort((a, b) => a.slotStartMs - b.slotStartMs);
+}
+
+/** Parse Tibber PricesToday/Tomorrow JSON → stündliche Forecast-Slots in ct/kWh. */
+export function parseTibberPriceJsonToHourlySlots(
+	raw: unknown,
+	targetDateKey: string,
+): FrozenHourSlot[] {
 	const byHour = new Map<number, number[]>();
-	for (const entry of parsed) {
-		if (!entry || typeof entry !== "object") continue;
-		const row = entry as TibberSlotRaw;
+	for (const row of parseTibberPriceEntries(raw)) {
 		const totalEur = asNum(row.total);
 		const startsMs = parseStartsAtMs(row.startsAt ?? row.starts_at);
 		if (totalEur === null || startsMs === null || totalEur < 0 || totalEur > 5) {

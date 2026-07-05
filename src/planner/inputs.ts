@@ -6,6 +6,8 @@ import { immersionDeviceConfigFromAdapter } from "../addons/immersion_heater/dev
 import { parseResolvedIntentJson, resolvedModeFromIntent } from "../addons/immersion_heater/runtime/intent_read";
 import { WALLBOX_EVCC_STATES } from "../addons/wallbox/ensure_evcc_states";
 import { addonGovernanceAiAllowedState } from "../addons/governance/ensure_states";
+import type { Price15MinSlot } from "../learning/price_forecast/tibber_parse";
+import { readTibber15MinPriceSlots } from "./battery_winter_price_inputs";
 import { batteryWinterPlanConfigFromAdapter } from "./battery_winter_config";
 import { readBatteryWinterDays } from "./battery_winter_inputs";
 import { parseResolvedBatteryIntentJson } from "../addons/battery/runtime/intent_read";
@@ -58,11 +60,13 @@ export interface PlannerInputs {
 	batteryWinterDays: BatteryWinterDayInput[];
 	snowCoverSuspected: boolean;
 	batteryAiAllowed: boolean;
+	batteryWinterPriceSlots: Price15MinSlot[];
 }
 
 export type PlannerHost = StateHost & {
 	config?: unknown;
 	getAbsolutePath?: (category?: string) => string;
+	getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
 	log?: { warn?: (msg: string) => void; debug?: (msg: string) => void };
 };
 
@@ -173,7 +177,7 @@ export async function readPlannerInputs(host: PlannerHost): Promise<PlannerInput
 
 	const batteryWinterConfig = batteryWinterPlanConfigFromAdapter(host.config);
 
-	const [thermalGov, batteryGov, coolingGov, houseLoadW, socPct, bufferTempC, evccMode, evccDischarge, pvTodayKwh, pvTomorrowKwh, pvBiasStatus, aiThermalAllowed, batteryAiAllowed, snowCover, outdoorTempC, coolingUnits, batteryWinterDays] =
+	const [thermalGov, batteryGov, coolingGov, houseLoadW, socPct, bufferTempC, evccMode, evccDischarge, pvTodayKwh, pvTomorrowKwh, pvBiasStatus, aiThermalAllowed, batteryAiAllowed, snowCover, outdoorTempC, coolingUnits, batteryWinterDays, batteryWinterPriceSlots] =
 		await Promise.all([
 			isAddonGovernanceEnabledFromState((id) => host.getStateAsync(id), "immersion_heater"),
 			isAddonGovernanceEnabledFromState((id) => host.getStateAsync(id), "battery"),
@@ -192,6 +196,7 @@ export async function readPlannerInputs(host: PlannerHost): Promise<PlannerInput
 			readOutdoorTempC(host),
 			readCoolingUnitInputs(host, acConfig, consumerStatsPersist),
 			readBatteryWinterDays(host, batteryWinterConfig.horizonDays),
+			readTibber15MinPriceSlots(host, now),
 		]);
 
 	return {
@@ -223,6 +228,7 @@ export async function readPlannerInputs(host: PlannerHost): Promise<PlannerInput
 		batteryWinterDays,
 		snowCoverSuspected: snowCover === true,
 		batteryAiAllowed: batteryAiAllowed === true,
+		batteryWinterPriceSlots,
 	};
 }
 

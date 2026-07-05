@@ -1100,7 +1100,7 @@
 				"hBatWinterPlan": {
 					"type": "header",
 					"size": 2,
-					"text": "Winter-Netzplanung (Planner, read-only)",
+					"text": "Winter-Netzplanung (Planner + FSM)",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -1109,7 +1109,7 @@
 				},
 				"batWinterPlanHint": {
 					"type": "staticText",
-					"text": "Berechnet planner.intent.battery.winter.* aus PV-Horizont, Hauslast und Config — noch ohne Sonnen-Writes. Sonnen Mode 2 bleibt für PV-Laden/Entladung zuständig.",
+					"text": "Berechnet planner.intent.battery.winter.* aus PV-Horizont, Hauslast, Tibber-15-min-Preisen und Config. Im aktiven Preisfenster: Sonnen Mode 1 + control.charge über Batterie-FSM (grid_charge).",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -5612,7 +5612,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Phase 2A–2E: PV-Bias, PV-Horizon, Weather-, Price-Statistics- und Price-Forecast-Learning (read-only). Ausgabe unter learning.pv_bias.*, learning.pv_horizon.*, learning.weather.*, learning.price_learning.* und learning.price_forecast.*"
+					"text": "Phase 2A–2E: PV-Bias, PV-Horizon, Weather-, Price-Statistics- und Price-Forecast-Learning (read-only). Tibber PricesToday/Tomorrow-JSON für Winter-15-min-Fenster unter learning_price_forecast_* konfigurieren.",
 				},
 				"learning_pv_bias_enabled": {
 					"type": "checkbox",

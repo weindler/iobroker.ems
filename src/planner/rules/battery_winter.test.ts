@@ -4,6 +4,7 @@ import { plannerModePolicyFromGlobalMode } from "../mode_policy.js";
 import { dailyKwhFromHouseLoadForecast, planBatteryWinter } from "./battery_winter.js";
 import type { BatteryWinterPlanConfig } from "../battery_winter_config.js";
 import type { BatteryWinterDayInput } from "./battery_winter.js";
+import { MS_PER_15MIN } from "../../learning/price_forecast/tibber_parse.js";
 
 const NOW = new Date("2026-01-15T18:00:00Z");
 
@@ -47,6 +48,7 @@ describe("battery winter plan", () => {
 			batteryGovernanceEnabled: true,
 			batteryAiAllowed: false,
 			days: winterDays(),
+			priceSlots: [],
 		});
 		assert.equal(r.forecast_active, true);
 		assert.ok(r.charge_energy_kwh !== null && r.charge_energy_kwh > 0);
@@ -66,6 +68,7 @@ describe("battery winter plan", () => {
 			batteryGovernanceEnabled: true,
 			batteryAiAllowed: false,
 			days: sunny,
+			priceSlots: [],
 		});
 		assert.equal(r.active, false);
 		assert.equal(r.charge_energy_kwh, null);
@@ -80,6 +83,7 @@ describe("battery winter plan", () => {
 			batteryGovernanceEnabled: true,
 			batteryAiAllowed: false,
 			days: winterDays(),
+			priceSlots: [],
 		};
 		const eco = planBatteryWinter({ ...base, modePolicy: plannerModePolicyFromGlobalMode("eco") });
 		const comfort = planBatteryWinter({ ...base, modePolicy: plannerModePolicyFromGlobalMode("comfort") });
@@ -96,6 +100,7 @@ describe("battery winter plan", () => {
 			batteryGovernanceEnabled: true,
 			batteryAiAllowed: true,
 			days: winterDays(),
+			priceSlots: [],
 		});
 		assert.equal(r.forecast_active, false);
 		assert.match(r.reason_de, /KI-Optimierung/);
@@ -116,5 +121,26 @@ describe("battery winter plan", () => {
 			},
 		});
 		assert.equal(kwh, 21);
+	});
+
+	it("selects Tibber windows when price slots are available", () => {
+		const baseMs = NOW.getTime();
+		const priceSlots = Array.from({ length: 8 }, (_, i) => ({
+			slotStartMs: baseMs + i * MS_PER_15MIN,
+			priceCtPerKwh: i === 2 || i === 3 ? 10 : 40 - i,
+		}));
+		const r = planBatteryWinter({
+			now: NOW,
+			socPct: 55,
+			snowCoverSuspected: false,
+			config: cfg(),
+			modePolicy: plannerModePolicyFromGlobalMode("balanced"),
+			batteryGovernanceEnabled: true,
+			batteryAiAllowed: false,
+			days: winterDays(),
+			priceSlots,
+		});
+		assert.ok(r.windows.length > 0);
+		assert.match(r.reason_de, /Preisfenster/);
 	});
 });

@@ -55,6 +55,17 @@ function pair(targetDate, hour, forecastCt, actualCt) {
         strict_1.default.equal(slots.length, 1);
         strict_1.default.equal(slots[0].forecastCtPerKwh, 25);
     });
+    (0, node_test_1.it)("parses Tibber JSON to 15-min slots", () => {
+        const target = "2026-06-21";
+        const raw = JSON.stringify([
+            { total: 0.2, startsAt: `${target}T18:00:00.000Z` },
+            { total: 0.22, startsAt: `${target}T18:15:00.000Z` },
+        ]);
+        const slots = (0, tibber_parse_1.parseTibberPriceJsonTo15MinSlots)(raw);
+        strict_1.default.equal(slots.length, 2);
+        strict_1.default.equal(slots[0].priceCtPerKwh, 20);
+        strict_1.default.equal(slots[1].priceCtPerKwh, 22);
+    });
     (0, node_test_1.it)("computes absolute error accuracy", () => {
         strict_1.default.equal((0, math_1.accuracyFromAvgErrorCt)(2), 80);
         strict_1.default.equal((0, math_1.accuracyFromAvgErrorCt)(0), 100);

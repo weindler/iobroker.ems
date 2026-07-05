@@ -7,6 +7,7 @@ const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
 const mode_policy_js_1 = require("../mode_policy.js");
 const battery_winter_js_1 = require("./battery_winter.js");
+const tibber_parse_js_1 = require("../../learning/price_forecast/tibber_parse.js");
 const NOW = new Date("2026-01-15T18:00:00Z");
 function cfg(overrides = {}) {
     return {
@@ -46,6 +47,7 @@ function winterDays(overrides = []) {
             batteryGovernanceEnabled: true,
             batteryAiAllowed: false,
             days: winterDays(),
+            priceSlots: [],
         });
         strict_1.default.equal(r.forecast_active, true);
         strict_1.default.ok(r.charge_energy_kwh !== null && r.charge_energy_kwh > 0);
@@ -64,6 +66,7 @@ function winterDays(overrides = []) {
             batteryGovernanceEnabled: true,
             batteryAiAllowed: false,
             days: sunny,
+            priceSlots: [],
         });
         strict_1.default.equal(r.active, false);
         strict_1.default.equal(r.charge_energy_kwh, null);
@@ -77,6 +80,7 @@ function winterDays(overrides = []) {
             batteryGovernanceEnabled: true,
             batteryAiAllowed: false,
             days: winterDays(),
+            priceSlots: [],
         };
         const eco = (0, battery_winter_js_1.planBatteryWinter)({ ...base, modePolicy: (0, mode_policy_js_1.plannerModePolicyFromGlobalMode)("eco") });
         const comfort = (0, battery_winter_js_1.planBatteryWinter)({ ...base, modePolicy: (0, mode_policy_js_1.plannerModePolicyFromGlobalMode)("comfort") });
@@ -92,6 +96,7 @@ function winterDays(overrides = []) {
             batteryGovernanceEnabled: true,
             batteryAiAllowed: true,
             days: winterDays(),
+            priceSlots: [],
         });
         strict_1.default.equal(r.forecast_active, false);
         strict_1.default.match(r.reason_de, /KI-Optimierung/);
@@ -111,5 +116,25 @@ function winterDays(overrides = []) {
             },
         });
         strict_1.default.equal(kwh, 21);
+    });
+    (0, node_test_1.it)("selects Tibber windows when price slots are available", () => {
+        const baseMs = NOW.getTime();
+        const priceSlots = Array.from({ length: 8 }, (_, i) => ({
+            slotStartMs: baseMs + i * tibber_parse_js_1.MS_PER_15MIN,
+            priceCtPerKwh: i === 2 || i === 3 ? 10 : 40 - i,
+        }));
+        const r = (0, battery_winter_js_1.planBatteryWinter)({
+            now: NOW,
+            socPct: 55,
+            snowCoverSuspected: false,
+            config: cfg(),
+            modePolicy: (0, mode_policy_js_1.plannerModePolicyFromGlobalMode)("balanced"),
+            batteryGovernanceEnabled: true,
+            batteryAiAllowed: false,
+            days: winterDays(),
+            priceSlots,
+        });
+        strict_1.default.ok(r.windows.length > 0);
+        strict_1.default.match(r.reason_de, /Preisfenster/);
     });
 });

@@ -76,6 +76,7 @@ export function runPlanner(inputs: PlannerInputs): PlannerIntent {
 		batteryGovernanceEnabled: inputs.batteryGovernanceEnabled,
 		batteryAiAllowed: inputs.batteryAiAllowed,
 		days: inputs.batteryWinterDays,
+		priceSlots: inputs.batteryWinterPriceSlots,
 	});
 	const battery_winter: PlannerBatteryWinterDecision = {
 		active: batteryWinterRaw.active,

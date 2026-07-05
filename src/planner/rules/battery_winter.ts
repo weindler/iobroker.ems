@@ -1,7 +1,9 @@
 import { SEGMENT_HOURS, SEGMENTS, type HouseLoadSegment } from "../../learning/house_load/constants";
 import type { DayForecastJson } from "../../learning/house_load/types";
+import type { Price15MinSlot } from "../../learning/price_forecast/tibber_parse";
 import type { BatteryWinterPlanConfig } from "../battery_winter_config";
 import type { PlannerModePolicy } from "../mode_policy";
+import { planBatteryWinterPriceWindows } from "./battery_winter_windows";
 
 export interface BatteryWinterDayInput {
 	dayIndex: number;
@@ -20,6 +22,7 @@ export interface BatteryWinterPlanInput {
 	batteryGovernanceEnabled: boolean;
 	batteryAiAllowed: boolean;
 	days: BatteryWinterDayInput[];
+	priceSlots: Price15MinSlot[];
 }
 
 export interface BatteryWinterChargeWindow {
@@ -226,6 +229,18 @@ export function planBatteryWinter(input: BatteryWinterPlanInput): BatteryWinterP
 	}
 
 	const recoveryDayHuman = recoveryIndex !== null ? recoveryIndex + 1 : null;
+	let windows: BatteryWinterChargeWindow[] = [];
+	if (chargeEnergy > 0 && chargeSlots !== null && chargeSlots > 0) {
+		const deadlineMs = bridgeEnd.getTime();
+		windows = planBatteryWinterPriceWindows({
+			nowMs: input.now.getTime(),
+			slots: input.priceSlots,
+			slotsNeeded: chargeSlots,
+			deadlineMs,
+			globalMode: input.modePolicy.mode,
+		});
+	}
+
 	const parts: string[] = [
 		`Horizont ${scanDays} Tag(e)`,
 		recoveryDayHuman
@@ -237,6 +252,14 @@ export function planBatteryWinter(input: BatteryWinterPlanInput): BatteryWinterP
 		parts.push(`Netz-Ziel +${chargeEnergy.toFixed(1)} kWh → ${socTarget.toFixed(0)} %`);
 		if (chargeDurationH !== null && chargeSlots !== null) {
 			parts.push(`~${chargeDurationH.toFixed(1)} h (${chargeSlots}×15 min @ ${maxChargeW} W)`);
+		}
+		if (windows.length > 0) {
+			const strategy = windows[0]?.strategy ?? "none";
+			parts.push(`${windows.length} Preisfenster (${strategy})`);
+		} else if (chargeSlots !== null && chargeSlots > 0 && input.priceSlots.length === 0) {
+			parts.push("keine Tibber-15-min-Preise konfiguriert");
+		} else if (chargeSlots !== null && chargeSlots > 0) {
+			parts.push("kein passendes Preisfenster im Horizont");
 		}
 	} else {
 		parts.push("kein Netzladen nötig");
@@ -262,7 +285,7 @@ export function planBatteryWinter(input: BatteryWinterPlanInput): BatteryWinterP
 		charge_duration_h: chargeDurationH,
 		charge_slots_15m: chargeSlots,
 		confidence_min_pct: minConfidence,
-		windows: [],
+		windows,
 		reason_de: parts.join("; ") + ".",
 	};
 }

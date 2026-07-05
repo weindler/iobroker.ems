@@ -5,4 +5,5 @@ export {
 	accuracyFromAvgErrorCt,
 	stabilityFromDailyAccuracy,
 } from "./math";
-export { parseTibberPriceJsonToHourlySlots } from "./tibber_parse";
+export { parseTibberPriceJsonToHourlySlots, parseTibberPriceJsonTo15MinSlots } from "./tibber_parse";
+export type { Price15MinSlot } from "./tibber_parse";

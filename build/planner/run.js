@@ -69,6 +69,7 @@ function runPlanner(inputs) {
         batteryGovernanceEnabled: inputs.batteryGovernanceEnabled,
         batteryAiAllowed: inputs.batteryAiAllowed,
         days: inputs.batteryWinterDays,
+        priceSlots: inputs.batteryWinterPriceSlots,
     });
     const battery_winter = {
         active: batteryWinterRaw.active,

@@ -9,7 +9,8 @@ import type { BatteryAction, BatteryDeviceIntent, BatteryOperatingMode } from ".
 import { assembleBatterySnapshot, type BatterySnapshot } from "./diagnostics";
 import { BAT, ensureBatteryArchitectureStates } from "./ensure_states";
 import { ensureBatteryEmsMirrorStates, EMS_MIRROR_BATTERY, EMS_MIRROR_BATTERY_IDS } from "./ems_mirror";
-import { computeGridBalanceTarget, resolveController } from "./grid_balance";
+import { computeGridBalanceTarget, medianCtFromPriceSlots, resolveController } from "./grid_balance";
+import { readTibber15MinPriceSlots } from "../../planner/battery_winter_price_inputs";
 import {
 	BATTERY_MAPPING_ROLES,
 	batteryMappingFromConfig,
@@ -388,6 +389,14 @@ async function controlTickInner(host: Host): Promise<void> {
 	const emsMirrorIntentActive = await readRelBool(host, EMS_MIRROR_BATTERY.batteryIntentActive);
 	const plannerDriven = deviceIntent.source === "planner";
 	const winterDriven = deviceIntent.source === "winter_planner";
+	const [batteryHoldActive, evccCharging, winterPlanActive, priceNowCt] = await Promise.all([
+		readRelBool(host, "planner.constraints.battery_hold_active"),
+		readRelBool(host, "live.wallbox.charging"),
+		readRelBool(host, "planner.intent.battery.winter.active"),
+		readRelNumber(host, "live.price.now_ct_per_kwh"),
+	]);
+	const gridBalanceSuppressed =
+		batteryHoldActive || evccCharging || winterPlanActive || runtime.ownership.active;
 	const emsBatteryIntentActive = fromResolved
 		? wantsCharge
 		: winterDriven
@@ -407,6 +416,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		adapterFeatureEnabled: adapterFeature,
 		batteryAddonEnabled: governanceEnabled,
 		gridBalancePaused: gridBalancePausedByFsm || runtime.ownership.active,
+		gridBalanceSuppressed,
 	});
 
 	const safetyOverride = ownershipLive && !liveWriteAllowed;
@@ -508,6 +518,13 @@ async function controlTickInner(host: Host): Promise<void> {
 		const capacityWh = (snapshot.capacity.effectiveKwh ?? 0) * 1000;
 		const restKwh = (await readRelNumber(host, EMS_MIRROR_BATTERY.effectivePvRestOfDayKwh)) ?? 0;
 		const snow = await readRelBool(host, EMS_MIRROR_BATTERY.snowCoverSuspected);
+		const priceSlots =
+			config.gridBalance.priceGateEnabled && config.gridBalance.priceMedianFactor > 0
+				? await readTibber15MinPriceSlots(
+						{ ...host, config: host.config, getForeignStateAsync: (id) => host.getForeignStateAsync(id) },
+						new Date(nowMs),
+					)
+				: [];
 		const result = computeGridBalanceTarget({
 			effectiveRestOfDayKwh: restKwh,
 			capacityWh,
@@ -521,6 +538,17 @@ async function controlTickInner(host: Host): Promise<void> {
 			offsetHighSocW: config.gridBalance.offsetHighSocW,
 			offsetLowSocW: config.gridBalance.offsetLowSocW,
 			socThresholdPct: config.gridBalance.socThresholdPct,
+			evccCharging,
+			batteryHoldActive,
+			winterGridPlanActive: winterPlanActive,
+			mode1Active: runtime.ownership.active,
+			priceNowCt,
+			priceMedianCt: medianCtFromPriceSlots(priceSlots),
+			priceGate: {
+				enabled: config.gridBalance.priceGateEnabled,
+				maxPriceCtPerKwh: config.gridBalance.maxPriceCtPerKwh,
+				medianFactor: config.gridBalance.priceMedianFactor,
+			},
 		});
 		if (result.gatePassed) {
 			gbTarget = Math.min(config.gridBalance.maxTargetW, result.targetBatteryChargingW);

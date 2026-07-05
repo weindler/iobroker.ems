@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.122",
+		"version": "0.1.123",
 		"news": {
+			"0.1.123": {
+				"en": "Grid balance price gate (absolute/median), EVCC/hold/winter blockers; winter planner states use null instead of -1",
+				"de": "Netzausgleich Preisgate (absolut/Median), Sperren EVCC/Hold/Winter; Winter-Planner-States mit null statt -1"
+			},
 			"0.1.122": {
 				"en": "Battery winter grid charge: Tibber 15-min price windows, FSM Mode 1 grid_charge writes, admin hints updated",
 				"de": "Winter-Netzladung Batterie: Tibber-15-min-Preisfenster, FSM Mode 1 grid_charge, Admin-Hinweise aktualisiert"

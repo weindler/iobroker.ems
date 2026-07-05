@@ -17,6 +17,16 @@ export async function setStateIfChanged(
 	return true;
 }
 
+/** Optional number: null clears the state value (no -1 sentinel). */
+export async function setOptionalNumberIfChanged(
+	host: StateHost,
+	id: string,
+	val: number | null | undefined,
+): Promise<boolean> {
+	const writeVal: ioBroker.StateValue = val === null || val === undefined ? null : val;
+	return setStateIfChanged(host, id, writeVal);
+}
+
 export async function setStatesIfRevisionChanged(
 	host: StateHost,
 	revisionStateId: string,

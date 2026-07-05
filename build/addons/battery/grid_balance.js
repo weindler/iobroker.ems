@@ -1,7 +1,60 @@
 "use strict";
 /** Netzausgleich-Logik — rein, ohne ioBroker. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveController = exports.computeGridBalanceTarget = void 0;
+exports.resolveController = exports.computeGridBalanceTarget = exports.evaluateGridBalancePriceGate = exports.medianCtFromPriceSlots = void 0;
+function medianCtFromPriceSlots(slots) {
+    if (slots.length === 0)
+        return null;
+    const sorted = [...slots].map((s) => s.priceCtPerKwh).sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    if (sorted.length % 2 === 1) {
+        return sorted[mid];
+    }
+    return (sorted[mid - 1] + sorted[mid]) / 2;
+}
+exports.medianCtFromPriceSlots = medianCtFromPriceSlots;
+function evaluateGridBalancePriceGate(params) {
+    if (!params.gate.enabled) {
+        return { passed: true, reasonDe: "Preisgate deaktiviert" };
+    }
+    const price = params.priceNowCt;
+    if (price === null || !Number.isFinite(price)) {
+        return { passed: false, reasonDe: "Strompreis unbekannt — Netzausgleich pausiert" };
+    }
+    const hasMax = params.gate.maxPriceCtPerKwh != null && params.gate.maxPriceCtPerKwh > 0;
+    const hasMedian = params.gate.medianFactor > 0 &&
+        params.referenceMedianCt != null &&
+        Number.isFinite(params.referenceMedianCt);
+    if (!hasMax && !hasMedian) {
+        return { passed: true, reasonDe: "Preisgate ohne Schwellen — durchgelassen" };
+    }
+    if (hasMax && price <= params.gate.maxPriceCtPerKwh) {
+        return {
+            passed: true,
+            reasonDe: `Preis ${price.toFixed(1)} ct/kWh ≤ ${params.gate.maxPriceCtPerKwh} ct/kWh`,
+        };
+    }
+    if (hasMedian) {
+        const limit = params.referenceMedianCt * params.gate.medianFactor;
+        if (price <= limit) {
+            return {
+                passed: true,
+                reasonDe: `Preis ${price.toFixed(1)} ct/kWh ≤ Median×${params.gate.medianFactor} (${limit.toFixed(1)} ct/kWh)`,
+            };
+        }
+    }
+    const parts = [];
+    if (hasMax)
+        parts.push(`>${params.gate.maxPriceCtPerKwh} ct/kWh`);
+    if (hasMedian) {
+        parts.push(`>${(params.referenceMedianCt * params.gate.medianFactor).toFixed(1)} ct/kWh (Median×${params.gate.medianFactor})`);
+    }
+    return {
+        passed: false,
+        reasonDe: `Preis ${price.toFixed(1)} ct/kWh zu hoch (${parts.join(", ")})`,
+    };
+}
+exports.evaluateGridBalancePriceGate = evaluateGridBalancePriceGate;
 function computeGridBalanceTarget(inputs) {
     const checksPassed = [];
     const checksFailed = [];
@@ -10,6 +63,26 @@ function computeGridBalanceTarget(inputs) {
         return inactive(`Controller=${inputs.controller}`, checksPassed, checksFailed);
     }
     checksPassed.push("controller_grid_balance");
+    if (inputs.mode1Active) {
+        checksFailed.push("mode1_active");
+        return inactive("Sonnen Mode 1 aktiv — Netzausgleich pausiert", checksPassed, checksFailed);
+    }
+    checksPassed.push("mode2_only");
+    if (inputs.batteryHoldActive) {
+        checksFailed.push("battery_hold");
+        return inactive("Batterie-Hold aktiv — Netzausgleich pausiert", checksPassed, checksFailed);
+    }
+    checksPassed.push("no_battery_hold");
+    if (inputs.evccCharging) {
+        checksFailed.push("evcc_charging");
+        return inactive("EVCC lädt — Netzausgleich pausiert", checksPassed, checksFailed);
+    }
+    checksPassed.push("no_evcc_charging");
+    if (inputs.winterGridPlanActive) {
+        checksFailed.push("winter_grid_plan");
+        return inactive("Winter-Netzplan aktiv — Netzausgleich pausiert", checksPassed, checksFailed);
+    }
+    checksPassed.push("no_winter_grid");
     if (!inputs.adapterFeatureEnabled) {
         checksFailed.push("adapter_feature_disabled");
         return inactive("Netzausgleich im Adapter deaktiviert", checksPassed, checksFailed);
@@ -42,6 +115,16 @@ function computeGridBalanceTarget(inputs) {
         return inactive("consumption_w <= pv_ac_power_w", checksPassed, checksFailed);
     }
     checksPassed.push("consumption_gt_pv");
+    const priceCheck = evaluateGridBalancePriceGate({
+        gate: inputs.priceGate,
+        priceNowCt: inputs.priceNowCt,
+        referenceMedianCt: inputs.priceMedianCt,
+    });
+    if (!priceCheck.passed) {
+        checksFailed.push("price_gate");
+        return inactive(priceCheck.reasonDe, checksPassed, checksFailed);
+    }
+    checksPassed.push("price_gate");
     const offset = inputs.socPct != null && inputs.socPct > inputs.socThresholdPct
         ? inputs.offsetHighSocW
         : inputs.offsetLowSocW;
@@ -51,7 +134,7 @@ function computeGridBalanceTarget(inputs) {
         active: true,
         gatePassed: true,
         targetBatteryChargingW: target,
-        reasonDe: `Netzausgleich: ${target} W (consumption − pv + ${offset} W)`,
+        reasonDe: `Netzausgleich: ${target} W (consumption − pv + ${offset} W); ${priceCheck.reasonDe}`,
         checksPassed,
         checksFailed,
     };
@@ -70,6 +153,9 @@ function inactive(reasonDe, checksPassed, checksFailed) {
 function resolveController(params) {
     if (params.emsBatteryIntentActive || params.gridBalancePaused) {
         return "ems";
+    }
+    if (params.gridBalanceSuppressed) {
+        return "idle";
     }
     if (params.emsGridBalanceEnabled && params.adapterFeatureEnabled && params.batteryAddonEnabled) {
         return "grid_balance";

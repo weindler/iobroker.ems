@@ -1496,6 +1496,52 @@
 					"xl": 4,
 					"hidden": "data.battery_profile !== 'sonnen_em'"
 				},
+				"bat_grid_balance_price_gate_enabled": {
+					"type": "checkbox",
+					"label": "Preisgate aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_grid_balance_max_price_ct_per_kwh": {
+					"type": "number",
+					"label": "Max. Preis absolut (ct/kWh, optional)",
+					"min": 0,
+					"max": 500,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_grid_balance_price_median_factor": {
+					"type": "number",
+					"label": "Preis relativ (× Median heute)",
+					"min": 0,
+					"max": 3,
+					"default": 1.05,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"batGridBalancePriceHint": {
+					"type": "staticText",
+					"text": "Netzausgleich nur in Mode 2 (control.charge-Tweak). Blockiert bei EVCC-Laden, Hold, Winter-Netzplan oder Mode 1. Preisgate: absolut ODER Median×Faktor (Tibber-JSON wie Winter-Plan).",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
 				"hBatDiagnostics": {
 					"type": "header",
 					"size": 2,

@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.120",
+		"version": "0.1.121",
 		"news": {
+			"0.1.121": {
+				"en": "Stop planner PV-surplus battery FSM (passive Mode 2); winter plan admin fields on battery tab",
+				"de": "Planner-PV-Laden Batterie abgeschaltet (Mode 2 passiv); Winter-Plan Admin-Felder im Batterie-Tab"
+			},
 			"0.1.120": {
 				"en": "Read-only battery winter grid plan: 7-day PV/house-load horizon, dynamic SOC target, charge duration (no FSM writes)",
 				"de": "Read-only Winter-Netzplanung Batterie: 7-Tage PV/Hauslast-Horizont, dynamisches SOC-Ziel, Ladedauer (keine FSM-Writes)"

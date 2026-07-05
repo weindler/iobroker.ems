@@ -54,13 +54,13 @@ function baseInputs(overrides = {}) {
     };
 }
 (0, node_test_1.describe)("planner run", () => {
-    (0, node_test_1.it)("prioritizes heater then battery on surplus", () => {
+    (0, node_test_1.it)("prioritizes heater on surplus; battery stays passive (Mode 2)", () => {
         (0, run_js_1.resetPlannerRevisionForTest)();
         const intent = (0, run_js_1.runPlanner)(baseInputs());
         strict_1.default.equal(intent.surplus_w, 4500);
         strict_1.default.equal(intent.thermal.commanded_stage, 1);
-        strict_1.default.equal(intent.battery.action, "charge");
-        strict_1.default.ok(intent.battery.max_charge_w >= 2000);
+        strict_1.default.equal(intent.battery.action, "none");
+        strict_1.default.match(intent.battery.reason_de, /Mode 2 passiv/);
     });
     (0, node_test_1.it)("skips battery on evcc hold", () => {
         (0, run_js_1.resetPlannerRevisionForTest)();
@@ -72,7 +72,7 @@ function baseInputs(overrides = {}) {
         strict_1.default.equal(intent.battery.action, "hold");
         strict_1.default.equal(intent.thermal.commanded_stage, 1);
     });
-    (0, node_test_1.it)("comfort uses battery on cloud deficit", () => {
+    (0, node_test_1.it)("comfort keeps battery passive on cloud deficit", () => {
         (0, run_js_1.resetPlannerRevisionForTest)();
         const intent = (0, run_js_1.runPlanner)(baseInputs({
             modePolicy: (0, mode_policy_js_1.plannerModePolicyFromGlobalMode)("comfort"),
@@ -82,7 +82,7 @@ function baseInputs(overrides = {}) {
             socPct: 60,
         }));
         strict_1.default.equal(intent.deficit_w, 1700);
-        strict_1.default.equal(intent.battery.action, "self_consumption");
+        strict_1.default.equal(intent.battery.action, "none");
     });
     (0, node_test_1.it)("off mode blocks planner optimization", () => {
         (0, run_js_1.resetPlannerRevisionForTest)();

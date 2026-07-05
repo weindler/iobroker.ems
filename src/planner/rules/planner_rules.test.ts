@@ -159,7 +159,7 @@ describe("planner battery", () => {
 		assert.equal(r.action, "hold");
 	});
 
-	it("charges from remaining surplus", () => {
+	it("stays passive on surplus (Sonnen Mode 2)", () => {
 		const constraints = buildPlannerConstraints({
 			evccBatteryMode: "normal",
 			evccBatteryDischargeControl: false,
@@ -174,11 +174,11 @@ describe("planner battery", () => {
 			consumerAllocatedW: 2000,
 			modePolicy: BALANCED,
 		});
-		assert.equal(r.action, "charge");
-		assert.equal(r.max_charge_w, 1000);
+		assert.equal(r.action, "none");
+		assert.match(r.reason_de, /Mode 2 passiv/);
 	});
 
-	it("comfort supports deficit self consumption", () => {
+	it("stays passive on deficit (comfort)", () => {
 		const constraints = buildPlannerConstraints({
 			evccBatteryMode: "normal",
 			evccBatteryDischargeControl: false,
@@ -193,7 +193,8 @@ describe("planner battery", () => {
 			consumerAllocatedW: 0,
 			modePolicy: COMFORT,
 		});
-		assert.equal(r.action, "self_consumption");
+		assert.equal(r.action, "none");
+		assert.match(r.reason_de, /Mode 2 passiv/);
 	});
 
 	it("forced respects user_intent hold for cheap price", () => {

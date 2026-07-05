@@ -1097,6 +1097,95 @@
 					"lg": 3,
 					"xl": 3
 				},
+				"hBatWinterPlan": {
+					"type": "header",
+					"size": 2,
+					"text": "Winter-Netzplanung (Planner, read-only)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"batWinterPlanHint": {
+					"type": "staticText",
+					"text": "Berechnet planner.intent.battery.winter.* aus PV-Horizont, Hauslast und Config — noch ohne Sonnen-Writes. Sonnen Mode 2 bleibt für PV-Laden/Entladung zuständig.",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"bat_winter_plan_enabled": {
+					"type": "checkbox",
+					"label": "Winter-Netzplanung aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"bat_winter_plan_horizon_days": {
+					"type": "number",
+					"label": "Horizont (Tage)",
+					"min": 1,
+					"max": 14,
+					"default": 7,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"bat_winter_plan_margin_kwh": {
+					"type": "number",
+					"label": "Planungs-Puffer (kWh)",
+					"min": 0,
+					"max": 50,
+					"default": 0.5,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"bat_winter_charge_efficiency_pct": {
+					"type": "number",
+					"label": "Lade-Wirkungsgrad (%)",
+					"min": 50,
+					"max": 100,
+					"default": 92,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"bat_winter_pv_recovery_ratio": {
+					"type": "number",
+					"label": "PV-Recovery (PV/Verbrauch)",
+					"min": 1,
+					"max": 3,
+					"default": 1.15,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"bat_winter_reserve_low_confidence_factor": {
+					"type": "number",
+					"label": "Reserve bei niedriger PV-Confidence",
+					"min": 0,
+					"max": 2,
+					"default": 0.25,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
 				"hBatSonnen": {
 					"type": "header",
 					"size": 2,

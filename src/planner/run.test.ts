@@ -53,13 +53,13 @@ function baseInputs(overrides: Partial<PlannerInputs> = {}): PlannerInputs {
 }
 
 describe("planner run", () => {
-	it("prioritizes heater then battery on surplus", () => {
+	it("prioritizes heater on surplus; battery stays passive (Mode 2)", () => {
 		resetPlannerRevisionForTest();
 		const intent = runPlanner(baseInputs());
 		assert.equal(intent.surplus_w, 4500);
 		assert.equal(intent.thermal.commanded_stage, 1);
-		assert.equal(intent.battery.action, "charge");
-		assert.ok(intent.battery.max_charge_w >= 2000);
+		assert.equal(intent.battery.action, "none");
+		assert.match(intent.battery.reason_de, /Mode 2 passiv/);
 	});
 
 	it("skips battery on evcc hold", () => {
@@ -75,7 +75,7 @@ describe("planner run", () => {
 		assert.equal(intent.thermal.commanded_stage, 1);
 	});
 
-	it("comfort uses battery on cloud deficit", () => {
+	it("comfort keeps battery passive on cloud deficit", () => {
 		resetPlannerRevisionForTest();
 		const intent = runPlanner(
 			baseInputs({
@@ -87,7 +87,7 @@ describe("planner run", () => {
 			}),
 		);
 		assert.equal(intent.deficit_w, 1700);
-		assert.equal(intent.battery.action, "self_consumption");
+		assert.equal(intent.battery.action, "none");
 	});
 
 	it("off mode blocks planner optimization", () => {

@@ -140,7 +140,7 @@ function thermalInput(overrides = {}) {
         });
         strict_1.default.equal(r.action, "hold");
     });
-    (0, node_test_1.it)("charges from remaining surplus", () => {
+    (0, node_test_1.it)("stays passive on surplus (Sonnen Mode 2)", () => {
         const constraints = (0, battery_js_1.buildPlannerConstraints)({
             evccBatteryMode: "normal",
             evccBatteryDischargeControl: false,
@@ -155,10 +155,10 @@ function thermalInput(overrides = {}) {
             consumerAllocatedW: 2000,
             modePolicy: BALANCED,
         });
-        strict_1.default.equal(r.action, "charge");
-        strict_1.default.equal(r.max_charge_w, 1000);
+        strict_1.default.equal(r.action, "none");
+        strict_1.default.match(r.reason_de, /Mode 2 passiv/);
     });
-    (0, node_test_1.it)("comfort supports deficit self consumption", () => {
+    (0, node_test_1.it)("stays passive on deficit (comfort)", () => {
         const constraints = (0, battery_js_1.buildPlannerConstraints)({
             evccBatteryMode: "normal",
             evccBatteryDischargeControl: false,
@@ -173,7 +173,8 @@ function thermalInput(overrides = {}) {
             consumerAllocatedW: 0,
             modePolicy: COMFORT,
         });
-        strict_1.default.equal(r.action, "self_consumption");
+        strict_1.default.equal(r.action, "none");
+        strict_1.default.match(r.reason_de, /Mode 2 passiv/);
     });
     (0, node_test_1.it)("forced respects user_intent hold for cheap price", () => {
         const constraints = (0, battery_js_1.buildPlannerConstraints)({

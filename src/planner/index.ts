@@ -6,7 +6,7 @@ export type { PlannerIntent } from "./types";
 export type { PlannerHost } from "./inputs";
 export { readPlannerThermalStage, readPlannerInputs } from "./inputs";
 export { runPlanner, runPlannerTick, resetPlannerRevisionForTest } from "./run";
-export { planThermal } from "./rules/thermal";
+export { planCooling, coolingReserveW } from "./rules/cooling";
 export { planBattery, buildPlannerConstraints } from "./rules/battery";
 export { plannerModePolicyFromGlobalMode } from "./mode_policy";
 export { deviceIntentFromPlannerDecision } from "./battery_bridge";

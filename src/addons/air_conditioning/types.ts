@@ -37,6 +37,8 @@ export type AcUnitConfig = {
 
 export type AcGlobalConfig = {
 	outdoorMaxPowerW: number;
+	/** Ab dieser Außentemp. (°C) Klima wahrscheinlich, wenn kein Raumsensor. */
+	plannerOutdoorLikelyTempC: number;
 	defaultProfileId: AcProfileId;
 	units: AcUnitConfig[];
 };

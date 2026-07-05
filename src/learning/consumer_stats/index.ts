@@ -117,5 +117,7 @@ export function resetConsumerStatsCache(): void {
 	persistDirty = false;
 }
 
+export { resolveConsumerEffectivePowerW, collectRecentDayMetrics } from "./learned_power";
+export type { LearnedConsumerPower } from "./learned_power";
 export { consumerStatsConfigFor } from "./config";
 export { consumerStatsBase, consumerStatsStateIds, ensureConsumerStatsStates } from "./ensure_states";

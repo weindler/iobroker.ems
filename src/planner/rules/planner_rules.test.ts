@@ -153,7 +153,7 @@ describe("planner battery", () => {
 			socPct: 80,
 			governanceEnabled: true,
 			constraints,
-			thermalAllocatedW: 2000,
+			consumerAllocatedW: 2000,
 			modePolicy: BALANCED,
 		});
 		assert.equal(r.action, "hold");
@@ -171,7 +171,7 @@ describe("planner battery", () => {
 			socPct: 80,
 			governanceEnabled: true,
 			constraints,
-			thermalAllocatedW: 2000,
+			consumerAllocatedW: 2000,
 			modePolicy: BALANCED,
 		});
 		assert.equal(r.action, "charge");
@@ -190,7 +190,7 @@ describe("planner battery", () => {
 			socPct: 55,
 			governanceEnabled: true,
 			constraints,
-			thermalAllocatedW: 0,
+			consumerAllocatedW: 0,
 			modePolicy: COMFORT,
 		});
 		assert.equal(r.action, "self_consumption");
@@ -208,7 +208,7 @@ describe("planner battery", () => {
 			socPct: 80,
 			governanceEnabled: true,
 			constraints,
-			thermalAllocatedW: 0,
+			consumerAllocatedW: 0,
 			modePolicy: plannerModePolicyFromGlobalMode("forced"),
 		});
 		assert.equal(r.action, "hold");

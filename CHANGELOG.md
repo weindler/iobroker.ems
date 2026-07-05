@@ -6,6 +6,15 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.119] – 2026-07-05
+
+### Added
+
+- **Planner Klima (Phase B-light):** `planCooling()` — erwartete kWh/Peak-W aus Admin-Config + Consumer-Stats-Learning (Median-W); Batterie reserviert Verbraucher-Last (`consumerAllocatedW`); States unter `planner.intent.cooling.*`.
+- **Consumer-Stats-Learning:** generische `resolveConsumerEffectivePowerW()` für alle EMS-Verbraucher (Config-Fallback, gelernt ab 3 Tagen).
+
+---
+
 ## [0.1.118] – 2026-07-05
 
 ### Changed

@@ -74,9 +74,9 @@ function planBattery(input) {
     if (input.surplusW === null) {
         return none("PV-Überschuss unbekannt.");
     }
-    const available = Math.max(0, Math.round(input.surplusW - input.thermalAllocatedW));
+    const available = Math.max(0, Math.round(input.surplusW - input.consumerAllocatedW));
     if (available < minSurplus) {
-        return none(`Rest-Überschuss ${available} W nach Heizstab unter Minimum ${minSurplus} W (${input.modePolicy.mode}).`);
+        return none(`Rest-Überschuss ${available} W nach Verbrauchern unter Minimum ${minSurplus} W (${input.modePolicy.mode}).`);
     }
     const target = input.modePolicy.chargeTargetSocPct;
     if (input.socPct !== null && input.socPct >= target) {

@@ -36,6 +36,15 @@ function baseInputs(overrides = {}) {
         pvBiasStatus: "ready",
         forecastModeEnabled: false,
         aiOptimizationAllowed: false,
+        acConfig: {
+            outdoorMaxPowerW: 1300,
+            plannerOutdoorLikelyTempC: 28,
+            defaultProfileId: "generic",
+            units: [],
+        },
+        coolingGovernanceEnabled: false,
+        outdoorTempC: null,
+        coolingUnits: [],
         ...overrides,
     };
 }

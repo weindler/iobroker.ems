@@ -1,12 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.readPlannerThermalTargetTemp = exports.readPlannerThermalStage = exports.readPlannerInputs = exports.PLANNER_BATTERY_MIN_SURPLUS_W = exports.PLANNER_BATTERY_TARGET_SOC_PCT = exports.PLANNER_SURPLUS_MIN_W = void 0;
+const config_1 = require("../addons/air_conditioning/config");
+const constants_1 = require("../addons/air_conditioning/constants");
+const ensure_states_1 = require("../addons/air_conditioning/runtime/ensure_states");
+const governance_1 = require("../addons/governance");
 const device_config_1 = require("../addons/immersion_heater/device_config");
 const intent_read_1 = require("../addons/immersion_heater/runtime/intent_read");
 const ensure_evcc_states_1 = require("../addons/wallbox/ensure_evcc_states");
-const governance_1 = require("../addons/governance");
-const ensure_states_1 = require("../addons/governance/ensure_states");
+const ensure_states_2 = require("../addons/governance/ensure_states");
 const intent_read_2 = require("../addons/battery/runtime/intent_read");
+const persist_1 = require("../learning/consumer_stats/persist");
+const consumer_stats_1 = require("../learning/consumer_stats");
+const config_2 = require("../learning/weather/config");
 const state_util_1 = require("../ems_light/state_util");
 const mode_policy_1 = require("./mode_policy");
 exports.PLANNER_SURPLUS_MIN_W = 400;
@@ -50,8 +56,49 @@ async function readBool(host, id) {
         return null;
     }
 }
+async function readConsumerStatsForPlanner(host) {
+    const dir = host.getAbsolutePath?.(consumer_stats_1.PERSIST_CATEGORY);
+    if (!dir) {
+        return null;
+    }
+    try {
+        return await (0, persist_1.readConsumerStatsPersist)(dir);
+    }
+    catch {
+        return null;
+    }
+}
+async function readOutdoorTempC(host) {
+    const weather = (0, config_2.weatherConfigFromAdapter)(host.config);
+    const tempMetric = weather.metrics.temp;
+    if (!tempMetric) {
+        return null;
+    }
+    const actual = await readNum(host, tempMetric.actualStateId);
+    if (actual !== null) {
+        return actual;
+    }
+    return readNum(host, tempMetric.forecastStateId);
+}
+async function readCoolingUnitInputs(host, acConfig, persist) {
+    const rows = [];
+    for (const unit of acConfig.units) {
+        if (!unit.enabled) {
+            continue;
+        }
+        const roomTempC = await readNum(host, `${(0, ensure_states_1.acUnitRuntimeBase)(unit.index)}.room_temp_c`);
+        const consumerKey = (0, constants_1.acUnitConsumerKey)(unit.index);
+        rows.push({
+            unit,
+            roomTempC,
+            consumerStats: persist?.consumers[consumerKey],
+        });
+    }
+    return rows;
+}
 async function readPlannerInputs(host) {
     const now = new Date();
+    const acConfig = (0, config_1.acGlobalConfigFromAdapter)(host.config);
     const pvFromPv = await readNum(host, "live.pv.power_w");
     const pvFromBattery = await readNum(host, "live.battery.pv_ac_power_w");
     const pvPowerW = pvFromPv ?? pvFromBattery;
@@ -67,9 +114,11 @@ async function readPlannerInputs(host) {
     const globalModeRaw = await readStr(host, "global_modes.active");
     const modePolicy = (0, mode_policy_1.plannerModePolicyFromGlobalMode)(globalModeRaw);
     const immersionConfig = (0, device_config_1.immersionDeviceConfigFromAdapter)(host.config);
-    const [thermalGov, batteryGov, houseLoadW, socPct, bufferTempC, evccMode, evccDischarge, pvTodayKwh, pvTomorrowKwh, pvBiasStatus, aiAllowed] = await Promise.all([
+    const consumerStatsPersist = await readConsumerStatsForPlanner(host);
+    const [thermalGov, batteryGov, coolingGov, houseLoadW, socPct, bufferTempC, evccMode, evccDischarge, pvTodayKwh, pvTomorrowKwh, pvBiasStatus, aiAllowed, outdoorTempC, coolingUnits] = await Promise.all([
         (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "immersion_heater"),
         (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "battery"),
+        (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "climate"),
         readNum(host, "live.battery.house_load_w"),
         readNum(host, "live.battery.soc_pct"),
         readNum(host, "live.thermal.buffer_temp_c"),
@@ -78,7 +127,9 @@ async function readPlannerInputs(host) {
         readNum(host, "learning.pv_bias.corrected_today_kwh"),
         readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
         readStr(host, "learning.pv_bias.status"),
-        readBool(host, (0, ensure_states_1.addonGovernanceAiAllowedState)("immersion_heater")),
+        readBool(host, (0, ensure_states_2.addonGovernanceAiAllowedState)("immersion_heater")),
+        readOutdoorTempC(host),
+        readCoolingUnitInputs(host, acConfig, consumerStatsPersist),
     ]);
     return {
         now,
@@ -101,6 +152,10 @@ async function readPlannerInputs(host) {
         pvBiasStatus,
         forecastModeEnabled: immersionConfig.forecastModeEnabled,
         aiOptimizationAllowed: aiAllowed === true,
+        acConfig,
+        coolingGovernanceEnabled: coolingGov,
+        outdoorTempC,
+        coolingUnits,
     };
 }
 exports.readPlannerInputs = readPlannerInputs;

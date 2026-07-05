@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.118",
+		"version": "0.1.119",
 		"news": {
+			"0.1.119": {
+				"en": "Planner cooling forecast: config/learned W, expected kWh today, battery reserves consumer load",
+				"de": "Planner Klima-Prognose: Config/gelernte W, erwartete kWh heute, Batterie reserviert Verbraucher-Last"
+			},
 			"0.1.118": {
 				"en": "AC cleaning ends primarily on SmartThings progress=100%; operatingState fallback only",
 				"de": "Klima-Reinigung endet primär bei SmartThings progress=100%; operatingState nur Fallback"

@@ -26,6 +26,14 @@ export interface PlannerBatteryDecision {
 	reason_de: string;
 }
 
+export interface PlannerCoolingDecision {
+	expected_kwh_today: number;
+	expected_peak_w: number;
+	likely_active: boolean;
+	reason_de: string;
+	forecast_active: boolean;
+}
+
 export interface PlannerConstraints {
 	evcc_battery_hold: boolean;
 	evcc_battery_discharge_control: boolean;
@@ -47,6 +55,7 @@ export interface PlannerIntent {
 	house_load_w: number | null;
 	constraints: PlannerConstraints;
 	thermal: PlannerThermalDecision;
+	cooling: PlannerCoolingDecision;
 	battery: PlannerBatteryDecision;
 }
 
@@ -75,6 +84,13 @@ export function emptyPlannerIntent(now: Date): PlannerIntent {
 			reason_de: "Kein Heizstab-Auftrag.",
 			target_temp_c: 60,
 			target_reason_de: "",
+			forecast_active: false,
+		},
+		cooling: {
+			expected_kwh_today: 0,
+			expected_peak_w: 0,
+			likely_active: false,
+			reason_de: "Kein Klima-Auftrag.",
 			forecast_active: false,
 		},
 		battery: { action: "none", max_charge_w: 0, target_soc_pct: null, reason_de: "Kein Batterie-Auftrag." },

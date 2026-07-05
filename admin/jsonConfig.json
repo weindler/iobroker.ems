@@ -2130,6 +2130,17 @@
 					"lg": 4,
 					"xl": 4
 				},
+				"ac_planner_outdoor_likely_temp_c": {
+					"type": "number",
+					"label": "Planner: Außentemp. Kühlwahrscheinlichkeit (°C)",
+					"default": 28,
+					"help": "Ab dieser Außentemperatur plant der EMS Klima-Last ein, wenn kein Raumsensor über Ein-Schwelle liegt.",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
 				"ac_default_profile": {
 					"type": "select",
 					"label": "Standard-Profil",

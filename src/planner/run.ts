@@ -4,6 +4,7 @@ import { readPlannerInputs } from "./inputs";
 import { buildPlannerConstraints, computeDeficitW, planBattery } from "./rules/battery";
 import { computePvSurplusW } from "./rules/surplus";
 import { planThermal } from "./rules/thermal";
+import { coolingReserveW, planCooling } from "./rules/cooling";
 import type { PlannerIntent } from "./types";
 import { PLANNER_ENGINE_VERSION } from "./types";
 
@@ -37,13 +38,30 @@ export function runPlanner(inputs: PlannerInputs): PlannerIntent {
 	});
 
 	const thermalAllocatedW = thermal.commanded_stage > 0 ? thermal.commanded_power_w : 0;
+
+	const coolingFull = planCooling({
+		now: inputs.now,
+		acConfig: inputs.acConfig,
+		governanceEnabled: inputs.coolingGovernanceEnabled,
+		outdoorTempC: inputs.outdoorTempC,
+		units: inputs.coolingUnits,
+	});
+	const cooling: PlannerIntent["cooling"] = {
+		expected_kwh_today: coolingFull.expected_kwh_today,
+		expected_peak_w: coolingFull.expected_peak_w,
+		likely_active: coolingFull.likely_active,
+		reason_de: coolingFull.reason_de,
+		forecast_active: coolingFull.forecast_active,
+	};
+	const consumerAllocatedW = thermalAllocatedW + coolingReserveW(cooling);
+
 	const battery = planBattery({
 		surplusW,
 		deficitW,
 		socPct: inputs.socPct,
 		governanceEnabled: inputs.batteryGovernanceEnabled,
 		constraints,
-		thermalAllocatedW,
+		consumerAllocatedW,
 		modePolicy: inputs.modePolicy,
 	});
 
@@ -62,6 +80,9 @@ export function runPlanner(inputs: PlannerInputs): PlannerIntent {
 		reasonParts.push(`Heizstab Stufe ${thermal.commanded_stage}`);
 	} else if (thermal.forecast_active && inputs.bufferTempC !== null && inputs.bufferTempC >= thermal.target_temp_c) {
 		reasonParts.push(`Heizstab Tagesziel ${thermal.target_temp_c} °C erreicht`);
+	}
+	if (cooling.likely_active) {
+		reasonParts.push(`Klima ~${cooling.expected_kwh_today} kWh (Peak ${cooling.expected_peak_w} W)`);
 	}
 	if (battery.action === "charge") {
 		reasonParts.push(`Batterie +${battery.max_charge_w} W`);
@@ -89,6 +110,7 @@ export function runPlanner(inputs: PlannerInputs): PlannerIntent {
 		house_load_w: inputs.houseLoadW,
 		constraints,
 		thermal,
+		cooling,
 		battery,
 	};
 }
@@ -113,6 +135,9 @@ function formatBriefing(intent: PlannerIntent): string {
 	} else if (intent.battery.action === "hold" || intent.constraints.battery_hold_active) {
 		lines.push(intent.battery.reason_de);
 	}
+	if (intent.cooling.likely_active) {
+		lines.push(`Klima: ${intent.cooling.reason_de}`);
+	}
 	return lines.join(" ").slice(0, 480);
 }
 
@@ -134,6 +159,11 @@ export async function runPlannerTick(host: PlannerHost): Promise<PlannerIntent> 
 		await setStateIfChanged(host, "planner.intent.thermal.target_temp_c", intent.thermal.target_temp_c);
 		await setStateIfChanged(host, "planner.intent.thermal.target_reason_de", intent.thermal.target_reason_de);
 		await setStateIfChanged(host, "planner.intent.thermal.forecast_active", intent.thermal.forecast_active);
+		await setStateIfChanged(host, "planner.intent.cooling.expected_kwh_today", intent.cooling.expected_kwh_today);
+		await setStateIfChanged(host, "planner.intent.cooling.expected_peak_w", intent.cooling.expected_peak_w);
+		await setStateIfChanged(host, "planner.intent.cooling.likely_active", intent.cooling.likely_active);
+		await setStateIfChanged(host, "planner.intent.cooling.reason_de", intent.cooling.reason_de);
+		await setStateIfChanged(host, "planner.intent.cooling.forecast_active", intent.cooling.forecast_active);
 		await setStateIfChanged(host, "planner.intent.battery.action", intent.battery.action);
 		await setStateIfChanged(host, "planner.intent.battery.max_charge_w", intent.battery.max_charge_w);
 		await setStateIfChanged(host, "planner.intent.battery.reason_de", intent.battery.reason_de);

@@ -31,6 +31,13 @@ function emptyPlannerIntent(now) {
             target_reason_de: "",
             forecast_active: false,
         },
+        cooling: {
+            expected_kwh_today: 0,
+            expected_peak_w: 0,
+            likely_active: false,
+            reason_de: "Kein Klima-Auftrag.",
+            forecast_active: false,
+        },
         battery: { action: "none", max_charge_w: 0, target_soc_pct: null, reason_de: "Kein Batterie-Auftrag." },
     };
 }

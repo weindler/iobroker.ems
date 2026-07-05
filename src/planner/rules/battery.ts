@@ -8,7 +8,8 @@ export interface BatteryPlanInput {
 	socPct: number | null;
 	governanceEnabled: boolean;
 	constraints: PlannerConstraints;
-	thermalAllocatedW: number;
+	/** Reservierte Leistung für Verbraucher (Heizstab + Klima + spätere Add-ons). */
+	consumerAllocatedW: number;
 	modePolicy: PlannerModePolicy;
 }
 
@@ -96,10 +97,10 @@ export function planBattery(input: BatteryPlanInput): PlannerBatteryDecision {
 		return none("PV-Überschuss unbekannt.");
 	}
 
-	const available = Math.max(0, Math.round(input.surplusW - input.thermalAllocatedW));
+	const available = Math.max(0, Math.round(input.surplusW - input.consumerAllocatedW));
 	if (available < minSurplus) {
 		return none(
-			`Rest-Überschuss ${available} W nach Heizstab unter Minimum ${minSurplus} W (${input.modePolicy.mode}).`,
+			`Rest-Überschuss ${available} W nach Verbrauchern unter Minimum ${minSurplus} W (${input.modePolicy.mode}).`,
 		);
 	}
 

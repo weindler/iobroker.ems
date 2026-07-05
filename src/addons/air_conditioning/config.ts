@@ -92,6 +92,7 @@ export function acGlobalConfigFromAdapter(config: unknown): AcGlobalConfig {
 	}
 	return {
 		outdoorMaxPowerW: Math.max(0, numField(c, "ac_outdoor_max_power_w", 1300)),
+		plannerOutdoorLikelyTempC: numField(c, "ac_planner_outdoor_likely_temp_c", 28),
 		defaultProfileId: parseProfile(c.ac_default_profile, "generic"),
 		units,
 	};

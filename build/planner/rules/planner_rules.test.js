@@ -135,7 +135,7 @@ function thermalInput(overrides = {}) {
             socPct: 80,
             governanceEnabled: true,
             constraints,
-            thermalAllocatedW: 2000,
+            consumerAllocatedW: 2000,
             modePolicy: BALANCED,
         });
         strict_1.default.equal(r.action, "hold");
@@ -152,7 +152,7 @@ function thermalInput(overrides = {}) {
             socPct: 80,
             governanceEnabled: true,
             constraints,
-            thermalAllocatedW: 2000,
+            consumerAllocatedW: 2000,
             modePolicy: BALANCED,
         });
         strict_1.default.equal(r.action, "charge");
@@ -170,7 +170,7 @@ function thermalInput(overrides = {}) {
             socPct: 55,
             governanceEnabled: true,
             constraints,
-            thermalAllocatedW: 0,
+            consumerAllocatedW: 0,
             modePolicy: COMFORT,
         });
         strict_1.default.equal(r.action, "self_consumption");
@@ -187,7 +187,7 @@ function thermalInput(overrides = {}) {
             socPct: 80,
             governanceEnabled: true,
             constraints,
-            thermalAllocatedW: 0,
+            consumerAllocatedW: 0,
             modePolicy: (0, mode_policy_js_1.plannerModePolicyFromGlobalMode)("forced"),
         });
         strict_1.default.equal(r.action, "hold");

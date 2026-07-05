@@ -29,6 +29,7 @@ export async function ensurePlannerStates(host: StateHost): Promise<void> {
 	await ensureChannel(host, "planner", "EMS Planner");
 	await ensureChannel(host, "planner.intent", "Planner Intents");
 	await ensureChannel(host, "planner.intent.thermal", "Planner Heizstab");
+	await ensureChannel(host, "planner.intent.cooling", "Planner Klima");
 	await ensureChannel(host, "planner.intent.battery", "Planner Batterie");
 	await ensureChannel(host, "planner.constraints", "Planner Constraints");
 
@@ -46,6 +47,11 @@ export async function ensurePlannerStates(host: StateHost): Promise<void> {
 		numState("planner.intent.thermal.target_temp_c", "Planner Heizstab Tagesziel °C"),
 		strState("planner.intent.thermal.target_reason_de", "Planner Heizstab Ziel-Begründung", ""),
 		boolState("planner.intent.thermal.forecast_active", "Planner Heizstab Forecast aktiv", false),
+		numState("planner.intent.cooling.expected_kwh_today", "Planner Klima erwartet kWh heute", 0),
+		numState("planner.intent.cooling.expected_peak_w", "Planner Klima erwartete Peak-Leistung W", 0),
+		boolState("planner.intent.cooling.likely_active", "Planner Klima voraussichtlich aktiv", false),
+		strState("planner.intent.cooling.reason_de", "Planner Klima Begründung", ""),
+		boolState("planner.intent.cooling.forecast_active", "Planner Klima Forecast aktiv", false),
 		strState("planner.intent.battery.action", "Planner Batterie Aktion", "none"),
 		numState("planner.intent.battery.max_charge_w", "Planner Batterie max. Ladeleistung W", 0),
 		strState("planner.intent.battery.reason_de", "Planner Batterie Begründung", ""),

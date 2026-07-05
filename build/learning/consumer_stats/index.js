@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureConsumerStatsStates = exports.consumerStatsStateIds = exports.consumerStatsBase = exports.consumerStatsConfigFor = exports.resetConsumerStatsCache = exports.flushConsumerStatsPersist = exports.tickConsumerStats = exports.initConsumerStatsForAddon = exports.initConsumerStatsForKey = exports.PERSIST_CATEGORY = void 0;
+exports.ensureConsumerStatsStates = exports.consumerStatsStateIds = exports.consumerStatsBase = exports.consumerStatsConfigFor = exports.collectRecentDayMetrics = exports.resolveConsumerEffectivePowerW = exports.resetConsumerStatsCache = exports.flushConsumerStatsPersist = exports.tickConsumerStats = exports.initConsumerStatsForAddon = exports.initConsumerStatsForKey = exports.PERSIST_CATEGORY = void 0;
 const buffer_1 = require("./buffer");
 const config_1 = require("./config");
 const ensure_states_1 = require("./ensure_states");
@@ -87,6 +87,9 @@ function resetConsumerStatsCache() {
     persistDirty = false;
 }
 exports.resetConsumerStatsCache = resetConsumerStatsCache;
+var learned_power_1 = require("./learned_power");
+Object.defineProperty(exports, "resolveConsumerEffectivePowerW", { enumerable: true, get: function () { return learned_power_1.resolveConsumerEffectivePowerW; } });
+Object.defineProperty(exports, "collectRecentDayMetrics", { enumerable: true, get: function () { return learned_power_1.collectRecentDayMetrics; } });
 var config_2 = require("./config");
 Object.defineProperty(exports, "consumerStatsConfigFor", { enumerable: true, get: function () { return config_2.consumerStatsConfigFor; } });
 var ensure_states_2 = require("./ensure_states");

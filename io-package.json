@@ -1,8 +1,16 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.113",
+		"version": "0.1.115",
 		"news": {
+			"0.1.115": {
+				"en": "Fix consumer stats stuck at 0: AC/immersion runtime hosts now provide getAbsolutePath for persistence",
+				"de": "Consumer-Statistik-Fix: Klima/Heizstab-Runtime mit getAbsolutePath — session_runtime_sec zählt wieder"
+			},
+			"0.1.114": {
+				"en": "AC stats: count session in dryrun and while feedback is off after EMS start",
+				"de": "Klima-Statistik: Session zählt auch im Dryrun und ohne feedback_switch nach EMS-Start"
+			},
 			"0.1.113": {
 				"en": "AC stats: count live session while feedback catches up; fix estimated power W=0 blocking kWh",
 				"de": "Klima-Statistik: live zählen auch bei Feedback-Verzögerung; Nennleistung 0 blockiert kWh nicht mehr"

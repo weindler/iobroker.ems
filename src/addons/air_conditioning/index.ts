@@ -1,4 +1,5 @@
 import { touchEmsActivity } from "../../ems_activity";
+import { withLearningDataPath } from "../../learning/data_dir";
 import { ensureAddonMappingStates, syncNativeMappingToStates } from "../../mapping_sync";
 import { AC_ADDON_ID } from "./constants";
 import { acMappingCommands, acMappingFromConfig } from "./mapping_config";
@@ -12,11 +13,9 @@ import {
 } from "./runtime/engine";
 
 function runtimeHost(adapter: ioBroker.Adapter): AcRuntimeHost {
-	const ext = adapter as ioBroker.Adapter & { getAbsolutePath?: (category?: string) => string };
-	return {
+	const base: AcRuntimeHost = {
 		config: adapter.config,
 		namespace: adapter.namespace,
-		getAbsolutePath: ext.getAbsolutePath?.bind(adapter),
 		log: adapter.log,
 		setObjectNotExistsAsync: (id, obj) => adapter.setObjectNotExistsAsync(id, obj),
 		getStateAsync: (id) => adapter.getStateAsync(id),
@@ -27,6 +26,7 @@ function runtimeHost(adapter: ioBroker.Adapter): AcRuntimeHost {
 		subscribeForeignStatesAsync: (p) => adapter.subscribeForeignStatesAsync(p),
 		unsubscribeForeignStatesAsync: (p) => adapter.unsubscribeForeignStatesAsync(p),
 	};
+	return withLearningDataPath(adapter, base);
 }
 
 export async function initAirConditioningModule(adapter: ioBroker.Adapter): Promise<null> {

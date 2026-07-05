@@ -25,6 +25,7 @@ import {
 	resolveAcMappingTarget,
 	type AcMappingTable,
 } from "./sequences";
+import { acStatsDeviceActive } from "./stats_active";
 import { switchIsOff, switchIsOn } from "./time";
 
 export type AcRuntimeHost = DeviceWriteHost & {
@@ -91,15 +92,6 @@ function allocatedPowerW(runningCount: number, outdoorMax: number, unitEstimated
 
 function stopRetryReady(up: AcUnitPersist, nowMs: number): boolean {
 	return !up.lastStopAtMs || nowMs - up.lastStopAtMs >= AC_STOP_RETRY_MS;
-}
-
-/** Statistik: auch live zählen wenn Start gesendet, Feedback noch nachzieht (bis Stopp bestätigt). */
-function acStatsDeviceActive(up: AcUnitPersist, live: boolean, fbOn: boolean, upRunning: boolean): boolean {
-	if (fbOn) return true;
-	if (!live && upRunning) return true;
-	if (!live || !up.lastStartAtMs) return false;
-	const stoppedAfterStart = up.lastStopAtMs != null && up.lastStopAtMs >= up.lastStartAtMs;
-	return !stoppedAfterStart;
 }
 
 function scheduleCleaningAfterStop(
@@ -303,15 +295,15 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 			}
 		}
 
-		if (live && switchIsOn(fb.value)) {
+		if (switchIsOn(fb.value)) {
 			up.running = true;
-		} else if (switchIsOff(fb.value)) {
+		} else if (live && switchIsOff(fb.value)) {
 			up.running = false;
 		}
 
 		const ids = acUnitRuntimeStates(unit.index);
 		const fbOn = switchIsOn(fb.value);
-		const deviceActive = acStatsDeviceActive(up, live, fbOn, up.running);
+		const deviceActive = acStatsDeviceActive(up, fbOn, up.running);
 		const estPower = deviceActive
 			? allocatedPowerW(runningCount || 1, config.outdoorMaxPowerW, unit.estimatedPowerW)
 			: 0;

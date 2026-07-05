@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleImmersionHeaterStateChange = exports.stopImmersionHeaterModule = exports.initImmersionHeaterModule = exports.IMMERSION_ADDON_ID = void 0;
 const ems_activity_1 = require("../../ems_activity");
 const ems_mirror_alive_1 = require("../../ems_mirror_alive");
+const data_dir_1 = require("../../learning/data_dir");
 const mapping_sync_1 = require("../../mapping_sync");
 const mapping_config_1 = require("./mapping_config");
 const status_1 = require("./status");
@@ -11,11 +12,9 @@ const device_config_1 = require("./device_config");
 const types_1 = require("./runtime/types");
 exports.IMMERSION_ADDON_ID = "immersion_heater";
 function runtimeHost(adapter) {
-    const ext = adapter;
-    return {
+    const base = {
         config: adapter.config,
         namespace: adapter.namespace,
-        getAbsolutePath: ext.getAbsolutePath?.bind(adapter),
         log: adapter.log,
         setObjectNotExistsAsync: (id, obj) => adapter.setObjectNotExistsAsync(id, obj),
         getStateAsync: (id) => adapter.getStateAsync(id),
@@ -27,6 +26,7 @@ function runtimeHost(adapter) {
         unsubscribeStatesAsync: (p) => adapter.unsubscribeStatesAsync(p),
         unsubscribeForeignStatesAsync: (p) => adapter.unsubscribeForeignStatesAsync(p),
     };
+    return (0, data_dir_1.withLearningDataPath)(adapter, base);
 }
 async function initImmersionHeaterModule(adapter) {
     await (0, ems_mirror_alive_1.ensureEmsMirrorAliveState)(adapter);

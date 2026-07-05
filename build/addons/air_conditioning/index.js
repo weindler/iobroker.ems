@@ -2,17 +2,16 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleAirConditioningStateChange = exports.stopAirConditioningModule = exports.initAirConditioningModule = void 0;
 const ems_activity_1 = require("../../ems_activity");
+const data_dir_1 = require("../../learning/data_dir");
 const mapping_sync_1 = require("../../mapping_sync");
 const constants_1 = require("./constants");
 const mapping_config_1 = require("./mapping_config");
 const tree_paths_1 = require("../../tree_paths");
 const engine_1 = require("./runtime/engine");
 function runtimeHost(adapter) {
-    const ext = adapter;
-    return {
+    const base = {
         config: adapter.config,
         namespace: adapter.namespace,
-        getAbsolutePath: ext.getAbsolutePath?.bind(adapter),
         log: adapter.log,
         setObjectNotExistsAsync: (id, obj) => adapter.setObjectNotExistsAsync(id, obj),
         getStateAsync: (id) => adapter.getStateAsync(id),
@@ -23,6 +22,7 @@ function runtimeHost(adapter) {
         subscribeForeignStatesAsync: (p) => adapter.subscribeForeignStatesAsync(p),
         unsubscribeForeignStatesAsync: (p) => adapter.unsubscribeForeignStatesAsync(p),
     };
+    return (0, data_dir_1.withLearningDataPath)(adapter, base);
 }
 async function initAirConditioningModule(adapter) {
     await (0, mapping_sync_1.ensureAddonMappingStates)(adapter, constants_1.AC_ADDON_ID, (0, mapping_config_1.acMappingCommands)());

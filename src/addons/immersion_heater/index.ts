@@ -1,5 +1,6 @@
 import { touchEmsActivity, isEmsActivityStateId } from "../../ems_activity";
 import { ensureEmsMirrorAliveState } from "../../ems_mirror_alive";
+import { withLearningDataPath } from "../../learning/data_dir";
 import { ensureAddonMappingStates, syncNativeMappingToStates } from "../../mapping_sync";
 import { IMMERSION_HEATER_MAPPING_COMMANDS, immersionHeaterMappingFromConfig } from "./mapping_config";
 import { ensureImmersionStatusStates } from "./status";
@@ -17,11 +18,9 @@ import { IMMERSION_RUNTIME_STATES } from "./runtime/types";
 export const IMMERSION_ADDON_ID = "immersion_heater";
 
 function runtimeHost(adapter: ioBroker.Adapter): ImmersionRuntimeHost {
-	const ext = adapter as ioBroker.Adapter & { getAbsolutePath?: (category?: string) => string };
-	return {
+	const base: ImmersionRuntimeHost = {
 		config: adapter.config,
 		namespace: adapter.namespace,
-		getAbsolutePath: ext.getAbsolutePath?.bind(adapter),
 		log: adapter.log,
 		setObjectNotExistsAsync: (id, obj) => adapter.setObjectNotExistsAsync(id, obj),
 		getStateAsync: (id) => adapter.getStateAsync(id),
@@ -33,6 +32,7 @@ function runtimeHost(adapter: ioBroker.Adapter): ImmersionRuntimeHost {
 		unsubscribeStatesAsync: (p) => adapter.unsubscribeStatesAsync(p),
 		unsubscribeForeignStatesAsync: (p) => adapter.unsubscribeForeignStatesAsync(p),
 	};
+	return withLearningDataPath(adapter, base);
 }
 
 export async function initImmersionHeaterModule(adapter: ioBroker.Adapter): Promise<null> {

@@ -15,6 +15,7 @@ const fsm_1 = require("./fsm");
 const persist_1 = require("./persist");
 const persist_io_1 = require("./persist_io");
 const sequences_1 = require("./sequences");
+const stats_active_1 = require("./stats_active");
 const time_1 = require("./time");
 let engineActive = false;
 let hostRef = null;
@@ -66,17 +67,6 @@ function allocatedPowerW(runningCount, outdoorMax, unitEstimated) {
 }
 function stopRetryReady(up, nowMs) {
     return !up.lastStopAtMs || nowMs - up.lastStopAtMs >= constants_1.AC_STOP_RETRY_MS;
-}
-/** Statistik: auch live zählen wenn Start gesendet, Feedback noch nachzieht (bis Stopp bestätigt). */
-function acStatsDeviceActive(up, live, fbOn, upRunning) {
-    if (fbOn)
-        return true;
-    if (!live && upRunning)
-        return true;
-    if (!live || !up.lastStartAtMs)
-        return false;
-    const stoppedAfterStart = up.lastStopAtMs != null && up.lastStopAtMs >= up.lastStartAtMs;
-    return !stoppedAfterStart;
 }
 function scheduleCleaningAfterStop(host, unit, up, nowMs) {
     if (!unit.cleaningAfterRun || up.cleaningActive) {
@@ -242,15 +232,15 @@ async function runAcRuntimeTickBody(host) {
                 await startUnit(host, unit, mappingTable, live, up, fsm.modePurpose);
             }
         }
-        if (live && (0, time_1.switchIsOn)(fb.value)) {
+        if ((0, time_1.switchIsOn)(fb.value)) {
             up.running = true;
         }
-        else if ((0, time_1.switchIsOff)(fb.value)) {
+        else if (live && (0, time_1.switchIsOff)(fb.value)) {
             up.running = false;
         }
         const ids = (0, ensure_states_1.acUnitRuntimeStates)(unit.index);
         const fbOn = (0, time_1.switchIsOn)(fb.value);
-        const deviceActive = acStatsDeviceActive(up, live, fbOn, up.running);
+        const deviceActive = (0, stats_active_1.acStatsDeviceActive)(up, fbOn, up.running);
         const estPower = deviceActive
             ? allocatedPowerW(runningCount || 1, config.outdoorMaxPowerW, unit.estimatedPowerW)
             : 0;

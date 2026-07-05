@@ -4,6 +4,7 @@ import { ensureConsumerStatsStates } from "./ensure_states";
 import { publishConsumerStats } from "./publish";
 import {
 	ensureConsumerEntry,
+	emptyConsumerStatsPersist,
 	pruneConsumerDays,
 	readConsumerStatsPersist,
 	upsertConsumerEntry,
@@ -35,7 +36,10 @@ function baseDir(host: ConsumerStatsHost): string | undefined {
 async function loadPersist(host: ConsumerStatsHost): Promise<ConsumerStatsPersist> {
 	const dir = baseDir(host);
 	if (!dir) {
-		return { version: 1, generated_at: new Date().toISOString(), consumers: {} };
+		if (!persistCache) {
+			persistCache = emptyConsumerStatsPersist();
+		}
+		return persistCache;
 	}
 	if (!persistCache) {
 		persistCache = await readConsumerStatsPersist(dir);

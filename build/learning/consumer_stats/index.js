@@ -15,7 +15,10 @@ function baseDir(host) {
 async function loadPersist(host) {
     const dir = baseDir(host);
     if (!dir) {
-        return { version: 1, generated_at: new Date().toISOString(), consumers: {} };
+        if (!persistCache) {
+            persistCache = (0, persist_1.emptyConsumerStatsPersist)();
+        }
+        return persistCache;
     }
     if (!persistCache) {
         persistCache = await (0, persist_1.readConsumerStatsPersist)(dir);

@@ -6,6 +6,22 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.115] – 2026-07-05
+
+### Fixed
+
+- **Consumer-Statistik (Klima/Heizstab):** `session_runtime_sec` blieb bei 0, obwohl `device_active`/`tracking` stimmten — Runtime-Host hatte kein `getAbsolutePath`, Persistenz wurde jeden Tick neu angelegt (`wasActive` nie fortgeschrieben).
+
+---
+
+## [0.1.114] – 2026-07-05
+
+### Fixed
+
+- **Klima-Statistik:** `session_runtime_sec` zählt auch im Dryrun und wenn `feedback_switch` noch aus ist — solange EMS die Session nach Start-Sequenz offen hat (nicht erst bei Feedback `on`).
+
+---
+
 ## [0.1.113] – 2026-07-04
 
 ### Fixed

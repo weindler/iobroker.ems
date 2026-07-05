@@ -7,7 +7,8 @@ import {
 	resolveActivePowerW,
 	snapshotFromEntry,
 } from "./buffer";
-import { immersionConsumerStatsFromConfig } from "./config";
+import { immersionConsumerStatsFromConfig, acUnitStatsFromConfig } from "./config";
+import { resetConsumerStatsCache, tickConsumerStats } from "./index";
 import { localDateKey } from "../energy_daily_rollup/day";
 
 function tick(
@@ -99,6 +100,66 @@ describe("consumer stats", () => {
 			powerOnThresholdW: 50,
 		});
 		assert.equal(power, 1744);
+	});
+
+	it("accumulates AC session runtime while countable stays true without feedback", () => {
+		const base = Date.parse("2026-07-05T07:00:00");
+		const config = acUnitStatsFromConfig({ ac_u2_enabled: true, ac_u2_stats_enabled: true }, 2);
+		let entry = emptyConsumerEntry("air_conditioning.unit_2", base);
+		entry = ingestConsumerStatsTick(
+			entry,
+			{
+				consumerKey: "air_conditioning.unit_2",
+				nowMs: base,
+				deviceActive: true,
+				countable: true,
+				measuredPowerW: null,
+				commandedPowerW: 650,
+			},
+			config,
+		);
+		entry = ingestConsumerStatsTick(
+			entry,
+			{
+				consumerKey: "air_conditioning.unit_2",
+				nowMs: base + 10_000,
+				deviceActive: true,
+				countable: true,
+				measuredPowerW: null,
+				commandedPowerW: 650,
+			},
+			config,
+		);
+		assert.equal(entry.sessionRuntimeSec, 10);
+		assert.equal(entry.todayRuntimeSec, 10);
+	});
+
+	it("accumulates session runtime across consumer stats ticks without disk path", async () => {
+		resetConsumerStatsCache();
+		const host = {
+			config: { ac_u2_enabled: true, ac_u2_stats_enabled: true },
+			getStateAsync: async () => null,
+			setStateAsync: async () => undefined,
+			setObjectNotExistsAsync: async () => undefined,
+		};
+		const base = Date.parse("2026-07-05T07:00:00");
+		await tickConsumerStats(host, {
+			consumerKey: "air_conditioning.unit_2",
+			nowMs: base,
+			deviceActive: true,
+			countable: true,
+			measuredPowerW: null,
+			commandedPowerW: 650,
+		});
+		const snap = await tickConsumerStats(host, {
+			consumerKey: "air_conditioning.unit_2",
+			nowMs: base + 10_000,
+			deviceActive: true,
+			countable: true,
+			measuredPowerW: null,
+			commandedPowerW: 650,
+		});
+		assert.equal(snap?.sessionRuntimeSec, 10);
 	});
 
 	it("caps tick delta to avoid restart spikes", () => {

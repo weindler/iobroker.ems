@@ -7,6 +7,7 @@ const strict_1 = __importDefault(require("node:assert/strict"));
 const node_test_1 = require("node:test");
 const buffer_1 = require("./buffer");
 const config_1 = require("./config");
+const index_1 = require("./index");
 const day_1 = require("../energy_daily_rollup/day");
 function tick(entry, nowMs, opts, config = (0, config_1.immersionConsumerStatsFromConfig)({})) {
     return (0, buffer_1.ingestConsumerStatsTick)(entry, {
@@ -82,6 +83,56 @@ function tick(entry, nowMs, opts, config = (0, config_1.immersionConsumerStatsFr
             powerOnThresholdW: 50,
         });
         strict_1.default.equal(power, 1744);
+    });
+    (0, node_test_1.it)("accumulates AC session runtime while countable stays true without feedback", () => {
+        const base = Date.parse("2026-07-05T07:00:00");
+        const config = (0, config_1.acUnitStatsFromConfig)({ ac_u2_enabled: true, ac_u2_stats_enabled: true }, 2);
+        let entry = (0, buffer_1.emptyConsumerEntry)("air_conditioning.unit_2", base);
+        entry = (0, buffer_1.ingestConsumerStatsTick)(entry, {
+            consumerKey: "air_conditioning.unit_2",
+            nowMs: base,
+            deviceActive: true,
+            countable: true,
+            measuredPowerW: null,
+            commandedPowerW: 650,
+        }, config);
+        entry = (0, buffer_1.ingestConsumerStatsTick)(entry, {
+            consumerKey: "air_conditioning.unit_2",
+            nowMs: base + 10_000,
+            deviceActive: true,
+            countable: true,
+            measuredPowerW: null,
+            commandedPowerW: 650,
+        }, config);
+        strict_1.default.equal(entry.sessionRuntimeSec, 10);
+        strict_1.default.equal(entry.todayRuntimeSec, 10);
+    });
+    (0, node_test_1.it)("accumulates session runtime across consumer stats ticks without disk path", async () => {
+        (0, index_1.resetConsumerStatsCache)();
+        const host = {
+            config: { ac_u2_enabled: true, ac_u2_stats_enabled: true },
+            getStateAsync: async () => null,
+            setStateAsync: async () => undefined,
+            setObjectNotExistsAsync: async () => undefined,
+        };
+        const base = Date.parse("2026-07-05T07:00:00");
+        await (0, index_1.tickConsumerStats)(host, {
+            consumerKey: "air_conditioning.unit_2",
+            nowMs: base,
+            deviceActive: true,
+            countable: true,
+            measuredPowerW: null,
+            commandedPowerW: 650,
+        });
+        const snap = await (0, index_1.tickConsumerStats)(host, {
+            consumerKey: "air_conditioning.unit_2",
+            nowMs: base + 10_000,
+            deviceActive: true,
+            countable: true,
+            measuredPowerW: null,
+            commandedPowerW: 650,
+        });
+        strict_1.default.equal(snap?.sessionRuntimeSec, 10);
     });
     (0, node_test_1.it)("caps tick delta to avoid restart spikes", () => {
         strict_1.default.equal((0, buffer_1.computeTickDeltaSec)(100_000, 0), 0);

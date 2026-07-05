@@ -26,7 +26,7 @@ import {
 	type AcMappingTable,
 } from "./sequences";
 import { acStatsDeviceActive } from "./stats_active";
-import { isCleaningFinishedByFeedback, isCleaningOperatingActive } from "./cleaning";
+import { isCleaningFinishedByFeedback, shouldMarkCleaningOperatingActive } from "./cleaning";
 import { switchIsOff, switchIsOn } from "./time";
 
 export type AcRuntimeHost = DeviceWriteHost & {
@@ -248,7 +248,8 @@ async function tickCleaning(
 	}
 
 	if (hasCleaningFeedback) {
-		if (isCleaningOperatingActive(cleaningStateRaw)) {
+		const elapsedSec = Math.round((nowMs - up.cleaningStartedAtMs) / 1000);
+		if (shouldMarkCleaningOperatingActive(cleaningStateRaw, elapsedSec)) {
 			up.cleaningSawOperatingActive = true;
 		}
 		if (
@@ -256,16 +257,18 @@ async function tickCleaning(
 				operatingStateRaw: cleaningStateRaw,
 				modeRaw: cleaningModeRaw,
 				sawOperatingActive: up.cleaningSawOperatingActive,
+				elapsedSec,
 			})
 		) {
-			const elapsedSec = Math.round((nowMs - up.cleaningStartedAtMs) / 1000);
+			const op = String(cleaningStateRaw ?? "");
+			const mode = String(cleaningModeRaw ?? "");
 			await finishCleaning(
 				host,
 				unit,
 				table,
 				live,
 				up,
-				`feedback ready (${elapsedSec}s)`,
+				`feedback (operatingState=${op || "?"}, mode=${mode || "?"}, ${elapsedSec}s)`,
 				true,
 			);
 			return;

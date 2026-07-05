@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.116",
+		"version": "0.1.117",
 		"news": {
+			"0.1.117": {
+				"en": "Fix AC cleaning ending after seconds: ready is also idle; require 5 min + confirmed autoClean",
+				"de": "Klima-Reinigung: vorzeitiges Ende behoben (ready=Idle); min. 5 min + bestätigtes autoClean"
+			},
 			"0.1.116": {
 				"en": "AC cleaning ends on SmartThings operatingState ready; remove odor mapping; progress mirror",
 				"de": "Klima-Reinigung endet bei SmartThings operatingState=ready; Odor-Mapping entfernt; Fortschritt gespiegelt"

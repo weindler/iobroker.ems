@@ -12,6 +12,10 @@ export const AC_FEEDBACK_POLL_MS = 3_000;
 export const AC_FEEDBACK_POLL_ATTEMPTS = 6;
 /** Während Reinigung SmartThings-Status per refresh aktualisieren. */
 export const AC_CLEANING_REFRESH_MS = 30_000;
+/** Frühestens danach autoClean als „Reinigung läuft“ werten (Flackern nach Start ignorieren). */
+export const AC_CLEANING_ACTIVE_CONFIRM_SEC = 60;
+/** Frühestens danach operatingState=ready als Ende werten (ready ist auch Idle vor Start). */
+export const AC_CLEANING_FEEDBACK_MIN_RUNTIME_SEC = 300;
 
 export const AC_PROFILE_IDS = ["generic", "samsung_smartthings"] as const;
 export type AcProfileId = (typeof AC_PROFILE_IDS)[number];

@@ -176,16 +176,19 @@ async function tickCleaning(host, unit, table, live, up, nowMs, cleaningStateRaw
         up.cleaningLastRefreshAtMs = nowMs;
     }
     if (hasCleaningFeedback) {
-        if ((0, cleaning_1.isCleaningOperatingActive)(cleaningStateRaw)) {
+        const elapsedSec = Math.round((nowMs - up.cleaningStartedAtMs) / 1000);
+        if ((0, cleaning_1.shouldMarkCleaningOperatingActive)(cleaningStateRaw, elapsedSec)) {
             up.cleaningSawOperatingActive = true;
         }
         if ((0, cleaning_1.isCleaningFinishedByFeedback)({
             operatingStateRaw: cleaningStateRaw,
             modeRaw: cleaningModeRaw,
             sawOperatingActive: up.cleaningSawOperatingActive,
+            elapsedSec,
         })) {
-            const elapsedSec = Math.round((nowMs - up.cleaningStartedAtMs) / 1000);
-            await finishCleaning(host, unit, table, live, up, `feedback ready (${elapsedSec}s)`, true);
+            const op = String(cleaningStateRaw ?? "");
+            const mode = String(cleaningModeRaw ?? "");
+            await finishCleaning(host, unit, table, live, up, `feedback (operatingState=${op || "?"}, mode=${mode || "?"}, ${elapsedSec}s)`, true);
             return;
         }
     }

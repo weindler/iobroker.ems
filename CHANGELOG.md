@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.117] – 2026-07-05
+
+### Fixed
+
+- **Klima-Reinigung:** Feedback-Ende nach wenigen Sekunden — `operatingState=ready` ist auch der Idle-Zustand vor Start; Ende erst nach bestätigtem `autoClean` (≥ 60 s) und Mindestlaufzeit 5 min (oder `autoCleaningMode=off`).
+
+---
+
 ## [0.1.116] – 2026-07-05
 
 ### Changed

@@ -5,6 +5,7 @@ tmp/
 temp/
 snapshots/runtime/
 exports/
+smartthings.*.json
 debug/
 *.bak
 *.tmp

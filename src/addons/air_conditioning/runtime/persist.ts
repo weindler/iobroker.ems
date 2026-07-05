@@ -5,6 +5,8 @@ export type AcUnitPersist = {
 	cleaningStartedAtMs: number | null;
 	cleaningPendingUntilMs: number | null;
 	cleaningSawOperatingActive: boolean;
+	cleaningSawProgressActive: boolean;
+	cleaningStartProgressPct: number | null;
 	cleaningLastRefreshAtMs: number | null;
 	lastStartAtMs: number | null;
 	lastStopAtMs: number | null;
@@ -25,6 +27,8 @@ export function emptyUnitPersist(index: number): AcUnitPersist {
 		cleaningStartedAtMs: null,
 		cleaningPendingUntilMs: null,
 		cleaningSawOperatingActive: false,
+		cleaningSawProgressActive: false,
+		cleaningStartProgressPct: null,
 		cleaningLastRefreshAtMs: null,
 		lastStartAtMs: null,
 		lastStopAtMs: null,

@@ -11,9 +11,37 @@ const cleaning_1 = require("./cleaning");
         strict_1.default.equal((0, cleaning_1.isCleaningOperatingActive)("autoClean"), true);
         strict_1.default.equal((0, cleaning_1.isCleaningOperatingActive)("ready"), false);
     });
+    (0, node_test_1.it)("parses progress values", () => {
+        strict_1.default.equal((0, cleaning_1.normalizeCleaningProgressPct)(42), 42);
+        strict_1.default.equal((0, cleaning_1.normalizeCleaningProgressPct)("100%"), 100);
+        strict_1.default.equal((0, cleaning_1.normalizeCleaningProgressPct)(""), null);
+    });
+    (0, node_test_1.it)("marks progress active between 0 and 100", () => {
+        strict_1.default.equal((0, cleaning_1.shouldMarkCleaningProgressActive)(0), false);
+        strict_1.default.equal((0, cleaning_1.shouldMarkCleaningProgressActive)(55), true);
+        strict_1.default.equal((0, cleaning_1.shouldMarkCleaningProgressActive)(100), false);
+    });
     (0, node_test_1.it)("ignores autoClean flicker in the first minute", () => {
         strict_1.default.equal((0, cleaning_1.shouldMarkCleaningOperatingActive)("autoClean", 12), false);
         strict_1.default.equal((0, cleaning_1.shouldMarkCleaningOperatingActive)("autoClean", 90), true);
+    });
+    (0, node_test_1.it)("does not finish on stale 100% shortly after start", () => {
+        strict_1.default.equal((0, cleaning_1.isCleaningFinishedByProgress)({
+            progressPct: 100,
+            sawProgressActive: false,
+            sawOperatingActive: false,
+            startProgressPct: 100,
+            elapsedSec: 90,
+        }), false);
+    });
+    (0, node_test_1.it)("finishes on progress 100% once cleaning was running", () => {
+        strict_1.default.equal((0, cleaning_1.isCleaningFinishedByProgress)({
+            progressPct: 100,
+            sawProgressActive: true,
+            sawOperatingActive: false,
+            startProgressPct: 0,
+            elapsedSec: 600,
+        }), true);
     });
     (0, node_test_1.it)("does not finish on idle ready shortly after start", () => {
         strict_1.default.equal((0, cleaning_1.isCleaningFinishedByFeedback)({

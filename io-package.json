@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.117",
+		"version": "0.1.118",
 		"news": {
+			"0.1.118": {
+				"en": "AC cleaning ends primarily on SmartThings progress=100%; operatingState fallback only",
+				"de": "Klima-Reinigung endet primär bei SmartThings progress=100%; operatingState nur Fallback"
+			},
 			"0.1.117": {
 				"en": "Fix AC cleaning ending after seconds: ready is also idle; require 5 min + confirmed autoClean",
 				"de": "Klima-Reinigung: vorzeitiges Ende behoben (ready=Idle); min. 5 min + bestätigtes autoClean"

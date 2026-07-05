@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.1.118] – 2026-07-05
+
+### Changed
+
+- **Klima-Reinigung:** Ende primär über SmartThings `progress = 100 %` (Josef-Mapping); `operatingState`/`autoCleaningMode` nur noch Fallback.
+
+---
+
 ## [0.1.117] – 2026-07-05
 
 ### Fixed

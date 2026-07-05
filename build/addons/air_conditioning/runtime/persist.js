@@ -10,6 +10,8 @@ function emptyUnitPersist(index) {
         cleaningStartedAtMs: null,
         cleaningPendingUntilMs: null,
         cleaningSawOperatingActive: false,
+        cleaningSawProgressActive: false,
+        cleaningStartProgressPct: null,
         cleaningLastRefreshAtMs: null,
         lastStartAtMs: null,
         lastStopAtMs: null,

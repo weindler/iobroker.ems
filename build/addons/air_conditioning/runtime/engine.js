@@ -139,6 +139,8 @@ async function finishCleaning(host, unit, table, live, up, reason, sendStop) {
     up.cleaningActive = false;
     up.cleaningStartedAtMs = null;
     up.cleaningSawOperatingActive = false;
+    up.cleaningSawProgressActive = false;
+    up.cleaningStartProgressPct = null;
     up.cleaningLastRefreshAtMs = null;
     host.log.info(`ac unit ${unit.index}: cleaning finished — ${reason}`);
 }
@@ -161,6 +163,8 @@ async function tickCleaning(host, unit, table, live, up, nowMs, cleaningStateRaw
         up.cleaningActive = true;
         up.cleaningStartedAtMs = nowMs;
         up.cleaningSawOperatingActive = false;
+        up.cleaningSawProgressActive = false;
+        up.cleaningStartProgressPct = null;
         up.cleaningLastRefreshAtMs = nowMs;
     }
     if (!up.cleaningActive || !up.cleaningStartedAtMs) {
@@ -168,7 +172,8 @@ async function tickCleaning(host, unit, table, live, up, nowMs, cleaningStateRaw
     }
     const stateFbId = (0, sequences_1.resolveAcMappingTarget)(table, unit.index, "feedback_cleaning_state");
     const modeFbId = (0, sequences_1.resolveAcMappingTarget)(table, unit.index, "feedback_cleaning_mode");
-    const hasCleaningFeedback = Boolean(stateFbId || modeFbId);
+    const progressFbId = (0, sequences_1.resolveAcMappingTarget)(table, unit.index, "feedback_cleaning_progress");
+    const hasCleaningFeedback = Boolean(stateFbId || modeFbId || progressFbId);
     const refreshId = (0, sequences_1.resolveAcMappingTarget)(table, unit.index, "cmd_refresh");
     const lastRefresh = up.cleaningLastRefreshAtMs ?? up.cleaningStartedAtMs;
     if (live && refreshId && nowMs - lastRefresh >= constants_1.AC_CLEANING_REFRESH_MS) {
@@ -177,8 +182,25 @@ async function tickCleaning(host, unit, table, live, up, nowMs, cleaningStateRaw
     }
     if (hasCleaningFeedback) {
         const elapsedSec = Math.round((nowMs - up.cleaningStartedAtMs) / 1000);
+        if (up.cleaningStartProgressPct == null && cleaningProgressPct != null) {
+            up.cleaningStartProgressPct = cleaningProgressPct;
+        }
         if ((0, cleaning_1.shouldMarkCleaningOperatingActive)(cleaningStateRaw, elapsedSec)) {
             up.cleaningSawOperatingActive = true;
+        }
+        if ((0, cleaning_1.shouldMarkCleaningProgressActive)(cleaningProgressPct)) {
+            up.cleaningSawProgressActive = true;
+        }
+        if (progressFbId &&
+            (0, cleaning_1.isCleaningFinishedByProgress)({
+                progressPct: cleaningProgressPct,
+                sawProgressActive: up.cleaningSawProgressActive,
+                sawOperatingActive: up.cleaningSawOperatingActive,
+                startProgressPct: up.cleaningStartProgressPct,
+                elapsedSec,
+            })) {
+            await finishCleaning(host, unit, table, live, up, `feedback (progress=${cleaningProgressPct ?? "?"}%, ${elapsedSec}s)`, true);
+            return;
         }
         if ((0, cleaning_1.isCleaningFinishedByFeedback)({
             operatingStateRaw: cleaningStateRaw,

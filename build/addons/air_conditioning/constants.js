@@ -17,7 +17,7 @@ exports.AC_FEEDBACK_POLL_ATTEMPTS = 6;
 exports.AC_CLEANING_REFRESH_MS = 30_000;
 /** Frühestens danach autoClean als „Reinigung läuft“ werten (Flackern nach Start ignorieren). */
 exports.AC_CLEANING_ACTIVE_CONFIRM_SEC = 60;
-/** Frühestens danach operatingState=ready als Ende werten (ready ist auch Idle vor Start). */
+/** Fallback: operatingState=ready erst nach … s (ready ist auch Idle vor Start). */
 exports.AC_CLEANING_FEEDBACK_MIN_RUNTIME_SEC = 300;
 exports.AC_PROFILE_IDS = ["generic", "samsung_smartthings"];
 exports.AC_MAPPING_ROLES = [

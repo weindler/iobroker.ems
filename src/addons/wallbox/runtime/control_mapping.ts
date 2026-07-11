@@ -4,44 +4,87 @@ import {
 	type WallboxMappingCommand,
 } from "../../../mapping_config";
 import type { WallboxEvccTelemetryConfig } from "../evcc_config";
+import {
+	collectConfiguredControlTargetStateIds,
+	evccControlTargetForRole,
+	evccModeChargeValue,
+	evccModeHoldValue,
+	hasEvccControlWriteMapping,
+	resolveWallboxControlModel,
+	type WallboxControlModel,
+	type WallboxEvccControlRole,
+} from "../evcc_control_config";
+import { hasLegacyWallboxWriteMapping } from "../evcc_config";
+import {
+	classifyWallboxControlTargetKind,
+	inferEvccSemanticRole,
+	isDirectGoeStateId,
+	validateControlObjectMeta,
+	validateEnumValueAgainstMeta,
+	validateEvccControlTargetMeta,
+	type WallboxControlObjectMeta,
+	type WallboxControlObjectMetaMap,
+	type WallboxControlTargetKind,
+	type WallboxEvccSemanticRole,
+} from "./control_object_meta";
 
-/** Legacy go-e Write-Rollen aus mapping_config (keine erfundenen Rollen). */
 export type WallboxWriteControlRole = Extract<
 	WallboxMappingCommand,
 	"set_enabled" | "set_current_a" | "set_charge_power_w"
 >;
 
-/** Klassifikation des konfigurierten Ziel-States (heuristisch aus State-ID, ohne IO). */
-export type WallboxControlTargetKind = "evcc" | "goe_direct" | "user_configured";
+export type WallboxEvccWriteRole = WallboxEvccControlRole;
 
 export interface WallboxControlMappingEntry {
-	role: WallboxWriteControlRole;
+	role: WallboxWriteControlRole | WallboxEvccWriteRole;
 	configured: boolean;
 	targetStateId: string;
-	targetValueType: "boolean" | "number";
+	targetValueType: "boolean" | "number" | "string";
 	targetKind: WallboxControlTargetKind;
+	semanticRole: WallboxEvccSemanticRole | "legacy_enabled" | "legacy_current" | "legacy_power" | null;
 	allowedValuesRaw: string | null;
 	readbackStateId: string | null;
 	required: boolean;
+	objectPresent: boolean;
+	writable: boolean;
+	commonType: string | null;
+	contractValid: boolean;
+	validationReason: string | null;
 }
 
 export interface WallboxControlMappingSnapshot {
-	/**
-	 * Name aus mapping_config / Admin-Vorlage — bedeutet „Legacy wb_set_*-Mappings“,
-	 * nicht zwingend EVCC-Steuerung. Zielstates können direkt go-e oder frei konfiguriert sein.
-	 */
-	controlModel: "legacy_goe";
+	controlModel: WallboxControlModel;
+	legacyMappingsPresent: boolean;
+	evccMappingsPresent: boolean;
 	setEnabled: WallboxControlMappingEntry | null;
 	setCurrentA: WallboxControlMappingEntry | null;
 	setChargePowerW: WallboxControlMappingEntry | null;
+	setMode: WallboxControlMappingEntry | null;
+	setMaxCurrentA: WallboxControlMappingEntry | null;
+	setPhase: WallboxControlMappingEntry | null;
+	evccChargeModeValue: string | null;
+	evccHoldModeValue: string | null;
+	chargeModeValueConfirmed: boolean;
+	holdModeValueConfirmed: boolean;
 	chargeControlRole: "set_current_a" | "set_charge_power_w" | null;
 	missingRoles: string[];
-	/** Strom- und Leistungsrolle zeigen auf denselben State — Einheit nicht eindeutig. */
 	ambiguousPowerControl: boolean;
 	mappingConflictReason: string | null;
-	/** true nur wenn alle Pflicht-Write-Targets als evcc.* klassifiziert sind. */
 	evccControlPathConfirmed: boolean;
+	liveEligible: boolean;
+	controlPathReason: string | null;
+	validationIssues: string[];
 }
+
+export { classifyWallboxControlTargetKind } from "./control_object_meta";
+export type { WallboxControlTargetKind, WallboxEvccSemanticRole } from "./control_object_meta";
+
+export type WallboxControlTelemetryCfg = Pick<
+	WallboxEvccTelemetryConfig,
+	"maxCurrentAStateId" | "enabledStateId"
+> & {
+	modeReadbackStateId: string;
+};
 
 function mappingEnabled(config: Record<string, unknown>, prefix: string): boolean {
 	return config[`${prefix}_enabled`] !== false;
@@ -52,156 +95,274 @@ function flatTarget(config: Record<string, unknown>, prefix: string): string {
 	return typeof t === "string" ? t.trim() : "";
 }
 
-/** Heuristik: evcc.* = EVCC-State, go-e.* = direkter go-eCharger-Pfad, sonst frei konfiguriert. */
-export function classifyWallboxControlTargetKind(stateId: string): WallboxControlTargetKind {
-	const id = stateId.trim().toLowerCase();
-	if (id.startsWith("evcc.")) return "evcc";
-	if (id.startsWith("go-e.")) return "goe_direct";
-	return "user_configured";
+function legacySemanticRole(
+	role: WallboxWriteControlRole,
+): "legacy_enabled" | "legacy_current" | "legacy_power" {
+	if (role === "set_enabled") return "legacy_enabled";
+	if (role === "set_current_a") return "legacy_current";
+	return "legacy_power";
 }
 
-function entryFromConfig(
+function applyMetaValidation(
+	entry: Omit<
+		WallboxControlMappingEntry,
+		"objectPresent" | "writable" | "commonType" | "contractValid" | "validationReason" | "semanticRole"
+	>,
+	meta: WallboxControlObjectMeta | undefined,
+	evccPath: boolean,
+	evccRole?: WallboxEvccControlRole,
+): WallboxControlMappingEntry {
+	let contractValid = true;
+	let validationReason: string | null = null;
+	let semanticRole: WallboxControlMappingEntry["semanticRole"] = inferEvccSemanticRole(entry.targetStateId);
+
+	if (evccPath && evccRole) {
+		const v = validateEvccControlTargetMeta(entry.targetStateId, entry.targetValueType, meta, evccRole);
+		contractValid = v.valid;
+		validationReason = v.reason;
+		semanticRole = v.semanticRole;
+	} else if (meta) {
+		const v = validateControlObjectMeta(meta, entry.targetValueType);
+		contractValid = v.valid;
+		validationReason = v.reason;
+	} else {
+		contractValid = false;
+		validationReason = "object_metadata_unverified";
+	}
+
+	return {
+		...entry,
+		semanticRole,
+		objectPresent: meta?.objectPresent ?? false,
+		writable: meta?.writable ?? false,
+		commonType: meta?.commonType ?? null,
+		contractValid,
+		validationReason,
+	};
+}
+
+function legacyEntryFromConfig(
 	role: WallboxWriteControlRole,
 	config: Record<string, unknown>,
 	legacy: ReturnType<typeof legacyWallboxMappingFromConfig>,
 	readbackStateId: string | null,
 	required: boolean,
+	meta: WallboxControlObjectMeta | undefined,
 ): WallboxControlMappingEntry | null {
 	const prefix = WALLBOX_FLAT_PREFIX[role];
 	const enabled = mappingEnabled(config, prefix);
 	const targetStateId = legacy[role]?.target_state?.trim() || flatTarget(config, prefix);
-	if (!enabled || !targetStateId) {
-		return null;
-	}
+	if (!enabled || !targetStateId) return null;
 	const valueType: "boolean" | "number" = role === "set_enabled" ? "boolean" : "number";
-	return {
+	const entry = applyMetaValidation(
+		{
+			role,
+			configured: true,
+			targetStateId,
+			targetValueType: valueType,
+			targetKind: classifyWallboxControlTargetKind(targetStateId),
+			allowedValuesRaw:
+				typeof legacy[role]?.allowed_values === "string" ? legacy[role]!.allowed_values! : null,
+			readbackStateId: readbackStateId?.trim() || null,
+			required,
+		},
+		meta,
+		false,
+	);
+	return { ...entry, semanticRole: legacySemanticRole(role) };
+}
+
+function evccEntryFromConfig(
+	role: WallboxEvccControlRole,
+	config: Record<string, unknown>,
+	readbackStateId: string | null,
+	required: boolean,
+	meta: WallboxControlObjectMeta | undefined,
+): WallboxControlMappingEntry | null {
+	const targetStateId = evccControlTargetForRole(config, role);
+	if (!targetStateId) return null;
+	return applyMetaValidation(
+		{
+			role,
+			configured: true,
+			targetStateId,
+			targetValueType: role === "set_mode" ? "string" : "number",
+			targetKind: classifyWallboxControlTargetKind(targetStateId),
+			allowedValuesRaw: null,
+			readbackStateId: readbackStateId?.trim() || null,
+			required,
+		},
+		meta,
+		true,
 		role,
-		configured: true,
-		targetStateId,
-		targetValueType: valueType,
-		targetKind: classifyWallboxControlTargetKind(targetStateId),
-		allowedValuesRaw:
-			typeof legacy[role]?.allowed_values === "string" ? legacy[role]!.allowed_values! : null,
-		readbackStateId:
-			typeof readbackStateId === "string" && readbackStateId.trim().length > 0
-				? readbackStateId.trim()
-				: null,
-		required,
-	};
+	);
 }
 
 function resolveChargeControlRole(
 	setCurrentA: WallboxControlMappingEntry | null,
 	setChargePowerW: WallboxControlMappingEntry | null,
-): {
-	chargeControlRole: "set_current_a" | "set_charge_power_w" | null;
-	ambiguousPowerControl: boolean;
-	mappingConflictReason: string | null;
-} {
-	if (setCurrentA && setChargePowerW) {
-		if (setCurrentA.targetStateId === setChargePowerW.targetStateId) {
-			return {
-				chargeControlRole: null,
-				ambiguousPowerControl: true,
-				mappingConflictReason: "ambiguous_power_control_mapping",
-			};
-		}
-		return {
-			chargeControlRole: "set_current_a",
-			ambiguousPowerControl: false,
-			mappingConflictReason: null,
-		};
+) {
+	if (setCurrentA && setChargePowerW && setCurrentA.targetStateId === setChargePowerW.targetStateId) {
+		return { chargeControlRole: null, ambiguousPowerControl: true, mappingConflictReason: "ambiguous_power_control_mapping" as const };
 	}
-	if (setCurrentA) {
-		return {
-			chargeControlRole: "set_current_a",
-			ambiguousPowerControl: false,
-			mappingConflictReason: null,
-		};
+	if (setCurrentA && setChargePowerW) return { chargeControlRole: "set_current_a" as const, ambiguousPowerControl: false, mappingConflictReason: null };
+	if (setCurrentA) return { chargeControlRole: "set_current_a" as const, ambiguousPowerControl: false, mappingConflictReason: null };
+	if (setChargePowerW) return { chargeControlRole: "set_charge_power_w" as const, ambiguousPowerControl: false, mappingConflictReason: null };
+	return { chargeControlRole: null, ambiguousPowerControl: false, mappingConflictReason: null };
+}
+
+function collectValidationIssues(entries: (WallboxControlMappingEntry | null)[]): string[] {
+	const issues: string[] = [];
+	for (const e of entries) {
+		if (e?.required && !e.contractValid && e.validationReason) issues.push(`${e.role}:${e.validationReason}`);
 	}
-	if (setChargePowerW) {
-		return {
-			chargeControlRole: "set_charge_power_w",
-			ambiguousPowerControl: false,
-			mappingConflictReason: null,
-		};
-	}
+	return issues;
+}
+
+function emptyEvccFields() {
 	return {
-		chargeControlRole: null,
-		ambiguousPowerControl: false,
-		mappingConflictReason: null,
+		setMode: null,
+		setMaxCurrentA: null,
+		setPhase: null,
+		evccChargeModeValue: null,
+		evccHoldModeValue: null,
+		chargeModeValueConfirmed: false,
+		holdModeValueConfirmed: false,
 	};
 }
 
-function computeEvccControlPathConfirmed(
-	setEnabled: WallboxControlMappingEntry | null,
-	chargeEntry: WallboxControlMappingEntry | null,
-): boolean {
-	if (!setEnabled || !chargeEntry) return false;
-	return setEnabled.targetKind === "evcc" && chargeEntry.targetKind === "evcc";
+function buildNoneSnapshot(config: Record<string, unknown>): WallboxControlMappingSnapshot {
+	return {
+		controlModel: "none",
+		legacyMappingsPresent: hasLegacyWallboxWriteMapping(config),
+		evccMappingsPresent: hasEvccControlWriteMapping(config),
+		setEnabled: null,
+		setCurrentA: null,
+		setChargePowerW: null,
+		...emptyEvccFields(),
+		chargeControlRole: null,
+		missingRoles: ["control_model_not_selected"],
+		ambiguousPowerControl: false,
+		mappingConflictReason: null,
+		evccControlPathConfirmed: false,
+		liveEligible: false,
+		controlPathReason: "control_model_not_selected",
+		validationIssues: [],
+	};
 }
 
-export interface BuildWallboxControlMappingSnapshotInput {
-	config: Record<string, unknown>;
-	telemetryCfg: Pick<WallboxEvccTelemetryConfig, "enabledStateId" | "chargePowerWStateId">;
-}
-
-/**
- * Normalisierter Control-Mapping-Snapshot aus Admin-Config und Telemetrie-IDs (read-only).
- * Keine ioBroker-Objektauflösung — rein aus Konfiguration.
- */
-export function buildWallboxControlMappingSnapshot(
-	input: BuildWallboxControlMappingSnapshotInput,
+function buildEvccSnapshot(
+	config: Record<string, unknown>,
+	telemetryCfg: WallboxControlTelemetryCfg,
+	objectMetas: WallboxControlObjectMetaMap,
 ): WallboxControlMappingSnapshot {
-	const { config, telemetryCfg } = input;
+	const meta = (id: string) => objectMetas[id];
+	const setMode = evccEntryFromConfig("set_mode", config, telemetryCfg.modeReadbackStateId, true, meta(evccControlTargetForRole(config, "set_mode")));
+	const setMaxCurrentA = evccEntryFromConfig("set_max_current_a", config, telemetryCfg.maxCurrentAStateId, true, meta(evccControlTargetForRole(config, "set_max_current_a")));
+	const setPhase = evccEntryFromConfig("set_phase", config, "", false, meta(evccControlTargetForRole(config, "set_phase")));
+	const chargeModeValue = evccModeChargeValue(config) || null;
+	const holdModeValue = evccModeHoldValue(config) || null;
+	const modeMeta = setMode ? meta(setMode.targetStateId) : undefined;
+	const modeValueIssues: string[] = [];
+	let chargeModeValueConfirmed = false;
+	let holdModeValueConfirmed = false;
+	if (chargeModeValue && setMode) {
+		const v = validateEnumValueAgainstMeta(chargeModeValue, modeMeta);
+		chargeModeValueConfirmed = v.valid;
+		if (!v.valid) modeValueIssues.push(`charge_mode:${v.reason}`);
+	} else if (!chargeModeValue) {
+		modeValueIssues.push("charge_mode:evcc_charge_mode_mapping_missing");
+	}
+	if (holdModeValue && setMode) {
+		const v = validateEnumValueAgainstMeta(holdModeValue, modeMeta);
+		holdModeValueConfirmed = v.valid;
+		if (!v.valid) modeValueIssues.push(`hold_mode:${v.reason}`);
+	}
+	const missingRoles: string[] = [];
+	if (!setMode) missingRoles.push("set_mode");
+	if (!setMaxCurrentA) missingRoles.push("set_max_current_a");
+	const validationIssues = [...collectValidationIssues([setMode, setMaxCurrentA]), ...modeValueIssues];
+	const contractStructurallyComplete = missingRoles.length === 0 && validationIssues.length === 0 && chargeModeValueConfirmed;
+	const evccControlPathConfirmed =
+		Boolean(setMode?.contractValid && setMaxCurrentA?.contractValid && chargeModeValueConfirmed) &&
+		setMode?.semanticRole === "evcc_mode" &&
+		setMaxCurrentA?.semanticRole === "evcc_max_current";
+	const liveEligible = evccControlPathConfirmed && contractStructurallyComplete;
+	return {
+		controlModel: "evcc",
+		legacyMappingsPresent: hasLegacyWallboxWriteMapping(config),
+		evccMappingsPresent: hasEvccControlWriteMapping(config),
+		setEnabled: null,
+		setCurrentA: null,
+		setChargePowerW: null,
+		setMode,
+		setMaxCurrentA,
+		setPhase,
+		evccChargeModeValue: chargeModeValue,
+		evccHoldModeValue: holdModeValue,
+		chargeModeValueConfirmed,
+		holdModeValueConfirmed,
+		chargeControlRole: null,
+		missingRoles,
+		ambiguousPowerControl: false,
+		mappingConflictReason: null,
+		evccControlPathConfirmed,
+		liveEligible,
+		controlPathReason: contractStructurallyComplete && evccControlPathConfirmed
+			? "evcc_control_path_confirmed"
+			: validationIssues[0] ?? (missingRoles.length > 0 ? "mapping_incomplete" : "evcc_control_path_unconfirmed"),
+		validationIssues,
+	};
+}
+
+function buildLegacyDirectSnapshot(
+	config: Record<string, unknown>,
+	telemetryCfg: WallboxControlTelemetryCfg,
+	objectMetas: WallboxControlObjectMetaMap,
+): WallboxControlMappingSnapshot {
 	const legacy = legacyWallboxMappingFromConfig(config);
-
-	const setEnabled = entryFromConfig(
-		"set_enabled",
-		config,
-		legacy,
-		telemetryCfg.enabledStateId,
-		true,
-	);
-	const setCurrentA = entryFromConfig(
-		"set_current_a",
-		config,
-		legacy,
-		"",
-		false,
-	);
-	const setChargePowerW = entryFromConfig(
-		"set_charge_power_w",
-		config,
-		legacy,
-		telemetryCfg.chargePowerWStateId,
-		false,
-	);
-
+	const meta = (id: string) => objectMetas[id];
+	const setEnabled = legacyEntryFromConfig("set_enabled", config, legacy, telemetryCfg.enabledStateId, true, meta(legacy.set_enabled?.target_state?.trim() || flatTarget(config, WALLBOX_FLAT_PREFIX.set_enabled)));
+	const setCurrentA = legacyEntryFromConfig("set_current_a", config, legacy, "", false, meta(legacy.set_current_a?.target_state?.trim() || flatTarget(config, WALLBOX_FLAT_PREFIX.set_current_a)));
+	const setChargePowerW = legacyEntryFromConfig("set_charge_power_w", config, legacy, "", false, meta(legacy.set_charge_power_w?.target_state?.trim() || flatTarget(config, WALLBOX_FLAT_PREFIX.set_charge_power_w)));
 	const missingRoles: string[] = [];
 	if (!setEnabled) missingRoles.push("set_enabled");
-
 	const roleResolution = resolveChargeControlRole(setCurrentA, setChargePowerW);
-	if (!roleResolution.chargeControlRole && !roleResolution.ambiguousPowerControl) {
-		missingRoles.push("set_current_a|set_charge_power_w");
-	}
-
-	const chargeEntry =
-		roleResolution.chargeControlRole === "set_current_a"
-			? setCurrentA
-			: roleResolution.chargeControlRole === "set_charge_power_w"
-				? setChargePowerW
-				: null;
-
+	if (!roleResolution.chargeControlRole && !roleResolution.ambiguousPowerControl) missingRoles.push("set_current_a|set_charge_power_w");
+	const chargeEntry = roleResolution.chargeControlRole === "set_current_a" ? setCurrentA : roleResolution.chargeControlRole === "set_charge_power_w" ? setChargePowerW : null;
+	const validationIssues = collectValidationIssues([setEnabled, chargeEntry]);
+	const contractStructurallyComplete = missingRoles.length === 0 && !roleResolution.ambiguousPowerControl && validationIssues.length === 0;
 	return {
-		controlModel: "legacy_goe",
+		controlModel: "legacy_direct",
+		legacyMappingsPresent: hasLegacyWallboxWriteMapping(config),
+		evccMappingsPresent: hasEvccControlWriteMapping(config),
 		setEnabled,
 		setCurrentA,
 		setChargePowerW,
+		...emptyEvccFields(),
 		chargeControlRole: roleResolution.chargeControlRole,
 		missingRoles,
 		ambiguousPowerControl: roleResolution.ambiguousPowerControl,
 		mappingConflictReason: roleResolution.mappingConflictReason,
-		evccControlPathConfirmed: computeEvccControlPathConfirmed(setEnabled, chargeEntry),
+		evccControlPathConfirmed: false,
+		liveEligible: false,
+		controlPathReason: "legacy_direct_not_live_eligible",
+		validationIssues,
 	};
 }
+
+export interface BuildWallboxControlMappingSnapshotInput {
+	config: Record<string, unknown>;
+	telemetryCfg: WallboxControlTelemetryCfg;
+	objectMetas?: WallboxControlObjectMetaMap;
+}
+
+export function buildWallboxControlMappingSnapshot(input: BuildWallboxControlMappingSnapshotInput): WallboxControlMappingSnapshot {
+	const controlModel = resolveWallboxControlModel(input.config);
+	const objectMetas = input.objectMetas ?? {};
+	if (controlModel === "none") return buildNoneSnapshot(input.config);
+	if (controlModel === "evcc") return buildEvccSnapshot(input.config, input.telemetryCfg, objectMetas);
+	return buildLegacyDirectSnapshot(input.config, input.telemetryCfg, objectMetas);
+}
+
+export { collectConfiguredControlTargetStateIds };

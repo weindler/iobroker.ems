@@ -1,4 +1,4 @@
-# EMS-Light — Wallbox EVCC Write Contract (v0.1.135)
+# EMS-Light — Wallbox EVCC Write Contract (v0.1.135 / EVCC v0.1.136)
 
 ## 1. Schichtenmodell
 
@@ -13,6 +13,38 @@ executeWallboxWrite()
 ```
 
 Der Write Contract übersetzt — er plant nicht neu und ändert keine Dispatch-Entscheidungen.
+
+## 1a. EVCC-Control-Pfad (v0.1.136)
+
+Bei `wb_control_model=evcc` gelten separate Rollen und Semantik:
+
+| Rolle | Admin-Key | Bedeutung |
+|-------|-----------|-----------|
+| `set_mode` | `wb_evcc_set_mode_target` | EVCC-Lademodus (Start/Stop/Hold) |
+| `set_max_current_a` | `wb_evcc_set_max_current_a_target` | maximale Stromstärke (`maxCurrent`) |
+| `set_phase` | `wb_evcc_set_phase_target` | Phasen (optional) |
+
+**Nicht verwendet:** `enabled`, `minCurrent`, `set_charge_power_w`.
+
+EMS übersetzt `targetCurrentA` als **Stromobergrenze** an EVCC — EVCC regelt den tatsächlichen Ladestrom.
+
+Mode-Werte (`wb_evcc_mode_charge_value`, `wb_evcc_mode_hold_value`) müssen explizit konfiguriert und gegen `common.states` validiert sein.
+
+### EVCC Write-Reihenfolge
+
+| Szenario | Operationen |
+|----------|-------------|
+| `charge_start` | 1. `set_max_current_a` → 2. `set_mode` |
+| `charge_adjust` | nur `set_max_current_a` (Charge-Modus bereits aktiv) |
+
+### EVCC Readback
+
+| Rolle | Readback |
+|-------|----------|
+| `set_max_current_a` | `wb_evcc_max_current_a_state` |
+| `set_mode` | `intent_evcc_mode_state` |
+
+`enabled` ist kein Mode-Write-Readback.
 
 ## 2. Vorhandene Control-Rollen (Legacy wb_set_*)
 
@@ -70,7 +102,7 @@ Das sind **keine EVCC-Control-States**. Ein Write auf diese States **umgeht EVCC
 | Begriff | Bedeutung |
 |---------|-----------|
 | `writeContractReady` | Strukturell vollständiger Write-Plan (Mapping, Werte, Reihenfolge) |
-| `evccControlPathConfirmed` | Alle Pflicht-Write-Targets sind `evcc.*` — kein direkter go-e-Umweg |
+| `evccControlPathConfirmed` | EVCC-Pfad: semantisch bestätigte Rollen (`evcc_mode`, `evcc_max_current`), keine go-e-States, Charge-Mode bestätigt |
 
 **`writeContractReady=true` bedeutet nicht EVCC-Kompatibilität.**
 

@@ -70,4 +70,9 @@ exports.WALLBOX_RUNTIME_STATES = {
     writeControlModel: `${exports.WALLBOX_RUNTIME_BASE}.write_control_model`,
     writeEvccPathConfirmed: `${exports.WALLBOX_RUNTIME_BASE}.write_evcc_path_confirmed`,
     writeScenario: `${exports.WALLBOX_RUNTIME_BASE}.write_scenario`,
+    writeLiveEligible: `${exports.WALLBOX_RUNTIME_BASE}.write_live_eligible`,
+    writeControlPathReason: `${exports.WALLBOX_RUNTIME_BASE}.write_control_path_reason`,
+    legacyMappingsPresent: `${exports.WALLBOX_RUNTIME_BASE}.legacy_mappings_present`,
+    evccControlMappingsPresent: `${exports.WALLBOX_RUNTIME_BASE}.evcc_control_mappings_present`,
+    controlMappingDiagnosticsJson: `${exports.WALLBOX_RUNTIME_BASE}.control_mapping_diagnostics_json`,
 };

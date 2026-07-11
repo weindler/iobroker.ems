@@ -92,9 +92,14 @@ async function ensureWallboxRuntimeStates(host) {
         boolState(states_1.WALLBOX_RUNTIME_STATES.feedbackContractReady, "Wallbox Feedback Contract ready", false),
         numState(states_1.WALLBOX_RUNTIME_STATES.writeOperationCount, "Wallbox Write-Operationen Anzahl", 0),
         strState(states_1.WALLBOX_RUNTIME_STATES.writeContractBlockReason, "Wallbox Write Contract Blockgrund"),
-        strState(states_1.WALLBOX_RUNTIME_STATES.writeControlModel, "Wallbox Steuerungsmodell", "legacy_goe"),
+        strState(states_1.WALLBOX_RUNTIME_STATES.writeControlModel, "Wallbox Steuerungsmodell"),
         boolState(states_1.WALLBOX_RUNTIME_STATES.writeEvccPathConfirmed, "Wallbox EVCC-Control-Pfad bestätigt", false),
         strState(states_1.WALLBOX_RUNTIME_STATES.writeScenario, "Wallbox Write-Szenario"),
+        boolState(states_1.WALLBOX_RUNTIME_STATES.writeLiveEligible, "Wallbox Write strukturell live-eligible", false),
+        strState(states_1.WALLBOX_RUNTIME_STATES.writeControlPathReason, "Wallbox Control-Pfad Begründung"),
+        boolState(states_1.WALLBOX_RUNTIME_STATES.legacyMappingsPresent, "Wallbox Legacy-Mappings vorhanden", false),
+        boolState(states_1.WALLBOX_RUNTIME_STATES.evccControlMappingsPresent, "Wallbox EVCC-Control-Mappings vorhanden", false),
+        strState(states_1.WALLBOX_RUNTIME_STATES.controlMappingDiagnosticsJson, "Wallbox Control-Mapping Diagnose (JSON)", "{}"),
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }

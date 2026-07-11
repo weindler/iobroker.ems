@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.WALLBOX_LIVE_WRITE_RELEASED = exports.resolveWallboxRuntimePhase = exports.runWallboxLiveFoundation = exports.executeWallboxWrite = exports.buildWallboxWritePlan = exports.buildWallboxControlMappingSnapshot = exports.buildWallboxCommandCandidate = exports.runWallboxDryrunDispatch = exports.resetWallboxDispatchCache = exports.buildWallboxDispatchIntent = exports.telemetryInputFromSnapshot = exports.resolveWallboxDailyPlanDecision = exports.resetWallboxDailyPlanCache = exports.ensureWallboxRuntimeStates = exports.publishWallboxLiveFoundationStates = exports.publishWallboxDispatchStates = exports.publishWallboxRuntimeStates = void 0;
+exports.WALLBOX_LIVE_WRITE_RELEASED = exports.resolveWallboxRuntimePhase = exports.runWallboxLiveFoundation = exports.executeWallboxWrite = exports.buildWallboxWritePlan = exports.WB_CONTROL_MODEL = exports.hasEvccControlWriteMapping = exports.resolveWallboxControlModel = exports.metaFromObject = exports.resolveWallboxControlObjectMetas = exports.collectConfiguredControlTargetStateIds = exports.buildWallboxControlMappingSnapshot = exports.buildWallboxCommandCandidate = exports.runWallboxDryrunDispatch = exports.resetWallboxDispatchCache = exports.buildWallboxDispatchIntent = exports.telemetryInputFromSnapshot = exports.resolveWallboxDailyPlanDecision = exports.resetWallboxDailyPlanCache = exports.ensureWallboxRuntimeStates = exports.publishWallboxLiveFoundationStates = exports.publishWallboxDispatchStates = exports.publishWallboxRuntimeStates = void 0;
 const state_write_1 = require("../../../policy/core/state_write");
 const states_1 = require("./states");
 async function publishWallboxRuntimeStates(host, decision, governanceAllowed) {
@@ -85,6 +85,34 @@ async function publishWallboxLiveFoundationStates(host, foundation) {
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeControlModel, plan?.controlModel ?? "");
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeEvccPathConfirmed, plan?.evccControlPathConfirmed ?? false);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeScenario, plan?.writeScenario ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeLiveEligible, plan?.liveEligible ?? false);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeControlPathReason, plan?.controlPathReason ?? "");
+    const mapping = foundation.mappingSnapshot;
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.legacyMappingsPresent, mapping.legacyMappingsPresent);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.evccControlMappingsPresent, mapping.evccMappingsPresent);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.controlMappingDiagnosticsJson, JSON.stringify({
+        controlModel: mapping.controlModel,
+        missingRoles: mapping.missingRoles,
+        validationIssues: mapping.validationIssues,
+        roles: [
+            mapping.setEnabled,
+            mapping.setCurrentA,
+            mapping.setChargePowerW,
+            mapping.setMode,
+            mapping.setMaxCurrentA,
+            mapping.setPhase,
+        ]
+            .filter(Boolean)
+            .map((e) => ({
+            role: e.role,
+            targetStateId: e.targetStateId,
+            semanticRole: e.semanticRole,
+            commonType: e.commonType,
+            writable: e.writable,
+            contractValid: e.contractValid,
+            validationReason: e.validationReason,
+        })),
+    }));
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.runtimeControlAvailable, false);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeAllowed, false);
 }
@@ -104,6 +132,14 @@ var command_1 = require("./command");
 Object.defineProperty(exports, "buildWallboxCommandCandidate", { enumerable: true, get: function () { return command_1.buildWallboxCommandCandidate; } });
 var control_mapping_1 = require("./control_mapping");
 Object.defineProperty(exports, "buildWallboxControlMappingSnapshot", { enumerable: true, get: function () { return control_mapping_1.buildWallboxControlMappingSnapshot; } });
+Object.defineProperty(exports, "collectConfiguredControlTargetStateIds", { enumerable: true, get: function () { return control_mapping_1.collectConfiguredControlTargetStateIds; } });
+var control_object_meta_1 = require("./control_object_meta");
+Object.defineProperty(exports, "resolveWallboxControlObjectMetas", { enumerable: true, get: function () { return control_object_meta_1.resolveWallboxControlObjectMetas; } });
+Object.defineProperty(exports, "metaFromObject", { enumerable: true, get: function () { return control_object_meta_1.metaFromObject; } });
+var evcc_control_config_1 = require("../evcc_control_config");
+Object.defineProperty(exports, "resolveWallboxControlModel", { enumerable: true, get: function () { return evcc_control_config_1.resolveWallboxControlModel; } });
+Object.defineProperty(exports, "hasEvccControlWriteMapping", { enumerable: true, get: function () { return evcc_control_config_1.hasEvccControlWriteMapping; } });
+Object.defineProperty(exports, "WB_CONTROL_MODEL", { enumerable: true, get: function () { return evcc_control_config_1.WB_CONTROL_MODEL; } });
 var write_plan_1 = require("./write_plan");
 Object.defineProperty(exports, "buildWallboxWritePlan", { enumerable: true, get: function () { return write_plan_1.buildWallboxWritePlan; } });
 var execute_1 = require("./execute");

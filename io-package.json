@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.135",
+		"version": "0.1.136",
 		"news": {
+			"0.1.136": {
+				"en": "The wallbox EVCC control mapping foundation separates EVCC control targets from legacy direct charger mappings. Admin can select control model none, evcc or legacy_direct; object metadata validates writable EVCC paths. liveEligible is diagnosed structurally; the release gate remains closed with no external writes.",
+				"de": "Die Wallbox-EVCC-Control-Mapping-Foundation trennt EVCC-Steuerziele von Legacy-Direkt-Mappings. Im Admin ist das Steuerpfad-Modell none, evcc oder legacy_direct wählbar; Objekt-Metadaten validieren schreibbare EVCC-Pfade. liveEligible wird strukturell diagnostiziert; das Release-Gate bleibt geschlossen ohne externe Writes."
+			},
 			"0.1.135": {
 				"en": "The wallbox EVCC write contract translates validated command candidates into a deterministic, serializable write plan with configured target states, operation sequence and readback contract. Execution remains fully blocked by the closed release gate; no external EVCC or wallbox writes occur.",
 				"de": "Der Wallbox-EVCC-Write-Contract übersetzt validierte Command-Kandidaten in einen deterministischen, serialisierbaren Write-Plan mit konfigurierten Ziel-States, Operationsreihenfolge und Rücklese-Vertrag. Die Ausführung bleibt durch das geschlossene Release-Gate vollständig gesperrt; es erfolgen keine externen EVCC- oder Wallbox-Writes."

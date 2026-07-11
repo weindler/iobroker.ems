@@ -102,6 +102,7 @@ function pipeline(entries, tel = telemetry(), config = {}) {
     });
     (0, node_test_1.it)("valid charge produces neutral candidate", () => {
         const { candidate } = pipeline([allocationEntry(3600)], telemetry(), {
+            wb_control_model: "legacy_direct",
             wb_set_enabled_target: "go-e.0.allow_charging",
             wb_set_current_a_target: "go-e.0.ampere",
         });
@@ -150,6 +151,7 @@ function pipeline(entries, tel = telemetry(), config = {}) {
             decision,
             telemetry: telemetry(),
             config: {
+                wb_control_model: "legacy_direct",
                 wb_set_enabled_target: "x",
                 wb_set_current_a_target: "y",
             },
@@ -164,6 +166,7 @@ function pipeline(entries, tel = telemetry(), config = {}) {
     });
     (0, node_test_1.it)("rejects negative target current", () => {
         const { decision, dispatch } = pipeline([allocationEntry(3600)], telemetry(), {
+            wb_control_model: "legacy_direct",
             wb_set_enabled_target: "x",
             wb_set_current_a_target: "y",
         });

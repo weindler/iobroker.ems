@@ -93,9 +93,14 @@ export async function ensureWallboxRuntimeStates(host: StateHost): Promise<void>
 		boolState(WALLBOX_RUNTIME_STATES.feedbackContractReady, "Wallbox Feedback Contract ready", false),
 		numState(WALLBOX_RUNTIME_STATES.writeOperationCount, "Wallbox Write-Operationen Anzahl", 0),
 		strState(WALLBOX_RUNTIME_STATES.writeContractBlockReason, "Wallbox Write Contract Blockgrund"),
-		strState(WALLBOX_RUNTIME_STATES.writeControlModel, "Wallbox Steuerungsmodell", "legacy_goe"),
+		strState(WALLBOX_RUNTIME_STATES.writeControlModel, "Wallbox Steuerungsmodell"),
 		boolState(WALLBOX_RUNTIME_STATES.writeEvccPathConfirmed, "Wallbox EVCC-Control-Pfad bestätigt", false),
 		strState(WALLBOX_RUNTIME_STATES.writeScenario, "Wallbox Write-Szenario"),
+		boolState(WALLBOX_RUNTIME_STATES.writeLiveEligible, "Wallbox Write strukturell live-eligible", false),
+		strState(WALLBOX_RUNTIME_STATES.writeControlPathReason, "Wallbox Control-Pfad Begründung"),
+		boolState(WALLBOX_RUNTIME_STATES.legacyMappingsPresent, "Wallbox Legacy-Mappings vorhanden", false),
+		boolState(WALLBOX_RUNTIME_STATES.evccControlMappingsPresent, "Wallbox EVCC-Control-Mappings vorhanden", false),
+		strState(WALLBOX_RUNTIME_STATES.controlMappingDiagnosticsJson, "Wallbox Control-Mapping Diagnose (JSON)", "{}"),
 	];
 	await ensureStates(host, defs);
 }

@@ -9,6 +9,9 @@ const execution_mode_1 = require("../../execution_mode");
 const tree_paths_1 = require("../../tree_paths");
 const states_1 = require("../../operator/daily_plan/states");
 const runtime_1 = require("./runtime");
+const config_1 = require("../../intent/config");
+const evcc_control_config_1 = require("./evcc_control_config");
+const control_object_meta_1 = require("./runtime/control_object_meta");
 let activeHost = null;
 const subscribedIds = [];
 let debounceTimer = null;
@@ -30,6 +33,24 @@ async function writeTimeField(host, stateId, field) {
     await host.setStateAsync(stateId, { val, ack: true });
 }
 const WALLBOX_ADDON_ID = "wallbox";
+async function resolveChargeModeActive(host, config) {
+    const chargeValue = (0, evcc_control_config_1.evccModeChargeValue)(config);
+    const intentCfg = (0, config_1.intentEvccConfigFromAdapter)(config);
+    if (!chargeValue || !intentCfg.modeStateId)
+        return null;
+    try {
+        const read = typeof host.getForeignStateAsync === "function"
+            ? host.getForeignStateAsync.bind(host)
+            : host.getStateAsync.bind(host);
+        const st = await read(intentCfg.modeStateId);
+        if (st?.val === undefined || st.val === null)
+            return null;
+        return String(st.val) === chargeValue;
+    }
+    catch {
+        return null;
+    }
+}
 async function refreshWallboxDailyPlanRuntime(host, snap) {
     const cfg = (0, evcc_config_1.wallboxEvccTelemetryConfigFromAdapter)(host.config);
     const addonOn = await host.getStateAsync((0, tree_paths_1.addonEnabled)(WALLBOX_ADDON_ID));
@@ -62,15 +83,25 @@ async function refreshWallboxDailyPlanRuntime(host, snap) {
     await (0, runtime_1.publishWallboxDispatchStates)(host, decision, dispatch);
     const liveRequested = await (0, execution_mode_1.isLiveWriteAllowed)((id) => host.getStateAsync(id), WALLBOX_ADDON_ID);
     const configRecord = host.config && typeof host.config === "object" ? host.config : {};
+    const intentCfg = (0, config_1.intentEvccConfigFromAdapter)(configRecord);
+    const targetStateIds = (0, runtime_1.collectConfiguredControlTargetStateIds)(configRecord);
+    const objectMetas = await (0, control_object_meta_1.resolveWallboxControlObjectMetas)(typeof host.getObjectAsync === "function" ? host.getObjectAsync.bind(host) : undefined, targetStateIds);
     const mappingSnapshot = (0, runtime_1.buildWallboxControlMappingSnapshot)({
         config: configRecord,
-        telemetryCfg: cfg,
+        telemetryCfg: {
+            enabledStateId: cfg.enabledStateId,
+            maxCurrentAStateId: cfg.maxCurrentAStateId,
+            modeReadbackStateId: intentCfg.modeStateId,
+        },
+        objectMetas,
     });
+    const chargeModeActive = await resolveChargeModeActive(host, configRecord);
     const foundation = await (0, runtime_1.runWallboxLiveFoundation)({
         dispatch,
         decision,
         mappingSnapshot,
         chargingEnabled,
+        chargeModeActive,
         addonEnabled: addonEnabledVal,
         governanceEnabled,
         liveRequested,

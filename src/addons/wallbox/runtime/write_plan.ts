@@ -1,3 +1,4 @@
+import type { WallboxControlModel } from "../evcc_control_config";
 import type { WallboxCommandCandidate, WallboxCommandAction } from "./command";
 import type { WallboxControlMappingEntry, WallboxControlMappingSnapshot } from "./control_mapping";
 
@@ -24,8 +25,10 @@ export interface WallboxWritePlan {
 	actionable: boolean;
 	contractReady: boolean;
 	feedbackContractReady: boolean;
-	controlModel: "legacy_goe";
+	controlModel: WallboxControlModel;
 	evccControlPathConfirmed: boolean;
+	liveEligible: boolean;
+	controlPathReason: string | null;
 	writeScenario: WallboxWriteScenario;
 	operations: WallboxWriteOperation[];
 	missingRoles: string[];
@@ -36,15 +39,31 @@ export interface WallboxWritePlan {
 	blockReason: string | null;
 }
 
-/**
- * Sichere Write-Reihenfolge für Ladebeginn: Sollwert vor Ladefreigabe.
- * Legacy dryrun_command nutzt historisch enable zuerst — der Write Contract korrigiert das bewusst.
- */
-export const WALLBOX_WRITE_SEQUENCE = {
+/** Sichere Write-Reihenfolge Legacy: Sollwert vor Ladefreigabe. */
+export const WALLBOX_LEGACY_WRITE_SEQUENCE = {
 	set_current_a: 1,
 	set_charge_power_w: 1,
 	set_enabled: 2,
 } as const;
+
+/** EVCC: maxCurrent vor Mode — EMS setzt Stromobergrenze, EVCC regelt den Ladestrom. */
+export const WALLBOX_EVCC_WRITE_SEQUENCE = {
+	set_max_current_a: 1,
+	set_mode: 2,
+	set_phase: 3,
+} as const;
+
+/** @deprecated Alias für Legacy-Tests */
+export const WALLBOX_WRITE_SEQUENCE = WALLBOX_LEGACY_WRITE_SEQUENCE;
+
+function planBase(mapping: WallboxControlMappingSnapshot) {
+	return {
+		controlModel: mapping.controlModel,
+		evccControlPathConfirmed: mapping.evccControlPathConfirmed,
+		liveEligible: false,
+		controlPathReason: mapping.controlPathReason,
+	};
+}
 
 function emptyPlan(
 	action: WallboxWritePlanAction,
@@ -53,14 +72,16 @@ function emptyPlan(
 	blockReason: string | null,
 	contractReady: boolean,
 	mapping: WallboxControlMappingSnapshot,
+	liveEligible = false,
 ): WallboxWritePlan {
 	return {
 		action,
 		actionable: false,
 		contractReady,
 		feedbackContractReady: false,
-		controlModel: mapping.controlModel,
-		evccControlPathConfirmed: mapping.evccControlPathConfirmed,
+		...planBase(mapping),
+		liveEligible,
+		controlPathReason: blockReason ?? mapping.controlPathReason,
 		writeScenario: null,
 		operations: [],
 		missingRoles: [],
@@ -92,16 +113,33 @@ function validChargeNumber(value: number | null): value is number {
 	return value !== null && Number.isFinite(value) && value > 0;
 }
 
+function sequenceForRole(role: string, controlModel: WallboxControlModel): number {
+	if (controlModel === "evcc") {
+		if (role === "set_max_current_a") return WALLBOX_EVCC_WRITE_SEQUENCE.set_max_current_a;
+		if (role === "set_mode") return WALLBOX_EVCC_WRITE_SEQUENCE.set_mode;
+		if (role === "set_phase") return WALLBOX_EVCC_WRITE_SEQUENCE.set_phase;
+		return 99;
+	}
+	if (role === "set_current_a") return WALLBOX_LEGACY_WRITE_SEQUENCE.set_current_a;
+	if (role === "set_charge_power_w") return WALLBOX_LEGACY_WRITE_SEQUENCE.set_charge_power_w;
+	if (role === "set_enabled") return WALLBOX_LEGACY_WRITE_SEQUENCE.set_enabled;
+	return 99;
+}
+
 function operationFromEntry(
 	entry: WallboxControlMappingEntry,
 	targetValue: string | number | boolean,
 	sourceField: string,
 	expectedReadback: string | number | boolean | null,
+	controlModel: WallboxControlModel,
 ): WallboxWriteOperation | null {
 	if (entry.targetValueType === "boolean" && typeof targetValue !== "boolean") {
 		return null;
 	}
 	if (entry.targetValueType === "number" && typeof targetValue !== "number") {
+		return null;
+	}
+	if (entry.targetValueType === "string" && typeof targetValue !== "string") {
 		return null;
 	}
 	if (entry.targetValueType === "number" && !Number.isFinite(targetValue as number)) {
@@ -112,7 +150,7 @@ function operationFromEntry(
 		targetStateId: entry.targetStateId,
 		targetValue,
 		targetValueType: entry.targetValueType,
-		sequence: WALLBOX_WRITE_SEQUENCE[entry.role],
+		sequence: sequenceForRole(entry.role, controlModel),
 		required: entry.required,
 		readbackStateId: entry.readbackStateId,
 		expectedReadbackValue: expectedReadback,
@@ -125,47 +163,210 @@ function computeFeedbackReady(operations: WallboxWriteOperation[]): boolean {
 	return operations.every((op) => op.required && op.readbackStateId !== null);
 }
 
+function legacyMappingStructurallyReady(mapping: WallboxControlMappingSnapshot): boolean {
+	if (mapping.ambiguousPowerControl) return false;
+	if (mapping.missingRoles.length > 0) return false;
+	if (mapping.validationIssues.length > 0) return false;
+	if (!mapping.setEnabled?.contractValid) return false;
+	const chargeEntry =
+		mapping.chargeControlRole === "set_current_a"
+			? mapping.setCurrentA
+			: mapping.chargeControlRole === "set_charge_power_w"
+				? mapping.setChargePowerW
+				: null;
+	return Boolean(chargeEntry?.contractValid);
+}
+
+function evccMappingStructurallyReady(mapping: WallboxControlMappingSnapshot): boolean {
+	if (mapping.missingRoles.length > 0) return false;
+	if (mapping.validationIssues.length > 0) return false;
+	if (!mapping.setMaxCurrentA?.contractValid) return false;
+	if (!mapping.setMode?.contractValid) return false;
+	if (!mapping.chargeModeValueConfirmed) return false;
+	return mapping.evccControlPathConfirmed;
+}
+
 export interface BuildWallboxWritePlanInput {
 	candidate: WallboxCommandCandidate;
 	mapping: WallboxControlMappingSnapshot;
-	/** Aktueller Ladefreigabe-Status aus EVCC-Telemetrie (evcc.enabled). */
+	/** Legacy: aktueller Ladefreigabe-Status (go-e/enabled). */
 	chargingEnabled: boolean | null;
+	/** EVCC: aktueller Modus entspricht konfiguriertem Charge-Mode-Wert. */
+	chargeModeActive: boolean | null;
 	now: Date;
 }
 
-/**
- * Reine Übersetzung Command → Write-Plan. Kein IO, kein Host, keine Writes.
- */
-export function buildWallboxWritePlan(input: BuildWallboxWritePlanInput): WallboxWritePlan {
-	const { candidate, mapping, chargingEnabled, now } = input;
-	const createdAt = now.toISOString();
-	const commandRevision =
-		candidate.dispatchRevision !== null ? String(candidate.dispatchRevision) : null;
-
-	if (!candidate.connected) {
-		return emptyPlan("none", createdAt, commandRevision, "vehicle_disconnected", false, mapping);
-	}
-
-	if (candidate.action === "none") {
-		return emptyPlan("none", createdAt, commandRevision, null, true, mapping);
-	}
-
-	if (candidate.action === "hold") {
+function buildEvccHoldPlan(
+	candidate: WallboxCommandCandidate,
+	mapping: WallboxControlMappingSnapshot,
+	createdAt: string,
+	commandRevision: string | null,
+): WallboxWritePlan {
+	if (!mapping.setMode || !mapping.holdModeValueConfirmed || !mapping.evccHoldModeValue) {
 		return emptyPlan("hold", createdAt, commandRevision, "hold_mapping_undefined", false, mapping);
 	}
+	const modeOp = operationFromEntry(
+		mapping.setMode,
+		mapping.evccHoldModeValue,
+		"evccHoldModeValue",
+		mapping.evccHoldModeValue,
+		"evcc",
+	);
+	if (!modeOp) {
+		return emptyPlan("hold", createdAt, commandRevision, "invalid_hold_mode_value", false, mapping);
+	}
+	const contractReady = mapping.setMode.contractValid && mapping.holdModeValueConfirmed;
+	return {
+		action: "hold",
+		actionable: contractReady,
+		contractReady,
+		feedbackContractReady: computeFeedbackReady([modeOp]),
+		controlModel: mapping.controlModel,
+		evccControlPathConfirmed: mapping.evccControlPathConfirmed,
+		liveEligible: false,
+		controlPathReason: mapping.controlPathReason,
+		writeScenario: null,
+		operations: [modeOp],
+		missingRoles: [],
+		unsupportedReasons: [],
+		commandRevision,
+		createdAt,
+		blocked: !contractReady,
+		blockReason: contractReady ? null : "hold_mapping_undefined",
+	};
+}
 
-	if (candidate.blocked || !candidate.technicallyReady) {
-		return emptyPlan(
-			"charge",
-			createdAt,
-			commandRevision,
-			candidate.blockReason ?? "candidate_blocked",
-			false,
-			mapping,
-		);
+function buildEvccChargePlan(
+	candidate: WallboxCommandCandidate,
+	mapping: WallboxControlMappingSnapshot,
+	chargeModeActive: boolean | null,
+	createdAt: string,
+	commandRevision: string | null,
+): WallboxWritePlan {
+	const unsupportedReasons: string[] = [];
+	const missingRoles = [...mapping.missingRoles];
+
+	if (mapping.controlModel === "none") {
+		return {
+			...emptyPlan("charge", createdAt, commandRevision, "control_model_not_selected", false, mapping),
+			missingRoles,
+			unsupportedReasons,
+		};
 	}
 
-	const unsupportedReasons: string[] = ["evcc_mode_write_not_configured"];
+	if (!mapping.setMaxCurrentA) {
+		return {
+			...emptyPlan("charge", createdAt, commandRevision, "mapping_incomplete", false, mapping),
+			missingRoles,
+			unsupportedReasons,
+		};
+	}
+
+	if (!validChargeNumber(candidate.targetCurrentA)) {
+		return emptyPlan("charge", createdAt, commandRevision, "invalid_target_current", false, mapping);
+	}
+
+	if (!mapping.chargeModeValueConfirmed || !mapping.evccChargeModeValue) {
+		return {
+			...emptyPlan(
+				"charge",
+				createdAt,
+				commandRevision,
+				"evcc_charge_mode_mapping_missing",
+				false,
+				mapping,
+			),
+			missingRoles,
+			unsupportedReasons,
+		};
+	}
+
+	if (!mapping.setMode) {
+		return {
+			...emptyPlan("charge", createdAt, commandRevision, "mapping_incomplete", false, mapping),
+			missingRoles,
+			unsupportedReasons,
+		};
+	}
+
+	if (mapping.validationIssues.length > 0) {
+		const reason = mapping.validationIssues[0] ?? "mapping_validation_failed";
+		return {
+			...emptyPlan("charge", createdAt, commandRevision, reason, false, mapping),
+			missingRoles,
+			unsupportedReasons,
+		};
+	}
+
+	const maxCurrentValue = candidate.targetCurrentA!;
+	const maxCurrentOp = operationFromEntry(
+		mapping.setMaxCurrentA,
+		maxCurrentValue,
+		"targetCurrentA",
+		mapping.setMaxCurrentA.readbackStateId ? maxCurrentValue : null,
+		"evcc",
+	);
+	if (!maxCurrentOp) {
+		return emptyPlan("charge", createdAt, commandRevision, "invalid_max_current_value_type", false, mapping);
+	}
+
+	const modeStartRequired = chargeModeActive !== true;
+	const writeScenario: WallboxWriteScenario = modeStartRequired ? "charge_start" : "charge_adjust";
+	const operations: WallboxWriteOperation[] = [maxCurrentOp];
+
+	if (modeStartRequired) {
+		const chargeModeValue = mapping.evccChargeModeValue;
+		const modeOp = operationFromEntry(
+			mapping.setMode,
+			chargeModeValue,
+			"evccChargeModeValue",
+			chargeModeValue,
+			"evcc",
+		);
+		if (!modeOp) {
+			return emptyPlan("charge", createdAt, commandRevision, "invalid_charge_mode_value_type", false, mapping);
+		}
+		operations.push(modeOp);
+	}
+
+	operations.sort((a, b) => a.sequence - b.sequence || a.role.localeCompare(b.role));
+
+	const structurallyReady = evccMappingStructurallyReady(mapping);
+	const contractReady = structurallyReady;
+	const feedbackContractReady = computeFeedbackReady(operations);
+	const liveEligible =
+		mapping.liveEligible &&
+		contractReady &&
+		(writeScenario !== "charge_start" || mapping.chargeModeValueConfirmed);
+
+	return {
+		action: "charge",
+		actionable: contractReady,
+		contractReady,
+		feedbackContractReady,
+		controlModel: mapping.controlModel,
+		evccControlPathConfirmed: mapping.evccControlPathConfirmed,
+		liveEligible,
+		controlPathReason: mapping.controlPathReason,
+		writeScenario,
+		operations,
+		missingRoles: [],
+		unsupportedReasons,
+		commandRevision,
+		createdAt,
+		blocked: !contractReady,
+		blockReason: contractReady ? null : (mapping.controlPathReason ?? "mapping_incomplete"),
+	};
+}
+
+function buildLegacyChargePlan(
+	candidate: WallboxCommandCandidate,
+	mapping: WallboxControlMappingSnapshot,
+	chargingEnabled: boolean | null,
+	createdAt: string,
+	commandRevision: string | null,
+): WallboxWritePlan {
+	const unsupportedReasons: string[] = [];
 	const missingRoles = [...mapping.missingRoles];
 
 	if (mapping.ambiguousPowerControl) {
@@ -178,6 +379,15 @@ export function buildWallboxWritePlan(input: BuildWallboxWritePlanInput): Wallbo
 				false,
 				mapping,
 			),
+			missingRoles,
+			unsupportedReasons,
+		};
+	}
+
+	if (mapping.validationIssues.length > 0) {
+		const reason = mapping.validationIssues[0] ?? "mapping_validation_failed";
+		return {
+			...emptyPlan("charge", createdAt, commandRevision, reason, false, mapping),
 			missingRoles,
 			unsupportedReasons,
 		};
@@ -229,7 +439,7 @@ export function buildWallboxWritePlan(input: BuildWallboxWritePlanInput): Wallbo
 		expectedReadback = chargeEntry.readbackStateId ? chargeValue : null;
 	}
 
-	const chargeOp = operationFromEntry(chargeEntry, chargeValue, sourceField, expectedReadback);
+	const chargeOp = operationFromEntry(chargeEntry, chargeValue, sourceField, expectedReadback, "legacy_direct");
 	if (!chargeOp) {
 		return emptyPlan("charge", createdAt, commandRevision, "invalid_charge_value_type", false, mapping);
 	}
@@ -249,6 +459,7 @@ export function buildWallboxWritePlan(input: BuildWallboxWritePlanInput): Wallbo
 			enableValue,
 			"enableCharging",
 			enableValue,
+			"legacy_direct",
 		);
 		if (!enableOp) {
 			return emptyPlan("charge", createdAt, commandRevision, "invalid_enable_value_type", false, mapping);
@@ -258,22 +469,69 @@ export function buildWallboxWritePlan(input: BuildWallboxWritePlanInput): Wallbo
 
 	operations.sort((a, b) => a.sequence - b.sequence || a.role.localeCompare(b.role));
 
+	const structurallyReady = legacyMappingStructurallyReady(mapping);
+	const contractReady = structurallyReady;
 	const feedbackContractReady = computeFeedbackReady(operations);
 
 	return {
 		action: "charge",
-		actionable: true,
-		contractReady: true,
+		actionable: contractReady,
+		contractReady,
 		feedbackContractReady,
 		controlModel: mapping.controlModel,
 		evccControlPathConfirmed: mapping.evccControlPathConfirmed,
+		liveEligible: false,
+		controlPathReason: mapping.controlPathReason,
 		writeScenario,
 		operations,
 		missingRoles: [],
 		unsupportedReasons,
 		commandRevision,
 		createdAt,
-		blocked: false,
-		blockReason: null,
+		blocked: !contractReady,
+		blockReason: contractReady ? null : (mapping.controlPathReason ?? "mapping_incomplete"),
 	};
+}
+
+/**
+ * Reine Übersetzung Command → Write-Plan. Kein IO, kein Host, keine Writes.
+ * EVCC: targetCurrentA wird als maxCurrent (Stromobergrenze) an EVCC übergeben.
+ */
+export function buildWallboxWritePlan(input: BuildWallboxWritePlanInput): WallboxWritePlan {
+	const { candidate, mapping, chargingEnabled, chargeModeActive, now } = input;
+	const createdAt = now.toISOString();
+	const commandRevision =
+		candidate.dispatchRevision !== null ? String(candidate.dispatchRevision) : null;
+
+	if (!candidate.connected) {
+		return emptyPlan("none", createdAt, commandRevision, "vehicle_disconnected", false, mapping);
+	}
+
+	if (candidate.action === "none") {
+		return emptyPlan("none", createdAt, commandRevision, null, true, mapping);
+	}
+
+	if (candidate.action === "hold") {
+		if (mapping.controlModel === "evcc") {
+			return buildEvccHoldPlan(candidate, mapping, createdAt, commandRevision);
+		}
+		return emptyPlan("hold", createdAt, commandRevision, "hold_mapping_undefined", false, mapping);
+	}
+
+	if (candidate.blocked || !candidate.technicallyReady) {
+		return emptyPlan(
+			"charge",
+			createdAt,
+			commandRevision,
+			candidate.blockReason ?? "candidate_blocked",
+			false,
+			mapping,
+		);
+	}
+
+	if (mapping.controlModel === "evcc") {
+		return buildEvccChargePlan(candidate, mapping, chargeModeActive, createdAt, commandRevision);
+	}
+
+	return buildLegacyChargePlan(candidate, mapping, chargingEnabled, createdAt, commandRevision);
 }

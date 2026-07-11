@@ -157,13 +157,14 @@ beliebige Wallbox → EVCC → EMS-Light (read-only)
 - **Dryrun-Dispatch (v0.1.133):** neutraler Intent, technisches Ziel, Mapping-Readiness, `dryrun_command_json` — weiterhin keine EVCC-Writes (auch im Live-Modus)
 - **Live-Foundation (v0.1.134):** Command-Kandidat + zentrale `executeWallboxWrite()` — Release-Gate geschlossen, keine realen Writes
 - **EVCC Write Contract (v0.1.135):** `WallboxWritePlan` aus Command + Legacy-Mapping — weiterhin keine Ausführung
+- **EVCC Control Mapping (v0.1.136):** EVCC-Steuerrollen `set_mode` + `set_max_current_a` (nicht `enabled`/`minCurrent`), Mode-Wert-Mapping, semantische Objektprüfung, Write-Reihenfolge maxCurrent→mode — Release-Gate geschlossen
 - `plan_time` / `effective_plan_time`: bei null/invalid wird der Spiegelstate auf `""` gesetzt (kein stale Deadline)
 - EVCC-Sitzungsenergie: Wh → kWh (`/ 1000`)
 - Go-Null-Zeit (`0001-01-01T00:00:00Z`) wird als „kein Plan" behandelt
 
 Legacy go-e-Write-Mappings (`wb_set_*`) bleiben in der Config, werden von der Runtime nicht mehr genutzt. Wallbox ist `supports_read_only` in der Registry.
 
-Details: `docs/EMS_LIGHT_WALLBOX_DAILY_PLAN_READONLY.md`, `docs/EMS_LIGHT_WALLBOX_DRYRUN_DISPATCH.md`, `docs/EMS_LIGHT_WALLBOX_LIVE_FOUNDATION.md`, `docs/EMS_LIGHT_WALLBOX_EVCC_WRITE_CONTRACT.md`
+Details: `docs/EMS_LIGHT_WALLBOX_DAILY_PLAN_READONLY.md`, `docs/EMS_LIGHT_WALLBOX_DRYRUN_DISPATCH.md`, `docs/EMS_LIGHT_WALLBOX_LIVE_FOUNDATION.md`, `docs/EMS_LIGHT_WALLBOX_EVCC_WRITE_CONTRACT.md`, `docs/EMS_LIGHT_WALLBOX_EVCC_CONTROL_MAPPING.md`
 
 ---
 

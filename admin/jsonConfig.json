@@ -323,6 +323,103 @@
 					"lg": 4,
 					"xl": 4
 				},
+				"hEvccControlWrite": {
+					"type": "header",
+					"size": 2,
+					"text": "EVCC — Steuer-Mappings (Write Contract)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"helpEvccControlWrite": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Getrennte Steuerziele für den EVCC-Control-Pfad (Write Contract). EMS setzt maxCurrent (Stromobergrenze) und Lademodus — EVCC regelt den tatsächlichen Ladestrom. Legacy go-e-Mappings (wb_set_*) bleiben unter legacy_direct."
+				},
+				"wb_control_model": {
+					"type": "select",
+					"label": "Steuerpfad",
+					"options": [
+						{
+							"label": "EVCC Control Path (empfohlen)",
+							"value": "evcc"
+						},
+						{
+							"label": "Legacy Direkt (go-e / wb_set_*)",
+							"value": "legacy_direct"
+						},
+						{
+							"label": "Deaktiviert",
+							"value": "none"
+						}
+					],
+					"default": "evcc",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"wb_evcc_set_max_current_a_target": {
+					"type": "objectId",
+					"label": "EVCC maxCurrent (Write)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_set_mode_target": {
+					"type": "objectId",
+					"label": "EVCC Lademodus (Write)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_mode_charge_value": {
+					"type": "text",
+					"label": "EVCC Modus-Wert: Laden",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_mode_hold_value": {
+					"type": "text",
+					"label": "EVCC Modus-Wert: Hold/Off",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_set_phase_target": {
+					"type": "objectId",
+					"label": "EVCC Phasen (Write, optional)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
 				"hEvccOps": {
 					"type": "header",
 					"size": 2,

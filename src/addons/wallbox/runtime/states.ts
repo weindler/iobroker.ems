@@ -68,4 +68,9 @@ export const WALLBOX_RUNTIME_STATES = {
 	writeControlModel: `${WALLBOX_RUNTIME_BASE}.write_control_model`,
 	writeEvccPathConfirmed: `${WALLBOX_RUNTIME_BASE}.write_evcc_path_confirmed`,
 	writeScenario: `${WALLBOX_RUNTIME_BASE}.write_scenario`,
+	writeLiveEligible: `${WALLBOX_RUNTIME_BASE}.write_live_eligible`,
+	writeControlPathReason: `${WALLBOX_RUNTIME_BASE}.write_control_path_reason`,
+	legacyMappingsPresent: `${WALLBOX_RUNTIME_BASE}.legacy_mappings_present`,
+	evccControlMappingsPresent: `${WALLBOX_RUNTIME_BASE}.evcc_control_mappings_present`,
+	controlMappingDiagnosticsJson: `${WALLBOX_RUNTIME_BASE}.control_mapping_diagnostics_json`,
 } as const;

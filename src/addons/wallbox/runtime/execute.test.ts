@@ -26,17 +26,44 @@ const SLOT_END = isoFromMs(Date.parse(SLOT_START) + DAILY_PLAN_SLOT_MS);
 function testMapping() {
 	return buildWallboxControlMappingSnapshot({
 		config: {
+			wb_control_model: "legacy_direct",
 			wb_set_enabled_target: "go-e.0.allow_charging",
 			wb_set_enabled_enabled: true,
 			wb_set_current_a_target: "go-e.0.amperePV",
 			wb_set_current_a_enabled: true,
 		},
-		telemetryCfg: { enabledStateId: "evcc.0.enabled", chargePowerWStateId: "" },
+		telemetryCfg: {
+			enabledStateId: "evcc.0.enabled",
+			maxCurrentAStateId: "",
+			modeReadbackStateId: "",
+		},
+		objectMetas: {
+			"go-e.0.allow_charging": {
+				stateId: "go-e.0.allow_charging",
+				objectPresent: true,
+				writable: true,
+				commonType: "boolean",
+				allowedStateKeys: null,
+			},
+			"go-e.0.amperePV": {
+				stateId: "go-e.0.amperePV",
+				objectPresent: true,
+				writable: true,
+				commonType: "number",
+				allowedStateKeys: null,
+			},
+		},
 	});
 }
 
 function chargeWritePlan(c: WallboxCommandCandidate = chargeCandidate(), chargingEnabled = false) {
-	return buildWallboxWritePlan({ candidate: c, mapping: testMapping(), chargingEnabled, now: NOW });
+	return buildWallboxWritePlan({
+		candidate: c,
+		mapping: testMapping(),
+		chargingEnabled,
+		chargeModeActive: null,
+		now: NOW,
+	});
 }
 
 function chargeCandidate(over: Partial<WallboxCommandCandidate> = {}): WallboxCommandCandidate {
@@ -112,7 +139,7 @@ function fullDispatch() {
 		intent,
 		decision,
 		telemetry: tel,
-		config: { wb_set_enabled_target: "x", wb_set_current_a_target: "y" },
+		config: { wb_control_model: "legacy_direct", wb_set_enabled_target: "x", wb_set_current_a_target: "y" },
 		chargingEnabled: false,
 		governanceEnabled: true,
 	});
@@ -224,6 +251,7 @@ describe("runWallboxLiveFoundation", () => {
 			decision,
 			mappingSnapshot: testMapping(),
 			chargingEnabled: false,
+			chargeModeActive: null,
 			addonEnabled: true,
 			governanceEnabled: false,
 			liveRequested: true,
@@ -285,6 +313,7 @@ describe("runWallboxLiveFoundation", () => {
 			decision,
 			mappingSnapshot: testMapping(),
 			chargingEnabled: false,
+			chargeModeActive: null,
 			addonEnabled: true,
 			governanceEnabled: true,
 			liveRequested: false,
@@ -345,6 +374,7 @@ describe("runWallboxLiveFoundation", () => {
 			decision,
 			mappingSnapshot: testMapping(),
 			chargingEnabled: false,
+			chargeModeActive: null,
 			addonEnabled: true,
 			governanceEnabled: true,
 			liveRequested: true,

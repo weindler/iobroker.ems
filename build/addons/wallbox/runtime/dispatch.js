@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runWallboxDryrunDispatch = exports.powerToTargetCurrentA = exports.evaluateWallboxDispatchReadiness = exports.resetWallboxDispatchCache = exports.WALLBOX_AC_VOLTAGE_V = exports.WALLBOX_CURRENT_STEP_A = void 0;
 const mapping_config_1 = require("../../../mapping_config");
+const evcc_control_config_1 = require("../evcc_control_config");
 /** EVCC/go-e typischerweise ganzzahlige Ampere — dokumentiert in EMS_LIGHT_WALLBOX_DRYRUN_DISPATCH.md */
 exports.WALLBOX_CURRENT_STEP_A = 1;
 exports.WALLBOX_AC_VOLTAGE_V = 230;
@@ -22,6 +23,44 @@ function mappingEnabled(config, prefix) {
 }
 function evaluateWallboxDispatchReadiness(config) {
     const c = config && typeof config === "object" ? config : {};
+    const controlModel = (0, evcc_control_config_1.resolveWallboxControlModel)(c);
+    if (controlModel === "none") {
+        return {
+            controlMappingComplete: false,
+            enableMappingAvailable: false,
+            currentMappingAvailable: false,
+            powerMappingAvailable: false,
+            modeMappingAvailable: false,
+            liveDispatchSupported: false,
+            missingMappings: ["control_model_not_selected"],
+            reasonDe: "Steuerpfad nicht ausgewählt — wb_control_model setzen (evcc oder legacy_direct).",
+        };
+    }
+    if (controlModel === "evcc") {
+        const modeMappingAvailable = (0, evcc_control_config_1.evccControlTargetForRole)(c, "set_mode").length > 0;
+        const maxCurrentMappingAvailable = (0, evcc_control_config_1.evccControlTargetForRole)(c, "set_max_current_a").length > 0;
+        const chargeModeValue = (0, evcc_control_config_1.evccModeChargeValue)(c);
+        const missing = [];
+        if (!modeMappingAvailable)
+            missing.push("set_mode");
+        if (!maxCurrentMappingAvailable)
+            missing.push("set_max_current_a");
+        if (!chargeModeValue)
+            missing.push("evcc_charge_mode_value");
+        const controlMappingComplete = modeMappingAvailable && maxCurrentMappingAvailable && chargeModeValue.length > 0;
+        return {
+            controlMappingComplete,
+            enableMappingAvailable: false,
+            currentMappingAvailable: maxCurrentMappingAvailable,
+            powerMappingAvailable: false,
+            modeMappingAvailable,
+            liveDispatchSupported: false,
+            missingMappings: missing,
+            reasonDe: controlMappingComplete
+                ? "EVCC-Control-Mapping grundsätzlich vorhanden; Live-Dispatch weiterhin gesperrt."
+                : `Fehlende EVCC-Steuer-Mappings: ${missing.join(", ")}.`,
+        };
+    }
     const legacy = (0, mapping_config_1.legacyWallboxMappingFromConfig)(c);
     const enableMappingAvailable = mappingEnabled(c, mapping_config_1.WALLBOX_FLAT_PREFIX.set_enabled) &&
         (Boolean(legacy.set_enabled?.target_state) || mappingTarget(c, mapping_config_1.WALLBOX_FLAT_PREFIX.set_enabled).length > 0);

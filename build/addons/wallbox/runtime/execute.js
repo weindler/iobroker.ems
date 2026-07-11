@@ -82,6 +82,7 @@ async function runWallboxLiveFoundation(input) {
             liveRequested: input.liveRequested,
             candidate: null,
             writePlan: null,
+            mappingSnapshot: input.mappingSnapshot,
             writeResult: null,
             liveWriteReleased: false,
             writeAllowed: false,
@@ -96,6 +97,7 @@ async function runWallboxLiveFoundation(input) {
         candidate,
         mapping: input.mappingSnapshot,
         chargingEnabled: input.chargingEnabled,
+        chargeModeActive: input.chargeModeActive,
         now: input.now,
     });
     let writeResult = null;
@@ -112,6 +114,7 @@ async function runWallboxLiveFoundation(input) {
         liveRequested: input.liveRequested,
         candidate,
         writePlan,
+        mappingSnapshot: input.mappingSnapshot,
         writeResult,
         liveWriteReleased: false,
         writeAllowed: false,

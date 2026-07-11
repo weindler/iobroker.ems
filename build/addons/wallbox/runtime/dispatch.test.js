@@ -121,8 +121,17 @@ function dryrun(entries, tel = telemetry(), config = {}) {
     });
 });
 (0, node_test_1.describe)("wallbox dispatch readiness", () => {
-    (0, node_test_1.it)("complete legacy mapping", () => {
+    (0, node_test_1.it)("legacy without explicit model is not ready", () => {
         const r = (0, dispatch_js_1.evaluateWallboxDispatchReadiness)({
+            wb_set_enabled_target: "go-e.0.allow_charging",
+            wb_set_current_a_target: "go-e.0.ampere",
+        });
+        strict_1.default.equal(r.controlMappingComplete, false);
+        strict_1.default.ok(r.missingMappings.includes("control_model_not_selected"));
+    });
+    (0, node_test_1.it)("complete legacy mapping with explicit model", () => {
+        const r = (0, dispatch_js_1.evaluateWallboxDispatchReadiness)({
+            wb_control_model: "legacy_direct",
             wb_set_enabled_target: "go-e.0.allow_charging",
             wb_set_current_a_target: "go-e.0.ampere",
         });
@@ -131,28 +140,48 @@ function dryrun(entries, tel = telemetry(), config = {}) {
         strict_1.default.equal(r.currentMappingAvailable, true);
         strict_1.default.equal(r.liveDispatchSupported, false);
     });
-    (0, node_test_1.it)("enable missing", () => {
-        const r = (0, dispatch_js_1.evaluateWallboxDispatchReadiness)({ wb_set_current_a_target: "go-e.0.ampere" });
+    (0, node_test_1.it)("enable missing on legacy_direct", () => {
+        const r = (0, dispatch_js_1.evaluateWallboxDispatchReadiness)({
+            wb_control_model: "legacy_direct",
+            wb_set_current_a_target: "go-e.0.ampere",
+        });
         strict_1.default.equal(r.enableMappingAvailable, false);
         strict_1.default.equal(r.controlMappingComplete, false);
         strict_1.default.ok(r.missingMappings.includes("set_enabled"));
     });
-    (0, node_test_1.it)("current missing without power alternative", () => {
-        const r = (0, dispatch_js_1.evaluateWallboxDispatchReadiness)({ wb_set_enabled_target: "go-e.0.allow_charging" });
+    (0, node_test_1.it)("current missing without power alternative on legacy_direct", () => {
+        const r = (0, dispatch_js_1.evaluateWallboxDispatchReadiness)({
+            wb_control_model: "legacy_direct",
+            wb_set_enabled_target: "go-e.0.allow_charging",
+        });
         strict_1.default.equal(r.currentMappingAvailable, false);
         strict_1.default.equal(r.powerMappingAvailable, false);
         strict_1.default.ok(r.missingMappings.some((m) => m.includes("set_current")));
     });
-    (0, node_test_1.it)("power mapping as alternative", () => {
+    (0, node_test_1.it)("power mapping as alternative on legacy_direct", () => {
         const r = (0, dispatch_js_1.evaluateWallboxDispatchReadiness)({
+            wb_control_model: "legacy_direct",
             wb_set_enabled_target: "go-e.0.allow_charging",
             wb_set_charge_power_w_target: "go-e.0.power",
         });
         strict_1.default.equal(r.powerMappingAvailable, true);
         strict_1.default.equal(r.controlMappingComplete, true);
     });
+    (0, node_test_1.it)("evcc mapping readiness requires mode, maxCurrent and charge mode value", () => {
+        const r = (0, dispatch_js_1.evaluateWallboxDispatchReadiness)({
+            wb_control_model: "evcc",
+            wb_evcc_set_mode_target: "evcc.0.loadpoint.1.mode",
+            wb_evcc_set_max_current_a_target: "evcc.0.loadpoint.1.maxCurrent",
+            wb_evcc_mode_charge_value: "pv",
+        });
+        strict_1.default.equal(r.controlMappingComplete, true);
+        strict_1.default.equal(r.currentMappingAvailable, true);
+        strict_1.default.equal(r.modeMappingAvailable, true);
+        strict_1.default.equal(r.enableMappingAvailable, false);
+    });
     (0, node_test_1.it)("live dispatch always false in v0.1.133", () => {
         const r = (0, dispatch_js_1.evaluateWallboxDispatchReadiness)({
+            wb_control_model: "legacy_direct",
             wb_set_enabled_target: "x",
             wb_set_current_a_target: "y",
         });
@@ -255,6 +284,7 @@ function dryrun(entries, tel = telemetry(), config = {}) {
         strict_1.default.ok(!src.includes("writeForeignIfChanged"));
         strict_1.default.ok(!src.includes("setForeignState"));
         const r = dryrun([allocationEntry(3600)], telemetry(), {
+            wb_control_model: "legacy_direct",
             wb_set_enabled_target: "go-e.0.allow_charging",
             wb_set_current_a_target: "go-e.0.ampere",
         });

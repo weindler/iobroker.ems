@@ -1,4 +1,9 @@
 import { legacyWallboxMappingFromConfig, WALLBOX_FLAT_PREFIX } from "../../../mapping_config";
+import {
+	evccControlTargetForRole,
+	evccModeChargeValue,
+	resolveWallboxControlModel,
+} from "../evcc_control_config";
 import type { WallboxDispatchIntent, WallboxChargeSource } from "./intent";
 import type { WallboxPlanDecision, WallboxTelemetryInput } from "./daily_plan";
 
@@ -85,6 +90,44 @@ function mappingEnabled(config: Record<string, unknown>, prefix: string): boolea
 
 export function evaluateWallboxDispatchReadiness(config: unknown): WallboxDispatchReadiness {
 	const c = config && typeof config === "object" ? (config as Record<string, unknown>) : {};
+	const controlModel = resolveWallboxControlModel(c);
+
+	if (controlModel === "none") {
+		return {
+			controlMappingComplete: false,
+			enableMappingAvailable: false,
+			currentMappingAvailable: false,
+			powerMappingAvailable: false,
+			modeMappingAvailable: false,
+			liveDispatchSupported: false,
+			missingMappings: ["control_model_not_selected"],
+			reasonDe: "Steuerpfad nicht ausgewählt — wb_control_model setzen (evcc oder legacy_direct).",
+		};
+	}
+
+	if (controlModel === "evcc") {
+		const modeMappingAvailable = evccControlTargetForRole(c, "set_mode").length > 0;
+		const maxCurrentMappingAvailable = evccControlTargetForRole(c, "set_max_current_a").length > 0;
+		const chargeModeValue = evccModeChargeValue(c);
+		const missing: string[] = [];
+		if (!modeMappingAvailable) missing.push("set_mode");
+		if (!maxCurrentMappingAvailable) missing.push("set_max_current_a");
+		if (!chargeModeValue) missing.push("evcc_charge_mode_value");
+		const controlMappingComplete = modeMappingAvailable && maxCurrentMappingAvailable && chargeModeValue.length > 0;
+		return {
+			controlMappingComplete,
+			enableMappingAvailable: false,
+			currentMappingAvailable: maxCurrentMappingAvailable,
+			powerMappingAvailable: false,
+			modeMappingAvailable,
+			liveDispatchSupported: false,
+			missingMappings: missing,
+			reasonDe: controlMappingComplete
+				? "EVCC-Control-Mapping grundsätzlich vorhanden; Live-Dispatch weiterhin gesperrt."
+				: `Fehlende EVCC-Steuer-Mappings: ${missing.join(", ")}.`,
+		};
+	}
+
 	const legacy = legacyWallboxMappingFromConfig(c);
 
 	const enableMappingAvailable =

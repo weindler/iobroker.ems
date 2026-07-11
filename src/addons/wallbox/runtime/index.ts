@@ -154,6 +154,42 @@ export async function publishWallboxLiveFoundationStates(
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeControlModel, plan?.controlModel ?? "");
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeEvccPathConfirmed, plan?.evccControlPathConfirmed ?? false);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeScenario, plan?.writeScenario ?? "");
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeLiveEligible, plan?.liveEligible ?? false);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeControlPathReason, plan?.controlPathReason ?? "");
+	const mapping = foundation.mappingSnapshot;
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.legacyMappingsPresent, mapping.legacyMappingsPresent);
+	await setStateIfChanged(
+		host,
+		WALLBOX_RUNTIME_STATES.evccControlMappingsPresent,
+		mapping.evccMappingsPresent,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_RUNTIME_STATES.controlMappingDiagnosticsJson,
+		JSON.stringify({
+			controlModel: mapping.controlModel,
+			missingRoles: mapping.missingRoles,
+			validationIssues: mapping.validationIssues,
+			roles: [
+				mapping.setEnabled,
+				mapping.setCurrentA,
+				mapping.setChargePowerW,
+				mapping.setMode,
+				mapping.setMaxCurrentA,
+				mapping.setPhase,
+			]
+				.filter(Boolean)
+				.map((e) => ({
+					role: e!.role,
+					targetStateId: e!.targetStateId,
+					semanticRole: e!.semanticRole,
+					commonType: e!.commonType,
+					writable: e!.writable,
+					contractValid: e!.contractValid,
+					validationReason: e!.validationReason,
+				})),
+		}),
+	);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.runtimeControlAvailable, false);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeAllowed, false);
 }
@@ -163,7 +199,13 @@ export { resetWallboxDailyPlanCache, resolveWallboxDailyPlanDecision, telemetryI
 export { buildWallboxDispatchIntent } from "./intent";
 export { resetWallboxDispatchCache, runWallboxDryrunDispatch } from "./dispatch";
 export { buildWallboxCommandCandidate } from "./command";
-export { buildWallboxControlMappingSnapshot } from "./control_mapping";
+export { buildWallboxControlMappingSnapshot, collectConfiguredControlTargetStateIds } from "./control_mapping";
+export { resolveWallboxControlObjectMetas, metaFromObject } from "./control_object_meta";
+export {
+	resolveWallboxControlModel,
+	hasEvccControlWriteMapping,
+	WB_CONTROL_MODEL,
+} from "../evcc_control_config";
 export { buildWallboxWritePlan } from "./write_plan";
 export {
 	executeWallboxWrite,

@@ -140,8 +140,18 @@ describe("wallbox power to current", () => {
 });
 
 describe("wallbox dispatch readiness", () => {
-	it("complete legacy mapping", () => {
+	it("legacy without explicit model is not ready", () => {
 		const r = evaluateWallboxDispatchReadiness({
+			wb_set_enabled_target: "go-e.0.allow_charging",
+			wb_set_current_a_target: "go-e.0.ampere",
+		});
+		assert.equal(r.controlMappingComplete, false);
+		assert.ok(r.missingMappings.includes("control_model_not_selected"));
+	});
+
+	it("complete legacy mapping with explicit model", () => {
+		const r = evaluateWallboxDispatchReadiness({
+			wb_control_model: "legacy_direct",
 			wb_set_enabled_target: "go-e.0.allow_charging",
 			wb_set_current_a_target: "go-e.0.ampere",
 		});
@@ -151,22 +161,29 @@ describe("wallbox dispatch readiness", () => {
 		assert.equal(r.liveDispatchSupported, false);
 	});
 
-	it("enable missing", () => {
-		const r = evaluateWallboxDispatchReadiness({ wb_set_current_a_target: "go-e.0.ampere" });
+	it("enable missing on legacy_direct", () => {
+		const r = evaluateWallboxDispatchReadiness({
+			wb_control_model: "legacy_direct",
+			wb_set_current_a_target: "go-e.0.ampere",
+		});
 		assert.equal(r.enableMappingAvailable, false);
 		assert.equal(r.controlMappingComplete, false);
 		assert.ok(r.missingMappings.includes("set_enabled"));
 	});
 
-	it("current missing without power alternative", () => {
-		const r = evaluateWallboxDispatchReadiness({ wb_set_enabled_target: "go-e.0.allow_charging" });
+	it("current missing without power alternative on legacy_direct", () => {
+		const r = evaluateWallboxDispatchReadiness({
+			wb_control_model: "legacy_direct",
+			wb_set_enabled_target: "go-e.0.allow_charging",
+		});
 		assert.equal(r.currentMappingAvailable, false);
 		assert.equal(r.powerMappingAvailable, false);
 		assert.ok(r.missingMappings.some((m) => m.includes("set_current")));
 	});
 
-	it("power mapping as alternative", () => {
+	it("power mapping as alternative on legacy_direct", () => {
 		const r = evaluateWallboxDispatchReadiness({
+			wb_control_model: "legacy_direct",
 			wb_set_enabled_target: "go-e.0.allow_charging",
 			wb_set_charge_power_w_target: "go-e.0.power",
 		});
@@ -174,8 +191,22 @@ describe("wallbox dispatch readiness", () => {
 		assert.equal(r.controlMappingComplete, true);
 	});
 
+	it("evcc mapping readiness requires mode, maxCurrent and charge mode value", () => {
+		const r = evaluateWallboxDispatchReadiness({
+			wb_control_model: "evcc",
+			wb_evcc_set_mode_target: "evcc.0.loadpoint.1.mode",
+			wb_evcc_set_max_current_a_target: "evcc.0.loadpoint.1.maxCurrent",
+			wb_evcc_mode_charge_value: "pv",
+		});
+		assert.equal(r.controlMappingComplete, true);
+		assert.equal(r.currentMappingAvailable, true);
+		assert.equal(r.modeMappingAvailable, true);
+		assert.equal(r.enableMappingAvailable, false);
+	});
+
 	it("live dispatch always false in v0.1.133", () => {
 		const r = evaluateWallboxDispatchReadiness({
+			wb_control_model: "legacy_direct",
 			wb_set_enabled_target: "x",
 			wb_set_current_a_target: "y",
 		});
@@ -295,6 +326,7 @@ describe("wallbox dryrun dispatch", () => {
 		assert.ok(!src.includes("writeForeignIfChanged"));
 		assert.ok(!src.includes("setForeignState"));
 		const r = dryrun([allocationEntry(3600)], telemetry(), {
+			wb_control_model: "legacy_direct",
 			wb_set_enabled_target: "go-e.0.allow_charging",
 			wb_set_current_a_target: "go-e.0.ampere",
 		});

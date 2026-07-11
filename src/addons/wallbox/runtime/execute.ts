@@ -116,6 +116,7 @@ export interface WallboxLiveFoundationResult {
 	liveRequested: boolean;
 	candidate: WallboxCommandCandidate | null;
 	writePlan: WallboxWritePlan | null;
+	mappingSnapshot: WallboxControlMappingSnapshot;
 	writeResult: WallboxWriteResult | null;
 	liveWriteReleased: false;
 	writeAllowed: false;
@@ -125,8 +126,10 @@ export interface RunWallboxLiveFoundationInput {
 	dispatch: WallboxDryrunDispatchResult;
 	decision: WallboxPlanDecision;
 	mappingSnapshot: WallboxControlMappingSnapshot;
-	/** Aktueller Ladefreigabe-Status aus EVCC-Telemetrie. */
+	/** Legacy: aktueller Ladefreigabe-Status aus EVCC-Telemetrie (enabled). */
 	chargingEnabled: boolean | null;
+	/** EVCC: aktueller Modus entspricht konfiguriertem Charge-Mode-Wert. */
+	chargeModeActive: boolean | null;
 	addonEnabled: boolean;
 	governanceEnabled: boolean;
 	liveRequested: boolean;
@@ -148,6 +151,7 @@ export async function runWallboxLiveFoundation(
 			liveRequested: input.liveRequested,
 			candidate: null,
 			writePlan: null,
+			mappingSnapshot: input.mappingSnapshot,
 			writeResult: null,
 			liveWriteReleased: false,
 			writeAllowed: false,
@@ -164,6 +168,7 @@ export async function runWallboxLiveFoundation(
 		candidate,
 		mapping: input.mappingSnapshot,
 		chargingEnabled: input.chargingEnabled,
+		chargeModeActive: input.chargeModeActive,
 		now: input.now,
 	});
 
@@ -182,6 +187,7 @@ export async function runWallboxLiveFoundation(
 		liveRequested: input.liveRequested,
 		candidate,
 		writePlan,
+		mappingSnapshot: input.mappingSnapshot,
 		writeResult,
 		liveWriteReleased: false,
 		writeAllowed: false,

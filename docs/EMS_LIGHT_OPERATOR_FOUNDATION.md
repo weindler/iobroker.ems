@@ -1,6 +1,6 @@
 # EMS-Light — General-Operator-Grundlage
 
-**Stand:** v0.1.125
+**Stand:** v0.1.126
 
 ## Ziel
 
@@ -23,37 +23,98 @@ Der General Operator führt Supply, Demand, Constraints und Dispatch aller Add-o
 
 Definiert in `src/operator/types.ts`:
 
-- `PlanRole` — supply, demand_fixed, demand_flex, constraint, storage, dispatch, infrastructure
+- `PlanRole` — supply, demand_fixed, demand_flex, constraint, storage, dispatch, infrastructure, **context**
 - `PlanSlotContribution` — Leistung/Energie/Preis pro Zeitfenster
-- `PlanContribution` — Add-on-Beitrag mit Rollen, Qualität, `reason_de`, Revision
+- `PlanContribution` — Beitrag mit `contributor`-Referenz, Rollen, Qualität, `reason_de`, Revision
+
+## Add-on- und System-Contributors
+
+```ts
+type OperatorContributorType = "addon" | "system";
+
+type OperatorSystemContributorId = "house_load" | "grid_supply" | "global_constraints";
+
+interface OperatorContributorRef {
+    type: OperatorContributorType;
+    id: EmsAddonId | OperatorSystemContributorId;
+    addonId: EmsAddonId | null;
+}
+```
+
+- Add-on-Contributions referenzieren ausschließlich IDs aus `src/operator/registry.ts` (19 Add-ons).
+- System-Contributions (`house_load`, `grid_supply`, `global_constraints`) sind **nicht** in der Add-on-Registry.
+- Hauslast ist bewusst **kein** Add-on.
+
+Hilfsfunktionen: `src/operator/contributor.ts`.
+
+## Contributions (v0.1.126)
+
+Modul `src/operator/contributions/`:
+
+| Datei | Contributor | Rolle |
+|-------|-------------|-------|
+| `pv.ts` | `pv_forecast` | supply |
+| `house_load.ts` | `house_load` (System) | demand_fixed |
+| `weather.ts` | `weather_forecast` | context |
+| `constraints.ts` | `house_main_fuse`, `global_constraints`, `grid_supply` | constraint / infrastructure |
+
+State-Leser → normalisiertes Build-Input → reine Builder-Funktion → `PlanContribution`.
+
+### PV Contribution
+
+- Quellen: `learning.pv_bias.*`, `learning.pv_horizon.*`
+- Tages-kWh in `details`; keine künstlichen 15-Min-PV-Slots
+- Echter Nullertrag nur bei gültiger Quelle mit Wert `0`
+
+### House Load Contribution
+
+- Quellen: `learning.house_load.*`
+- Segment-Baselines mit definierten Zeitgrenzen (`SEGMENT_HOURS`)
+- Keine feinere Auflösung innerhalb von Segmenten
+
+### Weather Contribution
+
+- Kontext only — keine kWh-Bilanz
+- Rolle `context` wird nicht mit `supply` verrechnet
+
+### Constraint Contribution
+
+- Hausanschlussgrenze, Netzimportlimit, effektives Limit, Import erlaubt/gesperrt
+- Noch **kein** Abzug aktueller Hauslast vom Sicherungslimit
+
+## Forecast Plan
+
+Siehe `docs/EMS_LIGHT_FORECAST_PLAN.md`.
+
+- Builder: `src/operator/forecast/build.ts`
+- States: `planner.intent.forecast_plan.*`
+- Tick: nach Grid Supply in `ems_light/tick.ts`
+
+### Teilnahme- und Ausschlussregeln
+
+- Aktiv nur bei vorhandenen, gültigen Daten
+- Fehlende Contributors unter `excludedContributors` — nicht als Null bilanziert
+- Status `ready` / `degraded` / `missing_inputs` gemäß Pflichtquellen PV + Hauslast
 
 ## Add-on-Registry
 
-`src/operator/registry.ts` — alle 19 `EMS_ADDON_IDS` mit Rollen und Metadaten (`canContributeToPlan`, `canDispatch`, `requiresGovernance`). Registry beschreibt Fähigkeiten, nicht den Live-Aktivierungszustand.
+`src/operator/registry.ts` — alle 19 `EMS_ADDON_IDS` mit Rollen und Metadaten. Registry beschreibt Fähigkeiten, nicht den Live-Aktivierungszustand.
 
 ## Grid Supply
 
-`src/operator/supply/grid.ts` — jahreszeitneutrale Netz-/Preis-Schicht:
+`src/operator/supply/grid.ts` — jahreszeitneutrale Netz-/Preis-Schicht (v0.1.125), eingebunden als System-Contributor `grid_supply`.
 
-- Eingänge: Dynamic Tariff (Tibber-Slots), aktueller Preis, Policy, Global Mode, Fixed-Tariff-Fallback
-- Ausgabe: `GridSupplyForecast` + States unter `planner.intent.supply.grid.*`
-- Keine Allocation — nur normalisierte Ressource für Batterie, Wallbox, später WP/EV
-
-Batterie-spezifische Logik (`battery_winter`, `grid_balance`) nutzt dieselbe Slot-Beschaffung über `readTibber15MinPriceSlots` → Grid Supply.
-
-## Stand nach v0.1.125
+## Stand nach v0.1.126
 
 Implementiert:
 
-- Operator-Typen und Registry
-- Grid-Supply-Berechnung und States
-- Tick-Integration (`ems_light/tick.ts`)
-- Migration der Preis-Slot-Leser für Winter/Grid Balance
-- Cursor Rule `.cursor/rules/ems-light-development.mdc`
+- Operator-Typen mit Add-on- und System-Contributors
+- PV-, Hauslast-, Wetter-, Constraint-Contributions
+- Deterministischer Forecast Plan mit States und Tick-Integration
+- Tests für Contributors und Forecast Plan
 
 Noch nicht implementiert:
 
-- Vollständiger Forecast Plan
 - Vollständiger Daily Plan
 - Zentrale Allocation
 - Wallbox-Dispatch

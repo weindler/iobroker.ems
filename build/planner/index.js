@@ -3,8 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.stopPlanner = exports.initPlanner = exports.batteryWinterPlanConfigFromAdapter = exports.readTibber15MinPriceSlots = exports.isNowInWinterChargeWindow = exports.planBatteryWinterPriceWindows = exports.dailyKwhFromHouseLoadForecast = exports.planBatteryWinter = exports.plannerModePolicyFromGlobalMode = exports.buildPlannerConstraints = exports.planBattery = exports.coolingReserveW = exports.planCooling = exports.resetPlannerRevisionForTest = exports.runPlannerTick = exports.runPlanner = exports.readPlannerInputs = exports.readPlannerThermalStage = void 0;
 const ensure_states_1 = require("./ensure_states");
 const grid_states_1 = require("../operator/supply/grid_states");
+const states_1 = require("../operator/forecast/states");
 const run_1 = require("./run");
 const grid_tick_1 = require("../operator/supply/grid_tick");
+const tick_1 = require("../operator/forecast/tick");
 var inputs_1 = require("./inputs");
 Object.defineProperty(exports, "readPlannerThermalStage", { enumerable: true, get: function () { return inputs_1.readPlannerThermalStage; } });
 Object.defineProperty(exports, "readPlannerInputs", { enumerable: true, get: function () { return inputs_1.readPlannerInputs; } });
@@ -33,8 +35,10 @@ Object.defineProperty(exports, "batteryWinterPlanConfigFromAdapter", { enumerabl
 async function initPlanner(host) {
     await (0, ensure_states_1.ensurePlannerStates)(host);
     await (0, grid_states_1.ensureGridSupplyStates)(host);
+    await (0, states_1.ensureForecastPlanStates)(host);
     await (0, run_1.runPlannerTick)(host);
-    await (0, grid_tick_1.runGridSupplyTick)(host);
+    const gridForecast = await (0, grid_tick_1.runGridSupplyTick)(host);
+    await (0, tick_1.runForecastPlanTick)(host, gridForecast);
 }
 exports.initPlanner = initPlanner;
 async function stopPlanner() {

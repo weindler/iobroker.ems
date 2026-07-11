@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.125",
+		"version": "0.1.126",
 		"news": {
+			"0.1.126": {
+				"en": "Shared deterministic forecast plan: PV forecast, house load learning, weather context, grid supply and global grid limits merged as standardized operator contributions. Missing sources are transparently excluded instead of inventing zero values.",
+				"de": "Gemeinsamen deterministischen Forecast Plan ergänzt. PV-Prognose, Hauslast-Learning, Wetterdaten, Grid Supply und globale Netzlimits werden als standardisierte Operator-Contributions zusammengeführt. Fehlende Quellen werden transparent ausgeschlossen und nicht mit Nullwerten erfunden."
+			},
 			"0.1.125": {
 				"en": "General Operator foundation: addon planning registry, shared grid supply layer for dynamic and fixed tariffs, central grid supply states, battery price reader migration; intent test decoupled from js-controller",
 				"de": "Grundlage für den gemeinsamen General Operator ergänzt: verbindliche Add-on-Planungsregistry, gemeinsame Grid-Supply-Schicht für dynamische und feste Tarife, zentrale Grid-Supply-States sowie Entkopplung der Batterie-Preislogik. Testumgebung für Intent-Tests korrigiert."

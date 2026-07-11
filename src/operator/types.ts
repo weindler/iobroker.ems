@@ -7,7 +7,18 @@ export type PlanRole =
 	| "constraint"
 	| "storage"
 	| "dispatch"
-	| "infrastructure";
+	| "infrastructure"
+	| "context";
+
+export type OperatorContributorType = "addon" | "system";
+
+export type OperatorSystemContributorId = "house_load" | "grid_supply" | "global_constraints";
+
+export interface OperatorContributorRef {
+	type: OperatorContributorType;
+	id: EmsAddonId | OperatorSystemContributorId;
+	addonId: EmsAddonId | null;
+}
 
 export type OperatorDataStatus = "valid" | "degraded" | "missing" | "disabled" | "invalid";
 
@@ -36,7 +47,7 @@ export interface PlanSlotContribution {
 }
 
 export interface PlanContribution {
-	addonId: EmsAddonId;
+	contributor: OperatorContributorRef;
 	roles: PlanRole[];
 	generatedAt: string;
 	validUntil: string | null;
@@ -84,6 +95,46 @@ export interface GridSupplyForecast {
 	configuredHouseFuseLimitW: number | null;
 	effectiveMaxGridImportW: number | null;
 	slots: GridSupplySlot[];
+	quality: OperatorDataQuality;
+	reasonDe: string;
+}
+
+export type ForecastPlanStatus =
+	| "ready"
+	| "degraded"
+	| "missing_inputs"
+	| "disabled"
+	| "error";
+
+export interface ForecastPlanDay {
+	date: string;
+
+	pvEnergyKwh: number | null;
+	houseLoadEnergyKwh: number | null;
+
+	renewableBalanceKwh: number | null;
+
+	weatherMinTempC: number | null;
+	weatherMaxTempC: number | null;
+
+	quality: OperatorDataQuality;
+	reasonDe: string;
+}
+
+export interface ForecastPlanSlot {
+	slot: OperatorTimeSlot;
+
+	pvPowerW: number | null;
+	houseLoadPowerW: number | null;
+
+	fixedBalancePowerW: number | null;
+
+	gridPriceCtPerKwh: number | null;
+	gridImportAllowed: boolean;
+	gridMaxImportPowerW: number | null;
+
+	outdoorTempC: number | null;
+
 	quality: OperatorDataQuality;
 	reasonDe: string;
 }

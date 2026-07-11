@@ -4,13 +4,27 @@ export type {
 	GridSupplySlot,
 	GridSupplySource,
 	OperatorAddonRegistration,
+	OperatorContributorRef,
+	OperatorContributorType,
 	OperatorDataQuality,
 	OperatorDataStatus,
+	OperatorSystemContributorId,
 	OperatorTimeSlot,
+	ForecastPlanDay,
+	ForecastPlanSlot,
+	ForecastPlanStatus,
 	PlanContribution,
 	PlanRole,
 	PlanSlotContribution,
 } from "./types";
+
+export {
+	addonContributorRef,
+	contributorRefKey,
+	parseContributorRef,
+	serializeContributorRef,
+	systemContributorRef,
+} from "./contributor";
 
 export {
 	OPERATOR_ADDON_REGISTRY,
@@ -45,6 +59,36 @@ export {
 	runGridSupplyTick,
 } from "./supply/grid_tick";
 
+export {
+	buildPvContribution,
+	buildHouseLoadContribution,
+	buildWeatherContribution,
+	buildGridSupplyContribution,
+	buildHouseMainFuseConstraintContribution,
+	buildGlobalConstraintsContribution,
+	collectContributions,
+	type ContributionsReadHost,
+} from "./contributions";
+
+export {
+	buildForecastPlan,
+	ensureForecastPlanStates,
+	forecastPlanRevisionForTest,
+	forecastPlanRevisionPayload,
+	FORECAST_PLAN_STATE_IDS,
+	resetForecastPlanRevisionForTest,
+	runForecastPlanTick,
+	type ForecastPlan,
+} from "./forecast";
+
 export { operatorQuality, mergeOperatorQuality } from "./quality";
 
-export { isoFromMs, isValidIsoTimestamp, slotEndMsFromStart, OPERATOR_MS_PER_15MIN } from "./time";
+export {
+	isoFromMs,
+	isValidIsoTimestamp,
+	slotEndMsFromStart,
+	OPERATOR_MS_PER_15MIN,
+	localDateKeyInTimezone,
+	isoAtTimezoneLocal,
+	addDaysToDateKey,
+} from "./time";

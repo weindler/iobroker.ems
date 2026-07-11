@@ -6,6 +6,7 @@ const tree_paths_1 = require("../tree_paths");
 const live_cache_1 = require("./live_cache");
 const planner_1 = require("../planner");
 const grid_tick_1 = require("../operator/supply/grid_tick");
+const tick_1 = require("../operator/forecast/tick");
 async function runEmsLightPhase1Tick(host) {
     (0, ems_activity_1.touchEmsActivity)();
     const ts = new Date().toISOString();
@@ -46,11 +47,18 @@ async function runEmsLightPhase1Tick(host) {
     catch (e) {
         hints.push(`planner: ${String(e)}`);
     }
+    let gridForecast;
     try {
-        await (0, grid_tick_1.runGridSupplyTick)(host);
+        gridForecast = await (0, grid_tick_1.runGridSupplyTick)(host);
     }
     catch (e) {
         hints.push(`grid_supply: ${String(e)}`);
+    }
+    try {
+        await (0, tick_1.runForecastPlanTick)(host, gridForecast);
+    }
+    catch (e) {
+        hints.push(`forecast_plan: ${String(e)}`);
     }
     const health = (0, live_cache_1.deriveHealth)(liveResult, !hints.some((h) => h.includes("global.execution_mode nicht")));
     const summaryParts = [

@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.runWallboxLiveFoundation = exports.resolveWallboxRuntimePhase = exports.executeWallboxWrite = exports.WALLBOX_LIVE_WRITE_RELEASED = void 0;
 const command_1 = require("./command");
 const write_plan_1 = require("./write_plan");
+const feedback_1 = require("./feedback");
+const feedback_config_1 = require("./feedback_config");
 /** Release-Freigabe für reale Wallbox-/EVCC-Writes — in v0.1.135 geschlossen. */
 exports.WALLBOX_LIVE_WRITE_RELEASED = false;
 /**
@@ -82,6 +84,7 @@ async function runWallboxLiveFoundation(input) {
             liveRequested: input.liveRequested,
             candidate: null,
             writePlan: null,
+            feedbackContract: null,
             mappingSnapshot: input.mappingSnapshot,
             writeResult: null,
             liveWriteReleased: false,
@@ -100,6 +103,12 @@ async function runWallboxLiveFoundation(input) {
         chargeModeActive: input.chargeModeActive,
         now: input.now,
     });
+    const feedbackConfig = (0, feedback_config_1.wallboxFeedbackConfigFromAdapter)(input.config);
+    const feedbackContract = (0, feedback_1.buildWallboxFeedbackContract)({
+        writePlan,
+        feedbackConfig,
+        now: input.now,
+    });
     let writeResult = null;
     if (phase === "live") {
         writeResult = await executeWallboxWrite({
@@ -114,6 +123,7 @@ async function runWallboxLiveFoundation(input) {
         liveRequested: input.liveRequested,
         candidate,
         writePlan,
+        feedbackContract,
         mappingSnapshot: input.mappingSnapshot,
         writeResult,
         liveWriteReleased: false,

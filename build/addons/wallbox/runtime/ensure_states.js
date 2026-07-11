@@ -100,6 +100,20 @@ async function ensureWallboxRuntimeStates(host) {
         boolState(states_1.WALLBOX_RUNTIME_STATES.legacyMappingsPresent, "Wallbox Legacy-Mappings vorhanden", false),
         boolState(states_1.WALLBOX_RUNTIME_STATES.evccControlMappingsPresent, "Wallbox EVCC-Control-Mappings vorhanden", false),
         strState(states_1.WALLBOX_RUNTIME_STATES.controlMappingDiagnosticsJson, "Wallbox Control-Mapping Diagnose (JSON)", "{}"),
+        boolState(states_1.WALLBOX_RUNTIME_STATES.feedbackContractPresent, "Wallbox Feedback-Vertrag vorhanden", false),
+        strState(states_1.WALLBOX_RUNTIME_STATES.feedbackContractJson, "Wallbox Feedback-Vertrag (JSON)"),
+        boolState(states_1.WALLBOX_RUNTIME_STATES.feedbackRequired, "Wallbox Feedback erforderlich", false),
+        boolState(states_1.WALLBOX_RUNTIME_STATES.feedbackContractStructuralReady, "Wallbox Feedback-Vertrag strukturell ready", false),
+        strState(states_1.WALLBOX_RUNTIME_STATES.feedbackStatus, "Wallbox Feedback-Status", "not_required"),
+        strState(states_1.WALLBOX_RUNTIME_STATES.feedbackBlockReason, "Wallbox Feedback-Blockgrund"),
+        strState(states_1.WALLBOX_RUNTIME_STATES.feedbackIssueKind, "Wallbox Feedback-Issue-Kategorie", "none"),
+        numState(states_1.WALLBOX_RUNTIME_STATES.feedbackExpectationCount, "Wallbox Feedback-Erwartungen Anzahl", 0),
+        numState(states_1.WALLBOX_RUNTIME_STATES.feedbackMatchedCount, "Wallbox Feedback matched Anzahl", 0),
+        numState(states_1.WALLBOX_RUNTIME_STATES.feedbackMismatchCount, "Wallbox Feedback mismatch Anzahl", 0),
+        numState(states_1.WALLBOX_RUNTIME_STATES.feedbackUnavailableCount, "Wallbox Feedback unavailable Anzahl", 0),
+        numState(states_1.WALLBOX_RUNTIME_STATES.feedbackInvalidCount, "Wallbox Feedback invalid Anzahl", 0),
+        numState(states_1.WALLBOX_RUNTIME_STATES.feedbackSettleTimeMs, "Wallbox Feedback Settle-Time ms"),
+        numState(states_1.WALLBOX_RUNTIME_STATES.feedbackTimeoutMs, "Wallbox Feedback Timeout ms"),
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }

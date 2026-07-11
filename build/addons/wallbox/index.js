@@ -102,6 +102,7 @@ async function refreshWallboxDailyPlanRuntime(host, snap) {
         mappingSnapshot,
         chargingEnabled,
         chargeModeActive,
+        config: configRecord,
         addonEnabled: addonEnabledVal,
         governanceEnabled,
         liveRequested,

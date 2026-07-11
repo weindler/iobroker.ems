@@ -101,6 +101,20 @@ export async function ensureWallboxRuntimeStates(host: StateHost): Promise<void>
 		boolState(WALLBOX_RUNTIME_STATES.legacyMappingsPresent, "Wallbox Legacy-Mappings vorhanden", false),
 		boolState(WALLBOX_RUNTIME_STATES.evccControlMappingsPresent, "Wallbox EVCC-Control-Mappings vorhanden", false),
 		strState(WALLBOX_RUNTIME_STATES.controlMappingDiagnosticsJson, "Wallbox Control-Mapping Diagnose (JSON)", "{}"),
+		boolState(WALLBOX_RUNTIME_STATES.feedbackContractPresent, "Wallbox Feedback-Vertrag vorhanden", false),
+		strState(WALLBOX_RUNTIME_STATES.feedbackContractJson, "Wallbox Feedback-Vertrag (JSON)"),
+		boolState(WALLBOX_RUNTIME_STATES.feedbackRequired, "Wallbox Feedback erforderlich", false),
+		boolState(WALLBOX_RUNTIME_STATES.feedbackContractStructuralReady, "Wallbox Feedback-Vertrag strukturell ready", false),
+		strState(WALLBOX_RUNTIME_STATES.feedbackStatus, "Wallbox Feedback-Status", "not_required"),
+		strState(WALLBOX_RUNTIME_STATES.feedbackBlockReason, "Wallbox Feedback-Blockgrund"),
+		strState(WALLBOX_RUNTIME_STATES.feedbackIssueKind, "Wallbox Feedback-Issue-Kategorie", "none"),
+		numState(WALLBOX_RUNTIME_STATES.feedbackExpectationCount, "Wallbox Feedback-Erwartungen Anzahl", 0),
+		numState(WALLBOX_RUNTIME_STATES.feedbackMatchedCount, "Wallbox Feedback matched Anzahl", 0),
+		numState(WALLBOX_RUNTIME_STATES.feedbackMismatchCount, "Wallbox Feedback mismatch Anzahl", 0),
+		numState(WALLBOX_RUNTIME_STATES.feedbackUnavailableCount, "Wallbox Feedback unavailable Anzahl", 0),
+		numState(WALLBOX_RUNTIME_STATES.feedbackInvalidCount, "Wallbox Feedback invalid Anzahl", 0),
+		numState(WALLBOX_RUNTIME_STATES.feedbackSettleTimeMs, "Wallbox Feedback Settle-Time ms"),
+		numState(WALLBOX_RUNTIME_STATES.feedbackTimeoutMs, "Wallbox Feedback Timeout ms"),
 	];
 	await ensureStates(host, defs);
 }

@@ -1,8 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.WALLBOX_LIVE_WRITE_RELEASED = exports.resolveWallboxRuntimePhase = exports.runWallboxLiveFoundation = exports.executeWallboxWrite = exports.buildWallboxWritePlan = exports.WB_CONTROL_MODEL = exports.hasEvccControlWriteMapping = exports.resolveWallboxControlModel = exports.metaFromObject = exports.resolveWallboxControlObjectMetas = exports.collectConfiguredControlTargetStateIds = exports.buildWallboxControlMappingSnapshot = exports.buildWallboxCommandCandidate = exports.runWallboxDryrunDispatch = exports.resetWallboxDispatchCache = exports.buildWallboxDispatchIntent = exports.telemetryInputFromSnapshot = exports.resolveWallboxDailyPlanDecision = exports.resetWallboxDailyPlanCache = exports.ensureWallboxRuntimeStates = exports.publishWallboxLiveFoundationStates = exports.publishWallboxDispatchStates = exports.publishWallboxRuntimeStates = void 0;
+exports.WALLBOX_LIVE_WRITE_RELEASED = exports.resolveWallboxRuntimePhase = exports.runWallboxLiveFoundation = exports.executeWallboxWrite = exports.wallboxFeedbackConfigFromAdapter = exports.countWallboxFeedbackExpectations = exports.normalizeWallboxFeedbackValue = exports.evaluateWallboxFeedback = exports.buildWallboxFeedbackContract = exports.buildWallboxWritePlan = exports.WB_CONTROL_MODEL = exports.hasEvccControlWriteMapping = exports.resolveWallboxControlModel = exports.metaFromObject = exports.resolveWallboxControlObjectMetas = exports.collectConfiguredControlTargetStateIds = exports.buildWallboxControlMappingSnapshot = exports.buildWallboxCommandCandidate = exports.runWallboxDryrunDispatch = exports.resetWallboxDispatchCache = exports.buildWallboxDispatchIntent = exports.telemetryInputFromSnapshot = exports.resolveWallboxDailyPlanDecision = exports.resetWallboxDailyPlanCache = exports.ensureWallboxRuntimeStates = exports.publishWallboxLiveFoundationStates = exports.publishWallboxDispatchStates = exports.publishWallboxRuntimeStates = void 0;
 const state_write_1 = require("../../../policy/core/state_write");
 const states_1 = require("./states");
+const feedback_1 = require("./feedback");
 async function publishWallboxRuntimeStates(host, decision, governanceAllowed) {
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.decisionSource, decision.decisionSource);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.reasonDe, decision.reasonDe);
@@ -113,6 +114,22 @@ async function publishWallboxLiveFoundationStates(host, foundation) {
             validationReason: e.validationReason,
         })),
     }));
+    const fb = foundation.feedbackContract;
+    const fbCounts = fb ? (0, feedback_1.countWallboxFeedbackExpectations)(fb.expectations) : null;
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackContractPresent, fb !== null);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackContractJson, fb ? JSON.stringify(fb) : "");
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackRequired, fb?.required ?? false);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackContractStructuralReady, fb?.ready ?? false);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackStatus, fb?.status ?? "not_required");
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackBlockReason, fb?.blockReason ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackIssueKind, fb?.issueKind ?? "none");
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackExpectationCount, fb?.expectations.length ?? 0);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackMatchedCount, fbCounts?.matched ?? 0);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackMismatchCount, fbCounts?.mismatch ?? 0);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackUnavailableCount, fbCounts?.unavailable ?? 0);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackInvalidCount, fbCounts?.invalid ?? 0);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackSettleTimeMs, fb?.settleTimeMs ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackTimeoutMs, fb?.timeoutMs ?? "");
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.runtimeControlAvailable, false);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeAllowed, false);
 }
@@ -142,6 +159,13 @@ Object.defineProperty(exports, "hasEvccControlWriteMapping", { enumerable: true,
 Object.defineProperty(exports, "WB_CONTROL_MODEL", { enumerable: true, get: function () { return evcc_control_config_1.WB_CONTROL_MODEL; } });
 var write_plan_1 = require("./write_plan");
 Object.defineProperty(exports, "buildWallboxWritePlan", { enumerable: true, get: function () { return write_plan_1.buildWallboxWritePlan; } });
+var feedback_2 = require("./feedback");
+Object.defineProperty(exports, "buildWallboxFeedbackContract", { enumerable: true, get: function () { return feedback_2.buildWallboxFeedbackContract; } });
+Object.defineProperty(exports, "evaluateWallboxFeedback", { enumerable: true, get: function () { return feedback_2.evaluateWallboxFeedback; } });
+Object.defineProperty(exports, "normalizeWallboxFeedbackValue", { enumerable: true, get: function () { return feedback_2.normalizeWallboxFeedbackValue; } });
+Object.defineProperty(exports, "countWallboxFeedbackExpectations", { enumerable: true, get: function () { return feedback_2.countWallboxFeedbackExpectations; } });
+var feedback_config_1 = require("./feedback_config");
+Object.defineProperty(exports, "wallboxFeedbackConfigFromAdapter", { enumerable: true, get: function () { return feedback_config_1.wallboxFeedbackConfigFromAdapter; } });
 var execute_1 = require("./execute");
 Object.defineProperty(exports, "executeWallboxWrite", { enumerable: true, get: function () { return execute_1.executeWallboxWrite; } });
 Object.defineProperty(exports, "runWallboxLiveFoundation", { enumerable: true, get: function () { return execute_1.runWallboxLiveFoundation; } });

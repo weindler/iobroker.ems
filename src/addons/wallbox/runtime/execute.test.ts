@@ -252,6 +252,7 @@ describe("runWallboxLiveFoundation", () => {
 			mappingSnapshot: testMapping(),
 			chargingEnabled: false,
 			chargeModeActive: null,
+			config: {},
 			addonEnabled: true,
 			governanceEnabled: false,
 			liveRequested: true,
@@ -260,6 +261,7 @@ describe("runWallboxLiveFoundation", () => {
 		assert.equal(r.phase, "observe");
 		assert.equal(r.candidate, null);
 		assert.equal(r.writePlan, null);
+		assert.equal(r.feedbackContract, null);
 		assert.equal(r.writeResult, null);
 		assert.equal(r.writeAllowed, false);
 	});
@@ -314,6 +316,7 @@ describe("runWallboxLiveFoundation", () => {
 			mappingSnapshot: testMapping(),
 			chargingEnabled: false,
 			chargeModeActive: null,
+			config: {},
 			addonEnabled: true,
 			governanceEnabled: true,
 			liveRequested: false,
@@ -322,6 +325,9 @@ describe("runWallboxLiveFoundation", () => {
 		assert.equal(r.phase, "dryrun");
 		assert.ok(r.candidate);
 		assert.ok(r.writePlan);
+		assert.ok(r.feedbackContract);
+		assert.notEqual(r.feedbackContract?.status, "pending");
+		assert.notEqual(r.feedbackContract?.status, "matched");
 		assert.equal(r.writeResult, null);
 	});
 
@@ -375,6 +381,7 @@ describe("runWallboxLiveFoundation", () => {
 			mappingSnapshot: testMapping(),
 			chargingEnabled: false,
 			chargeModeActive: null,
+			config: {},
 			addonEnabled: true,
 			governanceEnabled: true,
 			liveRequested: true,
@@ -383,9 +390,16 @@ describe("runWallboxLiveFoundation", () => {
 		assert.equal(r.phase, "live");
 		assert.ok(r.candidate?.technicallyReady);
 		assert.ok(r.writePlan?.contractReady);
+		assert.ok(r.feedbackContract);
 		assert.equal(r.writeResult?.reason, "release_gate_closed");
 		assert.equal(r.writeResult?.attempted, false);
 		assert.equal(r.writeAllowed, false);
+	});
+
+	it("live does not start feedback timers", async () => {
+		const src = readFileSync(join(process.cwd(), "src/addons/wallbox/runtime/execute.ts"), "utf8");
+		assert.ok(!src.includes("setTimeout"));
+		assert.ok(!src.includes("setInterval"));
 	});
 });
 

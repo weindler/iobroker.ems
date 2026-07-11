@@ -228,6 +228,7 @@ function fullDispatch() {
             mappingSnapshot: testMapping(),
             chargingEnabled: false,
             chargeModeActive: null,
+            config: {},
             addonEnabled: true,
             governanceEnabled: false,
             liveRequested: true,
@@ -236,6 +237,7 @@ function fullDispatch() {
         strict_1.default.equal(r.phase, "observe");
         strict_1.default.equal(r.candidate, null);
         strict_1.default.equal(r.writePlan, null);
+        strict_1.default.equal(r.feedbackContract, null);
         strict_1.default.equal(r.writeResult, null);
         strict_1.default.equal(r.writeAllowed, false);
     });
@@ -289,6 +291,7 @@ function fullDispatch() {
             mappingSnapshot: testMapping(),
             chargingEnabled: false,
             chargeModeActive: null,
+            config: {},
             addonEnabled: true,
             governanceEnabled: true,
             liveRequested: false,
@@ -297,6 +300,9 @@ function fullDispatch() {
         strict_1.default.equal(r.phase, "dryrun");
         strict_1.default.ok(r.candidate);
         strict_1.default.ok(r.writePlan);
+        strict_1.default.ok(r.feedbackContract);
+        strict_1.default.notEqual(r.feedbackContract?.status, "pending");
+        strict_1.default.notEqual(r.feedbackContract?.status, "matched");
         strict_1.default.equal(r.writeResult, null);
     });
     (0, node_test_1.it)("live routes to execute and blocks at release gate", async () => {
@@ -349,6 +355,7 @@ function fullDispatch() {
             mappingSnapshot: testMapping(),
             chargingEnabled: false,
             chargeModeActive: null,
+            config: {},
             addonEnabled: true,
             governanceEnabled: true,
             liveRequested: true,
@@ -357,9 +364,15 @@ function fullDispatch() {
         strict_1.default.equal(r.phase, "live");
         strict_1.default.ok(r.candidate?.technicallyReady);
         strict_1.default.ok(r.writePlan?.contractReady);
+        strict_1.default.ok(r.feedbackContract);
         strict_1.default.equal(r.writeResult?.reason, "release_gate_closed");
         strict_1.default.equal(r.writeResult?.attempted, false);
         strict_1.default.equal(r.writeAllowed, false);
+    });
+    (0, node_test_1.it)("live does not start feedback timers", async () => {
+        const src = (0, node_fs_1.readFileSync)((0, node_path_1.join)(process.cwd(), "src/addons/wallbox/runtime/execute.ts"), "utf8");
+        strict_1.default.ok(!src.includes("setTimeout"));
+        strict_1.default.ok(!src.includes("setInterval"));
     });
 });
 (0, node_test_1.describe)("wallbox execute write safety", () => {

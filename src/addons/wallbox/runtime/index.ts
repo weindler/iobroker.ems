@@ -4,6 +4,7 @@ import { WALLBOX_RUNTIME_STATES } from "./states";
 import type { WallboxPlanDecision } from "./daily_plan";
 import type { WallboxDryrunDispatchResult } from "./dispatch";
 import type { WallboxLiveFoundationResult } from "./execute";
+import { countWallboxFeedbackExpectations } from "./feedback";
 
 export async function publishWallboxRuntimeStates(
 	host: StateHost,
@@ -190,6 +191,22 @@ export async function publishWallboxLiveFoundationStates(
 				})),
 		}),
 	);
+	const fb = foundation.feedbackContract;
+	const fbCounts = fb ? countWallboxFeedbackExpectations(fb.expectations) : null;
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackContractPresent, fb !== null);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackContractJson, fb ? JSON.stringify(fb) : "");
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackRequired, fb?.required ?? false);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackContractStructuralReady, fb?.ready ?? false);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackStatus, fb?.status ?? "not_required");
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackBlockReason, fb?.blockReason ?? "");
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackIssueKind, fb?.issueKind ?? "none");
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackExpectationCount, fb?.expectations.length ?? 0);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackMatchedCount, fbCounts?.matched ?? 0);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackMismatchCount, fbCounts?.mismatch ?? 0);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackUnavailableCount, fbCounts?.unavailable ?? 0);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackInvalidCount, fbCounts?.invalid ?? 0);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackSettleTimeMs, fb?.settleTimeMs ?? "");
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackTimeoutMs, fb?.timeoutMs ?? "");
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.runtimeControlAvailable, false);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeAllowed, false);
 }
@@ -207,6 +224,13 @@ export {
 	WB_CONTROL_MODEL,
 } from "../evcc_control_config";
 export { buildWallboxWritePlan } from "./write_plan";
+export {
+	buildWallboxFeedbackContract,
+	evaluateWallboxFeedback,
+	normalizeWallboxFeedbackValue,
+	countWallboxFeedbackExpectations,
+} from "./feedback";
+export { wallboxFeedbackConfigFromAdapter } from "./feedback_config";
 export {
 	executeWallboxWrite,
 	runWallboxLiveFoundation,

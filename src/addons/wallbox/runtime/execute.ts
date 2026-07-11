@@ -3,6 +3,8 @@ import { buildWallboxControlMappingSnapshot, type WallboxControlMappingSnapshot 
 import type { WallboxDryrunDispatchResult } from "./dispatch";
 import type { WallboxPlanDecision } from "./daily_plan";
 import { buildWallboxWritePlan, type WallboxWritePlan } from "./write_plan";
+import { buildWallboxFeedbackContract, type WallboxFeedbackContract } from "./feedback";
+import { wallboxFeedbackConfigFromAdapter } from "./feedback_config";
 
 /** Release-Freigabe für reale Wallbox-/EVCC-Writes — in v0.1.135 geschlossen. */
 export const WALLBOX_LIVE_WRITE_RELEASED = false;
@@ -116,6 +118,7 @@ export interface WallboxLiveFoundationResult {
 	liveRequested: boolean;
 	candidate: WallboxCommandCandidate | null;
 	writePlan: WallboxWritePlan | null;
+	feedbackContract: WallboxFeedbackContract | null;
 	mappingSnapshot: WallboxControlMappingSnapshot;
 	writeResult: WallboxWriteResult | null;
 	liveWriteReleased: false;
@@ -130,6 +133,7 @@ export interface RunWallboxLiveFoundationInput {
 	chargingEnabled: boolean | null;
 	/** EVCC: aktueller Modus entspricht konfiguriertem Charge-Mode-Wert. */
 	chargeModeActive: boolean | null;
+	config: Record<string, unknown>;
 	addonEnabled: boolean;
 	governanceEnabled: boolean;
 	liveRequested: boolean;
@@ -151,6 +155,7 @@ export async function runWallboxLiveFoundation(
 			liveRequested: input.liveRequested,
 			candidate: null,
 			writePlan: null,
+			feedbackContract: null,
 			mappingSnapshot: input.mappingSnapshot,
 			writeResult: null,
 			liveWriteReleased: false,
@@ -172,6 +177,13 @@ export async function runWallboxLiveFoundation(
 		now: input.now,
 	});
 
+	const feedbackConfig = wallboxFeedbackConfigFromAdapter(input.config);
+	const feedbackContract = buildWallboxFeedbackContract({
+		writePlan,
+		feedbackConfig,
+		now: input.now,
+	});
+
 	let writeResult: WallboxWriteResult | null = null;
 	if (phase === "live") {
 		writeResult = await executeWallboxWrite({
@@ -187,6 +199,7 @@ export async function runWallboxLiveFoundation(
 		liveRequested: input.liveRequested,
 		candidate,
 		writePlan,
+		feedbackContract,
 		mappingSnapshot: input.mappingSnapshot,
 		writeResult,
 		liveWriteReleased: false,

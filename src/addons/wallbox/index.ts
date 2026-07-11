@@ -30,6 +30,13 @@ import {
 import { intentEvccConfigFromAdapter } from "../../intent/config";
 import { evccModeChargeValue } from "./evcc_control_config";
 import { resolveWallboxControlObjectMetas } from "./runtime/control_object_meta";
+import {
+	collectWallboxVehicleForeignStateIds,
+	ensureWallboxVehicleProfileStates,
+	normalizeWallboxVehicleProfiles,
+	refreshWallboxVehicleRuntime,
+	wallboxVehicleProfilesConfigFromAdapter,
+} from "./vehicles";
 
 type WallboxHost = EvccTelemetryReadHost &
 	ioBroker.Adapter & {
@@ -188,6 +195,7 @@ export async function refreshWallboxEvccTelemetry(host: WallboxHost): Promise<vo
 	await writeField(host, WALLBOX_EVCC_STATES.batteryMode, snap.battery_mode);
 	await writeField(host, WALLBOX_EVCC_STATES.batteryDischargeControl, snap.battery_discharge_control);
 
+	await refreshWallboxVehicleRuntime(host, snap, host.config);
 	await refreshWallboxDailyPlanRuntime(host, snap);
 }
 
@@ -207,10 +215,19 @@ export async function initWallboxModule(host: WallboxHost): Promise<void> {
 
 	await ensureWallboxEvccStates(host);
 	await ensureWallboxRuntimeStates(host);
+	const vehicleCfg = wallboxVehicleProfilesConfigFromAdapter(host.config);
+	const { profiles: vehicleProfiles } = normalizeWallboxVehicleProfiles(
+		vehicleCfg.profiles,
+		new Date().toISOString(),
+	);
+	await ensureWallboxVehicleProfileStates(host, vehicleProfiles);
 	await refreshWallboxEvccTelemetry(host);
 
 	const cfg = wallboxEvccTelemetryConfigFromAdapter(host.config);
 	const ids = new Set(configuredEvccTelemetryStateIds(cfg));
+	for (const id of collectWallboxVehicleForeignStateIds(host.config)) {
+		ids.add(id);
+	}
 	ids.add(addonEnabled(WALLBOX_ADDON_ID));
 	ids.add(addonGovernanceEnabledState(WALLBOX_ADDON_ID));
 	ids.add(GLOBAL.executionMode);
@@ -286,6 +303,11 @@ export function handleWallboxForeignStateChange(namespace: string, id: string): 
 	const cfg = wallboxEvccTelemetryConfigFromAdapter(activeHost.config);
 	const ids = configuredEvccTelemetryStateIds(cfg);
 	if (ids.includes(id)) {
+		scheduleRefresh(activeHost);
+		return;
+	}
+	const vehicleIds = collectWallboxVehicleForeignStateIds(activeHost.config);
+	if (vehicleIds.includes(id)) {
 		scheduleRefresh(activeHost);
 		return;
 	}

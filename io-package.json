@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.137",
+		"version": "0.1.138",
 		"news": {
+			"0.1.138": {
+				"en": "The wallbox vehicle profiles foundation separates the charging point from individual vehicles. EMS-Light can manage multiple normalized vehicle profiles under addons.wallbox.vehicles.<vehicle_id>, resolve the active vehicle from EVCC or manual selection, publish ActiveVehicleSnapshot diagnostics and per-vehicle charge limits. No planner integration, no SOC estimation from energy and no external writes; the release gate remains closed.",
+				"de": "Die Wallbox-Fahrzeugprofil-Foundation trennt den Ladepunkt von einzelnen Fahrzeugen. EMS-Light verwaltet mehrere normalisierte Fahrzeugprofile unter addons.wallbox.vehicles.<vehicle_id>, löst das aktive Fahrzeug aus EVCC oder manueller Auswahl auf und veröffentlicht ActiveVehicleSnapshot-Diagnose sowie fahrzeugspezifische Ladegrenzen. Keine Planner-Integration, keine SOC-Schätzung aus Energie und keine externen Writes; das Release-Gate bleibt geschlossen."
+			},
 			"0.1.137": {
 				"en": "The wallbox feedback contract foundation defines how future writes could be verified via configured telemetry readbacks. It builds neutral feedback contracts from write plans, normalizes values, compares expected vs actual, and publishes diagnostic states. No active timers, polling or external writes; the release gate remains closed.",
 				"de": "Die Wallbox-Feedback-Contract-Foundation definiert, wie künftige Writes über konfigurierte Telemetrie-Readbacks geprüft werden könnten. Sie erzeugt neutrale Feedback-Verträge aus Write-Plänen, normalisiert Werte, vergleicht Soll/Ist und veröffentlicht Diagnose-States. Keine aktiven Timer, kein Polling, keine externen Writes; das Release-Gate bleibt geschlossen."

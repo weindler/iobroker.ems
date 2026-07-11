@@ -12,6 +12,7 @@ const runtime_1 = require("./runtime");
 const config_1 = require("../../intent/config");
 const evcc_control_config_1 = require("./evcc_control_config");
 const control_object_meta_1 = require("./runtime/control_object_meta");
+const vehicles_1 = require("./vehicles");
 let activeHost = null;
 const subscribedIds = [];
 let debounceTimer = null;
@@ -134,6 +135,7 @@ async function refreshWallboxEvccTelemetry(host) {
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.maxCurrentA, snap.max_current_a);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryMode, snap.battery_mode);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryDischargeControl, snap.battery_discharge_control);
+    await (0, vehicles_1.refreshWallboxVehicleRuntime)(host, snap, host.config);
     await refreshWallboxDailyPlanRuntime(host, snap);
 }
 exports.refreshWallboxEvccTelemetry = refreshWallboxEvccTelemetry;
@@ -151,9 +153,15 @@ async function initWallboxModule(host) {
     activeHost = host;
     await (0, ensure_evcc_states_1.ensureWallboxEvccStates)(host);
     await (0, runtime_1.ensureWallboxRuntimeStates)(host);
+    const vehicleCfg = (0, vehicles_1.wallboxVehicleProfilesConfigFromAdapter)(host.config);
+    const { profiles: vehicleProfiles } = (0, vehicles_1.normalizeWallboxVehicleProfiles)(vehicleCfg.profiles, new Date().toISOString());
+    await (0, vehicles_1.ensureWallboxVehicleProfileStates)(host, vehicleProfiles);
     await refreshWallboxEvccTelemetry(host);
     const cfg = (0, evcc_config_1.wallboxEvccTelemetryConfigFromAdapter)(host.config);
     const ids = new Set((0, evcc_config_1.configuredEvccTelemetryStateIds)(cfg));
+    for (const id of (0, vehicles_1.collectWallboxVehicleForeignStateIds)(host.config)) {
+        ids.add(id);
+    }
     ids.add((0, tree_paths_1.addonEnabled)(WALLBOX_ADDON_ID));
     ids.add((0, governance_1.addonGovernanceEnabledState)(WALLBOX_ADDON_ID));
     ids.add(tree_paths_1.GLOBAL.executionMode);
@@ -232,6 +240,11 @@ function handleWallboxForeignStateChange(namespace, id) {
     const cfg = (0, evcc_config_1.wallboxEvccTelemetryConfigFromAdapter)(activeHost.config);
     const ids = (0, evcc_config_1.configuredEvccTelemetryStateIds)(cfg);
     if (ids.includes(id)) {
+        scheduleRefresh(activeHost);
+        return;
+    }
+    const vehicleIds = (0, vehicles_1.collectWallboxVehicleForeignStateIds)(activeHost.config);
+    if (vehicleIds.includes(id)) {
         scheduleRefresh(activeHost);
         return;
     }

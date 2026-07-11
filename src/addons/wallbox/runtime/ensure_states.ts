@@ -115,6 +115,28 @@ export async function ensureWallboxRuntimeStates(host: StateHost): Promise<void>
 		numState(WALLBOX_RUNTIME_STATES.feedbackInvalidCount, "Wallbox Feedback invalid Anzahl", 0),
 		numState(WALLBOX_RUNTIME_STATES.feedbackSettleTimeMs, "Wallbox Feedback Settle-Time ms"),
 		numState(WALLBOX_RUNTIME_STATES.feedbackTimeoutMs, "Wallbox Feedback Timeout ms"),
+		strState(WALLBOX_RUNTIME_STATES.activeVehicleId, "Wallbox aktives Fahrzeug ID"),
+		strState(WALLBOX_RUNTIME_STATES.activeVehicleName, "Wallbox aktives Fahrzeug Name"),
+		strState(WALLBOX_RUNTIME_STATES.activeVehicleSource, "Wallbox aktives Fahrzeug Quelle", "unknown"),
+		strState(
+			WALLBOX_RUNTIME_STATES.activeVehicleDetectionStatus,
+			"Wallbox Fahrzeug-Erkennungsstatus",
+			"unknown",
+		),
+		numState(WALLBOX_RUNTIME_STATES.activeVehicleConfidence, "Wallbox Fahrzeug-Erkennungs-Konfidenz", 0),
+		strState(WALLBOX_RUNTIME_STATES.activeVehicleSnapshotJson, "Wallbox ActiveVehicleSnapshot (JSON)"),
+		boolState(WALLBOX_RUNTIME_STATES.activeVehicleProfileValid, "Wallbox aktives Fahrzeugprofil gültig", false),
+		strState(
+			WALLBOX_RUNTIME_STATES.activeVehiclePlanningCapability,
+			"Wallbox aktive Planungsfähigkeit",
+			"insufficient",
+		),
+		numState(WALLBOX_RUNTIME_STATES.vehicleProfileCount, "Wallbox Fahrzeugprofil Anzahl", 0),
+		numState(WALLBOX_RUNTIME_STATES.vehicleEnabledProfileCount, "Wallbox aktive Fahrzeugprofile Anzahl", 0),
+		strState(WALLBOX_RUNTIME_STATES.vehicleResolutionReason, "Wallbox Fahrzeugauflösung Begründung"),
+		boolState(WALLBOX_RUNTIME_STATES.vehicleProfileResolved, "Wallbox Fahrzeugprofil aufgelöst", false),
+		boolState(WALLBOX_RUNTIME_STATES.vehicleActiveForCharging, "Wallbox fahrzeug aktiv für Laden", false),
+		boolState(WALLBOX_RUNTIME_STATES.vehicleConnected, "Wallbox Fahrzeug verbunden (Profil)", false),
 	];
 	await ensureStates(host, defs);
 }

@@ -86,6 +86,15 @@ async function ensureWallboxRuntimeStates(host) {
         boolState(states_1.WALLBOX_RUNTIME_STATES.executionAttempted, "Wallbox externer Geräte-Write versucht", false),
         boolState(states_1.WALLBOX_RUNTIME_STATES.executionExecuted, "Wallbox externer Geräte-Write ausgeführt", false),
         strState(states_1.WALLBOX_RUNTIME_STATES.executionBlockReason, "Wallbox Execution Blockgrund"),
+        boolState(states_1.WALLBOX_RUNTIME_STATES.writePlanPresent, "Wallbox Write-Plan vorhanden", false),
+        strState(states_1.WALLBOX_RUNTIME_STATES.writePlanJson, "Wallbox Write-Plan (JSON)"),
+        boolState(states_1.WALLBOX_RUNTIME_STATES.writeContractReady, "Wallbox Write Contract ready", false),
+        boolState(states_1.WALLBOX_RUNTIME_STATES.feedbackContractReady, "Wallbox Feedback Contract ready", false),
+        numState(states_1.WALLBOX_RUNTIME_STATES.writeOperationCount, "Wallbox Write-Operationen Anzahl", 0),
+        strState(states_1.WALLBOX_RUNTIME_STATES.writeContractBlockReason, "Wallbox Write Contract Blockgrund"),
+        strState(states_1.WALLBOX_RUNTIME_STATES.writeControlModel, "Wallbox Steuerungsmodell", "legacy_goe"),
+        boolState(states_1.WALLBOX_RUNTIME_STATES.writeEvccPathConfirmed, "Wallbox EVCC-Control-Pfad bestätigt", false),
+        strState(states_1.WALLBOX_RUNTIME_STATES.writeScenario, "Wallbox Write-Szenario"),
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }

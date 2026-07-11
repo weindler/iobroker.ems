@@ -10,6 +10,8 @@ import { evaluateWallboxDailyPlan, type WallboxTelemetryInput } from "./daily_pl
 import { buildWallboxDispatchIntent } from "./intent.js";
 import { runWallboxDryrunDispatch } from "./dispatch.js";
 import { type WallboxCommandCandidate } from "./command.js";
+import { buildWallboxControlMappingSnapshot } from "./control_mapping.js";
+import { buildWallboxWritePlan } from "./write_plan.js";
 import {
 	executeWallboxWrite,
 	runWallboxLiveFoundation,
@@ -20,6 +22,22 @@ import {
 const NOW = new Date("2026-07-11T10:07:00.000Z");
 const SLOT_START = slotStartIsoFloored(NOW, "UTC");
 const SLOT_END = isoFromMs(Date.parse(SLOT_START) + DAILY_PLAN_SLOT_MS);
+
+function testMapping() {
+	return buildWallboxControlMappingSnapshot({
+		config: {
+			wb_set_enabled_target: "go-e.0.allow_charging",
+			wb_set_enabled_enabled: true,
+			wb_set_current_a_target: "go-e.0.amperePV",
+			wb_set_current_a_enabled: true,
+		},
+		telemetryCfg: { enabledStateId: "evcc.0.enabled", chargePowerWStateId: "" },
+	});
+}
+
+function chargeWritePlan(c: WallboxCommandCandidate = chargeCandidate(), chargingEnabled = false) {
+	return buildWallboxWritePlan({ candidate: c, mapping: testMapping(), chargingEnabled, now: NOW });
+}
 
 function chargeCandidate(over: Partial<WallboxCommandCandidate> = {}): WallboxCommandCandidate {
 	return {
@@ -124,9 +142,10 @@ describe("wallbox runtime phase", () => {
 });
 
 describe("executeWallboxWrite", () => {
-	it("never executes external write in v0.1.134", async () => {
+	it("never executes external write in v0.1.135", async () => {
 		const r = await executeWallboxWrite({
 			candidate: chargeCandidate(),
+			writePlan: chargeWritePlan(),
 			phase: "live",
 			liveRequested: true,
 		});
@@ -139,6 +158,7 @@ describe("executeWallboxWrite", () => {
 	it("observe does not attempt execution", async () => {
 		const r = await executeWallboxWrite({
 			candidate: chargeCandidate(),
+			writePlan: null,
 			phase: "observe",
 			liveRequested: false,
 		});
@@ -149,6 +169,7 @@ describe("executeWallboxWrite", () => {
 	it("dryrun blocks without release gate", async () => {
 		const r = await executeWallboxWrite({
 			candidate: chargeCandidate(),
+			writePlan: chargeWritePlan(),
 			phase: "dryrun",
 			liveRequested: false,
 		});
@@ -158,6 +179,7 @@ describe("executeWallboxWrite", () => {
 	it("live with blocked candidate stops before release gate", async () => {
 		const r = await executeWallboxWrite({
 			candidate: chargeCandidate({ blocked: true, blockReason: "vehicle_disconnected" }),
+			writePlan: null,
 			phase: "live",
 			liveRequested: true,
 		});
@@ -200,6 +222,8 @@ describe("runWallboxLiveFoundation", () => {
 		const r = await runWallboxLiveFoundation({
 			dispatch,
 			decision,
+			mappingSnapshot: testMapping(),
+			chargingEnabled: false,
 			addonEnabled: true,
 			governanceEnabled: false,
 			liveRequested: true,
@@ -207,6 +231,7 @@ describe("runWallboxLiveFoundation", () => {
 		});
 		assert.equal(r.phase, "observe");
 		assert.equal(r.candidate, null);
+		assert.equal(r.writePlan, null);
 		assert.equal(r.writeResult, null);
 		assert.equal(r.writeAllowed, false);
 	});
@@ -258,6 +283,8 @@ describe("runWallboxLiveFoundation", () => {
 		const r = await runWallboxLiveFoundation({
 			dispatch,
 			decision,
+			mappingSnapshot: testMapping(),
+			chargingEnabled: false,
 			addonEnabled: true,
 			governanceEnabled: true,
 			liveRequested: false,
@@ -265,6 +292,7 @@ describe("runWallboxLiveFoundation", () => {
 		});
 		assert.equal(r.phase, "dryrun");
 		assert.ok(r.candidate);
+		assert.ok(r.writePlan);
 		assert.equal(r.writeResult, null);
 	});
 
@@ -315,6 +343,8 @@ describe("runWallboxLiveFoundation", () => {
 		const r = await runWallboxLiveFoundation({
 			dispatch,
 			decision,
+			mappingSnapshot: testMapping(),
+			chargingEnabled: false,
 			addonEnabled: true,
 			governanceEnabled: true,
 			liveRequested: true,
@@ -322,6 +352,7 @@ describe("runWallboxLiveFoundation", () => {
 		});
 		assert.equal(r.phase, "live");
 		assert.ok(r.candidate?.technicallyReady);
+		assert.ok(r.writePlan?.contractReady);
 		assert.equal(r.writeResult?.reason, "release_gate_closed");
 		assert.equal(r.writeResult?.attempted, false);
 		assert.equal(r.writeAllowed, false);
@@ -338,9 +369,16 @@ describe("wallbox execute write safety", () => {
 		assert.ok(!src.includes("setForeignStateAsync("));
 	});
 
+	it("write plan module has no foreign write imports", () => {
+		const src = readFileSync(join(process.cwd(), "src/addons/wallbox/runtime/write_plan.ts"), "utf8");
+		assert.ok(!src.includes("writeForeignIfChanged("));
+		assert.ok(!src.includes("setForeignStateAsync("));
+	});
+
 	it("valid charge candidate in live still produces zero writes via execute", async () => {
 		const r = await executeWallboxWrite({
 			candidate: chargeCandidate(),
+			writePlan: chargeWritePlan(),
 			phase: "live",
 			liveRequested: true,
 		});

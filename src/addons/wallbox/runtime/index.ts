@@ -143,11 +143,17 @@ export async function publishWallboxLiveFoundationStates(
 		WALLBOX_RUNTIME_STATES.executionExecuted,
 		foundation.writeResult?.executed ?? false,
 	);
-	await setStateIfChanged(
-		host,
-		WALLBOX_RUNTIME_STATES.executionBlockReason,
-		foundation.writeResult?.reason ?? (foundation.phase === "dryrun" ? "execution_gate_closed" : ""),
-	);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.executionBlockReason, foundation.writeResult?.reason ?? (foundation.phase === "dryrun" ? "execution_gate_closed" : ""));
+	const plan = foundation.writePlan;
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writePlanPresent, plan !== null);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writePlanJson, plan ? JSON.stringify(plan) : "");
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeContractReady, plan?.contractReady ?? false);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackContractReady, plan?.feedbackContractReady ?? false);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeOperationCount, plan?.operations.length ?? 0);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeContractBlockReason, plan?.blockReason ?? "");
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeControlModel, plan?.controlModel ?? "");
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeEvccPathConfirmed, plan?.evccControlPathConfirmed ?? false);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeScenario, plan?.writeScenario ?? "");
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.runtimeControlAvailable, false);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeAllowed, false);
 }
@@ -157,6 +163,8 @@ export { resetWallboxDailyPlanCache, resolveWallboxDailyPlanDecision, telemetryI
 export { buildWallboxDispatchIntent } from "./intent";
 export { resetWallboxDispatchCache, runWallboxDryrunDispatch } from "./dispatch";
 export { buildWallboxCommandCandidate } from "./command";
+export { buildWallboxControlMappingSnapshot } from "./control_mapping";
+export { buildWallboxWritePlan } from "./write_plan";
 export {
 	executeWallboxWrite,
 	runWallboxLiveFoundation,

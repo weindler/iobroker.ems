@@ -23,6 +23,7 @@ import {
 	resolveWallboxDailyPlanDecision,
 	runWallboxDryrunDispatch,
 	runWallboxLiveFoundation,
+	buildWallboxControlMappingSnapshot,
 	telemetryInputFromSnapshot,
 } from "./runtime";
 
@@ -103,9 +104,17 @@ async function refreshWallboxDailyPlanRuntime(host: WallboxHost, snap: Awaited<R
 	await publishWallboxDispatchStates(host, decision, dispatch);
 
 	const liveRequested = await isLiveWriteAllowed((id) => host.getStateAsync(id), WALLBOX_ADDON_ID);
+	const configRecord =
+		host.config && typeof host.config === "object" ? (host.config as Record<string, unknown>) : {};
+	const mappingSnapshot = buildWallboxControlMappingSnapshot({
+		config: configRecord,
+		telemetryCfg: cfg,
+	});
 	const foundation = await runWallboxLiveFoundation({
 		dispatch,
 		decision,
+		mappingSnapshot,
+		chargingEnabled,
 		addonEnabled: addonEnabledVal,
 		governanceEnabled,
 		liveRequested,

@@ -61,4 +61,13 @@ exports.WALLBOX_RUNTIME_STATES = {
     executionAttempted: `${exports.WALLBOX_RUNTIME_BASE}.execution_attempted`,
     executionExecuted: `${exports.WALLBOX_RUNTIME_BASE}.execution_executed`,
     executionBlockReason: `${exports.WALLBOX_RUNTIME_BASE}.execution_block_reason`,
+    writePlanPresent: `${exports.WALLBOX_RUNTIME_BASE}.write_plan_present`,
+    writePlanJson: `${exports.WALLBOX_RUNTIME_BASE}.write_plan_json`,
+    writeContractReady: `${exports.WALLBOX_RUNTIME_BASE}.write_contract_ready`,
+    feedbackContractReady: `${exports.WALLBOX_RUNTIME_BASE}.feedback_contract_ready`,
+    writeOperationCount: `${exports.WALLBOX_RUNTIME_BASE}.write_operation_count`,
+    writeContractBlockReason: `${exports.WALLBOX_RUNTIME_BASE}.write_contract_block_reason`,
+    writeControlModel: `${exports.WALLBOX_RUNTIME_BASE}.write_control_model`,
+    writeEvccPathConfirmed: `${exports.WALLBOX_RUNTIME_BASE}.write_evcc_path_confirmed`,
+    writeScenario: `${exports.WALLBOX_RUNTIME_BASE}.write_scenario`,
 };

@@ -1,8 +1,10 @@
 import { buildWallboxCommandCandidate, type WallboxCommandCandidate } from "./command";
+import { buildWallboxControlMappingSnapshot, type WallboxControlMappingSnapshot } from "./control_mapping";
 import type { WallboxDryrunDispatchResult } from "./dispatch";
 import type { WallboxPlanDecision } from "./daily_plan";
+import { buildWallboxWritePlan, type WallboxWritePlan } from "./write_plan";
 
-/** Release-Freigabe für reale Wallbox-/EVCC-Writes — in v0.1.134 geschlossen. */
+/** Release-Freigabe für reale Wallbox-/EVCC-Writes — in v0.1.135 geschlossen. */
 export const WALLBOX_LIVE_WRITE_RELEASED = false;
 
 /**
@@ -27,16 +29,17 @@ export interface WallboxWriteResult {
 
 export interface ExecuteWallboxWriteInput {
 	candidate: WallboxCommandCandidate;
+	writePlan: WallboxWritePlan | null;
 	phase: WallboxRuntimePhase;
 	liveRequested: boolean;
 }
 
 /**
  * EINZIGE zentrale Write-Funktion für Wallbox-/EVCC-Steuerdatenpunkte.
- * In v0.1.134 werden keine externen Writes ausgeführt — Release-Gate geschlossen.
+ * In v0.1.135 werden keine externen Writes ausgeführt — Release-Gate geschlossen.
  */
 export async function executeWallboxWrite(input: ExecuteWallboxWriteInput): Promise<WallboxWriteResult> {
-	const { candidate, phase, liveRequested } = input;
+	const { candidate, writePlan, phase, liveRequested } = input;
 
 	if (phase === "observe") {
 		return {
@@ -65,6 +68,15 @@ export async function executeWallboxWrite(input: ExecuteWallboxWriteInput): Prom
 		};
 	}
 
+	if (writePlan && !writePlan.contractReady) {
+		return {
+			attempted: false,
+			executed: false,
+			blocked: true,
+			reason: writePlan.blockReason ?? "write_contract_incomplete",
+		};
+	}
+
 	if (!WALLBOX_LIVE_WRITE_RELEASED) {
 		return {
 			attempted: false,
@@ -74,7 +86,7 @@ export async function executeWallboxWrite(input: ExecuteWallboxWriteInput): Prom
 		};
 	}
 
-	// Zukünftiger Live-Block: hier writeForeignIfChanged für dryrunCommand-Rollen.
+	// Zukünftiger Live-Block: Write-Plan-Operationen ausführen.
 	return {
 		attempted: false,
 		executed: false,
@@ -103,6 +115,7 @@ export interface WallboxLiveFoundationResult {
 	phase: WallboxRuntimePhase;
 	liveRequested: boolean;
 	candidate: WallboxCommandCandidate | null;
+	writePlan: WallboxWritePlan | null;
 	writeResult: WallboxWriteResult | null;
 	liveWriteReleased: false;
 	writeAllowed: false;
@@ -111,6 +124,9 @@ export interface WallboxLiveFoundationResult {
 export interface RunWallboxLiveFoundationInput {
 	dispatch: WallboxDryrunDispatchResult;
 	decision: WallboxPlanDecision;
+	mappingSnapshot: WallboxControlMappingSnapshot;
+	/** Aktueller Ladefreigabe-Status aus EVCC-Telemetrie. */
+	chargingEnabled: boolean | null;
 	addonEnabled: boolean;
 	governanceEnabled: boolean;
 	liveRequested: boolean;
@@ -131,6 +147,7 @@ export async function runWallboxLiveFoundation(
 			phase,
 			liveRequested: input.liveRequested,
 			candidate: null,
+			writePlan: null,
 			writeResult: null,
 			liveWriteReleased: false,
 			writeAllowed: false,
@@ -143,10 +160,18 @@ export async function runWallboxLiveFoundation(
 		now: input.now,
 	});
 
+	const writePlan = buildWallboxWritePlan({
+		candidate,
+		mapping: input.mappingSnapshot,
+		chargingEnabled: input.chargingEnabled,
+		now: input.now,
+	});
+
 	let writeResult: WallboxWriteResult | null = null;
 	if (phase === "live") {
 		writeResult = await executeWallboxWrite({
 			candidate,
+			writePlan,
 			phase,
 			liveRequested: input.liveRequested,
 		});
@@ -156,6 +181,7 @@ export async function runWallboxLiveFoundation(
 		phase,
 		liveRequested: input.liveRequested,
 		candidate,
+		writePlan,
 		writeResult,
 		liveWriteReleased: false,
 		writeAllowed: false,

@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.134",
+		"version": "0.1.135",
 		"news": {
+			"0.1.135": {
+				"en": "The wallbox EVCC write contract translates validated command candidates into a deterministic, serializable write plan with configured target states, operation sequence and readback contract. Execution remains fully blocked by the closed release gate; no external EVCC or wallbox writes occur.",
+				"de": "Der Wallbox-EVCC-Write-Contract übersetzt validierte Command-Kandidaten in einen deterministischen, serialisierbaren Write-Plan mit konfigurierten Ziel-States, Operationsreihenfolge und Rücklese-Vertrag. Die Ausführung bleibt durch das geschlossene Release-Gate vollständig gesperrt; es erfolgen keine externen EVCC- oder Wallbox-Writes."
+			},
 			"0.1.134": {
 				"en": "The wallbox live foundation builds a validated neutral command candidate from the daily plan dispatch and routes it through a central execution interface. Even in global and addon live mode, real EVCC and wallbox writes remain blocked by a closed release gate; observe, dryrun and live phases are diagnosed transparently.",
 				"de": "Die Wallbox-Live-Foundation erzeugt aus dem Daily-Plan-Dispatch einen validierten neutralen Command-Kandidaten und führt ihn über eine zentrale Execution-Schnittstelle. Auch im globalen und Add-on-Live-Modus bleiben reale EVCC- und Wallbox-Writes durch ein geschlossenes Release-Gate gesperrt; Observe-, Dryrun- und Live-Phasen werden transparent diagnostiziert."

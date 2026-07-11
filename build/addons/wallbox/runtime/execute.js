@@ -2,14 +2,15 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runWallboxLiveFoundation = exports.resolveWallboxRuntimePhase = exports.executeWallboxWrite = exports.WALLBOX_LIVE_WRITE_RELEASED = void 0;
 const command_1 = require("./command");
-/** Release-Freigabe für reale Wallbox-/EVCC-Writes — in v0.1.134 geschlossen. */
+const write_plan_1 = require("./write_plan");
+/** Release-Freigabe für reale Wallbox-/EVCC-Writes — in v0.1.135 geschlossen. */
 exports.WALLBOX_LIVE_WRITE_RELEASED = false;
 /**
  * EINZIGE zentrale Write-Funktion für Wallbox-/EVCC-Steuerdatenpunkte.
- * In v0.1.134 werden keine externen Writes ausgeführt — Release-Gate geschlossen.
+ * In v0.1.135 werden keine externen Writes ausgeführt — Release-Gate geschlossen.
  */
 async function executeWallboxWrite(input) {
-    const { candidate, phase, liveRequested } = input;
+    const { candidate, writePlan, phase, liveRequested } = input;
     if (phase === "observe") {
         return {
             attempted: false,
@@ -34,6 +35,14 @@ async function executeWallboxWrite(input) {
             reason: candidate.blockReason ?? "candidate_blocked",
         };
     }
+    if (writePlan && !writePlan.contractReady) {
+        return {
+            attempted: false,
+            executed: false,
+            blocked: true,
+            reason: writePlan.blockReason ?? "write_contract_incomplete",
+        };
+    }
     if (!exports.WALLBOX_LIVE_WRITE_RELEASED) {
         return {
             attempted: false,
@@ -42,7 +51,7 @@ async function executeWallboxWrite(input) {
             reason: "release_gate_closed",
         };
     }
-    // Zukünftiger Live-Block: hier writeForeignIfChanged für dryrunCommand-Rollen.
+    // Zukünftiger Live-Block: Write-Plan-Operationen ausführen.
     return {
         attempted: false,
         executed: false,
@@ -72,6 +81,7 @@ async function runWallboxLiveFoundation(input) {
             phase,
             liveRequested: input.liveRequested,
             candidate: null,
+            writePlan: null,
             writeResult: null,
             liveWriteReleased: false,
             writeAllowed: false,
@@ -82,10 +92,17 @@ async function runWallboxLiveFoundation(input) {
         decision: input.decision,
         now: input.now,
     });
+    const writePlan = (0, write_plan_1.buildWallboxWritePlan)({
+        candidate,
+        mapping: input.mappingSnapshot,
+        chargingEnabled: input.chargingEnabled,
+        now: input.now,
+    });
     let writeResult = null;
     if (phase === "live") {
         writeResult = await executeWallboxWrite({
             candidate,
+            writePlan,
             phase,
             liveRequested: input.liveRequested,
         });
@@ -94,6 +111,7 @@ async function runWallboxLiveFoundation(input) {
         phase,
         liveRequested: input.liveRequested,
         candidate,
+        writePlan,
         writeResult,
         liveWriteReleased: false,
         writeAllowed: false,

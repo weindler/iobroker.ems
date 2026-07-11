@@ -59,4 +59,13 @@ export const WALLBOX_RUNTIME_STATES = {
 	executionAttempted: `${WALLBOX_RUNTIME_BASE}.execution_attempted`,
 	executionExecuted: `${WALLBOX_RUNTIME_BASE}.execution_executed`,
 	executionBlockReason: `${WALLBOX_RUNTIME_BASE}.execution_block_reason`,
+	writePlanPresent: `${WALLBOX_RUNTIME_BASE}.write_plan_present`,
+	writePlanJson: `${WALLBOX_RUNTIME_BASE}.write_plan_json`,
+	writeContractReady: `${WALLBOX_RUNTIME_BASE}.write_contract_ready`,
+	feedbackContractReady: `${WALLBOX_RUNTIME_BASE}.feedback_contract_ready`,
+	writeOperationCount: `${WALLBOX_RUNTIME_BASE}.write_operation_count`,
+	writeContractBlockReason: `${WALLBOX_RUNTIME_BASE}.write_contract_block_reason`,
+	writeControlModel: `${WALLBOX_RUNTIME_BASE}.write_control_model`,
+	writeEvccPathConfirmed: `${WALLBOX_RUNTIME_BASE}.write_evcc_path_confirmed`,
+	writeScenario: `${WALLBOX_RUNTIME_BASE}.write_scenario`,
 } as const;

@@ -61,9 +61,16 @@ async function refreshWallboxDailyPlanRuntime(host, snap) {
     });
     await (0, runtime_1.publishWallboxDispatchStates)(host, decision, dispatch);
     const liveRequested = await (0, execution_mode_1.isLiveWriteAllowed)((id) => host.getStateAsync(id), WALLBOX_ADDON_ID);
+    const configRecord = host.config && typeof host.config === "object" ? host.config : {};
+    const mappingSnapshot = (0, runtime_1.buildWallboxControlMappingSnapshot)({
+        config: configRecord,
+        telemetryCfg: cfg,
+    });
     const foundation = await (0, runtime_1.runWallboxLiveFoundation)({
         dispatch,
         decision,
+        mappingSnapshot,
+        chargingEnabled,
         addonEnabled: addonEnabledVal,
         governanceEnabled,
         liveRequested,

@@ -1,6 +1,6 @@
 # EMS-Light — Flexible Plan Contributions
 
-**Stand:** v0.1.127
+**Stand:** v0.1.128
 
 ## 1. Zweck
 
@@ -10,12 +10,11 @@ Sie ergänzen die bestehenden Basis-Contributions (PV, Hauslast, Wetter, Grid, C
 
 ## 2. Unterschied zwischen Bedarf und Allocation
 
-| Aspekt | Flexible Contribution (v0.1.127) | Allocation / Daily Plan (später) |
-|--------|----------------------------------|----------------------------------|
+| Aspekt | Flexible Contribution (v0.1.127) | Daily Plan / Allocation (v0.1.128) |
+|--------|----------------------------------|-------------------------------------|
 | Entscheidung | dokumentiert Möglichkeiten | wählt konkrete Fenster und Leistungen |
-| Energiebilanz | PV − feste Hauslast **unverändert** | zieht flexible Lasten ab |
-| Geräte-Writes | keine | Dispatch über Runtime |
-| Slots | technische Verfügbarkeit | bevorzugte Leistung / Zeit |
+| Energiebilanz Forecast | PV − feste Hauslast **unverändert** | Allocation im Daily Plan, nicht im Forecast |
+| Geräte-Writes | keine | keine (Runtime folgt später) |
 
 ## 3. Contribution-IDs
 

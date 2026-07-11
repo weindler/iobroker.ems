@@ -1,6 +1,6 @@
 # EMS-Light — General-Operator-Grundlage
 
-**Stand:** v0.1.127
+**Stand:** v0.1.128
 
 ## Ziel
 
@@ -107,7 +107,7 @@ Siehe `docs/EMS_LIGHT_FORECAST_PLAN.md`.
 
 `src/operator/supply/grid.ts` — jahreszeitneutrale Netz-/Preis-Schicht (v0.1.125), eingebunden als System-Contributor `grid_supply`.
 
-## Stand nach v0.1.127
+## Stand nach v0.1.128
 
 Implementiert:
 
@@ -115,12 +115,14 @@ Implementiert:
 - PV-, Hauslast-, Wetter-, Constraint-Contributions
 - Flexible Contributions für Batterie, Wallbox, Heizstab, Klima
 - Deterministischer Forecast Plan mit flexiblen Beiträgen (feste Bilanz unverändert)
-- Tests für Contributors, flexible Add-ons und Forecast Plan
+- **Daily Plan mit zentraler Allocation Engine** (v0.1.128)
+- Tests für Contributors, flexible Add-ons, Forecast Plan und Daily Plan
 
 Noch nicht implementiert:
 
-- Vollständiger Daily Plan
-- Zentrale Allocation
+- Runtime-Dispatch aus Daily Plan
+- Vollständige Abschaltung alter Einzelplanner
+- Zentrale Allocation an Runtime
 - Wallbox-Dispatch
 - Batterie-Entladung
 - KI-Optimierung

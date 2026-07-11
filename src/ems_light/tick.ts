@@ -5,6 +5,7 @@ import { runPlannerTick, type PlannerHost } from "../planner";
 import { runGridSupplyTick } from "../operator/supply/grid_tick";
 import { runFlexibleContributionsTick } from "../operator/contributions/flexible/tick";
 import { runForecastPlanTick } from "../operator/forecast/tick";
+import { runDailyPlanTick } from "../operator/daily_plan/tick";
 
 export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): Promise<void> {
 	touchEmsActivity();
@@ -60,10 +61,19 @@ export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): 
 		hints.push(`flexible_contributions: ${String(e)}`);
 	}
 
+	let forecastPlan;
 	try {
-		await runForecastPlanTick(host, gridForecast, flexibleContributions);
+		forecastPlan = await runForecastPlanTick(host, gridForecast, flexibleContributions);
 	} catch (e) {
 		hints.push(`forecast_plan: ${String(e)}`);
+	}
+
+	if (forecastPlan) {
+		try {
+			await runDailyPlanTick(host, forecastPlan);
+		} catch (e) {
+			hints.push(`daily_plan: ${String(e)}`);
+		}
 	}
 
 	const health = deriveHealth(liveResult, !hints.some((h) => h.includes("global.execution_mode nicht")));

@@ -1,6 +1,6 @@
 # EMS-Light — Forecast Plan
 
-**Stand:** v0.1.127
+**Stand:** v0.1.128
 
 ## 1. Zweck
 
@@ -69,7 +69,7 @@ Unter `planner.intent.forecast_plan.*`:
 
 ## 8. Abgrenzung zum Daily Plan
 
-Der Forecast Plan beschreibt **Erwartungen und Grenzen**. Der Daily Plan (später) entscheidet Tagesziele und Allocation. In v0.1.127 gibt es noch keinen ausführbaren Daily Plan; flexible Contributions sind dokumentiert, aber nicht in der festen Bilanz verrechnet.
+Der Forecast Plan beschreibt **Erwartungen und Grenzen**. Der **Daily Plan** (v0.1.128) entscheidet Allocation für den aktuellen Tag — siehe `docs/EMS_LIGHT_DAILY_PLAN.md`. Die feste Energiebilanz im Forecast Plan bleibt PV − feste Hauslast.
 
 ## 9. Abgrenzung zur späteren KI-Optimierung
 
@@ -77,12 +77,9 @@ KI darf später innerhalb gültiger Pläne optimieren. Der Forecast Plan bleibt 
 
 ## 10. Noch nicht implementiert
 
-- Flexible Geräteplanung in Contributions (Allocation folgt)
-- Wallbox-Ladeplan, Batterie-Entladung
-- Ausführbarer Daily Plan
+- Runtime liest Daily Plan (Allocation nur als Vorschau)
+- Wallbox-Live-Steuerung, Batterie-Entladung
 - KI-Optimierung und Statistikvergleich
-- Abzug aktueller Hauslast vom Sicherungslimit
-- Phasenverteilung und dynamische Leistungsreduzierung
 
 ## Status `ready`, `degraded`, `missing_inputs`
 

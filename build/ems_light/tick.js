@@ -8,6 +8,7 @@ const planner_1 = require("../planner");
 const grid_tick_1 = require("../operator/supply/grid_tick");
 const tick_1 = require("../operator/contributions/flexible/tick");
 const tick_2 = require("../operator/forecast/tick");
+const tick_3 = require("../operator/daily_plan/tick");
 async function runEmsLightPhase1Tick(host) {
     (0, ems_activity_1.touchEmsActivity)();
     const ts = new Date().toISOString();
@@ -62,11 +63,20 @@ async function runEmsLightPhase1Tick(host) {
     catch (e) {
         hints.push(`flexible_contributions: ${String(e)}`);
     }
+    let forecastPlan;
     try {
-        await (0, tick_2.runForecastPlanTick)(host, gridForecast, flexibleContributions);
+        forecastPlan = await (0, tick_2.runForecastPlanTick)(host, gridForecast, flexibleContributions);
     }
     catch (e) {
         hints.push(`forecast_plan: ${String(e)}`);
+    }
+    if (forecastPlan) {
+        try {
+            await (0, tick_3.runDailyPlanTick)(host, forecastPlan);
+        }
+        catch (e) {
+            hints.push(`daily_plan: ${String(e)}`);
+        }
     }
     const health = (0, live_cache_1.deriveHealth)(liveResult, !hints.some((h) => h.includes("global.execution_mode nicht")));
     const summaryParts = [

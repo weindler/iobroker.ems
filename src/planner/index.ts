@@ -7,6 +7,8 @@ import { runPlannerTick } from "./run";
 import { runGridSupplyTick } from "../operator/supply/grid_tick";
 import { runFlexibleContributionsTick } from "../operator/contributions/flexible/tick";
 import { runForecastPlanTick } from "../operator/forecast/tick";
+import { ensureDailyPlanStates } from "../operator/daily_plan/states";
+import { runDailyPlanTick } from "../operator/daily_plan/tick";
 
 export type { PlannerIntent } from "./types";
 export type { PlannerHost } from "./inputs";
@@ -25,17 +27,19 @@ export async function initPlanner(host: PlannerHost): Promise<void> {
 	await ensureGridSupplyStates(host);
 	await ensureForecastPlanStates(host);
 	await ensureFlexibleContributionStates(host);
+	await ensureDailyPlanStates(host);
 	await runPlannerTick(host);
 	const gridForecast = await runGridSupplyTick(host);
 	const flexibleContributions = await runFlexibleContributionsTick(
 		host as Parameters<typeof runFlexibleContributionsTick>[0],
 		gridForecast,
 	);
-	await runForecastPlanTick(
+	const forecastPlan = await runForecastPlanTick(
 		host as Parameters<typeof runForecastPlanTick>[0],
 		gridForecast,
 		flexibleContributions,
 	);
+	await runDailyPlanTick(host as Parameters<typeof runDailyPlanTick>[0], forecastPlan);
 }
 
 export async function stopPlanner(): Promise<void> {

@@ -163,6 +163,7 @@ class Ems extends utils.Adapter {
             (0, policy_1.handleGlobalModesStateChange)(this.namespace, id);
             (0, intent_1.handleIntentStateChange)(this.namespace, id, state);
             (0, wallbox_1.handleWallboxForeignStateChange)(this.namespace, id);
+            (0, wallbox_1.handleWallboxStateChange)(this.namespace, id);
             (0, power_rollup_1.handlePowerRollupStateChange)(id, state);
             (0, energy_daily_rollup_1.handleEnergyDailyRollupStateChange)(id, state);
         }

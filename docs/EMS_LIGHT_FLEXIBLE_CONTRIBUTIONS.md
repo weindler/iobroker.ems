@@ -57,6 +57,10 @@ Keine dynamischen IDs, keine Zeitstempel in IDs. Flussrichtung über `flow`, nic
 
 ### EV-Session (`wallbox.ev_session`)
 
+**Runtime (v0.1.131):** read-only Daily-Plan-Diagnose unter `addons.wallbox.runtime.*`. Connected-Gate zuerst; keine EVCC-Writes. Siehe `docs/EMS_LIGHT_WALLBOX_DAILY_PLAN_READONLY.md`.
+
+Contribution liefert Bedarf, Deadline, Leistungsgrenzen an den Planner.
+
 **Connected-Gate:** `connected = false` → keine aktive Lade-Contribution (`disabled`, „Fahrzeug nicht verbunden“). SOC = 0 bei disconnected ist unkritisch.
 
 **Energiebedarf (Priorität):**

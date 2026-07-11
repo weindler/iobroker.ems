@@ -20,6 +20,7 @@ import { initDynamicTariffModule } from "./addons/dynamic_tariff";
 import { recordWallboxPipelineResult } from "./addons/wallbox/failsafe";
 import {
 	handleWallboxForeignStateChange,
+	handleWallboxStateChange,
 	initWallboxModule,
 	stopWallboxModule,
 } from "./addons/wallbox";
@@ -178,6 +179,7 @@ class Ems extends utils.Adapter {
 			handleGlobalModesStateChange(this.namespace, id);
 			handleIntentStateChange(this.namespace, id, state);
 			handleWallboxForeignStateChange(this.namespace, id);
+			handleWallboxStateChange(this.namespace, id);
 			handlePowerRollupStateChange(id, state);
 			handleEnergyDailyRollupStateChange(id, state);
 		}

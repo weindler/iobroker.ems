@@ -153,11 +153,14 @@ beliebige Wallbox → EVCC → EMS-Light (read-only)
 - Liest konfigurierte EVCC-Fremd-States
 - Normalisiert Telemetrie (`normalize.ts`, `evcc_telemetry.ts`)
 - Spiegelt in `addons.wallbox.evcc.*` (Snapshot JSON + Einzelstates)
+- **Daily-Plan-Diagnose (v0.1.131):** liest `planner.intent.allocation.wallbox.plan_json`, wertet aktuellen Slot read-only aus, schreibt `addons.wallbox.runtime.*` — keine EVCC-Writes
 - `plan_time` / `effective_plan_time`: bei null/invalid wird der Spiegelstate auf `""` gesetzt (kein stale Deadline)
 - EVCC-Sitzungsenergie: Wh → kWh (`/ 1000`)
 - Go-Null-Zeit (`0001-01-01T00:00:00Z`) wird als „kein Plan" behandelt
 
 Legacy go-e-Write-Mappings (`wb_set_*`) bleiben in der Config, werden von der Runtime nicht mehr genutzt. Wallbox ist `supports_read_only` in der Registry.
+
+Details: `docs/EMS_LIGHT_WALLBOX_DAILY_PLAN_READONLY.md`
 
 ---
 

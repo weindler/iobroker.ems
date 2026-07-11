@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.130",
+		"version": "0.1.131",
 		"news": {
+			"0.1.131": {
+				"en": "The wallbox now evaluates the current daily plan allocation, charging power, energy source and deadline in read-only operation. The connected gate prevents charging allowances without a plugged-in vehicle; an SOC of 0 in this state is harmless. No EVCC or wallbox commands are written.",
+				"de": "Die Wallbox wertet nun die aktuelle Daily-Plan-Allocation, Ladeleistung, Energiequelle und Deadline im read-only-Betrieb aus. Das Connected-Gate verhindert Ladefreigaben ohne angeschlossenes Fahrzeug; ein SOC von 0 ist in diesem Zustand unkritisch. Es werden weiterhin keine EVCC- oder Wallbox-Kommandos geschrieben."
+			},
 			"0.1.130": {
 				"en": "Air conditioning runtime now uses per-unit daily plan allocation as a power ceiling in automatic operation. The central governance gate is now fully enforced in the runtime. Temperature control, hysteresis, minimum runtime, minimum pause, SmartThings rate limits, safety, dryrun and live gates remain unchanged.",
 				"de": "Die Klima-Runtime nutzt im Automatikbetrieb nun pro Unit die aktuelle Daily-Plan-Allocation als Leistungsfreigabe. Das zentrale Governance-Gate wird jetzt auch in der Runtime vollständig durchgesetzt. Temperaturregelung, Hysterese, Mindestlaufzeit, Mindestpause, SmartThings-Rate-Limits, Safety, Dryrun und Live-Gates bleiben erhalten."

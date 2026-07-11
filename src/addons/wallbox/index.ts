@@ -5,6 +5,18 @@ import {
 import { ensureWallboxEvccStates, WALLBOX_EVCC_STATES } from "./ensure_evcc_states";
 import { readEvccTelemetrySnapshot, type EvccTelemetryReadHost } from "./evcc_telemetry";
 import type { TelemetryField } from "./normalize";
+import { isAddonGovernanceEnabledFromState, addonGovernanceEnabledState } from "../governance";
+import { addonEnabled } from "../../tree_paths";
+import {
+	ALLOCATION_ADDON_STATE_IDS,
+	DAILY_PLAN_STATE_IDS,
+} from "../../operator/daily_plan/states";
+import {
+	ensureWallboxRuntimeStates,
+	publishWallboxRuntimeStates,
+	resetWallboxDailyPlanCache,
+	resolveWallboxDailyPlanDecision,
+} from "./runtime";
 
 type WallboxHost = EvccTelemetryReadHost &
 	ioBroker.Adapter & {
@@ -44,6 +56,23 @@ async function writeTimeField(
 	await host.setStateAsync(stateId, { val, ack: true });
 }
 
+const WALLBOX_ADDON_ID = "wallbox";
+
+async function refreshWallboxDailyPlanRuntime(host: WallboxHost, snap: Awaited<ReturnType<typeof readEvccTelemetrySnapshot>>): Promise<void> {
+	const cfg = wallboxEvccTelemetryConfigFromAdapter(host.config);
+	const addonOn = await host.getStateAsync(addonEnabled(WALLBOX_ADDON_ID));
+	const addonEnabledVal = addonOn?.val !== false;
+	const governanceEnabled = await isAddonGovernanceEnabledFromState(
+		(id) => host.getStateAsync(id),
+		WALLBOX_ADDON_ID,
+	);
+	const decision = await resolveWallboxDailyPlanDecision(host, snap, cfg, new Date(), {
+		governanceEnabled,
+		addonEnabled: addonEnabledVal,
+	});
+	await publishWallboxRuntimeStates(host, decision, governanceEnabled);
+}
+
 export async function refreshWallboxEvccTelemetry(host: WallboxHost): Promise<void> {
 	const cfg = wallboxEvccTelemetryConfigFromAdapter(host.config);
 	const snap = await readEvccTelemetrySnapshot(host, cfg, new Date());
@@ -70,6 +99,8 @@ export async function refreshWallboxEvccTelemetry(host: WallboxHost): Promise<vo
 	await writeField(host, WALLBOX_EVCC_STATES.maxCurrentA, snap.max_current_a);
 	await writeField(host, WALLBOX_EVCC_STATES.batteryMode, snap.battery_mode);
 	await writeField(host, WALLBOX_EVCC_STATES.batteryDischargeControl, snap.battery_discharge_control);
+
+	await refreshWallboxDailyPlanRuntime(host, snap);
 }
 
 function scheduleRefresh(host: WallboxHost): void {
@@ -87,21 +118,35 @@ export async function initWallboxModule(host: WallboxHost): Promise<void> {
 	activeHost = host;
 
 	await ensureWallboxEvccStates(host);
+	await ensureWallboxRuntimeStates(host);
 	await refreshWallboxEvccTelemetry(host);
 
 	const cfg = wallboxEvccTelemetryConfigFromAdapter(host.config);
-	const ids = configuredEvccTelemetryStateIds(cfg);
+	const ids = new Set(configuredEvccTelemetryStateIds(cfg));
+	ids.add(addonEnabled(WALLBOX_ADDON_ID));
+	ids.add(addonGovernanceEnabledState(WALLBOX_ADDON_ID));
+	ids.add(DAILY_PLAN_STATE_IDS.revision);
+	ids.add(DAILY_PLAN_STATE_IDS.status);
+	ids.add(ALLOCATION_ADDON_STATE_IDS.wallbox.planJson);
+
 	for (const id of ids) {
 		if (subscribedIds.includes(id)) continue;
-		if (typeof host.subscribeForeignStatesAsync === "function") {
+		const isForeign = !id.startsWith("addons.") && !id.startsWith("planner.");
+		if (isForeign) {
+			if (typeof host.subscribeForeignStatesAsync === "function") {
+				try {
+					await host.subscribeForeignStatesAsync(id);
+					subscribedIds.push(id);
+				} catch (e) {
+					host.log.debug?.(`wallbox evcc subscribe ${id}: ${e}`);
+				}
+			}
+		} else if (typeof host.subscribeStatesAsync === "function") {
 			try {
-				// Kein Callback übergeben: ioBroker interpretiert eine Funktion als
-				// internen Completion-Callback, wodurch das Promise nie auflöst.
-				// Foreign-Änderungen laufen über onStateChange -> handleWallboxForeignStateChange.
-				await host.subscribeForeignStatesAsync(id);
+				await host.subscribeStatesAsync(id);
 				subscribedIds.push(id);
 			} catch (e) {
-				host.log.debug?.(`wallbox evcc subscribe ${id}: ${e}`);
+				host.log.debug?.(`wallbox subscribe ${id}: ${e}`);
 			}
 		}
 	}
@@ -114,14 +159,34 @@ export function stopWallboxModule(): void {
 		debounceTimer = null;
 	}
 	const host = activeHost;
-	if (host && typeof host.unsubscribeForeignStatesAsync === "function") {
-		for (const id of subscribedIds) {
-			void Promise.resolve(host.unsubscribeForeignStatesAsync!(id)).catch(() => undefined);
+	if (host) {
+		if (typeof host.unsubscribeStatesAsync === "function") {
+			for (const id of subscribedIds) {
+				if (id.startsWith("addons.") || id.startsWith("planner.")) {
+					void Promise.resolve(host.unsubscribeStatesAsync!(id)).catch(() => undefined);
+				}
+			}
+		}
+		if (typeof host.unsubscribeForeignStatesAsync === "function") {
+			for (const id of subscribedIds) {
+				if (!id.startsWith("addons.") && !id.startsWith("planner.")) {
+					void Promise.resolve(host.unsubscribeForeignStatesAsync!(id)).catch(() => undefined);
+				}
+			}
 		}
 	}
 	subscribedIds.length = 0;
 	activeHost = null;
+	resetWallboxDailyPlanCache();
 }
+
+const DAILY_PLAN_TRIGGER_IDS = new Set([
+	DAILY_PLAN_STATE_IDS.revision,
+	DAILY_PLAN_STATE_IDS.status,
+	ALLOCATION_ADDON_STATE_IDS.wallbox.planJson,
+	addonEnabled(WALLBOX_ADDON_ID),
+	addonGovernanceEnabledState(WALLBOX_ADDON_ID),
+]);
 
 export function handleWallboxForeignStateChange(namespace: string, id: string): void {
 	if (!activeHost) return;
@@ -129,6 +194,16 @@ export function handleWallboxForeignStateChange(namespace: string, id: string): 
 	const ids = configuredEvccTelemetryStateIds(cfg);
 	if (ids.includes(id)) {
 		scheduleRefresh(activeHost);
+		return;
 	}
 	void namespace;
+}
+
+export function handleWallboxStateChange(namespace: string, id: string): void {
+	if (!activeHost) return;
+	const ns = `${namespace}.`;
+	const bareId = id.startsWith(ns) ? id.slice(ns.length) : id;
+	if (DAILY_PLAN_TRIGGER_IDS.has(bareId)) {
+		scheduleRefresh(activeHost);
+	}
 }

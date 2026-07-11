@@ -87,7 +87,7 @@ Keine dynamischen IDs, keine Zeitstempel in IDs. Flussrichtung über `flow`, nic
 - Pro Unit (`AC_UNIT_COUNT = 5`) ein Beitrag `air_conditioning.unit_N`
 - Deaktivierte Units: `disabled`
 - Kühlbedarf aus Raumtemperatur, Ziel, Wetter, Learning/Config (`details.powerSource`)
-- **Governance-Lücke:** Contributions beachten `addons.climate.governance.enabled`; AC-Runtime-FSM prüft nur `addons.air_conditioning.enabled` (nicht in v0.1.127 behoben)
+- **Runtime (v0.1.130):** liest Daily-Plan-Allocation pro Unit; Governance-Gate via `isAddonGovernanceEnabledFromState(..., "climate")` — siehe `docs/EMS_LIGHT_AC_DAILY_PLAN_RUNTIME.md`
 
 ## 8. Teilnahme- und Ausschlussregeln
 
@@ -153,4 +153,6 @@ Noch **nicht** implementiert (Stand v0.1.129):
 - KI-Optimierung
 - Statistikvergleich
 
-**Heizstab-Runtime (v0.1.129):** liest Daily-Plan-Allocation im Auto-Modus — siehe `docs/EMS_LIGHT_IMMERSION_DAILY_PLAN_RUNTIME.md`.
+**Heizstab-Runtime (v0.1.129):** Daily-Plan-Allocation im Auto-Modus — `docs/EMS_LIGHT_IMMERSION_DAILY_PLAN_RUNTIME.md`
+
+**Klima-Runtime (v0.1.130):** Daily-Plan-Allocation pro Unit + Governance-Gate — `docs/EMS_LIGHT_AC_DAILY_PLAN_RUNTIME.md`

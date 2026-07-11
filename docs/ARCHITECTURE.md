@@ -187,6 +187,23 @@ Details: `docs/EMS_LIGHT_IMMERSION_DAILY_PLAN_RUNTIME.md`
 
 ---
 
+## 9a. Klima (Air Conditioning)
+
+**Pfad:** `src/addons/air_conditioning/`
+
+- Thermostat-FSM, SmartThings-Profile, Cleaning, Rate Limits
+- **Daily Plan (v0.1.130):** pro Unit `air_conditioning.unit_1..5` als Leistungsfreigabe
+- **Governance-Gate:** `isAddonGovernanceEnabledFromState(..., "climate")` in Runtime
+
+Details: `docs/EMS_LIGHT_AC_DAILY_PLAN_RUNTIME.md`
+
+**Ausführung:**
+
+- **Dryrun:** keine SmartThings-Writes, simuliert Zustand
+- **Live:** Profil-Sequenzen nur bei Governance + Live-Gate
+
+---
+
 ## 10. Add-on-Governance (implementiert)
 
 **Pfad:** `src/addons/governance/`

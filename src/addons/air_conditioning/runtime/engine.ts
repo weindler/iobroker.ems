@@ -8,14 +8,23 @@ import {
 	initConsumerStatsForKey,
 	flushConsumerStatsPersist,
 	resetConsumerStatsCache,
+	peekConsumerStatsEntry,
 } from "../../../learning/consumer_stats";
+import { isAddonGovernanceEnabledFromState, addonGovernanceEnabledState } from "../../../addons/governance";
+import { DAILY_PLAN_STATE_IDS, ALLOCATION_ADDON_STATE_IDS } from "../../../operator/daily_plan/states";
 import type { DeviceWriteHost } from "../../../device_write";
 import { acUnitConsumerKey, AC_ADDON_ID, AC_CLEANING_REFRESH_MS, AC_FEEDBACK_POLL_ATTEMPTS, AC_FEEDBACK_POLL_MS, AC_START_RETRY_MS, AC_STOP_RETRY_MS, AC_TICK_MS, AC_WATCH_MAPPING_ROLES } from "../constants";
 import { acGlobalConfigFromAdapter } from "../config";
 import type { AcUnitConfig } from "../types";
 import { getAcProfile } from "../profiles/registry";
 import type { AcUnitModePurpose } from "../types";
-import { acUnitRuntimeStates, AC_RUNTIME_BASE, ensureAcRuntimeStates } from "./ensure_states";
+import { acUnitRuntimeStates, AC_RUNTIME_BASE, AC_RUNTIME_SUMMARY_STATES, ensureAcRuntimeStates } from "./ensure_states";
+import {
+	evaluateAcCoolingPermission,
+	resolveAcUnitDailyPlanAllocation,
+	resetAcDailyPlanCache,
+	type AcUnitDailyPlanResolution,
+} from "./daily_plan";
 import { evaluateAcUnitFsm } from "./fsm";
 import { emptyUnitPersist, type AcRuntimePersist, type AcUnitPersist } from "./persist";
 import { readAcRuntimePersist, writeAcRuntimePersist } from "./persist_io";
@@ -195,8 +204,9 @@ async function finishCleaning(
 	up: AcUnitPersist,
 	reason: string,
 	sendStop: boolean,
+	allowWrite: boolean,
 ): Promise<void> {
-	if (sendStop && live) {
+	if (sendStop && live && allowWrite) {
 		const profile = getAcProfile(unit.profileId);
 		await executeAcWriteSteps(host, unit.index, table, profile.cleaningStopSequence(), true, host.log);
 	}
@@ -219,9 +229,15 @@ async function tickCleaning(
 	cleaningStateRaw: unknown,
 	cleaningModeRaw: unknown,
 	cleaningProgressPct: number | null,
+	allowNewCleaning: boolean,
 ): Promise<void> {
 	const pending = up.cleaningPendingUntilMs;
 	if (pending && nowMs >= pending && !up.cleaningActive) {
+		if (!allowNewCleaning) {
+			up.cleaningPendingUntilMs = null;
+			host.log.debug?.(`ac unit ${unit.index}: cleaning skipped — governance/add-on block`);
+			return;
+		}
 		up.cleaningPendingUntilMs = null;
 		const profile = getAcProfile(unit.profileId);
 		if (live) {
@@ -246,13 +262,14 @@ async function tickCleaning(
 		return;
 	}
 
+	const cleaningWritesAllowed = live && (allowNewCleaning || up.cleaningActive);
 	const stateFbId = resolveAcMappingTarget(table, unit.index, "feedback_cleaning_state");
 	const modeFbId = resolveAcMappingTarget(table, unit.index, "feedback_cleaning_mode");
 	const progressFbId = resolveAcMappingTarget(table, unit.index, "feedback_cleaning_progress");
 	const hasCleaningFeedback = Boolean(stateFbId || modeFbId || progressFbId);
 	const refreshId = resolveAcMappingTarget(table, unit.index, "cmd_refresh");
 	const lastRefresh = up.cleaningLastRefreshAtMs ?? up.cleaningStartedAtMs;
-	if (live && refreshId && nowMs - lastRefresh >= AC_CLEANING_REFRESH_MS) {
+	if (cleaningWritesAllowed && refreshId && nowMs - lastRefresh >= AC_CLEANING_REFRESH_MS) {
 		await executeAcWriteSteps(host, unit.index, table, [{ kind: "toggle", role: "cmd_refresh" }], true, host.log);
 		up.cleaningLastRefreshAtMs = nowMs;
 	}
@@ -287,6 +304,7 @@ async function tickCleaning(
 				up,
 				`feedback (progress=${cleaningProgressPct ?? "?"}%, ${elapsedSec}s)`,
 				true,
+				cleaningWritesAllowed,
 			);
 			return;
 		}
@@ -309,6 +327,7 @@ async function tickCleaning(
 				up,
 				`feedback (operatingState=${op || "?"}, mode=${mode || "?"}, ${elapsedSec}s)`,
 				true,
+				cleaningWritesAllowed,
 			);
 			return;
 		}
@@ -324,6 +343,7 @@ async function tickCleaning(
 			up,
 			`timeout (${unit.cleaningDurationMin} min)`,
 			true,
+			cleaningWritesAllowed,
 		);
 	}
 }
@@ -347,10 +367,18 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 	const mappingTable = buildAcMappingTableFromConfig(configRecord);
 	const addonOn = await host.getStateAsync(addonEnabled(AC_ADDON_ID));
 	const addonEnabledVal = addonOn?.val !== false;
+	const governanceEnabled = await isAddonGovernanceEnabledFromState(
+		(id) => host.getStateAsync(id),
+		"climate",
+	);
 	const live = await isLiveWriteAllowed((id) => host.getStateAsync(id), AC_ADDON_ID);
+	const allowNewCleaning = governanceEnabled && addonEnabledVal;
 
 	const activeUnits = config.units.filter((u) => u.enabled);
 	let runningCount = 0;
+	let anyDailyPlanActive = false;
+	let maxDailyPlanRevision = 0;
+	const summaryReasons: string[] = [];
 
 	for (const unit of activeUnits) {
 		const tempId = resolveAcMappingTarget(mappingTable, unit.index, "room_temp");
@@ -378,6 +406,7 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 			cleaningState.value,
 			cleaningMode.value,
 			cleaningProgress.num,
+			allowNewCleaning,
 		);
 
 		if (!addonEnabledVal && switchIsOn(fb.value) && stopRetryReady(up, nowMs)) {
@@ -386,7 +415,7 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 
 		const fsm = evaluateAcUnitFsm({
 			now,
-			addonEnabled: addonEnabledVal,
+			addonEnabled: addonEnabledVal && governanceEnabled,
 			unit,
 			roomTempC: temp.num,
 			roomHumidityPct: hum.num,
@@ -394,7 +423,33 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 			cleaningActive: up.cleaningActive,
 		});
 
-		if (fsm.demandStop) {
+		const consumerStats = await peekConsumerStatsEntry(host, acUnitConsumerKey(unit.index));
+		const dailyPlan: AcUnitDailyPlanResolution = await resolveAcUnitDailyPlanAllocation(
+			host,
+			unit,
+			consumerStats,
+			now,
+		);
+		if (dailyPlan.useDailyPlan) {
+			anyDailyPlanActive = true;
+			if (dailyPlan.dailyPlanRevision !== null) {
+				maxDailyPlanRevision = Math.max(maxDailyPlanRevision, dailyPlan.dailyPlanRevision);
+			}
+		}
+
+		const startRetryReady = !up.lastStartAtMs || nowMs - up.lastStartAtMs >= AC_START_RETRY_MS;
+		const permission = evaluateAcCoolingPermission({
+			unitEnabled: unit.enabled,
+			governanceEnabled,
+			addonEnabled: addonEnabledVal,
+			cleaningActive: up.cleaningActive,
+			fsm,
+			dailyPlan,
+			startRetryReady,
+			stopRetryReady: stopRetryReady(up, nowMs),
+		});
+
+		if (permission.allowStop) {
 			if (switchIsOn(fb.value)) {
 				if (stopRetryReady(up, nowMs)) {
 					if (up.lastStopAtMs) {
@@ -402,26 +457,29 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 							`ac unit ${unit.index}: retry stop (${Math.round((nowMs - up.lastStopAtMs) / 1000)}s since last attempt)`,
 						);
 					}
-					await stopUnit(host, unit, mappingTable, live, up);
+					await stopUnit(host, unit, mappingTable, live && permission.deviceWritesAllowed, up);
 				}
 			} else {
 				up.running = false;
 			}
-		} else if (fsm.demandStart && switchIsOff(fb.value)) {
+		} else if (fsm.demandStop) {
+			// Governance blockiert Stop-Writes — laufende Unit nicht blind abschalten.
+		} else if (permission.allowStart && switchIsOff(fb.value)) {
 			if (live) {
-				const cooledDown = !up.lastStartAtMs || nowMs - up.lastStartAtMs >= AC_START_RETRY_MS;
-				if (cooledDown) {
+				if (startRetryReady) {
 					if (up.lastStartAtMs) {
 						host.log.info(
 							`ac unit ${unit.index}: retry start (${Math.round((nowMs - up.lastStartAtMs) / 1000)}s since last attempt)`,
 						);
 					}
-					await startUnit(host, unit, mappingTable, live, up, fsm.modePurpose);
+					await startUnit(host, unit, mappingTable, live && permission.deviceWritesAllowed, up, fsm.modePurpose);
 				}
 			} else if (!up.running) {
-				await startUnit(host, unit, mappingTable, live, up, fsm.modePurpose);
+				await startUnit(host, unit, mappingTable, false, up, fsm.modePurpose);
 			}
 		}
+
+		summaryReasons.push(`U${unit.index}: ${permission.reasonDe}`);
 
 		if (switchIsOn(fb.value)) {
 			up.running = true;
@@ -436,7 +494,7 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 			? allocatedPowerW(runningCount || 1, config.outdoorMaxPowerW, unit.estimatedPowerW)
 			: 0;
 		await setStateIfChanged(host, ids.state, fsm.state);
-		await setStateIfChanged(host, ids.reasonDe, fsm.reasonDe);
+		await setStateIfChanged(host, ids.reasonDe, permission.reasonDe);
 		await setStateIfChanged(host, ids.roomTempC, temp.num ?? "");
 		await setStateIfChanged(host, ids.roomHumidityPct, hum.num ?? "");
 		await setStateIfChanged(host, ids.feedbackSwitch, fb.value == null ? "" : String(fb.value));
@@ -447,6 +505,17 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		await setStateIfChanged(host, ids.feedbackCleaningProgressPct, cleaningProgress.num ?? "");
 		await setStateIfChanged(host, ids.modePurpose, fsm.modePurpose);
 		await setStateIfChanged(host, ids.estimatedPowerW, estPower);
+		await setStateIfChanged(host, ids.decisionSource, permission.decisionSource);
+		await setStateIfChanged(host, ids.dailyPlanStatus, dailyPlan.dailyPlanStatus);
+		await setStateIfChanged(host, ids.dailyPlanRevision, dailyPlan.dailyPlanRevision ?? 0);
+		await setStateIfChanged(host, ids.dailyPlanSlotStart, dailyPlan.slotStartIso ?? "");
+		await setStateIfChanged(host, ids.dailyPlanSlotEnd, dailyPlan.slotEndIso ?? "");
+		await setStateIfChanged(host, ids.allocatedPowerW, dailyPlan.allocatedPowerW ?? "");
+		await setStateIfChanged(host, ids.expectedPowerW, dailyPlan.expectedPowerW ?? "");
+		await setStateIfChanged(host, ids.powerModelSource, dailyPlan.powerModelSource);
+		await setStateIfChanged(host, ids.allocationStatus, dailyPlan.allocationStatus);
+		await setStateIfChanged(host, ids.allocationReasonDe, dailyPlan.allocationReasonDe);
+		await setStateIfChanged(host, ids.governanceAllowed, governanceEnabled);
 
 		await tickConsumerStats(host, {
 			consumerKey: acUnitConsumerKey(unit.index),
@@ -459,6 +528,16 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 	}
 
 	await setStateIfChanged(host, `${AC_RUNTIME_BASE}.outdoor_allocated_power_w`, config.outdoorMaxPowerW);
+	await setStateIfChanged(host, AC_RUNTIME_SUMMARY_STATES.governanceAllowed, governanceEnabled);
+	await setStateIfChanged(host, AC_RUNTIME_SUMMARY_STATES.dailyPlanActive, anyDailyPlanActive);
+	await setStateIfChanged(host, AC_RUNTIME_SUMMARY_STATES.dailyPlanRevision, maxDailyPlanRevision);
+	await setStateIfChanged(
+		host,
+		AC_RUNTIME_SUMMARY_STATES.reasonDe,
+		!governanceEnabled
+			? "Klima-Governance deaktiviert — keine EMS-Steueraktion."
+			: summaryReasons.slice(0, 3).join(" | ") || "Klima Runtime aktiv.",
+	);
 
 	const dataDir = host.getAbsolutePath?.("air_conditioning");
 	if (dataDir) {
@@ -482,7 +561,14 @@ export async function initAcRuntimeEngine(host: AcRuntimeHost): Promise<void> {
 	const cfg = acGlobalConfigFromAdapter(host.config);
 	const configRecord = host.config && typeof host.config === "object" ? (host.config as Record<string, unknown>) : {};
 	const mappingTable = buildAcMappingTableFromConfig(configRecord);
-	const subs = new Set<string>([addonEnabled(AC_ADDON_ID), addonAvailable(AC_ADDON_ID)]);
+	const subs = new Set<string>([
+		addonEnabled(AC_ADDON_ID),
+		addonAvailable(AC_ADDON_ID),
+		addonGovernanceEnabledState("climate"),
+		DAILY_PLAN_STATE_IDS.revision,
+		DAILY_PLAN_STATE_IDS.status,
+		ALLOCATION_ADDON_STATE_IDS.air_conditioning.planJson,
+	]);
 	if (host.subscribeStatesAsync) {
 		for (const id of subs) {
 			if (subscribedIds.includes(id)) continue;
@@ -526,6 +612,7 @@ export function stopAcRuntimeEngine(): void {
 	hostRef = null;
 	persist = { version: 1, units: {} };
 	subscribedIds.length = 0;
+	resetAcDailyPlanCache();
 }
 
 export function acRuntimeWatchedForeignIds(config: unknown): string[] {

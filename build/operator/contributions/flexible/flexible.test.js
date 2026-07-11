@@ -355,9 +355,9 @@ function acInput(overrides = {}) {
         const all = (0, air_conditioning_1.buildAirConditioningContributions)(acInput({ governanceEnabled: false }));
         strict_1.default.ok(all.every((c) => !c.enabled));
     });
-    (0, node_test_1.it)("documents runtime governance gap", () => {
+    (0, node_test_1.it)("runtime no longer documents governance gap after v0.1.130", () => {
         const unit1 = (0, air_conditioning_1.buildAirConditioningContributions)(acInput()).find((c) => c.contributionId === "air_conditioning.unit_1");
-        strict_1.default.equal(unit1?.details.runtimeGovernanceGap, true);
+        strict_1.default.equal(unit1?.details.runtimeGovernanceGap, undefined);
     });
 });
 (0, node_test_1.describe)("flexible build orchestration", () => {

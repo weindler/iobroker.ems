@@ -102,7 +102,6 @@ function buildUnitContribution(
 			likelyActive: forecast.likelyActive,
 			outdoorTempC: input.outdoorTempC,
 			governanceEnabled: input.governanceEnabled,
-			runtimeGovernanceGap: true,
 		},
 		slots: [],
 	});

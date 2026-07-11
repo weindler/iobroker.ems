@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureAcRuntimeStates = exports.acUnitRuntimeStates = exports.acUnitRuntimeBase = exports.AC_RUNTIME_BASE = void 0;
+exports.ensureAcRuntimeStates = exports.AC_RUNTIME_SUMMARY_STATES = exports.acUnitRuntimeStates = exports.acUnitRuntimeBase = exports.AC_RUNTIME_BASE = void 0;
 const tree_paths_1 = require("../../../tree_paths");
 const constants_1 = require("../constants");
 exports.AC_RUNTIME_BASE = `${(0, tree_paths_1.addonBase)("air_conditioning")}.runtime`;
@@ -23,9 +23,26 @@ function acUnitRuntimeStates(unitIndex) {
         feedbackCleaningProgressPct: `${base}.feedback_cleaning_progress_pct`,
         modePurpose: `${base}.mode_purpose`,
         estimatedPowerW: `${base}.estimated_power_w`,
+        decisionSource: `${base}.decision_source`,
+        dailyPlanStatus: `${base}.daily_plan_status`,
+        dailyPlanRevision: `${base}.daily_plan_revision`,
+        dailyPlanSlotStart: `${base}.daily_plan_slot_start`,
+        dailyPlanSlotEnd: `${base}.daily_plan_slot_end`,
+        allocatedPowerW: `${base}.allocated_power_w`,
+        expectedPowerW: `${base}.expected_power_w`,
+        powerModelSource: `${base}.power_model_source`,
+        allocationStatus: `${base}.allocation_status`,
+        allocationReasonDe: `${base}.allocation_reason_de`,
+        governanceAllowed: `${base}.governance_allowed`,
     };
 }
 exports.acUnitRuntimeStates = acUnitRuntimeStates;
+exports.AC_RUNTIME_SUMMARY_STATES = {
+    governanceAllowed: `${exports.AC_RUNTIME_BASE}.governance_allowed`,
+    dailyPlanActive: `${exports.AC_RUNTIME_BASE}.daily_plan_active`,
+    dailyPlanRevision: `${exports.AC_RUNTIME_BASE}.daily_plan_revision`,
+    reasonDe: `${exports.AC_RUNTIME_BASE}.reason_de`,
+};
 async function ensureAcRuntimeStates(host) {
     await host.setObjectNotExistsAsync(`${(0, tree_paths_1.addonBase)("air_conditioning")}.units`, {
         type: "channel",
@@ -49,6 +66,31 @@ async function ensureAcRuntimeStates(host) {
         },
         native: {},
     });
+    const summaryDefs = [
+        {
+            id: exports.AC_RUNTIME_SUMMARY_STATES.governanceAllowed,
+            common: { name: "Klima Governance erlaubt", type: "boolean", role: "switch", read: true, write: false, def: false },
+        },
+        {
+            id: exports.AC_RUNTIME_SUMMARY_STATES.dailyPlanActive,
+            common: { name: "Klima Daily Plan aktiv", type: "boolean", role: "switch", read: true, write: false, def: false },
+        },
+        {
+            id: exports.AC_RUNTIME_SUMMARY_STATES.dailyPlanRevision,
+            common: { name: "Klima Daily Plan Revision", type: "number", role: "value", read: true, write: false, def: 0 },
+        },
+        {
+            id: exports.AC_RUNTIME_SUMMARY_STATES.reasonDe,
+            common: { name: "Klima Runtime Begründung", type: "string", role: "text", read: true, write: false, def: "" },
+        },
+    ];
+    for (const def of summaryDefs) {
+        await host.setObjectNotExistsAsync(def.id, {
+            type: "state",
+            common: def.common,
+            native: {},
+        });
+    }
     for (let i = 1; i <= constants_1.AC_UNIT_COUNT; i++) {
         const ch = acUnitRuntimeBase(i);
         const ids = acUnitRuntimeStates(i);
@@ -70,6 +112,17 @@ async function ensureAcRuntimeStates(host) {
             { id: ids.feedbackCleaningProgressPct, common: { name: `Klima ${i} Reinigung Fortschritt %`, type: "number", role: "value", read: true, write: false, def: 0 } },
             { id: ids.modePurpose, common: { name: `Klima ${i} Modus-Zweck`, type: "string", role: "text", read: true, write: false, def: "cooling" } },
             { id: ids.estimatedPowerW, common: { name: `Klima ${i} geschätzte Leistung W`, type: "number", role: "value", read: true, write: false, def: 0 } },
+            { id: ids.decisionSource, common: { name: `Klima ${i} Entscheidungsquelle`, type: "string", role: "text", read: true, write: false, def: "safe_default" } },
+            { id: ids.dailyPlanStatus, common: { name: `Klima ${i} Daily-Plan-Status`, type: "string", role: "text", read: true, write: false, def: "daily_plan_missing" } },
+            { id: ids.dailyPlanRevision, common: { name: `Klima ${i} Daily-Plan-Revision`, type: "number", role: "value", read: true, write: false, def: 0 } },
+            { id: ids.dailyPlanSlotStart, common: { name: `Klima ${i} Daily-Plan-Slot Start`, type: "string", role: "text", read: true, write: false, def: "" } },
+            { id: ids.dailyPlanSlotEnd, common: { name: `Klima ${i} Daily-Plan-Slot Ende`, type: "string", role: "text", read: true, write: false, def: "" } },
+            { id: ids.allocatedPowerW, common: { name: `Klima ${i} Daily-Plan Allocation W`, type: "number", role: "value", read: true, write: false } },
+            { id: ids.expectedPowerW, common: { name: `Klima ${i} erwartete Leistung W`, type: "number", role: "value", read: true, write: false } },
+            { id: ids.powerModelSource, common: { name: `Klima ${i} Leistungsmodell`, type: "string", role: "text", read: true, write: false, def: "config" } },
+            { id: ids.allocationStatus, common: { name: `Klima ${i} Allocation-Status`, type: "string", role: "text", read: true, write: false, def: "unknown" } },
+            { id: ids.allocationReasonDe, common: { name: `Klima ${i} Allocation-Begründung`, type: "string", role: "text", read: true, write: false, def: "" } },
+            { id: ids.governanceAllowed, common: { name: `Klima ${i} Governance erlaubt`, type: "boolean", role: "switch", read: true, write: false, def: false } },
         ];
         for (const def of defs) {
             await host.setObjectNotExistsAsync(def.id, {

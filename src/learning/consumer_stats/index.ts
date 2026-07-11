@@ -117,6 +117,15 @@ export function resetConsumerStatsCache(): void {
 	persistDirty = false;
 }
 
+/** Liest gecachte Consumer-Stats für eine Unit (nach initConsumerStatsForKey). */
+export async function peekConsumerStatsEntry(
+	host: ConsumerStatsHost,
+	consumerKey: string,
+): Promise<import("./types").ConsumerPersistEntry | undefined> {
+	const persist = await loadPersist(host);
+	return persist.consumers[consumerKey];
+}
+
 export { resolveConsumerEffectivePowerW, collectRecentDayMetrics } from "./learned_power";
 export type { LearnedConsumerPower } from "./learned_power";
 export { consumerStatsConfigFor } from "./config";

@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.129",
+		"version": "0.1.130",
 		"news": {
+			"0.1.130": {
+				"en": "Air conditioning runtime now uses per-unit daily plan allocation as a power ceiling in automatic operation. The central governance gate is now fully enforced in the runtime. Temperature control, hysteresis, minimum runtime, minimum pause, SmartThings rate limits, safety, dryrun and live gates remain unchanged.",
+				"de": "Die Klima-Runtime nutzt im Automatikbetrieb nun pro Unit die aktuelle Daily-Plan-Allocation als Leistungsfreigabe. Das zentrale Governance-Gate wird jetzt auch in der Runtime vollständig durchgesetzt. Temperaturregelung, Hysterese, Mindestlaufzeit, Mindestpause, SmartThings-Rate-Limits, Safety, Dryrun und Live-Gates bleiben erhalten."
+			},
 			"0.1.129": {
 				"en": "Immersion heater runtime now uses the current daily plan allocation as a power ceiling in automatic mode. Safety, fault/lockout, minimum runtime, minimum pause, stage model, dryrun and live gates remain fully unchanged. When the daily plan is missing or invalid, the deterministic thermal fallback still applies.",
 				"de": "Die Heizstab-Runtime nutzt im Automatikbetrieb nun die aktuelle Daily-Plan-Allocation als Leistungsfreigabe. Safety, Fault/Lockout, Mindestlaufzeit, Mindestpause, Stufenmodell, Dryrun und Live-Gates bleiben vollständig erhalten. Bei fehlendem oder ungültigem Daily Plan greift weiterhin der deterministische Thermal-Fallback."

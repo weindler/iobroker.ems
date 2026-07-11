@@ -428,11 +428,11 @@ describe("air conditioning contributions", () => {
 		assert.ok(all.every((c) => !c.enabled));
 	});
 
-	it("documents runtime governance gap", () => {
+	it("runtime no longer documents governance gap after v0.1.130", () => {
 		const unit1 = buildAirConditioningContributions(acInput()).find(
 			(c) => c.contributionId === "air_conditioning.unit_1",
 		);
-		assert.equal(unit1?.details.runtimeGovernanceGap, true);
+		assert.equal(unit1?.details.runtimeGovernanceGap, undefined);
 	});
 });
 

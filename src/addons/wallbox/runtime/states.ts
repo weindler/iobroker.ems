@@ -52,4 +52,11 @@ export const WALLBOX_RUNTIME_STATES = {
 	controlMappingComplete: `${WALLBOX_RUNTIME_BASE}.control_mapping_complete`,
 	controlMappingMissingJson: `${WALLBOX_RUNTIME_BASE}.control_mapping_missing_json`,
 	dryrunCommandJson: `${WALLBOX_RUNTIME_BASE}.dryrun_command_json`,
+	commandCandidateJson: `${WALLBOX_RUNTIME_BASE}.command_candidate_json`,
+	commandCandidatePresent: `${WALLBOX_RUNTIME_BASE}.command_candidate_present`,
+	liveFoundationPhase: `${WALLBOX_RUNTIME_BASE}.live_foundation_phase`,
+	liveWriteReleased: `${WALLBOX_RUNTIME_BASE}.live_write_released`,
+	executionAttempted: `${WALLBOX_RUNTIME_BASE}.execution_attempted`,
+	executionExecuted: `${WALLBOX_RUNTIME_BASE}.execution_executed`,
+	executionBlockReason: `${WALLBOX_RUNTIME_BASE}.execution_block_reason`,
 } as const;

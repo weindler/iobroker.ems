@@ -80,6 +80,13 @@ export async function ensureWallboxRuntimeStates(host: StateHost): Promise<void>
 		boolState(WALLBOX_RUNTIME_STATES.controlMappingComplete, "Wallbox Steuer-Mapping vollständig", false),
 		strState(WALLBOX_RUNTIME_STATES.controlMappingMissingJson, "Wallbox fehlende Steuer-Mappings (JSON)", "[]"),
 		strState(WALLBOX_RUNTIME_STATES.dryrunCommandJson, "Wallbox Dryrun-Kommandos (JSON)", "[]"),
+		strState(WALLBOX_RUNTIME_STATES.commandCandidateJson, "Wallbox Command-Kandidat (JSON)"),
+		boolState(WALLBOX_RUNTIME_STATES.commandCandidatePresent, "Wallbox Command-Kandidat vorhanden", false),
+		strState(WALLBOX_RUNTIME_STATES.liveFoundationPhase, "Wallbox Live-Foundation Phase (intern, kein globaler Modus)", "observe"),
+		boolState(WALLBOX_RUNTIME_STATES.liveWriteReleased, "Wallbox Live-Write freigegeben", false),
+		boolState(WALLBOX_RUNTIME_STATES.executionAttempted, "Wallbox externer Geräte-Write versucht", false),
+		boolState(WALLBOX_RUNTIME_STATES.executionExecuted, "Wallbox externer Geräte-Write ausgeführt", false),
+		strState(WALLBOX_RUNTIME_STATES.executionBlockReason, "Wallbox Execution Blockgrund"),
 	];
 	await ensureStates(host, defs);
 }

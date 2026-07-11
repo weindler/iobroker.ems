@@ -54,4 +54,11 @@ exports.WALLBOX_RUNTIME_STATES = {
     controlMappingComplete: `${exports.WALLBOX_RUNTIME_BASE}.control_mapping_complete`,
     controlMappingMissingJson: `${exports.WALLBOX_RUNTIME_BASE}.control_mapping_missing_json`,
     dryrunCommandJson: `${exports.WALLBOX_RUNTIME_BASE}.dryrun_command_json`,
+    commandCandidateJson: `${exports.WALLBOX_RUNTIME_BASE}.command_candidate_json`,
+    commandCandidatePresent: `${exports.WALLBOX_RUNTIME_BASE}.command_candidate_present`,
+    liveFoundationPhase: `${exports.WALLBOX_RUNTIME_BASE}.live_foundation_phase`,
+    liveWriteReleased: `${exports.WALLBOX_RUNTIME_BASE}.live_write_released`,
+    executionAttempted: `${exports.WALLBOX_RUNTIME_BASE}.execution_attempted`,
+    executionExecuted: `${exports.WALLBOX_RUNTIME_BASE}.execution_executed`,
+    executionBlockReason: `${exports.WALLBOX_RUNTIME_BASE}.execution_block_reason`,
 };

@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.133",
+		"version": "0.1.134",
 		"news": {
+			"0.1.134": {
+				"en": "The wallbox live foundation builds a validated neutral command candidate from the daily plan dispatch and routes it through a central execution interface. Even in global and addon live mode, real EVCC and wallbox writes remain blocked by a closed release gate; observe, dryrun and live phases are diagnosed transparently.",
+				"de": "Die Wallbox-Live-Foundation erzeugt aus dem Daily-Plan-Dispatch einen validierten neutralen Command-Kandidaten und führt ihn über eine zentrale Execution-Schnittstelle. Auch im globalen und Add-on-Live-Modus bleiben reale EVCC- und Wallbox-Writes durch ein geschlossenes Release-Gate gesperrt; Observe-, Dryrun- und Live-Phasen werden transparent diagnostiziert."
+			},
 			"0.1.133": {
 				"en": "The wallbox now derives a validated neutral dryrun dispatch from the daily plan allocation, including target power, target current, energy source and deadline diagnostics. Connected gate, technical power limits and mapping readiness are fully evaluated. Even in live mode, no EVCC or wallbox commands are written.",
 				"de": "Die Wallbox erzeugt nun aus der Daily-Plan-Allocation einen validierten neutralen Dryrun-Dispatch mit Ziel-Leistung, Ziel-Strom, Energiequelle und Deadline-Diagnose. Connected-Gate, technische Leistungsgrenzen und Mapping-Readiness werden vollständig geprüft. Auch im Live-Modus werden weiterhin keine EVCC- oder Wallbox-Kommandos geschrieben."

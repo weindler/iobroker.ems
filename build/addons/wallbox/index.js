@@ -5,6 +5,7 @@ const evcc_config_1 = require("./evcc_config");
 const ensure_evcc_states_1 = require("./ensure_evcc_states");
 const evcc_telemetry_1 = require("./evcc_telemetry");
 const governance_1 = require("../governance");
+const execution_mode_1 = require("../../execution_mode");
 const tree_paths_1 = require("../../tree_paths");
 const states_1 = require("../../operator/daily_plan/states");
 const runtime_1 = require("./runtime");
@@ -59,6 +60,16 @@ async function refreshWallboxDailyPlanRuntime(host, snap) {
         governanceEnabled,
     });
     await (0, runtime_1.publishWallboxDispatchStates)(host, decision, dispatch);
+    const liveRequested = await (0, execution_mode_1.isLiveWriteAllowed)((id) => host.getStateAsync(id), WALLBOX_ADDON_ID);
+    const foundation = await (0, runtime_1.runWallboxLiveFoundation)({
+        dispatch,
+        decision,
+        addonEnabled: addonEnabledVal,
+        governanceEnabled,
+        liveRequested,
+        now,
+    });
+    await (0, runtime_1.publishWallboxLiveFoundationStates)(host, foundation);
 }
 async function refreshWallboxEvccTelemetry(host) {
     const cfg = (0, evcc_config_1.wallboxEvccTelemetryConfigFromAdapter)(host.config);
@@ -106,6 +117,8 @@ async function initWallboxModule(host) {
     const ids = new Set((0, evcc_config_1.configuredEvccTelemetryStateIds)(cfg));
     ids.add((0, tree_paths_1.addonEnabled)(WALLBOX_ADDON_ID));
     ids.add((0, governance_1.addonGovernanceEnabledState)(WALLBOX_ADDON_ID));
+    ids.add(tree_paths_1.GLOBAL.executionMode);
+    ids.add((0, tree_paths_1.addonMode)(WALLBOX_ADDON_ID));
     ids.add(states_1.DAILY_PLAN_STATE_IDS.revision);
     ids.add(states_1.DAILY_PLAN_STATE_IDS.status);
     ids.add(states_1.ALLOCATION_ADDON_STATE_IDS.wallbox.planJson);
@@ -171,6 +184,8 @@ const DAILY_PLAN_TRIGGER_IDS = new Set([
     states_1.ALLOCATION_ADDON_STATE_IDS.wallbox.planJson,
     (0, tree_paths_1.addonEnabled)(WALLBOX_ADDON_ID),
     (0, governance_1.addonGovernanceEnabledState)(WALLBOX_ADDON_ID),
+    tree_paths_1.GLOBAL.executionMode,
+    (0, tree_paths_1.addonMode)(WALLBOX_ADDON_ID),
 ]);
 function handleWallboxForeignStateChange(namespace, id) {
     if (!activeHost)

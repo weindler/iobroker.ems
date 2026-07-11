@@ -3,6 +3,7 @@ import type { StateHost } from "../../../ems_light/state_util";
 import { WALLBOX_RUNTIME_STATES } from "./states";
 import type { WallboxPlanDecision } from "./daily_plan";
 import type { WallboxDryrunDispatchResult } from "./dispatch";
+import type { WallboxLiveFoundationResult } from "./execute";
 
 export async function publishWallboxRuntimeStates(
 	host: StateHost,
@@ -119,7 +120,46 @@ export async function publishWallboxDispatchStates(
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeAllowed, false);
 }
 
+export async function publishWallboxLiveFoundationStates(
+	host: StateHost,
+	foundation: WallboxLiveFoundationResult,
+): Promise<void> {
+	const candidate = foundation.candidate;
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.liveFoundationPhase, foundation.phase);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.liveWriteReleased, foundation.liveWriteReleased);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.commandCandidatePresent, candidate !== null);
+	await setStateIfChanged(
+		host,
+		WALLBOX_RUNTIME_STATES.commandCandidateJson,
+		candidate ? JSON.stringify(candidate) : "",
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_RUNTIME_STATES.executionAttempted,
+		foundation.writeResult?.attempted ?? false,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_RUNTIME_STATES.executionExecuted,
+		foundation.writeResult?.executed ?? false,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_RUNTIME_STATES.executionBlockReason,
+		foundation.writeResult?.reason ?? (foundation.phase === "dryrun" ? "execution_gate_closed" : ""),
+	);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.runtimeControlAvailable, false);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeAllowed, false);
+}
+
 export { ensureWallboxRuntimeStates } from "./ensure_states";
 export { resetWallboxDailyPlanCache, resolveWallboxDailyPlanDecision, telemetryInputFromSnapshot } from "./daily_plan";
 export { buildWallboxDispatchIntent } from "./intent";
 export { resetWallboxDispatchCache, runWallboxDryrunDispatch } from "./dispatch";
+export { buildWallboxCommandCandidate } from "./command";
+export {
+	executeWallboxWrite,
+	runWallboxLiveFoundation,
+	resolveWallboxRuntimePhase,
+	WALLBOX_LIVE_WRITE_RELEASED,
+} from "./execute";

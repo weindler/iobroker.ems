@@ -6,7 +6,8 @@ import { ensureWallboxEvccStates, WALLBOX_EVCC_STATES } from "./ensure_evcc_stat
 import { readEvccTelemetrySnapshot, type EvccTelemetryReadHost } from "./evcc_telemetry";
 import type { TelemetryField } from "./normalize";
 import { isAddonGovernanceEnabledFromState, addonGovernanceEnabledState } from "../governance";
-import { addonEnabled } from "../../tree_paths";
+import { isLiveWriteAllowed } from "../../execution_mode";
+import { addonEnabled, GLOBAL, addonMode } from "../../tree_paths";
 import {
 	ALLOCATION_ADDON_STATE_IDS,
 	DAILY_PLAN_STATE_IDS,
@@ -15,11 +16,13 @@ import {
 	buildWallboxDispatchIntent,
 	ensureWallboxRuntimeStates,
 	publishWallboxDispatchStates,
+	publishWallboxLiveFoundationStates,
 	publishWallboxRuntimeStates,
 	resetWallboxDailyPlanCache,
 	resetWallboxDispatchCache,
 	resolveWallboxDailyPlanDecision,
 	runWallboxDryrunDispatch,
+	runWallboxLiveFoundation,
 	telemetryInputFromSnapshot,
 } from "./runtime";
 
@@ -98,6 +101,17 @@ async function refreshWallboxDailyPlanRuntime(host: WallboxHost, snap: Awaited<R
 		governanceEnabled,
 	});
 	await publishWallboxDispatchStates(host, decision, dispatch);
+
+	const liveRequested = await isLiveWriteAllowed((id) => host.getStateAsync(id), WALLBOX_ADDON_ID);
+	const foundation = await runWallboxLiveFoundation({
+		dispatch,
+		decision,
+		addonEnabled: addonEnabledVal,
+		governanceEnabled,
+		liveRequested,
+		now,
+	});
+	await publishWallboxLiveFoundationStates(host, foundation);
 }
 
 export async function refreshWallboxEvccTelemetry(host: WallboxHost): Promise<void> {
@@ -152,6 +166,8 @@ export async function initWallboxModule(host: WallboxHost): Promise<void> {
 	const ids = new Set(configuredEvccTelemetryStateIds(cfg));
 	ids.add(addonEnabled(WALLBOX_ADDON_ID));
 	ids.add(addonGovernanceEnabledState(WALLBOX_ADDON_ID));
+	ids.add(GLOBAL.executionMode);
+	ids.add(addonMode(WALLBOX_ADDON_ID));
 	ids.add(DAILY_PLAN_STATE_IDS.revision);
 	ids.add(DAILY_PLAN_STATE_IDS.status);
 	ids.add(ALLOCATION_ADDON_STATE_IDS.wallbox.planJson);
@@ -214,6 +230,8 @@ const DAILY_PLAN_TRIGGER_IDS = new Set([
 	ALLOCATION_ADDON_STATE_IDS.wallbox.planJson,
 	addonEnabled(WALLBOX_ADDON_ID),
 	addonGovernanceEnabledState(WALLBOX_ADDON_ID),
+	GLOBAL.executionMode,
+	addonMode(WALLBOX_ADDON_ID),
 ]);
 
 export function handleWallboxForeignStateChange(namespace: string, id: string): void {

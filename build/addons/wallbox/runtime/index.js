@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runWallboxDryrunDispatch = exports.resetWallboxDispatchCache = exports.buildWallboxDispatchIntent = exports.telemetryInputFromSnapshot = exports.resolveWallboxDailyPlanDecision = exports.resetWallboxDailyPlanCache = exports.ensureWallboxRuntimeStates = exports.publishWallboxDispatchStates = exports.publishWallboxRuntimeStates = void 0;
+exports.WALLBOX_LIVE_WRITE_RELEASED = exports.resolveWallboxRuntimePhase = exports.runWallboxLiveFoundation = exports.executeWallboxWrite = exports.buildWallboxCommandCandidate = exports.runWallboxDryrunDispatch = exports.resetWallboxDispatchCache = exports.buildWallboxDispatchIntent = exports.telemetryInputFromSnapshot = exports.resolveWallboxDailyPlanDecision = exports.resetWallboxDailyPlanCache = exports.ensureWallboxRuntimeStates = exports.publishWallboxLiveFoundationStates = exports.publishWallboxDispatchStates = exports.publishWallboxRuntimeStates = void 0;
 const state_write_1 = require("../../../policy/core/state_write");
 const states_1 = require("./states");
 async function publishWallboxRuntimeStates(host, decision, governanceAllowed) {
@@ -66,6 +66,19 @@ async function publishWallboxDispatchStates(host, decision, dispatch) {
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeAllowed, false);
 }
 exports.publishWallboxDispatchStates = publishWallboxDispatchStates;
+async function publishWallboxLiveFoundationStates(host, foundation) {
+    const candidate = foundation.candidate;
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.liveFoundationPhase, foundation.phase);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.liveWriteReleased, foundation.liveWriteReleased);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.commandCandidatePresent, candidate !== null);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.commandCandidateJson, candidate ? JSON.stringify(candidate) : "");
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.executionAttempted, foundation.writeResult?.attempted ?? false);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.executionExecuted, foundation.writeResult?.executed ?? false);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.executionBlockReason, foundation.writeResult?.reason ?? (foundation.phase === "dryrun" ? "execution_gate_closed" : ""));
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.runtimeControlAvailable, false);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeAllowed, false);
+}
+exports.publishWallboxLiveFoundationStates = publishWallboxLiveFoundationStates;
 var ensure_states_1 = require("./ensure_states");
 Object.defineProperty(exports, "ensureWallboxRuntimeStates", { enumerable: true, get: function () { return ensure_states_1.ensureWallboxRuntimeStates; } });
 var daily_plan_1 = require("./daily_plan");
@@ -77,3 +90,10 @@ Object.defineProperty(exports, "buildWallboxDispatchIntent", { enumerable: true,
 var dispatch_1 = require("./dispatch");
 Object.defineProperty(exports, "resetWallboxDispatchCache", { enumerable: true, get: function () { return dispatch_1.resetWallboxDispatchCache; } });
 Object.defineProperty(exports, "runWallboxDryrunDispatch", { enumerable: true, get: function () { return dispatch_1.runWallboxDryrunDispatch; } });
+var command_1 = require("./command");
+Object.defineProperty(exports, "buildWallboxCommandCandidate", { enumerable: true, get: function () { return command_1.buildWallboxCommandCandidate; } });
+var execute_1 = require("./execute");
+Object.defineProperty(exports, "executeWallboxWrite", { enumerable: true, get: function () { return execute_1.executeWallboxWrite; } });
+Object.defineProperty(exports, "runWallboxLiveFoundation", { enumerable: true, get: function () { return execute_1.runWallboxLiveFoundation; } });
+Object.defineProperty(exports, "resolveWallboxRuntimePhase", { enumerable: true, get: function () { return execute_1.resolveWallboxRuntimePhase; } });
+Object.defineProperty(exports, "WALLBOX_LIVE_WRITE_RELEASED", { enumerable: true, get: function () { return execute_1.WALLBOX_LIVE_WRITE_RELEASED; } });

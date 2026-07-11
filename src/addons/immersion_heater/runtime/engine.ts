@@ -29,6 +29,14 @@ import {
 } from "./persist";
 import { readPlannerThermalStage, readPlannerThermalTargetTemp } from "../../../planner/inputs";
 import {
+	resolveImmersionDailyPlanAllocation,
+	resolveImmersionDecisionSource,
+	resetImmersionDailyPlanCache,
+	type ImmersionDailyPlanResolution,
+	type ImmersionDecisionSource,
+} from "./daily_plan";
+import { DAILY_PLAN_STATE_IDS, ALLOCATION_ADDON_STATE_IDS } from "../../../operator/daily_plan/states";
+import {
 	forceTargetFromIntent,
 	forceUntilFromIntent,
 	parseResolvedIntentJson,
@@ -79,6 +87,7 @@ let emsOffWriteAtMs: number | null = null;
 let chatter: ChatterTracker = { timestampsMs: [] };
 /** -1 = noch nie geschrieben → erster Tick stellt EMS-Besitz her (Live schreibt aktuellen Stand). */
 let lastCommandedStage = -1;
+let lastDailyPlanContext: ImmersionDailyPlanResolution | null = null;
 const subscribedIds: string[] = [];
 const TICK_MS = 5_000;
 
@@ -259,8 +268,23 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 			powerObservedAtMs = null;
 		}
 	}
-	const plannerCommandedStage = resolvedMode === "auto" ? await readPlannerThermalStage(host) : 0;
 	const plannerTargetTempC = resolvedMode === "auto" ? await readPlannerThermalTargetTemp(host) : null;
+
+	let autoDecisionSource: ImmersionDecisionSource = "thermal_fallback";
+	let dailyPlanContext: ImmersionDailyPlanResolution | null = null;
+	let plannerCommandedStage = 0;
+
+	if (resolvedMode === "auto") {
+		dailyPlanContext = await resolveImmersionDailyPlanAllocation(host, config, now);
+		lastDailyPlanContext = dailyPlanContext;
+		if (dailyPlanContext.useDailyPlan) {
+			plannerCommandedStage = dailyPlanContext.commandedStage;
+			autoDecisionSource = "daily_plan";
+		} else {
+			plannerCommandedStage = await readPlannerThermalStage(host);
+			autoDecisionSource = "thermal_fallback";
+		}
+	}
 
 	const fsm = runImmersionFsm({
 		nowMs,
@@ -359,6 +383,14 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 	const minRuntimeRem = persist.minRuntimeUntilMs ? Math.max(0, Math.ceil((persist.minRuntimeUntilMs - nowMs) / 1000)) : 0;
 	const minPauseRem = persist.pauseUntilMs ? Math.max(0, Math.ceil((persist.pauseUntilMs - nowMs) / 1000)) : 0;
 
+	const decisionSource = resolveImmersionDecisionSource(
+		resolvedMode,
+		failsafeActive,
+		persist.faultLockout,
+		fsm.state,
+		autoDecisionSource,
+	);
+
 	const snapshot: RuntimeSnapshot = {
 		schema_version: 1,
 		available: fsm.available && !persist.faultLockout,
@@ -388,7 +420,7 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 		updated_at: now.toISOString(),
 	};
 
-	await publishRuntime(host, snapshot);
+	await publishRuntime(host, snapshot, decisionSource, dailyPlanContext);
 
 	await tickConsumerStats(host, {
 		consumerKey: "immersion_heater",
@@ -408,7 +440,12 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 	scheduleTick();
 }
 
-async function publishRuntime(host: ImmersionRuntimeHost, s: RuntimeSnapshot): Promise<void> {
+async function publishRuntime(
+	host: ImmersionRuntimeHost,
+	s: RuntimeSnapshot,
+	decisionSource: ImmersionDecisionSource,
+	dailyPlan: ImmersionDailyPlanResolution | null,
+): Promise<void> {
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.available, s.available);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.state, s.state);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.requestedMode, s.requested_mode);
@@ -433,6 +470,40 @@ async function publishRuntime(host: ImmersionRuntimeHost, s: RuntimeSnapshot): P
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.faultMessage, s.fault_message);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.reason, s.reason);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.snapshotJson, JSON.stringify(s));
+	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.decisionSource, decisionSource);
+	await setStateIfChanged(
+		host,
+		IMMERSION_RUNTIME_STATES.dailyPlanStatus,
+		dailyPlan?.dailyPlanStatus ?? "daily_plan_missing",
+	);
+	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.dailyPlanRevision, dailyPlan?.dailyPlanRevision ?? 0);
+	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.dailyPlanSlotStart, dailyPlan?.slotStartIso ?? "");
+	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.dailyPlanSlotEnd, dailyPlan?.slotEndIso ?? "");
+	await setStateIfChanged(
+		host,
+		IMMERSION_RUNTIME_STATES.allocatedPowerW,
+		dailyPlan?.allocatedPowerW ?? "",
+	);
+	await setStateIfChanged(
+		host,
+		IMMERSION_RUNTIME_STATES.mandatoryAllocatedPowerW,
+		dailyPlan?.mandatoryAllocatedPowerW ?? "",
+	);
+	await setStateIfChanged(
+		host,
+		IMMERSION_RUNTIME_STATES.flexibleAllocatedPowerW,
+		dailyPlan?.flexibleAllocatedPowerW ?? "",
+	);
+	await setStateIfChanged(
+		host,
+		IMMERSION_RUNTIME_STATES.allocationStatus,
+		dailyPlan?.allocationStatus ?? "unknown",
+	);
+	await setStateIfChanged(
+		host,
+		IMMERSION_RUNTIME_STATES.allocationReasonDe,
+		dailyPlan?.allocationReasonDe ?? "",
+	);
 }
 
 export async function handleImmersionFaultReset(
@@ -490,6 +561,9 @@ export async function initImmersionRuntimeEngine(host: ImmersionRuntimeHost): Pr
 		IMMERSION_RUNTIME_STATES.faultReset,
 		addonEnabled("immersion_heater"),
 		addonAvailable("immersion_heater"),
+		DAILY_PLAN_STATE_IDS.revision,
+		DAILY_PLAN_STATE_IDS.status,
+		ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson,
 	]);
 	if (config.bufferTempStateId) subs.add(config.bufferTempStateId);
 	if (config.actualPowerStateId) subs.add(config.actualPowerStateId);
@@ -543,6 +617,8 @@ export function stopImmersionRuntimeEngine(): void {
 	hostRef = null;
 	persist = emptyPersist();
 	lastCommandedStage = -1;
+	lastDailyPlanContext = null;
+	resetImmersionDailyPlanCache();
 	emsOnWriteAtMs = null;
 	emsOffWriteAtMs = null;
 	mismatchSinceMs = null;
@@ -556,4 +632,8 @@ export function resetImmersionRuntimeForTest(): void {
 
 export function getImmersionPersistForTest(): RuntimePersistData {
 	return persist;
+}
+
+export function getImmersionDailyPlanContextForTest(): ImmersionDailyPlanResolution | null {
+	return lastDailyPlanContext;
 }

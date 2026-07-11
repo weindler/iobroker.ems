@@ -144,14 +144,13 @@ Modul: `src/operator/contributions/flexible/tick.ts`
 
 ## 13. Abgrenzung zum nächsten Block
 
-Noch **nicht** implementiert:
+Noch **nicht** implementiert (Stand v0.1.129):
 
-- Allocation Engine
-- Ausführbarer Daily Plan
-- Dispatch aus Contributions
+- Runtime-Dispatch für Batterie, Wallbox, Klima aus Daily Plan
 - Wallbox-Live-Steuerung / EVCC-Writes
 - Batterie-Entladesteuerung
-- Runtime-Umstellung (Batterie-/Heizstab-/Klima-FSM)
 - AC-Governance-Fix in der Runtime
 - KI-Optimierung
 - Statistikvergleich
+
+**Heizstab-Runtime (v0.1.129):** liest Daily-Plan-Allocation im Auto-Modus — siehe `docs/EMS_LIGHT_IMMERSION_DAILY_PLAN_RUNTIME.md`.

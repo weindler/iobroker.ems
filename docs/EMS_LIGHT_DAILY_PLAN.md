@@ -144,13 +144,14 @@ Semantische Revision — reine Timestamp-Änderung erhöht Revision nicht.
 
 ## 16. Read-only / Planungsstatus
 
-- Keine Runtime liest Daily Plan
-- Keine Geräte-Writes, keine EVCC-Writes
-- Bestehende Einzelplanner und FSMs unverändert parallel aktiv
+- **Heizstab-Runtime (v0.1.129):** liest Daily-Plan-Allocation als Leistungsobergrenze im Auto-Modus; siehe `docs/EMS_LIGHT_IMMERSION_DAILY_PLAN_RUNTIME.md`
+- Batterie-, Wallbox- und Klima-Runtimes lesen den Daily Plan noch nicht
+- Keine direkten Geräte-Writes aus dem Daily Plan selbst
+- Legacy-Thermal-Planner bleibt als Fallback für Heizstab
 
 ## 17. Noch nicht vorhanden
 
-- Runtime-Dispatch aus Daily Plan
+- Runtime-Dispatch für Batterie, Wallbox, Klima aus Daily Plan
 - Wallbox-Live-Steuerung
 - Batterie-Entladesteuerung
 - KI-Optimierung

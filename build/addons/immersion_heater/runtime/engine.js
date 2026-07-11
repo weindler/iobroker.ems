@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getImmersionPersistForTest = exports.resetImmersionRuntimeForTest = exports.stopImmersionRuntimeEngine = exports.initImmersionRuntimeEngine = exports.handleImmersionFaultReset = exports.runImmersionRuntimeTick = exports.immersionRuntimeWatchedForeignIds = void 0;
+exports.getImmersionDailyPlanContextForTest = exports.getImmersionPersistForTest = exports.resetImmersionRuntimeForTest = exports.stopImmersionRuntimeEngine = exports.initImmersionRuntimeEngine = exports.handleImmersionFaultReset = exports.runImmersionRuntimeTick = exports.immersionRuntimeWatchedForeignIds = void 0;
 const ems_activity_1 = require("../../../ems_activity");
 const execution_mode_1 = require("../../../execution_mode");
 const device_write_1 = require("../../../device_write");
@@ -17,6 +17,8 @@ const safety_1 = require("./safety");
 const types_1 = require("./types");
 const persist_1 = require("./persist");
 const inputs_1 = require("../../../planner/inputs");
+const daily_plan_1 = require("./daily_plan");
+const states_1 = require("../../../operator/daily_plan/states");
 const intent_read_1 = require("./intent_read");
 const feedback_1 = require("./feedback");
 const consumer_stats_1 = require("../../../learning/consumer_stats");
@@ -31,6 +33,7 @@ let emsOffWriteAtMs = null;
 let chatter = { timestampsMs: [] };
 /** -1 = noch nie geschrieben → erster Tick stellt EMS-Besitz her (Live schreibt aktuellen Stand). */
 let lastCommandedStage = -1;
+let lastDailyPlanContext = null;
 const subscribedIds = [];
 const TICK_MS = 5_000;
 function clearTick() {
@@ -202,8 +205,22 @@ async function runImmersionRuntimeTick(host) {
             powerObservedAtMs = null;
         }
     }
-    const plannerCommandedStage = resolvedMode === "auto" ? await (0, inputs_1.readPlannerThermalStage)(host) : 0;
     const plannerTargetTempC = resolvedMode === "auto" ? await (0, inputs_1.readPlannerThermalTargetTemp)(host) : null;
+    let autoDecisionSource = "thermal_fallback";
+    let dailyPlanContext = null;
+    let plannerCommandedStage = 0;
+    if (resolvedMode === "auto") {
+        dailyPlanContext = await (0, daily_plan_1.resolveImmersionDailyPlanAllocation)(host, config, now);
+        lastDailyPlanContext = dailyPlanContext;
+        if (dailyPlanContext.useDailyPlan) {
+            plannerCommandedStage = dailyPlanContext.commandedStage;
+            autoDecisionSource = "daily_plan";
+        }
+        else {
+            plannerCommandedStage = await (0, inputs_1.readPlannerThermalStage)(host);
+            autoDecisionSource = "thermal_fallback";
+        }
+    }
     const fsm = (0, fsm_1.runImmersionFsm)({
         nowMs,
         addonEnabled: enabled,
@@ -294,6 +311,7 @@ async function runImmersionRuntimeTick(host) {
     persist.pauseUntilMs = fsm.pauseUntilMs;
     const minRuntimeRem = persist.minRuntimeUntilMs ? Math.max(0, Math.ceil((persist.minRuntimeUntilMs - nowMs) / 1000)) : 0;
     const minPauseRem = persist.pauseUntilMs ? Math.max(0, Math.ceil((persist.pauseUntilMs - nowMs) / 1000)) : 0;
+    const decisionSource = (0, daily_plan_1.resolveImmersionDecisionSource)(resolvedMode, failsafeActive, persist.faultLockout, fsm.state, autoDecisionSource);
     const snapshot = {
         schema_version: 1,
         available: fsm.available && !persist.faultLockout,
@@ -322,7 +340,7 @@ async function runImmersionRuntimeTick(host) {
         execution_mode: live ? "live" : "dryrun",
         updated_at: now.toISOString(),
     };
-    await publishRuntime(host, snapshot);
+    await publishRuntime(host, snapshot, decisionSource, dailyPlanContext);
     await (0, consumer_stats_1.tickConsumerStats)(host, {
         consumerKey: "immersion_heater",
         nowMs,
@@ -339,7 +357,7 @@ async function runImmersionRuntimeTick(host) {
     scheduleTick();
 }
 exports.runImmersionRuntimeTick = runImmersionRuntimeTick;
-async function publishRuntime(host, s) {
+async function publishRuntime(host, s, decisionSource, dailyPlan) {
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.available, s.available);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.state, s.state);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.requestedMode, s.requested_mode);
@@ -364,6 +382,16 @@ async function publishRuntime(host, s) {
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.faultMessage, s.fault_message);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.reason, s.reason);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.snapshotJson, JSON.stringify(s));
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.decisionSource, decisionSource);
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.dailyPlanStatus, dailyPlan?.dailyPlanStatus ?? "daily_plan_missing");
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.dailyPlanRevision, dailyPlan?.dailyPlanRevision ?? 0);
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.dailyPlanSlotStart, dailyPlan?.slotStartIso ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.dailyPlanSlotEnd, dailyPlan?.slotEndIso ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.allocatedPowerW, dailyPlan?.allocatedPowerW ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.mandatoryAllocatedPowerW, dailyPlan?.mandatoryAllocatedPowerW ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.flexibleAllocatedPowerW, dailyPlan?.flexibleAllocatedPowerW ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.allocationStatus, dailyPlan?.allocationStatus ?? "unknown");
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.allocationReasonDe, dailyPlan?.allocationReasonDe ?? "");
 }
 async function handleImmersionFaultReset(host, state) {
     if (!state || state.val !== true)
@@ -419,6 +447,9 @@ async function initImmersionRuntimeEngine(host) {
         types_1.IMMERSION_RUNTIME_STATES.faultReset,
         (0, tree_paths_1.addonEnabled)("immersion_heater"),
         (0, tree_paths_1.addonAvailable)("immersion_heater"),
+        states_1.DAILY_PLAN_STATE_IDS.revision,
+        states_1.DAILY_PLAN_STATE_IDS.status,
+        states_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson,
     ]);
     if (config.bufferTempStateId)
         subs.add(config.bufferTempStateId);
@@ -477,6 +508,8 @@ function stopImmersionRuntimeEngine() {
     hostRef = null;
     persist = (0, persist_1.emptyPersist)();
     lastCommandedStage = -1;
+    lastDailyPlanContext = null;
+    (0, daily_plan_1.resetImmersionDailyPlanCache)();
     emsOnWriteAtMs = null;
     emsOffWriteAtMs = null;
     mismatchSinceMs = null;
@@ -492,3 +525,7 @@ function getImmersionPersistForTest() {
     return persist;
 }
 exports.getImmersionPersistForTest = getImmersionPersistForTest;
+function getImmersionDailyPlanContextForTest() {
+    return lastDailyPlanContext;
+}
+exports.getImmersionDailyPlanContextForTest = getImmersionDailyPlanContextForTest;

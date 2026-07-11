@@ -169,10 +169,14 @@ Vier Ebenen:
 
 1. **Gerätekonfiguration** — Admin `immersionHeaterTab`
 2. **User Intent** — `user_intent.thermal.*`, Control-States
-3. **Planung** — *geplant* (Planner; `auto` startet nicht selbstständig)
+3. **Planung** — Daily-Plan-Allocation (Auto) + Legacy-Thermal-Planner (Fallback)
 4. **Execution & Safety** — Runtime FSM, Live-Writes
 
-**Runtime-States:** `addons.immersion_heater.runtime.*` (Snapshot JSON + Skalarspiegel)
+**Entscheidungskette (Auto):** Safety/Fault → Off → Force → Daily Plan → Thermal-Fallback → AUS
+
+**Runtime-States:** `addons.immersion_heater.runtime.*` inkl. `decision_source`, `allocated_power_w`, Daily-Plan-Status
+
+Details: `docs/EMS_LIGHT_IMMERSION_DAILY_PLAN_RUNTIME.md`
 
 **Safety:** Leistungsprüfung, Relaisüberwachung, Fault Lockout, Mindestlaufzeit/-pause
 

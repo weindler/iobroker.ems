@@ -57,6 +57,16 @@ export async function ensureImmersionRuntimeStates(host: StateHost): Promise<voi
 		boolState(IMMERSION_RUNTIME_STATES.faultReset, "Fault Reset", false, true),
 		strState(IMMERSION_RUNTIME_STATES.reason, "Runtime-Grund", ""),
 		strState(IMMERSION_RUNTIME_STATES.snapshotJson, "Runtime Snapshot (JSON)", "{}"),
+		strState(IMMERSION_RUNTIME_STATES.decisionSource, "Entscheidungsquelle", "safe_default"),
+		strState(IMMERSION_RUNTIME_STATES.dailyPlanStatus, "Daily-Plan-Status Runtime", "daily_plan_missing"),
+		numState(IMMERSION_RUNTIME_STATES.dailyPlanRevision, "Daily-Plan-Revision", 0),
+		strState(IMMERSION_RUNTIME_STATES.dailyPlanSlotStart, "Daily-Plan-Slot Start (ISO)"),
+		strState(IMMERSION_RUNTIME_STATES.dailyPlanSlotEnd, "Daily-Plan-Slot Ende (ISO)"),
+		numState(IMMERSION_RUNTIME_STATES.allocatedPowerW, "Daily-Plan Allocation W"),
+		numState(IMMERSION_RUNTIME_STATES.mandatoryAllocatedPowerW, "Daily-Plan Mandatory W"),
+		numState(IMMERSION_RUNTIME_STATES.flexibleAllocatedPowerW, "Daily-Plan Flexible W"),
+		strState(IMMERSION_RUNTIME_STATES.allocationStatus, "Allocation-Status", "unknown"),
+		strState(IMMERSION_RUNTIME_STATES.allocationReasonDe, "Allocation-Begründung (DE)", ""),
 	];
 	await ensureStates(host, defs);
 }

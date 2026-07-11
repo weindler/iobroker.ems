@@ -101,4 +101,11 @@ export const WALLBOX_RUNTIME_STATES = {
 	vehicleProfileResolved: `${WALLBOX_RUNTIME_BASE}.vehicle_profile_resolved`,
 	vehicleActiveForCharging: `${WALLBOX_RUNTIME_BASE}.vehicle_active_for_charging`,
 	vehicleConnected: `${WALLBOX_RUNTIME_BASE}.vehicle_connected`,
+	activeVehicleResolvedSocPct: `${WALLBOX_RUNTIME_BASE}.active_vehicle_resolved_soc_pct`,
+	activeVehicleResolvedSocSource: `${WALLBOX_RUNTIME_BASE}.active_vehicle_resolved_soc_source`,
+	activeVehicleResolvedSocQuality: `${WALLBOX_RUNTIME_BASE}.active_vehicle_resolved_soc_quality`,
+	activeVehicleCurrentBatteryEnergyKwh: `${WALLBOX_RUNTIME_BASE}.active_vehicle_current_battery_energy_kwh`,
+	activeVehicleRequiredBatteryEnergyKwh: `${WALLBOX_RUNTIME_BASE}.active_vehicle_required_battery_energy_kwh`,
+	activeVehicleSocEnergyReady: `${WALLBOX_RUNTIME_BASE}.active_vehicle_soc_energy_ready`,
+	activeVehicleSocEnergyReasonCode: `${WALLBOX_RUNTIME_BASE}.active_vehicle_soc_energy_reason_code`,
 } as const;

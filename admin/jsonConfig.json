@@ -918,6 +918,28 @@
 							"sort": true
 						},
 						{
+							"type": "number",
+							"attr": "reference_range_at_100_pct_km",
+							"title": {
+								"de": "Referenzreichweite bei 100 % km",
+								"en": "Reference range at 100% km"
+							},
+							"width": "160px",
+							"filter": true,
+							"sort": true
+						},
+						{
+							"type": "number",
+							"attr": "soc_fallback_max_age_min",
+							"title": {
+								"de": "SOC-Fallback max. Alter min",
+								"en": "SOC fallback max age min"
+							},
+							"width": "160px",
+							"filter": true,
+							"sort": true
+						},
+						{
 							"type": "objectId",
 							"attr": "soc_state",
 							"title": {

@@ -5,6 +5,8 @@ export * from "./normalize";
 export * from "./readiness";
 export * from "./resolve";
 export * from "./soc";
+export * from "./soc_energy";
+export * from "./baseline";
 export * from "./snapshot";
 export * from "./charge_limits";
 export * from "./ensure_states";

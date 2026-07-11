@@ -137,6 +137,27 @@ export async function ensureWallboxRuntimeStates(host: StateHost): Promise<void>
 		boolState(WALLBOX_RUNTIME_STATES.vehicleProfileResolved, "Wallbox Fahrzeugprofil aufgelöst", false),
 		boolState(WALLBOX_RUNTIME_STATES.vehicleActiveForCharging, "Wallbox fahrzeug aktiv für Laden", false),
 		boolState(WALLBOX_RUNTIME_STATES.vehicleConnected, "Wallbox Fahrzeug verbunden (Profil)", false),
+		numState(WALLBOX_RUNTIME_STATES.activeVehicleResolvedSocPct, "Wallbox aktiver aufgelöster SOC %"),
+		strState(
+			WALLBOX_RUNTIME_STATES.activeVehicleResolvedSocSource,
+			"Wallbox aktive aufgelöste SOC-Quelle",
+			"unknown",
+		),
+		strState(
+			WALLBOX_RUNTIME_STATES.activeVehicleResolvedSocQuality,
+			"Wallbox aktive aufgelöste SOC-Qualität",
+			"none",
+		),
+		numState(
+			WALLBOX_RUNTIME_STATES.activeVehicleCurrentBatteryEnergyKwh,
+			"Wallbox aktiver Batterieenergieinhalt kWh",
+		),
+		numState(
+			WALLBOX_RUNTIME_STATES.activeVehicleRequiredBatteryEnergyKwh,
+			"Wallbox aktive benötigte Batterieenergie kWh",
+		),
+		boolState(WALLBOX_RUNTIME_STATES.activeVehicleSocEnergyReady, "Wallbox aktiver SOC/Energie bereit", false),
+		strState(WALLBOX_RUNTIME_STATES.activeVehicleSocEnergyReasonCode, "Wallbox aktiver SOC/Energie Reason-Code"),
 	];
 	await ensureStates(host, defs);
 }

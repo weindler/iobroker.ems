@@ -21,6 +21,8 @@ __exportStar(require("./normalize"), exports);
 __exportStar(require("./readiness"), exports);
 __exportStar(require("./resolve"), exports);
 __exportStar(require("./soc"), exports);
+__exportStar(require("./soc_energy"), exports);
+__exportStar(require("./baseline"), exports);
 __exportStar(require("./snapshot"), exports);
 __exportStar(require("./charge_limits"), exports);
 __exportStar(require("./ensure_states"), exports);

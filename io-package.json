@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.138",
+		"version": "0.1.139",
 		"news": {
+			"0.1.139": {
+				"en": "The wallbox vehicle SOC and energy fallback foundation adds a central deterministic resolver per profile: direct SOC including real 0%, energy rollforward from session counters, range estimate and last-trusted fallback, plus battery energy and charge requirement diagnostics. Profile-isolated baselines, no hidden default efficiency or range, no new charging permission and no external writes; the release gate remains closed.",
+				"de": "Die Wallbox-Fahrzeug-SOC- und Energie-Fallback-Foundation ergänzt einen zentralen deterministischen Resolver je Profil: direkter SOC inkl. realer 0 %, Energy-Rollforward aus Sitzungszählern, Reichweiten- und Last-Trusted-Fallback sowie Batterieenergie- und Ladebedarfs-Diagnose. Profilisolierte Baselines, keine versteckten Standard-Effizienz- oder Reichweiten-Annahmen, keine neue Ladefreigabe und keine externen Writes; das Release-Gate bleibt geschlossen."
+			},
 			"0.1.138": {
 				"en": "The wallbox vehicle profiles foundation separates the charging point from individual vehicles. EMS-Light can manage multiple normalized vehicle profiles under addons.wallbox.vehicles.<vehicle_id>, resolve the active vehicle from EVCC or manual selection, publish ActiveVehicleSnapshot diagnostics and per-vehicle charge limits. No planner integration, no SOC estimation from energy and no external writes; the release gate remains closed.",
 				"de": "Die Wallbox-Fahrzeugprofil-Foundation trennt den Ladepunkt von einzelnen Fahrzeugen. EMS-Light verwaltet mehrere normalisierte Fahrzeugprofile unter addons.wallbox.vehicles.<vehicle_id>, löst das aktive Fahrzeug aus EVCC oder manueller Auswahl auf und veröffentlicht ActiveVehicleSnapshot-Diagnose sowie fahrzeugspezifische Ladegrenzen. Keine Planner-Integration, keine SOC-Schätzung aus Energie und keine externen Writes; das Release-Gate bleibt geschlossen."

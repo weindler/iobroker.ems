@@ -9,6 +9,8 @@ const readiness_1 = require("./readiness");
 const resolve_1 = require("./resolve");
 const snapshot_1 = require("./snapshot");
 const soc_1 = require("./soc");
+const soc_energy_1 = require("./soc_energy");
+const baseline_1 = require("./baseline");
 const states_1 = require("../runtime/states");
 async function readForeign(host, objectId) {
     if (!objectId)
@@ -32,7 +34,73 @@ async function readEvccDetection(host, cfg) {
         evccVehicleName: nameRead?.val != null ? String(nameRead.val).trim() : null,
     };
 }
-async function publishVehicleStates(host, profile, telemetry, readiness, active, resolutionSource, confidence, invalidFields) {
+async function readPersistenceFromHost(host, vehicleId) {
+    const persistence = (0, baseline_1.getProfileSocPersistence)(vehicleId);
+    if (persistence.rollforwardAnchor && persistence.lastTrustedSnapshot)
+        return;
+    const p = (0, ensure_states_1.vehicleStatePaths)(vehicleId);
+    const socSt = await host.getStateAsync(p.estimationBaselineSocPct);
+    const sourceSt = await host.getStateAsync(p.estimationBaselineSocSource);
+    const atSt = await host.getStateAsync(p.estimationBaselineAt);
+    const sessionSt = await host.getStateAsync(p.estimationBaselineSessionEnergyKwh);
+    const ltSocSt = await host.getStateAsync(p.estimationLastTrustedSocPct);
+    const ltSourceSt = await host.getStateAsync(p.estimationLastTrustedOriginalSource);
+    const ltAtSt = await host.getStateAsync(p.estimationLastTrustedObservedAt);
+    (0, baseline_1.hydrateProfileSocPersistenceFromLegacyStates)(vehicleId, {
+        baselineSocPct: socSt?.val,
+        baselineSocSource: sourceSt?.val,
+        baselineAt: atSt?.val,
+        sessionEnergyKwh: sessionSt?.val,
+        lastTrustedSocPct: ltSocSt?.val,
+        lastTrustedOriginalSource: ltSourceSt?.val,
+        lastTrustedObservedAt: ltAtSt?.val,
+    });
+}
+async function publishSocEnergyStates(host, vehicleId, resolution) {
+    const p = (0, ensure_states_1.vehicleStatePaths)(vehicleId);
+    const anchor = (0, baseline_1.getRollforwardAnchor)(vehicleId);
+    const snapshot = (0, baseline_1.getLastTrustedSnapshot)(vehicleId);
+    await (0, state_write_1.setStateIfChanged)(host, p.estimationResolvedSocPct, (0, soc_energy_1.roundPublishedSocPct)(resolution.resolvedSocPct));
+    await (0, state_write_1.setStateIfChanged)(host, p.estimationResolvedSocSource, resolution.socSource);
+    await (0, state_write_1.setStateIfChanged)(host, p.estimationResolvedSocQuality, resolution.socQuality);
+    await (0, state_write_1.setStateIfChanged)(host, p.estimationResolvedSocEstimated, resolution.socEstimated);
+    await (0, state_write_1.setStateIfChanged)(host, p.estimationCurrentBatteryEnergyKwh, (0, soc_energy_1.roundPublishedEnergyKwh)(resolution.currentBatteryEnergyKwh));
+    await (0, state_write_1.setStateIfChanged)(host, p.estimationTargetBatteryEnergyKwh, (0, soc_energy_1.roundPublishedEnergyKwh)(resolution.targetBatteryEnergyKwh));
+    await (0, state_write_1.setStateIfChanged)(host, p.estimationRequiredBatteryEnergyKwh, (0, soc_energy_1.roundPublishedEnergyKwh)(resolution.requiredBatteryEnergyKwh));
+    await (0, state_write_1.setStateIfChanged)(host, p.estimationRequiredInputEnergyKwh, (0, soc_energy_1.roundPublishedEnergyKwh)(resolution.requiredInputEnergyKwh));
+    await (0, state_write_1.setStateIfChanged)(host, p.estimationResolvedTargetSocPct, (0, soc_energy_1.roundPublishedSocPct)(resolution.targetSocPct));
+    await (0, state_write_1.setStateIfChanged)(host, p.estimationSocEnergyReady, resolution.ready);
+    await (0, state_write_1.setStateIfChanged)(host, p.estimationSocEnergyReasonCode, resolution.reasonCode);
+    await (0, state_write_1.setStateIfChanged)(host, p.estimationBaselineValid, resolution.baselineValid);
+    await (0, state_write_1.setStateIfChanged)(host, p.estimationRollforwardAnchorValid, anchor !== null);
+    if (anchor) {
+        await (0, state_write_1.setStateIfChanged)(host, p.estimationBaselineSocPct, (0, soc_energy_1.roundPublishedSocPct)(anchor.socPct));
+        await (0, state_write_1.setStateIfChanged)(host, p.estimationBaselineSocSource, anchor.rootSource);
+        await (0, state_write_1.setStateIfChanged)(host, p.estimationBaselineAt, new Date(anchor.observedAtMs).toISOString());
+        await (0, state_write_1.setStateIfChanged)(host, p.estimationBaselineSessionEnergyKwh, (0, soc_energy_1.roundPublishedEnergyKwh)(anchor.sessionEnergyKwh));
+        await (0, state_write_1.setStateIfChanged)(host, p.estimationBaselineUpdatedAt, new Date(anchor.observedAtMs).toISOString());
+        await (0, state_write_1.setStateIfChanged)(host, p.estimationRollforwardRootSource, anchor.rootSource);
+    }
+    else {
+        await (0, state_write_1.setStateIfChanged)(host, p.estimationBaselineSocPct, "");
+        await (0, state_write_1.setStateIfChanged)(host, p.estimationBaselineSocSource, "");
+        await (0, state_write_1.setStateIfChanged)(host, p.estimationBaselineAt, "");
+        await (0, state_write_1.setStateIfChanged)(host, p.estimationBaselineSessionEnergyKwh, "");
+        await (0, state_write_1.setStateIfChanged)(host, p.estimationBaselineUpdatedAt, "");
+        await (0, state_write_1.setStateIfChanged)(host, p.estimationRollforwardRootSource, "");
+    }
+    if (snapshot) {
+        await (0, state_write_1.setStateIfChanged)(host, p.estimationLastTrustedSocPct, (0, soc_energy_1.roundPublishedSocPct)(snapshot.socPct));
+        await (0, state_write_1.setStateIfChanged)(host, p.estimationLastTrustedOriginalSource, snapshot.originalSource);
+        await (0, state_write_1.setStateIfChanged)(host, p.estimationLastTrustedObservedAt, new Date(snapshot.observedAtMs).toISOString());
+    }
+    else {
+        await (0, state_write_1.setStateIfChanged)(host, p.estimationLastTrustedSocPct, "");
+        await (0, state_write_1.setStateIfChanged)(host, p.estimationLastTrustedOriginalSource, "");
+        await (0, state_write_1.setStateIfChanged)(host, p.estimationLastTrustedObservedAt, "");
+    }
+}
+async function publishVehicleStates(host, profile, telemetry, readiness, active, resolutionSource, confidence, invalidFields, socEnergy) {
     const p = (0, ensure_states_1.vehicleStatePaths)(profile.vehicleId);
     await (0, state_write_1.setStateIfChanged)(host, p.configDisplayName, profile.displayName);
     await (0, state_write_1.setStateIfChanged)(host, p.configEnabled, profile.enabled);
@@ -47,6 +115,8 @@ async function publishVehicleStates(host, profile, telemetry, readiness, active,
     await (0, state_write_1.setStateIfChanged)(host, p.configMinimumDepartureSocPct, profile.minimumDepartureSocPct ?? "");
     await (0, state_write_1.setStateIfChanged)(host, p.configMaximumSocPct, profile.maximumSocPct ?? "");
     await (0, state_write_1.setStateIfChanged)(host, p.configChargeEfficiencyPct, profile.chargeEfficiencyPct ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, p.configReferenceRangeAt100PctKm, profile.referenceRangeAt100PctKm ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, p.configSocFallbackMaxAgeMin, profile.socFallbackMaxAgeMin ?? "");
     await (0, state_write_1.setStateIfChanged)(host, p.telemetryConnected, telemetry.connected ?? "");
     await (0, state_write_1.setStateIfChanged)(host, p.telemetryCharging, telemetry.charging ?? "");
     await (0, state_write_1.setStateIfChanged)(host, p.telemetrySocPct, telemetry.socPct ?? "");
@@ -57,8 +127,8 @@ async function publishVehicleStates(host, profile, telemetry, readiness, active,
     await (0, state_write_1.setStateIfChanged)(host, p.telemetryLastUpdate, telemetry.lastUpdate ?? "");
     await (0, state_write_1.setStateIfChanged)(host, p.telemetryStale, telemetry.stale);
     await (0, state_write_1.setStateIfChanged)(host, p.planningCapability, readiness.planningCapability);
-    await (0, state_write_1.setStateIfChanged)(host, p.planningRequiredEnergyKwh, "");
-    await (0, state_write_1.setStateIfChanged)(host, p.planningPlannedTargetSocPct, "");
+    await (0, state_write_1.setStateIfChanged)(host, p.planningRequiredEnergyKwh, (0, soc_energy_1.roundPublishedEnergyKwh)(socEnergy.requiredBatteryEnergyKwh));
+    await (0, state_write_1.setStateIfChanged)(host, p.planningPlannedTargetSocPct, (0, soc_energy_1.roundPublishedSocPct)(socEnergy.targetSocPct));
     await (0, state_write_1.setStateIfChanged)(host, p.planningDepartureTime, "");
     await (0, state_write_1.setStateIfChanged)(host, p.runtimeProfileValid, readiness.profileValid);
     await (0, state_write_1.setStateIfChanged)(host, p.runtimeTelemetryReady, readiness.telemetryReady);
@@ -69,8 +139,9 @@ async function publishVehicleStates(host, profile, telemetry, readiness, active,
     await (0, state_write_1.setStateIfChanged)(host, p.runtimeMissingFieldsJson, JSON.stringify(readiness.missingFields));
     await (0, state_write_1.setStateIfChanged)(host, p.runtimeInvalidFieldsJson, JSON.stringify(invalidFields));
     await (0, state_write_1.setStateIfChanged)(host, p.runtimeStatus, active ? "active" : profile.enabled ? "idle" : "disabled");
+    await publishSocEnergyStates(host, profile.vehicleId, socEnergy);
 }
-async function publishGlobalVehicleRuntime(host, snapshot, resolution, profileCount, enabledCount) {
+async function publishGlobalVehicleRuntime(host, snapshot, resolution, profileCount, enabledCount, activeSocEnergy) {
     const resolvedId = resolution.profileResolved ? (resolution.vehicleId ?? "") : "";
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleId, resolvedId);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleName, resolution.profileResolved ? (snapshot.displayName ?? "") : "");
@@ -86,6 +157,14 @@ async function publishGlobalVehicleRuntime(host, snapshot, resolution, profileCo
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.vehicleProfileResolved, resolution.profileResolved);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.vehicleActiveForCharging, resolution.activeForCharging);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.vehicleConnected, snapshot.connected);
+    const socEnergy = activeSocEnergy;
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleResolvedSocPct, socEnergy ? (0, soc_energy_1.roundPublishedSocPct)(socEnergy.resolvedSocPct) : "");
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleResolvedSocSource, socEnergy?.socSource ?? "unknown");
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleResolvedSocQuality, socEnergy?.socQuality ?? "none");
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleCurrentBatteryEnergyKwh, socEnergy ? (0, soc_energy_1.roundPublishedEnergyKwh)(socEnergy.currentBatteryEnergyKwh) : "");
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleRequiredBatteryEnergyKwh, socEnergy ? (0, soc_energy_1.roundPublishedEnergyKwh)(socEnergy.requiredBatteryEnergyKwh) : "");
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleSocEnergyReady, socEnergy?.ready ?? false);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleSocEnergyReasonCode, socEnergy?.reasonCode ?? "");
 }
 async function refreshWallboxVehicleRuntime(host, evccSnap, config, now = new Date()) {
     const cfg = (0, config_1.wallboxVehicleProfilesConfigFromAdapter)(config);
@@ -118,8 +197,10 @@ async function refreshWallboxVehicleRuntime(host, evccSnap, config, now = new Da
     }
     let activeProfile = null;
     let activeTelemetry = null;
+    let activeSocEnergy = null;
     const loadpointConnected = evccConnected === true;
     for (const profile of profiles) {
+        await readPersistenceFromHost(host, profile.vehicleId);
         const isResolvedProfile = resolution.profileResolved && resolution.vehicleId === profile.vehicleId;
         const socRead = profile.socStateId ? await readForeign(host, profile.socStateId) : undefined;
         const rangeRead = profile.rangeStateId ? await readForeign(host, profile.rangeStateId) : undefined;
@@ -139,8 +220,13 @@ async function refreshWallboxVehicleRuntime(host, evccSnap, config, now = new Da
         const telemetry = (0, soc_1.mergeProfileTelemetryReadings)(profile, raw, evccSnap, isResolvedProfile, loadpointConnected, now);
         const invalidFields = invalidById.get(profile.vehicleId) ?? [];
         const readiness = (0, readiness_1.assessWallboxVehicleProfileReadiness)(profile, telemetry, invalidFields);
+        const rollforwardAnchor = (0, baseline_1.getRollforwardAnchor)(profile.vehicleId);
+        const lastTrustedSnapshot = (0, baseline_1.getLastTrustedSnapshot)(profile.vehicleId);
+        const socEnergyInput = (0, soc_energy_1.buildSocEnergyInput)(profile.vehicleId, profile, telemetry, raw, rollforwardAnchor, lastTrustedSnapshot, now);
+        const socEnergy = (0, soc_energy_1.resolveVehicleSocAndEnergy)(socEnergyInput);
+        (0, baseline_1.updateProfileSocPersistenceAfterResolution)(profile.vehicleId, socEnergy, telemetry.sessionEnergyKwh, now);
         try {
-            await publishVehicleStates(host, profile, telemetry, readiness, isResolvedProfile, isResolvedProfile ? resolution.source : "", isResolvedProfile ? resolution.confidence : 0, invalidFields);
+            await publishVehicleStates(host, profile, telemetry, readiness, isResolvedProfile, isResolvedProfile ? resolution.source : "", isResolvedProfile ? resolution.confidence : 0, invalidFields, socEnergy);
         }
         catch {
             // isolate profile publish errors
@@ -148,6 +234,7 @@ async function refreshWallboxVehicleRuntime(host, evccSnap, config, now = new Da
         if (isResolvedProfile) {
             activeProfile = profile;
             activeTelemetry = telemetry;
+            activeSocEnergy = socEnergy;
         }
     }
     if (!activeTelemetry && !resolution.profileResolved) {
@@ -195,7 +282,7 @@ async function refreshWallboxVehicleRuntime(host, evccSnap, config, now = new Da
         now,
     });
     const enabledCount = profiles.filter((p) => p.enabled).length;
-    await publishGlobalVehicleRuntime(host, snapshot, resolution, profiles.length, enabledCount);
+    await publishGlobalVehicleRuntime(host, snapshot, resolution, profiles.length, enabledCount, activeSocEnergy);
     return snapshot;
 }
 exports.refreshWallboxVehicleRuntime = refreshWallboxVehicleRuntime;

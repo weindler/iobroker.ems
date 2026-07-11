@@ -36,6 +36,8 @@ function profileInputFromRow(row, index) {
         minimumDepartureSocPct: row.minimum_departure_soc_pct,
         maximumSocPct: row.maximum_soc_pct,
         chargeEfficiencyPct: row.charge_efficiency_pct,
+        referenceRangeAt100PctKm: row.reference_range_at_100_pct_km,
+        socFallbackMaxAgeMin: row.soc_fallback_max_age_min,
         socState: row.soc_state,
         rangeState: row.range_state,
         connectedState: row.connected_state,

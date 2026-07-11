@@ -1,7 +1,7 @@
 "use strict";
-/** Wallbox vehicle profile foundation (v0.1.138) — read-only / diagnostic. */
+/** Wallbox vehicle profile foundation (v0.1.138+) — read-only / diagnostic. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.VEHICLE_REASON_CODES = void 0;
+exports.SOC_ENERGY_REASON_CODES = exports.VEHICLE_REASON_CODES = void 0;
 exports.VEHICLE_REASON_CODES = {
     profileMissing: "vehicle_profile_missing",
     profileDisabled: "vehicle_profile_disabled",
@@ -21,4 +21,36 @@ exports.VEHICLE_REASON_CODES = {
     evccMatch: "vehicle_evcc_match",
     manualMatch: "vehicle_manual_match",
     disconnected: "vehicle_disconnected",
+};
+exports.SOC_ENERGY_REASON_CODES = {
+    directSocValid: "direct_soc_valid",
+    directSocMissing: "direct_soc_missing",
+    directSocInvalid: "direct_soc_invalid",
+    directSocStale: "direct_soc_stale",
+    energyRollforwardValid: "energy_rollforward_valid",
+    energyRollforwardNoBaseline: "energy_rollforward_no_baseline",
+    energyRollforwardNoCapacity: "energy_rollforward_no_capacity",
+    energyRollforwardNoEfficiency: "energy_rollforward_no_efficiency",
+    energyRollforwardCounterMissing: "energy_rollforward_counter_missing",
+    energyRollforwardCounterStale: "energy_rollforward_counter_stale",
+    energyRollforwardCounterReset: "energy_rollforward_counter_reset",
+    energyRollforwardProfileChanged: "energy_rollforward_profile_changed",
+    energyRollforwardBaselineSourceInvalid: "energy_rollforward_baseline_source_invalid",
+    energyRollforwardNoDirectAnchor: "energy_rollforward_no_direct_anchor",
+    energyRollforwardAnchorProfileMismatch: "energy_rollforward_anchor_profile_mismatch",
+    energyRollforwardAnchorSessionMismatch: "energy_rollforward_anchor_session_mismatch",
+    energyRollforwardAnchorInvalid: "energy_rollforward_anchor_invalid",
+    rangeEstimateValid: "range_estimate_valid",
+    rangeMissing: "range_missing",
+    rangeInvalid: "range_invalid",
+    rangeStale: "range_stale",
+    referenceRangeMissing: "reference_range_missing",
+    lastTrustedValid: "last_trusted_valid",
+    lastTrustedDisabled: "last_trusted_disabled",
+    lastTrustedExpired: "last_trusted_expired",
+    capacityMissing: "capacity_missing",
+    capacityInvalid: "capacity_invalid",
+    targetSocMissing: "target_soc_missing",
+    targetSocInvalid: "target_soc_invalid",
+    noUsableSocSource: "no_usable_soc_source",
 };

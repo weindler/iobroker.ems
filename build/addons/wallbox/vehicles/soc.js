@@ -1,8 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.pickEvccField = exports.emptyProfileTelemetry = exports.profileTelemetryFromForeignReads = exports.mergeProfileTelemetryReadings = void 0;
+exports.pickEvccField = exports.emptyProfileTelemetry = exports.profileTelemetryFromForeignReads = exports.mergeProfileTelemetryReadings = exports.isFieldStale = exports.STALE_MS = void 0;
 const normalize_1 = require("../normalize");
 const STALE_MS = 15 * 60 * 1000;
+exports.STALE_MS = STALE_MS;
 function fieldFromRawBool(raw) {
     if (typeof raw === "boolean")
         return raw;
@@ -30,6 +31,13 @@ function isStale(ts, nowMs) {
         return false;
     return nowMs - ts > STALE_MS;
 }
+/** Per-field stale check — missing timestamp is treated as stale. */
+function isFieldStale(ts, nowMs) {
+    if (ts === undefined || !Number.isFinite(ts))
+        return true;
+    return nowMs - ts > STALE_MS;
+}
+exports.isFieldStale = isFieldStale;
 function mergeProfileTelemetryReadings(profile, readings, evccSnap, isResolvedProfile, evccConnected, now) {
     const nowMs = now.getTime();
     let connected = readings.connected;
@@ -124,6 +132,9 @@ function profileTelemetryFromForeignReads(profile, reads, now) {
         connectedFromConfiguredState: Boolean(profile.connectedStateId && reads.connected),
         lastUpdate: latestTs ? new Date(latestTs).toISOString() : null,
         stale,
+        socTs: reads.soc?.ts,
+        rangeTs: reads.range?.ts,
+        sessionEnergyTs: reads.sessionEnergy?.ts,
     };
 }
 exports.profileTelemetryFromForeignReads = profileTelemetryFromForeignReads;

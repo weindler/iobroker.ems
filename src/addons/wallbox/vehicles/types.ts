@@ -1,8 +1,18 @@
-/** Wallbox vehicle profile foundation (v0.1.138) — read-only / diagnostic. */
+/** Wallbox vehicle profile foundation (v0.1.138+) — read-only / diagnostic. */
 
 export type VehicleProfileSource = "manual" | "evcc" | "hybrid";
 
 export type VehicleSocSource = "measured" | "evcc_estimated" | "ems_estimated" | "manual" | "unavailable";
+
+/** Resolved SOC source after fallback chain (v0.1.139). */
+export type ResolvedVehicleSocSource =
+	| "direct"
+	| "energy_rollforward"
+	| "range_estimate"
+	| "last_trusted"
+	| "unknown";
+
+export type ResolvedVehicleSocQuality = "high" | "medium" | "low" | "none";
 
 export type VehiclePlanningCapability = "soc_and_capacity" | "energy_only" | "limits_only" | "insufficient";
 
@@ -46,6 +56,9 @@ export interface WallboxVehicleProfile {
 	maximumSocPct: number | null;
 
 	chargeEfficiencyPct: number | null;
+
+	referenceRangeAt100PctKm: number | null;
+	socFallbackMaxAgeMin: number | null;
 
 	socStateId: string | null;
 	rangeStateId: string | null;
@@ -133,6 +146,63 @@ export interface ActiveVehicleSnapshot {
 	createdAt: string;
 }
 
+export interface VehicleSocEnergyResolution {
+	vehicleId: string | null;
+
+	resolvedSocPct: number | null;
+	socSource: ResolvedVehicleSocSource;
+	socQuality: ResolvedVehicleSocQuality;
+	socEstimated: boolean;
+
+	usableCapacityKwh: number | null;
+	currentBatteryEnergyKwh: number | null;
+	targetBatteryEnergyKwh: number | null;
+	requiredBatteryEnergyKwh: number | null;
+	requiredInputEnergyKwh: number | null;
+
+	targetSocPct: number | null;
+
+	ready: boolean;
+	reasonCode: string;
+	baselineValid: boolean;
+}
+
+/** Energy rollforward anchor — only from fresh direct SOC (v0.1.139). */
+export interface VehicleRollforwardAnchor {
+	vehicleId: string;
+	socPct: number;
+	observedAtMs: number;
+	sessionEnergyKwh: number | null;
+	rootSource: "direct";
+}
+
+export type LastTrustedOriginalSource = "direct" | "energy_rollforward" | "range_estimate";
+
+/** Time-limited last-trusted fallback snapshot (v0.1.139). */
+export interface VehicleLastTrustedSnapshot {
+	vehicleId: string;
+	socPct: number;
+	originalSource: LastTrustedOriginalSource;
+	quality: ResolvedVehicleSocQuality;
+	observedAtMs: number;
+}
+
+export interface VehicleProfileSocPersistence {
+	vehicleId: string;
+	rollforwardAnchor: VehicleRollforwardAnchor | null;
+	lastTrustedSnapshot: VehicleLastTrustedSnapshot | null;
+}
+
+/** @deprecated Use VehicleRollforwardAnchor / VehicleLastTrustedSnapshot */
+export interface VehicleSocBaseline {
+	vehicleId: string;
+	baselineSocPct: number;
+	baselineSocSource: ResolvedVehicleSocSource;
+	baselineAt: string;
+	sessionEnergyKwh: number | null;
+	updatedAt: string;
+}
+
 export interface ActiveVehicleChargeLimits {
 	maxAcChargePowerW: number | null;
 	minCurrentA: number | null;
@@ -168,4 +238,37 @@ export const VEHICLE_REASON_CODES = {
 	evccMatch: "vehicle_evcc_match",
 	manualMatch: "vehicle_manual_match",
 	disconnected: "vehicle_disconnected",
+} as const;
+
+export const SOC_ENERGY_REASON_CODES = {
+	directSocValid: "direct_soc_valid",
+	directSocMissing: "direct_soc_missing",
+	directSocInvalid: "direct_soc_invalid",
+	directSocStale: "direct_soc_stale",
+	energyRollforwardValid: "energy_rollforward_valid",
+	energyRollforwardNoBaseline: "energy_rollforward_no_baseline",
+	energyRollforwardNoCapacity: "energy_rollforward_no_capacity",
+	energyRollforwardNoEfficiency: "energy_rollforward_no_efficiency",
+	energyRollforwardCounterMissing: "energy_rollforward_counter_missing",
+	energyRollforwardCounterStale: "energy_rollforward_counter_stale",
+	energyRollforwardCounterReset: "energy_rollforward_counter_reset",
+	energyRollforwardProfileChanged: "energy_rollforward_profile_changed",
+	energyRollforwardBaselineSourceInvalid: "energy_rollforward_baseline_source_invalid",
+	energyRollforwardNoDirectAnchor: "energy_rollforward_no_direct_anchor",
+	energyRollforwardAnchorProfileMismatch: "energy_rollforward_anchor_profile_mismatch",
+	energyRollforwardAnchorSessionMismatch: "energy_rollforward_anchor_session_mismatch",
+	energyRollforwardAnchorInvalid: "energy_rollforward_anchor_invalid",
+	rangeEstimateValid: "range_estimate_valid",
+	rangeMissing: "range_missing",
+	rangeInvalid: "range_invalid",
+	rangeStale: "range_stale",
+	referenceRangeMissing: "reference_range_missing",
+	lastTrustedValid: "last_trusted_valid",
+	lastTrustedDisabled: "last_trusted_disabled",
+	lastTrustedExpired: "last_trusted_expired",
+	capacityMissing: "capacity_missing",
+	capacityInvalid: "capacity_invalid",
+	targetSocMissing: "target_soc_missing",
+	targetSocInvalid: "target_soc_invalid",
+	noUsableSocSource: "no_usable_soc_source",
 } as const;

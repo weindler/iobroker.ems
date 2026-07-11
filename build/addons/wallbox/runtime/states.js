@@ -103,4 +103,11 @@ exports.WALLBOX_RUNTIME_STATES = {
     vehicleProfileResolved: `${exports.WALLBOX_RUNTIME_BASE}.vehicle_profile_resolved`,
     vehicleActiveForCharging: `${exports.WALLBOX_RUNTIME_BASE}.vehicle_active_for_charging`,
     vehicleConnected: `${exports.WALLBOX_RUNTIME_BASE}.vehicle_connected`,
+    activeVehicleResolvedSocPct: `${exports.WALLBOX_RUNTIME_BASE}.active_vehicle_resolved_soc_pct`,
+    activeVehicleResolvedSocSource: `${exports.WALLBOX_RUNTIME_BASE}.active_vehicle_resolved_soc_source`,
+    activeVehicleResolvedSocQuality: `${exports.WALLBOX_RUNTIME_BASE}.active_vehicle_resolved_soc_quality`,
+    activeVehicleCurrentBatteryEnergyKwh: `${exports.WALLBOX_RUNTIME_BASE}.active_vehicle_current_battery_energy_kwh`,
+    activeVehicleRequiredBatteryEnergyKwh: `${exports.WALLBOX_RUNTIME_BASE}.active_vehicle_required_battery_energy_kwh`,
+    activeVehicleSocEnergyReady: `${exports.WALLBOX_RUNTIME_BASE}.active_vehicle_soc_energy_ready`,
+    activeVehicleSocEnergyReasonCode: `${exports.WALLBOX_RUNTIME_BASE}.active_vehicle_soc_energy_reason_code`,
 };

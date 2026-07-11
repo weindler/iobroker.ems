@@ -30,6 +30,14 @@ function isStale(ts: number | undefined, nowMs: number): boolean {
 	return nowMs - ts > STALE_MS;
 }
 
+export { STALE_MS };
+
+/** Per-field stale check — missing timestamp is treated as stale. */
+export function isFieldStale(ts: number | undefined, nowMs: number): boolean {
+	if (ts === undefined || !Number.isFinite(ts)) return true;
+	return nowMs - ts > STALE_MS;
+}
+
 export interface ProfileTelemetryReadings {
 	connected: boolean | null;
 	charging: boolean | null;
@@ -40,6 +48,9 @@ export interface ProfileTelemetryReadings {
 	connectedFromConfiguredState: boolean;
 	lastUpdate: string | null;
 	stale: boolean;
+	socTs?: number;
+	rangeTs?: number;
+	sessionEnergyTs?: number;
 }
 
 export function mergeProfileTelemetryReadings(
@@ -155,6 +166,9 @@ export function profileTelemetryFromForeignReads(
 		connectedFromConfiguredState: Boolean(profile.connectedStateId && reads.connected),
 		lastUpdate: latestTs ? new Date(latestTs).toISOString() : null,
 		stale,
+		socTs: reads.soc?.ts,
+		rangeTs: reads.range?.ts,
+		sessionEnergyTs: reads.sessionEnergy?.ts,
 	};
 }
 

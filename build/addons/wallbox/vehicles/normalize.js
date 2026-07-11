@@ -158,6 +158,8 @@ function normalizeWallboxVehicleProfile(input, nowIso) {
         minimumDepartureSocPct: parseOptionalSoc(input.minimumDepartureSocPct, "minimumDepartureSocPct", invalidFields),
         maximumSocPct: parseOptionalSoc(input.maximumSocPct, "maximumSocPct", invalidFields),
         chargeEfficiencyPct: parseOptionalEfficiency(input.chargeEfficiencyPct, "chargeEfficiencyPct", invalidFields),
+        referenceRangeAt100PctKm: parseOptionalPositiveNumber(input.referenceRangeAt100PctKm, "referenceRangeAt100PctKm", invalidFields),
+        socFallbackMaxAgeMin: parseOptionalNonNegativeNumber(input.socFallbackMaxAgeMin, "socFallbackMaxAgeMin", invalidFields),
         socStateId: strOrNull(input.socState),
         rangeStateId: strOrNull(input.rangeState),
         connectedStateId: strOrNull(input.connectedState),

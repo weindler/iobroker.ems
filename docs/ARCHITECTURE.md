@@ -160,6 +160,7 @@ beliebige Wallbox → EVCC → EMS-Light (read-only)
 - **EVCC Control Mapping (v0.1.136):** EVCC-Steuerrollen `set_mode` + `set_max_current_a` (nicht `enabled`/`minCurrent`), Mode-Wert-Mapping, semantische Objektprüfung, Write-Reihenfolge maxCurrent→mode — Release-Gate geschlossen
 - **Feedback Contract Foundation (v0.1.137):** `WallboxFeedbackContract` aus Write-Plan, Normalisierung, Soll-/Ist-Vergleich, Settle/Timeout-Vertrag — keine Timer, keine Writes
 - **Vehicle Profiles Foundation (v0.1.138):** dynamische Fahrzeugprofil-Tabelle `wb_vehicle_profiles`, Profilauflösung getrennt von `connected`, `ActiveVehicleSnapshot`, fahrzeugspezifische Ladegrenzen — read-only, keine Planner-Integration
+- **Vehicle SOC & Energy Fallback (v0.1.139):** zentrale SOC-Auflösung mit Fallback-Kette (direct, energy rollforward, range, last trusted), Energieinhalt/-bedarf je Profil, profilisolierte Baseline — read-only, keine Ladefreigabe
 - `plan_time` / `effective_plan_time`: bei null/invalid wird der Spiegelstate auf `""` gesetzt (kein stale Deadline)
 - EVCC-Sitzungsenergie: Wh → kWh (`/ 1000`)
 - Go-Null-Zeit (`0001-01-01T00:00:00Z`) wird als „kein Plan" behandelt

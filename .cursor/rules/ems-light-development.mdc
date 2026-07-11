@@ -1,0 +1,52 @@
+---
+description: EMS-Light verbindliche Gesamtarchitektur und Entwicklungsführung
+alwaysApply: true
+---
+
+# EMS-Light Entwicklungsführung
+
+## Projektziel
+
+- Eigenständiger ioBroker-Adapter `iobroker.ems` — kein externer EMS-Server.
+- Vollständig ohne KI funktionsfähig und sicher.
+- KI nur als optionale Optimierung von Forecast Plan und Daily Plan.
+
+## Global Modes
+
+Nur: `off`, `eco`, `balanced`, `comfort`, `forced`. Keine weiteren konkurrierenden Modi.
+
+## Gemeinsame Planung
+
+- Ein General Operator (`src/operator/`).
+- Forecast Plan und Daily Plan betrachten alle freigegebenen Add-ons gemeinsam.
+- Keine neuen isolierten Add-on-Sonderplanner.
+- Bestehende Sonderlogik schrittweise über Plan Contributions und Allocation integrieren.
+- Funktionierende Module nicht grundlos neu schreiben.
+
+## Add-on-Teilnahme
+
+Nur wenn: Registry-Eintrag, aktiviert, Governance erlaubt, Mapping/Telemetrie ok, verfügbar, kein Fault/Lockout.
+
+Fehlende Werte: `null` / `missing` — nie erfundene `0`, nie `-1` als Missing-Sentinel.
+
+## Verantwortlichkeiten
+
+Admin → Aktivierung, Mapping, Grenzen, Policies | Learning → Prognosen | Policy → Betreiberregeln | General Operator → Bilanz/Allocation | Runtime → Intents | Profil → Geräte | Safety → Write-Freigabe | KI → Plan-Optimierung innerhalb Grenzen.
+
+## Pipeline
+
+```text
+Mapping → Learning/Forecasts → Safety → Policy → Forecast Plan → Daily Plan → [KI] → Allocation → Intent → Profil → Observe/Dryrun/Live
+```
+
+## Schreibregeln
+
+Keine Fremd-Writes außer Runtime-Gates. Dryrun vor Live. Safety, Fault, Lockout, Feedback, Ownership, Restore nie umgehen. KI schreibt nie direkt auf Geräte.
+
+## ioBroker-Pflichten
+
+Ensure-States, `setStateIfChanged`, konfigurierbare Mappings, Admin+i18n, Release: Version in `package.json` + `io-package.json`, news de/en, Tests grün.
+
+## Entwicklungsführung
+
+Code = Ist-Stand. Masterplan + `docs/EMS_LIGHT_OPERATOR_FOUNDATION.md` = Zielbild. Block vollständig abschließen vor nächstem Block. Keine Scope-Erweiterung ohne Auftrag.

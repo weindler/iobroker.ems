@@ -1,6 +1,8 @@
 import type { PlannerHost } from "./inputs";
 import { ensurePlannerStates } from "./ensure_states";
+import { ensureGridSupplyStates } from "../operator/supply/grid_states";
 import { runPlannerTick } from "./run";
+import { runGridSupplyTick } from "../operator/supply/grid_tick";
 
 export type { PlannerIntent } from "./types";
 export type { PlannerHost } from "./inputs";
@@ -16,7 +18,9 @@ export { batteryWinterPlanConfigFromAdapter } from "./battery_winter_config";
 
 export async function initPlanner(host: PlannerHost): Promise<void> {
 	await ensurePlannerStates(host);
+	await ensureGridSupplyStates(host);
 	await runPlannerTick(host);
+	await runGridSupplyTick(host);
 }
 
 export async function stopPlanner(): Promise<void> {

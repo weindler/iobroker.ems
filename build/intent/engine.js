@@ -26,7 +26,6 @@ const types_2 = require("./thermal/types");
 const resolve_3 = require("./battery/resolve");
 const validation_3 = require("./battery/validation");
 const types_3 = require("./battery/types");
-const index_1 = require("../addons/immersion_heater/index");
 const control_1 = require("./thermal/control");
 let engineActive = false;
 let subscribedHost = null;
@@ -124,7 +123,7 @@ async function runIntentEngine(host) {
         (0, evcc_1.readEvccIntentSnapshot)(host, evccCfg, adminCfg.timezone, now),
         (0, evcc_battery_1.readEvccBatteryIntentSnapshot)(host, evccTelemetryCfg, now),
         (0, addon_active_1.isAddonIntentActive)(host, "wallbox"),
-        (0, addon_active_1.isAddonIntentActive)(host, index_1.IMMERSION_ADDON_ID),
+        (0, addon_active_1.isAddonIntentActive)(host, constants_1.THERMAL_TARGET_ID),
         (0, addon_active_1.isAddonIntentActive)(host, "battery"),
     ]);
     const admin = (0, admin_1.buildAdminIntentSnapshot)(adminCfg, now);

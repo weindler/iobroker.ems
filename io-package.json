@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.124",
+		"version": "0.1.125",
 		"news": {
+			"0.1.125": {
+				"en": "General Operator foundation: addon planning registry, shared grid supply layer for dynamic and fixed tariffs, central grid supply states, battery price reader migration; intent test decoupled from js-controller",
+				"de": "Grundlage für den gemeinsamen General Operator ergänzt: verbindliche Add-on-Planungsregistry, gemeinsame Grid-Supply-Schicht für dynamische und feste Tarife, zentrale Grid-Supply-States sowie Entkopplung der Batterie-Preislogik. Testumgebung für Intent-Tests korrigiert."
+			},
 			"0.1.124": {
 				"en": "Grid balance: on-change trigger on consumption/pv (debounced), 5 s heartbeat default, min-change gate wired",
 				"de": "Netzausgleich: on-change bei consumption/pv (debounced), Standard-Takt 5 s, Mindeständerung aktiv"

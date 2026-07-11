@@ -50,7 +50,6 @@ import { resolveBatteryIntent } from "./battery/resolve";
 import { lastBatteryChangedAt } from "./battery/validation";
 import type { IobrokerBatterySnapshot, ResolvedBatteryIntent } from "./battery/types";
 import { emptyResolvedBatteryIntent } from "./battery/types";
-import { IMMERSION_ADDON_ID } from "../addons/immersion_heater/index";
 import type { ThermalControlMode } from "../addons/immersion_heater/runtime/types";
 import {
 	THERMAL_CONTROL_FORCE_TARGET,
@@ -199,7 +198,7 @@ export async function runIntentEngine(host: IntentEngineHost): Promise<IntentEng
 		readEvccIntentSnapshot(host, evccCfg, adminCfg.timezone, now),
 		readEvccBatteryIntentSnapshot(host, evccTelemetryCfg, now),
 		isAddonIntentActive(host, "wallbox"),
-		isAddonIntentActive(host, IMMERSION_ADDON_ID),
+		isAddonIntentActive(host, THERMAL_TARGET_ID),
 		isAddonIntentActive(host, "battery"),
 	]);
 

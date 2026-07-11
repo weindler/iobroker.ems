@@ -2,7 +2,7 @@
 
 Eigenständiger ioBroker-Adapter für sicheres Energiemanagement — ohne Abhängigkeit von einem externen EMS-Server.
 
-**Aktuelle Version:** v0.1.65
+**Aktuelle Version:** v0.1.125
 
 ---
 
@@ -27,7 +27,7 @@ EMS-Light muss jederzeit ohne KI vollständig und sicher arbeiten. Die KI-Freiga
 | Command Pipeline (Dryrun/Live) | implementiert |
 | Add-on-Governance (GLOBAL: aktiv + KI-Freigabe) | implementiert |
 | Batterie: Profile `generic_readonly` + `sonnen_em` (Read-only/Dryrun/Live) | implementiert |
-| KI / General Operator | *geplant* |
+| KI / General Operator | *Grundlage v0.1.125 — Registry, Grid Supply; Daily Plan geplant* |
 | Weitere Batterie-Steuerprofile (Fronius, Victron, …) | *geplant* |
 
 ---

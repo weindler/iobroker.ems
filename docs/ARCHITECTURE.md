@@ -1,7 +1,7 @@
 # EMS-Light – Architektur (Ist-Stand)
 
 **Gültig ab:** 28.06.2026  
-**Adapter-Version:** v0.1.63
+**Adapter-Version:** v0.1.125
 
 Dieses Dokument beschreibt die **tatsächlich implementierte** Architektur des ioBroker-Adapters `iobroker.ems`. Geplante, aber noch nicht umgesetzte Bestandteile sind als *geplant* gekennzeichnet.
 
@@ -66,9 +66,10 @@ Periodischer Tick (Standard 60 s, konfigurierbar 15–600 s):
 
 - Spiegelt `global.execution_mode` nach `execution.safety.global_execution_mode`
 - Aktualisiert Live-Cache (`live.*`)
-- Schreibt `system.last_tick_at`, `system.health`, `system.summary_de`
+- Führt Planner (`planner.*`) und Grid Supply (`planner.intent.supply.grid.*`) aus
+- Schreibt `system.last_tick_at`, `system.health`, `execution.safety.summary_de`
 
-Phase 1 ist **read-only** — keine Planner- oder Geräteentscheidungen im Tick.
+Geräte-Runtimes (Heizstab, Batterie, Klima) laufen in eigenen Intervallen und lesen Planner-Intents.
 
 ---
 

@@ -2,6 +2,7 @@ import { touchEmsActivity } from "../ems_activity";
 import { GLOBAL } from "../tree_paths";
 import { deriveHealth, formatLiveCacheSummary, refreshLiveCache, type LiveCacheHost } from "./live_cache";
 import { runPlannerTick, type PlannerHost } from "../planner";
+import { runGridSupplyTick } from "../operator/supply/grid_tick";
 
 export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): Promise<void> {
 	touchEmsActivity();
@@ -41,6 +42,12 @@ export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): 
 		await runPlannerTick(host);
 	} catch (e) {
 		hints.push(`planner: ${String(e)}`);
+	}
+
+	try {
+		await runGridSupplyTick(host);
+	} catch (e) {
+		hints.push(`grid_supply: ${String(e)}`);
 	}
 
 	const health = deriveHealth(liveResult, !hints.some((h) => h.includes("global.execution_mode nicht")));

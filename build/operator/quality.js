@@ -11,7 +11,9 @@ function operatorQuality(status, reasonDe, confidencePct = null) {
 exports.operatorQuality = operatorQuality;
 function mergeOperatorQuality(a, b) {
     const rank = {
-        invalid: 5,
+        invalid: 7,
+        unsupported: 6,
+        blocked: 5,
         missing: 4,
         disabled: 3,
         degraded: 2,

@@ -14,7 +14,9 @@ export function operatorQuality(
 
 export function mergeOperatorQuality(a: OperatorDataQuality, b: OperatorDataQuality): OperatorDataQuality {
 	const rank: Record<OperatorDataStatus, number> = {
-		invalid: 5,
+		invalid: 7,
+		unsupported: 6,
+		blocked: 5,
 		missing: 4,
 		disabled: 3,
 		degraded: 2,

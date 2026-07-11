@@ -5,6 +5,7 @@ import type { PlanContribution, PlanSlotContribution } from "../types";
 import { operatorQuality } from "../quality";
 import { systemContributorRef } from "../contributor";
 import { addDaysToDateKey, isoAtTimezoneLocal, localDateKeyInTimezone } from "../time";
+import { CONTRIBUTION_IDS } from "../contribution_ids";
 import { baseContribution, clampConfidencePct } from "./types";
 
 export interface HouseLoadContributionBuildInput {
@@ -133,7 +134,7 @@ export function buildHouseLoadContribution(input: HouseLoadContributionBuildInpu
 	const tomorrowKey =
 		input.forecastTomorrow?.date ?? addDaysToDateKey(localDateKeyInTimezone(input.now, input.timezone), 1);
 
-	return baseContribution(systemContributorRef("house_load"), ["demand_fixed"], {
+	return baseContribution(CONTRIBUTION_IDS.HOUSE_LOAD_FIXED, systemContributorRef("house_load"), "consume", ["demand_fixed"], {
 		generatedAt,
 		validUntil: null,
 		revision: 1,

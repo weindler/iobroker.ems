@@ -1,6 +1,7 @@
 import type { GridSupplyForecast, PlanContribution } from "../types";
 import { operatorQuality } from "../quality";
 import { addonContributorRef, systemContributorRef } from "../contributor";
+import { CONTRIBUTION_IDS } from "../contribution_ids";
 import { baseContribution, houseMainFuseAddonId } from "./types";
 
 export interface ConstraintContributionBuildInput {
@@ -28,7 +29,12 @@ export function buildHouseMainFuseConstraintContribution(
 		reasonDe = "Konfigurierte Hausanschluss- und Netzimportgrenzen.";
 	}
 
-	return baseContribution(addonContributorRef(houseMainFuseAddonId()), ["constraint"], {
+	return baseContribution(
+		CONTRIBUTION_IDS.HOUSE_MAIN_FUSE,
+		addonContributorRef(houseMainFuseAddonId()),
+		"constraint",
+		["constraint"],
+		{
 		generatedAt,
 		validUntil: null,
 		revision: 1,
@@ -63,7 +69,12 @@ export function buildGlobalConstraintsContribution(
 		reasonDe = `Effektive Grenzen nach Global Mode (${input.globalMode ?? "unbekannt"}).`;
 	}
 
-	return baseContribution(systemContributorRef("global_constraints"), ["constraint"], {
+	return baseContribution(
+		CONTRIBUTION_IDS.GLOBAL_CONSTRAINTS,
+		systemContributorRef("global_constraints"),
+		"constraint",
+		["constraint"],
+		{
 		generatedAt,
 		validUntil: null,
 		revision: 1,
@@ -104,7 +115,12 @@ export function buildGridSupplyContribution(
 		quality: s.quality,
 	}));
 
-	return baseContribution(systemContributorRef("grid_supply"), ["infrastructure"], {
+	return baseContribution(
+		CONTRIBUTION_IDS.GRID_SUPPLY,
+		systemContributorRef("grid_supply"),
+		"context",
+		["infrastructure"],
+		{
 		generatedAt: grid.generatedAt,
 		validUntil: grid.validUntil,
 		revision: 1,

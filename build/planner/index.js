@@ -4,9 +4,11 @@ exports.stopPlanner = exports.initPlanner = exports.batteryWinterPlanConfigFromA
 const ensure_states_1 = require("./ensure_states");
 const grid_states_1 = require("../operator/supply/grid_states");
 const states_1 = require("../operator/forecast/states");
+const states_2 = require("../operator/contributions/flexible/states");
 const run_1 = require("./run");
 const grid_tick_1 = require("../operator/supply/grid_tick");
-const tick_1 = require("../operator/forecast/tick");
+const tick_1 = require("../operator/contributions/flexible/tick");
+const tick_2 = require("../operator/forecast/tick");
 var inputs_1 = require("./inputs");
 Object.defineProperty(exports, "readPlannerThermalStage", { enumerable: true, get: function () { return inputs_1.readPlannerThermalStage; } });
 Object.defineProperty(exports, "readPlannerInputs", { enumerable: true, get: function () { return inputs_1.readPlannerInputs; } });
@@ -36,9 +38,11 @@ async function initPlanner(host) {
     await (0, ensure_states_1.ensurePlannerStates)(host);
     await (0, grid_states_1.ensureGridSupplyStates)(host);
     await (0, states_1.ensureForecastPlanStates)(host);
+    await (0, states_2.ensureFlexibleContributionStates)(host);
     await (0, run_1.runPlannerTick)(host);
     const gridForecast = await (0, grid_tick_1.runGridSupplyTick)(host);
-    await (0, tick_1.runForecastPlanTick)(host, gridForecast);
+    const flexibleContributions = await (0, tick_1.runFlexibleContributionsTick)(host, gridForecast);
+    await (0, tick_2.runForecastPlanTick)(host, gridForecast, flexibleContributions);
 }
 exports.initPlanner = initPlanner;
 async function stopPlanner() {

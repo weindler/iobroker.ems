@@ -3,6 +3,7 @@ import { GLOBAL } from "../tree_paths";
 import { deriveHealth, formatLiveCacheSummary, refreshLiveCache, type LiveCacheHost } from "./live_cache";
 import { runPlannerTick, type PlannerHost } from "../planner";
 import { runGridSupplyTick } from "../operator/supply/grid_tick";
+import { runFlexibleContributionsTick } from "../operator/contributions/flexible/tick";
 import { runForecastPlanTick } from "../operator/forecast/tick";
 
 export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): Promise<void> {
@@ -52,8 +53,15 @@ export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): 
 		hints.push(`grid_supply: ${String(e)}`);
 	}
 
+	let flexibleContributions: Awaited<ReturnType<typeof runFlexibleContributionsTick>> = [];
 	try {
-		await runForecastPlanTick(host, gridForecast);
+		flexibleContributions = await runFlexibleContributionsTick(host, gridForecast);
+	} catch (e) {
+		hints.push(`flexible_contributions: ${String(e)}`);
+	}
+
+	try {
+		await runForecastPlanTick(host, gridForecast, flexibleContributions);
 	} catch (e) {
 		hints.push(`forecast_plan: ${String(e)}`);
 	}

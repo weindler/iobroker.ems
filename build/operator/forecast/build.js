@@ -1,11 +1,26 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.forecastPlanRevisionPayload = exports.buildForecastPlan = void 0;
+const contribution_ids_1 = require("../contribution_ids");
 const contributor_1 = require("../contributor");
 const quality_1 = require("../quality");
 const time_1 = require("../time");
 function findContribution(contributions, key) {
     return contributions.find((c) => (0, contributor_1.contributorRefKey)(c.contributor) === key);
+}
+function findContributionById(contributions, contributionId) {
+    return contributions.find((c) => c.contributionId === contributionId);
+}
+function isOptionalFlexibleExclusion(c) {
+    if (c.contributionId === contribution_ids_1.CONTRIBUTION_IDS.BATTERY_DISCHARGE)
+        return true;
+    if (c.contributionId === contribution_ids_1.CONTRIBUTION_IDS.WALLBOX_EV_SESSION && !c.enabled)
+        return true;
+    if (c.quality.status === "unsupported")
+        return true;
+    if (c.quality.status === "disabled" && c.flexible)
+        return true;
+    return false;
 }
 function pvDayEnergy(contribution, dateKey) {
     if (!contribution?.enabled)
@@ -205,10 +220,23 @@ function partitionContributors(contributions) {
     const excluded = [];
     for (const c of contributions) {
         if (c.enabled && c.quality.status !== "missing" && c.quality.status !== "invalid") {
-            active.push(c.contributor);
+            if (!active.some((a) => (0, contributor_1.contributorRefKey)(a) === (0, contributor_1.contributorRefKey)(c.contributor))) {
+                active.push(c.contributor);
+            }
+        }
+        else if (!isOptionalFlexibleExclusion(c)) {
+            excluded.push({
+                contributor: c.contributor,
+                contributionId: c.contributionId,
+                reasonDe: c.reasonDe || c.quality.reasonDe,
+            });
         }
         else {
-            excluded.push({ contributor: c.contributor, reasonDe: c.reasonDe || c.quality.reasonDe });
+            excluded.push({
+                contributor: c.contributor,
+                contributionId: c.contributionId,
+                reasonDe: c.reasonDe || c.quality.reasonDe,
+            });
         }
     }
     return { active, excluded };
@@ -291,6 +319,8 @@ function forecastPlanRevisionPayload(plan) {
         days: plan.days,
         slots: plan.slots,
         contributions: plan.contributions.map((c) => ({
+            contributionId: c.contributionId,
+            flow: c.flow,
             contributor: c.contributor,
             roles: c.roles,
             enabled: c.enabled,

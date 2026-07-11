@@ -6,6 +6,7 @@ import type {
 	OperatorDataQuality,
 	PlanContribution,
 } from "../types";
+import { CONTRIBUTION_IDS } from "../contribution_ids";
 import type { ForecastPlan, ForecastPlanExcludedContributor } from "./types";
 import { contributorRefKey } from "../contributor";
 import { mergeOperatorQuality, operatorQuality } from "../quality";
@@ -23,6 +24,21 @@ function findContribution(
 	key: string,
 ): PlanContribution | undefined {
 	return contributions.find((c) => contributorRefKey(c.contributor) === key);
+}
+
+function findContributionById(
+	contributions: PlanContribution[],
+	contributionId: string,
+): PlanContribution | undefined {
+	return contributions.find((c) => c.contributionId === contributionId);
+}
+
+function isOptionalFlexibleExclusion(c: PlanContribution): boolean {
+	if (c.contributionId === CONTRIBUTION_IDS.BATTERY_DISCHARGE) return true;
+	if (c.contributionId === CONTRIBUTION_IDS.WALLBOX_EV_SESSION && !c.enabled) return true;
+	if (c.quality.status === "unsupported") return true;
+	if (c.quality.status === "disabled" && c.flexible) return true;
+	return false;
 }
 
 function pvDayEnergy(contribution: PlanContribution | undefined, dateKey: string): number | null {
@@ -276,9 +292,21 @@ function partitionContributors(contributions: PlanContribution[]): {
 	const excluded: ForecastPlanExcludedContributor[] = [];
 	for (const c of contributions) {
 		if (c.enabled && c.quality.status !== "missing" && c.quality.status !== "invalid") {
-			active.push(c.contributor);
+			if (!active.some((a) => contributorRefKey(a) === contributorRefKey(c.contributor))) {
+				active.push(c.contributor);
+			}
+		} else if (!isOptionalFlexibleExclusion(c)) {
+			excluded.push({
+				contributor: c.contributor,
+				contributionId: c.contributionId,
+				reasonDe: c.reasonDe || c.quality.reasonDe,
+			});
 		} else {
-			excluded.push({ contributor: c.contributor, reasonDe: c.reasonDe || c.quality.reasonDe });
+			excluded.push({
+				contributor: c.contributor,
+				contributionId: c.contributionId,
+				reasonDe: c.reasonDe || c.quality.reasonDe,
+			});
 		}
 	}
 	return { active, excluded };
@@ -362,6 +390,8 @@ export function forecastPlanRevisionPayload(plan: ForecastPlan): string {
 		days: plan.days,
 		slots: plan.slots,
 		contributions: plan.contributions.map((c) => ({
+			contributionId: c.contributionId,
+			flow: c.flow,
 			contributor: c.contributor,
 			roles: c.roles,
 			enabled: c.enabled,

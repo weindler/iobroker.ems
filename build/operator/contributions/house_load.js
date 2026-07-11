@@ -6,6 +6,7 @@ const battery_winter_1 = require("../../planner/rules/battery_winter");
 const quality_1 = require("../quality");
 const contributor_1 = require("../contributor");
 const time_1 = require("../time");
+const contribution_ids_1 = require("../contribution_ids");
 const types_1 = require("./types");
 function dailyKwhFromHouseLoadDayForecast(json) {
     return (0, battery_winter_1.dailyKwhFromHouseLoadForecast)(json);
@@ -107,7 +108,7 @@ function buildHouseLoadContribution(input) {
     }
     const todayKey = input.forecastToday?.date ?? (0, time_1.localDateKeyInTimezone)(input.now, input.timezone);
     const tomorrowKey = input.forecastTomorrow?.date ?? (0, time_1.addDaysToDateKey)((0, time_1.localDateKeyInTimezone)(input.now, input.timezone), 1);
-    return (0, types_1.baseContribution)((0, contributor_1.systemContributorRef)("house_load"), ["demand_fixed"], {
+    return (0, types_1.baseContribution)(contribution_ids_1.CONTRIBUTION_IDS.HOUSE_LOAD_FIXED, (0, contributor_1.systemContributorRef)("house_load"), "consume", ["demand_fixed"], {
         generatedAt,
         validUntil: null,
         revision: 1,

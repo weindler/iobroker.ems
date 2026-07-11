@@ -7,6 +7,9 @@ import { buildGridSupplyContribution } from "../contributions/constraints";
 import { operatorQuality } from "../quality";
 import type { GridSupplyForecast } from "../types";
 import { buildForecastPlan, forecastPlanRevisionPayload } from "./build";
+import { buildBatteryContributions } from "../contributions/flexible/battery";
+import { buildWallboxEvSessionContribution } from "../contributions/flexible/wallbox";
+import { plannerModePolicyFromGlobalMode } from "../../planner/mode_policy";
 
 function gridForecast(overrides: Partial<GridSupplyForecast> = {}): GridSupplyForecast {
 	return {
@@ -251,5 +254,97 @@ describe("forecast plan build", () => {
 		const priceSlots = plan.slots.filter((s) => s.gridPriceCtPerKwh !== null);
 		assert.equal(priceSlots.length, 2);
 		assert.ok(priceSlots[0].slot.startIso < priceSlots[1].slot.startIso);
+	});
+
+	it("includes flexible contributions without changing fixed balance", () => {
+		const contributions = [
+			...fullContributions(now),
+			...buildBatteryContributions({
+				now,
+				addonEnabled: true,
+				governanceEnabled: true,
+				globalModeOff: false,
+				modePolicy: plannerModePolicyFromGlobalMode("balanced"),
+				gridForecast: gridForecast(),
+				profileId: "sonnen_em",
+				socPct: 50,
+				capacityManualKwh: 10,
+				capacityMappedKwh: null,
+				capacitySource: "manual",
+				minSocPct: 10,
+				maxSocPct: 100,
+				maxChargeW: 5000,
+				chargeCapable: true,
+				dischargeCapable: false,
+				fault: false,
+				lockout: false,
+				telemetryValid: true,
+				telemetryStale: false,
+				mappingsReady: true,
+				topOffRequested: false,
+				ownershipActive: false,
+				winterGridActive: false,
+			}),
+			buildWallboxEvSessionContribution({
+				now,
+				addonEnabled: true,
+				governanceEnabled: true,
+				globalModeOff: false,
+				modePolicy: plannerModePolicyFromGlobalMode("balanced"),
+				gridForecast: gridForecast(),
+				connected: false,
+				charging: false,
+				vehicleSocPct: 0,
+				planSocPct: null,
+				planActive: false,
+				sessionEnergyKwh: null,
+				remainingEnergyKwh: null,
+				vehicleCapacityKwh: null,
+				deadlineIso: null,
+				activePhases: null,
+				maxCurrentA: null,
+				evccConfigured: true,
+			}),
+		];
+		const plan = buildForecastPlan({ now, timezone: "UTC", contributions });
+		const day = plan.days.find((d) => d.date === "2026-07-11");
+		assert.equal(day?.renewableBalanceKwh, 11);
+		assert.ok(plan.contributions.some((c) => c.contributionId === "battery.charge"));
+		assert.ok(plan.excludedContributors.some((e) => e.contributionId === "battery.discharge"));
+		assert.ok(plan.excludedContributors.some((e) => e.contributionId === "wallbox.ev_session"));
+	});
+
+	it("unsupported battery discharge does not degrade plan", () => {
+		const contributions = [
+			...fullContributions(now),
+			...buildBatteryContributions({
+				now,
+				addonEnabled: true,
+				governanceEnabled: true,
+				globalModeOff: false,
+				modePolicy: plannerModePolicyFromGlobalMode("balanced"),
+				gridForecast: gridForecast(),
+				profileId: "sonnen_em",
+				socPct: 50,
+				capacityManualKwh: 10,
+				capacityMappedKwh: null,
+				capacitySource: "manual",
+				minSocPct: 10,
+				maxSocPct: 100,
+				maxChargeW: 5000,
+				chargeCapable: true,
+				dischargeCapable: false,
+				fault: false,
+				lockout: false,
+				telemetryValid: true,
+				telemetryStale: false,
+				mappingsReady: true,
+				topOffRequested: false,
+				ownershipActive: false,
+				winterGridActive: false,
+			}),
+		];
+		const plan = buildForecastPlan({ now, timezone: "UTC", contributions });
+		assert.equal(plan.status, "ready");
 	});
 });

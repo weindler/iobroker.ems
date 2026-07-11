@@ -1,0 +1,388 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const node_test_1 = require("node:test");
+const strict_1 = __importDefault(require("node:assert/strict"));
+const config_1 = require("../../../addons/air_conditioning/config");
+const constants_1 = require("../../../addons/air_conditioning/constants");
+const device_config_1 = require("../../../addons/immersion_heater/device_config");
+const mode_policy_1 = require("../../../planner/mode_policy");
+const quality_1 = require("../../quality");
+const contribution_ids_1 = require("../../contribution_ids");
+const battery_1 = require("./battery");
+const wallbox_1 = require("./wallbox");
+const immersion_heater_1 = require("./immersion_heater");
+const air_conditioning_1 = require("./air_conditioning");
+const build_1 = require("./build");
+const types_1 = require("./types");
+const NOW = new Date("2026-07-11T10:00:00.000Z");
+function gridForecast(overrides = {}) {
+    return {
+        generatedAt: NOW.toISOString(),
+        validUntil: null,
+        source: "dynamic_tariff",
+        currentPriceCtPerKwh: 24,
+        gridImportAllowed: true,
+        configuredMaxGridImportW: 11000,
+        configuredHouseFuseLimitW: 13800,
+        effectiveMaxGridImportW: 11000,
+        slots: [],
+        quality: (0, quality_1.operatorQuality)("valid", "OK"),
+        reasonDe: "OK",
+        ...overrides,
+    };
+}
+function batteryInput(overrides = {}) {
+    return {
+        now: NOW,
+        addonEnabled: true,
+        governanceEnabled: true,
+        globalModeOff: false,
+        modePolicy: (0, mode_policy_1.plannerModePolicyFromGlobalMode)("balanced"),
+        gridForecast: gridForecast(),
+        profileId: "sonnen_em",
+        socPct: 55,
+        capacityManualKwh: 10,
+        capacityMappedKwh: null,
+        capacitySource: "manual",
+        minSocPct: 10,
+        maxSocPct: 100,
+        maxChargeW: 5000,
+        chargeCapable: true,
+        dischargeCapable: false,
+        fault: false,
+        lockout: false,
+        telemetryValid: true,
+        telemetryStale: false,
+        mappingsReady: true,
+        topOffRequested: false,
+        ownershipActive: false,
+        winterGridActive: false,
+        ...overrides,
+    };
+}
+function wallboxInput(overrides = {}) {
+    return {
+        now: NOW,
+        addonEnabled: true,
+        governanceEnabled: true,
+        globalModeOff: false,
+        modePolicy: (0, mode_policy_1.plannerModePolicyFromGlobalMode)("balanced"),
+        gridForecast: gridForecast(),
+        connected: true,
+        charging: false,
+        vehicleSocPct: 40,
+        planSocPct: 80,
+        planActive: true,
+        sessionEnergyKwh: null,
+        remainingEnergyKwh: null,
+        vehicleCapacityKwh: null,
+        deadlineIso: "2026-07-11T18:00:00.000Z",
+        activePhases: 3,
+        maxCurrentA: 16,
+        evccConfigured: true,
+        ...overrides,
+    };
+}
+function immersionConfig() {
+    return (0, device_config_1.immersionDeviceConfigFromAdapter)({
+        ih_stage_count: 1,
+        ih_stage_1_set_state: "relay.0.heater",
+        ih_stage_1_nominal_power_w: 2000,
+        ih_buffer_temp_c_target: "sensor.0.temp",
+        ih_buffer_temp_c_enabled: true,
+    });
+}
+function immersionInput(overrides = {}) {
+    return {
+        now: NOW,
+        addonEnabled: true,
+        governanceEnabled: true,
+        globalModeOff: false,
+        modePolicy: (0, mode_policy_1.plannerModePolicyFromGlobalMode)("balanced"),
+        config: immersionConfig(),
+        bufferTempC: 50,
+        thermalMode: "auto",
+        fault: false,
+        lockout: false,
+        relayMapped: true,
+        pvTodayKwh: 12,
+        pvTomorrowKwh: 15,
+        pvBiasStatus: "ready",
+        forecastModeEnabled: true,
+        aiOptimizationAllowed: false,
+        ...overrides,
+    };
+}
+function acInput(overrides = {}) {
+    const acConfig = (0, config_1.acGlobalConfigFromAdapter)({
+        ac_u1_enabled: true,
+        ac_u1_on_temp_c: 26,
+        ac_u1_off_temp_c: 24,
+        ac_u1_estimated_power_w: 900,
+    });
+    return {
+        now: NOW,
+        addonEnabled: true,
+        governanceEnabled: true,
+        globalModeOff: false,
+        modePolicy: (0, mode_policy_1.plannerModePolicyFromGlobalMode)("balanced"),
+        acConfig,
+        outdoorTempC: 32,
+        units: acConfig.units.map((unit) => ({
+            unit,
+            roomTempC: unit.enabled ? 28 : null,
+            consumerStats: undefined,
+            mappingsReady: unit.enabled,
+            fault: false,
+            lockout: false,
+            cleaningBlocked: false,
+        })),
+        ...overrides,
+    };
+}
+(0, node_test_1.describe)("flexible participation", () => {
+    (0, node_test_1.it)("maps disabled addon", () => {
+        const r = (0, types_1.evaluateParticipation)({
+            addonEnabled: false,
+            governanceEnabled: true,
+            configured: true,
+            mappingsReady: true,
+            fault: false,
+            lockout: false,
+            globalModeOff: false,
+        });
+        strict_1.default.equal(r.status, "disabled");
+    });
+    (0, node_test_1.it)("maps fault to blocked", () => {
+        const r = (0, types_1.evaluateParticipation)({
+            addonEnabled: true,
+            governanceEnabled: true,
+            configured: true,
+            mappingsReady: true,
+            fault: true,
+            lockout: false,
+            globalModeOff: false,
+        });
+        strict_1.default.equal(r.status, "blocked");
+    });
+    (0, node_test_1.it)("maps unsupported profile capability", () => {
+        const r = (0, types_1.evaluateParticipation)({
+            addonEnabled: true,
+            governanceEnabled: true,
+            configured: true,
+            mappingsReady: true,
+            fault: false,
+            lockout: false,
+            globalModeOff: false,
+            unsupported: true,
+        });
+        strict_1.default.equal(r.status, "unsupported");
+    });
+});
+(0, node_test_1.describe)("battery contributions", () => {
+    (0, node_test_1.it)("builds valid charge contribution", () => {
+        const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput());
+        strict_1.default.equal(c.contributionId, contribution_ids_1.CONTRIBUTION_IDS.BATTERY_CHARGE);
+        strict_1.default.equal(c.flow, "consume");
+        strict_1.default.deepEqual(c.roles, ["storage", "demand_flex", "dispatch"]);
+        strict_1.default.equal(c.enabled, true);
+        strict_1.default.equal(c.details.requiredEnergyKwh, 4);
+    });
+    (0, node_test_1.it)("degrades when soc missing", () => {
+        const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({ socPct: null }));
+        strict_1.default.equal(c.quality.status, "degraded");
+        strict_1.default.equal(c.details.requiredEnergyKwh, null);
+    });
+    (0, node_test_1.it)("degrades when capacity missing", () => {
+        const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({ capacityManualKwh: null, capacityMappedKwh: null }));
+        strict_1.default.equal(c.quality.status, "degraded");
+    });
+    (0, node_test_1.it)("handles soc above max target as zero need", () => {
+        const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({ socPct: 98, modePolicy: (0, mode_policy_1.plannerModePolicyFromGlobalMode)("comfort") }));
+        strict_1.default.equal(c.details.requiredEnergyKwh, 0);
+    });
+    (0, node_test_1.it)("builds reserve constraint", () => {
+        const c = (0, battery_1.buildBatteryReserveContribution)(batteryInput());
+        strict_1.default.equal(c.contributionId, contribution_ids_1.CONTRIBUTION_IDS.BATTERY_RESERVE);
+        strict_1.default.equal(c.flow, "constraint");
+        strict_1.default.equal(c.details.minSocPct, 10);
+    });
+    (0, node_test_1.it)("top-off only when requested", () => {
+        const off = (0, battery_1.buildBatteryChargeContribution)(batteryInput({ topOffRequested: false }));
+        const on = (0, battery_1.buildBatteryChargeContribution)(batteryInput({ topOffRequested: true, socPct: 90 }));
+        strict_1.default.equal(off.details.topOffRequested, false);
+        strict_1.default.equal(on.details.targetSocPct, 100);
+        strict_1.default.equal(on.details.requiredEnergyKwh, 1);
+    });
+    (0, node_test_1.it)("grid import blocked in eco without winter grid", () => {
+        const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({ modePolicy: (0, mode_policy_1.plannerModePolicyFromGlobalMode)("eco"), winterGridActive: false }));
+        strict_1.default.equal(c.gridEligible, false);
+    });
+    (0, node_test_1.it)("global mode off disables charge", () => {
+        const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({ globalModeOff: true, modePolicy: (0, mode_policy_1.plannerModePolicyFromGlobalMode)("off") }));
+        strict_1.default.equal(c.enabled, false);
+    });
+    (0, node_test_1.it)("fault blocks charge", () => {
+        const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({ fault: true }));
+        strict_1.default.equal(c.enabled, false);
+        strict_1.default.equal(c.quality.status, "blocked");
+    });
+    (0, node_test_1.it)("sonnen_em discharge is unsupported", () => {
+        const c = (0, battery_1.buildBatteryDischargeContribution)(batteryInput({ profileId: "sonnen_em" }));
+        strict_1.default.equal(c.contributionId, contribution_ids_1.CONTRIBUTION_IDS.BATTERY_DISCHARGE);
+        strict_1.default.equal(c.flow, "provide");
+        strict_1.default.equal(c.enabled, false);
+        strict_1.default.equal(c.quality.status, "unsupported");
+        strict_1.default.equal(c.slots.length, 0);
+        strict_1.default.equal(c.details.passiveSelfConsumptionOnly, true);
+    });
+    (0, node_test_1.it)("returns three stable battery contributions", () => {
+        const all = (0, battery_1.buildBatteryContributions)(batteryInput());
+        strict_1.default.equal(all.length, 3);
+        const ids = all.map((c) => c.contributionId);
+        strict_1.default.deepEqual(ids, [
+            contribution_ids_1.CONTRIBUTION_IDS.BATTERY_CHARGE,
+            contribution_ids_1.CONTRIBUTION_IDS.BATTERY_DISCHARGE,
+            contribution_ids_1.CONTRIBUTION_IDS.BATTERY_RESERVE,
+        ]);
+    });
+});
+(0, node_test_1.describe)("wallbox contribution", () => {
+    (0, node_test_1.it)("connected false disables active session", () => {
+        const c = (0, wallbox_1.buildWallboxEvSessionContribution)(wallboxInput({ connected: false, vehicleSocPct: 0 }));
+        strict_1.default.equal(c.enabled, false);
+        strict_1.default.equal(c.quality.status, "disabled");
+        strict_1.default.match(c.reasonDe, /nicht verbunden/i);
+        strict_1.default.equal(c.details.vehicleSocPct, 0);
+    });
+    (0, node_test_1.it)("connected with remaining energy", () => {
+        const c = (0, wallbox_1.buildWallboxEvSessionContribution)(wallboxInput({ remainingEnergyKwh: 18.5, vehicleSocPct: null }));
+        strict_1.default.equal(c.enabled, true);
+        strict_1.default.equal(c.details.requiredEnergyKwh, 18.5);
+    });
+    (0, node_test_1.it)("connected with soc and vehicle capacity", () => {
+        const c = (0, wallbox_1.buildWallboxEvSessionContribution)(wallboxInput({ vehicleCapacityKwh: 60, vehicleSocPct: 40, planSocPct: 80 }));
+        strict_1.default.equal(c.details.requiredEnergyKwh, 24);
+    });
+    (0, node_test_1.it)("unknown capacity yields null energy need", () => {
+        const c = (0, wallbox_1.buildWallboxEvSessionContribution)(wallboxInput({ vehicleCapacityKwh: null, remainingEnergyKwh: null }));
+        strict_1.default.equal(c.details.requiredEnergyKwh, null);
+    });
+    (0, node_test_1.it)("missing soc with remaining energy stays valid", () => {
+        const c = (0, wallbox_1.buildWallboxEvSessionContribution)(wallboxInput({ vehicleSocPct: null, remainingEnergyKwh: 5 }));
+        strict_1.default.equal(c.enabled, true);
+        strict_1.default.equal(c.quality.status, "valid");
+    });
+    (0, node_test_1.it)("preserves deadline when present", () => {
+        const c = (0, wallbox_1.buildWallboxEvSessionContribution)(wallboxInput({ deadlineIso: "2026-07-11T20:00:00.000Z" }));
+        strict_1.default.equal(c.deadlineIso, "2026-07-11T20:00:00.000Z");
+    });
+    (0, node_test_1.it)("null deadline when absent", () => {
+        const c = (0, wallbox_1.buildWallboxEvSessionContribution)(wallboxInput({ deadlineIso: null }));
+        strict_1.default.equal(c.deadlineIso, null);
+    });
+    (0, node_test_1.it)("grid import blocked", () => {
+        const c = (0, wallbox_1.buildWallboxEvSessionContribution)(wallboxInput({ gridForecast: gridForecast({ gridImportAllowed: false }) }));
+        strict_1.default.equal(c.gridEligible, false);
+    });
+    (0, node_test_1.it)("marks runtime read-only", () => {
+        const c = (0, wallbox_1.buildWallboxEvSessionContribution)(wallboxInput());
+        strict_1.default.equal(c.details.runtimeControlAvailable, false);
+    });
+});
+(0, node_test_1.describe)("immersion heater contributions", () => {
+    (0, node_test_1.it)("mandatory below planning min temp", () => {
+        const [mandatory] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({ bufferTempC: 45, thermalMode: "auto" }));
+        strict_1.default.equal(mandatory.contributionId, contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_MANDATORY);
+        strict_1.default.equal(mandatory.enabled, true);
+        strict_1.default.equal(mandatory.details.mandatory, true);
+    });
+    (0, node_test_1.it)("flexible demand in auto mode", () => {
+        const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput());
+        strict_1.default.equal(flexible.contributionId, contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE);
+        strict_1.default.equal(flexible.flexible, true);
+        strict_1.default.equal(flexible.gridEligible, false);
+    });
+    (0, node_test_1.it)("no flexible demand when target reached", () => {
+        const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({ bufferTempC: 62 }));
+        strict_1.default.equal(flexible.enabled, false);
+    });
+    (0, node_test_1.it)("blocks on fault", () => {
+        const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({ fault: true }));
+        strict_1.default.equal(flexible.enabled, false);
+        strict_1.default.equal(flexible.quality.status, "blocked");
+    });
+    (0, node_test_1.it)("blocks on missing mapping", () => {
+        const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({ relayMapped: false }));
+        strict_1.default.equal(flexible.enabled, false);
+        strict_1.default.equal(flexible.quality.status, "missing");
+    });
+    (0, node_test_1.it)("governance off disables flexible", () => {
+        const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({ governanceEnabled: false }));
+        strict_1.default.equal(flexible.enabled, false);
+    });
+});
+(0, node_test_1.describe)("air conditioning contributions", () => {
+    (0, node_test_1.it)("creates five unit contributions", () => {
+        const all = (0, air_conditioning_1.buildAirConditioningContributions)(acInput());
+        strict_1.default.equal(all.length, constants_1.AC_UNIT_COUNT);
+        strict_1.default.equal(all[0].contributionId, "air_conditioning.unit_1");
+        strict_1.default.equal(all[4].contributionId, "air_conditioning.unit_5");
+    });
+    (0, node_test_1.it)("excludes disabled unit", () => {
+        const all = (0, air_conditioning_1.buildAirConditioningContributions)(acInput({
+            acConfig: (0, config_1.acGlobalConfigFromAdapter)({ ac_u2_enabled: false }),
+        }));
+        const unit2 = all.find((c) => c.contributionId === "air_conditioning.unit_2");
+        strict_1.default.equal(unit2?.enabled, false);
+    });
+    (0, node_test_1.it)("unit with cooling demand enabled", () => {
+        const all = (0, air_conditioning_1.buildAirConditioningContributions)(acInput());
+        const unit1 = all.find((c) => c.contributionId === "air_conditioning.unit_1");
+        strict_1.default.equal(unit1?.flow, "consume");
+        strict_1.default.ok(unit1?.details.expectedKwhToday !== undefined);
+    });
+    (0, node_test_1.it)("degrades when room temp missing", () => {
+        const input = acInput();
+        input.units[0].roomTempC = null;
+        const unit1 = (0, air_conditioning_1.buildAirConditioningContributions)(input).find((c) => c.contributionId === "air_conditioning.unit_1");
+        strict_1.default.equal(unit1?.quality.status, "degraded");
+    });
+    (0, node_test_1.it)("governance off excludes active units", () => {
+        const all = (0, air_conditioning_1.buildAirConditioningContributions)(acInput({ governanceEnabled: false }));
+        strict_1.default.ok(all.every((c) => !c.enabled));
+    });
+    (0, node_test_1.it)("documents runtime governance gap", () => {
+        const unit1 = (0, air_conditioning_1.buildAirConditioningContributions)(acInput()).find((c) => c.contributionId === "air_conditioning.unit_1");
+        strict_1.default.equal(unit1?.details.runtimeGovernanceGap, true);
+    });
+});
+(0, node_test_1.describe)("flexible build orchestration", () => {
+    (0, node_test_1.it)("produces unique contribution ids", () => {
+        const all = (0, build_1.buildFlexibleContributions)({
+            battery: batteryInput(),
+            wallbox: wallboxInput(),
+            immersion: immersionInput(),
+            airConditioning: acInput(),
+        });
+        const ids = all.map((c) => c.contributionId);
+        strict_1.default.equal(new Set(ids).size, ids.length);
+    });
+    (0, node_test_1.it)("revision payload ignores generatedAt", () => {
+        const input = {
+            battery: batteryInput(),
+            wallbox: wallboxInput(),
+            immersion: immersionInput(),
+            airConditioning: acInput(),
+        };
+        const a = (0, build_1.buildFlexibleContributions)(input);
+        const contributionsWithNewTimestamp = (0, build_1.buildFlexibleContributions)(input).map((c) => ({
+            ...c,
+            generatedAt: new Date("2026-07-11T10:05:00.000Z").toISOString(),
+        }));
+        strict_1.default.equal((0, types_1.flexibleContributionsRevisionPayload)(a), (0, types_1.flexibleContributionsRevisionPayload)(contributionsWithNewTimestamp));
+    });
+});

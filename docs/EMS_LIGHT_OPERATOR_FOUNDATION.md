@@ -1,6 +1,6 @@
 # EMS-Light — General-Operator-Grundlage
 
-**Stand:** v0.1.126
+**Stand:** v0.1.127
 
 ## Ziel
 
@@ -25,7 +25,7 @@ Definiert in `src/operator/types.ts`:
 
 - `PlanRole` — supply, demand_fixed, demand_flex, constraint, storage, dispatch, infrastructure, **context**
 - `PlanSlotContribution` — Leistung/Energie/Preis pro Zeitfenster
-- `PlanContribution` — Beitrag mit `contributor`-Referenz, Rollen, Qualität, `reason_de`, Revision
+- `PlanContribution` — Beitrag mit stabiler `contributionId`, `flow` (`consume` | `provide` | `constraint` | `context`), `contributor`-Referenz, Rollen, Qualität, `reason_de`, Revision
 
 ## Add-on- und System-Contributors
 
@@ -47,16 +47,19 @@ interface OperatorContributorRef {
 
 Hilfsfunktionen: `src/operator/contributor.ts`.
 
-## Contributions (v0.1.126)
+## Contributions (v0.1.127)
 
 Modul `src/operator/contributions/`:
 
 | Datei | Contributor | Rolle |
 |-------|-------------|-------|
-| `pv.ts` | `pv_forecast` | supply |
+| `pv.ts` | `pv_forecast` | supply (`pv_forecast.supply`) |
 | `house_load.ts` | `house_load` (System) | demand_fixed |
 | `weather.ts` | `weather_forecast` | context |
 | `constraints.ts` | `house_main_fuse`, `global_constraints`, `grid_supply` | constraint / infrastructure |
+| `flexible/*` | battery, wallbox, immersion_heater, air_conditioning | demand_flex, storage, constraint |
+
+Siehe `docs/EMS_LIGHT_FLEXIBLE_CONTRIBUTIONS.md` für flexible Add-ons.
 
 State-Leser → normalisiertes Build-Input → reine Builder-Funktion → `PlanContribution`.
 
@@ -104,14 +107,15 @@ Siehe `docs/EMS_LIGHT_FORECAST_PLAN.md`.
 
 `src/operator/supply/grid.ts` — jahreszeitneutrale Netz-/Preis-Schicht (v0.1.125), eingebunden als System-Contributor `grid_supply`.
 
-## Stand nach v0.1.126
+## Stand nach v0.1.127
 
 Implementiert:
 
-- Operator-Typen mit Add-on- und System-Contributors
+- Operator-Typen mit Add-on- und System-Contributors, `contributionId`, `flow`
 - PV-, Hauslast-, Wetter-, Constraint-Contributions
-- Deterministischer Forecast Plan mit States und Tick-Integration
-- Tests für Contributors und Forecast Plan
+- Flexible Contributions für Batterie, Wallbox, Heizstab, Klima
+- Deterministischer Forecast Plan mit flexiblen Beiträgen (feste Bilanz unverändert)
+- Tests für Contributors, flexible Add-ons und Forecast Plan
 
 Noch nicht implementiert:
 

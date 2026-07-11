@@ -6,7 +6,8 @@ const tree_paths_1 = require("../tree_paths");
 const live_cache_1 = require("./live_cache");
 const planner_1 = require("../planner");
 const grid_tick_1 = require("../operator/supply/grid_tick");
-const tick_1 = require("../operator/forecast/tick");
+const tick_1 = require("../operator/contributions/flexible/tick");
+const tick_2 = require("../operator/forecast/tick");
 async function runEmsLightPhase1Tick(host) {
     (0, ems_activity_1.touchEmsActivity)();
     const ts = new Date().toISOString();
@@ -54,8 +55,15 @@ async function runEmsLightPhase1Tick(host) {
     catch (e) {
         hints.push(`grid_supply: ${String(e)}`);
     }
+    let flexibleContributions = [];
     try {
-        await (0, tick_1.runForecastPlanTick)(host, gridForecast);
+        flexibleContributions = await (0, tick_1.runFlexibleContributionsTick)(host, gridForecast);
+    }
+    catch (e) {
+        hints.push(`flexible_contributions: ${String(e)}`);
+    }
+    try {
+        await (0, tick_2.runForecastPlanTick)(host, gridForecast, flexibleContributions);
     }
     catch (e) {
         hints.push(`forecast_plan: ${String(e)}`);

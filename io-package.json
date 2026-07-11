@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.126",
+		"version": "0.1.127",
 		"news": {
+			"0.1.127": {
+				"en": "Standardized flexible plan contributions for battery, wallbox, immersion heater and air conditioning. Availability, demand, deadlines, power limits, safety status and exclusion reasons are now represented together in the forecast plan without changing existing device runtimes or live writes.",
+				"de": "Standardisierte flexible Plan Contributions für Batterie, Wallbox, Heizstab und Klimaanlagen ergänzt. Verfügbarkeit, Bedarf, Deadlines, Leistungsgrenzen, Safety-Status und Ausschlussgründe werden nun gemeinsam im Forecast Plan dargestellt, ohne bestehende Geräte-Runtimes oder Live-Writes zu verändern."
+			},
 			"0.1.126": {
 				"en": "Shared deterministic forecast plan: PV forecast, house load learning, weather context, grid supply and global grid limits merged as standardized operator contributions. Missing sources are transparently excluded instead of inventing zero values.",
 				"de": "Gemeinsamen deterministischen Forecast Plan ergänzt. PV-Prognose, Hauslast-Learning, Wetterdaten, Grid Supply und globale Netzlimits werden als standardisierte Operator-Contributions zusammengeführt. Fehlende Quellen werden transparent ausgeschlossen und nicht mit Nullwerten erfunden."

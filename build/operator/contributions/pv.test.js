@@ -25,6 +25,8 @@ const pv_1 = require("./pv");
             ],
         });
         strict_1.default.equal(c.contributor.id, "pv_forecast");
+        strict_1.default.equal(c.contributionId, "pv_forecast.supply");
+        strict_1.default.equal(c.flow, "provide");
         strict_1.default.deepEqual(c.roles, ["supply"]);
         strict_1.default.equal(c.enabled, true);
         strict_1.default.equal(c.quality.status, "valid");

@@ -20,7 +20,16 @@ export interface OperatorContributorRef {
 	addonId: EmsAddonId | null;
 }
 
-export type OperatorDataStatus = "valid" | "degraded" | "missing" | "disabled" | "invalid";
+export type OperatorDataStatus =
+	| "valid"
+	| "degraded"
+	| "missing"
+	| "disabled"
+	| "invalid"
+	| "blocked"
+	| "unsupported";
+
+export type PlanContributionFlow = "consume" | "provide" | "constraint" | "context";
 
 export interface OperatorDataQuality {
 	status: OperatorDataStatus;
@@ -47,7 +56,9 @@ export interface PlanSlotContribution {
 }
 
 export interface PlanContribution {
+	contributionId: string;
 	contributor: OperatorContributorRef;
+	flow: PlanContributionFlow;
 	roles: PlanRole[];
 	generatedAt: string;
 	validUntil: string | null;

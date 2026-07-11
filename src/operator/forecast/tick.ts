@@ -1,5 +1,6 @@
 import { setStateIfChanged } from "../../policy/core/state_write";
 import { collectContributions, type ContributionsReadHost } from "../contributions/read";
+import type { PlanContribution } from "../types";
 import type { GridSupplyForecast } from "../types";
 import { buildForecastPlan, forecastPlanRevisionPayload } from "./build";
 import { FORECAST_PLAN_STATE_IDS } from "./states";
@@ -20,13 +21,15 @@ export function forecastPlanRevisionForTest(): number {
 export async function runForecastPlanTick(
 	host: ContributionsReadHost,
 	gridForecast?: GridSupplyForecast,
+	flexibleContributions: PlanContribution[] = [],
 ): Promise<ForecastPlan> {
 	const now = new Date();
 	const collected = await collectContributions(host, now, gridForecast);
+	const contributions = [...collected.contributions, ...flexibleContributions];
 	const plan = buildForecastPlan({
 		now,
 		timezone: collected.timezone,
-		contributions: collected.contributions,
+		contributions,
 	});
 
 	const payload = forecastPlanRevisionPayload(plan);

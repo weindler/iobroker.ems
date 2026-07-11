@@ -1,11 +1,7 @@
 import type { PlanContribution } from "../types";
 import { operatorQuality } from "../quality";
-import {
-	baseContribution,
-	clampConfidencePct,
-	isPvForecastPresent,
-	pvContributorRef,
-} from "./types";
+import { CONTRIBUTION_IDS } from "../contribution_ids";
+import { baseContribution, clampConfidencePct, isPvForecastPresent, pvContributorRef } from "./types";
 
 export interface PvHorizonDayInput {
 	dayIndex: number;
@@ -66,7 +62,7 @@ export function buildPvContribution(input: PvContributionBuildInput): PlanContri
 	const todayKey = input.horizonDays.find((d) => d.dayIndex === 0)?.dateKey ?? null;
 	const tomorrowKey = input.horizonDays.find((d) => d.dayIndex === 1)?.dateKey ?? null;
 
-	return baseContribution(pvContributorRef(), ["supply"], {
+	return baseContribution(CONTRIBUTION_IDS.PV_SUPPLY, pvContributorRef(), "provide", ["supply"], {
 		generatedAt,
 		validUntil: null,
 		revision: 1,

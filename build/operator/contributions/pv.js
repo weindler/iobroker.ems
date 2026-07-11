@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildPvContribution = void 0;
 const quality_1 = require("../quality");
+const contribution_ids_1 = require("../contribution_ids");
 const types_1 = require("./types");
 function isStale(lastUpdateTs, now, maxAgeHours) {
     if (!lastUpdateTs)
@@ -38,7 +39,7 @@ function buildPvContribution(input) {
     }
     const todayKey = input.horizonDays.find((d) => d.dayIndex === 0)?.dateKey ?? null;
     const tomorrowKey = input.horizonDays.find((d) => d.dayIndex === 1)?.dateKey ?? null;
-    return (0, types_1.baseContribution)((0, types_1.pvContributorRef)(), ["supply"], {
+    return (0, types_1.baseContribution)(contribution_ids_1.CONTRIBUTION_IDS.PV_SUPPLY, (0, types_1.pvContributorRef)(), "provide", ["supply"], {
         generatedAt,
         validUntil: null,
         revision: 1,

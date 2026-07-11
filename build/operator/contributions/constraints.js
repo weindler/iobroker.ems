@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildGridSupplyContribution = exports.buildGlobalConstraintsContribution = exports.buildHouseMainFuseConstraintContribution = void 0;
 const quality_1 = require("../quality");
 const contributor_1 = require("../contributor");
+const contribution_ids_1 = require("../contribution_ids");
 const types_1 = require("./types");
 function buildHouseMainFuseConstraintContribution(input) {
     const generatedAt = input.now.toISOString();
@@ -13,7 +14,7 @@ function buildHouseMainFuseConstraintContribution(input) {
         status = "valid";
         reasonDe = "Konfigurierte Hausanschluss- und Netzimportgrenzen.";
     }
-    return (0, types_1.baseContribution)((0, contributor_1.addonContributorRef)((0, types_1.houseMainFuseAddonId)()), ["constraint"], {
+    return (0, types_1.baseContribution)(contribution_ids_1.CONTRIBUTION_IDS.HOUSE_MAIN_FUSE, (0, contributor_1.addonContributorRef)((0, types_1.houseMainFuseAddonId)()), "constraint", ["constraint"], {
         generatedAt,
         validUntil: null,
         revision: 1,
@@ -42,7 +43,7 @@ function buildGlobalConstraintsContribution(input) {
         status = input.gridSupplyQuality.status === "valid" ? "valid" : "degraded";
         reasonDe = `Effektive Grenzen nach Global Mode (${input.globalMode ?? "unbekannt"}).`;
     }
-    return (0, types_1.baseContribution)((0, contributor_1.systemContributorRef)("global_constraints"), ["constraint"], {
+    return (0, types_1.baseContribution)(contribution_ids_1.CONTRIBUTION_IDS.GLOBAL_CONSTRAINTS, (0, contributor_1.systemContributorRef)("global_constraints"), "constraint", ["constraint"], {
         generatedAt,
         validUntil: null,
         revision: 1,
@@ -78,7 +79,7 @@ function buildGridSupplyContribution(grid) {
         mandatory: false,
         quality: s.quality,
     }));
-    return (0, types_1.baseContribution)((0, contributor_1.systemContributorRef)("grid_supply"), ["infrastructure"], {
+    return (0, types_1.baseContribution)(contribution_ids_1.CONTRIBUTION_IDS.GRID_SUPPLY, (0, contributor_1.systemContributorRef)("grid_supply"), "context", ["infrastructure"], {
         generatedAt: grid.generatedAt,
         validUntil: grid.validUntil,
         revision: 1,

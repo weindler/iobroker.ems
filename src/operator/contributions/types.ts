@@ -1,5 +1,10 @@
 import type { EmsAddonId } from "../../addons/registry";
-import type { OperatorContributorRef, PlanContribution, PlanRole } from "../types";
+import type {
+	OperatorContributorRef,
+	PlanContribution,
+	PlanContributionFlow,
+	PlanRole,
+} from "../types";
 import { operatorQuality } from "../quality";
 import { addonContributorRef } from "../contributor";
 
@@ -9,7 +14,9 @@ export function clampConfidencePct(value: number | null | undefined): number | n
 }
 
 export function baseContribution(
+	contributionId: string,
 	contributor: OperatorContributorRef,
+	flow: PlanContributionFlow,
 	roles: PlanRole[],
 	params: {
 		generatedAt: string;
@@ -22,10 +29,14 @@ export function baseContribution(
 		reasonDe: string;
 		details: Record<string, unknown>;
 		slots?: PlanContribution["slots"];
+		priorityBand?: number | null;
+		deadlineIso?: string | null;
 	},
 ): PlanContribution {
 	return {
+		contributionId,
 		contributor,
+		flow,
 		roles,
 		generatedAt: params.generatedAt,
 		validUntil: params.validUntil,
@@ -33,8 +44,8 @@ export function baseContribution(
 		enabled: params.enabled,
 		flexible: params.flexible,
 		gridEligible: params.gridEligible,
-		priorityBand: null,
-		deadlineIso: null,
+		priorityBand: params.priorityBand ?? null,
+		deadlineIso: params.deadlineIso ?? null,
 		slots: params.slots ?? [],
 		quality: params.quality,
 		reasonDe: params.reasonDe,

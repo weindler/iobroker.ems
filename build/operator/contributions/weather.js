@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildWeatherContribution = void 0;
 const quality_1 = require("../quality");
 const contributor_1 = require("../contributor");
+const contribution_ids_1 = require("../contribution_ids");
 const types_1 = require("./types");
 function buildWeatherContribution(input) {
     const generatedAt = input.now.toISOString();
@@ -39,7 +40,7 @@ function buildWeatherContribution(input) {
         mandatory: false,
         quality: (0, quality_1.operatorQuality)(point.outdoorTempC !== null || point.cloudPct !== null ? "valid" : "missing", "Wetter-Kontext-Slot.", confidence),
     }));
-    return (0, types_1.baseContribution)((0, contributor_1.addonContributorRef)((0, types_1.weatherForecastAddonId)()), ["context"], {
+    return (0, types_1.baseContribution)(contribution_ids_1.CONTRIBUTION_IDS.WEATHER_CONTEXT, (0, contributor_1.addonContributorRef)((0, types_1.weatherForecastAddonId)()), "context", ["context"], {
         generatedAt,
         validUntil: input.forecastHorizonEnd,
         revision: 1,

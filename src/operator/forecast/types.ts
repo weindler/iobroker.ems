@@ -11,6 +11,7 @@ export type { ForecastPlanDay, ForecastPlanSlot, ForecastPlanStatus } from "../t
 
 export interface ForecastPlanExcludedContributor {
 	contributor: OperatorContributorRef;
+	contributionId: string;
 	reasonDe: string;
 }
 

@@ -16,13 +16,14 @@ function forecastPlanRevisionForTest() {
     return revision;
 }
 exports.forecastPlanRevisionForTest = forecastPlanRevisionForTest;
-async function runForecastPlanTick(host, gridForecast) {
+async function runForecastPlanTick(host, gridForecast, flexibleContributions = []) {
     const now = new Date();
     const collected = await (0, read_1.collectContributions)(host, now, gridForecast);
+    const contributions = [...collected.contributions, ...flexibleContributions];
     const plan = (0, build_1.buildForecastPlan)({
         now,
         timezone: collected.timezone,
-        contributions: collected.contributions,
+        contributions,
     });
     const payload = (0, build_1.forecastPlanRevisionPayload)(plan);
     if (payload !== lastRevisionPayload) {

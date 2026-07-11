@@ -8,9 +8,11 @@ function clampConfidencePct(value) {
     return Math.max(0, Math.min(100, Math.round(value * 10) / 10));
 }
 exports.clampConfidencePct = clampConfidencePct;
-function baseContribution(contributor, roles, params) {
+function baseContribution(contributionId, contributor, flow, roles, params) {
     return {
+        contributionId,
         contributor,
+        flow,
         roles,
         generatedAt: params.generatedAt,
         validUntil: params.validUntil,
@@ -18,8 +20,8 @@ function baseContribution(contributor, roles, params) {
         enabled: params.enabled,
         flexible: params.flexible,
         gridEligible: params.gridEligible,
-        priorityBand: null,
-        deadlineIso: null,
+        priorityBand: params.priorityBand ?? null,
+        deadlineIso: params.deadlineIso ?? null,
         slots: params.slots ?? [],
         quality: params.quality,
         reasonDe: params.reasonDe,

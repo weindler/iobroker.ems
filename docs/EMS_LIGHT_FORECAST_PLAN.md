@@ -1,10 +1,10 @@
 # EMS-Light — Forecast Plan
 
-**Stand:** v0.1.126
+**Stand:** v0.1.127
 
 ## 1. Zweck
 
-Der Forecast Plan führt die ersten **realen** Planungsdaten in die gemeinsame Operator-Struktur zusammen. Er liefert einen deterministischen Überblick über erwartete PV-Erzeugung, feste Hauslast, Wetter-Kontext, Netzpreise und globale Grenzen — **ohne Allocation, ohne Daily Plan, ohne Geräte-Dispatch**.
+Der Forecast Plan führt die **realen** Planungsdaten in die gemeinsame Operator-Struktur zusammen. Ab v0.1.127 enthält er auch flexible Add-on-Contributions (Batterie, Wallbox, Heizstab, Klima). Die feste Energiebilanz (`renewableBalanceKwh`, `fixedBalancePowerW`) bleibt PV − feste Hauslast — flexible Lasten werden noch nicht abgezogen.
 
 ## 2. Datenquellen
 
@@ -16,6 +16,7 @@ Der Forecast Plan führt die ersten **realen** Planungsdaten in die gemeinsame O
 | `grid_supply` | System | Grid-Supply-Schicht (v0.1.125), Tibber/Fixed Tariff, Policy |
 | `house_main_fuse` | Add-on | konfigurierte Sicherungs- und Importgrenzen |
 | `global_constraints` | System | effektive Grenzen nach Global Mode |
+| `battery`, `wallbox`, `immersion_heater`, `air_conditioning` | Add-on | flexible Bedarfe (v0.1.127) |
 
 ## 3. Horizont
 
@@ -68,7 +69,7 @@ Unter `planner.intent.forecast_plan.*`:
 
 ## 8. Abgrenzung zum Daily Plan
 
-Der Forecast Plan beschreibt **Erwartungen und Grenzen**. Der Daily Plan (später) entscheidet Tagesziele und Allocation. In v0.1.126 gibt es noch keinen ausführbaren Daily Plan.
+Der Forecast Plan beschreibt **Erwartungen und Grenzen**. Der Daily Plan (später) entscheidet Tagesziele und Allocation. In v0.1.127 gibt es noch keinen ausführbaren Daily Plan; flexible Contributions sind dokumentiert, aber nicht in der festen Bilanz verrechnet.
 
 ## 9. Abgrenzung zur späteren KI-Optimierung
 
@@ -76,7 +77,7 @@ KI darf später innerhalb gültiger Pläne optimieren. Der Forecast Plan bleibt 
 
 ## 10. Noch nicht implementiert
 
-- Flexible Geräteplanung und Allocation
+- Flexible Geräteplanung in Contributions (Allocation folgt)
 - Wallbox-Ladeplan, Batterie-Entladung
 - Ausführbarer Daily Plan
 - KI-Optimierung und Statistikvergleich

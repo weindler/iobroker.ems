@@ -1,6 +1,7 @@
 import type { PlanContribution } from "../types";
 import { operatorQuality } from "../quality";
 import { addonContributorRef } from "../contributor";
+import { CONTRIBUTION_IDS } from "../contribution_ids";
 import { baseContribution, clampConfidencePct, weatherForecastAddonId } from "./types";
 
 export interface WeatherHourlyPoint {
@@ -73,7 +74,12 @@ export function buildWeatherContribution(input: WeatherContributionBuildInput): 
 		),
 	}));
 
-	return baseContribution(addonContributorRef(weatherForecastAddonId()), ["context"], {
+	return baseContribution(
+		CONTRIBUTION_IDS.WEATHER_CONTEXT,
+		addonContributorRef(weatherForecastAddonId()),
+		"context",
+		["context"],
+		{
 		generatedAt,
 		validUntil: input.forecastHorizonEnd,
 		revision: 1,

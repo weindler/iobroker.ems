@@ -22,6 +22,8 @@ describe("pv contribution", () => {
 			],
 		});
 		assert.equal(c.contributor.id, "pv_forecast");
+		assert.equal(c.contributionId, "pv_forecast.supply");
+		assert.equal(c.flow, "provide");
 		assert.deepEqual(c.roles, ["supply"]);
 		assert.equal(c.enabled, true);
 		assert.equal(c.quality.status, "valid");

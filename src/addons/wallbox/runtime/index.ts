@@ -2,6 +2,7 @@ import { setStateIfChanged } from "../../../policy/core/state_write";
 import type { StateHost } from "../../../ems_light/state_util";
 import { WALLBOX_RUNTIME_STATES } from "./states";
 import type { WallboxPlanDecision } from "./daily_plan";
+import type { WallboxDryrunDispatchResult } from "./dispatch";
 
 export async function publishWallboxRuntimeStates(
 	host: StateHost,
@@ -67,5 +68,58 @@ export async function publishWallboxRuntimeStates(
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeAllowed, false);
 }
 
+export async function publishWallboxDispatchStates(
+	host: StateHost,
+	decision: WallboxPlanDecision,
+	dispatch: WallboxDryrunDispatchResult,
+): Promise<void> {
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.dispatchStatus, dispatch.dispatchStatus);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.dispatchReasonDe, dispatch.dispatchReasonDe);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.dispatchAction, dispatch.intent.action);
+	await setStateIfChanged(
+		host,
+		WALLBOX_RUNTIME_STATES.dispatchIntentJson,
+		JSON.stringify(dispatch.intent),
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_RUNTIME_STATES.dispatchTargetJson,
+		JSON.stringify(dispatch.target),
+	);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.targetEnabled, dispatch.target.enableCharging);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.targetPowerW, dispatch.target.targetPowerW ?? 0);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.targetCurrentA, dispatch.target.targetCurrentA ?? "");
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.targetPhases, dispatch.target.phases ?? "");
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.targetEvccMode, dispatch.target.desiredEvccMode ?? "");
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.dispatchSource, decision.decisionSource);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.dispatchValidUntil, dispatch.intent.validUntil ?? "");
+	await setStateIfChanged(
+		host,
+		WALLBOX_RUNTIME_STATES.dispatchDailyPlanRevision,
+		dispatch.intent.dailyPlanRevision ?? 0,
+	);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.deadlineStatus, dispatch.deadlineStatus);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.deadlineRisk, dispatch.deadlineStatus === "at_risk");
+	await setStateIfChanged(
+		host,
+		WALLBOX_RUNTIME_STATES.controlMappingComplete,
+		dispatch.readiness.controlMappingComplete,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_RUNTIME_STATES.controlMappingMissingJson,
+		JSON.stringify(dispatch.readiness.missingMappings),
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_RUNTIME_STATES.dryrunCommandJson,
+		JSON.stringify(dispatch.dryrunCommand),
+	);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.runtimeControlAvailable, false);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeAllowed, false);
+}
+
 export { ensureWallboxRuntimeStates } from "./ensure_states";
-export { resetWallboxDailyPlanCache, resolveWallboxDailyPlanDecision } from "./daily_plan";
+export { resetWallboxDailyPlanCache, resolveWallboxDailyPlanDecision, telemetryInputFromSnapshot } from "./daily_plan";
+export { buildWallboxDispatchIntent } from "./intent";
+export { resetWallboxDispatchCache, runWallboxDryrunDispatch } from "./dispatch";

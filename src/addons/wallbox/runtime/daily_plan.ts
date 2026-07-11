@@ -58,7 +58,12 @@ export type WallboxPlanExecutionStatus =
 	| "planned_but_not_charging"
 	| "not_planned_not_charging"
 	| "vehicle_disconnected"
+	| "charging_below_plan"
+	| "charging_above_plan"
 	| "unknown";
+
+/** Abweichungstoleranz zwischen geplanter und tatsächlicher Ladeleistung (W). */
+export const WALLBOX_PLAN_POWER_TOLERANCE_W = 300;
 
 export interface WallboxTelemetryInput {
 	connected: boolean | null;
@@ -424,10 +429,21 @@ function planExecutionStatus(
 	charging: boolean | null,
 	chargingAllowedByPlan: boolean,
 	allocatedPowerW: number | null,
+	chargePowerW: number | null = null,
 ): WallboxPlanExecutionStatus {
 	if (!connected) return "vehicle_disconnected";
 	if (charging === true) {
-		if (chargingAllowedByPlan && (allocatedPowerW ?? 0) > 0) return "in_plan";
+		if (chargingAllowedByPlan && (allocatedPowerW ?? 0) > 0) {
+			if (chargePowerW !== null && allocatedPowerW !== null) {
+				if (chargePowerW < allocatedPowerW - WALLBOX_PLAN_POWER_TOLERANCE_W) {
+					return "charging_below_plan";
+				}
+				if (chargePowerW > allocatedPowerW + WALLBOX_PLAN_POWER_TOLERANCE_W) {
+					return "charging_above_plan";
+				}
+			}
+			return "in_plan";
+		}
 		return "charging_without_plan";
 	}
 	if (charging === false) {
@@ -435,6 +451,16 @@ function planExecutionStatus(
 		return "not_planned_not_charging";
 	}
 	return "unknown";
+}
+
+export function resolveWallboxPlanExecutionStatus(
+	connected: boolean,
+	charging: boolean | null,
+	chargingAllowedByPlan: boolean,
+	allocatedPowerW: number | null,
+	chargePowerW: number | null = null,
+): WallboxPlanExecutionStatus {
+	return planExecutionStatus(connected, charging, chargingAllowedByPlan, allocatedPowerW, chargePowerW);
 }
 
 function disconnectedDecision(telemetry: WallboxTelemetryInput): WallboxPlanDecision {
@@ -1024,6 +1050,7 @@ export function evaluateWallboxDailyPlan(input: EvaluateWallboxPlanInput): Wallb
 			telemetry.charging,
 			chargingAllowedByPlan,
 			allocatedPowerW,
+			telemetry.chargePowerW,
 		),
 		decisionSource,
 		reasonDe,

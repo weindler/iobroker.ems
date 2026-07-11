@@ -358,6 +358,18 @@ function emptySnap() {
         const d = evaluate([], telemetry({ charging: false }));
         strict_1.default.equal(d.planExecutionStatus, "not_planned_not_charging");
     });
+    (0, node_test_1.it)("charging below plan when power is lower than allocation", () => {
+        const d = evaluate([allocationEntry(3600)], telemetry({ charging: true, chargePowerW: 2000 }));
+        strict_1.default.equal(d.planExecutionStatus, "charging_below_plan");
+    });
+    (0, node_test_1.it)("charging above plan when power exceeds allocation", () => {
+        const d = evaluate([allocationEntry(3600)], telemetry({ charging: true, chargePowerW: 4500 }));
+        strict_1.default.equal(d.planExecutionStatus, "charging_above_plan");
+    });
+    (0, node_test_1.it)("in plan within tolerance", () => {
+        const d = evaluate([allocationEntry(3600)], telemetry({ charging: true, chargePowerW: 3700 }));
+        strict_1.default.equal(d.planExecutionStatus, "in_plan");
+    });
 });
 (0, node_test_1.describe)("wallbox read-only guarantee", () => {
     (0, node_test_1.it)("decision always reports read-only flags", () => {

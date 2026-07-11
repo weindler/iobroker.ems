@@ -64,6 +64,8 @@ Aus Allocation: `energySource`, `pvPowerW`, `gridPowerW`, `estimatedCostCt` (nul
 | `planned_but_not_charging` | Freigabe, lädt nicht |
 | `not_planned_not_charging` | keine Freigabe, lädt nicht |
 | `vehicle_disconnected` | Fahrzeug nicht verbunden |
+| `charging_below_plan` | lädt unter geplanter Allocation (>300 W Toleranz) |
+| `charging_above_plan` | lädt über geplanter Allocation (>300 W Toleranz) |
 
 Keine automatische Korrektur, keine Faults allein wegen Abweichung.
 
@@ -103,7 +105,7 @@ Kein Moduswechsel, keine Strombegrenzung, keine Planzeit-Übertragung, kein Star
 
 ## 17. Nächster späterer Dispatch-Schritt
 
-Wallbox-Live-Steuerung / EVCC-Dispatch nach erfolgreicher Validierung der Diagnose-States.
+Wallbox-Live-Steuerung / EVCC-Dispatch nach erfolgreicher Validierung der Dryrun-States. Siehe `docs/EMS_LIGHT_WALLBOX_DRYRUN_DISPATCH.md`.
 
 ## Abgrenzung
 
@@ -111,7 +113,7 @@ Wallbox-Live-Steuerung / EVCC-Dispatch nach erfolgreicher Validierung der Diagno
 |--------|----------------------|
 | Heizstab | ✅ Runtime-Leistungsobergrenze (v0.1.129) |
 | Klima | ✅ Runtime-Leistungsobergrenze + Governance (v0.1.130) |
-| Wallbox | ✅ read-only Diagnose (v0.1.131) |
-| Batterie | ❌ noch nicht angebunden |
+| Wallbox | ✅ read-only Diagnose + Dryrun-Dispatch (v0.1.133) |
+| Batterie | ✅ Ladepfad an Daily Plan (v0.1.132) |
 
 Keine KI, keine Batterieentladung, keine EVCC-Steuerung in diesem Block.

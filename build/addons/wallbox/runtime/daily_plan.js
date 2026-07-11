@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveWallboxDailyPlanDecision = exports.evaluateWallboxDailyPlan = exports.summarizeWallboxPlanUntilDeadline = exports.resolveWallboxPowerLimits = exports.parseDailyAllocationEntries = exports.computeRemainingEnergyKwh = exports.telemetryInputFromSnapshot = exports.wallboxMinChargePowerW = exports.resetWallboxDailyPlanCache = void 0;
+exports.resolveWallboxDailyPlanDecision = exports.evaluateWallboxDailyPlan = exports.resolveWallboxPlanExecutionStatus = exports.summarizeWallboxPlanUntilDeadline = exports.resolveWallboxPowerLimits = exports.parseDailyAllocationEntries = exports.computeRemainingEnergyKwh = exports.telemetryInputFromSnapshot = exports.wallboxMinChargePowerW = exports.resetWallboxDailyPlanCache = exports.WALLBOX_PLAN_POWER_TOLERANCE_W = void 0;
 const contribution_ids_1 = require("../../../operator/contribution_ids");
 const states_1 = require("../../../operator/daily_plan/states");
 const slots_1 = require("../../../operator/daily_plan/slots");
@@ -11,6 +11,8 @@ const WALLBOX_CONTRIBUTION_ID = contribution_ids_1.CONTRIBUTION_IDS.WALLBOX_EV_S
 const ACTIVE_ALLOCATION_STATUSES = new Set(["allocated", "partially_allocated"]);
 const USABLE_DAILY_PLAN_STATUSES = new Set(["ready", "degraded"]);
 const SLOT_HOURS = (0, slots_1.slotDurationHours)(15);
+/** Abweichungstoleranz zwischen geplanter und tatsächlicher Ladeleistung (W). */
+exports.WALLBOX_PLAN_POWER_TOLERANCE_W = 300;
 let planCache = null;
 function resetWallboxDailyPlanCache() {
     planCache = null;
@@ -260,12 +262,21 @@ function mergeCurrentSlotAllocation(entries, slotStartIso, slotEndIso) {
     }
     return { valid: true, entry: found, reasonDe: "" };
 }
-function planExecutionStatus(connected, charging, chargingAllowedByPlan, allocatedPowerW) {
+function planExecutionStatus(connected, charging, chargingAllowedByPlan, allocatedPowerW, chargePowerW = null) {
     if (!connected)
         return "vehicle_disconnected";
     if (charging === true) {
-        if (chargingAllowedByPlan && (allocatedPowerW ?? 0) > 0)
+        if (chargingAllowedByPlan && (allocatedPowerW ?? 0) > 0) {
+            if (chargePowerW !== null && allocatedPowerW !== null) {
+                if (chargePowerW < allocatedPowerW - exports.WALLBOX_PLAN_POWER_TOLERANCE_W) {
+                    return "charging_below_plan";
+                }
+                if (chargePowerW > allocatedPowerW + exports.WALLBOX_PLAN_POWER_TOLERANCE_W) {
+                    return "charging_above_plan";
+                }
+            }
             return "in_plan";
+        }
         return "charging_without_plan";
     }
     if (charging === false) {
@@ -275,6 +286,10 @@ function planExecutionStatus(connected, charging, chargingAllowedByPlan, allocat
     }
     return "unknown";
 }
+function resolveWallboxPlanExecutionStatus(connected, charging, chargingAllowedByPlan, allocatedPowerW, chargePowerW = null) {
+    return planExecutionStatus(connected, charging, chargingAllowedByPlan, allocatedPowerW, chargePowerW);
+}
+exports.resolveWallboxPlanExecutionStatus = resolveWallboxPlanExecutionStatus;
 function disconnectedDecision(telemetry) {
     return {
         connected: false,
@@ -823,7 +838,7 @@ function evaluateWallboxDailyPlan(input) {
         lastPlannedSlot: horizon.lastPlannedSlot,
         activePlannedSlots: horizon.activePlannedSlots,
         maxPlannedPowerW: horizon.maxPlannedPowerW,
-        planExecutionStatus: planExecutionStatus(true, telemetry.charging, chargingAllowedByPlan, allocatedPowerW),
+        planExecutionStatus: planExecutionStatus(true, telemetry.charging, chargingAllowedByPlan, allocatedPowerW, telemetry.chargePowerW),
         decisionSource,
         reasonDe,
         externalPlanActive,

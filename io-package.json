@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.132",
+		"version": "0.1.133",
 		"news": {
+			"0.1.133": {
+				"en": "The wallbox now derives a validated neutral dryrun dispatch from the daily plan allocation, including target power, target current, energy source and deadline diagnostics. Connected gate, technical power limits and mapping readiness are fully evaluated. Even in live mode, no EVCC or wallbox commands are written.",
+				"de": "Die Wallbox erzeugt nun aus der Daily-Plan-Allocation einen validierten neutralen Dryrun-Dispatch mit Ziel-Leistung, Ziel-Strom, Energiequelle und Deadline-Diagnose. Connected-Gate, technische Leistungsgrenzen und Mapping-Readiness werden vollständig geprüft. Auch im Live-Modus werden weiterhin keine EVCC- oder Wallbox-Kommandos geschrieben."
+			},
 			"0.1.132": {
 				"en": "The supported battery charge path now uses the current daily plan allocation as a charging power allowance. Manual user intent, safety, fault/lockout, SOC limits, ownership, feedback, restore, dryrun and live gates remain unchanged. Battery winter and grid balance serve only as fallbacks when the daily plan is missing or invalid; discharge control remains disabled.",
 				"de": "Der unterstützte Batterie-Ladepfad nutzt nun die aktuelle Daily-Plan-Allocation als Ladeleistungsfreigabe. Manueller User Intent, Safety, Fault/Lockout, SOC-Grenzen, Ownership, Feedback, Restore, Dryrun und Live-Gates bleiben erhalten. Battery Winter und Grid Balance dienen nur noch als Fallback bei fehlendem oder ungültigem Daily Plan; die Entladesteuerung bleibt deaktiviert."

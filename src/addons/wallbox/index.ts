@@ -12,10 +12,15 @@ import {
 	DAILY_PLAN_STATE_IDS,
 } from "../../operator/daily_plan/states";
 import {
+	buildWallboxDispatchIntent,
 	ensureWallboxRuntimeStates,
+	publishWallboxDispatchStates,
 	publishWallboxRuntimeStates,
 	resetWallboxDailyPlanCache,
+	resetWallboxDispatchCache,
 	resolveWallboxDailyPlanDecision,
+	runWallboxDryrunDispatch,
+	telemetryInputFromSnapshot,
 } from "./runtime";
 
 type WallboxHost = EvccTelemetryReadHost &
@@ -66,11 +71,33 @@ async function refreshWallboxDailyPlanRuntime(host: WallboxHost, snap: Awaited<R
 		(id) => host.getStateAsync(id),
 		WALLBOX_ADDON_ID,
 	);
-	const decision = await resolveWallboxDailyPlanDecision(host, snap, cfg, new Date(), {
+	const now = new Date();
+	const decision = await resolveWallboxDailyPlanDecision(host, snap, cfg, now, {
 		governanceEnabled,
 		addonEnabled: addonEnabledVal,
 	});
 	await publishWallboxRuntimeStates(host, decision, governanceEnabled);
+
+	const telemetry = telemetryInputFromSnapshot(snap, cfg);
+	const phases = telemetry.activePhases ?? telemetry.configuredPhases;
+	const intent = buildWallboxDispatchIntent({
+		decision,
+		governanceEnabled,
+		addonEnabled: addonEnabledVal,
+		phases,
+		now,
+	});
+	const chargingEnabled =
+		snap.enabled.status === "valid" && typeof snap.enabled.value === "boolean" ? snap.enabled.value : null;
+	const dispatch = runWallboxDryrunDispatch({
+		intent,
+		decision,
+		telemetry,
+		config: host.config,
+		chargingEnabled,
+		governanceEnabled,
+	});
+	await publishWallboxDispatchStates(host, decision, dispatch);
 }
 
 export async function refreshWallboxEvccTelemetry(host: WallboxHost): Promise<void> {
@@ -178,6 +205,7 @@ export function stopWallboxModule(): void {
 	subscribedIds.length = 0;
 	activeHost = null;
 	resetWallboxDailyPlanCache();
+	resetWallboxDispatchCache();
 }
 
 const DAILY_PLAN_TRIGGER_IDS = new Set([

@@ -413,6 +413,30 @@ describe("wallbox plan execution status", () => {
 		const d = evaluate([], telemetry({ charging: false }));
 		assert.equal(d.planExecutionStatus, "not_planned_not_charging");
 	});
+
+	it("charging below plan when power is lower than allocation", () => {
+		const d = evaluate(
+			[allocationEntry(3600)],
+			telemetry({ charging: true, chargePowerW: 2000 }),
+		);
+		assert.equal(d.planExecutionStatus, "charging_below_plan");
+	});
+
+	it("charging above plan when power exceeds allocation", () => {
+		const d = evaluate(
+			[allocationEntry(3600)],
+			telemetry({ charging: true, chargePowerW: 4500 }),
+		);
+		assert.equal(d.planExecutionStatus, "charging_above_plan");
+	});
+
+	it("in plan within tolerance", () => {
+		const d = evaluate(
+			[allocationEntry(3600)],
+			telemetry({ charging: true, chargePowerW: 3700 }),
+		);
+		assert.equal(d.planExecutionStatus, "in_plan");
+	});
 });
 
 describe("wallbox read-only guarantee", () => {

@@ -23,6 +23,9 @@ const intent_read_1 = require("./runtime/intent_read");
 const battery_bridge_1 = require("../../planner/battery_bridge");
 const winter_intent_1 = require("./runtime/winter_intent");
 const grid_balance_watch_1 = require("./runtime/grid_balance_watch");
+const states_1 = require("../../operator/daily_plan/states");
+const daily_plan_1 = require("./runtime/daily_plan");
+const state_write_1 = require("../../policy/core/state_write");
 exports.BATTERY_ADDON_ID = "battery";
 function batteryControlIntervalMs(config) {
     const sec = config.gridBalance.updateIntervalSec;
@@ -35,6 +38,11 @@ let ownershipLive = false;
 let prevLiveWriteAllowed = false;
 let ticking = false;
 let lastGridBalanceWriteW = null;
+const DAILY_PLAN_TRIGGER_IDS = new Set([
+    states_1.DAILY_PLAN_STATE_IDS.revision,
+    states_1.DAILY_PLAN_STATE_IDS.status,
+    states_1.ALLOCATION_ADDON_STATE_IDS.battery.planJson,
+]);
 /** Nur für Tests: internen Laufzeitzustand zurücksetzen. */
 function __resetBatteryRuntimeForTest(now = Date.now()) {
     runtime = (0, fsm_1.initialSonnenRuntime)(now);
@@ -42,6 +50,7 @@ function __resetBatteryRuntimeForTest(now = Date.now()) {
     ownershipLive = false;
     prevLiveWriteAllowed = false;
     lastGridBalanceWriteW = null;
+    (0, daily_plan_1.resetBatteryDailyPlanCache)();
 }
 exports.__resetBatteryRuntimeForTest = __resetBatteryRuntimeForTest;
 async function initBatteryModule(adapter) {
@@ -58,6 +67,9 @@ async function initBatteryModule(adapter) {
         await adapter.subscribeStatesAsync(relId);
     }
     await adapter.subscribeStatesAsync(ensure_states_1.BAT.control.faultReset);
+    for (const id of DAILY_PLAN_TRIGGER_IDS) {
+        await adapter.subscribeStatesAsync(id);
+    }
     await detectForeignOwnershipOnStart(host);
     const config = (0, config_1.batteryConfigFromAdapter)(host.config);
     const table = (0, mapping_1.batteryMappingFromConfig)(host.config);
@@ -79,6 +91,7 @@ function stopBatteryModule(_timer) {
     }
     (0, grid_balance_watch_1.clearGridBalanceWatch)();
     lastGridBalanceWriteW = null;
+    (0, daily_plan_1.resetBatteryDailyPlanCache)();
 }
 exports.stopBatteryModule = stopBatteryModule;
 function handleBatteryAdapterStateChange(adapter, stateId) {
@@ -86,7 +99,8 @@ function handleBatteryAdapterStateChange(adapter, stateId) {
     const rel = stateId.startsWith(ns) ? stateId.slice(ns.length) : stateId;
     if (rel === ensure_states_1.BAT.control.faultReset ||
         (0, execution_mode_1.isExecutionModeStateRelativeId)(rel) ||
-        ems_mirror_1.EMS_MIRROR_BATTERY_IDS.includes(rel)) {
+        ems_mirror_1.EMS_MIRROR_BATTERY_IDS.includes(rel) ||
+        DAILY_PLAN_TRIGGER_IDS.has(rel)) {
         void runBatteryControlTick(adapter).catch((e) => adapter.log.error(`battery state change tick: ${e}`));
     }
 }
@@ -236,19 +250,30 @@ async function controlTickInner(host) {
         governanceEnabled,
         requiredValues: ["soc", "power"],
     });
-    // Device intent: user_intent.battery first, EMS-mirror legacy fallback.
+    // Device intent: manual user intent → daily plan → winter → legacy planner → EMS mirror.
     const resolvedRaw = await host.getStateAsync("user_intent.battery.resolved_json");
     const resolvedIntent = (0, intent_read_1.parseResolvedBatteryIntentJson)(resolvedRaw?.val);
-    const fromResolved = resolvedIntent && (0, intent_read_1.resolvedIntentHasConstraint)(resolvedIntent)
+    const fromManual = resolvedIntent && (0, intent_read_1.resolvedIntentHasManualPriority)(resolvedIntent)
         ? (0, intent_read_1.deviceIntentFromResolvedBattery)(resolvedIntent)
         : null;
+    const topOffActive = resolvedIntent?.top_off_requested.status === "valid" && resolvedIntent.top_off_requested.value === true;
+    const targetSocFromIntent = resolvedIntent?.target_soc_pct.status === "valid" ? resolvedIntent.target_soc_pct.value : null;
+    const dailyPlanContext = await (0, daily_plan_1.resolveBatteryDailyPlanAllocation)(host, profile, snapshot.limits, {
+        now: new Date(nowMs),
+        socPct: snapshot.telemetry.socPct,
+        topOffActive,
+        targetSocFromIntent,
+        governanceEnabled,
+    });
     let deviceIntent;
     let wantsCharge;
     let requestId;
-    if (fromResolved?.intent) {
-        deviceIntent = fromResolved.intent;
-        wantsCharge = fromResolved.wantsCharge;
+    let runtimeDecisionSource = dailyPlanContext.decisionSource;
+    if (fromManual?.intent) {
+        deviceIntent = fromManual.intent;
+        wantsCharge = fromManual.wantsCharge;
         requestId = deviceIntent.requestId;
+        runtimeDecisionSource = "manual_user_intent";
         if (wantsCharge && (deviceIntent.maxChargeW ?? 0) <= 0) {
             const mirrorW = await readRelNumber(host, ems_mirror_1.EMS_MIRROR_BATTERY.chargePowerWRequest);
             if (mirrorW != null && mirrorW > 0) {
@@ -256,16 +281,27 @@ async function controlTickInner(host) {
             }
         }
     }
+    else if (dailyPlanContext.useDailyPlan) {
+        deviceIntent = (0, daily_plan_1.deviceIntentFromDailyPlan)(dailyPlanContext, nowMs);
+        wantsCharge = dailyPlanContext.chargingAllowed && (dailyPlanContext.effectiveChargePowerW ?? 0) > 0;
+        requestId = deviceIntent.requestId;
+        runtimeDecisionSource = dailyPlanContext.decisionSource;
+    }
     else {
         const winterIntent = await resolveWinterGridChargeIntent(host, config, nowMs);
         if (winterIntent) {
             deviceIntent = winterIntent;
             wantsCharge = true;
             requestId = winterIntent.requestId;
+            runtimeDecisionSource = "battery_winter_fallback";
+            dailyPlanContext.legacyFallbackActive = true;
+            dailyPlanContext.legacyFallbackSource = "battery_winter";
+            dailyPlanContext.legacyFallbackReasonDe = dailyPlanContext.allocationReasonDe;
         }
         else if (runtime.ownership.active && runtime.requestId?.startsWith("winter-planner")) {
             requestId = runtime.requestId ?? `winter-planner-${nowMs}`;
             wantsCharge = false;
+            runtimeDecisionSource = "restore";
             deviceIntent = {
                 requestId,
                 action: "self_consumption",
@@ -290,6 +326,10 @@ async function controlTickInner(host) {
                 deviceIntent = fromPlanner;
                 wantsCharge = (0, intent_1.isChargingAction)(fromPlanner.action);
                 requestId = fromPlanner.requestId;
+                runtimeDecisionSource = "legacy_planner_fallback";
+                dailyPlanContext.legacyFallbackActive = true;
+                dailyPlanContext.legacyFallbackSource = "legacy_planner";
+                dailyPlanContext.legacyFallbackReasonDe = dailyPlanContext.allocationReasonDe;
             }
             else {
                 const intentActive = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.batteryIntentActive);
@@ -310,9 +350,14 @@ async function controlTickInner(host) {
                     reason: `mirror intent_active=${intentActive} mode=${modeTarget}`,
                     source: "ems_mirror",
                 };
+                runtimeDecisionSource = wantsCharge ? "legacy_planner_fallback" : "safe_default";
             }
         }
     }
+    if (runtime.faultCode !== null)
+        runtimeDecisionSource = "fault";
+    if (runtime.lockout)
+        runtimeDecisionSource = "lockout";
     const telemetryFresh = !snapshot.telemetry.stale && snapshot.quality.socValid && snapshot.quality.powerValid;
     const validation = (0, validation_1.validateBatteryIntent)({
         intent: deviceIntent,
@@ -329,22 +374,30 @@ async function controlTickInner(host) {
     const emsMirrorIntentActive = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.batteryIntentActive);
     const plannerDriven = deviceIntent.source === "planner";
     const winterDriven = deviceIntent.source === "winter_planner";
+    const dailyPlanDriven = deviceIntent.source === "daily_plan";
+    const dailyPlanAuthoritative = (0, daily_plan_1.isBatteryDailyPlanAuthoritative)(dailyPlanContext);
     const [batteryHoldActive, evccCharging, winterPlanActive, priceNowCt] = await Promise.all([
         readRelBool(host, "planner.constraints.battery_hold_active"),
         readRelBool(host, "live.wallbox.charging"),
         readRelBool(host, "planner.intent.battery.winter.active"),
         readRelNumber(host, "live.price.now_ct_per_kwh"),
     ]);
-    const gridBalanceSuppressed = batteryHoldActive || evccCharging || winterPlanActive || runtime.ownership.active;
-    const emsBatteryIntentActive = fromResolved
+    const gridBalanceSuppressed = batteryHoldActive ||
+        evccCharging ||
+        winterPlanActive ||
+        runtime.ownership.active ||
+        dailyPlanAuthoritative;
+    const emsBatteryIntentActive = Boolean(fromManual
         ? wantsCharge
-        : winterDriven
-            ? wantsCharge || runtime.ownership.active
-            : plannerDriven
-                ? deviceIntent.action === "charge"
-                    ? wantsCharge
-                    : deviceIntent.action === "self_consumption" || deviceIntent.action === "hold"
-                : emsMirrorIntentActive && wantsCharge;
+        : dailyPlanDriven
+            ? wantsCharge || (runtime.ownership.active && runtime.requestId?.startsWith("daily-plan"))
+            : winterDriven
+                ? wantsCharge || runtime.ownership.active
+                : plannerDriven
+                    ? deviceIntent.action === "charge"
+                        ? wantsCharge
+                        : deviceIntent.action === "self_consumption" || deviceIntent.action === "hold"
+                    : emsMirrorIntentActive && wantsCharge);
     // Grid balance controller.
     const adapterFeature = snapshot.capabilities.control_grid_balance.available;
     const emsGb = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.gridBalanceEnabled);
@@ -467,6 +520,7 @@ async function controlTickInner(host) {
             batteryHoldActive,
             winterGridPlanActive: winterPlanActive,
             mode1Active: runtime.ownership.active,
+            dailyPlanAuthoritative,
             priceNowCt,
             priceMedianCt: (0, grid_balance_1.medianCtFromPriceSlots)(priceSlots),
             priceGate: {
@@ -512,6 +566,8 @@ async function controlTickInner(host) {
         action: deviceIntent.action,
         actualMode: modeRead.val,
         actualChargingW: snapshot.telemetry.chargingPowerW,
+        dailyPlan: dailyPlanContext,
+        decisionSource: runtimeDecisionSource,
     });
 }
 async function persist(host, s, x) {
@@ -570,6 +626,31 @@ async function persist(host, s, x) {
     await set(ensure_states_1.BAT.runtime.lastTransitionAt, iso);
     await set(ensure_states_1.BAT.runtime.reason, runtime.faultReason ?? s.readiness.reason);
     await set(ensure_states_1.BAT.runtime.ownershipActive, runtime.ownership.active);
+    const dp = x.dailyPlan;
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.decisionSource, x.decisionSource);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.reasonDe, dp.allocationReasonDe || "");
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.dailyPlanStatus, dp.dailyPlanStatus);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.dailyPlanAuthoritative, dp.dailyPlanAuthoritative);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.dailyPlanValid, dp.useDailyPlan);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.dailyPlanRevision, dp.dailyPlanRevision ?? 0);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.dailyPlanSlotStart, dp.slotStartIso ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.dailyPlanSlotEnd, dp.slotEndIso ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.allocationStatus, dp.allocationStatus);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.allocatedChargePowerW, dp.allocatedChargePowerW ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.allocatedEnergyKwh, dp.allocatedEnergyKwh ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.allocatedPvPowerW, dp.pvPowerW ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.allocatedGridPowerW, dp.gridPowerW ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.energySource, dp.energySource);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.estimatedCostCt, dp.estimatedCostCt ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.requestedChargePowerW, dp.requestedChargePowerW ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.effectiveChargePowerW, dp.effectiveChargePowerW ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.chargePowerCapped, dp.chargePowerCapped);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.topOffActive, dp.topOffActive);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.legacyFallbackActive, dp.legacyFallbackActive);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.legacyFallbackSource, dp.legacyFallbackSource);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.legacyFallbackReasonDe, dp.legacyFallbackReasonDe);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.dailyPlanBlocksGridBalance, dp.dailyPlanBlocksGridBalance);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.runtimeControlAvailable, dp.runtimeControlAvailable);
     const wouldWrite = !x.globalLive && ((0, intent_1.isChargingAction)(x.action) || x.gb.wouldWrite);
     await set(ensure_states_1.BAT.dryrun.wouldWrite, wouldWrite);
     await set(ensure_states_1.BAT.dryrun.wouldWriteState, x.gb.state || x.lastWrite?.state || "");

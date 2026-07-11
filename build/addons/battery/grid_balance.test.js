@@ -24,6 +24,7 @@ const grid_balance_js_1 = require("./grid_balance.js");
         batteryHoldActive: false,
         winterGridPlanActive: false,
         mode1Active: false,
+        dailyPlanAuthoritative: false,
         priceNowCt: 22,
         priceMedianCt: 28,
         priceGate: { enabled: true, maxPriceCtPerKwh: null, medianFactor: 1.05 },
@@ -42,6 +43,11 @@ const grid_balance_js_1 = require("./grid_balance.js");
         const r = (0, grid_balance_js_1.computeGridBalanceTarget)({ ...baseInputs, evccCharging: true });
         strict_1.default.equal(r.gatePassed, false);
         strict_1.default.match(r.reasonDe, /EVCC/);
+    });
+    (0, node_test_1.it)("blocks when daily plan is authoritative", () => {
+        const r = (0, grid_balance_js_1.computeGridBalanceTarget)({ ...baseInputs, dailyPlanAuthoritative: true });
+        strict_1.default.equal(r.gatePassed, false);
+        strict_1.default.match(r.reasonDe, /Daily Plan/);
     });
     (0, node_test_1.it)("passes price gate on absolute threshold", () => {
         const r = (0, grid_balance_js_1.evaluateGridBalancePriceGate)({

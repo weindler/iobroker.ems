@@ -27,6 +27,7 @@ export interface GridBalanceInputs {
 	batteryHoldActive: boolean;
 	winterGridPlanActive: boolean;
 	mode1Active: boolean;
+	dailyPlanAuthoritative: boolean;
 	priceNowCt: number | null;
 	priceMedianCt: number | null;
 	priceGate: GridBalancePriceGateConfig;
@@ -130,6 +131,12 @@ export function computeGridBalanceTarget(inputs: GridBalanceInputs): GridBalance
 		return inactive("EVCC lädt — Netzausgleich pausiert", checksPassed, checksFailed);
 	}
 	checksPassed.push("no_evcc_charging");
+
+	if (inputs.dailyPlanAuthoritative) {
+		checksFailed.push("daily_plan_authoritative");
+		return inactive("Daily Plan autoritativ — Netzausgleich pausiert", checksPassed, checksFailed);
+	}
+	checksPassed.push("no_daily_plan_authority");
 
 	if (inputs.winterGridPlanActive) {
 		checksFailed.push("winter_grid_plan");

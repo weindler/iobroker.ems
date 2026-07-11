@@ -147,15 +147,14 @@ Semantische Revision — reine Timestamp-Änderung erhöht Revision nicht.
 - **Heizstab-Runtime (v0.1.129):** liest Daily-Plan-Allocation als Leistungsobergrenze im Auto-Modus; siehe `docs/EMS_LIGHT_IMMERSION_DAILY_PLAN_RUNTIME.md`
 - **Klima-Runtime (v0.1.130):** liest Daily-Plan-Allocation pro Unit + Governance-Gate; siehe `docs/EMS_LIGHT_AC_DAILY_PLAN_RUNTIME.md`
 - **Wallbox (v0.1.131):** liest Daily-Plan-Allocation diagnostisch read-only; siehe `docs/EMS_LIGHT_WALLBOX_DAILY_PLAN_READONLY.md`
-- Batterie-Runtime liest den Daily Plan noch nicht
+- **Batterie-Laden (v0.1.132):** Daily-Plan-Allocation als Ladeleistungsfreigabe; siehe `docs/EMS_LIGHT_BATTERY_DAILY_PLAN_RUNTIME.md`
+- Batterie-Entladung weiterhin unsupported
 - Keine direkten Geräte-Writes aus dem Daily Plan selbst
 - Legacy-Thermal-Planner bleibt als Fallback für Heizstab
 
 ## 17. Noch nicht vorhanden
 
-- Runtime-Dispatch für Batterie aus Daily Plan
-- Wallbox-Live-Steuerung / EVCC-Writes
-- Batterie-Entladesteuerung
+- Batterie-Entladesteuerung / `battery.discharge` Dispatch
 - KI-Optimierung
 - Statistikvergleich
 - Observe-Modus

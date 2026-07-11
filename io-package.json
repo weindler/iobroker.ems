@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.131",
+		"version": "0.1.132",
 		"news": {
+			"0.1.132": {
+				"en": "The supported battery charge path now uses the current daily plan allocation as a charging power allowance. Manual user intent, safety, fault/lockout, SOC limits, ownership, feedback, restore, dryrun and live gates remain unchanged. Battery winter and grid balance serve only as fallbacks when the daily plan is missing or invalid; discharge control remains disabled.",
+				"de": "Der unterstützte Batterie-Ladepfad nutzt nun die aktuelle Daily-Plan-Allocation als Ladeleistungsfreigabe. Manueller User Intent, Safety, Fault/Lockout, SOC-Grenzen, Ownership, Feedback, Restore, Dryrun und Live-Gates bleiben erhalten. Battery Winter und Grid Balance dienen nur noch als Fallback bei fehlendem oder ungültigem Daily Plan; die Entladesteuerung bleibt deaktiviert."
+			},
 			"0.1.131": {
 				"en": "The wallbox now evaluates the current daily plan allocation, charging power, energy source and deadline in read-only operation. The connected gate prevents charging allowances without a plugged-in vehicle; an SOC of 0 in this state is harmless. No EVCC or wallbox commands are written.",
 				"de": "Die Wallbox wertet nun die aktuelle Daily-Plan-Allocation, Ladeleistung, Energiequelle und Deadline im read-only-Betrieb aus. Das Connected-Gate verhindert Ladefreigaben ohne angeschlossenes Fahrzeug; ein SOC von 0 ist in diesem Zustand unkritisch. Es werden weiterhin keine EVCC- oder Wallbox-Kommandos geschrieben."

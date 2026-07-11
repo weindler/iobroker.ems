@@ -36,6 +36,8 @@ Keine dynamischen IDs, keine Zeitstempel in IDs. Flussrichtung über `flow`, nic
 
 ### Charge (`battery.charge`)
 
+**Runtime (v0.1.132):** Daily-Plan-Allocation als Ladeleistungsobergrenze für `sonnen_em`; siehe `docs/EMS_LIGHT_BATTERY_DAILY_PLAN_RUNTIME.md`.
+
 - Beschreibt möglichen/erforderlichen Ladebedarf aus SOC, Kapazität, Ziel-SOC (Mode-Policy, Top-Off)
 - `gridEligible` nur bei erlaubtem Netzimport, Global Mode, Profil- und Runtime-Fähigkeit
 - PV-Laden unabhängig von `gridEligible` in `details.pvChargeAllowed`
@@ -148,9 +150,8 @@ Modul: `src/operator/contributions/flexible/tick.ts`
 
 ## 13. Abgrenzung zum nächsten Block
 
-Noch **nicht** implementiert (Stand v0.1.129):
+Noch **nicht** implementiert (Stand v0.1.132):
 
-- Runtime-Dispatch für Batterie, Wallbox, Klima aus Daily Plan
 - Wallbox-Live-Steuerung / EVCC-Writes
 - Batterie-Entladesteuerung
 - AC-Governance-Fix in der Runtime

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deviceIntentFromResolvedBattery = exports.resolvedIntentHasConstraint = exports.parseResolvedBatteryIntentJson = void 0;
+exports.deviceIntentFromResolvedBattery = exports.resolvedIntentHasConstraint = exports.resolvedIntentHasManualPriority = exports.parseResolvedBatteryIntentJson = void 0;
 const intent_1 = require("../core/intent");
 function parseResolvedBatteryIntentJson(raw) {
     if (!raw)
@@ -17,6 +17,27 @@ function parseResolvedBatteryIntentJson(raw) {
     return null;
 }
 exports.parseResolvedBatteryIntentJson = parseResolvedBatteryIntentJson;
+function resolvedIntentHasManualPriority(intent) {
+    if (intent.intent_state === "disabled" || intent.intent_state === "not_configured")
+        return false;
+    if (intent.manual_override.active) {
+        if (intent.manual_override.valid_until) {
+            const until = Date.parse(intent.manual_override.valid_until);
+            if (Number.isFinite(until) && until <= Date.now())
+                return false;
+        }
+        return true;
+    }
+    if (intent.operating_request.status === "valid") {
+        const op = intent.operating_request.value;
+        const kind = intent.operating_request.origin?.change_kind;
+        const manualKind = kind === "manual_explicit" || kind === "manual_inferred";
+        if (manualKind && op !== null && op !== "auto" && op !== "unknown")
+            return true;
+    }
+    return false;
+}
+exports.resolvedIntentHasManualPriority = resolvedIntentHasManualPriority;
 function resolvedIntentHasConstraint(intent) {
     if (intent.intent_state === "disabled" || intent.intent_state === "not_configured")
         return false;

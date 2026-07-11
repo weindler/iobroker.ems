@@ -15,6 +15,24 @@ export function parseResolvedBatteryIntentJson(raw: unknown): ResolvedBatteryInt
 	return null;
 }
 
+export function resolvedIntentHasManualPriority(intent: ResolvedBatteryIntent): boolean {
+	if (intent.intent_state === "disabled" || intent.intent_state === "not_configured") return false;
+	if (intent.manual_override.active) {
+		if (intent.manual_override.valid_until) {
+			const until = Date.parse(intent.manual_override.valid_until);
+			if (Number.isFinite(until) && until <= Date.now()) return false;
+		}
+		return true;
+	}
+	if (intent.operating_request.status === "valid") {
+		const op = intent.operating_request.value;
+		const kind = intent.operating_request.origin?.change_kind;
+		const manualKind = kind === "manual_explicit" || kind === "manual_inferred";
+		if (manualKind && op !== null && op !== "auto" && op !== "unknown") return true;
+	}
+	return false;
+}
+
 export function resolvedIntentHasConstraint(intent: ResolvedBatteryIntent): boolean {
 	if (intent.intent_state === "disabled" || intent.intent_state === "not_configured") return false;
 	const fields = [

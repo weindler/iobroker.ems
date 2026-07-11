@@ -25,6 +25,7 @@ describe("grid balance", () => {
 		batteryHoldActive: false,
 		winterGridPlanActive: false,
 		mode1Active: false,
+		dailyPlanAuthoritative: false,
 		priceNowCt: 22,
 		priceMedianCt: 28,
 		priceGate: { enabled: true, maxPriceCtPerKwh: null as number | null, medianFactor: 1.05 },
@@ -48,6 +49,12 @@ describe("grid balance", () => {
 		const r = computeGridBalanceTarget({ ...baseInputs, evccCharging: true });
 		assert.equal(r.gatePassed, false);
 		assert.match(r.reasonDe, /EVCC/);
+	});
+
+	it("blocks when daily plan is authoritative", () => {
+		const r = computeGridBalanceTarget({ ...baseInputs, dailyPlanAuthoritative: true });
+		assert.equal(r.gatePassed, false);
+		assert.match(r.reasonDe, /Daily Plan/);
 	});
 
 	it("passes price gate on absolute threshold", () => {

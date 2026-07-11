@@ -120,10 +120,10 @@ Implementiert:
 
 Noch nicht implementiert:
 
-- Runtime-Dispatch aus Daily Plan
-- Vollständige Abschaltung alter Einzelplanner
-- Zentrale Allocation an Runtime
-- Wallbox-Dispatch
+- Wallbox-Live-Dispatch / EVCC-Writes
 - Batterie-Entladung
+- Vollständige Abschaltung alter Einzelplanner
 - KI-Optimierung
 - Drei-Szenarien-Statistik
+
+Runtime-Dispatch aus Daily Plan (Stand v0.1.132): Heizstab, Klima, Batterie-Laden aktiv; Wallbox read-only diagnostisch.

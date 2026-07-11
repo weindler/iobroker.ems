@@ -282,6 +282,7 @@ Vollständige Pfad-Konventionen: `src/tree_paths.ts`.
 - **Zentrale Write-Funktion (`runtime/execute.ts`):** alle realen Batterie-Writes laufen über `executeBatteryWrite`; das finale Gate prüft unmittelbar vor `setForeignState` global Live, Governance, Profilbereitschaft, Intent, Telemetrie, Fault/Lockout, Mapping und Ownership.
 - **Ownership & Safe Restore:** EMS führt Safe Restore nur aus, wenn es die Batterie selbst in den manuellen Modus versetzt hat; fremde manuelle Steuerung wird nicht überschrieben.
 - **Verhältnis zu Governance/Learning:** `battery_enabled = false` stoppt Steuerung kontrolliert, Telemetrie und Battery Runtime Learning laufen weiter.
+- **Daily Plan (v0.1.132):** Ladepfad liest `planner.intent.allocation.battery.plan_json`, setzt Ladeleistungsobergrenze, blockiert Grid Balance bei autoritativem Plan. Details: `docs/EMS_LIGHT_BATTERY_DAILY_PLAN_RUNTIME.md`
 
 ---
 

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runForecastPlanTick = exports.resolveForecastRevisionChangeForTest = exports.forecastPlanRevisionForTest = exports.resetForecastPlanRevisionForTest = void 0;
+exports.primeForecastPeriodicCache = exports.runForecastPlanTick = exports.resolveForecastRevisionChangeForTest = exports.forecastPlanRevisionForTest = exports.resetForecastPlanRevisionForTest = void 0;
 const forecast_plan_write_probe_1 = require("../../diagnostics/forecast_plan_write_probe");
 const barrier_1 = require("../../bootstrap/barrier");
 const state_write_1 = require("../../policy/core/state_write");
@@ -235,7 +235,7 @@ async function runForecastPlanTick(host, gridForecast, flexibleContributions = [
     const learningFp = await learningInputFingerprint(host);
     const fullFp = await forecastInputFingerprint(host);
     const learningChanged = lastLearningFingerprint !== "" && learningFp !== lastLearningFingerprint;
-    const persistToDb = options.persistToDb !== false || learningChanged;
+    const persistToDb = options.persistToDb !== false;
     if ((0, barrier_1.isBootstrapComplete)() && !options.forceRebuild && !learningChanged && lastLearningFingerprint !== "") {
         if (cachedPeriodicPlan) {
             host.log?.info?.(`forecast plan periodic: learning unchanged — skip rebuild (revision=${cachedPeriodicPlan.revision}, grid/flex may have ticked)`);
@@ -321,3 +321,14 @@ async function runForecastPlanTick(host, gridForecast, flexibleContributions = [
     return plan;
 }
 exports.runForecastPlanTick = runForecastPlanTick;
+/** After learning init — align skip fingerprints with post-learning state (planner ran earlier). */
+async function primeForecastPeriodicCache(host) {
+    const fromFile = await loadPlanFromFile(host);
+    if (!fromFile)
+        return;
+    const learningFp = await learningInputFingerprint(host);
+    const fullFp = await forecastInputFingerprint(host);
+    rememberPeriodicPlan(fromFile, fullFp, learningFp);
+    host.log?.info?.(`forecast plan cache primed: revision=${fromFile.revision} slots=${fromFile.slots.length}`);
+}
+exports.primeForecastPeriodicCache = primeForecastPeriodicCache;

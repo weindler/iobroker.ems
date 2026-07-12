@@ -324,7 +324,7 @@ export async function runForecastPlanTick(
 	const learningFp = await learningInputFingerprint(host);
 	const fullFp = await forecastInputFingerprint(host);
 	const learningChanged = lastLearningFingerprint !== "" && learningFp !== lastLearningFingerprint;
-	const persistToDb = options.persistToDb !== false || learningChanged;
+	const persistToDb = options.persistToDb !== false;
 	if (isBootstrapComplete() && !options.forceRebuild && !learningChanged && lastLearningFingerprint !== "") {
 		if (cachedPeriodicPlan) {
 			(host.log as MemoryProbeLogger | undefined)?.info?.(
@@ -426,4 +426,16 @@ export async function runForecastPlanTick(
 	}
 
 	return plan;
+}
+
+/** After learning init — align skip fingerprints with post-learning state (planner ran earlier). */
+export async function primeForecastPeriodicCache(host: ContributionsReadHost): Promise<void> {
+	const fromFile = await loadPlanFromFile(host);
+	if (!fromFile) return;
+	const learningFp = await learningInputFingerprint(host);
+	const fullFp = await forecastInputFingerprint(host);
+	rememberPeriodicPlan(fromFile, fullFp, learningFp);
+	(host.log as MemoryProbeLogger | undefined)?.info?.(
+		`forecast plan cache primed: revision=${fromFile.revision} slots=${fromFile.slots.length}`,
+	);
 }

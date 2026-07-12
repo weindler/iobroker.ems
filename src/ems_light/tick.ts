@@ -10,6 +10,8 @@ import { runDailyPlanTick } from "../operator/daily_plan/tick";
 export type EmsLightPhase1TickOptions = {
 	/** When false, skip grid/forecast/daily operator ticks (planner runtime already ran them). */
 	operatorTicks?: boolean;
+	/** When false, skip forecast + daily plan ticks (grid/flex/planner still run). */
+	planTicks?: boolean;
 	/** When false, forecast/daily plans are computed in memory only (no file/scalar persistence). Default true. */
 	persistPlans?: boolean;
 };
@@ -19,6 +21,7 @@ export async function runEmsLightPhase1Tick(
 	options: EmsLightPhase1TickOptions = {},
 ): Promise<void> {
 	const runOperatorTicks = options.operatorTicks !== false;
+	const runPlanTicks = options.planTicks !== false;
 	const persistPlans = options.persistPlans !== false;
 	touchEmsActivity();
 	const ts = new Date().toISOString();
@@ -75,19 +78,21 @@ export async function runEmsLightPhase1Tick(
 		}
 
 		let forecastPlan;
-		try {
-			forecastPlan = await runForecastPlanTick(host, gridForecast, flexibleContributions, {
-				persistToDb: persistPlans,
-			});
-		} catch (e) {
-			hints.push(`forecast_plan: ${String(e)}`);
-		}
-
-		if (forecastPlan) {
+		if (runPlanTicks) {
 			try {
-				await runDailyPlanTick(host, forecastPlan, { persistToDb: persistPlans });
+				forecastPlan = await runForecastPlanTick(host, gridForecast, flexibleContributions, {
+					persistToDb: persistPlans,
+				});
 			} catch (e) {
-				hints.push(`daily_plan: ${String(e)}`);
+				hints.push(`forecast_plan: ${String(e)}`);
+			}
+
+			if (forecastPlan) {
+				try {
+					await runDailyPlanTick(host, forecastPlan, { persistToDb: persistPlans });
+				} catch (e) {
+					hints.push(`daily_plan: ${String(e)}`);
+				}
 			}
 		}
 	}

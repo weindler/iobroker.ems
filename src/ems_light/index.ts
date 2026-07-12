@@ -24,6 +24,7 @@ import { ensurePlannerStateTree, runPlannerRuntime, stopPlanner, type PlannerHos
 import { resetGlobalModesRuntime } from "../global_modes";
 import { ensureEmsLightStates } from "./ensure_states";
 import { runEmsLightPhase1Tick } from "./tick";
+import { primeForecastPeriodicCache } from "../operator/forecast/tick";
 import type { LiveCacheHost } from "./live_cache";
 import { logMemoryInventory, setMemoryInventoryContext } from "../diagnostics/memory_inventory";
 import { markModuleInit } from "../diagnostics/init_guard";
@@ -214,6 +215,9 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 		adapter.log.error(`User Intent Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
 	}
 	probeStartupMemory(adapter.log, "after_intent_engine_init");
+
+	await primeForecastPeriodicCache(host as Parameters<typeof primeForecastPeriodicCache>[0]);
+
 	policyAdapter = adapter;
 	try {
 		await adapter.subscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE);
@@ -234,7 +238,7 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 	const dailyHostForTick = energyDailyRollupHost;
 	const powerHostForTick = powerRollupHost;
 	tickTimer = setInterval(() => {
-		void runEmsLightPhase1Tick(host, { persistPlans: false }).catch((e) => {
+		void runEmsLightPhase1Tick(host, { persistPlans: false, planTicks: false }).catch((e) => {
 			adapter.log.error(`EMS-Light tick: ${e}`);
 		});
 		if (dailyHostForTick) {
@@ -249,7 +253,7 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 		}
 	}, sec * 1000);
 
-	adapter.log.debug(`EMS-Light Phase 1 ready (tick ${sec}s, plans persist to file)`);
+	adapter.log.debug(`EMS-Light Phase 1 ready (tick ${sec}s, plan rebuild only at startup)`);
 }
 
 export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<void> {

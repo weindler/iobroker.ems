@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getImmersionDailyPlanContextForTest = exports.getImmersionPersistForTest = exports.resetImmersionRuntimeForTest = exports.stopImmersionRuntimeEngine = exports.initImmersionRuntimeEngine = exports.hydrateImmersionRuntimePersist = exports.handleImmersionFaultReset = exports.runImmersionRuntimeTick = exports.immersionRuntimeWatchedForeignIds = void 0;
 const ems_activity_1 = require("../../../ems_activity");
+const startup_memory_1 = require("../../../diagnostics/startup_memory");
 const execution_mode_1 = require("../../../execution_mode");
 const device_write_1 = require("../../../device_write");
 const governance_1 = require("../../../addons/governance");
@@ -167,6 +168,7 @@ async function applyStageWrites(host, stageIndex, live) {
 }
 async function runImmersionRuntimeTick(host) {
     (0, ems_activity_1.touchEmsActivity)();
+    (0, startup_memory_1.probeStartupMemory)(host.log, "immersion_tick_start");
     const now = new Date();
     const nowMs = now.getTime();
     const config = (0, device_config_1.immersionDeviceConfigFromAdapter)(host.config);
@@ -186,9 +188,11 @@ async function runImmersionRuntimeTick(host) {
     let tempVal = null;
     let tempObsMs = null;
     if (config.bufferTempEnabled && config.bufferTempStateId) {
+        (0, startup_memory_1.probeStartupMemory)(host.log, "immersion_before_mapping_reads");
         const tr = await readForeignNum(host, config.bufferTempStateId);
         tempVal = tr.value;
         tempObsMs = tr.tsMs;
+        (0, startup_memory_1.probeStartupMemory)(host.log, "immersion_after_mapping_reads");
     }
     const temperature = (0, fsm_1.evaluateTemperature)(tempVal, tempObsMs, nowMs, config);
     const powerRead = config.actualPowerStateId ? await readForeignNum(host, config.actualPowerStateId) : { value: null, tsMs: null };
@@ -448,8 +452,12 @@ async function initImmersionRuntimeEngine(host) {
         return;
     engineActive = true;
     hostRef = host;
+    (0, startup_memory_1.probeStartupMemory)(host.log, "immersion_before_runtime_state_ensure");
     await (0, ensure_states_1.ensureImmersionRuntimeStates)(host);
+    (0, startup_memory_1.probeStartupMemory)(host.log, "immersion_after_runtime_state_ensure");
+    (0, startup_memory_1.probeStartupMemory)(host.log, "immersion_before_consumer_stats_init");
     await (0, consumer_stats_1.initConsumerStatsForAddon)(host, "immersion_heater");
+    (0, startup_memory_1.probeStartupMemory)(host.log, "immersion_after_consumer_stats_init");
     await hydrateImmersionRuntimePersist(host);
     const config = (0, device_config_1.immersionDeviceConfigFromAdapter)(host.config);
     const subs = new Set([
@@ -489,7 +497,9 @@ async function initImmersionRuntimeEngine(host) {
             subscribedIds.push(id);
         }
     }
+    (0, startup_memory_1.probeStartupMemory)(host.log, "immersion_before_first_runtime_tick");
     await runImmersionRuntimeTick(host);
+    (0, startup_memory_1.probeStartupMemory)(host.log, "immersion_after_first_runtime_writes");
     host.log.debug?.("immersion_heater: runtime engine initialized");
 }
 exports.initImmersionRuntimeEngine = initImmersionRuntimeEngine;

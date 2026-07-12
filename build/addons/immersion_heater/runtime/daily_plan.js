@@ -1,8 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveImmersionDecisionSource = exports.resolveImmersionDailyPlanAllocation = exports.resolveImmersionDailyPlanFromData = exports.mergeSlotAllocations = exports.stageIndexForMaxPowerW = exports.parseDailyAllocationEntries = exports.resetImmersionDailyPlanCache = exports.isImmersionAllocationSummaryAuthoritative = void 0;
+exports.resolveImmersionDecisionSource = exports.resolveImmersionDailyPlanAllocation = exports.resolveImmersionDailyPlanFromData = exports.mergeSlotAllocations = exports.stageIndexForMaxPowerW = exports.parseDailyAllocationEntries = exports.resetImmersionDailyPlanCache = exports.shouldDeferFullDailyPlanRead = exports.immersionAllocationFallbackReason = exports.isImmersionAllocationSummaryAuthoritative = void 0;
 const config_1 = require("../../../intent/config");
+const barrier_1 = require("../../../bootstrap/barrier");
 const memory_inventory_1 = require("../../../diagnostics/memory_inventory");
+const startup_memory_1 = require("../../../diagnostics/startup_memory");
 const contribution_ids_1 = require("../../../operator/contribution_ids");
 const states_1 = require("../../../operator/daily_plan/states");
 const slots_1 = require("../../../operator/daily_plan/slots");
@@ -39,6 +41,49 @@ function isImmersionAllocationSummaryAuthoritative(meta, now, allocationEntries)
     return true;
 }
 exports.isImmersionAllocationSummaryAuthoritative = isImmersionAllocationSummaryAuthoritative;
+function immersionAllocationFallbackReason(meta, now, allocationEntries) {
+    if (allocationEntries === null) {
+        return "invalid_allocation_schema";
+    }
+    if (!USABLE_DAILY_PLAN_STATUSES.has(meta.status)) {
+        return `status_not_usable:${meta.status || "empty"}`;
+    }
+    if (!isValidTimezone(meta.timezone)) {
+        return "invalid_timezone";
+    }
+    if (!Number.isFinite(meta.revision) || meta.revision < 1) {
+        return "revision_not_ready";
+    }
+    const localDate = (0, time_1.localDateKeyInTimezone)(now, meta.timezone);
+    if (meta.date !== localDate) {
+        return `date_mismatch:${meta.date}!=${localDate}`;
+    }
+    if (meta.validUntil) {
+        const validUntilMs = Date.parse(meta.validUntil);
+        if (!Number.isFinite(validUntilMs) || now.getTime() > validUntilMs) {
+            return "plan_expired";
+        }
+    }
+    return null;
+}
+exports.immersionAllocationFallbackReason = immersionAllocationFallbackReason;
+/** Skip stale full-plan reads while bootstrap is open or the planner has not published a daily plan yet. */
+function shouldDeferFullDailyPlanRead(fallbackReason) {
+    if (!(0, barrier_1.isBootstrapComplete)()) {
+        return true;
+    }
+    if (fallbackReason === "revision_not_ready") {
+        return true;
+    }
+    if (fallbackReason?.startsWith("status_not_usable:")) {
+        const status = fallbackReason.slice("status_not_usable:".length);
+        if (status === "empty" || status === "not_initialized") {
+            return true;
+        }
+    }
+    return false;
+}
+exports.shouldDeferFullDailyPlanRead = shouldDeferFullDailyPlanRead;
 let planCache = null;
 function resetImmersionDailyPlanCache() {
     planCache = null;
@@ -371,21 +416,41 @@ async function loadPlanData(host, now) {
     if (planCache && planCache.revision === revision) {
         return { meta, entries: planCache.entries, fullPlan: planCache.fullPlan };
     }
-    const allocationRaw = parseJson(await readStr(host, states_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson));
+    (0, startup_memory_1.probeStartupMemory)(host.log, "immersion_before_allocation_summary_read");
+    const allocationRawStr = await readStr(host, states_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson);
+    (0, startup_memory_1.probeStartupMemory)(host.log, "immersion_after_allocation_summary_read");
+    const allocationRaw = parseJson(allocationRawStr);
     const allocationEntries = parseDailyAllocationEntries(allocationRaw);
-    const allocationAuthoritative = isImmersionAllocationSummaryAuthoritative(meta, now, allocationEntries);
+    const fallbackReason = immersionAllocationFallbackReason(meta, now, allocationEntries);
+    const allocationAuthoritative = fallbackReason === null;
+    host.log?.info?.(`EMS mem-immersion-plan source=${allocationAuthoritative ? "allocation_only" : "full_plan_fallback"} ` +
+        `fallback=${fallbackReason ?? "none"} ` +
+        `stateId=${allocationAuthoritative ? states_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson : states_1.DAILY_PLAN_STATE_IDS.planJson} ` +
+        `payloadBytes=${allocationAuthoritative
+            ? allocationRawStr?.length ?? 0
+            : 0}`);
     let fullPlan = null;
-    if (!allocationAuthoritative) {
-        const fullPlanRaw = parseJson(await readStr(host, states_1.DAILY_PLAN_STATE_IDS.planJson));
+    const deferFullPlan = shouldDeferFullDailyPlanRead(fallbackReason);
+    if (!allocationAuthoritative && !deferFullPlan) {
+        (0, startup_memory_1.probeStartupMemory)(host.log, "immersion_before_full_plan_read");
+        const fullPlanRawStr = await readStr(host, states_1.DAILY_PLAN_STATE_IDS.planJson);
+        const fullPlanRaw = parseJson(fullPlanRawStr);
         fullPlan = parseFullDailyPlan(fullPlanRaw);
+        (0, startup_memory_1.probeStartupMemory)(host.log, "immersion_after_full_plan_read");
+        host.log?.info?.(`EMS mem-immersion-plan full_plan_read stateId=${states_1.DAILY_PLAN_STATE_IDS.planJson} payloadBytes=${fullPlanRawStr?.length ?? 0}`);
         (0, memory_inventory_1.recordMemoryInventory)({
             module: "immersion_daily_plan",
             checkpoint: "full_plan_read",
-            payloadBytes: typeof fullPlanRaw === "string"
-                ? fullPlanRaw.length
-                : fullPlanRaw
-                    ? JSON.stringify(fullPlanRaw).length
-                    : 0,
+            payloadBytes: fullPlanRawStr?.length ?? 0,
+        });
+    }
+    else if (!allocationAuthoritative && deferFullPlan) {
+        host.log?.info?.(`EMS mem-immersion-plan skip_full_plan fallback=${fallbackReason ?? "bootstrap_pending"} ` +
+            `bootstrapComplete=${(0, barrier_1.isBootstrapComplete)()}`);
+        (0, memory_inventory_1.recordMemoryInventory)({
+            module: "immersion_daily_plan",
+            checkpoint: "skip_full_plan",
+            payloadBytes: 0,
         });
     }
     else {
@@ -393,11 +458,7 @@ async function loadPlanData(host, now) {
             module: "immersion_daily_plan",
             checkpoint: "allocation_only",
             arrayEntries: allocationEntries?.length ?? 0,
-            payloadBytes: typeof allocationRaw === "string"
-                ? allocationRaw.length
-                : allocationRaw
-                    ? JSON.stringify(allocationRaw).length
-                    : 0,
+            payloadBytes: allocationRawStr?.length ?? 0,
         });
     }
     const entries = immersionEntriesFromSources(allocationAuthoritative ? allocationEntries : null, fullPlan);

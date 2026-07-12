@@ -11,6 +11,7 @@ const slots_1 = require("../../../operator/daily_plan/slots");
 const device_config_js_1 = require("../device_config.js");
 const daily_plan_js_1 = require("./daily_plan.js");
 const states_1 = require("../../../operator/daily_plan/states");
+const barrier_js_1 = require("../../../bootstrap/barrier.js");
 const TZ = "UTC";
 const NOW = new Date("2026-07-11T10:07:00.000Z");
 const SLOT_START = (0, slots_1.slotStartIsoFloored)(NOW, TZ);
@@ -48,6 +49,9 @@ function allocationEntry(contributionId, allocatedPowerW, status = "allocated") 
     };
 }
 (0, node_test_1.describe)("immersion daily plan reader", () => {
+    (0, node_test_1.beforeEach)(() => {
+        (0, barrier_js_1.markBootstrapComplete)();
+    });
     (0, node_test_1.it)("parses valid allocation JSON array", () => {
         const raw = [allocationEntry(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_MANDATORY, 1700)];
         const parsed = (0, daily_plan_js_1.parseDailyAllocationEntries)(JSON.stringify(raw));
@@ -300,5 +304,46 @@ function allocationEntry(contributionId, allocatedPowerW, status = "allocated") 
         strict_1.default.equal((0, daily_plan_js_1.isImmersionAllocationSummaryAuthoritative)({ ...meta, date: "2026-07-10" }, now, []), false);
         strict_1.default.equal((0, daily_plan_js_1.isImmersionAllocationSummaryAuthoritative)({ ...meta, revision: 0 }, now, []), false);
         strict_1.default.equal((0, daily_plan_js_1.isImmersionAllocationSummaryAuthoritative)(meta, now, null), false);
+    });
+    (0, node_test_1.it)("shouldDeferFullDailyPlanRead during bootstrap and revision_not_ready", () => {
+        (0, barrier_js_1.resetBootstrapBarrierForTest)();
+        strict_1.default.equal((0, daily_plan_js_1.shouldDeferFullDailyPlanRead)("revision_not_ready"), true);
+        strict_1.default.equal((0, daily_plan_js_1.shouldDeferFullDailyPlanRead)("status_not_usable:not_initialized"), true);
+        strict_1.default.equal((0, daily_plan_js_1.shouldDeferFullDailyPlanRead)("status_not_usable:empty"), true);
+        (0, barrier_js_1.markBootstrapComplete)();
+        strict_1.default.equal((0, daily_plan_js_1.shouldDeferFullDailyPlanRead)("revision_not_ready"), true);
+        strict_1.default.equal((0, daily_plan_js_1.shouldDeferFullDailyPlanRead)("status_not_usable:not_initialized"), true);
+        strict_1.default.equal((0, daily_plan_js_1.shouldDeferFullDailyPlanRead)("date_mismatch:old!=new"), false);
+    });
+    (0, node_test_1.it)("skips full daily plan read during bootstrap even when allocation is invalid", async () => {
+        (0, barrier_js_1.resetBootstrapBarrierForTest)();
+        (0, daily_plan_js_1.resetImmersionDailyPlanCache)();
+        const reads = [];
+        const host = {
+            config: { timezone: TZ },
+            log: { info() { } },
+            async getStateAsync(id) {
+                reads.push(id);
+                if (id === states_1.DAILY_PLAN_STATE_IDS.status)
+                    return { val: "not_initialized", ack: true };
+                if (id === states_1.DAILY_PLAN_STATE_IDS.date)
+                    return { val: "", ack: true };
+                if (id === states_1.DAILY_PLAN_STATE_IDS.revision)
+                    return { val: 0, ack: true };
+                if (id === states_1.DAILY_PLAN_STATE_IDS.validUntil)
+                    return { val: "", ack: true };
+                if (id === states_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson) {
+                    return { val: "{not-an-array}", ack: true };
+                }
+                if (id === states_1.DAILY_PLAN_STATE_IDS.planJson) {
+                    return { val: '{"date":"2026-07-11","allocations":[]}', ack: true };
+                }
+                return null;
+            },
+        };
+        const result = await (0, daily_plan_js_1.resolveImmersionDailyPlanAllocation)(host, MULTI_STAGE_CFG, NOW);
+        strict_1.default.equal(result.decisionSource, "thermal_fallback");
+        strict_1.default.equal(reads.includes(states_1.DAILY_PLAN_STATE_IDS.planJson), false);
+        (0, barrier_js_1.markBootstrapComplete)();
     });
 });

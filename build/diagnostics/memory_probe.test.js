@@ -24,4 +24,10 @@ const memory_probe_js_1 = require("./memory_probe.js");
         strict_1.default.equal(typeof delta.rssMiB, "number");
         strict_1.default.equal(typeof delta.heapUsedMiB, "number");
     });
+    (0, node_test_1.it)("converts Linux maxRSS KiB to MiB", () => {
+        strict_1.default.equal((0, memory_probe_js_1.maxRssToMiBForTest)(573440, "linux"), 560);
+    });
+    (0, node_test_1.it)("converts Windows maxRSS bytes to MiB", () => {
+        strict_1.default.equal((0, memory_probe_js_1.maxRssToMiBForTest)(1048576, "win32"), 1);
+    });
 });

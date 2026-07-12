@@ -1,4 +1,5 @@
 import { touchEmsActivity } from "../../../ems_activity";
+import { probeStartupMemory } from "../../../diagnostics/startup_memory";
 import { isLiveWriteAllowed } from "../../../execution_mode";
 import { writeForeignIfChanged } from "../../../device_write";
 import { isAddonGovernanceEnabledFromState } from "../../../addons/governance";
@@ -227,6 +228,7 @@ async function applyStageWrites(host: ImmersionRuntimeHost, stageIndex: number, 
 
 export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promise<void> {
 	touchEmsActivity();
+	probeStartupMemory(host.log, "immersion_tick_start");
 	const now = new Date();
 	const nowMs = now.getTime();
 	const config = immersionDeviceConfigFromAdapter(host.config);
@@ -249,9 +251,11 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 	let tempVal: number | null = null;
 	let tempObsMs: number | null = null;
 	if (config.bufferTempEnabled && config.bufferTempStateId) {
+		probeStartupMemory(host.log, "immersion_before_mapping_reads");
 		const tr = await readForeignNum(host, config.bufferTempStateId);
 		tempVal = tr.value;
 		tempObsMs = tr.tsMs;
+		probeStartupMemory(host.log, "immersion_after_mapping_reads");
 	}
 
 	const temperature = evaluateTemperature(tempVal, tempObsMs, nowMs, config);
@@ -562,8 +566,12 @@ export async function initImmersionRuntimeEngine(host: ImmersionRuntimeHost): Pr
 	if (engineActive && hostRef === host) return;
 	engineActive = true;
 	hostRef = host;
+	probeStartupMemory(host.log, "immersion_before_runtime_state_ensure");
 	await ensureImmersionRuntimeStates(host);
+	probeStartupMemory(host.log, "immersion_after_runtime_state_ensure");
+	probeStartupMemory(host.log, "immersion_before_consumer_stats_init");
 	await initConsumerStatsForAddon(host, "immersion_heater");
+	probeStartupMemory(host.log, "immersion_after_consumer_stats_init");
 	await hydrateImmersionRuntimePersist(host);
 
 	const config = immersionDeviceConfigFromAdapter(host.config);
@@ -599,7 +607,9 @@ export async function initImmersionRuntimeEngine(host: ImmersionRuntimeHost): Pr
 		}
 	}
 
+	probeStartupMemory(host.log, "immersion_before_first_runtime_tick");
 	await runImmersionRuntimeTick(host);
+	probeStartupMemory(host.log, "immersion_after_first_runtime_writes");
 	host.log.debug?.("immersion_heater: runtime engine initialized");
 }
 

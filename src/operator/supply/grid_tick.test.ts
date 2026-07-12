@@ -94,7 +94,7 @@ describe("grid supply revision writes", () => {
 		assert.ok(host.getCalls > readsAfterFirst);
 	});
 
-	it("same revision with missing state reads and writes new values", async () => {
+	it("same revision with missing state writes new values via skipRead", async () => {
 		const forecast = sampleForecast();
 		const input = sampleInput();
 		const host = mockHost();
@@ -102,14 +102,14 @@ describe("grid supply revision writes", () => {
 		await runGridSupplyTick(host as Parameters<typeof runGridSupplyTick>[0], { forecast, input });
 		assert.equal(gridSupplyRevisionForTest(), 1);
 		assert.equal(host.store.get(GRID_SUPPLY_STATE_IDS.revision), 1);
-		assert.ok(host.getCalls > 0);
+		assert.equal(host.getCalls, 0);
 	});
 
 	it("new revision uses skipRead and commits cache only after successful writes", async () => {
 		const input = sampleInput();
 		const host = mockHost();
-		const first = sampleForecast({ reasonDe: "first" });
-		const second = sampleForecast({ reasonDe: "second" });
+		const first = sampleForecast({ currentPriceCtPerKwh: 30 });
+		const second = sampleForecast({ currentPriceCtPerKwh: 31 });
 
 		await runGridSupplyTick(host, { forecast: first, input });
 		assert.equal(gridSupplyRevisionForTest(), 1);
@@ -117,7 +117,7 @@ describe("grid supply revision writes", () => {
 
 		await runGridSupplyTick(host, { forecast: second, input });
 		assert.equal(gridSupplyRevisionForTest(), 2);
-		assert.equal(host.store.get(GRID_SUPPLY_STATE_IDS.reasonDe), "second");
+		assert.equal(host.store.get(GRID_SUPPLY_STATE_IDS.currentPriceCtPerKwh), 31);
 		assert.equal(host.getCalls, readsAfterFirst);
 	});
 

@@ -1,4 +1,4 @@
-import { describe, it } from "node:test";
+import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { CONTRIBUTION_IDS } from "../../../operator/contribution_ids";
 import { addonContributorRef } from "../../../operator/contributor";
@@ -9,6 +9,7 @@ import {
 	mergeSlotAllocations,
 	parseDailyAllocationEntries,
 	isImmersionAllocationSummaryAuthoritative,
+	shouldDeferFullDailyPlanRead,
 	resolveImmersionDailyPlanAllocation,
 	resolveImmersionDailyPlanFromData,
 	resolveImmersionDecisionSource,
@@ -16,6 +17,7 @@ import {
 	resetImmersionDailyPlanCache,
 } from "./daily_plan.js";
 import { ALLOCATION_ADDON_STATE_IDS, DAILY_PLAN_STATE_IDS } from "../../../operator/daily_plan/states";
+import { markBootstrapComplete, resetBootstrapBarrierForTest } from "../../../bootstrap/barrier.js";
 
 const TZ = "UTC";
 const NOW = new Date("2026-07-11T10:07:00.000Z");
@@ -61,6 +63,9 @@ function allocationEntry(
 }
 
 describe("immersion daily plan reader", () => {
+	beforeEach(() => {
+		markBootstrapComplete();
+	});
 	it("parses valid allocation JSON array", () => {
 		const raw = [allocationEntry(CONTRIBUTION_IDS.IMMERSION_MANDATORY, 1700)];
 		const parsed = parseDailyAllocationEntries(JSON.stringify(raw));
@@ -367,5 +372,50 @@ describe("immersion daily plan reader", () => {
 		assert.equal(isImmersionAllocationSummaryAuthoritative({ ...meta, date: "2026-07-10" }, now, []), false);
 		assert.equal(isImmersionAllocationSummaryAuthoritative({ ...meta, revision: 0 }, now, []), false);
 		assert.equal(isImmersionAllocationSummaryAuthoritative(meta, now, null), false);
+	});
+
+	it("shouldDeferFullDailyPlanRead during bootstrap and revision_not_ready", () => {
+		resetBootstrapBarrierForTest();
+		assert.equal(shouldDeferFullDailyPlanRead("revision_not_ready"), true);
+		assert.equal(shouldDeferFullDailyPlanRead("status_not_usable:not_initialized"), true);
+		assert.equal(shouldDeferFullDailyPlanRead("status_not_usable:empty"), true);
+
+		markBootstrapComplete();
+		assert.equal(shouldDeferFullDailyPlanRead("revision_not_ready"), true);
+		assert.equal(shouldDeferFullDailyPlanRead("status_not_usable:not_initialized"), true);
+		assert.equal(shouldDeferFullDailyPlanRead("date_mismatch:old!=new"), false);
+	});
+
+	it("skips full daily plan read during bootstrap even when allocation is invalid", async () => {
+		resetBootstrapBarrierForTest();
+		resetImmersionDailyPlanCache();
+		const reads: string[] = [];
+		const host = {
+			config: { timezone: TZ },
+			log: { info() {} },
+			async getStateAsync(id: string) {
+				reads.push(id);
+				if (id === DAILY_PLAN_STATE_IDS.status) return { val: "not_initialized", ack: true };
+				if (id === DAILY_PLAN_STATE_IDS.date) return { val: "", ack: true };
+				if (id === DAILY_PLAN_STATE_IDS.revision) return { val: 0, ack: true };
+				if (id === DAILY_PLAN_STATE_IDS.validUntil) return { val: "", ack: true };
+				if (id === ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson) {
+					return { val: "{not-an-array}", ack: true };
+				}
+				if (id === DAILY_PLAN_STATE_IDS.planJson) {
+					return { val: '{"date":"2026-07-11","allocations":[]}', ack: true };
+				}
+				return null;
+			},
+		};
+
+		const result = await resolveImmersionDailyPlanAllocation(
+			host as Parameters<typeof resolveImmersionDailyPlanAllocation>[0],
+			MULTI_STAGE_CFG,
+			NOW,
+		);
+		assert.equal(result.decisionSource, "thermal_fallback");
+		assert.equal(reads.includes(DAILY_PLAN_STATE_IDS.planJson), false);
+		markBootstrapComplete();
 	});
 });

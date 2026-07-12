@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
 	captureMemoryProbe,
 	formatMemoryProbeLine,
+	maxRssToMiBForTest,
 	memoryProbeDelta,
 } from "./memory_probe.js";
 
@@ -24,5 +25,13 @@ describe("memory_probe", () => {
 		const delta = memoryProbeDelta(a, b);
 		assert.equal(typeof delta.rssMiB, "number");
 		assert.equal(typeof delta.heapUsedMiB, "number");
+	});
+
+	it("converts Linux maxRSS KiB to MiB", () => {
+		assert.equal(maxRssToMiBForTest(573440, "linux"), 560);
+	});
+
+	it("converts Windows maxRSS bytes to MiB", () => {
+		assert.equal(maxRssToMiBForTest(1048576, "win32"), 1);
 	});
 });

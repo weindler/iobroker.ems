@@ -89,26 +89,26 @@ function mockHost(initial = {}) {
         strict_1.default.equal((0, grid_tick_js_1.gridSupplyRevisionForTest)(), 1);
         strict_1.default.ok(host.getCalls > readsAfterFirst);
     });
-    (0, node_test_1.it)("same revision with missing state reads and writes new values", async () => {
+    (0, node_test_1.it)("same revision with missing state writes new values via skipRead", async () => {
         const forecast = sampleForecast();
         const input = sampleInput();
         const host = mockHost();
         await (0, grid_tick_js_1.runGridSupplyTick)(host, { forecast, input });
         strict_1.default.equal((0, grid_tick_js_1.gridSupplyRevisionForTest)(), 1);
         strict_1.default.equal(host.store.get(grid_states_js_1.GRID_SUPPLY_STATE_IDS.revision), 1);
-        strict_1.default.ok(host.getCalls > 0);
+        strict_1.default.equal(host.getCalls, 0);
     });
     (0, node_test_1.it)("new revision uses skipRead and commits cache only after successful writes", async () => {
         const input = sampleInput();
         const host = mockHost();
-        const first = sampleForecast({ reasonDe: "first" });
-        const second = sampleForecast({ reasonDe: "second" });
+        const first = sampleForecast({ currentPriceCtPerKwh: 30 });
+        const second = sampleForecast({ currentPriceCtPerKwh: 31 });
         await (0, grid_tick_js_1.runGridSupplyTick)(host, { forecast: first, input });
         strict_1.default.equal((0, grid_tick_js_1.gridSupplyRevisionForTest)(), 1);
         const readsAfterFirst = host.getCalls;
         await (0, grid_tick_js_1.runGridSupplyTick)(host, { forecast: second, input });
         strict_1.default.equal((0, grid_tick_js_1.gridSupplyRevisionForTest)(), 2);
-        strict_1.default.equal(host.store.get(grid_states_js_1.GRID_SUPPLY_STATE_IDS.reasonDe), "second");
+        strict_1.default.equal(host.store.get(grid_states_js_1.GRID_SUPPLY_STATE_IDS.currentPriceCtPerKwh), 31);
         strict_1.default.equal(host.getCalls, readsAfterFirst);
     });
     (0, node_test_1.it)("failed write does not advance revision cache", async () => {

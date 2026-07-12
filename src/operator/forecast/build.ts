@@ -379,28 +379,4 @@ function isoEndOfDay(dateKey: string, timezone: string): string {
 	return isoAtTimezoneLocal(next, 0, 0, timezone);
 }
 
-export function forecastPlanRevisionPayload(plan: ForecastPlan): string {
-	const payload = {
-		status: plan.status,
-		timezone: plan.timezone,
-		horizonEnd: plan.horizonEnd,
-		slotMinutes: plan.slotMinutes,
-		activeContributors: plan.activeContributors,
-		excludedContributors: plan.excludedContributors,
-		days: plan.days,
-		slots: plan.slots,
-		contributions: plan.contributions.map((c) => ({
-			contributionId: c.contributionId,
-			flow: c.flow,
-			contributor: c.contributor,
-			roles: c.roles,
-			enabled: c.enabled,
-			quality: c.quality,
-			details: c.details,
-			slots: c.slots,
-		})),
-		quality: plan.quality,
-		reasonDe: plan.reasonDe,
-	};
-	return JSON.stringify(payload);
-}
+export { forecastPlanRevisionPayload } from "./revision";

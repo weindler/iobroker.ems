@@ -9,7 +9,8 @@ const grid_tick_1 = require("../operator/supply/grid_tick");
 const tick_1 = require("../operator/contributions/flexible/tick");
 const tick_2 = require("../operator/forecast/tick");
 const tick_3 = require("../operator/daily_plan/tick");
-async function runEmsLightPhase1Tick(host) {
+async function runEmsLightPhase1Tick(host, options = {}) {
+    const runOperatorTicks = options.operatorTicks !== false;
     (0, ems_activity_1.touchEmsActivity)();
     const ts = new Date().toISOString();
     const hints = [];
@@ -49,33 +50,35 @@ async function runEmsLightPhase1Tick(host) {
     catch (e) {
         hints.push(`planner: ${String(e)}`);
     }
-    let gridForecast;
-    try {
-        gridForecast = await (0, grid_tick_1.runGridSupplyTick)(host);
-    }
-    catch (e) {
-        hints.push(`grid_supply: ${String(e)}`);
-    }
-    let flexibleContributions = [];
-    try {
-        flexibleContributions = await (0, tick_1.runFlexibleContributionsTick)(host, gridForecast);
-    }
-    catch (e) {
-        hints.push(`flexible_contributions: ${String(e)}`);
-    }
-    let forecastPlan;
-    try {
-        forecastPlan = await (0, tick_2.runForecastPlanTick)(host, gridForecast, flexibleContributions);
-    }
-    catch (e) {
-        hints.push(`forecast_plan: ${String(e)}`);
-    }
-    if (forecastPlan) {
+    if (runOperatorTicks) {
+        let gridForecast;
         try {
-            await (0, tick_3.runDailyPlanTick)(host, forecastPlan);
+            gridForecast = await (0, grid_tick_1.runGridSupplyTick)(host);
         }
         catch (e) {
-            hints.push(`daily_plan: ${String(e)}`);
+            hints.push(`grid_supply: ${String(e)}`);
+        }
+        let flexibleContributions = [];
+        try {
+            flexibleContributions = await (0, tick_1.runFlexibleContributionsTick)(host, gridForecast);
+        }
+        catch (e) {
+            hints.push(`flexible_contributions: ${String(e)}`);
+        }
+        let forecastPlan;
+        try {
+            forecastPlan = await (0, tick_2.runForecastPlanTick)(host, gridForecast, flexibleContributions);
+        }
+        catch (e) {
+            hints.push(`forecast_plan: ${String(e)}`);
+        }
+        if (forecastPlan) {
+            try {
+                await (0, tick_3.runDailyPlanTick)(host, forecastPlan);
+            }
+            catch (e) {
+                hints.push(`daily_plan: ${String(e)}`);
+            }
         }
     }
     const health = (0, live_cache_1.deriveHealth)(liveResult, !hints.some((h) => h.includes("global.execution_mode nicht")));

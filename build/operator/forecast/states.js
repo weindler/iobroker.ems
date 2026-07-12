@@ -32,6 +32,7 @@ exports.FORECAST_PLAN_STATE_IDS = {
     planJson: "planner.intent.forecast_plan.plan_json",
     reasonDe: "planner.intent.forecast_plan.reason_de",
     revision: "planner.intent.forecast_plan.revision",
+    semanticRevisionHash: "planner.intent.forecast_plan.semantic_revision_hash",
 };
 async function ensureForecastPlanStates(host) {
     await (0, state_util_1.ensureChannel)(host, "planner.intent.forecast_plan", "Planner Forecast Plan");
@@ -50,6 +51,7 @@ async function ensureForecastPlanStates(host) {
         strState(exports.FORECAST_PLAN_STATE_IDS.planJson, "Forecast Plan vollständig (JSON)", "{}"),
         strState(exports.FORECAST_PLAN_STATE_IDS.reasonDe, "Forecast Plan Begründung (DE)", ""),
         numState(exports.FORECAST_PLAN_STATE_IDS.revision, "Forecast Plan Revision", 0),
+        strState(exports.FORECAST_PLAN_STATE_IDS.semanticRevisionHash, "Forecast Plan semantischer Revisions-Hash", ""),
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }

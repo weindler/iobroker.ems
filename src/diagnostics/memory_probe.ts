@@ -1,4 +1,5 @@
 import v8 from "node:v8";
+import os from "node:os";
 
 export interface MemoryProbeSnapshot {
 	checkpoint: string;
@@ -20,6 +21,22 @@ function bytesToMiB(bytes: number): number {
 	return Math.round((bytes / (1024 * 1024)) * 100) / 100;
 }
 
+/**
+ * Linux/macOS: process.resourceUsage().maxRSS is in KiB (getrusage ru_maxrss).
+ * Windows: documented as bytes.
+ */
+export function maxRssToMiBForTest(maxRss: number, platform: string): number {
+	if (maxRss <= 0) return 0;
+	if (platform === "win32") {
+		return bytesToMiB(maxRss);
+	}
+	return Math.round((maxRss / 1024) * 100) / 100;
+}
+
+function maxRssToMiB(maxRss: number): number {
+	return maxRssToMiBForTest(maxRss, os.platform());
+}
+
 export function captureMemoryProbe(checkpoint: string, atMs = Date.now()): MemoryProbeSnapshot {
 	const usage = process.memoryUsage();
 	const resourceUsage =
@@ -33,7 +50,7 @@ export function captureMemoryProbe(checkpoint: string, atMs = Date.now()): Memor
 		heapUsedMiB: bytesToMiB(usage.heapUsed),
 		externalMiB: bytesToMiB(usage.external),
 		arrayBuffersMiB: bytesToMiB(usage.arrayBuffers ?? 0),
-		maxRssMiB: resourceUsage ? bytesToMiB(resourceUsage.maxRSS) : null,
+		maxRssMiB: resourceUsage ? maxRssToMiB(resourceUsage.maxRSS) : null,
 		v8HeapSizeLimitMiB: bytesToMiB(stats.heap_size_limit),
 		v8TotalHeapSizeMiB: bytesToMiB(stats.total_heap_size),
 		v8UsedHeapSizeMiB: bytesToMiB(stats.used_heap_size),

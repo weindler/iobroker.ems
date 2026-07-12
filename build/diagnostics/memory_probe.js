@@ -3,10 +3,27 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.memoryProbeDelta = exports.logMemoryProbe = exports.formatMemoryProbeLine = exports.captureMemoryProbe = void 0;
+exports.memoryProbeDelta = exports.logMemoryProbe = exports.formatMemoryProbeLine = exports.captureMemoryProbe = exports.maxRssToMiBForTest = void 0;
 const node_v8_1 = __importDefault(require("node:v8"));
+const node_os_1 = __importDefault(require("node:os"));
 function bytesToMiB(bytes) {
     return Math.round((bytes / (1024 * 1024)) * 100) / 100;
+}
+/**
+ * Linux/macOS: process.resourceUsage().maxRSS is in KiB (getrusage ru_maxrss).
+ * Windows: documented as bytes.
+ */
+function maxRssToMiBForTest(maxRss, platform) {
+    if (maxRss <= 0)
+        return 0;
+    if (platform === "win32") {
+        return bytesToMiB(maxRss);
+    }
+    return Math.round((maxRss / 1024) * 100) / 100;
+}
+exports.maxRssToMiBForTest = maxRssToMiBForTest;
+function maxRssToMiB(maxRss) {
+    return maxRssToMiBForTest(maxRss, node_os_1.default.platform());
 }
 function captureMemoryProbe(checkpoint, atMs = Date.now()) {
     const usage = process.memoryUsage();
@@ -20,7 +37,7 @@ function captureMemoryProbe(checkpoint, atMs = Date.now()) {
         heapUsedMiB: bytesToMiB(usage.heapUsed),
         externalMiB: bytesToMiB(usage.external),
         arrayBuffersMiB: bytesToMiB(usage.arrayBuffers ?? 0),
-        maxRssMiB: resourceUsage ? bytesToMiB(resourceUsage.maxRSS) : null,
+        maxRssMiB: resourceUsage ? maxRssToMiB(resourceUsage.maxRSS) : null,
         v8HeapSizeLimitMiB: bytesToMiB(stats.heap_size_limit),
         v8TotalHeapSizeMiB: bytesToMiB(stats.total_heap_size),
         v8UsedHeapSizeMiB: bytesToMiB(stats.used_heap_size),

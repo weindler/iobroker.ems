@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { getModuleInitCounts, markModuleInit, resetModuleInitGuardForTest } from "../diagnostics/init_guard.js";
 import { initIntentEngine, resetIntentEngineForTest, stopIntentEngine } from "../intent/engine.js";
 import type { IntentEngineHost } from "../intent/engine.js";
-import { hydratePersistedState } from "./persist_hydrate.js";
 
 function mockIntentHost(): IntentEngineHost {
 	return {
@@ -32,20 +31,10 @@ describe("module init guard", () => {
 		stopIntentEngine();
 	});
 
-	it("persist hydration is marked exactly once per hydratePersistedState call", async () => {
-		const adapter = {
-			config: {},
-			log: { info() {}, warn() {}, debug() {} },
-			getAbsolutePath: () => undefined,
-			setObjectNotExistsAsync: async () => {},
-			getStateAsync: async () => null,
-			setStateAsync: async () => {},
-			getForeignStateAsync: async () => null,
-			setForeignStateAsync: async () => {},
-		} as unknown as ioBroker.Adapter;
-
-		await hydratePersistedState(adapter);
-		assert.equal(getModuleInitCounts().get("persist_hydration"), 1);
+	it("persist hydration marker increments once per explicit mark", () => {
+		assert.equal(markModuleInit("persist_hydration").duplicate, false);
+		assert.equal(markModuleInit("persist_hydration").duplicate, true);
+		assert.equal(getModuleInitCounts().get("persist_hydration"), 2);
 	});
 
 	it("intent engine init is marked exactly once per initIntentEngine call", async () => {

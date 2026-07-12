@@ -7,7 +7,6 @@ const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
 const init_guard_js_1 = require("../diagnostics/init_guard.js");
 const engine_js_1 = require("../intent/engine.js");
-const persist_hydrate_js_1 = require("./persist_hydrate.js");
 function mockIntentHost() {
     return {
         config: {},
@@ -33,19 +32,10 @@ function mockIntentHost() {
         (0, engine_js_1.resetIntentEngineForTest)();
         (0, engine_js_1.stopIntentEngine)();
     });
-    (0, node_test_1.it)("persist hydration is marked exactly once per hydratePersistedState call", async () => {
-        const adapter = {
-            config: {},
-            log: { info() { }, warn() { }, debug() { } },
-            getAbsolutePath: () => undefined,
-            setObjectNotExistsAsync: async () => { },
-            getStateAsync: async () => null,
-            setStateAsync: async () => { },
-            getForeignStateAsync: async () => null,
-            setForeignStateAsync: async () => { },
-        };
-        await (0, persist_hydrate_js_1.hydratePersistedState)(adapter);
-        strict_1.default.equal((0, init_guard_js_1.getModuleInitCounts)().get("persist_hydration"), 1);
+    (0, node_test_1.it)("persist hydration marker increments once per explicit mark", () => {
+        strict_1.default.equal((0, init_guard_js_1.markModuleInit)("persist_hydration").duplicate, false);
+        strict_1.default.equal((0, init_guard_js_1.markModuleInit)("persist_hydration").duplicate, true);
+        strict_1.default.equal((0, init_guard_js_1.getModuleInitCounts)().get("persist_hydration"), 2);
     });
     (0, node_test_1.it)("intent engine init is marked exactly once per initIntentEngine call", async () => {
         await (0, engine_js_1.initIntentEngine)(mockIntentHost());

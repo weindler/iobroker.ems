@@ -308,29 +308,5 @@ function isoEndOfDay(dateKey, timezone) {
     const next = (0, time_1.addDaysToDateKey)(dateKey, 1);
     return (0, time_1.isoAtTimezoneLocal)(next, 0, 0, timezone);
 }
-function forecastPlanRevisionPayload(plan) {
-    const payload = {
-        status: plan.status,
-        timezone: plan.timezone,
-        horizonEnd: plan.horizonEnd,
-        slotMinutes: plan.slotMinutes,
-        activeContributors: plan.activeContributors,
-        excludedContributors: plan.excludedContributors,
-        days: plan.days,
-        slots: plan.slots,
-        contributions: plan.contributions.map((c) => ({
-            contributionId: c.contributionId,
-            flow: c.flow,
-            contributor: c.contributor,
-            roles: c.roles,
-            enabled: c.enabled,
-            quality: c.quality,
-            details: c.details,
-            slots: c.slots,
-        })),
-        quality: plan.quality,
-        reasonDe: plan.reasonDe,
-    };
-    return JSON.stringify(payload);
-}
-exports.forecastPlanRevisionPayload = forecastPlanRevisionPayload;
+var revision_1 = require("./revision");
+Object.defineProperty(exports, "forecastPlanRevisionPayload", { enumerable: true, get: function () { return revision_1.forecastPlanRevisionPayload; } });

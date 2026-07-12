@@ -221,7 +221,7 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 	} catch (e) {
 		adapter.log.warn(`EMS-Light state subscribe: ${e}`);
 	}
-	await runEmsLightPhase1Tick(host);
+	await runEmsLightPhase1Tick(host, { operatorTicks: false });
 	if (energyDailyRollupHost) {
 		await tickEnergyDailyRollup(energyDailyRollupHost);
 	}

@@ -7,7 +7,16 @@ import { runFlexibleContributionsTick } from "../operator/contributions/flexible
 import { runForecastPlanTick } from "../operator/forecast/tick";
 import { runDailyPlanTick } from "../operator/daily_plan/tick";
 
-export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): Promise<void> {
+export type EmsLightPhase1TickOptions = {
+	/** When false, skip grid/forecast/daily operator ticks (planner runtime already ran them). */
+	operatorTicks?: boolean;
+};
+
+export async function runEmsLightPhase1Tick(
+	host: LiveCacheHost & PlannerHost,
+	options: EmsLightPhase1TickOptions = {},
+): Promise<void> {
+	const runOperatorTicks = options.operatorTicks !== false;
 	touchEmsActivity();
 	const ts = new Date().toISOString();
 	const hints: string[] = [];
@@ -47,32 +56,34 @@ export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): 
 		hints.push(`planner: ${String(e)}`);
 	}
 
-	let gridForecast;
-	try {
-		gridForecast = await runGridSupplyTick(host);
-	} catch (e) {
-		hints.push(`grid_supply: ${String(e)}`);
-	}
-
-	let flexibleContributions: Awaited<ReturnType<typeof runFlexibleContributionsTick>> = [];
-	try {
-		flexibleContributions = await runFlexibleContributionsTick(host, gridForecast);
-	} catch (e) {
-		hints.push(`flexible_contributions: ${String(e)}`);
-	}
-
-	let forecastPlan;
-	try {
-		forecastPlan = await runForecastPlanTick(host, gridForecast, flexibleContributions);
-	} catch (e) {
-		hints.push(`forecast_plan: ${String(e)}`);
-	}
-
-	if (forecastPlan) {
+	if (runOperatorTicks) {
+		let gridForecast;
 		try {
-			await runDailyPlanTick(host, forecastPlan);
+			gridForecast = await runGridSupplyTick(host);
 		} catch (e) {
-			hints.push(`daily_plan: ${String(e)}`);
+			hints.push(`grid_supply: ${String(e)}`);
+		}
+
+		let flexibleContributions: Awaited<ReturnType<typeof runFlexibleContributionsTick>> = [];
+		try {
+			flexibleContributions = await runFlexibleContributionsTick(host, gridForecast);
+		} catch (e) {
+			hints.push(`flexible_contributions: ${String(e)}`);
+		}
+
+		let forecastPlan;
+		try {
+			forecastPlan = await runForecastPlanTick(host, gridForecast, flexibleContributions);
+		} catch (e) {
+			hints.push(`forecast_plan: ${String(e)}`);
+		}
+
+		if (forecastPlan) {
+			try {
+				await runDailyPlanTick(host, forecastPlan);
+			} catch (e) {
+				hints.push(`daily_plan: ${String(e)}`);
+			}
 		}
 	}
 

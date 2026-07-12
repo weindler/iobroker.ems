@@ -181,7 +181,7 @@ async function startEmsLightPhase1Runtime(adapter) {
     catch (e) {
         adapter.log.warn(`EMS-Light state subscribe: ${e}`);
     }
-    await (0, tick_1.runEmsLightPhase1Tick)(host);
+    await (0, tick_1.runEmsLightPhase1Tick)(host, { operatorTicks: false });
     if (energyDailyRollupHost) {
         await (0, energy_daily_rollup_1.tickEnergyDailyRollup)(energyDailyRollupHost);
     }

@@ -546,6 +546,20 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 	scheduleTick();
 }
 
+let acPersistHydrated = false;
+
+/** Phase D — Klima-Runtime-Persistenz von Disk laden (ohne Subscriptions/Ticks). */
+export async function hydrateAcRuntimePersist(host: AcRuntimeHost): Promise<void> {
+	if (acPersistHydrated) {
+		return;
+	}
+	const dataDir = host.getAbsolutePath?.("air_conditioning");
+	if (dataDir) {
+		persist = await readAcRuntimePersist(dataDir);
+	}
+	acPersistHydrated = true;
+}
+
 export async function initAcRuntimeEngine(host: AcRuntimeHost): Promise<void> {
 	if (engineActive && hostRef === host) return;
 	engineActive = true;
@@ -554,10 +568,7 @@ export async function initAcRuntimeEngine(host: AcRuntimeHost): Promise<void> {
 	for (let i = 1; i <= 5; i++) {
 		await initConsumerStatsForKey(host, acUnitConsumerKey(i));
 	}
-	const dataDir = host.getAbsolutePath?.("air_conditioning");
-	if (dataDir) {
-		persist = await readAcRuntimePersist(dataDir);
-	}
+	await hydrateAcRuntimePersist(host);
 	const cfg = acGlobalConfigFromAdapter(host.config);
 	const configRecord = host.config && typeof host.config === "object" ? (host.config as Record<string, unknown>) : {};
 	const mappingTable = buildAcMappingTableFromConfig(configRecord);
@@ -611,6 +622,7 @@ export function stopAcRuntimeEngine(): void {
 	engineActive = false;
 	hostRef = null;
 	persist = { version: 1, units: {} };
+	acPersistHydrated = false;
 	subscribedIds.length = 0;
 	resetAcDailyPlanCache();
 }

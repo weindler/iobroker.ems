@@ -4,6 +4,7 @@ import { ensureAddonMappingStates, syncNativeMappingToStates } from "../../mappi
 import { AC_ADDON_ID } from "./constants";
 import { acMappingCommands, acMappingFromConfig } from "./mapping_config";
 import { addonAvailable, addonEnabled } from "../../tree_paths";
+import { ensureAcRuntimeStates } from "./runtime/ensure_states";
 import {
 	acRuntimeWatchedForeignIds,
 	initAcRuntimeEngine,
@@ -29,12 +30,26 @@ function runtimeHost(adapter: ioBroker.Adapter): AcRuntimeHost {
 	return withLearningDataPath(adapter, base);
 }
 
-export async function initAirConditioningModule(adapter: ioBroker.Adapter): Promise<null> {
+export async function ensureAirConditioningStateTree(adapter: ioBroker.Adapter): Promise<void> {
 	await ensureAddonMappingStates(adapter, AC_ADDON_ID, acMappingCommands());
+	await ensureAcRuntimeStates(runtimeHost(adapter));
+}
+
+export async function startAirConditioningModuleRuntime(adapter: ioBroker.Adapter): Promise<null> {
 	await syncNativeMappingToStates(adapter, AC_ADDON_ID, acMappingFromConfig);
 	await initAcRuntimeEngine(runtimeHost(adapter));
 	touchEmsActivity();
 	return null;
+}
+
+/** Post-Bootstrap-Reconciliation — aktuelle Fremdeingänge erneut einlesen. */
+export async function refreshAirConditioningRuntime(adapter: ioBroker.Adapter): Promise<void> {
+	await runAcRuntimeTick(runtimeHost(adapter));
+}
+
+export async function initAirConditioningModule(adapter: ioBroker.Adapter): Promise<null> {
+	await ensureAirConditioningStateTree(adapter);
+	return startAirConditioningModuleRuntime(adapter);
 }
 
 export function stopAirConditioningModule(): void {

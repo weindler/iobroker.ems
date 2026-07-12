@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.policyProviderRegistry = exports.stopPolicyEngine = exports.handleGlobalModesStateChange = exports.initPolicyEngine = exports.runPolicyEngine = void 0;
+exports.policyProviderRegistry = exports.stopPolicyEngine = exports.handleGlobalModesStateChange = exports.initPolicyEngine = exports.runPolicyEngine = exports.ensurePolicyStateTree = void 0;
 const run_1 = require("../global_modes/run");
 const constants_1 = require("./core/constants");
 const hash_1 = require("./core/hash");
@@ -11,7 +11,9 @@ const state_write_1 = require("./core/state_write");
 const build_1 = require("./global/build");
 const config_1 = require("./global/config");
 const validate_1 = require("./global/validate");
-const ensure_states_1 = require("./global/ensure_states");
+const config_2 = require("../global_modes/config");
+const ensure_states_1 = require("../global_modes/ensure_states");
+const ensure_states_2 = require("./global/ensure_states");
 const persist_1 = require("./global/persist");
 const hash_2 = require("./core/hash");
 let lastSystemRevision = null;
@@ -34,7 +36,7 @@ function snapshotForJson(snapshot) {
 }
 async function writeProviderPolicyStates(host, provider, configured, effective, globalModes) {
     const base = `policy.${provider.addonType}.${provider.instanceId}`;
-    await (0, ensure_states_1.ensureAddonPolicyStates)(host, provider.addonType, provider.instanceId);
+    await (0, ensure_states_2.ensureAddonPolicyStates)(host, provider.addonType, provider.instanceId);
     const validation = provider.validate(effective);
     const hash = (0, hash_1.computePolicyRevisionHash)(effective, validation);
     const revision = (0, hash_1.revisionFromHash)(hash);
@@ -125,9 +127,20 @@ async function writeGlobalPolicyStates(host, configured, effective) {
     }
     return revision;
 }
+/** Phase B — Policy-/Global-Mode-Objekte ohne Engine-Lauf. */
+async function ensurePolicyStateTree(host) {
+    await (0, ensure_states_2.ensureSystemPolicyStates)(host);
+    await (0, ensure_states_2.ensureGlobalPolicyStates)(host);
+    const adminDefault = (0, config_2.globalModeDefaultFromConfig)(host.config);
+    await (0, ensure_states_1.ensureGlobalModesStates)(host, adminDefault);
+    for (const provider of registry_1.policyProviderRegistry.list()) {
+        await (0, ensure_states_2.ensureAddonPolicyStates)(host, provider.addonType, provider.instanceId);
+    }
+}
+exports.ensurePolicyStateTree = ensurePolicyStateTree;
 async function runPolicyEngine(host) {
-    await (0, ensure_states_1.ensureSystemPolicyStates)(host);
-    await (0, ensure_states_1.ensureGlobalPolicyStates)(host);
+    await (0, ensure_states_2.ensureSystemPolicyStates)(host);
+    await (0, ensure_states_2.ensureGlobalPolicyStates)(host);
     const globalModes = await (0, run_1.runGlobalModes)(host);
     const adminCfg = (0, config_1.globalPolicyConfigFromAdapter)(host.config);
     const configured = (0, build_1.buildConfiguredGlobalPolicy)(adminCfg);

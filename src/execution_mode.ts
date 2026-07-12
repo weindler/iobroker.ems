@@ -115,6 +115,19 @@ function hasExecutionModeValue(val: unknown): boolean {
 	return s === "dryrun" || s === "live";
 }
 
+const ALL_DRYRUN_MODES: ExecutionModeConfigModes = {
+	global: "dryrun",
+	wallbox: "dryrun",
+	battery: "dryrun",
+	immersion_heater: "dryrun",
+	air_conditioning: "dryrun",
+};
+
+export interface SyncExecutionModesOptions {
+	/** Cold-Start-Recovery: Runtime zwingend auf dryrun, Admin-Config unverändert. */
+	coldStartRecovery?: boolean;
+}
+
 async function applyExecutionModesFromConfig(
 	host: ExecutionModeHost,
 	modes: ExecutionModeConfigModes,
@@ -231,12 +244,23 @@ export async function syncExecutionModesFromConfig(
 		updateConfig?: (newConfig: Record<string, unknown>) => Promise<unknown>;
 	},
 	config: Record<string, unknown>,
+	options: SyncExecutionModesOptions = {},
 ): Promise<void> {
 	const modes = executionModesFromConfig(config);
 	const fingerprint = executionModesConfigFingerprint(config);
 	const prevRaw = await host.getStateAsync(EXECUTION_MODE_CONFIG_FINGERPRINT);
 	const prevFingerprint = String(prevRaw?.val ?? "");
 	const empty = await anyExecutionModeEmpty(host);
+
+	if (options.coldStartRecovery) {
+		await applyExecutionModesFromConfig(host, ALL_DRYRUN_MODES);
+		await host.setStateAsync(EXECUTION_MODE_CONFIG_FINGERPRINT, { val: fingerprint, ack: true });
+		await mirrorGlobalExecutionSafety(host);
+		host.log?.info?.(
+			"Cold-Start-Recovery: Ausführungsmodi auf dryrun geklemmt (Admin-Konfiguration unverändert)",
+		);
+		return;
+	}
 
 	if (!prevFingerprint && !empty) {
 		// Upgrade: Laufzeitwerte schon gesetzt, Fingerabdruck fehlt — nicht überschreiben

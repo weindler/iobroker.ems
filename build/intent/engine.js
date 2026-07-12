@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resetIntentEngineForTest = exports.getLastResolvedWallboxIntentForTest = exports.stopIntentEngine = exports.handleIntentStateChange = exports.initIntentEngine = exports.submitThermalControlFromRuntime = exports.runIntentEngine = void 0;
+exports.resetIntentEngineForTest = exports.getLastResolvedWallboxIntentForTest = exports.stopIntentEngine = exports.handleIntentStateChange = exports.initIntentEngine = exports.submitThermalControlFromRuntime = exports.runIntentEngine = exports.hydrateIntentPersist = void 0;
 const state_write_1 = require("../policy/core/state_write");
 const addon_active_1 = require("./core/addon_active");
 const aggregate_1 = require("./core/aggregate");
@@ -27,6 +27,37 @@ const resolve_3 = require("./battery/resolve");
 const validation_3 = require("./battery/validation");
 const types_3 = require("./battery/types");
 const control_1 = require("./thermal/control");
+let intentPersistLoaded = false;
+async function loadIntentPersistFromDisk(host) {
+    if (intentPersistLoaded) {
+        return;
+    }
+    try {
+        const dataDir = host.getAbsolutePath?.("intent");
+        if (dataDir) {
+            const persisted = await (0, persist_1.readIntentPersist)(dataDir);
+            if (persisted) {
+                lastWallbox = persisted.wallbox;
+                lastThermal = persisted.thermal;
+                lastBattery = persisted.battery;
+                lastResolvedAll = persisted.resolvedAll;
+                lastRequestIds = persisted.lastRequestIds;
+                wallboxSnapshot = persisted.wallboxSnapshot;
+                thermalSnapshot = persisted.thermalSnapshot;
+                batterySnapshot = persisted.batterySnapshot;
+            }
+        }
+    }
+    catch (e) {
+        host.log.warn(`Intent persist load failed: ${e}`);
+    }
+    intentPersistLoaded = true;
+}
+/** Phase D — Intent-Persistenz von Disk laden (ohne Engine-Lauf). */
+async function hydrateIntentPersist(host) {
+    await loadIntentPersistFromDisk(host);
+}
+exports.hydrateIntentPersist = hydrateIntentPersist;
 let engineActive = false;
 let subscribedHost = null;
 let lastWallbox = null;
@@ -366,25 +397,7 @@ async function initIntentEngine(host) {
     const now = new Date();
     await (0, ensure_states_1.ensureIntentStates)(host);
     host.log.debug?.("User Intent states ensured");
-    try {
-        const dataDir = host.getAbsolutePath?.("intent");
-        if (dataDir) {
-            const persisted = await (0, persist_1.readIntentPersist)(dataDir);
-            if (persisted) {
-                lastWallbox = persisted.wallbox;
-                lastThermal = persisted.thermal;
-                lastBattery = persisted.battery;
-                lastResolvedAll = persisted.resolvedAll;
-                lastRequestIds = persisted.lastRequestIds;
-                wallboxSnapshot = persisted.wallboxSnapshot;
-                thermalSnapshot = persisted.thermalSnapshot;
-                batterySnapshot = persisted.batterySnapshot;
-            }
-        }
-    }
-    catch (e) {
-        host.log.warn(`Intent persist load failed: ${e}`);
-    }
+    await loadIntentPersistFromDisk(host);
     if (!lastWallbox)
         lastWallbox = (0, types_1.emptyResolvedWallboxIntent)(now);
     if (!lastThermal)
@@ -508,6 +521,7 @@ function stopIntentEngine() {
     }
     engineActive = false;
     subscribedHost = null;
+    intentPersistLoaded = false;
     lastWallbox = null;
     lastThermal = null;
     lastBattery = null;

@@ -537,12 +537,13 @@ export async function handleImmersionFaultReset(
 	await runImmersionRuntimeTick(host);
 }
 
-export async function initImmersionRuntimeEngine(host: ImmersionRuntimeHost): Promise<void> {
-	if (engineActive && hostRef === host) return;
-	engineActive = true;
-	hostRef = host;
-	await ensureImmersionRuntimeStates(host);
-	await initConsumerStatsForAddon(host, "immersion_heater");
+let immersionPersistHydrated = false;
+
+/** Phase D — Heizstab-Runtime-Persistenz von Disk laden (ohne Subscriptions/Ticks). */
+export async function hydrateImmersionRuntimePersist(host: ImmersionRuntimeHost): Promise<void> {
+	if (immersionPersistHydrated) {
+		return;
+	}
 	const dataDir = host.getAbsolutePath?.("immersion_heater");
 	if (dataDir) {
 		const loaded = await readRuntimePersist(dataDir);
@@ -554,6 +555,16 @@ export async function initImmersionRuntimeEngine(host: ImmersionRuntimeHost): Pr
 			}
 		}
 	}
+	immersionPersistHydrated = true;
+}
+
+export async function initImmersionRuntimeEngine(host: ImmersionRuntimeHost): Promise<void> {
+	if (engineActive && hostRef === host) return;
+	engineActive = true;
+	hostRef = host;
+	await ensureImmersionRuntimeStates(host);
+	await initConsumerStatsForAddon(host, "immersion_heater");
+	await hydrateImmersionRuntimePersist(host);
 
 	const config = immersionDeviceConfigFromAdapter(host.config);
 	const subs = new Set<string>([
@@ -615,6 +626,7 @@ export function stopImmersionRuntimeEngine(): void {
 	}
 	engineActive = false;
 	hostRef = null;
+	immersionPersistHydrated = false;
 	persist = emptyPersist();
 	lastCommandedStage = -1;
 	lastDailyPlanContext = null;

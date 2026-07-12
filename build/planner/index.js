@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopPlanner = exports.initPlanner = exports.batteryWinterPlanConfigFromAdapter = exports.readTibber15MinPriceSlots = exports.isNowInWinterChargeWindow = exports.planBatteryWinterPriceWindows = exports.dailyKwhFromHouseLoadForecast = exports.planBatteryWinter = exports.plannerModePolicyFromGlobalMode = exports.buildPlannerConstraints = exports.planBattery = exports.coolingReserveW = exports.planCooling = exports.resetPlannerRevisionForTest = exports.runPlannerTick = exports.runPlanner = exports.readPlannerInputs = exports.readPlannerThermalStage = void 0;
+exports.stopPlanner = exports.initPlanner = exports.runPlannerRuntime = exports.ensurePlannerStateTree = exports.batteryWinterPlanConfigFromAdapter = exports.readTibber15MinPriceSlots = exports.isNowInWinterChargeWindow = exports.planBatteryWinterPriceWindows = exports.dailyKwhFromHouseLoadForecast = exports.planBatteryWinter = exports.plannerModePolicyFromGlobalMode = exports.buildPlannerConstraints = exports.planBattery = exports.coolingReserveW = exports.planCooling = exports.resetPlannerRevisionForTest = exports.runPlannerTick = exports.runPlanner = exports.readPlannerInputs = exports.readPlannerThermalStage = void 0;
 const ensure_states_1 = require("./ensure_states");
 const grid_states_1 = require("../operator/supply/grid_states");
 const states_1 = require("../operator/forecast/states");
@@ -36,17 +36,27 @@ var battery_winter_price_inputs_1 = require("./battery_winter_price_inputs");
 Object.defineProperty(exports, "readTibber15MinPriceSlots", { enumerable: true, get: function () { return battery_winter_price_inputs_1.readTibber15MinPriceSlots; } });
 var battery_winter_config_1 = require("./battery_winter_config");
 Object.defineProperty(exports, "batteryWinterPlanConfigFromAdapter", { enumerable: true, get: function () { return battery_winter_config_1.batteryWinterPlanConfigFromAdapter; } });
-async function initPlanner(host) {
+/** Phase B — nur Objektbaum, keine Planner-Ticks. */
+async function ensurePlannerStateTree(host) {
     await (0, ensure_states_1.ensurePlannerStates)(host);
     await (0, grid_states_1.ensureGridSupplyStates)(host);
     await (0, states_1.ensureForecastPlanStates)(host);
     await (0, states_2.ensureFlexibleContributionStates)(host);
     await (0, states_3.ensureDailyPlanStates)(host);
+}
+exports.ensurePlannerStateTree = ensurePlannerStateTree;
+/** Phase F — initiale Planner-Auswertung. */
+async function runPlannerRuntime(host) {
     await (0, run_1.runPlannerTick)(host);
     const gridForecast = await (0, grid_tick_1.runGridSupplyTick)(host);
     const flexibleContributions = await (0, tick_1.runFlexibleContributionsTick)(host, gridForecast);
     const forecastPlan = await (0, tick_2.runForecastPlanTick)(host, gridForecast, flexibleContributions);
     await (0, tick_3.runDailyPlanTick)(host, forecastPlan);
+}
+exports.runPlannerRuntime = runPlannerRuntime;
+async function initPlanner(host) {
+    await ensurePlannerStateTree(host);
+    await runPlannerRuntime(host);
 }
 exports.initPlanner = initPlanner;
 async function stopPlanner() {

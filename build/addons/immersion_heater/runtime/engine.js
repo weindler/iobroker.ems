@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getImmersionDailyPlanContextForTest = exports.getImmersionPersistForTest = exports.resetImmersionRuntimeForTest = exports.stopImmersionRuntimeEngine = exports.initImmersionRuntimeEngine = exports.handleImmersionFaultReset = exports.runImmersionRuntimeTick = exports.immersionRuntimeWatchedForeignIds = void 0;
+exports.getImmersionDailyPlanContextForTest = exports.getImmersionPersistForTest = exports.resetImmersionRuntimeForTest = exports.stopImmersionRuntimeEngine = exports.initImmersionRuntimeEngine = exports.hydrateImmersionRuntimePersist = exports.handleImmersionFaultReset = exports.runImmersionRuntimeTick = exports.immersionRuntimeWatchedForeignIds = void 0;
 const ems_activity_1 = require("../../../ems_activity");
 const execution_mode_1 = require("../../../execution_mode");
 const device_write_1 = require("../../../device_write");
@@ -423,13 +423,12 @@ async function handleImmersionFaultReset(host, state) {
     await runImmersionRuntimeTick(host);
 }
 exports.handleImmersionFaultReset = handleImmersionFaultReset;
-async function initImmersionRuntimeEngine(host) {
-    if (engineActive && hostRef === host)
+let immersionPersistHydrated = false;
+/** Phase D — Heizstab-Runtime-Persistenz von Disk laden (ohne Subscriptions/Ticks). */
+async function hydrateImmersionRuntimePersist(host) {
+    if (immersionPersistHydrated) {
         return;
-    engineActive = true;
-    hostRef = host;
-    await (0, ensure_states_1.ensureImmersionRuntimeStates)(host);
-    await (0, consumer_stats_1.initConsumerStatsForAddon)(host, "immersion_heater");
+    }
     const dataDir = host.getAbsolutePath?.("immersion_heater");
     if (dataDir) {
         const loaded = await (0, persist_1.readRuntimePersist)(dataDir);
@@ -441,6 +440,17 @@ async function initImmersionRuntimeEngine(host) {
             }
         }
     }
+    immersionPersistHydrated = true;
+}
+exports.hydrateImmersionRuntimePersist = hydrateImmersionRuntimePersist;
+async function initImmersionRuntimeEngine(host) {
+    if (engineActive && hostRef === host)
+        return;
+    engineActive = true;
+    hostRef = host;
+    await (0, ensure_states_1.ensureImmersionRuntimeStates)(host);
+    await (0, consumer_stats_1.initConsumerStatsForAddon)(host, "immersion_heater");
+    await hydrateImmersionRuntimePersist(host);
     const config = (0, device_config_1.immersionDeviceConfigFromAdapter)(host.config);
     const subs = new Set([
         "user_intent.thermal.resolved_json",
@@ -506,6 +516,7 @@ function stopImmersionRuntimeEngine() {
     }
     engineActive = false;
     hostRef = null;
+    immersionPersistHydrated = false;
     persist = (0, persist_1.emptyPersist)();
     lastCommandedStage = -1;
     lastDailyPlanContext = null;

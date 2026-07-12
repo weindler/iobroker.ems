@@ -22,12 +22,17 @@ export { planBatteryWinterPriceWindows, isNowInWinterChargeWindow } from "./rule
 export { readTibber15MinPriceSlots } from "./battery_winter_price_inputs";
 export { batteryWinterPlanConfigFromAdapter } from "./battery_winter_config";
 
-export async function initPlanner(host: PlannerHost): Promise<void> {
+/** Phase B — nur Objektbaum, keine Planner-Ticks. */
+export async function ensurePlannerStateTree(host: PlannerHost): Promise<void> {
 	await ensurePlannerStates(host);
 	await ensureGridSupplyStates(host);
 	await ensureForecastPlanStates(host);
 	await ensureFlexibleContributionStates(host);
 	await ensureDailyPlanStates(host);
+}
+
+/** Phase F — initiale Planner-Auswertung. */
+export async function runPlannerRuntime(host: PlannerHost): Promise<void> {
 	await runPlannerTick(host);
 	const gridForecast = await runGridSupplyTick(host);
 	const flexibleContributions = await runFlexibleContributionsTick(
@@ -40,6 +45,11 @@ export async function initPlanner(host: PlannerHost): Promise<void> {
 		flexibleContributions,
 	);
 	await runDailyPlanTick(host as Parameters<typeof runDailyPlanTick>[0], forecastPlan);
+}
+
+export async function initPlanner(host: PlannerHost): Promise<void> {
+	await ensurePlannerStateTree(host);
+	await runPlannerRuntime(host);
 }
 
 export async function stopPlanner(): Promise<void> {

@@ -165,4 +165,29 @@ const LIVE_IH_FP = (0, execution_mode_js_1.executionModesConfigFingerprint)({
         strict_1.default.equal(updated, true);
         strict_1.default.equal(config.ih_addon_mode, "live");
     });
+    (0, node_test_1.it)("syncExecutionModesFromConfig cold start recovery clamps live admin config to dryrun", async () => {
+        const store = new Map();
+        const host = {
+            log: { info: () => { }, debug: () => { } },
+            getStateAsync: async (id) => store.get(id) ?? null,
+            setStateAsync: async (id, st) => {
+                store.set(id, { val: st.val, ack: st.ack ?? false });
+            },
+            setObjectNotExistsAsync: async () => undefined,
+        };
+        const liveConfig = {
+            global_execution_mode: "live",
+            wb_addon_mode: "live",
+            bat_addon_mode: "live",
+            ih_addon_mode: "live",
+            ac_addon_mode: "live",
+        };
+        await (0, execution_mode_js_1.syncExecutionModesFromConfig)(host, liveConfig, { coldStartRecovery: true });
+        strict_1.default.equal(store.get("global.execution_mode")?.val, "dryrun");
+        strict_1.default.equal(store.get("addons.wallbox.mode")?.val, "dryrun");
+        strict_1.default.equal(store.get("addons.battery.mode")?.val, "dryrun");
+        strict_1.default.equal(store.get("addons.immersion_heater.mode")?.val, "dryrun");
+        strict_1.default.equal(store.get("addons.air_conditioning.mode")?.val, "dryrun");
+        strict_1.default.equal(store.get("execution.safety.global_execution_mode")?.val, "dryrun");
+    });
 });

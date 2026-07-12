@@ -1,54 +1,41 @@
 import * as utils from "@iobroker/adapter-core";
 import {
-	batteryUnloadRestore,
 	handleBatteryAdapterStateChange,
 	handleBatteryGridBalanceForeignStateChange,
-	initBatteryModule,
+	batteryUnloadRestore,
 	stopBatteryModule,
 } from "./addons/battery";
 import {
 	handleAirConditioningStateChange,
-	initAirConditioningModule,
 	stopAirConditioningModule,
 } from "./addons/air_conditioning";
 import {
 	handleImmersionHeaterStateChange,
-	initImmersionHeaterModule,
 	stopImmersionHeaterModule,
 } from "./addons/immersion_heater";
-import { initDynamicTariffModule } from "./addons/dynamic_tariff";
 import { recordWallboxPipelineResult } from "./addons/wallbox/failsafe";
 import {
 	handleWallboxForeignStateChange,
 	handleWallboxStateChange,
-	initWallboxModule,
 	stopWallboxModule,
 } from "./addons/wallbox";
 import { touchEmsActivity } from "./ems_activity";
-import { startFailsafeRunner, stopFailsafeRunner } from "./failsafe_runner";
-import { EMS_ADDON_IDS } from "./addons/registry";
-import { ensureAddonGovernanceStates, governedAddonByRuntimeId, syncAddonGovernanceFromConfig } from "./addons/governance";
+import { stopFailsafeRunner } from "./failsafe_runner";
 import { writeDryrunMirror } from "./dryrun_mirror";
 import {
-	ensureChannelTree,
-	ensureGlobalExecutionStates,
-	ensureAddonExecutionModeStates,
-	EXECUTION_MODE_ADDON_IDS,
 	handleExecutionModeStateChange,
 	isLiveWriteAllowed,
-	syncExecutionModesFromConfig,
 } from "./execution_mode";
-import { GLOBAL, addonMode } from "./tree_paths";
+import { isBootstrapComplete } from "./bootstrap/barrier";
+import { runAdapterBootstrap } from "./bootstrap/startup";
 import { parseInboxValue } from "./inbox";
-import { goeWallboxTemplateFlat, wallboxMappingFromConfig, WALLBOX_ALL_MAPPING_IDS } from "./mapping_config";
-import { ensureAddonMappingStates, syncNativeMappingToStates } from "./mapping_sync";
-import { initEmsLightPhase1, stopEmsLightPhase1 } from "./ems_light";
+import { goeWallboxTemplateFlat } from "./mapping_config";
+import { stopEmsLightPhase1 } from "./ems_light";
 import { handleEnergyDailyRollupStateChange } from "./learning/energy_daily_rollup";
 import { handlePowerRollupStateChange } from "./learning/power_rollup";
 import { handleGlobalModesStateChange } from "./policy";
 import { handleIntentStateChange } from "./intent";
 import { runCommandPipeline } from "./pipeline";
-import { ensureWallboxStatusStates } from "./status_wallbox";
 import { STATE } from "./states";
 import type { CommandIntent } from "./types";
 
@@ -118,34 +105,12 @@ class Ems extends utils.Adapter {
 	}
 
 	private async onReady(): Promise<void> {
-		const adapterConfig =
-			this.config && typeof this.config === "object" ? (this.config as Record<string, unknown>) : {};
+		await runAdapterBootstrap(this, this.step.bind(this));
 
-		await this.step("channel tree", () => ensureChannelTree(this.setObjectNotExistsAsync.bind(this)));
-		await this.step("base states", () => this.ensureBaseStates());
-		await this.step("global execution states", () => ensureGlobalExecutionStates(this));
-		await this.step("addon execution mode states", () => ensureAddonExecutionModeStates(this));
-		await this.step("addon states", () => this.ensureAddonStates());
-		await this.step("governance states", () => ensureAddonGovernanceStates(this));
-		await this.step("sync governance", () => syncAddonGovernanceFromConfig(this, adapterConfig));
-		await this.step("sync execution modes", () => syncExecutionModesFromConfig(this, adapterConfig));
-		await this.step("wallbox mapping", () => this.ensureWallboxMapping());
-		await this.step("wallbox status states", () => ensureWallboxStatusStates(this));
-		await this.step("wallbox module", () => initWallboxModule(this));
-		await this.step("battery module", () => initBatteryModule(this));
-		await this.step("immersion heater module", () => initImmersionHeaterModule(this));
-		await this.step("air conditioning module", () => initAirConditioningModule(this));
-		await this.step("dynamic tariff module", () => initDynamicTariffModule(this));
-		await this.step("failsafe runner", async () => startFailsafeRunner(this));
-		// EMS-Light/Learning explizit isoliert: muss unabhängig von Add-on-Fehlern laufen.
-		await this.step("ems-light phase 1 (learning)", () => initEmsLightPhase1(this), 45_000);
-		await this.step("subscribe command inbox", () => this.subscribeStatesAsync(STATE.command.inbox));
-		await this.step("subscribe execution modes", async () => {
-			await this.subscribeStatesAsync(GLOBAL.executionMode);
-			for (const addonId of EXECUTION_MODE_ADDON_IDS) {
-				await this.subscribeStatesAsync(addonMode(addonId));
-			}
-		});
+		if (!isBootstrapComplete()) {
+			this.log.warn("EMS adapter: Bootstrap unvollständig — Geräte-Runtime bleibt gesperrt");
+			return;
+		}
 
 		this.log.info("EMS adapter ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
 
@@ -170,6 +135,9 @@ class Ems extends utils.Adapter {
 	}
 
 	private async onStateChange(id: string, state: ioBroker.State | null): Promise<void> {
+		if (!isBootstrapComplete()) {
+			return;
+		}
 		if (state) {
 			await handleExecutionModeStateChange(this, id, state);
 			handleBatteryAdapterStateChange(this, id);
@@ -299,101 +267,6 @@ class Ems extends utils.Adapter {
 				val: JSON.stringify(event),
 				ack: true,
 			});
-		}
-	}
-
-	private async ensureBaseStates(): Promise<void> {
-		const defs: Array<{ _id: string; common: ioBroker.StateCommon; defVal?: ioBroker.StateValue }> = [
-			{
-				_id: STATE.command.inbox,
-				common: {
-					name: "Command inbox (JSON)",
-					type: "string",
-					role: "json",
-					read: true,
-					write: true,
-				},
-			},
-			{
-				_id: STATE.command.lastResult,
-				common: {
-					name: "Last pipeline result (JSON)",
-					type: "string",
-					role: "json",
-					read: true,
-					write: false,
-				},
-			},
-			{
-				_id: STATE.audit.lastEvent,
-				common: {
-					name: "Last audit event (global mirror)",
-					type: "string",
-					role: "json",
-					read: true,
-					write: false,
-				},
-			},
-		];
-
-		for (const def of defs) {
-			await this.setObjectNotExistsAsync(def._id, {
-				type: "state",
-				common: def.common,
-				native: {},
-			});
-			if (def.defVal !== undefined) {
-				const cur = await this.getStateAsync(def._id);
-				if (cur?.val === undefined || cur.val === null) {
-					await this.setStateAsync(def._id, { val: def.defVal, ack: true });
-				}
-			}
-		}
-	}
-
-	private async ensureAddonStates(): Promise<void> {
-		for (const addonId of EMS_ADDON_IDS) {
-			const base = `addons.${addonId}`;
-			const governed = governedAddonByRuntimeId(addonId);
-			await this.ensureState(`${base}.enabled`, {
-				name: `${addonId} enabled`,
-				type: "boolean",
-				role: "switch",
-				read: true,
-				write: !governed,
-				def: true,
-			}, true);
-			await this.ensureState(`${base}.available`, {
-				name: `${addonId} available`,
-				type: "boolean",
-				role: "state",
-				read: true,
-				write: true,
-				def: true,
-			}, true);
-		}
-	}
-
-	private async ensureWallboxMapping(): Promise<void> {
-		await ensureAddonMappingStates(this, "wallbox", WALLBOX_ALL_MAPPING_IDS);
-		await syncNativeMappingToStates(this, "wallbox", wallboxMappingFromConfig);
-	}
-
-	private async ensureState(
-		relativeId: string,
-		common: ioBroker.StateCommon,
-		defaultVal?: ioBroker.StateValue,
-	): Promise<void> {
-		await this.setObjectNotExistsAsync(relativeId, {
-			type: "state",
-			common,
-			native: {},
-		});
-		if (defaultVal !== undefined) {
-			const cur = await this.getStateAsync(relativeId);
-			if (cur?.val === undefined || cur.val === null || cur.val === "") {
-				await this.setStateAsync(relativeId, { val: defaultVal, ack: true });
-			}
 		}
 	}
 }

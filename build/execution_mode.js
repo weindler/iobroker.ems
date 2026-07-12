@@ -75,6 +75,13 @@ function hasExecutionModeValue(val) {
     const s = String(val ?? "").trim().toLowerCase();
     return s === "dryrun" || s === "live";
 }
+const ALL_DRYRUN_MODES = {
+    global: "dryrun",
+    wallbox: "dryrun",
+    battery: "dryrun",
+    immersion_heater: "dryrun",
+    air_conditioning: "dryrun",
+};
 async function applyExecutionModesFromConfig(host, modes) {
     await host.setStateAsync(tree_paths_1.GLOBAL.executionMode, { val: modes.global, ack: true });
     await host.setStateAsync((0, tree_paths_1.addonMode)("wallbox"), { val: modes.wallbox, ack: true });
@@ -161,12 +168,19 @@ async function alignAdminConfigWithRuntimeStates(host, config) {
  * - Neustart ohne Admin-Änderung → Laufzeitwerte aus Objektbaum bleiben, Admin wird nachgezogen
  * - Erststart / leere States → Admin-Defaults
  */
-async function syncExecutionModesFromConfig(host, config) {
+async function syncExecutionModesFromConfig(host, config, options = {}) {
     const modes = executionModesFromConfig(config);
     const fingerprint = executionModesConfigFingerprint(config);
     const prevRaw = await host.getStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT);
     const prevFingerprint = String(prevRaw?.val ?? "");
     const empty = await anyExecutionModeEmpty(host);
+    if (options.coldStartRecovery) {
+        await applyExecutionModesFromConfig(host, ALL_DRYRUN_MODES);
+        await host.setStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT, { val: fingerprint, ack: true });
+        await mirrorGlobalExecutionSafety(host);
+        host.log?.info?.("Cold-Start-Recovery: Ausführungsmodi auf dryrun geklemmt (Admin-Konfiguration unverändert)");
+        return;
+    }
     if (!prevFingerprint && !empty) {
         // Upgrade: Laufzeitwerte schon gesetzt, Fingerabdruck fehlt — nicht überschreiben
         await host.setStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT, { val: fingerprint, ack: true });

@@ -99,11 +99,14 @@ export function __resetBatteryRuntimeForTest(now = Date.now()): void {
 	resetBatteryDailyPlanCache();
 }
 
-export async function initBatteryModule(adapter: ioBroker.Adapter): Promise<null> {
+export async function ensureBatteryStateTree(adapter: ioBroker.Adapter): Promise<void> {
 	await ensureAddonMappingStates(adapter, BATTERY_ADDON_ID, BATTERY_MAPPING_ROLES);
-	await syncNativeMappingToStates(adapter, BATTERY_ADDON_ID, batteryMappingNativeFromConfig);
 	await ensureBatteryEmsMirrorStates(adapter);
 	await ensureBatteryArchitectureStates(adapter);
+}
+
+export async function startBatteryModuleRuntime(adapter: ioBroker.Adapter): Promise<null> {
+	await syncNativeMappingToStates(adapter, BATTERY_ADDON_ID, batteryMappingNativeFromConfig);
 
 	runtime = initialSonnenRuntime(Date.now());
 	gridBalancePausedByFsm = false;
@@ -134,6 +137,11 @@ export async function initBatteryModule(adapter: ioBroker.Adapter): Promise<null
 
 	void runBatteryControlTick(host).catch((e) => adapter.log.error(`battery tick (startup): ${e}`));
 	return null;
+}
+
+export async function initBatteryModule(adapter: ioBroker.Adapter): Promise<null> {
+	await ensureBatteryStateTree(adapter);
+	return startBatteryModuleRuntime(adapter);
 }
 
 export function stopBatteryModule(_timer: NodeJS.Timeout | null): void {

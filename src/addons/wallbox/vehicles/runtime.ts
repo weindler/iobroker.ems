@@ -95,6 +95,22 @@ async function readPersistenceFromHost(
 	});
 }
 
+/**
+ * Phase D — Rollforward-Anker, Last-Trusted-Snapshot und Session-Zähler aus States laden.
+ * Läuft vor der ersten SOC-Auflösung und ohne Fremd-Telemetrie-Lesezugriffe.
+ */
+export async function hydrateWallboxVehicleSocPersistence(
+	host: VehicleRuntimeHost,
+	config: unknown,
+	now: Date = new Date(),
+): Promise<void> {
+	const cfg = wallboxVehicleProfilesConfigFromAdapter(config);
+	const { profiles } = normalizeWallboxVehicleProfiles(cfg.profiles, now.toISOString());
+	for (const profile of profiles) {
+		await readPersistenceFromHost(host, profile.vehicleId);
+	}
+}
+
 async function publishSocEnergyStates(
 	host: VehicleRuntimeHost,
 	vehicleId: string,

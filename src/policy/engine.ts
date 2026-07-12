@@ -15,6 +15,8 @@ import {
 } from "./global/build";
 import { globalPolicyConfigFromAdapter } from "./global/config";
 import { validateGlobalPolicy } from "./global/validate";
+import { globalModeDefaultFromConfig } from "../global_modes/config";
+import { ensureGlobalModesStates } from "../global_modes/ensure_states";
 import {
 	ensureAddonPolicyStates,
 	ensureGlobalPolicyStates,
@@ -188,6 +190,17 @@ async function writeGlobalPolicyStates(
 	}
 
 	return revision;
+}
+
+/** Phase B — Policy-/Global-Mode-Objekte ohne Engine-Lauf. */
+export async function ensurePolicyStateTree(host: PolicyEngineHost): Promise<void> {
+	await ensureSystemPolicyStates(host);
+	await ensureGlobalPolicyStates(host);
+	const adminDefault = globalModeDefaultFromConfig(host.config);
+	await ensureGlobalModesStates(host, adminDefault);
+	for (const provider of policyProviderRegistry.list()) {
+		await ensureAddonPolicyStates(host, provider.addonType, provider.instanceId);
+	}
 }
 
 export async function runPolicyEngine(host: PolicyEngineHost): Promise<PolicyEngineRunResult> {

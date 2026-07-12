@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopEmsLightPhase1 = exports.initEmsLightPhase1 = void 0;
+exports.stopEmsLightPhase1 = exports.initEmsLightPhase1 = exports.startEmsLightPhase1Runtime = exports.ensureEmsLightStateTree = exports.getLearningStateTreeHost = void 0;
 const pv_bias_1 = require("../learning/pv_bias");
 const weather_1 = require("../learning/weather");
 const data_dir_1 = require("../learning/data_dir");
@@ -22,8 +22,8 @@ let powerRollupHost = null;
 let energyDailyRollupHost = null;
 function buildRollupHost(adapter) {
     const adapterAny = adapter;
-    return {
-        ...(0, data_dir_1.withLearningDataPath)(adapter, adapter),
+    const base = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
+    Object.assign(base, {
         namespace: adapter.namespace,
         config: adapter.config,
         log: adapter.log,
@@ -37,7 +37,8 @@ function buildRollupHost(adapter) {
         unsubscribeForeignStatesAsync: typeof adapterAny.unsubscribeForeignStatesAsync === "function"
             ? adapterAny.unsubscribeForeignStatesAsync.bind(adapter)
             : undefined,
-    };
+    });
+    return base;
 }
 function tickIntervalSec(config) {
     if (!config || typeof config !== "object") {
@@ -69,27 +70,11 @@ async function waitWithStartupTimeout(promise, timeoutMs, onTimeout) {
         }
     }
 }
-async function initEmsLightPhase1(adapter) {
-    const version = String(adapter.common?.version ?? "0.0.0");
-    const host = adapter;
+let learningHost = null;
+function buildIntentHost(adapter) {
     const adapterAny = adapter;
-    await (0, ensure_states_1.ensureEmsLightStates)(host, version);
-    await (0, planner_1.initPlanner)(host);
-    energyDailyRollupHost = buildRollupHost(adapter);
-    powerRollupHost = energyDailyRollupHost;
-    await (0, energy_daily_rollup_1.initEnergyDailyRollup)(energyDailyRollupHost);
-    await (0, power_rollup_1.initPowerRollup)(powerRollupHost);
-    await (0, pv_bias_1.initPvBiasLearning)(adapter);
-    await (0, weather_1.initWeatherLearning)(adapter);
-    const policyHost = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
-    const policyInit = (0, policy_1.initPolicyEngine)(policyHost).catch((e) => {
-        adapter.log.error(`Policy Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
-    });
-    await waitWithStartupTimeout(policyInit, POLICY_STARTUP_TIMEOUT_MS, () => {
-        adapter.log.warn(`Policy Engine init still running after ${POLICY_STARTUP_TIMEOUT_MS}ms; continuing adapter startup`);
-    });
-    const intentHost = {
-        ...(0, data_dir_1.withLearningDataPath)(adapter, adapter),
+    const base = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
+    Object.assign(base, {
         namespace: adapter.namespace,
         config: adapter.config,
         log: adapter.log,
@@ -106,17 +91,56 @@ async function initEmsLightPhase1(adapter) {
         unsubscribeForeignStatesAsync: typeof adapterAny.unsubscribeForeignStatesAsync === "function"
             ? adapterAny.unsubscribeForeignStatesAsync.bind(adapter)
             : undefined,
-    };
-    // Intent Engine isoliert initialisieren: ein Fehler darf weder still bleiben
-    // noch den restlichen Adapterstart (Tick, Subscriptions) blockieren.
+    });
+    return base;
+}
+/** Referenz auf den in Phase B erzeugten Learning-Host (für Phase D). */
+function getLearningStateTreeHost() {
+    return learningHost;
+}
+exports.getLearningStateTreeHost = getLearningStateTreeHost;
+/** Phase B — EMS-Light-, Planner-, Policy-, Intent- und Learning-Objekte. */
+async function ensureEmsLightStateTree(adapter) {
+    const version = String(adapter.common?.version ?? "0.0.0");
+    const host = adapter;
+    await (0, ensure_states_1.ensureEmsLightStates)(host, version);
+    await (0, planner_1.ensurePlannerStateTree)(host);
+    const policyHost = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
+    await (0, policy_1.ensurePolicyStateTree)(policyHost);
+    await (0, intent_1.ensureIntentStates)(buildIntentHost(adapter));
+    learningHost = await (0, pv_bias_1.ensureLearningStateTree)(adapter);
+}
+exports.ensureEmsLightStateTree = ensureEmsLightStateTree;
+/** Phase F — Runtime, Ticks und initiale Auswertung (nach Bootstrap-Barriere). */
+async function startEmsLightPhase1Runtime(adapter) {
+    const host = adapter;
+    await (0, planner_1.runPlannerRuntime)(host);
+    energyDailyRollupHost = buildRollupHost(adapter);
+    powerRollupHost = energyDailyRollupHost;
+    await (0, energy_daily_rollup_1.initEnergyDailyRollup)(energyDailyRollupHost);
+    await (0, power_rollup_1.initPowerRollup)(powerRollupHost);
+    if (learningHost) {
+        await (0, pv_bias_1.startPvBiasLearningRuntime)(adapter, learningHost);
+    }
+    else {
+        learningHost = await (0, pv_bias_1.ensureLearningStateTree)(adapter);
+        await (0, pv_bias_1.startPvBiasLearningRuntime)(adapter, learningHost);
+    }
+    await (0, weather_1.initWeatherLearning)(adapter);
+    const policyHost = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
+    const policyInit = (0, policy_1.initPolicyEngine)(policyHost).catch((e) => {
+        adapter.log.error(`Policy Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
+    });
+    await waitWithStartupTimeout(policyInit, POLICY_STARTUP_TIMEOUT_MS, () => {
+        adapter.log.warn(`Policy Engine init still running after ${POLICY_STARTUP_TIMEOUT_MS}ms; continuing adapter startup`);
+    });
+    const intentHost = buildIntentHost(adapter);
     try {
         await (0, intent_1.initIntentEngine)(intentHost);
     }
     catch (e) {
         adapter.log.error(`User Intent Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
     }
-    // Verbindliche ioBroker-Subscription auf dem echten Adapter (stateChange-Routing
-    // erfolgt in main.ts onStateChange -> handleGlobalModesStateChange).
     policyAdapter = adapter;
     try {
         await adapter.subscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE);
@@ -153,6 +177,11 @@ async function initEmsLightPhase1(adapter) {
     }, sec * 1000);
     adapter.log.debug(`EMS-Light Phase 1 ready (read-only, tick ${sec}s)`);
 }
+exports.startEmsLightPhase1Runtime = startEmsLightPhase1Runtime;
+async function initEmsLightPhase1(adapter) {
+    await ensureEmsLightStateTree(adapter);
+    await startEmsLightPhase1Runtime(adapter);
+}
 exports.initEmsLightPhase1 = initEmsLightPhase1;
 /** Nur Live-Tick-Timer stoppen (Learning-Intervalle laufen weiter). */
 function stopEmsLightTick() {
@@ -178,6 +207,7 @@ function stopEmsLightPhase1() {
     (0, planner_1.stopPlanner)();
     powerRollupHost = null;
     energyDailyRollupHost = null;
+    learningHost = null;
     stopEmsLightTick();
 }
 exports.stopEmsLightPhase1 = stopEmsLightPhase1;

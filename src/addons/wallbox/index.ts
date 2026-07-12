@@ -209,18 +209,30 @@ function scheduleRefresh(host: WallboxHost): void {
 	}, DEBOUNCE_MS);
 }
 
-export async function initWallboxModule(host: WallboxHost): Promise<void> {
-	if (activeHost === host) return;
-	activeHost = host;
-
+export async function ensureWallboxStaticStateTree(host: WallboxHost): Promise<void> {
 	await ensureWallboxEvccStates(host);
 	await ensureWallboxRuntimeStates(host);
+}
+
+/** Phase C — dynamische Fahrzeugprofil-Ordner aus Admin-Konfiguration. */
+export async function ensureWallboxDynamicVehicleProfiles(host: WallboxHost): Promise<void> {
 	const vehicleCfg = wallboxVehicleProfilesConfigFromAdapter(host.config);
 	const { profiles: vehicleProfiles } = normalizeWallboxVehicleProfiles(
 		vehicleCfg.profiles,
 		new Date().toISOString(),
 	);
 	await ensureWallboxVehicleProfileStates(host, vehicleProfiles);
+}
+
+export async function ensureWallboxStateTree(host: WallboxHost): Promise<void> {
+	await ensureWallboxStaticStateTree(host);
+	await ensureWallboxDynamicVehicleProfiles(host);
+}
+
+export async function startWallboxModuleRuntime(host: WallboxHost): Promise<void> {
+	if (activeHost === host) return;
+	activeHost = host;
+
 	await refreshWallboxEvccTelemetry(host);
 
 	const cfg = wallboxEvccTelemetryConfigFromAdapter(host.config);
@@ -258,6 +270,11 @@ export async function initWallboxModule(host: WallboxHost): Promise<void> {
 		}
 	}
 	host.log.debug("Wallbox EVCC telemetry module initialized (read-only)");
+}
+
+export async function initWallboxModule(host: WallboxHost): Promise<void> {
+	await ensureWallboxStateTree(host);
+	await startWallboxModuleRuntime(host);
 }
 
 export function stopWallboxModule(): void {

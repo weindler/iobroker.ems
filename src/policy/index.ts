@@ -6,5 +6,6 @@ export {
 	stopPolicyEngine,
 	handleGlobalModesStateChange,
 	policyProviderRegistry,
+	ensurePolicyStateTree,
 } from "./engine";
 export type { PolicyEngineHost, PolicyEngineRunResult } from "./engine";

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleWallboxStateChange = exports.handleWallboxForeignStateChange = exports.stopWallboxModule = exports.initWallboxModule = exports.refreshWallboxEvccTelemetry = void 0;
+exports.handleWallboxStateChange = exports.handleWallboxForeignStateChange = exports.stopWallboxModule = exports.initWallboxModule = exports.startWallboxModuleRuntime = exports.ensureWallboxStateTree = exports.ensureWallboxDynamicVehicleProfiles = exports.ensureWallboxStaticStateTree = exports.refreshWallboxEvccTelemetry = void 0;
 const evcc_config_1 = require("./evcc_config");
 const ensure_evcc_states_1 = require("./ensure_evcc_states");
 const evcc_telemetry_1 = require("./evcc_telemetry");
@@ -147,15 +147,27 @@ function scheduleRefresh(host) {
         void refreshWallboxEvccTelemetry(host).catch((e) => host.log.debug?.(`wallbox evcc refresh: ${e}`));
     }, DEBOUNCE_MS);
 }
-async function initWallboxModule(host) {
-    if (activeHost === host)
-        return;
-    activeHost = host;
+async function ensureWallboxStaticStateTree(host) {
     await (0, ensure_evcc_states_1.ensureWallboxEvccStates)(host);
     await (0, runtime_1.ensureWallboxRuntimeStates)(host);
+}
+exports.ensureWallboxStaticStateTree = ensureWallboxStaticStateTree;
+/** Phase C — dynamische Fahrzeugprofil-Ordner aus Admin-Konfiguration. */
+async function ensureWallboxDynamicVehicleProfiles(host) {
     const vehicleCfg = (0, vehicles_1.wallboxVehicleProfilesConfigFromAdapter)(host.config);
     const { profiles: vehicleProfiles } = (0, vehicles_1.normalizeWallboxVehicleProfiles)(vehicleCfg.profiles, new Date().toISOString());
     await (0, vehicles_1.ensureWallboxVehicleProfileStates)(host, vehicleProfiles);
+}
+exports.ensureWallboxDynamicVehicleProfiles = ensureWallboxDynamicVehicleProfiles;
+async function ensureWallboxStateTree(host) {
+    await ensureWallboxStaticStateTree(host);
+    await ensureWallboxDynamicVehicleProfiles(host);
+}
+exports.ensureWallboxStateTree = ensureWallboxStateTree;
+async function startWallboxModuleRuntime(host) {
+    if (activeHost === host)
+        return;
+    activeHost = host;
     await refreshWallboxEvccTelemetry(host);
     const cfg = (0, evcc_config_1.wallboxEvccTelemetryConfigFromAdapter)(host.config);
     const ids = new Set((0, evcc_config_1.configuredEvccTelemetryStateIds)(cfg));
@@ -195,6 +207,11 @@ async function initWallboxModule(host) {
         }
     }
     host.log.debug("Wallbox EVCC telemetry module initialized (read-only)");
+}
+exports.startWallboxModuleRuntime = startWallboxModuleRuntime;
+async function initWallboxModule(host) {
+    await ensureWallboxStateTree(host);
+    await startWallboxModuleRuntime(host);
 }
 exports.initWallboxModule = initWallboxModule;
 function stopWallboxModule() {

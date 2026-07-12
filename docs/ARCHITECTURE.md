@@ -1,7 +1,7 @@
 # EMS-Light – Architektur (Ist-Stand)
 
-**Gültig ab:** 28.06.2026  
-**Adapter-Version:** v0.1.125
+**Gültig ab:** 11.07.2026
+**Adapter-Version:** v0.1.140
 
 Dieses Dokument beschreibt die **tatsächlich implementierte** Architektur des ioBroker-Adapters `iobroker.ems`. Geplante, aber noch nicht umgesetzte Bestandteile sind als *geplant* gekennzeichnet.
 
@@ -161,6 +161,7 @@ beliebige Wallbox → EVCC → EMS-Light (read-only)
 - **Feedback Contract Foundation (v0.1.137):** `WallboxFeedbackContract` aus Write-Plan, Normalisierung, Soll-/Ist-Vergleich, Settle/Timeout-Vertrag — keine Timer, keine Writes
 - **Vehicle Profiles Foundation (v0.1.138):** dynamische Fahrzeugprofil-Tabelle `wb_vehicle_profiles`, Profilauflösung getrennt von `connected`, `ActiveVehicleSnapshot`, fahrzeugspezifische Ladegrenzen — read-only, keine Planner-Integration
 - **Vehicle SOC & Energy Fallback (v0.1.139):** zentrale SOC-Auflösung mit Fallback-Kette (direct, energy rollforward, range, last trusted), Energieinhalt/-bedarf je Profil, profilisolierte Baseline — read-only, keine Ladefreigabe
+- **State Tree Recovery (v0.1.140):** deterministischer phasenweiser Bootstrap, sicherer Cold Start nach Löschen von `ems.0.*`, Bootstrap-Barriere — siehe `docs/EMS_LIGHT_V0_1_140_STATE_TREE_RECOVERY.md`
 - `plan_time` / `effective_plan_time`: bei null/invalid wird der Spiegelstate auf `""` gesetzt (kein stale Deadline)
 - EVCC-Sitzungsenergie: Wh → kWh (`/ 1000`)
 - Go-Null-Zeit (`0001-01-01T00:00:00Z`) wird als „kein Plan" behandelt

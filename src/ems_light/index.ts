@@ -1,4 +1,9 @@
-import { initPvBiasLearning, stopPvBiasLearning } from "../learning/pv_bias";
+import {
+	ensureLearningStateTree,
+	startPvBiasLearningRuntime,
+	stopPvBiasLearning,
+	type LearningStateTreeHost,
+} from "../learning/pv_bias";
 import { initWeatherLearning, stopWeatherLearning } from "../learning/weather";
 import { withLearningDataPath } from "../learning/data_dir";
 import {
@@ -13,9 +18,9 @@ import {
 	tickPowerRollup,
 	type PowerRollupHost,
 } from "../learning/power_rollup";
-import { initPolicyEngine, stopPolicyEngine, type PolicyEngineHost } from "../policy";
-import { initIntentEngine, stopIntentEngine, type IntentEngineHost } from "../intent";
-import { initPlanner, stopPlanner, type PlannerHost } from "../planner";
+import { ensurePolicyStateTree, initPolicyEngine, stopPolicyEngine, type PolicyEngineHost } from "../policy";
+import { ensureIntentStates, initIntentEngine, stopIntentEngine, type IntentEngineHost } from "../intent";
+import { ensurePlannerStateTree, runPlannerRuntime, stopPlanner, type PlannerHost } from "../planner";
 import { resetGlobalModesRuntime } from "../global_modes";
 import { ensureEmsLightStates } from "./ensure_states";
 import { runEmsLightPhase1Tick } from "./tick";
@@ -32,8 +37,9 @@ let energyDailyRollupHost: EnergyDailyRollupHost | null = null;
 
 function buildRollupHost(adapter: ioBroker.Adapter): PowerRollupHost & EnergyDailyRollupHost {
 	const adapterAny = adapter as unknown as Record<string, unknown>;
-	return {
-		...withLearningDataPath(adapter, adapter as unknown as LiveCacheHost),
+	const base = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost) as unknown as PowerRollupHost &
+		EnergyDailyRollupHost;
+	Object.assign(base, {
 		namespace: adapter.namespace,
 		config: adapter.config,
 		log: adapter.log,
@@ -49,7 +55,8 @@ function buildRollupHost(adapter: ioBroker.Adapter): PowerRollupHost & EnergyDai
 			typeof adapterAny.unsubscribeForeignStatesAsync === "function"
 				? adapterAny.unsubscribeForeignStatesAsync.bind(adapter)
 				: undefined,
-	};
+	});
+	return base;
 }
 
 function tickIntervalSec(config: unknown): number {
@@ -87,30 +94,12 @@ async function waitWithStartupTimeout(
 	}
 }
 
-export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<void> {
-	const version = String(adapter.common?.version ?? "0.0.0");
-	const host = adapter as unknown as LiveCacheHost;
-	const adapterAny = adapter as unknown as Record<string, unknown>;
+let learningHost: LearningStateTreeHost | null = null;
 
-	await ensureEmsLightStates(host, version);
-	await initPlanner(host as unknown as PlannerHost & LiveCacheHost);
-	energyDailyRollupHost = buildRollupHost(adapter);
-	powerRollupHost = energyDailyRollupHost;
-	await initEnergyDailyRollup(energyDailyRollupHost);
-	await initPowerRollup(powerRollupHost);
-	await initPvBiasLearning(adapter);
-	await initWeatherLearning(adapter);
-	const policyHost = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & PolicyEngineHost);
-	const policyInit = initPolicyEngine(policyHost).catch((e) => {
-		adapter.log.error(`Policy Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
-	});
-	await waitWithStartupTimeout(policyInit, POLICY_STARTUP_TIMEOUT_MS, () => {
-		adapter.log.warn(
-			`Policy Engine init still running after ${POLICY_STARTUP_TIMEOUT_MS}ms; continuing adapter startup`,
-		);
-	});
-	const intentHost = {
-		...withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & IntentEngineHost),
+function buildIntentHost(adapter: ioBroker.Adapter): IntentEngineHost {
+	const adapterAny = adapter as unknown as Record<string, unknown>;
+	const base = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & IntentEngineHost);
+	Object.assign(base, {
 		namespace: adapter.namespace,
 		config: adapter.config,
 		log: adapter.log,
@@ -129,16 +118,58 @@ export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<voi
 			typeof adapterAny.unsubscribeForeignStatesAsync === "function"
 				? adapterAny.unsubscribeForeignStatesAsync.bind(adapter)
 				: undefined,
-	};
-	// Intent Engine isoliert initialisieren: ein Fehler darf weder still bleiben
-	// noch den restlichen Adapterstart (Tick, Subscriptions) blockieren.
+	});
+	return base;
+}
+
+/** Referenz auf den in Phase B erzeugten Learning-Host (für Phase D). */
+export function getLearningStateTreeHost(): LearningStateTreeHost | null {
+	return learningHost;
+}
+
+/** Phase B — EMS-Light-, Planner-, Policy-, Intent- und Learning-Objekte. */
+export async function ensureEmsLightStateTree(adapter: ioBroker.Adapter): Promise<void> {
+	const version = String(adapter.common?.version ?? "0.0.0");
+	const host = adapter as unknown as LiveCacheHost;
+	await ensureEmsLightStates(host, version);
+	await ensurePlannerStateTree(host as unknown as PlannerHost & LiveCacheHost);
+	const policyHost = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & PolicyEngineHost);
+	await ensurePolicyStateTree(policyHost);
+	await ensureIntentStates(buildIntentHost(adapter));
+	learningHost = await ensureLearningStateTree(adapter);
+}
+
+/** Phase F — Runtime, Ticks und initiale Auswertung (nach Bootstrap-Barriere). */
+export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Promise<void> {
+	const host = adapter as unknown as LiveCacheHost;
+
+	await runPlannerRuntime(host as unknown as PlannerHost & LiveCacheHost);
+	energyDailyRollupHost = buildRollupHost(adapter);
+	powerRollupHost = energyDailyRollupHost;
+	await initEnergyDailyRollup(energyDailyRollupHost);
+	await initPowerRollup(powerRollupHost);
+	if (learningHost) {
+		await startPvBiasLearningRuntime(adapter, learningHost);
+	} else {
+		learningHost = await ensureLearningStateTree(adapter);
+		await startPvBiasLearningRuntime(adapter, learningHost);
+	}
+	await initWeatherLearning(adapter);
+	const policyHost = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & PolicyEngineHost);
+	const policyInit = initPolicyEngine(policyHost).catch((e) => {
+		adapter.log.error(`Policy Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
+	});
+	await waitWithStartupTimeout(policyInit, POLICY_STARTUP_TIMEOUT_MS, () => {
+		adapter.log.warn(
+			`Policy Engine init still running after ${POLICY_STARTUP_TIMEOUT_MS}ms; continuing adapter startup`,
+		);
+	});
+	const intentHost = buildIntentHost(adapter);
 	try {
 		await initIntentEngine(intentHost);
 	} catch (e) {
 		adapter.log.error(`User Intent Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
 	}
-	// Verbindliche ioBroker-Subscription auf dem echten Adapter (stateChange-Routing
-	// erfolgt in main.ts onStateChange -> handleGlobalModesStateChange).
 	policyAdapter = adapter;
 	try {
 		await adapter.subscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE);
@@ -177,6 +208,11 @@ export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<voi
 	adapter.log.debug(`EMS-Light Phase 1 ready (read-only, tick ${sec}s)`);
 }
 
+export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<void> {
+	await ensureEmsLightStateTree(adapter);
+	await startEmsLightPhase1Runtime(adapter);
+}
+
 /** Nur Live-Tick-Timer stoppen (Learning-Intervalle laufen weiter). */
 function stopEmsLightTick(): void {
 	if (tickTimer) {
@@ -206,5 +242,6 @@ export function stopEmsLightPhase1(): void {
 	stopPlanner();
 	powerRollupHost = null;
 	energyDailyRollupHost = null;
+	learningHost = null;
 	stopEmsLightTick();
 }

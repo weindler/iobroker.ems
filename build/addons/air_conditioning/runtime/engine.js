@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.acRuntimeWatchedForeignIds = exports.stopAcRuntimeEngine = exports.initAcRuntimeEngine = exports.runAcRuntimeTick = void 0;
+exports.acRuntimeWatchedForeignIds = exports.stopAcRuntimeEngine = exports.initAcRuntimeEngine = exports.hydrateAcRuntimePersist = exports.runAcRuntimeTick = void 0;
 const ems_activity_1 = require("../../../ems_activity");
 const execution_mode_1 = require("../../../execution_mode");
 const state_util_1 = require("../../../ems_light/state_util");
@@ -392,6 +392,19 @@ async function runAcRuntimeTickBody(host) {
     }
     scheduleTick();
 }
+let acPersistHydrated = false;
+/** Phase D — Klima-Runtime-Persistenz von Disk laden (ohne Subscriptions/Ticks). */
+async function hydrateAcRuntimePersist(host) {
+    if (acPersistHydrated) {
+        return;
+    }
+    const dataDir = host.getAbsolutePath?.("air_conditioning");
+    if (dataDir) {
+        persist = await (0, persist_io_1.readAcRuntimePersist)(dataDir);
+    }
+    acPersistHydrated = true;
+}
+exports.hydrateAcRuntimePersist = hydrateAcRuntimePersist;
 async function initAcRuntimeEngine(host) {
     if (engineActive && hostRef === host)
         return;
@@ -401,10 +414,7 @@ async function initAcRuntimeEngine(host) {
     for (let i = 1; i <= 5; i++) {
         await (0, consumer_stats_1.initConsumerStatsForKey)(host, (0, constants_1.acUnitConsumerKey)(i));
     }
-    const dataDir = host.getAbsolutePath?.("air_conditioning");
-    if (dataDir) {
-        persist = await (0, persist_io_1.readAcRuntimePersist)(dataDir);
-    }
+    await hydrateAcRuntimePersist(host);
     const cfg = (0, config_1.acGlobalConfigFromAdapter)(host.config);
     const configRecord = host.config && typeof host.config === "object" ? host.config : {};
     const mappingTable = (0, sequences_1.buildAcMappingTableFromConfig)(configRecord);
@@ -462,6 +472,7 @@ function stopAcRuntimeEngine() {
     engineActive = false;
     hostRef = null;
     persist = { version: 1, units: {} };
+    acPersistHydrated = false;
     subscribedIds.length = 0;
     (0, daily_plan_1.resetAcDailyPlanCache)();
 }

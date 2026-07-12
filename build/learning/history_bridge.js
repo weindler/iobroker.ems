@@ -28,27 +28,27 @@ function sendToHistoryGetHistory(adapter, stateId, options) {
     });
 }
 exports.sendToHistoryGetHistory = sendToHistoryGetHistory;
+/** Erweitert host um sendToAsync — ohne das Ursprungsobjekt zu mutieren. */
 function withHistoryBridge(adapter, host) {
-    return {
-        ...host,
-        sendToAsync: async (instanceName, command, message) => new Promise((resolve, reject) => {
-            try {
-                adapter.sendTo(instanceName, command, message, (res) => {
-                    if (res instanceof Error) {
-                        reject(res);
-                        return;
-                    }
-                    if (res && typeof res === "object") {
-                        resolve(res);
-                        return;
-                    }
-                    reject(new Error(`${instanceName}:${command} empty response`));
-                });
-            }
-            catch (e) {
-                reject(e);
-            }
-        }),
-    };
+    const out = Object.create(host);
+    out.sendToAsync = async (instanceName, command, message) => new Promise((resolve, reject) => {
+        try {
+            adapter.sendTo(instanceName, command, message, (res) => {
+                if (res instanceof Error) {
+                    reject(res);
+                    return;
+                }
+                if (res && typeof res === "object") {
+                    resolve(res);
+                    return;
+                }
+                reject(new Error(`${instanceName}:${command} empty response`));
+            });
+        }
+        catch (e) {
+            reject(e);
+        }
+    });
+    return out;
 }
 exports.withHistoryBridge = withHistoryBridge;

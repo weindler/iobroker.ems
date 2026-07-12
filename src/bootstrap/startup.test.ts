@@ -1,0 +1,446 @@
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
+import * as fs from "node:fs/promises";
+import * as os from "node:os";
+import * as path from "node:path";
+import { stopBatteryModule } from "../addons/battery/index.js";
+import { stopAirConditioningModule } from "../addons/air_conditioning/index.js";
+import { stopImmersionHeaterModule } from "../addons/immersion_heater/index.js";
+import { stopWallboxModule } from "../addons/wallbox/index.js";
+import { stopEmsLightPhase1 } from "../ems_light/index.js";
+import { stopFailsafeRunner } from "../failsafe_runner.js";
+import { WALLBOX_LIVE_WRITE_RELEASED } from "../addons/wallbox/runtime/execute.js";
+import { resetAllProfileSocPersistence } from "../addons/wallbox/vehicles/baseline.js";
+import { vehicleStatePaths } from "../addons/wallbox/vehicles/ensure_states.js";
+import { IMMERSION_RUNTIME_STATES } from "../addons/immersion_heater/runtime/types.js";
+import {
+	allBootstrapCoreStateIds,
+	BOOTSTRAP_CORE_STATE_CATEGORIES,
+	LEGACY_WALLBOX_VEHICLE_SLOT_PREFIXES,
+} from "./manifest.js";
+import { ensureStaticStateTree, ensureDynamicVehicleProfiles } from "./ensure_static_tree.js";
+import { endBootstrapRun } from "./context.js";
+import { hydratePersistedState } from "./persist_hydrate.js";
+import { runPostBootstrapReconciliation } from "./reconcile.js";
+import {
+	getBootstrapRunContext,
+	isBootstrapComplete,
+	resetBootstrapBarrierForTest,
+	runAdapterBootstrap,
+} from "./startup.js";
+import { WALLBOX_EVCC_STATES } from "../addons/wallbox/ensure_evcc_states.js";
+
+type MockState = { val: ioBroker.StateValue; ack: boolean };
+
+function defaultConfig(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+	return {
+		global_execution_mode: "dryrun",
+		wb_addon_mode: "dryrun",
+		bat_addon_mode: "dryrun",
+		ih_addon_mode: "dryrun",
+		ac_addon_mode: "dryrun",
+		wb_vehicle_profiles: [],
+		...overrides,
+	};
+}
+
+function profileRow(id: string, name: string): Record<string, unknown> {
+	return {
+		vehicle_id: id,
+		display_name: name,
+		enabled: true,
+		source: "manual",
+		battery_capacity_net_kwh: 60,
+		max_ac_charge_power_w: 11000,
+		supported_phases: "3",
+		preferred_phases: 3,
+		min_current_a: 6,
+		max_current_a: 16,
+		default_target_soc_pct: 80,
+		minimum_departure_soc_pct: 50,
+		maximum_soc_pct: 90,
+	};
+}
+
+function liveConfig(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+	return defaultConfig({
+		global_execution_mode: "live",
+		wb_addon_mode: "live",
+		bat_addon_mode: "live",
+		ih_addon_mode: "live",
+		ac_addon_mode: "live",
+		...overrides,
+	});
+}
+
+function immersionConfig(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+	return defaultConfig({
+		ih_set_enabled_target: "relay.0.heater",
+		ih_buffer_temp_c_target: "sensor.0.buffer_temp",
+		ih_buffer_temp_c_enabled: true,
+		...overrides,
+	});
+}
+
+class FakeBootstrapAdapter {
+	readonly namespace = "ems.0";
+	readonly objects = new Map<string, ioBroker.Object>();
+	readonly states = new Map<string, MockState>();
+	readonly subscriptions: string[] = [];
+	readonly foreignSubscriptions: string[] = [];
+	readonly foreignWrites: Array<{ id: string; val: unknown }> = [];
+	readonly foreignStates = new Map<string, MockState>();
+	config: Record<string, unknown>;
+	common = { version: "0.1.140" };
+	private dataDir: string;
+
+	constructor(dataDir: string, config: Record<string, unknown> = defaultConfig()) {
+		this.dataDir = dataDir;
+		this.config = config;
+	}
+
+	log = {
+		debug: () => undefined,
+		info: () => undefined,
+		warn: () => undefined,
+		error: () => undefined,
+	};
+
+	getAbsoluteInstanceDataDir(): string {
+		return this.dataDir;
+	}
+
+	async setObjectNotExistsAsync(id: string, obj: ioBroker.Object): Promise<void> {
+		if (!this.objects.has(id)) {
+			this.objects.set(id, { ...obj, _id: id } as ioBroker.Object);
+		}
+		if (obj.type === "state" && obj.common?.def !== undefined && !this.states.has(id)) {
+			this.states.set(id, { val: obj.common.def as ioBroker.StateValue, ack: true });
+		}
+	}
+
+	async extendObjectAsync(id: string, obj: Partial<ioBroker.Object>): Promise<void> {
+		const cur = this.objects.get(id);
+		if (cur && obj.common) {
+			cur.common = { ...(cur.common as ioBroker.StateCommon), ...(obj.common as ioBroker.StateCommon) };
+		}
+	}
+
+	async getObjectAsync(id: string): Promise<ioBroker.Object | null> {
+		return this.objects.get(id) ?? null;
+	}
+
+	async getStateAsync(id: string): Promise<ioBroker.State | null> {
+		const s = this.states.get(id);
+		return s ? ({ val: s.val, ack: s.ack, ts: 0, lc: 0, from: "test" } as ioBroker.State) : null;
+	}
+
+	async setStateAsync(id: string, st: ioBroker.SettableState): Promise<void> {
+		this.states.set(id, { val: st.val as ioBroker.StateValue, ack: st.ack ?? false });
+	}
+
+	async getForeignStateAsync(id: string): Promise<ioBroker.State | null> {
+		const s = this.foreignStates.get(id);
+		return s ? ({ val: s.val, ack: s.ack, ts: 0, lc: 0, from: "test" } as ioBroker.State) : null;
+	}
+
+	async setForeignStateAsync(id: string, st: ioBroker.SettableState): Promise<void> {
+		this.foreignWrites.push({ id, val: st.val });
+	}
+
+	async subscribeStatesAsync(pattern: string): Promise<void> {
+		if (!this.subscriptions.includes(pattern)) {
+			this.subscriptions.push(pattern);
+		}
+	}
+
+	async subscribeForeignStatesAsync(pattern: string): Promise<void> {
+		if (!this.foreignSubscriptions.includes(pattern)) {
+			this.foreignSubscriptions.push(pattern);
+		}
+	}
+
+	async unsubscribeStatesAsync(_pattern: string): Promise<void> {
+		return undefined;
+	}
+
+	async unsubscribeForeignStatesAsync(_pattern: string): Promise<void> {
+		return undefined;
+	}
+
+	async getHistoryAsync(): Promise<Array<{ val: ioBroker.StateValue; ts: number }>> {
+		return [];
+	}
+
+	hasObject(relativeId: string): boolean {
+		return this.objects.has(relativeId);
+	}
+}
+
+async function strictStep(_label: string, fn: () => Promise<unknown>): Promise<void> {
+	await fn();
+}
+
+function stopAllRuntime(): void {
+	stopEmsLightPhase1();
+	stopWallboxModule();
+	stopBatteryModule(null);
+	stopImmersionHeaterModule();
+	stopAirConditioningModule();
+	stopFailsafeRunner();
+	resetBootstrapBarrierForTest();
+	endBootstrapRun();
+	resetAllProfileSocPersistence();
+}
+
+function assertCoreCategories(adapter: FakeBootstrapAdapter): void {
+	for (const [category, ids] of Object.entries(BOOTSTRAP_CORE_STATE_CATEGORIES)) {
+		for (const id of ids) {
+			assert.ok(adapter.hasObject(id), `${category}: missing object ${id}`);
+		}
+	}
+}
+
+describe("bootstrap cold start recovery", () => {
+	let tmp: string;
+
+	beforeEach(async () => {
+		tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-bootstrap-"));
+	});
+
+	afterEach(() => {
+		stopAllRuntime();
+	});
+
+	it("scenario A — empty namespace, empty vehicle profile list", async () => {
+		const adapter = new FakeBootstrapAdapter(tmp, defaultConfig({ wb_vehicle_profiles: [] }));
+		await runAdapterBootstrap(adapter as unknown as ioBroker.Adapter, strictStep);
+
+		assert.equal(isBootstrapComplete(), true);
+		assertCoreCategories(adapter);
+		assert.equal(adapter.states.get("global.execution_mode")?.val, "dryrun");
+		assert.equal(adapter.states.get("addons.wallbox.mode")?.val, "dryrun");
+		assert.equal(adapter.foreignWrites.length, 0);
+		assert.equal(WALLBOX_LIVE_WRITE_RELEASED, false);
+
+		for (const prefix of LEGACY_WALLBOX_VEHICLE_SLOT_PREFIXES) {
+			for (const id of adapter.objects.keys()) {
+				assert.ok(!id.startsWith(prefix), `legacy slot object must not exist: ${id}`);
+			}
+		}
+		const vehicleChannels = [...adapter.objects.keys()].filter((id) =>
+			id.startsWith("addons.wallbox.vehicles."),
+		);
+		assert.equal(vehicleChannels.length, 0, "no example vehicle profiles");
+	});
+
+	it("scenario B — one and five dynamic vehicle profiles", async () => {
+		for (const count of [1, 5]) {
+			stopAllRuntime();
+			const dir = await fs.mkdtemp(path.join(os.tmpdir(), "ems-bootstrap-vp-"));
+			const profiles = Array.from({ length: count }, (_, i) =>
+				profileRow(`car_${i + 1}`, `Car ${i + 1}`),
+			);
+			const adapter = new FakeBootstrapAdapter(dir, defaultConfig({ wb_vehicle_profiles: profiles }));
+			await ensureStaticStateTree(adapter as unknown as ioBroker.Adapter);
+			await ensureDynamicVehicleProfiles(adapter as unknown as ioBroker.Adapter);
+
+			for (const p of profiles) {
+				const vid = String(p.vehicle_id);
+				assert.ok(adapter.hasObject(`addons.wallbox.vehicles.${vid}.config.enabled`));
+				assert.ok(adapter.hasObject(`addons.wallbox.vehicles.${vid}.telemetry.soc_pct`));
+			}
+			if (count >= 2) {
+				const a = `addons.wallbox.vehicles.car_1.telemetry.soc_pct`;
+				const b = `addons.wallbox.vehicles.car_2.telemetry.soc_pct`;
+				assert.notEqual(a, b);
+			}
+		}
+	});
+
+	it("scenario C — idempotent second start preserves user values", async () => {
+		const adapter = new FakeBootstrapAdapter(tmp);
+		await runAdapterBootstrap(adapter as unknown as ioBroker.Adapter, strictStep);
+		await adapter.setStateAsync("global.execution_mode", { val: "dryrun", ack: true });
+		await adapter.setStateAsync("global_modes.requested", { val: "eco", ack: true });
+		const snapshotObjects = new Map(adapter.objects);
+		const snapshotStates = new Map(adapter.states);
+		const snapshotSubs = [...adapter.subscriptions];
+
+		stopAllRuntime();
+		await runAdapterBootstrap(adapter as unknown as ioBroker.Adapter, strictStep);
+
+		assert.equal(adapter.objects.size, snapshotObjects.size);
+		assert.equal(adapter.states.get("global_modes.requested")?.val, "eco");
+		assert.equal(adapter.states.get("global.execution_mode")?.val, "dryrun");
+		for (const sub of snapshotSubs) {
+			assert.ok(adapter.subscriptions.includes(sub), `subscription preserved: ${sub}`);
+		}
+	});
+
+	it("scenario D — partial namespace fills gaps and keeps valid user values", async () => {
+		const adapter = new FakeBootstrapAdapter(tmp);
+		await adapter.setObjectNotExistsAsync("global.execution_mode", {
+			type: "state",
+			common: { name: "Global mode", type: "string", role: "value", read: true, write: true, def: "dryrun" },
+			native: {},
+		} as ioBroker.Object);
+		await adapter.setStateAsync("global.execution_mode", { val: "dryrun", ack: true });
+		await adapter.setObjectNotExistsAsync("global_modes.requested", {
+			type: "state",
+			common: { name: "Requested", type: "string", role: "value", read: true, write: true },
+			native: {},
+		} as ioBroker.Object);
+		await adapter.setStateAsync("global_modes.requested", { val: "balanced", ack: true });
+		await adapter.setStateAsync("learning.persistence.battery_runtime_json", {
+			val: "{invalid-json",
+			ack: true,
+		});
+
+		await runAdapterBootstrap(adapter as unknown as ioBroker.Adapter, strictStep);
+
+		assert.equal(isBootstrapComplete(), true);
+		assert.equal(adapter.states.get("global_modes.requested")?.val, "balanced");
+		for (const id of allBootstrapCoreStateIds()) {
+			assert.ok(adapter.hasObject(id), `filled missing core object ${id}`);
+		}
+		assert.equal(adapter.foreignWrites.length, 0);
+	});
+
+	it("scenario E — full phase order A→B→C→D→Sync→E→F→Complete", async () => {
+		const order: string[] = [];
+		const adapter = new FakeBootstrapAdapter(tmp);
+		await runAdapterBootstrap(adapter as unknown as ioBroker.Adapter, strictStep, {
+			trace: (phase, detail) => order.push(detail ? `${phase}:${detail}` : phase),
+		});
+
+		const phases = ["A:", "B:", "C:", "D:", "sync:", "E:", "F:", "complete:"];
+		let lastIdx = -1;
+		for (const prefix of phases) {
+			const idx = order.findIndex((x) => x.startsWith(prefix));
+			assert.ok(idx > lastIdx, `missing or out-of-order ${prefix} in ${order.join(" -> ")}`);
+			lastIdx = idx;
+		}
+	});
+
+	it("scenario F — empty namespace with live admin config clamps to dryrun", async () => {
+		const cfg = liveConfig({ wb_vehicle_profiles: [] });
+		const adapter = new FakeBootstrapAdapter(tmp, cfg);
+		let coldStartDuringSync: boolean | null = null;
+		await runAdapterBootstrap(adapter as unknown as ioBroker.Adapter, async (label, fn) => {
+			await fn();
+			if (label === "sync execution modes") {
+				coldStartDuringSync = getBootstrapRunContext()?.coldStartRecovery ?? null;
+			}
+		});
+
+		assert.equal(isBootstrapComplete(), true);
+		assert.equal(coldStartDuringSync, true);
+		assert.equal(getBootstrapRunContext(), null);
+		assert.equal(adapter.config.global_execution_mode, "live");
+		assert.equal(adapter.config.wb_addon_mode, "live");
+		assert.equal(adapter.states.get("global.execution_mode")?.val, "dryrun");
+		assert.equal(adapter.states.get("addons.wallbox.mode")?.val, "dryrun");
+		assert.equal(adapter.states.get("addons.battery.mode")?.val, "dryrun");
+		assert.equal(adapter.states.get("addons.immersion_heater.mode")?.val, "dryrun");
+		assert.equal(adapter.states.get("addons.air_conditioning.mode")?.val, "dryrun");
+		assert.equal(adapter.states.get("execution.safety.global_execution_mode")?.val, "dryrun");
+		assert.equal(adapter.foreignWrites.length, 0);
+		assert.equal(WALLBOX_LIVE_WRITE_RELEASED, false);
+	});
+
+	it("scenario F2 — second start with existing namespace is warm start", async () => {
+		const cfg = liveConfig({ wb_vehicle_profiles: [] });
+		const adapter = new FakeBootstrapAdapter(tmp, cfg);
+		await runAdapterBootstrap(adapter as unknown as ioBroker.Adapter, strictStep);
+		assert.equal(adapter.states.get("global.execution_mode")?.val, "dryrun");
+
+		stopAllRuntime();
+		let secondRunColdStart: boolean | null = null;
+		const subsBefore = adapter.subscriptions.length;
+		await runAdapterBootstrap(adapter as unknown as ioBroker.Adapter, async (label, fn) => {
+			await fn();
+			if (label === "sync execution modes") {
+				secondRunColdStart = getBootstrapRunContext()?.coldStartRecovery ?? null;
+			}
+		});
+
+		assert.equal(secondRunColdStart, false);
+		assert.equal(adapter.states.get("global.execution_mode")?.val, "dryrun");
+		assert.equal(adapter.subscriptions.length, subsBefore);
+	});
+
+	it("scenario G — foreign input during bootstrap is reconciled after barrier", async () => {
+		const adapter = new FakeBootstrapAdapter(
+			tmp,
+			defaultConfig({ wb_evcc_connected_state: "evcc.0.status.connected" }),
+		);
+		let foreignSetDuringBootstrap = false;
+
+		await runAdapterBootstrap(adapter as unknown as ioBroker.Adapter, async (label, fn) => {
+			await fn();
+			if (label === "wallbox runtime" && !foreignSetDuringBootstrap) {
+				adapter.foreignStates.set("evcc.0.status.connected", { val: true, ack: true });
+				foreignSetDuringBootstrap = true;
+			}
+		});
+
+		assert.equal(isBootstrapComplete(), true);
+		assert.equal(adapter.foreignWrites.length, 0);
+		assert.equal(adapter.states.get(WALLBOX_EVCC_STATES.connected)?.val, true);
+	});
+
+	it("scenario G2 — post-bootstrap reconciliation picks up late foreign changes", async () => {
+		const adapter = new FakeBootstrapAdapter(
+			tmp,
+			defaultConfig({ wb_evcc_connected_state: "evcc.0.status.connected" }),
+		);
+		await runAdapterBootstrap(adapter as unknown as ioBroker.Adapter, strictStep);
+		adapter.foreignStates.set("evcc.0.status.connected", { val: true, ack: true });
+		await runPostBootstrapReconciliation(adapter as unknown as ioBroker.Adapter);
+		assert.equal(adapter.states.get(WALLBOX_EVCC_STATES.connected)?.val, true);
+		assert.equal(adapter.foreignWrites.length, 0);
+	});
+
+	it("scenario H — vehicle SOC persistence hydrated in Phase D before runtime", async () => {
+		const profiles = [profileRow("car_1", "Car 1")];
+		const adapter = new FakeBootstrapAdapter(tmp, defaultConfig({ wb_vehicle_profiles: profiles }));
+		await ensureStaticStateTree(adapter as unknown as ioBroker.Adapter);
+		await ensureDynamicVehicleProfiles(adapter as unknown as ioBroker.Adapter);
+
+		const p = vehicleStatePaths("car_1");
+		await adapter.setStateAsync(p.estimationBaselineSocPct, { val: 72, ack: true });
+		await adapter.setStateAsync(p.estimationBaselineSocSource, { val: "direct", ack: true });
+		await adapter.setStateAsync(p.estimationBaselineAt, { val: "2026-07-01T10:00:00.000Z", ack: true });
+
+		await hydratePersistedState(adapter as unknown as ioBroker.Adapter);
+
+		const { getRollforwardAnchor } = await import("../addons/wallbox/vehicles/baseline.js");
+		const anchor = getRollforwardAnchor("car_1");
+		assert.ok(anchor);
+		assert.equal(anchor?.socPct, 72);
+		assert.equal(anchor?.rootSource, "direct");
+	});
+
+	it("scenario I — immersion foreign input during bootstrap reconciled after barrier", async () => {
+		const adapter = new FakeBootstrapAdapter(tmp, immersionConfig());
+		let foreignSetDuringBootstrap = false;
+		const foreignWritesDuringBootstrap: Array<{ id: string; val: unknown }> = [];
+
+		await runAdapterBootstrap(adapter as unknown as ioBroker.Adapter, async (label, fn) => {
+			await fn();
+			if (label === "immersion runtime" && !foreignSetDuringBootstrap) {
+				foreignWritesDuringBootstrap.push(...adapter.foreignWrites);
+				adapter.foreignStates.set("sensor.0.buffer_temp", { val: 52.5, ack: true });
+				foreignSetDuringBootstrap = true;
+			}
+		});
+
+		assert.equal(isBootstrapComplete(), true);
+		assert.equal(foreignSetDuringBootstrap, true);
+		assert.equal(foreignWritesDuringBootstrap.length, 0);
+		assert.equal(adapter.states.get(IMMERSION_RUNTIME_STATES.bufferTemperatureC)?.val, 52.5);
+		const dupes = adapter.subscriptions.filter((s, i) => adapter.subscriptions.indexOf(s) !== i);
+		assert.equal(dupes.length, 0, "no duplicate subscriptions");
+	});
+});

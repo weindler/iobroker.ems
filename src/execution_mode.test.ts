@@ -184,4 +184,30 @@ describe("execution mode", () => {
 		assert.equal(updated, true);
 		assert.equal(config.ih_addon_mode, "live");
 	});
+
+	it("syncExecutionModesFromConfig cold start recovery clamps live admin config to dryrun", async () => {
+		const store = new Map<string, ioBroker.State>();
+		const host = {
+			log: { info: () => {}, debug: () => {} },
+			getStateAsync: async (id: string) => store.get(id) ?? null,
+			setStateAsync: async (id: string, st: ioBroker.SettableState) => {
+				store.set(id, { val: st.val, ack: st.ack ?? false } as ioBroker.State);
+			},
+			setObjectNotExistsAsync: async () => undefined,
+		};
+		const liveConfig = {
+			global_execution_mode: "live",
+			wb_addon_mode: "live",
+			bat_addon_mode: "live",
+			ih_addon_mode: "live",
+			ac_addon_mode: "live",
+		};
+		await syncExecutionModesFromConfig(host, liveConfig, { coldStartRecovery: true });
+		assert.equal(store.get("global.execution_mode")?.val, "dryrun");
+		assert.equal(store.get("addons.wallbox.mode")?.val, "dryrun");
+		assert.equal(store.get("addons.battery.mode")?.val, "dryrun");
+		assert.equal(store.get("addons.immersion_heater.mode")?.val, "dryrun");
+		assert.equal(store.get("addons.air_conditioning.mode")?.val, "dryrun");
+		assert.equal(store.get("execution.safety.global_execution_mode")?.val, "dryrun");
+	});
 });

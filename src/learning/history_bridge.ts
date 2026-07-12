@@ -37,26 +37,26 @@ export function sendToHistoryGetHistory(
 	});
 }
 
+/** Erweitert host um sendToAsync — ohne das Ursprungsobjekt zu mutieren. */
 export function withHistoryBridge<A extends HistoryQueryHost>(adapter: SendToAdapter, host: A): A {
-	return {
-		...host,
-		sendToAsync: async (instanceName, command, message) =>
-			new Promise((resolve, reject) => {
-				try {
-					adapter.sendTo(instanceName, command, message, (res?: ioBroker.Message | Error) => {
-						if (res instanceof Error) {
-							reject(res);
-							return;
-						}
-						if (res && typeof res === "object") {
-							resolve(res);
-							return;
-						}
-						reject(new Error(`${instanceName}:${command} empty response`));
-					});
-				} catch (e) {
-					reject(e);
-				}
-			}),
-	};
+	const out = Object.create(host) as A & { sendToAsync: HistoryQueryHost["sendToAsync"] };
+	out.sendToAsync = async (instanceName, command, message) =>
+		new Promise((resolve, reject) => {
+			try {
+				adapter.sendTo(instanceName, command, message, (res?: ioBroker.Message | Error) => {
+					if (res instanceof Error) {
+						reject(res);
+						return;
+					}
+					if (res && typeof res === "object") {
+						resolve(res);
+						return;
+					}
+					reject(new Error(`${instanceName}:${command} empty response`));
+				});
+			} catch (e) {
+				reject(e);
+			}
+		});
+	return out;
 }

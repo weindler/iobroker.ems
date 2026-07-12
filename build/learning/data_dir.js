@@ -25,17 +25,26 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.withLearningDataPath = exports.learningDataPath = void 0;
 const path = __importStar(require("node:path"));
-const utils = __importStar(require("@iobroker/adapter-core"));
 /** Absoluter Instanz-Datenordner für Learning-Artefakte (Freeze-JSON, Persist). */
 function learningDataPath(adapter, category) {
-    const base = utils.getAbsoluteInstanceDataDir(adapter);
+    const adapterAny = adapter;
+    let base;
+    if (typeof adapterAny.getAbsoluteInstanceDataDir === "function") {
+        base = adapterAny.getAbsoluteInstanceDataDir();
+    }
+    else {
+        // Lazy: vermeidet js-controller-Abhängigkeit beim Modul-Import (Tests, Cold Start).
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const utils = require("@iobroker/adapter-core");
+        base = utils.getAbsoluteInstanceDataDir(adapter);
+    }
     return category ? path.join(base, category) : base;
 }
 exports.learningDataPath = learningDataPath;
+/** Erweitert host um getAbsolutePath — ohne das Ursprungsobjekt zu mutieren. */
 function withLearningDataPath(adapter, host) {
-    return {
-        ...host,
-        getAbsolutePath: (category) => learningDataPath(adapter, category),
-    };
+    const out = Object.create(host);
+    out.getAbsolutePath = (category) => learningDataPath(adapter, category);
+    return out;
 }
 exports.withLearningDataPath = withLearningDataPath;

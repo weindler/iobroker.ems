@@ -85,6 +85,38 @@ interface DomainRequestIds {
 	battery: string | null;
 }
 
+let intentPersistLoaded = false;
+
+async function loadIntentPersistFromDisk(host: IntentEngineHost): Promise<void> {
+	if (intentPersistLoaded) {
+		return;
+	}
+	try {
+		const dataDir = host.getAbsolutePath?.("intent");
+		if (dataDir) {
+			const persisted = await readIntentPersist(dataDir);
+			if (persisted) {
+				lastWallbox = persisted.wallbox;
+				lastThermal = persisted.thermal;
+				lastBattery = persisted.battery;
+				lastResolvedAll = persisted.resolvedAll;
+				lastRequestIds = persisted.lastRequestIds;
+				wallboxSnapshot = persisted.wallboxSnapshot;
+				thermalSnapshot = persisted.thermalSnapshot;
+				batterySnapshot = persisted.batterySnapshot;
+			}
+		}
+	} catch (e) {
+		host.log.warn(`Intent persist load failed: ${e}`);
+	}
+	intentPersistLoaded = true;
+}
+
+/** Phase D — Intent-Persistenz von Disk laden (ohne Engine-Lauf). */
+export async function hydrateIntentPersist(host: IntentEngineHost): Promise<void> {
+	await loadIntentPersistFromDisk(host);
+}
+
 let engineActive = false;
 let subscribedHost: IntentEngineHost | null = null;
 let lastWallbox: ResolvedWallboxIntent | null = null;
@@ -476,24 +508,7 @@ export async function initIntentEngine(host: IntentEngineHost): Promise<void> {
 	await ensureIntentStates(host);
 	host.log.debug?.("User Intent states ensured");
 
-	try {
-		const dataDir = host.getAbsolutePath?.("intent");
-		if (dataDir) {
-			const persisted = await readIntentPersist(dataDir);
-			if (persisted) {
-				lastWallbox = persisted.wallbox;
-				lastThermal = persisted.thermal;
-				lastBattery = persisted.battery;
-				lastResolvedAll = persisted.resolvedAll;
-				lastRequestIds = persisted.lastRequestIds;
-				wallboxSnapshot = persisted.wallboxSnapshot;
-				thermalSnapshot = persisted.thermalSnapshot;
-				batterySnapshot = persisted.batterySnapshot;
-			}
-		}
-	} catch (e) {
-		host.log.warn(`Intent persist load failed: ${e}`);
-	}
+	await loadIntentPersistFromDisk(host);
 
 	if (!lastWallbox) lastWallbox = emptyResolvedWallboxIntent(now);
 	if (!lastThermal) lastThermal = emptyResolvedThermalIntent(now, THERMAL_TARGET_ID);
@@ -621,6 +636,7 @@ export function stopIntentEngine(): void {
 
 	engineActive = false;
 	subscribedHost = null;
+	intentPersistLoaded = false;
 	lastWallbox = null;
 	lastThermal = null;
 	lastBattery = null;

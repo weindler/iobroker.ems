@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.batteryUnloadRestore = exports.runBatteryControlTick = exports.handleBatteryForeignStateChange = exports.handleBatteryGridBalanceForeignStateChange = exports.handleBatteryAdapterStateChange = exports.stopBatteryModule = exports.initBatteryModule = exports.__resetBatteryRuntimeForTest = exports.BATTERY_ADDON_ID = void 0;
+exports.batteryUnloadRestore = exports.runBatteryControlTick = exports.handleBatteryForeignStateChange = exports.handleBatteryGridBalanceForeignStateChange = exports.handleBatteryAdapterStateChange = exports.stopBatteryModule = exports.initBatteryModule = exports.startBatteryModuleRuntime = exports.ensureBatteryStateTree = exports.__resetBatteryRuntimeForTest = exports.BATTERY_ADDON_ID = void 0;
 const governance_1 = require("../governance");
 const ems_activity_1 = require("../../ems_activity");
 const execution_mode_1 = require("../../execution_mode");
@@ -53,11 +53,14 @@ function __resetBatteryRuntimeForTest(now = Date.now()) {
     (0, daily_plan_1.resetBatteryDailyPlanCache)();
 }
 exports.__resetBatteryRuntimeForTest = __resetBatteryRuntimeForTest;
-async function initBatteryModule(adapter) {
+async function ensureBatteryStateTree(adapter) {
     await (0, mapping_sync_1.ensureAddonMappingStates)(adapter, exports.BATTERY_ADDON_ID, mapping_1.BATTERY_MAPPING_ROLES);
-    await (0, mapping_sync_1.syncNativeMappingToStates)(adapter, exports.BATTERY_ADDON_ID, mapping_1.batteryMappingNativeFromConfig);
     await (0, ems_mirror_1.ensureBatteryEmsMirrorStates)(adapter);
     await (0, ensure_states_1.ensureBatteryArchitectureStates)(adapter);
+}
+exports.ensureBatteryStateTree = ensureBatteryStateTree;
+async function startBatteryModuleRuntime(adapter) {
+    await (0, mapping_sync_1.syncNativeMappingToStates)(adapter, exports.BATTERY_ADDON_ID, mapping_1.batteryMappingNativeFromConfig);
     runtime = (0, fsm_1.initialSonnenRuntime)(Date.now());
     gridBalancePausedByFsm = false;
     ownershipLive = false;
@@ -82,6 +85,11 @@ async function initBatteryModule(adapter) {
     }, intervalMs);
     void runBatteryControlTick(host).catch((e) => adapter.log.error(`battery tick (startup): ${e}`));
     return null;
+}
+exports.startBatteryModuleRuntime = startBatteryModuleRuntime;
+async function initBatteryModule(adapter) {
+    await ensureBatteryStateTree(adapter);
+    return startBatteryModuleRuntime(adapter);
 }
 exports.initBatteryModule = initBatteryModule;
 function stopBatteryModule(_timer) {

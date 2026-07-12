@@ -21,26 +21,14 @@ import type { StateHost } from "../../ems_light/state_util";
 
 let pvBiasTimer: NodeJS.Timeout | null = null;
 
-async function runLearningTick(host: PvBiasRunHost & StateHost): Promise<void> {
-	await ensureEnergyDailyRollupForLearning(host);
-	await runPvBiasLearning(host);
-	await runPvHorizon(host);
-	await runPriceLearning(host);
-	// Rollup-Backfill vor House-Load/Battery — sonst fällt der erste Lauf auf history.0 zurück.
-	await ensurePowerRollupForLearning(host);
-	// House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
-	await runHouseLoadLearning(host);
-	await runThermalRuntimeLearning(host);
-	await runBatteryRuntimeLearning(host);
-	await runPriceForecastLearning(host);
-	await mirrorLearningPersistenceToStates(host as unknown as PersistenceMirrorHost);
-}
+export type LearningStateTreeHost = PvBiasRunHost & StateHost & PersistenceMirrorHost;
 
-export async function initPvBiasLearning(adapter: ioBroker.Adapter): Promise<void> {
+/** Phase B — Learning-States ohne Timer oder Persist-Restore. */
+export async function ensureLearningStateTree(adapter: ioBroker.Adapter): Promise<LearningStateTreeHost> {
 	const host = withHistoryBridge(
 		adapter,
 		withLearningDataPath(adapter, adapter as unknown as PvBiasRunHost & StateHost),
-	);
+	) as LearningStateTreeHost;
 	await ensurePvBiasStates(host);
 	await ensurePvHorizonLearningStates(host);
 	await ensurePriceLearningStates(host);
@@ -48,10 +36,15 @@ export async function initPvBiasLearning(adapter: ioBroker.Adapter): Promise<voi
 	await ensureHouseLoadLearningStates(host);
 	await ensureThermalRuntimeLearningStates(host);
 	await ensureBatteryRuntimeLearningStates(host);
-	await ensureLearningPersistenceStates(host as unknown as PersistenceMirrorHost);
-	// Vor dem ersten Lauf: fehlende Persist-Dateien aus den Backup-States wiederherstellen.
-	await restoreLearningPersistenceFromStates(host as unknown as PersistenceMirrorHost);
+	await ensureLearningPersistenceStates(host);
+	return host;
+}
 
+/** Phase D/F — Learning-Timer (Persist-Restore erfolgt in Phase D). */
+export async function startPvBiasLearningRuntime(
+	adapter: ioBroker.Adapter,
+	host: LearningStateTreeHost,
+): Promise<void> {
 	const cfg = pvBiasConfigFromAdapter(adapter.config);
 	stopPvBiasLearning();
 
@@ -68,6 +61,26 @@ export async function initPvBiasLearning(adapter: ioBroker.Adapter): Promise<voi
 	adapter.log.debug?.(
 		`EMS-Light PV-Bias + PV-Horizon + Price + House-Load + Thermal + Battery-Runtime ready (read-only, interval ${cfg.intervalSec}s)`,
 	);
+}
+
+async function runLearningTick(host: PvBiasRunHost & StateHost): Promise<void> {
+	await ensureEnergyDailyRollupForLearning(host);
+	await runPvBiasLearning(host);
+	await runPvHorizon(host);
+	await runPriceLearning(host);
+	// Rollup-Backfill vor House-Load/Battery — sonst fällt der erste Lauf auf history.0 zurück.
+	await ensurePowerRollupForLearning(host);
+	// House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
+	await runHouseLoadLearning(host);
+	await runThermalRuntimeLearning(host);
+	await runBatteryRuntimeLearning(host);
+	await runPriceForecastLearning(host);
+	await mirrorLearningPersistenceToStates(host as unknown as PersistenceMirrorHost);
+}
+
+export async function initPvBiasLearning(adapter: ioBroker.Adapter): Promise<void> {
+	const host = await ensureLearningStateTree(adapter);
+	await startPvBiasLearningRuntime(adapter, host);
 }
 
 export function stopPvBiasLearning(): void {

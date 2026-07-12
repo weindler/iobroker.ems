@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.139",
+		"version": "0.1.140",
 		"news": {
+			"0.1.140": {
+				"en": "State tree recovery and rebuild hardening: deterministic phased adapter bootstrap (static ensure, config sync, subscriptions, runtime), safe cold start after deleting ems.0.*, bootstrap barrier, idempotent restarts, integration tests and recovery documentation. No backup/restore, no live wallbox writes; release gate remains closed.",
+				"de": "State-Tree-Recovery und Rebuild-Härtung: deterministischer phasenweiser Adapter-Bootstrap (statisches Ensure, Config-Sync, Subscriptions, Runtime), sicherer Cold Start nach Löschen von ems.0.*, Bootstrap-Barriere, idempotente Neustarts, Integrationstests und Recovery-Dokumentation. Kein Backup/Restore, keine Live-Wallbox-Writes; Release-Gate bleibt geschlossen."
+			},
 			"0.1.139": {
 				"en": "The wallbox vehicle SOC and energy fallback foundation adds a central deterministic resolver per profile: direct SOC including real 0%, energy rollforward from session counters, range estimate and last-trusted fallback, plus battery energy and charge requirement diagnostics. Profile-isolated baselines, no hidden default efficiency or range, no new charging permission and no external writes; the release gate remains closed.",
 				"de": "Die Wallbox-Fahrzeug-SOC- und Energie-Fallback-Foundation ergänzt einen zentralen deterministischen Resolver je Profil: direkter SOC inkl. realer 0 %, Energy-Rollforward aus Sitzungszählern, Reichweiten- und Last-Trusted-Fallback sowie Batterieenergie- und Ladebedarfs-Diagnose. Profilisolierte Baselines, keine versteckten Standard-Effizienz- oder Reichweiten-Annahmen, keine neue Ladefreigabe und keine externen Writes; das Release-Gate bleibt geschlossen."

@@ -1,12 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleImmersionHeaterStateChange = exports.stopImmersionHeaterModule = exports.initImmersionHeaterModule = exports.IMMERSION_ADDON_ID = void 0;
+exports.handleImmersionHeaterStateChange = exports.stopImmersionHeaterModule = exports.initImmersionHeaterModule = exports.refreshImmersionHeaterRuntime = exports.startImmersionHeaterModuleRuntime = exports.ensureImmersionHeaterStateTree = exports.IMMERSION_ADDON_ID = void 0;
 const ems_activity_1 = require("../../ems_activity");
 const ems_mirror_alive_1 = require("../../ems_mirror_alive");
 const data_dir_1 = require("../../learning/data_dir");
 const mapping_sync_1 = require("../../mapping_sync");
 const mapping_config_1 = require("./mapping_config");
 const status_1 = require("./status");
+const ensure_states_1 = require("./runtime/ensure_states");
 const engine_1 = require("./runtime/engine");
 const device_config_1 = require("./device_config");
 const types_1 = require("./runtime/types");
@@ -28,15 +29,29 @@ function runtimeHost(adapter) {
     };
     return (0, data_dir_1.withLearningDataPath)(adapter, base);
 }
-async function initImmersionHeaterModule(adapter) {
+async function ensureImmersionHeaterStateTree(adapter) {
     await (0, ems_mirror_alive_1.ensureEmsMirrorAliveState)(adapter);
     await (0, mapping_sync_1.ensureAddonMappingStates)(adapter, exports.IMMERSION_ADDON_ID, mapping_config_1.IMMERSION_HEATER_MAPPING_COMMANDS);
-    await (0, mapping_sync_1.syncNativeMappingToStates)(adapter, exports.IMMERSION_ADDON_ID, mapping_config_1.immersionHeaterMappingFromConfig);
     await (0, status_1.ensureImmersionStatusStates)(adapter);
+    await (0, ensure_states_1.ensureImmersionRuntimeStates)(runtimeHost(adapter));
+}
+exports.ensureImmersionHeaterStateTree = ensureImmersionHeaterStateTree;
+async function startImmersionHeaterModuleRuntime(adapter) {
+    await (0, mapping_sync_1.syncNativeMappingToStates)(adapter, exports.IMMERSION_ADDON_ID, mapping_config_1.immersionHeaterMappingFromConfig);
     await (0, engine_1.initImmersionRuntimeEngine)(runtimeHost(adapter));
     (0, ems_activity_1.touchEmsActivity)();
     adapter.log.debug("immersion_heater: runtime engine + mapping (failsafe via central runner)");
     return null;
+}
+exports.startImmersionHeaterModuleRuntime = startImmersionHeaterModuleRuntime;
+/** Post-Bootstrap-Reconciliation — aktuelle Fremdeingänge erneut einlesen. */
+async function refreshImmersionHeaterRuntime(adapter) {
+    await (0, engine_1.runImmersionRuntimeTick)(runtimeHost(adapter));
+}
+exports.refreshImmersionHeaterRuntime = refreshImmersionHeaterRuntime;
+async function initImmersionHeaterModule(adapter) {
+    await ensureImmersionHeaterStateTree(adapter);
+    return startImmersionHeaterModuleRuntime(adapter);
 }
 exports.initImmersionHeaterModule = initImmersionHeaterModule;
 function stopImmersionHeaterModule() {

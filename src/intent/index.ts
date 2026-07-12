@@ -5,6 +5,7 @@ export {
 	handleIntentStateChange,
 	resetIntentEngineForTest,
 	getLastResolvedWallboxIntentForTest,
+	hydrateIntentPersist,
 	type IntentEngineHost,
 } from "./engine";
 export { ensureIntentStates } from "./ensure_states";

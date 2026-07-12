@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopPvBiasLearning = exports.initPvBiasLearning = void 0;
+exports.stopPvBiasLearning = exports.initPvBiasLearning = exports.startPvBiasLearningRuntime = exports.ensureLearningStateTree = void 0;
 const ensure_states_1 = require("./ensure_states");
 const run_1 = require("./run");
 const config_1 = require("./config");
@@ -16,6 +16,35 @@ const data_dir_1 = require("../data_dir");
 const history_bridge_1 = require("../history_bridge");
 const persistence_mirror_1 = require("../persistence_mirror");
 let pvBiasTimer = null;
+/** Phase B — Learning-States ohne Timer oder Persist-Restore. */
+async function ensureLearningStateTree(adapter) {
+    const host = (0, history_bridge_1.withHistoryBridge)(adapter, (0, data_dir_1.withLearningDataPath)(adapter, adapter));
+    await (0, ensure_states_1.ensurePvBiasStates)(host);
+    await (0, pv_horizon_1.ensurePvHorizonLearningStates)(host);
+    await (0, price_learning_1.ensurePriceLearningStates)(host);
+    await (0, price_forecast_1.ensurePriceForecastLearningStates)(host);
+    await (0, house_load_1.ensureHouseLoadLearningStates)(host);
+    await (0, thermal_runtime_1.ensureThermalRuntimeLearningStates)(host);
+    await (0, battery_runtime_1.ensureBatteryRuntimeLearningStates)(host);
+    await (0, persistence_mirror_1.ensureLearningPersistenceStates)(host);
+    return host;
+}
+exports.ensureLearningStateTree = ensureLearningStateTree;
+/** Phase D/F — Learning-Timer (Persist-Restore erfolgt in Phase D). */
+async function startPvBiasLearningRuntime(adapter, host) {
+    const cfg = (0, config_1.pvBiasConfigFromAdapter)(adapter.config);
+    stopPvBiasLearning();
+    void runLearningTick(host).catch((e) => {
+        adapter.log.error(`PV-Bias/Horizon initial run: ${e}`);
+    });
+    pvBiasTimer = setInterval(() => {
+        void runLearningTick(host).catch((e) => {
+            adapter.log.error(`PV-Bias/Horizon tick: ${e}`);
+        });
+    }, cfg.intervalSec * 1000);
+    adapter.log.debug?.(`EMS-Light PV-Bias + PV-Horizon + Price + House-Load + Thermal + Battery-Runtime ready (read-only, interval ${cfg.intervalSec}s)`);
+}
+exports.startPvBiasLearningRuntime = startPvBiasLearningRuntime;
 async function runLearningTick(host) {
     await (0, energy_daily_rollup_1.ensureEnergyDailyRollupForLearning)(host);
     await (0, run_1.runPvBiasLearning)(host);
@@ -31,28 +60,8 @@ async function runLearningTick(host) {
     await (0, persistence_mirror_1.mirrorLearningPersistenceToStates)(host);
 }
 async function initPvBiasLearning(adapter) {
-    const host = (0, history_bridge_1.withHistoryBridge)(adapter, (0, data_dir_1.withLearningDataPath)(adapter, adapter));
-    await (0, ensure_states_1.ensurePvBiasStates)(host);
-    await (0, pv_horizon_1.ensurePvHorizonLearningStates)(host);
-    await (0, price_learning_1.ensurePriceLearningStates)(host);
-    await (0, price_forecast_1.ensurePriceForecastLearningStates)(host);
-    await (0, house_load_1.ensureHouseLoadLearningStates)(host);
-    await (0, thermal_runtime_1.ensureThermalRuntimeLearningStates)(host);
-    await (0, battery_runtime_1.ensureBatteryRuntimeLearningStates)(host);
-    await (0, persistence_mirror_1.ensureLearningPersistenceStates)(host);
-    // Vor dem ersten Lauf: fehlende Persist-Dateien aus den Backup-States wiederherstellen.
-    await (0, persistence_mirror_1.restoreLearningPersistenceFromStates)(host);
-    const cfg = (0, config_1.pvBiasConfigFromAdapter)(adapter.config);
-    stopPvBiasLearning();
-    void runLearningTick(host).catch((e) => {
-        adapter.log.error(`PV-Bias/Horizon initial run: ${e}`);
-    });
-    pvBiasTimer = setInterval(() => {
-        void runLearningTick(host).catch((e) => {
-            adapter.log.error(`PV-Bias/Horizon tick: ${e}`);
-        });
-    }, cfg.intervalSec * 1000);
-    adapter.log.debug?.(`EMS-Light PV-Bias + PV-Horizon + Price + House-Load + Thermal + Battery-Runtime ready (read-only, interval ${cfg.intervalSec}s)`);
+    const host = await ensureLearningStateTree(adapter);
+    await startPvBiasLearningRuntime(adapter, host);
 }
 exports.initPvBiasLearning = initPvBiasLearning;
 function stopPvBiasLearning() {

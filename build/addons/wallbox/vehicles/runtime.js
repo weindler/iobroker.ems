@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureWallboxVehicleProfileStates = exports.collectWallboxVehicleForeignStateIds = exports.refreshWallboxVehicleRuntime = void 0;
+exports.ensureWallboxVehicleProfileStates = exports.collectWallboxVehicleForeignStateIds = exports.refreshWallboxVehicleRuntime = exports.hydrateWallboxVehicleSocPersistence = void 0;
 const state_write_1 = require("../../../policy/core/state_write");
 const config_1 = require("./config");
 const ensure_states_1 = require("./ensure_states");
@@ -56,6 +56,18 @@ async function readPersistenceFromHost(host, vehicleId) {
         lastTrustedObservedAt: ltAtSt?.val,
     });
 }
+/**
+ * Phase D — Rollforward-Anker, Last-Trusted-Snapshot und Session-Zähler aus States laden.
+ * Läuft vor der ersten SOC-Auflösung und ohne Fremd-Telemetrie-Lesezugriffe.
+ */
+async function hydrateWallboxVehicleSocPersistence(host, config, now = new Date()) {
+    const cfg = (0, config_1.wallboxVehicleProfilesConfigFromAdapter)(config);
+    const { profiles } = (0, normalize_1.normalizeWallboxVehicleProfiles)(cfg.profiles, now.toISOString());
+    for (const profile of profiles) {
+        await readPersistenceFromHost(host, profile.vehicleId);
+    }
+}
+exports.hydrateWallboxVehicleSocPersistence = hydrateWallboxVehicleSocPersistence;
 async function publishSocEnergyStates(host, vehicleId, resolution) {
     const p = (0, ensure_states_1.vehicleStatePaths)(vehicleId);
     const anchor = (0, baseline_1.getRollforwardAnchor)(vehicleId);

@@ -35,6 +35,7 @@ export const DAILY_PLAN_STATE_IDS = {
 	planJson: "planner.intent.daily_plan.plan_json",
 	reasonDe: "planner.intent.daily_plan.reason_de",
 	revision: "planner.intent.daily_plan.revision",
+	semanticRevisionHash: "planner.intent.daily_plan.semantic_revision_hash",
 } as const;
 
 export const ALLOCATION_ADDON_STATE_IDS = {
@@ -81,6 +82,7 @@ export async function ensureDailyPlanStates(host: StateHost): Promise<void> {
 		strState(DAILY_PLAN_STATE_IDS.planJson, "Daily Plan vollständig (JSON)", "{}"),
 		strState(DAILY_PLAN_STATE_IDS.reasonDe, "Daily Plan Begründung (DE)", ""),
 		numState(DAILY_PLAN_STATE_IDS.revision, "Daily Plan Revision", 0),
+		strState(DAILY_PLAN_STATE_IDS.semanticRevisionHash, "Daily Plan semantischer Revisions-Hash", ""),
 	];
 
 	await ensureStates(host, defs);

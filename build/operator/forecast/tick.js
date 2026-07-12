@@ -99,9 +99,15 @@ async function loadCachedForecastPlanForBootstrap(host) {
     lastRevisionPayload = (0, revision_1.forecastPlanRevisionPayload)(plan);
     return plan;
 }
-async function storedPlanJsonMatches(host, planJson) {
-    const stored = await readStr(host, states_1.FORECAST_PLAN_STATE_IDS.planJson);
-    return stored === planJson;
+async function storedPlanSemanticallyMatches(host, plan, semanticHash) {
+    const storedHash = await readStr(host, states_1.FORECAST_PLAN_STATE_IDS.semanticRevisionHash);
+    if (storedHash === semanticHash)
+        return true;
+    const raw = await readStr(host, states_1.FORECAST_PLAN_STATE_IDS.planJson);
+    const stored = (0, revision_1.parseForecastPlanFromJson)(raw);
+    if (!stored)
+        return false;
+    return (0, revision_1.forecastPlanSemanticRevisionHash)(stored) === semanticHash;
 }
 function scheduleFirstInstallForecastPersist(host, plan, semanticHash, nextRevision) {
     (0, deferred_writes_1.scheduleDeferredForecastPlanWrite)(host, async () => {
@@ -136,8 +142,8 @@ async function writeJsonState(host, stateId, json, revisionRequired, counts) {
 /** Persist forecast plan — single plan_json IPC write (no duplicate mirror states). */
 async function persistForecastPlan(host, plan, semanticHash, nextRevision) {
     const serialized = (0, serialization_1.serializeForecastPlanForWrites)(plan);
-    if (await storedPlanJsonMatches(host, serialized.planJson)) {
-        host.log?.info?.("forecast plan persist: plan_json unchanged — skip IPC write");
+    if (await storedPlanSemanticallyMatches(host, plan, semanticHash)) {
+        host.log?.info?.("forecast plan persist: semantically unchanged — skip IPC write");
         await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, undefined, false);
         if ((await readStr(host, states_1.FORECAST_PLAN_STATE_IDS.semanticRevisionHash)) !== semanticHash) {
             await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.semanticRevisionHash, semanticHash, undefined, true);
@@ -197,15 +203,13 @@ async function runForecastPlanTick(host, gridForecast, flexibleContributions = [
     const semanticHash = (0, revision_1.forecastPlanSemanticRevisionHash)(plan);
     let resolution = await resolveForecastRevisionChange(host, semanticPayload, semanticHash, deferLargeJsonWrites);
     plan.revision = resolution.nextRevision;
-    let serialized = null;
     if (!resolution.skipLargeJsonWrites && resolution.revisionChanged) {
-        serialized = (0, serialization_1.serializeForecastPlanForWrites)(plan);
-        if (await storedPlanJsonMatches(host, serialized.planJson)) {
+        if (await storedPlanSemanticallyMatches(host, plan, semanticHash)) {
             resolution = {
                 ...resolution,
                 skipLargeJsonWrites: true,
                 deferLargeJsonWrites: false,
-                skipReason: "plan_json_match",
+                skipReason: "semantic_plan_match",
             };
         }
     }

@@ -6,6 +6,7 @@ const config_2 = require("../../intent/config");
 const mode_policy_1 = require("../../planner/mode_policy");
 const state_write_1 = require("../../policy/core/state_write");
 const build_1 = require("./build");
+const revision_1 = require("./revision");
 const states_1 = require("./states");
 let lastRevisionPayload = "";
 let revision = 0;
@@ -28,6 +29,13 @@ async function readStr(host, relId) {
     catch {
         return null;
     }
+}
+async function readNum(host, relId) {
+    const raw = await readStr(host, relId);
+    if (raw === null)
+        return null;
+    const n = parseFloat(raw);
+    return Number.isFinite(n) ? n : null;
 }
 async function readEffectivePolicy(host) {
     const raw = await readStr(host, "policy.global.effective_json");
@@ -68,6 +76,56 @@ function addonAllocationSummary(plan, addonPrefix) {
     }
     return allocations;
 }
+async function storedDailyPlanSemanticallyMatches(host, plan, semanticHash) {
+    const storedHash = await readStr(host, states_1.DAILY_PLAN_STATE_IDS.semanticRevisionHash);
+    if (storedHash === semanticHash)
+        return true;
+    const raw = await readStr(host, states_1.DAILY_PLAN_STATE_IDS.planJson);
+    const stored = (0, revision_1.parseDailyPlanFromJson)(raw);
+    if (!stored)
+        return false;
+    return (0, revision_1.dailyPlanSemanticRevisionHash)(stored) === semanticHash;
+}
+async function persistDailyPlan(host, plan, semanticHash, nextRevision) {
+    const planJson = JSON.stringify(plan);
+    if ((await readStr(host, states_1.DAILY_PLAN_STATE_IDS.planJson)) === planJson) {
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
+        if ((await readStr(host, states_1.DAILY_PLAN_STATE_IDS.semanticRevisionHash)) !== semanticHash) {
+            await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.semanticRevisionHash, semanticHash);
+        }
+        lastRevisionPayload = (0, revision_1.dailyPlanRevisionPayload)(plan);
+        return;
+    }
+    await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.status, plan.status);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.date, plan.date);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.globalMode, plan.globalMode);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.planJson, planJson);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.revision, nextRevision);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.semanticRevisionHash, semanticHash);
+    const addonSummaries = [
+        { key: "battery", prefix: "battery" },
+        { key: "wallbox", prefix: "wallbox" },
+        { key: "immersion_heater", prefix: "immersion_heater" },
+        { key: "air_conditioning", prefix: "air_conditioning" },
+    ];
+    for (const { key, prefix } of addonSummaries) {
+        const ids = states_1.ALLOCATION_ADDON_STATE_IDS[key];
+        const summary = addonAllocationSummary(plan, prefix);
+        const status = summary.length > 0 ? "ready" : "idle";
+        await (0, state_write_1.setStateIfChanged)(host, ids.status, status);
+        await (0, state_write_1.setStateIfChanged)(host, ids.planJson, JSON.stringify(summary));
+        await (0, state_write_1.setStateIfChanged)(host, ids.reasonDe, summary.length > 0
+            ? `${summary.length} Allocation-Einträge für ${prefix}.`
+            : `Keine Allocation für ${prefix}.`);
+    }
+    revision = nextRevision;
+    lastRevisionPayload = (0, revision_1.dailyPlanRevisionPayload)(plan);
+    plan.revision = nextRevision;
+}
 async function runDailyPlanTick(host, forecastPlan) {
     const now = new Date();
     const adminCfg = (0, config_2.intentAdminConfigFromAdapter)(host.config);
@@ -90,49 +148,33 @@ async function runDailyPlanTick(host, forecastPlan) {
         configuredHouseFuseLimitW: policyNumber(effectivePolicy, "houseFuseLimitW") ?? adminPolicy.houseFuseLimitW,
         modePolicy,
     });
-    const payload = (0, build_1.dailyPlanRevisionPayload)(plan);
-    const revisionChanged = payload !== lastRevisionPayload;
+    const semanticPayload = (0, revision_1.dailyPlanRevisionPayload)(plan);
+    const semanticHash = (0, revision_1.dailyPlanSemanticRevisionHash)(plan);
+    let revisionChanged = semanticPayload !== lastRevisionPayload;
+    if (!revisionChanged && lastRevisionPayload !== "") {
+        plan.revision = revision;
+        return plan;
+    }
+    const storedRevision = await readNum(host, states_1.DAILY_PLAN_STATE_IDS.revision);
+    if (storedRevision !== null && storedRevision >= 0 && revision === 0) {
+        revision = storedRevision;
+    }
+    if (await storedDailyPlanSemanticallyMatches(host, plan, semanticHash)) {
+        plan.revision = revision;
+        lastRevisionPayload = semanticPayload;
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
+        return plan;
+    }
     const nextRevision = revisionChanged ? revision + 1 : revision;
     plan.revision = nextRevision;
-    const writeOpts = revisionChanged ? { skipRead: true } : undefined;
+    host.log?.info?.([
+        "daily plan write decision:",
+        `revisionChanged=${revisionChanged}`,
+        `storedHash=${((await readStr(host, states_1.DAILY_PLAN_STATE_IDS.semanticRevisionHash)) ?? "none").slice(0, 12)}`,
+        `computedHash=${semanticHash.slice(0, 12)}`,
+    ].join(" "));
     try {
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.status, plan.status, writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt, writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "", writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.date, plan.date, writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.globalMode, plan.globalMode, writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes, writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.activeContributionsJson, JSON.stringify(plan.activeContributionIds), writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.excludedContributionsJson, JSON.stringify(plan.excludedContributions), writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.slotsJson, JSON.stringify(plan.slots), writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.allocationsJson, JSON.stringify(plan.allocations), writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.totalsJson, JSON.stringify(plan.totals), writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.unallocatedJson, JSON.stringify(plan.unallocated), writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.policySnapshotJson, JSON.stringify(plan.policySnapshot), writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.constraintSnapshotJson, JSON.stringify(plan.constraintSnapshot), writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(plan), writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe, writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.revision, nextRevision, writeOpts);
-        const addonSummaries = [
-            { key: "battery", prefix: "battery" },
-            { key: "wallbox", prefix: "wallbox" },
-            { key: "immersion_heater", prefix: "immersion_heater" },
-            { key: "air_conditioning", prefix: "air_conditioning" },
-        ];
-        for (const { key, prefix } of addonSummaries) {
-            const ids = states_1.ALLOCATION_ADDON_STATE_IDS[key];
-            const summary = addonAllocationSummary(plan, prefix);
-            const status = summary.length > 0 ? "ready" : "idle";
-            await (0, state_write_1.setStateIfChanged)(host, ids.status, status, writeOpts);
-            await (0, state_write_1.setStateIfChanged)(host, ids.planJson, JSON.stringify(summary), writeOpts);
-            await (0, state_write_1.setStateIfChanged)(host, ids.reasonDe, summary.length > 0
-                ? `${summary.length} Allocation-Einträge für ${prefix}.`
-                : `Keine Allocation für ${prefix}.`, writeOpts);
-        }
-        if (revisionChanged) {
-            revision = nextRevision;
-            lastRevisionPayload = payload;
-        }
+        await persistDailyPlan(host, plan, semanticHash, nextRevision);
     }
     catch (e) {
         host.log?.warn?.(`daily plan state write: ${String(e)}`);

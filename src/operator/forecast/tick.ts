@@ -146,9 +146,17 @@ async function loadCachedForecastPlanForBootstrap(host: ContributionsReadHost): 
 	return plan;
 }
 
-async function storedPlanJsonMatches(host: ContributionsReadHost, planJson: string): Promise<boolean> {
-	const stored = await readStr(host, FORECAST_PLAN_STATE_IDS.planJson);
-	return stored === planJson;
+async function storedPlanSemanticallyMatches(
+	host: ContributionsReadHost,
+	plan: ForecastPlan,
+	semanticHash: string,
+): Promise<boolean> {
+	const storedHash = await readStr(host, FORECAST_PLAN_STATE_IDS.semanticRevisionHash);
+	if (storedHash === semanticHash) return true;
+	const raw = await readStr(host, FORECAST_PLAN_STATE_IDS.planJson);
+	const stored = parseForecastPlanFromJson(raw);
+	if (!stored) return false;
+	return forecastPlanSemanticRevisionHash(stored) === semanticHash;
 }
 
 function scheduleFirstInstallForecastPersist(
@@ -210,9 +218,9 @@ async function persistForecastPlan(
 ): Promise<void> {
 	const serialized = serializeForecastPlanForWrites(plan);
 
-	if (await storedPlanJsonMatches(host, serialized.planJson)) {
+	if (await storedPlanSemanticallyMatches(host, plan, semanticHash)) {
 		(host.log as MemoryProbeLogger | undefined)?.info?.(
-			"forecast plan persist: plan_json unchanged — skip IPC write",
+			"forecast plan persist: semantically unchanged — skip IPC write",
 		);
 		await writeScalarState(host, FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, undefined, false);
 		if ((await readStr(host, FORECAST_PLAN_STATE_IDS.semanticRevisionHash)) !== semanticHash) {
@@ -301,15 +309,13 @@ export async function runForecastPlanTick(
 	let resolution = await resolveForecastRevisionChange(host, semanticPayload, semanticHash, deferLargeJsonWrites);
 	plan.revision = resolution.nextRevision;
 
-	let serialized: ForecastPlanSerializedWrites | null = null;
 	if (!resolution.skipLargeJsonWrites && resolution.revisionChanged) {
-		serialized = serializeForecastPlanForWrites(plan);
-		if (await storedPlanJsonMatches(host, serialized.planJson)) {
+		if (await storedPlanSemanticallyMatches(host, plan, semanticHash)) {
 			resolution = {
 				...resolution,
 				skipLargeJsonWrites: true,
 				deferLargeJsonWrites: false,
-				skipReason: "plan_json_match",
+				skipReason: "semantic_plan_match",
 			};
 		}
 	}

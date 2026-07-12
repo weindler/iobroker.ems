@@ -35,6 +35,7 @@ exports.DAILY_PLAN_STATE_IDS = {
     planJson: "planner.intent.daily_plan.plan_json",
     reasonDe: "planner.intent.daily_plan.reason_de",
     revision: "planner.intent.daily_plan.revision",
+    semanticRevisionHash: "planner.intent.daily_plan.semantic_revision_hash",
 };
 exports.ALLOCATION_ADDON_STATE_IDS = {
     battery: {
@@ -78,6 +79,7 @@ async function ensureDailyPlanStates(host) {
         strState(exports.DAILY_PLAN_STATE_IDS.planJson, "Daily Plan vollständig (JSON)", "{}"),
         strState(exports.DAILY_PLAN_STATE_IDS.reasonDe, "Daily Plan Begründung (DE)", ""),
         numState(exports.DAILY_PLAN_STATE_IDS.revision, "Daily Plan Revision", 0),
+        strState(exports.DAILY_PLAN_STATE_IDS.semanticRevisionHash, "Daily Plan semantischer Revisions-Hash", ""),
     ];
     await (0, state_util_1.ensureStates)(host, defs);
     await (0, state_util_1.ensureChannel)(host, "planner.intent.allocation", "Planner Allocation");

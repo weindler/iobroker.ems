@@ -255,43 +255,6 @@ export function buildDailyPlanFromForecast(
 	});
 }
 
-export function dailyPlanRevisionPayload(plan: DailyPlan): string {
-	return JSON.stringify({
-		date: plan.date,
-		timezone: plan.timezone,
-		globalMode: plan.globalMode,
-		status: plan.status,
-		activeContributionIds: plan.activeContributionIds,
-		excludedContributions: plan.excludedContributions,
-		slots: plan.slots.map((s) => ({
-			slot: s.slot,
-			pvForecastPowerW: s.pvForecastPowerW,
-			fixedHouseLoadPowerW: s.fixedHouseLoadPowerW,
-			fixedBalancePowerW: s.fixedBalancePowerW,
-			gridPriceCtPerKwh: s.gridPriceCtPerKwh,
-			allocatedFlexiblePowerW: s.allocatedFlexiblePowerW,
-			allocatedPvPowerW: s.allocatedPvPowerW,
-			allocatedGridPowerW: s.allocatedGridPowerW,
-			allocations: s.allocations.map((a) => ({
-				contributionId: a.contributionId,
-				status: a.status,
-				energySource: a.energySource,
-				allocatedPowerW: a.allocatedPowerW,
-				allocatedEnergyKwh: a.allocatedEnergyKwh,
-				gridPowerW: a.gridPowerW,
-				pvPowerW: a.pvPowerW,
-				mandatory: a.mandatory,
-				estimatedCostCt: a.estimatedCostCt,
-				reasonDe: a.reasonDe,
-			})),
-		})),
-		unallocated: plan.unallocated,
-		totals: plan.totals,
-		policySnapshot: plan.policySnapshot,
-		constraintSnapshot: plan.constraintSnapshot,
-		quality: plan.quality,
-		reasonDe: plan.reasonDe,
-	});
-}
+export { dailyPlanRevisionPayload } from "./revision";
 
 export { buildAllocationCandidate };

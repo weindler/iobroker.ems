@@ -98,9 +98,7 @@ async function storedDailyPlanSemanticallyMatches(
 ): Promise<boolean> {
 	const storedHash = await readStr(host, DAILY_PLAN_STATE_IDS.semanticRevisionHash);
 	if (storedHash === semanticHash) return true;
-	const raw =
-		(await readDailyPlanFile(host as PlanPathHost)) ??
-		(await readStr(host, DAILY_PLAN_STATE_IDS.planJson));
+	const raw = await readDailyPlanFile(host as PlanPathHost);
 	const stored = parseDailyPlanFromJson(raw);
 	if (!stored) return false;
 	return dailyPlanSemanticRevisionHash(stored) === semanticHash;
@@ -115,10 +113,6 @@ async function persistDailyPlan(
 	const planJson = JSON.stringify(plan);
 	const existingFile = await readDailyPlanFile(host as PlanPathHost);
 	if (existingFile === planJson) {
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
-		if ((await readStr(host, DAILY_PLAN_STATE_IDS.semanticRevisionHash)) !== semanticHash) {
-			await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.semanticRevisionHash, semanticHash);
-		}
 		lastRevisionPayload = dailyPlanRevisionPayload(plan);
 		return;
 	}
@@ -136,7 +130,6 @@ async function persistDailyPlan(
 	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes);
 	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
 	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.revision, nextRevision);
-	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.semanticRevisionHash, semanticHash);
 
 	const addonSummaries: Array<{ key: keyof typeof ALLOCATION_ADDON_STATE_IDS; prefix: string }> = [
 		{ key: "battery", prefix: "battery" },
@@ -150,7 +143,6 @@ async function persistDailyPlan(
 		const summary = addonAllocationSummary(plan, prefix);
 		const status = summary.length > 0 ? "ready" : "idle";
 		await setStateIfChanged(host, ids.status, status);
-		await setStateIfChanged(host, ids.planJson, JSON.stringify(summary));
 		await setStateIfChanged(
 			host,
 			ids.reasonDe,
@@ -224,7 +216,6 @@ export async function runDailyPlanTick(
 	if (await storedDailyPlanSemanticallyMatches(host, plan, semanticHash)) {
 		plan.revision = revision;
 		lastRevisionPayload = semanticPayload;
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
 		return plan;
 	}
 

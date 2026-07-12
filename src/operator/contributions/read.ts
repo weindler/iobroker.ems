@@ -4,6 +4,9 @@ import { intentAdminConfigFromAdapter } from "../../intent/config";
 import { weatherConfigFromAdapter } from "../../learning/weather/config";
 import { PV_HORIZON_EXTENDED_FIRST_DAY, PV_HORIZON_DAY_COUNT } from "../../learning/pv_horizon/constants";
 import type { DayForecastJson } from "../../learning/house_load/types";
+import { readHouseLoadPersist } from "../../learning/house_load/persist";
+import { resolveEmsPaths, type PathResolverInput } from "../../backup_integration/paths";
+import * as path from "node:path";
 import type { GridSupplyForecast } from "../types";
 import { addDaysToDateKey, localDateKeyInTimezone } from "../time";
 import { buildPvContribution, type PvContributionBuildInput, type PvHorizonDayInput } from "./pv";
@@ -92,6 +95,29 @@ export interface CollectedContributions {
 	constraintInput: ConstraintContributionBuildInput;
 }
 
+async function readHouseLoadForecastsFromFile(host: ContributionsReadHost): Promise<{
+	status: string | null;
+	confidence: number | null;
+	forecastToday: DayForecastJson | null;
+	forecastTomorrow: DayForecastJson | null;
+	lastUpdate: string | null;
+} | null> {
+	try {
+		const layout = resolveEmsPaths(host as unknown as PathResolverInput);
+		const persist = await readHouseLoadPersist(path.join(layout.durableDataDir, "learning/house_load"));
+		if (!persist) return null;
+		return {
+			status: persist.health?.status ?? "ready",
+			confidence: persist.confidence ?? null,
+			forecastToday: persist.forecast_today ?? null,
+			forecastTomorrow: persist.forecast_tomorrow ?? null,
+			lastUpdate: persist.generated_at ?? null,
+		};
+	} catch {
+		return null;
+	}
+}
+
 export async function collectContributions(
 	host: ContributionsReadHost,
 	now: Date,
@@ -109,11 +135,6 @@ export async function collectContributions(
 		pvConfidence,
 		pvStatus,
 		pvLastUpdate,
-		houseStatus,
-		houseConfidence,
-		forecastTodayRaw,
-		forecastTomorrowRaw,
-		houseLastUpdate,
 		weatherStatus,
 		weatherHealth,
 		weatherConfidence,
@@ -129,11 +150,6 @@ export async function collectContributions(
 		readNum(host, "learning.pv_bias.confidence_pct"),
 		readStr(host, "learning.pv_bias.status"),
 		readStr(host, "learning.pv_bias.last_update_ts"),
-		readStr(host, "learning.house_load.status"),
-		readNum(host, "learning.house_load.confidence"),
-		readStr(host, "learning.house_load.forecast_today_json"),
-		readStr(host, "learning.house_load.forecast_tomorrow_json"),
-		readStr(host, "learning.house_load.last_update"),
 		readStr(host, "learning.weather.status"),
 		readStr(host, "learning.weather.health"),
 		readNum(host, "learning.weather.confidence_pct"),
@@ -142,6 +158,21 @@ export async function collectContributions(
 		readStr(host, "learning.weather.actual_source"),
 		readStr(host, "global_modes.active"),
 	]);
+
+	const houseFromFile = await readHouseLoadForecastsFromFile(host);
+	const houseStatus = houseFromFile?.status ?? (await readStr(host, "learning.house_load.status"));
+	const houseConfidence =
+		houseFromFile?.confidence ?? (await readNum(host, "learning.house_load.confidence"));
+	const forecastTodayRaw =
+		houseFromFile?.forecastToday != null
+			? JSON.stringify(houseFromFile.forecastToday)
+			: await readStr(host, "learning.house_load.forecast_today_json");
+	const forecastTomorrowRaw =
+		houseFromFile?.forecastTomorrow != null
+			? JSON.stringify(houseFromFile.forecastTomorrow)
+			: await readStr(host, "learning.house_load.forecast_tomorrow_json");
+	const houseLastUpdate =
+		houseFromFile?.lastUpdate ?? (await readStr(host, "learning.house_load.last_update"));
 
 	const horizonValues = await Promise.all(
 		Array.from({ length: PV_HORIZON_DAY_COUNT - PV_HORIZON_EXTENDED_FIRST_DAY + 1 }, (_, i) =>

@@ -57,6 +57,30 @@ describe("forecast revision persistence", () => {
 		assert.equal(forecastPlanRevisionForTest(), 7);
 	});
 
+	it("matching forecast plan file skips rewrite without reading stored hash", async () => {
+		const planJson = minimalStoredPlanJson();
+		const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "ems-forecast-rev-test-"));
+		await fs.mkdir(path.join(dataDir, "planner"), { recursive: true });
+		await fs.writeFile(path.join(dataDir, "planner", "forecast_plan.json"), planJson, "utf8");
+		const host = mockHost({
+			[FORECAST_PLAN_STATE_IDS.semanticRevisionHash]: "stale-state-hash",
+			[FORECAST_PLAN_STATE_IDS.revision]: 99,
+		});
+		Object.assign(host, { namespace: "ems.0", getAbsoluteInstanceDataDir: () => dataDir });
+		const plan = JSON.parse(planJson);
+		const { forecastPlanSemanticRevisionHash } = await import("./revision.js");
+		const hash = forecastPlanSemanticRevisionHash(plan);
+		const result = await resolveForecastRevisionChangeForTest(
+			host as Parameters<typeof resolveForecastRevisionChangeForTest>[0],
+			"payload",
+			hash,
+		);
+		assert.equal(result.revisionChanged, false);
+		assert.equal(result.skipReason, "file_hash_match");
+		assert.equal(result.nextRevision, 3);
+		await fs.rm(dataDir, { recursive: true, force: true });
+	});
+
 	it("cold start with different semantic hash bumps revision", async () => {
 		const host = mockHost({
 			[FORECAST_PLAN_STATE_IDS.semanticRevisionHash]: "old",
@@ -190,7 +214,7 @@ describe("forecast bootstrap cache", () => {
 		assert.equal(plan.revision, 3);
 		assert.equal(plan.slots.length > 0, true);
 		assert.equal(hasDeferredForecastPlanWrite(), false);
-		assert.equal(getStateCalls <= 4, true, `expected at most 4 state reads, got ${getStateCalls}`);
+		assert.equal(getStateCalls <= 6, true, `expected at most 6 state reads, got ${getStateCalls}`);
 		await fs.rm(dataDir, { recursive: true, force: true });
 	});
 });

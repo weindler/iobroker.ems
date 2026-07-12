@@ -34,6 +34,7 @@ const failsafe_runner_1 = require("./failsafe_runner");
 const dryrun_mirror_1 = require("./dryrun_mirror");
 const execution_mode_1 = require("./execution_mode");
 const barrier_1 = require("./bootstrap/barrier");
+const deferred_writes_1 = require("./operator/forecast/deferred_writes");
 const startup_1 = require("./bootstrap/startup");
 const export_handler_1 = require("./backup/export_handler");
 const handler_1 = require("./restore/handler");
@@ -129,6 +130,7 @@ class Ems extends utils.Adapter {
         }
         this.log.info("EMS adapter ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
         (0, startup_memory_1.probeStartupMemory)(this.log, "before_adapter_ready_log");
+        await (0, deferred_writes_1.flushDeferredForecastPlanWrites)();
         (0, startup_memory_1.schedulePostReadyMemoryProbes)(this.log);
         (0, startup_memory_1.logMemoryDiagnosticReport)(this.log);
         await this.step("backup export init", async () => {

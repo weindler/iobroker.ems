@@ -110,6 +110,22 @@ describe("forecast plan revision", () => {
 		assert.equal(forecastPlanSemanticRevisionHash(planA), forecastPlanSemanticRevisionHash(planB));
 	});
 
+	it("slot quality and reasonDe drift does not affect semantic hash", () => {
+		const plan = buildForecastPlan({ now, timezone: "UTC", contributions: baseContributions(now) });
+		const plan2: typeof plan = JSON.parse(JSON.stringify(plan));
+		plan2.slots[0] = {
+			...plan2.slots[0],
+			quality: operatorQuality("degraded", "Andere Meldung"),
+			reasonDe: "Anderer Grund",
+		};
+		plan2.days[0] = {
+			...plan2.days[0],
+			quality: operatorQuality("missing", "Fehlend"),
+			reasonDe: "Tag-Grund geändert",
+		};
+		assert.equal(forecastPlanSemanticRevisionHash(plan), forecastPlanSemanticRevisionHash(plan2));
+	});
+
 	it("slot change produces new semantic revision", () => {
 		const plan1 = buildForecastPlan({ now, timezone: "UTC", contributions: baseContributions(now) });
 		const changedGrid = gridForecast();

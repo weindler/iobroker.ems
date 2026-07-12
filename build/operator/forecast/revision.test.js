@@ -107,6 +107,21 @@ function baseContributions(now) {
         const planB = (0, build_js_1.buildForecastPlan)({ now, timezone: "UTC", contributions: contributionsB });
         strict_1.default.equal((0, revision_js_1.forecastPlanSemanticRevisionHash)(planA), (0, revision_js_1.forecastPlanSemanticRevisionHash)(planB));
     });
+    (0, node_test_1.it)("slot quality and reasonDe drift does not affect semantic hash", () => {
+        const plan = (0, build_js_1.buildForecastPlan)({ now, timezone: "UTC", contributions: baseContributions(now) });
+        const plan2 = JSON.parse(JSON.stringify(plan));
+        plan2.slots[0] = {
+            ...plan2.slots[0],
+            quality: (0, quality_js_1.operatorQuality)("degraded", "Andere Meldung"),
+            reasonDe: "Anderer Grund",
+        };
+        plan2.days[0] = {
+            ...plan2.days[0],
+            quality: (0, quality_js_1.operatorQuality)("missing", "Fehlend"),
+            reasonDe: "Tag-Grund geändert",
+        };
+        strict_1.default.equal((0, revision_js_1.forecastPlanSemanticRevisionHash)(plan), (0, revision_js_1.forecastPlanSemanticRevisionHash)(plan2));
+    });
     (0, node_test_1.it)("slot change produces new semantic revision", () => {
         const plan1 = (0, build_js_1.buildForecastPlan)({ now, timezone: "UTC", contributions: baseContributions(now) });
         const changedGrid = gridForecast();

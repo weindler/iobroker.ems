@@ -7,6 +7,7 @@ const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
 const states_js_1 = require("./states.js");
 const tick_js_1 = require("./tick.js");
+const deferred_writes_js_1 = require("./deferred_writes.js");
 function mockHost(initial = {}) {
     const store = new Map(Object.entries(initial));
     return {
@@ -34,6 +35,8 @@ function mockHost(initial = {}) {
         });
         const result = await (0, tick_js_1.resolveForecastRevisionChangeForTest)(host, "payload", "abc123");
         strict_1.default.equal(result.revisionChanged, false);
+        strict_1.default.equal(result.skipLargeJsonWrites, true);
+        strict_1.default.equal(result.skipReason, "stored_hash_match");
         strict_1.default.equal(result.nextRevision, 7);
         strict_1.default.equal((0, tick_js_1.forecastPlanRevisionForTest)(), 7);
     });
@@ -44,7 +47,18 @@ function mockHost(initial = {}) {
         });
         const result = await (0, tick_js_1.resolveForecastRevisionChangeForTest)(host, "payload", "new");
         strict_1.default.equal(result.revisionChanged, true);
+        strict_1.default.equal(result.skipLargeJsonWrites, false);
         strict_1.default.equal(result.nextRevision, 1);
+    });
+    (0, node_test_1.it)("semantic hash change with deferLargeJsonWrites schedules deferred write path", async () => {
+        const host = mockHost({
+            [states_js_1.FORECAST_PLAN_STATE_IDS.semanticRevisionHash]: "old",
+            [states_js_1.FORECAST_PLAN_STATE_IDS.revision]: 2,
+        });
+        const result = await (0, tick_js_1.resolveForecastRevisionChangeForTest)(host, "payload", "new", true);
+        strict_1.default.equal(result.revisionChanged, true);
+        strict_1.default.equal(result.deferLargeJsonWrites, true);
+        strict_1.default.equal((0, deferred_writes_js_1.hasDeferredForecastPlanWrite)(), false);
     });
     (0, node_test_1.it)("missing stored hash on cold start requires rewrite", async () => {
         const host = mockHost();

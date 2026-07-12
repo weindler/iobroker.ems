@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runForecastPlanTick = exports.resetForecastPlanRevisionForTest = exports.forecastPlanRevisionForTest = exports.FORECAST_PLAN_STATE_IDS = exports.ensureForecastPlanStates = exports.forecastPlanRevisionPayload = exports.buildForecastPlan = void 0;
+exports.hasDeferredForecastPlanWrite = exports.flushDeferredForecastPlanWrites = exports.runForecastPlanTick = exports.resetForecastPlanRevisionForTest = exports.forecastPlanRevisionForTest = exports.FORECAST_PLAN_STATE_IDS = exports.ensureForecastPlanStates = exports.forecastPlanRevisionPayload = exports.buildForecastPlan = void 0;
 var build_1 = require("./build");
 Object.defineProperty(exports, "buildForecastPlan", { enumerable: true, get: function () { return build_1.buildForecastPlan; } });
 Object.defineProperty(exports, "forecastPlanRevisionPayload", { enumerable: true, get: function () { return build_1.forecastPlanRevisionPayload; } });
@@ -11,3 +11,6 @@ var tick_1 = require("./tick");
 Object.defineProperty(exports, "forecastPlanRevisionForTest", { enumerable: true, get: function () { return tick_1.forecastPlanRevisionForTest; } });
 Object.defineProperty(exports, "resetForecastPlanRevisionForTest", { enumerable: true, get: function () { return tick_1.resetForecastPlanRevisionForTest; } });
 Object.defineProperty(exports, "runForecastPlanTick", { enumerable: true, get: function () { return tick_1.runForecastPlanTick; } });
+var deferred_writes_1 = require("./deferred_writes");
+Object.defineProperty(exports, "flushDeferredForecastPlanWrites", { enumerable: true, get: function () { return deferred_writes_1.flushDeferredForecastPlanWrites; } });
+Object.defineProperty(exports, "hasDeferredForecastPlanWrite", { enumerable: true, get: function () { return deferred_writes_1.hasDeferredForecastPlanWrite; } });

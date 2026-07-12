@@ -5,4 +5,6 @@ export {
 	forecastPlanRevisionForTest,
 	resetForecastPlanRevisionForTest,
 	runForecastPlanTick,
+	type ForecastPlanTickOptions,
 } from "./tick";
+export { flushDeferredForecastPlanWrites, hasDeferredForecastPlanWrite } from "./deferred_writes";

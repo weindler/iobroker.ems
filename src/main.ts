@@ -27,6 +27,7 @@ import {
 	isLiveWriteAllowed,
 } from "./execution_mode";
 import { isBootstrapComplete } from "./bootstrap/barrier";
+import { flushDeferredForecastPlanWrites } from "./operator/forecast/deferred_writes";
 import { runAdapterBootstrap } from "./bootstrap/startup";
 import { handleBackupStateChange, initBackupExportRuntime, isBackupRelatedState, stopDiagnosticMode } from "./backup/export_handler";
 import { handleRestoreStateChange, initRestoreRuntime, isRestoreRelatedState } from "./restore/handler";
@@ -143,6 +144,7 @@ class Ems extends utils.Adapter {
 
 		this.log.info("EMS adapter ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
 		probeStartupMemory(this.log, "before_adapter_ready_log");
+		await flushDeferredForecastPlanWrites();
 		schedulePostReadyMemoryProbes(this.log);
 		logMemoryDiagnosticReport(this.log);
 

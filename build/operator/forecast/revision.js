@@ -1,13 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.forecastPlanSemanticRevisionHash = exports.forecastPlanRevisionPayload = void 0;
+exports.isUsableStoredForecastPlan = exports.parseForecastPlanFromJson = exports.forecastPlanSemanticRevisionHash = exports.forecastPlanRevisionPayload = void 0;
 const node_crypto_1 = require("node:crypto");
-/** Contribution fields excluded from semantic revision (volatile / runtime). */
-const REVISION_OMIT_CONTRIBUTION_KEYS = new Set([
-    "generatedAt",
-    "validUntil",
-    "revision",
-]);
 /** Detail keys that must not bump revision when alone changed. */
 const REVISION_OMIT_DETAIL_KEYS = new Set([
     "lastUpdate",
@@ -16,6 +10,8 @@ const REVISION_OMIT_DETAIL_KEYS = new Set([
     "calculatedAt",
     "runtimeId",
     "runtime_id",
+    "generatedAt",
+    "validUntil",
 ]);
 function stripVolatileDetails(details) {
     const out = {};
@@ -26,6 +22,28 @@ function stripVolatileDetails(details) {
     }
     return out;
 }
+function dayForRevision(day) {
+    return {
+        date: day.date,
+        pvEnergyKwh: day.pvEnergyKwh,
+        houseLoadEnergyKwh: day.houseLoadEnergyKwh,
+        renewableBalanceKwh: day.renewableBalanceKwh,
+        weatherMinTempC: day.weatherMinTempC,
+        weatherMaxTempC: day.weatherMaxTempC,
+    };
+}
+function slotForRevision(slot) {
+    return {
+        slot: slot.slot,
+        pvPowerW: slot.pvPowerW,
+        houseLoadPowerW: slot.houseLoadPowerW,
+        fixedBalancePowerW: slot.fixedBalancePowerW,
+        gridPriceCtPerKwh: slot.gridPriceCtPerKwh,
+        gridImportAllowed: slot.gridImportAllowed,
+        gridMaxImportPowerW: slot.gridMaxImportPowerW,
+        outdoorTempC: slot.outdoorTempC,
+    };
+}
 function contributionForRevision(c) {
     return {
         contributionId: c.contributionId,
@@ -33,12 +51,15 @@ function contributionForRevision(c) {
         contributor: c.contributor,
         roles: c.roles,
         enabled: c.enabled,
-        quality: c.quality,
+        quality: {
+            status: c.quality.status,
+            confidencePct: c.quality.confidencePct,
+        },
         details: stripVolatileDetails(c.details),
         slots: c.slots,
     };
 }
-/** Semantic revision payload — excludes generatedAt, horizonStart and other volatile fields. */
+/** Semantic revision payload — energy/price core only, no volatile metadata. */
 function forecastPlanRevisionPayload(plan) {
     const payload = {
         status: plan.status,
@@ -47,11 +68,9 @@ function forecastPlanRevisionPayload(plan) {
         slotMinutes: plan.slotMinutes,
         activeContributors: plan.activeContributors,
         excludedContributors: plan.excludedContributors,
-        days: plan.days,
-        slots: plan.slots,
+        days: plan.days.map(dayForRevision),
+        slots: plan.slots.map(slotForRevision),
         contributions: plan.contributions.map(contributionForRevision),
-        quality: plan.quality,
-        reasonDe: plan.reasonDe,
     };
     return JSON.stringify(payload);
 }
@@ -60,3 +79,24 @@ function forecastPlanSemanticRevisionHash(plan) {
     return (0, node_crypto_1.createHash)("sha256").update(forecastPlanRevisionPayload(plan)).digest("hex");
 }
 exports.forecastPlanSemanticRevisionHash = forecastPlanSemanticRevisionHash;
+const USABLE_FORECAST_STATUSES = new Set(["ready", "degraded"]);
+function parseForecastPlanFromJson(raw) {
+    if (!raw || !raw.trim())
+        return null;
+    try {
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.slots))
+            return null;
+        return parsed;
+    }
+    catch {
+        return null;
+    }
+}
+exports.parseForecastPlanFromJson = parseForecastPlanFromJson;
+function isUsableStoredForecastPlan(plan) {
+    if (!plan)
+        return false;
+    return USABLE_FORECAST_STATUSES.has(plan.status);
+}
+exports.isUsableStoredForecastPlan = isUsableStoredForecastPlan;

@@ -130,8 +130,12 @@ class Ems extends utils.Adapter {
         }
         this.log.info("EMS adapter ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
         (0, startup_memory_1.probeStartupMemory)(this.log, "before_adapter_ready_log");
-        await (0, deferred_writes_1.flushDeferredForecastPlanWrites)();
         (0, startup_memory_1.schedulePostReadyMemoryProbes)(this.log);
+        setImmediate(() => {
+            void (0, deferred_writes_1.flushDeferredForecastPlanWrites)().catch((e) => {
+                this.log.warn(`Deferred forecast plan write failed: ${e instanceof Error ? e.message : String(e)}`);
+            });
+        });
         (0, startup_memory_1.logMemoryDiagnosticReport)(this.log);
         await this.step("backup export init", async () => {
             await (0, retention_1.cleanupTempExports)(this);

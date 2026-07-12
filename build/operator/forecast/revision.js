@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isUsableStoredForecastPlan = exports.parseForecastPlanFromJson = exports.forecastPlanSemanticRevisionHash = exports.forecastPlanRevisionPayload = void 0;
+exports.isBootstrapForecastPlanJson = exports.isUsableStoredForecastPlan = exports.parseForecastPlanFromJson = exports.forecastPlanSemanticRevisionHash = exports.forecastPlanRevisionPayload = void 0;
 const node_crypto_1 = require("node:crypto");
 /** Detail keys that must not bump revision when alone changed. */
 const REVISION_OMIT_DETAIL_KEYS = new Set([
@@ -12,6 +12,10 @@ const REVISION_OMIT_DETAIL_KEYS = new Set([
     "runtime_id",
     "generatedAt",
     "validUntil",
+    "forecastHorizonStart",
+    "forecastHorizonEnd",
+    "todayDateKey",
+    "tomorrowDateKey",
 ]);
 function stripVolatileDetails(details) {
     const out = {};
@@ -44,6 +48,12 @@ function slotForRevision(slot) {
         outdoorTempC: slot.outdoorTempC,
     };
 }
+function excludedForRevision(entry) {
+    return {
+        contributionId: entry.contributionId,
+        contributor: entry.contributor,
+    };
+}
 function contributionForRevision(c) {
     return {
         contributionId: c.contributionId,
@@ -56,18 +66,20 @@ function contributionForRevision(c) {
             confidencePct: c.quality.confidencePct,
         },
         details: stripVolatileDetails(c.details),
-        slots: c.slots,
     };
+}
+function horizonEndDateKey(horizonEnd) {
+    return horizonEnd.slice(0, 10);
 }
 /** Semantic revision payload — energy/price core only, no volatile metadata. */
 function forecastPlanRevisionPayload(plan) {
     const payload = {
         status: plan.status,
         timezone: plan.timezone,
-        horizonEnd: plan.horizonEnd,
+        horizonEndDate: horizonEndDateKey(plan.horizonEnd),
         slotMinutes: plan.slotMinutes,
         activeContributors: plan.activeContributors,
-        excludedContributors: plan.excludedContributors,
+        excludedContributors: plan.excludedContributors.map(excludedForRevision),
         days: plan.days.map(dayForRevision),
         slots: plan.slots.map(slotForRevision),
         contributions: plan.contributions.map(contributionForRevision),
@@ -100,3 +112,9 @@ function isUsableStoredForecastPlan(plan) {
     return USABLE_FORECAST_STATUSES.has(plan.status);
 }
 exports.isUsableStoredForecastPlan = isUsableStoredForecastPlan;
+function isBootstrapForecastPlanJson(raw) {
+    if (!raw || raw.trim() === "" || raw.trim() === "{}")
+        return false;
+    return raw.length >= 100;
+}
+exports.isBootstrapForecastPlanJson = isBootstrapForecastPlanJson;

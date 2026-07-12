@@ -14,6 +14,9 @@ import { buildForecastPlan } from "./build";
 import {
 	forecastPlanRevisionPayload,
 	forecastPlanSemanticRevisionHash,
+	isBootstrapForecastPlanJson,
+	isUsableStoredForecastPlan,
+	parseForecastPlanFromJson,
 } from "./revision";
 import {
 	clearDeferredForecastPlanWriteForTest,
@@ -29,6 +32,8 @@ let revision = 0;
 export type ForecastPlanTickOptions = {
 	/** When true, large JSON mirror writes run after adapter ready (see flushDeferredForecastPlanWrites). */
 	deferLargeJsonWrites?: boolean;
+	/** Skip bootstrap cache and always rebuild (deferred refresh after adapter ready). */
+	forceRebuild?: boolean;
 };
 
 export function resetForecastPlanRevisionForTest(): void {
@@ -120,6 +125,38 @@ export async function resolveForecastRevisionChangeForTest(
 	deferLargeJsonWrites = false,
 ): Promise<RevisionResolution> {
 	return resolveForecastRevisionChange(host, semanticPayload, semanticHash, deferLargeJsonWrites);
+}
+
+async function loadCachedForecastPlanForBootstrap(host: ContributionsReadHost): Promise<ForecastPlan | null> {
+	const statusRaw = await readStr(host, FORECAST_PLAN_STATE_IDS.status);
+	if (!statusRaw || statusRaw === "not_initialized") return null;
+
+	const planRaw = await readStr(host, FORECAST_PLAN_STATE_IDS.planJson);
+	if (!isBootstrapForecastPlanJson(planRaw)) return null;
+
+	const plan = parseForecastPlanFromJson(planRaw);
+	if (!isUsableStoredForecastPlan(plan)) return null;
+
+	const storedRevision = await readNum(host, FORECAST_PLAN_STATE_IDS.revision);
+	if (storedRevision !== null && storedRevision >= 0) {
+		plan!.revision = storedRevision;
+		revision = storedRevision;
+	}
+	lastRevisionPayload = forecastPlanRevisionPayload(plan!);
+	return plan;
+}
+
+function scheduleBootstrapForecastRefresh(
+	host: ContributionsReadHost,
+	gridForecast: GridSupplyForecast | undefined,
+	flexibleContributions: PlanContribution[],
+): void {
+	scheduleDeferredForecastPlanWrite(host, async () => {
+		await runForecastPlanTick(host, gridForecast, flexibleContributions, {
+			deferLargeJsonWrites: false,
+			forceRebuild: true,
+		});
+	});
 }
 
 async function allMirrorJsonMatches(
@@ -253,6 +290,19 @@ export async function runForecastPlanTick(
 	flexibleContributions: PlanContribution[] = [],
 	options: ForecastPlanTickOptions = {},
 ): Promise<ForecastPlan> {
+	const deferLargeJsonWrites = options.deferLargeJsonWrites ?? !isBootstrapComplete();
+
+	if (deferLargeJsonWrites && !options.forceRebuild) {
+		const cached = await loadCachedForecastPlanForBootstrap(host);
+		if (cached) {
+			(host.log as MemoryProbeLogger | undefined)?.info?.(
+				`forecast plan bootstrap: cached plan_json revision=${cached.revision} slots=${cached.slots.length} — skip rebuild`,
+			);
+			scheduleBootstrapForecastRefresh(host, gridForecast, flexibleContributions);
+			return cached;
+		}
+	}
+
 	const now = new Date();
 	const collected = await collectContributions(host, now, gridForecast);
 	const contributions = [...collected.contributions, ...flexibleContributions];
@@ -264,13 +314,16 @@ export async function runForecastPlanTick(
 
 	const semanticPayload = forecastPlanRevisionPayload(plan);
 	const semanticHash = forecastPlanSemanticRevisionHash(plan);
-	const deferLargeJsonWrites = options.deferLargeJsonWrites ?? !isBootstrapComplete();
 
 	let resolution = await resolveForecastRevisionChange(host, semanticPayload, semanticHash, deferLargeJsonWrites);
 	plan.revision = resolution.nextRevision;
 
 	let serialized: ForecastPlanSerializedWrites | null = null;
-	if (!resolution.skipLargeJsonWrites && resolution.revisionChanged) {
+	if (
+		!resolution.skipLargeJsonWrites &&
+		resolution.revisionChanged &&
+		!resolution.deferLargeJsonWrites
+	) {
 		serialized = serializeForecastPlanForWrites(plan);
 		if (await allMirrorJsonMatches(host, serialized)) {
 			resolution = {
@@ -293,6 +346,16 @@ export async function runForecastPlanTick(
 			`computedHash=${semanticHash.slice(0, 12)}`,
 		].join(" "),
 	);
+
+	if (deferLargeJsonWrites && !options.forceRebuild) {
+		scheduleBootstrapForecastRefresh(host, gridForecast, flexibleContributions);
+		(host.log as MemoryProbeLogger | undefined)?.info?.(
+			`forecast plan bootstrap: built_in_memory revision=${plan.revision} — defer all DB writes until adapter ready`,
+		);
+		revision = resolution.nextRevision;
+		lastRevisionPayload = semanticPayload;
+		return plan;
+	}
 
 	try {
 		await writeScalarState(host, FORECAST_PLAN_STATE_IDS.status, plan.status, undefined, resolution.revisionChanged);
@@ -318,20 +381,6 @@ export async function runForecastPlanTick(
 				revision = resolution.nextRevision;
 				lastRevisionPayload = semanticPayload;
 			}
-		} else if (resolution.deferLargeJsonWrites && serialized) {
-			const capturedPlan = plan;
-			const capturedSerialized = serialized;
-			const capturedRevision = resolution.nextRevision;
-			scheduleDeferredForecastPlanWrite(host, async () => {
-				await writeLargeJsonStates(host, capturedPlan, capturedSerialized, semanticHash, capturedRevision);
-				await writeScalarState(host, FORECAST_PLAN_STATE_IDS.status, capturedPlan.status, undefined, true);
-				await writeScalarState(host, FORECAST_PLAN_STATE_IDS.validUntil, capturedPlan.validUntil ?? "", undefined, true);
-				await writeScalarState(host, FORECAST_PLAN_STATE_IDS.horizonEnd, capturedPlan.horizonEnd, undefined, true);
-				await writeScalarState(host, FORECAST_PLAN_STATE_IDS.slotMinutes, capturedPlan.slotMinutes, undefined, true);
-				await writeScalarState(host, FORECAST_PLAN_STATE_IDS.reasonDe, capturedPlan.reasonDe, undefined, true);
-			});
-			revision = resolution.nextRevision;
-			lastRevisionPayload = semanticPayload;
 		} else if (serialized) {
 			await writeLargeJsonStates(host, plan, serialized, semanticHash, resolution.nextRevision);
 		}

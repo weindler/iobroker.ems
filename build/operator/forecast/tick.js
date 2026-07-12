@@ -81,6 +81,32 @@ async function resolveForecastRevisionChangeForTest(host, semanticPayload, seman
     return resolveForecastRevisionChange(host, semanticPayload, semanticHash, deferLargeJsonWrites);
 }
 exports.resolveForecastRevisionChangeForTest = resolveForecastRevisionChangeForTest;
+async function loadCachedForecastPlanForBootstrap(host) {
+    const statusRaw = await readStr(host, states_1.FORECAST_PLAN_STATE_IDS.status);
+    if (!statusRaw || statusRaw === "not_initialized")
+        return null;
+    const planRaw = await readStr(host, states_1.FORECAST_PLAN_STATE_IDS.planJson);
+    if (!(0, revision_1.isBootstrapForecastPlanJson)(planRaw))
+        return null;
+    const plan = (0, revision_1.parseForecastPlanFromJson)(planRaw);
+    if (!(0, revision_1.isUsableStoredForecastPlan)(plan))
+        return null;
+    const storedRevision = await readNum(host, states_1.FORECAST_PLAN_STATE_IDS.revision);
+    if (storedRevision !== null && storedRevision >= 0) {
+        plan.revision = storedRevision;
+        revision = storedRevision;
+    }
+    lastRevisionPayload = (0, revision_1.forecastPlanRevisionPayload)(plan);
+    return plan;
+}
+function scheduleBootstrapForecastRefresh(host, gridForecast, flexibleContributions) {
+    (0, deferred_writes_1.scheduleDeferredForecastPlanWrite)(host, async () => {
+        await runForecastPlanTick(host, gridForecast, flexibleContributions, {
+            deferLargeJsonWrites: false,
+            forceRebuild: true,
+        });
+    });
+}
 async function allMirrorJsonMatches(host, serialized) {
     const pairs = [
         [states_1.FORECAST_PLAN_STATE_IDS.activeContributorsJson, serialized.activeContributorsJson],
@@ -155,6 +181,15 @@ async function writeLargeJsonStates(host, plan, serialized, semanticHash, nextRe
     lastRevisionPayload = (0, revision_1.forecastPlanRevisionPayload)(plan);
 }
 async function runForecastPlanTick(host, gridForecast, flexibleContributions = [], options = {}) {
+    const deferLargeJsonWrites = options.deferLargeJsonWrites ?? !(0, barrier_1.isBootstrapComplete)();
+    if (deferLargeJsonWrites && !options.forceRebuild) {
+        const cached = await loadCachedForecastPlanForBootstrap(host);
+        if (cached) {
+            host.log?.info?.(`forecast plan bootstrap: cached plan_json revision=${cached.revision} slots=${cached.slots.length} — skip rebuild`);
+            scheduleBootstrapForecastRefresh(host, gridForecast, flexibleContributions);
+            return cached;
+        }
+    }
     const now = new Date();
     const collected = await (0, read_1.collectContributions)(host, now, gridForecast);
     const contributions = [...collected.contributions, ...flexibleContributions];
@@ -165,11 +200,12 @@ async function runForecastPlanTick(host, gridForecast, flexibleContributions = [
     });
     const semanticPayload = (0, revision_1.forecastPlanRevisionPayload)(plan);
     const semanticHash = (0, revision_1.forecastPlanSemanticRevisionHash)(plan);
-    const deferLargeJsonWrites = options.deferLargeJsonWrites ?? !(0, barrier_1.isBootstrapComplete)();
     let resolution = await resolveForecastRevisionChange(host, semanticPayload, semanticHash, deferLargeJsonWrites);
     plan.revision = resolution.nextRevision;
     let serialized = null;
-    if (!resolution.skipLargeJsonWrites && resolution.revisionChanged) {
+    if (!resolution.skipLargeJsonWrites &&
+        resolution.revisionChanged &&
+        !resolution.deferLargeJsonWrites) {
         serialized = (0, serialization_1.serializeForecastPlanForWrites)(plan);
         if (await allMirrorJsonMatches(host, serialized)) {
             resolution = {
@@ -189,6 +225,13 @@ async function runForecastPlanTick(host, gridForecast, flexibleContributions = [
         `storedHash=${resolution.storedHash?.slice(0, 12) ?? "none"}`,
         `computedHash=${semanticHash.slice(0, 12)}`,
     ].join(" "));
+    if (deferLargeJsonWrites && !options.forceRebuild) {
+        scheduleBootstrapForecastRefresh(host, gridForecast, flexibleContributions);
+        host.log?.info?.(`forecast plan bootstrap: built_in_memory revision=${plan.revision} — defer all DB writes until adapter ready`);
+        revision = resolution.nextRevision;
+        lastRevisionPayload = semanticPayload;
+        return plan;
+    }
     try {
         await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.status, plan.status, undefined, resolution.revisionChanged);
         await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, undefined, false);
@@ -206,21 +249,6 @@ async function runForecastPlanTick(host, gridForecast, flexibleContributions = [
                 revision = resolution.nextRevision;
                 lastRevisionPayload = semanticPayload;
             }
-        }
-        else if (resolution.deferLargeJsonWrites && serialized) {
-            const capturedPlan = plan;
-            const capturedSerialized = serialized;
-            const capturedRevision = resolution.nextRevision;
-            (0, deferred_writes_1.scheduleDeferredForecastPlanWrite)(host, async () => {
-                await writeLargeJsonStates(host, capturedPlan, capturedSerialized, semanticHash, capturedRevision);
-                await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.status, capturedPlan.status, undefined, true);
-                await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.validUntil, capturedPlan.validUntil ?? "", undefined, true);
-                await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.horizonEnd, capturedPlan.horizonEnd, undefined, true);
-                await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.slotMinutes, capturedPlan.slotMinutes, undefined, true);
-                await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.reasonDe, capturedPlan.reasonDe, undefined, true);
-            });
-            revision = resolution.nextRevision;
-            lastRevisionPayload = semanticPayload;
         }
         else if (serialized) {
             await writeLargeJsonStates(host, plan, serialized, semanticHash, resolution.nextRevision);

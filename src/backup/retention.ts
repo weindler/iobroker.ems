@@ -1,0 +1,135 @@
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
+import { realpath } from "node:fs/promises";
+
+export const BACKUP_RETENTION_MAX = 10;
+export const SUPPORT_RETENTION_MAX = 5;
+
+const BACKUP_EXT = ".emsbackup";
+const SUPPORT_EXT = ".emssupport";
+const TEMP_PREFIX = ".tmp-";
+
+/** Nur eigene Exportdateien (ems-light-*.{emsbackup,emssupport}). */
+export const OWN_EXPORT_FILE_RE = /^ems-light-.+\.(emsbackup|emssupport)$/;
+
+export function exportRootDir(instanceDataDir: string): string {
+	return path.join(instanceDataDir, "exports");
+}
+
+export function backupDir(instanceDataDir: string): string {
+	return path.join(exportRootDir(instanceDataDir), "backup");
+}
+
+export function supportDir(instanceDataDir: string): string {
+	return path.join(exportRootDir(instanceDataDir), "support");
+}
+
+export function assertSafeFileName(name: string): void {
+	if (!name || name.includes("..") || name.includes("/") || name.includes("\\") || name.includes("\0")) {
+		throw new Error("invalid export file name");
+	}
+	if (!OWN_EXPORT_FILE_RE.test(name)) {
+		throw new Error("invalid export file name pattern");
+	}
+}
+
+export async function assertPathWithinExportRoot(resolvedPath: string, exportRoot: string): Promise<void> {
+	const realRoot = await realpath(exportRoot).catch(() => path.resolve(exportRoot));
+	const realTarget = await realpath(resolvedPath).catch(() => path.resolve(resolvedPath));
+	if (!realTarget.startsWith(realRoot + path.sep) && realTarget !== realRoot) {
+		throw new Error("path traversal blocked (realpath)");
+	}
+}
+
+export function resolveExportPath(baseDir: string, fileName: string): string {
+	assertSafeFileName(fileName);
+	const resolved = path.resolve(baseDir, fileName);
+	const base = path.resolve(baseDir);
+	if (!resolved.startsWith(base + path.sep) && resolved !== base) {
+		throw new Error("path traversal blocked");
+	}
+	return resolved;
+}
+
+export async function ensureExportDirs(instanceDataDir: string): Promise<void> {
+	await fs.mkdir(backupDir(instanceDataDir), { recursive: true, mode: 0o700 });
+	await fs.mkdir(supportDir(instanceDataDir), { recursive: true, mode: 0o700 });
+}
+
+export async function cleanupTempExports(instanceDataDir: string): Promise<void> {
+	for (const dir of [backupDir(instanceDataDir), supportDir(instanceDataDir)]) {
+		try {
+			const files = await fs.readdir(dir);
+			for (const f of files) {
+				if (!f.startsWith(TEMP_PREFIX)) continue;
+				const full = path.join(dir, f);
+				const st = await fs.lstat(full);
+				if (st.isSymbolicLink()) continue;
+				await fs.unlink(full).catch(() => undefined);
+			}
+		} catch {
+			// Verzeichnis fehlt
+		}
+	}
+}
+
+function isOwnArchive(name: string, ext: string): boolean {
+	return name.endsWith(ext) && !name.startsWith(TEMP_PREFIX) && OWN_EXPORT_FILE_RE.test(name);
+}
+
+async function listArchives(dir: string, ext: string): Promise<Array<{ name: string; mtimeMs: number }>> {
+	try {
+		const files = await fs.readdir(dir);
+		const out: Array<{ name: string; mtimeMs: number }> = [];
+		for (const name of files) {
+			if (!isOwnArchive(name, ext)) continue;
+			const full = path.join(dir, name);
+			const st = await fs.lstat(full);
+			if (st.isSymbolicLink()) continue;
+			out.push({ name, mtimeMs: st.mtimeMs });
+		}
+		return out.sort((a, b) => a.mtimeMs - b.mtimeMs || a.name.localeCompare(b.name));
+	} catch {
+		return [];
+	}
+}
+
+export async function enforceRetention(instanceDataDir: string): Promise<void> {
+	const bDir = backupDir(instanceDataDir);
+	const sDir = supportDir(instanceDataDir);
+	const backups = await listArchives(bDir, BACKUP_EXT);
+	while (backups.length > BACKUP_RETENTION_MAX) {
+		const oldest = backups.shift();
+		if (oldest) {
+			const target = path.join(bDir, oldest.name);
+			await assertPathWithinExportRoot(target, bDir).catch(() => undefined);
+			await fs.unlink(target).catch(() => undefined);
+		}
+	}
+	const supports = await listArchives(sDir, SUPPORT_EXT);
+	while (supports.length > SUPPORT_RETENTION_MAX) {
+		const oldest = supports.shift();
+		if (oldest) {
+			const target = path.join(sDir, oldest.name);
+			await assertPathWithinExportRoot(target, sDir).catch(() => undefined);
+			await fs.unlink(target).catch(() => undefined);
+		}
+	}
+}
+
+export async function writeAtomicArchive(targetPath: string, data: Buffer): Promise<void> {
+	const dir = path.dirname(targetPath);
+	await fs.mkdir(dir, { recursive: true, mode: 0o700 });
+	const resolved = path.resolve(targetPath);
+	await assertPathWithinExportRoot(resolved, dir);
+	const tmp = path.join(dir, `${TEMP_PREFIX}${path.basename(targetPath)}.${process.pid}`);
+	await fs.writeFile(tmp, data, { mode: 0o600 });
+	await fs.rename(tmp, targetPath);
+	try {
+		await fs.chmod(targetPath, 0o600);
+	} catch {
+		// Plattform ohne chmod
+	}
+}
+
+export { BACKUP_EXT, SUPPORT_EXT, TEMP_PREFIX };

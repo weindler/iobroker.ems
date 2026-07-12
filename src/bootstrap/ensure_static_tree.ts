@@ -21,6 +21,7 @@ import { immersionHeaterMappingFromConfig } from "../addons/immersion_heater/map
 import { AC_ADDON_ID } from "../addons/air_conditioning/constants";
 import { acMappingFromConfig } from "../addons/air_conditioning/mapping_config";
 import { ensureCommandBaseStates, ensureAddonBasisStates } from "./base_ensure";
+import { ensureBackupStates } from "../backup/ensure_states";
 
 export type StaticStateTreeHost = ioBroker.Adapter & {
 	config: unknown;
@@ -35,6 +36,7 @@ export async function ensureStaticStateTree(host: StaticStateTreeHost): Promise<
 	await ensureAddonBasisStates(host);
 	await ensureAddonGovernanceStates(host);
 	await ensureEmsLightStateTree(host);
+	await ensureBackupStates(host);
 	await ensureAddonMappingStates(host, "wallbox", WALLBOX_ALL_MAPPING_IDS);
 	await ensureWallboxStatusStates(host);
 	await ensureWallboxStaticStateTree(host);

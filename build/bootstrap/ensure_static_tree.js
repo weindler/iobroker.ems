@@ -20,6 +20,7 @@ const mapping_config_3 = require("../addons/immersion_heater/mapping_config");
 const constants_1 = require("../addons/air_conditioning/constants");
 const mapping_config_4 = require("../addons/air_conditioning/mapping_config");
 const base_ensure_1 = require("./base_ensure");
+const ensure_states_1 = require("../backup/ensure_states");
 /** Phase B — statischer EMS-State-Tree ohne dynamische Fahrzeugprofile. */
 async function ensureStaticStateTree(host) {
     await (0, execution_mode_1.ensureChannelTree)(host.setObjectNotExistsAsync.bind(host));
@@ -29,6 +30,7 @@ async function ensureStaticStateTree(host) {
     await (0, base_ensure_1.ensureAddonBasisStates)(host);
     await (0, governance_1.ensureAddonGovernanceStates)(host);
     await (0, ems_light_1.ensureEmsLightStateTree)(host);
+    await (0, ensure_states_1.ensureBackupStates)(host);
     await (0, mapping_sync_1.ensureAddonMappingStates)(host, "wallbox", mapping_config_1.WALLBOX_ALL_MAPPING_IDS);
     await (0, status_wallbox_1.ensureWallboxStatusStates)(host);
     await (0, wallbox_1.ensureWallboxStaticStateTree)(host);

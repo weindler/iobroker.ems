@@ -35,6 +35,8 @@ const dryrun_mirror_1 = require("./dryrun_mirror");
 const execution_mode_1 = require("./execution_mode");
 const barrier_1 = require("./bootstrap/barrier");
 const startup_1 = require("./bootstrap/startup");
+const export_handler_1 = require("./backup/export_handler");
+const retention_1 = require("./backup/retention");
 const inbox_1 = require("./inbox");
 const mapping_config_1 = require("./mapping_config");
 const ems_light_1 = require("./ems_light");
@@ -110,6 +112,14 @@ class Ems extends utils.Adapter {
             return;
         }
         this.log.info("EMS adapter ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
+        await this.step("backup export init", async () => {
+            const dataDirFn = this
+                .getAbsoluteInstanceDataDir;
+            if (typeof dataDirFn === "function") {
+                await (0, retention_1.cleanupTempExports)(dataDirFn.call(this));
+            }
+            await (0, export_handler_1.initBackupExportRuntime)(this);
+        });
         await this.step("process pending inbox", async () => {
             const inbox = await this.getStateAsync(states_1.STATE.command.inbox);
             if (inbox && !inbox.ack && inbox.val != null) {
@@ -119,6 +129,7 @@ class Ems extends utils.Adapter {
         });
     }
     onUnload(callback) {
+        (0, export_handler_1.stopDiagnosticMode)();
         (0, ems_light_1.stopEmsLightPhase1)();
         void (0, battery_1.batteryUnloadRestore)(this).catch(() => undefined);
         (0, battery_1.stopBatteryModule)(null);
@@ -133,6 +144,11 @@ class Ems extends utils.Adapter {
             return;
         }
         if (state) {
+            const rel = id.startsWith(`${this.namespace}.`) ? id.slice(this.namespace.length + 1) : id;
+            if ((0, export_handler_1.isBackupRelatedState)(rel)) {
+                await (0, export_handler_1.handleBackupStateChange)(this, rel, state.val, state.ack);
+                return;
+            }
             await (0, execution_mode_1.handleExecutionModeStateChange)(this, id, state);
             (0, battery_1.handleBatteryAdapterStateChange)(this, id);
             (0, battery_1.handleBatteryGridBalanceForeignStateChange)(this, id);

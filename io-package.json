@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.140",
+		"version": "0.1.141",
 		"news": {
+			"0.1.141": {
+				"en": "Backup export and support bundle foundation: shared versioned export core for .emsbackup configuration archives and anonymized .emssupport diagnostic packages, allowlist-based config collection, persistence classification, SHA-256 manifest, ZIP archives, bounded diagnostic mode and log rotation. No import, restore or Backitup integration; release gate remains closed.",
+				"de": "Backup-Export- und Support-Paket-Foundation: gemeinsamer versionierter Exportkern für .emsbackup-Konfigurationsarchive und anonymisierte .emssupport-Diagnosepakete, Allowlist-basierte Datensammlung, Persistenz-Klassifikation, SHA-256-Manifest, ZIP-Archive, begrenzter Diagnosemodus und Logrotation. Kein Import, Restore oder Backitup-Anbindung; Release-Gate bleibt geschlossen."
+			},
 			"0.1.140": {
 				"en": "State tree recovery and rebuild hardening: deterministic phased adapter bootstrap (static ensure, config sync, subscriptions, runtime), safe cold start after deleting ems.0.*, bootstrap barrier, idempotent restarts, integration tests and recovery documentation. No backup/restore, no live wallbox writes; release gate remains closed.",
 				"de": "State-Tree-Recovery und Rebuild-Härtung: deterministischer phasenweiser Adapter-Bootstrap (statisches Ensure, Config-Sync, Subscriptions, Runtime), sicherer Cold Start nach Löschen von ems.0.*, Bootstrap-Barriere, idempotente Neustarts, Integrationstests und Recovery-Dokumentation. Kein Backup/Restore, keine Live-Wallbox-Writes; Release-Gate bleibt geschlossen."

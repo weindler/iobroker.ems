@@ -28,6 +28,8 @@ import {
 } from "./execution_mode";
 import { isBootstrapComplete } from "./bootstrap/barrier";
 import { runAdapterBootstrap } from "./bootstrap/startup";
+import { handleBackupStateChange, initBackupExportRuntime, isBackupRelatedState, stopDiagnosticMode } from "./backup/export_handler";
+import { cleanupTempExports } from "./backup/retention";
 import { parseInboxValue } from "./inbox";
 import { goeWallboxTemplateFlat } from "./mapping_config";
 import { stopEmsLightPhase1 } from "./ems_light";
@@ -114,6 +116,15 @@ class Ems extends utils.Adapter {
 
 		this.log.info("EMS adapter ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
 
+		await this.step("backup export init", async () => {
+			const dataDirFn = (this as ioBroker.Adapter & { getAbsoluteInstanceDataDir?: () => string })
+				.getAbsoluteInstanceDataDir;
+			if (typeof dataDirFn === "function") {
+				await cleanupTempExports(dataDirFn.call(this));
+			}
+			await initBackupExportRuntime(this);
+		});
+
 		await this.step("process pending inbox", async () => {
 			const inbox = await this.getStateAsync(STATE.command.inbox);
 			if (inbox && !inbox.ack && inbox.val != null) {
@@ -124,6 +135,7 @@ class Ems extends utils.Adapter {
 	}
 
 	private onUnload(callback: () => void): void {
+		stopDiagnosticMode();
 		stopEmsLightPhase1();
 		void batteryUnloadRestore(this as ioBroker.Adapter & { config: unknown }).catch(() => undefined);
 		stopBatteryModule(null);
@@ -139,6 +151,11 @@ class Ems extends utils.Adapter {
 			return;
 		}
 		if (state) {
+			const rel = id.startsWith(`${this.namespace}.`) ? id.slice(this.namespace.length + 1) : id;
+			if (isBackupRelatedState(rel)) {
+				await handleBackupStateChange(this, rel, state.val, state.ack);
+				return;
+			}
 			await handleExecutionModeStateChange(this, id, state);
 			handleBatteryAdapterStateChange(this, id);
 			handleBatteryGridBalanceForeignStateChange(this, id);

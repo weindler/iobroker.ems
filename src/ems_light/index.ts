@@ -216,8 +216,6 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 	}
 	probeStartupMemory(adapter.log, "after_intent_engine_init");
 
-	await primeForecastPeriodicCache(host as Parameters<typeof primeForecastPeriodicCache>[0]);
-
 	policyAdapter = adapter;
 	try {
 		await adapter.subscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE);
@@ -233,12 +231,14 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 		await tickPowerRollup(powerRollupHost);
 	}
 
+	await primeForecastPeriodicCache(host as Parameters<typeof primeForecastPeriodicCache>[0]);
+
 	const sec = tickIntervalSec(adapter.config);
 	stopEmsLightTick();
 	const dailyHostForTick = energyDailyRollupHost;
 	const powerHostForTick = powerRollupHost;
 	tickTimer = setInterval(() => {
-		void runEmsLightPhase1Tick(host, { persistPlans: false, planTicks: false }).catch((e) => {
+		void runEmsLightPhase1Tick(host, { persistPlans: false }).catch((e) => {
 			adapter.log.error(`EMS-Light tick: ${e}`);
 		});
 		if (dailyHostForTick) {
@@ -253,7 +253,7 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 		}
 	}, sec * 1000);
 
-	adapter.log.debug(`EMS-Light Phase 1 ready (tick ${sec}s, plan rebuild only at startup)`);
+	adapter.log.debug(`EMS-Light Phase 1 ready (tick ${sec}s, forecast/daily persist on learning change only)`);
 }
 
 export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<void> {

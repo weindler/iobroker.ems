@@ -174,7 +174,6 @@ async function startEmsLightPhase1Runtime(adapter) {
         adapter.log.error(`User Intent Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
     }
     (0, startup_memory_1.probeStartupMemory)(adapter.log, "after_intent_engine_init");
-    await (0, tick_2.primeForecastPeriodicCache)(host);
     policyAdapter = adapter;
     try {
         await adapter.subscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE);
@@ -190,12 +189,13 @@ async function startEmsLightPhase1Runtime(adapter) {
     if (powerRollupHost) {
         await (0, power_rollup_1.tickPowerRollup)(powerRollupHost);
     }
+    await (0, tick_2.primeForecastPeriodicCache)(host);
     const sec = tickIntervalSec(adapter.config);
     stopEmsLightTick();
     const dailyHostForTick = energyDailyRollupHost;
     const powerHostForTick = powerRollupHost;
     tickTimer = setInterval(() => {
-        void (0, tick_1.runEmsLightPhase1Tick)(host, { persistPlans: false, planTicks: false }).catch((e) => {
+        void (0, tick_1.runEmsLightPhase1Tick)(host, { persistPlans: false }).catch((e) => {
             adapter.log.error(`EMS-Light tick: ${e}`);
         });
         if (dailyHostForTick) {
@@ -209,7 +209,7 @@ async function startEmsLightPhase1Runtime(adapter) {
             });
         }
     }, sec * 1000);
-    adapter.log.debug(`EMS-Light Phase 1 ready (tick ${sec}s, plan rebuild only at startup)`);
+    adapter.log.debug(`EMS-Light Phase 1 ready (tick ${sec}s, forecast/daily persist on learning change only)`);
 }
 exports.startEmsLightPhase1Runtime = startEmsLightPhase1Runtime;
 async function initEmsLightPhase1(adapter) {

@@ -11,7 +11,6 @@ const tick_2 = require("../operator/forecast/tick");
 const tick_3 = require("../operator/daily_plan/tick");
 async function runEmsLightPhase1Tick(host, options = {}) {
     const runOperatorTicks = options.operatorTicks !== false;
-    const runPlanTicks = options.planTicks !== false;
     const persistPlans = options.persistPlans !== false;
     (0, ems_activity_1.touchEmsActivity)();
     const ts = new Date().toISOString();
@@ -68,22 +67,22 @@ async function runEmsLightPhase1Tick(host, options = {}) {
             hints.push(`flexible_contributions: ${String(e)}`);
         }
         let forecastPlan;
-        if (runPlanTicks) {
+        const learningChanged = await (0, tick_2.peekLearningInputsChanged)(host);
+        const persistPlansNow = persistPlans || learningChanged;
+        try {
+            forecastPlan = await (0, tick_2.runForecastPlanTick)(host, gridForecast, flexibleContributions, {
+                persistToDb: persistPlansNow,
+            });
+        }
+        catch (e) {
+            hints.push(`forecast_plan: ${String(e)}`);
+        }
+        if (forecastPlan) {
             try {
-                forecastPlan = await (0, tick_2.runForecastPlanTick)(host, gridForecast, flexibleContributions, {
-                    persistToDb: persistPlans,
-                });
+                await (0, tick_3.runDailyPlanTick)(host, forecastPlan, { persistToDb: persistPlansNow });
             }
             catch (e) {
-                hints.push(`forecast_plan: ${String(e)}`);
-            }
-            if (forecastPlan) {
-                try {
-                    await (0, tick_3.runDailyPlanTick)(host, forecastPlan, { persistToDb: persistPlans });
-                }
-                catch (e) {
-                    hints.push(`daily_plan: ${String(e)}`);
-                }
+                hints.push(`daily_plan: ${String(e)}`);
             }
         }
     }

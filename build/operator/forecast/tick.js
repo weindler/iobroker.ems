@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.primeForecastPeriodicCache = exports.runForecastPlanTick = exports.resolveForecastRevisionChangeForTest = exports.forecastPlanRevisionForTest = exports.resetForecastPlanRevisionForTest = void 0;
+exports.primeForecastPeriodicCache = exports.runForecastPlanTick = exports.resolveForecastRevisionChangeForTest = exports.peekLearningInputsChanged = exports.forecastPlanRevisionForTest = exports.resetForecastPlanRevisionForTest = void 0;
 const forecast_plan_write_probe_1 = require("../../diagnostics/forecast_plan_write_probe");
 const barrier_1 = require("../../bootstrap/barrier");
 const state_write_1 = require("../../policy/core/state_write");
@@ -64,6 +64,12 @@ function forecastPlanRevisionForTest() {
     return revision;
 }
 exports.forecastPlanRevisionForTest = forecastPlanRevisionForTest;
+/** True when learning timestamps differ from last primed/skipped baseline. */
+async function peekLearningInputsChanged(host) {
+    const learningFp = await learningInputFingerprint(host);
+    return lastLearningFingerprint !== "" && learningFp !== lastLearningFingerprint;
+}
+exports.peekLearningInputsChanged = peekLearningInputsChanged;
 async function readStr(host, relId) {
     try {
         const st = await host.getStateAsync(relId);
@@ -235,7 +241,8 @@ async function runForecastPlanTick(host, gridForecast, flexibleContributions = [
     const learningFp = await learningInputFingerprint(host);
     const fullFp = await forecastInputFingerprint(host);
     const learningChanged = lastLearningFingerprint !== "" && learningFp !== lastLearningFingerprint;
-    const persistToDb = options.persistToDb !== false;
+    // Interval ticks pass persistToDb=false; persist file only when learning inputs actually changed.
+    const persistToDb = options.persistToDb !== false || learningChanged;
     if ((0, barrier_1.isBootstrapComplete)() && !options.forceRebuild && !learningChanged && lastLearningFingerprint !== "") {
         if (cachedPeriodicPlan) {
             host.log?.info?.(`forecast plan periodic: learning unchanged — skip rebuild (revision=${cachedPeriodicPlan.revision}, grid/flex may have ticked)`);

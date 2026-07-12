@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.hasDeferredForecastPlanWrite = exports.flushDeferredForecastPlanWrites = exports.runForecastPlanTick = exports.resetForecastPlanRevisionForTest = exports.primeForecastPeriodicCache = exports.forecastPlanRevisionForTest = exports.FORECAST_PLAN_STATE_IDS = exports.ensureForecastPlanStates = exports.forecastPlanRevisionPayload = exports.buildForecastPlan = void 0;
+exports.hasDeferredForecastPlanWrite = exports.flushDeferredForecastPlanWrites = exports.runForecastPlanTick = exports.resetForecastPlanRevisionForTest = exports.primeForecastPeriodicCache = exports.peekLearningInputsChanged = exports.forecastPlanRevisionForTest = exports.FORECAST_PLAN_STATE_IDS = exports.ensureForecastPlanStates = exports.forecastPlanRevisionPayload = exports.buildForecastPlan = void 0;
 var build_1 = require("./build");
 Object.defineProperty(exports, "buildForecastPlan", { enumerable: true, get: function () { return build_1.buildForecastPlan; } });
 Object.defineProperty(exports, "forecastPlanRevisionPayload", { enumerable: true, get: function () { return build_1.forecastPlanRevisionPayload; } });
@@ -9,6 +9,7 @@ Object.defineProperty(exports, "ensureForecastPlanStates", { enumerable: true, g
 Object.defineProperty(exports, "FORECAST_PLAN_STATE_IDS", { enumerable: true, get: function () { return states_1.FORECAST_PLAN_STATE_IDS; } });
 var tick_1 = require("./tick");
 Object.defineProperty(exports, "forecastPlanRevisionForTest", { enumerable: true, get: function () { return tick_1.forecastPlanRevisionForTest; } });
+Object.defineProperty(exports, "peekLearningInputsChanged", { enumerable: true, get: function () { return tick_1.peekLearningInputsChanged; } });
 Object.defineProperty(exports, "primeForecastPeriodicCache", { enumerable: true, get: function () { return tick_1.primeForecastPeriodicCache; } });
 Object.defineProperty(exports, "resetForecastPlanRevisionForTest", { enumerable: true, get: function () { return tick_1.resetForecastPlanRevisionForTest; } });
 Object.defineProperty(exports, "runForecastPlanTick", { enumerable: true, get: function () { return tick_1.runForecastPlanTick; } });

@@ -95,6 +95,12 @@ export function forecastPlanRevisionForTest(): number {
 	return revision;
 }
 
+/** True when learning timestamps differ from last primed/skipped baseline. */
+export async function peekLearningInputsChanged(host: ContributionsReadHost): Promise<boolean> {
+	const learningFp = await learningInputFingerprint(host);
+	return lastLearningFingerprint !== "" && learningFp !== lastLearningFingerprint;
+}
+
 async function readStr(host: StateHost, relId: string): Promise<string | null> {
 	try {
 		const st = await host.getStateAsync(relId);
@@ -324,7 +330,8 @@ export async function runForecastPlanTick(
 	const learningFp = await learningInputFingerprint(host);
 	const fullFp = await forecastInputFingerprint(host);
 	const learningChanged = lastLearningFingerprint !== "" && learningFp !== lastLearningFingerprint;
-	const persistToDb = options.persistToDb !== false;
+	// Interval ticks pass persistToDb=false; persist file only when learning inputs actually changed.
+	const persistToDb = options.persistToDb !== false || learningChanged;
 	if (isBootstrapComplete() && !options.forceRebuild && !learningChanged && lastLearningFingerprint !== "") {
 		if (cachedPeriodicPlan) {
 			(host.log as MemoryProbeLogger | undefined)?.info?.(

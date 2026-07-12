@@ -4,15 +4,13 @@ import { deriveHealth, formatLiveCacheSummary, refreshLiveCache, type LiveCacheH
 import { runPlannerTick, type PlannerHost } from "../planner";
 import { runGridSupplyTick } from "../operator/supply/grid_tick";
 import { runFlexibleContributionsTick } from "../operator/contributions/flexible/tick";
-import { runForecastPlanTick } from "../operator/forecast/tick";
+import { runForecastPlanTick, peekLearningInputsChanged } from "../operator/forecast/tick";
 import { runDailyPlanTick } from "../operator/daily_plan/tick";
 
 export type EmsLightPhase1TickOptions = {
 	/** When false, skip grid/forecast/daily operator ticks (planner runtime already ran them). */
 	operatorTicks?: boolean;
-	/** When false, skip forecast + daily plan ticks (grid/flex/planner still run). */
-	planTicks?: boolean;
-	/** When false, forecast/daily plans are computed in memory only (no file/scalar persistence). Default true. */
+	/** When false, forecast/daily plans are computed in memory only unless learning inputs changed. Default true. */
 	persistPlans?: boolean;
 };
 
@@ -21,7 +19,6 @@ export async function runEmsLightPhase1Tick(
 	options: EmsLightPhase1TickOptions = {},
 ): Promise<void> {
 	const runOperatorTicks = options.operatorTicks !== false;
-	const runPlanTicks = options.planTicks !== false;
 	const persistPlans = options.persistPlans !== false;
 	touchEmsActivity();
 	const ts = new Date().toISOString();
@@ -78,21 +75,21 @@ export async function runEmsLightPhase1Tick(
 		}
 
 		let forecastPlan;
-		if (runPlanTicks) {
-			try {
-				forecastPlan = await runForecastPlanTick(host, gridForecast, flexibleContributions, {
-					persistToDb: persistPlans,
-				});
-			} catch (e) {
-				hints.push(`forecast_plan: ${String(e)}`);
-			}
+		const learningChanged = await peekLearningInputsChanged(host);
+		const persistPlansNow = persistPlans || learningChanged;
+		try {
+			forecastPlan = await runForecastPlanTick(host, gridForecast, flexibleContributions, {
+				persistToDb: persistPlansNow,
+			});
+		} catch (e) {
+			hints.push(`forecast_plan: ${String(e)}`);
+		}
 
-			if (forecastPlan) {
-				try {
-					await runDailyPlanTick(host, forecastPlan, { persistToDb: persistPlans });
-				} catch (e) {
-					hints.push(`daily_plan: ${String(e)}`);
-				}
+		if (forecastPlan) {
+			try {
+				await runDailyPlanTick(host, forecastPlan, { persistToDb: persistPlansNow });
+			} catch (e) {
+				hints.push(`daily_plan: ${String(e)}`);
 			}
 		}
 	}

@@ -3,6 +3,7 @@ export { buildForecastPlan, forecastPlanRevisionPayload, type ForecastPlanBuildI
 export { ensureForecastPlanStates, FORECAST_PLAN_STATE_IDS } from "./states";
 export {
 	forecastPlanRevisionForTest,
+	peekLearningInputsChanged,
 	primeForecastPeriodicCache,
 	resetForecastPlanRevisionForTest,
 	runForecastPlanTick,

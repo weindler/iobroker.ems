@@ -187,8 +187,6 @@ function gridSupplyRevisionPayload(forecast) {
         currentPriceCtPerKwh: forecast.currentPriceCtPerKwh,
         effectiveMaxGridImportW: forecast.effectiveMaxGridImportW,
         slots: forecast.slots.map((s) => ({
-            startIso: s.startIso,
-            endIso: s.endIso,
             priceCtPerKwh: s.priceCtPerKwh,
             importAllowed: s.importAllowed,
         })),

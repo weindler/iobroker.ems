@@ -81,8 +81,7 @@ async function storedDailyPlanSemanticallyMatches(host, plan, semanticHash) {
     const storedHash = await readStr(host, states_1.DAILY_PLAN_STATE_IDS.semanticRevisionHash);
     if (storedHash === semanticHash)
         return true;
-    const raw = (await (0, plan_store_1.readDailyPlanFile)(host)) ??
-        (await readStr(host, states_1.DAILY_PLAN_STATE_IDS.planJson));
+    const raw = await (0, plan_store_1.readDailyPlanFile)(host);
     const stored = (0, revision_1.parseDailyPlanFromJson)(raw);
     if (!stored)
         return false;
@@ -92,10 +91,6 @@ async function persistDailyPlan(host, plan, semanticHash, nextRevision) {
     const planJson = JSON.stringify(plan);
     const existingFile = await (0, plan_store_1.readDailyPlanFile)(host);
     if (existingFile === planJson) {
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
-        if ((await readStr(host, states_1.DAILY_PLAN_STATE_IDS.semanticRevisionHash)) !== semanticHash) {
-            await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.semanticRevisionHash, semanticHash);
-        }
         lastRevisionPayload = (0, revision_1.dailyPlanRevisionPayload)(plan);
         return;
     }
@@ -109,7 +104,6 @@ async function persistDailyPlan(host, plan, semanticHash, nextRevision) {
     await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes);
     await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
     await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.revision, nextRevision);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.semanticRevisionHash, semanticHash);
     const addonSummaries = [
         { key: "battery", prefix: "battery" },
         { key: "wallbox", prefix: "wallbox" },
@@ -121,7 +115,6 @@ async function persistDailyPlan(host, plan, semanticHash, nextRevision) {
         const summary = addonAllocationSummary(plan, prefix);
         const status = summary.length > 0 ? "ready" : "idle";
         await (0, state_write_1.setStateIfChanged)(host, ids.status, status);
-        await (0, state_write_1.setStateIfChanged)(host, ids.planJson, JSON.stringify(summary));
         await (0, state_write_1.setStateIfChanged)(host, ids.reasonDe, summary.length > 0
             ? `${summary.length} Allocation-Einträge für ${prefix}.`
             : `Keine Allocation für ${prefix}.`);
@@ -175,7 +168,6 @@ async function runDailyPlanTick(host, forecastPlan, options = {}) {
     if (await storedDailyPlanSemanticallyMatches(host, plan, semanticHash)) {
         plan.revision = revision;
         lastRevisionPayload = semanticPayload;
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
         return plan;
     }
     const nextRevision = revisionChanged ? revision + 1 : revision;

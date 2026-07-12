@@ -68,13 +68,37 @@ export function wallboxMaxChargePowerW(phases: number | null, maxCurrentA: numbe
 	return Math.round(phases * voltage * maxCurrentA);
 }
 
+const FLEX_REVISION_OMIT_DETAIL_KEYS = new Set([
+	"lastUpdate",
+	"lastUpdateTs",
+	"calculated_at",
+	"calculatedAt",
+	"runtimeId",
+	"runtime_id",
+	"generatedAt",
+	"validUntil",
+	"forecastHorizonStart",
+	"forecastHorizonEnd",
+	"todayDateKey",
+	"tomorrowDateKey",
+]);
+
+function stripVolatileFlexibleDetails(details: Record<string, unknown>): Record<string, unknown> {
+	const out: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(details)) {
+		if (FLEX_REVISION_OMIT_DETAIL_KEYS.has(key)) continue;
+		out[key] = value;
+	}
+	return out;
+}
+
 export function flexibleContributionsRevisionPayload(contributions: Array<{ contributionId: string; enabled: boolean; quality: OperatorDataQuality; details: Record<string, unknown>; slots: unknown[] }>): string {
 	return JSON.stringify(
 		contributions.map((c) => ({
 			contributionId: c.contributionId,
 			enabled: c.enabled,
 			quality: c.quality,
-			details: c.details,
+			details: stripVolatileFlexibleDetails(c.details),
 			slots: (c.slots as Array<Record<string, unknown>>).map((slot) => {
 				const { slot: _time, ...rest } = slot as { slot?: unknown };
 				return rest;

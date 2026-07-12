@@ -51,12 +51,35 @@ function wallboxMaxChargePowerW(phases, maxCurrentA, voltage = 230) {
     return Math.round(phases * voltage * maxCurrentA);
 }
 exports.wallboxMaxChargePowerW = wallboxMaxChargePowerW;
+const FLEX_REVISION_OMIT_DETAIL_KEYS = new Set([
+    "lastUpdate",
+    "lastUpdateTs",
+    "calculated_at",
+    "calculatedAt",
+    "runtimeId",
+    "runtime_id",
+    "generatedAt",
+    "validUntil",
+    "forecastHorizonStart",
+    "forecastHorizonEnd",
+    "todayDateKey",
+    "tomorrowDateKey",
+]);
+function stripVolatileFlexibleDetails(details) {
+    const out = {};
+    for (const [key, value] of Object.entries(details)) {
+        if (FLEX_REVISION_OMIT_DETAIL_KEYS.has(key))
+            continue;
+        out[key] = value;
+    }
+    return out;
+}
 function flexibleContributionsRevisionPayload(contributions) {
     return JSON.stringify(contributions.map((c) => ({
         contributionId: c.contributionId,
         enabled: c.enabled,
         quality: c.quality,
-        details: c.details,
+        details: stripVolatileFlexibleDetails(c.details),
         slots: c.slots.map((slot) => {
             const { slot: _time, ...rest } = slot;
             return rest;

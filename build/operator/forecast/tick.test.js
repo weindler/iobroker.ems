@@ -71,6 +71,25 @@ function mockHost(initial = {}) {
         strict_1.default.equal(result.nextRevision, 7);
         strict_1.default.equal((0, tick_js_1.forecastPlanRevisionForTest)(), 7);
     });
+    (0, node_test_1.it)("matching forecast plan file skips rewrite without reading stored hash", async () => {
+        const planJson = minimalStoredPlanJson();
+        const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "ems-forecast-rev-test-"));
+        await fs.mkdir(path.join(dataDir, "planner"), { recursive: true });
+        await fs.writeFile(path.join(dataDir, "planner", "forecast_plan.json"), planJson, "utf8");
+        const host = mockHost({
+            [states_js_1.FORECAST_PLAN_STATE_IDS.semanticRevisionHash]: "stale-state-hash",
+            [states_js_1.FORECAST_PLAN_STATE_IDS.revision]: 99,
+        });
+        Object.assign(host, { namespace: "ems.0", getAbsoluteInstanceDataDir: () => dataDir });
+        const plan = JSON.parse(planJson);
+        const { forecastPlanSemanticRevisionHash } = await Promise.resolve().then(() => __importStar(require("./revision.js")));
+        const hash = forecastPlanSemanticRevisionHash(plan);
+        const result = await (0, tick_js_1.resolveForecastRevisionChangeForTest)(host, "payload", hash);
+        strict_1.default.equal(result.revisionChanged, false);
+        strict_1.default.equal(result.skipReason, "file_hash_match");
+        strict_1.default.equal(result.nextRevision, 3);
+        await fs.rm(dataDir, { recursive: true, force: true });
+    });
     (0, node_test_1.it)("cold start with different semantic hash bumps revision", async () => {
         const host = mockHost({
             [states_js_1.FORECAST_PLAN_STATE_IDS.semanticRevisionHash]: "old",
@@ -178,7 +197,7 @@ function minimalStoredPlanJson() {
         strict_1.default.equal(plan.revision, 3);
         strict_1.default.equal(plan.slots.length > 0, true);
         strict_1.default.equal((0, deferred_writes_js_1.hasDeferredForecastPlanWrite)(), false);
-        strict_1.default.equal(getStateCalls <= 4, true, `expected at most 4 state reads, got ${getStateCalls}`);
+        strict_1.default.equal(getStateCalls <= 6, true, `expected at most 6 state reads, got ${getStateCalls}`);
         await fs.rm(dataDir, { recursive: true, force: true });
     });
 });

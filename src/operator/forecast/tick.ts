@@ -27,9 +27,8 @@ import {
 	writeForecastPlanFile,
 	type PlanPathHost,
 } from "../plan_store";
-import { flexibleContributionsRevisionPayload } from "../contributions/flexible/types";
+import { FLEXIBLE_CONTRIBUTIONS_STATE_IDS } from "../contributions/flexible/states";
 import { GRID_SUPPLY_STATE_IDS } from "../supply/grid_states";
-import { gridSupplyRevisionPayload } from "../supply/grid";
 import { FORECAST_PLAN_STATE_IDS } from "./states";
 import type { ForecastPlan } from "./types";
 
@@ -38,22 +37,16 @@ let revision = 0;
 let lastInputFingerprint = "";
 let cachedPeriodicPlan: ForecastPlan | null = null;
 
-async function forecastInputFingerprint(
-	host: ContributionsReadHost,
-	gridForecast: GridSupplyForecast | undefined,
-	flexibleContributions: PlanContribution[],
-): Promise<string> {
-	const gridPart = gridForecast
-		? gridSupplyRevisionPayload(gridForecast)
-		: String((await readNum(host, GRID_SUPPLY_STATE_IDS.revision)) ?? "");
-	const [pvUpd, houseUpd, weatherUpd] = await Promise.all([
+/** Stable fingerprint: revision counters + learning timestamps (not sliding slot windows). */
+async function forecastInputFingerprint(host: ContributionsReadHost): Promise<string> {
+	const [gridRev, flexRev, pvUpd, houseUpd, weatherUpd] = await Promise.all([
+		readNum(host, GRID_SUPPLY_STATE_IDS.revision),
+		readNum(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.revision),
 		readStr(host, "learning.pv_bias.last_update_ts"),
 		readStr(host, "learning.house_load.last_update"),
 		readStr(host, "learning.weather.last_update"),
 	]);
-	return [gridPart, pvUpd, houseUpd, weatherUpd, flexibleContributionsRevisionPayload(flexibleContributions)].join(
-		"|",
-	);
+	return [gridRev, flexRev, pvUpd, houseUpd, weatherUpd].join("|");
 }
 
 async function loadPlanFromFile(host: ContributionsReadHost): Promise<ForecastPlan | null> {
@@ -311,13 +304,15 @@ export async function runForecastPlanTick(
 			(host.log as MemoryProbeLogger | undefined)?.info?.(
 				`forecast plan bootstrap: cached plan file revision=${cached.revision} slots=${cached.slots.length} — skip rebuild (periodic tick refreshes)`,
 			);
-			const fp = await forecastInputFingerprint(host, gridForecast, flexibleContributions);
+			const fp = await forecastInputFingerprint(host);
 			rememberPeriodicPlan(cached, fp);
 			return cached;
 		}
 	}
 
-	const inputFingerprint = await forecastInputFingerprint(host, gridForecast, flexibleContributions);
+	const inputFingerprint = await forecastInputFingerprint(host);
+	const inputsChanged = lastInputFingerprint !== "" && inputFingerprint !== lastInputFingerprint;
+	const persistToDb = options.persistToDb !== false || inputsChanged;
 	if (
 		isBootstrapComplete() &&
 		!options.forceRebuild &&
@@ -372,14 +367,14 @@ export async function runForecastPlanTick(
 			`revisionChanged=${resolution.revisionChanged}`,
 			`skipLargeJson=${resolution.skipLargeJsonWrites}`,
 			`deferLargeJson=${resolution.deferLargeJsonWrites && !resolution.skipLargeJsonWrites}`,
-			`persistToDb=${options.persistToDb !== false}`,
+			`persistToDb=${persistToDb}`,
 			`skipReason=${resolution.skipReason}`,
 			`storedHash=${resolution.storedHash?.slice(0, 12) ?? "none"}`,
 			`computedHash=${semanticHash.slice(0, 12)}`,
 		].join(" "),
 	);
 
-	if (options.persistToDb === false) {
+	if (persistToDb === false) {
 		revision = resolution.nextRevision;
 		lastRevisionPayload = semanticPayload;
 		plan.revision = resolution.nextRevision;

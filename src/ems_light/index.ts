@@ -234,7 +234,7 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 	const dailyHostForTick = energyDailyRollupHost;
 	const powerHostForTick = powerRollupHost;
 	tickTimer = setInterval(() => {
-		void runEmsLightPhase1Tick(host).catch((e) => {
+		void runEmsLightPhase1Tick(host, { persistPlans: false }).catch((e) => {
 			adapter.log.error(`EMS-Light tick: ${e}`);
 		});
 		if (dailyHostForTick) {

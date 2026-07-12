@@ -117,7 +117,7 @@ describe("grid supply", () => {
 		assert.equal(legacy[0].priceCtPerKwh, 18.2);
 	});
 
-	it("revision payload changes on slot updates", () => {
+	it("revision payload changes when prices change", () => {
 		const t0 = Date.parse("2026-07-11T10:00:00.000Z");
 		const a = buildGridSupplyForecast(
 			baseInput({ dynamicSlots: [{ slotStartMs: t0, priceCtPerKwh: 10 }] }),
@@ -126,5 +126,17 @@ describe("grid supply", () => {
 			baseInput({ dynamicSlots: [{ slotStartMs: t0, priceCtPerKwh: 11 }] }),
 		);
 		assert.notEqual(gridSupplyRevisionPayload(a), gridSupplyRevisionPayload(b));
+	});
+
+	it("revision payload ignores slot time boundaries when prices unchanged", () => {
+		const t0 = Date.parse("2026-07-11T10:00:00.000Z");
+		const t1 = Date.parse("2026-07-11T10:15:00.000Z");
+		const a = buildGridSupplyForecast(
+			baseInput({ dynamicSlots: [{ slotStartMs: t0, priceCtPerKwh: 10 }] }),
+		);
+		const b = buildGridSupplyForecast(
+			baseInput({ dynamicSlots: [{ slotStartMs: t1, priceCtPerKwh: 10 }] }),
+		);
+		assert.equal(gridSupplyRevisionPayload(a), gridSupplyRevisionPayload(b));
 	});
 });

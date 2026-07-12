@@ -1,10 +1,36 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.collectContributions = exports.parseHouseLoadForecastJson = void 0;
 const state_util_1 = require("../../ems_light/state_util");
 const config_1 = require("../../intent/config");
 const config_2 = require("../../learning/weather/config");
 const constants_1 = require("../../learning/pv_horizon/constants");
+const persist_1 = require("../../learning/house_load/persist");
+const paths_1 = require("../../backup_integration/paths");
+const path = __importStar(require("node:path"));
 const time_1 = require("../time");
 const pv_1 = require("./pv");
 const house_load_1 = require("./house_load");
@@ -74,10 +100,28 @@ function pvHorizonDays(now, timezone, horizonValues, horizonConfidence) {
     }
     return days;
 }
+async function readHouseLoadForecastsFromFile(host) {
+    try {
+        const layout = (0, paths_1.resolveEmsPaths)(host);
+        const persist = await (0, persist_1.readHouseLoadPersist)(path.join(layout.durableDataDir, "learning/house_load"));
+        if (!persist)
+            return null;
+        return {
+            status: persist.health?.status ?? "ready",
+            confidence: persist.confidence ?? null,
+            forecastToday: persist.forecast_today ?? null,
+            forecastTomorrow: persist.forecast_tomorrow ?? null,
+            lastUpdate: persist.generated_at ?? null,
+        };
+    }
+    catch {
+        return null;
+    }
+}
 async function collectContributions(host, now, gridForecast) {
     const timezone = (0, config_1.intentAdminConfigFromAdapter)(host.config).timezone;
     const grid = gridForecast ?? (0, grid_1.buildGridSupplyForecast)(await (0, grid_read_1.collectGridSupplyBuildInput)(host, now));
-    const [correctedTodayKwh, correctedTomorrowKwh, rawTodayKwh, rawTomorrowKwh, pvConfidence, pvStatus, pvLastUpdate, houseStatus, houseConfidence, forecastTodayRaw, forecastTomorrowRaw, houseLastUpdate, weatherStatus, weatherHealth, weatherConfidence, weatherLastUpdate, weatherForecastSource, weatherActualSource, globalMode,] = await Promise.all([
+    const [correctedTodayKwh, correctedTomorrowKwh, rawTodayKwh, rawTomorrowKwh, pvConfidence, pvStatus, pvLastUpdate, weatherStatus, weatherHealth, weatherConfidence, weatherLastUpdate, weatherForecastSource, weatherActualSource, globalMode,] = await Promise.all([
         readNum(host, "learning.pv_bias.corrected_today_kwh"),
         readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
         readNum(host, "learning.pv_bias.raw_today_kwh"),
@@ -85,11 +129,6 @@ async function collectContributions(host, now, gridForecast) {
         readNum(host, "learning.pv_bias.confidence_pct"),
         readStr(host, "learning.pv_bias.status"),
         readStr(host, "learning.pv_bias.last_update_ts"),
-        readStr(host, "learning.house_load.status"),
-        readNum(host, "learning.house_load.confidence"),
-        readStr(host, "learning.house_load.forecast_today_json"),
-        readStr(host, "learning.house_load.forecast_tomorrow_json"),
-        readStr(host, "learning.house_load.last_update"),
         readStr(host, "learning.weather.status"),
         readStr(host, "learning.weather.health"),
         readNum(host, "learning.weather.confidence_pct"),
@@ -98,6 +137,16 @@ async function collectContributions(host, now, gridForecast) {
         readStr(host, "learning.weather.actual_source"),
         readStr(host, "global_modes.active"),
     ]);
+    const houseFromFile = await readHouseLoadForecastsFromFile(host);
+    const houseStatus = houseFromFile?.status ?? (await readStr(host, "learning.house_load.status"));
+    const houseConfidence = houseFromFile?.confidence ?? (await readNum(host, "learning.house_load.confidence"));
+    const forecastTodayRaw = houseFromFile?.forecastToday != null
+        ? JSON.stringify(houseFromFile.forecastToday)
+        : await readStr(host, "learning.house_load.forecast_today_json");
+    const forecastTomorrowRaw = houseFromFile?.forecastTomorrow != null
+        ? JSON.stringify(houseFromFile.forecastTomorrow)
+        : await readStr(host, "learning.house_load.forecast_tomorrow_json");
+    const houseLastUpdate = houseFromFile?.lastUpdate ?? (await readStr(host, "learning.house_load.last_update"));
     const horizonValues = await Promise.all(Array.from({ length: constants_1.PV_HORIZON_DAY_COUNT - constants_1.PV_HORIZON_EXTENDED_FIRST_DAY + 1 }, (_, i) => readNum(host, `learning.pv_horizon.day${constants_1.PV_HORIZON_EXTENDED_FIRST_DAY + i}.corrected_kwh`)));
     const horizonConfidence = await Promise.all(Array.from({ length: constants_1.PV_HORIZON_DAY_COUNT - constants_1.PV_HORIZON_EXTENDED_FIRST_DAY + 1 }, (_, i) => readNum(host, `learning.pv_horizon.day${constants_1.PV_HORIZON_EXTENDED_FIRST_DAY + i}.confidence_pct`)));
     const horizonDays = pvHorizonDays(now, timezone, horizonValues, horizonConfidence);

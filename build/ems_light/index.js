@@ -193,7 +193,7 @@ async function startEmsLightPhase1Runtime(adapter) {
     const dailyHostForTick = energyDailyRollupHost;
     const powerHostForTick = powerRollupHost;
     tickTimer = setInterval(() => {
-        void (0, tick_1.runEmsLightPhase1Tick)(host).catch((e) => {
+        void (0, tick_1.runEmsLightPhase1Tick)(host, { persistPlans: false }).catch((e) => {
             adapter.log.error(`EMS-Light tick: ${e}`);
         });
         if (dailyHostForTick) {

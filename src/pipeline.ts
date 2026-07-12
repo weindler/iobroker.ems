@@ -6,6 +6,7 @@ import {
 } from "./addons/registry";
 import { isLiveWriteAllowed } from "./execution_mode";
 import { writeForeignIfChanged } from "./device_write";
+import { isRestoreInProgress } from "./restore/barrier";
 import { isValueAllowed, loadMapping, resolvePlannedValue } from "./mapping";
 import type { CommandIntent, PipelineOutcome } from "./types";
 
@@ -23,6 +24,9 @@ export async function runCommandPipeline(
 	intent: CommandIntent,
 	ctx: PipelineContext,
 ): Promise<PipelineOutcome> {
+	if (isRestoreInProgress()) {
+		return fail("blocked", "restore_in_progress", [], ["restore_in_progress"]);
+	}
 	const checks_passed: string[] = [];
 	const checks_failed: string[] = [];
 	const addonId = intent.addon_id?.trim() ?? "";

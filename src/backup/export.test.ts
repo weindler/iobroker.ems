@@ -342,7 +342,7 @@ describe("backup export v0.1.141", () => {
 		assert.equal(isExportRunning(), true);
 		const p2 = await runExport(host, "backup");
 		assert.equal(p2.ok, false);
-		if (!p2.ok) assert.equal(p2.error, "export_already_running");
+		if (!p2.ok) assert.equal(p2.error, "operation_already_running");
 		const r1 = await p1;
 		assert.equal(r1.ok, true);
 	});

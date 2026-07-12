@@ -5,6 +5,7 @@ const command_1 = require("./command");
 const write_plan_1 = require("./write_plan");
 const feedback_1 = require("./feedback");
 const feedback_config_1 = require("./feedback_config");
+const barrier_1 = require("../../../restore/barrier");
 /** Release-Freigabe für reale Wallbox-/EVCC-Writes — in v0.1.135 geschlossen. */
 exports.WALLBOX_LIVE_WRITE_RELEASED = false;
 /**
@@ -13,6 +14,14 @@ exports.WALLBOX_LIVE_WRITE_RELEASED = false;
  */
 async function executeWallboxWrite(input) {
     const { candidate, writePlan, phase, liveRequested } = input;
+    if ((0, barrier_1.isRestoreInProgress)()) {
+        return {
+            attempted: false,
+            executed: false,
+            blocked: true,
+            reason: "restore_in_progress",
+        };
+    }
     if (phase === "observe") {
         return {
             attempted: false,

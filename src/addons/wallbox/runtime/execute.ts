@@ -5,6 +5,7 @@ import type { WallboxPlanDecision } from "./daily_plan";
 import { buildWallboxWritePlan, type WallboxWritePlan } from "./write_plan";
 import { buildWallboxFeedbackContract, type WallboxFeedbackContract } from "./feedback";
 import { wallboxFeedbackConfigFromAdapter } from "./feedback_config";
+import { isRestoreInProgress } from "../../../restore/barrier";
 
 /** Release-Freigabe für reale Wallbox-/EVCC-Writes — in v0.1.135 geschlossen. */
 export const WALLBOX_LIVE_WRITE_RELEASED = false;
@@ -42,6 +43,15 @@ export interface ExecuteWallboxWriteInput {
  */
 export async function executeWallboxWrite(input: ExecuteWallboxWriteInput): Promise<WallboxWriteResult> {
 	const { candidate, writePlan, phase, liveRequested } = input;
+
+	if (isRestoreInProgress()) {
+		return {
+			attempted: false,
+			executed: false,
+			blocked: true,
+			reason: "restore_in_progress",
+		};
+	}
 
 	if (phase === "observe") {
 		return {

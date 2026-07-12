@@ -1,5 +1,6 @@
 import type { BatteryProfileId } from "../core/types";
 import { writeForeignIfChanged, type DeviceWriteHost } from "../../../device_write";
+import { isRestoreInProgress } from "../../../restore/barrier";
 
 export type BatteryWriteKind = "operating_mode" | "charge_power";
 
@@ -80,6 +81,21 @@ export async function executeBatteryWrite(
 	params: ExecuteBatteryWriteParams,
 ): Promise<BatteryWriteResult> {
 	const at = new Date().toISOString();
+	if (isRestoreInProgress()) {
+		return {
+			kind: params.kind,
+			stateId: params.stateId,
+			value: params.value,
+			executed: false,
+			written: false,
+			skipped: true,
+			simulated: false,
+			gatePassed: false,
+			rejectCode: "restore_in_progress",
+			at,
+			expectedFeedback: params.expectedFeedback ?? null,
+		};
+	}
 	const base: Omit<BatteryWriteResult, "executed" | "written" | "skipped" | "simulated" | "gatePassed" | "rejectCode"> = {
 		kind: params.kind,
 		stateId: params.stateId,

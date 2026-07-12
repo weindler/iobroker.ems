@@ -29,6 +29,9 @@ import {
 import { isBootstrapComplete } from "./bootstrap/barrier";
 import { runAdapterBootstrap } from "./bootstrap/startup";
 import { handleBackupStateChange, initBackupExportRuntime, isBackupRelatedState, stopDiagnosticMode } from "./backup/export_handler";
+import { handleRestoreStateChange, initRestoreRuntime, isRestoreRelatedState } from "./restore/handler";
+import { runRestoreStartupRecovery, clearRestoreRestartRequiredAfterBootstrap } from "./restore/startup_recovery";
+import { isRestoreInProgress } from "./restore/barrier";
 import { cleanupTempExports } from "./backup/retention";
 import { parseInboxValue } from "./inbox";
 import { goeWallboxTemplateFlat } from "./mapping_config";
@@ -107,6 +110,12 @@ class Ems extends utils.Adapter {
 	}
 
 	private async onReady(): Promise<void> {
+		const recovery = await runRestoreStartupRecovery(this);
+		if (!recovery.ok) {
+			this.log.error(`Restore startup recovery failed: ${recovery.error}`);
+			return;
+		}
+
 		await runAdapterBootstrap(this, this.step.bind(this));
 
 		if (!isBootstrapComplete()) {
@@ -123,6 +132,8 @@ class Ems extends utils.Adapter {
 				await cleanupTempExports(dataDirFn.call(this));
 			}
 			await initBackupExportRuntime(this);
+			await initRestoreRuntime(this);
+			await clearRestoreRestartRequiredAfterBootstrap(this);
 		});
 
 		await this.step("process pending inbox", async () => {
@@ -147,13 +158,17 @@ class Ems extends utils.Adapter {
 	}
 
 	private async onStateChange(id: string, state: ioBroker.State | null): Promise<void> {
-		if (!isBootstrapComplete()) {
+		if (!isBootstrapComplete() || isRestoreInProgress()) {
 			return;
 		}
 		if (state) {
 			const rel = id.startsWith(`${this.namespace}.`) ? id.slice(this.namespace.length + 1) : id;
 			if (isBackupRelatedState(rel)) {
 				await handleBackupStateChange(this, rel, state.val, state.ack);
+				return;
+			}
+			if (isRestoreRelatedState(rel)) {
+				await handleRestoreStateChange(this, rel, state.val, state.ack);
 				return;
 			}
 			await handleExecutionModeStateChange(this, id, state);
@@ -175,6 +190,7 @@ class Ems extends utils.Adapter {
 
 	private async processInbox(val: unknown, ack: boolean | undefined): Promise<void> {
 		if (ack) return;
+		if (isRestoreInProgress()) return;
 		if (this.processingInbox) return;
 		if (val === null || val === undefined || val === "") {
 			return;

@@ -10,7 +10,9 @@ import { startFailsafeRunner } from "../failsafe_runner";
 import {
 	EXECUTION_MODE_ADDON_IDS,
 	syncExecutionModesFromConfig,
+	type ForceDryrunReason,
 } from "../execution_mode";
+import { getPendingForceDryrunReason } from "../restore/dryrun_context";
 import { GLOBAL, addonMode } from "../tree_paths";
 import { STATE } from "../states";
 import { detectFullNamespaceColdStart } from "./cold_start";
@@ -111,11 +113,12 @@ export async function runAdapterBootstrap(
 
 	trace?.("sync", "governance_and_mappings");
 	await step("sync governance", () => syncAddonGovernanceFromConfig(host, adapterConfig));
-	await step("sync execution modes", () =>
-		syncExecutionModesFromConfig(host, adapterConfig, {
-			coldStartRecovery: bootstrapCtx.coldStartRecovery,
-		}),
-	);
+	await step("sync execution modes", () => {
+		const restoreReason = getPendingForceDryrunReason();
+		const forceDryrunReason: ForceDryrunReason | null =
+			restoreReason ?? (bootstrapCtx.coldStartRecovery ? "namespace_cold_start" : null);
+		return syncExecutionModesFromConfig(host, adapterConfig, { forceDryrunReason });
+	});
 	await step("sync mappings", () => syncAllMappingsFromConfig(host));
 
 	if (bootstrapFailurePhase()) {

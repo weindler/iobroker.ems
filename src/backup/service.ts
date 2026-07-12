@@ -40,14 +40,19 @@ import {
 import { assertJsonSerializable, stableJsonStringify, validateManifest } from "./schema";
 import type { ExportArchiveEntry, ExportKind, ExportResult, ExportServiceHost } from "./types";
 
-let exportMutex = false;
+import {
+	tryAcquireOperationLock,
+	releaseOperationLock,
+	isOperationRunning,
+	resetOperationLockForTest,
+} from "./operation_lock";
 
 export function isExportRunning(): boolean {
-	return exportMutex;
+	return isOperationRunning();
 }
 
 export function resetExportMutexForTest(): void {
-	exportMutex = false;
+	resetOperationLockForTest();
 }
 
 function instanceDataDir(host: ExportServiceHost): string {
@@ -158,10 +163,13 @@ export async function runExport(
 	kind: ExportKind,
 	collectSupportExtras?: (host: ExportServiceHost) => Promise<ExportArchiveEntry[]>,
 ): Promise<ExportResult> {
-	if (exportMutex) {
-		return { ok: false, error: "export_already_running" };
+	if (isOperationRunning()) {
+		return { ok: false, error: "operation_already_running" };
 	}
-	exportMutex = true;
+	const lock = tryAcquireOperationLock(kind === "backup" ? "backup_export" : "support_export");
+	if (!lock.ok) {
+		return { ok: false, error: lock.error };
+	}
 	const dataDir = instanceDataDir(host);
 	const workDir = path.join(dataDir, "exports", `.work-${process.pid}`);
 	try {
@@ -221,7 +229,7 @@ export async function runExport(
 		host.log.error(`Export (${kind}) failed: ${msg}`);
 		return { ok: false, error: msg };
 	} finally {
-		exportMutex = false;
+		releaseOperationLock();
 		await fs.rm(workDir, { recursive: true, force: true }).catch(() => undefined);
 	}
 }

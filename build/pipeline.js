@@ -5,11 +5,15 @@ const governance_1 = require("./addons/governance");
 const registry_1 = require("./addons/registry");
 const execution_mode_1 = require("./execution_mode");
 const device_write_1 = require("./device_write");
+const barrier_1 = require("./restore/barrier");
 const mapping_1 = require("./mapping");
 /**
  * Canonical pipeline — dryrun mirror always; live write wenn global.live ∧ addon.live.
  */
 async function runCommandPipeline(intent, ctx) {
+    if ((0, barrier_1.isRestoreInProgress)()) {
+        return fail("blocked", "restore_in_progress", [], ["restore_in_progress"]);
+    }
     const checks_passed = [];
     const checks_failed = [];
     const addonId = intent.addon_id?.trim() ?? "";

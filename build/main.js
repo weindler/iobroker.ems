@@ -36,6 +36,9 @@ const execution_mode_1 = require("./execution_mode");
 const barrier_1 = require("./bootstrap/barrier");
 const startup_1 = require("./bootstrap/startup");
 const export_handler_1 = require("./backup/export_handler");
+const handler_1 = require("./restore/handler");
+const startup_recovery_1 = require("./restore/startup_recovery");
+const barrier_2 = require("./restore/barrier");
 const retention_1 = require("./backup/retention");
 const inbox_1 = require("./inbox");
 const mapping_config_1 = require("./mapping_config");
@@ -106,6 +109,11 @@ class Ems extends utils.Adapter {
         }
     }
     async onReady() {
+        const recovery = await (0, startup_recovery_1.runRestoreStartupRecovery)(this);
+        if (!recovery.ok) {
+            this.log.error(`Restore startup recovery failed: ${recovery.error}`);
+            return;
+        }
         await (0, startup_1.runAdapterBootstrap)(this, this.step.bind(this));
         if (!(0, barrier_1.isBootstrapComplete)()) {
             this.log.warn("EMS adapter: Bootstrap unvollständig — Geräte-Runtime bleibt gesperrt");
@@ -119,6 +127,8 @@ class Ems extends utils.Adapter {
                 await (0, retention_1.cleanupTempExports)(dataDirFn.call(this));
             }
             await (0, export_handler_1.initBackupExportRuntime)(this);
+            await (0, handler_1.initRestoreRuntime)(this);
+            await (0, startup_recovery_1.clearRestoreRestartRequiredAfterBootstrap)(this);
         });
         await this.step("process pending inbox", async () => {
             const inbox = await this.getStateAsync(states_1.STATE.command.inbox);
@@ -140,13 +150,17 @@ class Ems extends utils.Adapter {
         callback();
     }
     async onStateChange(id, state) {
-        if (!(0, barrier_1.isBootstrapComplete)()) {
+        if (!(0, barrier_1.isBootstrapComplete)() || (0, barrier_2.isRestoreInProgress)()) {
             return;
         }
         if (state) {
             const rel = id.startsWith(`${this.namespace}.`) ? id.slice(this.namespace.length + 1) : id;
             if ((0, export_handler_1.isBackupRelatedState)(rel)) {
                 await (0, export_handler_1.handleBackupStateChange)(this, rel, state.val, state.ack);
+                return;
+            }
+            if ((0, handler_1.isRestoreRelatedState)(rel)) {
+                await (0, handler_1.handleRestoreStateChange)(this, rel, state.val, state.ack);
                 return;
             }
             await (0, execution_mode_1.handleExecutionModeStateChange)(this, id, state);
@@ -168,6 +182,8 @@ class Ems extends utils.Adapter {
     }
     async processInbox(val, ack) {
         if (ack)
+            return;
+        if ((0, barrier_2.isRestoreInProgress)())
             return;
         if (this.processingInbox)
             return;

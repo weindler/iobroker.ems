@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureChannelTree = exports.handleExecutionModeStateChange = exports.isExecutionModeStateRelativeId = exports.persistExecutionModeToAdminConfig = exports.executionModeConfigKeyForRelativeId = exports.syncExecutionModesFromConfig = exports.ensureAddonExecutionModeStates = exports.ensureGlobalExecutionStates = exports.isLiveWriteAllowed = exports.executionModeCommon = exports.parseMode = exports.executionModesConfigFingerprint = exports.executionModesFromConfig = exports.EXECUTION_MODE_CONFIG_FINGERPRINT = exports.EXECUTION_MODE_ADDON_IDS = exports.EXECUTION_MODE_STATES = exports.EXECUTION_MODE_STATE_LABELS = exports.EXECUTION_MODES = void 0;
+exports.ensureChannelTree = exports.handleExecutionModeStateChange = exports.isExecutionModeStateRelativeId = exports.persistExecutionModeToAdminConfig = exports.executionModeConfigKeyForRelativeId = exports.syncExecutionModesFromConfig = exports.ensureAddonExecutionModeStates = exports.ensureGlobalExecutionStates = exports.clampNativeExecutionModesDryrun = exports.NATIVE_EXECUTION_MODE_KEYS = exports.isLiveWriteAllowed = exports.executionModeCommon = exports.parseMode = exports.executionModesConfigFingerprint = exports.executionModesFromConfig = exports.EXECUTION_MODE_CONFIG_FINGERPRINT = exports.EXECUTION_MODE_ADDON_IDS = exports.EXECUTION_MODE_STATES = exports.EXECUTION_MODE_STATE_LABELS = exports.EXECUTION_MODES = void 0;
 const tree_paths_1 = require("./tree_paths");
 exports.EXECUTION_MODES = ["dryrun", "live"];
 exports.EXECUTION_MODE_STATE_LABELS = {
@@ -82,6 +82,25 @@ const ALL_DRYRUN_MODES = {
     immersion_heater: "dryrun",
     air_conditioning: "dryrun",
 };
+exports.NATIVE_EXECUTION_MODE_KEYS = [
+    "global_execution_mode",
+    "wb_addon_mode",
+    "bat_addon_mode",
+    "ih_addon_mode",
+    "ac_addon_mode",
+];
+/** Setzt Native-Ausführungsmodi auf dryrun — übrige Native-Felder unverändert. */
+function clampNativeExecutionModesDryrun(config) {
+    return {
+        ...config,
+        global_execution_mode: "dryrun",
+        wb_addon_mode: "dryrun",
+        bat_addon_mode: "dryrun",
+        ih_addon_mode: "dryrun",
+        ac_addon_mode: "dryrun",
+    };
+}
+exports.clampNativeExecutionModesDryrun = clampNativeExecutionModesDryrun;
 async function applyExecutionModesFromConfig(host, modes) {
     await host.setStateAsync(tree_paths_1.GLOBAL.executionMode, { val: modes.global, ack: true });
     await host.setStateAsync((0, tree_paths_1.addonMode)("wallbox"), { val: modes.wallbox, ack: true });
@@ -174,11 +193,25 @@ async function syncExecutionModesFromConfig(host, config, options = {}) {
     const prevRaw = await host.getStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT);
     const prevFingerprint = String(prevRaw?.val ?? "");
     const empty = await anyExecutionModeEmpty(host);
-    if (options.coldStartRecovery) {
+    const forceReason = options.forceDryrunReason ??
+        (options.coldStartRecovery ? "namespace_cold_start" : null);
+    if (forceReason) {
+        const dryrunNative = forceReason === "restore_recovery" ? clampNativeExecutionModesDryrun(config) : config;
+        if (forceReason === "restore_recovery" && typeof host.updateConfig === "function") {
+            await host.updateConfig(dryrunNative);
+        }
         await applyExecutionModesFromConfig(host, ALL_DRYRUN_MODES);
-        await host.setStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT, { val: fingerprint, ack: true });
+        await host.setStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT, {
+            val: executionModesConfigFingerprint(dryrunNative),
+            ack: true,
+        });
         await mirrorGlobalExecutionSafety(host);
-        host.log?.info?.("Cold-Start-Recovery: Ausführungsmodi auf dryrun geklemmt (Admin-Konfiguration unverändert)");
+        if (forceReason === "restore_recovery") {
+            host.log?.info?.("Restore-Recovery: Ausführungsmodi in Native und Objektbaum auf dryrun gesetzt");
+        }
+        else {
+            host.log?.info?.("Cold-Start-Recovery: Ausführungsmodi auf dryrun geklemmt (Admin-Konfiguration unverändert)");
+        }
         return;
     }
     if (!prevFingerprint && !empty) {

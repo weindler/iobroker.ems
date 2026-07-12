@@ -1,7 +1,7 @@
 # EMS-Light – Architektur (Ist-Stand)
 
 **Gültig ab:** 11.07.2026
-**Adapter-Version:** v0.1.141
+**Adapter-Version:** v0.1.142
 
 Dieses Dokument beschreibt die **tatsächlich implementierte** Architektur des ioBroker-Adapters `iobroker.ems`. Geplante, aber noch nicht umgesetzte Bestandteile sind als *geplant* gekennzeichnet.
 
@@ -163,6 +163,7 @@ beliebige Wallbox → EVCC → EMS-Light (read-only)
 - **Vehicle SOC & Energy Fallback (v0.1.139):** zentrale SOC-Auflösung mit Fallback-Kette (direct, energy rollforward, range, last trusted), Energieinhalt/-bedarf je Profil, profilisolierte Baseline — read-only, keine Ladefreigabe
 - **State Tree Recovery (v0.1.140):** deterministischer phasenweiser Bootstrap, sicherer Cold Start nach Löschen von `ems.0.*`, Bootstrap-Barriere — siehe `docs/EMS_LIGHT_V0_1_140_STATE_TREE_RECOVERY.md`
 - **Backup Export (v0.1.141):** gemeinsamer Exportkern für `.emsbackup` und `.emssupport`, Allowlist, Anonymisierung, Diagnosemodus — siehe `docs/EMS_LIGHT_V0_1_141_BACKUP_EXPORT.md`
+- **Manual Restore (v0.1.142):** Validate/Apply aus `.emsbackup`, Plan-ID, Transaktion, Rollback, Startup-Recovery, Dryrun-Zwang — siehe `docs/EMS_LIGHT_V0_1_142_MANUAL_RESTORE.md`
 - `plan_time` / `effective_plan_time`: bei null/invalid wird der Spiegelstate auf `""` gesetzt (kein stale Deadline)
 - EVCC-Sitzungsenergie: Wh → kWh (`/ 1000`)
 - Go-Null-Zeit (`0001-01-01T00:00:00Z`) wird als „kein Plan" behandelt

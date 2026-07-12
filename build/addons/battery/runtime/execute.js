@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.executeBatteryWrite = exports.evaluateFinalWriteGate = void 0;
 const device_write_1 = require("../../../device_write");
+const barrier_1 = require("../../../restore/barrier");
 function evaluateFinalWriteGate(gate) {
     if (!gate.globalLive)
         return { passed: false, rejectCode: "execution_gate_closed" };
@@ -34,6 +35,21 @@ exports.evaluateFinalWriteGate = evaluateFinalWriteGate;
  */
 async function executeBatteryWrite(host, params) {
     const at = new Date().toISOString();
+    if ((0, barrier_1.isRestoreInProgress)()) {
+        return {
+            kind: params.kind,
+            stateId: params.stateId,
+            value: params.value,
+            executed: false,
+            written: false,
+            skipped: true,
+            simulated: false,
+            gatePassed: false,
+            rejectCode: "restore_in_progress",
+            at,
+            expectedFeedback: params.expectedFeedback ?? null,
+        };
+    }
     const base = {
         kind: params.kind,
         stateId: params.stateId,

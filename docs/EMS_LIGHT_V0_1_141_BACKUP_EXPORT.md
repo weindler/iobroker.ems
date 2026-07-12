@@ -4,7 +4,7 @@
 
 Gemeinsame, versionierte Exportarchitektur für:
 
-- **Konfigurationsbackup** (`.emsbackup`) — später wieder einlesbar (Restore ab v0.1.142)
+- **Restore ab v0.1.142:** siehe `docs/EMS_LIGHT_V0_1_142_MANUAL_RESTORE.md`
 - **Support-Paket** (`.emssupport`) — anonymisiertes Diagnosepaket, kein Voll-Restore
 
 ## Nicht enthalten (v0.1.141)

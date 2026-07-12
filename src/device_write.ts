@@ -1,5 +1,7 @@
 /** Read-before-write: kein Geräte-Write wenn Zielwert bereits aktiv ist. */
 
+import { assertDeviceActionAllowed } from "./restore/barrier";
+
 export interface DeviceWriteHost {
 	getForeignStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
 	setForeignStateAsync: (
@@ -89,6 +91,10 @@ export async function writeForeignIfChanged(
 	host: DeviceWriteHost,
 	params: WriteForeignIfChangedParams,
 ): Promise<WriteForeignIfChangedResult> {
+	const gate = assertDeviceActionAllowed();
+	if (!gate.ok) {
+		return { written: false, skipped: true, currentValue: null };
+	}
 	if (!params.stateId.trim()) {
 		return { written: false, skipped: false, currentValue: null };
 	}

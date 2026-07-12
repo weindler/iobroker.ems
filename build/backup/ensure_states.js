@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.setBackupExportStatus = exports.ensureBackupStates = exports.SUPPORT_STATES = exports.BACKUP_STATES = exports.SUPPORT_BASE = exports.BACKUP_BASE = void 0;
+exports.setBackupExportStatus = exports.ensureBackupStates = exports.SUPPORT_STATES = exports.RESTORE_STATES = exports.BACKUP_STATES = exports.SUPPORT_BASE = exports.BACKUP_BASE = void 0;
 const state_util_1 = require("../ems_light/state_util");
 exports.BACKUP_BASE = "backup";
 exports.SUPPORT_BASE = "support";
@@ -16,6 +16,24 @@ exports.BACKUP_STATES = {
     schemaVersion: `${exports.BACKUP_BASE}.schema_version`,
     exportRequest: `${exports.BACKUP_BASE}.export_request`,
     supportExportRequest: `${exports.BACKUP_BASE}.support_export_request`,
+};
+exports.RESTORE_STATES = {
+    selectedFile: `${exports.BACKUP_BASE}.restore.selected_file`,
+    validateRequest: `${exports.BACKUP_BASE}.restore.validate_request`,
+    status: `${exports.BACKUP_BASE}.restore.status`,
+    running: `${exports.BACKUP_BASE}.restore.running`,
+    planId: `${exports.BACKUP_BASE}.restore.plan_id`,
+    planExpiresAt: `${exports.BACKUP_BASE}.restore.plan_expires_at`,
+    archiveSha256: `${exports.BACKUP_BASE}.restore.archive_sha256`,
+    summaryJson: `${exports.BACKUP_BASE}.restore.summary_json`,
+    confirmPlanId: `${exports.BACKUP_BASE}.restore.confirm_plan_id`,
+    applyRequest: `${exports.BACKUP_BASE}.restore.apply_request`,
+    transactionId: `${exports.BACKUP_BASE}.restore.transaction_id`,
+    lastRestoreAt: `${exports.BACKUP_BASE}.restore.last_restore_at`,
+    lastFileName: `${exports.BACKUP_BASE}.restore.last_file_name`,
+    lastResult: `${exports.BACKUP_BASE}.restore.last_result`,
+    lastError: `${exports.BACKUP_BASE}.restore.last_error`,
+    restartRequired: `${exports.BACKUP_BASE}.restore.restart_required`,
 };
 exports.SUPPORT_STATES = {
     diagnosticMode: `${exports.SUPPORT_BASE}.diagnostic_mode`,
@@ -110,6 +128,70 @@ async function ensureBackupStates(host) {
                 min: 15,
                 max: 120,
             },
+        },
+        {
+            id: exports.RESTORE_STATES.selectedFile,
+            common: { name: "Restore-Datei", type: "string", role: "text", read: true, write: true, def: "" },
+        },
+        {
+            id: exports.RESTORE_STATES.validateRequest,
+            common: { name: "Restore validieren", type: "boolean", role: "button", read: true, write: true, def: false },
+        },
+        {
+            id: exports.RESTORE_STATES.status,
+            common: { name: "Restore-Status", type: "string", role: "text", read: true, write: false, def: "idle" },
+        },
+        {
+            id: exports.RESTORE_STATES.running,
+            common: { name: "Restore läuft", type: "boolean", role: "indicator", read: true, write: false, def: false },
+        },
+        {
+            id: exports.RESTORE_STATES.planId,
+            common: { name: "Restore-Plan-ID", type: "string", role: "text", read: true, write: false, def: "" },
+        },
+        {
+            id: exports.RESTORE_STATES.planExpiresAt,
+            common: { name: "Restore-Plan gültig bis", type: "string", role: "date", read: true, write: false, def: "" },
+        },
+        {
+            id: exports.RESTORE_STATES.archiveSha256,
+            common: { name: "Restore-Archiv-SHA256", type: "string", role: "text", read: true, write: false, def: "" },
+        },
+        {
+            id: exports.RESTORE_STATES.summaryJson,
+            common: { name: "Restore-Vorschau", type: "string", role: "json", read: true, write: false, def: "{}" },
+        },
+        {
+            id: exports.RESTORE_STATES.confirmPlanId,
+            common: { name: "Restore-Plan bestätigen", type: "string", role: "text", read: true, write: true, def: "" },
+        },
+        {
+            id: exports.RESTORE_STATES.applyRequest,
+            common: { name: "Restore anwenden", type: "boolean", role: "button", read: true, write: true, def: false },
+        },
+        {
+            id: exports.RESTORE_STATES.transactionId,
+            common: { name: "Restore-Transaktion", type: "string", role: "text", read: true, write: false, def: "" },
+        },
+        {
+            id: exports.RESTORE_STATES.lastRestoreAt,
+            common: { name: "Letzter Restore", type: "string", role: "date", read: true, write: false, def: "" },
+        },
+        {
+            id: exports.RESTORE_STATES.lastFileName,
+            common: { name: "Letzte Restore-Datei", type: "string", role: "text", read: true, write: false, def: "" },
+        },
+        {
+            id: exports.RESTORE_STATES.lastResult,
+            common: { name: "Letztes Restore-Ergebnis", type: "string", role: "text", read: true, write: false, def: "" },
+        },
+        {
+            id: exports.RESTORE_STATES.lastError,
+            common: { name: "Letzter Restore-Fehler", type: "string", role: "text", read: true, write: false, def: "" },
+        },
+        {
+            id: exports.RESTORE_STATES.restartRequired,
+            common: { name: "Neustart erforderlich", type: "boolean", role: "indicator", read: true, write: false, def: false },
         },
     ];
     await (0, state_util_1.ensureStates)(host, defs);

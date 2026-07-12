@@ -3,10 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.stopDiagnosticMode = exports.handleBackupStateChange = exports.isBackupRelatedState = exports.initBackupExportRuntime = exports.syncDiagnosticStatus = exports.handleDiagnosticModeRequest = exports.handleSupportExportRequest = exports.handleBackupExportRequest = void 0;
 const types_1 = require("./types");
 const ensure_states_1 = require("./ensure_states");
-const service_1 = require("./service");
+const operation_lock_1 = require("./operation_lock");
 const diagnostic_mode_1 = require("../support/diagnostic_mode");
 Object.defineProperty(exports, "stopDiagnosticMode", { enumerable: true, get: function () { return diagnostic_mode_1.stopDiagnosticMode; } });
 const support_1 = require("../support");
+const service_1 = require("./service");
 function isConsciousRequest(val, ack) {
     return val === true && ack !== true;
 }
@@ -44,8 +45,8 @@ async function handleSupportExportRequest(host, val, ack) {
     if (!isConsciousRequest(val, ack))
         return;
     await host.setStateAsync(ensure_states_1.BACKUP_STATES.supportExportRequest, { val: false, ack: true });
-    if ((0, service_1.isExportRunning)()) {
-        await host.setStateAsync(ensure_states_1.SUPPORT_STATES.lastError, { val: "export_already_running", ack: true });
+    if ((0, operation_lock_1.isOperationRunning)()) {
+        await host.setStateAsync(ensure_states_1.SUPPORT_STATES.lastError, { val: "operation_already_running", ack: true });
         return;
     }
     try {

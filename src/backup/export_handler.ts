@@ -1,6 +1,6 @@
 import { EXPORT_SCHEMA_VERSION } from "./types";
 import { BACKUP_STATES, SUPPORT_STATES, setBackupExportStatus } from "./ensure_states";
-import { isExportRunning, runBackupExport } from "./service";
+import { isOperationRunning } from "./operation_lock";
 import type { ExportServiceHost } from "./types";
 import {
 	DIAGNOSTIC_DEFAULT_DURATION_MIN,
@@ -11,6 +11,7 @@ import {
 	totalSupportLogBytes,
 } from "../support/diagnostic_mode";
 import { runSupportBundleExport } from "../support";
+import { runBackupExport } from "./service";
 
 function isConsciousRequest(val: unknown, ack: boolean | undefined): boolean {
 	return val === true && ack !== true;
@@ -54,8 +55,8 @@ export async function handleSupportExportRequest(
 ): Promise<void> {
 	if (!isConsciousRequest(val, ack)) return;
 	await host.setStateAsync(BACKUP_STATES.supportExportRequest, { val: false, ack: true });
-	if (isExportRunning()) {
-		await host.setStateAsync(SUPPORT_STATES.lastError, { val: "export_already_running", ack: true });
+	if (isOperationRunning()) {
+		await host.setStateAsync(SUPPORT_STATES.lastError, { val: "operation_already_running", ack: true });
 		return;
 	}
 	try {

@@ -306,7 +306,7 @@ class ExportTestHost {
         const p2 = await (0, service_js_1.runExport)(host, "backup");
         strict_1.default.equal(p2.ok, false);
         if (!p2.ok)
-            strict_1.default.equal(p2.error, "export_already_running");
+            strict_1.default.equal(p2.error, "operation_already_running");
         const r1 = await p1;
         strict_1.default.equal(r1.ok, true);
     });

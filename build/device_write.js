@@ -2,6 +2,7 @@
 /** Read-before-write: kein Geräte-Write wenn Zielwert bereits aktiv ist. */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.writeForeignIfChanged = exports.deviceValuesMatch = exports.normalizeDeviceValue = void 0;
+const barrier_1 = require("./restore/barrier");
 function normalizeDeviceValue(val) {
     if (val === null || val === undefined || val === "") {
         return null;
@@ -56,6 +57,10 @@ exports.deviceValuesMatch = deviceValuesMatch;
  * skipped=true bedeutet: Ziel bereits erreicht, kein Bus-Traffic nötig.
  */
 async function writeForeignIfChanged(host, params) {
+    const gate = (0, barrier_1.assertDeviceActionAllowed)();
+    if (!gate.ok) {
+        return { written: false, skipped: true, currentValue: null };
+    }
     if (!params.stateId.trim()) {
         return { written: false, skipped: false, currentValue: null };
     }

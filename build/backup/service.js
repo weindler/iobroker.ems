@@ -39,13 +39,13 @@ const manifest_1 = require("./manifest");
 const manifest_validate_1 = require("./manifest_validate");
 const retention_1 = require("./retention");
 const schema_1 = require("./schema");
-let exportMutex = false;
+const operation_lock_1 = require("./operation_lock");
 function isExportRunning() {
-    return exportMutex;
+    return (0, operation_lock_1.isOperationRunning)();
 }
 exports.isExportRunning = isExportRunning;
 function resetExportMutexForTest() {
-    exportMutex = false;
+    (0, operation_lock_1.resetOperationLockForTest)();
 }
 exports.resetExportMutexForTest = resetExportMutexForTest;
 function instanceDataDir(host) {
@@ -137,10 +137,13 @@ async function buildSupportEntries(host, collectSupportExtras) {
     return stringEntries.map((e) => ({ path: e.path, content: e.content }));
 }
 async function runExport(host, kind, collectSupportExtras) {
-    if (exportMutex) {
-        return { ok: false, error: "export_already_running" };
+    if ((0, operation_lock_1.isOperationRunning)()) {
+        return { ok: false, error: "operation_already_running" };
     }
-    exportMutex = true;
+    const lock = (0, operation_lock_1.tryAcquireOperationLock)(kind === "backup" ? "backup_export" : "support_export");
+    if (!lock.ok) {
+        return { ok: false, error: lock.error };
+    }
     const dataDir = instanceDataDir(host);
     const workDir = path.join(dataDir, "exports", `.work-${process.pid}`);
     try {
@@ -193,7 +196,7 @@ async function runExport(host, kind, collectSupportExtras) {
         return { ok: false, error: msg };
     }
     finally {
-        exportMutex = false;
+        (0, operation_lock_1.releaseOperationLock)();
         await fs.rm(workDir, { recursive: true, force: true }).catch(() => undefined);
     }
 }

@@ -1,8 +1,12 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.141",
+		"version": "0.1.142",
 		"news": {
+			"0.1.142": {
+				"en": "Manual restore foundation: validate and apply .emsbackup archives from allowed internal directories only, with full ZIP/manifest/CRC/SHA-256 validation, in-memory plan with plan-ID confirmation, transactional apply with rollback and startup recovery, shared export/restore operation lock, restore barrier blocking device actions, mandatory dryrun on all execution modes after restore, and restart-required workflow. No Backitup, no support package restore, no automatic live resume; release gate remains closed.",
+				"de": "Manuelle Restore-Foundation: Validate- und Apply-Wiederherstellung von .emsbackup-Archiven nur aus freigegebenen internen Verzeichnissen, mit vollständiger ZIP-/Manifest-/CRC-/SHA-256-Validierung, Plan-ID-Bestätigung, transaktionalem Apply mit Rollback und Startup-Recovery, gemeinsamem Export-/Restore-Lock, Restore-Barriere gegen Geräteaktionen, zwingendem Dryrun aller Ausführungsmodi nach Restore und Restart-required-Workflow. Kein Backitup, kein Support-Restore, keine automatische Live-Freigabe; Release-Gate bleibt geschlossen."
+			},
 			"0.1.141": {
 				"en": "Backup export and support bundle foundation: shared versioned export core for .emsbackup configuration archives and anonymized .emssupport diagnostic packages, allowlist-based config collection, persistence classification, SHA-256 manifest, ZIP archives, bounded diagnostic mode and log rotation. No import, restore or Backitup integration; release gate remains closed.",
 				"de": "Backup-Export- und Support-Paket-Foundation: gemeinsamer versionierter Exportkern für .emsbackup-Konfigurationsarchive und anonymisierte .emssupport-Diagnosepakete, Allowlist-basierte Datensammlung, Persistenz-Klassifikation, SHA-256-Manifest, ZIP-Archive, begrenzter Diagnosemodus und Logrotation. Kein Import, Restore oder Backitup-Anbindung; Release-Gate bleibt geschlossen."

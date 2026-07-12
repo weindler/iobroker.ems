@@ -9,6 +9,7 @@ const governance_1 = require("../addons/governance");
 const ems_light_1 = require("../ems_light");
 const failsafe_runner_1 = require("../failsafe_runner");
 const execution_mode_1 = require("../execution_mode");
+const dryrun_context_1 = require("../restore/dryrun_context");
 const tree_paths_1 = require("../tree_paths");
 const states_1 = require("../states");
 const cold_start_1 = require("./cold_start");
@@ -63,9 +64,11 @@ async function runAdapterBootstrap(host, step, options = {}) {
     await step("persist hydration", () => (0, persist_hydrate_1.hydratePersistedState)(host));
     trace?.("sync", "governance_and_mappings");
     await step("sync governance", () => (0, governance_1.syncAddonGovernanceFromConfig)(host, adapterConfig));
-    await step("sync execution modes", () => (0, execution_mode_1.syncExecutionModesFromConfig)(host, adapterConfig, {
-        coldStartRecovery: bootstrapCtx.coldStartRecovery,
-    }));
+    await step("sync execution modes", () => {
+        const restoreReason = (0, dryrun_context_1.getPendingForceDryrunReason)();
+        const forceDryrunReason = restoreReason ?? (bootstrapCtx.coldStartRecovery ? "namespace_cold_start" : null);
+        return (0, execution_mode_1.syncExecutionModesFromConfig)(host, adapterConfig, { forceDryrunReason });
+    });
     await step("sync mappings", () => (0, ensure_static_tree_1.syncAllMappingsFromConfig)(host));
     if ((0, barrier_1.bootstrapFailurePhase)()) {
         host.log.error(`Bootstrap abgebrochen vor Runtime (${(0, barrier_1.bootstrapFailurePhase)()})`);

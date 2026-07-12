@@ -1,5 +1,8 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import * as fs from "node:fs/promises";
+import * as os from "node:os";
+import * as path from "node:path";
 import { buildForecastPlan } from "./build.js";
 import { FORECAST_PLAN_STATE_IDS } from "./states.js";
 import {
@@ -160,13 +163,16 @@ describe("forecast bootstrap cache", () => {
 		resetForecastPlanRevisionForTest();
 	});
 
-	it("uses cached plan_json during bootstrap without scheduling duplicate refresh when already deferred", async () => {
+	it("uses cached plan file during bootstrap without scheduling duplicate refresh when already deferred", async () => {
 		const planJson = minimalStoredPlanJson();
+		const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "ems-forecast-test-"));
+		await fs.mkdir(path.join(dataDir, "planner"), { recursive: true });
+		await fs.writeFile(path.join(dataDir, "planner", "forecast_plan.json"), planJson, "utf8");
 		const host = mockHost({
 			[FORECAST_PLAN_STATE_IDS.status]: "ready",
-			[FORECAST_PLAN_STATE_IDS.planJson]: planJson,
 			[FORECAST_PLAN_STATE_IDS.revision]: 3,
 		});
+		Object.assign(host, { namespace: "ems.0", getAbsoluteInstanceDataDir: () => dataDir });
 		let getStateCalls = 0;
 		const origGet = host.getStateAsync.bind(host);
 		host.getStateAsync = async (id: string) => {
@@ -185,6 +191,6 @@ describe("forecast bootstrap cache", () => {
 		assert.equal(plan.slots.length > 0, true);
 		assert.equal(hasDeferredForecastPlanWrite(), false);
 		assert.equal(getStateCalls <= 4, true, `expected at most 4 state reads, got ${getStateCalls}`);
-		assert.equal(host.store.has(FORECAST_PLAN_STATE_IDS.planJson), true);
+		await fs.rm(dataDir, { recursive: true, force: true });
 	});
 });

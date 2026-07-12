@@ -1,10 +1,36 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
+const fs = __importStar(require("node:fs/promises"));
+const os = __importStar(require("node:os"));
+const path = __importStar(require("node:path"));
 const build_js_1 = require("./build.js");
 const states_js_1 = require("./states.js");
 const tick_js_1 = require("./tick.js");
@@ -132,13 +158,16 @@ function minimalStoredPlanJson() {
     (0, node_test_1.beforeEach)(() => {
         (0, tick_js_1.resetForecastPlanRevisionForTest)();
     });
-    (0, node_test_1.it)("uses cached plan_json during bootstrap without scheduling duplicate refresh when already deferred", async () => {
+    (0, node_test_1.it)("uses cached plan file during bootstrap without scheduling duplicate refresh when already deferred", async () => {
         const planJson = minimalStoredPlanJson();
+        const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "ems-forecast-test-"));
+        await fs.mkdir(path.join(dataDir, "planner"), { recursive: true });
+        await fs.writeFile(path.join(dataDir, "planner", "forecast_plan.json"), planJson, "utf8");
         const host = mockHost({
             [states_js_1.FORECAST_PLAN_STATE_IDS.status]: "ready",
-            [states_js_1.FORECAST_PLAN_STATE_IDS.planJson]: planJson,
             [states_js_1.FORECAST_PLAN_STATE_IDS.revision]: 3,
         });
+        Object.assign(host, { namespace: "ems.0", getAbsoluteInstanceDataDir: () => dataDir });
         let getStateCalls = 0;
         const origGet = host.getStateAsync.bind(host);
         host.getStateAsync = async (id) => {
@@ -150,6 +179,6 @@ function minimalStoredPlanJson() {
         strict_1.default.equal(plan.slots.length > 0, true);
         strict_1.default.equal((0, deferred_writes_js_1.hasDeferredForecastPlanWrite)(), false);
         strict_1.default.equal(getStateCalls <= 4, true, `expected at most 4 state reads, got ${getStateCalls}`);
-        strict_1.default.equal(host.store.has(states_js_1.FORECAST_PLAN_STATE_IDS.planJson), true);
+        await fs.rm(dataDir, { recursive: true, force: true });
     });
 });

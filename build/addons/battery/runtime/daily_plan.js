@@ -4,6 +4,7 @@ exports.isChargingDeviceIntent = exports.dailyPlanWantsCharge = exports.resolveB
 const config_1 = require("../../../intent/config");
 const contribution_ids_1 = require("../../../operator/contribution_ids");
 const states_1 = require("../../../operator/daily_plan/states");
+const load_1 = require("../../../operator/daily_plan/load");
 const slots_1 = require("../../../operator/daily_plan/slots");
 const time_1 = require("../../../operator/time");
 const intent_1 = require("../core/intent");
@@ -466,7 +467,7 @@ async function loadPlanData(host) {
     }
     const allocationRaw = parseJson(await readStr(host, states_1.ALLOCATION_ADDON_STATE_IDS.battery.planJson));
     const allocationEntries = parseDailyAllocationEntries(allocationRaw);
-    const fullPlanRaw = parseJson(await readStr(host, states_1.DAILY_PLAN_STATE_IDS.planJson));
+    const fullPlanRaw = parseJson(await (0, load_1.readDailyPlanJsonRaw)(host));
     const fullPlan = parseFullDailyPlan(fullPlanRaw);
     const parseError = allocationRaw === undefined || (allocationEntries === null && allocationRaw !== null);
     if (parseError) {

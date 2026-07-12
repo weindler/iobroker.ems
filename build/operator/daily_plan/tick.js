@@ -8,6 +8,7 @@ const state_write_1 = require("../../policy/core/state_write");
 const build_1 = require("./build");
 const revision_1 = require("./revision");
 const states_1 = require("./states");
+const plan_store_1 = require("../plan_store");
 let lastRevisionPayload = "";
 let revision = 0;
 function resetDailyPlanRevisionForTest() {
@@ -80,7 +81,8 @@ async function storedDailyPlanSemanticallyMatches(host, plan, semanticHash) {
     const storedHash = await readStr(host, states_1.DAILY_PLAN_STATE_IDS.semanticRevisionHash);
     if (storedHash === semanticHash)
         return true;
-    const raw = await readStr(host, states_1.DAILY_PLAN_STATE_IDS.planJson);
+    const raw = (await (0, plan_store_1.readDailyPlanFile)(host)) ??
+        (await readStr(host, states_1.DAILY_PLAN_STATE_IDS.planJson));
     const stored = (0, revision_1.parseDailyPlanFromJson)(raw);
     if (!stored)
         return false;
@@ -88,7 +90,8 @@ async function storedDailyPlanSemanticallyMatches(host, plan, semanticHash) {
 }
 async function persistDailyPlan(host, plan, semanticHash, nextRevision) {
     const planJson = JSON.stringify(plan);
-    if ((await readStr(host, states_1.DAILY_PLAN_STATE_IDS.planJson)) === planJson) {
+    const existingFile = await (0, plan_store_1.readDailyPlanFile)(host);
+    if (existingFile === planJson) {
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
         if ((await readStr(host, states_1.DAILY_PLAN_STATE_IDS.semanticRevisionHash)) !== semanticHash) {
             await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.semanticRevisionHash, semanticHash);
@@ -96,13 +99,14 @@ async function persistDailyPlan(host, plan, semanticHash, nextRevision) {
         lastRevisionPayload = (0, revision_1.dailyPlanRevisionPayload)(plan);
         return;
     }
+    await (0, plan_store_1.writeDailyPlanFile)(host, planJson);
+    host.log?.info?.(`daily plan file write: bytes=${planJson.length}`);
     await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.status, plan.status);
     await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
     await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "");
     await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.date, plan.date);
     await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.globalMode, plan.globalMode);
     await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.planJson, planJson);
     await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
     await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.revision, nextRevision);
     await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.semanticRevisionHash, semanticHash);

@@ -4,6 +4,7 @@ import {
 	ALLOCATION_ADDON_STATE_IDS,
 	DAILY_PLAN_STATE_IDS,
 } from "../../../operator/daily_plan/states";
+import { readDailyPlanJsonRaw } from "../../../operator/daily_plan/load";
 import { slotStartIsoFloored, slotKey, DAILY_PLAN_SLOT_MS } from "../../../operator/daily_plan/slots";
 import { isoFromMs, isValidIsoTimestamp, localDateKeyInTimezone } from "../../../operator/time";
 import type {
@@ -609,7 +610,7 @@ async function loadPlanData(host: DailyPlanReadHost): Promise<{
 
 	const allocationRaw = parseJson(await readStr(host, ALLOCATION_ADDON_STATE_IDS.battery.planJson));
 	const allocationEntries = parseDailyAllocationEntries(allocationRaw);
-	const fullPlanRaw = parseJson(await readStr(host, DAILY_PLAN_STATE_IDS.planJson));
+	const fullPlanRaw = parseJson(await readDailyPlanJsonRaw(host));
 	const fullPlan = parseFullDailyPlan(fullPlanRaw);
 	const parseError = allocationRaw === undefined || (allocationEntries === null && allocationRaw !== null);
 

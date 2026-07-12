@@ -22,7 +22,12 @@ import {
 	clearDeferredForecastPlanWriteForTest,
 	scheduleDeferredForecastPlanWrite,
 } from "./deferred_writes";
-import { serializeForecastPlanForWrites, type ForecastPlanSerializedWrites } from "./serialization";
+import { serializeForecastPlanForWrites } from "./serialization";
+import {
+	readForecastPlanFile,
+	writeForecastPlanFile,
+	type PlanPathHost,
+} from "../plan_store";
 import { FORECAST_PLAN_STATE_IDS } from "./states";
 import type { ForecastPlan } from "./types";
 
@@ -34,7 +39,7 @@ export type ForecastPlanTickOptions = {
 	deferLargeJsonWrites?: boolean;
 	/** Skip bootstrap cache and always rebuild. */
 	forceRebuild?: boolean;
-	/** When false, compute plan in memory only — no ioBroker state writes (avoids IPC RSS spike on 60s tick). */
+	/** When false, compute plan in memory only — no file/scalar persistence. */
 	persistToDb?: boolean;
 };
 
@@ -133,11 +138,22 @@ async function loadCachedForecastPlanForBootstrap(host: ContributionsReadHost): 
 	const statusRaw = await readStr(host, FORECAST_PLAN_STATE_IDS.status);
 	if (!statusRaw || statusRaw === "not_initialized") return null;
 
-	const planRaw = await readStr(host, FORECAST_PLAN_STATE_IDS.planJson);
+	let planRaw = await readForecastPlanFile(host as PlanPathHost);
+	let migratedFromState = false;
+	if (!isBootstrapForecastPlanJson(planRaw)) {
+		planRaw = await readStr(host, FORECAST_PLAN_STATE_IDS.planJson);
+		migratedFromState = isBootstrapForecastPlanJson(planRaw);
+	}
 	if (!isBootstrapForecastPlanJson(planRaw)) return null;
 
 	const plan = parseForecastPlanFromJson(planRaw);
 	if (!isUsableStoredForecastPlan(plan)) return null;
+
+	if (migratedFromState && planRaw) {
+		void writeForecastPlanFile(host as PlanPathHost, planRaw).catch((e) => {
+			host.log?.warn?.(`forecast plan file migration: ${String(e)}`);
+		});
+	}
 
 	const storedRevision = await readNum(host, FORECAST_PLAN_STATE_IDS.revision);
 	if (storedRevision !== null && storedRevision >= 0) {
@@ -155,7 +171,9 @@ async function storedPlanSemanticallyMatches(
 ): Promise<boolean> {
 	const storedHash = await readStr(host, FORECAST_PLAN_STATE_IDS.semanticRevisionHash);
 	if (storedHash === semanticHash) return true;
-	const raw = await readStr(host, FORECAST_PLAN_STATE_IDS.planJson);
+	const raw =
+		(await readForecastPlanFile(host as PlanPathHost)) ??
+		(await readStr(host, FORECAST_PLAN_STATE_IDS.planJson));
 	const stored = parseForecastPlanFromJson(raw);
 	if (!stored) return false;
 	return forecastPlanSemanticRevisionHash(stored) === semanticHash;
@@ -189,29 +207,7 @@ async function writeScalarState(
 	logForecastPlanWriteProbe(host.log as MemoryProbeLogger | undefined, "after_write", meta);
 }
 
-async function writeJsonState(
-	host: ContributionsReadHost,
-	stateId: string,
-	json: string,
-	revisionRequired: boolean,
-	counts?: { slotCount?: number; contributionCount?: number },
-): Promise<void> {
-	const bytes = utf8Bytes(json);
-	const meta = {
-		stateId,
-		revisionRequired,
-		skipRead: false,
-		slotCount: counts?.slotCount,
-		contributionCount: counts?.contributionCount,
-	};
-	logForecastPlanWriteProbe(host.log as MemoryProbeLogger | undefined, "before_payload", meta);
-	logForecastPlanWriteProbe(host.log as MemoryProbeLogger | undefined, "after_stringify", meta, { bytes });
-	logForecastPlanWriteProbe(host.log as MemoryProbeLogger | undefined, "before_setState", meta, { bytes });
-	await setStateIfChanged(host, stateId, json);
-	logForecastPlanWriteProbe(host.log as MemoryProbeLogger | undefined, "after_setState", meta, { bytes });
-}
-
-/** Persist forecast plan — single plan_json IPC write (no duplicate mirror states). */
+/** Persist forecast plan — full JSON to atomic file; scalars only in ioBroker states. */
 async function persistForecastPlan(
 	host: ContributionsReadHost,
 	plan: ForecastPlan,
@@ -222,7 +218,7 @@ async function persistForecastPlan(
 
 	if (await storedPlanSemanticallyMatches(host, plan, semanticHash)) {
 		(host.log as MemoryProbeLogger | undefined)?.info?.(
-			"forecast plan persist: semantically unchanged — skip IPC write",
+			"forecast plan persist: semantically unchanged — skip file write",
 		);
 		await writeScalarState(host, FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, undefined, false);
 		if ((await readStr(host, FORECAST_PLAN_STATE_IDS.semanticRevisionHash)) !== semanticHash) {
@@ -238,23 +234,29 @@ async function persistForecastPlan(
 		return;
 	}
 
+	const planBytes = utf8Bytes(serialized.planJson);
 	logForecastPlanDuplicationReport(host.log as MemoryProbeLogger | undefined, {
 		revisionChanged: true,
 		semanticHash,
 		fields: [
 			{
-				stateId: "plan_json",
-				bytes: serialized.report.fields.find((f) => f.stateId === "plan_json")?.bytes ?? utf8Bytes(serialized.planJson),
+				stateId: "forecast_plan.json",
+				bytes: planBytes,
 				slotCount: plan.slots.length,
 				contributionCount: plan.contributions.length,
 			},
 		],
-		totalSerializedBytes: utf8Bytes(serialized.planJson),
+		totalSerializedBytes: planBytes,
 		uniqueSlotBytes: serialized.report.uniqueSlotBytes,
 		uniqueContributionBytes: serialized.report.uniqueContributionBytes,
 		duplicateSlotBytesVsPlanJson: 0,
 		duplicateContributionBytesVsPlanJson: 0,
 	});
+
+	(host.log as MemoryProbeLogger | undefined)?.info?.(
+		`forecast plan file write: bytes=${planBytes} slots=${plan.slots.length}`,
+	);
+	await writeForecastPlanFile(host as PlanPathHost, serialized.planJson);
 
 	await writeScalarState(host, FORECAST_PLAN_STATE_IDS.status, plan.status, undefined, true);
 	await writeScalarState(host, FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, undefined, false);
@@ -263,13 +265,6 @@ async function persistForecastPlan(
 	await writeScalarState(host, FORECAST_PLAN_STATE_IDS.horizonEnd, plan.horizonEnd, undefined, true);
 	await writeScalarState(host, FORECAST_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes, undefined, true);
 	await writeScalarState(host, FORECAST_PLAN_STATE_IDS.reasonDe, plan.reasonDe, undefined, true);
-	await writeJsonState(
-		host,
-		FORECAST_PLAN_STATE_IDS.planJson,
-		serialized.planJson,
-		true,
-		{ slotCount: plan.slots.length, contributionCount: plan.contributions.length },
-	);
 	await writeScalarState(host, FORECAST_PLAN_STATE_IDS.revision, nextRevision, undefined, true);
 	await writeScalarState(host, FORECAST_PLAN_STATE_IDS.semanticRevisionHash, semanticHash, undefined, true);
 
@@ -290,7 +285,7 @@ export async function runForecastPlanTick(
 		const cached = await loadCachedForecastPlanForBootstrap(host);
 		if (cached) {
 			(host.log as MemoryProbeLogger | undefined)?.info?.(
-				`forecast plan bootstrap: cached plan_json revision=${cached.revision} slots=${cached.slots.length} — skip rebuild (periodic tick refreshes)`,
+				`forecast plan bootstrap: cached plan file revision=${cached.revision} slots=${cached.slots.length} — skip rebuild (periodic tick refreshes)`,
 			);
 			return cached;
 		}
@@ -345,7 +340,7 @@ export async function runForecastPlanTick(
 	if (deferLargeJsonWrites && !options.forceRebuild) {
 		scheduleFirstInstallForecastPersist(host, plan, semanticHash, resolution.nextRevision);
 		(host.log as MemoryProbeLogger | undefined)?.info?.(
-			`forecast plan bootstrap: built_in_memory revision=${plan.revision} — defer plan_json until adapter ready`,
+			`forecast plan bootstrap: built_in_memory revision=${plan.revision} — defer file persist until adapter ready`,
 		);
 		revision = resolution.nextRevision;
 		lastRevisionPayload = semanticPayload;

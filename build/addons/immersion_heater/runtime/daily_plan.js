@@ -7,6 +7,7 @@ const memory_inventory_1 = require("../../../diagnostics/memory_inventory");
 const startup_memory_1 = require("../../../diagnostics/startup_memory");
 const contribution_ids_1 = require("../../../operator/contribution_ids");
 const states_1 = require("../../../operator/daily_plan/states");
+const load_1 = require("../../../operator/daily_plan/load");
 const slots_1 = require("../../../operator/daily_plan/slots");
 const time_1 = require("../../../operator/time");
 const ACTIVE_ALLOCATION_STATUSES = new Set(["allocated", "partially_allocated"]);
@@ -425,7 +426,7 @@ async function loadPlanData(host, now) {
     const allocationAuthoritative = fallbackReason === null;
     host.log?.info?.(`EMS mem-immersion-plan source=${allocationAuthoritative ? "allocation_only" : "full_plan_fallback"} ` +
         `fallback=${fallbackReason ?? "none"} ` +
-        `stateId=${allocationAuthoritative ? states_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson : states_1.DAILY_PLAN_STATE_IDS.planJson} ` +
+        `planStore=${allocationAuthoritative ? states_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson : "daily_plan.json"} ` +
         `payloadBytes=${allocationAuthoritative
             ? allocationRawStr?.length ?? 0
             : 0}`);
@@ -433,11 +434,11 @@ async function loadPlanData(host, now) {
     const deferFullPlan = shouldDeferFullDailyPlanRead(fallbackReason);
     if (!allocationAuthoritative && !deferFullPlan) {
         (0, startup_memory_1.probeStartupMemory)(host.log, "immersion_before_full_plan_read");
-        const fullPlanRawStr = await readStr(host, states_1.DAILY_PLAN_STATE_IDS.planJson);
+        const fullPlanRawStr = await (0, load_1.readDailyPlanJsonRaw)(host);
         const fullPlanRaw = parseJson(fullPlanRawStr);
         fullPlan = parseFullDailyPlan(fullPlanRaw);
         (0, startup_memory_1.probeStartupMemory)(host.log, "immersion_after_full_plan_read");
-        host.log?.info?.(`EMS mem-immersion-plan full_plan_read stateId=${states_1.DAILY_PLAN_STATE_IDS.planJson} payloadBytes=${fullPlanRawStr?.length ?? 0}`);
+        host.log?.info?.(`EMS mem-immersion-plan full_plan_read store=daily_plan.json payloadBytes=${fullPlanRawStr?.length ?? 0}`);
         (0, memory_inventory_1.recordMemoryInventory)({
             module: "immersion_daily_plan",
             checkpoint: "full_plan_read",

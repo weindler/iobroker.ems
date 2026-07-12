@@ -7,6 +7,7 @@ import {
 	ALLOCATION_ADDON_STATE_IDS,
 	DAILY_PLAN_STATE_IDS,
 } from "../../../operator/daily_plan/states";
+import { readDailyPlanJsonRaw } from "../../../operator/daily_plan/load";
 import { slotStartIsoFloored, slotKey, DAILY_PLAN_SLOT_MS } from "../../../operator/daily_plan/slots";
 import { isoFromMs, isValidIsoTimestamp, localDateKeyInTimezone } from "../../../operator/time";
 import type { DailyAllocationEntry, DailyPlan, DailyPlanStatus, AllocationStatus } from "../../../operator/daily_plan/types";
@@ -549,7 +550,7 @@ async function loadPlanData(
 	host.log?.info?.(
 		`EMS mem-immersion-plan source=${allocationAuthoritative ? "allocation_only" : "full_plan_fallback"} ` +
 			`fallback=${fallbackReason ?? "none"} ` +
-			`stateId=${allocationAuthoritative ? ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson : DAILY_PLAN_STATE_IDS.planJson} ` +
+			`planStore=${allocationAuthoritative ? ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson : "daily_plan.json"} ` +
 			`payloadBytes=${
 				allocationAuthoritative
 					? allocationRawStr?.length ?? 0
@@ -561,12 +562,12 @@ async function loadPlanData(
 	const deferFullPlan = shouldDeferFullDailyPlanRead(fallbackReason);
 	if (!allocationAuthoritative && !deferFullPlan) {
 		probeStartupMemory(host.log, "immersion_before_full_plan_read");
-		const fullPlanRawStr = await readStr(host, DAILY_PLAN_STATE_IDS.planJson);
+		const fullPlanRawStr = await readDailyPlanJsonRaw(host);
 		const fullPlanRaw = parseJson(fullPlanRawStr);
 		fullPlan = parseFullDailyPlan(fullPlanRaw);
 		probeStartupMemory(host.log, "immersion_after_full_plan_read");
 		host.log?.info?.(
-			`EMS mem-immersion-plan full_plan_read stateId=${DAILY_PLAN_STATE_IDS.planJson} payloadBytes=${fullPlanRawStr?.length ?? 0}`,
+			`EMS mem-immersion-plan full_plan_read store=daily_plan.json payloadBytes=${fullPlanRawStr?.length ?? 0}`,
 		);
 		recordMemoryInventory({
 			module: "immersion_daily_plan",

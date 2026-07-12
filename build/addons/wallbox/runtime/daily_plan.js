@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.resolveWallboxDailyPlanDecision = exports.evaluateWallboxDailyPlan = exports.resolveWallboxPlanExecutionStatus = exports.summarizeWallboxPlanUntilDeadline = exports.resolveWallboxPowerLimits = exports.parseDailyAllocationEntries = exports.computeRemainingEnergyKwh = exports.telemetryInputFromSnapshot = exports.wallboxMinChargePowerW = exports.resetWallboxDailyPlanCache = exports.WALLBOX_PLAN_POWER_TOLERANCE_W = void 0;
 const contribution_ids_1 = require("../../../operator/contribution_ids");
 const states_1 = require("../../../operator/daily_plan/states");
+const load_1 = require("../../../operator/daily_plan/load");
 const slots_1 = require("../../../operator/daily_plan/slots");
 const time_1 = require("../../../operator/time");
 const config_1 = require("../../../intent/config");
@@ -880,7 +881,7 @@ async function loadPlanData(host) {
     }
     const allocationRaw = parseJson(await readStr(host, states_1.ALLOCATION_ADDON_STATE_IDS.wallbox.planJson));
     const allocationEntries = parseDailyAllocationEntries(allocationRaw);
-    const fullPlanRaw = parseJson(await readStr(host, states_1.DAILY_PLAN_STATE_IDS.planJson));
+    const fullPlanRaw = parseJson(await (0, load_1.readDailyPlanJsonRaw)(host));
     const fullPlan = parseFullDailyPlan(fullPlanRaw);
     const parseError = allocationRaw === undefined || (allocationEntries === null && allocationRaw !== null);
     if (parseError) {

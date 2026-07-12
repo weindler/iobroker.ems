@@ -10,7 +10,7 @@ import { runDailyPlanTick } from "../operator/daily_plan/tick";
 export type EmsLightPhase1TickOptions = {
 	/** When false, skip grid/forecast/daily operator ticks (planner runtime already ran them). */
 	operatorTicks?: boolean;
-	/** When false, forecast/daily plans are computed in memory only (no DB IPC). Default true. */
+	/** When false, forecast/daily plans are computed in memory only (no file/scalar persistence). Default true. */
 	persistPlans?: boolean;
 };
 

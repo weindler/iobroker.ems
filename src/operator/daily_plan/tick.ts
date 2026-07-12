@@ -13,6 +13,7 @@ import {
 import { ALLOCATION_ADDON_STATE_IDS, DAILY_PLAN_STATE_IDS } from "./states";
 import type { DailyPlan } from "./types";
 import type { ContributionsReadHost } from "../contributions/read";
+import { readDailyPlanFile, writeDailyPlanFile, type PlanPathHost } from "../plan_store";
 
 export type DailyPlanTickOptions = {
 	/** When false, build in memory only — no ioBroker state writes. */
@@ -97,7 +98,9 @@ async function storedDailyPlanSemanticallyMatches(
 ): Promise<boolean> {
 	const storedHash = await readStr(host, DAILY_PLAN_STATE_IDS.semanticRevisionHash);
 	if (storedHash === semanticHash) return true;
-	const raw = await readStr(host, DAILY_PLAN_STATE_IDS.planJson);
+	const raw =
+		(await readDailyPlanFile(host as PlanPathHost)) ??
+		(await readStr(host, DAILY_PLAN_STATE_IDS.planJson));
 	const stored = parseDailyPlanFromJson(raw);
 	if (!stored) return false;
 	return dailyPlanSemanticRevisionHash(stored) === semanticHash;
@@ -110,7 +113,8 @@ async function persistDailyPlan(
 	nextRevision: number,
 ): Promise<void> {
 	const planJson = JSON.stringify(plan);
-	if ((await readStr(host, DAILY_PLAN_STATE_IDS.planJson)) === planJson) {
+	const existingFile = await readDailyPlanFile(host as PlanPathHost);
+	if (existingFile === planJson) {
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
 		if ((await readStr(host, DAILY_PLAN_STATE_IDS.semanticRevisionHash)) !== semanticHash) {
 			await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.semanticRevisionHash, semanticHash);
@@ -119,13 +123,17 @@ async function persistDailyPlan(
 		return;
 	}
 
+	await writeDailyPlanFile(host as PlanPathHost, planJson);
+	(host.log as { info?: (msg: string) => void } | undefined)?.info?.(
+		`daily plan file write: bytes=${planJson.length}`,
+	);
+
 	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.status, plan.status);
 	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
 	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "");
 	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.date, plan.date);
 	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.globalMode, plan.globalMode);
 	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes);
-	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.planJson, planJson);
 	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
 	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.revision, nextRevision);
 	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.semanticRevisionHash, semanticHash);

@@ -9,6 +9,7 @@ const build_1 = require("./build");
 const revision_1 = require("./revision");
 const deferred_writes_1 = require("./deferred_writes");
 const serialization_1 = require("./serialization");
+const plan_store_1 = require("../plan_store");
 const states_1 = require("./states");
 let lastRevisionPayload = "";
 let revision = 0;
@@ -85,12 +86,22 @@ async function loadCachedForecastPlanForBootstrap(host) {
     const statusRaw = await readStr(host, states_1.FORECAST_PLAN_STATE_IDS.status);
     if (!statusRaw || statusRaw === "not_initialized")
         return null;
-    const planRaw = await readStr(host, states_1.FORECAST_PLAN_STATE_IDS.planJson);
+    let planRaw = await (0, plan_store_1.readForecastPlanFile)(host);
+    let migratedFromState = false;
+    if (!(0, revision_1.isBootstrapForecastPlanJson)(planRaw)) {
+        planRaw = await readStr(host, states_1.FORECAST_PLAN_STATE_IDS.planJson);
+        migratedFromState = (0, revision_1.isBootstrapForecastPlanJson)(planRaw);
+    }
     if (!(0, revision_1.isBootstrapForecastPlanJson)(planRaw))
         return null;
     const plan = (0, revision_1.parseForecastPlanFromJson)(planRaw);
     if (!(0, revision_1.isUsableStoredForecastPlan)(plan))
         return null;
+    if (migratedFromState && planRaw) {
+        void (0, plan_store_1.writeForecastPlanFile)(host, planRaw).catch((e) => {
+            host.log?.warn?.(`forecast plan file migration: ${String(e)}`);
+        });
+    }
     const storedRevision = await readNum(host, states_1.FORECAST_PLAN_STATE_IDS.revision);
     if (storedRevision !== null && storedRevision >= 0) {
         plan.revision = storedRevision;
@@ -103,7 +114,8 @@ async function storedPlanSemanticallyMatches(host, plan, semanticHash) {
     const storedHash = await readStr(host, states_1.FORECAST_PLAN_STATE_IDS.semanticRevisionHash);
     if (storedHash === semanticHash)
         return true;
-    const raw = await readStr(host, states_1.FORECAST_PLAN_STATE_IDS.planJson);
+    const raw = (await (0, plan_store_1.readForecastPlanFile)(host)) ??
+        (await readStr(host, states_1.FORECAST_PLAN_STATE_IDS.planJson));
     const stored = (0, revision_1.parseForecastPlanFromJson)(raw);
     if (!stored)
         return false;
@@ -124,26 +136,11 @@ async function writeScalarState(host, stateId, val, writeOpts, revisionRequired)
     await (0, state_write_1.setStateIfChanged)(host, stateId, val, writeOpts);
     (0, forecast_plan_write_probe_1.logForecastPlanWriteProbe)(host.log, "after_write", meta);
 }
-async function writeJsonState(host, stateId, json, revisionRequired, counts) {
-    const bytes = (0, forecast_plan_write_probe_1.utf8Bytes)(json);
-    const meta = {
-        stateId,
-        revisionRequired,
-        skipRead: false,
-        slotCount: counts?.slotCount,
-        contributionCount: counts?.contributionCount,
-    };
-    (0, forecast_plan_write_probe_1.logForecastPlanWriteProbe)(host.log, "before_payload", meta);
-    (0, forecast_plan_write_probe_1.logForecastPlanWriteProbe)(host.log, "after_stringify", meta, { bytes });
-    (0, forecast_plan_write_probe_1.logForecastPlanWriteProbe)(host.log, "before_setState", meta, { bytes });
-    await (0, state_write_1.setStateIfChanged)(host, stateId, json);
-    (0, forecast_plan_write_probe_1.logForecastPlanWriteProbe)(host.log, "after_setState", meta, { bytes });
-}
-/** Persist forecast plan — single plan_json IPC write (no duplicate mirror states). */
+/** Persist forecast plan — full JSON to atomic file; scalars only in ioBroker states. */
 async function persistForecastPlan(host, plan, semanticHash, nextRevision) {
     const serialized = (0, serialization_1.serializeForecastPlanForWrites)(plan);
     if (await storedPlanSemanticallyMatches(host, plan, semanticHash)) {
-        host.log?.info?.("forecast plan persist: semantically unchanged — skip IPC write");
+        host.log?.info?.("forecast plan persist: semantically unchanged — skip file write");
         await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, undefined, false);
         if ((await readStr(host, states_1.FORECAST_PLAN_STATE_IDS.semanticRevisionHash)) !== semanticHash) {
             await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.semanticRevisionHash, semanticHash, undefined, true);
@@ -151,23 +148,26 @@ async function persistForecastPlan(host, plan, semanticHash, nextRevision) {
         lastRevisionPayload = (0, revision_1.forecastPlanRevisionPayload)(plan);
         return;
     }
+    const planBytes = (0, forecast_plan_write_probe_1.utf8Bytes)(serialized.planJson);
     (0, forecast_plan_write_probe_1.logForecastPlanDuplicationReport)(host.log, {
         revisionChanged: true,
         semanticHash,
         fields: [
             {
-                stateId: "plan_json",
-                bytes: serialized.report.fields.find((f) => f.stateId === "plan_json")?.bytes ?? (0, forecast_plan_write_probe_1.utf8Bytes)(serialized.planJson),
+                stateId: "forecast_plan.json",
+                bytes: planBytes,
                 slotCount: plan.slots.length,
                 contributionCount: plan.contributions.length,
             },
         ],
-        totalSerializedBytes: (0, forecast_plan_write_probe_1.utf8Bytes)(serialized.planJson),
+        totalSerializedBytes: planBytes,
         uniqueSlotBytes: serialized.report.uniqueSlotBytes,
         uniqueContributionBytes: serialized.report.uniqueContributionBytes,
         duplicateSlotBytesVsPlanJson: 0,
         duplicateContributionBytesVsPlanJson: 0,
     });
+    host.log?.info?.(`forecast plan file write: bytes=${planBytes} slots=${plan.slots.length}`);
+    await (0, plan_store_1.writeForecastPlanFile)(host, serialized.planJson);
     await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.status, plan.status, undefined, true);
     await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, undefined, false);
     await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "", undefined, true);
@@ -175,7 +175,6 @@ async function persistForecastPlan(host, plan, semanticHash, nextRevision) {
     await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.horizonEnd, plan.horizonEnd, undefined, true);
     await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes, undefined, true);
     await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.reasonDe, plan.reasonDe, undefined, true);
-    await writeJsonState(host, states_1.FORECAST_PLAN_STATE_IDS.planJson, serialized.planJson, true, { slotCount: plan.slots.length, contributionCount: plan.contributions.length });
     await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.revision, nextRevision, undefined, true);
     await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.semanticRevisionHash, semanticHash, undefined, true);
     revision = nextRevision;
@@ -187,7 +186,7 @@ async function runForecastPlanTick(host, gridForecast, flexibleContributions = [
     if (deferLargeJsonWrites && !options.forceRebuild) {
         const cached = await loadCachedForecastPlanForBootstrap(host);
         if (cached) {
-            host.log?.info?.(`forecast plan bootstrap: cached plan_json revision=${cached.revision} slots=${cached.slots.length} — skip rebuild (periodic tick refreshes)`);
+            host.log?.info?.(`forecast plan bootstrap: cached plan file revision=${cached.revision} slots=${cached.slots.length} — skip rebuild (periodic tick refreshes)`);
             return cached;
         }
     }
@@ -231,7 +230,7 @@ async function runForecastPlanTick(host, gridForecast, flexibleContributions = [
     }
     if (deferLargeJsonWrites && !options.forceRebuild) {
         scheduleFirstInstallForecastPersist(host, plan, semanticHash, resolution.nextRevision);
-        host.log?.info?.(`forecast plan bootstrap: built_in_memory revision=${plan.revision} — defer plan_json until adapter ready`);
+        host.log?.info?.(`forecast plan bootstrap: built_in_memory revision=${plan.revision} — defer file persist until adapter ready`);
         revision = resolution.nextRevision;
         lastRevisionPayload = semanticPayload;
         return plan;

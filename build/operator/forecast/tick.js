@@ -126,7 +126,8 @@ function scheduleFirstInstallForecastPersist(host, plan, semanticHash, nextRevis
         await persistForecastPlan(host, plan, semanticHash, nextRevision);
     });
 }
-async function writeScalarState(host, stateId, val, writeOpts, revisionRequired) {
+async function writeScalarState(host, stateId, val, revisionRequired) {
+    const writeOpts = revisionRequired ? { skipRead: true } : undefined;
     const meta = {
         stateId,
         revisionRequired,
@@ -141,9 +142,9 @@ async function persistForecastPlan(host, plan, semanticHash, nextRevision) {
     const serialized = (0, serialization_1.serializeForecastPlanForWrites)(plan);
     if (await storedPlanSemanticallyMatches(host, plan, semanticHash)) {
         host.log?.info?.("forecast plan persist: semantically unchanged — skip file write");
-        await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, undefined, false);
+        await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, false);
         if ((await readStr(host, states_1.FORECAST_PLAN_STATE_IDS.semanticRevisionHash)) !== semanticHash) {
-            await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.semanticRevisionHash, semanticHash, undefined, true);
+            await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.semanticRevisionHash, semanticHash, true);
         }
         lastRevisionPayload = (0, revision_1.forecastPlanRevisionPayload)(plan);
         return;
@@ -168,15 +169,15 @@ async function persistForecastPlan(host, plan, semanticHash, nextRevision) {
     });
     host.log?.info?.(`forecast plan file write: bytes=${planBytes} slots=${plan.slots.length}`);
     await (0, plan_store_1.writeForecastPlanFile)(host, serialized.planJson);
-    await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.status, plan.status, undefined, true);
-    await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, undefined, false);
-    await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "", undefined, true);
-    await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.horizonStart, plan.horizonStart, undefined, false);
-    await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.horizonEnd, plan.horizonEnd, undefined, true);
-    await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes, undefined, true);
-    await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.reasonDe, plan.reasonDe, undefined, true);
-    await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.revision, nextRevision, undefined, true);
-    await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.semanticRevisionHash, semanticHash, undefined, true);
+    await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.status, plan.status, true);
+    await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, false);
+    await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "", true);
+    await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.horizonStart, plan.horizonStart, false);
+    await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.horizonEnd, plan.horizonEnd, true);
+    await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes, true);
+    await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.reasonDe, plan.reasonDe, true);
+    await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.revision, nextRevision, true);
+    await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.semanticRevisionHash, semanticHash, true);
     revision = nextRevision;
     lastRevisionPayload = (0, revision_1.forecastPlanRevisionPayload)(plan);
     plan.revision = nextRevision;
@@ -237,12 +238,12 @@ async function runForecastPlanTick(host, gridForecast, flexibleContributions = [
     }
     try {
         if (resolution.skipLargeJsonWrites) {
-            await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, undefined, false);
+            await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, false);
             if (resolution.storedHash !== semanticHash) {
-                await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.semanticRevisionHash, semanticHash, undefined, true);
+                await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.semanticRevisionHash, semanticHash, true);
             }
             if (resolution.revisionChanged) {
-                await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.revision, resolution.nextRevision, undefined, true);
+                await writeScalarState(host, states_1.FORECAST_PLAN_STATE_IDS.revision, resolution.nextRevision, true);
                 revision = resolution.nextRevision;
                 lastRevisionPayload = semanticPayload;
             }

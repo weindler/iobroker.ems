@@ -1,4 +1,5 @@
 import { setStateIfChanged, type StateWriteOptions } from "../../../policy/core/state_write";
+import { writeFlexibleContributionsFile, type PlanPathHost } from "../../plan_store";
 import type { PlanContribution } from "../../types";
 import { flexibleContributionsRevisionPayload } from "./types";
 import {
@@ -66,7 +67,6 @@ async function writeAddonStates(
 		rows[0]?.reasonDe ??
 		`Keine ${addonKey}-Contributions.`;
 	await setStateIfChanged(host, ids.status, status, writeOpts);
-	await setStateIfChanged(host, ids.contributionsJson, JSON.stringify(rows), writeOpts);
 	await setStateIfChanged(host, ids.reasonDe, reason, writeOpts);
 	await setStateIfChanged(host, ids.revision, revisionValue, writeOpts);
 }
@@ -106,14 +106,17 @@ export async function runFlexibleContributionsTick(
 	try {
 		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.status, overallStatus, writeOpts);
 		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.generatedAt, now.toISOString(), writeOpts);
-		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.contributionsJson, JSON.stringify(contributions), writeOpts);
-		await setStateIfChanged(
-			host,
-			FLEXIBLE_CONTRIBUTIONS_STATE_IDS.activeJson,
-			JSON.stringify(active.map((c) => c.contributionId)),
-			writeOpts,
-		);
-		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.excludedJson, JSON.stringify(excluded), writeOpts);
+		if (revisionChanged) {
+			const filePayload = JSON.stringify({ contributions, active, excluded });
+			try {
+				await writeFlexibleContributionsFile(host as PlanPathHost, filePayload);
+				(host.log as { info?: (msg: string) => void } | undefined)?.info?.(
+					`flexible contributions file write: bytes=${filePayload.length} count=${contributions.length}`,
+				);
+			} catch (e) {
+				host.log?.warn?.(`flexible contributions file write: ${String(e)}`);
+			}
+		}
 		await setStateIfChanged(
 			host,
 			FLEXIBLE_CONTRIBUTIONS_STATE_IDS.reasonDe,

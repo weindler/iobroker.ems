@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runPlannerTick = exports.runPlanner = exports.resetPlannerRevisionForTest = void 0;
 const state_write_1 = require("../policy/core/state_write");
+const plan_store_1 = require("../operator/plan_store");
 const inputs_1 = require("./inputs");
 const battery_1 = require("./rules/battery");
 const battery_winter_1 = require("./rules/battery_winter");
@@ -183,7 +184,14 @@ async function runPlannerTick(host, options) {
         await (0, state_write_1.setStateIfChanged)(host, "planner.last_run_at", intent.resolved_at);
         await (0, state_write_1.setStateIfChanged)(host, "planner.surplus_w", intent.surplus_w);
         await (0, state_write_1.setStateIfChanged)(host, "planner.deficit_w", intent.deficit_w);
-        await (0, state_write_1.setStateIfChanged)(host, "planner.intent.last_json", JSON.stringify(intent));
+        const intentJson = JSON.stringify(intent);
+        try {
+            await (0, plan_store_1.writePlannerIntentFile)(host, intentJson);
+            host.log?.info?.(`planner intent file write: bytes=${intentJson.length}`);
+        }
+        catch (e) {
+            host.log?.warn?.(`planner intent file write: ${String(e)}`);
+        }
         await (0, state_write_1.setStateIfChanged)(host, "planner.intent.last_reason_de", intent.reason_de);
         await (0, state_write_1.setStateIfChanged)(host, "planner.intent.thermal.commanded_stage", intent.thermal.commanded_stage);
         await (0, state_write_1.setStateIfChanged)(host, "planner.intent.thermal.commanded_power_w", intent.thermal.commanded_power_w);

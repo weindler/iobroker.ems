@@ -11,6 +11,7 @@ import { BAT, ensureBatteryArchitectureStates } from "./ensure_states";
 import { ensureBatteryEmsMirrorStates, EMS_MIRROR_BATTERY, EMS_MIRROR_BATTERY_IDS } from "./ems_mirror";
 import { computeGridBalanceTarget, medianCtFromPriceSlots, resolveController } from "./grid_balance";
 import { readTibber15MinPriceSlots } from "../../planner/battery_winter_price_inputs";
+import { readPlannerIntentJsonRaw } from "../../planner/intent_load";
 import {
 	BATTERY_MAPPING_ROLES,
 	batteryMappingFromConfig,
@@ -420,8 +421,8 @@ async function controlTickInner(host: Host): Promise<void> {
 				source: "winter_planner",
 			};
 		} else {
-			const plannerRaw = await host.getStateAsync("planner.intent.last_json");
-			const plannerParsed = parsePlannerIntentJson(plannerRaw?.val);
+			const plannerRawStr = await readPlannerIntentJsonRaw(host);
+			const plannerParsed = parsePlannerIntentJson(plannerRawStr);
 			const fromPlanner =
 				plannerParsed && plannerWantsActiveBatteryIntent(plannerParsed.battery)
 					? deviceIntentFromPlannerDecision(
@@ -878,7 +879,7 @@ async function resolveWinterGridChargeIntent(
 	config: BatteryConfig,
 	nowMs: number,
 ): Promise<BatteryDeviceIntent | null> {
-	const [winterActive, holdActive, evccCharging, windowsRaw, socTargetRaw, reasonDe, plannerJson] =
+	const [winterActive, holdActive, evccCharging, windowsRaw, socTargetRaw, reasonDe, plannerRawStr] =
 		await Promise.all([
 			readRelBool(host, "planner.intent.battery.winter.active"),
 			readRelBool(host, "planner.constraints.battery_hold_active"),
@@ -886,7 +887,7 @@ async function resolveWinterGridChargeIntent(
 			host.getStateAsync("planner.intent.battery.winter.windows_json"),
 			host.getStateAsync("planner.intent.battery.winter.soc_target_pct"),
 			host.getStateAsync("planner.intent.battery.winter.reason_de"),
-			host.getStateAsync("planner.intent.last_json"),
+			readPlannerIntentJsonRaw(host),
 		]);
 
 	if (!winterActive || holdActive || evccCharging) {
@@ -895,7 +896,7 @@ async function resolveWinterGridChargeIntent(
 
 	let revision = 0;
 	try {
-		const parsed = plannerJson?.val ? JSON.parse(String(plannerJson.val)) : null;
+		const parsed = plannerRawStr ? JSON.parse(plannerRawStr) : null;
 		if (parsed && typeof parsed.revision === "number") revision = parsed.revision;
 	} catch {
 		/* ignore */

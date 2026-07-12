@@ -1,4 +1,5 @@
 import { setOptionalNumberIfChanged, setStateIfChanged, type StateWriteOptions } from "../../policy/core/state_write";
+import { writeGridSupplySlotsFile, type PlanPathHost } from "../plan_store";
 import { buildGridSupplyForecast, gridSupplyRevisionPayload, type GridSupplyBuildInput } from "./grid";
 import { collectGridSupplyBuildInput, type GridSupplyReadHost } from "./grid_read";
 import { GRID_SUPPLY_STATE_IDS } from "./grid_states";
@@ -42,7 +43,17 @@ export async function runGridSupplyTick(
 			forecast.effectiveMaxGridImportW,
 			writeOpts,
 		);
-		await setStateIfChanged(host, GRID_SUPPLY_STATE_IDS.slotsJson, JSON.stringify(forecast.slots), writeOpts);
+		if (revisionChanged) {
+			const slotsJson = JSON.stringify(forecast.slots);
+			try {
+				await writeGridSupplySlotsFile(host as PlanPathHost, slotsJson);
+				(host.log as { info?: (msg: string) => void } | undefined)?.info?.(
+					`grid supply file write: bytes=${slotsJson.length} slots=${forecast.slots.length}`,
+				);
+			} catch (e) {
+				host.log?.warn?.(`grid supply file write: ${String(e)}`);
+			}
+		}
 		await setStateIfChanged(host, GRID_SUPPLY_STATE_IDS.reasonDe, forecast.reasonDe, writeOpts);
 		await setStateIfChanged(host, GRID_SUPPLY_STATE_IDS.revision, nextRevision, writeOpts);
 		if (revisionChanged) {

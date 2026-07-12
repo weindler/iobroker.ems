@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runFlexibleContributionsTick = exports.flexibleContributionsRevisionForTest = exports.resetFlexibleContributionsRevisionForTest = void 0;
 const state_write_1 = require("../../../policy/core/state_write");
+const plan_store_1 = require("../../plan_store");
 const types_1 = require("./types");
 const read_1 = require("./read");
 const states_1 = require("./states");
@@ -51,7 +52,6 @@ async function writeAddonStates(host, addonKey, contributions, writeOpts, revisi
         rows[0]?.reasonDe ??
         `Keine ${addonKey}-Contributions.`;
     await (0, state_write_1.setStateIfChanged)(host, ids.status, status, writeOpts);
-    await (0, state_write_1.setStateIfChanged)(host, ids.contributionsJson, JSON.stringify(rows), writeOpts);
     await (0, state_write_1.setStateIfChanged)(host, ids.reasonDe, reason, writeOpts);
     await (0, state_write_1.setStateIfChanged)(host, ids.revision, revisionValue, writeOpts);
 }
@@ -82,9 +82,16 @@ async function runFlexibleContributionsTick(host, gridForecast) {
     try {
         await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.status, overallStatus, writeOpts);
         await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.generatedAt, now.toISOString(), writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.contributionsJson, JSON.stringify(contributions), writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.activeJson, JSON.stringify(active.map((c) => c.contributionId)), writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.excludedJson, JSON.stringify(excluded), writeOpts);
+        if (revisionChanged) {
+            const filePayload = JSON.stringify({ contributions, active, excluded });
+            try {
+                await (0, plan_store_1.writeFlexibleContributionsFile)(host, filePayload);
+                host.log?.info?.(`flexible contributions file write: bytes=${filePayload.length} count=${contributions.length}`);
+            }
+            catch (e) {
+                host.log?.warn?.(`flexible contributions file write: ${String(e)}`);
+            }
+        }
         await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.reasonDe, `${active.length} aktiv, ${excluded.length} ausgeschlossen.`, writeOpts);
         await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.revision, nextRevision, writeOpts);
         await writeAddonStates(host, "battery", contributions, writeOpts, nextRevision);

@@ -1,4 +1,5 @@
 import { setOptionalNumberIfChanged, setStateIfChanged } from "../policy/core/state_write";
+import { writePlannerIntentFile, type PlanPathHost } from "../operator/plan_store";
 import type { Price15MinSlot } from "../learning/price_forecast/tibber_parse";
 import type { PlannerHost, PlannerInputs } from "./inputs";
 import { readPlannerInputs } from "./inputs";
@@ -194,7 +195,15 @@ export async function runPlannerTick(
 		await setStateIfChanged(host, "planner.last_run_at", intent.resolved_at);
 		await setStateIfChanged(host, "planner.surplus_w", intent.surplus_w);
 		await setStateIfChanged(host, "planner.deficit_w", intent.deficit_w);
-		await setStateIfChanged(host, "planner.intent.last_json", JSON.stringify(intent));
+		const intentJson = JSON.stringify(intent);
+		try {
+			await writePlannerIntentFile(host as PlanPathHost, intentJson);
+			(host.log as { info?: (msg: string) => void } | undefined)?.info?.(
+				`planner intent file write: bytes=${intentJson.length}`,
+			);
+		} catch (e) {
+			host.log?.warn?.(`planner intent file write: ${String(e)}`);
+		}
 		await setStateIfChanged(host, "planner.intent.last_reason_de", intent.reason_de);
 		await setStateIfChanged(host, "planner.intent.thermal.commanded_stage", intent.thermal.commanded_stage);
 		await setStateIfChanged(host, "planner.intent.thermal.commanded_power_w", intent.thermal.commanded_power_w);

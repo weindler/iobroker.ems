@@ -13,6 +13,7 @@ const ensure_states_1 = require("./ensure_states");
 const ems_mirror_1 = require("./ems_mirror");
 const grid_balance_1 = require("./grid_balance");
 const battery_winter_price_inputs_1 = require("../../planner/battery_winter_price_inputs");
+const intent_load_1 = require("../../planner/intent_load");
 const mapping_1 = require("./mapping");
 const registry_1 = require("./profiles/registry");
 const fsm_1 = require("./runtime/fsm");
@@ -325,8 +326,8 @@ async function controlTickInner(host) {
             };
         }
         else {
-            const plannerRaw = await host.getStateAsync("planner.intent.last_json");
-            const plannerParsed = (0, battery_bridge_1.parsePlannerIntentJson)(plannerRaw?.val);
+            const plannerRawStr = await (0, intent_load_1.readPlannerIntentJsonRaw)(host);
+            const plannerParsed = (0, battery_bridge_1.parsePlannerIntentJson)(plannerRawStr);
             const fromPlanner = plannerParsed && (0, battery_bridge_1.plannerWantsActiveBatteryIntent)(plannerParsed.battery)
                 ? (0, battery_bridge_1.deviceIntentFromPlannerDecision)(plannerParsed.battery, plannerParsed.revision, plannerParsed.resolved_at)
                 : null;
@@ -729,21 +730,21 @@ async function batteryUnloadRestore(host) {
 }
 exports.batteryUnloadRestore = batteryUnloadRestore;
 async function resolveWinterGridChargeIntent(host, config, nowMs) {
-    const [winterActive, holdActive, evccCharging, windowsRaw, socTargetRaw, reasonDe, plannerJson] = await Promise.all([
+    const [winterActive, holdActive, evccCharging, windowsRaw, socTargetRaw, reasonDe, plannerRawStr] = await Promise.all([
         readRelBool(host, "planner.intent.battery.winter.active"),
         readRelBool(host, "planner.constraints.battery_hold_active"),
         readRelBool(host, "live.wallbox.charging"),
         host.getStateAsync("planner.intent.battery.winter.windows_json"),
         host.getStateAsync("planner.intent.battery.winter.soc_target_pct"),
         host.getStateAsync("planner.intent.battery.winter.reason_de"),
-        host.getStateAsync("planner.intent.last_json"),
+        (0, intent_load_1.readPlannerIntentJsonRaw)(host),
     ]);
     if (!winterActive || holdActive || evccCharging) {
         return null;
     }
     let revision = 0;
     try {
-        const parsed = plannerJson?.val ? JSON.parse(String(plannerJson.val)) : null;
+        const parsed = plannerRawStr ? JSON.parse(plannerRawStr) : null;
         if (parsed && typeof parsed.revision === "number")
             revision = parsed.revision;
     }

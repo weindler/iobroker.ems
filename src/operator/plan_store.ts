@@ -20,28 +20,99 @@ export function dailyPlanFilePath(host: PlanPathHost): string {
 	return path.join(plannerDir(host), "daily_plan.json");
 }
 
-export async function readForecastPlanFile(host: PlanPathHost): Promise<string | null> {
+export function gridSupplySlotsFilePath(host: PlanPathHost): string {
+	return path.join(plannerDir(host), "grid_supply_slots.json");
+}
+
+export function flexibleContributionsFilePath(host: PlanPathHost): string {
+	return path.join(plannerDir(host), "flexible_contributions.json");
+}
+
+export function plannerIntentFilePath(host: PlanPathHost): string {
+	return path.join(plannerDir(host), "planner_intent_last.json");
+}
+
+async function readPlannerFile(host: PlanPathHost, filePath: string): Promise<string | null> {
 	try {
-		const raw = await fs.readFile(forecastPlanFilePath(host), "utf8");
+		const raw = await fs.readFile(filePath, "utf8");
 		return raw.trim() ? raw : null;
 	} catch {
 		return null;
 	}
+}
+
+async function writePlannerFile(host: PlanPathHost, filePath: string, content: string): Promise<void> {
+	try {
+		await atomicWriteFile(filePath, content);
+	} catch (e) {
+		throw e;
+	}
+}
+
+function safePlannerPath(host: PlanPathHost, build: (host: PlanPathHost) => string): string | null {
+	try {
+		return build(host);
+	} catch {
+		return null;
+	}
+}
+
+export async function readForecastPlanFile(host: PlanPathHost): Promise<string | null> {
+	const filePath = safePlannerPath(host, forecastPlanFilePath);
+	if (!filePath) return null;
+	return readPlannerFile(host, filePath);
 }
 
 export async function writeForecastPlanFile(host: PlanPathHost, planJson: string): Promise<void> {
-	await atomicWriteFile(forecastPlanFilePath(host), planJson);
+	const filePath = safePlannerPath(host, forecastPlanFilePath);
+	if (!filePath) throw new Error("forecast plan file path unavailable");
+	await writePlannerFile(host, filePath, planJson);
 }
 
 export async function readDailyPlanFile(host: PlanPathHost): Promise<string | null> {
-	try {
-		const raw = await fs.readFile(dailyPlanFilePath(host), "utf8");
-		return raw.trim() ? raw : null;
-	} catch {
-		return null;
-	}
+	const filePath = safePlannerPath(host, dailyPlanFilePath);
+	if (!filePath) return null;
+	return readPlannerFile(host, filePath);
 }
 
 export async function writeDailyPlanFile(host: PlanPathHost, planJson: string): Promise<void> {
-	await atomicWriteFile(dailyPlanFilePath(host), planJson);
+	const filePath = safePlannerPath(host, dailyPlanFilePath);
+	if (!filePath) throw new Error("daily plan file path unavailable");
+	await writePlannerFile(host, filePath, planJson);
+}
+
+export async function readGridSupplySlotsFile(host: PlanPathHost): Promise<string | null> {
+	const filePath = safePlannerPath(host, gridSupplySlotsFilePath);
+	if (!filePath) return null;
+	return readPlannerFile(host, filePath);
+}
+
+export async function writeGridSupplySlotsFile(host: PlanPathHost, slotsJson: string): Promise<void> {
+	const filePath = safePlannerPath(host, gridSupplySlotsFilePath);
+	if (!filePath) throw new Error("grid supply slots file path unavailable");
+	await writePlannerFile(host, filePath, slotsJson);
+}
+
+export async function readFlexibleContributionsFile(host: PlanPathHost): Promise<string | null> {
+	const filePath = safePlannerPath(host, flexibleContributionsFilePath);
+	if (!filePath) return null;
+	return readPlannerFile(host, filePath);
+}
+
+export async function writeFlexibleContributionsFile(host: PlanPathHost, payloadJson: string): Promise<void> {
+	const filePath = safePlannerPath(host, flexibleContributionsFilePath);
+	if (!filePath) throw new Error("flexible contributions file path unavailable");
+	await writePlannerFile(host, filePath, payloadJson);
+}
+
+export async function readPlannerIntentFile(host: PlanPathHost): Promise<string | null> {
+	const filePath = safePlannerPath(host, plannerIntentFilePath);
+	if (!filePath) return null;
+	return readPlannerFile(host, filePath);
+}
+
+export async function writePlannerIntentFile(host: PlanPathHost, intentJson: string): Promise<void> {
+	const filePath = safePlannerPath(host, plannerIntentFilePath);
+	if (!filePath) throw new Error("planner intent file path unavailable");
+	await writePlannerFile(host, filePath, intentJson);
 }

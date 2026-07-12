@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.gridSupplyRevisionForTest = exports.runGridSupplyTick = exports.resetGridSupplyRevisionForTest = void 0;
 const state_write_1 = require("../../policy/core/state_write");
+const plan_store_1 = require("../plan_store");
 const grid_1 = require("./grid");
 const grid_read_1 = require("./grid_read");
 const grid_states_1 = require("./grid_states");
@@ -27,7 +28,16 @@ async function runGridSupplyTick(host, prebuilt) {
         await (0, state_write_1.setOptionalNumberIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.currentPriceCtPerKwh, forecast.currentPriceCtPerKwh, writeOpts);
         await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.importAllowed, forecast.gridImportAllowed, writeOpts);
         await (0, state_write_1.setOptionalNumberIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.maxImportPowerW, forecast.effectiveMaxGridImportW, writeOpts);
-        await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.slotsJson, JSON.stringify(forecast.slots), writeOpts);
+        if (revisionChanged) {
+            const slotsJson = JSON.stringify(forecast.slots);
+            try {
+                await (0, plan_store_1.writeGridSupplySlotsFile)(host, slotsJson);
+                host.log?.info?.(`grid supply file write: bytes=${slotsJson.length} slots=${forecast.slots.length}`);
+            }
+            catch (e) {
+                host.log?.warn?.(`grid supply file write: ${String(e)}`);
+            }
+        }
         await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.reasonDe, forecast.reasonDe, writeOpts);
         await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.revision, nextRevision, writeOpts);
         if (revisionChanged) {

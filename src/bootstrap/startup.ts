@@ -31,6 +31,8 @@ import {
 	syncAllMappingsFromConfig,
 	type StaticStateTreeHost,
 } from "./ensure_static_tree";
+import { markModuleInit } from "../diagnostics/init_guard";
+import { probeStartupMemory } from "../diagnostics/startup_memory";
 import { hydratePersistedState } from "./persist_hydrate";
 import { runPostBootstrapReconciliation } from "./reconcile";
 
@@ -131,10 +133,22 @@ export async function runAdapterBootstrap(
 	}
 
 	trace?.("E", "subscriptions");
+	probeStartupMemory(host.log, "before_wallbox_runtime");
+	markModuleInit("wallbox_runtime");
 	await step("wallbox runtime", () => startWallboxModuleRuntime(host));
+	probeStartupMemory(host.log, "after_wallbox_runtime");
+	probeStartupMemory(host.log, "before_battery_runtime");
+	markModuleInit("battery_runtime");
 	await step("battery runtime", () => startBatteryModuleRuntime(host));
+	probeStartupMemory(host.log, "after_battery_runtime");
+	probeStartupMemory(host.log, "before_immersion_runtime");
+	markModuleInit("immersion_runtime");
 	await step("immersion runtime", () => startImmersionHeaterModuleRuntime(host));
+	probeStartupMemory(host.log, "after_immersion_runtime");
+	probeStartupMemory(host.log, "before_ac_runtime");
+	markModuleInit("air_conditioning_runtime");
 	await step("air conditioning runtime", () => startAirConditioningModuleRuntime(host));
+	probeStartupMemory(host.log, "after_ac_runtime");
 
 	trace?.("F", "runtime");
 	await step("failsafe runner", async () => startFailsafeRunner(host));

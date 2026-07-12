@@ -6,6 +6,7 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchHistoryRowsLookback = exports.fetchHistoryRowsAggregated = exports.fetchHistoryRowsInRange = exports.resetHistoryQueryQueueForTests = exports.withHistoryTimeout = exports.historyStateCandidates = exports.dayBoundsMs = exports.normalizeHistoryRows = exports.normalizeHistoryTs = exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_QUERY_BULK_OPTIONS = exports.HISTORY_QUERY_PER_DAY_OPTIONS = exports.HISTORY_AGGREGATES = exports.BULK_LOOKBACK_MAX_DAYS = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_BULK_TIMEOUT_MS = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
+const memory_inventory_1 = require("../diagnostics/memory_inventory");
 exports.HISTORY_ROWS_PER_DAY = 500;
 exports.HISTORY_CHUNK_TIMEOUT_MS = 45_000;
 exports.HISTORY_BULK_TIMEOUT_MS = 45_000;
@@ -197,9 +198,13 @@ function resetHistoryQueryQueueForTests() {
     historyQueryChain = Promise.resolve();
 }
 exports.resetHistoryQueryQueueForTests = resetHistoryQueryQueueForTests;
+function trackHistoryFetch(rows, queryKind, daysOrSlots) {
+    (0, memory_inventory_1.recordHistoryFetchInventory)((0, memory_inventory_1.getMemoryInventoryContext)(), rows.length, { queryKind, daysOrSlots });
+    return rows;
+}
 async function fetchHistoryRowsInRange(host, stateId, startMs, endMs, count = exports.HISTORY_ROWS_PER_DAY, timeoutMs = exports.HISTORY_CHUNK_TIMEOUT_MS, aggregate = "onchange") {
     const result = await fetchHistoryRowsInRangeDetailed(host, stateId, startMs, endMs, count, timeoutMs, aggregate);
-    return result.rows;
+    return trackHistoryFetch(result.rows, "in_range", Math.max(1, Math.ceil((endMs - startMs) / MS_PER_DAY)));
 }
 exports.fetchHistoryRowsInRange = fetchHistoryRowsInRange;
 /** Stündlich/täglich aggregiert — umgeht kaputte onChange-Timestamps in Rohdaten. */
@@ -216,9 +221,9 @@ async function fetchHistoryRowsAggregated(host, stateId, startMs, endMs, count, 
         count,
     }, timeoutMs);
     if (timedOut || error) {
-        return [];
+        return trackHistoryFetch([], "aggregated", Math.ceil((endMs - startMs) / stepMs));
     }
-    return normalizeHistoryRows(rows);
+    return trackHistoryFetch(normalizeHistoryRows(rows), "aggregated", Math.ceil((endMs - startMs) / stepMs));
 }
 exports.fetchHistoryRowsAggregated = fetchHistoryRowsAggregated;
 function bulkCountForDays(days) {
@@ -345,13 +350,13 @@ async function fetchHistoryRowsLookback(host, stateId, lookbackDays, countPerDay
             else if (host.log?.debug) {
                 host.log.debug?.(`History query: ${attempt.rows.length} Zeilen für ${candidateId} (${lookbackDays}d)`);
             }
-            return attempt.rows;
+            return trackHistoryFetch(attempt.rows, "lookback", lookbackDays);
         }
     }
     if (host.log?.warn) {
         const tried = candidates.join(" → ");
         host.log.warn(`History query: 0 rows for ${stateId} (${lookbackDays}d, tried: ${tried}, ${formatHistoryStats(combinedStats)})`);
     }
-    return [];
+    return trackHistoryFetch([], "lookback", lookbackDays);
 }
 exports.fetchHistoryRowsLookback = fetchHistoryRowsLookback;

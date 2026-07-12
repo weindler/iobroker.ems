@@ -44,6 +44,7 @@ const startup_2 = require("./backup_integration/startup");
 const startup_rearm_1 = require("./backup_integration/startup_rearm");
 const execution_mode_2 = require("./execution_mode");
 const tree_paths_1 = require("./tree_paths");
+const startup_memory_1 = require("./diagnostics/startup_memory");
 const inbox_1 = require("./inbox");
 const mapping_config_1 = require("./mapping_config");
 const ems_light_1 = require("./ems_light");
@@ -113,7 +114,9 @@ class Ems extends utils.Adapter {
         }
     }
     async onReady() {
+        (0, startup_memory_1.probeStartupMemory)(this.log, "onready_start");
         const integrationCtx = await (0, startup_2.runBackupIntegrationStartup)(this);
+        (0, startup_memory_1.probeStartupMemory)(this.log, "after_backup_integration");
         const recovery = await (0, startup_recovery_1.runRestoreStartupRecovery)(this);
         if (!recovery.ok) {
             this.log.error(`Restore startup recovery failed: ${recovery.error}`);
@@ -125,6 +128,9 @@ class Ems extends utils.Adapter {
             return;
         }
         this.log.info("EMS adapter ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
+        (0, startup_memory_1.probeStartupMemory)(this.log, "before_adapter_ready_log");
+        (0, startup_memory_1.schedulePostReadyMemoryProbes)(this.log);
+        (0, startup_memory_1.logMemoryDiagnosticReport)(this.log);
         await this.step("backup export init", async () => {
             await (0, retention_1.cleanupTempExports)(this);
             await (0, export_handler_1.initBackupExportRuntime)(this);

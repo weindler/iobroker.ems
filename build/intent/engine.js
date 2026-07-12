@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.resetIntentEngineForTest = exports.getLastResolvedWallboxIntentForTest = exports.stopIntentEngine = exports.handleIntentStateChange = exports.initIntentEngine = exports.submitThermalControlFromRuntime = exports.runIntentEngine = exports.hydrateIntentPersist = void 0;
+const init_guard_1 = require("../diagnostics/init_guard");
 const state_write_1 = require("../policy/core/state_write");
 const addon_active_1 = require("./core/addon_active");
 const aggregate_1 = require("./core/aggregate");
@@ -388,6 +389,10 @@ async function submitThermalControlFromRuntime(host, mode) {
 }
 exports.submitThermalControlFromRuntime = submitThermalControlFromRuntime;
 async function initIntentEngine(host) {
+    const initMark = (0, init_guard_1.markModuleInit)("intent_engine");
+    if (initMark.duplicate) {
+        host.log.warn?.(`Intent Engine init duplicate call #${initMark.count}`);
+    }
     if (engineActive && subscribedHost === host) {
         return;
     }

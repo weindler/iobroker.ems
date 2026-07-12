@@ -27,6 +27,7 @@ exports.restoreLearningPersistenceFromStates = exports.mirrorLearningPersistence
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const state_util_1 = require("../ems_light/state_util");
+const memory_inventory_1 = require("../diagnostics/memory_inventory");
 const ARTIFACTS = [
     {
         key: "battery_runtime",
@@ -171,5 +172,12 @@ async function restoreLearningPersistenceFromStates(host) {
     if (restored > 0) {
         await host.setStateAsync(`${BASE}.last_restore`, { val: new Date().toISOString(), ack: true });
     }
+    (0, memory_inventory_1.recordMemoryInventory)({
+        module: "learning_persist_mirror",
+        checkpoint: "after_restore",
+        recordsLoaded: restored,
+        arrayEntries: ARTIFACTS.length,
+        rawHistoryRetained: false,
+    });
 }
 exports.restoreLearningPersistenceFromStates = restoreLearningPersistenceFromStates;

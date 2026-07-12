@@ -18,13 +18,16 @@ import {
 	tickPowerRollup,
 	type PowerRollupHost,
 } from "../learning/power_rollup";
-import { ensurePolicyStateTree, initPolicyEngine, stopPolicyEngine, type PolicyEngineHost } from "../policy";
+import { ensurePolicyStateTree, initPolicyEngine, stopPolicyEngine, type PolicyEngineHost, getPolicyEngineMemoryDiagnostics } from "../policy";
 import { ensureIntentStates, initIntentEngine, stopIntentEngine, type IntentEngineHost } from "../intent";
 import { ensurePlannerStateTree, runPlannerRuntime, stopPlanner, type PlannerHost } from "../planner";
 import { resetGlobalModesRuntime } from "../global_modes";
 import { ensureEmsLightStates } from "./ensure_states";
 import { runEmsLightPhase1Tick } from "./tick";
 import type { LiveCacheHost } from "./live_cache";
+import { logMemoryInventory, setMemoryInventoryContext } from "../diagnostics/memory_inventory";
+import { markModuleInit } from "../diagnostics/init_guard";
+import { probeStartupMemory } from "../diagnostics/startup_memory";
 
 const DEFAULT_TICK_SEC = 60;
 const GLOBAL_MODES_REQUESTED_STATE = "global_modes.requested";
@@ -143,33 +146,75 @@ export async function ensureEmsLightStateTree(adapter: ioBroker.Adapter): Promis
 export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Promise<void> {
 	const host = adapter as unknown as LiveCacheHost;
 
+	probeStartupMemory(adapter.log, "before_planner_runtime");
+	markModuleInit("planner_runtime");
 	await runPlannerRuntime(host as unknown as PlannerHost & LiveCacheHost);
+	probeStartupMemory(adapter.log, "after_planner_runtime");
+
 	energyDailyRollupHost = buildRollupHost(adapter);
 	powerRollupHost = energyDailyRollupHost;
+
+	probeStartupMemory(adapter.log, "before_energy_daily_rollup_init");
+	markModuleInit("energy_daily_rollup");
 	await initEnergyDailyRollup(energyDailyRollupHost);
+	logMemoryInventory(adapter.log, "energy_daily_rollup", "after_init");
+	probeStartupMemory(adapter.log, "after_energy_daily_rollup_init");
+
+	probeStartupMemory(adapter.log, "before_power_rollup_init");
+	markModuleInit("power_rollup");
 	await initPowerRollup(powerRollupHost);
+	logMemoryInventory(adapter.log, "power_rollup", "after_init");
+	probeStartupMemory(adapter.log, "after_power_rollup_init");
+
+	probeStartupMemory(adapter.log, "before_learning_runtime_init");
+	markModuleInit("learning_runtime");
 	if (learningHost) {
 		await startPvBiasLearningRuntime(adapter, learningHost);
 	} else {
 		learningHost = await ensureLearningStateTree(adapter);
 		await startPvBiasLearningRuntime(adapter, learningHost);
 	}
+	probeStartupMemory(adapter.log, "after_learning_runtime_init");
+
+	probeStartupMemory(adapter.log, "before_weather_learning_init");
+	markModuleInit("weather_learning");
 	await initWeatherLearning(adapter);
+	probeStartupMemory(adapter.log, "after_weather_learning_init");
+
 	const policyHost = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & PolicyEngineHost);
-	const policyInit = initPolicyEngine(policyHost).catch((e) => {
-		adapter.log.error(`Policy Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
-	});
+	probeStartupMemory(adapter.log, "before_policy_engine_init");
+	markModuleInit("policy_engine_startup");
+	let policyInitSettled = false;
+	const policyInit = initPolicyEngine(policyHost)
+		.then(() => {
+			policyInitSettled = true;
+		})
+		.catch((e) => {
+			adapter.log.error(`Policy Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
+		});
 	await waitWithStartupTimeout(policyInit, POLICY_STARTUP_TIMEOUT_MS, () => {
 		adapter.log.warn(
 			`Policy Engine init still running after ${POLICY_STARTUP_TIMEOUT_MS}ms; continuing adapter startup`,
 		);
 	});
+	const policyDiag = getPolicyEngineMemoryDiagnostics();
+	probeStartupMemory(
+		adapter.log,
+		policyInitSettled ? "after_policy_engine_init" : "after_policy_engine_init_timeout",
+	);
+	adapter.log.info?.(
+		`EMS mem-policy initCalls=${policyDiag.initCalls} runsInFlight=${policyDiag.runsInFlight} settled=${policyInitSettled}`,
+	);
+
+	probeStartupMemory(adapter.log, "before_intent_engine_init");
+	markModuleInit("intent_engine");
 	const intentHost = buildIntentHost(adapter);
 	try {
 		await initIntentEngine(intentHost);
 	} catch (e) {
 		adapter.log.error(`User Intent Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
 	}
+	probeStartupMemory(adapter.log, "after_intent_engine_init");
 	policyAdapter = adapter;
 	try {
 		await adapter.subscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE);

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.policyProviderRegistry = exports.stopPolicyEngine = exports.handleGlobalModesStateChange = exports.initPolicyEngine = exports.runPolicyEngine = exports.ensurePolicyStateTree = void 0;
+exports.policyProviderRegistry = exports.stopPolicyEngine = exports.handleGlobalModesStateChange = exports.initPolicyEngine = exports.runPolicyEngine = exports.ensurePolicyStateTree = exports.resetPolicyEngineMemoryDiagnosticsForTest = exports.getPolicyEngineMemoryDiagnostics = void 0;
 const run_1 = require("../global_modes/run");
 const constants_1 = require("./core/constants");
 const hash_1 = require("./core/hash");
@@ -16,12 +16,28 @@ const ensure_states_1 = require("../global_modes/ensure_states");
 const ensure_states_2 = require("./global/ensure_states");
 const persist_1 = require("./global/persist");
 const hash_2 = require("./core/hash");
+const init_guard_1 = require("../diagnostics/init_guard");
+const memory_inventory_1 = require("../diagnostics/memory_inventory");
 let lastSystemRevision = null;
 /** Engine ist aktiv und darf auf stateChange reagieren (unabhängig von der ioBroker-Subscription). */
 let subscribed = false;
 /** Ob wir über den Host selbst subscribed haben (v. a. für Tests / Standalone). */
 let patternSubscribed = false;
 let subscribedHost = null;
+let policyEngineInitCalls = 0;
+let policyEngineRunsInFlight = 0;
+function getPolicyEngineMemoryDiagnostics() {
+    return {
+        initCalls: policyEngineInitCalls,
+        runsInFlight: policyEngineRunsInFlight,
+    };
+}
+exports.getPolicyEngineMemoryDiagnostics = getPolicyEngineMemoryDiagnostics;
+function resetPolicyEngineMemoryDiagnosticsForTest() {
+    policyEngineInitCalls = 0;
+    policyEngineRunsInFlight = 0;
+}
+exports.resetPolicyEngineMemoryDiagnosticsForTest = resetPolicyEngineMemoryDiagnosticsForTest;
 const REQUESTED_PATTERN = "global_modes.requested";
 function snapshotForJson(snapshot) {
     const { validation, ...rest } = snapshot;
@@ -139,49 +155,60 @@ async function ensurePolicyStateTree(host) {
 }
 exports.ensurePolicyStateTree = ensurePolicyStateTree;
 async function runPolicyEngine(host) {
-    await (0, ensure_states_2.ensureSystemPolicyStates)(host);
-    await (0, ensure_states_2.ensureGlobalPolicyStates)(host);
-    const globalModes = await (0, run_1.runGlobalModes)(host);
-    const adminCfg = (0, config_1.globalPolicyConfigFromAdapter)(host.config);
-    const configured = (0, build_1.buildConfiguredGlobalPolicy)(adminCfg);
-    const effective = (0, build_1.buildEffectiveGlobalPolicy)(configured, globalModes.profile);
-    const engineIssues = [...globalModes.issues];
-    let engineValid = globalModes.valid && effective.validation.valid;
-    const providers = registry_1.policyProviderRegistry.list();
-    for (const provider of providers) {
-        try {
-            const cfg = await provider.readConfig();
-            const facts = await provider.readFacts();
-            const pConfigured = provider.buildConfiguredPolicy(cfg, facts);
-            const pEffective = provider.buildEffectivePolicy(pConfigured, facts, globalModes.profile);
-            const pValidation = provider.validate(pEffective);
-            if (!pValidation.valid) {
-                engineValid = false;
-                engineIssues.push(...pValidation.issues);
+    policyEngineRunsInFlight++;
+    try {
+        await (0, ensure_states_2.ensureSystemPolicyStates)(host);
+        await (0, ensure_states_2.ensureGlobalPolicyStates)(host);
+        const globalModes = await (0, run_1.runGlobalModes)(host);
+        const adminCfg = (0, config_1.globalPolicyConfigFromAdapter)(host.config);
+        const configured = (0, build_1.buildConfiguredGlobalPolicy)(adminCfg);
+        const effective = (0, build_1.buildEffectiveGlobalPolicy)(configured, globalModes.profile);
+        const engineIssues = [...globalModes.issues];
+        let engineValid = globalModes.valid && effective.validation.valid;
+        const providers = registry_1.policyProviderRegistry.list();
+        for (const provider of providers) {
+            try {
+                const cfg = await provider.readConfig();
+                const facts = await provider.readFacts();
+                const pConfigured = provider.buildConfiguredPolicy(cfg, facts);
+                const pEffective = provider.buildEffectivePolicy(pConfigured, facts, globalModes.profile);
+                const pValidation = provider.validate(pEffective);
+                if (!pValidation.valid) {
+                    engineValid = false;
+                    engineIssues.push(...pValidation.issues);
+                }
+                await writeProviderPolicyStates(host, provider, pConfigured, pEffective, globalModes);
             }
-            await writeProviderPolicyStates(host, provider, pConfigured, pEffective, globalModes);
+            catch (e) {
+                engineValid = false;
+                engineIssues.push({
+                    code: "provider_runtime_error",
+                    severity: "error",
+                    message: `Provider ${provider.id}: ${String(e)}`,
+                });
+                host.log.warn(`Policy provider ${provider.id} failed: ${e}`);
+            }
         }
-        catch (e) {
-            engineValid = false;
-            engineIssues.push({
-                code: "provider_runtime_error",
-                severity: "error",
-                message: `Provider ${provider.id}: ${String(e)}`,
-            });
-            host.log.warn(`Policy provider ${provider.id} failed: ${e}`);
-        }
+        const systemRevision = await writeSystemStates(host, providers, engineIssues, engineValid);
+        const globalPolicyRevision = await writeGlobalPolicyStates(host, configured, effective);
+        return {
+            globalModes,
+            systemRevision,
+            globalPolicyRevision,
+            providersProcessed: providers.length,
+        };
     }
-    const systemRevision = await writeSystemStates(host, providers, engineIssues, engineValid);
-    const globalPolicyRevision = await writeGlobalPolicyStates(host, configured, effective);
-    return {
-        globalModes,
-        systemRevision,
-        globalPolicyRevision,
-        providersProcessed: providers.length,
-    };
+    finally {
+        policyEngineRunsInFlight--;
+    }
 }
 exports.runPolicyEngine = runPolicyEngine;
 async function initPolicyEngine(host) {
+    policyEngineInitCalls++;
+    const initMark = (0, init_guard_1.markModuleInit)("policy_engine");
+    if (initMark.duplicate) {
+        host.log.warn?.(`Policy Engine init duplicate call #${initMark.count}`);
+    }
     host.log.debug?.("Policy Engine initialized");
     // Engine immer als aktiv markieren — die eigentliche ioBroker-Subscription auf
     // global_modes.requested registriert die Adapterschicht auf dem echten Adapter
@@ -190,6 +217,12 @@ async function initPolicyEngine(host) {
     subscribedHost = host;
     subscribed = true;
     await runPolicyEngine(host);
+    (0, memory_inventory_1.recordMemoryInventory)({
+        module: "policy_engine",
+        checkpoint: "init_complete",
+        recordsLoaded: registry_1.policyProviderRegistry.list().length,
+        rawHistoryRetained: false,
+    });
     // Optionaler Selbst-Subscribe (Standalone / Unit-Tests). Im Adapterbetrieb
     // werden State-Änderungen über das zentrale stateChange-Event geliefert.
     if (!patternSubscribed && host.subscribeStatesAsync) {

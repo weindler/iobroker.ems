@@ -4,6 +4,8 @@
  * getHistoryAsync nur wenn kein sendToAsync am Host.
  */
 
+import { getMemoryInventoryContext, recordHistoryFetchInventory } from "../diagnostics/memory_inventory";
+
 export type HistoryQueryHost = {
 	getHistoryAsync: (
 		id: string,
@@ -258,6 +260,15 @@ export function resetHistoryQueryQueueForTests(): void {
 	historyQueryChain = Promise.resolve();
 }
 
+function trackHistoryFetch(
+	rows: ioBroker.GetHistoryResult,
+	queryKind: string,
+	daysOrSlots?: number,
+): ioBroker.GetHistoryResult {
+	recordHistoryFetchInventory(getMemoryInventoryContext(), rows.length, { queryKind, daysOrSlots });
+	return rows;
+}
+
 export async function fetchHistoryRowsInRange(
 	host: HistoryQueryHost,
 	stateId: string,
@@ -276,7 +287,11 @@ export async function fetchHistoryRowsInRange(
 		timeoutMs,
 		aggregate,
 	);
-	return result.rows;
+	return trackHistoryFetch(
+		result.rows,
+		"in_range",
+		Math.max(1, Math.ceil((endMs - startMs) / MS_PER_DAY)),
+	);
 }
 
 /** Stündlich/täglich aggregiert — umgeht kaputte onChange-Timestamps in Rohdaten. */
@@ -309,9 +324,9 @@ export async function fetchHistoryRowsAggregated(
 	);
 
 	if (timedOut || error) {
-		return [];
+		return trackHistoryFetch([], "aggregated", Math.ceil((endMs - startMs) / stepMs));
 	}
-	return normalizeHistoryRows(rows);
+	return trackHistoryFetch(normalizeHistoryRows(rows), "aggregated", Math.ceil((endMs - startMs) / stepMs));
 }
 
 function bulkCountForDays(days: number): number {
@@ -530,7 +545,7 @@ export async function fetchHistoryRowsLookback(
 			} else if (host.log?.debug) {
 				host.log.debug?.(`History query: ${attempt.rows.length} Zeilen für ${candidateId} (${lookbackDays}d)`);
 			}
-			return attempt.rows;
+			return trackHistoryFetch(attempt.rows, "lookback", lookbackDays);
 		}
 	}
 
@@ -540,5 +555,5 @@ export async function fetchHistoryRowsLookback(
 			`History query: 0 rows for ${stateId} (${lookbackDays}d, tried: ${tried}, ${formatHistoryStats(combinedStats)})`,
 		);
 	}
-	return [];
+	return trackHistoryFetch([], "lookback", lookbackDays);
 }

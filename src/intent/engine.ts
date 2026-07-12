@@ -1,3 +1,4 @@
+import { markModuleInit } from "../diagnostics/init_guard";
 import type { StateHost } from "../ems_light/state_util";
 import { setStateIfChanged } from "../policy/core/state_write";
 import { isAddonIntentActive } from "./core/addon_active";
@@ -495,6 +496,10 @@ export async function submitThermalControlFromRuntime(
 }
 
 export async function initIntentEngine(host: IntentEngineHost): Promise<void> {
+	const initMark = markModuleInit("intent_engine");
+	if (initMark.duplicate) {
+		host.log.warn?.(`Intent Engine init duplicate call #${initMark.count}`);
+	}
 	if (engineActive && subscribedHost === host) {
 		return;
 	}

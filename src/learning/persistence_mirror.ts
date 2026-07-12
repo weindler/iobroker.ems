@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { ensureChannel, ensureStates, type StateDef, type StateHost } from "../ems_light/state_util";
+import { recordMemoryInventory } from "../diagnostics/memory_inventory";
 
 /**
  * Backup-Spiegel für die Learning-Zusammenfassungen.
@@ -177,4 +178,11 @@ export async function restoreLearningPersistenceFromStates(host: PersistenceMirr
 	if (restored > 0) {
 		await host.setStateAsync(`${BASE}.last_restore`, { val: new Date().toISOString(), ack: true });
 	}
+	recordMemoryInventory({
+		module: "learning_persist_mirror",
+		checkpoint: "after_restore",
+		recordsLoaded: restored,
+		arrayEntries: ARTIFACTS.length,
+		rawHistoryRetained: false,
+	});
 }

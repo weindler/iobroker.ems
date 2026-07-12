@@ -18,6 +18,8 @@ import {
 	type PersistenceMirrorHost,
 } from "../persistence_mirror";
 import type { StateHost } from "../../ems_light/state_util";
+import { setMemoryInventoryContext, logMemoryInventory } from "../../diagnostics/memory_inventory";
+import { probeStartupMemory } from "../../diagnostics/startup_memory";
 
 let pvBiasTimer: NodeJS.Timeout | null = null;
 
@@ -63,19 +65,31 @@ export async function startPvBiasLearningRuntime(
 	);
 }
 
+async function runLearningModule(
+	host: PvBiasRunHost & StateHost,
+	module: string,
+	run: () => Promise<void>,
+): Promise<void> {
+	setMemoryInventoryContext(module);
+	probeStartupMemory(host.log, `before_learning_${module}`);
+	await run();
+	logMemoryInventory(host.log, module, `after_${module}`);
+	probeStartupMemory(host.log, `after_learning_${module}`);
+}
+
 async function runLearningTick(host: PvBiasRunHost & StateHost): Promise<void> {
-	await ensureEnergyDailyRollupForLearning(host);
-	await runPvBiasLearning(host);
-	await runPvHorizon(host);
-	await runPriceLearning(host);
-	// Rollup-Backfill vor House-Load/Battery — sonst fällt der erste Lauf auf history.0 zurück.
-	await ensurePowerRollupForLearning(host);
-	// House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
-	await runHouseLoadLearning(host);
-	await runThermalRuntimeLearning(host);
-	await runBatteryRuntimeLearning(host);
-	await runPriceForecastLearning(host);
-	await mirrorLearningPersistenceToStates(host as unknown as PersistenceMirrorHost);
+	await runLearningModule(host, "energy_daily_rollup", () => ensureEnergyDailyRollupForLearning(host));
+	await runLearningModule(host, "pv_bias", () => runPvBiasLearning(host));
+	await runLearningModule(host, "pv_horizon", () => runPvHorizon(host));
+	await runLearningModule(host, "price_learning", () => runPriceLearning(host));
+	await runLearningModule(host, "power_rollup", () => ensurePowerRollupForLearning(host));
+	await runLearningModule(host, "house_load", () => runHouseLoadLearning(host));
+	await runLearningModule(host, "thermal_runtime", () => runThermalRuntimeLearning(host));
+	await runLearningModule(host, "battery_runtime", () => runBatteryRuntimeLearning(host));
+	await runLearningModule(host, "price_forecast", () => runPriceForecastLearning(host));
+	await runLearningModule(host, "persistence_mirror", () =>
+		mirrorLearningPersistenceToStates(host as unknown as PersistenceMirrorHost),
+	);
 }
 
 export async function initPvBiasLearning(adapter: ioBroker.Adapter): Promise<void> {

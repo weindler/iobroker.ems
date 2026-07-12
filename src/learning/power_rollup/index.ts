@@ -1,4 +1,5 @@
 import { asNum } from "../../ems_light/state_util";
+import { recordMemoryInventory } from "../../diagnostics/memory_inventory";
 import { ensurePowerRollupBackfill, type PowerRollupBackfillHost } from "./backfill";
 import {
 	bufferToHourRecord,
@@ -268,6 +269,13 @@ export async function initPowerRollup(host: PowerRollupHost): Promise<void> {
 	}
 
 	host.log.debug?.(`Power-Rollup ready (${sources.length} source(s))`);
+	recordMemoryInventory({
+		module: "power_rollup",
+		checkpoint: "after_init",
+		recordsLoaded: sources.length,
+		mapEntries: sourceRuntimes.size,
+		rawHistoryRetained: false,
+	});
 }
 
 export async function tickPowerRollup(host: PowerRollupHost): Promise<void> {

@@ -24,6 +24,8 @@ import {
 } from "./global/ensure_states";
 import { readGlobalPolicyPersistRevision, writeGlobalPolicyPersist } from "./global/persist";
 import { stableStringify } from "./core/hash";
+import { markModuleInit } from "../diagnostics/init_guard";
+import { recordMemoryInventory } from "../diagnostics/memory_inventory";
 
 export type PolicyEngineHost = GlobalModesHost & {
 	subscribeStatesAsync?: (pattern: string, callback: () => void) => Promise<void>;
@@ -43,6 +45,23 @@ let subscribed = false;
 /** Ob wir über den Host selbst subscribed haben (v. a. für Tests / Standalone). */
 let patternSubscribed = false;
 let subscribedHost: PolicyEngineHost | null = null;
+let policyEngineInitCalls = 0;
+let policyEngineRunsInFlight = 0;
+
+export function getPolicyEngineMemoryDiagnostics(): {
+	initCalls: number;
+	runsInFlight: number;
+} {
+	return {
+		initCalls: policyEngineInitCalls,
+		runsInFlight: policyEngineRunsInFlight,
+	};
+}
+
+export function resetPolicyEngineMemoryDiagnosticsForTest(): void {
+	policyEngineInitCalls = 0;
+	policyEngineRunsInFlight = 0;
+}
 
 const REQUESTED_PATTERN = "global_modes.requested";
 
@@ -204,6 +223,8 @@ export async function ensurePolicyStateTree(host: PolicyEngineHost): Promise<voi
 }
 
 export async function runPolicyEngine(host: PolicyEngineHost): Promise<PolicyEngineRunResult> {
+	policyEngineRunsInFlight++;
+	try {
 	await ensureSystemPolicyStates(host);
 	await ensureGlobalPolicyStates(host);
 
@@ -248,9 +269,17 @@ export async function runPolicyEngine(host: PolicyEngineHost): Promise<PolicyEng
 		globalPolicyRevision,
 		providersProcessed: providers.length,
 	};
+	} finally {
+		policyEngineRunsInFlight--;
+	}
 }
 
 export async function initPolicyEngine(host: PolicyEngineHost): Promise<void> {
+	policyEngineInitCalls++;
+	const initMark = markModuleInit("policy_engine");
+	if (initMark.duplicate) {
+		host.log.warn?.(`Policy Engine init duplicate call #${initMark.count}`);
+	}
 	host.log.debug?.("Policy Engine initialized");
 	// Engine immer als aktiv markieren — die eigentliche ioBroker-Subscription auf
 	// global_modes.requested registriert die Adapterschicht auf dem echten Adapter
@@ -260,6 +289,12 @@ export async function initPolicyEngine(host: PolicyEngineHost): Promise<void> {
 	subscribed = true;
 
 	await runPolicyEngine(host);
+	recordMemoryInventory({
+		module: "policy_engine",
+		checkpoint: "init_complete",
+		recordsLoaded: policyProviderRegistry.list().length,
+		rawHistoryRetained: false,
+	});
 
 	// Optionaler Selbst-Subscribe (Standalone / Unit-Tests). Im Adapterbetrieb
 	// werden State-Änderungen über das zentrale stateChange-Event geliefert.

@@ -21,6 +21,8 @@ Object.defineProperty(exports, "resetBootstrapBarrierForTest", { enumerable: tru
 const context_1 = require("./context");
 Object.defineProperty(exports, "getBootstrapRunContext", { enumerable: true, get: function () { return context_1.getBootstrapRunContext; } });
 const ensure_static_tree_1 = require("./ensure_static_tree");
+const init_guard_1 = require("../diagnostics/init_guard");
+const startup_memory_1 = require("../diagnostics/startup_memory");
 const persist_hydrate_1 = require("./persist_hydrate");
 const reconcile_1 = require("./reconcile");
 async function runCriticalStep(step, label, fn, strict) {
@@ -79,10 +81,22 @@ async function runAdapterBootstrap(host, step, options = {}) {
         return;
     }
     trace?.("E", "subscriptions");
+    (0, startup_memory_1.probeStartupMemory)(host.log, "before_wallbox_runtime");
+    (0, init_guard_1.markModuleInit)("wallbox_runtime");
     await step("wallbox runtime", () => (0, wallbox_1.startWallboxModuleRuntime)(host));
+    (0, startup_memory_1.probeStartupMemory)(host.log, "after_wallbox_runtime");
+    (0, startup_memory_1.probeStartupMemory)(host.log, "before_battery_runtime");
+    (0, init_guard_1.markModuleInit)("battery_runtime");
     await step("battery runtime", () => (0, battery_1.startBatteryModuleRuntime)(host));
+    (0, startup_memory_1.probeStartupMemory)(host.log, "after_battery_runtime");
+    (0, startup_memory_1.probeStartupMemory)(host.log, "before_immersion_runtime");
+    (0, init_guard_1.markModuleInit)("immersion_runtime");
     await step("immersion runtime", () => (0, immersion_heater_1.startImmersionHeaterModuleRuntime)(host));
+    (0, startup_memory_1.probeStartupMemory)(host.log, "after_immersion_runtime");
+    (0, startup_memory_1.probeStartupMemory)(host.log, "before_ac_runtime");
+    (0, init_guard_1.markModuleInit)("air_conditioning_runtime");
     await step("air conditioning runtime", () => (0, air_conditioning_1.startAirConditioningModuleRuntime)(host));
+    (0, startup_memory_1.probeStartupMemory)(host.log, "after_ac_runtime");
     trace?.("F", "runtime");
     await step("failsafe runner", async () => (0, failsafe_runner_1.startFailsafeRunner)(host));
     await step("ems-light runtime", () => (0, ems_light_1.startEmsLightPhase1Runtime)(host), 45_000);

@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.stopPowerRollup = exports.fetchRollupHouseLoadSamples = exports.fetchRollupPowerHistory = exports.ensurePowerRollupForLearning = exports.handlePowerRollupStateChange = exports.tickPowerRollup = exports.initPowerRollup = void 0;
 const state_util_1 = require("../../ems_light/state_util");
+const memory_inventory_1 = require("../../diagnostics/memory_inventory");
 const backfill_1 = require("./backfill");
 const buffer_1 = require("./buffer");
 const hour_1 = require("./hour");
@@ -200,6 +201,13 @@ async function initPowerRollup(host) {
         }
     }
     host.log.debug?.(`Power-Rollup ready (${sources.length} source(s))`);
+    (0, memory_inventory_1.recordMemoryInventory)({
+        module: "power_rollup",
+        checkpoint: "after_init",
+        recordsLoaded: sources.length,
+        mapEntries: sourceRuntimes.size,
+        rawHistoryRetained: false,
+    });
 }
 exports.initPowerRollup = initPowerRollup;
 async function tickPowerRollup(host) {

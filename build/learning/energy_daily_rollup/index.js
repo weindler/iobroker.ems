@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.stopEnergyDailyRollup = exports.fetchRollupDayKwh = exports.ensureEnergyDailyRollupForLearning = exports.handleEnergyDailyRollupStateChange = exports.tickEnergyDailyRollup = exports.initEnergyDailyRollup = void 0;
 const state_util_1 = require("../../ems_light/state_util");
+const memory_inventory_1 = require("../../diagnostics/memory_inventory");
 const backfill_1 = require("./backfill");
 const buffer_1 = require("./buffer");
 const day_1 = require("./day");
@@ -174,6 +175,13 @@ async function initEnergyDailyRollup(host) {
         }
     }
     host.log.debug?.(`Energy-Daily-Rollup ready (${sources.length} source(s))`);
+    (0, memory_inventory_1.recordMemoryInventory)({
+        module: "energy_daily_rollup",
+        checkpoint: "after_init",
+        recordsLoaded: sources.length,
+        mapEntries: sourceRuntimes.size,
+        rawHistoryRetained: false,
+    });
 }
 exports.initEnergyDailyRollup = initEnergyDailyRollup;
 async function tickEnergyDailyRollup(host) {

@@ -41,6 +41,11 @@ import {
 import { markBootstrapCompletedForRearm, captureExecutionModeBaselineFromHost } from "./backup_integration/startup_rearm";
 import { EXECUTION_MODE_ADDON_IDS } from "./execution_mode";
 import { GLOBAL, addonMode } from "./tree_paths";
+import {
+	probeStartupMemory,
+	schedulePostReadyMemoryProbes,
+	logMemoryDiagnosticReport,
+} from "./diagnostics/startup_memory";
 import { parseInboxValue } from "./inbox";
 import { goeWallboxTemplateFlat } from "./mapping_config";
 import { stopEmsLightPhase1 } from "./ems_light";
@@ -118,7 +123,10 @@ class Ems extends utils.Adapter {
 	}
 
 	private async onReady(): Promise<void> {
+		probeStartupMemory(this.log, "onready_start");
+
 		const integrationCtx = await runBackupIntegrationStartup(this);
+		probeStartupMemory(this.log, "after_backup_integration");
 
 		const recovery = await runRestoreStartupRecovery(this);
 		if (!recovery.ok) {
@@ -134,6 +142,9 @@ class Ems extends utils.Adapter {
 		}
 
 		this.log.info("EMS adapter ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
+		probeStartupMemory(this.log, "before_adapter_ready_log");
+		schedulePostReadyMemoryProbes(this.log);
+		logMemoryDiagnosticReport(this.log);
 
 		await this.step("backup export init", async () => {
 			await cleanupTempExports(this);

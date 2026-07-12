@@ -12,6 +12,9 @@ const planner_1 = require("../planner");
 const global_modes_1 = require("../global_modes");
 const ensure_states_1 = require("./ensure_states");
 const tick_1 = require("./tick");
+const memory_inventory_1 = require("../diagnostics/memory_inventory");
+const init_guard_1 = require("../diagnostics/init_guard");
+const startup_memory_1 = require("../diagnostics/startup_memory");
 const DEFAULT_TICK_SEC = 60;
 const GLOBAL_MODES_REQUESTED_STATE = "global_modes.requested";
 const INTENT_WALLBOX_REQUEST_STATE = "user_intent.inputs.iobroker.wallbox.request_json";
@@ -114,11 +117,24 @@ exports.ensureEmsLightStateTree = ensureEmsLightStateTree;
 /** Phase F — Runtime, Ticks und initiale Auswertung (nach Bootstrap-Barriere). */
 async function startEmsLightPhase1Runtime(adapter) {
     const host = adapter;
+    (0, startup_memory_1.probeStartupMemory)(adapter.log, "before_planner_runtime");
+    (0, init_guard_1.markModuleInit)("planner_runtime");
     await (0, planner_1.runPlannerRuntime)(host);
+    (0, startup_memory_1.probeStartupMemory)(adapter.log, "after_planner_runtime");
     energyDailyRollupHost = buildRollupHost(adapter);
     powerRollupHost = energyDailyRollupHost;
+    (0, startup_memory_1.probeStartupMemory)(adapter.log, "before_energy_daily_rollup_init");
+    (0, init_guard_1.markModuleInit)("energy_daily_rollup");
     await (0, energy_daily_rollup_1.initEnergyDailyRollup)(energyDailyRollupHost);
+    (0, memory_inventory_1.logMemoryInventory)(adapter.log, "energy_daily_rollup", "after_init");
+    (0, startup_memory_1.probeStartupMemory)(adapter.log, "after_energy_daily_rollup_init");
+    (0, startup_memory_1.probeStartupMemory)(adapter.log, "before_power_rollup_init");
+    (0, init_guard_1.markModuleInit)("power_rollup");
     await (0, power_rollup_1.initPowerRollup)(powerRollupHost);
+    (0, memory_inventory_1.logMemoryInventory)(adapter.log, "power_rollup", "after_init");
+    (0, startup_memory_1.probeStartupMemory)(adapter.log, "after_power_rollup_init");
+    (0, startup_memory_1.probeStartupMemory)(adapter.log, "before_learning_runtime_init");
+    (0, init_guard_1.markModuleInit)("learning_runtime");
     if (learningHost) {
         await (0, pv_bias_1.startPvBiasLearningRuntime)(adapter, learningHost);
     }
@@ -126,14 +142,30 @@ async function startEmsLightPhase1Runtime(adapter) {
         learningHost = await (0, pv_bias_1.ensureLearningStateTree)(adapter);
         await (0, pv_bias_1.startPvBiasLearningRuntime)(adapter, learningHost);
     }
+    (0, startup_memory_1.probeStartupMemory)(adapter.log, "after_learning_runtime_init");
+    (0, startup_memory_1.probeStartupMemory)(adapter.log, "before_weather_learning_init");
+    (0, init_guard_1.markModuleInit)("weather_learning");
     await (0, weather_1.initWeatherLearning)(adapter);
+    (0, startup_memory_1.probeStartupMemory)(adapter.log, "after_weather_learning_init");
     const policyHost = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
-    const policyInit = (0, policy_1.initPolicyEngine)(policyHost).catch((e) => {
+    (0, startup_memory_1.probeStartupMemory)(adapter.log, "before_policy_engine_init");
+    (0, init_guard_1.markModuleInit)("policy_engine_startup");
+    let policyInitSettled = false;
+    const policyInit = (0, policy_1.initPolicyEngine)(policyHost)
+        .then(() => {
+        policyInitSettled = true;
+    })
+        .catch((e) => {
         adapter.log.error(`Policy Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
     });
     await waitWithStartupTimeout(policyInit, POLICY_STARTUP_TIMEOUT_MS, () => {
         adapter.log.warn(`Policy Engine init still running after ${POLICY_STARTUP_TIMEOUT_MS}ms; continuing adapter startup`);
     });
+    const policyDiag = (0, policy_1.getPolicyEngineMemoryDiagnostics)();
+    (0, startup_memory_1.probeStartupMemory)(adapter.log, policyInitSettled ? "after_policy_engine_init" : "after_policy_engine_init_timeout");
+    adapter.log.info?.(`EMS mem-policy initCalls=${policyDiag.initCalls} runsInFlight=${policyDiag.runsInFlight} settled=${policyInitSettled}`);
+    (0, startup_memory_1.probeStartupMemory)(adapter.log, "before_intent_engine_init");
+    (0, init_guard_1.markModuleInit)("intent_engine");
     const intentHost = buildIntentHost(adapter);
     try {
         await (0, intent_1.initIntentEngine)(intentHost);
@@ -141,6 +173,7 @@ async function startEmsLightPhase1Runtime(adapter) {
     catch (e) {
         adapter.log.error(`User Intent Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
     }
+    (0, startup_memory_1.probeStartupMemory)(adapter.log, "after_intent_engine_init");
     policyAdapter = adapter;
     try {
         await adapter.subscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE);

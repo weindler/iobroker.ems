@@ -1,4 +1,5 @@
 import { asNum } from "../../ems_light/state_util";
+import { recordMemoryInventory } from "../../diagnostics/memory_inventory";
 import { ensureEnergyDailyRollupBackfill, type EnergyDailyBackfillHost } from "./backfill";
 import { bufferToDayRecord, emptyDayBuffer, ingestDailyKwhSample } from "./buffer";
 import { localDateKey } from "./day";
@@ -225,6 +226,13 @@ export async function initEnergyDailyRollup(host: EnergyDailyRollupHost): Promis
 	}
 
 	host.log.debug?.(`Energy-Daily-Rollup ready (${sources.length} source(s))`);
+	recordMemoryInventory({
+		module: "energy_daily_rollup",
+		checkpoint: "after_init",
+		recordsLoaded: sources.length,
+		mapEntries: sourceRuntimes.size,
+		rawHistoryRetained: false,
+	});
 }
 
 export async function tickEnergyDailyRollup(host: EnergyDailyRollupHost): Promise<void> {

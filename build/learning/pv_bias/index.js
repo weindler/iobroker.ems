@@ -15,6 +15,8 @@ const pv_horizon_1 = require("../pv_horizon");
 const data_dir_1 = require("../data_dir");
 const history_bridge_1 = require("../history_bridge");
 const persistence_mirror_1 = require("../persistence_mirror");
+const memory_inventory_1 = require("../../diagnostics/memory_inventory");
+const startup_memory_1 = require("../../diagnostics/startup_memory");
 let pvBiasTimer = null;
 /** Phase B — Learning-States ohne Timer oder Persist-Restore. */
 async function ensureLearningStateTree(adapter) {
@@ -45,19 +47,24 @@ async function startPvBiasLearningRuntime(adapter, host) {
     adapter.log.debug?.(`EMS-Light PV-Bias + PV-Horizon + Price + House-Load + Thermal + Battery-Runtime ready (read-only, interval ${cfg.intervalSec}s)`);
 }
 exports.startPvBiasLearningRuntime = startPvBiasLearningRuntime;
+async function runLearningModule(host, module, run) {
+    (0, memory_inventory_1.setMemoryInventoryContext)(module);
+    (0, startup_memory_1.probeStartupMemory)(host.log, `before_learning_${module}`);
+    await run();
+    (0, memory_inventory_1.logMemoryInventory)(host.log, module, `after_${module}`);
+    (0, startup_memory_1.probeStartupMemory)(host.log, `after_learning_${module}`);
+}
 async function runLearningTick(host) {
-    await (0, energy_daily_rollup_1.ensureEnergyDailyRollupForLearning)(host);
-    await (0, run_1.runPvBiasLearning)(host);
-    await (0, pv_horizon_1.runPvHorizon)(host);
-    await (0, price_learning_1.runPriceLearning)(host);
-    // Rollup-Backfill vor House-Load/Battery — sonst fällt der erste Lauf auf history.0 zurück.
-    await (0, power_rollup_1.ensurePowerRollupForLearning)(host);
-    // House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
-    await (0, house_load_1.runHouseLoadLearning)(host);
-    await (0, thermal_runtime_1.runThermalRuntimeLearning)(host);
-    await (0, battery_runtime_1.runBatteryRuntimeLearning)(host);
-    await (0, price_forecast_1.runPriceForecastLearning)(host);
-    await (0, persistence_mirror_1.mirrorLearningPersistenceToStates)(host);
+    await runLearningModule(host, "energy_daily_rollup", () => (0, energy_daily_rollup_1.ensureEnergyDailyRollupForLearning)(host));
+    await runLearningModule(host, "pv_bias", () => (0, run_1.runPvBiasLearning)(host));
+    await runLearningModule(host, "pv_horizon", () => (0, pv_horizon_1.runPvHorizon)(host));
+    await runLearningModule(host, "price_learning", () => (0, price_learning_1.runPriceLearning)(host));
+    await runLearningModule(host, "power_rollup", () => (0, power_rollup_1.ensurePowerRollupForLearning)(host));
+    await runLearningModule(host, "house_load", () => (0, house_load_1.runHouseLoadLearning)(host));
+    await runLearningModule(host, "thermal_runtime", () => (0, thermal_runtime_1.runThermalRuntimeLearning)(host));
+    await runLearningModule(host, "battery_runtime", () => (0, battery_runtime_1.runBatteryRuntimeLearning)(host));
+    await runLearningModule(host, "price_forecast", () => (0, price_forecast_1.runPriceForecastLearning)(host));
+    await runLearningModule(host, "persistence_mirror", () => (0, persistence_mirror_1.mirrorLearningPersistenceToStates)(host));
 }
 async function initPvBiasLearning(adapter) {
     const host = await ensureLearningStateTree(adapter);

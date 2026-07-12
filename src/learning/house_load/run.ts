@@ -12,6 +12,7 @@ import { readHouseLoadPersist, writeHouseLoadPersist } from "./persist";
 import type { HouseLoadComputeResult } from "./types";
 
 import type { HistoryQueryHost } from "../history_query";
+import { recordMemoryInventory } from "../../diagnostics/memory_inventory";
 
 export type HouseLoadRunHost = HistoryQueryHost & {
 	config: unknown;
@@ -161,6 +162,16 @@ export async function runHouseLoadLearning(host: HouseLoadRunHost): Promise<void
 				`House Load Learning: ungenügende Historie (sample_days=${result.sampleDays}, samples=${result.sampleCount})`,
 			);
 		}
+
+		recordMemoryInventory({
+			module: "house_load",
+			checkpoint: "after_run",
+			recordsLoaded: result.sampleCount,
+			historyResults: stats.rowsTotal,
+			daysOrSlots: result.sampleDays,
+			arrayEntries: samples.length,
+			rawHistoryRetained: false,
+		});
 	} catch (e) {
 		const msg = e instanceof Error ? e.message : String(e);
 		host.log.error(`House Load Learning: ${msg}`);

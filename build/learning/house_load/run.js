@@ -7,6 +7,7 @@ const history_1 = require("./history");
 const mapping_1 = require("./mapping");
 const math_1 = require("./math");
 const persist_1 = require("./persist");
+const memory_inventory_1 = require("../../diagnostics/memory_inventory");
 const JSON_STATE_LIMIT = 12_000;
 function truncateJson(obj) {
     const raw = JSON.stringify(obj);
@@ -116,6 +117,15 @@ async function runHouseLoadLearning(host) {
         if (result.status === "insufficient_data") {
             host.log.warn(`House Load Learning: ungenügende Historie (sample_days=${result.sampleDays}, samples=${result.sampleCount})`);
         }
+        (0, memory_inventory_1.recordMemoryInventory)({
+            module: "house_load",
+            checkpoint: "after_run",
+            recordsLoaded: result.sampleCount,
+            historyResults: stats.rowsTotal,
+            daysOrSlots: result.sampleDays,
+            arrayEntries: samples.length,
+            rawHistoryRetained: false,
+        });
     }
     catch (e) {
         const msg = e instanceof Error ? e.message : String(e);

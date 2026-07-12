@@ -14,6 +14,11 @@ import { ALLOCATION_ADDON_STATE_IDS, DAILY_PLAN_STATE_IDS } from "./states";
 import type { DailyPlan } from "./types";
 import type { ContributionsReadHost } from "../contributions/read";
 
+export type DailyPlanTickOptions = {
+	/** When false, build in memory only — no ioBroker state writes. */
+	persistToDb?: boolean;
+};
+
 let lastRevisionPayload = "";
 let revision = 0;
 
@@ -155,6 +160,7 @@ async function persistDailyPlan(
 export async function runDailyPlanTick(
 	host: ContributionsReadHost,
 	forecastPlan: ForecastPlan,
+	options: DailyPlanTickOptions = {},
 ): Promise<DailyPlan> {
 	const now = new Date();
 	const adminCfg = intentAdminConfigFromAdapter(host.config);
@@ -195,6 +201,16 @@ export async function runDailyPlanTick(
 	const storedRevision = await readNum(host, DAILY_PLAN_STATE_IDS.revision);
 	if (storedRevision !== null && storedRevision >= 0 && revision === 0) {
 		revision = storedRevision;
+	}
+
+	if (options.persistToDb === false) {
+		const nextRevision = revisionChanged ? revision + 1 : revision;
+		plan.revision = nextRevision;
+		if (revisionChanged) {
+			revision = nextRevision;
+			lastRevisionPayload = semanticPayload;
+		}
+		return plan;
 	}
 
 	if (await storedDailyPlanSemanticallyMatches(host, plan, semanticHash)) {

@@ -10,6 +10,8 @@ import { runDailyPlanTick } from "../operator/daily_plan/tick";
 export type EmsLightPhase1TickOptions = {
 	/** When false, skip grid/forecast/daily operator ticks (planner runtime already ran them). */
 	operatorTicks?: boolean;
+	/** When false, forecast/daily plans are computed in memory only (no DB IPC). Default true. */
+	persistPlans?: boolean;
 };
 
 export async function runEmsLightPhase1Tick(
@@ -17,6 +19,7 @@ export async function runEmsLightPhase1Tick(
 	options: EmsLightPhase1TickOptions = {},
 ): Promise<void> {
 	const runOperatorTicks = options.operatorTicks !== false;
+	const persistPlans = options.persistPlans !== false;
 	touchEmsActivity();
 	const ts = new Date().toISOString();
 	const hints: string[] = [];
@@ -73,14 +76,16 @@ export async function runEmsLightPhase1Tick(
 
 		let forecastPlan;
 		try {
-			forecastPlan = await runForecastPlanTick(host, gridForecast, flexibleContributions);
+			forecastPlan = await runForecastPlanTick(host, gridForecast, flexibleContributions, {
+				persistToDb: persistPlans,
+			});
 		} catch (e) {
 			hints.push(`forecast_plan: ${String(e)}`);
 		}
 
 		if (forecastPlan) {
 			try {
-				await runDailyPlanTick(host, forecastPlan);
+				await runDailyPlanTick(host, forecastPlan, { persistToDb: persistPlans });
 			} catch (e) {
 				hints.push(`daily_plan: ${String(e)}`);
 			}

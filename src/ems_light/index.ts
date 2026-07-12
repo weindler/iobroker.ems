@@ -30,10 +30,12 @@ import { markModuleInit } from "../diagnostics/init_guard";
 import { probeStartupMemory } from "../diagnostics/startup_memory";
 
 const DEFAULT_TICK_SEC = 60;
+const PLAN_PERSIST_INTERVAL_MS = 15 * 60 * 1000;
 const GLOBAL_MODES_REQUESTED_STATE = "global_modes.requested";
 const INTENT_WALLBOX_REQUEST_STATE = "user_intent.inputs.iobroker.wallbox.request_json";
 const POLICY_STARTUP_TIMEOUT_MS = 8000;
 let tickTimer: NodeJS.Timeout | null = null;
+let planPersistTimer: NodeJS.Timeout | null = null;
 let policyAdapter: ioBroker.Adapter | null = null;
 let powerRollupHost: PowerRollupHost | null = null;
 let energyDailyRollupHost: EnergyDailyRollupHost | null = null;
@@ -234,7 +236,7 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 	const dailyHostForTick = energyDailyRollupHost;
 	const powerHostForTick = powerRollupHost;
 	tickTimer = setInterval(() => {
-		void runEmsLightPhase1Tick(host).catch((e) => {
+		void runEmsLightPhase1Tick(host, { persistPlans: false }).catch((e) => {
 			adapter.log.error(`EMS-Light tick: ${e}`);
 		});
 		if (dailyHostForTick) {
@@ -249,7 +251,13 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 		}
 	}, sec * 1000);
 
-	adapter.log.debug(`EMS-Light Phase 1 ready (read-only, tick ${sec}s)`);
+	planPersistTimer = setInterval(() => {
+		void runEmsLightPhase1Tick(host, { persistPlans: true }).catch((e) => {
+			adapter.log.error(`EMS-Light plan persist: ${e}`);
+		});
+	}, PLAN_PERSIST_INTERVAL_MS);
+
+	adapter.log.debug(`EMS-Light Phase 1 ready (tick ${sec}s in-memory, plan persist ${PLAN_PERSIST_INTERVAL_MS / 60000}min)`);
 }
 
 export async function initEmsLightPhase1(adapter: ioBroker.Adapter): Promise<void> {
@@ -262,6 +270,10 @@ function stopEmsLightTick(): void {
 	if (tickTimer) {
 		clearInterval(tickTimer);
 		tickTimer = null;
+	}
+	if (planPersistTimer) {
+		clearInterval(planPersistTimer);
+		planPersistTimer = null;
 	}
 }
 

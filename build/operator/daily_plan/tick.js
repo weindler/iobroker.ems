@@ -126,7 +126,7 @@ async function persistDailyPlan(host, plan, semanticHash, nextRevision) {
     lastRevisionPayload = (0, revision_1.dailyPlanRevisionPayload)(plan);
     plan.revision = nextRevision;
 }
-async function runDailyPlanTick(host, forecastPlan) {
+async function runDailyPlanTick(host, forecastPlan, options = {}) {
     const now = new Date();
     const adminCfg = (0, config_2.intentAdminConfigFromAdapter)(host.config);
     const timezone = adminCfg.timezone || "Europe/Berlin";
@@ -158,6 +158,15 @@ async function runDailyPlanTick(host, forecastPlan) {
     const storedRevision = await readNum(host, states_1.DAILY_PLAN_STATE_IDS.revision);
     if (storedRevision !== null && storedRevision >= 0 && revision === 0) {
         revision = storedRevision;
+    }
+    if (options.persistToDb === false) {
+        const nextRevision = revisionChanged ? revision + 1 : revision;
+        plan.revision = nextRevision;
+        if (revisionChanged) {
+            revision = nextRevision;
+            lastRevisionPayload = semanticPayload;
+        }
+        return plan;
     }
     if (await storedDailyPlanSemanticallyMatches(host, plan, semanticHash)) {
         plan.revision = revision;

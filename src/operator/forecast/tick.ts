@@ -34,6 +34,8 @@ export type ForecastPlanTickOptions = {
 	deferLargeJsonWrites?: boolean;
 	/** Skip bootstrap cache and always rebuild. */
 	forceRebuild?: boolean;
+	/** When false, compute plan in memory only — no ioBroker state writes (avoids IPC RSS spike on 60s tick). */
+	persistToDb?: boolean;
 };
 
 export function resetForecastPlanRevisionForTest(): void {
@@ -326,11 +328,19 @@ export async function runForecastPlanTick(
 			`revisionChanged=${resolution.revisionChanged}`,
 			`skipLargeJson=${resolution.skipLargeJsonWrites}`,
 			`deferLargeJson=${resolution.deferLargeJsonWrites && !resolution.skipLargeJsonWrites}`,
+			`persistToDb=${options.persistToDb !== false}`,
 			`skipReason=${resolution.skipReason}`,
 			`storedHash=${resolution.storedHash?.slice(0, 12) ?? "none"}`,
 			`computedHash=${semanticHash.slice(0, 12)}`,
 		].join(" "),
 	);
+
+	if (options.persistToDb === false) {
+		revision = resolution.nextRevision;
+		lastRevisionPayload = semanticPayload;
+		plan.revision = resolution.nextRevision;
+		return plan;
+	}
 
 	if (deferLargeJsonWrites && !options.forceRebuild) {
 		scheduleFirstInstallForecastPersist(host, plan, semanticHash, resolution.nextRevision);

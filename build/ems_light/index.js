@@ -16,10 +16,12 @@ const memory_inventory_1 = require("../diagnostics/memory_inventory");
 const init_guard_1 = require("../diagnostics/init_guard");
 const startup_memory_1 = require("../diagnostics/startup_memory");
 const DEFAULT_TICK_SEC = 60;
+const PLAN_PERSIST_INTERVAL_MS = 15 * 60 * 1000;
 const GLOBAL_MODES_REQUESTED_STATE = "global_modes.requested";
 const INTENT_WALLBOX_REQUEST_STATE = "user_intent.inputs.iobroker.wallbox.request_json";
 const POLICY_STARTUP_TIMEOUT_MS = 8000;
 let tickTimer = null;
+let planPersistTimer = null;
 let policyAdapter = null;
 let powerRollupHost = null;
 let energyDailyRollupHost = null;
@@ -193,7 +195,7 @@ async function startEmsLightPhase1Runtime(adapter) {
     const dailyHostForTick = energyDailyRollupHost;
     const powerHostForTick = powerRollupHost;
     tickTimer = setInterval(() => {
-        void (0, tick_1.runEmsLightPhase1Tick)(host).catch((e) => {
+        void (0, tick_1.runEmsLightPhase1Tick)(host, { persistPlans: false }).catch((e) => {
             adapter.log.error(`EMS-Light tick: ${e}`);
         });
         if (dailyHostForTick) {
@@ -207,7 +209,12 @@ async function startEmsLightPhase1Runtime(adapter) {
             });
         }
     }, sec * 1000);
-    adapter.log.debug(`EMS-Light Phase 1 ready (read-only, tick ${sec}s)`);
+    planPersistTimer = setInterval(() => {
+        void (0, tick_1.runEmsLightPhase1Tick)(host, { persistPlans: true }).catch((e) => {
+            adapter.log.error(`EMS-Light plan persist: ${e}`);
+        });
+    }, PLAN_PERSIST_INTERVAL_MS);
+    adapter.log.debug(`EMS-Light Phase 1 ready (tick ${sec}s in-memory, plan persist ${PLAN_PERSIST_INTERVAL_MS / 60000}min)`);
 }
 exports.startEmsLightPhase1Runtime = startEmsLightPhase1Runtime;
 async function initEmsLightPhase1(adapter) {
@@ -220,6 +227,10 @@ function stopEmsLightTick() {
     if (tickTimer) {
         clearInterval(tickTimer);
         tickTimer = null;
+    }
+    if (planPersistTimer) {
+        clearInterval(planPersistTimer);
+        planPersistTimer = null;
     }
 }
 function stopEmsLightPhase1() {

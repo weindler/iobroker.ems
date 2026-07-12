@@ -218,10 +218,17 @@ async function runForecastPlanTick(host, gridForecast, flexibleContributions = [
         `revisionChanged=${resolution.revisionChanged}`,
         `skipLargeJson=${resolution.skipLargeJsonWrites}`,
         `deferLargeJson=${resolution.deferLargeJsonWrites && !resolution.skipLargeJsonWrites}`,
+        `persistToDb=${options.persistToDb !== false}`,
         `skipReason=${resolution.skipReason}`,
         `storedHash=${resolution.storedHash?.slice(0, 12) ?? "none"}`,
         `computedHash=${semanticHash.slice(0, 12)}`,
     ].join(" "));
+    if (options.persistToDb === false) {
+        revision = resolution.nextRevision;
+        lastRevisionPayload = semanticPayload;
+        plan.revision = resolution.nextRevision;
+        return plan;
+    }
     if (deferLargeJsonWrites && !options.forceRebuild) {
         scheduleFirstInstallForecastPersist(host, plan, semanticHash, resolution.nextRevision);
         host.log?.info?.(`forecast plan bootstrap: built_in_memory revision=${plan.revision} — defer plan_json until adapter ready`);

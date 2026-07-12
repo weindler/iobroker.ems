@@ -149,7 +149,10 @@ async function readCoolingUnitInputs(
 	return rows;
 }
 
-export async function readPlannerInputs(host: PlannerHost): Promise<PlannerInputs> {
+export async function readPlannerInputs(
+	host: PlannerHost,
+	options?: { batteryWinterPriceSlots?: Price15MinSlot[] },
+): Promise<PlannerInputs> {
 	const now = new Date();
 	const acConfig = acGlobalConfigFromAdapter(host.config);
 	const pvFromPv = await readNum(host, "live.pv.power_w");
@@ -196,7 +199,7 @@ export async function readPlannerInputs(host: PlannerHost): Promise<PlannerInput
 			readOutdoorTempC(host),
 			readCoolingUnitInputs(host, acConfig, consumerStatsPersist),
 			readBatteryWinterDays(host, batteryWinterConfig.horizonDays),
-			readTibber15MinPriceSlots(host, now),
+			options?.batteryWinterPriceSlots ?? readTibber15MinPriceSlots(host, now),
 		]);
 
 	return {

@@ -207,7 +207,6 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 	);
 
 	probeStartupMemory(adapter.log, "before_intent_engine_init");
-	markModuleInit("intent_engine");
 	const intentHost = buildIntentHost(adapter);
 	try {
 		await initIntentEngine(intentHost);

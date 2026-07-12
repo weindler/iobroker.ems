@@ -16,7 +16,11 @@ function mockHost(initial = {}) {
             return val === undefined ? null : { val, ack: true };
         },
         async setStateAsync(id, state) {
-            this.writes.push({ id, val: state.val });
+            this.writes.push({
+                id,
+                val: state.val,
+                ack: state.ack ?? false,
+            });
             store.set(id, state.val);
         },
     };
@@ -33,5 +37,36 @@ function mockHost(initial = {}) {
         const changed = await (0, state_write_js_1.setStateIfChanged)(host, "policy.global.revision", "def");
         strict_1.default.equal(changed, true);
         strict_1.default.equal(host.writes.length, 1);
+    });
+    (0, node_test_1.it)("skipRead writes without loading current state", async () => {
+        const host = mockHost({ "planner.intent.forecast_plan.plan_json": "huge-old-payload" });
+        let getCalls = 0;
+        const origGet = host.getStateAsync.bind(host);
+        host.getStateAsync = async (id) => {
+            getCalls++;
+            return origGet(id);
+        };
+        const changed = await (0, state_write_js_1.setStateIfChanged)(host, "planner.intent.forecast_plan.plan_json", "{}", {
+            skipRead: true,
+        });
+        strict_1.default.equal(changed, true);
+        strict_1.default.equal(getCalls, 0);
+        strict_1.default.equal(host.writes.length, 1);
+        strict_1.default.equal(host.writes[0].val, "{}");
+        strict_1.default.equal(host.writes[0].ack, true);
+    });
+    (0, node_test_1.it)("missing state with unchanged revision still reads before first write", async () => {
+        const host = mockHost();
+        let getCalls = 0;
+        const origGet = host.getStateAsync.bind(host);
+        host.getStateAsync = async (id) => {
+            getCalls++;
+            return origGet(id);
+        };
+        const changed = await (0, state_write_js_1.setStateIfChanged)(host, "planner.intent.supply.grid.revision", 1);
+        strict_1.default.equal(changed, true);
+        strict_1.default.equal(getCalls, 1);
+        strict_1.default.equal(host.writes.length, 1);
+        strict_1.default.equal(host.writes[0].ack, true);
     });
 });

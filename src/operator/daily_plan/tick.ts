@@ -2,7 +2,7 @@ import { globalPolicyConfigFromAdapter } from "../../policy/global/config";
 import type { PolicySnapshot } from "../../policy/core/types";
 import { intentAdminConfigFromAdapter } from "../../intent/config";
 import { plannerModePolicyFromGlobalMode } from "../../planner/mode_policy";
-import { setStateIfChanged } from "../../policy/core/state_write";
+import { setStateIfChanged, type StateWriteOptions } from "../../policy/core/state_write";
 import type { ForecastPlan } from "../forecast/types";
 import { buildDailyPlanFromForecast, dailyPlanRevisionPayload } from "./build";
 import { ALLOCATION_ADDON_STATE_IDS, DAILY_PLAN_STATE_IDS } from "./states";
@@ -105,46 +105,49 @@ export async function runDailyPlanTick(
 	});
 
 	const payload = dailyPlanRevisionPayload(plan);
-	if (payload !== lastRevisionPayload) {
-		revision += 1;
-		lastRevisionPayload = payload;
-	}
-	plan.revision = revision;
+	const revisionChanged = payload !== lastRevisionPayload;
+	const nextRevision = revisionChanged ? revision + 1 : revision;
+	plan.revision = nextRevision;
+	const writeOpts: StateWriteOptions | undefined = revisionChanged ? { skipRead: true } : undefined;
 
 	try {
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.status, plan.status);
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "");
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.date, plan.date);
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.globalMode, plan.globalMode);
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes);
+		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.status, plan.status, writeOpts);
+		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt, writeOpts);
+		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "", writeOpts);
+		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.date, plan.date, writeOpts);
+		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.globalMode, plan.globalMode, writeOpts);
+		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes, writeOpts);
 		await setStateIfChanged(
 			host,
 			DAILY_PLAN_STATE_IDS.activeContributionsJson,
 			JSON.stringify(plan.activeContributionIds),
+			writeOpts,
 		);
 		await setStateIfChanged(
 			host,
 			DAILY_PLAN_STATE_IDS.excludedContributionsJson,
 			JSON.stringify(plan.excludedContributions),
+			writeOpts,
 		);
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.slotsJson, JSON.stringify(plan.slots));
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.allocationsJson, JSON.stringify(plan.allocations));
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.totalsJson, JSON.stringify(plan.totals));
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.unallocatedJson, JSON.stringify(plan.unallocated));
+		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.slotsJson, JSON.stringify(plan.slots), writeOpts);
+		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.allocationsJson, JSON.stringify(plan.allocations), writeOpts);
+		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.totalsJson, JSON.stringify(plan.totals), writeOpts);
+		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.unallocatedJson, JSON.stringify(plan.unallocated), writeOpts);
 		await setStateIfChanged(
 			host,
 			DAILY_PLAN_STATE_IDS.policySnapshotJson,
 			JSON.stringify(plan.policySnapshot),
+			writeOpts,
 		);
 		await setStateIfChanged(
 			host,
 			DAILY_PLAN_STATE_IDS.constraintSnapshotJson,
 			JSON.stringify(plan.constraintSnapshot),
+			writeOpts,
 		);
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.revision, revision);
+		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(plan), writeOpts);
+		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe, writeOpts);
+		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.revision, nextRevision, writeOpts);
 
 		const addonSummaries: Array<{ key: keyof typeof ALLOCATION_ADDON_STATE_IDS; prefix: string }> = [
 			{ key: "battery", prefix: "battery" },
@@ -157,15 +160,20 @@ export async function runDailyPlanTick(
 			const ids = ALLOCATION_ADDON_STATE_IDS[key];
 			const summary = addonAllocationSummary(plan, prefix);
 			const status = summary.length > 0 ? "ready" : "idle";
-			await setStateIfChanged(host, ids.status, status);
-			await setStateIfChanged(host, ids.planJson, JSON.stringify(summary));
+			await setStateIfChanged(host, ids.status, status, writeOpts);
+			await setStateIfChanged(host, ids.planJson, JSON.stringify(summary), writeOpts);
 			await setStateIfChanged(
 				host,
 				ids.reasonDe,
 				summary.length > 0
 					? `${summary.length} Allocation-Einträge für ${prefix}.`
 					: `Keine Allocation für ${prefix}.`,
+				writeOpts,
 			);
+		}
+		if (revisionChanged) {
+			revision = nextRevision;
+			lastRevisionPayload = payload;
 		}
 	} catch (e) {
 		host.log?.warn?.(`daily plan state write: ${String(e)}`);

@@ -91,29 +91,28 @@ async function runDailyPlanTick(host, forecastPlan) {
         modePolicy,
     });
     const payload = (0, build_1.dailyPlanRevisionPayload)(plan);
-    if (payload !== lastRevisionPayload) {
-        revision += 1;
-        lastRevisionPayload = payload;
-    }
-    plan.revision = revision;
+    const revisionChanged = payload !== lastRevisionPayload;
+    const nextRevision = revisionChanged ? revision + 1 : revision;
+    plan.revision = nextRevision;
+    const writeOpts = revisionChanged ? { skipRead: true } : undefined;
     try {
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.status, plan.status);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "");
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.date, plan.date);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.globalMode, plan.globalMode);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.activeContributionsJson, JSON.stringify(plan.activeContributionIds));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.excludedContributionsJson, JSON.stringify(plan.excludedContributions));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.slotsJson, JSON.stringify(plan.slots));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.allocationsJson, JSON.stringify(plan.allocations));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.totalsJson, JSON.stringify(plan.totals));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.unallocatedJson, JSON.stringify(plan.unallocated));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.policySnapshotJson, JSON.stringify(plan.policySnapshot));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.constraintSnapshotJson, JSON.stringify(plan.constraintSnapshot));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.revision, revision);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.status, plan.status, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "", writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.date, plan.date, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.globalMode, plan.globalMode, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.activeContributionsJson, JSON.stringify(plan.activeContributionIds), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.excludedContributionsJson, JSON.stringify(plan.excludedContributions), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.slotsJson, JSON.stringify(plan.slots), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.allocationsJson, JSON.stringify(plan.allocations), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.totalsJson, JSON.stringify(plan.totals), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.unallocatedJson, JSON.stringify(plan.unallocated), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.policySnapshotJson, JSON.stringify(plan.policySnapshot), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.constraintSnapshotJson, JSON.stringify(plan.constraintSnapshot), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(plan), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.revision, nextRevision, writeOpts);
         const addonSummaries = [
             { key: "battery", prefix: "battery" },
             { key: "wallbox", prefix: "wallbox" },
@@ -124,11 +123,15 @@ async function runDailyPlanTick(host, forecastPlan) {
             const ids = states_1.ALLOCATION_ADDON_STATE_IDS[key];
             const summary = addonAllocationSummary(plan, prefix);
             const status = summary.length > 0 ? "ready" : "idle";
-            await (0, state_write_1.setStateIfChanged)(host, ids.status, status);
-            await (0, state_write_1.setStateIfChanged)(host, ids.planJson, JSON.stringify(summary));
+            await (0, state_write_1.setStateIfChanged)(host, ids.status, status, writeOpts);
+            await (0, state_write_1.setStateIfChanged)(host, ids.planJson, JSON.stringify(summary), writeOpts);
             await (0, state_write_1.setStateIfChanged)(host, ids.reasonDe, summary.length > 0
                 ? `${summary.length} Allocation-Einträge für ${prefix}.`
-                : `Keine Allocation für ${prefix}.`);
+                : `Keine Allocation für ${prefix}.`, writeOpts);
+        }
+        if (revisionChanged) {
+            revision = nextRevision;
+            lastRevisionPayload = payload;
         }
     }
     catch (e) {

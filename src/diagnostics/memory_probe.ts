@@ -8,6 +8,7 @@ export interface MemoryProbeSnapshot {
 	heapUsedMiB: number;
 	externalMiB: number;
 	arrayBuffersMiB: number;
+	maxRssMiB: number | null;
 	v8HeapSizeLimitMiB: number;
 	v8TotalHeapSizeMiB: number;
 	v8UsedHeapSizeMiB: number;
@@ -21,6 +22,8 @@ function bytesToMiB(bytes: number): number {
 
 export function captureMemoryProbe(checkpoint: string, atMs = Date.now()): MemoryProbeSnapshot {
 	const usage = process.memoryUsage();
+	const resourceUsage =
+		typeof process.resourceUsage === "function" ? process.resourceUsage() : undefined;
 	const stats = v8.getHeapStatistics();
 	return {
 		checkpoint,
@@ -30,6 +33,7 @@ export function captureMemoryProbe(checkpoint: string, atMs = Date.now()): Memor
 		heapUsedMiB: bytesToMiB(usage.heapUsed),
 		externalMiB: bytesToMiB(usage.external),
 		arrayBuffersMiB: bytesToMiB(usage.arrayBuffers ?? 0),
+		maxRssMiB: resourceUsage ? bytesToMiB(resourceUsage.maxRSS) : null,
 		v8HeapSizeLimitMiB: bytesToMiB(stats.heap_size_limit),
 		v8TotalHeapSizeMiB: bytesToMiB(stats.total_heap_size),
 		v8UsedHeapSizeMiB: bytesToMiB(stats.used_heap_size),
@@ -46,6 +50,7 @@ export function formatMemoryProbeLine(snapshot: MemoryProbeSnapshot): string {
 		`heapTotal=${snapshot.heapTotalMiB}MiB ` +
 		`external=${snapshot.externalMiB}MiB ` +
 		`arrayBuffers=${snapshot.arrayBuffersMiB}MiB ` +
+		(snapshot.maxRssMiB !== null ? `maxRss=${snapshot.maxRssMiB}MiB ` : "") +
 		`v8_used=${snapshot.v8UsedHeapSizeMiB}MiB ` +
 		`v8_limit=${snapshot.v8HeapSizeLimitMiB}MiB`
 	);

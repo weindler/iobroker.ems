@@ -57,7 +57,6 @@ function wallboxVehicleHydrateHost(adapter) {
 async function hydratePersistedState(host) {
     (0, startup_memory_1.probeStartupMemory)(host.log, "before_persist_hydration");
     (0, init_guard_1.markModuleInit)("persist_hydration");
-    (0, init_guard_1.markModuleInit)("persist_hydration");
     const learningHost = (0, ems_light_1.getLearningStateTreeHost)();
     if (learningHost) {
         (0, startup_memory_1.probeStartupMemory)(host.log, "before_learning_persist_mirror");

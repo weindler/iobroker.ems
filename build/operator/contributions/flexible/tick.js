@@ -43,17 +43,17 @@ function addonStatus(contributions) {
         return "unsupported";
     return "disabled";
 }
-async function writeAddonStates(host, addonKey, contributions) {
+async function writeAddonStates(host, addonKey, contributions, writeOpts, revisionValue) {
     const ids = states_1.FLEXIBLE_ADDON_STATE_IDS[addonKey];
     const rows = addonContributions(contributions, addonKey === "air_conditioning" ? "air_conditioning" : addonKey);
     const status = addonStatus(rows);
     const reason = rows.find((c) => c.enabled)?.reasonDe ??
         rows[0]?.reasonDe ??
         `Keine ${addonKey}-Contributions.`;
-    await (0, state_write_1.setStateIfChanged)(host, ids.status, status);
-    await (0, state_write_1.setStateIfChanged)(host, ids.contributionsJson, JSON.stringify(rows));
-    await (0, state_write_1.setStateIfChanged)(host, ids.reasonDe, reason);
-    await (0, state_write_1.setStateIfChanged)(host, ids.revision, revision);
+    await (0, state_write_1.setStateIfChanged)(host, ids.status, status, writeOpts);
+    await (0, state_write_1.setStateIfChanged)(host, ids.contributionsJson, JSON.stringify(rows), writeOpts);
+    await (0, state_write_1.setStateIfChanged)(host, ids.reasonDe, reason, writeOpts);
+    await (0, state_write_1.setStateIfChanged)(host, ids.revision, revisionValue, writeOpts);
 }
 async function runFlexibleContributionsTick(host, gridForecast) {
     const now = new Date();
@@ -74,24 +74,27 @@ async function runFlexibleContributionsTick(host, gridForecast) {
         return [];
     }
     const payload = (0, types_1.flexibleContributionsRevisionPayload)(contributions);
-    if (payload !== lastRevisionPayload) {
-        revision += 1;
-        lastRevisionPayload = payload;
-    }
+    const revisionChanged = payload !== lastRevisionPayload;
+    const nextRevision = revisionChanged ? revision + 1 : revision;
+    const writeOpts = revisionChanged ? { skipRead: true } : undefined;
     const { active, excluded } = partitionFlexible(contributions);
     const overallStatus = active.length > 0 ? "ready" : excluded.length > 0 ? "degraded" : "missing";
     try {
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.status, overallStatus);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.generatedAt, now.toISOString());
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.contributionsJson, JSON.stringify(contributions));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.activeJson, JSON.stringify(active.map((c) => c.contributionId)));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.excludedJson, JSON.stringify(excluded));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.reasonDe, `${active.length} aktiv, ${excluded.length} ausgeschlossen.`);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.revision, revision);
-        await writeAddonStates(host, "battery", contributions);
-        await writeAddonStates(host, "wallbox", contributions);
-        await writeAddonStates(host, "immersion_heater", contributions);
-        await writeAddonStates(host, "air_conditioning", contributions);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.status, overallStatus, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.generatedAt, now.toISOString(), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.contributionsJson, JSON.stringify(contributions), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.activeJson, JSON.stringify(active.map((c) => c.contributionId)), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.excludedJson, JSON.stringify(excluded), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.reasonDe, `${active.length} aktiv, ${excluded.length} ausgeschlossen.`, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.revision, nextRevision, writeOpts);
+        await writeAddonStates(host, "battery", contributions, writeOpts, nextRevision);
+        await writeAddonStates(host, "wallbox", contributions, writeOpts, nextRevision);
+        await writeAddonStates(host, "immersion_heater", contributions, writeOpts, nextRevision);
+        await writeAddonStates(host, "air_conditioning", contributions, writeOpts, nextRevision);
+        if (revisionChanged) {
+            revision = nextRevision;
+            lastRevisionPayload = payload;
+        }
     }
     catch (e) {
         host.log?.warn?.(`flexible contributions state write: ${String(e)}`);

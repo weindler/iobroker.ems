@@ -26,26 +26,29 @@ async function runForecastPlanTick(host, gridForecast, flexibleContributions = [
         contributions,
     });
     const payload = (0, build_1.forecastPlanRevisionPayload)(plan);
-    if (payload !== lastRevisionPayload) {
-        revision += 1;
-        lastRevisionPayload = payload;
-    }
-    plan.revision = revision;
+    const revisionChanged = payload !== lastRevisionPayload;
+    const nextRevision = revisionChanged ? revision + 1 : revision;
+    plan.revision = nextRevision;
+    const writeOpts = revisionChanged ? { skipRead: true } : undefined;
     try {
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.status, plan.status);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "");
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.horizonStart, plan.horizonStart);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.horizonEnd, plan.horizonEnd);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.activeContributorsJson, JSON.stringify(plan.activeContributors));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.excludedContributorsJson, JSON.stringify(plan.excludedContributors));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.daysJson, JSON.stringify(plan.days));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.slotsJson, JSON.stringify(plan.slots));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.contributionsJson, JSON.stringify(plan.contributions));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.revision, revision);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.status, plan.status, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "", writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.horizonStart, plan.horizonStart, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.horizonEnd, plan.horizonEnd, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.activeContributorsJson, JSON.stringify(plan.activeContributors), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.excludedContributorsJson, JSON.stringify(plan.excludedContributors), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.daysJson, JSON.stringify(plan.days), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.slotsJson, JSON.stringify(plan.slots), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.contributionsJson, JSON.stringify(plan.contributions), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.planJson, JSON.stringify(plan), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.reasonDe, plan.reasonDe, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.FORECAST_PLAN_STATE_IDS.revision, nextRevision, writeOpts);
+        if (revisionChanged) {
+            revision = nextRevision;
+            lastRevisionPayload = payload;
+        }
     }
     catch (e) {
         host.log?.warn?.(`forecast plan state write: ${String(e)}`);

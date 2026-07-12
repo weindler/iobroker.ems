@@ -5,6 +5,7 @@ import {
 	parseTibberPriceJsonTo15MinSlots,
 	type Price15MinSlot,
 } from "../../learning/price_forecast/tibber_parse";
+import { recordMemoryInventory } from "../../diagnostics/memory_inventory";
 import { asNum } from "../../ems_light/state_util";
 import type { StateHost } from "../../ems_light/state_util";
 import type { GridSupplyBuildInput } from "./grid";
@@ -69,12 +70,30 @@ function policyNumberValue(snapshot: PolicySnapshot | null, section: "limits", k
 async function readEffectivePolicySnapshot(host: GridSupplyReadHost): Promise<PolicySnapshot | null> {
 	const raw = await readStr(host, "policy.global.effective_json");
 	if (!raw) return null;
+	recordMemoryInventory({
+		module: "grid_supply",
+		checkpoint: "policy_effective_read",
+		payloadBytes: raw.length,
+	});
 	try {
 		const parsed = JSON.parse(raw) as PolicySnapshot;
 		return parsed && typeof parsed === "object" ? parsed : null;
 	} catch {
 		return null;
 	}
+}
+
+function statePayloadBytes(val: unknown): number {
+	if (val == null) return 0;
+	if (typeof val === "string") return val.length;
+	if (typeof val === "object") {
+		try {
+			return JSON.stringify(val).length;
+		} catch {
+			return 0;
+		}
+	}
+	return String(val).length;
 }
 
 /** Liest Tibber Today/Tomorrow-JSON und liefert sortierte 15-min-Preisslots ab now. */
@@ -89,14 +108,24 @@ export async function readDynamicTariffPrice15MinSlots(
 
 	const minStartMs = now.getTime();
 	const byStart = new Map<number, Price15MinSlot>();
+	let payloadBytes = 0;
 
 	for (const stateId of [cfg.todayJsonStateId, cfg.tomorrowJsonStateId]) {
 		if (!stateId) continue;
 		const raw = await readVal(host, stateId);
+		payloadBytes += statePayloadBytes(raw);
 		for (const slot of parseTibberPriceJsonTo15MinSlots(raw, { minStartMs })) {
 			byStart.set(slot.slotStartMs, slot);
 		}
 	}
+
+	recordMemoryInventory({
+		module: "grid_supply",
+		checkpoint: "tibber_price_read",
+		arrayEntries: byStart.size,
+		payloadBytes,
+		recordsLoaded: [cfg.todayJsonStateId, cfg.tomorrowJsonStateId].filter(Boolean).length,
+	});
 
 	return [...byStart.values()].sort((a, b) => a.slotStartMs - b.slotStartMs);
 }

@@ -1,4 +1,5 @@
 import { setOptionalNumberIfChanged, setStateIfChanged } from "../policy/core/state_write";
+import type { Price15MinSlot } from "../learning/price_forecast/tibber_parse";
 import type { PlannerHost, PlannerInputs } from "./inputs";
 import { readPlannerInputs } from "./inputs";
 import { buildPlannerConstraints, computeDeficitW, planBattery } from "./rules/battery";
@@ -180,8 +181,11 @@ function formatBriefing(intent: PlannerIntent): string {
 	return lines.join(" ").slice(0, 480);
 }
 
-export async function runPlannerTick(host: PlannerHost): Promise<PlannerIntent> {
-	const inputs = await readPlannerInputs(host);
+export async function runPlannerTick(
+	host: PlannerHost,
+	options?: { batteryWinterPriceSlots?: Price15MinSlot[] },
+): Promise<PlannerIntent> {
+	const inputs = await readPlannerInputs(host, options);
 	const intent = runPlanner(inputs);
 
 	try {

@@ -8,11 +8,14 @@ import { immersionDeviceConfigFromAdapter } from "../device_config.js";
 import {
 	mergeSlotAllocations,
 	parseDailyAllocationEntries,
+	isImmersionAllocationSummaryAuthoritative,
+	resolveImmersionDailyPlanAllocation,
 	resolveImmersionDailyPlanFromData,
 	resolveImmersionDecisionSource,
 	stageIndexForMaxPowerW,
 	resetImmersionDailyPlanCache,
 } from "./daily_plan.js";
+import { ALLOCATION_ADDON_STATE_IDS, DAILY_PLAN_STATE_IDS } from "../../../operator/daily_plan/states";
 
 const TZ = "UTC";
 const NOW = new Date("2026-07-11T10:07:00.000Z");
@@ -253,5 +256,116 @@ describe("immersion daily plan reader", () => {
 	it("resets cache helper", () => {
 		resetImmersionDailyPlanCache();
 		assert.ok(true);
+	});
+
+	it("reads allocation summary without loading full daily plan when immersion entries exist", async () => {
+		resetImmersionDailyPlanCache();
+		const reads: string[] = [];
+		const allocation = [allocationEntry(CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, 1700)];
+		const host = {
+			config: { timezone: TZ },
+			async getStateAsync(id: string) {
+				reads.push(id);
+				if (id === DAILY_PLAN_STATE_IDS.status) return { val: "ready", ack: true };
+				if (id === DAILY_PLAN_STATE_IDS.date) return { val: "2026-07-11", ack: true };
+				if (id === DAILY_PLAN_STATE_IDS.revision) return { val: 3, ack: true };
+				if (id === DAILY_PLAN_STATE_IDS.validUntil) return { val: "", ack: true };
+				if (id === ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson) {
+					return { val: JSON.stringify(allocation), ack: true };
+				}
+				if (id === DAILY_PLAN_STATE_IDS.planJson) {
+					throw new Error("full plan must not be read");
+				}
+				return null;
+			},
+		};
+
+		const result = await resolveImmersionDailyPlanAllocation(
+			host as Parameters<typeof resolveImmersionDailyPlanAllocation>[0],
+			MULTI_STAGE_CFG,
+			NOW,
+		);
+		assert.equal(result.useDailyPlan, true);
+		assert.ok(!reads.includes(DAILY_PLAN_STATE_IDS.planJson));
+	});
+
+	it("valid authoritative allocation without immersion entries means zero allocation", async () => {
+		resetImmersionDailyPlanCache();
+		const reads: string[] = [];
+		const host = {
+			config: { timezone: TZ },
+			async getStateAsync(id: string) {
+				reads.push(id);
+				if (id === DAILY_PLAN_STATE_IDS.status) return { val: "ready", ack: true };
+				if (id === DAILY_PLAN_STATE_IDS.date) return { val: "2026-07-11", ack: true };
+				if (id === DAILY_PLAN_STATE_IDS.revision) return { val: 2, ack: true };
+				if (id === DAILY_PLAN_STATE_IDS.validUntil) return { val: "", ack: true };
+				if (id === ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson) {
+					return { val: "[]", ack: true };
+				}
+				if (id === DAILY_PLAN_STATE_IDS.planJson) {
+					throw new Error("full plan must not be read for authoritative empty allocation");
+				}
+				return null;
+			},
+		};
+
+		const result = await resolveImmersionDailyPlanAllocation(
+			host as Parameters<typeof resolveImmersionDailyPlanAllocation>[0],
+			MULTI_STAGE_CFG,
+			NOW,
+		);
+		assert.equal(result.dailyPlanStatus, "daily_plan_zero_allocation");
+		assert.equal(result.useDailyPlan, true);
+		assert.equal(result.allocatedPowerW, 0);
+		assert.ok(!reads.includes(DAILY_PLAN_STATE_IDS.planJson));
+	});
+
+	it("invalid allocation schema falls back to full daily plan read", async () => {
+		resetImmersionDailyPlanCache();
+		const reads: string[] = [];
+		const host = {
+			config: { timezone: TZ },
+			async getStateAsync(id: string) {
+				reads.push(id);
+				if (id === DAILY_PLAN_STATE_IDS.status) return { val: "ready", ack: true };
+				if (id === DAILY_PLAN_STATE_IDS.date) return { val: "2026-07-11", ack: true };
+				if (id === DAILY_PLAN_STATE_IDS.revision) return { val: 2, ack: true };
+				if (id === DAILY_PLAN_STATE_IDS.validUntil) return { val: "", ack: true };
+				if (id === ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson) {
+					return { val: "{not-an-array}", ack: true };
+				}
+				if (id === DAILY_PLAN_STATE_IDS.planJson) {
+					return { val: "{}", ack: true };
+				}
+				return null;
+			},
+		};
+
+		await resolveImmersionDailyPlanAllocation(
+			host as Parameters<typeof resolveImmersionDailyPlanAllocation>[0],
+			MULTI_STAGE_CFG,
+			NOW,
+		);
+		assert.ok(reads.includes(DAILY_PLAN_STATE_IDS.planJson));
+	});
+
+	it("allocation summary authority requires usable status, date and revision", () => {
+		const now = NOW;
+		const meta = {
+			status: "ready",
+			date: "2026-07-11",
+			revision: 2,
+			validUntil: null as string | null,
+			timezone: TZ,
+		};
+		assert.equal(isImmersionAllocationSummaryAuthoritative(meta, now, []), true);
+		assert.equal(
+			isImmersionAllocationSummaryAuthoritative({ ...meta, status: "missing_inputs" }, now, []),
+			false,
+		);
+		assert.equal(isImmersionAllocationSummaryAuthoritative({ ...meta, date: "2026-07-10" }, now, []), false);
+		assert.equal(isImmersionAllocationSummaryAuthoritative({ ...meta, revision: 0 }, now, []), false);
+		assert.equal(isImmersionAllocationSummaryAuthoritative(meta, now, null), false);
 	});
 });

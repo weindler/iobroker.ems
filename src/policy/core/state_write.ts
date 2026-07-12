@@ -1,10 +1,20 @@
 import type { StateHost } from "../../ems_light/state_util";
 
+export type StateWriteOptions = {
+	/** Skip getStateAsync — caller already knows the value changed (e.g. revision bump). */
+	skipRead?: boolean;
+};
+
 export async function setStateIfChanged(
 	host: StateHost,
 	id: string,
 	val: ioBroker.StateValue,
+	options?: StateWriteOptions,
 ): Promise<boolean> {
+	if (options?.skipRead) {
+		await host.setStateAsync(id, { val, ack: true });
+		return true;
+	}
 	const cur = await host.getStateAsync(id);
 	const curVal = cur?.val;
 	if (curVal === val) {
@@ -22,9 +32,10 @@ export async function setOptionalNumberIfChanged(
 	host: StateHost,
 	id: string,
 	val: number | null | undefined,
+	options?: StateWriteOptions,
 ): Promise<boolean> {
 	const writeVal: ioBroker.StateValue = val === null || val === undefined ? null : val;
-	return setStateIfChanged(host, id, writeVal);
+	return setStateIfChanged(host, id, writeVal, options);
 }
 
 export async function setStatesIfRevisionChanged(

@@ -1,4 +1,5 @@
 import { intentAdminConfigFromAdapter } from "../../../intent/config";
+import { recordMemoryInventory } from "../../../diagnostics/memory_inventory";
 import { CONTRIBUTION_IDS } from "../../../operator/contribution_ids";
 import {
 	ALLOCATION_ADDON_STATE_IDS,
@@ -67,6 +68,36 @@ interface DailyPlanMeta {
 	revision: number;
 	validUntil: string | null;
 	timezone: string;
+}
+
+export function isImmersionAllocationSummaryAuthoritative(
+	meta: DailyPlanMeta,
+	now: Date,
+	allocationEntries: DailyAllocationEntry[] | null,
+): boolean {
+	if (allocationEntries === null) {
+		return false;
+	}
+	if (!USABLE_DAILY_PLAN_STATUSES.has(meta.status as DailyPlanStatus)) {
+		return false;
+	}
+	if (!isValidTimezone(meta.timezone)) {
+		return false;
+	}
+	if (!Number.isFinite(meta.revision) || meta.revision < 1) {
+		return false;
+	}
+	const localDate = localDateKeyInTimezone(now, meta.timezone);
+	if (meta.date !== localDate) {
+		return false;
+	}
+	if (meta.validUntil) {
+		const validUntilMs = Date.parse(meta.validUntil);
+		if (!Number.isFinite(validUntilMs) || now.getTime() > validUntilMs) {
+			return false;
+		}
+	}
+	return true;
 }
 
 interface ParsedPlanCache {
@@ -434,7 +465,10 @@ export function resolveImmersionDailyPlanFromData(input: ResolveDailyPlanInput):
 	};
 }
 
-async function loadPlanData(host: DailyPlanReadHost): Promise<{
+async function loadPlanData(
+	host: DailyPlanReadHost,
+	now: Date,
+): Promise<{
 	meta: DailyPlanMeta;
 	entries: DailyAllocationEntry[];
 	fullPlan: DailyPlan | null;
@@ -456,11 +490,37 @@ async function loadPlanData(host: DailyPlanReadHost): Promise<{
 
 	const allocationRaw = parseJson(await readStr(host, ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson));
 	const allocationEntries = parseDailyAllocationEntries(allocationRaw);
+	const allocationAuthoritative = isImmersionAllocationSummaryAuthoritative(meta, now, allocationEntries);
 
-	const fullPlanRaw = parseJson(await readStr(host, DAILY_PLAN_STATE_IDS.planJson));
-	const fullPlan = parseFullDailyPlan(fullPlanRaw);
+	let fullPlan: DailyPlan | null = null;
+	if (!allocationAuthoritative) {
+		const fullPlanRaw = parseJson(await readStr(host, DAILY_PLAN_STATE_IDS.planJson));
+		fullPlan = parseFullDailyPlan(fullPlanRaw);
+		recordMemoryInventory({
+			module: "immersion_daily_plan",
+			checkpoint: "full_plan_read",
+			payloadBytes:
+				typeof fullPlanRaw === "string"
+					? fullPlanRaw.length
+					: fullPlanRaw
+						? JSON.stringify(fullPlanRaw).length
+						: 0,
+		});
+	} else {
+		recordMemoryInventory({
+			module: "immersion_daily_plan",
+			checkpoint: "allocation_only",
+			arrayEntries: allocationEntries?.length ?? 0,
+			payloadBytes:
+				typeof allocationRaw === "string"
+					? allocationRaw.length
+					: allocationRaw
+						? JSON.stringify(allocationRaw).length
+						: 0,
+		});
+	}
 
-	const entries = immersionEntriesFromSources(allocationEntries, fullPlan);
+	const entries = immersionEntriesFromSources(allocationAuthoritative ? allocationEntries : null, fullPlan);
 	planCache = { revision, entries, fullPlan };
 	return { meta, entries, fullPlan };
 }
@@ -470,7 +530,7 @@ export async function resolveImmersionDailyPlanAllocation(
 	config: ImmersionDeviceConfig,
 	now: Date,
 ): Promise<ImmersionDailyPlanResolution> {
-	const { meta, entries } = await loadPlanData(host);
+	const { meta, entries } = await loadPlanData(host, now);
 
 	if (!meta.status || meta.status === "not_initialized") {
 		return {

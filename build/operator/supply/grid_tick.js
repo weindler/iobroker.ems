@@ -12,25 +12,28 @@ function resetGridSupplyRevisionForTest() {
     revision = 0;
 }
 exports.resetGridSupplyRevisionForTest = resetGridSupplyRevisionForTest;
-async function runGridSupplyTick(host) {
-    const input = await (0, grid_read_1.collectGridSupplyBuildInput)(host, new Date());
-    const forecast = (0, grid_1.buildGridSupplyForecast)(input);
+async function runGridSupplyTick(host, prebuilt) {
+    const input = prebuilt?.input ?? (await (0, grid_read_1.collectGridSupplyBuildInput)(host, new Date()));
+    const forecast = prebuilt?.forecast ?? (0, grid_1.buildGridSupplyForecast)(input);
     const payload = (0, grid_1.gridSupplyRevisionPayload)(forecast);
-    if (payload !== lastRevisionPayload) {
-        revision += 1;
-        lastRevisionPayload = payload;
-    }
+    const revisionChanged = payload !== lastRevisionPayload;
+    const nextRevision = revisionChanged ? revision + 1 : revision;
+    const writeOpts = revisionChanged ? { skipRead: true } : undefined;
     try {
-        await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.status, forecast.quality.status);
-        await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.source, forecast.source);
-        await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.generatedAt, forecast.generatedAt);
-        await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.validUntil, forecast.validUntil ?? "");
-        await (0, state_write_1.setOptionalNumberIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.currentPriceCtPerKwh, forecast.currentPriceCtPerKwh);
-        await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.importAllowed, forecast.gridImportAllowed);
-        await (0, state_write_1.setOptionalNumberIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.maxImportPowerW, forecast.effectiveMaxGridImportW);
-        await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.slotsJson, JSON.stringify(forecast.slots));
-        await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.reasonDe, forecast.reasonDe);
-        await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.revision, revision);
+        await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.status, forecast.quality.status, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.source, forecast.source, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.generatedAt, forecast.generatedAt, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.validUntil, forecast.validUntil ?? "", writeOpts);
+        await (0, state_write_1.setOptionalNumberIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.currentPriceCtPerKwh, forecast.currentPriceCtPerKwh, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.importAllowed, forecast.gridImportAllowed, writeOpts);
+        await (0, state_write_1.setOptionalNumberIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.maxImportPowerW, forecast.effectiveMaxGridImportW, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.slotsJson, JSON.stringify(forecast.slots), writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.reasonDe, forecast.reasonDe, writeOpts);
+        await (0, state_write_1.setStateIfChanged)(host, grid_states_1.GRID_SUPPLY_STATE_IDS.revision, nextRevision, writeOpts);
+        if (revisionChanged) {
+            revision = nextRevision;
+            lastRevisionPayload = payload;
+        }
     }
     catch (e) {
         host.log?.warn?.(`grid supply state write: ${String(e)}`);

@@ -11,6 +11,10 @@ const tick_1 = require("../operator/contributions/flexible/tick");
 const tick_2 = require("../operator/forecast/tick");
 const states_3 = require("../operator/daily_plan/states");
 const tick_3 = require("../operator/daily_plan/tick");
+const grid_1 = require("../operator/supply/grid");
+const grid_read_1 = require("../operator/supply/grid_read");
+const memory_inventory_1 = require("../diagnostics/memory_inventory");
+const startup_memory_1 = require("../diagnostics/startup_memory");
 var inputs_1 = require("./inputs");
 Object.defineProperty(exports, "readPlannerThermalStage", { enumerable: true, get: function () { return inputs_1.readPlannerThermalStage; } });
 Object.defineProperty(exports, "readPlannerInputs", { enumerable: true, get: function () { return inputs_1.readPlannerInputs; } });
@@ -36,6 +40,9 @@ var battery_winter_price_inputs_1 = require("./battery_winter_price_inputs");
 Object.defineProperty(exports, "readTibber15MinPriceSlots", { enumerable: true, get: function () { return battery_winter_price_inputs_1.readTibber15MinPriceSlots; } });
 var battery_winter_config_1 = require("./battery_winter_config");
 Object.defineProperty(exports, "batteryWinterPlanConfigFromAdapter", { enumerable: true, get: function () { return battery_winter_config_1.batteryWinterPlanConfigFromAdapter; } });
+function plannerProbe(log, checkpoint) {
+    (0, startup_memory_1.probeStartupMemory)(log, checkpoint);
+}
 /** Phase B — nur Objektbaum, keine Planner-Ticks. */
 async function ensurePlannerStateTree(host) {
     await (0, ensure_states_1.ensurePlannerStates)(host);
@@ -47,11 +54,44 @@ async function ensurePlannerStateTree(host) {
 exports.ensurePlannerStateTree = ensurePlannerStateTree;
 /** Phase F — initiale Planner-Auswertung. */
 async function runPlannerRuntime(host) {
-    await (0, run_1.runPlannerTick)(host);
-    const gridForecast = await (0, grid_tick_1.runGridSupplyTick)(host);
+    const log = host.log;
+    const now = new Date();
+    plannerProbe(log, "planner_runtime_start");
+    plannerProbe(log, "planner_before_grid_collect");
+    const gridInput = await (0, grid_read_1.collectGridSupplyBuildInput)(host, now);
+    const gridForecast = (0, grid_1.buildGridSupplyForecast)(gridInput);
+    const priceSlots = (0, grid_1.gridSlotsToPrice15Min)(gridForecast.slots);
+    (0, memory_inventory_1.recordMemoryInventory)({
+        module: "planner_grid_collect",
+        checkpoint: "after_collect",
+        arrayEntries: priceSlots.length,
+        mapEntries: gridForecast.slots.length,
+    });
+    (0, memory_inventory_1.logMemoryInventory)(log, "planner_grid_collect", "after_collect");
+    plannerProbe(log, "planner_after_grid_collect");
+    plannerProbe(log, "planner_before_run_planner_tick");
+    await (0, run_1.runPlannerTick)(host, { batteryWinterPriceSlots: priceSlots });
+    plannerProbe(log, "planner_after_run_planner_tick");
+    plannerProbe(log, "planner_before_grid_supply_write");
+    await (0, grid_tick_1.runGridSupplyTick)(host, { forecast: gridForecast, input: gridInput });
+    plannerProbe(log, "planner_after_grid_supply_write");
+    plannerProbe(log, "planner_before_flexible_contributions");
     const flexibleContributions = await (0, tick_1.runFlexibleContributionsTick)(host, gridForecast);
+    plannerProbe(log, "planner_after_flexible_contributions");
+    plannerProbe(log, "planner_before_forecast_plan");
     const forecastPlan = await (0, tick_2.runForecastPlanTick)(host, gridForecast, flexibleContributions);
+    (0, memory_inventory_1.recordMemoryInventory)({
+        module: "planner_forecast_plan",
+        checkpoint: "after_build",
+        arrayEntries: forecastPlan.slots.length,
+        recordsLoaded: forecastPlan.contributions.length,
+    });
+    (0, memory_inventory_1.logMemoryInventory)(log, "planner_forecast_plan", "after_build");
+    plannerProbe(log, "planner_after_forecast_plan");
+    plannerProbe(log, "planner_before_daily_plan");
     await (0, tick_3.runDailyPlanTick)(host, forecastPlan);
+    plannerProbe(log, "planner_after_daily_plan");
+    plannerProbe(log, "planner_runtime_done");
 }
 exports.runPlannerRuntime = runPlannerRuntime;
 async function initPlanner(host) {

@@ -64,7 +64,6 @@ function wallboxVehicleHydrateHost(adapter: PersistHydrateHost): ioBroker.Adapte
 export async function hydratePersistedState(host: PersistHydrateHost): Promise<void> {
 	probeStartupMemory(host.log, "before_persist_hydration");
 	markModuleInit("persist_hydration");
-	markModuleInit("persist_hydration");
 
 	const learningHost = getLearningStateTreeHost();
 	if (learningHost) {

@@ -174,8 +174,8 @@ function formatBriefing(intent) {
     }
     return lines.join(" ").slice(0, 480);
 }
-async function runPlannerTick(host) {
-    const inputs = await (0, inputs_1.readPlannerInputs)(host);
+async function runPlannerTick(host, options) {
+    const inputs = await (0, inputs_1.readPlannerInputs)(host, options);
     const intent = runPlanner(inputs);
     try {
         await (0, state_write_1.setStateIfChanged)(host, "planner.status", "ready");

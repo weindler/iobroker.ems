@@ -1,7 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.setStatesIfRevisionChanged = exports.setOptionalNumberIfChanged = exports.setStateIfChanged = void 0;
-async function setStateIfChanged(host, id, val) {
+async function setStateIfChanged(host, id, val, options) {
+    if (options?.skipRead) {
+        await host.setStateAsync(id, { val, ack: true });
+        return true;
+    }
     const cur = await host.getStateAsync(id);
     const curVal = cur?.val;
     if (curVal === val) {
@@ -15,9 +19,9 @@ async function setStateIfChanged(host, id, val) {
 }
 exports.setStateIfChanged = setStateIfChanged;
 /** Optional number: null clears the state value (no -1 sentinel). */
-async function setOptionalNumberIfChanged(host, id, val) {
+async function setOptionalNumberIfChanged(host, id, val, options) {
     const writeVal = val === null || val === undefined ? null : val;
-    return setStateIfChanged(host, id, writeVal);
+    return setStateIfChanged(host, id, writeVal, options);
 }
 exports.setOptionalNumberIfChanged = setOptionalNumberIfChanged;
 async function setStatesIfRevisionChanged(host, revisionStateId, newRevision, writes, updatedAtId, updatedAt) {

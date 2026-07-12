@@ -165,7 +165,6 @@ async function startEmsLightPhase1Runtime(adapter) {
     (0, startup_memory_1.probeStartupMemory)(adapter.log, policyInitSettled ? "after_policy_engine_init" : "after_policy_engine_init_timeout");
     adapter.log.info?.(`EMS mem-policy initCalls=${policyDiag.initCalls} runsInFlight=${policyDiag.runsInFlight} settled=${policyInitSettled}`);
     (0, startup_memory_1.probeStartupMemory)(adapter.log, "before_intent_engine_init");
-    (0, init_guard_1.markModuleInit)("intent_engine");
     const intentHost = buildIntentHost(adapter);
     try {
         await (0, intent_1.initIntentEngine)(intentHost);

@@ -6,6 +6,7 @@ export interface MemoryInventoryEntry {
 	daysOrSlots?: number;
 	mapEntries?: number;
 	arrayEntries?: number;
+	payloadBytes?: number;
 	rawHistoryRetained?: boolean;
 }
 
@@ -55,6 +56,7 @@ export function formatMemoryInventoryLine(entry: MemoryInventoryEntry): string {
 		entry.daysOrSlots !== undefined ? `daysOrSlots=${entry.daysOrSlots}` : null,
 		entry.mapEntries !== undefined ? `mapEntries=${entry.mapEntries}` : null,
 		entry.arrayEntries !== undefined ? `arrayEntries=${entry.arrayEntries}` : null,
+		entry.payloadBytes !== undefined ? `payloadBytes=${entry.payloadBytes}` : null,
 		entry.rawHistoryRetained !== undefined ? `rawHistoryRetained=${entry.rawHistoryRetained ? "yes" : "no"}` : null,
 	].filter(Boolean);
 	return parts.join(" ");

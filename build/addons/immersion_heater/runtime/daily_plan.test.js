@@ -10,6 +10,7 @@ const contributor_1 = require("../../../operator/contributor");
 const slots_1 = require("../../../operator/daily_plan/slots");
 const device_config_js_1 = require("../device_config.js");
 const daily_plan_js_1 = require("./daily_plan.js");
+const states_1 = require("../../../operator/daily_plan/states");
 const TZ = "UTC";
 const NOW = new Date("2026-07-11T10:07:00.000Z");
 const SLOT_START = (0, slots_1.slotStartIsoFloored)(NOW, TZ);
@@ -198,5 +199,106 @@ function allocationEntry(contributionId, allocatedPowerW, status = "allocated") 
     (0, node_test_1.it)("resets cache helper", () => {
         (0, daily_plan_js_1.resetImmersionDailyPlanCache)();
         strict_1.default.ok(true);
+    });
+    (0, node_test_1.it)("reads allocation summary without loading full daily plan when immersion entries exist", async () => {
+        (0, daily_plan_js_1.resetImmersionDailyPlanCache)();
+        const reads = [];
+        const allocation = [allocationEntry(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, 1700)];
+        const host = {
+            config: { timezone: TZ },
+            async getStateAsync(id) {
+                reads.push(id);
+                if (id === states_1.DAILY_PLAN_STATE_IDS.status)
+                    return { val: "ready", ack: true };
+                if (id === states_1.DAILY_PLAN_STATE_IDS.date)
+                    return { val: "2026-07-11", ack: true };
+                if (id === states_1.DAILY_PLAN_STATE_IDS.revision)
+                    return { val: 3, ack: true };
+                if (id === states_1.DAILY_PLAN_STATE_IDS.validUntil)
+                    return { val: "", ack: true };
+                if (id === states_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson) {
+                    return { val: JSON.stringify(allocation), ack: true };
+                }
+                if (id === states_1.DAILY_PLAN_STATE_IDS.planJson) {
+                    throw new Error("full plan must not be read");
+                }
+                return null;
+            },
+        };
+        const result = await (0, daily_plan_js_1.resolveImmersionDailyPlanAllocation)(host, MULTI_STAGE_CFG, NOW);
+        strict_1.default.equal(result.useDailyPlan, true);
+        strict_1.default.ok(!reads.includes(states_1.DAILY_PLAN_STATE_IDS.planJson));
+    });
+    (0, node_test_1.it)("valid authoritative allocation without immersion entries means zero allocation", async () => {
+        (0, daily_plan_js_1.resetImmersionDailyPlanCache)();
+        const reads = [];
+        const host = {
+            config: { timezone: TZ },
+            async getStateAsync(id) {
+                reads.push(id);
+                if (id === states_1.DAILY_PLAN_STATE_IDS.status)
+                    return { val: "ready", ack: true };
+                if (id === states_1.DAILY_PLAN_STATE_IDS.date)
+                    return { val: "2026-07-11", ack: true };
+                if (id === states_1.DAILY_PLAN_STATE_IDS.revision)
+                    return { val: 2, ack: true };
+                if (id === states_1.DAILY_PLAN_STATE_IDS.validUntil)
+                    return { val: "", ack: true };
+                if (id === states_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson) {
+                    return { val: "[]", ack: true };
+                }
+                if (id === states_1.DAILY_PLAN_STATE_IDS.planJson) {
+                    throw new Error("full plan must not be read for authoritative empty allocation");
+                }
+                return null;
+            },
+        };
+        const result = await (0, daily_plan_js_1.resolveImmersionDailyPlanAllocation)(host, MULTI_STAGE_CFG, NOW);
+        strict_1.default.equal(result.dailyPlanStatus, "daily_plan_zero_allocation");
+        strict_1.default.equal(result.useDailyPlan, true);
+        strict_1.default.equal(result.allocatedPowerW, 0);
+        strict_1.default.ok(!reads.includes(states_1.DAILY_PLAN_STATE_IDS.planJson));
+    });
+    (0, node_test_1.it)("invalid allocation schema falls back to full daily plan read", async () => {
+        (0, daily_plan_js_1.resetImmersionDailyPlanCache)();
+        const reads = [];
+        const host = {
+            config: { timezone: TZ },
+            async getStateAsync(id) {
+                reads.push(id);
+                if (id === states_1.DAILY_PLAN_STATE_IDS.status)
+                    return { val: "ready", ack: true };
+                if (id === states_1.DAILY_PLAN_STATE_IDS.date)
+                    return { val: "2026-07-11", ack: true };
+                if (id === states_1.DAILY_PLAN_STATE_IDS.revision)
+                    return { val: 2, ack: true };
+                if (id === states_1.DAILY_PLAN_STATE_IDS.validUntil)
+                    return { val: "", ack: true };
+                if (id === states_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson) {
+                    return { val: "{not-an-array}", ack: true };
+                }
+                if (id === states_1.DAILY_PLAN_STATE_IDS.planJson) {
+                    return { val: "{}", ack: true };
+                }
+                return null;
+            },
+        };
+        await (0, daily_plan_js_1.resolveImmersionDailyPlanAllocation)(host, MULTI_STAGE_CFG, NOW);
+        strict_1.default.ok(reads.includes(states_1.DAILY_PLAN_STATE_IDS.planJson));
+    });
+    (0, node_test_1.it)("allocation summary authority requires usable status, date and revision", () => {
+        const now = NOW;
+        const meta = {
+            status: "ready",
+            date: "2026-07-11",
+            revision: 2,
+            validUntil: null,
+            timezone: TZ,
+        };
+        strict_1.default.equal((0, daily_plan_js_1.isImmersionAllocationSummaryAuthoritative)(meta, now, []), true);
+        strict_1.default.equal((0, daily_plan_js_1.isImmersionAllocationSummaryAuthoritative)({ ...meta, status: "missing_inputs" }, now, []), false);
+        strict_1.default.equal((0, daily_plan_js_1.isImmersionAllocationSummaryAuthoritative)({ ...meta, date: "2026-07-10" }, now, []), false);
+        strict_1.default.equal((0, daily_plan_js_1.isImmersionAllocationSummaryAuthoritative)({ ...meta, revision: 0 }, now, []), false);
+        strict_1.default.equal((0, daily_plan_js_1.isImmersionAllocationSummaryAuthoritative)(meta, now, null), false);
     });
 });

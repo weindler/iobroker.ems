@@ -1,4 +1,4 @@
-import { setStateIfChanged } from "../../policy/core/state_write";
+import { setStateIfChanged, type StateWriteOptions } from "../../policy/core/state_write";
 import { collectContributions, type ContributionsReadHost } from "../contributions/read";
 import type { PlanContribution } from "../types";
 import type { GridSupplyForecast } from "../types";
@@ -33,39 +33,45 @@ export async function runForecastPlanTick(
 	});
 
 	const payload = forecastPlanRevisionPayload(plan);
-	if (payload !== lastRevisionPayload) {
-		revision += 1;
-		lastRevisionPayload = payload;
-	}
-	plan.revision = revision;
+	const revisionChanged = payload !== lastRevisionPayload;
+	const nextRevision = revisionChanged ? revision + 1 : revision;
+	plan.revision = nextRevision;
+	const writeOpts: StateWriteOptions | undefined = revisionChanged ? { skipRead: true } : undefined;
 
 	try {
-		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.status, plan.status);
-		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
-		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "");
-		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.horizonStart, plan.horizonStart);
-		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.horizonEnd, plan.horizonEnd);
-		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes);
+		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.status, plan.status, writeOpts);
+		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, writeOpts);
+		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "", writeOpts);
+		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.horizonStart, plan.horizonStart, writeOpts);
+		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.horizonEnd, plan.horizonEnd, writeOpts);
+		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes, writeOpts);
 		await setStateIfChanged(
 			host,
 			FORECAST_PLAN_STATE_IDS.activeContributorsJson,
 			JSON.stringify(plan.activeContributors),
+			writeOpts,
 		);
 		await setStateIfChanged(
 			host,
 			FORECAST_PLAN_STATE_IDS.excludedContributorsJson,
 			JSON.stringify(plan.excludedContributors),
+			writeOpts,
 		);
-		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.daysJson, JSON.stringify(plan.days));
-		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.slotsJson, JSON.stringify(plan.slots));
+		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.daysJson, JSON.stringify(plan.days), writeOpts);
+		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.slotsJson, JSON.stringify(plan.slots), writeOpts);
 		await setStateIfChanged(
 			host,
 			FORECAST_PLAN_STATE_IDS.contributionsJson,
 			JSON.stringify(plan.contributions),
+			writeOpts,
 		);
-		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
-		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
-		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.revision, revision);
+		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.planJson, JSON.stringify(plan), writeOpts);
+		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.reasonDe, plan.reasonDe, writeOpts);
+		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.revision, nextRevision, writeOpts);
+		if (revisionChanged) {
+			revision = nextRevision;
+			lastRevisionPayload = payload;
+		}
 	} catch (e) {
 		host.log?.warn?.(`forecast plan state write: ${String(e)}`);
 		try {

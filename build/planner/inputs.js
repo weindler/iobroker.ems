@@ -99,7 +99,7 @@ async function readCoolingUnitInputs(host, acConfig, persist) {
     }
     return rows;
 }
-async function readPlannerInputs(host) {
+async function readPlannerInputs(host, options) {
     const now = new Date();
     const acConfig = (0, config_1.acGlobalConfigFromAdapter)(host.config);
     const pvFromPv = await readNum(host, "live.pv.power_w");
@@ -137,7 +137,7 @@ async function readPlannerInputs(host) {
         readOutdoorTempC(host),
         readCoolingUnitInputs(host, acConfig, consumerStatsPersist),
         (0, battery_winter_inputs_1.readBatteryWinterDays)(host, batteryWinterConfig.horizonDays),
-        (0, battery_winter_price_inputs_1.readTibber15MinPriceSlots)(host, now),
+        options?.batteryWinterPriceSlots ?? (0, battery_winter_price_inputs_1.readTibber15MinPriceSlots)(host, now),
     ]);
     return {
         now,

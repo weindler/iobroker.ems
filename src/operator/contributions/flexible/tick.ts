@@ -1,4 +1,4 @@
-import { setStateIfChanged } from "../../../policy/core/state_write";
+import { setStateIfChanged, type StateWriteOptions } from "../../../policy/core/state_write";
 import type { PlanContribution } from "../../types";
 import { flexibleContributionsRevisionPayload } from "./types";
 import {
@@ -52,6 +52,8 @@ async function writeAddonStates(
 	host: FlexibleContributionsReadHost,
 	addonKey: keyof typeof FLEXIBLE_ADDON_STATE_IDS,
 	contributions: PlanContribution[],
+	writeOpts: StateWriteOptions | undefined,
+	revisionValue: number,
 ): Promise<void> {
 	const ids = FLEXIBLE_ADDON_STATE_IDS[addonKey];
 	const rows = addonContributions(
@@ -63,10 +65,10 @@ async function writeAddonStates(
 		rows.find((c) => c.enabled)?.reasonDe ??
 		rows[0]?.reasonDe ??
 		`Keine ${addonKey}-Contributions.`;
-	await setStateIfChanged(host, ids.status, status);
-	await setStateIfChanged(host, ids.contributionsJson, JSON.stringify(rows));
-	await setStateIfChanged(host, ids.reasonDe, reason);
-	await setStateIfChanged(host, ids.revision, revision);
+	await setStateIfChanged(host, ids.status, status, writeOpts);
+	await setStateIfChanged(host, ids.contributionsJson, JSON.stringify(rows), writeOpts);
+	await setStateIfChanged(host, ids.reasonDe, reason, writeOpts);
+	await setStateIfChanged(host, ids.revision, revisionValue, writeOpts);
 }
 
 export async function runFlexibleContributionsTick(
@@ -94,35 +96,40 @@ export async function runFlexibleContributionsTick(
 	}
 
 	const payload = flexibleContributionsRevisionPayload(contributions);
-	if (payload !== lastRevisionPayload) {
-		revision += 1;
-		lastRevisionPayload = payload;
-	}
+	const revisionChanged = payload !== lastRevisionPayload;
+	const nextRevision = revisionChanged ? revision + 1 : revision;
+	const writeOpts: StateWriteOptions | undefined = revisionChanged ? { skipRead: true } : undefined;
 
 	const { active, excluded } = partitionFlexible(contributions);
 	const overallStatus = active.length > 0 ? "ready" : excluded.length > 0 ? "degraded" : "missing";
 
 	try {
-		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.status, overallStatus);
-		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.generatedAt, now.toISOString());
-		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.contributionsJson, JSON.stringify(contributions));
+		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.status, overallStatus, writeOpts);
+		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.generatedAt, now.toISOString(), writeOpts);
+		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.contributionsJson, JSON.stringify(contributions), writeOpts);
 		await setStateIfChanged(
 			host,
 			FLEXIBLE_CONTRIBUTIONS_STATE_IDS.activeJson,
 			JSON.stringify(active.map((c) => c.contributionId)),
+			writeOpts,
 		);
-		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.excludedJson, JSON.stringify(excluded));
+		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.excludedJson, JSON.stringify(excluded), writeOpts);
 		await setStateIfChanged(
 			host,
 			FLEXIBLE_CONTRIBUTIONS_STATE_IDS.reasonDe,
 			`${active.length} aktiv, ${excluded.length} ausgeschlossen.`,
+			writeOpts,
 		);
-		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.revision, revision);
+		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.revision, nextRevision, writeOpts);
 
-		await writeAddonStates(host, "battery", contributions);
-		await writeAddonStates(host, "wallbox", contributions);
-		await writeAddonStates(host, "immersion_heater", contributions);
-		await writeAddonStates(host, "air_conditioning", contributions);
+		await writeAddonStates(host, "battery", contributions, writeOpts, nextRevision);
+		await writeAddonStates(host, "wallbox", contributions, writeOpts, nextRevision);
+		await writeAddonStates(host, "immersion_heater", contributions, writeOpts, nextRevision);
+		await writeAddonStates(host, "air_conditioning", contributions, writeOpts, nextRevision);
+		if (revisionChanged) {
+			revision = nextRevision;
+			lastRevisionPayload = payload;
+		}
 	} catch (e) {
 		host.log?.warn?.(`flexible contributions state write: ${String(e)}`);
 	}

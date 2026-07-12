@@ -13,6 +13,7 @@ import {
 	type ForceDryrunReason,
 } from "../execution_mode";
 import { getPendingForceDryrunReason } from "../restore/dryrun_context";
+import { isStartupRearmRequired } from "../backup_integration/startup_rearm";
 import { GLOBAL, addonMode } from "../tree_paths";
 import { STATE } from "../states";
 import { detectFullNamespaceColdStart } from "./cold_start";
@@ -116,7 +117,9 @@ export async function runAdapterBootstrap(
 	await step("sync execution modes", () => {
 		const restoreReason = getPendingForceDryrunReason();
 		const forceDryrunReason: ForceDryrunReason | null =
-			restoreReason ?? (bootstrapCtx.coldStartRecovery ? "namespace_cold_start" : null);
+			restoreReason ??
+			(isStartupRearmRequired() ? "startup_rearm_required" : null) ??
+			(bootstrapCtx.coldStartRecovery ? "namespace_cold_start" : null);
 		return syncExecutionModesFromConfig(host, adapterConfig, { forceDryrunReason });
 	});
 	await step("sync mappings", () => syncAllMappingsFromConfig(host));

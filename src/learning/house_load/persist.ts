@@ -1,5 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { atomicWriteFile } from "../../persistence/atomic_write";
 import { MODULE_TAG } from "./constants";
 import type { HouseLoadComputeResult, HouseLoadPersist } from "./types";
 
@@ -20,10 +21,9 @@ export async function writeHouseLoadPersist(
 		forecast_tomorrow: result.forecastTomorrowJson,
 		health: { ...result.healthJson, last_persist_at: lastRun },
 	};
-	await fs.writeFile(
+	await atomicWriteFile(
 		path.join(baseDir, "house_load_learning_v1.json"),
 		`${JSON.stringify(payload, null, 2)}\n`,
-		"utf8",
 	);
 }
 

@@ -1,4 +1,5 @@
 import * as fs from "node:fs/promises";
+import * as path from "node:path";
 import { scanRestoreTransactionsAtStartup } from "./journal";
 import { runRestoreRollback } from "./rollback";
 import { runRestoreRuntimeCleanup } from "./runtime_cleanup";
@@ -6,6 +7,7 @@ import { setRestoreInProgress, setRestoreRestartRequired } from "./barrier";
 import { syncExecutionModesFromConfig } from "../execution_mode";
 import { setPendingForceDryrunReason, clearPendingForceDryrunReason } from "./dryrun_context";
 import { RESTORE_STATES } from "../backup/ensure_states";
+import { resolveEmsPaths } from "../backup_integration/paths";
 import type { RestoreHost } from "./types";
 
 export type StartupRecoveryResult =
@@ -37,12 +39,8 @@ async function runRolledBackFollowUp(host: RestoreHost): Promise<StartupRecovery
 	return { ok: true, action: "finalized_rolled_back" };
 }
 
-export async function runRestoreStartupRecovery(host: RestoreHost): Promise<StartupRecoveryResult> {
-	const dataDir =
-		typeof host.getAbsoluteInstanceDataDir === "function" ? host.getAbsoluteInstanceDataDir() : null;
-	if (!dataDir) return { ok: true, action: "none" };
-
-	const scan = await scanRestoreTransactionsAtStartup(dataDir);
+async function runRecoveryScan(host: RestoreHost, transactionsDir: string): Promise<StartupRecoveryResult> {
+	const scan = await scanRestoreTransactionsAtStartup(transactionsDir);
 
 	if (scan.failed.length > 0) {
 		await markStartupRecoveryBlocked(host, "restore_transaction_failed");
@@ -88,8 +86,20 @@ export async function runRestoreStartupRecovery(host: RestoreHost): Promise<Star
 	return { ok: true, action: "none" };
 }
 
-export async function cleanupFinishedRestoreTransactions(instanceDataDir: string): Promise<void> {
-	const scan = await scanRestoreTransactionsAtStartup(instanceDataDir);
+export async function runRestoreStartupRecoveryAtPath(
+	host: RestoreHost,
+	transactionsDir: string,
+): Promise<StartupRecoveryResult> {
+	return runRecoveryScan(host, transactionsDir);
+}
+
+export async function runRestoreStartupRecovery(host: RestoreHost): Promise<StartupRecoveryResult> {
+	const layout = resolveEmsPaths(host);
+	return runRecoveryScan(host, layout.runtimeTransactionsDir);
+}
+
+export async function cleanupFinishedRestoreTransactions(transactionsDir: string): Promise<void> {
+	const scan = await scanRestoreTransactionsAtStartup(transactionsDir);
 	for (const { dir, journal } of scan.active) {
 		if (journal.phase === "committed") {
 			await fs.rm(dir, { recursive: true, force: true }).catch(() => undefined);
@@ -101,11 +111,8 @@ export async function cleanupFinishedRestoreTransactions(instanceDataDir: string
 }
 
 export async function clearRestoreRestartRequiredAfterBootstrap(host: RestoreHost): Promise<void> {
-	const dataDir =
-		typeof host.getAbsoluteInstanceDataDir === "function" ? host.getAbsoluteInstanceDataDir() : null;
-	if (dataDir) {
-		await cleanupFinishedRestoreTransactions(dataDir);
-	}
+	const layout = resolveEmsPaths(host);
+	await cleanupFinishedRestoreTransactions(layout.runtimeTransactionsDir);
 	setRestoreRestartRequired(false);
 	setRestoreInProgress(false);
 	clearPendingForceDryrunReason();

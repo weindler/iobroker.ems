@@ -89,9 +89,13 @@ function diagnosticModeStatus() {
     };
 }
 exports.diagnosticModeStatus = diagnosticModeStatus;
+const paths_1 = require("../backup_integration/paths");
 function logsDir(host) {
+    if (typeof host.getAbsoluteInstanceDataDir === "function" && host.namespace) {
+        return path.join((0, paths_1.resolveEmsPaths)(host).runtimeExportsDir, "support", "logs");
+    }
     if (typeof host.getAbsoluteInstanceDataDir === "function") {
-        return path.join(host.getAbsoluteInstanceDataDir(), "exports", "support", "logs");
+        return path.join((0, paths_1.resolveEmsPaths)(host.getAbsoluteInstanceDataDir()).runtimeExportsDir, "support", "logs");
     }
     return path.join("/tmp", "ems-support-logs");
 }

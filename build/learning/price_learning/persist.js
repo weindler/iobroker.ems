@@ -26,6 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.writePriceLearningPersist = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
+const atomic_write_1 = require("../../persistence/atomic_write");
 const constants_1 = require("./constants");
 async function writePriceLearningPersist(baseDir, result, lastRun) {
     await fs.mkdir(baseDir, { recursive: true });
@@ -53,6 +54,6 @@ async function writePriceLearningPersist(baseDir, result, lastRun) {
         },
     };
     const filePath = path.join(baseDir, "price_learning_v1.json");
-    await fs.writeFile(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+    await (0, atomic_write_1.atomicWriteFile)(filePath, `${JSON.stringify(payload, null, 2)}\n`);
 }
 exports.writePriceLearningPersist = writePriceLearningPersist;

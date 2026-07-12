@@ -1,5 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { atomicWriteFile } from "../../persistence/atomic_write";
 import { MS_PER_DAY } from "../house_load/constants";
 import { dateKeyToStartMs } from "../energy_daily_rollup/day";
 import { emptyConsumerEntry } from "./buffer";
@@ -37,10 +38,9 @@ export async function writeConsumerStatsPersist(
 		...persist,
 		generated_at: new Date().toISOString(),
 	};
-	await fs.writeFile(
+	await atomicWriteFile(
 		path.join(baseDir, CONSUMER_STATS_FILENAME),
 		`${JSON.stringify(next, null, 2)}\n`,
-		"utf8",
 	);
 }
 

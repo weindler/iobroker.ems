@@ -26,6 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.pruneConsumerDays = exports.mergeDayRecord = exports.upsertConsumerEntry = exports.ensureConsumerEntry = exports.writeConsumerStatsPersist = exports.readConsumerStatsPersist = exports.emptyConsumerStatsPersist = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
+const atomic_write_1 = require("../../persistence/atomic_write");
 const constants_1 = require("../house_load/constants");
 const day_1 = require("../energy_daily_rollup/day");
 const buffer_1 = require("./buffer");
@@ -54,7 +55,7 @@ async function writeConsumerStatsPersist(baseDir, persist) {
         ...persist,
         generated_at: new Date().toISOString(),
     };
-    await fs.writeFile(path.join(baseDir, types_1.CONSUMER_STATS_FILENAME), `${JSON.stringify(next, null, 2)}\n`, "utf8");
+    await (0, atomic_write_1.atomicWriteFile)(path.join(baseDir, types_1.CONSUMER_STATS_FILENAME), `${JSON.stringify(next, null, 2)}\n`);
 }
 exports.writeConsumerStatsPersist = writeConsumerStatsPersist;
 function ensureConsumerEntry(persist, consumerKey, nowMs) {

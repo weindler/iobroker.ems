@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.clearRestoreRestartRequiredAfterBootstrap = exports.cleanupFinishedRestoreTransactions = exports.runRestoreStartupRecovery = void 0;
+exports.clearRestoreRestartRequiredAfterBootstrap = exports.cleanupFinishedRestoreTransactions = exports.runRestoreStartupRecovery = exports.runRestoreStartupRecoveryAtPath = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const journal_1 = require("./journal");
 const rollback_1 = require("./rollback");
@@ -32,6 +32,7 @@ const barrier_1 = require("./barrier");
 const execution_mode_1 = require("../execution_mode");
 const dryrun_context_1 = require("./dryrun_context");
 const ensure_states_1 = require("../backup/ensure_states");
+const paths_1 = require("../backup_integration/paths");
 async function persistRestoreRecoveryDryrun(host) {
     const config = host.config && typeof host.config === "object" ? host.config : {};
     await (0, execution_mode_1.syncExecutionModesFromConfig)(host, config, { forceDryrunReason: "restore_recovery" });
@@ -53,11 +54,8 @@ async function runRolledBackFollowUp(host) {
     await (0, runtime_cleanup_1.runRestoreRuntimeCleanup)(host);
     return { ok: true, action: "finalized_rolled_back" };
 }
-async function runRestoreStartupRecovery(host) {
-    const dataDir = typeof host.getAbsoluteInstanceDataDir === "function" ? host.getAbsoluteInstanceDataDir() : null;
-    if (!dataDir)
-        return { ok: true, action: "none" };
-    const scan = await (0, journal_1.scanRestoreTransactionsAtStartup)(dataDir);
+async function runRecoveryScan(host, transactionsDir) {
+    const scan = await (0, journal_1.scanRestoreTransactionsAtStartup)(transactionsDir);
     if (scan.failed.length > 0) {
         await markStartupRecoveryBlocked(host, "restore_transaction_failed");
         return { ok: false, error: "restore_transaction_failed" };
@@ -95,9 +93,17 @@ async function runRestoreStartupRecovery(host) {
     }
     return { ok: true, action: "none" };
 }
+async function runRestoreStartupRecoveryAtPath(host, transactionsDir) {
+    return runRecoveryScan(host, transactionsDir);
+}
+exports.runRestoreStartupRecoveryAtPath = runRestoreStartupRecoveryAtPath;
+async function runRestoreStartupRecovery(host) {
+    const layout = (0, paths_1.resolveEmsPaths)(host);
+    return runRecoveryScan(host, layout.runtimeTransactionsDir);
+}
 exports.runRestoreStartupRecovery = runRestoreStartupRecovery;
-async function cleanupFinishedRestoreTransactions(instanceDataDir) {
-    const scan = await (0, journal_1.scanRestoreTransactionsAtStartup)(instanceDataDir);
+async function cleanupFinishedRestoreTransactions(transactionsDir) {
+    const scan = await (0, journal_1.scanRestoreTransactionsAtStartup)(transactionsDir);
     for (const { dir, journal } of scan.active) {
         if (journal.phase === "committed") {
             await fs.rm(dir, { recursive: true, force: true }).catch(() => undefined);
@@ -109,10 +115,8 @@ async function cleanupFinishedRestoreTransactions(instanceDataDir) {
 }
 exports.cleanupFinishedRestoreTransactions = cleanupFinishedRestoreTransactions;
 async function clearRestoreRestartRequiredAfterBootstrap(host) {
-    const dataDir = typeof host.getAbsoluteInstanceDataDir === "function" ? host.getAbsoluteInstanceDataDir() : null;
-    if (dataDir) {
-        await cleanupFinishedRestoreTransactions(dataDir);
-    }
+    const layout = (0, paths_1.resolveEmsPaths)(host);
+    await cleanupFinishedRestoreTransactions(layout.runtimeTransactionsDir);
     (0, barrier_1.setRestoreRestartRequired)(false);
     (0, barrier_1.setRestoreInProgress)(false);
     (0, dryrun_context_1.clearPendingForceDryrunReason)();

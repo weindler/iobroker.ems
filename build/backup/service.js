@@ -27,6 +27,7 @@ exports.getExportDataDir = exports.runSupportExport = exports.runBackupExport = 
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const data_dir_1 = require("../learning/data_dir");
+const paths_1 = require("../backup_integration/paths");
 const archive_1 = require("./archive");
 const checksum_1 = require("./checksum");
 const collect_diagnostics_1 = require("./collect_diagnostics");
@@ -144,10 +145,10 @@ async function runExport(host, kind, collectSupportExtras) {
     if (!lock.ok) {
         return { ok: false, error: lock.error };
     }
-    const dataDir = instanceDataDir(host);
-    const workDir = path.join(dataDir, "exports", `.work-${process.pid}`);
+    const layout = (0, paths_1.resolveEmsPaths)(host);
+    const workDir = path.join(layout.runtimeTempDir, `.work-${process.pid}`);
     try {
-        await (0, retention_1.cleanupTempExports)(dataDir);
+        await (0, retention_1.cleanupTempExports)(host);
         await fs.mkdir(workDir, { recursive: true });
         const createdAt = new Date().toISOString();
         const version = adapterVersion(host);
@@ -174,10 +175,10 @@ async function runExport(host, kind, collectSupportExtras) {
         const maxArchive = kind === "backup" ? limits_1.EXPORT_LIMITS.MAX_BACKUP_ARCHIVE_BYTES : limits_1.EXPORT_LIMITS.MAX_SUPPORT_ARCHIVE_BYTES;
         (0, limits_1.assertWithinLimit)(archive.length, maxArchive, "finished archive size");
         const fileName = (0, manifest_1.exportFileName)(kind, version, createdAt);
-        const targetDir = kind === "backup" ? (0, retention_1.backupDir)(dataDir) : (0, retention_1.supportDir)(dataDir);
+        const targetDir = kind === "backup" ? (0, retention_1.backupDir)(host) : (0, retention_1.supportDir)(host);
         const targetPath = (0, retention_1.resolveExportPath)(targetDir, fileName);
         await (0, retention_1.writeAtomicArchive)(targetPath, archive);
-        await (0, retention_1.enforceRetention)(dataDir);
+        await (0, retention_1.enforceRetention)(host);
         const sha256 = (0, checksum_1.sha256Buffer)(archive);
         return {
             ok: true,

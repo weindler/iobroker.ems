@@ -39,12 +39,9 @@ const execution_mode_1 = require("../execution_mode");
 const diagnostic_mode_1 = require("../support/diagnostic_mode");
 const apply_hooks_1 = require("./apply_hooks");
 const schema_1 = require("../backup/schema");
-function instanceDataDir(host) {
-    if (typeof host.getAbsoluteInstanceDataDir === "function") {
-        return host.getAbsoluteInstanceDataDir();
-    }
-    throw new Error("instance data dir unavailable");
-}
+const startup_1 = require("../backup_integration/startup");
+const manifest_1 = require("../backup_integration/manifest");
+const paths_1 = require("../backup_integration/paths");
 function currentNative(host) {
     return host.config && typeof host.config === "object" ? { ...host.config } : {};
 }
@@ -60,8 +57,7 @@ async function runRestoreValidate(host, fileName) {
         return { ok: false, error: lock.error, status: "error" };
     try {
         (0, plan_1.invalidateRestorePlan)();
-        const dataDir = instanceDataDir(host);
-        const file = await (0, source_1.readRestoreArchiveFile)(dataDir, fileName);
+        const file = await (0, source_1.readRestoreArchiveFile)(host, fileName);
         const validated = (0, validate_archive_1.validateRestoreArchiveBuffer)(file.buffer);
         const projection = (0, projection_1.buildRestoreProjection)(validated.payloadMap);
         const identity = {
@@ -100,8 +96,7 @@ async function runRestoreApply(host, fileName, confirmPlanId) {
     try {
         await (0, apply_hooks_1.maybeInjectRestoreApplyFailure)("after_lock");
         (0, diagnostic_mode_1.stopDiagnosticMode)();
-        const dataDir = instanceDataDir(host);
-        const file = await (0, source_1.readRestoreArchiveFile)(dataDir, fileName);
+        const file = await (0, source_1.readRestoreArchiveFile)(host, fileName);
         const validated = (0, validate_archive_1.validateRestoreArchiveBuffer)(file.buffer);
         const identity = {
             fileName,
@@ -113,7 +108,14 @@ async function runRestoreApply(host, fileName, confirmPlanId) {
         const plan = (0, plan_1.assertPlanMatchesIdentity)(identity, confirmPlanId);
         (0, plan_1.markPlanUsed)();
         await (0, apply_hooks_1.maybeInjectRestoreApplyFailure)("after_barrier");
-        txDir = await (0, journal_1.ensureTransactionLayout)(dataDir, txId);
+        txDir = await (0, journal_1.ensureTransactionLayout)(host, txId);
+        const layout = (0, paths_1.resolveEmsPaths)(host);
+        let manifest = await (0, startup_1.readManifestFromDisk)(layout.manifestPath);
+        if (!manifest) {
+            throw new Error("manifest_missing");
+        }
+        manifest = (0, manifest_1.validateManifest)(manifest);
+        manifest = await (0, manifest_1.beginRestoreTransactionFence)(layout.manifestPath, manifest, txId);
         const beforeNative = (0, projection_1.exportCurrentNativeProjection)(currentNative(host));
         await (0, journal_1.writeJsonFileAtomic)(path.join(txDir, "before", "native_projection.json"), beforeNative);
         const learningBefore = await (0, learning_apply_1.snapshotLearningFiles)(host);
@@ -123,6 +125,7 @@ async function runRestoreApply(host, fileName, confirmPlanId) {
             archiveFileName: fileName,
             archiveSha256: validated.archiveSha256,
             phase: "prepared",
+            manifest,
         });
         await (0, journal_1.writeJournalAtomic)(txDir, journal);
         await (0, apply_hooks_1.maybeInjectRestoreApplyFailure)("after_before_snapshot");
@@ -155,6 +158,7 @@ async function runRestoreApply(host, fileName, confirmPlanId) {
         await (0, apply_hooks_1.maybeInjectRestoreApplyFailure)("after_restart_required");
         await (0, apply_hooks_1.maybeInjectRestoreApplyFailure)("before_committed_journal");
         await (0, journal_1.updateJournalPhase)(txDir, "committed");
+        await (0, manifest_1.finalizeRestoreTransactionFence)(layout.manifestPath, manifest, "committed");
         return { ok: true, status: "success_restart_required", transactionId: txId, planId: plan.planId };
     }
     catch (e) {

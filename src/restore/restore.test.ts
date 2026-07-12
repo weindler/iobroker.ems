@@ -21,6 +21,8 @@ import { executeBatteryWrite, type FinalWriteGate } from "../addons/battery/runt
 import { writeForeignIfChanged } from "../device_write.js";
 import { EXECUTION_MODE_CONFIG_FINGERPRINT } from "../execution_mode.js";
 import { learningDataPath } from "../learning/data_dir.js";
+import { createInitialManifest, writeManifestAtomic } from "../backup_integration/manifest.js";
+import { resolveEmsPaths } from "../backup_integration/paths.js";
 import { readStoreZipArchive, zipCrc32 } from "./zip_reader.js";
 import { validateRestoreArchiveBuffer, assertRestoreManifest } from "./validate_archive.js";
 import {
@@ -155,7 +157,7 @@ async function copyBackupToInbox(host: RestoreTestHost, fileName?: string): Prom
 	assert.equal(result.ok, true);
 	if (!result.ok) throw new Error("export failed");
 	const target = fileName ?? path.basename(result.filePath);
-	const inbox = restoreInboxDir(host.getAbsoluteInstanceDataDir());
+	const inbox = restoreInboxDir(host);
 	await fs.mkdir(inbox, { recursive: true });
 	await fs.copyFile(result.filePath, path.join(inbox, target));
 	return { fileName: target, sha256: result.sha256 };
@@ -220,10 +222,11 @@ describe("restore source validation", () => {
 
 	it("resolves paths inside backup dir or inbox", () => {
 		const name = "ems-light-0.1.142-backup-20260712T120000Z.emsbackup";
-		const inBackup = resolveRestoreSourcePath(tmp, name);
+		const resolver = { namespace: "ems.0", getAbsoluteInstanceDataDir: () => tmp };
+		const inBackup = resolveRestoreSourcePath(resolver, name);
 		assert.equal(inBackup.rootKind, "backup_dir");
-		const inbox = path.join(restoreInboxDir(tmp), name);
-		assert.equal(resolveRestoreSourcePath(tmp, name).path, inBackup.path);
+		const inbox = path.join(restoreInboxDir(resolver), name);
+		assert.equal(resolveRestoreSourcePath(resolver, name).path, inBackup.path);
 		void inbox;
 	});
 });
@@ -530,6 +533,12 @@ describe("restore validate and apply", () => {
 		});
 		await host.setStateAsync("command.inbox", { val: "pending", ack: false });
 		await writeLearningFixture(host, "battery_runtime_learning_v1.json", { version: 1, samples: [] });
+		const layout = resolveEmsPaths(host);
+		await fs.mkdir(path.dirname(layout.manifestPath), { recursive: true });
+		await writeManifestAtomic(
+			layout.manifestPath,
+			createInitialManifest({ instance: 0, namespace: host.namespace, adapterVersion: "0.1.143" }),
+		);
 	});
 
 	afterEach(async () => {
@@ -668,7 +677,7 @@ describe("restore startup recovery", () => {
 
 	it("rolls back incomplete prepared transaction on startup", async () => {
 		const txId = newTransactionId();
-		const txDir = await ensureTransactionLayout(tmp, txId);
+		const txDir = await ensureTransactionLayout(host, txId);
 		const beforeNative = exportCurrentNativeProjection(host.config);
 		await fs.writeFile(
 			path.join(txDir, "before", "native_projection.json"),
@@ -691,7 +700,7 @@ describe("restore startup recovery", () => {
 	it("blocks runtime on multiple incomplete transactions", async () => {
 		for (let i = 0; i < 2; i++) {
 			const txId = newTransactionId();
-			const txDir = await ensureTransactionLayout(tmp, txId);
+			const txDir = await ensureTransactionLayout(host, txId);
 			const journal = createJournal({
 				transactionId: txId,
 				archiveFileName: "test.emsbackup",
@@ -707,7 +716,7 @@ describe("restore startup recovery", () => {
 
 	it("finalizes committed transaction without re-applying config", async () => {
 		const txId = newTransactionId();
-		const txDir = await ensureTransactionLayout(tmp, txId);
+		const txDir = await ensureTransactionLayout(host, txId);
 		const journal = createJournal({
 			transactionId: txId,
 			archiveFileName: "test.emsbackup",

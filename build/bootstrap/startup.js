@@ -10,6 +10,7 @@ const ems_light_1 = require("../ems_light");
 const failsafe_runner_1 = require("../failsafe_runner");
 const execution_mode_1 = require("../execution_mode");
 const dryrun_context_1 = require("../restore/dryrun_context");
+const startup_rearm_1 = require("../backup_integration/startup_rearm");
 const tree_paths_1 = require("../tree_paths");
 const states_1 = require("../states");
 const cold_start_1 = require("./cold_start");
@@ -66,7 +67,9 @@ async function runAdapterBootstrap(host, step, options = {}) {
     await step("sync governance", () => (0, governance_1.syncAddonGovernanceFromConfig)(host, adapterConfig));
     await step("sync execution modes", () => {
         const restoreReason = (0, dryrun_context_1.getPendingForceDryrunReason)();
-        const forceDryrunReason = restoreReason ?? (bootstrapCtx.coldStartRecovery ? "namespace_cold_start" : null);
+        const forceDryrunReason = restoreReason ??
+            ((0, startup_rearm_1.isStartupRearmRequired)() ? "startup_rearm_required" : null) ??
+            (bootstrapCtx.coldStartRecovery ? "namespace_cold_start" : null);
         return (0, execution_mode_1.syncExecutionModesFromConfig)(host, adapterConfig, { forceDryrunReason });
     });
     await step("sync mappings", () => (0, ensure_static_tree_1.syncAllMappingsFromConfig)(host));

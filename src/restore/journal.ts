@@ -3,19 +3,21 @@ import * as path from "node:path";
 import { randomUUID } from "node:crypto";
 import { stableJsonStringify } from "../backup/schema";
 import { restoreTransactionsDir } from "./source";
+import type { PathResolverInput } from "../backup_integration/paths";
 import type { RestoreJournal, RestoreJournalPhase } from "./types";
-import { RESTORE_JOURNAL_SCHEMA_VERSION } from "./types";
+import { RESTORE_JOURNAL_SCHEMA_VERSION, RESTORE_JOURNAL_SCHEMA_VERSION_V2 } from "./types";
+import type { EmsInstanceManifest } from "../backup_integration/manifest";
 
 export function newTransactionId(): string {
 	return randomUUID().replace(/-/g, "").slice(0, 24);
 }
 
-export function transactionDir(instanceDataDir: string, transactionId: string): string {
-	return path.join(restoreTransactionsDir(instanceDataDir), transactionId);
+export function transactionDir(input: PathResolverInput, transactionId: string): string {
+	return path.join(restoreTransactionsDir(input), transactionId);
 }
 
-export async function ensureTransactionLayout(instanceDataDir: string, transactionId: string): Promise<string> {
-	const dir = transactionDir(instanceDataDir, transactionId);
+export async function ensureTransactionLayout(input: PathResolverInput, transactionId: string): Promise<string> {
+	const dir = transactionDir(input, transactionId);
 	await fs.mkdir(path.join(dir, "before", "learning"), { recursive: true, mode: 0o700 });
 	await fs.mkdir(path.join(dir, "staged", "learning"), { recursive: true, mode: 0o700 });
 	return dir;
@@ -42,8 +44,27 @@ export function createJournal(input: {
 	archiveFileName: string;
 	archiveSha256: string;
 	phase: RestoreJournalPhase;
+	manifest?: EmsInstanceManifest;
 }): RestoreJournal {
 	const now = new Date().toISOString();
+	if (input.manifest) {
+		return {
+			schema_version: RESTORE_JOURNAL_SCHEMA_VERSION_V2,
+			transaction_id: input.transactionId,
+			archive_file_name: input.archiveFileName,
+			archive_sha256: input.archiveSha256,
+			phase: input.phase,
+			created_at: now,
+			updated_at: now,
+			restore_must_start_dryrun: true,
+			data_epoch: input.manifest.dataEpoch,
+			base_checkpoint_generation: input.manifest.checkpointGeneration,
+			base_checkpoint_id: input.manifest.checkpointId,
+			transaction_fence_id: input.transactionId,
+			instance: input.manifest.instance,
+			namespace: input.manifest.namespace,
+		};
+	}
 	return {
 		schema_version: RESTORE_JOURNAL_SCHEMA_VERSION,
 		transaction_id: input.transactionId,
@@ -98,8 +119,8 @@ export interface StartupJournalScan {
 	rolledBack: Array<{ dir: string; journal: RestoreJournal }>;
 }
 
-export async function scanRestoreTransactionsAtStartup(instanceDataDir: string): Promise<StartupJournalScan> {
-	const base = restoreTransactionsDir(instanceDataDir);
+export async function scanRestoreTransactionsAtStartup(transactionsDir: string): Promise<StartupJournalScan> {
+	const base = transactionsDir;
 	const failed: StartupJournalScan["failed"] = [];
 	const active: StartupJournalScan["active"] = [];
 	const rolledBack: StartupJournalScan["rolledBack"] = [];

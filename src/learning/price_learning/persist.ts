@@ -1,5 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { atomicWriteFile } from "../../persistence/atomic_write";
 import { MODULE_TAG } from "./constants";
 import type { PriceLearningPersist, PriceLearningResult } from "./types";
 
@@ -33,5 +34,5 @@ export async function writePriceLearningPersist(
 		},
 	};
 	const filePath = path.join(baseDir, "price_learning_v1.json");
-	await fs.writeFile(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+	await atomicWriteFile(filePath, `${JSON.stringify(payload, null, 2)}\n`);
 }

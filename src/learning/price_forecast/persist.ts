@@ -1,5 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { atomicWriteFile, isAtomicTempFileName } from "../../persistence/atomic_write";
 import { MODULE_TAG } from "./constants";
 import type { PriceForecastFreezeFile, PriceForecastPersist, PriceForecastResult } from "./types";
 
@@ -18,7 +19,7 @@ export async function writeForecastFreezeFile(
 	const dir = freezeDir(baseDir);
 	await fs.mkdir(dir, { recursive: true });
 	const filePath = freezeFilePath(baseDir, payload.target_date);
-	await fs.writeFile(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+	await atomicWriteFile(filePath, `${JSON.stringify(payload, null, 2)}\n`);
 }
 
 export async function readForecastFreezeFiles(
@@ -40,6 +41,7 @@ export async function readForecastFreezeFiles(
 
 	const files: PriceForecastFreezeFile[] = [];
 	for (const name of names) {
+		if (isAtomicTempFileName(name)) continue;
 		if (!name.endsWith(".json")) continue;
 		const targetDate = name.replace(/\.json$/, "");
 		if (targetDate < cutoffKey) continue;
@@ -85,9 +87,8 @@ export async function writePriceForecastPersist(
 			forecast_confidence: result.forecastConfidence,
 		},
 	};
-	await fs.writeFile(
+	await atomicWriteFile(
 		path.join(baseDir, "price_forecast_learning_v1.json"),
 		`${JSON.stringify(payload, null, 2)}\n`,
-		"utf8",
 	);
 }

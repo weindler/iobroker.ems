@@ -52,6 +52,8 @@ const startup_recovery_js_1 = require("./startup_recovery.js");
 const journal_js_2 = require("./journal.js");
 const dryrun_context_js_1 = require("./dryrun_context.js");
 const diagnostic_mode_js_1 = require("../support/diagnostic_mode.js");
+const manifest_js_1 = require("../backup_integration/manifest.js");
+const paths_js_1 = require("../backup_integration/paths.js");
 const APPLY_INJECTION_POINTS = [
     "after_lock",
     "after_barrier",
@@ -87,7 +89,7 @@ class InjectionTestHost {
     objects = new Map();
     states = new Map();
     config;
-    common = { version: "0.1.142" };
+    common = { version: "0.1.143" };
     updateConfigCalls = 0;
     failUpdateConfigOnCall = null;
     constructor(dataDir, config = {}) {
@@ -169,7 +171,7 @@ async function copyBackupToInbox(host) {
     if (!result.ok)
         throw new Error("export failed");
     const target = path.basename(result.filePath);
-    const inbox = (0, source_js_1.restoreInboxDir)(host.getAbsoluteInstanceDataDir());
+    const inbox = (0, source_js_1.restoreInboxDir)(host);
     await fs.mkdir(inbox, { recursive: true });
     await fs.copyFile(result.filePath, path.join(inbox, target));
     return { fileName: target };
@@ -191,7 +193,20 @@ async function prepareHost(tmp) {
     }
     const neighborPath = path.join((0, data_dir_js_1.learningDataPath)(host, "learning/battery_runtime"), "neighbor_unknown.json");
     await fs.writeFile(neighborPath, Buffer.from('{"keep":true}'), { mode: 0o600 });
+    await ensureTestManifest(host);
     return host;
+}
+async function transactionsDirForHost(host) {
+    return (0, paths_js_1.resolveEmsPaths)(host).runtimeTransactionsDir;
+}
+async function ensureTestManifest(host) {
+    const layout = (0, paths_js_1.resolveEmsPaths)(host);
+    await fs.mkdir(path.dirname(layout.manifestPath), { recursive: true });
+    await (0, manifest_js_1.writeManifestAtomic)(layout.manifestPath, (0, manifest_js_1.createInitialManifest)({
+        instance: 0,
+        namespace: host.namespace,
+        adapterVersion: String(host.common.version),
+    }));
 }
 async function assertDryrunModes(host) {
     strict_1.default.equal(host.config.global_execution_mode, "dryrun");
@@ -291,9 +306,10 @@ async function assertNoDeviceWritesDuring(fn) {
             strict_1.default.equal((0, operation_lock_js_1.isOperationRunning)(), false);
             strict_1.default.equal((0, plan_js_1.getActiveRestorePlan)(), null);
             if (apply.status === "rolled_back") {
-                const txDirs = await fs.readdir(path.join(tmp, "restore", "transactions"));
+                const txRoot = await transactionsDirForHost(host);
+                const txDirs = await fs.readdir(txRoot);
                 if (txDirs.length > 0) {
-                    const journal = await (0, journal_js_1.readJournal)(path.join(tmp, "restore", "transactions", txDirs[0]));
+                    const journal = await (0, journal_js_1.readJournal)(path.join(txRoot, txDirs[0]));
                     strict_1.default.equal(journal?.phase, "rolled_back");
                 }
             }
@@ -330,8 +346,9 @@ async function assertNoDeviceWritesDuring(fn) {
         strict_1.default.equal(apply.status, "recovery_failed");
         strict_1.default.equal(apply.error, "restore_rollback_failed");
         strict_1.default.equal((0, barrier_js_1.isRestoreInProgress)(), true);
-        const txDirs = await fs.readdir(path.join(tmp, "restore", "transactions"));
-        const journal = await (0, journal_js_1.readJournal)(path.join(tmp, "restore", "transactions", txDirs[0]));
+        const txRoot = await transactionsDirForHost(host);
+        const txDirs = await fs.readdir(txRoot);
+        const journal = await (0, journal_js_1.readJournal)(path.join(txRoot, txDirs[0]));
         strict_1.default.equal(journal?.phase, "failed");
     });
     (0, node_test_1.it)("rollback failure on learning restore leaves journal failed", async () => {
@@ -398,7 +415,7 @@ async function assertNoDeviceWritesDuring(fn) {
         strict_1.default.deepEqual(host.config, before.native);
         strict_1.default.equal((0, operation_lock_js_1.isOperationRunning)(), false);
         strict_1.default.equal((0, barrier_js_1.isRestoreInProgress)(), false);
-        await strict_1.default.rejects(() => fs.readdir(path.join(tmp, "restore", "transactions")));
+        await strict_1.default.rejects(async () => fs.readdir((await transactionsDirForHost(host))));
     });
     (0, node_test_1.it)("rollback after live config restores business fields but keeps native dryrun", async () => {
         const host = await prepareHost(tmp);
@@ -444,7 +461,7 @@ async function assertNoDeviceWritesDuring(fn) {
     (0, node_test_1.it)("failed journal blocks startup with active barrier", async () => {
         const host = await liveHost();
         const txId = (0, journal_js_2.newTransactionId)();
-        const txDir = await (0, journal_js_2.ensureTransactionLayout)(tmp, txId);
+        const txDir = await (0, journal_js_2.ensureTransactionLayout)(host, txId);
         await (0, journal_js_2.writeJournalAtomic)(txDir, (0, journal_js_2.createJournal)({
             transactionId: txId,
             archiveFileName: "test.emsbackup",
@@ -460,7 +477,7 @@ async function assertNoDeviceWritesDuring(fn) {
     (0, node_test_1.it)("defective journal blocks startup like failed", async () => {
         const host = await liveHost();
         const txId = (0, journal_js_2.newTransactionId)();
-        await (0, journal_js_2.ensureTransactionLayout)(tmp, txId);
+        await (0, journal_js_2.ensureTransactionLayout)(host, txId);
         const recovery = await (0, startup_recovery_js_1.runRestoreStartupRecovery)(host);
         strict_1.default.equal(recovery.ok, false);
         strict_1.default.equal(recovery.error, "restore_transaction_failed");
@@ -474,7 +491,7 @@ async function assertNoDeviceWritesDuring(fn) {
         await host.setStateAsync(ensure_states_js_1.RESTORE_STATES.lastResult, { val: "rolled_back", ack: true });
         await host.setStateAsync(ensure_states_js_1.RESTORE_STATES.lastRestoreAt, { val: "2020-01-01T00:00:00.000Z", ack: true });
         const txId = (0, journal_js_2.newTransactionId)();
-        const txDir = await (0, journal_js_2.ensureTransactionLayout)(tmp, txId);
+        const txDir = await (0, journal_js_2.ensureTransactionLayout)(host, txId);
         await (0, journal_js_2.writeJournalAtomic)(txDir, (0, journal_js_2.createJournal)({
             transactionId: txId,
             archiveFileName: "test.emsbackup",
@@ -523,7 +540,7 @@ async function assertNoDeviceWritesDuring(fn) {
         const host = await liveHost();
         for (const sha of ["d1".repeat(32), "d2".repeat(32)]) {
             const txId = (0, journal_js_2.newTransactionId)();
-            const txDir = await (0, journal_js_2.ensureTransactionLayout)(tmp, txId);
+            const txDir = await (0, journal_js_2.ensureTransactionLayout)(host, txId);
             await (0, journal_js_2.writeJournalAtomic)(txDir, (0, journal_js_2.createJournal)({
                 transactionId: txId,
                 archiveFileName: "test.emsbackup",
@@ -540,7 +557,7 @@ async function assertNoDeviceWritesDuring(fn) {
         const host = await liveHost();
         for (const sha of ["e".repeat(64), "f".repeat(64)]) {
             const txId = (0, journal_js_2.newTransactionId)();
-            const txDir = await (0, journal_js_2.ensureTransactionLayout)(tmp, txId);
+            const txDir = await (0, journal_js_2.ensureTransactionLayout)(host, txId);
             await (0, journal_js_2.writeJournalAtomic)(txDir, (0, journal_js_2.createJournal)({
                 transactionId: txId,
                 archiveFileName: "test.emsbackup",
@@ -613,7 +630,7 @@ async function assertNoDeviceWritesDuring(fn) {
         await host.setStateAsync((0, tree_paths_js_1.addonMode)("wallbox"), { val: "live", ack: true });
         await host.setObjectNotExistsAsync("global", { type: "channel", native: {} });
         const txId = (0, journal_js_2.newTransactionId)();
-        const txDir = await (0, journal_js_2.ensureTransactionLayout)(tmp, txId);
+        const txDir = await (0, journal_js_2.ensureTransactionLayout)(host, txId);
         await (0, journal_js_2.writeJournalAtomic)(txDir, (0, journal_js_2.createJournal)({
             transactionId: txId,
             archiveFileName: "test.emsbackup",
@@ -642,7 +659,7 @@ async function assertNoDeviceWritesDuring(fn) {
         });
         await host.setStateAsync(tree_paths_js_1.GLOBAL.executionMode, { val: "live", ack: true });
         const txId = (0, journal_js_2.newTransactionId)();
-        const txDir = await (0, journal_js_2.ensureTransactionLayout)(tmp, txId);
+        const txDir = await (0, journal_js_2.ensureTransactionLayout)(host, txId);
         await (0, journal_js_2.writeJournalAtomic)(txDir, (0, journal_js_2.createJournal)({
             transactionId: txId,
             archiveFileName: "test.emsbackup",

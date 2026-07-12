@@ -1,3 +1,4 @@
+import { isStartupRearmRequired, clearStartupRearmRequired, getBootstrapCompletedAtMs, isExplicitUserLiveRearmRequest } from "./backup_integration/startup_rearm";
 import { GLOBAL, addonMode } from "./tree_paths";
 
 export type ExecutionMode = "dryrun" | "live";
@@ -87,6 +88,9 @@ export async function isLiveWriteAllowed(
 	getState: (id: string) => Promise<ioBroker.State | null | undefined>,
 	addonId: string,
 ): Promise<boolean> {
+	if (isStartupRearmRequired()) {
+		return false;
+	}
 	const global = await getState(GLOBAL.executionMode);
 	if (parseMode(global?.val) !== "live") {
 		return false;
@@ -130,7 +134,7 @@ export interface SyncExecutionModesOptions {
 	forceDryrunReason?: ForceDryrunReason | null;
 }
 
-export type ForceDryrunReason = "namespace_cold_start" | "restore_recovery";
+export type ForceDryrunReason = "namespace_cold_start" | "restore_recovery" | "startup_rearm_required";
 
 export const NATIVE_EXECUTION_MODE_KEYS = [
 	"global_execution_mode",
@@ -296,6 +300,10 @@ export async function syncExecutionModesFromConfig(
 			host.log?.info?.(
 				"Restore-Recovery: Ausführungsmodi in Native und Objektbaum auf dryrun gesetzt",
 			);
+		} else if (forceReason === "startup_rearm_required") {
+			host.log?.info?.(
+				"Startup-Rearm: effektive Ausführungsmodi auf dryrun — Native-Konfiguration unverändert",
+			);
 		} else {
 			host.log?.info?.(
 				"Cold-Start-Recovery: Ausführungsmodi auf dryrun geklemmt (Admin-Konfiguration unverändert)",
@@ -405,6 +413,14 @@ export async function handleExecutionModeStateChange(
 	const relativeId = id.slice(prefix.length);
 	if (!isExecutionModeStateRelativeId(relativeId)) {
 		return;
+	}
+
+	if (
+		isStartupRearmRequired() &&
+		relativeId === GLOBAL.executionMode &&
+		isExplicitUserLiveRearmRequest(state, adapter.namespace, relativeId, getBootstrapCompletedAtMs())
+	) {
+		clearStartupRearmRequired();
 	}
 
 	const requested = String(state.val ?? "").trim().toLowerCase();

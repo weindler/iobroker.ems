@@ -1,11 +1,12 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { atomicWriteFile } from "../../persistence/atomic_write";
 import type { WeatherPersistDay } from "./types";
 
 export async function writeWeatherDayPersist(baseDir: string, payload: WeatherPersistDay): Promise<void> {
 	await fs.mkdir(baseDir, { recursive: true });
 	const filePath = path.join(baseDir, `${payload.date}.json`);
-	await fs.writeFile(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+	await atomicWriteFile(filePath, `${JSON.stringify(payload, null, 2)}\n`);
 }
 
 export function dayResultToPersist(

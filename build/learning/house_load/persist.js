@@ -26,6 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.readHouseLoadPersist = exports.writeHouseLoadPersist = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
+const atomic_write_1 = require("../../persistence/atomic_write");
 const constants_1 = require("./constants");
 async function writeHouseLoadPersist(baseDir, result, lastRun) {
     await fs.mkdir(baseDir, { recursive: true });
@@ -40,7 +41,7 @@ async function writeHouseLoadPersist(baseDir, result, lastRun) {
         forecast_tomorrow: result.forecastTomorrowJson,
         health: { ...result.healthJson, last_persist_at: lastRun },
     };
-    await fs.writeFile(path.join(baseDir, "house_load_learning_v1.json"), `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+    await (0, atomic_write_1.atomicWriteFile)(path.join(baseDir, "house_load_learning_v1.json"), `${JSON.stringify(payload, null, 2)}\n`);
 }
 exports.writeHouseLoadPersist = writeHouseLoadPersist;
 async function readHouseLoadPersist(baseDir) {

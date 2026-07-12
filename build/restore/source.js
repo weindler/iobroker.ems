@@ -24,17 +24,18 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.readRestoreArchiveFile = exports.assertRestoreSourceSafe = exports.resolveRestoreSourcePath = exports.assertRestoreFileName = exports.restoreTransactionsDir = exports.restoreInboxDir = void 0;
-const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
-const promises_1 = require("node:fs/promises");
+const paths_1 = require("../backup_integration/paths");
 const retention_1 = require("../backup/retention");
-const retention_2 = require("../backup/retention");
-function restoreInboxDir(instanceDataDir) {
-    return path.join(instanceDataDir, "restore", "inbox");
+function layoutFromInstanceDataDir(instanceDataDir) {
+    return (0, paths_1.resolveEmsPaths)(instanceDataDir);
+}
+function restoreInboxDir(input) {
+    return (0, paths_1.resolveEmsPaths)(input).runtimeRestoreInboxDir;
 }
 exports.restoreInboxDir = restoreInboxDir;
-function restoreTransactionsDir(instanceDataDir) {
-    return path.join(instanceDataDir, "restore", "transactions");
+function restoreTransactionsDir(input) {
+    return (0, paths_1.resolveEmsPaths)(input).runtimeTransactionsDir;
 }
 exports.restoreTransactionsDir = restoreTransactionsDir;
 /** Validiert Dateinamen — nur einfacher `.emsbackup`-Name. */
@@ -54,16 +55,25 @@ function assertRestoreFileName(fileName) {
     if (fileName.endsWith(".emssupport")) {
         throw new Error("support packages not restorable");
     }
-    if (!retention_2.OWN_EXPORT_FILE_RE.test(fileName)) {
+    if (!retention_1.OWN_EXPORT_FILE_RE.test(fileName)) {
         throw new Error("invalid restore file name pattern");
     }
 }
 exports.assertRestoreFileName = assertRestoreFileName;
-function resolveRestoreSourcePath(instanceDataDir, fileName) {
+function resolveRestoreSourcePath(input, fileName) {
     assertRestoreFileName(fileName);
+    const layout = (0, paths_1.resolveEmsPaths)(input);
     const candidates = [
-        { path: path.join((0, retention_1.backupDir)(instanceDataDir), fileName), rootKind: "backup_dir", root: (0, retention_1.backupDir)(instanceDataDir) },
-        { path: path.join(restoreInboxDir(instanceDataDir), fileName), rootKind: "inbox", root: restoreInboxDir(instanceDataDir) },
+        {
+            path: path.join(layout.runtimeExportsDir, "backup", fileName),
+            rootKind: "backup_dir",
+            root: path.join(layout.runtimeExportsDir, "backup"),
+        },
+        {
+            path: path.join(layout.runtimeRestoreInboxDir, fileName),
+            rootKind: "inbox",
+            root: layout.runtimeRestoreInboxDir,
+        },
     ];
     for (const c of candidates) {
         const resolved = path.resolve(c.path);
@@ -76,23 +86,28 @@ function resolveRestoreSourcePath(instanceDataDir, fileName) {
 }
 exports.resolveRestoreSourcePath = resolveRestoreSourcePath;
 async function assertRestoreSourceSafe(resolvedPath, allowedRoot) {
-    const st = await fs.lstat(resolvedPath);
+    const { realpath, lstat } = await Promise.resolve().then(() => __importStar(require("node:fs/promises")));
+    const st = await lstat(resolvedPath);
     if (st.isSymbolicLink()) {
         throw new Error("restore source symlink not allowed");
     }
-    const realRoot = await (0, promises_1.realpath)(allowedRoot).catch(() => path.resolve(allowedRoot));
-    const realTarget = await (0, promises_1.realpath)(resolvedPath).catch(() => path.resolve(resolvedPath));
+    const realRoot = await realpath(allowedRoot).catch(() => path.resolve(allowedRoot));
+    const realTarget = await realpath(resolvedPath).catch(() => path.resolve(resolvedPath));
     if (!realTarget.startsWith(realRoot + path.sep) && realTarget !== realRoot) {
         throw new Error("restore source realpath outside root");
     }
 }
 exports.assertRestoreSourceSafe = assertRestoreSourceSafe;
-async function readRestoreArchiveFile(instanceDataDir, fileName) {
-    const { path: resolved, rootKind } = resolveRestoreSourcePath(instanceDataDir, fileName);
-    const allowedRoot = rootKind === "backup_dir" ? (0, retention_1.backupDir)(instanceDataDir) : restoreInboxDir(instanceDataDir);
+async function readRestoreArchiveFile(input, fileName) {
+    const { path: resolved, rootKind } = resolveRestoreSourcePath(input, fileName);
+    const layout = (0, paths_1.resolveEmsPaths)(input);
+    const allowedRoot = rootKind === "backup_dir"
+        ? path.join(layout.runtimeExportsDir, "backup")
+        : layout.runtimeRestoreInboxDir;
     await assertRestoreSourceSafe(resolved, allowedRoot);
-    const st = await fs.stat(resolved);
-    const buffer = await fs.readFile(resolved);
+    const { stat, readFile } = await Promise.resolve().then(() => __importStar(require("node:fs/promises")));
+    const st = await stat(resolved);
+    const buffer = await readFile(resolved);
     return { buffer, rootKind, sizeBytes: st.size, mtimeMs: st.mtimeMs, resolvedPath: resolved };
 }
 exports.readRestoreArchiveFile = readRestoreArchiveFile;

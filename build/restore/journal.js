@@ -34,12 +34,12 @@ function newTransactionId() {
     return (0, node_crypto_1.randomUUID)().replace(/-/g, "").slice(0, 24);
 }
 exports.newTransactionId = newTransactionId;
-function transactionDir(instanceDataDir, transactionId) {
-    return path.join((0, source_1.restoreTransactionsDir)(instanceDataDir), transactionId);
+function transactionDir(input, transactionId) {
+    return path.join((0, source_1.restoreTransactionsDir)(input), transactionId);
 }
 exports.transactionDir = transactionDir;
-async function ensureTransactionLayout(instanceDataDir, transactionId) {
-    const dir = transactionDir(instanceDataDir, transactionId);
+async function ensureTransactionLayout(input, transactionId) {
+    const dir = transactionDir(input, transactionId);
     await fs.mkdir(path.join(dir, "before", "learning"), { recursive: true, mode: 0o700 });
     await fs.mkdir(path.join(dir, "staged", "learning"), { recursive: true, mode: 0o700 });
     return dir;
@@ -64,6 +64,24 @@ async function readJournal(dir) {
 exports.readJournal = readJournal;
 function createJournal(input) {
     const now = new Date().toISOString();
+    if (input.manifest) {
+        return {
+            schema_version: types_1.RESTORE_JOURNAL_SCHEMA_VERSION_V2,
+            transaction_id: input.transactionId,
+            archive_file_name: input.archiveFileName,
+            archive_sha256: input.archiveSha256,
+            phase: input.phase,
+            created_at: now,
+            updated_at: now,
+            restore_must_start_dryrun: true,
+            data_epoch: input.manifest.dataEpoch,
+            base_checkpoint_generation: input.manifest.checkpointGeneration,
+            base_checkpoint_id: input.manifest.checkpointId,
+            transaction_fence_id: input.transactionId,
+            instance: input.manifest.instance,
+            namespace: input.manifest.namespace,
+        };
+    }
     return {
         schema_version: types_1.RESTORE_JOURNAL_SCHEMA_VERSION,
         transaction_id: input.transactionId,
@@ -112,8 +130,8 @@ async function listRecoverableTransactions(instanceDataDir) {
     return scan.active;
 }
 exports.listRecoverableTransactions = listRecoverableTransactions;
-async function scanRestoreTransactionsAtStartup(instanceDataDir) {
-    const base = (0, source_1.restoreTransactionsDir)(instanceDataDir);
+async function scanRestoreTransactionsAtStartup(transactionsDir) {
+    const base = transactionsDir;
     const failed = [];
     const active = [];
     const rolledBack = [];

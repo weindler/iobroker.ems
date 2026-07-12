@@ -26,10 +26,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.dayResultToPersist = exports.writeWeatherDayPersist = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
+const atomic_write_1 = require("../../persistence/atomic_write");
 async function writeWeatherDayPersist(baseDir, payload) {
     await fs.mkdir(baseDir, { recursive: true });
     const filePath = path.join(baseDir, `${payload.date}.json`);
-    await fs.writeFile(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+    await (0, atomic_write_1.atomicWriteFile)(filePath, `${JSON.stringify(payload, null, 2)}\n`);
 }
 exports.writeWeatherDayPersist = writeWeatherDayPersist;
 function dayResultToPersist(day, forecastSource, actualSource) {

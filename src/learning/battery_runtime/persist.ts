@@ -1,5 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { atomicWriteFile } from "../../persistence/atomic_write";
 import { MODULE_TAG } from "./constants";
 import type { BatteryRuntimeComputeResult, BatteryRuntimePersist } from "./types";
 
@@ -28,10 +29,9 @@ export async function writeBatteryRuntimePersist(
 		topoff_due: result.topoffDue,
 		estimated_runtime_days: result.estimatedRuntimeDays,
 	};
-	await fs.writeFile(
+	await atomicWriteFile(
 		path.join(baseDir, "battery_runtime_learning_v1.json"),
 		`${JSON.stringify(payload, null, 2)}\n`,
-		"utf8",
 	);
 }
 

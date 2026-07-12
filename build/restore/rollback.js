@@ -32,6 +32,9 @@ const learning_apply_1 = require("./learning_apply");
 const execution_mode_1 = require("../execution_mode");
 const runtime_cleanup_1 = require("./runtime_cleanup");
 const apply_hooks_1 = require("./apply_hooks");
+const paths_1 = require("../backup_integration/paths");
+const startup_1 = require("../backup_integration/startup");
+const manifest_1 = require("../backup_integration/manifest");
 async function runRestoreRollback(host, txDir) {
     await (0, journal_1.updateJournalPhase)(txDir, "rollback_running");
     const beforePath = path.join(txDir, "before", "native_projection.json");
@@ -51,6 +54,12 @@ async function runRestoreRollback(host, txDir) {
     await (0, learning_apply_1.restoreLearningFromSnapshot)(host, txDir, "before");
     await (0, runtime_cleanup_1.runRestoreRuntimeCleanup)(host);
     await (0, journal_1.updateJournalPhase)(txDir, "rolled_back");
+    const layout = (0, paths_1.resolveEmsPaths)(host);
+    const manifestRaw = await (0, startup_1.readManifestFromDisk)(layout.manifestPath);
+    if (manifestRaw?.transactionFence) {
+        const manifest = (0, manifest_1.validateManifest)(manifestRaw);
+        await (0, manifest_1.finalizeRestoreTransactionFence)(layout.manifestPath, manifest, "rolled_back");
+    }
 }
 exports.runRestoreRollback = runRestoreRollback;
 async function readTransactionJournal(txDir) {

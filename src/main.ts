@@ -33,6 +33,14 @@ import { handleRestoreStateChange, initRestoreRuntime, isRestoreRelatedState } f
 import { runRestoreStartupRecovery, clearRestoreRestartRequiredAfterBootstrap } from "./restore/startup_recovery";
 import { isRestoreInProgress } from "./restore/barrier";
 import { cleanupTempExports } from "./backup/retention";
+import {
+	runBackupIntegrationStartup,
+	updateBootGuardAfterBootstrap,
+	getBackupIntegrationContext,
+} from "./backup_integration/startup";
+import { markBootstrapCompletedForRearm, captureExecutionModeBaselineFromHost } from "./backup_integration/startup_rearm";
+import { EXECUTION_MODE_ADDON_IDS } from "./execution_mode";
+import { GLOBAL, addonMode } from "./tree_paths";
 import { parseInboxValue } from "./inbox";
 import { goeWallboxTemplateFlat } from "./mapping_config";
 import { stopEmsLightPhase1 } from "./ems_light";
@@ -110,6 +118,8 @@ class Ems extends utils.Adapter {
 	}
 
 	private async onReady(): Promise<void> {
+		const integrationCtx = await runBackupIntegrationStartup(this);
+
 		const recovery = await runRestoreStartupRecovery(this);
 		if (!recovery.ok) {
 			this.log.error(`Restore startup recovery failed: ${recovery.error}`);
@@ -126,14 +136,19 @@ class Ems extends utils.Adapter {
 		this.log.info("EMS adapter ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
 
 		await this.step("backup export init", async () => {
-			const dataDirFn = (this as ioBroker.Adapter & { getAbsoluteInstanceDataDir?: () => string })
-				.getAbsoluteInstanceDataDir;
-			if (typeof dataDirFn === "function") {
-				await cleanupTempExports(dataDirFn.call(this));
-			}
+			await cleanupTempExports(this);
 			await initBackupExportRuntime(this);
 			await initRestoreRuntime(this);
 			await clearRestoreRestartRequiredAfterBootstrap(this);
+			markBootstrapCompletedForRearm();
+			await captureExecutionModeBaselineFromHost(this, [
+				GLOBAL.executionMode,
+				...EXECUTION_MODE_ADDON_IDS.map((id) => addonMode(id)),
+			]);
+			const manifest = integrationCtx.manifest ?? getBackupIntegrationContext()?.manifest;
+			if (manifest) {
+				await updateBootGuardAfterBootstrap(this, manifest);
+			}
 		});
 
 		await this.step("process pending inbox", async () => {

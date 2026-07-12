@@ -26,9 +26,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.readGlobalPolicyPersistRevision = exports.writeGlobalPolicyPersist = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
+const atomic_write_1 = require("../../persistence/atomic_write");
 async function writeGlobalPolicyPersist(baseDir, payload) {
     await fs.mkdir(baseDir, { recursive: true });
-    await fs.writeFile(path.join(baseDir, "policy_global_v1.json"), `${JSON.stringify({ module: "policy_global_v1", ...payload }, null, 2)}\n`, "utf8");
+    await (0, atomic_write_1.atomicWriteFile)(path.join(baseDir, "policy_global_v1.json"), `${JSON.stringify({ module: "policy_global_v1", ...payload }, null, 2)}\n`);
 }
 exports.writeGlobalPolicyPersist = writeGlobalPolicyPersist;
 async function readGlobalPolicyPersistRevision(baseDir) {

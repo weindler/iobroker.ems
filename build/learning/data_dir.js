@@ -23,28 +23,48 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.withLearningDataPath = exports.learningDataPath = void 0;
+exports.joinSafe = exports.runtimeTransactionsDir = exports.durableInstanceDir = exports.runtimeExportsDir = exports.withLearningDataPath = exports.resolveAdapterPaths = exports.learningDataPathFromRoot = exports.learningDataPath = void 0;
 const path = __importStar(require("node:path"));
+const paths_1 = require("../backup_integration/paths");
 /** Absoluter Instanz-Datenordner für Learning-Artefakte (Freeze-JSON, Persist). */
 function learningDataPath(adapter, category) {
-    const adapterAny = adapter;
-    let base;
-    if (typeof adapterAny.getAbsoluteInstanceDataDir === "function") {
-        base = adapterAny.getAbsoluteInstanceDataDir();
-    }
-    else {
-        // Lazy: vermeidet js-controller-Abhängigkeit beim Modul-Import (Tests, Cold Start).
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const utils = require("@iobroker/adapter-core");
-        base = utils.getAbsoluteInstanceDataDir(adapter);
-    }
-    return category ? path.join(base, category) : base;
+    return (0, paths_1.categoryDataPath)((0, paths_1.resolveEmsPaths)(adapter), category);
 }
 exports.learningDataPath = learningDataPath;
+function learningDataPathFromRoot(durableDataDir, category) {
+    const layout = (0, paths_1.resolveEmsPaths)(durableDataDir);
+    return (0, paths_1.categoryDataPath)(layout, category);
+}
+exports.learningDataPathFromRoot = learningDataPathFromRoot;
+function resolveAdapterPaths(input) {
+    return (0, paths_1.resolveEmsPaths)(input);
+}
+exports.resolveAdapterPaths = resolveAdapterPaths;
 /** Erweitert host um getAbsolutePath — ohne das Ursprungsobjekt zu mutieren. */
 function withLearningDataPath(adapter, host) {
+    const layout = (0, paths_1.resolveEmsPaths)(adapter);
     const out = Object.create(host);
-    out.getAbsolutePath = (category) => learningDataPath(adapter, category);
+    out.getAbsolutePath = (category) => (0, paths_1.categoryDataPath)(layout, category);
+    out.getEmsPaths = () => layout;
     return out;
 }
 exports.withLearningDataPath = withLearningDataPath;
+/** Legacy helper — runtime exports root. */
+function runtimeExportsDir(adapter) {
+    return (0, paths_1.resolveEmsPaths)(adapter).runtimeExportsDir;
+}
+exports.runtimeExportsDir = runtimeExportsDir;
+/** @deprecated Use resolveEmsPaths().durableDataDir */
+function durableInstanceDir(adapter) {
+    return (0, paths_1.resolveEmsPaths)(adapter).durableDataDir;
+}
+exports.durableInstanceDir = durableInstanceDir;
+/** Runtime transactions directory. */
+function runtimeTransactionsDir(adapter) {
+    return (0, paths_1.resolveEmsPaths)(adapter).runtimeTransactionsDir;
+}
+exports.runtimeTransactionsDir = runtimeTransactionsDir;
+function joinSafe(base, ...parts) {
+    return path.join(base, ...parts);
+}
+exports.joinSafe = joinSafe;

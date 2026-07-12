@@ -26,6 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.writePriceForecastPersist = exports.readForecastFreezeFiles = exports.writeForecastFreezeFile = exports.freezeFilePath = exports.freezeDir = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
+const atomic_write_1 = require("../../persistence/atomic_write");
 const constants_1 = require("./constants");
 function freezeDir(baseDir) {
     return path.join(baseDir, "freeze");
@@ -39,7 +40,7 @@ async function writeForecastFreezeFile(baseDir, payload) {
     const dir = freezeDir(baseDir);
     await fs.mkdir(dir, { recursive: true });
     const filePath = freezeFilePath(baseDir, payload.target_date);
-    await fs.writeFile(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+    await (0, atomic_write_1.atomicWriteFile)(filePath, `${JSON.stringify(payload, null, 2)}\n`);
 }
 exports.writeForecastFreezeFile = writeForecastFreezeFile;
 async function readForecastFreezeFiles(baseDir, lookbackDays) {
@@ -57,6 +58,8 @@ async function readForecastFreezeFiles(baseDir, lookbackDays) {
     const cutoffKey = cutoff.toISOString().slice(0, 10);
     const files = [];
     for (const name of names) {
+        if ((0, atomic_write_1.isAtomicTempFileName)(name))
+            continue;
         if (!name.endsWith(".json"))
             continue;
         const targetDate = name.replace(/\.json$/, "");
@@ -101,6 +104,6 @@ async function writePriceForecastPersist(baseDir, result, lastRun) {
             forecast_confidence: result.forecastConfidence,
         },
     };
-    await fs.writeFile(path.join(baseDir, "price_forecast_learning_v1.json"), `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+    await (0, atomic_write_1.atomicWriteFile)(path.join(baseDir, "price_forecast_learning_v1.json"), `${JSON.stringify(payload, null, 2)}\n`);
 }
 exports.writePriceForecastPersist = writePriceForecastPersist;

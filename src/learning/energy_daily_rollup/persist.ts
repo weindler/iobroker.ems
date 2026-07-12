@@ -1,5 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { atomicWriteFile } from "../../persistence/atomic_write";
 import { MS_PER_DAY } from "../house_load/constants";
 import { dateKeyToStartMs } from "./day";
 import {
@@ -36,10 +37,9 @@ export async function writeEnergyDailyPersist(
 		...persist,
 		generated_at: new Date().toISOString(),
 	};
-	await fs.writeFile(
+	await atomicWriteFile(
 		path.join(baseDir, ENERGY_DAILY_FILENAME),
 		`${JSON.stringify(next, null, 2)}\n`,
-		"utf8",
 	);
 }
 

@@ -26,6 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.readBatteryRuntimePersist = exports.writeBatteryRuntimePersist = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
+const atomic_write_1 = require("../../persistence/atomic_write");
 const constants_1 = require("./constants");
 async function writeBatteryRuntimePersist(baseDir, result, lastRun) {
     await fs.mkdir(baseDir, { recursive: true });
@@ -48,7 +49,7 @@ async function writeBatteryRuntimePersist(baseDir, result, lastRun) {
         topoff_due: result.topoffDue,
         estimated_runtime_days: result.estimatedRuntimeDays,
     };
-    await fs.writeFile(path.join(baseDir, "battery_runtime_learning_v1.json"), `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+    await (0, atomic_write_1.atomicWriteFile)(path.join(baseDir, "battery_runtime_learning_v1.json"), `${JSON.stringify(payload, null, 2)}\n`);
 }
 exports.writeBatteryRuntimePersist = writeBatteryRuntimePersist;
 async function readBatteryRuntimePersist(baseDir) {

@@ -26,6 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.readThermalRuntimePersist = exports.writeThermalRuntimePersist = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
+const atomic_write_1 = require("../../persistence/atomic_write");
 const constants_1 = require("./constants");
 async function writeThermalRuntimePersist(baseDir, result, lastRun) {
     await fs.mkdir(baseDir, { recursive: true });
@@ -41,7 +42,7 @@ async function writeThermalRuntimePersist(baseDir, result, lastRun) {
         history: result.historyJson,
         health: result.health,
     };
-    await fs.writeFile(path.join(baseDir, "thermal_runtime_learning_v1.json"), `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+    await (0, atomic_write_1.atomicWriteFile)(path.join(baseDir, "thermal_runtime_learning_v1.json"), `${JSON.stringify(payload, null, 2)}\n`);
 }
 exports.writeThermalRuntimePersist = writeThermalRuntimePersist;
 async function readThermalRuntimePersist(baseDir) {

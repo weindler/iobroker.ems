@@ -1,6 +1,7 @@
 import type { ExportManifest } from "../backup/types";
 
 export const RESTORE_JOURNAL_SCHEMA_VERSION = 1;
+export const RESTORE_JOURNAL_SCHEMA_VERSION_V2 = 2;
 export const RESTORE_PLAN_TTL_MS = 15 * 60_000;
 
 export type RestoreStatus =
@@ -82,6 +83,12 @@ export interface RestoreJournal {
 	created_at: string;
 	updated_at: string;
 	restore_must_start_dryrun: true;
+	data_epoch?: string;
+	base_checkpoint_generation?: number;
+	base_checkpoint_id?: string;
+	transaction_fence_id?: string;
+	instance?: number;
+	namespace?: string;
 }
 
 export interface RestoreHost {

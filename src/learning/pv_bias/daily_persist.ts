@@ -1,5 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { atomicWriteFile } from "../../persistence/atomic_write";
 
 export const PV_BIAS_DAILY_FILENAME = "pv_bias_daily_v1.json";
 
@@ -37,10 +38,9 @@ export async function readDailyPersist(baseDir: string): Promise<PvBiasDailyPers
 
 export async function writeDailyPersist(baseDir: string, persist: PvBiasDailyPersist): Promise<void> {
 	await fs.mkdir(baseDir, { recursive: true });
-	await fs.writeFile(
+	await atomicWriteFile(
 		path.join(baseDir, PV_BIAS_DAILY_FILENAME),
 		`${JSON.stringify(persist, null, 2)}\n`,
-		"utf8",
 	);
 }
 

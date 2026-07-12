@@ -1,8 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.142",
+		"version": "0.1.143",
+		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.143": {
+				"en": "ioBroker dataFolder integration: durable EMS data under ems.%INSTANCE% included in standard ioBroker backups, runtime/recovery/export/restore data under ems-runtime.%INSTANCE% excluded, central path resolution, idempotent runtime migration, instance manifest with checkpoint fencing, journal binding and quarantine, boot-guard diagnostics, atomic durable writes, and mandatory startup live-rearm after every process start. No direct Backitup dependency or communication; release gate remains closed.",
+				"de": "ioBroker-dataFolder-Integration: dauerhafte EMS-Daten unter ems.%INSTANCE% im normalen ioBroker-Backup, Runtime-/Recovery-/Export-/Restore-Daten unter ems-runtime.%INSTANCE% ausgeschlossen, zentrale Pfadauflösung, idempotente Runtime-Migration, Instanz-Manifest mit Checkpoint-Fencing, Journal-Bindung und Quarantäne, Boot-Guard-Diagnose, atomare durable Writes und zwingender Startup-Live-Rearm nach jedem Prozessstart. Keine direkte Backitup-Abhängigkeit oder -Kommunikation; Release-Gate bleibt geschlossen."
+			},
 			"0.1.142": {
 				"en": "Manual restore foundation: validate and apply .emsbackup archives from allowed internal directories only, with full ZIP/manifest/CRC/SHA-256 validation, in-memory plan with plan-ID confirmation, transactional apply with rollback and startup recovery, shared export/restore operation lock, restore barrier blocking device actions, mandatory dryrun on all execution modes after restore, and restart-required workflow. No Backitup, no support package restore, no automatic live resume; release gate remains closed.",
 				"de": "Manuelle Restore-Foundation: Validate- und Apply-Wiederherstellung von .emsbackup-Archiven nur aus freigegebenen internen Verzeichnissen, mit vollständiger ZIP-/Manifest-/CRC-/SHA-256-Validierung, Plan-ID-Bestätigung, transaktionalem Apply mit Rollback und Startup-Recovery, gemeinsamem Export-/Restore-Lock, Restore-Barriere gegen Geräteaktionen, zwingendem Dryrun aller Ausführungsmodi nach Restore und Restart-required-Workflow. Kein Backitup, kein Support-Restore, keine automatische Live-Freigabe; Release-Gate bleibt geschlossen."

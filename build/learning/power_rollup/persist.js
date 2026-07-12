@@ -26,6 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.pruneSourceHours = exports.mergeHourRecord = exports.upsertSourcePersist = exports.writePowerHourlyPersist = exports.readPowerHourlyPersist = exports.emptyPowerHourlyPersist = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
+const atomic_write_1 = require("../../persistence/atomic_write");
 const constants_1 = require("../battery_runtime/constants");
 const hour_1 = require("./hour");
 const types_1 = require("./types");
@@ -64,7 +65,7 @@ async function writePowerHourlyPersist(baseDir, persist) {
         ...persist,
         generated_at: new Date().toISOString(),
     };
-    await fs.writeFile(path.join(baseDir, types_1.POWER_HOURLY_FILENAME), `${JSON.stringify(next, null, 2)}\n`, "utf8");
+    await (0, atomic_write_1.atomicWriteFile)(path.join(baseDir, types_1.POWER_HOURLY_FILENAME), `${JSON.stringify(next, null, 2)}\n`);
 }
 exports.writePowerHourlyPersist = writePowerHourlyPersist;
 function upsertSourcePersist(persist, source) {

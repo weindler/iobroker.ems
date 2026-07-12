@@ -276,7 +276,7 @@ class ExportTestHost {
         strict_1.default.ok((await fs.readdir(dir)).includes("foreign-backup.emsbackup"));
     });
     (0, node_test_1.it)("retention keeps exactly 5 support packages", async () => {
-        const dir = path.join(tmp, "exports", "support");
+        const dir = (0, retention_js_1.supportDir)(tmp);
         await fs.mkdir(dir, { recursive: true });
         for (let i = 0; i < retention_js_1.SUPPORT_RETENTION_MAX + 1; i++) {
             const name = (0, manifest_js_1.exportFileName)("support", "0.1.141", `2026-07-12T14:00:0${String(i).padStart(1, "0")}.000Z`);
@@ -463,7 +463,7 @@ class ExportTestHost {
     });
     (0, node_test_1.it)("support export fails when serialized logs still contain forbidden values", async () => {
         const host = new ExportTestHost(tmp, { global_execution_mode: "dryrun" });
-        const logDir = path.join(tmp, "exports", "support", "logs");
+        const logDir = path.join((0, retention_js_1.supportDir)(tmp), "logs");
         await fs.mkdir(logDir, { recursive: true });
         await fs.writeFile(path.join(logDir, "errors-001.ndjson"), '{"detail":"password: \\"still-leaked\\""}\n', "utf8");
         const { runSupportBundleExport } = await Promise.resolve().then(() => __importStar(require("../support/index.js")));
@@ -485,7 +485,7 @@ class ExportTestHost {
     (0, node_test_1.it)("failed support export does not publish stale success filename", async () => {
         const host = new ExportTestHost(tmp, { global_execution_mode: "dryrun" });
         await host.setStateAsync(ensure_states_js_1.BACKUP_STATES.lastFileName, { val: "ems-light-old.emssupport", ack: true });
-        const logDir = path.join(tmp, "exports", "support", "logs");
+        const logDir = path.join((0, retention_js_1.supportDir)(tmp), "logs");
         await fs.mkdir(logDir, { recursive: true });
         await fs.writeFile(path.join(logDir, "errors-001.ndjson"), '{"detail":"password: \\"still-leaked\\""}\n', "utf8");
         await (0, export_handler_js_1.handleSupportExportRequest)(host, true, false);
@@ -541,7 +541,7 @@ class ExportTestHost {
     });
     (0, node_test_1.it)("support failure resets trigger", async () => {
         const host = new ExportTestHost(tmp, { global_execution_mode: "dryrun" });
-        const logDir = path.join(tmp, "exports", "support", "logs");
+        const logDir = path.join((0, retention_js_1.supportDir)(tmp), "logs");
         await fs.mkdir(logDir, { recursive: true });
         await fs.writeFile(path.join(logDir, "errors-001.ndjson"), '{"Password":"leak"}\n');
         await (0, export_handler_js_1.handleSupportExportRequest)(host, true, false);

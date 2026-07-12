@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { realpath } from "node:fs/promises";
+import { resolveEmsPaths, type PathResolverInput } from "../backup_integration/paths";
 
 export const BACKUP_RETENTION_MAX = 10;
 export const SUPPORT_RETENTION_MAX = 5;
@@ -12,16 +13,16 @@ const TEMP_PREFIX = ".tmp-";
 /** Nur eigene Exportdateien (ems-light-*.{emsbackup,emssupport}). */
 export const OWN_EXPORT_FILE_RE = /^ems-light-.+\.(emsbackup|emssupport)$/;
 
-export function exportRootDir(instanceDataDir: string): string {
-	return path.join(instanceDataDir, "exports");
+export function exportRootDir(input: PathResolverInput): string {
+	return resolveEmsPaths(input).runtimeExportsDir;
 }
 
-export function backupDir(instanceDataDir: string): string {
-	return path.join(exportRootDir(instanceDataDir), "backup");
+export function backupDir(input: PathResolverInput): string {
+	return path.join(exportRootDir(input), "backup");
 }
 
-export function supportDir(instanceDataDir: string): string {
-	return path.join(exportRootDir(instanceDataDir), "support");
+export function supportDir(input: PathResolverInput): string {
+	return path.join(exportRootDir(input), "support");
 }
 
 export function assertSafeFileName(name: string): void {
@@ -51,13 +52,13 @@ export function resolveExportPath(baseDir: string, fileName: string): string {
 	return resolved;
 }
 
-export async function ensureExportDirs(instanceDataDir: string): Promise<void> {
-	await fs.mkdir(backupDir(instanceDataDir), { recursive: true, mode: 0o700 });
-	await fs.mkdir(supportDir(instanceDataDir), { recursive: true, mode: 0o700 });
+export async function ensureExportDirs(input: PathResolverInput): Promise<void> {
+	await fs.mkdir(backupDir(input), { recursive: true, mode: 0o700 });
+	await fs.mkdir(supportDir(input), { recursive: true, mode: 0o700 });
 }
 
-export async function cleanupTempExports(instanceDataDir: string): Promise<void> {
-	for (const dir of [backupDir(instanceDataDir), supportDir(instanceDataDir)]) {
+export async function cleanupTempExports(input: PathResolverInput): Promise<void> {
+	for (const dir of [backupDir(input), supportDir(input)]) {
 		try {
 			const files = await fs.readdir(dir);
 			for (const f of files) {
@@ -70,6 +71,17 @@ export async function cleanupTempExports(instanceDataDir: string): Promise<void>
 		} catch {
 			// Verzeichnis fehlt
 		}
+	}
+	const layout = resolveEmsPaths(input);
+	try {
+		const workParent = layout.runtimeExportsDir;
+		const files = await fs.readdir(workParent);
+		for (const f of files) {
+			if (!f.startsWith(".work-")) continue;
+			await fs.rm(path.join(workParent, f), { recursive: true, force: true }).catch(() => undefined);
+		}
+	} catch {
+		// ignore
 	}
 }
 
@@ -94,9 +106,9 @@ async function listArchives(dir: string, ext: string): Promise<Array<{ name: str
 	}
 }
 
-export async function enforceRetention(instanceDataDir: string): Promise<void> {
-	const bDir = backupDir(instanceDataDir);
-	const sDir = supportDir(instanceDataDir);
+export async function enforceRetention(input: PathResolverInput): Promise<void> {
+	const bDir = backupDir(input);
+	const sDir = supportDir(input);
 	const backups = await listArchives(bDir, BACKUP_EXT);
 	while (backups.length > BACKUP_RETENTION_MAX) {
 		const oldest = backups.shift();

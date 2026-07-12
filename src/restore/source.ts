@@ -1,17 +1,19 @@
-import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { realpath } from "node:fs/promises";
-import { backupDir } from "../backup/retention";
+import { resolveEmsPaths, type PathResolverInput } from "../backup_integration/paths";
 import { OWN_EXPORT_FILE_RE } from "../backup/retention";
 
 export type RestoreRootKind = "backup_dir" | "inbox";
 
-export function restoreInboxDir(instanceDataDir: string): string {
-	return path.join(instanceDataDir, "restore", "inbox");
+function layoutFromInstanceDataDir(instanceDataDir: string) {
+	return resolveEmsPaths(instanceDataDir);
 }
 
-export function restoreTransactionsDir(instanceDataDir: string): string {
-	return path.join(instanceDataDir, "restore", "transactions");
+export function restoreInboxDir(input: PathResolverInput): string {
+	return resolveEmsPaths(input).runtimeRestoreInboxDir;
+}
+
+export function restoreTransactionsDir(input: PathResolverInput): string {
+	return resolveEmsPaths(input).runtimeTransactionsDir;
 }
 
 /** Validiert Dateinamen — nur einfacher `.emsbackup`-Name. */
@@ -36,11 +38,20 @@ export function assertRestoreFileName(fileName: string): void {
 	}
 }
 
-export function resolveRestoreSourcePath(instanceDataDir: string, fileName: string): { path: string; rootKind: RestoreRootKind } {
+export function resolveRestoreSourcePath(input: PathResolverInput, fileName: string): { path: string; rootKind: RestoreRootKind } {
 	assertRestoreFileName(fileName);
+	const layout = resolveEmsPaths(input);
 	const candidates: Array<{ path: string; rootKind: RestoreRootKind; root: string }> = [
-		{ path: path.join(backupDir(instanceDataDir), fileName), rootKind: "backup_dir", root: backupDir(instanceDataDir) },
-		{ path: path.join(restoreInboxDir(instanceDataDir), fileName), rootKind: "inbox", root: restoreInboxDir(instanceDataDir) },
+		{
+			path: path.join(layout.runtimeExportsDir, "backup", fileName),
+			rootKind: "backup_dir",
+			root: path.join(layout.runtimeExportsDir, "backup"),
+		},
+		{
+			path: path.join(layout.runtimeRestoreInboxDir, fileName),
+			rootKind: "inbox",
+			root: layout.runtimeRestoreInboxDir,
+		},
 	];
 	for (const c of candidates) {
 		const resolved = path.resolve(c.path);
@@ -53,7 +64,8 @@ export function resolveRestoreSourcePath(instanceDataDir: string, fileName: stri
 }
 
 export async function assertRestoreSourceSafe(resolvedPath: string, allowedRoot: string): Promise<void> {
-	const st = await fs.lstat(resolvedPath);
+	const { realpath, lstat } = await import("node:fs/promises");
+	const st = await lstat(resolvedPath);
 	if (st.isSymbolicLink()) {
 		throw new Error("restore source symlink not allowed");
 	}
@@ -64,17 +76,22 @@ export async function assertRestoreSourceSafe(resolvedPath: string, allowedRoot:
 	}
 }
 
-export async function readRestoreArchiveFile(instanceDataDir: string, fileName: string): Promise<{
+export async function readRestoreArchiveFile(input: PathResolverInput, fileName: string): Promise<{
 	buffer: Buffer;
 	rootKind: RestoreRootKind;
 	sizeBytes: number;
 	mtimeMs: number;
 	resolvedPath: string;
 }> {
-	const { path: resolved, rootKind } = resolveRestoreSourcePath(instanceDataDir, fileName);
-	const allowedRoot = rootKind === "backup_dir" ? backupDir(instanceDataDir) : restoreInboxDir(instanceDataDir);
+	const { path: resolved, rootKind } = resolveRestoreSourcePath(input, fileName);
+	const layout = resolveEmsPaths(input);
+	const allowedRoot =
+		rootKind === "backup_dir"
+			? path.join(layout.runtimeExportsDir, "backup")
+			: layout.runtimeRestoreInboxDir;
 	await assertRestoreSourceSafe(resolved, allowedRoot);
-	const st = await fs.stat(resolved);
-	const buffer = await fs.readFile(resolved);
+	const { stat, readFile } = await import("node:fs/promises");
+	const st = await stat(resolved);
+	const buffer = await readFile(resolved);
 	return { buffer, rootKind, sizeBytes: st.size, mtimeMs: st.mtimeMs, resolvedPath: resolved };
 }

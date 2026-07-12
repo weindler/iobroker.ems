@@ -1,5 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { atomicWriteFile } from "../../persistence/atomic_write";
 import { MODULE_TAG } from "./constants";
 import type { ThermalRuntimeComputeResult, ThermalRuntimePersist } from "./types";
 
@@ -21,10 +22,9 @@ export async function writeThermalRuntimePersist(
 		history: result.historyJson,
 		health: result.health,
 	};
-	await fs.writeFile(
+	await atomicWriteFile(
 		path.join(baseDir, "thermal_runtime_learning_v1.json"),
 		`${JSON.stringify(payload, null, 2)}\n`,
-		"utf8",
 	);
 }
 

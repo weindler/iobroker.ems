@@ -26,6 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.pruneSourceDays = exports.mergeDayRecord = exports.upsertSourcePersist = exports.writeEnergyDailyPersist = exports.readEnergyDailyPersist = exports.emptyEnergyDailyPersist = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
+const atomic_write_1 = require("../../persistence/atomic_write");
 const constants_1 = require("../house_load/constants");
 const day_1 = require("./day");
 const types_1 = require("./types");
@@ -53,7 +54,7 @@ async function writeEnergyDailyPersist(baseDir, persist) {
         ...persist,
         generated_at: new Date().toISOString(),
     };
-    await fs.writeFile(path.join(baseDir, types_1.ENERGY_DAILY_FILENAME), `${JSON.stringify(next, null, 2)}\n`, "utf8");
+    await (0, atomic_write_1.atomicWriteFile)(path.join(baseDir, types_1.ENERGY_DAILY_FILENAME), `${JSON.stringify(next, null, 2)}\n`);
 }
 exports.writeEnergyDailyPersist = writeEnergyDailyPersist;
 function upsertSourcePersist(persist, source) {

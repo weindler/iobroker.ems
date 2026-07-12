@@ -44,13 +44,13 @@ import { stopDiagnosticMode } from "../support/diagnostic_mode";
 import { maybeInjectRestoreApplyFailure } from "./apply_hooks";
 import type { RestoreHost, RestoreResult, RestoreArchiveIdentity } from "./types";
 import { stableJsonStringify } from "../backup/schema";
-
-function instanceDataDir(host: RestoreHost): string {
-	if (typeof host.getAbsoluteInstanceDataDir === "function") {
-		return host.getAbsoluteInstanceDataDir();
-	}
-	throw new Error("instance data dir unavailable");
-}
+import { readManifestFromDisk } from "../backup_integration/startup";
+import {
+	beginRestoreTransactionFence,
+	finalizeRestoreTransactionFence,
+	validateManifest,
+} from "../backup_integration/manifest";
+import { resolveEmsPaths } from "../backup_integration/paths";
 
 function currentNative(host: RestoreHost): Record<string, unknown> {
 	return host.config && typeof host.config === "object" ? { ...(host.config as Record<string, unknown>) } : {};
@@ -69,8 +69,7 @@ export async function runRestoreValidate(host: RestoreHost, fileName: string): P
 
 	try {
 		invalidateRestorePlan();
-		const dataDir = instanceDataDir(host);
-		const file = await readRestoreArchiveFile(dataDir, fileName);
+		const file = await readRestoreArchiveFile(host, fileName);
 		const validated = validateRestoreArchiveBuffer(file.buffer);
 		const projection = buildRestoreProjection(validated.payloadMap);
 		const identity: RestoreArchiveIdentity = {
@@ -108,8 +107,7 @@ export async function runRestoreApply(host: RestoreHost, fileName: string, confi
 	try {
 		await maybeInjectRestoreApplyFailure("after_lock");
 		stopDiagnosticMode();
-		const dataDir = instanceDataDir(host);
-		const file = await readRestoreArchiveFile(dataDir, fileName);
+		const file = await readRestoreArchiveFile(host, fileName);
 		const validated = validateRestoreArchiveBuffer(file.buffer);
 		const identity: RestoreArchiveIdentity = {
 			fileName,
@@ -123,7 +121,15 @@ export async function runRestoreApply(host: RestoreHost, fileName: string, confi
 
 		await maybeInjectRestoreApplyFailure("after_barrier");
 
-		txDir = await ensureTransactionLayout(dataDir, txId);
+		txDir = await ensureTransactionLayout(host, txId);
+		const layout = resolveEmsPaths(host);
+		let manifest = await readManifestFromDisk(layout.manifestPath);
+		if (!manifest) {
+			throw new Error("manifest_missing");
+		}
+		manifest = validateManifest(manifest);
+		manifest = await beginRestoreTransactionFence(layout.manifestPath, manifest, txId);
+
 		const beforeNative = exportCurrentNativeProjection(currentNative(host));
 		await writeJsonFileAtomic(path.join(txDir, "before", "native_projection.json"), beforeNative);
 
@@ -135,6 +141,7 @@ export async function runRestoreApply(host: RestoreHost, fileName: string, confi
 			archiveFileName: fileName,
 			archiveSha256: validated.archiveSha256,
 			phase: "prepared",
+			manifest,
 		});
 		await writeJournalAtomic(txDir, journal);
 		await maybeInjectRestoreApplyFailure("after_before_snapshot");
@@ -174,6 +181,7 @@ export async function runRestoreApply(host: RestoreHost, fileName: string, confi
 		await maybeInjectRestoreApplyFailure("after_restart_required");
 		await maybeInjectRestoreApplyFailure("before_committed_journal");
 		await updateJournalPhase(txDir, "committed");
+		await finalizeRestoreTransactionFence(layout.manifestPath, manifest, "committed");
 
 		return { ok: true, status: "success_restart_required", transactionId: txId, planId: plan.planId };
 	} catch (e) {

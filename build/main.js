@@ -40,6 +40,10 @@ const handler_1 = require("./restore/handler");
 const startup_recovery_1 = require("./restore/startup_recovery");
 const barrier_2 = require("./restore/barrier");
 const retention_1 = require("./backup/retention");
+const startup_2 = require("./backup_integration/startup");
+const startup_rearm_1 = require("./backup_integration/startup_rearm");
+const execution_mode_2 = require("./execution_mode");
+const tree_paths_1 = require("./tree_paths");
 const inbox_1 = require("./inbox");
 const mapping_config_1 = require("./mapping_config");
 const ems_light_1 = require("./ems_light");
@@ -109,6 +113,7 @@ class Ems extends utils.Adapter {
         }
     }
     async onReady() {
+        const integrationCtx = await (0, startup_2.runBackupIntegrationStartup)(this);
         const recovery = await (0, startup_recovery_1.runRestoreStartupRecovery)(this);
         if (!recovery.ok) {
             this.log.error(`Restore startup recovery failed: ${recovery.error}`);
@@ -121,14 +126,19 @@ class Ems extends utils.Adapter {
         }
         this.log.info("EMS adapter ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
         await this.step("backup export init", async () => {
-            const dataDirFn = this
-                .getAbsoluteInstanceDataDir;
-            if (typeof dataDirFn === "function") {
-                await (0, retention_1.cleanupTempExports)(dataDirFn.call(this));
-            }
+            await (0, retention_1.cleanupTempExports)(this);
             await (0, export_handler_1.initBackupExportRuntime)(this);
             await (0, handler_1.initRestoreRuntime)(this);
             await (0, startup_recovery_1.clearRestoreRestartRequiredAfterBootstrap)(this);
+            (0, startup_rearm_1.markBootstrapCompletedForRearm)();
+            await (0, startup_rearm_1.captureExecutionModeBaselineFromHost)(this, [
+                tree_paths_1.GLOBAL.executionMode,
+                ...execution_mode_2.EXECUTION_MODE_ADDON_IDS.map((id) => (0, tree_paths_1.addonMode)(id)),
+            ]);
+            const manifest = integrationCtx.manifest ?? (0, startup_2.getBackupIntegrationContext)()?.manifest;
+            if (manifest) {
+                await (0, startup_2.updateBootGuardAfterBootstrap)(this, manifest);
+            }
         });
         await this.step("process pending inbox", async () => {
             const inbox = await this.getStateAsync(states_1.STATE.command.inbox);

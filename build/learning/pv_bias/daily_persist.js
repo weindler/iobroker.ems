@@ -26,6 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.dailyRecord = exports.upsertDailyRecord = exports.writeDailyPersist = exports.readDailyPersist = exports.emptyDailyPersist = exports.PV_BIAS_DAILY_FILENAME = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
+const atomic_write_1 = require("../../persistence/atomic_write");
 exports.PV_BIAS_DAILY_FILENAME = "pv_bias_daily_v1.json";
 function emptyDailyPersist() {
     return { version: 1, days: {} };
@@ -47,7 +48,7 @@ async function readDailyPersist(baseDir) {
 exports.readDailyPersist = readDailyPersist;
 async function writeDailyPersist(baseDir, persist) {
     await fs.mkdir(baseDir, { recursive: true });
-    await fs.writeFile(path.join(baseDir, exports.PV_BIAS_DAILY_FILENAME), `${JSON.stringify(persist, null, 2)}\n`, "utf8");
+    await (0, atomic_write_1.atomicWriteFile)(path.join(baseDir, exports.PV_BIAS_DAILY_FILENAME), `${JSON.stringify(persist, null, 2)}\n`);
 }
 exports.writeDailyPersist = writeDailyPersist;
 function upsertDailyRecord(persist, record) {

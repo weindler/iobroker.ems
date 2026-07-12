@@ -76,14 +76,20 @@ export function diagnosticModeStatus(): { active: boolean; expiresAt: string } {
 	};
 }
 
+import { resolveEmsPaths } from "../backup_integration/paths";
+
 export type DiagnosticRecorderHost = {
 	getAbsoluteInstanceDataDir?: () => string;
+	namespace?: string;
 	log?: { debug?: (m: string) => void };
 };
 
 function logsDir(host: DiagnosticRecorderHost): string {
+	if (typeof host.getAbsoluteInstanceDataDir === "function" && host.namespace) {
+		return path.join(resolveEmsPaths(host as ioBroker.Adapter).runtimeExportsDir, "support", "logs");
+	}
 	if (typeof host.getAbsoluteInstanceDataDir === "function") {
-		return path.join(host.getAbsoluteInstanceDataDir(), "exports", "support", "logs");
+		return path.join(resolveEmsPaths(host.getAbsoluteInstanceDataDir()).runtimeExportsDir, "support", "logs");
 	}
 	return path.join("/tmp", "ems-support-logs");
 }

@@ -41,6 +41,8 @@ const execute_js_1 = require("../addons/wallbox/runtime/execute.js");
 const execute_js_2 = require("../addons/battery/runtime/execute.js");
 const device_write_js_1 = require("../device_write.js");
 const data_dir_js_1 = require("../learning/data_dir.js");
+const manifest_js_2 = require("../backup_integration/manifest.js");
+const paths_js_1 = require("../backup_integration/paths.js");
 const zip_reader_js_1 = require("./zip_reader.js");
 const validate_archive_js_1 = require("./validate_archive.js");
 const source_js_1 = require("./source.js");
@@ -133,7 +135,7 @@ async function copyBackupToInbox(host, fileName) {
     if (!result.ok)
         throw new Error("export failed");
     const target = fileName ?? path.basename(result.filePath);
-    const inbox = (0, source_js_1.restoreInboxDir)(host.getAbsoluteInstanceDataDir());
+    const inbox = (0, source_js_1.restoreInboxDir)(host);
     await fs.mkdir(inbox, { recursive: true });
     await fs.copyFile(result.filePath, path.join(inbox, target));
     return { fileName: target, sha256: result.sha256 };
@@ -185,10 +187,11 @@ async function writeLearningFixture(host, key, data) {
     });
     (0, node_test_1.it)("resolves paths inside backup dir or inbox", () => {
         const name = "ems-light-0.1.142-backup-20260712T120000Z.emsbackup";
-        const inBackup = (0, source_js_1.resolveRestoreSourcePath)(tmp, name);
+        const resolver = { namespace: "ems.0", getAbsoluteInstanceDataDir: () => tmp };
+        const inBackup = (0, source_js_1.resolveRestoreSourcePath)(resolver, name);
         strict_1.default.equal(inBackup.rootKind, "backup_dir");
-        const inbox = path.join((0, source_js_1.restoreInboxDir)(tmp), name);
-        strict_1.default.equal((0, source_js_1.resolveRestoreSourcePath)(tmp, name).path, inBackup.path);
+        const inbox = path.join((0, source_js_1.restoreInboxDir)(resolver), name);
+        strict_1.default.equal((0, source_js_1.resolveRestoreSourcePath)(resolver, name).path, inBackup.path);
         void inbox;
     });
 });
@@ -473,6 +476,9 @@ async function writeLearningFixture(host, key, data) {
         });
         await host.setStateAsync("command.inbox", { val: "pending", ack: false });
         await writeLearningFixture(host, "battery_runtime_learning_v1.json", { version: 1, samples: [] });
+        const layout = (0, paths_js_1.resolveEmsPaths)(host);
+        await fs.mkdir(path.dirname(layout.manifestPath), { recursive: true });
+        await (0, manifest_js_2.writeManifestAtomic)(layout.manifestPath, (0, manifest_js_2.createInitialManifest)({ instance: 0, namespace: host.namespace, adapterVersion: "0.1.143" }));
     });
     (0, node_test_1.afterEach)(async () => {
         (0, service_js_1.resetExportMutexForTest)();
@@ -590,7 +596,7 @@ async function writeLearningFixture(host, key, data) {
     });
     (0, node_test_1.it)("rolls back incomplete prepared transaction on startup", async () => {
         const txId = (0, journal_js_1.newTransactionId)();
-        const txDir = await (0, journal_js_1.ensureTransactionLayout)(tmp, txId);
+        const txDir = await (0, journal_js_1.ensureTransactionLayout)(host, txId);
         const beforeNative = (0, projection_js_1.exportCurrentNativeProjection)(host.config);
         await fs.writeFile(path.join(txDir, "before", "native_projection.json"), (0, schema_js_1.stableJsonStringify)(beforeNative), { mode: 0o600 });
         const journal = (0, journal_js_1.createJournal)({
@@ -609,7 +615,7 @@ async function writeLearningFixture(host, key, data) {
     (0, node_test_1.it)("blocks runtime on multiple incomplete transactions", async () => {
         for (let i = 0; i < 2; i++) {
             const txId = (0, journal_js_1.newTransactionId)();
-            const txDir = await (0, journal_js_1.ensureTransactionLayout)(tmp, txId);
+            const txDir = await (0, journal_js_1.ensureTransactionLayout)(host, txId);
             const journal = (0, journal_js_1.createJournal)({
                 transactionId: txId,
                 archiveFileName: "test.emsbackup",
@@ -624,7 +630,7 @@ async function writeLearningFixture(host, key, data) {
     });
     (0, node_test_1.it)("finalizes committed transaction without re-applying config", async () => {
         const txId = (0, journal_js_1.newTransactionId)();
-        const txDir = await (0, journal_js_1.ensureTransactionLayout)(tmp, txId);
+        const txDir = await (0, journal_js_1.ensureTransactionLayout)(host, txId);
         const journal = (0, journal_js_1.createJournal)({
             transactionId: txId,
             archiveFileName: "test.emsbackup",

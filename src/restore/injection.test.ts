@@ -47,6 +47,8 @@ import {
 	resetRestoreDryrunContextForTest,
 } from "./dryrun_context.js";
 import { resetDiagnosticModeForTest } from "../support/diagnostic_mode.js";
+import { createInitialManifest, writeManifestAtomic } from "../backup_integration/manifest.js";
+import { resolveEmsPaths } from "../backup_integration/paths.js";
 
 const APPLY_INJECTION_POINTS: RestoreApplyInjectionPoint[] = [
 	"after_lock",
@@ -84,7 +86,7 @@ class InjectionTestHost {
 	readonly objects = new Map<string, ioBroker.Object>();
 	readonly states = new Map<string, { val: ioBroker.StateValue; ack: boolean }>();
 	config: Record<string, unknown>;
-	common = { version: "0.1.142" };
+	common = { version: "0.1.143" };
 	updateConfigCalls = 0;
 	failUpdateConfigOnCall: number | null = null;
 
@@ -182,7 +184,7 @@ async function copyBackupToInbox(host: InjectionTestHost): Promise<{ fileName: s
 	assert.equal(result.ok, true);
 	if (!result.ok) throw new Error("export failed");
 	const target = path.basename(result.filePath);
-	const inbox = restoreInboxDir(host.getAbsoluteInstanceDataDir());
+	const inbox = restoreInboxDir(host);
 	await fs.mkdir(inbox, { recursive: true });
 	await fs.copyFile(result.filePath, path.join(inbox, target));
 	return { fileName: target };
@@ -208,7 +210,25 @@ async function prepareHost(tmp: string): Promise<InjectionTestHost> {
 		"neighbor_unknown.json",
 	);
 	await fs.writeFile(neighborPath, Buffer.from('{"keep":true}'), { mode: 0o600 });
+	await ensureTestManifest(host);
 	return host;
+}
+
+async function transactionsDirForHost(host: InjectionTestHost): Promise<string> {
+	return resolveEmsPaths(host).runtimeTransactionsDir;
+}
+
+async function ensureTestManifest(host: InjectionTestHost): Promise<void> {
+	const layout = resolveEmsPaths(host);
+	await fs.mkdir(path.dirname(layout.manifestPath), { recursive: true });
+	await writeManifestAtomic(
+		layout.manifestPath,
+		createInitialManifest({
+			instance: 0,
+			namespace: host.namespace,
+			adapterVersion: String(host.common.version),
+		}),
+	);
 }
 
 async function assertDryrunModes(host: InjectionTestHost): Promise<void> {
@@ -318,9 +338,10 @@ describe("restore apply injection rollback", () => {
 			assert.equal(isOperationRunning(), false);
 			assert.equal(getActiveRestorePlan(), null);
 			if (apply.status === "rolled_back") {
-				const txDirs = await fs.readdir(path.join(tmp, "restore", "transactions"));
+				const txRoot = await transactionsDirForHost(host);
+				const txDirs = await fs.readdir(txRoot);
 				if (txDirs.length > 0) {
-					const journal = await readJournal(path.join(tmp, "restore", "transactions", txDirs[0]!));
+					const journal = await readJournal(path.join(txRoot, txDirs[0]!));
 					assert.equal(journal?.phase, "rolled_back");
 				}
 			}
@@ -359,8 +380,9 @@ describe("restore apply injection rollback", () => {
 		assert.equal(apply.status, "recovery_failed");
 		assert.equal(apply.error, "restore_rollback_failed");
 		assert.equal(isRestoreInProgress(), true);
-		const txDirs = await fs.readdir(path.join(tmp, "restore", "transactions"));
-		const journal = await readJournal(path.join(tmp, "restore", "transactions", txDirs[0]!));
+		const txRoot = await transactionsDirForHost(host);
+		const txDirs = await fs.readdir(txRoot);
+		const journal = await readJournal(path.join(txRoot, txDirs[0]!));
 		assert.equal(journal?.phase, "failed");
 	});
 
@@ -434,7 +456,7 @@ describe("restore apply injection rollback", () => {
 		assert.deepEqual(host.config, before.native);
 		assert.equal(isOperationRunning(), false);
 		assert.equal(isRestoreInProgress(), false);
-		await assert.rejects(() => fs.readdir(path.join(tmp, "restore", "transactions")));
+		await assert.rejects(async () => fs.readdir((await transactionsDirForHost(host))));
 	});
 
 	it("rollback after live config restores business fields but keeps native dryrun", async () => {
@@ -487,7 +509,7 @@ describe("restore startup journal blocking", () => {
 	it("failed journal blocks startup with active barrier", async () => {
 		const host = await liveHost();
 		const txId = newTransactionId();
-		const txDir = await ensureTransactionLayout(tmp, txId);
+		const txDir = await ensureTransactionLayout(host, txId);
 		await writeJournalAtomic(
 			txDir,
 			createJournal({
@@ -507,7 +529,7 @@ describe("restore startup journal blocking", () => {
 	it("defective journal blocks startup like failed", async () => {
 		const host = await liveHost();
 		const txId = newTransactionId();
-		await ensureTransactionLayout(tmp, txId);
+		await ensureTransactionLayout(host, txId);
 		const recovery = await runRestoreStartupRecovery(host);
 		assert.equal(recovery.ok, false);
 		assert.equal(recovery.error, "restore_transaction_failed");
@@ -523,7 +545,7 @@ describe("restore startup journal blocking", () => {
 		await host.setStateAsync(RESTORE_STATES.lastRestoreAt, { val: "2020-01-01T00:00:00.000Z", ack: true });
 
 		const txId = newTransactionId();
-		const txDir = await ensureTransactionLayout(tmp, txId);
+		const txDir = await ensureTransactionLayout(host, txId);
 		await writeJournalAtomic(
 			txDir,
 			createJournal({
@@ -584,7 +606,7 @@ describe("restore startup journal blocking", () => {
 		const host = await liveHost();
 		for (const sha of ["d1".repeat(32), "d2".repeat(32)]) {
 			const txId = newTransactionId();
-			const txDir = await ensureTransactionLayout(tmp, txId);
+			const txDir = await ensureTransactionLayout(host, txId);
 			await writeJournalAtomic(
 				txDir,
 				createJournal({
@@ -605,7 +627,7 @@ describe("restore startup journal blocking", () => {
 		const host = await liveHost();
 		for (const sha of ["e".repeat(64), "f".repeat(64)]) {
 			const txId = newTransactionId();
-			const txDir = await ensureTransactionLayout(tmp, txId);
+			const txDir = await ensureTransactionLayout(host, txId);
 			await writeJournalAtomic(
 				txDir,
 				createJournal({
@@ -690,7 +712,7 @@ describe("restore dryrun reason separation", () => {
 		await host.setObjectNotExistsAsync("global", { type: "channel", native: {} } as ioBroker.Object);
 
 		const txId = newTransactionId();
-		const txDir = await ensureTransactionLayout(tmp, txId);
+		const txDir = await ensureTransactionLayout(host, txId);
 		await writeJournalAtomic(
 			txDir,
 			createJournal({
@@ -725,7 +747,7 @@ describe("restore dryrun reason separation", () => {
 		});
 		await host.setStateAsync(GLOBAL.executionMode, { val: "live", ack: true });
 		const txId = newTransactionId();
-		const txDir = await ensureTransactionLayout(tmp, txId);
+		const txDir = await ensureTransactionLayout(host, txId);
 		await writeJournalAtomic(
 			txDir,
 			createJournal({

@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { learningDataPath } from "../learning/data_dir";
+import { resolveEmsPaths } from "../backup_integration/paths";
 import { buildZipArchive } from "./archive";
 import { sha256Buffer } from "./checksum";
 import {
@@ -170,10 +171,10 @@ export async function runExport(
 	if (!lock.ok) {
 		return { ok: false, error: lock.error };
 	}
-	const dataDir = instanceDataDir(host);
-	const workDir = path.join(dataDir, "exports", `.work-${process.pid}`);
+	const layout = resolveEmsPaths(host);
+	const workDir = path.join(layout.runtimeTempDir, `.work-${process.pid}`);
 	try {
-		await cleanupTempExports(dataDir);
+		await cleanupTempExports(host);
 		await fs.mkdir(workDir, { recursive: true });
 
 		const createdAt = new Date().toISOString();
@@ -207,11 +208,11 @@ export async function runExport(
 		assertWithinLimit(archive.length, maxArchive, "finished archive size");
 
 		const fileName = exportFileName(kind, version, createdAt);
-		const targetDir = kind === "backup" ? backupDir(dataDir) : supportDir(dataDir);
+		const targetDir = kind === "backup" ? backupDir(host) : supportDir(host);
 		const targetPath = resolveExportPath(targetDir, fileName);
 		await writeAtomicArchive(targetPath, archive);
 
-		await enforceRetention(dataDir);
+		await enforceRetention(host);
 
 		const sha256 = sha256Buffer(archive);
 		return {

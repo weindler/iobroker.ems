@@ -27,6 +27,7 @@ exports.TEMP_PREFIX = exports.SUPPORT_EXT = exports.BACKUP_EXT = exports.writeAt
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const promises_1 = require("node:fs/promises");
+const paths_1 = require("../backup_integration/paths");
 exports.BACKUP_RETENTION_MAX = 10;
 exports.SUPPORT_RETENTION_MAX = 5;
 const BACKUP_EXT = ".emsbackup";
@@ -37,16 +38,16 @@ const TEMP_PREFIX = ".tmp-";
 exports.TEMP_PREFIX = TEMP_PREFIX;
 /** Nur eigene Exportdateien (ems-light-*.{emsbackup,emssupport}). */
 exports.OWN_EXPORT_FILE_RE = /^ems-light-.+\.(emsbackup|emssupport)$/;
-function exportRootDir(instanceDataDir) {
-    return path.join(instanceDataDir, "exports");
+function exportRootDir(input) {
+    return (0, paths_1.resolveEmsPaths)(input).runtimeExportsDir;
 }
 exports.exportRootDir = exportRootDir;
-function backupDir(instanceDataDir) {
-    return path.join(exportRootDir(instanceDataDir), "backup");
+function backupDir(input) {
+    return path.join(exportRootDir(input), "backup");
 }
 exports.backupDir = backupDir;
-function supportDir(instanceDataDir) {
-    return path.join(exportRootDir(instanceDataDir), "support");
+function supportDir(input) {
+    return path.join(exportRootDir(input), "support");
 }
 exports.supportDir = supportDir;
 function assertSafeFileName(name) {
@@ -76,13 +77,13 @@ function resolveExportPath(baseDir, fileName) {
     return resolved;
 }
 exports.resolveExportPath = resolveExportPath;
-async function ensureExportDirs(instanceDataDir) {
-    await fs.mkdir(backupDir(instanceDataDir), { recursive: true, mode: 0o700 });
-    await fs.mkdir(supportDir(instanceDataDir), { recursive: true, mode: 0o700 });
+async function ensureExportDirs(input) {
+    await fs.mkdir(backupDir(input), { recursive: true, mode: 0o700 });
+    await fs.mkdir(supportDir(input), { recursive: true, mode: 0o700 });
 }
 exports.ensureExportDirs = ensureExportDirs;
-async function cleanupTempExports(instanceDataDir) {
-    for (const dir of [backupDir(instanceDataDir), supportDir(instanceDataDir)]) {
+async function cleanupTempExports(input) {
+    for (const dir of [backupDir(input), supportDir(input)]) {
         try {
             const files = await fs.readdir(dir);
             for (const f of files) {
@@ -98,6 +99,19 @@ async function cleanupTempExports(instanceDataDir) {
         catch {
             // Verzeichnis fehlt
         }
+    }
+    const layout = (0, paths_1.resolveEmsPaths)(input);
+    try {
+        const workParent = layout.runtimeExportsDir;
+        const files = await fs.readdir(workParent);
+        for (const f of files) {
+            if (!f.startsWith(".work-"))
+                continue;
+            await fs.rm(path.join(workParent, f), { recursive: true, force: true }).catch(() => undefined);
+        }
+    }
+    catch {
+        // ignore
     }
 }
 exports.cleanupTempExports = cleanupTempExports;
@@ -123,9 +137,9 @@ async function listArchives(dir, ext) {
         return [];
     }
 }
-async function enforceRetention(instanceDataDir) {
-    const bDir = backupDir(instanceDataDir);
-    const sDir = supportDir(instanceDataDir);
+async function enforceRetention(input) {
+    const bDir = backupDir(input);
+    const sDir = supportDir(input);
     const backups = await listArchives(bDir, BACKUP_EXT);
     while (backups.length > exports.BACKUP_RETENTION_MAX) {
         const oldest = backups.shift();

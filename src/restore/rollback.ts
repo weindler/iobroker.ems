@@ -7,6 +7,9 @@ import { syncExecutionModesFromConfig } from "../execution_mode";
 import { runRestoreRuntimeCleanup } from "./runtime_cleanup";
 import { maybeInjectRestoreRollbackFailure } from "./apply_hooks";
 import type { RestoreHost } from "./types";
+import { resolveEmsPaths } from "../backup_integration/paths";
+import { readManifestFromDisk } from "../backup_integration/startup";
+import { finalizeRestoreTransactionFence, validateManifest } from "../backup_integration/manifest";
 
 export async function runRestoreRollback(host: RestoreHost, txDir: string): Promise<void> {
 	await updateJournalPhase(txDir, "rollback_running");
@@ -28,6 +31,12 @@ export async function runRestoreRollback(host: RestoreHost, txDir: string): Prom
 	await restoreLearningFromSnapshot(host, txDir, "before");
 	await runRestoreRuntimeCleanup(host);
 	await updateJournalPhase(txDir, "rolled_back");
+	const layout = resolveEmsPaths(host);
+	const manifestRaw = await readManifestFromDisk(layout.manifestPath);
+	if (manifestRaw?.transactionFence) {
+		const manifest = validateManifest(manifestRaw);
+		await finalizeRestoreTransactionFence(layout.manifestPath, manifest, "rolled_back");
+	}
 }
 
 export async function readTransactionJournal(txDir: string) {

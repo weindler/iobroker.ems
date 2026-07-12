@@ -110,6 +110,19 @@ describe("forecast plan revision", () => {
 		assert.equal(forecastPlanSemanticRevisionHash(planA), forecastPlanSemanticRevisionHash(planB));
 	});
 
+	it("slot ISO timestamps drift does not affect semantic hash", () => {
+		const plan = buildForecastPlan({ now, timezone: "UTC", contributions: baseContributions(now) });
+		const plan2: typeof plan = JSON.parse(JSON.stringify(plan));
+		plan2.slots[0] = {
+			...plan2.slots[0],
+			slot: {
+				startIso: "2026-07-11T10:15:00.000Z",
+				endIso: "2026-07-11T10:30:00.000Z",
+			},
+		};
+		assert.equal(forecastPlanSemanticRevisionHash(plan), forecastPlanSemanticRevisionHash(plan2));
+	});
+
 	it("slot quality and reasonDe drift does not affect semantic hash", () => {
 		const plan = buildForecastPlan({ now, timezone: "UTC", contributions: baseContributions(now) });
 		const plan2: typeof plan = JSON.parse(JSON.stringify(plan));

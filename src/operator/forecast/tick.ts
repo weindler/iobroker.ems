@@ -30,9 +30,9 @@ let lastRevisionPayload = "";
 let revision = 0;
 
 export type ForecastPlanTickOptions = {
-	/** When true, large JSON mirror writes run after adapter ready (see flushDeferredForecastPlanWrites). */
+	/** When true, plan_json persistence runs after adapter ready (see flushDeferredForecastPlanWrites). */
 	deferLargeJsonWrites?: boolean;
-	/** Skip bootstrap cache and always rebuild (deferred refresh after adapter ready). */
+	/** Skip bootstrap cache and always rebuild. */
 	forceRebuild?: boolean;
 };
 
@@ -146,36 +146,20 @@ async function loadCachedForecastPlanForBootstrap(host: ContributionsReadHost): 
 	return plan;
 }
 
-function scheduleBootstrapForecastRefresh(
-	host: ContributionsReadHost,
-	gridForecast: GridSupplyForecast | undefined,
-	flexibleContributions: PlanContribution[],
-): void {
-	scheduleDeferredForecastPlanWrite(host, async () => {
-		await runForecastPlanTick(host, gridForecast, flexibleContributions, {
-			deferLargeJsonWrites: false,
-			forceRebuild: true,
-		});
-	});
+async function storedPlanJsonMatches(host: ContributionsReadHost, planJson: string): Promise<boolean> {
+	const stored = await readStr(host, FORECAST_PLAN_STATE_IDS.planJson);
+	return stored === planJson;
 }
 
-async function allMirrorJsonMatches(
+function scheduleFirstInstallForecastPersist(
 	host: ContributionsReadHost,
-	serialized: ForecastPlanSerializedWrites,
-): Promise<boolean> {
-	const pairs: Array<[string, string]> = [
-		[FORECAST_PLAN_STATE_IDS.activeContributorsJson, serialized.activeContributorsJson],
-		[FORECAST_PLAN_STATE_IDS.excludedContributorsJson, serialized.excludedContributorsJson],
-		[FORECAST_PLAN_STATE_IDS.daysJson, serialized.daysJson],
-		[FORECAST_PLAN_STATE_IDS.slotsJson, serialized.slotsJson],
-		[FORECAST_PLAN_STATE_IDS.contributionsJson, serialized.contributionsJson],
-		[FORECAST_PLAN_STATE_IDS.planJson, serialized.planJson],
-	];
-	for (const [stateId, json] of pairs) {
-		const stored = await readStr(host, stateId);
-		if (stored !== json) return false;
-	}
-	return true;
+	plan: ForecastPlan,
+	semanticHash: string,
+	nextRevision: number,
+): void {
+	scheduleDeferredForecastPlanWrite(host, async () => {
+		await persistForecastPlan(host, plan, semanticHash, nextRevision);
+	});
 }
 
 async function writeScalarState(
@@ -201,7 +185,6 @@ async function writeJsonState(
 	json: string,
 	revisionRequired: boolean,
 	counts?: { slotCount?: number; contributionCount?: number },
-	dup?: { duplicateSlotsVsPlanJson?: number; duplicateContributionsVsPlanJson?: number },
 ): Promise<void> {
 	const bytes = utf8Bytes(json);
 	const meta = {
@@ -210,8 +193,6 @@ async function writeJsonState(
 		skipRead: false,
 		slotCount: counts?.slotCount,
 		contributionCount: counts?.contributionCount,
-		duplicateSlotsVsPlanJson: dup?.duplicateSlotsVsPlanJson,
-		duplicateContributionsVsPlanJson: dup?.duplicateContributionsVsPlanJson,
 	};
 	logForecastPlanWriteProbe(host.log as MemoryProbeLogger | undefined, "before_payload", meta);
 	logForecastPlanWriteProbe(host.log as MemoryProbeLogger | undefined, "after_stringify", meta, { bytes });
@@ -220,68 +201,71 @@ async function writeJsonState(
 	logForecastPlanWriteProbe(host.log as MemoryProbeLogger | undefined, "after_setState", meta, { bytes });
 }
 
-async function writeLargeJsonStates(
+/** Persist forecast plan — single plan_json IPC write (no duplicate mirror states). */
+async function persistForecastPlan(
 	host: ContributionsReadHost,
 	plan: ForecastPlan,
-	serialized: ForecastPlanSerializedWrites,
 	semanticHash: string,
 	nextRevision: number,
 ): Promise<void> {
+	const serialized = serializeForecastPlanForWrites(plan);
+
+	if (await storedPlanJsonMatches(host, serialized.planJson)) {
+		(host.log as MemoryProbeLogger | undefined)?.info?.(
+			"forecast plan persist: plan_json unchanged — skip IPC write",
+		);
+		await writeScalarState(host, FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, undefined, false);
+		if ((await readStr(host, FORECAST_PLAN_STATE_IDS.semanticRevisionHash)) !== semanticHash) {
+			await writeScalarState(
+				host,
+				FORECAST_PLAN_STATE_IDS.semanticRevisionHash,
+				semanticHash,
+				undefined,
+				true,
+			);
+		}
+		lastRevisionPayload = forecastPlanRevisionPayload(plan);
+		return;
+	}
+
 	logForecastPlanDuplicationReport(host.log as MemoryProbeLogger | undefined, {
 		revisionChanged: true,
 		semanticHash,
-		fields: serialized.report.fields.map((f) => ({
-			stateId: f.stateId,
-			bytes: f.bytes,
-			slotCount: f.slotCount,
-			contributionCount: f.contributionCount,
-		})),
-		totalSerializedBytes: serialized.report.totalSerializedBytes,
+		fields: [
+			{
+				stateId: "plan_json",
+				bytes: serialized.report.fields.find((f) => f.stateId === "plan_json")?.bytes ?? utf8Bytes(serialized.planJson),
+				slotCount: plan.slots.length,
+				contributionCount: plan.contributions.length,
+			},
+		],
+		totalSerializedBytes: utf8Bytes(serialized.planJson),
 		uniqueSlotBytes: serialized.report.uniqueSlotBytes,
 		uniqueContributionBytes: serialized.report.uniqueContributionBytes,
-		duplicateSlotBytesVsPlanJson: serialized.report.duplicateSlotBytesVsPlanJson,
-		duplicateContributionBytesVsPlanJson: serialized.report.duplicateContributionBytesVsPlanJson,
+		duplicateSlotBytesVsPlanJson: 0,
+		duplicateContributionBytesVsPlanJson: 0,
 	});
 
-	await writeJsonState(host, FORECAST_PLAN_STATE_IDS.activeContributorsJson, serialized.activeContributorsJson, true);
-	await writeJsonState(
-		host,
-		FORECAST_PLAN_STATE_IDS.excludedContributorsJson,
-		serialized.excludedContributorsJson,
-		true,
-	);
-	await writeJsonState(host, FORECAST_PLAN_STATE_IDS.daysJson, serialized.daysJson, true);
-	await writeJsonState(
-		host,
-		FORECAST_PLAN_STATE_IDS.slotsJson,
-		serialized.slotsJson,
-		true,
-		{ slotCount: plan.slots.length },
-	);
-	await writeJsonState(
-		host,
-		FORECAST_PLAN_STATE_IDS.contributionsJson,
-		serialized.contributionsJson,
-		true,
-		{ contributionCount: plan.contributions.length },
-	);
+	await writeScalarState(host, FORECAST_PLAN_STATE_IDS.status, plan.status, undefined, true);
+	await writeScalarState(host, FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, undefined, false);
+	await writeScalarState(host, FORECAST_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "", undefined, true);
+	await writeScalarState(host, FORECAST_PLAN_STATE_IDS.horizonStart, plan.horizonStart, undefined, false);
+	await writeScalarState(host, FORECAST_PLAN_STATE_IDS.horizonEnd, plan.horizonEnd, undefined, true);
+	await writeScalarState(host, FORECAST_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes, undefined, true);
+	await writeScalarState(host, FORECAST_PLAN_STATE_IDS.reasonDe, plan.reasonDe, undefined, true);
 	await writeJsonState(
 		host,
 		FORECAST_PLAN_STATE_IDS.planJson,
 		serialized.planJson,
 		true,
 		{ slotCount: plan.slots.length, contributionCount: plan.contributions.length },
-		{
-			duplicateSlotsVsPlanJson: serialized.report.duplicateSlotBytesVsPlanJson,
-			duplicateContributionsVsPlanJson: serialized.report.duplicateContributionBytesVsPlanJson,
-		},
 	);
-
 	await writeScalarState(host, FORECAST_PLAN_STATE_IDS.revision, nextRevision, undefined, true);
 	await writeScalarState(host, FORECAST_PLAN_STATE_IDS.semanticRevisionHash, semanticHash, undefined, true);
 
 	revision = nextRevision;
 	lastRevisionPayload = forecastPlanRevisionPayload(plan);
+	plan.revision = nextRevision;
 }
 
 export async function runForecastPlanTick(
@@ -296,9 +280,8 @@ export async function runForecastPlanTick(
 		const cached = await loadCachedForecastPlanForBootstrap(host);
 		if (cached) {
 			(host.log as MemoryProbeLogger | undefined)?.info?.(
-				`forecast plan bootstrap: cached plan_json revision=${cached.revision} slots=${cached.slots.length} — skip rebuild`,
+				`forecast plan bootstrap: cached plan_json revision=${cached.revision} slots=${cached.slots.length} — skip rebuild (periodic tick refreshes)`,
 			);
-			scheduleBootstrapForecastRefresh(host, gridForecast, flexibleContributions);
 			return cached;
 		}
 	}
@@ -319,18 +302,14 @@ export async function runForecastPlanTick(
 	plan.revision = resolution.nextRevision;
 
 	let serialized: ForecastPlanSerializedWrites | null = null;
-	if (
-		!resolution.skipLargeJsonWrites &&
-		resolution.revisionChanged &&
-		!resolution.deferLargeJsonWrites
-	) {
+	if (!resolution.skipLargeJsonWrites && resolution.revisionChanged) {
 		serialized = serializeForecastPlanForWrites(plan);
-		if (await allMirrorJsonMatches(host, serialized)) {
+		if (await storedPlanJsonMatches(host, serialized.planJson)) {
 			resolution = {
 				...resolution,
 				skipLargeJsonWrites: true,
 				deferLargeJsonWrites: false,
-				skipReason: "mirror_json_match",
+				skipReason: "plan_json_match",
 			};
 		}
 	}
@@ -348,9 +327,9 @@ export async function runForecastPlanTick(
 	);
 
 	if (deferLargeJsonWrites && !options.forceRebuild) {
-		scheduleBootstrapForecastRefresh(host, gridForecast, flexibleContributions);
+		scheduleFirstInstallForecastPersist(host, plan, semanticHash, resolution.nextRevision);
 		(host.log as MemoryProbeLogger | undefined)?.info?.(
-			`forecast plan bootstrap: built_in_memory revision=${plan.revision} — defer all DB writes until adapter ready`,
+			`forecast plan bootstrap: built_in_memory revision=${plan.revision} — defer plan_json until adapter ready`,
 		);
 		revision = resolution.nextRevision;
 		lastRevisionPayload = semanticPayload;
@@ -358,15 +337,8 @@ export async function runForecastPlanTick(
 	}
 
 	try {
-		await writeScalarState(host, FORECAST_PLAN_STATE_IDS.status, plan.status, undefined, resolution.revisionChanged);
-		await writeScalarState(host, FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, undefined, false);
-		await writeScalarState(host, FORECAST_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "", undefined, resolution.revisionChanged);
-		await writeScalarState(host, FORECAST_PLAN_STATE_IDS.horizonStart, plan.horizonStart, undefined, false);
-		await writeScalarState(host, FORECAST_PLAN_STATE_IDS.horizonEnd, plan.horizonEnd, undefined, resolution.revisionChanged);
-		await writeScalarState(host, FORECAST_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes, undefined, resolution.revisionChanged);
-		await writeScalarState(host, FORECAST_PLAN_STATE_IDS.reasonDe, plan.reasonDe, undefined, resolution.revisionChanged);
-
 		if (resolution.skipLargeJsonWrites) {
+			await writeScalarState(host, FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt, undefined, false);
 			if (resolution.storedHash !== semanticHash) {
 				await writeScalarState(
 					host,
@@ -381,8 +353,8 @@ export async function runForecastPlanTick(
 				revision = resolution.nextRevision;
 				lastRevisionPayload = semanticPayload;
 			}
-		} else if (serialized) {
-			await writeLargeJsonStates(host, plan, serialized, semanticHash, resolution.nextRevision);
+		} else {
+			await persistForecastPlan(host, plan, semanticHash, resolution.nextRevision);
 		}
 	} catch (e) {
 		host.log?.warn?.(`forecast plan state write: ${String(e)}`);

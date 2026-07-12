@@ -183,7 +183,7 @@ describe("forecast bootstrap cache", () => {
 
 		assert.equal(plan.revision, 3);
 		assert.equal(plan.slots.length > 0, true);
-		assert.equal(hasDeferredForecastPlanWrite(), true);
+		assert.equal(hasDeferredForecastPlanWrite(), false);
 		assert.equal(getStateCalls <= 4, true, `expected at most 4 state reads, got ${getStateCalls}`);
 		assert.equal(host.store.has(FORECAST_PLAN_STATE_IDS.planJson), true);
 	});

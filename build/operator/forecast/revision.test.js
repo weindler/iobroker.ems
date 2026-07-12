@@ -107,6 +107,18 @@ function baseContributions(now) {
         const planB = (0, build_js_1.buildForecastPlan)({ now, timezone: "UTC", contributions: contributionsB });
         strict_1.default.equal((0, revision_js_1.forecastPlanSemanticRevisionHash)(planA), (0, revision_js_1.forecastPlanSemanticRevisionHash)(planB));
     });
+    (0, node_test_1.it)("slot ISO timestamps drift does not affect semantic hash", () => {
+        const plan = (0, build_js_1.buildForecastPlan)({ now, timezone: "UTC", contributions: baseContributions(now) });
+        const plan2 = JSON.parse(JSON.stringify(plan));
+        plan2.slots[0] = {
+            ...plan2.slots[0],
+            slot: {
+                startIso: "2026-07-11T10:15:00.000Z",
+                endIso: "2026-07-11T10:30:00.000Z",
+            },
+        };
+        strict_1.default.equal((0, revision_js_1.forecastPlanSemanticRevisionHash)(plan), (0, revision_js_1.forecastPlanSemanticRevisionHash)(plan2));
+    });
     (0, node_test_1.it)("slot quality and reasonDe drift does not affect semantic hash", () => {
         const plan = (0, build_js_1.buildForecastPlan)({ now, timezone: "UTC", contributions: baseContributions(now) });
         const plan2 = JSON.parse(JSON.stringify(plan));

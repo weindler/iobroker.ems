@@ -148,7 +148,7 @@ function minimalStoredPlanJson() {
         const plan = await (0, tick_js_1.runForecastPlanTick)(host, gridForecast(), [], { deferLargeJsonWrites: true });
         strict_1.default.equal(plan.revision, 3);
         strict_1.default.equal(plan.slots.length > 0, true);
-        strict_1.default.equal((0, deferred_writes_js_1.hasDeferredForecastPlanWrite)(), true);
+        strict_1.default.equal((0, deferred_writes_js_1.hasDeferredForecastPlanWrite)(), false);
         strict_1.default.equal(getStateCalls <= 4, true, `expected at most 4 state reads, got ${getStateCalls}`);
         strict_1.default.equal(host.store.has(states_js_1.FORECAST_PLAN_STATE_IDS.planJson), true);
     });

@@ -38,9 +38,9 @@ function dayForRevision(day: ForecastPlanDay): Record<string, unknown> {
 	};
 }
 
-function slotForRevision(slot: ForecastPlanSlot): Record<string, unknown> {
+function slotForRevision(slot: ForecastPlanSlot, index: number): Record<string, unknown> {
 	return {
-		slot: slot.slot,
+		index,
 		pvPowerW: slot.pvPowerW,
 		houseLoadPowerW: slot.houseLoadPowerW,
 		fixedBalancePowerW: slot.fixedBalancePowerW,
@@ -87,7 +87,7 @@ export function forecastPlanRevisionPayload(plan: ForecastPlan): string {
 		activeContributors: plan.activeContributors,
 		excludedContributors: plan.excludedContributors.map(excludedForRevision),
 		days: plan.days.map(dayForRevision),
-		slots: plan.slots.map(slotForRevision),
+		slots: plan.slots.map((slot, index) => slotForRevision(slot, index)),
 		contributions: plan.contributions.map(contributionForRevision),
 	};
 	return JSON.stringify(payload);

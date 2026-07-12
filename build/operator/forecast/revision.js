@@ -36,9 +36,9 @@ function dayForRevision(day) {
         weatherMaxTempC: day.weatherMaxTempC,
     };
 }
-function slotForRevision(slot) {
+function slotForRevision(slot, index) {
     return {
-        slot: slot.slot,
+        index,
         pvPowerW: slot.pvPowerW,
         houseLoadPowerW: slot.houseLoadPowerW,
         fixedBalancePowerW: slot.fixedBalancePowerW,
@@ -81,7 +81,7 @@ function forecastPlanRevisionPayload(plan) {
         activeContributors: plan.activeContributors,
         excludedContributors: plan.excludedContributors.map(excludedForRevision),
         days: plan.days.map(dayForRevision),
-        slots: plan.slots.map(slotForRevision),
+        slots: plan.slots.map((slot, index) => slotForRevision(slot, index)),
         contributions: plan.contributions.map(contributionForRevision),
     };
     return JSON.stringify(payload);

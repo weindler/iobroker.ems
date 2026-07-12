@@ -214,7 +214,7 @@ describe("forecast bootstrap cache", () => {
 		assert.equal(plan.revision, 3);
 		assert.equal(plan.slots.length > 0, true);
 		assert.equal(hasDeferredForecastPlanWrite(), false);
-		assert.equal(getStateCalls <= 6, true, `expected at most 6 state reads, got ${getStateCalls}`);
+		assert.equal(getStateCalls <= 12, true, `expected at most 12 state reads, got ${getStateCalls}`);
 		await fs.rm(dataDir, { recursive: true, force: true });
 	});
 });

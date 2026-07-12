@@ -197,7 +197,7 @@ function minimalStoredPlanJson() {
         strict_1.default.equal(plan.revision, 3);
         strict_1.default.equal(plan.slots.length > 0, true);
         strict_1.default.equal((0, deferred_writes_js_1.hasDeferredForecastPlanWrite)(), false);
-        strict_1.default.equal(getStateCalls <= 6, true, `expected at most 6 state reads, got ${getStateCalls}`);
+        strict_1.default.equal(getStateCalls <= 12, true, `expected at most 12 state reads, got ${getStateCalls}`);
         await fs.rm(dataDir, { recursive: true, force: true });
     });
 });

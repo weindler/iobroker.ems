@@ -16,17 +16,24 @@ const states_2 = require("./states");
 let lastRevisionPayload = "";
 let revision = 0;
 let lastInputFingerprint = "";
+let lastLearningFingerprint = "";
 let cachedPeriodicPlan = null;
-/** Stable fingerprint: revision counters + learning timestamps (not sliding slot windows). */
-async function forecastInputFingerprint(host) {
-    const [gridRev, flexRev, pvUpd, houseUpd, weatherUpd] = await Promise.all([
-        readNum(host, grid_states_1.GRID_SUPPLY_STATE_IDS.revision),
-        readNum(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.revision),
+async function learningInputFingerprint(host) {
+    const [pvUpd, houseUpd, weatherUpd] = await Promise.all([
         readStr(host, "learning.pv_bias.last_update_ts"),
         readStr(host, "learning.house_load.last_update"),
         readStr(host, "learning.weather.last_update"),
     ]);
-    return [gridRev, flexRev, pvUpd, houseUpd, weatherUpd].join("|");
+    return [pvUpd, houseUpd, weatherUpd].join("|");
+}
+/** Full fingerprint incl. grid/flex revision — for logging only. */
+async function forecastInputFingerprint(host) {
+    const [gridRev, flexRev, learning] = await Promise.all([
+        readNum(host, grid_states_1.GRID_SUPPLY_STATE_IDS.revision),
+        readNum(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.revision),
+        learningInputFingerprint(host),
+    ]);
+    return [gridRev, flexRev, learning].join("|");
 }
 async function loadPlanFromFile(host) {
     const planRaw = await (0, plan_store_1.readForecastPlanFile)(host);
@@ -37,8 +44,9 @@ async function loadPlanFromFile(host) {
         return null;
     return plan;
 }
-function rememberPeriodicPlan(plan, fingerprint) {
-    lastInputFingerprint = fingerprint;
+function rememberPeriodicPlan(plan, fullFingerprint, learningFingerprint) {
+    lastInputFingerprint = fullFingerprint;
+    lastLearningFingerprint = learningFingerprint;
     cachedPeriodicPlan = plan;
     lastRevisionPayload = (0, revision_1.forecastPlanRevisionPayload)(plan);
     revision = plan.revision;
@@ -47,6 +55,7 @@ function resetForecastPlanRevisionForTest() {
     lastRevisionPayload = "";
     revision = 0;
     lastInputFingerprint = "";
+    lastLearningFingerprint = "";
     cachedPeriodicPlan = null;
     (0, deferred_writes_1.clearDeferredForecastPlanWriteForTest)();
 }
@@ -217,26 +226,26 @@ async function runForecastPlanTick(host, gridForecast, flexibleContributions = [
         const cached = await loadCachedForecastPlanForBootstrap(host);
         if (cached) {
             host.log?.info?.(`forecast plan bootstrap: cached plan file revision=${cached.revision} slots=${cached.slots.length} — skip rebuild (periodic tick refreshes)`);
-            const fp = await forecastInputFingerprint(host);
-            rememberPeriodicPlan(cached, fp);
+            const learningFp = await learningInputFingerprint(host);
+            const fullFp = await forecastInputFingerprint(host);
+            rememberPeriodicPlan(cached, fullFp, learningFp);
             return cached;
         }
     }
-    const inputFingerprint = await forecastInputFingerprint(host);
-    const inputsChanged = lastInputFingerprint !== "" && inputFingerprint !== lastInputFingerprint;
-    const persistToDb = options.persistToDb !== false || inputsChanged;
-    if ((0, barrier_1.isBootstrapComplete)() &&
-        !options.forceRebuild &&
-        inputFingerprint === lastInputFingerprint &&
-        inputFingerprint !== "") {
+    const learningFp = await learningInputFingerprint(host);
+    const fullFp = await forecastInputFingerprint(host);
+    const learningChanged = lastLearningFingerprint !== "" && learningFp !== lastLearningFingerprint;
+    const persistToDb = options.persistToDb !== false || learningChanged;
+    if ((0, barrier_1.isBootstrapComplete)() && !options.forceRebuild && !learningChanged && lastLearningFingerprint !== "") {
         if (cachedPeriodicPlan) {
-            host.log?.info?.(`forecast plan periodic: inputs unchanged — skip rebuild (revision=${cachedPeriodicPlan.revision})`);
+            host.log?.info?.(`forecast plan periodic: learning unchanged — skip rebuild (revision=${cachedPeriodicPlan.revision}, grid/flex may have ticked)`);
+            lastInputFingerprint = fullFp;
             return cachedPeriodicPlan;
         }
         const fromFile = await loadPlanFromFile(host);
         if (fromFile) {
             host.log?.info?.(`forecast plan periodic: loaded file revision=${fromFile.revision} — skip rebuild`);
-            rememberPeriodicPlan(fromFile, inputFingerprint);
+            rememberPeriodicPlan(fromFile, fullFp, learningFp);
             return fromFile;
         }
     }
@@ -276,7 +285,7 @@ async function runForecastPlanTick(host, gridForecast, flexibleContributions = [
         revision = resolution.nextRevision;
         lastRevisionPayload = semanticPayload;
         plan.revision = resolution.nextRevision;
-        rememberPeriodicPlan(plan, inputFingerprint);
+        rememberPeriodicPlan(plan, fullFp, learningFp);
         return plan;
     }
     if (deferLargeJsonWrites && !options.forceRebuild) {
@@ -285,7 +294,7 @@ async function runForecastPlanTick(host, gridForecast, flexibleContributions = [
         revision = resolution.nextRevision;
         lastRevisionPayload = semanticPayload;
         plan.revision = resolution.nextRevision;
-        rememberPeriodicPlan(plan, inputFingerprint);
+        rememberPeriodicPlan(plan, fullFp, learningFp);
         return plan;
     }
     try {
@@ -297,7 +306,7 @@ async function runForecastPlanTick(host, gridForecast, flexibleContributions = [
         else {
             await persistForecastPlan(host, plan, semanticHash, resolution.nextRevision);
         }
-        rememberPeriodicPlan(plan, inputFingerprint);
+        rememberPeriodicPlan(plan, fullFp, learningFp);
     }
     catch (e) {
         host.log?.warn?.(`forecast plan state write: ${String(e)}`);

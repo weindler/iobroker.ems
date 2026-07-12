@@ -35,18 +35,26 @@ import type { ForecastPlan } from "./types";
 let lastRevisionPayload = "";
 let revision = 0;
 let lastInputFingerprint = "";
+let lastLearningFingerprint = "";
 let cachedPeriodicPlan: ForecastPlan | null = null;
 
-/** Stable fingerprint: revision counters + learning timestamps (not sliding slot windows). */
-async function forecastInputFingerprint(host: ContributionsReadHost): Promise<string> {
-	const [gridRev, flexRev, pvUpd, houseUpd, weatherUpd] = await Promise.all([
-		readNum(host, GRID_SUPPLY_STATE_IDS.revision),
-		readNum(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.revision),
+async function learningInputFingerprint(host: ContributionsReadHost): Promise<string> {
+	const [pvUpd, houseUpd, weatherUpd] = await Promise.all([
 		readStr(host, "learning.pv_bias.last_update_ts"),
 		readStr(host, "learning.house_load.last_update"),
 		readStr(host, "learning.weather.last_update"),
 	]);
-	return [gridRev, flexRev, pvUpd, houseUpd, weatherUpd].join("|");
+	return [pvUpd, houseUpd, weatherUpd].join("|");
+}
+
+/** Full fingerprint incl. grid/flex revision — for logging only. */
+async function forecastInputFingerprint(host: ContributionsReadHost): Promise<string> {
+	const [gridRev, flexRev, learning] = await Promise.all([
+		readNum(host, GRID_SUPPLY_STATE_IDS.revision),
+		readNum(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.revision),
+		learningInputFingerprint(host),
+	]);
+	return [gridRev, flexRev, learning].join("|");
 }
 
 async function loadPlanFromFile(host: ContributionsReadHost): Promise<ForecastPlan | null> {
@@ -57,8 +65,9 @@ async function loadPlanFromFile(host: ContributionsReadHost): Promise<ForecastPl
 	return plan;
 }
 
-function rememberPeriodicPlan(plan: ForecastPlan, fingerprint: string): void {
-	lastInputFingerprint = fingerprint;
+function rememberPeriodicPlan(plan: ForecastPlan, fullFingerprint: string, learningFingerprint: string): void {
+	lastInputFingerprint = fullFingerprint;
+	lastLearningFingerprint = learningFingerprint;
 	cachedPeriodicPlan = plan;
 	lastRevisionPayload = forecastPlanRevisionPayload(plan);
 	revision = plan.revision;
@@ -77,6 +86,7 @@ export function resetForecastPlanRevisionForTest(): void {
 	lastRevisionPayload = "";
 	revision = 0;
 	lastInputFingerprint = "";
+	lastLearningFingerprint = "";
 	cachedPeriodicPlan = null;
 	clearDeferredForecastPlanWriteForTest();
 }
@@ -304,25 +314,23 @@ export async function runForecastPlanTick(
 			(host.log as MemoryProbeLogger | undefined)?.info?.(
 				`forecast plan bootstrap: cached plan file revision=${cached.revision} slots=${cached.slots.length} — skip rebuild (periodic tick refreshes)`,
 			);
-			const fp = await forecastInputFingerprint(host);
-			rememberPeriodicPlan(cached, fp);
+			const learningFp = await learningInputFingerprint(host);
+			const fullFp = await forecastInputFingerprint(host);
+			rememberPeriodicPlan(cached, fullFp, learningFp);
 			return cached;
 		}
 	}
 
-	const inputFingerprint = await forecastInputFingerprint(host);
-	const inputsChanged = lastInputFingerprint !== "" && inputFingerprint !== lastInputFingerprint;
-	const persistToDb = options.persistToDb !== false || inputsChanged;
-	if (
-		isBootstrapComplete() &&
-		!options.forceRebuild &&
-		inputFingerprint === lastInputFingerprint &&
-		inputFingerprint !== ""
-	) {
+	const learningFp = await learningInputFingerprint(host);
+	const fullFp = await forecastInputFingerprint(host);
+	const learningChanged = lastLearningFingerprint !== "" && learningFp !== lastLearningFingerprint;
+	const persistToDb = options.persistToDb !== false || learningChanged;
+	if (isBootstrapComplete() && !options.forceRebuild && !learningChanged && lastLearningFingerprint !== "") {
 		if (cachedPeriodicPlan) {
 			(host.log as MemoryProbeLogger | undefined)?.info?.(
-				`forecast plan periodic: inputs unchanged — skip rebuild (revision=${cachedPeriodicPlan.revision})`,
+				`forecast plan periodic: learning unchanged — skip rebuild (revision=${cachedPeriodicPlan.revision}, grid/flex may have ticked)`,
 			);
+			lastInputFingerprint = fullFp;
 			return cachedPeriodicPlan;
 		}
 		const fromFile = await loadPlanFromFile(host);
@@ -330,7 +338,7 @@ export async function runForecastPlanTick(
 			(host.log as MemoryProbeLogger | undefined)?.info?.(
 				`forecast plan periodic: loaded file revision=${fromFile.revision} — skip rebuild`,
 			);
-			rememberPeriodicPlan(fromFile, inputFingerprint);
+			rememberPeriodicPlan(fromFile, fullFp, learningFp);
 			return fromFile;
 		}
 	}
@@ -378,7 +386,7 @@ export async function runForecastPlanTick(
 		revision = resolution.nextRevision;
 		lastRevisionPayload = semanticPayload;
 		plan.revision = resolution.nextRevision;
-		rememberPeriodicPlan(plan, inputFingerprint);
+		rememberPeriodicPlan(plan, fullFp, learningFp);
 		return plan;
 	}
 
@@ -390,7 +398,7 @@ export async function runForecastPlanTick(
 		revision = resolution.nextRevision;
 		lastRevisionPayload = semanticPayload;
 		plan.revision = resolution.nextRevision;
-		rememberPeriodicPlan(plan, inputFingerprint);
+		rememberPeriodicPlan(plan, fullFp, learningFp);
 		return plan;
 	}
 
@@ -402,7 +410,7 @@ export async function runForecastPlanTick(
 		} else {
 			await persistForecastPlan(host, plan, semanticHash, resolution.nextRevision);
 		}
-		rememberPeriodicPlan(plan, inputFingerprint);
+		rememberPeriodicPlan(plan, fullFp, learningFp);
 	} catch (e) {
 		host.log?.warn?.(`forecast plan state write: ${String(e)}`);
 		try {

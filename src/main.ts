@@ -48,6 +48,7 @@ import {
 	logMemoryDiagnosticReport,
 } from "./diagnostics/startup_memory";
 import { parseInboxValue } from "./inbox";
+import { EMS_RUNTIME_BUILD_MARKER } from "./runtime/build_marker";
 import { goeWallboxTemplateFlat } from "./mapping_config";
 import { stopEmsLightPhase1 } from "./ems_light";
 import { handleEnergyDailyRollupStateChange } from "./learning/energy_daily_rollup";
@@ -143,6 +144,7 @@ class Ems extends utils.Adapter {
 		}
 
 		this.log.info("EMS adapter ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
+		this.log.info(`EMS runtime marker: ${EMS_RUNTIME_BUILD_MARKER}`);
 		probeStartupMemory(this.log, "before_adapter_ready_log");
 		schedulePostReadyMemoryProbes(this.log);
 		setImmediate(() => {

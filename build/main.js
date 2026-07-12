@@ -47,6 +47,7 @@ const execution_mode_2 = require("./execution_mode");
 const tree_paths_1 = require("./tree_paths");
 const startup_memory_1 = require("./diagnostics/startup_memory");
 const inbox_1 = require("./inbox");
+const build_marker_1 = require("./runtime/build_marker");
 const mapping_config_1 = require("./mapping_config");
 const ems_light_1 = require("./ems_light");
 const energy_daily_rollup_1 = require("./learning/energy_daily_rollup");
@@ -129,6 +130,7 @@ class Ems extends utils.Adapter {
             return;
         }
         this.log.info("EMS adapter ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
+        this.log.info(`EMS runtime marker: ${build_marker_1.EMS_RUNTIME_BUILD_MARKER}`);
         (0, startup_memory_1.probeStartupMemory)(this.log, "before_adapter_ready_log");
         (0, startup_memory_1.schedulePostReadyMemoryProbes)(this.log);
         setImmediate(() => {

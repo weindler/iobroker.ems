@@ -22,3 +22,7 @@ __exportStar(require("./validate"), exports);
 __exportStar(require("./builder"), exports);
 __exportStar(require("./write"), exports);
 __exportStar(require("./coverage"), exports);
+__exportStar(require("./config_from_adapter"), exports);
+__exportStar(require("./allowed_paths"), exports);
+__exportStar(require("./iobroker_source"), exports);
+__exportStar(require("./from_iobroker"), exports);

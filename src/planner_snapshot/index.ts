@@ -6,3 +6,7 @@ export * from "./validate";
 export * from "./builder";
 export * from "./write";
 export * from "./coverage";
+export * from "./config_from_adapter";
+export * from "./allowed_paths";
+export * from "./iobroker_source";
+export * from "./from_iobroker";

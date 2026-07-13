@@ -1,4 +1,4 @@
-import { PLANNER_IPC_BUDGET_BYTES, PLANNER_JOB_MODES, PLANNER_JOB_TRIGGERS, PLANNER_SCHEMA_VERSION, PLANNER_WORKER_STATUSES } from "./constants";
+import { PLANNER_IPC_BUDGET_BYTES, PLANNER_JOB_KINDS, PLANNER_JOB_MODES, PLANNER_JOB_TRIGGERS, PLANNER_SCHEMA_VERSION, PLANNER_WORKER_STATUSES } from "./constants";
 import type {
 	AddonAllocationPublic,
 	PlannerCompactSummary,
@@ -42,6 +42,7 @@ export function validatePlannerJobRequest(raw: unknown): { valid: boolean; error
 	}
 	if (!PLANNER_JOB_TRIGGERS.includes(raw.trigger as never)) errors.push("invalid trigger");
 	if (!PLANNER_JOB_MODES.includes(raw.mode as never)) errors.push("invalid mode");
+	if (!PLANNER_JOB_KINDS.includes(raw.kind as never)) errors.push("invalid kind");
 	if (!isIsoString(raw.requestedAt)) errors.push("requestedAt must be ISO timestamp");
 	if (typeof raw.timeoutMs !== "number" || raw.timeoutMs <= 0) errors.push("timeoutMs must be positive");
 	if (!isNonEmptyString(raw.inputSnapshotPath)) errors.push("inputSnapshotPath required");

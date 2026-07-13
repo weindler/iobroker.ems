@@ -82,33 +82,10 @@ export interface OperatorAddonRegistration {
 	requiresGovernance: boolean;
 }
 
-export type GridSupplySource = "dynamic_tariff" | "fixed_tariff" | "none";
-
-export type GridPriceLabel = "cheap" | "normal" | "expensive" | null;
-
-export interface GridSupplySlot {
-	startIso: string;
-	endIso: string;
-	priceCtPerKwh: number | null;
-	importAllowed: boolean;
-	maxImportPowerW: number | null;
-	priceLabel: GridPriceLabel;
-	quality: OperatorDataQuality;
-}
-
-export interface GridSupplyForecast {
-	generatedAt: string;
-	validUntil: string | null;
-	source: GridSupplySource;
-	currentPriceCtPerKwh: number | null;
-	gridImportAllowed: boolean;
-	configuredMaxGridImportW: number | null;
-	configuredHouseFuseLimitW: number | null;
-	effectiveMaxGridImportW: number | null;
-	slots: GridSupplySlot[];
-	quality: OperatorDataQuality;
-	reasonDe: string;
-}
+export type GridSupplySource = import("../grid_supply/types").GridSupplySource;
+export type GridPriceLabel = import("../grid_supply/types").GridPriceLabel;
+export type GridSupplySlot = import("../grid_supply/types").GridSupplySlot;
+export type GridSupplyForecast = import("../grid_supply/types").GridSupplyForecast;
 
 export type ForecastPlanStatus =
 	| "ready"

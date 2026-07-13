@@ -37,6 +37,8 @@ function validatePlannerJobRequest(raw) {
         errors.push("invalid trigger");
     if (!constants_1.PLANNER_JOB_MODES.includes(raw.mode))
         errors.push("invalid mode");
+    if (!constants_1.PLANNER_JOB_KINDS.includes(raw.kind))
+        errors.push("invalid kind");
     if (!isIsoString(raw.requestedAt))
         errors.push("requestedAt must be ISO timestamp");
     if (typeof raw.timeoutMs !== "number" || raw.timeoutMs <= 0)

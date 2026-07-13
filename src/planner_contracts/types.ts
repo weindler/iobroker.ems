@@ -1,12 +1,14 @@
-import type { PLANNER_JOB_MODES, PLANNER_JOB_TRIGGERS, PLANNER_WORKER_STATUSES } from "./constants";
+import type { PLANNER_JOB_KINDS, PLANNER_JOB_MODES, PLANNER_JOB_TRIGGERS, PLANNER_WORKER_STATUSES } from "./constants";
 
 export type PlannerJobTrigger = (typeof PLANNER_JOB_TRIGGERS)[number];
 export type PlannerJobMode = (typeof PLANNER_JOB_MODES)[number];
+export type PlannerJobKind = (typeof PLANNER_JOB_KINDS)[number];
 export type PlannerWorkerStatus = (typeof PLANNER_WORKER_STATUSES)[number];
 
 /** Job request written by the main process before spawning the worker. */
 export interface PlannerJobRequest {
 	schemaVersion: 1;
+	kind: PlannerJobKind;
 	jobId: string;
 	generation: number;
 	trigger: PlannerJobTrigger;

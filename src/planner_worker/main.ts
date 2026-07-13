@@ -1,5 +1,5 @@
 import * as path from "node:path";
-import { runPlannerTestJob } from "./test_job";
+import { runPlannerWorkerJob } from "./worker_job";
 
 function parseJobDir(argv: string[]): string | null {
 	for (let i = 2; i < argv.length; i++) {
@@ -18,7 +18,7 @@ async function main(): Promise<void> {
 		process.exit(2);
 	}
 
-	const outcome = await runPlannerTestJob(jobDir);
+	const outcome = await runPlannerWorkerJob(jobDir);
 	if (outcome.exitCode !== 0) {
 		console.error(outcome.message.slice(0, 512));
 	}

@@ -47,6 +47,7 @@ describe("planner_job lifecycle", () => {
 			workerScriptPath: workerPath,
 			request: {
 				schemaVersion: 1,
+				kind: "legacy_stub",
 				jobId: `job-${Date.now()}`,
 				generation: 1,
 				trigger: "manual",
@@ -96,6 +97,7 @@ describe("planner_job lifecycle", () => {
 			timeoutMs: 200,
 			request: {
 				schemaVersion: 1,
+				kind: "legacy_stub",
 				jobId: `slow-${Date.now()}`,
 				generation: 1,
 				trigger: "manual",
@@ -133,6 +135,7 @@ describe("planner_job lifecycle", () => {
 			timeoutMs: 60_000,
 			request: {
 				schemaVersion: 1,
+				kind: "legacy_stub",
 				jobId: `hang-${Date.now()}`,
 				generation: 1,
 				trigger: "manual",
@@ -172,6 +175,7 @@ describe("planner_job lifecycle", () => {
 			timeoutMs: 10_000,
 			request: {
 				schemaVersion: 1,
+				kind: "legacy_stub",
 				jobId: "parallel-1",
 				generation: 1,
 				trigger: "manual",
@@ -195,6 +199,7 @@ describe("planner_job lifecycle", () => {
 					workerScriptPath: slowWorker,
 					request: {
 						schemaVersion: 1,
+						kind: "legacy_stub",
 						jobId: "parallel-2",
 						generation: 1,
 						trigger: "manual",

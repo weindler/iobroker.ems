@@ -24,7 +24,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const path = __importStar(require("node:path"));
-const test_job_1 = require("./test_job");
+const worker_job_1 = require("./worker_job");
 function parseJobDir(argv) {
     for (let i = 2; i < argv.length; i++) {
         if (argv[i] === "--job-dir" && argv[i + 1]) {
@@ -40,7 +40,7 @@ async function main() {
         console.error("planner_worker: missing --job-dir or PLANNER_JOB_DIR");
         process.exit(2);
     }
-    const outcome = await (0, test_job_1.runPlannerTestJob)(jobDir);
+    const outcome = await (0, worker_job_1.runPlannerWorkerJob)(jobDir);
     if (outcome.exitCode !== 0) {
         console.error(outcome.message.slice(0, 512));
     }

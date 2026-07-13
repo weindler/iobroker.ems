@@ -66,6 +66,7 @@ function sampleDaily(rev = 1) {
 async function writeJobFiles(jobDir, jobId, generation) {
     const request = {
         schemaVersion: 1,
+        kind: "legacy_stub",
         jobId,
         generation,
         trigger: "manual",

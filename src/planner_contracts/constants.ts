@@ -14,6 +14,8 @@ export const PLANNER_JOB_TRIGGERS = [
 
 export const PLANNER_JOB_MODES = ["publish", "simulation", "explain"] as const;
 
+export const PLANNER_JOB_KINDS = ["planner_snapshot_v2", "legacy_stub"] as const;
+
 export const PLANNER_WORKER_STATUSES = ["ok", "error", "timeout", "stale"] as const;
 
 export const PLANNER_CANONICAL_FORECAST_FILE = "forecast_plan_v1.json";

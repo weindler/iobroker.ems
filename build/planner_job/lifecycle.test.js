@@ -71,6 +71,7 @@ function seedPlan(rev) {
             workerScriptPath: workerPath,
             request: {
                 schemaVersion: 1,
+                kind: "legacy_stub",
                 jobId: `job-${Date.now()}`,
                 generation: 1,
                 trigger: "manual",
@@ -112,6 +113,7 @@ function seedPlan(rev) {
             timeoutMs: 200,
             request: {
                 schemaVersion: 1,
+                kind: "legacy_stub",
                 jobId: `slow-${Date.now()}`,
                 generation: 1,
                 trigger: "manual",
@@ -146,6 +148,7 @@ function seedPlan(rev) {
             timeoutMs: 60_000,
             request: {
                 schemaVersion: 1,
+                kind: "legacy_stub",
                 jobId: `hang-${Date.now()}`,
                 generation: 1,
                 trigger: "manual",
@@ -182,6 +185,7 @@ function seedPlan(rev) {
             timeoutMs: 10_000,
             request: {
                 schemaVersion: 1,
+                kind: "legacy_stub",
                 jobId: "parallel-1",
                 generation: 1,
                 trigger: "manual",
@@ -202,6 +206,7 @@ function seedPlan(rev) {
             workerScriptPath: slowWorker,
             request: {
                 schemaVersion: 1,
+                kind: "legacy_stub",
                 jobId: "parallel-2",
                 generation: 1,
                 trigger: "manual",

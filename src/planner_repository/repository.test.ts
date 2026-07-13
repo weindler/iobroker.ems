@@ -46,6 +46,7 @@ function sampleDaily(rev = 1): CanonicalDailyPlanV1 {
 async function writeJobFiles(jobDir: string, jobId: string, generation: number): Promise<void> {
 	const request = {
 		schemaVersion: 1 as const,
+		kind: "legacy_stub" as const,
 		jobId,
 		generation,
 		trigger: "manual" as const,

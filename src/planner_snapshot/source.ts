@@ -1,5 +1,7 @@
 import type { SnapshotStateValue } from "./types";
 
+export type { SnapshotStateValue } from "./types";
+
 export interface PlannerWeatherMetricRefs {
 	actualStateId: string | null;
 	forecastStateId: string | null;

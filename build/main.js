@@ -47,6 +47,7 @@ const tree_paths_1 = require("./tree_paths");
 const inbox_1 = require("./inbox");
 const mapping_config_1 = require("./mapping_config");
 const ems_light_1 = require("./ems_light");
+const runtime_1 = require("./planner_shadow/runtime");
 const energy_daily_rollup_1 = require("./learning/energy_daily_rollup");
 const power_rollup_1 = require("./learning/power_rollup");
 const policy_1 = require("./policy");
@@ -184,6 +185,9 @@ class Ems extends utils.Adapter {
             (0, wallbox_1.handleWallboxStateChange)(this.namespace, id);
             (0, power_rollup_1.handlePowerRollupStateChange)(id, state);
             (0, energy_daily_rollup_1.handleEnergyDailyRollupStateChange)(id, state);
+            if (await (0, runtime_1.handlePlannerShadowStateChange)(this, rel, state.val, state.ack)) {
+                return;
+            }
         }
         const inboxId = `${this.namespace}.${states_1.STATE.command.inbox}`;
         if (id !== inboxId || !state)

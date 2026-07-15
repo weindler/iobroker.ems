@@ -34,6 +34,7 @@ const repository_1 = require("../planner_repository/repository");
 const from_iobroker_1 = require("../planner_snapshot/from_iobroker");
 const write_1 = require("../planner_snapshot/write");
 const trigger_1 = require("./trigger");
+const compare_1 = require("../planner_shadow/compare");
 function createPlannerRuntimeContext(adapter, options = {}) {
     const layout = (0, paths_2.resolvePlannerPaths)({
         namespace: adapter.namespace,
@@ -85,6 +86,7 @@ function createPlannerRuntimeContext(adapter, options = {}) {
             const merged = { ...runResult, result };
             return merged;
         },
+        compareShadowOutput: ({ snapshot, prepared }) => (0, compare_1.compareSnapshotPreparedInput)(snapshot, prepared).result,
     };
     return { deps, lifecycle };
 }

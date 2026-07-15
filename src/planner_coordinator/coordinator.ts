@@ -1,10 +1,12 @@
 import { PlannerInputValidationError } from "../planner_preparation/types";
+import type { PlannerShadowComparisonResult } from "../planner_shadow/types";
 import { copyCoordinatorStatus, createInitialCoordinatorStatus } from "./status";
 import { mergeTriggerRequests } from "./trigger";
 import type {
 	PlannerCoordinatorRunOutcome,
 	PlannerCoordinatorState,
 	PlannerCoordinatorStatus,
+	PlannerCoordinatorStatusListener,
 	PlannerOnDemandCoordinatorDependencies,
 	PlannerOnDemandCoordinatorOptions,
 	PlannerTriggerReason,
@@ -23,6 +25,7 @@ export class PlannerOnDemandCoordinator {
 	private activeJobId: string | undefined;
 	private pendingTrigger: PlannerTriggerRequest | undefined;
 	private queuePromise: Promise<void> = Promise.resolve();
+	private readonly listeners = new Set<PlannerCoordinatorStatusListener>();
 
 	constructor(
 		private readonly deps: PlannerOnDemandCoordinatorDependencies,
@@ -39,14 +42,31 @@ export class PlannerOnDemandCoordinator {
 		this.status.enabled = true;
 		if (this.status.state === "disabled") {
 			this.setState("idle");
+		} else {
+			this.notifyListeners();
 		}
 	}
 
-	disable(): void {
+	async disable(options: { interruptActive?: boolean } = {}): Promise<void> {
 		this.status.enabled = false;
+		this.status.rerunPending = false;
+		this.status.pendingReason = undefined;
+		this.pendingTrigger = undefined;
+		if (options.interruptActive && this.runInProgress) {
+			await this.deps.shutdownWorker().catch(() => undefined);
+		}
 		if (!this.runInProgress && !this.stopping && !this.stopped) {
 			this.setState("disabled");
 		}
+		this.notifyListeners();
+	}
+
+	subscribeStatus(listener: PlannerCoordinatorStatusListener): () => void {
+		this.listeners.add(listener);
+		listener(copyCoordinatorStatus(this.status));
+		return () => {
+			this.listeners.delete(listener);
+		};
 	}
 
 	getStatus(): PlannerCoordinatorStatus {
@@ -72,13 +92,18 @@ export class PlannerOnDemandCoordinator {
 		if (!this.status.enabled) {
 			this.status.lastResult = "skipped";
 			this.status.lastSkipReason = "planner_disabled";
+			this.status.lastTriggerReason = trigger.reason;
+			this.notifyListeners();
 			return { result: "skipped", skipReason: "planner_disabled" };
 		}
+
+		this.status.lastTriggerReason = trigger.reason;
 
 		if (this.runSlotTaken || this.runInProgress) {
 			this.status.rerunPending = true;
 			this.pendingTrigger = mergeTriggerRequests(this.pendingTrigger, trigger);
 			this.status.pendingReason = this.pendingTrigger.reason;
+			this.notifyListeners();
 			return { result: "coalesced" };
 		}
 
@@ -122,7 +147,7 @@ export class PlannerOnDemandCoordinator {
 		trigger: PlannerTriggerRequest,
 	): Promise<PlannerCoordinatorRunOutcome> {
 		let lastOutcome = await this.runOnce(trigger);
-		while (this.status.rerunPending && !this.stopping && !this.stopped) {
+		while (this.status.rerunPending && !this.stopping && !this.stopped && this.status.enabled) {
 			this.status.rerunPending = false;
 			const followUp =
 				this.pendingTrigger ??
@@ -225,6 +250,7 @@ export class PlannerOnDemandCoordinator {
 			this.status.lastResult = "success";
 			this.status.lastErrorCode = undefined;
 			this.status.lastSkipReason = undefined;
+			this.applyComparisonResult(this.deps.compareShadowOutput?.({ snapshot, prepared }));
 			this.finishRun(startedAt, "succeeded");
 
 			await this.deps.cleanupJob(jobId).catch(() => undefined);
@@ -243,6 +269,9 @@ export class PlannerOnDemandCoordinator {
 			this.status.lastResult = "failed";
 			this.status.lastErrorCode = errorCode;
 			this.status.lastSkipReason = undefined;
+			this.status.comparisonStatus = "worker_failed";
+			this.status.comparisonMismatchCount = 0;
+			this.status.comparisonFirstMismatch = undefined;
 			this.finishRun(startedAt, "failed");
 			if (jobId) {
 				await this.deps.cleanupJob(jobId).catch(() => undefined);
@@ -288,6 +317,31 @@ export class PlannerOnDemandCoordinator {
 		this.setState(finalState);
 	}
 
+	private applyComparisonResult(comparison: PlannerShadowComparisonResult | undefined): void {
+		if (!comparison) {
+			return;
+		}
+		this.status.comparisonStatus = comparison.status;
+		this.status.comparisonReferenceRevision = comparison.referenceRevision;
+		this.status.comparisonWorkerRevision = comparison.workerRevision;
+		this.status.comparisonMismatchCount = comparison.mismatchCount;
+		this.status.comparisonFirstMismatch = comparison.firstMismatchPath;
+	}
+
+	private notifyListeners(): void {
+		if (this.listeners.size === 0) {
+			return;
+		}
+		const snapshot = copyCoordinatorStatus(this.status);
+		for (const listener of this.listeners) {
+			try {
+				listener(snapshot);
+			} catch {
+				// ignore listener failures
+			}
+		}
+	}
+
 	private normalizeErrorCode(error: unknown): string {
 		if (error instanceof PlannerInputValidationError) {
 			return error.code;
@@ -321,6 +375,10 @@ export class PlannerOnDemandCoordinator {
 	}
 
 	private setState(state: PlannerCoordinatorState): void {
+		if (this.status.state === state) {
+			return;
+		}
 		this.status.state = state;
+		this.notifyListeners();
 	}
 }

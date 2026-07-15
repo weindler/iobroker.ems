@@ -25,6 +25,11 @@ import {
 	stopPlannerOnDemandCoordinator,
 } from "../planner_coordinator/compose";
 import type { PlannerCoordinatorAdapterHost } from "../planner_coordinator/runtime_factory";
+import {
+	initPlannerShadowRuntime,
+	stopPlannerShadowRuntime,
+	type PlannerShadowRuntimeHost,
+} from "../planner_shadow/runtime";
 import { ensurePlannerStateTree, runPlannerRuntime, stopPlanner, type PlannerHost } from "../planner";
 import { resetGlobalModesRuntime } from "../global_modes";
 import { ensureEmsLightStates } from "./ensure_states";
@@ -132,6 +137,19 @@ export function getLearningStateTreeHost(): LearningStateTreeHost | null {
 	return learningHost;
 }
 
+function buildPlannerShadowRuntimeHost(adapter: ioBroker.Adapter): PlannerShadowRuntimeHost {
+	return {
+		namespace: adapter.namespace,
+		log: adapter.log,
+		getStateAsync: adapter.getStateAsync.bind(adapter),
+		setStateAsync: adapter.setStateAsync.bind(adapter),
+		setObjectNotExistsAsync: adapter.setObjectNotExistsAsync.bind(adapter),
+		extendObjectAsync: adapter.extendObjectAsync?.bind(adapter),
+		subscribeStatesAsync: adapter.subscribeStatesAsync.bind(adapter),
+		unsubscribeStatesAsync: adapter.unsubscribeStatesAsync.bind(adapter),
+	};
+}
+
 /** Phase B — EMS-Light-, Planner-, Policy-, Intent- und Learning-Objekte. */
 export async function ensureEmsLightStateTree(adapter: ioBroker.Adapter): Promise<void> {
 	const version = String(adapter.common?.version ?? "0.0.0");
@@ -152,6 +170,7 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 	createPlannerOnDemandCoordinatorFromAdapter(adapter as unknown as PlannerCoordinatorAdapterHost, {
 		enabled: false,
 	});
+	await initPlannerShadowRuntime(buildPlannerShadowRuntimeHost(adapter));
 	energyDailyRollupHost = buildRollupHost(adapter);
 	powerRollupHost = energyDailyRollupHost;
 	await initEnergyDailyRollup(energyDailyRollupHost);
@@ -248,6 +267,7 @@ export async function stopEmsLightPhase1(): Promise<void> {
 	stopPowerRollup();
 	stopEnergyDailyRollup();
 	stopPlanner();
+	await stopPlannerShadowRuntime();
 	await stopPlannerOnDemandCoordinator();
 	powerRollupHost = null;
 	energyDailyRollupHost = null;

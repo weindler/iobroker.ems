@@ -2,6 +2,7 @@ import type { PlannerJobRunResult } from "../planner_job/lifecycle";
 import type { PlannerPreparedInput } from "../planner_preparation/types";
 import type { PlannerInputSnapshot } from "../planner_snapshot/types";
 import type { PlannerWorkerResult } from "../planner_contracts/types";
+import type { PlannerShadowComparisonResult, PlannerShadowComparisonStatus } from "../planner_shadow/types";
 
 export type PlannerCoordinatorState =
 	| "disabled"
@@ -46,7 +47,15 @@ export interface PlannerCoordinatorStatus {
 	lastResult?: "success" | "failed" | "skipped";
 	lastSkipReason?: string;
 	lastErrorCode?: string;
+	lastTriggerReason?: PlannerTriggerReason;
+	comparisonStatus?: PlannerShadowComparisonStatus;
+	comparisonReferenceRevision?: string;
+	comparisonWorkerRevision?: string;
+	comparisonMismatchCount?: number;
+	comparisonFirstMismatch?: string;
 }
+
+export type PlannerCoordinatorStatusListener = (status: PlannerCoordinatorStatus) => void;
 
 export interface PlannerCoordinatorRunOutcome {
 	result: "success" | "failed" | "skipped" | "coalesced";
@@ -79,6 +88,10 @@ export interface PlannerOnDemandCoordinatorDependencies {
 	isWorkerRunning(): boolean;
 	shutdownWorker(): Promise<void>;
 	now(): Date;
+	compareShadowOutput?: (input: {
+		snapshot: PlannerInputSnapshot;
+		prepared: PlannerPreparedInput;
+	}) => PlannerShadowComparisonResult;
 }
 
 export interface PlannerOnDemandCoordinatorOptions {

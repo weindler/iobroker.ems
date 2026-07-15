@@ -7,6 +7,8 @@ function createInitialCoordinatorStatus(enabled) {
         enabled,
         generation: 0,
         rerunPending: false,
+        comparisonStatus: "not_available",
+        comparisonMismatchCount: 0,
     };
 }
 exports.createInitialCoordinatorStatus = createInitialCoordinatorStatus;

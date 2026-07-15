@@ -44,6 +44,7 @@ import { GLOBAL, addonMode } from "./tree_paths";
 import { parseInboxValue } from "./inbox";
 import { goeWallboxTemplateFlat } from "./mapping_config";
 import { stopEmsLightPhase1 } from "./ems_light";
+import { handlePlannerShadowStateChange } from "./planner_shadow/runtime";
 import { handleEnergyDailyRollupStateChange } from "./learning/energy_daily_rollup";
 import { handlePowerRollupStateChange } from "./learning/power_rollup";
 import { handleGlobalModesStateChange } from "./policy";
@@ -197,6 +198,9 @@ class Ems extends utils.Adapter {
 			handleWallboxStateChange(this.namespace, id);
 			handlePowerRollupStateChange(id, state);
 			handleEnergyDailyRollupStateChange(id, state);
+			if (await handlePlannerShadowStateChange(this, rel, state.val, state.ack)) {
+				return;
+			}
 		}
 		const inboxId = `${this.namespace}.${STATE.command.inbox}`;
 		if (id !== inboxId || !state) return;

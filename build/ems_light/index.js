@@ -9,6 +9,7 @@ const power_rollup_1 = require("../learning/power_rollup");
 const policy_1 = require("../policy");
 const intent_1 = require("../intent");
 const compose_1 = require("../planner_coordinator/compose");
+const runtime_1 = require("../planner_shadow/runtime");
 const planner_1 = require("../planner");
 const global_modes_1 = require("../global_modes");
 const ensure_states_1 = require("./ensure_states");
@@ -100,6 +101,18 @@ function getLearningStateTreeHost() {
     return learningHost;
 }
 exports.getLearningStateTreeHost = getLearningStateTreeHost;
+function buildPlannerShadowRuntimeHost(adapter) {
+    return {
+        namespace: adapter.namespace,
+        log: adapter.log,
+        getStateAsync: adapter.getStateAsync.bind(adapter),
+        setStateAsync: adapter.setStateAsync.bind(adapter),
+        setObjectNotExistsAsync: adapter.setObjectNotExistsAsync.bind(adapter),
+        extendObjectAsync: adapter.extendObjectAsync?.bind(adapter),
+        subscribeStatesAsync: adapter.subscribeStatesAsync.bind(adapter),
+        unsubscribeStatesAsync: adapter.unsubscribeStatesAsync.bind(adapter),
+    };
+}
 /** Phase B — EMS-Light-, Planner-, Policy-, Intent- und Learning-Objekte. */
 async function ensureEmsLightStateTree(adapter) {
     const version = String(adapter.common?.version ?? "0.0.0");
@@ -119,6 +132,7 @@ async function startEmsLightPhase1Runtime(adapter) {
     (0, compose_1.createPlannerOnDemandCoordinatorFromAdapter)(adapter, {
         enabled: false,
     });
+    await (0, runtime_1.initPlannerShadowRuntime)(buildPlannerShadowRuntimeHost(adapter));
     energyDailyRollupHost = buildRollupHost(adapter);
     powerRollupHost = energyDailyRollupHost;
     await (0, energy_daily_rollup_1.initEnergyDailyRollup)(energyDailyRollupHost);
@@ -209,6 +223,7 @@ async function stopEmsLightPhase1() {
     (0, power_rollup_1.stopPowerRollup)();
     (0, energy_daily_rollup_1.stopEnergyDailyRollup)();
     (0, planner_1.stopPlanner)();
+    await (0, runtime_1.stopPlannerShadowRuntime)();
     await (0, compose_1.stopPlannerOnDemandCoordinator)();
     powerRollupHost = null;
     energyDailyRollupHost = null;

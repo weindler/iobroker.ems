@@ -820,3 +820,139 @@ describe("planner_coordinator status semantics", () => {
 		assert.equal(coordinator.getStatus().lastResult, "success");
 	});
 });
+
+describe("planner_coordinator shadow comparison", () => {
+	it("records matched comparison on successful worker run", async () => {
+		const { deps } = createFakeDeps({
+			compareShadowOutput: () => ({
+				status: "matched",
+				referenceRevision: "a".repeat(64),
+				workerRevision: "a".repeat(64),
+				mismatchCount: 0,
+			}),
+		});
+		const coordinator = createPlannerOnDemandCoordinatorForTest(deps, { enabled: true });
+		coordinator.enable();
+		await coordinator.request({ reason: "manual", requestedAt: "t1" });
+		const status = coordinator.getStatus();
+		assert.equal(status.lastResult, "success");
+		assert.equal(status.comparisonStatus, "matched");
+		assert.equal(status.comparisonMismatchCount, 0);
+	});
+
+	it("keeps technical success when comparison mismatches", async () => {
+		const { deps } = createFakeDeps({
+			compareShadowOutput: () => ({
+				status: "mismatch",
+				referenceRevision: "a".repeat(64),
+				workerRevision: "b".repeat(64),
+				mismatchCount: 2,
+				firstMismatchPath: "slots[0].maxImportW",
+			}),
+		});
+		const coordinator = createPlannerOnDemandCoordinatorForTest(deps, { enabled: true });
+		coordinator.enable();
+		await coordinator.request({ reason: "manual", requestedAt: "t1" });
+		const status = coordinator.getStatus();
+		assert.equal(status.lastResult, "success");
+		assert.equal(status.comparisonStatus, "mismatch");
+		assert.equal(status.comparisonMismatchCount, 2);
+	});
+
+	it("sets worker_failed comparison on worker error", async () => {
+		const { deps } = createFakeDeps({
+			runWorkerJob: async ({ jobId, generation }) => ({
+				jobId,
+				generation,
+				exitCode: 1,
+				timedOut: false,
+				published: false,
+				publishReason: "simulation",
+				stdoutBytes: 0,
+				stderrBytes: 0,
+				result: null,
+			}),
+		});
+		const coordinator = createPlannerOnDemandCoordinatorForTest(deps, { enabled: true });
+		coordinator.enable();
+		await coordinator.request({ reason: "manual", requestedAt: "t1" });
+		const status = coordinator.getStatus();
+		assert.equal(status.lastResult, "failed");
+		assert.equal(status.comparisonStatus, "worker_failed");
+	});
+
+	it("unchanged_input does not refresh comparison status", async () => {
+		const fixed = snapshot("f".repeat(64));
+		const { deps } = createFakeDeps({
+			buildSnapshot: async () => fixed,
+			compareShadowOutput: () => ({
+				status: "matched",
+				referenceRevision: "a".repeat(64),
+				workerRevision: "a".repeat(64),
+				mismatchCount: 0,
+			}),
+		});
+		const coordinator = createPlannerOnDemandCoordinatorForTest(deps, { enabled: true });
+		coordinator.enable();
+		await coordinator.request({ reason: "manual", requestedAt: "t1" });
+		const afterSuccess = coordinator.getStatus().comparisonStatus;
+		await coordinator.request({ reason: "manual", requestedAt: "t2" });
+		const afterSkip = coordinator.getStatus();
+		assert.equal(afterSkip.lastSkipReason, "unchanged_input");
+		assert.equal(afterSkip.comparisonStatus, afterSuccess);
+	});
+
+	it("subscribeStatus receives updates and unsubscribes cleanly", async () => {
+		const { deps } = createFakeDeps();
+		const coordinator = createPlannerOnDemandCoordinatorForTest(deps, { enabled: false });
+		const seen: string[] = [];
+		const unsubscribe = coordinator.subscribeStatus((status) => {
+			seen.push(status.state);
+		});
+		assert.ok(seen.includes("disabled"));
+		coordinator.enable();
+		assert.ok(seen.includes("idle"));
+		unsubscribe();
+		const before = seen.length;
+		await coordinator.request({ reason: "test", requestedAt: "t" });
+		assert.equal(seen.length, before);
+	});
+
+	it("disable during active run interrupts worker and skips pending rerun", async () => {
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let shutdownCalled = false;
+		const { deps } = createFakeDeps({
+			runWorkerJob: async (args) => {
+				await gate;
+				return {
+					jobId: args.jobId,
+					generation: args.generation,
+					exitCode: 0,
+					timedOut: false,
+					published: false,
+					publishReason: "simulation",
+					stdoutBytes: 0,
+					stderrBytes: 0,
+					result: workerResult(args.jobId, args.generation),
+				};
+			},
+			shutdownWorker: async () => {
+				shutdownCalled = true;
+				release();
+			},
+		});
+		const coordinator = createPlannerOnDemandCoordinatorForTest(deps, { enabled: true });
+		coordinator.enable();
+		void coordinator.request({ reason: "manual", requestedAt: "t1" });
+		await new Promise((r) => setTimeout(r, 5));
+		void coordinator.request({ reason: "manual", requestedAt: "t2" });
+		await coordinator.disable({ interruptActive: true });
+		assert.equal(shutdownCalled, true);
+		await new Promise((r) => setTimeout(r, 20));
+		assert.equal(coordinator.getStatus().rerunPending, false);
+		assert.equal(coordinator.getStatus().enabled, false);
+	});
+});

@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isPlannerRuntimeContextLoadedForTest = exports.registerPlannerOnDemandCoordinatorForTest = exports.createPlannerOnDemandCoordinatorForTest = exports.stopPlannerOnDemandCoordinator = exports.createPlannerOnDemandCoordinatorFromAdapter = exports.getPlannerOnDemandCoordinator = exports.PlannerCoordinatorAlreadyActiveError = void 0;
+exports.isPlannerRuntimeContextLoadedForTest = exports.registerPlannerOnDemandCoordinatorForTest = exports.createPlannerOnDemandCoordinatorForTest = exports.stopPlannerOnDemandCoordinator = exports.createPlannerOnDemandCoordinatorFromAdapter = exports.setPlannerOnDemandCoordinatorEnabled = exports.getPlannerOnDemandCoordinator = exports.PlannerCoordinatorAlreadyActiveError = void 0;
 const coordinator_1 = require("./coordinator");
 let activeCoordinator = null;
 let activeAdapterHost = null;
@@ -40,6 +40,18 @@ function getPlannerOnDemandCoordinator() {
     return activeCoordinator;
 }
 exports.getPlannerOnDemandCoordinator = getPlannerOnDemandCoordinator;
+async function setPlannerOnDemandCoordinatorEnabled(enabled) {
+    const coordinator = activeCoordinator;
+    if (!coordinator) {
+        return;
+    }
+    if (enabled) {
+        coordinator.enable();
+        return;
+    }
+    await coordinator.disable({ interruptActive: true });
+}
+exports.setPlannerOnDemandCoordinatorEnabled = setPlannerOnDemandCoordinatorEnabled;
 async function loadRuntimeContext(host, options) {
     if (runtimeContext) {
         return runtimeContext;
@@ -82,6 +94,12 @@ function createLazyRuntimeDependencies(host, options) {
         runWorkerJob: async (args) => {
             const runtime = await loadRuntimeContext(host, options);
             return runtime.deps.runWorkerJob(args);
+        },
+        compareShadowOutput: (input) => {
+            if (!runtimeContext?.deps.compareShadowOutput) {
+                throw new Error("compare_shadow_output_unavailable");
+            }
+            return runtimeContext.deps.compareShadowOutput(input);
         },
     };
 }

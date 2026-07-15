@@ -8,6 +8,7 @@ import { runGridSupplyTick } from "../operator/supply/grid_tick";
 import { runFlexibleContributionsTick } from "../operator/contributions/flexible/tick";
 import { runForecastPlanTick } from "../operator/forecast/tick";
 import { ensureDailyPlanStates } from "../operator/daily_plan/states";
+import { ensurePlannerCoordinatorStates } from "../planner_shadow/ensure_states";
 import { runDailyPlanTick } from "../operator/daily_plan/tick";
 
 export type { PlannerIntent } from "./types";
@@ -29,6 +30,7 @@ export async function ensurePlannerStateTree(host: PlannerHost): Promise<void> {
 	await ensureForecastPlanStates(host);
 	await ensureFlexibleContributionStates(host);
 	await ensureDailyPlanStates(host);
+	await ensurePlannerCoordinatorStates(host);
 }
 
 /** Phase F — initiale Planner-Auswertung. */

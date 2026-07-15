@@ -1,12 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createInitialCoordinatorStatus = exports.copyCoordinatorStatus = exports.triggerToJobTrigger = exports.mergeTriggerRequests = exports.PLANNER_TRIGGER_PRIORITY = exports.PLANNER_COORDINATOR_SHUTDOWN_TIMEOUT_MS = exports.PLANNER_COORDINATOR_DEFAULT_TIMEOUT_MS = exports.createPlannerRuntimeContext = exports.PlannerCoordinatorAlreadyActiveError = exports.isPlannerRuntimeContextLoadedForTest = exports.registerPlannerOnDemandCoordinatorForTest = exports.stopPlannerOnDemandCoordinator = exports.getPlannerOnDemandCoordinator = exports.createPlannerOnDemandCoordinatorFromAdapter = exports.createPlannerOnDemandCoordinatorForTest = exports.PlannerOnDemandCoordinator = void 0;
+exports.createInitialCoordinatorStatus = exports.copyCoordinatorStatus = exports.triggerToJobTrigger = exports.mergeTriggerRequests = exports.PLANNER_TRIGGER_PRIORITY = exports.PLANNER_COORDINATOR_SHUTDOWN_TIMEOUT_MS = exports.PLANNER_COORDINATOR_DEFAULT_TIMEOUT_MS = exports.createPlannerRuntimeContext = exports.PlannerCoordinatorAlreadyActiveError = exports.isPlannerRuntimeContextLoadedForTest = exports.registerPlannerOnDemandCoordinatorForTest = exports.stopPlannerOnDemandCoordinator = exports.setPlannerOnDemandCoordinatorEnabled = exports.getPlannerOnDemandCoordinator = exports.createPlannerOnDemandCoordinatorFromAdapter = exports.createPlannerOnDemandCoordinatorForTest = exports.PlannerOnDemandCoordinator = void 0;
 var coordinator_1 = require("./coordinator");
 Object.defineProperty(exports, "PlannerOnDemandCoordinator", { enumerable: true, get: function () { return coordinator_1.PlannerOnDemandCoordinator; } });
 var compose_1 = require("./compose");
 Object.defineProperty(exports, "createPlannerOnDemandCoordinatorForTest", { enumerable: true, get: function () { return compose_1.createPlannerOnDemandCoordinatorForTest; } });
 Object.defineProperty(exports, "createPlannerOnDemandCoordinatorFromAdapter", { enumerable: true, get: function () { return compose_1.createPlannerOnDemandCoordinatorFromAdapter; } });
 Object.defineProperty(exports, "getPlannerOnDemandCoordinator", { enumerable: true, get: function () { return compose_1.getPlannerOnDemandCoordinator; } });
+Object.defineProperty(exports, "setPlannerOnDemandCoordinatorEnabled", { enumerable: true, get: function () { return compose_1.setPlannerOnDemandCoordinatorEnabled; } });
 Object.defineProperty(exports, "stopPlannerOnDemandCoordinator", { enumerable: true, get: function () { return compose_1.stopPlannerOnDemandCoordinator; } });
 Object.defineProperty(exports, "registerPlannerOnDemandCoordinatorForTest", { enumerable: true, get: function () { return compose_1.registerPlannerOnDemandCoordinatorForTest; } });
 Object.defineProperty(exports, "isPlannerRuntimeContextLoadedForTest", { enumerable: true, get: function () { return compose_1.isPlannerRuntimeContextLoadedForTest; } });

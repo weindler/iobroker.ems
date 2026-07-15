@@ -17,6 +17,7 @@ class PlannerOnDemandCoordinator {
     activeJobId;
     pendingTrigger;
     queuePromise = Promise.resolve();
+    listeners = new Set();
     constructor(deps, options = {}) {
         this.deps = deps;
         const enabled = options.enabled ?? false;
@@ -30,12 +31,29 @@ class PlannerOnDemandCoordinator {
         if (this.status.state === "disabled") {
             this.setState("idle");
         }
+        else {
+            this.notifyListeners();
+        }
     }
-    disable() {
+    async disable(options = {}) {
         this.status.enabled = false;
+        this.status.rerunPending = false;
+        this.status.pendingReason = undefined;
+        this.pendingTrigger = undefined;
+        if (options.interruptActive && this.runInProgress) {
+            await this.deps.shutdownWorker().catch(() => undefined);
+        }
         if (!this.runInProgress && !this.stopping && !this.stopped) {
             this.setState("disabled");
         }
+        this.notifyListeners();
+    }
+    subscribeStatus(listener) {
+        this.listeners.add(listener);
+        listener((0, status_1.copyCoordinatorStatus)(this.status));
+        return () => {
+            this.listeners.delete(listener);
+        };
     }
     getStatus() {
         return (0, status_1.copyCoordinatorStatus)(this.status);
@@ -57,12 +75,16 @@ class PlannerOnDemandCoordinator {
         if (!this.status.enabled) {
             this.status.lastResult = "skipped";
             this.status.lastSkipReason = "planner_disabled";
+            this.status.lastTriggerReason = trigger.reason;
+            this.notifyListeners();
             return { result: "skipped", skipReason: "planner_disabled" };
         }
+        this.status.lastTriggerReason = trigger.reason;
         if (this.runSlotTaken || this.runInProgress) {
             this.status.rerunPending = true;
             this.pendingTrigger = (0, trigger_1.mergeTriggerRequests)(this.pendingTrigger, trigger);
             this.status.pendingReason = this.pendingTrigger.reason;
+            this.notifyListeners();
             return { result: "coalesced" };
         }
         const outcome = await this.enqueueRun(trigger);
@@ -100,7 +122,7 @@ class PlannerOnDemandCoordinator {
     }
     async runWithOptionalFollowUp(trigger) {
         let lastOutcome = await this.runOnce(trigger);
-        while (this.status.rerunPending && !this.stopping && !this.stopped) {
+        while (this.status.rerunPending && !this.stopping && !this.stopped && this.status.enabled) {
             this.status.rerunPending = false;
             const followUp = this.pendingTrigger ??
                 ({
@@ -191,6 +213,7 @@ class PlannerOnDemandCoordinator {
             this.status.lastResult = "success";
             this.status.lastErrorCode = undefined;
             this.status.lastSkipReason = undefined;
+            this.applyComparisonResult(this.deps.compareShadowOutput?.({ snapshot, prepared }));
             this.finishRun(startedAt, "succeeded");
             await this.deps.cleanupJob(jobId).catch(() => undefined);
             return {
@@ -208,6 +231,9 @@ class PlannerOnDemandCoordinator {
             this.status.lastResult = "failed";
             this.status.lastErrorCode = errorCode;
             this.status.lastSkipReason = undefined;
+            this.status.comparisonStatus = "worker_failed";
+            this.status.comparisonMismatchCount = 0;
+            this.status.comparisonFirstMismatch = undefined;
             this.finishRun(startedAt, "failed");
             if (jobId) {
                 await this.deps.cleanupJob(jobId).catch(() => undefined);
@@ -251,6 +277,30 @@ class PlannerOnDemandCoordinator {
         this.status.lastDurationMs = finishedAt.getTime() - startedAt.getTime();
         this.setState(finalState);
     }
+    applyComparisonResult(comparison) {
+        if (!comparison) {
+            return;
+        }
+        this.status.comparisonStatus = comparison.status;
+        this.status.comparisonReferenceRevision = comparison.referenceRevision;
+        this.status.comparisonWorkerRevision = comparison.workerRevision;
+        this.status.comparisonMismatchCount = comparison.mismatchCount;
+        this.status.comparisonFirstMismatch = comparison.firstMismatchPath;
+    }
+    notifyListeners() {
+        if (this.listeners.size === 0) {
+            return;
+        }
+        const snapshot = (0, status_1.copyCoordinatorStatus)(this.status);
+        for (const listener of this.listeners) {
+            try {
+                listener(snapshot);
+            }
+            catch {
+                // ignore listener failures
+            }
+        }
+    }
     normalizeErrorCode(error) {
         if (error instanceof types_1.PlannerInputValidationError) {
             return error.code;
@@ -283,7 +333,11 @@ class PlannerOnDemandCoordinator {
         return "coordinator_failed";
     }
     setState(state) {
+        if (this.status.state === state) {
+            return;
+        }
         this.status.state = state;
+        this.notifyListeners();
     }
 }
 exports.PlannerOnDemandCoordinator = PlannerOnDemandCoordinator;

@@ -10,6 +10,7 @@ const grid_tick_1 = require("../operator/supply/grid_tick");
 const tick_1 = require("../operator/contributions/flexible/tick");
 const tick_2 = require("../operator/forecast/tick");
 const states_3 = require("../operator/daily_plan/states");
+const ensure_states_2 = require("../planner_shadow/ensure_states");
 const tick_3 = require("../operator/daily_plan/tick");
 var inputs_1 = require("./inputs");
 Object.defineProperty(exports, "readPlannerThermalStage", { enumerable: true, get: function () { return inputs_1.readPlannerThermalStage; } });
@@ -43,6 +44,7 @@ async function ensurePlannerStateTree(host) {
     await (0, states_1.ensureForecastPlanStates)(host);
     await (0, states_2.ensureFlexibleContributionStates)(host);
     await (0, states_3.ensureDailyPlanStates)(host);
+    await (0, ensure_states_2.ensurePlannerCoordinatorStates)(host);
 }
 exports.ensurePlannerStateTree = ensurePlannerStateTree;
 /** Phase F — initiale Planner-Auswertung. */

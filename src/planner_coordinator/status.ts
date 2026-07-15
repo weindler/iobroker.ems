@@ -8,6 +8,8 @@ export function createInitialCoordinatorStatus(
 		enabled,
 		generation: 0,
 		rerunPending: false,
+		comparisonStatus: "not_available",
+		comparisonMismatchCount: 0,
 	};
 }
 

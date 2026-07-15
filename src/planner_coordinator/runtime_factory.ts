@@ -10,6 +10,7 @@ import { buildPlannerInputSnapshotFromIoBroker } from "../planner_snapshot/from_
 import type { PlannerSnapshotIoBrokerHost } from "../planner_snapshot/iobroker_source";
 import { writePlannerInputSnapshot } from "../planner_snapshot/write";
 import { triggerToJobTrigger } from "./trigger";
+import { compareSnapshotPreparedInput } from "../planner_shadow/compare";
 import type {
 	PlannerOnDemandCoordinatorDependencies,
 	PlannerWorkerRunResult,
@@ -85,6 +86,7 @@ export function createPlannerRuntimeContext(
 			const merged: PlannerWorkerRunResult = { ...runResult, result };
 			return merged;
 		},
+		compareShadowOutput: ({ snapshot, prepared }) => compareSnapshotPreparedInput(snapshot, prepared).result,
 	};
 
 	return { deps, lifecycle };

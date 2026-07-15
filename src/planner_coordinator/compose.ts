@@ -21,6 +21,18 @@ export function getPlannerOnDemandCoordinator(): PlannerOnDemandCoordinator | nu
 	return activeCoordinator;
 }
 
+export async function setPlannerOnDemandCoordinatorEnabled(enabled: boolean): Promise<void> {
+	const coordinator = activeCoordinator;
+	if (!coordinator) {
+		return;
+	}
+	if (enabled) {
+		coordinator.enable();
+		return;
+	}
+	await coordinator.disable({ interruptActive: true });
+}
+
 async function loadRuntimeContext(
 	host: PlannerCoordinatorAdapterHost,
 	options: PlannerOnDemandCoordinatorOptions & { packageRoot?: string },
@@ -72,6 +84,12 @@ function createLazyRuntimeDependencies(
 		runWorkerJob: async (args) => {
 			const runtime = await loadRuntimeContext(host, options);
 			return runtime.deps.runWorkerJob(args);
+		},
+		compareShadowOutput: (input) => {
+			if (!runtimeContext?.deps.compareShadowOutput) {
+				throw new Error("compare_shadow_output_unavailable");
+			}
+			return runtimeContext.deps.compareShadowOutput(input);
 		},
 	};
 }

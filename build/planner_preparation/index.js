@@ -14,7 +14,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.writePreparedInput = exports.readAndValidatePlannerInputFile = exports.validatePlannerInputBudget = exports.validatePlannerInputRevision = exports.parsePlannerInputSnapshotV2 = void 0;
+exports.readAndValidatePreparedInputFile = exports.writePreparedInput = exports.readAndValidatePlannerInputFile = exports.validatePlannerInputBudget = exports.validatePlannerInputRevision = exports.parsePlannerInputSnapshotV2 = void 0;
 __exportStar(require("./constants"), exports);
 __exportStar(require("./types"), exports);
 __exportStar(require("./canonical"), exports);
@@ -25,3 +25,4 @@ Object.defineProperty(exports, "validatePlannerInputRevision", { enumerable: tru
 Object.defineProperty(exports, "validatePlannerInputBudget", { enumerable: true, get: function () { return validate_1.validatePlannerInputBudget; } });
 Object.defineProperty(exports, "readAndValidatePlannerInputFile", { enumerable: true, get: function () { return validate_1.readAndValidatePlannerInputFile; } });
 Object.defineProperty(exports, "writePreparedInput", { enumerable: true, get: function () { return validate_1.writePreparedInput; } });
+Object.defineProperty(exports, "readAndValidatePreparedInputFile", { enumerable: true, get: function () { return validate_1.readAndValidatePreparedInputFile; } });

@@ -175,8 +175,8 @@ class FakeBootstrapAdapter {
 async function strictStep(_label, fn) {
     await fn();
 }
-function stopAllRuntime() {
-    (0, index_js_5.stopEmsLightPhase1)();
+async function stopAllRuntime() {
+    await (0, index_js_5.stopEmsLightPhase1)();
     (0, index_js_4.stopWallboxModule)();
     (0, index_js_1.stopBatteryModule)(null);
     (0, index_js_3.stopImmersionHeaterModule)();
@@ -198,8 +198,8 @@ function assertCoreCategories(adapter) {
     (0, node_test_1.beforeEach)(async () => {
         tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-bootstrap-"));
     });
-    (0, node_test_1.afterEach)(() => {
-        stopAllRuntime();
+    (0, node_test_1.afterEach)(async () => {
+        await stopAllRuntime();
     });
     (0, node_test_1.it)("scenario A — empty namespace, empty vehicle profile list", async () => {
         const adapter = new FakeBootstrapAdapter(tmp, defaultConfig({ wb_vehicle_profiles: [] }));
@@ -220,7 +220,7 @@ function assertCoreCategories(adapter) {
     });
     (0, node_test_1.it)("scenario B — one and five dynamic vehicle profiles", async () => {
         for (const count of [1, 5]) {
-            stopAllRuntime();
+            await stopAllRuntime();
             const dir = await fs.mkdtemp(path.join(os.tmpdir(), "ems-bootstrap-vp-"));
             const profiles = Array.from({ length: count }, (_, i) => profileRow(`car_${i + 1}`, `Car ${i + 1}`));
             const adapter = new FakeBootstrapAdapter(dir, defaultConfig({ wb_vehicle_profiles: profiles }));
@@ -246,7 +246,7 @@ function assertCoreCategories(adapter) {
         const snapshotObjects = new Map(adapter.objects);
         const snapshotStates = new Map(adapter.states);
         const snapshotSubs = [...adapter.subscriptions];
-        stopAllRuntime();
+        await stopAllRuntime();
         await (0, startup_js_1.runAdapterBootstrap)(adapter, strictStep);
         strict_1.default.equal(adapter.objects.size, snapshotObjects.size);
         strict_1.default.equal(adapter.states.get("global_modes.requested")?.val, "eco");
@@ -324,7 +324,7 @@ function assertCoreCategories(adapter) {
         const adapter = new FakeBootstrapAdapter(tmp, cfg);
         await (0, startup_js_1.runAdapterBootstrap)(adapter, strictStep);
         strict_1.default.equal(adapter.states.get("global.execution_mode")?.val, "dryrun");
-        stopAllRuntime();
+        await stopAllRuntime();
         let secondRunColdStart = null;
         const subsBefore = adapter.subscriptions.length;
         await (0, startup_js_1.runAdapterBootstrap)(adapter, async (label, fn) => {

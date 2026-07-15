@@ -20,6 +20,11 @@ import {
 } from "../learning/power_rollup";
 import { ensurePolicyStateTree, initPolicyEngine, stopPolicyEngine, type PolicyEngineHost } from "../policy";
 import { ensureIntentStates, initIntentEngine, stopIntentEngine, type IntentEngineHost } from "../intent";
+import {
+	createPlannerOnDemandCoordinatorFromAdapter,
+	stopPlannerOnDemandCoordinator,
+} from "../planner_coordinator/compose";
+import type { PlannerCoordinatorAdapterHost } from "../planner_coordinator/runtime_factory";
 import { ensurePlannerStateTree, runPlannerRuntime, stopPlanner, type PlannerHost } from "../planner";
 import { resetGlobalModesRuntime } from "../global_modes";
 import { ensureEmsLightStates } from "./ensure_states";
@@ -144,6 +149,9 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 	const host = adapter as unknown as LiveCacheHost;
 
 	await runPlannerRuntime(host as unknown as PlannerHost & LiveCacheHost);
+	createPlannerOnDemandCoordinatorFromAdapter(adapter as unknown as PlannerCoordinatorAdapterHost, {
+		enabled: false,
+	});
 	energyDailyRollupHost = buildRollupHost(adapter);
 	powerRollupHost = energyDailyRollupHost;
 	await initEnergyDailyRollup(energyDailyRollupHost);
@@ -221,7 +229,7 @@ function stopEmsLightTick(): void {
 	}
 }
 
-export function stopEmsLightPhase1(): void {
+export async function stopEmsLightPhase1(): Promise<void> {
 	if (policyAdapter) {
 		const adapter = policyAdapter;
 		policyAdapter = null;
@@ -240,6 +248,7 @@ export function stopEmsLightPhase1(): void {
 	stopPowerRollup();
 	stopEnergyDailyRollup();
 	stopPlanner();
+	await stopPlannerOnDemandCoordinator();
 	powerRollupHost = null;
 	energyDailyRollupHost = null;
 	learningHost = null;

@@ -128,3 +128,63 @@ export async function writePreparedInput(
 		preparationRevision: withRevision.preparationRevision,
 	};
 }
+
+export async function readAndValidatePreparedInputFile(
+	jobDir: string,
+	options: {
+		expectedInputRevision: string;
+		runtimeRootDir: string;
+	},
+): Promise<PlannerPreparedInput> {
+	const resolvedJob = path.resolve(jobDir);
+	const resolvedRuntime = path.resolve(options.runtimeRootDir);
+	assertPathWithinRoot(resolvedJob, resolvedRuntime);
+
+	const target = path.join(resolvedJob, PLANNER_PREPARED_INPUT_FILE);
+	let raw: string;
+	try {
+		raw = await fs.readFile(target, "utf8");
+	} catch (e) {
+		throw new PlannerInputValidationError("prepared_output_missing", `prepared input missing: ${String(e)}`);
+	}
+
+	const byteSize = utf8ByteLength(raw);
+	if (byteSize > PLANNER_PREPARED_INPUT_BUDGET_BYTES) {
+		throw new PlannerInputValidationError(
+			"prepared_output_budget_exceeded",
+			`prepared input exceeds budget: ${byteSize} > ${PLANNER_PREPARED_INPUT_BUDGET_BYTES}`,
+		);
+	}
+
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw);
+	} catch {
+		throw new PlannerInputValidationError("prepared_output_invalid", "prepared input is not valid JSON");
+	}
+
+	if (!parsed || typeof parsed !== "object") {
+		throw new PlannerInputValidationError("prepared_output_invalid", "prepared input must be an object");
+	}
+
+	const prepared = parsed as PlannerPreparedInput;
+	if (prepared.schemaVersion !== PLANNER_PREPARED_INPUT_SCHEMA_VERSION) {
+		throw new PlannerInputValidationError("prepared_output_invalid", "prepared input schema invalid");
+	}
+	if (prepared.inputRevision !== options.expectedInputRevision) {
+		throw new PlannerInputValidationError(
+			"result_input_revision_mismatch",
+			"prepared inputRevision mismatch",
+		);
+	}
+
+	const expectedPrepRevision = computePreparationRevision({ ...prepared, preparationRevision: "" });
+	if (prepared.preparationRevision !== expectedPrepRevision) {
+		throw new PlannerInputValidationError(
+			"prepared_output_invalid",
+			"prepared preparationRevision mismatch",
+		);
+	}
+
+	return prepared;
+}

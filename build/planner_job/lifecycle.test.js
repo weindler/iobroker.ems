@@ -226,3 +226,110 @@ function seedPlan(rev) {
         await first;
     });
 });
+(0, node_test_1.describe)("planner_job lifecycle simulation mode", () => {
+    (0, node_test_1.it)("mode simulation does not publish canonical plans", async () => {
+        const root = path.join(os.tmpdir(), `ems-planner-sim-${Date.now()}`);
+        const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
+        const layout = (0, paths_js_2.resolvePlannerPaths)({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+        const repo = new repository_js_1.PlannerRepository(layout);
+        const { forecast, daily } = seedPlan(77);
+        await repo.writeSeedCanonicalPlans(forecast, daily);
+        const lifecycle = new lifecycle_js_1.PlannerJobLifecycle(layout, repo);
+        const workerPath = path.join(process.cwd(), "build", "planner_worker", "main.js");
+        const result = await lifecycle.runJob({
+            workerScriptPath: workerPath,
+            request: {
+                schemaVersion: 1,
+                kind: "legacy_stub",
+                jobId: `sim-${Date.now()}`,
+                generation: 9,
+                trigger: "manual",
+                mode: "simulation",
+                requestedAt: new Date().toISOString(),
+                timeoutMs: 30_000,
+                inputSnapshotPath: path.join(layout.runtimeJobsDir, "input.json"),
+            },
+            input: {
+                schemaVersion: 1,
+                capturedAt: new Date().toISOString(),
+                timezone: "Europe/Berlin",
+                globalMode: "balanced",
+            },
+        });
+        strict_1.default.equal(result.exitCode, 0);
+        strict_1.default.equal(result.published, false);
+        strict_1.default.equal(result.publishReason, "exit_0");
+        const kept = await repo.readCanonicalForecastPlan();
+        strict_1.default.equal(kept?.revision, 77);
+        await fs.rm(root, { recursive: true, force: true });
+    });
+    (0, node_test_1.it)("mode publish still publishes canonical plans", async () => {
+        const root = path.join(os.tmpdir(), `ems-planner-publish-${Date.now()}`);
+        const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
+        const layout = (0, paths_js_2.resolvePlannerPaths)({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+        const repo = new repository_js_1.PlannerRepository(layout);
+        const lifecycle = new lifecycle_js_1.PlannerJobLifecycle(layout, repo);
+        const workerPath = path.join(process.cwd(), "build", "planner_worker", "main.js");
+        const result = await lifecycle.runJob({
+            workerScriptPath: workerPath,
+            request: {
+                schemaVersion: 1,
+                kind: "legacy_stub",
+                jobId: `pub-${Date.now()}`,
+                generation: 3,
+                trigger: "manual",
+                mode: "publish",
+                requestedAt: new Date().toISOString(),
+                timeoutMs: 30_000,
+                inputSnapshotPath: path.join(layout.runtimeJobsDir, "input.json"),
+            },
+            input: {
+                schemaVersion: 1,
+                capturedAt: new Date().toISOString(),
+                timezone: "Europe/Berlin",
+                globalMode: "balanced",
+            },
+        });
+        strict_1.default.equal(result.published, true);
+        const forecast = await repo.readCanonicalForecastPlan();
+        strict_1.default.ok(forecast);
+        await fs.rm(root, { recursive: true, force: true });
+    });
+    (0, node_test_1.it)("failed simulation does not publish", async () => {
+        const root = path.join(os.tmpdir(), `ems-planner-sim-fail-${Date.now()}`);
+        const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
+        const layout = (0, paths_js_2.resolvePlannerPaths)({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+        const repo = new repository_js_1.PlannerRepository(layout);
+        const { forecast, daily } = seedPlan(88);
+        await repo.writeSeedCanonicalPlans(forecast, daily);
+        const lifecycle = new lifecycle_js_1.PlannerJobLifecycle(layout, repo);
+        const badWorker = path.join(root, "bad_worker.js");
+        await fs.mkdir(root, { recursive: true });
+        await fs.writeFile(badWorker, "process.exit(2);");
+        const result = await lifecycle.runJob({
+            workerScriptPath: badWorker,
+            request: {
+                schemaVersion: 1,
+                kind: "legacy_stub",
+                jobId: `sim-fail-${Date.now()}`,
+                generation: 1,
+                trigger: "manual",
+                mode: "simulation",
+                requestedAt: new Date().toISOString(),
+                timeoutMs: 30_000,
+                inputSnapshotPath: path.join(layout.runtimeJobsDir, "input.json"),
+            },
+            input: {
+                schemaVersion: 1,
+                capturedAt: new Date().toISOString(),
+                timezone: "Europe/Berlin",
+                globalMode: "balanced",
+            },
+        });
+        strict_1.default.equal(result.published, false);
+        strict_1.default.notEqual(result.exitCode, 0);
+        const kept = await repo.readCanonicalForecastPlan();
+        strict_1.default.equal(kept?.revision, 88);
+        await fs.rm(root, { recursive: true, force: true });
+    });
+});

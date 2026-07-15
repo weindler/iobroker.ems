@@ -221,3 +221,119 @@ describe("planner_job lifecycle", () => {
 		await first;
 	});
 });
+
+describe("planner_job lifecycle simulation mode", () => {
+	it("mode simulation does not publish canonical plans", async () => {
+		const root = path.join(os.tmpdir(), `ems-planner-sim-${Date.now()}`);
+		const durable = durableDataDirFromRoot(root, 0);
+		const layout = resolvePlannerPaths({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+		const repo = new PlannerRepository(layout);
+		const { forecast, daily } = seedPlan(77);
+		await repo.writeSeedCanonicalPlans(forecast, daily);
+		const lifecycle = new PlannerJobLifecycle(layout, repo);
+		const workerPath = path.join(process.cwd(), "build", "planner_worker", "main.js");
+
+		const result = await lifecycle.runJob({
+			workerScriptPath: workerPath,
+			request: {
+				schemaVersion: 1,
+				kind: "legacy_stub",
+				jobId: `sim-${Date.now()}`,
+				generation: 9,
+				trigger: "manual",
+				mode: "simulation",
+				requestedAt: new Date().toISOString(),
+				timeoutMs: 30_000,
+				inputSnapshotPath: path.join(layout.runtimeJobsDir, "input.json"),
+			},
+			input: {
+				schemaVersion: 1,
+				capturedAt: new Date().toISOString(),
+				timezone: "Europe/Berlin",
+				globalMode: "balanced",
+			},
+		});
+
+		assert.equal(result.exitCode, 0);
+		assert.equal(result.published, false);
+		assert.equal(result.publishReason, "exit_0");
+		const kept = await repo.readCanonicalForecastPlan();
+		assert.equal(kept?.revision, 77);
+		await fs.rm(root, { recursive: true, force: true });
+	});
+
+	it("mode publish still publishes canonical plans", async () => {
+		const root = path.join(os.tmpdir(), `ems-planner-publish-${Date.now()}`);
+		const durable = durableDataDirFromRoot(root, 0);
+		const layout = resolvePlannerPaths({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+		const repo = new PlannerRepository(layout);
+		const lifecycle = new PlannerJobLifecycle(layout, repo);
+		const workerPath = path.join(process.cwd(), "build", "planner_worker", "main.js");
+
+		const result = await lifecycle.runJob({
+			workerScriptPath: workerPath,
+			request: {
+				schemaVersion: 1,
+				kind: "legacy_stub",
+				jobId: `pub-${Date.now()}`,
+				generation: 3,
+				trigger: "manual",
+				mode: "publish",
+				requestedAt: new Date().toISOString(),
+				timeoutMs: 30_000,
+				inputSnapshotPath: path.join(layout.runtimeJobsDir, "input.json"),
+			},
+			input: {
+				schemaVersion: 1,
+				capturedAt: new Date().toISOString(),
+				timezone: "Europe/Berlin",
+				globalMode: "balanced",
+			},
+		});
+
+		assert.equal(result.published, true);
+		const forecast = await repo.readCanonicalForecastPlan();
+		assert.ok(forecast);
+		await fs.rm(root, { recursive: true, force: true });
+	});
+
+	it("failed simulation does not publish", async () => {
+		const root = path.join(os.tmpdir(), `ems-planner-sim-fail-${Date.now()}`);
+		const durable = durableDataDirFromRoot(root, 0);
+		const layout = resolvePlannerPaths({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+		const repo = new PlannerRepository(layout);
+		const { forecast, daily } = seedPlan(88);
+		await repo.writeSeedCanonicalPlans(forecast, daily);
+		const lifecycle = new PlannerJobLifecycle(layout, repo);
+		const badWorker = path.join(root, "bad_worker.js");
+		await fs.mkdir(root, { recursive: true });
+		await fs.writeFile(badWorker, "process.exit(2);");
+
+		const result = await lifecycle.runJob({
+			workerScriptPath: badWorker,
+			request: {
+				schemaVersion: 1,
+				kind: "legacy_stub",
+				jobId: `sim-fail-${Date.now()}`,
+				generation: 1,
+				trigger: "manual",
+				mode: "simulation",
+				requestedAt: new Date().toISOString(),
+				timeoutMs: 30_000,
+				inputSnapshotPath: path.join(layout.runtimeJobsDir, "input.json"),
+			},
+			input: {
+				schemaVersion: 1,
+				capturedAt: new Date().toISOString(),
+				timezone: "Europe/Berlin",
+				globalMode: "balanced",
+			},
+		});
+
+		assert.equal(result.published, false);
+		assert.notEqual(result.exitCode, 0);
+		const kept = await repo.readCanonicalForecastPlan();
+		assert.equal(kept?.revision, 88);
+		await fs.rm(root, { recursive: true, force: true });
+	});
+});

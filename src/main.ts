@@ -160,9 +160,9 @@ class Ems extends utils.Adapter {
 		});
 	}
 
-	private onUnload(callback: () => void): void {
+	private async onUnload(callback: () => void): Promise<void> {
 		stopDiagnosticMode();
-		stopEmsLightPhase1();
+		await stopEmsLightPhase1();
 		void batteryUnloadRestore(this as ioBroker.Adapter & { config: unknown }).catch(() => undefined);
 		stopBatteryModule(null);
 		stopImmersionHeaterModule();

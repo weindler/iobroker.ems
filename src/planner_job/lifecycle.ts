@@ -8,6 +8,7 @@ import {
 import type { PlannerPathLayout } from "../planner_paths/paths";
 import type { PlannerInputSnapshot, PlannerJobRequest } from "../planner_contracts/types";
 import { assertWithinIpcBudget } from "../planner_contracts/validate";
+import { validatePlannerInputBudget } from "../planner_preparation/validate";
 import { PlannerRepository } from "../planner_repository/repository";
 import {
 	PLANNER_DEFAULT_JOB_TIMEOUT_MS,
@@ -71,7 +72,7 @@ export class PlannerJobLifecycle {
 		const requestJson = `${JSON.stringify(options.request, null, 2)}\n`;
 		const inputJson = `${JSON.stringify(options.input, null, 2)}\n`;
 		assertWithinIpcBudget(requestJson, "request");
-		assertWithinIpcBudget(inputJson, "input");
+		validatePlannerInputBudget(inputJson);
 
 		await fs.writeFile(path.join(jobDir, JOB_REQUEST_FILE), requestJson, { mode: 0o600 });
 		await fs.writeFile(path.join(jobDir, JOB_INPUT_FILE), inputJson, { mode: 0o600 });
@@ -122,7 +123,7 @@ export class PlannerJobLifecycle {
 		let published = false;
 		let publishReason = timedOut ? "timeout" : `exit_${exitCode}`;
 
-		if (!timedOut && exitCode === 0 && this.activeJob) {
+		if (!timedOut && exitCode === 0 && this.activeJob && options.request.mode !== "simulation") {
 			const publish = await this.repository.publishCurrentJob({
 				jobId,
 				expectedGeneration: generation,

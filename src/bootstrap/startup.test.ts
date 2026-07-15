@@ -181,8 +181,8 @@ async function strictStep(_label: string, fn: () => Promise<unknown>): Promise<v
 	await fn();
 }
 
-function stopAllRuntime(): void {
-	stopEmsLightPhase1();
+async function stopAllRuntime(): Promise<void> {
+	await stopEmsLightPhase1();
 	stopWallboxModule();
 	stopBatteryModule(null);
 	stopImmersionHeaterModule();
@@ -208,8 +208,8 @@ describe("bootstrap cold start recovery", () => {
 		tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-bootstrap-"));
 	});
 
-	afterEach(() => {
-		stopAllRuntime();
+	afterEach(async () => {
+		await stopAllRuntime();
 	});
 
 	it("scenario A — empty namespace, empty vehicle profile list", async () => {
@@ -236,7 +236,7 @@ describe("bootstrap cold start recovery", () => {
 
 	it("scenario B — one and five dynamic vehicle profiles", async () => {
 		for (const count of [1, 5]) {
-			stopAllRuntime();
+			await stopAllRuntime();
 			const dir = await fs.mkdtemp(path.join(os.tmpdir(), "ems-bootstrap-vp-"));
 			const profiles = Array.from({ length: count }, (_, i) =>
 				profileRow(`car_${i + 1}`, `Car ${i + 1}`),
@@ -267,7 +267,7 @@ describe("bootstrap cold start recovery", () => {
 		const snapshotStates = new Map(adapter.states);
 		const snapshotSubs = [...adapter.subscriptions];
 
-		stopAllRuntime();
+		await stopAllRuntime();
 		await runAdapterBootstrap(adapter as unknown as ioBroker.Adapter, strictStep);
 
 		assert.equal(adapter.objects.size, snapshotObjects.size);
@@ -355,7 +355,7 @@ describe("bootstrap cold start recovery", () => {
 		await runAdapterBootstrap(adapter as unknown as ioBroker.Adapter, strictStep);
 		assert.equal(adapter.states.get("global.execution_mode")?.val, "dryrun");
 
-		stopAllRuntime();
+		await stopAllRuntime();
 		let secondRunColdStart: boolean | null = null;
 		const subsBefore = adapter.subscriptions.length;
 		await runAdapterBootstrap(adapter as unknown as ioBroker.Adapter, async (label, fn) => {

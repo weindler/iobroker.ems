@@ -29,6 +29,7 @@ const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const constants_1 = require("../planner_paths/constants");
 const validate_1 = require("../planner_contracts/validate");
+const validate_2 = require("../planner_preparation/validate");
 const constants_2 = require("./constants");
 const ipc_1 = require("./ipc");
 class PlannerJobLifecycle {
@@ -62,7 +63,7 @@ class PlannerJobLifecycle {
         const requestJson = `${JSON.stringify(options.request, null, 2)}\n`;
         const inputJson = `${JSON.stringify(options.input, null, 2)}\n`;
         (0, validate_1.assertWithinIpcBudget)(requestJson, "request");
-        (0, validate_1.assertWithinIpcBudget)(inputJson, "input");
+        (0, validate_2.validatePlannerInputBudget)(inputJson);
         await fs.writeFile(path.join(jobDir, constants_1.JOB_REQUEST_FILE), requestJson, { mode: 0o600 });
         await fs.writeFile(path.join(jobDir, constants_1.JOB_INPUT_FILE), inputJson, { mode: 0o600 });
         this.activeJob = { jobId: options.request.jobId, generation: options.request.generation };
@@ -103,7 +104,7 @@ class PlannerJobLifecycle {
         const jobId = options.request.jobId;
         let published = false;
         let publishReason = timedOut ? "timeout" : `exit_${exitCode}`;
-        if (!timedOut && exitCode === 0 && this.activeJob) {
+        if (!timedOut && exitCode === 0 && this.activeJob && options.request.mode !== "simulation") {
             const publish = await this.repository.publishCurrentJob({
                 jobId,
                 expectedGeneration: generation,

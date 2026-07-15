@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.writePreparedInput = exports.readAndValidatePlannerInputFile = exports.validatePlannerInputBudget = exports.validatePlannerInputRevision = exports.parsePlannerInputSnapshotV2 = void 0;
+exports.readAndValidatePreparedInputFile = exports.writePreparedInput = exports.readAndValidatePlannerInputFile = exports.validatePlannerInputBudget = exports.validatePlannerInputRevision = exports.parsePlannerInputSnapshotV2 = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const paths_1 = require("../backup_integration/paths");
@@ -121,3 +121,43 @@ async function writePreparedInput(jobDir, prepared, options) {
     };
 }
 exports.writePreparedInput = writePreparedInput;
+async function readAndValidatePreparedInputFile(jobDir, options) {
+    const resolvedJob = path.resolve(jobDir);
+    const resolvedRuntime = path.resolve(options.runtimeRootDir);
+    (0, paths_1.assertPathWithinRoot)(resolvedJob, resolvedRuntime);
+    const target = path.join(resolvedJob, constants_2.PLANNER_PREPARED_INPUT_FILE);
+    let raw;
+    try {
+        raw = await fs.readFile(target, "utf8");
+    }
+    catch (e) {
+        throw new types_1.PlannerInputValidationError("prepared_output_missing", `prepared input missing: ${String(e)}`);
+    }
+    const byteSize = (0, canonical_1.utf8ByteLength)(raw);
+    if (byteSize > constants_2.PLANNER_PREPARED_INPUT_BUDGET_BYTES) {
+        throw new types_1.PlannerInputValidationError("prepared_output_budget_exceeded", `prepared input exceeds budget: ${byteSize} > ${constants_2.PLANNER_PREPARED_INPUT_BUDGET_BYTES}`);
+    }
+    let parsed;
+    try {
+        parsed = JSON.parse(raw);
+    }
+    catch {
+        throw new types_1.PlannerInputValidationError("prepared_output_invalid", "prepared input is not valid JSON");
+    }
+    if (!parsed || typeof parsed !== "object") {
+        throw new types_1.PlannerInputValidationError("prepared_output_invalid", "prepared input must be an object");
+    }
+    const prepared = parsed;
+    if (prepared.schemaVersion !== constants_2.PLANNER_PREPARED_INPUT_SCHEMA_VERSION) {
+        throw new types_1.PlannerInputValidationError("prepared_output_invalid", "prepared input schema invalid");
+    }
+    if (prepared.inputRevision !== options.expectedInputRevision) {
+        throw new types_1.PlannerInputValidationError("result_input_revision_mismatch", "prepared inputRevision mismatch");
+    }
+    const expectedPrepRevision = (0, canonical_2.computePreparationRevision)({ ...prepared, preparationRevision: "" });
+    if (prepared.preparationRevision !== expectedPrepRevision) {
+        throw new types_1.PlannerInputValidationError("prepared_output_invalid", "prepared preparationRevision mismatch");
+    }
+    return prepared;
+}
+exports.readAndValidatePreparedInputFile = readAndValidatePreparedInputFile;

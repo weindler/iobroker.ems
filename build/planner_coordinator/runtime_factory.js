@@ -24,17 +24,21 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createPlannerRuntimeContext = void 0;
+const fs = __importStar(require("node:fs"));
 const path = __importStar(require("node:path"));
 const paths_1 = require("../backup_integration/paths");
 const lifecycle_1 = require("../planner_job/lifecycle");
 const constants_1 = require("../planner_job/constants");
 const validate_1 = require("../planner_preparation/validate");
 const paths_2 = require("../planner_paths/paths");
+const types_1 = require("../planner_candidate/types");
+const build_1 = require("../planner_candidate/build");
+const candidate_compare_1 = require("../planner_shadow/candidate_compare");
+const compare_1 = require("../planner_shadow/compare");
 const repository_1 = require("../planner_repository/repository");
 const from_iobroker_1 = require("../planner_snapshot/from_iobroker");
 const write_1 = require("../planner_snapshot/write");
 const trigger_1 = require("./trigger");
-const compare_1 = require("../planner_shadow/compare");
 function createPlannerRuntimeContext(adapter, options = {}) {
     const layout = (0, paths_2.resolvePlannerPaths)({
         namespace: adapter.namespace,
@@ -58,7 +62,19 @@ function createPlannerRuntimeContext(adapter, options = {}) {
             expectedInputRevision,
             runtimeRootDir: layout.runtimePlannerDir,
         }),
-        cleanupJob: async (jobId) => repository.cleanupJobDir(layout.jobDir(jobId), true),
+        cleanupJob: async (jobId) => {
+            // Preserve last candidate under non-canonical candidate area before job cleanup.
+            try {
+                const src = path.join(layout.jobDir(jobId), types_1.PLANNER_CANDIDATE_FILE);
+                const destDir = layout.candidateJobDir(jobId);
+                await fs.promises.mkdir(destDir, { recursive: true, mode: 0o700 });
+                await fs.promises.copyFile(src, path.join(destDir, types_1.PLANNER_CANDIDATE_FILE));
+            }
+            catch {
+                // absent candidate is fine
+            }
+            await repository.cleanupJobDir(layout.jobDir(jobId), true);
+        },
         runWorkerJob: async ({ jobId, generation, snapshot, triggerReason, requestedAt, timeoutMs }) => {
             const jobDir = layout.jobDir(jobId);
             await (0, write_1.writePlannerInputSnapshot)(jobDir, snapshot, {
@@ -86,7 +102,25 @@ function createPlannerRuntimeContext(adapter, options = {}) {
             const merged = { ...runResult, result };
             return merged;
         },
-        compareShadowOutput: ({ snapshot, prepared }) => (0, compare_1.compareSnapshotPreparedInput)(snapshot, prepared).result,
+        compareShadowOutput: ({ snapshot, prepared, jobId }) => {
+            if (!jobId) {
+                return (0, compare_1.compareSnapshotPreparedInput)(snapshot, prepared).result;
+            }
+            try {
+                const reference = (0, build_1.buildPlanCandidateFromSnapshot)(snapshot).candidate;
+                const raw = fs.readFileSync(path.join(layout.jobDir(jobId), types_1.PLANNER_CANDIDATE_FILE), "utf8");
+                const worker = JSON.parse(raw);
+                return (0, candidate_compare_1.comparePlanCandidates)(reference, worker);
+            }
+            catch {
+                return {
+                    status: "worker_failed",
+                    mismatchCount: 0,
+                    mismatchedSlotCount: 0,
+                    firstMismatchPath: "candidate_read",
+                };
+            }
+        },
     };
     return { deps, lifecycle };
 }

@@ -12,7 +12,10 @@ import { validatePlannerJobRequest } from "../planner_contracts/validate";
 import type { PlannerJobRequest } from "../planner_contracts/types";
 import { validatePlannerInputSnapshot } from "../planner_contracts/validate";
 import { PLANNER_PREPARED_INPUT_FILE } from "../planner_preparation/constants";
-import { preparePlannerFromSnapshot } from "../planner_preparation/prepare";
+import { buildPlanCandidateFromSnapshot } from "../planner_candidate/build";
+import { writePlanCandidateAtomic } from "../planner_candidate/io";
+import { PLANNER_CANDIDATE_FILE } from "../planner_candidate/types";
+import { PHASE_3E_PUBLISH_DEFAULTS, resolvePlannerPublishTarget } from "../planner_publish/policy";
 import { readAndValidatePlannerInputFile, writePreparedInput } from "../planner_preparation/validate";
 import { PlannerInputValidationError } from "../planner_preparation/types";
 import { sha256File, sha256Hex, stableSemanticStringify } from "../planner_repository/hash";
@@ -49,22 +52,40 @@ function buildStubDailyPlan(capturedAt: string, date: string): CanonicalDailyPla
 	};
 }
 
-function semanticRevision(forecast: CanonicalForecastPlanV1, daily: CanonicalDailyPlanV1): string {
-	const payload = {
-		forecast: {
-			revision: forecast.revision,
-			status: forecast.status,
-			horizon_start: forecast.horizon_start,
-			horizon_end: forecast.horizon_end,
-			slot_count: forecast.slots.length,
-		},
-		daily: {
-			revision: daily.revision,
-			status: daily.status,
-			date: daily.date,
-			allocation_count: daily.allocations.length,
-		},
-	};
+function semanticRevision(forecast: CanonicalForecastPlanV1, daily: CanonicalDailyPlanV1, candidateRev?: string): string {
+	const payload =
+		candidateRev != null
+			? {
+					forecast: {
+						revision: forecast.revision,
+						status: forecast.status,
+						horizon_start: forecast.horizon_start,
+						horizon_end: forecast.horizon_end,
+						slot_count: forecast.slots.length,
+					},
+					daily: {
+						revision: daily.revision,
+						status: daily.status,
+						date: daily.date,
+						allocation_count: daily.allocations.length,
+					},
+					candidateRevision: candidateRev,
+				}
+			: {
+					forecast: {
+						revision: forecast.revision,
+						status: forecast.status,
+						horizon_start: forecast.horizon_start,
+						horizon_end: forecast.horizon_end,
+						slot_count: forecast.slots.length,
+					},
+					daily: {
+						revision: daily.revision,
+						status: daily.status,
+						date: daily.date,
+						allocation_count: daily.allocations.length,
+					},
+				};
 	return sha256Hex(stableSemanticStringify(payload));
 }
 
@@ -194,13 +215,34 @@ async function runSnapshotV2Job(
 	}
 
 	let prepared;
+	let candidate;
 	try {
-		prepared = preparePlannerFromSnapshot(snapshot);
+		const built = buildPlanCandidateFromSnapshot(snapshot);
+		prepared = built.prepared;
+		candidate = built.candidate;
 		const runtimeRoot = options.runtimePlannerDir ?? path.resolve(jobDir, "..", "..");
 		await writePreparedInput(jobDir, prepared, { runtimeRootDir: runtimeRoot });
+		await writePlanCandidateAtomic(jobDir, candidate);
 	} catch (e) {
 		await removePreparedOutput(jobDir);
 		return { exitCode: 2, message: String(e).slice(0, 480) };
+	}
+
+	const publishDecision = resolvePlannerPublishTarget({
+		requestedTarget: PHASE_3E_PUBLISH_DEFAULTS.requestedTarget,
+		jobMode: request.mode,
+		releaseGate: PHASE_3E_PUBLISH_DEFAULTS.releaseGate,
+		candidateValid: candidate.validationStatus !== "failed",
+		generationMatches: true,
+		inputRevisionMatches: candidate.inputRevision === snapshot.inputRevision,
+		shuttingDown: false,
+		productiveTakeoverMode: PHASE_3E_PUBLISH_DEFAULTS.productiveTakeoverMode,
+	});
+	if (publishDecision.target === "blocked_canonical" || publishDecision.reason === "canonical_gate_closed") {
+		// expected in simulation — candidate only
+	}
+	if (!publishDecision.allowed && publishDecision.target !== "candidate") {
+		// still write job-local artifacts for shadow compare; never touch durable canonical
 	}
 
 	const capturedAt = snapshot.capturedAt;
@@ -227,29 +269,32 @@ async function runSnapshotV2Job(
 	const dailyHash = await sha256File(dailyPath);
 	const preparedPath = path.join(jobDir, PLANNER_PREPARED_INPUT_FILE);
 	const preparedHash = await sha256File(preparedPath);
+	const candidatePath = path.join(jobDir, PLANNER_CANDIDATE_FILE);
+	const candidateHash = await sha256File(candidatePath);
 	const forecastStat = await fs.stat(forecastPath);
 	const dailyStat = await fs.stat(dailyPath);
 	const preparedStat = await fs.stat(preparedPath);
-	const semRev = semanticRevision(forecast, daily);
+	const candidateStat = await fs.stat(candidatePath);
+	const semRev = semanticRevision(forecast, daily, candidate.candidateRevision);
 
 	const summary = {
 		forecast: {
-			status: forecast.status,
-			revision: forecast.revision,
-			horizonStart: forecast.horizon_start,
-			horizonEnd: forecast.horizon_end,
-			reasonDe: `Phase-3B Grid-Supply-Vorbereitung (${prepared.slots.length} Slots)`,
+			status: candidate.forecastStatus,
+			revision: 1,
+			horizonStart: candidate.horizonStart,
+			horizonEnd: candidate.horizonEnd,
+			reasonDe: `Phase-3E Candidate (${candidate.slotCount} Slots)`,
 		},
 		daily: {
-			status: daily.status,
-			revision: daily.revision,
-			date: daily.date,
-			validUntil: daily.valid_until,
-			reasonDe: "Phase-3B Stub-Daily",
+			status: candidate.dailyStatus,
+			revision: 1,
+			date: capturedAt.slice(0, 10),
+			validUntil: null as string | null,
+			reasonDe: `Phase-3E Allocation (${candidate.allocations.length} Einträge)`,
 		},
 		quality: {
-			forecast: "prepared",
-			daily: "stub",
+			forecast: candidate.validationStatus === "ok" ? "candidate" : candidate.validationStatus,
+			daily: candidate.validationStatus === "ok" ? "candidate" : candidate.validationStatus,
 		},
 	};
 
@@ -260,20 +305,18 @@ async function runSnapshotV2Job(
 		status: "ok" as const,
 		semanticRevision: semRev,
 		summary,
-		allocations: [
-			{
-				addonId: "battery",
-				status: "ready",
-				revision: 1,
-				nextAction: null,
-				nextWindowStart: null,
-				nextWindowEnd: null,
-				powerW: 0,
-				energyKwh: null,
-				reasonDe: "Phase-3B Stub-Allocation",
-				payloadJson: "[]",
-			},
-		],
+		allocations: candidate.allocations.slice(0, 32).map((a) => ({
+			addonId: a.contributionId,
+			status: a.status,
+			revision: 1,
+			nextAction: null as string | null,
+			nextWindowStart: a.slotStart,
+			nextWindowEnd: a.slotEnd,
+			powerW: a.powerW,
+			energyKwh: a.energyKwh,
+			reasonDe: a.status,
+			payloadJson: "[]",
+		})),
 		files: [
 			{
 				fileName: CANONICAL_FORECAST_PLAN_FILE,
@@ -290,6 +333,11 @@ async function runSnapshotV2Job(
 				byteSize: preparedStat.size,
 				sha256: preparedHash,
 			},
+			{
+				fileName: PLANNER_CANDIDATE_FILE,
+				byteSize: candidateStat.size,
+				sha256: candidateHash,
+			},
 		],
 	};
 
@@ -298,10 +346,10 @@ async function runSnapshotV2Job(
 	await fs.writeFile(path.join(jobDir, JOB_SUMMARY_FILE), summaryJson, { mode: 0o600 });
 	await fs.writeFile(path.join(jobDir, JOB_RESULT_FILE), resultJson, { mode: 0o600 });
 
-	const revHint = ` rev=${snapshot.inputRevision.slice(0, 12)}`;
+	const revHint = ` rev=${snapshot.inputRevision.slice(0, 12)} cand=${candidate.candidateRevision.slice(0, 12)}`;
 	return {
 		exitCode: 0,
-		message: `ok slots=${prepared.slots.length}${revHint}`,
+		message: `ok slots=${candidate.slotCount}${revHint} publish=${publishDecision.target}`,
 	};
 }
 

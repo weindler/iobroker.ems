@@ -65,11 +65,12 @@ function snapshot(rev = "a".repeat(64)): PlannerInputSnapshot {
 	} as unknown as PlannerInputSnapshot;
 }
 
-function createMemoryHost(): PlannerShadowRuntimeHost & { states: Map<string, StoredState> } {
+function createMemoryHost(config: Record<string, unknown> = {}): PlannerShadowRuntimeHost & { states: Map<string, StoredState> } {
 	const states = new Map<string, StoredState>();
 	const subscribed = new Set<string>();
 	return {
 		namespace: "ems.0",
+		config,
 		states,
 		log: { debug: () => undefined, info: () => undefined, warn: () => undefined, error: () => undefined },
 		getStateAsync: async (id) => (states.has(id) ? (states.get(id) as ioBroker.State) : null),
@@ -157,7 +158,7 @@ function createDeps(): PlannerOnDemandCoordinatorDependencies {
 
 describe("planner_shadow runtime", () => {
 	it("starts with shadow disabled and does not load heavy runtime", async () => {
-		const host = createMemoryHost();
+		const host = createMemoryHost({ planner_runtime_mode: "off" });
 		const coordinator = createPlannerOnDemandCoordinatorForTest(createDeps(), { enabled: false });
 		registerPlannerOnDemandCoordinatorForTest(coordinator);
 		await initPlannerShadowRuntime(host);
@@ -169,8 +170,20 @@ describe("planner_shadow runtime", () => {
 		await stopPlannerOnDemandCoordinator();
 	});
 
+	it("native off ignores session shadow_enabled=true", async () => {
+		const host = createMemoryHost({ planner_runtime_mode: "off" });
+		const coordinator = createPlannerOnDemandCoordinatorForTest(createDeps(), { enabled: false });
+		registerPlannerOnDemandCoordinatorForTest(coordinator);
+		await initPlannerShadowRuntime(host);
+		await handlePlannerShadowStateChange(host, PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, true, false);
+		assert.equal(isPlannerShadowEnabledForTest(), false);
+		assert.equal(coordinator.getStatus().enabled, false);
+		await stopPlannerShadowRuntime();
+		await stopPlannerOnDemandCoordinator();
+	});
+
 	it("activation alone does not start a worker", async () => {
-		const host = createMemoryHost();
+		const host = createMemoryHost({ planner_runtime_mode: "shadow_manual" });
 		let builds = 0;
 		const deps = createDeps();
 		deps.buildSnapshot = async () => {
@@ -180,16 +193,13 @@ describe("planner_shadow runtime", () => {
 		const coordinator = createPlannerOnDemandCoordinatorForTest(deps, { enabled: false });
 		registerPlannerOnDemandCoordinatorForTest(coordinator);
 		await initPlannerShadowRuntime(host);
-		await handlePlannerShadowStateChange(host, PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, true, false);
-		assert.equal(isPlannerShadowEnabledForTest(), true);
-		assert.equal(coordinator.getStatus().enabled, true);
 		assert.equal(builds, 0);
 		await stopPlannerShadowRuntime();
 		await stopPlannerOnDemandCoordinator();
 	});
 
 	it("disabled manual trigger sets planner_disabled skip", async () => {
-		const host = createMemoryHost();
+		const host = createMemoryHost({ planner_runtime_mode: "off" });
 		const coordinator = createPlannerOnDemandCoordinatorForTest(createDeps(), { enabled: false });
 		registerPlannerOnDemandCoordinatorForTest(coordinator);
 		await initPlannerShadowRuntime(host);
@@ -202,7 +212,7 @@ describe("planner_shadow runtime", () => {
 	});
 
 	it("ignores acked manual trigger", async () => {
-		const host = createMemoryHost();
+		const host = createMemoryHost({ planner_runtime_mode: "shadow_manual" });
 		let workers = 0;
 		const deps = createDeps();
 		deps.runWorkerJob = async (args) => {
@@ -212,7 +222,6 @@ describe("planner_shadow runtime", () => {
 		const coordinator = createPlannerOnDemandCoordinatorForTest(deps, { enabled: false });
 		registerPlannerOnDemandCoordinatorForTest(coordinator);
 		await initPlannerShadowRuntime(host);
-		await handlePlannerShadowStateChange(host, PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, true, false);
 		await handlePlannerShadowStateChange(host, PLANNER_COORDINATOR_STATE_IDS.manualTrigger, true, true);
 		assert.equal(workers, 0);
 		await stopPlannerShadowRuntime();
@@ -220,7 +229,7 @@ describe("planner_shadow runtime", () => {
 	});
 
 	it("enabled manual trigger starts exactly one run", async () => {
-		const host = createMemoryHost();
+		const host = createMemoryHost({ planner_runtime_mode: "shadow_manual" });
 		let workers = 0;
 		const deps = createDeps();
 		deps.runWorkerJob = async (args) => {
@@ -230,9 +239,8 @@ describe("planner_shadow runtime", () => {
 		const coordinator = createPlannerOnDemandCoordinatorForTest(deps, { enabled: false });
 		registerPlannerOnDemandCoordinatorForTest(coordinator);
 		await initPlannerShadowRuntime(host);
-		await handlePlannerShadowStateChange(host, PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, true, false);
 		await handlePlannerShadowStateChange(host, PLANNER_COORDINATOR_STATE_IDS.manualTrigger, true, false);
-		await new Promise((r) => setTimeout(r, 20));
+		await new Promise((r) => setTimeout(r, 40));
 		assert.equal(workers, 1);
 		assert.equal(coordinator.getStatus().lastResult, "success");
 		await stopPlannerShadowRuntime();
@@ -240,7 +248,7 @@ describe("planner_shadow runtime", () => {
 	});
 
 	it("force trigger passes force true to coordinator", async () => {
-		const host = createMemoryHost();
+		const host = createMemoryHost({ planner_runtime_mode: "shadow_manual" });
 		const forces: boolean[] = [];
 		const deps = createDeps();
 		const coordinator = createPlannerOnDemandCoordinatorForTest(deps, { enabled: false });
@@ -251,28 +259,32 @@ describe("planner_shadow runtime", () => {
 		};
 		registerPlannerOnDemandCoordinatorForTest(coordinator);
 		await initPlannerShadowRuntime(host);
-		await handlePlannerShadowStateChange(host, PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, true, false);
 		await handlePlannerShadowStateChange(host, PLANNER_COORDINATOR_STATE_IDS.manualForceTrigger, true, false);
-		await new Promise((r) => setTimeout(r, 20));
+		await new Promise((r) => setTimeout(r, 40));
 		assert.deepEqual(forces, [true]);
 		await stopPlannerShadowRuntime();
 		await stopPlannerOnDemandCoordinator();
 	});
 
 	it("writes compact primitive status states only", async () => {
-		const host = createMemoryHost();
+		const host = createMemoryHost({ planner_runtime_mode: "shadow_manual" });
 		const coordinator = createPlannerOnDemandCoordinatorForTest(createDeps(), { enabled: false });
 		registerPlannerOnDemandCoordinatorForTest(coordinator);
 		await initPlannerShadowRuntime(host);
-		await handlePlannerShadowStateChange(host, PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, true, false);
 		await handlePlannerShadowStateChange(host, PLANNER_COORDINATOR_STATE_IDS.manualTrigger, true, false);
-		await new Promise((r) => setTimeout(r, 30));
+		await new Promise((r) => setTimeout(r, 40));
 		const comparisonStatus = host.states.get(PLANNER_COORDINATOR_STATE_IDS.comparisonStatus)?.val;
 		assert.equal(comparisonStatus, "matched");
 		const refRev = String(host.states.get(PLANNER_COORDINATOR_STATE_IDS.comparisonReferenceRevision)?.val ?? "");
 		assert.ok(refRev.length <= 12);
 		for (const [, stored] of host.states) {
-			assert.ok(typeof stored.val === "string" || typeof stored.val === "number" || typeof stored.val === "boolean");
+			assert.ok(
+				stored.val === null ||
+					typeof stored.val === "string" ||
+					typeof stored.val === "number" ||
+					typeof stored.val === "boolean",
+				`non-primitive state value: ${JSON.stringify(stored.val)}`,
+			);
 		}
 		await stopPlannerShadowRuntime();
 		await stopPlannerOnDemandCoordinator();

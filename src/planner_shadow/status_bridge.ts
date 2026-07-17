@@ -4,9 +4,18 @@ import type { PlannerCoordinatorStatus } from "../planner_coordinator/types";
 import { shortenRevision } from "./canonical";
 import { PLANNER_COORDINATOR_STATE_IDS } from "./ensure_states";
 
+export interface TriggerDiagnosticsForStates {
+	pending?: boolean;
+	lastAutoRequestAt?: string | null;
+	nextScheduledAt?: string | null;
+	lastTriggerClass?: string;
+	lastCoalescedCount?: number;
+}
+
 export async function writePlannerCoordinatorStatusStates(
 	host: StateHost,
 	status: PlannerCoordinatorStatus,
+	diag?: TriggerDiagnosticsForStates | null,
 ): Promise<void> {
 	const active = status.state === "building_snapshot" ||
 		status.state === "starting_worker" ||
@@ -39,6 +48,16 @@ export async function writePlannerCoordinatorStatusStates(
 	);
 	await setStateIfChanged(
 		host,
+		PLANNER_COORDINATOR_STATE_IDS.candidateRevision,
+		shortenRevision(status.candidateRevision),
+	);
+	await setStateIfChanged(
+		host,
+		PLANNER_COORDINATOR_STATE_IDS.candidateValidation,
+		status.candidateValidation ?? "",
+	);
+	await setStateIfChanged(
+		host,
 		PLANNER_COORDINATOR_STATE_IDS.comparisonStatus,
 		status.comparisonStatus ?? "not_available",
 	);
@@ -62,4 +81,34 @@ export async function writePlannerCoordinatorStatusStates(
 		PLANNER_COORDINATOR_STATE_IDS.comparisonFirstMismatch,
 		status.comparisonFirstMismatch ?? "",
 	);
+	await setStateIfChanged(
+		host,
+		PLANNER_COORDINATOR_STATE_IDS.comparisonFirstDomain,
+		status.comparisonFirstDomain ?? "",
+	);
+	await setOptionalNumberIfChanged(
+		host,
+		PLANNER_COORDINATOR_STATE_IDS.comparisonMismatchedSlots,
+		status.comparisonMismatchedSlots ?? null,
+	);
+
+	if (diag) {
+		await setStateIfChanged(host, PLANNER_COORDINATOR_STATE_IDS.lastTriggerClass, diag.lastTriggerClass ?? "");
+		await setOptionalNumberIfChanged(
+			host,
+			PLANNER_COORDINATOR_STATE_IDS.lastCoalescedCount,
+			diag.lastCoalescedCount ?? null,
+		);
+		await setStateIfChanged(
+			host,
+			PLANNER_COORDINATOR_STATE_IDS.lastAutoRequestAt,
+			diag.lastAutoRequestAt ?? "",
+		);
+		await setStateIfChanged(
+			host,
+			PLANNER_COORDINATOR_STATE_IDS.nextScheduledAt,
+			diag.nextScheduledAt ?? "",
+		);
+		await setStateIfChanged(host, PLANNER_COORDINATOR_STATE_IDS.triggerPending, diag.pending === true);
+	}
 }

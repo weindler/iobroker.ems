@@ -104,6 +104,7 @@ exports.getLearningStateTreeHost = getLearningStateTreeHost;
 function buildPlannerShadowRuntimeHost(adapter) {
     return {
         namespace: adapter.namespace,
+        config: adapter.config,
         log: adapter.log,
         getStateAsync: adapter.getStateAsync.bind(adapter),
         setStateAsync: adapter.setStateAsync.bind(adapter),

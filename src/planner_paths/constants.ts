@@ -13,3 +13,6 @@ export const DURABLE_PLANNER_SEGMENT = "planner";
 export const RUNTIME_PLANNER_SEGMENT = "planner";
 export const RUNTIME_JOBS_SEGMENT = "jobs";
 export const RUNTIME_SIMULATIONS_SEGMENT = "simulations";
+/** Non-canonical shadow candidates — never consumed by device runtimes. */
+export const RUNTIME_CANDIDATE_SEGMENT = "candidate";
+export const CANDIDATE_CURRENT_FILE = "plan_candidate_v1.json";

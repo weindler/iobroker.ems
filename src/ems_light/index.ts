@@ -140,6 +140,7 @@ export function getLearningStateTreeHost(): LearningStateTreeHost | null {
 function buildPlannerShadowRuntimeHost(adapter: ioBroker.Adapter): PlannerShadowRuntimeHost {
 	return {
 		namespace: adapter.namespace,
+		config: adapter.config,
 		log: adapter.log,
 		getStateAsync: adapter.getStateAsync.bind(adapter),
 		setStateAsync: adapter.setStateAsync.bind(adapter),

@@ -1,6 +1,8 @@
 import { DEFAULT_GLOBAL_MODE, type GlobalMode } from "../global_modes/constants";
 import { isGlobalMode } from "../global_modes/config";
-import { PLANNER_BATTERY_TARGET_SOC_PCT } from "./inputs";
+
+/** Default charge target used by balanced/comfort mode policies. */
+export const PLANNER_BATTERY_TARGET_SOC_PCT = 95;
 
 export interface PlannerModePolicy {
 	mode: GlobalMode;

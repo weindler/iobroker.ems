@@ -53,11 +53,12 @@ function snapshot(rev = "a".repeat(64)) {
         batteryWinter: { config: { enabled: false, horizonDays: 0, socTargetMinPct: null, socTargetMaxPct: null }, days: [] },
     };
 }
-function createMemoryHost() {
+function createMemoryHost(config = {}) {
     const states = new Map();
     const subscribed = new Set();
     return {
         namespace: "ems.0",
+        config,
         states,
         log: { debug: () => undefined, info: () => undefined, warn: () => undefined, error: () => undefined },
         getStateAsync: async (id) => (states.has(id) ? states.get(id) : null),
@@ -143,7 +144,7 @@ function createDeps() {
 }
 (0, node_test_1.describe)("planner_shadow runtime", () => {
     (0, node_test_1.it)("starts with shadow disabled and does not load heavy runtime", async () => {
-        const host = createMemoryHost();
+        const host = createMemoryHost({ planner_runtime_mode: "off" });
         const coordinator = (0, compose_js_1.createPlannerOnDemandCoordinatorForTest)(createDeps(), { enabled: false });
         (0, compose_js_1.registerPlannerOnDemandCoordinatorForTest)(coordinator);
         await (0, runtime_js_1.initPlannerShadowRuntime)(host);
@@ -154,8 +155,19 @@ function createDeps() {
         await (0, runtime_js_1.stopPlannerShadowRuntime)();
         await (0, compose_js_1.stopPlannerOnDemandCoordinator)();
     });
+    (0, node_test_1.it)("native off ignores session shadow_enabled=true", async () => {
+        const host = createMemoryHost({ planner_runtime_mode: "off" });
+        const coordinator = (0, compose_js_1.createPlannerOnDemandCoordinatorForTest)(createDeps(), { enabled: false });
+        (0, compose_js_1.registerPlannerOnDemandCoordinatorForTest)(coordinator);
+        await (0, runtime_js_1.initPlannerShadowRuntime)(host);
+        await (0, runtime_js_1.handlePlannerShadowStateChange)(host, ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, true, false);
+        strict_1.default.equal((0, runtime_js_1.isPlannerShadowEnabledForTest)(), false);
+        strict_1.default.equal(coordinator.getStatus().enabled, false);
+        await (0, runtime_js_1.stopPlannerShadowRuntime)();
+        await (0, compose_js_1.stopPlannerOnDemandCoordinator)();
+    });
     (0, node_test_1.it)("activation alone does not start a worker", async () => {
-        const host = createMemoryHost();
+        const host = createMemoryHost({ planner_runtime_mode: "shadow_manual" });
         let builds = 0;
         const deps = createDeps();
         deps.buildSnapshot = async () => {
@@ -165,15 +177,12 @@ function createDeps() {
         const coordinator = (0, compose_js_1.createPlannerOnDemandCoordinatorForTest)(deps, { enabled: false });
         (0, compose_js_1.registerPlannerOnDemandCoordinatorForTest)(coordinator);
         await (0, runtime_js_1.initPlannerShadowRuntime)(host);
-        await (0, runtime_js_1.handlePlannerShadowStateChange)(host, ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, true, false);
-        strict_1.default.equal((0, runtime_js_1.isPlannerShadowEnabledForTest)(), true);
-        strict_1.default.equal(coordinator.getStatus().enabled, true);
         strict_1.default.equal(builds, 0);
         await (0, runtime_js_1.stopPlannerShadowRuntime)();
         await (0, compose_js_1.stopPlannerOnDemandCoordinator)();
     });
     (0, node_test_1.it)("disabled manual trigger sets planner_disabled skip", async () => {
-        const host = createMemoryHost();
+        const host = createMemoryHost({ planner_runtime_mode: "off" });
         const coordinator = (0, compose_js_1.createPlannerOnDemandCoordinatorForTest)(createDeps(), { enabled: false });
         (0, compose_js_1.registerPlannerOnDemandCoordinatorForTest)(coordinator);
         await (0, runtime_js_1.initPlannerShadowRuntime)(host);
@@ -185,7 +194,7 @@ function createDeps() {
         await (0, compose_js_1.stopPlannerOnDemandCoordinator)();
     });
     (0, node_test_1.it)("ignores acked manual trigger", async () => {
-        const host = createMemoryHost();
+        const host = createMemoryHost({ planner_runtime_mode: "shadow_manual" });
         let workers = 0;
         const deps = createDeps();
         deps.runWorkerJob = async (args) => {
@@ -195,14 +204,13 @@ function createDeps() {
         const coordinator = (0, compose_js_1.createPlannerOnDemandCoordinatorForTest)(deps, { enabled: false });
         (0, compose_js_1.registerPlannerOnDemandCoordinatorForTest)(coordinator);
         await (0, runtime_js_1.initPlannerShadowRuntime)(host);
-        await (0, runtime_js_1.handlePlannerShadowStateChange)(host, ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, true, false);
         await (0, runtime_js_1.handlePlannerShadowStateChange)(host, ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.manualTrigger, true, true);
         strict_1.default.equal(workers, 0);
         await (0, runtime_js_1.stopPlannerShadowRuntime)();
         await (0, compose_js_1.stopPlannerOnDemandCoordinator)();
     });
     (0, node_test_1.it)("enabled manual trigger starts exactly one run", async () => {
-        const host = createMemoryHost();
+        const host = createMemoryHost({ planner_runtime_mode: "shadow_manual" });
         let workers = 0;
         const deps = createDeps();
         deps.runWorkerJob = async (args) => {
@@ -212,16 +220,15 @@ function createDeps() {
         const coordinator = (0, compose_js_1.createPlannerOnDemandCoordinatorForTest)(deps, { enabled: false });
         (0, compose_js_1.registerPlannerOnDemandCoordinatorForTest)(coordinator);
         await (0, runtime_js_1.initPlannerShadowRuntime)(host);
-        await (0, runtime_js_1.handlePlannerShadowStateChange)(host, ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, true, false);
         await (0, runtime_js_1.handlePlannerShadowStateChange)(host, ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.manualTrigger, true, false);
-        await new Promise((r) => setTimeout(r, 20));
+        await new Promise((r) => setTimeout(r, 40));
         strict_1.default.equal(workers, 1);
         strict_1.default.equal(coordinator.getStatus().lastResult, "success");
         await (0, runtime_js_1.stopPlannerShadowRuntime)();
         await (0, compose_js_1.stopPlannerOnDemandCoordinator)();
     });
     (0, node_test_1.it)("force trigger passes force true to coordinator", async () => {
-        const host = createMemoryHost();
+        const host = createMemoryHost({ planner_runtime_mode: "shadow_manual" });
         const forces = [];
         const deps = createDeps();
         const coordinator = (0, compose_js_1.createPlannerOnDemandCoordinatorForTest)(deps, { enabled: false });
@@ -232,27 +239,28 @@ function createDeps() {
         };
         (0, compose_js_1.registerPlannerOnDemandCoordinatorForTest)(coordinator);
         await (0, runtime_js_1.initPlannerShadowRuntime)(host);
-        await (0, runtime_js_1.handlePlannerShadowStateChange)(host, ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, true, false);
         await (0, runtime_js_1.handlePlannerShadowStateChange)(host, ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.manualForceTrigger, true, false);
-        await new Promise((r) => setTimeout(r, 20));
+        await new Promise((r) => setTimeout(r, 40));
         strict_1.default.deepEqual(forces, [true]);
         await (0, runtime_js_1.stopPlannerShadowRuntime)();
         await (0, compose_js_1.stopPlannerOnDemandCoordinator)();
     });
     (0, node_test_1.it)("writes compact primitive status states only", async () => {
-        const host = createMemoryHost();
+        const host = createMemoryHost({ planner_runtime_mode: "shadow_manual" });
         const coordinator = (0, compose_js_1.createPlannerOnDemandCoordinatorForTest)(createDeps(), { enabled: false });
         (0, compose_js_1.registerPlannerOnDemandCoordinatorForTest)(coordinator);
         await (0, runtime_js_1.initPlannerShadowRuntime)(host);
-        await (0, runtime_js_1.handlePlannerShadowStateChange)(host, ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, true, false);
         await (0, runtime_js_1.handlePlannerShadowStateChange)(host, ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.manualTrigger, true, false);
-        await new Promise((r) => setTimeout(r, 30));
+        await new Promise((r) => setTimeout(r, 40));
         const comparisonStatus = host.states.get(ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.comparisonStatus)?.val;
         strict_1.default.equal(comparisonStatus, "matched");
         const refRev = String(host.states.get(ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.comparisonReferenceRevision)?.val ?? "");
         strict_1.default.ok(refRev.length <= 12);
         for (const [, stored] of host.states) {
-            strict_1.default.ok(typeof stored.val === "string" || typeof stored.val === "number" || typeof stored.val === "boolean");
+            strict_1.default.ok(stored.val === null ||
+                typeof stored.val === "string" ||
+                typeof stored.val === "number" ||
+                typeof stored.val === "boolean", `non-primitive state value: ${JSON.stringify(stored.val)}`);
         }
         await (0, runtime_js_1.stopPlannerShadowRuntime)();
         await (0, compose_js_1.stopPlannerOnDemandCoordinator)();

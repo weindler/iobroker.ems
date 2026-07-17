@@ -28,7 +28,8 @@ import type { BatteryWinterDayInput } from "./rules/battery_winter";
 import type { BatteryWinterPlanConfig } from "./battery_winter_config";
 
 export const PLANNER_SURPLUS_MIN_W = 400;
-export const PLANNER_BATTERY_TARGET_SOC_PCT = 95;
+import { PLANNER_BATTERY_TARGET_SOC_PCT } from "./mode_policy";
+export { PLANNER_BATTERY_TARGET_SOC_PCT };
 export const PLANNER_BATTERY_MIN_SURPLUS_W = 500;
 
 export interface PlannerInputs {

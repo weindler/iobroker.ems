@@ -19,7 +19,8 @@ const config_2 = require("../learning/weather/config");
 const state_util_1 = require("../ems_light/state_util");
 const mode_policy_1 = require("./mode_policy");
 exports.PLANNER_SURPLUS_MIN_W = 400;
-exports.PLANNER_BATTERY_TARGET_SOC_PCT = 95;
+const mode_policy_2 = require("./mode_policy");
+Object.defineProperty(exports, "PLANNER_BATTERY_TARGET_SOC_PCT", { enumerable: true, get: function () { return mode_policy_2.PLANNER_BATTERY_TARGET_SOC_PCT; } });
 exports.PLANNER_BATTERY_MIN_SURPLUS_W = 500;
 async function readNum(host, id) {
     try {

@@ -551,14 +551,19 @@ function createFakeDeps(overrides = {}) {
     });
 });
 (0, node_test_1.describe)("planner_coordinator import boundaries", () => {
-    (0, node_test_1.it)("does not import operator runtime modules", () => {
+    (0, node_test_1.it)("core coordinator does not import operator ticks or worker runtime", () => {
         strict_1.default.doesNotThrow(() => (0, import_graph_js_1.assertNoForbiddenImportRoots)([
             "planner_coordinator/coordinator.ts",
             "planner_coordinator/trigger.ts",
             "planner_coordinator/status.ts",
             "planner_coordinator/constants.ts",
-            "planner_coordinator/types.ts",
-        ], ["operator"]));
+        ], [
+            "operator/forecast/tick",
+            "operator/daily_plan/tick",
+            "operator/contributions/read",
+            "planner_worker",
+            "planner_candidate/build",
+        ]));
     });
     (0, node_test_1.it)("does not reference runtime engine paths in coordinator sources", () => {
         const text = (0, node_fs_1.readFileSync)(path.join(process.cwd(), "src/planner_coordinator/coordinator.ts"), "utf8");

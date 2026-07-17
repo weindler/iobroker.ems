@@ -3,6 +3,12 @@ import type { PlannerPreparedInput } from "../planner_preparation/types";
 import type { PlannerInputSnapshot } from "../planner_snapshot/types";
 import type { PlannerWorkerResult } from "../planner_contracts/types";
 import type { PlannerShadowComparisonResult, PlannerShadowComparisonStatus } from "../planner_shadow/types";
+import type { PlannerCandidateComparisonStatus } from "../planner_shadow/candidate_compare";
+
+// Allow Phase-3E candidate statuses on the same compact field.
+export type PlannerCoordinatorComparisonStatus =
+	| PlannerShadowComparisonStatus
+	| PlannerCandidateComparisonStatus;
 
 export type PlannerCoordinatorState =
 	| "disabled"
@@ -48,11 +54,15 @@ export interface PlannerCoordinatorStatus {
 	lastSkipReason?: string;
 	lastErrorCode?: string;
 	lastTriggerReason?: PlannerTriggerReason;
-	comparisonStatus?: PlannerShadowComparisonStatus;
+	comparisonStatus?: PlannerCoordinatorComparisonStatus;
 	comparisonReferenceRevision?: string;
 	comparisonWorkerRevision?: string;
 	comparisonMismatchCount?: number;
 	comparisonFirstMismatch?: string;
+	comparisonFirstDomain?: string;
+	comparisonMismatchedSlots?: number;
+	candidateRevision?: string;
+	candidateValidation?: string;
 }
 
 export type PlannerCoordinatorStatusListener = (status: PlannerCoordinatorStatus) => void;
@@ -91,7 +101,8 @@ export interface PlannerOnDemandCoordinatorDependencies {
 	compareShadowOutput?: (input: {
 		snapshot: PlannerInputSnapshot;
 		prepared: PlannerPreparedInput;
-	}) => PlannerShadowComparisonResult;
+		jobId?: string;
+	}) => PlannerShadowComparisonResult | import("../planner_shadow/candidate_compare").PlannerCandidateComparisonResult;
 }
 
 export interface PlannerOnDemandCoordinatorOptions {

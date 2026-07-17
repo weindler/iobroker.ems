@@ -188,6 +188,7 @@ class Ems extends utils.Adapter {
             if (await (0, runtime_1.handlePlannerShadowStateChange)(this, rel, state.val, state.ack)) {
                 return;
             }
+            (0, runtime_1.observePlannerTriggerStateChange)(rel, state.ack);
         }
         const inboxId = `${this.namespace}.${states_1.STATE.command.inbox}`;
         if (id !== inboxId || !state)

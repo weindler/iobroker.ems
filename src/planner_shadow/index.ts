@@ -33,6 +33,12 @@ export {
 	initPlannerShadowRuntime,
 	stopPlannerShadowRuntime,
 	handlePlannerShadowStateChange,
+	observePlannerTriggerStateChange,
 	isPlannerShadowEnabledForTest,
+	getPlannerConfiguredModeForTest,
+	getPlannerEffectiveModeForTest,
 } from "./runtime";
 export type { PlannerShadowRuntimeHost } from "./runtime";
+export { resolveEffectivePlannerMode, initialSessionShadowFromNative } from "./mode";
+export { comparePlanCandidates } from "./candidate_compare";
+export type { PlannerCandidateComparisonResult, PlannerCandidateComparisonStatus } from "./candidate_compare";

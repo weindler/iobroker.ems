@@ -30,9 +30,12 @@ const constants_1 = require("../planner_paths/constants");
 const validate_1 = require("../planner_contracts/validate");
 const validate_2 = require("../planner_contracts/validate");
 const constants_2 = require("../planner_preparation/constants");
-const prepare_1 = require("../planner_preparation/prepare");
+const build_1 = require("../planner_candidate/build");
+const io_1 = require("../planner_candidate/io");
+const types_1 = require("../planner_candidate/types");
+const policy_1 = require("../planner_publish/policy");
 const validate_3 = require("../planner_preparation/validate");
-const types_1 = require("../planner_preparation/types");
+const types_2 = require("../planner_preparation/types");
 const hash_1 = require("../planner_repository/hash");
 const schema_1 = require("../planner_repository/schema");
 function buildStubForecastPlan(capturedAt, horizonEnd) {
@@ -58,22 +61,39 @@ function buildStubDailyPlan(capturedAt, date) {
         allocations: [{ addon_id: "battery", power_w: 0 }],
     };
 }
-function semanticRevision(forecast, daily) {
-    const payload = {
-        forecast: {
-            revision: forecast.revision,
-            status: forecast.status,
-            horizon_start: forecast.horizon_start,
-            horizon_end: forecast.horizon_end,
-            slot_count: forecast.slots.length,
-        },
-        daily: {
-            revision: daily.revision,
-            status: daily.status,
-            date: daily.date,
-            allocation_count: daily.allocations.length,
-        },
-    };
+function semanticRevision(forecast, daily, candidateRev) {
+    const payload = candidateRev != null
+        ? {
+            forecast: {
+                revision: forecast.revision,
+                status: forecast.status,
+                horizon_start: forecast.horizon_start,
+                horizon_end: forecast.horizon_end,
+                slot_count: forecast.slots.length,
+            },
+            daily: {
+                revision: daily.revision,
+                status: daily.status,
+                date: daily.date,
+                allocation_count: daily.allocations.length,
+            },
+            candidateRevision: candidateRev,
+        }
+        : {
+            forecast: {
+                revision: forecast.revision,
+                status: forecast.status,
+                horizon_start: forecast.horizon_start,
+                horizon_end: forecast.horizon_end,
+                slot_count: forecast.slots.length,
+            },
+            daily: {
+                revision: daily.revision,
+                status: daily.status,
+                date: daily.date,
+                allocation_count: daily.allocations.length,
+            },
+        };
     return (0, hash_1.sha256Hex)((0, hash_1.stableSemanticStringify)(payload));
 }
 async function removePreparedOutput(jobDir) {
@@ -176,20 +196,40 @@ async function runSnapshotV2Job(jobDir, inputPath, request, options) {
     }
     catch (e) {
         await removePreparedOutput(jobDir);
-        if (e instanceof types_1.PlannerInputValidationError) {
+        if (e instanceof types_2.PlannerInputValidationError) {
             return { exitCode: 2, message: `${e.code}: ${e.message}` };
         }
         return { exitCode: 2, message: String(e).slice(0, 480) };
     }
     let prepared;
+    let candidate;
     try {
-        prepared = (0, prepare_1.preparePlannerFromSnapshot)(snapshot);
+        const built = (0, build_1.buildPlanCandidateFromSnapshot)(snapshot);
+        prepared = built.prepared;
+        candidate = built.candidate;
         const runtimeRoot = options.runtimePlannerDir ?? path.resolve(jobDir, "..", "..");
         await (0, validate_3.writePreparedInput)(jobDir, prepared, { runtimeRootDir: runtimeRoot });
+        await (0, io_1.writePlanCandidateAtomic)(jobDir, candidate);
     }
     catch (e) {
         await removePreparedOutput(jobDir);
         return { exitCode: 2, message: String(e).slice(0, 480) };
+    }
+    const publishDecision = (0, policy_1.resolvePlannerPublishTarget)({
+        requestedTarget: policy_1.PHASE_3E_PUBLISH_DEFAULTS.requestedTarget,
+        jobMode: request.mode,
+        releaseGate: policy_1.PHASE_3E_PUBLISH_DEFAULTS.releaseGate,
+        candidateValid: candidate.validationStatus !== "failed",
+        generationMatches: true,
+        inputRevisionMatches: candidate.inputRevision === snapshot.inputRevision,
+        shuttingDown: false,
+        productiveTakeoverMode: policy_1.PHASE_3E_PUBLISH_DEFAULTS.productiveTakeoverMode,
+    });
+    if (publishDecision.target === "blocked_canonical" || publishDecision.reason === "canonical_gate_closed") {
+        // expected in simulation — candidate only
+    }
+    if (!publishDecision.allowed && publishDecision.target !== "candidate") {
+        // still write job-local artifacts for shadow compare; never touch durable canonical
     }
     const capturedAt = snapshot.capturedAt;
     const horizonEnd = prepared.horizonEnd;
@@ -211,28 +251,31 @@ async function runSnapshotV2Job(jobDir, inputPath, request, options) {
     const dailyHash = await (0, hash_1.sha256File)(dailyPath);
     const preparedPath = path.join(jobDir, constants_2.PLANNER_PREPARED_INPUT_FILE);
     const preparedHash = await (0, hash_1.sha256File)(preparedPath);
+    const candidatePath = path.join(jobDir, types_1.PLANNER_CANDIDATE_FILE);
+    const candidateHash = await (0, hash_1.sha256File)(candidatePath);
     const forecastStat = await fs.stat(forecastPath);
     const dailyStat = await fs.stat(dailyPath);
     const preparedStat = await fs.stat(preparedPath);
-    const semRev = semanticRevision(forecast, daily);
+    const candidateStat = await fs.stat(candidatePath);
+    const semRev = semanticRevision(forecast, daily, candidate.candidateRevision);
     const summary = {
         forecast: {
-            status: forecast.status,
-            revision: forecast.revision,
-            horizonStart: forecast.horizon_start,
-            horizonEnd: forecast.horizon_end,
-            reasonDe: `Phase-3B Grid-Supply-Vorbereitung (${prepared.slots.length} Slots)`,
+            status: candidate.forecastStatus,
+            revision: 1,
+            horizonStart: candidate.horizonStart,
+            horizonEnd: candidate.horizonEnd,
+            reasonDe: `Phase-3E Candidate (${candidate.slotCount} Slots)`,
         },
         daily: {
-            status: daily.status,
-            revision: daily.revision,
-            date: daily.date,
-            validUntil: daily.valid_until,
-            reasonDe: "Phase-3B Stub-Daily",
+            status: candidate.dailyStatus,
+            revision: 1,
+            date: capturedAt.slice(0, 10),
+            validUntil: null,
+            reasonDe: `Phase-3E Allocation (${candidate.allocations.length} Einträge)`,
         },
         quality: {
-            forecast: "prepared",
-            daily: "stub",
+            forecast: candidate.validationStatus === "ok" ? "candidate" : candidate.validationStatus,
+            daily: candidate.validationStatus === "ok" ? "candidate" : candidate.validationStatus,
         },
     };
     const result = {
@@ -242,20 +285,18 @@ async function runSnapshotV2Job(jobDir, inputPath, request, options) {
         status: "ok",
         semanticRevision: semRev,
         summary,
-        allocations: [
-            {
-                addonId: "battery",
-                status: "ready",
-                revision: 1,
-                nextAction: null,
-                nextWindowStart: null,
-                nextWindowEnd: null,
-                powerW: 0,
-                energyKwh: null,
-                reasonDe: "Phase-3B Stub-Allocation",
-                payloadJson: "[]",
-            },
-        ],
+        allocations: candidate.allocations.slice(0, 32).map((a) => ({
+            addonId: a.contributionId,
+            status: a.status,
+            revision: 1,
+            nextAction: null,
+            nextWindowStart: a.slotStart,
+            nextWindowEnd: a.slotEnd,
+            powerW: a.powerW,
+            energyKwh: a.energyKwh,
+            reasonDe: a.status,
+            payloadJson: "[]",
+        })),
         files: [
             {
                 fileName: constants_1.CANONICAL_FORECAST_PLAN_FILE,
@@ -272,16 +313,21 @@ async function runSnapshotV2Job(jobDir, inputPath, request, options) {
                 byteSize: preparedStat.size,
                 sha256: preparedHash,
             },
+            {
+                fileName: types_1.PLANNER_CANDIDATE_FILE,
+                byteSize: candidateStat.size,
+                sha256: candidateHash,
+            },
         ],
     };
     const summaryJson = `${JSON.stringify(summary, null, 2)}\n`;
     const resultJson = `${JSON.stringify(result, null, 2)}\n`;
     await fs.writeFile(path.join(jobDir, constants_1.JOB_SUMMARY_FILE), summaryJson, { mode: 0o600 });
     await fs.writeFile(path.join(jobDir, constants_1.JOB_RESULT_FILE), resultJson, { mode: 0o600 });
-    const revHint = ` rev=${snapshot.inputRevision.slice(0, 12)}`;
+    const revHint = ` rev=${snapshot.inputRevision.slice(0, 12)} cand=${candidate.candidateRevision.slice(0, 12)}`;
     return {
         exitCode: 0,
-        message: `ok slots=${prepared.slots.length}${revHint}`,
+        message: `ok slots=${candidate.slotCount}${revHint} publish=${publishDecision.target}`,
     };
 }
 /**

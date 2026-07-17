@@ -42,10 +42,12 @@ function resolvePlannerPaths(input) {
     const runtimePlannerDir = path.join(ems.runtimeDataDir, constants_1.RUNTIME_PLANNER_SEGMENT);
     const runtimeJobsDir = path.join(runtimePlannerDir, constants_1.RUNTIME_JOBS_SEGMENT);
     const runtimeSimulationsDir = path.join(runtimePlannerDir, constants_1.RUNTIME_SIMULATIONS_SEGMENT);
+    const runtimeCandidateDir = path.join(runtimePlannerDir, constants_1.RUNTIME_CANDIDATE_SEGMENT);
     (0, paths_1.assertPathWithinRoot)(durablePlannerDir, ems.durableDataDir);
     (0, paths_1.assertPathWithinRoot)(runtimePlannerDir, ems.runtimeDataDir);
     (0, paths_1.assertPathWithinRoot)(runtimeJobsDir, ems.runtimeDataDir);
     (0, paths_1.assertPathWithinRoot)(runtimeSimulationsDir, ems.runtimeDataDir);
+    (0, paths_1.assertPathWithinRoot)(runtimeCandidateDir, ems.runtimeDataDir);
     return {
         durablePlannerDir,
         canonicalForecastPlanPath: path.join(durablePlannerDir, constants_1.CANONICAL_FORECAST_PLAN_FILE),
@@ -53,6 +55,7 @@ function resolvePlannerPaths(input) {
         runtimePlannerDir,
         runtimeJobsDir,
         runtimeSimulationsDir,
+        runtimeCandidateDir,
         jobDir: (jobId) => {
             assertSafeJobId(jobId);
             const dir = path.join(runtimeJobsDir, jobId);
@@ -62,6 +65,12 @@ function resolvePlannerPaths(input) {
         simulationDir: (jobId) => {
             assertSafeJobId(jobId);
             const dir = path.join(runtimeSimulationsDir, jobId);
+            (0, paths_1.assertPathWithinRoot)(dir, ems.runtimeDataDir);
+            return dir;
+        },
+        candidateJobDir: (jobId) => {
+            assertSafeJobId(jobId);
+            const dir = path.join(runtimeCandidateDir, jobId);
             (0, paths_1.assertPathWithinRoot)(dir, ems.runtimeDataDir);
             return dir;
         },

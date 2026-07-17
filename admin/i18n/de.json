@@ -45,5 +45,9 @@
 	"SOC-Schwelle (%)": "SOC-Schwelle (%)",
 	"Maximale Sollleistung (W)": "Maximale Sollleistung (W)",
 	"Aktualisierungsintervall (s)": "Aktualisierungsintervall (s)",
-	"Diagnose": "Diagnose"
+	"Diagnose": "Diagnose",
+	"Planner Runtime (Shadow)": "Planner Runtime (Shadow)",
+	"Aus": "Aus",
+	"Shadow manuell": "Shadow manuell",
+	"Shadow automatisch": "Shadow automatisch"
 }

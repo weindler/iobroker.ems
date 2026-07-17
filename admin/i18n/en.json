@@ -45,5 +45,9 @@
 	"SOC-Schwelle (%)": "SOC threshold (%)",
 	"Maximale Sollleistung (W)": "Maximum setpoint power (W)",
 	"Aktualisierungsintervall (s)": "Update interval (s)",
-	"Diagnose": "Diagnostics"
+	"Diagnose": "Diagnostics",
+	"Planner Runtime (Shadow)": "Planner Runtime (Shadow)",
+	"Aus": "Off",
+	"Shadow manuell": "Shadow manual",
+	"Shadow automatisch": "Shadow automatic"
 }

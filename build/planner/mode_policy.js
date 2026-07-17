@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.plannerModePolicyFromGlobalMode = void 0;
+exports.plannerModePolicyFromGlobalMode = exports.PLANNER_BATTERY_TARGET_SOC_PCT = void 0;
 const constants_1 = require("../global_modes/constants");
 const config_1 = require("../global_modes/config");
-const inputs_1 = require("./inputs");
+/** Default charge target used by balanced/comfort mode policies. */
+exports.PLANNER_BATTERY_TARGET_SOC_PCT = 95;
 const MODE_POLICIES = {
     off: {
         mode: "off",
@@ -12,7 +13,7 @@ const MODE_POLICIES = {
         allowPvCharge: false,
         supportBatteryOnDeficit: false,
         batteryMinSocForDeficitPct: 100,
-        chargeTargetSocPct: inputs_1.PLANNER_BATTERY_TARGET_SOC_PCT,
+        chargeTargetSocPct: exports.PLANNER_BATTERY_TARGET_SOC_PCT,
         batterySurplusMinFactor: 1,
         labelDe: "Off — keine Planner-Optimierung",
     },
@@ -34,7 +35,7 @@ const MODE_POLICIES = {
         allowPvCharge: true,
         supportBatteryOnDeficit: false,
         batteryMinSocForDeficitPct: 100,
-        chargeTargetSocPct: inputs_1.PLANNER_BATTERY_TARGET_SOC_PCT,
+        chargeTargetSocPct: exports.PLANNER_BATTERY_TARGET_SOC_PCT,
         batterySurplusMinFactor: 1,
         labelDe: "Balanced — Überschuss Heizstab, dann Batterie",
     },
@@ -45,7 +46,7 @@ const MODE_POLICIES = {
         allowPvCharge: true,
         supportBatteryOnDeficit: true,
         batteryMinSocForDeficitPct: 15,
-        chargeTargetSocPct: inputs_1.PLANNER_BATTERY_TARGET_SOC_PCT,
+        chargeTargetSocPct: exports.PLANNER_BATTERY_TARGET_SOC_PCT,
         batterySurplusMinFactor: 1,
         labelDe: "Comfort — Batterie bei Wolken mitnutzen",
     },

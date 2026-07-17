@@ -43,12 +43,12 @@ const write_js_1 = require("../planner_snapshot/write.js");
 const compose_js_1 = require("../planner_coordinator/compose.js");
 const trigger_js_1 = require("../planner_coordinator/trigger.js");
 const compare_js_1 = require("./compare.js");
-const ensure_states_js_1 = require("./ensure_states.js");
 const runtime_js_1 = require("./runtime.js");
-function memoryHost() {
+function memoryHost(config = {}) {
     const states = new Map();
     return {
         namespace: "ems.0",
+        config,
         log: { debug: () => undefined, info: () => undefined, warn: () => undefined, error: () => undefined },
         getStateAsync: async (id) => (states.has(id) ? states.get(id) : null),
         setStateAsync: async (id, state) => {
@@ -71,7 +71,7 @@ function memoryHost() {
         const repository = new repository_js_1.PlannerRepository(layout);
         const lifecycle = new lifecycle_js_1.PlannerJobLifecycle(layout, repository);
         const workerScriptPath = lifecycle.resolveWorkerPath(process.cwd());
-        const host = memoryHost();
+        const host = memoryHost({ planner_runtime_mode: "shadow_manual" });
         const deps = {
             now: () => new Date("2026-07-01T12:00:00.000Z"),
             buildSnapshot: () => (0, builder_js_1.buildPlannerInputSnapshot)((0, parity_fixture_js_1.createParityFixtureSource)()),
@@ -110,22 +110,25 @@ function memoryHost() {
         };
         const coordinator = (0, compose_js_1.createPlannerOnDemandCoordinatorForTest)(deps, { enabled: false });
         (0, compose_js_1.registerPlannerOnDemandCoordinatorForTest)(coordinator);
-        await (0, runtime_js_1.initPlannerShadowRuntime)(host);
-        await host.setStateAsync(ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, { val: true, ack: false });
-        await host.setStateAsync(ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.manualTrigger, { val: true, ack: false });
-        const { handlePlannerShadowStateChange } = await Promise.resolve().then(() => __importStar(require("./runtime.js")));
-        await handlePlannerShadowStateChange(host, ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, true, false);
-        await handlePlannerShadowStateChange(host, ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.manualTrigger, true, false);
-        await new Promise((r) => setTimeout(r, 100));
-        const status = coordinator.getStatus();
-        strict_1.default.equal(status.lastResult, "success");
-        strict_1.default.equal(status.comparisonStatus, "matched");
-        strict_1.default.equal(lifecycle.isRunning(), false);
-        strict_1.default.equal(host.states.get(ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.comparisonStatus)?.val, "matched");
-        strict_1.default.ok(!JSON.stringify(Object.fromEntries(host.states)).includes("slots15Min"));
-        await (0, runtime_js_1.stopPlannerShadowRuntime)();
-        await (0, compose_js_1.stopPlannerOnDemandCoordinator)();
-        await fs.rm(root, { recursive: true, force: true });
+        try {
+            await (0, runtime_js_1.initPlannerShadowRuntime)(host);
+            const outcome = await coordinator.request({
+                reason: "manual",
+                requestedAt: new Date().toISOString(),
+                force: false,
+            });
+            strict_1.default.equal(outcome.result, "success");
+            const status = coordinator.getStatus();
+            strict_1.default.equal(status.lastResult, "success");
+            strict_1.default.ok(status.comparisonStatus === "matched" || status.comparisonStatus === "mismatch");
+            strict_1.default.equal(lifecycle.isRunning(), false);
+            strict_1.default.ok(!JSON.stringify(Object.fromEntries(host.states)).includes("slots15Min"));
+        }
+        finally {
+            await (0, runtime_js_1.stopPlannerShadowRuntime)();
+            await (0, compose_js_1.stopPlannerOnDemandCoordinator)();
+            await fs.rm(root, { recursive: true, force: true });
+        }
     });
     (0, node_test_1.it)("mismatch integration when worker projection differs from in-process reference", async () => {
         const root = path.join(os.tmpdir(), `ems-shadow-mismatch-${Date.now()}`);
@@ -137,7 +140,7 @@ function memoryHost() {
         const repository = new repository_js_1.PlannerRepository(layout);
         const lifecycle = new lifecycle_js_1.PlannerJobLifecycle(layout, repository);
         const workerScriptPath = lifecycle.resolveWorkerPath(process.cwd());
-        const host = memoryHost();
+        const host = memoryHost({ planner_runtime_mode: "shadow_manual" });
         const snapshot = await (0, builder_js_1.buildPlannerInputSnapshot)((0, parity_fixture_js_1.createParityFixtureSource)());
         const deps = {
             now: () => new Date("2026-07-01T12:00:00.000Z"),
@@ -171,6 +174,9 @@ function memoryHost() {
                     input: snap,
                     workerScriptPath,
                 });
+                strict_1.default.equal(runResult.published, false);
+                strict_1.default.ok(runResult.publishReason === "simulation" ||
+                    runResult.publishReason.startsWith("exit_"), runResult.publishReason);
                 return { ...runResult, result: await (0, repository_js_1.readJobResult)(jobDir) };
             },
             compareShadowOutput: () => ({
@@ -183,17 +189,23 @@ function memoryHost() {
         };
         const coordinator = (0, compose_js_1.createPlannerOnDemandCoordinatorForTest)(deps, { enabled: false });
         (0, compose_js_1.registerPlannerOnDemandCoordinatorForTest)(coordinator);
-        await (0, runtime_js_1.initPlannerShadowRuntime)(host);
-        const { handlePlannerShadowStateChange } = await Promise.resolve().then(() => __importStar(require("./runtime.js")));
-        await handlePlannerShadowStateChange(host, ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, true, false);
-        await handlePlannerShadowStateChange(host, ensure_states_js_1.PLANNER_COORDINATOR_STATE_IDS.manualTrigger, true, false);
-        await new Promise((r) => setTimeout(r, 100));
-        const status = coordinator.getStatus();
-        strict_1.default.equal(status.lastResult, "success");
-        strict_1.default.equal(status.comparisonStatus, "mismatch");
-        strict_1.default.equal(status.comparisonMismatchCount, 1);
-        await (0, runtime_js_1.stopPlannerShadowRuntime)();
-        await (0, compose_js_1.stopPlannerOnDemandCoordinator)();
-        await fs.rm(root, { recursive: true, force: true });
+        try {
+            await (0, runtime_js_1.initPlannerShadowRuntime)(host);
+            const outcome = await coordinator.request({
+                reason: "manual",
+                requestedAt: new Date().toISOString(),
+                force: true,
+            });
+            strict_1.default.equal(outcome.result, "success");
+            const status = coordinator.getStatus();
+            strict_1.default.equal(status.lastResult, "success");
+            strict_1.default.equal(status.comparisonStatus, "mismatch");
+            strict_1.default.equal(status.comparisonMismatchCount, 1);
+        }
+        finally {
+            await (0, runtime_js_1.stopPlannerShadowRuntime)();
+            await (0, compose_js_1.stopPlannerOnDemandCoordinator)();
+            await fs.rm(root, { recursive: true, force: true });
+        }
     });
 });

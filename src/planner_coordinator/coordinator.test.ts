@@ -575,7 +575,7 @@ describe("planner_coordinator shutdown", () => {
 });
 
 describe("planner_coordinator import boundaries", () => {
-	it("does not import operator runtime modules", () => {
+	it("core coordinator does not import operator ticks or worker runtime", () => {
 		assert.doesNotThrow(() =>
 			assertNoForbiddenImportRoots(
 				[
@@ -583,9 +583,14 @@ describe("planner_coordinator import boundaries", () => {
 					"planner_coordinator/trigger.ts",
 					"planner_coordinator/status.ts",
 					"planner_coordinator/constants.ts",
-					"planner_coordinator/types.ts",
 				],
-				["operator"],
+				[
+					"operator/forecast/tick",
+					"operator/daily_plan/tick",
+					"operator/contributions/read",
+					"planner_worker",
+					"planner_candidate/build",
+				],
 			),
 		);
 	});

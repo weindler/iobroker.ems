@@ -1,3 +1,4 @@
+import * as fs from "node:fs";
 import * as path from "node:path";
 import { resolveEmsPaths } from "../backup_integration/paths";
 import { PlannerJobLifecycle } from "../planner_job/lifecycle";
@@ -5,12 +6,16 @@ import { PLANNER_DEFAULT_JOB_TIMEOUT_MS } from "../planner_job/constants";
 import type { PlannerJobRequest } from "../planner_contracts/types";
 import { readAndValidatePreparedInputFile } from "../planner_preparation/validate";
 import { resolvePlannerPaths } from "../planner_paths/paths";
+import { PLANNER_CANDIDATE_FILE } from "../planner_candidate/types";
+import type { PlannerPlanCandidate } from "../planner_candidate/types";
+import { buildPlanCandidateFromSnapshot } from "../planner_candidate/build";
+import { comparePlanCandidates } from "../planner_shadow/candidate_compare";
+import { compareSnapshotPreparedInput } from "../planner_shadow/compare";
 import { readJobResult, PlannerRepository } from "../planner_repository/repository";
 import { buildPlannerInputSnapshotFromIoBroker } from "../planner_snapshot/from_iobroker";
 import type { PlannerSnapshotIoBrokerHost } from "../planner_snapshot/iobroker_source";
 import { writePlannerInputSnapshot } from "../planner_snapshot/write";
 import { triggerToJobTrigger } from "./trigger";
-import { compareSnapshotPreparedInput } from "../planner_shadow/compare";
 import type {
 	PlannerOnDemandCoordinatorDependencies,
 	PlannerWorkerRunResult,
@@ -58,7 +63,18 @@ export function createPlannerRuntimeContext(
 				expectedInputRevision,
 				runtimeRootDir: layout.runtimePlannerDir,
 			}),
-		cleanupJob: async (jobId) => repository.cleanupJobDir(layout.jobDir(jobId), true),
+		cleanupJob: async (jobId) => {
+			// Preserve last candidate under non-canonical candidate area before job cleanup.
+			try {
+				const src = path.join(layout.jobDir(jobId), PLANNER_CANDIDATE_FILE);
+				const destDir = layout.candidateJobDir(jobId);
+				await fs.promises.mkdir(destDir, { recursive: true, mode: 0o700 });
+				await fs.promises.copyFile(src, path.join(destDir, PLANNER_CANDIDATE_FILE));
+			} catch {
+				// absent candidate is fine
+			}
+			await repository.cleanupJobDir(layout.jobDir(jobId), true);
+		},
 		runWorkerJob: async ({ jobId, generation, snapshot, triggerReason, requestedAt, timeoutMs }) => {
 			const jobDir = layout.jobDir(jobId);
 			await writePlannerInputSnapshot(jobDir, snapshot, {
@@ -86,7 +102,24 @@ export function createPlannerRuntimeContext(
 			const merged: PlannerWorkerRunResult = { ...runResult, result };
 			return merged;
 		},
-		compareShadowOutput: ({ snapshot, prepared }) => compareSnapshotPreparedInput(snapshot, prepared).result,
+		compareShadowOutput: ({ snapshot, prepared, jobId }) => {
+			if (!jobId) {
+				return compareSnapshotPreparedInput(snapshot, prepared).result;
+			}
+			try {
+				const reference = buildPlanCandidateFromSnapshot(snapshot).candidate;
+				const raw = fs.readFileSync(path.join(layout.jobDir(jobId), PLANNER_CANDIDATE_FILE), "utf8");
+				const worker = JSON.parse(raw) as PlannerPlanCandidate;
+				return comparePlanCandidates(reference, worker);
+			} catch {
+				return {
+					status: "worker_failed" as const,
+					mismatchCount: 0,
+					mismatchedSlotCount: 0,
+					firstMismatchPath: "candidate_read",
+				};
+			}
+		},
 	};
 
 	return { deps, lifecycle };

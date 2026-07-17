@@ -250,7 +250,10 @@ export class PlannerOnDemandCoordinator {
 			this.status.lastResult = "success";
 			this.status.lastErrorCode = undefined;
 			this.status.lastSkipReason = undefined;
-			this.applyComparisonResult(this.deps.compareShadowOutput?.({ snapshot, prepared }));
+			this.applyComparisonResult(this.deps.compareShadowOutput?.({ snapshot, prepared, jobId }));
+			if (this.status.comparisonReferenceRevision) {
+				this.status.candidateRevision = this.status.comparisonWorkerRevision;
+			}
 			this.finishRun(startedAt, "succeeded");
 
 			await this.deps.cleanupJob(jobId).catch(() => undefined);
@@ -317,7 +320,12 @@ export class PlannerOnDemandCoordinator {
 		this.setState(finalState);
 	}
 
-	private applyComparisonResult(comparison: PlannerShadowComparisonResult | undefined): void {
+	private applyComparisonResult(
+		comparison:
+			| PlannerShadowComparisonResult
+			| import("../planner_shadow/candidate_compare").PlannerCandidateComparisonResult
+			| undefined,
+	): void {
 		if (!comparison) {
 			return;
 		}
@@ -326,6 +334,15 @@ export class PlannerOnDemandCoordinator {
 		this.status.comparisonWorkerRevision = comparison.workerRevision;
 		this.status.comparisonMismatchCount = comparison.mismatchCount;
 		this.status.comparisonFirstMismatch = comparison.firstMismatchPath;
+		if ("firstMismatchDomain" in comparison) {
+			this.status.comparisonFirstDomain = comparison.firstMismatchDomain;
+		}
+		if ("mismatchedSlotCount" in comparison) {
+			this.status.comparisonMismatchedSlots = comparison.mismatchedSlotCount;
+		}
+		if (comparison.workerRevision) {
+			this.status.candidateRevision = comparison.workerRevision;
+		}
 	}
 
 	private notifyListeners(): void {

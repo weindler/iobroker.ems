@@ -4,6 +4,7 @@ import {
 	CANONICAL_DAILY_PLAN_FILE,
 	CANONICAL_FORECAST_PLAN_FILE,
 	DURABLE_PLANNER_SEGMENT,
+	RUNTIME_CANDIDATE_SEGMENT,
 	RUNTIME_JOBS_SEGMENT,
 	RUNTIME_PLANNER_SEGMENT,
 	RUNTIME_SIMULATIONS_SEGMENT,
@@ -18,8 +19,11 @@ export interface PlannerPathLayout {
 	runtimePlannerDir: string;
 	runtimeJobsDir: string;
 	runtimeSimulationsDir: string;
+	/** Non-canonical candidate area for shadow comparison only. */
+	runtimeCandidateDir: string;
 	jobDir: (jobId: string) => string;
 	simulationDir: (jobId: string) => string;
+	candidateJobDir: (jobId: string) => string;
 }
 
 function assertSafeJobId(jobId: string): void {
@@ -38,11 +42,13 @@ export function resolvePlannerPaths(input: PathResolverInput): PlannerPathLayout
 	const runtimePlannerDir = path.join(ems.runtimeDataDir, RUNTIME_PLANNER_SEGMENT);
 	const runtimeJobsDir = path.join(runtimePlannerDir, RUNTIME_JOBS_SEGMENT);
 	const runtimeSimulationsDir = path.join(runtimePlannerDir, RUNTIME_SIMULATIONS_SEGMENT);
+	const runtimeCandidateDir = path.join(runtimePlannerDir, RUNTIME_CANDIDATE_SEGMENT);
 
 	assertPathWithinRoot(durablePlannerDir, ems.durableDataDir);
 	assertPathWithinRoot(runtimePlannerDir, ems.runtimeDataDir);
 	assertPathWithinRoot(runtimeJobsDir, ems.runtimeDataDir);
 	assertPathWithinRoot(runtimeSimulationsDir, ems.runtimeDataDir);
+	assertPathWithinRoot(runtimeCandidateDir, ems.runtimeDataDir);
 
 	return {
 		durablePlannerDir,
@@ -51,6 +57,7 @@ export function resolvePlannerPaths(input: PathResolverInput): PlannerPathLayout
 		runtimePlannerDir,
 		runtimeJobsDir,
 		runtimeSimulationsDir,
+		runtimeCandidateDir,
 		jobDir: (jobId: string) => {
 			assertSafeJobId(jobId);
 			const dir = path.join(runtimeJobsDir, jobId);
@@ -60,6 +67,12 @@ export function resolvePlannerPaths(input: PathResolverInput): PlannerPathLayout
 		simulationDir: (jobId: string) => {
 			assertSafeJobId(jobId);
 			const dir = path.join(runtimeSimulationsDir, jobId);
+			assertPathWithinRoot(dir, ems.runtimeDataDir);
+			return dir;
+		},
+		candidateJobDir: (jobId: string) => {
+			assertSafeJobId(jobId);
+			const dir = path.join(runtimeCandidateDir, jobId);
 			assertPathWithinRoot(dir, ems.runtimeDataDir);
 			return dir;
 		},

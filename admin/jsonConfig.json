@@ -35,6 +35,30 @@
 					"lg": 4,
 					"xl": 4
 				},
+				"planner_runtime_mode": {
+					"type": "select",
+					"label": "Planner Runtime (Shadow)",
+					"options": [
+						{
+							"label": "Aus",
+							"value": "off"
+						},
+						{
+							"label": "Shadow manuell",
+							"value": "shadow_manual"
+						},
+						{
+							"label": "Shadow automatisch",
+							"value": "shadow_auto"
+						}
+					],
+					"default": "off",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
 				"hGlobalFailsafe": {
 					"type": "header",
 					"size": 2,

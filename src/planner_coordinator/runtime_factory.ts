@@ -8,13 +8,18 @@ import { readAndValidatePreparedInputFile } from "../planner_preparation/validat
 import { resolvePlannerPaths } from "../planner_paths/paths";
 import { PLANNER_CANDIDATE_FILE } from "../planner_candidate/types";
 import type { PlannerPlanCandidate } from "../planner_candidate/types";
-import { buildPlanCandidateFromSnapshot } from "../planner_candidate/build";
 import { comparePlanCandidates } from "../planner_shadow/candidate_compare";
 import { compareSnapshotPreparedInput } from "../planner_shadow/compare";
 import { readJobResult, PlannerRepository } from "../planner_repository/repository";
 import { buildPlannerInputSnapshotFromIoBroker } from "../planner_snapshot/from_iobroker";
 import type { PlannerSnapshotIoBrokerHost } from "../planner_snapshot/iobroker_source";
 import { writePlannerInputSnapshot } from "../planner_snapshot/write";
+import {
+	authoritativeProjectionIsUsable,
+	computeAuthoritativeDualRunProjection,
+	forbidAuthoritativeRecompute,
+	getActiveAuthoritativeProjection,
+} from "../planner_takeover/authoritative_projection";
 import { triggerToJobTrigger } from "./trigger";
 import type {
 	PlannerOnDemandCoordinatorDependencies,
@@ -64,7 +69,6 @@ export function createPlannerRuntimeContext(
 				runtimeRootDir: layout.runtimePlannerDir,
 			}),
 		cleanupJob: async (jobId) => {
-			// Preserve last candidate under non-canonical candidate area before job cleanup.
 			try {
 				const src = path.join(layout.jobDir(jobId), PLANNER_CANDIDATE_FILE);
 				const destDir = layout.candidateJobDir(jobId);
@@ -74,6 +78,22 @@ export function createPlannerRuntimeContext(
 				// absent candidate is fine
 			}
 			await repository.cleanupJobDir(layout.jobDir(jobId), true);
+		},
+		runAuthoritativeProjection: async ({ snapshot, generation, jobId }) => {
+			const projection = computeAuthoritativeDualRunProjection({
+				snapshot,
+				generation,
+				jobId,
+				// Dual-run seal only — never durable canonical publish.
+				sealPublish: () => true,
+			});
+			if (projection.publishStatus !== "ok") {
+				return {
+					ok: false,
+					errorCode: projection.publishErrorCode ?? "authoritative_publish_failed",
+				};
+			}
+			return { ok: true };
 		},
 		runWorkerJob: async ({ jobId, generation, snapshot, triggerReason, requestedAt, timeoutMs }) => {
 			const jobDir = layout.jobDir(jobId);
@@ -107,7 +127,18 @@ export function createPlannerRuntimeContext(
 				return compareSnapshotPreparedInput(snapshot, prepared).result;
 			}
 			try {
-				const reference = buildPlanCandidateFromSnapshot(snapshot).candidate;
+				const stored = getActiveAuthoritativeProjection();
+				if (!authoritativeProjectionIsUsable(stored) || stored.jobId !== jobId) {
+					forbidAuthoritativeRecompute();
+					return {
+						status: "in_process_failed" as const,
+						mismatchCount: 0,
+						mismatchedSlotCount: 0,
+						firstMismatchPath: "authoritative_projection_missing",
+						firstMismatchDomain: "authoritative",
+					};
+				}
+				const reference = stored.candidate;
 				const raw = fs.readFileSync(path.join(layout.jobDir(jobId), PLANNER_CANDIDATE_FILE), "utf8");
 				const worker = JSON.parse(raw) as PlannerPlanCandidate;
 				return comparePlanCandidates(reference, worker);
@@ -119,6 +150,13 @@ export function createPlannerRuntimeContext(
 					firstMismatchPath: "candidate_read",
 				};
 			}
+		},
+		onDualRunOutcome: async (event) => {
+			const { getDualRunBridgeContext } = await import("../planner_takeover/session.js");
+			const ctx = getDualRunBridgeContext();
+			if (!ctx) return;
+			const { handleCoordinatorDualRunOutcome } = await import("../planner_takeover/dual_run_bridge.js");
+			await handleCoordinatorDualRunOutcome(ctx, event);
 		},
 	};
 

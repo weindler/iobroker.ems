@@ -12,6 +12,9 @@ const HEAVY = [
     "/build/planner_preparation/prepare.js",
     "/build/planner_candidate/build.js",
     "/build/planner_snapshot/from_iobroker.js",
+    "/build/planner_takeover/record.js",
+    "/build/planner_takeover/dual_run_bridge.js",
+    "/build/planner_takeover/evidence_io.js",
 ];
 function run(body) {
     const r = (0, node_child_process_1.spawnSync)(process.execPath, ["-e", body], {

@@ -9,6 +9,7 @@ import { runFlexibleContributionsTick } from "../operator/contributions/flexible
 import { runForecastPlanTick } from "../operator/forecast/tick";
 import { ensureDailyPlanStates } from "../operator/daily_plan/states";
 import { ensurePlannerCoordinatorStates } from "../planner_shadow/ensure_states";
+import { ensurePlannerTakeoverStates } from "../planner_takeover/states";
 import { runDailyPlanTick } from "../operator/daily_plan/tick";
 
 export type { PlannerIntent } from "./types";
@@ -31,6 +32,7 @@ export async function ensurePlannerStateTree(host: PlannerHost): Promise<void> {
 	await ensureFlexibleContributionStates(host);
 	await ensureDailyPlanStates(host);
 	await ensurePlannerCoordinatorStates(host);
+	await ensurePlannerTakeoverStates(host);
 }
 
 /** Phase F — initiale Planner-Auswertung. */

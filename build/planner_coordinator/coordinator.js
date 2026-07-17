@@ -1,4 +1,27 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PlannerOnDemandCoordinator = void 0;
 const types_1 = require("../planner_preparation/types");
@@ -147,9 +170,11 @@ class PlannerOnDemandCoordinator {
         let jobId;
         let generation = 0;
         let inputRevision;
+        let snapshotForOutcome;
         try {
             this.setState("building_snapshot");
             const snapshot = await this.deps.buildSnapshot();
+            snapshotForOutcome = snapshot;
             inputRevision = snapshot.inputRevision;
             if (this.shouldSkipUnchangedInput(trigger, inputRevision)) {
                 const finishedAt = this.deps.now();
@@ -169,6 +194,25 @@ class PlannerOnDemandCoordinator {
             jobId = `planner-${generation}-${startedAt.getTime()}`;
             this.activeJobId = jobId;
             this.status.activeJobId = jobId;
+            let authoritativeFailed = false;
+            let authoritativeErrorCode;
+            if (this.deps.runAuthoritativeProjection) {
+                try {
+                    const auth = await this.deps.runAuthoritativeProjection({
+                        snapshot,
+                        generation,
+                        jobId,
+                    });
+                    if (auth && auth.ok === false) {
+                        authoritativeFailed = true;
+                        authoritativeErrorCode = auth.errorCode ?? "authoritative_failed";
+                    }
+                }
+                catch {
+                    authoritativeFailed = true;
+                    authoritativeErrorCode = "authoritative_failed";
+                }
+            }
             this.setState("starting_worker");
             this.setState("worker_running");
             const workerResult = await this.deps.runWorkerJob({
@@ -217,6 +261,27 @@ class PlannerOnDemandCoordinator {
             if (this.status.comparisonReferenceRevision) {
                 this.status.candidateRevision = this.status.comparisonWorkerRevision;
             }
+            await this.emitDualRunOutcome({
+                result: "success",
+                trigger,
+                generation,
+                jobId,
+                snapshot,
+                comparison: this.status.comparisonStatus
+                    ? {
+                        status: this.status.comparisonStatus,
+                        referenceRevision: this.status.comparisonReferenceRevision,
+                        workerRevision: this.status.comparisonWorkerRevision,
+                        mismatchCount: this.status.comparisonMismatchCount ?? 0,
+                        mismatchedSlotCount: this.status.comparisonMismatchedSlots ?? 0,
+                        firstMismatchPath: this.status.comparisonFirstMismatch,
+                        firstMismatchDomain: this.status.comparisonFirstDomain,
+                    }
+                    : undefined,
+                shuttingDown: this.stopping || this.stopped,
+                authoritativeFailed,
+                authoritativeErrorCode,
+            });
             this.finishRun(startedAt, "succeeded");
             await this.deps.cleanupJob(jobId).catch(() => undefined);
             return {
@@ -237,6 +302,19 @@ class PlannerOnDemandCoordinator {
             this.status.comparisonStatus = "worker_failed";
             this.status.comparisonMismatchCount = 0;
             this.status.comparisonFirstMismatch = undefined;
+            if (snapshotForOutcome) {
+                await this.emitDualRunOutcome({
+                    result: "failed",
+                    trigger,
+                    generation,
+                    jobId,
+                    snapshot: snapshotForOutcome,
+                    errorCode,
+                    shuttingDown: this.stopping || this.stopped || errorCode === "coordinator_stopping",
+                    authoritativeFailed: errorCode.includes("authoritative"),
+                    authoritativeErrorCode: errorCode.includes("authoritative") ? errorCode : undefined,
+                });
+            }
             this.finishRun(startedAt, "failed");
             if (jobId) {
                 await this.deps.cleanupJob(jobId).catch(() => undefined);
@@ -255,11 +333,28 @@ class PlannerOnDemandCoordinator {
             this.status.activeJobId = undefined;
             this.status.activeReason = undefined;
             this.runInProgress = false;
+            try {
+                void Promise.resolve().then(() => __importStar(require("../planner_takeover/authoritative_projection.js"))).then((m) => m.clearActiveAuthoritativeProjection())
+                    .catch(() => undefined);
+            }
+            catch {
+                // optional
+            }
             if (!this.stopping && !this.stopped && this.status.enabled) {
                 if (this.status.state === "succeeded" || this.status.state === "failed") {
                     this.setState("idle");
                 }
             }
+        }
+    }
+    async emitDualRunOutcome(event) {
+        if (!this.deps.onDualRunOutcome)
+            return;
+        try {
+            await this.deps.onDualRunOutcome(event);
+        }
+        catch {
+            // Dual-run / evidence failures must never fail the coordinator.
         }
     }
     shouldSkipUnchangedInput(trigger, inputRevision) {

@@ -4,17 +4,23 @@ import {
 } from "../planner_coordinator/compose";
 import type { PlannerCoordinatorStatus, PlannerTriggerReason } from "../planner_coordinator/types";
 import type { StateHost } from "../ems_light/state_util";
-import { plannerRuntimeModeFromConfig } from "../planner_config";
+import {
+	plannerRuntimeModeFromConfig,
+	plannerTakeoverEvaluationModeFromConfig,
+	type PlannerTakeoverEvaluationMode,
+} from "../planner_config";
 import {
 	PlannerTriggerSystem,
 	type AggregatedTriggerRequest,
 } from "../planner_trigger";
+import { resolvePlannerPaths } from "../planner_paths/paths";
 import {
 	isPlannerCoordinatorState,
 	PLANNER_COORDINATOR_STATE_IDS,
 } from "./ensure_states";
 import { initialSessionShadowFromNative, resolveEffectivePlannerMode } from "./mode";
 import { writePlannerCoordinatorStatusStates } from "./status_bridge";
+import { configureDualRunSession } from "../planner_takeover/session";
 
 export type PlannerShadowRuntimeHost = StateHost & {
 	namespace: string;
@@ -22,6 +28,7 @@ export type PlannerShadowRuntimeHost = StateHost & {
 	log: Pick<ioBroker.Logger, "debug" | "info" | "warn" | "error">;
 	subscribeStatesAsync?: (pattern: string) => Promise<void>;
 	unsubscribeStatesAsync?: (pattern: string) => Promise<void>;
+	getAbsoluteInstanceDataDir?: () => string;
 };
 
 const SUBSCRIBED_PATTERNS = [
@@ -30,10 +37,17 @@ const SUBSCRIBED_PATTERNS = [
 	PLANNER_COORDINATOR_STATE_IDS.manualForceTrigger,
 ];
 
+const TAKEOVER_STATE_PREFIX = "planner.takeover.";
+
+function isPlannerTakeoverStateId(relativeId: string): boolean {
+	return relativeId.startsWith(TAKEOVER_STATE_PREFIX);
+}
+
 let runtimeHost: PlannerShadowRuntimeHost | null = null;
 let statusUnsubscribe: (() => void) | null = null;
 let sessionShadowEnabled = false;
 let configuredMode = "off" as import("../planner_config").PlannerRuntimeMode;
+let configuredEvaluationMode: PlannerTakeoverEvaluationMode = "disabled";
 let unloadStopped = false;
 let triggerSystem: PlannerTriggerSystem | null = null;
 
@@ -59,12 +73,32 @@ async function writeModeStates(host: PlannerShadowRuntimeHost): Promise<void> {
 	await setStateIfChangedSafe(host, PLANNER_COORDINATOR_STATE_IDS.configuredMode, effective.configuredMode);
 	await setStateIfChangedSafe(host, PLANNER_COORDINATOR_STATE_IDS.effectiveMode, effective.effectiveMode);
 	await setStateIfChangedSafe(host, PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, sessionShadowEnabled);
+
+	const observing = effective.effectiveMode === "shadow_auto" && configuredEvaluationMode === "observe";
+	// Compact takeover mode states without loading evidence persistence when disabled.
+	await setStateIfChangedSafe(host, "planner.takeover.configured_evaluation_mode", configuredEvaluationMode);
+	await setStateIfChangedSafe(host, "planner.takeover.effective_evaluation_mode", observing ? "observe" : "disabled");
+	if (!observing) {
+		await setStateIfChangedSafe(host, "planner.takeover.state", "not_evaluated");
+		await setStateIfChangedSafe(host, "planner.takeover.canonical_allowed", false);
+		await setStateIfChangedSafe(host, "planner.takeover.would_be_eligible", false);
+		await setStateIfChangedSafe(
+			host,
+			"planner.takeover.block_reason",
+			effective.effectiveMode === "shadow_auto" ? "evaluation_disabled" : "runtime_mode_not_auto",
+		);
+	}
 }
 
 async function applySessionAndCoordinator(host: PlannerShadowRuntimeHost): Promise<void> {
 	const effective = resolveEffectivePlannerMode({
 		config: { planner_runtime_mode: configuredMode },
 		sessionShadowEnabled,
+	});
+	configureDualRunSession({
+		plannerRuntimeMode: effective.effectiveMode,
+		configuredEvaluationMode,
+		stateHost: host,
 	});
 	await setPlannerOnDemandCoordinatorEnabled(effective.coordinatorEnabled);
 	await writeModeStates(host);
@@ -116,8 +150,40 @@ export async function initPlannerShadowRuntime(host: PlannerShadowRuntimeHost): 
 		host.log.warn(`planner_runtime_mode invalid — clamped to off (raw=${String(parsed.raw)})`);
 	}
 
+	const evalParsed = plannerTakeoverEvaluationModeFromConfig(host.config);
+	configuredEvaluationMode = evalParsed.mode;
+	if (evalParsed.clamped) {
+		host.log.warn(
+			`planner_takeover_evaluation_mode invalid — clamped to disabled (raw=${String(evalParsed.raw)})`,
+		);
+	}
+
 	// Discard any persisted session grant; arm only from native mode.
 	sessionShadowEnabled = initialSessionShadowFromNative(configuredMode);
+
+	const layout = resolvePlannerPaths({
+		namespace: host.namespace,
+		getAbsoluteInstanceDataDir: () =>
+			typeof host.getAbsoluteInstanceDataDir === "function"
+				? host.getAbsoluteInstanceDataDir()
+				: "/tmp/ems-missing-instance-data",
+	});
+	const effectiveMode = resolveEffectivePlannerMode({
+		config: { planner_runtime_mode: configuredMode },
+		sessionShadowEnabled,
+	}).effectiveMode;
+	configureDualRunSession({
+		layout,
+		plannerRuntimeMode: effectiveMode,
+		configuredEvaluationMode,
+		stateHost: host,
+		shuttingDown: false,
+	});
+
+	if (effectiveMode !== "off") {
+		const { ensurePlannerTakeoverStates } = await import("../planner_takeover/states.js");
+		await ensurePlannerTakeoverStates(host);
+	}
 	await applySessionAndCoordinator(host);
 
 	triggerSystem?.stop();
@@ -155,6 +221,7 @@ export async function initPlannerShadowRuntime(host: PlannerShadowRuntimeHost): 
 
 export async function stopPlannerShadowRuntime(): Promise<void> {
 	unloadStopped = true;
+	configureDualRunSession({ shuttingDown: true });
 	triggerSystem?.stop();
 	triggerSystem = null;
 	const host = runtimeHost;
@@ -167,6 +234,7 @@ export async function stopPlannerShadowRuntime(): Promise<void> {
 	statusUnsubscribe = null;
 	await setPlannerOnDemandCoordinatorEnabled(false);
 	sessionShadowEnabled = false;
+	configureDualRunSession({ stateHost: null, plannerRuntimeMode: "off" });
 	runtimeHost = null;
 }
 
@@ -192,6 +260,7 @@ export function getPlannerEffectiveModeForTest(): string {
 export function observePlannerTriggerStateChange(relativeId: string, ack: boolean | undefined): boolean {
 	if (unloadStopped || !triggerSystem) return false;
 	if (isPlannerCoordinatorState(relativeId)) return false;
+	if (isPlannerTakeoverStateId(relativeId)) return false;
 	return triggerSystem.observeStateChange(relativeId, ack);
 }
 

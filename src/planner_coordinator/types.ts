@@ -84,6 +84,15 @@ export interface PlannerWorkerRunResult extends PlannerJobRunResult {
 
 export interface PlannerOnDemandCoordinatorDependencies {
 	buildSnapshot(): Promise<PlannerInputSnapshot>;
+	/**
+	 * Compute the authoritative dual-run projection exactly once for this job.
+	 * Must not be repeated for compare/evidence; result is reused via store.
+	 */
+	runAuthoritativeProjection?(input: {
+		snapshot: PlannerInputSnapshot;
+		generation: number;
+		jobId: string;
+	}): Promise<{ ok: boolean; errorCode?: string } | void> | { ok: boolean; errorCode?: string } | void;
 	runWorkerJob(input: {
 		jobId: string;
 		generation: number;
@@ -103,6 +112,26 @@ export interface PlannerOnDemandCoordinatorDependencies {
 		prepared: PlannerPreparedInput;
 		jobId?: string;
 	}) => PlannerShadowComparisonResult | import("../planner_shadow/candidate_compare").PlannerCandidateComparisonResult;
+	/**
+	 * Optional Phase-3F dual-run / takeover evidence hook.
+	 * Must never throw into the coordinator — callers wrap errors.
+	 * Must never delay or affect authoritative planner publish.
+	 */
+	onDualRunOutcome?: (event: {
+		result: "success" | "failed";
+		trigger: PlannerTriggerRequest;
+		generation: number;
+		jobId?: string;
+		snapshot: PlannerInputSnapshot;
+		comparison?:
+			| PlannerShadowComparisonResult
+			| import("../planner_shadow/candidate_compare").PlannerCandidateComparisonResult;
+		errorCode?: string;
+		shuttingDown: boolean;
+		/** When set, authoritative side failed or publish seal failed — never positive match. */
+		authoritativeFailed?: boolean;
+		authoritativeErrorCode?: string;
+	}) => Promise<void> | void;
 }
 
 export interface PlannerOnDemandCoordinatorOptions {

@@ -37,6 +37,7 @@ exports.PLANNER_TRIGGER_ALLOWLIST = [
  */
 exports.PLANNER_TRIGGER_DENYLIST_PREFIXES = [
     "planner.coordinator.",
+    "planner.takeover.",
     "planner.forecast.",
     "planner.daily.",
     "planner.trigger.",

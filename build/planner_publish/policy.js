@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PHASE_3E_PUBLISH_DEFAULTS = exports.resolvePlannerPublishTarget = void 0;
+exports.PHASE_3F_PUBLISH_DEFAULTS = exports.PHASE_3E_PUBLISH_DEFAULTS = exports.resolvePlannerPublishTarget = void 0;
 /**
  * Resolve publish target. Canonical is never reachable in Phase 3E:
  * requires productiveTakeoverMode + open releaseGate + non-simulation + all validations.
@@ -42,9 +42,11 @@ function resolvePlannerPublishTarget(input) {
     return { target: "blocked_canonical", allowed: false, reason: "canonical_not_implemented_phase_3e" };
 }
 exports.resolvePlannerPublishTarget = resolvePlannerPublishTarget;
-/** Phase 3E default: always closed release gate, never productive takeover. */
+/** Phase 3E/3F default: always closed release gate, never productive takeover. */
 exports.PHASE_3E_PUBLISH_DEFAULTS = {
     releaseGate: "closed",
     productiveTakeoverMode: false,
     requestedTarget: "candidate",
 };
+/** Phase 3F alias — identical hard defaults. */
+exports.PHASE_3F_PUBLISH_DEFAULTS = exports.PHASE_3E_PUBLISH_DEFAULTS;

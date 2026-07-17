@@ -59,6 +59,26 @@
 					"lg": 4,
 					"xl": 4
 				},
+				"planner_takeover_evaluation_mode": {
+					"type": "select",
+					"label": "Planner Takeover Evaluation",
+					"options": [
+						{
+							"label": "Deaktiviert",
+							"value": "disabled"
+						},
+						{
+							"label": "Beobachten",
+							"value": "observe"
+						}
+					],
+					"default": "disabled",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
 				"hGlobalFailsafe": {
 					"type": "header",
 					"size": 2,

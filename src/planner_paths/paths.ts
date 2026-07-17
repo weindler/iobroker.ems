@@ -8,6 +8,8 @@ import {
 	RUNTIME_JOBS_SEGMENT,
 	RUNTIME_PLANNER_SEGMENT,
 	RUNTIME_SIMULATIONS_SEGMENT,
+	RUNTIME_TAKEOVER_SEGMENT,
+	TAKEOVER_EVIDENCE_FILE_NAME,
 } from "./constants";
 
 export interface PlannerPathLayout {
@@ -21,6 +23,9 @@ export interface PlannerPathLayout {
 	runtimeSimulationsDir: string;
 	/** Non-canonical candidate area for shadow comparison only. */
 	runtimeCandidateDir: string;
+	/** Takeover evidence area — never canonical, never runtime-consumed as plan. */
+	runtimeTakeoverDir: string;
+	takeoverEvidencePath: string;
 	jobDir: (jobId: string) => string;
 	simulationDir: (jobId: string) => string;
 	candidateJobDir: (jobId: string) => string;
@@ -43,12 +48,14 @@ export function resolvePlannerPaths(input: PathResolverInput): PlannerPathLayout
 	const runtimeJobsDir = path.join(runtimePlannerDir, RUNTIME_JOBS_SEGMENT);
 	const runtimeSimulationsDir = path.join(runtimePlannerDir, RUNTIME_SIMULATIONS_SEGMENT);
 	const runtimeCandidateDir = path.join(runtimePlannerDir, RUNTIME_CANDIDATE_SEGMENT);
+	const runtimeTakeoverDir = path.join(runtimePlannerDir, RUNTIME_TAKEOVER_SEGMENT);
 
 	assertPathWithinRoot(durablePlannerDir, ems.durableDataDir);
 	assertPathWithinRoot(runtimePlannerDir, ems.runtimeDataDir);
 	assertPathWithinRoot(runtimeJobsDir, ems.runtimeDataDir);
 	assertPathWithinRoot(runtimeSimulationsDir, ems.runtimeDataDir);
 	assertPathWithinRoot(runtimeCandidateDir, ems.runtimeDataDir);
+	assertPathWithinRoot(runtimeTakeoverDir, ems.runtimeDataDir);
 
 	return {
 		durablePlannerDir,
@@ -58,6 +65,8 @@ export function resolvePlannerPaths(input: PathResolverInput): PlannerPathLayout
 		runtimeJobsDir,
 		runtimeSimulationsDir,
 		runtimeCandidateDir,
+		runtimeTakeoverDir,
+		takeoverEvidencePath: path.join(runtimeTakeoverDir, TAKEOVER_EVIDENCE_FILE_NAME),
 		jobDir: (jobId: string) => {
 			assertSafeJobId(jobId);
 			const dir = path.join(runtimeJobsDir, jobId);

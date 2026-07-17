@@ -32,12 +32,12 @@ const constants_1 = require("../planner_job/constants");
 const validate_1 = require("../planner_preparation/validate");
 const paths_2 = require("../planner_paths/paths");
 const types_1 = require("../planner_candidate/types");
-const build_1 = require("../planner_candidate/build");
 const candidate_compare_1 = require("../planner_shadow/candidate_compare");
 const compare_1 = require("../planner_shadow/compare");
 const repository_1 = require("../planner_repository/repository");
 const from_iobroker_1 = require("../planner_snapshot/from_iobroker");
 const write_1 = require("../planner_snapshot/write");
+const authoritative_projection_1 = require("../planner_takeover/authoritative_projection");
 const trigger_1 = require("./trigger");
 function createPlannerRuntimeContext(adapter, options = {}) {
     const layout = (0, paths_2.resolvePlannerPaths)({
@@ -63,7 +63,6 @@ function createPlannerRuntimeContext(adapter, options = {}) {
             runtimeRootDir: layout.runtimePlannerDir,
         }),
         cleanupJob: async (jobId) => {
-            // Preserve last candidate under non-canonical candidate area before job cleanup.
             try {
                 const src = path.join(layout.jobDir(jobId), types_1.PLANNER_CANDIDATE_FILE);
                 const destDir = layout.candidateJobDir(jobId);
@@ -74,6 +73,22 @@ function createPlannerRuntimeContext(adapter, options = {}) {
                 // absent candidate is fine
             }
             await repository.cleanupJobDir(layout.jobDir(jobId), true);
+        },
+        runAuthoritativeProjection: async ({ snapshot, generation, jobId }) => {
+            const projection = (0, authoritative_projection_1.computeAuthoritativeDualRunProjection)({
+                snapshot,
+                generation,
+                jobId,
+                // Dual-run seal only — never durable canonical publish.
+                sealPublish: () => true,
+            });
+            if (projection.publishStatus !== "ok") {
+                return {
+                    ok: false,
+                    errorCode: projection.publishErrorCode ?? "authoritative_publish_failed",
+                };
+            }
+            return { ok: true };
         },
         runWorkerJob: async ({ jobId, generation, snapshot, triggerReason, requestedAt, timeoutMs }) => {
             const jobDir = layout.jobDir(jobId);
@@ -107,7 +122,18 @@ function createPlannerRuntimeContext(adapter, options = {}) {
                 return (0, compare_1.compareSnapshotPreparedInput)(snapshot, prepared).result;
             }
             try {
-                const reference = (0, build_1.buildPlanCandidateFromSnapshot)(snapshot).candidate;
+                const stored = (0, authoritative_projection_1.getActiveAuthoritativeProjection)();
+                if (!(0, authoritative_projection_1.authoritativeProjectionIsUsable)(stored) || stored.jobId !== jobId) {
+                    (0, authoritative_projection_1.forbidAuthoritativeRecompute)();
+                    return {
+                        status: "in_process_failed",
+                        mismatchCount: 0,
+                        mismatchedSlotCount: 0,
+                        firstMismatchPath: "authoritative_projection_missing",
+                        firstMismatchDomain: "authoritative",
+                    };
+                }
+                const reference = stored.candidate;
                 const raw = fs.readFileSync(path.join(layout.jobDir(jobId), types_1.PLANNER_CANDIDATE_FILE), "utf8");
                 const worker = JSON.parse(raw);
                 return (0, candidate_compare_1.comparePlanCandidates)(reference, worker);
@@ -120,6 +146,14 @@ function createPlannerRuntimeContext(adapter, options = {}) {
                     firstMismatchPath: "candidate_read",
                 };
             }
+        },
+        onDualRunOutcome: async (event) => {
+            const { getDualRunBridgeContext } = await Promise.resolve().then(() => __importStar(require("../planner_takeover/session.js")));
+            const ctx = getDualRunBridgeContext();
+            if (!ctx)
+                return;
+            const { handleCoordinatorDualRunOutcome } = await Promise.resolve().then(() => __importStar(require("../planner_takeover/dual_run_bridge.js")));
+            await handleCoordinatorDualRunOutcome(ctx, event);
         },
     };
     return { deps, lifecycle };

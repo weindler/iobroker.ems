@@ -77,9 +77,12 @@ export function resolvePlannerPublishTarget(input: PlannerPublishDecisionInput):
 	return { target: "blocked_canonical", allowed: false, reason: "canonical_not_implemented_phase_3e" };
 }
 
-/** Phase 3E default: always closed release gate, never productive takeover. */
+/** Phase 3E/3F default: always closed release gate, never productive takeover. */
 export const PHASE_3E_PUBLISH_DEFAULTS = {
 	releaseGate: "closed" as const,
 	productiveTakeoverMode: false as const,
 	requestedTarget: "candidate" as const,
 };
+
+/** Phase 3F alias — identical hard defaults. */
+export const PHASE_3F_PUBLISH_DEFAULTS = PHASE_3E_PUBLISH_DEFAULTS;

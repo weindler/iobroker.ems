@@ -95,11 +95,24 @@ function createLazyRuntimeDependencies(host, options) {
             const runtime = await loadRuntimeContext(host, options);
             return runtime.deps.runWorkerJob(args);
         },
+        runAuthoritativeProjection: async (args) => {
+            const runtime = await loadRuntimeContext(host, options);
+            if (!runtime.deps.runAuthoritativeProjection) {
+                return { ok: true };
+            }
+            return runtime.deps.runAuthoritativeProjection(args);
+        },
         compareShadowOutput: (input) => {
             if (!runtimeContext?.deps.compareShadowOutput) {
                 throw new Error("compare_shadow_output_unavailable");
             }
             return runtimeContext.deps.compareShadowOutput(input);
+        },
+        onDualRunOutcome: async (event) => {
+            const runtime = await loadRuntimeContext(host, options);
+            if (!runtime.deps.onDualRunOutcome)
+                return;
+            await runtime.deps.onDualRunOutcome(event);
         },
     };
 }

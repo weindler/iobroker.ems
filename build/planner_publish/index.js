@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PHASE_3E_PUBLISH_DEFAULTS = exports.resolvePlannerPublishTarget = void 0;
+exports.tryMintCanonicalPublishPermitFromShadow = exports.requireCanonicalPublishPermit = exports.PHASE_3F_PUBLISH_DEFAULTS = exports.PHASE_3E_PUBLISH_DEFAULTS = exports.resolvePlannerPublishTarget = void 0;
 var policy_1 = require("./policy");
 Object.defineProperty(exports, "resolvePlannerPublishTarget", { enumerable: true, get: function () { return policy_1.resolvePlannerPublishTarget; } });
 Object.defineProperty(exports, "PHASE_3E_PUBLISH_DEFAULTS", { enumerable: true, get: function () { return policy_1.PHASE_3E_PUBLISH_DEFAULTS; } });
+Object.defineProperty(exports, "PHASE_3F_PUBLISH_DEFAULTS", { enumerable: true, get: function () { return policy_1.PHASE_3F_PUBLISH_DEFAULTS; } });
+var permit_1 = require("./permit");
+Object.defineProperty(exports, "requireCanonicalPublishPermit", { enumerable: true, get: function () { return permit_1.requireCanonicalPublishPermit; } });
+Object.defineProperty(exports, "tryMintCanonicalPublishPermitFromShadow", { enumerable: true, get: function () { return permit_1.tryMintCanonicalPublishPermitFromShadow; } });

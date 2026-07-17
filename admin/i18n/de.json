@@ -47,6 +47,9 @@
 	"Aktualisierungsintervall (s)": "Aktualisierungsintervall (s)",
 	"Diagnose": "Diagnose",
 	"Planner Runtime (Shadow)": "Planner Runtime (Shadow)",
+	"Planner Takeover Evaluation": "Planner Takeover Evaluation",
+	"Deaktiviert": "Deaktiviert",
+	"Beobachten": "Beobachten",
 	"Aus": "Aus",
 	"Shadow manuell": "Shadow manuell",
 	"Shadow automatisch": "Shadow automatisch"

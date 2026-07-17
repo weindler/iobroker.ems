@@ -175,10 +175,12 @@ export class PlannerOnDemandCoordinator {
 		let jobId: string | undefined;
 		let generation = 0;
 		let inputRevision: string | undefined;
+		let snapshotForOutcome: import("../planner_snapshot/types").PlannerInputSnapshot | undefined;
 
 		try {
 			this.setState("building_snapshot");
 			const snapshot = await this.deps.buildSnapshot();
+			snapshotForOutcome = snapshot;
 			inputRevision = snapshot.inputRevision;
 
 			if (this.shouldSkipUnchangedInput(trigger, inputRevision)) {
@@ -200,6 +202,25 @@ export class PlannerOnDemandCoordinator {
 			jobId = `planner-${generation}-${startedAt.getTime()}`;
 			this.activeJobId = jobId;
 			this.status.activeJobId = jobId;
+
+			let authoritativeFailed = false;
+			let authoritativeErrorCode: string | undefined;
+			if (this.deps.runAuthoritativeProjection) {
+				try {
+					const auth = await this.deps.runAuthoritativeProjection({
+						snapshot,
+						generation,
+						jobId,
+					});
+					if (auth && auth.ok === false) {
+						authoritativeFailed = true;
+						authoritativeErrorCode = auth.errorCode ?? "authoritative_failed";
+					}
+				} catch {
+					authoritativeFailed = true;
+					authoritativeErrorCode = "authoritative_failed";
+				}
+			}
 
 			this.setState("starting_worker");
 			this.setState("worker_running");
@@ -254,6 +275,27 @@ export class PlannerOnDemandCoordinator {
 			if (this.status.comparisonReferenceRevision) {
 				this.status.candidateRevision = this.status.comparisonWorkerRevision;
 			}
+			await this.emitDualRunOutcome({
+				result: "success",
+				trigger,
+				generation,
+				jobId,
+				snapshot,
+				comparison: this.status.comparisonStatus
+					? {
+							status: this.status.comparisonStatus,
+							referenceRevision: this.status.comparisonReferenceRevision,
+							workerRevision: this.status.comparisonWorkerRevision,
+							mismatchCount: this.status.comparisonMismatchCount ?? 0,
+							mismatchedSlotCount: this.status.comparisonMismatchedSlots ?? 0,
+							firstMismatchPath: this.status.comparisonFirstMismatch,
+							firstMismatchDomain: this.status.comparisonFirstDomain,
+						}
+					: undefined,
+				shuttingDown: this.stopping || this.stopped,
+				authoritativeFailed,
+				authoritativeErrorCode,
+			});
 			this.finishRun(startedAt, "succeeded");
 
 			await this.deps.cleanupJob(jobId).catch(() => undefined);
@@ -275,6 +317,19 @@ export class PlannerOnDemandCoordinator {
 			this.status.comparisonStatus = "worker_failed";
 			this.status.comparisonMismatchCount = 0;
 			this.status.comparisonFirstMismatch = undefined;
+			if (snapshotForOutcome) {
+				await this.emitDualRunOutcome({
+					result: "failed",
+					trigger,
+					generation,
+					jobId,
+					snapshot: snapshotForOutcome,
+					errorCode,
+					shuttingDown: this.stopping || this.stopped || errorCode === "coordinator_stopping",
+					authoritativeFailed: errorCode.includes("authoritative"),
+					authoritativeErrorCode: errorCode.includes("authoritative") ? errorCode : undefined,
+				});
+			}
 			this.finishRun(startedAt, "failed");
 			if (jobId) {
 				await this.deps.cleanupJob(jobId).catch(() => undefined);
@@ -292,11 +347,40 @@ export class PlannerOnDemandCoordinator {
 			this.status.activeJobId = undefined;
 			this.status.activeReason = undefined;
 			this.runInProgress = false;
+			try {
+				void import("../planner_takeover/authoritative_projection.js")
+					.then((m) => m.clearActiveAuthoritativeProjection())
+					.catch(() => undefined);
+			} catch {
+				// optional
+			}
 			if (!this.stopping && !this.stopped && this.status.enabled) {
 				if (this.status.state === "succeeded" || this.status.state === "failed") {
 					this.setState("idle");
 				}
 			}
+		}
+	}
+
+	private async emitDualRunOutcome(event: {
+		result: "success" | "failed";
+		trigger: PlannerTriggerRequest;
+		generation: number;
+		jobId?: string;
+		snapshot: import("../planner_snapshot/types").PlannerInputSnapshot;
+		comparison?:
+			| PlannerShadowComparisonResult
+			| import("../planner_shadow/candidate_compare").PlannerCandidateComparisonResult;
+		errorCode?: string;
+		shuttingDown: boolean;
+		authoritativeFailed?: boolean;
+		authoritativeErrorCode?: string;
+	}): Promise<void> {
+		if (!this.deps.onDualRunOutcome) return;
+		try {
+			await this.deps.onDualRunOutcome(event);
+		} catch {
+			// Dual-run / evidence failures must never fail the coordinator.
 		}
 	}
 

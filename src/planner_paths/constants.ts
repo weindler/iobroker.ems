@@ -16,3 +16,6 @@ export const RUNTIME_SIMULATIONS_SEGMENT = "simulations";
 /** Non-canonical shadow candidates — never consumed by device runtimes. */
 export const RUNTIME_CANDIDATE_SEGMENT = "candidate";
 export const CANDIDATE_CURRENT_FILE = "plan_candidate_v1.json";
+/** Takeover evaluation evidence — runtime only, never canonical. */
+export const RUNTIME_TAKEOVER_SEGMENT = "takeover";
+export const TAKEOVER_EVIDENCE_FILE_NAME = "evidence_v1.json";

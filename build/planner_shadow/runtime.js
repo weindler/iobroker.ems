@@ -89,6 +89,22 @@ async function applySessionAndCoordinator(host) {
         configuredEvaluationMode,
         stateHost: host,
     });
+    try {
+        const { configureAuthorizationSession, getAuthorizationSession } = await Promise.resolve().then(() => __importStar(require("../planner_authorization/runtime_session.js")));
+        const prev = getAuthorizationSession();
+        const modeChanged = prev.runtimeMode !== effective.effectiveMode || prev.evaluationMode !== configuredEvaluationMode;
+        configureAuthorizationSession({
+            runtimeMode: effective.effectiveMode,
+            evaluationMode: configuredEvaluationMode,
+        });
+        if (modeChanged && prev.service) {
+            await prev.service.invalidate("mode_change");
+            await prev.service.syncFromConfig();
+        }
+    }
+    catch {
+        // optional
+    }
     await (0, compose_1.setPlannerOnDemandCoordinatorEnabled)(effective.coordinatorEnabled);
     await writeModeStates(host);
 }
@@ -98,6 +114,22 @@ async function onCoordinatorStatus(status) {
         return;
     const diag = triggerSystem?.getDiagnostics();
     await (0, status_bridge_1.writePlannerCoordinatorStatusStates)(host, status, diag);
+    try {
+        const { configureAuthorizationSession, getAuthorizationSession } = await Promise.resolve().then(() => __importStar(require("../planner_authorization/runtime_session.js")));
+        const jobActive = Boolean(status.activeJobId);
+        const pending = status.rerunPending === true;
+        configureAuthorizationSession({
+            plannerJobActive: jobActive,
+            pendingRerun: pending,
+        });
+        const auth = getAuthorizationSession().service;
+        if (auth && (jobActive || pending)) {
+            await auth.invalidate(jobActive ? "planner_job_active" : "pending_rerun");
+        }
+    }
+    catch {
+        // optional
+    }
 }
 function mapAggregatedToCoordinatorReason(req) {
     if (req.reasonCode === "manual" || req.reasonCode === "manual_force")
@@ -130,6 +162,15 @@ async function onAggregatedTrigger(req) {
         requestedAt: req.lastObservedAt,
         force: req.force,
     });
+    try {
+        const { getAuthorizationSession } = await Promise.resolve().then(() => __importStar(require("../planner_authorization/runtime_session.js")));
+        const auth = getAuthorizationSession().service;
+        if (auth)
+            await auth.invalidate("planner_trigger");
+    }
+    catch {
+        // optional
+    }
 }
 async function initPlannerShadowRuntime(host) {
     runtimeHost = host;
@@ -197,11 +238,20 @@ async function initPlannerShadowRuntime(host) {
             await host.subscribeStatesAsync(pattern);
         }
     }
+    const { initPlannerAuthorizationRuntime } = await Promise.resolve().then(() => __importStar(require("../planner_authorization/runtime.js")));
+    await initPlannerAuthorizationRuntime(host);
 }
 exports.initPlannerShadowRuntime = initPlannerShadowRuntime;
 async function stopPlannerShadowRuntime() {
     unloadStopped = true;
     (0, session_1.configureDualRunSession)({ shuttingDown: true });
+    try {
+        const { stopPlannerAuthorizationRuntime } = await Promise.resolve().then(() => __importStar(require("../planner_authorization/runtime.js")));
+        await stopPlannerAuthorizationRuntime();
+    }
+    catch {
+        // optional
+    }
     triggerSystem?.stop();
     triggerSystem = null;
     const host = runtimeHost;
@@ -248,6 +298,10 @@ function observePlannerTriggerStateChange(relativeId, ack) {
 }
 exports.observePlannerTriggerStateChange = observePlannerTriggerStateChange;
 async function handlePlannerShadowStateChange(host, relativeId, val, ack) {
+    if (relativeId.startsWith("planner.takeover.authorization.")) {
+        const { handlePlannerAuthorizationRuntimeStateChange } = await Promise.resolve().then(() => __importStar(require("../planner_authorization/runtime.js")));
+        return handlePlannerAuthorizationRuntimeStateChange(host, relativeId, val, ack);
+    }
     if (!(0, ensure_states_1.isPlannerCoordinatorState)(relativeId)) {
         return false;
     }

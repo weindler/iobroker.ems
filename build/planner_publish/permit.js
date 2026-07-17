@@ -1,22 +1,19 @@
 "use strict";
 /**
  * Capability-based canonical publish permit.
- * Phase 3F: no productive code path may mint this permit.
- * Functions that could publish canonical must require CanonicalPublishPermit.
+ * Phase 3G: requires valid Authorization-Grant AND ProductiveTakeoverActivationCapability.
+ * No productive path may mint either the activation capability or this permit.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.tryMintCanonicalPublishPermitFromShadow = exports.requireCanonicalPublishPermit = void 0;
-/**
- * Type-level assertion helper for future canonical publish.
- * There is intentionally no exported mint/create function in Phase 3F.
- */
 function requireCanonicalPublishPermit(permit) {
     return permit;
 }
 exports.requireCanonicalPublishPermit = requireCanonicalPublishPermit;
-/** Compile-time / runtime proof that Phase 3F never yields a permit from config or evidence. */
+/**
+ * Always null in Phase 3F/3G — no shadow/config/evidence combination yields a permit.
+ */
 function tryMintCanonicalPublishPermitFromShadow(_input) {
-    // Hard closed — no combination of Phase-3F inputs produces a permit.
     return null;
 }
 exports.tryMintCanonicalPublishPermitFromShadow = tryMintCanonicalPublishPermitFromShadow;

@@ -100,6 +100,24 @@ async function applySessionAndCoordinator(host: PlannerShadowRuntimeHost): Promi
 		configuredEvaluationMode,
 		stateHost: host,
 	});
+	try {
+		const { configureAuthorizationSession, getAuthorizationSession } = await import(
+			"../planner_authorization/runtime_session.js"
+		);
+		const prev = getAuthorizationSession();
+		const modeChanged =
+			prev.runtimeMode !== effective.effectiveMode || prev.evaluationMode !== configuredEvaluationMode;
+		configureAuthorizationSession({
+			runtimeMode: effective.effectiveMode,
+			evaluationMode: configuredEvaluationMode,
+		});
+		if (modeChanged && prev.service) {
+			await prev.service.invalidate("mode_change");
+			await prev.service.syncFromConfig();
+		}
+	} catch {
+		// optional
+	}
 	await setPlannerOnDemandCoordinatorEnabled(effective.coordinatorEnabled);
 	await writeModeStates(host);
 }
@@ -109,6 +127,23 @@ async function onCoordinatorStatus(status: PlannerCoordinatorStatus): Promise<vo
 	if (!host || unloadStopped) return;
 	const diag = triggerSystem?.getDiagnostics();
 	await writePlannerCoordinatorStatusStates(host, status, diag);
+	try {
+		const { configureAuthorizationSession, getAuthorizationSession } = await import(
+			"../planner_authorization/runtime_session.js"
+		);
+		const jobActive = Boolean(status.activeJobId);
+		const pending = status.rerunPending === true;
+		configureAuthorizationSession({
+			plannerJobActive: jobActive,
+			pendingRerun: pending,
+		});
+		const auth = getAuthorizationSession().service;
+		if (auth && (jobActive || pending)) {
+			await auth.invalidate(jobActive ? "planner_job_active" : "pending_rerun");
+		}
+	} catch {
+		// optional
+	}
 }
 
 function mapAggregatedToCoordinatorReason(req: AggregatedTriggerRequest): PlannerTriggerReason {
@@ -138,6 +173,13 @@ async function onAggregatedTrigger(req: AggregatedTriggerRequest): Promise<void>
 		requestedAt: req.lastObservedAt,
 		force: req.force,
 	});
+	try {
+		const { getAuthorizationSession } = await import("../planner_authorization/runtime_session.js");
+		const auth = getAuthorizationSession().service;
+		if (auth) await auth.invalidate("planner_trigger");
+	} catch {
+		// optional
+	}
 }
 
 export async function initPlannerShadowRuntime(host: PlannerShadowRuntimeHost): Promise<void> {
@@ -217,11 +259,20 @@ export async function initPlannerShadowRuntime(host: PlannerShadowRuntimeHost): 
 			await host.subscribeStatesAsync(pattern);
 		}
 	}
+
+	const { initPlannerAuthorizationRuntime } = await import("../planner_authorization/runtime.js");
+	await initPlannerAuthorizationRuntime(host);
 }
 
 export async function stopPlannerShadowRuntime(): Promise<void> {
 	unloadStopped = true;
 	configureDualRunSession({ shuttingDown: true });
+	try {
+		const { stopPlannerAuthorizationRuntime } = await import("../planner_authorization/runtime.js");
+		await stopPlannerAuthorizationRuntime();
+	} catch {
+		// optional
+	}
 	triggerSystem?.stop();
 	triggerSystem = null;
 	const host = runtimeHost;
@@ -270,6 +321,12 @@ export async function handlePlannerShadowStateChange(
 	val: unknown,
 	ack: boolean | undefined,
 ): Promise<boolean> {
+	if (relativeId.startsWith("planner.takeover.authorization.")) {
+		const { handlePlannerAuthorizationRuntimeStateChange } = await import(
+			"../planner_authorization/runtime.js"
+		);
+		return handlePlannerAuthorizationRuntimeStateChange(host, relativeId, val, ack);
+	}
 	if (!isPlannerCoordinatorState(relativeId)) {
 		return false;
 	}

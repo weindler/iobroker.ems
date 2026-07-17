@@ -188,6 +188,11 @@ class Ems extends utils.Adapter {
 				return;
 			}
 			await handleExecutionModeStateChange(this, id, state);
+			if (rel === GLOBAL.executionMode) {
+				void import("./planner_authorization/runtime.js")
+					.then((m) => m.notifyPlannerAuthorizationExecutionMode(String(state.val ?? "dryrun")))
+					.catch(() => undefined);
+			}
 			handleBatteryAdapterStateChange(this, id);
 			handleBatteryGridBalanceForeignStateChange(this, id);
 			handleImmersionHeaterStateChange(this, id);

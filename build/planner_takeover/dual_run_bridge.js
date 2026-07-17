@@ -151,5 +151,39 @@ async function handleCoordinatorDualRunOutcome(ctx, event) {
             decision,
         });
     }
+    try {
+        const { configureAuthorizationSession, getAuthorizationSession } = await Promise.resolve().then(() => __importStar(require("../planner_authorization/runtime_session.js")));
+        const authRev = recorded.evidence.lastAuthoritativeRevision;
+        const candRev = recorded.evidence.lastCandidateRevision;
+        configureAuthorizationSession({
+            evidence: recorded.evidence,
+            lastCompareStatus: recorded.compare?.status ?? event.result,
+            authoritativePublishOk: !authFailed && stored?.publishStatus === "ok",
+            candidateValid: worker?.validationStatus === "ok" || worker?.validationStatus === "degraded",
+            bound: authRev && candRev && identityBase.inputRevision
+                ? {
+                    generation: event.generation,
+                    inputRevision: identityBase.inputRevision,
+                    candidateRevision: candRev,
+                    authoritativeRevision: authRev,
+                    evidenceRevision: recorded.evidence.evidenceRevision,
+                    evidencePolicyRevision: recorded.evidence.policyFingerprint,
+                    planningHorizonStart: identityBase.planningHorizonStart,
+                    planningHorizonEnd: identityBase.planningHorizonEnd,
+                    slotDurationMinutes: identityBase.slotDurationMinutes,
+                    plannerContractVersion: identityBase.plannerContractVersion ?? 1,
+                    snapshotSchemaVersion: event.snapshot.schemaVersion,
+                    publishPolicyRevision: "phase_3g_closed",
+                }
+                : null,
+        });
+        const svc = getAuthorizationSession().service;
+        if (svc && recorded.compare?.status && recorded.compare.status !== "matched") {
+            await svc.invalidate(recorded.compare.status);
+        }
+    }
+    catch {
+        // authorization session optional
+    }
 }
 exports.handleCoordinatorDualRunOutcome = handleCoordinatorDualRunOutcome;

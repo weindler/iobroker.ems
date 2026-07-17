@@ -1,7 +1,7 @@
 /**
  * Capability-based canonical publish permit.
- * Phase 3F: no productive code path may mint this permit.
- * Functions that could publish canonical must require CanonicalPublishPermit.
+ * Phase 3G: requires valid Authorization-Grant AND ProductiveTakeoverActivationCapability.
+ * No productive path may mint either the activation capability or this permit.
  */
 
 declare const canonicalPermitBrand: unique symbol;
@@ -10,15 +10,13 @@ export interface CanonicalPublishPermit {
 	readonly [canonicalPermitBrand]: true;
 }
 
-/**
- * Type-level assertion helper for future canonical publish.
- * There is intentionally no exported mint/create function in Phase 3F.
- */
 export function requireCanonicalPublishPermit(permit: CanonicalPublishPermit): CanonicalPublishPermit {
 	return permit;
 }
 
-/** Compile-time / runtime proof that Phase 3F never yields a permit from config or evidence. */
+/**
+ * Always null in Phase 3F/3G — no shadow/config/evidence combination yields a permit.
+ */
 export function tryMintCanonicalPublishPermitFromShadow(_input: {
 	evaluationState?: string;
 	requestedTarget?: string;
@@ -26,7 +24,8 @@ export function tryMintCanonicalPublishPermitFromShadow(_input: {
 	config?: unknown;
 	evidence?: unknown;
 	workerResult?: unknown;
+	authorizationGrant?: unknown;
+	productiveActivation?: unknown;
 }): CanonicalPublishPermit | null {
-	// Hard closed — no combination of Phase-3F inputs produces a permit.
 	return null;
 }

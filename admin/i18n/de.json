@@ -48,8 +48,10 @@
 	"Diagnose": "Diagnose",
 	"Planner Runtime (Shadow)": "Planner Runtime (Shadow)",
 	"Planner Takeover Evaluation": "Planner Takeover Evaluation",
+	"Planner Takeover Authorization": "Planner Takeover Authorization",
 	"Deaktiviert": "Deaktiviert",
 	"Beobachten": "Beobachten",
+	"Manuell vorbereiten": "Manuell vorbereiten",
 	"Aus": "Aus",
 	"Shadow manuell": "Shadow manuell",
 	"Shadow automatisch": "Shadow automatisch"

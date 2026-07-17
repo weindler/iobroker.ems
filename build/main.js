@@ -175,6 +175,10 @@ class Ems extends utils.Adapter {
                 return;
             }
             await (0, execution_mode_1.handleExecutionModeStateChange)(this, id, state);
+            if (rel === tree_paths_1.GLOBAL.executionMode) {
+                void Promise.resolve().then(() => __importStar(require("./planner_authorization/runtime.js"))).then((m) => m.notifyPlannerAuthorizationExecutionMode(String(state.val ?? "dryrun")))
+                    .catch(() => undefined);
+            }
             (0, battery_1.handleBatteryAdapterStateChange)(this, id);
             (0, battery_1.handleBatteryGridBalanceForeignStateChange)(this, id);
             (0, immersion_heater_1.handleImmersionHeaterStateChange)(this, id);

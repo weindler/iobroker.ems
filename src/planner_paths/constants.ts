@@ -19,3 +19,11 @@ export const CANDIDATE_CURRENT_FILE = "plan_candidate_v1.json";
 /** Takeover evaluation evidence — runtime only, never canonical. */
 export const RUNTIME_TAKEOVER_SEGMENT = "takeover";
 export const TAKEOVER_EVIDENCE_FILE_NAME = "evidence_v1.json";
+
+/** Phase 3H worker-dryrun authority artifacts — runtime only, never durable. */
+export const RUNTIME_WORKER_SEGMENT = "worker";
+export const RUNTIME_WORKER_CANONICAL_SEGMENT = "canonical";
+export const ACTIVE_AUTHORITY_POINTER_FILE = "active_authority_v1.json";
+export const WORKER_PLAN_FILE = "plan_v1.json";
+/** Alias kept for readability in docs/call sites. */
+export const WORKER_CANONICAL_PLAN_FILE = WORKER_PLAN_FILE;

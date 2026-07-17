@@ -118,6 +118,23 @@ async function applySessionAndCoordinator(host: PlannerShadowRuntimeHost): Promi
 	} catch {
 		// optional
 	}
+	try {
+		const { configureAuthoritySession, getAuthoritySession } = await import(
+			"../planner_authority/runtime_session.js"
+		);
+		configureAuthoritySession({
+			runtimeMode: effective.effectiveMode,
+			evaluationMode: configuredEvaluationMode,
+		});
+		const authorityChangedOff =
+			effective.effectiveMode !== "shadow_auto" || configuredEvaluationMode !== "observe";
+		const authoritySvc = getAuthoritySession().service;
+		if (authorityChangedOff && authoritySvc) {
+			await authoritySvc.fallback("mode_change");
+		}
+	} catch {
+		// optional
+	}
 	await setPlannerOnDemandCoordinatorEnabled(effective.coordinatorEnabled);
 	await writeModeStates(host);
 }
@@ -262,11 +279,21 @@ export async function initPlannerShadowRuntime(host: PlannerShadowRuntimeHost): 
 
 	const { initPlannerAuthorizationRuntime } = await import("../planner_authorization/runtime.js");
 	await initPlannerAuthorizationRuntime(host);
+
+	const { initPlannerAuthorityRuntime } = await import("../planner_authority/runtime.js");
+	await initPlannerAuthorityRuntime(host);
 }
 
 export async function stopPlannerShadowRuntime(): Promise<void> {
 	unloadStopped = true;
 	configureDualRunSession({ shuttingDown: true });
+	try {
+		// Authority first — revoke worker authority back to legacy before authorization stops.
+		const { stopPlannerAuthorityRuntime } = await import("../planner_authority/runtime.js");
+		await stopPlannerAuthorityRuntime();
+	} catch {
+		// optional
+	}
 	try {
 		const { stopPlannerAuthorizationRuntime } = await import("../planner_authorization/runtime.js");
 		await stopPlannerAuthorizationRuntime();
@@ -326,6 +353,16 @@ export async function handlePlannerShadowStateChange(
 			"../planner_authorization/runtime.js"
 		);
 		return handlePlannerAuthorizationRuntimeStateChange(host, relativeId, val, ack);
+	}
+	if (
+		relativeId.startsWith("planner.authority.") ||
+		relativeId === "planner.takeover.activate_worker_dryrun" ||
+		relativeId === "planner.takeover.deactivate_worker"
+	) {
+		const { handlePlannerAuthorityRuntimeStateChange } = await import(
+			"../planner_authority/runtime.js"
+		);
+		return handlePlannerAuthorityRuntimeStateChange(host, relativeId, val, ack);
 	}
 	if (!isPlannerCoordinatorState(relativeId)) {
 		return false;

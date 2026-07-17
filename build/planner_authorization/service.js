@@ -240,6 +240,31 @@ class PlannerAuthorizationService {
             this.emitStatus();
         });
     }
+    /** Non-mutating read of the current valid grant (for authority precondition checks). */
+    peekGrant() {
+        if (this.grant && !(0, grant_1.grantExpired)(this.grant, this.nowMs()))
+            return this.grant;
+        return null;
+    }
+    /**
+     * Consume the current grant for authority activation. Synchronous — must only be
+     * called by the authority path while it holds its own mutex. Clears the internal
+     * grant and returns to idle; the authority now owns the granted authorization.
+     */
+    consumeGrantForActivation() {
+        if (this.shuttingDown)
+            return null;
+        const grant = this.grant;
+        if (!grant || (0, grant_1.grantExpired)(grant, this.nowMs()))
+            return null;
+        this.grant = null;
+        this.clearGrantTimer();
+        this.setState("idle");
+        this.lastEventCode = "grant_consumed";
+        void this.auditEvent("grant_consumed", "ok", null, grant.grantId);
+        this.emitStatus();
+        return grant;
+    }
     computeEligibility() {
         const extras = this.deps.getEligibilityExtras();
         const evidence = this.deps.getEvidence();
@@ -269,6 +294,7 @@ class PlannerAuthorizationService {
             challengeActive: this.challenge != null && !this.challenge.consumed && !(0, challenge_1.challengeExpired)(this.challenge, this.nowMs()),
             grantActive: this.grant != null && !(0, grant_1.grantExpired)(this.grant, this.nowMs()),
             releaseGateClosed: true,
+            dryrunPilotReady: extras.dryrunPilotReady === true,
         };
         return (0, eligibility_1.evaluateAuthorizationEligibility)(input);
     }
@@ -302,6 +328,7 @@ class PlannerAuthorizationService {
             challengeActive: false,
             grantActive: false,
             releaseGateClosed: true,
+            dryrunPilotReady: extras.dryrunPilotReady === true,
         });
     }
     revisionsMatchChallenge(challenge) {

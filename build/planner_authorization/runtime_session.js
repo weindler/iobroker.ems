@@ -19,6 +19,7 @@ const session = {
     restoreBarrierActive: false,
     operationLockActive: false,
     sessionId: `sess-${Date.now().toString(36)}`,
+    dryrunPilotReady: false,
 };
 function configureAuthorizationSession(partial) {
     Object.assign(session, partial);
@@ -46,5 +47,6 @@ function resetAuthorizationSessionForTest() {
     session.restoreBarrierActive = false;
     session.operationLockActive = false;
     session.sessionId = `sess-${Date.now().toString(36)}`;
+    session.dryrunPilotReady = false;
 }
 exports.resetAuthorizationSessionForTest = resetAuthorizationSessionForTest;

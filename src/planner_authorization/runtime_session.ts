@@ -23,6 +23,8 @@ interface AuthRuntimeSession {
 	restoreBarrierActive: boolean;
 	operationLockActive: boolean;
 	sessionId: string;
+	/** Phase 3H: dryrun pilot readiness stands in for full evidence ready. */
+	dryrunPilotReady: boolean;
 }
 
 const session: AuthRuntimeSession = {
@@ -43,6 +45,7 @@ const session: AuthRuntimeSession = {
 	restoreBarrierActive: false,
 	operationLockActive: false,
 	sessionId: `sess-${Date.now().toString(36)}`,
+	dryrunPilotReady: false,
 };
 
 export function configureAuthorizationSession(partial: Partial<AuthRuntimeSession>): void {
@@ -71,4 +74,5 @@ export function resetAuthorizationSessionForTest(): void {
 	session.restoreBarrierActive = false;
 	session.operationLockActive = false;
 	session.sessionId = `sess-${Date.now().toString(36)}`;
+	session.dryrunPilotReady = false;
 }

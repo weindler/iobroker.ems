@@ -80,6 +80,15 @@ export function createPlannerRuntimeContext(
 			await repository.cleanupJobDir(layout.jobDir(jobId), true);
 		},
 		runAuthoritativeProjection: async ({ snapshot, generation, jobId }) => {
+			try {
+				const { getAuthoritySession } = await import("../planner_authority/runtime_session.js");
+				const auth = getAuthoritySession().service;
+				if (auth?.shouldSkipLegacyAuthoritativeProjection()) {
+					return { ok: true };
+				}
+			} catch {
+				// authority optional
+			}
 			const projection = computeAuthoritativeDualRunProjection({
 				snapshot,
 				generation,
@@ -96,6 +105,17 @@ export function createPlannerRuntimeContext(
 			return { ok: true };
 		},
 		runWorkerJob: async ({ jobId, generation, snapshot, triggerReason, requestedAt, timeoutMs }) => {
+			const { captureRssSnapshot } = await import("../planner_authority/memory.js");
+			const before = captureRssSnapshot();
+			let legacyModuleLoaded = false;
+			try {
+				const { getAuthoritySession } = await import("../planner_authority/runtime_session.js");
+				const auth = getAuthoritySession().service;
+				legacyModuleLoaded = !(auth?.shouldSkipLegacyAuthoritativeProjection() ?? false);
+			} catch {
+				legacyModuleLoaded = true;
+			}
+
 			const jobDir = layout.jobDir(jobId);
 			await writePlannerInputSnapshot(jobDir, snapshot, {
 				runtimeRootDir: layout.runtimePlannerDir,
@@ -119,6 +139,19 @@ export function createPlannerRuntimeContext(
 				timeoutMs,
 			});
 			const result = await readJobResult(jobDir);
+			const after = captureRssSnapshot();
+			const delta = Math.round((after.rssMiB - before.rssMiB) * 10) / 10;
+			try {
+				const { recordPlannerAuthorityWorkerMemory } = await import("../planner_authority/runtime.js");
+				await recordPlannerAuthorityWorkerMemory({
+					rssBeforeWorkerJobMib: before.rssMiB,
+					rssAfterWorkerExitMib: after.rssMiB,
+					lastWorkerDeltaMib: delta,
+					legacyModuleLoaded,
+				});
+			} catch {
+				// memory diagnostics optional
+			}
 			const merged: PlannerWorkerRunResult = { ...runResult, result };
 			return merged;
 		},

@@ -23,7 +23,18 @@ function evaluateAuthorizationEligibility(input) {
     if (input.operationLockActive)
         codes.push("operation_lock_active");
     const evidence = input.evidence;
-    if (!evidence || evidence.state !== "ready") {
+    const lastEligibleMs = evidence?.lastEligibleRunAt ? Date.parse(evidence.lastEligibleRunAt) : NaN;
+    /** Inclusive OR partner for dryrunPilotReady — never XOR. */
+    const fullEvidenceReady = evidence != null &&
+        evidence.state === "ready" &&
+        evidence.schemaVersion === input.expectedEvidenceSchemaVersion &&
+        evidence.policyFingerprint === input.expectedPolicyFingerprint &&
+        Number.isFinite(lastEligibleMs) &&
+        input.nowMs - lastEligibleMs <= constants_1.TAKEOVER_MAX_STALE_ELIGIBLE_MS;
+    if (fullEvidenceReady || input.dryrunPilotReady === true) {
+        // Inclusive OR: either full evidence readiness or dryrun pilot readiness satisfies the gate.
+    }
+    else if (!evidence || evidence.state !== "ready") {
         codes.push("evidence_not_ready");
     }
     else {
@@ -33,7 +44,6 @@ function evaluateAuthorizationEligibility(input) {
         if (evidence.policyFingerprint !== input.expectedPolicyFingerprint) {
             codes.push("evidence_policy_mismatch");
         }
-        const lastEligibleMs = evidence.lastEligibleRunAt ? Date.parse(evidence.lastEligibleRunAt) : NaN;
         if (!Number.isFinite(lastEligibleMs) || input.nowMs - lastEligibleMs > constants_1.TAKEOVER_MAX_STALE_ELIGIBLE_MS) {
             codes.push("evidence_stale");
         }
@@ -78,6 +88,10 @@ function evaluateAuthorizationEligibility(input) {
         eligible: unique.length === 0,
         codes: unique,
         primaryCode: unique[0] ?? null,
+        /** Inclusive OR of full evidence ready and dryrun pilot ready (diagnostic). */
+        takeoverReady: fullEvidenceReady || input.dryrunPilotReady === true,
+        fullEvidenceReady,
+        dryrunPilotReady: input.dryrunPilotReady === true,
     };
 }
 exports.evaluateAuthorizationEligibility = evaluateAuthorizationEligibility;

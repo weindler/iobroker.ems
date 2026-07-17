@@ -27,6 +27,12 @@ exports.assertJobPathNotUnderDurableDataFolder = exports.resolvePlannerPaths = v
 const path = __importStar(require("node:path"));
 const paths_1 = require("../backup_integration/paths");
 const constants_1 = require("./constants");
+function assertSafeGeneration(generation) {
+    if (!Number.isInteger(generation) || generation < 0 || generation > Number.MAX_SAFE_INTEGER) {
+        throw new Error("invalid generation");
+    }
+    return String(generation);
+}
 function assertSafeJobId(jobId) {
     (0, paths_1.assertSafeRelativeSegment)(jobId);
     if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(jobId)) {
@@ -44,12 +50,14 @@ function resolvePlannerPaths(input) {
     const runtimeSimulationsDir = path.join(runtimePlannerDir, constants_1.RUNTIME_SIMULATIONS_SEGMENT);
     const runtimeCandidateDir = path.join(runtimePlannerDir, constants_1.RUNTIME_CANDIDATE_SEGMENT);
     const runtimeTakeoverDir = path.join(runtimePlannerDir, constants_1.RUNTIME_TAKEOVER_SEGMENT);
+    const workerCanonicalDir = path.join(runtimePlannerDir, constants_1.RUNTIME_WORKER_SEGMENT, constants_1.RUNTIME_WORKER_CANONICAL_SEGMENT);
     (0, paths_1.assertPathWithinRoot)(durablePlannerDir, ems.durableDataDir);
     (0, paths_1.assertPathWithinRoot)(runtimePlannerDir, ems.runtimeDataDir);
     (0, paths_1.assertPathWithinRoot)(runtimeJobsDir, ems.runtimeDataDir);
     (0, paths_1.assertPathWithinRoot)(runtimeSimulationsDir, ems.runtimeDataDir);
     (0, paths_1.assertPathWithinRoot)(runtimeCandidateDir, ems.runtimeDataDir);
     (0, paths_1.assertPathWithinRoot)(runtimeTakeoverDir, ems.runtimeDataDir);
+    (0, paths_1.assertPathWithinRoot)(workerCanonicalDir, ems.runtimeDataDir);
     return {
         durablePlannerDir,
         canonicalForecastPlanPath: path.join(durablePlannerDir, constants_1.CANONICAL_FORECAST_PLAN_FILE),
@@ -60,6 +68,19 @@ function resolvePlannerPaths(input) {
         runtimeCandidateDir,
         runtimeTakeoverDir,
         takeoverEvidencePath: path.join(runtimeTakeoverDir, constants_1.TAKEOVER_EVIDENCE_FILE_NAME),
+        activeAuthorityPointerPath: path.join(runtimePlannerDir, constants_1.ACTIVE_AUTHORITY_POINTER_FILE),
+        workerCanonicalDir,
+        workerCanonicalGenerationDir: (generation) => {
+            const dir = path.join(workerCanonicalDir, assertSafeGeneration(generation));
+            (0, paths_1.assertPathWithinRoot)(dir, ems.runtimeDataDir);
+            return dir;
+        },
+        workerCanonicalPlanPath: (generation) => {
+            const dir = path.join(workerCanonicalDir, assertSafeGeneration(generation));
+            const file = path.join(dir, constants_1.WORKER_PLAN_FILE);
+            (0, paths_1.assertPathWithinRoot)(file, ems.runtimeDataDir);
+            return file;
+        },
         jobDir: (jobId) => {
             assertSafeJobId(jobId);
             const dir = path.join(runtimeJobsDir, jobId);

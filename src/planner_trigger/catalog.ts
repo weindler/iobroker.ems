@@ -53,6 +53,7 @@ export const PLANNER_TRIGGER_ALLOWLIST: readonly CatalogEntry[] = [
 export const PLANNER_TRIGGER_DENYLIST_PREFIXES: readonly string[] = [
 	"planner.coordinator.",
 	"planner.takeover.",
+	"planner.authority.",
 	"planner.forecast.",
 	"planner.daily.",
 	"planner.trigger.",

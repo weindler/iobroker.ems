@@ -29,3 +29,13 @@ export {
 	plannerTakeoverAuthorizationModeFromConfig,
 } from "./authorization_mode";
 export type { PlannerTakeoverAuthorizationMode } from "./authorization_mode";
+
+export {
+	PLANNER_REQUESTED_AUTHORITIES,
+	PLANNER_AUTHORITATIVE_SOURCE_CONFIG_KEY,
+	PLANNER_AUTHORITATIVE_SOURCE_DEFAULT,
+	isPlannerRequestedAuthority,
+	parsePlannerRequestedAuthority,
+	plannerRequestedAuthorityFromConfig,
+} from "./authoritative_source";
+export type { PlannerRequestedAuthority } from "./authoritative_source";

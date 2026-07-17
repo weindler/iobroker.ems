@@ -105,6 +105,21 @@ async function applySessionAndCoordinator(host) {
     catch {
         // optional
     }
+    try {
+        const { configureAuthoritySession, getAuthoritySession } = await Promise.resolve().then(() => __importStar(require("../planner_authority/runtime_session.js")));
+        configureAuthoritySession({
+            runtimeMode: effective.effectiveMode,
+            evaluationMode: configuredEvaluationMode,
+        });
+        const authorityChangedOff = effective.effectiveMode !== "shadow_auto" || configuredEvaluationMode !== "observe";
+        const authoritySvc = getAuthoritySession().service;
+        if (authorityChangedOff && authoritySvc) {
+            await authoritySvc.fallback("mode_change");
+        }
+    }
+    catch {
+        // optional
+    }
     await (0, compose_1.setPlannerOnDemandCoordinatorEnabled)(effective.coordinatorEnabled);
     await writeModeStates(host);
 }
@@ -240,11 +255,21 @@ async function initPlannerShadowRuntime(host) {
     }
     const { initPlannerAuthorizationRuntime } = await Promise.resolve().then(() => __importStar(require("../planner_authorization/runtime.js")));
     await initPlannerAuthorizationRuntime(host);
+    const { initPlannerAuthorityRuntime } = await Promise.resolve().then(() => __importStar(require("../planner_authority/runtime.js")));
+    await initPlannerAuthorityRuntime(host);
 }
 exports.initPlannerShadowRuntime = initPlannerShadowRuntime;
 async function stopPlannerShadowRuntime() {
     unloadStopped = true;
     (0, session_1.configureDualRunSession)({ shuttingDown: true });
+    try {
+        // Authority first — revoke worker authority back to legacy before authorization stops.
+        const { stopPlannerAuthorityRuntime } = await Promise.resolve().then(() => __importStar(require("../planner_authority/runtime.js")));
+        await stopPlannerAuthorityRuntime();
+    }
+    catch {
+        // optional
+    }
     try {
         const { stopPlannerAuthorizationRuntime } = await Promise.resolve().then(() => __importStar(require("../planner_authorization/runtime.js")));
         await stopPlannerAuthorizationRuntime();
@@ -301,6 +326,12 @@ async function handlePlannerShadowStateChange(host, relativeId, val, ack) {
     if (relativeId.startsWith("planner.takeover.authorization.")) {
         const { handlePlannerAuthorizationRuntimeStateChange } = await Promise.resolve().then(() => __importStar(require("../planner_authorization/runtime.js")));
         return handlePlannerAuthorizationRuntimeStateChange(host, relativeId, val, ack);
+    }
+    if (relativeId.startsWith("planner.authority.") ||
+        relativeId === "planner.takeover.activate_worker_dryrun" ||
+        relativeId === "planner.takeover.deactivate_worker") {
+        const { handlePlannerAuthorityRuntimeStateChange } = await Promise.resolve().then(() => __importStar(require("../planner_authority/runtime.js")));
+        return handlePlannerAuthorityRuntimeStateChange(host, relativeId, val, ack);
     }
     if (!(0, ensure_states_1.isPlannerCoordinatorState)(relativeId)) {
         return false;

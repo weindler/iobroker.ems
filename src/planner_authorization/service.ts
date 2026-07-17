@@ -306,6 +306,30 @@ export class PlannerAuthorizationService {
 		});
 	}
 
+	/** Non-mutating read of the current valid grant (for authority precondition checks). */
+	peekGrant(): PlannerTakeoverAuthorizationGrant | null {
+		if (this.grant && !grantExpired(this.grant, this.nowMs())) return this.grant;
+		return null;
+	}
+
+	/**
+	 * Consume the current grant for authority activation. Synchronous — must only be
+	 * called by the authority path while it holds its own mutex. Clears the internal
+	 * grant and returns to idle; the authority now owns the granted authorization.
+	 */
+	consumeGrantForActivation(): PlannerTakeoverAuthorizationGrant | null {
+		if (this.shuttingDown) return null;
+		const grant = this.grant;
+		if (!grant || grantExpired(grant, this.nowMs())) return null;
+		this.grant = null;
+		this.clearGrantTimer();
+		this.setState("idle");
+		this.lastEventCode = "grant_consumed";
+		void this.auditEvent("grant_consumed", "ok", null, grant.grantId);
+		this.emitStatus();
+		return grant;
+	}
+
 	private computeEligibility() {
 		const extras = this.deps.getEligibilityExtras();
 		const evidence = this.deps.getEvidence();
@@ -335,6 +359,7 @@ export class PlannerAuthorizationService {
 			challengeActive: this.challenge != null && !this.challenge.consumed && !challengeExpired(this.challenge, this.nowMs()),
 			grantActive: this.grant != null && !grantExpired(this.grant, this.nowMs()),
 			releaseGateClosed: true,
+			dryrunPilotReady: extras.dryrunPilotReady === true,
 		};
 		return evaluateAuthorizationEligibility(input);
 	}
@@ -369,6 +394,7 @@ export class PlannerAuthorizationService {
 			challengeActive: false,
 			grantActive: false,
 			releaseGateClosed: true,
+			dryrunPilotReady: extras.dryrunPilotReady === true,
 		});
 	}
 

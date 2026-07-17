@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.tryMintCanonicalPublishPermitFromShadow = exports.requireCanonicalPublishPermit = exports.PHASE_3F_PUBLISH_DEFAULTS = exports.PHASE_3E_PUBLISH_DEFAULTS = exports.resolvePlannerPublishTarget = void 0;
+exports.WORKER_DRYRUN_PUBLISH_PERMIT_TTL_MS = exports.permitExpired = exports.consumePermit = exports.isCanonicalPublishPermit = exports.mintWorkerDryrunCanonicalPublishPermit = exports.tryMintCanonicalPublishPermitFromShadow = exports.requireCanonicalPublishPermit = exports.PHASE_3F_PUBLISH_DEFAULTS = exports.PHASE_3E_PUBLISH_DEFAULTS = exports.resolvePlannerPublishTarget = void 0;
 var policy_1 = require("./policy");
 Object.defineProperty(exports, "resolvePlannerPublishTarget", { enumerable: true, get: function () { return policy_1.resolvePlannerPublishTarget; } });
 Object.defineProperty(exports, "PHASE_3E_PUBLISH_DEFAULTS", { enumerable: true, get: function () { return policy_1.PHASE_3E_PUBLISH_DEFAULTS; } });
@@ -8,3 +8,8 @@ Object.defineProperty(exports, "PHASE_3F_PUBLISH_DEFAULTS", { enumerable: true, 
 var permit_1 = require("./permit");
 Object.defineProperty(exports, "requireCanonicalPublishPermit", { enumerable: true, get: function () { return permit_1.requireCanonicalPublishPermit; } });
 Object.defineProperty(exports, "tryMintCanonicalPublishPermitFromShadow", { enumerable: true, get: function () { return permit_1.tryMintCanonicalPublishPermitFromShadow; } });
+Object.defineProperty(exports, "mintWorkerDryrunCanonicalPublishPermit", { enumerable: true, get: function () { return permit_1.mintWorkerDryrunCanonicalPublishPermit; } });
+Object.defineProperty(exports, "isCanonicalPublishPermit", { enumerable: true, get: function () { return permit_1.isCanonicalPublishPermit; } });
+Object.defineProperty(exports, "consumePermit", { enumerable: true, get: function () { return permit_1.consumePermit; } });
+Object.defineProperty(exports, "permitExpired", { enumerable: true, get: function () { return permit_1.permitExpired; } });
+Object.defineProperty(exports, "WORKER_DRYRUN_PUBLISH_PERMIT_TTL_MS", { enumerable: true, get: function () { return permit_1.WORKER_DRYRUN_PUBLISH_PERMIT_TTL_MS; } });

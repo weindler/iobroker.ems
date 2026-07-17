@@ -86,6 +86,7 @@ async function ensureService(): Promise<PlannerAuthorizationService | null> {
 				pendingRerun: s.pendingRerun,
 				executionMode: s.executionMode,
 				bound: s.bound,
+				dryrunPilotReady: s.dryrunPilotReady === true,
 			};
 		},
 		onStatus: (status) => {

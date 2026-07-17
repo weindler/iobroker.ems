@@ -140,6 +140,41 @@ describe("planner_authorization eligibility", () => {
 	it("mismatch blocks", () => {
 		assert.ok(baseElig({ lastCompareStatus: "mismatch" }).codes.includes("newer_mismatch"));
 	});
+
+	it("inclusive OR readiness: full=false pilot=false blocks", () => {
+		const r = baseElig({ evidence: null, dryrunPilotReady: false });
+		assert.equal(r.takeoverReady, false);
+		assert.equal(r.fullEvidenceReady, false);
+		assert.equal(r.dryrunPilotReady, false);
+		assert.ok(r.codes.includes("evidence_not_ready"));
+	});
+
+	it("inclusive OR readiness: full=false pilot=true allows evidence gate", () => {
+		const r = baseElig({
+			evidence: { ...readyEvidence(), state: "collecting" },
+			dryrunPilotReady: true,
+		});
+		assert.equal(r.takeoverReady, true);
+		assert.equal(r.fullEvidenceReady, false);
+		assert.equal(r.dryrunPilotReady, true);
+		assert.equal(r.codes.includes("evidence_not_ready"), false);
+	});
+
+	it("inclusive OR readiness: full=true pilot=false allows evidence gate", () => {
+		const r = baseElig({ dryrunPilotReady: false });
+		assert.equal(r.takeoverReady, true);
+		assert.equal(r.fullEvidenceReady, true);
+		assert.equal(r.dryrunPilotReady, false);
+		assert.equal(r.codes.includes("evidence_not_ready"), false);
+	});
+
+	it("inclusive OR readiness: full=true pilot=true allows (not XOR)", () => {
+		const r = baseElig({ dryrunPilotReady: true });
+		assert.equal(r.takeoverReady, true);
+		assert.equal(r.fullEvidenceReady, true);
+		assert.equal(r.dryrunPilotReady, true);
+		assert.equal(r.codes.includes("evidence_not_ready"), false);
+	});
 });
 
 describe("planner_authorization challenge grant permit", () => {

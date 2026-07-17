@@ -70,6 +70,10 @@ export interface PlannerAuthorizationEligibilityResult {
 	eligible: boolean;
 	codes: PlannerAuthorizationEligibilityCode[];
 	primaryCode: PlannerAuthorizationEligibilityCode | null;
+	/** Inclusive OR diagnostic — true when full evidence or dryrun pilot is ready. */
+	takeoverReady: boolean;
+	fullEvidenceReady: boolean;
+	dryrunPilotReady: boolean;
 }
 
 export interface CanonicalPermitMintPreview {

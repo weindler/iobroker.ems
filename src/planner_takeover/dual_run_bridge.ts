@@ -161,13 +161,63 @@ export async function handleCoordinatorDualRunOutcome(
 		const { configureAuthorizationSession, getAuthorizationSession } = await import(
 			"../planner_authorization/runtime_session.js"
 		);
+		const { evaluateDryrunPilotReadiness } = await import("../planner_authority/pilot_readiness.js");
+		const { policyFingerprint } = await import("./evidence.js");
+		const { DEFAULT_TAKEOVER_READINESS_POLICY } = await import("./constants.js");
 		const authRev = recorded.evidence.lastAuthoritativeRevision;
 		const candRev = recorded.evidence.lastCandidateRevision;
+		const bound =
+			authRev && candRev && identityBase.inputRevision
+				? {
+						generation: event.generation,
+						inputRevision: identityBase.inputRevision,
+						candidateRevision: candRev,
+						authoritativeRevision: authRev,
+						evidenceRevision: recorded.evidence.evidenceRevision,
+						evidencePolicyRevision: recorded.evidence.policyFingerprint,
+						planningHorizonStart: identityBase.planningHorizonStart,
+						planningHorizonEnd: identityBase.planningHorizonEnd,
+						slotDurationMinutes: identityBase.slotDurationMinutes,
+						plannerContractVersion: identityBase.plannerContractVersion ?? 1,
+						snapshotSchemaVersion: event.snapshot.schemaVersion,
+						publishPolicyRevision: "phase_3g_closed",
+					}
+				: null;
+		const pilot = evaluateDryrunPilotReadiness({
+			evaluationObserving: evaluationMode === "observe",
+			evidence: recorded.evidence,
+			nowMs: Date.now(),
+			expectedPolicyFingerprint: policyFingerprint(DEFAULT_TAKEOVER_READINESS_POLICY),
+			identityMatches:
+				bound != null && recorded.evidence.evidenceRevision === bound.evidenceRevision,
+		});
 		configureAuthorizationSession({
 			evidence: recorded.evidence,
 			lastCompareStatus: recorded.compare?.status ?? event.result,
 			authoritativePublishOk: !authFailed && stored?.publishStatus === "ok",
 			candidateValid: worker?.validationStatus === "ok" || worker?.validationStatus === "degraded",
+			bound,
+			dryrunPilotReady: pilot.state === "ready",
+		});
+		const svc = getAuthorizationSession().service;
+		if (svc && recorded.compare?.status && recorded.compare.status !== "matched") {
+			await svc.invalidate(recorded.compare.status);
+		}
+	} catch {
+		// authorization session optional
+	}
+
+	try {
+		const { configureAuthoritySession, getAuthoritySession } = await import(
+			"../planner_authority/runtime_session.js"
+		);
+		const authRev = recorded.evidence.lastAuthoritativeRevision;
+		const candRev = recorded.evidence.lastCandidateRevision;
+		configureAuthoritySession({
+			runtimeMode,
+			evaluationMode,
+			evidence: recorded.evidence,
+			candidate: worker,
 			bound:
 				authRev && candRev && identityBase.inputRevision
 					? {
@@ -177,20 +227,14 @@ export async function handleCoordinatorDualRunOutcome(
 							authoritativeRevision: authRev,
 							evidenceRevision: recorded.evidence.evidenceRevision,
 							evidencePolicyRevision: recorded.evidence.policyFingerprint,
-							planningHorizonStart: identityBase.planningHorizonStart,
-							planningHorizonEnd: identityBase.planningHorizonEnd,
-							slotDurationMinutes: identityBase.slotDurationMinutes,
-							plannerContractVersion: identityBase.plannerContractVersion ?? 1,
-							snapshotSchemaVersion: event.snapshot.schemaVersion,
-							publishPolicyRevision: "phase_3g_closed",
 						}
 					: null,
 		});
-		const svc = getAuthorizationSession().service;
-		if (svc && recorded.compare?.status && recorded.compare.status !== "matched") {
-			await svc.invalidate(recorded.compare.status);
+		const authoritySvc = getAuthoritySession().service;
+		if (authoritySvc && worker) {
+			await authoritySvc.onWorkerJobSuccess(worker, event.jobId);
 		}
 	} catch {
-		// authorization session optional
+		// authority session optional
 	}
 }

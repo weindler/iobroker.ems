@@ -8,5 +8,11 @@ export { resolvePlannerPublishTarget, PHASE_3E_PUBLISH_DEFAULTS, PHASE_3F_PUBLIS
 export {
 	requireCanonicalPublishPermit,
 	tryMintCanonicalPublishPermitFromShadow,
+	mintWorkerDryrunCanonicalPublishPermit,
+	isCanonicalPublishPermit,
+	consumePermit,
+	permitExpired,
+	WORKER_DRYRUN_PUBLISH_PERMIT_TTL_MS,
 	type CanonicalPublishPermit,
+	type WorkerDryrunPublishPermitMintInput,
 } from "./permit";

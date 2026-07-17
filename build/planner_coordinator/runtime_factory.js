@@ -75,6 +75,16 @@ function createPlannerRuntimeContext(adapter, options = {}) {
             await repository.cleanupJobDir(layout.jobDir(jobId), true);
         },
         runAuthoritativeProjection: async ({ snapshot, generation, jobId }) => {
+            try {
+                const { getAuthoritySession } = await Promise.resolve().then(() => __importStar(require("../planner_authority/runtime_session.js")));
+                const auth = getAuthoritySession().service;
+                if (auth?.shouldSkipLegacyAuthoritativeProjection()) {
+                    return { ok: true };
+                }
+            }
+            catch {
+                // authority optional
+            }
             const projection = (0, authoritative_projection_1.computeAuthoritativeDualRunProjection)({
                 snapshot,
                 generation,
@@ -91,6 +101,17 @@ function createPlannerRuntimeContext(adapter, options = {}) {
             return { ok: true };
         },
         runWorkerJob: async ({ jobId, generation, snapshot, triggerReason, requestedAt, timeoutMs }) => {
+            const { captureRssSnapshot } = await Promise.resolve().then(() => __importStar(require("../planner_authority/memory.js")));
+            const before = captureRssSnapshot();
+            let legacyModuleLoaded = false;
+            try {
+                const { getAuthoritySession } = await Promise.resolve().then(() => __importStar(require("../planner_authority/runtime_session.js")));
+                const auth = getAuthoritySession().service;
+                legacyModuleLoaded = !(auth?.shouldSkipLegacyAuthoritativeProjection() ?? false);
+            }
+            catch {
+                legacyModuleLoaded = true;
+            }
             const jobDir = layout.jobDir(jobId);
             await (0, write_1.writePlannerInputSnapshot)(jobDir, snapshot, {
                 runtimeRootDir: layout.runtimePlannerDir,
@@ -114,6 +135,20 @@ function createPlannerRuntimeContext(adapter, options = {}) {
                 timeoutMs,
             });
             const result = await (0, repository_1.readJobResult)(jobDir);
+            const after = captureRssSnapshot();
+            const delta = Math.round((after.rssMiB - before.rssMiB) * 10) / 10;
+            try {
+                const { recordPlannerAuthorityWorkerMemory } = await Promise.resolve().then(() => __importStar(require("../planner_authority/runtime.js")));
+                await recordPlannerAuthorityWorkerMemory({
+                    rssBeforeWorkerJobMib: before.rssMiB,
+                    rssAfterWorkerExitMib: after.rssMiB,
+                    lastWorkerDeltaMib: delta,
+                    legacyModuleLoaded,
+                });
+            }
+            catch {
+                // memory diagnostics optional
+            }
             const merged = { ...runResult, result };
             return merged;
         },

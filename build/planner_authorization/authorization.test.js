@@ -122,6 +122,37 @@ function bound() {
     (0, node_test_1.it)("mismatch blocks", () => {
         strict_1.default.ok(baseElig({ lastCompareStatus: "mismatch" }).codes.includes("newer_mismatch"));
     });
+    (0, node_test_1.it)("inclusive OR readiness: full=false pilot=false blocks", () => {
+        const r = baseElig({ evidence: null, dryrunPilotReady: false });
+        strict_1.default.equal(r.takeoverReady, false);
+        strict_1.default.equal(r.fullEvidenceReady, false);
+        strict_1.default.equal(r.dryrunPilotReady, false);
+        strict_1.default.ok(r.codes.includes("evidence_not_ready"));
+    });
+    (0, node_test_1.it)("inclusive OR readiness: full=false pilot=true allows evidence gate", () => {
+        const r = baseElig({
+            evidence: { ...readyEvidence(), state: "collecting" },
+            dryrunPilotReady: true,
+        });
+        strict_1.default.equal(r.takeoverReady, true);
+        strict_1.default.equal(r.fullEvidenceReady, false);
+        strict_1.default.equal(r.dryrunPilotReady, true);
+        strict_1.default.equal(r.codes.includes("evidence_not_ready"), false);
+    });
+    (0, node_test_1.it)("inclusive OR readiness: full=true pilot=false allows evidence gate", () => {
+        const r = baseElig({ dryrunPilotReady: false });
+        strict_1.default.equal(r.takeoverReady, true);
+        strict_1.default.equal(r.fullEvidenceReady, true);
+        strict_1.default.equal(r.dryrunPilotReady, false);
+        strict_1.default.equal(r.codes.includes("evidence_not_ready"), false);
+    });
+    (0, node_test_1.it)("inclusive OR readiness: full=true pilot=true allows (not XOR)", () => {
+        const r = baseElig({ dryrunPilotReady: true });
+        strict_1.default.equal(r.takeoverReady, true);
+        strict_1.default.equal(r.fullEvidenceReady, true);
+        strict_1.default.equal(r.dryrunPilotReady, true);
+        strict_1.default.equal(r.codes.includes("evidence_not_ready"), false);
+    });
 });
 (0, node_test_1.describe)("planner_authorization challenge grant permit", () => {
     (0, node_test_1.it)("prepare→confirm yields activation_blocked without permit", async () => {

@@ -88,6 +88,7 @@ async function ensureService() {
                 pendingRerun: s.pendingRerun,
                 executionMode: s.executionMode,
                 bound: s.bound,
+                dryrunPilotReady: s.dryrunPilotReady === true,
             };
         },
         onStatus: (status) => {

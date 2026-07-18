@@ -8,27 +8,42 @@ const node_test_1 = require("node:test");
 const stats_active_1 = require("./stats_active");
 const persist_1 = require("./persist");
 (0, node_test_1.describe)("acStatsDeviceActive", () => {
-    (0, node_test_1.it)("counts after live start while feedback is still off", () => {
+    (0, node_test_1.it)("counts after live start while feedback is still off (within grace)", () => {
         const up = (0, persist_1.emptyUnitPersist)(2);
         up.lastStartAtMs = 1000;
-        strict_1.default.equal((0, stats_active_1.acStatsDeviceActive)(up, false, false), true);
+        strict_1.default.equal((0, stats_active_1.acStatsDeviceActive)(up, false, false, 1000 + 5_000), true);
     });
     (0, node_test_1.it)("counts in dryrun while EMS session is open and feedback is off", () => {
         const up = (0, persist_1.emptyUnitPersist)(2);
         up.lastStartAtMs = 1000;
         up.running = true;
-        strict_1.default.equal((0, stats_active_1.acStatsDeviceActive)(up, false, true), true);
+        strict_1.default.equal((0, stats_active_1.acStatsDeviceActive)(up, false, true, 1000 + 3600_000), true);
     });
     (0, node_test_1.it)("stops counting after stop was confirmed", () => {
         const up = (0, persist_1.emptyUnitPersist)(2);
         up.lastStartAtMs = 1000;
         up.lastStopAtMs = 2000;
-        strict_1.default.equal((0, stats_active_1.acStatsDeviceActive)(up, false, false), false);
+        strict_1.default.equal((0, stats_active_1.acStatsDeviceActive)(up, false, false, 3000), false);
     });
     (0, node_test_1.it)("counts when feedback is on regardless of stop timestamps", () => {
         const up = (0, persist_1.emptyUnitPersist)(2);
         up.lastStartAtMs = 1000;
         up.lastStopAtMs = 2000;
-        strict_1.default.equal((0, stats_active_1.acStatsDeviceActive)(up, true, false), true);
+        strict_1.default.equal((0, stats_active_1.acStatsDeviceActive)(up, true, false, 9000), true);
+    });
+    (0, node_test_1.it)("does not sticky-count forever after start when feedback stays off", () => {
+        const up = (0, persist_1.emptyUnitPersist)(1);
+        up.lastStartAtMs = 1000;
+        const afterGrace = 1000 + stats_active_1.AC_STATS_START_FEEDBACK_GRACE_MS + 1;
+        strict_1.default.equal((0, stats_active_1.acStatsDeviceActive)(up, false, false, afterGrace), false);
+    });
+    (0, node_test_1.it)("closeAcUnitStatsSession ends open start without stop", () => {
+        const up = (0, persist_1.emptyUnitPersist)(1);
+        up.lastStartAtMs = 1000;
+        up.running = true;
+        strict_1.default.equal((0, stats_active_1.closeAcUnitStatsSession)(up, 5000), true);
+        strict_1.default.equal(up.running, false);
+        strict_1.default.equal(up.lastStopAtMs, 5000);
+        strict_1.default.equal((0, stats_active_1.acStatsDeviceActive)(up, false, false, 6000), false);
     });
 });

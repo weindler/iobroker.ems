@@ -34,7 +34,7 @@ import {
 	resolveAcMappingTarget,
 	type AcMappingTable,
 } from "./sequences";
-import { acStatsDeviceActive } from "./stats_active";
+import { acStatsDeviceActive, closeAcUnitStatsSession } from "./stats_active";
 import {
 	isCleaningFinishedByFeedback,
 	isCleaningFinishedByProgress,
@@ -374,6 +374,27 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 	const live = await isLiveWriteAllowed((id) => host.getStateAsync(id), AC_ADDON_ID);
 	const allowNewCleaning = governanceEnabled && addonEnabledVal;
 
+	// Disabled units leave the control loop — close sticky stats and try one stop if still on.
+	for (const unit of config.units.filter((u) => !u.enabled)) {
+		const up = unitPersist(unit.index);
+		const fbId = resolveAcMappingTarget(mappingTable, unit.index, "feedback_switch");
+		const fb = await readForeign(host, fbId);
+		if (closeAcUnitStatsSession(up, nowMs)) {
+			host.log.debug?.(`ac unit ${unit.index}: stats session closed (unit disabled in config)`);
+		}
+		if (switchIsOn(fb.value) && stopRetryReady(up, nowMs)) {
+			await stopUnit(host, unit, mappingTable, live, up);
+		}
+		await tickConsumerStats(host, {
+			consumerKey: acUnitConsumerKey(unit.index),
+			nowMs,
+			deviceActive: false,
+			countable: false,
+			measuredPowerW: null,
+			commandedPowerW: 0,
+		});
+	}
+
 	const activeUnits = config.units.filter((u) => u.enabled);
 	let runningCount = 0;
 	let anyDailyPlanActive = false;
@@ -489,7 +510,11 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 
 		const ids = acUnitRuntimeStates(unit.index);
 		const fbOn = switchIsOn(fb.value);
-		const deviceActive = acStatsDeviceActive(up, fbOn, up.running);
+		const deviceActive = acStatsDeviceActive(up, fbOn, up.running, nowMs);
+		// Live + feedback off: do not keep a forever-open stats session after the start grace.
+		if (!fbOn && !deviceActive && up.lastStartAtMs && (up.lastStopAtMs == null || up.lastStopAtMs < up.lastStartAtMs)) {
+			closeAcUnitStatsSession(up, nowMs);
+		}
 		const estPower = deviceActive
 			? allocatedPowerW(runningCount || 1, config.outdoorMaxPowerW, unit.estimatedPowerW)
 			: 0;

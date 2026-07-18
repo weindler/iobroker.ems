@@ -56,10 +56,10 @@ const host = {
   setObjectNotExistsAsync: async () => undefined,
   subscribeStatesAsync: async () => undefined,
   unsubscribeStatesAsync: async () => undefined,
+  durableDataDir: "/tmp/ems-3e-lazy/ems.0",
 };
 compose.createPlannerOnDemandCoordinatorFromAdapter({
   namespace: "ems.0",
-  getAbsoluteInstanceDataDir: () => "/tmp/ems-3e-lazy",
   getStateAsync: async () => null,
   config: { planner_runtime_mode: "off" },
 }, { enabled: false });

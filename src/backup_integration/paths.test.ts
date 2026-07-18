@@ -56,6 +56,14 @@ describe("backup_integration paths", () => {
 		assert.throws(() => assertPathWithinRoot("/tmp/ems.0/policy/file.json", root));
 	});
 
+	it("uses durableDataDir injection without getAbsoluteInstanceDataDir", () => {
+		const root = path.join(os.tmpdir(), "ems-durable-inject");
+		const durable = path.join(root, "ems.0");
+		const layout = resolveEmsPaths({ namespace: "ems.0", durableDataDir: durable });
+		assert.equal(layout.durableDataDir, path.resolve(durable));
+		assert.equal(layout.runtimeDataDir, path.resolve(path.join(root, "ems-runtime.0")));
+	});
+
 	it("parseInstanceFromNamespace", () => {
 		assert.equal(parseInstanceFromNamespace("ems.0"), 0);
 		assert.equal(parseInstanceFromNamespace("ems.1"), 1);

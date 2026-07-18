@@ -60,9 +60,13 @@ function resolveDurableDataDir(input) {
     if (typeof input === "string") {
         return path.resolve(input);
     }
+    if (typeof input.durableDataDir === "string" && input.durableDataDir.length > 0) {
+        return path.resolve(input.durableDataDir);
+    }
     if (typeof input.getAbsoluteInstanceDataDir === "function") {
         return path.resolve(input.getAbsoluteInstanceDataDir());
     }
+    // Real ioBroker: instance data dir comes from adapter-core, not from an adapter method.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const utils = require("@iobroker/adapter-core");
     return path.resolve(utils.getAbsoluteInstanceDataDir(input));

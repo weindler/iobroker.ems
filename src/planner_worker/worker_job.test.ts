@@ -37,10 +37,7 @@ describe("planner_worker job", () => {
 	it("runs preparation for v2 snapshot in-process", async () => {
 		const root = path.join(os.tmpdir(), `ems-worker-prep-${Date.now()}`);
 		const durable = durableDataDirFromRoot(root, 0);
-		const layout = resolvePlannerPaths({
-			namespace: "ems.0",
-			getAbsoluteInstanceDataDir: () => durable,
-		});
+		const layout = resolvePlannerPaths(durable);
 		const jobDir = layout.jobDir("job-prep-1");
 		await fs.mkdir(jobDir, { recursive: true });
 
@@ -73,10 +70,7 @@ describe("planner_worker job", () => {
 	it("builder and worker compute identical inputRevision", async () => {
 		const root = path.join(os.tmpdir(), `ems-worker-rev-${Date.now()}`);
 		const durable = durableDataDirFromRoot(root, 0);
-		const layout = resolvePlannerPaths({
-			namespace: "ems.0",
-			getAbsoluteInstanceDataDir: () => durable,
-		});
+		const layout = resolvePlannerPaths(durable);
 		const jobDir = layout.jobDir("job-rev");
 		await fs.mkdir(jobDir, { recursive: true });
 
@@ -264,10 +258,7 @@ describe("planner_worker integration", () => {
 	it("spawns real node worker process for v2 job", async () => {
 		const root = path.join(os.tmpdir(), `ems-worker-spawn-${Date.now()}`);
 		const durable = durableDataDirFromRoot(root, 0);
-		const layout = resolvePlannerPaths({
-			namespace: "ems.0",
-			getAbsoluteInstanceDataDir: () => durable,
-		});
+		const layout = resolvePlannerPaths(durable);
 		const jobDir = layout.jobDir(`job-spawn-${Date.now()}`);
 		await fs.mkdir(jobDir, { recursive: true });
 

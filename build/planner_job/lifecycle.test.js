@@ -63,7 +63,7 @@ function seedPlan(rev) {
     (0, node_test_1.it)("starts worker, publishes, and leaves no child process", async () => {
         const root = path.join(os.tmpdir(), `ems-planner-life-${Date.now()}`);
         const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_2.resolvePlannerPaths)({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+        const layout = (0, paths_js_2.resolvePlannerPaths)(durable);
         const repo = new repository_js_1.PlannerRepository(layout);
         const lifecycle = new lifecycle_js_1.PlannerJobLifecycle(layout, repo);
         const workerPath = path.join(process.cwd(), "build", "planner_worker", "main.js");
@@ -99,7 +99,7 @@ function seedPlan(rev) {
     (0, node_test_1.it)("does not publish on timeout and preserves last canonical plan", async () => {
         const root = path.join(os.tmpdir(), `ems-planner-timeout-${Date.now()}`);
         const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_2.resolvePlannerPaths)({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+        const layout = (0, paths_js_2.resolvePlannerPaths)(durable);
         const repo = new repository_js_1.PlannerRepository(layout);
         const { forecast, daily } = seedPlan(42);
         await repo.writeSeedCanonicalPlans(forecast, daily);
@@ -137,7 +137,7 @@ function seedPlan(rev) {
     (0, node_test_1.it)("shutdown kills running worker", async () => {
         const root = path.join(os.tmpdir(), `ems-planner-shutdown-${Date.now()}`);
         const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_2.resolvePlannerPaths)({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+        const layout = (0, paths_js_2.resolvePlannerPaths)(durable);
         const repo = new repository_js_1.PlannerRepository(layout);
         const lifecycle = new lifecycle_js_1.PlannerJobLifecycle(layout, repo);
         const slowWorker = path.join(root, "hang_worker.js");
@@ -174,7 +174,7 @@ function seedPlan(rev) {
     (0, node_test_1.it)("rejects parallel second job", async () => {
         const root = path.join(os.tmpdir(), `ems-planner-parallel-${Date.now()}`);
         const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_2.resolvePlannerPaths)({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+        const layout = (0, paths_js_2.resolvePlannerPaths)(durable);
         const repo = new repository_js_1.PlannerRepository(layout);
         const lifecycle = new lifecycle_js_1.PlannerJobLifecycle(layout, repo);
         const slowWorker = path.join(root, "parallel_slow.js");
@@ -230,7 +230,7 @@ function seedPlan(rev) {
     (0, node_test_1.it)("mode simulation does not publish canonical plans", async () => {
         const root = path.join(os.tmpdir(), `ems-planner-sim-${Date.now()}`);
         const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_2.resolvePlannerPaths)({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+        const layout = (0, paths_js_2.resolvePlannerPaths)(durable);
         const repo = new repository_js_1.PlannerRepository(layout);
         const { forecast, daily } = seedPlan(77);
         await repo.writeSeedCanonicalPlans(forecast, daily);
@@ -266,7 +266,7 @@ function seedPlan(rev) {
     (0, node_test_1.it)("mode publish still publishes canonical plans", async () => {
         const root = path.join(os.tmpdir(), `ems-planner-publish-${Date.now()}`);
         const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_2.resolvePlannerPaths)({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+        const layout = (0, paths_js_2.resolvePlannerPaths)(durable);
         const repo = new repository_js_1.PlannerRepository(layout);
         const lifecycle = new lifecycle_js_1.PlannerJobLifecycle(layout, repo);
         const workerPath = path.join(process.cwd(), "build", "planner_worker", "main.js");
@@ -298,7 +298,7 @@ function seedPlan(rev) {
     (0, node_test_1.it)("failed simulation does not publish", async () => {
         const root = path.join(os.tmpdir(), `ems-planner-sim-fail-${Date.now()}`);
         const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_2.resolvePlannerPaths)({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+        const layout = (0, paths_js_2.resolvePlannerPaths)(durable);
         const repo = new repository_js_1.PlannerRepository(layout);
         const { forecast, daily } = seedPlan(88);
         await repo.writeSeedCanonicalPlans(forecast, daily);

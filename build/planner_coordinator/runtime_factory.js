@@ -39,22 +39,26 @@ const from_iobroker_1 = require("../planner_snapshot/from_iobroker");
 const write_1 = require("../planner_snapshot/write");
 const authoritative_projection_1 = require("../planner_takeover/authoritative_projection");
 const trigger_1 = require("./trigger");
+function snapshotHostWithPaths(adapter, emsPaths) {
+    if (typeof adapter.getAbsolutePath === "function") {
+        return adapter;
+    }
+    const out = Object.create(adapter);
+    out.getAbsolutePath = (category) => (0, paths_1.categoryDataPath)(emsPaths, category);
+    return out;
+}
 function createPlannerRuntimeContext(adapter, options = {}) {
-    const layout = (0, paths_2.resolvePlannerPaths)({
-        namespace: adapter.namespace,
-        getAbsoluteInstanceDataDir: () => adapter.getAbsoluteInstanceDataDir(),
-    });
-    const emsPaths = (0, paths_1.resolveEmsPaths)({
-        namespace: adapter.namespace,
-        getAbsoluteInstanceDataDir: () => adapter.getAbsoluteInstanceDataDir(),
-    });
+    const pathInput = options.paths ?? adapter;
+    const layout = (0, paths_2.resolvePlannerPaths)(pathInput);
+    const emsPaths = (0, paths_1.resolveEmsPaths)(pathInput);
+    const snapshotHost = snapshotHostWithPaths(adapter, emsPaths);
     const repository = new repository_1.PlannerRepository(layout);
     const lifecycle = new lifecycle_1.PlannerJobLifecycle(layout, repository);
     const packageRoot = options.packageRoot ?? path.resolve(__dirname, "..", "..");
     const workerScriptPath = lifecycle.resolveWorkerPath(packageRoot);
     const deps = {
         now: () => new Date(),
-        buildSnapshot: () => (0, from_iobroker_1.buildPlannerInputSnapshotFromIoBroker)(adapter),
+        buildSnapshot: () => (0, from_iobroker_1.buildPlannerInputSnapshotFromIoBroker)(snapshotHost),
         isWorkerRunning: () => lifecycle.isRunning(),
         shutdownWorker: () => lifecycle.shutdown(),
         readWorkerResult: async (jobId) => (0, repository_1.readJobResult)(layout.jobDir(jobId)),
@@ -208,6 +212,13 @@ function createPlannerRuntimeContext(adapter, options = {}) {
             await handleCoordinatorDualRunOutcome(ctx, event);
         },
     };
-    return { deps, lifecycle };
+    return {
+        deps,
+        lifecycle,
+        pathInput,
+        durableDataDir: emsPaths.durableDataDir,
+        runtimeDataDir: emsPaths.runtimeDataDir,
+        runtimeJobsDir: layout.runtimeJobsDir,
+    };
 }
 exports.createPlannerRuntimeContext = createPlannerRuntimeContext;

@@ -29,7 +29,13 @@ export type PlannerShadowRuntimeHost = StateHost & {
 	log: Pick<ioBroker.Logger, "debug" | "info" | "warn" | "error">;
 	subscribeStatesAsync?: (pattern: string) => Promise<void>;
 	unsubscribeStatesAsync?: (pattern: string) => Promise<void>;
-	getAbsoluteInstanceDataDir?: () => string;
+	/** Test/injection only — production resolves via adapter-core. */
+	durableDataDir?: string;
+	/**
+	 * Preferred path contract for resolvePlannerPaths (real adapter or durable string).
+	 * When set, used instead of the host object itself.
+	 */
+	pathInput?: import("../backup_integration/paths").PathResolverInput;
 };
 
 const SUBSCRIBED_PATTERNS = [
@@ -225,13 +231,8 @@ export async function initPlannerShadowRuntime(host: PlannerShadowRuntimeHost): 
 	// Discard any persisted session grant; arm only from native mode.
 	sessionShadowEnabled = initialSessionShadowFromNative(configuredMode);
 
-	const layout = resolvePlannerPaths({
-		namespace: host.namespace,
-		getAbsoluteInstanceDataDir: () =>
-			typeof host.getAbsoluteInstanceDataDir === "function"
-				? host.getAbsoluteInstanceDataDir()
-				: "/tmp/ems-missing-instance-data",
-	});
+	// Central EMS paths — never call a non-existent adapter.getAbsoluteInstanceDataDir().
+	const layout = resolvePlannerPaths(host.pathInput ?? host);
 	const effectiveMode = resolveEffectivePlannerMode({
 		config: { planner_runtime_mode: configuredMode },
 		sessionShadowEnabled,

@@ -21,10 +21,7 @@ describe("planner_coordinator integration", () => {
 	it("runs real worker process and validates prepared output", async () => {
 		const root = path.join(os.tmpdir(), `ems-coord-int-${Date.now()}`);
 		const durable = durableDataDirFromRoot(root, 0);
-		const layout = resolvePlannerPaths({
-			namespace: "ems.0",
-			getAbsoluteInstanceDataDir: () => durable,
-		});
+		const layout = resolvePlannerPaths(durable);
 		const repository = new PlannerRepository(layout);
 		const lifecycle = new PlannerJobLifecycle(layout, repository);
 		const workerScriptPath = lifecycle.resolveWorkerPath(process.cwd());
@@ -89,10 +86,7 @@ describe("planner_coordinator integration", () => {
 	it("cleans up temp files after integration run", async () => {
 		const root = path.join(os.tmpdir(), `ems-coord-clean-${Date.now()}`);
 		const durable = durableDataDirFromRoot(root, 0);
-		const layout = resolvePlannerPaths({
-			namespace: "ems.0",
-			getAbsoluteInstanceDataDir: () => durable,
-		});
+		const layout = resolvePlannerPaths(durable);
 		const repository = new PlannerRepository(layout);
 		const lifecycle = new PlannerJobLifecycle(layout, repository);
 		const workerScriptPath = lifecycle.resolveWorkerPath(process.cwd());

@@ -31,10 +31,7 @@ const EVIDENCE_REV = "erev-1";
 
 function tmpLayout(): { layout: PlannerPathLayout; dir: string } {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ems-authority-"));
-	const layout = resolvePlannerPaths({
-		namespace: "ems.0",
-		getAbsoluteInstanceDataDir: () => path.join(dir, "ems.0"),
-	});
+	const layout = resolvePlannerPaths(path.join(dir, "ems.0"));
 	return { layout, dir };
 }
 

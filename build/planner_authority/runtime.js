@@ -66,13 +66,7 @@ async function ensureService() {
     const { policyFingerprint } = await Promise.resolve().then(() => __importStar(require("../planner_takeover/evidence.js")));
     const { DEFAULT_TAKEOVER_READINESS_POLICY } = await Promise.resolve().then(() => __importStar(require("../planner_takeover/constants.js")));
     const { getAuthorizationSession } = await Promise.resolve().then(() => __importStar(require("../planner_authorization/runtime_session.js")));
-    const layout = sess.layout ??
-        (0, paths_1.resolvePlannerPaths)({
-            namespace: host.namespace,
-            getAbsoluteInstanceDataDir: () => typeof host.getAbsoluteInstanceDataDir === "function"
-                ? host.getAbsoluteInstanceDataDir()
-                : "/tmp/ems-missing-instance-data",
-        });
+    const layout = sess.layout ?? (0, paths_1.resolvePlannerPaths)(host.pathInput ?? host);
     const service = new PlannerAuthorityService({
         now: () => new Date(),
         adapterInstance: host.namespace,
@@ -124,12 +118,7 @@ async function initPlannerAuthorityRuntime(host) {
     if (parsed.clamped) {
         host.log?.warn?.(`planner_authoritative_source invalid — clamped to legacy (raw=${String(parsed.raw)})`);
     }
-    const layout = (0, paths_1.resolvePlannerPaths)({
-        namespace: host.namespace,
-        getAbsoluteInstanceDataDir: () => typeof host.getAbsoluteInstanceDataDir === "function"
-            ? host.getAbsoluteInstanceDataDir()
-            : "/tmp/ems-missing-instance-data",
-    });
+    const layout = (0, paths_1.resolvePlannerPaths)(host.pathInput ?? host);
     (0, runtime_session_1.configureAuthoritySession)({
         configuredSource,
         layout,

@@ -61,10 +61,7 @@ function jobRequest(overrides = {}) {
     (0, node_test_1.it)("runs preparation for v2 snapshot in-process", async () => {
         const root = path.join(os.tmpdir(), `ems-worker-prep-${Date.now()}`);
         const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_2.resolvePlannerPaths)({
-            namespace: "ems.0",
-            getAbsoluteInstanceDataDir: () => durable,
-        });
+        const layout = (0, paths_js_2.resolvePlannerPaths)(durable);
         const jobDir = layout.jobDir("job-prep-1");
         await fs.mkdir(jobDir, { recursive: true });
         const snapshot = await (0, builder_js_1.buildPlannerInputSnapshot)((0, parity_fixture_js_1.createParityFixtureSource)());
@@ -87,10 +84,7 @@ function jobRequest(overrides = {}) {
     (0, node_test_1.it)("builder and worker compute identical inputRevision", async () => {
         const root = path.join(os.tmpdir(), `ems-worker-rev-${Date.now()}`);
         const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_2.resolvePlannerPaths)({
-            namespace: "ems.0",
-            getAbsoluteInstanceDataDir: () => durable,
-        });
+        const layout = (0, paths_js_2.resolvePlannerPaths)(durable);
         const jobDir = layout.jobDir("job-rev");
         await fs.mkdir(jobDir, { recursive: true });
         const snapshot = await (0, builder_js_1.buildPlannerInputSnapshot)((0, parity_fixture_js_1.createParityFixtureSource)());
@@ -218,10 +212,7 @@ function jobRequest(overrides = {}) {
     (0, node_test_1.it)("spawns real node worker process for v2 job", async () => {
         const root = path.join(os.tmpdir(), `ems-worker-spawn-${Date.now()}`);
         const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_2.resolvePlannerPaths)({
-            namespace: "ems.0",
-            getAbsoluteInstanceDataDir: () => durable,
-        });
+        const layout = (0, paths_js_2.resolvePlannerPaths)(durable);
         const jobDir = layout.jobDir(`job-spawn-${Date.now()}`);
         await fs.mkdir(jobDir, { recursive: true });
         const snapshot = await (0, builder_js_1.buildPlannerInputSnapshot)((0, parity_fixture_js_1.createParityFixtureSource)());

@@ -24,7 +24,6 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.resetPlannerRuntimeLoadStateForTest = exports.isPlannerRuntimeContextLoadedForTest = exports.registerPlannerOnDemandCoordinatorForTest = exports.createPlannerOnDemandCoordinatorForTest = exports.stopPlannerOnDemandCoordinator = exports.createPlannerOnDemandCoordinatorFromAdapter = exports.setPlannerOnDemandCoordinatorEnabled = exports.getPlannerOnDemandCoordinator = exports.PlannerCoordinatorAlreadyActiveError = void 0;
-const data_dir_1 = require("../learning/data_dir");
 const coordinator_1 = require("./coordinator");
 const errors_1 = require("./errors");
 let activeCoordinator = null;
@@ -59,7 +58,10 @@ async function loadRuntimeContext(host, options) {
         return runtimeContext;
     }
     if (!runtimeLoadPromise) {
-        runtimeLoadPromise = Promise.resolve().then(() => __importStar(require("./runtime_factory.js"))).then((module) => module.createPlannerRuntimeContext(host, { packageRoot: options.packageRoot }))
+        runtimeLoadPromise = Promise.resolve().then(() => __importStar(require("./runtime_factory.js"))).then((module) => module.createPlannerRuntimeContext(host, {
+            packageRoot: options.packageRoot,
+            paths: options.paths,
+        }))
             .catch((error) => {
             runtimeLoadPromise = null;
             throw (0, errors_1.wrapCoordinatorStageError)("runtime_import_failed", "runtime_import_failed", error);
@@ -172,13 +174,6 @@ function createLazyRuntimeDependencies(host, options) {
         },
     };
 }
-function asCoordinatorHost(adapter) {
-    // Ensure learning/data path helpers exist for snapshot JSON reads on first lazy load.
-    if (typeof adapter.getAbsolutePath === "function") {
-        return adapter;
-    }
-    return (0, data_dir_1.withLearningDataPath)(adapter, adapter);
-}
 function createPlannerOnDemandCoordinatorFromAdapter(adapter, options = {}) {
     if (activeCoordinator) {
         const state = activeCoordinator.getStatus().state;
@@ -186,10 +181,10 @@ function createPlannerOnDemandCoordinatorFromAdapter(adapter, options = {}) {
             throw new PlannerCoordinatorAlreadyActiveError();
         }
     }
-    const host = asCoordinatorHost(adapter);
-    const coordinator = new coordinator_1.PlannerOnDemandCoordinator(createLazyRuntimeDependencies(host, options), options);
+    // Snapshot getAbsolutePath is attached lazily inside createPlannerRuntimeContext via resolveEmsPaths.
+    const coordinator = new coordinator_1.PlannerOnDemandCoordinator(createLazyRuntimeDependencies(adapter, options), options);
     activeCoordinator = coordinator;
-    activeAdapterHost = host;
+    activeAdapterHost = adapter;
     return coordinator;
 }
 exports.createPlannerOnDemandCoordinatorFromAdapter = createPlannerOnDemandCoordinatorFromAdapter;

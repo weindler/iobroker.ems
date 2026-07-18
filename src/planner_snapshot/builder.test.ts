@@ -324,10 +324,7 @@ describe("planner_snapshot write", () => {
 	it("writes input.json atomically under runtime job dir", async () => {
 		const root = path.join(os.tmpdir(), `ems-snap-write-${Date.now()}`);
 		const durable = durableDataDirFromRoot(root, 0);
-		const layout = resolvePlannerPaths({
-			namespace: "ems.0",
-			getAbsoluteInstanceDataDir: () => durable,
-		});
+		const layout = resolvePlannerPaths(durable);
 		const jobDir = layout.jobDir("job-snap-1");
 		await fs.mkdir(jobDir, { recursive: true });
 		const snap = await buildPlannerInputSnapshot(realisticFixtureSource(root));
@@ -359,10 +356,7 @@ describe("planner_snapshot write", () => {
 	it("rejects traversal in job dir", async () => {
 		const root = path.join(os.tmpdir(), `ems-snap-traversal-${Date.now()}`);
 		const durable = durableDataDirFromRoot(root, 0);
-		const layout = resolvePlannerPaths({
-			namespace: "ems.0",
-			getAbsoluteInstanceDataDir: () => durable,
-		});
+		const layout = resolvePlannerPaths(durable);
 		const snap = await buildPlannerInputSnapshot(createMockSource());
 		await assert.rejects(
 			() =>
@@ -377,10 +371,7 @@ describe("planner_snapshot write", () => {
 	it("rejects snapshots exceeding budget", async () => {
 		const root = path.join(os.tmpdir(), `ems-snap-budget-${Date.now()}`);
 		const durable = durableDataDirFromRoot(root, 0);
-		const layout = resolvePlannerPaths({
-			namespace: "ems.0",
-			getAbsoluteInstanceDataDir: () => durable,
-		});
+		const layout = resolvePlannerPaths(durable);
 		const jobDir = layout.jobDir("job-budget");
 		await fs.mkdir(jobDir, { recursive: true });
 		const snap = await buildPlannerInputSnapshot(createMockSource());

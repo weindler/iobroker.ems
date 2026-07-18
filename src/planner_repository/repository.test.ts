@@ -68,7 +68,7 @@ async function writeJobFiles(jobDir: string, jobId: string, generation: number):
 async function makeRepo(): Promise<{ repo: PlannerRepository; layout: ReturnType<typeof resolvePlannerPaths> }> {
 	const root = path.join(os.tmpdir(), `ems-planner-repo-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 	const durable = durableDataDirFromRoot(root, 0);
-	const layout = resolvePlannerPaths({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+	const layout = resolvePlannerPaths(durable);
 	return { repo: new PlannerRepository(layout), layout };
 }
 

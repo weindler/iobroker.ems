@@ -21,7 +21,7 @@ function memoryHost(config = {}) {
         objects,
         states,
         order,
-        getAbsoluteInstanceDataDir: () => "/tmp/ems-authority-cold",
+        durableDataDir: "/tmp/ems-authority-cold/ems.0",
         async setObjectNotExistsAsync(id, obj) {
             order.push(`object:${id}`);
             if (!objects.has(id))

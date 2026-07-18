@@ -26,11 +26,12 @@ import type { PlannerOnDemandCoordinatorDependencies } from "../planner_coordina
 
 type StoredState = { val: ioBroker.StateValue; ack: boolean };
 
-function memoryHost(config: Record<string, unknown> = {}): PlannerShadowRuntimeHost & { states: Map<string, StoredState> } {
+function memoryHost(config: Record<string, unknown> = {}, durableDataDir?: string): PlannerShadowRuntimeHost & { states: Map<string, StoredState> } {
 	const states = new Map<string, StoredState>();
 	return {
 		namespace: "ems.0",
 		config,
+		durableDataDir,
 		log: { debug: () => undefined, info: () => undefined, warn: () => undefined, error: () => undefined },
 		getStateAsync: async (id) => (states.has(id) ? (states.get(id) as ioBroker.State) : null),
 		setStateAsync: async (id, state) => {
@@ -47,14 +48,11 @@ describe("planner_shadow integration", () => {
 	it("matched end-to-end shadow run with real worker and compact states", async () => {
 		const root = path.join(os.tmpdir(), `ems-shadow-int-${Date.now()}`);
 		const durable = durableDataDirFromRoot(root, 0);
-		const layout = resolvePlannerPaths({
-			namespace: "ems.0",
-			getAbsoluteInstanceDataDir: () => durable,
-		});
+		const layout = resolvePlannerPaths(durable);
 		const repository = new PlannerRepository(layout);
 		const lifecycle = new PlannerJobLifecycle(layout, repository);
 		const workerScriptPath = lifecycle.resolveWorkerPath(process.cwd());
-		const host = memoryHost({ planner_runtime_mode: "shadow_manual" });
+		const host = memoryHost({ planner_runtime_mode: "shadow_manual" }, durable);
 
 		const deps: PlannerOnDemandCoordinatorDependencies = {
 			now: () => new Date("2026-07-01T12:00:00.000Z"),
@@ -120,14 +118,11 @@ describe("planner_shadow integration", () => {
 	it("mismatch integration when worker projection differs from in-process reference", async () => {
 		const root = path.join(os.tmpdir(), `ems-shadow-mismatch-${Date.now()}`);
 		const durable = durableDataDirFromRoot(root, 0);
-		const layout = resolvePlannerPaths({
-			namespace: "ems.0",
-			getAbsoluteInstanceDataDir: () => durable,
-		});
+		const layout = resolvePlannerPaths(durable);
 		const repository = new PlannerRepository(layout);
 		const lifecycle = new PlannerJobLifecycle(layout, repository);
 		const workerScriptPath = lifecycle.resolveWorkerPath(process.cwd());
-		const host = memoryHost({ planner_runtime_mode: "shadow_manual" });
+		const host = memoryHost({ planner_runtime_mode: "shadow_manual" }, durable);
 		const snapshot = await buildPlannerInputSnapshot(createParityFixtureSource());
 
 		const deps: PlannerOnDemandCoordinatorDependencies = {

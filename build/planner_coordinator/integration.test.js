@@ -47,10 +47,7 @@ const compose_js_1 = require("./compose.js");
     (0, node_test_1.it)("runs real worker process and validates prepared output", async () => {
         const root = path.join(os.tmpdir(), `ems-coord-int-${Date.now()}`);
         const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_2.resolvePlannerPaths)({
-            namespace: "ems.0",
-            getAbsoluteInstanceDataDir: () => durable,
-        });
+        const layout = (0, paths_js_2.resolvePlannerPaths)(durable);
         const repository = new repository_js_1.PlannerRepository(layout);
         const lifecycle = new lifecycle_js_1.PlannerJobLifecycle(layout, repository);
         const workerScriptPath = lifecycle.resolveWorkerPath(process.cwd());
@@ -109,10 +106,7 @@ const compose_js_1 = require("./compose.js");
     (0, node_test_1.it)("cleans up temp files after integration run", async () => {
         const root = path.join(os.tmpdir(), `ems-coord-clean-${Date.now()}`);
         const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_2.resolvePlannerPaths)({
-            namespace: "ems.0",
-            getAbsoluteInstanceDataDir: () => durable,
-        });
+        const layout = (0, paths_js_2.resolvePlannerPaths)(durable);
         const repository = new repository_js_1.PlannerRepository(layout);
         const lifecycle = new lifecycle_js_1.PlannerJobLifecycle(layout, repository);
         const workerScriptPath = lifecycle.resolveWorkerPath(process.cwd());

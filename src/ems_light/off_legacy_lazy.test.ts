@@ -87,7 +87,7 @@ const host = {
   async getForeignStateAsync() { return null; },
   async subscribeStatesAsync() {},
   async unsubscribeStatesAsync() {},
-  getAbsoluteInstanceDataDir: () => "/tmp/ems-off-legacy-proof",
+  durableDataDir: "/tmp/ems-off-legacy-proof/ems.0",
 };
 (async () => {
   await planner.ensurePlannerStateTree(host, { includeTakeoverStates: false });
@@ -116,7 +116,7 @@ const host = {
   setObjectNotExistsAsync: async () => undefined,
   subscribeStatesAsync: async () => undefined,
   unsubscribeStatesAsync: async () => undefined,
-  getAbsoluteInstanceDataDir: () => "/tmp/ems-shadow-auto-lazy",
+  durableDataDir: "/tmp/ems-shadow-auto-lazy/ems.0",
 };
 (async () => {
   const coordinator = compose.createPlannerOnDemandCoordinatorFromAdapter(host, { enabled: false });

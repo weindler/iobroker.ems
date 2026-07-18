@@ -1,6 +1,10 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { resolveEmsPaths } from "../backup_integration/paths";
+import {
+	categoryDataPath,
+	resolveEmsPaths,
+	type PathResolverInput,
+} from "../backup_integration/paths";
 import { PlannerJobLifecycle } from "../planner_job/lifecycle";
 import { PLANNER_DEFAULT_JOB_TIMEOUT_MS } from "../planner_job/constants";
 import type { PlannerJobRequest } from "../planner_contracts/types";
@@ -26,32 +30,57 @@ import type {
 	PlannerWorkerRunResult,
 } from "./types";
 
+/**
+ * Minimal ioBroker adapter surface for the on-demand coordinator.
+ * Do not require adapter.getAbsoluteInstanceDataDir — that method is not part of
+ * the real adapter contract; durable/runtime dirs come from resolveEmsPaths /
+ * @iobroker/adapter-core.getAbsoluteInstanceDataDir(adapter).
+ */
 export interface PlannerCoordinatorAdapterHost extends PlannerSnapshotIoBrokerHost {
 	namespace: string;
-	getAbsoluteInstanceDataDir(): string;
+	/** Test/injection only — production uses adapter-core via resolveEmsPaths(adapter). */
+	durableDataDir?: string;
 }
 
 export interface PlannerRuntimeContextOptions {
 	packageRoot?: string;
+	/**
+	 * Optional serializable path contract for tests / explicit injection.
+	 * Defaults to the adapter (central EMS path resolver + adapter-core).
+	 */
+	paths?: PathResolverInput;
 }
 
 export interface PlannerRuntimeContext {
 	deps: PlannerOnDemandCoordinatorDependencies;
 	lifecycle: PlannerJobLifecycle;
+	/** Resolved layout — exposed for diagnostics/tests only. */
+	pathInput: PathResolverInput;
+	durableDataDir: string;
+	runtimeDataDir: string;
+	runtimeJobsDir: string;
+}
+
+function snapshotHostWithPaths(
+	adapter: PlannerCoordinatorAdapterHost,
+	emsPaths: ReturnType<typeof resolveEmsPaths>,
+): PlannerSnapshotIoBrokerHost {
+	if (typeof adapter.getAbsolutePath === "function") {
+		return adapter;
+	}
+	const out = Object.create(adapter) as PlannerSnapshotIoBrokerHost;
+	out.getAbsolutePath = (category?: string) => categoryDataPath(emsPaths, category);
+	return out;
 }
 
 export function createPlannerRuntimeContext(
 	adapter: PlannerCoordinatorAdapterHost,
 	options: PlannerRuntimeContextOptions = {},
 ): PlannerRuntimeContext {
-	const layout = resolvePlannerPaths({
-		namespace: adapter.namespace,
-		getAbsoluteInstanceDataDir: () => adapter.getAbsoluteInstanceDataDir(),
-	});
-	const emsPaths = resolveEmsPaths({
-		namespace: adapter.namespace,
-		getAbsoluteInstanceDataDir: () => adapter.getAbsoluteInstanceDataDir(),
-	});
+	const pathInput: PathResolverInput = options.paths ?? adapter;
+	const layout = resolvePlannerPaths(pathInput);
+	const emsPaths = resolveEmsPaths(pathInput);
+	const snapshotHost = snapshotHostWithPaths(adapter, emsPaths);
 	const repository = new PlannerRepository(layout);
 	const lifecycle = new PlannerJobLifecycle(layout, repository);
 	const packageRoot = options.packageRoot ?? path.resolve(__dirname, "..", "..");
@@ -59,7 +88,7 @@ export function createPlannerRuntimeContext(
 
 	const deps: PlannerOnDemandCoordinatorDependencies = {
 		now: () => new Date(),
-		buildSnapshot: () => buildPlannerInputSnapshotFromIoBroker(adapter),
+		buildSnapshot: () => buildPlannerInputSnapshotFromIoBroker(snapshotHost),
 		isWorkerRunning: () => lifecycle.isRunning(),
 		shutdownWorker: () => lifecycle.shutdown(),
 		readWorkerResult: async (jobId) => readJobResult(layout.jobDir(jobId)),
@@ -208,5 +237,12 @@ export function createPlannerRuntimeContext(
 		},
 	};
 
-	return { deps, lifecycle };
+	return {
+		deps,
+		lifecycle,
+		pathInput,
+		durableDataDir: emsPaths.durableDataDir,
+		runtimeDataDir: emsPaths.runtimeDataDir,
+		runtimeJobsDir: layout.runtimeJobsDir,
+	};
 }

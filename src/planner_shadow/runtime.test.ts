@@ -16,7 +16,6 @@ import {
 	stopPlannerShadowRuntime,
 } from "./runtime.js";
 import type { PlannerShadowRuntimeHost } from "./runtime.js";
-
 type StoredState = { val: ioBroker.StateValue; ack: boolean };
 
 function snapshot(rev = "a".repeat(64)): PlannerInputSnapshot {
@@ -70,6 +69,7 @@ function createMemoryHost(config: Record<string, unknown> = {}): PlannerShadowRu
 	const subscribed = new Set<string>();
 	return {
 		namespace: "ems.0",
+		durableDataDir: "/tmp/ems-shadow-runtime-test/ems.0",
 		config,
 		states,
 		log: { debug: () => undefined, info: () => undefined, warn: () => undefined, error: () => undefined },

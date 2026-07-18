@@ -44,11 +44,12 @@ const compose_js_1 = require("../planner_coordinator/compose.js");
 const trigger_js_1 = require("../planner_coordinator/trigger.js");
 const compare_js_1 = require("./compare.js");
 const runtime_js_1 = require("./runtime.js");
-function memoryHost(config = {}) {
+function memoryHost(config = {}, durableDataDir) {
     const states = new Map();
     return {
         namespace: "ems.0",
         config,
+        durableDataDir,
         log: { debug: () => undefined, info: () => undefined, warn: () => undefined, error: () => undefined },
         getStateAsync: async (id) => (states.has(id) ? states.get(id) : null),
         setStateAsync: async (id, state) => {
@@ -64,14 +65,11 @@ function memoryHost(config = {}) {
     (0, node_test_1.it)("matched end-to-end shadow run with real worker and compact states", async () => {
         const root = path.join(os.tmpdir(), `ems-shadow-int-${Date.now()}`);
         const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_2.resolvePlannerPaths)({
-            namespace: "ems.0",
-            getAbsoluteInstanceDataDir: () => durable,
-        });
+        const layout = (0, paths_js_2.resolvePlannerPaths)(durable);
         const repository = new repository_js_1.PlannerRepository(layout);
         const lifecycle = new lifecycle_js_1.PlannerJobLifecycle(layout, repository);
         const workerScriptPath = lifecycle.resolveWorkerPath(process.cwd());
-        const host = memoryHost({ planner_runtime_mode: "shadow_manual" });
+        const host = memoryHost({ planner_runtime_mode: "shadow_manual" }, durable);
         const deps = {
             now: () => new Date("2026-07-01T12:00:00.000Z"),
             buildSnapshot: () => (0, builder_js_1.buildPlannerInputSnapshot)((0, parity_fixture_js_1.createParityFixtureSource)()),
@@ -133,14 +131,11 @@ function memoryHost(config = {}) {
     (0, node_test_1.it)("mismatch integration when worker projection differs from in-process reference", async () => {
         const root = path.join(os.tmpdir(), `ems-shadow-mismatch-${Date.now()}`);
         const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_2.resolvePlannerPaths)({
-            namespace: "ems.0",
-            getAbsoluteInstanceDataDir: () => durable,
-        });
+        const layout = (0, paths_js_2.resolvePlannerPaths)(durable);
         const repository = new repository_js_1.PlannerRepository(layout);
         const lifecycle = new lifecycle_js_1.PlannerJobLifecycle(layout, repository);
         const workerScriptPath = lifecycle.resolveWorkerPath(process.cwd());
-        const host = memoryHost({ planner_runtime_mode: "shadow_manual" });
+        const host = memoryHost({ planner_runtime_mode: "shadow_manual" }, durable);
         const snapshot = await (0, builder_js_1.buildPlannerInputSnapshot)((0, parity_fixture_js_1.createParityFixtureSource)());
         const deps = {
             now: () => new Date("2026-07-01T12:00:00.000Z"),

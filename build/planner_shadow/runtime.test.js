@@ -58,6 +58,7 @@ function createMemoryHost(config = {}) {
     const subscribed = new Set();
     return {
         namespace: "ems.0",
+        durableDataDir: "/tmp/ems-shadow-runtime-test/ems.0",
         config,
         states,
         log: { debug: () => undefined, info: () => undefined, warn: () => undefined, error: () => undefined },

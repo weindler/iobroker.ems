@@ -207,12 +207,8 @@ async function initPlannerShadowRuntime(host) {
     }
     // Discard any persisted session grant; arm only from native mode.
     sessionShadowEnabled = (0, mode_1.initialSessionShadowFromNative)(configuredMode);
-    const layout = (0, paths_1.resolvePlannerPaths)({
-        namespace: host.namespace,
-        getAbsoluteInstanceDataDir: () => typeof host.getAbsoluteInstanceDataDir === "function"
-            ? host.getAbsoluteInstanceDataDir()
-            : "/tmp/ems-missing-instance-data",
-    });
+    // Central EMS paths — never call a non-existent adapter.getAbsoluteInstanceDataDir().
+    const layout = (0, paths_1.resolvePlannerPaths)(host.pathInput ?? host);
     const effectiveMode = (0, mode_1.resolveEffectivePlannerMode)({
         config: { planner_runtime_mode: configuredMode },
         sessionShadowEnabled,

@@ -54,12 +54,7 @@ async function ensureService() {
     const host = hostRef;
     if (!host)
         return null;
-    const layout = (0, paths_1.resolvePlannerPaths)({
-        namespace: host.namespace,
-        getAbsoluteInstanceDataDir: () => typeof host.getAbsoluteInstanceDataDir === "function"
-            ? host.getAbsoluteInstanceDataDir()
-            : "/tmp/ems-missing-instance-data",
-    });
+    const layout = (0, paths_1.resolvePlannerPaths)(host.pathInput ?? host);
     const service = new PlannerAuthorizationService({
         now: () => new Date(),
         adapterInstance: host.namespace,

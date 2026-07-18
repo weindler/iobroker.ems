@@ -68,6 +68,13 @@ const paths_js_1 = require("./paths.js");
         strict_1.default.doesNotThrow(() => (0, paths_js_1.assertPathWithinRoot)("/tmp/ems.0/learning/file.json", root));
         strict_1.default.throws(() => (0, paths_js_1.assertPathWithinRoot)("/tmp/ems.0/policy/file.json", root));
     });
+    (0, node_test_1.it)("uses durableDataDir injection without getAbsoluteInstanceDataDir", () => {
+        const root = path.join(os.tmpdir(), "ems-durable-inject");
+        const durable = path.join(root, "ems.0");
+        const layout = (0, paths_js_1.resolveEmsPaths)({ namespace: "ems.0", durableDataDir: durable });
+        strict_1.default.equal(layout.durableDataDir, path.resolve(durable));
+        strict_1.default.equal(layout.runtimeDataDir, path.resolve(path.join(root, "ems-runtime.0")));
+    });
     (0, node_test_1.it)("parseInstanceFromNamespace", () => {
         strict_1.default.equal((0, paths_js_1.parseInstanceFromNamespace)("ems.0"), 0);
         strict_1.default.equal((0, paths_js_1.parseInstanceFromNamespace)("ems.1"), 1);

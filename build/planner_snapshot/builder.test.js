@@ -317,10 +317,7 @@ function realisticFixtureSource(tmpDir) {
     (0, node_test_1.it)("writes input.json atomically under runtime job dir", async () => {
         const root = path.join(os.tmpdir(), `ems-snap-write-${Date.now()}`);
         const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_2.resolvePlannerPaths)({
-            namespace: "ems.0",
-            getAbsoluteInstanceDataDir: () => durable,
-        });
+        const layout = (0, paths_js_2.resolvePlannerPaths)(durable);
         const jobDir = layout.jobDir("job-snap-1");
         await fs.mkdir(jobDir, { recursive: true });
         const snap = await (0, builder_js_1.buildPlannerInputSnapshot)(realisticFixtureSource(root));
@@ -345,10 +342,7 @@ function realisticFixtureSource(tmpDir) {
     (0, node_test_1.it)("rejects traversal in job dir", async () => {
         const root = path.join(os.tmpdir(), `ems-snap-traversal-${Date.now()}`);
         const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_2.resolvePlannerPaths)({
-            namespace: "ems.0",
-            getAbsoluteInstanceDataDir: () => durable,
-        });
+        const layout = (0, paths_js_2.resolvePlannerPaths)(durable);
         const snap = await (0, builder_js_1.buildPlannerInputSnapshot)(createMockSource());
         await strict_1.default.rejects(() => (0, write_js_1.writePlannerInputSnapshot)(path.join(layout.runtimeJobsDir, "..", "..", "escape"), snap, {
             runtimeRootDir: layout.runtimePlannerDir,
@@ -358,10 +352,7 @@ function realisticFixtureSource(tmpDir) {
     (0, node_test_1.it)("rejects snapshots exceeding budget", async () => {
         const root = path.join(os.tmpdir(), `ems-snap-budget-${Date.now()}`);
         const durable = (0, paths_js_1.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_2.resolvePlannerPaths)({
-            namespace: "ems.0",
-            getAbsoluteInstanceDataDir: () => durable,
-        });
+        const layout = (0, paths_js_2.resolvePlannerPaths)(durable);
         const jobDir = layout.jobDir("job-budget");
         await fs.mkdir(jobDir, { recursive: true });
         const snap = await (0, builder_js_1.buildPlannerInputSnapshot)(createMockSource());

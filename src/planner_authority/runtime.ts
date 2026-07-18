@@ -23,7 +23,9 @@ export type AuthorityRuntimeHost = StateHost & {
 	namespace: string;
 	config?: unknown;
 	log?: Pick<ioBroker.Logger, "debug" | "info" | "warn" | "error">;
-	getAbsoluteInstanceDataDir?: () => string;
+	/** Test/injection only — production resolves via adapter-core. */
+	durableDataDir?: string;
+	pathInput?: import("../backup_integration/paths").PathResolverInput;
 	subscribeStatesAsync?: (pattern: string) => Promise<void>;
 	unsubscribeStatesAsync?: (pattern: string) => Promise<void>;
 };
@@ -62,15 +64,7 @@ async function ensureService(): Promise<PlannerAuthorityService | null> {
 	const { DEFAULT_TAKEOVER_READINESS_POLICY } = await import("../planner_takeover/constants.js");
 	const { getAuthorizationSession } = await import("../planner_authorization/runtime_session.js");
 
-	const layout =
-		sess.layout ??
-		resolvePlannerPaths({
-			namespace: host.namespace,
-			getAbsoluteInstanceDataDir: () =>
-				typeof host.getAbsoluteInstanceDataDir === "function"
-					? host.getAbsoluteInstanceDataDir()
-					: "/tmp/ems-missing-instance-data",
-		});
+	const layout = sess.layout ?? resolvePlannerPaths(host.pathInput ?? host);
 
 	const service = new PlannerAuthorityService({
 		now: () => new Date(),
@@ -128,13 +122,7 @@ export async function initPlannerAuthorityRuntime(host: AuthorityRuntimeHost): P
 			`planner_authoritative_source invalid — clamped to legacy (raw=${String(parsed.raw)})`,
 		);
 	}
-	const layout = resolvePlannerPaths({
-		namespace: host.namespace,
-		getAbsoluteInstanceDataDir: () =>
-			typeof host.getAbsoluteInstanceDataDir === "function"
-				? host.getAbsoluteInstanceDataDir()
-				: "/tmp/ems-missing-instance-data",
-	});
+	const layout = resolvePlannerPaths(host.pathInput ?? host);
 	configureAuthoritySession({
 		configuredSource,
 		layout,

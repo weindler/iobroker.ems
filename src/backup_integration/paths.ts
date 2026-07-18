@@ -2,7 +2,13 @@ import * as path from "node:path";
 
 export type PathResolverInput =
 	| string
-	| { namespace: string; getAbsoluteInstanceDataDir?: () => string };
+	| {
+			namespace: string;
+			/** Optional override — tests only; not part of the real ioBroker adapter contract. */
+			getAbsoluteInstanceDataDir?: () => string;
+			/** Explicit durable instance dir (ems.<n>). Prefer this over mocking adapter-core. */
+			durableDataDir?: string;
+	  };
 
 export interface EmsPathLayout {
 	durableDataDir: string;
@@ -58,9 +64,13 @@ export function resolveDurableDataDir(input: PathResolverInput): string {
 	if (typeof input === "string") {
 		return path.resolve(input);
 	}
+	if (typeof input.durableDataDir === "string" && input.durableDataDir.length > 0) {
+		return path.resolve(input.durableDataDir);
+	}
 	if (typeof input.getAbsoluteInstanceDataDir === "function") {
 		return path.resolve(input.getAbsoluteInstanceDataDir());
 	}
+	// Real ioBroker: instance data dir comes from adapter-core, not from an adapter method.
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	const utils = require("@iobroker/adapter-core") as typeof import("@iobroker/adapter-core");
 	return path.resolve(utils.getAbsoluteInstanceDataDir(input as ioBroker.Adapter));

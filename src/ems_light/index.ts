@@ -143,6 +143,8 @@ function buildPlannerShadowRuntimeHost(adapter: ioBroker.Adapter): PlannerShadow
 		namespace: adapter.namespace,
 		config: adapter.config,
 		log: adapter.log,
+		// Real adapter for resolveEmsPaths → @iobroker/adapter-core (not a fake adapter method).
+		pathInput: adapter,
 		getStateAsync: adapter.getStateAsync.bind(adapter),
 		setStateAsync: adapter.setStateAsync.bind(adapter),
 		setObjectNotExistsAsync: adapter.setObjectNotExistsAsync.bind(adapter),

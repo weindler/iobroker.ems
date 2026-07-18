@@ -45,11 +45,11 @@ const HEAVY_MODULE_MARKERS = [
 function fakeHost() {
     return {
         namespace: "ems.0",
-        getAbsoluteInstanceDataDir: () => path.join("/tmp", "ems-coord-lazy"),
         getStateAsync: async () => null,
         config: {},
     };
 }
+const TEST_PATHS = path.join("/tmp", "ems-coord-lazy", "ems.0");
 function modulesFromChild(stdout) {
     return stdout
         .trim()
@@ -71,7 +71,6 @@ const path = require("path");
 const compose = require(path.join(process.cwd(), "build/planner_coordinator/compose.js"));
 const host = {
   namespace: "ems.0",
-  getAbsoluteInstanceDataDir: () => "/tmp/ems-coord-lazy",
   getStateAsync: async () => null,
   config: {},
 };
@@ -91,7 +90,6 @@ const path = require("path");
 const compose = require(path.join(process.cwd(), "build/planner_coordinator/compose.js"));
 const host = {
   namespace: "ems.0",
-  getAbsoluteInstanceDataDir: () => "/tmp/ems-coord-lazy",
   getStateAsync: async () => null,
   config: {},
 };
@@ -112,7 +110,6 @@ const path = require("path");
 const compose = require(path.join(process.cwd(), "build/planner_coordinator/compose.js"));
 const host = {
   namespace: "ems.0",
-  getAbsoluteInstanceDataDir: () => "/tmp/ems-coord-lazy-stop",
   getStateAsync: async () => null,
   config: {},
 };
@@ -175,7 +172,10 @@ const host = {
     });
     (0, node_test_1.it)("first enabled request loads runtime modules", async () => {
         const host = fakeHost();
-        const coordinator = (0, compose_js_1.createPlannerOnDemandCoordinatorFromAdapter)(host, { enabled: true });
+        const coordinator = (0, compose_js_1.createPlannerOnDemandCoordinatorFromAdapter)(host, {
+            enabled: true,
+            paths: TEST_PATHS,
+        });
         coordinator.enable();
         strict_1.default.equal((0, compose_js_1.isPlannerRuntimeContextLoadedForTest)(), false);
         await coordinator.request({ reason: "test", requestedAt: new Date().toISOString() }).catch(() => undefined);

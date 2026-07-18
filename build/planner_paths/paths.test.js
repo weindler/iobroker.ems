@@ -37,24 +37,32 @@ const constants_js_1 = require("./constants.js");
     (0, node_test_1.it)("separates durable canonical plans from runtime job dirs", () => {
         const root = path.join(os.tmpdir(), `ems-planner-paths-${Date.now()}`);
         const durable = (0, paths_js_2.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_1.resolvePlannerPaths)({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+        const layout = (0, paths_js_1.resolvePlannerPaths)(durable);
         strict_1.default.equal(layout.canonicalForecastPlanPath, path.join(durable, "planner", constants_js_1.CANONICAL_FORECAST_PLAN_FILE));
         strict_1.default.equal(layout.canonicalDailyPlanPath, path.join(durable, "planner", constants_js_1.CANONICAL_DAILY_PLAN_FILE));
         strict_1.default.equal(layout.runtimePlannerDir, path.join((0, paths_js_2.runtimeDataDirFromRoot)(root, 0), "planner"));
         strict_1.default.equal(layout.jobDir("job-1"), path.join(layout.runtimeJobsDir, "job-1"));
         strict_1.default.equal(layout.simulationDir("sim-1"), path.join(layout.runtimeSimulationsDir, "sim-1"));
     });
-    (0, node_test_1.it)("keeps job files outside durable dataFolder", () => {
+    (0, node_test_1.it)("keeps job files outside durable dataFolder for instance 0 and 1", () => {
         const root = path.join(os.tmpdir(), `ems-planner-outside-${Date.now()}`);
-        const durable = (0, paths_js_2.durableDataDirFromRoot)(root, 0);
-        const layout = (0, paths_js_1.resolvePlannerPaths)({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
-        const jobDir = layout.jobDir("test-job");
-        strict_1.default.doesNotThrow(() => (0, paths_js_1.assertJobPathNotUnderDurableDataFolder)(jobDir, durable));
-        strict_1.default.throws(() => (0, paths_js_1.assertJobPathNotUnderDurableDataFolder)(path.join(durable, "planner", "jobs", "x"), durable));
+        for (const instance of [0, 1]) {
+            const durable = (0, paths_js_2.durableDataDirFromRoot)(root, instance);
+            const layout = (0, paths_js_1.resolvePlannerPaths)(durable);
+            const jobDir = layout.jobDir(`test-job-${instance}`);
+            strict_1.default.equal(layout.runtimePlannerDir, path.join((0, paths_js_2.runtimeDataDirFromRoot)(root, instance), "planner"));
+            strict_1.default.doesNotThrow(() => (0, paths_js_1.assertJobPathNotUnderDurableDataFolder)(jobDir, durable));
+            strict_1.default.throws(() => (0, paths_js_1.assertJobPathNotUnderDurableDataFolder)(path.join(durable, "planner", "jobs", "x"), durable));
+        }
     });
     (0, node_test_1.it)("rejects path traversal in job ids", () => {
         const durable = path.join(os.tmpdir(), "ems.0");
-        const layout = (0, paths_js_1.resolvePlannerPaths)({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+        const layout = (0, paths_js_1.resolvePlannerPaths)(durable);
         strict_1.default.throws(() => layout.jobDir("../evil"));
+    });
+    (0, node_test_1.it)("rejects invalid instance folder names via string path basename", () => {
+        const layout = (0, paths_js_1.resolvePlannerPaths)(path.join(os.tmpdir(), "not-an-ems-instance"));
+        // basename is not ems.N → namespace defaults to ems.0; runtime still colocated under parent.
+        strict_1.default.ok(layout.runtimeJobsDir.includes("ems-runtime.0"));
     });
 });

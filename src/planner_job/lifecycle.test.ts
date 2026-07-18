@@ -38,7 +38,7 @@ describe("planner_job lifecycle", () => {
 	it("starts worker, publishes, and leaves no child process", async () => {
 		const root = path.join(os.tmpdir(), `ems-planner-life-${Date.now()}`);
 		const durable = durableDataDirFromRoot(root, 0);
-		const layout = resolvePlannerPaths({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+		const layout = resolvePlannerPaths(durable);
 		const repo = new PlannerRepository(layout);
 		const lifecycle = new PlannerJobLifecycle(layout, repo);
 		const workerPath = path.join(process.cwd(), "build", "planner_worker", "main.js");
@@ -78,7 +78,7 @@ describe("planner_job lifecycle", () => {
 	it("does not publish on timeout and preserves last canonical plan", async () => {
 		const root = path.join(os.tmpdir(), `ems-planner-timeout-${Date.now()}`);
 		const durable = durableDataDirFromRoot(root, 0);
-		const layout = resolvePlannerPaths({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+		const layout = resolvePlannerPaths(durable);
 		const repo = new PlannerRepository(layout);
 		const { forecast, daily } = seedPlan(42);
 		await repo.writeSeedCanonicalPlans(forecast, daily);
@@ -123,7 +123,7 @@ describe("planner_job lifecycle", () => {
 	it("shutdown kills running worker", async () => {
 		const root = path.join(os.tmpdir(), `ems-planner-shutdown-${Date.now()}`);
 		const durable = durableDataDirFromRoot(root, 0);
-		const layout = resolvePlannerPaths({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+		const layout = resolvePlannerPaths(durable);
 		const repo = new PlannerRepository(layout);
 		const lifecycle = new PlannerJobLifecycle(layout, repo);
 		const slowWorker = path.join(root, "hang_worker.js");
@@ -163,7 +163,7 @@ describe("planner_job lifecycle", () => {
 	it("rejects parallel second job", async () => {
 		const root = path.join(os.tmpdir(), `ems-planner-parallel-${Date.now()}`);
 		const durable = durableDataDirFromRoot(root, 0);
-		const layout = resolvePlannerPaths({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+		const layout = resolvePlannerPaths(durable);
 		const repo = new PlannerRepository(layout);
 		const lifecycle = new PlannerJobLifecycle(layout, repo);
 		const slowWorker = path.join(root, "parallel_slow.js");
@@ -226,7 +226,7 @@ describe("planner_job lifecycle simulation mode", () => {
 	it("mode simulation does not publish canonical plans", async () => {
 		const root = path.join(os.tmpdir(), `ems-planner-sim-${Date.now()}`);
 		const durable = durableDataDirFromRoot(root, 0);
-		const layout = resolvePlannerPaths({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+		const layout = resolvePlannerPaths(durable);
 		const repo = new PlannerRepository(layout);
 		const { forecast, daily } = seedPlan(77);
 		await repo.writeSeedCanonicalPlans(forecast, daily);
@@ -265,7 +265,7 @@ describe("planner_job lifecycle simulation mode", () => {
 	it("mode publish still publishes canonical plans", async () => {
 		const root = path.join(os.tmpdir(), `ems-planner-publish-${Date.now()}`);
 		const durable = durableDataDirFromRoot(root, 0);
-		const layout = resolvePlannerPaths({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+		const layout = resolvePlannerPaths(durable);
 		const repo = new PlannerRepository(layout);
 		const lifecycle = new PlannerJobLifecycle(layout, repo);
 		const workerPath = path.join(process.cwd(), "build", "planner_worker", "main.js");
@@ -300,7 +300,7 @@ describe("planner_job lifecycle simulation mode", () => {
 	it("failed simulation does not publish", async () => {
 		const root = path.join(os.tmpdir(), `ems-planner-sim-fail-${Date.now()}`);
 		const durable = durableDataDirFromRoot(root, 0);
-		const layout = resolvePlannerPaths({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+		const layout = resolvePlannerPaths(durable);
 		const repo = new PlannerRepository(layout);
 		const { forecast, daily } = seedPlan(88);
 		await repo.writeSeedCanonicalPlans(forecast, daily);

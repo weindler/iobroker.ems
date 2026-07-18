@@ -26,7 +26,9 @@ export type AuthorizationRuntimeHost = StateHost & {
 	namespace: string;
 	config?: unknown;
 	log?: Pick<ioBroker.Logger, "debug" | "info" | "warn" | "error">;
-	getAbsoluteInstanceDataDir?: () => string;
+	/** Test/injection only — production resolves via adapter-core. */
+	durableDataDir?: string;
+	pathInput?: import("../backup_integration/paths").PathResolverInput;
 	subscribeStatesAsync?: (pattern: string) => Promise<void>;
 	unsubscribeStatesAsync?: (pattern: string) => Promise<void>;
 };
@@ -51,13 +53,7 @@ async function ensureService(): Promise<PlannerAuthorizationService | null> {
 	const { PlannerAuthorizationService } = await import("./service.js");
 	const host = hostRef;
 	if (!host) return null;
-	const layout = resolvePlannerPaths({
-		namespace: host.namespace,
-		getAbsoluteInstanceDataDir: () =>
-			typeof host.getAbsoluteInstanceDataDir === "function"
-				? host.getAbsoluteInstanceDataDir()
-				: "/tmp/ems-missing-instance-data",
-	});
+	const layout = resolvePlannerPaths(host.pathInput ?? host);
 	const service = new PlannerAuthorizationService({
 		now: () => new Date(),
 		adapterInstance: host.namespace,

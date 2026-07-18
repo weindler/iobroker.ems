@@ -1,0 +1,272 @@
+{
+  "meta": {
+    "phase": "4A",
+    "title": "EMS-Light production state surface inventory",
+    "branch": "refactor/v0.1.143-production-surface-cleanup",
+    "baselineTag": "planner-shadow-gate3-verified",
+    "version": "0.1.143",
+    "generatedAt": "2026-07-18",
+    "method": "code-derived family catalog + production observation (~1534 states)",
+    "classes": {
+      "A_core_user": "Core User Surface",
+      "B_advanced_user": "Advanced User Surface",
+      "C_temporary_diagnostics": "Temporary Diagnostics",
+      "D_internal_file_data": "Internal File Data",
+      "E_obsolete": "Obsolete",
+      "F_compatibility_contract": "Compatibility Contract"
+    },
+    "notes": [
+      "Counts are estimated static leaf states from ensure/STATE_IDS maps.",
+      "Live production exceeds estimates via dynamic vehicles, AC units, mappings, dryrun mirrors.",
+      "No objects deleted or moved in Phase 4A."
+    ]
+  },
+  "productionObservation": {
+    "approxTotalStates": 1534,
+    "shadowVerified": true,
+    "workerAuthoritative": false,
+    "canonicalAllowed": false
+  },
+  "budgets": {
+    "plannerCoreNormalOpsMaxStates": 30,
+    "largeJsonAsPermanentStates": false,
+    "dynamicDevicesOnlyIfConfigured": true,
+    "temporaryDiagnosticsOnlyInDiagMode": true
+  },
+  "targetUserSurface": [
+    "planner off | automatic",
+    "compact status",
+    "last run",
+    "next run",
+    "quality",
+    "active source",
+    "last error",
+    "manual rerun"
+  ],
+  "forbiddenNormalUiTerms": [
+    "shadow",
+    "candidate",
+    "lease",
+    "generation",
+    "takeover"
+  ],
+  "largeJsonCandidatesForFiles": [
+    {
+      "idPattern": "planner.intent.forecast_plan.{plan,slots,days,contributions}_json",
+      "suggestedPath": "ems-runtime.<n>/planner/forecast/",
+      "runtimeReaders": ["forecast tick (writer)", "snapshot excludes hot path"],
+      "backupRestore": "optional export; not required as state",
+      "visRisk": "low",
+      "blocker": "confirm no external scripts poll these states"
+    },
+    {
+      "idPattern": "planner.intent.daily_plan.{plan,slots,allocations,unallocated,policy_snapshot,constraint_snapshot}_json",
+      "suggestedPath": "ems.<n>/planner/ (canonical already) + ems-runtime for working copies",
+      "runtimeReaders": ["daily_plan tick", "addon daily_plan modules via allocation.plan_json"],
+      "backupRestore": "canonical plans already file-oriented in planner_paths",
+      "visRisk": "low",
+      "blocker": "migrate allocation.<addon>.plan_json consumers first (F_compatibility)"
+    },
+    {
+      "idPattern": "planner.intent.allocation.<addon>.plan_json",
+      "suggestedPath": "ems-runtime.<n>/planner/allocations/<addon>.json",
+      "runtimeReaders": ["wallbox/battery/IH/AC daily_plan tests and runtime"],
+      "backupRestore": "not primary backup payload",
+      "visRisk": "none known",
+      "blocker": "compatibility contract until readers switch to files"
+    },
+    {
+      "idPattern": "learning.persistence.*_json",
+      "suggestedPath": "already durable under ems.<n>/learning/",
+      "runtimeReaders": ["persistence_mirror dual-write"],
+      "backupRestore": "files are source of truth for export",
+      "visRisk": "none",
+      "blocker": "safe to stop state mirror after confirming admin/scripts"
+    }
+  ],
+  "families": [
+    {
+      "id": "global",
+      "estimatedStaticCount": 50,
+      "targetClass": "A_core_user",
+      "idPattern": "global.* | command.* | audit.* | addons.<id>.{enabled,available,mode}"
+    },
+    {
+      "id": "runtime_execution",
+      "estimatedStaticCount": 36,
+      "targetClass": "A_core_user",
+      "idPattern": "system.* | live.* | execution.safety.* | economics.*"
+    },
+    {
+      "id": "global_modes_policy",
+      "estimatedStaticCount": 26,
+      "targetClass": "B_advanced_user",
+      "idPattern": "global_modes.* | policy.*"
+    },
+    {
+      "id": "user_intent",
+      "estimatedStaticCount": 40,
+      "targetClass": "B_advanced_user",
+      "idPattern": "user_intent.*"
+    },
+    {
+      "id": "planner_core",
+      "estimatedStaticCount": 39,
+      "targetClass": "F_compatibility_contract",
+      "idPattern": "planner.intent.{thermal,cooling,battery,...} | planner.constraints.*"
+    },
+    {
+      "id": "planner_coordinator",
+      "estimatedStaticCount": 33,
+      "targetClass": "C_temporary_diagnostics",
+      "idPattern": "planner.coordinator.*"
+    },
+    {
+      "id": "planner_authority",
+      "estimatedStaticCount": 21,
+      "targetClass": "C_temporary_diagnostics",
+      "idPattern": "planner.authority.*"
+    },
+    {
+      "id": "planner_takeover",
+      "estimatedStaticCount": 22,
+      "targetClass": "C_temporary_diagnostics",
+      "idPattern": "planner.takeover.*"
+    },
+    {
+      "id": "planner_authorization",
+      "estimatedStaticCount": 23,
+      "targetClass": "C_temporary_diagnostics",
+      "idPattern": "planner.takeover.authorization.*"
+    },
+    {
+      "id": "forecast_plan",
+      "estimatedStaticCount": 14,
+      "targetClass": "D_internal_file_data",
+      "idPattern": "planner.intent.forecast_plan.*"
+    },
+    {
+      "id": "daily_plan",
+      "estimatedStaticCount": 17,
+      "targetClass": "D_internal_file_data",
+      "idPattern": "planner.intent.daily_plan.*"
+    },
+    {
+      "id": "allocations",
+      "estimatedStaticCount": 12,
+      "targetClass": "F_compatibility_contract",
+      "idPattern": "planner.intent.allocation.<addon>.*"
+    },
+    {
+      "id": "contributions",
+      "estimatedStaticCount": 23,
+      "targetClass": "D_internal_file_data",
+      "idPattern": "planner.intent.contributions.*"
+    },
+    {
+      "id": "grid_supply",
+      "estimatedStaticCount": 10,
+      "targetClass": "B_advanced_user",
+      "idPattern": "planner.intent.supply.grid.*"
+    },
+    {
+      "id": "learning",
+      "estimatedStaticCount": 180,
+      "targetClass": "B_advanced_user",
+      "idPattern": "learning.*"
+    },
+    {
+      "id": "backup_restore",
+      "estimatedStaticCount": 46,
+      "targetClass": "B_advanced_user",
+      "idPattern": "backup.* | support.* | info.backup.*"
+    },
+    {
+      "id": "wallbox",
+      "estimatedStaticCount": 200,
+      "targetClass": "A_core_user",
+      "idPattern": "addons.wallbox.* (excl vehicles)"
+    },
+    {
+      "id": "vehicle_profiles",
+      "estimatedStaticCount": 0,
+      "dynamicPerVehicle": 64,
+      "targetClass": "A_core_user",
+      "idPattern": "addons.wallbox.vehicles.<id>.*"
+    },
+    {
+      "id": "battery",
+      "estimatedStaticCount": 140,
+      "targetClass": "A_core_user",
+      "idPattern": "addons.battery.* | ems_mirror.*"
+    },
+    {
+      "id": "immersion_heater",
+      "estimatedStaticCount": 45,
+      "targetClass": "A_core_user",
+      "idPattern": "addons.immersion_heater.*"
+    },
+    {
+      "id": "air_conditioning",
+      "estimatedStaticCount": 120,
+      "targetClass": "A_core_user",
+      "idPattern": "addons.air_conditioning.* | addons.climate.*",
+      "risk": "disabled units still create large trees"
+    },
+    {
+      "id": "diagnostics_misc",
+      "estimatedStaticCount": 0,
+      "targetClass": "C_temporary_diagnostics",
+      "idPattern": "addons.<addon>.dryrun.*"
+    }
+  ],
+  "classTotalsEstimatedStatic": {
+    "A_core_user": 591,
+    "B_advanced_user": 302,
+    "C_temporary_diagnostics": 99,
+    "D_internal_file_data": 54,
+    "E_obsolete": 0,
+    "F_compatibility_contract": 51
+  },
+  "compatibilityRisks": [
+    {
+      "id": "planner.intent.allocation.*.plan_json",
+      "reason": "addon daily_plan modules and tests read these states",
+      "class": "F_compatibility_contract"
+    },
+    {
+      "id": "planner.intent.* (VIS)",
+      "reason": "vis/ems-dashboard-view.json binds legacy battery/thermal/global_mode paths",
+      "class": "F_compatibility_contract"
+    },
+    {
+      "id": "learning.persistence.*_json",
+      "reason": "dual-write with durable files; backup may still expect mirror presence",
+      "class": "F_compatibility_contract"
+    }
+  ],
+  "iobrokerVisibilityLevers": [
+    {
+      "mechanism": "admin jsonConfig expertMode",
+      "scope": "config UI fields",
+      "documented": true,
+      "requiresAdmin": ">= 7.4.3 recommended (repo currently >= 6.0.0)"
+    },
+    {
+      "mechanism": "admin jsonConfig hidden",
+      "scope": "config UI fields (formula or bool)",
+      "documented": true
+    },
+    {
+      "mechanism": "common.expert",
+      "scope": "object tree visibility in Admin expert mode",
+      "documented": true,
+      "source": "@iobroker/types objects.d.ts"
+    },
+    {
+      "mechanism": "common.custom",
+      "scope": "per-state custom settings (history etc.), NOT a hide flag",
+      "documented": true
+    }
+  ]
+}

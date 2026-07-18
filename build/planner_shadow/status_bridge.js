@@ -16,6 +16,8 @@ async function writePlannerCoordinatorStatusStates(host, status, diag) {
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.PLANNER_COORDINATOR_STATE_IDS.lastResult, status.lastResult ?? "");
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.PLANNER_COORDINATOR_STATE_IDS.lastSkipReason, status.lastSkipReason ?? "");
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.PLANNER_COORDINATOR_STATE_IDS.lastErrorCode, status.lastErrorCode ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.PLANNER_COORDINATOR_STATE_IDS.lastErrorStage, status.lastErrorStage ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.PLANNER_COORDINATOR_STATE_IDS.lastErrorDetail, status.lastErrorDetail ?? "");
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.PLANNER_COORDINATOR_STATE_IDS.lastStartedAt, status.lastStartedAt ?? "");
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.PLANNER_COORDINATOR_STATE_IDS.lastFinishedAt, status.lastFinishedAt ?? "");
     await (0, state_write_1.setOptionalNumberIfChanged)(host, ensure_states_1.PLANNER_COORDINATOR_STATE_IDS.lastDurationMs, status.lastDurationMs ?? null);

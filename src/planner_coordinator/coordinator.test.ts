@@ -14,6 +14,7 @@ import type { PlannerPreparedInput } from "../planner_preparation/types.js";
 import type { PlannerWorkerResult } from "../planner_contracts/types.js";
 import { PlannerInputValidationError } from "../planner_preparation/types.js";
 import { assertNoForbiddenImportRoots } from "../test_support/import_graph.js";
+import { PlannerCoordinatorStageError } from "./errors.js";
 
 function snapshot(rev = "a".repeat(64)): PlannerInputSnapshot {
 	return {
@@ -959,5 +960,141 @@ describe("planner_coordinator shadow comparison", () => {
 		await new Promise((r) => setTimeout(r, 20));
 		assert.equal(coordinator.getStatus().rerunPending, false);
 		assert.equal(coordinator.getStatus().enabled, false);
+	});
+});
+
+describe("planner_coordinator staged failure diagnostics", () => {
+	it("logs original error and sets stage/detail for snapshot build failure", async () => {
+		const logs: string[] = [];
+		const { deps } = createFakeDeps({
+			buildSnapshot: async () => {
+				throw new Error("snapshot boom");
+			},
+		});
+		const coordinator = createPlannerOnDemandCoordinatorForTest(deps, {
+			enabled: true,
+			log: {
+				error: (m: string) => logs.push(`error:${m}`),
+				warn: () => undefined,
+				info: () => undefined,
+				debug: (m: string) => logs.push(`debug:${m}`),
+			},
+		});
+		coordinator.enable();
+		const outcome = await coordinator.request({ reason: "manual", requestedAt: "t", force: true });
+		assert.equal(outcome.result, "failed");
+		assert.equal(outcome.errorCode, "snapshot_build_failed");
+		const status = coordinator.getStatus();
+		assert.equal(status.lastErrorStage, "snapshot_build_failed");
+		assert.match(String(status.lastErrorDetail), /snapshot boom/);
+		assert.equal(status.state, "idle");
+		assert.equal(status.activeJobId, undefined);
+		assert.ok(logs.some((l) => l.startsWith("error:") && l.includes("snapshot_build_failed")));
+		assert.ok(logs.some((l) => l.startsWith("debug:") && l.includes("stack")));
+	});
+
+	it("maps runtime import stage errors", async () => {
+		const { deps } = createFakeDeps({
+			buildSnapshot: async () => {
+				throw new PlannerCoordinatorStageError(
+					"runtime_import_failed",
+					"runtime_import_failed",
+					"Cannot find module './runtime_factory.js'",
+				);
+			},
+		});
+		const coordinator = createPlannerOnDemandCoordinatorForTest(deps, { enabled: true });
+		coordinator.enable();
+		const outcome = await coordinator.request({ reason: "manual", requestedAt: "t", force: true });
+		assert.equal(outcome.errorCode, "runtime_import_failed");
+		assert.equal(coordinator.getStatus().lastErrorStage, "runtime_import_failed");
+		assert.equal(coordinator.getStatus().state, "idle");
+	});
+
+	it("maps snapshot source failures", async () => {
+		const { deps } = createFakeDeps({
+			buildSnapshot: async () => {
+				throw new Error("getAbsolutePath unavailable for planner snapshot file read");
+			},
+		});
+		const coordinator = createPlannerOnDemandCoordinatorForTest(deps, { enabled: true });
+		coordinator.enable();
+		const outcome = await coordinator.request({ reason: "manual", requestedAt: "t", force: true });
+		assert.equal(outcome.errorCode, "snapshot_source_failed");
+		assert.equal(coordinator.getStatus().lastErrorStage, "snapshot_source_failed");
+	});
+
+	it("preserves force when coalescing startup_recovery with manual_force", async () => {
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let workerRuns = 0;
+		const fixed = snapshot();
+		const { deps } = createFakeDeps({
+			buildSnapshot: async () => {
+				await gate;
+				return fixed;
+			},
+			runWorkerJob: async (args) => {
+				workerRuns += 1;
+				return {
+					jobId: args.jobId,
+					generation: args.generation,
+					exitCode: 0,
+					timedOut: false,
+					published: false,
+					publishReason: "simulation",
+					stdoutBytes: 0,
+					stderrBytes: 0,
+					result: workerResult(args.jobId, args.generation),
+				};
+			},
+		});
+
+		const coordinator = createPlannerOnDemandCoordinatorForTest(deps, { enabled: true });
+		coordinator.enable();
+		const first = coordinator.request({
+			reason: "startup_recovery",
+			requestedAt: "t0",
+			force: false,
+		});
+		await new Promise((r) => setTimeout(r, 5));
+		const coalesced = await coordinator.request({
+			reason: "manual",
+			requestedAt: "t1",
+			force: true,
+		});
+		assert.equal(coalesced.result, "coalesced");
+		assert.equal(coordinator.getStatus().rerunPending, true);
+		assert.equal(coordinator.getStatus().pendingReason, "manual");
+		release();
+		await first;
+		// Wait for forced follow-up — without sticky force, unchanged revision would skip.
+		await new Promise((r) => setTimeout(r, 40));
+		assert.equal(workerRuns, 2);
+		assert.equal(coordinator.getStatus().state, "idle");
+		assert.equal(coordinator.getStatus().rerunPending, false);
+		assert.equal(coordinator.hasActiveJobReference(), false);
+		assert.equal(coordinator.getStatus().lastResult, "success");
+	});
+
+	it("keeps input revision on failure after snapshot succeeded", async () => {
+		const fixed = snapshot();
+		const { deps } = createFakeDeps({
+			buildSnapshot: async () => fixed,
+			runWorkerJob: async () => {
+				throw new Error("job path must not be under durable dataFolder");
+			},
+		});
+		const coordinator = createPlannerOnDemandCoordinatorForTest(deps, { enabled: true });
+		coordinator.enable();
+		const outcome = await coordinator.request({ reason: "manual", requestedAt: "t", force: true });
+		assert.equal(outcome.result, "failed");
+		assert.equal(outcome.errorCode, "worker_spawn_failed");
+		assert.equal(coordinator.getStatus().lastErrorStage, "worker_spawn_failed");
+		assert.equal(coordinator.getStatus().lastInputRevision, fixed.inputRevision);
+		assert.equal(coordinator.getStatus().state, "idle");
+		assert.equal(coordinator.getStatus().activeJobId, undefined);
 	});
 });

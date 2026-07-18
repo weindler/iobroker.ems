@@ -23,8 +23,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isPlannerRuntimeContextLoadedForTest = exports.registerPlannerOnDemandCoordinatorForTest = exports.createPlannerOnDemandCoordinatorForTest = exports.stopPlannerOnDemandCoordinator = exports.createPlannerOnDemandCoordinatorFromAdapter = exports.setPlannerOnDemandCoordinatorEnabled = exports.getPlannerOnDemandCoordinator = exports.PlannerCoordinatorAlreadyActiveError = void 0;
+exports.resetPlannerRuntimeLoadStateForTest = exports.isPlannerRuntimeContextLoadedForTest = exports.registerPlannerOnDemandCoordinatorForTest = exports.createPlannerOnDemandCoordinatorForTest = exports.stopPlannerOnDemandCoordinator = exports.createPlannerOnDemandCoordinatorFromAdapter = exports.setPlannerOnDemandCoordinatorEnabled = exports.getPlannerOnDemandCoordinator = exports.PlannerCoordinatorAlreadyActiveError = void 0;
+const data_dir_1 = require("../learning/data_dir");
 const coordinator_1 = require("./coordinator");
+const errors_1 = require("./errors");
 let activeCoordinator = null;
 let activeAdapterHost = null;
 let runtimeContext = null;
@@ -57,17 +59,40 @@ async function loadRuntimeContext(host, options) {
         return runtimeContext;
     }
     if (!runtimeLoadPromise) {
-        runtimeLoadPromise = Promise.resolve().then(() => __importStar(require("./runtime_factory.js"))).then((module) => module.createPlannerRuntimeContext(host, { packageRoot: options.packageRoot }));
+        runtimeLoadPromise = Promise.resolve().then(() => __importStar(require("./runtime_factory.js"))).then((module) => module.createPlannerRuntimeContext(host, { packageRoot: options.packageRoot }))
+            .catch((error) => {
+            runtimeLoadPromise = null;
+            throw (0, errors_1.wrapCoordinatorStageError)("runtime_import_failed", "runtime_import_failed", error);
+        });
     }
-    runtimeContext = await runtimeLoadPromise;
-    return runtimeContext;
+    try {
+        runtimeContext = await runtimeLoadPromise;
+        return runtimeContext;
+    }
+    catch (error) {
+        runtimeLoadPromise = null;
+        runtimeContext = null;
+        throw (0, errors_1.wrapCoordinatorStageError)("runtime_import_failed", "runtime_import_failed", error);
+    }
 }
 function createLazyRuntimeDependencies(host, options) {
     return {
         now: () => new Date(),
         buildSnapshot: async () => {
             const runtime = await loadRuntimeContext(host, options);
-            return runtime.deps.buildSnapshot();
+            try {
+                return await runtime.deps.buildSnapshot();
+            }
+            catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                if (message.includes("getAbsolutePath") ||
+                    message.includes("readState failed") ||
+                    message.includes("readForeignState failed") ||
+                    message.includes("snapshot file")) {
+                    throw (0, errors_1.wrapCoordinatorStageError)("snapshot_source_failed", "snapshot_source_failed", error);
+                }
+                throw (0, errors_1.wrapCoordinatorStageError)("snapshot_build_failed", "snapshot_build_failed", error);
+            }
         },
         isWorkerRunning: () => {
             if (!runtimeContext) {
@@ -84,11 +109,21 @@ function createLazyRuntimeDependencies(host, options) {
         },
         readWorkerResult: async (jobId) => {
             const runtime = await loadRuntimeContext(host, options);
-            return runtime.deps.readWorkerResult(jobId);
+            try {
+                return await runtime.deps.readWorkerResult(jobId);
+            }
+            catch (error) {
+                throw (0, errors_1.wrapCoordinatorStageError)("worker_protocol_failed", "result_missing", error);
+            }
         },
         readPreparedOutput: async (jobId, expectedInputRevision) => {
             const runtime = await loadRuntimeContext(host, options);
-            return runtime.deps.readPreparedOutput(jobId, expectedInputRevision);
+            try {
+                return await runtime.deps.readPreparedOutput(jobId, expectedInputRevision);
+            }
+            catch (error) {
+                throw (0, errors_1.wrapCoordinatorStageError)("preparation_failed", "prepared_output_missing", error);
+            }
         },
         cleanupJob: async (jobId) => {
             if (!runtimeContext) {
@@ -98,7 +133,18 @@ function createLazyRuntimeDependencies(host, options) {
         },
         runWorkerJob: async (args) => {
             const runtime = await loadRuntimeContext(host, options);
-            return runtime.deps.runWorkerJob(args);
+            try {
+                return await runtime.deps.runWorkerJob(args);
+            }
+            catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                if (message.includes("job path must not be under durable") ||
+                    message.includes("ENOENT") ||
+                    message.includes("spawn")) {
+                    throw (0, errors_1.wrapCoordinatorStageError)("worker_spawn_failed", "worker_spawn_failed", error);
+                }
+                throw (0, errors_1.wrapCoordinatorStageError)("worker_protocol_failed", "worker_protocol_failed", error);
+            }
         },
         runAuthoritativeProjection: async (args) => {
             const runtime = await loadRuntimeContext(host, options);
@@ -109,9 +155,14 @@ function createLazyRuntimeDependencies(host, options) {
         },
         compareShadowOutput: (input) => {
             if (!runtimeContext?.deps.compareShadowOutput) {
-                throw new Error("compare_shadow_output_unavailable");
+                throw (0, errors_1.wrapCoordinatorStageError)("candidate_validation_failed", "compare_shadow_output_unavailable", new Error("compare_shadow_output_unavailable"));
             }
-            return runtimeContext.deps.compareShadowOutput(input);
+            try {
+                return runtimeContext.deps.compareShadowOutput(input);
+            }
+            catch (error) {
+                throw (0, errors_1.wrapCoordinatorStageError)("candidate_validation_failed", "candidate_validation_failed", error);
+            }
         },
         onDualRunOutcome: async (event) => {
             const runtime = await loadRuntimeContext(host, options);
@@ -121,6 +172,13 @@ function createLazyRuntimeDependencies(host, options) {
         },
     };
 }
+function asCoordinatorHost(adapter) {
+    // Ensure learning/data path helpers exist for snapshot JSON reads on first lazy load.
+    if (typeof adapter.getAbsolutePath === "function") {
+        return adapter;
+    }
+    return (0, data_dir_1.withLearningDataPath)(adapter, adapter);
+}
 function createPlannerOnDemandCoordinatorFromAdapter(adapter, options = {}) {
     if (activeCoordinator) {
         const state = activeCoordinator.getStatus().state;
@@ -128,9 +186,10 @@ function createPlannerOnDemandCoordinatorFromAdapter(adapter, options = {}) {
             throw new PlannerCoordinatorAlreadyActiveError();
         }
     }
-    const coordinator = new coordinator_1.PlannerOnDemandCoordinator(createLazyRuntimeDependencies(adapter, options), options);
+    const host = asCoordinatorHost(adapter);
+    const coordinator = new coordinator_1.PlannerOnDemandCoordinator(createLazyRuntimeDependencies(host, options), options);
     activeCoordinator = coordinator;
-    activeAdapterHost = adapter;
+    activeAdapterHost = host;
     return coordinator;
 }
 exports.createPlannerOnDemandCoordinatorFromAdapter = createPlannerOnDemandCoordinatorFromAdapter;
@@ -165,3 +224,9 @@ function isPlannerRuntimeContextLoadedForTest() {
     return runtimeContext !== null || runtimeLoadPromise !== null;
 }
 exports.isPlannerRuntimeContextLoadedForTest = isPlannerRuntimeContextLoadedForTest;
+/** Test hook: clear lazy runtime load state without stopping a registered test coordinator. */
+function resetPlannerRuntimeLoadStateForTest() {
+    runtimeContext = null;
+    runtimeLoadPromise = null;
+}
+exports.resetPlannerRuntimeLoadStateForTest = resetPlannerRuntimeLoadStateForTest;

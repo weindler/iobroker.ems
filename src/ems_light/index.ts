@@ -178,6 +178,7 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 	}
 	createPlannerOnDemandCoordinatorFromAdapter(adapter as unknown as PlannerCoordinatorAdapterHost, {
 		enabled: false,
+		log: adapter.log,
 	});
 	await initPlannerShadowRuntime(buildPlannerShadowRuntimeHost(adapter));
 	energyDailyRollupHost = buildRollupHost(adapter);

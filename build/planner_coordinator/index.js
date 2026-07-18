@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createInitialCoordinatorStatus = exports.copyCoordinatorStatus = exports.triggerToJobTrigger = exports.mergeTriggerRequests = exports.PLANNER_TRIGGER_PRIORITY = exports.PLANNER_COORDINATOR_SHUTDOWN_TIMEOUT_MS = exports.PLANNER_COORDINATOR_DEFAULT_TIMEOUT_MS = exports.createPlannerRuntimeContext = exports.PlannerCoordinatorAlreadyActiveError = exports.isPlannerRuntimeContextLoadedForTest = exports.registerPlannerOnDemandCoordinatorForTest = exports.stopPlannerOnDemandCoordinator = exports.setPlannerOnDemandCoordinatorEnabled = exports.getPlannerOnDemandCoordinator = exports.createPlannerOnDemandCoordinatorFromAdapter = exports.createPlannerOnDemandCoordinatorForTest = exports.PlannerOnDemandCoordinator = void 0;
+exports.createInitialCoordinatorStatus = exports.copyCoordinatorStatus = exports.triggerToJobTrigger = exports.mergeTriggerRequests = exports.PLANNER_TRIGGER_PRIORITY = exports.PLANNER_COORDINATOR_SHUTDOWN_TIMEOUT_MS = exports.PLANNER_COORDINATOR_DEFAULT_TIMEOUT_MS = exports.classifyCoordinatorError = exports.PlannerCoordinatorStageError = exports.PLANNER_COORDINATOR_ERROR_STAGES = exports.createPlannerRuntimeContext = exports.PlannerCoordinatorAlreadyActiveError = exports.resetPlannerRuntimeLoadStateForTest = exports.isPlannerRuntimeContextLoadedForTest = exports.registerPlannerOnDemandCoordinatorForTest = exports.stopPlannerOnDemandCoordinator = exports.setPlannerOnDemandCoordinatorEnabled = exports.getPlannerOnDemandCoordinator = exports.createPlannerOnDemandCoordinatorFromAdapter = exports.createPlannerOnDemandCoordinatorForTest = exports.PlannerOnDemandCoordinator = void 0;
 var coordinator_1 = require("./coordinator");
 Object.defineProperty(exports, "PlannerOnDemandCoordinator", { enumerable: true, get: function () { return coordinator_1.PlannerOnDemandCoordinator; } });
 var compose_1 = require("./compose");
@@ -11,9 +11,14 @@ Object.defineProperty(exports, "setPlannerOnDemandCoordinatorEnabled", { enumera
 Object.defineProperty(exports, "stopPlannerOnDemandCoordinator", { enumerable: true, get: function () { return compose_1.stopPlannerOnDemandCoordinator; } });
 Object.defineProperty(exports, "registerPlannerOnDemandCoordinatorForTest", { enumerable: true, get: function () { return compose_1.registerPlannerOnDemandCoordinatorForTest; } });
 Object.defineProperty(exports, "isPlannerRuntimeContextLoadedForTest", { enumerable: true, get: function () { return compose_1.isPlannerRuntimeContextLoadedForTest; } });
+Object.defineProperty(exports, "resetPlannerRuntimeLoadStateForTest", { enumerable: true, get: function () { return compose_1.resetPlannerRuntimeLoadStateForTest; } });
 Object.defineProperty(exports, "PlannerCoordinatorAlreadyActiveError", { enumerable: true, get: function () { return compose_1.PlannerCoordinatorAlreadyActiveError; } });
 var runtime_factory_1 = require("./runtime_factory");
 Object.defineProperty(exports, "createPlannerRuntimeContext", { enumerable: true, get: function () { return runtime_factory_1.createPlannerRuntimeContext; } });
+var errors_1 = require("./errors");
+Object.defineProperty(exports, "PLANNER_COORDINATOR_ERROR_STAGES", { enumerable: true, get: function () { return errors_1.PLANNER_COORDINATOR_ERROR_STAGES; } });
+Object.defineProperty(exports, "PlannerCoordinatorStageError", { enumerable: true, get: function () { return errors_1.PlannerCoordinatorStageError; } });
+Object.defineProperty(exports, "classifyCoordinatorError", { enumerable: true, get: function () { return errors_1.classifyCoordinatorError; } });
 var constants_1 = require("./constants");
 Object.defineProperty(exports, "PLANNER_COORDINATOR_DEFAULT_TIMEOUT_MS", { enumerable: true, get: function () { return constants_1.PLANNER_COORDINATOR_DEFAULT_TIMEOUT_MS; } });
 Object.defineProperty(exports, "PLANNER_COORDINATOR_SHUTDOWN_TIMEOUT_MS", { enumerable: true, get: function () { return constants_1.PLANNER_COORDINATOR_SHUTDOWN_TIMEOUT_MS; } });

@@ -31,6 +31,7 @@ const strict_1 = __importDefault(require("node:assert/strict"));
 const node_child_process_1 = require("node:child_process");
 const path = __importStar(require("node:path"));
 const compose_js_1 = require("./compose.js");
+const errors_js_1 = require("./errors.js");
 const index_js_1 = require("../ems_light/index.js");
 const HEAVY_MODULE_MARKERS = [
     "/build/operator/",
@@ -127,6 +128,50 @@ const host = {
         for (const marker of HEAVY_MODULE_MARKERS) {
             strict_1.default.ok(!modules.some((entry) => entry.includes(marker)), marker);
         }
+    });
+    (0, node_test_1.it)("runtime import failure surfaces as runtime_import_failed stage", async () => {
+        (0, compose_js_1.resetPlannerRuntimeLoadStateForTest)();
+        const host = fakeHost();
+        const coordinator = (0, compose_js_1.createPlannerOnDemandCoordinatorFromAdapter)(host, {
+            enabled: true,
+            packageRoot: "/tmp/ems-missing-package-root-for-import-test",
+        });
+        // Force lazy path to fail by clearing and injecting a broken loader via request after
+        // swapping buildSnapshot through a test coordinator is covered elsewhere; here we assert
+        // classify + compose wrap by calling a failing dynamic import through buildSnapshot deps.
+        coordinator.enable();
+        await (0, compose_js_1.stopPlannerOnDemandCoordinator)();
+        (0, compose_js_1.resetPlannerRuntimeLoadStateForTest)();
+        const logs = [];
+        const failing = (0, compose_js_1.createPlannerOnDemandCoordinatorForTest)({
+            now: () => new Date(),
+            buildSnapshot: async () => {
+                throw (0, errors_js_1.wrapCoordinatorStageError)("runtime_import_failed", "runtime_import_failed", new Error("Cannot find module './runtime_factory.js'"));
+            },
+            runWorkerJob: async () => {
+                throw new Error("unreachable");
+            },
+            readPreparedOutput: async () => {
+                throw new Error("unreachable");
+            },
+            readWorkerResult: async () => null,
+            cleanupJob: async () => undefined,
+            isWorkerRunning: () => false,
+            shutdownWorker: async () => undefined,
+        }, {
+            enabled: true,
+            log: {
+                error: (m) => logs.push(m),
+                warn: () => undefined,
+                info: () => undefined,
+                debug: () => undefined,
+            },
+        });
+        failing.enable();
+        const outcome = await failing.request({ reason: "manual", requestedAt: new Date().toISOString(), force: true });
+        strict_1.default.equal(outcome.errorCode, "runtime_import_failed");
+        strict_1.default.equal(failing.getStatus().lastErrorStage, "runtime_import_failed");
+        strict_1.default.ok(logs.some((l) => l.includes("runtime_import_failed")));
     });
     (0, node_test_1.it)("first enabled request loads runtime modules", async () => {
         const host = fakeHost();

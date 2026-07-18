@@ -25,6 +25,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PlannerOnDemandCoordinator = void 0;
 const types_1 = require("../planner_preparation/types");
+const errors_1 = require("./errors");
 const status_1 = require("./status");
 const trigger_1 = require("./trigger");
 class PlannerOnDemandCoordinator {
@@ -41,10 +42,12 @@ class PlannerOnDemandCoordinator {
     pendingTrigger;
     queuePromise = Promise.resolve();
     listeners = new Set();
+    log;
     constructor(deps, options = {}) {
         this.deps = deps;
         const enabled = options.enabled ?? false;
         this.status = (0, status_1.createInitialCoordinatorStatus)(enabled);
+        this.log = options.log;
     }
     enable() {
         if (this.stopped) {
@@ -171,11 +174,14 @@ class PlannerOnDemandCoordinator {
         let generation = 0;
         let inputRevision;
         let snapshotForOutcome;
+        let stageHint;
         try {
             this.setState("building_snapshot");
+            stageHint = "snapshot_build_failed";
             const snapshot = await this.deps.buildSnapshot();
             snapshotForOutcome = snapshot;
             inputRevision = snapshot.inputRevision;
+            stageHint = undefined;
             if (this.shouldSkipUnchangedInput(trigger, inputRevision)) {
                 const finishedAt = this.deps.now();
                 this.status.lastResult = "skipped";
@@ -214,7 +220,9 @@ class PlannerOnDemandCoordinator {
                 }
             }
             this.setState("starting_worker");
+            stageHint = "worker_spawn_failed";
             this.setState("worker_running");
+            stageHint = "worker_protocol_failed";
             const workerResult = await this.deps.runWorkerJob({
                 jobId,
                 generation,
@@ -222,6 +230,7 @@ class PlannerOnDemandCoordinator {
                 triggerReason: trigger.reason,
                 requestedAt: trigger.requestedAt,
             });
+            stageHint = undefined;
             if (this.stopping || this.stopped) {
                 throw new Error("coordinator_stopping");
             }
@@ -232,6 +241,7 @@ class PlannerOnDemandCoordinator {
                 throw new Error("worker_exit_nonzero");
             }
             this.setState("validating_output");
+            stageHint = "candidate_validation_failed";
             const result = workerResult.result ?? (await this.deps.readWorkerResult(jobId));
             if (!result) {
                 throw new Error("result_missing");
@@ -245,10 +255,12 @@ class PlannerOnDemandCoordinator {
             if (result.status !== "ok") {
                 throw new Error("result_status_not_ok");
             }
+            stageHint = "preparation_failed";
             const prepared = await this.deps.readPreparedOutput(jobId, inputRevision);
             if (prepared.inputRevision !== inputRevision) {
                 throw new Error("result_input_revision_mismatch");
             }
+            stageHint = undefined;
             this.lastSuccessfulInputRevision = inputRevision;
             this.lastSuccessfulPreparationRevision = prepared.preparationRevision;
             this.lastRunFailed = false;
@@ -256,6 +268,8 @@ class PlannerOnDemandCoordinator {
             this.status.lastPreparationRevision = prepared.preparationRevision;
             this.status.lastResult = "success";
             this.status.lastErrorCode = undefined;
+            this.status.lastErrorStage = undefined;
+            this.status.lastErrorDetail = undefined;
             this.status.lastSkipReason = undefined;
             this.applyComparisonResult(this.deps.compareShadowOutput?.({ snapshot, prepared, jobId }));
             if (this.status.comparisonReferenceRevision) {
@@ -294,14 +308,22 @@ class PlannerOnDemandCoordinator {
             };
         }
         catch (e) {
-            const errorCode = this.normalizeErrorCode(e);
+            const classified = (0, errors_1.classifyCoordinatorError)(e, stageHint);
+            const errorCode = this.normalizeErrorCode(e, classified.code);
             this.lastRunFailed = true;
             this.status.lastResult = "failed";
             this.status.lastErrorCode = errorCode;
+            this.status.lastErrorStage = classified.stage;
+            this.status.lastErrorDetail = classified.detail;
             this.status.lastSkipReason = undefined;
+            // Preserve snapshot revision for diagnosis even when the run failed later.
+            if (inputRevision) {
+                this.status.lastInputRevision = inputRevision;
+            }
             this.status.comparisonStatus = "worker_failed";
             this.status.comparisonMismatchCount = 0;
             this.status.comparisonFirstMismatch = undefined;
+            this.logCoordinatorFailure(e, classified.stage, errorCode, classified.detail);
             if (snapshotForOutcome) {
                 await this.emitDualRunOutcome({
                     result: "failed",
@@ -345,6 +367,13 @@ class PlannerOnDemandCoordinator {
                     this.setState("idle");
                 }
             }
+        }
+    }
+    logCoordinatorFailure(error, stage, code, detail) {
+        const name = error instanceof Error ? error.name : typeof error;
+        this.log?.error?.(`planner coordinator failed stage=${stage} code=${code} name=${name} detail=${detail}`);
+        if (error instanceof Error && error.stack) {
+            this.log?.debug?.(`planner coordinator stack: ${error.stack}`);
         }
     }
     async emitDualRunOutcome(event) {
@@ -408,9 +437,15 @@ class PlannerOnDemandCoordinator {
             }
         }
     }
-    normalizeErrorCode(error) {
+    normalizeErrorCode(error, classifiedCode) {
+        if (error instanceof errors_1.PlannerCoordinatorStageError) {
+            return error.code || error.stage;
+        }
         if (error instanceof types_1.PlannerInputValidationError) {
             return error.code;
+        }
+        if (classifiedCode && classifiedCode !== "coordinator_failed") {
+            return classifiedCode;
         }
         const message = error instanceof Error ? error.message : String(error);
         const known = [
@@ -425,6 +460,12 @@ class PlannerOnDemandCoordinator {
             "prepared_output_invalid",
             "prepared_output_budget_exceeded",
             "snapshot_build_failed",
+            "runtime_import_failed",
+            "snapshot_source_failed",
+            "worker_spawn_failed",
+            "worker_protocol_failed",
+            "candidate_validation_failed",
+            "preparation_failed",
         ];
         for (const code of known) {
             if (message.includes(code)) {
@@ -437,7 +478,10 @@ class PlannerOnDemandCoordinator {
         if (message.includes("generation")) {
             return "result_generation_mismatch";
         }
-        return "coordinator_failed";
+        if (message.includes("job path must not be under durable")) {
+            return "worker_spawn_failed";
+        }
+        return classifiedCode ?? "coordinator_failed";
     }
     setState(state) {
         if (this.status.state === state) {

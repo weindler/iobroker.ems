@@ -1,4 +1,6 @@
+import { withLearningDataPath } from "../learning/data_dir";
 import { PlannerOnDemandCoordinator } from "./coordinator";
+import { wrapCoordinatorStageError } from "./errors";
 import type {
 	PlannerOnDemandCoordinatorDependencies,
 	PlannerOnDemandCoordinatorOptions,
@@ -41,12 +43,21 @@ async function loadRuntimeContext(
 		return runtimeContext;
 	}
 	if (!runtimeLoadPromise) {
-		runtimeLoadPromise = import("./runtime_factory.js").then((module) =>
-			module.createPlannerRuntimeContext(host, { packageRoot: options.packageRoot }),
-		);
+		runtimeLoadPromise = import("./runtime_factory.js")
+			.then((module) => module.createPlannerRuntimeContext(host, { packageRoot: options.packageRoot }))
+			.catch((error) => {
+				runtimeLoadPromise = null;
+				throw wrapCoordinatorStageError("runtime_import_failed", "runtime_import_failed", error);
+			});
 	}
-	runtimeContext = await runtimeLoadPromise;
-	return runtimeContext;
+	try {
+		runtimeContext = await runtimeLoadPromise;
+		return runtimeContext;
+	} catch (error) {
+		runtimeLoadPromise = null;
+		runtimeContext = null;
+		throw wrapCoordinatorStageError("runtime_import_failed", "runtime_import_failed", error);
+	}
 }
 
 function createLazyRuntimeDependencies(
@@ -57,7 +68,20 @@ function createLazyRuntimeDependencies(
 		now: () => new Date(),
 		buildSnapshot: async () => {
 			const runtime = await loadRuntimeContext(host, options);
-			return runtime.deps.buildSnapshot();
+			try {
+				return await runtime.deps.buildSnapshot();
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				if (
+					message.includes("getAbsolutePath") ||
+					message.includes("readState failed") ||
+					message.includes("readForeignState failed") ||
+					message.includes("snapshot file")
+				) {
+					throw wrapCoordinatorStageError("snapshot_source_failed", "snapshot_source_failed", error);
+				}
+				throw wrapCoordinatorStageError("snapshot_build_failed", "snapshot_build_failed", error);
+			}
 		},
 		isWorkerRunning: () => {
 			if (!runtimeContext) {
@@ -74,11 +98,19 @@ function createLazyRuntimeDependencies(
 		},
 		readWorkerResult: async (jobId) => {
 			const runtime = await loadRuntimeContext(host, options);
-			return runtime.deps.readWorkerResult(jobId);
+			try {
+				return await runtime.deps.readWorkerResult(jobId);
+			} catch (error) {
+				throw wrapCoordinatorStageError("worker_protocol_failed", "result_missing", error);
+			}
 		},
 		readPreparedOutput: async (jobId, expectedInputRevision) => {
 			const runtime = await loadRuntimeContext(host, options);
-			return runtime.deps.readPreparedOutput(jobId, expectedInputRevision);
+			try {
+				return await runtime.deps.readPreparedOutput(jobId, expectedInputRevision);
+			} catch (error) {
+				throw wrapCoordinatorStageError("preparation_failed", "prepared_output_missing", error);
+			}
 		},
 		cleanupJob: async (jobId) => {
 			if (!runtimeContext) {
@@ -88,7 +120,19 @@ function createLazyRuntimeDependencies(
 		},
 		runWorkerJob: async (args) => {
 			const runtime = await loadRuntimeContext(host, options);
-			return runtime.deps.runWorkerJob(args);
+			try {
+				return await runtime.deps.runWorkerJob(args);
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				if (
+					message.includes("job path must not be under durable") ||
+					message.includes("ENOENT") ||
+					message.includes("spawn")
+				) {
+					throw wrapCoordinatorStageError("worker_spawn_failed", "worker_spawn_failed", error);
+				}
+				throw wrapCoordinatorStageError("worker_protocol_failed", "worker_protocol_failed", error);
+			}
 		},
 		runAuthoritativeProjection: async (args) => {
 			const runtime = await loadRuntimeContext(host, options);
@@ -99,9 +143,21 @@ function createLazyRuntimeDependencies(
 		},
 		compareShadowOutput: (input) => {
 			if (!runtimeContext?.deps.compareShadowOutput) {
-				throw new Error("compare_shadow_output_unavailable");
+				throw wrapCoordinatorStageError(
+					"candidate_validation_failed",
+					"compare_shadow_output_unavailable",
+					new Error("compare_shadow_output_unavailable"),
+				);
 			}
-			return runtimeContext.deps.compareShadowOutput(input);
+			try {
+				return runtimeContext.deps.compareShadowOutput(input);
+			} catch (error) {
+				throw wrapCoordinatorStageError(
+					"candidate_validation_failed",
+					"candidate_validation_failed",
+					error,
+				);
+			}
 		},
 		onDualRunOutcome: async (event) => {
 			const runtime = await loadRuntimeContext(host, options);
@@ -109,6 +165,17 @@ function createLazyRuntimeDependencies(
 			await runtime.deps.onDualRunOutcome(event);
 		},
 	};
+}
+
+function asCoordinatorHost(adapter: PlannerCoordinatorAdapterHost): PlannerCoordinatorAdapterHost {
+	// Ensure learning/data path helpers exist for snapshot JSON reads on first lazy load.
+	if (typeof adapter.getAbsolutePath === "function") {
+		return adapter;
+	}
+	return withLearningDataPath(
+		adapter as unknown as ioBroker.Adapter,
+		adapter,
+	) as unknown as PlannerCoordinatorAdapterHost;
 }
 
 export function createPlannerOnDemandCoordinatorFromAdapter(
@@ -121,9 +188,10 @@ export function createPlannerOnDemandCoordinatorFromAdapter(
 			throw new PlannerCoordinatorAlreadyActiveError();
 		}
 	}
-	const coordinator = new PlannerOnDemandCoordinator(createLazyRuntimeDependencies(adapter, options), options);
+	const host = asCoordinatorHost(adapter);
+	const coordinator = new PlannerOnDemandCoordinator(createLazyRuntimeDependencies(host, options), options);
 	activeCoordinator = coordinator;
-	activeAdapterHost = adapter;
+	activeAdapterHost = host;
 	return coordinator;
 }
 
@@ -161,4 +229,10 @@ export function registerPlannerOnDemandCoordinatorForTest(
 /** Test hook: inspect whether runtime modules were loaded via lazy factory. */
 export function isPlannerRuntimeContextLoadedForTest(): boolean {
 	return runtimeContext !== null || runtimeLoadPromise !== null;
+}
+
+/** Test hook: clear lazy runtime load state without stopping a registered test coordinator. */
+export function resetPlannerRuntimeLoadStateForTest(): void {
+	runtimeContext = null;
+	runtimeLoadPromise = null;
 }

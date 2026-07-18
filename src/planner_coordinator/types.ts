@@ -53,6 +53,10 @@ export interface PlannerCoordinatorStatus {
 	lastResult?: "success" | "failed" | "skipped";
 	lastSkipReason?: string;
 	lastErrorCode?: string;
+	/** High-level failure stage (import/snapshot/worker/...). */
+	lastErrorStage?: string;
+	/** Compact safe error detail for diagnostics (no stack). */
+	lastErrorDetail?: string;
 	lastTriggerReason?: PlannerTriggerReason;
 	comparisonStatus?: PlannerCoordinatorComparisonStatus;
 	comparisonReferenceRevision?: string;
@@ -136,4 +140,6 @@ export interface PlannerOnDemandCoordinatorDependencies {
 
 export interface PlannerOnDemandCoordinatorOptions {
 	enabled?: boolean;
+	/** Optional adapter logger for staged failure diagnostics. */
+	log?: Pick<ioBroker.Logger, "error" | "warn" | "info" | "debug">;
 }

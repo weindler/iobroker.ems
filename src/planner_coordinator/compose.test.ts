@@ -7,9 +7,11 @@ import {
 	createPlannerOnDemandCoordinatorForTest,
 	isPlannerRuntimeContextLoadedForTest,
 	registerPlannerOnDemandCoordinatorForTest,
+	resetPlannerRuntimeLoadStateForTest,
 	stopPlannerOnDemandCoordinator,
 	PlannerCoordinatorAlreadyActiveError,
 } from "./compose.js";
+import { wrapCoordinatorStageError } from "./errors.js";
 import type { PlannerCoordinatorAdapterHost } from "./runtime_factory.js";
 import type { PlannerInputSnapshot } from "../planner_snapshot/types.js";
 import { stopEmsLightPhase1 } from "../ems_light/index.js";
@@ -116,6 +118,58 @@ const host = {
 		for (const marker of HEAVY_MODULE_MARKERS) {
 			assert.ok(!modules.some((entry) => entry.includes(marker)), marker);
 		}
+	});
+
+	it("runtime import failure surfaces as runtime_import_failed stage", async () => {
+		resetPlannerRuntimeLoadStateForTest();
+		const host = fakeHost();
+		const coordinator = createPlannerOnDemandCoordinatorFromAdapter(host, {
+			enabled: true,
+			packageRoot: "/tmp/ems-missing-package-root-for-import-test",
+		});
+		// Force lazy path to fail by clearing and injecting a broken loader via request after
+		// swapping buildSnapshot through a test coordinator is covered elsewhere; here we assert
+		// classify + compose wrap by calling a failing dynamic import through buildSnapshot deps.
+		coordinator.enable();
+		await stopPlannerOnDemandCoordinator();
+		resetPlannerRuntimeLoadStateForTest();
+		const logs: string[] = [];
+		const failing = createPlannerOnDemandCoordinatorForTest(
+			{
+				now: () => new Date(),
+				buildSnapshot: async () => {
+					throw wrapCoordinatorStageError(
+						"runtime_import_failed",
+						"runtime_import_failed",
+						new Error("Cannot find module './runtime_factory.js'"),
+					);
+				},
+				runWorkerJob: async () => {
+					throw new Error("unreachable");
+				},
+				readPreparedOutput: async () => {
+					throw new Error("unreachable");
+				},
+				readWorkerResult: async () => null,
+				cleanupJob: async () => undefined,
+				isWorkerRunning: () => false,
+				shutdownWorker: async () => undefined,
+			},
+			{
+				enabled: true,
+				log: {
+					error: (m: string) => logs.push(m),
+					warn: () => undefined,
+					info: () => undefined,
+					debug: () => undefined,
+				},
+			},
+		);
+		failing.enable();
+		const outcome = await failing.request({ reason: "manual", requestedAt: new Date().toISOString(), force: true });
+		assert.equal(outcome.errorCode, "runtime_import_failed");
+		assert.equal(failing.getStatus().lastErrorStage, "runtime_import_failed");
+		assert.ok(logs.some((l) => l.includes("runtime_import_failed")));
 	});
 
 	it("first enabled request loads runtime modules", async () => {

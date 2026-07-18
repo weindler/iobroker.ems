@@ -33,6 +33,8 @@ export async function writePlannerCoordinatorStatusStates(
 	await setStateIfChanged(host, PLANNER_COORDINATOR_STATE_IDS.lastResult, status.lastResult ?? "");
 	await setStateIfChanged(host, PLANNER_COORDINATOR_STATE_IDS.lastSkipReason, status.lastSkipReason ?? "");
 	await setStateIfChanged(host, PLANNER_COORDINATOR_STATE_IDS.lastErrorCode, status.lastErrorCode ?? "");
+	await setStateIfChanged(host, PLANNER_COORDINATOR_STATE_IDS.lastErrorStage, status.lastErrorStage ?? "");
+	await setStateIfChanged(host, PLANNER_COORDINATOR_STATE_IDS.lastErrorDetail, status.lastErrorDetail ?? "");
 	await setStateIfChanged(host, PLANNER_COORDINATOR_STATE_IDS.lastStartedAt, status.lastStartedAt ?? "");
 	await setStateIfChanged(host, PLANNER_COORDINATOR_STATE_IDS.lastFinishedAt, status.lastFinishedAt ?? "");
 	await setOptionalNumberIfChanged(host, PLANNER_COORDINATOR_STATE_IDS.lastDurationMs, status.lastDurationMs ?? null);

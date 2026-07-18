@@ -4,15 +4,21 @@ exports.triggerToJobTrigger = exports.mergeTriggerRequests = void 0;
 const constants_1 = require("./constants");
 function mergeTriggerRequests(current, incoming) {
     if (!current) {
-        return { ...incoming };
+        return {
+            reason: incoming.reason,
+            requestedAt: incoming.requestedAt,
+            correlationId: incoming.correlationId,
+            force: incoming.force === true,
+        };
     }
     const currentPriority = constants_1.PLANNER_TRIGGER_PRIORITY[current.reason];
     const incomingPriority = constants_1.PLANNER_TRIGGER_PRIORITY[incoming.reason];
     const winner = incomingPriority >= currentPriority ? incoming : current;
     return {
         reason: winner.reason,
-        requestedAt: incoming.requestedAt,
+        requestedAt: incoming.requestedAt || current.requestedAt,
         correlationId: incoming.correlationId ?? current.correlationId,
+        // Force is sticky: once true, later non-forced coalesced events must not clear it.
         force: Boolean(current.force || incoming.force),
     };
 }

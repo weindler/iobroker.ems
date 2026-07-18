@@ -113,10 +113,16 @@ function createPlannerRuntimeContext(adapter, options = {}) {
                 legacyModuleLoaded = true;
             }
             const jobDir = layout.jobDir(jobId);
-            await (0, write_1.writePlannerInputSnapshot)(jobDir, snapshot, {
-                runtimeRootDir: layout.runtimePlannerDir,
-                durableDataDir: emsPaths.durableDataDir,
-            });
+            try {
+                await (0, write_1.writePlannerInputSnapshot)(jobDir, snapshot, {
+                    runtimeRootDir: layout.runtimePlannerDir,
+                    durableDataDir: emsPaths.durableDataDir,
+                });
+            }
+            catch (error) {
+                const { wrapCoordinatorStageError } = await Promise.resolve().then(() => __importStar(require("./errors.js")));
+                throw wrapCoordinatorStageError("worker_spawn_failed", "worker_spawn_failed", error);
+            }
             const request = {
                 schemaVersion: 1,
                 kind: "planner_snapshot_v2",
@@ -128,12 +134,23 @@ function createPlannerRuntimeContext(adapter, options = {}) {
                 timeoutMs: timeoutMs ?? constants_1.PLANNER_DEFAULT_JOB_TIMEOUT_MS,
                 inputSnapshotPath: path.join(jobDir, "input.json"),
             };
-            const runResult = await lifecycle.runJob({
-                request,
-                input: snapshot,
-                workerScriptPath,
-                timeoutMs,
-            });
+            let runResult;
+            try {
+                runResult = await lifecycle.runJob({
+                    request,
+                    input: snapshot,
+                    workerScriptPath,
+                    timeoutMs,
+                });
+            }
+            catch (error) {
+                const { wrapCoordinatorStageError } = await Promise.resolve().then(() => __importStar(require("./errors.js")));
+                const message = error instanceof Error ? error.message : String(error);
+                if (message.includes("already running") || message.includes("ENOENT") || message.includes("spawn")) {
+                    throw wrapCoordinatorStageError("worker_spawn_failed", "worker_spawn_failed", error);
+                }
+                throw wrapCoordinatorStageError("worker_protocol_failed", "worker_protocol_failed", error);
+            }
             const result = await (0, repository_1.readJobResult)(jobDir);
             const after = captureRssSnapshot();
             const delta = Math.round((after.rssMiB - before.rssMiB) * 10) / 10;

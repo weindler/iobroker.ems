@@ -1,5 +1,6 @@
 import { PlannerInputValidationError } from "../planner_preparation/types";
 import type { PlannerShadowComparisonResult } from "../planner_shadow/types";
+import { classifyCoordinatorError, PlannerCoordinatorStageError } from "./errors";
 import { copyCoordinatorStatus, createInitialCoordinatorStatus } from "./status";
 import { mergeTriggerRequests } from "./trigger";
 import type {
@@ -26,6 +27,7 @@ export class PlannerOnDemandCoordinator {
 	private pendingTrigger: PlannerTriggerRequest | undefined;
 	private queuePromise: Promise<void> = Promise.resolve();
 	private readonly listeners = new Set<PlannerCoordinatorStatusListener>();
+	private readonly log: PlannerOnDemandCoordinatorOptions["log"];
 
 	constructor(
 		private readonly deps: PlannerOnDemandCoordinatorDependencies,
@@ -33,6 +35,7 @@ export class PlannerOnDemandCoordinator {
 	) {
 		const enabled = options.enabled ?? false;
 		this.status = createInitialCoordinatorStatus(enabled);
+		this.log = options.log;
 	}
 
 	enable(): void {
@@ -176,12 +179,15 @@ export class PlannerOnDemandCoordinator {
 		let generation = 0;
 		let inputRevision: string | undefined;
 		let snapshotForOutcome: import("../planner_snapshot/types").PlannerInputSnapshot | undefined;
+		let stageHint: import("./errors").PlannerCoordinatorErrorStage | undefined;
 
 		try {
 			this.setState("building_snapshot");
+			stageHint = "snapshot_build_failed";
 			const snapshot = await this.deps.buildSnapshot();
 			snapshotForOutcome = snapshot;
 			inputRevision = snapshot.inputRevision;
+			stageHint = undefined;
 
 			if (this.shouldSkipUnchangedInput(trigger, inputRevision)) {
 				const finishedAt = this.deps.now();
@@ -223,7 +229,9 @@ export class PlannerOnDemandCoordinator {
 			}
 
 			this.setState("starting_worker");
+			stageHint = "worker_spawn_failed";
 			this.setState("worker_running");
+			stageHint = "worker_protocol_failed";
 			const workerResult = await this.deps.runWorkerJob({
 				jobId,
 				generation,
@@ -231,6 +239,7 @@ export class PlannerOnDemandCoordinator {
 				triggerReason: trigger.reason,
 				requestedAt: trigger.requestedAt,
 			});
+			stageHint = undefined;
 
 			if (this.stopping || this.stopped) {
 				throw new Error("coordinator_stopping");
@@ -244,6 +253,7 @@ export class PlannerOnDemandCoordinator {
 			}
 
 			this.setState("validating_output");
+			stageHint = "candidate_validation_failed";
 			const result = workerResult.result ?? (await this.deps.readWorkerResult(jobId));
 			if (!result) {
 				throw new Error("result_missing");
@@ -258,10 +268,12 @@ export class PlannerOnDemandCoordinator {
 				throw new Error("result_status_not_ok");
 			}
 
+			stageHint = "preparation_failed";
 			const prepared = await this.deps.readPreparedOutput(jobId, inputRevision);
 			if (prepared.inputRevision !== inputRevision) {
 				throw new Error("result_input_revision_mismatch");
 			}
+			stageHint = undefined;
 
 			this.lastSuccessfulInputRevision = inputRevision;
 			this.lastSuccessfulPreparationRevision = prepared.preparationRevision;
@@ -270,6 +282,8 @@ export class PlannerOnDemandCoordinator {
 			this.status.lastPreparationRevision = prepared.preparationRevision;
 			this.status.lastResult = "success";
 			this.status.lastErrorCode = undefined;
+			this.status.lastErrorStage = undefined;
+			this.status.lastErrorDetail = undefined;
 			this.status.lastSkipReason = undefined;
 			this.applyComparisonResult(this.deps.compareShadowOutput?.({ snapshot, prepared, jobId }));
 			if (this.status.comparisonReferenceRevision) {
@@ -309,14 +323,22 @@ export class PlannerOnDemandCoordinator {
 				durationMs: this.status.lastDurationMs,
 			};
 		} catch (e) {
-			const errorCode = this.normalizeErrorCode(e);
+			const classified = classifyCoordinatorError(e, stageHint);
+			const errorCode = this.normalizeErrorCode(e, classified.code);
 			this.lastRunFailed = true;
 			this.status.lastResult = "failed";
 			this.status.lastErrorCode = errorCode;
+			this.status.lastErrorStage = classified.stage;
+			this.status.lastErrorDetail = classified.detail;
 			this.status.lastSkipReason = undefined;
+			// Preserve snapshot revision for diagnosis even when the run failed later.
+			if (inputRevision) {
+				this.status.lastInputRevision = inputRevision;
+			}
 			this.status.comparisonStatus = "worker_failed";
 			this.status.comparisonMismatchCount = 0;
 			this.status.comparisonFirstMismatch = undefined;
+			this.logCoordinatorFailure(e, classified.stage, errorCode, classified.detail);
 			if (snapshotForOutcome) {
 				await this.emitDualRunOutcome({
 					result: "failed",
@@ -359,6 +381,21 @@ export class PlannerOnDemandCoordinator {
 					this.setState("idle");
 				}
 			}
+		}
+	}
+
+	private logCoordinatorFailure(
+		error: unknown,
+		stage: string,
+		code: string,
+		detail: string,
+	): void {
+		const name = error instanceof Error ? error.name : typeof error;
+		this.log?.error?.(
+			`planner coordinator failed stage=${stage} code=${code} name=${name} detail=${detail}`,
+		);
+		if (error instanceof Error && error.stack) {
+			this.log?.debug?.(`planner coordinator stack: ${error.stack}`);
 		}
 	}
 
@@ -443,9 +480,15 @@ export class PlannerOnDemandCoordinator {
 		}
 	}
 
-	private normalizeErrorCode(error: unknown): string {
+	private normalizeErrorCode(error: unknown, classifiedCode?: string): string {
+		if (error instanceof PlannerCoordinatorStageError) {
+			return error.code || error.stage;
+		}
 		if (error instanceof PlannerInputValidationError) {
 			return error.code;
+		}
+		if (classifiedCode && classifiedCode !== "coordinator_failed") {
+			return classifiedCode;
 		}
 		const message = error instanceof Error ? error.message : String(error);
 		const known = [
@@ -460,6 +503,12 @@ export class PlannerOnDemandCoordinator {
 			"prepared_output_invalid",
 			"prepared_output_budget_exceeded",
 			"snapshot_build_failed",
+			"runtime_import_failed",
+			"snapshot_source_failed",
+			"worker_spawn_failed",
+			"worker_protocol_failed",
+			"candidate_validation_failed",
+			"preparation_failed",
 		];
 		for (const code of known) {
 			if (message.includes(code)) {
@@ -472,7 +521,10 @@ export class PlannerOnDemandCoordinator {
 		if (message.includes("generation")) {
 			return "result_generation_mismatch";
 		}
-		return "coordinator_failed";
+		if (message.includes("job path must not be under durable")) {
+			return "worker_spawn_failed";
+		}
+		return classifiedCode ?? "coordinator_failed";
 	}
 
 	private setState(state: PlannerCoordinatorState): void {

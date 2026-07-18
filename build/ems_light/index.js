@@ -140,6 +140,7 @@ async function startEmsLightPhase1Runtime(adapter) {
     }
     (0, compose_1.createPlannerOnDemandCoordinatorFromAdapter)(adapter, {
         enabled: false,
+        log: adapter.log,
     });
     await (0, runtime_1.initPlannerShadowRuntime)(buildPlannerShadowRuntimeHost(adapter));
     energyDailyRollupHost = buildRollupHost(adapter);

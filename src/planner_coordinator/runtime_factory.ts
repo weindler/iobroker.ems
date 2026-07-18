@@ -117,10 +117,15 @@ export function createPlannerRuntimeContext(
 			}
 
 			const jobDir = layout.jobDir(jobId);
-			await writePlannerInputSnapshot(jobDir, snapshot, {
-				runtimeRootDir: layout.runtimePlannerDir,
-				durableDataDir: emsPaths.durableDataDir,
-			});
+			try {
+				await writePlannerInputSnapshot(jobDir, snapshot, {
+					runtimeRootDir: layout.runtimePlannerDir,
+					durableDataDir: emsPaths.durableDataDir,
+				});
+			} catch (error) {
+				const { wrapCoordinatorStageError } = await import("./errors.js");
+				throw wrapCoordinatorStageError("worker_spawn_failed", "worker_spawn_failed", error);
+			}
 			const request: PlannerJobRequest = {
 				schemaVersion: 1,
 				kind: "planner_snapshot_v2",
@@ -132,12 +137,22 @@ export function createPlannerRuntimeContext(
 				timeoutMs: timeoutMs ?? PLANNER_DEFAULT_JOB_TIMEOUT_MS,
 				inputSnapshotPath: path.join(jobDir, "input.json"),
 			};
-			const runResult = await lifecycle.runJob({
-				request,
-				input: snapshot as unknown as import("../planner_contracts/types").PlannerInputSnapshot,
-				workerScriptPath,
-				timeoutMs,
-			});
+			let runResult;
+			try {
+				runResult = await lifecycle.runJob({
+					request,
+					input: snapshot as unknown as import("../planner_contracts/types").PlannerInputSnapshot,
+					workerScriptPath,
+					timeoutMs,
+				});
+			} catch (error) {
+				const { wrapCoordinatorStageError } = await import("./errors.js");
+				const message = error instanceof Error ? error.message : String(error);
+				if (message.includes("already running") || message.includes("ENOENT") || message.includes("spawn")) {
+					throw wrapCoordinatorStageError("worker_spawn_failed", "worker_spawn_failed", error);
+				}
+				throw wrapCoordinatorStageError("worker_protocol_failed", "worker_protocol_failed", error);
+			}
 			const result = await readJobResult(jobDir);
 			const after = captureRssSnapshot();
 			const delta = Math.round((after.rssMiB - before.rssMiB) * 10) / 10;

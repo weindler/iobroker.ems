@@ -31,6 +31,7 @@ import {
 	type PlannerShadowRuntimeHost,
 } from "../planner_shadow/runtime";
 import { ensurePlannerStateTree, runPlannerRuntime, stopPlanner, type PlannerHost } from "../planner";
+import { plannerRuntimeModeFromConfig } from "../planner_config";
 import { resetGlobalModesRuntime } from "../global_modes";
 import { ensureEmsLightStates } from "./ensure_states";
 import { runEmsLightPhase1Tick } from "./tick";
@@ -155,8 +156,11 @@ function buildPlannerShadowRuntimeHost(adapter: ioBroker.Adapter): PlannerShadow
 export async function ensureEmsLightStateTree(adapter: ioBroker.Adapter): Promise<void> {
 	const version = String(adapter.common?.version ?? "0.0.0");
 	const host = adapter as unknown as LiveCacheHost;
+	const plannerMode = plannerRuntimeModeFromConfig(adapter.config).mode;
 	await ensureEmsLightStates(host, version);
-	await ensurePlannerStateTree(host as unknown as PlannerHost & LiveCacheHost);
+	await ensurePlannerStateTree(host as unknown as PlannerHost & LiveCacheHost, {
+		includeTakeoverStates: plannerMode !== "off",
+	});
 	const policyHost = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & PolicyEngineHost);
 	await ensurePolicyStateTree(policyHost);
 	await ensureIntentStates(buildIntentHost(adapter));
@@ -166,8 +170,12 @@ export async function ensureEmsLightStateTree(adapter: ioBroker.Adapter): Promis
 /** Phase F — Runtime, Ticks und initiale Auswertung (nach Bootstrap-Barriere). */
 export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Promise<void> {
 	const host = adapter as unknown as LiveCacheHost;
+	const plannerMode = plannerRuntimeModeFromConfig(adapter.config).mode;
 
-	await runPlannerRuntime(host as unknown as PlannerHost & LiveCacheHost);
+	// off/legacy: keep v0.1.124-shaped startup — no Forecast/Daily/Allocation bootstrap.
+	if (plannerMode !== "off") {
+		await runPlannerRuntime(host as unknown as PlannerHost & LiveCacheHost);
+	}
 	createPlannerOnDemandCoordinatorFromAdapter(adapter as unknown as PlannerCoordinatorAdapterHost, {
 		enabled: false,
 	});

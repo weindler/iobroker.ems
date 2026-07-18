@@ -24,17 +24,47 @@ interface ZonedParts {
 	minute: number;
 }
 
+const FORMATTER_OPTIONS: Intl.DateTimeFormatOptions = {
+	timeZone: "UTC",
+	hour12: false,
+	year: "numeric",
+	month: "2-digit",
+	day: "2-digit",
+	hour: "2-digit",
+	minute: "2-digit",
+};
+
+/** Cache formatters — creating one per minute-scan blew RSS by hundreds of MiB. */
+const zonedFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function createFormatter(timezone: string): Intl.DateTimeFormat {
+	return new Intl.DateTimeFormat("en-US", { ...FORMATTER_OPTIONS, timeZone: timezone });
+}
+
+/**
+ * Resolve a cached formatter for a timezone.
+ * Invalid zones are not cached; callers fall back to UTC for conversion.
+ */
+function zonedFormatter(timezone: string): Intl.DateTimeFormat {
+	const key = timezone.trim() || "UTC";
+	const cached = zonedFormatters.get(key);
+	if (cached) return cached;
+	try {
+		const fmt = createFormatter(key);
+		// Validate eagerly so bad zones never enter the cache.
+		fmt.formatToParts(new Date());
+		zonedFormatters.set(key, fmt);
+		return fmt;
+	} catch {
+		if (key === "UTC") {
+			return createFormatter("UTC");
+		}
+		return zonedFormatter("UTC");
+	}
+}
+
 function zonedParts(ms: number, timezone: string): ZonedParts {
-	const fmt = new Intl.DateTimeFormat("en-US", {
-		timeZone: timezone,
-		hour12: false,
-		year: "numeric",
-		month: "2-digit",
-		day: "2-digit",
-		hour: "2-digit",
-		minute: "2-digit",
-	});
-	const parts = fmt.formatToParts(new Date(ms));
+	const parts = zonedFormatter(timezone).formatToParts(new Date(ms));
 	const pick = (type: Intl.DateTimeFormatPartTypes): number => {
 		const v = parts.find((p) => p.type === type)?.value ?? "0";
 		return parseInt(v, 10);
@@ -75,4 +105,16 @@ export function addDaysToDateKey(dateKey: string, days: number): string {
 	const [y, mo, da] = dateKey.split("-").map((x) => parseInt(x, 10));
 	const d = new Date(Date.UTC(y, mo - 1, da + days, 12, 0, 0));
 	return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
+export function zonedFormatterCacheSizeForTest(): number {
+	return zonedFormatters.size;
+}
+
+export function resetZonedFormatterCacheForTest(): void {
+	zonedFormatters.clear();
+}
+
+export function zonedFormatterCacheHasForTest(timezone: string): boolean {
+	return zonedFormatters.has(timezone);
 }

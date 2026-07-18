@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addDaysToDateKey = exports.isoAtTimezoneLocal = exports.localDateKeyInTimezone = exports.isValidIsoTimestamp = exports.slotEndMsFromStart = exports.isoFromMs = exports.OPERATOR_MS_PER_15MIN = void 0;
+exports.zonedFormatterCacheHasForTest = exports.resetZonedFormatterCacheForTest = exports.zonedFormatterCacheSizeForTest = exports.addDaysToDateKey = exports.isoAtTimezoneLocal = exports.localDateKeyInTimezone = exports.isValidIsoTimestamp = exports.slotEndMsFromStart = exports.isoFromMs = exports.OPERATOR_MS_PER_15MIN = void 0;
 const tibber_parse_1 = require("../learning/price_forecast/tibber_parse");
 exports.OPERATOR_MS_PER_15MIN = tibber_parse_1.MS_PER_15MIN;
 function isoFromMs(ms) {
@@ -18,17 +18,45 @@ function isValidIsoTimestamp(iso) {
     return Number.isFinite(ms);
 }
 exports.isValidIsoTimestamp = isValidIsoTimestamp;
+const FORMATTER_OPTIONS = {
+    timeZone: "UTC",
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+};
+/** Cache formatters — creating one per minute-scan blew RSS by hundreds of MiB. */
+const zonedFormatters = new Map();
+function createFormatter(timezone) {
+    return new Intl.DateTimeFormat("en-US", { ...FORMATTER_OPTIONS, timeZone: timezone });
+}
+/**
+ * Resolve a cached formatter for a timezone.
+ * Invalid zones are not cached; callers fall back to UTC for conversion.
+ */
+function zonedFormatter(timezone) {
+    const key = timezone.trim() || "UTC";
+    const cached = zonedFormatters.get(key);
+    if (cached)
+        return cached;
+    try {
+        const fmt = createFormatter(key);
+        // Validate eagerly so bad zones never enter the cache.
+        fmt.formatToParts(new Date());
+        zonedFormatters.set(key, fmt);
+        return fmt;
+    }
+    catch {
+        if (key === "UTC") {
+            return createFormatter("UTC");
+        }
+        return zonedFormatter("UTC");
+    }
+}
 function zonedParts(ms, timezone) {
-    const fmt = new Intl.DateTimeFormat("en-US", {
-        timeZone: timezone,
-        hour12: false,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
-    const parts = fmt.formatToParts(new Date(ms));
+    const parts = zonedFormatter(timezone).formatToParts(new Date(ms));
     const pick = (type) => {
         const v = parts.find((p) => p.type === type)?.value ?? "0";
         return parseInt(v, 10);
@@ -65,3 +93,15 @@ function addDaysToDateKey(dateKey, days) {
     return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
 }
 exports.addDaysToDateKey = addDaysToDateKey;
+function zonedFormatterCacheSizeForTest() {
+    return zonedFormatters.size;
+}
+exports.zonedFormatterCacheSizeForTest = zonedFormatterCacheSizeForTest;
+function resetZonedFormatterCacheForTest() {
+    zonedFormatters.clear();
+}
+exports.resetZonedFormatterCacheForTest = resetZonedFormatterCacheForTest;
+function zonedFormatterCacheHasForTest(timezone) {
+    return zonedFormatters.has(timezone);
+}
+exports.zonedFormatterCacheHasForTest = zonedFormatterCacheHasForTest;

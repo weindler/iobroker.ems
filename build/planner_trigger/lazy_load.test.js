@@ -15,6 +15,12 @@ const HEAVY = [
     "/build/planner_takeover/record.js",
     "/build/planner_takeover/dual_run_bridge.js",
     "/build/planner_takeover/evidence_io.js",
+    "/build/operator/forecast/tick.js",
+    "/build/operator/forecast/build.js",
+    "/build/operator/daily_plan/tick.js",
+    "/build/operator/daily_plan/allocation.js",
+    "/build/planner_authorization/runtime.js",
+    "/build/planner_authority/runtime.js",
 ];
 function run(body) {
     const r = (0, node_child_process_1.spawnSync)(process.execPath, ["-e", body], {
@@ -65,6 +71,41 @@ compose.createPlannerOnDemandCoordinatorFromAdapter({
 })();
 `);
         for (const m of HEAVY) {
+            strict_1.default.ok(!modules.some((e) => e.includes(m)), m);
+        }
+    });
+    (0, node_test_1.it)("off/legacy ems_light tick does not load forecast or allocation cores", () => {
+        const modules = run(`
+const path = require("path");
+const tick = require(path.join(process.cwd(), "build/ems_light/tick.js"));
+const host = {
+  namespace: "ems.0",
+  config: {
+    planner_runtime_mode: "off",
+    planner_takeover_evaluation_mode: "disabled",
+    planner_takeover_authorization_mode: "disabled",
+    planner_authoritative_source: "legacy",
+    global_execution_mode: "dryrun",
+  },
+  log: { debug(){}, info(){}, warn(){}, error(){} },
+  getStateAsync: async () => null,
+  setStateAsync: async () => undefined,
+  getForeignStateAsync: async () => null,
+};
+(async () => {
+  await tick.runEmsLightPhase1Tick(host);
+  console.log(Object.keys(require.cache).join("\\n"));
+})();
+`);
+        for (const m of [
+            "/build/operator/forecast/tick.js",
+            "/build/operator/forecast/build.js",
+            "/build/operator/daily_plan/tick.js",
+            "/build/operator/daily_plan/allocation.js",
+            "/build/planner_coordinator/runtime_factory.js",
+            "/build/planner_worker/",
+            "/build/planner_candidate/build.js",
+        ]) {
             strict_1.default.ok(!modules.some((e) => e.includes(m)), m);
         }
     });

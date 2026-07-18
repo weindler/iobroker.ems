@@ -105,6 +105,29 @@ console.log(Object.keys(require.cache).join("\\n"));
             strict_1.default.ok(!modules.some((entry) => entry.includes(marker)), marker);
         }
     });
+    (0, node_test_1.it)("stop without prior job does not load heavy modules", () => {
+        const script = `
+const path = require("path");
+const compose = require(path.join(process.cwd(), "build/planner_coordinator/compose.js"));
+const host = {
+  namespace: "ems.0",
+  getAbsoluteInstanceDataDir: () => "/tmp/ems-coord-lazy-stop",
+  getStateAsync: async () => null,
+  config: {},
+};
+(async () => {
+  compose.createPlannerOnDemandCoordinatorFromAdapter(host, { enabled: false });
+  await compose.stopPlannerOnDemandCoordinator();
+  console.log(Object.keys(require.cache).join("\\n"));
+})();
+`;
+        const result = runChildScript(script);
+        strict_1.default.equal(result.status, 0, result.stderr || result.stdout);
+        const modules = modulesFromChild(result.stdout);
+        for (const marker of HEAVY_MODULE_MARKERS) {
+            strict_1.default.ok(!modules.some((entry) => entry.includes(marker)), marker);
+        }
+    });
     (0, node_test_1.it)("first enabled request loads runtime modules", async () => {
         const host = fakeHost();
         const coordinator = (0, compose_js_1.createPlannerOnDemandCoordinatorFromAdapter)(host, { enabled: true });

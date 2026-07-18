@@ -10,7 +10,7 @@
  */
 
 import type { StateHost } from "../ems_light/state_util";
-import { setStateIfChanged } from "../policy/core/state_write";
+import { setOptionalNumberIfChanged, setStateIfChanged } from "../policy/core/state_write";
 import {
 	ALLOCATION_ADDON_STATE_IDS,
 	DAILY_PLAN_STATE_IDS,
@@ -101,8 +101,8 @@ export async function projectWorkerViewToIntentStates(
 	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.status, "ready");
 	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.date, localDate);
 	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.globalMode, input.globalMode);
-	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.slotMinutes, input.slotMinutes ?? 15);
+	await setOptionalNumberIfChanged(host, DAILY_PLAN_STATE_IDS.slotMinutes, input.slotMinutes ?? 15);
 	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.generatedAt, input.now.toISOString());
 	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.validUntil, validUntil);
-	await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.revision, view.generation ?? 0);
+	await setOptionalNumberIfChanged(host, DAILY_PLAN_STATE_IDS.revision, view.generation ?? 0);
 }

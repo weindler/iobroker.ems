@@ -21,6 +21,7 @@ import {
 import { initialSessionShadowFromNative, resolveEffectivePlannerMode } from "./mode";
 import { writePlannerCoordinatorStatusStates } from "./status_bridge";
 import { configureDualRunSession } from "../planner_takeover/session";
+import { setOptionalNumberIfChanged } from "../policy/core/state_write";
 
 export type PlannerShadowRuntimeHost = StateHost & {
 	namespace: string;
@@ -50,6 +51,7 @@ let configuredMode = "off" as import("../planner_config").PlannerRuntimeMode;
 let configuredEvaluationMode: PlannerTakeoverEvaluationMode = "disabled";
 let unloadStopped = false;
 let triggerSystem: PlannerTriggerSystem | null = null;
+let authAuthorityRuntimesStarted = false;
 
 function isConsciousButtonRequest(val: unknown, ack: boolean | undefined): boolean {
 	return val === true && ack !== true;
@@ -100,40 +102,43 @@ async function applySessionAndCoordinator(host: PlannerShadowRuntimeHost): Promi
 		configuredEvaluationMode,
 		stateHost: host,
 	});
-	try {
-		const { configureAuthorizationSession, getAuthorizationSession } = await import(
-			"../planner_authorization/runtime_session.js"
-		);
-		const prev = getAuthorizationSession();
-		const modeChanged =
-			prev.runtimeMode !== effective.effectiveMode || prev.evaluationMode !== configuredEvaluationMode;
-		configureAuthorizationSession({
-			runtimeMode: effective.effectiveMode,
-			evaluationMode: configuredEvaluationMode,
-		});
-		if (modeChanged && prev.service) {
-			await prev.service.invalidate("mode_change");
-			await prev.service.syncFromConfig();
+	// Keep auth/authority cores unloaded while native mode is off.
+	if (effective.effectiveMode !== "off") {
+		try {
+			const { configureAuthorizationSession, getAuthorizationSession } = await import(
+				"../planner_authorization/runtime_session.js"
+			);
+			const prev = getAuthorizationSession();
+			const modeChanged =
+				prev.runtimeMode !== effective.effectiveMode || prev.evaluationMode !== configuredEvaluationMode;
+			configureAuthorizationSession({
+				runtimeMode: effective.effectiveMode,
+				evaluationMode: configuredEvaluationMode,
+			});
+			if (modeChanged && prev.service) {
+				await prev.service.invalidate("mode_change");
+				await prev.service.syncFromConfig();
+			}
+		} catch {
+			// optional
 		}
-	} catch {
-		// optional
-	}
-	try {
-		const { configureAuthoritySession, getAuthoritySession } = await import(
-			"../planner_authority/runtime_session.js"
-		);
-		configureAuthoritySession({
-			runtimeMode: effective.effectiveMode,
-			evaluationMode: configuredEvaluationMode,
-		});
-		const authorityChangedOff =
-			effective.effectiveMode !== "shadow_auto" || configuredEvaluationMode !== "observe";
-		const authoritySvc = getAuthoritySession().service;
-		if (authorityChangedOff && authoritySvc) {
-			await authoritySvc.fallback("mode_change");
+		try {
+			const { configureAuthoritySession, getAuthoritySession } = await import(
+				"../planner_authority/runtime_session.js"
+			);
+			configureAuthoritySession({
+				runtimeMode: effective.effectiveMode,
+				evaluationMode: configuredEvaluationMode,
+			});
+			const authorityChangedOff =
+				effective.effectiveMode !== "shadow_auto" || configuredEvaluationMode !== "observe";
+			const authoritySvc = getAuthoritySession().service;
+			if (authorityChangedOff && authoritySvc) {
+				await authoritySvc.fallback("mode_change");
+			}
+		} catch {
+			// optional
 		}
-	} catch {
-		// optional
 	}
 	await setPlannerOnDemandCoordinatorEnabled(effective.coordinatorEnabled);
 	await writeModeStates(host);
@@ -177,7 +182,7 @@ async function onAggregatedTrigger(req: AggregatedTriggerRequest): Promise<void>
 	const host = runtimeHost;
 	if (host) {
 		await setStateIfChangedSafe(host, PLANNER_COORDINATOR_STATE_IDS.lastTriggerClass, req.primaryClass);
-		await setStateIfChangedSafe(host, PLANNER_COORDINATOR_STATE_IDS.lastCoalescedCount, req.coalescedCount);
+		await setOptionalNumberIfChanged(host, PLANNER_COORDINATOR_STATE_IDS.lastCoalescedCount, req.coalescedCount);
 		await setStateIfChangedSafe(host, PLANNER_COORDINATOR_STATE_IDS.lastAutoRequestAt, req.lastObservedAt);
 		const diag = triggerSystem?.getDiagnostics();
 		if (diag?.nextScheduledAt) {
@@ -277,28 +282,34 @@ export async function initPlannerShadowRuntime(host: PlannerShadowRuntimeHost): 
 		}
 	}
 
-	const { initPlannerAuthorizationRuntime } = await import("../planner_authorization/runtime.js");
-	await initPlannerAuthorizationRuntime(host);
+	if (effectiveMode !== "off") {
+		const { initPlannerAuthorizationRuntime } = await import("../planner_authorization/runtime.js");
+		await initPlannerAuthorizationRuntime(host);
 
-	const { initPlannerAuthorityRuntime } = await import("../planner_authority/runtime.js");
-	await initPlannerAuthorityRuntime(host);
+		const { initPlannerAuthorityRuntime } = await import("../planner_authority/runtime.js");
+		await initPlannerAuthorityRuntime(host);
+		authAuthorityRuntimesStarted = true;
+	}
 }
 
 export async function stopPlannerShadowRuntime(): Promise<void> {
 	unloadStopped = true;
 	configureDualRunSession({ shuttingDown: true });
-	try {
-		// Authority first — revoke worker authority back to legacy before authorization stops.
-		const { stopPlannerAuthorityRuntime } = await import("../planner_authority/runtime.js");
-		await stopPlannerAuthorityRuntime();
-	} catch {
-		// optional
-	}
-	try {
-		const { stopPlannerAuthorizationRuntime } = await import("../planner_authorization/runtime.js");
-		await stopPlannerAuthorizationRuntime();
-	} catch {
-		// optional
+	if (authAuthorityRuntimesStarted) {
+		try {
+			// Authority first — revoke worker authority back to legacy before authorization stops.
+			const { stopPlannerAuthorityRuntime } = await import("../planner_authority/runtime.js");
+			await stopPlannerAuthorityRuntime();
+		} catch {
+			// optional
+		}
+		try {
+			const { stopPlannerAuthorizationRuntime } = await import("../planner_authorization/runtime.js");
+			await stopPlannerAuthorizationRuntime();
+		} catch {
+			// optional
+		}
+		authAuthorityRuntimesStarted = false;
 	}
 	triggerSystem?.stop();
 	triggerSystem = null;

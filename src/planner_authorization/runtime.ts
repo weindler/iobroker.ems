@@ -134,18 +134,18 @@ export async function initPlannerAuthorizationRuntime(host: AuthorizationRuntime
 				: "dryrun",
 	});
 
+	// Objects must exist before any state write (cold-start / empty namespace).
+	await ensurePlannerAuthorizationStates(host);
+
 	await setStateIfChangedSafe(host, PLANNER_AUTHORIZATION_STATE_IDS.configuredMode, configuredAuthMode);
 	await setStateIfChangedSafe(host, PLANNER_AUTHORIZATION_STATE_IDS.effectiveMode, "disabled");
 	await setStateIfChangedSafe(host, PLANNER_AUTHORIZATION_STATE_IDS.activationCapabilityPresent, false);
 	await setStateIfChangedSafe(host, PLANNER_AUTHORIZATION_STATE_IDS.permitMinted, false);
 	await setStateIfChangedSafe(host, PLANNER_AUTHORIZATION_STATE_IDS.canonicalAllowed, false);
 
-	if (configuredAuthMode === "manual_prepare") {
-		await ensurePlannerAuthorizationStates(host);
-		if (typeof host.subscribeStatesAsync === "function") {
-			for (const p of AUTH_BUTTON_PATTERNS) {
-				await host.subscribeStatesAsync(p);
-			}
+	if (configuredAuthMode === "manual_prepare" && typeof host.subscribeStatesAsync === "function") {
+		for (const p of AUTH_BUTTON_PATTERNS) {
+			await host.subscribeStatesAsync(p);
 		}
 	}
 }

@@ -2,7 +2,7 @@ import { globalPolicyConfigFromAdapter } from "../../policy/global/config";
 import type { PolicySnapshot } from "../../policy/core/types";
 import { intentAdminConfigFromAdapter } from "../../intent/config";
 import { plannerModePolicyFromGlobalMode } from "../../planner/mode_policy";
-import { setStateIfChanged } from "../../policy/core/state_write";
+import { setOptionalNumberIfChanged, setStateIfChanged } from "../../policy/core/state_write";
 import type { ForecastPlan } from "../forecast/types";
 import { buildDailyPlanFromForecast, dailyPlanRevisionPayload } from "./build";
 import { ALLOCATION_ADDON_STATE_IDS, DAILY_PLAN_STATE_IDS } from "./states";
@@ -117,7 +117,7 @@ export async function runDailyPlanTick(
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "");
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.date, plan.date);
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.globalMode, plan.globalMode);
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes);
+		await setOptionalNumberIfChanged(host, DAILY_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes);
 		await setStateIfChanged(
 			host,
 			DAILY_PLAN_STATE_IDS.activeContributionsJson,
@@ -144,7 +144,7 @@ export async function runDailyPlanTick(
 		);
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.revision, revision);
+		await setOptionalNumberIfChanged(host, DAILY_PLAN_STATE_IDS.revision, revision);
 
 		const addonSummaries: Array<{ key: keyof typeof ALLOCATION_ADDON_STATE_IDS; prefix: string }> = [
 			{ key: "battery", prefix: "battery" },

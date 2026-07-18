@@ -32,6 +32,7 @@ const ensure_states_1 = require("./ensure_states");
 const mode_1 = require("./mode");
 const status_bridge_1 = require("./status_bridge");
 const session_1 = require("../planner_takeover/session");
+const state_write_1 = require("../policy/core/state_write");
 const SUBSCRIBED_PATTERNS = [
     ensure_states_1.PLANNER_COORDINATOR_STATE_IDS.shadowEnabled,
     ensure_states_1.PLANNER_COORDINATOR_STATE_IDS.manualTrigger,
@@ -48,6 +49,7 @@ let configuredMode = "off";
 let configuredEvaluationMode = "disabled";
 let unloadStopped = false;
 let triggerSystem = null;
+let authAuthorityRuntimesStarted = false;
 function isConsciousButtonRequest(val, ack) {
     return val === true && ack !== true;
 }
@@ -89,36 +91,39 @@ async function applySessionAndCoordinator(host) {
         configuredEvaluationMode,
         stateHost: host,
     });
-    try {
-        const { configureAuthorizationSession, getAuthorizationSession } = await Promise.resolve().then(() => __importStar(require("../planner_authorization/runtime_session.js")));
-        const prev = getAuthorizationSession();
-        const modeChanged = prev.runtimeMode !== effective.effectiveMode || prev.evaluationMode !== configuredEvaluationMode;
-        configureAuthorizationSession({
-            runtimeMode: effective.effectiveMode,
-            evaluationMode: configuredEvaluationMode,
-        });
-        if (modeChanged && prev.service) {
-            await prev.service.invalidate("mode_change");
-            await prev.service.syncFromConfig();
+    // Keep auth/authority cores unloaded while native mode is off.
+    if (effective.effectiveMode !== "off") {
+        try {
+            const { configureAuthorizationSession, getAuthorizationSession } = await Promise.resolve().then(() => __importStar(require("../planner_authorization/runtime_session.js")));
+            const prev = getAuthorizationSession();
+            const modeChanged = prev.runtimeMode !== effective.effectiveMode || prev.evaluationMode !== configuredEvaluationMode;
+            configureAuthorizationSession({
+                runtimeMode: effective.effectiveMode,
+                evaluationMode: configuredEvaluationMode,
+            });
+            if (modeChanged && prev.service) {
+                await prev.service.invalidate("mode_change");
+                await prev.service.syncFromConfig();
+            }
         }
-    }
-    catch {
-        // optional
-    }
-    try {
-        const { configureAuthoritySession, getAuthoritySession } = await Promise.resolve().then(() => __importStar(require("../planner_authority/runtime_session.js")));
-        configureAuthoritySession({
-            runtimeMode: effective.effectiveMode,
-            evaluationMode: configuredEvaluationMode,
-        });
-        const authorityChangedOff = effective.effectiveMode !== "shadow_auto" || configuredEvaluationMode !== "observe";
-        const authoritySvc = getAuthoritySession().service;
-        if (authorityChangedOff && authoritySvc) {
-            await authoritySvc.fallback("mode_change");
+        catch {
+            // optional
         }
-    }
-    catch {
-        // optional
+        try {
+            const { configureAuthoritySession, getAuthoritySession } = await Promise.resolve().then(() => __importStar(require("../planner_authority/runtime_session.js")));
+            configureAuthoritySession({
+                runtimeMode: effective.effectiveMode,
+                evaluationMode: configuredEvaluationMode,
+            });
+            const authorityChangedOff = effective.effectiveMode !== "shadow_auto" || configuredEvaluationMode !== "observe";
+            const authoritySvc = getAuthoritySession().service;
+            if (authorityChangedOff && authoritySvc) {
+                await authoritySvc.fallback("mode_change");
+            }
+        }
+        catch {
+            // optional
+        }
     }
     await (0, compose_1.setPlannerOnDemandCoordinatorEnabled)(effective.coordinatorEnabled);
     await writeModeStates(host);
@@ -164,7 +169,7 @@ async function onAggregatedTrigger(req) {
     const host = runtimeHost;
     if (host) {
         await setStateIfChangedSafe(host, ensure_states_1.PLANNER_COORDINATOR_STATE_IDS.lastTriggerClass, req.primaryClass);
-        await setStateIfChangedSafe(host, ensure_states_1.PLANNER_COORDINATOR_STATE_IDS.lastCoalescedCount, req.coalescedCount);
+        await (0, state_write_1.setOptionalNumberIfChanged)(host, ensure_states_1.PLANNER_COORDINATOR_STATE_IDS.lastCoalescedCount, req.coalescedCount);
         await setStateIfChangedSafe(host, ensure_states_1.PLANNER_COORDINATOR_STATE_IDS.lastAutoRequestAt, req.lastObservedAt);
         const diag = triggerSystem?.getDiagnostics();
         if (diag?.nextScheduledAt) {
@@ -253,29 +258,35 @@ async function initPlannerShadowRuntime(host) {
             await host.subscribeStatesAsync(pattern);
         }
     }
-    const { initPlannerAuthorizationRuntime } = await Promise.resolve().then(() => __importStar(require("../planner_authorization/runtime.js")));
-    await initPlannerAuthorizationRuntime(host);
-    const { initPlannerAuthorityRuntime } = await Promise.resolve().then(() => __importStar(require("../planner_authority/runtime.js")));
-    await initPlannerAuthorityRuntime(host);
+    if (effectiveMode !== "off") {
+        const { initPlannerAuthorizationRuntime } = await Promise.resolve().then(() => __importStar(require("../planner_authorization/runtime.js")));
+        await initPlannerAuthorizationRuntime(host);
+        const { initPlannerAuthorityRuntime } = await Promise.resolve().then(() => __importStar(require("../planner_authority/runtime.js")));
+        await initPlannerAuthorityRuntime(host);
+        authAuthorityRuntimesStarted = true;
+    }
 }
 exports.initPlannerShadowRuntime = initPlannerShadowRuntime;
 async function stopPlannerShadowRuntime() {
     unloadStopped = true;
     (0, session_1.configureDualRunSession)({ shuttingDown: true });
-    try {
-        // Authority first — revoke worker authority back to legacy before authorization stops.
-        const { stopPlannerAuthorityRuntime } = await Promise.resolve().then(() => __importStar(require("../planner_authority/runtime.js")));
-        await stopPlannerAuthorityRuntime();
-    }
-    catch {
-        // optional
-    }
-    try {
-        const { stopPlannerAuthorizationRuntime } = await Promise.resolve().then(() => __importStar(require("../planner_authorization/runtime.js")));
-        await stopPlannerAuthorizationRuntime();
-    }
-    catch {
-        // optional
+    if (authAuthorityRuntimesStarted) {
+        try {
+            // Authority first — revoke worker authority back to legacy before authorization stops.
+            const { stopPlannerAuthorityRuntime } = await Promise.resolve().then(() => __importStar(require("../planner_authority/runtime.js")));
+            await stopPlannerAuthorityRuntime();
+        }
+        catch {
+            // optional
+        }
+        try {
+            const { stopPlannerAuthorizationRuntime } = await Promise.resolve().then(() => __importStar(require("../planner_authorization/runtime.js")));
+            await stopPlannerAuthorizationRuntime();
+        }
+        catch {
+            // optional
+        }
+        authAuthorityRuntimesStarted = false;
     }
     triggerSystem?.stop();
     triggerSystem = null;

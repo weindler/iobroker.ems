@@ -84,15 +84,9 @@ function isPlannerAuthorityState(relativeId) {
 }
 exports.isPlannerAuthorityState = isPlannerAuthorityState;
 async function writePlannerAuthorityMemoryStates(host, memory) {
-    if (memory.rssBeforeWorkerJobMib != null) {
-        await (0, state_write_1.setStateIfChanged)(host, exports.PLANNER_AUTHORITY_STATE_IDS.rssBeforeWorkerJobMib, memory.rssBeforeWorkerJobMib);
-    }
-    if (memory.rssAfterWorkerExitMib != null) {
-        await (0, state_write_1.setStateIfChanged)(host, exports.PLANNER_AUTHORITY_STATE_IDS.rssAfterWorkerExitMib, memory.rssAfterWorkerExitMib);
-    }
-    if (memory.lastWorkerDeltaMib != null) {
-        await (0, state_write_1.setStateIfChanged)(host, exports.PLANNER_AUTHORITY_STATE_IDS.lastWorkerDeltaMib, memory.lastWorkerDeltaMib);
-    }
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, exports.PLANNER_AUTHORITY_STATE_IDS.rssBeforeWorkerJobMib, memory.rssBeforeWorkerJobMib);
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, exports.PLANNER_AUTHORITY_STATE_IDS.rssAfterWorkerExitMib, memory.rssAfterWorkerExitMib);
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, exports.PLANNER_AUTHORITY_STATE_IDS.lastWorkerDeltaMib, memory.lastWorkerDeltaMib);
     await (0, state_write_1.setStateIfChanged)(host, exports.PLANNER_AUTHORITY_STATE_IDS.legacyModuleLoaded, memory.legacyModuleLoaded);
 }
 exports.writePlannerAuthorityMemoryStates = writePlannerAuthorityMemoryStates;
@@ -111,7 +105,7 @@ async function writePlannerAuthorityStates(host, status) {
     await (0, state_write_1.setStateIfChanged)(host, exports.PLANNER_AUTHORITY_STATE_IDS.fallbackReason, status.fallbackReason ?? "");
     await (0, state_write_1.setStateIfChanged)(host, exports.PLANNER_AUTHORITY_STATE_IDS.viewQuality, status.viewQuality ?? "");
     await (0, state_write_1.setStateIfChanged)(host, exports.PLANNER_AUTHORITY_STATE_IDS.planRevision, status.planRevision ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, exports.PLANNER_AUTHORITY_STATE_IDS.generation, status.generation ?? 0);
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, exports.PLANNER_AUTHORITY_STATE_IDS.generation, status.generation ?? 0);
     await (0, state_write_1.setStateIfChanged)(host, exports.PLANNER_AUTHORITY_STATE_IDS.lastEventCode, status.lastEventCode ?? "");
     await (0, state_write_1.setStateIfChanged)(host, exports.PLANNER_AUTHORITY_STATE_IDS.lastErrorCode, status.lastErrorCode ?? "");
 }

@@ -147,6 +147,9 @@ export async function initPlannerAuthorityRuntime(host: AuthorityRuntimeHost): P
 				: "dryrun",
 	});
 
+	// Objects must exist before any state write (cold-start / empty namespace).
+	await ensurePlannerAuthorityStates(host);
+
 	await setStateIfChangedSafe(host, PLANNER_AUTHORITY_STATE_IDS.configuredSource, configuredSource);
 	// No automatic activation on startup — effective is always legacy or worker_pending.
 	await setStateIfChangedSafe(
@@ -157,12 +160,9 @@ export async function initPlannerAuthorityRuntime(host: AuthorityRuntimeHost): P
 	await setStateIfChangedSafe(host, PLANNER_AUTHORITY_STATE_IDS.workerAuthoritative, false);
 	await setStateIfChangedSafe(host, PLANNER_AUTHORITY_STATE_IDS.canonicalAllowed, false);
 
-	if (configuredSource === "worker_dryrun") {
-		await ensurePlannerAuthorityStates(host);
-		if (typeof host.subscribeStatesAsync === "function") {
-			for (const p of AUTHORITY_BUTTON_PATTERNS) {
-				await host.subscribeStatesAsync(p);
-			}
+	if (configuredSource === "worker_dryrun" && typeof host.subscribeStatesAsync === "function") {
+		for (const p of AUTHORITY_BUTTON_PATTERNS) {
+			await host.subscribeStatesAsync(p);
 		}
 	}
 }

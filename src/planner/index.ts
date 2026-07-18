@@ -3,14 +3,9 @@ import { ensurePlannerStates } from "./ensure_states";
 import { ensureGridSupplyStates } from "../operator/supply/grid_states";
 import { ensureForecastPlanStates } from "../operator/forecast/states";
 import { ensureFlexibleContributionStates } from "../operator/contributions/flexible/states";
-import { runPlannerTick } from "./run";
-import { runGridSupplyTick } from "../operator/supply/grid_tick";
-import { runFlexibleContributionsTick } from "../operator/contributions/flexible/tick";
-import { runForecastPlanTick } from "../operator/forecast/tick";
 import { ensureDailyPlanStates } from "../operator/daily_plan/states";
 import { ensurePlannerCoordinatorStates } from "../planner_shadow/ensure_states";
-import { ensurePlannerTakeoverStates } from "../planner_takeover/states";
-import { runDailyPlanTick } from "../operator/daily_plan/tick";
+import { runPlannerTick } from "./run";
 
 export type { PlannerIntent } from "./types";
 export type { PlannerHost } from "./inputs";
@@ -24,20 +19,35 @@ export { planBatteryWinterPriceWindows, isNowInWinterChargeWindow } from "./rule
 export { readTibber15MinPriceSlots } from "./battery_winter_price_inputs";
 export { batteryWinterPlanConfigFromAdapter } from "./battery_winter_config";
 
+export type EnsurePlannerStateTreeOptions = {
+	/** When false, skip takeover object tree (default true for non-off modes). */
+	includeTakeoverStates?: boolean;
+};
+
 /** Phase B — nur Objektbaum, keine Planner-Ticks. */
-export async function ensurePlannerStateTree(host: PlannerHost): Promise<void> {
+export async function ensurePlannerStateTree(
+	host: PlannerHost,
+	options?: EnsurePlannerStateTreeOptions,
+): Promise<void> {
 	await ensurePlannerStates(host);
 	await ensureGridSupplyStates(host);
 	await ensureForecastPlanStates(host);
 	await ensureFlexibleContributionStates(host);
 	await ensureDailyPlanStates(host);
 	await ensurePlannerCoordinatorStates(host);
-	await ensurePlannerTakeoverStates(host);
+	if (options?.includeTakeoverStates !== false) {
+		const { ensurePlannerTakeoverStates } = await import("../planner_takeover/states.js");
+		await ensurePlannerTakeoverStates(host);
+	}
 }
 
-/** Phase F — initiale Planner-Auswertung. */
+/** Phase F — initiale Planner-Auswertung (Forecast / Daily / Allocation). */
 export async function runPlannerRuntime(host: PlannerHost): Promise<void> {
 	await runPlannerTick(host);
+	const { runGridSupplyTick } = await import("../operator/supply/grid_tick.js");
+	const { runFlexibleContributionsTick } = await import("../operator/contributions/flexible/tick.js");
+	const { runForecastPlanTick } = await import("../operator/forecast/tick.js");
+	const { runDailyPlanTick } = await import("../operator/daily_plan/tick.js");
 	const gridForecast = await runGridSupplyTick(host);
 	const flexibleContributions = await runFlexibleContributionsTick(
 		host as Parameters<typeof runFlexibleContributionsTick>[0],

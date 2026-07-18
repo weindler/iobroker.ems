@@ -11,6 +11,7 @@ const intent_1 = require("../intent");
 const compose_1 = require("../planner_coordinator/compose");
 const runtime_1 = require("../planner_shadow/runtime");
 const planner_1 = require("../planner");
+const planner_config_1 = require("../planner_config");
 const global_modes_1 = require("../global_modes");
 const ensure_states_1 = require("./ensure_states");
 const tick_1 = require("./tick");
@@ -118,8 +119,11 @@ function buildPlannerShadowRuntimeHost(adapter) {
 async function ensureEmsLightStateTree(adapter) {
     const version = String(adapter.common?.version ?? "0.0.0");
     const host = adapter;
+    const plannerMode = (0, planner_config_1.plannerRuntimeModeFromConfig)(adapter.config).mode;
     await (0, ensure_states_1.ensureEmsLightStates)(host, version);
-    await (0, planner_1.ensurePlannerStateTree)(host);
+    await (0, planner_1.ensurePlannerStateTree)(host, {
+        includeTakeoverStates: plannerMode !== "off",
+    });
     const policyHost = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
     await (0, policy_1.ensurePolicyStateTree)(policyHost);
     await (0, intent_1.ensureIntentStates)(buildIntentHost(adapter));
@@ -129,7 +133,11 @@ exports.ensureEmsLightStateTree = ensureEmsLightStateTree;
 /** Phase F — Runtime, Ticks und initiale Auswertung (nach Bootstrap-Barriere). */
 async function startEmsLightPhase1Runtime(adapter) {
     const host = adapter;
-    await (0, planner_1.runPlannerRuntime)(host);
+    const plannerMode = (0, planner_config_1.plannerRuntimeModeFromConfig)(adapter.config).mode;
+    // off/legacy: keep v0.1.124-shaped startup — no Forecast/Daily/Allocation bootstrap.
+    if (plannerMode !== "off") {
+        await (0, planner_1.runPlannerRuntime)(host);
+    }
     (0, compose_1.createPlannerOnDemandCoordinatorFromAdapter)(adapter, {
         enabled: false,
     });

@@ -1,5 +1,5 @@
 import { ensureChannel, ensureStates, type StateDef, type StateHost } from "../ems_light/state_util";
-import { setStateIfChanged } from "../policy/core/state_write";
+import { setOptionalNumberIfChanged, setStateIfChanged } from "../policy/core/state_write";
 import type { PlannerAuthorityPublicStatus } from "./types";
 
 export const PLANNER_AUTHORITY_STATE_IDS = {
@@ -102,15 +102,17 @@ export async function writePlannerAuthorityMemoryStates(
 		legacyModuleLoaded: boolean;
 	},
 ): Promise<void> {
-	if (memory.rssBeforeWorkerJobMib != null) {
-		await setStateIfChanged(host, PLANNER_AUTHORITY_STATE_IDS.rssBeforeWorkerJobMib, memory.rssBeforeWorkerJobMib);
-	}
-	if (memory.rssAfterWorkerExitMib != null) {
-		await setStateIfChanged(host, PLANNER_AUTHORITY_STATE_IDS.rssAfterWorkerExitMib, memory.rssAfterWorkerExitMib);
-	}
-	if (memory.lastWorkerDeltaMib != null) {
-		await setStateIfChanged(host, PLANNER_AUTHORITY_STATE_IDS.lastWorkerDeltaMib, memory.lastWorkerDeltaMib);
-	}
+	await setOptionalNumberIfChanged(
+		host,
+		PLANNER_AUTHORITY_STATE_IDS.rssBeforeWorkerJobMib,
+		memory.rssBeforeWorkerJobMib,
+	);
+	await setOptionalNumberIfChanged(
+		host,
+		PLANNER_AUTHORITY_STATE_IDS.rssAfterWorkerExitMib,
+		memory.rssAfterWorkerExitMib,
+	);
+	await setOptionalNumberIfChanged(host, PLANNER_AUTHORITY_STATE_IDS.lastWorkerDeltaMib, memory.lastWorkerDeltaMib);
 	await setStateIfChanged(host, PLANNER_AUTHORITY_STATE_IDS.legacyModuleLoaded, memory.legacyModuleLoaded);
 }
 
@@ -137,7 +139,7 @@ export async function writePlannerAuthorityStates(
 	await setStateIfChanged(host, PLANNER_AUTHORITY_STATE_IDS.fallbackReason, status.fallbackReason ?? "");
 	await setStateIfChanged(host, PLANNER_AUTHORITY_STATE_IDS.viewQuality, status.viewQuality ?? "");
 	await setStateIfChanged(host, PLANNER_AUTHORITY_STATE_IDS.planRevision, status.planRevision ?? "");
-	await setStateIfChanged(host, PLANNER_AUTHORITY_STATE_IDS.generation, status.generation ?? 0);
+	await setOptionalNumberIfChanged(host, PLANNER_AUTHORITY_STATE_IDS.generation, status.generation ?? 0);
 	await setStateIfChanged(host, PLANNER_AUTHORITY_STATE_IDS.lastEventCode, status.lastEventCode ?? "");
 	await setStateIfChanged(host, PLANNER_AUTHORITY_STATE_IDS.lastErrorCode, status.lastErrorCode ?? "");
 }

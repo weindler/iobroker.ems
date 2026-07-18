@@ -1,4 +1,4 @@
-import { setStateIfChanged } from "../../policy/core/state_write";
+import { setOptionalNumberIfChanged, setStateIfChanged } from "../../policy/core/state_write";
 import { collectContributions, type ContributionsReadHost } from "../contributions/read";
 import type { PlanContribution } from "../types";
 import type { GridSupplyForecast } from "../types";
@@ -45,7 +45,7 @@ export async function runForecastPlanTick(
 		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "");
 		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.horizonStart, plan.horizonStart);
 		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.horizonEnd, plan.horizonEnd);
-		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes);
+		await setOptionalNumberIfChanged(host, FORECAST_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes);
 		await setStateIfChanged(
 			host,
 			FORECAST_PLAN_STATE_IDS.activeContributorsJson,
@@ -65,7 +65,7 @@ export async function runForecastPlanTick(
 		);
 		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
 		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
-		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.revision, revision);
+		await setOptionalNumberIfChanged(host, FORECAST_PLAN_STATE_IDS.revision, revision);
 	} catch (e) {
 		host.log?.warn?.(`forecast plan state write: ${String(e)}`);
 		try {

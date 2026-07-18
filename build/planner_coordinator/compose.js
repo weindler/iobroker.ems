@@ -76,8 +76,11 @@ function createLazyRuntimeDependencies(host, options) {
             return runtimeContext.deps.isWorkerRunning();
         },
         shutdownWorker: async () => {
-            const runtime = await loadRuntimeContext(host, options);
-            return runtime.deps.shutdownWorker();
+            // Never load runtime factory just to stop an unused coordinator.
+            if (!runtimeContext) {
+                return;
+            }
+            return runtimeContext.deps.shutdownWorker();
         },
         readWorkerResult: async (jobId) => {
             const runtime = await loadRuntimeContext(host, options);
@@ -88,8 +91,10 @@ function createLazyRuntimeDependencies(host, options) {
             return runtime.deps.readPreparedOutput(jobId, expectedInputRevision);
         },
         cleanupJob: async (jobId) => {
-            const runtime = await loadRuntimeContext(host, options);
-            return runtime.deps.cleanupJob(jobId);
+            if (!runtimeContext) {
+                return;
+            }
+            return runtimeContext.deps.cleanupJob(jobId);
         },
         runWorkerJob: async (args) => {
             const runtime = await loadRuntimeContext(host, options);

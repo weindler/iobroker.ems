@@ -19,6 +19,7 @@ import { WALLBOX_VEHICLES_BASE, vehicleBasePath } from "../addons/wallbox/vehicl
 import { isAddonEnabled } from "../addons/governance/config";
 import { batteryWinterPlanConfigFromAdapter } from "../planner/battery_winter_config";
 import { learningPersistenceMirrorRelativeIds } from "../learning/persistence_mirror";
+import { WALLBOX_RUNTIME_BASE, WALLBOX_RUNTIME_BALLAST_SUFFIXES } from "../addons/wallbox/runtime/states";
 import { mappingBase } from "../tree_paths";
 import {
 	COMPATIBILITY_STATE_PREFIXES,
@@ -256,10 +257,44 @@ export async function runDynamicSurfaceCleanup(host: SurfaceCleanupHost): Promis
 	await cleanupLearningMirrorsAndDiag(host, stats);
 	await cleanupOrphanAllowedValues(host, stats);
 	await cleanupLegacyInfoBackup(host, stats);
+	await cleanupWallboxRuntimeBallast(host, stats);
+	await cleanupUserIntentBallast(host, stats);
 	host.log.info(
 		`surface cleanup: checked=${stats.checked} deleted=${stats.deleted} skipped=${stats.skipped}`,
 	);
 	return stats;
+}
+
+async function cleanupWallboxRuntimeBallast(host: SurfaceCleanupHost, stats: SurfaceCleanupStats): Promise<void> {
+	for (const suffix of WALLBOX_RUNTIME_BALLAST_SUFFIXES) {
+		await safeDeleteRelative(host, `${WALLBOX_RUNTIME_BASE}.${suffix}`, stats, "wallbox_runtime_ballast");
+	}
+}
+
+async function cleanupUserIntentBallast(host: SurfaceCleanupHost, stats: SurfaceCleanupStats): Promise<void> {
+	const roots = [
+		"user_intent.resolved_all_json",
+		"user_intent.wallbox.diagnostics",
+		"user_intent.wallbox.sources",
+		"user_intent.thermal.diagnostics",
+		"user_intent.battery.diagnostics",
+	] as const;
+	for (const root of roots) {
+		await safeDeleteRelative(host, root, stats, "user_intent_ballast");
+	}
+	const leaves = [
+		"user_intent.wallbox.diagnostics.last_resolution_json",
+		"user_intent.wallbox.diagnostics.last_error",
+		"user_intent.thermal.diagnostics.last_error",
+		"user_intent.battery.diagnostics.last_error",
+		"user_intent.wallbox.sources.evcc.snapshot_json",
+		"user_intent.wallbox.sources.evcc.status",
+		"user_intent.wallbox.sources.evcc.last_observed",
+		"user_intent.wallbox.sources.admin.snapshot_json",
+	] as const;
+	for (const id of leaves) {
+		await safeDeleteRelative(host, id, stats, "user_intent_ballast_leaf");
+	}
 }
 
 async function cleanupLegacyInfoBackup(host: SurfaceCleanupHost, stats: SurfaceCleanupStats): Promise<void> {

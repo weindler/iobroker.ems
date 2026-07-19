@@ -48,8 +48,6 @@ async function publishWallboxDispatchStates(host, decision, dispatch) {
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.dispatchStatus, dispatch.dispatchStatus);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.dispatchReasonDe, dispatch.dispatchReasonDe);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.dispatchAction, dispatch.intent.action);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.dispatchIntentJson, JSON.stringify(dispatch.intent));
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.dispatchTargetJson, JSON.stringify(dispatch.target));
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.targetEnabled, dispatch.target.enableCharging);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.targetPowerW, dispatch.target.targetPowerW ?? 0);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.targetCurrentA, dispatch.target.targetCurrentA ?? "");
@@ -62,76 +60,53 @@ async function publishWallboxDispatchStates(host, decision, dispatch) {
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.deadlineRisk, dispatch.deadlineStatus === "at_risk");
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.controlMappingComplete, dispatch.readiness.controlMappingComplete);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.controlMappingMissingJson, JSON.stringify(dispatch.readiness.missingMappings));
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.dryrunCommandJson, JSON.stringify(dispatch.dryrunCommand));
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.runtimeControlAvailable, false);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeAllowed, false);
 }
 exports.publishWallboxDispatchStates = publishWallboxDispatchStates;
 async function publishWallboxLiveFoundationStates(host, foundation) {
     const candidate = foundation.candidate;
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.liveFoundationPhase, foundation.phase);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.liveWriteReleased, foundation.liveWriteReleased);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.commandCandidatePresent, candidate !== null);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.commandCandidateJson, candidate ? JSON.stringify(candidate) : "");
+    const plan = foundation.writePlan;
+    const mapping = foundation.mappingSnapshot;
+    const fb = foundation.feedbackContract;
+    const fbCounts = fb ? (0, feedback_1.countWallboxFeedbackExpectations)(fb.expectations) : null;
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.executionAttempted, foundation.writeResult?.attempted ?? false);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.executionExecuted, foundation.writeResult?.executed ?? false);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.executionBlockReason, foundation.writeResult?.reason ?? (foundation.phase === "dryrun" ? "execution_gate_closed" : ""));
-    const plan = foundation.writePlan;
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writePlanPresent, plan !== null);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writePlanJson, plan ? JSON.stringify(plan) : "");
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeContractReady, plan?.contractReady ?? false);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackContractReady, plan?.feedbackContractReady ?? false);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeOperationCount, plan?.operations.length ?? 0);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeContractBlockReason, plan?.blockReason ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeControlModel, plan?.controlModel ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeEvccPathConfirmed, plan?.evccControlPathConfirmed ?? false);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeScenario, plan?.writeScenario ?? "");
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeLiveEligible, plan?.liveEligible ?? false);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeControlPathReason, plan?.controlPathReason ?? "");
-    const mapping = foundation.mappingSnapshot;
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.legacyMappingsPresent, mapping.legacyMappingsPresent);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.evccControlMappingsPresent, mapping.evccMappingsPresent);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.controlMappingDiagnosticsJson, JSON.stringify({
-        controlModel: mapping.controlModel,
-        missingRoles: mapping.missingRoles,
-        validationIssues: mapping.validationIssues,
-        roles: [
-            mapping.setEnabled,
-            mapping.setCurrentA,
-            mapping.setChargePowerW,
-            mapping.setMode,
-            mapping.setMaxCurrentA,
-            mapping.setPhase,
-        ]
-            .filter(Boolean)
-            .map((e) => ({
-            role: e.role,
-            targetStateId: e.targetStateId,
-            semanticRole: e.semanticRole,
-            commonType: e.commonType,
-            writable: e.writable,
-            contractValid: e.contractValid,
-            validationReason: e.validationReason,
-        })),
-    }));
-    const fb = foundation.feedbackContract;
-    const fbCounts = fb ? (0, feedback_1.countWallboxFeedbackExpectations)(fb.expectations) : null;
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackContractPresent, fb !== null);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackContractJson, fb ? JSON.stringify(fb) : "");
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackRequired, fb?.required ?? false);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackContractStructuralReady, fb?.ready ?? false);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackStatus, fb?.status ?? "not_required");
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackBlockReason, fb?.blockReason ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackIssueKind, fb?.issueKind ?? "none");
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackExpectationCount, fb?.expectations.length ?? 0);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackMatchedCount, fbCounts?.matched ?? 0);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackMismatchCount, fbCounts?.mismatch ?? 0);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackUnavailableCount, fbCounts?.unavailable ?? 0);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackInvalidCount, fbCounts?.invalid ?? 0);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackSettleTimeMs, fb?.settleTimeMs ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.feedbackTimeoutMs, fb?.timeoutMs ?? "");
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.runtimeControlAvailable, false);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeAllowed, false);
+    const detail = {
+        phase: foundation.phase,
+        liveWriteReleased: foundation.liveWriteReleased,
+        commandCandidate: candidate,
+        writeResult: foundation.writeResult,
+        writePlan: plan,
+        mapping: {
+            controlModel: mapping.controlModel,
+            legacyMappingsPresent: mapping.legacyMappingsPresent,
+            evccMappingsPresent: mapping.evccMappingsPresent,
+            missingRoles: mapping.missingRoles,
+            validationIssues: mapping.validationIssues,
+        },
+        feedback: fb
+            ? {
+                required: fb.required,
+                ready: fb.ready,
+                status: fb.status,
+                blockReason: fb.blockReason,
+                issueKind: fb.issueKind,
+                expectationCount: fb.expectations.length,
+                counts: fbCounts,
+                settleTimeMs: fb.settleTimeMs,
+                timeoutMs: fb.timeoutMs,
+            }
+            : null,
+    };
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.detailJson, JSON.stringify(detail));
 }
 exports.publishWallboxLiveFoundationStates = publishWallboxLiveFoundationStates;
 var ensure_states_1 = require("./ensure_states");

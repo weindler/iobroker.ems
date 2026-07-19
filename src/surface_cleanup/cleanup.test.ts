@@ -89,6 +89,10 @@ describe("surface cleanup allowlist", () => {
 		assert.equal(isAllowlistedCleanupRelativeId("addons.sensorics.enabled"), true);
 		assert.equal(isAllowlistedCleanupRelativeId("addons.wallbox.mapping.evcc_connected.allowed_values"), true);
 		assert.equal(isAllowlistedCleanupRelativeId("info.backup.export_register_ready"), true);
+		assert.equal(isAllowlistedCleanupRelativeId("addons.wallbox.runtime.dispatch_intent_json"), true);
+		assert.equal(isAllowlistedCleanupRelativeId("addons.wallbox.runtime.detail_json"), false);
+		assert.equal(isAllowlistedCleanupRelativeId("user_intent.resolved_all_json"), true);
+		assert.equal(isAllowlistedCleanupRelativeId("user_intent.wallbox.resolved_json"), false);
 		assert.equal(isAllowlistedCleanupRelativeId("ems.0.addons.air_conditioning.units.unit_1"), false);
 		assert.equal(isAllowlistedCleanupRelativeId("alias.0.foo"), false);
 	});
@@ -281,6 +285,36 @@ describe("dynamic surface ensure + cleanup", () => {
 		assert.ok(stats.deleted >= 1);
 		assert.equal(host.objects.has("info.backup"), false);
 		assert.equal(host.objects.has("info.backup.export_register_ready"), false);
+	});
+
+	it("purges wallbox runtime ballast and user_intent diag mirrors", async () => {
+		const host = new FakeCleanupHost({});
+		await host.setObjectNotExistsAsync("addons.wallbox.runtime.dispatch_intent_json", {
+			type: "state",
+			common: { name: "x", type: "string", role: "json", read: true, write: false },
+			native: {},
+		} as ioBroker.Object);
+		await host.setObjectNotExistsAsync("addons.wallbox.runtime.active_vehicle_snapshot_json", {
+			type: "state",
+			common: { name: "x", type: "string", role: "json", read: true, write: false },
+			native: {},
+		} as ioBroker.Object);
+		await host.setObjectNotExistsAsync("user_intent.resolved_all_json", {
+			type: "state",
+			common: { name: "x", type: "string", role: "json", read: true, write: false },
+			native: {},
+		} as ioBroker.Object);
+		await host.setObjectNotExistsAsync("user_intent.wallbox.sources", {
+			type: "channel",
+			common: { name: "sources" },
+			native: {},
+		} as ioBroker.Object);
+		const stats = await runDynamicSurfaceCleanup(host);
+		assert.ok(stats.deleted >= 3);
+		assert.equal(host.objects.has("addons.wallbox.runtime.dispatch_intent_json"), false);
+		assert.equal(host.objects.has("addons.wallbox.runtime.active_vehicle_snapshot_json"), false);
+		assert.equal(host.objects.has("user_intent.resolved_all_json"), false);
+		assert.equal(host.objects.has("user_intent.wallbox.sources"), false);
 	});
 
 	it("purges lean planner shadow and operator mirror roots", async () => {

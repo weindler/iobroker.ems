@@ -160,7 +160,6 @@ async function publishGlobalVehicleRuntime(host, snapshot, resolution, profileCo
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleSource, resolution.source);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleDetectionStatus, resolution.detectionStatus);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleConfidence, resolution.confidence);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleSnapshotJson, (0, snapshot_1.activeVehicleSnapshotJson)(snapshot));
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleProfileValid, snapshot.profileResolved && snapshot.planningCapability !== "insufficient");
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.activeVehiclePlanningCapability, snapshot.planningCapability);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.vehicleProfileCount, profileCount);

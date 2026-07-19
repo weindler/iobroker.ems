@@ -78,16 +78,6 @@ export async function publishWallboxDispatchStates(
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.dispatchStatus, dispatch.dispatchStatus);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.dispatchReasonDe, dispatch.dispatchReasonDe);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.dispatchAction, dispatch.intent.action);
-	await setStateIfChanged(
-		host,
-		WALLBOX_RUNTIME_STATES.dispatchIntentJson,
-		JSON.stringify(dispatch.intent),
-	);
-	await setStateIfChanged(
-		host,
-		WALLBOX_RUNTIME_STATES.dispatchTargetJson,
-		JSON.stringify(dispatch.target),
-	);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.targetEnabled, dispatch.target.enableCharging);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.targetPowerW, dispatch.target.targetPowerW ?? 0);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.targetCurrentA, dispatch.target.targetCurrentA ?? "");
@@ -112,11 +102,6 @@ export async function publishWallboxDispatchStates(
 		WALLBOX_RUNTIME_STATES.controlMappingMissingJson,
 		JSON.stringify(dispatch.readiness.missingMappings),
 	);
-	await setStateIfChanged(
-		host,
-		WALLBOX_RUNTIME_STATES.dryrunCommandJson,
-		JSON.stringify(dispatch.dryrunCommand),
-	);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.runtimeControlAvailable, false);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeAllowed, false);
 }
@@ -126,14 +111,11 @@ export async function publishWallboxLiveFoundationStates(
 	foundation: WallboxLiveFoundationResult,
 ): Promise<void> {
 	const candidate = foundation.candidate;
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.liveFoundationPhase, foundation.phase);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.liveWriteReleased, foundation.liveWriteReleased);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.commandCandidatePresent, candidate !== null);
-	await setStateIfChanged(
-		host,
-		WALLBOX_RUNTIME_STATES.commandCandidateJson,
-		candidate ? JSON.stringify(candidate) : "",
-	);
+	const plan = foundation.writePlan;
+	const mapping = foundation.mappingSnapshot;
+	const fb = foundation.feedbackContract;
+	const fbCounts = fb ? countWallboxFeedbackExpectations(fb.expectations) : null;
+
 	await setStateIfChanged(
 		host,
 		WALLBOX_RUNTIME_STATES.executionAttempted,
@@ -144,71 +126,46 @@ export async function publishWallboxLiveFoundationStates(
 		WALLBOX_RUNTIME_STATES.executionExecuted,
 		foundation.writeResult?.executed ?? false,
 	);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.executionBlockReason, foundation.writeResult?.reason ?? (foundation.phase === "dryrun" ? "execution_gate_closed" : ""));
-	const plan = foundation.writePlan;
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writePlanPresent, plan !== null);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writePlanJson, plan ? JSON.stringify(plan) : "");
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeContractReady, plan?.contractReady ?? false);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackContractReady, plan?.feedbackContractReady ?? false);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeOperationCount, plan?.operations.length ?? 0);
+	await setStateIfChanged(
+		host,
+		WALLBOX_RUNTIME_STATES.executionBlockReason,
+		foundation.writeResult?.reason ?? (foundation.phase === "dryrun" ? "execution_gate_closed" : ""),
+	);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeContractBlockReason, plan?.blockReason ?? "");
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeControlModel, plan?.controlModel ?? "");
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeEvccPathConfirmed, plan?.evccControlPathConfirmed ?? false);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeScenario, plan?.writeScenario ?? "");
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeLiveEligible, plan?.liveEligible ?? false);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeControlPathReason, plan?.controlPathReason ?? "");
-	const mapping = foundation.mappingSnapshot;
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.legacyMappingsPresent, mapping.legacyMappingsPresent);
-	await setStateIfChanged(
-		host,
-		WALLBOX_RUNTIME_STATES.evccControlMappingsPresent,
-		mapping.evccMappingsPresent,
-	);
-	await setStateIfChanged(
-		host,
-		WALLBOX_RUNTIME_STATES.controlMappingDiagnosticsJson,
-		JSON.stringify({
-			controlModel: mapping.controlModel,
-			missingRoles: mapping.missingRoles,
-			validationIssues: mapping.validationIssues,
-			roles: [
-				mapping.setEnabled,
-				mapping.setCurrentA,
-				mapping.setChargePowerW,
-				mapping.setMode,
-				mapping.setMaxCurrentA,
-				mapping.setPhase,
-			]
-				.filter(Boolean)
-				.map((e) => ({
-					role: e!.role,
-					targetStateId: e!.targetStateId,
-					semanticRole: e!.semanticRole,
-					commonType: e!.commonType,
-					writable: e!.writable,
-					contractValid: e!.contractValid,
-					validationReason: e!.validationReason,
-				})),
-		}),
-	);
-	const fb = foundation.feedbackContract;
-	const fbCounts = fb ? countWallboxFeedbackExpectations(fb.expectations) : null;
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackContractPresent, fb !== null);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackContractJson, fb ? JSON.stringify(fb) : "");
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackRequired, fb?.required ?? false);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackContractStructuralReady, fb?.ready ?? false);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackStatus, fb?.status ?? "not_required");
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackBlockReason, fb?.blockReason ?? "");
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackIssueKind, fb?.issueKind ?? "none");
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackExpectationCount, fb?.expectations.length ?? 0);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackMatchedCount, fbCounts?.matched ?? 0);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackMismatchCount, fbCounts?.mismatch ?? 0);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackUnavailableCount, fbCounts?.unavailable ?? 0);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackInvalidCount, fbCounts?.invalid ?? 0);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackSettleTimeMs, fb?.settleTimeMs ?? "");
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackTimeoutMs, fb?.timeoutMs ?? "");
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.runtimeControlAvailable, false);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeAllowed, false);
+
+	const detail = {
+		phase: foundation.phase,
+		liveWriteReleased: foundation.liveWriteReleased,
+		commandCandidate: candidate,
+		writeResult: foundation.writeResult,
+		writePlan: plan,
+		mapping: {
+			controlModel: mapping.controlModel,
+			legacyMappingsPresent: mapping.legacyMappingsPresent,
+			evccMappingsPresent: mapping.evccMappingsPresent,
+			missingRoles: mapping.missingRoles,
+			validationIssues: mapping.validationIssues,
+		},
+		feedback: fb
+			? {
+					required: fb.required,
+					ready: fb.ready,
+					status: fb.status,
+					blockReason: fb.blockReason,
+					issueKind: fb.issueKind,
+					expectationCount: fb.expectations.length,
+					counts: fbCounts,
+					settleTimeMs: fb.settleTimeMs,
+					timeoutMs: fb.timeoutMs,
+				}
+			: null,
+	};
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.detailJson, JSON.stringify(detail));
 }
 
 export { ensureWallboxRuntimeStates } from "./ensure_states";

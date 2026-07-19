@@ -74,7 +74,7 @@ exports.STATE_SURFACE_FAMILIES = [
         publicFeature: true,
         targetClass: "B_advanced_user",
         migrationStrategy: "Keep domain request/result; collapse diagnostics JSON.",
-        largeJsonIds: ["user_intent.resolved_all_json", "user_intent.*.resolved_json"],
+        largeJsonIds: ["user_intent.*.resolved_json"],
     },
     {
         id: "planner_core",

@@ -7212,6 +7212,28 @@
 					"lg": 12,
 					"xl": 12,
 					"text": "Nach dem Export: backup.last_file_name / last_sha256 prüfen. Vor Namespace-Wipe immer einen erfolgreichen Export sichern (siehe docs/EMS_LIGHT_FRESH_INSTALL_CHECKLIST.md)."
+				},
+				"introSupportDiagnose": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Diagnose-/Support-Paket (kein Restore): anonymisierte System-/Runtime-Infos inkl. tiefer Wallbox-Detail-JSON und Logs — für Support und Fehleranalyse. Liegt unter /opt/iobroker/iobroker-data/ems-runtime.&lt;Instanz&gt;/exports/support/ (*.emssupport). Ersetzt keine Einzelstates für Write-/Feedback-Contracts im Objektbaum."
+				},
+				"requestSupportExport": {
+					"type": "sendTo",
+					"label": "Diagnose-/Support-Paket erstellen",
+					"command": "requestSupportExport",
+					"jsonData": "{}",
+					"button": "Support-Paket jetzt erstellen",
+					"showResult": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
 				}
 			}
 		}

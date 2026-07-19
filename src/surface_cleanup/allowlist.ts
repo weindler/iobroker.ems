@@ -56,6 +56,14 @@ const MAPPING_ALLOWED_VALUES_RE = /^addons\.[a-z0-9_]+\.mapping\.[a-z0-9_]+\.all
 const STUB_ADDON_LEAF_RE =
 	/^addons\.(sensorics|inverter_[123]|pv_plant|house_main_fuse|heating|heat_pump|consumer_1|weather_live|weather_forecast|pv_forecast|series_storage|fixed_tariff)\.(enabled|available|mode)$/;
 
+/** Wallbox deep contract/feedback leaves → detail_json + support bundle. */
+const WALLBOX_RUNTIME_BALLAST_RE =
+	/^addons\.wallbox\.runtime\.(dispatch_intent_json|dispatch_target_json|dryrun_command_json|command_candidate_json|command_candidate_present|live_foundation_phase|live_write_released|write_plan_present|write_plan_json|write_contract_ready|feedback_contract_ready|write_operation_count|write_control_model|write_evcc_path_confirmed|write_scenario|write_control_path_reason|legacy_mappings_present|evcc_control_mappings_present|control_mapping_diagnostics_json|feedback_contract_present|feedback_contract_json|feedback_required|feedback_contract_structural_ready|feedback_issue_kind|feedback_expectation_count|feedback_matched_count|feedback_mismatch_count|feedback_unavailable_count|feedback_invalid_count|feedback_settle_time_ms|feedback_timeout_ms|active_vehicle_snapshot_json)$/;
+
+/** User-intent source/diag mirrors — Betrieb keeps domain resolved_* + request_json. */
+const USER_INTENT_BALLAST_RE =
+	/^user_intent\.(resolved_all_json|wallbox\.diagnostics(\.|$)|wallbox\.sources(\.|$)|thermal\.diagnostics(\.|$)|battery\.diagnostics(\.|$))/;
+
 export const AC_MAPPING_LEAF_SUFFIXES = ["enabled", "target_state", "allowed_values"] as const;
 
 export function isLeanPlannerPurgeRoot(relativeId: string): boolean {
@@ -93,6 +101,12 @@ export function isAllowlistedCleanupRelativeId(relativeId: string): boolean {
 	if (relativeId === "info.backup" || relativeId.startsWith("info.backup.")) {
 		return true;
 	}
+	if (WALLBOX_RUNTIME_BALLAST_RE.test(relativeId)) {
+		return true;
+	}
+	if (USER_INTENT_BALLAST_RE.test(relativeId)) {
+		return true;
+	}
 	return AC_UNIT_RE.test(relativeId) || AC_MAPPING_RE.test(relativeId) || VEHICLE_FOLDER_RE.test(relativeId);
 }
 
@@ -105,5 +119,7 @@ export const CLEANUP_ALLOWLIST_DESCRIPTION = [
 	"stub addons.* (inverter/heating/… without runtime)",
 	"planner.intent.thermal|cooling|battery.winter when addon/winter disabled",
 	"info.backup.* (merged into backup.*)",
+	"addons.wallbox.runtime.* ballast (→ detail_json / support)",
+	"user_intent sources/diagnostics ballast (Betrieb: resolved_* + request_json)",
 	...LEAN_PLANNER_PURGE_ROOTS.map((r) => `${r} (lean planner surface purge)`),
 ] as const;

@@ -78,6 +78,10 @@ class FakeCleanupHost {
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.sensorics.enabled"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.wallbox.mapping.evcc_connected.allowed_values"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("info.backup.export_register_ready"), true);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.wallbox.runtime.dispatch_intent_json"), true);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.wallbox.runtime.detail_json"), false);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("user_intent.resolved_all_json"), true);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("user_intent.wallbox.resolved_json"), false);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("ems.0.addons.air_conditioning.units.unit_1"), false);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("alias.0.foo"), false);
     });
@@ -230,6 +234,35 @@ class FakeCleanupHost {
         strict_1.default.ok(stats.deleted >= 1);
         strict_1.default.equal(host.objects.has("info.backup"), false);
         strict_1.default.equal(host.objects.has("info.backup.export_register_ready"), false);
+    });
+    (0, node_test_1.it)("purges wallbox runtime ballast and user_intent diag mirrors", async () => {
+        const host = new FakeCleanupHost({});
+        await host.setObjectNotExistsAsync("addons.wallbox.runtime.dispatch_intent_json", {
+            type: "state",
+            common: { name: "x", type: "string", role: "json", read: true, write: false },
+            native: {},
+        });
+        await host.setObjectNotExistsAsync("addons.wallbox.runtime.active_vehicle_snapshot_json", {
+            type: "state",
+            common: { name: "x", type: "string", role: "json", read: true, write: false },
+            native: {},
+        });
+        await host.setObjectNotExistsAsync("user_intent.resolved_all_json", {
+            type: "state",
+            common: { name: "x", type: "string", role: "json", read: true, write: false },
+            native: {},
+        });
+        await host.setObjectNotExistsAsync("user_intent.wallbox.sources", {
+            type: "channel",
+            common: { name: "sources" },
+            native: {},
+        });
+        const stats = await (0, cleanup_js_1.runDynamicSurfaceCleanup)(host);
+        strict_1.default.ok(stats.deleted >= 3);
+        strict_1.default.equal(host.objects.has("addons.wallbox.runtime.dispatch_intent_json"), false);
+        strict_1.default.equal(host.objects.has("addons.wallbox.runtime.active_vehicle_snapshot_json"), false);
+        strict_1.default.equal(host.objects.has("user_intent.resolved_all_json"), false);
+        strict_1.default.equal(host.objects.has("user_intent.wallbox.sources"), false);
     });
     (0, node_test_1.it)("purges lean planner shadow and operator mirror roots", async () => {
         const host = new FakeCleanupHost({});

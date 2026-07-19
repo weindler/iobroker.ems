@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.156",
+		"version": "0.1.157",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.157": {
+				"en": "Object-tree diet: lean wallbox runtime (detail_json + support package), purge user_intent source/diag mirrors. Winter/thermal/horizon kept.",
+				"de": "Objektbaum-Diät: schlanke Wallbox-Runtime (detail_json + Support-Paket), user_intent Quellen/Diagnose-Spiegel weg. Winter/Thermal/Horizon bleiben."
+			},
 			"0.1.156": {
 				"en": "One backup tree: merge info.backup into backup.*; purge stubs/allowed_values leftovers. Status only under backup.*",
 				"de": "Ein Backup-Baum: info.backup → backup.*; Stub-/allowed_values-Reste löschen. Status nur noch unter backup.*"

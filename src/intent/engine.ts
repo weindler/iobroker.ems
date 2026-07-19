@@ -200,17 +200,6 @@ async function writeBatteryMirror(host: IntentEngineHost, intent: ResolvedBatter
 	await setStateIfChanged(host, "user_intent.battery.source_summary", JSON.stringify(intent.source_summary));
 }
 
-async function writeSourceSnapshots(
-	host: IntentEngineHost,
-	evcc: Awaited<ReturnType<typeof readEvccIntentSnapshot>>,
-	admin: ReturnType<typeof buildAdminIntentSnapshot>,
-): Promise<void> {
-	await setStateIfChanged(host, "user_intent.wallbox.sources.evcc.snapshot_json", JSON.stringify(evcc));
-	await setStateIfChanged(host, "user_intent.wallbox.sources.evcc.status", evcc.status);
-	await setStateIfChanged(host, "user_intent.wallbox.sources.evcc.last_observed", evcc.observed_at);
-	await setStateIfChanged(host, "user_intent.wallbox.sources.admin.snapshot_json", JSON.stringify(admin));
-}
-
 export interface IntentEngineResult {
 	wallbox: ResolvedWallboxIntent;
 	thermal: ResolvedThermalIntent;
@@ -299,19 +288,8 @@ export async function runIntentEngine(host: IntentEngineHost): Promise<IntentEng
 	await writeWallboxMirror(host, wallbox);
 	await writeThermalMirror(host, thermal);
 	await writeBatteryMirror(host, battery);
-	await setStateIfChanged(host, "user_intent.resolved_all_json", JSON.stringify(resolvedAll));
 	await setStateIfChanged(host, "user_intent.resolved_all.revision", resolvedAll.revision);
-	await writeSourceSnapshots(host, evcc, admin);
 	await setStateIfChanged(host, "user_intent.status", "ready");
-
-	const diag = {
-		revision: resolvedAll.revision,
-		wallbox: wallbox.intent_state,
-		thermal: thermal.intent_state,
-		battery: battery.intent_state,
-		at: now.toISOString(),
-	};
-	await setStateIfChanged(host, "user_intent.wallbox.diagnostics.last_resolution_json", JSON.stringify(diag));
 
 	const dataDir = host.getAbsolutePath?.("intent");
 	const anyChanged = wallboxChanged || thermalChanged || batteryChanged || aggregateChanged;

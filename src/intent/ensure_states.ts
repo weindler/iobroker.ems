@@ -62,7 +62,6 @@ function domainMirrorStates(prefix: string, label: string): StateDef[] {
 		strState(`${prefix}.last_changed`, `${label} Intent zuletzt geändert (ISO)`, ""),
 		boolState(`${prefix}.manual_override_active`, `${label} Manual Override aktiv`, false),
 		strState(`${prefix}.source_summary`, `${label} Intent Quellen (JSON)`, "[]"),
-		strState(`${prefix}.diagnostics.last_error`, `${label} Intent letzter Fehler`, ""),
 	];
 }
 
@@ -82,8 +81,6 @@ export const USER_INTENT_IOBROKER_CHANNEL = "user_intent.inputs.iobroker";
 export const USER_INTENT_WALLBOX_INPUTS_CHANNEL = "user_intent.inputs.iobroker.wallbox";
 export const USER_INTENT_THERMAL_INPUTS_CHANNEL = "user_intent.inputs.iobroker.thermal";
 export const USER_INTENT_BATTERY_INPUTS_CHANNEL = "user_intent.inputs.iobroker.battery";
-export const USER_INTENT_WALLBOX_SOURCES_CHANNEL = "user_intent.wallbox.sources";
-export const USER_INTENT_WALLBOX_DIAG_CHANNEL = "user_intent.wallbox.diagnostics";
 
 export async function ensureIntentChannels(host: StateHost): Promise<void> {
 	await ensureChannel(host, USER_INTENT_CHANNEL, "EMS-Light User Intent");
@@ -95,13 +92,7 @@ export async function ensureIntentChannels(host: StateHost): Promise<void> {
 	await ensureChannel(host, USER_INTENT_WALLBOX_INPUTS_CHANNEL, "EMS-Light Wallbox ioBroker Input");
 	await ensureChannel(host, USER_INTENT_THERMAL_INPUTS_CHANNEL, "EMS-Light Thermal ioBroker Input");
 	await ensureChannel(host, USER_INTENT_BATTERY_INPUTS_CHANNEL, "EMS-Light Battery ioBroker Input");
-	await ensureChannel(host, USER_INTENT_WALLBOX_SOURCES_CHANNEL, "EMS-Light Wallbox Intent Sources");
-	await ensureChannel(host, USER_INTENT_WALLBOX_DIAG_CHANNEL, "EMS-Light Wallbox Intent Diagnostics");
-	await ensureChannel(host, "user_intent.wallbox.sources.evcc", "EMS-Light EVCC Intent Source");
-	await ensureChannel(host, "user_intent.wallbox.sources.admin", "EMS-Light Admin Intent Defaults");
-	await ensureChannel(host, "user_intent.thermal.diagnostics", "EMS-Light Thermal Intent Diagnostics");
 	await ensureChannel(host, "user_intent.thermal.control", "EMS-Light Thermal Control");
-	await ensureChannel(host, "user_intent.battery.diagnostics", "EMS-Light Battery Intent Diagnostics");
 }
 
 export async function ensureIntentStates(host: StateHost): Promise<void> {
@@ -110,14 +101,8 @@ export async function ensureIntentStates(host: StateHost): Promise<void> {
 	const defs: StateDef[] = [
 		strState("user_intent.contract_version", "User Intent Contract Version", INTENT_CONTRACT_VERSION, false, true),
 		strState("user_intent.status", "User Intent Engine Status", "not_initialized"),
-		strState("user_intent.resolved_all_json", "User Intent Gesamtvertrag (JSON)", "{}"),
 		numState("user_intent.resolved_all.revision", "User Intent Gesamt-Revision", 0),
 		...domainMirrorStates("user_intent.wallbox", "Wallbox"),
-		strState("user_intent.wallbox.diagnostics.last_resolution_json", "Wallbox Intent letzte Auflösung (JSON)", "{}"),
-		strState("user_intent.wallbox.sources.evcc.snapshot_json", "EVCC Intent Snapshot (JSON)", "{}"),
-		strState("user_intent.wallbox.sources.evcc.status", "EVCC Intent Source Status", "unconfigured"),
-		strState("user_intent.wallbox.sources.evcc.last_observed", "EVCC Intent zuletzt beobachtet (ISO)", ""),
-		strState("user_intent.wallbox.sources.admin.snapshot_json", "Admin Intent Defaults (JSON)", "{}"),
 		...domainMirrorStates("user_intent.thermal", "Thermal"),
 		...domainMirrorStates("user_intent.battery", "Battery"),
 		strState("user_intent.thermal.control.requested_mode", "Thermal Modus (off|auto|force)", "auto", true, true),

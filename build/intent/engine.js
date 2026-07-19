@@ -138,12 +138,6 @@ async function writeBatteryMirror(host, intent) {
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.battery.manual_override_active", intent.manual_override.active);
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.battery.source_summary", JSON.stringify(intent.source_summary));
 }
-async function writeSourceSnapshots(host, evcc, admin) {
-    await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.sources.evcc.snapshot_json", JSON.stringify(evcc));
-    await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.sources.evcc.status", evcc.status);
-    await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.sources.evcc.last_observed", evcc.observed_at);
-    await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.sources.admin.snapshot_json", JSON.stringify(admin));
-}
 async function runIntentEngine(host) {
     const now = new Date();
     await (0, ensure_states_1.ensureIntentStates)(host);
@@ -214,18 +208,8 @@ async function runIntentEngine(host) {
     await writeWallboxMirror(host, wallbox);
     await writeThermalMirror(host, thermal);
     await writeBatteryMirror(host, battery);
-    await (0, state_write_1.setStateIfChanged)(host, "user_intent.resolved_all_json", JSON.stringify(resolvedAll));
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.resolved_all.revision", resolvedAll.revision);
-    await writeSourceSnapshots(host, evcc, admin);
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.status", "ready");
-    const diag = {
-        revision: resolvedAll.revision,
-        wallbox: wallbox.intent_state,
-        thermal: thermal.intent_state,
-        battery: battery.intent_state,
-        at: now.toISOString(),
-    };
-    await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.diagnostics.last_resolution_json", JSON.stringify(diag));
     const dataDir = host.getAbsolutePath?.("intent");
     const anyChanged = wallboxChanged || thermalChanged || batteryChanged || aggregateChanged;
     if (dataDir && anyChanged) {

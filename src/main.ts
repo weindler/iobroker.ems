@@ -108,6 +108,36 @@ class Ems extends utils.Adapter {
 					`requestBackupExport unhandled: ${e instanceof Error ? e.message : String(e)}`,
 				);
 			});
+			return;
+		}
+		if (obj.command === "requestSupportExport") {
+			void (async () => {
+				try {
+					const { handleSupportExportRequest } = await import("./backup/export_handler.js");
+					await handleSupportExportRequest(this, true, false);
+					const file = String((await this.getStateAsync("backup.last_file_name"))?.val ?? "");
+					const err = String((await this.getStateAsync("backup.last_error"))?.val ?? "");
+					const payload = {
+						result: err ? "error" : "ok",
+						fileName: file,
+						error: err,
+						hint: "ems-runtime.%INSTANCE%/exports/support/",
+					};
+					if (obj.callback) {
+						this.sendTo(obj.from, obj.command, payload, obj.callback);
+					}
+				} catch (e) {
+					const error = e instanceof Error ? e.message : String(e);
+					this.log.error(`requestSupportExport: ${error}`);
+					if (obj.callback) {
+						this.sendTo(obj.from, obj.command, { result: "error", error }, obj.callback);
+					}
+				}
+			})().catch((e) => {
+				this.log.error(
+					`requestSupportExport unhandled: ${e instanceof Error ? e.message : String(e)}`,
+				);
+			});
 		}
 	}
 

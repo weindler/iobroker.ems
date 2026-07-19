@@ -12,7 +12,6 @@ import { normalizeWallboxVehicleProfile, normalizeWallboxVehicleProfiles } from 
 import { assessWallboxVehicleProfileReadiness } from "./readiness";
 import { resolveActiveVehicle, pickEvccConnected } from "./resolve";
 import {
-	activeVehicleSnapshotJson,
 	assessActiveProfileReadiness,
 	buildActiveVehicleSnapshot,
 } from "./snapshot";
@@ -280,7 +279,6 @@ async function publishGlobalVehicleRuntime(
 		resolution.detectionStatus,
 	);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.activeVehicleConfidence, resolution.confidence);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.activeVehicleSnapshotJson, activeVehicleSnapshotJson(snapshot));
 	await setStateIfChanged(
 		host,
 		WALLBOX_RUNTIME_STATES.activeVehicleProfileValid,

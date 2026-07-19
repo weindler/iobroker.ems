@@ -7936,7 +7936,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Sicherung und Diagnose. 1) Voll-Export bleibt auf dem Host (+ Download-Spiegel). 2) Support: erstellen, dann unten herunterladen. 3) Restore: Datei wählen/hochladen → validieren → Plan-ID → ausführen."
+					"text": "Sicherung und Diagnose. Voll-Export und Support landen auf dem Host; Support-Paket versucht zusätzlich Browser-Download. Restore: Dateiname eintragen → validieren → Plan-ID → ausführen."
 				},
 				"hBackupFull": {
 					"type": "header",
@@ -7968,7 +7968,7 @@
 					"color": "primary",
 					"icon": "send",
 					"result": {
-						"ok": "Backup erstellt — siehe Dateiliste / Host-Pfad",
+						"ok": "Backup erstellt — siehe Host-Pfad / backup.last_file_name",
 						"error": "Backup fehlgeschlagen — siehe backup.last_error"
 					},
 					"xs": 12,
@@ -7984,20 +7984,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Ablage Host: …/ems-runtime.&lt;Instanz&gt;/exports/backup/  ·  Spiegel: Adapter-Dateien → backup/ (Download möglich)"
-				},
-				"backupFilePicker": {
-					"type": "fileSelector",
-					"label": "Backup-Dateien (Download)",
-					"objectID": "ems.%INSTANCE%",
-					"pattern": "backup/*.*",
-					"refresh": true,
-					"delete": false,
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
+					"text": "Ablage Host: …/ems-runtime.&lt;Instanz&gt;/exports/backup/  ·  Danach backup.last_file_name prüfen."
 				},
 				"dividerBackupSupport": {
 					"type": "divider",
@@ -8025,13 +8012,13 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Anonymisierte Runtime-/Systeminfos und Logs — nur für Support, nicht zum Restore. Nach Erstellung: Datei unten in der Liste anklicken und auf den PC speichern (Download). Kleine Pakete öffnen ggf. zusätzlich automatisch."
+					"text": "Anonymisierte Runtime-/Systeminfos und Logs — nur für Support. Button erstellt das Paket und öffnet bei kleiner Datei den Browser-Download. Sonst Datei vom Host: …/exports/support/*.emssupport"
 				},
 				"requestSupportExport": {
 					"type": "sendTo",
 					"command": "requestSupportExport",
 					"jsonData": "{}",
-					"label": "Support-Paket erstellen",
+					"label": "Support-Paket erstellen & Download",
 					"showProcess": true,
 					"timeout": 180000,
 					"openUrl": true,
@@ -8039,7 +8026,7 @@
 					"color": "secondary",
 					"icon": "info",
 					"result": {
-						"ok": "Support-Paket erstellt — unten herunterladen",
+						"ok": "Support-Paket erstellt",
 						"error": "Support-Export fehlgeschlagen"
 					},
 					"xs": 12,
@@ -8055,21 +8042,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Download auf den PC: Datei in der Liste wählen (Refresh bei Bedarf). Host-Kopie: …/exports/support/*.emssupport"
-				},
-				"supportFilePicker": {
-					"type": "fileSelector",
-					"label": "Support-Paket herunterladen",
-					"objectID": "ems.%INSTANCE%",
-					"pattern": "support/*.*",
-					"refresh": true,
-					"delete": true,
-					"noNone": true,
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
+					"text": "Fallback Host: …/exports/support/*.emssupport (wenn kein Browser-Download kommt)."
 				},
 				"dividerBackupRestore": {
 					"type": "divider",
@@ -8097,51 +8070,13 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Nur .emsbackup (nicht Support). Datei wählen oder vom PC hochladen → „Upload übernehmen“ → Validieren → Plan-ID eintragen → Restore. Danach Adapter-Neustart (dryrun)."
-				},
-				"restoreUploadPicker": {
-					"type": "fileSelector",
-					"label": ".emsbackup vom PC hochladen (restore-inbox)",
-					"objectID": "ems.%INSTANCE%",
-					"pattern": "restore-inbox/*.*",
-					"upload": "restore-inbox",
-					"refresh": true,
-					"delete": true,
-					"maxSize": 52428800,
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"restoreUploadSyncBtn": {
-					"type": "sendTo",
-					"command": "syncRestoreInbox",
-					"jsonData": "{}",
-					"label": "Upload übernehmen & Liste aktualisieren",
-					"showProcess": true,
-					"timeout": 60000,
-					"variant": "outlined",
-					"result": {
-						"ok": "Liste aktualisiert — Datei unten wählen",
-						"empty": "Keine .emsbackup gefunden",
-						"error": "Sync fehlgeschlagen"
-					},
-					"xs": 12,
-					"sm": 6,
-					"md": 5,
-					"lg": 4,
-					"xl": 4
+					"text": "Nur .emsbackup. Datei auf dem Host nach …/restore/inbox/ oder …/exports/backup/ legen, exakten Dateinamen unten eintragen → Validieren → Plan-ID aus backup.restore.plan_id hier eintragen → Restore. Danach Adapter-Neustart (dryrun)."
 				},
 				"restore_selected_file": {
-					"type": "selectSendTo",
-					"label": "Backup-Datei wählen",
-					"command": "listRestoreFiles",
-					"jsonData": "{}",
-					"manual": false,
-					"noTranslation": true,
+					"type": "text",
+					"label": "Backup-Dateiname (z. B. ems-light-….emsbackup)",
+					"default": "",
 					"doNotSave": true,
-					"alsoDependsOn": [],
 					"xs": 12,
 					"sm": 12,
 					"md": 8,
@@ -8158,7 +8093,7 @@
 					"variant": "contained",
 					"color": "primary",
 					"result": {
-						"ok": "Validierung ok — Plan-ID eintragen",
+						"ok": "Validierung ok — Plan-ID in Objekten prüfen und unten eintragen",
 						"error": "Validierung fehlgeschlagen"
 					},
 					"xs": 12,
@@ -8167,33 +8102,9 @@
 					"lg": 4,
 					"xl": 3
 				},
-				"restoreStatusText": {
-					"type": "state",
-					"label": "Restore-Status",
-					"oid": "backup.restore.status",
-					"control": "text",
-					"readOnly": true,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 3,
-					"xl": 3
-				},
-				"restorePlanIdText": {
-					"type": "state",
-					"label": "Plan-ID (nach Validierung)",
-					"oid": "backup.restore.plan_id",
-					"control": "text",
-					"readOnly": true,
-					"xs": 12,
-					"sm": 12,
-					"md": 8,
-					"lg": 6,
-					"xl": 6
-				},
 				"restore_confirm_plan_id": {
 					"type": "text",
-					"label": "Plan-ID zur Bestätigung eintragen",
+					"label": "Plan-ID zur Bestätigung (von backup.restore.plan_id)",
 					"default": "",
 					"doNotSave": true,
 					"xs": 12,
@@ -8220,18 +8131,6 @@
 					"md": 4,
 					"lg": 4,
 					"xl": 3
-				},
-				"restoreErrorText": {
-					"type": "state",
-					"label": "Restore-Fehler",
-					"oid": "backup.restore.last_error",
-					"control": "text",
-					"readOnly": true,
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
 				}
 			}
 		}

@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.168",
+		"version": "0.1.169",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.169": {
+				"en": "Fix: Backup tab no longer uses fileSelector/selectSendTo/state (Admin config crash). Simple sendTo + text fields.",
+				"de": "Fix: Backup-Tab ohne fileSelector/selectSendTo/state (Admin-Config-Crash). Nur sendTo + Textfelder."
+			},
 			"0.1.168": {
 				"en": "Backup sendTo: use standard send icon (safer Admin render).",
 				"de": "Backup sendTo: Standard-Icon send (stabileres Admin-Rendering)."

@@ -151,7 +151,7 @@ describe("startup rearm", () => {
 	});
 });
 
-describe("startup rearm via handleExecutionModeStateChange", () => {
+describe("execution mode dryrun/live write gate", () => {
 	function makeAdapter(config: Record<string, unknown> = { global_execution_mode: "live" }) {
 		const store = new Map<string, ioBroker.State>();
 		return {
@@ -167,130 +167,34 @@ describe("startup rearm via handleExecutionModeStateChange", () => {
 		};
 	}
 
-	it("2: dryrun request processes normally but keeps startup_rearm_required", async () => {
-		resetStartupRearmForTest();
-		setStartupRearmRequired(true);
-		markBootstrapCompletedForRearm(1000);
-		recordExecutionModeBaseline(GLOBAL_REL, 1);
-		const adapter = makeAdapter({ global_execution_mode: "live" });
-
-		await handleExecutionModeStateChange(
-			adapter,
-			`${NS}.${GLOBAL_REL}`,
-			freshUserState("dryrun", 2),
-		);
-
+	it("dryrun global blocks writes even if addon live", async () => {
+		const adapter = makeAdapter({ global_execution_mode: "live", wb_addon_mode: "live" });
+		await handleExecutionModeStateChange(adapter, `${NS}.${GLOBAL_REL}`, freshUserState("dryrun", 2));
+		await handleExecutionModeStateChange(adapter, `${NS}.${WB_REL}`, freshUserState("live", 2));
 		assert.equal(adapter.store.get(GLOBAL_REL)?.val, "dryrun");
-		assert.equal(adapter.store.get(GLOBAL_REL)?.ack, true);
-		assert.equal(isStartupRearmRequired(), true);
-		assert.equal(await isLiveWriteAllowed(adapter.getStateAsync, "wallbox"), false);
-	});
-
-	it("3: dryrun then live on another addon mode does not enable writes", async () => {
-		resetStartupRearmForTest();
-		setStartupRearmRequired(true);
-		markBootstrapCompletedForRearm(1000);
-		recordExecutionModeBaseline(GLOBAL_REL, 1);
-		recordExecutionModeBaseline(WB_REL, 1);
-		const adapter = makeAdapter({ global_execution_mode: "live", wb_addon_mode: "live" });
-
-		await handleExecutionModeStateChange(
-			adapter,
-			`${NS}.${GLOBAL_REL}`,
-			freshUserState("dryrun", 2),
-		);
-		await handleExecutionModeStateChange(
-			adapter,
-			`${NS}.${WB_REL}`,
-			freshUserState("live", 2),
-		);
-
-		assert.equal(isStartupRearmRequired(), true);
 		assert.equal(adapter.store.get(WB_REL)?.val, "live");
 		assert.equal(await isLiveWriteAllowed(adapter.getStateAsync, "wallbox"), false);
 	});
 
-	it("4: native live config is mirrored to object tree while rearm blocks writes", async () => {
-		resetStartupRearmForTest();
-		setStartupRearmRequired(true);
-		markBootstrapCompletedForRearm(1000);
-		recordExecutionModeBaseline(GLOBAL_REL, 1);
-		const adapter = makeAdapter({ global_execution_mode: "live", wb_addon_mode: "live" });
-
-		await syncExecutionModesFromConfig(adapter, adapter.config, {
-			forceDryrunReason: "startup_rearm_required",
-		});
-		assert.equal(adapter.config.global_execution_mode, "live");
-		assert.equal(adapter.store.get(GLOBAL_REL)?.val, "live");
-		assert.equal(adapter.store.get(WB_REL)?.val, "live");
-		assert.equal(await isLiveWriteAllowed(adapter.getStateAsync, "wallbox"), false);
-
-		await handleExecutionModeStateChange(
-			adapter,
-			`${NS}.${GLOBAL_REL}`,
-			freshUserState("dryrun", 2),
-		);
-
-		assert.equal(isStartupRearmRequired(), true);
-		assert.equal(adapter.config.global_execution_mode, "live");
-		assert.equal(await isLiveWriteAllowed(adapter.getStateAsync, "wallbox"), false);
-	});
-
-	it("5: second fresh explicit live request completes regular rearm", async () => {
-		resetStartupRearmForTest();
-		setStartupRearmRequired(true);
-		markBootstrapCompletedForRearm(1000);
-		recordExecutionModeBaseline(GLOBAL_REL, 1);
-		recordExecutionModeBaseline(WB_REL, 1);
-		const adapter = makeAdapter({ global_execution_mode: "live", wb_addon_mode: "live" });
-
-		await handleExecutionModeStateChange(
-			adapter,
-			`${NS}.${GLOBAL_REL}`,
-			freshUserState("dryrun", 2),
-		);
-		assert.equal(isStartupRearmRequired(), true);
-
-		await handleExecutionModeStateChange(
-			adapter,
-			`${NS}.${GLOBAL_REL}`,
-			freshUserState("live", 3),
-		);
-		assert.equal(isStartupRearmRequired(), false);
-		assert.equal(adapter.store.get("info.backup.live_rearm_required")?.val, false);
-
-		await adapter.setStateAsync(WB_REL, { val: "live", ack: true });
-		await adapter.setStateAsync(GLOBAL.executionMode, { val: "live", ack: true });
+	it("live global + live addon allows writes", async () => {
+		const adapter = makeAdapter({ global_execution_mode: "dryrun", wb_addon_mode: "dryrun" });
+		await handleExecutionModeStateChange(adapter, `${NS}.${GLOBAL_REL}`, freshUserState("live", 2));
+		await handleExecutionModeStateChange(adapter, `${NS}.${WB_REL}`, freshUserState("live", 3));
 		assert.equal(await isLiveWriteAllowed(adapter.getStateAsync, "wallbox"), true);
 	});
 
-	it("1: fresh external live request after bootstrap clears rearm via handler", async () => {
-		resetStartupRearmForTest();
-		setStartupRearmRequired(true);
-		markBootstrapCompletedForRearm(1000);
-		recordExecutionModeBaseline(GLOBAL_REL, 1);
-		const adapter = makeAdapter({ global_execution_mode: "live" });
-
-		await handleExecutionModeStateChange(
-			adapter,
-			`${NS}.${GLOBAL_REL}`,
-			freshUserState("live", 2),
-		);
-
-		assert.equal(isStartupRearmRequired(), false);
-		assert.equal(adapter.store.get("info.backup.live_rearm_required")?.val, false);
-		assert.equal(adapter.store.get(GLOBAL_REL)?.val, "live");
+	it("live global + dryrun addon blocks writes", async () => {
+		const adapter = makeAdapter();
+		await adapter.setStateAsync(GLOBAL_REL, { val: "live", ack: true });
+		await adapter.setStateAsync(WB_REL, { val: "dryrun", ack: true });
+		assert.equal(await isLiveWriteAllowed(adapter.getStateAsync, "wallbox"), false);
 	});
 
-	it("confirmStartupLiveRearm clears flag and info state", async () => {
-		resetStartupRearmForTest();
-		setStartupRearmRequired(true);
-		const adapter = makeAdapter({ global_execution_mode: "live" });
-		await adapter.setStateAsync(GLOBAL.executionMode, { val: "live", ack: true });
-		const { confirmStartupLiveRearm } = await import("./startup_rearm.js");
-		const result = await confirmStartupLiveRearm(adapter);
-		assert.equal(result.ok, true);
-		assert.equal(isStartupRearmRequired(), false);
-		assert.equal(adapter.store.get("info.backup.live_rearm_required")?.val, false);
+	it("sync from admin live config mirrors object tree and allows writes", async () => {
+		const adapter = makeAdapter({ global_execution_mode: "live", wb_addon_mode: "live" });
+		await syncExecutionModesFromConfig(adapter, adapter.config, {});
+		assert.equal(adapter.store.get(GLOBAL_REL)?.val, "live");
+		assert.equal(adapter.store.get(WB_REL)?.val, "live");
+		assert.equal(await isLiveWriteAllowed(adapter.getStateAsync, "wallbox"), true);
 	});
 });

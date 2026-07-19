@@ -102,30 +102,19 @@ function getLearningStateTreeHost() {
     return learningHost;
 }
 exports.getLearningStateTreeHost = getLearningStateTreeHost;
-function buildPlannerShadowRuntimeHost(adapter) {
-    return {
-        namespace: adapter.namespace,
-        config: adapter.config,
-        log: adapter.log,
-        // Real adapter for resolveEmsPaths → @iobroker/adapter-core (not a fake adapter method).
-        pathInput: adapter,
-        getStateAsync: adapter.getStateAsync.bind(adapter),
-        setStateAsync: adapter.setStateAsync.bind(adapter),
-        setObjectNotExistsAsync: adapter.setObjectNotExistsAsync.bind(adapter),
-        extendObjectAsync: adapter.extendObjectAsync?.bind(adapter),
-        subscribeStatesAsync: adapter.subscribeStatesAsync.bind(adapter),
-        unsubscribeStatesAsync: adapter.unsubscribeStatesAsync.bind(adapter),
-    };
-}
 /** Phase B — EMS-Light-, Planner-, Policy-, Intent- und Learning-Objekte. */
 async function ensureEmsLightStateTree(adapter) {
     const version = String(adapter.common?.version ?? "0.0.0");
     const host = adapter;
-    const plannerMode = (0, planner_config_1.plannerRuntimeModeFromConfig)(adapter.config).mode;
+    const configured = (0, planner_config_1.plannerRuntimeModeFromConfig)(adapter.config).mode;
+    if (configured !== "off") {
+        adapter.log.info(`Planner Shadow Mode „${configured}“ ignoriert — Produktions-Oberfläche erzwingt off`);
+    }
+    const plannerMode = "off";
     await (0, ensure_states_1.ensureEmsLightStates)(host, version);
     await (0, planner_1.ensurePlannerStateTree)(host, {
-        includeTakeoverStates: plannerMode !== "off",
-        coordinatorMinimal: plannerMode === "off",
+        includeTakeoverStates: false,
+        coordinatorMinimal: true,
     });
     const policyHost = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
     await (0, policy_1.ensurePolicyStateTree)(policyHost);
@@ -136,16 +125,15 @@ exports.ensureEmsLightStateTree = ensureEmsLightStateTree;
 /** Phase F — Runtime, Ticks und initiale Auswertung (nach Bootstrap-Barriere). */
 async function startEmsLightPhase1Runtime(adapter) {
     const host = adapter;
-    const plannerMode = (0, planner_config_1.plannerRuntimeModeFromConfig)(adapter.config).mode;
-    // off/legacy: keep v0.1.124-shaped startup — no Forecast/Daily/Allocation bootstrap.
-    if (plannerMode !== "off") {
-        await (0, planner_1.runPlannerRuntime)(host);
+    const configured = (0, planner_config_1.plannerRuntimeModeFromConfig)(adapter.config).mode;
+    if (configured !== "off") {
+        adapter.log.info(`Planner Shadow Runtime nicht gestartet (konfiguriert „${configured}“, Oberfläche erzwingt off)`);
     }
+    // Shadow/Takeover/Authority stay out of the production control path.
     (0, compose_1.createPlannerOnDemandCoordinatorFromAdapter)(adapter, {
         enabled: false,
         log: adapter.log,
     });
-    await (0, runtime_1.initPlannerShadowRuntime)(buildPlannerShadowRuntimeHost(adapter));
     energyDailyRollupHost = buildRollupHost(adapter);
     powerRollupHost = energyDailyRollupHost;
     await (0, energy_daily_rollup_1.initEnergyDailyRollup)(energyDailyRollupHost);

@@ -1,4 +1,3 @@
-import { isStartupRearmRequired, clearStartupRearmRequired, getBootstrapCompletedAtMs, isExplicitUserLiveRearmRequest } from "./backup_integration/startup_rearm";
 import { GLOBAL, addonMode } from "./tree_paths";
 
 export type ExecutionMode = "dryrun" | "live";
@@ -88,9 +87,6 @@ export async function isLiveWriteAllowed(
 	getState: (id: string) => Promise<ioBroker.State | null | undefined>,
 	addonId: string,
 ): Promise<boolean> {
-	if (isStartupRearmRequired()) {
-		return false;
-	}
 	const global = await getState(GLOBAL.executionMode);
 	if (parseMode(global?.val) !== "live") {
 		return false;
@@ -134,7 +130,7 @@ export interface SyncExecutionModesOptions {
 	forceDryrunReason?: ForceDryrunReason | null;
 }
 
-export type ForceDryrunReason = "namespace_cold_start" | "restore_recovery" | "startup_rearm_required";
+export type ForceDryrunReason = "namespace_cold_start" | "restore_recovery";
 
 export const NATIVE_EXECUTION_MODE_KEYS = [
 	"global_execution_mode",
@@ -290,19 +286,6 @@ export async function syncExecutionModesFromConfig(
 		if (forceReason === "restore_recovery" && typeof host.updateConfig === "function") {
 			await host.updateConfig(dryrunNative);
 		}
-		if (forceReason === "startup_rearm_required") {
-			// Object tree follows Admin/Native; writes stay gated by isStartupRearmRequired().
-			await applyExecutionModesFromConfig(host, modes);
-			await host.setStateAsync(EXECUTION_MODE_CONFIG_FINGERPRINT, {
-				val: fingerprint,
-				ack: true,
-			});
-			await mirrorGlobalExecutionSafety(host);
-			host.log?.info?.(
-				"Startup-Rearm: Objektbaum folgt Admin-Config — Geräte-Writes gesperrt bis explizitem Live-Rearm",
-			);
-			return;
-		}
 		await applyExecutionModesFromConfig(host, ALL_DRYRUN_MODES);
 		await host.setStateAsync(EXECUTION_MODE_CONFIG_FINGERPRINT, {
 			val: executionModesConfigFingerprint(dryrunNative),
@@ -422,16 +405,6 @@ export async function handleExecutionModeStateChange(
 	const relativeId = id.slice(prefix.length);
 	if (!isExecutionModeStateRelativeId(relativeId)) {
 		return;
-	}
-
-	if (
-		isStartupRearmRequired() &&
-		relativeId === GLOBAL.executionMode &&
-		isExplicitUserLiveRearmRequest(state, adapter.namespace, relativeId, getBootstrapCompletedAtMs())
-	) {
-		clearStartupRearmRequired();
-		await adapter.setStateAsync("info.backup.live_rearm_required", { val: false, ack: true });
-		adapter.log.info("Startup-Rearm aufgehoben — Geräte-Writes freigegeben (info.backup.live_rearm_required=false)");
 	}
 
 	const requested = String(state.val ?? "").trim().toLowerCase();

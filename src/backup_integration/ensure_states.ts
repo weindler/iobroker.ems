@@ -76,12 +76,12 @@ export async function ensureBackupIntegrationInfoStates(host: StateHost): Promis
 		},
 		{
 			id: BACKUP_INFO_STATES.liveRearmRequired,
-			common: { name: "Live-Rearm erforderlich", type: "boolean", role: "indicator", read: true, write: false, def: true },
+			common: { name: "Live-Rearm erforderlich (obsolet)", type: "boolean", role: "indicator", read: true, write: false, def: false },
 		},
 		{
 			id: BACKUP_INFO_STATES.confirmLiveRearm,
 			common: {
-				name: "Live-Writes freigeben (Startup-Rearm bestätigen)",
+				name: "Live-Writes freigeben (obsolet, ungenutzt)",
 				type: "boolean",
 				role: "button",
 				read: true,

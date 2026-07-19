@@ -13,7 +13,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Globale Ausführung für alle Addons. Admin-Config und Objektbaum (global.execution_mode) bleiben synchron. Nach jedem Adapter-Start sind Geräte-Writes gesperrt (Startup-Rearm). Freigabe: Button „Live-Writes freigeben“ unten oder Objekt ems.X.info.backup.confirm_live_rearm=true — nicht nur Admin-Config speichern (das startet neu und setzt Rearm wieder)."
+					"text": "Globale Ausführung und Addon-Ausführung: dryrun = keine Geräte-Writes, live = Writes erlaubt. Admin-Config und Objektbaum bleiben synchron."
 				},
 				"global_execution_mode": {
 					"type": "select",
@@ -35,102 +35,14 @@
 					"lg": 4,
 					"xl": 4
 				},
-				"confirmLiveRearm": {
-					"type": "sendTo",
-					"label": "Startup-Rearm",
-					"command": "confirmLiveRearm",
-					"jsonData": "{}",
-					"button": "Live-Writes freigeben",
-					"showResult": true,
+				"introPlannerOff": {
+					"type": "staticText",
 					"xs": 12,
 					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"planner_runtime_mode": {
-					"type": "select",
-					"label": "Planner Runtime (Shadow)",
-					"options": [
-						{
-							"label": "Aus",
-							"value": "off"
-						},
-						{
-							"label": "Shadow manuell",
-							"value": "shadow_manual"
-						},
-						{
-							"label": "Shadow automatisch",
-							"value": "shadow_auto"
-						}
-					],
-					"default": "off",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"planner_takeover_evaluation_mode": {
-					"type": "select",
-					"label": "Planner Takeover Evaluation",
-					"options": [
-						{
-							"label": "Deaktiviert",
-							"value": "disabled"
-						},
-						{
-							"label": "Beobachten",
-							"value": "observe"
-						}
-					],
-					"default": "disabled",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"planner_takeover_authorization_mode": {
-					"type": "select",
-					"label": "Planner Takeover Authorization",
-					"options": [
-						{
-							"label": "Deaktiviert",
-							"value": "disabled"
-						},
-						{
-							"label": "Manuell vorbereiten",
-							"value": "manual_prepare"
-						}
-					],
-					"default": "disabled",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"planner_authoritative_source": {
-					"type": "select",
-					"label": "Planner Authoritative Source",
-					"options": [
-						{
-							"label": "Legacy",
-							"value": "legacy"
-						},
-						{
-							"label": "Worker Dryrun",
-							"value": "worker_dryrun"
-						}
-					],
-					"default": "legacy",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Planner-Shadow / Takeover / Authority sind in der normalen Bedienung abgeschaltet (Runtime-Mode off). Keine Shadow-Schalter in diesem Admin."
 				},
 				"hGlobalFailsafe": {
 					"type": "header",

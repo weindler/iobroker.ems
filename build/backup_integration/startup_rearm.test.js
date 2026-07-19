@@ -1,27 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -83,7 +60,7 @@ function freshUserState(val, lc, ts = 2000) {
         strict_1.default.equal((0, startup_rearm_js_1.isAdapterInternalStateOrigin)("system.user.admin", "ems.0"), false);
     });
 });
-(0, node_test_1.describe)("startup rearm via handleExecutionModeStateChange", () => {
+(0, node_test_1.describe)("execution mode dryrun/live write gate", () => {
     function makeAdapter(config = { global_execution_mode: "live" }) {
         const store = new Map();
         return {
@@ -98,85 +75,31 @@ function freshUserState(val, lc, ts = 2000) {
             store,
         };
     }
-    (0, node_test_1.it)("2: dryrun request processes normally but keeps startup_rearm_required", async () => {
-        (0, startup_rearm_js_1.resetStartupRearmForTest)();
-        (0, startup_rearm_js_1.setStartupRearmRequired)(true);
-        (0, startup_rearm_js_1.markBootstrapCompletedForRearm)(1000);
-        (0, startup_rearm_js_1.recordExecutionModeBaseline)(GLOBAL_REL, 1);
-        const adapter = makeAdapter({ global_execution_mode: "live" });
-        await (0, execution_mode_js_1.handleExecutionModeStateChange)(adapter, `${NS}.${GLOBAL_REL}`, freshUserState("dryrun", 2));
-        strict_1.default.equal(adapter.store.get(GLOBAL_REL)?.val, "dryrun");
-        strict_1.default.equal(adapter.store.get(GLOBAL_REL)?.ack, true);
-        strict_1.default.equal((0, startup_rearm_js_1.isStartupRearmRequired)(), true);
-        strict_1.default.equal(await (0, execution_mode_js_1.isLiveWriteAllowed)(adapter.getStateAsync, "wallbox"), false);
-    });
-    (0, node_test_1.it)("3: dryrun then live on another addon mode does not enable writes", async () => {
-        (0, startup_rearm_js_1.resetStartupRearmForTest)();
-        (0, startup_rearm_js_1.setStartupRearmRequired)(true);
-        (0, startup_rearm_js_1.markBootstrapCompletedForRearm)(1000);
-        (0, startup_rearm_js_1.recordExecutionModeBaseline)(GLOBAL_REL, 1);
-        (0, startup_rearm_js_1.recordExecutionModeBaseline)(WB_REL, 1);
+    (0, node_test_1.it)("dryrun global blocks writes even if addon live", async () => {
         const adapter = makeAdapter({ global_execution_mode: "live", wb_addon_mode: "live" });
         await (0, execution_mode_js_1.handleExecutionModeStateChange)(adapter, `${NS}.${GLOBAL_REL}`, freshUserState("dryrun", 2));
         await (0, execution_mode_js_1.handleExecutionModeStateChange)(adapter, `${NS}.${WB_REL}`, freshUserState("live", 2));
-        strict_1.default.equal((0, startup_rearm_js_1.isStartupRearmRequired)(), true);
+        strict_1.default.equal(adapter.store.get(GLOBAL_REL)?.val, "dryrun");
         strict_1.default.equal(adapter.store.get(WB_REL)?.val, "live");
         strict_1.default.equal(await (0, execution_mode_js_1.isLiveWriteAllowed)(adapter.getStateAsync, "wallbox"), false);
     });
-    (0, node_test_1.it)("4: native live config is mirrored to object tree while rearm blocks writes", async () => {
-        (0, startup_rearm_js_1.resetStartupRearmForTest)();
-        (0, startup_rearm_js_1.setStartupRearmRequired)(true);
-        (0, startup_rearm_js_1.markBootstrapCompletedForRearm)(1000);
-        (0, startup_rearm_js_1.recordExecutionModeBaseline)(GLOBAL_REL, 1);
-        const adapter = makeAdapter({ global_execution_mode: "live", wb_addon_mode: "live" });
-        await (0, execution_mode_js_1.syncExecutionModesFromConfig)(adapter, adapter.config, {
-            forceDryrunReason: "startup_rearm_required",
-        });
-        strict_1.default.equal(adapter.config.global_execution_mode, "live");
-        strict_1.default.equal(adapter.store.get(GLOBAL_REL)?.val, "live");
-        strict_1.default.equal(adapter.store.get(WB_REL)?.val, "live");
-        strict_1.default.equal(await (0, execution_mode_js_1.isLiveWriteAllowed)(adapter.getStateAsync, "wallbox"), false);
-        await (0, execution_mode_js_1.handleExecutionModeStateChange)(adapter, `${NS}.${GLOBAL_REL}`, freshUserState("dryrun", 2));
-        strict_1.default.equal((0, startup_rearm_js_1.isStartupRearmRequired)(), true);
-        strict_1.default.equal(adapter.config.global_execution_mode, "live");
-        strict_1.default.equal(await (0, execution_mode_js_1.isLiveWriteAllowed)(adapter.getStateAsync, "wallbox"), false);
-    });
-    (0, node_test_1.it)("5: second fresh explicit live request completes regular rearm", async () => {
-        (0, startup_rearm_js_1.resetStartupRearmForTest)();
-        (0, startup_rearm_js_1.setStartupRearmRequired)(true);
-        (0, startup_rearm_js_1.markBootstrapCompletedForRearm)(1000);
-        (0, startup_rearm_js_1.recordExecutionModeBaseline)(GLOBAL_REL, 1);
-        (0, startup_rearm_js_1.recordExecutionModeBaseline)(WB_REL, 1);
-        const adapter = makeAdapter({ global_execution_mode: "live", wb_addon_mode: "live" });
-        await (0, execution_mode_js_1.handleExecutionModeStateChange)(adapter, `${NS}.${GLOBAL_REL}`, freshUserState("dryrun", 2));
-        strict_1.default.equal((0, startup_rearm_js_1.isStartupRearmRequired)(), true);
-        await (0, execution_mode_js_1.handleExecutionModeStateChange)(adapter, `${NS}.${GLOBAL_REL}`, freshUserState("live", 3));
-        strict_1.default.equal((0, startup_rearm_js_1.isStartupRearmRequired)(), false);
-        strict_1.default.equal(adapter.store.get("info.backup.live_rearm_required")?.val, false);
-        await adapter.setStateAsync(WB_REL, { val: "live", ack: true });
-        await adapter.setStateAsync(tree_paths_js_1.GLOBAL.executionMode, { val: "live", ack: true });
+    (0, node_test_1.it)("live global + live addon allows writes", async () => {
+        const adapter = makeAdapter({ global_execution_mode: "dryrun", wb_addon_mode: "dryrun" });
+        await (0, execution_mode_js_1.handleExecutionModeStateChange)(adapter, `${NS}.${GLOBAL_REL}`, freshUserState("live", 2));
+        await (0, execution_mode_js_1.handleExecutionModeStateChange)(adapter, `${NS}.${WB_REL}`, freshUserState("live", 3));
         strict_1.default.equal(await (0, execution_mode_js_1.isLiveWriteAllowed)(adapter.getStateAsync, "wallbox"), true);
     });
-    (0, node_test_1.it)("1: fresh external live request after bootstrap clears rearm via handler", async () => {
-        (0, startup_rearm_js_1.resetStartupRearmForTest)();
-        (0, startup_rearm_js_1.setStartupRearmRequired)(true);
-        (0, startup_rearm_js_1.markBootstrapCompletedForRearm)(1000);
-        (0, startup_rearm_js_1.recordExecutionModeBaseline)(GLOBAL_REL, 1);
-        const adapter = makeAdapter({ global_execution_mode: "live" });
-        await (0, execution_mode_js_1.handleExecutionModeStateChange)(adapter, `${NS}.${GLOBAL_REL}`, freshUserState("live", 2));
-        strict_1.default.equal((0, startup_rearm_js_1.isStartupRearmRequired)(), false);
-        strict_1.default.equal(adapter.store.get("info.backup.live_rearm_required")?.val, false);
-        strict_1.default.equal(adapter.store.get(GLOBAL_REL)?.val, "live");
+    (0, node_test_1.it)("live global + dryrun addon blocks writes", async () => {
+        const adapter = makeAdapter();
+        await adapter.setStateAsync(GLOBAL_REL, { val: "live", ack: true });
+        await adapter.setStateAsync(WB_REL, { val: "dryrun", ack: true });
+        strict_1.default.equal(await (0, execution_mode_js_1.isLiveWriteAllowed)(adapter.getStateAsync, "wallbox"), false);
     });
-    (0, node_test_1.it)("confirmStartupLiveRearm clears flag and info state", async () => {
-        (0, startup_rearm_js_1.resetStartupRearmForTest)();
-        (0, startup_rearm_js_1.setStartupRearmRequired)(true);
-        const adapter = makeAdapter({ global_execution_mode: "live" });
-        await adapter.setStateAsync(tree_paths_js_1.GLOBAL.executionMode, { val: "live", ack: true });
-        const { confirmStartupLiveRearm } = await Promise.resolve().then(() => __importStar(require("./startup_rearm.js")));
-        const result = await confirmStartupLiveRearm(adapter);
-        strict_1.default.equal(result.ok, true);
-        strict_1.default.equal((0, startup_rearm_js_1.isStartupRearmRequired)(), false);
-        strict_1.default.equal(adapter.store.get("info.backup.live_rearm_required")?.val, false);
+    (0, node_test_1.it)("sync from admin live config mirrors object tree and allows writes", async () => {
+        const adapter = makeAdapter({ global_execution_mode: "live", wb_addon_mode: "live" });
+        await (0, execution_mode_js_1.syncExecutionModesFromConfig)(adapter, adapter.config, {});
+        strict_1.default.equal(adapter.store.get(GLOBAL_REL)?.val, "live");
+        strict_1.default.equal(adapter.store.get(WB_REL)?.val, "live");
+        strict_1.default.equal(await (0, execution_mode_js_1.isLiveWriteAllowed)(adapter.getStateAsync, "wallbox"), true);
     });
 });

@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.148",
+		"version": "0.1.149",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.149": {
+				"en": "Cleanup: remove Startup-Rearm write gate (dryrun/live only); hide Planner Shadow/Takeover from Admin. Device writes follow global+addon modes again.",
+				"de": "Aufräumen: Startup-Rearm-Write-Gate entfernt (nur noch dryrun/live); Planner-Shadow/Takeover aus dem Admin. Geräte-Writes folgen wieder Global+Addon-Modi."
+			},
 			"0.1.148": {
 				"en": "Fix Startup-Rearm: clear restore gate before ready; Admin button Live-Writes freigeben (confirmLiveRearm) — mode toggle alone no longer silently ignored.",
 				"de": "Fix Startup-Rearm: Restore-Gate vor Ready freigeben; Admin-Button Live-Writes freigeben (confirmLiveRearm) — Mode-Toggle wird nicht mehr still ignoriert."

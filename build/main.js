@@ -42,7 +42,6 @@ const barrier_2 = require("./restore/barrier");
 const retention_1 = require("./backup/retention");
 const startup_2 = require("./backup_integration/startup");
 const startup_rearm_1 = require("./backup_integration/startup_rearm");
-const ensure_states_1 = require("./backup_integration/ensure_states");
 const execution_mode_2 = require("./execution_mode");
 const tree_paths_1 = require("./tree_paths");
 const inbox_1 = require("./inbox");
@@ -106,26 +105,6 @@ class Ems extends utils.Adapter {
                 }
             })().catch((e) => {
                 this.log.error(`requestBackupExport unhandled: ${e instanceof Error ? e.message : String(e)}`);
-            });
-            return;
-        }
-        if (obj.command === "confirmLiveRearm") {
-            void (async () => {
-                try {
-                    const result = await (0, startup_rearm_1.confirmStartupLiveRearm)(this);
-                    if (obj.callback) {
-                        this.sendTo(obj.from, obj.command, result, obj.callback);
-                    }
-                }
-                catch (e) {
-                    const error = e instanceof Error ? e.message : String(e);
-                    this.log.error(`confirmLiveRearm: ${error}`);
-                    if (obj.callback) {
-                        this.sendTo(obj.from, obj.command, { ok: false, error }, obj.callback);
-                    }
-                }
-            })().catch((e) => {
-                this.log.error(`confirmLiveRearm unhandled: ${e instanceof Error ? e.message : String(e)}`);
             });
         }
     }
@@ -199,7 +178,6 @@ class Ems extends utils.Adapter {
             await (0, export_handler_1.initBackupExportRuntime)(this);
             await (0, handler_1.initRestoreRuntime)(this);
         });
-        await this.subscribeStatesAsync("info.backup.confirm_live_rearm");
         await this.step("process pending inbox", async () => {
             const inbox = await this.getStateAsync(states_1.STATE.command.inbox);
             if (inbox && !inbox.ack && inbox.val != null) {
@@ -220,26 +198,11 @@ class Ems extends utils.Adapter {
         callback();
     }
     async onStateChange(id, state) {
-        const relEarly = id.startsWith(`${this.namespace}.`) ? id.slice(this.namespace.length + 1) : id;
-        // Confirm button must work even if restore gate stuck after a timed-out init step.
-        if (state &&
-            !state.ack &&
-            (state.val === true || state.val === "true" || state.val === 1) &&
-            relEarly === ensure_states_1.BACKUP_INFO_STATES.confirmLiveRearm) {
-            await (0, startup_rearm_1.confirmStartupLiveRearm)(this);
-            return;
-        }
         if (!(0, barrier_1.isBootstrapComplete)() || (0, barrier_2.isRestoreInProgress)()) {
-            if (state &&
-                !state.ack &&
-                (relEarly === tree_paths_1.GLOBAL.executionMode ||
-                    (relEarly.startsWith("addons.") && relEarly.endsWith(".mode")))) {
-                this.log.warn(`${relEarly}: State-Change ignoriert (bootstrapComplete=${(0, barrier_1.isBootstrapComplete)()} restoreInProgress=${(0, barrier_2.isRestoreInProgress)()})`);
-            }
             return;
         }
         if (state) {
-            const rel = relEarly;
+            const rel = id.startsWith(`${this.namespace}.`) ? id.slice(this.namespace.length + 1) : id;
             if ((0, export_handler_1.isBackupRelatedState)(rel)) {
                 await (0, export_handler_1.handleBackupStateChange)(this, rel, state.val, state.ack);
                 return;

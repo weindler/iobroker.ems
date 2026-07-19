@@ -120,7 +120,7 @@ exports.runLegacyRestoreRecoveryBeforeMigration = runLegacyRestoreRecoveryBefore
 async function runBackupIntegrationStartup(host) {
     const layout = (0, paths_1.resolveEmsPaths)(host);
     await ensureRuntimeDirs(layout);
-    (0, startup_rearm_1.setStartupRearmRequired)(true);
+    (0, startup_rearm_1.setStartupRearmRequired)(false);
     (0, barrier_1.setRestoreInProgress)(true);
     (0, dryrun_context_1.setPendingForceDryrunReason)(null);
     await (0, ensure_states_1.ensureBackupIntegrationInfoStates)(host);
@@ -208,7 +208,7 @@ async function runBackupIntegrationStartup(host) {
         checkpointGeneration: manifest?.checkpointGeneration ?? 0,
         journalStatus,
         migrationStatus,
-        liveRearmRequired: true,
+        liveRearmRequired: false,
     });
     return ctx;
 }

@@ -26,11 +26,9 @@ import {
 } from "../planner_coordinator/compose";
 import type { PlannerCoordinatorAdapterHost } from "../planner_coordinator/runtime_factory";
 import {
-	initPlannerShadowRuntime,
 	stopPlannerShadowRuntime,
-	type PlannerShadowRuntimeHost,
 } from "../planner_shadow/runtime";
-import { ensurePlannerStateTree, runPlannerRuntime, stopPlanner, type PlannerHost } from "../planner";
+import { ensurePlannerStateTree, stopPlanner, type PlannerHost } from "../planner";
 import { plannerRuntimeModeFromConfig } from "../planner_config";
 import { resetGlobalModesRuntime } from "../global_modes";
 import { ensureEmsLightStates } from "./ensure_states";
@@ -138,31 +136,21 @@ export function getLearningStateTreeHost(): LearningStateTreeHost | null {
 	return learningHost;
 }
 
-function buildPlannerShadowRuntimeHost(adapter: ioBroker.Adapter): PlannerShadowRuntimeHost {
-	return {
-		namespace: adapter.namespace,
-		config: adapter.config,
-		log: adapter.log,
-		// Real adapter for resolveEmsPaths → @iobroker/adapter-core (not a fake adapter method).
-		pathInput: adapter,
-		getStateAsync: adapter.getStateAsync.bind(adapter),
-		setStateAsync: adapter.setStateAsync.bind(adapter),
-		setObjectNotExistsAsync: adapter.setObjectNotExistsAsync.bind(adapter),
-		extendObjectAsync: adapter.extendObjectAsync?.bind(adapter),
-		subscribeStatesAsync: adapter.subscribeStatesAsync.bind(adapter),
-		unsubscribeStatesAsync: adapter.unsubscribeStatesAsync.bind(adapter),
-	};
-}
-
 /** Phase B — EMS-Light-, Planner-, Policy-, Intent- und Learning-Objekte. */
 export async function ensureEmsLightStateTree(adapter: ioBroker.Adapter): Promise<void> {
 	const version = String(adapter.common?.version ?? "0.0.0");
 	const host = adapter as unknown as LiveCacheHost;
-	const plannerMode = plannerRuntimeModeFromConfig(adapter.config).mode;
+	const configured = plannerRuntimeModeFromConfig(adapter.config).mode;
+	if (configured !== "off") {
+		adapter.log.info(
+			`Planner Shadow Mode „${configured}“ ignoriert — Produktions-Oberfläche erzwingt off`,
+		);
+	}
+	const plannerMode = "off" as const;
 	await ensureEmsLightStates(host, version);
 	await ensurePlannerStateTree(host as unknown as PlannerHost & LiveCacheHost, {
-		includeTakeoverStates: plannerMode !== "off",
-		coordinatorMinimal: plannerMode === "off",
+		includeTakeoverStates: false,
+		coordinatorMinimal: true,
 	});
 	const policyHost = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & PolicyEngineHost);
 	await ensurePolicyStateTree(policyHost);
@@ -173,17 +161,18 @@ export async function ensureEmsLightStateTree(adapter: ioBroker.Adapter): Promis
 /** Phase F — Runtime, Ticks und initiale Auswertung (nach Bootstrap-Barriere). */
 export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Promise<void> {
 	const host = adapter as unknown as LiveCacheHost;
-	const plannerMode = plannerRuntimeModeFromConfig(adapter.config).mode;
-
-	// off/legacy: keep v0.1.124-shaped startup — no Forecast/Daily/Allocation bootstrap.
-	if (plannerMode !== "off") {
-		await runPlannerRuntime(host as unknown as PlannerHost & LiveCacheHost);
+	const configured = plannerRuntimeModeFromConfig(adapter.config).mode;
+	if (configured !== "off") {
+		adapter.log.info(
+			`Planner Shadow Runtime nicht gestartet (konfiguriert „${configured}“, Oberfläche erzwingt off)`,
+		);
 	}
+
+	// Shadow/Takeover/Authority stay out of the production control path.
 	createPlannerOnDemandCoordinatorFromAdapter(adapter as unknown as PlannerCoordinatorAdapterHost, {
 		enabled: false,
 		log: adapter.log,
 	});
-	await initPlannerShadowRuntime(buildPlannerShadowRuntimeHost(adapter));
 	energyDailyRollupHost = buildRollupHost(adapter);
 	powerRollupHost = energyDailyRollupHost;
 	await initEnergyDailyRollup(energyDailyRollupHost);

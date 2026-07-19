@@ -121,7 +121,7 @@ export async function runBackupIntegrationStartup(host: RestoreHost): Promise<Ba
 	const layout = resolveEmsPaths(host);
 	await ensureRuntimeDirs(layout);
 
-	setStartupRearmRequired(true);
+	setStartupRearmRequired(false);
 	setRestoreInProgress(true);
 	setPendingForceDryrunReason(null);
 
@@ -218,7 +218,7 @@ export async function runBackupIntegrationStartup(host: RestoreHost): Promise<Ba
 		checkpointGeneration: manifest?.checkpointGeneration ?? 0,
 		journalStatus,
 		migrationStatus,
-		liveRearmRequired: true,
+		liveRearmRequired: false,
 	});
 
 	return ctx;

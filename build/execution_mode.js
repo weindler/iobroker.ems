@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ensureChannelTree = exports.handleExecutionModeStateChange = exports.isExecutionModeStateRelativeId = exports.persistExecutionModeToAdminConfig = exports.executionModeConfigKeyForRelativeId = exports.syncExecutionModesFromConfig = exports.ensureAddonExecutionModeStates = exports.ensureGlobalExecutionStates = exports.clampNativeExecutionModesDryrun = exports.NATIVE_EXECUTION_MODE_KEYS = exports.isLiveWriteAllowed = exports.executionModeCommon = exports.parseMode = exports.executionModesConfigFingerprint = exports.executionModesFromConfig = exports.EXECUTION_MODE_CONFIG_FINGERPRINT = exports.EXECUTION_MODE_ADDON_IDS = exports.EXECUTION_MODE_STATES = exports.EXECUTION_MODE_STATE_LABELS = exports.EXECUTION_MODES = void 0;
-const startup_rearm_1 = require("./backup_integration/startup_rearm");
 const tree_paths_1 = require("./tree_paths");
 exports.EXECUTION_MODES = ["dryrun", "live"];
 exports.EXECUTION_MODE_STATE_LABELS = {
@@ -54,9 +53,6 @@ function executionModeCommon(name, def = "dryrun") {
 }
 exports.executionModeCommon = executionModeCommon;
 async function isLiveWriteAllowed(getState, addonId) {
-    if ((0, startup_rearm_1.isStartupRearmRequired)()) {
-        return false;
-    }
     const global = await getState(tree_paths_1.GLOBAL.executionMode);
     if (parseMode(global?.val) !== "live") {
         return false;
@@ -204,17 +200,6 @@ async function syncExecutionModesFromConfig(host, config, options = {}) {
         if (forceReason === "restore_recovery" && typeof host.updateConfig === "function") {
             await host.updateConfig(dryrunNative);
         }
-        if (forceReason === "startup_rearm_required") {
-            // Object tree follows Admin/Native; writes stay gated by isStartupRearmRequired().
-            await applyExecutionModesFromConfig(host, modes);
-            await host.setStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT, {
-                val: fingerprint,
-                ack: true,
-            });
-            await mirrorGlobalExecutionSafety(host);
-            host.log?.info?.("Startup-Rearm: Objektbaum folgt Admin-Config — Geräte-Writes gesperrt bis explizitem Live-Rearm");
-            return;
-        }
         await applyExecutionModesFromConfig(host, ALL_DRYRUN_MODES);
         await host.setStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT, {
             val: executionModesConfigFingerprint(dryrunNative),
@@ -310,13 +295,6 @@ async function handleExecutionModeStateChange(adapter, id, state) {
     const relativeId = id.slice(prefix.length);
     if (!isExecutionModeStateRelativeId(relativeId)) {
         return;
-    }
-    if ((0, startup_rearm_1.isStartupRearmRequired)() &&
-        relativeId === tree_paths_1.GLOBAL.executionMode &&
-        (0, startup_rearm_1.isExplicitUserLiveRearmRequest)(state, adapter.namespace, relativeId, (0, startup_rearm_1.getBootstrapCompletedAtMs)())) {
-        (0, startup_rearm_1.clearStartupRearmRequired)();
-        await adapter.setStateAsync("info.backup.live_rearm_required", { val: false, ack: true });
-        adapter.log.info("Startup-Rearm aufgehoben — Geräte-Writes freigegeben (info.backup.live_rearm_required=false)");
     }
     const requested = String(state.val ?? "").trim().toLowerCase();
     const mode = parseMode(state.val);

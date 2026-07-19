@@ -7986,6 +7986,119 @@
 					"xl": 12,
 					"text": "Ablage Host: …/ems-runtime.&lt;Instanz&gt;/exports/backup/  ·  Danach backup.last_file_name prüfen."
 				},
+				"dividerBackupDiag": {
+					"type": "divider",
+					"height": 2,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"hBackupDiag": {
+					"type": "header",
+					"size": 2,
+					"text": "2. Diagnosemodus (zeitlich begrenzt)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"introDiagMode": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Aktiviert erweiterte Diagnose-Aufzeichnung nur für die gewählte Dauer (15/30/60/120 Min) und schaltet danach automatisch ab — läuft nicht dauerhaft. Danach Support-Paket erstellen."
+				},
+				"diagnostic_duration_min": {
+					"type": "select",
+					"label": "Dauer Diagnosemodus",
+					"doNotSave": true,
+					"default": 60,
+					"options": [
+						{ "label": "15 Minuten", "value": 15 },
+						{ "label": "30 Minuten", "value": 30 },
+						{ "label": "60 Minuten", "value": 60 },
+						{ "label": "120 Minuten", "value": 120 }
+					],
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 3,
+					"xl": 3
+				},
+				"startDiagnosticMode": {
+					"type": "sendTo",
+					"command": "startDiagnosticMode",
+					"jsonData": "{\"durationMin\": \"${data.diagnostic_duration_min}\"}",
+					"label": "Diagnosemodus starten",
+					"showProcess": true,
+					"timeout": 30000,
+					"variant": "contained",
+					"color": "secondary",
+					"icon": "send",
+					"result": {
+						"ok": "Diagnosemodus aktiv — endet automatisch nach Ablauf",
+						"error": "Start fehlgeschlagen (nur 15/30/60/120 Min)"
+					},
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 3,
+					"xl": 3
+				},
+				"stopDiagnosticMode": {
+					"type": "sendTo",
+					"command": "stopDiagnosticMode",
+					"jsonData": "{}",
+					"label": "Diagnosemodus stoppen",
+					"showProcess": true,
+					"timeout": 15000,
+					"variant": "outlined",
+					"color": "primary",
+					"icon": "send",
+					"result": {
+						"ok": "Diagnosemodus beendet",
+						"error": "Stop fehlgeschlagen"
+					},
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 3,
+					"xl": 3
+				},
+				"getDiagnosticModeStatus": {
+					"type": "sendTo",
+					"command": "getDiagnosticModeStatus",
+					"jsonData": "{}",
+					"label": "Status prüfen",
+					"showProcess": true,
+					"timeout": 15000,
+					"variant": "text",
+					"icon": "info",
+					"result": {
+						"ok": "Status gelesen",
+						"error": "Status nicht lesbar"
+					},
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 3,
+					"xl": 3
+				},
+				"diagModeHint": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Auto-Ende ist fest verdrahtet — kein Dauerbetrieb. Während aktiv: mehr Detail in Support-Logs; nach Ablauf oder Stop Support-Paket erzeugen."
+				},
 				"dividerBackupSupport": {
 					"type": "divider",
 					"height": 2,
@@ -7998,7 +8111,7 @@
 				"hBackupSupport": {
 					"type": "header",
 					"size": 2,
-					"text": "2. Diagnose-/Support-Paket (kein Restore)",
+					"text": "3. Diagnose-/Support-Paket (kein Restore)",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -8056,7 +8169,7 @@
 				"hBackupRestore": {
 					"type": "header",
 					"size": 2,
-					"text": "3. Wiederherstellen",
+					"text": "4. Wiederherstellen",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,

@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.173",
+		"version": "0.1.174",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.174": {
+				"en": "Backup tab: diagnostic mode with 15/30/60/120 min auto-off (start/stop/status).",
+				"de": "Backup-Tab: Diagnosemodus mit Auto-Ende nach 15/30/60/120 Min (Start/Stop/Status)."
+			},
 			"0.1.173": {
 				"en": "Backup UX: newest file marked, no Plan-ID typing, confirm dialog on restore; clarify Save is not needed.",
 				"de": "Backup-UX: Neueste Datei markiert, keine Plan-ID tippen, Bestätigungsdialog beim Restore; Speichern nicht nötig."

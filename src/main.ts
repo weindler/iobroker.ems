@@ -110,6 +110,113 @@ class Ems extends utils.Adapter {
 			});
 			return;
 		}
+		if (obj.command === "startDiagnosticMode") {
+			void (async () => {
+				try {
+					const msg = (obj.message && typeof obj.message === "object" ? obj.message : {}) as {
+						durationMin?: number | string;
+						diagnostic_duration_min?: number | string;
+					};
+					const raw = msg.durationMin ?? msg.diagnostic_duration_min ?? 60;
+					const durationMin = typeof raw === "number" ? raw : Number(raw);
+					const { handleDiagnosticModeRequest, syncDiagnosticStatus } = await import(
+						"./backup/export_handler.js"
+					);
+					const started = await handleDiagnosticModeRequest(this, true, false, durationMin);
+					await syncDiagnosticStatus(this);
+					if (obj.callback) {
+						if (started.ok) {
+							this.sendTo(
+								obj.from,
+								obj.command,
+								{
+									result: "ok",
+									active: true,
+									durationMin: started.durationMin,
+									expiresAt: started.expiresAt,
+									hint: `Diagnosemodus ${started.durationMin} Min — endet automatisch ${started.expiresAt}`,
+								},
+								obj.callback,
+							);
+						} else {
+							this.sendTo(
+								obj.from,
+								obj.command,
+								{ result: "error", error: started.error },
+								obj.callback,
+							);
+						}
+					}
+				} catch (e) {
+					const error = e instanceof Error ? e.message : String(e);
+					this.log.error(`startDiagnosticMode: ${error}`);
+					if (obj.callback) {
+						this.sendTo(obj.from, obj.command, { result: "error", error }, obj.callback);
+					}
+				}
+			})();
+			return;
+		}
+		if (obj.command === "stopDiagnosticMode") {
+			void (async () => {
+				try {
+					const { handleDiagnosticStopRequest } = await import("./backup/export_handler.js");
+					const stopped = await handleDiagnosticStopRequest(this);
+					if (obj.callback) {
+						this.sendTo(
+							obj.from,
+							obj.command,
+							{
+								result: "ok",
+								active: false,
+								wasActive: stopped.wasActive,
+								hint: stopped.wasActive
+									? "Diagnosemodus manuell beendet"
+									: "Diagnosemodus war bereits aus",
+							},
+							obj.callback,
+						);
+					}
+				} catch (e) {
+					const error = e instanceof Error ? e.message : String(e);
+					if (obj.callback) {
+						this.sendTo(obj.from, obj.command, { result: "error", error }, obj.callback);
+					}
+				}
+			})();
+			return;
+		}
+		if (obj.command === "getDiagnosticModeStatus") {
+			void (async () => {
+				try {
+					const { syncDiagnosticStatus } = await import("./backup/export_handler.js");
+					const { diagnosticModeStatus } = await import("./support/diagnostic_mode.js");
+					await syncDiagnosticStatus(this);
+					const st = diagnosticModeStatus();
+					if (obj.callback) {
+						this.sendTo(
+							obj.from,
+							obj.command,
+							{
+								result: "ok",
+								active: st.active,
+								expiresAt: st.expiresAt,
+								hint: st.active
+									? `Aktiv — endet automatisch ${st.expiresAt}`
+									: "Inaktiv (Auto-Ende oder gestoppt)",
+							},
+							obj.callback,
+						);
+					}
+				} catch (e) {
+					const error = e instanceof Error ? e.message : String(e);
+					if (obj.callback) {
+						this.sendTo(obj.from, obj.command, { result: "error", error }, obj.callback);
+					}
+				}
+			})();
+			return;
+		}
 		if (obj.command === "requestSupportExport") {
 			void (async () => {
 				try {

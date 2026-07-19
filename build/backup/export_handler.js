@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopDiagnosticMode = exports.handleBackupStateChange = exports.isBackupRelatedState = exports.initBackupExportRuntime = exports.syncDiagnosticStatus = exports.handleDiagnosticModeRequest = exports.handleSupportExportRequest = exports.handleBackupExportRequest = void 0;
+exports.stopDiagnosticMode = exports.handleBackupStateChange = exports.isBackupRelatedState = exports.initBackupExportRuntime = exports.syncDiagnosticStatus = exports.handleDiagnosticStopRequest = exports.handleDiagnosticModeRequest = exports.handleSupportExportRequest = exports.handleBackupExportRequest = void 0;
 const types_1 = require("./types");
 const ensure_states_1 = require("./ensure_states");
 const operation_lock_1 = require("./operation_lock");
@@ -127,26 +127,63 @@ async function handleSupportExportRequest(host, val, ack) {
     }
 }
 exports.handleSupportExportRequest = handleSupportExportRequest;
-async function handleDiagnosticModeRequest(host, val, ack) {
-    if (!isConsciousRequest(val, ack))
-        return;
+async function handleDiagnosticModeRequest(host, val, ack, durationOverride) {
+    if (!isConsciousRequest(val, ack)) {
+        return { ok: false, error: "ignored" };
+    }
     await host.setStateAsync(ensure_states_1.SUPPORT_STATES.diagnosticRequest, { val: false, ack: true });
-    const durSt = await host.getStateAsync(ensure_states_1.SUPPORT_STATES.diagnosticDurationMin);
-    const durationMin = typeof durSt?.val === "number" && Number.isFinite(durSt.val)
-        ? durSt.val
-        : diagnostic_mode_1.DIAGNOSTIC_DEFAULT_DURATION_MIN;
+    let durationMin = diagnostic_mode_1.DIAGNOSTIC_DEFAULT_DURATION_MIN;
+    if (typeof durationOverride === "number" && Number.isFinite(durationOverride)) {
+        durationMin = durationOverride;
+    }
+    else {
+        const durSt = await host.getStateAsync(ensure_states_1.SUPPORT_STATES.diagnosticDurationMin);
+        if (typeof durSt?.val === "number" && Number.isFinite(durSt.val)) {
+            durationMin = durSt.val;
+        }
+    }
+    await host.setStateAsync(ensure_states_1.SUPPORT_STATES.diagnosticDurationMin, { val: durationMin, ack: true });
     const started = (0, diagnostic_mode_1.startDiagnosticMode)(durationMin, () => {
-        void syncDiagnosticStatus(host);
+        void (async () => {
+            await syncDiagnosticStatus(host);
+            host.log?.info?.(`Diagnosemodus automatisch beendet nach ${durationMin} Min — Support-Paket ggf. jetzt erstellen`);
+        })();
     });
     if (started.ok) {
         await host.setStateAsync(ensure_states_1.SUPPORT_STATES.diagnosticMode, { val: true, ack: true });
         await host.setStateAsync(ensure_states_1.SUPPORT_STATES.diagnosticExpiresAt, { val: started.expiresAt, ack: true });
+        await host.setStateAsync(ensure_states_1.SUPPORT_STATES.lastError, { val: "", ack: true });
+        try {
+            await (0, diagnostic_mode_1.recordDiagnosticEvent)(host, {
+                ts: new Date().toISOString(),
+                level: "info",
+                module: "support",
+                event: "diagnostic_mode_started",
+                detail: `duration_min=${durationMin};expires_at=${started.expiresAt}`,
+            });
+            await syncDiagnosticStatus(host);
+        }
+        catch {
+            /* logging optional */
+        }
+        host.log?.info?.(`Diagnosemodus gestartet für ${durationMin} Min — endet automatisch ${started.expiresAt}`);
+        return { ok: true, expiresAt: started.expiresAt, durationMin };
     }
-    else {
-        await host.setStateAsync(ensure_states_1.SUPPORT_STATES.lastError, { val: started.error, ack: true });
-    }
+    await host.setStateAsync(ensure_states_1.SUPPORT_STATES.lastError, { val: started.error, ack: true });
+    return { ok: false, error: started.error };
 }
 exports.handleDiagnosticModeRequest = handleDiagnosticModeRequest;
+async function handleDiagnosticStopRequest(host) {
+    const wasActive = (0, diagnostic_mode_1.diagnosticModeStatus)().active;
+    (0, diagnostic_mode_1.stopDiagnosticMode)();
+    await syncDiagnosticStatus(host);
+    await host.setStateAsync(ensure_states_1.SUPPORT_STATES.diagnosticRequest, { val: false, ack: true });
+    if (wasActive) {
+        host.log?.info?.("Diagnosemodus manuell beendet");
+    }
+    return { ok: true, wasActive };
+}
+exports.handleDiagnosticStopRequest = handleDiagnosticStopRequest;
 async function syncDiagnosticStatus(host) {
     const st = (0, diagnostic_mode_1.diagnosticModeStatus)();
     await host.setStateAsync(ensure_states_1.SUPPORT_STATES.diagnosticMode, { val: st.active, ack: true });

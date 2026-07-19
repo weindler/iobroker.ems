@@ -5,6 +5,7 @@ import type { ExportServiceHost } from "./types";
 import {
 	DIAGNOSTIC_DEFAULT_DURATION_MIN,
 	diagnosticModeStatus,
+	recordDiagnosticEvent,
 	resetDiagnosticOnStartup,
 	startDiagnosticMode,
 	stopDiagnosticMode,
@@ -126,23 +127,66 @@ export async function handleDiagnosticModeRequest(
 	host: ExportServiceHost,
 	val: unknown,
 	ack?: boolean,
-): Promise<void> {
-	if (!isConsciousRequest(val, ack)) return;
+	durationOverride?: number,
+): Promise<{ ok: true; expiresAt: string; durationMin: number } | { ok: false; error: string }> {
+	if (!isConsciousRequest(val, ack)) {
+		return { ok: false, error: "ignored" };
+	}
 	await host.setStateAsync(SUPPORT_STATES.diagnosticRequest, { val: false, ack: true });
-	const durSt = await host.getStateAsync(SUPPORT_STATES.diagnosticDurationMin);
-	const durationMin =
-		typeof durSt?.val === "number" && Number.isFinite(durSt.val)
-			? durSt.val
-			: DIAGNOSTIC_DEFAULT_DURATION_MIN;
+	let durationMin = DIAGNOSTIC_DEFAULT_DURATION_MIN;
+	if (typeof durationOverride === "number" && Number.isFinite(durationOverride)) {
+		durationMin = durationOverride;
+	} else {
+		const durSt = await host.getStateAsync(SUPPORT_STATES.diagnosticDurationMin);
+		if (typeof durSt?.val === "number" && Number.isFinite(durSt.val)) {
+			durationMin = durSt.val;
+		}
+	}
+	await host.setStateAsync(SUPPORT_STATES.diagnosticDurationMin, { val: durationMin, ack: true });
 	const started = startDiagnosticMode(durationMin, () => {
-		void syncDiagnosticStatus(host);
+		void (async () => {
+			await syncDiagnosticStatus(host);
+			host.log?.info?.(
+				`Diagnosemodus automatisch beendet nach ${durationMin} Min — Support-Paket ggf. jetzt erstellen`,
+			);
+		})();
 	});
 	if (started.ok) {
 		await host.setStateAsync(SUPPORT_STATES.diagnosticMode, { val: true, ack: true });
 		await host.setStateAsync(SUPPORT_STATES.diagnosticExpiresAt, { val: started.expiresAt, ack: true });
-	} else {
-		await host.setStateAsync(SUPPORT_STATES.lastError, { val: started.error, ack: true });
+		await host.setStateAsync(SUPPORT_STATES.lastError, { val: "", ack: true });
+		try {
+			await recordDiagnosticEvent(host, {
+				ts: new Date().toISOString(),
+				level: "info",
+				module: "support",
+				event: "diagnostic_mode_started",
+				detail: `duration_min=${durationMin};expires_at=${started.expiresAt}`,
+			});
+			await syncDiagnosticStatus(host);
+		} catch {
+			/* logging optional */
+		}
+		host.log?.info?.(
+			`Diagnosemodus gestartet für ${durationMin} Min — endet automatisch ${started.expiresAt}`,
+		);
+		return { ok: true, expiresAt: started.expiresAt, durationMin };
 	}
+	await host.setStateAsync(SUPPORT_STATES.lastError, { val: started.error, ack: true });
+	return { ok: false, error: started.error };
+}
+
+export async function handleDiagnosticStopRequest(
+	host: ExportServiceHost,
+): Promise<{ ok: true; wasActive: boolean }> {
+	const wasActive = diagnosticModeStatus().active;
+	stopDiagnosticMode();
+	await syncDiagnosticStatus(host);
+	await host.setStateAsync(SUPPORT_STATES.diagnosticRequest, { val: false, ack: true });
+	if (wasActive) {
+		host.log?.info?.("Diagnosemodus manuell beendet");
+	}
+	return { ok: true, wasActive };
 }
 
 export async function syncDiagnosticStatus(host: ExportServiceHost): Promise<void> {

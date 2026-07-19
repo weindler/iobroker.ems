@@ -71,6 +71,10 @@ describe("surface cleanup allowlist", () => {
 			isAllowlistedCleanupRelativeId("addons.air_conditioning.mapping.unit_2_cmd_switch_on"),
 			true,
 		);
+		assert.equal(
+			isAllowlistedCleanupRelativeId("addons.air_conditioning.mapping.unit_3_cmd_switch_on.enabled"),
+			true,
+		);
 		assert.equal(isAllowlistedCleanupRelativeId("addons.wallbox.vehicles.ford_explorer"), true);
 		assert.equal(isAllowlistedCleanupRelativeId("planner.authority"), true);
 		assert.equal(isAllowlistedCleanupRelativeId("planner.takeover"), true);
@@ -122,12 +126,23 @@ describe("dynamic surface ensure + cleanup", () => {
 			setObjectNotExistsAsync: host.setObjectNotExistsAsync.bind(host),
 		}, { unitIndexes: [1, 2, 3, 4, 5] });
 		assert.ok(host.objects.has("addons.air_conditioning.units.unit_5"));
+		assert.ok(
+			host.objects.has("addons.air_conditioning.mapping.unit_5_cmd_switch_on.enabled"),
+		);
 
 		host.config = { ac_u1_enabled: true };
 		const first = await runDynamicSurfaceCleanup(host);
 		assert.ok(first.deleted > 0);
 		assert.ok(host.objects.has("addons.air_conditioning.units.unit_1"));
 		assert.equal(host.objects.has("addons.air_conditioning.units.unit_5"), false);
+		assert.equal(
+			host.objects.has("addons.air_conditioning.mapping.unit_5_cmd_switch_on.enabled"),
+			false,
+		);
+		assert.equal(
+			host.objects.has("addons.air_conditioning.mapping.unit_3_cmd_cleaning_mode.target_state"),
+			false,
+		);
 
 		const before = host.objects.size;
 		const second = await runDynamicSurfaceCleanup(host);

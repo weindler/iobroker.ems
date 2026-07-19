@@ -63,6 +63,7 @@ class FakeCleanupHost {
     (0, node_test_1.it)("allows AC/vehicle roots and lean planner purge roots", () => {
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.air_conditioning.units.unit_3"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.air_conditioning.mapping.unit_2_cmd_switch_on"), true);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.air_conditioning.mapping.unit_3_cmd_switch_on.enabled"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.wallbox.vehicles.ford_explorer"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.authority"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.takeover"), true);
@@ -109,11 +110,14 @@ class FakeCleanupHost {
             setObjectNotExistsAsync: host.setObjectNotExistsAsync.bind(host),
         }, { unitIndexes: [1, 2, 3, 4, 5] });
         strict_1.default.ok(host.objects.has("addons.air_conditioning.units.unit_5"));
+        strict_1.default.ok(host.objects.has("addons.air_conditioning.mapping.unit_5_cmd_switch_on.enabled"));
         host.config = { ac_u1_enabled: true };
         const first = await (0, cleanup_js_1.runDynamicSurfaceCleanup)(host);
         strict_1.default.ok(first.deleted > 0);
         strict_1.default.ok(host.objects.has("addons.air_conditioning.units.unit_1"));
         strict_1.default.equal(host.objects.has("addons.air_conditioning.units.unit_5"), false);
+        strict_1.default.equal(host.objects.has("addons.air_conditioning.mapping.unit_5_cmd_switch_on.enabled"), false);
+        strict_1.default.equal(host.objects.has("addons.air_conditioning.mapping.unit_3_cmd_cleaning_mode.target_state"), false);
         const before = host.objects.size;
         const second = await (0, cleanup_js_1.runDynamicSurfaceCleanup)(host);
         strict_1.default.equal(second.deleted, 0);

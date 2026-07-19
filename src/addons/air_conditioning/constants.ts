@@ -36,6 +36,7 @@ export const AC_MAPPING_ROLES = [
 	"cmd_set_cool_setpoint",
 	"cmd_set_heat_setpoint",
 	"cmd_cleaning_start",
+	"cmd_cleaning_mode",
 	"cmd_refresh",
 ] as const;
 

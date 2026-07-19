@@ -16,6 +16,7 @@ import { WALLBOX_VEHICLES_BASE, vehicleBasePath } from "../addons/wallbox/vehicl
 import { mappingBase } from "../tree_paths";
 import {
 	COMPATIBILITY_STATE_PREFIXES,
+	AC_MAPPING_LEAF_SUFFIXES,
 	isAllowlistedCleanupRelativeId,
 	isLeanPlannerPurgeRoot,
 	LEAN_PLANNER_PURGE_ROOTS,
@@ -113,7 +114,12 @@ async function cleanupUnconfiguredAcUnits(host: SurfaceCleanupHost, stats: Surfa
 		await safeDeleteRelative(host, unitBase, stats, "ac_unit");
 		for (const role of AC_MAPPING_ROLES) {
 			const cmd = acUnitMappingCommand(i, role);
-			await safeDeleteRelative(host, mappingBase(AC_ADDON_ID, cmd), stats, "ac_mapping");
+			const base = mappingBase(AC_ADDON_ID, cmd);
+			// Mapping ensures only create leaf states — channel root often missing.
+			for (const suffix of AC_MAPPING_LEAF_SUFFIXES) {
+				await safeDeleteRelative(host, `${base}.${suffix}`, stats, "ac_mapping_leaf");
+			}
+			await safeDeleteRelative(host, base, stats, "ac_mapping");
 		}
 	}
 }

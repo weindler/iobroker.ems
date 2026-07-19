@@ -13,9 +13,7 @@ export const PROTECTED_PREFIXES = [
 ] as const;
 
 /** Compatibility JSON mirrors that stay until an explicit reader migration (4E/4F). */
-export const COMPATIBILITY_STATE_PREFIXES = [
-	"learning.persistence.",
-] as const;
+export const COMPATIBILITY_STATE_PREFIXES = ["learning.persistence."] as const;
 
 /**
  * Planner Shadow / operator-plan mirrors purged while production forces planner off.
@@ -32,8 +30,12 @@ export const LEAN_PLANNER_PURGE_ROOTS = [
 ] as const;
 
 const AC_UNIT_RE = /^addons\.air_conditioning\.units\.unit_[1-5]$/;
-const AC_MAPPING_RE = /^addons\.air_conditioning\.mapping\.unit_[1-5]_[a-z0-9_]+$/;
+/** Mapping command channel or known leaf under it. */
+const AC_MAPPING_RE =
+	/^addons\.air_conditioning\.mapping\.unit_[1-5]_[a-z0-9_]+(\.(enabled|target_state|allowed_values))?$/;
 const VEHICLE_FOLDER_RE = /^addons\.wallbox\.vehicles\.[a-z0-9_]+$/;
+
+export const AC_MAPPING_LEAF_SUFFIXES = ["enabled", "target_state", "allowed_values"] as const;
 
 export function isLeanPlannerPurgeRoot(relativeId: string): boolean {
 	return (LEAN_PLANNER_PURGE_ROOTS as readonly string[]).includes(relativeId);
@@ -53,8 +55,8 @@ export function isAllowlistedCleanupRelativeId(relativeId: string): boolean {
 }
 
 export const CLEANUP_ALLOWLIST_DESCRIPTION = [
-	"addons.air_conditioning.units.unit_{1-5} (only when unit not configured)",
-	"addons.air_conditioning.mapping.unit_{1-5}_* (only when unit not configured)",
+	"addons.air_conditioning.units.unit_{1-5} (only when unit not enabled)",
+	"addons.air_conditioning.mapping.unit_{1-5}_* (+ .enabled/.target_state/.allowed_values)",
 	"addons.wallbox.vehicles.<vehicleId> (only when vehicle_id absent from wb_vehicle_profiles)",
 	...LEAN_PLANNER_PURGE_ROOTS.map((r) => `${r} (lean planner surface purge)`),
 ] as const;

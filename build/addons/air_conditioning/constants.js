@@ -36,6 +36,7 @@ exports.AC_MAPPING_ROLES = [
     "cmd_set_cool_setpoint",
     "cmd_set_heat_setpoint",
     "cmd_cleaning_start",
+    "cmd_cleaning_mode",
     "cmd_refresh",
 ];
 /** Fremde States, deren Änderung einen Tick auslöst (keine Schreib-/Impuls-States). */

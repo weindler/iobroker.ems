@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.151",
+		"version": "0.1.152",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.152": {
+				"en": "Fix AC mapping cleanup: delete mapping leaf states for disabled units (unit_3..5 leftovers), not only missing channel roots.",
+				"de": "Fix AC-Mapping-Cleanup: Mapping-Leaf-States deaktivierter Units (Rest unit_3..5) löschen, nicht nur fehlende Channel-Roots."
+			},
 			"0.1.151": {
 				"en": "Fix: write null instead of empty string to number runtime states (allocated power etc.) to stop js-controller type warnings.",
 				"de": "Fix: null statt leerem String auf Number-Runtime-States (allocated power etc.) — keine js-controller Type-Warnungen mehr."

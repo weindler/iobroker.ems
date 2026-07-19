@@ -75,7 +75,12 @@ async function cleanupUnconfiguredAcUnits(host, stats) {
         await safeDeleteRelative(host, unitBase, stats, "ac_unit");
         for (const role of constants_1.AC_MAPPING_ROLES) {
             const cmd = (0, constants_1.acUnitMappingCommand)(i, role);
-            await safeDeleteRelative(host, (0, tree_paths_1.mappingBase)(constants_1.AC_ADDON_ID, cmd), stats, "ac_mapping");
+            const base = (0, tree_paths_1.mappingBase)(constants_1.AC_ADDON_ID, cmd);
+            // Mapping ensures only create leaf states — channel root often missing.
+            for (const suffix of allowlist_1.AC_MAPPING_LEAF_SUFFIXES) {
+                await safeDeleteRelative(host, `${base}.${suffix}`, stats, "ac_mapping_leaf");
+            }
+            await safeDeleteRelative(host, base, stats, "ac_mapping");
         }
     }
 }

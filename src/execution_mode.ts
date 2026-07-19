@@ -430,6 +430,8 @@ export async function handleExecutionModeStateChange(
 		isExplicitUserLiveRearmRequest(state, adapter.namespace, relativeId, getBootstrapCompletedAtMs())
 	) {
 		clearStartupRearmRequired();
+		await adapter.setStateAsync("info.backup.live_rearm_required", { val: false, ack: true });
+		adapter.log.info("Startup-Rearm aufgehoben — Geräte-Writes freigegeben (info.backup.live_rearm_required=false)");
 	}
 
 	const requested = String(state.val ?? "").trim().toLowerCase();

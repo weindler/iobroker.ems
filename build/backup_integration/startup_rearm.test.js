@@ -129,6 +129,7 @@ function freshUserState(val, lc, ts = 2000) {
         strict_1.default.equal((0, startup_rearm_js_1.isStartupRearmRequired)(), true);
         await (0, execution_mode_js_1.handleExecutionModeStateChange)(adapter, `${NS}.${GLOBAL_REL}`, freshUserState("live", 3));
         strict_1.default.equal((0, startup_rearm_js_1.isStartupRearmRequired)(), false);
+        strict_1.default.equal(adapter.store.get("info.backup.live_rearm_required")?.val, false);
         await adapter.setStateAsync(WB_REL, { val: "live", ack: true });
         await adapter.setStateAsync(tree_paths_js_1.GLOBAL.executionMode, { val: "live", ack: true });
         strict_1.default.equal(await (0, execution_mode_js_1.isLiveWriteAllowed)(adapter.getStateAsync, "wallbox"), true);
@@ -141,6 +142,7 @@ function freshUserState(val, lc, ts = 2000) {
         const adapter = makeAdapter({ global_execution_mode: "live" });
         await (0, execution_mode_js_1.handleExecutionModeStateChange)(adapter, `${NS}.${GLOBAL_REL}`, freshUserState("live", 2));
         strict_1.default.equal((0, startup_rearm_js_1.isStartupRearmRequired)(), false);
+        strict_1.default.equal(adapter.store.get("info.backup.live_rearm_required")?.val, false);
         strict_1.default.equal(adapter.store.get(GLOBAL_REL)?.val, "live");
     });
 });

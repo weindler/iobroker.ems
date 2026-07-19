@@ -257,6 +257,7 @@ describe("startup rearm via handleExecutionModeStateChange", () => {
 			freshUserState("live", 3),
 		);
 		assert.equal(isStartupRearmRequired(), false);
+		assert.equal(adapter.store.get("info.backup.live_rearm_required")?.val, false);
 
 		await adapter.setStateAsync(WB_REL, { val: "live", ack: true });
 		await adapter.setStateAsync(GLOBAL.executionMode, { val: "live", ack: true });
@@ -277,6 +278,7 @@ describe("startup rearm via handleExecutionModeStateChange", () => {
 		);
 
 		assert.equal(isStartupRearmRequired(), false);
+		assert.equal(adapter.store.get("info.backup.live_rearm_required")?.val, false);
 		assert.equal(adapter.store.get(GLOBAL_REL)?.val, "live");
 	});
 });

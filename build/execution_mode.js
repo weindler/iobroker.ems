@@ -315,6 +315,8 @@ async function handleExecutionModeStateChange(adapter, id, state) {
         relativeId === tree_paths_1.GLOBAL.executionMode &&
         (0, startup_rearm_1.isExplicitUserLiveRearmRequest)(state, adapter.namespace, relativeId, (0, startup_rearm_1.getBootstrapCompletedAtMs)())) {
         (0, startup_rearm_1.clearStartupRearmRequired)();
+        await adapter.setStateAsync("info.backup.live_rearm_required", { val: false, ack: true });
+        adapter.log.info("Startup-Rearm aufgehoben — Geräte-Writes freigegeben (info.backup.live_rearm_required=false)");
     }
     const requested = String(state.val ?? "").trim().toLowerCase();
     const mode = parseMode(state.val);

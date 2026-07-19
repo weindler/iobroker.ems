@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.146",
+		"version": "0.1.147",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.147": {
+				"en": "Fix: clear info.backup.live_rearm_required when Startup-Rearm is lifted by explicit live request.",
+				"de": "Fix: info.backup.live_rearm_required wird bei explizitem Live-Rearm auf false gesetzt."
+			},
 			"0.1.146": {
 				"en": "Fix Admin Export sendTo: reply via this.sendTo(callback token) — no longer crash with UNCAUGHT_EXCEPTION.",
 				"de": "Fix Admin-Export sendTo: Antwort über this.sendTo(Callback-Token) — kein UNCAUGHT_EXCEPTION-Crash mehr."

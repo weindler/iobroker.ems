@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.171",
+		"version": "0.1.172",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.172": {
+				"en": "Fix support export: relative archive paths no longer false-positive as absolute paths.",
+				"de": "Fix Support-Export: relative Archivpfade nicht mehr fälschlich als Absolute Paths erkannt."
+			},
 			"0.1.171": {
 				"en": "Align with ioBroker Node 22: engines >=20, @types/node 22. Build/dev on Node 22.23.1.",
 				"de": "Abgleich mit ioBroker Node 22: engines >=20, @types/node 22. Build/Dev auf Node 22.23.1."

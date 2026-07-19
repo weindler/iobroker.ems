@@ -7,7 +7,8 @@ const IP_V4_RE = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
 const IP_V6_RE = /\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}\b/g;
 const MAC_RE = /\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b/g;
 const EMAIL_RE = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
-const ABS_PATH_RE = /(?:\/[\w.-]+){2,}/g;
+/** Nur absolute POSIX-Pfade (/opt/...), nicht relative Archivpfade (diagnostics/persist/...). */
+const ABS_PATH_RE = /(^|[\s"'`(=:])(\/(?:[\w.-]+\/)+[\w.-]+)/g;
 const BEARER_RE = /\bBearer\s+[A-Za-z0-9\-._~+/]+=*/i;
 const JWT_RE = /\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/;
 const COOKIE_RE = /\b(?:Set-Cookie|cookie)\s*[:=]/i;
@@ -55,11 +56,11 @@ function sanitizeString(text, ctx) {
     out = out.replace(BEARER_RE, "Bearer <redacted>");
     out = out.replace(JWT_RE, "jwt_redacted");
     out = out.replace(SECRET_QUERY_RE, "?<secret_query_redacted>");
-    out = out.replace(ABS_PATH_RE, (m) => {
-        if (m.includes("node_modules") || m.includes("iobroker")) {
-            return "<adapter_root>/...";
+    out = out.replace(ABS_PATH_RE, (full, prefix, p) => {
+        if (p.includes("node_modules") || p.includes("iobroker")) {
+            return `${prefix}<adapter_root>/...`;
         }
-        return "<path_redacted>";
+        return `${prefix}<path_redacted>`;
     });
     out = out.replace(/__ISO_(\d+)__/g, (_, i) => isoHold[Number(i)] ?? "");
     return out;
@@ -160,7 +161,7 @@ function scanForForbiddenSecrets(text) {
         return "authorization header in support export";
     }
     resetRegex(ABS_PATH_RE);
-    if (ABS_PATH_RE.test(text) && !text.includes("<path_redacted>")) {
+    if (ABS_PATH_RE.test(text) && !text.includes("<path_redacted>") && !text.includes("<adapter_root>")) {
         return "absolute path in support export";
     }
     return null;

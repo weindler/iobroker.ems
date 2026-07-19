@@ -239,6 +239,12 @@ describe("backup export v0.1.141", () => {
 		assert.ok(hit);
 	});
 
+	it("relative archive paths are not flagged as absolute paths", () => {
+		assert.equal(scanForForbiddenSecrets("diagnostics/persist/immersion_heater_runtime_v1.json"), null);
+		assert.equal(scanForForbiddenSecrets("states/runtime_diagnostics.json"), null);
+		assert.ok(scanForForbiddenSecrets("file at /opt/iobroker/iobroker-data/ems.0/x.json"));
+	});
+
 	it("manifest validates safety block and restore policy", () => {
 		const files = buildManifestFileEntries([{ path: "config/adapter.json", content: "{}" }]);
 		const m = buildExportManifest({

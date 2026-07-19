@@ -210,6 +210,11 @@ class ExportTestHost {
         const hit = (0, sanitize_js_1.scanForForbiddenSecrets)("vehicle VIN 1HGBH41JXMN109186 at 192.168.1.10");
         strict_1.default.ok(hit);
     });
+    (0, node_test_1.it)("relative archive paths are not flagged as absolute paths", () => {
+        strict_1.default.equal((0, sanitize_js_1.scanForForbiddenSecrets)("diagnostics/persist/immersion_heater_runtime_v1.json"), null);
+        strict_1.default.equal((0, sanitize_js_1.scanForForbiddenSecrets)("states/runtime_diagnostics.json"), null);
+        strict_1.default.ok((0, sanitize_js_1.scanForForbiddenSecrets)("file at /opt/iobroker/iobroker-data/ems.0/x.json"));
+    });
     (0, node_test_1.it)("manifest validates safety block and restore policy", () => {
         const files = (0, manifest_js_1.buildManifestFileEntries)([{ path: "config/adapter.json", content: "{}" }]);
         const m = (0, manifest_js_1.buildExportManifest)({

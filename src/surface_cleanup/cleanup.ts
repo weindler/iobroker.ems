@@ -210,8 +210,32 @@ async function cleanupLearningMirrorsAndDiag(host: SurfaceCleanupHost, stats: Su
 	for (const id of BATTERY_RUNTIME_DIAG_IDS) {
 		await safeDeleteRelative(host, id, stats, "battery_runtime_diag");
 	}
+	/** Basis-States ohne Channel-Root (enabled/available/mode). */
+	const stubLeaves = ["enabled", "available", "mode"] as const;
 	for (const addonId of STUB_ADDON_IDS) {
 		await safeDeleteRelative(host, `addons.${addonId}`, stats, "stub_addon");
+		for (const leaf of stubLeaves) {
+			await safeDeleteRelative(host, `addons.${addonId}.${leaf}`, stats, "stub_addon_leaf");
+		}
+	}
+}
+
+/** Orphan allowed_values leaves — no longer ensured; only recreated when native has values. */
+async function cleanupOrphanAllowedValues(host: SurfaceCleanupHost, stats: SurfaceCleanupStats): Promise<void> {
+	const ids = host.listRelativeObjectIds ? await host.listRelativeObjectIds() : [];
+	const candidates =
+		ids.length > 0
+			? ids.filter((id) => id.endsWith(".allowed_values") && id.includes(".mapping."))
+			: [];
+	for (const id of candidates) {
+		await safeDeleteRelative(host, id, stats, "allowed_values_orphan");
+	}
+	// Known AC mapping allowed_values even without full enumeration
+	for (let i = 1; i <= AC_UNIT_COUNT; i++) {
+		for (const role of AC_MAPPING_ROLES) {
+			const base = mappingBase(AC_ADDON_ID, acUnitMappingCommand(i, role));
+			await safeDeleteRelative(host, `${base}.allowed_values`, stats, "allowed_values_orphan");
+		}
 	}
 }
 
@@ -230,8 +254,35 @@ export async function runDynamicSurfaceCleanup(host: SurfaceCleanupHost): Promis
 	await cleanupOrphanVehicles(host, stats);
 	await cleanupLeanPlannerSurface(host, stats);
 	await cleanupLearningMirrorsAndDiag(host, stats);
+	await cleanupOrphanAllowedValues(host, stats);
+	await cleanupLegacyInfoBackup(host, stats);
 	host.log.info(
 		`surface cleanup: checked=${stats.checked} deleted=${stats.deleted} skipped=${stats.skipped}`,
 	);
 	return stats;
+}
+
+async function cleanupLegacyInfoBackup(host: SurfaceCleanupHost, stats: SurfaceCleanupStats): Promise<void> {
+	await safeDeleteRelative(host, "info.backup", stats, "info_backup_legacy");
+	const knownLeaves = [
+		"integration",
+		"data_folder",
+		"runtime_folder",
+		"format_version",
+		"persistence_schema_version",
+		"persistence_valid",
+		"last_validation_at",
+		"last_validation_error",
+		"restore_detection",
+		"checkpoint_generation",
+		"journal_status",
+		"migration_status",
+		"live_rearm_required",
+		"confirm_live_rearm",
+		"export_register_ready",
+		"export_register_hint",
+	];
+	for (const leaf of knownLeaves) {
+		await safeDeleteRelative(host, `info.backup.${leaf}`, stats, "info_backup_legacy_leaf");
+	}
 }

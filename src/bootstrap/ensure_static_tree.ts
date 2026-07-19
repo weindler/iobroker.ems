@@ -92,8 +92,9 @@ export async function cleanupDynamicPlaceholders(host: StaticStateTreeHost): Pro
 			if (typeof listFn !== "function") {
 				return [];
 			}
-			const start = `${host.namespace}.addons.wallbox.vehicles.`;
-			const end = `${host.namespace}.addons.wallbox.vehicles.\uffff`;
+			// Full instance namespace — cleanup needs stub leaves + mapping allowed_values.
+			const start = `${host.namespace}.`;
+			const end = `${host.namespace}.\uffff`;
 			const res = await listFn.call(host, { startkey: start, endkey: end });
 			const rows = res?.rows ?? [];
 			const prefix = `${host.namespace}.`;

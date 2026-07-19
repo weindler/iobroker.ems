@@ -30,7 +30,7 @@ async function publishExportRegisterStatus(
 			ack: true,
 		});
 	} catch {
-		/* info.backup may not exist yet on very early calls */
+		/* backup.* may not exist yet on very early calls */
 	}
 }
 

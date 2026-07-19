@@ -84,7 +84,7 @@ class Ems extends utils.Adapter {
                     await handleBackupExportRequest(this, true, false);
                     const file = String((await this.getStateAsync("backup.last_file_name"))?.val ?? "");
                     const err = String((await this.getStateAsync("backup.last_error"))?.val ?? "");
-                    const ready = (await this.getStateAsync("info.backup.export_register_ready"))?.val === true;
+                    const ready = (await this.getStateAsync("backup.export_register_ready"))?.val === true;
                     const payload = {
                         result: err ? "error" : "ok",
                         fileName: file,

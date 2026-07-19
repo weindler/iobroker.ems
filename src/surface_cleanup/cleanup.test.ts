@@ -86,6 +86,9 @@ describe("surface cleanup allowlist", () => {
 		assert.equal(isAllowlistedCleanupRelativeId("learning.persistence.pv_bias_daily_json"), true);
 		assert.equal(isAllowlistedCleanupRelativeId("learning.persistence.files_present"), false);
 		assert.equal(isAllowlistedCleanupRelativeId("addons.sensorics"), true);
+		assert.equal(isAllowlistedCleanupRelativeId("addons.sensorics.enabled"), true);
+		assert.equal(isAllowlistedCleanupRelativeId("addons.wallbox.mapping.evcc_connected.allowed_values"), true);
+		assert.equal(isAllowlistedCleanupRelativeId("info.backup.export_register_ready"), true);
 		assert.equal(isAllowlistedCleanupRelativeId("ems.0.addons.air_conditioning.units.unit_1"), false);
 		assert.equal(isAllowlistedCleanupRelativeId("alias.0.foo"), false);
 	});
@@ -242,6 +245,42 @@ describe("dynamic surface ensure + cleanup", () => {
 		await ensurePlannerCoordinatorStates(host);
 		const sample = host.objects.get("planner.coordinator.comparison_status");
 		assert.equal((sample?.common as ioBroker.StateCommon | undefined)?.expert, true);
+	});
+
+	it("purges stub addon leaves and mapping allowed_values", async () => {
+		const host = new FakeCleanupHost({});
+		await host.setObjectNotExistsAsync("addons.sensorics.enabled", {
+			type: "state",
+			common: { name: "x", type: "boolean", role: "switch", read: true, write: true },
+			native: {},
+		} as ioBroker.Object);
+		await host.setObjectNotExistsAsync("addons.wallbox.mapping.evcc_connected.allowed_values", {
+			type: "state",
+			common: { name: "x", type: "string", role: "json", read: true, write: true },
+			native: {},
+		} as ioBroker.Object);
+		const stats = await runDynamicSurfaceCleanup(host);
+		assert.ok(stats.deleted >= 2);
+		assert.equal(host.objects.has("addons.sensorics.enabled"), false);
+		assert.equal(host.objects.has("addons.wallbox.mapping.evcc_connected.allowed_values"), false);
+	});
+
+	it("purges legacy info.backup into single backup.* tree", async () => {
+		const host = new FakeCleanupHost({});
+		await host.setObjectNotExistsAsync("info.backup", {
+			type: "channel",
+			common: { name: "legacy" },
+			native: {},
+		} as ioBroker.Object);
+		await host.setObjectNotExistsAsync("info.backup.export_register_ready", {
+			type: "state",
+			common: { name: "x", type: "boolean", role: "indicator", read: true, write: false },
+			native: {},
+		} as ioBroker.Object);
+		const stats = await runDynamicSurfaceCleanup(host);
+		assert.ok(stats.deleted >= 1);
+		assert.equal(host.objects.has("info.backup"), false);
+		assert.equal(host.objects.has("info.backup.export_register_ready"), false);
 	});
 
 	it("purges lean planner shadow and operator mirror roots", async () => {

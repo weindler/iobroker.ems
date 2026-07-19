@@ -1,94 +1,58 @@
 import { ensureChannel, ensureStates, type StateHost } from "../ems_light/state_util";
+import { BACKUP_BASE } from "../backup/ensure_states";
 
-export const BACKUP_INFO_BASE = "info.backup";
+/**
+ * Lean backup diagnostics live under `backup.*` (single tree).
+ * Legacy `info.backup.*` is purged by surface cleanup.
+ */
+export const BACKUP_INFO_BASE = BACKUP_BASE;
 
 export const BACKUP_INFO_STATES = {
-	integration: `${BACKUP_INFO_BASE}.integration`,
-	dataFolder: `${BACKUP_INFO_BASE}.data_folder`,
-	runtimeFolder: `${BACKUP_INFO_BASE}.runtime_folder`,
-	formatVersion: `${BACKUP_INFO_BASE}.format_version`,
-	persistenceSchemaVersion: `${BACKUP_INFO_BASE}.persistence_schema_version`,
-	persistenceValid: `${BACKUP_INFO_BASE}.persistence_valid`,
-	lastValidationAt: `${BACKUP_INFO_BASE}.last_validation_at`,
-	lastValidationError: `${BACKUP_INFO_BASE}.last_validation_error`,
-	restoreDetection: `${BACKUP_INFO_BASE}.restore_detection`,
-	checkpointGeneration: `${BACKUP_INFO_BASE}.checkpoint_generation`,
-	journalStatus: `${BACKUP_INFO_BASE}.journal_status`,
-	migrationStatus: `${BACKUP_INFO_BASE}.migration_status`,
-	liveRearmRequired: `${BACKUP_INFO_BASE}.live_rearm_required`,
-	/** Button: explicit user confirm to allow live device writes after startup. */
-	confirmLiveRearm: `${BACKUP_INFO_BASE}.confirm_live_rearm`,
-	/** True after at least one successful full backup export this process (Export-Register). */
-	exportRegisterReady: `${BACKUP_INFO_BASE}.export_register_ready`,
-	exportRegisterHint: `${BACKUP_INFO_BASE}.export_register_hint`,
+	runtimeFolder: `${BACKUP_BASE}.runtime_folder`,
+	persistenceValid: `${BACKUP_BASE}.persistence_valid`,
+	journalStatus: `${BACKUP_BASE}.journal_status`,
+	migrationStatus: `${BACKUP_BASE}.migration_status`,
+	exportRegisterReady: `${BACKUP_BASE}.export_register_ready`,
+	exportRegisterHint: `${BACKUP_BASE}.export_register_hint`,
+	/** @deprecated removed — kept as id for cleanup/compat reads */
+	liveRearmRequired: "info.backup.live_rearm_required",
+	/** @deprecated removed */
+	confirmLiveRearm: "info.backup.confirm_live_rearm",
 } as const;
 
+/** Only user-relevant status under backup.* — no second info.backup tree. */
 export async function ensureBackupIntegrationInfoStates(host: StateHost): Promise<void> {
-	await ensureChannel(host, BACKUP_INFO_BASE, "Backup-Integration (Diagnose)");
+	await ensureChannel(host, BACKUP_BASE, "EMS Backup Export");
 	await ensureStates(host, [
 		{
-			id: BACKUP_INFO_STATES.integration,
-			common: { name: "Backup-Integration", type: "string", role: "text", read: true, write: false, def: "iobroker_data_folder" },
-		},
-		{
-			id: BACKUP_INFO_STATES.dataFolder,
-			common: { name: "Datenordner (logisch)", type: "string", role: "text", read: true, write: false, def: "ems.%INSTANCE%" },
-		},
-		{
 			id: BACKUP_INFO_STATES.runtimeFolder,
-			common: { name: "Runtime-Ordner (logisch)", type: "string", role: "text", read: true, write: false, def: "ems-runtime.%INSTANCE%" },
-		},
-		{
-			id: BACKUP_INFO_STATES.formatVersion,
-			common: { name: "Manifest-Formatversion", type: "number", role: "value", read: true, write: false, def: 0 },
-		},
-		{
-			id: BACKUP_INFO_STATES.persistenceSchemaVersion,
-			common: { name: "Persistenz-Schemaversion", type: "number", role: "value", read: true, write: false, def: 0 },
+			common: {
+				name: "Runtime-Ordner (Backup/Learning)",
+				type: "string",
+				role: "text",
+				read: true,
+				write: false,
+				def: "ems-runtime.%INSTANCE%",
+			},
 		},
 		{
 			id: BACKUP_INFO_STATES.persistenceValid,
-			common: { name: "Persistenz gültig", type: "boolean", role: "indicator", read: true, write: false, def: false },
-		},
-		{
-			id: BACKUP_INFO_STATES.lastValidationAt,
-			common: { name: "Letzte Persistenz-Validierung", type: "string", role: "value.time", read: true, write: false, def: "" },
-		},
-		{
-			id: BACKUP_INFO_STATES.lastValidationError,
-			common: { name: "Letzter Validierungsfehler", type: "string", role: "text", read: true, write: false, def: "" },
-		},
-		{
-			id: BACKUP_INFO_STATES.restoreDetection,
-			common: { name: "Restore-Erkennung (diagnostisch)", type: "string", role: "text", read: true, write: false, def: "none" },
-		},
-		{
-			id: BACKUP_INFO_STATES.checkpointGeneration,
-			common: { name: "Checkpoint-Generation", type: "number", role: "value", read: true, write: false, def: 0 },
+			common: {
+				name: "Persistenz gültig",
+				type: "boolean",
+				role: "indicator",
+				read: true,
+				write: false,
+				def: false,
+			},
 		},
 		{
 			id: BACKUP_INFO_STATES.journalStatus,
-			common: { name: "Journal-Status", type: "string", role: "text", read: true, write: false, def: "none" },
+			common: { name: "Restore-Journal Status", type: "string", role: "text", read: true, write: false, def: "none" },
 		},
 		{
 			id: BACKUP_INFO_STATES.migrationStatus,
-			common: { name: "Migrations-Status", type: "string", role: "text", read: true, write: false, def: "pending" },
-		},
-		{
-			id: BACKUP_INFO_STATES.liveRearmRequired,
-			common: { name: "Live-Rearm erforderlich (obsolet)", type: "boolean", role: "indicator", read: true, write: false, def: false },
-		},
-		{
-			id: BACKUP_INFO_STATES.confirmLiveRearm,
-			common: {
-				name: "Live-Writes freigeben (obsolet, ungenutzt)",
-				type: "boolean",
-				role: "button",
-				read: true,
-				write: true,
-				def: false,
-			},
-			defaultVal: false,
+			common: { name: "Runtime-Migration Status", type: "string", role: "text", read: true, write: false, def: "pending" },
 		},
 		{
 			id: BACKUP_INFO_STATES.exportRegisterReady,
@@ -104,7 +68,7 @@ export async function ensureBackupIntegrationInfoStates(host: StateHost): Promis
 		{
 			id: BACKUP_INFO_STATES.exportRegisterHint,
 			common: {
-				name: "Export-Register Hinweis",
+				name: "Export-Pfad Hinweis",
 				type: "string",
 				role: "text",
 				read: true,
@@ -131,18 +95,8 @@ export async function publishBackupIntegrationDiagnostics(
 		liveRearmRequired: boolean;
 	},
 ): Promise<void> {
-	const now = new Date().toISOString();
-	await host.setStateAsync(BACKUP_INFO_STATES.integration, { val: "iobroker_data_folder", ack: true });
-	await host.setStateAsync(BACKUP_INFO_STATES.dataFolder, { val: diag.dataFolder, ack: true });
 	await host.setStateAsync(BACKUP_INFO_STATES.runtimeFolder, { val: diag.runtimeFolder, ack: true });
-	await host.setStateAsync(BACKUP_INFO_STATES.formatVersion, { val: diag.formatVersion, ack: true });
-	await host.setStateAsync(BACKUP_INFO_STATES.persistenceSchemaVersion, { val: diag.persistenceSchemaVersion, ack: true });
 	await host.setStateAsync(BACKUP_INFO_STATES.persistenceValid, { val: diag.persistenceValid, ack: true });
-	await host.setStateAsync(BACKUP_INFO_STATES.lastValidationAt, { val: now, ack: true });
-	await host.setStateAsync(BACKUP_INFO_STATES.lastValidationError, { val: diag.lastValidationError, ack: true });
-	await host.setStateAsync(BACKUP_INFO_STATES.restoreDetection, { val: diag.restoreDetection, ack: true });
-	await host.setStateAsync(BACKUP_INFO_STATES.checkpointGeneration, { val: diag.checkpointGeneration, ack: true });
 	await host.setStateAsync(BACKUP_INFO_STATES.journalStatus, { val: diag.journalStatus, ack: true });
 	await host.setStateAsync(BACKUP_INFO_STATES.migrationStatus, { val: diag.migrationStatus, ack: true });
-	await host.setStateAsync(BACKUP_INFO_STATES.liveRearmRequired, { val: diag.liveRearmRequired, ack: true });
 }

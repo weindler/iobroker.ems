@@ -21,7 +21,7 @@ async function publishExportRegisterStatus(host, ok, detail) {
         });
     }
     catch {
-        /* info.backup may not exist yet on very early calls */
+        /* backup.* may not exist yet on very early calls */
     }
 }
 async function handleBackupExportRequest(host, val, ack) {

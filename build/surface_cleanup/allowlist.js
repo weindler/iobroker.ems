@@ -41,6 +41,10 @@ const AC_UNIT_RE = /^addons\.air_conditioning\.units\.unit_[1-5]$/;
 const AC_MAPPING_RE = /^addons\.air_conditioning\.mapping\.unit_[1-5]_[a-z0-9_]+(\.(enabled|target_state|allowed_values))?$/;
 const VEHICLE_FOLDER_RE = /^addons\.wallbox\.vehicles\.[a-z0-9_]+$/;
 const PLANNER_OPTIONAL_INTENT_RE = /^planner\.intent\.(thermal|cooling|battery\.winter)(\.|$)/;
+/** Any mapping allowed_values leaf (diet — recreate only when native has values). */
+const MAPPING_ALLOWED_VALUES_RE = /^addons\.[a-z0-9_]+\.mapping\.[a-z0-9_]+\.allowed_values$/;
+/** Stub addon basis leaves without channel root. */
+const STUB_ADDON_LEAF_RE = /^addons\.(sensorics|inverter_[123]|pv_plant|house_main_fuse|heating|heat_pump|consumer_1|weather_live|weather_forecast|pv_forecast|series_storage|fixed_tariff)\.(enabled|available|mode)$/;
 exports.AC_MAPPING_LEAF_SUFFIXES = ["enabled", "target_state", "allowed_values"];
 function isLeanPlannerPurgeRoot(relativeId) {
     return exports.LEAN_PLANNER_PURGE_ROOTS.includes(relativeId);
@@ -68,6 +72,15 @@ function isAllowlistedCleanupRelativeId(relativeId) {
     if (PLANNER_OPTIONAL_INTENT_RE.test(relativeId)) {
         return true;
     }
+    if (MAPPING_ALLOWED_VALUES_RE.test(relativeId)) {
+        return true;
+    }
+    if (STUB_ADDON_LEAF_RE.test(relativeId)) {
+        return true;
+    }
+    if (relativeId === "info.backup" || relativeId.startsWith("info.backup.")) {
+        return true;
+    }
     return AC_UNIT_RE.test(relativeId) || AC_MAPPING_RE.test(relativeId) || VEHICLE_FOLDER_RE.test(relativeId);
 }
 exports.isAllowlistedCleanupRelativeId = isAllowlistedCleanupRelativeId;
@@ -79,5 +92,6 @@ exports.CLEANUP_ALLOWLIST_DESCRIPTION = [
     "learning.battery_runtime.power_* diagnostics",
     "stub addons.* (inverter/heating/… without runtime)",
     "planner.intent.thermal|cooling|battery.winter when addon/winter disabled",
+    "info.backup.* (merged into backup.*)",
     ...exports.LEAN_PLANNER_PURGE_ROOTS.map((r) => `${r} (lean planner surface purge)`),
 ];

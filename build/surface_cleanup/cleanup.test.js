@@ -75,6 +75,9 @@ class FakeCleanupHost {
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("learning.persistence.pv_bias_daily_json"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("learning.persistence.files_present"), false);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.sensorics"), true);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.sensorics.enabled"), true);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.wallbox.mapping.evcc_connected.allowed_values"), true);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("info.backup.export_register_ready"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("ems.0.addons.air_conditioning.units.unit_1"), false);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("alias.0.foo"), false);
     });
@@ -193,6 +196,40 @@ class FakeCleanupHost {
         await (0, ensure_states_js_3.ensurePlannerCoordinatorStates)(host);
         const sample = host.objects.get("planner.coordinator.comparison_status");
         strict_1.default.equal(sample?.common?.expert, true);
+    });
+    (0, node_test_1.it)("purges stub addon leaves and mapping allowed_values", async () => {
+        const host = new FakeCleanupHost({});
+        await host.setObjectNotExistsAsync("addons.sensorics.enabled", {
+            type: "state",
+            common: { name: "x", type: "boolean", role: "switch", read: true, write: true },
+            native: {},
+        });
+        await host.setObjectNotExistsAsync("addons.wallbox.mapping.evcc_connected.allowed_values", {
+            type: "state",
+            common: { name: "x", type: "string", role: "json", read: true, write: true },
+            native: {},
+        });
+        const stats = await (0, cleanup_js_1.runDynamicSurfaceCleanup)(host);
+        strict_1.default.ok(stats.deleted >= 2);
+        strict_1.default.equal(host.objects.has("addons.sensorics.enabled"), false);
+        strict_1.default.equal(host.objects.has("addons.wallbox.mapping.evcc_connected.allowed_values"), false);
+    });
+    (0, node_test_1.it)("purges legacy info.backup into single backup.* tree", async () => {
+        const host = new FakeCleanupHost({});
+        await host.setObjectNotExistsAsync("info.backup", {
+            type: "channel",
+            common: { name: "legacy" },
+            native: {},
+        });
+        await host.setObjectNotExistsAsync("info.backup.export_register_ready", {
+            type: "state",
+            common: { name: "x", type: "boolean", role: "indicator", read: true, write: false },
+            native: {},
+        });
+        const stats = await (0, cleanup_js_1.runDynamicSurfaceCleanup)(host);
+        strict_1.default.ok(stats.deleted >= 1);
+        strict_1.default.equal(host.objects.has("info.backup"), false);
+        strict_1.default.equal(host.objects.has("info.backup.export_register_ready"), false);
     });
     (0, node_test_1.it)("purges lean planner shadow and operator mirror roots", async () => {
         const host = new FakeCleanupHost({});

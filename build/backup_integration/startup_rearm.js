@@ -75,8 +75,13 @@ async function confirmStartupLiveRearm(host) {
         await host.setStateAsync("execution.safety.global_execution_mode", { val: "live", ack: true });
     }
     clearStartupRearmRequired();
-    await host.setStateAsync(BACKUP_INFO_STATES.liveRearmRequired, { val: false, ack: true });
-    await host.setStateAsync(BACKUP_INFO_STATES.confirmLiveRearm, { val: false, ack: true });
+    try {
+        await host.setStateAsync(BACKUP_INFO_STATES.liveRearmRequired, { val: false, ack: true });
+        await host.setStateAsync(BACKUP_INFO_STATES.confirmLiveRearm, { val: false, ack: true });
+    }
+    catch {
+        /* legacy info.backup states may already be purged */
+    }
     host.log.info(alreadyCleared
         ? "Startup-Rearm war bereits aufgehoben — live_rearm_required=false bestätigt"
         : "Startup-Rearm aufgehoben (confirm_live_rearm) — Geräte-Writes freigegeben");

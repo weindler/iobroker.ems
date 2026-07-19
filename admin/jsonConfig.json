@@ -7189,7 +7189,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "WICHTIG vor Neuinstallation oder Löschen der Instanz: hier einen vollständigen Export erstellen. Enthalten sind Admin-Config, alle Mappings, Fahrzeugprofile, Policies und Learning-Dateien (Preis/PV/Hauslast/Stats). Die Datei liegt auf dem Host unter /opt/iobroker/iobroker-data/ems-runtime.&lt;Instanz&gt;/exports/backup/ (kein Browser-Download). Nach Frischinstall: Export-Datei in den Restore-Inbox-Ordner legen und Restore im Admin ausführen — dann sind Mappings und Learning wieder da. Status auch unter backup.* und info.backup.export_register_*."
+					"text": "WICHTIG vor Neuinstallation oder Löschen der Instanz: hier einen vollständigen Export erstellen. Enthalten sind Admin-Config, alle Mappings, Fahrzeugprofile, Policies und Learning-Dateien (Preis/PV/Hauslast/Stats). Die Datei liegt auf dem Host unter /opt/iobroker/iobroker-data/ems-runtime.&lt;Instanz&gt;/exports/backup/ (kein Browser-Download). Nach Frischinstall: Export-Datei in den Restore-Inbox-Ordner legen und Restore im Admin ausführen — dann sind Mappings und Learning wieder da. Status nur unter backup.* (export_register_ready, last_file_name, …)."
 				},
 				"requestBackupExport": {
 					"type": "sendTo",

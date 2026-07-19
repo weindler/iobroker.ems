@@ -67,4 +67,24 @@ const cleaning_1 = require("./cleaning");
             elapsedSec: 120,
         }), true);
     });
+    (0, node_test_1.it)("aborts stuck cleaning that never engaged", () => {
+        strict_1.default.equal((0, cleaning_1.isCleaningStuckNeverEngaged)({
+            operatingStateRaw: "ready",
+            sawOperatingActive: false,
+            sawProgressActive: false,
+            elapsedSec: 200,
+        }), true);
+        strict_1.default.equal((0, cleaning_1.isCleaningStuckNeverEngaged)({
+            operatingStateRaw: "ready",
+            sawOperatingActive: false,
+            sawProgressActive: false,
+            elapsedSec: 60,
+        }), false);
+        strict_1.default.equal((0, cleaning_1.isCleaningStuckNeverEngaged)({
+            operatingStateRaw: "autoClean",
+            sawOperatingActive: true,
+            sawProgressActive: false,
+            elapsedSec: 200,
+        }), false);
+    });
 });

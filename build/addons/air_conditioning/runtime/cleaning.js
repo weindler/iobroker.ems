@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isCleaningFinishedByFeedback = exports.isCleaningFinishedByProgress = exports.shouldMarkCleaningProgressActive = exports.shouldMarkCleaningOperatingActive = exports.isCleaningOperatingActive = exports.normalizeCleaningProgressPct = exports.normalizeCleaningToken = exports.CLEANING_RUNNING_OPERATING = void 0;
+exports.isCleaningStuckNeverEngaged = exports.isCleaningFinishedByFeedback = exports.isCleaningFinishedByProgress = exports.shouldMarkCleaningProgressActive = exports.shouldMarkCleaningOperatingActive = exports.isCleaningOperatingActive = exports.normalizeCleaningProgressPct = exports.normalizeCleaningToken = exports.CLEANING_RUNNING_OPERATING = void 0;
 const constants_1 = require("../constants");
 /** SmartThings custom.autoCleaningMode — operatingState während Reinigung. */
 exports.CLEANING_RUNNING_OPERATING = ["autoclean", "speedclean", "quietclean", "timedclean"];
@@ -59,3 +59,15 @@ function isCleaningFinishedByFeedback(input) {
     return false;
 }
 exports.isCleaningFinishedByFeedback = isCleaningFinishedByFeedback;
+/** Reinigung nie wirklich gestartet (ready + kein autoclean/progress) → Flag freigeben. */
+function isCleaningStuckNeverEngaged(input) {
+    if (input.sawOperatingActive || input.sawProgressActive) {
+        return false;
+    }
+    if (input.elapsedSec < constants_1.AC_CLEANING_STUCK_ABORT_SEC) {
+        return false;
+    }
+    const op = normalizeCleaningToken(input.operatingStateRaw);
+    return op === "ready" || op === "" || op === "idle";
+}
+exports.isCleaningStuckNeverEngaged = isCleaningStuckNeverEngaged;

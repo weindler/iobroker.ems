@@ -20,6 +20,11 @@ export const AC_CLEANING_FEEDBACK_MIN_RUNTIME_SEC = 300;
 export const AC_CLEANING_MIN_COOL_RUNTIME_MS = 5 * 60_000;
 /** Default Feuchte-Abschalt-Hysterese (%-Punkte unter Max), wenn Admin nichts setzt. */
 export const AC_HUMIDITY_OFF_HYSTERESIS_PCT_DEFAULT = 3;
+/**
+ * Reinigung abbrechen, wenn nie autoclean/progress gesehen wurde und operatingState weiter ready
+ * (z. B. Stop fehlgeschlagen, Gerät lief weiter — sonst Deadlock: cleaning sperrt Stop).
+ */
+export const AC_CLEANING_STUCK_ABORT_SEC = 180;
 
 export const AC_PROFILE_IDS = ["generic", "samsung_smartthings"] as const;
 export type AcProfileId = (typeof AC_PROFILE_IDS)[number];

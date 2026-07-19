@@ -4,6 +4,7 @@ import {
 	isCleaningFinishedByFeedback,
 	isCleaningFinishedByProgress,
 	isCleaningOperatingActive,
+	isCleaningStuckNeverEngaged,
 	normalizeCleaningProgressPct,
 	shouldMarkCleaningOperatingActive,
 	shouldMarkCleaningProgressActive,
@@ -91,6 +92,36 @@ describe("ac cleaning feedback", () => {
 				elapsedSec: 120,
 			}),
 			true,
+		);
+	});
+
+	it("aborts stuck cleaning that never engaged", () => {
+		assert.equal(
+			isCleaningStuckNeverEngaged({
+				operatingStateRaw: "ready",
+				sawOperatingActive: false,
+				sawProgressActive: false,
+				elapsedSec: 200,
+			}),
+			true,
+		);
+		assert.equal(
+			isCleaningStuckNeverEngaged({
+				operatingStateRaw: "ready",
+				sawOperatingActive: false,
+				sawProgressActive: false,
+				elapsedSec: 60,
+			}),
+			false,
+		);
+		assert.equal(
+			isCleaningStuckNeverEngaged({
+				operatingStateRaw: "autoClean",
+				sawOperatingActive: true,
+				sawProgressActive: false,
+				elapsedSec: 200,
+			}),
+			false,
 		);
 	});
 });

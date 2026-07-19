@@ -205,12 +205,17 @@ async function finishCleaning(host, unit, table, live, up, reason, sendStop, all
     up.cleaningLastRefreshAtMs = null;
     host.log.info(`ac unit ${unit.index}: cleaning finished — ${reason}`);
 }
-async function tickCleaning(host, unit, table, live, up, nowMs, cleaningStateRaw, cleaningModeRaw, cleaningProgressPct, allowNewCleaning) {
+async function tickCleaning(host, unit, table, live, up, nowMs, cleaningStateRaw, cleaningModeRaw, cleaningProgressPct, allowNewCleaning, unitFeedbackOn) {
     const pending = up.cleaningPendingUntilMs;
     if (pending && nowMs >= pending && !up.cleaningActive) {
         if (!allowNewCleaning) {
             up.cleaningPendingUntilMs = null;
             host.log.debug?.(`ac unit ${unit.index}: cleaning skipped — governance/add-on block`);
+            return;
+        }
+        // Gerät muss aus sein — sonst startet Samsung oft keine echte Reinigung, EMS-Flag hängt.
+        if (unitFeedbackOn) {
+            host.log.info(`ac unit ${unit.index}: cleaning waiting — unit still on`);
             return;
         }
         up.cleaningPendingUntilMs = null;
@@ -247,8 +252,8 @@ async function tickCleaning(host, unit, table, live, up, nowMs, cleaningStateRaw
         await (0, sequences_1.executeAcWriteSteps)(host, unit.index, table, [{ kind: "toggle", role: "cmd_refresh" }], true, host.log);
         up.cleaningLastRefreshAtMs = nowMs;
     }
+    const elapsedSec = Math.round((nowMs - up.cleaningStartedAtMs) / 1000);
     if (hasCleaningFeedback) {
-        const elapsedSec = Math.round((nowMs - up.cleaningStartedAtMs) / 1000);
         if (up.cleaningStartProgressPct == null && cleaningProgressPct != null) {
             up.cleaningStartProgressPct = cleaningProgressPct;
         }
@@ -257,6 +262,15 @@ async function tickCleaning(host, unit, table, live, up, nowMs, cleaningStateRaw
         }
         if ((0, cleaning_1.shouldMarkCleaningProgressActive)(cleaningProgressPct)) {
             up.cleaningSawProgressActive = true;
+        }
+        if ((0, cleaning_1.isCleaningStuckNeverEngaged)({
+            operatingStateRaw: cleaningStateRaw,
+            sawOperatingActive: up.cleaningSawOperatingActive,
+            sawProgressActive: up.cleaningSawProgressActive,
+            elapsedSec,
+        })) {
+            await finishCleaning(host, unit, table, live, up, `abort — never engaged (operatingState=${String(cleaningStateRaw ?? "?")}, unit=${unitFeedbackOn ? "on" : "off"}, ${elapsedSec}s)`, true, cleaningWritesAllowed);
+            return;
         }
         if (progressFbId &&
             (0, cleaning_1.isCleaningFinishedByProgress)({
@@ -280,6 +294,16 @@ async function tickCleaning(host, unit, table, live, up, nowMs, cleaningStateRaw
             await finishCleaning(host, unit, table, live, up, `feedback (operatingState=${op || "?"}, mode=${mode || "?"}, ${elapsedSec}s)`, true, cleaningWritesAllowed);
             return;
         }
+    }
+    else if ((0, cleaning_1.isCleaningStuckNeverEngaged)({
+        operatingStateRaw: cleaningStateRaw,
+        sawOperatingActive: false,
+        sawProgressActive: false,
+        elapsedSec,
+    })) {
+        // Kein Cleaning-Feedback gemappt — nach Stuck-Zeit Flag trotzdem freigeben.
+        await finishCleaning(host, unit, table, live, up, `abort — no cleaning feedback mapped (${elapsedSec}s)`, false, cleaningWritesAllowed);
+        return;
     }
     const timeoutMs = unit.cleaningDurationMin * 60_000;
     if (unit.cleaningDurationMin > 0 && nowMs >= up.cleaningStartedAtMs + timeoutMs) {
@@ -357,7 +381,17 @@ async function runAcRuntimeTickBody(host) {
         const up = unitPersist(unit.index);
         if ((0, time_1.switchIsOn)(fb.value))
             runningCount += 1;
-        await tickCleaning(host, unit, mappingTable, live, up, nowMs, cleaningState.value, cleaningMode.value, cleaningProgress.num, allowNewCleaning);
+        await tickCleaning(host, unit, mappingTable, live, up, nowMs, cleaningState.value, cleaningMode.value, cleaningProgress.num, allowNewCleaning, (0, time_1.switchIsOn)(fb.value));
+        // Cleaning-Flag sperrt FSM-Stop — Gerät trotzdem ausschalten, sonst Deadlock.
+        if (up.cleaningActive &&
+            (0, time_1.switchIsOn)(fb.value) &&
+            stopRetryReady(up, nowMs) &&
+            live &&
+            governanceEnabled &&
+            addonEnabledVal) {
+            host.log.info(`ac unit ${unit.index}: stop while cleaning flag set (device still on)`);
+            await stopUnit(host, unit, mappingTable, true, up);
+        }
         if (!addonEnabledVal && (0, time_1.switchIsOn)(fb.value) && stopRetryReady(up, nowMs)) {
             await stopUnit(host, unit, mappingTable, live, up);
         }

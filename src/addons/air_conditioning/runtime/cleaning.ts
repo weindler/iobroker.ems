@@ -1,6 +1,7 @@
 import {
 	AC_CLEANING_ACTIVE_CONFIRM_SEC,
 	AC_CLEANING_FEEDBACK_MIN_RUNTIME_SEC,
+	AC_CLEANING_STUCK_ABORT_SEC,
 } from "../constants";
 
 /** SmartThings custom.autoCleaningMode — operatingState während Reinigung. */
@@ -70,4 +71,21 @@ export function isCleaningFinishedByFeedback(input: {
 		return true;
 	}
 	return false;
+}
+
+/** Reinigung nie wirklich gestartet (ready + kein autoclean/progress) → Flag freigeben. */
+export function isCleaningStuckNeverEngaged(input: {
+	operatingStateRaw: unknown;
+	sawOperatingActive: boolean;
+	sawProgressActive: boolean;
+	elapsedSec: number;
+}): boolean {
+	if (input.sawOperatingActive || input.sawProgressActive) {
+		return false;
+	}
+	if (input.elapsedSec < AC_CLEANING_STUCK_ABORT_SEC) {
+		return false;
+	}
+	const op = normalizeCleaningToken(input.operatingStateRaw);
+	return op === "ready" || op === "" || op === "idle";
 }

@@ -51,6 +51,7 @@ import { acStatsDeviceActive, closeAcUnitStatsSession } from "./stats_active";
 import {
 	isCleaningFinishedByFeedback,
 	isCleaningFinishedByProgress,
+	isCleaningStuckNeverEngaged,
 	shouldMarkCleaningOperatingActive,
 	shouldMarkCleaningProgressActive,
 } from "./cleaning";
@@ -318,12 +319,18 @@ async function tickCleaning(
 	cleaningModeRaw: unknown,
 	cleaningProgressPct: number | null,
 	allowNewCleaning: boolean,
+	unitFeedbackOn: boolean,
 ): Promise<void> {
 	const pending = up.cleaningPendingUntilMs;
 	if (pending && nowMs >= pending && !up.cleaningActive) {
 		if (!allowNewCleaning) {
 			up.cleaningPendingUntilMs = null;
 			host.log.debug?.(`ac unit ${unit.index}: cleaning skipped — governance/add-on block`);
+			return;
+		}
+		// Gerät muss aus sein — sonst startet Samsung oft keine echte Reinigung, EMS-Flag hängt.
+		if (unitFeedbackOn) {
+			host.log.info(`ac unit ${unit.index}: cleaning waiting — unit still on`);
 			return;
 		}
 		up.cleaningPendingUntilMs = null;
@@ -362,8 +369,9 @@ async function tickCleaning(
 		up.cleaningLastRefreshAtMs = nowMs;
 	}
 
+	const elapsedSec = Math.round((nowMs - up.cleaningStartedAtMs) / 1000);
+
 	if (hasCleaningFeedback) {
-		const elapsedSec = Math.round((nowMs - up.cleaningStartedAtMs) / 1000);
 		if (up.cleaningStartProgressPct == null && cleaningProgressPct != null) {
 			up.cleaningStartProgressPct = cleaningProgressPct;
 		}
@@ -372,6 +380,27 @@ async function tickCleaning(
 		}
 		if (shouldMarkCleaningProgressActive(cleaningProgressPct)) {
 			up.cleaningSawProgressActive = true;
+		}
+
+		if (
+			isCleaningStuckNeverEngaged({
+				operatingStateRaw: cleaningStateRaw,
+				sawOperatingActive: up.cleaningSawOperatingActive,
+				sawProgressActive: up.cleaningSawProgressActive,
+				elapsedSec,
+			})
+		) {
+			await finishCleaning(
+				host,
+				unit,
+				table,
+				live,
+				up,
+				`abort — never engaged (operatingState=${String(cleaningStateRaw ?? "?")}, unit=${unitFeedbackOn ? "on" : "off"}, ${elapsedSec}s)`,
+				true,
+				cleaningWritesAllowed,
+			);
+			return;
 		}
 
 		if (
@@ -419,6 +448,26 @@ async function tickCleaning(
 			);
 			return;
 		}
+	} else if (
+		isCleaningStuckNeverEngaged({
+			operatingStateRaw: cleaningStateRaw,
+			sawOperatingActive: false,
+			sawProgressActive: false,
+			elapsedSec,
+		})
+	) {
+		// Kein Cleaning-Feedback gemappt — nach Stuck-Zeit Flag trotzdem freigeben.
+		await finishCleaning(
+			host,
+			unit,
+			table,
+			live,
+			up,
+			`abort — no cleaning feedback mapped (${elapsedSec}s)`,
+			false,
+			cleaningWritesAllowed,
+		);
+		return;
 	}
 
 	const timeoutMs = unit.cleaningDurationMin * 60_000;
@@ -522,7 +571,21 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 			cleaningMode.value,
 			cleaningProgress.num,
 			allowNewCleaning,
+			switchIsOn(fb.value),
 		);
+
+		// Cleaning-Flag sperrt FSM-Stop — Gerät trotzdem ausschalten, sonst Deadlock.
+		if (
+			up.cleaningActive &&
+			switchIsOn(fb.value) &&
+			stopRetryReady(up, nowMs) &&
+			live &&
+			governanceEnabled &&
+			addonEnabledVal
+		) {
+			host.log.info(`ac unit ${unit.index}: stop while cleaning flag set (device still on)`);
+			await stopUnit(host, unit, mappingTable, true, up);
+		}
 
 		if (!addonEnabledVal && switchIsOn(fb.value) && stopRetryReady(up, nowMs)) {
 			await stopUnit(host, unit, mappingTable, live, up);

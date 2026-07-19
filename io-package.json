@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.163",
+		"version": "0.1.164",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.164": {
+				"en": "AC fix: stuck cleaning deadlock — abort if never engaged; stop device while cleaning flag set; start clean only when off.",
+				"de": "Klima-Fix: Reinigungs-Deadlock — Abbruch wenn nie gestartet; Stop trotz Cleaning-Flag; Reinigung erst bei ausgeschaltetem Gerät."
+			},
 			"0.1.163": {
 				"en": "AC fix: stop writes off/false on shared switch (pulse-true kept devices on); confirm feedback before cleaning.",
 				"de": "Klima-Fix: Stop schreibt off/false auf gemeinsamen Switch (Pulse-true ließ Geräte an); Reinigung erst nach Feedback aus."

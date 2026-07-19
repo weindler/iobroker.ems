@@ -41,6 +41,11 @@ function parseOptionalHumidity(c: Record<string, unknown>, key: string): number 
 	return v > 0 ? v : null;
 }
 
+/** Leer = Modus absichtlich aus (cool/dry/heat/fan). */
+export function acModeCommandEnabled(mode: string): boolean {
+	return mode.trim().length > 0;
+}
+
 function effectiveEstimatedPowerW(c: Record<string, unknown>, key: string, def: number): number {
 	const n = numField(c, key, def);
 	return n > 0 ? n : def;

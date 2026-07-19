@@ -16,6 +16,10 @@ export const AC_CLEANING_REFRESH_MS = 30_000;
 export const AC_CLEANING_ACTIVE_CONFIRM_SEC = 60;
 /** Fallback: operatingState=ready erst nach … s (ready ist auch Idle vor Start). */
 export const AC_CLEANING_FEEDBACK_MIN_RUNTIME_SEC = 300;
+/** Nach Stopp nur reinigen, wenn die Kühlphase mindestens so lang war (Kurzabbruch / Fehlstart). */
+export const AC_CLEANING_MIN_COOL_RUNTIME_MS = 5 * 60_000;
+/** Feuchte-Abschaltung: maxHumidity − diese %-Punkte (Hysterese gegen Dry-Flattern). */
+export const AC_HUMIDITY_OFF_HYSTERESIS_PCT = 3;
 
 export const AC_PROFILE_IDS = ["generic", "samsung_smartthings"] as const;
 export type AcProfileId = (typeof AC_PROFILE_IDS)[number];

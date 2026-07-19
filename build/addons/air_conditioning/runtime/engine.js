@@ -13,6 +13,7 @@ const constants_1 = require("../constants");
 const configured_1 = require("../configured");
 const config_1 = require("../config");
 const registry_1 = require("../profiles/registry");
+const types_1 = require("../profiles/types");
 const ensure_states_1 = require("./ensure_states");
 const daily_plan_1 = require("./daily_plan");
 const fsm_1 = require("./fsm");
@@ -61,7 +62,11 @@ function unitPersist(index) {
     if (!persist.units[index]) {
         persist.units[index] = (0, persist_1.emptyUnitPersist)(index);
     }
-    return persist.units[index];
+    const up = persist.units[index];
+    if (up.lastModePurpose === undefined) {
+        up.lastModePurpose = null;
+    }
+    return up;
 }
 function allocatedPowerW(runningCount, outdoorMax, unitEstimated) {
     if (runningCount <= 0)
@@ -79,6 +84,14 @@ function scheduleCleaningAfterStop(host, unit, up, nowMs) {
     }
     if (up.cleaningPendingUntilMs && up.cleaningPendingUntilMs > nowMs) {
         return;
+    }
+    // Abort/short cool runs must not trigger auto-clean (would loop with immediate re-stop).
+    if (up.lastStartAtMs != null) {
+        const coolRuntimeMs = nowMs - up.lastStartAtMs;
+        if (coolRuntimeMs < constants_1.AC_CLEANING_MIN_COOL_RUNTIME_MS) {
+            host.log.info(`ac unit ${unit.index}: cleaning skipped — cool run too short (${Math.round(coolRuntimeMs / 1000)}s < ${Math.round(constants_1.AC_CLEANING_MIN_COOL_RUNTIME_MS / 1000)}s)`);
+            return;
+        }
     }
     up.cleaningPendingUntilMs = nowMs + unit.cleaningDelayMin * 60_000;
     const at = new Date(up.cleaningPendingUntilMs).toLocaleTimeString("de-AT", { hour: "2-digit", minute: "2-digit" });
@@ -99,6 +112,7 @@ async function stopUnit(host, unit, table, live, up) {
     }
     up.running = false;
     up.lastStopAtMs = Date.now();
+    up.lastModePurpose = null;
     scheduleCleaningAfterStop(host, unit, up, up.lastStopAtMs);
 }
 async function waitForFeedbackOn(host, fbId) {
@@ -115,11 +129,31 @@ async function waitForFeedbackOn(host, fbId) {
     const fb = await readForeign(host, fbId);
     return { on: (0, time_1.switchIsOn)(fb.value), value: fb.value };
 }
+async function applyModePurposeWhileRunning(host, unit, table, live, up, modePurpose) {
+    if (up.lastModePurpose === modePurpose) {
+        return;
+    }
+    const { mode, fanMode, fanSpeed } = (0, types_1.modeStringsForPurpose)(unit, modePurpose);
+    if (!(0, config_1.acModeCommandEnabled)(mode)) {
+        return;
+    }
+    const steps = [
+        { kind: "set", role: "cmd_set_mode", value: mode },
+        { kind: "set", role: "cmd_set_fan_mode", value: fanMode },
+        ...(0, types_1.optionalStep)("cmd_set_fan_speed", fanSpeed),
+    ];
+    await (0, sequences_1.executeAcWriteSteps)(host, unit.index, table, steps, live, host.log);
+    up.lastModePurpose = modePurpose;
+    if (live) {
+        host.log.info(`ac unit ${unit.index}: mode → ${modePurpose} (${mode})`);
+    }
+}
 async function startUnit(host, unit, table, live, up, modePurpose) {
     const profile = (0, registry_1.getAcProfile)(unit.profileId);
     const steps = profile.coolingStartSequence(unit, modePurpose);
     await (0, sequences_1.executeAcWriteSteps)(host, unit.index, table, steps, live, host.log);
     up.lastStartAtMs = Date.now();
+    up.lastModePurpose = modePurpose;
     if (!live) {
         up.running = true;
         return;
@@ -360,6 +394,12 @@ async function runAcRuntimeTickBody(host) {
             else if (!up.running) {
                 await startUnit(host, unit, mappingTable, false, up, fsm.modePurpose);
             }
+        }
+        else if ((0, time_1.switchIsOn)(fb.value) &&
+            !fsm.demandStop &&
+            !up.cleaningActive &&
+            permission.deviceWritesAllowed) {
+            await applyModePurposeWhileRunning(host, unit, mappingTable, live, up, fsm.modePurpose);
         }
         summaryReasons.push(`U${unit.index}: ${permission.reasonDe}`);
         if ((0, time_1.switchIsOn)(fb.value)) {

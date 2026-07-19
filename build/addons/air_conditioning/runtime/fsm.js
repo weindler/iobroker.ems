@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.evaluateAcUnitFsm = void 0;
+const constants_1 = require("../constants");
+const config_1 = require("../config");
 const time_1 = require("./time");
 function evaluateAcUnitFsm(input) {
     const { unit } = input;
@@ -48,42 +50,108 @@ function evaluateAcUnitFsm(input) {
         // pretend we evaluated off-temp (operator sees reason_de).
         return none("idle", "Raumtemperatur fehlt.");
     }
+    const coolEnabled = (0, config_1.acModeCommandEnabled)(unit.modeWhenCooling);
+    const dryEnabled = (0, config_1.acModeCommandEnabled)(unit.modeWhenDehumidify) && unit.maxHumidityPct !== null;
+    const heatEnabled = (0, config_1.acModeCommandEnabled)(unit.modeWhenHeating);
     const humidity = input.roomHumidityPct;
-    const humidityHigh = unit.maxHumidityPct !== null && humidity !== null && humidity >= unit.maxHumidityPct;
+    const humidityHigh = dryEnabled && humidity !== null && humidity >= unit.maxHumidityPct;
+    const humidityOffPct = dryEnabled
+        ? Math.max(0, unit.maxHumidityPct - constants_1.AC_HUMIDITY_OFF_HYSTERESIS_PCT)
+        : null;
+    const humidityLow = dryEnabled && humidity !== null && humidityOffPct !== null && humidity <= humidityOffPct;
     const tempHigh = temp >= unit.onTempC;
     const tempLow = temp <= unit.offTempC;
-    let modePurpose = "cooling";
-    if (humidityHigh && !tempHigh) {
-        modePurpose = "dehumidify";
-    }
-    // Off-temperature always wins while the unit is on — humidity must not keep cooling forever.
-    if (tempLow && (0, time_1.switchIsOn)(input.feedbackSwitchRaw)) {
-        return {
-            state: "running",
-            demandStart: false,
-            demandStop: true,
-            modePurpose: "cooling",
-            reasonDe: `Temp ${temp.toFixed(1)} °C ≤ ${unit.offTempC} °C — Abschalten.`,
-        };
-    }
-    if (tempHigh || humidityHigh) {
-        if ((0, time_1.switchIsOff)(input.feedbackSwitchRaw)) {
-            const why = humidityHigh && !tempHigh ? "Feuchte hoch" : `Temp ${temp.toFixed(1)} °C ≥ ${unit.onTempC} °C`;
+    const needCool = coolEnabled && tempHigh;
+    const needDry = dryEnabled && humidityHigh;
+    // Heating path reserved: only when mode string set (FSM demand not wired yet).
+    void heatEnabled;
+    if (!coolEnabled && !dryEnabled) {
+        if ((0, time_1.switchIsOn)(input.feedbackSwitchRaw)) {
             return {
-                state: "idle",
-                demandStart: true,
+                state: "running",
+                demandStart: false,
+                demandStop: true,
+                modePurpose: "cooling",
+                reasonDe: "Kein Modus konfiguriert (cool/dry leer) — Abschalten.",
+            };
+        }
+        return none("idle", "Kein Modus konfiguriert (cool/dry leer).");
+    }
+    // Cool has priority when temp is at/above on-temp; otherwise dry when humidity demands it.
+    const modePurpose = needCool ? "cooling" : needDry ? "dehumidify" : "cooling";
+    if ((0, time_1.switchIsOn)(input.feedbackSwitchRaw)) {
+        if (needCool || needDry) {
+            const why = needCool
+                ? `Temp ${temp.toFixed(1)} °C ≥ ${unit.onTempC} °C — cool`
+                : `Feuchte ${humidity.toFixed(0)} % ≥ ${unit.maxHumidityPct} % — dry`;
+            return {
+                state: "running",
+                demandStart: false,
                 demandStop: false,
                 modePurpose,
-                reasonDe: `${why} — Einschalten.`,
+                reasonDe: `Läuft (${why}).`,
+            };
+        }
+        if (humidityLow) {
+            return {
+                state: "running",
+                demandStart: false,
+                demandStop: true,
+                modePurpose: "dehumidify",
+                reasonDe: `Feuchte ${humidity.toFixed(0)} % ≤ ${humidityOffPct} % — Entfeuchten fertig.`,
+            };
+        }
+        if (coolEnabled) {
+            if (tempLow) {
+                return {
+                    state: "running",
+                    demandStart: false,
+                    demandStop: true,
+                    modePurpose: "cooling",
+                    reasonDe: `Temp ${temp.toFixed(1)} °C ≤ ${unit.offTempC} °C — Abschalten.`,
+                };
+            }
+            return {
+                state: "running",
+                demandStart: false,
+                demandStop: false,
+                modePurpose: "cooling",
+                reasonDe: `Temp ${temp.toFixed(1)} °C im Hysterese-Bereich — läuft weiter.`,
+            };
+        }
+        // Dry-only: hold while humidity still above off-hysteresis.
+        if (dryEnabled && !humidityLow) {
+            return {
+                state: "running",
+                demandStart: false,
+                demandStop: false,
+                modePurpose: "dehumidify",
+                reasonDe: `Feuchte im Hysterese-Bereich — dry läuft weiter.`,
             };
         }
         return {
             state: "running",
             demandStart: false,
+            demandStop: true,
+            modePurpose: "cooling",
+            reasonDe: "Kein cool/dry-Bedarf — Abschalten.",
+        };
+    }
+    // Switch off: start for cool and/or dry (dry may start even below cool off-temp).
+    if (needCool || needDry) {
+        const why = needCool
+            ? `Temp ${temp.toFixed(1)} °C ≥ ${unit.onTempC} °C — cool`
+            : `Feuchte ${humidity.toFixed(0)} % ≥ ${unit.maxHumidityPct} % — dry`;
+        return {
+            state: "idle",
+            demandStart: true,
             demandStop: false,
             modePurpose,
-            reasonDe: `Läuft — Temp ${temp.toFixed(1)} °C.`,
+            reasonDe: `${why} — Einschalten.`,
         };
+    }
+    if (!coolEnabled && dryEnabled && !humidityHigh) {
+        return none("idle", "Dry konfiguriert, Feuchte unter Schwellwert.");
     }
     return none("idle", `Temp ${temp.toFixed(1)} °C im Hysterese-Bereich.`);
 }

@@ -13,11 +13,23 @@ import {
 import { isAddonGovernanceEnabledFromState, addonGovernanceEnabledState } from "../../../addons/governance";
 import { DAILY_PLAN_STATE_IDS, ALLOCATION_ADDON_STATE_IDS } from "../../../operator/daily_plan/states";
 import type { DeviceWriteHost } from "../../../device_write";
-import { acUnitConsumerKey, AC_ADDON_ID, AC_CLEANING_REFRESH_MS, AC_FEEDBACK_POLL_ATTEMPTS, AC_FEEDBACK_POLL_MS, AC_START_RETRY_MS, AC_STOP_RETRY_MS, AC_TICK_MS, AC_WATCH_MAPPING_ROLES } from "../constants";
+import {
+	acUnitConsumerKey,
+	AC_ADDON_ID,
+	AC_CLEANING_MIN_COOL_RUNTIME_MS,
+	AC_CLEANING_REFRESH_MS,
+	AC_FEEDBACK_POLL_ATTEMPTS,
+	AC_FEEDBACK_POLL_MS,
+	AC_START_RETRY_MS,
+	AC_STOP_RETRY_MS,
+	AC_TICK_MS,
+	AC_WATCH_MAPPING_ROLES,
+} from "../constants";
 import { configuredAcUnitIndexes } from "../configured";
-import { acGlobalConfigFromAdapter } from "../config";
+import { acGlobalConfigFromAdapter, acModeCommandEnabled } from "../config";
 import type { AcUnitConfig } from "../types";
 import { getAcProfile } from "../profiles/registry";
+import { modeStringsForPurpose, optionalStep } from "../profiles/types";
 import type { AcUnitModePurpose } from "../types";
 import { acUnitRuntimeStates, AC_RUNTIME_BASE, AC_RUNTIME_SUMMARY_STATES, ensureAcRuntimeStates } from "./ensure_states";
 import {
@@ -97,7 +109,11 @@ function unitPersist(index: number): AcUnitPersist {
 	if (!persist.units[index]) {
 		persist.units[index] = emptyUnitPersist(index);
 	}
-	return persist.units[index];
+	const up = persist.units[index];
+	if (up.lastModePurpose === undefined) {
+		up.lastModePurpose = null;
+	}
+	return up;
 }
 
 function allocatedPowerW(runningCount: number, outdoorMax: number, unitEstimated: number): number {
@@ -121,6 +137,16 @@ function scheduleCleaningAfterStop(
 	}
 	if (up.cleaningPendingUntilMs && up.cleaningPendingUntilMs > nowMs) {
 		return;
+	}
+	// Abort/short cool runs must not trigger auto-clean (would loop with immediate re-stop).
+	if (up.lastStartAtMs != null) {
+		const coolRuntimeMs = nowMs - up.lastStartAtMs;
+		if (coolRuntimeMs < AC_CLEANING_MIN_COOL_RUNTIME_MS) {
+			host.log.info(
+				`ac unit ${unit.index}: cleaning skipped — cool run too short (${Math.round(coolRuntimeMs / 1000)}s < ${Math.round(AC_CLEANING_MIN_COOL_RUNTIME_MS / 1000)}s)`,
+			);
+			return;
+		}
 	}
 	up.cleaningPendingUntilMs = nowMs + unit.cleaningDelayMin * 60_000;
 	const at = new Date(up.cleaningPendingUntilMs).toLocaleTimeString("de-AT", { hour: "2-digit", minute: "2-digit" });
@@ -147,6 +173,7 @@ async function stopUnit(
 	}
 	up.running = false;
 	up.lastStopAtMs = Date.now();
+	up.lastModePurpose = null;
 	scheduleCleaningAfterStop(host, unit, up, up.lastStopAtMs);
 }
 
@@ -168,6 +195,33 @@ async function waitForFeedbackOn(
 	return { on: switchIsOn(fb.value), value: fb.value };
 }
 
+async function applyModePurposeWhileRunning(
+	host: AcRuntimeHost,
+	unit: AcUnitConfig,
+	table: AcMappingTable,
+	live: boolean,
+	up: AcUnitPersist,
+	modePurpose: AcUnitModePurpose,
+): Promise<void> {
+	if (up.lastModePurpose === modePurpose) {
+		return;
+	}
+	const { mode, fanMode, fanSpeed } = modeStringsForPurpose(unit, modePurpose);
+	if (!acModeCommandEnabled(mode)) {
+		return;
+	}
+	const steps = [
+		{ kind: "set" as const, role: "cmd_set_mode" as const, value: mode },
+		{ kind: "set" as const, role: "cmd_set_fan_mode" as const, value: fanMode },
+		...optionalStep("cmd_set_fan_speed", fanSpeed),
+	];
+	await executeAcWriteSteps(host, unit.index, table, steps, live, host.log);
+	up.lastModePurpose = modePurpose;
+	if (live) {
+		host.log.info(`ac unit ${unit.index}: mode → ${modePurpose} (${mode})`);
+	}
+}
+
 async function startUnit(
 	host: AcRuntimeHost,
 	unit: AcUnitConfig,
@@ -180,6 +234,7 @@ async function startUnit(
 	const steps = profile.coolingStartSequence(unit, modePurpose);
 	await executeAcWriteSteps(host, unit.index, table, steps, live, host.log);
 	up.lastStartAtMs = Date.now();
+	up.lastModePurpose = modePurpose;
 	if (!live) {
 		up.running = true;
 		return;
@@ -505,6 +560,20 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 			} else if (!up.running) {
 				await startUnit(host, unit, mappingTable, false, up, fsm.modePurpose);
 			}
+		} else if (
+			switchIsOn(fb.value) &&
+			!fsm.demandStop &&
+			!up.cleaningActive &&
+			permission.deviceWritesAllowed
+		) {
+			await applyModePurposeWhileRunning(
+				host,
+				unit,
+				mappingTable,
+				live,
+				up,
+				fsm.modePurpose,
+			);
 		}
 
 		summaryReasons.push(`U${unit.index}: ${permission.reasonDe}`);

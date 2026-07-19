@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.159",
+		"version": "0.1.160",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.160": {
+				"en": "AC fix: dry below off-temp when humidity high; cool preferred above on-temp; empty cool/dry/heat mode disables that purpose; skip auto-clean after short runs (stops cleaning loop).",
+				"de": "Klima-Fix: Dry unter Abschalttemp. bei hoher Feuchte; Cool bevorzugt über Einschalttemp.; leerer cool/dry/heat-Modus deaktiviert den Zweck; keine Auto-Reinigung nach Kurzläufen (Reinigungs-Schleife)."
+			},
 			"0.1.159": {
 				"en": "Battery-for-consumers policy (immersion/climate/wallbox): SOC floor, critical-only, EVCC hold visible to Operator.",
 				"de": "Batterie-für-Verbraucher-Policy (Heizstab/Klima/Wallbox): SOC-Boden, nur-kritisch, EVCC-Hold für den Operator sichtbar."

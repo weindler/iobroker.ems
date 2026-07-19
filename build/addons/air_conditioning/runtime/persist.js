@@ -15,6 +15,7 @@ function emptyUnitPersist(index) {
         cleaningLastRefreshAtMs: null,
         lastStartAtMs: null,
         lastStopAtMs: null,
+        lastModePurpose: null,
     };
 }
 exports.emptyUnitPersist = emptyUnitPersist;

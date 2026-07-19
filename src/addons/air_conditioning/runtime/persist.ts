@@ -1,3 +1,5 @@
+import type { AcUnitModePurpose } from "../types";
+
 export type AcUnitPersist = {
 	index: number;
 	running: boolean;
@@ -10,6 +12,8 @@ export type AcUnitPersist = {
 	cleaningLastRefreshAtMs: number | null;
 	lastStartAtMs: number | null;
 	lastStopAtMs: number | null;
+	/** Last mode purpose written to the device (cool/dry switch while running). */
+	lastModePurpose: AcUnitModePurpose | null;
 };
 
 export type AcRuntimePersist = {
@@ -32,6 +36,7 @@ export function emptyUnitPersist(index: number): AcUnitPersist {
 		cleaningLastRefreshAtMs: null,
 		lastStartAtMs: null,
 		lastStopAtMs: null,
+		lastModePurpose: null,
 	};
 }
 

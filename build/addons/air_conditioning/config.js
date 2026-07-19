@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.acEnabledUnits = exports.acGlobalConfigFromAdapter = exports.acUnitConfigFromAdapter = void 0;
+exports.acEnabledUnits = exports.acGlobalConfigFromAdapter = exports.acUnitConfigFromAdapter = exports.acModeCommandEnabled = void 0;
 const constants_1 = require("./constants");
 function configRecord(config) {
     return config && typeof config === "object" ? config : {};
@@ -37,6 +37,11 @@ function parseOptionalHumidity(c, key) {
     const v = numField(c, key, 0);
     return v > 0 ? v : null;
 }
+/** Leer = Modus absichtlich aus (cool/dry/heat/fan). */
+function acModeCommandEnabled(mode) {
+    return mode.trim().length > 0;
+}
+exports.acModeCommandEnabled = acModeCommandEnabled;
 function effectiveEstimatedPowerW(c, key, def) {
     const n = numField(c, key, def);
     return n > 0 ? n : def;

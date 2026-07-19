@@ -281,4 +281,16 @@ describe("startup rearm via handleExecutionModeStateChange", () => {
 		assert.equal(adapter.store.get("info.backup.live_rearm_required")?.val, false);
 		assert.equal(adapter.store.get(GLOBAL_REL)?.val, "live");
 	});
+
+	it("confirmStartupLiveRearm clears flag and info state", async () => {
+		resetStartupRearmForTest();
+		setStartupRearmRequired(true);
+		const adapter = makeAdapter({ global_execution_mode: "live" });
+		await adapter.setStateAsync(GLOBAL.executionMode, { val: "live", ack: true });
+		const { confirmStartupLiveRearm } = await import("./startup_rearm.js");
+		const result = await confirmStartupLiveRearm(adapter);
+		assert.equal(result.ok, true);
+		assert.equal(isStartupRearmRequired(), false);
+		assert.equal(adapter.store.get("info.backup.live_rearm_required")?.val, false);
+	});
 });

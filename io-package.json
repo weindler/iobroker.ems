@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.147",
+		"version": "0.1.148",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.148": {
+				"en": "Fix Startup-Rearm: clear restore gate before ready; Admin button Live-Writes freigeben (confirmLiveRearm) — mode toggle alone no longer silently ignored.",
+				"de": "Fix Startup-Rearm: Restore-Gate vor Ready freigeben; Admin-Button Live-Writes freigeben (confirmLiveRearm) — Mode-Toggle wird nicht mehr still ignoriert."
+			},
 			"0.1.147": {
 				"en": "Fix: clear info.backup.live_rearm_required when Startup-Rearm is lifted by explicit live request.",
 				"de": "Fix: info.backup.live_rearm_required wird bei explizitem Live-Rearm auf false gesetzt."

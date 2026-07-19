@@ -1,7 +1,30 @@
 "use strict";
 /** Startup live-rearm gate — independent from restore dryrun context. */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resetStartupRearmForTest = exports.captureExecutionModeBaselineFromHost = exports.isExplicitUserLiveRearmRequest = exports.isExplicitUserExecutionModeRequest = exports.isFreshUserStateChange = exports.isAdapterInternalStateOrigin = exports.clearStartupRearmRequired = exports.getExecutionModeBaselineLc = exports.clearExecutionModeBaseline = exports.recordExecutionModeBaseline = exports.getBootstrapCompletedAtMs = exports.markBootstrapCompletedForRearm = exports.isStartupRearmRequired = exports.setStartupRearmRequired = void 0;
+exports.resetStartupRearmForTest = exports.captureExecutionModeBaselineFromHost = exports.isExplicitUserLiveRearmRequest = exports.isExplicitUserExecutionModeRequest = exports.isFreshUserStateChange = exports.isAdapterInternalStateOrigin = exports.confirmStartupLiveRearm = exports.clearStartupRearmRequired = exports.getExecutionModeBaselineLc = exports.clearExecutionModeBaseline = exports.recordExecutionModeBaseline = exports.getBootstrapCompletedAtMs = exports.markBootstrapCompletedForRearm = exports.isStartupRearmRequired = exports.setStartupRearmRequired = void 0;
 let startupRearmRequired = false;
 let bootstrapCompletedAtMs = 0;
 const executionModeBaselineLc = new Map();
@@ -37,6 +60,29 @@ function clearStartupRearmRequired() {
     startupRearmRequired = false;
 }
 exports.clearStartupRearmRequired = clearStartupRearmRequired;
+/**
+ * Explizite Benutzer-Freigabe für Geräte-Writes nach Adapter-Start.
+ * Unabhängig von Mode-Toggle — Admin-Config-Save / Restart blockiert das nicht.
+ */
+async function confirmStartupLiveRearm(host) {
+    const { BACKUP_INFO_STATES } = await Promise.resolve().then(() => __importStar(require("./ensure_states.js")));
+    const { GLOBAL } = await Promise.resolve().then(() => __importStar(require("../tree_paths.js")));
+    const { parseMode } = await Promise.resolve().then(() => __importStar(require("../execution_mode.js")));
+    const alreadyCleared = !isStartupRearmRequired();
+    const globalMode = parseMode((await host.getStateAsync(GLOBAL.executionMode))?.val);
+    if (globalMode !== "live") {
+        await host.setStateAsync(GLOBAL.executionMode, { val: "live", ack: true });
+        await host.setStateAsync("execution.safety.global_execution_mode", { val: "live", ack: true });
+    }
+    clearStartupRearmRequired();
+    await host.setStateAsync(BACKUP_INFO_STATES.liveRearmRequired, { val: false, ack: true });
+    await host.setStateAsync(BACKUP_INFO_STATES.confirmLiveRearm, { val: false, ack: true });
+    host.log.info(alreadyCleared
+        ? "Startup-Rearm war bereits aufgehoben — live_rearm_required=false bestätigt"
+        : "Startup-Rearm aufgehoben (confirm_live_rearm) — Geräte-Writes freigegeben");
+    return { ok: true, alreadyCleared };
+}
+exports.confirmStartupLiveRearm = confirmStartupLiveRearm;
 /** Adapter-interne Writes (Sync, Reconciliation, Hydration) dürfen Rearm nicht aufheben. */
 function isAdapterInternalStateOrigin(from, adapterNamespace) {
     const origin = String(from ?? "").trim();

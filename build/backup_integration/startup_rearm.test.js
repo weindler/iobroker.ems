@@ -1,4 +1,27 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -144,5 +167,16 @@ function freshUserState(val, lc, ts = 2000) {
         strict_1.default.equal((0, startup_rearm_js_1.isStartupRearmRequired)(), false);
         strict_1.default.equal(adapter.store.get("info.backup.live_rearm_required")?.val, false);
         strict_1.default.equal(adapter.store.get(GLOBAL_REL)?.val, "live");
+    });
+    (0, node_test_1.it)("confirmStartupLiveRearm clears flag and info state", async () => {
+        (0, startup_rearm_js_1.resetStartupRearmForTest)();
+        (0, startup_rearm_js_1.setStartupRearmRequired)(true);
+        const adapter = makeAdapter({ global_execution_mode: "live" });
+        await adapter.setStateAsync(tree_paths_js_1.GLOBAL.executionMode, { val: "live", ack: true });
+        const { confirmStartupLiveRearm } = await Promise.resolve().then(() => __importStar(require("./startup_rearm.js")));
+        const result = await confirmStartupLiveRearm(adapter);
+        strict_1.default.equal(result.ok, true);
+        strict_1.default.equal((0, startup_rearm_js_1.isStartupRearmRequired)(), false);
+        strict_1.default.equal(adapter.store.get("info.backup.live_rearm_required")?.val, false);
     });
 });

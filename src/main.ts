@@ -38,7 +38,8 @@ import {
 	updateBootGuardAfterBootstrap,
 	getBackupIntegrationContext,
 } from "./backup_integration/startup";
-import { markBootstrapCompletedForRearm, captureExecutionModeBaselineFromHost } from "./backup_integration/startup_rearm";
+import { markBootstrapCompletedForRearm, captureExecutionModeBaselineFromHost, confirmStartupLiveRearm } from "./backup_integration/startup_rearm";
+import { BACKUP_INFO_STATES } from "./backup_integration/ensure_states";
 import { EXECUTION_MODE_ADDON_IDS } from "./execution_mode";
 import { GLOBAL, addonMode } from "./tree_paths";
 import { parseInboxValue } from "./inbox";
@@ -108,6 +109,25 @@ class Ems extends utils.Adapter {
 					`requestBackupExport unhandled: ${e instanceof Error ? e.message : String(e)}`,
 				);
 			});
+			return;
+		}
+		if (obj.command === "confirmLiveRearm") {
+			void (async () => {
+				try {
+					const result = await confirmStartupLiveRearm(this);
+					if (obj.callback) {
+						this.sendTo(obj.from, obj.command, result, obj.callback);
+					}
+				} catch (e) {
+					const error = e instanceof Error ? e.message : String(e);
+					this.log.error(`confirmLiveRearm: ${error}`);
+					if (obj.callback) {
+						this.sendTo(obj.from, obj.command, { ok: false, error }, obj.callback);
+					}
+				}
+			})().catch((e) => {
+				this.log.error(`confirmLiveRearm unhandled: ${e instanceof Error ? e.message : String(e)}`);
+			});
 		}
 	}
 
@@ -169,21 +189,26 @@ class Ems extends utils.Adapter {
 
 		this.log.info("EMS adapter ready — Failsafe Heizstab/Batterie/Wallbox (nur Live)");
 
+		// Clear restore/stateChange gate BEFORE optional inits that can time out —
+		// otherwise execution-mode / rearm handlers stay dead for the whole process.
+		await clearRestoreRestartRequiredAfterBootstrap(this);
+		markBootstrapCompletedForRearm();
+		await captureExecutionModeBaselineFromHost(this, [
+			GLOBAL.executionMode,
+			...EXECUTION_MODE_ADDON_IDS.map((id) => addonMode(id)),
+		]);
+		const manifest = integrationCtx.manifest ?? getBackupIntegrationContext()?.manifest;
+		if (manifest) {
+			await updateBootGuardAfterBootstrap(this, manifest);
+		}
+
 		await this.step("backup export init", async () => {
 			await cleanupTempExports(this);
 			await initBackupExportRuntime(this);
 			await initRestoreRuntime(this);
-			await clearRestoreRestartRequiredAfterBootstrap(this);
-			markBootstrapCompletedForRearm();
-			await captureExecutionModeBaselineFromHost(this, [
-				GLOBAL.executionMode,
-				...EXECUTION_MODE_ADDON_IDS.map((id) => addonMode(id)),
-			]);
-			const manifest = integrationCtx.manifest ?? getBackupIntegrationContext()?.manifest;
-			if (manifest) {
-				await updateBootGuardAfterBootstrap(this, manifest);
-			}
 		});
+
+		await this.subscribeStatesAsync("info.backup.confirm_live_rearm");
 
 		await this.step("process pending inbox", async () => {
 			const inbox = await this.getStateAsync(STATE.command.inbox);
@@ -207,11 +232,32 @@ class Ems extends utils.Adapter {
 	}
 
 	private async onStateChange(id: string, state: ioBroker.State | null): Promise<void> {
+		const relEarly = id.startsWith(`${this.namespace}.`) ? id.slice(this.namespace.length + 1) : id;
+		// Confirm button must work even if restore gate stuck after a timed-out init step.
+		if (
+			state &&
+			!state.ack &&
+			(state.val === true || state.val === "true" || state.val === 1) &&
+			relEarly === BACKUP_INFO_STATES.confirmLiveRearm
+		) {
+			await confirmStartupLiveRearm(this);
+			return;
+		}
 		if (!isBootstrapComplete() || isRestoreInProgress()) {
+			if (
+				state &&
+				!state.ack &&
+				(relEarly === GLOBAL.executionMode ||
+					(relEarly.startsWith("addons.") && relEarly.endsWith(".mode")))
+			) {
+				this.log.warn(
+					`${relEarly}: State-Change ignoriert (bootstrapComplete=${isBootstrapComplete()} restoreInProgress=${isRestoreInProgress()})`,
+				);
+			}
 			return;
 		}
 		if (state) {
-			const rel = id.startsWith(`${this.namespace}.`) ? id.slice(this.namespace.length + 1) : id;
+			const rel = relEarly;
 			if (isBackupRelatedState(rel)) {
 				await handleBackupStateChange(this, rel, state.val, state.ack);
 				return;

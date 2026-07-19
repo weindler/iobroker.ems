@@ -16,6 +16,8 @@ export const BACKUP_INFO_STATES = {
 	journalStatus: `${BACKUP_INFO_BASE}.journal_status`,
 	migrationStatus: `${BACKUP_INFO_BASE}.migration_status`,
 	liveRearmRequired: `${BACKUP_INFO_BASE}.live_rearm_required`,
+	/** Button: explicit user confirm to allow live device writes after startup. */
+	confirmLiveRearm: `${BACKUP_INFO_BASE}.confirm_live_rearm`,
 	/** True after at least one successful full backup export this process (Export-Register). */
 	exportRegisterReady: `${BACKUP_INFO_BASE}.export_register_ready`,
 	exportRegisterHint: `${BACKUP_INFO_BASE}.export_register_hint`,
@@ -75,6 +77,18 @@ export async function ensureBackupIntegrationInfoStates(host: StateHost): Promis
 		{
 			id: BACKUP_INFO_STATES.liveRearmRequired,
 			common: { name: "Live-Rearm erforderlich", type: "boolean", role: "indicator", read: true, write: false, def: true },
+		},
+		{
+			id: BACKUP_INFO_STATES.confirmLiveRearm,
+			common: {
+				name: "Live-Writes freigeben (Startup-Rearm bestätigen)",
+				type: "boolean",
+				role: "button",
+				read: true,
+				write: true,
+				def: false,
+			},
+			defaultVal: false,
 		},
 		{
 			id: BACKUP_INFO_STATES.exportRegisterReady,

@@ -36,6 +36,41 @@ export function clearStartupRearmRequired(): void {
 	startupRearmRequired = false;
 }
 
+export type ConfirmLiveRearmHost = {
+	log: { info: (msg: string) => void; warn?: (msg: string) => void };
+	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
+	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
+};
+
+/**
+ * Explizite Benutzer-Freigabe für Geräte-Writes nach Adapter-Start.
+ * Unabhängig von Mode-Toggle — Admin-Config-Save / Restart blockiert das nicht.
+ */
+export async function confirmStartupLiveRearm(
+	host: ConfirmLiveRearmHost,
+): Promise<{ ok: true; alreadyCleared: boolean } | { ok: false; error: string }> {
+	const { BACKUP_INFO_STATES } = await import("./ensure_states.js");
+	const { GLOBAL } = await import("../tree_paths.js");
+	const { parseMode } = await import("../execution_mode.js");
+
+	const alreadyCleared = !isStartupRearmRequired();
+	const globalMode = parseMode((await host.getStateAsync(GLOBAL.executionMode))?.val);
+	if (globalMode !== "live") {
+		await host.setStateAsync(GLOBAL.executionMode, { val: "live", ack: true });
+		await host.setStateAsync("execution.safety.global_execution_mode", { val: "live", ack: true });
+	}
+
+	clearStartupRearmRequired();
+	await host.setStateAsync(BACKUP_INFO_STATES.liveRearmRequired, { val: false, ack: true });
+	await host.setStateAsync(BACKUP_INFO_STATES.confirmLiveRearm, { val: false, ack: true });
+	host.log.info(
+		alreadyCleared
+			? "Startup-Rearm war bereits aufgehoben — live_rearm_required=false bestätigt"
+			: "Startup-Rearm aufgehoben (confirm_live_rearm) — Geräte-Writes freigegeben",
+	);
+	return { ok: true, alreadyCleared };
+}
+
 /** Adapter-interne Writes (Sync, Reconciliation, Hydration) dürfen Rearm nicht aufheben. */
 export function isAdapterInternalStateOrigin(from: unknown, adapterNamespace: string): boolean {
 	const origin = String(from ?? "").trim();

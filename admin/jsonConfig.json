@@ -13,7 +13,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Globale Ausführung für alle Addons. Admin-Config und Objektbaum (global.execution_mode) bleiben synchron. Nach jedem Adapter-Start sind Geräte-Writes zusätzlich gesperrt (Startup-Rearm), bis Sie global.execution_mode erneut bewusst auf Live setzen — siehe info.backup.live_rearm_required."
+					"text": "Globale Ausführung für alle Addons. Admin-Config und Objektbaum (global.execution_mode) bleiben synchron. Nach jedem Adapter-Start sind Geräte-Writes gesperrt (Startup-Rearm). Freigabe: Button „Live-Writes freigeben“ unten oder Objekt ems.X.info.backup.confirm_live_rearm=true — nicht nur Admin-Config speichern (das startet neu und setzt Rearm wieder)."
 				},
 				"global_execution_mode": {
 					"type": "select",
@@ -34,6 +34,19 @@
 					"md": 4,
 					"lg": 4,
 					"xl": 4
+				},
+				"confirmLiveRearm": {
+					"type": "sendTo",
+					"label": "Startup-Rearm",
+					"command": "confirmLiveRearm",
+					"jsonData": "{}",
+					"button": "Live-Writes freigeben",
+					"showResult": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
 				},
 				"planner_runtime_mode": {
 					"type": "select",

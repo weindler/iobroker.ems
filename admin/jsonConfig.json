@@ -7966,7 +7966,7 @@
 					"timeout": 120000,
 					"variant": "contained",
 					"color": "primary",
-					"icon": "upload",
+					"icon": "send",
 					"result": {
 						"ok": "Backup erstellt — siehe Dateiliste / Host-Pfad",
 						"error": "Backup fehlgeschlagen — siehe backup.last_error"

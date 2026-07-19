@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.acUnitConsumerKey = exports.acUnitMappingCommands = exports.acUnitMappingCommand = exports.AC_WATCH_MAPPING_ROLES = exports.AC_MAPPING_ROLES = exports.AC_PROFILE_IDS = exports.AC_CLEANING_FEEDBACK_MIN_RUNTIME_SEC = exports.AC_CLEANING_ACTIVE_CONFIRM_SEC = exports.AC_CLEANING_REFRESH_MS = exports.AC_FEEDBACK_POLL_ATTEMPTS = exports.AC_FEEDBACK_POLL_MS = exports.AC_STOP_RETRY_MS = exports.AC_START_RETRY_MS = exports.AC_WRITE_REFRESH_DELAY_MS = exports.AC_WRITE_SETPOINT_DELAY_MS = exports.AC_TICK_MS = exports.AC_UNIT_COUNT = exports.AC_ADDON_ID = void 0;
+exports.acUnitConsumerKey = exports.acUnitMappingCommands = exports.acMappingFlatPrefix = exports.acUnitMappingCommand = exports.AC_WATCH_MAPPING_ROLES = exports.AC_MAPPING_ROLES = exports.AC_PROFILE_IDS = exports.AC_CLEANING_FEEDBACK_MIN_RUNTIME_SEC = exports.AC_CLEANING_ACTIVE_CONFIRM_SEC = exports.AC_CLEANING_REFRESH_MS = exports.AC_FEEDBACK_POLL_ATTEMPTS = exports.AC_FEEDBACK_POLL_MS = exports.AC_STOP_RETRY_MS = exports.AC_START_RETRY_MS = exports.AC_WRITE_REFRESH_DELAY_MS = exports.AC_WRITE_SETPOINT_DELAY_MS = exports.AC_TICK_MS = exports.AC_UNIT_COUNT = exports.AC_ADDON_ID = void 0;
 exports.AC_ADDON_ID = "air_conditioning";
 exports.AC_UNIT_COUNT = 5;
 exports.AC_TICK_MS = 10_000;
@@ -53,6 +53,10 @@ function acUnitMappingCommand(unitIndex, role) {
     return `unit_${unitIndex}_${role}`;
 }
 exports.acUnitMappingCommand = acUnitMappingCommand;
+function acMappingFlatPrefix(unitIndex, role) {
+    return `ac_u${unitIndex}_${role}`;
+}
+exports.acMappingFlatPrefix = acMappingFlatPrefix;
 function acUnitMappingCommands() {
     const out = [];
     for (let i = 1; i <= exports.AC_UNIT_COUNT; i++) {

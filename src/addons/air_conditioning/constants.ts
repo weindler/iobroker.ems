@@ -57,6 +57,10 @@ export function acUnitMappingCommand(unitIndex: number, role: AcMappingRole): st
 	return `unit_${unitIndex}_${role}`;
 }
 
+export function acMappingFlatPrefix(unitIndex: number, role: AcMappingRole): string {
+	return `ac_u${unitIndex}_${role}`;
+}
+
 export function acUnitMappingCommands(): string[] {
 	const out: string[] = [];
 	for (let i = 1; i <= AC_UNIT_COUNT; i++) {

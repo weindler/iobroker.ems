@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.153",
+		"version": "0.1.154",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.154": {
+				"en": "Fix: restore acMappingFlatPrefix export (0.1.153 build break) — AC mapping sync only for enabled units.",
+				"de": "Fix: acMappingFlatPrefix-Export wiederhergestellt (0.1.153 Build-Bruch) — AC-Mapping-Sync nur für aktivierte Units."
+			},
 			"0.1.153": {
 				"en": "Fix: sync AC mappings only for enabled units — no more writes to deleted unit_3..5 mapping states after cleanup.",
 				"de": "Fix: AC-Mappings nur für aktivierte Units syncen — keine Writes mehr auf gelöschte unit_3..5 Mapping-States nach Cleanup."

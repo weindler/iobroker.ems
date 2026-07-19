@@ -5,10 +5,10 @@
 import {
 	AC_MAPPING_ROLES,
 	AC_UNIT_COUNT,
+	acMappingFlatPrefix,
 	acUnitMappingCommand,
 } from "./constants";
 import { acUnitConfigFromAdapter } from "./config";
-import { acMappingFlatPrefix } from "./constants";
 
 function configRecord(config: unknown): Record<string, unknown> {
 	return config && typeof config === "object" ? (config as Record<string, unknown>) : {};

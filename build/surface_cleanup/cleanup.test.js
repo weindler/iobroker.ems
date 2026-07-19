@@ -68,9 +68,9 @@ class FakeCleanupHost {
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.authority"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.takeover"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.coordinator"), true);
-        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.intent.forecast_plan"), true);
-        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.intent.daily_plan"), true);
-        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.intent.allocation"), true);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.intent.forecast_plan"), false);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.intent.daily_plan"), false);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.intent.allocation"), false);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.intent.allocation.wallbox.plan_json"), false);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("learning.persistence.pv_bias_daily_json"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("learning.persistence.files_present"), false);
@@ -264,17 +264,9 @@ class FakeCleanupHost {
         strict_1.default.equal(host.objects.has("user_intent.resolved_all_json"), false);
         strict_1.default.equal(host.objects.has("user_intent.wallbox.sources"), false);
     });
-    (0, node_test_1.it)("purges lean planner shadow and operator mirror roots", async () => {
+    (0, node_test_1.it)("purges lean planner shadow roots but keeps daily/forecast/allocation", async () => {
         const host = new FakeCleanupHost({});
-        for (const root of [
-            "planner.authority",
-            "planner.takeover",
-            "planner.coordinator",
-            "planner.intent.forecast_plan",
-            "planner.intent.daily_plan",
-            "planner.intent.contributions",
-            "planner.intent.allocation",
-        ]) {
+        for (const root of ["planner.authority", "planner.takeover", "planner.coordinator"]) {
             await host.setObjectNotExistsAsync(root, {
                 type: "channel",
                 common: { name: root },
@@ -286,16 +278,35 @@ class FakeCleanupHost {
                 native: {},
             });
         }
+        for (const root of [
+            "planner.intent.forecast_plan",
+            "planner.intent.daily_plan",
+            "planner.intent.allocation",
+        ]) {
+            await host.setObjectNotExistsAsync(root, {
+                type: "channel",
+                common: { name: root },
+                native: {},
+            });
+            await host.setObjectNotExistsAsync(`${root}.status`, {
+                type: "state",
+                common: { name: "status", type: "string", role: "text", read: true, write: false },
+                native: {},
+            });
+        }
         await host.setObjectNotExistsAsync("planner.intent.supply.grid.price_now", {
             type: "state",
             common: { name: "price", type: "number", role: "value", read: true, write: false },
             native: {},
         });
         const stats = await (0, cleanup_js_1.runDynamicSurfaceCleanup)(host);
-        strict_1.default.ok(stats.deleted >= 7);
+        strict_1.default.ok(stats.deleted >= 3);
         strict_1.default.equal(host.objects.has("planner.authority"), false);
         strict_1.default.equal(host.objects.has("planner.takeover.leaf"), false);
-        strict_1.default.equal(host.objects.has("planner.intent.forecast_plan.leaf"), false);
+        strict_1.default.equal(host.objects.has("planner.coordinator"), false);
+        strict_1.default.equal(host.objects.has("planner.intent.forecast_plan.status"), true);
+        strict_1.default.equal(host.objects.has("planner.intent.daily_plan.status"), true);
+        strict_1.default.equal(host.objects.has("planner.intent.allocation.status"), true);
         strict_1.default.equal(host.objects.has("planner.intent.supply.grid.price_now"), true);
     });
 });

@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.157",
+		"version": "0.1.158",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.158": {
+				"en": "Fix: re-enable Forecast→Daily Plan→Allocation (heater/addons need it). Shadow stays off. Admin Backup tab polished.",
+				"de": "Fix: Forecast→Daily Plan→Allocation wieder aktiv (Heizstab/Add-ons brauchen das). Shadow bleibt aus. Admin Backup-Tab aufgeräumt."
+			},
 			"0.1.157": {
 				"en": "Object-tree diet: lean wallbox runtime (detail_json + support package), purge user_intent source/diag mirrors. Winter/thermal/horizon kept.",
 				"de": "Objektbaum-Diät: schlanke Wallbox-Runtime (detail_json + Support-Paket), user_intent Quellen/Diagnose-Spiegel weg. Winter/Thermal/Horizon bleiben."

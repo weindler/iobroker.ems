@@ -6142,7 +6142,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Phase 2A–2E: PV-Bias, PV-Horizon, Weather-, Price-Statistics- und Price-Forecast-Learning (read-only). Tibber PricesToday/Tomorrow-JSON für Winter-15-min-Fenster unter learning_price_forecast_* konfigurieren.",
+					"text": "Phase 2A–2E: PV-Bias, PV-Horizon, Weather-, Price-Statistics- und Price-Forecast-Learning (read-only). Tibber PricesToday/Tomorrow-JSON für Winter-15-min-Fenster unter learning_price_forecast_* konfigurieren."
 				},
 				"learning_pv_bias_enabled": {
 					"type": "checkbox",
@@ -7180,38 +7180,78 @@
 		},
 		"exportTab": {
 			"type": "panel",
-			"label": "Export",
+			"label": "Backup",
 			"items": {
-				"introExportRegister": {
+				"introBackupTab": {
 					"type": "staticText",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "WICHTIG vor Neuinstallation oder Löschen der Instanz: hier einen vollständigen Export erstellen. Enthalten sind Admin-Config, alle Mappings, Fahrzeugprofile, Policies und Learning-Dateien (Preis/PV/Hauslast/Stats). Die Datei liegt auf dem Host unter /opt/iobroker/iobroker-data/ems-runtime.&lt;Instanz&gt;/exports/backup/ (kein Browser-Download). Nach Frischinstall: Export-Datei in den Restore-Inbox-Ordner legen und Restore im Admin ausführen — dann sind Mappings und Learning wieder da. Status nur unter backup.* (export_register_ready, last_file_name, …)."
+					"text": "Sicherung und Diagnose für diese EMS-Instanz. Dateien liegen auf dem Host (kein Browser-Download). Status unter backup.* (last_file_name, last_sha256, export_register_ready, …)."
+				},
+				"hBackupFull": {
+					"type": "header",
+					"size": 2,
+					"text": "1. Vollständiger Export (für Restore)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"introBackupFull": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Vor Neuinstallation oder Löschen der Instanz immer zuerst erstellen. Enthalten: Admin-Config, Mappings, Fahrzeugprofile, Policies und Learning (Preis/PV/Hauslast/Stats)."
 				},
 				"requestBackupExport": {
 					"type": "sendTo",
-					"label": "Vollständigen Export erstellen (vor Neuinstall!)",
 					"command": "requestBackupExport",
 					"jsonData": "{}",
 					"button": "Backup jetzt erstellen",
 					"showResult": true,
+					"variant": "contained",
+					"color": "primary",
+					"icon": "upload",
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
-					"lg": 6,
-					"xl": 6
+					"lg": 5,
+					"xl": 4
 				},
-				"exportRegisterHintText": {
+				"backupPathHint": {
 					"type": "staticText",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Nach dem Export: backup.last_file_name / last_sha256 prüfen. Vor Namespace-Wipe immer einen erfolgreichen Export sichern (siehe docs/EMS_LIGHT_FRESH_INSTALL_CHECKLIST.md)."
+					"text": "Ablage: /opt/iobroker/iobroker-data/ems-runtime.&lt;Instanz&gt;/exports/backup/  ·  Danach backup.last_file_name und last_sha256 prüfen."
+				},
+				"dividerBackupSupport": {
+					"type": "divider",
+					"height": 2,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"hBackupSupport": {
+					"type": "header",
+					"size": 2,
+					"text": "2. Diagnose-/Support-Paket (kein Restore)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
 				"introSupportDiagnose": {
 					"type": "staticText",
@@ -7220,20 +7260,59 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Diagnose-/Support-Paket (kein Restore): anonymisierte System-/Runtime-Infos inkl. tiefer Wallbox-Detail-JSON und Logs — für Support und Fehleranalyse. Liegt unter /opt/iobroker/iobroker-data/ems-runtime.&lt;Instanz&gt;/exports/support/ (*.emssupport). Ersetzt keine Einzelstates für Write-/Feedback-Contracts im Objektbaum."
+					"text": "Anonymisierte Runtime-/Systeminfos, Logs und tiefe Detail-JSON (z. B. Wallbox) — nur für Support und Fehleranalyse, nicht zum Wiederherstellen der Instanz."
 				},
 				"requestSupportExport": {
 					"type": "sendTo",
-					"label": "Diagnose-/Support-Paket erstellen",
 					"command": "requestSupportExport",
 					"jsonData": "{}",
 					"button": "Support-Paket jetzt erstellen",
 					"showResult": true,
+					"variant": "outlined",
+					"color": "primary",
+					"icon": "info",
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
-					"lg": 6,
-					"xl": 6
+					"lg": 5,
+					"xl": 4
+				},
+				"supportPathHint": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Ablage: /opt/iobroker/iobroker-data/ems-runtime.&lt;Instanz&gt;/exports/support/ (*.emssupport)"
+				},
+				"dividerBackupRestore": {
+					"type": "divider",
+					"height": 2,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"hBackupRestore": {
+					"type": "header",
+					"size": 2,
+					"text": "3. Wiederherstellen nach Frischinstall",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"restoreHintText": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Export-Datei in den Restore-Inbox-Ordner legen und Restore im Admin ausführen — dann sind Mappings und Learning wieder da. Details: docs/EMS_LIGHT_FRESH_INSTALL_CHECKLIST.md"
 				}
 			}
 		}

@@ -64,12 +64,12 @@ async function ensurePlannerStateTree(host, options) {
         includeWinter: options?.includeWinterIntent !== false,
     });
     await (0, grid_states_1.ensureGridSupplyStates)(host);
-    if (options?.leanOperatorSurface) {
-        return;
-    }
     await (0, states_1.ensureForecastPlanStates)(host);
     await (0, states_2.ensureFlexibleContributionStates)(host);
     await (0, states_3.ensureDailyPlanStates)(host);
+    if (options?.leanOperatorSurface) {
+        return;
+    }
     await (0, ensure_states_2.ensurePlannerCoordinatorStates)(host, { minimal: options?.coordinatorMinimal === true });
     if (options?.includeTakeoverStates !== false) {
         const { ensurePlannerTakeoverStates } = await Promise.resolve().then(() => __importStar(require("../planner_takeover/states.js")));

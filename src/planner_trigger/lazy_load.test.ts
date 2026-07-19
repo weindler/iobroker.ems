@@ -75,7 +75,7 @@ compose.createPlannerOnDemandCoordinatorFromAdapter({
 		}
 	});
 
-	it("off/legacy ems_light tick does not load forecast or allocation cores", () => {
+	it("ems_light tick loads daily plan but not shadow/worker cores", () => {
 		const modules = run(`
 const path = require("path");
 const tick = require(path.join(process.cwd(), "build/ems_light/tick.js"));
@@ -98,14 +98,16 @@ const host = {
   console.log(Object.keys(require.cache).join("\\n"));
 })();
 `);
+		assert.ok(
+			modules.some((e) => e.includes("/build/operator/daily_plan/tick.js")),
+			"daily plan tick must load",
+		);
 		for (const m of [
-			"/build/operator/forecast/tick.js",
-			"/build/operator/forecast/build.js",
-			"/build/operator/daily_plan/tick.js",
-			"/build/operator/daily_plan/allocation.js",
 			"/build/planner_coordinator/runtime_factory.js",
 			"/build/planner_worker/",
 			"/build/planner_candidate/build.js",
+			"/build/planner_authorization/runtime.js",
+			"/build/planner_authority/runtime.js",
 		]) {
 			assert.ok(!modules.some((e) => e.includes(m)), m);
 		}

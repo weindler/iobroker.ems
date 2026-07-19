@@ -5,11 +5,12 @@ import { runPlannerTick } from "../planner/run";
 import type { PlannerHost } from "../planner/inputs";
 
 /**
- * Operator Forecast / Daily Plan / Allocation — disabled on production lean surface
- * (Shadow/operator mirrors are not part of the control path; addons use climate/surplus fallback).
+ * Operator Forecast → Daily Plan → Allocation.
+ * Always on for production control (addons consume these plans).
+ * Shadow/Takeover/Authority stay disabled separately.
  */
 function operatorForecastPathEnabled(_config: unknown): boolean {
-	return false;
+	return true;
 }
 
 export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): Promise<void> {

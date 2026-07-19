@@ -31,10 +31,6 @@ const strict_1 = __importDefault(require("node:assert/strict"));
 const node_child_process_1 = require("node:child_process");
 const path = __importStar(require("node:path"));
 const HEAVY = [
-    "/build/operator/forecast/tick.js",
-    "/build/operator/forecast/build.js",
-    "/build/operator/daily_plan/tick.js",
-    "/build/operator/daily_plan/allocation.js",
     "/build/planner_candidate/build.js",
     "/build/planner_coordinator/runtime_factory.js",
     "/build/planner_worker/",
@@ -60,7 +56,7 @@ function assertNoHeavy(modules) {
     }
 }
 (0, node_test_1.describe)("ems_light off/legacy start path", () => {
-    (0, node_test_1.it)("off tick never loads forecast, daily plan or allocation cores", () => {
+    (0, node_test_1.it)("production tick loads daily plan but never shadow/authority/worker cores", () => {
         const { lines } = run(`
 const tick = require(${JSON.stringify(path.join(process.cwd(), "build/ems_light/tick.js"))});
 const host = {
@@ -83,8 +79,9 @@ const host = {
 })();
 `);
         assertNoHeavy(lines);
+        strict_1.default.ok(lines.some((e) => e.includes("/build/operator/daily_plan/tick.js")), "daily plan tick must load on production path");
     });
-    (0, node_test_1.it)("off ensure + five ticks + stop loads no forecast/daily/candidate/authority/worker cores", () => {
+    (0, node_test_1.it)("lean ensure + five ticks + stop loads no shadow/authority/worker cores", () => {
         const { lines } = run(`
 const path = require("path");
 const planner = require(path.join(process.cwd(), "build/planner/index.js"));
@@ -113,7 +110,7 @@ const host = {
   durableDataDir: "/tmp/ems-off-legacy-proof/ems.0",
 };
 (async () => {
-  await planner.ensurePlannerStateTree(host, { includeTakeoverStates: false });
+  await planner.ensurePlannerStateTree(host, { includeTakeoverStates: false, leanOperatorSurface: true });
   compose.createPlannerOnDemandCoordinatorFromAdapter(host, { enabled: false });
   await shadow.initPlannerShadowRuntime(host);
   for (let i = 0; i < 5; i++) await tick.runEmsLightPhase1Tick(host);
@@ -123,6 +120,7 @@ const host = {
 })();
 `);
         assertNoHeavy(lines);
+        strict_1.default.ok(lines.some((e) => e.includes("/build/operator/daily_plan/")), "daily plan path must load on production path");
     });
     (0, node_test_1.it)("shadow_auto construction stays lazy until the first real coordinator run", () => {
         const { stdout } = run(`

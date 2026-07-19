@@ -29,11 +29,12 @@ const tree_paths_1 = require("../tree_paths");
 const live_cache_1 = require("./live_cache");
 const run_1 = require("../planner/run");
 /**
- * Operator Forecast / Daily Plan / Allocation — disabled on production lean surface
- * (Shadow/operator mirrors are not part of the control path; addons use climate/surplus fallback).
+ * Operator Forecast → Daily Plan → Allocation.
+ * Always on for production control (addons consume these plans).
+ * Shadow/Takeover/Authority stay disabled separately.
  */
 function operatorForecastPathEnabled(_config) {
-    return false;
+    return true;
 }
 async function runEmsLightPhase1Tick(host) {
     (0, ems_activity_1.touchEmsActivity)();

@@ -18,17 +18,13 @@ export const PROTECTED_PREFIXES = [
 export const COMPATIBILITY_STATE_PREFIXES = [] as const;
 
 /**
- * Planner Shadow / operator-plan mirrors purged while production forces planner off.
- * Exact channel/root ids only — recursive delete removes children.
+ * Planner Shadow / Takeover / Authority only — purged while production forces Shadow off.
+ * Forecast Plan, Daily Plan and Allocation are the live control path and must stay.
  */
 export const LEAN_PLANNER_PURGE_ROOTS = [
 	"planner.authority",
 	"planner.takeover",
 	"planner.coordinator",
-	"planner.intent.forecast_plan",
-	"planner.intent.daily_plan",
-	"planner.intent.contributions",
-	"planner.intent.allocation",
 ] as const;
 
 /** Large learning JSON mirrors — replaced by file-backed .emsbackup. */
@@ -121,5 +117,5 @@ export const CLEANUP_ALLOWLIST_DESCRIPTION = [
 	"info.backup.* (merged into backup.*)",
 	"addons.wallbox.runtime.* ballast (→ detail_json / support)",
 	"user_intent sources/diagnostics ballast (Betrieb: resolved_* + request_json)",
-	...LEAN_PLANNER_PURGE_ROOTS.map((r) => `${r} (lean planner surface purge)`),
+	...LEAN_PLANNER_PURGE_ROOTS.map((r) => `${r} (lean shadow surface purge)`),
 ] as const;

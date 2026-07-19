@@ -18,17 +18,13 @@ exports.PROTECTED_PREFIXES = [
 /** Compatibility: learning.persistence.*_json may be purged (RAM diet); restore from .emsbackup files. */
 exports.COMPATIBILITY_STATE_PREFIXES = [];
 /**
- * Planner Shadow / operator-plan mirrors purged while production forces planner off.
- * Exact channel/root ids only — recursive delete removes children.
+ * Planner Shadow / Takeover / Authority only — purged while production forces Shadow off.
+ * Forecast Plan, Daily Plan and Allocation are the live control path and must stay.
  */
 exports.LEAN_PLANNER_PURGE_ROOTS = [
     "planner.authority",
     "planner.takeover",
     "planner.coordinator",
-    "planner.intent.forecast_plan",
-    "planner.intent.daily_plan",
-    "planner.intent.contributions",
-    "planner.intent.allocation",
 ];
 /** Large learning JSON mirrors — replaced by file-backed .emsbackup. */
 exports.LEARNING_MIRROR_PURGE_RE = /^learning\.persistence\.(battery_runtime|house_load|thermal_runtime|price_learning|price_forecast|pv_bias_daily|power_hourly|energy_daily)_json$/;
@@ -105,5 +101,5 @@ exports.CLEANUP_ALLOWLIST_DESCRIPTION = [
     "info.backup.* (merged into backup.*)",
     "addons.wallbox.runtime.* ballast (→ detail_json / support)",
     "user_intent sources/diagnostics ballast (Betrieb: resolved_* + request_json)",
-    ...exports.LEAN_PLANNER_PURGE_ROOTS.map((r) => `${r} (lean planner surface purge)`),
+    ...exports.LEAN_PLANNER_PURGE_ROOTS.map((r) => `${r} (lean shadow surface purge)`),
 ];

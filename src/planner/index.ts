@@ -25,8 +25,8 @@ export type EnsurePlannerStateTreeOptions = {
 	/** When true, only core coordinator states (mode off). */
 	coordinatorMinimal?: boolean;
 	/**
-	 * Production lean surface: skip forecast/daily/contributions/allocation mirrors
-	 * and skip coordinator entirely (Shadow forced off).
+	 * Lean surface: skip Shadow/Coordinator/Takeover object trees.
+	 * Forecast Plan, Daily Plan and Allocation stay ensured — they are the control path.
 	 */
 	leanOperatorSurface?: boolean;
 	/** Intent-Spiegel nur für aktivierte Add-ons / Winterplan. */
@@ -46,12 +46,12 @@ export async function ensurePlannerStateTree(
 		includeWinter: options?.includeWinterIntent !== false,
 	});
 	await ensureGridSupplyStates(host);
-	if (options?.leanOperatorSurface) {
-		return;
-	}
 	await ensureForecastPlanStates(host);
 	await ensureFlexibleContributionStates(host);
 	await ensureDailyPlanStates(host);
+	if (options?.leanOperatorSurface) {
+		return;
+	}
 	await ensurePlannerCoordinatorStates(host, { minimal: options?.coordinatorMinimal === true });
 	if (options?.includeTakeoverStates !== false) {
 		const { ensurePlannerTakeoverStates } = await import("../planner_takeover/states.js");

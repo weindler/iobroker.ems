@@ -79,9 +79,9 @@ describe("surface cleanup allowlist", () => {
 		assert.equal(isAllowlistedCleanupRelativeId("planner.authority"), true);
 		assert.equal(isAllowlistedCleanupRelativeId("planner.takeover"), true);
 		assert.equal(isAllowlistedCleanupRelativeId("planner.coordinator"), true);
-		assert.equal(isAllowlistedCleanupRelativeId("planner.intent.forecast_plan"), true);
-		assert.equal(isAllowlistedCleanupRelativeId("planner.intent.daily_plan"), true);
-		assert.equal(isAllowlistedCleanupRelativeId("planner.intent.allocation"), true);
+		assert.equal(isAllowlistedCleanupRelativeId("planner.intent.forecast_plan"), false);
+		assert.equal(isAllowlistedCleanupRelativeId("planner.intent.daily_plan"), false);
+		assert.equal(isAllowlistedCleanupRelativeId("planner.intent.allocation"), false);
 		assert.equal(isAllowlistedCleanupRelativeId("planner.intent.allocation.wallbox.plan_json"), false);
 		assert.equal(isAllowlistedCleanupRelativeId("learning.persistence.pv_bias_daily_json"), true);
 		assert.equal(isAllowlistedCleanupRelativeId("learning.persistence.files_present"), false);
@@ -317,17 +317,9 @@ describe("dynamic surface ensure + cleanup", () => {
 		assert.equal(host.objects.has("user_intent.wallbox.sources"), false);
 	});
 
-	it("purges lean planner shadow and operator mirror roots", async () => {
+	it("purges lean planner shadow roots but keeps daily/forecast/allocation", async () => {
 		const host = new FakeCleanupHost({});
-		for (const root of [
-			"planner.authority",
-			"planner.takeover",
-			"planner.coordinator",
-			"planner.intent.forecast_plan",
-			"planner.intent.daily_plan",
-			"planner.intent.contributions",
-			"planner.intent.allocation",
-		]) {
+		for (const root of ["planner.authority", "planner.takeover", "planner.coordinator"]) {
 			await host.setObjectNotExistsAsync(root, {
 				type: "channel",
 				common: { name: root },
@@ -339,6 +331,22 @@ describe("dynamic surface ensure + cleanup", () => {
 				native: {},
 			} as ioBroker.Object);
 		}
+		for (const root of [
+			"planner.intent.forecast_plan",
+			"planner.intent.daily_plan",
+			"planner.intent.allocation",
+		]) {
+			await host.setObjectNotExistsAsync(root, {
+				type: "channel",
+				common: { name: root },
+				native: {},
+			} as ioBroker.Object);
+			await host.setObjectNotExistsAsync(`${root}.status`, {
+				type: "state",
+				common: { name: "status", type: "string", role: "text", read: true, write: false },
+				native: {},
+			} as ioBroker.Object);
+		}
 		await host.setObjectNotExistsAsync("planner.intent.supply.grid.price_now", {
 			type: "state",
 			common: { name: "price", type: "number", role: "value", read: true, write: false },
@@ -346,10 +354,13 @@ describe("dynamic surface ensure + cleanup", () => {
 		} as ioBroker.Object);
 
 		const stats = await runDynamicSurfaceCleanup(host);
-		assert.ok(stats.deleted >= 7);
+		assert.ok(stats.deleted >= 3);
 		assert.equal(host.objects.has("planner.authority"), false);
 		assert.equal(host.objects.has("planner.takeover.leaf"), false);
-		assert.equal(host.objects.has("planner.intent.forecast_plan.leaf"), false);
+		assert.equal(host.objects.has("planner.coordinator"), false);
+		assert.equal(host.objects.has("planner.intent.forecast_plan.status"), true);
+		assert.equal(host.objects.has("planner.intent.daily_plan.status"), true);
+		assert.equal(host.objects.has("planner.intent.allocation.status"), true);
 		assert.equal(host.objects.has("planner.intent.supply.grid.price_now"), true);
 	});
 });

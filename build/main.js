@@ -67,12 +67,17 @@ class Ems extends utils.Adapter {
         this.on("message", (obj) => this.onMessage(obj));
     }
     onMessage(obj) {
-        const msg = obj;
-        if (msg.command === "applyGoeTemplate") {
-            msg.callback?.((0, mapping_config_1.goeWallboxTemplateFlat)());
+        if (!obj?.command) {
             return;
         }
-        if (msg.command === "requestBackupExport") {
+        if (obj.command === "applyGoeTemplate") {
+            // obj.callback is an ioBroker message token (string), not a JS function.
+            if (obj.callback) {
+                this.sendTo(obj.from, obj.command, (0, mapping_config_1.goeWallboxTemplateFlat)(), obj.callback);
+            }
+            return;
+        }
+        if (obj.command === "requestBackupExport") {
             void (async () => {
                 try {
                     const { handleBackupExportRequest } = await Promise.resolve().then(() => __importStar(require("./backup/export_handler.js")));
@@ -80,21 +85,27 @@ class Ems extends utils.Adapter {
                     const file = String((await this.getStateAsync("backup.last_file_name"))?.val ?? "");
                     const err = String((await this.getStateAsync("backup.last_error"))?.val ?? "");
                     const ready = (await this.getStateAsync("info.backup.export_register_ready"))?.val === true;
-                    msg.callback?.({
+                    const payload = {
                         result: err ? "error" : "ok",
                         fileName: file,
                         error: err,
                         exportRegisterReady: ready,
                         hint: "ems-runtime.%INSTANCE%/exports/backup/",
-                    });
+                    };
+                    if (obj.callback) {
+                        this.sendTo(obj.from, obj.command, payload, obj.callback);
+                    }
                 }
                 catch (e) {
-                    msg.callback?.({
-                        result: "error",
-                        error: e instanceof Error ? e.message : String(e),
-                    });
+                    const error = e instanceof Error ? e.message : String(e);
+                    this.log.error(`requestBackupExport: ${error}`);
+                    if (obj.callback) {
+                        this.sendTo(obj.from, obj.command, { result: "error", error }, obj.callback);
+                    }
                 }
-            })();
+            })().catch((e) => {
+                this.log.error(`requestBackupExport unhandled: ${e instanceof Error ? e.message : String(e)}`);
+            });
         }
     }
     /**

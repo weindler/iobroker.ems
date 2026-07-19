@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.145",
+		"version": "0.1.146",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.146": {
+				"en": "Fix Admin Export sendTo: reply via this.sendTo(callback token) — no longer crash with UNCAUGHT_EXCEPTION.",
+				"de": "Fix Admin-Export sendTo: Antwort über this.sendTo(Callback-Token) — kein UNCAUGHT_EXCEPTION-Crash mehr."
+			},
 			"0.1.145": {
 				"en": "Hotfix: stop AC stats writes for unconfigured units (no object warnings); remove invalid jsonConfig expert flags for Admin schema compatibility.",
 				"de": "Hotfix: keine AC-Stats-Writes mehr für unkonfigurierte Units (keine Object-Warnungen); ungültige jsonConfig-expert-Flags entfernt (Admin-Schema)."

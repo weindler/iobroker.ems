@@ -157,29 +157,22 @@ function scheduleCleaningAfterStop(
 	);
 }
 
-async function stopUnit(
+async function waitForFeedbackOff(
 	host: AcRuntimeHost,
-	unit: AcUnitConfig,
-	table: AcMappingTable,
-	live: boolean,
-	up: AcUnitPersist,
-): Promise<void> {
-	const offId = resolveAcMappingTarget(table, unit.index, "cmd_switch_off");
-	const refreshId = resolveAcMappingTarget(table, unit.index, "cmd_refresh");
-	if (live && offId) {
-		await executeAcWriteSteps(host, unit.index, table, [{ kind: "toggle", role: "cmd_switch_off" }], true, host.log);
-		if (refreshId) {
-			await executeAcWriteSteps(host, unit.index, table, [{ kind: "toggle", role: "cmd_refresh" }], true, host.log);
-		}
-		host.log.info(`ac unit ${unit.index}: stop (live)`);
-	} else if (!live) {
-		host.log.debug?.(`ac dryrun unit ${unit.index}: stop`);
+	fbId: string,
+): Promise<{ off: boolean; value: unknown }> {
+	if (!fbId) {
+		return { off: false, value: null };
 	}
-	up.running = false;
-	up.lastStopAtMs = Date.now();
-	const purpose = up.lastModePurpose;
-	scheduleCleaningAfterStop(host, unit, up, up.lastStopAtMs, purpose);
-	up.lastModePurpose = null;
+	for (let attempt = 0; attempt < AC_FEEDBACK_POLL_ATTEMPTS; attempt++) {
+		await new Promise((resolve) => setTimeout(resolve, AC_FEEDBACK_POLL_MS));
+		const fb = await readForeign(host, fbId);
+		if (switchIsOff(fb.value)) {
+			return { off: true, value: fb.value };
+		}
+	}
+	const fb = await readForeign(host, fbId);
+	return { off: switchIsOff(fb.value), value: fb.value };
 }
 
 async function waitForFeedbackOn(
@@ -198,6 +191,40 @@ async function waitForFeedbackOn(
 	}
 	const fb = await readForeign(host, fbId);
 	return { on: switchIsOn(fb.value), value: fb.value };
+}
+
+async function stopUnit(
+	host: AcRuntimeHost,
+	unit: AcUnitConfig,
+	table: AcMappingTable,
+	live: boolean,
+	up: AcUnitPersist,
+): Promise<void> {
+	const profile = getAcProfile(unit.profileId);
+	const steps = profile.coolingStopSequence?.() ?? [{ kind: "switch_off" as const }];
+	await executeAcWriteSteps(host, unit.index, table, steps, live, host.log);
+	up.lastStopAtMs = Date.now();
+	if (!live) {
+		up.running = false;
+		const purpose = up.lastModePurpose;
+		scheduleCleaningAfterStop(host, unit, up, up.lastStopAtMs, purpose);
+		up.lastModePurpose = null;
+		return;
+	}
+	const fbId = resolveAcMappingTarget(table, unit.index, "feedback_switch");
+	const fb = await waitForFeedbackOff(host, fbId);
+	if (fb.off) {
+		up.running = false;
+		host.log.info(`ac unit ${unit.index}: stop (live) — feedback off`);
+		const purpose = up.lastModePurpose;
+		scheduleCleaningAfterStop(host, unit, up, up.lastStopAtMs, purpose);
+		up.lastModePurpose = null;
+	} else {
+		up.running = true;
+		host.log.warn(
+			`ac unit ${unit.index}: stop sent but feedback still on after ${Math.round((AC_FEEDBACK_POLL_MS * AC_FEEDBACK_POLL_ATTEMPTS) / 1000)}s (last=${String(fb.value ?? "")}) — cleaning not scheduled`,
+		);
+	}
 }
 
 async function applyModePurposeWhileRunning(

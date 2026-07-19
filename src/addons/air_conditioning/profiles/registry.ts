@@ -32,6 +32,7 @@ export const GENERIC_AC_PROFILE: AcProfile = {
 			{ kind: "toggle", role: "cmd_switch_on" },
 		];
 	},
+	coolingStopSequence: () => [{ kind: "switch_off" }, { kind: "delay_ms", ms: AC_WRITE_REFRESH_DELAY_MS }, { kind: "toggle", role: "cmd_refresh" }],
 	cleaningStartSequence: () => [
 		{ kind: "set", role: "cmd_cleaning_start", value: "on" },
 	],
@@ -45,6 +46,12 @@ export const SAMSUNG_SMARTTHINGS_PROFILE: AcProfile = {
 	id: "samsung_smartthings",
 	displayNameDe: "Samsung SmartThings",
 	coolingStartSequence: samsungCoolingStart,
+	// Nicht pulse-true auf dem Switch: das wäre „an“. Shared Switch → set off; eigener Off-Button → pulse.
+	coolingStopSequence: () => [
+		{ kind: "switch_off" },
+		{ kind: "delay_ms", ms: AC_WRITE_REFRESH_DELAY_MS },
+		{ kind: "toggle", role: "cmd_refresh" },
+	],
 	cleaningStartSequence: () => [
 		{ kind: "toggle", role: "cmd_refresh" },
 		{ kind: "set", role: "cmd_cleaning_start", value: "on" },

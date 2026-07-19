@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.162",
+		"version": "0.1.163",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.163": {
+				"en": "AC fix: stop writes off/false on shared switch (pulse-true kept devices on); confirm feedback before cleaning.",
+				"de": "Klima-Fix: Stop schreibt off/false auf gemeinsamen Switch (Pulse-true ließ Geräte an); Reinigung erst nach Feedback aus."
+			},
 			"0.1.162": {
 				"en": "AC: dry mode uses half the configured cool power estimate for runtime stats.",
 				"de": "Klima: Dry nutzt für Runtime-Stats die Hälfte der konfigurierten Kühl-Leistungsschätzung."

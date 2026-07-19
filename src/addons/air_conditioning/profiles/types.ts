@@ -4,12 +4,15 @@ import type { AcUnitConfig, AcUnitModePurpose } from "../types";
 export type AcWriteStep =
 	| { kind: "set"; role: AcMappingRole; value: string | number | boolean }
 	| { kind: "toggle"; role: AcMappingRole }
+	| { kind: "switch_off" }
 	| { kind: "delay_ms"; ms: number };
 
 export type AcProfile = {
 	id: string;
 	displayNameDe: string;
 	coolingStartSequence: (unit: AcUnitConfig, purpose: AcUnitModePurpose) => AcWriteStep[];
+	/** Optional; default engine uses smart switch_off when missing. */
+	coolingStopSequence?: () => AcWriteStep[];
 	cleaningStartSequence: () => AcWriteStep[];
 	cleaningStopSequence: () => AcWriteStep[];
 };

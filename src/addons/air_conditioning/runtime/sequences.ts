@@ -75,19 +75,71 @@ async function pulseSmartThingsToggle(
 	});
 }
 
+/**
+ * Ausschalten: eigener Off-Button → Impuls; gemeinsamer Switch (gleich On/Feedback) → Wert „off“/false.
+ * Pulse-true auf dem An-Switch würde das Gerät anlassen bzw. an lassen.
+ */
+export async function writeAcUnitSwitchOff(
+	host: DeviceWriteHost,
+	unitIndex: number,
+	table: AcMappingTable,
+	live: boolean,
+	log?: { info?: (m: string) => void; debug?: (m: string) => void; warn?: (m: string) => void },
+): Promise<{ attempted: boolean; mode: "pulse" | "set_off" | "none"; targetId: string }> {
+	const offId = resolveAcMappingTarget(table, unitIndex, "cmd_switch_off");
+	const onId = resolveAcMappingTarget(table, unitIndex, "cmd_switch_on");
+	const fbId = resolveAcMappingTarget(table, unitIndex, "feedback_switch");
+	const targetId = offId || onId || fbId;
+	if (!targetId) {
+		log?.warn?.(`ac unit ${unitIndex}: stop skipped — kein switch_off/on/feedback gemappt`);
+		return { attempted: false, mode: "none", targetId: "" };
+	}
+	const dedicatedOffButton = Boolean(offId && offId !== onId && offId !== fbId);
+	if (!live) {
+		log?.debug?.(
+			`ac dryrun unit ${unitIndex}: switch_off → ${targetId} (${dedicatedOffButton ? "pulse" : "set_off"})`,
+		);
+		return { attempted: true, mode: dedicatedOffButton ? "pulse" : "set_off", targetId };
+	}
+	if (dedicatedOffButton) {
+		await pulseSmartThingsToggle(host, unitIndex, "cmd_switch_off", offId);
+		return { attempted: true, mode: "pulse", targetId: offId };
+	}
+	let current: unknown = null;
+	try {
+		const st = await host.getForeignStateAsync(targetId);
+		current = st?.val ?? null;
+	} catch {
+		current = null;
+	}
+	const offValue: string | boolean =
+		typeof current === "boolean" || current === 0 || current === 1 ? false : "off";
+	await writeForeignIfChanged(host, {
+		stateId: targetId,
+		value: offValue,
+		reason: `ac unit ${unitIndex} switch_off`,
+		force: true,
+	});
+	return { attempted: true, mode: "set_off", targetId };
+}
+
 export async function executeAcWriteSteps(
 	host: DeviceWriteHost,
 	unitIndex: number,
 	table: AcMappingTable,
 	steps: AcWriteStep[],
 	live: boolean,
-	log?: { info?: (m: string) => void; debug?: (m: string) => void },
+	log?: { info?: (m: string) => void; debug?: (m: string) => void; warn?: (m: string) => void },
 ): Promise<void> {
 	for (const step of steps) {
 		if (step.kind === "delay_ms") {
 			if (live) {
 				await sleep(step.ms);
 			}
+			continue;
+		}
+		if (step.kind === "switch_off") {
+			await writeAcUnitSwitchOff(host, unitIndex, table, live, log);
 			continue;
 		}
 		const role = step.role;

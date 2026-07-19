@@ -216,25 +216,23 @@ async function stopUnit(
 	}
 	const fbId = resolveAcMappingTarget(table, unit.index, "feedback_switch");
 	// Sofort prüfen, dann kurze Poll-Schleife; bei Bedarf zweite Off-Welle.
-	let fb = fbId ? await readForeign(host, fbId) : { value: null as unknown, num: null };
-	if (fbId && switchIsOn(fb.value)) {
-		fb = await waitForFeedbackOff(host, fbId);
-	} else if (fbId) {
-		fb = { value: fb.value, num: null };
+	let fbValue: unknown = fbId ? (await readForeign(host, fbId)).value : null;
+	if (fbId && switchIsOn(fbValue)) {
+		fbValue = (await waitForFeedbackOff(host, fbId)).value;
 	}
-	if (fbId && switchIsOn(fb.value)) {
+	if (fbId && switchIsOn(fbValue)) {
 		host.log.warn(`ac unit ${unit.index}: still on after first stop — retry switch_off`);
 		await writeAcUnitSwitchOff(host, unit.index, table, true, host.log);
 		const refreshId = resolveAcMappingTarget(table, unit.index, "cmd_refresh");
 		if (refreshId) {
 			await executeAcWriteSteps(host, unit.index, table, [{ kind: "toggle", role: "cmd_refresh" }], true, host.log);
 		}
-		fb = await waitForFeedbackOff(host, fbId);
+		fbValue = (await waitForFeedbackOff(host, fbId)).value;
 	}
-	if (!fbId || switchIsOff(fb.value)) {
+	if (!fbId || switchIsOff(fbValue)) {
 		up.running = false;
 		host.log.info(
-			`ac unit ${unit.index}: stop (live) — feedback ${fbId ? `off (${String(fb.value ?? "")})` : "unmapped"}`,
+			`ac unit ${unit.index}: stop (live) — feedback ${fbId ? `off (${String(fbValue ?? "")})` : "unmapped"}`,
 		);
 		const purpose = up.lastModePurpose;
 		scheduleCleaningAfterStop(host, unit, up, up.lastStopAtMs, purpose);
@@ -242,7 +240,7 @@ async function stopUnit(
 	} else {
 		up.running = true;
 		host.log.warn(
-			`ac unit ${unit.index}: stop sent but feedback still on (last=${String(fb.value ?? "")}) — check mapping cmd_switch_off/on → SmartThings switch; cleaning not scheduled`,
+			`ac unit ${unit.index}: stop sent but feedback still on (last=${String(fbValue ?? "")}) — check mapping cmd_switch_off/on → SmartThings switch; cleaning not scheduled`,
 		);
 	}
 }

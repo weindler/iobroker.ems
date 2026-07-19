@@ -14,7 +14,7 @@ import { isAddonGovernanceEnabledFromState, addonGovernanceEnabledState } from "
 import { DAILY_PLAN_STATE_IDS, ALLOCATION_ADDON_STATE_IDS } from "../../../operator/daily_plan/states";
 import type { DeviceWriteHost } from "../../../device_write";
 import { acUnitConsumerKey, AC_ADDON_ID, AC_CLEANING_REFRESH_MS, AC_FEEDBACK_POLL_ATTEMPTS, AC_FEEDBACK_POLL_MS, AC_START_RETRY_MS, AC_STOP_RETRY_MS, AC_TICK_MS, AC_WATCH_MAPPING_ROLES } from "../constants";
-import { configuredAcUnitIndexes } from "../configured";
+import { configuredAcUnitIndexes, isAcUnitConfigured } from "../configured";
 import { acGlobalConfigFromAdapter } from "../config";
 import type { AcUnitConfig } from "../types";
 import { getAcProfile } from "../profiles/registry";
@@ -375,8 +375,11 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 	const live = await isLiveWriteAllowed((id) => host.getStateAsync(id), AC_ADDON_ID);
 	const allowNewCleaning = governanceEnabled && addonEnabledVal;
 
-	// Disabled units leave the control loop — close sticky stats and try one stop if still on.
-	for (const unit of config.units.filter((u) => !u.enabled)) {
+	// Disabled-but-configured units leave the control loop — close sticky stats / optional stop.
+	// Unconfigured placeholders (4B1) have no objects; do not write stats for them.
+	for (const unit of config.units.filter(
+		(u) => !u.enabled && isAcUnitConfigured(host.config, u.index),
+	)) {
 		const up = unitPersist(unit.index);
 		const fbId = resolveAcMappingTarget(mappingTable, unit.index, "feedback_switch");
 		const fb = await readForeign(host, fbId);

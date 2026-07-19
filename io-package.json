@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.144",
+		"version": "0.1.145",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.145": {
+				"en": "Hotfix: stop AC stats writes for unconfigured units (no object warnings); remove invalid jsonConfig expert flags for Admin schema compatibility.",
+				"de": "Hotfix: keine AC-Stats-Writes mehr für unkonfigurierte Units (keine Object-Warnungen); ungültige jsonConfig-expert-Flags entfernt (Admin-Schema)."
+			},
 			"0.1.144": {
 				"en": "Lightweight control and surface: Admin Export register (Learning+Stats including consumer_stats), Daily Plan zero-allocation falls back to surplus/climate control, AC/vehicle placeholder cleanup, minimal planner coordinator when shadow off, Admin and object execution modes stay in sync with write-gate rearm, fresh-install checklist. No authority activation; release gate remains closed.",
 				"de": "Leichtgewichtige Steuerung und Oberfläche: Admin-Export-Register (Learning+Stats inkl. consumer_stats), Daily-Plan mit 0 W fällt auf Überschuss-/Klima-Steuerung zurück, AC-/Fahrzeug-Platzhalter-Cleanup, minimaler Planner-Coordinator bei Shadow aus, Admin und Objektbaum-Ausführungsmodi synchron mit Write-Gate-Rearm, Frischinstall-Checkliste. Keine Authority-Aktivierung; Release-Gate bleibt geschlossen."

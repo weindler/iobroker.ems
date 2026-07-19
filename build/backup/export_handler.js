@@ -8,8 +8,21 @@ const diagnostic_mode_1 = require("../support/diagnostic_mode");
 Object.defineProperty(exports, "stopDiagnosticMode", { enumerable: true, get: function () { return diagnostic_mode_1.stopDiagnosticMode; } });
 const support_1 = require("../support");
 const service_1 = require("./service");
+const ensure_states_2 = require("../backup_integration/ensure_states");
 function isConsciousRequest(val, ack) {
     return val === true && ack !== true;
+}
+async function publishExportRegisterStatus(host, ok, detail) {
+    try {
+        await host.setStateAsync(ensure_states_2.BACKUP_INFO_STATES.exportRegisterReady, { val: ok, ack: true });
+        await host.setStateAsync(ensure_states_2.BACKUP_INFO_STATES.exportRegisterHint, {
+            val: detail,
+            ack: true,
+        });
+    }
+    catch {
+        /* info.backup may not exist yet on very early calls */
+    }
 }
 async function handleBackupExportRequest(host, val, ack) {
     if (!isConsciousRequest(val, ack))
@@ -28,12 +41,14 @@ async function handleBackupExportRequest(host, val, ack) {
                 lastSha256: result.sha256,
                 lastError: "",
             });
+            await publishExportRegisterStatus(host, true, `ems-runtime.%INSTANCE%/exports/backup/${result.fileName}`);
         }
         else {
             await (0, ensure_states_1.setBackupExportStatus)(host, {
                 status: "error",
                 lastError: result.error,
             });
+            await publishExportRegisterStatus(host, false, result.error);
         }
     }
     finally {

@@ -1,4 +1,5 @@
 import { ensureChannel, ensureStates, type StateDef, type StateHost } from "../ems_light/state_util";
+import { withExpertCommon } from "../ems_light/expert_surface";
 
 export const PLANNER_COORDINATOR_STATE_IDS = {
 	shadowEnabled: "planner.coordinator.shadow_enabled",
@@ -41,33 +42,39 @@ export const PLANNER_COORDINATOR_STATE_PREFIX = "planner.coordinator.";
 function strState(id: string, name: string, def = "", write = false): StateDef {
 	return {
 		id,
-		common: { name, type: "string", role: write ? "state" : "text", read: true, write, def },
+		common: withExpertCommon({ name, type: "string", role: write ? "state" : "text", read: true, write, def }),
 		defaultVal: def,
 		setDefaultIfEmpty: !write,
+		extendCommon: true,
 	};
 }
 
 function numState(id: string, name: string, def = 0, write = false): StateDef {
 	return {
 		id,
-		common: { name, type: "number", role: "value", read: true, write, def },
+		common: withExpertCommon({ name, type: "number", role: "value", read: true, write, def }),
 		defaultVal: def,
 		setDefaultIfEmpty: !write,
+		extendCommon: true,
 	};
 }
 
 function boolState(id: string, name: string, def = false, write = false, role: "state" | "button" = "state"): StateDef {
 	return {
 		id,
-		common: { name, type: "boolean", role, read: true, write, def },
+		common: withExpertCommon({ name, type: "boolean", role, read: true, write, def }),
 		defaultVal: def,
 		setDefaultIfEmpty: !write,
+		extendCommon: true,
 	};
 }
 
-export async function ensurePlannerCoordinatorStates(host: StateHost): Promise<void> {
+export async function ensurePlannerCoordinatorStates(
+	host: StateHost,
+	options?: { minimal?: boolean },
+): Promise<void> {
 	await ensureChannel(host, "planner.coordinator", "Planner On-Demand Coordinator");
-	const defs: StateDef[] = [
+	const coreDefs: StateDef[] = [
 		boolState(PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, "Planner Shadow Session-Freigabe", false, true),
 		boolState(PLANNER_COORDINATOR_STATE_IDS.manualTrigger, "Planner Shadow manuell starten", false, true, "button"),
 		boolState(
@@ -80,6 +87,13 @@ export async function ensurePlannerCoordinatorStates(host: StateHost): Promise<v
 		strState(PLANNER_COORDINATOR_STATE_IDS.configuredMode, "Planner Betriebsart (Konfiguration)", "off"),
 		strState(PLANNER_COORDINATOR_STATE_IDS.effectiveMode, "Planner Betriebsart (effektiv)", "off"),
 		strState(PLANNER_COORDINATOR_STATE_IDS.state, "Coordinator Zustand", "disabled"),
+	];
+	if (options?.minimal) {
+		await ensureStates(host, coreDefs);
+		return;
+	}
+	const defs: StateDef[] = [
+		...coreDefs,
 		boolState(PLANNER_COORDINATOR_STATE_IDS.active, "Coordinator aktiv", false),
 		strState(PLANNER_COORDINATOR_STATE_IDS.activeJobId, "Coordinator Job-ID"),
 		strState(PLANNER_COORDINATOR_STATE_IDS.lastTriggerReason, "Coordinator letzter Trigger"),

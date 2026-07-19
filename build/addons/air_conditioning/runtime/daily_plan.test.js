@@ -92,7 +92,7 @@ function fsmDemandStart() {
         strict_1.default.equal(r.allocationAllowsStart, true);
         strict_1.default.equal(r.allocatedPowerW, 800);
     });
-    (0, node_test_1.it)("valid zero allocation without fallback", () => {
+    (0, node_test_1.it)("zero allocation falls back to climate FSM", () => {
         const expected = (0, daily_plan_js_1.resolveUnitExpectedPower)(UNIT, undefined, NOW.getTime());
         const r = (0, daily_plan_js_1.resolveAcUnitDailyPlanFromData)({
             unitIndex: 1,
@@ -102,9 +102,10 @@ function fsmDemandStart() {
             entries: [],
             expectedPower: expected,
         });
-        strict_1.default.equal(r.useDailyPlan, true);
+        strict_1.default.equal(r.useDailyPlan, false);
         strict_1.default.equal(r.dailyPlanStatus, "daily_plan_zero_allocation");
         strict_1.default.equal(r.allocationAllowsStart, false);
+        strict_1.default.match(r.allocationReasonDe, /Climate-Fallback/);
     });
     (0, node_test_1.it)("blocks start when allocation below expected power", () => {
         const expected = (0, daily_plan_js_1.resolveUnitExpectedPower)(UNIT, undefined, NOW.getTime());
@@ -190,7 +191,7 @@ function fsmDemandStart() {
         strict_1.default.equal(perm.allowStart, true);
         strict_1.default.equal(perm.decisionSource, "daily_plan");
     });
-    (0, node_test_1.it)("no fallback on valid zero allocation", () => {
+    (0, node_test_1.it)("climate fallback on zero allocation with thermal demand", () => {
         const fsm = fsmDemandStart();
         const expected = (0, daily_plan_js_1.resolveUnitExpectedPower)(UNIT, undefined, NOW.getTime());
         const dailyPlan = (0, daily_plan_js_1.resolveAcUnitDailyPlanFromData)({
@@ -201,6 +202,7 @@ function fsmDemandStart() {
             entries: [],
             expectedPower: expected,
         });
+        strict_1.default.equal(dailyPlan.useDailyPlan, false);
         const perm = (0, daily_plan_js_1.evaluateAcCoolingPermission)({
             unitEnabled: true,
             governanceEnabled: true,
@@ -211,8 +213,8 @@ function fsmDemandStart() {
             startRetryReady: true,
             stopRetryReady: true,
         });
-        strict_1.default.equal(perm.allowStart, false);
-        strict_1.default.equal(perm.decisionSource, "daily_plan");
+        strict_1.default.equal(perm.allowStart, true);
+        strict_1.default.equal(perm.decisionSource, "climate_fallback");
     });
     (0, node_test_1.it)("climate fallback when plan missing", () => {
         const fsm = fsmDemandStart();

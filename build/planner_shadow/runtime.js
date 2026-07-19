@@ -70,8 +70,11 @@ async function writeModeStates(host) {
     await setStateIfChangedSafe(host, ensure_states_1.PLANNER_COORDINATOR_STATE_IDS.configuredMode, effective.configuredMode);
     await setStateIfChangedSafe(host, ensure_states_1.PLANNER_COORDINATOR_STATE_IDS.effectiveMode, effective.effectiveMode);
     await setStateIfChangedSafe(host, ensure_states_1.PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, sessionShadowEnabled);
+    // Do not create/write takeover stubs while runtime mode is off (objects may not exist).
+    if (effective.effectiveMode === "off") {
+        return;
+    }
     const observing = effective.effectiveMode === "shadow_auto" && configuredEvaluationMode === "observe";
-    // Compact takeover mode states without loading evidence persistence when disabled.
     await setStateIfChangedSafe(host, "planner.takeover.configured_evaluation_mode", configuredEvaluationMode);
     await setStateIfChangedSafe(host, "planner.takeover.effective_evaluation_mode", observing ? "observe" : "disabled");
     if (!observing) {
@@ -221,6 +224,8 @@ async function initPlannerShadowRuntime(host) {
         shuttingDown: false,
     });
     if (effectiveMode !== "off") {
+        const { ensurePlannerCoordinatorStates } = await Promise.resolve().then(() => __importStar(require("./ensure_states.js")));
+        await ensurePlannerCoordinatorStates(host, { minimal: false });
         const { ensurePlannerTakeoverStates } = await Promise.resolve().then(() => __importStar(require("../planner_takeover/states.js")));
         await ensurePlannerTakeoverStates(host);
     }

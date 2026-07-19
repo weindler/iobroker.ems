@@ -25,6 +25,7 @@ export const SELECTED_STATE_DATA_ARTIFACTS: Array<{ category: string; fileName: 
 	{ category: "learning/pv_bias", fileName: "pv_bias_daily_v1.json" },
 	{ category: "learning/power_rollup", fileName: "power_hourly_v1.json" },
 	{ category: "learning/energy_daily_rollup", fileName: "energy_daily_v1.json" },
+	{ category: "learning/consumer_stats", fileName: "consumer_stats_v1.json" },
 ];
 
 export const SELECTED_STATE_DATA_KEYS: readonly string[] = SELECTED_STATE_DATA_ARTIFACTS.map((a) => a.fileName);

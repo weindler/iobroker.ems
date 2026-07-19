@@ -22,6 +22,7 @@ import { AC_ADDON_ID } from "../addons/air_conditioning/constants";
 import { acMappingFromConfig } from "../addons/air_conditioning/mapping_config";
 import { ensureCommandBaseStates, ensureAddonBasisStates } from "./base_ensure";
 import { ensureBackupStates } from "../backup/ensure_states";
+import { runDynamicSurfaceCleanup, type SurfaceCleanupHost } from "../surface_cleanup/cleanup";
 
 export type StaticStateTreeHost = ioBroker.Adapter & {
 	config: unknown;
@@ -49,6 +50,43 @@ export async function ensureStaticStateTree(host: StaticStateTreeHost): Promise<
 /** Phase C — dynamische Fahrzeugprofil-Ordner aus `wb_vehicle_profiles`. */
 export async function ensureDynamicVehicleProfiles(host: StaticStateTreeHost): Promise<void> {
 	await ensureWallboxDynamicVehicleProfiles(host);
+}
+
+/**
+ * Phase 4B1 — controlled cleanup of unconfigured AC / orphan vehicle placeholders.
+ * Runs after ensure so configured trees exist; idempotent.
+ */
+export async function cleanupDynamicPlaceholders(host: StaticStateTreeHost): Promise<void> {
+	const cleanupHost: SurfaceCleanupHost = {
+		namespace: host.namespace,
+		config: host.config,
+		log: host.log,
+		getObjectAsync: (id) => host.getObjectAsync(id),
+		delObjectAsync: (id, opts) => host.delObjectAsync(id, opts),
+		listRelativeObjectIds: async () => {
+			const listFn = (
+				host as StaticStateTreeHost & {
+					getObjectListAsync?: (params: {
+						startkey: string;
+						endkey: string;
+					}) => Promise<{ rows?: Array<{ id: string }> }>;
+				}
+			).getObjectListAsync;
+			if (typeof listFn !== "function") {
+				return [];
+			}
+			const start = `${host.namespace}.addons.wallbox.vehicles.`;
+			const end = `${host.namespace}.addons.wallbox.vehicles.\uffff`;
+			const res = await listFn.call(host, { startkey: start, endkey: end });
+			const rows = res?.rows ?? [];
+			const prefix = `${host.namespace}.`;
+			return rows
+				.map((r) => r.id)
+				.filter((id) => id.startsWith(prefix))
+				.map((id) => id.slice(prefix.length));
+		},
+	};
+	await runDynamicSurfaceCleanup(cleanupHost);
 }
 
 /** Phase sync — Mapping-Werte aus Admin-Config (nach Objekterzeugung). */

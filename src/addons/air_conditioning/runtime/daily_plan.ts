@@ -382,8 +382,8 @@ export function resolveAcUnitDailyPlanFromData(input: ResolveAcUnitDailyPlanInpu
 			slotEndIso,
 			allocatedPowerW: merge.allocatedPowerW,
 			allocationStatus: merge.allocationStatus,
-			allocationReasonDe: "Kein belastbares Leistungsmodell für die Unit — kein Start trotz Daily Plan.",
-			useDailyPlan: true,
+			allocationReasonDe: "Kein belastbares Leistungsmodell für die Unit — Climate-Fallback aktiv.",
+			useDailyPlan: false,
 			allocationAllowsStart: false,
 		};
 	}
@@ -399,6 +399,10 @@ export function resolveAcUnitDailyPlanFromData(input: ResolveAcUnitDailyPlanInpu
 		allocationReasonDe = `Allocation ${merge.allocatedPowerW} W kleiner als erwartete Unit-Leistung ${expectedPower.powerW} W (${expectedPower.source}).`;
 	}
 
+	if (merge.allocatedPowerW <= 0) {
+		allocationReasonDe = `${merge.reasonDe} Climate-Fallback aktiv.`;
+	}
+
 	return {
 		unitIndex,
 		contributionId,
@@ -411,7 +415,8 @@ export function resolveAcUnitDailyPlanFromData(input: ResolveAcUnitDailyPlanInpu
 		powerModelSource: expectedPower.source,
 		allocationStatus: merge.allocationStatus,
 		allocationReasonDe,
-		useDailyPlan: true,
+		/** Positive allocation owns control (may still block start); 0 W → climate FSM. */
+		useDailyPlan: merge.allocatedPowerW > 0,
 		powerModelValid: true,
 		allocationAllowsStart,
 	};

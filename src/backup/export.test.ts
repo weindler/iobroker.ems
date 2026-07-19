@@ -209,10 +209,11 @@ describe("backup export v0.1.141", () => {
 	});
 
 	it("support bundle uses shared core and anonymizes secrets", async () => {
+		const secret = "ACCESS_TOKEN_SECRET_XYZ_991_UNIQUE";
 		const host = new ExportTestHost(tmp, {
 			wb_evcc_connected_state: "mqtt.0.home/evcc/connected",
 			wb_vehicle_profiles: [profileRow("vin123456789012345", "My Car")],
-			access_token: "abc",
+			access_token: secret,
 		});
 		const { runSupportBundleExport } = await import("../support/index.js");
 		const result = await runSupportBundleExport(host);
@@ -221,7 +222,7 @@ describe("backup export v0.1.141", () => {
 		const buf = await fs.readFile(result.filePath);
 		const text = buf.toString("utf8");
 		assert.ok(!text.includes("access_token"));
-		assert.ok(!text.includes("abc"));
+		assert.ok(!text.includes(secret));
 	});
 
 	it("sanitizer pseudonyms are stable within one bundle", () => {
@@ -395,6 +396,7 @@ describe("backup export v0.1.141", () => {
 			"pv_bias_daily_v1.json",
 			"power_hourly_v1.json",
 			"energy_daily_v1.json",
+			"consumer_stats_v1.json",
 		]);
 	});
 

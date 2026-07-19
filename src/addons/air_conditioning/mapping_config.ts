@@ -42,3 +42,6 @@ export function acMappingCommands(): string[] {
 	}
 	return cmds;
 }
+
+/** Prefer {@link acMappingCommandsForConfiguredUnits} for ensure; this remains for catalog/audit. */
+export { acMappingCommandsForConfiguredUnits } from "./configured";

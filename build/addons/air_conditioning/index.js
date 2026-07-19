@@ -5,6 +5,7 @@ const ems_activity_1 = require("../../ems_activity");
 const data_dir_1 = require("../../learning/data_dir");
 const mapping_sync_1 = require("../../mapping_sync");
 const constants_1 = require("./constants");
+const configured_1 = require("./configured");
 const mapping_config_1 = require("./mapping_config");
 const tree_paths_1 = require("../../tree_paths");
 const ensure_states_1 = require("./runtime/ensure_states");
@@ -26,7 +27,8 @@ function runtimeHost(adapter) {
     return (0, data_dir_1.withLearningDataPath)(adapter, base);
 }
 async function ensureAirConditioningStateTree(adapter) {
-    await (0, mapping_sync_1.ensureAddonMappingStates)(adapter, constants_1.AC_ADDON_ID, (0, mapping_config_1.acMappingCommands)());
+    const cmds = (0, configured_1.acMappingCommandsForConfiguredUnits)(adapter.config);
+    await (0, mapping_sync_1.ensureAddonMappingStates)(adapter, constants_1.AC_ADDON_ID, cmds);
     await (0, ensure_states_1.ensureAcRuntimeStates)(runtimeHost(adapter));
 }
 exports.ensureAirConditioningStateTree = ensureAirConditioningStateTree;

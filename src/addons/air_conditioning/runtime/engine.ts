@@ -14,6 +14,7 @@ import { isAddonGovernanceEnabledFromState, addonGovernanceEnabledState } from "
 import { DAILY_PLAN_STATE_IDS, ALLOCATION_ADDON_STATE_IDS } from "../../../operator/daily_plan/states";
 import type { DeviceWriteHost } from "../../../device_write";
 import { acUnitConsumerKey, AC_ADDON_ID, AC_CLEANING_REFRESH_MS, AC_FEEDBACK_POLL_ATTEMPTS, AC_FEEDBACK_POLL_MS, AC_START_RETRY_MS, AC_STOP_RETRY_MS, AC_TICK_MS, AC_WATCH_MAPPING_ROLES } from "../constants";
+import { configuredAcUnitIndexes } from "../configured";
 import { acGlobalConfigFromAdapter } from "../config";
 import type { AcUnitConfig } from "../types";
 import { getAcProfile } from "../profiles/registry";
@@ -590,7 +591,7 @@ export async function initAcRuntimeEngine(host: AcRuntimeHost): Promise<void> {
 	engineActive = true;
 	hostRef = host;
 	await ensureAcRuntimeStates(host);
-	for (let i = 1; i <= 5; i++) {
+	for (const i of configuredAcUnitIndexes(host.config)) {
 		await initConsumerStatsForKey(host, acUnitConsumerKey(i));
 	}
 	await hydrateAcRuntimePersist(host);

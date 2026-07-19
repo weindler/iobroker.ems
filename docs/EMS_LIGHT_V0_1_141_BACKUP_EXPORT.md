@@ -70,14 +70,19 @@ Anonymisiert via zentrale Sanitizer-Schicht (`sanitize.ts`):
 - Nach Neustart standardmäßig aus
 - NDJSON-Logs mit Rotation (max. 3 MiB gesamt)
 
-## Export-States
+## Export-Register (Admin, ab v0.1.144)
 
-```
-backup.status / backup.running / backup.export_request
-backup.support_export_request
-support.diagnostic_mode / support.diagnostic_expires_at
-support.diagnostic_request / support.diagnostic_duration_min
-```
+Admin-Tab **Export**: Button „Export erstellen“ sendet `requestBackupExport` und setzt `backup.export_request`.
+
+Zusätzlich in `persistence/selected_state_data.json`:
+
+- `consumer_stats_v1.json` (Consumer-Laufzeiten/Energie)
+
+Pfad auf dem Host: `ems-runtime.<instance>/exports/backup/`.
+Status: `info.backup.export_register_ready`, `info.backup.export_register_hint`.
+
+Wetter-Tagesdateien unter `learning/weather/*.json` sind bewusst **nicht** im Restore-Allowlist (viele Tagesdateien); Support-Bundle kann Diagnosen liefern.
+
 
 Archive liegen unter `<instanceDataDir>/exports/backup/` bzw. `.../support/`.
 

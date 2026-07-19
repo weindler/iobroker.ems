@@ -17,6 +17,9 @@ exports.BACKUP_INFO_STATES = {
     journalStatus: `${exports.BACKUP_INFO_BASE}.journal_status`,
     migrationStatus: `${exports.BACKUP_INFO_BASE}.migration_status`,
     liveRearmRequired: `${exports.BACKUP_INFO_BASE}.live_rearm_required`,
+    /** True after at least one successful full backup export this process (Export-Register). */
+    exportRegisterReady: `${exports.BACKUP_INFO_BASE}.export_register_ready`,
+    exportRegisterHint: `${exports.BACKUP_INFO_BASE}.export_register_hint`,
 };
 async function ensureBackupIntegrationInfoStates(host) {
     await (0, state_util_1.ensureChannel)(host, exports.BACKUP_INFO_BASE, "Backup-Integration (Diagnose)");
@@ -72,6 +75,28 @@ async function ensureBackupIntegrationInfoStates(host) {
         {
             id: exports.BACKUP_INFO_STATES.liveRearmRequired,
             common: { name: "Live-Rearm erforderlich", type: "boolean", role: "indicator", read: true, write: false, def: true },
+        },
+        {
+            id: exports.BACKUP_INFO_STATES.exportRegisterReady,
+            common: {
+                name: "Export-Register bereit (letzter Export ok)",
+                type: "boolean",
+                role: "indicator",
+                read: true,
+                write: false,
+                def: false,
+            },
+        },
+        {
+            id: exports.BACKUP_INFO_STATES.exportRegisterHint,
+            common: {
+                name: "Export-Register Hinweis",
+                type: "string",
+                role: "text",
+                read: true,
+                write: false,
+                def: "ems-runtime.%INSTANCE%/exports/backup/",
+            },
         },
     ]);
 }

@@ -182,10 +182,11 @@ class ExportTestHost {
         strict_1.default.equal((0, collect_persistence_js_1.isTransientStateId)("addons.wallbox.config.enabled"), false);
     });
     (0, node_test_1.it)("support bundle uses shared core and anonymizes secrets", async () => {
+        const secret = "ACCESS_TOKEN_SECRET_XYZ_991_UNIQUE";
         const host = new ExportTestHost(tmp, {
             wb_evcc_connected_state: "mqtt.0.home/evcc/connected",
             wb_vehicle_profiles: [profileRow("vin123456789012345", "My Car")],
-            access_token: "abc",
+            access_token: secret,
         });
         const { runSupportBundleExport } = await Promise.resolve().then(() => __importStar(require("../support/index.js")));
         const result = await runSupportBundleExport(host);
@@ -195,7 +196,7 @@ class ExportTestHost {
         const buf = await fs.readFile(result.filePath);
         const text = buf.toString("utf8");
         strict_1.default.ok(!text.includes("access_token"));
-        strict_1.default.ok(!text.includes("abc"));
+        strict_1.default.ok(!text.includes(secret));
     });
     (0, node_test_1.it)("sanitizer pseudonyms are stable within one bundle", () => {
         const ctx = (0, sanitize_js_1.createPseudonymContext)();
@@ -353,6 +354,7 @@ class ExportTestHost {
             "pv_bias_daily_v1.json",
             "power_hourly_v1.json",
             "energy_daily_v1.json",
+            "consumer_stats_v1.json",
         ]);
     });
     (0, node_test_1.it)("excludes active runtime state from restore files", async () => {

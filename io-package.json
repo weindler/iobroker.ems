@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.143",
+		"version": "0.1.144",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.144": {
+				"en": "Lightweight control and surface: Admin Export register (Learning+Stats including consumer_stats), Daily Plan zero-allocation falls back to surplus/climate control, AC/vehicle placeholder cleanup, minimal planner coordinator when shadow off, Admin and object execution modes stay in sync with write-gate rearm, fresh-install checklist. No authority activation; release gate remains closed.",
+				"de": "Leichtgewichtige Steuerung und Oberfläche: Admin-Export-Register (Learning+Stats inkl. consumer_stats), Daily-Plan mit 0 W fällt auf Überschuss-/Klima-Steuerung zurück, AC-/Fahrzeug-Platzhalter-Cleanup, minimaler Planner-Coordinator bei Shadow aus, Admin und Objektbaum-Ausführungsmodi synchron mit Write-Gate-Rearm, Frischinstall-Checkliste. Keine Authority-Aktivierung; Release-Gate bleibt geschlossen."
+			},
 			"0.1.143": {
 				"en": "ioBroker dataFolder integration: durable EMS data under ems.%INSTANCE% included in standard ioBroker backups, runtime/recovery/export/restore data under ems-runtime.%INSTANCE% excluded, central path resolution, idempotent runtime migration, instance manifest with checkpoint fencing, journal binding and quarantine, boot-guard diagnostics, atomic durable writes, and mandatory startup live-rearm after every process start. No direct Backitup dependency or communication; release gate remains closed.",
 				"de": "ioBroker-dataFolder-Integration: dauerhafte EMS-Daten unter ems.%INSTANCE% im normalen ioBroker-Backup, Runtime-/Recovery-/Export-/Restore-Daten unter ems-runtime.%INSTANCE% ausgeschlossen, zentrale Pfadauflösung, idempotente Runtime-Migration, Instanz-Manifest mit Checkpoint-Fencing, Journal-Bindung und Quarantäne, Boot-Guard-Diagnose, atomare durable Writes und zwingender Startup-Live-Rearm nach jedem Prozessstart. Keine direkte Backitup-Abhängigkeit oder -Kommunikation; Release-Gate bleibt geschlossen."

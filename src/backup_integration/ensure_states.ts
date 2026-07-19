@@ -16,6 +16,9 @@ export const BACKUP_INFO_STATES = {
 	journalStatus: `${BACKUP_INFO_BASE}.journal_status`,
 	migrationStatus: `${BACKUP_INFO_BASE}.migration_status`,
 	liveRearmRequired: `${BACKUP_INFO_BASE}.live_rearm_required`,
+	/** True after at least one successful full backup export this process (Export-Register). */
+	exportRegisterReady: `${BACKUP_INFO_BASE}.export_register_ready`,
+	exportRegisterHint: `${BACKUP_INFO_BASE}.export_register_hint`,
 } as const;
 
 export async function ensureBackupIntegrationInfoStates(host: StateHost): Promise<void> {
@@ -72,6 +75,28 @@ export async function ensureBackupIntegrationInfoStates(host: StateHost): Promis
 		{
 			id: BACKUP_INFO_STATES.liveRearmRequired,
 			common: { name: "Live-Rearm erforderlich", type: "boolean", role: "indicator", read: true, write: false, def: true },
+		},
+		{
+			id: BACKUP_INFO_STATES.exportRegisterReady,
+			common: {
+				name: "Export-Register bereit (letzter Export ok)",
+				type: "boolean",
+				role: "indicator",
+				read: true,
+				write: false,
+				def: false,
+			},
+		},
+		{
+			id: BACKUP_INFO_STATES.exportRegisterHint,
+			common: {
+				name: "Export-Register Hinweis",
+				type: "string",
+				role: "text",
+				read: true,
+				write: false,
+				def: "ems-runtime.%INSTANCE%/exports/backup/",
+			},
 		},
 	]);
 }

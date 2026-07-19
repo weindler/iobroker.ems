@@ -2,7 +2,8 @@ import { touchEmsActivity } from "../../ems_activity";
 import { withLearningDataPath } from "../../learning/data_dir";
 import { ensureAddonMappingStates, syncNativeMappingToStates } from "../../mapping_sync";
 import { AC_ADDON_ID } from "./constants";
-import { acMappingCommands, acMappingFromConfig } from "./mapping_config";
+import { acMappingCommandsForConfiguredUnits } from "./configured";
+import { acMappingFromConfig } from "./mapping_config";
 import { addonAvailable, addonEnabled } from "../../tree_paths";
 import { ensureAcRuntimeStates } from "./runtime/ensure_states";
 import {
@@ -31,7 +32,8 @@ function runtimeHost(adapter: ioBroker.Adapter): AcRuntimeHost {
 }
 
 export async function ensureAirConditioningStateTree(adapter: ioBroker.Adapter): Promise<void> {
-	await ensureAddonMappingStates(adapter, AC_ADDON_ID, acMappingCommands());
+	const cmds = acMappingCommandsForConfiguredUnits(adapter.config);
+	await ensureAddonMappingStates(adapter, AC_ADDON_ID, cmds);
 	await ensureAcRuntimeStates(runtimeHost(adapter));
 }
 

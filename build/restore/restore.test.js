@@ -648,7 +648,7 @@ async function writeLearningFixture(host, key, data) {
 });
 (0, node_test_1.describe)("restore learning keys", () => {
     (0, node_test_1.it)("maps exactly eight known learning keys", () => {
-        strict_1.default.equal(learning_map_js_1.RESTORE_LEARNING_KEYS.length, 8);
+        strict_1.default.equal(learning_map_js_1.RESTORE_LEARNING_KEYS.length, 9);
         for (const key of learning_map_js_1.RESTORE_LEARNING_KEYS) {
             strict_1.default.ok(learning_map_js_1.RESTORE_LEARNING_TARGETS[key]);
             strict_1.default.ok(key.endsWith(".json"));

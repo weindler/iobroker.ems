@@ -13,7 +13,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Globale Ausführung für alle Addons. Live-Schreiben nur wenn hier und beim Addon „Live“ steht (effektiv: global.live ∧ addon.live). Objektbaum: global.execution_mode — Admin und Objektbaum bleiben synchron."
+					"text": "Globale Ausführung für alle Addons. Admin-Config und Objektbaum (global.execution_mode) bleiben synchron. Nach jedem Adapter-Start sind Geräte-Writes zusätzlich gesperrt (Startup-Rearm), bis Sie global.execution_mode erneut bewusst auf Live setzen — siehe info.backup.live_rearm_required."
 				},
 				"global_execution_mode": {
 					"type": "select",
@@ -38,6 +38,7 @@
 				"planner_runtime_mode": {
 					"type": "select",
 					"label": "Planner Runtime (Shadow)",
+					"expert": true,
 					"options": [
 						{
 							"label": "Aus",
@@ -62,6 +63,7 @@
 				"planner_takeover_evaluation_mode": {
 					"type": "select",
 					"label": "Planner Takeover Evaluation",
+					"expert": true,
 					"options": [
 						{
 							"label": "Deaktiviert",
@@ -82,6 +84,7 @@
 				"planner_takeover_authorization_mode": {
 					"type": "select",
 					"label": "Planner Takeover Authorization",
+					"expert": true,
 					"options": [
 						{
 							"label": "Deaktiviert",
@@ -102,6 +105,7 @@
 				"planner_authoritative_source": {
 					"type": "select",
 					"label": "Planner Authoritative Source",
+					"expert": true,
 					"options": [
 						{
 							"label": "Legacy",
@@ -7250,6 +7254,43 @@
 					"md": 4,
 					"lg": 4,
 					"xl": 4
+				}
+			}
+		},
+		"exportTab": {
+			"type": "panel",
+			"label": "Export",
+			"items": {
+				"introExportRegister": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Export-Register: erstellt ein .emsbackup mit Admin-Config, Mappings, Fahrzeugprofilen, Policies und Learning/Stats (inkl. consumer_stats). Die Datei liegt auf dem Host unter ems-runtime.&lt;Instanz&gt;/exports/backup/ — nicht im Browser-Download. Status auch unter backup.* und info.backup.export_register_*."
+				},
+				"requestBackupExport": {
+					"type": "sendTo",
+					"label": "Vollständigen Export erstellen",
+					"command": "requestBackupExport",
+					"jsonData": "{}",
+					"button": "Export erstellen",
+					"showResult": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"exportRegisterHintText": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Nach dem Export: backup.last_file_name / last_sha256 prüfen. Vor Namespace-Wipe immer einen erfolgreichen Export sichern (siehe docs/EMS_LIGHT_FRESH_INSTALL_CHECKLIST.md)."
 				}
 			}
 		}

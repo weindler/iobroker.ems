@@ -72,6 +72,8 @@ export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
 
 	const temp = input.roomTempC;
 	if (temp === null) {
+		// Already running without a readable temp: do not invent a stop, but also do not
+		// pretend we evaluated off-temp (operator sees reason_de).
 		return none("idle", "Raumtemperatur fehlt.");
 	}
 
@@ -84,6 +86,17 @@ export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
 	let modePurpose: AcUnitModePurpose = "cooling";
 	if (humidityHigh && !tempHigh) {
 		modePurpose = "dehumidify";
+	}
+
+	// Off-temperature always wins while the unit is on — humidity must not keep cooling forever.
+	if (tempLow && switchIsOn(input.feedbackSwitchRaw)) {
+		return {
+			state: "running",
+			demandStart: false,
+			demandStop: true,
+			modePurpose: "cooling",
+			reasonDe: `Temp ${temp.toFixed(1)} °C ≤ ${unit.offTempC} °C — Abschalten.`,
+		};
 	}
 
 	if (tempHigh || humidityHigh) {
@@ -103,16 +116,6 @@ export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
 			demandStop: false,
 			modePurpose,
 			reasonDe: `Läuft — Temp ${temp.toFixed(1)} °C.`,
-		};
-	}
-
-	if (tempLow && switchIsOn(input.feedbackSwitchRaw)) {
-		return {
-			state: "running",
-			demandStart: false,
-			demandStop: true,
-			modePurpose: "cooling",
-			reasonDe: `Temp ${temp.toFixed(1)} °C ≤ ${unit.offTempC} °C — Abschalten.`,
 		};
 	}
 

@@ -12,9 +12,26 @@ import {
 } from "../support/diagnostic_mode";
 import { runSupportBundleExport } from "../support";
 import { runBackupExport } from "./service";
+import { BACKUP_INFO_STATES } from "../backup_integration/ensure_states";
 
 function isConsciousRequest(val: unknown, ack: boolean | undefined): boolean {
 	return val === true && ack !== true;
+}
+
+async function publishExportRegisterStatus(
+	host: ExportServiceHost,
+	ok: boolean,
+	detail: string,
+): Promise<void> {
+	try {
+		await host.setStateAsync(BACKUP_INFO_STATES.exportRegisterReady, { val: ok, ack: true });
+		await host.setStateAsync(BACKUP_INFO_STATES.exportRegisterHint, {
+			val: detail,
+			ack: true,
+		});
+	} catch {
+		/* info.backup may not exist yet on very early calls */
+	}
 }
 
 export async function handleBackupExportRequest(
@@ -37,11 +54,17 @@ export async function handleBackupExportRequest(
 				lastSha256: result.sha256,
 				lastError: "",
 			});
+			await publishExportRegisterStatus(
+				host,
+				true,
+				`ems-runtime.%INSTANCE%/exports/backup/${result.fileName}`,
+			);
 		} else {
 			await setBackupExportStatus(host, {
 				status: "error",
 				lastError: result.error,
 			});
+			await publishExportRegisterStatus(host, false, result.error);
 		}
 	} finally {
 		await setBackupExportStatus(host, { running: false });

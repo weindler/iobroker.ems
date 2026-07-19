@@ -130,6 +130,37 @@ class FakeBootstrapAdapter {
 		return this.objects.get(id) ?? null;
 	}
 
+	async delObjectAsync(id: string, options?: { recursive?: boolean }): Promise<void> {
+		if (options?.recursive) {
+			const prefix = `${id}.`;
+			for (const key of [...this.objects.keys()]) {
+				if (key === id || key.startsWith(prefix)) {
+					this.objects.delete(key);
+					this.states.delete(key);
+				}
+			}
+			return;
+		}
+		this.objects.delete(id);
+		this.states.delete(id);
+	}
+
+	async getObjectListAsync(params: {
+		startkey: string;
+		endkey: string;
+	}): Promise<{ rows: Array<{ id: string }> }> {
+		const ns = `${this.namespace}.`;
+		const startRel = params.startkey.startsWith(ns) ? params.startkey.slice(ns.length) : params.startkey;
+		const endRel = params.endkey.startsWith(ns) ? params.endkey.slice(ns.length) : params.endkey;
+		const rows: Array<{ id: string }> = [];
+		for (const id of this.objects.keys()) {
+			if (id >= startRel && id <= endRel) {
+				rows.push({ id: `${ns}${id}` });
+			}
+		}
+		return { rows };
+	}
+
 	async getStateAsync(id: string): Promise<ioBroker.State | null> {
 		const s = this.states.get(id);
 		return s ? ({ val: s.val, ack: s.ack, ts: 0, lc: 0, from: "test" } as ioBroker.State) : null;

@@ -70,12 +70,35 @@ class Ems extends utils.Adapter {
 	private onMessage(obj: ioBroker.Message): void {
 		const msg = obj as ioBroker.Message & {
 			command?: string;
-			callback?: (result: Record<string, string | boolean>) => void;
+			callback?: (result: Record<string, string | boolean | number>) => void;
 		};
-		if (msg.command !== "applyGoeTemplate") {
+		if (msg.command === "applyGoeTemplate") {
+			msg.callback?.(goeWallboxTemplateFlat());
 			return;
 		}
-		msg.callback?.(goeWallboxTemplateFlat());
+		if (msg.command === "requestBackupExport") {
+			void (async () => {
+				try {
+					const { handleBackupExportRequest } = await import("./backup/export_handler.js");
+					await handleBackupExportRequest(this, true, false);
+					const file = String((await this.getStateAsync("backup.last_file_name"))?.val ?? "");
+					const err = String((await this.getStateAsync("backup.last_error"))?.val ?? "");
+					const ready = (await this.getStateAsync("info.backup.export_register_ready"))?.val === true;
+					msg.callback?.({
+						result: err ? "error" : "ok",
+						fileName: file,
+						error: err,
+						exportRegisterReady: ready,
+						hint: "ems-runtime.%INSTANCE%/exports/backup/",
+					});
+				} catch (e) {
+					msg.callback?.({
+						result: "error",
+						error: e instanceof Error ? e.message : String(e),
+					});
+				}
+			})();
+		}
 	}
 
 	/**

@@ -61,6 +61,8 @@ async function runAdapterBootstrap(host, step, options = {}) {
     }
     trace?.("C", "dynamic_vehicle_profiles");
     await step("dynamic vehicle profiles", () => (0, ensure_static_tree_1.ensureDynamicVehicleProfiles)(host));
+    trace?.("C2", "dynamic_surface_cleanup");
+    await step("dynamic surface cleanup", () => (0, ensure_static_tree_1.cleanupDynamicPlaceholders)(host));
     trace?.("D", "persist_hydration");
     await step("persist hydration", () => (0, persist_hydrate_1.hydratePersistedState)(host));
     trace?.("sync", "governance_and_mappings");

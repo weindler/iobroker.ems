@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.acMappingCommands = exports.acMappingFromConfig = exports.acMappingFlatPrefix = void 0;
+exports.acMappingCommandsForConfiguredUnits = exports.acMappingCommands = exports.acMappingFromConfig = exports.acMappingFlatPrefix = void 0;
 const constants_1 = require("./constants");
 function acMappingFlatPrefix(unitIndex, role) {
     return `ac_u${unitIndex}_${role}`;
@@ -39,3 +39,6 @@ function acMappingCommands() {
     return cmds;
 }
 exports.acMappingCommands = acMappingCommands;
+/** Prefer {@link acMappingCommandsForConfiguredUnits} for ensure; this remains for catalog/audit. */
+var configured_1 = require("./configured");
+Object.defineProperty(exports, "acMappingCommandsForConfiguredUnits", { enumerable: true, get: function () { return configured_1.acMappingCommandsForConfiguredUnits; } });

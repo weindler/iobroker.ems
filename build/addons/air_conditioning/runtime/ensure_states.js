@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ensureAcRuntimeStates = exports.AC_RUNTIME_SUMMARY_STATES = exports.acUnitRuntimeStates = exports.acUnitRuntimeBase = exports.AC_RUNTIME_BASE = void 0;
 const tree_paths_1 = require("../../../tree_paths");
-const constants_1 = require("../constants");
+const configured_1 = require("../configured");
 exports.AC_RUNTIME_BASE = `${(0, tree_paths_1.addonBase)("air_conditioning")}.runtime`;
 function acUnitRuntimeBase(unitIndex) {
     return `${(0, tree_paths_1.addonBase)("air_conditioning")}.units.unit_${unitIndex}`;
@@ -43,7 +43,7 @@ exports.AC_RUNTIME_SUMMARY_STATES = {
     dailyPlanRevision: `${exports.AC_RUNTIME_BASE}.daily_plan_revision`,
     reasonDe: `${exports.AC_RUNTIME_BASE}.reason_de`,
 };
-async function ensureAcRuntimeStates(host) {
+async function ensureAcRuntimeStates(host, options) {
     await host.setObjectNotExistsAsync(`${(0, tree_paths_1.addonBase)("air_conditioning")}.units`, {
         type: "channel",
         common: { name: "Klima Innengeräte" },
@@ -91,7 +91,9 @@ async function ensureAcRuntimeStates(host) {
             native: {},
         });
     }
-    for (let i = 1; i <= constants_1.AC_UNIT_COUNT; i++) {
+    const unitIndexes = options?.unitIndexes ??
+        (host.config !== undefined ? (0, configured_1.configuredAcUnitIndexes)(host.config) : []);
+    for (const i of unitIndexes) {
         const ch = acUnitRuntimeBase(i);
         const ids = acUnitRuntimeStates(i);
         await host.setObjectNotExistsAsync(ch, {

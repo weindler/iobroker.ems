@@ -389,7 +389,8 @@ export const STATE_SURFACE_FAMILIES: StateSurfaceFamily[] = [
 		label: "Air conditioning units + mappings",
 		idPattern: "addons.air_conditioning.* | addons.climate.*",
 		estimatedStaticCount: 120,
-		dynamicNote: "Up to 5 units × ~23 runtime; mappings can add ~240 if fully ensured for disabled units",
+		dynamicNote:
+			"Phase 4B1: only configured units (enabled OR mapping target). Unconfigured unit_2..5 placeholders are not ensured and may be cleaned.",
 		dataTypes: ["string", "number", "boolean"],
 		readWrite: "mixed",
 		producer: "addons/air_conditioning/runtime/ensure_states",
@@ -398,7 +399,8 @@ export const STATE_SURFACE_FAMILIES: StateSurfaceFamily[] = [
 		avgOrMaxSizeHint: "mostly scalars",
 		publicFeature: true,
 		targetClass: "A_core_user",
-		migrationStrategy: "CRITICAL: ensure states only for enabled units; stop creating trees for disabled units.",
+		migrationStrategy:
+			"Ensure only configured units; controlled cleanup allowlist for never-configured placeholders; keep disabled-but-configured.",
 	},
 	{
 		id: "diagnostics_misc",

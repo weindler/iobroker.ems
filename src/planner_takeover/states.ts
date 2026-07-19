@@ -1,4 +1,5 @@
 import { ensureChannel, ensureStates, type StateDef, type StateHost } from "../ems_light/state_util";
+import { withExpertCommon } from "../ems_light/expert_surface";
 import { setOptionalNumberIfChanged, setStateIfChanged } from "../policy/core/state_write";
 import { shortenRevision } from "../planner_shadow/canonical";
 import type { PlannerTakeoverEvidence } from "./types";
@@ -34,27 +35,30 @@ export const PLANNER_TAKEOVER_STATE_PREFIX = "planner.takeover.";
 function strState(id: string, name: string, def = ""): StateDef {
 	return {
 		id,
-		common: { name, type: "string", role: "text", read: true, write: false, def },
+		common: withExpertCommon({ name, type: "string", role: "text", read: true, write: false, def }),
 		defaultVal: def,
 		setDefaultIfEmpty: true,
+		extendCommon: true,
 	};
 }
 
 function numState(id: string, name: string, def = 0): StateDef {
 	return {
 		id,
-		common: { name, type: "number", role: "value", read: true, write: false, def },
+		common: withExpertCommon({ name, type: "number", role: "value", read: true, write: false, def }),
 		defaultVal: def,
 		setDefaultIfEmpty: true,
+		extendCommon: true,
 	};
 }
 
 function boolState(id: string, name: string, def = false): StateDef {
 	return {
 		id,
-		common: { name, type: "boolean", role: "state", read: true, write: false, def },
+		common: withExpertCommon({ name, type: "boolean", role: "state", read: true, write: false, def }),
 		defaultVal: def,
 		setDefaultIfEmpty: true,
+		extendCommon: true,
 	};
 }
 

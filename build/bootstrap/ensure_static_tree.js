@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.syncAllMappingsFromConfig = exports.ensureDynamicVehicleProfiles = exports.ensureStaticStateTree = void 0;
+exports.syncAllMappingsFromConfig = exports.cleanupDynamicPlaceholders = exports.ensureDynamicVehicleProfiles = exports.ensureStaticStateTree = void 0;
 const air_conditioning_1 = require("../addons/air_conditioning");
 const battery_1 = require("../addons/battery");
 const immersion_heater_1 = require("../addons/immersion_heater");
@@ -21,6 +21,7 @@ const constants_1 = require("../addons/air_conditioning/constants");
 const mapping_config_4 = require("../addons/air_conditioning/mapping_config");
 const base_ensure_1 = require("./base_ensure");
 const ensure_states_1 = require("../backup/ensure_states");
+const cleanup_1 = require("../surface_cleanup/cleanup");
 /** Phase B — statischer EMS-State-Tree ohne dynamische Fahrzeugprofile. */
 async function ensureStaticStateTree(host) {
     await (0, execution_mode_1.ensureChannelTree)(host.setObjectNotExistsAsync.bind(host));
@@ -45,6 +46,36 @@ async function ensureDynamicVehicleProfiles(host) {
     await (0, wallbox_1.ensureWallboxDynamicVehicleProfiles)(host);
 }
 exports.ensureDynamicVehicleProfiles = ensureDynamicVehicleProfiles;
+/**
+ * Phase 4B1 — controlled cleanup of unconfigured AC / orphan vehicle placeholders.
+ * Runs after ensure so configured trees exist; idempotent.
+ */
+async function cleanupDynamicPlaceholders(host) {
+    const cleanupHost = {
+        namespace: host.namespace,
+        config: host.config,
+        log: host.log,
+        getObjectAsync: (id) => host.getObjectAsync(id),
+        delObjectAsync: (id, opts) => host.delObjectAsync(id, opts),
+        listRelativeObjectIds: async () => {
+            const listFn = host.getObjectListAsync;
+            if (typeof listFn !== "function") {
+                return [];
+            }
+            const start = `${host.namespace}.addons.wallbox.vehicles.`;
+            const end = `${host.namespace}.addons.wallbox.vehicles.\uffff`;
+            const res = await listFn.call(host, { startkey: start, endkey: end });
+            const rows = res?.rows ?? [];
+            const prefix = `${host.namespace}.`;
+            return rows
+                .map((r) => r.id)
+                .filter((id) => id.startsWith(prefix))
+                .map((id) => id.slice(prefix.length));
+        },
+    };
+    await (0, cleanup_1.runDynamicSurfaceCleanup)(cleanupHost);
+}
+exports.cleanupDynamicPlaceholders = cleanupDynamicPlaceholders;
 /** Phase sync — Mapping-Werte aus Admin-Config (nach Objekterzeugung). */
 async function syncAllMappingsFromConfig(host) {
     await (0, mapping_sync_1.syncNativeMappingToStates)(host, "wallbox", mapping_config_1.wallboxMappingFromConfig);

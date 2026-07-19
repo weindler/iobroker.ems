@@ -100,7 +100,7 @@ function freshUserState(val, lc, ts = 2000) {
         strict_1.default.equal(adapter.store.get(WB_REL)?.val, "live");
         strict_1.default.equal(await (0, execution_mode_js_1.isLiveWriteAllowed)(adapter.getStateAsync, "wallbox"), false);
     });
-    (0, node_test_1.it)("4: native live config stays effective dryrun after dryrun request while rearm active", async () => {
+    (0, node_test_1.it)("4: native live config is mirrored to object tree while rearm blocks writes", async () => {
         (0, startup_rearm_js_1.resetStartupRearmForTest)();
         (0, startup_rearm_js_1.setStartupRearmRequired)(true);
         (0, startup_rearm_js_1.markBootstrapCompletedForRearm)(1000);
@@ -110,6 +110,9 @@ function freshUserState(val, lc, ts = 2000) {
             forceDryrunReason: "startup_rearm_required",
         });
         strict_1.default.equal(adapter.config.global_execution_mode, "live");
+        strict_1.default.equal(adapter.store.get(GLOBAL_REL)?.val, "live");
+        strict_1.default.equal(adapter.store.get(WB_REL)?.val, "live");
+        strict_1.default.equal(await (0, execution_mode_js_1.isLiveWriteAllowed)(adapter.getStateAsync, "wallbox"), false);
         await (0, execution_mode_js_1.handleExecutionModeStateChange)(adapter, `${NS}.${GLOBAL_REL}`, freshUserState("dryrun", 2));
         strict_1.default.equal((0, startup_rearm_js_1.isStartupRearmRequired)(), true);
         strict_1.default.equal(adapter.config.global_execution_mode, "live");

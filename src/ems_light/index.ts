@@ -162,6 +162,7 @@ export async function ensureEmsLightStateTree(adapter: ioBroker.Adapter): Promis
 	await ensureEmsLightStates(host, version);
 	await ensurePlannerStateTree(host as unknown as PlannerHost & LiveCacheHost, {
 		includeTakeoverStates: plannerMode !== "off",
+		coordinatorMinimal: plannerMode === "off",
 	});
 	const policyHost = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & PolicyEngineHost);
 	await ensurePolicyStateTree(policyHost);

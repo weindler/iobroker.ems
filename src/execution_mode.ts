@@ -290,6 +290,19 @@ export async function syncExecutionModesFromConfig(
 		if (forceReason === "restore_recovery" && typeof host.updateConfig === "function") {
 			await host.updateConfig(dryrunNative);
 		}
+		if (forceReason === "startup_rearm_required") {
+			// Object tree follows Admin/Native; writes stay gated by isStartupRearmRequired().
+			await applyExecutionModesFromConfig(host, modes);
+			await host.setStateAsync(EXECUTION_MODE_CONFIG_FINGERPRINT, {
+				val: fingerprint,
+				ack: true,
+			});
+			await mirrorGlobalExecutionSafety(host);
+			host.log?.info?.(
+				"Startup-Rearm: Objektbaum folgt Admin-Config — Geräte-Writes gesperrt bis explizitem Live-Rearm",
+			);
+			return;
+		}
 		await applyExecutionModesFromConfig(host, ALL_DRYRUN_MODES);
 		await host.setStateAsync(EXECUTION_MODE_CONFIG_FINGERPRINT, {
 			val: executionModesConfigFingerprint(dryrunNative),
@@ -299,10 +312,6 @@ export async function syncExecutionModesFromConfig(
 		if (forceReason === "restore_recovery") {
 			host.log?.info?.(
 				"Restore-Recovery: Ausführungsmodi in Native und Objektbaum auf dryrun gesetzt",
-			);
-		} else if (forceReason === "startup_rearm_required") {
-			host.log?.info?.(
-				"Startup-Rearm: effektive Ausführungsmodi auf dryrun — Native-Konfiguration unverändert",
 			);
 		} else {
 			host.log?.info?.(

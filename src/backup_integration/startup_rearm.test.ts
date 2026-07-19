@@ -210,7 +210,7 @@ describe("startup rearm via handleExecutionModeStateChange", () => {
 		assert.equal(await isLiveWriteAllowed(adapter.getStateAsync, "wallbox"), false);
 	});
 
-	it("4: native live config stays effective dryrun after dryrun request while rearm active", async () => {
+	it("4: native live config is mirrored to object tree while rearm blocks writes", async () => {
 		resetStartupRearmForTest();
 		setStartupRearmRequired(true);
 		markBootstrapCompletedForRearm(1000);
@@ -221,6 +221,9 @@ describe("startup rearm via handleExecutionModeStateChange", () => {
 			forceDryrunReason: "startup_rearm_required",
 		});
 		assert.equal(adapter.config.global_execution_mode, "live");
+		assert.equal(adapter.store.get(GLOBAL_REL)?.val, "live");
+		assert.equal(adapter.store.get(WB_REL)?.val, "live");
+		assert.equal(await isLiveWriteAllowed(adapter.getStateAsync, "wallbox"), false);
 
 		await handleExecutionModeStateChange(
 			adapter,

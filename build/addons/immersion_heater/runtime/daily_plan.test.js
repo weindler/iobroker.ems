@@ -117,7 +117,7 @@ function allocationEntry(contributionId, allocatedPowerW, status = "allocated") 
         strict_1.default.equal(r.allocatedPowerW, 3400);
         strict_1.default.equal(r.mandatoryAllocatedPowerW, 3400);
     });
-    (0, node_test_1.it)("resolves valid daily plan with zero allocation without fallback flag", () => {
+    (0, node_test_1.it)("zero allocation falls back to thermal planner path", () => {
         const r = (0, daily_plan_js_1.resolveImmersionDailyPlanFromData)({
             now: NOW,
             timezone: TZ,
@@ -125,10 +125,11 @@ function allocationEntry(contributionId, allocatedPowerW, status = "allocated") 
             entries: [],
             config: MULTI_STAGE_CFG,
         });
-        strict_1.default.equal(r.useDailyPlan, true);
+        strict_1.default.equal(r.useDailyPlan, false);
         strict_1.default.equal(r.dailyPlanStatus, "daily_plan_zero_allocation");
         strict_1.default.equal(r.commandedStage, 0);
-        strict_1.default.equal(r.decisionSource, "daily_plan");
+        strict_1.default.equal(r.decisionSource, "thermal_fallback");
+        strict_1.default.match(r.allocationReasonDe, /Thermal-Fallback/);
     });
     (0, node_test_1.it)("falls back on wrong date", () => {
         const r = (0, daily_plan_js_1.resolveImmersionDailyPlanFromData)({

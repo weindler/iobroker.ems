@@ -122,7 +122,7 @@ describe("ac daily plan reader", () => {
 		assert.equal(r.allocatedPowerW, 800);
 	});
 
-	it("valid zero allocation without fallback", () => {
+	it("zero allocation falls back to climate FSM", () => {
 		const expected = resolveUnitExpectedPower(UNIT, undefined, NOW.getTime());
 		const r = resolveAcUnitDailyPlanFromData({
 			unitIndex: 1,
@@ -132,9 +132,10 @@ describe("ac daily plan reader", () => {
 			entries: [],
 			expectedPower: expected,
 		});
-		assert.equal(r.useDailyPlan, true);
+		assert.equal(r.useDailyPlan, false);
 		assert.equal(r.dailyPlanStatus, "daily_plan_zero_allocation");
 		assert.equal(r.allocationAllowsStart, false);
+		assert.match(r.allocationReasonDe, /Climate-Fallback/);
 	});
 
 	it("blocks start when allocation below expected power", () => {
@@ -226,7 +227,7 @@ describe("ac cooling permission", () => {
 		assert.equal(perm.decisionSource, "daily_plan");
 	});
 
-	it("no fallback on valid zero allocation", () => {
+	it("climate fallback on zero allocation with thermal demand", () => {
 		const fsm = fsmDemandStart();
 		const expected = resolveUnitExpectedPower(UNIT, undefined, NOW.getTime());
 		const dailyPlan = resolveAcUnitDailyPlanFromData({
@@ -237,6 +238,7 @@ describe("ac cooling permission", () => {
 			entries: [],
 			expectedPower: expected,
 		});
+		assert.equal(dailyPlan.useDailyPlan, false);
 		const perm = evaluateAcCoolingPermission({
 			unitEnabled: true,
 			governanceEnabled: true,
@@ -247,8 +249,8 @@ describe("ac cooling permission", () => {
 			startRetryReady: true,
 			stopRetryReady: true,
 		});
-		assert.equal(perm.allowStart, false);
-		assert.equal(perm.decisionSource, "daily_plan");
+		assert.equal(perm.allowStart, true);
+		assert.equal(perm.decisionSource, "climate_fallback");
 	});
 
 	it("climate fallback when plan missing", () => {

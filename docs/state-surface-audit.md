@@ -1,11 +1,11 @@
 # Phase 4A — Production State Surface Audit
 
-**Date:** 2026-07-18  
-**Branch:** `refactor/v0.1.143-production-surface-cleanup`  
-**Baseline tag:** `planner-shadow-gate3-verified`  
-**Version:** 0.1.143  
+**Date:** 2026-07-18
+**Branch:** `refactor/v0.1.143-production-surface-cleanup`
+**Baseline tag:** `planner-shadow-gate3-verified`
+**Version:** 0.1.143
 
-Machine-readable companion: [`state-surface-inventory.json`](./state-surface-inventory.json).  
+Machine-readable companion: [`state-surface-inventory.json`](./state-surface-inventory.json).
 Read-only tool: `npm run audit:states` → `build/audit/run_state_surface_audit.js`.
 
 ## Problem statement
@@ -68,11 +68,11 @@ Dynamic growth: `ensureDynamicVehicleProfiles`, AC unit trees, dryrun mirrors on
 
 ## Largest producers
 
-1. **Wallbox + mappings + vehicles** — operational but mapping/dryrun JSON and empty vehicle trees inflate count.  
-2. **Learning + persistence mirrors** — many scalars plus dual-written JSON.  
-3. **Battery architecture tree** — keep status; mapping/dryrun are advanced.  
-4. **AC fixed 5-unit expansion** — disabled units still create large subtrees.  
-5. **Planner intent JSON mirrors** (forecast/daily/allocations/contributions) — high bytes, low operator value as states.  
+1. **Wallbox + mappings + vehicles** — operational but mapping/dryrun JSON and empty vehicle trees inflate count.
+2. **Learning + persistence mirrors** — many scalars plus dual-written JSON.
+3. **Battery architecture tree** — keep status; mapping/dryrun are advanced.
+4. **AC fixed 5-unit expansion** — disabled units still create large subtrees.
+5. **Planner intent JSON mirrors** (forecast/daily/allocations/contributions) — high bytes, low operator value as states.
 6. **Shadow/authority/takeover** — ~99 diagnostic states with internal vocabulary.
 
 ## Large JSON investigation
@@ -100,10 +100,10 @@ Allowed concepts:
 
 Hard budgets:
 
-- Planner core in normal operation: **≤ ~30** always-present states  
-- Temporary planner diagnostics: only with explicit diagnostic/pilot mode  
-- No permanent large slot/contribution JSON states  
-- Dynamic device states only for **configured/enabled** devices  
+- Planner core in normal operation: **≤ ~30** always-present states
+- Temporary planner diagnostics: only with explicit diagnostic/pilot mode
+- No permanent large slot/contribution JSON states
+- Dynamic device states only for **configured/enabled** devices
 - Overall adapter count far below ~1534
 
 ## ioBroker-compliant visibility levers
@@ -117,21 +117,22 @@ Documented only (no invented metadata):
 | `common.expert` | Object `common` | Object tree visible only in expert mode (`@iobroker/types`) |
 | `common.custom` | Object `common` | Custom settings — **not** a hide flag |
 
-This adapter currently does **not** set `common.expert` on planner diagnostic states; Global planner gates have no `expertMode`.
+This adapter sets `common.expert: true` on planner coordinator / authority / takeover / authorization states (Phase 4B1). Global Admin planner gates use jsonConfig `"expert": true` (fields retained). Core user states are not expert-marked.
+
+See also: [`dynamic-state-lifecycle.md`](./dynamic-state-lifecycle.md), [`state-surface-production-gap.md`](./state-surface-production-gap.md).
 
 ## Recommended cleanup order (later phases)
 
-1. Stop ensuring AC/vehicle/mapping trees for disabled/unconfigured devices (largest easy win).  
-2. Gate planner pilot admin fields + `common.expert` on coordinator/authority/takeover.  
-3. Introduce diagnostic mode; move C-class trees behind it (no deletion yet).  
-4. Migrate D-class JSON to durable/runtime files; keep compact status states.  
-5. Retarget F-class readers (allocation `plan_json`, VIS) then shrink compatibility states.  
+1. ~~Stop ensuring AC/vehicle/mapping trees for disabled/unconfigured devices~~ (done in 4B1 for AC configured-definition + vehicle table).
+2. ~~Gate planner pilot admin fields + `common.expert` on coordinator/authority/takeover~~ (done in 4B1).
+3. Introduce diagnostic mode; move C-class trees behind it (no deletion yet).
+4. Migrate D-class JSON to durable/runtime files; keep compact status states.
+5. Retarget F-class readers (allocation `plan_json`, VIS) then shrink compatibility states.
 6. Only then deprecate/remove obsolete objects with migration notes.
 
-## Out of scope for 4A
+## Out of scope for 4A / unchanged in 4B1
 
-- Functional runtime changes  
-- Deleting existing ioBroker objects  
-- Authority activation  
-- Execution-mode / startup-rearm semantics  
-- `vis/` modifications  
+- Authority activation / lease / takeover eligibility semantics
+- Execution-mode / startup-rearm / restore dryrun clamp
+- Large JSON state relocation
+- `vis/` modifications

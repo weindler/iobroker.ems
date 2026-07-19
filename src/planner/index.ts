@@ -22,6 +22,8 @@ export { batteryWinterPlanConfigFromAdapter } from "./battery_winter_config";
 export type EnsurePlannerStateTreeOptions = {
 	/** When false, skip takeover object tree (default true for non-off modes). */
 	includeTakeoverStates?: boolean;
+	/** When true, only core coordinator states (mode off). */
+	coordinatorMinimal?: boolean;
 };
 
 /** Phase B — nur Objektbaum, keine Planner-Ticks. */
@@ -34,7 +36,7 @@ export async function ensurePlannerStateTree(
 	await ensureForecastPlanStates(host);
 	await ensureFlexibleContributionStates(host);
 	await ensureDailyPlanStates(host);
-	await ensurePlannerCoordinatorStates(host);
+	await ensurePlannerCoordinatorStates(host, { minimal: options?.coordinatorMinimal === true });
 	if (options?.includeTakeoverStates !== false) {
 		const { ensurePlannerTakeoverStates } = await import("../planner_takeover/states.js");
 		await ensurePlannerTakeoverStates(host);

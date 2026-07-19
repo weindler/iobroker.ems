@@ -1,5 +1,5 @@
 import { addonBase } from "../../../tree_paths";
-import { AC_UNIT_COUNT } from "../constants";
+import { configuredAcUnitIndexes } from "../configured";
 
 export const AC_RUNTIME_BASE = `${addonBase("air_conditioning")}.runtime`;
 
@@ -43,9 +43,13 @@ export const AC_RUNTIME_SUMMARY_STATES = {
 	reasonDe: `${AC_RUNTIME_BASE}.reason_de`,
 } as const;
 
-export async function ensureAcRuntimeStates(host: {
-	setObjectNotExistsAsync: (id: string, obj: ioBroker.Object) => Promise<unknown>;
-}): Promise<void> {
+export async function ensureAcRuntimeStates(
+	host: {
+		setObjectNotExistsAsync: (id: string, obj: ioBroker.Object) => Promise<unknown>;
+		config?: unknown;
+	},
+	options?: { unitIndexes?: number[] },
+): Promise<void> {
 	await host.setObjectNotExistsAsync(`${addonBase("air_conditioning")}.units`, {
 		type: "channel",
 		common: { name: "Klima Innengeräte" },
@@ -95,7 +99,11 @@ export async function ensureAcRuntimeStates(host: {
 		} as ioBroker.Object);
 	}
 
-	for (let i = 1; i <= AC_UNIT_COUNT; i++) {
+	const unitIndexes =
+		options?.unitIndexes ??
+		(host.config !== undefined ? configuredAcUnitIndexes(host.config) : []);
+
+	for (const i of unitIndexes) {
 		const ch = acUnitRuntimeBase(i);
 		const ids = acUnitRuntimeStates(i);
 		await host.setObjectNotExistsAsync(ch, {

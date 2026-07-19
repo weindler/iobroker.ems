@@ -420,7 +420,7 @@ export function resolveImmersionDailyPlanFromData(input: ResolveDailyPlanInput):
 
 	return {
 		dailyPlanStatus,
-		decisionSource: "daily_plan",
+		decisionSource: cappedPowerW > 0 ? "daily_plan" : "thermal_fallback",
 		dailyPlanRevision: meta.revision,
 		slotStartIso,
 		slotEndIso,
@@ -428,9 +428,13 @@ export function resolveImmersionDailyPlanFromData(input: ResolveDailyPlanInput):
 		mandatoryAllocatedPowerW: merge.mandatoryPowerW,
 		flexibleAllocatedPowerW: merge.flexiblePowerW,
 		allocationStatus: merge.allocationStatus,
-		allocationReasonDe: cappedPowerW <= 0 ? merge.reasonDe : stagePick.reasonDe,
+		allocationReasonDe:
+			cappedPowerW <= 0
+				? `${merge.reasonDe} Thermal-Fallback (Planner/Überschuss) aktiv.`
+				: stagePick.reasonDe,
 		commandedStage: stagePick.stageIndex,
-		useDailyPlan: true,
+		/** Zero allocation does not own control — surplus planner may command a stage. */
+		useDailyPlan: cappedPowerW > 0,
 	};
 }
 

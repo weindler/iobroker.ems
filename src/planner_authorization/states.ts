@@ -1,4 +1,5 @@
 import { ensureChannel, ensureStates, type StateDef, type StateHost } from "../ems_light/state_util";
+import { withExpertCommon } from "../ems_light/expert_surface";
 import { setOptionalNumberIfChanged, setStateIfChanged } from "../policy/core/state_write";
 import type { PlannerAuthorizationPublicStatus } from "./types";
 
@@ -33,18 +34,20 @@ export const PLANNER_AUTHORIZATION_STATE_PREFIX = "planner.takeover.authorizatio
 function strState(id: string, name: string, def = "", write = false): StateDef {
 	return {
 		id,
-		common: { name, type: "string", role: write ? "state" : "text", read: true, write, def },
+		common: withExpertCommon({ name, type: "string", role: write ? "state" : "text", read: true, write, def }),
 		defaultVal: def,
 		setDefaultIfEmpty: !write,
+		extendCommon: true,
 	};
 }
 
 function numState(id: string, name: string, def = 0): StateDef {
 	return {
 		id,
-		common: { name, type: "number", role: "value", read: true, write: false, def },
+		common: withExpertCommon({ name, type: "number", role: "value", read: true, write: false, def }),
 		defaultVal: def,
 		setDefaultIfEmpty: true,
+		extendCommon: true,
 	};
 }
 
@@ -57,9 +60,10 @@ function boolState(
 ): StateDef {
 	return {
 		id,
-		common: { name, type: "boolean", role, read: true, write, def },
+		common: withExpertCommon({ name, type: "boolean", role, read: true, write, def }),
 		defaultVal: def,
 		setDefaultIfEmpty: !write,
+		extendCommon: true,
 	};
 }
 

@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.writePlannerAuthorityStates = exports.writePlannerAuthorityMemoryStates = exports.isPlannerAuthorityState = exports.ensurePlannerAuthorityStates = exports.PLANNER_AUTHORITY_STATE_PREFIX = exports.PLANNER_AUTHORITY_STATE_IDS = void 0;
 const state_util_1 = require("../ems_light/state_util");
+const expert_surface_1 = require("../ems_light/expert_surface");
 const state_write_1 = require("../policy/core/state_write");
 exports.PLANNER_AUTHORITY_STATE_IDS = {
     configuredSource: "planner.authority.configured_source",
@@ -30,25 +31,28 @@ exports.PLANNER_AUTHORITY_STATE_PREFIX = "planner.authority.";
 function strState(id, name, def = "", write = false) {
     return {
         id,
-        common: { name, type: "string", role: write ? "state" : "text", read: true, write, def },
+        common: (0, expert_surface_1.withExpertCommon)({ name, type: "string", role: write ? "state" : "text", read: true, write, def }),
         defaultVal: def,
         setDefaultIfEmpty: !write,
+        extendCommon: true,
     };
 }
 function numState(id, name, def = 0) {
     return {
         id,
-        common: { name, type: "number", role: "value", read: true, write: false, def },
+        common: (0, expert_surface_1.withExpertCommon)({ name, type: "number", role: "value", read: true, write: false, def }),
         defaultVal: def,
         setDefaultIfEmpty: true,
+        extendCommon: true,
     };
 }
 function boolState(id, name, def = false, write = false, role = "state") {
     return {
         id,
-        common: { name, type: "boolean", role, read: true, write, def },
+        common: (0, expert_surface_1.withExpertCommon)({ name, type: "boolean", role, read: true, write, def }),
         defaultVal: def,
         setDefaultIfEmpty: !write,
+        extendCommon: true,
     };
 }
 async function ensurePlannerAuthorityStates(host) {

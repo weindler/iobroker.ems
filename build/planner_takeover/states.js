@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.writePlannerTakeoverStates = exports.isPlannerTakeoverState = exports.ensurePlannerTakeoverStates = exports.PLANNER_TAKEOVER_STATE_PREFIX = exports.PLANNER_TAKEOVER_STATE_IDS = void 0;
 const state_util_1 = require("../ems_light/state_util");
+const expert_surface_1 = require("../ems_light/expert_surface");
 const state_write_1 = require("../policy/core/state_write");
 const canonical_1 = require("../planner_shadow/canonical");
 exports.PLANNER_TAKEOVER_STATE_IDS = {
@@ -32,25 +33,28 @@ exports.PLANNER_TAKEOVER_STATE_PREFIX = "planner.takeover.";
 function strState(id, name, def = "") {
     return {
         id,
-        common: { name, type: "string", role: "text", read: true, write: false, def },
+        common: (0, expert_surface_1.withExpertCommon)({ name, type: "string", role: "text", read: true, write: false, def }),
         defaultVal: def,
         setDefaultIfEmpty: true,
+        extendCommon: true,
     };
 }
 function numState(id, name, def = 0) {
     return {
         id,
-        common: { name, type: "number", role: "value", read: true, write: false, def },
+        common: (0, expert_surface_1.withExpertCommon)({ name, type: "number", role: "value", read: true, write: false, def }),
         defaultVal: def,
         setDefaultIfEmpty: true,
+        extendCommon: true,
     };
 }
 function boolState(id, name, def = false) {
     return {
         id,
-        common: { name, type: "boolean", role: "state", read: true, write: false, def },
+        common: (0, expert_surface_1.withExpertCommon)({ name, type: "boolean", role: "state", read: true, write: false, def }),
         defaultVal: def,
         setDefaultIfEmpty: true,
+        extendCommon: true,
     };
 }
 async function ensurePlannerTakeoverStates(host) {

@@ -125,6 +125,7 @@ async function ensureEmsLightStateTree(adapter) {
     await (0, ensure_states_1.ensureEmsLightStates)(host, version);
     await (0, planner_1.ensurePlannerStateTree)(host, {
         includeTakeoverStates: plannerMode !== "off",
+        coordinatorMinimal: plannerMode === "off",
     });
     const policyHost = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
     await (0, policy_1.ensurePolicyStateTree)(policyHost);

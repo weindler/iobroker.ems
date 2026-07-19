@@ -28,6 +28,7 @@ import { beginBootstrapRun, endBootstrapRun, getBootstrapRunContext } from "./co
 import {
 	ensureDynamicVehicleProfiles,
 	ensureStaticStateTree,
+	cleanupDynamicPlaceholders,
 	syncAllMappingsFromConfig,
 	type StaticStateTreeHost,
 } from "./ensure_static_tree";
@@ -108,6 +109,9 @@ export async function runAdapterBootstrap(
 
 	trace?.("C", "dynamic_vehicle_profiles");
 	await step("dynamic vehicle profiles", () => ensureDynamicVehicleProfiles(host));
+
+	trace?.("C2", "dynamic_surface_cleanup");
+	await step("dynamic surface cleanup", () => cleanupDynamicPlaceholders(host));
 
 	trace?.("D", "persist_hydration");
 	await step("persist hydration", () => hydratePersistedState(host));

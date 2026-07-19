@@ -63,7 +63,7 @@ async function ensurePlannerStateTree(host, options) {
     await (0, states_1.ensureForecastPlanStates)(host);
     await (0, states_2.ensureFlexibleContributionStates)(host);
     await (0, states_3.ensureDailyPlanStates)(host);
-    await (0, ensure_states_2.ensurePlannerCoordinatorStates)(host);
+    await (0, ensure_states_2.ensurePlannerCoordinatorStates)(host, { minimal: options?.coordinatorMinimal === true });
     if (options?.includeTakeoverStates !== false) {
         const { ensurePlannerTakeoverStates } = await Promise.resolve().then(() => __importStar(require("../planner_takeover/states.js")));
         await ensurePlannerTakeoverStates(host);

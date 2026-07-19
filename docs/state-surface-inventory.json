@@ -1,12 +1,12 @@
 {
   "meta": {
-    "phase": "4A",
+    "phase": "4B1",
     "title": "EMS-Light production state surface inventory",
     "branch": "refactor/v0.1.143-production-surface-cleanup",
     "baselineTag": "planner-shadow-gate3-verified",
     "version": "0.1.143",
     "generatedAt": "2026-07-18",
-    "method": "code-derived family catalog + production observation (~1534 states)",
+    "method": "code-derived family catalog + production observation (~1534 states) + dump analyzer",
     "classes": {
       "A_core_user": "Core User Surface",
       "B_advanced_user": "Advanced User Surface",
@@ -18,7 +18,8 @@
     "notes": [
       "Counts are estimated static leaf states from ensure/STATE_IDS maps.",
       "Live production exceeds estimates via dynamic vehicles, AC units, mappings, dryrun mirrors.",
-      "No objects deleted or moved in Phase 4A."
+      "Phase 4B1: AC/vehicle ensure only when configured; controlled placeholder cleanup; common.expert on planner C-class.",
+      "Compatibility JSON states retained; no large JSON relocation."
     ]
   },
   "productionObservation": {

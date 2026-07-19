@@ -10,6 +10,7 @@ const consumer_stats_1 = require("../../../learning/consumer_stats");
 const governance_1 = require("../../../addons/governance");
 const states_1 = require("../../../operator/daily_plan/states");
 const constants_1 = require("../constants");
+const configured_1 = require("../configured");
 const config_1 = require("../config");
 const registry_1 = require("../profiles/registry");
 const ensure_states_1 = require("./ensure_states");
@@ -435,7 +436,7 @@ async function initAcRuntimeEngine(host) {
     engineActive = true;
     hostRef = host;
     await (0, ensure_states_1.ensureAcRuntimeStates)(host);
-    for (let i = 1; i <= 5; i++) {
+    for (const i of (0, configured_1.configuredAcUnitIndexes)(host.config)) {
         await (0, consumer_stats_1.initConsumerStatsForKey)(host, (0, constants_1.acUnitConsumerKey)(i));
     }
     await hydrateAcRuntimePersist(host);

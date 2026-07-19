@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isPlannerCoordinatorState = exports.ensurePlannerCoordinatorStates = exports.PLANNER_COORDINATOR_STATE_PREFIX = exports.PLANNER_COORDINATOR_STATE_IDS = void 0;
 const state_util_1 = require("../ems_light/state_util");
+const expert_surface_1 = require("../ems_light/expert_surface");
 exports.PLANNER_COORDINATOR_STATE_IDS = {
     shadowEnabled: "planner.coordinator.shadow_enabled",
     manualTrigger: "planner.coordinator.manual_trigger",
@@ -41,36 +42,46 @@ exports.PLANNER_COORDINATOR_STATE_PREFIX = "planner.coordinator.";
 function strState(id, name, def = "", write = false) {
     return {
         id,
-        common: { name, type: "string", role: write ? "state" : "text", read: true, write, def },
+        common: (0, expert_surface_1.withExpertCommon)({ name, type: "string", role: write ? "state" : "text", read: true, write, def }),
         defaultVal: def,
         setDefaultIfEmpty: !write,
+        extendCommon: true,
     };
 }
 function numState(id, name, def = 0, write = false) {
     return {
         id,
-        common: { name, type: "number", role: "value", read: true, write, def },
+        common: (0, expert_surface_1.withExpertCommon)({ name, type: "number", role: "value", read: true, write, def }),
         defaultVal: def,
         setDefaultIfEmpty: !write,
+        extendCommon: true,
     };
 }
 function boolState(id, name, def = false, write = false, role = "state") {
     return {
         id,
-        common: { name, type: "boolean", role, read: true, write, def },
+        common: (0, expert_surface_1.withExpertCommon)({ name, type: "boolean", role, read: true, write, def }),
         defaultVal: def,
         setDefaultIfEmpty: !write,
+        extendCommon: true,
     };
 }
-async function ensurePlannerCoordinatorStates(host) {
+async function ensurePlannerCoordinatorStates(host, options) {
     await (0, state_util_1.ensureChannel)(host, "planner.coordinator", "Planner On-Demand Coordinator");
-    const defs = [
+    const coreDefs = [
         boolState(exports.PLANNER_COORDINATOR_STATE_IDS.shadowEnabled, "Planner Shadow Session-Freigabe", false, true),
         boolState(exports.PLANNER_COORDINATOR_STATE_IDS.manualTrigger, "Planner Shadow manuell starten", false, true, "button"),
         boolState(exports.PLANNER_COORDINATOR_STATE_IDS.manualForceTrigger, "Planner Shadow manuell erzwingen", false, true, "button"),
         strState(exports.PLANNER_COORDINATOR_STATE_IDS.configuredMode, "Planner Betriebsart (Konfiguration)", "off"),
         strState(exports.PLANNER_COORDINATOR_STATE_IDS.effectiveMode, "Planner Betriebsart (effektiv)", "off"),
         strState(exports.PLANNER_COORDINATOR_STATE_IDS.state, "Coordinator Zustand", "disabled"),
+    ];
+    if (options?.minimal) {
+        await (0, state_util_1.ensureStates)(host, coreDefs);
+        return;
+    }
+    const defs = [
+        ...coreDefs,
         boolState(exports.PLANNER_COORDINATOR_STATE_IDS.active, "Coordinator aktiv", false),
         strState(exports.PLANNER_COORDINATOR_STATE_IDS.activeJobId, "Coordinator Job-ID"),
         strState(exports.PLANNER_COORDINATOR_STATE_IDS.lastTriggerReason, "Coordinator letzter Trigger"),

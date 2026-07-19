@@ -165,7 +165,7 @@ describe("immersion daily plan reader", () => {
 		assert.equal(r.mandatoryAllocatedPowerW, 3400);
 	});
 
-	it("resolves valid daily plan with zero allocation without fallback flag", () => {
+	it("zero allocation falls back to thermal planner path", () => {
 		const r = resolveImmersionDailyPlanFromData({
 			now: NOW,
 			timezone: TZ,
@@ -173,10 +173,11 @@ describe("immersion daily plan reader", () => {
 			entries: [],
 			config: MULTI_STAGE_CFG,
 		});
-		assert.equal(r.useDailyPlan, true);
+		assert.equal(r.useDailyPlan, false);
 		assert.equal(r.dailyPlanStatus, "daily_plan_zero_allocation");
 		assert.equal(r.commandedStage, 0);
-		assert.equal(r.decisionSource, "daily_plan");
+		assert.equal(r.decisionSource, "thermal_fallback");
+		assert.match(r.allocationReasonDe, /Thermal-Fallback/);
 	});
 
 	it("falls back on wrong date", () => {

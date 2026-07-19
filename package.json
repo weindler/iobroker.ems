@@ -1,6 +1,6 @@
 {
 	"name": "iobroker.ems",
-	"version": "0.1.150",
+	"version": "0.1.151",
 	"description": "EMS-Light ioBroker adapter — energy management with learning, policies, and safe dryrun/live execution",
 	"author": {
 		"name": "weindler"

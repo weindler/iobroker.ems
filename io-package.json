@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.150",
+		"version": "0.1.151",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.151": {
+				"en": "Fix: write null instead of empty string to number runtime states (allocated power etc.) to stop js-controller type warnings.",
+				"de": "Fix: null statt leerem String auf Number-Runtime-States (allocated power etc.) — keine js-controller Type-Warnungen mehr."
+			},
 			"0.1.150": {
 				"en": "Lean surface: only enabled AC units get states; purge Shadow/Forecast/Daily mirrors; dryrun/live only. Export before upgrade recommended.",
 				"de": "Schlanke Oberfläche: nur aktivierte Klima-Units bekommen States; Shadow/Forecast/Daily-Spiegel werden bereinigt; nur dryrun/live. Vor Update Export empfohlen."

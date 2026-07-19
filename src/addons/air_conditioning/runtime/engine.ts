@@ -527,14 +527,14 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 			: 0;
 		await setStateIfChanged(host, ids.state, fsm.state);
 		await setStateIfChanged(host, ids.reasonDe, permission.reasonDe);
-		await setStateIfChanged(host, ids.roomTempC, temp.num ?? "");
-		await setStateIfChanged(host, ids.roomHumidityPct, hum.num ?? "");
+		await setStateIfChanged(host, ids.roomTempC, temp.num ?? null);
+		await setStateIfChanged(host, ids.roomHumidityPct, hum.num ?? null);
 		await setStateIfChanged(host, ids.feedbackSwitch, fb.value == null ? "" : String(fb.value));
 		await setStateIfChanged(host, ids.running, fbOn);
 		await setStateIfChanged(host, ids.cleaningActive, up.cleaningActive);
 		await setStateIfChanged(host, ids.feedbackCleaningState, cleaningState.value == null ? "" : String(cleaningState.value));
 		await setStateIfChanged(host, ids.feedbackCleaningMode, cleaningMode.value == null ? "" : String(cleaningMode.value));
-		await setStateIfChanged(host, ids.feedbackCleaningProgressPct, cleaningProgress.num ?? "");
+		await setStateIfChanged(host, ids.feedbackCleaningProgressPct, cleaningProgress.num ?? null);
 		await setStateIfChanged(host, ids.modePurpose, fsm.modePurpose);
 		await setStateIfChanged(host, ids.estimatedPowerW, estPower);
 		await setStateIfChanged(host, ids.decisionSource, permission.decisionSource);
@@ -542,8 +542,8 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		await setStateIfChanged(host, ids.dailyPlanRevision, dailyPlan.dailyPlanRevision ?? 0);
 		await setStateIfChanged(host, ids.dailyPlanSlotStart, dailyPlan.slotStartIso ?? "");
 		await setStateIfChanged(host, ids.dailyPlanSlotEnd, dailyPlan.slotEndIso ?? "");
-		await setStateIfChanged(host, ids.allocatedPowerW, dailyPlan.allocatedPowerW ?? "");
-		await setStateIfChanged(host, ids.expectedPowerW, dailyPlan.expectedPowerW ?? "");
+		await setStateIfChanged(host, ids.allocatedPowerW, dailyPlan.allocatedPowerW ?? null);
+		await setStateIfChanged(host, ids.expectedPowerW, dailyPlan.expectedPowerW ?? null);
 		await setStateIfChanged(host, ids.powerModelSource, dailyPlan.powerModelSource);
 		await setStateIfChanged(host, ids.allocationStatus, dailyPlan.allocationStatus);
 		await setStateIfChanged(host, ids.allocationReasonDe, dailyPlan.allocationReasonDe);

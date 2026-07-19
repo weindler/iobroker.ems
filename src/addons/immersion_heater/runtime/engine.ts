@@ -450,16 +450,16 @@ async function publishRuntime(
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.state, s.state);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.requestedMode, s.requested_mode);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.resolvedMode, s.resolved_mode);
-	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.bufferTemperatureC, s.buffer_temperature_c ?? "");
+	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.bufferTemperatureC, s.buffer_temperature_c ?? null);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.temperatureStatus, s.temperature_status);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.planningMinTempC, s.planning_min_temp_c);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.planningMaxTempC, s.planning_max_temp_c);
-	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.forceTargetTempC, s.force_target_temp_c ?? "");
+	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.forceTargetTempC, s.force_target_temp_c ?? null);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.forceUntil, s.force_until ?? "");
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.commandedStage, s.commanded_stage);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.commandedPowerW, s.commanded_power_w);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.feedbackStage, s.feedback_stage);
-	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.measuredPowerW, s.measured_power_w ?? "");
+	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.measuredPowerW, s.measured_power_w ?? null);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.powerVerificationStatus, s.power_verification_status);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.minRuntimeRemainingSec, s.minimum_runtime_remaining_sec);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.minPauseRemainingSec, s.minimum_pause_remaining_sec);
@@ -482,17 +482,17 @@ async function publishRuntime(
 	await setStateIfChanged(
 		host,
 		IMMERSION_RUNTIME_STATES.allocatedPowerW,
-		dailyPlan?.allocatedPowerW ?? "",
+		dailyPlan?.allocatedPowerW ?? null,
 	);
 	await setStateIfChanged(
 		host,
 		IMMERSION_RUNTIME_STATES.mandatoryAllocatedPowerW,
-		dailyPlan?.mandatoryAllocatedPowerW ?? "",
+		dailyPlan?.mandatoryAllocatedPowerW ?? null,
 	);
 	await setStateIfChanged(
 		host,
 		IMMERSION_RUNTIME_STATES.flexibleAllocatedPowerW,
-		dailyPlan?.flexibleAllocatedPowerW ?? "",
+		dailyPlan?.flexibleAllocatedPowerW ?? null,
 	);
 	await setStateIfChanged(
 		host,

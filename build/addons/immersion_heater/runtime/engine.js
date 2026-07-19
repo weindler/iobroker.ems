@@ -362,16 +362,16 @@ async function publishRuntime(host, s, decisionSource, dailyPlan) {
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.state, s.state);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.requestedMode, s.requested_mode);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.resolvedMode, s.resolved_mode);
-    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.bufferTemperatureC, s.buffer_temperature_c ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.bufferTemperatureC, s.buffer_temperature_c ?? null);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.temperatureStatus, s.temperature_status);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planningMinTempC, s.planning_min_temp_c);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planningMaxTempC, s.planning_max_temp_c);
-    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.forceTargetTempC, s.force_target_temp_c ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.forceTargetTempC, s.force_target_temp_c ?? null);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.forceUntil, s.force_until ?? "");
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.commandedStage, s.commanded_stage);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.commandedPowerW, s.commanded_power_w);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.feedbackStage, s.feedback_stage);
-    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.measuredPowerW, s.measured_power_w ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.measuredPowerW, s.measured_power_w ?? null);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.powerVerificationStatus, s.power_verification_status);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.minRuntimeRemainingSec, s.minimum_runtime_remaining_sec);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.minPauseRemainingSec, s.minimum_pause_remaining_sec);
@@ -387,9 +387,9 @@ async function publishRuntime(host, s, decisionSource, dailyPlan) {
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.dailyPlanRevision, dailyPlan?.dailyPlanRevision ?? 0);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.dailyPlanSlotStart, dailyPlan?.slotStartIso ?? "");
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.dailyPlanSlotEnd, dailyPlan?.slotEndIso ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.allocatedPowerW, dailyPlan?.allocatedPowerW ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.mandatoryAllocatedPowerW, dailyPlan?.mandatoryAllocatedPowerW ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.flexibleAllocatedPowerW, dailyPlan?.flexibleAllocatedPowerW ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.allocatedPowerW, dailyPlan?.allocatedPowerW ?? null);
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.mandatoryAllocatedPowerW, dailyPlan?.mandatoryAllocatedPowerW ?? null);
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.flexibleAllocatedPowerW, dailyPlan?.flexibleAllocatedPowerW ?? null);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.allocationStatus, dailyPlan?.allocationStatus ?? "unknown");
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.allocationReasonDe, dailyPlan?.allocationReasonDe ?? "");
 }

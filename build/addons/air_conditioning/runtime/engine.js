@@ -380,14 +380,14 @@ async function runAcRuntimeTickBody(host) {
             : 0;
         await (0, state_write_1.setStateIfChanged)(host, ids.state, fsm.state);
         await (0, state_write_1.setStateIfChanged)(host, ids.reasonDe, permission.reasonDe);
-        await (0, state_write_1.setStateIfChanged)(host, ids.roomTempC, temp.num ?? "");
-        await (0, state_write_1.setStateIfChanged)(host, ids.roomHumidityPct, hum.num ?? "");
+        await (0, state_write_1.setStateIfChanged)(host, ids.roomTempC, temp.num ?? null);
+        await (0, state_write_1.setStateIfChanged)(host, ids.roomHumidityPct, hum.num ?? null);
         await (0, state_write_1.setStateIfChanged)(host, ids.feedbackSwitch, fb.value == null ? "" : String(fb.value));
         await (0, state_write_1.setStateIfChanged)(host, ids.running, fbOn);
         await (0, state_write_1.setStateIfChanged)(host, ids.cleaningActive, up.cleaningActive);
         await (0, state_write_1.setStateIfChanged)(host, ids.feedbackCleaningState, cleaningState.value == null ? "" : String(cleaningState.value));
         await (0, state_write_1.setStateIfChanged)(host, ids.feedbackCleaningMode, cleaningMode.value == null ? "" : String(cleaningMode.value));
-        await (0, state_write_1.setStateIfChanged)(host, ids.feedbackCleaningProgressPct, cleaningProgress.num ?? "");
+        await (0, state_write_1.setStateIfChanged)(host, ids.feedbackCleaningProgressPct, cleaningProgress.num ?? null);
         await (0, state_write_1.setStateIfChanged)(host, ids.modePurpose, fsm.modePurpose);
         await (0, state_write_1.setStateIfChanged)(host, ids.estimatedPowerW, estPower);
         await (0, state_write_1.setStateIfChanged)(host, ids.decisionSource, permission.decisionSource);
@@ -395,8 +395,8 @@ async function runAcRuntimeTickBody(host) {
         await (0, state_write_1.setStateIfChanged)(host, ids.dailyPlanRevision, dailyPlan.dailyPlanRevision ?? 0);
         await (0, state_write_1.setStateIfChanged)(host, ids.dailyPlanSlotStart, dailyPlan.slotStartIso ?? "");
         await (0, state_write_1.setStateIfChanged)(host, ids.dailyPlanSlotEnd, dailyPlan.slotEndIso ?? "");
-        await (0, state_write_1.setStateIfChanged)(host, ids.allocatedPowerW, dailyPlan.allocatedPowerW ?? "");
-        await (0, state_write_1.setStateIfChanged)(host, ids.expectedPowerW, dailyPlan.expectedPowerW ?? "");
+        await (0, state_write_1.setStateIfChanged)(host, ids.allocatedPowerW, dailyPlan.allocatedPowerW ?? null);
+        await (0, state_write_1.setStateIfChanged)(host, ids.expectedPowerW, dailyPlan.expectedPowerW ?? null);
         await (0, state_write_1.setStateIfChanged)(host, ids.powerModelSource, dailyPlan.powerModelSource);
         await (0, state_write_1.setStateIfChanged)(host, ids.allocationStatus, dailyPlan.allocationStatus);
         await (0, state_write_1.setStateIfChanged)(host, ids.allocationReasonDe, dailyPlan.allocationReasonDe);

@@ -26,7 +26,7 @@ import {
 	AC_WATCH_MAPPING_ROLES,
 } from "../constants";
 import { configuredAcUnitIndexes } from "../configured";
-import { acGlobalConfigFromAdapter, acModeCommandEnabled } from "../config";
+import { acCleaningAfterPurpose, acGlobalConfigFromAdapter, acModeCommandEnabled } from "../config";
 import type { AcUnitConfig } from "../types";
 import { getAcProfile } from "../profiles/registry";
 import { modeStringsForPurpose, optionalStep } from "../profiles/types";
@@ -131,8 +131,9 @@ function scheduleCleaningAfterStop(
 	unit: AcUnitConfig,
 	up: AcUnitPersist,
 	nowMs: number,
+	purpose: AcUnitModePurpose | null,
 ): void {
-	if (!unit.cleaningAfterRun || up.cleaningActive) {
+	if (!acCleaningAfterPurpose(unit, purpose) || up.cleaningActive) {
 		return;
 	}
 	if (up.cleaningPendingUntilMs && up.cleaningPendingUntilMs > nowMs) {
@@ -150,7 +151,10 @@ function scheduleCleaningAfterStop(
 	}
 	up.cleaningPendingUntilMs = nowMs + unit.cleaningDelayMin * 60_000;
 	const at = new Date(up.cleaningPendingUntilMs).toLocaleTimeString("de-AT", { hour: "2-digit", minute: "2-digit" });
-	host.log.info(`ac unit ${unit.index}: cleaning scheduled in ${unit.cleaningDelayMin} min (at ~${at})`);
+	const why = purpose ?? "unknown";
+	host.log.info(
+		`ac unit ${unit.index}: cleaning scheduled in ${unit.cleaningDelayMin} min (at ~${at}, after ${why})`,
+	);
 }
 
 async function stopUnit(
@@ -173,8 +177,9 @@ async function stopUnit(
 	}
 	up.running = false;
 	up.lastStopAtMs = Date.now();
+	const purpose = up.lastModePurpose;
+	scheduleCleaningAfterStop(host, unit, up, up.lastStopAtMs, purpose);
 	up.lastModePurpose = null;
-	scheduleCleaningAfterStop(host, unit, up, up.lastStopAtMs);
 }
 
 async function waitForFeedbackOn(

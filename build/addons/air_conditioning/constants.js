@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.acUnitConsumerKey = exports.acUnitMappingCommands = exports.acMappingFlatPrefix = exports.acUnitMappingCommand = exports.AC_WATCH_MAPPING_ROLES = exports.AC_MAPPING_ROLES = exports.AC_PROFILE_IDS = exports.AC_HUMIDITY_OFF_HYSTERESIS_PCT = exports.AC_CLEANING_MIN_COOL_RUNTIME_MS = exports.AC_CLEANING_FEEDBACK_MIN_RUNTIME_SEC = exports.AC_CLEANING_ACTIVE_CONFIRM_SEC = exports.AC_CLEANING_REFRESH_MS = exports.AC_FEEDBACK_POLL_ATTEMPTS = exports.AC_FEEDBACK_POLL_MS = exports.AC_STOP_RETRY_MS = exports.AC_START_RETRY_MS = exports.AC_WRITE_REFRESH_DELAY_MS = exports.AC_WRITE_SETPOINT_DELAY_MS = exports.AC_TICK_MS = exports.AC_UNIT_COUNT = exports.AC_ADDON_ID = void 0;
+exports.acUnitConsumerKey = exports.acUnitMappingCommands = exports.acMappingFlatPrefix = exports.acUnitMappingCommand = exports.AC_WATCH_MAPPING_ROLES = exports.AC_MAPPING_ROLES = exports.AC_PROFILE_IDS = exports.AC_HUMIDITY_OFF_HYSTERESIS_PCT_DEFAULT = exports.AC_CLEANING_MIN_COOL_RUNTIME_MS = exports.AC_CLEANING_FEEDBACK_MIN_RUNTIME_SEC = exports.AC_CLEANING_ACTIVE_CONFIRM_SEC = exports.AC_CLEANING_REFRESH_MS = exports.AC_FEEDBACK_POLL_ATTEMPTS = exports.AC_FEEDBACK_POLL_MS = exports.AC_STOP_RETRY_MS = exports.AC_START_RETRY_MS = exports.AC_WRITE_REFRESH_DELAY_MS = exports.AC_WRITE_SETPOINT_DELAY_MS = exports.AC_TICK_MS = exports.AC_UNIT_COUNT = exports.AC_ADDON_ID = void 0;
 exports.AC_ADDON_ID = "air_conditioning";
 exports.AC_UNIT_COUNT = 5;
 exports.AC_TICK_MS = 10_000;
@@ -19,10 +19,10 @@ exports.AC_CLEANING_REFRESH_MS = 30_000;
 exports.AC_CLEANING_ACTIVE_CONFIRM_SEC = 60;
 /** Fallback: operatingState=ready erst nach … s (ready ist auch Idle vor Start). */
 exports.AC_CLEANING_FEEDBACK_MIN_RUNTIME_SEC = 300;
-/** Nach Stopp nur reinigen, wenn die Kühlphase mindestens so lang war (Kurzabbruch / Fehlstart). */
+/** Nach Stopp nur reinigen, wenn die Kühl-/Dry-Phase mindestens so lang war (Kurzabbruch / Fehlstart). */
 exports.AC_CLEANING_MIN_COOL_RUNTIME_MS = 5 * 60_000;
-/** Feuchte-Abschaltung: maxHumidity − diese %-Punkte (Hysterese gegen Dry-Flattern). */
-exports.AC_HUMIDITY_OFF_HYSTERESIS_PCT = 3;
+/** Default Feuchte-Abschalt-Hysterese (%-Punkte unter Max), wenn Admin nichts setzt. */
+exports.AC_HUMIDITY_OFF_HYSTERESIS_PCT_DEFAULT = 3;
 exports.AC_PROFILE_IDS = ["generic", "samsung_smartthings"];
 exports.AC_MAPPING_ROLES = [
     "room_temp",

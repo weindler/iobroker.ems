@@ -1,9 +1,10 @@
 import {
 	AC_PROFILE_IDS,
 	AC_UNIT_COUNT,
+	AC_HUMIDITY_OFF_HYSTERESIS_PCT_DEFAULT,
 	type AcProfileId,
 } from "./constants";
-import type { AcGlobalConfig, AcUnitConfig } from "./types";
+import type { AcGlobalConfig, AcUnitConfig, AcUnitModePurpose } from "./types";
 
 function configRecord(config: unknown): Record<string, unknown> {
 	return config && typeof config === "object" ? (config as Record<string, unknown>) : {};
@@ -46,6 +47,25 @@ export function acModeCommandEnabled(mode: string): boolean {
 	return mode.trim().length > 0;
 }
 
+export function acCleaningAfterPurpose(
+	unit: AcUnitConfig,
+	purpose: AcUnitModePurpose | null,
+): boolean {
+	switch (purpose) {
+		case "dehumidify":
+			return unit.cleaningAfterDehumidify;
+		case "heating":
+			return unit.cleaningAfterHeating;
+		case "cooling":
+			return unit.cleaningAfterCooling;
+		case "fan_only":
+			return false;
+		default:
+			// Unbekannter letzter Modus: nur reinigen wenn Cool oder Dry dafür markiert sind.
+			return unit.cleaningAfterCooling || unit.cleaningAfterDehumidify;
+	}
+}
+
 function effectiveEstimatedPowerW(c: Record<string, unknown>, key: string, def: number): number {
 	const n = numField(c, key, def);
 	return n > 0 ? n : def;
@@ -55,6 +75,11 @@ export function acUnitConfigFromAdapter(config: unknown, index: number): AcUnitC
 	const c = configRecord(config);
 	const p = `ac_u${index}_`;
 	const defaultProfile = parseProfile(c.ac_default_profile, "generic");
+	const legacyCleaning = boolField(c, `${p}cleaning_after_run`, true);
+	const humidityHyst = Math.max(
+		0,
+		Math.min(30, numField(c, `${p}humidity_off_hysteresis_pct`, AC_HUMIDITY_OFF_HYSTERESIS_PCT_DEFAULT)),
+	);
 	return {
 		index,
 		enabled: boolField(c, `${p}enabled`, false),
@@ -63,6 +88,7 @@ export function acUnitConfigFromAdapter(config: unknown, index: number): AcUnitC
 		onTempC: numField(c, `${p}on_temp_c`, 26),
 		offTempC: numField(c, `${p}off_temp_c`, 24),
 		maxHumidityPct: parseOptionalHumidity(c, `${p}max_humidity_pct`),
+		humidityOffHysteresisPct: humidityHyst,
 		coolingSetpointC: numField(c, `${p}cooling_setpoint_c`, 17),
 		modeWhenCooling: strField(c, `${p}mode_when_cooling`, "cool"),
 		fanModeWhenCooling: strField(c, `${p}fan_mode_when_cooling`, "auto"),
@@ -71,14 +97,17 @@ export function acUnitConfigFromAdapter(config: unknown, index: number): AcUnitC
 		fanModeWhenDehumidify: strField(c, `${p}fan_mode_when_dehumidify`, "auto"),
 		modeWhenFanOnly: strField(c, `${p}mode_when_fan_only`, "fan"),
 		fanModeWhenFanOnly: strField(c, `${p}fan_mode_when_fan_only`, "auto"),
-		modeWhenHeating: strField(c, `${p}mode_when_heating`, "heat"),
+		modeWhenHeating: strField(c, `${p}mode_when_heating`, ""),
 		fanModeWhenHeating: strField(c, `${p}fan_mode_when_heating`, "auto"),
 		heatSetpointC: null,
 		activeFrom: strField(c, `${p}active_from`, "08:00"),
 		activeUntil: strField(c, `${p}active_until`, "20:00"),
 		hardOffAt: strField(c, `${p}hard_off_at`, "20:00"),
 		estimatedPowerW: effectiveEstimatedPowerW(c, `${p}estimated_power_w`, 700),
-		cleaningAfterRun: boolField(c, `${p}cleaning_after_run`, true),
+		cleaningAfterRun: legacyCleaning,
+		cleaningAfterCooling: boolField(c, `${p}cleaning_after_cooling`, legacyCleaning),
+		cleaningAfterDehumidify: boolField(c, `${p}cleaning_after_dehumidify`, legacyCleaning),
+		cleaningAfterHeating: boolField(c, `${p}cleaning_after_heating`, false),
 		cleaningDelayMin: Math.max(0, numField(c, `${p}cleaning_delay_min`, 1)),
 		cleaningDurationMin: Math.max(0, numField(c, `${p}cleaning_duration_min`, 30)),
 		statsEnabled: boolField(c, `${p}stats_enabled`, true),

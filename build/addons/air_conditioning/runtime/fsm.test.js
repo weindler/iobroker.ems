@@ -108,7 +108,7 @@ const fsm_1 = require("./fsm");
         strict_1.default.equal(res.demandStop, false);
         strict_1.default.equal(res.modePurpose, "cooling");
     });
-    (0, node_test_1.it)("stops when humidity drops below hysteresis and temp is not high", () => {
+    (0, node_test_1.it)("stops when humidity drops below configured hysteresis", () => {
         const res = (0, fsm_1.evaluateAcUnitFsm)({
             now: new Date("2026-07-04T12:00:00"),
             addonEnabled: true,
@@ -120,6 +120,32 @@ const fsm_1 = require("./fsm");
         });
         strict_1.default.equal(res.demandStop, true);
         strict_1.default.match(res.reasonDe, /Entfeuchten fertig/);
+    });
+    (0, node_test_1.it)("uses unit humidity hysteresis for dry off", () => {
+        const custom = {
+            ...humidUnit,
+            humidityOffHysteresisPct: 10,
+        };
+        const stillOn = (0, fsm_1.evaluateAcUnitFsm)({
+            now: new Date("2026-07-04T12:00:00"),
+            addonEnabled: true,
+            unit: custom,
+            roomTempC: 25,
+            roomHumidityPct: 55,
+            feedbackSwitchRaw: "on",
+            cleaningActive: false,
+        });
+        strict_1.default.equal(stillOn.demandStop, false);
+        const off = (0, fsm_1.evaluateAcUnitFsm)({
+            now: new Date("2026-07-04T12:00:00"),
+            addonEnabled: true,
+            unit: custom,
+            roomTempC: 25,
+            roomHumidityPct: 50,
+            feedbackSwitchRaw: "on",
+            cleaningActive: false,
+        });
+        strict_1.default.equal(off.demandStop, true);
     });
     (0, node_test_1.it)("does not demand stop in hysteresis band while already on", () => {
         const res = (0, fsm_1.evaluateAcUnitFsm)({

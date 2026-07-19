@@ -2844,7 +2844,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Klimaanlage: bis zu 5 Innengeräte. Zuerst unter GLOBAL aktivieren, dann pro Gerät Schwellwerte und Mapping setzen. Mapping: States über die Lupe auswählen (Raum-Sensor + SmartThings-Befehle). Feuchte-Steuerung nur wenn Raumfeuchte gemappt ist und Max. Feuchte &gt; 0. Erst dryrun testen, dann live."
+					"text": "Klimaanlage: bis zu 5 Innengeräte. GLOBAL aktivieren, dann pro Gerät Abschnitte Kühlen / Trocknen / Heizen / Reinigung setzen. Mapping unten. Dry: Max-Feuchte &gt; 0 und Modus gesetzt. Leer-Modus = Zweck aus. Reinigung typisch nach Cool/Dry (Kondensat), nicht nach Heizen. Erst dryrun, dann live."
 				},
 				"climateGovernanceHint": {
 					"type": "staticText",
@@ -2967,6 +2967,57 @@
 					"lg": 4,
 					"xl": 4
 				},
+				"ac_u1_active_from": {
+					"type": "text",
+					"label": "Aktiv ab (HH:MM)",
+					"default": "08:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_active_until": {
+					"type": "text",
+					"label": "Aktiv bis (HH:MM)",
+					"default": "20:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_hard_off_at": {
+					"type": "text",
+					"label": "Hard-Off (HH:MM)",
+					"default": "20:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u1_estimated_power_w": {
+					"type": "number",
+					"label": "Geschätzte Leistung (W)",
+					"default": 800,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hAcU1Cool": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 1 — 1. Kühlen",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
 				"ac_u1_on_temp_c": {
 					"type": "number",
 					"label": "Einschalttemperatur (°C)",
@@ -2994,19 +3045,6 @@
 					"max": 45,
 					"step": 0.1,
 					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
-				},
-				"ac_u1_max_humidity_pct": {
-					"type": "number",
-					"label": "Max. Feuchte (%) — optional",
-					"min": 0,
-					"max": 100,
-					"default": 0,
-					"xs": 12,
-					"sm": 4,
-					"md": 3,
-					"lg": 3,
-					"xl": 3,
-					"help": "0 = Feuchte nur anzeigen, nicht steuern. Wert > 0: bei Überschreitung Entfeuchten (wenn Raumfeuchte gemappt)."
 				},
 				"ac_u1_cooling_setpoint_c": {
 					"type": "number",
@@ -3054,6 +3092,43 @@
 					"lg": 3,
 					"xl": 3
 				},
+				"hAcU1Dry": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 1 — 2. Trocknen",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u1_max_humidity_pct": {
+					"type": "number",
+					"label": "Max. Feuchte (%) — optional",
+					"min": 0,
+					"max": 100,
+					"default": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"help": "0 = Trocknen aus (Feuchte nur anzeigen). &gt;0 = Einschalt-Feuchte für Dry."
+				},
+				"ac_u1_humidity_off_hysteresis_pct": {
+					"type": "number",
+					"label": "Feuchte-Hysterese (%-Punkte)",
+					"default": 3,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"min": 0,
+					"max": 30,
+					"step": 1,
+					"help": "Dry aus bei Feuchte ≤ Max − Hysterese (z. B. Max 60, Hysterese 3 → aus bei ≤57 %)."
+				},
 				"ac_u1_mode_when_dehumidify": {
 					"type": "text",
 					"label": "Modus Entfeuchten",
@@ -3063,7 +3138,7 @@
 					"md": 3,
 					"lg": 3,
 					"xl": 3,
-					"help": "Leer = Entfeuchten deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max.-Feuchte > 0 nötig."
+					"help": "Leer = Trocknen deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max-Feuchte &gt; 0."
 				},
 				"ac_u1_fan_mode_when_dehumidify": {
 					"type": "text",
@@ -3074,58 +3149,100 @@
 					"md": 3,
 					"lg": 3,
 					"xl": 3,
-					"help": "Leer = Entfeuchten deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max.-Feuchte > 0 nötig."
+					"help": "Leer = Trocknen deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max-Feuchte &gt; 0."
 				},
-				"ac_u1_active_from": {
+				"hAcU1Heat": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 1 — 3. Heizen (noch nicht aktiv)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"acU1HeatHint": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Heizen ist vorbereitet, die Steuerung ist noch nicht aktiv. Modus leer lassen = aus. Reinigung nach Heizen normalerweise nicht nötig (kein Kondensat)."
+				},
+				"ac_u1_mode_when_heating": {
 					"type": "text",
-					"label": "Aktiv ab (HH:MM)",
-					"default": "08:00",
+					"label": "Modus Heizen",
+					"default": "",
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Leer = Heizen deaktiviert. Sonst Gerätebefehl (z. B. heat)."
 				},
-				"ac_u1_active_until": {
+				"ac_u1_fan_mode_when_heating": {
 					"type": "text",
-					"label": "Aktiv bis (HH:MM)",
-					"default": "20:00",
+					"label": "Lüftermodus Heizen",
+					"default": "auto",
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Lüftermodus beim Heizen (z. B. auto)."
 				},
-				"ac_u1_hard_off_at": {
-					"type": "text",
-					"label": "Hard-Off (HH:MM)",
-					"default": "20:00",
+				"hAcU1Clean": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 1 — 4. Reinigung",
 					"xs": 12,
-					"sm": 4,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
-				"ac_u1_estimated_power_w": {
-					"type": "number",
-					"label": "Geschätzte Leistung (W)",
-					"default": 800,
-					"min": 0,
+				"acU1CleanHint": {
+					"type": "staticText",
 					"xs": 12,
-					"sm": 4,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Nach Cool/Dry entsteht Kondensat → Auto-Reinigung sinnvoll. Nach Heizen typisch nicht nötig."
 				},
-				"ac_u1_cleaning_after_run": {
+				"ac_u1_cleaning_after_cooling": {
 					"type": "checkbox",
-					"label": "Reinigung nach Lauf",
+					"label": "Reinigung nach Kühlen",
 					"default": true,
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Nach Cool-Lauf automatisch reinigen."
+				},
+				"ac_u1_cleaning_after_dehumidify": {
+					"type": "checkbox",
+					"label": "Reinigung nach Trocknen",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"help": "Nach Dry-Lauf automatisch reinigen."
+				},
+				"ac_u1_cleaning_after_heating": {
+					"type": "checkbox",
+					"label": "Reinigung nach Heizen",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"help": "Normalerweise aus — beim Heizen entsteht kein Kondensat wie beim Kühlen."
 				},
 				"ac_u1_cleaning_delay_min": {
 					"type": "number",
@@ -3153,7 +3270,7 @@
 				"hAcU1Stats": {
 					"type": "header",
 					"size": 3,
-					"text": "Statistik Innengerät 1",
+					"text": "Innengerät 1 — Statistik",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -3215,7 +3332,7 @@
 				"hAcU1Map": {
 					"type": "header",
 					"size": 3,
-					"text": "Mapping Innengerät 1 — Pflicht: Raumtemperatur, Rückmeldung Ein/Aus, EIN/AUS, Modus, Lüfter, Kühl-Sollwert, Reinigung, Refresh",
+					"text": "Innengerät 1 — Mapping",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -3638,6 +3755,57 @@
 					"lg": 4,
 					"xl": 4
 				},
+				"ac_u2_active_from": {
+					"type": "text",
+					"label": "Aktiv ab (HH:MM)",
+					"default": "08:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_active_until": {
+					"type": "text",
+					"label": "Aktiv bis (HH:MM)",
+					"default": "19:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_hard_off_at": {
+					"type": "text",
+					"label": "Hard-Off (HH:MM)",
+					"default": "19:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_estimated_power_w": {
+					"type": "number",
+					"label": "Geschätzte Leistung (W)",
+					"default": 650,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hAcU2Cool": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 2 — 1. Kühlen",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
 				"ac_u2_on_temp_c": {
 					"type": "number",
 					"label": "Einschalttemperatur (°C)",
@@ -3665,19 +3833,6 @@
 					"max": 45,
 					"step": 0.1,
 					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
-				},
-				"ac_u2_max_humidity_pct": {
-					"type": "number",
-					"label": "Max. Feuchte (%) — optional",
-					"min": 0,
-					"max": 100,
-					"default": 0,
-					"xs": 12,
-					"sm": 4,
-					"md": 3,
-					"lg": 3,
-					"xl": 3,
-					"help": "0 = Feuchte nur anzeigen, nicht steuern. Wert > 0: bei Überschreitung Entfeuchten (wenn Raumfeuchte gemappt)."
 				},
 				"ac_u2_cooling_setpoint_c": {
 					"type": "number",
@@ -3725,6 +3880,43 @@
 					"lg": 3,
 					"xl": 3
 				},
+				"hAcU2Dry": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 2 — 2. Trocknen",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u2_max_humidity_pct": {
+					"type": "number",
+					"label": "Max. Feuchte (%) — optional",
+					"min": 0,
+					"max": 100,
+					"default": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"help": "0 = Trocknen aus (Feuchte nur anzeigen). &gt;0 = Einschalt-Feuchte für Dry."
+				},
+				"ac_u2_humidity_off_hysteresis_pct": {
+					"type": "number",
+					"label": "Feuchte-Hysterese (%-Punkte)",
+					"default": 3,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"min": 0,
+					"max": 30,
+					"step": 1,
+					"help": "Dry aus bei Feuchte ≤ Max − Hysterese (z. B. Max 60, Hysterese 3 → aus bei ≤57 %)."
+				},
 				"ac_u2_mode_when_dehumidify": {
 					"type": "text",
 					"label": "Modus Entfeuchten",
@@ -3734,7 +3926,7 @@
 					"md": 3,
 					"lg": 3,
 					"xl": 3,
-					"help": "Leer = Entfeuchten deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max.-Feuchte > 0 nötig."
+					"help": "Leer = Trocknen deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max-Feuchte &gt; 0."
 				},
 				"ac_u2_fan_mode_when_dehumidify": {
 					"type": "text",
@@ -3745,58 +3937,100 @@
 					"md": 3,
 					"lg": 3,
 					"xl": 3,
-					"help": "Leer = Entfeuchten deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max.-Feuchte > 0 nötig."
+					"help": "Leer = Trocknen deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max-Feuchte &gt; 0."
 				},
-				"ac_u2_active_from": {
+				"hAcU2Heat": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 2 — 3. Heizen (noch nicht aktiv)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"acU2HeatHint": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Heizen ist vorbereitet, die Steuerung ist noch nicht aktiv. Modus leer lassen = aus. Reinigung nach Heizen normalerweise nicht nötig (kein Kondensat)."
+				},
+				"ac_u2_mode_when_heating": {
 					"type": "text",
-					"label": "Aktiv ab (HH:MM)",
-					"default": "08:00",
+					"label": "Modus Heizen",
+					"default": "",
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Leer = Heizen deaktiviert. Sonst Gerätebefehl (z. B. heat)."
 				},
-				"ac_u2_active_until": {
+				"ac_u2_fan_mode_when_heating": {
 					"type": "text",
-					"label": "Aktiv bis (HH:MM)",
-					"default": "19:00",
+					"label": "Lüftermodus Heizen",
+					"default": "auto",
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Lüftermodus beim Heizen (z. B. auto)."
 				},
-				"ac_u2_hard_off_at": {
-					"type": "text",
-					"label": "Hard-Off (HH:MM)",
-					"default": "19:00",
+				"hAcU2Clean": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 2 — 4. Reinigung",
 					"xs": 12,
-					"sm": 4,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
-				"ac_u2_estimated_power_w": {
-					"type": "number",
-					"label": "Geschätzte Leistung (W)",
-					"default": 650,
-					"min": 0,
+				"acU2CleanHint": {
+					"type": "staticText",
 					"xs": 12,
-					"sm": 4,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Nach Cool/Dry entsteht Kondensat → Auto-Reinigung sinnvoll. Nach Heizen typisch nicht nötig."
 				},
-				"ac_u2_cleaning_after_run": {
+				"ac_u2_cleaning_after_cooling": {
 					"type": "checkbox",
-					"label": "Reinigung nach Lauf",
+					"label": "Reinigung nach Kühlen",
 					"default": true,
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Nach Cool-Lauf automatisch reinigen."
+				},
+				"ac_u2_cleaning_after_dehumidify": {
+					"type": "checkbox",
+					"label": "Reinigung nach Trocknen",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"help": "Nach Dry-Lauf automatisch reinigen."
+				},
+				"ac_u2_cleaning_after_heating": {
+					"type": "checkbox",
+					"label": "Reinigung nach Heizen",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"help": "Normalerweise aus — beim Heizen entsteht kein Kondensat wie beim Kühlen."
 				},
 				"ac_u2_cleaning_delay_min": {
 					"type": "number",
@@ -3824,7 +4058,7 @@
 				"hAcU2Stats": {
 					"type": "header",
 					"size": 3,
-					"text": "Statistik Innengerät 2",
+					"text": "Innengerät 2 — Statistik",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -3886,7 +4120,7 @@
 				"hAcU2Map": {
 					"type": "header",
 					"size": 3,
-					"text": "Mapping Innengerät 2",
+					"text": "Innengerät 2 — Mapping",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -4309,6 +4543,57 @@
 					"lg": 4,
 					"xl": 4
 				},
+				"ac_u3_active_from": {
+					"type": "text",
+					"label": "Aktiv ab (HH:MM)",
+					"default": "08:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_active_until": {
+					"type": "text",
+					"label": "Aktiv bis (HH:MM)",
+					"default": "19:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_hard_off_at": {
+					"type": "text",
+					"label": "Hard-Off (HH:MM)",
+					"default": "19:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u3_estimated_power_w": {
+					"type": "number",
+					"label": "Geschätzte Leistung (W)",
+					"default": 700,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hAcU3Cool": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 3 — 1. Kühlen",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
 				"ac_u3_on_temp_c": {
 					"type": "number",
 					"label": "Einschalttemperatur (°C)",
@@ -4336,19 +4621,6 @@
 					"max": 45,
 					"step": 0.1,
 					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
-				},
-				"ac_u3_max_humidity_pct": {
-					"type": "number",
-					"label": "Max. Feuchte (%) — optional",
-					"min": 0,
-					"max": 100,
-					"default": 0,
-					"xs": 12,
-					"sm": 4,
-					"md": 3,
-					"lg": 3,
-					"xl": 3,
-					"help": "0 = Feuchte nur anzeigen, nicht steuern. Wert > 0: bei Überschreitung Entfeuchten (wenn Raumfeuchte gemappt)."
 				},
 				"ac_u3_cooling_setpoint_c": {
 					"type": "number",
@@ -4396,6 +4668,43 @@
 					"lg": 3,
 					"xl": 3
 				},
+				"hAcU3Dry": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 3 — 2. Trocknen",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u3_max_humidity_pct": {
+					"type": "number",
+					"label": "Max. Feuchte (%) — optional",
+					"min": 0,
+					"max": 100,
+					"default": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"help": "0 = Trocknen aus (Feuchte nur anzeigen). &gt;0 = Einschalt-Feuchte für Dry."
+				},
+				"ac_u3_humidity_off_hysteresis_pct": {
+					"type": "number",
+					"label": "Feuchte-Hysterese (%-Punkte)",
+					"default": 3,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"min": 0,
+					"max": 30,
+					"step": 1,
+					"help": "Dry aus bei Feuchte ≤ Max − Hysterese (z. B. Max 60, Hysterese 3 → aus bei ≤57 %)."
+				},
 				"ac_u3_mode_when_dehumidify": {
 					"type": "text",
 					"label": "Modus Entfeuchten",
@@ -4405,7 +4714,7 @@
 					"md": 3,
 					"lg": 3,
 					"xl": 3,
-					"help": "Leer = Entfeuchten deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max.-Feuchte > 0 nötig."
+					"help": "Leer = Trocknen deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max-Feuchte &gt; 0."
 				},
 				"ac_u3_fan_mode_when_dehumidify": {
 					"type": "text",
@@ -4416,58 +4725,100 @@
 					"md": 3,
 					"lg": 3,
 					"xl": 3,
-					"help": "Leer = Entfeuchten deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max.-Feuchte > 0 nötig."
+					"help": "Leer = Trocknen deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max-Feuchte &gt; 0."
 				},
-				"ac_u3_active_from": {
+				"hAcU3Heat": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 3 — 3. Heizen (noch nicht aktiv)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"acU3HeatHint": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Heizen ist vorbereitet, die Steuerung ist noch nicht aktiv. Modus leer lassen = aus. Reinigung nach Heizen normalerweise nicht nötig (kein Kondensat)."
+				},
+				"ac_u3_mode_when_heating": {
 					"type": "text",
-					"label": "Aktiv ab (HH:MM)",
-					"default": "08:00",
+					"label": "Modus Heizen",
+					"default": "",
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Leer = Heizen deaktiviert. Sonst Gerätebefehl (z. B. heat)."
 				},
-				"ac_u3_active_until": {
+				"ac_u3_fan_mode_when_heating": {
 					"type": "text",
-					"label": "Aktiv bis (HH:MM)",
-					"default": "19:00",
+					"label": "Lüftermodus Heizen",
+					"default": "auto",
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Lüftermodus beim Heizen (z. B. auto)."
 				},
-				"ac_u3_hard_off_at": {
-					"type": "text",
-					"label": "Hard-Off (HH:MM)",
-					"default": "19:00",
+				"hAcU3Clean": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 3 — 4. Reinigung",
 					"xs": 12,
-					"sm": 4,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
-				"ac_u3_estimated_power_w": {
-					"type": "number",
-					"label": "Geschätzte Leistung (W)",
-					"default": 700,
-					"min": 0,
+				"acU3CleanHint": {
+					"type": "staticText",
 					"xs": 12,
-					"sm": 4,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Nach Cool/Dry entsteht Kondensat → Auto-Reinigung sinnvoll. Nach Heizen typisch nicht nötig."
 				},
-				"ac_u3_cleaning_after_run": {
+				"ac_u3_cleaning_after_cooling": {
 					"type": "checkbox",
-					"label": "Reinigung nach Lauf",
+					"label": "Reinigung nach Kühlen",
 					"default": true,
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Nach Cool-Lauf automatisch reinigen."
+				},
+				"ac_u3_cleaning_after_dehumidify": {
+					"type": "checkbox",
+					"label": "Reinigung nach Trocknen",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"help": "Nach Dry-Lauf automatisch reinigen."
+				},
+				"ac_u3_cleaning_after_heating": {
+					"type": "checkbox",
+					"label": "Reinigung nach Heizen",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"help": "Normalerweise aus — beim Heizen entsteht kein Kondensat wie beim Kühlen."
 				},
 				"ac_u3_cleaning_delay_min": {
 					"type": "number",
@@ -4495,7 +4846,7 @@
 				"hAcU3Stats": {
 					"type": "header",
 					"size": 3,
-					"text": "Statistik Innengerät 3",
+					"text": "Innengerät 3 — Statistik",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -4557,7 +4908,7 @@
 				"hAcU3Map": {
 					"type": "header",
 					"size": 3,
-					"text": "Mapping Innengerät 3",
+					"text": "Innengerät 3 — Mapping",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -4969,6 +5320,57 @@
 					"lg": 4,
 					"xl": 4
 				},
+				"ac_u4_active_from": {
+					"type": "text",
+					"label": "Aktiv ab (HH:MM)",
+					"default": "08:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_active_until": {
+					"type": "text",
+					"label": "Aktiv bis (HH:MM)",
+					"default": "19:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_hard_off_at": {
+					"type": "text",
+					"label": "Hard-Off (HH:MM)",
+					"default": "19:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_estimated_power_w": {
+					"type": "number",
+					"label": "Geschätzte Leistung (W)",
+					"default": 700,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hAcU4Cool": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 4 — 1. Kühlen",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
 				"ac_u4_on_temp_c": {
 					"type": "number",
 					"label": "Einschalttemperatur (°C)",
@@ -4996,19 +5398,6 @@
 					"max": 45,
 					"step": 0.1,
 					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
-				},
-				"ac_u4_max_humidity_pct": {
-					"type": "number",
-					"label": "Max. Feuchte (%) — optional",
-					"min": 0,
-					"max": 100,
-					"default": 0,
-					"xs": 12,
-					"sm": 4,
-					"md": 3,
-					"lg": 3,
-					"xl": 3,
-					"help": "0 = Feuchte nur anzeigen, nicht steuern. Wert > 0: bei Überschreitung Entfeuchten (wenn Raumfeuchte gemappt)."
 				},
 				"ac_u4_cooling_setpoint_c": {
 					"type": "number",
@@ -5056,6 +5445,43 @@
 					"lg": 3,
 					"xl": 3
 				},
+				"hAcU4Dry": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 4 — 2. Trocknen",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u4_max_humidity_pct": {
+					"type": "number",
+					"label": "Max. Feuchte (%) — optional",
+					"min": 0,
+					"max": 100,
+					"default": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"help": "0 = Trocknen aus (Feuchte nur anzeigen). &gt;0 = Einschalt-Feuchte für Dry."
+				},
+				"ac_u4_humidity_off_hysteresis_pct": {
+					"type": "number",
+					"label": "Feuchte-Hysterese (%-Punkte)",
+					"default": 3,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"min": 0,
+					"max": 30,
+					"step": 1,
+					"help": "Dry aus bei Feuchte ≤ Max − Hysterese (z. B. Max 60, Hysterese 3 → aus bei ≤57 %)."
+				},
 				"ac_u4_mode_when_dehumidify": {
 					"type": "text",
 					"label": "Modus Entfeuchten",
@@ -5065,7 +5491,7 @@
 					"md": 3,
 					"lg": 3,
 					"xl": 3,
-					"help": "Leer = Entfeuchten deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max.-Feuchte > 0 nötig."
+					"help": "Leer = Trocknen deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max-Feuchte &gt; 0."
 				},
 				"ac_u4_fan_mode_when_dehumidify": {
 					"type": "text",
@@ -5076,58 +5502,100 @@
 					"md": 3,
 					"lg": 3,
 					"xl": 3,
-					"help": "Leer = Entfeuchten deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max.-Feuchte > 0 nötig."
+					"help": "Leer = Trocknen deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max-Feuchte &gt; 0."
 				},
-				"ac_u4_active_from": {
+				"hAcU4Heat": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 4 — 3. Heizen (noch nicht aktiv)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"acU4HeatHint": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Heizen ist vorbereitet, die Steuerung ist noch nicht aktiv. Modus leer lassen = aus. Reinigung nach Heizen normalerweise nicht nötig (kein Kondensat)."
+				},
+				"ac_u4_mode_when_heating": {
 					"type": "text",
-					"label": "Aktiv ab (HH:MM)",
-					"default": "08:00",
+					"label": "Modus Heizen",
+					"default": "",
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Leer = Heizen deaktiviert. Sonst Gerätebefehl (z. B. heat)."
 				},
-				"ac_u4_active_until": {
+				"ac_u4_fan_mode_when_heating": {
 					"type": "text",
-					"label": "Aktiv bis (HH:MM)",
-					"default": "19:00",
+					"label": "Lüftermodus Heizen",
+					"default": "auto",
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Lüftermodus beim Heizen (z. B. auto)."
 				},
-				"ac_u4_hard_off_at": {
-					"type": "text",
-					"label": "Hard-Off (HH:MM)",
-					"default": "19:00",
+				"hAcU4Clean": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 4 — 4. Reinigung",
 					"xs": 12,
-					"sm": 4,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
-				"ac_u4_estimated_power_w": {
-					"type": "number",
-					"label": "Geschätzte Leistung (W)",
-					"default": 700,
-					"min": 0,
+				"acU4CleanHint": {
+					"type": "staticText",
 					"xs": 12,
-					"sm": 4,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Nach Cool/Dry entsteht Kondensat → Auto-Reinigung sinnvoll. Nach Heizen typisch nicht nötig."
 				},
-				"ac_u4_cleaning_after_run": {
+				"ac_u4_cleaning_after_cooling": {
 					"type": "checkbox",
-					"label": "Reinigung nach Lauf",
+					"label": "Reinigung nach Kühlen",
 					"default": true,
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Nach Cool-Lauf automatisch reinigen."
+				},
+				"ac_u4_cleaning_after_dehumidify": {
+					"type": "checkbox",
+					"label": "Reinigung nach Trocknen",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"help": "Nach Dry-Lauf automatisch reinigen."
+				},
+				"ac_u4_cleaning_after_heating": {
+					"type": "checkbox",
+					"label": "Reinigung nach Heizen",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"help": "Normalerweise aus — beim Heizen entsteht kein Kondensat wie beim Kühlen."
 				},
 				"ac_u4_cleaning_delay_min": {
 					"type": "number",
@@ -5155,7 +5623,7 @@
 				"hAcU4Stats": {
 					"type": "header",
 					"size": 3,
-					"text": "Statistik Innengerät 4",
+					"text": "Innengerät 4 — Statistik",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -5217,7 +5685,7 @@
 				"hAcU4Map": {
 					"type": "header",
 					"size": 3,
-					"text": "Mapping Innengerät 4",
+					"text": "Innengerät 4 — Mapping",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -5629,6 +6097,57 @@
 					"lg": 4,
 					"xl": 4
 				},
+				"ac_u5_active_from": {
+					"type": "text",
+					"label": "Aktiv ab (HH:MM)",
+					"default": "08:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_active_until": {
+					"type": "text",
+					"label": "Aktiv bis (HH:MM)",
+					"default": "19:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_hard_off_at": {
+					"type": "text",
+					"label": "Hard-Off (HH:MM)",
+					"default": "19:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u5_estimated_power_w": {
+					"type": "number",
+					"label": "Geschätzte Leistung (W)",
+					"default": 700,
+					"min": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hAcU5Cool": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 5 — 1. Kühlen",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
 				"ac_u5_on_temp_c": {
 					"type": "number",
 					"label": "Einschalttemperatur (°C)",
@@ -5656,19 +6175,6 @@
 					"max": 45,
 					"step": 0.1,
 					"help": "Dezimalwerte mit Punkt (z. B. 24.5) oder Komma (24,5)."
-				},
-				"ac_u5_max_humidity_pct": {
-					"type": "number",
-					"label": "Max. Feuchte (%) — optional",
-					"min": 0,
-					"max": 100,
-					"default": 0,
-					"xs": 12,
-					"sm": 4,
-					"md": 3,
-					"lg": 3,
-					"xl": 3,
-					"help": "0 = Feuchte nur anzeigen, nicht steuern. Wert > 0: bei Überschreitung Entfeuchten (wenn Raumfeuchte gemappt)."
 				},
 				"ac_u5_cooling_setpoint_c": {
 					"type": "number",
@@ -5716,6 +6222,43 @@
 					"lg": 3,
 					"xl": 3
 				},
+				"hAcU5Dry": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 5 — 2. Trocknen",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ac_u5_max_humidity_pct": {
+					"type": "number",
+					"label": "Max. Feuchte (%) — optional",
+					"min": 0,
+					"max": 100,
+					"default": 0,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"help": "0 = Trocknen aus (Feuchte nur anzeigen). &gt;0 = Einschalt-Feuchte für Dry."
+				},
+				"ac_u5_humidity_off_hysteresis_pct": {
+					"type": "number",
+					"label": "Feuchte-Hysterese (%-Punkte)",
+					"default": 3,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"min": 0,
+					"max": 30,
+					"step": 1,
+					"help": "Dry aus bei Feuchte ≤ Max − Hysterese (z. B. Max 60, Hysterese 3 → aus bei ≤57 %)."
+				},
 				"ac_u5_mode_when_dehumidify": {
 					"type": "text",
 					"label": "Modus Entfeuchten",
@@ -5725,7 +6268,7 @@
 					"md": 3,
 					"lg": 3,
 					"xl": 3,
-					"help": "Leer = Entfeuchten deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max.-Feuchte > 0 nötig."
+					"help": "Leer = Trocknen deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max-Feuchte &gt; 0."
 				},
 				"ac_u5_fan_mode_when_dehumidify": {
 					"type": "text",
@@ -5736,58 +6279,100 @@
 					"md": 3,
 					"lg": 3,
 					"xl": 3,
-					"help": "Leer = Entfeuchten deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max.-Feuchte > 0 nötig."
+					"help": "Leer = Trocknen deaktiviert. Sonst Gerätebefehl (z. B. dry). Zusätzlich Max-Feuchte &gt; 0."
 				},
-				"ac_u5_active_from": {
+				"hAcU5Heat": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 5 — 3. Heizen (noch nicht aktiv)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"acU5HeatHint": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Heizen ist vorbereitet, die Steuerung ist noch nicht aktiv. Modus leer lassen = aus. Reinigung nach Heizen normalerweise nicht nötig (kein Kondensat)."
+				},
+				"ac_u5_mode_when_heating": {
 					"type": "text",
-					"label": "Aktiv ab (HH:MM)",
-					"default": "08:00",
+					"label": "Modus Heizen",
+					"default": "",
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Leer = Heizen deaktiviert. Sonst Gerätebefehl (z. B. heat)."
 				},
-				"ac_u5_active_until": {
+				"ac_u5_fan_mode_when_heating": {
 					"type": "text",
-					"label": "Aktiv bis (HH:MM)",
-					"default": "19:00",
+					"label": "Lüftermodus Heizen",
+					"default": "auto",
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Lüftermodus beim Heizen (z. B. auto)."
 				},
-				"ac_u5_hard_off_at": {
-					"type": "text",
-					"label": "Hard-Off (HH:MM)",
-					"default": "19:00",
+				"hAcU5Clean": {
+					"type": "header",
+					"size": 3,
+					"text": "Innengerät 5 — 4. Reinigung",
 					"xs": 12,
-					"sm": 4,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
-				"ac_u5_estimated_power_w": {
-					"type": "number",
-					"label": "Geschätzte Leistung (W)",
-					"default": 700,
-					"min": 0,
+				"acU5CleanHint": {
+					"type": "staticText",
 					"xs": 12,
-					"sm": 4,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Nach Cool/Dry entsteht Kondensat → Auto-Reinigung sinnvoll. Nach Heizen typisch nicht nötig."
 				},
-				"ac_u5_cleaning_after_run": {
+				"ac_u5_cleaning_after_cooling": {
 					"type": "checkbox",
-					"label": "Reinigung nach Lauf",
+					"label": "Reinigung nach Kühlen",
 					"default": true,
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Nach Cool-Lauf automatisch reinigen."
+				},
+				"ac_u5_cleaning_after_dehumidify": {
+					"type": "checkbox",
+					"label": "Reinigung nach Trocknen",
+					"default": true,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"help": "Nach Dry-Lauf automatisch reinigen."
+				},
+				"ac_u5_cleaning_after_heating": {
+					"type": "checkbox",
+					"label": "Reinigung nach Heizen",
+					"default": false,
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"help": "Normalerweise aus — beim Heizen entsteht kein Kondensat wie beim Kühlen."
 				},
 				"ac_u5_cleaning_delay_min": {
 					"type": "number",
@@ -5815,7 +6400,7 @@
 				"hAcU5Stats": {
 					"type": "header",
 					"size": 3,
-					"text": "Statistik Innengerät 5",
+					"text": "Innengerät 5 — Statistik",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -5877,7 +6462,7 @@
 				"hAcU5Map": {
 					"type": "header",
 					"size": 3,
-					"text": "Mapping Innengerät 5",
+					"text": "Innengerät 5 — Mapping",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,

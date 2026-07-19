@@ -1,5 +1,4 @@
 import type { AcUnitConfig, AcUnitModePurpose } from "../types";
-import { AC_HUMIDITY_OFF_HYSTERESIS_PCT } from "../constants";
 import { acModeCommandEnabled } from "../config";
 import { isHardOffTime, isWithinClockWindow, switchIsOff, switchIsOn } from "./time";
 
@@ -88,7 +87,7 @@ export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
 	const humidityHigh =
 		dryEnabled && humidity !== null && humidity >= unit.maxHumidityPct!;
 	const humidityOffPct = dryEnabled
-		? Math.max(0, unit.maxHumidityPct! - AC_HUMIDITY_OFF_HYSTERESIS_PCT)
+		? Math.max(0, unit.maxHumidityPct! - unit.humidityOffHysteresisPct)
 		: null;
 	const humidityLow =
 		dryEnabled && humidity !== null && humidityOffPct !== null && humidity <= humidityOffPct;

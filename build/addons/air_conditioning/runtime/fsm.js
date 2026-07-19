@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.evaluateAcUnitFsm = void 0;
-const constants_1 = require("../constants");
 const config_1 = require("../config");
 const time_1 = require("./time");
 function evaluateAcUnitFsm(input) {
@@ -56,7 +55,7 @@ function evaluateAcUnitFsm(input) {
     const humidity = input.roomHumidityPct;
     const humidityHigh = dryEnabled && humidity !== null && humidity >= unit.maxHumidityPct;
     const humidityOffPct = dryEnabled
-        ? Math.max(0, unit.maxHumidityPct - constants_1.AC_HUMIDITY_OFF_HYSTERESIS_PCT)
+        ? Math.max(0, unit.maxHumidityPct - unit.humidityOffHysteresisPct)
         : null;
     const humidityLow = dryEnabled && humidity !== null && humidityOffPct !== null && humidity <= humidityOffPct;
     const tempHigh = temp >= unit.onTempC;

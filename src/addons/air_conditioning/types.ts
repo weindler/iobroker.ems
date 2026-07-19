@@ -10,6 +10,8 @@ export type AcUnitConfig = {
 	onTempC: number;
 	offTempC: number;
 	maxHumidityPct: number | null;
+	/** %-Punkte unter maxHumidityPct für Dry-Aus (Hysterese). */
+	humidityOffHysteresisPct: number;
 	coolingSetpointC: number;
 	modeWhenCooling: string;
 	fanModeWhenCooling: string;
@@ -25,7 +27,11 @@ export type AcUnitConfig = {
 	activeUntil: string;
 	hardOffAt: string;
 	estimatedPowerW: number;
+	/** @deprecated prefer cleaningAfterCooling/Dehumidify/Heating */
 	cleaningAfterRun: boolean;
+	cleaningAfterCooling: boolean;
+	cleaningAfterDehumidify: boolean;
+	cleaningAfterHeating: boolean;
 	cleaningDelayMin: number;
 	cleaningDurationMin: number;
 	statsEnabled: boolean;

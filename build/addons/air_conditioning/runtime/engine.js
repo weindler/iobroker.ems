@@ -78,8 +78,8 @@ function allocatedPowerW(runningCount, outdoorMax, unitEstimated) {
 function stopRetryReady(up, nowMs) {
     return !up.lastStopAtMs || nowMs - up.lastStopAtMs >= constants_1.AC_STOP_RETRY_MS;
 }
-function scheduleCleaningAfterStop(host, unit, up, nowMs) {
-    if (!unit.cleaningAfterRun || up.cleaningActive) {
+function scheduleCleaningAfterStop(host, unit, up, nowMs, purpose) {
+    if (!(0, config_1.acCleaningAfterPurpose)(unit, purpose) || up.cleaningActive) {
         return;
     }
     if (up.cleaningPendingUntilMs && up.cleaningPendingUntilMs > nowMs) {
@@ -95,7 +95,8 @@ function scheduleCleaningAfterStop(host, unit, up, nowMs) {
     }
     up.cleaningPendingUntilMs = nowMs + unit.cleaningDelayMin * 60_000;
     const at = new Date(up.cleaningPendingUntilMs).toLocaleTimeString("de-AT", { hour: "2-digit", minute: "2-digit" });
-    host.log.info(`ac unit ${unit.index}: cleaning scheduled in ${unit.cleaningDelayMin} min (at ~${at})`);
+    const why = purpose ?? "unknown";
+    host.log.info(`ac unit ${unit.index}: cleaning scheduled in ${unit.cleaningDelayMin} min (at ~${at}, after ${why})`);
 }
 async function stopUnit(host, unit, table, live, up) {
     const offId = (0, sequences_1.resolveAcMappingTarget)(table, unit.index, "cmd_switch_off");
@@ -112,8 +113,9 @@ async function stopUnit(host, unit, table, live, up) {
     }
     up.running = false;
     up.lastStopAtMs = Date.now();
+    const purpose = up.lastModePurpose;
+    scheduleCleaningAfterStop(host, unit, up, up.lastStopAtMs, purpose);
     up.lastModePurpose = null;
-    scheduleCleaningAfterStop(host, unit, up, up.lastStopAtMs);
 }
 async function waitForFeedbackOn(host, fbId) {
     if (!fbId) {

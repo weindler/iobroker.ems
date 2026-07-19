@@ -118,7 +118,7 @@ describe("ac unit fsm", () => {
 		assert.equal(res.modePurpose, "cooling");
 	});
 
-	it("stops when humidity drops below hysteresis and temp is not high", () => {
+	it("stops when humidity drops below configured hysteresis", () => {
 		const res = evaluateAcUnitFsm({
 			now: new Date("2026-07-04T12:00:00"),
 			addonEnabled: true,
@@ -130,6 +130,33 @@ describe("ac unit fsm", () => {
 		});
 		assert.equal(res.demandStop, true);
 		assert.match(res.reasonDe, /Entfeuchten fertig/);
+	});
+
+	it("uses unit humidity hysteresis for dry off", () => {
+		const custom = {
+			...humidUnit,
+			humidityOffHysteresisPct: 10,
+		};
+		const stillOn = evaluateAcUnitFsm({
+			now: new Date("2026-07-04T12:00:00"),
+			addonEnabled: true,
+			unit: custom,
+			roomTempC: 25,
+			roomHumidityPct: 55,
+			feedbackSwitchRaw: "on",
+			cleaningActive: false,
+		});
+		assert.equal(stillOn.demandStop, false);
+		const off = evaluateAcUnitFsm({
+			now: new Date("2026-07-04T12:00:00"),
+			addonEnabled: true,
+			unit: custom,
+			roomTempC: 25,
+			roomHumidityPct: 50,
+			feedbackSwitchRaw: "on",
+			cleaningActive: false,
+		});
+		assert.equal(off.demandStop, true);
 	});
 
 	it("does not demand stop in hysteresis band while already on", () => {

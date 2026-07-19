@@ -40,4 +40,17 @@ describe("ac unit configured detection", () => {
 		assert.ok(cmds.includes("unit_1_cmd_switch_off"));
 		assert.ok(!cmds.some((c) => c.startsWith("unit_3_")));
 	});
+
+	it("acMappingFromConfig only emits enabled units", async () => {
+		const { acMappingFromConfig } = await import("./mapping_config.js");
+		const entries = acMappingFromConfig({
+			ac_u1_enabled: true,
+			ac_u1_room_temp_enabled: true,
+			ac_u3_enabled: false,
+			ac_u3_room_temp_enabled: true,
+			ac_u3_room_temp_target: "temp.0.x",
+		});
+		assert.ok(Object.keys(entries).every((k) => k.startsWith("unit_1_")));
+		assert.equal(entries["unit_3_room_temp"], undefined);
+	});
 });

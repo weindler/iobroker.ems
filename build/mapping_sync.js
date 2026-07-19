@@ -58,15 +58,32 @@ async function syncNativeMappingToStates(host, addonId, fromConfig) {
 exports.syncNativeMappingToStates = syncNativeMappingToStates;
 async function applyMappingEntry(host, addonId, cmd, entry) {
     const base = (0, tree_paths_1.mappingBase)(addonId, cmd);
+    const hostWithObj = host;
+    const objectExists = async (id) => {
+        if (typeof hostWithObj.getObjectAsync !== "function") {
+            return true;
+        }
+        const obj = await hostWithObj.getObjectAsync(id);
+        return Boolean(obj);
+    };
     if (typeof entry.enabled === "boolean") {
-        await host.setStateAsync(`${base}.enabled`, { val: entry.enabled, ack: true });
+        const id = `${base}.enabled`;
+        if (await objectExists(id)) {
+            await host.setStateAsync(id, { val: entry.enabled, ack: true });
+        }
     }
     const ts = entry.target_state;
     if (typeof ts === "string" && ts.trim()) {
-        await host.setStateAsync(`${base}.target_state`, { val: ts.trim(), ack: true });
+        const id = `${base}.target_state`;
+        if (await objectExists(id)) {
+            await host.setStateAsync(id, { val: ts.trim(), ack: true });
+        }
     }
     const av = entry.allowed_values;
     if (typeof av === "string" && av.trim()) {
-        await host.setStateAsync(`${base}.allowed_values`, { val: av.trim(), ack: true });
+        const id = `${base}.allowed_values`;
+        if (await objectExists(id)) {
+            await host.setStateAsync(id, { val: av.trim(), ack: true });
+        }
     }
 }

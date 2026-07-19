@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.152",
+		"version": "0.1.153",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.153": {
+				"en": "Fix: sync AC mappings only for enabled units — no more writes to deleted unit_3..5 mapping states after cleanup.",
+				"de": "Fix: AC-Mappings nur für aktivierte Units syncen — keine Writes mehr auf gelöschte unit_3..5 Mapping-States nach Cleanup."
+			},
 			"0.1.152": {
 				"en": "Fix AC mapping cleanup: delete mapping leaf states for disabled units (unit_3..5 leftovers), not only missing channel roots.",
 				"de": "Fix AC-Mapping-Cleanup: Mapping-Leaf-States deaktivierter Units (Rest unit_3..5) löschen, nicht nur fehlende Channel-Roots."

@@ -2,15 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.acMappingCommandsForConfiguredUnits = exports.acMappingCommands = exports.acMappingFromConfig = exports.acMappingFlatPrefix = void 0;
 const constants_1 = require("./constants");
-function acMappingFlatPrefix(unitIndex, role) {
-    return `ac_u${unitIndex}_${role}`;
-}
-exports.acMappingFlatPrefix = acMappingFlatPrefix;
+Object.defineProperty(exports, "acMappingFlatPrefix", { enumerable: true, get: function () { return constants_1.acMappingFlatPrefix; } });
+const configured_1 = require("./configured");
 function acMappingFromConfig(config) {
     const out = {};
-    for (let i = 1; i <= constants_1.AC_UNIT_COUNT; i++) {
+    const units = (0, configured_1.configuredAcUnitIndexes)(config);
+    for (const i of units) {
         for (const role of constants_1.AC_MAPPING_ROLES) {
-            const prefix = acMappingFlatPrefix(i, role);
+            const prefix = (0, constants_1.acMappingFlatPrefix)(i, role);
             const entry = {};
             const t = config[`${prefix}_target`];
             if (typeof t === "string" && t.trim()) {
@@ -40,5 +39,5 @@ function acMappingCommands() {
 }
 exports.acMappingCommands = acMappingCommands;
 /** Prefer {@link acMappingCommandsForConfiguredUnits} for ensure; this remains for catalog/audit. */
-var configured_1 = require("./configured");
-Object.defineProperty(exports, "acMappingCommandsForConfiguredUnits", { enumerable: true, get: function () { return configured_1.acMappingCommandsForConfiguredUnits; } });
+var configured_2 = require("./configured");
+Object.defineProperty(exports, "acMappingCommandsForConfiguredUnits", { enumerable: true, get: function () { return configured_2.acMappingCommandsForConfiguredUnits; } });

@@ -7,7 +7,7 @@ exports.acMappingCommandsForConfiguredUnits = exports.configuredAcUnitIndexes = 
  */
 const constants_1 = require("./constants");
 const config_1 = require("./config");
-const mapping_config_1 = require("./mapping_config");
+const constants_2 = require("./constants");
 function configRecord(config) {
     return config && typeof config === "object" ? config : {};
 }
@@ -15,7 +15,7 @@ function configRecord(config) {
 function acUnitHasMappingTarget(config, index) {
     const c = configRecord(config);
     for (const role of constants_1.AC_MAPPING_ROLES) {
-        const t = c[`${(0, mapping_config_1.acMappingFlatPrefix)(index, role)}_target`];
+        const t = c[`${(0, constants_2.acMappingFlatPrefix)(index, role)}_target`];
         if (typeof t === "string" && t.trim().length > 0) {
             return true;
         }

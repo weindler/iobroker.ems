@@ -2,17 +2,18 @@ import type { NativeMappingEntry } from "../../mapping_config";
 import {
 	AC_MAPPING_ROLES,
 	AC_UNIT_COUNT,
+	acMappingFlatPrefix,
 	acUnitMappingCommand,
 	type AcMappingRole,
 } from "./constants";
+import { configuredAcUnitIndexes } from "./configured";
 
-export function acMappingFlatPrefix(unitIndex: number, role: AcMappingRole): string {
-	return `ac_u${unitIndex}_${role}`;
-}
+export { acMappingFlatPrefix };
 
 export function acMappingFromConfig(config: Record<string, unknown>): Record<string, NativeMappingEntry> {
 	const out: Record<string, NativeMappingEntry> = {};
-	for (let i = 1; i <= AC_UNIT_COUNT; i++) {
+	const units = configuredAcUnitIndexes(config);
+	for (const i of units) {
 		for (const role of AC_MAPPING_ROLES) {
 			const prefix = acMappingFlatPrefix(i, role);
 			const entry: NativeMappingEntry = {};

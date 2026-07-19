@@ -23,11 +23,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.restoreLearningPersistenceFromStates = exports.mirrorLearningPersistenceToStates = exports.ensureLearningPersistenceStates = void 0;
+exports.restoreLearningPersistenceFromStates = exports.mirrorLearningPersistenceToStates = exports.ensureLearningPersistenceStates = exports.learningPersistenceMirrorRelativeIds = exports.LEARNING_PERSISTENCE_ARTIFACTS = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const state_util_1 = require("../ems_light/state_util");
-const ARTIFACTS = [
+exports.LEARNING_PERSISTENCE_ARTIFACTS = [
     {
         key: "battery_runtime",
         category: "learning/battery_runtime",
@@ -81,60 +81,79 @@ const BASE = "learning.persistence";
 function mirrorStateId(key) {
     return `${BASE}.${key}_json`;
 }
+function learningPersistenceMirrorRelativeIds() {
+    return exports.LEARNING_PERSISTENCE_ARTIFACTS.map((a) => mirrorStateId(a.key));
+}
+exports.learningPersistenceMirrorRelativeIds = learningPersistenceMirrorRelativeIds;
 async function ensureLearningPersistenceStates(host) {
-    await (0, state_util_1.ensureChannel)(host, BASE, "Learning-Persistenz (Backup-Spiegel)");
-    const defs = ARTIFACTS.map((a) => ({
-        id: mirrorStateId(a.key),
-        common: {
-            name: a.nameDe,
-            type: "string",
-            role: "json",
-            read: true,
-            write: false,
+    await (0, state_util_1.ensureChannel)(host, BASE, "Learning-Persistenz (Status)");
+    const defs = [
+        {
+            id: `${BASE}.last_mirror`,
+            common: {
+                name: "Letzte Datei-Prüfung (ISO)",
+                type: "string",
+                role: "value.time",
+                read: true,
+                write: false,
+            },
         },
-    }));
-    defs.push({
-        id: `${BASE}.last_mirror`,
-        common: { name: "Letzte Spiegelung", type: "string", role: "value.time", read: true, write: false },
-    }, {
-        id: `${BASE}.last_restore`,
-        common: { name: "Letzte Wiederherstellung", type: "string", role: "value.time", read: true, write: false },
-    });
+        {
+            id: `${BASE}.last_restore`,
+            common: {
+                name: "Letzte Wiederherstellung aus Alt-Spiegel (ISO)",
+                type: "string",
+                role: "value.time",
+                read: true,
+                write: false,
+            },
+        },
+        {
+            id: `${BASE}.files_present`,
+            common: {
+                name: "Anzahl vorhandener Learning-Dateien",
+                type: "number",
+                role: "value",
+                read: true,
+                write: false,
+            },
+        },
+    ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
 exports.ensureLearningPersistenceStates = ensureLearningPersistenceStates;
-/** Datei-Zusammenfassungen in die Spiegel-States schreiben (ack=true). */
+/**
+ * Leichtgewichtiger Status-Tick: zählt Dateien, schreibt keine großen JSON-States mehr.
+ * Vorher: Spiegelung ganzer Learning-Dateien in den Objektbaum (RAM-Last).
+ */
 async function mirrorLearningPersistenceToStates(host) {
     if (typeof host.getAbsolutePath !== "function") {
         return;
     }
-    let mirrored = 0;
-    for (const a of ARTIFACTS) {
+    let present = 0;
+    for (const a of exports.LEARNING_PERSISTENCE_ARTIFACTS) {
         try {
             const filePath = path.join(host.getAbsolutePath(a.category), a.fileName);
-            const raw = await fs.readFile(filePath, "utf8");
-            await host.setStateAsync(mirrorStateId(a.key), { val: raw, ack: true });
-            mirrored++;
+            await fs.access(filePath);
+            present++;
         }
         catch {
-            // Datei existiert (noch) nicht — vorhandenen Spiegel-State unangetastet lassen.
+            // missing ok
         }
     }
-    if (mirrored > 0) {
-        await host.setStateAsync(`${BASE}.last_mirror`, { val: new Date().toISOString(), ack: true });
-    }
+    await host.setStateAsync(`${BASE}.files_present`, { val: present, ack: true });
+    await host.setStateAsync(`${BASE}.last_mirror`, { val: new Date().toISOString(), ack: true });
 }
 exports.mirrorLearningPersistenceToStates = mirrorLearningPersistenceToStates;
 /**
- * Fehlende Zusammenfassungs-Dateien aus den Spiegel-States wiederherstellen.
- * Nur schreiben, wenn die Datei fehlt und der State gültiges JSON enthält.
+ * Fehlende Zusammenfassungs-Dateien aus Alt-Spiegel-States wiederherstellen (Upgrade-Pfad).
  */
 async function restoreLearningPersistenceFromStates(host) {
     if (typeof host.getAbsolutePath !== "function") {
         return;
     }
     let restored = 0;
-    for (const a of ARTIFACTS) {
+    for (const a of exports.LEARNING_PERSISTENCE_ARTIFACTS) {
         try {
             const dir = host.getAbsolutePath(a.category);
             const filePath = path.join(dir, a.fileName);
@@ -162,7 +181,7 @@ async function restoreLearningPersistenceFromStates(host) {
             await fs.mkdir(dir, { recursive: true });
             await fs.writeFile(filePath, val.endsWith("\n") ? val : `${val}\n`, "utf8");
             restored++;
-            host.log.debug?.(`Learning-Persistenz: ${a.fileName} aus Backup-State wiederhergestellt`);
+            host.log.debug?.(`Learning-Persistenz: ${a.fileName} aus Alt-Spiegel wiederhergestellt`);
         }
         catch (e) {
             host.log.warn(`Learning-Persistenz restore ${a.key}: ${e instanceof Error ? e.message : e}`);

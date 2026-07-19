@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.acMappingCommandsForConfiguredUnits = exports.configuredAcUnitIndexes = exports.isAcUnitConfigured = exports.acUnitHasMappingTarget = void 0;
+exports.acMappingCommandsForConfiguredUnits = exports.isAcMappingRoleConfigured = exports.configuredAcUnitIndexes = exports.isAcUnitConfigured = exports.acUnitHasMappingTarget = void 0;
 /**
  * When an AC unit slot gets state-tree objects.
  * Slots 1..AC_UNIT_COUNT remain Admin UI capacity — only enabled units get objects.
@@ -43,11 +43,28 @@ function configuredAcUnitIndexes(config) {
     return out;
 }
 exports.configuredAcUnitIndexes = configuredAcUnitIndexes;
+/** True if this unit+role has target or explicit enabled in native config. */
+function isAcMappingRoleConfigured(config, index, role) {
+    const c = configRecord(config);
+    const prefix = (0, constants_1.acMappingFlatPrefix)(index, role);
+    const t = c[`${prefix}_target`];
+    const en = c[`${prefix}_enabled`];
+    const hasTarget = typeof t === "string" && t.trim().length > 0;
+    const hasEnabled = typeof en === "boolean";
+    return hasTarget || hasEnabled;
+}
+exports.isAcMappingRoleConfigured = isAcMappingRoleConfigured;
+/**
+ * Mapping commands for ensure/cleanup: enabled units × roles that are actually mapped in Admin.
+ * Empty slots do not get mapping leaves (lightweight surface).
+ */
 function acMappingCommandsForConfiguredUnits(config) {
     const cmds = [];
     for (const i of configuredAcUnitIndexes(config)) {
         for (const role of constants_1.AC_MAPPING_ROLES) {
-            cmds.push((0, constants_1.acUnitMappingCommand)(i, role));
+            if (isAcMappingRoleConfigured(config, i, role)) {
+                cmds.push((0, constants_1.acUnitMappingCommand)(i, role));
+            }
         }
     }
     return cmds;

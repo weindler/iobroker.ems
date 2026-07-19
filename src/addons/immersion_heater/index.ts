@@ -1,8 +1,8 @@
 import { touchEmsActivity, isEmsActivityStateId } from "../../ems_activity";
 import { ensureEmsMirrorAliveState } from "../../ems_mirror_alive";
 import { withLearningDataPath } from "../../learning/data_dir";
-import { ensureAddonMappingStates, syncNativeMappingToStates } from "../../mapping_sync";
-import { IMMERSION_HEATER_MAPPING_COMMANDS, immersionHeaterMappingFromConfig } from "./mapping_config";
+import { ensureAddonMappingStates, mappingCommandsFromEntries, syncNativeMappingToStates } from "../../mapping_sync";
+import { immersionHeaterMappingFromConfig } from "./mapping_config";
 import { ensureImmersionStatusStates } from "./status";
 import { ensureImmersionRuntimeStates } from "./runtime/ensure_states";
 import {
@@ -38,7 +38,15 @@ function runtimeHost(adapter: ioBroker.Adapter): ImmersionRuntimeHost {
 
 export async function ensureImmersionHeaterStateTree(adapter: ioBroker.Adapter): Promise<void> {
 	await ensureEmsMirrorAliveState(adapter);
-	await ensureAddonMappingStates(adapter, IMMERSION_ADDON_ID, IMMERSION_HEATER_MAPPING_COMMANDS);
+	const cfg =
+		adapter.config && typeof adapter.config === "object"
+			? (adapter.config as Record<string, unknown>)
+			: {};
+	await ensureAddonMappingStates(
+		adapter,
+		IMMERSION_ADDON_ID,
+		mappingCommandsFromEntries(immersionHeaterMappingFromConfig(cfg)),
+	);
 	await ensureImmersionStatusStates(adapter);
 	await ensureImmersionRuntimeStates(runtimeHost(adapter));
 }

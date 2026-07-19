@@ -88,36 +88,6 @@ async function writeResult(
 		});
 	}
 	await setNumIfValid(host, "learning.battery_runtime.estimated_runtime_days", result.estimatedRuntimeDays);
-	await setNumIfValid(host, "learning.battery_runtime.power_history_raw_rows", result.powerHistoryRawRows);
-	await setNumIfValid(
-		host,
-		"learning.battery_runtime.power_history_normalized_rows",
-		result.powerHistoryNormalizedRows,
-	);
-	await setNumIfValid(host, "learning.battery_runtime.power_raw_charge_samples", result.powerRawChargeSamples);
-	await setNumIfValid(
-		host,
-		"learning.battery_runtime.power_raw_discharge_samples",
-		result.powerRawDischargeSamples,
-	);
-	await setNumIfValid(host, "learning.battery_runtime.power_hourly_charge_points", result.powerHourlyChargePoints);
-	await setNumIfValid(
-		host,
-		"learning.battery_runtime.power_hourly_discharge_points",
-		result.powerHourlyDischargePoints,
-	);
-	if (result.powerInvertApplied !== null) {
-		await host.setStateAsync("learning.battery_runtime.power_invert_applied", {
-			val: result.powerInvertApplied ? 1 : 0,
-			ack: true,
-		});
-	}
-	if (result.powerInvertAuto !== null) {
-		await host.setStateAsync("learning.battery_runtime.power_invert_auto", {
-			val: result.powerInvertAuto ? 1 : 0,
-			ack: true,
-		});
-	}
 	await host.setStateAsync("learning.battery_runtime.power_history_mode", {
 		val: result.powerHistoryMode ?? "",
 		ack: true,

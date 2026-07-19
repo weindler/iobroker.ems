@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.154",
+		"version": "0.1.155",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.155": {
+				"en": "Lightweight surface: mappings only when configured, no large learning JSON mirrors (use Export backup), stub addons lazy, clearer Admin texts. Export before reinstall!",
+				"de": "Leichte Oberfläche: Mappings nur wenn konfiguriert, keine großen Learning-JSON-Spiegel (Export-Backup nutzen), Stub-Addons lazy, klarere Admin-Texte. Vor Neuinstall Export!"
+			},
 			"0.1.154": {
 				"en": "Fix: restore acMappingFlatPrefix export (0.1.153 build break) — AC mapping sync only for enabled units.",
 				"de": "Fix: acMappingFlatPrefix-Export wiederhergestellt (0.1.153 Build-Bruch) — AC-Mapping-Sync nur für aktivierte Units."

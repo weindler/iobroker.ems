@@ -31,7 +31,10 @@ function runtimeHost(adapter) {
 }
 async function ensureImmersionHeaterStateTree(adapter) {
     await (0, ems_mirror_alive_1.ensureEmsMirrorAliveState)(adapter);
-    await (0, mapping_sync_1.ensureAddonMappingStates)(adapter, exports.IMMERSION_ADDON_ID, mapping_config_1.IMMERSION_HEATER_MAPPING_COMMANDS);
+    const cfg = adapter.config && typeof adapter.config === "object"
+        ? adapter.config
+        : {};
+    await (0, mapping_sync_1.ensureAddonMappingStates)(adapter, exports.IMMERSION_ADDON_ID, (0, mapping_sync_1.mappingCommandsFromEntries)((0, mapping_config_1.immersionHeaterMappingFromConfig)(cfg)));
     await (0, status_1.ensureImmersionStatusStates)(adapter);
     await (0, ensure_states_1.ensureImmersionRuntimeStates)(runtimeHost(adapter));
 }

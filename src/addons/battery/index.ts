@@ -12,8 +12,8 @@ import { ensureBatteryEmsMirrorStates, EMS_MIRROR_BATTERY, EMS_MIRROR_BATTERY_ID
 import { computeGridBalanceTarget, medianCtFromPriceSlots, resolveController } from "./grid_balance";
 import { readTibber15MinPriceSlots } from "../../planner/battery_winter_price_inputs";
 import {
-	BATTERY_MAPPING_ROLES,
 	batteryMappingFromConfig,
+	batteryMappingCommandsForEnsure,
 	batteryMappingNativeFromConfig,
 	type BatteryMappingTable,
 } from "./mapping";
@@ -100,7 +100,7 @@ export function __resetBatteryRuntimeForTest(now = Date.now()): void {
 }
 
 export async function ensureBatteryStateTree(adapter: ioBroker.Adapter): Promise<void> {
-	await ensureAddonMappingStates(adapter, BATTERY_ADDON_ID, BATTERY_MAPPING_ROLES);
+	await ensureAddonMappingStates(adapter, BATTERY_ADDON_ID, batteryMappingCommandsForEnsure(adapter.config));
 	await ensureBatteryEmsMirrorStates(adapter);
 	await ensureBatteryArchitectureStates(adapter);
 }

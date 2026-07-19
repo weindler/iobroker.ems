@@ -3,35 +3,30 @@ import * as path from "node:path";
 import { ensureChannel, ensureStates, type StateDef, type StateHost } from "../ems_light/state_util";
 
 /**
- * Backup-Spiegel für die Learning-Zusammenfassungen.
+ * Learning-Persistenz: Dateien unter ems-runtime sind die Quelle der Wahrheit.
+ * .emsbackup (Export-Register) sichert sie für Frischinstall/Restore.
  *
- * Hintergrund: Die gelernten Zusammenfassungen liegen als JSON-Dateien im
- * Instanz-Datenordner (`getAbsoluteInstanceDataDir`). Dieser Ordner wird beim
- * Löschen der Adapter-Instanz entfernt. Damit die Zusammenfassungen in einem
- * ioBroker-Backup (Objekte + States) enthalten sind und nach Verlust der Datei
- * wiederhergestellt werden können, werden sie zusätzlich als JSON-State im
- * Objektbaum gespiegelt.
- *
- * Die Roh-Historie der Quell-Datenpunkte (history.0) bleibt die eigentliche
- * Quelle; dieser Spiegel ist eine zusätzliche Absicherung.
+ * Große JSON-Spiegel-States im Objektbaum wurden entfernt (RAM).
+ * restoreLearningPersistenceFromStates bleibt für Altinstallationen mit Spiegeln.
  */
 export type PersistenceMirrorHost = StateHost & {
 	getAbsolutePath?: (category?: string) => string;
-	log: { info: (msg: string) => void;
-		debug?: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
+	log: {
+		info: (msg: string) => void;
+		debug?: (msg: string) => void;
+		warn: (msg: string) => void;
+		error: (msg: string) => void;
+	};
 };
 
 interface ArtifactDef {
-	/** Suffix des Spiegel-States. */
 	key: string;
-	/** Relativer Ordner unter dem Instanz-Datenordner. */
 	category: string;
-	/** Dateiname der Zusammenfassung. */
 	fileName: string;
 	nameDe: string;
 }
 
-const ARTIFACTS: readonly ArtifactDef[] = [
+export const LEARNING_PERSISTENCE_ARTIFACTS: readonly ArtifactDef[] = [
 	{
 		key: "battery_runtime",
 		category: "learning/battery_runtime",
@@ -88,62 +83,78 @@ function mirrorStateId(key: string): string {
 	return `${BASE}.${key}_json`;
 }
 
+export function learningPersistenceMirrorRelativeIds(): string[] {
+	return LEARNING_PERSISTENCE_ARTIFACTS.map((a) => mirrorStateId(a.key));
+}
+
 export async function ensureLearningPersistenceStates(host: PersistenceMirrorHost): Promise<void> {
-	await ensureChannel(host, BASE, "Learning-Persistenz (Backup-Spiegel)");
-	const defs: StateDef[] = ARTIFACTS.map((a) => ({
-		id: mirrorStateId(a.key),
-		common: {
-			name: a.nameDe,
-			type: "string",
-			role: "json",
-			read: true,
-			write: false,
-		},
-	}));
-	defs.push(
+	await ensureChannel(host, BASE, "Learning-Persistenz (Status)");
+	const defs: StateDef[] = [
 		{
 			id: `${BASE}.last_mirror`,
-			common: { name: "Letzte Spiegelung", type: "string", role: "value.time", read: true, write: false },
+			common: {
+				name: "Letzte Datei-Prüfung (ISO)",
+				type: "string",
+				role: "value.time",
+				read: true,
+				write: false,
+			},
 		},
 		{
 			id: `${BASE}.last_restore`,
-			common: { name: "Letzte Wiederherstellung", type: "string", role: "value.time", read: true, write: false },
+			common: {
+				name: "Letzte Wiederherstellung aus Alt-Spiegel (ISO)",
+				type: "string",
+				role: "value.time",
+				read: true,
+				write: false,
+			},
 		},
-	);
+		{
+			id: `${BASE}.files_present`,
+			common: {
+				name: "Anzahl vorhandener Learning-Dateien",
+				type: "number",
+				role: "value",
+				read: true,
+				write: false,
+			},
+		},
+	];
 	await ensureStates(host, defs);
 }
 
-/** Datei-Zusammenfassungen in die Spiegel-States schreiben (ack=true). */
+/**
+ * Leichtgewichtiger Status-Tick: zählt Dateien, schreibt keine großen JSON-States mehr.
+ * Vorher: Spiegelung ganzer Learning-Dateien in den Objektbaum (RAM-Last).
+ */
 export async function mirrorLearningPersistenceToStates(host: PersistenceMirrorHost): Promise<void> {
 	if (typeof host.getAbsolutePath !== "function") {
 		return;
 	}
-	let mirrored = 0;
-	for (const a of ARTIFACTS) {
+	let present = 0;
+	for (const a of LEARNING_PERSISTENCE_ARTIFACTS) {
 		try {
 			const filePath = path.join(host.getAbsolutePath(a.category), a.fileName);
-			const raw = await fs.readFile(filePath, "utf8");
-			await host.setStateAsync(mirrorStateId(a.key), { val: raw, ack: true });
-			mirrored++;
+			await fs.access(filePath);
+			present++;
 		} catch {
-			// Datei existiert (noch) nicht — vorhandenen Spiegel-State unangetastet lassen.
+			// missing ok
 		}
 	}
-	if (mirrored > 0) {
-		await host.setStateAsync(`${BASE}.last_mirror`, { val: new Date().toISOString(), ack: true });
-	}
+	await host.setStateAsync(`${BASE}.files_present`, { val: present, ack: true });
+	await host.setStateAsync(`${BASE}.last_mirror`, { val: new Date().toISOString(), ack: true });
 }
 
 /**
- * Fehlende Zusammenfassungs-Dateien aus den Spiegel-States wiederherstellen.
- * Nur schreiben, wenn die Datei fehlt und der State gültiges JSON enthält.
+ * Fehlende Zusammenfassungs-Dateien aus Alt-Spiegel-States wiederherstellen (Upgrade-Pfad).
  */
 export async function restoreLearningPersistenceFromStates(host: PersistenceMirrorHost): Promise<void> {
 	if (typeof host.getAbsolutePath !== "function") {
 		return;
 	}
 	let restored = 0;
-	for (const a of ARTIFACTS) {
+	for (const a of LEARNING_PERSISTENCE_ARTIFACTS) {
 		try {
 			const dir = host.getAbsolutePath(a.category);
 			const filePath = path.join(dir, a.fileName);
@@ -169,7 +180,7 @@ export async function restoreLearningPersistenceFromStates(host: PersistenceMirr
 			await fs.mkdir(dir, { recursive: true });
 			await fs.writeFile(filePath, val.endsWith("\n") ? val : `${val}\n`, "utf8");
 			restored++;
-			host.log.debug?.(`Learning-Persistenz: ${a.fileName} aus Backup-State wiederhergestellt`);
+			host.log.debug?.(`Learning-Persistenz: ${a.fileName} aus Alt-Spiegel wiederhergestellt`);
 		} catch (e) {
 			host.log.warn(`Learning-Persistenz restore ${a.key}: ${e instanceof Error ? e.message : e}`);
 		}

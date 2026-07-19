@@ -29,7 +29,9 @@ import {
 	stopPlannerShadowRuntime,
 } from "../planner_shadow/runtime";
 import { ensurePlannerStateTree, stopPlanner, type PlannerHost } from "../planner";
+import { batteryWinterPlanConfigFromAdapter } from "../planner/battery_winter_config";
 import { plannerRuntimeModeFromConfig } from "../planner_config";
+import { isAddonEnabled } from "../addons/governance/config";
 import { resetGlobalModesRuntime } from "../global_modes";
 import { ensureEmsLightStates } from "./ensure_states";
 import { runEmsLightPhase1Tick } from "./tick";
@@ -151,6 +153,9 @@ export async function ensureEmsLightStateTree(adapter: ioBroker.Adapter): Promis
 		includeTakeoverStates: false,
 		coordinatorMinimal: true,
 		leanOperatorSurface: true,
+		includeThermalIntent: isAddonEnabled(adapter.config, "immersion_heater"),
+		includeCoolingIntent: isAddonEnabled(adapter.config, "climate"),
+		includeWinterIntent: batteryWinterPlanConfigFromAdapter(adapter.config).enabled,
 	});
 	const policyHost = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & PolicyEngineHost);
 	await ensurePolicyStateTree(policyHost);

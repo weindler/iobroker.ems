@@ -1,13 +1,20 @@
-import { ensureAddonMappingStates, syncNativeMappingToStates } from "../../mapping_sync";
+import { ensureAddonMappingStates, mappingCommandsFromEntries, syncNativeMappingToStates } from "../../mapping_sync";
 import {
-	DYNAMIC_TARIFF_MAPPING_ROLES,
 	dynamicTariffMappingFromConfig,
 } from "./mapping_config";
 
 export const DYNAMIC_TARIFF_ADDON_ID = "dynamic_tariff";
 
 export async function initDynamicTariffModule(adapter: ioBroker.Adapter): Promise<null> {
-	await ensureAddonMappingStates(adapter, DYNAMIC_TARIFF_ADDON_ID, DYNAMIC_TARIFF_MAPPING_ROLES);
+	const cfg =
+		adapter.config && typeof adapter.config === "object"
+			? (adapter.config as Record<string, unknown>)
+			: {};
+	await ensureAddonMappingStates(
+		adapter,
+		DYNAMIC_TARIFF_ADDON_ID,
+		mappingCommandsFromEntries(dynamicTariffMappingFromConfig(cfg)),
+	);
 	await syncNativeMappingToStates(adapter, DYNAMIC_TARIFF_ADDON_ID, dynamicTariffMappingFromConfig);
 	adapter.log.debug("dynamic_tariff: read-only price mapping");
 	return null;

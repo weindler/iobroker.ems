@@ -8,11 +8,17 @@ import {
 	AC_ADDON_ID,
 	acUnitMappingCommand,
 } from "../addons/air_conditioning/constants";
-import { isAcUnitConfigured } from "../addons/air_conditioning/configured";
+import {
+	acMappingCommandsForConfiguredUnits,
+	isAcUnitConfigured,
+} from "../addons/air_conditioning/configured";
 import { acUnitRuntimeBase } from "../addons/air_conditioning/runtime/ensure_states";
 import { wallboxVehicleProfilesConfigFromAdapter } from "../addons/wallbox/vehicles/config";
 import { normalizeWallboxVehicleProfiles } from "../addons/wallbox/vehicles/normalize";
 import { WALLBOX_VEHICLES_BASE, vehicleBasePath } from "../addons/wallbox/vehicles/ensure_states";
+import { isAddonEnabled } from "../addons/governance/config";
+import { batteryWinterPlanConfigFromAdapter } from "../planner/battery_winter_config";
+import { learningPersistenceMirrorRelativeIds } from "../learning/persistence_mirror";
 import { mappingBase } from "../tree_paths";
 import {
 	COMPATIBILITY_STATE_PREFIXES,
@@ -86,7 +92,6 @@ async function safeDeleteRelative(
 		bump(stats, `missing:${kind}`);
 		return;
 	}
-	// Re-check config immediately before delete (caller already gated, but stay explicit).
 	try {
 		await host.delObjectAsync(relativeId, { recursive: true });
 		stats.deleted += 1;
@@ -104,22 +109,33 @@ function configuredVehicleIds(config: unknown): Set<string> {
 }
 
 async function cleanupUnconfiguredAcUnits(host: SurfaceCleanupHost, stats: SurfaceCleanupStats): Promise<void> {
+	const keepCmds = new Set(acMappingCommandsForConfiguredUnits(host.config));
 	for (let i = 1; i <= AC_UNIT_COUNT; i++) {
-		if (isAcUnitConfigured(host.config, i)) {
-			stats.checked += 1;
-			bump(stats, "ac_configured_kept");
+		if (!isAcUnitConfigured(host.config, i)) {
+			const unitBase = acUnitRuntimeBase(i);
+			await safeDeleteRelative(host, unitBase, stats, "ac_unit");
+			for (const role of AC_MAPPING_ROLES) {
+				const cmd = acUnitMappingCommand(i, role);
+				const base = mappingBase(AC_ADDON_ID, cmd);
+				for (const suffix of AC_MAPPING_LEAF_SUFFIXES) {
+					await safeDeleteRelative(host, `${base}.${suffix}`, stats, "ac_mapping_leaf");
+				}
+				await safeDeleteRelative(host, base, stats, "ac_mapping");
+			}
 			continue;
 		}
-		const unitBase = acUnitRuntimeBase(i);
-		await safeDeleteRelative(host, unitBase, stats, "ac_unit");
+		stats.checked += 1;
+		bump(stats, "ac_configured_kept");
 		for (const role of AC_MAPPING_ROLES) {
 			const cmd = acUnitMappingCommand(i, role);
-			const base = mappingBase(AC_ADDON_ID, cmd);
-			// Mapping ensures only create leaf states — channel root often missing.
-			for (const suffix of AC_MAPPING_LEAF_SUFFIXES) {
-				await safeDeleteRelative(host, `${base}.${suffix}`, stats, "ac_mapping_leaf");
+			if (keepCmds.has(cmd)) {
+				continue;
 			}
-			await safeDeleteRelative(host, base, stats, "ac_mapping");
+			const base = mappingBase(AC_ADDON_ID, cmd);
+			for (const suffix of AC_MAPPING_LEAF_SUFFIXES) {
+				await safeDeleteRelative(host, `${base}.${suffix}`, stats, "ac_mapping_unused_role");
+			}
+			await safeDeleteRelative(host, base, stats, "ac_mapping_unused_role");
 		}
 	}
 }
@@ -148,6 +164,55 @@ async function cleanupLeanPlannerSurface(host: SurfaceCleanupHost, stats: Surfac
 	for (const root of LEAN_PLANNER_PURGE_ROOTS) {
 		await safeDeleteRelative(host, root, stats, "lean_planner");
 	}
+	if (!isAddonEnabled(host.config, "immersion_heater")) {
+		await safeDeleteRelative(host, "planner.intent.thermal", stats, "planner_thermal_off");
+	}
+	if (!isAddonEnabled(host.config, "climate")) {
+		await safeDeleteRelative(host, "planner.intent.cooling", stats, "planner_cooling_off");
+	}
+	if (!batteryWinterPlanConfigFromAdapter(host.config).enabled) {
+		await safeDeleteRelative(host, "planner.intent.battery.winter", stats, "planner_winter_off");
+	}
+}
+
+const STUB_ADDON_IDS = [
+	"sensorics",
+	"inverter_1",
+	"inverter_2",
+	"inverter_3",
+	"pv_plant",
+	"house_main_fuse",
+	"heating",
+	"heat_pump",
+	"consumer_1",
+	"weather_live",
+	"weather_forecast",
+	"pv_forecast",
+	"series_storage",
+	"fixed_tariff",
+] as const;
+
+const BATTERY_RUNTIME_DIAG_IDS = [
+	"learning.battery_runtime.power_history_raw_rows",
+	"learning.battery_runtime.power_history_normalized_rows",
+	"learning.battery_runtime.power_raw_charge_samples",
+	"learning.battery_runtime.power_raw_discharge_samples",
+	"learning.battery_runtime.power_hourly_charge_points",
+	"learning.battery_runtime.power_hourly_discharge_points",
+	"learning.battery_runtime.power_invert_applied",
+	"learning.battery_runtime.power_invert_auto",
+] as const;
+
+async function cleanupLearningMirrorsAndDiag(host: SurfaceCleanupHost, stats: SurfaceCleanupStats): Promise<void> {
+	for (const id of learningPersistenceMirrorRelativeIds()) {
+		await safeDeleteRelative(host, id, stats, "learning_mirror");
+	}
+	for (const id of BATTERY_RUNTIME_DIAG_IDS) {
+		await safeDeleteRelative(host, id, stats, "battery_runtime_diag");
+	}
+	for (const addonId of STUB_ADDON_IDS) {
+		await safeDeleteRelative(host, `addons.${addonId}`, stats, "stub_addon");
+	}
 }
 
 /**
@@ -164,6 +229,7 @@ export async function runDynamicSurfaceCleanup(host: SurfaceCleanupHost): Promis
 	await cleanupUnconfiguredAcUnits(host, stats);
 	await cleanupOrphanVehicles(host, stats);
 	await cleanupLeanPlannerSurface(host, stats);
+	await cleanupLearningMirrorsAndDiag(host, stats);
 	host.log.info(
 		`surface cleanup: checked=${stats.checked} deleted=${stats.deleted} skipped=${stats.skipped}`,
 	);

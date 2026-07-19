@@ -1,9 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureAddonBasisStates = exports.ensureCommandBaseStates = void 0;
-const registry_1 = require("../addons/registry");
+exports.ensureAddonBasisStates = exports.ensureCommandBaseStates = exports.CORE_ADDON_BASIS_IDS = void 0;
+const registry_1 = require("../addons/governance/registry");
 const governance_1 = require("../addons/governance");
 const states_1 = require("../states");
+/** Core add-ons that get enabled/available basis states (stubs stay lazy). */
+exports.CORE_ADDON_BASIS_IDS = [
+    ...registry_1.GOVERNED_ADDON_REGISTRY.map((e) => e.runtimeAddonId),
+    "dynamic_tariff",
+];
 async function ensureState(host, relativeId, common, defaultVal) {
     await host.setObjectNotExistsAsync(relativeId, {
         type: "state",
@@ -66,9 +71,9 @@ async function ensureCommandBaseStates(host) {
     }
 }
 exports.ensureCommandBaseStates = ensureCommandBaseStates;
-/** Phase B — Add-on enabled/available Basisstates. */
+/** Phase B — Add-on enabled/available Basisstates (nur Kern-Add-ons). */
 async function ensureAddonBasisStates(host) {
-    for (const addonId of registry_1.EMS_ADDON_IDS) {
+    for (const addonId of exports.CORE_ADDON_BASIS_IDS) {
         const base = `addons.${addonId}`;
         const governed = (0, governance_1.governedAddonByRuntimeId)(addonId);
         await ensureState(host, `${base}.enabled`, {

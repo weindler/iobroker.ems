@@ -29,23 +29,30 @@ describe("ac unit configured detection", () => {
 		assert.deepEqual(configuredAcUnitIndexes(cfg), [2]);
 	});
 
-	it("limits mapping commands to enabled units only", () => {
+	it("limits mapping commands to enabled units with mapped roles only", () => {
 		const cmds = acMappingCommandsForConfiguredUnits({
 			ac_u1_enabled: true,
+			ac_u1_cmd_switch_off_target: "ac.0.off",
+			ac_u1_cmd_switch_off_enabled: true,
 			ac_u2_enabled: true,
+			ac_u2_room_temp_target: "temp.0.x",
 			ac_u3_enabled: false,
-			ac_u3_room_temp_target: "temp.0.x",
+			ac_u3_room_temp_target: "temp.0.y",
 		});
-		assert.ok(cmds.every((c) => c.startsWith("unit_1_") || c.startsWith("unit_2_")));
-		assert.ok(cmds.includes("unit_1_cmd_switch_off"));
+		assert.deepEqual(cmds.sort(), ["unit_1_cmd_switch_off", "unit_2_room_temp"].sort());
 		assert.ok(!cmds.some((c) => c.startsWith("unit_3_")));
 	});
 
-	it("acMappingFromConfig only emits enabled units", async () => {
+	it("enabled unit without mappings yields no mapping commands", () => {
+		assert.deepEqual(acMappingCommandsForConfiguredUnits({ ac_u1_enabled: true }), []);
+	});
+
+	it("acMappingFromConfig only emits enabled units with mapped roles", async () => {
 		const { acMappingFromConfig } = await import("./mapping_config.js");
 		const entries = acMappingFromConfig({
 			ac_u1_enabled: true,
 			ac_u1_room_temp_enabled: true,
+			ac_u1_room_temp_target: "temp.0.a",
 			ac_u3_enabled: false,
 			ac_u3_room_temp_enabled: true,
 			ac_u3_room_temp_target: "temp.0.x",

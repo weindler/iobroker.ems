@@ -1,6 +1,12 @@
-import { EMS_ADDON_IDS } from "../addons/registry";
+import { GOVERNED_ADDON_REGISTRY } from "../addons/governance/registry";
 import { governedAddonByRuntimeId } from "../addons/governance";
 import { STATE } from "../states";
+
+/** Core add-ons that get enabled/available basis states (stubs stay lazy). */
+export const CORE_ADDON_BASIS_IDS: readonly string[] = [
+	...GOVERNED_ADDON_REGISTRY.map((e) => e.runtimeAddonId),
+	"dynamic_tariff",
+];
 
 type BaseEnsureHost = {
 	setObjectNotExistsAsync: (id: string, obj: ioBroker.Object) => Promise<unknown>;
@@ -77,9 +83,9 @@ export async function ensureCommandBaseStates(host: BaseEnsureHost): Promise<voi
 	}
 }
 
-/** Phase B — Add-on enabled/available Basisstates. */
+/** Phase B — Add-on enabled/available Basisstates (nur Kern-Add-ons). */
 export async function ensureAddonBasisStates(host: BaseEnsureHost): Promise<void> {
-	for (const addonId of EMS_ADDON_IDS) {
+	for (const addonId of CORE_ADDON_BASIS_IDS) {
 		const base = `addons.${addonId}`;
 		const governed = governedAddonByRuntimeId(addonId);
 		await ensureState(

@@ -65,33 +65,26 @@ const BAT_STATE = "learning.persistence.battery_runtime_json";
     (0, node_test_1.afterEach)(async () => {
         await fs.rm(tmp, { recursive: true, force: true });
     });
-    (0, node_test_1.it)("ensures channel + mirror states", async () => {
+    (0, node_test_1.it)("ensures lean status states only (no large json mirrors)", async () => {
         const host = makeHost(tmp);
         await (0, persistence_mirror_1.ensureLearningPersistenceStates)(host);
         strict_1.default.ok(host.objects.has("learning.persistence"));
-        strict_1.default.ok(host.objects.has(BAT_STATE));
         strict_1.default.ok(host.objects.has("learning.persistence.last_mirror"));
         strict_1.default.ok(host.objects.has("learning.persistence.last_restore"));
+        strict_1.default.ok(host.objects.has("learning.persistence.files_present"));
+        strict_1.default.equal(host.objects.has(BAT_STATE), false);
     });
-    (0, node_test_1.it)("mirrors existing persist file into a json state", async () => {
+    (0, node_test_1.it)("status tick counts files without writing json mirrors", async () => {
         const host = makeHost(tmp);
         const dir = path.join(tmp, BAT_DIR);
         await fs.mkdir(dir, { recursive: true });
-        const payload = JSON.stringify({ sample_days: 5, avg_night_discharge_pct: 12 });
-        await fs.writeFile(path.join(dir, BAT_FILE), `${payload}\n`, "utf8");
-        await (0, persistence_mirror_1.mirrorLearningPersistenceToStates)(host);
-        const st = host.states.get(BAT_STATE);
-        strict_1.default.ok(st, "mirror state must exist");
-        strict_1.default.equal(JSON.parse(String(st.val)).sample_days, 5);
-        strict_1.default.ok(host.states.get("learning.persistence.last_mirror"));
-    });
-    (0, node_test_1.it)("does not create a state when no file exists", async () => {
-        const host = makeHost(tmp);
+        await fs.writeFile(path.join(dir, BAT_FILE), `${JSON.stringify({ sample_days: 5 })}\n`, "utf8");
         await (0, persistence_mirror_1.mirrorLearningPersistenceToStates)(host);
         strict_1.default.equal(host.states.get(BAT_STATE), undefined);
-        strict_1.default.equal(host.states.get("learning.persistence.last_mirror"), undefined);
+        strict_1.default.equal(host.states.get("learning.persistence.files_present")?.val, 1);
+        strict_1.default.ok(host.states.get("learning.persistence.last_mirror"));
     });
-    (0, node_test_1.it)("restores a missing file from the mirror state", async () => {
+    (0, node_test_1.it)("restores a missing file from a legacy mirror state", async () => {
         const host = makeHost(tmp);
         const payload = JSON.stringify({ sample_days: 9 });
         host.states.set(BAT_STATE, { val: payload, ack: true });
@@ -109,22 +102,5 @@ const BAT_STATE = "learning.persistence.battery_runtime_json";
         await (0, persistence_mirror_1.restoreLearningPersistenceFromStates)(host);
         const onDisk = await fs.readFile(path.join(dir, BAT_FILE), "utf8");
         strict_1.default.equal(JSON.parse(onDisk).sample_days, 1);
-    });
-    (0, node_test_1.it)("ignores invalid json in the mirror state on restore", async () => {
-        const host = makeHost(tmp);
-        host.states.set(BAT_STATE, { val: "not-json{", ack: true });
-        await (0, persistence_mirror_1.restoreLearningPersistenceFromStates)(host);
-        await strict_1.default.rejects(() => fs.readFile(path.join(tmp, BAT_DIR, BAT_FILE), "utf8"));
-    });
-    (0, node_test_1.it)("round-trips: mirror then restore after file loss", async () => {
-        const host = makeHost(tmp);
-        const dir = path.join(tmp, BAT_DIR);
-        await fs.mkdir(dir, { recursive: true });
-        await fs.writeFile(path.join(dir, BAT_FILE), JSON.stringify({ sample_days: 7 }), "utf8");
-        await (0, persistence_mirror_1.mirrorLearningPersistenceToStates)(host);
-        await fs.rm(dir, { recursive: true, force: true });
-        await (0, persistence_mirror_1.restoreLearningPersistenceFromStates)(host);
-        const restored = await fs.readFile(path.join(dir, BAT_FILE), "utf8");
-        strict_1.default.equal(JSON.parse(restored).sample_days, 7);
     });
 });

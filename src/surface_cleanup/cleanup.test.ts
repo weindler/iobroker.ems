@@ -83,7 +83,9 @@ describe("surface cleanup allowlist", () => {
 		assert.equal(isAllowlistedCleanupRelativeId("planner.intent.daily_plan"), true);
 		assert.equal(isAllowlistedCleanupRelativeId("planner.intent.allocation"), true);
 		assert.equal(isAllowlistedCleanupRelativeId("planner.intent.allocation.wallbox.plan_json"), false);
-		assert.equal(isAllowlistedCleanupRelativeId("learning.persistence.pv_bias_json"), false);
+		assert.equal(isAllowlistedCleanupRelativeId("learning.persistence.pv_bias_daily_json"), true);
+		assert.equal(isAllowlistedCleanupRelativeId("learning.persistence.files_present"), false);
+		assert.equal(isAllowlistedCleanupRelativeId("addons.sensorics"), true);
 		assert.equal(isAllowlistedCleanupRelativeId("ems.0.addons.air_conditioning.units.unit_1"), false);
 		assert.equal(isAllowlistedCleanupRelativeId("alias.0.foo"), false);
 	});
@@ -230,7 +232,7 @@ describe("dynamic surface ensure + cleanup", () => {
 		assert.ok(oneCount < legacyCount);
 		const savingsVsLegacy = legacyCount - emptyCount;
 		assert.ok(
-			savingsVsLegacy >= 200,
+			savingsVsLegacy >= 150,
 			`expected large placeholder savings, got ${savingsVsLegacy} (empty=${emptyCount} one=${oneCount} legacy=${legacyCount})`,
 		);
 	});

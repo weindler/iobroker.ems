@@ -23,6 +23,7 @@ function strState(id: string, name: string, def?: string): StateDef {
 	};
 }
 
+/** Lean KPI surface — Power-History-Diagnose bleibt in der Datei / Logs. */
 export async function ensureBatteryRuntimeLearningStates(host: StateHost): Promise<void> {
 	await ensureChannel(host, "learning.battery_runtime", "EMS-Light Learning Batterie-Runtime");
 
@@ -46,14 +47,6 @@ export async function ensureBatteryRuntimeLearningStates(host: StateHost): Promi
 		numState("learning.battery_runtime.topoff_days_remaining", "Battery-Runtime Top-Off Tage verbleibend"),
 		numState("learning.battery_runtime.topoff_due", "Battery-Runtime Top-Off fällig (0/1)"),
 		numState("learning.battery_runtime.estimated_runtime_days", "Battery-Runtime geschätzte Laufzeit", "Tage"),
-		numState("learning.battery_runtime.power_history_raw_rows", "Battery-Runtime Power-History Zeilen gesamt"),
-		numState("learning.battery_runtime.power_history_normalized_rows", "Battery-Runtime Power-History gültige Zeilen"),
-		numState("learning.battery_runtime.power_raw_charge_samples", "Battery-Runtime Power Roh-Lade-Samples"),
-		numState("learning.battery_runtime.power_raw_discharge_samples", "Battery-Runtime Power Roh-Entlade-Samples"),
-		numState("learning.battery_runtime.power_hourly_charge_points", "Battery-Runtime Power Stunden-Lade-Peaks"),
-		numState("learning.battery_runtime.power_hourly_discharge_points", "Battery-Runtime Power Stunden-Entlade-Peaks"),
-		numState("learning.battery_runtime.power_invert_applied", "Battery-Runtime Power-Invert aktiv (0/1)"),
-		numState("learning.battery_runtime.power_invert_auto", "Battery-Runtime Power-Invert auto (0/1)"),
 		strState("learning.battery_runtime.power_history_mode", "Battery-Runtime Power-Quelle (ems_rollup|history_fallback)"),
 	];
 

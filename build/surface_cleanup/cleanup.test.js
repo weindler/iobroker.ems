@@ -72,7 +72,9 @@ class FakeCleanupHost {
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.intent.daily_plan"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.intent.allocation"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.intent.allocation.wallbox.plan_json"), false);
-        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("learning.persistence.pv_bias_json"), false);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("learning.persistence.pv_bias_daily_json"), true);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("learning.persistence.files_present"), false);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.sensorics"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("ems.0.addons.air_conditioning.units.unit_1"), false);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("alias.0.foo"), false);
     });
@@ -184,7 +186,7 @@ class FakeCleanupHost {
         strict_1.default.ok(emptyCount < oneCount);
         strict_1.default.ok(oneCount < legacyCount);
         const savingsVsLegacy = legacyCount - emptyCount;
-        strict_1.default.ok(savingsVsLegacy >= 200, `expected large placeholder savings, got ${savingsVsLegacy} (empty=${emptyCount} one=${oneCount} legacy=${legacyCount})`);
+        strict_1.default.ok(savingsVsLegacy >= 150, `expected large placeholder savings, got ${savingsVsLegacy} (empty=${emptyCount} one=${oneCount} legacy=${legacyCount})`);
     });
     (0, node_test_1.it)("marks planner coordinator states as expert", async () => {
         const host = new FakeCleanupHost({});

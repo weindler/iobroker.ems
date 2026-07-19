@@ -58,7 +58,11 @@ var battery_winter_config_1 = require("./battery_winter_config");
 Object.defineProperty(exports, "batteryWinterPlanConfigFromAdapter", { enumerable: true, get: function () { return battery_winter_config_1.batteryWinterPlanConfigFromAdapter; } });
 /** Phase B — nur Objektbaum, keine Planner-Ticks. */
 async function ensurePlannerStateTree(host, options) {
-    await (0, ensure_states_1.ensurePlannerStates)(host);
+    await (0, ensure_states_1.ensurePlannerStates)(host, {
+        includeThermal: options?.includeThermalIntent !== false,
+        includeCooling: options?.includeCoolingIntent !== false,
+        includeWinter: options?.includeWinterIntent !== false,
+    });
     await (0, grid_states_1.ensureGridSupplyStates)(host);
     if (options?.leanOperatorSurface) {
         return;

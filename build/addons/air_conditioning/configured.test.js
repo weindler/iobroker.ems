@@ -49,22 +49,28 @@ const configured_js_1 = require("./configured.js");
         strict_1.default.equal((0, configured_js_1.isAcUnitConfigured)(cfg, 2), true);
         strict_1.default.deepEqual((0, configured_js_1.configuredAcUnitIndexes)(cfg), [2]);
     });
-    (0, node_test_1.it)("limits mapping commands to enabled units only", () => {
+    (0, node_test_1.it)("limits mapping commands to enabled units with mapped roles only", () => {
         const cmds = (0, configured_js_1.acMappingCommandsForConfiguredUnits)({
             ac_u1_enabled: true,
+            ac_u1_cmd_switch_off_target: "ac.0.off",
+            ac_u1_cmd_switch_off_enabled: true,
             ac_u2_enabled: true,
+            ac_u2_room_temp_target: "temp.0.x",
             ac_u3_enabled: false,
-            ac_u3_room_temp_target: "temp.0.x",
+            ac_u3_room_temp_target: "temp.0.y",
         });
-        strict_1.default.ok(cmds.every((c) => c.startsWith("unit_1_") || c.startsWith("unit_2_")));
-        strict_1.default.ok(cmds.includes("unit_1_cmd_switch_off"));
+        strict_1.default.deepEqual(cmds.sort(), ["unit_1_cmd_switch_off", "unit_2_room_temp"].sort());
         strict_1.default.ok(!cmds.some((c) => c.startsWith("unit_3_")));
     });
-    (0, node_test_1.it)("acMappingFromConfig only emits enabled units", async () => {
+    (0, node_test_1.it)("enabled unit without mappings yields no mapping commands", () => {
+        strict_1.default.deepEqual((0, configured_js_1.acMappingCommandsForConfiguredUnits)({ ac_u1_enabled: true }), []);
+    });
+    (0, node_test_1.it)("acMappingFromConfig only emits enabled units with mapped roles", async () => {
         const { acMappingFromConfig } = await Promise.resolve().then(() => __importStar(require("./mapping_config.js")));
         const entries = acMappingFromConfig({
             ac_u1_enabled: true,
             ac_u1_room_temp_enabled: true,
+            ac_u1_room_temp_target: "temp.0.a",
             ac_u3_enabled: false,
             ac_u3_room_temp_enabled: true,
             ac_u3_room_temp_target: "temp.0.x",

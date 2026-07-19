@@ -61,7 +61,14 @@ export const VEHICLE_PROFILE_ALLOWED_KEYS = new Set([
 	"updated_at",
 ]);
 
-const MAPPING_ADDON_KEYS = new Set(["wallbox", "battery", "immersion_heater", "air_conditioning", "climate"]);
+const MAPPING_ADDON_KEYS = new Set([
+	"wallbox",
+	"battery",
+	"immersion_heater",
+	"air_conditioning",
+	"climate",
+	"dynamic_tariff",
+]);
 
 const MAPPING_SUBKEY_RE = /(_target|_enabled|_state|_mode)$/;
 

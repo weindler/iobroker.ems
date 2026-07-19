@@ -56,38 +56,30 @@ describe("learning persistence mirror", () => {
 		await fs.rm(tmp, { recursive: true, force: true });
 	});
 
-	it("ensures channel + mirror states", async () => {
+	it("ensures lean status states only (no large json mirrors)", async () => {
 		const host = makeHost(tmp);
 		await ensureLearningPersistenceStates(host);
 		assert.ok(host.objects.has("learning.persistence"));
-		assert.ok(host.objects.has(BAT_STATE));
 		assert.ok(host.objects.has("learning.persistence.last_mirror"));
 		assert.ok(host.objects.has("learning.persistence.last_restore"));
+		assert.ok(host.objects.has("learning.persistence.files_present"));
+		assert.equal(host.objects.has(BAT_STATE), false);
 	});
 
-	it("mirrors existing persist file into a json state", async () => {
+	it("status tick counts files without writing json mirrors", async () => {
 		const host = makeHost(tmp);
 		const dir = path.join(tmp, BAT_DIR);
 		await fs.mkdir(dir, { recursive: true });
-		const payload = JSON.stringify({ sample_days: 5, avg_night_discharge_pct: 12 });
-		await fs.writeFile(path.join(dir, BAT_FILE), `${payload}\n`, "utf8");
+		await fs.writeFile(path.join(dir, BAT_FILE), `${JSON.stringify({ sample_days: 5 })}\n`, "utf8");
 
 		await mirrorLearningPersistenceToStates(host);
 
-		const st = host.states.get(BAT_STATE);
-		assert.ok(st, "mirror state must exist");
-		assert.equal(JSON.parse(String(st!.val)).sample_days, 5);
+		assert.equal(host.states.get(BAT_STATE), undefined);
+		assert.equal(host.states.get("learning.persistence.files_present")?.val, 1);
 		assert.ok(host.states.get("learning.persistence.last_mirror"));
 	});
 
-	it("does not create a state when no file exists", async () => {
-		const host = makeHost(tmp);
-		await mirrorLearningPersistenceToStates(host);
-		assert.equal(host.states.get(BAT_STATE), undefined);
-		assert.equal(host.states.get("learning.persistence.last_mirror"), undefined);
-	});
-
-	it("restores a missing file from the mirror state", async () => {
+	it("restores a missing file from a legacy mirror state", async () => {
 		const host = makeHost(tmp);
 		const payload = JSON.stringify({ sample_days: 9 });
 		host.states.set(BAT_STATE, { val: payload, ack: true });
@@ -110,28 +102,5 @@ describe("learning persistence mirror", () => {
 
 		const onDisk = await fs.readFile(path.join(dir, BAT_FILE), "utf8");
 		assert.equal(JSON.parse(onDisk).sample_days, 1);
-	});
-
-	it("ignores invalid json in the mirror state on restore", async () => {
-		const host = makeHost(tmp);
-		host.states.set(BAT_STATE, { val: "not-json{", ack: true });
-
-		await restoreLearningPersistenceFromStates(host);
-
-		await assert.rejects(() => fs.readFile(path.join(tmp, BAT_DIR, BAT_FILE), "utf8"));
-	});
-
-	it("round-trips: mirror then restore after file loss", async () => {
-		const host = makeHost(tmp);
-		const dir = path.join(tmp, BAT_DIR);
-		await fs.mkdir(dir, { recursive: true });
-		await fs.writeFile(path.join(dir, BAT_FILE), JSON.stringify({ sample_days: 7 }), "utf8");
-
-		await mirrorLearningPersistenceToStates(host);
-		await fs.rm(dir, { recursive: true, force: true });
-		await restoreLearningPersistenceFromStates(host);
-
-		const restored = await fs.readFile(path.join(dir, BAT_FILE), "utf8");
-		assert.equal(JSON.parse(restored).sample_days, 7);
 	});
 });

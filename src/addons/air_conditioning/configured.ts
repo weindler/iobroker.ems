@@ -47,11 +47,28 @@ export function configuredAcUnitIndexes(config: unknown): number[] {
 	return out;
 }
 
+/** True if this unit+role has target or explicit enabled in native config. */
+export function isAcMappingRoleConfigured(config: unknown, index: number, role: (typeof AC_MAPPING_ROLES)[number]): boolean {
+	const c = configRecord(config);
+	const prefix = acMappingFlatPrefix(index, role);
+	const t = c[`${prefix}_target`];
+	const en = c[`${prefix}_enabled`];
+	const hasTarget = typeof t === "string" && t.trim().length > 0;
+	const hasEnabled = typeof en === "boolean";
+	return hasTarget || hasEnabled;
+}
+
+/**
+ * Mapping commands for ensure/cleanup: enabled units × roles that are actually mapped in Admin.
+ * Empty slots do not get mapping leaves (lightweight surface).
+ */
 export function acMappingCommandsForConfiguredUnits(config: unknown): string[] {
 	const cmds: string[] = [];
 	for (const i of configuredAcUnitIndexes(config)) {
 		for (const role of AC_MAPPING_ROLES) {
-			cmds.push(acUnitMappingCommand(i, role));
+			if (isAcMappingRoleConfigured(config, i, role)) {
+				cmds.push(acUnitMappingCommand(i, role));
+			}
 		}
 	}
 	return cmds;

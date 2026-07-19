@@ -3,8 +3,12 @@ import { ensureBatteryStateTree } from "../addons/battery";
 import { ensureImmersionHeaterStateTree } from "../addons/immersion_heater";
 import { ensureWallboxStaticStateTree, ensureWallboxDynamicVehicleProfiles } from "../addons/wallbox";
 import { ensureAddonGovernanceStates } from "../addons/governance";
-import { ensureAddonMappingStates, syncNativeMappingToStates } from "../mapping_sync";
-import { wallboxMappingFromConfig, WALLBOX_ALL_MAPPING_IDS } from "../mapping_config";
+import {
+	ensureAddonMappingStates,
+	mappingCommandsFromEntries,
+	syncNativeMappingToStates,
+} from "../mapping_sync";
+import { wallboxMappingFromConfig } from "../mapping_config";
 import { ensureEmsLightStateTree } from "../ems_light";
 import {
 	ensureChannelTree,
@@ -28,8 +32,13 @@ export type StaticStateTreeHost = ioBroker.Adapter & {
 	config: unknown;
 };
 
+function configRecord(config: unknown): Record<string, unknown> {
+	return config && typeof config === "object" ? (config as Record<string, unknown>) : {};
+}
+
 /** Phase B — statischer EMS-State-Tree ohne dynamische Fahrzeugprofile. */
 export async function ensureStaticStateTree(host: StaticStateTreeHost): Promise<void> {
+	const cfg = configRecord(host.config);
 	await ensureChannelTree(host.setObjectNotExistsAsync.bind(host));
 	await ensureCommandBaseStates(host);
 	await ensureGlobalExecutionStates(host);
@@ -38,13 +47,21 @@ export async function ensureStaticStateTree(host: StaticStateTreeHost): Promise<
 	await ensureAddonGovernanceStates(host);
 	await ensureEmsLightStateTree(host);
 	await ensureBackupStates(host);
-	await ensureAddonMappingStates(host, "wallbox", WALLBOX_ALL_MAPPING_IDS);
+	await ensureAddonMappingStates(
+		host,
+		"wallbox",
+		mappingCommandsFromEntries(wallboxMappingFromConfig(cfg)),
+	);
 	await ensureWallboxStatusStates(host);
 	await ensureWallboxStaticStateTree(host);
 	await ensureBatteryStateTree(host);
 	await ensureImmersionHeaterStateTree(host);
 	await ensureAirConditioningStateTree(host);
-	await ensureAddonMappingStates(host, DYNAMIC_TARIFF_ADDON_ID, DYNAMIC_TARIFF_MAPPING_ROLES);
+	await ensureAddonMappingStates(
+		host,
+		DYNAMIC_TARIFF_ADDON_ID,
+		mappingCommandsFromEntries(dynamicTariffMappingFromConfig(cfg)),
+	);
 }
 
 /** Phase C — dynamische Fahrzeugprofil-Ordner aus `wb_vehicle_profiles`. */

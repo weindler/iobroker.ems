@@ -13,7 +13,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Globale Ausführung und Addon-Ausführung: dryrun = keine Geräte-Writes, live = Writes erlaubt. Admin-Config und Objektbaum bleiben synchron."
+					"text": "So starten Sie: 1) Geräte-Mappings setzen (welche ioBroker-States EMS lesen/schreiben darf). 2) Pro Gerät dryrun lassen, bis alles stimmt. 3) Erst dann auf live umschalten. dryrun = EMS plant und zeigt, schreibt aber nicht auf Geräte. live = Writes erlaubt. Global und pro Add-on müssen live sein, sonst bleibt es dryrun. KI-Optimierung (falls später aktiv) braucht zusätzlich die Freigabe „KI-Optimierung erlaubt“ pro Add-on."
 				},
 				"global_execution_mode": {
 					"type": "select",
@@ -42,7 +42,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Planner-Shadow / Takeover / Authority sind in der normalen Bedienung abgeschaltet (Runtime-Mode off). Keine Shadow-Schalter in diesem Admin."
+					"text": "Der schwere Planner-Shadow/Takeover-Pfad ist in dieser Produktion abgeschaltet. EMS steuert über Failsafe + Daily-Plan-Logik. Später kann KI pro Add-on (mit Freigabe) Pläne optimieren — ohne direkte Geräte-Writes."
 				},
 				"hGlobalFailsafe": {
 					"type": "header",
@@ -7189,14 +7189,14 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Export-Register: erstellt ein .emsbackup mit Admin-Config, Mappings, Fahrzeugprofilen, Policies und Learning/Stats (inkl. consumer_stats). Die Datei liegt auf dem Host unter ems-runtime.&lt;Instanz&gt;/exports/backup/ — nicht im Browser-Download. Status auch unter backup.* und info.backup.export_register_*."
+					"text": "WICHTIG vor Neuinstallation oder Löschen der Instanz: hier einen vollständigen Export erstellen. Enthalten sind Admin-Config, alle Mappings, Fahrzeugprofile, Policies und Learning-Dateien (Preis/PV/Hauslast/Stats). Die Datei liegt auf dem Host unter /opt/iobroker/iobroker-data/ems-runtime.&lt;Instanz&gt;/exports/backup/ (kein Browser-Download). Nach Frischinstall: Export-Datei in den Restore-Inbox-Ordner legen und Restore im Admin ausführen — dann sind Mappings und Learning wieder da. Status auch unter backup.* und info.backup.export_register_*."
 				},
 				"requestBackupExport": {
 					"type": "sendTo",
-					"label": "Vollständigen Export erstellen",
+					"label": "Vollständigen Export erstellen (vor Neuinstall!)",
 					"command": "requestBackupExport",
 					"jsonData": "{}",
-					"button": "Export erstellen",
+					"button": "Backup jetzt erstellen",
 					"showResult": true,
 					"xs": 12,
 					"sm": 12,

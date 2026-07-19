@@ -29,6 +29,10 @@ export type EnsurePlannerStateTreeOptions = {
 	 * and skip coordinator entirely (Shadow forced off).
 	 */
 	leanOperatorSurface?: boolean;
+	/** Intent-Spiegel nur für aktivierte Add-ons / Winterplan. */
+	includeThermalIntent?: boolean;
+	includeCoolingIntent?: boolean;
+	includeWinterIntent?: boolean;
 };
 
 /** Phase B — nur Objektbaum, keine Planner-Ticks. */
@@ -36,7 +40,11 @@ export async function ensurePlannerStateTree(
 	host: PlannerHost,
 	options?: EnsurePlannerStateTreeOptions,
 ): Promise<void> {
-	await ensurePlannerStates(host);
+	await ensurePlannerStates(host, {
+		includeThermal: options?.includeThermalIntent !== false,
+		includeCooling: options?.includeCoolingIntent !== false,
+		includeWinter: options?.includeWinterIntent !== false,
+	});
 	await ensureGridSupplyStates(host);
 	if (options?.leanOperatorSurface) {
 		return;

@@ -54,7 +54,7 @@ function __resetBatteryRuntimeForTest(now = Date.now()) {
 }
 exports.__resetBatteryRuntimeForTest = __resetBatteryRuntimeForTest;
 async function ensureBatteryStateTree(adapter) {
-    await (0, mapping_sync_1.ensureAddonMappingStates)(adapter, exports.BATTERY_ADDON_ID, mapping_1.BATTERY_MAPPING_ROLES);
+    await (0, mapping_sync_1.ensureAddonMappingStates)(adapter, exports.BATTERY_ADDON_ID, (0, mapping_1.batteryMappingCommandsForEnsure)(adapter.config));
     await (0, ems_mirror_1.ensureBatteryEmsMirrorStates)(adapter);
     await (0, ensure_states_1.ensureBatteryArchitectureStates)(adapter);
 }

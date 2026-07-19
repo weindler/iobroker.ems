@@ -85,7 +85,7 @@ export function batteryMappingFromConfig(config: unknown): BatteryMappingTable {
 	return table;
 }
 
-/** Für mapping_sync: logische Rollen → native Mapping-Einträge. */
+/** Für mapping_sync: nur Rollen mit gesetztem target_state (leichte Oberfläche). */
 export function batteryMappingNativeFromConfig(
 	config: Record<string, unknown>,
 ): Record<string, NativeMappingEntry> {
@@ -93,11 +93,19 @@ export function batteryMappingNativeFromConfig(
 	const out: Record<string, NativeMappingEntry> = {};
 	for (const role of BATTERY_MAPPING_ROLES) {
 		const slot = table[role];
-		if (slot.targetState || typeof slot.enabled === "boolean") {
+		if (slot.targetState) {
 			out[role] = { enabled: slot.enabled, target_state: slot.targetState };
 		}
 	}
 	return out;
+}
+
+export function batteryMappingCommandsForEnsure(config: unknown): string[] {
+	return Object.keys(
+		batteryMappingNativeFromConfig(
+			config && typeof config === "object" ? (config as Record<string, unknown>) : {},
+		),
+	);
 }
 
 /** Eine Rolle gilt als konfiguriert, wenn enabled und ein Ziel-State gesetzt ist. */

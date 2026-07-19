@@ -22,8 +22,12 @@ const mapping_config_4 = require("../addons/air_conditioning/mapping_config");
 const base_ensure_1 = require("./base_ensure");
 const ensure_states_1 = require("../backup/ensure_states");
 const cleanup_1 = require("../surface_cleanup/cleanup");
+function configRecord(config) {
+    return config && typeof config === "object" ? config : {};
+}
 /** Phase B — statischer EMS-State-Tree ohne dynamische Fahrzeugprofile. */
 async function ensureStaticStateTree(host) {
+    const cfg = configRecord(host.config);
     await (0, execution_mode_1.ensureChannelTree)(host.setObjectNotExistsAsync.bind(host));
     await (0, base_ensure_1.ensureCommandBaseStates)(host);
     await (0, execution_mode_1.ensureGlobalExecutionStates)(host);
@@ -32,13 +36,13 @@ async function ensureStaticStateTree(host) {
     await (0, governance_1.ensureAddonGovernanceStates)(host);
     await (0, ems_light_1.ensureEmsLightStateTree)(host);
     await (0, ensure_states_1.ensureBackupStates)(host);
-    await (0, mapping_sync_1.ensureAddonMappingStates)(host, "wallbox", mapping_config_1.WALLBOX_ALL_MAPPING_IDS);
+    await (0, mapping_sync_1.ensureAddonMappingStates)(host, "wallbox", (0, mapping_sync_1.mappingCommandsFromEntries)((0, mapping_config_1.wallboxMappingFromConfig)(cfg)));
     await (0, status_wallbox_1.ensureWallboxStatusStates)(host);
     await (0, wallbox_1.ensureWallboxStaticStateTree)(host);
     await (0, battery_1.ensureBatteryStateTree)(host);
     await (0, immersion_heater_1.ensureImmersionHeaterStateTree)(host);
     await (0, air_conditioning_1.ensureAirConditioningStateTree)(host);
-    await (0, mapping_sync_1.ensureAddonMappingStates)(host, dynamic_tariff_1.DYNAMIC_TARIFF_ADDON_ID, mapping_config_2.DYNAMIC_TARIFF_MAPPING_ROLES);
+    await (0, mapping_sync_1.ensureAddonMappingStates)(host, dynamic_tariff_1.DYNAMIC_TARIFF_ADDON_ID, (0, mapping_sync_1.mappingCommandsFromEntries)((0, mapping_config_2.dynamicTariffMappingFromConfig)(cfg)));
 }
 exports.ensureStaticStateTree = ensureStaticStateTree;
 /** Phase C — dynamische Fahrzeugprofil-Ordner aus `wb_vehicle_profiles`. */

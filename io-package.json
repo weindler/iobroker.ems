@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.169",
+		"version": "0.1.170",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.170": {
+				"en": "Support package includes real runtime diagnostics (wallbox detail, addon states, persist). Restore file dropdown. Fix ISO/IPv6 sanitizer false positive.",
+				"de": "Support-Paket mit echter Runtime-Diagnose (Wallbox-Detail, Add-on-States, Persistenz). Restore-Dateiauswahl. Fix ISO/IPv6-Sanitizer-Fehlalarm."
+			},
 			"0.1.169": {
 				"en": "Fix: Backup tab no longer uses fileSelector/selectSendTo/state (Admin config crash). Simple sendTo + text fields.",
 				"de": "Fix: Backup-Tab ohne fileSelector/selectSendTo/state (Admin-Config-Crash). Nur sendTo + Textfelder."

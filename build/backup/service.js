@@ -113,6 +113,11 @@ async function buildSupportEntries(host, collectSupportExtras) {
     const bootstrap = (0, sanitize_1.sanitizeForSupport)(await (0, collect_diagnostics_1.collectBootstrapDiagnostics)());
     const addons = (0, sanitize_1.sanitizeForSupport)(await (0, collect_diagnostics_1.collectAddonDiagnostics)(host));
     const vehicleSupport = (0, sanitize_1.sanitizeForSupport)(await (0, collect_persistence_1.collectVehicleSupportPersistence)(host));
+    const richRaw = await (0, collect_diagnostics_1.collectRichSupportDiagnostics)(host);
+    const richSanitized = richRaw.map((e) => {
+        const parsed = JSON.parse(typeof e.content === "string" ? e.content : e.content.toString("utf8"));
+        return { path: e.path, content: (0, schema_1.stableJsonStringify)((0, sanitize_1.sanitizeForSupport)(parsed)) };
+    });
     const entries = [
         { path: "summary/system.json", content: (0, schema_1.stableJsonStringify)(system) },
         { path: "summary/adapter.json", content: (0, schema_1.stableJsonStringify)(adapterSummary) },
@@ -124,6 +129,7 @@ async function buildSupportEntries(host, collectSupportExtras) {
         { path: "diagnostics/bootstrap.json", content: (0, schema_1.stableJsonStringify)(bootstrap) },
         { path: "diagnostics/addons.json", content: (0, schema_1.stableJsonStringify)(addons) },
         { path: "diagnostics/vehicle_persistence.json", content: (0, schema_1.stableJsonStringify)(vehicleSupport) },
+        ...richSanitized,
         ...(await collectSupportExtras(host)),
     ];
     const stringEntries = entries.map((e) => ({
@@ -133,6 +139,8 @@ async function buildSupportEntries(host, collectSupportExtras) {
     // collect → sanitize → serialize → final secret scan
     (0, sanitize_1.assertSupportBundleClean)(stringEntries);
     for (const e of stringEntries) {
+        if (e.path.endsWith(".ndjson"))
+            continue;
         (0, schema_1.assertJsonSerializable)(JSON.parse(e.content), e.path);
     }
     return stringEntries.map((e) => ({ path: e.path, content: e.content }));

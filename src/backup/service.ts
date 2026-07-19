@@ -9,6 +9,7 @@ import {
 	collectBootstrapDiagnostics,
 	collectHealthDiagnostics,
 	collectMappingDiagnostics,
+	collectRichSupportDiagnostics,
 	collectSelectedStateSnapshot,
 	collectSystemSummary,
 } from "./collect_diagnostics";
@@ -132,6 +133,11 @@ async function buildSupportEntries(
 	const bootstrap = sanitizeForSupport(await collectBootstrapDiagnostics());
 	const addons = sanitizeForSupport(await collectAddonDiagnostics(host));
 	const vehicleSupport = sanitizeForSupport(await collectVehicleSupportPersistence(host));
+	const richRaw = await collectRichSupportDiagnostics(host);
+	const richSanitized: ExportArchiveEntry[] = richRaw.map((e) => {
+		const parsed = JSON.parse(typeof e.content === "string" ? e.content : e.content.toString("utf8"));
+		return { path: e.path, content: stableJsonStringify(sanitizeForSupport(parsed)) };
+	});
 
 	const entries: ExportArchiveEntry[] = [
 		{ path: "summary/system.json", content: stableJsonStringify(system) },
@@ -144,6 +150,7 @@ async function buildSupportEntries(
 		{ path: "diagnostics/bootstrap.json", content: stableJsonStringify(bootstrap) },
 		{ path: "diagnostics/addons.json", content: stableJsonStringify(addons) },
 		{ path: "diagnostics/vehicle_persistence.json", content: stableJsonStringify(vehicleSupport) },
+		...richSanitized,
 		...(await collectSupportExtras(host)),
 	];
 
@@ -154,6 +161,7 @@ async function buildSupportEntries(
 	// collect → sanitize → serialize → final secret scan
 	assertSupportBundleClean(stringEntries);
 	for (const e of stringEntries) {
+		if (e.path.endsWith(".ndjson")) continue;
 		assertJsonSerializable(JSON.parse(e.content), e.path);
 	}
 	return stringEntries.map((e) => ({ path: e.path, content: e.content }));

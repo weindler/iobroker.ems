@@ -50,6 +50,12 @@ function pseudonym(map: Map<string, string>, prefix: string, counter: () => numb
 
 export function sanitizeString(text: string, ctx: PseudonymContext): string {
 	let out = text;
+	// ISO-Zeitstempel schützen — sonst frisst die IPv6-Regex z. B. T09:35:07
+	const isoHold: string[] = [];
+	out = out.replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/g, (m) => {
+		isoHold.push(m);
+		return `__ISO_${isoHold.length - 1}__`;
+	});
 	out = out.replace(VIN_RE, () => pseudonym(ctx.vehicle, "vehicle", () => ++ctx.nextVehicle, "VIN"));
 	out = out.replace(IP_V4_RE, () => pseudonym(ctx.host, "host", () => ++ctx.nextHost, "ip"));
 	out = out.replace(IP_V6_RE, () => pseudonym(ctx.host, "host_v6", () => ++ctx.nextHost, "ipv6"));
@@ -65,6 +71,7 @@ export function sanitizeString(text: string, ctx: PseudonymContext): string {
 		}
 		return "<path_redacted>";
 	});
+	out = out.replace(/__ISO_(\d+)__/g, (_, i) => isoHold[Number(i)] ?? "");
 	return out;
 }
 
@@ -112,6 +119,8 @@ function resetRegex(re: RegExp): void {
 
 export function scanForForbiddenSecrets(text: string): string | null {
 	const lower = text.toLowerCase();
+	// ISO-Zeiten ausnehmen (sonst Match auf T09:46:04 als IPv6)
+	const withoutIso = text.replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/g, "<iso>");
 	if (/\b(api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|private[_-]?key)\s*[:=]\s*\S+/i.test(text)) {
 		return "secret pattern in text";
 	}
@@ -135,11 +144,11 @@ export function scanForForbiddenSecrets(text: string): string | null {
 		return "vin-like value in support export";
 	}
 	resetRegex(IP_V4_RE);
-	if (IP_V4_RE.test(text) && !text.includes("host_")) {
+	if (IP_V4_RE.test(withoutIso) && !withoutIso.includes("host_")) {
 		return "ip address in support export";
 	}
 	resetRegex(IP_V6_RE);
-	if (IP_V6_RE.test(text) && !text.includes("host_v6")) {
+	if (IP_V6_RE.test(withoutIso) && !withoutIso.includes("host_v6")) {
 		return "ipv6 address in support export";
 	}
 	resetRegex(EMAIL_RE);

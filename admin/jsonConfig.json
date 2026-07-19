@@ -7936,7 +7936,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Sicherung und Diagnose. Voll-Export und Support landen auf dem Host; Support-Paket versucht zusätzlich Browser-Download. Restore: Dateiname eintragen → validieren → Plan-ID → ausführen."
+					"text": "Sicherung und Diagnose. Voll-Export auf dem Host. Support-Paket = echte Runtime-Diagnose + Download. Restore: Backup-Datei wählen → validieren → Plan-ID → ausführen."
 				},
 				"hBackupFull": {
 					"type": "header",
@@ -8012,7 +8012,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Anonymisierte Runtime-/Systeminfos und Logs — nur für Support. Button erstellt das Paket und öffnet bei kleiner Datei den Browser-Download. Sonst Datei vom Host: …/exports/support/*.emssupport"
+					"text": "Anonymisierte Runtime-Diagnose: Wallbox detail_json, Batterie/Heizstab/Klima-States, Persistenz, vorhandene Support-Logs. Button erstellt das Paket und öffnet den Browser-Download (sonst Host …/exports/support/)."
 				},
 				"requestSupportExport": {
 					"type": "sendTo",
@@ -8070,12 +8070,15 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Nur .emsbackup. Datei auf dem Host nach …/restore/inbox/ oder …/exports/backup/ legen, exakten Dateinamen unten eintragen → Validieren → Plan-ID aus backup.restore.plan_id hier eintragen → Restore. Danach Adapter-Neustart (dryrun)."
+					"text": "Nur .emsbackup (nicht Support). Datei aus der Liste wählen (Host: exports/backup oder restore/inbox) → Validieren → Plan-ID aus dem Ergebnis bzw. backup.restore.plan_id eintragen → Restore. Danach Adapter-Neustart (dryrun)."
 				},
 				"restore_selected_file": {
-					"type": "text",
-					"label": "Backup-Dateiname (z. B. ems-light-….emsbackup)",
-					"default": "",
+					"type": "selectSendTo",
+					"label": "Backup-Datei wählen",
+					"command": "listRestoreFiles",
+					"jsonData": "{}",
+					"manual": true,
+					"noTranslation": true,
 					"doNotSave": true,
 					"xs": 12,
 					"sm": 12,
@@ -8093,7 +8096,7 @@
 					"variant": "contained",
 					"color": "primary",
 					"result": {
-						"ok": "Validierung ok — Plan-ID in Objekten prüfen und unten eintragen",
+						"ok": "Validierung ok — Plan-ID unten eintragen (siehe auch backup.restore.plan_id)",
 						"error": "Validierung fehlgeschlagen"
 					},
 					"xs": 12,

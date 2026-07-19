@@ -7936,7 +7936,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Sicherung und Diagnose für diese EMS-Instanz. Dateien liegen auf dem Host (kein Browser-Download). Status unter backup.* (last_file_name, last_sha256, export_register_ready, …)."
+					"text": "Sicherung und Diagnose. 1) Voll-Export bleibt auf dem Host (+ Download-Spiegel). 2) Support: erstellen, dann unten herunterladen. 3) Restore: Datei wählen/hochladen → validieren → Plan-ID → ausführen."
 				},
 				"hBackupFull": {
 					"type": "header",
@@ -7955,7 +7955,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Vor Neuinstallation oder Löschen der Instanz immer zuerst erstellen. Enthalten: Admin-Config, Mappings, Fahrzeugprofile, Policies und Learning (Preis/PV/Hauslast/Stats)."
+					"text": "Vor Neuinstallation oder Löschen der Instanz immer zuerst erstellen. Enthalten: Admin-Config, Mappings, Fahrzeugprofile, Policies und Learning."
 				},
 				"requestBackupExport": {
 					"type": "sendTo",
@@ -7963,6 +7963,8 @@
 					"jsonData": "{}",
 					"button": "Backup jetzt erstellen",
 					"showResult": true,
+					"showProcess": true,
+					"timeout": 120000,
 					"variant": "contained",
 					"color": "primary",
 					"icon": "upload",
@@ -7979,7 +7981,20 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Ablage: /opt/iobroker/iobroker-data/ems-runtime.&lt;Instanz&gt;/exports/backup/  ·  Danach backup.last_file_name und last_sha256 prüfen."
+					"text": "Ablage Host: …/ems-runtime.&lt;Instanz&gt;/exports/backup/  ·  Spiegel: Adapter-Dateien → backup/ (Download möglich)"
+				},
+				"backupFilePicker": {
+					"type": "fileSelector",
+					"label": "Backup-Dateien (Download)",
+					"objectID": "ems.%INSTANCE%",
+					"pattern": "backup/*.*",
+					"refresh": true,
+					"delete": false,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
 				"dividerBackupSupport": {
 					"type": "divider",
@@ -8007,16 +8022,19 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Anonymisierte Runtime-/Systeminfos, Logs und tiefe Detail-JSON (z. B. Wallbox) — nur für Support und Fehleranalyse, nicht zum Wiederherstellen der Instanz."
+					"text": "Anonymisierte Runtime-/Systeminfos und Logs — nur für Support, nicht zum Restore. Nach Erstellung: Datei unten in der Liste anklicken und auf den PC speichern (Download). Kleine Pakete öffnen ggf. zusätzlich automatisch."
 				},
 				"requestSupportExport": {
 					"type": "sendTo",
 					"command": "requestSupportExport",
 					"jsonData": "{}",
-					"button": "Support-Paket jetzt erstellen",
+					"button": "Support-Paket erstellen",
 					"showResult": true,
-					"variant": "outlined",
-					"color": "primary",
+					"showProcess": true,
+					"timeout": 180000,
+					"openUrl": true,
+					"variant": "contained",
+					"color": "secondary",
 					"icon": "info",
 					"xs": 12,
 					"sm": 12,
@@ -8031,7 +8049,21 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Ablage: /opt/iobroker/iobroker-data/ems-runtime.&lt;Instanz&gt;/exports/support/ (*.emssupport)"
+					"text": "Download auf den PC: Datei in der Liste wählen (Refresh bei Bedarf). Host-Kopie: …/exports/support/*.emssupport"
+				},
+				"supportFilePicker": {
+					"type": "fileSelector",
+					"label": "Support-Paket herunterladen",
+					"objectID": "ems.%INSTANCE%",
+					"pattern": "support/*.*",
+					"refresh": true,
+					"delete": true,
+					"noNone": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
 				"dividerBackupRestore": {
 					"type": "divider",
@@ -8045,7 +8077,7 @@
 				"hBackupRestore": {
 					"type": "header",
 					"size": 2,
-					"text": "3. Wiederherstellen nach Frischinstall",
+					"text": "3. Wiederherstellen",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -8059,7 +8091,131 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Export-Datei in den Restore-Inbox-Ordner legen und Restore im Admin ausführen — dann sind Mappings und Learning wieder da. Details: docs/EMS_LIGHT_FRESH_INSTALL_CHECKLIST.md"
+					"text": "Nur .emsbackup (nicht Support). Datei wählen oder vom PC hochladen → „Upload übernehmen“ → Validieren → Plan-ID eintragen → Restore. Danach Adapter-Neustart (dryrun)."
+				},
+				"restoreUploadPicker": {
+					"type": "fileSelector",
+					"label": ".emsbackup vom PC hochladen (restore-inbox)",
+					"objectID": "ems.%INSTANCE%",
+					"pattern": "restore-inbox/*.*",
+					"upload": "restore-inbox",
+					"refresh": true,
+					"delete": true,
+					"maxSize": 52428800,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"restoreUploadSyncBtn": {
+					"type": "sendTo",
+					"command": "syncRestoreInbox",
+					"jsonData": "{}",
+					"button": "Upload übernehmen & Liste aktualisieren",
+					"showResult": true,
+					"showProcess": true,
+					"timeout": 60000,
+					"variant": "outlined",
+					"xs": 12,
+					"sm": 6,
+					"md": 5,
+					"lg": 4,
+					"xl": 4
+				},
+				"restore_selected_file": {
+					"type": "selectSendTo",
+					"label": "Backup-Datei wählen",
+					"command": "listRestoreFiles",
+					"jsonData": "{}",
+					"manual": false,
+					"noTranslation": true,
+					"doNotSave": true,
+					"alsoDependsOn": [],
+					"xs": 12,
+					"sm": 12,
+					"md": 8,
+					"lg": 8,
+					"xl": 8
+				},
+				"restoreValidateBtn": {
+					"type": "sendTo",
+					"command": "restoreValidate",
+					"jsonData": "{\"file\": \"${data.restore_selected_file}\"}",
+					"button": "Backup validieren",
+					"showResult": true,
+					"showProcess": true,
+					"timeout": 120000,
+					"variant": "contained",
+					"color": "primary",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 3
+				},
+				"restoreStatusText": {
+					"type": "state",
+					"label": "Restore-Status",
+					"oid": "backup.restore.status",
+					"control": "text",
+					"readOnly": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 3,
+					"xl": 3
+				},
+				"restorePlanIdText": {
+					"type": "state",
+					"label": "Plan-ID (nach Validierung)",
+					"oid": "backup.restore.plan_id",
+					"control": "text",
+					"readOnly": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 8,
+					"lg": 6,
+					"xl": 6
+				},
+				"restore_confirm_plan_id": {
+					"type": "text",
+					"label": "Plan-ID zur Bestätigung eintragen",
+					"default": "",
+					"doNotSave": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 8,
+					"lg": 6,
+					"xl": 6
+				},
+				"restoreApplyBtn": {
+					"type": "sendTo",
+					"command": "restoreApply",
+					"jsonData": "{\"file\": \"${data.restore_selected_file}\", \"planId\": \"${data.restore_confirm_plan_id}\"}",
+					"button": "Restore ausführen",
+					"showResult": true,
+					"showProcess": true,
+					"timeout": 300000,
+					"variant": "contained",
+					"color": "primary",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 3
+				},
+				"restoreErrorText": {
+					"type": "state",
+					"label": "Restore-Fehler",
+					"oid": "backup.restore.last_error",
+					"control": "text",
+					"readOnly": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				}
 			}
 		}

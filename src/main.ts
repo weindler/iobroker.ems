@@ -91,7 +91,7 @@ class Ems extends utils.Adapter {
 						fileName: file,
 						error: err,
 						exportRegisterReady: ready,
-						hint: "ems-runtime.%INSTANCE%/exports/backup/",
+						hint: "Host: ems-runtime.%INSTANCE%/exports/backup/ — zusätzlich unter Adapter-Dateien backup/ (Admin Download)",
 					};
 					if (obj.callback) {
 						this.sendTo(obj.from, obj.command, payload, obj.callback);
@@ -117,12 +117,26 @@ class Ems extends utils.Adapter {
 					await handleSupportExportRequest(this, true, false);
 					const file = String((await this.getStateAsync("backup.last_file_name"))?.val ?? "");
 					const err = String((await this.getStateAsync("backup.last_error"))?.val ?? "");
-					const payload = {
+					const { readSupportFileBase64 } = await import("./backup/admin_files.js");
+					const dl = err ? null : await readSupportFileBase64(this, file);
+					const payload: Record<string, unknown> = {
 						result: err ? "error" : "ok",
 						fileName: file,
 						error: err,
-						hint: "ems-runtime.%INSTANCE%/exports/support/",
+						hint: "Host: exports/support/ — Download: Adapter-Dateien support/ oder data-URL (klein)",
 					};
+					// Admin sendTo openUrl: Browser speichert/öffnet die Datei (nur wenn nicht zu groß).
+					if (dl && dl.ok && dl.sizeBytes <= 6_000_000) {
+						payload.openUrl = `data:application/octet-stream;base64,${dl.base64}`;
+						payload.window = "_blank";
+						payload.downloadFileName = dl.fileName;
+						payload.base64 = dl.base64;
+						payload.mimeType = dl.mimeType;
+						payload.sizeBytes = dl.sizeBytes;
+					} else if (dl && dl.ok) {
+						payload.hint =
+							`Datei ${dl.fileName} (${dl.sizeBytes} Bytes) — zu groß für Direkt-Download; unter Adapter-Dateien → support/ herunterladen`;
+					}
 					if (obj.callback) {
 						this.sendTo(obj.from, obj.command, payload, obj.callback);
 					}
@@ -138,6 +152,174 @@ class Ems extends utils.Adapter {
 					`requestSupportExport unhandled: ${e instanceof Error ? e.message : String(e)}`,
 				);
 			});
+			return;
+		}
+		if (obj.command === "listRestoreFiles" || obj.command === "syncRestoreInbox") {
+			void (async () => {
+				try {
+					const { listRestoreFileOptions } = await import("./backup/admin_files.js");
+					const options = await listRestoreFileOptions(this);
+					if (obj.callback) {
+						if (obj.command === "syncRestoreInbox") {
+							const files = options.filter((o) => o.value).map((o) => o.value);
+							this.sendTo(
+								obj.from,
+								obj.command,
+								{
+									result: files.length ? "ok" : "empty",
+									files,
+									hint: files.length
+										? `${files.length} Datei(en) verfügbar — unten „Backup-Datei wählen“`
+										: "Keine .emsbackup — zuerst Export oder Upload",
+								},
+								obj.callback,
+							);
+						} else {
+							this.sendTo(obj.from, obj.command, options, obj.callback);
+						}
+					}
+				} catch (e) {
+					this.log.warn(`listRestoreFiles: ${e instanceof Error ? e.message : String(e)}`);
+					if (obj.callback) {
+						if (obj.command === "syncRestoreInbox") {
+							this.sendTo(
+								obj.from,
+								obj.command,
+								{ result: "error", error: e instanceof Error ? e.message : String(e) },
+								obj.callback,
+							);
+						} else {
+							this.sendTo(obj.from, obj.command, [{ label: "Fehler beim Lesen", value: "" }], obj.callback);
+						}
+					}
+				}
+			})();
+			return;
+		}
+		if (obj.command === "restoreUploadToInbox") {
+			void (async () => {
+				try {
+					const msg = (obj.message && typeof obj.message === "object" ? obj.message : {}) as {
+						fileName?: string;
+						data?: string;
+						restore_upload?: string;
+					};
+					const data = String(msg.data ?? msg.restore_upload ?? "");
+					const { writeRestoreUploadToInbox } = await import("./backup/admin_files.js");
+					const res = await writeRestoreUploadToInbox(this, String(msg.fileName ?? ""), data);
+					if (res.ok) {
+						await this.setStateAsync("backup.restore.selected_file", { val: res.fileName, ack: true });
+					}
+					if (obj.callback) {
+						this.sendTo(obj.from, obj.command, res, obj.callback);
+					}
+				} catch (e) {
+					const error = e instanceof Error ? e.message : String(e);
+					if (obj.callback) {
+						this.sendTo(obj.from, obj.command, { ok: false, error }, obj.callback);
+					}
+				}
+			})();
+			return;
+		}
+		if (obj.command === "restoreValidate") {
+			void (async () => {
+				try {
+					const msg = (obj.message && typeof obj.message === "object" ? obj.message : {}) as {
+						file?: string;
+						restore_selected_file?: string;
+					};
+					const fileName = String(msg.file ?? msg.restore_selected_file ?? "").trim();
+					if (!fileName) {
+						if (obj.callback) {
+							this.sendTo(obj.from, obj.command, { result: "error", error: "no_file_selected" }, obj.callback);
+						}
+						return;
+					}
+					await this.setStateAsync("backup.restore.selected_file", { val: fileName, ack: true });
+					const { handleRestoreValidateRequest } = await import("./restore/handler.js");
+					await handleRestoreValidateRequest(this, true, false);
+					const status = String((await this.getStateAsync("backup.restore.status"))?.val ?? "");
+					const planId = String((await this.getStateAsync("backup.restore.plan_id"))?.val ?? "");
+					const err = String((await this.getStateAsync("backup.restore.last_error"))?.val ?? "");
+					const summary = String((await this.getStateAsync("backup.restore.summary_json"))?.val ?? "");
+					if (obj.callback) {
+						this.sendTo(
+							obj.from,
+							obj.command,
+							{
+								result: status === "ready" ? "ok" : "error",
+								status,
+								planId,
+								error: err,
+								summaryJson: summary,
+								hint: planId
+									? `Plan-ID unten eintragen und „Restore ausführen“: ${planId}`
+									: "Validierung fehlgeschlagen",
+							},
+							obj.callback,
+						);
+					}
+				} catch (e) {
+					const error = e instanceof Error ? e.message : String(e);
+					if (obj.callback) {
+						this.sendTo(obj.from, obj.command, { result: "error", error }, obj.callback);
+					}
+				}
+			})();
+			return;
+		}
+		if (obj.command === "restoreApply") {
+			void (async () => {
+				try {
+					const msg = (obj.message && typeof obj.message === "object" ? obj.message : {}) as {
+						file?: string;
+						restore_selected_file?: string;
+						planId?: string;
+						restore_confirm_plan_id?: string;
+					};
+					const fileName = String(msg.file ?? msg.restore_selected_file ?? "").trim();
+					const planId = String(msg.planId ?? msg.restore_confirm_plan_id ?? "").trim();
+					if (!fileName || !planId) {
+						if (obj.callback) {
+							this.sendTo(
+								obj.from,
+								obj.command,
+								{ result: "error", error: "file and planId required" },
+								obj.callback,
+							);
+						}
+						return;
+					}
+					await this.setStateAsync("backup.restore.selected_file", { val: fileName, ack: true });
+					await this.setStateAsync("backup.restore.confirm_plan_id", { val: planId, ack: true });
+					const { handleRestoreApplyRequest } = await import("./restore/handler.js");
+					await handleRestoreApplyRequest(this, true, false);
+					const status = String((await this.getStateAsync("backup.restore.status"))?.val ?? "");
+					const err = String((await this.getStateAsync("backup.restore.last_error"))?.val ?? "");
+					if (obj.callback) {
+						this.sendTo(
+							obj.from,
+							obj.command,
+							{
+								result: status.startsWith("success") ? "ok" : "error",
+								status,
+								error: err,
+								hint: status.startsWith("success")
+									? "Restore ok — Adapter-Neustart erforderlich (dryrun)."
+									: err || status,
+							},
+							obj.callback,
+						);
+					}
+				} catch (e) {
+					const error = e instanceof Error ? e.message : String(e);
+					if (obj.callback) {
+						this.sendTo(obj.from, obj.command, { result: "error", error }, obj.callback);
+					}
+				}
+			})();
+			return;
 		}
 	}
 
@@ -214,6 +396,8 @@ class Ems extends utils.Adapter {
 
 		await this.step("backup export init", async () => {
 			await cleanupTempExports(this);
+			const { ensureAdapterFilesMeta } = await import("./backup/admin_files.js");
+			await ensureAdapterFilesMeta(this);
 			await initBackupExportRuntime(this);
 			await initRestoreRuntime(this);
 		});

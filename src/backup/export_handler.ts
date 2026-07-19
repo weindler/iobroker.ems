@@ -59,6 +59,14 @@ export async function handleBackupExportRequest(
 				true,
 				`ems-runtime.%INSTANCE%/exports/backup/${result.fileName}`,
 			);
+			try {
+				const { mirrorHostExportFile } = await import("./admin_files.js");
+				await mirrorHostExportFile(host as import("./admin_files").AdapterFilesHost, "backup", result.fileName);
+			} catch (e) {
+				host.log?.warn?.(
+					`backup: Admin-File-Spiegel fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`,
+				);
+			}
 		} else {
 			await setBackupExportStatus(host, {
 				status: "error",
@@ -97,6 +105,14 @@ export async function handleSupportExportRequest(
 			});
 			await host.setStateAsync(SUPPORT_STATES.lastBundleAt, { val: result.createdAt, ack: true });
 			await host.setStateAsync(SUPPORT_STATES.lastError, { val: "", ack: true });
+			try {
+				const { mirrorHostExportFile } = await import("./admin_files.js");
+				await mirrorHostExportFile(host as import("./admin_files").AdapterFilesHost, "support", result.fileName);
+			} catch (e) {
+				host.log?.warn?.(
+					`support: Admin-File-Spiegel fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`,
+				);
+			}
 		} else {
 			await setBackupExportStatus(host, { status: "error", lastError: result.error });
 			await host.setStateAsync(SUPPORT_STATES.lastError, { val: result.error, ack: true });

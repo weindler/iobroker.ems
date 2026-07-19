@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.166",
+		"version": "0.1.167",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.167": {
+				"en": "Fix Backup tab jsonConfig: sendTo uses label (not button); drop invalid showResult.",
+				"de": "Fix Backup-Tab jsonConfig: sendTo mit label (nicht button); ungültiges showResult entfernt."
+			},
 			"0.1.166": {
 				"en": "Backup tab: support package download via Admin files; restore file select/upload/validate/apply in UI.",
 				"de": "Backup-Tab: Support-Paket per Admin-Dateien herunterladen; Restore mit Dateiauswahl/Upload/Validieren/Ausführen."

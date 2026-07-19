@@ -60,6 +60,13 @@ export interface PlannerConstraints {
 	user_intent_battery_hold: boolean;
 	battery_hold_active: boolean;
 	reason_de: string;
+	/** Live battery-for-consumers gate (Operator-sichtbar). */
+	battery_consumer_immersion_allowed: boolean;
+	battery_consumer_immersion_reason_de: string;
+	battery_consumer_climate_allowed: boolean;
+	battery_consumer_climate_reason_de: string;
+	battery_consumer_wallbox_allowed: boolean;
+	battery_consumer_wallbox_reason_de: string;
 }
 
 export interface PlannerIntent {
@@ -95,6 +102,12 @@ export function emptyPlannerIntent(now: Date): PlannerIntent {
 			user_intent_battery_hold: false,
 			battery_hold_active: false,
 			reason_de: "",
+			battery_consumer_immersion_allowed: false,
+			battery_consumer_immersion_reason_de: "",
+			battery_consumer_climate_allowed: false,
+			battery_consumer_climate_reason_de: "",
+			battery_consumer_wallbox_allowed: false,
+			battery_consumer_wallbox_reason_de: "",
 		},
 		global_mode: { active: "balanced", policy_label_de: "" },
 		deficit_w: null,

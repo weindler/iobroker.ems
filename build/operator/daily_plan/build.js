@@ -97,7 +97,6 @@ function buildDailyPlan(input) {
     const horizonSlots = (0, slots_1.buildDailyHorizonSlots)(input.now, input.timezone, SLOT_MINUTES);
     const slots = (0, constraints_1.buildDailyPlanSlots)(horizonSlots, input.forecastPlan.slots, input.effectiveMaxGridImportW, input.configuredHouseFuseLimitW);
     const candidates = (0, allocation_1.buildAllocationCandidates)(input.contributions, input.globalMode, input.energyPriority);
-    const { policySnapshot, constraintSnapshot } = (0, policy_1.resolvePolicySnapshotForPlan)(input.policySnapshot, input.energyPriority, input.mutualExclusions, input.gridImportAllowedPolicy, input.effectiveMaxGridImportW, input.configuredHouseFuseLimitW);
     const allocationResult = (0, allocation_1.runAllocation)({
         slots,
         candidates,
@@ -106,7 +105,10 @@ function buildDailyPlan(input) {
         gridImportAllowedPolicy: input.gridImportAllowedPolicy,
         mutualExclusions: input.mutualExclusions,
         nowMs: input.now.getTime(),
+        batteryConsumerAccess: input.batteryConsumerAccess,
+        batteryDischargeBudgetW: input.batteryDischargeBudgetW ?? null,
     });
+    const { policySnapshot, constraintSnapshot } = (0, policy_1.resolvePolicySnapshotForPlan)(input.policySnapshot, input.energyPriority, input.mutualExclusions, input.gridImportAllowedPolicy, input.effectiveMaxGridImportW, input.configuredHouseFuseLimitW, input.batteryConsumerAccess);
     const dayForecast = input.forecastPlan.days.find((d) => d.date === dateKey) ?? {
         date: dateKey,
         pvEnergyKwh: null,
@@ -182,6 +184,8 @@ function buildDailyPlanFromForecast(now, timezone, globalMode, forecastPlan, pol
         effectiveMaxGridImportW: policy.effectiveMaxGridImportW,
         configuredHouseFuseLimitW: policy.configuredHouseFuseLimitW,
         modePolicy: policy.modePolicy,
+        batteryConsumerAccess: policy.batteryConsumerAccess,
+        batteryDischargeBudgetW: policy.batteryDischargeBudgetW ?? null,
     });
 }
 exports.buildDailyPlanFromForecast = buildDailyPlanFromForecast;
@@ -210,6 +214,7 @@ function dailyPlanRevisionPayload(plan) {
                 allocatedEnergyKwh: a.allocatedEnergyKwh,
                 gridPowerW: a.gridPowerW,
                 pvPowerW: a.pvPowerW,
+                batteryPowerW: a.batteryPowerW,
                 mandatory: a.mandatory,
                 estimatedCostCt: a.estimatedCostCt,
                 reasonDe: a.reasonDe,

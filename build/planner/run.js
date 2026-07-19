@@ -9,6 +9,7 @@ const surplus_1 = require("./rules/surplus");
 const thermal_1 = require("./rules/thermal");
 const cooling_1 = require("./rules/cooling");
 const types_1 = require("./types");
+const battery_consumers_1 = require("../policy/battery_consumers");
 let revision = 0;
 function resetPlannerRevisionForTest() {
     revision = 0;
@@ -17,11 +18,32 @@ exports.resetPlannerRevisionForTest = resetPlannerRevisionForTest;
 function runPlanner(inputs) {
     const surplusW = (0, surplus_1.computePvSurplusW)(inputs.pvPowerW, inputs.houseLoadW);
     const deficitW = (0, battery_1.computeDeficitW)(inputs.pvPowerW, inputs.houseLoadW);
-    const constraints = (0, battery_1.buildPlannerConstraints)({
+    const constraintsHold = (0, battery_1.buildPlannerConstraints)({
         evccBatteryMode: inputs.evccBatteryMode,
         evccBatteryDischargeControl: inputs.evccBatteryDischargeControl,
         userIntentBatteryHold: inputs.userIntentBatteryHold,
     });
+    const batConsumers = (0, battery_consumers_1.batteryConsumersConfigFromAdapter)(inputs.adapterConfig ?? {});
+    const immersionCritical = (0, battery_consumers_1.immersionCriticalNow)(inputs.bufferTempC, inputs.immersionConfig.planningMinTempC, batConsumers.immersion_heater.criticalMarginK);
+    const consumerAccess = (0, battery_consumers_1.resolveAllBatteryConsumerAccess)({
+        config: batConsumers,
+        batteryHoldActive: constraintsHold.battery_hold_active,
+        socPct: inputs.socPct,
+        criticalByConsumer: {
+            immersion_heater: immersionCritical,
+            air_conditioning: null,
+            wallbox: false,
+        },
+    });
+    const constraints = {
+        ...constraintsHold,
+        battery_consumer_immersion_allowed: consumerAccess.immersion_heater.allowed,
+        battery_consumer_immersion_reason_de: consumerAccess.immersion_heater.reasonDe,
+        battery_consumer_climate_allowed: consumerAccess.air_conditioning.allowed,
+        battery_consumer_climate_reason_de: consumerAccess.air_conditioning.reasonDe,
+        battery_consumer_wallbox_allowed: consumerAccess.wallbox.allowed,
+        battery_consumer_wallbox_reason_de: consumerAccess.wallbox.reasonDe,
+    };
     const thermal = (0, thermal_1.planThermal)({
         surplusW,
         bufferTempC: inputs.bufferTempC,
@@ -218,6 +240,12 @@ async function runPlannerTick(host) {
         await (0, state_write_1.setStateIfChanged)(host, "planner.intent.battery.winter.reason_de", w.reason_de);
         await (0, state_write_1.setStateIfChanged)(host, "planner.constraints.evcc_battery_hold", intent.constraints.evcc_battery_hold);
         await (0, state_write_1.setStateIfChanged)(host, "planner.constraints.battery_hold_active", intent.constraints.battery_hold_active);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.constraints.battery_consumer_immersion_allowed", intent.constraints.battery_consumer_immersion_allowed);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.constraints.battery_consumer_immersion_reason_de", intent.constraints.battery_consumer_immersion_reason_de);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.constraints.battery_consumer_climate_allowed", intent.constraints.battery_consumer_climate_allowed);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.constraints.battery_consumer_climate_reason_de", intent.constraints.battery_consumer_climate_reason_de);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.constraints.battery_consumer_wallbox_allowed", intent.constraints.battery_consumer_wallbox_allowed);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.constraints.battery_consumer_wallbox_reason_de", intent.constraints.battery_consumer_wallbox_reason_de);
         await (0, state_write_1.setStateIfChanged)(host, "operator.briefing_de", formatBriefing(intent));
     }
     catch (e) {

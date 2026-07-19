@@ -7,6 +7,11 @@ const mode_policy_1 = require("../../planner/mode_policy");
 const state_write_1 = require("../../policy/core/state_write");
 const build_1 = require("./build");
 const states_1 = require("./states");
+const battery_consumers_1 = require("../../policy/battery_consumers");
+const device_config_1 = require("../../addons/immersion_heater/device_config");
+const state_util_1 = require("../../ems_light/state_util");
+const battery_1 = require("../../planner/rules/battery");
+const ensure_evcc_states_1 = require("../../addons/wallbox/ensure_evcc_states");
 let lastRevisionPayload = "";
 let revision = 0;
 function resetDailyPlanRevisionForTest() {
@@ -81,6 +86,39 @@ async function runDailyPlanTick(host, forecastPlan) {
     const mutualExclusions = Array.isArray(mutualRaw)
         ? mutualRaw
         : adminPolicy.mutualExclusions ?? [];
+    const batConsumers = (0, battery_consumers_1.batteryConsumersConfigFromAdapter)(host.config);
+    const immersionCfg = (0, device_config_1.immersionDeviceConfigFromAdapter)(host.config);
+    const socPct = (0, state_util_1.asNum)((await host.getStateAsync("live.battery.soc_pct"))?.val);
+    const bufferTempC = (0, state_util_1.asNum)((await host.getStateAsync("live.thermal.buffer_temp_c"))?.val);
+    const evccMode = await readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryMode);
+    const evccDischargeRaw = await host.getStateAsync(ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryDischargeControl);
+    const evccDischarge = evccDischargeRaw?.val === true;
+    const batteryIntentRaw = await readStr(host, "user_intent.battery.resolved_json");
+    let userHold = false;
+    if (batteryIntentRaw) {
+        try {
+            const parsed = JSON.parse(batteryIntentRaw);
+            userHold = parsed.operating_request?.value === "hold";
+        }
+        catch {
+            userHold = false;
+        }
+    }
+    const hold = (0, battery_1.buildPlannerConstraints)({
+        evccBatteryMode: evccMode,
+        evccBatteryDischargeControl: evccDischarge,
+        userIntentBatteryHold: userHold,
+    });
+    const consumerAccess = (0, battery_consumers_1.resolveAllBatteryConsumerAccess)({
+        config: batConsumers,
+        batteryHoldActive: hold.battery_hold_active,
+        socPct,
+        criticalByConsumer: {
+            immersion_heater: (0, battery_consumers_1.immersionCriticalNow)(bufferTempC, immersionCfg.planningMinTempC, batConsumers.immersion_heater.criticalMarginK),
+            air_conditioning: null,
+            wallbox: false,
+        },
+    });
     const plan = (0, build_1.buildDailyPlanFromForecast)(now, timezone, modePolicy.mode, forecastPlan, {
         policySnapshot: effectivePolicy,
         energyPriority,
@@ -89,6 +127,8 @@ async function runDailyPlanTick(host, forecastPlan) {
         effectiveMaxGridImportW: policyNumber(effectivePolicy, "maxGridImportW") ?? adminPolicy.maxGridImportW,
         configuredHouseFuseLimitW: policyNumber(effectivePolicy, "houseFuseLimitW") ?? adminPolicy.houseFuseLimitW,
         modePolicy,
+        batteryConsumerAccess: consumerAccess,
+        batteryDischargeBudgetW: batConsumers.maxDischargePowerW,
     });
     const payload = (0, build_1.dailyPlanRevisionPayload)(plan);
     if (payload !== lastRevisionPayload) {

@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.158",
+		"version": "0.1.159",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.159": {
+				"en": "Battery-for-consumers policy (immersion/climate/wallbox): SOC floor, critical-only, EVCC hold visible to Operator.",
+				"de": "Batterie-für-Verbraucher-Policy (Heizstab/Klima/Wallbox): SOC-Boden, nur-kritisch, EVCC-Hold für den Operator sichtbar."
+			},
 			"0.1.158": {
 				"en": "Fix: re-enable Forecast→Daily Plan→Allocation (heater/addons need it). Shadow stays off. Admin Backup tab polished.",
 				"de": "Fix: Forecast→Daily Plan→Allocation wieder aktiv (Heizstab/Add-ons brauchen das). Shadow bleibt aus. Admin Backup-Tab aufgeräumt."

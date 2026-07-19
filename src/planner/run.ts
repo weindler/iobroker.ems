@@ -3,12 +3,17 @@ import type { PlannerHost, PlannerInputs } from "./inputs";
 import { readPlannerInputs } from "./inputs";
 import { buildPlannerConstraints, computeDeficitW, planBattery } from "./rules/battery";
 import { planBatteryWinter } from "./rules/battery_winter";
-import type { PlannerBatteryWinterDecision } from "./types";
+import type { PlannerBatteryWinterDecision, PlannerConstraints } from "./types";
 import { computePvSurplusW } from "./rules/surplus";
 import { planThermal } from "./rules/thermal";
 import { coolingReserveW, planCooling } from "./rules/cooling";
 import type { PlannerIntent } from "./types";
 import { PLANNER_ENGINE_VERSION } from "./types";
+import {
+	batteryConsumersConfigFromAdapter,
+	immersionCriticalNow,
+	resolveAllBatteryConsumerAccess,
+} from "../policy/battery_consumers";
 
 let revision = 0;
 
@@ -19,11 +24,36 @@ export function resetPlannerRevisionForTest(): void {
 export function runPlanner(inputs: PlannerInputs): PlannerIntent {
 	const surplusW = computePvSurplusW(inputs.pvPowerW, inputs.houseLoadW);
 	const deficitW = computeDeficitW(inputs.pvPowerW, inputs.houseLoadW);
-	const constraints = buildPlannerConstraints({
+	const constraintsHold = buildPlannerConstraints({
 		evccBatteryMode: inputs.evccBatteryMode,
 		evccBatteryDischargeControl: inputs.evccBatteryDischargeControl,
 		userIntentBatteryHold: inputs.userIntentBatteryHold,
 	});
+	const batConsumers = batteryConsumersConfigFromAdapter(inputs.adapterConfig ?? {});
+	const immersionCritical = immersionCriticalNow(
+		inputs.bufferTempC,
+		inputs.immersionConfig.planningMinTempC,
+		batConsumers.immersion_heater.criticalMarginK,
+	);
+	const consumerAccess = resolveAllBatteryConsumerAccess({
+		config: batConsumers,
+		batteryHoldActive: constraintsHold.battery_hold_active,
+		socPct: inputs.socPct,
+		criticalByConsumer: {
+			immersion_heater: immersionCritical,
+			air_conditioning: null,
+			wallbox: false,
+		},
+	});
+	const constraints: PlannerConstraints = {
+		...constraintsHold,
+		battery_consumer_immersion_allowed: consumerAccess.immersion_heater.allowed,
+		battery_consumer_immersion_reason_de: consumerAccess.immersion_heater.reasonDe,
+		battery_consumer_climate_allowed: consumerAccess.air_conditioning.allowed,
+		battery_consumer_climate_reason_de: consumerAccess.air_conditioning.reasonDe,
+		battery_consumer_wallbox_allowed: consumerAccess.wallbox.allowed,
+		battery_consumer_wallbox_reason_de: consumerAccess.wallbox.reasonDe,
+	};
 
 	const thermal = planThermal({
 		surplusW,
@@ -228,6 +258,36 @@ export async function runPlannerTick(host: PlannerHost): Promise<PlannerIntent> 
 			host,
 			"planner.constraints.battery_hold_active",
 			intent.constraints.battery_hold_active,
+		);
+		await setStateIfChanged(
+			host,
+			"planner.constraints.battery_consumer_immersion_allowed",
+			intent.constraints.battery_consumer_immersion_allowed,
+		);
+		await setStateIfChanged(
+			host,
+			"planner.constraints.battery_consumer_immersion_reason_de",
+			intent.constraints.battery_consumer_immersion_reason_de,
+		);
+		await setStateIfChanged(
+			host,
+			"planner.constraints.battery_consumer_climate_allowed",
+			intent.constraints.battery_consumer_climate_allowed,
+		);
+		await setStateIfChanged(
+			host,
+			"planner.constraints.battery_consumer_climate_reason_de",
+			intent.constraints.battery_consumer_climate_reason_de,
+		);
+		await setStateIfChanged(
+			host,
+			"planner.constraints.battery_consumer_wallbox_allowed",
+			intent.constraints.battery_consumer_wallbox_allowed,
+		);
+		await setStateIfChanged(
+			host,
+			"planner.constraints.battery_consumer_wallbox_reason_de",
+			intent.constraints.battery_consumer_wallbox_reason_de,
 		);
 		await setStateIfChanged(host, "operator.briefing_de", formatBriefing(intent));
 	} catch (e) {

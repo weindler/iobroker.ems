@@ -87,6 +87,7 @@ function buildAllocationCandidate(c, globalMode, energyPriority) {
     const hasDeadline = c.deadlineIso !== null && c.deadlineIso.trim().length > 0;
     const pvFirst = contributionId === contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE || c.details.pvFirst === true;
     const gridEligible = c.gridEligible && !pvFirst;
+    const batteryEligible = c.details.batteryEligible === true;
     let allocatable = true;
     let allocationStatus = "allocated";
     let reasonDe = c.reasonDe || c.quality.reasonDe;
@@ -129,6 +130,7 @@ function buildAllocationCandidate(c, globalMode, energyPriority) {
         deadlineIso: c.deadlineIso,
         gridEligible,
         pvFirst,
+        batteryEligible,
         maxPowerW: maxPowerFromContribution(c),
         requiredEnergyKwh: requiredEnergyFromContribution(c),
         priorityRank: c.priorityBand ?? null,
@@ -168,7 +170,7 @@ function gridImportEffective(slotImportAllowed, policyAllowed, modeAllowsOptimiz
     return slotImportAllowed;
 }
 exports.gridImportEffective = gridImportEffective;
-function resolvePolicySnapshotForPlan(policySnapshot, energyPriority, mutualExclusions, gridImportAllowedPolicy, effectiveMaxGridImportW, configuredHouseFuseLimitW) {
+function resolvePolicySnapshotForPlan(policySnapshot, energyPriority, mutualExclusions, gridImportAllowedPolicy, effectiveMaxGridImportW, configuredHouseFuseLimitW, batteryConsumerAccess) {
     return {
         policySnapshot: {
             energyPriority,
@@ -181,6 +183,18 @@ function resolvePolicySnapshotForPlan(policySnapshot, energyPriority, mutualExcl
             effectiveMaxGridImportW,
             configuredHouseFuseLimitW,
             mutualExclusions,
+            batteryConsumers: batteryConsumerAccess
+                ? Object.fromEntries(Object.entries(batteryConsumerAccess).map(([k, v]) => [
+                    k,
+                    v
+                        ? {
+                            allowed: v.allowed,
+                            reasonDe: v.reasonDe,
+                            minSocPct: v.minSocPct,
+                        }
+                        : null,
+                ]))
+                : {},
         },
     };
 }

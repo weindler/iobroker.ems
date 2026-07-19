@@ -51,6 +51,7 @@ function baseInputs(overrides = {}) {
         snowCoverSuspected: false,
         batteryAiAllowed: false,
         batteryWinterPriceSlots: [],
+        adapterConfig: {},
         ...overrides,
     };
 }

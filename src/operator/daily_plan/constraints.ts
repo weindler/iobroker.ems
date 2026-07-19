@@ -73,8 +73,10 @@ export function mergeForecastIntoDailySlot(
 		allocatedFlexiblePowerW: 0,
 		allocatedPvPowerW: 0,
 		allocatedGridPowerW: 0,
+		allocatedBatteryPowerW: 0,
 		remainingPvSurplusPowerW: pvSurplus,
 		remainingGridImportPowerWAfterAlloc: gridRemaining,
+		remainingBatteryDischargePowerW: null,
 		allocations: [],
 		quality: operatorQuality(
 			pvSurplus === null && gridRemaining === null ? "degraded" : "valid",

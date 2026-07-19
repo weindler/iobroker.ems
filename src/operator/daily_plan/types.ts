@@ -4,10 +4,11 @@ import type {
 	OperatorTimeSlot,
 	PlanContribution,
 } from "../types";
+import type { BatteryConsumerAccess, BatteryConsumerId } from "../../policy/battery_consumers";
 
 export type DailyPlanStatus = "ready" | "degraded" | "missing_inputs" | "disabled" | "error";
 
-export type AllocationEnergySource = "pv_surplus" | "grid" | "mixed" | "none";
+export type AllocationEnergySource = "pv_surplus" | "grid" | "battery" | "mixed" | "none";
 
 export type AllocationStatus =
 	| "allocated"
@@ -35,6 +36,8 @@ export interface DailyAllocationEntry {
 
 	gridPowerW: number;
 	pvPowerW: number;
+	/** House-battery share; optional in older fixtures → treat as 0. */
+	batteryPowerW?: number;
 
 	mandatory: boolean;
 	priorityRank: number | null;
@@ -63,9 +66,11 @@ export interface DailyPlanSlot {
 	allocatedFlexiblePowerW: number;
 	allocatedPvPowerW: number;
 	allocatedGridPowerW: number;
+	allocatedBatteryPowerW: number;
 
 	remainingPvSurplusPowerW: number | null;
 	remainingGridImportPowerWAfterAlloc: number | null;
+	remainingBatteryDischargePowerW: number | null;
 
 	allocations: DailyAllocationEntry[];
 
@@ -147,6 +152,8 @@ export interface AllocationCandidate {
 	deadlineIso: string | null;
 	gridEligible: boolean;
 	pvFirst: boolean;
+	/** May draw house-battery energy when Operator gate allows. */
+	batteryEligible: boolean;
 	maxPowerW: number | null;
 	requiredEnergyKwh: number | null;
 	priorityRank: number | null;
@@ -190,4 +197,6 @@ export type DailyPlanBuildInput = {
 		mode: string;
 		allowOptimization: boolean;
 	};
+	batteryConsumerAccess?: Partial<Record<BatteryConsumerId, BatteryConsumerAccess>>;
+	batteryDischargeBudgetW?: number | null;
 };

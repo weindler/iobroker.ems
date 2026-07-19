@@ -2026,6 +2026,143 @@
 					"xl": 12,
 					"hidden": "data.battery_profile !== 'sonnen_em'"
 				},
+				"hBatConsumers": {
+					"type": "header",
+					"size": 2,
+					"text": "Batterie für Verbraucher (Operator)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"batConsumersIntro": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Gemeinsamer Contract für Heizstab, Klima und Wallbox. Der Operator sieht Hold (EVCC/Intent) und gibt Batterieenergie nur frei, wenn Policy und SOC-Boden es erlauben — kein Gegeneinanderschreiben mit EVCC. Live-Status: planner.constraints.battery_consumer_*_allowed / reason_de."
+				},
+				"bat_consumer_max_discharge_w": {
+					"type": "number",
+					"label": "Max. Entladeleistung für Verbraucher (W, optional)",
+					"min": 0,
+					"max": 20000,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"bat_consumer_immersion_may_use_battery": {
+					"type": "checkbox",
+					"label": "Heizstab darf Batterie nutzen",
+					"default": false,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"bat_consumer_immersion_only_when_critical": {
+					"type": "checkbox",
+					"label": "Heizstab: nur wenn Puffer kritisch",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"bat_consumer_immersion_min_soc_pct": {
+					"type": "number",
+					"label": "Heizstab: SOC-Boden (%)",
+					"min": 0,
+					"max": 100,
+					"default": 50,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"bat_consumer_immersion_critical_margin_k": {
+					"type": "number",
+					"label": "Heizstab: Kritisch-Marge über Min (K)",
+					"min": 0,
+					"max": 20,
+					"default": 2,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"bat_consumer_climate_may_use_battery": {
+					"type": "checkbox",
+					"label": "Klima darf Batterie nutzen",
+					"default": false,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"bat_consumer_climate_only_when_critical": {
+					"type": "checkbox",
+					"label": "Klima: nur wenn kritisch",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"bat_consumer_climate_min_soc_pct": {
+					"type": "number",
+					"label": "Klima: SOC-Boden (%)",
+					"min": 0,
+					"max": 100,
+					"default": 50,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"bat_consumer_wallbox_may_use_battery": {
+					"type": "checkbox",
+					"label": "Wallbox darf Batterie nutzen (EMS-Allocation)",
+					"default": false,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"bat_consumer_wallbox_min_soc_pct": {
+					"type": "number",
+					"label": "Wallbox: SOC-Boden (%)",
+					"min": 0,
+					"max": 100,
+					"default": 50,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"batConsumersHint": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Standard: alles aus. Bei EVCC-Hold oder SOC ≤ Boden kein Batteriezugriff. Heizstab „nur kritisch“ = Puffer ≤ Planungs-Min + Marge."
+				},
 				"hBatDiagnostics": {
 					"type": "header",
 					"size": 2,

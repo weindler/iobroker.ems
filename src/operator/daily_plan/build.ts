@@ -128,15 +128,6 @@ export function buildDailyPlan(input: DailyPlanBuildInput): DailyPlan {
 		input.energyPriority,
 	);
 
-	const { policySnapshot, constraintSnapshot } = resolvePolicySnapshotForPlan(
-		input.policySnapshot,
-		input.energyPriority,
-		input.mutualExclusions,
-		input.gridImportAllowedPolicy,
-		input.effectiveMaxGridImportW,
-		input.configuredHouseFuseLimitW,
-	);
-
 	const allocationResult = runAllocation({
 		slots,
 		candidates,
@@ -145,7 +136,19 @@ export function buildDailyPlan(input: DailyPlanBuildInput): DailyPlan {
 		gridImportAllowedPolicy: input.gridImportAllowedPolicy,
 		mutualExclusions: input.mutualExclusions,
 		nowMs: input.now.getTime(),
+		batteryConsumerAccess: input.batteryConsumerAccess,
+		batteryDischargeBudgetW: input.batteryDischargeBudgetW ?? null,
 	});
+
+	const { policySnapshot, constraintSnapshot } = resolvePolicySnapshotForPlan(
+		input.policySnapshot,
+		input.energyPriority,
+		input.mutualExclusions,
+		input.gridImportAllowedPolicy,
+		input.effectiveMaxGridImportW,
+		input.configuredHouseFuseLimitW,
+		input.batteryConsumerAccess,
+	);
 
 	const dayForecast =
 		input.forecastPlan.days.find((d) => d.date === dateKey) ?? {
@@ -225,6 +228,8 @@ export function buildDailyPlanFromForecast(
 		effectiveMaxGridImportW: number | null;
 		configuredHouseFuseLimitW: number | null;
 		modePolicy: { mode: string; allowOptimization: boolean };
+		batteryConsumerAccess?: DailyPlanBuildInput["batteryConsumerAccess"];
+		batteryDischargeBudgetW?: number | null;
 	},
 ): DailyPlan {
 	return buildDailyPlan({
@@ -252,6 +257,8 @@ export function buildDailyPlanFromForecast(
 		effectiveMaxGridImportW: policy.effectiveMaxGridImportW,
 		configuredHouseFuseLimitW: policy.configuredHouseFuseLimitW,
 		modePolicy: policy.modePolicy,
+		batteryConsumerAccess: policy.batteryConsumerAccess,
+		batteryDischargeBudgetW: policy.batteryDischargeBudgetW ?? null,
 	});
 }
 
@@ -280,6 +287,7 @@ export function dailyPlanRevisionPayload(plan: DailyPlan): string {
 				allocatedEnergyKwh: a.allocatedEnergyKwh,
 				gridPowerW: a.gridPowerW,
 				pvPowerW: a.pvPowerW,
+				batteryPowerW: a.batteryPowerW,
 				mandatory: a.mandatory,
 				estimatedCostCt: a.estimatedCostCt,
 				reasonDe: a.reasonDe,

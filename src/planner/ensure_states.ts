@@ -69,6 +69,36 @@ export async function ensurePlannerStates(
 		strState("planner.intent.battery.reason_de", "Planner Batterie Begründung", ""),
 		boolState("planner.constraints.evcc_battery_hold", "Planner EVCC Batterie-Hold", false),
 		boolState("planner.constraints.battery_hold_active", "Planner Batterie-Hold gesamt", false),
+		boolState(
+			"planner.constraints.battery_consumer_immersion_allowed",
+			"Batterie für Heizstab jetzt erlaubt",
+			false,
+		),
+		strState(
+			"planner.constraints.battery_consumer_immersion_reason_de",
+			"Batterie Heizstab Begründung",
+			"",
+		),
+		boolState(
+			"planner.constraints.battery_consumer_climate_allowed",
+			"Batterie für Klima jetzt erlaubt",
+			false,
+		),
+		strState(
+			"planner.constraints.battery_consumer_climate_reason_de",
+			"Batterie Klima Begründung",
+			"",
+		),
+		boolState(
+			"planner.constraints.battery_consumer_wallbox_allowed",
+			"Batterie für Wallbox jetzt erlaubt",
+			false,
+		),
+		strState(
+			"planner.constraints.battery_consumer_wallbox_reason_de",
+			"Batterie Wallbox Begründung",
+			"",
+		),
 	];
 
 	if (includeThermal) {

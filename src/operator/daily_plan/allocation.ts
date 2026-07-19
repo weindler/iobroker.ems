@@ -20,6 +20,8 @@ import {
 	powerWFromEnergyKwh,
 	slotsUntilDeadline,
 } from "./slots";
+import { batteryConsumerIdFromAddon } from "../../policy/battery_consumers";
+import type { BatteryConsumerAccess, BatteryConsumerId } from "../../policy/battery_consumers";
 
 const SLOT_MINUTES = 15;
 
@@ -58,6 +60,7 @@ function createAllocationEntry(
 	allocatedPowerW: number,
 	pvPowerW: number,
 	gridPowerW: number,
+	batteryPowerW: number,
 	status: AllocationStatus,
 	energySource: AllocationEnergySource,
 	reasonDe: string,
@@ -80,6 +83,7 @@ function createAllocationEntry(
 		allocatedEnergyKwh,
 		gridPowerW,
 		pvPowerW,
+		batteryPowerW,
 		mandatory: candidate.mandatory,
 		priorityRank: candidate.priorityRank,
 		deadlineIso: candidate.deadlineIso,
@@ -93,6 +97,7 @@ function applyAllocationToSlot(slot: DailyPlanSlot, entry: DailyAllocationEntry)
 	slot.allocatedFlexiblePowerW += entry.allocatedPowerW ?? 0;
 	slot.allocatedPvPowerW += entry.pvPowerW;
 	slot.allocatedGridPowerW += entry.gridPowerW;
+	slot.allocatedBatteryPowerW += entry.batteryPowerW ?? 0;
 	if (slot.remainingPvSurplusPowerW !== null) {
 		slot.remainingPvSurplusPowerW = Math.max(0, slot.remainingPvSurplusPowerW - entry.pvPowerW);
 	}
@@ -100,6 +105,12 @@ function applyAllocationToSlot(slot: DailyPlanSlot, entry: DailyAllocationEntry)
 		slot.remainingGridImportPowerWAfterAlloc = Math.max(
 			0,
 			slot.remainingGridImportPowerWAfterAlloc - entry.gridPowerW,
+		);
+	}
+	if (slot.remainingBatteryDischargePowerW !== null) {
+		slot.remainingBatteryDischargePowerW = Math.max(
+			0,
+			slot.remainingBatteryDischargePowerW - (entry.batteryPowerW ?? 0),
 		);
 	}
 }
@@ -128,6 +139,7 @@ function tryAllocateInSlot(
 	gridAddonIds: Map<string, string>,
 	mutualExclusions: Array<{ addonA: string; addonB: string }>,
 	forceMinPowerW: number | null,
+	batteryAllowedForCandidate: boolean,
 ): DailyAllocationEntry | null {
 	if (remaining.remainingKwh <= 0) return null;
 
@@ -138,12 +150,24 @@ function tryAllocateInSlot(
 
 	let pvW = 0;
 	let gridW = 0;
+	let batteryW = 0;
 
 	if (slot.remainingPvSurplusPowerW !== null && slot.remainingPvSurplusPowerW > 0) {
 		pvW = Math.min(targetW, slot.remainingPvSurplusPowerW);
 	}
 
-	const rest = targetW - pvW;
+	let rest = targetW - pvW;
+	if (
+		candidate.batteryEligible &&
+		batteryAllowedForCandidate &&
+		rest > 0 &&
+		slot.remainingBatteryDischargePowerW !== null &&
+		slot.remainingBatteryDischargePowerW > 0
+	) {
+		batteryW = Math.min(rest, slot.remainingBatteryDischargePowerW);
+		rest -= batteryW;
+	}
+
 	if (
 		candidate.gridEligible &&
 		!candidate.pvFirst &&
@@ -156,13 +180,24 @@ function tryAllocateInSlot(
 		gridW = Math.min(rest, slot.remainingGridImportPowerWAfterAlloc);
 	}
 
-	const allocatedW = pvW + gridW;
+	const allocatedW = pvW + gridW + batteryW;
 	if (allocatedW <= 0) return null;
 
+	const sources = [pvW > 0, gridW > 0, batteryW > 0].filter(Boolean).length;
 	let energySource: AllocationEnergySource = "none";
-	if (pvW > 0 && gridW > 0) energySource = "mixed";
+	if (sources > 1) energySource = "mixed";
 	else if (pvW > 0) energySource = "pv_surplus";
+	else if (batteryW > 0) energySource = "battery";
 	else if (gridW > 0) energySource = "grid";
+
+	const reasonDe =
+		energySource === "pv_surplus"
+			? "PV-Überschuss zugewiesen."
+			: energySource === "battery"
+				? "Hausbatterie zugewiesen (Policy/Operator)."
+				: energySource === "grid"
+					? "Netzenergie zugewiesen."
+					: "Gemischte Zuweisung (PV/Batterie/Netz).";
 
 	const entry = createAllocationEntry(
 		candidate,
@@ -170,13 +205,10 @@ function tryAllocateInSlot(
 		allocatedW,
 		pvW,
 		gridW,
+		batteryW,
 		"allocated",
 		energySource,
-		energySource === "pv_surplus"
-			? "PV-Überschuss zugewiesen."
-			: energySource === "grid"
-				? "Netzenergie zugewiesen."
-				: "Gemischte Zuweisung.",
+		reasonDe,
 		remaining.requestedKwh,
 	);
 
@@ -193,6 +225,10 @@ export interface RunAllocationInput {
 	gridImportAllowedPolicy: boolean | null;
 	mutualExclusions: Array<{ id: string; addonA: string; addonB: string; reason?: string }>;
 	nowMs: number;
+	/** Live Operator gate per consumer; missing → no battery. */
+	batteryConsumerAccess?: Partial<Record<BatteryConsumerId, BatteryConsumerAccess>>;
+	/** Shared discharge budget per slot (W); null → no battery allocation. */
+	batteryDischargeBudgetW?: number | null;
 }
 
 export interface RunAllocationResult {
@@ -201,12 +237,28 @@ export interface RunAllocationResult {
 	unallocated: DailyPlanUnallocated[];
 }
 
+function batteryAllowedForCandidate(
+	candidate: AllocationCandidate,
+	access: Partial<Record<BatteryConsumerId, BatteryConsumerAccess>> | undefined,
+): boolean {
+	if (!candidate.batteryEligible) return false;
+	const id = batteryConsumerIdFromAddon(candidate.addonId);
+	if (!id || !access) return false;
+	return access[id]?.allowed === true;
+}
+
 export function runAllocation(input: RunAllocationInput): RunAllocationResult {
+	const budget =
+		input.batteryDischargeBudgetW !== undefined && input.batteryDischargeBudgetW !== null
+			? Math.max(0, Math.round(input.batteryDischargeBudgetW))
+			: null;
 	const slots = input.slots.map((s) => ({
 		...s,
 		allocations: [...s.allocations],
 		remainingPvSurplusPowerW: s.remainingPvSurplusPowerW,
 		remainingGridImportPowerWAfterAlloc: s.remainingGridImportPowerWAfterAlloc,
+		remainingBatteryDischargePowerW: budget,
+		allocatedBatteryPowerW: 0,
 	}));
 
 	const allEntries: DailyAllocationEntry[] = [];
@@ -252,6 +304,8 @@ export function runAllocation(input: RunAllocationInput): RunAllocationResult {
 			input.globalMode,
 		);
 
+	const batOk = (c: AllocationCandidate) => batteryAllowedForCandidate(c, input.batteryConsumerAccess);
+
 	for (const candidate of mandatory) {
 		const rem = remainingById.get(candidate.contributionId);
 		if (!rem) continue;
@@ -265,6 +319,7 @@ export function runAllocation(input: RunAllocationInput): RunAllocationResult {
 				gridAddonIdsInSlot(slot, input.mutualExclusions),
 				input.mutualExclusions,
 				null,
+				batOk(candidate),
 			);
 			if (entry) allEntries.push(entry);
 		}
@@ -304,6 +359,7 @@ export function runAllocation(input: RunAllocationInput): RunAllocationResult {
 				gridAddonIdsInSlot(slot, input.mutualExclusions),
 				input.mutualExclusions,
 				minW,
+				batOk(candidate),
 			);
 			if (entry) allEntries.push(entry);
 		}
@@ -312,7 +368,6 @@ export function runAllocation(input: RunAllocationInput): RunAllocationResult {
 	for (const candidate of flexible) {
 		const rem = remainingById.get(candidate.contributionId);
 		if (!rem) continue;
-
 		const orderedSlots = candidate.gridEligible
 			? [...slots].sort((a, b) => {
 					const pa = a.gridPriceCtPerKwh ?? 9999;
@@ -320,7 +375,6 @@ export function runAllocation(input: RunAllocationInput): RunAllocationResult {
 					return pa - pb || a.slot.startIso.localeCompare(b.slot.startIso);
 				})
 			: slots;
-
 		for (const slot of orderedSlots) {
 			if (rem.remainingKwh <= 0) break;
 			const entry = tryAllocateInSlot(
@@ -331,6 +385,7 @@ export function runAllocation(input: RunAllocationInput): RunAllocationResult {
 				gridAddonIdsInSlot(slot, input.mutualExclusions),
 				input.mutualExclusions,
 				null,
+				batOk(candidate),
 			);
 			if (entry) allEntries.push(entry);
 		}
@@ -353,9 +408,13 @@ export function runAllocation(input: RunAllocationInput): RunAllocationResult {
 		const allocated = round3((rem.requestedKwh ?? 0) - rem.remainingKwh);
 		if (rem.remainingKwh > 0.001) {
 			let reason = "Bedarf nicht vollständig zuweisbar.";
-			if (c.pvFirst) reason = "PV-first — kein ausreichender PV-Überschuss in belastbaren Slots.";
-			else if (!c.gridEligible) reason = "Netzbezug für diesen Beitrag nicht freigegeben.";
-			else if (slots.every((s) => s.availablePvSurplusPowerW === null)) {
+			if (c.pvFirst && !c.batteryEligible) {
+				reason = "PV-first — kein ausreichender PV-Überschuss in belastbaren Slots.";
+			} else if (c.pvFirst && c.batteryEligible) {
+				reason = "PV/Batterie-Budget reicht nicht für den Bedarf.";
+			} else if (!c.gridEligible) {
+				reason = "Netzbezug für diesen Beitrag nicht freigegeben.";
+			} else if (slots.every((s) => s.availablePvSurplusPowerW === null)) {
 				reason = "Kein zeitaufgelöster PV-Forecast — PV-Allocation nicht möglich.";
 			}
 			unallocated.push({

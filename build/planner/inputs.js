@@ -170,6 +170,7 @@ async function readPlannerInputs(host) {
         snowCoverSuspected: snowCover === true,
         batteryAiAllowed: batteryAiAllowed === true,
         batteryWinterPriceSlots,
+        adapterConfig: host.config ?? {},
     };
 }
 exports.readPlannerInputs = readPlannerInputs;

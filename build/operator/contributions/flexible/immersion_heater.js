@@ -61,6 +61,7 @@ function buildImmersionMandatoryContribution(input) {
             maxPowerW: maxW,
             thermalMode: input.thermalMode,
             mandatory: true,
+            batteryEligible: true,
         },
         slots: [],
     });
@@ -126,6 +127,7 @@ function buildImmersionFlexibleContribution(input) {
             pvFirst: true,
             forecastActive: target.forecastActive,
             minimumRuntimeSec: input.config.minimumRuntimeSec,
+            batteryEligible: true,
         },
         slots: [],
     });

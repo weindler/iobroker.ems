@@ -62,6 +62,8 @@ export interface PlannerInputs {
 	snowCoverSuspected: boolean;
 	batteryAiAllowed: boolean;
 	batteryWinterPriceSlots: Price15MinSlot[];
+	/** Raw adapter config for policy modules (battery consumers, …). */
+	adapterConfig: unknown;
 }
 
 export type PlannerHost = StateHost & {
@@ -230,6 +232,7 @@ export async function readPlannerInputs(host: PlannerHost): Promise<PlannerInput
 		snowCoverSuspected: snowCover === true,
 		batteryAiAllowed: batteryAiAllowed === true,
 		batteryWinterPriceSlots,
+		adapterConfig: host.config ?? {},
 	};
 }
 

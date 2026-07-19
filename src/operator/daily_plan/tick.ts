@@ -8,6 +8,15 @@ import { buildDailyPlanFromForecast, dailyPlanRevisionPayload } from "./build";
 import { ALLOCATION_ADDON_STATE_IDS, DAILY_PLAN_STATE_IDS } from "./states";
 import type { DailyPlan } from "./types";
 import type { ContributionsReadHost } from "../contributions/read";
+import {
+	batteryConsumersConfigFromAdapter,
+	immersionCriticalNow,
+	resolveAllBatteryConsumerAccess,
+} from "../../policy/battery_consumers";
+import { immersionDeviceConfigFromAdapter } from "../../addons/immersion_heater/device_config";
+import { asNum } from "../../ems_light/state_util";
+import { buildPlannerConstraints } from "../../planner/rules/battery";
+import { WALLBOX_EVCC_STATES } from "../../addons/wallbox/ensure_evcc_states";
 
 let lastRevisionPayload = "";
 let revision = 0;
@@ -92,6 +101,43 @@ export async function runDailyPlanTick(
 		? (mutualRaw as Array<{ id: string; addonA: string; addonB: string; reason?: string }>)
 		: adminPolicy.mutualExclusions ?? [];
 
+	const batConsumers = batteryConsumersConfigFromAdapter(host.config);
+	const immersionCfg = immersionDeviceConfigFromAdapter(host.config);
+	const socPct = asNum((await host.getStateAsync("live.battery.soc_pct"))?.val);
+	const bufferTempC = asNum((await host.getStateAsync("live.thermal.buffer_temp_c"))?.val);
+	const evccMode = await readStr(host, WALLBOX_EVCC_STATES.batteryMode);
+	const evccDischargeRaw = await host.getStateAsync(WALLBOX_EVCC_STATES.batteryDischargeControl);
+	const evccDischarge = evccDischargeRaw?.val === true;
+	const batteryIntentRaw = await readStr(host, "user_intent.battery.resolved_json");
+	let userHold = false;
+	if (batteryIntentRaw) {
+		try {
+			const parsed = JSON.parse(batteryIntentRaw) as { operating_request?: { value?: string } };
+			userHold = parsed.operating_request?.value === "hold";
+		} catch {
+			userHold = false;
+		}
+	}
+	const hold = buildPlannerConstraints({
+		evccBatteryMode: evccMode,
+		evccBatteryDischargeControl: evccDischarge,
+		userIntentBatteryHold: userHold,
+	});
+	const consumerAccess = resolveAllBatteryConsumerAccess({
+		config: batConsumers,
+		batteryHoldActive: hold.battery_hold_active,
+		socPct,
+		criticalByConsumer: {
+			immersion_heater: immersionCriticalNow(
+				bufferTempC,
+				immersionCfg.planningMinTempC,
+				batConsumers.immersion_heater.criticalMarginK,
+			),
+			air_conditioning: null,
+			wallbox: false,
+		},
+	});
+
 	const plan = buildDailyPlanFromForecast(now, timezone, modePolicy.mode, forecastPlan, {
 		policySnapshot: effectivePolicy as unknown as Record<string, unknown> | null,
 		energyPriority,
@@ -102,6 +148,8 @@ export async function runDailyPlanTick(
 		configuredHouseFuseLimitW:
 			policyNumber(effectivePolicy, "houseFuseLimitW") ?? adminPolicy.houseFuseLimitW,
 		modePolicy,
+		batteryConsumerAccess: consumerAccess,
+		batteryDischargeBudgetW: batConsumers.maxDischargePowerW,
 	});
 
 	const payload = dailyPlanRevisionPayload(plan);

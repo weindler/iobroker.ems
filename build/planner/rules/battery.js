@@ -21,6 +21,12 @@ function buildPlannerConstraints(input) {
         reason_de: batteryHoldActive
             ? `Hausbatterie gesperrt: ${parts.join(", ")}.`
             : "Keine EVCC-/Intent-Sperre.",
+        battery_consumer_immersion_allowed: false,
+        battery_consumer_immersion_reason_de: "",
+        battery_consumer_climate_allowed: false,
+        battery_consumer_climate_reason_de: "",
+        battery_consumer_wallbox_allowed: false,
+        battery_consumer_wallbox_reason_de: "",
     };
 }
 exports.buildPlannerConstraints = buildPlannerConstraints;

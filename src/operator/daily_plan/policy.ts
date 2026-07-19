@@ -107,6 +107,7 @@ export function buildAllocationCandidate(
 	const pvFirst =
 		contributionId === CONTRIBUTION_IDS.IMMERSION_FLEXIBLE || c.details.pvFirst === true;
 	const gridEligible = c.gridEligible && !pvFirst;
+	const batteryEligible = c.details.batteryEligible === true;
 
 	let allocatable = true;
 	let allocationStatus: AllocationCandidate["allocationStatus"] = "allocated";
@@ -150,6 +151,7 @@ export function buildAllocationCandidate(
 		deadlineIso: c.deadlineIso,
 		gridEligible,
 		pvFirst,
+		batteryEligible,
 		maxPowerW: maxPowerFromContribution(c),
 		requiredEnergyKwh: requiredEnergyFromContribution(c),
 		priorityRank: c.priorityBand ?? null,
@@ -194,6 +196,9 @@ export function resolvePolicySnapshotForPlan(
 	gridImportAllowedPolicy: boolean | null,
 	effectiveMaxGridImportW: number | null,
 	configuredHouseFuseLimitW: number | null,
+	batteryConsumerAccess?: Partial<
+		Record<string, { allowed: boolean; reasonDe: string; minSocPct: number | null }>
+	>,
 ): { policySnapshot: Record<string, unknown>; constraintSnapshot: Record<string, unknown> } {
 	return {
 		policySnapshot: {
@@ -207,6 +212,20 @@ export function resolvePolicySnapshotForPlan(
 			effectiveMaxGridImportW,
 			configuredHouseFuseLimitW,
 			mutualExclusions,
+			batteryConsumers: batteryConsumerAccess
+				? Object.fromEntries(
+						Object.entries(batteryConsumerAccess).map(([k, v]) => [
+							k,
+							v
+								? {
+										allowed: v.allowed,
+										reasonDe: v.reasonDe,
+										minSocPct: v.minSocPct,
+									}
+								: null,
+						]),
+					)
+				: {},
 		},
 	};
 }

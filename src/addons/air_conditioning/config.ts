@@ -66,6 +66,18 @@ export function acCleaningAfterPurpose(
 	}
 }
 
+/** Geschätzte elektrische Leistung: Dry ~ Hälfte von Cool (kein separates Admin-Feld). */
+export function acEstimatedPowerForPurpose(
+	unit: AcUnitConfig,
+	purpose: AcUnitModePurpose | null | undefined,
+): number {
+	const base = unit.estimatedPowerW;
+	if (purpose === "dehumidify") {
+		return Math.max(0, Math.round(base / 2));
+	}
+	return base;
+}
+
 function effectiveEstimatedPowerW(c: Record<string, unknown>, key: string, def: number): number {
 	const n = numField(c, key, def);
 	return n > 0 ? n : def;

@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.161",
+		"version": "0.1.162",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.162": {
+				"en": "AC: dry mode uses half the configured cool power estimate for runtime stats.",
+				"de": "Klima: Dry nutzt für Runtime-Stats die Hälfte der konfigurierten Kühl-Leistungsschätzung."
+			},
 			"0.1.161": {
 				"en": "AC admin: Cool/Dry/Heat/Clean sections; humidity off hysteresis; clean-after checkboxes per mode (heat default off).",
 				"de": "Klima-Admin: Abschnitte Kühlen/Trocknen/Heizen/Reinigung; Feuchte-Aus-Hysterese; Reinigungs-Haken pro Modus (Heizen standardmäßig aus)."

@@ -26,7 +26,7 @@ import {
 	AC_WATCH_MAPPING_ROLES,
 } from "../constants";
 import { configuredAcUnitIndexes } from "../configured";
-import { acCleaningAfterPurpose, acGlobalConfigFromAdapter, acModeCommandEnabled } from "../config";
+import { acCleaningAfterPurpose, acEstimatedPowerForPurpose, acGlobalConfigFromAdapter, acModeCommandEnabled } from "../config";
 import type { AcUnitConfig } from "../types";
 import { getAcProfile } from "../profiles/registry";
 import { modeStringsForPurpose, optionalStep } from "../profiles/types";
@@ -597,7 +597,11 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 			closeAcUnitStatsSession(up, nowMs);
 		}
 		const estPower = deviceActive
-			? allocatedPowerW(runningCount || 1, config.outdoorMaxPowerW, unit.estimatedPowerW)
+			? allocatedPowerW(
+					runningCount || 1,
+					config.outdoorMaxPowerW,
+					acEstimatedPowerForPurpose(unit, fsm.modePurpose),
+				)
 			: 0;
 		await setStateIfChanged(host, ids.state, fsm.state);
 		await setStateIfChanged(host, ids.reasonDe, permission.reasonDe);

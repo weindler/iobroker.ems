@@ -2999,14 +2999,15 @@
 				},
 				"ac_u1_estimated_power_w": {
 					"type": "number",
-					"label": "Geschätzte Leistung (W)",
+					"label": "Geschätzte Leistung Kühlen (W)",
 					"default": 800,
 					"min": 0,
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Elektrische Leistung im Kühlbetrieb (W). Beim Trocknen rechnet EMS mit der Hälfte."
 				},
 				"hAcU1Cool": {
 					"type": "header",
@@ -3787,14 +3788,15 @@
 				},
 				"ac_u2_estimated_power_w": {
 					"type": "number",
-					"label": "Geschätzte Leistung (W)",
+					"label": "Geschätzte Leistung Kühlen (W)",
 					"default": 650,
 					"min": 0,
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Elektrische Leistung im Kühlbetrieb (W). Beim Trocknen rechnet EMS mit der Hälfte."
 				},
 				"hAcU2Cool": {
 					"type": "header",
@@ -4575,14 +4577,15 @@
 				},
 				"ac_u3_estimated_power_w": {
 					"type": "number",
-					"label": "Geschätzte Leistung (W)",
+					"label": "Geschätzte Leistung Kühlen (W)",
 					"default": 700,
 					"min": 0,
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Elektrische Leistung im Kühlbetrieb (W). Beim Trocknen rechnet EMS mit der Hälfte."
 				},
 				"hAcU3Cool": {
 					"type": "header",
@@ -5352,14 +5355,15 @@
 				},
 				"ac_u4_estimated_power_w": {
 					"type": "number",
-					"label": "Geschätzte Leistung (W)",
+					"label": "Geschätzte Leistung Kühlen (W)",
 					"default": 700,
 					"min": 0,
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Elektrische Leistung im Kühlbetrieb (W). Beim Trocknen rechnet EMS mit der Hälfte."
 				},
 				"hAcU4Cool": {
 					"type": "header",
@@ -6129,14 +6133,15 @@
 				},
 				"ac_u5_estimated_power_w": {
 					"type": "number",
-					"label": "Geschätzte Leistung (W)",
+					"label": "Geschätzte Leistung Kühlen (W)",
 					"default": 700,
 					"min": 0,
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
 					"lg": 3,
-					"xl": 3
+					"xl": 3,
+					"help": "Elektrische Leistung im Kühlbetrieb (W). Beim Trocknen rechnet EMS mit der Hälfte."
 				},
 				"hAcU5Cool": {
 					"type": "header",

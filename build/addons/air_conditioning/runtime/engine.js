@@ -418,7 +418,7 @@ async function runAcRuntimeTickBody(host) {
             (0, stats_active_1.closeAcUnitStatsSession)(up, nowMs);
         }
         const estPower = deviceActive
-            ? allocatedPowerW(runningCount || 1, config.outdoorMaxPowerW, unit.estimatedPowerW)
+            ? allocatedPowerW(runningCount || 1, config.outdoorMaxPowerW, (0, config_1.acEstimatedPowerForPurpose)(unit, fsm.modePurpose))
             : 0;
         await (0, state_write_1.setStateIfChanged)(host, ids.state, fsm.state);
         await (0, state_write_1.setStateIfChanged)(host, ids.reasonDe, permission.reasonDe);

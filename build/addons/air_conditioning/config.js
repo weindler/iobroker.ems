@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.acEnabledUnits = exports.acGlobalConfigFromAdapter = exports.acUnitConfigFromAdapter = exports.acCleaningAfterPurpose = exports.acModeCommandEnabled = void 0;
+exports.acEnabledUnits = exports.acGlobalConfigFromAdapter = exports.acUnitConfigFromAdapter = exports.acEstimatedPowerForPurpose = exports.acCleaningAfterPurpose = exports.acModeCommandEnabled = void 0;
 const constants_1 = require("./constants");
 function configRecord(config) {
     return config && typeof config === "object" ? config : {};
@@ -58,6 +58,15 @@ function acCleaningAfterPurpose(unit, purpose) {
     }
 }
 exports.acCleaningAfterPurpose = acCleaningAfterPurpose;
+/** Geschätzte elektrische Leistung: Dry ~ Hälfte von Cool (kein separates Admin-Feld). */
+function acEstimatedPowerForPurpose(unit, purpose) {
+    const base = unit.estimatedPowerW;
+    if (purpose === "dehumidify") {
+        return Math.max(0, Math.round(base / 2));
+    }
+    return base;
+}
+exports.acEstimatedPowerForPurpose = acEstimatedPowerForPurpose;
 function effectiveEstimatedPowerW(c, key, def) {
     const n = numField(c, key, def);
     return n > 0 ? n : def;

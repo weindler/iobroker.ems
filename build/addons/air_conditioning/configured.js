@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.acMappingCommandsForConfiguredUnits = exports.configuredAcUnitIndexes = exports.isAcUnitConfigured = exports.acUnitHasMappingTarget = void 0;
 /**
- * When an AC unit slot is considered "configured" for state-tree ensure/cleanup.
- * Slots 1..AC_UNIT_COUNT remain the Admin UI capacity — only configured slots get objects.
+ * When an AC unit slot gets state-tree objects.
+ * Slots 1..AC_UNIT_COUNT remain Admin UI capacity — only enabled units get objects.
  */
 const constants_1 = require("./constants");
 const config_1 = require("./config");
@@ -24,19 +24,14 @@ function acUnitHasMappingTarget(config, index) {
 }
 exports.acUnitHasMappingTarget = acUnitHasMappingTarget;
 /**
- * Configured = enabled OR at least one mapping target set.
- * Not configured: default Admin slot with no enable and no mappings (placeholder).
- * Disabled-but-configured (mappings exist, enabled false) stays configured.
+ * Configured for ensure/cleanup = Unit in Admin aktiviert (`ac_uN_enabled`).
+ * Nur aktivierte Units bekommen Runtime-/Mapping-States.
  */
 function isAcUnitConfigured(config, index) {
     if (!Number.isInteger(index) || index < 1 || index > constants_1.AC_UNIT_COUNT) {
         return false;
     }
-    const unit = (0, config_1.acUnitConfigFromAdapter)(config, index);
-    if (unit.enabled) {
-        return true;
-    }
-    return acUnitHasMappingTarget(config, index);
+    return (0, config_1.acUnitConfigFromAdapter)(config, index).enabled === true;
 }
 exports.isAcUnitConfigured = isAcUnitConfigured;
 function configuredAcUnitIndexes(config) {

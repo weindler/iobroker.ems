@@ -18,19 +18,26 @@ describe("ac unit configured detection", () => {
 		assert.deepEqual(configuredAcUnitIndexes({ ac_u2_enabled: true }), [2]);
 	});
 
-	it("treats disabled unit with mapping target as configured", () => {
+	it("ignores disabled unit even with mapping targets (ensure only enabled)", () => {
 		const cfg = {
 			ac_u1_enabled: false,
 			ac_u1_feedback_switch_target: "smartthings.0.devices.x.switch",
+			ac_u2_enabled: true,
 		};
-		assert.equal(isAcUnitConfigured(cfg, 1), true);
-		assert.equal(isAcUnitConfigured(cfg, 3), false);
+		assert.equal(isAcUnitConfigured(cfg, 1), false);
+		assert.equal(isAcUnitConfigured(cfg, 2), true);
+		assert.deepEqual(configuredAcUnitIndexes(cfg), [2]);
 	});
 
-	it("limits mapping commands to configured units only", () => {
-		const cmds = acMappingCommandsForConfiguredUnits({ ac_u1_enabled: true });
-		assert.ok(cmds.every((c) => c.startsWith("unit_1_")));
+	it("limits mapping commands to enabled units only", () => {
+		const cmds = acMappingCommandsForConfiguredUnits({
+			ac_u1_enabled: true,
+			ac_u2_enabled: true,
+			ac_u3_enabled: false,
+			ac_u3_room_temp_target: "temp.0.x",
+		});
+		assert.ok(cmds.every((c) => c.startsWith("unit_1_") || c.startsWith("unit_2_")));
 		assert.ok(cmds.includes("unit_1_cmd_switch_off"));
-		assert.ok(!cmds.some((c) => c.startsWith("unit_2_")));
+		assert.ok(!cmds.some((c) => c.startsWith("unit_3_")));
 	});
 });

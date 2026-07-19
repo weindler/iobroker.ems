@@ -253,9 +253,14 @@ async function runAcRuntimeTickBody(host) {
     const governanceEnabled = await (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "climate");
     const live = await (0, execution_mode_1.isLiveWriteAllowed)((id) => host.getStateAsync(id), constants_1.AC_ADDON_ID);
     const allowNewCleaning = governanceEnabled && addonEnabledVal;
-    // Disabled-but-configured units leave the control loop — close sticky stats / optional stop.
-    // Unconfigured placeholders (4B1) have no objects; do not write stats for them.
-    for (const unit of config.units.filter((u) => !u.enabled && (0, configured_1.isAcUnitConfigured)(host.config, u.index))) {
+    // Disabled units that still have objects (e.g. just turned off): close sticky stats / optional stop.
+    // Unconfigured placeholders are not ensured and are removed by surface cleanup.
+    for (const unit of config.units.filter((u) => !u.enabled)) {
+        const ids = (0, ensure_states_1.acUnitRuntimeStates)(unit.index);
+        const exists = await host.getStateAsync(ids.state);
+        if (!exists) {
+            continue;
+        }
         const up = unitPersist(unit.index);
         const fbId = (0, sequences_1.resolveAcMappingTarget)(mappingTable, unit.index, "feedback_switch");
         const fb = await readForeign(host, fbId);

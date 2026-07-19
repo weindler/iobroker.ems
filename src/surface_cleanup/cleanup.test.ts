@@ -65,13 +65,19 @@ class FakeCleanupHost implements SurfaceCleanupHost {
 }
 
 describe("surface cleanup allowlist", () => {
-	it("allows only AC unit/mapping and vehicle folder roots", () => {
+	it("allows AC/vehicle roots and lean planner purge roots", () => {
 		assert.equal(isAllowlistedCleanupRelativeId("addons.air_conditioning.units.unit_3"), true);
 		assert.equal(
 			isAllowlistedCleanupRelativeId("addons.air_conditioning.mapping.unit_2_cmd_switch_on"),
 			true,
 		);
 		assert.equal(isAllowlistedCleanupRelativeId("addons.wallbox.vehicles.ford_explorer"), true);
+		assert.equal(isAllowlistedCleanupRelativeId("planner.authority"), true);
+		assert.equal(isAllowlistedCleanupRelativeId("planner.takeover"), true);
+		assert.equal(isAllowlistedCleanupRelativeId("planner.coordinator"), true);
+		assert.equal(isAllowlistedCleanupRelativeId("planner.intent.forecast_plan"), true);
+		assert.equal(isAllowlistedCleanupRelativeId("planner.intent.daily_plan"), true);
+		assert.equal(isAllowlistedCleanupRelativeId("planner.intent.allocation"), true);
 		assert.equal(isAllowlistedCleanupRelativeId("planner.intent.allocation.wallbox.plan_json"), false);
 		assert.equal(isAllowlistedCleanupRelativeId("learning.persistence.pv_bias_json"), false);
 		assert.equal(isAllowlistedCleanupRelativeId("ems.0.addons.air_conditioning.units.unit_1"), false);
@@ -92,11 +98,12 @@ describe("dynamic surface ensure + cleanup", () => {
 		assert.ok(host.objects.has("addons.air_conditioning.runtime"));
 	});
 
-	it("creates configured unit and keeps disabled-but-mapped unit", async () => {
+	it("creates only enabled units, not disabled with leftover mappings", async () => {
 		const host = new FakeCleanupHost({
 			ac_u1_enabled: true,
-			ac_u2_enabled: false,
-			ac_u2_feedback_switch_target: "smartthings.0.x.switch",
+			ac_u2_enabled: true,
+			ac_u3_enabled: false,
+			ac_u3_feedback_switch_target: "smartthings.0.x.switch",
 		});
 		await ensureAddonMappingStates(host, AC_ADDON_ID, acMappingCommandsForConfiguredUnits(host.config));
 		await ensureAcRuntimeStates(host);
@@ -128,16 +135,16 @@ describe("dynamic surface ensure + cleanup", () => {
 		assert.equal(host.objects.size, before);
 	});
 
-	it("does not delete configured disabled unit", async () => {
+	it("deletes disabled unit that only has leftover mapping targets", async () => {
 		const host = new FakeCleanupHost({
 			ac_u1_enabled: false,
 			ac_u1_room_temp_target: "temp.0.x",
 		});
 		await ensureAcRuntimeStates(host, { unitIndexes: [1] });
 		const stats = await runDynamicSurfaceCleanup(host);
-		assert.ok(host.objects.has("addons.air_conditioning.units.unit_1"));
-		assert.equal(host.deleted.includes("addons.air_conditioning.units.unit_1"), false);
-		assert.ok(stats.skippedReasons.ac_configured_kept || stats.checked > 0);
+		assert.equal(host.objects.has("addons.air_conditioning.units.unit_1"), false);
+		assert.ok(host.deleted.includes("addons.air_conditioning.units.unit_1"));
+		assert.ok(stats.deleted >= 1);
 	});
 
 	it("empty vehicle table creates no profile folders; orphan profiles are cleaned", async () => {
@@ -218,5 +225,41 @@ describe("dynamic surface ensure + cleanup", () => {
 		await ensurePlannerCoordinatorStates(host);
 		const sample = host.objects.get("planner.coordinator.comparison_status");
 		assert.equal((sample?.common as ioBroker.StateCommon | undefined)?.expert, true);
+	});
+
+	it("purges lean planner shadow and operator mirror roots", async () => {
+		const host = new FakeCleanupHost({});
+		for (const root of [
+			"planner.authority",
+			"planner.takeover",
+			"planner.coordinator",
+			"planner.intent.forecast_plan",
+			"planner.intent.daily_plan",
+			"planner.intent.contributions",
+			"planner.intent.allocation",
+		]) {
+			await host.setObjectNotExistsAsync(root, {
+				type: "channel",
+				common: { name: root },
+				native: {},
+			} as ioBroker.Object);
+			await host.setObjectNotExistsAsync(`${root}.leaf`, {
+				type: "state",
+				common: { name: "leaf", type: "string", role: "text", read: true, write: false },
+				native: {},
+			} as ioBroker.Object);
+		}
+		await host.setObjectNotExistsAsync("planner.intent.supply.grid.price_now", {
+			type: "state",
+			common: { name: "price", type: "number", role: "value", read: true, write: false },
+			native: {},
+		} as ioBroker.Object);
+
+		const stats = await runDynamicSurfaceCleanup(host);
+		assert.ok(stats.deleted >= 7);
+		assert.equal(host.objects.has("planner.authority"), false);
+		assert.equal(host.objects.has("planner.takeover.leaf"), false);
+		assert.equal(host.objects.has("planner.intent.forecast_plan.leaf"), false);
+		assert.equal(host.objects.has("planner.intent.supply.grid.price_now"), true);
 	});
 });

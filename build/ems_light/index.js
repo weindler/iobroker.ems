@@ -110,11 +110,11 @@ async function ensureEmsLightStateTree(adapter) {
     if (configured !== "off") {
         adapter.log.info(`Planner Shadow Mode „${configured}“ ignoriert — Produktions-Oberfläche erzwingt off`);
     }
-    const plannerMode = "off";
     await (0, ensure_states_1.ensureEmsLightStates)(host, version);
     await (0, planner_1.ensurePlannerStateTree)(host, {
         includeTakeoverStates: false,
         coordinatorMinimal: true,
+        leanOperatorSurface: true,
     });
     const policyHost = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
     await (0, policy_1.ensurePolicyStateTree)(policyHost);

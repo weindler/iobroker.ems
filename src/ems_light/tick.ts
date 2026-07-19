@@ -1,16 +1,15 @@
 import { touchEmsActivity } from "../ems_activity";
 import { GLOBAL } from "../tree_paths";
-import { plannerRuntimeModeFromConfig } from "../planner_config";
 import { deriveHealth, formatLiveCacheSummary, refreshLiveCache, type LiveCacheHost } from "./live_cache";
 import { runPlannerTick } from "../planner/run";
 import type { PlannerHost } from "../planner/inputs";
 
 /**
- * Operator Forecast / Daily Plan / Allocation only when planner runtime is not `off`.
- * Matches v0.1.124 tick shape for the default off/legacy start path.
+ * Operator Forecast / Daily Plan / Allocation — disabled on production lean surface
+ * (Shadow/operator mirrors are not part of the control path; addons use climate/surplus fallback).
  */
-function operatorForecastPathEnabled(config: unknown): boolean {
-	return plannerRuntimeModeFromConfig(config).mode !== "off";
+function operatorForecastPathEnabled(_config: unknown): boolean {
+	return false;
 }
 
 export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): Promise<void> {

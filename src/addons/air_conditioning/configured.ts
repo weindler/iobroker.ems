@@ -1,6 +1,6 @@
 /**
- * When an AC unit slot is considered "configured" for state-tree ensure/cleanup.
- * Slots 1..AC_UNIT_COUNT remain the Admin UI capacity — only configured slots get objects.
+ * When an AC unit slot gets state-tree objects.
+ * Slots 1..AC_UNIT_COUNT remain Admin UI capacity — only enabled units get objects.
  */
 import {
 	AC_MAPPING_ROLES,
@@ -27,19 +27,14 @@ export function acUnitHasMappingTarget(config: unknown, index: number): boolean 
 }
 
 /**
- * Configured = enabled OR at least one mapping target set.
- * Not configured: default Admin slot with no enable and no mappings (placeholder).
- * Disabled-but-configured (mappings exist, enabled false) stays configured.
+ * Configured for ensure/cleanup = Unit in Admin aktiviert (`ac_uN_enabled`).
+ * Nur aktivierte Units bekommen Runtime-/Mapping-States.
  */
 export function isAcUnitConfigured(config: unknown, index: number): boolean {
 	if (!Number.isInteger(index) || index < 1 || index > AC_UNIT_COUNT) {
 		return false;
 	}
-	const unit = acUnitConfigFromAdapter(config, index);
-	if (unit.enabled) {
-		return true;
-	}
-	return acUnitHasMappingTarget(config, index);
+	return acUnitConfigFromAdapter(config, index).enabled === true;
 }
 
 export function configuredAcUnitIndexes(config: unknown): number[] {

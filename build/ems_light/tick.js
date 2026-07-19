@@ -26,15 +26,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.runEmsLightPhase1Tick = void 0;
 const ems_activity_1 = require("../ems_activity");
 const tree_paths_1 = require("../tree_paths");
-const planner_config_1 = require("../planner_config");
 const live_cache_1 = require("./live_cache");
 const run_1 = require("../planner/run");
 /**
- * Operator Forecast / Daily Plan / Allocation only when planner runtime is not `off`.
- * Matches v0.1.124 tick shape for the default off/legacy start path.
+ * Operator Forecast / Daily Plan / Allocation — disabled on production lean surface
+ * (Shadow/operator mirrors are not part of the control path; addons use climate/surplus fallback).
  */
-function operatorForecastPathEnabled(config) {
-    return (0, planner_config_1.plannerRuntimeModeFromConfig)(config).mode !== "off";
+function operatorForecastPathEnabled(_config) {
+    return false;
 }
 async function runEmsLightPhase1Tick(host) {
     (0, ems_activity_1.touchEmsActivity)();

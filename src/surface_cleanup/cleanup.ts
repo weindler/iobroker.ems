@@ -17,6 +17,8 @@ import { mappingBase } from "../tree_paths";
 import {
 	COMPATIBILITY_STATE_PREFIXES,
 	isAllowlistedCleanupRelativeId,
+	isLeanPlannerPurgeRoot,
+	LEAN_PLANNER_PURGE_ROOTS,
 	PROTECTED_PREFIXES,
 } from "./allowlist";
 
@@ -47,6 +49,9 @@ function bump(stats: SurfaceCleanupStats, reason: string): void {
 }
 
 function isProtectedRelativeId(relativeId: string): boolean {
+	if (isLeanPlannerPurgeRoot(relativeId)) {
+		return false;
+	}
 	for (const p of PROTECTED_PREFIXES) {
 		if (relativeId === p || relativeId.startsWith(`${p}.`) || relativeId.startsWith(p)) {
 			return true;
@@ -133,6 +138,12 @@ async function cleanupOrphanVehicles(host: SurfaceCleanupHost, stats: SurfaceCle
 	}
 }
 
+async function cleanupLeanPlannerSurface(host: SurfaceCleanupHost, stats: SurfaceCleanupStats): Promise<void> {
+	for (const root of LEAN_PLANNER_PURGE_ROOTS) {
+		await safeDeleteRelative(host, root, stats, "lean_planner");
+	}
+}
+
 /**
  * Idempotent controlled cleanup. Safe to re-run after interrupt.
  * Never deletes outside allowlist / protected prefixes.
@@ -146,6 +157,7 @@ export async function runDynamicSurfaceCleanup(host: SurfaceCleanupHost): Promis
 	};
 	await cleanupUnconfiguredAcUnits(host, stats);
 	await cleanupOrphanVehicles(host, stats);
+	await cleanupLeanPlannerSurface(host, stats);
 	host.log.info(
 		`surface cleanup: checked=${stats.checked} deleted=${stats.deleted} skipped=${stats.skipped}`,
 	);

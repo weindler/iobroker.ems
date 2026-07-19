@@ -29,7 +29,7 @@ Per unused unit (order of magnitude):
 
 If production effectively used 1 configured unit and kept placeholders for 4 slots: **~320–360** objects — the bulk of the ~437 gap.
 
-Phase 4B1: ensure + cleanup only when **configured** (enabled OR mapping target set). Disabled-but-mapped units stay.
+Phase 4B1+: ensure + cleanup only when unit **enabled** (`ac_uN_enabled`). Disabled slots and leftover mappings are not kept as objects.
 
 ### 2. Fahrzeugprofile
 

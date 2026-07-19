@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.149",
+		"version": "0.1.150",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.150": {
+				"en": "Lean surface: only enabled AC units get states; purge Shadow/Forecast/Daily mirrors; dryrun/live only. Export before upgrade recommended.",
+				"de": "Schlanke Oberfläche: nur aktivierte Klima-Units bekommen States; Shadow/Forecast/Daily-Spiegel werden bereinigt; nur dryrun/live. Vor Update Export empfohlen."
+			},
 			"0.1.149": {
 				"en": "Cleanup: remove Startup-Rearm write gate (dryrun/live only); hide Planner Shadow/Takeover from Admin. Device writes follow global+addon modes again.",
 				"de": "Aufräumen: Startup-Rearm-Write-Gate entfernt (nur noch dryrun/live); Planner-Shadow/Takeover aus dem Admin. Geräte-Writes folgen wieder Global+Addon-Modi."

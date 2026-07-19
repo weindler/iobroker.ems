@@ -60,10 +60,16 @@ class FakeCleanupHost {
     }
 }
 (0, node_test_1.describe)("surface cleanup allowlist", () => {
-    (0, node_test_1.it)("allows only AC unit/mapping and vehicle folder roots", () => {
+    (0, node_test_1.it)("allows AC/vehicle roots and lean planner purge roots", () => {
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.air_conditioning.units.unit_3"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.air_conditioning.mapping.unit_2_cmd_switch_on"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.wallbox.vehicles.ford_explorer"), true);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.authority"), true);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.takeover"), true);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.coordinator"), true);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.intent.forecast_plan"), true);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.intent.daily_plan"), true);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.intent.allocation"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.intent.allocation.wallbox.plan_json"), false);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("learning.persistence.pv_bias_json"), false);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("ems.0.addons.air_conditioning.units.unit_1"), false);
@@ -80,11 +86,12 @@ class FakeCleanupHost {
         strict_1.default.ok(host.objects.has("addons.air_conditioning.units"));
         strict_1.default.ok(host.objects.has("addons.air_conditioning.runtime"));
     });
-    (0, node_test_1.it)("creates configured unit and keeps disabled-but-mapped unit", async () => {
+    (0, node_test_1.it)("creates only enabled units, not disabled with leftover mappings", async () => {
         const host = new FakeCleanupHost({
             ac_u1_enabled: true,
-            ac_u2_enabled: false,
-            ac_u2_feedback_switch_target: "smartthings.0.x.switch",
+            ac_u2_enabled: true,
+            ac_u3_enabled: false,
+            ac_u3_feedback_switch_target: "smartthings.0.x.switch",
         });
         await (0, mapping_sync_js_1.ensureAddonMappingStates)(host, constants_js_1.AC_ADDON_ID, (0, mapping_config_js_1.acMappingCommandsForConfiguredUnits)(host.config));
         await (0, ensure_states_js_1.ensureAcRuntimeStates)(host);
@@ -112,16 +119,16 @@ class FakeCleanupHost {
         strict_1.default.equal(second.deleted, 0);
         strict_1.default.equal(host.objects.size, before);
     });
-    (0, node_test_1.it)("does not delete configured disabled unit", async () => {
+    (0, node_test_1.it)("deletes disabled unit that only has leftover mapping targets", async () => {
         const host = new FakeCleanupHost({
             ac_u1_enabled: false,
             ac_u1_room_temp_target: "temp.0.x",
         });
         await (0, ensure_states_js_1.ensureAcRuntimeStates)(host, { unitIndexes: [1] });
         const stats = await (0, cleanup_js_1.runDynamicSurfaceCleanup)(host);
-        strict_1.default.ok(host.objects.has("addons.air_conditioning.units.unit_1"));
-        strict_1.default.equal(host.deleted.includes("addons.air_conditioning.units.unit_1"), false);
-        strict_1.default.ok(stats.skippedReasons.ac_configured_kept || stats.checked > 0);
+        strict_1.default.equal(host.objects.has("addons.air_conditioning.units.unit_1"), false);
+        strict_1.default.ok(host.deleted.includes("addons.air_conditioning.units.unit_1"));
+        strict_1.default.ok(stats.deleted >= 1);
     });
     (0, node_test_1.it)("empty vehicle table creates no profile folders; orphan profiles are cleaned", async () => {
         const host = new FakeCleanupHost({ wb_vehicle_profiles: [] });
@@ -180,5 +187,39 @@ class FakeCleanupHost {
         await (0, ensure_states_js_3.ensurePlannerCoordinatorStates)(host);
         const sample = host.objects.get("planner.coordinator.comparison_status");
         strict_1.default.equal(sample?.common?.expert, true);
+    });
+    (0, node_test_1.it)("purges lean planner shadow and operator mirror roots", async () => {
+        const host = new FakeCleanupHost({});
+        for (const root of [
+            "planner.authority",
+            "planner.takeover",
+            "planner.coordinator",
+            "planner.intent.forecast_plan",
+            "planner.intent.daily_plan",
+            "planner.intent.contributions",
+            "planner.intent.allocation",
+        ]) {
+            await host.setObjectNotExistsAsync(root, {
+                type: "channel",
+                common: { name: root },
+                native: {},
+            });
+            await host.setObjectNotExistsAsync(`${root}.leaf`, {
+                type: "state",
+                common: { name: "leaf", type: "string", role: "text", read: true, write: false },
+                native: {},
+            });
+        }
+        await host.setObjectNotExistsAsync("planner.intent.supply.grid.price_now", {
+            type: "state",
+            common: { name: "price", type: "number", role: "value", read: true, write: false },
+            native: {},
+        });
+        const stats = await (0, cleanup_js_1.runDynamicSurfaceCleanup)(host);
+        strict_1.default.ok(stats.deleted >= 7);
+        strict_1.default.equal(host.objects.has("planner.authority"), false);
+        strict_1.default.equal(host.objects.has("planner.takeover.leaf"), false);
+        strict_1.default.equal(host.objects.has("planner.intent.forecast_plan.leaf"), false);
+        strict_1.default.equal(host.objects.has("planner.intent.supply.grid.price_now"), true);
     });
 });

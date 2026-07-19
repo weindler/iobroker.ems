@@ -24,6 +24,11 @@ export type EnsurePlannerStateTreeOptions = {
 	includeTakeoverStates?: boolean;
 	/** When true, only core coordinator states (mode off). */
 	coordinatorMinimal?: boolean;
+	/**
+	 * Production lean surface: skip forecast/daily/contributions/allocation mirrors
+	 * and skip coordinator entirely (Shadow forced off).
+	 */
+	leanOperatorSurface?: boolean;
 };
 
 /** Phase B — nur Objektbaum, keine Planner-Ticks. */
@@ -33,6 +38,9 @@ export async function ensurePlannerStateTree(
 ): Promise<void> {
 	await ensurePlannerStates(host);
 	await ensureGridSupplyStates(host);
+	if (options?.leanOperatorSurface) {
+		return;
+	}
 	await ensureForecastPlanStates(host);
 	await ensureFlexibleContributionStates(host);
 	await ensureDailyPlanStates(host);

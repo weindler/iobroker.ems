@@ -146,11 +146,11 @@ export async function ensureEmsLightStateTree(adapter: ioBroker.Adapter): Promis
 			`Planner Shadow Mode „${configured}“ ignoriert — Produktions-Oberfläche erzwingt off`,
 		);
 	}
-	const plannerMode = "off" as const;
 	await ensureEmsLightStates(host, version);
 	await ensurePlannerStateTree(host as unknown as PlannerHost & LiveCacheHost, {
 		includeTakeoverStates: false,
 		coordinatorMinimal: true,
+		leanOperatorSurface: true,
 	});
 	const policyHost = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & PolicyEngineHost);
 	await ensurePolicyStateTree(policyHost);

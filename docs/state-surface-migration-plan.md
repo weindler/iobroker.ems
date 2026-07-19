@@ -1,7 +1,7 @@
 # Phase 4A — State Surface Migration Plan
 
-**Status:** 4B1 shipped in 0.1.144 (configured-only ensure + placeholder cleanup). JSON relocation (4E) still deferred.
-**Baseline:** tag `planner-shadow-gate3-verified`; production surface cleanup line 0.1.144.
+**Status:** 4B1 shipped; 0.1.150 lean purge of Shadow/operator mirrors while planner forced off.
+**Baseline:** production surface cleanup line 0.1.150.
 
 ## Goals
 

@@ -60,6 +60,9 @@ Object.defineProperty(exports, "batteryWinterPlanConfigFromAdapter", { enumerabl
 async function ensurePlannerStateTree(host, options) {
     await (0, ensure_states_1.ensurePlannerStates)(host);
     await (0, grid_states_1.ensureGridSupplyStates)(host);
+    if (options?.leanOperatorSurface) {
+        return;
+    }
     await (0, states_1.ensureForecastPlanStates)(host);
     await (0, states_2.ensureFlexibleContributionStates)(host);
     await (0, states_3.ensureDailyPlanStates)(host);

@@ -18,6 +18,9 @@ function bump(stats, reason) {
     stats.skippedReasons[reason] = (stats.skippedReasons[reason] ?? 0) + 1;
 }
 function isProtectedRelativeId(relativeId) {
+    if ((0, allowlist_1.isLeanPlannerPurgeRoot)(relativeId)) {
+        return false;
+    }
     for (const p of allowlist_1.PROTECTED_PREFIXES) {
         if (relativeId === p || relativeId.startsWith(`${p}.`) || relativeId.startsWith(p)) {
             return true;
@@ -97,6 +100,11 @@ async function cleanupOrphanVehicles(host, stats) {
         await safeDeleteRelative(host, (0, ensure_states_2.vehicleBasePath)(vehicleId), stats, "vehicle_orphan");
     }
 }
+async function cleanupLeanPlannerSurface(host, stats) {
+    for (const root of allowlist_1.LEAN_PLANNER_PURGE_ROOTS) {
+        await safeDeleteRelative(host, root, stats, "lean_planner");
+    }
+}
 /**
  * Idempotent controlled cleanup. Safe to re-run after interrupt.
  * Never deletes outside allowlist / protected prefixes.
@@ -110,6 +118,7 @@ async function runDynamicSurfaceCleanup(host) {
     };
     await cleanupUnconfiguredAcUnits(host, stats);
     await cleanupOrphanVehicles(host, stats);
+    await cleanupLeanPlannerSurface(host, stats);
     host.log.info(`surface cleanup: checked=${stats.checked} deleted=${stats.deleted} skipped=${stats.skipped}`);
     return stats;
 }

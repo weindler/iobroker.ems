@@ -3,7 +3,7 @@
 **Version:** 0.1.144+  
 **Zweck:** Kontrollierter Neuaufbau des Objektbaums `ems.<instance>.*` nach Export — kein automatisches Löschen aus dem Adapter.
 
-Siehe auch: [EMS_LIGHT_V0_1_140_STATE_TREE_RECOVERY.md](./EMS_LIGHT_V0_1_140_STATE_TREE_RECOVERY.md), [dynamic-state-lifecycle.md](./dynamic-state-lifecycle.md).
+Siehe auch: [EMS_LIGHT_V0_1_140_STATE_TREE_RECOVERY.md](./EMS_LIGHT_V0_1_140_STATE_TREE_RECOVERY.md), Index: [README.md](./README.md).
 
 ## Voraussetzungen
 

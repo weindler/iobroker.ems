@@ -6,7 +6,7 @@ Kurzanleitung für Entwickler am ioBroker-Adapter `iobroker.ems`.
 
 ## Voraussetzungen
 
-- Node.js ≥ 18
+- Node.js ≥ 20 (Produktion typisch 22.x)
 - npm
 - ioBroker js-controller ≥ 5.0.19 (für Installation auf einem ioBroker-Host)
 
@@ -95,20 +95,29 @@ Keine Patch-Version allein wegen reiner Dokumentationsänderungen erhöhen.
 
 ## Dokumentationsregeln
 
-**Erlaubte dauerhafte Dokumente:**
+**Einstieg:** `docs/README.md` (Index + Prioritäten).
+
+**Dauerhaft erlaubt:**
 
 ```text
 README.md
 CHANGELOG.md
 LICENSE
+docs/README.md
 docs/EMS_LIGHT_MASTERPLAN.md
+docs/EMS_LIGHT_OPERATOR_FOUNDATION.md
 docs/ARCHITECTURE.md
 docs/DEVELOPMENT.md
+docs/EMS_LIGHT_*.md          # Themen-Docs Operator / Add-ons / Backup
 ```
 
-**Nicht anlegen:**
+**Nicht anlegen / nicht wieder einchecken:**
 
 ```text
+docs/planner_phase_*.md
+docs/planner-shadow-*.md
+docs/*-audit.md
+docs/state-surface-*.md|json
 PHASE_*.md
 *_BRIEFING_CHATGPT.md
 *_CURSOR_PROMPT.md
@@ -119,8 +128,8 @@ PHASE_*.md
 docs/archive/
 ```
 
-- Architekturänderungen nur in den drei zentralen `docs/`-Dateien dokumentieren
-- Temporäre Arbeitsberichte gehören in Chat oder Commit-Messages, nicht ins Repository
+- Ist-Stand und Pipeline in `ARCHITECTURE.md` + Operator-Docs halten; Masterplan = Zielbild
+- Temporäre Phase-/Shadow-/Audit-Berichte gehören in Chat oder Commit-Messages, nicht ins Repo
 - Keine manuellen Änderungen an generierten `build/`-Dateien — immer über `npm run build` erzeugen
 
 ---

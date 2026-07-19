@@ -110,12 +110,13 @@ function main(): void {
 	}
 
 	if (writeDocs) {
-		const docPath = resolve("docs/state-surface-production-gap.md");
+		// Nicht unter docs/ committen — Audit-Arbeitsbericht lokal/CI.
+		const docPath = resolve("state-surface-production-gap.local.md");
 		writeFileSync(docPath, md, "utf8");
-		console.log(`Wrote ${docPath}`);
+		console.log(`Wrote ${docPath} (local only — do not commit under docs/)`);
 	} else {
 		console.log("");
-		console.log("Pass --write-docs to refresh docs/state-surface-production-gap.md");
+		console.log("Pass --write-docs to write state-surface-production-gap.local.md (not under docs/)");
 	}
 }
 

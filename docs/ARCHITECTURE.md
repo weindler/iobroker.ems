@@ -1,9 +1,11 @@
 # EMS-Light – Architektur (Ist-Stand)
 
-**Gültig ab:** 11.07.2026
-**Adapter-Version:** v0.1.143
+**Gültig ab:** 19.07.2026  
+**Adapter-Version:** v0.1.174
 
 Dieses Dokument beschreibt die **tatsächlich implementierte** Architektur des ioBroker-Adapters `iobroker.ems`. Geplante, aber noch nicht umgesetzte Bestandteile sind als *geplant* gekennzeichnet.
+
+Index und Prioritäten: `docs/README.md`.
 
 ---
 
@@ -12,13 +14,15 @@ Dieses Dokument beschreibt die **tatsächlich implementierte** Architektur des i
 EMS-Light ist ein ioBroker-Adapter (`ems.0`), der als eigenständiges Energiemanagement arbeitet:
 
 - **Lesen** von Messwerten und Fremd-States (EVCC, Sensoren, Tarife)
-- **Learning** (PV-Bias, Wetter, Preise, Hauslast, Thermal/Battery Runtime)
-- **Global Modes** und **Policy Engine** (Betreibervorgaben, keine Geräteaktionen)
-- **User Intent** (read-only Erfassung von Benutzeraufträgen)
-- **Geräte-Runtime** (Heizstab: FSM, Safety, Live-Writes; Wallbox: read-only)
-- **Command Pipeline** (Dryrun/Live-Gates für Legacy-Befehle)
+- **Learning** (PV-Bias, PV-Horizont, Wetter, Preise, Hauslast, Thermal/Battery Runtime)
+- **Global Modes** und **Policy Engine** (Betreibervorgaben)
+- **General Operator:** Forecast Plan → Daily Plan → Allocation (gemeinsam für alle freigegebenen Add-ons)
+- **Geräte-Runtime** (Heizstab, Klima, Batterie, Wallbox) über Intent/Profil — Dryrun vor Live
+- **Safety / Fault / Lockout / Ownership** — keine Fremd-Writes außer Runtime-Gates
 
 Es gibt **keine** Abhängigkeit von einem externen EMS-V2-Server.
+
+**Schwerer Planner (Shadow/Takeover):** in Produktion **abgeschaltet**. Planung läuft über den Operator-Pfad, nicht über den Legacy-Shadow-Worker.
 
 ---
 
@@ -26,26 +30,30 @@ Es gibt **keine** Abhängigkeit von einem externen EMS-V2-Server.
 
 ```text
 src/
-├── main.ts                 Adapter-Einstieg, State-Subscriptions
+├── main.ts                 Adapter-Einstieg, State-Subscriptions, Admin sendTo
 ├── pipeline.ts             Command-Inbox → Mapping → Dryrun/Live
 ├── execution_mode.ts       global.execution_mode, addons.<id>.mode
 ├── mapping*.ts             Mapping-Konfiguration und Sync
-├── ems_light/              Phase-1-Tick, Live-Cache, State-Ensure
+├── ems_light/              Tick, Live-Cache, State-Ensure (Produktion)
+├── operator/               Forecast Plan, Daily Plan, Contributions, Allocation
 ├── global_modes/           off/eco/balanced/comfort/forced
 ├── policy/                 Policy Engine (core + global)
-├── intent/                 User Intent (wallbox, thermal, battery)
-├── learning/               Learning-Module (siehe Abschnitt 4)
+├── intent/                 User Intent / Geräte-Intents
+├── learning/               PV-Bias, Horizon, Preise, Hauslast, …
 ├── addons/
-│   ├── wallbox/            EVCC-Telemetrie (read-only)
+│   ├── wallbox/            EVCC Telemetrie + Dryrun/Live-Pfad
 │   ├── immersion_heater/   Heizstab-Runtime, FSM, Safety
-│   ├── battery/            Batterie: core/ profiles/ runtime/ (FSM, zentrale Write-Funktion)
-│   └── dynamic_tariff/     Tarif-Modul
-└── tree_paths.ts           Zentrale State-Pfad-Konventionen
+│   ├── air_conditioning/   Klima-Runtime
+│   ├── battery/            Batterie: core/ profiles/ runtime/
+│   └── governance/         enabled + ai_optimization_allowed
+├── backup/ / restore/      Export, Support-Paket, Restore
+├── support/                Diagnosemodus (zeitlich begrenzt)
+└── planner_shadow/ …       Legacy — in Produktion nicht aktiv
 ```
 
 Build-Ausgabe: `build/` (TypeScript → JavaScript, wird mitgeliefert).
 
-Admin: `admin/jsonConfig.json`, `admin/i18n/de.json`.
+Admin: `admin/jsonConfig.json`, `admin/i18n/`.
 
 ---
 
@@ -56,20 +64,22 @@ Admin: `admin/jsonConfig.json`, `admin/i18n/de.json`.
 1. Kanalbaum und Basis-States anlegen
 2. Global Execution States (`global.execution_mode`)
 3. Add-on-Mapping-States synchronisieren
-4. Module initialisieren: Wallbox (EVCC), Batterie, Heizstab, Dynamic Tariff
+4. Module initialisieren: Wallbox (EVCC), Batterie, Heizstab, Klima, Dynamic Tariff
 5. Failsafe-Runner starten
-6. EMS-Light Phase 1: Learning, Policy Engine, Intent Engine, Tick-Timer
+6. EMS-Light: Learning, Policy, Operator-Ticks (Forecast/Daily Plan), Geräte-Runtimes
 
-### 3.2 EMS-Light Phase-1-Tick (`ems_light/tick.ts`)
+### 3.2 Produktions-Tick
 
-Periodischer Tick (Standard 60 s, konfigurierbar 15–600 s):
+Periodischer Tick (typisch 60 s):
 
-- Spiegelt `global.execution_mode` nach `execution.safety.global_execution_mode`
-- Aktualisiert Live-Cache (`live.*`)
-- Führt Planner (`planner.*`) und Grid Supply (`planner.intent.supply.grid.*`) aus
-- Schreibt `system.last_tick_at`, `system.health`, `execution.safety.summary_de`
+- Spiegelt Execution Mode / Safety
+- Aktualisiert Live-Cache
+- Baut Forecast Plan und Daily Plan (Allocation)
+- Geräte-Runtimes lesen Allocation/Intents in eigenen Intervallen
 
-Geräte-Runtimes (Heizstab, Batterie, Klima) laufen in eigenen Intervallen und lesen Planner-Intents.
+Legacy Shadow/Takeover wird nicht gestartet (`planner_runtime_mode: off`).
+
+Geräte-Runtimes (Heizstab, Batterie, Klima, Wallbox) laufen in eigenen Intervallen und lesen Operator-Intents.
 
 ---
 
@@ -142,36 +152,23 @@ Revision basiert auf semantischem Hash (volatile Felder wie `observed_at` ausges
 
 ---
 
-## 8. Wallbox (EVCC, read-only)
+## 8. Wallbox (EVCC)
 
 **Pfad:** `src/addons/wallbox/`
 
 ```text
-beliebige Wallbox → EVCC → EMS-Light (read-only)
+beliebige Wallbox → EVCC → EMS-Light (Telemetrie + gesteuerte Writes)
 ```
 
-- Liest konfigurierte EVCC-Fremd-States
-- Normalisiert Telemetrie (`normalize.ts`, `evcc_telemetry.ts`)
-- Spiegelt in `addons.wallbox.evcc.*` (Snapshot JSON + Einzelstates)
-- **Daily-Plan-Diagnose (v0.1.131):** liest `planner.intent.allocation.wallbox.plan_json`, wertet aktuellen Slot read-only aus, schreibt `addons.wallbox.runtime.*` — keine EVCC-Writes
-- **Dryrun-Dispatch (v0.1.133):** neutraler Intent, technisches Ziel, Mapping-Readiness, `dryrun_command_json` — weiterhin keine EVCC-Writes (auch im Live-Modus)
-- **Live-Foundation (v0.1.134):** Command-Kandidat + zentrale `executeWallboxWrite()` — Release-Gate geschlossen, keine realen Writes
-- **EVCC Write Contract (v0.1.135):** `WallboxWritePlan` aus Command + Legacy-Mapping — weiterhin keine Ausführung
-- **EVCC Control Mapping (v0.1.136):** EVCC-Steuerrollen `set_mode` + `set_max_current_a` (nicht `enabled`/`minCurrent`), Mode-Wert-Mapping, semantische Objektprüfung, Write-Reihenfolge maxCurrent→mode — Release-Gate geschlossen
-- **Feedback Contract Foundation (v0.1.137):** `WallboxFeedbackContract` aus Write-Plan, Normalisierung, Soll-/Ist-Vergleich, Settle/Timeout-Vertrag — keine Timer, keine Writes
-- **Vehicle Profiles Foundation (v0.1.138):** dynamische Fahrzeugprofil-Tabelle `wb_vehicle_profiles`, Profilauflösung getrennt von `connected`, `ActiveVehicleSnapshot`, fahrzeugspezifische Ladegrenzen — read-only, keine Planner-Integration
-- **Vehicle SOC & Energy Fallback (v0.1.139):** zentrale SOC-Auflösung mit Fallback-Kette (direct, energy rollforward, range, last trusted), Energieinhalt/-bedarf je Profil, profilisolierte Baseline — read-only, keine Ladefreigabe
-- **State Tree Recovery (v0.1.140):** deterministischer phasenweiser Bootstrap, sicherer Cold Start nach Löschen von `ems.0.*`, Bootstrap-Barriere — siehe `docs/EMS_LIGHT_V0_1_140_STATE_TREE_RECOVERY.md`
-- **Backup Export (v0.1.141):** gemeinsamer Exportkern für `.emsbackup` und `.emssupport`, Allowlist, Anonymisierung, Diagnosemodus — siehe `docs/EMS_LIGHT_V0_1_141_BACKUP_EXPORT.md`
-- **Manual Restore (v0.1.142):** Validate/Apply aus `.emsbackup`, Plan-ID, Transaktion, Rollback, Startup-Recovery, Dryrun-Zwang — siehe `docs/EMS_LIGHT_V0_1_142_MANUAL_RESTORE.md`
-- **ioBroker dataFolder (v0.1.143):** dauerhafte Daten unter `ems.%INSTANCE%`, Runtime unter `ems-runtime.%INSTANCE%`, Startup-Live-Rearm — siehe `docs/EMS_LIGHT_V0_1_143_IOBACKUP_INTEGRATION.md`
-- `plan_time` / `effective_plan_time`: bei null/invalid wird der Spiegelstate auf `""` gesetzt (kein stale Deadline)
-- EVCC-Sitzungsenergie: Wh → kWh (`/ 1000`)
-- Go-Null-Zeit (`0001-01-01T00:00:00Z`) wird als „kein Plan" behandelt
+- Liest konfigurierte EVCC-Fremd-States, normalisiert und spiegelt nach `addons.wallbox.evcc.*`
+- Daily-Plan-Allocation → Dryrun-Dispatch → Live-Foundation (`executeWallboxWrite`) mit Write-/Feedback-Vertrag
+- Fahrzeugprofile + SOC/Energie-Fallback unter `wb_vehicle_profiles` / Runtime-States
+- Live-Writes nur über Runtime-Gates (Dryrun vor Live); Release-Gates je nach Instanz-Config
+- Backup/Restore/State-Tree: siehe `docs/EMS_LIGHT_V0_1_140*.md` … `143*.md` und Admin-Tab Backup
 
-Legacy go-e-Write-Mappings (`wb_set_*`) bleiben in der Config, werden von der Runtime nicht mehr genutzt. Wallbox ist `supports_read_only` in der Registry.
+Legacy go-e-Write-Mappings (`wb_set_*`) bleiben in der Config, werden von der Runtime nicht mehr genutzt.
 
-Details: `docs/EMS_LIGHT_WALLBOX_DAILY_PLAN_READONLY.md`, `docs/EMS_LIGHT_WALLBOX_DRYRUN_DISPATCH.md`, `docs/EMS_LIGHT_WALLBOX_LIVE_FOUNDATION.md`, `docs/EMS_LIGHT_WALLBOX_EVCC_WRITE_CONTRACT.md`, `docs/EMS_LIGHT_WALLBOX_EVCC_CONTROL_MAPPING.md`, `docs/EMS_LIGHT_WALLBOX_FEEDBACK_CONTRACT.md`, `docs/EMS_LIGHT_WALLBOX_VEHICLE_PROFILES.md`
+Details: `docs/EMS_LIGHT_WALLBOX_*.md` (Index in `docs/README.md`).
 
 ---
 
@@ -321,10 +318,11 @@ Keine externen Snapshot-Fixtures im Repository — Tests nutzen Mock-Hosts.
 ## 14. Geplant, nicht implementiert
 
 - Modus `observe`
-- Deterministischer Planner / General Operator
-- KI-Integration und Kostenkontrolle
+- Optionale KI-Optimierung auf Forecast/Daily Plan (Governance-Flags schon vorhanden)
 - Weitere Batterie-Steuerprofile (Sonnen Performance, Fronius, Victron, …) und bestätigte Entladesteuerung
-- Einheitliche Runtime-States (`decision_source`, `planner_status`, …) über Governance hinaus
-- EVCC-Writes / Wallbox-Steuerung
+- Einheitliche Runtime-States (`decision_source`, `planner_status`, …) überall
+- Aufräumen Legacy Shadow/Takeover-Code (derzeit nur abgeschaltet)
 
-Details und verbindliche Zielarchitektur: `docs/EMS_LIGHT_MASTERPLAN.md`.
+**Bereits produktiv (nicht mehr „geplant“):** General Operator (Forecast + Daily Plan + Allocation), Heizstab/Klima/Batterie-Laden über Daily Plan, Wallbox-Pfad bis Write/Feedback/Profile.
+
+Details und Zielbild: `docs/EMS_LIGHT_MASTERPLAN.md`. Priorität bis 10.08.2026: `docs/README.md`.

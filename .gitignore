@@ -11,6 +11,7 @@ debug/
 *.tmp
 .env
 .env.*
+*.local.md
 .DS_Store
 .idea/
 .vscode/

@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.172",
+		"version": "0.1.173",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.173": {
+				"en": "Backup UX: newest file marked, no Plan-ID typing, confirm dialog on restore; clarify Save is not needed.",
+				"de": "Backup-UX: Neueste Datei markiert, keine Plan-ID tippen, Bestätigungsdialog beim Restore; Speichern nicht nötig."
+			},
 			"0.1.172": {
 				"en": "Fix support export: relative archive paths no longer false-positive as absolute paths.",
 				"de": "Fix Support-Export: relative Archivpfade nicht mehr fälschlich als Absolute Paths erkannt."

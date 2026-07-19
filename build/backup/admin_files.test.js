@@ -57,6 +57,28 @@ const source_1 = require("../restore/source");
             await fs.rm(tmp, { recursive: true, force: true });
         }
     });
+    (0, node_test_1.it)("labels newest backup with timestamp and NEUESTE", async () => {
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-admin-label-"));
+        try {
+            const host = {
+                getAbsoluteInstanceDataDir: () => path.join(tmp, "ems.0"),
+                namespace: "ems.0",
+            };
+            const { resolveEmsPaths } = await Promise.resolve().then(() => __importStar(require("../backup_integration/paths.js")));
+            const layout = resolveEmsPaths(host);
+            await fs.mkdir(path.join(layout.runtimeExportsDir, "backup"), { recursive: true });
+            await fs.writeFile(path.join(layout.runtimeExportsDir, "backup", "ems-light-0.1.1-backup-2026-07-19T100000000Z.emsbackup"), "a");
+            await fs.writeFile(path.join(layout.runtimeExportsDir, "backup", "ems-light-0.1.1-backup-2026-07-19T090000000Z.emsbackup"), "b");
+            const opts = await (0, admin_files_1.listRestoreFileOptions)(host);
+            strict_1.default.equal(opts[0]?.value, "ems-light-0.1.1-backup-2026-07-19T100000000Z.emsbackup");
+            strict_1.default.match(String(opts[0]?.label), /NEUESTE/);
+            strict_1.default.match(String(opts[0]?.label), /2026-07-19 10:00:00/);
+            strict_1.default.ok((0, admin_files_1.parseBackupFileStamp)("ems-light-0.1.171-backup-2026-07-19T095123951Z.emsbackup"));
+        }
+        finally {
+            await fs.rm(tmp, { recursive: true, force: true });
+        }
+    });
     (0, node_test_1.it)("writes upload into inbox with valid name", async () => {
         const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-admin-up-"));
         try {

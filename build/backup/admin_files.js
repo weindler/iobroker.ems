@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readSupportFileBase64 = exports.writeRestoreUploadToInbox = exports.listRestoreFileOptions = exports.syncAdapterRestoreInboxToHost = exports.mirrorHostExportFile = exports.mirrorExportIntoAdapterFiles = exports.ensureAdapterFilesMeta = void 0;
+exports.readSupportFileBase64 = exports.writeRestoreUploadToInbox = exports.listRestoreFileOptions = exports.syncAdapterRestoreInboxToHost = exports.parseBackupFileStamp = exports.mirrorHostExportFile = exports.mirrorExportIntoAdapterFiles = exports.ensureAdapterFilesMeta = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const retention_1 = require("./retention");
@@ -62,6 +62,28 @@ async function mirrorHostExportFile(host, kind, fileName) {
     await mirrorExportIntoAdapterFiles(host, kind, fileName, data);
 }
 exports.mirrorHostExportFile = mirrorHostExportFile;
+/** Zeitstempel aus ems-light-…-backup-2026-07-19T095123951Z.emsbackup lesen. */
+function parseBackupFileStamp(fileName) {
+    const m = fileName.match(/(\d{4}-\d{2}-\d{2})T(\d{2})(\d{2})(\d{2})(\d{3})?Z/);
+    if (!m)
+        return null;
+    const [, day, hh, mm, ss] = m;
+    return {
+        sortKey: `${day}T${hh}${mm}${ss}`,
+        labelWhen: `${day} ${hh}:${mm}:${ss} UTC`,
+    };
+}
+exports.parseBackupFileStamp = parseBackupFileStamp;
+function formatRestoreOptionLabel(fileName, tag, newest) {
+    const stamp = parseBackupFileStamp(fileName);
+    const when = stamp?.labelWhen ?? fileName;
+    const newestMark = newest ? " ★ NEUESTE" : "";
+    return {
+        value: fileName,
+        label: `${when}${newestMark}`,
+        description: `${tag} · ${fileName}`,
+    };
+}
 /**
  * Admin-Uploads unter restore-inbox/ in die Host-Inbox spiegeln
  * (Restore liest nur Host-Pfade).
@@ -112,7 +134,7 @@ async function listRestoreFileOptions(host) {
         { dir: (0, retention_1.backupDir)(host), tag: "backup" },
         { dir: (0, source_1.restoreInboxDir)(host), tag: "inbox" },
     ];
-    const out = [];
+    const collected = [];
     const seen = new Set();
     for (const { dir, tag } of dirs) {
         let names = [];
@@ -122,7 +144,7 @@ async function listRestoreFileOptions(host) {
         catch {
             continue;
         }
-        for (const name of names.sort().reverse()) {
+        for (const name of names) {
             if (!name.endsWith(".emsbackup"))
                 continue;
             if (!retention_1.OWN_EXPORT_FILE_RE.test(name))
@@ -130,20 +152,20 @@ async function listRestoreFileOptions(host) {
             if (seen.has(name))
                 continue;
             seen.add(name);
-            out.push({
-                value: name,
-                label: name,
-                description: tag,
-            });
+            const stamp = parseBackupFileStamp(name);
+            collected.push({ name, tag, sortKey: stamp?.sortKey ?? name });
         }
     }
-    if (out.length === 0) {
-        out.push({
-            value: "",
-            label: "(keine .emsbackup gefunden — Export erstellen oder Datei hochladen)",
-        });
+    collected.sort((a, b) => (a.sortKey < b.sortKey ? 1 : a.sortKey > b.sortKey ? -1 : 0));
+    if (collected.length === 0) {
+        return [
+            {
+                value: "",
+                label: "(keine .emsbackup — zuerst „Backup jetzt erstellen“)",
+            },
+        ];
     }
-    return out;
+    return collected.map((c, i) => formatRestoreOptionLabel(c.name, c.tag, i === 0));
 }
 exports.listRestoreFileOptions = listRestoreFileOptions;
 async function writeRestoreUploadToInbox(host, _fileName, base64OrDataUrl) {

@@ -7936,7 +7936,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Sicherung und Diagnose. Voll-Export auf dem Host. Support-Paket = echte Runtime-Diagnose + Download. Restore: Backup-Datei wählen → validieren → Plan-ID → ausführen."
+					"text": "Sicherung und Diagnose. Buttons speichern keine Instanz-Config — bei „Änderungen speichern?“ einfach ohne Speichern schließen. Restore: oberste Datei = neueste → validieren → ausführen."
 				},
 				"hBackupFull": {
 					"type": "header",
@@ -8070,14 +8070,14 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Nur .emsbackup (nicht Support). Datei aus der Liste wählen (Host: exports/backup oder restore/inbox) → Validieren → Plan-ID aus dem Ergebnis bzw. backup.restore.plan_id eintragen → Restore. Danach Adapter-Neustart (dryrun)."
+					"text": "Nur .emsbackup. Liste zeigt Datum/Uhrzeit — ★ NEUESTE steht oben. Ablauf: Datei wählen → Validieren → Restore ausführen (Bestätigung im Dialog). Kein Plan-ID-Abschreiben nötig. Danach Adapter-Neustart (dryrun)."
 				},
 				"restore_selected_file": {
 					"type": "selectSendTo",
-					"label": "Backup-Datei wählen",
+					"label": "Backup-Datei (oben = neueste)",
 					"command": "listRestoreFiles",
 					"jsonData": "{}",
-					"manual": true,
+					"manual": false,
 					"noTranslation": true,
 					"doNotSave": true,
 					"xs": 12,
@@ -8096,7 +8096,7 @@
 					"variant": "contained",
 					"color": "primary",
 					"result": {
-						"ok": "Validierung ok — Plan-ID unten eintragen (siehe auch backup.restore.plan_id)",
+						"ok": "Validierung ok — jetzt „Restore ausführen“",
 						"error": "Validierung fehlgeschlagen"
 					},
 					"xs": 12,
@@ -8105,29 +8105,26 @@
 					"lg": 4,
 					"xl": 3
 				},
-				"restore_confirm_plan_id": {
-					"type": "text",
-					"label": "Plan-ID zur Bestätigung (von backup.restore.plan_id)",
-					"default": "",
-					"doNotSave": true,
-					"xs": 12,
-					"sm": 12,
-					"md": 8,
-					"lg": 6,
-					"xl": 6
-				},
 				"restoreApplyBtn": {
 					"type": "sendTo",
 					"command": "restoreApply",
-					"jsonData": "{\"file\": \"${data.restore_selected_file}\", \"planId\": \"${data.restore_confirm_plan_id}\"}",
+					"jsonData": "{\"file\": \"${data.restore_selected_file}\"}",
 					"label": "Restore ausführen",
 					"showProcess": true,
 					"timeout": 300000,
 					"variant": "contained",
 					"color": "primary",
+					"confirm": {
+						"condition": "true",
+						"title": "Restore ausführen?",
+						"text": "Die gewählte Backup-Datei wird eingespielt (danach dryrun). Zuvor muss Validieren erfolgreich gewesen sein.",
+						"ok": "Ja, Restore",
+						"cancel": "Abbrechen",
+						"type": "warning"
+					},
 					"result": {
 						"ok": "Restore ok — Adapter neu starten",
-						"error": "Restore fehlgeschlagen"
+						"error": "Restore fehlgeschlagen — zuerst validieren?"
 					},
 					"xs": 12,
 					"sm": 6,

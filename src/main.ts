@@ -254,7 +254,7 @@ class Ems extends utils.Adapter {
 								error: err,
 								summaryJson: summary,
 								hint: planId
-									? `Plan-ID unten eintragen und „Restore ausführen“: ${planId}`
+									? `Validierung ok. Danach „Restore ausführen“ — Plan-ID wird automatisch verwendet (${planId}).`
 									: "Validierung fehlgeschlagen",
 							},
 							obj.callback,
@@ -279,13 +279,34 @@ class Ems extends utils.Adapter {
 						restore_confirm_plan_id?: string;
 					};
 					const fileName = String(msg.file ?? msg.restore_selected_file ?? "").trim();
-					const planId = String(msg.planId ?? msg.restore_confirm_plan_id ?? "").trim();
-					if (!fileName || !planId) {
+					let planId = String(msg.planId ?? msg.restore_confirm_plan_id ?? "").trim();
+					if (!fileName) {
 						if (obj.callback) {
 							this.sendTo(
 								obj.from,
 								obj.command,
-								{ result: "error", error: "file and planId required" },
+								{ result: "error", error: "no_file_selected" },
+								obj.callback,
+							);
+						}
+						return;
+					}
+					if (!planId) {
+						const status = String((await this.getStateAsync("backup.restore.status"))?.val ?? "");
+						const stored = String((await this.getStateAsync("backup.restore.plan_id"))?.val ?? "").trim();
+						if (status === "ready" && stored) {
+							planId = stored;
+						}
+					}
+					if (!planId) {
+						if (obj.callback) {
+							this.sendTo(
+								obj.from,
+								obj.command,
+								{
+									result: "error",
+									error: "zuerst „Backup validieren“ — danach Restore ohne Plan-ID-Feld",
+								},
 								obj.callback,
 							);
 						}

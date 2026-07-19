@@ -53,8 +53,8 @@ function acCleaningAfterPurpose(unit, purpose) {
         case "fan_only":
             return false;
         default:
-            // Unbekannter letzter Modus: nur reinigen wenn Cool oder Dry dafür markiert sind.
-            return unit.cleaningAfterCooling || unit.cleaningAfterDehumidify;
+            // Unbekannter Modus (z. B. nach Restart/Abort): keine Auto-Reinigung raten.
+            return false;
     }
 }
 exports.acCleaningAfterPurpose = acCleaningAfterPurpose;

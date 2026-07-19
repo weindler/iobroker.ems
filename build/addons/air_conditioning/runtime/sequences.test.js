@@ -39,7 +39,7 @@ const sequences_1 = require("./sequences");
         await (0, sequences_1.executeAcWriteSteps)(host, 2, table, [{ kind: "toggle", role: "cmd_switch_on" }], false);
         strict_1.default.equal(wrote, false);
     });
-    (0, node_test_1.it)("switch_off on shared switch writes off instead of pulse true", async () => {
+    (0, node_test_1.it)("switch_off writes off/false to all mapped switch targets", async () => {
         const writes = [];
         const host = {
             getForeignStateAsync: async () => ({ val: "on", ack: true, ts: 0, lc: 0, from: "test" }),
@@ -54,17 +54,16 @@ const sequences_1 = require("./sequences");
             unit_2_feedback_switch: { enabled: true, targetStateId: "st.switch" },
         };
         await (0, sequences_1.executeAcWriteSteps)(host, 2, table, [{ kind: "switch_off" }], true);
-        strict_1.default.equal(writes.length, 1);
-        strict_1.default.deepEqual(writes[0], { id: "st.switch", val: "off" });
+        strict_1.default.ok(writes.some((w) => w.id === "st.switch" && w.val === "off"));
+        strict_1.default.ok(writes.some((w) => w.id === "st.switch" && w.val === false));
     });
-    (0, node_test_1.it)("switch_off on dedicated off button pulses true", async () => {
+    (0, node_test_1.it)("switch_off on dedicated off also pulses after set", async () => {
         const writes = [];
         const host = {
             getForeignStateAsync: async () => ({ val: false, ack: true, ts: 0, lc: 0, from: "test" }),
             setForeignStateAsync: async (id, state) => {
-                if (state && typeof state === "object" && "val" in state) {
-                    writes.push({ id, val: state.val, ack: state.ack });
-                }
+                const val = state && typeof state === "object" && "val" in state ? state.val : state;
+                writes.push({ id, val });
             },
         };
         const table = {
@@ -73,8 +72,8 @@ const sequences_1 = require("./sequences");
             unit_2_feedback_switch: { enabled: true, targetStateId: "st.switch" },
         };
         await (0, sequences_1.executeAcWriteSteps)(host, 2, table, [{ kind: "switch_off" }], true);
-        strict_1.default.ok(writes.length >= 2);
-        strict_1.default.equal(writes[writes.length - 1]?.id, "st.off");
-        strict_1.default.equal(writes[writes.length - 1]?.val, true);
+        strict_1.default.ok(writes.some((w) => w.id === "st.off" && w.val === "off"));
+        strict_1.default.ok(writes.some((w) => w.id === "st.switch" && w.val === "off"));
+        strict_1.default.ok(writes.some((w) => w.id === "st.off" && w.val === true));
     });
 });

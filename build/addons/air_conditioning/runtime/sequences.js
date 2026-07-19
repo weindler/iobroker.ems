@@ -61,43 +61,45 @@ async function pulseSmartThingsToggle(host, unitIndex, role, stateId) {
     });
 }
 /**
- * Ausschalten: eigener Off-Button → Impuls; gemeinsamer Switch (gleich On/Feedback) → Wert „off“/false.
- * Pulse-true auf dem An-Switch würde das Gerät anlassen bzw. an lassen.
+ * Ausschalten möglichst robust:
+ * - auf allen gemappten Switch-/Cmd-Zielen „off“/false schreiben
+ * - zusätzlich Impuls auf dediziertem Off-Button (falls vorhanden)
+ * Pulse-true allein auf dem An-Switch würde das Gerät anlassen.
  */
 async function writeAcUnitSwitchOff(host, unitIndex, table, live, log) {
     const offId = resolveAcMappingTarget(table, unitIndex, "cmd_switch_off");
     const onId = resolveAcMappingTarget(table, unitIndex, "cmd_switch_on");
     const fbId = resolveAcMappingTarget(table, unitIndex, "feedback_switch");
-    const targetId = offId || onId || fbId;
-    if (!targetId) {
+    const targets = [...new Set([offId, onId, fbId].filter((id) => Boolean(id)))];
+    if (targets.length === 0) {
         log?.warn?.(`ac unit ${unitIndex}: stop skipped — kein switch_off/on/feedback gemappt`);
-        return { attempted: false, mode: "none", targetId: "" };
+        return { attempted: false, mode: "none", targets: [] };
     }
-    const dedicatedOffButton = Boolean(offId && offId !== onId && offId !== fbId);
     if (!live) {
-        log?.debug?.(`ac dryrun unit ${unitIndex}: switch_off → ${targetId} (${dedicatedOffButton ? "pulse" : "set_off"})`);
-        return { attempted: true, mode: dedicatedOffButton ? "pulse" : "set_off", targetId };
+        log?.debug?.(`ac dryrun unit ${unitIndex}: switch_off → ${targets.join(", ")}`);
+        return { attempted: true, mode: "set_off", targets };
     }
-    if (dedicatedOffButton) {
+    log?.info?.(`ac unit ${unitIndex}: switch_off writing off/false → ${targets.join(", ")}` +
+        (offId && offId !== onId && offId !== fbId ? ` (+ pulse ${offId})` : ""));
+    for (const stateId of targets) {
+        await (0, device_write_1.writeForeignIfChanged)(host, {
+            stateId,
+            value: "off",
+            reason: `ac unit ${unitIndex} switch_off`,
+            force: true,
+        });
+        await (0, device_write_1.writeForeignIfChanged)(host, {
+            stateId,
+            value: false,
+            reason: `ac unit ${unitIndex} switch_off bool`,
+            force: true,
+        });
+    }
+    // Dedizierter Off-Taster (SmartThings Command) zusätzlich impulsieren.
+    if (offId && offId !== onId && offId !== fbId) {
         await pulseSmartThingsToggle(host, unitIndex, "cmd_switch_off", offId);
-        return { attempted: true, mode: "pulse", targetId: offId };
     }
-    let current = null;
-    try {
-        const st = await host.getForeignStateAsync(targetId);
-        current = st?.val ?? null;
-    }
-    catch {
-        current = null;
-    }
-    const offValue = typeof current === "boolean" || current === 0 || current === 1 ? false : "off";
-    await (0, device_write_1.writeForeignIfChanged)(host, {
-        stateId: targetId,
-        value: offValue,
-        reason: `ac unit ${unitIndex} switch_off`,
-        force: true,
-    });
-    return { attempted: true, mode: "set_off", targetId };
+    return { attempted: true, mode: "set_off", targets };
 }
 exports.writeAcUnitSwitchOff = writeAcUnitSwitchOff;
 async function executeAcWriteSteps(host, unitIndex, table, steps, live, log) {

@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.164",
+		"version": "0.1.165",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.165": {
+				"en": "AC stop: write off/false to all switch mappings + retry; no auto-clean when last mode unknown.",
+				"de": "Klima-Stop: off/false auf alle Switch-Mappings + Retry; keine Auto-Reinigung bei unbekanntem letztem Modus."
+			},
 			"0.1.164": {
 				"en": "AC fix: stuck cleaning deadlock — abort if never engaged; stop device while cleaning flag set; start clean only when off.",
 				"de": "Klima-Fix: Reinigungs-Deadlock — Abbruch wenn nie gestartet; Stop trotz Cleaning-Flag; Reinigung erst bei ausgeschaltetem Gerät."

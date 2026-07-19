@@ -38,7 +38,7 @@ describe("ac sequences write steps", () => {
 		assert.equal(wrote, false);
 	});
 
-	it("switch_off on shared switch writes off instead of pulse true", async () => {
+	it("switch_off writes off/false to all mapped switch targets", async () => {
 		const writes: Array<{ id: string; val: unknown }> = [];
 		const host: DeviceWriteHost = {
 			getForeignStateAsync: async () => ({ val: "on", ack: true, ts: 0, lc: 0, from: "test" }),
@@ -53,18 +53,17 @@ describe("ac sequences write steps", () => {
 			unit_2_feedback_switch: { enabled: true, targetStateId: "st.switch" },
 		};
 		await executeAcWriteSteps(host, 2, table, [{ kind: "switch_off" }], true);
-		assert.equal(writes.length, 1);
-		assert.deepEqual(writes[0], { id: "st.switch", val: "off" });
+		assert.ok(writes.some((w) => w.id === "st.switch" && w.val === "off"));
+		assert.ok(writes.some((w) => w.id === "st.switch" && w.val === false));
 	});
 
-	it("switch_off on dedicated off button pulses true", async () => {
-		const writes: Array<{ id: string; val: unknown; ack?: boolean }> = [];
+	it("switch_off on dedicated off also pulses after set", async () => {
+		const writes: Array<{ id: string; val: unknown }> = [];
 		const host: DeviceWriteHost = {
 			getForeignStateAsync: async () => ({ val: false, ack: true, ts: 0, lc: 0, from: "test" }),
 			setForeignStateAsync: async (id, state) => {
-				if (state && typeof state === "object" && "val" in state) {
-					writes.push({ id, val: state.val, ack: state.ack as boolean | undefined });
-				}
+				const val = state && typeof state === "object" && "val" in state ? state.val : state;
+				writes.push({ id, val });
 			},
 		};
 		const table: AcMappingTable = {
@@ -73,8 +72,8 @@ describe("ac sequences write steps", () => {
 			unit_2_feedback_switch: { enabled: true, targetStateId: "st.switch" },
 		};
 		await executeAcWriteSteps(host, 2, table, [{ kind: "switch_off" }], true);
-		assert.ok(writes.length >= 2);
-		assert.equal(writes[writes.length - 1]?.id, "st.off");
-		assert.equal(writes[writes.length - 1]?.val, true);
+		assert.ok(writes.some((w) => w.id === "st.off" && w.val === "off"));
+		assert.ok(writes.some((w) => w.id === "st.switch" && w.val === "off"));
+		assert.ok(writes.some((w) => w.id === "st.off" && w.val === true));
 	});
 });

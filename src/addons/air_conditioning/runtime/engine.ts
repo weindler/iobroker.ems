@@ -45,6 +45,7 @@ import {
 	buildAcMappingTableFromConfig,
 	executeAcWriteSteps,
 	resolveAcMappingTarget,
+	writeAcUnitSwitchOff,
 	type AcMappingTable,
 } from "./sequences";
 import { acStatsDeviceActive, closeAcUnitStatsSession } from "./stats_active";
@@ -203,6 +204,7 @@ async function stopUnit(
 ): Promise<void> {
 	const profile = getAcProfile(unit.profileId);
 	const steps = profile.coolingStopSequence?.() ?? [{ kind: "switch_off" as const }];
+	host.log.info(`ac unit ${unit.index}: stop sequence starting (${live ? "live" : "dryrun"})`);
 	await executeAcWriteSteps(host, unit.index, table, steps, live, host.log);
 	up.lastStopAtMs = Date.now();
 	if (!live) {
@@ -213,17 +215,34 @@ async function stopUnit(
 		return;
 	}
 	const fbId = resolveAcMappingTarget(table, unit.index, "feedback_switch");
-	const fb = await waitForFeedbackOff(host, fbId);
-	if (fb.off) {
+	// Sofort prüfen, dann kurze Poll-Schleife; bei Bedarf zweite Off-Welle.
+	let fb = fbId ? await readForeign(host, fbId) : { value: null as unknown, num: null };
+	if (fbId && switchIsOn(fb.value)) {
+		fb = await waitForFeedbackOff(host, fbId);
+	} else if (fbId) {
+		fb = { value: fb.value, num: null };
+	}
+	if (fbId && switchIsOn(fb.value)) {
+		host.log.warn(`ac unit ${unit.index}: still on after first stop — retry switch_off`);
+		await writeAcUnitSwitchOff(host, unit.index, table, true, host.log);
+		const refreshId = resolveAcMappingTarget(table, unit.index, "cmd_refresh");
+		if (refreshId) {
+			await executeAcWriteSteps(host, unit.index, table, [{ kind: "toggle", role: "cmd_refresh" }], true, host.log);
+		}
+		fb = await waitForFeedbackOff(host, fbId);
+	}
+	if (!fbId || switchIsOff(fb.value)) {
 		up.running = false;
-		host.log.info(`ac unit ${unit.index}: stop (live) — feedback off`);
+		host.log.info(
+			`ac unit ${unit.index}: stop (live) — feedback ${fbId ? `off (${String(fb.value ?? "")})` : "unmapped"}`,
+		);
 		const purpose = up.lastModePurpose;
 		scheduleCleaningAfterStop(host, unit, up, up.lastStopAtMs, purpose);
 		up.lastModePurpose = null;
 	} else {
 		up.running = true;
 		host.log.warn(
-			`ac unit ${unit.index}: stop sent but feedback still on after ${Math.round((AC_FEEDBACK_POLL_MS * AC_FEEDBACK_POLL_ATTEMPTS) / 1000)}s (last=${String(fb.value ?? "")}) — cleaning not scheduled`,
+			`ac unit ${unit.index}: stop sent but feedback still on (last=${String(fb.value ?? "")}) — check mapping cmd_switch_off/on → SmartThings switch; cleaning not scheduled`,
 		);
 	}
 }

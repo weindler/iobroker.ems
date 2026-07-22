@@ -125,4 +125,4 @@ Two separate persistence roles per profile:
 - No daily-plan allocation or dispatch action changes
 - No automatic reference-range or efficiency learning
 - No cross-profile data bleed
-- `WALLBOX_LIVE_WRITE_RELEASED` remains `false`
+- No behavior change from the vehicle SOC/energy module itself when `WALLBOX_LIVE_WRITE_RELEASED = true` (v0.1.177) — this module stays read-only regardless of the write gate

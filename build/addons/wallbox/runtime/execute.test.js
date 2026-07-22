@@ -5,8 +5,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
-const node_fs_1 = require("node:fs");
-const node_path_1 = require("node:path");
 const contribution_ids_1 = require("../../../operator/contribution_ids");
 const contributor_1 = require("../../../operator/contributor");
 const slots_1 = require("../../../operator/daily_plan/slots");
@@ -52,12 +50,47 @@ function testMapping() {
         },
     });
 }
+const EVCC_MODE = "evcc.0.loadpoint.1.mode";
+const EVCC_MAX_CURRENT = "evcc.0.loadpoint.1.maxCurrent";
+const MODE_STATES = ["pv", "off", "now"];
+function meta(id, commonType, writable = true, allowedStateKeys = null) {
+    return { stateId: id, objectPresent: true, writable, commonType, allowedStateKeys };
+}
+function testEvccMapping() {
+    return (0, control_mapping_js_1.buildWallboxControlMappingSnapshot)({
+        config: {
+            wb_control_model: "evcc",
+            wb_evcc_set_mode_target: EVCC_MODE,
+            wb_evcc_set_max_current_a_target: EVCC_MAX_CURRENT,
+            wb_evcc_mode_charge_value: "pv",
+            wb_evcc_mode_hold_value: "off",
+        },
+        telemetryCfg: {
+            enabledStateId: "evcc.0.loadpoint.1.enabled",
+            maxCurrentAStateId: "evcc.0.telemetry.maxCurrent",
+            modeReadbackStateId: EVCC_MODE,
+        },
+        objectMetas: {
+            [EVCC_MODE]: meta(EVCC_MODE, "string", true, MODE_STATES),
+            [EVCC_MAX_CURRENT]: meta(EVCC_MAX_CURRENT, "number"),
+        },
+    });
+}
 function chargeWritePlan(c = chargeCandidate(), chargingEnabled = false) {
     return (0, write_plan_js_1.buildWallboxWritePlan)({
         candidate: c,
         mapping: testMapping(),
         chargingEnabled,
         chargeModeActive: null,
+        now: NOW,
+    });
+}
+function evccChargeWritePlan(c = chargeCandidate(), chargeModeActive = false) {
+    return (0, write_plan_js_1.buildWallboxWritePlan)({
+        candidate: c,
+        mapping: testEvccMapping(),
+        chargingEnabled: null,
+        chargeModeActive,
         now: NOW,
     });
 }
@@ -75,6 +108,18 @@ function chargeCandidate(over = {}) {
         blocked: false,
         blockReason: null,
         ...over,
+    };
+}
+function mockHost(overrides = {}) {
+    const writes = [];
+    return {
+        writes,
+        getForeignStateAsync: async () => null,
+        setForeignStateAsync: async (id, st) => {
+            writes.push({ id, val: typeof st === "object" && st !== null ? st.val : st });
+        },
+        log: { info: () => undefined, warn: () => undefined, error: () => undefined, debug: () => undefined },
+        ...overrides,
     };
 }
 function fullDispatch() {
@@ -150,20 +195,11 @@ function fullDispatch() {
     });
 });
 (0, node_test_1.describe)("executeWallboxWrite", () => {
-    (0, node_test_1.it)("never executes external write in v0.1.135", async () => {
-        const r = await (0, execute_js_1.executeWallboxWrite)({
-            candidate: chargeCandidate(),
-            writePlan: chargeWritePlan(),
-            phase: "live",
-            liveRequested: true,
-        });
-        strict_1.default.equal(r.attempted, false, "function invocation alone is not an external write attempt");
-        strict_1.default.equal(r.executed, false);
-        strict_1.default.equal(r.blocked, true);
-        strict_1.default.equal(r.reason, "release_gate_closed");
+    (0, node_test_1.it)("release gate is open (v0.1.176, gated by liveEligible/fault/ownership)", () => {
+        strict_1.default.equal(execute_js_1.WALLBOX_LIVE_WRITE_RELEASED, true);
     });
     (0, node_test_1.it)("observe does not attempt execution", async () => {
-        const r = await (0, execute_js_1.executeWallboxWrite)({
+        const r = await (0, execute_js_1.executeWallboxWrite)(mockHost(), {
             candidate: chargeCandidate(),
             writePlan: null,
             phase: "observe",
@@ -172,8 +208,8 @@ function fullDispatch() {
         strict_1.default.equal(r.attempted, false);
         strict_1.default.equal(r.reason, "observe_mode");
     });
-    (0, node_test_1.it)("dryrun blocks without release gate", async () => {
-        const r = await (0, execute_js_1.executeWallboxWrite)({
+    (0, node_test_1.it)("dryrun blocks without execution gate", async () => {
+        const r = await (0, execute_js_1.executeWallboxWrite)(mockHost(), {
             candidate: chargeCandidate(),
             writePlan: chargeWritePlan(),
             phase: "dryrun",
@@ -181,8 +217,8 @@ function fullDispatch() {
         });
         strict_1.default.equal(r.reason, "execution_gate_closed");
     });
-    (0, node_test_1.it)("live with blocked candidate stops before release gate", async () => {
-        const r = await (0, execute_js_1.executeWallboxWrite)({
+    (0, node_test_1.it)("live with blocked candidate stops before write plan", async () => {
+        const r = await (0, execute_js_1.executeWallboxWrite)(mockHost(), {
             candidate: chargeCandidate({ blocked: true, blockReason: "vehicle_disconnected" }),
             writePlan: null,
             phase: "live",
@@ -190,8 +226,104 @@ function fullDispatch() {
         });
         strict_1.default.equal(r.reason, "vehicle_disconnected");
     });
-    (0, node_test_1.it)("release gate is closed", () => {
-        strict_1.default.equal(execute_js_1.WALLBOX_LIVE_WRITE_RELEASED, false);
+    (0, node_test_1.it)("active fault/lockout blocks live writes", async () => {
+        const host = mockHost();
+        const r = await (0, execute_js_1.executeWallboxWrite)(host, {
+            candidate: chargeCandidate(),
+            writePlan: evccChargeWritePlan(),
+            phase: "live",
+            liveRequested: true,
+            faultActive: true,
+        });
+        strict_1.default.equal(r.reason, "fault_lockout");
+        strict_1.default.equal(host.writes.length, 0);
+    });
+    (0, node_test_1.it)("legacy_direct control model never executes (structurally not live-eligible)", async () => {
+        const host = mockHost();
+        const plan = chargeWritePlan();
+        strict_1.default.equal(plan.liveEligible, false, "legacy_direct plans are never live-eligible");
+        const r = await (0, execute_js_1.executeWallboxWrite)(host, {
+            candidate: chargeCandidate(),
+            writePlan: plan,
+            phase: "live",
+            liveRequested: true,
+        });
+        strict_1.default.equal(r.executed, false);
+        strict_1.default.equal(r.blocked, true);
+        strict_1.default.equal(host.writes.length, 0);
+    });
+    (0, node_test_1.it)("live EVCC charge_start writes maxCurrent then mode in sequence order", async () => {
+        const host = mockHost();
+        const plan = evccChargeWritePlan(chargeCandidate(), false);
+        strict_1.default.equal(plan.liveEligible, true, "evcc plan with confirmed mapping must be live-eligible");
+        strict_1.default.equal(plan.writeScenario, "charge_start");
+        const r = await (0, execute_js_1.executeWallboxWrite)(host, {
+            candidate: chargeCandidate(),
+            writePlan: plan,
+            phase: "live",
+            liveRequested: true,
+        });
+        strict_1.default.equal(r.attempted, true);
+        strict_1.default.equal(r.executed, true);
+        strict_1.default.equal(r.blocked, false);
+        strict_1.default.equal(r.ownershipGranted, true);
+        strict_1.default.ok(typeof r.writeTimestampMs === "number");
+        strict_1.default.equal(host.writes.length, 2);
+        strict_1.default.equal(host.writes[0].id, EVCC_MAX_CURRENT);
+        strict_1.default.equal(host.writes[0].val, 16);
+        strict_1.default.equal(host.writes[1].id, EVCC_MODE);
+        strict_1.default.equal(host.writes[1].val, "pv");
+    });
+    (0, node_test_1.it)("live EVCC charge_adjust (already in charge mode) writes only maxCurrent", async () => {
+        const host = mockHost();
+        const plan = evccChargeWritePlan(chargeCandidate(), true);
+        strict_1.default.equal(plan.writeScenario, "charge_adjust");
+        const r = await (0, execute_js_1.executeWallboxWrite)(host, {
+            candidate: chargeCandidate(),
+            writePlan: plan,
+            phase: "live",
+            liveRequested: true,
+        });
+        strict_1.default.equal(r.executed, true);
+        strict_1.default.equal(host.writes.length, 1);
+        strict_1.default.equal(host.writes[0].id, EVCC_MAX_CURRENT);
+    });
+    (0, node_test_1.it)("write already at target is executed without a real write (skipped)", async () => {
+        const host = mockHost({
+            getForeignStateAsync: async (id) => {
+                if (id === EVCC_MAX_CURRENT)
+                    return { val: 16 };
+                return null;
+            },
+        });
+        const plan = evccChargeWritePlan(chargeCandidate(), true);
+        const r = await (0, execute_js_1.executeWallboxWrite)(host, {
+            candidate: chargeCandidate(),
+            writePlan: plan,
+            phase: "live",
+            liveRequested: true,
+        });
+        strict_1.default.equal(r.executed, true);
+        strict_1.default.equal(r.reason, "already_at_target");
+        strict_1.default.equal(host.writes.length, 0);
+    });
+    (0, node_test_1.it)("write failure blocks with write_failed and grants no ownership", async () => {
+        const host = mockHost({
+            setForeignStateAsync: async () => {
+                throw new Error("bus down");
+            },
+        });
+        const plan = evccChargeWritePlan(chargeCandidate(), false);
+        const r = await (0, execute_js_1.executeWallboxWrite)(host, {
+            candidate: chargeCandidate(),
+            writePlan: plan,
+            phase: "live",
+            liveRequested: true,
+        });
+        strict_1.default.equal(r.executed, false);
+        strict_1.default.equal(r.blocked, true);
+        strict_1.default.equal(r.reason, "write_failed");
+        strict_1.default.equal(r.ownershipGranted, false);
     });
 });
 (0, node_test_1.describe)("runWallboxLiveFoundation", () => {
@@ -222,7 +354,7 @@ function fullDispatch() {
             governanceEnabled: false,
             addonEnabled: true,
         });
-        const r = await (0, execute_js_1.runWallboxLiveFoundation)({
+        const r = await (0, execute_js_1.runWallboxLiveFoundation)(mockHost(), {
             dispatch,
             decision,
             mappingSnapshot: testMapping(),
@@ -285,7 +417,7 @@ function fullDispatch() {
             governanceEnabled: true,
             addonEnabled: true,
         });
-        const r = await (0, execute_js_1.runWallboxLiveFoundation)({
+        const r = await (0, execute_js_1.runWallboxLiveFoundation)(mockHost(), {
             dispatch,
             decision,
             mappingSnapshot: testMapping(),
@@ -301,11 +433,9 @@ function fullDispatch() {
         strict_1.default.ok(r.candidate);
         strict_1.default.ok(r.writePlan);
         strict_1.default.ok(r.feedbackContract);
-        strict_1.default.notEqual(r.feedbackContract?.status, "pending");
-        strict_1.default.notEqual(r.feedbackContract?.status, "matched");
         strict_1.default.equal(r.writeResult, null);
     });
-    (0, node_test_1.it)("live routes to execute and blocks at release gate", async () => {
+    (0, node_test_1.it)("live with legacy_direct mapping blocks at liveEligible gate (structural)", async () => {
         const dispatch = fullDispatch();
         const decision = (0, daily_plan_js_1.evaluateWallboxDailyPlan)({
             now: NOW,
@@ -349,7 +479,8 @@ function fullDispatch() {
             governanceEnabled: true,
             addonEnabled: true,
         });
-        const r = await (0, execute_js_1.runWallboxLiveFoundation)({
+        const host = mockHost();
+        const r = await (0, execute_js_1.runWallboxLiveFoundation)(host, {
             dispatch,
             decision,
             mappingSnapshot: testMapping(),
@@ -364,38 +495,9 @@ function fullDispatch() {
         strict_1.default.equal(r.phase, "live");
         strict_1.default.ok(r.candidate?.technicallyReady);
         strict_1.default.ok(r.writePlan?.contractReady);
-        strict_1.default.ok(r.feedbackContract);
-        strict_1.default.equal(r.writeResult?.reason, "release_gate_closed");
+        strict_1.default.equal(r.writePlan?.liveEligible, false);
         strict_1.default.equal(r.writeResult?.attempted, false);
         strict_1.default.equal(r.writeAllowed, false);
-    });
-    (0, node_test_1.it)("live does not start feedback timers", async () => {
-        const src = (0, node_fs_1.readFileSync)((0, node_path_1.join)(process.cwd(), "src/addons/wallbox/runtime/execute.ts"), "utf8");
-        strict_1.default.ok(!src.includes("setTimeout"));
-        strict_1.default.ok(!src.includes("setInterval"));
-    });
-});
-(0, node_test_1.describe)("wallbox execute write safety", () => {
-    (0, node_test_1.it)("execute module has no foreign write imports", () => {
-        const src = (0, node_fs_1.readFileSync)((0, node_path_1.join)(process.cwd(), "src/addons/wallbox/runtime/execute.ts"), "utf8");
-        strict_1.default.ok(!/import\s*\{[^}]*writeForeignIfChanged/.test(src));
-        strict_1.default.ok(!/import\s*\{[^}]*setForeignStateAsync/.test(src));
-        strict_1.default.ok(!/from\s+["'].*failsafe/.test(src));
-        strict_1.default.ok(!src.includes("writeForeignIfChanged("));
-        strict_1.default.ok(!src.includes("setForeignStateAsync("));
-    });
-    (0, node_test_1.it)("write plan module has no foreign write imports", () => {
-        const src = (0, node_fs_1.readFileSync)((0, node_path_1.join)(process.cwd(), "src/addons/wallbox/runtime/write_plan.ts"), "utf8");
-        strict_1.default.ok(!src.includes("writeForeignIfChanged("));
-        strict_1.default.ok(!src.includes("setForeignStateAsync("));
-    });
-    (0, node_test_1.it)("valid charge candidate in live still produces zero writes via execute", async () => {
-        const r = await (0, execute_js_1.executeWallboxWrite)({
-            candidate: chargeCandidate(),
-            writePlan: chargeWritePlan(),
-            phase: "live",
-            liveRequested: true,
-        });
-        strict_1.default.equal(r.executed, false);
+        strict_1.default.equal(host.writes.length, 0);
     });
 });

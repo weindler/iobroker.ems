@@ -18,6 +18,7 @@ import {
 	publishWallboxDispatchStates,
 	publishWallboxLiveFoundationStates,
 	publishWallboxRuntimeStates,
+	publishWallboxSafetyStates,
 	resetWallboxDailyPlanCache,
 	resetWallboxDispatchCache,
 	resolveWallboxDailyPlanDecision,
@@ -26,7 +27,21 @@ import {
 	buildWallboxControlMappingSnapshot,
 	collectConfiguredControlTargetStateIds,
 	telemetryInputFromSnapshot,
+	emptyWallboxOwnership,
+	grantWallboxOwnership,
+	emptyWallboxFault,
+	raiseWallboxFault,
+	faultCodeForFeedbackStatus,
+	planWallboxSafeRestore,
+	tickWallboxFeedback,
+	isWallboxFeedbackStatusTerminal,
+	type WallboxOwnershipState,
+	type WallboxFaultState,
 } from "./runtime";
+import type { WallboxFeedbackContract } from "./runtime/feedback";
+import type { WallboxLiveFoundationResult } from "./runtime/execute";
+import { writeForeignIfChanged } from "../../device_write";
+import { WALLBOX_RUNTIME_STATES } from "./runtime/states";
 import { intentEvccConfigFromAdapter } from "../../intent/config";
 import { evccModeChargeValue } from "./evcc_control_config";
 import { resolveWallboxControlObjectMetas } from "./runtime/control_object_meta";
@@ -47,8 +62,18 @@ type WallboxHost = EvccTelemetryReadHost &
 let activeHost: WallboxHost | null = null;
 const subscribedIds: string[] = [];
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let periodicTimer: ReturnType<typeof setInterval> | null = null;
+
+/** EMS-Ownership über die aktive EVCC-Steuerung — Safe-Restore-Pflicht bis geklärt. */
+let wallboxOwnership: WallboxOwnershipState = emptyWallboxOwnership();
+/** Fault/Lockout aus Write-Fehlern oder Feedback-Mismatch/Timeout — sperrt weitere Live-Writes. */
+let wallboxFault: WallboxFaultState = emptyWallboxFault();
+/** Feedback-Contract eines zuletzt ausgeführten Writes, wartet auf Rücklese-Bestätigung. */
+let pendingWallboxFeedback: { contract: WallboxFeedbackContract; writeTimestampMs: number } | null = null;
 
 const DEBOUNCE_MS = 300;
+/** Deterministischer Sicherheits-Tick (Feedback-Timeout/Safe-Restore) unabhängig von EVCC-Telemetrie-Events. */
+const SAFETY_TICK_MS = 10_000;
 
 async function writeField(
 	host: WallboxHost,
@@ -153,7 +178,7 @@ async function refreshWallboxDailyPlanRuntime(host: WallboxHost, snap: Awaited<R
 		objectMetas,
 	});
 	const chargeModeActive = await resolveChargeModeActive(host, configRecord);
-	const foundation = await runWallboxLiveFoundation({
+	const foundation = await runWallboxLiveFoundation(host, {
 		dispatch,
 		decision,
 		mappingSnapshot,
@@ -164,8 +189,98 @@ async function refreshWallboxDailyPlanRuntime(host: WallboxHost, snap: Awaited<R
 		governanceEnabled,
 		liveRequested,
 		now,
+		faultActive: wallboxFault.active,
 	});
 	await publishWallboxLiveFoundationStates(host, foundation);
+	await runWallboxSafetyTick(host, foundation, now);
+	await publishWallboxSafetyStates(host, wallboxOwnership, wallboxFault);
+}
+
+/**
+ * Ownership/Fault/Safe-Restore-Verdrahtung nach jedem Foundation-Lauf:
+ * - erfolgreicher Write → Ownership übernehmen, Feedback-Contract zur Prüfung vormerken
+ * - Write fehlgeschlagen → Fault/Lockout auslösen
+ * - anstehendes Feedback → auswerten; Mismatch/Timeout/Invalid → Fault/Lockout
+ * - Kontrolle verlassen (nicht mehr live) während Ownership aktiv → Safe-Restore versuchen
+ */
+async function runWallboxSafetyTick(
+	host: WallboxHost,
+	foundation: WallboxLiveFoundationResult,
+	now: Date,
+): Promise<void> {
+	const writeResult = foundation.writeResult;
+	if (writeResult?.executed && writeResult.ownershipGranted) {
+		wallboxOwnership = grantWallboxOwnership(
+			foundation.mappingSnapshot.controlModel,
+			foundation.writePlan?.writeScenario ?? null,
+			now.toISOString(),
+		);
+		if (foundation.feedbackContract?.required && writeResult.writeTimestampMs !== null) {
+			pendingWallboxFeedback = {
+				contract: foundation.feedbackContract,
+				writeTimestampMs: writeResult.writeTimestampMs,
+			};
+		}
+	} else if (writeResult?.blocked && writeResult.reason === "write_failed") {
+		wallboxFault = raiseWallboxFault("write_failed", "wallbox live write failed", now.toISOString());
+		host.log.error("wallbox: Live-Write fehlgeschlagen — Fault/Lockout aktiv, fault_reset zum Zurücksetzen");
+	}
+
+	if (pendingWallboxFeedback) {
+		const evaluated = await tickWallboxFeedback(
+			host,
+			pendingWallboxFeedback.contract,
+			pendingWallboxFeedback.writeTimestampMs,
+			now.getTime(),
+		);
+		if (isWallboxFeedbackStatusTerminal(evaluated.status)) {
+			const code = faultCodeForFeedbackStatus(evaluated.status);
+			if (code) {
+				wallboxFault = raiseWallboxFault(code, evaluated.blockReason ?? evaluated.status, now.toISOString());
+				host.log.warn(
+					`wallbox: Feedback ${evaluated.status} (${evaluated.blockReason ?? "n/a"}) — Fault/Lockout aktiv`,
+				);
+			}
+			pendingWallboxFeedback = null;
+		} else {
+			pendingWallboxFeedback = { ...pendingWallboxFeedback, contract: evaluated };
+		}
+	}
+
+	if (foundation.phase !== "live" && wallboxOwnership.active) {
+		const restorePlan = planWallboxSafeRestore(wallboxOwnership, foundation.mappingSnapshot);
+		if (restorePlan.required) {
+			if (restorePlan.possible && restorePlan.operation) {
+				try {
+					const r = await writeForeignIfChanged(host, {
+						stateId: restorePlan.operation.targetStateId,
+						value: restorePlan.operation.targetValue,
+						reason: "wallbox safe_restore",
+					});
+					host.log.info(
+						`wallbox: Safe-Restore → ${restorePlan.operation.targetValue} (${r.skipped ? "bereits gesetzt" : "geschrieben"})`,
+					);
+				} catch (e) {
+					host.log.error(`wallbox: Safe-Restore-Write fehlgeschlagen: ${String(e)}`);
+				}
+			} else {
+				host.log.warn(
+					`wallbox: Safe-Restore nicht möglich (${restorePlan.reason}) — Ownership bleibt bis Mapping korrigiert oder manuell zurückgesetzt`,
+				);
+				return;
+			}
+		}
+		wallboxOwnership = emptyWallboxOwnership();
+		pendingWallboxFeedback = null;
+	}
+}
+
+function handleWallboxFaultReset(host: WallboxHost): void {
+	if (!wallboxFault.active) return;
+	wallboxFault = emptyWallboxFault();
+	pendingWallboxFeedback = null;
+	host.log.info("wallbox: Fault/Lockout manuell zurückgesetzt");
+	void publishWallboxSafetyStates(host, wallboxOwnership, wallboxFault).catch(() => undefined);
 }
 
 export async function refreshWallboxEvccTelemetry(host: WallboxHost): Promise<void> {
@@ -247,6 +362,7 @@ export async function startWallboxModuleRuntime(host: WallboxHost): Promise<void
 	ids.add(DAILY_PLAN_STATE_IDS.revision);
 	ids.add(DAILY_PLAN_STATE_IDS.status);
 	ids.add(ALLOCATION_ADDON_STATE_IDS.wallbox.planJson);
+	ids.add(WALLBOX_RUNTIME_STATES.faultReset);
 
 	for (const id of ids) {
 		if (subscribedIds.includes(id)) continue;
@@ -269,7 +385,15 @@ export async function startWallboxModuleRuntime(host: WallboxHost): Promise<void
 			}
 		}
 	}
-	host.log.debug("Wallbox EVCC telemetry module initialized (read-only)");
+	if (periodicTimer) clearInterval(periodicTimer);
+	periodicTimer = setInterval(() => {
+		if (!activeHost) return;
+		void refreshWallboxEvccTelemetry(activeHost).catch((e) =>
+			activeHost?.log.debug?.(`wallbox safety tick: ${e}`),
+		);
+	}, SAFETY_TICK_MS);
+
+	host.log.debug("Wallbox EVCC telemetry module initialized (EVCC-Live-Foundation aktiv)");
 }
 
 export async function initWallboxModule(host: WallboxHost): Promise<void> {
@@ -281,6 +405,10 @@ export function stopWallboxModule(): void {
 	if (debounceTimer) {
 		clearTimeout(debounceTimer);
 		debounceTimer = null;
+	}
+	if (periodicTimer) {
+		clearInterval(periodicTimer);
+		periodicTimer = null;
 	}
 	const host = activeHost;
 	if (host) {
@@ -303,6 +431,9 @@ export function stopWallboxModule(): void {
 	activeHost = null;
 	resetWallboxDailyPlanCache();
 	resetWallboxDispatchCache();
+	wallboxOwnership = emptyWallboxOwnership();
+	wallboxFault = emptyWallboxFault();
+	pendingWallboxFeedback = null;
 }
 
 const DAILY_PLAN_TRIGGER_IDS = new Set([
@@ -335,6 +466,15 @@ export function handleWallboxStateChange(namespace: string, id: string): void {
 	if (!activeHost) return;
 	const ns = `${namespace}.`;
 	const bareId = id.startsWith(ns) ? id.slice(ns.length) : id;
+	if (bareId === WALLBOX_RUNTIME_STATES.faultReset) {
+		void activeHost.getStateAsync(WALLBOX_RUNTIME_STATES.faultReset).then((st) => {
+			if (st?.val === true && activeHost) {
+				handleWallboxFaultReset(activeHost);
+				void activeHost.setStateAsync(WALLBOX_RUNTIME_STATES.faultReset, { val: false, ack: true });
+			}
+		});
+		return;
+	}
 	if (DAILY_PLAN_TRIGGER_IDS.has(bareId)) {
 		scheduleRefresh(activeHost);
 	}

@@ -161,9 +161,11 @@ beliebige Wallbox → EVCC → EMS-Light (Telemetrie + gesteuerte Writes)
 ```
 
 - Liest konfigurierte EVCC-Fremd-States, normalisiert und spiegelt nach `addons.wallbox.evcc.*`
-- Daily-Plan-Allocation → Dryrun-Dispatch → Live-Foundation (`executeWallboxWrite`) mit Write-/Feedback-Vertrag
+- Daily-Plan-Allocation → Dryrun-Dispatch → `executeWallboxWrite()` (seit v0.1.177 **echte Writes** für den EVCC-Control-Pfad, kontrolliert freigegeben über `WALLBOX_LIVE_WRITE_RELEASED = true`)
+- Feedback-Loop: nach jedem Write wird der Soll-/Ist-Vertrag (`runtime/feedback.ts`) per periodischem Safety-Tick (`runtime/feedback_tick.ts`, 10s) gegen die Readback-States geprüft
+- Safety-Schicht analog Heizstab/Batterie: Ownership (`runtime/ownership.ts`), Fault/Lockout (`runtime/fault.ts`, State `fault_reset` zum manuellen Rücksetzen), Safe-Restore auf den konfigurierten EVCC-Hold-Modus beim Verlassen von Live (`runtime/restore.ts`)
 - Fahrzeugprofile + SOC/Energie-Fallback unter `wb_vehicle_profiles` / Runtime-States
-- Live-Writes nur über Runtime-Gates (Dryrun vor Live); Release-Gates je nach Instanz-Config
+- Legacy-Direktpfad (`legacy_direct`, ehem. go-e) bleibt strukturell nie `liveEligible` — nur der EVCC-Control-Pfad kann live schreiben
 - Backup/Restore/State-Tree: siehe `docs/EMS_LIGHT_V0_1_140*.md` … `143*.md` und Admin-Tab Backup
 
 Legacy go-e-Write-Mappings (`wb_set_*`) bleiben in der Config, werden von der Runtime nicht mehr genutzt.
@@ -323,6 +325,6 @@ Keine externen Snapshot-Fixtures im Repository — Tests nutzen Mock-Hosts.
 - Einheitliche Runtime-States (`decision_source`, `planner_status`, …) überall
 - Aufräumen Legacy Shadow/Takeover-Code (derzeit nur abgeschaltet)
 
-**Bereits produktiv (nicht mehr „geplant“):** General Operator (Forecast + Daily Plan + Allocation), Heizstab/Klima/Batterie-Laden über Daily Plan, Wallbox-Pfad bis Write/Feedback/Profile.
+**Bereits produktiv (nicht mehr „geplant“):** General Operator (Forecast + Daily Plan + Allocation), Heizstab/Klima/Batterie-Laden über Daily Plan, Wallbox EVCC-Control-Pfad mit echten Live-Writes, Feedback-Verifikation und Safety-Schicht (Ownership/Fault/Restore).
 
 Details und Zielbild: `docs/EMS_LIGHT_MASTERPLAN.md`. Priorität bis 10.08.2026: `docs/README.md`.

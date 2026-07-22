@@ -18,10 +18,10 @@ function numState(id: string, name: string, def?: number): StateDef {
 	};
 }
 
-function boolState(id: string, name: string, def = false): StateDef {
+function boolState(id: string, name: string, def = false, write = false): StateDef {
 	return {
 		id,
-		common: { name, type: "boolean", role: "switch", read: true, write: false, def },
+		common: { name, type: "boolean", role: "switch", read: true, write, def },
 		defaultVal: def,
 	};
 }
@@ -105,6 +105,11 @@ export async function ensureWallboxRuntimeStates(host: StateHost): Promise<void>
 		numState(WALLBOX_RUNTIME_STATES.activeVehicleRequiredBatteryEnergyKwh, "Wallbox aktive benötigte Batterieenergie kWh"),
 		boolState(WALLBOX_RUNTIME_STATES.activeVehicleSocEnergyReady, "Wallbox aktiver SOC/Energie bereit", false),
 		strState(WALLBOX_RUNTIME_STATES.activeVehicleSocEnergyReasonCode, "Wallbox aktiver SOC/Energie Reason-Code"),
+		boolState(WALLBOX_RUNTIME_STATES.ownershipActive, "Wallbox EMS-Ownership aktiv", false),
+		boolState(WALLBOX_RUNTIME_STATES.faultActive, "Wallbox Fault/Lockout aktiv", false),
+		strState(WALLBOX_RUNTIME_STATES.faultCode, "Wallbox Fault-Code"),
+		strState(WALLBOX_RUNTIME_STATES.faultMessage, "Wallbox Fault-Meldung"),
+		boolState(WALLBOX_RUNTIME_STATES.faultReset, "Wallbox Fault zurücksetzen", false, true),
 		strState(
 			WALLBOX_RUNTIME_STATES.detailJson,
 			"Wallbox Detail-Diagnose (JSON, für Support-Paket)",

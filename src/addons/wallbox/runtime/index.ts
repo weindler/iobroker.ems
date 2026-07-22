@@ -5,6 +5,8 @@ import type { WallboxPlanDecision } from "./daily_plan";
 import type { WallboxDryrunDispatchResult } from "./dispatch";
 import type { WallboxLiveFoundationResult } from "./execute";
 import { countWallboxFeedbackExpectations } from "./feedback";
+import type { WallboxOwnershipState } from "./ownership";
+import type { WallboxFaultState } from "./fault";
 
 export async function publishWallboxRuntimeStates(
 	host: StateHost,
@@ -135,8 +137,8 @@ export async function publishWallboxLiveFoundationStates(
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeLiveEligible, plan?.liveEligible ?? false);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackStatus, fb?.status ?? "not_required");
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.feedbackBlockReason, fb?.blockReason ?? "");
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.runtimeControlAvailable, false);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeAllowed, false);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.runtimeControlAvailable, plan?.liveEligible ?? false);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.writeAllowed, foundation.writeAllowed);
 
 	const detail = {
 		phase: foundation.phase,
@@ -168,6 +170,17 @@ export async function publishWallboxLiveFoundationStates(
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.detailJson, JSON.stringify(detail));
 }
 
+export async function publishWallboxSafetyStates(
+	host: StateHost,
+	ownership: WallboxOwnershipState,
+	fault: WallboxFaultState,
+): Promise<void> {
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.ownershipActive, ownership.active);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.faultActive, fault.active);
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.faultCode, fault.code ?? "");
+	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.faultMessage, fault.message ?? "");
+}
+
 export { ensureWallboxRuntimeStates } from "./ensure_states";
 export { resetWallboxDailyPlanCache, resolveWallboxDailyPlanDecision, telemetryInputFromSnapshot } from "./daily_plan";
 export { buildWallboxDispatchIntent } from "./intent";
@@ -194,3 +207,19 @@ export {
 	resolveWallboxRuntimePhase,
 	WALLBOX_LIVE_WRITE_RELEASED,
 } from "./execute";
+export {
+	emptyWallboxOwnership,
+	grantWallboxOwnership,
+	canSafeRestoreWallbox,
+	type WallboxOwnershipState,
+} from "./ownership";
+export {
+	emptyWallboxFault,
+	raiseWallboxFault,
+	clearWallboxFault,
+	faultCodeForFeedbackStatus,
+	type WallboxFaultState,
+	type WallboxFaultCode,
+} from "./fault";
+export { planWallboxSafeRestore, type WallboxRestorePlan } from "./restore";
+export { tickWallboxFeedback, isWallboxFeedbackStatusTerminal } from "./feedback_tick";

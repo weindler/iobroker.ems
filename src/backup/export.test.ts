@@ -502,8 +502,8 @@ describe("backup export v0.1.141", () => {
 		assert.ok(!name.includes("@"));
 	});
 
-	it("regression: WALLBOX_LIVE_WRITE_RELEASED stays false", () => {
-		assert.equal(WALLBOX_LIVE_WRITE_RELEASED, false);
+	it("regression: WALLBOX_LIVE_WRITE_RELEASED reflects the v0.1.176 controlled release (gated by fault/lockout/ownership/liveEligible)", () => {
+		assert.equal(WALLBOX_LIVE_WRITE_RELEASED, true);
 	});
 
 	it("assertJsonSerializable rejects secrets in support path", () => {

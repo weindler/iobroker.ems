@@ -252,7 +252,7 @@ describe("bootstrap cold start recovery", () => {
 		assert.equal(adapter.states.get("global.execution_mode")?.val, "dryrun");
 		assert.equal(adapter.states.get("addons.wallbox.mode")?.val, "dryrun");
 		assert.equal(adapter.foreignWrites.length, 0);
-		assert.equal(WALLBOX_LIVE_WRITE_RELEASED, false);
+		assert.equal(WALLBOX_LIVE_WRITE_RELEASED, true);
 
 		for (const prefix of LEGACY_WALLBOX_VEHICLE_SLOT_PREFIXES) {
 			for (const id of adapter.objects.keys()) {
@@ -377,7 +377,7 @@ describe("bootstrap cold start recovery", () => {
 		assert.equal(adapter.states.get("addons.air_conditioning.mode")?.val, "dryrun");
 		assert.equal(adapter.states.get("execution.safety.global_execution_mode")?.val, "dryrun");
 		assert.equal(adapter.foreignWrites.length, 0);
-		assert.equal(WALLBOX_LIVE_WRITE_RELEASED, false);
+		assert.equal(WALLBOX_LIVE_WRITE_RELEASED, true);
 	});
 
 	it("scenario F2 — second start with existing namespace is warm start", async () => {

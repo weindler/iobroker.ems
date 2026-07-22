@@ -9,6 +9,8 @@ const execution_mode_1 = require("../../execution_mode");
 const tree_paths_1 = require("../../tree_paths");
 const states_1 = require("../../operator/daily_plan/states");
 const runtime_1 = require("./runtime");
+const device_write_1 = require("../../device_write");
+const states_2 = require("./runtime/states");
 const config_1 = require("../../intent/config");
 const evcc_control_config_1 = require("./evcc_control_config");
 const control_object_meta_1 = require("./runtime/control_object_meta");
@@ -16,7 +18,16 @@ const vehicles_1 = require("./vehicles");
 let activeHost = null;
 const subscribedIds = [];
 let debounceTimer = null;
+let periodicTimer = null;
+/** EMS-Ownership über die aktive EVCC-Steuerung — Safe-Restore-Pflicht bis geklärt. */
+let wallboxOwnership = (0, runtime_1.emptyWallboxOwnership)();
+/** Fault/Lockout aus Write-Fehlern oder Feedback-Mismatch/Timeout — sperrt weitere Live-Writes. */
+let wallboxFault = (0, runtime_1.emptyWallboxFault)();
+/** Feedback-Contract eines zuletzt ausgeführten Writes, wartet auf Rücklese-Bestätigung. */
+let pendingWallboxFeedback = null;
 const DEBOUNCE_MS = 300;
+/** Deterministischer Sicherheits-Tick (Feedback-Timeout/Safe-Restore) unabhängig von EVCC-Telemetrie-Events. */
+const SAFETY_TICK_MS = 10_000;
 async function writeField(host, stateId, field) {
     if (field.status === "missing" || field.value === null) {
         return;
@@ -97,7 +108,7 @@ async function refreshWallboxDailyPlanRuntime(host, snap) {
         objectMetas,
     });
     const chargeModeActive = await resolveChargeModeActive(host, configRecord);
-    const foundation = await (0, runtime_1.runWallboxLiveFoundation)({
+    const foundation = await (0, runtime_1.runWallboxLiveFoundation)(host, {
         dispatch,
         decision,
         mappingSnapshot,
@@ -108,8 +119,80 @@ async function refreshWallboxDailyPlanRuntime(host, snap) {
         governanceEnabled,
         liveRequested,
         now,
+        faultActive: wallboxFault.active,
     });
     await (0, runtime_1.publishWallboxLiveFoundationStates)(host, foundation);
+    await runWallboxSafetyTick(host, foundation, now);
+    await (0, runtime_1.publishWallboxSafetyStates)(host, wallboxOwnership, wallboxFault);
+}
+/**
+ * Ownership/Fault/Safe-Restore-Verdrahtung nach jedem Foundation-Lauf:
+ * - erfolgreicher Write → Ownership übernehmen, Feedback-Contract zur Prüfung vormerken
+ * - Write fehlgeschlagen → Fault/Lockout auslösen
+ * - anstehendes Feedback → auswerten; Mismatch/Timeout/Invalid → Fault/Lockout
+ * - Kontrolle verlassen (nicht mehr live) während Ownership aktiv → Safe-Restore versuchen
+ */
+async function runWallboxSafetyTick(host, foundation, now) {
+    const writeResult = foundation.writeResult;
+    if (writeResult?.executed && writeResult.ownershipGranted) {
+        wallboxOwnership = (0, runtime_1.grantWallboxOwnership)(foundation.mappingSnapshot.controlModel, foundation.writePlan?.writeScenario ?? null, now.toISOString());
+        if (foundation.feedbackContract?.required && writeResult.writeTimestampMs !== null) {
+            pendingWallboxFeedback = {
+                contract: foundation.feedbackContract,
+                writeTimestampMs: writeResult.writeTimestampMs,
+            };
+        }
+    }
+    else if (writeResult?.blocked && writeResult.reason === "write_failed") {
+        wallboxFault = (0, runtime_1.raiseWallboxFault)("write_failed", "wallbox live write failed", now.toISOString());
+        host.log.error("wallbox: Live-Write fehlgeschlagen — Fault/Lockout aktiv, fault_reset zum Zurücksetzen");
+    }
+    if (pendingWallboxFeedback) {
+        const evaluated = await (0, runtime_1.tickWallboxFeedback)(host, pendingWallboxFeedback.contract, pendingWallboxFeedback.writeTimestampMs, now.getTime());
+        if ((0, runtime_1.isWallboxFeedbackStatusTerminal)(evaluated.status)) {
+            const code = (0, runtime_1.faultCodeForFeedbackStatus)(evaluated.status);
+            if (code) {
+                wallboxFault = (0, runtime_1.raiseWallboxFault)(code, evaluated.blockReason ?? evaluated.status, now.toISOString());
+                host.log.warn(`wallbox: Feedback ${evaluated.status} (${evaluated.blockReason ?? "n/a"}) — Fault/Lockout aktiv`);
+            }
+            pendingWallboxFeedback = null;
+        }
+        else {
+            pendingWallboxFeedback = { ...pendingWallboxFeedback, contract: evaluated };
+        }
+    }
+    if (foundation.phase !== "live" && wallboxOwnership.active) {
+        const restorePlan = (0, runtime_1.planWallboxSafeRestore)(wallboxOwnership, foundation.mappingSnapshot);
+        if (restorePlan.required) {
+            if (restorePlan.possible && restorePlan.operation) {
+                try {
+                    const r = await (0, device_write_1.writeForeignIfChanged)(host, {
+                        stateId: restorePlan.operation.targetStateId,
+                        value: restorePlan.operation.targetValue,
+                        reason: "wallbox safe_restore",
+                    });
+                    host.log.info(`wallbox: Safe-Restore → ${restorePlan.operation.targetValue} (${r.skipped ? "bereits gesetzt" : "geschrieben"})`);
+                }
+                catch (e) {
+                    host.log.error(`wallbox: Safe-Restore-Write fehlgeschlagen: ${String(e)}`);
+                }
+            }
+            else {
+                host.log.warn(`wallbox: Safe-Restore nicht möglich (${restorePlan.reason}) — Ownership bleibt bis Mapping korrigiert oder manuell zurückgesetzt`);
+                return;
+            }
+        }
+        wallboxOwnership = (0, runtime_1.emptyWallboxOwnership)();
+        pendingWallboxFeedback = null;
+    }
+}
+function handleWallboxFaultReset(host) {
+    if (!wallboxFault.active)
+        return;
+    wallboxFault = (0, runtime_1.emptyWallboxFault)();
+    pendingWallboxFeedback = null;
+    host.log.info("wallbox: Fault/Lockout manuell zurückgesetzt");
+    void (0, runtime_1.publishWallboxSafetyStates)(host, wallboxOwnership, wallboxFault).catch(() => undefined);
 }
 async function refreshWallboxEvccTelemetry(host) {
     const cfg = (0, evcc_config_1.wallboxEvccTelemetryConfigFromAdapter)(host.config);
@@ -181,6 +264,7 @@ async function startWallboxModuleRuntime(host) {
     ids.add(states_1.DAILY_PLAN_STATE_IDS.revision);
     ids.add(states_1.DAILY_PLAN_STATE_IDS.status);
     ids.add(states_1.ALLOCATION_ADDON_STATE_IDS.wallbox.planJson);
+    ids.add(states_2.WALLBOX_RUNTIME_STATES.faultReset);
     for (const id of ids) {
         if (subscribedIds.includes(id))
             continue;
@@ -206,7 +290,14 @@ async function startWallboxModuleRuntime(host) {
             }
         }
     }
-    host.log.debug("Wallbox EVCC telemetry module initialized (read-only)");
+    if (periodicTimer)
+        clearInterval(periodicTimer);
+    periodicTimer = setInterval(() => {
+        if (!activeHost)
+            return;
+        void refreshWallboxEvccTelemetry(activeHost).catch((e) => activeHost?.log.debug?.(`wallbox safety tick: ${e}`));
+    }, SAFETY_TICK_MS);
+    host.log.debug("Wallbox EVCC telemetry module initialized (EVCC-Live-Foundation aktiv)");
 }
 exports.startWallboxModuleRuntime = startWallboxModuleRuntime;
 async function initWallboxModule(host) {
@@ -218,6 +309,10 @@ function stopWallboxModule() {
     if (debounceTimer) {
         clearTimeout(debounceTimer);
         debounceTimer = null;
+    }
+    if (periodicTimer) {
+        clearInterval(periodicTimer);
+        periodicTimer = null;
     }
     const host = activeHost;
     if (host) {
@@ -240,6 +335,9 @@ function stopWallboxModule() {
     activeHost = null;
     (0, runtime_1.resetWallboxDailyPlanCache)();
     (0, runtime_1.resetWallboxDispatchCache)();
+    wallboxOwnership = (0, runtime_1.emptyWallboxOwnership)();
+    wallboxFault = (0, runtime_1.emptyWallboxFault)();
+    pendingWallboxFeedback = null;
 }
 exports.stopWallboxModule = stopWallboxModule;
 const DAILY_PLAN_TRIGGER_IDS = new Set([
@@ -273,6 +371,15 @@ function handleWallboxStateChange(namespace, id) {
         return;
     const ns = `${namespace}.`;
     const bareId = id.startsWith(ns) ? id.slice(ns.length) : id;
+    if (bareId === states_2.WALLBOX_RUNTIME_STATES.faultReset) {
+        void activeHost.getStateAsync(states_2.WALLBOX_RUNTIME_STATES.faultReset).then((st) => {
+            if (st?.val === true && activeHost) {
+                handleWallboxFaultReset(activeHost);
+                void activeHost.setStateAsync(states_2.WALLBOX_RUNTIME_STATES.faultReset, { val: false, ack: true });
+            }
+        });
+        return;
+    }
     if (DAILY_PLAN_TRIGGER_IDS.has(bareId)) {
         scheduleRefresh(activeHost);
     }

@@ -566,13 +566,17 @@ async function writeLearningFixture(host, key, data) {
         });
         strict_1.default.equal(battery.rejectCode, "restore_in_progress");
         const wallbox = await (0, execute_js_1.executeWallboxWrite)({
+            getForeignStateAsync: async () => null,
+            setForeignStateAsync: async () => undefined,
+            log: { info: () => undefined, warn: () => undefined, error: () => undefined, debug: () => undefined },
+        }, {
             candidate: { blocked: false },
             writePlan: {},
             phase: "live",
             liveRequested: true,
         });
         strict_1.default.equal(wallbox.reason, "restore_in_progress");
-        strict_1.default.equal(execute_js_1.WALLBOX_LIVE_WRITE_RELEASED, false);
+        strict_1.default.equal(execute_js_1.WALLBOX_LIVE_WRITE_RELEASED, true);
     });
 });
 (0, node_test_1.describe)("restore startup recovery", () => {

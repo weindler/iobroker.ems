@@ -321,7 +321,7 @@ Die bestehende EVCC-/Wallbox-Runtime, FSM, Safety und Intent-Ausführung bleiben
 
 Später werden nur zentrale Governance und Entscheidungsquelle vereinheitlicht.
 
-**Aktuell (v0.1.63):** Wallbox ist vollständig read-only. EVCC-Telemetrie wird gelesen und in `addons.wallbox.evcc.*` gespiegelt. Keine EVCC- oder Wallbox-Writes.
+**Aktuell (v0.1.177):** Wallbox schreibt live für den EVCC-Control-Pfad (`liveEligible=true`), abgesichert über Ownership/Fault-Lockout/Safe-Restore und Feedback-Verifikation (siehe `docs/EMS_LIGHT_WALLBOX_LIVE_FOUNDATION.md`). Der Legacy-Direktpfad (go-e) bleibt strukturell read-only. EVCC-Telemetrie wird weiterhin gelesen und in `addons.wallbox.evcc.*` gespiegelt.
 
 ### Heizstab
 

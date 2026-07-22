@@ -1,4 +1,4 @@
-# EMS-Light — Wallbox Feedback Contract (v0.1.137)
+# EMS-Light — Wallbox Feedback Contract (v0.1.137, aktive Auswertung seit v0.1.177)
 
 ## 1. Schichtenmodell
 
@@ -11,10 +11,12 @@ WallboxWritePlan
         ↓
 WallboxFeedbackContract
         ↓
-executeWallboxWrite()   ← Release-Gate geschlossen
+executeWallboxWrite()   ← Write ausgeführt (v0.1.177: liveEligible + phase=live + kein Fault)
+        ↓
+tickWallboxFeedback()   ← periodischer Safety-Tick liest Readback-States und wertet aus
 ```
 
-Der Feedback-Vertrag beschreibt, **wie** spätere Writes anhand vorhandener Telemetrie überprüft werden könnten. In v0.1.137 gibt es keine aktive Überwachung.
+Der Feedback-Vertrag beschrieb ursprünglich (v0.1.137) nur, **wie** Writes anhand vorhandener Telemetrie überprüft werden könnten. Seit v0.1.177 wird er im periodischen Safety-Tick (`runtime/feedback_tick.ts`, alle 10s in `index.ts`) aktiv gegen die realen Readback-States ausgewertet.
 
 ## 2. Drei getrennte Begriffe
 
@@ -129,7 +131,7 @@ Keine Fault-FSM, kein Lockout, kein Restore.
 |-------|------------------|
 | `observe` | nein |
 | `dryrun` | ja, Diagnose — `status=unavailable`, `feedback_write_not_executed` |
-| `live` | ja + Execution blockiert am Release-Gate |
+| `live` | ja + Execution ausgeführt (bei `liveEligible` + kein Fault) + Feedback aktiv per Safety-Tick ausgewertet |
 
 ## 12. Diagnose-States
 
@@ -149,16 +151,22 @@ Unter `addons.wallbox.runtime.*`:
 ## 13. Release-Gate
 
 ```ts
-WALLBOX_LIVE_WRITE_RELEASED = false;
+WALLBOX_LIVE_WRITE_RELEASED = true; // kontrolliert offen seit v0.1.177
 ```
 
-## 14. Nicht enthalten
+Zusätzlich gated durch `writePlan.liveEligible` (nur EVCC-Control-Pfad), `phase === "live"` und `faultActive === false`.
 
-* keine Write-Ausführung
-* kein aktives Polling / Retry
-* kein Ownership / Restore
-* kein Lockout
-* keine reale Timeout-Auslösung
+## 14. Seit v0.1.177 aktiv
+
+* Write-Ausführung für den EVCC-Control-Pfad
+* periodisches Polling der Readback-States (10s-Safety-Tick, kein Retry der Writes selbst)
+* Ownership (`runtime/ownership.ts`) und Safe-Restore (`runtime/restore.ts`)
+* Fault/Lockout (`runtime/fault.ts`) bei terminalem `mismatch`/`timeout`/`invalid` — manueller Reset über `fault_reset`-State
+
+## 15. Weiterhin nicht enthalten
+
+* keine reale Timeout-**Eskalation** über den Fault hinaus (kein Retry, kein automatischer Reset)
+* keine Steuerung des Legacy-Direktpfads (go-e) — strukturell nie live-eligible
 * keine Änderung an Heizstab, Klima, Batterie
 
 Siehe auch: `docs/EMS_LIGHT_WALLBOX_EVCC_WRITE_CONTRACT.md`, `docs/EMS_LIGHT_WALLBOX_EVCC_CONTROL_MAPPING.md`

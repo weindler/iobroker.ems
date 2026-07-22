@@ -6,68 +6,116 @@ const write_plan_1 = require("./write_plan");
 const feedback_1 = require("./feedback");
 const feedback_config_1 = require("./feedback_config");
 const barrier_1 = require("../../../restore/barrier");
-/** Release-Freigabe für reale Wallbox-/EVCC-Writes — in v0.1.135 geschlossen. */
-exports.WALLBOX_LIVE_WRITE_RELEASED = false;
+const device_write_1 = require("../../../device_write");
 /**
- * EINZIGE zentrale Write-Funktion für Wallbox-/EVCC-Steuerdatenpunkte.
- * In v0.1.135 werden keine externen Writes ausgeführt — Release-Gate geschlossen.
+ * Release-Freigabe für reale Wallbox-/EVCC-Writes — Master-Kill-Switch.
+ * v0.1.176: kontrolliert geöffnet, nachdem echte Writes, Feedback-Loop und
+ * Safety-Schicht (Fault/Lockout, Ownership, Safe-Restore) verdrahtet sind.
+ * Nur der EVCC-Steuerpfad ist live-eligible (`writePlan.liveEligible`); legacy_direct
+ * bleibt strukturell dryrun/diagnostisch (siehe control_mapping.ts).
  */
-async function executeWallboxWrite(input) {
-    const { candidate, writePlan, phase, liveRequested } = input;
-    if ((0, barrier_1.isRestoreInProgress)()) {
-        return {
-            attempted: false,
-            executed: false,
-            blocked: true,
-            reason: "restore_in_progress",
-        };
-    }
-    if (phase === "observe") {
-        return {
-            attempted: false,
-            executed: false,
-            blocked: true,
-            reason: "observe_mode",
-        };
-    }
-    if (phase === "dryrun" || !liveRequested) {
-        return {
-            attempted: false,
-            executed: false,
-            blocked: true,
-            reason: "execution_gate_closed",
-        };
-    }
-    if (candidate.blocked) {
-        return {
-            attempted: false,
-            executed: false,
-            blocked: true,
-            reason: candidate.blockReason ?? "candidate_blocked",
-        };
-    }
-    if (writePlan && !writePlan.contractReady) {
-        return {
-            attempted: false,
-            executed: false,
-            blocked: true,
-            reason: writePlan.blockReason ?? "write_contract_incomplete",
-        };
-    }
-    if (!exports.WALLBOX_LIVE_WRITE_RELEASED) {
-        return {
-            attempted: false,
-            executed: false,
-            blocked: true,
-            reason: "release_gate_closed",
-        };
-    }
-    // Zukünftiger Live-Block: Write-Plan-Operationen ausführen.
+exports.WALLBOX_LIVE_WRITE_RELEASED = true;
+function blockedResult(reason) {
     return {
         attempted: false,
         executed: false,
         blocked: true,
-        reason: "release_gate_closed",
+        reason,
+        operationResults: [],
+        ownershipGranted: false,
+        writeTimestampMs: null,
+    };
+}
+/**
+ * EINZIGE zentrale Write-Funktion für Wallbox-/EVCC-Steuerdatenpunkte.
+ * Nur der EVCC-Steuerpfad ist live-eligible; legacy_direct bleibt strukturell blockiert.
+ */
+async function executeWallboxWrite(host, input) {
+    const { candidate, writePlan, phase, liveRequested, faultActive } = input;
+    if ((0, barrier_1.isRestoreInProgress)()) {
+        return blockedResult("restore_in_progress");
+    }
+    if (phase === "observe") {
+        return blockedResult("observe_mode");
+    }
+    if (phase === "dryrun" || !liveRequested) {
+        return blockedResult("execution_gate_closed");
+    }
+    if (faultActive) {
+        return blockedResult("fault_lockout");
+    }
+    if (candidate.blocked) {
+        return blockedResult(candidate.blockReason ?? "candidate_blocked");
+    }
+    if (!writePlan || !writePlan.contractReady) {
+        return blockedResult(writePlan?.blockReason ?? "write_contract_incomplete");
+    }
+    if (!writePlan.liveEligible) {
+        return blockedResult(writePlan.controlPathReason ?? "not_live_eligible");
+    }
+    if (!exports.WALLBOX_LIVE_WRITE_RELEASED) {
+        return blockedResult("release_gate_closed");
+    }
+    if (writePlan.operations.length === 0) {
+        return blockedResult("no_operations");
+    }
+    const operations = [...writePlan.operations].sort((a, b) => a.sequence - b.sequence || a.role.localeCompare(b.role));
+    const operationResults = [];
+    let anyWritten = false;
+    let requiredFailed = false;
+    for (const op of operations) {
+        try {
+            const r = await (0, device_write_1.writeForeignIfChanged)(host, {
+                stateId: op.targetStateId,
+                value: op.targetValue,
+                reason: `wallbox ${writePlan.action}/${op.role}`,
+            });
+            operationResults.push({
+                role: op.role,
+                targetStateId: op.targetStateId,
+                written: r.written,
+                skipped: r.skipped,
+                required: op.required,
+                error: null,
+            });
+            if (r.written)
+                anyWritten = true;
+        }
+        catch (e) {
+            host.log?.error?.(`wallbox write failed ${op.targetStateId}: ${String(e)}`);
+            operationResults.push({
+                role: op.role,
+                targetStateId: op.targetStateId,
+                written: false,
+                skipped: false,
+                required: op.required,
+                error: String(e),
+            });
+            if (op.required)
+                requiredFailed = true;
+        }
+    }
+    if (requiredFailed) {
+        return {
+            attempted: true,
+            executed: false,
+            blocked: true,
+            reason: "write_failed",
+            operationResults,
+            ownershipGranted: false,
+            writeTimestampMs: null,
+        };
+    }
+    const nowMs = Date.now();
+    host.log?.debug?.(`wallbox LIVE write ${writePlan.action} (${writePlan.writeScenario ?? "n/a"}) → ${operations.map((o) => o.role).join(",")}`);
+    return {
+        attempted: true,
+        executed: true,
+        blocked: false,
+        reason: anyWritten ? "executed" : "already_at_target",
+        operationResults,
+        ownershipGranted: true,
+        writeTimestampMs: nowMs,
     };
 }
 exports.executeWallboxWrite = executeWallboxWrite;
@@ -81,7 +129,7 @@ function resolveWallboxRuntimePhase(input) {
     return "live";
 }
 exports.resolveWallboxRuntimePhase = resolveWallboxRuntimePhase;
-async function runWallboxLiveFoundation(input) {
+async function runWallboxLiveFoundation(host, input) {
     const phase = resolveWallboxRuntimePhase({
         addonEnabled: input.addonEnabled,
         governanceEnabled: input.governanceEnabled,
@@ -96,7 +144,7 @@ async function runWallboxLiveFoundation(input) {
             feedbackContract: null,
             mappingSnapshot: input.mappingSnapshot,
             writeResult: null,
-            liveWriteReleased: false,
+            liveWriteReleased: exports.WALLBOX_LIVE_WRITE_RELEASED,
             writeAllowed: false,
         };
     }
@@ -120,11 +168,12 @@ async function runWallboxLiveFoundation(input) {
     });
     let writeResult = null;
     if (phase === "live") {
-        writeResult = await executeWallboxWrite({
+        writeResult = await executeWallboxWrite(host, {
             candidate,
             writePlan,
             phase,
             liveRequested: input.liveRequested,
+            faultActive: input.faultActive,
         });
     }
     return {
@@ -135,8 +184,8 @@ async function runWallboxLiveFoundation(input) {
         feedbackContract,
         mappingSnapshot: input.mappingSnapshot,
         writeResult,
-        liveWriteReleased: false,
-        writeAllowed: false,
+        liveWriteReleased: exports.WALLBOX_LIVE_WRITE_RELEASED,
+        writeAllowed: exports.WALLBOX_LIVE_WRITE_RELEASED && writePlan.liveEligible && phase === "live",
     };
 }
 exports.runWallboxLiveFoundation = runWallboxLiveFoundation;

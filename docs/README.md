@@ -1,6 +1,6 @@
 # EMS-Light — Dokumentation
 
-**Adapter:** `iobroker.ems` · **Stand:** v0.1.176 (Juli 2026)
+**Adapter:** `iobroker.ems` · **Stand:** v0.1.177 (Juli 2026)
 
 ## Zentrale Dokumente
 
@@ -52,7 +52,7 @@ Schwerer Planner-Shadow/Takeover ist **abgeschaltet**. Produktion läuft über F
 Kein Architektur-Umbau — sequenzielle Blöcke, jeder vollständig abgeschlossen (Tests grün, Version/News, Doku) bevor der nächste beginnt:
 
 0. ✅ **DST-/Bootstrap-Testfehler fixen** (v0.1.176) — `operator/time.test.ts` Mitternachts-Erwartung korrigiert, Bootstrap-Manifest an aktuelle Learning-Persistenz-States angepasst.
-1. **Wallbox-Live-Gate kontrolliert öffnen** — echte Writes statt Stub, Feedback-Loop aktiv verdrahten, Safety-Schicht (Ownership/Restore/Fault/Lockout) analog Batterie.
+1. ✅ **Wallbox-Live-Gate kontrolliert öffnen** (v0.1.177) — echte Writes für den EVCC-Control-Pfad, aktive Feedback-Verifikation per Safety-Tick, Ownership/Fault-Lockout/Safe-Restore analog Heizstab/Batterie. Legacy-Direktpfad (go-e) bleibt strukturell ausgeschlossen.
 2. **Batterie-Laden vollständig live absichern** — FinalWriteGate echt verdrahten (Fault/Lockout/Ownership), eigenständiger Battery-Failsafe analog Wallbox/Heizstab, fehlende Safety-Tests.
 3. **Admin-UI: Generator für Klima-Tab-Duplikate** — 5× identische AC-Unit-Blöcke (48,5 % von `admin/jsonConfig.json`) aus einem Template erzeugen, kein Laufzeit-/Schema-Risiko.
 4. Shadow-Stack-Löschung — **explizit nach dem 10.08.**, `src/planner/` (aktiver Realtime-Fallback) bleibt in jedem Fall erhalten.

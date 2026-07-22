@@ -1,4 +1,4 @@
-# EMS-Light — Wallbox EVCC Write Contract (v0.1.135 / EVCC v0.1.136)
+# EMS-Light — Wallbox EVCC Write Contract (v0.1.135 / EVCC v0.1.136, live seit v0.1.177)
 
 ## 1. Schichtenmodell
 
@@ -204,15 +204,15 @@ Kein Polling, kein Timeout, kein Ack — nur struktureller Vertrag.
 |-------|------------|
 | observe (intern) | nein |
 | dryrun | ja, Diagnose |
-| live | ja + `executeWallboxWrite()` blockiert am Release-Gate |
+| live | ja + `executeWallboxWrite()` führt aus, wenn `liveEligible` (nur EVCC-Pfad) + kein Fault |
 
 ## 12. Release-Gate
 
 ```ts
-WALLBOX_LIVE_WRITE_RELEASED = false;
+WALLBOX_LIVE_WRITE_RELEASED = true; // kontrolliert offen seit v0.1.177
 ```
 
-Auch bei vollständigem Write-Plan: keine externen Writes.
+Nur für den EVCC-Control-Pfad (`writePlan.liveEligible = true`). Der Legacy-Direktpfad (go-e, `legacy_direct`) bleibt strukturell nie `liveEligible` und kann über dieses Gate nicht schreiben — unabhängig vom Release-Flag.
 
 ## 13. Mögliche EMS/EVCC-Konflikte
 
@@ -224,13 +224,15 @@ Bei direktem go-e-Pfad:
 
 Ein späterer Live-Block sollte EVCC-Control-States oder explizite Ownership klären.
 
-## 14. Nicht enthalten
+## 14. Seit v0.1.177 aktiv
 
-* keine reale EVCC-Steuerung
-* keine Write-Freigabe
-* kein Write-Feedback / Ack / Timeout
-* kein Ownership / Restore
-* keine Phasenumschaltung
+* reale EVCC-Steuerung über den Control-Pfad (`set_max_current_a`, `set_mode`)
+* Write-Feedback (Soll-/Ist-Vergleich per Safety-Tick, siehe `EMS_LIGHT_WALLBOX_FEEDBACK_CONTRACT.md`)
+* Ownership + Safe-Restore (`runtime/ownership.ts`, `runtime/restore.ts`)
+* Fault/Lockout bei Write-Fehler oder terminalem Feedback-Mismatch
+
+## 15. Weiterhin nicht enthalten
+
+* keine Steuerung des Legacy-Direktpfads (go-e) — strukturell nie live-eligible
+* keine Phasenumschaltung (`set_phase`) im Write-Pfad
 * keine Änderung an Heizstab, Klima, Batterie
-
-Nächster Block: Release-Gate öffnen + Write-Ausführung mit Feedback.

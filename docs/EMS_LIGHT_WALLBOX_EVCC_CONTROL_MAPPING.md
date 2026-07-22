@@ -95,7 +95,7 @@ Der Mapping-Snapshot dokumentiert `semanticRole`: `evcc_mode`, `evcc_max_current
 
 ## 8. liveEligible
 
-Strukturelle Eignung für einen späteren Live-Pfad — **keine Write-Freigabe**.
+Strukturelle Eignung für den Live-Pfad — kombiniert mit dem globalen Release-Gate ergibt sich daraus die tatsächliche Write-Freigabe.
 
 | Modell | liveEligible |
 |--------|--------------|
@@ -103,11 +103,13 @@ Strukturelle Eignung für einen späteren Live-Pfad — **keine Write-Freigabe**
 | `legacy_direct` | `false` |
 | `none` / unvollständig / falsche Semantik | `false` |
 
-Release-Gate bleibt geschlossen:
+Release-Gate ist seit v0.1.177 kontrolliert offen:
 
 ```ts
-WALLBOX_LIVE_WRITE_RELEASED = false;
+WALLBOX_LIVE_WRITE_RELEASED = true;
 ```
+
+Tatsächlich geschrieben wird nur bei `WALLBOX_LIVE_WRITE_RELEASED && liveEligible && phase === "live" && !faultActive` — `legacy_direct` bleibt damit strukturell dauerhaft ausgeschlossen, unabhängig vom Release-Flag.
 
 ## 9. Feedback / Readback
 
@@ -130,11 +132,14 @@ Unter `addons.wallbox.runtime.*`:
 * `write_control_path_reason`
 * `control_mapping_diagnostics_json`
 
-## 11. Nicht enthalten
+## 11. Seit v0.1.177
 
-* keine realen EVCC-Writes
-* keine Release-Gate-Öffnung
-* kein Feedback / Ownership / Restore
+* reale EVCC-Writes für den `evcc`-Control-Pfad (`liveEligible=true`)
+* Feedback / Ownership / Restore — siehe `EMS_LIGHT_WALLBOX_LIVE_FOUNDATION.md`, `EMS_LIGHT_WALLBOX_FEEDBACK_CONTRACT.md`
+
+## 12. Weiterhin nicht enthalten
+
+* keine realen Writes für `legacy_direct` (strukturell nie `liveEligible`)
 * keine Änderung an Heizstab, Klima, Batterie
 
 Siehe auch: `docs/EMS_LIGHT_WALLBOX_EVCC_WRITE_CONTRACT.md`

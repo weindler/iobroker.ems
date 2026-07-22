@@ -82,6 +82,12 @@ exports.WALLBOX_RUNTIME_STATES = {
     activeVehicleRequiredBatteryEnergyKwh: `${exports.WALLBOX_RUNTIME_BASE}.active_vehicle_required_battery_energy_kwh`,
     activeVehicleSocEnergyReady: `${exports.WALLBOX_RUNTIME_BASE}.active_vehicle_soc_energy_ready`,
     activeVehicleSocEnergyReasonCode: `${exports.WALLBOX_RUNTIME_BASE}.active_vehicle_soc_energy_reason_code`,
+    /** Safety-Schicht: Ownership/Fault-Lockout für reale EVCC-Writes. */
+    ownershipActive: `${exports.WALLBOX_RUNTIME_BASE}.ownership_active`,
+    faultActive: `${exports.WALLBOX_RUNTIME_BASE}.fault_active`,
+    faultCode: `${exports.WALLBOX_RUNTIME_BASE}.fault_code`,
+    faultMessage: `${exports.WALLBOX_RUNTIME_BASE}.fault_message`,
+    faultReset: `${exports.WALLBOX_RUNTIME_BASE}.fault_reset`,
     /** Deep write/feedback/dispatch detail for Support-Diagnose (not individual leaves). */
     detailJson: `${exports.WALLBOX_RUNTIME_BASE}.detail_json`,
 };

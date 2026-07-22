@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.176",
+		"version": "0.1.177",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.177": {
+				"en": "Wallbox: controlled live-write release for the EVCC control path — real writes, active feedback verification, ownership/fault-lockout/safe-restore safety layer analogous to the immersion heater/battery. Legacy direct (go-e) path remains structurally excluded (never live-eligible).",
+				"de": "Wallbox: kontrollierte Live-Write-Freigabe für den EVCC-Control-Pfad — echte Writes, aktive Feedback-Verifikation, Ownership-/Fault-Lockout-/Safe-Restore-Sicherheitsschicht analog Heizstab/Batterie. Legacy-Direktpfad (go-e) bleibt strukturell ausgeschlossen (nie live-eligible)."
+			},
 			"0.1.176": {
 				"en": "Test fixes: Europe/Berlin midnight test now expects the real zoned offset (ICU no longer reports hour=24); bootstrap core-state manifest updated to the current learning persistence status states. No runtime behavior change.",
 				"de": "Test-Fixes: Der Europe/Berlin-Mitternachtstest erwartet jetzt den tatsächlichen zonierten Offset (ICU meldet nicht mehr hour=24); Bootstrap-Kern-State-Manifest an die aktuellen Learning-Persistenz-Status-States angepasst. Kein Laufzeitverhalten geändert."

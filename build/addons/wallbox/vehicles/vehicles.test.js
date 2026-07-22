@@ -610,8 +610,8 @@ function emptySnap() {
     });
 });
 (0, node_test_1.describe)("runtime safety regression", () => {
-    (0, node_test_1.it)("release gate remains closed", () => {
-        strict_1.default.equal(execute_js_1.WALLBOX_LIVE_WRITE_RELEASED, false);
+    (0, node_test_1.it)("release gate is open (gated by fault/lockout/ownership/liveEligible)", () => {
+        strict_1.default.equal(execute_js_1.WALLBOX_LIVE_WRITE_RELEASED, true);
     });
     (0, node_test_1.it)("vehicle runtime module does not import dispatch or write execution", () => {
         const src = (0, node_fs_1.readFileSync)((0, node_path_1.join)(process.cwd(), "src/addons/wallbox/vehicles/runtime.ts"), "utf8");

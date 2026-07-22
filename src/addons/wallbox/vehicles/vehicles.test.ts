@@ -708,8 +708,8 @@ describe("telemetry merge", () => {
 });
 
 describe("runtime safety regression", () => {
-	it("release gate remains closed", () => {
-		assert.equal(WALLBOX_LIVE_WRITE_RELEASED, false);
+	it("release gate is open (gated by fault/lockout/ownership/liveEligible)", () => {
+		assert.equal(WALLBOX_LIVE_WRITE_RELEASED, true);
 	});
 
 	it("vehicle runtime module does not import dispatch or write execution", () => {

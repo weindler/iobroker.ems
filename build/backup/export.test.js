@@ -443,8 +443,8 @@ class ExportTestHost {
         strict_1.default.ok(name.endsWith(".emsbackup"));
         strict_1.default.ok(!name.includes("@"));
     });
-    (0, node_test_1.it)("regression: WALLBOX_LIVE_WRITE_RELEASED stays false", () => {
-        strict_1.default.equal(execute_js_1.WALLBOX_LIVE_WRITE_RELEASED, false);
+    (0, node_test_1.it)("regression: WALLBOX_LIVE_WRITE_RELEASED reflects the v0.1.176 controlled release (gated by fault/lockout/ownership/liveEligible)", () => {
+        strict_1.default.equal(execute_js_1.WALLBOX_LIVE_WRITE_RELEASED, true);
     });
     (0, node_test_1.it)("assertJsonSerializable rejects secrets in support path", () => {
         strict_1.default.throws(() => (0, schema_js_1.assertJsonSerializable)({ api_key: "secret" }, "test"));

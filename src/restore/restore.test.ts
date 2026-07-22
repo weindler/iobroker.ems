@@ -642,14 +642,21 @@ describe("restore device write barrier", () => {
 			},
 		);
 		assert.equal(battery.rejectCode, "restore_in_progress");
-		const wallbox = await executeWallboxWrite({
-			candidate: { blocked: false } as never,
-			writePlan: {} as never,
-			phase: "live",
-			liveRequested: true,
-		});
+		const wallbox = await executeWallboxWrite(
+			{
+				getForeignStateAsync: async () => null,
+				setForeignStateAsync: async () => undefined,
+				log: { info: () => undefined, warn: () => undefined, error: () => undefined, debug: () => undefined },
+			},
+			{
+				candidate: { blocked: false } as never,
+				writePlan: {} as never,
+				phase: "live",
+				liveRequested: true,
+			},
+		);
 		assert.equal(wallbox.reason, "restore_in_progress");
-		assert.equal(WALLBOX_LIVE_WRITE_RELEASED, false);
+		assert.equal(WALLBOX_LIVE_WRITE_RELEASED, true);
 	});
 });
 

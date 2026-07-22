@@ -439,9 +439,9 @@ describe("wallbox feedback safety", () => {
 		assert.ok(!src.includes("setInterval"));
 	});
 
-	it("execute module still has closed release gate", () => {
+	it("execute module has no self-scheduling timers (safety tick lives in the orchestrator)", () => {
 		const src = readFileSync(join(process.cwd(), "src/addons/wallbox/runtime/execute.ts"), "utf8");
-		assert.ok(src.includes("WALLBOX_LIVE_WRITE_RELEASED = false"));
+		assert.ok(src.includes("WALLBOX_LIVE_WRITE_RELEASED = true"));
 		assert.ok(!src.includes("setTimeout"));
 		assert.ok(!src.includes("setInterval"));
 	});

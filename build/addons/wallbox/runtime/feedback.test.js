@@ -400,9 +400,9 @@ function legacyPlanWithCrossReadback() {
         strict_1.default.ok(!src.includes("setTimeout"));
         strict_1.default.ok(!src.includes("setInterval"));
     });
-    (0, node_test_1.it)("execute module still has closed release gate", () => {
+    (0, node_test_1.it)("execute module has no self-scheduling timers (safety tick lives in the orchestrator)", () => {
         const src = (0, node_fs_1.readFileSync)((0, node_path_1.join)(process.cwd(), "src/addons/wallbox/runtime/execute.ts"), "utf8");
-        strict_1.default.ok(src.includes("WALLBOX_LIVE_WRITE_RELEASED = false"));
+        strict_1.default.ok(src.includes("WALLBOX_LIVE_WRITE_RELEASED = true"));
         strict_1.default.ok(!src.includes("setTimeout"));
         strict_1.default.ok(!src.includes("setInterval"));
     });

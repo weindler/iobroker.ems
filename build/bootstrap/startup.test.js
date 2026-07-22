@@ -235,7 +235,7 @@ function assertCoreCategories(adapter) {
         strict_1.default.equal(adapter.states.get("global.execution_mode")?.val, "dryrun");
         strict_1.default.equal(adapter.states.get("addons.wallbox.mode")?.val, "dryrun");
         strict_1.default.equal(adapter.foreignWrites.length, 0);
-        strict_1.default.equal(execute_js_1.WALLBOX_LIVE_WRITE_RELEASED, false);
+        strict_1.default.equal(execute_js_1.WALLBOX_LIVE_WRITE_RELEASED, true);
         for (const prefix of manifest_js_1.LEGACY_WALLBOX_VEHICLE_SLOT_PREFIXES) {
             for (const id of adapter.objects.keys()) {
                 strict_1.default.ok(!id.startsWith(prefix), `legacy slot object must not exist: ${id}`);
@@ -343,7 +343,7 @@ function assertCoreCategories(adapter) {
         strict_1.default.equal(adapter.states.get("addons.air_conditioning.mode")?.val, "dryrun");
         strict_1.default.equal(adapter.states.get("execution.safety.global_execution_mode")?.val, "dryrun");
         strict_1.default.equal(adapter.foreignWrites.length, 0);
-        strict_1.default.equal(execute_js_1.WALLBOX_LIVE_WRITE_RELEASED, false);
+        strict_1.default.equal(execute_js_1.WALLBOX_LIVE_WRITE_RELEASED, true);
     });
     (0, node_test_1.it)("scenario F2 — second start with existing namespace is warm start", async () => {
         const cfg = liveConfig({ wb_vehicle_profiles: [] });

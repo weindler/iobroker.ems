@@ -145,9 +145,9 @@ Per-vehicle states under `addons.wallbox.vehicles.*` are additive.
 
 - No automatic SOC estimation from charged energy
 - No daily-plan or dispatch changes
-- No real EVCC/wallbox writes
-- **Release gate remains closed** (`WALLBOX_LIVE_WRITE_RELEASED = false`)
-- No new timers or polling loops
+- No real EVCC/wallbox writes triggered by this module itself (vehicle profiles feed the daily plan, not the write path directly)
+- Since v0.1.177 the write gate itself is controlled-open (`WALLBOX_LIVE_WRITE_RELEASED = true`) for the EVCC control path — see `EMS_LIGHT_WALLBOX_LIVE_FOUNDATION.md`
+- No new timers or polling loops in this module
 
 ## Module Path
 

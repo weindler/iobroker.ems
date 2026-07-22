@@ -116,6 +116,21 @@ function runImmersionFsm(input) {
                 commandedStage: 0,
             };
         }
+        // Wiedereinschalt-Hysterese: Nach Zielerreichung erst unterhalb (Ziel − Hysterese) neu starten,
+        // nicht bereits bei minimalem Unterschreiten. Nur relevant, solange gerade nicht geheizt wird —
+        // laufende Heizzyklen (persist.commandedStage > 0) sind davon unberührt.
+        if (persist.commandedStage <= 0) {
+            const reheatThresholdC = autoTargetC - config.temperatureHysteresisK;
+            if (temp >= reheatThresholdC) {
+                return {
+                    ...base,
+                    state: "auto_ready",
+                    available: true,
+                    reason: "auto_reheat_hysteresis",
+                    commandedStage: 0,
+                };
+            }
+        }
         const desiredStage = Math.max(0, Math.round(plannerCommandedStage));
         const desiredCfg = config.stages.find((s) => s.index === desiredStage && s.enabled);
         if (desiredStage > 0 && desiredCfg && desiredCfg.nominalPowerW > 0 && desiredCfg.setStateId) {

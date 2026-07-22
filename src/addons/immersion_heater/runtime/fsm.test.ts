@@ -164,6 +164,85 @@ describe("immersion fsm", () => {
 		assert.equal(r.commandedStage, 0);
 	});
 
+	it("auto reheat hysteresis blocks restart just below target", () => {
+		// CFG: ih_temperature_hysteresis_k default = 2 K, autoTargetC = 60 (kein plannerTargetTempC).
+		const r = runImmersionFsm({
+			nowMs: NOW,
+			addonEnabled: true,
+			addonAvailable: true,
+			configValid: true,
+			executionLive: false,
+			failsafeActive: false,
+			resolvedMode: "auto",
+			forceTargetTempC: null,
+			forceUntilMs: null,
+			plannerCommandedStage: 1,
+			plannerTargetTempC: null,
+			temperature: { valueC: 59, status: "valid", observedAtMs: NOW },
+			measuredPowerW: 0,
+			hasPowerMeasurement: false,
+			persist: emptyPersist(),
+			config: CFG,
+			faultLockout: false,
+			faultCode: "none",
+		});
+		assert.equal(r.state, "auto_ready");
+		assert.equal(r.reason, "auto_reheat_hysteresis");
+		assert.equal(r.commandedStage, 0);
+	});
+
+	it("auto reheat hysteresis allows restart once below (target - hysteresis)", () => {
+		const r = runImmersionFsm({
+			nowMs: NOW,
+			addonEnabled: true,
+			addonAvailable: true,
+			configValid: true,
+			executionLive: false,
+			failsafeActive: false,
+			resolvedMode: "auto",
+			forceTargetTempC: null,
+			forceUntilMs: null,
+			plannerCommandedStage: 1,
+			plannerTargetTempC: null,
+			temperature: { valueC: 57.9, status: "valid", observedAtMs: NOW },
+			measuredPowerW: 0,
+			hasPowerMeasurement: false,
+			persist: emptyPersist(),
+			config: CFG,
+			faultLockout: false,
+			faultCode: "none",
+		});
+		assert.equal(r.state, "auto_heating");
+		assert.equal(r.commandedStage, 1);
+	});
+
+	it("auto reheat hysteresis does not interrupt an already-running heating cycle", () => {
+		// persist.commandedStage > 0 (bereits am Heizen) → Hysterese-Block greift nicht,
+		// normale Weiterführung bis temp >= autoTargetC.
+		const r = runImmersionFsm({
+			nowMs: NOW,
+			addonEnabled: true,
+			addonAvailable: true,
+			configValid: true,
+			executionLive: false,
+			failsafeActive: false,
+			resolvedMode: "auto",
+			forceTargetTempC: null,
+			forceUntilMs: null,
+			plannerCommandedStage: 1,
+			plannerTargetTempC: null,
+			temperature: { valueC: 59, status: "valid", observedAtMs: NOW },
+			measuredPowerW: 0,
+			hasPowerMeasurement: false,
+			persist: { ...emptyPersist(), commandedStage: 1 },
+			config: CFG,
+			faultLockout: false,
+			faultCode: "none",
+		});
+		assert.equal(r.state, "auto_heating");
+		assert.equal(r.commandedStage, 1);
+	});
+
 	it("control mode maps to operating_request", () => {
 		assert.equal(controlModeToOperatingRequest("force"), "force_on");
 		assert.equal(controlModeToOperatingRequest("off"), "off");

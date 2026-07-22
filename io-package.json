@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.174",
+		"version": "0.1.175",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.175": {
+				"en": "Immersion heater: auto mode now uses the existing hysteresis (K) as a reheat threshold — reheats only once temp drops below target minus hysteresis, instead of immediately at target. Reduces frequent short on/off cycles.",
+				"de": "Heizstab: Auto-Modus nutzt die vorhandene Hysterese (K) jetzt auch als Wiedereinschalt-Schwelle — heizt erst wieder unter Ziel minus Hysterese nach, statt sofort am Zielwert. Reduziert häufiges kurzes Ein-/Ausschalten."
+			},
 			"0.1.174": {
 				"en": "Backup tab: diagnostic mode with 15/30/60/120 min auto-off (start/stop/status).",
 				"de": "Backup-Tab: Diagnosemodus mit Auto-Ende nach 15/30/60/120 Min (Start/Stop/Status)."

@@ -6,6 +6,8 @@ Im Automatikbetrieb liest die Heizstab-Runtime die aktuelle Daily-Plan-Allocatio
 
 Der Daily Plan ersetzt keine technische Runtime-Logik und schreibt keine Relais direkt.
 
+**Wiedereinschalt-Hysterese (v0.1.175):** Im Auto-Modus wird erst wieder geheizt, wenn die Puffertemperatur unter `Zieltemperatur − Hysterese (K)` fällt (Feld `ih_temperature_hysteresis_k`, bisher nur im Force-Modus genutzt). Ausschalten bleibt unverändert bei Zielerreichung. Reduziert häufige kurze Ein-/Aus-Zyklen, ohne Mindestlaufzeit/-pause anzufassen. Siehe `src/addons/immersion_heater/runtime/fsm.ts` (Reason `auto_reheat_hysteresis`).
+
 ## 2. Entscheidungsreihenfolge
 
 ```text

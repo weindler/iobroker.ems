@@ -161,6 +161,82 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
         strict_1.default.equal(r.reason, "auto_planning_target_reached");
         strict_1.default.equal(r.commandedStage, 0);
     });
+    (0, node_test_1.it)("auto reheat hysteresis blocks restart just below target", () => {
+        // CFG: ih_temperature_hysteresis_k default = 2 K, autoTargetC = 60 (kein plannerTargetTempC).
+        const r = (0, fsm_js_1.runImmersionFsm)({
+            nowMs: NOW,
+            addonEnabled: true,
+            addonAvailable: true,
+            configValid: true,
+            executionLive: false,
+            failsafeActive: false,
+            resolvedMode: "auto",
+            forceTargetTempC: null,
+            forceUntilMs: null,
+            plannerCommandedStage: 1,
+            plannerTargetTempC: null,
+            temperature: { valueC: 59, status: "valid", observedAtMs: NOW },
+            measuredPowerW: 0,
+            hasPowerMeasurement: false,
+            persist: (0, persist_js_1.emptyPersist)(),
+            config: CFG,
+            faultLockout: false,
+            faultCode: "none",
+        });
+        strict_1.default.equal(r.state, "auto_ready");
+        strict_1.default.equal(r.reason, "auto_reheat_hysteresis");
+        strict_1.default.equal(r.commandedStage, 0);
+    });
+    (0, node_test_1.it)("auto reheat hysteresis allows restart once below (target - hysteresis)", () => {
+        const r = (0, fsm_js_1.runImmersionFsm)({
+            nowMs: NOW,
+            addonEnabled: true,
+            addonAvailable: true,
+            configValid: true,
+            executionLive: false,
+            failsafeActive: false,
+            resolvedMode: "auto",
+            forceTargetTempC: null,
+            forceUntilMs: null,
+            plannerCommandedStage: 1,
+            plannerTargetTempC: null,
+            temperature: { valueC: 57.9, status: "valid", observedAtMs: NOW },
+            measuredPowerW: 0,
+            hasPowerMeasurement: false,
+            persist: (0, persist_js_1.emptyPersist)(),
+            config: CFG,
+            faultLockout: false,
+            faultCode: "none",
+        });
+        strict_1.default.equal(r.state, "auto_heating");
+        strict_1.default.equal(r.commandedStage, 1);
+    });
+    (0, node_test_1.it)("auto reheat hysteresis does not interrupt an already-running heating cycle", () => {
+        // persist.commandedStage > 0 (bereits am Heizen) → Hysterese-Block greift nicht,
+        // normale Weiterführung bis temp >= autoTargetC.
+        const r = (0, fsm_js_1.runImmersionFsm)({
+            nowMs: NOW,
+            addonEnabled: true,
+            addonAvailable: true,
+            configValid: true,
+            executionLive: false,
+            failsafeActive: false,
+            resolvedMode: "auto",
+            forceTargetTempC: null,
+            forceUntilMs: null,
+            plannerCommandedStage: 1,
+            plannerTargetTempC: null,
+            temperature: { valueC: 59, status: "valid", observedAtMs: NOW },
+            measuredPowerW: 0,
+            hasPowerMeasurement: false,
+            persist: { ...(0, persist_js_1.emptyPersist)(), commandedStage: 1 },
+            config: CFG,
+            faultLockout: false,
+            faultCode: "none",
+        });
+        strict_1.default.equal(r.state, "auto_heating");
+        strict_1.default.equal(r.commandedStage, 1);
+    });
     (0, node_test_1.it)("control mode maps to operating_request", () => {
         strict_1.default.equal((0, fsm_js_1.controlModeToOperatingRequest)("force"), "force_on");
         strict_1.default.equal((0, fsm_js_1.controlModeToOperatingRequest)("off"), "off");

@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.175",
+		"version": "0.1.176",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.176": {
+				"en": "Test fixes: Europe/Berlin midnight test now expects the real zoned offset (ICU no longer reports hour=24); bootstrap core-state manifest updated to the current learning persistence status states. No runtime behavior change.",
+				"de": "Test-Fixes: Der Europe/Berlin-Mitternachtstest erwartet jetzt den tatsächlichen zonierten Offset (ICU meldet nicht mehr hour=24); Bootstrap-Kern-State-Manifest an die aktuellen Learning-Persistenz-Status-States angepasst. Kein Laufzeitverhalten geändert."
+			},
 			"0.1.175": {
 				"en": "Immersion heater: auto mode now uses the existing hysteresis (K) as a reheat threshold — reheats only once temp drops below target minus hysteresis, instead of immediately at target. Reduces frequent short on/off cycles.",
 				"de": "Heizstab: Auto-Modus nutzt die vorhandene Hysterese (K) jetzt auch als Wiedereinschalt-Schwelle — heizt erst wieder unter Ziel minus Hysterese nach, statt sofort am Zielwert. Reduziert häufiges kurzes Ein-/Ausschalten."

@@ -48,10 +48,10 @@ describe("operator time formatter cache", () => {
 		// Non-midnight hours work with hour12:false; values must stay stable with the cache.
 		assert.equal(isoAtTimezoneLocal("2026-07-15", 12, 15, "Europe/Berlin"), "2026-07-15T10:15:00.000Z"); // CEST
 		assert.equal(isoAtTimezoneLocal("2026-01-15", 12, 15, "Europe/Berlin"), "2026-01-15T11:15:00.000Z"); // CET
-		// Local midnight historically falls back under hour12:false (ICU reports hour=24).
-		// Keep that conversion result unchanged so Forecast horizon edges stay stable.
-		assert.equal(isoAtTimezoneLocal("2026-07-15", 0, 0, "Europe/Berlin"), "2026-07-15T00:00:00.000Z");
-		assert.equal(isoAtTimezoneLocal("2026-01-15", 0, 0, "Europe/Berlin"), "2026-01-15T00:00:00.000Z");
+		// Local midnight: current ICU reports hour=00 (not the historical hour=24 fallback),
+		// so the scan finds the real zoned minute — this must be the true CEST/CET midnight.
+		assert.equal(isoAtTimezoneLocal("2026-07-15", 0, 0, "Europe/Berlin"), "2026-07-14T22:00:00.000Z"); // CEST (UTC+2)
+		assert.equal(isoAtTimezoneLocal("2026-01-15", 0, 0, "Europe/Berlin"), "2026-01-14T23:00:00.000Z"); // CET (UTC+1)
 		assert.equal(zonedFormatterCacheSizeForTest(), 1);
 	});
 

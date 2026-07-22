@@ -42,7 +42,7 @@ exports.BOOTSTRAP_CORE_STATE_CATEGORIES = {
         "addons.wallbox.runtime.active_vehicle_id",
     ],
     immersionBasis: ["addons.immersion_heater.runtime.state"],
-    learningPersistence: ["learning.persistence.pv_bias_daily_json"],
+    learningPersistence: ["learning.persistence.last_mirror"],
 };
 /** Flache Liste aller Kern-IDs für Assertions. */
 function allBootstrapCoreStateIds() {

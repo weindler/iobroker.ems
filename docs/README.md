@@ -1,6 +1,6 @@
 # EMS-Light — Dokumentation
 
-**Adapter:** `iobroker.ems` · **Stand:** v0.1.174 (Juli 2026)
+**Adapter:** `iobroker.ems` · **Stand:** v0.1.176 (Juli 2026)
 
 ## Zentrale Dokumente
 
@@ -47,15 +47,17 @@ Schwerer Planner-Shadow/Takeover ist **abgeschaltet**. Produktion läuft über F
 | [EMS_LIGHT_V0_1_142_MANUAL_RESTORE.md](./EMS_LIGHT_V0_1_142_MANUAL_RESTORE.md) | Restore |
 | [EMS_LIGHT_V0_1_143_IOBACKUP_INTEGRATION.md](./EMS_LIGHT_V0_1_143_IOBACKUP_INTEGRATION.md) | dataFolder / Runtime |
 
-## Priorität bis 10.08.2026 (Ford Explorer EV, 79 kWh)
+## Aufräum-Fahrplan bis 10.08.2026 (Ford Explorer EV, 79 kWh)
 
-1. **EVCC** zuverlässig (Mapping, Feedback, Live-Writes freigeben wenn dryrun ok)
-2. **Hausbatterie live** (Laden über Daily Plan, Safety/Fault/Ownership)
-3. **Wallbox** über Operator-Allocation + Fahrzeugprofil (Explorer)
-4. Heizstab/Klima beobachten (bereits Daily-Plan-Pfad)
-5. **KI erst danach** — optional auf Forecast/Daily Plan, nie direkte Geräte-Writes
+Kein Architektur-Umbau — sequenzielle Blöcke, jeder vollständig abgeschlossen (Tests grün, Version/News, Doku) bevor der nächste beginnt:
 
-Nicht priorisiert bis dahin: Heavy Planner wieder einschalten, Shadow/Takeover, weitere Batterie-Profile (Fronius/Victron).
+0. ✅ **DST-/Bootstrap-Testfehler fixen** (v0.1.176) — `operator/time.test.ts` Mitternachts-Erwartung korrigiert, Bootstrap-Manifest an aktuelle Learning-Persistenz-States angepasst.
+1. **Wallbox-Live-Gate kontrolliert öffnen** — echte Writes statt Stub, Feedback-Loop aktiv verdrahten, Safety-Schicht (Ownership/Restore/Fault/Lockout) analog Batterie.
+2. **Batterie-Laden vollständig live absichern** — FinalWriteGate echt verdrahten (Fault/Lockout/Ownership), eigenständiger Battery-Failsafe analog Wallbox/Heizstab, fehlende Safety-Tests.
+3. **Admin-UI: Generator für Klima-Tab-Duplikate** — 5× identische AC-Unit-Blöcke (48,5 % von `admin/jsonConfig.json`) aus einem Template erzeugen, kein Laufzeit-/Schema-Risiko.
+4. Shadow-Stack-Löschung — **explizit nach dem 10.08.**, `src/planner/` (aktiver Realtime-Fallback) bleibt in jedem Fall erhalten.
+
+Nicht priorisiert bis dahin: Heavy Planner wieder einschalten, weitere Batterie-Profile (Fronius/Victron), KI-Optimierungsschicht (erst nach Block 1–3).
 
 ## Nicht mehr im Repo
 

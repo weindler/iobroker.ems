@@ -1,6 +1,6 @@
 # EMS-Light — Dokumentation
 
-**Adapter:** `iobroker.ems` · **Stand:** v0.1.179 (Juli 2026)
+**Adapter:** `iobroker.ems` · **Stand:** v0.1.180 (Juli 2026)
 
 ## Zentrale Dokumente
 
@@ -55,7 +55,7 @@ Kein Architektur-Umbau — sequenzielle Blöcke, jeder vollständig abgeschlosse
 0. ✅ **DST-/Bootstrap-Testfehler fixen** (v0.1.176) — `operator/time.test.ts` Mitternachts-Erwartung korrigiert, Bootstrap-Manifest an aktuelle Learning-Persistenz-States angepasst.
 1. ✅ **Wallbox-Live-Gate kontrolliert öffnen** (v0.1.177) — echte Writes für den EVCC-Control-Pfad, aktive Feedback-Verifikation per Safety-Tick, Ownership/Fault-Lockout/Safe-Restore analog Heizstab/Batterie. Legacy-Direktpfad (go-e) bleibt strukturell ausgeschlossen.
 2. ✅ **Batterie-Laden vollständig live absichern** (v0.1.178) — `FinalWriteGate` echt verdrahtet (Fault/Lockout/Ownership statt Platzhalter), `safety_blocked` (HW-SOC-Obergrenze) aktiviert, eigenständiger FSM-unabhängiger Battery-Failsafe (EMS-Unreachable-Heartbeat) analog Wallbox/Heizstab, neue Safety-/Restore-/Failsafe-Tests.
-3. **Admin-UI: Generator für Klima-Tab-Duplikate** — 5× identische AC-Unit-Blöcke (48,5 % von `admin/jsonConfig.json`) aus einem Template erzeugen, kein Laufzeit-/Schema-Risiko.
+3. ✅ **Admin-UI: Generator für Klima-Tab-Duplikate** (v0.1.180) — 5× identische AC-Unit-Blöcke werden jetzt aus `src/tools/admin_config/climate_unit_shape.ts` (Struktur) + `climate_unit_defaults.ts` (5 individuelle Default-Sets) generiert statt von Hand gepflegt. `npm run admin-config:generate` schreibt `admin/jsonConfig.json` neu (nur der Klima-Block wird textuell ersetzt, alles andere bleibt Byte-identisch). `npm test` prüft per Drift-Check (`admin-config:check`), dass die Datei dem Template entspricht — jede zukünftige Handbearbeitung der `ac_u<N>_*`-Felder lässt CI fehlschlagen.
 4. Shadow-Stack-Löschung — **explizit nach dem 10.08.**, `src/planner/` (aktiver Realtime-Fallback) bleibt in jedem Fall erhalten.
 
 Nicht priorisiert bis dahin: Heavy Planner wieder einschalten, weitere Batterie-Profile (Fronius/Victron), KI-Optimierungsschicht (erst nach Block 1–3).

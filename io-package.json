@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.179",
+		"version": "0.1.180",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.180": {
+				"en": "Dev-tooling only, no runtime change: the 5 identical climate (AC) unit blocks in admin/jsonConfig.json are now generated from a single template plus per-unit default overrides (src/tools/admin_config/) instead of being hand-maintained duplicates. `npm run admin-config:generate` regenerates the file; `npm test` now fails if the file drifts from the template. One inconsistent key order in unit 2 was normalized as a side effect (values unchanged).",
+				"de": "Nur Entwickler-Tooling, kein Laufzeitverhalten geändert: die 5 identischen Klima-Innengerät-Blöcke in admin/jsonConfig.json werden jetzt aus einem einzigen Template plus individuellen Default-Overrides je Gerät (src/tools/admin_config/) generiert statt von Hand als Duplikate gepflegt zu werden. `npm run admin-config:generate` erzeugt die Datei neu; `npm test` schlägt jetzt fehl, wenn die Datei vom Template abweicht. Eine inkonsistente Feld-Reihenfolge bei Gerät 2 wurde dabei normalisiert (Werte unverändert)."
+			},
 			"0.1.179": {
 				"en": "Immersion heater: fixed a bug where the reheat hysteresis blocked the heater from ever fully reaching the daily target — an early stop (e.g. brief PV surplus dip, zero daily-plan allocation for the slot) below target was wrongly treated as \"target reached\", locking out reheating until the temperature dropped a full hysteresis band. The hysteresis now only applies once the target was genuinely reached, so the heater keeps recharging in one run whenever surplus/allocation allows.",
 				"de": "Heizstab: Fehler behoben, bei dem die Wiedereinschalt-Hysterese verhinderte, dass der Heizstab je das Tagesziel vollständig erreichte — ein früher Stopp unterhalb des Ziels (z.B. kurzer PV-Überschuss-Einbruch, 0 W Daily-Plan-Allocation im Slot) wurde fälschlich als „Ziel erreicht“ gewertet und sperrte das Nachheizen bis zum vollen Hysterese-Abfall. Die Hysterese greift jetzt erst, wenn das Ziel wirklich erreicht wurde — der Heizstab lädt bei verfügbarem Überschuss/Allocation in einem Zug durch."

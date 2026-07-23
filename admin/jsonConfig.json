@@ -4142,6 +4142,7 @@
 				"ac_u2_room_temp_target": {
 					"type": "objectId",
 					"label": "Raumtemperatur State-ID",
+					"default": "alias.0.Josef_Zimmer_OG.Sensoren.Temp_Feucht.Temperatur",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
@@ -4149,8 +4150,7 @@
 					"xl": 9,
 					"types": [
 						"state"
-					],
-					"default": "alias.0.Josef_Zimmer_OG.Sensoren.Temp_Feucht.Temperatur"
+					]
 				},
 				"ac_u2_room_humidity_enabled": {
 					"type": "checkbox",
@@ -4165,6 +4165,7 @@
 				"ac_u2_room_humidity_target": {
 					"type": "objectId",
 					"label": "Raumfeuchte State-ID",
+					"default": "alias.0.Josef_Zimmer_OG.Sensoren.Temp_Feucht.Luftfeuchtigkeit",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
@@ -4172,8 +4173,7 @@
 					"xl": 9,
 					"types": [
 						"state"
-					],
-					"default": "alias.0.Josef_Zimmer_OG.Sensoren.Temp_Feucht.Luftfeuchtigkeit"
+					]
 				},
 				"ac_u2_feedback_switch_enabled": {
 					"type": "checkbox",
@@ -4188,6 +4188,7 @@
 				"ac_u2_feedback_switch_target": {
 					"type": "objectId",
 					"label": "Rückmeldung Ein/Aus State-ID",
+					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.status.switch.switch.value",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
@@ -4195,8 +4196,7 @@
 					"xl": 9,
 					"types": [
 						"state"
-					],
-					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.status.switch.switch.value"
+					]
 				},
 				"ac_u2_feedback_mode_enabled": {
 					"type": "checkbox",
@@ -4211,6 +4211,7 @@
 				"ac_u2_feedback_mode_target": {
 					"type": "objectId",
 					"label": "Rückmeldung Modus State-ID",
+					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.status.airConditionerMode.airConditionerMode.value",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
@@ -4218,8 +4219,7 @@
 					"xl": 9,
 					"types": [
 						"state"
-					],
-					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.status.airConditionerMode.airConditionerMode.value"
+					]
 				},
 				"ac_u2_cmd_switch_on_enabled": {
 					"type": "checkbox",
@@ -4234,6 +4234,7 @@
 				"ac_u2_cmd_switch_on_target": {
 					"type": "objectId",
 					"label": "Befehl EIN State-ID",
+					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.capabilities.switch-on",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
@@ -4241,8 +4242,7 @@
 					"xl": 9,
 					"types": [
 						"state"
-					],
-					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.capabilities.switch-on"
+					]
 				},
 				"ac_u2_cmd_switch_off_enabled": {
 					"type": "checkbox",
@@ -4257,6 +4257,7 @@
 				"ac_u2_cmd_switch_off_target": {
 					"type": "objectId",
 					"label": "Befehl AUS State-ID",
+					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.capabilities.switch-off",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
@@ -4264,8 +4265,7 @@
 					"xl": 9,
 					"types": [
 						"state"
-					],
-					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.capabilities.switch-off"
+					]
 				},
 				"ac_u2_cmd_set_mode_enabled": {
 					"type": "checkbox",
@@ -4280,6 +4280,7 @@
 				"ac_u2_cmd_set_mode_target": {
 					"type": "objectId",
 					"label": "Befehl Modus State-ID",
+					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.capabilities.airConditionerMode-setAirConditionerMode",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
@@ -4287,8 +4288,7 @@
 					"xl": 9,
 					"types": [
 						"state"
-					],
-					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.capabilities.airConditionerMode-setAirConditionerMode"
+					]
 				},
 				"ac_u2_cmd_set_fan_mode_enabled": {
 					"type": "checkbox",
@@ -4303,6 +4303,7 @@
 				"ac_u2_cmd_set_fan_mode_target": {
 					"type": "objectId",
 					"label": "Befehl Lüftermodus State-ID",
+					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.capabilities.airConditionerFanMode-setFanMode",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
@@ -4310,8 +4311,7 @@
 					"xl": 9,
 					"types": [
 						"state"
-					],
-					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.capabilities.airConditionerFanMode-setFanMode"
+					]
 				},
 				"ac_u2_cmd_set_fan_speed_enabled": {
 					"type": "checkbox",
@@ -4348,6 +4348,7 @@
 				"ac_u2_cmd_set_cool_setpoint_target": {
 					"type": "objectId",
 					"label": "Befehl Kühl-Sollwert State-ID",
+					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.capabilities.thermostatCoolingSetpoint-setCoolingSetpoint",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
@@ -4355,8 +4356,7 @@
 					"xl": 9,
 					"types": [
 						"state"
-					],
-					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.capabilities.thermostatCoolingSetpoint-setCoolingSetpoint"
+					]
 				},
 				"ac_u2_cmd_set_heat_setpoint_enabled": {
 					"type": "checkbox",
@@ -4393,6 +4393,7 @@
 				"ac_u2_cmd_cleaning_start_target": {
 					"type": "objectId",
 					"label": "Befehl Reinigung start State-ID",
+					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.capabilities.custom.autoCleaningMode-setAutoCleaningMode",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
@@ -4400,8 +4401,7 @@
 					"xl": 9,
 					"types": [
 						"state"
-					],
-					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.capabilities.custom.autoCleaningMode-setAutoCleaningMode"
+					]
 				},
 				"ac_u2_feedback_cleaning_state_enabled": {
 					"type": "checkbox",
@@ -4485,6 +4485,7 @@
 				"ac_u2_cmd_refresh_target": {
 					"type": "objectId",
 					"label": "Befehl Refresh State-ID",
+					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.capabilities.refresh-refresh",
 					"xs": 12,
 					"sm": 8,
 					"md": 9,
@@ -4492,8 +4493,7 @@
 					"xl": 9,
 					"types": [
 						"state"
-					],
-					"default": "smartthings.0.e03855e7-4dc4-bad7-c8c8-1b7dd0293381.capabilities.refresh-refresh"
+					]
 				},
 				"hAcU3": {
 					"type": "header",

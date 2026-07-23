@@ -379,6 +379,7 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 	persist.forceUntil = forceUntil;
 	persist.minRuntimeUntilMs = fsm.minRuntimeUntilMs;
 	persist.pauseUntilMs = fsm.pauseUntilMs;
+	persist.autoTargetReached = fsm.autoTargetReached;
 
 	const minRuntimeRem = persist.minRuntimeUntilMs ? Math.max(0, Math.ceil((persist.minRuntimeUntilMs - nowMs) / 1000)) : 0;
 	const minPauseRem = persist.pauseUntilMs ? Math.max(0, Math.ceil((persist.pauseUntilMs - nowMs) / 1000)) : 0;

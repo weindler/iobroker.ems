@@ -40,6 +40,7 @@ function emptyPersist() {
         commandedStage: 0,
         minRuntimeUntilMs: null,
         pauseUntilMs: null,
+        autoTargetReached: false,
     };
 }
 exports.emptyPersist = emptyPersist;

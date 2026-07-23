@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.178",
+		"version": "0.1.179",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.179": {
+				"en": "Immersion heater: fixed a bug where the reheat hysteresis blocked the heater from ever fully reaching the daily target — an early stop (e.g. brief PV surplus dip, zero daily-plan allocation for the slot) below target was wrongly treated as \"target reached\", locking out reheating until the temperature dropped a full hysteresis band. The hysteresis now only applies once the target was genuinely reached, so the heater keeps recharging in one run whenever surplus/allocation allows.",
+				"de": "Heizstab: Fehler behoben, bei dem die Wiedereinschalt-Hysterese verhinderte, dass der Heizstab je das Tagesziel vollständig erreichte — ein früher Stopp unterhalb des Ziels (z.B. kurzer PV-Überschuss-Einbruch, 0 W Daily-Plan-Allocation im Slot) wurde fälschlich als „Ziel erreicht“ gewertet und sperrte das Nachheizen bis zum vollen Hysterese-Abfall. Die Hysterese greift jetzt erst, wenn das Ziel wirklich erreicht wurde — der Heizstab lädt bei verfügbarem Überschuss/Allocation in einem Zug durch."
+			},
 			"0.1.178": {
 				"en": "Battery: FinalWriteGate now wired to real fault/lockout/ownership state instead of placeholders (safety restore still passes through during an active fault); safety_blocked stop condition enforces the hardware SOC ceiling; new standalone, FSM-independent failsafe (EMS-unreachable heartbeat) forces charge power 0 + self-consumption analogous to wallbox/immersion heater. New tests for stop conditions, safe-restore plan and failsafe.",
 				"de": "Batterie: FinalWriteGate ist jetzt mit echtem Fault-/Lockout-/Ownership-Zustand verdrahtet statt Platzhaltern (Safety-Restore läuft bei aktivem Fault weiterhin durch); safety_blocked erzwingt die Hardware-SOC-Obergrenze; neuer eigenständiger, FSM-unabhängiger Failsafe (EMS-Unreachable-Heartbeat) erzwingt Ladeleistung 0 + Self-Consumption analog Wallbox/Heizstab. Neue Tests für Stop-Bedingungen, Safe-Restore-Plan und Failsafe."

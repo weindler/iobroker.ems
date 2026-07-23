@@ -101,6 +101,8 @@ export interface RuntimePersistData {
 	commandedStage: number;
 	minRuntimeUntilMs: number | null;
 	pauseUntilMs: number | null;
+	/** Auto-Modus: Tagesziel seit dem letzten vollständigen Abkühlen unter die Wiedereinschalt-Hysterese schon erreicht? */
+	autoTargetReached: boolean;
 }
 
 export interface RuntimeSnapshot {

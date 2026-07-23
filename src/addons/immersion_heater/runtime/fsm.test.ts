@@ -164,8 +164,37 @@ describe("immersion fsm", () => {
 		assert.equal(r.commandedStage, 0);
 	});
 
-	it("auto reheat hysteresis blocks restart just below target", () => {
+	it("auto reheat hysteresis blocks restart just below target — but only once target was actually reached", () => {
 		// CFG: ih_temperature_hysteresis_k default = 2 K, autoTargetC = 60 (kein plannerTargetTempC).
+		const r = runImmersionFsm({
+			nowMs: NOW,
+			addonEnabled: true,
+			addonAvailable: true,
+			configValid: true,
+			executionLive: false,
+			failsafeActive: false,
+			resolvedMode: "auto",
+			forceTargetTempC: null,
+			forceUntilMs: null,
+			plannerCommandedStage: 1,
+			plannerTargetTempC: null,
+			temperature: { valueC: 59, status: "valid", observedAtMs: NOW },
+			measuredPowerW: 0,
+			hasPowerMeasurement: false,
+			persist: { ...emptyPersist(), autoTargetReached: true },
+			config: CFG,
+			faultLockout: false,
+			faultCode: "none",
+		});
+		assert.equal(r.state, "auto_ready");
+		assert.equal(r.reason, "auto_reheat_hysteresis");
+		assert.equal(r.commandedStage, 0);
+	});
+
+	it("auto reheat hysteresis does NOT block restart if target was never reached (PV dip before full charge)", () => {
+		// Heizstab stoppte z.B. wegen kurzer Überschuss-Lücke bei 59°C, bevor autoTargetC (60) je
+		// erreicht wurde. persist.autoTargetReached bleibt false → darf beim nächsten Überschuss
+		// sofort weiterheizen statt bis (Ziel − Hysterese) zu warten.
 		const r = runImmersionFsm({
 			nowMs: NOW,
 			addonEnabled: true,
@@ -186,12 +215,12 @@ describe("immersion fsm", () => {
 			faultLockout: false,
 			faultCode: "none",
 		});
-		assert.equal(r.state, "auto_ready");
-		assert.equal(r.reason, "auto_reheat_hysteresis");
-		assert.equal(r.commandedStage, 0);
+		assert.equal(r.state, "auto_heating");
+		assert.equal(r.commandedStage, 1);
+		assert.equal(r.autoTargetReached, false);
 	});
 
-	it("auto reheat hysteresis allows restart once below (target - hysteresis)", () => {
+	it("auto reheat hysteresis allows restart once below (target - hysteresis), resetting the reached-flag", () => {
 		const r = runImmersionFsm({
 			nowMs: NOW,
 			addonEnabled: true,
@@ -207,13 +236,39 @@ describe("immersion fsm", () => {
 			temperature: { valueC: 57.9, status: "valid", observedAtMs: NOW },
 			measuredPowerW: 0,
 			hasPowerMeasurement: false,
-			persist: emptyPersist(),
+			persist: { ...emptyPersist(), autoTargetReached: true },
 			config: CFG,
 			faultLockout: false,
 			faultCode: "none",
 		});
 		assert.equal(r.state, "auto_heating");
 		assert.equal(r.commandedStage, 1);
+		assert.equal(r.autoTargetReached, false);
+	});
+
+	it("reaching autoTargetC sets autoTargetReached for later hysteresis gating", () => {
+		const r = runImmersionFsm({
+			nowMs: NOW,
+			addonEnabled: true,
+			addonAvailable: true,
+			configValid: true,
+			executionLive: false,
+			failsafeActive: false,
+			resolvedMode: "auto",
+			forceTargetTempC: null,
+			forceUntilMs: null,
+			plannerCommandedStage: 0,
+			plannerTargetTempC: 54,
+			temperature: { valueC: 54, status: "valid", observedAtMs: NOW },
+			measuredPowerW: 0,
+			hasPowerMeasurement: false,
+			persist: emptyPersist(),
+			config: CFG,
+			faultLockout: false,
+			faultCode: "none",
+		});
+		assert.equal(r.reason, "auto_planning_target_reached");
+		assert.equal(r.autoTargetReached, true);
 	});
 
 	it("auto reheat hysteresis does not interrupt an already-running heating cycle", () => {

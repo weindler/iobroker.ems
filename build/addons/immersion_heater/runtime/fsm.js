@@ -18,6 +18,7 @@ function runImmersionFsm(input) {
         pauseUntilMs: persist.pauseUntilMs,
         autoRevertToAuto: false,
         clearForceFields: false,
+        autoTargetReached: persist.autoTargetReached,
     };
     if (!addonEnabled || !addonAvailable) {
         return { ...base, state: "disabled", reason: "addon_disabled" };
@@ -66,6 +67,12 @@ function runImmersionFsm(input) {
         const autoTargetC = Math.min(config.planningMaxTempC, plannerTargetTempC !== null && Number.isFinite(plannerTargetTempC)
             ? plannerTargetTempC
             : config.planningMaxTempC);
+        // Wiedereinschalt-Hysterese gilt nur, wenn das Tagesziel seit dem letzten vollständigen
+        // Abkühlen unter (Ziel − Hysterese) auch wirklich erreicht wurde. Ein Stopp mangels PV-
+        // Überschuss (Thermal-Fallback) oder Daily-Plan-Allocation VOR Zielerreichung darf das
+        // Nachheizen nicht dauerhaft blockieren — sonst lädt der Heizstab nie vollständig durch.
+        const reheatThresholdC = autoTargetC - config.temperatureHysteresisK;
+        const targetReached = temp < reheatThresholdC ? false : persist.autoTargetReached || temp >= autoTargetC;
         if (temp >= config.planningMaxTempC) {
             const minRuntimeActive = persist.minRuntimeUntilMs !== null && nowMs < persist.minRuntimeUntilMs;
             if (minRuntimeActive && persist.commandedStage > 0) {
@@ -80,6 +87,7 @@ function runImmersionFsm(input) {
                         commandedPowerW: activeStage.nominalPowerW,
                         minRuntimeUntilMs: persist.minRuntimeUntilMs,
                         powerVerificationStatus: evaluatePower(hasPowerMeasurement, measuredPowerW, activeStage.nominalPowerW, true, config),
+                        autoTargetReached: true,
                     };
                 }
             }
@@ -89,6 +97,7 @@ function runImmersionFsm(input) {
                 available: true,
                 reason: "auto_planning_max_temp_reached",
                 commandedStage: 0,
+                autoTargetReached: true,
             };
         }
         if (temp >= autoTargetC) {
@@ -105,6 +114,7 @@ function runImmersionFsm(input) {
                         commandedPowerW: activeStage.nominalPowerW,
                         minRuntimeUntilMs: persist.minRuntimeUntilMs,
                         powerVerificationStatus: evaluatePower(hasPowerMeasurement, measuredPowerW, activeStage.nominalPowerW, true, config),
+                        autoTargetReached: true,
                     };
                 }
             }
@@ -114,22 +124,21 @@ function runImmersionFsm(input) {
                 available: true,
                 reason: "auto_planning_target_reached",
                 commandedStage: 0,
+                autoTargetReached: true,
             };
         }
         // Wiedereinschalt-Hysterese: Nach Zielerreichung erst unterhalb (Ziel − Hysterese) neu starten,
         // nicht bereits bei minimalem Unterschreiten. Nur relevant, solange gerade nicht geheizt wird —
         // laufende Heizzyklen (persist.commandedStage > 0) sind davon unberührt.
-        if (persist.commandedStage <= 0) {
-            const reheatThresholdC = autoTargetC - config.temperatureHysteresisK;
-            if (temp >= reheatThresholdC) {
-                return {
-                    ...base,
-                    state: "auto_ready",
-                    available: true,
-                    reason: "auto_reheat_hysteresis",
-                    commandedStage: 0,
-                };
-            }
+        if (persist.commandedStage <= 0 && targetReached) {
+            return {
+                ...base,
+                state: "auto_ready",
+                available: true,
+                reason: "auto_reheat_hysteresis",
+                commandedStage: 0,
+                autoTargetReached: true,
+            };
         }
         const desiredStage = Math.max(0, Math.round(plannerCommandedStage));
         const desiredCfg = config.stages.find((s) => s.index === desiredStage && s.enabled);
@@ -142,6 +151,7 @@ function runImmersionFsm(input) {
                     reason: "auto_minimum_pause",
                     commandedStage: 0,
                     pauseUntilMs: persist.pauseUntilMs,
+                    autoTargetReached: false,
                 };
             }
             const minRuntimeActive = persist.minRuntimeUntilMs !== null && nowMs < persist.minRuntimeUntilMs;
@@ -159,6 +169,7 @@ function runImmersionFsm(input) {
                         ? persist.minRuntimeUntilMs
                         : nowMs + config.minimumRuntimeSec * 1000,
                     powerVerificationStatus: evaluatePower(hasPowerMeasurement, measuredPowerW, stageCfg.nominalPowerW, true, config),
+                    autoTargetReached: false,
                 };
             }
         }
@@ -175,6 +186,7 @@ function runImmersionFsm(input) {
                     commandedPowerW: activeStage.nominalPowerW,
                     minRuntimeUntilMs: persist.minRuntimeUntilMs,
                     powerVerificationStatus: evaluatePower(hasPowerMeasurement, measuredPowerW, activeStage.nominalPowerW, true, config),
+                    autoTargetReached: false,
                 };
             }
         }
@@ -184,6 +196,7 @@ function runImmersionFsm(input) {
             available: true,
             reason: desiredStage > 0 ? "auto_planner_stage_unavailable" : "auto_ready_no_surplus",
             commandedStage: 0,
+            autoTargetReached: false,
         };
     }
     // force

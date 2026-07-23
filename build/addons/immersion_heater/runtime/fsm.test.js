@@ -161,8 +161,36 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
         strict_1.default.equal(r.reason, "auto_planning_target_reached");
         strict_1.default.equal(r.commandedStage, 0);
     });
-    (0, node_test_1.it)("auto reheat hysteresis blocks restart just below target", () => {
+    (0, node_test_1.it)("auto reheat hysteresis blocks restart just below target — but only once target was actually reached", () => {
         // CFG: ih_temperature_hysteresis_k default = 2 K, autoTargetC = 60 (kein plannerTargetTempC).
+        const r = (0, fsm_js_1.runImmersionFsm)({
+            nowMs: NOW,
+            addonEnabled: true,
+            addonAvailable: true,
+            configValid: true,
+            executionLive: false,
+            failsafeActive: false,
+            resolvedMode: "auto",
+            forceTargetTempC: null,
+            forceUntilMs: null,
+            plannerCommandedStage: 1,
+            plannerTargetTempC: null,
+            temperature: { valueC: 59, status: "valid", observedAtMs: NOW },
+            measuredPowerW: 0,
+            hasPowerMeasurement: false,
+            persist: { ...(0, persist_js_1.emptyPersist)(), autoTargetReached: true },
+            config: CFG,
+            faultLockout: false,
+            faultCode: "none",
+        });
+        strict_1.default.equal(r.state, "auto_ready");
+        strict_1.default.equal(r.reason, "auto_reheat_hysteresis");
+        strict_1.default.equal(r.commandedStage, 0);
+    });
+    (0, node_test_1.it)("auto reheat hysteresis does NOT block restart if target was never reached (PV dip before full charge)", () => {
+        // Heizstab stoppte z.B. wegen kurzer Überschuss-Lücke bei 59°C, bevor autoTargetC (60) je
+        // erreicht wurde. persist.autoTargetReached bleibt false → darf beim nächsten Überschuss
+        // sofort weiterheizen statt bis (Ziel − Hysterese) zu warten.
         const r = (0, fsm_js_1.runImmersionFsm)({
             nowMs: NOW,
             addonEnabled: true,
@@ -183,11 +211,11 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
             faultLockout: false,
             faultCode: "none",
         });
-        strict_1.default.equal(r.state, "auto_ready");
-        strict_1.default.equal(r.reason, "auto_reheat_hysteresis");
-        strict_1.default.equal(r.commandedStage, 0);
+        strict_1.default.equal(r.state, "auto_heating");
+        strict_1.default.equal(r.commandedStage, 1);
+        strict_1.default.equal(r.autoTargetReached, false);
     });
-    (0, node_test_1.it)("auto reheat hysteresis allows restart once below (target - hysteresis)", () => {
+    (0, node_test_1.it)("auto reheat hysteresis allows restart once below (target - hysteresis), resetting the reached-flag", () => {
         const r = (0, fsm_js_1.runImmersionFsm)({
             nowMs: NOW,
             addonEnabled: true,
@@ -203,13 +231,38 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
             temperature: { valueC: 57.9, status: "valid", observedAtMs: NOW },
             measuredPowerW: 0,
             hasPowerMeasurement: false,
-            persist: (0, persist_js_1.emptyPersist)(),
+            persist: { ...(0, persist_js_1.emptyPersist)(), autoTargetReached: true },
             config: CFG,
             faultLockout: false,
             faultCode: "none",
         });
         strict_1.default.equal(r.state, "auto_heating");
         strict_1.default.equal(r.commandedStage, 1);
+        strict_1.default.equal(r.autoTargetReached, false);
+    });
+    (0, node_test_1.it)("reaching autoTargetC sets autoTargetReached for later hysteresis gating", () => {
+        const r = (0, fsm_js_1.runImmersionFsm)({
+            nowMs: NOW,
+            addonEnabled: true,
+            addonAvailable: true,
+            configValid: true,
+            executionLive: false,
+            failsafeActive: false,
+            resolvedMode: "auto",
+            forceTargetTempC: null,
+            forceUntilMs: null,
+            plannerCommandedStage: 0,
+            plannerTargetTempC: 54,
+            temperature: { valueC: 54, status: "valid", observedAtMs: NOW },
+            measuredPowerW: 0,
+            hasPowerMeasurement: false,
+            persist: (0, persist_js_1.emptyPersist)(),
+            config: CFG,
+            faultLockout: false,
+            faultCode: "none",
+        });
+        strict_1.default.equal(r.reason, "auto_planning_target_reached");
+        strict_1.default.equal(r.autoTargetReached, true);
     });
     (0, node_test_1.it)("auto reheat hysteresis does not interrupt an already-running heating cycle", () => {
         // persist.commandedStage > 0 (bereits am Heizen) → Hysterese-Block greift nicht,

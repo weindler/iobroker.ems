@@ -1,6 +1,6 @@
 # EMS-Light — Dokumentation
 
-**Adapter:** `iobroker.ems` · **Stand:** v0.1.178 (Juli 2026)
+**Adapter:** `iobroker.ems` · **Stand:** v0.1.179 (Juli 2026)
 
 ## Zentrale Dokumente
 
@@ -59,6 +59,8 @@ Kein Architektur-Umbau — sequenzielle Blöcke, jeder vollständig abgeschlosse
 4. Shadow-Stack-Löschung — **explizit nach dem 10.08.**, `src/planner/` (aktiver Realtime-Fallback) bleibt in jedem Fall erhalten.
 
 Nicht priorisiert bis dahin: Heavy Planner wieder einschalten, weitere Batterie-Profile (Fronius/Victron), KI-Optimierungsschicht (erst nach Block 1–3).
+
+**Zwischenfix (v0.1.179, außerhalb der Blockreihe):** Heizstab lud im Auto-Modus nie bis zum vollen Tagesziel durch — ein früher Stopp unterhalb des Ziels (PV-Überschuss-Dip, 0 W Daily-Plan-Allocation) wurde von der Wiedereinschalt-Hysterese fälschlich wie „Ziel erreicht“ behandelt. Hysterese greift jetzt erst nach echter Zielerreichung. Siehe `docs/EMS_LIGHT_IMMERSION_DAILY_PLAN_RUNTIME.md`.
 
 ## Nicht mehr im Repo
 

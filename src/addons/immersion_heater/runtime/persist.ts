@@ -17,6 +17,7 @@ export function emptyPersist(): RuntimePersistData {
 		commandedStage: 0,
 		minRuntimeUntilMs: null,
 		pauseUntilMs: null,
+		autoTargetReached: false,
 	};
 }
 

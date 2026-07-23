@@ -44,6 +44,7 @@ export interface FsmOutput {
 	pauseUntilMs: number | null;
 	autoRevertToAuto: boolean;
 	clearForceFields: boolean;
+	autoTargetReached: boolean;
 }
 
 export function runImmersionFsm(input: FsmInput): FsmOutput {
@@ -81,6 +82,7 @@ export function runImmersionFsm(input: FsmInput): FsmOutput {
 		pauseUntilMs: persist.pauseUntilMs,
 		autoRevertToAuto: false,
 		clearForceFields: false,
+		autoTargetReached: persist.autoTargetReached,
 	};
 
 	if (!addonEnabled || !addonAvailable) {
@@ -137,6 +139,13 @@ export function runImmersionFsm(input: FsmInput): FsmOutput {
 				: config.planningMaxTempC,
 		);
 
+		// Wiedereinschalt-Hysterese gilt nur, wenn das Tagesziel seit dem letzten vollständigen
+		// Abkühlen unter (Ziel − Hysterese) auch wirklich erreicht wurde. Ein Stopp mangels PV-
+		// Überschuss (Thermal-Fallback) oder Daily-Plan-Allocation VOR Zielerreichung darf das
+		// Nachheizen nicht dauerhaft blockieren — sonst lädt der Heizstab nie vollständig durch.
+		const reheatThresholdC = autoTargetC - config.temperatureHysteresisK;
+		const targetReached = temp < reheatThresholdC ? false : persist.autoTargetReached || temp >= autoTargetC;
+
 		if (temp >= config.planningMaxTempC) {
 			const minRuntimeActive = persist.minRuntimeUntilMs !== null && nowMs < persist.minRuntimeUntilMs;
 			if (minRuntimeActive && persist.commandedStage > 0) {
@@ -157,6 +166,7 @@ export function runImmersionFsm(input: FsmInput): FsmOutput {
 							true,
 							config,
 						),
+						autoTargetReached: true,
 					};
 				}
 			}
@@ -166,6 +176,7 @@ export function runImmersionFsm(input: FsmInput): FsmOutput {
 				available: true,
 				reason: "auto_planning_max_temp_reached",
 				commandedStage: 0,
+				autoTargetReached: true,
 			};
 		}
 
@@ -189,6 +200,7 @@ export function runImmersionFsm(input: FsmInput): FsmOutput {
 							true,
 							config,
 						),
+						autoTargetReached: true,
 					};
 				}
 			}
@@ -198,23 +210,22 @@ export function runImmersionFsm(input: FsmInput): FsmOutput {
 				available: true,
 				reason: "auto_planning_target_reached",
 				commandedStage: 0,
+				autoTargetReached: true,
 			};
 		}
 
 		// Wiedereinschalt-Hysterese: Nach Zielerreichung erst unterhalb (Ziel − Hysterese) neu starten,
 		// nicht bereits bei minimalem Unterschreiten. Nur relevant, solange gerade nicht geheizt wird —
 		// laufende Heizzyklen (persist.commandedStage > 0) sind davon unberührt.
-		if (persist.commandedStage <= 0) {
-			const reheatThresholdC = autoTargetC - config.temperatureHysteresisK;
-			if (temp >= reheatThresholdC) {
-				return {
-					...base,
-					state: "auto_ready",
-					available: true,
-					reason: "auto_reheat_hysteresis",
-					commandedStage: 0,
-				};
-			}
+		if (persist.commandedStage <= 0 && targetReached) {
+			return {
+				...base,
+				state: "auto_ready",
+				available: true,
+				reason: "auto_reheat_hysteresis",
+				commandedStage: 0,
+				autoTargetReached: true,
+			};
 		}
 
 		const desiredStage = Math.max(0, Math.round(plannerCommandedStage));
@@ -229,6 +240,7 @@ export function runImmersionFsm(input: FsmInput): FsmOutput {
 					reason: "auto_minimum_pause",
 					commandedStage: 0,
 					pauseUntilMs: persist.pauseUntilMs,
+					autoTargetReached: false,
 				};
 			}
 			const minRuntimeActive = persist.minRuntimeUntilMs !== null && nowMs < persist.minRuntimeUntilMs;
@@ -253,6 +265,7 @@ export function runImmersionFsm(input: FsmInput): FsmOutput {
 						true,
 						config,
 					),
+					autoTargetReached: false,
 				};
 			}
 		}
@@ -276,6 +289,7 @@ export function runImmersionFsm(input: FsmInput): FsmOutput {
 						true,
 						config,
 					),
+					autoTargetReached: false,
 				};
 			}
 		}
@@ -286,6 +300,7 @@ export function runImmersionFsm(input: FsmInput): FsmOutput {
 			available: true,
 			reason: desiredStage > 0 ? "auto_planner_stage_unavailable" : "auto_ready_no_surplus",
 			commandedStage: 0,
+			autoTargetReached: false,
 		};
 	}
 

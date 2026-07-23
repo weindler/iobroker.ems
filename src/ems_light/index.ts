@@ -20,17 +20,8 @@ import {
 } from "../learning/power_rollup";
 import { ensurePolicyStateTree, initPolicyEngine, stopPolicyEngine, type PolicyEngineHost } from "../policy";
 import { ensureIntentStates, initIntentEngine, stopIntentEngine, type IntentEngineHost } from "../intent";
-import {
-	createPlannerOnDemandCoordinatorFromAdapter,
-	stopPlannerOnDemandCoordinator,
-} from "../planner_coordinator/compose";
-import type { PlannerCoordinatorAdapterHost } from "../planner_coordinator/runtime_factory";
-import {
-	stopPlannerShadowRuntime,
-} from "../planner_shadow/runtime";
 import { ensurePlannerStateTree, stopPlanner, type PlannerHost } from "../planner";
 import { batteryWinterPlanConfigFromAdapter } from "../planner/battery_winter_config";
-import { plannerRuntimeModeFromConfig } from "../planner_config";
 import { isAddonEnabled } from "../addons/governance/config";
 import { resetGlobalModesRuntime } from "../global_modes";
 import { ensureEmsLightStates } from "./ensure_states";
@@ -142,17 +133,8 @@ export function getLearningStateTreeHost(): LearningStateTreeHost | null {
 export async function ensureEmsLightStateTree(adapter: ioBroker.Adapter): Promise<void> {
 	const version = String(adapter.common?.version ?? "0.0.0");
 	const host = adapter as unknown as LiveCacheHost;
-	const configured = plannerRuntimeModeFromConfig(adapter.config).mode;
-	if (configured !== "off") {
-		adapter.log.info(
-			`Planner Shadow Mode „${configured}“ ignoriert — Produktions-Oberfläche erzwingt off`,
-		);
-	}
 	await ensureEmsLightStates(host, version);
 	await ensurePlannerStateTree(host as unknown as PlannerHost & LiveCacheHost, {
-		includeTakeoverStates: false,
-		coordinatorMinimal: true,
-		leanOperatorSurface: true,
 		includeThermalIntent: isAddonEnabled(adapter.config, "immersion_heater"),
 		includeCoolingIntent: isAddonEnabled(adapter.config, "climate"),
 		includeWinterIntent: batteryWinterPlanConfigFromAdapter(adapter.config).enabled,
@@ -166,18 +148,6 @@ export async function ensureEmsLightStateTree(adapter: ioBroker.Adapter): Promis
 /** Phase F — Runtime, Ticks und initiale Auswertung (nach Bootstrap-Barriere). */
 export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Promise<void> {
 	const host = adapter as unknown as LiveCacheHost;
-	const configured = plannerRuntimeModeFromConfig(adapter.config).mode;
-	if (configured !== "off") {
-		adapter.log.info(
-			`Planner Shadow Runtime nicht gestartet (konfiguriert „${configured}“, Oberfläche erzwingt off)`,
-		);
-	}
-
-	// Shadow/Takeover/Authority stay out of the production control path.
-	createPlannerOnDemandCoordinatorFromAdapter(adapter as unknown as PlannerCoordinatorAdapterHost, {
-		enabled: false,
-		log: adapter.log,
-	});
 	energyDailyRollupHost = buildRollupHost(adapter);
 	powerRollupHost = energyDailyRollupHost;
 	await initEnergyDailyRollup(energyDailyRollupHost);
@@ -274,8 +244,6 @@ export async function stopEmsLightPhase1(): Promise<void> {
 	stopPowerRollup();
 	stopEnergyDailyRollup();
 	stopPlanner();
-	await stopPlannerShadowRuntime();
-	await stopPlannerOnDemandCoordinator();
 	powerRollupHost = null;
 	energyDailyRollupHost = null;
 	learningHost = null;

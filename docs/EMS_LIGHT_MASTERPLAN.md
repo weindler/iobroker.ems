@@ -1,7 +1,7 @@
 # EMS-Light – Verbindlicher Masterplan
 
 **Status:** Gültig ab 28.06.2026  
-**Aktualisierung:** 19.07.2026 — Operator-Pfad (Forecast/Daily Plan) produktiv; schwerer Planner-Shadow/Takeover abgeschaltet. KI weiterhin optional/ungebaut. Index: `docs/README.md`.
+**Aktualisierung:** 23.07.2026 — Operator-Pfad (Forecast/Daily Plan) produktiv; schwerer Planner-Shadow/Takeover-Codestack seit v0.1.181 vollständig entfernt (nicht mehr nur abgeschaltet). KI weiterhin optional/ungebaut. Index: `docs/README.md`.
 
 ---
 

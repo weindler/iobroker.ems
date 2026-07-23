@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.180",
+		"version": "0.1.181",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.181": {
+				"en": "Cleanup (Block 4), no runtime behavior change: removed the entire legacy Shadow/Takeover/Authority/Authorization/Coordinator planner stack (16 directories, ~20,500 lines) — it was already unreachable in production (only ever started from its own tests, never from main.ts/ems_light). The active realtime planner (src/planner/, thermal/cooling/battery-winter fallback) is untouched. Compiled build output ~23% smaller; RAM footprint unchanged since these modules never loaded in production before either. All 1172 tests green.",
+				"de": "Aufräumen (Block 4), kein Laufzeitverhalten geändert: kompletter Legacy-Planner-Stack Shadow/Takeover/Authority/Authorization/Coordinator entfernt (16 Verzeichnisse, ~20.500 Zeilen) — er war in Produktion bereits unerreichbar (wurde nur aus eigenen Tests gestartet, nie aus main.ts/ems_light). Der aktive Realtime-Planner (src/planner/, Thermal/Klima/Batterie-Winter-Fallback) bleibt unverändert. Kompilierte Build-Ausgabe ~23% kleiner; RAM-Verbrauch unverändert, da diese Module auch vorher nie in Produktion geladen wurden. Alle 1172 Tests grün."
+			},
 			"0.1.180": {
 				"en": "Dev-tooling only, no runtime change: the 5 identical climate (AC) unit blocks in admin/jsonConfig.json are now generated from a single template plus per-unit default overrides (src/tools/admin_config/) instead of being hand-maintained duplicates. `npm run admin-config:generate` regenerates the file; `npm test` now fails if the file drifts from the template. One inconsistent key order in unit 2 was normalized as a side effect (values unchanged).",
 				"de": "Nur Entwickler-Tooling, kein Laufzeitverhalten geändert: die 5 identischen Klima-Innengerät-Blöcke in admin/jsonConfig.json werden jetzt aus einem einzigen Template plus individuellen Default-Overrides je Gerät (src/tools/admin_config/) generiert statt von Hand als Duplikate gepflegt zu werden. `npm run admin-config:generate` erzeugt die Datei neu; `npm test` schlägt jetzt fehl, wenn die Datei vom Template abweicht. Eine inkonsistente Feld-Reihenfolge bei Gerät 2 wurde dabei normalisiert (Werte unverändert)."

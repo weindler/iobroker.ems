@@ -1,6 +1,6 @@
 # EMS-Light — Dokumentation
 
-**Adapter:** `iobroker.ems` · **Stand:** v0.1.180 (Juli 2026)
+**Adapter:** `iobroker.ems` · **Stand:** v0.1.181 (Juli 2026)
 
 ## Zentrale Dokumente
 
@@ -14,7 +14,7 @@
 
 ## Operator & Planung (Produktion)
 
-Schwerer Planner-Shadow/Takeover ist **abgeschaltet**. Produktion läuft über Forecast Plan → Daily Plan → Allocation → Intent → Profil.
+Schwerer Planner-Shadow/Takeover ist seit v0.1.181 **vollständig aus dem Code entfernt**. Produktion läuft über Forecast Plan → Daily Plan → Allocation → Intent → Profil.
 
 | Dokument | Inhalt |
 |----------|--------|
@@ -56,12 +56,12 @@ Kein Architektur-Umbau — sequenzielle Blöcke, jeder vollständig abgeschlosse
 1. ✅ **Wallbox-Live-Gate kontrolliert öffnen** (v0.1.177) — echte Writes für den EVCC-Control-Pfad, aktive Feedback-Verifikation per Safety-Tick, Ownership/Fault-Lockout/Safe-Restore analog Heizstab/Batterie. Legacy-Direktpfad (go-e) bleibt strukturell ausgeschlossen.
 2. ✅ **Batterie-Laden vollständig live absichern** (v0.1.178) — `FinalWriteGate` echt verdrahtet (Fault/Lockout/Ownership statt Platzhalter), `safety_blocked` (HW-SOC-Obergrenze) aktiviert, eigenständiger FSM-unabhängiger Battery-Failsafe (EMS-Unreachable-Heartbeat) analog Wallbox/Heizstab, neue Safety-/Restore-/Failsafe-Tests.
 3. ✅ **Admin-UI: Generator für Klima-Tab-Duplikate** (v0.1.180) — 5× identische AC-Unit-Blöcke werden jetzt aus `src/tools/admin_config/climate_unit_shape.ts` (Struktur) + `climate_unit_defaults.ts` (5 individuelle Default-Sets) generiert statt von Hand gepflegt. `npm run admin-config:generate` schreibt `admin/jsonConfig.json` neu (nur der Klima-Block wird textuell ersetzt, alles andere bleibt Byte-identisch). `npm test` prüft per Drift-Check (`admin-config:check`), dass die Datei dem Template entspricht — jede zukünftige Handbearbeitung der `ac_u<N>_*`-Felder lässt CI fehlschlagen.
-4. Shadow-Stack-Löschung — **explizit nach dem 10.08.**, `src/planner/` (aktiver Realtime-Fallback) bleibt in jedem Fall erhalten.
+4. ✅ **Shadow-Stack-Löschung** (v0.1.181) — vorgezogen (vorher „nach dem 10.08.“ geplant). 16 Verzeichnisse (`planner_shadow`, `planner_takeover`, `planner_authority`, `planner_authorization`, `planner_coordinator`, `planner_snapshot`, `planner_config`, `planner_trigger`, `planner_repository`, `planner_job`, `planner_worker`, `planner_preparation`, `planner_paths`, `planner_candidate`, `planner_contracts`, `planner_publish`), ~20.500 LOC, komplett entfernt — sie waren in Produktion bereits unerreichbar (`initPlannerShadowRuntime` wurde nur aus Tests aufgerufen, nie aus `main.ts`/`ems_light`). `src/planner/` (aktiver Realtime-Fallback für Thermal/Cooling/Battery-Winter) bleibt vollständig erhalten und unverändert im Verhalten. Kompilierte Build-Ausgabe (`build/`) dadurch ~23 % kleiner (5,6 MB → 4,3 MB); RAM-Fußabdruck unverändert, da die Module bereits vorher nie in den Produktionspfad geladen wurden (per Test abgesichert, siehe `ems_light/off_legacy_lazy.test.ts`). `npm test`: 1172/1172 grün.
 
-Nicht priorisiert bis dahin: Heavy Planner wieder einschalten, weitere Batterie-Profile (Fronius/Victron), KI-Optimierungsschicht (erst nach Block 1–3).
+Nicht priorisiert: Heavy Planner wieder einführen, weitere Batterie-Profile (Fronius/Victron), KI-Optimierungsschicht (erst nach stabilem Wallbox-/Batterie-Live-Betrieb).
 
 **Zwischenfix (v0.1.179, außerhalb der Blockreihe):** Heizstab lud im Auto-Modus nie bis zum vollen Tagesziel durch — ein früher Stopp unterhalb des Ziels (PV-Überschuss-Dip, 0 W Daily-Plan-Allocation) wurde von der Wiedereinschalt-Hysterese fälschlich wie „Ziel erreicht“ behandelt. Hysterese greift jetzt erst nach echter Zielerreichung. Siehe `docs/EMS_LIGHT_IMMERSION_DAILY_PLAN_RUNTIME.md`.
 
 ## Nicht mehr im Repo
 
-Entfernt (Juli 2026): `planner_phase_3*`, Shadow-Gate-Verification, State-Surface-/Admin-Audit-Arbeitsberichte. Code für Shadow/Takeover kann noch liegen (abgeschaltet) — Aufräumen ist ein eigener Block, kein Doc-Thema.
+Entfernt (Juli 2026): `planner_phase_3*`, Shadow-Gate-Verification, State-Surface-/Admin-Audit-Arbeitsberichte. Seit v0.1.181 zusätzlich entfernt: der komplette Shadow/Takeover/Authority/Authorization/Coordinator-Codestack (Block 4, siehe oben) — nur noch als String-Präfixe in `src/surface_cleanup/allowlist.ts` (Migration/Purge alter Objektbäume aus Vor-Installationen) und `src/audit/state_surface_catalog.ts` (Katalog-Metadaten) referenziert, kein Code-Import mehr.

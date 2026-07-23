@@ -14,7 +14,6 @@ const constants_js_1 = require("../addons/air_conditioning/constants.js");
 const ensure_states_js_2 = require("../addons/wallbox/vehicles/ensure_states.js");
 const normalize_js_1 = require("../addons/wallbox/vehicles/normalize.js");
 const config_js_1 = require("../addons/wallbox/vehicles/config.js");
-const ensure_states_js_3 = require("../planner_shadow/ensure_states.js");
 class FakeCleanupHost {
     namespace = "ems.0";
     objects = new Map();
@@ -194,12 +193,6 @@ class FakeCleanupHost {
         strict_1.default.ok(oneCount < legacyCount);
         const savingsVsLegacy = legacyCount - emptyCount;
         strict_1.default.ok(savingsVsLegacy >= 150, `expected large placeholder savings, got ${savingsVsLegacy} (empty=${emptyCount} one=${oneCount} legacy=${legacyCount})`);
-    });
-    (0, node_test_1.it)("marks planner coordinator states as expert", async () => {
-        const host = new FakeCleanupHost({});
-        await (0, ensure_states_js_3.ensurePlannerCoordinatorStates)(host);
-        const sample = host.objects.get("planner.coordinator.comparison_status");
-        strict_1.default.equal(sample?.common?.expert, true);
     });
     (0, node_test_1.it)("purges stub addon leaves and mapping allowed_values", async () => {
         const host = new FakeCleanupHost({});

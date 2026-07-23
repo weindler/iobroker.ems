@@ -9,7 +9,6 @@ import { AC_ADDON_ID } from "../addons/air_conditioning/constants.js";
 import { ensureWallboxVehicleProfileStates } from "../addons/wallbox/vehicles/ensure_states.js";
 import { normalizeWallboxVehicleProfiles } from "../addons/wallbox/vehicles/normalize.js";
 import { wallboxVehicleProfilesConfigFromAdapter } from "../addons/wallbox/vehicles/config.js";
-import { ensurePlannerCoordinatorStates } from "../planner_shadow/ensure_states.js";
 
 class FakeCleanupHost implements SurfaceCleanupHost {
 	readonly namespace = "ems.0";
@@ -242,13 +241,6 @@ describe("dynamic surface ensure + cleanup", () => {
 			savingsVsLegacy >= 150,
 			`expected large placeholder savings, got ${savingsVsLegacy} (empty=${emptyCount} one=${oneCount} legacy=${legacyCount})`,
 		);
-	});
-
-	it("marks planner coordinator states as expert", async () => {
-		const host = new FakeCleanupHost({});
-		await ensurePlannerCoordinatorStates(host);
-		const sample = host.objects.get("planner.coordinator.comparison_status");
-		assert.equal((sample?.common as ioBroker.StateCommon | undefined)?.expert, true);
 	});
 
 	it("purges stub addon leaves and mapping allowed_values", async () => {

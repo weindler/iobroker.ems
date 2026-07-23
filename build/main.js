@@ -47,7 +47,6 @@ const tree_paths_1 = require("./tree_paths");
 const inbox_1 = require("./inbox");
 const mapping_config_1 = require("./mapping_config");
 const ems_light_1 = require("./ems_light");
-const runtime_1 = require("./planner_shadow/runtime");
 const energy_daily_rollup_1 = require("./learning/energy_daily_rollup");
 const power_rollup_1 = require("./learning/power_rollup");
 const policy_1 = require("./policy");
@@ -497,12 +496,6 @@ class Ems extends utils.Adapter {
                 return;
             }
             await (0, execution_mode_1.handleExecutionModeStateChange)(this, id, state);
-            if (rel === tree_paths_1.GLOBAL.executionMode) {
-                void Promise.resolve().then(() => __importStar(require("./planner_authorization/runtime.js"))).then((m) => m.notifyPlannerAuthorizationExecutionMode(String(state.val ?? "dryrun")))
-                    .catch(() => undefined);
-                void Promise.resolve().then(() => __importStar(require("./planner_authority/runtime.js"))).then((m) => m.notifyPlannerAuthorityExecutionMode(String(state.val ?? "dryrun")))
-                    .catch(() => undefined);
-            }
             (0, battery_1.handleBatteryAdapterStateChange)(this, id);
             (0, battery_1.handleBatteryGridBalanceForeignStateChange)(this, id);
             (0, immersion_heater_1.handleImmersionHeaterStateChange)(this, id);
@@ -513,10 +506,6 @@ class Ems extends utils.Adapter {
             (0, wallbox_1.handleWallboxStateChange)(this.namespace, id);
             (0, power_rollup_1.handlePowerRollupStateChange)(id, state);
             (0, energy_daily_rollup_1.handleEnergyDailyRollupStateChange)(id, state);
-            if (await (0, runtime_1.handlePlannerShadowStateChange)(this, rel, state.val, state.ack)) {
-                return;
-            }
-            (0, runtime_1.observePlannerTriggerStateChange)(rel, state.ack);
         }
         const inboxId = `${this.namespace}.${states_1.STATE.command.inbox}`;
         if (id !== inboxId || !state)

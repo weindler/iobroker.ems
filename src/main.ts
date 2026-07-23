@@ -44,7 +44,6 @@ import { GLOBAL, addonMode } from "./tree_paths";
 import { parseInboxValue } from "./inbox";
 import { goeWallboxTemplateFlat } from "./mapping_config";
 import { stopEmsLightPhase1 } from "./ems_light";
-import { handlePlannerShadowStateChange, observePlannerTriggerStateChange } from "./planner_shadow/runtime";
 import { handleEnergyDailyRollupStateChange } from "./learning/energy_daily_rollup";
 import { handlePowerRollupStateChange } from "./learning/power_rollup";
 import { handleGlobalModesStateChange } from "./policy";
@@ -566,14 +565,6 @@ class Ems extends utils.Adapter {
 				return;
 			}
 			await handleExecutionModeStateChange(this, id, state);
-			if (rel === GLOBAL.executionMode) {
-				void import("./planner_authorization/runtime.js")
-					.then((m) => m.notifyPlannerAuthorizationExecutionMode(String(state.val ?? "dryrun")))
-					.catch(() => undefined);
-				void import("./planner_authority/runtime.js")
-					.then((m) => m.notifyPlannerAuthorityExecutionMode(String(state.val ?? "dryrun")))
-					.catch(() => undefined);
-			}
 			handleBatteryAdapterStateChange(this, id);
 			handleBatteryGridBalanceForeignStateChange(this, id);
 			handleImmersionHeaterStateChange(this, id);
@@ -584,10 +575,6 @@ class Ems extends utils.Adapter {
 			handleWallboxStateChange(this.namespace, id);
 			handlePowerRollupStateChange(id, state);
 			handleEnergyDailyRollupStateChange(id, state);
-			if (await handlePlannerShadowStateChange(this, rel, state.val, state.ack)) {
-				return;
-			}
-			observePlannerTriggerStateChange(rel, state.ack);
 		}
 		const inboxId = `${this.namespace}.${STATE.command.inbox}`;
 		if (id !== inboxId || !state) return;

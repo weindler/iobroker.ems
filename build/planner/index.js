@@ -23,13 +23,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopPlanner = exports.initPlanner = exports.runPlannerRuntime = exports.ensurePlannerStateTree = exports.batteryWinterPlanConfigFromAdapter = exports.readTibber15MinPriceSlots = exports.isNowInWinterChargeWindow = exports.planBatteryWinterPriceWindows = exports.dailyKwhFromHouseLoadForecast = exports.planBatteryWinter = exports.plannerModePolicyFromGlobalMode = exports.buildPlannerConstraints = exports.planBattery = exports.coolingReserveW = exports.planCooling = exports.resetPlannerRevisionForTest = exports.runPlannerTick = exports.runPlanner = exports.readPlannerInputs = exports.readPlannerThermalStage = void 0;
+exports.stopPlanner = exports.runPlannerRuntime = exports.ensurePlannerStateTree = exports.batteryWinterPlanConfigFromAdapter = exports.readTibber15MinPriceSlots = exports.isNowInWinterChargeWindow = exports.planBatteryWinterPriceWindows = exports.dailyKwhFromHouseLoadForecast = exports.planBatteryWinter = exports.plannerModePolicyFromGlobalMode = exports.buildPlannerConstraints = exports.planBattery = exports.coolingReserveW = exports.planCooling = exports.resetPlannerRevisionForTest = exports.runPlannerTick = exports.runPlanner = exports.readPlannerInputs = exports.readPlannerThermalStage = void 0;
 const ensure_states_1 = require("./ensure_states");
 const grid_states_1 = require("../operator/supply/grid_states");
 const states_1 = require("../operator/forecast/states");
 const states_2 = require("../operator/contributions/flexible/states");
 const states_3 = require("../operator/daily_plan/states");
-const ensure_states_2 = require("../planner_shadow/ensure_states");
 const run_1 = require("./run");
 var inputs_1 = require("./inputs");
 Object.defineProperty(exports, "readPlannerThermalStage", { enumerable: true, get: function () { return inputs_1.readPlannerThermalStage; } });
@@ -56,7 +55,12 @@ var battery_winter_price_inputs_1 = require("./battery_winter_price_inputs");
 Object.defineProperty(exports, "readTibber15MinPriceSlots", { enumerable: true, get: function () { return battery_winter_price_inputs_1.readTibber15MinPriceSlots; } });
 var battery_winter_config_1 = require("./battery_winter_config");
 Object.defineProperty(exports, "batteryWinterPlanConfigFromAdapter", { enumerable: true, get: function () { return battery_winter_config_1.batteryWinterPlanConfigFromAdapter; } });
-/** Phase B — nur Objektbaum, keine Planner-Ticks. */
+/**
+ * Phase B — nur Objektbaum, keine Planner-Ticks.
+ * Legacy Shadow/Takeover/Coordinator-Objektbäume gehören nicht mehr zur Produktions-Oberfläche
+ * (Shadow/Takeover-Stack entfernt, siehe docs/README.md Block 4) — Forecast Plan, Daily Plan und
+ * Allocation sind der alleinige Kontrollpfad.
+ */
 async function ensurePlannerStateTree(host, options) {
     await (0, ensure_states_1.ensurePlannerStates)(host, {
         includeThermal: options?.includeThermalIntent !== false,
@@ -67,14 +71,6 @@ async function ensurePlannerStateTree(host, options) {
     await (0, states_1.ensureForecastPlanStates)(host);
     await (0, states_2.ensureFlexibleContributionStates)(host);
     await (0, states_3.ensureDailyPlanStates)(host);
-    if (options?.leanOperatorSurface) {
-        return;
-    }
-    await (0, ensure_states_2.ensurePlannerCoordinatorStates)(host, { minimal: options?.coordinatorMinimal === true });
-    if (options?.includeTakeoverStates !== false) {
-        const { ensurePlannerTakeoverStates } = await Promise.resolve().then(() => __importStar(require("../planner_takeover/states.js")));
-        await ensurePlannerTakeoverStates(host);
-    }
 }
 exports.ensurePlannerStateTree = ensurePlannerStateTree;
 /** Phase F — initiale Planner-Auswertung (Forecast / Daily / Allocation). */
@@ -90,11 +86,6 @@ async function runPlannerRuntime(host) {
     await runDailyPlanTick(host, forecastPlan);
 }
 exports.runPlannerRuntime = runPlannerRuntime;
-async function initPlanner(host) {
-    await ensurePlannerStateTree(host);
-    await runPlannerRuntime(host);
-}
-exports.initPlanner = initPlanner;
 async function stopPlanner() {
     // stateless — nothing to tear down
 }

@@ -1,7 +1,7 @@
 # EMS-Light – Architektur (Ist-Stand)
 
-**Gültig ab:** 19.07.2026  
-**Adapter-Version:** v0.1.174
+**Gültig ab:** 23.07.2026  
+**Adapter-Version:** v0.1.181
 
 Dieses Dokument beschreibt die **tatsächlich implementierte** Architektur des ioBroker-Adapters `iobroker.ems`. Geplante, aber noch nicht umgesetzte Bestandteile sind als *geplant* gekennzeichnet.
 
@@ -22,7 +22,7 @@ EMS-Light ist ein ioBroker-Adapter (`ems.0`), der als eigenständiges Energieman
 
 Es gibt **keine** Abhängigkeit von einem externen EMS-V2-Server.
 
-**Schwerer Planner (Shadow/Takeover):** in Produktion **abgeschaltet**. Planung läuft über den Operator-Pfad, nicht über den Legacy-Shadow-Worker.
+**Schwerer Planner (Shadow/Takeover):** seit v0.1.181 vollständig aus dem Code entfernt (Block 4, ~20.500 LOC). Planung läuft ausschließlich über den Operator-Pfad (Forecast Plan → Daily Plan → Allocation).
 
 ---
 
@@ -48,7 +48,7 @@ src/
 │   └── governance/         enabled + ai_optimization_allowed
 ├── backup/ / restore/      Export, Support-Paket, Restore
 ├── support/                Diagnosemodus (zeitlich begrenzt)
-└── planner_shadow/ …       Legacy — in Produktion nicht aktiv
+└── planner/                Aktiver Realtime-Fallback (Thermal/Cooling/Battery-Regeln)
 ```
 
 Build-Ausgabe: `build/` (TypeScript → JavaScript, wird mitgeliefert).
@@ -76,8 +76,6 @@ Periodischer Tick (typisch 60 s):
 - Aktualisiert Live-Cache
 - Baut Forecast Plan und Daily Plan (Allocation)
 - Geräte-Runtimes lesen Allocation/Intents in eigenen Intervallen
-
-Legacy Shadow/Takeover wird nicht gestartet (`planner_runtime_mode: off`).
 
 Geräte-Runtimes (Heizstab, Batterie, Klima, Wallbox) laufen in eigenen Intervallen und lesen Operator-Intents.
 
@@ -325,7 +323,6 @@ Keine externen Snapshot-Fixtures im Repository — Tests nutzen Mock-Hosts.
 - Optionale KI-Optimierung auf Forecast/Daily Plan (Governance-Flags schon vorhanden)
 - Weitere Batterie-Steuerprofile (Sonnen Performance, Fronius, Victron, …) und bestätigte Entladesteuerung
 - Einheitliche Runtime-States (`decision_source`, `planner_status`, …) überall
-- Aufräumen Legacy Shadow/Takeover-Code (derzeit nur abgeschaltet)
 
 **Bereits produktiv (nicht mehr „geplant“):** General Operator (Forecast + Daily Plan + Allocation), Heizstab/Klima/Batterie-Laden über Daily Plan, Wallbox EVCC-Control-Pfad mit echten Live-Writes, Feedback-Verifikation und Safety-Schicht (Ownership/Fault/Restore).
 

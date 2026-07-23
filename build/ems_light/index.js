@@ -8,11 +8,8 @@ const energy_daily_rollup_1 = require("../learning/energy_daily_rollup");
 const power_rollup_1 = require("../learning/power_rollup");
 const policy_1 = require("../policy");
 const intent_1 = require("../intent");
-const compose_1 = require("../planner_coordinator/compose");
-const runtime_1 = require("../planner_shadow/runtime");
 const planner_1 = require("../planner");
 const battery_winter_config_1 = require("../planner/battery_winter_config");
-const planner_config_1 = require("../planner_config");
 const config_1 = require("../addons/governance/config");
 const global_modes_1 = require("../global_modes");
 const ensure_states_1 = require("./ensure_states");
@@ -108,15 +105,8 @@ exports.getLearningStateTreeHost = getLearningStateTreeHost;
 async function ensureEmsLightStateTree(adapter) {
     const version = String(adapter.common?.version ?? "0.0.0");
     const host = adapter;
-    const configured = (0, planner_config_1.plannerRuntimeModeFromConfig)(adapter.config).mode;
-    if (configured !== "off") {
-        adapter.log.info(`Planner Shadow Mode „${configured}“ ignoriert — Produktions-Oberfläche erzwingt off`);
-    }
     await (0, ensure_states_1.ensureEmsLightStates)(host, version);
     await (0, planner_1.ensurePlannerStateTree)(host, {
-        includeTakeoverStates: false,
-        coordinatorMinimal: true,
-        leanOperatorSurface: true,
         includeThermalIntent: (0, config_1.isAddonEnabled)(adapter.config, "immersion_heater"),
         includeCoolingIntent: (0, config_1.isAddonEnabled)(adapter.config, "climate"),
         includeWinterIntent: (0, battery_winter_config_1.batteryWinterPlanConfigFromAdapter)(adapter.config).enabled,
@@ -130,15 +120,6 @@ exports.ensureEmsLightStateTree = ensureEmsLightStateTree;
 /** Phase F — Runtime, Ticks und initiale Auswertung (nach Bootstrap-Barriere). */
 async function startEmsLightPhase1Runtime(adapter) {
     const host = adapter;
-    const configured = (0, planner_config_1.plannerRuntimeModeFromConfig)(adapter.config).mode;
-    if (configured !== "off") {
-        adapter.log.info(`Planner Shadow Runtime nicht gestartet (konfiguriert „${configured}“, Oberfläche erzwingt off)`);
-    }
-    // Shadow/Takeover/Authority stay out of the production control path.
-    (0, compose_1.createPlannerOnDemandCoordinatorFromAdapter)(adapter, {
-        enabled: false,
-        log: adapter.log,
-    });
     energyDailyRollupHost = buildRollupHost(adapter);
     powerRollupHost = energyDailyRollupHost;
     await (0, energy_daily_rollup_1.initEnergyDailyRollup)(energyDailyRollupHost);
@@ -229,8 +210,6 @@ async function stopEmsLightPhase1() {
     (0, power_rollup_1.stopPowerRollup)();
     (0, energy_daily_rollup_1.stopEnergyDailyRollup)();
     (0, planner_1.stopPlanner)();
-    await (0, runtime_1.stopPlannerShadowRuntime)();
-    await (0, compose_1.stopPlannerOnDemandCoordinator)();
     powerRollupHost = null;
     energyDailyRollupHost = null;
     learningHost = null;

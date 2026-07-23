@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.177",
+		"version": "0.1.178",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.178": {
+				"en": "Battery: FinalWriteGate now wired to real fault/lockout/ownership state instead of placeholders (safety restore still passes through during an active fault); safety_blocked stop condition enforces the hardware SOC ceiling; new standalone, FSM-independent failsafe (EMS-unreachable heartbeat) forces charge power 0 + self-consumption analogous to wallbox/immersion heater. New tests for stop conditions, safe-restore plan and failsafe.",
+				"de": "Batterie: FinalWriteGate ist jetzt mit echtem Fault-/Lockout-/Ownership-Zustand verdrahtet statt Platzhaltern (Safety-Restore läuft bei aktivem Fault weiterhin durch); safety_blocked erzwingt die Hardware-SOC-Obergrenze; neuer eigenständiger, FSM-unabhängiger Failsafe (EMS-Unreachable-Heartbeat) erzwingt Ladeleistung 0 + Self-Consumption analog Wallbox/Heizstab. Neue Tests für Stop-Bedingungen, Safe-Restore-Plan und Failsafe."
+			},
 			"0.1.177": {
 				"en": "Wallbox: controlled live-write release for the EVCC control path — real writes, active feedback verification, ownership/fault-lockout/safe-restore safety layer analogous to the immersion heater/battery. Legacy direct (go-e) path remains structurally excluded (never live-eligible).",
 				"de": "Wallbox: kontrollierte Live-Write-Freigabe für den EVCC-Control-Pfad — echte Writes, aktive Feedback-Verifikation, Ownership-/Fault-Lockout-/Safe-Restore-Sicherheitsschicht analog Heizstab/Batterie. Legacy-Direktpfad (go-e) bleibt strukturell ausgeschlossen (nie live-eligible)."

@@ -531,6 +531,14 @@ async function controlTickInner(host: Host): Promise<void> {
 		snapshot.telemetry.socPct != null &&
 		snapshot.telemetry.socPct >= deviceIntent.targetSocPct;
 
+	// Hardware-Sicherheitsdecke unabhängig vom Intent-Ziel: nie über den konfigurierten
+	// HW-Max-SOC hinaus laden, auch wenn der Intent kein (oder ein höheres) Ziel setzt.
+	const safetyBlocked =
+		runtime.ownership.active &&
+		snapshot.limits.maxSocPct != null &&
+		snapshot.telemetry.socPct != null &&
+		snapshot.telemetry.socPct >= snapshot.limits.maxSocPct;
+
 	const stopReason = evaluateStopCondition({
 		targetSocReached,
 		intentExpired:
@@ -538,10 +546,10 @@ async function controlTickInner(host: Host): Promise<void> {
 		intentRevoked: runtime.ownership.active && !wantsCharge,
 		addonDisabled: !governanceEnabled,
 		globalLeftLive: ownershipLive && !liveWriteAllowed,
-		safetyBlocked: false,
+		safetyBlocked,
 		telemetryStale: runtime.ownership.active && snapshot.telemetry.stale,
 		communicationLost: runtime.ownership.active && online === false,
-		fault: false,
+		fault: runtime.faultCode !== null,
 		unloading: false,
 		higherPriorityIntent: false,
 	});
@@ -573,7 +581,15 @@ async function controlTickInner(host: Host): Promise<void> {
 	if (step.log) host.log[step.log.level](step.log.msg);
 
 	// Apply FSM writes through the single central write function.
+	// Sicherheits-/Restore-Writes (stop_charge…restore_grid_balance) müssen auch bei
+	// aktivem Fault/Lockout durchkommen — sonst bleibt die Batterie im unsicheren
+	// Zustand hängen, weil genau diese Writes den Fault erst kontrolliert beenden.
 	const safetyWrite = isBatterySafetyWriteState(runtime.state) && runtime.ownership.active;
+	const foreignOwnershipConflict = isForeignManualControl({
+		currentMode: modeRead.val,
+		manualModeValue: config.sonnenModeValues.manual,
+		ownership: runtime.ownership,
+	});
 	const gate: FinalWriteGate = {
 		globalLive: effectiveLive,
 		governanceEnabled,
@@ -582,10 +598,10 @@ async function controlTickInner(host: Host): Promise<void> {
 		profileReady: snapshot.readiness.liveReady,
 		intentValid: intentValid || safetyOverride || safetyWrite,
 		telemetryReady: snapshot.readiness.telemetryReady,
-		fault: false,
-		lockout: false,
+		fault: runtime.faultCode !== null && !safetyWrite,
+		lockout: runtime.lockout && !safetyWrite,
 		targetMappingConfigured: true,
-		ownershipValid: true,
+		ownershipValid: !foreignOwnershipConflict,
 	};
 
 	let lastWrite: { state: string; value: number; success: boolean; expected: number | null } | null = null;
@@ -836,6 +852,9 @@ export async function batteryUnloadRestore(host: Host): Promise<void> {
 	}
 	const config = batteryConfigFromAdapter(host.config);
 	const table = batteryMappingFromConfig(host.config);
+	// Unload-Restore ist selbst der Safety-Write-Pfad (Gegenstück zu safetyWrite im Tick) —
+	// Fault/Lockout darf ihn nicht blockieren, sonst bleibt die Batterie beim Adapter-Stop
+	// im unsicheren Zustand hängen. Ownership ist durch die Precondition oben bereits belegt.
 	const gate: FinalWriteGate = {
 		globalLive: true,
 		governanceEnabled: true,
@@ -847,7 +866,7 @@ export async function batteryUnloadRestore(host: Host): Promise<void> {
 		fault: false,
 		lockout: false,
 		targetMappingConfigured: true,
-		ownershipValid: true,
+		ownershipValid: runtime.ownership.active,
 	};
 	try {
 		await executeBatteryWrite(host as unknown as BatteryWriteHost, {

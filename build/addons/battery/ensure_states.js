@@ -119,6 +119,13 @@ exports.BAT = {
     control: {
         faultReset: `${exports.BATTERY_BASE}.control.fault_reset`,
     },
+    failsafe: {
+        emsReachable: `${exports.BATTERY_BASE}.failsafe.ems_reachable`,
+        wouldTrip: `${exports.BATTERY_BASE}.failsafe.would_trip`,
+        active: `${exports.BATTERY_BASE}.failsafe.active`,
+        lastFailsafeAt: `${exports.BATTERY_BASE}.failsafe.last_failsafe_at`,
+        updatedAt: `${exports.BATTERY_BASE}.failsafe.updated_at`,
+    },
 };
 const bool = (name) => ({
     name,
@@ -253,6 +260,11 @@ function batteryStateDefs() {
             },
             defVal: false,
         },
+        { id: exports.BAT.failsafe.emsReachable, common: { ...bool("EMS erreichbar"), def: true }, defVal: true },
+        { id: exports.BAT.failsafe.wouldTrip, common: bool("Failsafe würde auslösen (Dryrun)") },
+        { id: exports.BAT.failsafe.active, common: bool("Failsafe aktiv (Notabschaltung erzwungen)") },
+        { id: exports.BAT.failsafe.lastFailsafeAt, common: txt("Letzter Failsafe (ISO)"), defVal: "" },
+        { id: exports.BAT.failsafe.updatedAt, common: txt("Failsafe zuletzt geprüft (ISO)"), defVal: "" },
     ];
 }
 async function ensureBatteryArchitectureStates(adapter) {
@@ -266,6 +278,7 @@ async function ensureBatteryArchitectureStates(adapter) {
         "dryrun",
         "diagnostics",
         "control",
+        "failsafe",
     ];
     for (const ch of channels) {
         await adapter.setObjectNotExistsAsync(`${exports.BATTERY_BASE}.${ch}`, {

@@ -1,5 +1,6 @@
 import { runImmersionFailsafeCheck } from "./addons/immersion_heater/failsafe";
 import { runWallboxFailsafeCheck } from "./addons/wallbox/failsafe";
+import { runBatteryFailsafeCheck } from "./addons/battery/failsafe";
 import { failsafeTimeoutsFromConfig } from "./failsafe_common";
 
 let timer: NodeJS.Timeout | null = null;
@@ -15,9 +16,10 @@ export function startFailsafeRunner(adapter: ioBroker.Adapter): void {
 	timer = setInterval(() => {
 		void runImmersionFailsafeCheck(adapter).catch((e) => adapter.log.error(`failsafe immersion: ${e}`));
 		void runWallboxFailsafeCheck(adapter).catch((e) => adapter.log.error(`failsafe wallbox: ${e}`));
+		void runBatteryFailsafeCheck(adapter).catch((e) => adapter.log.error(`failsafe battery: ${e}`));
 	}, failsafeCheckIntervalSec * 1000);
 
-	adapter.log.debug(`failsafe runner: interval ${failsafeCheckIntervalSec}s (immersion, wallbox)`);
+	adapter.log.debug(`failsafe runner: interval ${failsafeCheckIntervalSec}s (immersion, wallbox, battery)`);
 }
 
 export function stopFailsafeRunner(): void {

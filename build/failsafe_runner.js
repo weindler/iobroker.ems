@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.stopFailsafeRunner = exports.startFailsafeRunner = void 0;
 const failsafe_1 = require("./addons/immersion_heater/failsafe");
 const failsafe_2 = require("./addons/wallbox/failsafe");
+const failsafe_3 = require("./addons/battery/failsafe");
 const failsafe_common_1 = require("./failsafe_common");
 let timer = null;
 function startFailsafeRunner(adapter) {
@@ -14,8 +15,9 @@ function startFailsafeRunner(adapter) {
     timer = setInterval(() => {
         void (0, failsafe_1.runImmersionFailsafeCheck)(adapter).catch((e) => adapter.log.error(`failsafe immersion: ${e}`));
         void (0, failsafe_2.runWallboxFailsafeCheck)(adapter).catch((e) => adapter.log.error(`failsafe wallbox: ${e}`));
+        void (0, failsafe_3.runBatteryFailsafeCheck)(adapter).catch((e) => adapter.log.error(`failsafe battery: ${e}`));
     }, failsafeCheckIntervalSec * 1000);
-    adapter.log.debug(`failsafe runner: interval ${failsafeCheckIntervalSec}s (immersion, wallbox)`);
+    adapter.log.debug(`failsafe runner: interval ${failsafeCheckIntervalSec}s (immersion, wallbox, battery)`);
 }
 exports.startFailsafeRunner = startFailsafeRunner;
 function stopFailsafeRunner() {

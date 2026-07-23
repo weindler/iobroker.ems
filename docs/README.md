@@ -1,6 +1,6 @@
 # EMS-Light — Dokumentation
 
-**Adapter:** `iobroker.ems` · **Stand:** v0.1.177 (Juli 2026)
+**Adapter:** `iobroker.ems` · **Stand:** v0.1.178 (Juli 2026)
 
 ## Zentrale Dokumente
 
@@ -34,6 +34,7 @@ Schwerer Planner-Shadow/Takeover ist **abgeschaltet**. Produktion läuft über F
 | [EMS_LIGHT_WALLBOX_FEEDBACK_CONTRACT.md](./EMS_LIGHT_WALLBOX_FEEDBACK_CONTRACT.md) | Feedback-Vertrag |
 | [EMS_LIGHT_WALLBOX_VEHICLE_PROFILES.md](./EMS_LIGHT_WALLBOX_VEHICLE_PROFILES.md) | Fahrzeugprofile |
 | [EMS_LIGHT_WALLBOX_VEHICLE_SOC_ENERGY.md](./EMS_LIGHT_WALLBOX_VEHICLE_SOC_ENERGY.md) | SOC / Energie |
+| [EMS_LIGHT_BATTERY_LIVE_FOUNDATION.md](./EMS_LIGHT_BATTERY_LIVE_FOUNDATION.md) | Batterie Live-Absicherung (Gate/Failsafe) |
 | [EMS_LIGHT_BATTERY_DAILY_PLAN_RUNTIME.md](./EMS_LIGHT_BATTERY_DAILY_PLAN_RUNTIME.md) | Batterie + Daily Plan |
 | [EMS_LIGHT_IMMERSION_DAILY_PLAN_RUNTIME.md](./EMS_LIGHT_IMMERSION_DAILY_PLAN_RUNTIME.md) | Heizstab |
 | [EMS_LIGHT_AC_DAILY_PLAN_RUNTIME.md](./EMS_LIGHT_AC_DAILY_PLAN_RUNTIME.md) | Klima |
@@ -53,7 +54,7 @@ Kein Architektur-Umbau — sequenzielle Blöcke, jeder vollständig abgeschlosse
 
 0. ✅ **DST-/Bootstrap-Testfehler fixen** (v0.1.176) — `operator/time.test.ts` Mitternachts-Erwartung korrigiert, Bootstrap-Manifest an aktuelle Learning-Persistenz-States angepasst.
 1. ✅ **Wallbox-Live-Gate kontrolliert öffnen** (v0.1.177) — echte Writes für den EVCC-Control-Pfad, aktive Feedback-Verifikation per Safety-Tick, Ownership/Fault-Lockout/Safe-Restore analog Heizstab/Batterie. Legacy-Direktpfad (go-e) bleibt strukturell ausgeschlossen.
-2. **Batterie-Laden vollständig live absichern** — FinalWriteGate echt verdrahten (Fault/Lockout/Ownership), eigenständiger Battery-Failsafe analog Wallbox/Heizstab, fehlende Safety-Tests.
+2. ✅ **Batterie-Laden vollständig live absichern** (v0.1.178) — `FinalWriteGate` echt verdrahtet (Fault/Lockout/Ownership statt Platzhalter), `safety_blocked` (HW-SOC-Obergrenze) aktiviert, eigenständiger FSM-unabhängiger Battery-Failsafe (EMS-Unreachable-Heartbeat) analog Wallbox/Heizstab, neue Safety-/Restore-/Failsafe-Tests.
 3. **Admin-UI: Generator für Klima-Tab-Duplikate** — 5× identische AC-Unit-Blöcke (48,5 % von `admin/jsonConfig.json`) aus einem Template erzeugen, kein Laufzeit-/Schema-Risiko.
 4. Shadow-Stack-Löschung — **explizit nach dem 10.08.**, `src/planner/` (aktiver Realtime-Fallback) bleibt in jedem Fall erhalten.
 

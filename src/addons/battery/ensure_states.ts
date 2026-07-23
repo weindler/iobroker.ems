@@ -118,6 +118,13 @@ export const BAT = {
 	control: {
 		faultReset: `${BATTERY_BASE}.control.fault_reset`,
 	},
+	failsafe: {
+		emsReachable: `${BATTERY_BASE}.failsafe.ems_reachable`,
+		wouldTrip: `${BATTERY_BASE}.failsafe.would_trip`,
+		active: `${BATTERY_BASE}.failsafe.active`,
+		lastFailsafeAt: `${BATTERY_BASE}.failsafe.last_failsafe_at`,
+		updatedAt: `${BATTERY_BASE}.failsafe.updated_at`,
+	},
 } as const;
 
 type Def = { id: string; common: ioBroker.StateCommon; defVal?: ioBroker.StateValue };
@@ -264,6 +271,12 @@ function batteryStateDefs(): Def[] {
 			},
 			defVal: false,
 		},
+
+		{ id: BAT.failsafe.emsReachable, common: { ...bool("EMS erreichbar"), def: true }, defVal: true },
+		{ id: BAT.failsafe.wouldTrip, common: bool("Failsafe würde auslösen (Dryrun)") },
+		{ id: BAT.failsafe.active, common: bool("Failsafe aktiv (Notabschaltung erzwungen)") },
+		{ id: BAT.failsafe.lastFailsafeAt, common: txt("Letzter Failsafe (ISO)"), defVal: "" },
+		{ id: BAT.failsafe.updatedAt, common: txt("Failsafe zuletzt geprüft (ISO)"), defVal: "" },
 	];
 }
 
@@ -278,6 +291,7 @@ export async function ensureBatteryArchitectureStates(adapter: ioBroker.Adapter)
 		"dryrun",
 		"diagnostics",
 		"control",
+		"failsafe",
 	];
 	for (const ch of channels) {
 		await adapter.setObjectNotExistsAsync(`${BATTERY_BASE}.${ch}`, {

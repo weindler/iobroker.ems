@@ -8017,7 +8017,6 @@
 				"diagnostic_duration_min": {
 					"type": "select",
 					"label": "Dauer Diagnosemodus",
-					"doNotSave": true,
 					"default": 60,
 					"options": [
 						{ "label": "15 Minuten", "value": 15 },

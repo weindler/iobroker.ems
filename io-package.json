@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.181",
+		"version": "0.1.182",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.182": {
+				"en": "Fix: the Backup tab's diagnostic-duration dropdown used `doNotSave`, which the installed Admin schema rejects for `select` fields (`must NOT have additional properties: doNotSave`) — this made the whole jsonConfig invalid and caused Admin to show an unsaved-changes prompt every time the Backup tab was opened, even without any change. Removed `doNotSave`; the selected duration is now saved as a normal config value (harmless — only used to pre-fill the dropdown, still passed to the start command directly).",
+				"de": "Fix: Die Dauer-Auswahl im Backup-Tab (Diagnosemodus) nutzte `doNotSave`, was das installierte Admin-Schema für `select`-Felder ablehnt (`must NOT have additional properties: doNotSave`) — dadurch war die gesamte jsonConfig ungültig und Admin zeigte beim Öffnen des Backup-Tabs immer „ungespeicherte Änderungen“ an, auch ohne echte Änderung. `doNotSave` entfernt; die gewählte Dauer wird jetzt als normaler Konfigwert gespeichert (unproblematisch — dient nur zur Vorauswahl, wird weiterhin direkt an den Start-Befehl übergeben)."
+			},
 			"0.1.181": {
 				"en": "Cleanup (Block 4), no runtime behavior change: removed the entire legacy Shadow/Takeover/Authority/Authorization/Coordinator planner stack (16 directories, ~20,500 lines) — it was already unreachable in production (only ever started from its own tests, never from main.ts/ems_light). The active realtime planner (src/planner/, thermal/cooling/battery-winter fallback) is untouched. Compiled build output ~23% smaller; RAM footprint unchanged since these modules never loaded in production before either. All 1172 tests green.",
 				"de": "Aufräumen (Block 4), kein Laufzeitverhalten geändert: kompletter Legacy-Planner-Stack Shadow/Takeover/Authority/Authorization/Coordinator entfernt (16 Verzeichnisse, ~20.500 Zeilen) — er war in Produktion bereits unerreichbar (wurde nur aus eigenen Tests gestartet, nie aus main.ts/ems_light). Der aktive Realtime-Planner (src/planner/, Thermal/Klima/Batterie-Winter-Fallback) bleibt unverändert. Kompilierte Build-Ausgabe ~23% kleiner; RAM-Verbrauch unverändert, da diese Module auch vorher nie in Produktion geladen wurden. Alle 1172 Tests grün."

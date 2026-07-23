@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.182",
+		"version": "0.1.183",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.183": {
+				"en": "Fix: another invalid jsonConfig value in the Backup tab — the \"Status prüfen\" button used variant \"text\", which the Admin schema does not allow for sendTo buttons (only \"contained\"/\"outlined\"). Changed to \"outlined\". Checked all other buttons in jsonConfig.json — no more invalid variants.",
+				"de": "Fix: noch ein ungültiger jsonConfig-Wert im Backup-Tab — der Button „Status prüfen“ nutzte variant \"text\", das laut Admin-Schema für sendTo-Buttons nicht erlaubt ist (nur \"contained\"/\"outlined\"). Auf \"outlined\" geändert. Alle übrigen Buttons in jsonConfig.json geprüft — keine ungültigen variant-Werte mehr."
+			},
 			"0.1.182": {
 				"en": "Fix: the Backup tab's diagnostic-duration dropdown used `doNotSave`, which the installed Admin schema rejects for `select` fields (`must NOT have additional properties: doNotSave`) — this made the whole jsonConfig invalid and caused Admin to show an unsaved-changes prompt every time the Backup tab was opened, even without any change. Removed `doNotSave`; the selected duration is now saved as a normal config value (harmless — only used to pre-fill the dropdown, still passed to the start command directly).",
 				"de": "Fix: Die Dauer-Auswahl im Backup-Tab (Diagnosemodus) nutzte `doNotSave`, was das installierte Admin-Schema für `select`-Felder ablehnt (`must NOT have additional properties: doNotSave`) — dadurch war die gesamte jsonConfig ungültig und Admin zeigte beim Öffnen des Backup-Tabs immer „ungespeicherte Änderungen“ an, auch ohne echte Änderung. `doNotSave` entfernt; die gewählte Dauer wird jetzt als normaler Konfigwert gespeichert (unproblematisch — dient nur zur Vorauswahl, wird weiterhin direkt an den Start-Befehl übergeben)."

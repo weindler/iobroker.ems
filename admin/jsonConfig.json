@@ -8077,7 +8077,7 @@
 					"label": "Status prüfen",
 					"showProcess": true,
 					"timeout": 15000,
-					"variant": "text",
+					"variant": "outlined",
 					"icon": "info",
 					"result": {
 						"ok": "Status gelesen",

@@ -98,7 +98,11 @@ async function runFreezeTrack(host, cfg, track) {
     const targetDate = track.targetDate(now);
     const slots = (0, tibber_parse_1.parseTibberPriceJsonToHourlySlots)(raw, targetDate);
     if (slots.length === 0) {
-        host.log.warn(`Price Forecast Freeze (${track.label}): keine Slots für ${targetDate}`);
+        const diag = (0, tibber_parse_1.diagnoseTibberPriceJson)(raw, targetDate);
+        host.log.warn(`Price Forecast Freeze (${track.label}): keine Slots für ${targetDate} — ` +
+            `Quelle ${track.jsonStateId} liefert rawType=${diag.rawType}, rows=${diag.totalRows} ` +
+            `(gültig=${diag.validRows}, verworfen range=${diag.rejectedByRange}/startsAt=${diag.rejectedByStartsAt}), ` +
+            `gefundene Tage=[${diag.distinctDateKeys.join(", ") || "keine"}], gesucht=${diag.targetDateKey}`);
         await host.setStateAsync(track.statusStateId, { val: "error", ack: true });
         await host.setStateAsync(track.reasonStateId, {
             val: `Keine Forecast-Slots für ${targetDate} (${track.label}).`,

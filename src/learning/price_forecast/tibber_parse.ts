@@ -116,6 +116,64 @@ export function parseTibberPriceJsonToHourlySlots(
 	return slots.sort((a, b) => a.hourStartMs - b.hourStartMs);
 }
 
+export interface TibberPriceJsonDiagnosis {
+	/** Raw payload type (typeof), e.g. "string" | "object" | "undefined". */
+	rawType: string;
+	/** Rows found after JSON.parse / array check, before any filtering. */
+	totalRows: number;
+	/** Rows with a valid total (0..5 €/kWh) and a parseable startsAt. */
+	validRows: number;
+	/** Rows rejected for a numeric total outside [0, 5] €/kWh (likely unit/negative-price issue). */
+	rejectedByRange: number;
+	/** Rows rejected because startsAt was missing/unparseable. */
+	rejectedByStartsAt: number;
+	/** Distinct local date-keys (YYYY-MM-DD) found among validRows, sorted. */
+	distinctDateKeys: string[];
+	/** The date-key this freeze attempt was looking for. */
+	targetDateKey: string;
+	/** How many validRows actually matched targetDateKey (should equal the resulting slot count). */
+	matchedTargetCount: number;
+}
+
+/** Read-only diagnosis of a Tibber PricesToday/Tomorrow JSON payload vs. a target date — for log output only. */
+export function diagnoseTibberPriceJson(raw: unknown, targetDateKey: string): TibberPriceJsonDiagnosis {
+	const rawType = typeof raw;
+	const entries = parseTibberPriceEntries(raw);
+	let validRows = 0;
+	let rejectedByRange = 0;
+	let rejectedByStartsAt = 0;
+	let matchedTargetCount = 0;
+	const dateKeySet = new Set<string>();
+
+	for (const row of entries) {
+		const totalEur = asNum(row.total);
+		const startsMs = parseStartsAtMs(row.startsAt ?? row.starts_at);
+		if (startsMs === null) {
+			rejectedByStartsAt += 1;
+			continue;
+		}
+		if (totalEur === null || totalEur < 0 || totalEur > 5) {
+			rejectedByRange += 1;
+			continue;
+		}
+		validRows += 1;
+		const key = dateKeyFromMs(startsMs);
+		dateKeySet.add(key);
+		if (key === targetDateKey) matchedTargetCount += 1;
+	}
+
+	return {
+		rawType,
+		totalRows: entries.length,
+		validRows,
+		rejectedByRange,
+		rejectedByStartsAt,
+		distinctDateKeys: [...dateKeySet].sort(),
+		targetDateKey,
+		matchedTargetCount,
+	};
+}
+
 export function targetDateForTomorrowFreeze(ref: Date): string {
 	return tomorrowDateKey(ref);
 }

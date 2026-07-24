@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.dateKeyFromMs = exports.targetDateForTodayFreeze = exports.targetDateForTomorrowFreeze = exports.parseTibberPriceJsonToHourlySlots = exports.parseTibberPriceJsonTo15MinSlots = exports.MS_PER_15MIN = void 0;
+exports.dateKeyFromMs = exports.targetDateForTodayFreeze = exports.targetDateForTomorrowFreeze = exports.diagnoseTibberPriceJson = exports.parseTibberPriceJsonToHourlySlots = exports.parseTibberPriceJsonTo15MinSlots = exports.MS_PER_15MIN = void 0;
 exports.MS_PER_15MIN = 15 * 60 * 1000;
 function asNum(v) {
     if (v === null || v === undefined || v === "")
@@ -98,6 +98,44 @@ function parseTibberPriceJsonToHourlySlots(raw, targetDateKey) {
     return slots.sort((a, b) => a.hourStartMs - b.hourStartMs);
 }
 exports.parseTibberPriceJsonToHourlySlots = parseTibberPriceJsonToHourlySlots;
+/** Read-only diagnosis of a Tibber PricesToday/Tomorrow JSON payload vs. a target date — for log output only. */
+function diagnoseTibberPriceJson(raw, targetDateKey) {
+    const rawType = typeof raw;
+    const entries = parseTibberPriceEntries(raw);
+    let validRows = 0;
+    let rejectedByRange = 0;
+    let rejectedByStartsAt = 0;
+    let matchedTargetCount = 0;
+    const dateKeySet = new Set();
+    for (const row of entries) {
+        const totalEur = asNum(row.total);
+        const startsMs = parseStartsAtMs(row.startsAt ?? row.starts_at);
+        if (startsMs === null) {
+            rejectedByStartsAt += 1;
+            continue;
+        }
+        if (totalEur === null || totalEur < 0 || totalEur > 5) {
+            rejectedByRange += 1;
+            continue;
+        }
+        validRows += 1;
+        const key = dateKeyFromMs(startsMs);
+        dateKeySet.add(key);
+        if (key === targetDateKey)
+            matchedTargetCount += 1;
+    }
+    return {
+        rawType,
+        totalRows: entries.length,
+        validRows,
+        rejectedByRange,
+        rejectedByStartsAt,
+        distinctDateKeys: [...dateKeySet].sort(),
+        targetDateKey,
+        matchedTargetCount,
+    };
+}
+exports.diagnoseTibberPriceJson = diagnoseTibberPriceJson;
 function targetDateForTomorrowFreeze(ref) {
     return tomorrowDateKey(ref);
 }

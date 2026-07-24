@@ -1,9 +1,13 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.183",
+		"version": "0.1.184",
 		"dataFolder": "ems.%INSTANCE%",
 		"news": {
+			"0.1.184": {
+				"en": "Diagnostics: when a Price-Forecast-Freeze finds no usable slots (\"keine Slots für ...\"), the warning now also logs the source state's raw type/row count, how many rows were rejected and why, and which dates were actually found vs. the date being searched for. No behavior change — this only adds detail to the existing warning to find the root cause of the recurring \"keine Slots\" issue reported by some users despite the source data appearing populated.",
+				"de": "Diagnose: Wenn ein Price-Forecast-Freeze keine verwertbaren Slots findet („keine Slots für ...“), protokolliert die Warnung jetzt zusätzlich Rohtyp/Zeilenzahl der Quelle, wie viele Zeilen aus welchem Grund verworfen wurden und welche Tage tatsächlich gefunden wurden vs. dem gesuchten Tag. Kein Verhaltensunterschied — nur zusätzliche Details in der bestehenden Warnung, um die Ursache des von manchen Nutzern gemeldeten wiederkehrenden „keine Slots“-Problems zu finden, obwohl die Quelldaten befüllt scheinen."
+			},
 			"0.1.183": {
 				"en": "Fix: another invalid jsonConfig value in the Backup tab — the \"Status prüfen\" button used variant \"text\", which the Admin schema does not allow for sendTo buttons (only \"contained\"/\"outlined\"). Changed to \"outlined\". Checked all other buttons in jsonConfig.json — no more invalid variants.",
 				"de": "Fix: noch ein ungültiger jsonConfig-Wert im Backup-Tab — der Button „Status prüfen“ nutzte variant \"text\", das laut Admin-Schema für sendTo-Buttons nicht erlaubt ist (nur \"contained\"/\"outlined\"). Auf \"outlined\" geändert. Alle übrigen Buttons in jsonConfig.json geprüft — keine ungültigen variant-Werte mehr."

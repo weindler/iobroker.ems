@@ -7,6 +7,7 @@ const contribution_ids_1 = require("../../contribution_ids");
 const quality_1 = require("../../quality");
 const contributor_1 = require("../../contributor");
 const types_1 = require("../types");
+const flex_demand_1 = require("./flex_demand");
 const types_2 = require("./types");
 function buildUnitContribution(input, unitInput, forecast) {
     const generatedAt = input.now.toISOString();
@@ -50,6 +51,9 @@ function buildUnitContribution(input, unitInput, forecast) {
         status = participation.status === "degraded" ? "degraded" : "valid";
     }
     const enabled = participation.allowed && hasDemand;
+    const requiredEnergyKwh = hasDemand ? (0, types_2.round3)(forecast.expectedKwh) : null;
+    const maxPowerW = forecast.powerW > 0 ? forecast.powerW : null;
+    const quality = (0, quality_1.operatorQuality)(status, reasonDe);
     return (0, types_1.baseContribution)(contributionId, (0, contributor_1.addonContributorRef)("air_conditioning"), "consume", ["demand_flex", "dispatch"], {
         generatedAt,
         validUntil: null,
@@ -57,7 +61,7 @@ function buildUnitContribution(input, unitInput, forecast) {
         enabled,
         flexible: true,
         gridEligible: input.modePolicy.mode !== "eco" && !input.globalModeOff,
-        quality: (0, quality_1.operatorQuality)(status, reasonDe),
+        quality,
         reasonDe,
         details: {
             unitIndex: unit.index,
@@ -66,13 +70,21 @@ function buildUnitContribution(input, unitInput, forecast) {
             onTempC: unit.onTempC,
             offTempC: unit.offTempC,
             expectedKwhToday: (0, types_2.round3)(forecast.expectedKwh),
+            requiredEnergyKwh,
             expectedPeakW: forecast.powerW,
             powerSource: forecast.powerSource,
             likelyActive: forecast.likelyActive,
             outdoorTempC: input.outdoorTempC,
             governanceEnabled: input.governanceEnabled,
         },
-        slots: [],
+        slots: (0, flex_demand_1.buildFlexibleDemandSlot)({
+            generatedAt,
+            requiredEnergyKwh,
+            maxPowerW,
+            available: enabled,
+            quality,
+            reasonDe,
+        }),
     });
 }
 function buildAirConditioningContributions(input) {

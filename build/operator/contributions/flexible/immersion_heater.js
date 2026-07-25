@@ -6,6 +6,7 @@ const contribution_ids_1 = require("../../contribution_ids");
 const quality_1 = require("../../quality");
 const contributor_1 = require("../../contributor");
 const types_1 = require("../types");
+const flex_demand_1 = require("./flex_demand");
 const types_2 = require("./types");
 function enabledStages(config) {
     return config.stages.filter((s) => s.enabled && s.nominalPowerW > 0 && s.setStateId);
@@ -45,6 +46,13 @@ function buildImmersionMandatoryContribution(input) {
     const mandatory = mandatoryReason !== null;
     const maxW = maxStagePowerW(input.config);
     const enabled = mandatory && participation.allowed && !input.globalModeOff;
+    const mandatoryTargetC = input.thermalMode === "force"
+        ? input.config.planningMaxTempC
+        : input.config.planningMinTempC;
+    const requiredEnergyKwh = mandatory && input.bufferTempC !== null && maxW !== null
+        ? (0, flex_demand_1.estimateImmersionRequiredEnergyKwh)(input.bufferTempC, mandatoryTargetC, maxW)
+        : null;
+    const quality = (0, quality_1.operatorQuality)(!mandatory ? "disabled" : enabled ? "valid" : participation.status, mandatory ? (mandatoryReason ?? "") : "Kein Pflichtbedarf.");
     return (0, types_1.baseContribution)(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_MANDATORY, (0, contributor_1.addonContributorRef)("immersion_heater"), "consume", ["demand_flex", "dispatch"], {
         generatedAt,
         validUntil: null,
@@ -52,18 +60,27 @@ function buildImmersionMandatoryContribution(input) {
         enabled,
         flexible: false,
         gridEligible: false,
-        quality: (0, quality_1.operatorQuality)(!mandatory ? "disabled" : enabled ? "valid" : participation.status, mandatory ? (mandatoryReason ?? "") : "Kein Pflichtbedarf."),
+        quality,
         reasonDe: mandatory ? (mandatoryReason ?? "") : "Kein Pflichtbedarf für Heizstab.",
         details: {
             bufferTempC: input.bufferTempC,
             mandatoryMinTempC: input.config.planningMinTempC,
             targetTempC: target.targetTempC,
+            requiredEnergyKwh,
             maxPowerW: maxW,
             thermalMode: input.thermalMode,
             mandatory: true,
             batteryEligible: true,
         },
-        slots: [],
+        slots: (0, flex_demand_1.buildFlexibleDemandSlot)({
+            generatedAt,
+            requiredEnergyKwh,
+            maxPowerW: maxW,
+            available: enabled,
+            mandatory: true,
+            quality,
+            reasonDe: mandatoryReason ?? "Pflichtbedarf.",
+        }),
     });
 }
 exports.buildImmersionMandatoryContribution = buildImmersionMandatoryContribution;
@@ -94,6 +111,9 @@ function buildImmersionFlexibleContribution(input) {
         input.modePolicy.allowThermalAuto &&
         !atTarget;
     const maxW = maxStagePowerW(input.config);
+    const requiredEnergyKwh = autoReady && input.bufferTempC !== null && maxW !== null
+        ? (0, flex_demand_1.estimateImmersionRequiredEnergyKwh)(input.bufferTempC, target.targetTempC, maxW)
+        : null;
     let status = autoReady ? "valid" : "disabled";
     let reasonDe = "Kein flexibler Heizstab-Bedarf.";
     if (participation.allowed && input.thermalMode !== "auto") {
@@ -104,32 +124,53 @@ function buildImmersionFlexibleContribution(input) {
         status = "disabled";
         reasonDe = "Zieltemperatur erreicht — kein flexibler Bedarf.";
     }
+    else if (autoReady && requiredEnergyKwh !== null && requiredEnergyKwh <= 0) {
+        status = "disabled";
+        reasonDe = "Zieltemperatur erreicht — kein flexibler Bedarf.";
+    }
+    else if (autoReady && input.bufferTempC === null) {
+        status = "degraded";
+        reasonDe = "Puffertemperatur fehlt — flexibler Bedarf nicht belastbar.";
+    }
     else if (autoReady) {
-        reasonDe = `Flexibler Warmwasserbedarf bis ${target.targetTempC} °C (PV-first).`;
+        reasonDe = `Flexibler Warmwasserbedarf bis ${target.targetTempC} °C (${requiredEnergyKwh?.toFixed(1) ?? "?"} kWh, PV-first).`;
     }
     else if (!participation.allowed) {
         status = participation.status;
         reasonDe = participation.reasonDe;
     }
+    const enabled = autoReady &&
+        requiredEnergyKwh !== null &&
+        requiredEnergyKwh > 0 &&
+        input.bufferTempC !== null;
+    const quality = (0, quality_1.operatorQuality)(status, reasonDe);
     return (0, types_1.baseContribution)(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, (0, contributor_1.addonContributorRef)("immersion_heater"), "consume", ["demand_flex", "dispatch"], {
         generatedAt,
         validUntil: null,
         revision: 1,
-        enabled: autoReady,
+        enabled,
         flexible: true,
         gridEligible: false,
-        quality: (0, quality_1.operatorQuality)(status, reasonDe),
+        quality,
         reasonDe,
         details: {
             bufferTempC: input.bufferTempC,
             targetTempC: target.targetTempC,
+            requiredEnergyKwh,
             maxPowerW: maxW,
             pvFirst: true,
             forecastActive: target.forecastActive,
             minimumRuntimeSec: input.config.minimumRuntimeSec,
             batteryEligible: true,
         },
-        slots: [],
+        slots: (0, flex_demand_1.buildFlexibleDemandSlot)({
+            generatedAt,
+            requiredEnergyKwh,
+            maxPowerW: maxW,
+            available: enabled,
+            quality,
+            reasonDe,
+        }),
     });
 }
 exports.buildImmersionFlexibleContribution = buildImmersionFlexibleContribution;

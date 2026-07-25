@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.189",
+		"version": "0.1.190",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.190": {
+				"en": "New: flexible plan contributions for immersion heater and air conditioning now publish requiredEnergyKwh and maxPowerW slots (same pattern as battery/wallbox), enabling Daily Plan allocation against PV surplus. Immersion: estimated from buffer temperature delta to forecast/mandatory target (~0.38 kWh/°C conservative default, capped by max stage power × 18 h). AC: uses existing planCooling expectedKwh and powerW. Without reliable temperature (ih) or cooling demand (ac), slots stay empty — no invented values.",
+				"de": "Neu: Flexible Plan-Contributions für Heizstab und Klima liefern jetzt requiredEnergyKwh- und maxPowerW-Slots (gleiches Muster wie Batterie/Wallbox) — damit kann der Daily Plan PV-Überschuss an diese Verbraucher zuweisen. Heizstab: Schätzung aus Puffer-Temperaturdifferenz zum Forecast-/Pflichtziel (~0,38 kWh/°C konservativer Default, gedeckelt durch max. Stufenleistung × 18 h). Klima: nutzt bestehendes planCooling expectedKwh und powerW. Ohne belastbare Temperatur (ih) oder Kühlbedarf (ac) bleiben Slots leer — keine erfundenen Werte."
+			},
 			"0.1.189": {
 				"en": "Fix: the weather-based PV power curve (v0.1.188) stayed inactive (\"daily_only\", Lat/Lon oder Wetterdaten fehlen) for correctly configured setups whose system location (Systemeinstellungen → Breitengrad/Längengrad) is stored as a comma-decimal string (e.g. with Float-Teiler-Zeichen = Komma) instead of a plain number — a strict typeof-number check rejected an otherwise valid location. Latitude/longitude are now parsed the same tolerant way as all other numeric admin/state values in this adapter (accepts comma or dot as decimal separator). No config changes needed if PV-Kurve pro Slot / BrightSky-Prefix / kWp states are already set — just update and restart.",
 				"de": "Fix: Die wetterbasierte PV-Leistungskurve (v0.1.188) blieb bei korrekt konfigurierten Installationen inaktiv (\"daily_only\", „Lat/Lon oder Wetterdaten fehlen“), wenn der System-Standort (Systemeinstellungen → Breitengrad/Längengrad) je nach Float-Teiler-Zeichen als Komma-String statt als reine Zahl gespeichert ist — eine strikte typeof-number-Prüfung hat einen ansonsten gültigen Standort fälschlich verworfen. Breitengrad/Längengrad werden jetzt genauso tolerant geparst wie alle anderen Zahlenwerte in diesem Adapter (Komma oder Punkt als Dezimaltrennzeichen). Keine Config-Änderung nötig, wenn PV-Kurve pro Slot / BrightSky-Prefix / kWp-States bereits gesetzt sind — einfach aktualisieren und neu starten."

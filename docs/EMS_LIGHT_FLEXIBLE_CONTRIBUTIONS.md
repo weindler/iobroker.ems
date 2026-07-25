@@ -87,12 +87,14 @@ Contribution liefert Bedarf, Deadline, Leistungsgrenzen an den Planner.
 - Nur bei Governance, Modus `auto`, Zieltemperatur nicht erreicht
 - PV-first, Netzbezug standardmäßig nicht freigegeben
 - Beschreibt Bedarf — kopiert nicht blind `planner.intent.thermal.action`
+- **v0.1.190:** liefert `requiredEnergyKwh` + `maxPowerW`-Slot (Schätzung aus Puffertemperatur → Tagesziel, ~0,38 kWh/°C Default)
 
 ## 7. Klima
 
 - Pro Unit (`AC_UNIT_COUNT = 5`) ein Beitrag `air_conditioning.unit_N`
 - Deaktivierte Units: `disabled`
 - Kühlbedarf aus Raumtemperatur, Ziel, Wetter, Learning/Config (`details.powerSource`)
+- **v0.1.190:** `requiredEnergyKwh` + `maxPowerW`-Slot aus `planCooling` (`expectedKwh` / `powerW`)
 - **Runtime (v0.1.130):** liest Daily-Plan-Allocation pro Unit; Governance-Gate via `isAddonGovernanceEnabledFromState(..., "climate")` — siehe `docs/EMS_LIGHT_AC_DAILY_PLAN_RUNTIME.md`
 
 ## 8. Teilnahme- und Ausschlussregeln

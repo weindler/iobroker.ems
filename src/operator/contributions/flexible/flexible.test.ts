@@ -346,13 +346,16 @@ describe("wallbox contribution", () => {
 });
 
 describe("immersion heater contributions", () => {
-	it("mandatory below planning min temp", () => {
+	it("mandatory below planning min temp includes energy slot", () => {
 		const [mandatory] = buildImmersionHeaterContributions(
 			immersionInput({ bufferTempC: 45, thermalMode: "auto" }),
 		);
 		assert.equal(mandatory.contributionId, CONTRIBUTION_IDS.IMMERSION_MANDATORY);
 		assert.equal(mandatory.enabled, true);
 		assert.equal(mandatory.details.mandatory, true);
+		assert.ok((mandatory.details.requiredEnergyKwh as number) > 0);
+		assert.equal(mandatory.slots.length, 1);
+		assert.equal(mandatory.slots[0].mandatory, true);
 	});
 
 	it("flexible demand in auto mode", () => {
@@ -360,6 +363,10 @@ describe("immersion heater contributions", () => {
 		assert.equal(flexible.contributionId, CONTRIBUTION_IDS.IMMERSION_FLEXIBLE);
 		assert.equal(flexible.flexible, true);
 		assert.equal(flexible.gridEligible, false);
+		assert.ok(typeof flexible.details.requiredEnergyKwh === "number");
+		assert.ok((flexible.details.requiredEnergyKwh as number) > 0);
+		assert.equal(flexible.slots.length, 1);
+		assert.equal(flexible.slots[0].maxPowerW, 2000);
 	});
 
 	it("no flexible demand when target reached", () => {
@@ -412,6 +419,8 @@ describe("air conditioning contributions", () => {
 		const unit1 = all.find((c) => c.contributionId === "air_conditioning.unit_1");
 		assert.equal(unit1?.flow, "consume");
 		assert.ok(unit1?.details.expectedKwhToday !== undefined);
+		assert.ok((unit1?.details.requiredEnergyKwh as number) > 0);
+		assert.equal(unit1?.slots.length, 1);
 	});
 
 	it("degrades when room temp missing", () => {

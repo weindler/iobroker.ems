@@ -6,6 +6,7 @@ import type { OperatorDataStatus, PlanContribution } from "../../types";
 import { operatorQuality } from "../../quality";
 import { addonContributorRef } from "../../contributor";
 import { baseContribution } from "../types";
+import { buildFlexibleDemandSlot, estimateImmersionRequiredEnergyKwh } from "./flex_demand";
 import { evaluateParticipation, round3 } from "./types";
 
 export interface ImmersionContributionBuildInput {
@@ -70,6 +71,18 @@ export function buildImmersionMandatoryContribution(input: ImmersionContribution
 	const mandatory = mandatoryReason !== null;
 	const maxW = maxStagePowerW(input.config);
 	const enabled = mandatory && participation.allowed && !input.globalModeOff;
+	const mandatoryTargetC =
+		input.thermalMode === "force"
+			? input.config.planningMaxTempC
+			: input.config.planningMinTempC;
+	const requiredEnergyKwh =
+		mandatory && input.bufferTempC !== null && maxW !== null
+			? estimateImmersionRequiredEnergyKwh(input.bufferTempC, mandatoryTargetC, maxW)
+			: null;
+	const quality = operatorQuality(
+		!mandatory ? "disabled" : enabled ? "valid" : participation.status,
+		mandatory ? (mandatoryReason ?? "") : "Kein Pflichtbedarf.",
+	);
 
 	return baseContribution(
 		CONTRIBUTION_IDS.IMMERSION_MANDATORY,
@@ -83,21 +96,27 @@ export function buildImmersionMandatoryContribution(input: ImmersionContribution
 			enabled,
 			flexible: false,
 			gridEligible: false,
-			quality: operatorQuality(
-				!mandatory ? "disabled" : enabled ? "valid" : participation.status,
-				mandatory ? (mandatoryReason ?? "") : "Kein Pflichtbedarf.",
-			),
+			quality,
 			reasonDe: mandatory ? (mandatoryReason ?? "") : "Kein Pflichtbedarf für Heizstab.",
 			details: {
 				bufferTempC: input.bufferTempC,
 				mandatoryMinTempC: input.config.planningMinTempC,
 				targetTempC: target.targetTempC,
+				requiredEnergyKwh,
 				maxPowerW: maxW,
 				thermalMode: input.thermalMode,
 				mandatory: true,
 				batteryEligible: true,
 			},
-			slots: [],
+			slots: buildFlexibleDemandSlot({
+				generatedAt,
+				requiredEnergyKwh,
+				maxPowerW: maxW,
+				available: enabled,
+				mandatory: true,
+				quality,
+				reasonDe: mandatoryReason ?? "Pflichtbedarf.",
+			}),
 		},
 	);
 }
@@ -134,6 +153,10 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 		!atTarget;
 
 	const maxW = maxStagePowerW(input.config);
+	const requiredEnergyKwh =
+		autoReady && input.bufferTempC !== null && maxW !== null
+			? estimateImmersionRequiredEnergyKwh(input.bufferTempC, target.targetTempC, maxW)
+			: null;
 	let status: OperatorDataStatus = autoReady ? "valid" : "disabled";
 	let reasonDe = "Kein flexibler Heizstab-Bedarf.";
 
@@ -143,12 +166,25 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 	} else if (atTarget) {
 		status = "disabled";
 		reasonDe = "Zieltemperatur erreicht — kein flexibler Bedarf.";
+	} else if (autoReady && requiredEnergyKwh !== null && requiredEnergyKwh <= 0) {
+		status = "disabled";
+		reasonDe = "Zieltemperatur erreicht — kein flexibler Bedarf.";
+	} else if (autoReady && input.bufferTempC === null) {
+		status = "degraded";
+		reasonDe = "Puffertemperatur fehlt — flexibler Bedarf nicht belastbar.";
 	} else if (autoReady) {
-		reasonDe = `Flexibler Warmwasserbedarf bis ${target.targetTempC} °C (PV-first).`;
+		reasonDe = `Flexibler Warmwasserbedarf bis ${target.targetTempC} °C (${requiredEnergyKwh?.toFixed(1) ?? "?"} kWh, PV-first).`;
 	} else if (!participation.allowed) {
 		status = participation.status;
 		reasonDe = participation.reasonDe;
 	}
+
+	const enabled =
+		autoReady &&
+		requiredEnergyKwh !== null &&
+		requiredEnergyKwh > 0 &&
+		input.bufferTempC !== null;
+	const quality = operatorQuality(status, reasonDe);
 
 	return baseContribution(
 		CONTRIBUTION_IDS.IMMERSION_FLEXIBLE,
@@ -159,21 +195,29 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 			generatedAt,
 			validUntil: null,
 			revision: 1,
-			enabled: autoReady,
+			enabled,
 			flexible: true,
 			gridEligible: false,
-			quality: operatorQuality(status, reasonDe),
+			quality,
 			reasonDe,
 			details: {
 				bufferTempC: input.bufferTempC,
 				targetTempC: target.targetTempC,
+				requiredEnergyKwh,
 				maxPowerW: maxW,
 				pvFirst: true,
 				forecastActive: target.forecastActive,
 				minimumRuntimeSec: input.config.minimumRuntimeSec,
 				batteryEligible: true,
 			},
-			slots: [],
+			slots: buildFlexibleDemandSlot({
+				generatedAt,
+				requiredEnergyKwh,
+				maxPowerW: maxW,
+				available: enabled,
+				quality,
+				reasonDe,
+			}),
 		},
 	);
 }

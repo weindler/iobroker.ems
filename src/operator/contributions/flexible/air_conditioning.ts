@@ -8,6 +8,7 @@ import type { PlanContribution } from "../../types";
 import { operatorQuality } from "../../quality";
 import { addonContributorRef } from "../../contributor";
 import { baseContribution } from "../types";
+import { buildFlexibleDemandSlot } from "./flex_demand";
 import { evaluateParticipation, round3 } from "./types";
 
 export interface AcUnitContributionBuildInput {
@@ -80,6 +81,9 @@ function buildUnitContribution(
 	}
 
 	const enabled = participation.allowed && hasDemand;
+	const requiredEnergyKwh = hasDemand ? round3(forecast.expectedKwh) : null;
+	const maxPowerW = forecast.powerW > 0 ? forecast.powerW : null;
+	const quality = operatorQuality(status, reasonDe);
 
 	return baseContribution(contributionId, addonContributorRef("air_conditioning"), "consume", ["demand_flex", "dispatch"], {
 		generatedAt,
@@ -88,7 +92,7 @@ function buildUnitContribution(
 		enabled,
 		flexible: true,
 		gridEligible: input.modePolicy.mode !== "eco" && !input.globalModeOff,
-		quality: operatorQuality(status, reasonDe),
+		quality,
 		reasonDe,
 		details: {
 			unitIndex: unit.index,
@@ -97,13 +101,21 @@ function buildUnitContribution(
 			onTempC: unit.onTempC,
 			offTempC: unit.offTempC,
 			expectedKwhToday: round3(forecast.expectedKwh),
+			requiredEnergyKwh,
 			expectedPeakW: forecast.powerW,
 			powerSource: forecast.powerSource,
 			likelyActive: forecast.likelyActive,
 			outdoorTempC: input.outdoorTempC,
 			governanceEnabled: input.governanceEnabled,
 		},
-		slots: [],
+		slots: buildFlexibleDemandSlot({
+			generatedAt,
+			requiredEnergyKwh,
+			maxPowerW,
+			available: enabled,
+			quality,
+			reasonDe,
+		}),
 	});
 }
 

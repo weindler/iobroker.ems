@@ -294,17 +294,24 @@ function acInput(overrides = {}) {
     });
 });
 (0, node_test_1.describe)("immersion heater contributions", () => {
-    (0, node_test_1.it)("mandatory below planning min temp", () => {
+    (0, node_test_1.it)("mandatory below planning min temp includes energy slot", () => {
         const [mandatory] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({ bufferTempC: 45, thermalMode: "auto" }));
         strict_1.default.equal(mandatory.contributionId, contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_MANDATORY);
         strict_1.default.equal(mandatory.enabled, true);
         strict_1.default.equal(mandatory.details.mandatory, true);
+        strict_1.default.ok(mandatory.details.requiredEnergyKwh > 0);
+        strict_1.default.equal(mandatory.slots.length, 1);
+        strict_1.default.equal(mandatory.slots[0].mandatory, true);
     });
     (0, node_test_1.it)("flexible demand in auto mode", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput());
         strict_1.default.equal(flexible.contributionId, contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE);
         strict_1.default.equal(flexible.flexible, true);
         strict_1.default.equal(flexible.gridEligible, false);
+        strict_1.default.ok(typeof flexible.details.requiredEnergyKwh === "number");
+        strict_1.default.ok(flexible.details.requiredEnergyKwh > 0);
+        strict_1.default.equal(flexible.slots.length, 1);
+        strict_1.default.equal(flexible.slots[0].maxPowerW, 2000);
     });
     (0, node_test_1.it)("no flexible demand when target reached", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({ bufferTempC: 62 }));
@@ -344,6 +351,8 @@ function acInput(overrides = {}) {
         const unit1 = all.find((c) => c.contributionId === "air_conditioning.unit_1");
         strict_1.default.equal(unit1?.flow, "consume");
         strict_1.default.ok(unit1?.details.expectedKwhToday !== undefined);
+        strict_1.default.ok(unit1?.details.requiredEnergyKwh > 0);
+        strict_1.default.equal(unit1?.slots.length, 1);
     });
     (0, node_test_1.it)("degrades when room temp missing", () => {
         const input = acInput();

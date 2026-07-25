@@ -165,6 +165,88 @@ describe("daily plan constraints", () => {
 	});
 });
 
+describe("daily plan forecast merge across resolutions", () => {
+	const hourStart = "2026-07-11T06:00:00.000Z";
+	const q1Start = "2026-07-11T06:00:00.000Z";
+	const q1End = "2026-07-11T06:15:00.000Z";
+	const q2Start = "2026-07-11T06:15:00.000Z";
+	const q2End = "2026-07-11T06:30:00.000Z";
+	const q3Start = "2026-07-11T06:30:00.000Z";
+	const q3End = "2026-07-11T06:45:00.000Z";
+	const q4Start = "2026-07-11T06:45:00.000Z";
+	const q4End = "2026-07-11T07:00:00.000Z";
+	const hourEnd = q4End;
+
+	it("projects a multi-hour house-load segment onto every contained 15-min slot", () => {
+		const slots = buildDailyPlanSlots(
+			[
+				{ startIso: q1Start, endIso: q1End },
+				{ startIso: q2Start, endIso: q2End },
+				{ startIso: q3Start, endIso: q3End },
+				{ startIso: q4Start, endIso: q4End },
+			],
+			[
+				// 4h segment baseline (e.g. house-load learning), does not align with 15-min keys
+				forecastSlot(hourStart, hourEnd, { load: 500 }),
+				// exact 15-min price slot only for the first quarter (e.g. grid supply)
+				forecastSlot(q1Start, q1End, { price: 25 }),
+			],
+			11000,
+			13800,
+		);
+
+		assert.equal(slots.length, 4);
+		for (const s of slots) {
+			assert.equal(s.fixedHouseLoadPowerW, 500, `expected house load in slot ${s.slot.startIso}`);
+		}
+		assert.equal(slots[0].gridPriceCtPerKwh, 25);
+		assert.equal(slots[1].gridPriceCtPerKwh, null);
+		assert.equal(slots[2].gridPriceCtPerKwh, null);
+		assert.equal(slots[3].gridPriceCtPerKwh, null);
+	});
+
+	it("does not leak a segment's value onto slots outside its window", () => {
+		const outsideStart = "2026-07-11T07:00:00.000Z";
+		const outsideEnd = "2026-07-11T07:15:00.000Z";
+		const slots = buildDailyPlanSlots(
+			[{ startIso: outsideStart, endIso: outsideEnd }],
+			[forecastSlot(hourStart, hourEnd, { load: 500 })],
+			11000,
+			13800,
+		);
+		assert.equal(slots[0].fixedHouseLoadPowerW, null);
+	});
+
+	it("still computes fixedBalancePowerW when pv and house load come from different-resolution sources", () => {
+		const slots = buildDailyPlanSlots(
+			[{ startIso: q1Start, endIso: q1End }],
+			[
+				forecastSlot(hourStart, hourEnd, { load: 500 }),
+				forecastSlot(q1Start, q1End, { pv: 2000 }),
+			],
+			11000,
+			13800,
+		);
+		assert.equal(slots[0].pvForecastPowerW, 2000);
+		assert.equal(slots[0].fixedHouseLoadPowerW, 500);
+		assert.equal(slots[0].fixedBalancePowerW, 1500);
+		assert.equal(slots[0].availablePvSurplusPowerW, 1500);
+	});
+
+	it("prefers the more precise (smaller) overlapping slot when sources overlap", () => {
+		const slots = buildDailyPlanSlots(
+			[{ startIso: q1Start, endIso: q1End }],
+			[
+				forecastSlot(hourStart, hourEnd, { load: 500 }),
+				forecastSlot(q1Start, q1End, { load: 640 }),
+			],
+			11000,
+			13800,
+		);
+		assert.equal(slots[0].fixedHouseLoadPowerW, 640);
+	});
+});
+
 describe("daily plan slots", () => {
 	it("floors to 15 minute boundary", () => {
 		assert.equal(slotStartIsoFloored(NOW, TZ), "2026-07-11T10:00:00.000Z");

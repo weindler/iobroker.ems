@@ -1,6 +1,6 @@
 # EMS-Light — Daily Plan und Allocation Engine
 
-**Stand:** v0.1.128
+**Stand:** v0.1.187
 
 ## 1. Zweck des Daily Plans
 
@@ -62,6 +62,16 @@ availablePvSurplusPowerW = max(0, fixedBalancePowerW)
 ```
 
 Nur wenn beide Eingangswerte vorhanden. Tages-PV-kWh werden **nicht** künstlich auf Slots verteilt.
+
+**Merge über unterschiedliche Auflösungen (v0.1.187):** Forecast-Quellen liefern nicht alle
+dieselbe Slot-Granularität — Grid-Preise sind exakte 15-Min-Slots, Hauslast kommt als
+Mehrstunden-Segment-Baseline (z. B. „Nacht 00–06 Uhr“). Der Merge sucht daher **pro Feld**
+den präzisesten Forecast-Slot, der den jeweiligen 15-Min-Horizont-Slot zeitlich vollständig
+umschließt (`src/operator/daily_plan/constraints.ts`, `buildForecastFieldIndex` /
+`lookupContaining`) — kein exakter Key-Match mehr. Dadurch übernimmt jeder 15-Min-Slot
+innerhalb eines Segments dessen Wert, ohne dass die Segment-Baseline künstlich feiner
+aufgelöst wird. PV-Leistung pro Slot bleibt weiterhin `null`, solange keine 15-Min-PV-Quelle
+existiert (siehe `docs/EMS_LIGHT_FORECAST_PLAN.md`).
 
 ## 6. PV- und Grid-Verfügbarkeit
 

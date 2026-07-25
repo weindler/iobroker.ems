@@ -1,6 +1,6 @@
 # EMS-Light — Dokumentation
 
-**Adapter:** `iobroker.ems` · **Stand:** v0.1.186 (Juli 2026)
+**Adapter:** `iobroker.ems` · **Stand:** v0.1.187 (Juli 2026)
 
 ## Zentrale Dokumente
 
@@ -42,6 +42,8 @@ Schwerer Planner-Shadow/Takeover ist seit v0.1.181 **vollständig aus dem Code e
 ## KI-Optimierung (optional, `src/ai/`)
 
 Seit v0.1.185: Gerüst, standardmäßig aus. Global-Tab: An/Aus, OpenAI-Modell-Whitelist (Default `gpt-4.1-mini`), verschlüsseltes Token (`encryptedNative`), Tageslimit (Soft-Warnung ab 80%), manueller „Jetzt optimieren“-Button. Aufruf nur bei neuer Daily-Plan-Revision oder manuell — nicht bei jedem Tick. Die KI liefert kurze Text-Hinweise UND (seit v0.1.186) optionale Zeitpunkt-Präferenzen (`slot_preferences`, Gewichtung 0..3 je 15-Min-Slot) zu Add-ons, die aktiv UND einzeln „KI-Optimierung erlaubt“ sind; sie schreibt nichts in die Allocation zurück (noch keine echte Optimierungslogik, siehe Masterplan §4/§13). Fail-closed bei fehlendem Token, Limit, Timeout oder ungültiger Antwort. Token nie im Backup/Support-Export (automatisch über `isSecretKey`/`ALLOWED_PREFIXES` in `src/backup/collect_config.ts`).
+
+Seit v0.1.187: **Fix Daily-Plan-Merge** (`src/operator/daily_plan/constraints.ts`) — Hauslast-Prognosen liefern Mehrstunden-Segment-Baselines (z. B. „Nacht 00–06 Uhr“), der Merge in die 15-Minuten-Daily-Plan-Slots suchte aber nur exakte 15-Min-Key-Treffer. Dadurch blieb `fixedHouseLoadPowerW` (und damit `fixedBalancePowerW`/`availablePvSurplusPowerW`) in jedem Slot `null`, obwohl ein Segmentwert existierte — das blockierte flexible Allocation für **alle** Add-ons, nicht nur Heizstab/Klima. Neu: pro Feld (`pv`, `houseLoad`, `gridPrice`, `gridImportAllowed`) wird der präziseste Forecast-Slot gesucht, der den 15-Min-Horizont-Slot vollständig umschließt (`buildForecastFieldIndex`/`lookupContaining`), statt exaktem Key-Match. Exakt aufgelöste Quellen (Tibber-Preise) funktionieren unverändert weiter. PV-Leistung pro Slot bleibt weiterhin `null` — es existiert noch keine 15-Min-PV-Pipeline (in Arbeit, siehe Aufräum-Fahrplan).
 
 Seit v0.1.186: **Plan-Vergleich** (`src/ai/compare/`, Admin-Tab „Plan-Vergleich“). Plan A = deterministischer Plan, den EMS tatsächlich ausführt (unverändert). Plan B = reine Beobachtungs-Simulation: verteilt dieselbe von Plan A für Heizstab/Klima flexibel eingeplante Energiemenge anhand der KI-`slot_preferences` neu über den Tag (Wasserfüllungs-Algorithmus, kapazitätsbegrenzt durch das, was in jedem Slot nach Plan A an PV/Netz-Freiraum ohnehin verfügbar war). Pflicht-Zyklen (mandatory, z. B. Anti-Legionellen) werden nie angefasst. Ohne KI oder ohne Add-on-Freigabe ist Plan B identisch mit Plan A. States: `compare.plan_a.chart_json` / `compare.plan_b.chart_json` (VIS-taugliche `[{t,pv_w,grid_w,ih_w,ac_w,price_ct}, …]`-Zeitreihen), `compare.active_plan` (nur Anzeige, schaltet nichts um), `compare.delta_summary_json` (Kosten/PV/Netz/unallokiert je Plan). Läuft automatisch bei jeder neuen Daily-Plan-Revision.
 

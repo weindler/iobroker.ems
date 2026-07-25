@@ -8,7 +8,16 @@ function targetFromFraction(config, fraction) {
 function clampTarget(config, targetC) {
     return Math.min(config.planningMaxTempC, Math.max(config.planningMinTempC, targetC));
 }
-/** Regelbasiertes Tagesziel (Phase B) — nur wenn Forecast-Modus an und KI aus. */
+/**
+ * Regelbasiertes Tagesziel (Phase B) — läuft unabhängig von der KI-Governance-Freigabe.
+ *
+ * `aiOptimizationAllowed` schaltet hier absichtlich nichts um: die KI liefert (Stand v0.1.190)
+ * ausschließlich Slot-Präferenzen für den reinen Beobachtungs-Plan-Vergleich (`src/ai/compare/`),
+ * nie ein eigenes Tagesziel. Solange keine echte KI-Zieltemperatur existiert, muss der bewährte
+ * PV-Forecast (moderates Ziel bei ähnlicher PV-Prognose morgen) weiterlaufen — sonst heizt der
+ * Heizstab bei aktivierter KI-Freigabe dauerhaft auf die Planungsobergrenze und erzeugt unnötige
+ * Wärmeverluste, ohne dass die KI dafür etwas beigetragen hätte.
+ */
 function resolveThermalForecastTarget(input) {
     const { config } = input;
     const max = config.planningMaxTempC;
@@ -16,13 +25,6 @@ function resolveThermalForecastTarget(input) {
         return {
             targetTempC: max,
             targetReasonDe: "Forecast-Modus aus — Ziel = Planungsobergrenze.",
-            forecastActive: false,
-        };
-    }
-    if (input.aiOptimizationAllowed) {
-        return {
-            targetTempC: max,
-            targetReasonDe: "KI-Optimierung aktiv — regelbasierter Forecast wartet auf KI-Anbindung.",
             forecastActive: false,
         };
     }

@@ -31,10 +31,11 @@ function target(overrides = {}) {
         strict_1.default.equal(r.targetTempC, 63);
         strict_1.default.equal(r.forecastActive, false);
     });
-    (0, node_test_1.it)("uses max when KI optimization allowed", () => {
-        const r = target({ aiOptimizationAllowed: true });
-        strict_1.default.equal(r.targetTempC, 63);
-        strict_1.default.equal(r.forecastActive, false);
+    (0, node_test_1.it)("aiOptimizationAllowed does not override the regelbasierten PV-Forecast", () => {
+        const withAi = target({ aiOptimizationAllowed: true });
+        const withoutAi = target({ aiOptimizationAllowed: false });
+        strict_1.default.deepEqual(withAi, withoutAi);
+        strict_1.default.equal(withAi.forecastActive, true);
     });
     (0, node_test_1.it)("targets min when buffer below planning min", () => {
         const r = target({ bufferTempC: 46 });

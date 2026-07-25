@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.190",
+		"version": "0.1.191",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.191": {
+				"en": "Fix: immersion heater governance flag \"AI optimization allowed\" made the rule-based thermal forecast target jump to the planning max temperature (\"KI-Optimierung aktiv — regelbasierter Forecast wartet auf KI-Anbindung\") instead of the moderate PV-forecast target — even though the AI currently only feeds the observation-only Plan-Vergleich (Plan B) and never provides a real target temperature. This caused unnecessary buffer overheating and heat loss whenever AI was allowed for the immersion heater. The rule-based PV-forecast target (moderate target when tomorrow's PV looks similar to today) now runs regardless of the AI governance flag; it will only be superseded once a real AI-driven target temperature is implemented.",
+				"de": "Fix: Das Heizstab-Governance-Häkchen „KI-Optimierung erlaubt“ ließ das regelbasierte Thermal-Forecast-Ziel auf die Planungsobergrenze springen („KI-Optimierung aktiv — regelbasierter Forecast wartet auf KI-Anbindung“) statt das moderate PV-Forecast-Ziel zu nutzen — obwohl die KI aktuell nur den reinen Beobachtungs-Plan-Vergleich (Plan B) füttert und nie eine echte Zieltemperatur liefert. Das führte bei aktivierter KI-Freigabe zu unnötigem Nachheizen bis zur Obergrenze und entsprechenden Wärmeverlusten. Das regelbasierte PV-Forecast-Ziel (moderates Ziel bei ähnlicher PV-Prognose morgen) läuft jetzt unabhängig vom KI-Governance-Häkchen und wird erst abgelöst, wenn eine echte KI-Zieltemperatur implementiert ist."
+			},
 			"0.1.190": {
 				"en": "New: flexible plan contributions for immersion heater and air conditioning now publish requiredEnergyKwh and maxPowerW slots (same pattern as battery/wallbox), enabling Daily Plan allocation against PV surplus. Immersion: estimated from buffer temperature delta to forecast/mandatory target (~0.38 kWh/°C conservative default, capped by max stage power × 18 h). AC: uses existing planCooling expectedKwh and powerW. Without reliable temperature (ih) or cooling demand (ac), slots stay empty — no invented values.",
 				"de": "Neu: Flexible Plan-Contributions für Heizstab und Klima liefern jetzt requiredEnergyKwh- und maxPowerW-Slots (gleiches Muster wie Batterie/Wallbox) — damit kann der Daily Plan PV-Überschuss an diese Verbraucher zuweisen. Heizstab: Schätzung aus Puffer-Temperaturdifferenz zum Forecast-/Pflichtziel (~0,38 kWh/°C konservativer Default, gedeckelt durch max. Stufenleistung × 18 h). Klima: nutzt bestehendes planCooling expectedKwh und powerW. Ohne belastbare Temperatur (ih) oder Kühlbedarf (ac) bleiben Slots leer — keine erfundenen Werte."

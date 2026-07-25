@@ -30,10 +30,11 @@ describe("thermal forecast target", () => {
 		assert.equal(r.forecastActive, false);
 	});
 
-	it("uses max when KI optimization allowed", () => {
-		const r = target({ aiOptimizationAllowed: true });
-		assert.equal(r.targetTempC, 63);
-		assert.equal(r.forecastActive, false);
+	it("aiOptimizationAllowed does not override the regelbasierten PV-Forecast", () => {
+		const withAi = target({ aiOptimizationAllowed: true });
+		const withoutAi = target({ aiOptimizationAllowed: false });
+		assert.deepEqual(withAi, withoutAi);
+		assert.equal(withAi.forecastActive, true);
 	});
 
 	it("targets min when buffer below planning min", () => {

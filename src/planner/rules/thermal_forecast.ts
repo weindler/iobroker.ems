@@ -7,6 +7,10 @@ export interface ThermalForecastInput {
 	pvTomorrowKwh: number | null;
 	pvBiasStatus: string | null;
 	forecastModeEnabled: boolean;
+	/**
+	 * Reserviert für eine zukünftige echte KI-Zieltemperatur. Aktuell (v0.1.190) liefert die KI
+	 * kein Tagesziel — dieses Feld beeinflusst `resolveThermalForecastTarget` bewusst nicht.
+	 */
 	aiOptimizationAllowed: boolean;
 }
 
@@ -25,7 +29,16 @@ function clampTarget(config: ImmersionDeviceConfig, targetC: number): number {
 	return Math.min(config.planningMaxTempC, Math.max(config.planningMinTempC, targetC));
 }
 
-/** Regelbasiertes Tagesziel (Phase B) — nur wenn Forecast-Modus an und KI aus. */
+/**
+ * Regelbasiertes Tagesziel (Phase B) — läuft unabhängig von der KI-Governance-Freigabe.
+ *
+ * `aiOptimizationAllowed` schaltet hier absichtlich nichts um: die KI liefert (Stand v0.1.190)
+ * ausschließlich Slot-Präferenzen für den reinen Beobachtungs-Plan-Vergleich (`src/ai/compare/`),
+ * nie ein eigenes Tagesziel. Solange keine echte KI-Zieltemperatur existiert, muss der bewährte
+ * PV-Forecast (moderates Ziel bei ähnlicher PV-Prognose morgen) weiterlaufen — sonst heizt der
+ * Heizstab bei aktivierter KI-Freigabe dauerhaft auf die Planungsobergrenze und erzeugt unnötige
+ * Wärmeverluste, ohne dass die KI dafür etwas beigetragen hätte.
+ */
 export function resolveThermalForecastTarget(input: ThermalForecastInput): ThermalForecastResult {
 	const { config } = input;
 	const max = config.planningMaxTempC;
@@ -34,14 +47,6 @@ export function resolveThermalForecastTarget(input: ThermalForecastInput): Therm
 		return {
 			targetTempC: max,
 			targetReasonDe: "Forecast-Modus aus — Ziel = Planungsobergrenze.",
-			forecastActive: false,
-		};
-	}
-
-	if (input.aiOptimizationAllowed) {
-		return {
-			targetTempC: max,
-			targetReasonDe: "KI-Optimierung aktiv — regelbasierter Forecast wartet auf KI-Anbindung.",
 			forecastActive: false,
 		};
 	}

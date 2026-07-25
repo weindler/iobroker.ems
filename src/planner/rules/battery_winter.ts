@@ -20,6 +20,11 @@ export interface BatteryWinterPlanInput {
 	config: BatteryWinterPlanConfig;
 	modePolicy: PlannerModePolicy;
 	batteryGovernanceEnabled: boolean;
+	/**
+	 * Reserviert für eine zukünftige echte KI-gesteuerte Winter-Netzplanung. Aktuell (v0.1.191)
+	 * liefert die KI kein eigenes Ergebnis für diese Regel — dieses Feld beeinflusst
+	 * `planBatteryWinter` bewusst nicht (siehe analoger Fix in `thermal_forecast.ts`, v0.1.191).
+	 */
 	batteryAiAllowed: boolean;
 	days: BatteryWinterDayInput[];
 	priceSlots: Price15MinSlot[];
@@ -118,7 +123,10 @@ function reserveFromConfidence(
 	return { reserveKwh: round3(reserve), minConfidence: minConf };
 }
 
-/** Read-only 7-Tage-Bilanz für Winter-Netzladung (keine Gerätewrites). */
+/**
+ * Read-only 7-Tage-Bilanz für Winter-Netzladung (keine Gerätewrites).
+ * Läuft unabhängig von der KI-Governance-Freigabe (`batteryAiAllowed`) — siehe Feld-Doku.
+ */
 export function planBatteryWinter(input: BatteryWinterPlanInput): BatteryWinterPlanDecision {
 	const inactive = (reason: string, forecastActive = false): BatteryWinterPlanDecision => ({
 		active: false,
@@ -144,12 +152,6 @@ export function planBatteryWinter(input: BatteryWinterPlanInput): BatteryWinterP
 	}
 	if (!input.batteryGovernanceEnabled) {
 		return inactive("Batterie-Governance aus — keine Winter-Netzplanung.");
-	}
-	if (input.batteryAiAllowed) {
-		return inactive(
-			"KI-Optimierung Batterie aktiv — regelbasierte Winter-Netzplanung wartet auf KI-Anbindung.",
-			false,
-		);
 	}
 	if (input.modePolicy.mode === "off") {
 		return inactive(`${input.modePolicy.labelDe} — keine Winter-Netzplanung.`);

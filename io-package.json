@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.191",
+		"version": "0.1.192",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.192": {
+				"en": "Fix: the same \"AI optimization allowed\" issue fixed for the immersion heater in v0.1.191 also existed in the battery winter grid-charge planning — the battery governance flag made the rule-based winter bridge/reserve calculation defer entirely (\"wartet auf KI-Anbindung\") instead of running normally, even though the AI never provides a winter-charge result either. The rule-based winter grid-charge planning now runs regardless of the AI governance flag, matching the immersion heater fix.",
+				"de": "Fix: Derselbe „KI-Optimierung erlaubt“-Fehler, der in v0.1.191 beim Heizstab behoben wurde, bestand auch bei der Batterie-Winter-Netzladeplanung — das Governance-Häkchen ließ die regelbasierte Bilanz/Reserve-Berechnung komplett aussetzen („wartet auf KI-Anbindung“), obwohl die KI auch hier nie ein Winterlade-Ergebnis liefert. Die regelbasierte Winter-Netzladeplanung läuft jetzt unabhängig vom KI-Governance-Häkchen, analog zum Heizstab-Fix."
+			},
 			"0.1.191": {
 				"en": "Fix: immersion heater governance flag \"AI optimization allowed\" made the rule-based thermal forecast target jump to the planning max temperature (\"KI-Optimierung aktiv — regelbasierter Forecast wartet auf KI-Anbindung\") instead of the moderate PV-forecast target — even though the AI currently only feeds the observation-only Plan-Vergleich (Plan B) and never provides a real target temperature. This caused unnecessary buffer overheating and heat loss whenever AI was allowed for the immersion heater. The rule-based PV-forecast target (moderate target when tomorrow's PV looks similar to today) now runs regardless of the AI governance flag; it will only be superseded once a real AI-driven target temperature is implemented.",
 				"de": "Fix: Das Heizstab-Governance-Häkchen „KI-Optimierung erlaubt“ ließ das regelbasierte Thermal-Forecast-Ziel auf die Planungsobergrenze springen („KI-Optimierung aktiv — regelbasierter Forecast wartet auf KI-Anbindung“) statt das moderate PV-Forecast-Ziel zu nutzen — obwohl die KI aktuell nur den reinen Beobachtungs-Plan-Vergleich (Plan B) füttert und nie eine echte Zieltemperatur liefert. Das führte bei aktivierter KI-Freigabe zu unnötigem Nachheizen bis zur Obergrenze und entsprechenden Wärmeverlusten. Das regelbasierte PV-Forecast-Ziel (moderates Ziel bei ähnlicher PV-Prognose morgen) läuft jetzt unabhängig vom KI-Governance-Häkchen und wird erst abgelöst, wenn eine echte KI-Zieltemperatur implementiert ist."

@@ -86,20 +86,21 @@ function winterDays(overrides = []) {
         const comfort = (0, battery_winter_js_1.planBatteryWinter)({ ...base, modePolicy: (0, mode_policy_js_1.plannerModePolicyFromGlobalMode)("comfort") });
         strict_1.default.ok((comfort.charge_energy_kwh ?? 0) >= (eco.charge_energy_kwh ?? 0));
     });
-    (0, node_test_1.it)("defers when battery AI is enabled", () => {
-        const r = (0, battery_winter_js_1.planBatteryWinter)({
+    (0, node_test_1.it)("batteryAiAllowed does not override the regelbasierte Winter-Netzplanung", () => {
+        const base = {
             now: NOW,
             socPct: 50,
             snowCoverSuspected: false,
             config: cfg(),
             modePolicy: (0, mode_policy_js_1.plannerModePolicyFromGlobalMode)("balanced"),
             batteryGovernanceEnabled: true,
-            batteryAiAllowed: true,
             days: winterDays(),
             priceSlots: [],
-        });
-        strict_1.default.equal(r.forecast_active, false);
-        strict_1.default.match(r.reason_de, /KI-Optimierung/);
+        };
+        const withAi = (0, battery_winter_js_1.planBatteryWinter)({ ...base, batteryAiAllowed: true });
+        const withoutAi = (0, battery_winter_js_1.planBatteryWinter)({ ...base, batteryAiAllowed: false });
+        strict_1.default.deepEqual(withAi, withoutAi);
+        strict_1.default.equal(withAi.forecast_active, true);
     });
     (0, node_test_1.it)("sums house load segments to daily kWh", () => {
         const kwh = (0, battery_winter_js_1.dailyKwhFromHouseLoadForecast)({

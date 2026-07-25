@@ -90,20 +90,21 @@ describe("battery winter plan", () => {
 		assert.ok((comfort.charge_energy_kwh ?? 0) >= (eco.charge_energy_kwh ?? 0));
 	});
 
-	it("defers when battery AI is enabled", () => {
-		const r = planBatteryWinter({
+	it("batteryAiAllowed does not override the regelbasierte Winter-Netzplanung", () => {
+		const base = {
 			now: NOW,
 			socPct: 50,
 			snowCoverSuspected: false,
 			config: cfg(),
 			modePolicy: plannerModePolicyFromGlobalMode("balanced"),
 			batteryGovernanceEnabled: true,
-			batteryAiAllowed: true,
 			days: winterDays(),
 			priceSlots: [],
-		});
-		assert.equal(r.forecast_active, false);
-		assert.match(r.reason_de, /KI-Optimierung/);
+		};
+		const withAi = planBatteryWinter({ ...base, batteryAiAllowed: true });
+		const withoutAi = planBatteryWinter({ ...base, batteryAiAllowed: false });
+		assert.deepEqual(withAi, withoutAi);
+		assert.equal(withAi.forecast_active, true);
 	});
 
 	it("sums house load segments to daily kWh", () => {

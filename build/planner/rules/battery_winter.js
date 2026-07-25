@@ -63,7 +63,10 @@ function reserveFromConfidence(days, scanDays, baseReserveKwh, factor, modeFacto
     }
     return { reserveKwh: round3(reserve), minConfidence: minConf };
 }
-/** Read-only 7-Tage-Bilanz für Winter-Netzladung (keine Gerätewrites). */
+/**
+ * Read-only 7-Tage-Bilanz für Winter-Netzladung (keine Gerätewrites).
+ * Läuft unabhängig von der KI-Governance-Freigabe (`batteryAiAllowed`) — siehe Feld-Doku.
+ */
 function planBatteryWinter(input) {
     const inactive = (reason, forecastActive = false) => ({
         active: false,
@@ -88,9 +91,6 @@ function planBatteryWinter(input) {
     }
     if (!input.batteryGovernanceEnabled) {
         return inactive("Batterie-Governance aus — keine Winter-Netzplanung.");
-    }
-    if (input.batteryAiAllowed) {
-        return inactive("KI-Optimierung Batterie aktiv — regelbasierte Winter-Netzplanung wartet auf KI-Anbindung.", false);
     }
     if (input.modePolicy.mode === "off") {
         return inactive(`${input.modePolicy.labelDe} — keine Winter-Netzplanung.`);

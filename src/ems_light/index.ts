@@ -144,6 +144,8 @@ export async function ensureEmsLightStateTree(adapter: ioBroker.Adapter): Promis
 	await ensureIntentStates(buildIntentHost(adapter));
 	const { ensureAiStateTree } = await import("../ai/index.js");
 	await ensureAiStateTree(host);
+	const { ensureCompareStateTree } = await import("../ai/compare/index.js");
+	await ensureCompareStateTree(host);
 	learningHost = await ensureLearningStateTree(adapter);
 }
 

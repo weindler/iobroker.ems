@@ -25,6 +25,10 @@ function baseRequest() {
                 estimatedGridCostCt: null,
             },
             unallocated: [],
+            slots: [
+                { t: "2026-07-25T10:00:00.000Z", priceCtPerKwh: 30, pvSurplusW: 500, ihFlexW: 200, acW: 0 },
+                { t: "2026-07-25T10:15:00.000Z", priceCtPerKwh: 32, pvSurplusW: 400, ihFlexW: 0, acW: 0 },
+            ],
         },
         policyHighlights: {},
         triggerReason: "test",
@@ -79,6 +83,40 @@ function fakeFetch(response, status = 200) {
         strict_1.default.equal(res.reasonDe, "Testbegründung.");
         strict_1.default.equal(res.usage.promptTokens, 120);
         strict_1.default.equal(res.usage.completionTokens, 40);
+    });
+    (0, node_test_1.it)("parses slot_preferences: keeps allowed-addon entries with a valid slot iso, clamps weight, drops the rest", async () => {
+        const fetchImpl = fakeFetch({
+            choices: [
+                {
+                    message: {
+                        content: JSON.stringify({
+                            proposals: [],
+                            slot_preferences: [
+                                { addon_id: "immersion_heater", slot_start_iso: "2026-07-25T10:00:00.000Z", weight: 2.5 },
+                                { addon_id: "immersion_heater", slot_start_iso: "2026-07-25T10:00:00.000Z", weight: 99 },
+                                { addon_id: "wallbox", slot_start_iso: "2026-07-25T10:00:00.000Z", weight: 2 },
+                                { addon_id: "immersion_heater", slot_start_iso: "2099-01-01T00:00:00.000Z", weight: 2 },
+                                { addon_id: "immersion_heater", slot_start_iso: "2026-07-25T10:15:00.000Z", weight: -5 },
+                            ],
+                            reason_de: "Testbegründung.",
+                        }),
+                    },
+                },
+            ],
+            usage: { prompt_tokens: 120, completion_tokens: 40 },
+        });
+        const provider = (0, openai_provider_js_1.createOpenAiProvider)(fetchImpl);
+        const res = await provider.optimize(baseRequest(), {
+            apiKey: "sk-test",
+            model: "gpt-4.1-mini",
+            timeoutMs: 1000,
+        });
+        strict_1.default.equal(res.ok, true);
+        strict_1.default.equal(res.slotPreferences.length, 3);
+        strict_1.default.equal(res.slotPreferences[0].weight, 2.5);
+        strict_1.default.equal(res.slotPreferences[1].weight, 3);
+        strict_1.default.equal(res.slotPreferences[2].weight, 0);
+        strict_1.default.ok(res.slotPreferences.every((p) => p.addonId === "immersion_heater"));
     });
     (0, node_test_1.it)("http error status → ok=false with http_<status> error, no throw", async () => {
         const provider = (0, openai_provider_js_1.createOpenAiProvider)(fakeFetch({ error: "bad key" }, 401));

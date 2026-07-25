@@ -102,4 +102,132 @@ describe("ai buildAiOptimizationContext", () => {
 		const ctx = await buildAiOptimizationContext(host, minimalPlan(), "x");
 		assert.deepEqual(ctx.policyHighlights, { houseFuseLimitW: null, maxGridImportW: null, gridImportAllowed: null });
 	});
+
+	it("dailyPlan.slots stays empty when neither immersion_heater nor climate is allowed", async () => {
+		const host = { config: {}, async getStateAsync() { return null; } };
+		const plan = minimalPlan({
+			slots: [
+				{
+					slot: { startIso: "2026-07-25T10:00:00.000Z", endIso: "2026-07-25T10:15:00.000Z" },
+					pvForecastPowerW: 1000,
+					fixedHouseLoadPowerW: 400,
+					fixedBalancePowerW: 600,
+					gridPriceCtPerKwh: 30,
+					gridImportAllowed: true,
+					configuredGridImportLimitW: 30000,
+					remainingGridImportPowerW: 20000,
+					availablePvSurplusPowerW: 600,
+					allocatedFlexiblePowerW: 500,
+					allocatedPvPowerW: 500,
+					allocatedGridPowerW: 0,
+					allocatedBatteryPowerW: 0,
+					remainingPvSurplusPowerW: 100,
+					remainingGridImportPowerWAfterAlloc: 20000,
+					remainingBatteryDischargePowerW: null,
+					allocations: [
+						{
+							contributionId: "immersion_heater.flexible",
+							contributor: { type: "addon", id: "immersion_heater", addonId: "immersion_heater" },
+							slot: { startIso: "2026-07-25T10:00:00.000Z", endIso: "2026-07-25T10:15:00.000Z" },
+							status: "allocated",
+							energySource: "pv_surplus",
+							requestedPowerW: 500,
+							allocatedPowerW: 500,
+							requestedEnergyKwh: 0.125,
+							allocatedEnergyKwh: 0.125,
+							gridPowerW: 0,
+							pvPowerW: 500,
+							mandatory: false,
+							priorityRank: 1,
+							deadlineIso: null,
+							estimatedCostCt: 0,
+							reasonDe: "PV vorhanden",
+						},
+					],
+					quality: { status: "valid", confidencePct: 100, reasonDe: "" },
+					reasonDe: "",
+				},
+			],
+		});
+		const ctx = await buildAiOptimizationContext(host, plan, "x");
+		assert.deepEqual(ctx.dailyPlan.slots, []);
+	});
+
+	it("dailyPlan.slots is populated (only flexible, not mandatory) when immersion_heater is allowed", async () => {
+		const host = {
+			config: { immersion_heater_enabled: true, immersion_heater_ai_optimization_allowed: true },
+			async getStateAsync() {
+				return null;
+			},
+		};
+		const plan = minimalPlan({
+			slots: [
+				{
+					slot: { startIso: "2026-07-25T10:00:00.000Z", endIso: "2026-07-25T10:15:00.000Z" },
+					pvForecastPowerW: 1000,
+					fixedHouseLoadPowerW: 400,
+					fixedBalancePowerW: 600,
+					gridPriceCtPerKwh: 30,
+					gridImportAllowed: true,
+					configuredGridImportLimitW: 30000,
+					remainingGridImportPowerW: 20000,
+					availablePvSurplusPowerW: 600,
+					allocatedFlexiblePowerW: 700,
+					allocatedPvPowerW: 700,
+					allocatedGridPowerW: 0,
+					allocatedBatteryPowerW: 0,
+					remainingPvSurplusPowerW: 0,
+					remainingGridImportPowerWAfterAlloc: 20000,
+					remainingBatteryDischargePowerW: null,
+					allocations: [
+						{
+							contributionId: "immersion_heater.mandatory",
+							contributor: { type: "addon", id: "immersion_heater", addonId: "immersion_heater" },
+							slot: { startIso: "2026-07-25T10:00:00.000Z", endIso: "2026-07-25T10:15:00.000Z" },
+							status: "allocated",
+							energySource: "grid",
+							requestedPowerW: 200,
+							allocatedPowerW: 200,
+							requestedEnergyKwh: 0.05,
+							allocatedEnergyKwh: 0.05,
+							gridPowerW: 200,
+							pvPowerW: 0,
+							mandatory: true,
+							priorityRank: 0,
+							deadlineIso: null,
+							estimatedCostCt: 0,
+							reasonDe: "Anti-Legionellen",
+						},
+						{
+							contributionId: "immersion_heater.flexible",
+							contributor: { type: "addon", id: "immersion_heater", addonId: "immersion_heater" },
+							slot: { startIso: "2026-07-25T10:00:00.000Z", endIso: "2026-07-25T10:15:00.000Z" },
+							status: "allocated",
+							energySource: "pv_surplus",
+							requestedPowerW: 500,
+							allocatedPowerW: 500,
+							requestedEnergyKwh: 0.125,
+							allocatedEnergyKwh: 0.125,
+							gridPowerW: 0,
+							pvPowerW: 500,
+							mandatory: false,
+							priorityRank: 1,
+							deadlineIso: null,
+							estimatedCostCt: 0,
+							reasonDe: "PV vorhanden",
+						},
+					],
+					quality: { status: "valid", confidencePct: 100, reasonDe: "" },
+					reasonDe: "",
+				},
+			],
+		});
+		const ctx = await buildAiOptimizationContext(host, plan, "x");
+		assert.equal(ctx.dailyPlan.slots.length, 1);
+		assert.equal(ctx.dailyPlan.slots[0].t, "2026-07-25T10:00:00.000Z");
+		assert.equal(ctx.dailyPlan.slots[0].ihFlexW, 500);
+		assert.equal(ctx.dailyPlan.slots[0].acW, 0);
+		assert.equal(ctx.dailyPlan.slots[0].priceCtPerKwh, 30);
+		assert.equal(ctx.dailyPlan.slots[0].pvSurplusW, 600);
+	});
 });

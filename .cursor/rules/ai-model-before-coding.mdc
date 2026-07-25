@@ -1,0 +1,18 @@
+---
+description: Vor jedem Coding-Schritt an diesem Adapter prüfen, ob Sonnet 5 High aktiv ist
+alwaysApply: true
+---
+
+# Modellwahl vor dem Programmieren
+
+Bevor Code (nicht nur Diskussion/Planung) für `iobroker.ems` implementiert wird:
+
+1. Prüfen/fragen, ob im Chat aktuell **Sonnet 5 High** (Claude, thinking/high effort) aktiv ist.
+2. Falls nicht sicher oder ein anderes Modell aktiv ist: den Nutzer explizit bitten, im
+   Cursor-Chat auf **Sonnet 5 High** umzuschalten, bevor Dateien geändert werden.
+3. Reine Diskussion, Planung oder Recherche (kein Datei-Write) ist davon **nicht** betroffen —
+   die Prüfung gilt nur unmittelbar vor dem ersten Schreib-Tool-Call (Write/StrReplace/EditNotebook)
+   in dieser Codebasis.
+4. Der Agent kann das aktive Chat-Modell nicht selbst umschalten — nur Subagenten (`Task`-Tool)
+   können mit explizitem Modell gestartet werden. Für direkte Bearbeitung an Ort und Stelle muss
+   der Nutzer manuell umschalten.

@@ -47,6 +47,7 @@ async function runAiOptimizationNow(host, plan, triggerReason, provider) {
         result = {
             ok: false,
             proposals: [],
+            slotPreferences: [],
             reasonDe: "Unerwarteter Fehler beim KI-Aufruf.",
             usage: { promptTokens: null, completionTokens: null },
             error: String(e instanceof Error ? e.message : e),
@@ -60,14 +61,20 @@ async function runAiOptimizationNow(host, plan, triggerReason, provider) {
     if (!result.ok) {
         await host.setStateAsync(ensure_states_1.AI_STATES.lastRunResult, { val: "error", ack: true });
         await host.setStateAsync(ensure_states_1.AI_STATES.lastError, { val: String(result.error ?? "").slice(0, 480), ack: true });
+        await host.setStateAsync(ensure_states_1.AI_STATES.lastSlotPreferencesJson, { val: "[]", ack: true });
         await writeStatus(host, "error");
         host.log?.warn?.(`KI-Optimierung fehlgeschlagen (${triggerReason}): ${result.error ?? result.reasonDe}`);
         return { ran: true, status: "error", reasonDe: result.reasonDe };
     }
     await host.setStateAsync(ensure_states_1.AI_STATES.lastRunResult, { val: "ok", ack: true });
     await host.setStateAsync(ensure_states_1.AI_STATES.lastError, { val: "", ack: true });
+    await host.setStateAsync(ensure_states_1.AI_STATES.lastSlotPreferencesJson, {
+        val: JSON.stringify(result.slotPreferences),
+        ack: true,
+    });
     await writeStatus(host, "ready");
-    host.log?.debug?.(`KI-Optimierung (${triggerReason}): ${result.proposals.length} Vorschlag/Vorschläge — ${result.reasonDe}`);
+    host.log?.debug?.(`KI-Optimierung (${triggerReason}): ${result.proposals.length} Vorschlag/Vorschläge, ` +
+        `${result.slotPreferences.length} Slot-Präferenz(en) — ${result.reasonDe}`);
     return { ran: true, status: "ready", reasonDe: result.reasonDe };
 }
 exports.runAiOptimizationNow = runAiOptimizationNow;

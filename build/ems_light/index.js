@@ -139,6 +139,8 @@ async function ensureEmsLightStateTree(adapter) {
     await (0, intent_1.ensureIntentStates)(buildIntentHost(adapter));
     const { ensureAiStateTree } = await Promise.resolve().then(() => __importStar(require("../ai/index.js")));
     await ensureAiStateTree(host);
+    const { ensureCompareStateTree } = await Promise.resolve().then(() => __importStar(require("../ai/compare/index.js")));
+    await ensureCompareStateTree(host);
     learningHost = await (0, pv_bias_1.ensureLearningStateTree)(adapter);
 }
 exports.ensureEmsLightStateTree = ensureEmsLightStateTree;

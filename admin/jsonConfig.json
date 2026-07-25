@@ -8035,6 +8035,50 @@
 				}
 			}
 		},
+		"compareTab": {
+			"type": "panel",
+			"label": "Plan-Vergleich",
+			"items": {
+				"compareIntro": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Plan A (deterministisch) ist der Plan, den EMS tatsächlich ausführt — das ändert sich hier NICHT. Plan B ist eine reine Beobachtungs-Simulation: Sie zeigt, wie die von der KI vorgeschlagenen Zeitpunkt-Präferenzen (nur für hier freigegebene Add-ons, nur Heizstab/Klima) den Netzbezug/die Kosten verändern würden — bei exakt derselben Energiemenge, nur zu anderen Zeitpunkten. Ohne KI (oder ohne Freigabe) ist Plan B identisch mit Plan A."
+				},
+				"compareStates": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Für VIS/Grafiken: compare.plan_a.chart_json und compare.plan_b.chart_json (je [{t,pv_w,grid_w,ih_w,ac_w,price_ct}, …], gleiche Zeitachse — zwei Kurven im History-/Flot-Widget). compare.active_plan (a/b) und compare.delta_summary_json enthalten die Zusammenfassung (Kosten/PV/Netz/unallokiert je Plan). Hinweis: ih_w/ac_w zeigen nur die flexible, verschiebbare Leistung — sicherheitsrelevante Pflicht-Zyklen (z. B. Anti-Legionellen) sind bewusst ausgeklammert und laufen unverändert wie geplant."
+				},
+				"getPlanCompareStatusBtn": {
+					"type": "sendTo",
+					"command": "getPlanCompareStatus",
+					"jsonData": "{}",
+					"label": "Status prüfen",
+					"help": "Zeigt, welcher Plan rechnerisch günstiger wäre — löst keine Neuberechnung aus (die läuft automatisch bei jedem neuen Tagesplan).",
+					"showProcess": true,
+					"timeout": 15000,
+					"variant": "outlined",
+					"icon": "info",
+					"result": {
+						"ok": "Status gelesen — Details unter compare.* im Objektbaum",
+						"error": "Status nicht lesbar"
+					},
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				}
+			}
+		},
 		"exportTab": {
 			"type": "panel",
 			"label": "Backup",

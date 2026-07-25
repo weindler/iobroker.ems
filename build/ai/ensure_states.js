@@ -14,6 +14,7 @@ exports.AI_STATES = {
     lastRunResult: `${exports.AI_BASE}.last_run_result`,
     lastReasonDe: `${exports.AI_BASE}.last_reason_de`,
     lastError: `${exports.AI_BASE}.last_error`,
+    lastSlotPreferencesJson: `${exports.AI_BASE}.last_slot_preferences_json`,
     optimizeNowRequest: `${exports.AI_BASE}.optimize_now_request`,
 };
 async function ensureAiStates(host) {
@@ -95,6 +96,17 @@ async function ensureAiStates(host) {
         {
             id: exports.AI_STATES.lastError,
             common: { name: "Letzter KI-Fehler", type: "string", role: "text", read: true, write: false, def: "" },
+        },
+        {
+            id: exports.AI_STATES.lastSlotPreferencesJson,
+            common: {
+                name: "Letzte KI-Zeitpunkt-Präferenzen (JSON, intern — Basis für Plan-Vergleich)",
+                type: "string",
+                role: "json",
+                read: true,
+                write: false,
+                def: "[]",
+            },
         },
         {
             id: exports.AI_STATES.optimizeNowRequest,

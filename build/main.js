@@ -387,6 +387,41 @@ class Ems extends utils.Adapter {
             })();
             return;
         }
+        if (obj.command === "getPlanCompareStatus") {
+            void (async () => {
+                try {
+                    const { COMPARE_STATES } = await Promise.resolve().then(() => __importStar(require("./ai/compare/index.js")));
+                    const generatedAt = String((await this.getStateAsync(COMPARE_STATES.generatedAt))?.val ?? "");
+                    const activePlan = String((await this.getStateAsync(COMPARE_STATES.activePlan))?.val ?? "a");
+                    const deltaRaw = (await this.getStateAsync(COMPARE_STATES.deltaSummaryJson))?.val;
+                    let deltaHint = "Noch kein Vergleich berechnet.";
+                    if (typeof deltaRaw === "string" && deltaRaw) {
+                        try {
+                            const delta = JSON.parse(deltaRaw);
+                            deltaHint = delta.decisionReasonDe ?? deltaHint;
+                        }
+                        catch {
+                            // deltaHint bleibt Default
+                        }
+                    }
+                    if (obj.callback) {
+                        this.sendTo(obj.from, obj.command, {
+                            result: "ok",
+                            activePlan,
+                            hint: `Rechnerisch günstiger: Plan ${activePlan.toUpperCase()} — ${deltaHint}` +
+                                (generatedAt ? ` — berechnet ${generatedAt}` : ""),
+                        }, obj.callback);
+                    }
+                }
+                catch (e) {
+                    const error = e instanceof Error ? e.message : String(e);
+                    if (obj.callback) {
+                        this.sendTo(obj.from, obj.command, { result: "error", error }, obj.callback);
+                    }
+                }
+            })();
+            return;
+        }
         if (obj.command === "restoreApply") {
             void (async () => {
                 try {

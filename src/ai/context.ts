@@ -1,7 +1,7 @@
-import { governedAddonIds } from "../addons/governance/registry";
+import { governedAddonEntry, governedAddonIds } from "../addons/governance/registry";
 import { isAddonAiOptimizationAllowed, isAddonEnabled } from "../addons/governance/config";
-import type { AiDailyPlanDigest, AiOptimizationRequestContext } from "./types";
-import type { DailyPlan } from "../operator/daily_plan/types";
+import type { AiDailyPlanDigest, AiDigestSlot, AiOptimizationRequestContext } from "./types";
+import type { DailyPlan, DailyPlanSlot } from "../operator/daily_plan/types";
 
 export type ContextHost = {
 	config: unknown;
@@ -13,7 +13,34 @@ export function resolveAllowedAddonIds(config: unknown): string[] {
 	return governedAddonIds().filter((id) => isAddonEnabled(config, id) && isAddonAiOptimizationAllowed(config, id));
 }
 
-function digestFromDailyPlan(plan: DailyPlan): AiDailyPlanDigest {
+/** Summe der flexiblen (nicht-mandatory) Allokation eines Add-on-Präfixes in einem Slot. */
+export function addonFlexPowerInSlot(slot: DailyPlanSlot, contributionPrefix: string): number {
+	let sum = 0;
+	for (const a of slot.allocations) {
+		if (a.mandatory) continue;
+		if (!a.contributionId.startsWith(contributionPrefix)) continue;
+		sum += a.allocatedPowerW ?? 0;
+	}
+	return sum;
+}
+
+/** Compact per-slot rows for immersion_heater/climate — nur befüllt, wenn eines der beiden freigegeben ist. */
+function buildSlotDigest(plan: DailyPlan, allowedAddonIds: string[]): AiDigestSlot[] {
+	const ihAllowed = allowedAddonIds.includes("immersion_heater");
+	const acAllowed = allowedAddonIds.includes("climate");
+	if (!ihAllowed && !acAllowed) return [];
+	const ihPrefix = governedAddonEntry("immersion_heater").runtimeAddonId;
+	const acPrefix = governedAddonEntry("climate").runtimeAddonId;
+	return plan.slots.map((slot) => ({
+		t: slot.slot.startIso,
+		priceCtPerKwh: slot.gridPriceCtPerKwh,
+		pvSurplusW: slot.availablePvSurplusPowerW,
+		ihFlexW: ihAllowed ? Math.round(addonFlexPowerInSlot(slot, ihPrefix)) : 0,
+		acW: acAllowed ? Math.round(addonFlexPowerInSlot(slot, acPrefix)) : 0,
+	}));
+}
+
+function digestFromDailyPlan(plan: DailyPlan, allowedAddonIds: string[]): AiDailyPlanDigest {
 	return {
 		date: plan.date,
 		globalMode: plan.globalMode,
@@ -31,6 +58,7 @@ function digestFromDailyPlan(plan: DailyPlan): AiDailyPlanDigest {
 			unallocatedEnergyKwh: u.unallocatedEnergyKwh,
 			reasonDe: u.reasonDe,
 		})),
+		slots: buildSlotDigest(plan, allowedAddonIds),
 	};
 }
 
@@ -62,12 +90,13 @@ export async function buildAiOptimizationContext(
 	triggerReason: string,
 ): Promise<AiOptimizationRequestContext> {
 	const policyRaw = await readJson(host, "policy.global.effective_json");
+	const allowedAddonIds = resolveAllowedAddonIds(host.config);
 	return {
 		generatedAt: new Date().toISOString(),
 		timezone: plan.timezone,
 		globalMode: plan.globalMode,
-		allowedAddonIds: resolveAllowedAddonIds(host.config),
-		dailyPlan: digestFromDailyPlan(plan),
+		allowedAddonIds,
+		dailyPlan: digestFromDailyPlan(plan, allowedAddonIds),
 		policyHighlights: pickPolicyHighlights(policyRaw),
 		triggerReason,
 	};

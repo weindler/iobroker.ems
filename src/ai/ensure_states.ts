@@ -13,6 +13,7 @@ export const AI_STATES = {
 	lastRunResult: `${AI_BASE}.last_run_result`,
 	lastReasonDe: `${AI_BASE}.last_reason_de`,
 	lastError: `${AI_BASE}.last_error`,
+	lastSlotPreferencesJson: `${AI_BASE}.last_slot_preferences_json`,
 	optimizeNowRequest: `${AI_BASE}.optimize_now_request`,
 } as const;
 
@@ -96,6 +97,17 @@ export async function ensureAiStates(host: StateHost): Promise<void> {
 		{
 			id: AI_STATES.lastError,
 			common: { name: "Letzter KI-Fehler", type: "string", role: "text", read: true, write: false, def: "" },
+		},
+		{
+			id: AI_STATES.lastSlotPreferencesJson,
+			common: {
+				name: "Letzte KI-Zeitpunkt-Präferenzen (JSON, intern — Basis für Plan-Vergleich)",
+				type: "string",
+				role: "json",
+				read: true,
+				write: false,
+				def: "[]",
+			},
 		},
 		{
 			id: AI_STATES.optimizeNowRequest,

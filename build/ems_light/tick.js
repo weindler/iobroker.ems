@@ -118,6 +118,13 @@ async function runEmsLightPhase1Tick(host) {
                 catch (e) {
                     hints.push(`ai_optimization: ${String(e)}`);
                 }
+                try {
+                    const { maybeUpdatePlanCompareOnDailyPlanChange } = await Promise.resolve().then(() => __importStar(require("../ai/compare/index.js")));
+                    await maybeUpdatePlanCompareOnDailyPlanChange(host, plan);
+                }
+                catch (e) {
+                    hints.push(`plan_compare: ${String(e)}`);
+                }
             }
         }
     }

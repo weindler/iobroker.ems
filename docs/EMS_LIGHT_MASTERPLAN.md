@@ -1,7 +1,7 @@
 # EMS-Light – Verbindlicher Masterplan
 
 **Status:** Gültig ab 28.06.2026  
-**Aktualisierung:** 25.07.2026 — Operator-Pfad (Forecast/Daily Plan) produktiv; schwerer Planner-Shadow/Takeover-Codestack seit v0.1.181 vollständig entfernt (nicht mehr nur abgeschaltet). KI seit v0.1.185 als Gerüst vorhanden (`src/ai/`, standardmäßig aus, siehe Abschnitt 13) — echte Optimierungslogik weiterhin offen. Index: `docs/README.md`.
+**Aktualisierung:** 25.07.2026 — Operator-Pfad (Forecast/Daily Plan) produktiv; schwerer Planner-Shadow/Takeover-Codestack seit v0.1.181 vollständig entfernt (nicht mehr nur abgeschaltet). KI seit v0.1.185 als Gerüst vorhanden (`src/ai/`, standardmäßig aus, siehe Abschnitt 13) — echte Optimierungslogik weiterhin offen. Seit v0.1.186: Plan-Vergleich (`src/ai/compare/`) simuliert einen KI-gewichteten Plan B (nur Zeitpunkt-Verschiebung Heizstab/Klima, gleiche Energiemenge) zur reinen Beobachtung/Statistik — Plan A bleibt der einzige tatsächlich ausgeführte Plan. Index: `docs/README.md`.
 
 ---
 
@@ -405,6 +405,14 @@ replan_only_on_material_change
 > oder manuell über „Jetzt optimieren“ — `monthly_cost_limit` und `minimum_replan_interval` sind noch nicht umgesetzt.
 > Die KI liefert bislang nur beobachtende Text-Hinweise (`ai.last_reason_de`), schreibt nichts in Allocation/Intent
 > zurück — echte Optimierungslogik (Abschnitt 4) ist ein separater, noch offener Schritt.
+>
+> **Stand (v0.1.186):** KI-Antwort um optionale `slot_preferences` erweitert (Gewichtung 0..3 je 15-Min-Slot,
+> nur Heizstab/Klima, nur freigegebene Add-ons). Neues Modul `src/ai/compare/` simuliert daraus einen Plan B
+> (Wasserfüllung: dieselbe von Plan A eingeplante Energiemenge, nur zeitlich anders verteilt, kapazitätsbegrenzt
+> durch das in Plan A ohnehin verfügbare PV/Netz-Fenster) und vergleicht Kosten/PV/Netz gegen Plan A. Reine
+> Beobachtung/Statistik (Tab „Plan-Vergleich“, `compare.*`-States, VIS-taugliche `chart_json`-Zeitreihen) —
+> Plan A bleibt der einzige tatsächlich ausgeführte Plan, `compare.active_plan` schaltet nichts um. Eine echte
+> Übernahme von Plan B in die Ausführung ist weiterhin ein separater, noch offener Schritt.
 
 ---
 

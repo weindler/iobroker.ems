@@ -97,6 +97,15 @@ export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): 
 				} catch (e) {
 					hints.push(`ai_optimization: ${String(e)}`);
 				}
+				try {
+					const { maybeUpdatePlanCompareOnDailyPlanChange } = await import("../ai/compare/index.js");
+					await maybeUpdatePlanCompareOnDailyPlanChange(
+						host as Parameters<typeof maybeUpdatePlanCompareOnDailyPlanChange>[0],
+						plan,
+					);
+				} catch (e) {
+					hints.push(`plan_compare: ${String(e)}`);
+				}
 			}
 		}
 	}

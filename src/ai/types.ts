@@ -11,6 +11,18 @@
 
 export type AiProviderId = "openai";
 
+/** Ein einzelner, kompakter Zeitschlitz — nur was die KI für Zeitpunkt-Vorschläge braucht. */
+export interface AiDigestSlot {
+	/** ISO-Start des 15-Minuten-Slots — exakt so für slot_preferences zurückzugeben. */
+	t: string;
+	priceCtPerKwh: number | null;
+	pvSurplusW: number | null;
+	/** Aktuelle (deterministische) flexible Heizstab-Leistung in diesem Slot — 0 wenn Add-on nicht erlaubt. */
+	ihFlexW: number;
+	/** Aktuelle (deterministische) Klimaanlagen-Leistung in diesem Slot — 0 wenn Add-on nicht erlaubt. */
+	acW: number;
+}
+
 /** Kompakter, bereits sanitisierter Tagesplan-Auszug — kein Rohzugriff auf Geräte-States. */
 export interface AiDailyPlanDigest {
 	date: string;
@@ -25,6 +37,8 @@ export interface AiDailyPlanDigest {
 		estimatedGridCostCt: number | null;
 	};
 	unallocated: Array<{ contributionId: string; unallocatedEnergyKwh: number | null; reasonDe: string }>;
+	/** Nur befüllt, wenn immersion_heater und/oder climate freigegeben sind — Basis für slot_preferences. */
+	slots: AiDigestSlot[];
 }
 
 export interface AiOptimizationRequestContext {
@@ -44,9 +58,21 @@ export interface AiOptimizationProposal {
 	note: string;
 }
 
+/**
+ * Zeitpunkt-Präferenz der KI für ein freigegebenes Add-on — reine Gewichtung, keine Watt-Vorgabe.
+ * weight 1 = neutral (deterministischer Plan bleibt für diesen Slot unverändert), >1 = bevorzugt,
+ * <1 = meiden. Wird beim Plan-Vergleich (src/ai/compare/) angewendet — nie direkt auf Geräte.
+ */
+export interface AiSlotPreference {
+	addonId: string;
+	slotStartIso: string;
+	weight: number;
+}
+
 export interface AiOptimizationResult {
 	ok: boolean;
 	proposals: AiOptimizationProposal[];
+	slotPreferences: AiSlotPreference[];
 	reasonDe: string;
 	usage: { promptTokens: number | null; completionTokens: number | null };
 	error?: string;

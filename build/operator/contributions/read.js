@@ -57,13 +57,18 @@ async function readForeignStr(host, stateId) {
         return null;
     }
 }
-/** `system.config.common.latitude/longitude` — kein erfundener Standort ohne diesen Eintrag. */
+/**
+ * `system.config.common.latitude/longitude` — kein erfundener Standort ohne diesen Eintrag.
+ * Toleranter Zahlen-Parse (wie `asNum`): manche Systemeinstellungen speichern den Wert je nach
+ * Float-Teilerzeichen als String mit Komma statt Punkt — ein reiner `typeof === "number"`-Check
+ * würde diesen sonst gültigen Standort fälschlich verwerfen.
+ */
 async function readSystemLocation(host) {
     try {
         const obj = await host.getForeignObjectAsync?.("system.config");
         const common = obj?.common;
-        const lat = typeof common?.latitude === "number" && Number.isFinite(common.latitude) ? common.latitude : null;
-        const lon = typeof common?.longitude === "number" && Number.isFinite(common.longitude) ? common.longitude : null;
+        const lat = (0, state_util_1.asNum)(common?.latitude);
+        const lon = (0, state_util_1.asNum)(common?.longitude);
         return { lat, lon };
     }
     catch {

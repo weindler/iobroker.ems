@@ -1,6 +1,6 @@
 # EMS-Light — Dokumentation
 
-**Adapter:** `iobroker.ems` · **Stand:** v0.1.188 (Juli 2026)
+**Adapter:** `iobroker.ems` · **Stand:** v0.1.189 (Juli 2026)
 
 ## Zentrale Dokumente
 
@@ -38,6 +38,13 @@ Schwerer Planner-Shadow/Takeover ist seit v0.1.181 **vollständig aus dem Code e
 | [EMS_LIGHT_BATTERY_DAILY_PLAN_RUNTIME.md](./EMS_LIGHT_BATTERY_DAILY_PLAN_RUNTIME.md) | Batterie + Daily Plan |
 | [EMS_LIGHT_IMMERSION_DAILY_PLAN_RUNTIME.md](./EMS_LIGHT_IMMERSION_DAILY_PLAN_RUNTIME.md) | Heizstab |
 | [EMS_LIGHT_AC_DAILY_PLAN_RUNTIME.md](./EMS_LIGHT_AC_DAILY_PLAN_RUNTIME.md) | Klima |
+
+Seit v0.1.189: **Fix Standort-Parsing** für die PV-Kurve (`src/operator/contributions/read.ts`,
+`readSystemLocation`). `system.config.common.latitude/longitude` wurde bisher nur akzeptiert, wenn
+es als reine JS-Zahl vorlag — bei manchen System-Einstellungen (Float-Teiler-Zeichen = Komma) wird
+der Wert als Komma-String gespeichert und die PV-Kurve blieb trotz vollständig korrekter Konfiguration
+inaktiv (`daily_only`, „Lat/Lon oder Wetterdaten fehlen“). Lat/Lon werden jetzt wie alle anderen
+Zahlenwerte im Adapter toleranter geparst (Komma oder Punkt).
 
 ## KI-Optimierung (optional, `src/ai/`)
 

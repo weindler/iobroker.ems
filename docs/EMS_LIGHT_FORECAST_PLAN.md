@@ -1,6 +1,6 @@
 # EMS-Light — Forecast Plan
 
-**Stand:** v0.1.188
+**Stand:** v0.1.189
 
 ## 1. Zweck
 
@@ -57,6 +57,10 @@ konfiguriert, verteilt EMS die bereits gelernte Tages-kWh als Form über den Tag
   gelernten Wert (keine erfundene Überschreitung der Hardware-Grenze).
 - Ohne Standort oder ohne konfigurierten Stunden-Prefix bleibt `pvPowerW` `null` — kein Fallback
   auf eine erfundene Kurve.
+- Seit v0.1.189: `latitude`/`longitude` werden toleranter geparst (Komma **oder** Punkt als
+  Dezimaltrennzeichen, wie `asNum` im gesamten Adapter) — zuvor wurde ein Standort mit Komma-String
+  (je nach Float-Teiler-Zeichen-Einstellung) fälschlich als fehlend behandelt und die Kurve blieb
+  trotz korrekter Konfiguration bei `daily_only`.
 
 ## 5. Umgang mit fehlenden Daten
 

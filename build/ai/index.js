@@ -1,11 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runAiOptimizationManual = exports.handleAiStateChange = exports.isAiRelatedState = exports.maybeTriggerAiOptimizationOnDailyPlanChange = exports.ensureAiStateTree = exports.resetAiPipelineHookForTest = exports.resolveAllowedAddonIds = exports.AI_DEFAULT_MAX_CALLS_PER_DAY = exports.AI_DEFAULT_MODEL = exports.AI_ALLOWED_MODELS = exports.aiConfigFromAdapter = exports.AI_STATES = exports.ensureAiStates = void 0;
+exports.runAiOptimizationManual = exports.handleAiStateChange = exports.isAiRelatedState = exports.maybeTriggerAiOptimizationOnDailyPlanChange = exports.ensureAiStateTree = exports.resetAiPipelineHookForTest = exports.aiTriggerDigestPayload = exports.resolveAllowedAddonIds = exports.AI_DEFAULT_MAX_CALLS_PER_DAY = exports.AI_DEFAULT_MODEL = exports.AI_ALLOWED_MODELS = exports.aiConfigFromAdapter = exports.AI_STATES = exports.ensureAiStates = void 0;
 const states_1 = require("../operator/daily_plan/states");
 const config_1 = require("./config");
 const ensure_states_1 = require("./ensure_states");
 const openai_provider_1 = require("./openai_provider");
 const run_1 = require("./run");
+const trigger_digest_1 = require("./trigger_digest");
 var ensure_states_2 = require("./ensure_states");
 Object.defineProperty(exports, "ensureAiStates", { enumerable: true, get: function () { return ensure_states_2.ensureAiStates; } });
 var ensure_states_3 = require("./ensure_states");
@@ -17,9 +18,11 @@ Object.defineProperty(exports, "AI_DEFAULT_MODEL", { enumerable: true, get: func
 Object.defineProperty(exports, "AI_DEFAULT_MAX_CALLS_PER_DAY", { enumerable: true, get: function () { return config_2.AI_DEFAULT_MAX_CALLS_PER_DAY; } });
 var context_1 = require("./context");
 Object.defineProperty(exports, "resolveAllowedAddonIds", { enumerable: true, get: function () { return context_1.resolveAllowedAddonIds; } });
-let lastReactedRevision = -1;
+var trigger_digest_2 = require("./trigger_digest");
+Object.defineProperty(exports, "aiTriggerDigestPayload", { enumerable: true, get: function () { return trigger_digest_2.aiTriggerDigestPayload; } });
+let lastTriggerDigestPayload = "";
 function resetAiPipelineHookForTest() {
-    lastReactedRevision = -1;
+    lastTriggerDigestPayload = "";
 }
 exports.resetAiPipelineHookForTest = resetAiPipelineHookForTest;
 async function ensureAiStateTree(host) {
@@ -27,21 +30,26 @@ async function ensureAiStateTree(host) {
 }
 exports.ensureAiStateTree = ensureAiStateTree;
 /**
- * Wird nach jedem Daily-Plan-Tick aufgerufen. Löst nur bei tatsächlicher Plan-Änderung
- * (neue Revision) einen KI-Versuch aus — nicht bei jedem Tick (Kostenkontrolle, Masterplan §13).
+ * Wird nach jedem Daily-Plan-Tick aufgerufen. Löst NICHT bei jeder Operator-Revision einen
+ * KI-Versuch aus (die wechselt praktisch jeden Tick — Horizont-Roll, Allocation-Fortschritt,
+ * Zehntelgrad-Zittern), sondern nur bei einer grob relevanten Änderung im Sinne von
+ * `aiTriggerDigestPayload` (Add-on-Bedarf startet/endet, Zieltemperatur-Stufe wechselt,
+ * PV-Tagesprognose springt deutlich, Tageswechsel, Global-Mode-Wechsel) — Kostenkontrolle,
+ * Masterplan §13.
  */
 async function maybeTriggerAiOptimizationOnDailyPlanChange(host, plan) {
     const cfg = (0, config_1.aiConfigFromAdapter)(host.config);
+    const digestPayload = (0, trigger_digest_1.aiTriggerDigestPayload)(plan);
     if (!cfg.enabled) {
-        lastReactedRevision = plan.revision;
+        lastTriggerDigestPayload = digestPayload;
         return null;
     }
-    if (plan.revision === lastReactedRevision) {
+    if (digestPayload === lastTriggerDigestPayload) {
         return null;
     }
-    lastReactedRevision = plan.revision;
+    lastTriggerDigestPayload = digestPayload;
     const provider = (0, openai_provider_1.createOpenAiProvider)();
-    return (0, run_1.runAiOptimizationNow)(host, plan, "new_daily_plan", provider);
+    return (0, run_1.runAiOptimizationNow)(host, plan, "daily_plan_digest_change", provider);
 }
 exports.maybeTriggerAiOptimizationOnDailyPlanChange = maybeTriggerAiOptimizationOnDailyPlanChange;
 const AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX = "ai.optimize_now_request";

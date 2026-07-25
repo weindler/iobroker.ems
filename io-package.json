@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.192",
+		"version": "0.1.193",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.193": {
+				"en": "Fix: the automatic AI trigger fired on every Daily Plan revision — which changes on practically every EMS tick (rolling 15-min horizon, allocation progress, minor PV/temperature fluctuations), not just on actually relevant changes. This burned through the daily call limit (and tokens/cost) within a short time for changes the AI could never meaningfully react to anyway. The automatic trigger now compares a deliberately coarse \"digest\" of the plan (active/excluded add-ons, calendar day, global mode, plan status, and bucketed totals for flexible demand/allocation, PV forecast energy and grid cost) and only calls the AI when that digest actually changes — e.g. an add-on starts/stops contributing, the target-temperature step changes the required energy noticeably, PV forecast jumps, or the day/mode changes. The manual \"Optimize now\" button is unaffected and still always runs on request.",
+				"de": "Fix: Der automatische KI-Trigger löste bei jeder Daily-Plan-Revision aus — die ändert sich praktisch bei jedem EMS-Tick (rollierender 15-Min-Horizont, Allocation-Fortschritt, kleine PV-/Temperatur-Schwankungen), nicht nur bei wirklich relevanten Änderungen. Das hat das Tageslimit (und Tokens/Kosten) innerhalb kurzer Zeit für Änderungen verbraucht, auf die die KI ohnehin nie sinnvoll reagieren könnte. Der automatische Trigger vergleicht jetzt einen bewusst groben „Fingerabdruck“ des Plans (aktive/ausgeschlossene Add-ons, Kalendertag, Global Mode, Plan-Status sowie grob gerasterte Summen für Flex-Bedarf/-Allocation, PV-Tagesprognose und Netzkosten) und ruft die KI nur auf, wenn sich dieser Fingerabdruck tatsächlich ändert — z. B. ein Add-on startet/stoppt, die Zieltemperatur-Stufe verändert den Energiebedarf merklich, die PV-Prognose springt oder sich Tag/Modus ändern. Der manuelle „Jetzt optimieren“-Button ist davon unberührt und läuft weiterhin immer auf Anfrage."
+			},
 			"0.1.192": {
 				"en": "Fix: the same \"AI optimization allowed\" issue fixed for the immersion heater in v0.1.191 also existed in the battery winter grid-charge planning — the battery governance flag made the rule-based winter bridge/reserve calculation defer entirely (\"wartet auf KI-Anbindung\") instead of running normally, even though the AI never provides a winter-charge result either. The rule-based winter grid-charge planning now runs regardless of the AI governance flag, matching the immersion heater fix.",
 				"de": "Fix: Derselbe „KI-Optimierung erlaubt“-Fehler, der in v0.1.191 beim Heizstab behoben wurde, bestand auch bei der Batterie-Winter-Netzladeplanung — das Governance-Häkchen ließ die regelbasierte Bilanz/Reserve-Berechnung komplett aussetzen („wartet auf KI-Anbindung“), obwohl die KI auch hier nie ein Winterlade-Ergebnis liefert. Die regelbasierte Winter-Netzladeplanung läuft jetzt unabhängig vom KI-Governance-Häkchen, analog zum Heizstab-Fix."

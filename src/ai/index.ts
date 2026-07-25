@@ -4,17 +4,19 @@ import { aiConfigFromAdapter } from "./config";
 import { ensureAiStates } from "./ensure_states";
 import { createOpenAiProvider } from "./openai_provider";
 import { runAiOptimizationNow, type AiRunHost, type AiRunOutcome } from "./run";
+import { aiTriggerDigestPayload } from "./trigger_digest";
 
 export { ensureAiStates } from "./ensure_states";
 export { AI_STATES } from "./ensure_states";
 export { aiConfigFromAdapter, AI_ALLOWED_MODELS, AI_DEFAULT_MODEL, AI_DEFAULT_MAX_CALLS_PER_DAY } from "./config";
 export { resolveAllowedAddonIds } from "./context";
+export { aiTriggerDigestPayload } from "./trigger_digest";
 export type { AiRunHost, AiRunOutcome } from "./run";
 
-let lastReactedRevision = -1;
+let lastTriggerDigestPayload = "";
 
 export function resetAiPipelineHookForTest(): void {
-	lastReactedRevision = -1;
+	lastTriggerDigestPayload = "";
 }
 
 export async function ensureAiStateTree(host: Parameters<typeof ensureAiStates>[0]): Promise<void> {
@@ -22,24 +24,29 @@ export async function ensureAiStateTree(host: Parameters<typeof ensureAiStates>[
 }
 
 /**
- * Wird nach jedem Daily-Plan-Tick aufgerufen. Löst nur bei tatsächlicher Plan-Änderung
- * (neue Revision) einen KI-Versuch aus — nicht bei jedem Tick (Kostenkontrolle, Masterplan §13).
+ * Wird nach jedem Daily-Plan-Tick aufgerufen. Löst NICHT bei jeder Operator-Revision einen
+ * KI-Versuch aus (die wechselt praktisch jeden Tick — Horizont-Roll, Allocation-Fortschritt,
+ * Zehntelgrad-Zittern), sondern nur bei einer grob relevanten Änderung im Sinne von
+ * `aiTriggerDigestPayload` (Add-on-Bedarf startet/endet, Zieltemperatur-Stufe wechselt,
+ * PV-Tagesprognose springt deutlich, Tageswechsel, Global-Mode-Wechsel) — Kostenkontrolle,
+ * Masterplan §13.
  */
 export async function maybeTriggerAiOptimizationOnDailyPlanChange(
 	host: AiRunHost,
 	plan: DailyPlan,
 ): Promise<AiRunOutcome | null> {
 	const cfg = aiConfigFromAdapter(host.config);
+	const digestPayload = aiTriggerDigestPayload(plan);
 	if (!cfg.enabled) {
-		lastReactedRevision = plan.revision;
+		lastTriggerDigestPayload = digestPayload;
 		return null;
 	}
-	if (plan.revision === lastReactedRevision) {
+	if (digestPayload === lastTriggerDigestPayload) {
 		return null;
 	}
-	lastReactedRevision = plan.revision;
+	lastTriggerDigestPayload = digestPayload;
 	const provider = createOpenAiProvider();
-	return runAiOptimizationNow(host, plan, "new_daily_plan", provider);
+	return runAiOptimizationNow(host, plan, "daily_plan_digest_change", provider);
 }
 
 const AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX = "ai.optimize_now_request";

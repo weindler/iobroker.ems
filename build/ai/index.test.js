@@ -54,3 +54,89 @@ const states_js_1 = require("../operator/daily_plan/states.js");
         strict_1.default.equal(store.get(states_js_1.DAILY_PLAN_STATE_IDS.planJson), undefined);
     });
 });
+function minimalPlan(overrides = {}) {
+    return {
+        generatedAt: "2026-07-25T10:00:00.000Z",
+        validUntil: null,
+        revision: 1,
+        date: "2026-07-25",
+        timezone: "Europe/Berlin",
+        slotMinutes: 15,
+        globalMode: "balanced",
+        status: "ready",
+        policySnapshot: {},
+        constraintSnapshot: {},
+        activeContributionIds: [],
+        excludedContributions: [],
+        slots: [],
+        allocations: [],
+        unallocated: [],
+        totals: {
+            pvForecastEnergyKwh: null,
+            fixedHouseLoadEnergyKwh: null,
+            fixedRenewableBalanceKwh: null,
+            flexibleRequestedEnergyKwh: null,
+            flexibleAllocatedEnergyKwh: 0,
+            flexibleUnallocatedEnergyKwh: null,
+            pvAllocatedEnergyKwh: 0,
+            gridAllocatedEnergyKwh: 0,
+            batteryChargeEnergyKwh: 0,
+            wallboxEnergyKwh: 0,
+            immersionHeaterEnergyKwh: 0,
+            airConditioningEnergyKwh: 0,
+            estimatedGridCostCt: null,
+            mandatoryRequestedEnergyKwh: null,
+            mandatoryAllocatedEnergyKwh: 0,
+            mandatoryUnallocatedEnergyKwh: null,
+        },
+        quality: { status: "valid", confidencePct: 100, reasonDe: "" },
+        reasonDe: "Testplan",
+        ...overrides,
+    };
+}
+function mockRunHost(config) {
+    const store = new Map();
+    return {
+        config,
+        store,
+        log: { debug() { }, warn() { }, error() { } },
+        async getStateAsync(id) {
+            const val = store.get(id);
+            return val === undefined ? null : { val, ack: true };
+        },
+        async setStateAsync(id, state) {
+            store.set(id, state.val);
+        },
+    };
+}
+(0, node_test_1.describe)("maybeTriggerAiOptimizationOnDailyPlanChange — digest-based throttling", () => {
+    (0, node_test_1.it)("does not trigger again when only revision/slots change but the coarse digest stays equal", async () => {
+        (0, index_js_1.resetAiPipelineHookForTest)();
+        const host = mockRunHost({ ai_enabled: true, immersion_heater_enabled: true, immersion_heater_ai_optimization_allowed: true });
+        const first = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ revision: 1 }));
+        strict_1.default.ok(first !== null);
+        strict_1.default.equal(first?.status, "no_token");
+        const second = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ revision: 2, slots: [] }));
+        strict_1.default.equal(second, null);
+    });
+    (0, node_test_1.it)("triggers again once the coarse digest changes (e.g. flexible demand jumps by more than one bucket)", async () => {
+        (0, index_js_1.resetAiPipelineHookForTest)();
+        const host = mockRunHost({ ai_enabled: true, immersion_heater_enabled: true, immersion_heater_ai_optimization_allowed: true });
+        const first = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 1 } }));
+        strict_1.default.ok(first !== null);
+        const second = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 5 } }));
+        strict_1.default.ok(second !== null);
+    });
+    (0, node_test_1.it)("while disabled, tracks the digest so re-enabling with the same unchanged plan doesn't immediately fire", async () => {
+        (0, index_js_1.resetAiPipelineHookForTest)();
+        const disabledHost = mockRunHost({ ai_enabled: false });
+        const plan = minimalPlan({ revision: 1 });
+        const whileDisabled = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(disabledHost, plan);
+        strict_1.default.equal(whileDisabled, null);
+        const enabledHost = mockRunHost({ ai_enabled: true, immersion_heater_enabled: true, immersion_heater_ai_optimization_allowed: true });
+        const afterEnableUnchanged = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(enabledHost, plan);
+        strict_1.default.equal(afterEnableUnchanged, null);
+        const afterEnableChanged = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(enabledHost, minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 5 } }));
+        strict_1.default.ok(afterEnableChanged !== null);
+    });
+});

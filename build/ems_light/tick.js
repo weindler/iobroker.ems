@@ -103,11 +103,21 @@ async function runEmsLightPhase1Tick(host) {
             hints.push(`forecast_plan: ${String(e)}`);
         }
         if (forecastPlan) {
+            let plan = null;
             try {
-                await runDailyPlanTick(host, forecastPlan);
+                plan = await runDailyPlanTick(host, forecastPlan);
             }
             catch (e) {
                 hints.push(`daily_plan: ${String(e)}`);
+            }
+            if (plan) {
+                try {
+                    const { maybeTriggerAiOptimizationOnDailyPlanChange } = await Promise.resolve().then(() => __importStar(require("../ai/index.js")));
+                    await maybeTriggerAiOptimizationOnDailyPlanChange(host, plan);
+                }
+                catch (e) {
+                    hints.push(`ai_optimization: ${String(e)}`);
+                }
             }
         }
     }

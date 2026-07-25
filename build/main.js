@@ -335,6 +335,58 @@ class Ems extends utils.Adapter {
             })();
             return;
         }
+        if (obj.command === "getAiStatus") {
+            void (async () => {
+                try {
+                    const { AI_STATES } = await Promise.resolve().then(() => __importStar(require("./ai/index.js")));
+                    const status = String((await this.getStateAsync(AI_STATES.status))?.val ?? "off");
+                    const callsToday = Number((await this.getStateAsync(AI_STATES.callsToday))?.val ?? 0);
+                    const callsLimit = Number((await this.getStateAsync(AI_STATES.callsLimit))?.val ?? 0);
+                    const costToday = Number((await this.getStateAsync(AI_STATES.costEstimateTodayEur))?.val ?? 0);
+                    const lastRunAt = String((await this.getStateAsync(AI_STATES.lastRunAt))?.val ?? "");
+                    const lastReason = String((await this.getStateAsync(AI_STATES.lastReasonDe))?.val ?? "");
+                    if (obj.callback) {
+                        this.sendTo(obj.from, obj.command, {
+                            result: "ok",
+                            status,
+                            hint: `Status: ${status} — Aufrufe heute: ${callsToday}/${callsLimit} — ` +
+                                `≈ ${costToday.toFixed(4)} € heute${lastRunAt ? ` — letzter Lauf ${lastRunAt}` : ""}` +
+                                (lastReason ? ` — ${lastReason}` : ""),
+                        }, obj.callback);
+                    }
+                }
+                catch (e) {
+                    const error = e instanceof Error ? e.message : String(e);
+                    if (obj.callback) {
+                        this.sendTo(obj.from, obj.command, { result: "error", error }, obj.callback);
+                    }
+                }
+            })();
+            return;
+        }
+        if (obj.command === "aiOptimizeNow") {
+            void (async () => {
+                try {
+                    const { runAiOptimizationManual } = await Promise.resolve().then(() => __importStar(require("./ai/index.js")));
+                    const outcome = await runAiOptimizationManual(this);
+                    if (obj.callback) {
+                        this.sendTo(obj.from, obj.command, {
+                            result: outcome.status === "ready" || outcome.status === "error" ? "ok" : "skipped",
+                            status: outcome.status,
+                            hint: outcome.reasonDe,
+                        }, obj.callback);
+                    }
+                }
+                catch (e) {
+                    const error = e instanceof Error ? e.message : String(e);
+                    this.log.error(`aiOptimizeNow: ${error}`);
+                    if (obj.callback) {
+                        this.sendTo(obj.from, obj.command, { result: "error", error }, obj.callback);
+                    }
+                }
+            })();
+            return;
+        }
         if (obj.command === "restoreApply") {
             void (async () => {
                 try {
@@ -493,6 +545,11 @@ class Ems extends utils.Adapter {
             }
             if ((0, handler_1.isRestoreRelatedState)(rel)) {
                 await (0, handler_1.handleRestoreStateChange)(this, rel, state.val, state.ack);
+                return;
+            }
+            const { isAiRelatedState, handleAiStateChange } = await Promise.resolve().then(() => __importStar(require("./ai/index.js")));
+            if (isAiRelatedState(rel)) {
+                await handleAiStateChange(this, rel, state.val, state.ack);
                 return;
             }
             await (0, execution_mode_1.handleExecutionModeStateChange)(this, id, state);

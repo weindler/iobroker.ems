@@ -1,9 +1,19 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.184",
+		"version": "0.1.185",
 		"dataFolder": "ems.%INSTANCE%",
+		"encryptedNative": [
+			"ai_openai_api_key"
+		],
+		"protectedNative": [
+			"ai_openai_api_key"
+		],
 		"news": {
+			"0.1.185": {
+				"en": "New (optional, off by default): AI plan-optimization skeleton. Global tab gets an off-by-default toggle, an OpenAI model whitelist (default gpt-4.1-mini), an encrypted API token field, a daily call limit (soft warning at 80%), and a manual \"Optimize now\" button. The AI only ever proposes short notes for add-ons that are both active and individually AI-allowed (see the existing per-add-on checkboxes); it never writes to devices, never changes policies, and never touches an add-on without that flag. Every failure (no token, limit reached, timeout, invalid response) leaves the deterministic Daily Plan completely untouched — this is a foundation, not yet real optimization logic. The token is encrypted via js-controller and excluded from Backup/Support exports like all other secrets.",
+				"de": "Neu (optional, standardmäßig aus): Gerüst für KI-Plan-Optimierung. Der Global-Tab bekommt einen standardmäßig deaktivierten Schalter, eine OpenAI-Modell-Whitelist (Standard gpt-4.1-mini), ein verschlüsseltes API-Token-Feld, ein Tageslimit für Aufrufe (Soft-Warnung ab 80%) und einen manuellen „Jetzt optimieren“-Button. Die KI gibt ausschließlich kurze Hinweise zu Add-ons, die sowohl aktiv als auch einzeln per Checkbox für KI-Optimierung freigegeben sind; sie schreibt nie auf Geräte, ändert nie Policies und fasst kein nicht freigegebenes Add-on an. Jeder Fehlschlag (kein Token, Limit erreicht, Timeout, ungültige Antwort) lässt den deterministischen Daily Plan komplett unverändert — das ist ein Gerüst, noch keine echte Optimierungslogik. Der Token wird über den js-controller verschlüsselt gespeichert und wie alle anderen Secrets aus Backup-/Support-Exporten ausgeschlossen."
+			},
 			"0.1.184": {
 				"en": "Diagnostics: when a Price-Forecast-Freeze finds no usable slots (\"keine Slots für ...\"), the warning now also logs the source state's raw type/row count, how many rows were rejected and why, and which dates were actually found vs. the date being searched for. No behavior change — this only adds detail to the existing warning to find the root cause of the recurring \"keine Slots\" issue reported by some users despite the source data appearing populated.",
 				"de": "Diagnose: Wenn ein Price-Forecast-Freeze keine verwertbaren Slots findet („keine Slots für ...“), protokolliert die Warnung jetzt zusätzlich Rohtyp/Zeilenzahl der Quelle, wie viele Zeilen aus welchem Grund verworfen wurden und welche Tage tatsächlich gefunden wurden vs. dem gesuchten Tag. Kein Verhaltensunterschied — nur zusätzliche Details in der bestehenden Warnung, um die Ursache des von manchen Nutzern gemeldeten wiederkehrenden „keine Slots“-Problems zu finden, obwohl die Quelldaten befüllt scheinen."

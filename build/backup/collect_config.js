@@ -28,6 +28,7 @@ const ALLOWED_PREFIXES = [
     "thermal_",
     "tariff_",
     "dt_",
+    "ai_",
 ];
 const ALLOWED_EXACT = new Set(["mapping", "wb_vehicle_profiles"]);
 /** Explizite Fahrzeugprofil-Felder (kein „alle Felder außer Secrets“). */

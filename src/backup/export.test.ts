@@ -175,6 +175,19 @@ describe("backup export v0.1.141", () => {
 		assert.equal(out.random_unknown_field, undefined);
 	});
 
+	it("allowlist keeps non-secret ai_ config but drops the OpenAI token", () => {
+		const out = filterAllowlistedConfig({
+			ai_enabled: true,
+			ai_model: "gpt-4.1-mini",
+			ai_max_calls_per_day: 20,
+			ai_openai_api_key: "sk-should-never-leave-the-adapter",
+		});
+		assert.equal(out.ai_enabled, true);
+		assert.equal(out.ai_model, "gpt-4.1-mini");
+		assert.equal(out.ai_max_calls_per_day, 20);
+		assert.equal(out.ai_openai_api_key, undefined);
+	});
+
 	it("vehicle profile allowlist drops unknown and nested fields", () => {
 		const row = filterVehicleProfileRow({
 			vehicle_id: "car_1",

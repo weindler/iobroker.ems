@@ -142,6 +142,8 @@ export async function ensureEmsLightStateTree(adapter: ioBroker.Adapter): Promis
 	const policyHost = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & PolicyEngineHost);
 	await ensurePolicyStateTree(policyHost);
 	await ensureIntentStates(buildIntentHost(adapter));
+	const { ensureAiStateTree } = await import("../ai/index.js");
+	await ensureAiStateTree(host);
 	learningHost = await ensureLearningStateTree(adapter);
 }
 

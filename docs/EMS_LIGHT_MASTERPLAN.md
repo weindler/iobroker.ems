@@ -1,7 +1,7 @@
 # EMS-Light – Verbindlicher Masterplan
 
 **Status:** Gültig ab 28.06.2026  
-**Aktualisierung:** 23.07.2026 — Operator-Pfad (Forecast/Daily Plan) produktiv; schwerer Planner-Shadow/Takeover-Codestack seit v0.1.181 vollständig entfernt (nicht mehr nur abgeschaltet). KI weiterhin optional/ungebaut. Index: `docs/README.md`.
+**Aktualisierung:** 25.07.2026 — Operator-Pfad (Forecast/Daily Plan) produktiv; schwerer Planner-Shadow/Takeover-Codestack seit v0.1.181 vollständig entfernt (nicht mehr nur abgeschaltet). KI seit v0.1.185 als Gerüst vorhanden (`src/ai/`, standardmäßig aus, siehe Abschnitt 13) — echte Optimierungslogik weiterhin offen. Index: `docs/README.md`.
 
 ---
 
@@ -399,6 +399,12 @@ monthly_cost_limit
 minimum_replan_interval
 replan_only_on_material_change
 ```
+
+> **Stand (v0.1.185):** Gerüst implementiert (`src/ai/`) — `ai_enabled`, `ai_model` (Whitelist), `ai_openai_api_key`
+> (verschlüsselt), `ai_max_calls_per_day` (Soft-Warnung 80%) im Global-Tab. Aufruf nur bei neuer Daily-Plan-Revision
+> oder manuell über „Jetzt optimieren“ — `monthly_cost_limit` und `minimum_replan_interval` sind noch nicht umgesetzt.
+> Die KI liefert bislang nur beobachtende Text-Hinweise (`ai.last_reason_de`), schreibt nichts in Allocation/Intent
+> zurück — echte Optimierungslogik (Abschnitt 4) ist ein separater, noch offener Schritt.
 
 ---
 

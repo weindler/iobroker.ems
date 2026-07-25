@@ -44,6 +44,116 @@
 					"xl": 12,
 					"text": "Der schwere Planner-Shadow/Takeover-Pfad ist in dieser Produktion abgeschaltet. EMS steuert über Failsafe + Daily-Plan-Logik. Später kann KI pro Add-on (mit Freigabe) Pläne optimieren — ohne direkte Geräte-Writes."
 				},
+				"hAiOptimization": {
+					"type": "header",
+					"size": 2,
+					"text": "KI-Optimierung (optional, standardmäßig aus)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"aiOptimizationIntro": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "EMS-Light funktioniert vollständig ohne KI. Wenn aktiviert, darf die KI nur Add-ons vorschlagsweise optimieren, die unten UND aktiv UND einzeln per „KI-Optimierung erlaubt“ freigegeben sind — sie schreibt nie auf Geräte, ändert nie Policies. Aufruf nur bei neuem Tagesplan (nicht bei jedem Tick) oder per Knopf unten. Kostenschätzung ist grob (Preisliste im Adapter, keine Live-Abrechnung)."
+				},
+				"ai_enabled": {
+					"type": "checkbox",
+					"label": "KI global aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ai_model": {
+					"type": "select",
+					"label": "Modell",
+					"default": "gpt-4.1-mini",
+					"options": [
+						{ "label": "GPT-4.1 mini (günstig, empfohlen)", "value": "gpt-4.1-mini" },
+						{ "label": "GPT-4o mini (günstig)", "value": "gpt-4o-mini" },
+						{ "label": "GPT-5 mini", "value": "gpt-5-mini" },
+						{ "label": "GPT-4.1", "value": "gpt-4.1" }
+					],
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ai_openai_api_key": {
+					"type": "password",
+					"label": "OpenAI API-Token",
+					"default": "",
+					"help": "Wird verschlüsselt gespeichert und nie in Backup-/Support-Exporten mitgeschickt.",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ai_max_calls_per_day": {
+					"type": "number",
+					"label": "Max. KI-Aufrufe/Tag",
+					"default": 20,
+					"min": 1,
+					"max": 500,
+					"help": "Soft-Warnung ab 80% des Limits. Jeder Aufruf (auch Fehler) zählt.",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"aiOptimizeNowBtn": {
+					"type": "sendTo",
+					"command": "aiOptimizeNow",
+					"jsonData": "{}",
+					"label": "Jetzt optimieren",
+					"help": "Löst sofort einen einzelnen KI-Versuch aus (zählt gegen das Tageslimit) — zum Testen. Ergebnis unter ai.* im Objektbaum.",
+					"showProcess": true,
+					"timeout": 30000,
+					"variant": "contained",
+					"color": "secondary",
+					"icon": "send",
+					"result": {
+						"ok": "KI-Versuch abgeschlossen — Details unter ai.* im Objektbaum",
+						"error": "KI-Versuch fehlgeschlagen — Details unter ai.last_error"
+					},
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"getAiStatusBtn": {
+					"type": "sendTo",
+					"command": "getAiStatus",
+					"jsonData": "{}",
+					"label": "Status prüfen",
+					"help": "Zeigt Status, Aufrufe heute, Kostenschätzung — ohne einen Call auszulösen.",
+					"showProcess": true,
+					"timeout": 15000,
+					"variant": "outlined",
+					"icon": "info",
+					"result": {
+						"ok": "Status gelesen — Details unter ai.* im Objektbaum",
+						"error": "Status nicht lesbar"
+					},
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
 				"hGlobalFailsafe": {
 					"type": "header",
 					"size": 2,

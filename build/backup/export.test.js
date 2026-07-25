@@ -151,6 +151,18 @@ class ExportTestHost {
         strict_1.default.equal(out.password, undefined);
         strict_1.default.equal(out.random_unknown_field, undefined);
     });
+    (0, node_test_1.it)("allowlist keeps non-secret ai_ config but drops the OpenAI token", () => {
+        const out = (0, collect_config_js_1.filterAllowlistedConfig)({
+            ai_enabled: true,
+            ai_model: "gpt-4.1-mini",
+            ai_max_calls_per_day: 20,
+            ai_openai_api_key: "sk-should-never-leave-the-adapter",
+        });
+        strict_1.default.equal(out.ai_enabled, true);
+        strict_1.default.equal(out.ai_model, "gpt-4.1-mini");
+        strict_1.default.equal(out.ai_max_calls_per_day, 20);
+        strict_1.default.equal(out.ai_openai_api_key, undefined);
+    });
     (0, node_test_1.it)("vehicle profile allowlist drops unknown and nested fields", () => {
         const row = (0, collect_config_js_1.filterVehicleProfileRow)({
             vehicle_id: "car_1",

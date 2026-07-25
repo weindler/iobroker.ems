@@ -1,6 +1,6 @@
 # EMS-Light — Dokumentation
 
-**Adapter:** `iobroker.ems` · **Stand:** v0.1.181 (Juli 2026)
+**Adapter:** `iobroker.ems` · **Stand:** v0.1.185 (Juli 2026)
 
 ## Zentrale Dokumente
 
@@ -38,6 +38,10 @@ Schwerer Planner-Shadow/Takeover ist seit v0.1.181 **vollständig aus dem Code e
 | [EMS_LIGHT_BATTERY_DAILY_PLAN_RUNTIME.md](./EMS_LIGHT_BATTERY_DAILY_PLAN_RUNTIME.md) | Batterie + Daily Plan |
 | [EMS_LIGHT_IMMERSION_DAILY_PLAN_RUNTIME.md](./EMS_LIGHT_IMMERSION_DAILY_PLAN_RUNTIME.md) | Heizstab |
 | [EMS_LIGHT_AC_DAILY_PLAN_RUNTIME.md](./EMS_LIGHT_AC_DAILY_PLAN_RUNTIME.md) | Klima |
+
+## KI-Optimierung (optional, `src/ai/`)
+
+Seit v0.1.185: Gerüst, standardmäßig aus. Global-Tab: An/Aus, OpenAI-Modell-Whitelist (Default `gpt-4.1-mini`), verschlüsseltes Token (`encryptedNative`), Tageslimit (Soft-Warnung ab 80%), manueller „Jetzt optimieren“-Button. Aufruf nur bei neuer Daily-Plan-Revision oder manuell — nicht bei jedem Tick. Die KI liefert nur kurze Text-Hinweise zu Add-ons, die aktiv UND einzeln „KI-Optimierung erlaubt“ sind; sie schreibt nichts in die Allocation zurück (noch keine echte Optimierungslogik, siehe Masterplan §4/§13). Fail-closed bei fehlendem Token, Limit, Timeout oder ungültiger Antwort. Token nie im Backup/Support-Export (automatisch über `isSecretKey`/`ALLOWED_PREFIXES` in `src/backup/collect_config.ts`).
 
 ## Backup / Restore
 

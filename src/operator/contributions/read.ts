@@ -6,7 +6,9 @@ import { PV_HORIZON_EXTENDED_FIRST_DAY, PV_HORIZON_DAY_COUNT } from "../../learn
 import type { DayForecastJson } from "../../learning/house_load/types";
 import type { GridSupplyForecast } from "../types";
 import { addDaysToDateKey, localDateKeyInTimezone } from "../time";
-import { buildPvContribution, type PvContributionBuildInput, type PvHorizonDayInput } from "./pv";
+import { buildPvContribution, type PvContributionBuildInput, type PvHorizonDayInput, type PvShapeInput } from "./pv";
+import type { PvShapeHourPoint } from "./pv_shape";
+import { pvShapeConfigFromAdapter, pvShapeConfigReady } from "./pv_shape_config";
 import { buildHouseLoadContribution } from "./house_load";
 import { buildWeatherContribution, type WeatherHourlyPoint } from "./weather";
 import {
@@ -19,7 +21,10 @@ import type { PlanContribution } from "../types";
 import { collectGridSupplyBuildInput, type GridSupplyReadHost } from "../supply/grid_read";
 import { buildGridSupplyForecast } from "../supply/grid";
 
-export type ContributionsReadHost = GridSupplyReadHost & StateHost;
+export type ContributionsReadHost = GridSupplyReadHost &
+	StateHost & {
+		getForeignObjectAsync?: (id: string) => Promise<ioBroker.Object | null | undefined>;
+	};
 
 async function readNum(host: ContributionsReadHost, relId: string): Promise<number | null> {
 	try {
@@ -48,6 +53,87 @@ async function readForeignNum(host: ContributionsReadHost, stateId: string): Pro
 	} catch {
 		return null;
 	}
+}
+
+async function readForeignStr(host: ContributionsReadHost, stateId: string): Promise<string | null> {
+	if (!stateId.trim()) return null;
+	try {
+		const st = await host.getForeignStateAsync?.(stateId);
+		if (st?.val == null || st.val === "") return null;
+		return String(st.val);
+	} catch {
+		return null;
+	}
+}
+
+/** `system.config.common.latitude/longitude` — kein erfundener Standort ohne diesen Eintrag. */
+async function readSystemLocation(
+	host: ContributionsReadHost,
+): Promise<{ lat: number | null; lon: number | null }> {
+	try {
+		const obj = await host.getForeignObjectAsync?.("system.config");
+		const common = (obj as { common?: Record<string, unknown> } | null | undefined)?.common;
+		const lat = typeof common?.latitude === "number" && Number.isFinite(common.latitude) ? common.latitude : null;
+		const lon = typeof common?.longitude === "number" && Number.isFinite(common.longitude) ? common.longitude : null;
+		return { lat, lon };
+	} catch {
+		return { lat: null, lon: null };
+	}
+}
+
+const PV_SHAPE_HOURLY_PROBE_COUNT = 24;
+
+/**
+ * Liest ein BrightSky-artiges rollierendes Stunden-Array (`prefix.NN.timestamp/.cloud_cover/.solar_estimate`).
+ * Andere Wetteradapter mit abweichender Struktur liefern hier einfach keine Treffer (fail-closed, kein Fallback).
+ */
+async function readPvShapeHourlyPoints(
+	host: ContributionsReadHost,
+	prefix: string,
+): Promise<PvShapeHourPoint[]> {
+	if (!prefix.trim()) return [];
+	const indices = Array.from({ length: PV_SHAPE_HOURLY_PROBE_COUNT }, (_, i) => String(i).padStart(2, "0"));
+	const rows = await Promise.all(
+		indices.map(async (idx) => {
+			const base = `${prefix}.${idx}`;
+			const [timestampRaw, cloudPct, solarEstimateKwh] = await Promise.all([
+				readForeignStr(host, `${base}.timestamp`),
+				readForeignNum(host, `${base}.cloud_cover`),
+				readForeignNum(host, `${base}.solar_estimate`),
+			]);
+			if (!timestampRaw) return null;
+			const ms = Date.parse(timestampRaw);
+			if (!Number.isFinite(ms)) return null;
+			const point: PvShapeHourPoint = { hourStartIso: new Date(ms).toISOString(), cloudPct, solarEstimateKwh };
+			return point;
+		}),
+	);
+	return rows.filter((r): r is PvShapeHourPoint => r !== null);
+}
+
+async function readPvShapeInput(
+	host: ContributionsReadHost,
+	timezone: string,
+): Promise<PvShapeInput | null> {
+	const cfg = pvShapeConfigFromAdapter(host.config);
+	if (!pvShapeConfigReady(cfg)) return null;
+
+	const [location, hourlyPoints, kwp1, kwp2] = await Promise.all([
+		readSystemLocation(host),
+		readPvShapeHourlyPoints(host, cfg.brightskyHourlyPrefix),
+		readForeignNum(host, cfg.kwpState1),
+		readForeignNum(host, cfg.kwpState2),
+	]);
+
+	const capW = kwp1 !== null || kwp2 !== null ? Math.round(((kwp1 ?? 0) + (kwp2 ?? 0)) * 1000) : null;
+
+	return {
+		timezone,
+		latDeg: location.lat,
+		lonDeg: location.lon,
+		hourlyPoints,
+		capW,
+	};
 }
 
 export function parseHouseLoadForecastJson(raw: string | null): DayForecastJson | null {
@@ -160,6 +246,8 @@ export async function collectContributions(
 	horizonDays[1].correctedKwh = correctedTomorrowKwh;
 	horizonDays[1].confidencePct = pvConfidence;
 
+	const pvShape = await readPvShapeInput(host, timezone);
+
 	const pvInput: PvContributionBuildInput = {
 		now,
 		correctedTodayKwh,
@@ -171,6 +259,7 @@ export async function collectContributions(
 		lastUpdateTs: pvLastUpdate,
 		source: "learning.pv_bias",
 		horizonDays,
+		shape: pvShape,
 	};
 
 	const weatherCfg = weatherConfigFromAdapter(host.config);

@@ -15,6 +15,11 @@ const slots_1 = require("./slots");
 const allocation_1 = require("./allocation");
 const build_1 = require("./build");
 const constraints_2 = require("./constraints");
+const build_2 = require("../forecast/build");
+const pv_1 = require("../contributions/pv");
+const house_load_1 = require("../contributions/house_load");
+const weather_1 = require("../contributions/weather");
+const constraints_3 = require("../contributions/constraints");
 const NOW = new Date("2026-07-11T10:07:00.000Z");
 const TZ = "UTC";
 function flexContribution(contributionId, addonId, overrides = {}) {
@@ -113,6 +118,113 @@ function minimalForecast(overrides = {}) {
     });
     (0, node_test_1.it)("effective import limit uses minimum of limits", () => {
         strict_1.default.equal((0, constraints_1.effectiveImportLimitW)(11000, 9000), 9000);
+    });
+});
+(0, node_test_1.describe)("daily plan end-to-end: PV shape + house-load segments reach Daily Plan slots", () => {
+    (0, node_test_1.it)("regression: pvForecastPowerW/fixedHouseLoadPowerW are no longer null once PV shape + house-load segments are configured", () => {
+        const now = new Date("2026-07-11T10:00:00.000Z");
+        const tz = "UTC";
+        const pv = (0, pv_1.buildPvContribution)({
+            now,
+            correctedTodayKwh: 15,
+            correctedTomorrowKwh: 18,
+            rawTodayKwh: 14,
+            rawTomorrowKwh: 17,
+            confidencePct: 80,
+            status: "ready",
+            lastUpdateTs: now.toISOString(),
+            source: "learning.pv_bias",
+            horizonDays: [
+                { dayIndex: 0, dateKey: "2026-07-11", correctedKwh: 15, confidencePct: 80 },
+                { dayIndex: 1, dateKey: "2026-07-12", correctedKwh: 18, confidencePct: 80 },
+            ],
+            shape: { timezone: tz, latDeg: 48.14, lonDeg: 11.58, hourlyPoints: [], capW: null },
+        });
+        const house = (0, house_load_1.buildHouseLoadContribution)({
+            now,
+            timezone: tz,
+            status: "ready",
+            confidence: 70,
+            forecastToday: {
+                date: "2026-07-11",
+                season: "summer",
+                weekday: "saturday",
+                day_type: "weekend",
+                segments: {
+                    midday: { avg_w: 800, source: "p", fallback_level: "none", confidence: 70 },
+                    afternoon: { avg_w: 600, source: "p", fallback_level: "none", confidence: 70 },
+                    evening: { avg_w: 400, source: "p", fallback_level: "none", confidence: 70 },
+                },
+            },
+            forecastTomorrow: null,
+            lastUpdate: now.toISOString(),
+        });
+        const weather = (0, weather_1.buildWeatherContribution)({
+            now,
+            learningStatus: "ready",
+            learningHealth: "ok",
+            confidencePct: 90,
+            lastUpdate: now.toISOString(),
+            forecastSource: "test",
+            actualSource: "test",
+            outdoorTempC: 22,
+            cloudPct: 10,
+            hourlyPoints: [],
+            todayMinTempC: 18,
+            todayMaxTempC: 24,
+            tomorrowMinTempC: null,
+            tomorrowMaxTempC: null,
+            forecastHorizonStart: now.toISOString(),
+            forecastHorizonEnd: null,
+        });
+        const grid = (0, constraints_3.buildGridSupplyContribution)({
+            generatedAt: now.toISOString(),
+            validUntil: null,
+            source: "dynamic_tariff",
+            currentPriceCtPerKwh: 24,
+            gridImportAllowed: true,
+            configuredMaxGridImportW: 11000,
+            configuredHouseFuseLimitW: 13800,
+            effectiveMaxGridImportW: 11000,
+            slots: [
+                {
+                    startIso: "2026-07-11T10:00:00.000Z",
+                    endIso: "2026-07-11T10:15:00.000Z",
+                    priceCtPerKwh: 20,
+                    importAllowed: true,
+                    maxImportPowerW: 11000,
+                    priceLabel: "normal",
+                    quality: (0, quality_1.operatorQuality)("valid", "OK"),
+                },
+            ],
+            quality: (0, quality_1.operatorQuality)("valid", "Grid OK"),
+            reasonDe: "Grid OK",
+        });
+        const forecastPlan = (0, build_2.buildForecastPlan)({ now, timezone: tz, contributions: [pv, house, weather, grid] });
+        strict_1.default.equal(forecastPlan.status, "ready");
+        const plan = (0, build_1.buildDailyPlanFromForecast)(now, tz, "balanced", forecastPlan, {
+            policySnapshot: null,
+            energyPriority: [],
+            mutualExclusions: [],
+            gridImportAllowedPolicy: true,
+            effectiveMaxGridImportW: 11000,
+            configuredHouseFuseLimitW: 13800,
+            modePolicy: { mode: "balanced", allowOptimization: true },
+        });
+        const firstSlot = plan.slots[0];
+        strict_1.default.equal(firstSlot.slot.startIso, "2026-07-11T10:00:00.000Z");
+        strict_1.default.notEqual(firstSlot.pvForecastPowerW, null);
+        strict_1.default.notEqual(firstSlot.fixedHouseLoadPowerW, null);
+        strict_1.default.equal(firstSlot.fixedHouseLoadPowerW, 800);
+        strict_1.default.notEqual(firstSlot.fixedBalancePowerW, null);
+        strict_1.default.notEqual(firstSlot.availablePvSurplusPowerW, null);
+        // Jeder 15-Min-Slot übernimmt den Wert seines umschließenden Segments (10-14 Uhr, 14-18 Uhr, 18-24 Uhr) —
+        // kein Slot bleibt mehr null, obwohl die Quelle nur Mehrstunden-Segmente liefert.
+        for (const s of plan.slots) {
+            const hourUtc = new Date(s.slot.startIso).getUTCHours();
+            const expected = hourUtc < 14 ? 800 : hourUtc < 18 ? 600 : 400;
+            strict_1.default.equal(s.fixedHouseLoadPowerW, expected, `slot ${s.slot.startIso} should inherit its segment value`);
+        }
     });
 });
 (0, node_test_1.describe)("daily plan forecast merge across resolutions", () => {

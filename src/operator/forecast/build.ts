@@ -198,6 +198,18 @@ function buildSlots(
 		});
 	}
 
+	for (const s of pv?.slots ?? []) {
+		if (!s.available) continue;
+		upsert(s.slot.startIso, s.slot.endIso, {
+			pvPowerW: s.preferredPowerW ?? null,
+			quality: mergeOperatorQuality(
+				byKey.get(slotKey(s.slot.startIso, s.slot.endIso))?.quality ?? operatorQuality("missing", ""),
+				s.quality,
+			),
+			reasonDe: "PV-Form-Slot (Sonnenstand/Wetter).",
+		});
+	}
+
 	for (const s of house?.slots ?? []) {
 		const power = s.preferredPowerW;
 		upsert(s.slot.startIso, s.slot.endIso, {

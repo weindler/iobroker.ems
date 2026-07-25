@@ -1,6 +1,6 @@
 # EMS-Light — Daily Plan und Allocation Engine
 
-**Stand:** v0.1.187
+**Stand:** v0.1.188
 
 ## 1. Zweck des Daily Plans
 
@@ -71,7 +71,8 @@ umschließt (`src/operator/daily_plan/constraints.ts`, `buildForecastFieldIndex`
 `lookupContaining`) — kein exakter Key-Match mehr. Dadurch übernimmt jeder 15-Min-Slot
 innerhalb eines Segments dessen Wert, ohne dass die Segment-Baseline künstlich feiner
 aufgelöst wird. PV-Leistung pro Slot bleibt weiterhin `null`, solange keine 15-Min-PV-Quelle
-existiert (siehe `docs/EMS_LIGHT_FORECAST_PLAN.md`).
+konfiguriert ist — seit v0.1.188 optional verfügbar über die wetterbasierte PV-Kurve
+(siehe `docs/EMS_LIGHT_FORECAST_PLAN.md`, Abschnitt „PV-Kurve pro 15-Min-Slot“).
 
 ## 6. PV- und Grid-Verfügbarkeit
 

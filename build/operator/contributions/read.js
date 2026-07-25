@@ -7,6 +7,7 @@ const config_2 = require("../../learning/weather/config");
 const constants_1 = require("../../learning/pv_horizon/constants");
 const time_1 = require("../time");
 const pv_1 = require("./pv");
+const pv_shape_config_1 = require("./pv_shape_config");
 const house_load_1 = require("./house_load");
 const weather_1 = require("./weather");
 const constraints_1 = require("./constraints");
@@ -42,6 +43,77 @@ async function readForeignNum(host, stateId) {
     catch {
         return null;
     }
+}
+async function readForeignStr(host, stateId) {
+    if (!stateId.trim())
+        return null;
+    try {
+        const st = await host.getForeignStateAsync?.(stateId);
+        if (st?.val == null || st.val === "")
+            return null;
+        return String(st.val);
+    }
+    catch {
+        return null;
+    }
+}
+/** `system.config.common.latitude/longitude` — kein erfundener Standort ohne diesen Eintrag. */
+async function readSystemLocation(host) {
+    try {
+        const obj = await host.getForeignObjectAsync?.("system.config");
+        const common = obj?.common;
+        const lat = typeof common?.latitude === "number" && Number.isFinite(common.latitude) ? common.latitude : null;
+        const lon = typeof common?.longitude === "number" && Number.isFinite(common.longitude) ? common.longitude : null;
+        return { lat, lon };
+    }
+    catch {
+        return { lat: null, lon: null };
+    }
+}
+const PV_SHAPE_HOURLY_PROBE_COUNT = 24;
+/**
+ * Liest ein BrightSky-artiges rollierendes Stunden-Array (`prefix.NN.timestamp/.cloud_cover/.solar_estimate`).
+ * Andere Wetteradapter mit abweichender Struktur liefern hier einfach keine Treffer (fail-closed, kein Fallback).
+ */
+async function readPvShapeHourlyPoints(host, prefix) {
+    if (!prefix.trim())
+        return [];
+    const indices = Array.from({ length: PV_SHAPE_HOURLY_PROBE_COUNT }, (_, i) => String(i).padStart(2, "0"));
+    const rows = await Promise.all(indices.map(async (idx) => {
+        const base = `${prefix}.${idx}`;
+        const [timestampRaw, cloudPct, solarEstimateKwh] = await Promise.all([
+            readForeignStr(host, `${base}.timestamp`),
+            readForeignNum(host, `${base}.cloud_cover`),
+            readForeignNum(host, `${base}.solar_estimate`),
+        ]);
+        if (!timestampRaw)
+            return null;
+        const ms = Date.parse(timestampRaw);
+        if (!Number.isFinite(ms))
+            return null;
+        const point = { hourStartIso: new Date(ms).toISOString(), cloudPct, solarEstimateKwh };
+        return point;
+    }));
+    return rows.filter((r) => r !== null);
+}
+async function readPvShapeInput(host, timezone) {
+    const cfg = (0, pv_shape_config_1.pvShapeConfigFromAdapter)(host.config);
+    if (!(0, pv_shape_config_1.pvShapeConfigReady)(cfg))
+        return null;
+    const [location, hourlyPoints, kwp1, kwp2] = await Promise.all([
+        readSystemLocation(host),
+        readPvShapeHourlyPoints(host, cfg.brightskyHourlyPrefix),
+        readForeignNum(host, cfg.kwpState1),
+        readForeignNum(host, cfg.kwpState2),
+    ]);
+    const capW = kwp1 !== null || kwp2 !== null ? Math.round(((kwp1 ?? 0) + (kwp2 ?? 0)) * 1000) : null;
+    return {
+        timezone,
+        latDeg: location.lat,
+        lonDeg: location.lon,
+        hourlyPoints,
+        capW,
+    };
 }
 function parseHouseLoadForecastJson(raw) {
     if (!raw)
@@ -105,6 +177,7 @@ async function collectContributions(host, now, gridForecast) {
     horizonDays[0].confidencePct = pvConfidence;
     horizonDays[1].correctedKwh = correctedTomorrowKwh;
     horizonDays[1].confidencePct = pvConfidence;
+    const pvShape = await readPvShapeInput(host, timezone);
     const pvInput = {
         now,
         correctedTodayKwh,
@@ -116,6 +189,7 @@ async function collectContributions(host, now, gridForecast) {
         lastUpdateTs: pvLastUpdate,
         source: "learning.pv_bias",
         horizonDays,
+        shape: pvShape,
     };
     const weatherCfg = (0, config_2.weatherConfigFromAdapter)(host.config);
     const tempMetric = weatherCfg.metrics.temp;

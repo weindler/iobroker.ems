@@ -1,6 +1,6 @@
 # EMS-Light — Forecast Plan
 
-**Stand:** v0.1.128
+**Stand:** v0.1.188
 
 ## 1. Zweck
 
@@ -35,9 +35,28 @@ Der Forecast Plan führt die **realen** Planungsdaten in die gemeinsame Operator
 
 **Slot-Ebene (`ForecastPlanSlot`, Ziel 15 min):**
 
-- Nur zeitlich auflösbare Daten (Grid-Preise, Hauslast-Segmente)
+- Nur zeitlich auflösbare Daten (Grid-Preise, Hauslast-Segmente, optional PV-Form)
 - PV-Leistung bleibt `null`, wenn keine belastbare Slot-Quelle existiert
 - `fixedBalancePowerW` nur bei gültigem PV- **und** Hauslast-Slot
+
+### PV-Kurve pro 15-Min-Slot (optional, v0.1.188)
+
+Standardmäßig bleibt `pvPowerW` weiterhin `null` (nur Tages-kWh aus PV-Bias). Wird in Admin →
+Lernen → „PV-Kurve pro 15-Min-Slot“ aktiviert **und** ein BrightSky-artiger Stunden-Prefix
+konfiguriert, verteilt EMS die bereits gelernte Tages-kWh als Form über den Tag
+(`src/operator/contributions/pv_shape.ts`):
+
+- **Form** aus Sonnenstand (Clear-Sky, Näherung ohne Zeitgleichung) am System-Standort
+  (`system.config.common.latitude/longitude`).
+- **Dämpfung je Stunde**, wenn vorhanden: `solar_estimate` (bevorzugt, proportional auf die
+  15-Min-Slots der Stunde verteilt) oder `cloud_cover` (linear gedämpft, Faktor 0,75).
+- **Normierung**: Summe(`pvPowerW` × Slotdauer) über den Kalendertag ≈ die gelernte Tages-kWh —
+  die Energiemenge kommt weiterhin ausschließlich aus PV-Bias, hier wird nur verteilt.
+- **kWp-Kappung** (optional, `pv_shape_kwp_state_1/2`): `pvPowerW` wird nie über die konfigurierte
+  Anlagenleistung hinaus ausgewiesen — trifft die Kappung, liegt die Tagessumme bewusst unter dem
+  gelernten Wert (keine erfundene Überschreitung der Hardware-Grenze).
+- Ohne Standort oder ohne konfigurierten Stunden-Prefix bleibt `pvPowerW` `null` — kein Fallback
+  auf eine erfundene Kurve.
 
 ## 5. Umgang mit fehlenden Daten
 

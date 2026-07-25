@@ -19,6 +19,11 @@ import { runAllocation, buildAllocationCandidates } from "./allocation";
 import { buildDailyPlan, buildDailyPlanFromForecast, dailyPlanRevisionPayload } from "./build";
 import { buildDailyPlanSlots } from "./constraints";
 import type { ForecastPlan } from "../forecast/types";
+import { buildForecastPlan } from "../forecast/build";
+import { buildPvContribution } from "../contributions/pv";
+import { buildHouseLoadContribution } from "../contributions/house_load";
+import { buildWeatherContribution } from "../contributions/weather";
+import { buildGridSupplyContribution } from "../contributions/constraints";
 
 const NOW = new Date("2026-07-11T10:07:00.000Z");
 const TZ = "UTC";
@@ -162,6 +167,121 @@ describe("daily plan constraints", () => {
 
 	it("effective import limit uses minimum of limits", () => {
 		assert.equal(effectiveImportLimitW(11000, 9000), 9000);
+	});
+});
+
+describe("daily plan end-to-end: PV shape + house-load segments reach Daily Plan slots", () => {
+	it("regression: pvForecastPowerW/fixedHouseLoadPowerW are no longer null once PV shape + house-load segments are configured", () => {
+		const now = new Date("2026-07-11T10:00:00.000Z");
+		const tz = "UTC";
+
+		const pv = buildPvContribution({
+			now,
+			correctedTodayKwh: 15,
+			correctedTomorrowKwh: 18,
+			rawTodayKwh: 14,
+			rawTomorrowKwh: 17,
+			confidencePct: 80,
+			status: "ready",
+			lastUpdateTs: now.toISOString(),
+			source: "learning.pv_bias",
+			horizonDays: [
+				{ dayIndex: 0, dateKey: "2026-07-11", correctedKwh: 15, confidencePct: 80 },
+				{ dayIndex: 1, dateKey: "2026-07-12", correctedKwh: 18, confidencePct: 80 },
+			],
+			shape: { timezone: tz, latDeg: 48.14, lonDeg: 11.58, hourlyPoints: [], capW: null },
+		});
+
+		const house = buildHouseLoadContribution({
+			now,
+			timezone: tz,
+			status: "ready",
+			confidence: 70,
+			forecastToday: {
+				date: "2026-07-11",
+				season: "summer",
+				weekday: "saturday",
+				day_type: "weekend",
+				segments: {
+					midday: { avg_w: 800, source: "p", fallback_level: "none", confidence: 70 },
+					afternoon: { avg_w: 600, source: "p", fallback_level: "none", confidence: 70 },
+					evening: { avg_w: 400, source: "p", fallback_level: "none", confidence: 70 },
+				},
+			},
+			forecastTomorrow: null,
+			lastUpdate: now.toISOString(),
+		});
+
+		const weather = buildWeatherContribution({
+			now,
+			learningStatus: "ready",
+			learningHealth: "ok",
+			confidencePct: 90,
+			lastUpdate: now.toISOString(),
+			forecastSource: "test",
+			actualSource: "test",
+			outdoorTempC: 22,
+			cloudPct: 10,
+			hourlyPoints: [],
+			todayMinTempC: 18,
+			todayMaxTempC: 24,
+			tomorrowMinTempC: null,
+			tomorrowMaxTempC: null,
+			forecastHorizonStart: now.toISOString(),
+			forecastHorizonEnd: null,
+		});
+
+		const grid = buildGridSupplyContribution({
+			generatedAt: now.toISOString(),
+			validUntil: null,
+			source: "dynamic_tariff",
+			currentPriceCtPerKwh: 24,
+			gridImportAllowed: true,
+			configuredMaxGridImportW: 11000,
+			configuredHouseFuseLimitW: 13800,
+			effectiveMaxGridImportW: 11000,
+			slots: [
+				{
+					startIso: "2026-07-11T10:00:00.000Z",
+					endIso: "2026-07-11T10:15:00.000Z",
+					priceCtPerKwh: 20,
+					importAllowed: true,
+					maxImportPowerW: 11000,
+					priceLabel: "normal",
+					quality: operatorQuality("valid", "OK"),
+				},
+			],
+			quality: operatorQuality("valid", "Grid OK"),
+			reasonDe: "Grid OK",
+		});
+
+		const forecastPlan = buildForecastPlan({ now, timezone: tz, contributions: [pv, house, weather, grid] });
+		assert.equal(forecastPlan.status, "ready");
+
+		const plan = buildDailyPlanFromForecast(now, tz, "balanced", forecastPlan, {
+			policySnapshot: null,
+			energyPriority: [],
+			mutualExclusions: [],
+			gridImportAllowedPolicy: true,
+			effectiveMaxGridImportW: 11000,
+			configuredHouseFuseLimitW: 13800,
+			modePolicy: { mode: "balanced", allowOptimization: true },
+		});
+
+		const firstSlot = plan.slots[0];
+		assert.equal(firstSlot.slot.startIso, "2026-07-11T10:00:00.000Z");
+		assert.notEqual(firstSlot.pvForecastPowerW, null);
+		assert.notEqual(firstSlot.fixedHouseLoadPowerW, null);
+		assert.equal(firstSlot.fixedHouseLoadPowerW, 800);
+		assert.notEqual(firstSlot.fixedBalancePowerW, null);
+		assert.notEqual(firstSlot.availablePvSurplusPowerW, null);
+		// Jeder 15-Min-Slot übernimmt den Wert seines umschließenden Segments (10-14 Uhr, 14-18 Uhr, 18-24 Uhr) —
+		// kein Slot bleibt mehr null, obwohl die Quelle nur Mehrstunden-Segmente liefert.
+		for (const s of plan.slots) {
+			const hourUtc = new Date(s.slot.startIso).getUTCHours();
+			const expected = hourUtc < 14 ? 800 : hourUtc < 18 ? 600 : 400;
+			assert.equal(s.fixedHouseLoadPowerW, expected, `slot ${s.slot.startIso} should inherit its segment value`);
+		}
 	});
 });
 

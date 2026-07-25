@@ -151,6 +151,15 @@ function buildSlots(input, pv, house, weather, grid, globalConstraints) {
             reasonDe: "Grid-Supply-Preisslot.",
         });
     }
+    for (const s of pv?.slots ?? []) {
+        if (!s.available)
+            continue;
+        upsert(s.slot.startIso, s.slot.endIso, {
+            pvPowerW: s.preferredPowerW ?? null,
+            quality: (0, quality_1.mergeOperatorQuality)(byKey.get(slotKey(s.slot.startIso, s.slot.endIso))?.quality ?? (0, quality_1.operatorQuality)("missing", ""), s.quality),
+            reasonDe: "PV-Form-Slot (Sonnenstand/Wetter).",
+        });
+    }
     for (const s of house?.slots ?? []) {
         const power = s.preferredPowerW;
         upsert(s.slot.startIso, s.slot.endIso, {

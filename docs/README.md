@@ -1,6 +1,6 @@
 # EMS-Light — Dokumentation
 
-**Adapter:** `iobroker.ems` · **Stand:** v0.1.187 (Juli 2026)
+**Adapter:** `iobroker.ems` · **Stand:** v0.1.188 (Juli 2026)
 
 ## Zentrale Dokumente
 
@@ -42,6 +42,17 @@ Schwerer Planner-Shadow/Takeover ist seit v0.1.181 **vollständig aus dem Code e
 ## KI-Optimierung (optional, `src/ai/`)
 
 Seit v0.1.185: Gerüst, standardmäßig aus. Global-Tab: An/Aus, OpenAI-Modell-Whitelist (Default `gpt-4.1-mini`), verschlüsseltes Token (`encryptedNative`), Tageslimit (Soft-Warnung ab 80%), manueller „Jetzt optimieren“-Button. Aufruf nur bei neuer Daily-Plan-Revision oder manuell — nicht bei jedem Tick. Die KI liefert kurze Text-Hinweise UND (seit v0.1.186) optionale Zeitpunkt-Präferenzen (`slot_preferences`, Gewichtung 0..3 je 15-Min-Slot) zu Add-ons, die aktiv UND einzeln „KI-Optimierung erlaubt“ sind; sie schreibt nichts in die Allocation zurück (noch keine echte Optimierungslogik, siehe Masterplan §4/§13). Fail-closed bei fehlendem Token, Limit, Timeout oder ungültiger Antwort. Token nie im Backup/Support-Export (automatisch über `isSecretKey`/`ALLOWED_PREFIXES` in `src/backup/collect_config.ts`).
+
+Seit v0.1.188: **PV-Kurve pro 15-Min-Slot** (optional, `src/operator/contributions/pv_shape.ts`,
+Admin → Lernen → „PV-Kurve pro 15-Min-Slot“). Standardmäßig aus. Aktiviert (BrightSky-Stunden-Prefix
++ System-Standort) verteilt EMS die gelernte Tages-PV-kWh (PV-Bias, unverändert) als Form über den
+Tag: Sonnenstand (Clear-Sky-Näherung) je 15-Min-Slot, gedämpft/gewichtet je Stunde durch
+`solar_estimate` (bevorzugt) oder `cloud_cover` (linear, Faktor 0,75) — wenn für die Stunde
+vorhanden. Summe(Leistung×Dauer) bleibt auf die gelernte Tages-kWh normiert; optionale
+kWp-Kappung (`pv_shape_kwp_state_1/2`) klippt Spitzen statt die Hardware-Grenze zu überschreiten.
+Ohne Standort/Stundenquelle bleibt `pvForecastPowerW` weiterhin `null` wie bisher. Damit steht dem
+Daily Plan erstmals ein echter `pvForecastPowerW` je Slot zur Verfügung — Voraussetzung für
+sinnvolle flexible Allocation (Heizstab/Klima/Batterie), siehe v0.1.187-Fix unten.
 
 Seit v0.1.187: **Fix Daily-Plan-Merge** (`src/operator/daily_plan/constraints.ts`) — Hauslast-Prognosen liefern Mehrstunden-Segment-Baselines (z. B. „Nacht 00–06 Uhr“), der Merge in die 15-Minuten-Daily-Plan-Slots suchte aber nur exakte 15-Min-Key-Treffer. Dadurch blieb `fixedHouseLoadPowerW` (und damit `fixedBalancePowerW`/`availablePvSurplusPowerW`) in jedem Slot `null`, obwohl ein Segmentwert existierte — das blockierte flexible Allocation für **alle** Add-ons, nicht nur Heizstab/Klima. Neu: pro Feld (`pv`, `houseLoad`, `gridPrice`, `gridImportAllowed`) wird der präziseste Forecast-Slot gesucht, der den 15-Min-Horizont-Slot vollständig umschließt (`buildForecastFieldIndex`/`lookupContaining`), statt exaktem Key-Match. Exakt aufgelöste Quellen (Tibber-Preise) funktionieren unverändert weiter. PV-Leistung pro Slot bleibt weiterhin `null` — es existiert noch keine 15-Min-PV-Pipeline (in Arbeit, siehe Aufräum-Fahrplan).
 

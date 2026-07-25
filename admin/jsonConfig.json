@@ -7240,6 +7240,68 @@
 					"lg": 6,
 					"xl": 6
 				},
+				"hPvShape": {
+					"type": "header",
+					"size": 2,
+					"text": "PV-Kurve pro 15-Min-Slot (optional, v0.1.188)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"hPvShapeHelp": {
+					"type": "staticText",
+					"text": "Ohne diese Einstellungen bleibt PV pro Slot null (nur Tages-kWh, wie bisher) — Daily Plan kann dann keinen PV-Überschuss je Slot berechnen. Aktiviert verteilt EMS die bereits gelernte Tages-kWh (oben, PV-Bias) als Form über den Tag: Sonnenstand (aus System-Standort) + optional stündliche Bewölkung/Solar-Schätzung eines BrightSky-artigen Adapters. Die Tagesenergie bleibt unverändert — nur die zeitliche Verteilung wird geschätzt. Keine erfundene Kurve ohne Standort.",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"pv_shape_enabled": {
+					"type": "checkbox",
+					"label": "PV-Kurve pro Slot aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"pv_shape_brightsky_hourly_prefix": {
+					"type": "text",
+					"label": "BrightSky-Stundenprefix — z. B. brightsky.0.hourly (liest .00….23 .timestamp/.cloud_cover/.solar_estimate)",
+					"xs": 12,
+					"sm": 12,
+					"md": 8,
+					"lg": 8,
+					"xl": 8
+				},
+				"pv_shape_kwp_state_1": {
+					"type": "objectId",
+					"label": "Installierte Leistung Fläche/WR 1 (kWp) — z. B. pvforecast.0.plants.<name>.power.installed",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"pv_shape_kwp_state_2": {
+					"type": "objectId",
+					"label": "Installierte Leistung Fläche/WR 2 (kWp, optional)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
 				"hWeatherLearning": {
 					"type": "header",
 					"size": 2,

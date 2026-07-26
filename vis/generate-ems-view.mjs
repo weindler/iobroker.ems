@@ -438,7 +438,7 @@ widgets[wid()] = htmlWidget(chartIframeHtml(), {
 	width: `${VIEW_W - 2 * M - 4}px`,
 	height: `${chartH - 22}px`,
 	"background-color": "transparent",
-}, "1000");
+}, "0");
 
 const view = {
 	settings: {

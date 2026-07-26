@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.197",
+		"version": "0.1.198",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.198": {
+				"en": "Fix: VIS dashboard Plan A/B charts showed \"Keine Plandaten\" while the same page worked when opened directly. Cause: the iframe widget refreshed every second (refreshInterval 1000) and bindVis() used empty VIS state cache instead of fetching compare.* states via socket.io. Charts now always load initial data via vis.conn.getStates or socket.io; live updates via stateChange/bind. iframe refresh disabled.",
+				"de": "Fix: VIS-Dashboard Plan-A/B-Charts zeigten „Keine Plandaten“, obwohl dieselbe Seite direkt im Browser funktionierte. Ursache: iframe-Widget wurde jede Sekunde neu geladen (refreshInterval 1000) und bindVis() nutzte leeren VIS-State-Cache statt compare.*-States per socket.io zu holen. Charts laden Initialdaten jetzt immer über vis.conn.getStates oder socket.io; Live-Updates per stateChange/bind. iframe-Refresh deaktiviert."
+			},
 			"0.1.197": {
 				"en": "New: VIS Plan A/B charts are now shipped with the adapter (admin/ems-charts.html → /adapter/ems/ems-charts.html?inst=ems.0). No copying files into vis/www — update the adapter and import the included vis/ems-dashboard-view.json (1276×637). Charts read compare.plan_a.chart_json, compare.plan_b.chart_json and compare.delta_summary_json via socket.io. Generator: npm run vis:generate.",
 				"de": "Neu: VIS Plan-A/B-Charts liegen jetzt im Adapter (admin/ems-charts.html → /adapter/ems/ems-charts.html?inst=ems.0). Kein Kopieren nach vis/www — Adapter aktualisieren und die mitgelieferte vis/ems-dashboard-view.json importieren (1276×637). Charts lesen compare.plan_a.chart_json, compare.plan_b.chart_json und compare.delta_summary_json per socket.io. Generator: npm run vis:generate."

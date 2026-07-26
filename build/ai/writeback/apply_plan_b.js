@@ -5,6 +5,14 @@ const registry_1 = require("../../addons/governance/registry");
 const slots_1 = require("../../operator/daily_plan/slots");
 const build_1 = require("../compare/build");
 const redistribute_1 = require("../compare/redistribute");
+const device_config_1 = require("../../addons/immersion_heater/device_config");
+const addon_plan_publish_1 = require("../../operator/daily_plan/addon_plan_publish");
+function inferMinPowerW(ownWPerSlot, runtimeAddonId) {
+    const runnable = ownWPerSlot.filter((w) => w >= addon_plan_publish_1.RUNNABLE_ALLOCATION_FLOOR_W);
+    if (runnable.length > 0)
+        return Math.min(...runnable);
+    return runtimeAddonId === "immersion_heater" ? device_config_1.SINGLE_STAGE_DEFAULT_NOMINAL_W : 500;
+}
 function clonePlan(plan) {
     return JSON.parse(JSON.stringify(plan));
 }
@@ -110,7 +118,7 @@ function redistributeEligible(plan, governedId, slotPreferences) {
         capacityPerSlot.push(Math.max(ownW, ownW + remainingPv + remainingGrid));
         multipliers.push(weightByIso.get(slot.slot.startIso) ?? 1);
     }
-    return (0, redistribute_1.redistributeAddonAcrossSlots)(ownWPerSlot.map((ownW, i) => ({ ownW, capacityW: capacityPerSlot[i] })), multipliers);
+    return (0, redistribute_1.redistributeAddonAcrossSlots)(ownWPerSlot.map((ownW, i) => ({ ownW, capacityW: capacityPerSlot[i] })), multipliers, inferMinPowerW(ownWPerSlot, prefix));
 }
 /**
  * Wendet KI-Slot-Präferenzen auf eine Kopie von Plan A an, wenn Plan B messbar gewinnt.

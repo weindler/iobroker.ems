@@ -31,6 +31,7 @@ const state_write_1 = require("../../policy/core/state_write");
 const build_1 = require("./build");
 const briefing_1 = require("./briefing");
 const live_surplus_1 = require("./live_surplus");
+const addon_plan_publish_1 = require("./addon_plan_publish");
 const states_1 = require("./states");
 const battery_consumers_1 = require("../../policy/battery_consumers");
 const device_config_1 = require("../../addons/immersion_heater/device_config");
@@ -88,15 +89,6 @@ function policyStringArray(snapshot, key) {
     if (!entry || !Array.isArray(entry.value))
         return null;
     return entry.value.filter((v) => typeof v === "string");
-}
-function addonAllocationSummary(plan, addonPrefix) {
-    const allocations = plan.allocations.filter((a) => a.contributionId === addonPrefix ||
-        a.contributionId.startsWith(`${addonPrefix}.`) ||
-        (a.contributor.id === addonPrefix && addonPrefix !== "air_conditioning"));
-    if (addonPrefix === "air_conditioning") {
-        return plan.allocations.filter((a) => a.contributionId.startsWith("air_conditioning."));
-    }
-    return allocations;
 }
 async function runDailyPlanTick(host, forecastPlan) {
     const now = new Date();
@@ -209,13 +201,10 @@ async function runDailyPlanTick(host, forecastPlan) {
         ];
         for (const { key, prefix } of addonSummaries) {
             const ids = states_1.ALLOCATION_ADDON_STATE_IDS[key];
-            const summary = addonAllocationSummary(plan, prefix);
-            const status = summary.length > 0 ? "ready" : "idle";
-            await (0, state_write_1.setStateIfChanged)(host, ids.status, status);
-            await (0, state_write_1.setStateIfChanged)(host, ids.planJson, JSON.stringify(summary));
-            await (0, state_write_1.setStateIfChanged)(host, ids.reasonDe, summary.length > 0
-                ? `${summary.length} Allocation-Einträge für ${prefix}.`
-                : `Keine Allocation für ${prefix}.`);
+            const view = (0, addon_plan_publish_1.addonAllocationPublishView)(plan, prefix);
+            await (0, state_write_1.setStateIfChanged)(host, ids.status, view.status);
+            await (0, state_write_1.setStateIfChanged)(host, ids.planJson, JSON.stringify(view.runnable));
+            await (0, state_write_1.setStateIfChanged)(host, ids.reasonDe, view.reasonDe);
         }
     }
     catch (e) {

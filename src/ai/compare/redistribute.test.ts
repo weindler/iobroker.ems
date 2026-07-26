@@ -102,6 +102,18 @@ describe("redistributeAddonAcrossSlots", () => {
 		assert.ok(Math.abs(totalAfter - totalBefore) < 1e-6);
 	});
 
+	it("with minPowerW coalesces micro crumbs into runnable stages or drops them", () => {
+		const slots = [
+			{ ownW: 8, capacityW: 2000 },
+			{ ownW: 8, capacityW: 2000 },
+			{ ownW: 8, capacityW: 2000 },
+			{ ownW: 1700, capacityW: 2000 },
+		];
+		const result = redistributeAddonAcrossSlots(slots, [1, 1, 1, 1], 1700);
+		assert.ok(result.every((w) => w === 0 || w >= 1700));
+		assert.equal(result[3], 1700);
+	});
+
 	it("never assigns more than a slot's own capacity", () => {
 		const slots = [
 			{ ownW: 100, capacityW: 150 },

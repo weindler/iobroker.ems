@@ -398,6 +398,26 @@ function minimalForecast(overrides = {}) {
         });
         strict_1.default.ok(result.allocations.every((a) => a.gridPowerW === 0));
     });
+    (0, node_test_1.it)("immersion fallback minPower even when contribution omits minPowerW", () => {
+        const slots = (0, constraints_2.buildDailyPlanSlots)([{ startIso: slot1Start, endIso: slot1End }], [forecastSlot(slot1Start, slot1End, { pv: 1008, load: 1000 })], // surplus 8 W
+        11000, 13800);
+        const flex = (0, policy_1.buildAllocationCandidate)(flexContribution(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, "immersion_heater", {
+            gridEligible: false,
+            details: { requiredEnergyKwh: 1, maxPowerW: 1700, pvFirst: true },
+        }), "balanced", []);
+        strict_1.default.equal(flex.minPowerW, null);
+        const result = (0, allocation_1.runAllocation)({
+            slots,
+            candidates: [flex],
+            globalMode: "balanced",
+            modeAllowsOptimization: true,
+            gridImportAllowedPolicy: true,
+            mutualExclusions: [],
+            nowMs: NOW.getTime(),
+        });
+        strict_1.default.equal(result.allocations.length, 0);
+        strict_1.default.ok(result.unallocated.some((u) => /1700/.test(u.reasonDe)));
+    });
     (0, node_test_1.it)("skips micro allocations below minPowerW (no 8 W Schein-Slots)", () => {
         const slots = (0, constraints_2.buildDailyPlanSlots)([
             { startIso: slot1Start, endIso: slot1End },
@@ -524,7 +544,8 @@ function minimalForecast(overrides = {}) {
             ],
             contributions: [
                 flexContribution(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, "immersion_heater", {
-                    details: { requiredEnergyKwh: 1 },
+                    details: { requiredEnergyKwh: 1, maxPowerW: 1700, minPowerW: 1700, pvFirst: true },
+                    gridEligible: false,
                 }),
             ],
         });

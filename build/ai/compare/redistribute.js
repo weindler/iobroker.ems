@@ -8,7 +8,7 @@
  * verfügbar war. Ohne KI-Gewichtung (multiplier=1 überall) reproduziert das Ergebnis exakt Plan A.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.redistributeAddonAcrossSlots = exports.waterFillProportional = exports.computeSlotWeight = void 0;
+exports.redistributeAddonAcrossSlots = exports.coalescePowersToMinStage = exports.waterFillProportional = exports.computeSlotWeight = void 0;
 const SLOT_WEIGHT_MULTIPLIER_MIN = 0;
 const SLOT_WEIGHT_MULTIPLIER_MAX = 3;
 /**
@@ -83,13 +83,55 @@ function waterFillProportional(weights, capacities, total) {
 }
 exports.waterFillProportional = waterFillProportional;
 /**
+ * Verwirft Leistungen unter minPowerW und bündelt die Energie in fahrbare Slots
+ * (ganze minPowerW-Quanten), kapazitätsbegrenzt. Rest unter einer Stufe bleibt 0.
+ */
+function coalescePowersToMinStage(powers, capacities, minPowerW) {
+    const n = powers.length;
+    const out = new Array(n).fill(0);
+    if (!(minPowerW > 0) || n === 0)
+        return powers.map((p) => Math.max(0, p));
+    let pool = 0;
+    for (let i = 0; i < n; i++) {
+        const p = Math.max(0, powers[i] ?? 0);
+        if (p >= minPowerW) {
+            out[i] = p;
+        }
+        else {
+            pool += p;
+        }
+    }
+    const order = powers
+        .map((p, i) => i)
+        .sort((a, b) => (powers[b] ?? 0) - (powers[a] ?? 0) || a - b);
+    for (const i of order) {
+        if (pool < minPowerW)
+            break;
+        const room = Math.max(0, (capacities[i] ?? 0) - out[i]);
+        if (room < minPowerW)
+            continue;
+        const add = Math.min(pool, room, Math.floor(room / minPowerW) * minPowerW);
+        if (add < minPowerW)
+            continue;
+        out[i] += add;
+        pool -= add;
+    }
+    return out;
+}
+exports.coalescePowersToMinStage = coalescePowersToMinStage;
+/**
  * Verteilt die von Plan A für ein Add-on zugeteilte Gesamtenergie (Summe von ownW über alle Slots)
  * gemäß KI-Multiplikatoren neu — energieerhaltend und kapazitätsbegrenzt.
+ * Optional: `minPowerW` verhindert Mikro-Slots nach der Umverteilung.
  */
-function redistributeAddonAcrossSlots(slots, multipliers) {
+function redistributeAddonAcrossSlots(slots, multipliers, minPowerW) {
     const weights = slots.map((s, i) => computeSlotWeight(s.ownW, s.capacityW, multipliers[i] ?? 1));
     const capacities = slots.map((s) => Math.max(0, s.capacityW));
     const total = slots.reduce((sum, s) => sum + Math.max(0, s.ownW), 0);
-    return waterFillProportional(weights, capacities, total);
+    const raw = waterFillProportional(weights, capacities, total);
+    if (minPowerW !== null && minPowerW !== undefined && minPowerW > 0) {
+        return coalescePowersToMinStage(raw, capacities, minPowerW);
+    }
+    return raw;
 }
 exports.redistributeAddonAcrossSlots = redistributeAddonAcrossSlots;

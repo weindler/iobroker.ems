@@ -56,14 +56,19 @@ function enabledStages(config: ImmersionDeviceConfig) {
 	return config.stages.filter((s) => s.enabled && s.nominalPowerW > 0 && s.setStateId);
 }
 
+/** Nennleistungen für Planung — auch wenn setStateId noch fehlt (Participation sperrt dann separat). */
+function poweredStages(config: ImmersionDeviceConfig) {
+	return config.stages.filter((s) => s.enabled && s.nominalPowerW > 0);
+}
+
 function maxStagePowerW(config: ImmersionDeviceConfig): number | null {
-	const stages = enabledStages(config);
+	const stages = poweredStages(config);
 	if (stages.length === 0) return null;
 	return Math.max(...stages.map((s) => s.nominalPowerW));
 }
 
 function minStagePowerW(config: ImmersionDeviceConfig): number | null {
-	const stages = enabledStages(config);
+	const stages = poweredStages(config);
 	if (stages.length === 0) return null;
 	return Math.min(...stages.map((s) => s.nominalPowerW));
 }

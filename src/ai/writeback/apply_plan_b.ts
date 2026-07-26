@@ -9,8 +9,16 @@ import {
 } from "../compare/build";
 import { redistributeAddonAcrossSlots } from "../compare/redistribute";
 import type { CompareResult } from "../compare/types";
+import { SINGLE_STAGE_DEFAULT_NOMINAL_W } from "../../addons/immersion_heater/device_config";
+import { RUNNABLE_ALLOCATION_FLOOR_W } from "../../operator/daily_plan/addon_plan_publish";
 
 type EligibleId = (typeof COMPARE_ELIGIBLE_GOVERNED_IDS)[number];
+
+function inferMinPowerW(ownWPerSlot: number[], runtimeAddonId: string): number {
+	const runnable = ownWPerSlot.filter((w) => w >= RUNNABLE_ALLOCATION_FLOOR_W);
+	if (runnable.length > 0) return Math.min(...runnable);
+	return runtimeAddonId === "immersion_heater" ? SINGLE_STAGE_DEFAULT_NOMINAL_W : 500;
+}
 
 function clonePlan(plan: DailyPlan): DailyPlan {
 	return JSON.parse(JSON.stringify(plan)) as DailyPlan;
@@ -142,6 +150,7 @@ function redistributeEligible(
 	return redistributeAddonAcrossSlots(
 		ownWPerSlot.map((ownW, i) => ({ ownW, capacityW: capacityPerSlot[i]! })),
 		multipliers,
+		inferMinPowerW(ownWPerSlot, prefix),
 	);
 }
 

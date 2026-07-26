@@ -135,6 +135,7 @@ function seriesOn(a,b,key){
 function planBadge(powerW,allocStatus){
 	var p=num(powerW);
 	if(p!==null&&p>=ON_W)return{cls:"on",label:"Plant jetzt"};
+	// status ready = mind. ein fahrbares Fenster im Horizont (Mikro-Slots zählen nicht)
 	if(allocStatus==="ready")return{cls:"partial",label:"Im Plan, Slot aus"};
 	return{cls:"off",label:"Plant nicht"};
 }

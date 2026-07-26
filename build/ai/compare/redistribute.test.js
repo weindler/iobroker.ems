@@ -93,6 +93,17 @@ const redistribute_js_1 = require("./redistribute.js");
         const totalAfter = result.reduce((s, x) => s + x, 0);
         strict_1.default.ok(Math.abs(totalAfter - totalBefore) < 1e-6);
     });
+    (0, node_test_1.it)("with minPowerW coalesces micro crumbs into runnable stages or drops them", () => {
+        const slots = [
+            { ownW: 8, capacityW: 2000 },
+            { ownW: 8, capacityW: 2000 },
+            { ownW: 8, capacityW: 2000 },
+            { ownW: 1700, capacityW: 2000 },
+        ];
+        const result = (0, redistribute_js_1.redistributeAddonAcrossSlots)(slots, [1, 1, 1, 1], 1700);
+        strict_1.default.ok(result.every((w) => w === 0 || w >= 1700));
+        strict_1.default.equal(result[3], 1700);
+    });
     (0, node_test_1.it)("never assigns more than a slot's own capacity", () => {
         const slots = [
             { ownW: 100, capacityW: 150 },

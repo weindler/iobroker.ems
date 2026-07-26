@@ -53,6 +53,7 @@ function buildAddonRedistribution(plan, governedId, slotPreferences) {
         capacityPerSlot.push(Math.max(ownW, ownW + remainingPv + remainingGrid));
         multipliers.push(weightByIso.get(slot.slot.startIso) ?? 1);
     }
+    // Compare bleibt energieerhaltend (keine Stage-Coalesce) — Coalesce nur beim Write-back.
     const newWPerSlot = (0, redistribute_1.redistributeAddonAcrossSlots)(ownWPerSlot.map((ownW, i) => ({ ownW, capacityW: capacityPerSlot[i] })), multipliers);
     return { prefix, ownWPerSlot, ownPvWPerSlot, newWPerSlot };
 }

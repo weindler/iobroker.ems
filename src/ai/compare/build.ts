@@ -77,6 +77,7 @@ function buildAddonRedistribution(
 		multipliers.push(weightByIso.get(slot.slot.startIso) ?? 1);
 	}
 
+	// Compare bleibt energieerhaltend (keine Stage-Coalesce) — Coalesce nur beim Write-back.
 	const newWPerSlot = redistributeAddonAcrossSlots(
 		ownWPerSlot.map((ownW, i) => ({ ownW, capacityW: capacityPerSlot[i] })),
 		multipliers,

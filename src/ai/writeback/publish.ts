@@ -1,5 +1,6 @@
 import type { StateHost } from "../../ems_light/state_util";
 import { setOptionalNumberIfChanged, setStateIfChanged } from "../../policy/core/state_write";
+import { addonAllocationPublishView } from "../../operator/daily_plan/addon_plan_publish";
 import type { DailyPlan } from "../../operator/daily_plan/types";
 import { ALLOCATION_ADDON_STATE_IDS, DAILY_PLAN_STATE_IDS } from "../../operator/daily_plan/states";
 
@@ -12,18 +13,6 @@ export type WritebackPublishHost = {
 
 function asStateHost(host: WritebackPublishHost): StateHost {
 	return host as unknown as StateHost;
-}
-
-function addonAllocationSummary(plan: DailyPlan, addonPrefix: string) {
-	if (addonPrefix === "air_conditioning") {
-		return plan.allocations.filter((a) => a.contributionId.startsWith("air_conditioning."));
-	}
-	return plan.allocations.filter(
-		(a) =>
-			a.contributionId === addonPrefix ||
-			a.contributionId.startsWith(`${addonPrefix}.`) ||
-			(a.contributor.id === addonPrefix && addonPrefix !== "air_conditioning"),
-	);
 }
 
 /** Schreibt Daily-Plan- + Allocation-States nach KI-Write-back (Plan B) neu. */
@@ -48,16 +37,10 @@ export async function republishDailyPlanAfterWriteback(
 		];
 		for (const { key, prefix } of addonSummaries) {
 			const ids = ALLOCATION_ADDON_STATE_IDS[key];
-			const summary = addonAllocationSummary(plan, prefix);
-			await setStateIfChanged(h, ids.status, summary.length > 0 ? "ready" : "idle");
-			await setStateIfChanged(h, ids.planJson, JSON.stringify(summary));
-			await setStateIfChanged(
-				h,
-				ids.reasonDe,
-				summary.length > 0
-					? `${summary.length} Allocation-Einträge für ${prefix} (ggf. KI Plan B).`
-					: `Keine Allocation für ${prefix}.`,
-			);
+			const view = addonAllocationPublishView(plan, prefix, { kiWriteback: true });
+			await setStateIfChanged(h, ids.status, view.status);
+			await setStateIfChanged(h, ids.planJson, JSON.stringify(view.runnable));
+			await setStateIfChanged(h, ids.reasonDe, view.reasonDe);
 		}
 	} catch (e) {
 		host.log?.warn?.(`KI Write-back publish: ${String(e)}`);

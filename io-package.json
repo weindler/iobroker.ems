@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.209",
+		"version": "0.1.210",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.210": {
+				"en": "Hardening: immersion/climate allocation uses a fallback min stage (~1700 W) even if minPowerW was missing — no more published micro-slot crumbs. Addon plan_json/status only count runnable windows (≥50 W); KI redistribute coalesces below min stage. Fixes VIS \"27 entries / no windows\" after upgrade.",
+				"de": "Härtung: Heizstab/Klima-Allocation nutzt Fallback-Mindeststufe (~1700 W), auch wenn minPowerW fehlte — keine veröffentlichten Mikro-Slots mehr. Addon-plan_json/Status zählen nur fahrbare Fenster (≥50 W); KI-Umverteilung bündelt unter Mindeststufe. Behebt VIS „27 Einträge / keine Fenster“ nach Update."
+			},
 			"0.1.209": {
 				"en": "Allocation quality: immersion heater and climate contributions publish minPowerW (smallest runnable stage/unit power). Daily Plan no longer creates micro-slots below that floor (e.g. 8 W crumbs) — leftover energy stays unallocated with a clear reason. VIS plan board shows upcoming runnable windows per addon.",
 				"de": "Allocation-Qualität: Heizstab und Klima melden minPowerW (kleinste fahrbare Stufe/Leistung). Der Daily Plan erzeugt keine Mikro-Slots darunter mehr (z. B. 8-W-Häppchen) — Rest bleibt unalloziert mit klarer Begründung. VIS-Planübersicht zeigt je Add-on die nächsten fahrbaren Fenster."

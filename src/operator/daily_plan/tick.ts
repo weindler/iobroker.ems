@@ -7,6 +7,7 @@ import type { ForecastPlan } from "../forecast/types";
 import { buildDailyPlanFromForecast, dailyPlanRevisionPayload } from "./build";
 import { buildOperatorBriefingDe } from "./briefing";
 import { buildOperatorLiveSurplus } from "./live_surplus";
+import { addonAllocationPublishView } from "./addon_plan_publish";
 import { ALLOCATION_ADDON_STATE_IDS, DAILY_PLAN_STATE_IDS } from "./states";
 import type { DailyPlan } from "./types";
 import type { ContributionsReadHost } from "../contributions/read";
@@ -69,19 +70,6 @@ function policyStringArray(snapshot: PolicySnapshot | null, key: string): string
 	const entry = snapshot?.preferences?.[key];
 	if (!entry || !Array.isArray(entry.value)) return null;
 	return entry.value.filter((v): v is string => typeof v === "string");
-}
-
-function addonAllocationSummary(plan: DailyPlan, addonPrefix: string) {
-	const allocations = plan.allocations.filter(
-		(a) =>
-			a.contributionId === addonPrefix ||
-			a.contributionId.startsWith(`${addonPrefix}.`) ||
-			(a.contributor.id === addonPrefix && addonPrefix !== "air_conditioning"),
-	);
-	if (addonPrefix === "air_conditioning") {
-		return plan.allocations.filter((a) => a.contributionId.startsWith("air_conditioning."));
-	}
-	return allocations;
 }
 
 export async function runDailyPlanTick(
@@ -231,17 +219,10 @@ export async function runDailyPlanTick(
 
 		for (const { key, prefix } of addonSummaries) {
 			const ids = ALLOCATION_ADDON_STATE_IDS[key];
-			const summary = addonAllocationSummary(plan, prefix);
-			const status = summary.length > 0 ? "ready" : "idle";
-			await setStateIfChanged(host, ids.status, status);
-			await setStateIfChanged(host, ids.planJson, JSON.stringify(summary));
-			await setStateIfChanged(
-				host,
-				ids.reasonDe,
-				summary.length > 0
-					? `${summary.length} Allocation-Einträge für ${prefix}.`
-					: `Keine Allocation für ${prefix}.`,
-			);
+			const view = addonAllocationPublishView(plan, prefix);
+			await setStateIfChanged(host, ids.status, view.status);
+			await setStateIfChanged(host, ids.planJson, JSON.stringify(view.runnable));
+			await setStateIfChanged(host, ids.reasonDe, view.reasonDe);
 		}
 	} catch (e) {
 		host.log?.warn?.(`daily plan state write: ${String(e)}`);

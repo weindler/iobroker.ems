@@ -22,8 +22,30 @@ import {
 } from "./slots";
 import { batteryConsumerIdFromAddon } from "../../policy/battery_consumers";
 import type { BatteryConsumerAccess, BatteryConsumerId } from "../../policy/battery_consumers";
+import { SINGLE_STAGE_DEFAULT_NOMINAL_W } from "../../addons/immersion_heater/device_config";
 
 const SLOT_MINUTES = 15;
+
+/**
+ * Effektive Mindestleistung für Allocation. Contribution.minPowerW hat Vorrang;
+ * für Heizstab/Klima greift ein Fallback, damit nie wieder 8-W-Mikro-Slots entstehen,
+ * falls die Contribution kein minPowerW geliefert hat.
+ */
+export function effectiveMinPowerW(candidate: AllocationCandidate): number | null {
+	if (candidate.minPowerW !== null && candidate.minPowerW > 0) {
+		return candidate.minPowerW;
+	}
+	if (candidate.contributionId.startsWith("immersion_heater")) {
+		if (candidate.maxPowerW !== null && candidate.maxPowerW > 0) {
+			return Math.min(candidate.maxPowerW, SINGLE_STAGE_DEFAULT_NOMINAL_W);
+		}
+		return SINGLE_STAGE_DEFAULT_NOMINAL_W;
+	}
+	if (candidate.contributionId.startsWith("air_conditioning")) {
+		return candidate.maxPowerW !== null && candidate.maxPowerW > 0 ? candidate.maxPowerW : null;
+	}
+	return null;
+}
 
 interface RemainingEnergy {
 	contributionId: string;
@@ -144,7 +166,7 @@ function tryAllocateInSlot(
 	if (remaining.remainingKwh <= 0) return null;
 
 	const maxFromEnergy = powerWFromEnergyKwh(remaining.remainingKwh, SLOT_MINUTES);
-	const minW = candidate.minPowerW !== null && candidate.minPowerW > 0 ? candidate.minPowerW : null;
+	const minW = effectiveMinPowerW(candidate);
 	// Restenergie unter kleinster fahrbarer Stufe → kein Mikro-Slot (Runtime könnte ihn ohnehin nicht schalten).
 	if (minW !== null && maxFromEnergy < minW && (forceMinPowerW === null || forceMinPowerW < minW)) {
 		return null;
@@ -417,11 +439,12 @@ export function runAllocation(input: RunAllocationInput): RunAllocationResult {
 		const allocated = round3((rem.requestedKwh ?? 0) - rem.remainingKwh);
 		if (rem.remainingKwh > 0.001) {
 			const remPowerW = powerWFromEnergyKwh(rem.remainingKwh, SLOT_MINUTES);
+			const minW = effectiveMinPowerW(c);
 			let reason = "Bedarf nicht vollständig zuweisbar.";
-			if (c.minPowerW !== null && allocated < 0.001) {
-				reason = `Keine fahrbare Leistung (≥ ${Math.round(c.minPowerW)} W) verfügbar — Bedarf zu klein oder PV-Surplus unter Mindeststufe.`;
-			} else if (c.minPowerW !== null && remPowerW < c.minPowerW) {
-				reason = `Rest unter kleinster fahrbarer Stufe (≥ ${Math.round(c.minPowerW)} W) — nicht als Mikro-Slot geplant.`;
+			if (minW !== null && allocated < 0.001) {
+				reason = `Keine fahrbare Leistung (≥ ${Math.round(minW)} W) verfügbar — Bedarf zu klein oder PV-Surplus unter Mindeststufe.`;
+			} else if (minW !== null && remPowerW < minW) {
+				reason = `Rest unter kleinster fahrbarer Stufe (≥ ${Math.round(minW)} W) — nicht als Mikro-Slot geplant.`;
 			} else if (c.pvFirst && !c.batteryEligible) {
 				reason = "PV-first — kein ausreichender PV-Überschuss in belastbaren Slots.";
 			} else if (c.pvFirst && c.batteryEligible) {

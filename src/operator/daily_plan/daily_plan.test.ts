@@ -554,6 +554,35 @@ describe("daily plan allocation", () => {
 		assert.ok(result.allocations.every((a) => a.gridPowerW === 0));
 	});
 
+	it("immersion fallback minPower even when contribution omits minPowerW", () => {
+		const slots = buildDailyPlanSlots(
+			[{ startIso: slot1Start, endIso: slot1End }],
+			[forecastSlot(slot1Start, slot1End, { pv: 1008, load: 1000 })], // surplus 8 W
+			11000,
+			13800,
+		);
+		const flex = buildAllocationCandidate(
+			flexContribution(CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, "immersion_heater", {
+				gridEligible: false,
+				details: { requiredEnergyKwh: 1, maxPowerW: 1700, pvFirst: true },
+			}),
+			"balanced",
+			[],
+		);
+		assert.equal(flex.minPowerW, null);
+		const result = runAllocation({
+			slots,
+			candidates: [flex],
+			globalMode: "balanced",
+			modeAllowsOptimization: true,
+			gridImportAllowedPolicy: true,
+			mutualExclusions: [],
+			nowMs: NOW.getTime(),
+		});
+		assert.equal(result.allocations.length, 0);
+		assert.ok(result.unallocated.some((u) => /1700/.test(u.reasonDe)));
+	});
+
 	it("skips micro allocations below minPowerW (no 8 W Schein-Slots)", () => {
 		const slots = buildDailyPlanSlots(
 			[
@@ -708,7 +737,8 @@ describe("daily plan build", () => {
 			],
 			contributions: [
 				flexContribution(CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, "immersion_heater", {
-					details: { requiredEnergyKwh: 1 },
+					details: { requiredEnergyKwh: 1, maxPowerW: 1700, minPowerW: 1700, pvFirst: true },
+					gridEligible: false,
 				}),
 			],
 		});

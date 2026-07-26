@@ -2,17 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.republishDailyPlanAfterWriteback = void 0;
 const state_write_1 = require("../../policy/core/state_write");
+const addon_plan_publish_1 = require("../../operator/daily_plan/addon_plan_publish");
 const states_1 = require("../../operator/daily_plan/states");
 function asStateHost(host) {
     return host;
-}
-function addonAllocationSummary(plan, addonPrefix) {
-    if (addonPrefix === "air_conditioning") {
-        return plan.allocations.filter((a) => a.contributionId.startsWith("air_conditioning."));
-    }
-    return plan.allocations.filter((a) => a.contributionId === addonPrefix ||
-        a.contributionId.startsWith(`${addonPrefix}.`) ||
-        (a.contributor.id === addonPrefix && addonPrefix !== "air_conditioning"));
 }
 /** Schreibt Daily-Plan- + Allocation-States nach KI-Write-back (Plan B) neu. */
 async function republishDailyPlanAfterWriteback(host, plan) {
@@ -32,12 +25,10 @@ async function republishDailyPlanAfterWriteback(host, plan) {
         ];
         for (const { key, prefix } of addonSummaries) {
             const ids = states_1.ALLOCATION_ADDON_STATE_IDS[key];
-            const summary = addonAllocationSummary(plan, prefix);
-            await (0, state_write_1.setStateIfChanged)(h, ids.status, summary.length > 0 ? "ready" : "idle");
-            await (0, state_write_1.setStateIfChanged)(h, ids.planJson, JSON.stringify(summary));
-            await (0, state_write_1.setStateIfChanged)(h, ids.reasonDe, summary.length > 0
-                ? `${summary.length} Allocation-Einträge für ${prefix} (ggf. KI Plan B).`
-                : `Keine Allocation für ${prefix}.`);
+            const view = (0, addon_plan_publish_1.addonAllocationPublishView)(plan, prefix, { kiWriteback: true });
+            await (0, state_write_1.setStateIfChanged)(h, ids.status, view.status);
+            await (0, state_write_1.setStateIfChanged)(h, ids.planJson, JSON.stringify(view.runnable));
+            await (0, state_write_1.setStateIfChanged)(h, ids.reasonDe, view.reasonDe);
         }
     }
     catch (e) {

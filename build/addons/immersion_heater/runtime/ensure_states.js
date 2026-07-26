@@ -39,6 +39,8 @@ async function ensureImmersionRuntimeStates(host) {
         strState(types_1.IMMERSION_RUNTIME_STATES.temperatureStatus, "Temperatur-Status", "missing"),
         numState(types_1.IMMERSION_RUNTIME_STATES.planningMinTempC, "Planungsuntergrenze °C"),
         numState(types_1.IMMERSION_RUNTIME_STATES.planningMaxTempC, "Planungsobergrenze °C"),
+        numState(types_1.IMMERSION_RUNTIME_STATES.planTargetTempC, "Plan-Tagesziel °C"),
+        strState(types_1.IMMERSION_RUNTIME_STATES.planTargetReasonDe, "Plan-Tagesziel Begründung (DE)", ""),
         numState(types_1.IMMERSION_RUNTIME_STATES.forceTargetTempC, "Force-Ziel °C"),
         strState(types_1.IMMERSION_RUNTIME_STATES.forceUntil, "Force bis (ISO)"),
         numState(types_1.IMMERSION_RUNTIME_STATES.commandedStage, "Befohlene Stufe", 0),

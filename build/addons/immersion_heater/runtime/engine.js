@@ -13,6 +13,9 @@ const validate_config_1 = require("../validate_config");
 const status_1 = require("../status");
 const ensure_states_1 = require("./ensure_states");
 const fsm_1 = require("./fsm");
+const thermal_forecast_1 = require("../../../operator/planning/thermal_forecast");
+const governance_2 = require("../../governance");
+const state_util_1 = require("../../../ems_light/state_util");
 const safety_1 = require("./safety");
 const types_1 = require("./types");
 const persist_1 = require("./persist");
@@ -127,6 +130,52 @@ async function readBool(host, id) {
     const st = await host.getStateAsync(id);
     return st?.val === true;
 }
+async function readLocalNum(host, id) {
+    try {
+        const st = await host.getStateAsync(id);
+        return (0, state_util_1.asNum)(st?.val);
+    }
+    catch {
+        return null;
+    }
+}
+async function readLocalStr(host, id) {
+    try {
+        const st = await host.getStateAsync(id);
+        if (st?.val === null || st?.val === undefined || st.val === "")
+            return null;
+        return String(st.val);
+    }
+    catch {
+        return null;
+    }
+}
+/** Forecast-/Force-Tagesziel für VIS und FSM-Ceiling (nicht die harte Planungsobergrenze allein). */
+async function resolveImmersionPlanTarget(host, config, bufferTempC, resolvedMode, forceTarget) {
+    if (resolvedMode === "off") {
+        return { targetTempC: null, reasonDe: "Modus off — kein Heiz-Tagesziel." };
+    }
+    if (resolvedMode === "force") {
+        const t = forceTarget ?? config.planningMaxTempC;
+        return { targetTempC: t, reasonDe: `Force-Ziel ${t} °C.` };
+    }
+    const [pvToday, pvTomorrow, pvStatus, aiAllowed] = await Promise.all([
+        readLocalNum(host, "learning.pv_bias.corrected_today_kwh"),
+        readLocalNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
+        readLocalStr(host, "learning.pv_bias.status"),
+        readBool(host, (0, governance_2.addonGovernanceAiAllowedState)("immersion_heater")),
+    ]);
+    const forecast = (0, thermal_forecast_1.resolveThermalForecastTarget)({
+        config,
+        bufferTempC,
+        pvTodayKwh: pvToday,
+        pvTomorrowKwh: pvTomorrow,
+        pvBiasStatus: pvStatus,
+        forecastModeEnabled: config.forecastModeEnabled,
+        aiOptimizationAllowed: aiAllowed,
+    });
+    return { targetTempC: forecast.targetTempC, reasonDe: forecast.targetReasonDe };
+}
 async function applyStageWrites(host, stageIndex, live) {
     // Dryrun: EMS besitzt das Relais nicht — keine physischen Writes.
     if (!live)
@@ -217,15 +266,16 @@ async function runImmersionRuntimeTick(host) {
     let autoDecisionSource = "thermal_fallback";
     let dailyPlanContext = null;
     let plannerCommandedStage = 0;
-    let plannerTargetTempC = null;
+    const planTarget = await resolveImmersionPlanTarget(host, config, temperature.valueC, resolvedMode, forceTarget);
+    let plannerTargetTempC = planTarget.targetTempC;
     if (resolvedMode === "auto") {
         dailyPlanContext = await (0, daily_plan_1.resolveImmersionDailyPlanAllocation)(host, config, now);
         lastDailyPlanContext = dailyPlanContext;
         if (dailyPlanContext.useDailyPlan) {
-            // Daily Plan besitzt den Slot: Stufe aus Allocation (0 = absichtlich aus, auch bei
-            // Mikro-Allocation unter der kleinsten Stufe). Ziel-Ceiling = Komfort-Obergrenze.
+            // Daily Plan besitzt den Slot: Stufe aus Allocation (0 = absichtlich aus).
+            // FSM-Ceiling = Forecast-Tagesziel (nicht pauschal planningMax).
             plannerCommandedStage = dailyPlanContext.commandedStage;
-            plannerTargetTempC = config.planningMaxTempC;
+            plannerTargetTempC = planTarget.targetTempC;
             autoDecisionSource = "daily_plan";
         }
         else {
@@ -236,6 +286,9 @@ async function runImmersionRuntimeTick(host) {
             plannerTargetTempC = safeDefault.targetTempC;
             autoDecisionSource = "thermal_fallback";
         }
+    }
+    else if (resolvedMode === "force") {
+        plannerTargetTempC = planTarget.targetTempC;
     }
     const fsm = (0, fsm_1.runImmersionFsm)({
         nowMs,
@@ -339,6 +392,12 @@ async function runImmersionRuntimeTick(host) {
         temperature_status: temperature.status,
         planning_min_temp_c: config.planningMinTempC,
         planning_max_temp_c: config.planningMaxTempC,
+        plan_target_temp_c: resolvedMode === "auto" && autoDecisionSource === "thermal_fallback"
+            ? plannerTargetTempC
+            : planTarget.targetTempC,
+        plan_target_reason_de: resolvedMode === "auto" && autoDecisionSource === "thermal_fallback"
+            ? `Sicherheits-Default ${plannerTargetTempC ?? config.planningMinTempC} °C (Daily Plan nicht nutzbar).`
+            : planTarget.reasonDe,
         force_target_temp_c: forceTarget,
         force_until: forceUntil,
         commanded_stage: persist.faultLockout ? 0 : effectiveStage,
@@ -383,6 +442,8 @@ async function publishRuntime(host, s, decisionSource, dailyPlan) {
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.temperatureStatus, s.temperature_status);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planningMinTempC, s.planning_min_temp_c);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planningMaxTempC, s.planning_max_temp_c);
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planTargetTempC, s.plan_target_temp_c ?? null);
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planTargetReasonDe, s.plan_target_reason_de);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.forceTargetTempC, s.force_target_temp_c ?? null);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.forceUntil, s.force_until ?? "");
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.commandedStage, s.commanded_stage);

@@ -338,8 +338,8 @@ for (const c of /** @type {CardDef[]} */ ([
 		x: M + 2 * (cardW + GAP), y: cardY, w: cardW, h: cardH, title: "Heizstab", color: C.ih,
 		rows: [
 			{ type: "f", oid: "addons.immersion_heater.runtime.buffer_temperature_c", label: "Buf ", digits: "1", unit: "°", em: true, color: C.ih },
+			{ type: "f", oid: "addons.immersion_heater.runtime.plan_target_temp_c", label: "Ziel ", digits: "1", unit: "°", color: C.ih },
 			{ type: "f", oid: "addons.immersion_heater.runtime.allocated_power_w", label: "Plan ", digits: "0", unit: " W", color: C.ih },
-			{ type: "f", oid: "addons.immersion_heater.runtime.commanded_power_w", label: "P ", digits: "0", unit: " W" },
 			{ type: "s", oid: "addons.immersion_heater.runtime.decision_source", label: "Src " },
 		],
 	},

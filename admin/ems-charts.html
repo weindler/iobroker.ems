@@ -78,6 +78,10 @@ var stateIds=[
 	INST+".addons.immersion_heater.runtime.allocated_power_w",
 	INST+".addons.immersion_heater.runtime.commanded_power_w",
 	INST+".addons.immersion_heater.runtime.buffer_temperature_c",
+	INST+".addons.immersion_heater.runtime.plan_target_temp_c",
+	INST+".addons.immersion_heater.runtime.plan_target_reason_de",
+	INST+".addons.immersion_heater.runtime.planning_min_temp_c",
+	INST+".addons.immersion_heater.runtime.planning_max_temp_c",
 	INST+".addons.immersion_heater.runtime.allocation_reason_de",
 	INST+".addons.immersion_heater.runtime.state",
 	INST+".addons.battery.runtime.decision_source",
@@ -223,9 +227,15 @@ function renderGrid(){
 			["Befehl jetzt",fmtW(g("addons.immersion_heater.runtime.commanded_power_w"))],
 			["Quelle",txt(g("addons.immersion_heater.runtime.decision_source"),"—")],
 			["Puffer",fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c"))],
+			["Tagesziel",fmtTemp(g("addons.immersion_heater.runtime.plan_target_temp_c"))+" (Band "+fmtTemp(g("addons.immersion_heater.runtime.planning_min_temp_c"))+"–"+fmtTemp(g("addons.immersion_heater.runtime.planning_max_temp_c"))+")"],
 			["Nächste Fenster",nextWindows(g("planner.intent.allocation.immersion_heater.plan_json"),ON_W)],
 			["Allocation",txt(ihAl)+" — "+txt(g("planner.intent.allocation.immersion_heater.reason_de"),"")]
-		],txt(g("addons.immersion_heater.runtime.allocation_reason_de"),txt(g("addons.immersion_heater.runtime.state"),"")))
+		],(function(){
+			var z=txt(g("addons.immersion_heater.runtime.plan_target_reason_de"),"");
+			var a=txt(g("addons.immersion_heater.runtime.allocation_reason_de"),"");
+			if(z&&a)return z+" · "+a;
+			return z||a||txt(g("addons.immersion_heater.runtime.state"),"");
+		})())
 		+card("Batterie","#58a6ff",planBadge(batP,batAl),[
 			["Slot-Plan laden",fmtW(batP)],
 			["SOC",fmtPct(g("live.battery.soc_pct"))],

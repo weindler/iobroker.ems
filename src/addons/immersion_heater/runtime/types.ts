@@ -115,6 +115,9 @@ export interface RuntimeSnapshot {
 	temperature_status: TemperatureStatus;
 	planning_min_temp_c: number;
 	planning_max_temp_c: number;
+	/** Effektives Plan-/Forecast-Tagesziel (°C) — wohin der Heizstab im Auto heizen würde. */
+	plan_target_temp_c: number | null;
+	plan_target_reason_de: string;
 	force_target_temp_c: number | null;
 	force_until: string | null;
 	commanded_stage: number;
@@ -145,6 +148,8 @@ export const IMMERSION_RUNTIME_STATES = {
 	temperatureStatus: `${IMMERSION_RUNTIME_BASE}.temperature_status`,
 	planningMinTempC: `${IMMERSION_RUNTIME_BASE}.planning_min_temp_c`,
 	planningMaxTempC: `${IMMERSION_RUNTIME_BASE}.planning_max_temp_c`,
+	planTargetTempC: `${IMMERSION_RUNTIME_BASE}.plan_target_temp_c`,
+	planTargetReasonDe: `${IMMERSION_RUNTIME_BASE}.plan_target_reason_de`,
 	forceTargetTempC: `${IMMERSION_RUNTIME_BASE}.force_target_temp_c`,
 	forceUntil: `${IMMERSION_RUNTIME_BASE}.force_until`,
 	commandedStage: `${IMMERSION_RUNTIME_BASE}.commanded_stage`,

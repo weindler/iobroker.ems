@@ -12,6 +12,8 @@ exports.IMMERSION_RUNTIME_STATES = {
     temperatureStatus: `${exports.IMMERSION_RUNTIME_BASE}.temperature_status`,
     planningMinTempC: `${exports.IMMERSION_RUNTIME_BASE}.planning_min_temp_c`,
     planningMaxTempC: `${exports.IMMERSION_RUNTIME_BASE}.planning_max_temp_c`,
+    planTargetTempC: `${exports.IMMERSION_RUNTIME_BASE}.plan_target_temp_c`,
+    planTargetReasonDe: `${exports.IMMERSION_RUNTIME_BASE}.plan_target_reason_de`,
     forceTargetTempC: `${exports.IMMERSION_RUNTIME_BASE}.force_target_temp_c`,
     forceUntil: `${exports.IMMERSION_RUNTIME_BASE}.force_until`,
     commandedStage: `${exports.IMMERSION_RUNTIME_BASE}.commanded_stage`,

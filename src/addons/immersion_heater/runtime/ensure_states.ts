@@ -40,6 +40,8 @@ export async function ensureImmersionRuntimeStates(host: StateHost): Promise<voi
 		strState(IMMERSION_RUNTIME_STATES.temperatureStatus, "Temperatur-Status", "missing"),
 		numState(IMMERSION_RUNTIME_STATES.planningMinTempC, "Planungsuntergrenze °C"),
 		numState(IMMERSION_RUNTIME_STATES.planningMaxTempC, "Planungsobergrenze °C"),
+		numState(IMMERSION_RUNTIME_STATES.planTargetTempC, "Plan-Tagesziel °C"),
+		strState(IMMERSION_RUNTIME_STATES.planTargetReasonDe, "Plan-Tagesziel Begründung (DE)", ""),
 		numState(IMMERSION_RUNTIME_STATES.forceTargetTempC, "Force-Ziel °C"),
 		strState(IMMERSION_RUNTIME_STATES.forceUntil, "Force bis (ISO)"),
 		numState(IMMERSION_RUNTIME_STATES.commandedStage, "Befohlene Stufe", 0),

@@ -165,7 +165,7 @@ describe("immersion daily plan reader", () => {
 		assert.equal(r.mandatoryAllocatedPowerW, 3400);
 	});
 
-	it("zero allocation falls back to thermal planner path", () => {
+	it("zero allocation keeps Daily Plan ownership (absichtlich aus, kein Fallback)", () => {
 		const r = resolveImmersionDailyPlanFromData({
 			now: NOW,
 			timezone: TZ,
@@ -173,11 +173,28 @@ describe("immersion daily plan reader", () => {
 			entries: [],
 			config: MULTI_STAGE_CFG,
 		});
-		assert.equal(r.useDailyPlan, false);
+		assert.equal(r.useDailyPlan, true);
 		assert.equal(r.dailyPlanStatus, "daily_plan_zero_allocation");
 		assert.equal(r.commandedStage, 0);
-		assert.equal(r.decisionSource, "thermal_fallback");
-		assert.match(r.allocationReasonDe, /Thermal-Fallback/);
+		assert.equal(r.decisionSource, "daily_plan");
+		assert.match(r.allocationReasonDe, /ohne Heizstab-Leistung/);
+		assert.doesNotMatch(r.allocationReasonDe, /Thermal-Fallback/);
+	});
+
+	it("allocation below smallest stage is Daily Plan off (not thermal fallback)", () => {
+		const r = resolveImmersionDailyPlanFromData({
+			now: NOW,
+			timezone: TZ,
+			meta: { status: "ready", date: "2026-07-11", revision: 1, validUntil: null, timezone: TZ },
+			entries: [allocationEntry(CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, 8)],
+			config: MULTI_STAGE_CFG,
+		});
+		assert.equal(r.useDailyPlan, true);
+		assert.equal(r.dailyPlanStatus, "daily_plan_zero_allocation");
+		assert.equal(r.commandedStage, 0);
+		assert.equal(r.allocatedPowerW, 8);
+		assert.equal(r.decisionSource, "daily_plan");
+		assert.match(r.allocationReasonDe, /keine fahrbare Stufe/);
 	});
 
 	it("falls back on wrong date", () => {

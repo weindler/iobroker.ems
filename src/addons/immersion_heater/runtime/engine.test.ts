@@ -154,8 +154,9 @@ describe("immersion runtime engine — Daily Plan vs. Sicherheits-Default (Roadm
 		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), 1);
 	});
 
-	it("daily_plan_zero_allocation (Status degraded, keine Heizstab-Allocation) -> lokaler Sicherheits-Default", async () => {
+	it("daily_plan_zero_allocation (gültiger Plan, 0 W im Slot) -> Plan aus, kein Sicherheits-Default-Heizen", async () => {
 		const now = realNow();
+		// Unter planningMinTempC — früher hätte der Fallback geheizt; mit Plan-Ownership bleibt aus.
 		const host = baseHost(40);
 		host.set(DAILY_PLAN_STATE_IDS.status, "degraded");
 		host.set(DAILY_PLAN_STATE_IDS.date, localDateKeyInTimezone(now, TZ));
@@ -166,8 +167,29 @@ describe("immersion runtime engine — Daily Plan vs. Sicherheits-Default (Roadm
 		await runImmersionRuntimeTick(host);
 
 		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.dailyPlanStatus), "daily_plan_zero_allocation");
-		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.decisionSource), "thermal_fallback");
-		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), 1);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.decisionSource), "daily_plan");
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), 0);
+	});
+
+	it("Mikro-Allocation unter kleinster Stufe -> Daily Plan aus (Stage 0)", async () => {
+		const now = realNow();
+		const slotStartIso = slotStartIsoFloored(now, TZ);
+		const slotEndIso = new Date(Date.parse(slotStartIso) + DAILY_PLAN_SLOT_MS).toISOString();
+		const host = baseHost(40);
+		host.set(DAILY_PLAN_STATE_IDS.status, "ready");
+		host.set(DAILY_PLAN_STATE_IDS.date, localDateKeyInTimezone(now, TZ));
+		host.set(DAILY_PLAN_STATE_IDS.revision, 1);
+		host.set(DAILY_PLAN_STATE_IDS.validUntil, "");
+		host.set(
+			ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson,
+			JSON.stringify([allocationEntry(slotStartIso, slotEndIso, 8)]),
+		);
+
+		await runImmersionRuntimeTick(host);
+
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.dailyPlanStatus), "daily_plan_zero_allocation");
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.decisionSource), "daily_plan");
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), 0);
 	});
 
 	it("daily_plan_valid: Allocation im aktuellen Slot -> Daily Plan steuert, Legacy-Planner bleibt irrelevant", async () => {

@@ -135,8 +135,9 @@ async function decisionState(host, id) {
         strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.decisionSource), "thermal_fallback");
         strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 1);
     });
-    (0, node_test_1.it)("daily_plan_zero_allocation (Status degraded, keine Heizstab-Allocation) -> lokaler Sicherheits-Default", async () => {
+    (0, node_test_1.it)("daily_plan_zero_allocation (gültiger Plan, 0 W im Slot) -> Plan aus, kein Sicherheits-Default-Heizen", async () => {
         const now = realNow();
+        // Unter planningMinTempC — früher hätte der Fallback geheizt; mit Plan-Ownership bleibt aus.
         const host = baseHost(40);
         host.set(states_js_1.DAILY_PLAN_STATE_IDS.status, "degraded");
         host.set(states_js_1.DAILY_PLAN_STATE_IDS.date, (0, time_js_1.localDateKeyInTimezone)(now, TZ));
@@ -145,8 +146,23 @@ async function decisionState(host, id) {
         host.set(states_js_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson, "[]");
         await (0, engine_js_1.runImmersionRuntimeTick)(host);
         strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.dailyPlanStatus), "daily_plan_zero_allocation");
-        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.decisionSource), "thermal_fallback");
-        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 1);
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.decisionSource), "daily_plan");
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 0);
+    });
+    (0, node_test_1.it)("Mikro-Allocation unter kleinster Stufe -> Daily Plan aus (Stage 0)", async () => {
+        const now = realNow();
+        const slotStartIso = (0, slots_js_1.slotStartIsoFloored)(now, TZ);
+        const slotEndIso = new Date(Date.parse(slotStartIso) + slots_js_1.DAILY_PLAN_SLOT_MS).toISOString();
+        const host = baseHost(40);
+        host.set(states_js_1.DAILY_PLAN_STATE_IDS.status, "ready");
+        host.set(states_js_1.DAILY_PLAN_STATE_IDS.date, (0, time_js_1.localDateKeyInTimezone)(now, TZ));
+        host.set(states_js_1.DAILY_PLAN_STATE_IDS.revision, 1);
+        host.set(states_js_1.DAILY_PLAN_STATE_IDS.validUntil, "");
+        host.set(states_js_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson, JSON.stringify([allocationEntry(slotStartIso, slotEndIso, 8)]));
+        await (0, engine_js_1.runImmersionRuntimeTick)(host);
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.dailyPlanStatus), "daily_plan_zero_allocation");
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.decisionSource), "daily_plan");
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 0);
     });
     (0, node_test_1.it)("daily_plan_valid: Allocation im aktuellen Slot -> Daily Plan steuert, Legacy-Planner bleibt irrelevant", async () => {
         const now = realNow();

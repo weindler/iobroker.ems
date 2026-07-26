@@ -60,7 +60,7 @@ Seit v0.1.203 gibt es **keinen Rückgriff mehr auf den alten Realtime-Planner** 
 
 `decision_source = thermal_fallback` bezeichnet ab jetzt diesen lokalen Sicherheits-Default, nicht mehr den alten Planner. Fallback nur bei fehlendem, ungültigem, abgelaufenem oder nicht zuordenbarem Daily Plan — **nicht** bei gültigem Plan mit bewusst 0 W Allocation.
 
-Der alte Thermal-Planner (`operator/planning/thermal.ts`) wird seit Block 4 nicht mehr im Produktions-Tick ausgeführt; `planner.intent.thermal.*` bleibt bis Block 5 als unbeschriebene Legacy-Hülle und wird von der Runtime nicht gelesen.
+Der alte Thermal-Planner (`operator/planning/thermal.ts`) läuft nicht mehr im Produktions-Tick; Legacy-`planner.intent.thermal.*` wurde in Block 5 entfernt. Seit v0.1.207 gilt: nutzbarer Plan + aktueller Slot → immer `useDailyPlan` (auch bei 0 W / unterstufiger Allocation).
 
 ## 8. Safety und FSM
 
@@ -99,10 +99,9 @@ Bei Revision- oder Slotwechsel wird die Allocation neu eingelesen (Cache an Revi
 
 ## 12. Bekannte Einschränkungen
 
-- Nur Heizstab-Runtime angebunden; Batterie, Wallbox und Klima lesen den Daily Plan noch nicht
-- Legacy-Thermal-Planner bleibt vorläufig als Fallback
-- Keine KI, keine direkten Relais-Writes aus dem Daily Plan
-- AC-Governance-Runtime-Lücke unverändert
+- Allocation unter der kleinsten Relais-Stufe (z. B. 8 W bei 1700-W-Stufe) gilt als **aus** (`daily_plan_zero_allocation`) — der Allocator kann solche Mikro-Slots noch erzeugen; die Runtime fährt sie nicht
+- Thermal-Fallback nur noch wenn der Daily Plan selbst nicht verwendbar ist (missing/expired/wrong_date/…)
+- Keine direkten Relais-Writes aus dem Daily Plan — nur über bestehende Dryrun/Live-Gates
 
 ## 13. Abgrenzung zu Klima, Wallbox und Batterie
 

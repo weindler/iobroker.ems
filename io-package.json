@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.206",
+		"version": "0.1.207",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.207": {
+				"en": "Fix: immersion heater Daily Plan slot ownership (0 W / below min stage = off). VIS rebuilt around \"Was plant das EMS?\": per-addon plan cards (IH/battery/wallbox/climate) + clear AI answers (does KI shift? is it better than rules?). Replaces cryptic A/B watt charts and NaN battery fields.",
+				"de": "Fix: Heizstab Daily-Plan-Slot-Ownership (0 W / unter Stufe = aus). VIS neu um „Was plant das EMS?“: Add-on-Plan-Karten (Heizstab/Batterie/Wallbox/Klima) + klare KI-Antworten (verschiebt? besser als Regelwerk?). Ersetzt unklare A/B-Watt-Charts und Batterie-NaN."
+			},
 			"0.1.206": {
 				"en": "Roadmap Block 6 (\"AI write-back only with measurable benefit\") completed: AI receives a full Daily Plan horizon digest plus learning scalars (pv_bias, thermal_runtime, battery_runtime, price_learning, house_load) — not a slot-only stub. After each run, Plan B is compared to Plan A; write-back updates Daily Plan / allocation states only when B wins (cost primary, else lower grid / higher PV). If B loses, slot preferences are cleared and automatic AI is suspended (ai.auto_suspended; status suspended). Manual Optimize now clears the suspend for a retry. New monthly cost soft-limit (ai_monthly_cost_limit_eur; 0=off). minimum_replan_interval remains ai_min_interval_minutes. AI never writes devices directly — dryrun/live runtime gates unchanged. Default ai_enabled=false. Roadmap blocks 1–6 complete.",
 				"de": "Roadmap-Block 6 („KI-Write-back nur bei messbarem Nutzen“) abgeschlossen: Die KI erhält den vollen Daily-Plan-Horizont plus Learning-Kennzahlen (pv_bias, thermal_runtime, battery_runtime, price_learning, house_load) — kein Slot-Mini-Kontext. Nach jedem Lauf wird Plan B gegen Plan A verglichen; Write-back schreibt nur dann Daily-Plan-/Allocation-States um, wenn B gewinnt (Kosten primär, sonst weniger Netz / mehr PV). Verliert B → Präferenzen verworfen, Auto-KI gesperrt (ai.auto_suspended; Status suspended). „Jetzt optimieren“ hebt die Sperre für einen erneuten Versuch. Neues Monatskosten-Softlimit (ai_monthly_cost_limit_eur; 0=aus). minimum_replan_interval bleibt ai_min_interval_minutes. Die KI schreibt nie direkt auf Geräte — Dryrun/Live-Runtime-Gates unverändert. Standard ai_enabled=false. Roadmap-Blöcke 1–6 abgeschlossen."

@@ -287,16 +287,14 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 		dailyPlanContext = await resolveImmersionDailyPlanAllocation(host, config, now);
 		lastDailyPlanContext = dailyPlanContext;
 		if (dailyPlanContext.useDailyPlan) {
-			// Daily Plan liefert die Stufe direkt aus der Allocation — das Zieltemperatur-Ceiling
-			// bleibt die konfigurierte Komfort-Obergrenze (FSM begrenzt ohnehin auf planningMaxTempC).
+			// Daily Plan besitzt den Slot: Stufe aus Allocation (0 = absichtlich aus, auch bei
+			// Mikro-Allocation unter der kleinsten Stufe). Ziel-Ceiling = Komfort-Obergrenze.
 			plannerCommandedStage = dailyPlanContext.commandedStage;
 			plannerTargetTempC = config.planningMaxTempC;
 			autoDecisionSource = "daily_plan";
 		} else {
-			// Daily Plan nicht verwendbar (missing/degraded/expired/wrong_date/...) — lokaler
-			// Sicherheits-Default statt altem Realtime-Planner (Roadmap Block 3.1): nur die
-			// Pflicht-Untergrenze halten, gleiche Schwelle wie die Operator-Pflicht-Contribution
-			// (`operator/contributions/flexible/immersion_heater.ts`).
+			// Daily Plan nicht verwendbar (missing/expired/wrong_date/…) — lokaler
+			// Sicherheits-Default: nur die Pflicht-Untergrenze halten.
 			const safeDefault = safeDefaultAutoTarget(config);
 			plannerCommandedStage = safeDefault.stage;
 			plannerTargetTempC = safeDefault.targetTempC;

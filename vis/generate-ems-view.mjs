@@ -251,13 +251,13 @@ function buildCard(card) {
 	}
 }
 
-function chartIframeHtml() {
+function planBoardIframeHtml() {
 	const src = `/adapter/ems/ems-charts.html?inst=${encodeURIComponent(PREFIX)}`;
-	return `<iframe src="${src}" title="Plan A vs B" style="width:100%;height:100%;border:0;background:#161b22;display:block;"></iframe>`;
+	return `<iframe src="${src}" title="EMS Plan-Übersicht" style="width:100%;height:100%;border:0;background:#161b22;display:block;"></iframe>`;
 }
 
 // --- Layout coordinates (must fit 1276 × 637) ---
-// y=0-20 header | briefing | cards | meta+reason | alloc | charts
+// y=0-20 header | briefing | live cards | Plan-Übersicht (iframe)
 
 widgets[wid()] = {
 	tpl: "i-vis-image-new",
@@ -329,125 +329,62 @@ for (const c of /** @type {CardDef[]} */ ([
 		x: M + (cardW + GAP), y: cardY, w: cardW, h: cardH, title: "Batterie", color: C.accent,
 		rows: [
 			{ type: "f", oid: "live.battery.soc_pct", label: "SOC ", digits: "0", unit: " %", em: true, color: C.accent },
-			{ type: "f", oid: "addons.battery.telemetry.power_w", label: "P ", digits: "0", unit: " W" },
-			{ type: "s", oid: "addons.battery.runtime.state", label: "FSM " },
-			{ type: "s", oid: "addons.battery.runtime.action", label: "Int " },
+			{ type: "f", oid: "addons.battery.runtime.allocated_charge_power_w", label: "Plan ", digits: "0", unit: " W" },
+			{ type: "s", oid: "addons.battery.runtime.decision_source", label: "Src " },
+			{ type: "s", oid: "addons.battery.runtime.daily_plan_status", label: "PlanSt " },
 		],
 	},
 	{
 		x: M + 2 * (cardW + GAP), y: cardY, w: cardW, h: cardH, title: "Heizstab", color: C.ih,
 		rows: [
 			{ type: "f", oid: "addons.immersion_heater.runtime.buffer_temperature_c", label: "Buf ", digits: "1", unit: "°", em: true, color: C.ih },
-			{ type: "f", oid: "addons.immersion_heater.runtime.planning_max_temp_c", label: "Ziel ", digits: "1", unit: "°" },
-			{ type: "f", oid: "addons.immersion_heater.runtime.commanded_power_w", label: "P ", digits: "0", unit: " W", color: C.ih },
-			{ type: "s", oid: "addons.immersion_heater.runtime.state", label: "St " },
+			{ type: "f", oid: "addons.immersion_heater.runtime.allocated_power_w", label: "Plan ", digits: "0", unit: " W", color: C.ih },
+			{ type: "f", oid: "addons.immersion_heater.runtime.commanded_power_w", label: "P ", digits: "0", unit: " W" },
+			{ type: "s", oid: "addons.immersion_heater.runtime.decision_source", label: "Src " },
 		],
 	},
 	{
 		x: M + 3 * (cardW + GAP), y: cardY, w: cardW, h: cardH, title: "Wallbox", color: C.wb,
 		rows: [
 			{ type: "f", oid: "live.wallbox.charge_power_w", label: "P ", digits: "0", unit: " W", em: true, color: C.wb },
+			{ type: "f", oid: "addons.wallbox.runtime.allocated_power_w", label: "Plan ", digits: "0", unit: " W" },
 			{ type: "f", oid: "live.wallbox.vehicle_soc_pct", label: "SOC ", digits: "0", unit: " %" },
-			{ type: "s", oid: "addons.wallbox.runtime.dispatch_status", label: "Disp " },
-			{ type: "s", oid: "planner.intent.allocation.wallbox.status", label: "Al " },
+			{ type: "s", oid: "addons.wallbox.runtime.decision_source", label: "Src " },
 		],
 	},
 	{
 		x: M + 4 * (cardW + GAP), y: cardY, w: cardW, h: cardH, title: "Klima", color: C.ac,
 		rows: [
-			{ type: "f", oid: "addons.air_conditioning.units.unit_1.allocated_power_w", label: "P ", digits: "0", unit: " W", em: true, color: C.ac },
-			{ type: "f", oid: "addons.air_conditioning.units.unit_1.estimated_power_w", label: "Est ", digits: "0", unit: " W" },
+			{ type: "f", oid: "addons.air_conditioning.units.unit_1.allocated_power_w", label: "Plan ", digits: "0", unit: " W", em: true, color: C.ac },
+			{ type: "s", oid: "addons.air_conditioning.units.unit_1.decision_source", label: "Src " },
+			{ type: "s", oid: "addons.air_conditioning.units.unit_1.daily_plan_status", label: "PlanSt " },
 			{ type: "s", oid: "addons.air_conditioning.units.unit_1.running", label: "On " },
-			{ type: "s", oid: "planner.intent.allocation.air_conditioning.status", label: "Al " },
 		],
 	},
 	{
-		x: M + 5 * (cardW + GAP), y: cardY, w: cardW, h: cardH, title: "KI/Vgl", color: C.planB,
+		x: M + 5 * (cardW + GAP), y: cardY, w: cardW, h: cardH, title: "KI", color: C.planB,
 		rows: [
-			{ type: "f", oid: "ai.cost_estimate_today_eur", label: "€ ", digits: "3", unit: "", em: true },
-			{ type: "s", oid: "compare.active_plan", label: "Plan " },
-			{ type: "s", oid: "ai.last_run_result", label: "Run " },
-			{ type: "f", oid: "learning.pv_bias.corrected_today_kwh", label: "PV ", digits: "1", unit: "kWh", color: C.pv },
+			{ type: "s", oid: "ai.status", label: "St ", em: true, color: C.planB },
+			{ type: "s", oid: "compare.active_plan", label: "Aktiv " },
+			{ type: "s", oid: "ai.auto_suspended", label: "AutoAus " },
+			{ type: "f", oid: "ai.cost_estimate_today_eur", label: "€ ", digits: "3", unit: "" },
 		],
 	},
 ])) {
 	buildCard(c);
 }
 
-// Meta row: Daily | Batterie-Lade-Logik (PV-Defizit, Legacy-Werte) | Learning
-const metaY = cardY + cardH + GAP;
-const metaW = Math.floor((VIEW_W - 2 * M - 2 * GAP) / 3);
-const metaH = 18 + 3 * ROW_H + 4 + REASON_H;
+// Plan-Übersicht — fills rest (KI-Fragen + Add-on Daily-Plan-Karten)
+const boardY = cardY + cardH + GAP;
+const boardH = VIEW_H - boardY - M;
 
-buildCard({
-	x: M, y: metaY, w: metaW, h: metaH, title: "Daily Plan", color: C.accent,
-	rows: [
-		{ type: "s", oid: "planner.intent.daily_plan.status", label: "St ", em: true },
-		{ type: "s", oid: "planner.intent.daily_plan.date", label: "Tag " },
-		{ type: "s", oid: "planner.intent.allocation.battery.status", label: "Al.Bat " },
-	],
-});
-widgets[wid()] = textBlockWidget(oid("planner.intent.daily_plan.reason_de"), "→ ", {
-	left: `${M + 6}px`, top: `${metaY + 18 + 3 * ROW_H + 2}px`, width: `${metaW - 12}px`, height: `${REASON_H}px`,
-});
-
-buildCard({
-	x: M + metaW + GAP, y: metaY, w: metaW, h: metaH, title: "Batterie-Lade-Logik", color: C.accent,
-	rows: [
-		{ type: "s", oid: "addons.battery.runtime.decision_source", label: "Src " },
-		{ type: "f", oid: "addons.battery.runtime.target_soc_pct", label: "SOC* ", digits: "0", unit: "%" },
-		{ type: "f", oid: "addons.battery.runtime.allocated_energy_kwh", label: "E ", digits: "1", unit: "kWh" },
-	],
-});
-widgets[wid()] = textBlockWidget(oid("addons.battery.runtime.reason_de"), "→ ", {
-	left: `${M + metaW + GAP + 6}px`, top: `${metaY + 18 + 3 * ROW_H + 2}px`, width: `${metaW - 12}px`, height: `${REASON_H}px`,
-});
-
-buildCard({
-	x: M + 2 * (metaW + GAP), y: metaY, w: metaW, h: metaH, title: "Learning / Wetter", color: C.pv,
-	rows: [
-		{ type: "f", oid: "learning.pv_bias.corrected_tomorrow_kwh", label: "PV+1 ", digits: "1", unit: "kWh" },
-		{ type: "s", oid: "learning.weather.health", label: "Wetter " },
-		{ type: "f", oid: "learning.weather.confidence_pct", label: "Konf ", digits: "0", unit: "%" },
-	],
-});
-widgets[wid()] = textBlockWidget(oid("learning.weather.missing_fields"), "Fehlt: ", {
-	left: `${M + 2 * (metaW + GAP) + 6}px`, top: `${metaY + 18 + 3 * ROW_H + 2}px`, width: `${metaW - 12}px`, height: `${REASON_H}px`,
-});
-
-// Allocation strip
-const allocY = metaY + metaH + GAP;
-const allocW = Math.floor((VIEW_W - 2 * M - 3 * GAP) / 4);
-const allocH = 38;
-
-for (const [i, spec] of [
-	{ t: "Al Bat", o: "battery", c: C.accent },
-	{ t: "Al WB", o: "wallbox", c: C.wb },
-	{ t: "Al IH", o: "immersion_heater", c: C.ih },
-	{ t: "Al AC", o: "air_conditioning", c: C.ac },
-].entries()) {
-	const ax = M + i * (allocW + GAP);
-	widgets[wid()] = cardPanel(ax, allocY, allocW, allocH);
-	widgets[wid()] = sectionTitle(spec.t, ax + 6, allocY + 3, 40, spec.c);
-	widgets[wid()] = stringWidget(oid(`planner.intent.allocation.${spec.o}.status`), "", {
-		left: `${ax + 46}px`, top: `${allocY + 4}px`, width: `${allocW - 52}px`, height: "14px", "font-size": FS.val,
-	});
-	widgets[wid()] = textBlockWidget(oid(`planner.intent.allocation.${spec.o}.reason_de`), "", {
-		left: `${ax + 6}px`, top: `${allocY + 17}px`, width: `${allocW - 12}px`, height: "18px", "font-size": "9px",
-	});
-}
-
-// Charts — fills rest to exactly VIEW_H
-const chartY = allocY + allocH + GAP;
-const chartH = VIEW_H - chartY - M;
-
-widgets[wid()] = cardPanel(M, chartY, VIEW_W - 2 * M, chartH);
-widgets[wid()] = sectionTitle("Plan A vs. B", M + 6, chartY + 4, 100, C.text);
-widgets[wid()] = htmlWidget(chartIframeHtml(), {
+widgets[wid()] = cardPanel(M, boardY, VIEW_W - 2 * M, boardH);
+widgets[wid()] = sectionTitle("Was plant das EMS?", M + 6, boardY + 4, 200, C.text);
+widgets[wid()] = htmlWidget(planBoardIframeHtml(), {
 	left: `${M + 2}px`,
-	top: `${chartY + 18}px`,
+	top: `${boardY + 16}px`,
 	width: `${VIEW_W - 2 * M - 4}px`,
-	height: `${chartH - 22}px`,
+	height: `${boardH - 20}px`,
 	"background-color": "transparent",
 }, "0", { fixed: true });
 
@@ -475,5 +412,5 @@ const chartsAdmin = join(__dirname, "..", "admin", "ems-charts.html");
 copyFileSync(chartsSrc, chartsAdmin);
 
 // Sanity check layout fits
-const maxY = chartY + chartH;
+const maxY = boardY + boardH;
 console.log(`Written ${out} (${Object.keys(widgets).length} widgets, ${VIEW_W}x${VIEW_H}, bottom=${maxY})`);

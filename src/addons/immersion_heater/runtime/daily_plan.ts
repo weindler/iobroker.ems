@@ -414,13 +414,26 @@ export function resolveImmersionDailyPlanFromData(input: ResolveDailyPlanInput):
 	const techMax = maxTechnicalPowerW(config);
 	const cappedPowerW = techMax > 0 ? Math.min(merge.totalPowerW, techMax) : merge.totalPowerW;
 	const stagePick = stageIndexForMaxPowerW(config, cappedPowerW);
+	const executableStage = stagePick.stageIndex > 0;
 
-	const dailyPlanStatus: ImmersionDailyPlanStatus =
-		cappedPowerW <= 0 ? "daily_plan_zero_allocation" : "daily_plan_valid";
+	// Nutzbarer Daily Plan + aufgelöster Slot: Plan besitzt die Steuerung.
+	// 0 W oder Leistung unter der kleinsten Stufe = absichtlich aus — kein Thermal-Fallback.
+	const dailyPlanStatus: ImmersionDailyPlanStatus = executableStage
+		? "daily_plan_valid"
+		: "daily_plan_zero_allocation";
+
+	let allocationReasonDe: string;
+	if (executableStage) {
+		allocationReasonDe = stagePick.reasonDe;
+	} else if (cappedPowerW <= 0) {
+		allocationReasonDe = `${merge.reasonDe} Daily Plan aktiv — Slot ohne Heizstab-Leistung (aus).`;
+	} else {
+		allocationReasonDe = `${stagePick.reasonDe} Daily Plan aktiv — keine fahrbare Stufe (aus).`;
+	}
 
 	return {
 		dailyPlanStatus,
-		decisionSource: cappedPowerW > 0 ? "daily_plan" : "thermal_fallback",
+		decisionSource: "daily_plan",
 		dailyPlanRevision: meta.revision,
 		slotStartIso,
 		slotEndIso,
@@ -428,13 +441,9 @@ export function resolveImmersionDailyPlanFromData(input: ResolveDailyPlanInput):
 		mandatoryAllocatedPowerW: merge.mandatoryPowerW,
 		flexibleAllocatedPowerW: merge.flexiblePowerW,
 		allocationStatus: merge.allocationStatus,
-		allocationReasonDe:
-			cappedPowerW <= 0
-				? `${merge.reasonDe} Thermal-Fallback (Planner/Überschuss) aktiv.`
-				: stagePick.reasonDe,
+		allocationReasonDe,
 		commandedStage: stagePick.stageIndex,
-		/** Zero allocation does not own control — surplus planner may command a stage. */
-		useDailyPlan: cappedPowerW > 0,
+		useDailyPlan: true,
 	};
 }
 
@@ -487,7 +496,7 @@ export async function resolveImmersionDailyPlanAllocation(
 			mandatoryAllocatedPowerW: null,
 			flexibleAllocatedPowerW: null,
 			allocationStatus: "missing",
-			allocationReasonDe: "Daily Plan fehlt – bisheriger Thermal-Planner wird verwendet.",
+			allocationReasonDe: "Daily Plan fehlt – lokaler Sicherheits-Default aktiv.",
 			commandedStage: 0,
 			useDailyPlan: false,
 		};

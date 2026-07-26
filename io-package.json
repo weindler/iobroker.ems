@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.196",
+		"version": "0.1.197",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.197": {
+				"en": "New: VIS Plan A/B charts are now shipped with the adapter (admin/ems-charts.html → /adapter/ems/ems-charts.html?inst=ems.0). No copying files into vis/www — update the adapter and import the included vis/ems-dashboard-view.json (1276×637). Charts read compare.plan_a.chart_json, compare.plan_b.chart_json and compare.delta_summary_json via socket.io. Generator: npm run vis:generate.",
+				"de": "Neu: VIS Plan-A/B-Charts liegen jetzt im Adapter (admin/ems-charts.html → /adapter/ems/ems-charts.html?inst=ems.0). Kein Kopieren nach vis/www — Adapter aktualisieren und die mitgelieferte vis/ems-dashboard-view.json importieren (1276×637). Charts lesen compare.plan_a.chart_json, compare.plan_b.chart_json und compare.delta_summary_json per socket.io. Generator: npm run vis:generate."
+			},
 			"0.1.196": {
 				"en": "New: configurable minimum interval between automatic AI calls (Global tab → \"Min. interval between automatic calls\", default 60 minutes, 0 disables it). Despite the v0.1.195 fix, live testing still showed ~40+ automatic calls before mid-morning because the coarse digest alone reacted to legitimate small demand changes (e.g. the immersion heater target temperature moving through several bucket steps). The trigger now requires both a digest change AND that the configured interval has passed since the last automatic call — a hard cap of at most 1 call/configured-interval (24/day at the 60min default), independent of how often the digest changes. The manual \"Optimize now\" button is unaffected. The last automatic-trigger timestamp is persisted so an adapter restart cannot bypass the interval.",
 				"de": "Neu: konfigurierbarer Mindestabstand zwischen automatischen KI-Aufrufen (Global-Tab → „Mindestabstand automatische Aufrufe“, Standard 60 Minuten, 0 deaktiviert ihn). Trotz des Fixes in v0.1.195 zeigte der Live-Test weiterhin 40+ automatische Aufrufe bis zum Vormittag, weil der grobe Digest allein bereits auf legitime kleine Bedarfsänderungen reagierte (z. B. wanderte die Heizstab-Zieltemperatur über mehrere Bucket-Stufen). Der Trigger verlangt jetzt sowohl eine Digest-Änderung ALS AUCH den Ablauf des konfigurierten Mindestabstands seit dem letzten automatischen Aufruf — eine harte Obergrenze von maximal 1 Aufruf je konfiguriertem Intervall (24/Tag bei 60-Minuten-Standard), unabhängig davon, wie oft sich der Digest ändert. Der manuelle „Jetzt optimieren“-Button ist unverändert. Der Zeitpunkt des letzten automatischen Triggers wird persistiert, damit ein Adapter-Neustart den Mindestabstand nicht aushebelt."

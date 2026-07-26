@@ -17,6 +17,9 @@ const VIEW_H = 637;
 const M = 8;
 const GAP = 6;
 const ROW_H = 16;
+const BRIEF_Y = 22;
+const BRIEF_H = 42;
+const REASON_H = 28;
 
 const C = {
 	bg: "#0d1117",
@@ -159,7 +162,10 @@ function textBlockWidget(oid, prepend, style) {
 			color: C.textMuted,
 			"background-color": "transparent",
 			border: "none",
-			"line-height": "1.25",
+			"line-height": "1.3",
+			"white-space": "normal",
+			"word-wrap": "break-word",
+			overflow: "hidden",
 			...style,
 		},
 		widgetSet: "basic",
@@ -251,7 +257,7 @@ function chartIframeHtml() {
 }
 
 // --- Layout coordinates (must fit 1276 × 637) ---
-// y=0-20 header | y=22-52 briefing | y=54-150 cards | y=152-218 meta | y=220-252 alloc | y=254-637 charts
+// y=0-20 header | briefing | cards | meta+reason | alloc | charts
 
 widgets[wid()] = {
 	tpl: "i-vis-image-new",
@@ -293,14 +299,19 @@ widgets[wid()] = floatWidget(oid("ai.calls_limit"), "/", {
 	left: "676px", top: "5px", width: "40px", height: "16px", "font-size": FS.val, color: C.textMuted,
 }, "0", "");
 
-// Briefing
-widgets[wid()] = cardPanel(M, 22, VIEW_W - 2 * M, 28);
+// Briefing (Planner-Zusammenfassung, 2 Zeilen)
+widgets[wid()] = cardPanel(M, BRIEF_Y, VIEW_W - 2 * M, BRIEF_H);
 widgets[wid()] = textBlockWidget(oid("operator.briefing_de"), "", {
-	left: `${M + 6}px`, top: "28px", width: `${VIEW_W - 2 * M - 12}px`, height: "20px", "font-size": FS.hero, color: C.text,
+	left: `${M + 6}px`,
+	top: `${BRIEF_Y + 4}px`,
+	width: `${VIEW_W - 2 * M - 12}px`,
+	height: `${BRIEF_H - 8}px`,
+	"font-size": "10px",
+	color: C.text,
 });
 
 // 6 live cards
-const cardY = 54;
+const cardY = BRIEF_Y + BRIEF_H + 4;
 const cardW = Math.floor((VIEW_W - 2 * M - 5 * GAP) / 6);
 const cardH = 96;
 
@@ -366,7 +377,7 @@ for (const c of /** @type {CardDef[]} */ ([
 // Meta row: Daily | Forecast/Winter | Learning
 const metaY = cardY + cardH + GAP;
 const metaW = Math.floor((VIEW_W - 2 * M - 2 * GAP) / 3);
-const metaH = 64;
+const metaH = 18 + 3 * ROW_H + 4 + REASON_H;
 
 buildCard({
 	x: M, y: metaY, w: metaW, h: metaH, title: "Daily Plan", color: C.accent,
@@ -377,7 +388,7 @@ buildCard({
 	],
 });
 widgets[wid()] = textBlockWidget(oid("planner.intent.daily_plan.reason_de"), "→ ", {
-	left: `${M + 6}px`, top: `${metaY + 18 + 3 * ROW_H}px`, width: `${metaW - 12}px`, height: "14px",
+	left: `${M + 6}px`, top: `${metaY + 18 + 3 * ROW_H + 2}px`, width: `${metaW - 12}px`, height: `${REASON_H}px`,
 });
 
 buildCard({
@@ -389,7 +400,7 @@ buildCard({
 	],
 });
 widgets[wid()] = textBlockWidget(oid("planner.intent.battery.winter.reason_de"), "→ ", {
-	left: `${M + metaW + GAP + 6}px`, top: `${metaY + 18 + 3 * ROW_H}px`, width: `${metaW - 12}px`, height: "14px",
+	left: `${M + metaW + GAP + 6}px`, top: `${metaY + 18 + 3 * ROW_H + 2}px`, width: `${metaW - 12}px`, height: `${REASON_H}px`,
 });
 
 buildCard({
@@ -401,13 +412,13 @@ buildCard({
 	],
 });
 widgets[wid()] = textBlockWidget(oid("learning.weather.missing_fields"), "Fehlt: ", {
-	left: `${M + 2 * (metaW + GAP) + 6}px`, top: `${metaY + 18 + 3 * ROW_H}px`, width: `${metaW - 12}px`, height: "14px",
+	left: `${M + 2 * (metaW + GAP) + 6}px`, top: `${metaY + 18 + 3 * ROW_H + 2}px`, width: `${metaW - 12}px`, height: `${REASON_H}px`,
 });
 
 // Allocation strip
 const allocY = metaY + metaH + GAP;
 const allocW = Math.floor((VIEW_W - 2 * M - 3 * GAP) / 4);
-const allocH = 30;
+const allocH = 38;
 
 for (const [i, spec] of [
 	{ t: "Al Bat", o: "battery", c: C.accent },
@@ -422,7 +433,7 @@ for (const [i, spec] of [
 		left: `${ax + 46}px`, top: `${allocY + 4}px`, width: `${allocW - 52}px`, height: "14px", "font-size": FS.val,
 	});
 	widgets[wid()] = textBlockWidget(oid(`planner.intent.allocation.${spec.o}.reason_de`), "", {
-		left: `${ax + 6}px`, top: `${allocY + 16}px`, width: `${allocW - 12}px`, height: "12px", "font-size": "9px",
+		left: `${ax + 6}px`, top: `${allocY + 17}px`, width: `${allocW - 12}px`, height: "18px", "font-size": "9px",
 	});
 }
 

@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.199",
+		"version": "0.1.200",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,14 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.200": {
+				"en": "Fix: VIS dashboard planner/briefing and reason texts were clipped (single-line boxes). Briefing now uses 2 lines; Daily/Forecast/Learning reason rows and allocation hints have proper height and word-wrap. Re-import vis/ems-dashboard-view.json.",
+				"de": "Fix: VIS-Dashboard — Planner-/Briefing- und Reason-Texte wurden abgeschnitten (Einzeiler-Boxen). Briefing jetzt 2 Zeilen; Daily/Forecast/Learning-Reason-Zeilen und Allocation-Hinweise mit passender Höhe und Zeilenumbruch. vis/ems-dashboard-view.json neu importieren."
+			},
+			"0.1.199": {
+				"en": "Fix: VIS chart iframe widget now uses g_fixed=true so VIS does not recreate the iframe on every live-state tick (PV/surplus updates ~1/s caused apparent reload/flicker even with refreshInterval 0). Regenerate or re-import vis/ems-dashboard-view.json.",
+				"de": "Fix: VIS-Chart-iframe nutzt jetzt g_fixed=true — VIS erzeugt das iframe nicht mehr bei jedem Live-State-Tick neu (PV/Überschuss ~1/s wirkte wie Sekunden-Reload trotz refreshInterval 0). vis/ems-dashboard-view.json neu generieren bzw. importieren."
+			},
 			"0.1.198": {
 				"en": "Fix: VIS dashboard Plan A/B charts showed \"Keine Plandaten\" while the same page worked when opened directly. Cause: the iframe widget refreshed every second (refreshInterval 1000) and bindVis() used empty VIS state cache instead of fetching compare.* states via socket.io. Charts now always load initial data via vis.conn.getStates or socket.io; live updates via stateChange/bind. iframe refresh disabled.",
 				"de": "Fix: VIS-Dashboard Plan-A/B-Charts zeigten „Keine Plandaten“, obwohl dieselbe Seite direkt im Browser funktionierte. Ursache: iframe-Widget wurde jede Sekunde neu geladen (refreshInterval 1000) und bindVis() nutzte leeren VIS-State-Cache statt compare.*-States per socket.io zu holen. Charts laden Initialdaten jetzt immer über vis.conn.getStates oder socket.io; Live-Updates per stateChange/bind. iframe-Refresh deaktiviert."

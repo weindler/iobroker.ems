@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.collectContributions = exports.parseHouseLoadForecastJson = void 0;
+exports.collectContributions = exports.parseHouseLoadForecastHorizonJson = exports.parseHouseLoadForecastJson = void 0;
 const state_util_1 = require("../../ems_light/state_util");
 const config_1 = require("../../intent/config");
 const config_2 = require("../../learning/weather/config");
@@ -134,6 +134,21 @@ function parseHouseLoadForecastJson(raw) {
     }
 }
 exports.parseHouseLoadForecastJson = parseHouseLoadForecastJson;
+function parseHouseLoadForecastHorizonJson(raw) {
+    if (!raw)
+        return null;
+    try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed))
+            return null;
+        const days = parsed.filter((d) => !!d && typeof d === "object" && !!d.segments);
+        return days.length > 0 ? days : null;
+    }
+    catch {
+        return null;
+    }
+}
+exports.parseHouseLoadForecastHorizonJson = parseHouseLoadForecastHorizonJson;
 function pvHorizonDays(now, timezone, horizonValues, horizonConfidence) {
     const todayKey = (0, time_1.localDateKeyInTimezone)(now, timezone);
     const days = [
@@ -154,7 +169,7 @@ function pvHorizonDays(now, timezone, horizonValues, horizonConfidence) {
 async function collectContributions(host, now, gridForecast) {
     const timezone = (0, config_1.intentAdminConfigFromAdapter)(host.config).timezone;
     const grid = gridForecast ?? (0, grid_1.buildGridSupplyForecast)(await (0, grid_read_1.collectGridSupplyBuildInput)(host, now));
-    const [correctedTodayKwh, correctedTomorrowKwh, rawTodayKwh, rawTomorrowKwh, pvConfidence, pvStatus, pvLastUpdate, houseStatus, houseConfidence, forecastTodayRaw, forecastTomorrowRaw, houseLastUpdate, weatherStatus, weatherHealth, weatherConfidence, weatherLastUpdate, weatherForecastSource, weatherActualSource, globalMode,] = await Promise.all([
+    const [correctedTodayKwh, correctedTomorrowKwh, rawTodayKwh, rawTomorrowKwh, pvConfidence, pvStatus, pvLastUpdate, houseStatus, houseConfidence, forecastTodayRaw, forecastTomorrowRaw, forecastHorizonRaw, houseLastUpdate, weatherStatus, weatherHealth, weatherConfidence, weatherLastUpdate, weatherForecastSource, weatherActualSource, globalMode,] = await Promise.all([
         readNum(host, "learning.pv_bias.corrected_today_kwh"),
         readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
         readNum(host, "learning.pv_bias.raw_today_kwh"),
@@ -166,6 +181,7 @@ async function collectContributions(host, now, gridForecast) {
         readNum(host, "learning.house_load.confidence"),
         readStr(host, "learning.house_load.forecast_today_json"),
         readStr(host, "learning.house_load.forecast_tomorrow_json"),
+        readStr(host, "learning.house_load.forecast_horizon_json"),
         readStr(host, "learning.house_load.last_update"),
         readStr(host, "learning.weather.status"),
         readStr(host, "learning.weather.health"),
@@ -228,6 +244,7 @@ async function collectContributions(host, now, gridForecast) {
             confidence: houseConfidence,
             forecastToday: parseHouseLoadForecastJson(forecastTodayRaw),
             forecastTomorrow: parseHouseLoadForecastJson(forecastTomorrowRaw),
+            forecastHorizon: parseHouseLoadForecastHorizonJson(forecastHorizonRaw),
             lastUpdate: houseLastUpdate,
         }),
         (0, weather_1.buildWeatherContribution)({

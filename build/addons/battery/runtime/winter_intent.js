@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.winterNumOrNull = exports.deviceIntentFromWinterPlanner = exports.parseWinterWindowsJson = void 0;
-const battery_winter_windows_1 = require("../../../planner/rules/battery_winter_windows");
+const battery_winter_windows_1 = require("../../../operator/planning/battery_winter_windows");
 function numOrNull(v) {
     if (v === null || v === undefined || v === "" || v === -1)
         return null;

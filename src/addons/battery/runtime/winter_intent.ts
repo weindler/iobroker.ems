@@ -1,5 +1,5 @@
-import type { BatteryWinterChargeWindow } from "../../../planner/rules/battery_winter";
-import { isNowInWinterChargeWindow } from "../../../planner/rules/battery_winter_windows";
+import type { BatteryWinterChargeWindow } from "../../../operator/planning/battery_winter";
+import { isNowInWinterChargeWindow } from "../../../operator/planning/battery_winter_windows";
 import type { BatteryDeviceIntent } from "../core/types";
 
 export interface WinterPlannerSnapshot {

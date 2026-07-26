@@ -3,6 +3,11 @@ export const MODULE_TAG = "house_load_learning_v1";
 export const DEFAULT_LOOKBACK_DAYS = 90;
 export const DEFAULT_INTERVAL_SEC = 3600;
 
+/** Forecast-Horizont analog PV-Horizon (`PV_HORIZON_DAY_COUNT`): Tag 0 (heute) bis Tag 6 (+7. Tag). */
+export const HOUSE_LOAD_HORIZON_DAY_COUNT = 7;
+/** dayOffset-Werte 2..6 = Tag 3..7 (Tag 0/1 laufen weiter über forecast_today/forecast_tomorrow). */
+export const HOUSE_LOAD_HORIZON_EXTENDED_DAY_OFFSETS: readonly number[] = [2, 3, 4, 5, 6];
+
 export const HISTORY_QUERY_TIMEOUT_MS = 45_000;
 export const MS_PER_HOUR = 3_600_000;
 export const MS_PER_DAY = 86_400_000;

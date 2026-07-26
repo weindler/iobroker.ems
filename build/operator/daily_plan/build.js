@@ -141,7 +141,10 @@ function buildDailyPlan(input) {
     const noPvSlots = allocationResult.slots.every((s) => s.availablePvSurplusPowerW === null);
     const status = resolveDailyPlanStatus(input.forecastPlan.status, input.timezone, allocationResult.slots.length > 0, hasMandatoryGap || hasDegradedContributions || hasUnallocated || noPvSlots);
     const quality = (0, allocation_1.allocationQualityFromUnallocated)(allocationResult.unallocated, hasMandatoryGap);
-    let reasonDe = "Deterministischer Daily Plan für den aktuellen Tag.";
+    const horizonEndIso = allocationResult.slots.length > 0
+        ? allocationResult.slots[allocationResult.slots.length - 1].slot.endIso
+        : null;
+    let reasonDe = `Deterministischer Daily Plan, rollierender Horizont ${slots_1.DAILY_PLAN_HORIZON_HOURS} h.`;
     if (input.globalMode === "off") {
         reasonDe = "Global Mode off — Plan dokumentiert, keine flexible Allocation.";
     }
@@ -153,7 +156,7 @@ function buildDailyPlan(input) {
     }
     return {
         generatedAt: input.now.toISOString(),
-        validUntil: null,
+        validUntil: horizonEndIso,
         revision: 0,
         date: dateKey,
         timezone: input.timezone,

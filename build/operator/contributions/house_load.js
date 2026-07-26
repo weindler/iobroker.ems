@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildHouseLoadContribution = exports.dailyKwhFromHouseLoadDayForecast = void 0;
 const constants_1 = require("../../learning/house_load/constants");
-const battery_winter_1 = require("../../planner/rules/battery_winter");
+const battery_winter_1 = require("../planning/battery_winter");
 const quality_1 = require("../quality");
 const contributor_1 = require("../contributor");
 const time_1 = require("../time");
@@ -106,8 +106,21 @@ function buildHouseLoadContribution(input) {
     if (input.forecastTomorrow) {
         slots.push(...segmentSlotsFromForecast(input.forecastTomorrow, input.timezone, confidence));
     }
+    // Roadmap Block 5: Segment-Slots auch für Tag 3+ (Daily-Plan-Horizont ≥48 h) —
+    // gleiche Musterprognose wie morgen, keine erfundenen Werte.
+    for (const forecast of input.forecastHorizon ?? []) {
+        if (!forecast?.date)
+            continue;
+        slots.push(...segmentSlotsFromForecast(forecast, input.timezone, confidence));
+    }
     const todayKey = input.forecastToday?.date ?? (0, time_1.localDateKeyInTimezone)(input.now, input.timezone);
     const tomorrowKey = input.forecastTomorrow?.date ?? (0, time_1.addDaysToDateKey)((0, time_1.localDateKeyInTimezone)(input.now, input.timezone), 1);
+    const horizonDays = (input.forecastHorizon ?? []).map((forecast, idx) => ({
+        dayIndex: idx + 2,
+        dateKey: forecast.date,
+        kwh: dailyKwhFromHouseLoadDayForecast(forecast),
+        confidencePct: confidence,
+    }));
     return (0, types_1.baseContribution)(contribution_ids_1.CONTRIBUTION_IDS.HOUSE_LOAD_FIXED, (0, contributor_1.systemContributorRef)("house_load"), "consume", ["demand_fixed"], {
         generatedAt,
         validUntil: null,
@@ -124,6 +137,7 @@ function buildHouseLoadContribution(input) {
             expectedFixedTomorrowKwh: tomorrowKwh,
             todayDateKey: todayKey,
             tomorrowDateKey: tomorrowKey,
+            horizonDays,
             fallbackLevelToday: worstFallbackLevel(input.forecastToday),
             fallbackLevelTomorrow: worstFallbackLevel(input.forecastTomorrow),
             slotResolution: slots.length > 0 ? "segment_baseline" : "daily_only",

@@ -18,6 +18,10 @@ function baseInput(overrides = {}) {
         currentPriceCtPerKwh: 24.5,
         fixedPriceCtPerKwh: null,
         dynamicSlots: [],
+        priceLearningStatus: null,
+        priceLearningAvgPrice7dEur: null,
+        priceLearningAvgPrice30dEur: null,
+        priceLearningAvgPrice90dEur: null,
         ...overrides,
     };
 }
@@ -79,6 +83,57 @@ function baseInput(overrides = {}) {
         const forecast = (0, grid_1.buildGridSupplyForecast)(baseInput({ currentPriceCtPerKwh: null, fixedPriceCtPerKwh: null }));
         strict_1.default.equal(forecast.source, "none");
         strict_1.default.equal(forecast.quality.status, "missing");
+    });
+    (0, node_test_1.it)("uses price_learning as Tibber-fallback when dynamic slots are missing", () => {
+        const forecast = (0, grid_1.buildGridSupplyForecast)(baseInput({
+            currentPriceCtPerKwh: null,
+            fixedPriceCtPerKwh: null,
+            priceLearningStatus: "ready",
+            priceLearningAvgPrice7dEur: 0.28,
+        }));
+        strict_1.default.equal(forecast.source, "price_learning_fallback");
+        strict_1.default.equal(forecast.currentPriceCtPerKwh, 28);
+        strict_1.default.equal(forecast.quality.status, "degraded");
+        strict_1.default.ok(forecast.slots.length > 0);
+        strict_1.default.ok(forecast.slots.every((s) => s.priceCtPerKwh === 28));
+    });
+    (0, node_test_1.it)("prefers dynamic tariff over price_learning fallback when both are available", () => {
+        const t0 = Date.parse("2026-07-11T10:00:00.000Z");
+        const forecast = (0, grid_1.buildGridSupplyForecast)(baseInput({
+            dynamicSlots: [{ slotStartMs: t0, priceCtPerKwh: 20 }],
+            priceLearningStatus: "ready",
+            priceLearningAvgPrice7dEur: 0.28,
+        }));
+        strict_1.default.equal(forecast.source, "dynamic_tariff");
+    });
+    (0, node_test_1.it)("prefers price_learning fallback over fixed tariff (more specific to the dynamic price sensor)", () => {
+        const forecast = (0, grid_1.buildGridSupplyForecast)(baseInput({
+            currentPriceCtPerKwh: null,
+            fixedPriceCtPerKwh: 32.1,
+            priceLearningStatus: "ready",
+            priceLearningAvgPrice7dEur: 0.28,
+        }));
+        strict_1.default.equal(forecast.source, "price_learning_fallback");
+        strict_1.default.equal(forecast.currentPriceCtPerKwh, 28);
+    });
+    (0, node_test_1.it)("falls through to fixed tariff when price_learning has insufficient data", () => {
+        const forecast = (0, grid_1.buildGridSupplyForecast)(baseInput({
+            currentPriceCtPerKwh: null,
+            fixedPriceCtPerKwh: 32.1,
+            priceLearningStatus: "insufficient_data",
+            priceLearningAvgPrice7dEur: null,
+        }));
+        strict_1.default.equal(forecast.source, "fixed_tariff");
+        strict_1.default.equal(forecast.currentPriceCtPerKwh, 32.1);
+    });
+    (0, node_test_1.it)("never fabricates a price_learning fallback without a ready status", () => {
+        const forecast = (0, grid_1.buildGridSupplyForecast)(baseInput({
+            currentPriceCtPerKwh: null,
+            fixedPriceCtPerKwh: null,
+            priceLearningStatus: "no_source",
+            priceLearningAvgPrice7dEur: 0.28,
+        }));
+        strict_1.default.equal(forecast.source, "none");
     });
     (0, node_test_1.it)("converts grid slots to Price15Min for battery compatibility", () => {
         const t0 = Date.parse("2026-07-11T10:00:00.000Z");

@@ -215,6 +215,7 @@ function computeHouseLoadLearning(params) {
     const profileJson = accumulatorsToProfileJson(acc);
     const forecastTodayJson = buildDayForecast(acc, 0);
     const forecastTomorrowJson = buildDayForecast(acc, 1);
+    const forecastHorizonJson = constants_1.HOUSE_LOAD_HORIZON_EXTENDED_DAY_OFFSETS.map((offset) => buildDayForecast(acc, offset));
     const fallbacksUsed = countForecastFallbacks(forecastTodayJson) + countForecastFallbacks(forecastTomorrowJson);
     const confidence = confidencePctFromSamples(params.samples.length, params.sampleDays);
     let healthStatus = "ok";
@@ -257,6 +258,7 @@ function computeHouseLoadLearning(params) {
         profileJson,
         forecastTodayJson,
         forecastTomorrowJson,
+        forecastHorizonJson,
         healthJson,
         sourceStateId: params.sourceStateId,
         error: "",
@@ -279,6 +281,7 @@ function noSourceResult(sourceStateId, now) {
         profileJson: {},
         forecastTodayJson: emptyForecast,
         forecastTomorrowJson: buildDayForecast(emptyProfile(), 1),
+        forecastHorizonJson: constants_1.HOUSE_LOAD_HORIZON_EXTENDED_DAY_OFFSETS.map((offset) => buildDayForecast(emptyProfile(), offset)),
         healthJson: {
             status: "no_source",
             sample_count: 0,

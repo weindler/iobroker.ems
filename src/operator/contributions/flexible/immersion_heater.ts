@@ -1,12 +1,13 @@
 import type { ImmersionDeviceConfig } from "../../../addons/immersion_heater/runtime/types";
-import { resolveThermalForecastTarget } from "../../../planner/rules/thermal_forecast";
+import { resolveThermalForecastTarget } from "../../planning/thermal_forecast";
 import type { PlannerModePolicy } from "../../../planner/mode_policy";
 import { CONTRIBUTION_IDS } from "../../contribution_ids";
 import type { OperatorDataStatus, PlanContribution } from "../../types";
 import { operatorQuality } from "../../quality";
 import { addonContributorRef } from "../../contributor";
 import { baseContribution } from "../types";
-import { buildFlexibleDemandSlot, estimateImmersionRequiredEnergyKwh } from "./flex_demand";
+import { buildFlexibleDemandSlot, estimateImmersionRequiredEnergyKwh, type ImmersionLearningMargin } from "./flex_demand";
+import type { ThermalLearningSignal } from "./thermal_learning";
 import { evaluateParticipation, round3 } from "./types";
 
 export interface ImmersionContributionBuildInput {
@@ -26,6 +27,29 @@ export interface ImmersionContributionBuildInput {
 	pvBiasStatus: string | null;
 	forecastModeEnabled: boolean;
 	aiOptimizationAllowed: boolean;
+	/** Thermal-Runtime-Learning (`learning.thermal_runtime.*`) — optional, `null`/fehlend → reine Physik-Schätzung. */
+	thermalLearning?: ThermalLearningSignal | null;
+}
+
+function learningMargin(input: ImmersionContributionBuildInput): ImmersionLearningMargin | null {
+	if (!input.thermalLearning) return null;
+	return {
+		status: input.thermalLearning.status,
+		coolingRateCPerHAvg: input.thermalLearning.coolingRateCPerHAvg,
+	};
+}
+
+function thermalLearningDetails(input: ImmersionContributionBuildInput): Record<string, unknown> {
+	const learning = input.thermalLearning ?? null;
+	return {
+		thermalLearningStatus: learning?.status ?? "missing",
+		thermalLearningHealth: learning?.health ?? null,
+		thermalLearningSamples: learning?.samples ?? null,
+		coolingRateCPerHAvg: learning?.coolingRateCPerHAvg ?? null,
+		estimatedRemainingHours: learning?.estimatedRemainingHours ?? null,
+		estimatedEmptyAt: learning?.estimatedEmptyAt ?? null,
+		learnedDayTypeRuntimeHoursMedian: learning?.currentDayTypeRuntimeHoursMedian ?? null,
+	};
 }
 
 function enabledStages(config: ImmersionDeviceConfig) {
@@ -77,7 +101,7 @@ export function buildImmersionMandatoryContribution(input: ImmersionContribution
 			: input.config.planningMinTempC;
 	const requiredEnergyKwh =
 		mandatory && input.bufferTempC !== null && maxW !== null
-			? estimateImmersionRequiredEnergyKwh(input.bufferTempC, mandatoryTargetC, maxW)
+			? estimateImmersionRequiredEnergyKwh(input.bufferTempC, mandatoryTargetC, maxW, learningMargin(input))
 			: null;
 	const quality = operatorQuality(
 		!mandatory ? "disabled" : enabled ? "valid" : participation.status,
@@ -107,6 +131,7 @@ export function buildImmersionMandatoryContribution(input: ImmersionContribution
 				thermalMode: input.thermalMode,
 				mandatory: true,
 				batteryEligible: true,
+				...thermalLearningDetails(input),
 			},
 			slots: buildFlexibleDemandSlot({
 				generatedAt,
@@ -155,7 +180,7 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 	const maxW = maxStagePowerW(input.config);
 	const requiredEnergyKwh =
 		autoReady && input.bufferTempC !== null && maxW !== null
-			? estimateImmersionRequiredEnergyKwh(input.bufferTempC, target.targetTempC, maxW)
+			? estimateImmersionRequiredEnergyKwh(input.bufferTempC, target.targetTempC, maxW, learningMargin(input))
 			: null;
 	let status: OperatorDataStatus = autoReady ? "valid" : "disabled";
 	let reasonDe = "Kein flexibler Heizstab-Bedarf.";
@@ -186,6 +211,19 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 		input.bufferTempC !== null;
 	const quality = operatorQuality(status, reasonDe);
 
+	/*
+	 * Gelernte Pflicht-Deadline (`estimated_empty_at`) nur setzen, wenn der Puffer aktuell
+	 * NOCH nicht mandatory ist (sonst regelt die Mandatory-Contribution es bereits) und das
+	 * Lernmodell belastbar ist. So priorisiert die Allocation günstige/PV-Slots vor dem
+	 * gelernten Zeitpunkt statt den flexiblen Bedarf unbegrenzt aufzuschieben.
+	 */
+	const learningDeadlineIso =
+		enabled && input.thermalLearning?.status === "valid" ? input.thermalLearning.estimatedEmptyAt : null;
+
+	if (enabled && learningDeadlineIso) {
+		reasonDe = `${reasonDe} Gelernte Pflichtgrenze voraussichtlich ${learningDeadlineIso}.`;
+	}
+
 	return baseContribution(
 		CONTRIBUTION_IDS.IMMERSION_FLEXIBLE,
 		addonContributorRef("immersion_heater"),
@@ -198,6 +236,7 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 			enabled,
 			flexible: true,
 			gridEligible: false,
+			deadlineIso: learningDeadlineIso,
 			quality,
 			reasonDe,
 			details: {
@@ -209,6 +248,7 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 				forecastActive: target.forecastActive,
 				minimumRuntimeSec: input.config.minimumRuntimeSec,
 				batteryEligible: true,
+				...thermalLearningDetails(input),
 			},
 			slots: buildFlexibleDemandSlot({
 				generatedAt,

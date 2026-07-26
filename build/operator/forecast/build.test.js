@@ -45,6 +45,7 @@ function fullContributions(now, opts = {}) {
     const withHouse = opts.house !== false;
     const withWeather = opts.weather !== false;
     const withGrid = opts.grid !== false;
+    const withHorizon = opts.horizon === true;
     const contributions = [];
     if (withPv) {
         contributions.push((0, pv_1.buildPvContribution)({
@@ -57,10 +58,20 @@ function fullContributions(now, opts = {}) {
             status: "ready",
             lastUpdateTs: now.toISOString(),
             source: "learning.pv_bias",
-            horizonDays: [
-                { dayIndex: 0, dateKey: "2026-07-11", correctedKwh: 15, confidencePct: 80 },
-                { dayIndex: 1, dateKey: "2026-07-12", correctedKwh: 18, confidencePct: 80 },
-            ],
+            horizonDays: withHorizon
+                ? [
+                    { dayIndex: 0, dateKey: "2026-07-11", correctedKwh: 15, confidencePct: 80 },
+                    { dayIndex: 1, dateKey: "2026-07-12", correctedKwh: 18, confidencePct: 80 },
+                    { dayIndex: 2, dateKey: "2026-07-13", correctedKwh: 12, confidencePct: 70 },
+                    { dayIndex: 3, dateKey: "2026-07-14", correctedKwh: 13, confidencePct: 67 },
+                    { dayIndex: 4, dateKey: "2026-07-15", correctedKwh: 14, confidencePct: 64 },
+                    { dayIndex: 5, dateKey: "2026-07-16", correctedKwh: 10, confidencePct: 61 },
+                    { dayIndex: 6, dateKey: "2026-07-17", correctedKwh: 9, confidencePct: 58 },
+                ]
+                : [
+                    { dayIndex: 0, dateKey: "2026-07-11", correctedKwh: 15, confidencePct: 80 },
+                    { dayIndex: 1, dateKey: "2026-07-12", correctedKwh: 18, confidencePct: 80 },
+                ],
         }));
     }
     if (withHouse) {
@@ -79,6 +90,17 @@ function fullContributions(now, opts = {}) {
                 },
             },
             forecastTomorrow: null,
+            forecastHorizon: withHorizon
+                ? ["2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-17"].map((date) => ({
+                    date,
+                    season: "summer",
+                    weekday: "monday",
+                    day_type: "weekday",
+                    segments: {
+                        midday: { avg_w: 900, source: "profile", fallback_level: "none", confidence: 70 },
+                    },
+                }))
+                : null,
             lastUpdate: now.toISOString(),
         }));
     }
@@ -265,7 +287,7 @@ function fullContributions(now, opts = {}) {
                 mappingsReady: true,
                 topOffRequested: false,
                 ownershipActive: false,
-                winterGridActive: false,
+                deficitChargeActive: false,
             }),
             (0, wallbox_1.buildWallboxEvSessionContribution)({
                 now,
@@ -295,6 +317,56 @@ function fullContributions(now, opts = {}) {
         strict_1.default.ok(plan.excludedContributors.some((e) => e.contributionId === "battery.discharge"));
         strict_1.default.ok(plan.excludedContributors.some((e) => e.contributionId === "wallbox.ev_session"));
     });
+    (0, node_test_1.it)("extends days to day 3-7 when PV horizon data exists, without fabricating house load", () => {
+        const plan = (0, build_1.buildForecastPlan)({
+            now,
+            timezone: "UTC",
+            contributions: fullContributions(now, { horizon: true, house: false }),
+        });
+        strict_1.default.equal(plan.days.length, 7);
+        const day3 = plan.days.find((d) => d.date === "2026-07-13");
+        strict_1.default.equal(day3?.pvEnergyKwh, 12);
+        strict_1.default.equal(day3?.houseLoadEnergyKwh, null);
+        const day7 = plan.days.find((d) => d.date === "2026-07-17");
+        strict_1.default.equal(day7?.pvEnergyKwh, 9);
+    });
+    (0, node_test_1.it)("fills house load day 3-7 from learned horizon when available (no null-as-zero)", () => {
+        const plan = (0, build_1.buildForecastPlan)({
+            now,
+            timezone: "UTC",
+            contributions: fullContributions(now, { horizon: true }),
+        });
+        const day3 = plan.days.find((d) => d.date === "2026-07-13");
+        strict_1.default.ok(typeof day3?.houseLoadEnergyKwh === "number");
+        strict_1.default.ok(day3?.renewableBalanceKwh !== null);
+        const day7 = plan.days.find((d) => d.date === "2026-07-17");
+        strict_1.default.ok(typeof day7?.houseLoadEnergyKwh === "number");
+    });
+    (0, node_test_1.it)("weather context fields exist for day 3-7 but stay null (no mapped multi-day forecast source, no fabrication)", () => {
+        const plan = (0, build_1.buildForecastPlan)({
+            now,
+            timezone: "UTC",
+            contributions: fullContributions(now, { horizon: true }),
+        });
+        const day3 = plan.days.find((d) => d.date === "2026-07-13");
+        strict_1.default.ok(day3);
+        strict_1.default.equal(day3?.weatherMinTempC, null);
+        strict_1.default.equal(day3?.weatherMaxTempC, null);
+    });
+    (0, node_test_1.it)("horizonEnd reflects the furthest day when horizon data exists", () => {
+        const withoutHorizon = (0, build_1.buildForecastPlan)({
+            now,
+            timezone: "UTC",
+            contributions: fullContributions(now),
+        });
+        const withHorizon = (0, build_1.buildForecastPlan)({
+            now,
+            timezone: "UTC",
+            contributions: fullContributions(now, { horizon: true }),
+        });
+        strict_1.default.ok(Date.parse(withHorizon.horizonEnd) > Date.parse(withoutHorizon.horizonEnd));
+        strict_1.default.ok(withHorizon.horizonEnd.startsWith("2026-07-18"));
+    });
     (0, node_test_1.it)("unsupported battery discharge does not degrade plan", () => {
         const contributions = [
             ...fullContributions(now),
@@ -322,7 +394,7 @@ function fullContributions(now, opts = {}) {
                 mappingsReady: true,
                 topOffRequested: false,
                 ownershipActive: false,
-                winterGridActive: false,
+                deficitChargeActive: false,
             }),
         ];
         const plan = (0, build_1.buildForecastPlan)({ now, timezone: "UTC", contributions });

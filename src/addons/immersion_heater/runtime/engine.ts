@@ -17,7 +17,7 @@ import {
 	recordChatterEvent,
 	type ChatterTracker,
 } from "./safety";
-import type { RuntimePersistData, RuntimeSnapshot } from "./types";
+import type { ImmersionDeviceConfig, RuntimePersistData, RuntimeSnapshot } from "./types";
 import {
 	IMMERSION_RUNTIME_STATES,
 } from "./types";
@@ -27,7 +27,6 @@ import {
 	readRuntimePersist,
 	writeRuntimePersist,
 } from "./persist";
-import { readPlannerThermalStage, readPlannerThermalTargetTemp } from "../../../planner/inputs";
 import {
 	resolveImmersionDailyPlanAllocation,
 	resolveImmersionDecisionSource,
@@ -158,6 +157,17 @@ export function immersionRuntimeWatchedForeignIds(
 	return [...ids];
 }
 
+/**
+ * Lokaler Sicherheits-Default für den Auto-Modus, wenn der Daily Plan nicht verwendbar ist
+ * (Roadmap Block 3.1) — bewusst kein Rückgriff auf den alten Realtime-Planner
+ * (`planner.intent.thermal.*`). Ziel ist nur die Pflicht-Untergrenze (`planningMinTempC`,
+ * gleiche Schwelle wie die Operator-Pflicht-Contribution), nicht der volle Komfortbereich.
+ * Die Stufe nutzt die bereits vorhandene, admin-konfigurierte `forceDefaultStage`.
+ */
+function safeDefaultAutoTarget(config: ImmersionDeviceConfig): { stage: number; targetTempC: number } {
+	return { stage: config.forceDefaultStage, targetTempC: config.planningMinTempC };
+}
+
 async function submitAutoRevertToAuto(host: ImmersionRuntimeHost, now: Date): Promise<void> {
 	const issuedAt = now.toISOString();
 	const raw = {
@@ -268,20 +278,28 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 			powerObservedAtMs = null;
 		}
 	}
-	const plannerTargetTempC = resolvedMode === "auto" ? await readPlannerThermalTargetTemp(host) : null;
-
 	let autoDecisionSource: ImmersionDecisionSource = "thermal_fallback";
 	let dailyPlanContext: ImmersionDailyPlanResolution | null = null;
 	let plannerCommandedStage = 0;
+	let plannerTargetTempC: number | null = null;
 
 	if (resolvedMode === "auto") {
 		dailyPlanContext = await resolveImmersionDailyPlanAllocation(host, config, now);
 		lastDailyPlanContext = dailyPlanContext;
 		if (dailyPlanContext.useDailyPlan) {
+			// Daily Plan liefert die Stufe direkt aus der Allocation — das Zieltemperatur-Ceiling
+			// bleibt die konfigurierte Komfort-Obergrenze (FSM begrenzt ohnehin auf planningMaxTempC).
 			plannerCommandedStage = dailyPlanContext.commandedStage;
+			plannerTargetTempC = config.planningMaxTempC;
 			autoDecisionSource = "daily_plan";
 		} else {
-			plannerCommandedStage = await readPlannerThermalStage(host);
+			// Daily Plan nicht verwendbar (missing/degraded/expired/wrong_date/...) — lokaler
+			// Sicherheits-Default statt altem Realtime-Planner (Roadmap Block 3.1): nur die
+			// Pflicht-Untergrenze halten, gleiche Schwelle wie die Operator-Pflicht-Contribution
+			// (`operator/contributions/flexible/immersion_heater.ts`).
+			const safeDefault = safeDefaultAutoTarget(config);
+			plannerCommandedStage = safeDefault.stage;
+			plannerTargetTempC = safeDefault.targetTempC;
 			autoDecisionSource = "thermal_fallback";
 		}
 	}

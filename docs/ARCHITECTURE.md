@@ -22,7 +22,8 @@ EMS-Light ist ein ioBroker-Adapter (`ems.0`), der als eigenständiges Energieman
 
 Es gibt **keine** Abhängigkeit von einem externen EMS-V2-Server.
 
-**Schwerer Planner (Shadow/Takeover):** seit v0.1.181 vollständig aus dem Code entfernt (Block 4, ~20.500 LOC). Planung läuft ausschließlich über den Operator-Pfad (Forecast Plan → Daily Plan → Allocation).
+**Schwerer Planner (Shadow/Takeover):** seit v0.1.181 vollständig aus dem Code entfernt (~20.500 LOC).  
+**Legacy Realtime-Planner (`runPlannerTick`):** seit v0.1.204 (Roadmap Block 4) aus dem Produktions-Tick entfernt. Planung läuft ausschließlich über den Operator-Pfad (Forecast Plan → Daily Plan → Allocation); Regeln unter `operator/planning/`.
 
 ---
 
@@ -36,6 +37,7 @@ src/
 ├── mapping*.ts             Mapping-Konfiguration und Sync
 ├── ems_light/              Tick, Live-Cache, State-Ensure (Produktion)
 ├── operator/               Forecast Plan, Daily Plan, Contributions, Allocation
+│   └── planning/           Planungsregeln (ehem. planner/rules/, Block 4)
 ├── global_modes/           off/eco/balanced/comfort/forced
 ├── policy/                 Policy Engine (core + global)
 ├── intent/                 User Intent / Geräte-Intents
@@ -48,7 +50,7 @@ src/
 │   └── governance/         enabled + ai_optimization_allowed
 ├── backup/ / restore/      Export, Support-Paket, Restore
 ├── support/                Diagnosemodus (zeitlich begrenzt)
-└── planner/                Aktiver Realtime-Fallback (Thermal/Cooling/Battery-Regeln)
+└── planner/                Legacy State-Hülle + reine Tests (kein Produktions-Tick)
 ```
 
 Build-Ausgabe: `build/` (TypeScript → JavaScript, wird mitgeliefert).
@@ -74,7 +76,7 @@ Periodischer Tick (typisch 60 s):
 
 - Spiegelt Execution Mode / Safety
 - Aktualisiert Live-Cache
-- Baut Forecast Plan und Daily Plan (Allocation)
+- Baut Forecast Plan und Daily Plan (Allocation, rollierender Horizont 48 h seit v0.1.205)
 - Geräte-Runtimes lesen Allocation/Intents in eigenen Intervallen
 
 Geräte-Runtimes (Heizstab, Batterie, Klima, Wallbox) laufen in eigenen Intervallen und lesen Operator-Intents.
@@ -180,10 +182,10 @@ Vier Ebenen:
 
 1. **Gerätekonfiguration** — Admin `immersionHeaterTab`
 2. **User Intent** — `user_intent.thermal.*`, Control-States
-3. **Planung** — Daily-Plan-Allocation (Auto) + Legacy-Thermal-Planner (Fallback)
+3. **Planung** — Daily-Plan-Allocation (Auto); bei fehlendem Plan lokaler Sicherheits-Default (Pflicht-Untergrenze), kein Legacy-Realtime-Planner (Block 3/4)
 4. **Execution & Safety** — Runtime FSM, Live-Writes
 
-**Entscheidungskette (Auto):** Safety/Fault → Off → Force → Daily Plan → Thermal-Fallback → AUS
+**Entscheidungskette (Auto):** Safety/Fault → Off → Force → Daily Plan → Sicherheits-Default → AUS
 
 **Runtime-States:** `addons.immersion_heater.runtime.*` inkl. `decision_source`, `allocated_power_w`, Daily-Plan-Status
 
@@ -320,7 +322,7 @@ Keine externen Snapshot-Fixtures im Repository — Tests nutzen Mock-Hosts.
 ## 14. Geplant, nicht implementiert
 
 - Modus `observe`
-- Optionale KI-Optimierung auf Forecast/Daily Plan (Governance-Flags schon vorhanden)
+- (erledigt v0.1.206) Optionale KI-Optimierung mit Write-back nur bei messbarem Plan-B-Vorteil — siehe Masterplan §13
 - Weitere Batterie-Steuerprofile (Sonnen Performance, Fronius, Victron, …) und bestätigte Entladesteuerung
 - Einheitliche Runtime-States (`decision_source`, `planner_status`, …) überall
 

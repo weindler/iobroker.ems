@@ -1326,7 +1326,7 @@
         "e00018": {
             "tpl": "tplValueFloat",
             "data": {
-                "oid": "ems.0.planner.surplus_w",
+                "oid": "ems.0.operator.diagnostics.surplus_w",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,
@@ -1875,7 +1875,7 @@
         "e00025": {
             "tpl": "tplValueString",
             "data": {
-                "oid": "ems.0.planner.intent.battery.action",
+                "oid": "ems.0.addons.battery.runtime.action",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,
@@ -2187,7 +2187,7 @@
         "e00029": {
             "tpl": "tplValueFloat",
             "data": {
-                "oid": "ems.0.planner.intent.thermal.target_temp_c",
+                "oid": "ems.0.addons.immersion_heater.runtime.planning_max_temp_c",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,
@@ -2266,7 +2266,7 @@
         "e00030": {
             "tpl": "tplValueFloat",
             "data": {
-                "oid": "ems.0.planner.intent.thermal.commanded_power_w",
+                "oid": "ems.0.addons.immersion_heater.runtime.commanded_power_w",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,
@@ -3044,7 +3044,7 @@
         "e00040": {
             "tpl": "tplValueFloat",
             "data": {
-                "oid": "ems.0.planner.intent.cooling.expected_kwh_today",
+                "oid": "ems.0.addons.air_conditioning.units.unit_1.allocated_power_w",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,
@@ -3101,10 +3101,10 @@
                 "lc-zindex": 0,
                 "is_comma": "true",
                 "factor": "1",
-                "html_prepend": "kWh ",
-                "html_append_singular": "",
-                "html_append_plural": "",
-                "digits": "1"
+                "html_prepend": "P ",
+                "html_append_singular": " W",
+                "html_append_plural": " W",
+                "digits": "0"
             },
             "style": {
                 "height": "16px",
@@ -3123,7 +3123,7 @@
         "e00041": {
             "tpl": "tplValueFloat",
             "data": {
-                "oid": "ems.0.planner.intent.cooling.expected_peak_w",
+                "oid": "ems.0.addons.air_conditioning.units.unit_1.estimated_power_w",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,
@@ -3180,7 +3180,7 @@
                 "lc-zindex": 0,
                 "is_comma": "true",
                 "factor": "1",
-                "html_prepend": "Pk ",
+                "html_prepend": "Est ",
                 "html_append_singular": " W",
                 "html_append_plural": " W",
                 "digits": "0"
@@ -3202,7 +3202,7 @@
         "e00042": {
             "tpl": "tplValueString",
             "data": {
-                "oid": "ems.0.planner.intent.cooling.likely_active",
+                "oid": "ems.0.addons.air_conditioning.units.unit_1.running",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,
@@ -4421,7 +4421,7 @@
                 "lc-border-radius": 3,
                 "lc-zindex": 0,
                 "refreshInterval": "0",
-                "html": "<div style=\"font-family:system-ui,sans-serif;font-size:9px;font-weight:700;color:#58a6ff;letter-spacing:0.05em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;\">Winter / Forecast</div>"
+                "html": "<div style=\"font-family:system-ui,sans-serif;font-size:9px;font-weight:700;color:#58a6ff;letter-spacing:0.05em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;\">Batterie-Lade-Logik</div>"
             },
             "style": {
                 "overflow": "hidden",
@@ -4438,7 +4438,7 @@
         "e00058": {
             "tpl": "tplValueString",
             "data": {
-                "oid": "ems.0.planner.intent.battery.winter.active",
+                "oid": "ems.0.addons.battery.runtime.decision_source",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,
@@ -4493,7 +4493,7 @@
                 "lc-border-color": "",
                 "lc-border-radius": 3,
                 "lc-zindex": 0,
-                "html_prepend": "Win ",
+                "html_prepend": "Src ",
                 "html_append": ""
             },
             "style": {
@@ -4513,7 +4513,7 @@
         "e00059": {
             "tpl": "tplValueFloat",
             "data": {
-                "oid": "ems.0.planner.intent.battery.winter.soc_target_pct",
+                "oid": "ems.0.addons.battery.runtime.target_soc_pct",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,
@@ -4592,7 +4592,7 @@
         "e00060": {
             "tpl": "tplValueFloat",
             "data": {
-                "oid": "ems.0.planner.intent.battery.winter.energy_deficit_kwh",
+                "oid": "ems.0.addons.battery.runtime.allocated_energy_kwh",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,
@@ -4649,7 +4649,7 @@
                 "lc-zindex": 0,
                 "is_comma": "true",
                 "factor": "1",
-                "html_prepend": "Def ",
+                "html_prepend": "E ",
                 "html_append_singular": "kWh",
                 "html_append_plural": "kWh",
                 "digits": "1"
@@ -4671,7 +4671,7 @@
         "e00061": {
             "tpl": "tplValueString",
             "data": {
-                "oid": "ems.0.planner.intent.battery.winter.reason_de",
+                "oid": "ems.0.addons.battery.runtime.reason_de",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,

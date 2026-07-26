@@ -14,7 +14,7 @@ export interface GridDataQuality {
 	reasonDe: string;
 }
 
-export type GridSupplySource = "dynamic_tariff" | "fixed_tariff" | "none";
+export type GridSupplySource = "dynamic_tariff" | "price_learning_fallback" | "fixed_tariff" | "none";
 
 export type GridPriceLabel = "cheap" | "normal" | "expensive" | null;
 

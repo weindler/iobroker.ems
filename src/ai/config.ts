@@ -9,6 +9,8 @@ export const AI_DEFAULT_MODEL: AiAllowedModel = "gpt-4.1-mini";
 export const AI_DEFAULT_MAX_CALLS_PER_DAY = 20;
 /** Mindestabstand zwischen automatischen KI-Aufrufen (Minuten) — 0 = kein Mindestabstand (nur Digest zählt). */
 export const AI_DEFAULT_MIN_INTERVAL_MINUTES = 60;
+/** 0 = kein Monatslimit (nur Tagesaufrufe). */
+export const AI_DEFAULT_MONTHLY_COST_LIMIT_EUR = 0;
 export const AI_SOFT_WARNING_FRACTION = 0.8;
 export const AI_DEFAULT_TIMEOUT_MS = 20_000;
 
@@ -23,8 +25,13 @@ export interface AiAdminConfig {
 	/** "" wenn kein Token gesetzt — niemals erfunden. */
 	apiKey: string;
 	maxCallsPerDay: number;
-	/** Mindestabstand zwischen automatischen (nicht manuellen) KI-Aufrufen, in Minuten. 0 = deaktiviert. */
+	/**
+	 * Mindestabstand zwischen automatischen (nicht manuellen) KI-Aufrufen, in Minuten. 0 = deaktiviert.
+	 * Entspricht Masterplan `minimum_replan_interval` (Admin-Key: `ai_min_interval_minutes`).
+	 */
 	minIntervalMinutes: number;
+	/** Monatliches Kosten-Softlimit in EUR; 0 = aus. Admin-Key: `ai_monthly_cost_limit_eur`. */
+	monthlyCostLimitEur: number;
 }
 
 export function aiConfigFromAdapter(config: unknown): AiAdminConfig {
@@ -45,6 +52,10 @@ export function aiConfigFromAdapter(config: unknown): AiAdminConfig {
 			? Math.round(minIntervalRaw)
 			: AI_DEFAULT_MIN_INTERVAL_MINUTES;
 
+	const monthlyRaw = asNum(c.ai_monthly_cost_limit_eur);
+	const monthlyCostLimitEur =
+		monthlyRaw !== null && monthlyRaw >= 0 ? monthlyRaw : AI_DEFAULT_MONTHLY_COST_LIMIT_EUR;
+
 	return {
 		enabled,
 		provider: "openai",
@@ -52,5 +63,6 @@ export function aiConfigFromAdapter(config: unknown): AiAdminConfig {
 		apiKey,
 		maxCallsPerDay,
 		minIntervalMinutes,
+		monthlyCostLimitEur,
 	};
 }

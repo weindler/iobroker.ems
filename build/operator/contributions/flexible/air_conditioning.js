@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildAirConditioningContributions = void 0;
 const constants_1 = require("../../../addons/air_conditioning/constants");
-const cooling_1 = require("../../../planner/rules/cooling");
+const cooling_1 = require("../../planning/cooling");
 const contribution_ids_1 = require("../../contribution_ids");
 const quality_1 = require("../../quality");
 const contributor_1 = require("../../contributor");

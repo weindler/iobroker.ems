@@ -299,7 +299,7 @@ widgets[wid()] = floatWidget(oid("ai.calls_limit"), "/", {
 	left: "676px", top: "5px", width: "40px", height: "16px", "font-size": FS.val, color: C.textMuted,
 }, "0", "");
 
-// Briefing (Planner-Zusammenfassung, 2 Zeilen)
+// Briefing (Operator Daily-Plan-Zusammenfassung, 2 Zeilen — Roadmap Block 3.3)
 widgets[wid()] = cardPanel(M, BRIEF_Y, VIEW_W - 2 * M, BRIEF_H);
 widgets[wid()] = textBlockWidget(oid("operator.briefing_de"), "", {
 	left: `${M + 6}px`,
@@ -321,7 +321,7 @@ for (const c of /** @type {CardDef[]} */ ([
 		rows: [
 			{ type: "f", oid: "live.pv.power_w", label: "PV ", digits: "0", unit: " W", em: true, color: C.pv },
 			{ type: "f", oid: "live.battery.house_load_w", label: "Last ", digits: "0", unit: " W" },
-			{ type: "f", oid: "planner.surplus_w", label: "Üss ", digits: "0", unit: " W", em: true, color: C.surplus },
+			{ type: "f", oid: "operator.diagnostics.surplus_w", label: "Üss ", digits: "0", unit: " W", em: true, color: C.surplus },
 			{ type: "f", oid: "live.price.now_ct_per_kwh", label: "Preis ", digits: "2", unit: " ct" },
 		],
 	},
@@ -331,15 +331,15 @@ for (const c of /** @type {CardDef[]} */ ([
 			{ type: "f", oid: "live.battery.soc_pct", label: "SOC ", digits: "0", unit: " %", em: true, color: C.accent },
 			{ type: "f", oid: "addons.battery.telemetry.power_w", label: "P ", digits: "0", unit: " W" },
 			{ type: "s", oid: "addons.battery.runtime.state", label: "FSM " },
-			{ type: "s", oid: "planner.intent.battery.action", label: "Int " },
+			{ type: "s", oid: "addons.battery.runtime.action", label: "Int " },
 		],
 	},
 	{
 		x: M + 2 * (cardW + GAP), y: cardY, w: cardW, h: cardH, title: "Heizstab", color: C.ih,
 		rows: [
 			{ type: "f", oid: "addons.immersion_heater.runtime.buffer_temperature_c", label: "Buf ", digits: "1", unit: "°", em: true, color: C.ih },
-			{ type: "f", oid: "planner.intent.thermal.target_temp_c", label: "Ziel ", digits: "1", unit: "°" },
-			{ type: "f", oid: "planner.intent.thermal.commanded_power_w", label: "P ", digits: "0", unit: " W", color: C.ih },
+			{ type: "f", oid: "addons.immersion_heater.runtime.planning_max_temp_c", label: "Ziel ", digits: "1", unit: "°" },
+			{ type: "f", oid: "addons.immersion_heater.runtime.commanded_power_w", label: "P ", digits: "0", unit: " W", color: C.ih },
 			{ type: "s", oid: "addons.immersion_heater.runtime.state", label: "St " },
 		],
 	},
@@ -355,9 +355,9 @@ for (const c of /** @type {CardDef[]} */ ([
 	{
 		x: M + 4 * (cardW + GAP), y: cardY, w: cardW, h: cardH, title: "Klima", color: C.ac,
 		rows: [
-			{ type: "f", oid: "planner.intent.cooling.expected_kwh_today", label: "kWh ", digits: "1", unit: "", em: true, color: C.ac },
-			{ type: "f", oid: "planner.intent.cooling.expected_peak_w", label: "Pk ", digits: "0", unit: " W" },
-			{ type: "s", oid: "planner.intent.cooling.likely_active", label: "On " },
+			{ type: "f", oid: "addons.air_conditioning.units.unit_1.allocated_power_w", label: "P ", digits: "0", unit: " W", em: true, color: C.ac },
+			{ type: "f", oid: "addons.air_conditioning.units.unit_1.estimated_power_w", label: "Est ", digits: "0", unit: " W" },
+			{ type: "s", oid: "addons.air_conditioning.units.unit_1.running", label: "On " },
 			{ type: "s", oid: "planner.intent.allocation.air_conditioning.status", label: "Al " },
 		],
 	},
@@ -374,7 +374,7 @@ for (const c of /** @type {CardDef[]} */ ([
 	buildCard(c);
 }
 
-// Meta row: Daily | Forecast/Winter | Learning
+// Meta row: Daily | Batterie-Lade-Logik (PV-Defizit, Legacy-Werte) | Learning
 const metaY = cardY + cardH + GAP;
 const metaW = Math.floor((VIEW_W - 2 * M - 2 * GAP) / 3);
 const metaH = 18 + 3 * ROW_H + 4 + REASON_H;
@@ -392,14 +392,14 @@ widgets[wid()] = textBlockWidget(oid("planner.intent.daily_plan.reason_de"), "�
 });
 
 buildCard({
-	x: M + metaW + GAP, y: metaY, w: metaW, h: metaH, title: "Winter / Forecast", color: C.accent,
+	x: M + metaW + GAP, y: metaY, w: metaW, h: metaH, title: "Batterie-Lade-Logik", color: C.accent,
 	rows: [
-		{ type: "s", oid: "planner.intent.battery.winter.active", label: "Win " },
-		{ type: "f", oid: "planner.intent.battery.winter.soc_target_pct", label: "SOC* ", digits: "0", unit: "%" },
-		{ type: "f", oid: "planner.intent.battery.winter.energy_deficit_kwh", label: "Def ", digits: "1", unit: "kWh" },
+		{ type: "s", oid: "addons.battery.runtime.decision_source", label: "Src " },
+		{ type: "f", oid: "addons.battery.runtime.target_soc_pct", label: "SOC* ", digits: "0", unit: "%" },
+		{ type: "f", oid: "addons.battery.runtime.allocated_energy_kwh", label: "E ", digits: "1", unit: "kWh" },
 	],
 });
-widgets[wid()] = textBlockWidget(oid("planner.intent.battery.winter.reason_de"), "→ ", {
+widgets[wid()] = textBlockWidget(oid("addons.battery.runtime.reason_de"), "→ ", {
 	left: `${M + metaW + GAP + 6}px`, top: `${metaY + 18 + 3 * ROW_H + 2}px`, width: `${metaW - 12}px`, height: `${REASON_H}px`,
 });
 

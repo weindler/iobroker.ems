@@ -79,6 +79,8 @@ export type HouseLoadComputeResult = {
 	profileJson: HouseLoadProfileJson;
 	forecastTodayJson: DayForecastJson;
 	forecastTomorrowJson: DayForecastJson;
+	/** Tag 3–7 (dayOffset 2–6) — gleiche Saison/Day-Type/Segment-Musterlogik wie „morgen“, kein Fake-Wert. */
+	forecastHorizonJson: DayForecastJson[];
 	healthJson: HouseLoadHealthJson;
 	sourceStateId: string;
 	error: string;
@@ -93,6 +95,7 @@ export type HouseLoadPersist = {
 	profile: HouseLoadProfileJson;
 	forecast_today: DayForecastJson;
 	forecast_tomorrow: DayForecastJson;
+	forecast_horizon: DayForecastJson[];
 	health: HouseLoadHealthJson;
 };
 

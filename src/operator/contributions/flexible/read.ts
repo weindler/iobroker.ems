@@ -16,13 +16,25 @@ import { weatherConfigFromAdapter } from "../../../learning/weather/config";
 import { PERSIST_CATEGORY as CONSUMER_STATS_PERSIST } from "../../../learning/consumer_stats";
 import { readConsumerStatsPersist } from "../../../learning/consumer_stats/persist";
 import type { ConsumerStatsPersist } from "../../../learning/consumer_stats/types";
+import { PV_HORIZON_DAY_COUNT, PV_HORIZON_EXTENDED_FIRST_DAY } from "../../../learning/pv_horizon/constants";
 import { addonEnabled } from "../../../tree_paths";
-import { plannerModePolicyFromGlobalMode } from "../../../planner/mode_policy";
+import { plannerModePolicyFromGlobalMode, type PlannerModePolicy } from "../../../planner/mode_policy";
 import { parseResolvedIntentJson, resolvedModeFromIntent } from "../../../addons/immersion_heater/runtime/intent_read";
 import type { GridSupplyForecast } from "../../types";
 import type { PlanContribution } from "../../types";
-import type { ContributionsReadHost } from "../read";
+import { addDaysToDateKey, localDateKeyInTimezone } from "../../time";
+import { intentAdminConfigFromAdapter } from "../../../intent/config";
+import { dailyKwhFromHouseLoadDayForecast } from "../house_load";
+import { parseHouseLoadForecastHorizonJson, parseHouseLoadForecastJson, type ContributionsReadHost } from "../read";
 import { buildFlexibleContributions } from "./build";
+import {
+	planBatteryChargeLogic,
+	type BatteryChargeLogicDayInput,
+	type BatteryChargeLogicDecision,
+} from "./battery_charge_logic";
+import { batteryChargeLogicConfigFromAdapter } from "./battery_charge_logic_config";
+import { buildBatteryLearningSignal, type BatteryLearningSignal } from "./battery_learning";
+import { buildThermalLearningSignal, type ThermalLearningSignal } from "./thermal_learning";
 
 export type FlexibleContributionsReadHost = ContributionsReadHost & {
 	getAbsolutePath?: (rel: string) => string;
@@ -98,6 +110,165 @@ function validIsoDeadline(raw: string | null): string | null {
 	return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 
+async function readThermalLearningSignal(
+	host: FlexibleContributionsReadHost,
+	now: Date,
+): Promise<ThermalLearningSignal> {
+	const [
+		rawStatus,
+		rawHealth,
+		samples,
+		coolingRateCPerHAvg,
+		coolingConstantPerH,
+		coolingAsymptoteC,
+		estimatedRemainingHours,
+		estimatedEmptyAtRaw,
+		byDayTypeJsonRaw,
+	] = await Promise.all([
+		readStr(host, "learning.thermal_runtime.status"),
+		readStr(host, "learning.thermal_runtime.health"),
+		readNum(host, "learning.thermal_runtime.samples"),
+		readNum(host, "learning.thermal_runtime.cooling_rate_c_per_h_avg"),
+		readNum(host, "learning.thermal_runtime.cooling_k_per_h"),
+		readNum(host, "learning.thermal_runtime.cooling_asymptote_c"),
+		readNum(host, "learning.thermal_runtime.estimated_remaining_hours"),
+		readStr(host, "learning.thermal_runtime.estimated_empty_at"),
+		readStr(host, "learning.thermal_runtime.by_day_type_json"),
+	]);
+
+	return buildThermalLearningSignal({
+		now,
+		rawStatus,
+		rawHealth,
+		samples,
+		coolingRateCPerHAvg,
+		coolingConstantPerH,
+		coolingAsymptoteC,
+		estimatedRemainingHours,
+		estimatedEmptyAtRaw,
+		byDayTypeJsonRaw,
+	});
+}
+
+async function readBatteryLearningSignal(host: FlexibleContributionsReadHost): Promise<BatteryLearningSignal> {
+	const [
+		rawStatus,
+		sampleDays,
+		avgNightDischargeKwh,
+		avgChargePowerW,
+		maxChargePowerW,
+		topoffDueRaw,
+		topoffDaysRemaining,
+		estimatedRuntimeDays,
+	] = await Promise.all([
+		readStr(host, "learning.battery_runtime.status"),
+		readNum(host, "learning.battery_runtime.sample_days"),
+		readNum(host, "learning.battery_runtime.avg_night_discharge_kwh"),
+		readNum(host, "learning.battery_runtime.avg_charge_power_w"),
+		readNum(host, "learning.battery_runtime.max_charge_power_w"),
+		readNum(host, "learning.battery_runtime.topoff_due"),
+		readNum(host, "learning.battery_runtime.topoff_days_remaining"),
+		readNum(host, "learning.battery_runtime.estimated_runtime_days"),
+	]);
+
+	return buildBatteryLearningSignal({
+		rawStatus,
+		sampleDays,
+		avgNightDischargeKwh,
+		avgChargePowerW,
+		maxChargePowerW,
+		topoffDueRaw,
+		topoffDaysRemaining,
+		estimatedRuntimeDays,
+	});
+}
+
+/**
+ * PV-Defizit-Ladelogik (Block 2, `battery_charge_logic.ts`) — liest denselben PV-/Hauslast-
+ * Horizont (Tag 0–7) wie die Forecast-Plan-Contributions (Block 1.4), unabhängig von deren
+ * bereits gebauten PlanContribution-Objekten (die Flexible-Contributions laufen im Tick vor
+ * dem Forecast Plan, siehe `src/ems_light/tick.ts`).
+ */
+async function readBatteryChargeLogicDecision(
+	host: FlexibleContributionsReadHost,
+	now: Date,
+	socPct: number | null,
+	governanceEnabled: boolean,
+	modePolicy: PlannerModePolicy,
+): Promise<BatteryChargeLogicDecision> {
+	const timezone = intentAdminConfigFromAdapter(host.config).timezone;
+	const [
+		correctedTodayKwh,
+		correctedTomorrowKwh,
+		pvConfidence,
+		forecastTodayRaw,
+		forecastTomorrowRaw,
+		forecastHorizonRaw,
+		snowCoverSuspected,
+	] = await Promise.all([
+		readNum(host, "learning.pv_bias.corrected_today_kwh"),
+		readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
+		readNum(host, "learning.pv_bias.confidence_pct"),
+		readStr(host, "learning.house_load.forecast_today_json"),
+		readStr(host, "learning.house_load.forecast_tomorrow_json"),
+		readStr(host, "learning.house_load.forecast_horizon_json"),
+		readBool(host, "ems_mirror.snow_cover_suspected"),
+	]);
+
+	const [pvHorizonValues, pvHorizonConfidence] = await Promise.all([
+		Promise.all(
+			Array.from({ length: PV_HORIZON_DAY_COUNT - PV_HORIZON_EXTENDED_FIRST_DAY + 1 }, (_, i) =>
+				readNum(host, `learning.pv_horizon.day${PV_HORIZON_EXTENDED_FIRST_DAY + i}.corrected_kwh`),
+			),
+		),
+		Promise.all(
+			Array.from({ length: PV_HORIZON_DAY_COUNT - PV_HORIZON_EXTENDED_FIRST_DAY + 1 }, (_, i) =>
+				readNum(host, `learning.pv_horizon.day${PV_HORIZON_EXTENDED_FIRST_DAY + i}.confidence_pct`),
+			),
+		),
+	]);
+
+	const houseHorizon = parseHouseLoadForecastHorizonJson(forecastHorizonRaw);
+	const todayKey = localDateKeyInTimezone(now, timezone);
+
+	const days: BatteryChargeLogicDayInput[] = [
+		{
+			dayIndex: 0,
+			dateKey: todayKey,
+			pvKwh: correctedTodayKwh,
+			loadKwh: dailyKwhFromHouseLoadDayForecast(parseHouseLoadForecastJson(forecastTodayRaw)),
+			pvConfidencePct: pvConfidence,
+		},
+		{
+			dayIndex: 1,
+			dateKey: addDaysToDateKey(todayKey, 1),
+			pvKwh: correctedTomorrowKwh,
+			loadKwh: dailyKwhFromHouseLoadDayForecast(parseHouseLoadForecastJson(forecastTomorrowRaw)),
+			pvConfidencePct: pvConfidence,
+		},
+	];
+	for (let d = PV_HORIZON_EXTENDED_FIRST_DAY; d <= PV_HORIZON_DAY_COUNT; d++) {
+		const idx = d - PV_HORIZON_EXTENDED_FIRST_DAY;
+		days.push({
+			dayIndex: d - 1,
+			dateKey: addDaysToDateKey(todayKey, d - 1),
+			pvKwh: pvHorizonValues[idx] ?? null,
+			loadKwh: dailyKwhFromHouseLoadDayForecast(houseHorizon?.[idx] ?? null),
+			pvConfidencePct: pvHorizonConfidence[idx] ?? null,
+		});
+	}
+
+	return planBatteryChargeLogic({
+		now,
+		socPct,
+		snowCoverSuspected: snowCoverSuspected === true,
+		config: batteryChargeLogicConfigFromAdapter(host.config),
+		modePolicy,
+		governanceEnabled,
+		days,
+	});
+}
+
 export interface CollectedFlexibleContributions {
 	contributions: PlanContribution[];
 }
@@ -137,7 +308,6 @@ export async function collectFlexibleContributions(
 		telemetryStale,
 		telemetryReady,
 		ownershipActive,
-		winterActive,
 		batteryIntentRaw,
 		connected,
 		charging,
@@ -181,7 +351,6 @@ export async function collectFlexibleContributions(
 		readBool(host, BAT.telemetry.stale),
 		readBool(host, BAT.status.telemetryReady),
 		readBool(host, BAT.runtime.ownershipActive),
-		readBool(host, "planner.intent.battery.winter.active"),
 		host.getStateAsync("user_intent.battery.resolved_json"),
 		readBool(host, WALLBOX_EVCC_STATES.connected),
 		readBool(host, WALLBOX_EVCC_STATES.charging),
@@ -217,6 +386,10 @@ export async function collectFlexibleContributions(
 
 	const acConfig = acGlobalConfigFromAdapter(config);
 	const stats = await readConsumerStats(host);
+
+	const thermalLearning = await readThermalLearningSignal(host, now);
+	const batteryLearning = await readBatteryLearningSignal(host);
+	const chargeLogic = await readBatteryChargeLogicDecision(host, now, socPct, batteryGov, modePolicy);
 
 	const acUnits = await Promise.all(
 		Array.from({ length: AC_UNIT_COUNT }, async (_, i) => {
@@ -266,7 +439,10 @@ export async function collectFlexibleContributions(
 			mappingsReady: telemetryReady === true,
 			topOffRequested: topOff,
 			ownershipActive: ownershipActive === true,
-			winterGridActive: winterActive === true,
+			deficitChargeActive: chargeLogic.active,
+			legacyDeficitChargeActive: false,
+			batteryLearning,
+			chargeLogic,
 		},
 		wallbox: {
 			now,
@@ -305,6 +481,7 @@ export async function collectFlexibleContributions(
 			pvBiasStatus,
 			forecastModeEnabled: immersionConfig.forecastModeEnabled,
 			aiOptimizationAllowed: aiThermal === true,
+			thermalLearning,
 		},
 		airConditioning: {
 			now,

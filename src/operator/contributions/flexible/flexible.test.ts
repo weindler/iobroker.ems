@@ -63,7 +63,7 @@ function batteryInput(overrides: Partial<Parameters<typeof buildBatteryChargeCon
 		mappingsReady: true,
 		topOffRequested: false,
 		ownershipActive: false,
-		winterGridActive: false,
+		deficitChargeActive: false,
 		...overrides,
 	};
 }
@@ -229,6 +229,27 @@ describe("battery contributions", () => {
 		assert.equal(c.contributionId, CONTRIBUTION_IDS.BATTERY_RESERVE);
 		assert.equal(c.flow, "constraint");
 		assert.equal(c.details.minSocPct, 10);
+		assert.equal(c.details.batteryLearningStatus, "missing");
+	});
+
+	it("reserve exposes learned night discharge and marks top-off target when due", () => {
+		const c = buildBatteryReserveContribution(
+			batteryInput({
+				batteryLearning: {
+					status: "valid",
+					sampleDays: 40,
+					avgNightDischargeKwh: 2.4,
+					avgChargePowerW: 2600,
+					maxChargePowerW: 3000,
+					topoffDue: true,
+					topoffDaysRemaining: -3,
+					estimatedRuntimeDays: 5,
+					reasonDe: "Top-Off fällig",
+				},
+			}),
+		);
+		assert.equal(c.details.avgNightDischargeKwh, 2.4);
+		assert.equal(c.details.topOffTargetSocPct, 100);
 	});
 
 	it("top-off only when requested", () => {
@@ -239,11 +260,141 @@ describe("battery contributions", () => {
 		assert.equal(on.details.requiredEnergyKwh, 1);
 	});
 
-	it("grid import blocked in eco without winter grid", () => {
+	it("keeps policy target when learning is missing (unchanged behavior)", () => {
+		const c = buildBatteryChargeContribution(batteryInput());
+		assert.equal(c.details.targetSocPct, plannerModePolicyFromGlobalMode("balanced").chargeTargetSocPct);
+		assert.equal(c.details.batteryLearningStatus, "missing");
+	});
+
+	it("ignores a degraded learning model for top-off (not belastbar enough)", () => {
 		const c = buildBatteryChargeContribution(
-			batteryInput({ modePolicy: plannerModePolicyFromGlobalMode("eco"), winterGridActive: false }),
+			batteryInput({
+				batteryLearning: {
+					status: "degraded",
+					sampleDays: 3,
+					avgNightDischargeKwh: 2.4,
+					avgChargePowerW: 2600,
+					maxChargePowerW: 3000,
+					topoffDue: true,
+					topoffDaysRemaining: -2,
+					estimatedRuntimeDays: 5,
+					reasonDe: "wenig Historie",
+				},
+			}),
+		);
+		assert.equal(c.details.targetSocPct, plannerModePolicyFromGlobalMode("balanced").chargeTargetSocPct);
+	});
+
+	it("raises target to 100% when the learned top-off interval is due", () => {
+		const c = buildBatteryChargeContribution(
+			batteryInput({
+				socPct: 85,
+				batteryLearning: {
+					status: "valid",
+					sampleDays: 40,
+					avgNightDischargeKwh: 2.4,
+					avgChargePowerW: 2600,
+					maxChargePowerW: 3000,
+					topoffDue: true,
+					topoffDaysRemaining: -3,
+					estimatedRuntimeDays: 5,
+					reasonDe: "Top-Off fällig",
+				},
+			}),
+		);
+		assert.equal(c.details.targetSocPct, 100);
+		assert.equal(c.details.topoffDueLearned, true);
+		assert.equal(c.details.avgNightDischargeKwh, 2.4);
+		assert.match(c.reasonDe, /Top-Off/);
+	});
+
+	it("does not raise target when the learned model says top-off is not due", () => {
+		const c = buildBatteryChargeContribution(
+			batteryInput({
+				socPct: 85,
+				batteryLearning: {
+					status: "valid",
+					sampleDays: 40,
+					avgNightDischargeKwh: 2.4,
+					avgChargePowerW: 2600,
+					maxChargePowerW: 3000,
+					topoffDue: false,
+					topoffDaysRemaining: 10,
+					estimatedRuntimeDays: 5,
+					reasonDe: "nicht fällig",
+				},
+			}),
+		);
+		assert.equal(c.details.targetSocPct, plannerModePolicyFromGlobalMode("balanced").chargeTargetSocPct);
+	});
+
+	it("grid import blocked in eco without active PV-deficit charge logic", () => {
+		const c = buildBatteryChargeContribution(
+			batteryInput({ modePolicy: plannerModePolicyFromGlobalMode("eco"), deficitChargeActive: false }),
 		);
 		assert.equal(c.gridEligible, false);
+	});
+
+	it("grid import allowed in eco when PV-deficit charge logic is active", () => {
+		const c = buildBatteryChargeContribution(
+			batteryInput({ modePolicy: plannerModePolicyFromGlobalMode("eco"), deficitChargeActive: true }),
+		);
+		assert.equal(c.gridEligible, true);
+	});
+
+	it("raises target SOC above the eco policy target and sets a deadline when the PV-deficit charge logic is active", () => {
+		const c = buildBatteryChargeContribution(
+			batteryInput({
+				socPct: 55,
+				modePolicy: plannerModePolicyFromGlobalMode("eco"),
+				deficitChargeActive: true,
+				chargeLogic: {
+					active: true,
+					forecastActive: true,
+					horizonDays: 4,
+					bridgeUntilIso: "2026-07-15T22:00:00.000Z",
+					pvRecoveryDay: 4,
+					energyStoredKwh: 5.5,
+					energyDeficitKwh: 3,
+					energyReserveKwh: 0.5,
+					energyTargetKwh: 9.6,
+					socTargetPct: 96,
+					chargeEnergyKwh: 4.1,
+					confidenceMinPct: 60,
+					reasonDe: "PV-Defizit-Horizont 4 Tag(e); Netz-Ziel +4.1 kWh.",
+				},
+			}),
+		);
+		assert.equal(c.details.targetSocPct, 96);
+		assert.equal(c.deadlineIso, "2026-07-15T22:00:00.000Z");
+		assert.equal(c.details.chargeLogicActive, true);
+		assert.equal(c.gridEligible, true);
+		assert.match(c.reasonDe, /PV-Defizit-Ladelogik/);
+	});
+
+	it("does not raise target or set deadline when charge logic is inactive", () => {
+		const c = buildBatteryChargeContribution(
+			batteryInput({
+				socPct: 55,
+				chargeLogic: {
+					active: false,
+					forecastActive: true,
+					horizonDays: 7,
+					bridgeUntilIso: null,
+					pvRecoveryDay: 1,
+					energyStoredKwh: 8,
+					energyDeficitKwh: 0,
+					energyReserveKwh: 0,
+					energyTargetKwh: 8,
+					socTargetPct: null,
+					chargeEnergyKwh: null,
+					confidenceMinPct: 90,
+					reasonDe: "kein Netzladen nötig",
+				},
+			}),
+		);
+		assert.equal(c.details.targetSocPct, plannerModePolicyFromGlobalMode("balanced").chargeTargetSocPct);
+		assert.equal(c.deadlineIso, null);
 	});
 
 	it("global mode off disables charge", () => {
@@ -393,6 +544,82 @@ describe("immersion heater contributions", () => {
 			immersionInput({ governanceEnabled: false }),
 		);
 		assert.equal(flexible.enabled, false);
+	});
+
+	it("has no deadline without thermal-runtime learning (unchanged behavior)", () => {
+		const [, flexible] = buildImmersionHeaterContributions(immersionInput());
+		assert.equal(flexible.deadlineIso, null);
+	});
+
+	it("has no deadline when the learning model is only degraded", () => {
+		const [, flexible] = buildImmersionHeaterContributions(
+			immersionInput({
+				thermalLearning: {
+					status: "degraded",
+					health: "degraded",
+					samples: 2,
+					coolingRateCPerHAvg: 1.1,
+					coolingConstantPerH: null,
+					coolingAsymptoteC: null,
+					estimatedRemainingHours: 4,
+					estimatedEmptyAt: "2026-07-26T14:00:00.000Z",
+					currentDayTypeRuntimeHoursMedian: null,
+					reasonDe: "wenige Zyklen",
+				},
+			}),
+		);
+		assert.equal(flexible.deadlineIso, null);
+	});
+
+	it("adopts the learned estimated_empty_at as deadline when the model is valid", () => {
+		const [, flexible] = buildImmersionHeaterContributions(
+			immersionInput({
+				thermalLearning: {
+					status: "valid",
+					health: "ok",
+					samples: 12,
+					coolingRateCPerHAvg: 1.1,
+					coolingConstantPerH: 0.04,
+					coolingAsymptoteC: 18,
+					estimatedRemainingHours: 4,
+					estimatedEmptyAt: "2026-07-26T14:00:00.000Z",
+					currentDayTypeRuntimeHoursMedian: 12,
+					reasonDe: "belastbares Modell",
+				},
+			}),
+		);
+		assert.equal(flexible.deadlineIso, "2026-07-26T14:00:00.000Z");
+		assert.equal(flexible.details.thermalLearningStatus, "valid");
+		assert.equal(flexible.details.estimatedEmptyAt, "2026-07-26T14:00:00.000Z");
+		assert.equal(flexible.details.coolingRateCPerHAvg, 1.1);
+	});
+
+	it("does not set a deadline when the flexible contribution is disabled anyway", () => {
+		const [, flexible] = buildImmersionHeaterContributions(
+			immersionInput({
+				bufferTempC: 62,
+				thermalLearning: {
+					status: "valid",
+					health: "ok",
+					samples: 12,
+					coolingRateCPerHAvg: 1.1,
+					coolingConstantPerH: 0.04,
+					coolingAsymptoteC: 18,
+					estimatedRemainingHours: 4,
+					estimatedEmptyAt: "2026-07-26T14:00:00.000Z",
+					currentDayTypeRuntimeHoursMedian: 12,
+					reasonDe: "belastbares Modell",
+				},
+			}),
+		);
+		assert.equal(flexible.enabled, false);
+		assert.equal(flexible.deadlineIso, null);
+	});
+
+	it("exposes missing learning status in details when no thermal-runtime signal is supplied", () => {
+		const [mandatory, flexible] = buildImmersionHeaterContributions(immersionInput());
+		assert.equal(mandatory.details.thermalLearningStatus, "missing");
+		assert.equal(flexible.details.thermalLearningStatus, "missing");
 	});
 });
 

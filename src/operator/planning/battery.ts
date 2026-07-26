@@ -1,5 +1,5 @@
-import type { PlannerBatteryDecision, PlannerConstraints } from "../types";
-import type { PlannerModePolicy } from "../mode_policy";
+import type { PlannerBatteryDecision, PlannerConstraints } from "../../planner/types";
+import type { PlannerModePolicy } from "../../planner/mode_policy";
 
 export interface BatteryPlanInput {
 	surplusW: number | null;

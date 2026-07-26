@@ -32,8 +32,6 @@ const power_rollup_1 = require("../learning/power_rollup");
 const policy_1 = require("../policy");
 const intent_1 = require("../intent");
 const planner_1 = require("../planner");
-const battery_winter_config_1 = require("../planner/battery_winter_config");
-const config_1 = require("../addons/governance/config");
 const global_modes_1 = require("../global_modes");
 const ensure_states_1 = require("./ensure_states");
 const tick_1 = require("./tick");
@@ -129,11 +127,7 @@ async function ensureEmsLightStateTree(adapter) {
     const version = String(adapter.common?.version ?? "0.0.0");
     const host = adapter;
     await (0, ensure_states_1.ensureEmsLightStates)(host, version);
-    await (0, planner_1.ensurePlannerStateTree)(host, {
-        includeThermalIntent: (0, config_1.isAddonEnabled)(adapter.config, "immersion_heater"),
-        includeCoolingIntent: (0, config_1.isAddonEnabled)(adapter.config, "climate"),
-        includeWinterIntent: (0, battery_winter_config_1.batteryWinterPlanConfigFromAdapter)(adapter.config).enabled,
-    });
+    await (0, planner_1.ensurePlannerStateTree)(host);
     const policyHost = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
     await (0, policy_1.ensurePolicyStateTree)(policyHost);
     await (0, intent_1.ensureIntentStates)(buildIntentHost(adapter));

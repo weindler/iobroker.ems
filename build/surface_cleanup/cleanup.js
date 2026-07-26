@@ -11,8 +11,6 @@ const ensure_states_1 = require("../addons/air_conditioning/runtime/ensure_state
 const config_1 = require("../addons/wallbox/vehicles/config");
 const normalize_1 = require("../addons/wallbox/vehicles/normalize");
 const ensure_states_2 = require("../addons/wallbox/vehicles/ensure_states");
-const config_2 = require("../addons/governance/config");
-const battery_winter_config_1 = require("../planner/battery_winter_config");
 const persistence_mirror_1 = require("../learning/persistence_mirror");
 const states_1 = require("../addons/wallbox/runtime/states");
 const tree_paths_1 = require("../tree_paths");
@@ -123,15 +121,13 @@ async function cleanupLeanPlannerSurface(host, stats) {
     for (const root of allowlist_1.LEAN_PLANNER_PURGE_ROOTS) {
         await safeDeleteRelative(host, root, stats, "lean_planner");
     }
-    if (!(0, config_2.isAddonEnabled)(host.config, "immersion_heater")) {
-        await safeDeleteRelative(host, "planner.intent.thermal", stats, "planner_thermal_off");
-    }
-    if (!(0, config_2.isAddonEnabled)(host.config, "climate")) {
-        await safeDeleteRelative(host, "planner.intent.cooling", stats, "planner_cooling_off");
-    }
-    if (!(0, battery_winter_config_1.batteryWinterPlanConfigFromAdapter)(host.config).enabled) {
-        await safeDeleteRelative(host, "planner.intent.battery.winter", stats, "planner_winter_off");
-    }
+    // Roadmap Block 5: Legacy Realtime-Intent-Bäume + surplus/deficit immer entfernen
+    // (ersetzt durch Operator Daily Plan / operator.diagnostics.*).
+    await safeDeleteRelative(host, "planner.intent.thermal", stats, "planner_thermal_legacy");
+    await safeDeleteRelative(host, "planner.intent.cooling", stats, "planner_cooling_legacy");
+    await safeDeleteRelative(host, "planner.intent.battery.winter", stats, "planner_winter_legacy");
+    await safeDeleteRelative(host, "planner.surplus_w", stats, "planner_surplus_legacy");
+    await safeDeleteRelative(host, "planner.deficit_w", stats, "planner_deficit_legacy");
 }
 const STUB_ADDON_IDS = [
     "sensorics",

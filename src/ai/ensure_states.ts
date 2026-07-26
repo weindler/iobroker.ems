@@ -9,12 +9,17 @@ export const AI_STATES = {
 	callsLimit: `${AI_BASE}.calls_limit`,
 	limitWarning: `${AI_BASE}.limit_warning`,
 	costEstimateTodayEur: `${AI_BASE}.cost_estimate_today_eur`,
+	costEstimateMonthEur: `${AI_BASE}.cost_estimate_month_eur`,
+	costMonthKey: `${AI_BASE}.cost_month_key`,
+	monthlyCostLimitEur: `${AI_BASE}.monthly_cost_limit_eur`,
 	lastRunAt: `${AI_BASE}.last_run_at`,
 	lastAutoTriggerAtMs: `${AI_BASE}.last_auto_trigger_at_ms`,
 	lastRunResult: `${AI_BASE}.last_run_result`,
 	lastReasonDe: `${AI_BASE}.last_reason_de`,
 	lastError: `${AI_BASE}.last_error`,
 	lastSlotPreferencesJson: `${AI_BASE}.last_slot_preferences_json`,
+	autoSuspended: `${AI_BASE}.auto_suspended`,
+	autoSuspendReasonDe: `${AI_BASE}.auto_suspend_reason_de`,
 	optimizeNowRequest: `${AI_BASE}.optimize_now_request`,
 } as const;
 
@@ -34,10 +39,11 @@ export async function ensureAiStates(host: StateHost): Promise<void> {
 				states: {
 					off: "Aus",
 					ready: "Bereit",
-					limit_reached: "Tageslimit erreicht",
+					limit_reached: "Limit erreicht",
 					error: "Fehler",
 					no_token: "Kein Token",
 					no_addons_allowed: "Kein Add-on freigegeben",
+					suspended: "Auto aus (kein Plan-B-Vorteil)",
 				},
 			},
 		},
@@ -84,6 +90,41 @@ export async function ensureAiStates(host: StateHost): Promise<void> {
 			},
 		},
 		{
+			id: AI_STATES.costEstimateMonthEur,
+			common: {
+				name: "KI-Kostenschätzung Monat (EUR, ungefähr)",
+				type: "number",
+				role: "value",
+				read: true,
+				write: false,
+				def: 0,
+				unit: "EUR",
+			},
+		},
+		{
+			id: AI_STATES.costMonthKey,
+			common: {
+				name: "KI-Monatsschlüssel (YYYY-MM, intern)",
+				type: "string",
+				role: "text",
+				read: true,
+				write: false,
+				def: "",
+			},
+		},
+		{
+			id: AI_STATES.monthlyCostLimitEur,
+			common: {
+				name: "KI-Monatslimit EUR (0=aus)",
+				type: "number",
+				role: "value",
+				read: true,
+				write: false,
+				def: 0,
+				unit: "EUR",
+			},
+		},
+		{
 			id: AI_STATES.lastRunAt,
 			common: { name: "Letzter KI-Lauf", type: "string", role: "date", read: true, write: false, def: "" },
 		},
@@ -113,12 +154,34 @@ export async function ensureAiStates(host: StateHost): Promise<void> {
 		{
 			id: AI_STATES.lastSlotPreferencesJson,
 			common: {
-				name: "Letzte KI-Zeitpunkt-Präferenzen (JSON, intern — Basis für Plan-Vergleich)",
+				name: "Letzte KI-Zeitpunkt-Präferenzen (JSON, intern — Basis für Plan-Vergleich/Write-back)",
 				type: "string",
 				role: "json",
 				read: true,
 				write: false,
 				def: "[]",
+			},
+		},
+		{
+			id: AI_STATES.autoSuspended,
+			common: {
+				name: "KI-Auto gesperrt (Plan B ohne Vorteil)",
+				type: "boolean",
+				role: "indicator",
+				read: true,
+				write: false,
+				def: false,
+			},
+		},
+		{
+			id: AI_STATES.autoSuspendReasonDe,
+			common: {
+				name: "KI-Auto-Sperre Begründung",
+				type: "string",
+				role: "text",
+				read: true,
+				write: false,
+				def: "",
 			},
 		},
 		{

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DAILY_PLAN_SLOT_MS = exports.minPowerForDeadline = exports.slotsUntilDeadline = exports.powerWFromEnergyKwh = exports.energyKwhFromPower = exports.slotDurationHours = exports.slotKey = exports.buildDailyHorizonSlots = exports.endOfLocalDayIso = exports.slotStartIsoFloored = exports.floorMinuteTo15 = void 0;
+exports.DAILY_PLAN_SLOT_MS = exports.minPowerForDeadline = exports.slotsUntilDeadline = exports.powerWFromEnergyKwh = exports.energyKwhFromPower = exports.slotDurationHours = exports.slotKey = exports.buildDailyHorizonSlots = exports.DAILY_PLAN_HORIZON_HOURS = exports.endOfLocalDayIso = exports.slotStartIsoFloored = exports.floorMinuteTo15 = void 0;
 const time_1 = require("../time");
 function floorMinuteTo15(minute) {
     return Math.floor(minute / 15) * 15;
@@ -27,15 +27,19 @@ function endOfLocalDayIso(dateKey, timezone) {
     return (0, time_1.isoAtTimezoneLocal)((0, time_1.addDaysToDateKey)(dateKey, 1), 0, 0, timezone);
 }
 exports.endOfLocalDayIso = endOfLocalDayIso;
-function buildDailyHorizonSlots(now, timezone, slotMinutes = 15) {
-    const dateKey = (0, time_1.localDateKeyInTimezone)(now, timezone);
+/**
+ * Rolling Daily-Plan-Horizont (Roadmap Block 5): mindestens 48 h ab aktuellem 15-Min-Floor.
+ * Alle flexiblen Add-ons lesen denselben Plan — kein addon-spezifischer Horizont.
+ */
+exports.DAILY_PLAN_HORIZON_HOURS = 48;
+function buildDailyHorizonSlots(now, timezone, slotMinutes = 15, horizonHours = exports.DAILY_PLAN_HORIZON_HOURS) {
     const startIso = slotStartIsoFloored(now, timezone);
-    const endIso = endOfLocalDayIso(dateKey, timezone);
-    if (!(0, time_1.isValidIsoTimestamp)(startIso) || !(0, time_1.isValidIsoTimestamp)(endIso))
+    if (!(0, time_1.isValidIsoTimestamp)(startIso))
         return [];
+    const hours = Number.isFinite(horizonHours) && horizonHours > 0 ? horizonHours : exports.DAILY_PLAN_HORIZON_HOURS;
     const slotMs = slotMinutes * 60_000;
     let cursor = Date.parse(startIso);
-    const endMs = Date.parse(endIso);
+    const endMs = cursor + hours * 3_600_000;
     const out = [];
     while (cursor < endMs) {
         const next = cursor + slotMs;

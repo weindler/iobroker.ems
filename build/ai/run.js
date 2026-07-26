@@ -6,13 +6,14 @@ const context_1 = require("./context");
 const ensure_states_1 = require("./ensure_states");
 const limiter_1 = require("./limiter");
 const pricing_1 = require("./pricing");
+const writeback_1 = require("./writeback");
 async function writeStatus(host, status) {
     await host.setStateAsync(ensure_states_1.AI_STATES.status, { val: status, ack: true });
 }
 /**
- * Orchestriert genau einen KI-Optimierungsversuch. Fail-closed: jede Ablehnung/jeder Fehler
- * lässt den bestehenden deterministischen Tagesplan unverändert — es wird hier (noch) nichts
- * in die Allocation zurückgeschrieben, nur beobachtet/protokolliert (Gerüst, siehe Masterplan §4/§13).
+ * Orchestriert genau einen KI-Optimierungsversuch (Roadmap Block 6).
+ * Fail-closed: ohne messbaren Plan-B-Vorteil kein Write-back, Auto-Trigger gesperrt.
+ * Write-back geht nur über Daily-Plan-Allocation — nie direkt auf Geräte.
  */
 async function runAiOptimizationNow(host, plan, triggerReason, provider) {
     const cfg = (0, config_1.aiConfigFromAdapter)(host.config);
@@ -29,14 +30,17 @@ async function runAiOptimizationNow(host, plan, triggerReason, provider) {
         await writeStatus(host, "no_addons_allowed");
         return { ran: false, status: "no_addons_allowed", reasonDe: "Kein Add-on hat KI-Optimierung erlaubt." };
     }
-    const limitState = await (0, limiter_1.readAndRolloverDailyCalls)(host, cfg.maxCallsPerDay);
+    const limitState = await (0, limiter_1.readAndRolloverDailyCalls)(host, cfg.maxCallsPerDay, new Date(), cfg.monthlyCostLimitEur);
     if (limitState.limitReached) {
         await writeStatus(host, "limit_reached");
-        return {
-            ran: false,
-            status: "limit_reached",
-            reasonDe: `Tageslimit erreicht (${limitState.callsToday}/${limitState.limit}).`,
-        };
+        const reason = limitState.monthlyLimitReached
+            ? `Monatslimit erreicht (${limitState.costMonthEur.toFixed(3)}/${limitState.monthlyLimitEur} EUR).`
+            : `Tageslimit erreicht (${limitState.callsToday}/${limitState.limit}).`;
+        return { ran: false, status: "limit_reached", reasonDe: reason };
+    }
+    // Manueller Lauf darf Auto-Suspend aufheben und erneut prüfen.
+    if (triggerReason === "manual") {
+        await (0, writeback_1.clearAiAutoSuspend)(host);
     }
     const context = await (0, context_1.buildAiOptimizationContext)(host, plan, triggerReason);
     let result;
@@ -54,7 +58,7 @@ async function runAiOptimizationNow(host, plan, triggerReason, provider) {
         };
     }
     const costEur = (0, pricing_1.estimateCostEur)(cfg.model, result.usage.promptTokens, result.usage.completionTokens);
-    await (0, limiter_1.recordDailyCall)(host, cfg.maxCallsPerDay, costEur);
+    await (0, limiter_1.recordDailyCall)(host, cfg.maxCallsPerDay, costEur, new Date(), cfg.monthlyCostLimitEur);
     const nowIso = new Date().toISOString();
     await host.setStateAsync(ensure_states_1.AI_STATES.lastRunAt, { val: nowIso, ack: true });
     await host.setStateAsync(ensure_states_1.AI_STATES.lastReasonDe, { val: result.reasonDe.slice(0, 480), ack: true });
@@ -72,9 +76,23 @@ async function runAiOptimizationNow(host, plan, triggerReason, provider) {
         val: JSON.stringify(result.slotPreferences),
         ack: true,
     });
+    const gate = await (0, writeback_1.finalizeAiRunWithWritebackGate)(host, plan, result.slotPreferences);
+    if (gate.suspended) {
+        await writeStatus(host, "suspended");
+        const reason = gate.compare.delta.decisionReasonDe;
+        await host.setStateAsync(ensure_states_1.AI_STATES.lastReasonDe, { val: reason.slice(0, 480), ack: true });
+        host.log?.warn?.(`KI ohne Plan-B-Vorteil — Auto aus: ${reason}`);
+        return { ran: true, status: "suspended", reasonDe: reason };
+    }
     await writeStatus(host, "ready");
-    host.log?.debug?.(`KI-Optimierung (${triggerReason}): ${result.proposals.length} Vorschlag/Vorschläge, ` +
-        `${result.slotPreferences.length} Slot-Präferenz(en) — ${result.reasonDe}`);
-    return { ran: true, status: "ready", reasonDe: result.reasonDe };
+    const wbNote = gate.writebackApplied ? "Write-back aktiv." : "kein Write-back nötig.";
+    host.log?.debug?.(`KI-Optimierung (${triggerReason}): ${result.slotPreferences.length} Slot-Präferenz(en), ${wbNote} — ${result.reasonDe}`);
+    return {
+        ran: true,
+        status: "ready",
+        reasonDe: gate.writebackApplied
+            ? `${result.reasonDe} Write-back auf Allocation angewendet.`
+            : result.reasonDe,
+    };
 }
 exports.runAiOptimizationNow = runAiOptimizationNow;

@@ -96,11 +96,15 @@ async function collectGridSupplyBuildInput(host, now) {
     const policyGridImportAllowed = policyBoolValue(effectivePolicy, "economics", "gridImportAllowed") ?? adminPolicy.gridImportAllowed;
     const configuredMaxGridImportW = policyNumberValue(effectivePolicy, "limits", "maxGridImportW") ?? adminPolicy.maxGridImportW;
     const configuredHouseFuseLimitW = policyNumberValue(effectivePolicy, "limits", "houseFuseLimitW") ?? adminPolicy.houseFuseLimitW;
-    const [globalMode, currentPriceCtPerKwh, fixedPriceCtPerKwh, dynamicSlots] = await Promise.all([
+    const [globalMode, currentPriceCtPerKwh, fixedPriceCtPerKwh, dynamicSlots, priceLearningStatus, priceLearningAvgPrice7dEur, priceLearningAvgPrice30dEur, priceLearningAvgPrice90dEur,] = await Promise.all([
         readStr(host, "global_modes.active"),
         readNum(host, "live.price.now_ct_per_kwh"),
         readNum(host, "economics.config.fixed_price_ct_per_kwh"),
         readDynamicTariffPrice15MinSlots(host, now),
+        readStr(host, "learning.price_learning.status"),
+        readNum(host, "learning.price_learning.avg_price_7d"),
+        readNum(host, "learning.price_learning.avg_price_30d"),
+        readNum(host, "learning.price_learning.avg_price_90d"),
     ]);
     return {
         now,
@@ -111,6 +115,10 @@ async function collectGridSupplyBuildInput(host, now) {
         currentPriceCtPerKwh,
         fixedPriceCtPerKwh,
         dynamicSlots,
+        priceLearningStatus,
+        priceLearningAvgPrice7dEur,
+        priceLearningAvgPrice30dEur,
+        priceLearningAvgPrice90dEur,
     };
 }
 exports.collectGridSupplyBuildInput = collectGridSupplyBuildInput;

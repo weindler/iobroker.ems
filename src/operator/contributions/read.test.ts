@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { collectContributions, type ContributionsReadHost } from "./read";
+import { collectContributions, parseHouseLoadForecastHorizonJson, type ContributionsReadHost } from "./read";
 
 const PV_SHAPE_CONFIG = {
 	pv_shape_enabled: true,
@@ -57,5 +57,24 @@ describe("collectContributions — PV shape system location parsing", () => {
 		const pv = contributions.find((c) => c.contributionId === "pv_forecast.supply");
 		assert.equal(pv?.details.slotResolution, "daily_only");
 		assert.equal(pv?.slots.length, 0);
+	});
+});
+
+describe("parseHouseLoadForecastHorizonJson", () => {
+	it("returns null for missing/invalid input (no fabricated horizon)", () => {
+		assert.equal(parseHouseLoadForecastHorizonJson(null), null);
+		assert.equal(parseHouseLoadForecastHorizonJson("not json"), null);
+		assert.equal(parseHouseLoadForecastHorizonJson("{}"), null);
+		assert.equal(parseHouseLoadForecastHorizonJson("[]"), null);
+	});
+
+	it("parses a valid array of day forecasts", () => {
+		const raw = JSON.stringify([
+			{ date: "2026-07-13", season: "summer", weekday: "monday", day_type: "weekday", segments: {} },
+			{ date: "2026-07-14", season: "summer", weekday: "tuesday", day_type: "weekday", segments: {} },
+		]);
+		const parsed = parseHouseLoadForecastHorizonJson(raw);
+		assert.equal(parsed?.length, 2);
+		assert.equal(parsed?.[0].date, "2026-07-13");
 	});
 });

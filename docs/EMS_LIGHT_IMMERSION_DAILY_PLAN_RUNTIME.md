@@ -1,4 +1,4 @@
-# EMS-Light — Heizstab Daily-Plan Runtime (v0.1.129)
+# EMS-Light — Heizstab Daily-Plan Runtime (v0.1.129, Sicherheits-Default seit v0.1.203)
 
 ## 1. Ziel der Runtime-Anbindung
 
@@ -17,7 +17,7 @@ Safety / Fault / Lockout
 → manueller Off-Befehl
 → manueller Force-Befehl
 → gültige Daily-Plan-Allocation (Auto)
-→ deterministischer Legacy-Thermal-Planner (temporärer Fallback)
+→ lokaler Sicherheits-Default (Pflicht-Untergrenze, kein Realtime-Planner — Roadmap Block 3.1)
 → sicherer AUS-Zustand
 ```
 
@@ -50,15 +50,17 @@ Ist die Allocation kleiner als die kleinste verfügbare Stufe, wird **nicht neu 
 |---|---|
 | **Off** | Daily Plan ignorieren, sicher AUS, `decision_source = manual_off` |
 | **Force** | Bisheriges Force-Verhalten, Daily Plan nicht als Begrenzung, `decision_source = manual_force` |
-| **Auto** | Daily Plan prüfen; bei gültigem Plan mit 0 W kein Thermal-Fallback |
+| **Auto** | Daily Plan prüfen; bei gültigem Plan mit 0 W kein Sicherheits-Default |
 
-Wichtig: **gültiger Daily Plan + 0 W → AUS laut Plan**, der alte Thermal-Planner darf nicht einschalten.
+Wichtig: **gültiger Daily Plan + 0 W → AUS laut Plan**, der Sicherheits-Default darf nicht einschalten.
 
-## 7. Legacy-Fallback
+## 7. Sicherheits-Default (Roadmap Block 3.1)
 
-Der bestehende Thermal-Planner (`planner.intent.thermal.commanded_stage`) bleibt als **temporärer Fallback** erhalten.
+Seit v0.1.203 gibt es **keinen Rückgriff mehr auf den alten Realtime-Planner** (`planner.intent.thermal.commanded_stage`/`target_temp_c`). Ist der Daily Plan nicht verwendbar, nutzt `engine.ts` einen rein lokalen Default: Zieltemperatur = `ih_planning_min_temp_c` (Pflicht-Untergrenze, dieselbe Schwelle wie die Operator-Pflicht-Contribution), Stufe = `ih_force_default_stage` (bereits vorhandener Admin-Key). Kein Zugriff auf `planner.intent.*`-States.
 
-Fallback nur bei fehlendem, ungültigem, abgelaufenem oder nicht zuordenbarem Daily Plan — **nicht** bei gültigem Plan mit bewusst 0 W Allocation.
+`decision_source = thermal_fallback` bezeichnet ab jetzt diesen lokalen Sicherheits-Default, nicht mehr den alten Planner. Fallback nur bei fehlendem, ungültigem, abgelaufenem oder nicht zuordenbarem Daily Plan — **nicht** bei gültigem Plan mit bewusst 0 W Allocation.
+
+Der alte Thermal-Planner (`operator/planning/thermal.ts`) wird seit Block 4 nicht mehr im Produktions-Tick ausgeführt; `planner.intent.thermal.*` bleibt bis Block 5 als unbeschriebene Legacy-Hülle und wird von der Runtime nicht gelesen.
 
 ## 8. Safety und FSM
 

@@ -115,11 +115,24 @@ export function buildPvContribution(input: PvContributionBuildInput): PlanContri
 	const slots: PlanSlotContribution[] = [];
 	let shapeActive = false;
 	if (hasForecast && input.shape && input.shape.latDeg !== null && input.shape.lonDeg !== null) {
+		// Roadmap Block 5: 15-Min-Form für alle Horizon-Tage mit kWh (Daily Plan ≥48 h),
+		// nicht nur heute/morgen — nie erfundene Tages-kWh.
 		const today = todayKey ?? localDateKeyInTimezone(input.now, input.shape.timezone);
-		const tomorrow = tomorrowKey ?? addDaysToDateKey(today, 1);
-		const todaySlots = pvShapeSlotContributions(today, input.correctedTodayKwh, input.shape);
-		const tomorrowSlots = pvShapeSlotContributions(tomorrow, input.correctedTomorrowKwh, input.shape);
-		slots.push(...todaySlots, ...tomorrowSlots);
+		const dayKwhByKey = new Map<string, number | null>();
+		dayKwhByKey.set(today, input.correctedTodayKwh);
+		dayKwhByKey.set(tomorrowKey ?? addDaysToDateKey(today, 1), input.correctedTomorrowKwh);
+		for (const day of input.horizonDays) {
+			if (!day.dateKey) continue;
+			if (!dayKwhByKey.has(day.dateKey) || day.dayIndex >= 2) {
+				dayKwhByKey.set(day.dateKey, day.correctedKwh);
+			}
+		}
+		const orderedKeys = [...dayKwhByKey.keys()].sort();
+		for (const dateKey of orderedKeys) {
+			const kwh = dayKwhByKey.get(dateKey) ?? null;
+			if (kwh === null || !Number.isFinite(kwh)) continue;
+			slots.push(...pvShapeSlotContributions(dateKey, kwh, input.shape));
+		}
 		shapeActive = slots.length > 0;
 	}
 

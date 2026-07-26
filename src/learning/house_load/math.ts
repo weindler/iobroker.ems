@@ -1,5 +1,6 @@
 import {
 	CONFIDENCE_TARGET_SAMPLES,
+	HOUSE_LOAD_HORIZON_EXTENDED_DAY_OFFSETS,
 	MIN_DAY_HOURS,
 	MIN_PROFILE_SAMPLES,
 	SEGMENTS,
@@ -278,6 +279,9 @@ export function computeHouseLoadLearning(params: {
 	const profileJson = accumulatorsToProfileJson(acc);
 	const forecastTodayJson = buildDayForecast(acc, 0);
 	const forecastTomorrowJson = buildDayForecast(acc, 1);
+	const forecastHorizonJson = HOUSE_LOAD_HORIZON_EXTENDED_DAY_OFFSETS.map((offset) =>
+		buildDayForecast(acc, offset),
+	);
 	const fallbacksUsed =
 		countForecastFallbacks(forecastTodayJson) + countForecastFallbacks(forecastTomorrowJson);
 
@@ -325,6 +329,7 @@ export function computeHouseLoadLearning(params: {
 		profileJson,
 		forecastTodayJson,
 		forecastTomorrowJson,
+		forecastHorizonJson,
 		healthJson,
 		sourceStateId: params.sourceStateId,
 		error: "",
@@ -347,6 +352,9 @@ export function noSourceResult(sourceStateId: string, now: Date): HouseLoadCompu
 		profileJson: {},
 		forecastTodayJson: emptyForecast,
 		forecastTomorrowJson: buildDayForecast(emptyProfile(), 1),
+		forecastHorizonJson: HOUSE_LOAD_HORIZON_EXTENDED_DAY_OFFSETS.map((offset) =>
+			buildDayForecast(emptyProfile(), offset),
+		),
 		healthJson: {
 			status: "no_source",
 			sample_count: 0,

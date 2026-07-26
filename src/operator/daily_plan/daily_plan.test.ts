@@ -14,7 +14,12 @@ import {
 	policyOrderFor,
 } from "./policy";
 import { availablePvSurplus, remainingGridImportForSlot, effectiveImportLimitW } from "./constraints";
-import { buildDailyHorizonSlots, energyKwhFromPower, slotStartIsoFloored } from "./slots";
+import {
+	buildDailyHorizonSlots,
+	DAILY_PLAN_HORIZON_HOURS,
+	energyKwhFromPower,
+	slotStartIsoFloored,
+} from "./slots";
 import { runAllocation, buildAllocationCandidates } from "./allocation";
 import { buildDailyPlan, buildDailyPlanFromForecast, dailyPlanRevisionPayload } from "./build";
 import { buildDailyPlanSlots } from "./constraints";
@@ -275,9 +280,11 @@ describe("daily plan end-to-end: PV shape + house-load segments reach Daily Plan
 		assert.equal(firstSlot.fixedHouseLoadPowerW, 800);
 		assert.notEqual(firstSlot.fixedBalancePowerW, null);
 		assert.notEqual(firstSlot.availablePvSurplusPowerW, null);
-		// Jeder 15-Min-Slot übernimmt den Wert seines umschließenden Segments (10-14 Uhr, 14-18 Uhr, 18-24 Uhr) —
-		// kein Slot bleibt mehr null, obwohl die Quelle nur Mehrstunden-Segmente liefert.
-		for (const s of plan.slots) {
+		assert.equal(plan.slots.length, DAILY_PLAN_HORIZON_HOURS * 4);
+		assert.equal(plan.validUntil, "2026-07-13T10:00:00.000Z");
+		// Segmente gelten für den konfigurierten Tag (heute); rollierender 48h-Horizont
+		// enthält Folgetage ohne Hauslast-Segmente in diesem Fixture → nur Tag 0 prüfen.
+		for (const s of plan.slots.filter((x) => x.slot.startIso.startsWith("2026-07-11"))) {
 			const hourUtc = new Date(s.slot.startIso).getUTCHours();
 			const expected = hourUtc < 14 ? 800 : hourUtc < 18 ? 600 : 400;
 			assert.equal(s.fixedHouseLoadPowerW, expected, `slot ${s.slot.startIso} should inherit its segment value`);
@@ -372,11 +379,12 @@ describe("daily plan slots", () => {
 		assert.equal(slotStartIsoFloored(NOW, TZ), "2026-07-11T10:00:00.000Z");
 	});
 
-	it("builds horizon until local day end", () => {
+	it("builds rolling horizon of at least 48 hours (Block 5)", () => {
 		const slots = buildDailyHorizonSlots(NOW, TZ, 15);
 		assert.ok(slots.length > 0);
-		assert.ok(slots[0].startIso >= "2026-07-11T10:00:00.000Z");
-		assert.equal(slots[slots.length - 1].endIso, "2026-07-12T00:00:00.000Z");
+		assert.equal(slots[0].startIso, "2026-07-11T10:00:00.000Z");
+		assert.equal(slots[slots.length - 1].endIso, "2026-07-13T10:00:00.000Z");
+		assert.equal(slots.length, DAILY_PLAN_HORIZON_HOURS * 4);
 	});
 });
 

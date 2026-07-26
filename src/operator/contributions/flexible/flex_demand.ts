@@ -6,14 +6,33 @@ export const IMMERSION_DEFAULT_KWH_PER_DEGREE_C = 0.38;
 
 const MAX_HEATING_HOURS_PER_DAY = 18;
 
+/**
+ * Sicherheitsmarge gegen gelernten Wärmeverlust (ein Daily-Plan-Slot = 15 min), bis die
+ * Allocation den Heizstab tatsächlich einschalten kann. Nur genutzt, wenn Thermal-Runtime-Learning
+ * (`learning.thermal_runtime.*`) ein belastbares Modell liefert (`status === "valid"`).
+ */
+const LEARNED_LOSS_MARGIN_HOURS = 0.25;
+
+export interface ImmersionLearningMargin {
+	status: "valid" | "degraded" | "missing";
+	coolingRateCPerHAvg: number | null;
+}
+
 export function estimateImmersionRequiredEnergyKwh(
 	bufferTempC: number,
 	targetTempC: number,
 	maxPowerW: number | null,
+	learning?: ImmersionLearningMargin | null,
 ): number {
 	const delta = targetTempC - bufferTempC;
 	if (delta <= 0) return 0;
 	let kwh = round3(delta * IMMERSION_DEFAULT_KWH_PER_DEGREE_C);
+
+	if (learning?.status === "valid" && learning.coolingRateCPerHAvg !== null && learning.coolingRateCPerHAvg > 0) {
+		const projectedLossC = round3(learning.coolingRateCPerHAvg * LEARNED_LOSS_MARGIN_HOURS);
+		kwh = round3(kwh + projectedLossC * IMMERSION_DEFAULT_KWH_PER_DEGREE_C);
+	}
+
 	if (maxPowerW !== null && maxPowerW > 0) {
 		const cap = round3((maxPowerW / 1000) * MAX_HEATING_HOURS_PER_DAY);
 		kwh = Math.min(kwh, cap);

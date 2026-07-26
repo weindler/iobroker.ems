@@ -1,3 +1,4 @@
+/** @deprecated (Roadmap Block 2) Legacy-Planner-Config — Operator-Pendant: `operator/contributions/flexible/battery_charge_logic_config.ts` (gleiche Admin-Keys, saubere Typnamen). */
 import { batteryConfigFromAdapter } from "../addons/battery/config";
 
 function rec(config: unknown): Record<string, unknown> {

@@ -1,3 +1,4 @@
+/** @deprecated (Roadmap Block 2) Nur noch für den Legacy-Planner-Pfad — Allocation (Operator) übernimmt Preisfenster-Auswahl deadline-basiert. */
 import type { Price15MinSlot } from "../../learning/price_forecast/tibber_parse";
 import { MS_PER_15MIN } from "../../learning/price_forecast/tibber_parse";
 import type { GlobalMode } from "../../global_modes/constants";

@@ -1,7 +1,7 @@
 import type { ImmersionDeviceConfig } from "../../addons/immersion_heater/runtime/types";
-import type { PlannerModePolicy } from "../mode_policy";
-import type { PlannerThermalDecision } from "../types";
-import { PLANNER_SURPLUS_MIN_W } from "../inputs";
+import type { PlannerModePolicy } from "../../planner/mode_policy";
+import type { PlannerThermalDecision } from "../../planner/types";
+import { PLANNER_SURPLUS_MIN_W } from "../../planner/inputs";
 import { resolveThermalForecastTarget } from "./thermal_forecast";
 
 export interface ThermalPlanInput {

@@ -22,6 +22,38 @@ describe("flex demand slots", () => {
 		assert.equal(kwh, round3((1700 / 1000) * 18));
 	});
 
+	it("adds a learned loss margin when the thermal model is valid", () => {
+		const base = estimateImmersionRequiredEnergyKwh(50, 60, 1700);
+		const withMargin = estimateImmersionRequiredEnergyKwh(50, 60, 1700, {
+			status: "valid",
+			coolingRateCPerHAvg: 1.2,
+		});
+		assert.ok(withMargin > base);
+		assert.equal(withMargin, round3(base + round3(1.2 * 0.25) * IMMERSION_DEFAULT_KWH_PER_DEGREE_C));
+	});
+
+	it("ignores the learning margin when the model is degraded or missing", () => {
+		const base = estimateImmersionRequiredEnergyKwh(50, 60, 1700);
+		const degraded = estimateImmersionRequiredEnergyKwh(50, 60, 1700, {
+			status: "degraded",
+			coolingRateCPerHAvg: 1.2,
+		});
+		const missing = estimateImmersionRequiredEnergyKwh(50, 60, 1700, {
+			status: "missing",
+			coolingRateCPerHAvg: null,
+		});
+		assert.equal(degraded, base);
+		assert.equal(missing, base);
+	});
+
+	it("still returns zero at target even with a learning margin supplied", () => {
+		const kwh = estimateImmersionRequiredEnergyKwh(60, 60, 1700, {
+			status: "valid",
+			coolingRateCPerHAvg: 1.2,
+		});
+		assert.equal(kwh, 0);
+	});
+
 	it("builds a single demand slot when energy and power are valid", () => {
 		const quality = operatorQuality("valid", "OK");
 		const slots = buildFlexibleDemandSlot({

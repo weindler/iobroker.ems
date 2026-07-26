@@ -1,7 +1,7 @@
 # EMS-Light – Verbindlicher Masterplan
 
 **Status:** Gültig ab 28.06.2026  
-**Aktualisierung:** 25.07.2026 — Operator-Pfad (Forecast/Daily Plan) produktiv; schwerer Planner-Shadow/Takeover-Codestack seit v0.1.181 vollständig entfernt (nicht mehr nur abgeschaltet). KI seit v0.1.185 als Gerüst vorhanden (`src/ai/`, standardmäßig aus, siehe Abschnitt 13) — echte Optimierungslogik weiterhin offen. Seit v0.1.186: Plan-Vergleich (`src/ai/compare/`) simuliert einen KI-gewichteten Plan B (nur Zeitpunkt-Verschiebung Heizstab/Klima, gleiche Energiemenge) zur reinen Beobachtung/Statistik — Plan A bleibt der einzige tatsächlich ausgeführte Plan. Seit v0.1.187: Fix im Daily-Plan-Merge (`src/operator/daily_plan/constraints.ts`) — Hauslast-Segment-Baselines (Mehrstunden) wurden bisher nicht auf 15-Min-Slots projiziert (exakter Key-Match traf nur 15-Min-Quellen wie Grid-Preise), wodurch `fixedHouseLoadPowerW`/`fixedBalancePowerW`/`availablePvSurplusPowerW` in jedem Slot `null` blieben und jede flexible Allocation blockiert war. Seit v0.1.188: optionale wetterbasierte PV-Kurve pro 15-Min-Slot (`src/operator/contributions/pv_shape.ts`, standardmäßig aus) — verteilt die gelernte Tages-PV-kWh anhand Sonnenstand + stündlicher Bewölkung/Solar-Schätzung, normiert auf die gelernte Tagesenergie, optionale kWp-Kappung. Damit ist `pvForecastPowerW` erstmals (optional) je Slot verfügbar; ohne Konfiguration bleibt das Verhalten wie zuvor (`null`). Seit v0.1.189: Fix im Standort-Parsing (`readSystemLocation` in `src/operator/contributions/read.ts`) — `system.config.common.latitude/longitude` als Komma-Dezimal-String (je nach Float-Teiler-Zeichen-Einstellung) wurde durch einen strikten `typeof === "number"`-Check fälschlich verworfen, wodurch die PV-Kurve trotz vollständig korrekter Konfiguration (aktiviert, BrightSky-Prefix, kWp-States) bei `daily_only` blieb. Lat/Lon werden nun wie alle übrigen Zahlenwerte im Adapter toleranter geparst. Seit v0.1.190: Heizstab/Klima liefern in ihren flexiblen Plan-Contributions jetzt `requiredEnergyKwh`/`maxPowerW`-Slots (`src/operator/contributions/flexible/flex_demand.ts`), wodurch die Daily-Plan-Allocation PV-Überschuss real an diese Verbraucher zuweisen kann. Seit v0.1.191: Fix im regelbasierten Thermal-Forecast (`src/planner/rules/thermal_forecast.ts`) — das Heizstab-Governance-Häkchen „KI-Optimierung erlaubt“ hat das Tagesziel bislang pauschal auf die Planungsobergrenze gesetzt („wartet auf KI-Anbindung“), obwohl die KI (Stand v0.1.191) ausschließlich den reinen Beobachtungs-Plan-Vergleich füttert und nie eine echte Zieltemperatur liefert — das führte zu unnötigem Nachheizen/Wärmeverlust. Der regelbasierte PV-Forecast läuft jetzt unabhängig von der KI-Governance-Freigabe; Seit v0.1.192: derselbe Fix auch in der Batterie-Winter-Netzplanung (`src/planner/rules/battery_winter.ts`) — das Governance-Häkchen „KI-Optimierung erlaubt“ ließ die regelbasierte Bilanz/Reserve-Berechnung komplett aussetzen; sie läuft jetzt unabhängig von der KI-Freigabe. Seit v0.1.193: der automatische KI-Trigger reagiert nur noch auf einen groben Plan-Fingerabdruck (`src/ai/trigger_digest.ts`). Seit v0.1.194: Allocated/Unallocated aus dem Digest entfernt (verursachten trotz v0.1.193 noch ~30–40 Aufrufe/Tag durch Allocation-Fortschritt). Index: `docs/README.md`.
+**Aktualisierung:** 26.07.2026 — Roadmap-Blöcke 1–6 abgeschlossen (v0.1.206): KI optional mit Write-back nur bei messbarem Plan-B-Vorteil (siehe §13). Zuvor 25.07.2026 — Operator-Pfad (Forecast/Daily Plan) produktiv; schwerer Planner-Shadow/Takeover-Codestack seit v0.1.181 vollständig entfernt (nicht mehr nur abgeschaltet). KI seit v0.1.185 als Gerüst vorhanden (`src/ai/`, standardmäßig aus, siehe Abschnitt 13) — echte Optimierungslogik weiterhin offen. Seit v0.1.186: Plan-Vergleich (`src/ai/compare/`) simuliert einen KI-gewichteten Plan B (nur Zeitpunkt-Verschiebung Heizstab/Klima, gleiche Energiemenge) zur reinen Beobachtung/Statistik — Plan A bleibt der einzige tatsächlich ausgeführte Plan. Seit v0.1.187: Fix im Daily-Plan-Merge (`src/operator/daily_plan/constraints.ts`) — Hauslast-Segment-Baselines (Mehrstunden) wurden bisher nicht auf 15-Min-Slots projiziert (exakter Key-Match traf nur 15-Min-Quellen wie Grid-Preise), wodurch `fixedHouseLoadPowerW`/`fixedBalancePowerW`/`availablePvSurplusPowerW` in jedem Slot `null` blieben und jede flexible Allocation blockiert war. Seit v0.1.188: optionale wetterbasierte PV-Kurve pro 15-Min-Slot (`src/operator/contributions/pv_shape.ts`, standardmäßig aus) — verteilt die gelernte Tages-PV-kWh anhand Sonnenstand + stündlicher Bewölkung/Solar-Schätzung, normiert auf die gelernte Tagesenergie, optionale kWp-Kappung. Damit ist `pvForecastPowerW` erstmals (optional) je Slot verfügbar; ohne Konfiguration bleibt das Verhalten wie zuvor (`null`). Seit v0.1.189: Fix im Standort-Parsing (`readSystemLocation` in `src/operator/contributions/read.ts`) — `system.config.common.latitude/longitude` als Komma-Dezimal-String (je nach Float-Teiler-Zeichen-Einstellung) wurde durch einen strikten `typeof === "number"`-Check fälschlich verworfen, wodurch die PV-Kurve trotz vollständig korrekter Konfiguration (aktiviert, BrightSky-Prefix, kWp-States) bei `daily_only` blieb. Lat/Lon werden nun wie alle übrigen Zahlenwerte im Adapter toleranter geparst. Seit v0.1.190: Heizstab/Klima liefern in ihren flexiblen Plan-Contributions jetzt `requiredEnergyKwh`/`maxPowerW`-Slots (`src/operator/contributions/flexible/flex_demand.ts`), wodurch die Daily-Plan-Allocation PV-Überschuss real an diese Verbraucher zuweisen kann. Seit v0.1.191: Fix im regelbasierten Thermal-Forecast (`src/planner/rules/thermal_forecast.ts`) — das Heizstab-Governance-Häkchen „KI-Optimierung erlaubt“ hat das Tagesziel bislang pauschal auf die Planungsobergrenze gesetzt („wartet auf KI-Anbindung“), obwohl die KI (Stand v0.1.191) ausschließlich den reinen Beobachtungs-Plan-Vergleich füttert und nie eine echte Zieltemperatur liefert — das führte zu unnötigem Nachheizen/Wärmeverlust. Der regelbasierte PV-Forecast läuft jetzt unabhängig von der KI-Governance-Freigabe; Seit v0.1.192: derselbe Fix auch in der Batterie-Winter-Netzplanung (`src/planner/rules/battery_winter.ts`) — das Governance-Häkchen „KI-Optimierung erlaubt“ ließ die regelbasierte Bilanz/Reserve-Berechnung komplett aussetzen; sie läuft jetzt unabhängig von der KI-Freigabe. Seit v0.1.193: der automatische KI-Trigger reagiert nur noch auf einen groben Plan-Fingerabdruck (`src/ai/trigger_digest.ts`). Seit v0.1.194: Allocated/Unallocated aus dem Digest entfernt (verursachten trotz v0.1.193 noch ~30–40 Aufrufe/Tag durch Allocation-Fortschritt). Index: `docs/README.md`.
 
 ---
 
@@ -205,9 +205,13 @@ decision_source = policy_fallback
 
 Es werden keine voneinander unabhängigen Add-on-KIs gebaut.
 
-Später wird ein zentraler General Operator verwendet.
+**Implementiert (Roadmap Block 4, v0.1.204):** Ein Planungspfad pro Tick —
+Learning → Policy → Forecast Plan → Daily Plan → [KI optional] → Allocation → Runtime.
+Der Legacy-Realtime-Planner (`runPlannerTick` / `src/planner/run.ts`) ist aus dem
+Produktions-Tick entfernt. Planungsregeln liegen unter `src/operator/planning/`
+(ehemals `src/planner/rules/`).
 
-Dieser betrachtet gemeinsam:
+Der General Operator betrachtet gemeinsam:
 
 - PV
 - Hauslast
@@ -229,7 +233,8 @@ Ein Add-on ohne KI-Freigabe darf von der KI nicht umgeplant oder gesteuert werde
 
 Seine Messwerte und sein deterministischer Plan dürfen als Rahmenbedingung berücksichtigt werden.
 
-> **Stand 28.06.2026:** General Operator und KI-Integration sind noch nicht implementiert.
+> **Stand 26.07.2026:** General Operator (Forecast/Daily Plan/Allocation) ist der alleinige
+> Produktions-Planner. KI-Write-back bleibt optional und folgt erst Roadmap Block 6.
 
 ---
 
@@ -443,6 +448,16 @@ replan_only_on_material_change
 > Digest-Änderungsfrequenz (max. 24/Tag bei 60 Min.). Der Zeitpunkt wird in `ai.last_auto_trigger_at_ms`
 > persistiert, ein Adapter-Neustart hebelt den Mindestabstand also nicht aus. Der manuelle
 > „Jetzt optimieren“-Button ignoriert Digest und Mindestabstand weiterhin vollständig.
+>
+> **Stand (v0.1.206 / Roadmap Block 6):** KI ist **optional und nachweisbar**. Kontext an die KI =
+> vollständiger Daily-Plan-Horizont (alle 15-Min-Slots) + Learning-Digest (pv_bias, thermal_runtime,
+> battery_runtime, price_learning, house_load) — kein Mini-Slot-only-Kontext mehr. Nach einem Lauf
+> wird Plan B gegen Plan A verglichen (`src/ai/compare/` + Gate in `src/ai/writeback/`): Write-back auf
+> Daily-Plan-/Allocation-States nur wenn B messbar gewinnt (Kosten primär, sonst Netz↓ bzw. PV↑).
+> Verliert B → Präferenzen verworfen, Auto-Trigger gesperrt (`ai.auto_suspended` / Status `suspended`);
+> manueller „Jetzt optimieren“ hebt die Sperre für einen erneuten Versuch auf. Zusätzlich:
+> `ai_monthly_cost_limit_eur` (`monthly_cost_limit`, 0 = aus). Geräte-Writes weiterhin nur über
+> Dryrun/Live-Runtime-Gates — die KI schreibt nie direkt auf Geräte. Standard bleibt `ai_enabled=false`.
 
 ---
 

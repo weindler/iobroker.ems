@@ -20,6 +20,56 @@ export interface GridSupplyBuildInput {
 	currentPriceCtPerKwh: number | null;
 	fixedPriceCtPerKwh: number | null;
 	dynamicSlots: Price15MinSlot[];
+	/**
+	 * `learning.price_learning.*` — Tibber-Fallback (Block 1.3), NUR genutzt wenn `dynamicSlots`
+	 * leer sind (z. B. Tibber-Feed vorübergehend ohne Daten). Nie ein Ersatz für eine echte
+	 * dynamische Preiskurve — liefert lediglich einen gelernten Durchschnittspreis statt "keine Quelle".
+	 */
+	priceLearningStatus?: string | null;
+	priceLearningAvgPrice7dEur?: number | null;
+	priceLearningAvgPrice30dEur?: number | null;
+	priceLearningAvgPrice90dEur?: number | null;
+}
+
+const PRICE_LEARNING_FALLBACK_HORIZON_HOURS = 48;
+
+function priceLearningFallbackCtPerKwh(input: GridSupplyBuildInput): number | null {
+	if (input.priceLearningStatus !== "ready") return null;
+	const eur =
+		input.priceLearningAvgPrice7dEur ?? input.priceLearningAvgPrice30dEur ?? input.priceLearningAvgPrice90dEur;
+	if (eur === null || eur === undefined || !Number.isFinite(eur) || eur < 0) return null;
+	return Math.round(eur * 100 * 100) / 100;
+}
+
+/**
+ * Flacher gelernter Preis für den Fallback-Horizont — `price_learning` liefert nur einen
+ * Durchschnittswert (keine Stunden-Preiskurve), daher keine erfundene Preis-Varianz pro Slot.
+ */
+function buildPriceLearningFallbackSlots(
+	now: Date,
+	priceCtPerKwh: number,
+	flexibleImportAllowed: boolean,
+	effectiveMaxImportW: number | null,
+): GridSupplySlot[] {
+	const slots: GridSupplySlot[] = [];
+	const slotCount = (PRICE_LEARNING_FALLBACK_HORIZON_HOURS * 60) / 15;
+	const startMs = now.getTime();
+	for (let i = 0; i < slotCount; i++) {
+		const slotStartMs = startMs + i * 15 * 60_000;
+		slots.push({
+			startIso: isoFromMs(slotStartMs),
+			endIso: isoFromMs(slotEndMsFromStart(slotStartMs)),
+			priceCtPerKwh,
+			importAllowed: flexibleImportAllowed,
+			maxImportPowerW: effectiveMaxImportW,
+			priceLabel: "normal",
+			quality: gridDataQuality(
+				"degraded",
+				"Price-Learning-Fallback (gelernter Ø-Preis, keine Stunden-Kurve)",
+			),
+		});
+	}
+	return slots;
 }
 
 export function computeEffectiveMaxGridImportW(
@@ -137,6 +187,20 @@ function resolveSourceAndCurrentPrice(input: GridSupplyBuildInput): {
 		};
 	}
 
+	const learnedFallback = priceLearningFallbackCtPerKwh(input);
+	if (learnedFallback !== null) {
+		return {
+			source: "price_learning_fallback",
+			currentPriceCtPerKwh: learnedFallback,
+			quality: gridDataQuality(
+				"degraded",
+				"Price-Learning-Fallback — keine aktuellen Tarif-Slots, gelernter Ø-Preis genutzt",
+				null,
+			),
+			reasonPart: "Price-Learning-Fallback (gelernter Ø-Preis)",
+		};
+	}
+
 	if (input.fixedPriceCtPerKwh !== null && Number.isFinite(input.fixedPriceCtPerKwh) && input.fixedPriceCtPerKwh >= 0) {
 		return {
 			source: "fixed_tariff",
@@ -184,7 +248,11 @@ export function buildGridSupplyForecast(input: GridSupplyBuildInput): GridSupply
 		),
 	);
 
-	const slots = normalizedDynamic;
+	const fallbackSlots =
+		source === "price_learning_fallback" && currentPriceCtPerKwh !== null
+			? buildPriceLearningFallbackSlots(input.now, currentPriceCtPerKwh, flexibleImportAllowed, effectiveMaxGridImportW)
+			: [];
+	const slots = normalizedDynamic.length > 0 ? normalizedDynamic : fallbackSlots;
 	const validUntil = slots.length > 0 ? slots[slots.length - 1].endIso : null;
 
 	let reasonDe = reasonPart;

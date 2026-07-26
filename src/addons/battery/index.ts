@@ -36,16 +36,6 @@ import {
 	resolvedIntentHasManualPriority,
 } from "./runtime/intent_read";
 import {
-	deviceIntentFromPlannerDecision,
-	parsePlannerIntentJson,
-	plannerWantsActiveBatteryIntent,
-} from "../../planner/battery_bridge";
-import {
-	deviceIntentFromWinterPlanner,
-	parseWinterWindowsJson,
-	winterNumOrNull,
-} from "./runtime/winter_intent";
-import {
 	clearGridBalanceWatch,
 	isGridBalanceWatchState,
 	scheduleGridBalanceTick,
@@ -350,7 +340,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		requiredValues: ["soc", "power"],
 	});
 
-	// Device intent: manual user intent → daily plan → winter → legacy planner → EMS mirror.
+	// Device intent: manual user intent → daily plan → EMS mirror / safe default (Block 5: no winter/legacy planner).
 	const resolvedRaw = await host.getStateAsync("user_intent.battery.resolved_json");
 	const resolvedIntent = parseResolvedBatteryIntentJson(resolvedRaw?.val);
 	const fromManual =
@@ -392,74 +382,47 @@ async function controlTickInner(host: Host): Promise<void> {
 		wantsCharge = dailyPlanContext.chargingAllowed && (dailyPlanContext.effectiveChargePowerW ?? 0) > 0;
 		requestId = deviceIntent.requestId;
 		runtimeDecisionSource = dailyPlanContext.decisionSource;
+	} else if (runtime.ownership.active && runtime.requestId?.startsWith("winter-planner")) {
+		// Cleanup ownership from pre-Block-5 installs that still hold a winter-planner request.
+		requestId = runtime.requestId ?? `winter-planner-${nowMs}`;
+		wantsCharge = false;
+		runtimeDecisionSource = "restore";
+		deviceIntent = {
+			requestId,
+			action: "self_consumption",
+			targetSocPct: null,
+			maxChargeW: null,
+			maxDischargeW: null,
+			energySource: "any",
+			validFrom: null,
+			validUntil: null,
+			issuedAt: new Date(nowMs).toISOString(),
+			reason: "Legacy Winter-Ownership beendet — Rückkehr Mode 2",
+			source: "winter_planner",
+		};
 	} else {
-		const winterIntent = await resolveWinterGridChargeIntent(host, config, nowMs);
-		if (winterIntent) {
-			deviceIntent = winterIntent;
-			wantsCharge = true;
-			requestId = winterIntent.requestId;
-			runtimeDecisionSource = "battery_winter_fallback";
-			dailyPlanContext.legacyFallbackActive = true;
-			dailyPlanContext.legacyFallbackSource = "battery_winter";
-			dailyPlanContext.legacyFallbackReasonDe = dailyPlanContext.allocationReasonDe;
-		} else if (runtime.ownership.active && runtime.requestId?.startsWith("winter-planner")) {
-			requestId = runtime.requestId ?? `winter-planner-${nowMs}`;
-			wantsCharge = false;
-			runtimeDecisionSource = "restore";
-			deviceIntent = {
-				requestId,
-				action: "self_consumption",
-				targetSocPct: null,
-				maxChargeW: null,
-				maxDischargeW: null,
-				energySource: "any",
-				validFrom: null,
-				validUntil: null,
-				issuedAt: new Date(nowMs).toISOString(),
-				reason: "Winter-Preisfenster beendet — Rückkehr Mode 2",
-				source: "winter_planner",
-			};
-		} else {
-			const plannerRaw = await host.getStateAsync("planner.intent.last_json");
-			const plannerParsed = parsePlannerIntentJson(plannerRaw?.val);
-			const fromPlanner =
-				plannerParsed && plannerWantsActiveBatteryIntent(plannerParsed.battery)
-					? deviceIntentFromPlannerDecision(
-							plannerParsed.battery,
-							plannerParsed.revision,
-							plannerParsed.resolved_at,
-						)
-					: null;
-			if (fromPlanner) {
-				deviceIntent = fromPlanner;
-				wantsCharge = isChargingAction(fromPlanner.action);
-				requestId = fromPlanner.requestId;
-				runtimeDecisionSource = "legacy_planner_fallback";
-				dailyPlanContext.legacyFallbackActive = true;
-				dailyPlanContext.legacyFallbackSource = "legacy_planner";
-				dailyPlanContext.legacyFallbackReasonDe = dailyPlanContext.allocationReasonDe;
-			} else {
-				const intentActive = await readRelBool(host, EMS_MIRROR_BATTERY.batteryIntentActive);
-				const modeTarget = await readRelNumber(host, EMS_MIRROR_BATTERY.operatingModeTarget);
-				const chargeReq = await readRelNumber(host, EMS_MIRROR_BATTERY.chargePowerWRequest);
-				wantsCharge = intentActive && modeTarget === 1 && (chargeReq ?? 0) > 0;
-				requestId = `bat-${(await readRelNumber(host, EMS_MIRROR_BATTERY.modeRequestId)) ?? 0}`;
-				deviceIntent = {
-					requestId,
-					action: wantsCharge ? "charge" : "self_consumption",
-					targetSocPct: null,
-					maxChargeW: chargeReq,
-					maxDischargeW: null,
-					energySource: "any",
-					validFrom: null,
-					validUntil: null,
-					issuedAt: new Date(nowMs).toISOString(),
-					reason: `mirror intent_active=${intentActive} mode=${modeTarget}`,
-					source: "ems_mirror",
-				};
-				runtimeDecisionSource = wantsCharge ? "legacy_planner_fallback" : "safe_default";
-			}
-		}
+		const intentActive = await readRelBool(host, EMS_MIRROR_BATTERY.batteryIntentActive);
+		const modeTarget = await readRelNumber(host, EMS_MIRROR_BATTERY.operatingModeTarget);
+		const chargeReq = await readRelNumber(host, EMS_MIRROR_BATTERY.chargePowerWRequest);
+		wantsCharge = intentActive && modeTarget === 1 && (chargeReq ?? 0) > 0;
+		requestId = `bat-${(await readRelNumber(host, EMS_MIRROR_BATTERY.modeRequestId)) ?? 0}`;
+		deviceIntent = {
+			requestId,
+			action: wantsCharge ? "charge" : "self_consumption",
+			targetSocPct: null,
+			maxChargeW: chargeReq,
+			maxDischargeW: null,
+			energySource: "any",
+			validFrom: null,
+			validUntil: null,
+			issuedAt: new Date(nowMs).toISOString(),
+			reason: `mirror intent_active=${intentActive} mode=${modeTarget}`,
+			source: "ems_mirror",
+		};
+		runtimeDecisionSource = wantsCharge ? "legacy_planner_fallback" : "safe_default";
+		dailyPlanContext.legacyFallbackActive = !dailyPlanContext.useDailyPlan;
+		dailyPlanContext.legacyFallbackSource = wantsCharge ? "ems_mirror" : "safe_default";
+		dailyPlanContext.legacyFallbackReasonDe = dailyPlanContext.allocationReasonDe;
 	}
 
 	if (runtime.faultCode !== null) runtimeDecisionSource = "fault";
@@ -481,34 +444,23 @@ async function controlTickInner(host: Host): Promise<void> {
 	const effectiveChargeW = validation.effectiveChargeW ?? 0;
 
 	const emsMirrorIntentActive = await readRelBool(host, EMS_MIRROR_BATTERY.batteryIntentActive);
-	const plannerDriven = deviceIntent.source === "planner";
-	const winterDriven = deviceIntent.source === "winter_planner";
 	const dailyPlanDriven = deviceIntent.source === "daily_plan";
 	const dailyPlanAuthoritative = isBatteryDailyPlanAuthoritative(dailyPlanContext);
-	const [batteryHoldActive, evccCharging, winterPlanActive, priceNowCt] = await Promise.all([
+	const [batteryHoldActive, evccCharging, priceNowCt] = await Promise.all([
 		readRelBool(host, "planner.constraints.battery_hold_active"),
 		readRelBool(host, "live.wallbox.charging"),
-		readRelBool(host, "planner.intent.battery.winter.active"),
 		readRelNumber(host, "live.price.now_ct_per_kwh"),
 	]);
 	const gridBalanceSuppressed =
-		batteryHoldActive ||
-		evccCharging ||
-		winterPlanActive ||
-		runtime.ownership.active ||
-		dailyPlanAuthoritative;
+		batteryHoldActive || evccCharging || runtime.ownership.active || dailyPlanAuthoritative;
 	const emsBatteryIntentActive = Boolean(
 		fromManual
 			? wantsCharge
 			: dailyPlanDriven
 				? wantsCharge || (runtime.ownership.active && runtime.requestId?.startsWith("daily-plan"))
-				: winterDriven
+				: deviceIntent.source === "winter_planner"
 					? wantsCharge || runtime.ownership.active
-					: plannerDriven
-						? deviceIntent.action === "charge"
-							? wantsCharge
-							: deviceIntent.action === "self_consumption" || deviceIntent.action === "hold"
-						: emsMirrorIntentActive && wantsCharge,
+					: emsMirrorIntentActive && wantsCharge,
 	);
 
 	// Grid balance controller.
@@ -660,7 +612,7 @@ async function controlTickInner(host: Host): Promise<void> {
 			socThresholdPct: config.gridBalance.socThresholdPct,
 			evccCharging,
 			batteryHoldActive,
-			winterGridPlanActive: winterPlanActive,
+			winterGridPlanActive: false,
 			mode1Active: runtime.ownership.active,
 			dailyPlanAuthoritative,
 			priceNowCt,
@@ -892,42 +844,3 @@ export async function batteryUnloadRestore(host: Host): Promise<void> {
 	}
 }
 
-async function resolveWinterGridChargeIntent(
-	host: Host,
-	config: BatteryConfig,
-	nowMs: number,
-): Promise<BatteryDeviceIntent | null> {
-	const [winterActive, holdActive, evccCharging, windowsRaw, socTargetRaw, reasonDe, plannerJson] =
-		await Promise.all([
-			readRelBool(host, "planner.intent.battery.winter.active"),
-			readRelBool(host, "planner.constraints.battery_hold_active"),
-			readRelBool(host, "live.wallbox.charging"),
-			host.getStateAsync("planner.intent.battery.winter.windows_json"),
-			host.getStateAsync("planner.intent.battery.winter.soc_target_pct"),
-			host.getStateAsync("planner.intent.battery.winter.reason_de"),
-			host.getStateAsync("planner.intent.last_json"),
-		]);
-
-	if (!winterActive || holdActive || evccCharging) {
-		return null;
-	}
-
-	let revision = 0;
-	try {
-		const parsed = plannerJson?.val ? JSON.parse(String(plannerJson.val)) : null;
-		if (parsed && typeof parsed.revision === "number") revision = parsed.revision;
-	} catch {
-		/* ignore */
-	}
-
-	const snap = {
-		active: true,
-		socTargetPct: winterNumOrNull(socTargetRaw?.val),
-		maxChargeW: config.limits.maxChargeW ?? 0,
-		windows: parseWinterWindowsJson(windowsRaw?.val),
-		reasonDe: String(reasonDe?.val ?? "Winter-Netzplanung"),
-		revision,
-	};
-
-	return deviceIntentFromWinterPlanner(snap, nowMs);
-}

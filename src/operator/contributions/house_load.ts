@@ -1,12 +1,19 @@
 import { SEGMENT_HOURS, SEGMENTS, type HouseLoadSegment } from "../../learning/house_load/constants";
 import type { DayForecastJson } from "../../learning/house_load/types";
-import { dailyKwhFromHouseLoadForecast } from "../../planner/rules/battery_winter";
+import { dailyKwhFromHouseLoadForecast } from "../planning/battery_winter";
 import type { PlanContribution, PlanSlotContribution } from "../types";
 import { operatorQuality } from "../quality";
 import { systemContributorRef } from "../contributor";
 import { addDaysToDateKey, isoAtTimezoneLocal, localDateKeyInTimezone } from "../time";
 import { CONTRIBUTION_IDS } from "../contribution_ids";
 import { baseContribution, clampConfidencePct } from "./types";
+
+export interface HouseLoadHorizonDayOutput {
+	dayIndex: number;
+	dateKey: string;
+	kwh: number | null;
+	confidencePct: number | null;
+}
 
 export interface HouseLoadContributionBuildInput {
 	now: Date;
@@ -15,6 +22,8 @@ export interface HouseLoadContributionBuildInput {
 	confidence: number | null;
 	forecastToday: DayForecastJson | null;
 	forecastTomorrow: DayForecastJson | null;
+	/** Tag 3–7 (analog PV-Horizon) — gleiche Musterlogik wie morgen, kein erfundener Wert. */
+	forecastHorizon?: DayForecastJson[] | null;
 	lastUpdate: string | null;
 }
 
@@ -129,10 +138,23 @@ export function buildHouseLoadContribution(input: HouseLoadContributionBuildInpu
 	if (input.forecastTomorrow) {
 		slots.push(...segmentSlotsFromForecast(input.forecastTomorrow, input.timezone, confidence));
 	}
+	// Roadmap Block 5: Segment-Slots auch für Tag 3+ (Daily-Plan-Horizont ≥48 h) —
+	// gleiche Musterprognose wie morgen, keine erfundenen Werte.
+	for (const forecast of input.forecastHorizon ?? []) {
+		if (!forecast?.date) continue;
+		slots.push(...segmentSlotsFromForecast(forecast, input.timezone, confidence));
+	}
 
 	const todayKey = input.forecastToday?.date ?? localDateKeyInTimezone(input.now, input.timezone);
 	const tomorrowKey =
 		input.forecastTomorrow?.date ?? addDaysToDateKey(localDateKeyInTimezone(input.now, input.timezone), 1);
+
+	const horizonDays: HouseLoadHorizonDayOutput[] = (input.forecastHorizon ?? []).map((forecast, idx) => ({
+		dayIndex: idx + 2,
+		dateKey: forecast.date,
+		kwh: dailyKwhFromHouseLoadDayForecast(forecast),
+		confidencePct: confidence,
+	}));
 
 	return baseContribution(CONTRIBUTION_IDS.HOUSE_LOAD_FIXED, systemContributorRef("house_load"), "consume", ["demand_fixed"], {
 		generatedAt,
@@ -150,6 +172,7 @@ export function buildHouseLoadContribution(input: HouseLoadContributionBuildInpu
 			expectedFixedTomorrowKwh: tomorrowKwh,
 			todayDateKey: todayKey,
 			tomorrowDateKey: tomorrowKey,
+			horizonDays,
 			fallbackLevelToday: worstFallbackLevel(input.forecastToday),
 			fallbackLevelTomorrow: worstFallbackLevel(input.forecastTomorrow),
 			slotResolution: slots.length > 0 ? "segment_baseline" : "daily_only",

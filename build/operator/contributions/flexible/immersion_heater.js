@@ -1,13 +1,33 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildImmersionHeaterContributions = exports.buildImmersionFlexibleContribution = exports.buildImmersionMandatoryContribution = void 0;
-const thermal_forecast_1 = require("../../../planner/rules/thermal_forecast");
+const thermal_forecast_1 = require("../../planning/thermal_forecast");
 const contribution_ids_1 = require("../../contribution_ids");
 const quality_1 = require("../../quality");
 const contributor_1 = require("../../contributor");
 const types_1 = require("../types");
 const flex_demand_1 = require("./flex_demand");
 const types_2 = require("./types");
+function learningMargin(input) {
+    if (!input.thermalLearning)
+        return null;
+    return {
+        status: input.thermalLearning.status,
+        coolingRateCPerHAvg: input.thermalLearning.coolingRateCPerHAvg,
+    };
+}
+function thermalLearningDetails(input) {
+    const learning = input.thermalLearning ?? null;
+    return {
+        thermalLearningStatus: learning?.status ?? "missing",
+        thermalLearningHealth: learning?.health ?? null,
+        thermalLearningSamples: learning?.samples ?? null,
+        coolingRateCPerHAvg: learning?.coolingRateCPerHAvg ?? null,
+        estimatedRemainingHours: learning?.estimatedRemainingHours ?? null,
+        estimatedEmptyAt: learning?.estimatedEmptyAt ?? null,
+        learnedDayTypeRuntimeHoursMedian: learning?.currentDayTypeRuntimeHoursMedian ?? null,
+    };
+}
 function enabledStages(config) {
     return config.stages.filter((s) => s.enabled && s.nominalPowerW > 0 && s.setStateId);
 }
@@ -50,7 +70,7 @@ function buildImmersionMandatoryContribution(input) {
         ? input.config.planningMaxTempC
         : input.config.planningMinTempC;
     const requiredEnergyKwh = mandatory && input.bufferTempC !== null && maxW !== null
-        ? (0, flex_demand_1.estimateImmersionRequiredEnergyKwh)(input.bufferTempC, mandatoryTargetC, maxW)
+        ? (0, flex_demand_1.estimateImmersionRequiredEnergyKwh)(input.bufferTempC, mandatoryTargetC, maxW, learningMargin(input))
         : null;
     const quality = (0, quality_1.operatorQuality)(!mandatory ? "disabled" : enabled ? "valid" : participation.status, mandatory ? (mandatoryReason ?? "") : "Kein Pflichtbedarf.");
     return (0, types_1.baseContribution)(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_MANDATORY, (0, contributor_1.addonContributorRef)("immersion_heater"), "consume", ["demand_flex", "dispatch"], {
@@ -71,6 +91,7 @@ function buildImmersionMandatoryContribution(input) {
             thermalMode: input.thermalMode,
             mandatory: true,
             batteryEligible: true,
+            ...thermalLearningDetails(input),
         },
         slots: (0, flex_demand_1.buildFlexibleDemandSlot)({
             generatedAt,
@@ -112,7 +133,7 @@ function buildImmersionFlexibleContribution(input) {
         !atTarget;
     const maxW = maxStagePowerW(input.config);
     const requiredEnergyKwh = autoReady && input.bufferTempC !== null && maxW !== null
-        ? (0, flex_demand_1.estimateImmersionRequiredEnergyKwh)(input.bufferTempC, target.targetTempC, maxW)
+        ? (0, flex_demand_1.estimateImmersionRequiredEnergyKwh)(input.bufferTempC, target.targetTempC, maxW, learningMargin(input))
         : null;
     let status = autoReady ? "valid" : "disabled";
     let reasonDe = "Kein flexibler Heizstab-Bedarf.";
@@ -144,6 +165,16 @@ function buildImmersionFlexibleContribution(input) {
         requiredEnergyKwh > 0 &&
         input.bufferTempC !== null;
     const quality = (0, quality_1.operatorQuality)(status, reasonDe);
+    /*
+     * Gelernte Pflicht-Deadline (`estimated_empty_at`) nur setzen, wenn der Puffer aktuell
+     * NOCH nicht mandatory ist (sonst regelt die Mandatory-Contribution es bereits) und das
+     * Lernmodell belastbar ist. So priorisiert die Allocation günstige/PV-Slots vor dem
+     * gelernten Zeitpunkt statt den flexiblen Bedarf unbegrenzt aufzuschieben.
+     */
+    const learningDeadlineIso = enabled && input.thermalLearning?.status === "valid" ? input.thermalLearning.estimatedEmptyAt : null;
+    if (enabled && learningDeadlineIso) {
+        reasonDe = `${reasonDe} Gelernte Pflichtgrenze voraussichtlich ${learningDeadlineIso}.`;
+    }
     return (0, types_1.baseContribution)(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, (0, contributor_1.addonContributorRef)("immersion_heater"), "consume", ["demand_flex", "dispatch"], {
         generatedAt,
         validUntil: null,
@@ -151,6 +182,7 @@ function buildImmersionFlexibleContribution(input) {
         enabled,
         flexible: true,
         gridEligible: false,
+        deadlineIso: learningDeadlineIso,
         quality,
         reasonDe,
         details: {
@@ -162,6 +194,7 @@ function buildImmersionFlexibleContribution(input) {
             forecastActive: target.forecastActive,
             minimumRuntimeSec: input.config.minimumRuntimeSec,
             batteryEligible: true,
+            ...thermalLearningDetails(input),
         },
         slots: (0, flex_demand_1.buildFlexibleDemandSlot)({
             generatedAt,

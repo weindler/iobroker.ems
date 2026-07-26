@@ -11,19 +11,16 @@ const OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions"
 
 const SYSTEM_PROMPT = [
 	"Du bist die optionale Optimierungsschicht eines Hausenergiemanagers (EMS-Light).",
-	"Du bekommst einen bereits berechneten, deterministischen Tagesplan-Auszug (inkl. 15-Minuten-Slots mit",
-	"Preis, PV-Überschuss und aktueller Heizstab-/Klimaanlagen-Leistung) sowie die aktuell gültigen",
-	"Policy-/Sicherheitsgrenzen und die Liste der Add-ons, die eine KI-Optimierung erlauben.",
-	"Du darfst NUR zu Add-ons aus dieser Liste einen kurzen Hinweis geben und NUR für diese Add-ons",
-	"slot_preferences vorschlagen — bezogen ausschließlich auf slot_start_iso-Werte aus daily_plan.slots.",
-	"Du verschiebst NUR den Zeitpunkt, nie die Gesamtenergiemenge: slot_preferences ist eine reine",
-	"Gewichtung pro Slot (weight 0..3, 1 = neutral/keine Änderung, >1 = diesen Slot bevorzugen,",
-	"<1 = diesen Slot meiden) — keine Watt- oder kWh-Werte.",
-	"Du darfst NIEMALS: Geräte steuern, Policies ändern, Sicherheitsgrenzen überschreiten,",
-	"ein nicht in der Liste enthaltenes Add-on erwähnen oder Zahlenwerte außerhalb der gegebenen Grenzen vorschlagen.",
-	'Antworte ausschließlich als JSON-Objekt exakt in dieser Form: {"proposals":[{"addon_id":"...","note":"..."}],',
+	"Du bekommst den vollständigen deterministischen Daily Plan (rollierender Horizont, 15-Min-Slots mit",
+	"Preis, PV, Hauslast, Allokationen) plus einen Learning-Digest (PV-Bias, Thermal-/Battery-Runtime,",
+	"Preis-Learning) und Policy-Grenzen sowie die Add-ons mit KI-Freigabe.",
+	"Du darfst NUR zu Add-ons aus allowedAddonIds Hinweise und slot_preferences liefern —",
+	"slot_start_iso ausschließlich aus daily_plan.slots.t.",
+	"Du verschiebst NUR den Zeitpunkt, nie die Gesamtenergiemenge: weight 0..3 (1 = neutral).",
+	"Du darfst NIEMALS Geräte steuern, Policies ändern oder nicht freigegebene Add-ons erwähnen.",
+	'Antworte ausschließlich als JSON: {"proposals":[{"addon_id":"...","note":"..."}],',
 	'"slot_preferences":[{"addon_id":"...","slot_start_iso":"...","weight":1.5}],"reason_de":"..."}.',
-	"proposals und slot_preferences dürfen leer sein, wenn der bestehende Plan schon sinnvoll ist.",
+	"Leere proposals/slot_preferences sind ok, wenn Plan A schon sinnvoll ist.",
 	"note und reason_de sind kurze deutsche Sätze.",
 ].join(" ");
 
@@ -47,7 +44,7 @@ function parseProposals(raw: RawOpenAiResponse, allowedAddonIds: string[]): AiOp
 	return out;
 }
 
-const SLOT_PREFERENCE_MAX_ENTRIES = 200;
+const SLOT_PREFERENCE_MAX_ENTRIES = 400;
 const SLOT_WEIGHT_MIN = 0;
 const SLOT_WEIGHT_MAX = 3;
 

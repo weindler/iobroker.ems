@@ -55,6 +55,11 @@ function houseLoadDayEnergy(contribution, dateKey) {
         const v = details.expectedFixedTomorrowKwh;
         return typeof v === "number" && Number.isFinite(v) ? v : null;
     }
+    const horizonDays = details.horizonDays;
+    const match = horizonDays?.find((d) => d.dateKey === dateKey);
+    if (match && match.kwh !== null && Number.isFinite(match.kwh)) {
+        return match.kwh;
+    }
     return null;
 }
 function weatherDayMinMax(contribution, dateKey, todayKey, tomorrowKey) {
@@ -291,9 +296,9 @@ function buildForecastPlan(input) {
     const slots = buildSlots(input, pv, house, weather, grid, globalConstraints);
     const { active, excluded } = partitionContributors(input.contributions);
     const status = resolveStatus(pv, house, weather, grid, input.timezone);
-    const todayKey = (0, time_1.localDateKeyInTimezone)(input.now, input.timezone);
     const horizonStart = input.now.toISOString();
-    const horizonEnd = isoEndOfDay((0, time_1.addDaysToDateKey)(todayKey, 1), input.timezone);
+    const furthestDateKey = days.length > 0 ? days[days.length - 1].date : (0, time_1.localDateKeyInTimezone)(input.now, input.timezone);
+    const horizonEnd = isoEndOfDay(furthestDateKey, input.timezone);
     return {
         generatedAt: input.now.toISOString(),
         validUntil: grid?.validUntil ?? null,

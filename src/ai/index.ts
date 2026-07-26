@@ -6,6 +6,7 @@ import { AI_STATES, ensureAiStates } from "./ensure_states";
 import { createOpenAiProvider } from "./openai_provider";
 import { runAiOptimizationNow, type AiRunHost, type AiRunOutcome } from "./run";
 import { aiTriggerDigestPayload } from "./trigger_digest";
+import { isAiAutoSuspended } from "./writeback";
 
 export { ensureAiStates } from "./ensure_states";
 export { AI_STATES } from "./ensure_states";
@@ -57,6 +58,9 @@ export async function maybeTriggerAiOptimizationOnDailyPlanChange(
 	const digestPayload = aiTriggerDigestPayload(plan);
 	if (!cfg.enabled) {
 		lastTriggerDigestPayload = digestPayload;
+		return null;
+	}
+	if (await isAiAutoSuspended(host)) {
 		return null;
 	}
 	if (digestPayload === lastTriggerDigestPayload) {

@@ -5,6 +5,8 @@ import { plannerModePolicyFromGlobalMode } from "../../planner/mode_policy";
 import { setOptionalNumberIfChanged, setStateIfChanged } from "../../policy/core/state_write";
 import type { ForecastPlan } from "../forecast/types";
 import { buildDailyPlanFromForecast, dailyPlanRevisionPayload } from "./build";
+import { buildOperatorBriefingDe } from "./briefing";
+import { buildOperatorLiveSurplus } from "./live_surplus";
 import { ALLOCATION_ADDON_STATE_IDS, DAILY_PLAN_STATE_IDS } from "./states";
 import type { DailyPlan } from "./types";
 import type { ContributionsReadHost } from "../contributions/read";
@@ -15,7 +17,7 @@ import {
 } from "../../policy/battery_consumers";
 import { immersionDeviceConfigFromAdapter } from "../../addons/immersion_heater/device_config";
 import { asNum } from "../../ems_light/state_util";
-import { buildPlannerConstraints } from "../../planner/rules/battery";
+import { buildPlannerConstraints } from "../planning/battery";
 import { WALLBOX_EVCC_STATES } from "../../addons/wallbox/ensure_evcc_states";
 
 let lastRevisionPayload = "";
@@ -138,7 +140,7 @@ export async function runDailyPlanTick(
 		},
 	});
 
-	const plan = buildDailyPlanFromForecast(now, timezone, modePolicy.mode, forecastPlan, {
+	let plan = buildDailyPlanFromForecast(now, timezone, modePolicy.mode, forecastPlan, {
 		policySnapshot: effectivePolicy as unknown as Record<string, unknown> | null,
 		energyPriority,
 		mutualExclusions,
@@ -158,6 +160,17 @@ export async function runDailyPlanTick(
 		lastRevisionPayload = payload;
 	}
 	plan.revision = revision;
+
+	// Roadmap Block 6: vorhandene KI-Präferenzen → Plan B auf Allocation, wenn messbar besser.
+	try {
+		const { maybeApplyAiWritebackOnDailyPlan } = await import("../../ai/writeback/index.js");
+		plan = await maybeApplyAiWritebackOnDailyPlan(
+			host as Parameters<typeof maybeApplyAiWritebackOnDailyPlan>[0],
+			plan,
+		);
+	} catch (e) {
+		host.log?.warn?.(`ai_writeback: ${String(e)}`);
+	}
 
 	try {
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.status, plan.status);
@@ -193,6 +206,21 @@ export async function runDailyPlanTick(
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
 		await setOptionalNumberIfChanged(host, DAILY_PLAN_STATE_IDS.revision, revision);
+
+		// Roadmap Block 3.3: Briefing + Live-Überschuss/-Defizit aus Daily Plan + Live-Cache —
+		// kein Rückgriff mehr auf `formatBriefing()`/`planner.surplus_w` des alten Realtime-Planners.
+		const pvFromPv = asNum((await host.getStateAsync("live.pv.power_w"))?.val);
+		const pvFromBattery = asNum((await host.getStateAsync("live.battery.pv_ac_power_w"))?.val);
+		const liveSurplus = buildOperatorLiveSurplus({
+			pvPowerW: pvFromPv ?? pvFromBattery,
+			houseLoadW: asNum((await host.getStateAsync("live.battery.house_load_w"))?.val),
+			now,
+			timezone,
+		});
+		await setOptionalNumberIfChanged(host, "operator.diagnostics.surplus_w", liveSurplus.surplusW);
+		await setOptionalNumberIfChanged(host, "operator.diagnostics.deficit_w", liveSurplus.deficitW);
+		await setStateIfChanged(host, "operator.diagnostics.slot_start_iso", liveSurplus.slotStartIso ?? "");
+		await setStateIfChanged(host, "operator.briefing_de", buildOperatorBriefingDe(plan, now, timezone));
 
 		const addonSummaries: Array<{ key: keyof typeof ALLOCATION_ADDON_STATE_IDS; prefix: string }> = [
 			{ key: "battery", prefix: "battery" },

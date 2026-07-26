@@ -8,6 +8,7 @@
 |----------|--------|
 | [EMS_LIGHT_MASTERPLAN.md](./EMS_LIGHT_MASTERPLAN.md) | Zielbild und verbindliche Regeln |
 | [EMS_LIGHT_OPERATOR_FOUNDATION.md](./EMS_LIGHT_OPERATOR_FOUNDATION.md) | General Operator (Pipeline, Rollen) |
+| [EMS_LIGHT_ROADMAP.md](./EMS_LIGHT_ROADMAP.md) | **Produkt-Roadmap** (Blöcke 1–6 erledigt, zuletzt v0.1.206) |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Implementierter Ist-Stand |
 | [DEVELOPMENT.md](./DEVELOPMENT.md) | Build, Tests, Doc-Regeln |
 | [EMS_LIGHT_FRESH_INSTALL_CHECKLIST.md](./EMS_LIGHT_FRESH_INSTALL_CHECKLIST.md) | Neuinstallation / Namespace-Wipe |

@@ -1,6 +1,6 @@
 # EMS-Light — Forecast Plan
 
-**Stand:** v0.1.189
+**Stand:** v0.1.201 (Roadmap-Block 1.4 — Horizont Tag 0–7, siehe `docs/EMS_LIGHT_ROADMAP.md`)
 
 ## 1. Zweck
 
@@ -11,17 +11,25 @@ Der Forecast Plan führt die **realen** Planungsdaten in die gemeinsame Operator
 | Contributor | Typ | Quellen |
 |-------------|-----|---------|
 | `pv_forecast` | Add-on | `learning.pv_bias.*`, `learning.pv_horizon.day3–7.*` |
-| `house_load` | System | `learning.house_load.forecast_*_json`, Confidence, Status |
+| `house_load` | System | `learning.house_load.forecast_today_json`/`forecast_tomorrow_json`/`forecast_horizon_json` (Tag 3–7), Confidence, Status |
 | `weather_forecast` | Add-on | `learning.weather.*`, konfigurierte Forecast-/Ist-States |
-| `grid_supply` | System | Grid-Supply-Schicht (v0.1.125), Tibber/Fixed Tariff, Policy |
+| `grid_supply` | System | Grid-Supply-Schicht (v0.1.125), Tibber/`price_learning`-Fallback/Fixed Tariff, Policy |
 | `house_main_fuse` | Add-on | konfigurierte Sicherungs- und Importgrenzen |
 | `global_constraints` | System | effektive Grenzen nach Global Mode |
-| `battery`, `wallbox`, `immersion_heater`, `air_conditioning` | Add-on | flexible Bedarfe (v0.1.127) |
+| `battery`, `wallbox`, `immersion_heater`, `air_conditioning` | Add-on | flexible Bedarfe (v0.1.127), seit v0.1.201 mit `thermal_runtime`/`battery_runtime`-Learning |
 
 ## 3. Horizont
 
 - Mindestens Rest des aktuellen Tages plus Folgetag (bevorzugt 48 h)
-- PV-Horizont-Tage 3–7 als **Tagesaggregate** in `days`
+- **Tag 0–7 (v0.1.201):** `days[]` erweitert sich automatisch, sobald PV-Horizont-Daten
+  (`learning.pv_horizon.day3-7.*`) vorliegen; `horizonEnd` folgt dem tatsächlich weitesten Tag
+  in `days[]` statt starr „morgen Ende"
+- PV-Horizont-Tage 3–7 als **Tagesaggregate** in `days` (`pvEnergyKwh`)
+- Hauslast-Tage 3–7 ebenfalls als **Tagesaggregate** aus `learning.house_load.forecast_horizon_json`
+  (`houseLoadEnergyKwh`) — dieselbe Saison/Wochentag/Day-Type-Musterlogik wie „morgen", nicht
+  erfunden, nur weiter in die Zukunft projiziert
+- Wetter-Kontextfelder (`weatherMinTempC`/`weatherMaxTempC`) existieren strukturell für jeden Tag,
+  bleiben für Tag 3–7 aber `null` (kein Admin-Mapping für mehrtägige Wetter-Rohdaten vorhanden)
 - Grid-Preis-Slots nur soweit echte Daten vorhanden sind
 - Keine künstlichen leeren Slots bis zum Horizontende
 

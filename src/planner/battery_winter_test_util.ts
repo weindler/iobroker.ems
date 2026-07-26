@@ -1,6 +1,6 @@
 import type { BatteryWinterPlanConfig } from "./battery_winter_config";
 import { batteryWinterPlanConfigFromAdapter } from "./battery_winter_config";
-import type { BatteryWinterDayInput } from "./rules/battery_winter";
+import type { BatteryWinterDayInput } from "../operator/planning/battery_winter";
 
 /** Test-/Default-Horizont für Planner-Inputs. */
 export function defaultBatteryWinterDays(): BatteryWinterDayInput[] {

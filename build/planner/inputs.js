@@ -174,6 +174,12 @@ async function readPlannerInputs(host) {
     };
 }
 exports.readPlannerInputs = readPlannerInputs;
+/**
+ * @deprecated (Roadmap Block 3.1) Kein Consumer mehr — `src/addons/immersion_heater/runtime/engine.ts`
+ * nutzt bei nicht verwendbarem Daily Plan einen lokalen Sicherheits-Default (Pflicht-Untergrenze),
+ * keinen Rückgriff mehr auf den alten Realtime-Planner. `planner.intent.thermal.*` bleibt nur noch
+ * Diagnose-Output des auslaufenden Planners (`planner/run.ts`), Entfernung erst Block 5.
+ */
 async function readPlannerThermalStage(host) {
     const n = await readNum(host, "planner.intent.thermal.commanded_stage");
     if (n === null || !Number.isFinite(n))
@@ -181,6 +187,7 @@ async function readPlannerThermalStage(host) {
     return Math.max(0, Math.round(n));
 }
 exports.readPlannerThermalStage = readPlannerThermalStage;
+/** @deprecated (Roadmap Block 3.1) Kein Consumer mehr, siehe `readPlannerThermalStage`. */
 async function readPlannerThermalTargetTemp(host) {
     return readNum(host, "planner.intent.thermal.target_temp_c");
 }

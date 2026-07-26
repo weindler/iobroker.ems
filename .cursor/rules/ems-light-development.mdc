@@ -49,4 +49,6 @@ Ensure-States, `setStateIfChanged`, konfigurierbare Mappings, Admin+i18n, Releas
 
 ## Entwicklungsführung
 
-Code = Ist-Stand. Masterplan + `docs/EMS_LIGHT_OPERATOR_FOUNDATION.md` = Zielbild. Block vollständig abschließen vor nächstem Block. Keine Scope-Erweiterung ohne Auftrag.
+Code = Ist-Stand. Masterplan + `docs/EMS_LIGHT_OPERATOR_FOUNDATION.md` = Zielbild.
+
+**Verbindliche Roadmap:** `.cursor/rules/ems-light-roadmap.mdc` + `docs/EMS_LIGHT_ROADMAP.md` — Blöcke 1–6 waren **strikt sequenziell** (abgeschlossen mit Block 6 / v0.1.206). Keine Scope-Erweiterung ohne Auftrag.

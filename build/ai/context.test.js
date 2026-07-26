@@ -71,7 +71,7 @@ function minimalPlan(overrides = {}) {
     });
 });
 (0, node_test_1.describe)("ai buildAiOptimizationContext", () => {
-    (0, node_test_1.it)("builds a compact digest without leaking full slot/allocation arrays", async () => {
+    (0, node_test_1.it)("builds full daily-plan digest + learning digest (Block 6)", async () => {
         const host = {
             config: { immersion_heater_enabled: true, immersion_heater_ai_optimization_allowed: true },
             async getStateAsync(id) {
@@ -84,24 +84,31 @@ function minimalPlan(overrides = {}) {
                         ack: true,
                     };
                 }
+                if (id === "learning.pv_bias.status")
+                    return { val: "ready", ack: true };
+                if (id === "learning.pv_bias.corrected_today_kwh")
+                    return { val: 12.5, ack: true };
                 return null;
             },
         };
         const ctx = await (0, context_js_1.buildAiOptimizationContext)(host, minimalPlan(), "test_trigger");
         strict_1.default.deepEqual(ctx.allowedAddonIds, ["immersion_heater"]);
         strict_1.default.equal(ctx.dailyPlan.date, "2026-07-25");
+        strict_1.default.equal(ctx.dailyPlan.horizonSlotCount, 0);
         strict_1.default.equal(ctx.dailyPlan.totals.flexibleUnallocatedEnergyKwh, 1.2);
+        strict_1.default.equal(ctx.dailyPlan.totals.immersionHeaterEnergyKwh, 1.8);
+        strict_1.default.equal(ctx.learning.pvBiasStatus, "ready");
+        strict_1.default.equal(ctx.learning.pvCorrectedTodayKwh, 12.5);
         strict_1.default.equal(ctx.policyHighlights.houseFuseLimitW, 30000);
         strict_1.default.equal(ctx.policyHighlights.gridImportAllowed, true);
         strict_1.default.equal(ctx.triggerReason, "test_trigger");
-        strict_1.default.equal(ctx.slots, undefined);
     });
     (0, node_test_1.it)("missing/invalid policy state → empty highlights, never throws", async () => {
         const host = { config: {}, async getStateAsync() { return null; } };
         const ctx = await (0, context_js_1.buildAiOptimizationContext)(host, minimalPlan(), "x");
         strict_1.default.deepEqual(ctx.policyHighlights, { houseFuseLimitW: null, maxGridImportW: null, gridImportAllowed: null });
     });
-    (0, node_test_1.it)("dailyPlan.slots stays empty when neither immersion_heater nor climate is allowed", async () => {
+    (0, node_test_1.it)("emits horizon slots but zeros IH/AC when neither is AI-allowed", async () => {
         const host = { config: {}, async getStateAsync() { return null; } };
         const plan = minimalPlan({
             slots: [
@@ -148,7 +155,10 @@ function minimalPlan(overrides = {}) {
             ],
         });
         const ctx = await (0, context_js_1.buildAiOptimizationContext)(host, plan, "x");
-        strict_1.default.deepEqual(ctx.dailyPlan.slots, []);
+        strict_1.default.equal(ctx.dailyPlan.slots.length, 1);
+        strict_1.default.equal(ctx.dailyPlan.slots[0].ihFlexW, 0);
+        strict_1.default.equal(ctx.dailyPlan.slots[0].acW, 0);
+        strict_1.default.equal(ctx.dailyPlan.slots[0].houseLoadW, 400);
     });
     (0, node_test_1.it)("dailyPlan.slots is populated (only flexible, not mandatory) when immersion_heater is allowed", async () => {
         const host = {

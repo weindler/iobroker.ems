@@ -6,7 +6,7 @@
  * - Die KI optimiert ausschließlich innerhalb bestehender Policy-/Safety-/Add-on-Grenzen.
  * - Sie schreibt niemals direkt auf Geräte-States, ändert niemals Policies und
  *   plant niemals ein Add-on ohne dessen individuelle "KI-Optimierung erlaubt"-Freigabe.
- * - Bei Fehler/Timeout/ungültiger Antwort bleibt der deterministische Plan unverändert
- *   in Kraft (fail-closed).
+ * - Write-back (Block 6) geht nur über Daily-Plan-Allocation, und nur wenn Plan B Plan A
+ *   messbar schlägt — sonst Auto-KI aus (fail-closed).
  */
 Object.defineProperty(exports, "__esModule", { value: true });

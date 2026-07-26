@@ -2,8 +2,8 @@ import type { AcGlobalConfig, AcUnitConfig } from "../../addons/air_conditioning
 import { isHardOffTime, isWithinClockWindow, localMinutesNow } from "../../addons/air_conditioning/runtime/time";
 import type { ConsumerPersistEntry } from "../../learning/consumer_stats/types";
 import { resolveConsumerEffectivePowerW } from "../../learning/consumer_stats/learned_power";
-import type { PlannerCoolingDecision } from "../types";
-import { sumAllocatedConsumerPeakW } from "../consumer_allocate";
+import type { PlannerCoolingDecision } from "../../planner/types";
+import { sumAllocatedConsumerPeakW } from "../../planner/consumer_allocate";
 
 export type CoolingUnitPlanInput = {
 	unit: AcUnitConfig;

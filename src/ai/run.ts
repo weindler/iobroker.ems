@@ -5,9 +5,11 @@ import { AI_STATES } from "./ensure_states";
 import { readAndRolloverDailyCalls, recordDailyCall, type LimiterHost } from "./limiter";
 import { estimateCostEur } from "./pricing";
 import type { AiProvider, AiStatus } from "./types";
+import { clearAiAutoSuspend, finalizeAiRunWithWritebackGate, type WritebackHost } from "./writeback";
 
 export type AiRunHost = ContextHost &
-	LimiterHost & {
+	LimiterHost &
+	WritebackHost & {
 		log?: { debug?: (m: string) => void; warn?: (m: string) => void; error?: (m: string) => void };
 	};
 
@@ -22,9 +24,9 @@ async function writeStatus(host: AiRunHost, status: AiStatus): Promise<void> {
 }
 
 /**
- * Orchestriert genau einen KI-Optimierungsversuch. Fail-closed: jede Ablehnung/jeder Fehler
- * lässt den bestehenden deterministischen Tagesplan unverändert — es wird hier (noch) nichts
- * in die Allocation zurückgeschrieben, nur beobachtet/protokolliert (Gerüst, siehe Masterplan §4/§13).
+ * Orchestriert genau einen KI-Optimierungsversuch (Roadmap Block 6).
+ * Fail-closed: ohne messbaren Plan-B-Vorteil kein Write-back, Auto-Trigger gesperrt.
+ * Write-back geht nur über Daily-Plan-Allocation — nie direkt auf Geräte.
  */
 export async function runAiOptimizationNow(
 	host: AiRunHost,
@@ -50,14 +52,23 @@ export async function runAiOptimizationNow(
 		return { ran: false, status: "no_addons_allowed", reasonDe: "Kein Add-on hat KI-Optimierung erlaubt." };
 	}
 
-	const limitState = await readAndRolloverDailyCalls(host, cfg.maxCallsPerDay);
+	const limitState = await readAndRolloverDailyCalls(
+		host,
+		cfg.maxCallsPerDay,
+		new Date(),
+		cfg.monthlyCostLimitEur,
+	);
 	if (limitState.limitReached) {
 		await writeStatus(host, "limit_reached");
-		return {
-			ran: false,
-			status: "limit_reached",
-			reasonDe: `Tageslimit erreicht (${limitState.callsToday}/${limitState.limit}).`,
-		};
+		const reason = limitState.monthlyLimitReached
+			? `Monatslimit erreicht (${limitState.costMonthEur.toFixed(3)}/${limitState.monthlyLimitEur} EUR).`
+			: `Tageslimit erreicht (${limitState.callsToday}/${limitState.limit}).`;
+		return { ran: false, status: "limit_reached", reasonDe: reason };
+	}
+
+	// Manueller Lauf darf Auto-Suspend aufheben und erneut prüfen.
+	if (triggerReason === "manual") {
+		await clearAiAutoSuspend(host);
 	}
 
 	const context = await buildAiOptimizationContext(host, plan, triggerReason);
@@ -77,7 +88,7 @@ export async function runAiOptimizationNow(
 	}
 
 	const costEur = estimateCostEur(cfg.model, result.usage.promptTokens, result.usage.completionTokens);
-	await recordDailyCall(host, cfg.maxCallsPerDay, costEur);
+	await recordDailyCall(host, cfg.maxCallsPerDay, costEur, new Date(), cfg.monthlyCostLimitEur);
 
 	const nowIso = new Date().toISOString();
 	await host.setStateAsync(AI_STATES.lastRunAt, { val: nowIso, ack: true });
@@ -98,10 +109,26 @@ export async function runAiOptimizationNow(
 		val: JSON.stringify(result.slotPreferences),
 		ack: true,
 	});
+
+	const gate = await finalizeAiRunWithWritebackGate(host, plan, result.slotPreferences);
+	if (gate.suspended) {
+		await writeStatus(host, "suspended");
+		const reason = gate.compare.delta.decisionReasonDe;
+		await host.setStateAsync(AI_STATES.lastReasonDe, { val: reason.slice(0, 480), ack: true });
+		host.log?.warn?.(`KI ohne Plan-B-Vorteil — Auto aus: ${reason}`);
+		return { ran: true, status: "suspended", reasonDe: reason };
+	}
+
 	await writeStatus(host, "ready");
+	const wbNote = gate.writebackApplied ? "Write-back aktiv." : "kein Write-back nötig.";
 	host.log?.debug?.(
-		`KI-Optimierung (${triggerReason}): ${result.proposals.length} Vorschlag/Vorschläge, ` +
-			`${result.slotPreferences.length} Slot-Präferenz(en) — ${result.reasonDe}`,
+		`KI-Optimierung (${triggerReason}): ${result.slotPreferences.length} Slot-Präferenz(en), ${wbNote} — ${result.reasonDe}`,
 	);
-	return { ran: true, status: "ready", reasonDe: result.reasonDe };
+	return {
+		ran: true,
+		status: "ready",
+		reasonDe: gate.writebackApplied
+			? `${result.reasonDe} Write-back auf Allocation angewendet.`
+			: result.reasonDe,
+	};
 }

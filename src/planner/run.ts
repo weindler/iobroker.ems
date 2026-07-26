@@ -1,14 +1,15 @@
-import { setOptionalNumberIfChanged, setStateIfChanged } from "../policy/core/state_write";
-import type { PlannerHost, PlannerInputs } from "./inputs";
-import { readPlannerInputs } from "./inputs";
-import { buildPlannerConstraints, computeDeficitW, planBattery } from "./rules/battery";
-import { planBatteryWinter } from "./rules/battery_winter";
+/**
+ * Pure legacy planner composition — tests / offline diagnosis only (Roadmap Block 4).
+ * Production tick must not import this module; control path is Operator Forecast → Daily Plan.
+ */
+import type { PlannerInputs } from "./inputs";
+import { buildPlannerConstraints, computeDeficitW, planBattery } from "../operator/planning/battery";
+import { planBatteryWinter } from "../operator/planning/battery_winter";
 import type { PlannerBatteryWinterDecision, PlannerConstraints } from "./types";
-import { computePvSurplusW } from "./rules/surplus";
-import { planThermal } from "./rules/thermal";
-import { coolingReserveW, planCooling } from "./rules/cooling";
+import { computePvSurplusW } from "../operator/planning/surplus";
+import { planThermal } from "../operator/planning/thermal";
+import { coolingReserveW, planCooling } from "../operator/planning/cooling";
 import type { PlannerIntent } from "./types";
-import { PLANNER_ENGINE_VERSION } from "./types";
 import {
 	batteryConsumersConfigFromAdapter,
 	immersionCriticalNow,
@@ -179,120 +180,4 @@ export function runPlanner(inputs: PlannerInputs): PlannerIntent {
 		battery,
 		battery_winter,
 	};
-}
-
-function formatBriefing(intent: PlannerIntent): string {
-	const lines: string[] = [
-		`Planner v${PLANNER_ENGINE_VERSION}. Mode: ${intent.global_mode.active}.`,
-		intent.reason_de,
-	];
-	if (intent.thermal.commanded_stage > 0) {
-		lines.push(intent.thermal.reason_de);
-	} else if (intent.thermal.forecast_active && intent.thermal.target_reason_de) {
-		lines.push(`Heizstab-Ziel ${intent.thermal.target_temp_c} °C: ${intent.thermal.target_reason_de}`);
-	} else if (
-		intent.thermal.reason_de &&
-		!intent.thermal.reason_de.startsWith("Heizstab-Modus")
-	) {
-		lines.push(`Heizstab: ${intent.thermal.reason_de}`);
-	}
-	if (intent.battery.action === "charge" || intent.battery.action === "self_consumption") {
-		lines.push(intent.battery.reason_de);
-	} else if (intent.battery.action === "hold" || intent.constraints.battery_hold_active) {
-		lines.push(intent.battery.reason_de);
-	}
-	if (intent.battery_winter.forecast_active) {
-		lines.push(`Winter-Netz: ${intent.battery_winter.reason_de}`);
-	}
-	if (intent.cooling.likely_active) {
-		lines.push(`Klima: ${intent.cooling.reason_de}`);
-	}
-	return lines.join(" ").slice(0, 480);
-}
-
-export async function runPlannerTick(host: PlannerHost): Promise<PlannerIntent> {
-	const inputs = await readPlannerInputs(host);
-	const intent = runPlanner(inputs);
-
-	try {
-		await setStateIfChanged(host, "planner.status", "ready");
-		await setStateIfChanged(host, "planner.global_mode.active", intent.global_mode.active);
-		await setStateIfChanged(host, "planner.last_run_at", intent.resolved_at);
-		await setStateIfChanged(host, "planner.surplus_w", intent.surplus_w);
-		await setStateIfChanged(host, "planner.deficit_w", intent.deficit_w);
-		await setStateIfChanged(host, "planner.intent.last_json", JSON.stringify(intent));
-		await setStateIfChanged(host, "planner.intent.last_reason_de", intent.reason_de);
-		await setStateIfChanged(host, "planner.intent.thermal.commanded_stage", intent.thermal.commanded_stage);
-		await setStateIfChanged(host, "planner.intent.thermal.commanded_power_w", intent.thermal.commanded_power_w);
-		await setStateIfChanged(host, "planner.intent.thermal.reason_de", intent.thermal.reason_de);
-		await setStateIfChanged(host, "planner.intent.thermal.target_temp_c", intent.thermal.target_temp_c);
-		await setStateIfChanged(host, "planner.intent.thermal.target_reason_de", intent.thermal.target_reason_de);
-		await setStateIfChanged(host, "planner.intent.thermal.forecast_active", intent.thermal.forecast_active);
-		await setStateIfChanged(host, "planner.intent.cooling.expected_kwh_today", intent.cooling.expected_kwh_today);
-		await setStateIfChanged(host, "planner.intent.cooling.expected_peak_w", intent.cooling.expected_peak_w);
-		await setStateIfChanged(host, "planner.intent.cooling.likely_active", intent.cooling.likely_active);
-		await setStateIfChanged(host, "planner.intent.cooling.reason_de", intent.cooling.reason_de);
-		await setStateIfChanged(host, "planner.intent.cooling.forecast_active", intent.cooling.forecast_active);
-		await setStateIfChanged(host, "planner.intent.battery.action", intent.battery.action);
-		await setStateIfChanged(host, "planner.intent.battery.max_charge_w", intent.battery.max_charge_w);
-		await setStateIfChanged(host, "planner.intent.battery.reason_de", intent.battery.reason_de);
-		const w = intent.battery_winter;
-		await setStateIfChanged(host, "planner.intent.battery.winter.active", w.active);
-		await setStateIfChanged(host, "planner.intent.battery.winter.forecast_active", w.forecast_active);
-		await setStateIfChanged(host, "planner.intent.battery.winter.horizon_days", w.horizon_days);
-		await setStateIfChanged(host, "planner.intent.battery.winter.bridge_until_iso", w.bridge_until_iso ?? "");
-		await setOptionalNumberIfChanged(host, "planner.intent.battery.winter.pv_recovery_day", w.pv_recovery_day);
-		await setOptionalNumberIfChanged(host, "planner.intent.battery.winter.energy_stored_kwh", w.energy_stored_kwh);
-		await setOptionalNumberIfChanged(host, "planner.intent.battery.winter.energy_deficit_kwh", w.energy_deficit_kwh);
-		await setOptionalNumberIfChanged(host, "planner.intent.battery.winter.energy_reserve_kwh", w.energy_reserve_kwh);
-		await setOptionalNumberIfChanged(host, "planner.intent.battery.winter.energy_target_kwh", w.energy_target_kwh);
-		await setOptionalNumberIfChanged(host, "planner.intent.battery.winter.soc_target_pct", w.soc_target_pct);
-		await setOptionalNumberIfChanged(host, "planner.intent.battery.winter.charge_energy_kwh", w.charge_energy_kwh);
-		await setOptionalNumberIfChanged(host, "planner.intent.battery.winter.charge_duration_h", w.charge_duration_h);
-		await setOptionalNumberIfChanged(host, "planner.intent.battery.winter.charge_slots_15m", w.charge_slots_15m);
-		await setOptionalNumberIfChanged(host, "planner.intent.battery.winter.confidence_min_pct", w.confidence_min_pct);
-		await setStateIfChanged(host, "planner.intent.battery.winter.windows_json", w.windows_json);
-		await setStateIfChanged(host, "planner.intent.battery.winter.reason_de", w.reason_de);
-		await setStateIfChanged(host, "planner.constraints.evcc_battery_hold", intent.constraints.evcc_battery_hold);
-		await setStateIfChanged(
-			host,
-			"planner.constraints.battery_hold_active",
-			intent.constraints.battery_hold_active,
-		);
-		await setStateIfChanged(
-			host,
-			"planner.constraints.battery_consumer_immersion_allowed",
-			intent.constraints.battery_consumer_immersion_allowed,
-		);
-		await setStateIfChanged(
-			host,
-			"planner.constraints.battery_consumer_immersion_reason_de",
-			intent.constraints.battery_consumer_immersion_reason_de,
-		);
-		await setStateIfChanged(
-			host,
-			"planner.constraints.battery_consumer_climate_allowed",
-			intent.constraints.battery_consumer_climate_allowed,
-		);
-		await setStateIfChanged(
-			host,
-			"planner.constraints.battery_consumer_climate_reason_de",
-			intent.constraints.battery_consumer_climate_reason_de,
-		);
-		await setStateIfChanged(
-			host,
-			"planner.constraints.battery_consumer_wallbox_allowed",
-			intent.constraints.battery_consumer_wallbox_allowed,
-		);
-		await setStateIfChanged(
-			host,
-			"planner.constraints.battery_consumer_wallbox_reason_de",
-			intent.constraints.battery_consumer_wallbox_reason_de,
-		);
-		await setStateIfChanged(host, "operator.briefing_de", formatBriefing(intent));
-	} catch (e) {
-		host.log?.warn?.(`planner state write: ${String(e)}`);
-	}
-
-	return intent;
 }

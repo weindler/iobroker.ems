@@ -129,6 +129,41 @@ function manyWeeklySamples(year, month, day, hour, powerW, count) {
         strict_1.default.equal(r.healthJson.status, "no_source");
         strict_1.default.equal(r.healthJson.missing_source, true);
     });
+    (0, node_test_1.it)("no_source still returns 5 horizon-day placeholders (day 3-7), not fewer/more", () => {
+        const r = (0, math_1.noSourceResult)("", new Date("2026-06-21T10:00:00"));
+        strict_1.default.equal(r.forecastHorizonJson.length, 5);
+    });
+});
+(0, node_test_1.describe)("house load forecast horizon (day 3-7)", () => {
+    (0, node_test_1.it)("builds 5 additional day forecasts (dayOffset 2-6) using the same pattern logic as tomorrow", () => {
+        const samples = manyWeeklySamples(2026, 6, 1, 11, 350, 6);
+        const acc = (0, math_1.buildProfileAccumulators)(samples);
+        const horizon = [2, 3, 4, 5, 6].map((offset) => (0, math_1.buildDayForecast)(acc, offset));
+        strict_1.default.equal(horizon.length, 5);
+        const dates = new Set(horizon.map((d) => d.date));
+        strict_1.default.equal(dates.size, 5);
+        for (const day of horizon) {
+            strict_1.default.ok(day.segments.midday?.avg_w !== undefined);
+        }
+    });
+    (0, node_test_1.it)("computeHouseLoadLearning exposes forecastHorizonJson with 5 distinct future days", () => {
+        const samples = manyWeeklySamples(2026, 6, 1, 11, 350, 6);
+        const r = (0, math_1.computeHouseLoadLearning)({
+            samples,
+            sampleDays: 6,
+            lastValidTs: samples[0].ts,
+            sourceStateId: "sonnen.0.status.consumption",
+            now: new Date("2026-06-21T10:00:00"),
+            lastPersistAt: null,
+        });
+        strict_1.default.equal(r.forecastHorizonJson.length, 5);
+        const dates = new Set([
+            r.forecastTodayJson.date,
+            r.forecastTomorrowJson.date,
+            ...r.forecastHorizonJson.map((d) => d.date),
+        ]);
+        strict_1.default.equal(dates.size, 7);
+    });
 });
 (0, node_test_1.describe)("house load compute", () => {
     (0, node_test_1.it)("returns insufficient_data with few samples", () => {

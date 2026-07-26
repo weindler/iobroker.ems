@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { immersionDeviceConfigFromAdapter } from "../../addons/immersion_heater/device_config.js";
-import { plannerModePolicyFromGlobalMode } from "../mode_policy.js";
+import { plannerModePolicyFromGlobalMode } from "../../planner/mode_policy.js";
 import { computePvSurplusW } from "./surplus.js";
 import { planThermal, type ThermalPlanInput } from "./thermal.js";
 import { buildPlannerConstraints, planBattery } from "./battery.js";

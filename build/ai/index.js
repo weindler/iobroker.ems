@@ -8,6 +8,7 @@ const ensure_states_1 = require("./ensure_states");
 const openai_provider_1 = require("./openai_provider");
 const run_1 = require("./run");
 const trigger_digest_1 = require("./trigger_digest");
+const writeback_1 = require("./writeback");
 var ensure_states_2 = require("./ensure_states");
 Object.defineProperty(exports, "ensureAiStates", { enumerable: true, get: function () { return ensure_states_2.ensureAiStates; } });
 var ensure_states_3 = require("./ensure_states");
@@ -54,6 +55,9 @@ async function maybeTriggerAiOptimizationOnDailyPlanChange(host, plan, now = new
     const digestPayload = (0, trigger_digest_1.aiTriggerDigestPayload)(plan);
     if (!cfg.enabled) {
         lastTriggerDigestPayload = digestPayload;
+        return null;
+    }
+    if (await (0, writeback_1.isAiAutoSuspended)(host)) {
         return null;
     }
     if (digestPayload === lastTriggerDigestPayload) {

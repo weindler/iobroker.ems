@@ -69,4 +69,51 @@ function segmentForecast() {
         strict_1.default.equal(c.enabled, false);
         strict_1.default.equal(c.details.expectedFixedTodayKwh, null);
     });
+    (0, node_test_1.it)("exposes day 3-7 horizon kWh from forecastHorizon (pattern-based, no fabrication)", () => {
+        const day3 = { ...segmentForecast(), date: "2026-07-13" };
+        const day4 = { ...segmentForecast(), date: "2026-07-14" };
+        const c = (0, house_load_1.buildHouseLoadContribution)({
+            now,
+            timezone: "Europe/Berlin",
+            status: "ready",
+            confidence: 75,
+            forecastToday: segmentForecast(),
+            forecastTomorrow: null,
+            forecastHorizon: [day3, day4],
+            lastUpdate: now.toISOString(),
+        });
+        const horizonDays = c.details.horizonDays;
+        strict_1.default.equal(horizonDays.length, 2);
+        strict_1.default.equal(horizonDays[0].dayIndex, 2);
+        strict_1.default.equal(horizonDays[0].dateKey, "2026-07-13");
+        strict_1.default.equal(horizonDays[0].kwh, 5.6);
+        strict_1.default.equal(horizonDays[1].dayIndex, 3);
+        strict_1.default.equal(horizonDays[1].dateKey, "2026-07-14");
+    });
+    (0, node_test_1.it)("emits segment slots for forecastHorizon days (Block 5 ≥48h Daily Plan coverage)", () => {
+        const day3 = { ...segmentForecast(), date: "2026-07-13" };
+        const c = (0, house_load_1.buildHouseLoadContribution)({
+            now,
+            timezone: "Europe/Berlin",
+            status: "ready",
+            confidence: 75,
+            forecastToday: segmentForecast(),
+            forecastTomorrow: null,
+            forecastHorizon: [day3],
+            lastUpdate: now.toISOString(),
+        });
+        strict_1.default.ok(c.slots.some((s) => s.slot.startIso.includes("2026-07-13")));
+    });
+    (0, node_test_1.it)("returns empty horizonDays when no forecastHorizon given (no fake days)", () => {
+        const c = (0, house_load_1.buildHouseLoadContribution)({
+            now,
+            timezone: "Europe/Berlin",
+            status: "ready",
+            confidence: 75,
+            forecastToday: segmentForecast(),
+            forecastTomorrow: null,
+            lastUpdate: now.toISOString(),
+        });
+        strict_1.default.deepEqual(c.details.horizonDays, []);
+    });
 });

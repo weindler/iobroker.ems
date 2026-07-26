@@ -5,7 +5,6 @@ import {
 	isoAtTimezoneLocal,
 	isoFromMs,
 	isValidIsoTimestamp,
-	localDateKeyInTimezone,
 } from "../time";
 
 export function floorMinuteTo15(minute: number): number {
@@ -34,15 +33,25 @@ export function endOfLocalDayIso(dateKey: string, timezone: string): string {
 	return isoAtTimezoneLocal(addDaysToDateKey(dateKey, 1), 0, 0, timezone);
 }
 
-export function buildDailyHorizonSlots(now: Date, timezone: string, slotMinutes = 15): OperatorTimeSlot[] {
-	const dateKey = localDateKeyInTimezone(now, timezone);
-	const startIso = slotStartIsoFloored(now, timezone);
-	const endIso = endOfLocalDayIso(dateKey, timezone);
-	if (!isValidIsoTimestamp(startIso) || !isValidIsoTimestamp(endIso)) return [];
+/**
+ * Rolling Daily-Plan-Horizont (Roadmap Block 5): mindestens 48 h ab aktuellem 15-Min-Floor.
+ * Alle flexiblen Add-ons lesen denselben Plan — kein addon-spezifischer Horizont.
+ */
+export const DAILY_PLAN_HORIZON_HOURS = 48 as const;
 
+export function buildDailyHorizonSlots(
+	now: Date,
+	timezone: string,
+	slotMinutes = 15,
+	horizonHours: number = DAILY_PLAN_HORIZON_HOURS,
+): OperatorTimeSlot[] {
+	const startIso = slotStartIsoFloored(now, timezone);
+	if (!isValidIsoTimestamp(startIso)) return [];
+
+	const hours = Number.isFinite(horizonHours) && horizonHours > 0 ? horizonHours : DAILY_PLAN_HORIZON_HOURS;
 	const slotMs = slotMinutes * 60_000;
 	let cursor = Date.parse(startIso);
-	const endMs = Date.parse(endIso);
+	const endMs = cursor + hours * 3_600_000;
 	const out: OperatorTimeSlot[] = [];
 
 	while (cursor < endMs) {

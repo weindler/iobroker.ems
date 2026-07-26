@@ -71,7 +71,7 @@ describe("ai resolveAllowedAddonIds", () => {
 });
 
 describe("ai buildAiOptimizationContext", () => {
-	it("builds a compact digest without leaking full slot/allocation arrays", async () => {
+	it("builds full daily-plan digest + learning digest (Block 6)", async () => {
 		const host = {
 			config: { immersion_heater_enabled: true, immersion_heater_ai_optimization_allowed: true },
 			async getStateAsync(id: string) {
@@ -84,17 +84,22 @@ describe("ai buildAiOptimizationContext", () => {
 						ack: true,
 					} as ioBroker.State;
 				}
+				if (id === "learning.pv_bias.status") return { val: "ready", ack: true } as ioBroker.State;
+				if (id === "learning.pv_bias.corrected_today_kwh") return { val: 12.5, ack: true } as ioBroker.State;
 				return null;
 			},
 		};
 		const ctx = await buildAiOptimizationContext(host, minimalPlan(), "test_trigger");
 		assert.deepEqual(ctx.allowedAddonIds, ["immersion_heater"]);
 		assert.equal(ctx.dailyPlan.date, "2026-07-25");
+		assert.equal(ctx.dailyPlan.horizonSlotCount, 0);
 		assert.equal(ctx.dailyPlan.totals.flexibleUnallocatedEnergyKwh, 1.2);
+		assert.equal(ctx.dailyPlan.totals.immersionHeaterEnergyKwh, 1.8);
+		assert.equal(ctx.learning.pvBiasStatus, "ready");
+		assert.equal(ctx.learning.pvCorrectedTodayKwh, 12.5);
 		assert.equal(ctx.policyHighlights.houseFuseLimitW, 30000);
 		assert.equal(ctx.policyHighlights.gridImportAllowed, true);
 		assert.equal(ctx.triggerReason, "test_trigger");
-		assert.equal((ctx as unknown as { slots?: unknown }).slots, undefined);
 	});
 
 	it("missing/invalid policy state → empty highlights, never throws", async () => {
@@ -103,7 +108,7 @@ describe("ai buildAiOptimizationContext", () => {
 		assert.deepEqual(ctx.policyHighlights, { houseFuseLimitW: null, maxGridImportW: null, gridImportAllowed: null });
 	});
 
-	it("dailyPlan.slots stays empty when neither immersion_heater nor climate is allowed", async () => {
+	it("emits horizon slots but zeros IH/AC when neither is AI-allowed", async () => {
 		const host = { config: {}, async getStateAsync() { return null; } };
 		const plan = minimalPlan({
 			slots: [
@@ -150,7 +155,10 @@ describe("ai buildAiOptimizationContext", () => {
 			],
 		});
 		const ctx = await buildAiOptimizationContext(host, plan, "x");
-		assert.deepEqual(ctx.dailyPlan.slots, []);
+		assert.equal(ctx.dailyPlan.slots.length, 1);
+		assert.equal(ctx.dailyPlan.slots[0]!.ihFlexW, 0);
+		assert.equal(ctx.dailyPlan.slots[0]!.acW, 0);
+		assert.equal(ctx.dailyPlan.slots[0]!.houseLoadW, 400);
 	});
 
 	it("dailyPlan.slots is populated (only flexible, not mandatory) when immersion_heater is allowed", async () => {

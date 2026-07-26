@@ -16,7 +16,6 @@ const fsm_1 = require("./fsm");
 const safety_1 = require("./safety");
 const types_1 = require("./types");
 const persist_1 = require("./persist");
-const inputs_1 = require("../../../planner/inputs");
 const daily_plan_1 = require("./daily_plan");
 const states_1 = require("../../../operator/daily_plan/states");
 const intent_read_1 = require("./intent_read");
@@ -102,6 +101,16 @@ function immersionRuntimeWatchedForeignIds(config) {
     return [...ids];
 }
 exports.immersionRuntimeWatchedForeignIds = immersionRuntimeWatchedForeignIds;
+/**
+ * Lokaler Sicherheits-Default für den Auto-Modus, wenn der Daily Plan nicht verwendbar ist
+ * (Roadmap Block 3.1) — bewusst kein Rückgriff auf den alten Realtime-Planner
+ * (`planner.intent.thermal.*`). Ziel ist nur die Pflicht-Untergrenze (`planningMinTempC`,
+ * gleiche Schwelle wie die Operator-Pflicht-Contribution), nicht der volle Komfortbereich.
+ * Die Stufe nutzt die bereits vorhandene, admin-konfigurierte `forceDefaultStage`.
+ */
+function safeDefaultAutoTarget(config) {
+    return { stage: config.forceDefaultStage, targetTempC: config.planningMinTempC };
+}
 async function submitAutoRevertToAuto(host, now) {
     const issuedAt = now.toISOString();
     const raw = {
@@ -205,19 +214,28 @@ async function runImmersionRuntimeTick(host) {
             powerObservedAtMs = null;
         }
     }
-    const plannerTargetTempC = resolvedMode === "auto" ? await (0, inputs_1.readPlannerThermalTargetTemp)(host) : null;
     let autoDecisionSource = "thermal_fallback";
     let dailyPlanContext = null;
     let plannerCommandedStage = 0;
+    let plannerTargetTempC = null;
     if (resolvedMode === "auto") {
         dailyPlanContext = await (0, daily_plan_1.resolveImmersionDailyPlanAllocation)(host, config, now);
         lastDailyPlanContext = dailyPlanContext;
         if (dailyPlanContext.useDailyPlan) {
+            // Daily Plan liefert die Stufe direkt aus der Allocation — das Zieltemperatur-Ceiling
+            // bleibt die konfigurierte Komfort-Obergrenze (FSM begrenzt ohnehin auf planningMaxTempC).
             plannerCommandedStage = dailyPlanContext.commandedStage;
+            plannerTargetTempC = config.planningMaxTempC;
             autoDecisionSource = "daily_plan";
         }
         else {
-            plannerCommandedStage = await (0, inputs_1.readPlannerThermalStage)(host);
+            // Daily Plan nicht verwendbar (missing/degraded/expired/wrong_date/...) — lokaler
+            // Sicherheits-Default statt altem Realtime-Planner (Roadmap Block 3.1): nur die
+            // Pflicht-Untergrenze halten, gleiche Schwelle wie die Operator-Pflicht-Contribution
+            // (`operator/contributions/flexible/immersion_heater.ts`).
+            const safeDefault = safeDefaultAutoTarget(config);
+            plannerCommandedStage = safeDefault.stage;
+            plannerTargetTempC = safeDefault.targetTempC;
             autoDecisionSource = "thermal_fallback";
         }
     }

@@ -10,12 +10,17 @@ exports.AI_STATES = {
     callsLimit: `${exports.AI_BASE}.calls_limit`,
     limitWarning: `${exports.AI_BASE}.limit_warning`,
     costEstimateTodayEur: `${exports.AI_BASE}.cost_estimate_today_eur`,
+    costEstimateMonthEur: `${exports.AI_BASE}.cost_estimate_month_eur`,
+    costMonthKey: `${exports.AI_BASE}.cost_month_key`,
+    monthlyCostLimitEur: `${exports.AI_BASE}.monthly_cost_limit_eur`,
     lastRunAt: `${exports.AI_BASE}.last_run_at`,
     lastAutoTriggerAtMs: `${exports.AI_BASE}.last_auto_trigger_at_ms`,
     lastRunResult: `${exports.AI_BASE}.last_run_result`,
     lastReasonDe: `${exports.AI_BASE}.last_reason_de`,
     lastError: `${exports.AI_BASE}.last_error`,
     lastSlotPreferencesJson: `${exports.AI_BASE}.last_slot_preferences_json`,
+    autoSuspended: `${exports.AI_BASE}.auto_suspended`,
+    autoSuspendReasonDe: `${exports.AI_BASE}.auto_suspend_reason_de`,
     optimizeNowRequest: `${exports.AI_BASE}.optimize_now_request`,
 };
 async function ensureAiStates(host) {
@@ -33,10 +38,11 @@ async function ensureAiStates(host) {
                 states: {
                     off: "Aus",
                     ready: "Bereit",
-                    limit_reached: "Tageslimit erreicht",
+                    limit_reached: "Limit erreicht",
                     error: "Fehler",
                     no_token: "Kein Token",
                     no_addons_allowed: "Kein Add-on freigegeben",
+                    suspended: "Auto aus (kein Plan-B-Vorteil)",
                 },
             },
         },
@@ -83,6 +89,41 @@ async function ensureAiStates(host) {
             },
         },
         {
+            id: exports.AI_STATES.costEstimateMonthEur,
+            common: {
+                name: "KI-Kostenschätzung Monat (EUR, ungefähr)",
+                type: "number",
+                role: "value",
+                read: true,
+                write: false,
+                def: 0,
+                unit: "EUR",
+            },
+        },
+        {
+            id: exports.AI_STATES.costMonthKey,
+            common: {
+                name: "KI-Monatsschlüssel (YYYY-MM, intern)",
+                type: "string",
+                role: "text",
+                read: true,
+                write: false,
+                def: "",
+            },
+        },
+        {
+            id: exports.AI_STATES.monthlyCostLimitEur,
+            common: {
+                name: "KI-Monatslimit EUR (0=aus)",
+                type: "number",
+                role: "value",
+                read: true,
+                write: false,
+                def: 0,
+                unit: "EUR",
+            },
+        },
+        {
             id: exports.AI_STATES.lastRunAt,
             common: { name: "Letzter KI-Lauf", type: "string", role: "date", read: true, write: false, def: "" },
         },
@@ -112,12 +153,34 @@ async function ensureAiStates(host) {
         {
             id: exports.AI_STATES.lastSlotPreferencesJson,
             common: {
-                name: "Letzte KI-Zeitpunkt-Präferenzen (JSON, intern — Basis für Plan-Vergleich)",
+                name: "Letzte KI-Zeitpunkt-Präferenzen (JSON, intern — Basis für Plan-Vergleich/Write-back)",
                 type: "string",
                 role: "json",
                 read: true,
                 write: false,
                 def: "[]",
+            },
+        },
+        {
+            id: exports.AI_STATES.autoSuspended,
+            common: {
+                name: "KI-Auto gesperrt (Plan B ohne Vorteil)",
+                type: "boolean",
+                role: "indicator",
+                read: true,
+                write: false,
+                def: false,
+            },
+        },
+        {
+            id: exports.AI_STATES.autoSuspendReasonDe,
+            common: {
+                name: "KI-Auto-Sperre Begründung",
+                type: "string",
+                role: "text",
+                read: true,
+                write: false,
+                def: "",
             },
         },
         {

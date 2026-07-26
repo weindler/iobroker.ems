@@ -62,6 +62,11 @@ export async function ensureEmsLightStates(host: StateHost, adapterVersion: stri
 		strState("planner.intent.last_reason_de", "Planner letzte Begründung (DE)"),
 
 		strState("operator.briefing_de", "Operator Briefing (DE)", OPERATOR_BRIEFING_DEFAULT),
+		// Roadmap Block 3.3: Live-Diagnose (Live-Cache + aktueller Daily-Plan-Slot) — ersetzt
+		// die VIS-Anzeige von `planner.surplus_w`/`planner.deficit_w` (auslaufender Realtime-Planner).
+		numState("operator.diagnostics.surplus_w", "Operator Live-PV-Überschuss", "W"),
+		numState("operator.diagnostics.deficit_w", "Operator Live-PV-Unterdeckung", "W"),
+		strState("operator.diagnostics.slot_start_iso", "Operator Diagnose aktueller Daily-Plan-Slot (ISO)"),
 
 		strState("execution.safety.global_execution_mode", "Spiegel global.execution_mode"),
 		strState("execution.safety.summary_de", "Execution Safety Zusammenfassung"),

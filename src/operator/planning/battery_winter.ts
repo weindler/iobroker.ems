@@ -1,8 +1,14 @@
+/**
+ * @deprecated (Roadmap Block 2, v0.1.202) Ersetzt durch die Operator-Contribution
+ * `src/operator/contributions/flexible/battery_charge_logic.ts` ("Batterie-Lade-Logik",
+ * bewusst nicht jahreszeitgebunden benannt). Läuft parallel weiter für Diagnose/Vergleich
+ * bis Cleanup in Block 5 — keine funktionale Erweiterung mehr hier.
+ */
 import { SEGMENT_HOURS, SEGMENTS, type HouseLoadSegment } from "../../learning/house_load/constants";
 import type { DayForecastJson } from "../../learning/house_load/types";
 import type { Price15MinSlot } from "../../learning/price_forecast/tibber_parse";
-import type { BatteryWinterPlanConfig } from "../battery_winter_config";
-import type { PlannerModePolicy } from "../mode_policy";
+import type { BatteryWinterPlanConfig } from "../../planner/battery_winter_config";
+import type { PlannerModePolicy } from "../../planner/mode_policy";
 import { planBatteryWinterPriceWindows } from "./battery_winter_windows";
 
 export interface BatteryWinterDayInput {

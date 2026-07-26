@@ -63,3 +63,20 @@ function buildHost(systemConfigCommon) {
         strict_1.default.equal(pv?.slots.length, 0);
     });
 });
+(0, node_test_1.describe)("parseHouseLoadForecastHorizonJson", () => {
+    (0, node_test_1.it)("returns null for missing/invalid input (no fabricated horizon)", () => {
+        strict_1.default.equal((0, read_1.parseHouseLoadForecastHorizonJson)(null), null);
+        strict_1.default.equal((0, read_1.parseHouseLoadForecastHorizonJson)("not json"), null);
+        strict_1.default.equal((0, read_1.parseHouseLoadForecastHorizonJson)("{}"), null);
+        strict_1.default.equal((0, read_1.parseHouseLoadForecastHorizonJson)("[]"), null);
+    });
+    (0, node_test_1.it)("parses a valid array of day forecasts", () => {
+        const raw = JSON.stringify([
+            { date: "2026-07-13", season: "summer", weekday: "monday", day_type: "weekday", segments: {} },
+            { date: "2026-07-14", season: "summer", weekday: "tuesday", day_type: "weekday", segments: {} },
+        ]);
+        const parsed = (0, read_1.parseHouseLoadForecastHorizonJson)(raw);
+        strict_1.default.equal(parsed?.length, 2);
+        strict_1.default.equal(parsed?.[0].date, "2026-07-13");
+    });
+});

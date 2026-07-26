@@ -1,4 +1,27 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runDailyPlanTick = exports.dailyPlanRevisionForTest = exports.resetDailyPlanRevisionForTest = void 0;
 const config_1 = require("../../policy/global/config");
@@ -6,11 +29,13 @@ const config_2 = require("../../intent/config");
 const mode_policy_1 = require("../../planner/mode_policy");
 const state_write_1 = require("../../policy/core/state_write");
 const build_1 = require("./build");
+const briefing_1 = require("./briefing");
+const live_surplus_1 = require("./live_surplus");
 const states_1 = require("./states");
 const battery_consumers_1 = require("../../policy/battery_consumers");
 const device_config_1 = require("../../addons/immersion_heater/device_config");
 const state_util_1 = require("../../ems_light/state_util");
-const battery_1 = require("../../planner/rules/battery");
+const battery_1 = require("../planning/battery");
 const ensure_evcc_states_1 = require("../../addons/wallbox/ensure_evcc_states");
 let lastRevisionPayload = "";
 let revision = 0;
@@ -119,7 +144,7 @@ async function runDailyPlanTick(host, forecastPlan) {
             wallbox: false,
         },
     });
-    const plan = (0, build_1.buildDailyPlanFromForecast)(now, timezone, modePolicy.mode, forecastPlan, {
+    let plan = (0, build_1.buildDailyPlanFromForecast)(now, timezone, modePolicy.mode, forecastPlan, {
         policySnapshot: effectivePolicy,
         energyPriority,
         mutualExclusions,
@@ -136,6 +161,14 @@ async function runDailyPlanTick(host, forecastPlan) {
         lastRevisionPayload = payload;
     }
     plan.revision = revision;
+    // Roadmap Block 6: vorhandene KI-Präferenzen → Plan B auf Allocation, wenn messbar besser.
+    try {
+        const { maybeApplyAiWritebackOnDailyPlan } = await Promise.resolve().then(() => __importStar(require("../../ai/writeback/index.js")));
+        plan = await maybeApplyAiWritebackOnDailyPlan(host, plan);
+    }
+    catch (e) {
+        host.log?.warn?.(`ai_writeback: ${String(e)}`);
+    }
     try {
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.status, plan.status);
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
@@ -154,6 +187,20 @@ async function runDailyPlanTick(host, forecastPlan) {
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
         await (0, state_write_1.setOptionalNumberIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.revision, revision);
+        // Roadmap Block 3.3: Briefing + Live-Überschuss/-Defizit aus Daily Plan + Live-Cache —
+        // kein Rückgriff mehr auf `formatBriefing()`/`planner.surplus_w` des alten Realtime-Planners.
+        const pvFromPv = (0, state_util_1.asNum)((await host.getStateAsync("live.pv.power_w"))?.val);
+        const pvFromBattery = (0, state_util_1.asNum)((await host.getStateAsync("live.battery.pv_ac_power_w"))?.val);
+        const liveSurplus = (0, live_surplus_1.buildOperatorLiveSurplus)({
+            pvPowerW: pvFromPv ?? pvFromBattery,
+            houseLoadW: (0, state_util_1.asNum)((await host.getStateAsync("live.battery.house_load_w"))?.val),
+            now,
+            timezone,
+        });
+        await (0, state_write_1.setOptionalNumberIfChanged)(host, "operator.diagnostics.surplus_w", liveSurplus.surplusW);
+        await (0, state_write_1.setOptionalNumberIfChanged)(host, "operator.diagnostics.deficit_w", liveSurplus.deficitW);
+        await (0, state_write_1.setStateIfChanged)(host, "operator.diagnostics.slot_start_iso", liveSurplus.slotStartIso ?? "");
+        await (0, state_write_1.setStateIfChanged)(host, "operator.briefing_de", (0, briefing_1.buildOperatorBriefingDe)(plan, now, timezone));
         const addonSummaries = [
             { key: "battery", prefix: "battery" },
             { key: "wallbox", prefix: "wallbox" },

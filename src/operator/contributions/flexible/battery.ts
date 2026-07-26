@@ -6,6 +6,8 @@ import { addonContributorRef } from "../../contributor";
 import type { PlannerModePolicy } from "../../../planner/mode_policy";
 import type { GridSupplyForecast } from "../../types";
 import { baseContribution } from "../types";
+import type { BatteryChargeLogicDecision } from "./battery_charge_logic";
+import type { BatteryLearningSignal } from "./battery_learning";
 import { evaluateParticipation, round3 } from "./types";
 
 export interface BatteryContributionBuildInput {
@@ -32,12 +34,66 @@ export interface BatteryContributionBuildInput {
 	mappingsReady: boolean;
 	topOffRequested: boolean;
 	ownershipActive: boolean;
-	winterGridActive: boolean;
+	/**
+	 * PV-Defizit-Ladelogik aktiv (ehem. "winterGridActive"/Battery-Winter) — generisch für
+	 * mehrtägiges PV-Defizit, nicht jahreszeitgebunden. Steuert die Netz-Freigabe im eco-Modus.
+	 */
+	deficitChargeActive: boolean;
+	/**
+	 * Diagnose nur: Zustand des auslaufenden Legacy-Planners (`planner.intent.battery.winter.active`)
+	 * für den Parallel-Vergleich alt/neu (Block 2.2) — beeinflusst keine Entscheidung.
+	 */
+	legacyDeficitChargeActive?: boolean;
+	/** Battery-Runtime-Learning (`learning.battery_runtime.*`) — optional, `null`/fehlend → reine Policy/Intent-Logik. */
+	batteryLearning?: BatteryLearningSignal | null;
+	/** PV-Defizit-Ladelogik-Entscheidung (Block 2, `battery_charge_logic.ts`) — optional, `null` → keine Defizit-Anhebung. */
+	chargeLogic?: BatteryChargeLogicDecision | null;
 }
 
+/** Top-Off durch Nutzer-Intent ODER gelerntes Intervall (`topoff_due`) überschritten. */
+function learnedTopoffDue(input: BatteryContributionBuildInput): boolean {
+	return input.batteryLearning?.status === "valid" && input.batteryLearning.topoffDue === true;
+}
+
+function deficitChargeSocTarget(input: BatteryContributionBuildInput): number | null {
+	if (!input.chargeLogic?.active) return null;
+	return input.chargeLogic.socTargetPct;
+}
+
+/** Höchstes Ziel aus Policy, Top-Off und PV-Defizit-Ladelogik — nie niedriger als die Policy. */
 function chargeTargetSocPct(input: BatteryContributionBuildInput): number {
-	if (input.topOffRequested) return 100;
+	if (input.topOffRequested || learnedTopoffDue(input)) return 100;
+	const deficitTarget = deficitChargeSocTarget(input);
+	if (deficitTarget !== null) return Math.max(deficitTarget, input.modePolicy.chargeTargetSocPct);
 	return input.modePolicy.chargeTargetSocPct;
+}
+
+function batteryLearningDetails(input: BatteryContributionBuildInput): Record<string, unknown> {
+	const learning = input.batteryLearning ?? null;
+	return {
+		batteryLearningStatus: learning?.status ?? "missing",
+		avgNightDischargeKwh: learning?.avgNightDischargeKwh ?? null,
+		avgChargePowerW: learning?.avgChargePowerW ?? null,
+		topoffDueLearned: learning?.topoffDue ?? null,
+		topoffDaysRemaining: learning?.topoffDaysRemaining ?? null,
+		estimatedRuntimeDays: learning?.estimatedRuntimeDays ?? null,
+	};
+}
+
+function chargeLogicDetails(input: BatteryContributionBuildInput): Record<string, unknown> {
+	const d = input.chargeLogic ?? null;
+	return {
+		chargeLogicActive: d?.active ?? false,
+		chargeLogicHorizonDays: d?.horizonDays ?? null,
+		chargeLogicBridgeUntilIso: d?.bridgeUntilIso ?? null,
+		chargeLogicPvRecoveryDay: d?.pvRecoveryDay ?? null,
+		chargeLogicEnergyDeficitKwh: d?.energyDeficitKwh ?? null,
+		chargeLogicEnergyTargetKwh: d?.energyTargetKwh ?? null,
+		chargeLogicSocTargetPct: d?.socTargetPct ?? null,
+		chargeLogicConfidenceMinPct: d?.confidenceMinPct ?? null,
+		chargeLogicReasonDe: d?.reasonDe ?? null,
+		legacyDeficitChargeActive: input.legacyDeficitChargeActive ?? null,
+	};
 }
 
 function requiredChargeEnergyKwh(input: BatteryContributionBuildInput): number | null {
@@ -56,7 +112,7 @@ function requiredChargeEnergyKwh(input: BatteryContributionBuildInput): number |
 function gridChargeEligible(input: BatteryContributionBuildInput): boolean {
 	if (!input.gridForecast?.gridImportAllowed) return false;
 	if (input.globalModeOff || !input.modePolicy.allowOptimization) return false;
-	if (input.modePolicy.mode === "eco" && !input.winterGridActive) return false;
+	if (input.modePolicy.mode === "eco" && !input.deficitChargeActive) return false;
 	return input.chargeCapable;
 }
 
@@ -77,6 +133,7 @@ export function buildBatteryChargeContribution(input: BatteryContributionBuildIn
 	const maxW = input.maxChargeW;
 	const gridEligible = gridChargeEligible(input);
 	const enabled = participation.allowed && input.chargeCapable && requiredKwh !== null;
+	const deficitDriven = input.chargeLogic?.active === true;
 
 	let status = participation.status;
 	let reasonDe = participation.reasonDe;
@@ -93,8 +150,21 @@ export function buildBatteryChargeContribution(input: BatteryContributionBuildIn
 		} else {
 			status = participation.status === "degraded" ? "degraded" : "valid";
 			reasonDe = `Ladebedarf ${requiredKwh} kWh bis ${chargeTargetSocPct(input)} % SOC.`;
+			if (!input.topOffRequested && learnedTopoffDue(input)) {
+				reasonDe = `${reasonDe} Gelerntes Top-Off-Intervall überschritten (${input.batteryLearning?.topoffDaysRemaining !== null && input.batteryLearning?.topoffDaysRemaining !== undefined ? `${input.batteryLearning.topoffDaysRemaining} Tage überfällig` : "fällig"}).`;
+			}
+			if (deficitDriven) {
+				reasonDe = `${reasonDe} PV-Defizit-Ladelogik aktiv (${input.chargeLogic?.reasonDe ?? ""})`.trim();
+			}
 		}
 	}
+
+	/*
+	 * Deadline aus der PV-Defizit-Ladelogik (Block 2, `battery_charge_logic.ts`) nur setzen,
+	 * wenn sie aktuell den Bedarf treibt — sonst füllt die Allocation (Top-Off/Policy-Ziel)
+	 * weiterhin ohne feste Frist, PV-first.
+	 */
+	const deadlineIso = deficitDriven && requiredKwh !== null && requiredKwh > 0 ? input.chargeLogic?.bridgeUntilIso ?? null : null;
 
 	return baseContribution(
 		CONTRIBUTION_IDS.BATTERY_CHARGE,
@@ -108,6 +178,7 @@ export function buildBatteryChargeContribution(input: BatteryContributionBuildIn
 			enabled: enabled && status !== "unsupported",
 			flexible: true,
 			gridEligible,
+			deadlineIso,
 			quality: operatorQuality(status, reasonDe),
 			reasonDe,
 			details: {
@@ -121,7 +192,9 @@ export function buildBatteryChargeContribution(input: BatteryContributionBuildIn
 				pvChargeAllowed: input.modePolicy.allowPvCharge,
 				gridImportAllowed: input.gridForecast?.gridImportAllowed ?? null,
 				ownershipActive: input.ownershipActive,
-				winterGridActive: input.winterGridActive,
+				deficitChargeActive: input.deficitChargeActive,
+				...batteryLearningDetails(input),
+				...chargeLogicDetails(input),
 			},
 			slots: maxW !== null && participation.allowed
 				? [
@@ -217,10 +290,12 @@ export function buildBatteryReserveContribution(input: BatteryContributionBuildI
 				energyStoredKwh: energy.energyStoredKwh,
 				energyAboveReserveKwh: energy.energyAboveTechnicalMinKwh,
 				energyFreeToFullKwh: energy.energyFreeToFullKwh,
-				topOffTargetSocPct: input.topOffRequested ? 100 : null,
+				topOffTargetSocPct: input.topOffRequested || learnedTopoffDue(input) ? 100 : null,
 				fault: input.fault,
 				lockout: input.lockout,
 				ownershipActive: input.ownershipActive,
+				...batteryLearningDetails(input),
+				...chargeLogicDetails(input),
 			},
 			slots: [],
 		},

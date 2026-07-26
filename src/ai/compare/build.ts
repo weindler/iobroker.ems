@@ -9,6 +9,23 @@ export const COMPARE_ELIGIBLE_GOVERNED_IDS = ["immersion_heater", "climate"] as 
 type CompareEligibleGovernedId = (typeof COMPARE_ELIGIBLE_GOVERNED_IDS)[number];
 
 const COST_EPSILON_CT = 0.01;
+const ENERGY_EPSILON_KWH = 0.001;
+
+/**
+ * Roadmap Block 6: Plan B muss Plan A messbar schlagen (Kosten primär, sonst Netz↓ / PV↑).
+ * Teurer Plan B gewinnt nie.
+ */
+export function planBBeatsPlanA(input: {
+	deltaCostCt: number;
+	deltaGridKwh: number;
+	deltaPvKwh: number;
+}): boolean {
+	if (input.deltaCostCt < -COST_EPSILON_CT) return true;
+	if (input.deltaCostCt > COST_EPSILON_CT) return false;
+	if (input.deltaGridKwh < -ENERGY_EPSILON_KWH) return true;
+	if (input.deltaPvKwh > ENERGY_EPSILON_KWH && input.deltaGridKwh <= ENERGY_EPSILON_KWH) return true;
+	return false;
+}
 
 interface SlotOwnUsage {
 	ownW: number;
@@ -176,18 +193,22 @@ export function buildCompareResult(
 	totalsB.acKwh = round1(totalsB.acKwh);
 
 	const deltaCostCt = round1(totalsB.costCt - totalsA.costCt);
+	const deltaGridKwh = round1(totalsB.gridKwh - totalsA.gridKwh);
+	const deltaPvKwh = round1(totalsB.pvKwh - totalsA.pvKwh);
+	const beats = planBBeatsPlanA({ deltaCostCt, deltaGridKwh, deltaPvKwh });
 
 	let activePlan: "a" | "b" = "a";
 	let decisionReasonDe: string;
 	if (activeGovernedIds.length === 0) {
 		decisionReasonDe = "Kein Add-on für KI-Optimierung freigegeben — Plan-Vergleich zeigt nur Plan A.";
-	} else if (deltaCostCt < -COST_EPSILON_CT) {
+	} else if (beats) {
 		activePlan = "b";
 		decisionReasonDe =
-			`Plan B rechnerisch um ${Math.abs(deltaCostCt).toFixed(1)} ct günstiger (nur Beobachtung — ` +
-			`EMS führt weiterhin Plan A aus).`;
+			`Plan B schlägt Plan A (ΔKosten ${deltaCostCt.toFixed(1)} ct, ΔNetz ${deltaGridKwh.toFixed(2)} kWh, ` +
+			`ΔPV ${deltaPvKwh.toFixed(2)} kWh) — Write-back auf Allocation wenn KI aktiv.`;
 	} else {
-		decisionReasonDe = "Plan A mindestens gleich gut wie die KI-Simulation — Plan B verworfen.";
+		decisionReasonDe =
+			"Plan B schlägt Plan A nicht messbar (Kosten/PV/Netz) — Plan B verworfen, KI-Auto aus.";
 	}
 
 	const delta: CompareDeltaSummary = {

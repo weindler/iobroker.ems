@@ -71,4 +71,54 @@ describe("house load contribution", () => {
 		assert.equal(c.enabled, false);
 		assert.equal(c.details.expectedFixedTodayKwh, null);
 	});
+
+	it("exposes day 3-7 horizon kWh from forecastHorizon (pattern-based, no fabrication)", () => {
+		const day3 = { ...segmentForecast(), date: "2026-07-13" };
+		const day4 = { ...segmentForecast(), date: "2026-07-14" };
+		const c = buildHouseLoadContribution({
+			now,
+			timezone: "Europe/Berlin",
+			status: "ready",
+			confidence: 75,
+			forecastToday: segmentForecast(),
+			forecastTomorrow: null,
+			forecastHorizon: [day3, day4],
+			lastUpdate: now.toISOString(),
+		});
+		const horizonDays = c.details.horizonDays as Array<{ dayIndex: number; dateKey: string; kwh: number | null }>;
+		assert.equal(horizonDays.length, 2);
+		assert.equal(horizonDays[0].dayIndex, 2);
+		assert.equal(horizonDays[0].dateKey, "2026-07-13");
+		assert.equal(horizonDays[0].kwh, 5.6);
+		assert.equal(horizonDays[1].dayIndex, 3);
+		assert.equal(horizonDays[1].dateKey, "2026-07-14");
+	});
+
+	it("emits segment slots for forecastHorizon days (Block 5 ≥48h Daily Plan coverage)", () => {
+		const day3 = { ...segmentForecast(), date: "2026-07-13" };
+		const c = buildHouseLoadContribution({
+			now,
+			timezone: "Europe/Berlin",
+			status: "ready",
+			confidence: 75,
+			forecastToday: segmentForecast(),
+			forecastTomorrow: null,
+			forecastHorizon: [day3],
+			lastUpdate: now.toISOString(),
+		});
+		assert.ok(c.slots.some((s) => s.slot.startIso.includes("2026-07-13")));
+	});
+
+	it("returns empty horizonDays when no forecastHorizon given (no fake days)", () => {
+		const c = buildHouseLoadContribution({
+			now,
+			timezone: "Europe/Berlin",
+			status: "ready",
+			confidence: 75,
+			forecastToday: segmentForecast(),
+			forecastTomorrow: null,
+			lastUpdate: now.toISOString(),
+		});
+		assert.deepEqual(c.details.horizonDays, []);
+	});
 });

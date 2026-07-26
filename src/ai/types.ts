@@ -5,39 +5,71 @@
  * - Die KI optimiert ausschließlich innerhalb bestehender Policy-/Safety-/Add-on-Grenzen.
  * - Sie schreibt niemals direkt auf Geräte-States, ändert niemals Policies und
  *   plant niemals ein Add-on ohne dessen individuelle "KI-Optimierung erlaubt"-Freigabe.
- * - Bei Fehler/Timeout/ungültiger Antwort bleibt der deterministische Plan unverändert
- *   in Kraft (fail-closed).
+ * - Write-back (Block 6) geht nur über Daily-Plan-Allocation, und nur wenn Plan B Plan A
+ *   messbar schlägt — sonst Auto-KI aus (fail-closed).
  */
 
 export type AiProviderId = "openai";
 
-/** Ein einzelner, kompakter Zeitschlitz — nur was die KI für Zeitpunkt-Vorschläge braucht. */
+/** Slot-Zeile für die KI (volle Plan-Sicht, nicht nur Mini-Digest). */
 export interface AiDigestSlot {
 	/** ISO-Start des 15-Minuten-Slots — exakt so für slot_preferences zurückzugeben. */
 	t: string;
 	priceCtPerKwh: number | null;
 	pvSurplusW: number | null;
+	houseLoadW: number | null;
 	/** Aktuelle (deterministische) flexible Heizstab-Leistung in diesem Slot — 0 wenn Add-on nicht erlaubt. */
 	ihFlexW: number;
 	/** Aktuelle (deterministische) Klimaanlagen-Leistung in diesem Slot — 0 wenn Add-on nicht erlaubt. */
 	acW: number;
+	batteryChargeW: number;
+	wallboxW: number;
+	allocatedPvW: number;
+	allocatedGridW: number;
 }
 
-/** Kompakter, bereits sanitisierter Tagesplan-Auszug — kein Rohzugriff auf Geräte-States. */
+/** Learning-Kurzdigest — skalare Kennzahlen, keine Roh-History. */
+export interface AiLearningDigest {
+	pvBiasStatus: string | null;
+	pvCorrectedTodayKwh: number | null;
+	pvCorrectedTomorrowKwh: number | null;
+	thermalRuntimeStatus: string | null;
+	thermalEstimatedEmptyAt: string | null;
+	batteryRuntimeStatus: string | null;
+	batteryTopOffIntervalDays: number | null;
+	priceLearningStatus: string | null;
+	/** Ø 7d aus Learning — Einheit €/kWh (Adapter-State). */
+	priceAvgEurPerKwh7d: number | null;
+	houseLoadStatus: string | null;
+}
+
+/** Daily-Plan-Auszug für die KI (vollständig genug für Zeitpunkt-Optimierung). */
 export interface AiDailyPlanDigest {
 	date: string;
 	globalMode: string;
 	status: string;
+	timezone: string;
+	slotMinutes: number;
+	horizonSlotCount: number;
+	validUntil: string | null;
 	activeContributionIds: string[];
 	excludedContributionIds: string[];
 	totals: {
 		pvForecastEnergyKwh: number | null;
+		fixedHouseLoadEnergyKwh: number | null;
+		flexibleRequestedEnergyKwh: number | null;
 		flexibleAllocatedEnergyKwh: number;
 		flexibleUnallocatedEnergyKwh: number | null;
+		pvAllocatedEnergyKwh: number;
+		gridAllocatedEnergyKwh: number;
+		batteryChargeEnergyKwh: number;
+		wallboxEnergyKwh: number;
+		immersionHeaterEnergyKwh: number;
+		airConditioningEnergyKwh: number;
 		estimatedGridCostCt: number | null;
 	};
 	unallocated: Array<{ contributionId: string; unallocatedEnergyKwh: number | null; reasonDe: string }>;
-	/** Nur befüllt, wenn immersion_heater und/oder climate freigegeben sind — Basis für slot_preferences. */
+	/** Alle Horizon-Slots; IH/AC-Leistungen nur wenn freigegeben. */
 	slots: AiDigestSlot[];
 }
 
@@ -48,6 +80,7 @@ export interface AiOptimizationRequestContext {
 	/** Add-ons mit Governance "aktiv" UND "KI-Optimierung erlaubt" — nur diese darf die KI je erwähnen. */
 	allowedAddonIds: string[];
 	dailyPlan: AiDailyPlanDigest;
+	learning: AiLearningDigest;
 	policyHighlights: Record<string, unknown>;
 	triggerReason: string;
 }
@@ -60,8 +93,8 @@ export interface AiOptimizationProposal {
 
 /**
  * Zeitpunkt-Präferenz der KI für ein freigegebenes Add-on — reine Gewichtung, keine Watt-Vorgabe.
- * weight 1 = neutral (deterministischer Plan bleibt für diesen Slot unverändert), >1 = bevorzugt,
- * <1 = meiden. Wird beim Plan-Vergleich (src/ai/compare/) angewendet — nie direkt auf Geräte.
+ * weight 1 = neutral, >1 = bevorzugt, <1 = meiden.
+ * Wird beim Plan-Vergleich / Write-back angewendet — nie direkt auf Geräte.
  */
 export interface AiSlotPreference {
 	addonId: string;
@@ -92,4 +125,11 @@ export interface AiProvider {
 	): Promise<AiOptimizationResult>;
 }
 
-export type AiStatus = "off" | "ready" | "limit_reached" | "error" | "no_token" | "no_addons_allowed";
+export type AiStatus =
+	| "off"
+	| "ready"
+	| "limit_reached"
+	| "error"
+	| "no_token"
+	| "no_addons_allowed"
+	| "suspended";

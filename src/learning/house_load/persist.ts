@@ -19,6 +19,7 @@ export async function writeHouseLoadPersist(
 		profile: result.profileJson,
 		forecast_today: result.forecastTodayJson,
 		forecast_tomorrow: result.forecastTomorrowJson,
+		forecast_horizon: result.forecastHorizonJson,
 		health: { ...result.healthJson, last_persist_at: lastRun },
 	};
 	await atomicWriteFile(

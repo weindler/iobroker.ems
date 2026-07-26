@@ -1,8 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { plannerModePolicyFromGlobalMode } from "../mode_policy.js";
+import { plannerModePolicyFromGlobalMode } from "../../planner/mode_policy.js";
 import { dailyKwhFromHouseLoadForecast, planBatteryWinter } from "./battery_winter.js";
-import type { BatteryWinterPlanConfig } from "../battery_winter_config.js";
+import type { BatteryWinterPlanConfig } from "../../planner/battery_winter_config.js";
 import type { BatteryWinterDayInput } from "./battery_winter.js";
 import { MS_PER_15MIN } from "../../learning/price_forecast/tibber_parse.js";
 

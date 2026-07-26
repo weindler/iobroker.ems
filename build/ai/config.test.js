@@ -15,20 +15,23 @@ const config_js_1 = require("./config.js");
         strict_1.default.equal(cfg.apiKey, "");
         strict_1.default.equal(cfg.maxCallsPerDay, config_js_1.AI_DEFAULT_MAX_CALLS_PER_DAY);
         strict_1.default.equal(cfg.minIntervalMinutes, config_js_1.AI_DEFAULT_MIN_INTERVAL_MINUTES);
+        strict_1.default.equal(cfg.monthlyCostLimitEur, 0);
     });
-    (0, node_test_1.it)("reads enabled/model/token/limit/interval from config", () => {
+    (0, node_test_1.it)("reads enabled/model/token/limit/interval/monthly from config", () => {
         const cfg = (0, config_js_1.aiConfigFromAdapter)({
             ai_enabled: true,
             ai_model: "gpt-4o-mini",
             ai_openai_api_key: "  sk-test-123  ",
             ai_max_calls_per_day: 5,
             ai_min_interval_minutes: 30,
+            ai_monthly_cost_limit_eur: 2.5,
         });
         strict_1.default.equal(cfg.enabled, true);
         strict_1.default.equal(cfg.model, "gpt-4o-mini");
         strict_1.default.equal(cfg.apiKey, "sk-test-123");
         strict_1.default.equal(cfg.maxCallsPerDay, 5);
         strict_1.default.equal(cfg.minIntervalMinutes, 30);
+        strict_1.default.equal(cfg.monthlyCostLimitEur, 2.5);
     });
     (0, node_test_1.it)("accepts 0 as an explicit, valid min interval (disabled)", () => {
         strict_1.default.equal((0, config_js_1.aiConfigFromAdapter)({ ai_min_interval_minutes: 0 }).minIntervalMinutes, 0);

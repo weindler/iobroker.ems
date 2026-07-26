@@ -1,7 +1,7 @@
 import { AC_UNIT_COUNT } from "../../../addons/air_conditioning/constants";
 import type { AcGlobalConfig, AcUnitConfig } from "../../../addons/air_conditioning/types";
 import type { ConsumerPersistEntry } from "../../../learning/consumer_stats/types";
-import { planCooling, type CoolingUnitPlanInput } from "../../../planner/rules/cooling";
+import { planCooling, type CoolingUnitPlanInput } from "../../planning/cooling";
 import type { PlannerModePolicy } from "../../../planner/mode_policy";
 import { acUnitContributionId } from "../../contribution_ids";
 import type { PlanContribution } from "../../types";

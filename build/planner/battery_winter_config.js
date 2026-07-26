@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.batteryWinterPlanConfigFromAdapter = void 0;
+/** @deprecated (Roadmap Block 2) Legacy-Planner-Config — Operator-Pendant: `operator/contributions/flexible/battery_charge_logic_config.ts` (gleiche Admin-Keys, saubere Typnamen). */
 const config_1 = require("../addons/battery/config");
 function rec(config) {
     return config && typeof config === "object" ? config : {};

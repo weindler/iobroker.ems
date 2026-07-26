@@ -39,6 +39,7 @@ async function writeHouseLoadPersist(baseDir, result, lastRun) {
         profile: result.profileJson,
         forecast_today: result.forecastTodayJson,
         forecast_tomorrow: result.forecastTomorrowJson,
+        forecast_horizon: result.forecastHorizonJson,
         health: { ...result.healthJson, last_persist_at: lastRun },
     };
     await (0, atomic_write_1.atomicWriteFile)(path.join(baseDir, "house_load_learning_v1.json"), `${JSON.stringify(payload, null, 2)}\n`);

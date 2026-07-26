@@ -61,6 +61,7 @@ const host = {
 })();
 `);
         strict_1.default.ok(!lines.some((e) => e.includes("/build/planner_")), "legacy planner_* shadow-stack must not exist / load on the production path");
+        strict_1.default.ok(!lines.some((e) => e.includes("/build/planner/run.js")), "legacy runPlannerTick module must not load on the production path (Roadmap Block 4)");
         strict_1.default.ok(lines.some((e) => e.includes("/build/operator/daily_plan/tick.js")), "daily plan tick must load on production path");
     });
 });

@@ -42,6 +42,20 @@ Keine dynamischen IDs, keine Zeitstempel in IDs. Flussrichtung über `flow`, nic
 - `gridEligible` nur bei erlaubtem Netzimport, Global Mode, Profil- und Runtime-Fähigkeit
 - PV-Laden unabhängig von `gridEligible` in `details.pvChargeAllowed`
 - Slots: technische Maximalleistung, kein „jetzt laden“
+- **v0.1.201:** `learning.battery_runtime.*` (Nachtentladung, Ladeleistung, `topoff_due`) — ist ein
+  gelerntes Top-Off-Intervall überschritten, wird `chargeTargetSocPct` automatisch auf 100 %
+  gesetzt (auch ohne explizites `topOffRequested`); Details unter `batteryLearningStatus`/
+  `topoffDueLearned`/`estimatedRuntimeDays`
+- **v0.1.202 (Roadmap Block 2, „Batterie-Lade-Logik"):** PV-Defizit-Ladelogik
+  (`src/operator/contributions/flexible/battery_charge_logic.ts`, Nachfolger von
+  `planner/rules/battery_winter.ts` — bewusst nicht jahreszeitgebunden benannt, siehe
+  `docs/EMS_LIGHT_ROADMAP.md`) hebt `chargeTargetSocPct` an, wenn der 0–7-Tage-PV-Horizont den
+  Hauslastbedarf nicht deckt, und setzt `deadlineIso` auf die berechnete Brücken-Frist
+  (`bridgeUntilIso`). Die eigentliche Slot-/Preisauswahl übernimmt die vorhandene deadline-
+  basierte Daily-Plan-Allocation (kein eigenes Preisfenster-Modul). In `eco`-Mode schaltet
+  `deficitChargeActive` den Netzbezug frei. Details unter `chargeLogicActive`/
+  `chargeLogicEnergyDeficitKwh`/`chargeLogicSocTargetPct`; `legacyDeficitChargeActive` spiegelt
+  zum Vergleich den auslaufenden Legacy-Planner-Zustand.
 
 ### Discharge (`battery.discharge`)
 
@@ -88,6 +102,9 @@ Contribution liefert Bedarf, Deadline, Leistungsgrenzen an den Planner.
 - PV-first, Netzbezug standardmäßig nicht freigegeben
 - Beschreibt Bedarf — kopiert nicht blind `planner.intent.thermal.action`
 - **v0.1.190:** liefert `requiredEnergyKwh` + `maxPowerW`-Slot (Schätzung aus Puffertemperatur → Tagesziel, ~0,38 kWh/°C Default)
+- **v0.1.201:** `learning.thermal_runtime.*` (gelernte Kühlrate, `estimated_empty_at`) liefert, wenn
+  `valid`, die `deadlineIso` der flexiblen Contribution und eine kleine Verlust-Marge in
+  `requiredEnergyKwh`; Details unter `thermalLearningStatus`/`coolingRateCPerHAvg`/`estimatedEmptyAt`
 
 ## 7. Klima
 

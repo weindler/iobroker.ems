@@ -59,7 +59,7 @@ function batteryInput(overrides = {}) {
         mappingsReady: true,
         topOffRequested: false,
         ownershipActive: false,
-        winterGridActive: false,
+        deficitChargeActive: false,
         ...overrides,
     };
 }
@@ -209,6 +209,24 @@ function acInput(overrides = {}) {
         strict_1.default.equal(c.contributionId, contribution_ids_1.CONTRIBUTION_IDS.BATTERY_RESERVE);
         strict_1.default.equal(c.flow, "constraint");
         strict_1.default.equal(c.details.minSocPct, 10);
+        strict_1.default.equal(c.details.batteryLearningStatus, "missing");
+    });
+    (0, node_test_1.it)("reserve exposes learned night discharge and marks top-off target when due", () => {
+        const c = (0, battery_1.buildBatteryReserveContribution)(batteryInput({
+            batteryLearning: {
+                status: "valid",
+                sampleDays: 40,
+                avgNightDischargeKwh: 2.4,
+                avgChargePowerW: 2600,
+                maxChargePowerW: 3000,
+                topoffDue: true,
+                topoffDaysRemaining: -3,
+                estimatedRuntimeDays: 5,
+                reasonDe: "Top-Off fällig",
+            },
+        }));
+        strict_1.default.equal(c.details.avgNightDischargeKwh, 2.4);
+        strict_1.default.equal(c.details.topOffTargetSocPct, 100);
     });
     (0, node_test_1.it)("top-off only when requested", () => {
         const off = (0, battery_1.buildBatteryChargeContribution)(batteryInput({ topOffRequested: false }));
@@ -217,9 +235,120 @@ function acInput(overrides = {}) {
         strict_1.default.equal(on.details.targetSocPct, 100);
         strict_1.default.equal(on.details.requiredEnergyKwh, 1);
     });
-    (0, node_test_1.it)("grid import blocked in eco without winter grid", () => {
-        const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({ modePolicy: (0, mode_policy_1.plannerModePolicyFromGlobalMode)("eco"), winterGridActive: false }));
+    (0, node_test_1.it)("keeps policy target when learning is missing (unchanged behavior)", () => {
+        const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput());
+        strict_1.default.equal(c.details.targetSocPct, (0, mode_policy_1.plannerModePolicyFromGlobalMode)("balanced").chargeTargetSocPct);
+        strict_1.default.equal(c.details.batteryLearningStatus, "missing");
+    });
+    (0, node_test_1.it)("ignores a degraded learning model for top-off (not belastbar enough)", () => {
+        const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({
+            batteryLearning: {
+                status: "degraded",
+                sampleDays: 3,
+                avgNightDischargeKwh: 2.4,
+                avgChargePowerW: 2600,
+                maxChargePowerW: 3000,
+                topoffDue: true,
+                topoffDaysRemaining: -2,
+                estimatedRuntimeDays: 5,
+                reasonDe: "wenig Historie",
+            },
+        }));
+        strict_1.default.equal(c.details.targetSocPct, (0, mode_policy_1.plannerModePolicyFromGlobalMode)("balanced").chargeTargetSocPct);
+    });
+    (0, node_test_1.it)("raises target to 100% when the learned top-off interval is due", () => {
+        const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({
+            socPct: 85,
+            batteryLearning: {
+                status: "valid",
+                sampleDays: 40,
+                avgNightDischargeKwh: 2.4,
+                avgChargePowerW: 2600,
+                maxChargePowerW: 3000,
+                topoffDue: true,
+                topoffDaysRemaining: -3,
+                estimatedRuntimeDays: 5,
+                reasonDe: "Top-Off fällig",
+            },
+        }));
+        strict_1.default.equal(c.details.targetSocPct, 100);
+        strict_1.default.equal(c.details.topoffDueLearned, true);
+        strict_1.default.equal(c.details.avgNightDischargeKwh, 2.4);
+        strict_1.default.match(c.reasonDe, /Top-Off/);
+    });
+    (0, node_test_1.it)("does not raise target when the learned model says top-off is not due", () => {
+        const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({
+            socPct: 85,
+            batteryLearning: {
+                status: "valid",
+                sampleDays: 40,
+                avgNightDischargeKwh: 2.4,
+                avgChargePowerW: 2600,
+                maxChargePowerW: 3000,
+                topoffDue: false,
+                topoffDaysRemaining: 10,
+                estimatedRuntimeDays: 5,
+                reasonDe: "nicht fällig",
+            },
+        }));
+        strict_1.default.equal(c.details.targetSocPct, (0, mode_policy_1.plannerModePolicyFromGlobalMode)("balanced").chargeTargetSocPct);
+    });
+    (0, node_test_1.it)("grid import blocked in eco without active PV-deficit charge logic", () => {
+        const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({ modePolicy: (0, mode_policy_1.plannerModePolicyFromGlobalMode)("eco"), deficitChargeActive: false }));
         strict_1.default.equal(c.gridEligible, false);
+    });
+    (0, node_test_1.it)("grid import allowed in eco when PV-deficit charge logic is active", () => {
+        const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({ modePolicy: (0, mode_policy_1.plannerModePolicyFromGlobalMode)("eco"), deficitChargeActive: true }));
+        strict_1.default.equal(c.gridEligible, true);
+    });
+    (0, node_test_1.it)("raises target SOC above the eco policy target and sets a deadline when the PV-deficit charge logic is active", () => {
+        const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({
+            socPct: 55,
+            modePolicy: (0, mode_policy_1.plannerModePolicyFromGlobalMode)("eco"),
+            deficitChargeActive: true,
+            chargeLogic: {
+                active: true,
+                forecastActive: true,
+                horizonDays: 4,
+                bridgeUntilIso: "2026-07-15T22:00:00.000Z",
+                pvRecoveryDay: 4,
+                energyStoredKwh: 5.5,
+                energyDeficitKwh: 3,
+                energyReserveKwh: 0.5,
+                energyTargetKwh: 9.6,
+                socTargetPct: 96,
+                chargeEnergyKwh: 4.1,
+                confidenceMinPct: 60,
+                reasonDe: "PV-Defizit-Horizont 4 Tag(e); Netz-Ziel +4.1 kWh.",
+            },
+        }));
+        strict_1.default.equal(c.details.targetSocPct, 96);
+        strict_1.default.equal(c.deadlineIso, "2026-07-15T22:00:00.000Z");
+        strict_1.default.equal(c.details.chargeLogicActive, true);
+        strict_1.default.equal(c.gridEligible, true);
+        strict_1.default.match(c.reasonDe, /PV-Defizit-Ladelogik/);
+    });
+    (0, node_test_1.it)("does not raise target or set deadline when charge logic is inactive", () => {
+        const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({
+            socPct: 55,
+            chargeLogic: {
+                active: false,
+                forecastActive: true,
+                horizonDays: 7,
+                bridgeUntilIso: null,
+                pvRecoveryDay: 1,
+                energyStoredKwh: 8,
+                energyDeficitKwh: 0,
+                energyReserveKwh: 0,
+                energyTargetKwh: 8,
+                socTargetPct: null,
+                chargeEnergyKwh: null,
+                confidenceMinPct: 90,
+                reasonDe: "kein Netzladen nötig",
+            },
+        }));
+        strict_1.default.equal(c.details.targetSocPct, (0, mode_policy_1.plannerModePolicyFromGlobalMode)("balanced").chargeTargetSocPct);
+        strict_1.default.equal(c.deadlineIso, null);
     });
     (0, node_test_1.it)("global mode off disables charge", () => {
         const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({ globalModeOff: true, modePolicy: (0, mode_policy_1.plannerModePolicyFromGlobalMode)("off") }));
@@ -330,6 +459,71 @@ function acInput(overrides = {}) {
     (0, node_test_1.it)("governance off disables flexible", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({ governanceEnabled: false }));
         strict_1.default.equal(flexible.enabled, false);
+    });
+    (0, node_test_1.it)("has no deadline without thermal-runtime learning (unchanged behavior)", () => {
+        const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput());
+        strict_1.default.equal(flexible.deadlineIso, null);
+    });
+    (0, node_test_1.it)("has no deadline when the learning model is only degraded", () => {
+        const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
+            thermalLearning: {
+                status: "degraded",
+                health: "degraded",
+                samples: 2,
+                coolingRateCPerHAvg: 1.1,
+                coolingConstantPerH: null,
+                coolingAsymptoteC: null,
+                estimatedRemainingHours: 4,
+                estimatedEmptyAt: "2026-07-26T14:00:00.000Z",
+                currentDayTypeRuntimeHoursMedian: null,
+                reasonDe: "wenige Zyklen",
+            },
+        }));
+        strict_1.default.equal(flexible.deadlineIso, null);
+    });
+    (0, node_test_1.it)("adopts the learned estimated_empty_at as deadline when the model is valid", () => {
+        const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
+            thermalLearning: {
+                status: "valid",
+                health: "ok",
+                samples: 12,
+                coolingRateCPerHAvg: 1.1,
+                coolingConstantPerH: 0.04,
+                coolingAsymptoteC: 18,
+                estimatedRemainingHours: 4,
+                estimatedEmptyAt: "2026-07-26T14:00:00.000Z",
+                currentDayTypeRuntimeHoursMedian: 12,
+                reasonDe: "belastbares Modell",
+            },
+        }));
+        strict_1.default.equal(flexible.deadlineIso, "2026-07-26T14:00:00.000Z");
+        strict_1.default.equal(flexible.details.thermalLearningStatus, "valid");
+        strict_1.default.equal(flexible.details.estimatedEmptyAt, "2026-07-26T14:00:00.000Z");
+        strict_1.default.equal(flexible.details.coolingRateCPerHAvg, 1.1);
+    });
+    (0, node_test_1.it)("does not set a deadline when the flexible contribution is disabled anyway", () => {
+        const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
+            bufferTempC: 62,
+            thermalLearning: {
+                status: "valid",
+                health: "ok",
+                samples: 12,
+                coolingRateCPerHAvg: 1.1,
+                coolingConstantPerH: 0.04,
+                coolingAsymptoteC: 18,
+                estimatedRemainingHours: 4,
+                estimatedEmptyAt: "2026-07-26T14:00:00.000Z",
+                currentDayTypeRuntimeHoursMedian: 12,
+                reasonDe: "belastbares Modell",
+            },
+        }));
+        strict_1.default.equal(flexible.enabled, false);
+        strict_1.default.equal(flexible.deadlineIso, null);
+    });
+    (0, node_test_1.it)("exposes missing learning status in details when no thermal-runtime signal is supplied", () => {
+        const [mandatory, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput());
+        strict_1.default.equal(mandatory.details.thermalLearningStatus, "missing");
+        strict_1.default.equal(flexible.details.thermalLearningStatus, "missing");
     });
 });
 (0, node_test_1.describe)("air conditioning contributions", () => {

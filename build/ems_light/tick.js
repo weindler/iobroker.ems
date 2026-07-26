@@ -27,11 +27,10 @@ exports.runEmsLightPhase1Tick = void 0;
 const ems_activity_1 = require("../ems_activity");
 const tree_paths_1 = require("../tree_paths");
 const live_cache_1 = require("./live_cache");
-const run_1 = require("../planner/run");
 /**
  * Operator Forecast → Daily Plan → Allocation.
  * Always on for production control (addons consume these plans).
- * Shadow/Takeover/Authority stay disabled separately.
+ * Roadmap Block 4: single planner path — no `runPlannerTick` / `src/planner/run.ts` on the tick.
  */
 function operatorForecastPathEnabled(_config) {
     return true;
@@ -69,12 +68,6 @@ async function runEmsLightPhase1Tick(host) {
     catch (e) {
         hints.push(`live_cache: ${String(e)}`);
         liveResult.errors.push(String(e));
-    }
-    try {
-        await (0, run_1.runPlannerTick)(host);
-    }
-    catch (e) {
-        hints.push(`planner: ${String(e)}`);
     }
     if (operatorForecastPathEnabled(host.config)) {
         const { runGridSupplyTick } = await Promise.resolve().then(() => __importStar(require("../operator/supply/grid_tick.js")));

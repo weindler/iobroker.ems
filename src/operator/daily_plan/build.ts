@@ -12,7 +12,7 @@ import {
 	buildAllocationCandidate,
 	resolvePolicySnapshotForPlan,
 } from "./policy";
-import { buildDailyHorizonSlots, energyKwhFromPower } from "./slots";
+import { buildDailyHorizonSlots, DAILY_PLAN_HORIZON_HOURS, energyKwhFromPower } from "./slots";
 import type {
 	DailyPlan,
 	DailyPlanExcludedContribution,
@@ -209,7 +209,12 @@ export function buildDailyPlan(input: DailyPlanBuildInput): DailyPlan {
 
 	const quality = allocationQualityFromUnallocated(allocationResult.unallocated, hasMandatoryGap);
 
-	let reasonDe = "Deterministischer Daily Plan für den aktuellen Tag.";
+	const horizonEndIso =
+		allocationResult.slots.length > 0
+			? allocationResult.slots[allocationResult.slots.length - 1]!.slot.endIso
+			: null;
+
+	let reasonDe = `Deterministischer Daily Plan, rollierender Horizont ${DAILY_PLAN_HORIZON_HOURS} h.`;
 	if (input.globalMode === "off") {
 		reasonDe = "Global Mode off — Plan dokumentiert, keine flexible Allocation.";
 	} else if (status === "missing_inputs") {
@@ -220,7 +225,7 @@ export function buildDailyPlan(input: DailyPlanBuildInput): DailyPlan {
 
 	return {
 		generatedAt: input.now.toISOString(),
-		validUntil: null,
+		validUntil: horizonEndIso,
 		revision: 0,
 		date: dateKey,
 		timezone: input.timezone,

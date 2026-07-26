@@ -21,8 +21,6 @@ import {
 import { ensurePolicyStateTree, initPolicyEngine, stopPolicyEngine, type PolicyEngineHost } from "../policy";
 import { ensureIntentStates, initIntentEngine, stopIntentEngine, type IntentEngineHost } from "../intent";
 import { ensurePlannerStateTree, stopPlanner, type PlannerHost } from "../planner";
-import { batteryWinterPlanConfigFromAdapter } from "../planner/battery_winter_config";
-import { isAddonEnabled } from "../addons/governance/config";
 import { resetGlobalModesRuntime } from "../global_modes";
 import { ensureEmsLightStates } from "./ensure_states";
 import { runEmsLightPhase1Tick } from "./tick";
@@ -134,11 +132,7 @@ export async function ensureEmsLightStateTree(adapter: ioBroker.Adapter): Promis
 	const version = String(adapter.common?.version ?? "0.0.0");
 	const host = adapter as unknown as LiveCacheHost;
 	await ensureEmsLightStates(host, version);
-	await ensurePlannerStateTree(host as unknown as PlannerHost & LiveCacheHost, {
-		includeThermalIntent: isAddonEnabled(adapter.config, "immersion_heater"),
-		includeCoolingIntent: isAddonEnabled(adapter.config, "climate"),
-		includeWinterIntent: batteryWinterPlanConfigFromAdapter(adapter.config).enabled,
-	});
+	await ensurePlannerStateTree(host as unknown as PlannerHost & LiveCacheHost);
 	const policyHost = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & PolicyEngineHost);
 	await ensurePolicyStateTree(policyHost);
 	await ensureIntentStates(buildIntentHost(adapter));

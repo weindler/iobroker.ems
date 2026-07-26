@@ -39,6 +39,10 @@ const host = {
 			"legacy planner_* shadow-stack must not exist / load on the production path",
 		);
 		assert.ok(
+			!lines.some((e) => e.includes("/build/planner/run.js")),
+			"legacy runPlannerTick module must not load on the production path (Roadmap Block 4)",
+		);
+		assert.ok(
 			lines.some((e) => e.includes("/build/operator/daily_plan/tick.js")),
 			"daily plan tick must load on production path",
 		);

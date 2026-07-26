@@ -1,18 +1,25 @@
 ---
-description: Vor jedem Coding-Schritt an diesem Adapter prüfen, ob Sonnet 5 High aktiv ist
+description: Coding für iobroker.ems läuft mit First-Party-Modellen (Grok / Composer)
 alwaysApply: true
 ---
 
 # Modellwahl vor dem Programmieren
 
-Bevor Code (nicht nur Diskussion/Planung) für `iobroker.ems` implementiert wird:
+Für `iobroker.ems` gilt verbindlich: Coding mit **First-Party-Modellen** —
+**Grok 4.5** und/oder **Composer 2.5** (Cursor Models Pool).
 
-1. Prüfen/fragen, ob im Chat aktuell **Sonnet 5 High** (Claude, thinking/high effort) aktiv ist.
-2. Falls nicht sicher oder ein anderes Modell aktiv ist: den Nutzer explizit bitten, im
-   Cursor-Chat auf **Sonnet 5 High** umzuschalten, bevor Dateien geändert werden.
-3. Reine Diskussion, Planung oder Recherche (kein Datei-Write) ist davon **nicht** betroffen —
-   die Prüfung gilt nur unmittelbar vor dem ersten Schreib-Tool-Call (Write/StrReplace/EditNotebook)
-   in dieser Codebasis.
-4. Der Agent kann das aktive Chat-Modell nicht selbst umschalten — nur Subagenten (`Task`-Tool)
-   können mit explizitem Modell gestartet werden. Für direkte Bearbeitung an Ort und Stelle muss
-   der Nutzer manuell umschalten.
+Begründung (Nutzerauftrag): Kein ausreichendes Kontingent mehr für Sonnet/Claude
+(API / Other Models); Arbeit an der Roadmap (inkl. Block 6) muss mit dem First-Party-Pool laufen.
+
+## Vor dem ersten Code-Write
+
+1. First-Party nutzen (Grok 4.5 oder Composer 2.5) — **nicht** auf Sonnet 5 High umschalten
+   verlangen und **nicht** auf API-Usage warten.
+2. Subagenten (`Task`-Tool) ebenfalls First-Party starten (`cursor-grok-4.5-high-fast` oder
+   `composer-2.5-fast`), nicht Claude/GPT/Gemini — sonst läuft der API-Pool weiter leer.
+3. Reine Diskussion, Planung oder Recherche (kein Datei-Write) ist davon nicht betroffen.
+
+## Hinweis
+
+Der Agent kann das aktive Chat-Modell nicht selbst umschalten. Wenn der Chat auf einem
+Drittanbieter-Modell steht: kurz den Nutzer bitten, auf Grok 4.5 / Composer 2.5 zu wechseln.

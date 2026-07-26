@@ -117,11 +117,11 @@ describe("runAiOptimizationNow — gating", () => {
 });
 
 describe("runAiOptimizationNow — successful/failed calls", () => {
-	it("successful call → status ready, increments daily counter, writes cost", async () => {
+	it("successful call without slot prefs → status ready, increments daily counter, writes cost", async () => {
 		const provider = fakeProvider({
 			ok: true,
 			proposals: [{ addonId: "immersion_heater", note: "x" }],
-			slotPreferences: [{ addonId: "immersion_heater", slotStartIso: "2026-07-25T10:00:00.000Z", weight: 2 }],
+			slotPreferences: [],
 			reasonDe: "Alles gut.",
 			usage: { promptTokens: 100, completionTokens: 50 },
 		});
@@ -132,10 +132,24 @@ describe("runAiOptimizationNow — successful/failed calls", () => {
 		assert.equal(host.store.get(AI_STATES.callsToday), 1);
 		assert.equal(host.store.get(AI_STATES.lastRunResult), "ok");
 		assert.ok(Number(host.store.get(AI_STATES.costEstimateTodayEur)) > 0);
-		assert.equal(
-			host.store.get(AI_STATES.lastSlotPreferencesJson),
-			JSON.stringify([{ addonId: "immersion_heater", slotStartIso: "2026-07-25T10:00:00.000Z", weight: 2 }]),
-		);
+		assert.equal(host.store.get(AI_STATES.lastSlotPreferencesJson), "[]");
+	});
+
+	it("successful call with prefs that do not beat Plan A → suspended, prefs cleared", async () => {
+		const provider = fakeProvider({
+			ok: true,
+			proposals: [{ addonId: "immersion_heater", note: "x" }],
+			slotPreferences: [{ addonId: "immersion_heater", slotStartIso: "2026-07-25T10:00:00.000Z", weight: 2 }],
+			reasonDe: "Alles gut.",
+			usage: { promptTokens: 100, completionTokens: 50 },
+		});
+		const host = mockHost(ALLOWED_CONFIG);
+		const outcome = await runAiOptimizationNow(host, minimalPlan(), "new_daily_plan", provider);
+		assert.equal(outcome.status, "suspended");
+		assert.equal(outcome.ran, true);
+		assert.equal(host.store.get(AI_STATES.autoSuspended), true);
+		assert.equal(host.store.get(AI_STATES.lastSlotPreferencesJson), "[]");
+		assert.equal(host.store.get(AI_STATES.callsToday), 1);
 	});
 
 	it("failed call → status error, still counts against the daily limit, clears slot preferences", async () => {

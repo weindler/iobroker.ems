@@ -134,6 +134,44 @@ describe("house load forecast", () => {
 		assert.equal(r.healthJson.status, "no_source");
 		assert.equal(r.healthJson.missing_source, true);
 	});
+
+	it("no_source still returns 5 horizon-day placeholders (day 3-7), not fewer/more", () => {
+		const r = noSourceResult("", new Date("2026-06-21T10:00:00"));
+		assert.equal(r.forecastHorizonJson.length, 5);
+	});
+});
+
+describe("house load forecast horizon (day 3-7)", () => {
+	it("builds 5 additional day forecasts (dayOffset 2-6) using the same pattern logic as tomorrow", () => {
+		const samples = manyWeeklySamples(2026, 6, 1, 11, 350, 6);
+		const acc = buildProfileAccumulators(samples);
+		const horizon = [2, 3, 4, 5, 6].map((offset) => buildDayForecast(acc, offset));
+		assert.equal(horizon.length, 5);
+		const dates = new Set(horizon.map((d) => d.date));
+		assert.equal(dates.size, 5);
+		for (const day of horizon) {
+			assert.ok(day.segments.midday?.avg_w !== undefined);
+		}
+	});
+
+	it("computeHouseLoadLearning exposes forecastHorizonJson with 5 distinct future days", () => {
+		const samples = manyWeeklySamples(2026, 6, 1, 11, 350, 6);
+		const r = computeHouseLoadLearning({
+			samples,
+			sampleDays: 6,
+			lastValidTs: samples[0].ts,
+			sourceStateId: "sonnen.0.status.consumption",
+			now: new Date("2026-06-21T10:00:00"),
+			lastPersistAt: null,
+		});
+		assert.equal(r.forecastHorizonJson.length, 5);
+		const dates = new Set([
+			r.forecastTodayJson.date,
+			r.forecastTomorrowJson.date,
+			...r.forecastHorizonJson.map((d) => d.date),
+		]);
+		assert.equal(dates.size, 7);
+	});
 });
 
 describe("house load compute", () => {

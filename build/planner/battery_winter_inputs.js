@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.readBatteryWinterDays = void 0;
 const time_1 = require("../learning/house_load/time");
-const battery_winter_1 = require("./rules/battery_winter");
+const battery_winter_1 = require("../operator/planning/battery_winter");
 async function readNum(host, id) {
     try {
         const st = await host.getStateAsync(id);

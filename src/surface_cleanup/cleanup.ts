@@ -16,8 +16,6 @@ import { acUnitRuntimeBase } from "../addons/air_conditioning/runtime/ensure_sta
 import { wallboxVehicleProfilesConfigFromAdapter } from "../addons/wallbox/vehicles/config";
 import { normalizeWallboxVehicleProfiles } from "../addons/wallbox/vehicles/normalize";
 import { WALLBOX_VEHICLES_BASE, vehicleBasePath } from "../addons/wallbox/vehicles/ensure_states";
-import { isAddonEnabled } from "../addons/governance/config";
-import { batteryWinterPlanConfigFromAdapter } from "../planner/battery_winter_config";
 import { learningPersistenceMirrorRelativeIds } from "../learning/persistence_mirror";
 import { WALLBOX_RUNTIME_BASE, WALLBOX_RUNTIME_BALLAST_SUFFIXES } from "../addons/wallbox/runtime/states";
 import { mappingBase } from "../tree_paths";
@@ -165,15 +163,13 @@ async function cleanupLeanPlannerSurface(host: SurfaceCleanupHost, stats: Surfac
 	for (const root of LEAN_PLANNER_PURGE_ROOTS) {
 		await safeDeleteRelative(host, root, stats, "lean_planner");
 	}
-	if (!isAddonEnabled(host.config, "immersion_heater")) {
-		await safeDeleteRelative(host, "planner.intent.thermal", stats, "planner_thermal_off");
-	}
-	if (!isAddonEnabled(host.config, "climate")) {
-		await safeDeleteRelative(host, "planner.intent.cooling", stats, "planner_cooling_off");
-	}
-	if (!batteryWinterPlanConfigFromAdapter(host.config).enabled) {
-		await safeDeleteRelative(host, "planner.intent.battery.winter", stats, "planner_winter_off");
-	}
+	// Roadmap Block 5: Legacy Realtime-Intent-Bäume + surplus/deficit immer entfernen
+	// (ersetzt durch Operator Daily Plan / operator.diagnostics.*).
+	await safeDeleteRelative(host, "planner.intent.thermal", stats, "planner_thermal_legacy");
+	await safeDeleteRelative(host, "planner.intent.cooling", stats, "planner_cooling_legacy");
+	await safeDeleteRelative(host, "planner.intent.battery.winter", stats, "planner_winter_legacy");
+	await safeDeleteRelative(host, "planner.surplus_w", stats, "planner_surplus_legacy");
+	await safeDeleteRelative(host, "planner.deficit_w", stats, "planner_deficit_legacy");
 }
 
 const STUB_ADDON_IDS = [

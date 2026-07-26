@@ -76,6 +76,10 @@ async function writeResult(
 		val: truncateJson(result.forecastTomorrowJson),
 		ack: true,
 	});
+	await host.setStateAsync("learning.house_load.forecast_horizon_json", {
+		val: truncateJson(result.forecastHorizonJson),
+		ack: true,
+	});
 	await host.setStateAsync("learning.house_load.health_json", {
 		val: truncateJson(result.healthJson),
 		ack: true,

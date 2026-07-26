@@ -1,7 +1,10 @@
 import { contextForDayOffset } from "../learning/house_load/time";
 import type { DayForecastJson } from "../learning/house_load/types";
 import type { PlannerHost } from "./inputs";
-import { dailyKwhFromHouseLoadForecast, type BatteryWinterDayInput } from "./rules/battery_winter";
+import {
+	dailyKwhFromHouseLoadForecast,
+	type BatteryWinterDayInput,
+} from "../operator/planning/battery_winter";
 
 async function readNum(host: PlannerHost, id: string): Promise<number | null> {
 	try {

@@ -152,6 +152,20 @@ export function parseHouseLoadForecastJson(raw: string | null): DayForecastJson 
 	}
 }
 
+export function parseHouseLoadForecastHorizonJson(raw: string | null): DayForecastJson[] | null {
+	if (!raw) return null;
+	try {
+		const parsed = JSON.parse(raw) as unknown;
+		if (!Array.isArray(parsed)) return null;
+		const days = parsed.filter(
+			(d): d is DayForecastJson => !!d && typeof d === "object" && !!(d as DayForecastJson).segments,
+		);
+		return days.length > 0 ? days : null;
+	} catch {
+		return null;
+	}
+}
+
 function pvHorizonDays(
 	now: Date,
 	timezone: string,
@@ -204,6 +218,7 @@ export async function collectContributions(
 		houseConfidence,
 		forecastTodayRaw,
 		forecastTomorrowRaw,
+		forecastHorizonRaw,
 		houseLastUpdate,
 		weatherStatus,
 		weatherHealth,
@@ -224,6 +239,7 @@ export async function collectContributions(
 		readNum(host, "learning.house_load.confidence"),
 		readStr(host, "learning.house_load.forecast_today_json"),
 		readStr(host, "learning.house_load.forecast_tomorrow_json"),
+		readStr(host, "learning.house_load.forecast_horizon_json"),
 		readStr(host, "learning.house_load.last_update"),
 		readStr(host, "learning.weather.status"),
 		readStr(host, "learning.weather.health"),
@@ -302,6 +318,7 @@ export async function collectContributions(
 			confidence: houseConfidence,
 			forecastToday: parseHouseLoadForecastJson(forecastTodayRaw),
 			forecastTomorrow: parseHouseLoadForecastJson(forecastTomorrowRaw),
+			forecastHorizon: parseHouseLoadForecastHorizonJson(forecastHorizonRaw),
 			lastUpdate: houseLastUpdate,
 		}),
 		buildWeatherContribution({

@@ -39,6 +39,7 @@ export async function ensureHouseLoadLearningStates(host: StateHost): Promise<vo
 		strState("learning.house_load.profile_json", "House-Load Profil (JSON)"),
 		strState("learning.house_load.forecast_today_json", "House-Load Forecast heute (JSON)"),
 		strState("learning.house_load.forecast_tomorrow_json", "House-Load Forecast morgen (JSON)"),
+		strState("learning.house_load.forecast_horizon_json", "House-Load Forecast Tag 3-7 (JSON)"),
 		strState("learning.house_load.health_json", "House-Load Health (JSON)"),
 		strState("learning.house_load.source_state", "House-Load Quell-State"),
 		strState("learning.house_load.history_mode", "House-Load Datenquelle (ems_rollup|aggregate_hourly|onchange_raw)"),

@@ -1,13 +1,13 @@
 import { touchEmsActivity } from "../ems_activity";
 import { GLOBAL } from "../tree_paths";
 import { deriveHealth, formatLiveCacheSummary, refreshLiveCache, type LiveCacheHost } from "./live_cache";
-import { runPlannerTick } from "../planner/run";
+/** Type-only — must not pull `planner/run` onto the production tick path (Block 4). */
 import type { PlannerHost } from "../planner/inputs";
 
 /**
  * Operator Forecast → Daily Plan → Allocation.
  * Always on for production control (addons consume these plans).
- * Shadow/Takeover/Authority stay disabled separately.
+ * Roadmap Block 4: single planner path — no `runPlannerTick` / `src/planner/run.ts` on the tick.
  */
 function operatorForecastPathEnabled(_config: unknown): boolean {
 	return true;
@@ -45,12 +45,6 @@ export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): 
 	} catch (e) {
 		hints.push(`live_cache: ${String(e)}`);
 		liveResult.errors.push(String(e));
-	}
-
-	try {
-		await runPlannerTick(host);
-	} catch (e) {
-		hints.push(`planner: ${String(e)}`);
 	}
 
 	if (operatorForecastPathEnabled(host.config)) {

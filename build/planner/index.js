@@ -23,32 +23,31 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopPlanner = exports.runPlannerRuntime = exports.ensurePlannerStateTree = exports.batteryWinterPlanConfigFromAdapter = exports.readTibber15MinPriceSlots = exports.isNowInWinterChargeWindow = exports.planBatteryWinterPriceWindows = exports.dailyKwhFromHouseLoadForecast = exports.planBatteryWinter = exports.plannerModePolicyFromGlobalMode = exports.buildPlannerConstraints = exports.planBattery = exports.coolingReserveW = exports.planCooling = exports.resetPlannerRevisionForTest = exports.runPlannerTick = exports.runPlanner = exports.readPlannerInputs = exports.readPlannerThermalStage = void 0;
+exports.stopPlanner = exports.runPlannerRuntime = exports.ensurePlannerStateTree = exports.batteryWinterPlanConfigFromAdapter = exports.readTibber15MinPriceSlots = exports.isNowInWinterChargeWindow = exports.planBatteryWinterPriceWindows = exports.dailyKwhFromHouseLoadForecast = exports.planBatteryWinter = exports.plannerModePolicyFromGlobalMode = exports.buildPlannerConstraints = exports.planBattery = exports.coolingReserveW = exports.planCooling = exports.resetPlannerRevisionForTest = exports.runPlanner = exports.readPlannerInputs = exports.readPlannerThermalStage = void 0;
 const ensure_states_1 = require("./ensure_states");
 const grid_states_1 = require("../operator/supply/grid_states");
 const states_1 = require("../operator/forecast/states");
 const states_2 = require("../operator/contributions/flexible/states");
 const states_3 = require("../operator/daily_plan/states");
-const run_1 = require("./run");
 var inputs_1 = require("./inputs");
 Object.defineProperty(exports, "readPlannerThermalStage", { enumerable: true, get: function () { return inputs_1.readPlannerThermalStage; } });
 Object.defineProperty(exports, "readPlannerInputs", { enumerable: true, get: function () { return inputs_1.readPlannerInputs; } });
-var run_2 = require("./run");
-Object.defineProperty(exports, "runPlanner", { enumerable: true, get: function () { return run_2.runPlanner; } });
-Object.defineProperty(exports, "runPlannerTick", { enumerable: true, get: function () { return run_2.runPlannerTick; } });
-Object.defineProperty(exports, "resetPlannerRevisionForTest", { enumerable: true, get: function () { return run_2.resetPlannerRevisionForTest; } });
-var cooling_1 = require("./rules/cooling");
+/** Pure composition for tests/diagnose only — not used on the production tick (Block 4). */
+var run_1 = require("./run");
+Object.defineProperty(exports, "runPlanner", { enumerable: true, get: function () { return run_1.runPlanner; } });
+Object.defineProperty(exports, "resetPlannerRevisionForTest", { enumerable: true, get: function () { return run_1.resetPlannerRevisionForTest; } });
+var cooling_1 = require("../operator/planning/cooling");
 Object.defineProperty(exports, "planCooling", { enumerable: true, get: function () { return cooling_1.planCooling; } });
 Object.defineProperty(exports, "coolingReserveW", { enumerable: true, get: function () { return cooling_1.coolingReserveW; } });
-var battery_1 = require("./rules/battery");
+var battery_1 = require("../operator/planning/battery");
 Object.defineProperty(exports, "planBattery", { enumerable: true, get: function () { return battery_1.planBattery; } });
 Object.defineProperty(exports, "buildPlannerConstraints", { enumerable: true, get: function () { return battery_1.buildPlannerConstraints; } });
 var mode_policy_1 = require("./mode_policy");
 Object.defineProperty(exports, "plannerModePolicyFromGlobalMode", { enumerable: true, get: function () { return mode_policy_1.plannerModePolicyFromGlobalMode; } });
-var battery_winter_1 = require("./rules/battery_winter");
+var battery_winter_1 = require("../operator/planning/battery_winter");
 Object.defineProperty(exports, "planBatteryWinter", { enumerable: true, get: function () { return battery_winter_1.planBatteryWinter; } });
 Object.defineProperty(exports, "dailyKwhFromHouseLoadForecast", { enumerable: true, get: function () { return battery_winter_1.dailyKwhFromHouseLoadForecast; } });
-var battery_winter_windows_1 = require("./rules/battery_winter_windows");
+var battery_winter_windows_1 = require("../operator/planning/battery_winter_windows");
 Object.defineProperty(exports, "planBatteryWinterPriceWindows", { enumerable: true, get: function () { return battery_winter_windows_1.planBatteryWinterPriceWindows; } });
 Object.defineProperty(exports, "isNowInWinterChargeWindow", { enumerable: true, get: function () { return battery_winter_windows_1.isNowInWinterChargeWindow; } });
 var battery_winter_price_inputs_1 = require("./battery_winter_price_inputs");
@@ -57,25 +56,22 @@ var battery_winter_config_1 = require("./battery_winter_config");
 Object.defineProperty(exports, "batteryWinterPlanConfigFromAdapter", { enumerable: true, get: function () { return battery_winter_config_1.batteryWinterPlanConfigFromAdapter; } });
 /**
  * Phase B — nur Objektbaum, keine Planner-Ticks.
- * Legacy Shadow/Takeover/Coordinator-Objektbäume gehören nicht mehr zur Produktions-Oberfläche
- * (Shadow/Takeover-Stack entfernt, siehe docs/README.md Block 4) — Forecast Plan, Daily Plan und
- * Allocation sind der alleinige Kontrollpfad.
+ * Roadmap Block 4/5: einziger Planungspfad ist Operator Forecast → Daily Plan → Allocation.
+ * Legacy Realtime-Intent-Bäume (thermal/cooling/winter) werden nicht mehr angelegt und per
+ * Surface-Cleanup von Alt-Installationen entfernt.
  */
-async function ensurePlannerStateTree(host, options) {
-    await (0, ensure_states_1.ensurePlannerStates)(host, {
-        includeThermal: options?.includeThermalIntent !== false,
-        includeCooling: options?.includeCoolingIntent !== false,
-        includeWinter: options?.includeWinterIntent !== false,
-    });
+async function ensurePlannerStateTree(host, _options) {
+    await (0, ensure_states_1.ensurePlannerStates)(host);
     await (0, grid_states_1.ensureGridSupplyStates)(host);
     await (0, states_1.ensureForecastPlanStates)(host);
     await (0, states_2.ensureFlexibleContributionStates)(host);
     await (0, states_3.ensureDailyPlanStates)(host);
 }
 exports.ensurePlannerStateTree = ensurePlannerStateTree;
-/** Phase F — initiale Planner-Auswertung (Forecast / Daily / Allocation). */
+/**
+ * Operator-only runtime (Forecast / Daily / Allocation) — kein Legacy-`runPlannerTick`.
+ */
 async function runPlannerRuntime(host) {
-    await (0, run_1.runPlannerTick)(host);
     const { runGridSupplyTick } = await Promise.resolve().then(() => __importStar(require("../operator/supply/grid_tick.js")));
     const { runFlexibleContributionsTick } = await Promise.resolve().then(() => __importStar(require("../operator/contributions/flexible/tick.js")));
     const { runForecastPlanTick } = await Promise.resolve().then(() => __importStar(require("../operator/forecast/tick.js")));

@@ -17,9 +17,11 @@ import {
 	resolveAllBatteryConsumerAccess,
 } from "../../policy/battery_consumers";
 import { immersionDeviceConfigFromAdapter } from "../../addons/immersion_heater/device_config";
+import { IMMERSION_RUNTIME_STATES } from "../../addons/immersion_heater/runtime/types";
 import { asNum } from "../../ems_light/state_util";
 import { buildPlannerConstraints } from "../planning/battery";
 import { WALLBOX_EVCC_STATES } from "../../addons/wallbox/ensure_evcc_states";
+import { CONTRIBUTION_IDS } from "../contribution_ids";
 
 let lastRevisionPayload = "";
 let revision = 0;
@@ -223,6 +225,29 @@ export async function runDailyPlanTick(
 			await setStateIfChanged(host, ids.status, view.status);
 			await setStateIfChanged(host, ids.planJson, JSON.stringify(view.runnable));
 			await setStateIfChanged(host, ids.reasonDe, view.reasonDe);
+		}
+
+		// Heizstab-Tagesziel aus Contribution-Details (gleiche Forecast-Logik wie Allocation).
+		const ihFlex = forecastPlan.contributions.find(
+			(c) => c.contributionId === CONTRIBUTION_IDS.IMMERSION_FLEXIBLE,
+		);
+		const ihMand = forecastPlan.contributions.find(
+			(c) => c.contributionId === CONTRIBUTION_IDS.IMMERSION_MANDATORY,
+		);
+		const ihDetails = ihFlex?.details ?? ihMand?.details ?? null;
+		const targetTemp =
+			ihDetails && typeof ihDetails.targetTempC === "number" && Number.isFinite(ihDetails.targetTempC)
+				? ihDetails.targetTempC
+				: null;
+		if (targetTemp !== null) {
+			await setOptionalNumberIfChanged(host, IMMERSION_RUNTIME_STATES.planTargetTempC, targetTemp);
+			const reasonFromDetails =
+				ihDetails && typeof ihDetails.targetReasonDe === "string" ? ihDetails.targetReasonDe : "";
+			const reason =
+				reasonFromDetails.trim() ||
+				(typeof ihFlex?.reasonDe === "string" && ihFlex.reasonDe.trim() ? ihFlex.reasonDe : "") ||
+				`Plan-Tagesziel ${targetTemp} °C.`;
+			await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.planTargetReasonDe, reason);
 		}
 	} catch (e) {
 		host.log?.warn?.(`daily plan state write: ${String(e)}`);

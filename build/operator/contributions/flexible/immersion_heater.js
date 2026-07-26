@@ -97,6 +97,7 @@ function buildImmersionMandatoryContribution(input) {
             bufferTempC: input.bufferTempC,
             mandatoryMinTempC: input.config.planningMinTempC,
             targetTempC: target.targetTempC,
+            targetReasonDe: target.targetReasonDe,
             requiredEnergyKwh,
             maxPowerW: maxW,
             minPowerW: minW,
@@ -202,6 +203,7 @@ function buildImmersionFlexibleContribution(input) {
         details: {
             bufferTempC: input.bufferTempC,
             targetTempC: target.targetTempC,
+            targetReasonDe: target.targetReasonDe,
             requiredEnergyKwh,
             maxPowerW: maxW,
             minPowerW: minW,

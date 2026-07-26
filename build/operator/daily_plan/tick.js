@@ -35,9 +35,11 @@ const addon_plan_publish_1 = require("./addon_plan_publish");
 const states_1 = require("./states");
 const battery_consumers_1 = require("../../policy/battery_consumers");
 const device_config_1 = require("../../addons/immersion_heater/device_config");
+const types_1 = require("../../addons/immersion_heater/runtime/types");
 const state_util_1 = require("../../ems_light/state_util");
 const battery_1 = require("../planning/battery");
 const ensure_evcc_states_1 = require("../../addons/wallbox/ensure_evcc_states");
+const contribution_ids_1 = require("../contribution_ids");
 let lastRevisionPayload = "";
 let revision = 0;
 function resetDailyPlanRevisionForTest() {
@@ -205,6 +207,21 @@ async function runDailyPlanTick(host, forecastPlan) {
             await (0, state_write_1.setStateIfChanged)(host, ids.status, view.status);
             await (0, state_write_1.setStateIfChanged)(host, ids.planJson, JSON.stringify(view.runnable));
             await (0, state_write_1.setStateIfChanged)(host, ids.reasonDe, view.reasonDe);
+        }
+        // Heizstab-Tagesziel aus Contribution-Details (gleiche Forecast-Logik wie Allocation).
+        const ihFlex = forecastPlan.contributions.find((c) => c.contributionId === contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE);
+        const ihMand = forecastPlan.contributions.find((c) => c.contributionId === contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_MANDATORY);
+        const ihDetails = ihFlex?.details ?? ihMand?.details ?? null;
+        const targetTemp = ihDetails && typeof ihDetails.targetTempC === "number" && Number.isFinite(ihDetails.targetTempC)
+            ? ihDetails.targetTempC
+            : null;
+        if (targetTemp !== null) {
+            await (0, state_write_1.setOptionalNumberIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planTargetTempC, targetTemp);
+            const reasonFromDetails = ihDetails && typeof ihDetails.targetReasonDe === "string" ? ihDetails.targetReasonDe : "";
+            const reason = reasonFromDetails.trim() ||
+                (typeof ihFlex?.reasonDe === "string" && ihFlex.reasonDe.trim() ? ihFlex.reasonDe : "") ||
+                `Plan-Tagesziel ${targetTemp} °C.`;
+            await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planTargetReasonDe, reason);
         }
     }
     catch (e) {

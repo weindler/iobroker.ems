@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.211",
+		"version": "0.1.212",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.212": {
+				"en": "Fix: immersion plan_target_temp_c was missing after upgrade (state not ensured / not written). Ensure plan_target states on init/tick; Daily Plan also publishes Tagesziel from contribution details so VIS shows the real day target instead of —.",
+				"de": "Fix: Heizstab plan_target_temp_c fehlte nach Update (State nicht angelegt/geschrieben). plan_target-States bei Init/Tick sicherstellen; Daily Plan schreibt Tagesziel zusätzlich aus Contribution-Details — VIS zeigt echte Zieltemperatur statt —."
+			},
 			"0.1.211": {
 				"en": "VIS/Runtime: immersion heater publishes plan_target_temp_c (forecast day target) + reason. Dashboard shows Buf vs Ziel; plan board shows Tagesziel with min–max band. FSM auto ceiling follows forecast target when Daily Plan is active (not always planning max).",
 				"de": "VIS/Runtime: Heizstab schreibt plan_target_temp_c (Forecast-Tagesziel) + Begründung. Dashboard zeigt Buf vs. Ziel; Plan-Karte zeigt Tagesziel mit Min–Max-Band. FSM-Auto-Ceiling folgt bei nutzbarem Daily Plan dem Forecast-Ziel (nicht pauschal der Planungsobergrenze)."

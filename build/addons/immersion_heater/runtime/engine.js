@@ -36,6 +36,8 @@ let chatter = { timestampsMs: [] };
 /** -1 = noch nie geschrieben → erster Tick stellt EMS-Besitz her (Live schreibt aktuellen Stand). */
 let lastCommandedStage = -1;
 let lastDailyPlanContext = null;
+/** Nach Upgrade einmalig Ensure nachziehen (plan_target_*), danach nicht jeden Tick. */
+let runtimeStatesEnsuredThisProcess = false;
 const subscribedIds = [];
 const TICK_MS = 5_000;
 function clearTick() {
@@ -225,6 +227,10 @@ async function applyStageWrites(host, stageIndex, live) {
 }
 async function runImmersionRuntimeTick(host) {
     (0, ems_activity_1.touchEmsActivity)();
+    if (!runtimeStatesEnsuredThisProcess) {
+        await (0, ensure_states_1.ensureImmersionRuntimeStates)(host);
+        runtimeStatesEnsuredThisProcess = true;
+    }
     const now = new Date();
     const nowMs = now.getTime();
     const config = (0, device_config_1.immersionDeviceConfigFromAdapter)(host.config);
@@ -442,8 +448,8 @@ async function publishRuntime(host, s, decisionSource, dailyPlan) {
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.temperatureStatus, s.temperature_status);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planningMinTempC, s.planning_min_temp_c);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planningMaxTempC, s.planning_max_temp_c);
-    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planTargetTempC, s.plan_target_temp_c ?? null);
-    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planTargetReasonDe, s.plan_target_reason_de);
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planTargetTempC, s.plan_target_temp_c);
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planTargetReasonDe, s.plan_target_reason_de || "");
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.forceTargetTempC, s.force_target_temp_c ?? null);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.forceUntil, s.force_until ?? "");
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.commandedStage, s.commanded_stage);
@@ -522,11 +528,13 @@ async function hydrateImmersionRuntimePersist(host) {
 }
 exports.hydrateImmersionRuntimePersist = hydrateImmersionRuntimePersist;
 async function initImmersionRuntimeEngine(host) {
+    // Ensure immer — auch bei erneutem Init nach Adapter-Update (neue States wie plan_target_*).
+    await (0, ensure_states_1.ensureImmersionRuntimeStates)(host);
+    runtimeStatesEnsuredThisProcess = true;
     if (engineActive && hostRef === host)
         return;
     engineActive = true;
     hostRef = host;
-    await (0, ensure_states_1.ensureImmersionRuntimeStates)(host);
     await (0, consumer_stats_1.initConsumerStatsForAddon)(host, "immersion_heater");
     await hydrateImmersionRuntimePersist(host);
     const config = (0, device_config_1.immersionDeviceConfigFromAdapter)(host.config);
@@ -595,6 +603,7 @@ function stopImmersionRuntimeEngine() {
     engineActive = false;
     hostRef = null;
     immersionPersistHydrated = false;
+    runtimeStatesEnsuredThisProcess = false;
     persist = (0, persist_1.emptyPersist)();
     lastCommandedStage = -1;
     lastDailyPlanContext = null;

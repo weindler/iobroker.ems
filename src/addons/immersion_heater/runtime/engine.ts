@@ -2,7 +2,7 @@ import { touchEmsActivity } from "../../../ems_activity";
 import { isLiveWriteAllowed } from "../../../execution_mode";
 import { writeForeignIfChanged } from "../../../device_write";
 import { isAddonGovernanceEnabledFromState } from "../../../addons/governance";
-import { setStateIfChanged } from "../../../policy/core/state_write";
+import { setOptionalNumberIfChanged, setStateIfChanged } from "../../../policy/core/state_write";
 import { INTENT_SCHEMA_VERSION, IOBROKER_THERMAL_REQUEST_STATE } from "../../../intent/core/constants";
 import { addonAvailable, addonEnabled } from "../../../tree_paths";
 import { immersionDeviceConfigFromAdapter } from "../device_config";
@@ -90,6 +90,8 @@ let chatter: ChatterTracker = { timestampsMs: [] };
 /** -1 = noch nie geschrieben → erster Tick stellt EMS-Besitz her (Live schreibt aktuellen Stand). */
 let lastCommandedStage = -1;
 let lastDailyPlanContext: ImmersionDailyPlanResolution | null = null;
+/** Nach Upgrade einmalig Ensure nachziehen (plan_target_*), danach nicht jeden Tick. */
+let runtimeStatesEnsuredThisProcess = false;
 const subscribedIds: string[] = [];
 const TICK_MS = 5_000;
 
@@ -292,6 +294,10 @@ async function applyStageWrites(host: ImmersionRuntimeHost, stageIndex: number, 
 
 export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promise<void> {
 	touchEmsActivity();
+	if (!runtimeStatesEnsuredThisProcess) {
+		await ensureImmersionRuntimeStates(host);
+		runtimeStatesEnsuredThisProcess = true;
+	}
 	const now = new Date();
 	const nowMs = now.getTime();
 	const config = immersionDeviceConfigFromAdapter(host.config);
@@ -543,8 +549,8 @@ async function publishRuntime(
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.temperatureStatus, s.temperature_status);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.planningMinTempC, s.planning_min_temp_c);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.planningMaxTempC, s.planning_max_temp_c);
-	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.planTargetTempC, s.plan_target_temp_c ?? null);
-	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.planTargetReasonDe, s.plan_target_reason_de);
+	await setOptionalNumberIfChanged(host, IMMERSION_RUNTIME_STATES.planTargetTempC, s.plan_target_temp_c);
+	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.planTargetReasonDe, s.plan_target_reason_de || "");
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.forceTargetTempC, s.force_target_temp_c ?? null);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.forceUntil, s.force_until ?? "");
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.commandedStage, s.commanded_stage);
@@ -650,10 +656,12 @@ export async function hydrateImmersionRuntimePersist(host: ImmersionRuntimeHost)
 }
 
 export async function initImmersionRuntimeEngine(host: ImmersionRuntimeHost): Promise<void> {
+	// Ensure immer — auch bei erneutem Init nach Adapter-Update (neue States wie plan_target_*).
+	await ensureImmersionRuntimeStates(host);
+	runtimeStatesEnsuredThisProcess = true;
 	if (engineActive && hostRef === host) return;
 	engineActive = true;
 	hostRef = host;
-	await ensureImmersionRuntimeStates(host);
 	await initConsumerStatsForAddon(host, "immersion_heater");
 	await hydrateImmersionRuntimePersist(host);
 
@@ -718,6 +726,7 @@ export function stopImmersionRuntimeEngine(): void {
 	engineActive = false;
 	hostRef = null;
 	immersionPersistHydrated = false;
+	runtimeStatesEnsuredThisProcess = false;
 	persist = emptyPersist();
 	lastCommandedStage = -1;
 	lastDailyPlanContext = null;

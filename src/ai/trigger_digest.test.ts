@@ -61,6 +61,26 @@ describe("aiTriggerDigestPayload", () => {
 		assert.equal(aiTriggerDigestPayload(a), aiTriggerDigestPayload(b));
 	});
 
+	it("is stable when only allocation progress changes (assigned/unassigned totals move slot-by-slot)", () => {
+		const a = minimalPlan({
+			totals: {
+				...minimalPlan().totals,
+				flexibleRequestedEnergyKwh: 5,
+				flexibleAllocatedEnergyKwh: 0.5,
+				flexibleUnallocatedEnergyKwh: 4.5,
+			},
+		});
+		const b = minimalPlan({
+			totals: {
+				...minimalPlan().totals,
+				flexibleRequestedEnergyKwh: 5,
+				flexibleAllocatedEnergyKwh: 2.4,
+				flexibleUnallocatedEnergyKwh: 2.6,
+			},
+		});
+		assert.equal(aiTriggerDigestPayload(a), aiTriggerDigestPayload(b));
+	});
+
 	it("changes when flexibleRequestedEnergyKwh jumps by more than one bucket (e.g. target temp step)", () => {
 		const a = minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 5 } });
 		const b = minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 6 } });

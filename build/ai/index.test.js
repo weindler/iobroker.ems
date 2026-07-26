@@ -119,6 +119,21 @@ function mockRunHost(config) {
         const second = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ revision: 2, slots: [] }));
         strict_1.default.equal(second, null);
     });
+    (0, node_test_1.it)("does not trigger again when only allocation progress changes but demand digest stays equal", async () => {
+        (0, index_js_1.resetAiPipelineHookForTest)();
+        const host = mockRunHost({ ai_enabled: true, immersion_heater_enabled: true, immersion_heater_ai_optimization_allowed: true });
+        const baseTotals = {
+            ...minimalPlan().totals,
+            flexibleRequestedEnergyKwh: 5,
+        };
+        const first = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ totals: { ...baseTotals, flexibleAllocatedEnergyKwh: 0.5, flexibleUnallocatedEnergyKwh: 4.5 } }));
+        strict_1.default.ok(first !== null);
+        const second = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({
+            revision: 99,
+            totals: { ...baseTotals, flexibleAllocatedEnergyKwh: 2.4, flexibleUnallocatedEnergyKwh: 2.6 },
+        }));
+        strict_1.default.equal(second, null);
+    });
     (0, node_test_1.it)("triggers again once the coarse digest changes (e.g. flexible demand jumps by more than one bucket)", async () => {
         (0, index_js_1.resetAiPipelineHookForTest)();
         const host = mockRunHost({ ai_enabled: true, immersion_heater_enabled: true, immersion_heater_ai_optimization_allowed: true });

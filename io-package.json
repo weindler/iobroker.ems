@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.193",
+		"version": "0.1.194",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.194": {
+				"en": "Fix: the v0.1.193 AI trigger digest still included bucketed flexibleAllocatedEnergyKwh and flexibleUnallocatedEnergyKwh — those change on practically every tick as the Daily Plan assigns energy slot-by-slot through the morning (e.g. immersion heater PV allocation in five 15-min steps), causing ~30–40 AI calls before mid-morning even though the underlying flex demand had not changed. The digest now tracks only flex demand (flexibleRequestedEnergyKwh), not allocation progress; automatic AI calls should drop to a handful per day (day change, demand step, PV forecast jump, add-on set change). Manual \"Optimize now\" unchanged.",
+				"de": "Fix: Der KI-Trigger-Digest in v0.1.193 enthielt noch gerasterte flexibleAllocatedEnergyKwh und flexibleUnallocatedEnergyKwh — die ändern sich praktisch bei jedem Tick, sobald der Daily Plan morgens Slot für Slot zuweist (z. B. Heizstab-PV in fünf 15-Min-Schritten), und lösten so ~30–40 KI-Aufrufe bis zum Vormittag aus, obwohl sich der eigentliche Flex-Bedarf nicht geändert hatte. Der Digest trackt jetzt nur noch den Flex-Bedarf (flexibleRequestedEnergyKwh), nicht den Allocation-Fortschritt; automatische KI-Aufrufe sollten auf wenige pro Tag sinken (Tageswechsel, Bedarfssprung, PV-Prognose, Add-on-Set). Manueller „Jetzt optimieren“ unverändert."
+			},
 			"0.1.193": {
 				"en": "Fix: the automatic AI trigger fired on every Daily Plan revision — which changes on practically every EMS tick (rolling 15-min horizon, allocation progress, minor PV/temperature fluctuations), not just on actually relevant changes. This burned through the daily call limit (and tokens/cost) within a short time for changes the AI could never meaningfully react to anyway. The automatic trigger now compares a deliberately coarse \"digest\" of the plan (active/excluded add-ons, calendar day, global mode, plan status, and bucketed totals for flexible demand/allocation, PV forecast energy and grid cost) and only calls the AI when that digest actually changes — e.g. an add-on starts/stops contributing, the target-temperature step changes the required energy noticeably, PV forecast jumps, or the day/mode changes. The manual \"Optimize now\" button is unaffected and still always runs on request.",
 				"de": "Fix: Der automatische KI-Trigger löste bei jeder Daily-Plan-Revision aus — die ändert sich praktisch bei jedem EMS-Tick (rollierender 15-Min-Horizont, Allocation-Fortschritt, kleine PV-/Temperatur-Schwankungen), nicht nur bei wirklich relevanten Änderungen. Das hat das Tageslimit (und Tokens/Kosten) innerhalb kurzer Zeit für Änderungen verbraucht, auf die die KI ohnehin nie sinnvoll reagieren könnte. Der automatische Trigger vergleicht jetzt einen bewusst groben „Fingerabdruck“ des Plans (aktive/ausgeschlossene Add-ons, Kalendertag, Global Mode, Plan-Status sowie grob gerasterte Summen für Flex-Bedarf/-Allocation, PV-Tagesprognose und Netzkosten) und ruft die KI nur auf, wenn sich dieser Fingerabdruck tatsächlich ändert — z. B. ein Add-on startet/stoppt, die Zieltemperatur-Stufe verändert den Energiebedarf merklich, die PV-Prognose springt oder sich Tag/Modus ändern. Der manuelle „Jetzt optimieren“-Button ist davon unberührt und läuft weiterhin immer auf Anfrage."

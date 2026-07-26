@@ -61,6 +61,25 @@ function minimalPlan(overrides = {}) {
         });
         strict_1.default.equal((0, trigger_digest_js_1.aiTriggerDigestPayload)(a), (0, trigger_digest_js_1.aiTriggerDigestPayload)(b));
     });
+    (0, node_test_1.it)("is stable when only allocation progress changes (assigned/unassigned totals move slot-by-slot)", () => {
+        const a = minimalPlan({
+            totals: {
+                ...minimalPlan().totals,
+                flexibleRequestedEnergyKwh: 5,
+                flexibleAllocatedEnergyKwh: 0.5,
+                flexibleUnallocatedEnergyKwh: 4.5,
+            },
+        });
+        const b = minimalPlan({
+            totals: {
+                ...minimalPlan().totals,
+                flexibleRequestedEnergyKwh: 5,
+                flexibleAllocatedEnergyKwh: 2.4,
+                flexibleUnallocatedEnergyKwh: 2.6,
+            },
+        });
+        strict_1.default.equal((0, trigger_digest_js_1.aiTriggerDigestPayload)(a), (0, trigger_digest_js_1.aiTriggerDigestPayload)(b));
+    });
     (0, node_test_1.it)("changes when flexibleRequestedEnergyKwh jumps by more than one bucket (e.g. target temp step)", () => {
         const a = minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 5 } });
         const b = minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 6 } });

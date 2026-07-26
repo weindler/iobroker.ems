@@ -23,14 +23,16 @@ function bucket(value: number | null, size: number): number | null {
  * Plan-Vergleich-Beobachtung durch die KI ist sie Rauschen — sie hätte sonst mehrfach pro Stunde
  * einen KI-Call ausgelöst und das Tageslimit unnötig verbraucht.
  *
- * Dieser Digest enthält deshalb bewusst NICHT die 15-Minuten-Slot-Liste, sondern nur:
+ * Dieser Digest enthält deshalb bewusst NICHT die 15-Minuten-Slot-Liste und auch nicht den
+ * Allocation-Fortschritt (zugewiesen/unallokiert), sondern nur:
  * - Kalendertag, Global Mode, Plan-Status
  * - welche Add-ons überhaupt aktiv/ausgeschlossen sind (nicht: wie viel W in welchem Slot)
- * - grob gerasterte Gesamt-Energiemengen (Flex-Bedarf/-Allocation/-Rest, PV-Tagesprognose, Netzkosten)
+ * - grob gerasterten Flex-**Bedarf** (nicht: wie viel schon zugeteilt wurde), PV-Tagesprognose, Netzkosten
  *
  * Ein Trigger erfolgt damit nur bei Ereignissen wie: Add-on-Bedarf startet/endet, Zieltemperatur
  * springt eine Stufe (wirkt sich auf `flexibleRequestedEnergyKwh` aus), PV-Tagesprognose ändert
- * sich deutlich, Tageswechsel, Global-Mode-Wechsel — nicht bei jedem Tick.
+ * sich deutlich, Tageswechsel, Global-Mode-Wechsel — nicht bei jedem Tick und nicht wenn sich nur
+ * der Slot-für-Slot-Allocation-Fortschritt ändert (v0.1.194).
  */
 export function aiTriggerDigestPayload(plan: DailyPlan): string {
 	return JSON.stringify({
@@ -41,14 +43,6 @@ export function aiTriggerDigestPayload(plan: DailyPlan): string {
 		excludedContributionIds: plan.excludedContributions.map((e) => e.contributionId).sort(),
 		flexibleRequestedEnergyKwhBucket: bucket(
 			plan.totals.flexibleRequestedEnergyKwh,
-			AI_TRIGGER_ENERGY_BUCKET_KWH,
-		),
-		flexibleAllocatedEnergyKwhBucket: bucket(
-			plan.totals.flexibleAllocatedEnergyKwh,
-			AI_TRIGGER_ENERGY_BUCKET_KWH,
-		),
-		flexibleUnallocatedEnergyKwhBucket: bucket(
-			plan.totals.flexibleUnallocatedEnergyKwh,
 			AI_TRIGGER_ENERGY_BUCKET_KWH,
 		),
 		pvForecastEnergyKwhBucket: bucket(plan.totals.pvForecastEnergyKwh, AI_TRIGGER_PV_BUCKET_KWH),

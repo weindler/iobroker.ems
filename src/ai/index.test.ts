@@ -130,6 +130,29 @@ describe("maybeTriggerAiOptimizationOnDailyPlanChange — digest-based throttlin
 		assert.equal(second, null);
 	});
 
+	it("does not trigger again when only allocation progress changes but demand digest stays equal", async () => {
+		resetAiPipelineHookForTest();
+		const host = mockRunHost({ ai_enabled: true, immersion_heater_enabled: true, immersion_heater_ai_optimization_allowed: true });
+		const baseTotals = {
+			...minimalPlan().totals,
+			flexibleRequestedEnergyKwh: 5,
+		};
+		const first = await maybeTriggerAiOptimizationOnDailyPlanChange(
+			host,
+			minimalPlan({ totals: { ...baseTotals, flexibleAllocatedEnergyKwh: 0.5, flexibleUnallocatedEnergyKwh: 4.5 } }),
+		);
+		assert.ok(first !== null);
+
+		const second = await maybeTriggerAiOptimizationOnDailyPlanChange(
+			host,
+			minimalPlan({
+				revision: 99,
+				totals: { ...baseTotals, flexibleAllocatedEnergyKwh: 2.4, flexibleUnallocatedEnergyKwh: 2.6 },
+			}),
+		);
+		assert.equal(second, null);
+	});
+
 	it("triggers again once the coarse digest changes (e.g. flexible demand jumps by more than one bucket)", async () => {
 		resetAiPipelineHookForTest();
 		const host = mockRunHost({ ai_enabled: true, immersion_heater_enabled: true, immersion_heater_ai_optimization_allowed: true });

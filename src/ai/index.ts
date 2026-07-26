@@ -28,8 +28,8 @@ export async function ensureAiStateTree(host: Parameters<typeof ensureAiStates>[
  * KI-Versuch aus (die wechselt praktisch jeden Tick — Horizont-Roll, Allocation-Fortschritt,
  * Zehntelgrad-Zittern), sondern nur bei einer grob relevanten Änderung im Sinne von
  * `aiTriggerDigestPayload` (Add-on-Bedarf startet/endet, Zieltemperatur-Stufe wechselt,
- * PV-Tagesprognose springt deutlich, Tageswechsel, Global-Mode-Wechsel) — Kostenkontrolle,
- * Masterplan §13.
+ * PV-Tagesprognose springt deutlich, Tageswechsel, Global-Mode-Wechsel) — nicht bei
+ * Allocation-Fortschritt Slot für Slot (v0.1.194) — Kostenkontrolle, Masterplan §13.
  */
 export async function maybeTriggerAiOptimizationOnDailyPlanChange(
 	host: AiRunHost,

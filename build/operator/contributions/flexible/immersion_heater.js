@@ -37,6 +37,12 @@ function maxStagePowerW(config) {
         return null;
     return Math.max(...stages.map((s) => s.nominalPowerW));
 }
+function minStagePowerW(config) {
+    const stages = enabledStages(config);
+    if (stages.length === 0)
+        return null;
+    return Math.min(...stages.map((s) => s.nominalPowerW));
+}
 function buildImmersionMandatoryContribution(input) {
     const generatedAt = input.now.toISOString();
     const target = (0, thermal_forecast_1.resolveThermalForecastTarget)({
@@ -65,6 +71,7 @@ function buildImmersionMandatoryContribution(input) {
     });
     const mandatory = mandatoryReason !== null;
     const maxW = maxStagePowerW(input.config);
+    const minW = minStagePowerW(input.config);
     const enabled = mandatory && participation.allowed && !input.globalModeOff;
     const mandatoryTargetC = input.thermalMode === "force"
         ? input.config.planningMaxTempC
@@ -88,6 +95,7 @@ function buildImmersionMandatoryContribution(input) {
             targetTempC: target.targetTempC,
             requiredEnergyKwh,
             maxPowerW: maxW,
+            minPowerW: minW,
             thermalMode: input.thermalMode,
             mandatory: true,
             batteryEligible: true,
@@ -97,6 +105,7 @@ function buildImmersionMandatoryContribution(input) {
             generatedAt,
             requiredEnergyKwh,
             maxPowerW: maxW,
+            minPowerW: minW,
             available: enabled,
             mandatory: true,
             quality,
@@ -132,6 +141,7 @@ function buildImmersionFlexibleContribution(input) {
         input.modePolicy.allowThermalAuto &&
         !atTarget;
     const maxW = maxStagePowerW(input.config);
+    const minW = minStagePowerW(input.config);
     const requiredEnergyKwh = autoReady && input.bufferTempC !== null && maxW !== null
         ? (0, flex_demand_1.estimateImmersionRequiredEnergyKwh)(input.bufferTempC, target.targetTempC, maxW, learningMargin(input))
         : null;
@@ -190,6 +200,7 @@ function buildImmersionFlexibleContribution(input) {
             targetTempC: target.targetTempC,
             requiredEnergyKwh,
             maxPowerW: maxW,
+            minPowerW: minW,
             pvFirst: true,
             forecastActive: target.forecastActive,
             minimumRuntimeSec: input.config.minimumRuntimeSec,
@@ -200,6 +211,7 @@ function buildImmersionFlexibleContribution(input) {
             generatedAt,
             requiredEnergyKwh,
             maxPowerW: maxW,
+            minPowerW: minW,
             available: enabled,
             quality,
             reasonDe,

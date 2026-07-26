@@ -155,6 +155,11 @@ export interface AllocationCandidate {
 	/** May draw house-battery energy when Operator gate allows. */
 	batteryEligible: boolean;
 	maxPowerW: number | null;
+	/**
+	 * Kleinste fahrbare Leistung (z. B. Heizstab-Stufe 1). Allocation darunter wird verworfen —
+	 * keine Mikro-Slots, die die Runtime ohnehin nicht schalten kann.
+	 */
+	minPowerW: number | null;
 	requiredEnergyKwh: number | null;
 	priorityRank: number | null;
 	policyOrder: number;

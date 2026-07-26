@@ -78,10 +78,19 @@ function tryAllocateInSlot(candidate, slot, remaining, gridAllowed, gridAddonIds
     if (remaining.remainingKwh <= 0)
         return null;
     const maxFromEnergy = (0, slots_1.powerWFromEnergyKwh)(remaining.remainingKwh, SLOT_MINUTES);
+    const minW = candidate.minPowerW !== null && candidate.minPowerW > 0 ? candidate.minPowerW : null;
+    // Restenergie unter kleinster fahrbarer Stufe → kein Mikro-Slot (Runtime könnte ihn ohnehin nicht schalten).
+    if (minW !== null && maxFromEnergy < minW && (forceMinPowerW === null || forceMinPowerW < minW)) {
+        return null;
+    }
     let targetW = forceMinPowerW ?? maxFromEnergy;
+    if (minW !== null)
+        targetW = Math.max(targetW, minW);
     if (candidate.maxPowerW !== null)
         targetW = Math.min(targetW, candidate.maxPowerW);
     if (targetW <= 0)
+        return null;
+    if (minW !== null && targetW < minW)
         return null;
     let pvW = 0;
     let gridW = 0;
@@ -109,6 +118,9 @@ function tryAllocateInSlot(candidate, slot, remaining, gridAllowed, gridAddonIds
     }
     const allocatedW = pvW + gridW + batteryW;
     if (allocatedW <= 0)
+        return null;
+    // Teil-Surplus unter minW nicht als Schein-Allocation speichern.
+    if (minW !== null && allocatedW < minW)
         return null;
     const sources = [pvW > 0, gridW > 0, batteryW > 0].filter(Boolean).length;
     let energySource = "none";
@@ -256,8 +268,15 @@ function runAllocation(input) {
         }
         const allocated = round3((rem.requestedKwh ?? 0) - rem.remainingKwh);
         if (rem.remainingKwh > 0.001) {
+            const remPowerW = (0, slots_1.powerWFromEnergyKwh)(rem.remainingKwh, SLOT_MINUTES);
             let reason = "Bedarf nicht vollständig zuweisbar.";
-            if (c.pvFirst && !c.batteryEligible) {
+            if (c.minPowerW !== null && allocated < 0.001) {
+                reason = `Keine fahrbare Leistung (≥ ${Math.round(c.minPowerW)} W) verfügbar — Bedarf zu klein oder PV-Surplus unter Mindeststufe.`;
+            }
+            else if (c.minPowerW !== null && remPowerW < c.minPowerW) {
+                reason = `Rest unter kleinster fahrbarer Stufe (≥ ${Math.round(c.minPowerW)} W) — nicht als Mikro-Slot geplant.`;
+            }
+            else if (c.pvFirst && !c.batteryEligible) {
                 reason = "PV-first — kein ausreichender PV-Überschuss in belastbaren Slots.";
             }
             else if (c.pvFirst && c.batteryEligible) {

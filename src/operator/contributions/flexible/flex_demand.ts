@@ -44,6 +44,8 @@ export function buildFlexibleDemandSlot(input: {
 	generatedAt: string;
 	requiredEnergyKwh: number | null;
 	maxPowerW: number | null;
+	/** Kleinste fahrbare Leistung; null = keine Untergrenze in der Allocation. */
+	minPowerW?: number | null;
 	available: boolean;
 	mandatory?: boolean;
 	quality: OperatorDataQuality;
@@ -59,10 +61,17 @@ export function buildFlexibleDemandSlot(input: {
 	) {
 		return [];
 	}
+	const minPowerW =
+		input.minPowerW !== null &&
+		input.minPowerW !== undefined &&
+		Number.isFinite(input.minPowerW) &&
+		input.minPowerW > 0
+			? input.minPowerW
+			: null;
 	return [
 		{
 			slot: { startIso: input.generatedAt, endIso: input.generatedAt },
-			minPowerW: null,
+			minPowerW,
 			preferredPowerW: null,
 			maxPowerW: input.maxPowerW,
 			requiredEnergyKwh: round3(input.requiredEnergyKwh),

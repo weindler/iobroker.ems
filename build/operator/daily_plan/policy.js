@@ -77,6 +77,17 @@ function maxPowerFromContribution(c) {
     }
     return null;
 }
+function minPowerFromContribution(c) {
+    const fromDetails = c.details.minPowerW;
+    if (typeof fromDetails === "number" && Number.isFinite(fromDetails) && fromDetails > 0) {
+        return fromDetails;
+    }
+    const slotMin = c.slots.find((s) => s.minPowerW !== null)?.minPowerW;
+    if (typeof slotMin === "number" && Number.isFinite(slotMin) && slotMin > 0) {
+        return slotMin;
+    }
+    return null;
+}
 function buildAllocationCandidate(c, globalMode, energyPriority) {
     const addonId = c.contributor.addonId ?? c.contributor.id;
     const contributionId = c.contributionId;
@@ -132,6 +143,7 @@ function buildAllocationCandidate(c, globalMode, energyPriority) {
         pvFirst,
         batteryEligible,
         maxPowerW: maxPowerFromContribution(c),
+        minPowerW: minPowerFromContribution(c),
         requiredEnergyKwh: requiredEnergyFromContribution(c),
         priorityRank: c.priorityBand ?? null,
         policyOrder,

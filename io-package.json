@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.208",
+		"version": "0.1.209",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.209": {
+				"en": "Allocation quality: immersion heater and climate contributions publish minPowerW (smallest runnable stage/unit power). Daily Plan no longer creates micro-slots below that floor (e.g. 8 W crumbs) — leftover energy stays unallocated with a clear reason. VIS plan board shows upcoming runnable windows per addon.",
+				"de": "Allocation-Qualität: Heizstab und Klima melden minPowerW (kleinste fahrbare Stufe/Leistung). Der Daily Plan erzeugt keine Mikro-Slots darunter mehr (z. B. 8-W-Häppchen) — Rest bleibt unalloziert mit klarer Begründung. VIS-Planübersicht zeigt je Add-on die nächsten fahrbaren Fenster."
+			},
 			"0.1.208": {
 				"en": "VIS polish: Daily Plan slot shows 15-min window + dated horizon (no more identical clock times). Wallbox allocated power writes 0 instead of empty string (avoids Plan NaN); Wallbox card shows PlanSt.",
 				"de": "VIS-Politur: Daily-Plan-Slot zeigt 15-Min-Fenster + Horizont mit Datum (keine gleichen Uhrzeiten mehr). Wallbox-Allocation schreibt 0 statt leerem String (kein Plan-NaN); Wallbox-Karte zeigt PlanSt."

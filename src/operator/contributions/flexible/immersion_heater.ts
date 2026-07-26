@@ -62,6 +62,12 @@ function maxStagePowerW(config: ImmersionDeviceConfig): number | null {
 	return Math.max(...stages.map((s) => s.nominalPowerW));
 }
 
+function minStagePowerW(config: ImmersionDeviceConfig): number | null {
+	const stages = enabledStages(config);
+	if (stages.length === 0) return null;
+	return Math.min(...stages.map((s) => s.nominalPowerW));
+}
+
 export function buildImmersionMandatoryContribution(input: ImmersionContributionBuildInput): PlanContribution {
 	const generatedAt = input.now.toISOString();
 	const target = resolveThermalForecastTarget({
@@ -94,6 +100,7 @@ export function buildImmersionMandatoryContribution(input: ImmersionContribution
 
 	const mandatory = mandatoryReason !== null;
 	const maxW = maxStagePowerW(input.config);
+	const minW = minStagePowerW(input.config);
 	const enabled = mandatory && participation.allowed && !input.globalModeOff;
 	const mandatoryTargetC =
 		input.thermalMode === "force"
@@ -128,6 +135,7 @@ export function buildImmersionMandatoryContribution(input: ImmersionContribution
 				targetTempC: target.targetTempC,
 				requiredEnergyKwh,
 				maxPowerW: maxW,
+				minPowerW: minW,
 				thermalMode: input.thermalMode,
 				mandatory: true,
 				batteryEligible: true,
@@ -137,6 +145,7 @@ export function buildImmersionMandatoryContribution(input: ImmersionContribution
 				generatedAt,
 				requiredEnergyKwh,
 				maxPowerW: maxW,
+				minPowerW: minW,
 				available: enabled,
 				mandatory: true,
 				quality,
@@ -178,6 +187,7 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 		!atTarget;
 
 	const maxW = maxStagePowerW(input.config);
+	const minW = minStagePowerW(input.config);
 	const requiredEnergyKwh =
 		autoReady && input.bufferTempC !== null && maxW !== null
 			? estimateImmersionRequiredEnergyKwh(input.bufferTempC, target.targetTempC, maxW, learningMargin(input))
@@ -244,6 +254,7 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 				targetTempC: target.targetTempC,
 				requiredEnergyKwh,
 				maxPowerW: maxW,
+				minPowerW: minW,
 				pvFirst: true,
 				forecastActive: target.forecastActive,
 				minimumRuntimeSec: input.config.minimumRuntimeSec,
@@ -254,6 +265,7 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 				generatedAt,
 				requiredEnergyKwh,
 				maxPowerW: maxW,
+				minPowerW: minW,
 				available: enabled,
 				quality,
 				reasonDe,

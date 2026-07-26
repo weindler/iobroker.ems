@@ -63,12 +63,16 @@ var stateIds=[
 	INST+".operator.diagnostics.slot_start_iso",
 	INST+".planner.intent.allocation.immersion_heater.status",
 	INST+".planner.intent.allocation.immersion_heater.reason_de",
+	INST+".planner.intent.allocation.immersion_heater.plan_json",
 	INST+".planner.intent.allocation.battery.status",
 	INST+".planner.intent.allocation.battery.reason_de",
+	INST+".planner.intent.allocation.battery.plan_json",
 	INST+".planner.intent.allocation.wallbox.status",
 	INST+".planner.intent.allocation.wallbox.reason_de",
+	INST+".planner.intent.allocation.wallbox.plan_json",
 	INST+".planner.intent.allocation.air_conditioning.status",
 	INST+".planner.intent.allocation.air_conditioning.reason_de",
+	INST+".planner.intent.allocation.air_conditioning.plan_json",
 	INST+".addons.immersion_heater.runtime.decision_source",
 	INST+".addons.immersion_heater.runtime.daily_plan_status",
 	INST+".addons.immersion_heater.runtime.allocated_power_w",
@@ -133,6 +137,23 @@ function planBadge(powerW,allocStatus){
 	if(p!==null&&p>=ON_W)return{cls:"on",label:"Plant jetzt"};
 	if(allocStatus==="ready")return{cls:"partial",label:"Im Plan, Slot aus"};
 	return{cls:"off",label:"Plant nicht"};
+}
+
+/** Nächste fahrbare Fenster aus Allocation-plan_json (≥ ON_W). */
+function nextWindows(planJson,minW){
+	var arr=parseArr(planJson),now=Date.now(), thr=minW||ON_W, list=[],i;
+	for(i=0;i<arr.length;i++){
+		var a=arr[i],w=+(a.allocatedPowerW||0),t=a.slot&&a.slot.startIso;
+		if(!t||w<thr)continue;
+		if(Date.parse(t)+15*60*1000<=now)continue;
+		list.push({t:t,w:w});
+	}
+	list.sort(function(x,y){return Date.parse(x.t)-Date.parse(y.t);});
+	if(!list.length)return "keine fahrbaren Fenster voraus";
+	var parts=[];
+	for(i=0;i<Math.min(4,list.length);i++)parts.push(fmtTime(list[i].t)+" "+Math.round(list[i].w)+"W");
+	if(list.length>4)parts.push("+"+(list.length-4)+" weitere");
+	return parts.join(" · ");
 }
 
 function card(title,color,badge,rows,note){
@@ -200,30 +221,30 @@ function renderGrid(){
 			["Slot-Plan",fmtW(ihP)],
 			["Befehl jetzt",fmtW(g("addons.immersion_heater.runtime.commanded_power_w"))],
 			["Quelle",txt(g("addons.immersion_heater.runtime.decision_source"),"—")],
-			["Plan-Status",txt(g("addons.immersion_heater.runtime.daily_plan_status"),"—")],
 			["Puffer",fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c"))],
+			["Nächste Fenster",nextWindows(g("planner.intent.allocation.immersion_heater.plan_json"),ON_W)],
 			["Allocation",txt(ihAl)+" — "+txt(g("planner.intent.allocation.immersion_heater.reason_de"),"")]
 		],txt(g("addons.immersion_heater.runtime.allocation_reason_de"),txt(g("addons.immersion_heater.runtime.state"),"")))
 		+card("Batterie","#58a6ff",planBadge(batP,batAl),[
 			["Slot-Plan laden",fmtW(batP)],
 			["SOC",fmtPct(g("live.battery.soc_pct"))],
 			["Quelle",txt(g("addons.battery.runtime.decision_source"),"—")],
-			["Plan-Status",txt(g("addons.battery.runtime.daily_plan_status"),"—")],
 			["FSM",txt(g("addons.battery.runtime.state"),"—")],
+			["Nächste Fenster",nextWindows(g("planner.intent.allocation.battery.plan_json"),ON_W)],
 			["Allocation",txt(batAl)+" — "+txt(g("planner.intent.allocation.battery.reason_de"),"")]
 		],txt(g("addons.battery.runtime.reason_de"),""))
 		+card("Wallbox / EVCC","#d2a8ff",planBadge(wbP,wbAl),[
 			["Slot-Plan",fmtW(wbP)],
 			["Leistung jetzt",fmtW(g("live.wallbox.charge_power_w"))],
 			["Fahrzeug-SOC",fmtPct(g("live.wallbox.vehicle_soc_pct"))],
-			["Quelle",txt(g("addons.wallbox.runtime.decision_source"),"—")],
 			["Dispatch",txt(g("addons.wallbox.runtime.dispatch_status"),"—")],
+			["Nächste Fenster",nextWindows(g("planner.intent.allocation.wallbox.plan_json"),ON_W)],
 			["Allocation",txt(wbAl)+" — "+txt(g("planner.intent.allocation.wallbox.reason_de"),"")]
 		],txt(g("addons.wallbox.runtime.reason_de"),txt(g("addons.wallbox.runtime.plan_execution_status"),"")))
 		+card("Klima","#79c0ff",planBadge(acP,acAl),[
 			["Slot-Plan U1",fmtW(acP)],
 			["Quelle",txt(g("addons.air_conditioning.units.unit_1.decision_source"),"—")],
-			["Plan-Status",txt(g("addons.air_conditioning.units.unit_1.daily_plan_status"),"—")],
+			["Nächste Fenster",nextWindows(g("planner.intent.allocation.air_conditioning.plan_json"),ON_W)],
 			["Allocation",txt(acAl)+" — "+txt(g("planner.intent.allocation.air_conditioning.reason_de"),"")],
 			["Runtime",txt(g("addons.air_conditioning.runtime.reason_de"),"—")]
 		],txt(g("addons.air_conditioning.units.unit_1.allocation_reason_de"),txt(g("addons.air_conditioning.units.unit_1.reason_de"),"")));

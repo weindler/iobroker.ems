@@ -553,6 +553,79 @@ describe("daily plan allocation", () => {
 		});
 		assert.ok(result.allocations.every((a) => a.gridPowerW === 0));
 	});
+
+	it("skips micro allocations below minPowerW (no 8 W Schein-Slots)", () => {
+		const slots = buildDailyPlanSlots(
+			[
+				{ startIso: slot1Start, endIso: slot1End },
+				{ startIso: "2026-07-11T10:15:00.000Z", endIso: "2026-07-11T10:30:00.000Z" },
+			],
+			[
+				forecastSlot(slot1Start, slot1End, { pv: 5000, load: 1000 }),
+				forecastSlot("2026-07-11T10:15:00.000Z", "2026-07-11T10:30:00.000Z", { pv: 5000, load: 1000 }),
+			],
+			11000,
+			13800,
+		);
+		// 0.1 kWh → ceil zu 400 W < 1700 W Mindeststufe → keine Allocation.
+		const flex = buildAllocationCandidate(
+			flexContribution(CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, "immersion_heater", {
+				gridEligible: false,
+				details: { requiredEnergyKwh: 0.1, maxPowerW: 1700, minPowerW: 1700, pvFirst: true },
+			}),
+			"balanced",
+			[],
+		);
+		assert.equal(flex.minPowerW, 1700);
+
+		const result = runAllocation({
+			slots,
+			candidates: [flex],
+			globalMode: "balanced",
+			modeAllowsOptimization: true,
+			gridImportAllowedPolicy: true,
+			mutualExclusions: [],
+			nowMs: NOW.getTime(),
+		});
+		assert.equal(result.allocations.length, 0);
+		assert.ok(result.unallocated.some((u) => u.contributionId === CONTRIBUTION_IDS.IMMERSION_FLEXIBLE));
+	});
+
+	it("allocates only slots that can carry at least minPowerW", () => {
+		const slots = buildDailyPlanSlots(
+			[
+				{ startIso: slot1Start, endIso: slot1End },
+				{ startIso: "2026-07-11T10:15:00.000Z", endIso: "2026-07-11T10:30:00.000Z" },
+			],
+			[
+				forecastSlot(slot1Start, slot1End, { pv: 1500, load: 1000 }), // surplus 500 < 1700
+				forecastSlot("2026-07-11T10:15:00.000Z", "2026-07-11T10:30:00.000Z", { pv: 4000, load: 1000 }), // 3000
+			],
+			11000,
+			13800,
+		);
+		const flex = buildAllocationCandidate(
+			flexContribution(CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, "immersion_heater", {
+				gridEligible: false,
+				details: { requiredEnergyKwh: 0.5, maxPowerW: 1700, minPowerW: 1700, pvFirst: true },
+			}),
+			"balanced",
+			[],
+		);
+
+		const result = runAllocation({
+			slots,
+			candidates: [flex],
+			globalMode: "balanced",
+			modeAllowsOptimization: true,
+			gridImportAllowedPolicy: true,
+			mutualExclusions: [],
+			nowMs: NOW.getTime(),
+		});
+		assert.ok(result.allocations.length >= 1);
+		assert.ok(result.allocations.every((a) => (a.allocatedPowerW ?? 0) >= 1700));
+		assert.ok(result.allocations.every((a) => a.slot.startIso !== slot1Start));
+	});
 });
 
 describe("daily plan build", () => {

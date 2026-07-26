@@ -398,6 +398,57 @@ function minimalForecast(overrides = {}) {
         });
         strict_1.default.ok(result.allocations.every((a) => a.gridPowerW === 0));
     });
+    (0, node_test_1.it)("skips micro allocations below minPowerW (no 8 W Schein-Slots)", () => {
+        const slots = (0, constraints_2.buildDailyPlanSlots)([
+            { startIso: slot1Start, endIso: slot1End },
+            { startIso: "2026-07-11T10:15:00.000Z", endIso: "2026-07-11T10:30:00.000Z" },
+        ], [
+            forecastSlot(slot1Start, slot1End, { pv: 5000, load: 1000 }),
+            forecastSlot("2026-07-11T10:15:00.000Z", "2026-07-11T10:30:00.000Z", { pv: 5000, load: 1000 }),
+        ], 11000, 13800);
+        // 0.1 kWh → ceil zu 400 W < 1700 W Mindeststufe → keine Allocation.
+        const flex = (0, policy_1.buildAllocationCandidate)(flexContribution(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, "immersion_heater", {
+            gridEligible: false,
+            details: { requiredEnergyKwh: 0.1, maxPowerW: 1700, minPowerW: 1700, pvFirst: true },
+        }), "balanced", []);
+        strict_1.default.equal(flex.minPowerW, 1700);
+        const result = (0, allocation_1.runAllocation)({
+            slots,
+            candidates: [flex],
+            globalMode: "balanced",
+            modeAllowsOptimization: true,
+            gridImportAllowedPolicy: true,
+            mutualExclusions: [],
+            nowMs: NOW.getTime(),
+        });
+        strict_1.default.equal(result.allocations.length, 0);
+        strict_1.default.ok(result.unallocated.some((u) => u.contributionId === contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE));
+    });
+    (0, node_test_1.it)("allocates only slots that can carry at least minPowerW", () => {
+        const slots = (0, constraints_2.buildDailyPlanSlots)([
+            { startIso: slot1Start, endIso: slot1End },
+            { startIso: "2026-07-11T10:15:00.000Z", endIso: "2026-07-11T10:30:00.000Z" },
+        ], [
+            forecastSlot(slot1Start, slot1End, { pv: 1500, load: 1000 }), // surplus 500 < 1700
+            forecastSlot("2026-07-11T10:15:00.000Z", "2026-07-11T10:30:00.000Z", { pv: 4000, load: 1000 }), // 3000
+        ], 11000, 13800);
+        const flex = (0, policy_1.buildAllocationCandidate)(flexContribution(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, "immersion_heater", {
+            gridEligible: false,
+            details: { requiredEnergyKwh: 0.5, maxPowerW: 1700, minPowerW: 1700, pvFirst: true },
+        }), "balanced", []);
+        const result = (0, allocation_1.runAllocation)({
+            slots,
+            candidates: [flex],
+            globalMode: "balanced",
+            modeAllowsOptimization: true,
+            gridImportAllowedPolicy: true,
+            mutualExclusions: [],
+            nowMs: NOW.getTime(),
+        });
+        strict_1.default.ok(result.allocations.length >= 1);
+        strict_1.default.ok(result.allocations.every((a) => (a.allocatedPowerW ?? 0) >= 1700));
+        strict_1.default.ok(result.allocations.every((a) => a.slot.startIso !== slot1Start));
+    });
 });
 (0, node_test_1.describe)("daily plan build", () => {
     (0, node_test_1.it)("builds full plan from forecast", () => {

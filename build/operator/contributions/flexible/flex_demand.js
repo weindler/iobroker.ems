@@ -36,10 +36,16 @@ function buildFlexibleDemandSlot(input) {
         input.maxPowerW <= 0) {
         return [];
     }
+    const minPowerW = input.minPowerW !== null &&
+        input.minPowerW !== undefined &&
+        Number.isFinite(input.minPowerW) &&
+        input.minPowerW > 0
+        ? input.minPowerW
+        : null;
     return [
         {
             slot: { startIso: input.generatedAt, endIso: input.generatedAt },
-            minPowerW: null,
+            minPowerW,
             preferredPowerW: null,
             maxPowerW: input.maxPowerW,
             requiredEnergyKwh: (0, types_1.round3)(input.requiredEnergyKwh),

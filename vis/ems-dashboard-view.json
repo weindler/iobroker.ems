@@ -6602,7 +6602,7 @@
         "e00086": {
             "tpl": "tplHtml",
             "data": {
-                "g_fixed": false,
+                "g_fixed": true,
                 "g_visibility": false,
                 "g_css_font_text": true,
                 "g_css_background": true,

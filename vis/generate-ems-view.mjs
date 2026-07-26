@@ -94,10 +94,10 @@ function gBlock(opts = {}) {
 	};
 }
 
-function htmlWidget(html, style, refresh = "0") {
+function htmlWidget(html, style, refresh = "0", opts = {}) {
 	return {
 		tpl: "tplHtml",
-		data: { ...gBlock(), refreshInterval: refresh, html },
+		data: { ...gBlock({ fixed: opts.fixed ?? false }), refreshInterval: refresh, html },
 		style: { overflow: "hidden", "z-index": "10", color: C.text, ...style },
 		widgetSet: "basic",
 	};
@@ -438,7 +438,7 @@ widgets[wid()] = htmlWidget(chartIframeHtml(), {
 	width: `${VIEW_W - 2 * M - 4}px`,
 	height: `${chartH - 22}px`,
 	"background-color": "transparent",
-}, "0");
+}, "0", { fixed: true });
 
 const view = {
 	settings: {

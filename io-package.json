@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.194",
+		"version": "0.1.196",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,14 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.196": {
+				"en": "New: configurable minimum interval between automatic AI calls (Global tab → \"Min. interval between automatic calls\", default 60 minutes, 0 disables it). Despite the v0.1.195 fix, live testing still showed ~40+ automatic calls before mid-morning because the coarse digest alone reacted to legitimate small demand changes (e.g. the immersion heater target temperature moving through several bucket steps). The trigger now requires both a digest change AND that the configured interval has passed since the last automatic call — a hard cap of at most 1 call/configured-interval (24/day at the 60min default), independent of how often the digest changes. The manual \"Optimize now\" button is unaffected. The last automatic-trigger timestamp is persisted so an adapter restart cannot bypass the interval.",
+				"de": "Neu: konfigurierbarer Mindestabstand zwischen automatischen KI-Aufrufen (Global-Tab → „Mindestabstand automatische Aufrufe“, Standard 60 Minuten, 0 deaktiviert ihn). Trotz des Fixes in v0.1.195 zeigte der Live-Test weiterhin 40+ automatische Aufrufe bis zum Vormittag, weil der grobe Digest allein bereits auf legitime kleine Bedarfsänderungen reagierte (z. B. wanderte die Heizstab-Zieltemperatur über mehrere Bucket-Stufen). Der Trigger verlangt jetzt sowohl eine Digest-Änderung ALS AUCH den Ablauf des konfigurierten Mindestabstands seit dem letzten automatischen Aufruf — eine harte Obergrenze von maximal 1 Aufruf je konfiguriertem Intervall (24/Tag bei 60-Minuten-Standard), unabhängig davon, wie oft sich der Digest ändert. Der manuelle „Jetzt optimieren“-Button ist unverändert. Der Zeitpunkt des letzten automatischen Triggers wird persistiert, damit ein Adapter-Neustart den Mindestabstand nicht aushebelt."
+			},
+			"0.1.195": {
+				"en": "Fix: v0.1.194 still caused ~30–40 automatic AI calls before mid-morning because `flexibleRequestedEnergyKwh` in Daily Plan totals was summed once per allocation row — each row repeats the full contribution demand (e.g. 5 immersion-heater PV slots × 0.494 kWh = 2.47 kWh in totals), so the AI trigger digest bucket jumped as slots appeared even though real flex demand was unchanged. Totals now count requested energy once per contributionId (max per row); `estimatedGridCostCt` was also removed from the digest as a minor noise source. Automatic AI calls should drop to a handful per day after update.",
+				"de": "Fix: v0.1.194 verursachte weiter ~30–40 automatische KI-Aufrufe bis zum Vormittag, weil `flexibleRequestedEnergyKwh` in den Daily-Plan-Totals pro Allocation-Zeile summiert wurde — jede Zeile trägt den vollen Contributions-Bedarf (z. B. 5 Heizstab-PV-Slots × 0,494 kWh = 2,47 kWh in den Totals), sodass der KI-Trigger-Digest-Bucket mit jedem neuen Slot sprang, obwohl der echte Flex-Bedarf unverändert blieb. Totals zählen den angeforderten Bedarf jetzt einmal pro contributionId (Maximum je Zeile); `estimatedGridCostCt` wurde zusätzlich aus dem Digest entfernt (Rauschen). Automatische KI-Aufrufe sollten nach dem Update auf wenige pro Tag sinken."
+			},
 			"0.1.194": {
 				"en": "Fix: the v0.1.193 AI trigger digest still included bucketed flexibleAllocatedEnergyKwh and flexibleUnallocatedEnergyKwh — those change on practically every tick as the Daily Plan assigns energy slot-by-slot through the morning (e.g. immersion heater PV allocation in five 15-min steps), causing ~30–40 AI calls before mid-morning even though the underlying flex demand had not changed. The digest now tracks only flex demand (flexibleRequestedEnergyKwh), not allocation progress; automatic AI calls should drop to a handful per day (day change, demand step, PV forecast jump, add-on set change). Manual \"Optimize now\" unchanged.",
 				"de": "Fix: Der KI-Trigger-Digest in v0.1.193 enthielt noch gerasterte flexibleAllocatedEnergyKwh und flexibleUnallocatedEnergyKwh — die ändern sich praktisch bei jedem Tick, sobald der Daily Plan morgens Slot für Slot zuweist (z. B. Heizstab-PV in fünf 15-Min-Schritten), und lösten so ~30–40 KI-Aufrufe bis zum Vormittag aus, obwohl sich der eigentliche Flex-Bedarf nicht geändert hatte. Der Digest trackt jetzt nur noch den Flex-Bedarf (flexibleRequestedEnergyKwh), nicht den Allocation-Fortschritt; automatische KI-Aufrufe sollten auf wenige pro Tag sinken (Tageswechsel, Bedarfssprung, PV-Prognose, Add-on-Set). Manueller „Jetzt optimieren“ unverändert."

@@ -109,10 +109,18 @@ function mockRunHost(config) {
         },
     };
 }
+// Mindestabstand explizit deaktiviert (0), damit diese Tests ausschließlich das Digest-Verhalten
+// prüfen — der Mindestabstand selbst hat eine eigene describe-Gruppe weiter unten.
+const NO_INTERVAL = { ai_min_interval_minutes: 0 };
 (0, node_test_1.describe)("maybeTriggerAiOptimizationOnDailyPlanChange — digest-based throttling", () => {
     (0, node_test_1.it)("does not trigger again when only revision/slots change but the coarse digest stays equal", async () => {
         (0, index_js_1.resetAiPipelineHookForTest)();
-        const host = mockRunHost({ ai_enabled: true, immersion_heater_enabled: true, immersion_heater_ai_optimization_allowed: true });
+        const host = mockRunHost({
+            ai_enabled: true,
+            immersion_heater_enabled: true,
+            immersion_heater_ai_optimization_allowed: true,
+            ...NO_INTERVAL,
+        });
         const first = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ revision: 1 }));
         strict_1.default.ok(first !== null);
         strict_1.default.equal(first?.status, "no_token");
@@ -121,7 +129,12 @@ function mockRunHost(config) {
     });
     (0, node_test_1.it)("does not trigger again when only allocation progress changes but demand digest stays equal", async () => {
         (0, index_js_1.resetAiPipelineHookForTest)();
-        const host = mockRunHost({ ai_enabled: true, immersion_heater_enabled: true, immersion_heater_ai_optimization_allowed: true });
+        const host = mockRunHost({
+            ai_enabled: true,
+            immersion_heater_enabled: true,
+            immersion_heater_ai_optimization_allowed: true,
+            ...NO_INTERVAL,
+        });
         const baseTotals = {
             ...minimalPlan().totals,
             flexibleRequestedEnergyKwh: 5,
@@ -136,7 +149,12 @@ function mockRunHost(config) {
     });
     (0, node_test_1.it)("triggers again once the coarse digest changes (e.g. flexible demand jumps by more than one bucket)", async () => {
         (0, index_js_1.resetAiPipelineHookForTest)();
-        const host = mockRunHost({ ai_enabled: true, immersion_heater_enabled: true, immersion_heater_ai_optimization_allowed: true });
+        const host = mockRunHost({
+            ai_enabled: true,
+            immersion_heater_enabled: true,
+            immersion_heater_ai_optimization_allowed: true,
+            ...NO_INTERVAL,
+        });
         const first = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 1 } }));
         strict_1.default.ok(first !== null);
         const second = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 5 } }));
@@ -148,10 +166,75 @@ function mockRunHost(config) {
         const plan = minimalPlan({ revision: 1 });
         const whileDisabled = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(disabledHost, plan);
         strict_1.default.equal(whileDisabled, null);
-        const enabledHost = mockRunHost({ ai_enabled: true, immersion_heater_enabled: true, immersion_heater_ai_optimization_allowed: true });
+        const enabledHost = mockRunHost({
+            ai_enabled: true,
+            immersion_heater_enabled: true,
+            immersion_heater_ai_optimization_allowed: true,
+            ...NO_INTERVAL,
+        });
         const afterEnableUnchanged = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(enabledHost, plan);
         strict_1.default.equal(afterEnableUnchanged, null);
         const afterEnableChanged = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(enabledHost, minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 5 } }));
         strict_1.default.ok(afterEnableChanged !== null);
+    });
+});
+(0, node_test_1.describe)("maybeTriggerAiOptimizationOnDailyPlanChange — minimum interval throttling (v0.1.196)", () => {
+    (0, node_test_1.it)("fires immediately on the very first automatic trigger even with the default 60min interval", async () => {
+        (0, index_js_1.resetAiPipelineHookForTest)();
+        const host = mockRunHost({ ai_enabled: true, immersion_heater_enabled: true, immersion_heater_ai_optimization_allowed: true });
+        const t0 = new Date("2026-07-26T08:00:00.000Z");
+        const first = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ revision: 1 }), t0);
+        strict_1.default.ok(first !== null);
+    });
+    (0, node_test_1.it)("suppresses a second digest change within the interval, then fires once the interval has elapsed", async () => {
+        (0, index_js_1.resetAiPipelineHookForTest)();
+        const host = mockRunHost({ ai_enabled: true, immersion_heater_enabled: true, immersion_heater_ai_optimization_allowed: true });
+        const t0 = new Date("2026-07-26T08:00:00.000Z");
+        const first = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 1 } }), t0);
+        strict_1.default.ok(first !== null);
+        // digest changed again, but only 10 minutes later — well within the 60min default interval.
+        const t1 = new Date("2026-07-26T08:10:00.000Z");
+        const blocked = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 5 } }), t1);
+        strict_1.default.equal(blocked, null);
+        // still within the interval and digest unchanged from t1's plan → stays blocked.
+        const t2 = new Date("2026-07-26T08:30:00.000Z");
+        const stillBlocked = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 5 } }), t2);
+        strict_1.default.equal(stillBlocked, null);
+        // interval elapsed (61 minutes after t0) → fires with the now-current plan.
+        const t3 = new Date("2026-07-26T09:01:00.000Z");
+        const fired = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 5 } }), t3);
+        strict_1.default.ok(fired !== null);
+    });
+    (0, node_test_1.it)("respects a custom configured interval (e.g. 30 minutes)", async () => {
+        (0, index_js_1.resetAiPipelineHookForTest)();
+        const host = mockRunHost({
+            ai_enabled: true,
+            immersion_heater_enabled: true,
+            immersion_heater_ai_optimization_allowed: true,
+            ai_min_interval_minutes: 30,
+        });
+        const t0 = new Date("2026-07-26T08:00:00.000Z");
+        await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 1 } }), t0);
+        const t1 = new Date("2026-07-26T08:29:00.000Z");
+        const blocked = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 5 } }), t1);
+        strict_1.default.equal(blocked, null);
+        const t2 = new Date("2026-07-26T08:31:00.000Z");
+        const fired = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 5 } }), t2);
+        strict_1.default.ok(fired !== null);
+    });
+    (0, node_test_1.it)("with interval disabled (0), behaves exactly like pure digest-based throttling", async () => {
+        (0, index_js_1.resetAiPipelineHookForTest)();
+        const host = mockRunHost({
+            ai_enabled: true,
+            immersion_heater_enabled: true,
+            immersion_heater_ai_optimization_allowed: true,
+            ...NO_INTERVAL,
+        });
+        const t0 = new Date("2026-07-26T08:00:00.000Z");
+        const first = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 1 } }), t0);
+        strict_1.default.ok(first !== null);
+        const t1 = new Date("2026-07-26T08:00:01.000Z");
+        const fired = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 5 } }), t1);
+        strict_1.default.ok(fired !== null);
     });
 });

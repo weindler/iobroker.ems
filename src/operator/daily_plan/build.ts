@@ -27,6 +27,26 @@ function round3(n: number): number {
 	return Math.round(n * 1000) / 1000;
 }
 
+/** Pro Contribution nur einmal zählen — requestedEnergyKwh wiederholt sich je Allocation-Slot. */
+function accumulateRequestedEnergy(
+	byContribution: Map<string, number>,
+	contributionId: string,
+	requestedEnergyKwh: number | null,
+): void {
+	if (requestedEnergyKwh === null || !Number.isFinite(requestedEnergyKwh)) return;
+	const prev = byContribution.get(contributionId);
+	byContribution.set(
+		contributionId,
+		prev === undefined ? requestedEnergyKwh : Math.max(prev, requestedEnergyKwh),
+	);
+}
+
+function sumRequestedByContribution(byContribution: Map<string, number>): number {
+	let sum = 0;
+	for (const v of byContribution.values()) sum += v;
+	return sum;
+}
+
 function computeTotals(
 	slots: DailyPlan["slots"],
 	allocations: DailyPlan["allocations"],
@@ -44,6 +64,8 @@ function computeTotals(
 	let mandatoryAlloc = 0;
 	let flexReq = 0;
 	let flexAlloc = 0;
+	const flexReqByContribution = new Map<string, number>();
+	const mandatoryReqByContribution = new Map<string, number>();
 
 	for (const a of allocations) {
 		const e = a.allocatedEnergyKwh ?? 0;
@@ -60,12 +82,15 @@ function computeTotals(
 
 		if (a.mandatory) {
 			mandatoryAlloc += e;
-			if (a.requestedEnergyKwh !== null) mandatoryReq += a.requestedEnergyKwh;
+			accumulateRequestedEnergy(mandatoryReqByContribution, a.contributionId, a.requestedEnergyKwh);
 		} else {
 			flexAlloc += e;
-			if (a.requestedEnergyKwh !== null) flexReq += a.requestedEnergyKwh;
+			accumulateRequestedEnergy(flexReqByContribution, a.contributionId, a.requestedEnergyKwh);
 		}
 	}
+
+	flexReq = sumRequestedByContribution(flexReqByContribution);
+	mandatoryReq = sumRequestedByContribution(mandatoryReqByContribution);
 
 	return {
 		pvForecastEnergyKwh: day.pvEnergyKwh,

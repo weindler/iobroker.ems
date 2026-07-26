@@ -27,12 +27,12 @@ function bucket(value, size) {
  * Allocation-Fortschritt (zugewiesen/unallokiert), sondern nur:
  * - Kalendertag, Global Mode, Plan-Status
  * - welche Add-ons überhaupt aktiv/ausgeschlossen sind (nicht: wie viel W in welchem Slot)
- * - grob gerasterten Flex-**Bedarf** (nicht: wie viel schon zugeteilt wurde), PV-Tagesprognose, Netzkosten
+ * - grob gerasterten Flex-**Bedarf** (einmal pro Contribution, nicht pro Slot), PV-Tagesprognose
  *
  * Ein Trigger erfolgt damit nur bei Ereignissen wie: Add-on-Bedarf startet/endet, Zieltemperatur
  * springt eine Stufe (wirkt sich auf `flexibleRequestedEnergyKwh` aus), PV-Tagesprognose ändert
- * sich deutlich, Tageswechsel, Global-Mode-Wechsel — nicht bei jedem Tick und nicht wenn sich nur
- * der Slot-für-Slot-Allocation-Fortschritt ändert (v0.1.194).
+ * sich deutlich, Tageswechsel, Global-Mode-Wechsel — nicht bei jedem Tick, nicht bei Allocation-
+ * Fortschritt (v0.1.194) und nicht wenn sich nur die Slot-Anzahl mit gleichem Bedarf ändert (v0.1.195).
  */
 function aiTriggerDigestPayload(plan) {
     return JSON.stringify({
@@ -43,7 +43,6 @@ function aiTriggerDigestPayload(plan) {
         excludedContributionIds: plan.excludedContributions.map((e) => e.contributionId).sort(),
         flexibleRequestedEnergyKwhBucket: bucket(plan.totals.flexibleRequestedEnergyKwh, exports.AI_TRIGGER_ENERGY_BUCKET_KWH),
         pvForecastEnergyKwhBucket: bucket(plan.totals.pvForecastEnergyKwh, exports.AI_TRIGGER_PV_BUCKET_KWH),
-        estimatedGridCostCtBucket: bucket(plan.totals.estimatedGridCostCt, exports.AI_TRIGGER_COST_BUCKET_CT),
     });
 }
 exports.aiTriggerDigestPayload = aiTriggerDigestPayload;

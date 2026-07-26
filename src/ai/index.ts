@@ -1,14 +1,21 @@
 import { DAILY_PLAN_STATE_IDS } from "../operator/daily_plan/states";
 import type { DailyPlan } from "../operator/daily_plan/types";
+import { asNum } from "../ems_light/state_util";
 import { aiConfigFromAdapter } from "./config";
-import { ensureAiStates } from "./ensure_states";
+import { AI_STATES, ensureAiStates } from "./ensure_states";
 import { createOpenAiProvider } from "./openai_provider";
 import { runAiOptimizationNow, type AiRunHost, type AiRunOutcome } from "./run";
 import { aiTriggerDigestPayload } from "./trigger_digest";
 
 export { ensureAiStates } from "./ensure_states";
 export { AI_STATES } from "./ensure_states";
-export { aiConfigFromAdapter, AI_ALLOWED_MODELS, AI_DEFAULT_MODEL, AI_DEFAULT_MAX_CALLS_PER_DAY } from "./config";
+export {
+	aiConfigFromAdapter,
+	AI_ALLOWED_MODELS,
+	AI_DEFAULT_MODEL,
+	AI_DEFAULT_MAX_CALLS_PER_DAY,
+	AI_DEFAULT_MIN_INTERVAL_MINUTES,
+} from "./config";
 export { resolveAllowedAddonIds } from "./context";
 export { aiTriggerDigestPayload } from "./trigger_digest";
 export type { AiRunHost, AiRunOutcome } from "./run";
@@ -29,11 +36,22 @@ export async function ensureAiStateTree(host: Parameters<typeof ensureAiStates>[
  * Zehntelgrad-Zittern), sondern nur bei einer grob relevanten Änderung im Sinne von
  * `aiTriggerDigestPayload` (Add-on-Bedarf startet/endet, Zieltemperatur-Stufe wechselt,
  * PV-Tagesprognose springt deutlich, Tageswechsel, Global-Mode-Wechsel) — nicht bei
- * Allocation-Fortschritt Slot für Slot (v0.1.194) — Kostenkontrolle, Masterplan §13.
+ * Allocation-Fortschritt Slot für Slot (v0.1.194) und nicht bei wiederholtem Bedarf pro Slot
+ * in den Totals (v0.1.195) — Kostenkontrolle, Masterplan §13.
+ *
+ * Seit v0.1.196: zusätzlich ein konfigurierbarer Mindestabstand zwischen automatischen Aufrufen
+ * (Default 60 Min, Admin-Feld "ai_min_interval_minutes", 0 = deaktiviert). Der Digest allein hat
+ * sich live als zu fein erwiesen (z. B. Heizstab-Zieltemperatur, die in kleinen Schritten über
+ * mehrere Bucket-Grenzen wandert) — der Mindestabstand deckelt automatische Aufrufe hart auf
+ * max. 24/Tag bei stündlichem Abstand, unabhängig davon, wie oft sich der Digest ändert. Der
+ * Zeitpunkt des letzten automatischen Triggers wird persistiert (`AI_STATES.lastAutoTriggerAtMs`),
+ * damit ein Adapter-Neustart das Limit nicht aushebelt. Der manuelle "Jetzt optimieren"-Button
+ * ignoriert Digest und Mindestabstand vollständig (unverändert).
  */
 export async function maybeTriggerAiOptimizationOnDailyPlanChange(
 	host: AiRunHost,
 	plan: DailyPlan,
+	now: Date = new Date(),
 ): Promise<AiRunOutcome | null> {
 	const cfg = aiConfigFromAdapter(host.config);
 	const digestPayload = aiTriggerDigestPayload(plan);
@@ -44,7 +62,17 @@ export async function maybeTriggerAiOptimizationOnDailyPlanChange(
 	if (digestPayload === lastTriggerDigestPayload) {
 		return null;
 	}
+	if (cfg.minIntervalMinutes > 0) {
+		const lastTriggerMs = asNum((await host.getStateAsync(AI_STATES.lastAutoTriggerAtMs))?.val) ?? 0;
+		const elapsedMs = now.getTime() - lastTriggerMs;
+		if (lastTriggerMs > 0 && elapsedMs < cfg.minIntervalMinutes * 60_000) {
+			// Digest bleibt bewusst ungesetzt, damit der nächste Tick nach Ablauf des
+			// Mindestabstands mit dem dann aktuellen Plan sofort feuert.
+			return null;
+		}
+	}
 	lastTriggerDigestPayload = digestPayload;
+	await host.setStateAsync(AI_STATES.lastAutoTriggerAtMs, { val: now.getTime(), ack: true });
 	const provider = createOpenAiProvider();
 	return runAiOptimizationNow(host, plan, "daily_plan_digest_change", provider);
 }

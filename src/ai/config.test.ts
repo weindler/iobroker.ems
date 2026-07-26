@@ -1,28 +1,51 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { AI_DEFAULT_MAX_CALLS_PER_DAY, AI_DEFAULT_MODEL, aiConfigFromAdapter } from "./config.js";
+import {
+	AI_DEFAULT_MAX_CALLS_PER_DAY,
+	AI_DEFAULT_MIN_INTERVAL_MINUTES,
+	AI_DEFAULT_MODEL,
+	aiConfigFromAdapter,
+} from "./config.js";
 
 describe("ai config", () => {
-	it("defaults to fully off, no token, default model/limit", () => {
+	it("defaults to fully off, no token, default model/limit/interval", () => {
 		const cfg = aiConfigFromAdapter({});
 		assert.equal(cfg.enabled, false);
 		assert.equal(cfg.provider, "openai");
 		assert.equal(cfg.model, AI_DEFAULT_MODEL);
 		assert.equal(cfg.apiKey, "");
 		assert.equal(cfg.maxCallsPerDay, AI_DEFAULT_MAX_CALLS_PER_DAY);
+		assert.equal(cfg.minIntervalMinutes, AI_DEFAULT_MIN_INTERVAL_MINUTES);
 	});
 
-	it("reads enabled/model/token/limit from config", () => {
+	it("reads enabled/model/token/limit/interval from config", () => {
 		const cfg = aiConfigFromAdapter({
 			ai_enabled: true,
 			ai_model: "gpt-4o-mini",
 			ai_openai_api_key: "  sk-test-123  ",
 			ai_max_calls_per_day: 5,
+			ai_min_interval_minutes: 30,
 		});
 		assert.equal(cfg.enabled, true);
 		assert.equal(cfg.model, "gpt-4o-mini");
 		assert.equal(cfg.apiKey, "sk-test-123");
 		assert.equal(cfg.maxCallsPerDay, 5);
+		assert.equal(cfg.minIntervalMinutes, 30);
+	});
+
+	it("accepts 0 as an explicit, valid min interval (disabled)", () => {
+		assert.equal(aiConfigFromAdapter({ ai_min_interval_minutes: 0 }).minIntervalMinutes, 0);
+	});
+
+	it("invalid/negative min interval falls back to default", () => {
+		assert.equal(
+			aiConfigFromAdapter({ ai_min_interval_minutes: -5 }).minIntervalMinutes,
+			AI_DEFAULT_MIN_INTERVAL_MINUTES,
+		);
+		assert.equal(
+			aiConfigFromAdapter({ ai_min_interval_minutes: "abc" }).minIntervalMinutes,
+			AI_DEFAULT_MIN_INTERVAL_MINUTES,
+		);
 	});
 
 	it("rejects unknown model → falls back to default (no free text)", () => {

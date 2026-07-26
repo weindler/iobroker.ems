@@ -163,6 +163,8 @@
 	"Wird verschlüsselt gespeichert und nie in Backup-/Support-Exporten mitgeschickt.": "Stored encrypted and never included in backup/support exports.",
 	"Max. KI-Aufrufe/Tag": "Max. AI calls/day",
 	"Soft-Warnung ab 80% des Limits. Jeder Aufruf (auch Fehler) zählt.": "Soft warning from 80% of the limit. Every call (including errors) counts.",
+	"Mindestabstand automatische Aufrufe (Min.)": "Min. interval between automatic calls (min.)",
+	"Automatische Aufrufe (bei relevanter Tagesplan-Änderung) frühestens nach dieser Zeit seit dem letzten automatischen Aufruf. 0 = kein Mindestabstand (nur Änderung zählt). Betrifft nicht den manuellen „Jetzt optimieren“-Button.": "Automatic calls (on a relevant daily plan change) fire at the earliest after this much time since the last automatic call. 0 = no minimum interval (only the change matters). Does not affect the manual \"Optimize now\" button.",
 	"Jetzt optimieren": "Optimize now",
 	"Löst sofort einen einzelnen KI-Versuch aus (zählt gegen das Tageslimit) — zum Testen. Ergebnis unter ai.* im Objektbaum.": "Immediately triggers a single AI attempt (counts against the daily limit) — for testing. Result under ai.* in the object tree.",
 	"KI-Versuch abgeschlossen — Details unter ai.* im Objektbaum": "AI attempt completed — details under ai.* in the object tree",

@@ -426,8 +426,23 @@ replan_only_on_material_change
 >
 > **Stand (v0.1.194):** `flexibleAllocatedEnergyKwh` und `flexibleUnallocatedEnergyKwh` aus dem Digest entfernt —
 > sie änderten sich Slot für Slot beim Allocation-Fortschritt und verursachten trotz v0.1.193 noch ~30–40
-> automatische KI-Aufrufe bis zum Vormittag. Im Digest bleiben nur Flex-**Bedarf** (`flexibleRequestedEnergyKwh`),
-> PV-Tagesprognose, Add-on-Set, Tag/Modus/Status und grob gerasterte Netzkosten.
+> automatische KI-Aufrufe bis zum Vormittag.
+>
+> **Stand (v0.1.195):** `flexibleRequestedEnergyKwh` in den Daily-Plan-Totals wurde pro Allocation-Zeile
+> summiert (jede Zeile trägt den vollen Contributions-Bedarf) — der Digest-Bucket sprang deshalb weiter bei
+> jedem neuen Slot (~43 Aufrufe bis Vormittag live). Totals zählen den Bedarf jetzt einmal pro `contributionId`;
+> `estimatedGridCostCt` zusätzlich aus dem Digest entfernt. Im Digest bleiben Flex-**Bedarf** (korrekt dedupliziert),
+> PV-Tagesprognose, Add-on-Set, Tag/Modus/Status.
+>
+> **Stand (v0.1.196):** Auch nach dem Totals-Fix zeigte der Live-Betrieb weiterhin 40+ automatische Aufrufe
+> bis zum Vormittag — der Digest allein reagiert legitim auf jede kleine Bedarfsänderung (z. B. Heizstab-
+> Zieltemperatur über mehrere Bucket-Stufen). Zusätzlich zum Digest gibt es jetzt einen konfigurierbaren
+> **Mindestabstand** zwischen automatischen Aufrufen (`ai_min_interval_minutes`, Admin-Feld, Standard 60 Min.,
+> 0 = deaktiviert). Ein automatischer Aufruf erfolgt nur noch, wenn sich der Digest geändert hat UND seit dem
+> letzten automatischen Aufruf mindestens dieser Abstand vergangen ist — harte Obergrenze unabhängig von der
+> Digest-Änderungsfrequenz (max. 24/Tag bei 60 Min.). Der Zeitpunkt wird in `ai.last_auto_trigger_at_ms`
+> persistiert, ein Adapter-Neustart hebelt den Mindestabstand also nicht aus. Der manuelle
+> „Jetzt optimieren“-Button ignoriert Digest und Mindestabstand weiterhin vollständig.
 
 ---
 

@@ -113,6 +113,19 @@
 					"lg": 3,
 					"xl": 3
 				},
+				"ai_min_interval_minutes": {
+					"type": "number",
+					"label": "Mindestabstand automatische Aufrufe (Min.)",
+					"default": 60,
+					"min": 0,
+					"max": 1440,
+					"help": "Automatische Aufrufe (bei relevanter Tagesplan-Änderung) frühestens nach dieser Zeit seit dem letzten automatischen Aufruf. 0 = kein Mindestabstand (nur Änderung zählt). Betrifft nicht den manuellen „Jetzt optimieren“-Button.",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
 				"aiOptimizeNowBtn": {
 					"type": "sendTo",
 					"command": "aiOptimizeNow",

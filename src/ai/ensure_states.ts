@@ -10,6 +10,7 @@ export const AI_STATES = {
 	limitWarning: `${AI_BASE}.limit_warning`,
 	costEstimateTodayEur: `${AI_BASE}.cost_estimate_today_eur`,
 	lastRunAt: `${AI_BASE}.last_run_at`,
+	lastAutoTriggerAtMs: `${AI_BASE}.last_auto_trigger_at_ms`,
 	lastRunResult: `${AI_BASE}.last_run_result`,
 	lastReasonDe: `${AI_BASE}.last_reason_de`,
 	lastError: `${AI_BASE}.last_error`,
@@ -85,6 +86,17 @@ export async function ensureAiStates(host: StateHost): Promise<void> {
 		{
 			id: AI_STATES.lastRunAt,
 			common: { name: "Letzter KI-Lauf", type: "string", role: "date", read: true, write: false, def: "" },
+		},
+		{
+			id: AI_STATES.lastAutoTriggerAtMs,
+			common: {
+				name: "Letzter automatischer KI-Trigger (Unix-ms, intern — Mindestabstand)",
+				type: "number",
+				role: "value",
+				read: true,
+				write: false,
+				def: 0,
+			},
 		},
 		{
 			id: AI_STATES.lastRunResult,

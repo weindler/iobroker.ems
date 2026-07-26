@@ -11,6 +11,7 @@ exports.AI_STATES = {
     limitWarning: `${exports.AI_BASE}.limit_warning`,
     costEstimateTodayEur: `${exports.AI_BASE}.cost_estimate_today_eur`,
     lastRunAt: `${exports.AI_BASE}.last_run_at`,
+    lastAutoTriggerAtMs: `${exports.AI_BASE}.last_auto_trigger_at_ms`,
     lastRunResult: `${exports.AI_BASE}.last_run_result`,
     lastReasonDe: `${exports.AI_BASE}.last_reason_de`,
     lastError: `${exports.AI_BASE}.last_error`,
@@ -84,6 +85,17 @@ async function ensureAiStates(host) {
         {
             id: exports.AI_STATES.lastRunAt,
             common: { name: "Letzter KI-Lauf", type: "string", role: "date", read: true, write: false, def: "" },
+        },
+        {
+            id: exports.AI_STATES.lastAutoTriggerAtMs,
+            common: {
+                name: "Letzter automatischer KI-Trigger (Unix-ms, intern — Mindestabstand)",
+                type: "number",
+                role: "value",
+                read: true,
+                write: false,
+                def: 0,
+            },
         },
         {
             id: exports.AI_STATES.lastRunResult,

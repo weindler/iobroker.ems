@@ -7,6 +7,8 @@ export type AiAllowedModel = (typeof AI_ALLOWED_MODELS)[number];
 
 export const AI_DEFAULT_MODEL: AiAllowedModel = "gpt-4.1-mini";
 export const AI_DEFAULT_MAX_CALLS_PER_DAY = 20;
+/** Mindestabstand zwischen automatischen KI-Aufrufen (Minuten) — 0 = kein Mindestabstand (nur Digest zählt). */
+export const AI_DEFAULT_MIN_INTERVAL_MINUTES = 60;
 export const AI_SOFT_WARNING_FRACTION = 0.8;
 export const AI_DEFAULT_TIMEOUT_MS = 20_000;
 
@@ -21,6 +23,8 @@ export interface AiAdminConfig {
 	/** "" wenn kein Token gesetzt — niemals erfunden. */
 	apiKey: string;
 	maxCallsPerDay: number;
+	/** Mindestabstand zwischen automatischen (nicht manuellen) KI-Aufrufen, in Minuten. 0 = deaktiviert. */
+	minIntervalMinutes: number;
 }
 
 export function aiConfigFromAdapter(config: unknown): AiAdminConfig {
@@ -34,11 +38,19 @@ export function aiConfigFromAdapter(config: unknown): AiAdminConfig {
 	const maxCallsPerDay =
 		maxCallsRaw !== null && maxCallsRaw > 0 ? Math.round(maxCallsRaw) : AI_DEFAULT_MAX_CALLS_PER_DAY;
 
+	const minIntervalRaw = asNum(c.ai_min_interval_minutes);
+	// 0 ist ein gültiger, bewusster Wert (Mindestabstand deaktiviert) — nur negativ/ungültig fällt auf Default zurück.
+	const minIntervalMinutes =
+		minIntervalRaw !== null && minIntervalRaw >= 0
+			? Math.round(minIntervalRaw)
+			: AI_DEFAULT_MIN_INTERVAL_MINUTES;
+
 	return {
 		enabled,
 		provider: "openai",
 		model,
 		apiKey,
 		maxCallsPerDay,
+		minIntervalMinutes,
 	};
 }

@@ -1,6 +1,6 @@
 # EMS-Light — Dokumentation
 
-**Adapter:** `iobroker.ems` · **Stand:** v0.1.189 (Juli 2026)
+**Adapter:** `iobroker.ems` · **Stand:** v0.1.196 (Juli 2026)
 
 ## Zentrale Dokumente
 
@@ -50,7 +50,7 @@ Zahlenwerte im Adapter toleranter geparst (Komma oder Punkt).
 
 Seit v0.1.185: Gerüst, standardmäßig aus. Global-Tab: An/Aus, OpenAI-Modell-Whitelist (Default `gpt-4.1-mini`), verschlüsseltes Token (`encryptedNative`), Tageslimit (Soft-Warnung ab 80%), manueller „Jetzt optimieren“-Button. Automatischer Aufruf nur bei relevanter Daily-Plan-Änderung (siehe v0.1.193-Fix unten) oder manuell — nicht bei jedem Tick. Die KI liefert kurze Text-Hinweise UND (seit v0.1.186) optionale Zeitpunkt-Präferenzen (`slot_preferences`, Gewichtung 0..3 je 15-Min-Slot) zu Add-ons, die aktiv UND einzeln „KI-Optimierung erlaubt“ sind; sie schreibt nichts in die Allocation zurück (noch keine echte Optimierungslogik, siehe Masterplan §4/§13). Fail-closed bei fehlendem Token, Limit, Timeout oder ungültiger Antwort. Token nie im Backup/Support-Export (automatisch über `isSecretKey`/`ALLOWED_PREFIXES` in `src/backup/collect_config.ts`).
 
-Seit v0.1.193: **Fix automatischer KI-Trigger** (`src/ai/index.ts`, `src/ai/trigger_digest.ts`) — siehe Masterplan §13. Seit v0.1.194: Allocated/Unallocated aus dem Digest entfernt (die verursachten trotz v0.1.193 noch ~30–40 Aufrufe bis Vormittag durch Slot-für-Slot-Allocation-Fortschritt); im Digest bleibt nur Flex-**Bedarf**, nicht Zuweisungsfortschritt.
+Seit v0.1.193: **Fix automatischer KI-Trigger** (`src/ai/index.ts`, `src/ai/trigger_digest.ts`) — siehe Masterplan §13. Seit v0.1.194: Allocated/Unallocated aus dem Digest entfernt. Seit v0.1.195: `flexibleRequestedEnergyKwh` in den Daily-Plan-Totals wird pro Contribution nur einmal gezählt (nicht pro Allocation-Zeile) — v0.1.194 sprang der Digest-Bucket trotzdem bei jedem neuen Heizstab-Slot (~43 Aufrufe bis Vormittag); im Digest bleibt nur der echte Flex-**Bedarf**, nicht Zuweisungsfortschritt oder Slot-Wiederholungen. Seit v0.1.196: zusätzlich konfigurierbarer **Mindestabstand** zwischen automatischen Aufrufen (Admin-Feld „Mindestabstand automatische Aufrufe“, Standard 60 Min., 0 = deaktiviert) — der Digest allein blieb live zu fein (weiterhin ~40+ Aufrufe bis Vormittag); jetzt harte Obergrenze von max. 1 automatischem Aufruf je Intervall, persistiert über Adapter-Neustarts hinweg. Manueller „Jetzt optimieren“-Button unverändert.
 
 Seit v0.1.188: **PV-Kurve pro 15-Min-Slot** (optional, `src/operator/contributions/pv_shape.ts`,
 Admin → Lernen → „PV-Kurve pro 15-Min-Slot“). Standardmäßig aus. Aktiviert (BrightSky-Stunden-Prefix

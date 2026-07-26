@@ -81,6 +81,15 @@ describe("aiTriggerDigestPayload", () => {
 		assert.equal(aiTriggerDigestPayload(a), aiTriggerDigestPayload(b));
 	});
 
+	it("is stable when flex demand is repeated across multiple allocation slots (same contribution)", () => {
+		const totalsBase = { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 0.494, flexibleAllocatedEnergyKwh: 0.2 };
+		const a = minimalPlan({ totals: totalsBase });
+		const b = minimalPlan({
+			totals: { ...totalsBase, flexibleAllocatedEnergyKwh: 0.49 },
+		});
+		assert.equal(aiTriggerDigestPayload(a), aiTriggerDigestPayload(b));
+	});
+
 	it("changes when flexibleRequestedEnergyKwh jumps by more than one bucket (e.g. target temp step)", () => {
 		const a = minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 5 } });
 		const b = minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 6 } });

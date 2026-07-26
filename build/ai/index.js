@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runAiOptimizationManual = exports.handleAiStateChange = exports.isAiRelatedState = exports.maybeTriggerAiOptimizationOnDailyPlanChange = exports.ensureAiStateTree = exports.resetAiPipelineHookForTest = exports.aiTriggerDigestPayload = exports.resolveAllowedAddonIds = exports.AI_DEFAULT_MAX_CALLS_PER_DAY = exports.AI_DEFAULT_MODEL = exports.AI_ALLOWED_MODELS = exports.aiConfigFromAdapter = exports.AI_STATES = exports.ensureAiStates = void 0;
+exports.runAiOptimizationManual = exports.handleAiStateChange = exports.isAiRelatedState = exports.maybeTriggerAiOptimizationOnDailyPlanChange = exports.ensureAiStateTree = exports.resetAiPipelineHookForTest = exports.aiTriggerDigestPayload = exports.resolveAllowedAddonIds = exports.AI_DEFAULT_MIN_INTERVAL_MINUTES = exports.AI_DEFAULT_MAX_CALLS_PER_DAY = exports.AI_DEFAULT_MODEL = exports.AI_ALLOWED_MODELS = exports.aiConfigFromAdapter = exports.AI_STATES = exports.ensureAiStates = void 0;
 const states_1 = require("../operator/daily_plan/states");
+const state_util_1 = require("../ems_light/state_util");
 const config_1 = require("./config");
 const ensure_states_1 = require("./ensure_states");
 const openai_provider_1 = require("./openai_provider");
@@ -16,6 +17,7 @@ Object.defineProperty(exports, "aiConfigFromAdapter", { enumerable: true, get: f
 Object.defineProperty(exports, "AI_ALLOWED_MODELS", { enumerable: true, get: function () { return config_2.AI_ALLOWED_MODELS; } });
 Object.defineProperty(exports, "AI_DEFAULT_MODEL", { enumerable: true, get: function () { return config_2.AI_DEFAULT_MODEL; } });
 Object.defineProperty(exports, "AI_DEFAULT_MAX_CALLS_PER_DAY", { enumerable: true, get: function () { return config_2.AI_DEFAULT_MAX_CALLS_PER_DAY; } });
+Object.defineProperty(exports, "AI_DEFAULT_MIN_INTERVAL_MINUTES", { enumerable: true, get: function () { return config_2.AI_DEFAULT_MIN_INTERVAL_MINUTES; } });
 var context_1 = require("./context");
 Object.defineProperty(exports, "resolveAllowedAddonIds", { enumerable: true, get: function () { return context_1.resolveAllowedAddonIds; } });
 var trigger_digest_2 = require("./trigger_digest");
@@ -35,9 +37,19 @@ exports.ensureAiStateTree = ensureAiStateTree;
  * Zehntelgrad-Zittern), sondern nur bei einer grob relevanten Änderung im Sinne von
  * `aiTriggerDigestPayload` (Add-on-Bedarf startet/endet, Zieltemperatur-Stufe wechselt,
  * PV-Tagesprognose springt deutlich, Tageswechsel, Global-Mode-Wechsel) — nicht bei
- * Allocation-Fortschritt Slot für Slot (v0.1.194) — Kostenkontrolle, Masterplan §13.
+ * Allocation-Fortschritt Slot für Slot (v0.1.194) und nicht bei wiederholtem Bedarf pro Slot
+ * in den Totals (v0.1.195) — Kostenkontrolle, Masterplan §13.
+ *
+ * Seit v0.1.196: zusätzlich ein konfigurierbarer Mindestabstand zwischen automatischen Aufrufen
+ * (Default 60 Min, Admin-Feld "ai_min_interval_minutes", 0 = deaktiviert). Der Digest allein hat
+ * sich live als zu fein erwiesen (z. B. Heizstab-Zieltemperatur, die in kleinen Schritten über
+ * mehrere Bucket-Grenzen wandert) — der Mindestabstand deckelt automatische Aufrufe hart auf
+ * max. 24/Tag bei stündlichem Abstand, unabhängig davon, wie oft sich der Digest ändert. Der
+ * Zeitpunkt des letzten automatischen Triggers wird persistiert (`AI_STATES.lastAutoTriggerAtMs`),
+ * damit ein Adapter-Neustart das Limit nicht aushebelt. Der manuelle "Jetzt optimieren"-Button
+ * ignoriert Digest und Mindestabstand vollständig (unverändert).
  */
-async function maybeTriggerAiOptimizationOnDailyPlanChange(host, plan) {
+async function maybeTriggerAiOptimizationOnDailyPlanChange(host, plan, now = new Date()) {
     const cfg = (0, config_1.aiConfigFromAdapter)(host.config);
     const digestPayload = (0, trigger_digest_1.aiTriggerDigestPayload)(plan);
     if (!cfg.enabled) {
@@ -47,7 +59,17 @@ async function maybeTriggerAiOptimizationOnDailyPlanChange(host, plan) {
     if (digestPayload === lastTriggerDigestPayload) {
         return null;
     }
+    if (cfg.minIntervalMinutes > 0) {
+        const lastTriggerMs = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_1.AI_STATES.lastAutoTriggerAtMs))?.val) ?? 0;
+        const elapsedMs = now.getTime() - lastTriggerMs;
+        if (lastTriggerMs > 0 && elapsedMs < cfg.minIntervalMinutes * 60_000) {
+            // Digest bleibt bewusst ungesetzt, damit der nächste Tick nach Ablauf des
+            // Mindestabstands mit dem dann aktuellen Plan sofort feuert.
+            return null;
+        }
+    }
     lastTriggerDigestPayload = digestPayload;
+    await host.setStateAsync(ensure_states_1.AI_STATES.lastAutoTriggerAtMs, { val: now.getTime(), ack: true });
     const provider = (0, openai_provider_1.createOpenAiProvider)();
     return (0, run_1.runAiOptimizationNow)(host, plan, "daily_plan_digest_change", provider);
 }

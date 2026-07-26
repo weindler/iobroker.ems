@@ -611,6 +611,41 @@ describe("daily plan build", () => {
 		});
 		assert.equal(plan.status, "missing_inputs");
 	});
+
+	it("flexibleRequestedEnergyKwh totals dedupe per contribution across allocation rows", () => {
+		const s1 = "2026-07-11T10:00:00.000Z";
+		const e1 = "2026-07-11T10:15:00.000Z";
+		const s2 = "2026-07-11T10:15:00.000Z";
+		const e2 = "2026-07-11T10:30:00.000Z";
+		const s3 = "2026-07-11T10:30:00.000Z";
+		const e3 = "2026-07-11T10:45:00.000Z";
+		const forecast = minimalForecast({
+			slots: [
+				forecastSlot(s1, e1, { pv: 3000, load: 500 }),
+				forecastSlot(s2, e2, { pv: 3000, load: 500 }),
+				forecastSlot(s3, e3, { pv: 3000, load: 500 }),
+			],
+			contributions: [
+				flexContribution(CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, "immersion_heater", {
+					details: { requiredEnergyKwh: 1 },
+				}),
+			],
+		});
+		const plan = buildDailyPlanFromForecast(NOW, TZ, "balanced", forecast, {
+			policySnapshot: null,
+			energyPriority: ["immersion_heater"],
+			mutualExclusions: [],
+			gridImportAllowedPolicy: true,
+			effectiveMaxGridImportW: 11000,
+			configuredHouseFuseLimitW: 13800,
+			modePolicy: { mode: "balanced", allowOptimization: true },
+		});
+		const ihRows = plan.allocations.filter(
+			(a) => a.contributionId === CONTRIBUTION_IDS.IMMERSION_FLEXIBLE,
+		);
+		assert.ok(ihRows.length >= 2, "expected multi-slot IH allocation for regression");
+		assert.equal(plan.totals.flexibleRequestedEnergyKwh, 1);
+	});
 });
 
 describe("grid import effective", () => {

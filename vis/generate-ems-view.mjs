@@ -347,7 +347,7 @@ for (const c of /** @type {CardDef[]} */ ([
 		x: M + 3 * (cardW + GAP), y: cardY, w: cardW, h: cardH, title: "Wallbox", color: C.wb,
 		rows: [
 			{ type: "f", oid: "live.wallbox.charge_power_w", label: "P ", digits: "0", unit: " W", em: true, color: C.wb },
-			{ type: "f", oid: "addons.wallbox.runtime.allocated_power_w", label: "Plan ", digits: "0", unit: " W" },
+			{ type: "s", oid: "addons.wallbox.runtime.daily_plan_status", label: "PlanSt " },
 			{ type: "f", oid: "live.wallbox.vehicle_soc_pct", label: "SOC ", digits: "0", unit: " %" },
 			{ type: "s", oid: "addons.wallbox.runtime.decision_source", label: "Src " },
 		],

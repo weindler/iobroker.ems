@@ -14,10 +14,11 @@ async function publishWallboxRuntimeStates(host, decision, governanceAllowed) {
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.dailyPlanSlotEnd, decision.slotEndIso ?? "");
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.connected, decision.connected);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.chargingAllowedByPlan, decision.chargingAllowedByPlan);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.allocatedPowerW, decision.allocatedPowerW ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.allocatedEnergyKwh, decision.allocatedEnergyKwh ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.allocatedPvPowerW, decision.pvPowerW ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.allocatedGridPowerW, decision.gridPowerW ?? "");
+    // 0 W = kein Slot-Bedarf (nicht null/"" — VIS-Float sonst „NaN“)
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.allocatedPowerW, decision.allocatedPowerW ?? 0);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.allocatedEnergyKwh, decision.allocatedEnergyKwh ?? 0);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.allocatedPvPowerW, decision.pvPowerW ?? 0);
+    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.allocatedGridPowerW, decision.gridPowerW ?? 0);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.energySource, decision.energySource);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.deadlineIso, decision.deadlineIso ?? "");
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.remainingEnergyKwh, decision.remainingEnergyKwh ?? "");

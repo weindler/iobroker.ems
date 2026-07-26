@@ -2655,9 +2655,9 @@
             "widgetSet": "basic"
         },
         "e00035": {
-            "tpl": "tplValueFloat",
+            "tpl": "tplValueString",
             "data": {
-                "oid": "ems.0.addons.wallbox.runtime.allocated_power_w",
+                "oid": "ems.0.addons.wallbox.runtime.daily_plan_status",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,
@@ -2712,19 +2712,15 @@
                 "lc-border-color": "",
                 "lc-border-radius": 3,
                 "lc-zindex": 0,
-                "is_comma": "true",
-                "factor": "1",
-                "html_prepend": "Plan ",
-                "html_append_singular": " W",
-                "html_append_plural": " W",
-                "digits": "0"
+                "html_prepend": "PlanSt ",
+                "html_append": ""
             },
             "style": {
                 "height": "16px",
                 "z-index": "12",
+                "font-size": "12px",
                 "font-weight": "400",
                 "color": "#e6edf3",
-                "font-size": "12px",
                 "background-color": "transparent",
                 "border": "none",
                 "left": "647px",

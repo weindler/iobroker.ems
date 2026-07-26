@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.207",
+		"version": "0.1.208",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.208": {
+				"en": "VIS polish: Daily Plan slot shows 15-min window + dated horizon (no more identical clock times). Wallbox allocated power writes 0 instead of empty string (avoids Plan NaN); Wallbox card shows PlanSt.",
+				"de": "VIS-Politur: Daily-Plan-Slot zeigt 15-Min-Fenster + Horizont mit Datum (keine gleichen Uhrzeiten mehr). Wallbox-Allocation schreibt 0 statt leerem String (kein Plan-NaN); Wallbox-Karte zeigt PlanSt."
+			},
 			"0.1.207": {
 				"en": "Fix: immersion heater Daily Plan slot ownership (0 W / below min stage = off). VIS rebuilt around \"Was plant das EMS?\": per-addon plan cards (IH/battery/wallbox/climate) + clear AI answers (does KI shift? is it better than rules?). Replaces cryptic A/B watt charts and NaN battery fields.",
 				"de": "Fix: Heizstab Daily-Plan-Slot-Ownership (0 W / unter Stufe = aus). VIS neu um „Was plant das EMS?“: Add-on-Plan-Karten (Heizstab/Batterie/Wallbox/Klima) + klare KI-Antworten (verschiebt? besser als Regelwerk?). Ersetzt unklare A/B-Watt-Charts und Batterie-NaN."

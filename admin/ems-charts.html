@@ -111,6 +111,8 @@ function fmtW(v){var n=num(v);return n===null?"—":Math.round(n)+" W";}
 function fmtPct(v){var n=num(v);return n===null?"—":Math.round(n)+" %";}
 function fmtTemp(v){var n=num(v);return n===null?"—":n.toFixed(1)+" °C";}
 function fmtTime(iso){try{return new Date(iso).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});}catch(e){return"—";}}
+function fmtDayTime(iso){try{return new Date(iso).toLocaleString("de-DE",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});}catch(e){return fmtTime(iso);}}
+function slotEndIso(startIso){try{return new Date(Date.parse(startIso)+15*60*1000).toISOString();}catch(e){return null;}}
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c];});}
 
 function seriesOn(a,b,key){
@@ -173,9 +175,12 @@ function renderDaily(){
 	var stt=txt(g("planner.intent.daily_plan.status"),"—");
 	var slot=g("operator.diagnostics.slot_start_iso");
 	var until=g("planner.intent.daily_plan.valid_until");
+	var end=slot?slotEndIso(slot):null;
+	var slotLine=slot?(fmtTime(slot)+"–"+(end?fmtTime(end):"?")):"—";
+	var untilLine=until?("Horizont bis "+fmtDayTime(until)):"";
 	el.innerHTML=
 		'<div class="ems-daily-main"><div class="ems-k">Daily Plan</div><div class="ems-v ok">'+esc(stt)+'</div>'
-		+'<div class="ems-ai-reason">Slot '+(slot?fmtTime(slot):"—")+(until?" · bis "+fmtTime(until):"")+'</div></div>'
+		+'<div class="ems-ai-reason">Aktueller Slot '+esc(slotLine)+(untilLine?" · "+esc(untilLine):"")+'</div></div>'
 		+'<div class="ems-daily-reason">'+esc(txt(g("planner.intent.daily_plan.reason_de"),"Keine Begründung."))+'</div>';
 }
 

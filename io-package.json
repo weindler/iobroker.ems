@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.213",
+		"version": "0.1.214",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.214": {
+				"en": "Battery Daily Plan cap is taken only from Admin technical hardware limits (bat_hw_max_charge_w) — not from runtime states. Slot power cannot exceed the configured max charge watts.",
+				"de": "Batterie-Daily-Plan-Obergrenze kommt nur aus den technischen Hardwaregrenzen in der Admin-Config (bat_hw_max_charge_w) — nicht aus Runtime-States. Slot-Leistung darf die konfigurierten Max-Lade-Watt nicht überschreiten."
+			},
 			"0.1.213": {
 				"en": "Fix: battery Daily Plan no longer uses effective_max_charge_w (current command, often 0 when idle) as planning cap — that allowed allocations up to the grid import limit (~11 kW). Planning now uses hardware_max_charge_w; battery charge without a technical max is excluded from allocation.",
 				"de": "Fix: Batterie-Daily-Plan nutzt nicht mehr effective_max_charge_w (aktueller Befehl, im Idle oft 0) als Planungs-Cap — dadurch konnten Slots bis zur Netz-Importgrenze (~11 kW) entstehen. Planung nimmt hardware_max_charge_w; ohne technische Max-Ladeleistung keine Batterie-Allocation."

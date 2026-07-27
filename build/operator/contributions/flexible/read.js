@@ -219,7 +219,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     const modePolicy = (0, mode_policy_1.plannerModePolicyFromGlobalMode)(globalModeRaw);
     const globalModeOff = modePolicy.mode === "off";
     const batteryCfg = (0, config_1.batteryConfigFromAdapter)(config);
-    const [batteryEnabled, batteryGov, wallboxEnabled, wallboxGov, immersionEnabled, immersionGov, climateEnabled, climateGov, socPct, capacityEffective, capacityNet, capacitySource, minSoc, maxSoc, maxChargeW, chargeCapable, dischargeCapable, batteryFault, batteryLockout, telemetryValid, telemetryStale, telemetryReady, ownershipActive, batteryIntentRaw, connected, charging, vehicleSoc, planSoc, planActive, sessionKwh, deadlineRaw, activePhases, maxCurrentA, bufferTemp, immersionFault, immersionState, thermalRaw, pvToday, pvTomorrow, pvBiasStatus, aiThermal, outdoorTemp,] = await Promise.all([
+    const [batteryEnabled, batteryGov, wallboxEnabled, wallboxGov, immersionEnabled, immersionGov, climateEnabled, climateGov, socPct, capacityEffective, capacityNet, capacitySource, minSoc, maxSoc, chargeCapable, dischargeCapable, batteryFault, batteryLockout, telemetryValid, telemetryStale, telemetryReady, ownershipActive, batteryIntentRaw, connected, charging, vehicleSoc, planSoc, planActive, sessionKwh, deadlineRaw, activePhases, maxCurrentA, bufferTemp, immersionFault, immersionState, thermalRaw, pvToday, pvTomorrow, pvBiasStatus, aiThermal, outdoorTemp,] = await Promise.all([
         readBool(host, (0, tree_paths_1.addonEnabled)("battery")),
         (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "battery"),
         readBool(host, (0, tree_paths_1.addonEnabled)("wallbox")),
@@ -234,7 +234,6 @@ async function collectFlexibleContributions(host, now, gridForecast) {
         readStr(host, ensure_states_1.BAT.identity.capacitySource),
         readNum(host, ensure_states_1.BAT.limits.hardwareMinSocPct),
         readNum(host, ensure_states_1.BAT.limits.hardwareMaxSocPct),
-        readNum(host, ensure_states_1.BAT.limits.hardwareMaxChargeW),
         readBool(host, ensure_states_1.BAT.capabilities.setChargePower),
         readBool(host, ensure_states_1.BAT.capabilities.setDischargePower),
         readBool(host, ensure_states_1.BAT.status.fault),
@@ -276,13 +275,11 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     const thermalLearning = await readThermalLearningSignal(host, now);
     const batteryLearning = await readBatteryLearningSignal(host);
     const chargeLogic = await readBatteryChargeLogicDecision(host, now, socPct, batteryGov, modePolicy);
-    // Planung braucht die Hardware-Max-Ladeleistung — nicht effective_max_charge_w (das ist der
-    // aktuelle Befehl und oft 0 im Idle → sonst Allocation bis zur Netz-Importgrenze, z. B. ~11 kW).
-    const hwMaxChargeW = maxChargeW !== null && maxChargeW > 0
-        ? maxChargeW
-        : batteryCfg.limits.maxChargeW !== null && batteryCfg.limits.maxChargeW > 0
-            ? batteryCfg.limits.maxChargeW
-            : null;
+    // Technische Hardwaregrenze aus Admin-Config (`bat_hw_max_charge_w`) — nie Runtime-Befehl
+    // und nie Netz-/Hausanschluss-Grenze als Planungs-Cap.
+    const hwMaxChargeW = batteryCfg.limits.maxChargeW !== null && batteryCfg.limits.maxChargeW > 0
+        ? batteryCfg.limits.maxChargeW
+        : null;
     const acUnits = await Promise.all(Array.from({ length: constants_1.AC_UNIT_COUNT }, async (_, i) => {
         const index = i + 1;
         const unit = acConfig.units.find((u) => u.index === index);

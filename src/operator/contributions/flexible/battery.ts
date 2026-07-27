@@ -152,7 +152,7 @@ export function buildBatteryChargeContribution(input: BatteryContributionBuildIn
 			reasonDe = "Batterie am Ladeziel — kein weiterer Ladebedarf.";
 		} else {
 			status = participation.status === "degraded" ? "degraded" : "valid";
-			reasonDe = `Ladebedarf ${requiredKwh} kWh bis ${chargeTargetSocPct(input)} % SOC (max ${maxW} W).`;
+			reasonDe = `Ladebedarf ${requiredKwh} kWh bis ${chargeTargetSocPct(input)} % SOC (Config-Max ${maxW} W).`;
 			if (!input.topOffRequested && learnedTopoffDue(input)) {
 				reasonDe = `${reasonDe} Gelerntes Top-Off-Intervall überschritten (${input.batteryLearning?.topoffDaysRemaining !== null && input.batteryLearning?.topoffDaysRemaining !== undefined ? `${input.batteryLearning.topoffDaysRemaining} Tage überfällig` : "fällig"}).`;
 			}

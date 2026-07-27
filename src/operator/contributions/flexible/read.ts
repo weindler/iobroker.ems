@@ -299,7 +299,6 @@ export async function collectFlexibleContributions(
 		capacitySource,
 		minSoc,
 		maxSoc,
-		maxChargeW,
 		chargeCapable,
 		dischargeCapable,
 		batteryFault,
@@ -342,7 +341,6 @@ export async function collectFlexibleContributions(
 		readStr(host, BAT.identity.capacitySource),
 		readNum(host, BAT.limits.hardwareMinSocPct),
 		readNum(host, BAT.limits.hardwareMaxSocPct),
-		readNum(host, BAT.limits.hardwareMaxChargeW),
 		readBool(host, BAT.capabilities.setChargePower),
 		readBool(host, BAT.capabilities.setDischargePower),
 		readBool(host, BAT.status.fault),
@@ -391,14 +389,12 @@ export async function collectFlexibleContributions(
 	const batteryLearning = await readBatteryLearningSignal(host);
 	const chargeLogic = await readBatteryChargeLogicDecision(host, now, socPct, batteryGov, modePolicy);
 
-	// Planung braucht die Hardware-Max-Ladeleistung — nicht effective_max_charge_w (das ist der
-	// aktuelle Befehl und oft 0 im Idle → sonst Allocation bis zur Netz-Importgrenze, z. B. ~11 kW).
+	// Technische Hardwaregrenze aus Admin-Config (`bat_hw_max_charge_w`) — nie Runtime-Befehl
+	// und nie Netz-/Hausanschluss-Grenze als Planungs-Cap.
 	const hwMaxChargeW =
-		maxChargeW !== null && maxChargeW > 0
-			? maxChargeW
-			: batteryCfg.limits.maxChargeW !== null && batteryCfg.limits.maxChargeW > 0
-				? batteryCfg.limits.maxChargeW
-				: null;
+		batteryCfg.limits.maxChargeW !== null && batteryCfg.limits.maxChargeW > 0
+			? batteryCfg.limits.maxChargeW
+			: null;
 
 	const acUnits = await Promise.all(
 		Array.from({ length: AC_UNIT_COUNT }, async (_, i) => {

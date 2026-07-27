@@ -2,6 +2,12 @@ import { touchEmsActivity } from "../../../ems_activity";
 import { isLiveWriteAllowed } from "../../../execution_mode";
 import { writeForeignIfChanged } from "../../../device_write";
 import { isAddonGovernanceEnabledFromState } from "../../../addons/governance";
+import {
+	plannerStatusFromDailyPlan,
+	publishAddonRuntimeSurface,
+	type ExecutionStatus,
+	type IntentStatus,
+} from "../../../addons/runtime_surface";
 import { setOptionalNumberIfChanged, setStateIfChanged } from "../../../policy/core/state_write";
 import { INTENT_SCHEMA_VERSION, IOBROKER_THERMAL_REQUEST_STATE } from "../../../intent/core/constants";
 import { addonAvailable, addonEnabled } from "../../../tree_paths";
@@ -601,6 +607,42 @@ async function publishRuntime(
 		IMMERSION_RUNTIME_STATES.allocationReasonDe,
 		dailyPlan?.allocationReasonDe ?? "",
 	);
+
+	const governanceOn = await isAddonGovernanceEnabledFromState(
+		(id) => host.getStateAsync(id),
+		"immersion_heater",
+	);
+	const lockout = s.state === "fault_lockout" || decisionSource === "lockout";
+	let intentStatus: IntentStatus = "idle";
+	if (s.fault_active || lockout || decisionSource === "safety") {
+		intentStatus = "blocked";
+	} else if (s.commanded_stage > 0) {
+		intentStatus = "active";
+	} else if (s.resolved_mode === "off") {
+		intentStatus = "none";
+	}
+	let executionStatus: ExecutionStatus = s.execution_mode === "live" ? "live" : "dryrun";
+	if (s.fault_active) {
+		executionStatus = "fault";
+	} else if (lockout) {
+		executionStatus = "lockout";
+	}
+	await publishAddonRuntimeSurface(host, "immersion_heater", {
+		decisionDetail: decisionSource,
+		decisionReason: s.reason || dailyPlan?.allocationReasonDe || "",
+		nowIso: s.updated_at,
+		plannerStatus: plannerStatusFromDailyPlan({
+			governanceEnabled: governanceOn,
+			useDailyPlan: dailyPlan?.useDailyPlan === true,
+			dailyPlanStatus: dailyPlan?.dailyPlanStatus ?? null,
+		}),
+		intentStatus,
+		executionStatus,
+		profileReady: s.available === true,
+		telemetryReady: s.temperature_status === "valid",
+		fault: s.fault_active,
+		lockout,
+	});
 }
 
 export async function handleImmersionFaultReset(

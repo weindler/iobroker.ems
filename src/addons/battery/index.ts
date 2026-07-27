@@ -1,4 +1,10 @@
 import { isAddonGovernanceEnabledFromState } from "../governance";
+import {
+	plannerStatusFromDailyPlan,
+	publishAddonRuntimeSurface,
+	type ExecutionStatus,
+	type IntentStatus,
+} from "../runtime_surface";
 import { touchEmsActivity } from "../../ems_activity";
 import { isLiveWriteAllowed, isExecutionModeStateRelativeId } from "../../execution_mode";
 import { ensureAddonMappingStates, syncNativeMappingToStates } from "../../mapping_sync";
@@ -652,6 +658,7 @@ async function controlTickInner(host: Host): Promise<void> {
 	await persist(host, snapshot, {
 		nowMs,
 		globalLive: liveWriteAllowed,
+		governanceEnabled,
 		controller,
 		lastWrite,
 		gb: { wouldWrite: gbWouldWrite, target: gbTarget, state: gbState },
@@ -669,6 +676,7 @@ async function controlTickInner(host: Host): Promise<void> {
 interface PersistExtra {
 	nowMs: number;
 	globalLive: boolean;
+	governanceEnabled: boolean;
 	controller: string;
 	lastWrite: { state: string; value: number; success: boolean; expected: number | null } | null;
 	gb: { wouldWrite: boolean; target: number; state: string };
@@ -770,6 +778,40 @@ async function persist(host: Host, s: BatterySnapshot, x: PersistExtra): Promise
 	await setStateIfChanged(host, BAT.runtime.legacyFallbackReasonDe, dp.legacyFallbackReasonDe);
 	await setStateIfChanged(host, BAT.runtime.dailyPlanBlocksGridBalance, dp.dailyPlanBlocksGridBalance);
 	await setStateIfChanged(host, BAT.runtime.runtimeControlAvailable, dp.runtimeControlAvailable);
+
+	const fault = runtime.faultCode !== null;
+	const lockout = runtime.lockout === true;
+	let intentStatus: IntentStatus = "idle";
+	if (fault || lockout || x.decisionSource === "safety") {
+		intentStatus = "blocked";
+	} else if (isChargingAction(x.action) || (x.requestedPowerW ?? 0) > 0) {
+		intentStatus = "active";
+	} else if (x.decisionSource === "addon_disabled" || x.decisionSource === "governance_disabled") {
+		intentStatus = "none";
+	}
+	let executionStatus: ExecutionStatus = x.globalLive ? "live" : "dryrun";
+	if (fault) {
+		executionStatus = "fault";
+	} else if (lockout) {
+		executionStatus = "lockout";
+	}
+	await publishAddonRuntimeSurface(host, "battery", {
+		decisionDetail: x.decisionSource,
+		decisionReason: dp.allocationReasonDe || s.readiness.reason || "",
+		nowIso: iso,
+		plannerStatus: plannerStatusFromDailyPlan({
+			governanceEnabled: x.governanceEnabled,
+			useDailyPlan: dp.useDailyPlan,
+			dailyPlanValid: dp.useDailyPlan,
+			dailyPlanStatus: dp.dailyPlanStatus,
+		}),
+		intentStatus,
+		executionStatus,
+		profileReady: s.readiness.dryrunReady || s.readiness.liveReady || s.readiness.controlReady,
+		telemetryReady: s.readiness.telemetryReady,
+		fault,
+		lockout,
+	});
 
 	const wouldWrite = !x.globalLive && (isChargingAction(x.action) || x.gb.wouldWrite);
 	await set(BAT.dryrun.wouldWrite, wouldWrite);

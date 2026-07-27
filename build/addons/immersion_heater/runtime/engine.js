@@ -5,6 +5,7 @@ const ems_activity_1 = require("../../../ems_activity");
 const execution_mode_1 = require("../../../execution_mode");
 const device_write_1 = require("../../../device_write");
 const governance_1 = require("../../../addons/governance");
+const runtime_surface_1 = require("../../../addons/runtime_surface");
 const state_write_1 = require("../../../policy/core/state_write");
 const constants_1 = require("../../../intent/core/constants");
 const tree_paths_1 = require("../../../tree_paths");
@@ -476,6 +477,41 @@ async function publishRuntime(host, s, decisionSource, dailyPlan) {
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.flexibleAllocatedPowerW, dailyPlan?.flexibleAllocatedPowerW ?? null);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.allocationStatus, dailyPlan?.allocationStatus ?? "unknown");
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.allocationReasonDe, dailyPlan?.allocationReasonDe ?? "");
+    const governanceOn = await (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "immersion_heater");
+    const lockout = s.state === "fault_lockout" || decisionSource === "lockout";
+    let intentStatus = "idle";
+    if (s.fault_active || lockout || decisionSource === "safety") {
+        intentStatus = "blocked";
+    }
+    else if (s.commanded_stage > 0) {
+        intentStatus = "active";
+    }
+    else if (s.resolved_mode === "off") {
+        intentStatus = "none";
+    }
+    let executionStatus = s.execution_mode === "live" ? "live" : "dryrun";
+    if (s.fault_active) {
+        executionStatus = "fault";
+    }
+    else if (lockout) {
+        executionStatus = "lockout";
+    }
+    await (0, runtime_surface_1.publishAddonRuntimeSurface)(host, "immersion_heater", {
+        decisionDetail: decisionSource,
+        decisionReason: s.reason || dailyPlan?.allocationReasonDe || "",
+        nowIso: s.updated_at,
+        plannerStatus: (0, runtime_surface_1.plannerStatusFromDailyPlan)({
+            governanceEnabled: governanceOn,
+            useDailyPlan: dailyPlan?.useDailyPlan === true,
+            dailyPlanStatus: dailyPlan?.dailyPlanStatus ?? null,
+        }),
+        intentStatus,
+        executionStatus,
+        profileReady: s.available === true,
+        telemetryReady: s.temperature_status === "valid",
+        fault: s.fault_active,
+        lockout,
+    });
 }
 async function handleImmersionFaultReset(host, state) {
     if (!state || state.val !== true)

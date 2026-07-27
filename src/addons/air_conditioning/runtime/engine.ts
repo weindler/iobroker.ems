@@ -11,6 +11,12 @@ import {
 	peekConsumerStatsEntry,
 } from "../../../learning/consumer_stats";
 import { isAddonGovernanceEnabledFromState, addonGovernanceEnabledState } from "../../../addons/governance";
+import {
+	plannerStatusFromDailyPlan,
+	publishAddonRuntimeSurface,
+	type ExecutionStatus,
+	type IntentStatus,
+} from "../../../addons/runtime_surface";
 import { DAILY_PLAN_STATE_IDS, ALLOCATION_ADDON_STATE_IDS } from "../../../operator/daily_plan/states";
 import type { DeviceWriteHost } from "../../../device_write";
 import {
@@ -560,6 +566,10 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 	let anyDailyPlanActive = false;
 	let maxDailyPlanRevision = 0;
 	const summaryReasons: string[] = [];
+	let primaryDecisionDetail = "safe_default";
+	let anyTelemetryReady = false;
+	let anyFault = false;
+	let anyLockout = false;
 
 	for (const unit of activeUnits) {
 		const tempId = resolveAcMappingTarget(mappingTable, unit.index, "room_temp");
@@ -689,6 +699,18 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		}
 
 		summaryReasons.push(`U${unit.index}: ${permission.reasonDe}`);
+		if (primaryDecisionDetail === "safe_default") {
+			primaryDecisionDetail = permission.decisionSource;
+		}
+		if (temp.num != null) {
+			anyTelemetryReady = true;
+		}
+		if (permission.decisionSource === "fault") {
+			anyFault = true;
+		}
+		if (permission.decisionSource === "lockout") {
+			anyLockout = true;
+		}
 
 		if (switchIsOn(fb.value)) {
 			up.running = true;
@@ -748,13 +770,47 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 	await setStateIfChanged(host, AC_RUNTIME_SUMMARY_STATES.governanceAllowed, governanceEnabled);
 	await setStateIfChanged(host, AC_RUNTIME_SUMMARY_STATES.dailyPlanActive, anyDailyPlanActive);
 	await setStateIfChanged(host, AC_RUNTIME_SUMMARY_STATES.dailyPlanRevision, maxDailyPlanRevision);
-	await setStateIfChanged(
-		host,
-		AC_RUNTIME_SUMMARY_STATES.reasonDe,
-		!governanceEnabled
-			? "Klima-Governance deaktiviert — keine EMS-Steueraktion."
-			: summaryReasons.slice(0, 3).join(" | ") || "Klima Runtime aktiv.",
-	);
+	const summaryReason = !governanceEnabled
+		? "Klima-Governance deaktiviert — keine EMS-Steueraktion."
+		: summaryReasons.slice(0, 3).join(" | ") || "Klima Runtime aktiv.";
+	await setStateIfChanged(host, AC_RUNTIME_SUMMARY_STATES.reasonDe, summaryReason);
+
+	const decisionDetail = !governanceEnabled
+		? "governance_disabled"
+		: !addonEnabledVal
+			? "unit_disabled"
+			: primaryDecisionDetail;
+	let intentStatus: IntentStatus = "idle";
+	if (!governanceEnabled || !addonEnabledVal) {
+		intentStatus = "none";
+	} else if (anyFault || anyLockout) {
+		intentStatus = "blocked";
+	} else if (runningCount > 0 || anyDailyPlanActive) {
+		intentStatus = "active";
+	}
+	let executionStatus: ExecutionStatus = live ? "live" : "dryrun";
+	if (anyFault) {
+		executionStatus = "fault";
+	} else if (anyLockout) {
+		executionStatus = "lockout";
+	}
+	await publishAddonRuntimeSurface(host, AC_ADDON_ID, {
+		decisionDetail,
+		decisionReason: summaryReason,
+		nowIso: new Date(nowMs).toISOString(),
+		plannerStatus: plannerStatusFromDailyPlan({
+			governanceEnabled: governanceEnabled && addonEnabledVal,
+			useDailyPlan: anyDailyPlanActive,
+			dailyPlanValid: anyDailyPlanActive,
+			dailyPlanStatus: anyDailyPlanActive ? "valid" : "missing",
+		}),
+		intentStatus,
+		executionStatus,
+		profileReady: configuredAcUnitIndexes(host.config).length > 0,
+		telemetryReady: anyTelemetryReady || activeUnits.length === 0,
+		fault: anyFault,
+		lockout: anyLockout,
+	});
 
 	const dataDir = host.getAbsolutePath?.("air_conditioning");
 	if (dataDir) {

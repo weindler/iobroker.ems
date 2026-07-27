@@ -330,8 +330,8 @@ for (const c of /** @type {CardDef[]} */ ([
 		rows: [
 			{ type: "f", oid: "live.battery.soc_pct", label: "SOC ", digits: "0", unit: " %", em: true, color: C.accent },
 			{ type: "f", oid: "addons.battery.runtime.allocated_charge_power_w", label: "Plan ", digits: "0", unit: " W" },
-			{ type: "s", oid: "addons.battery.runtime.decision_source", label: "Src " },
-			{ type: "s", oid: "addons.battery.runtime.daily_plan_status", label: "PlanSt " },
+			{ type: "s", oid: "addons.battery.runtime.surface.decision_source", label: "Src " },
+			{ type: "s", oid: "addons.battery.runtime.surface.planner_status", label: "PlanSt " },
 		],
 	},
 	{
@@ -340,24 +340,24 @@ for (const c of /** @type {CardDef[]} */ ([
 			{ type: "f", oid: "addons.immersion_heater.runtime.buffer_temperature_c", label: "Buf ", digits: "1", unit: "°", em: true, color: C.ih },
 			{ type: "f", oid: "addons.immersion_heater.runtime.plan_target_temp_c", label: "Ziel ", digits: "1", unit: "°", color: C.ih },
 			{ type: "f", oid: "addons.immersion_heater.runtime.allocated_power_w", label: "Plan ", digits: "0", unit: " W", color: C.ih },
-			{ type: "s", oid: "addons.immersion_heater.runtime.decision_source", label: "Src " },
+			{ type: "s", oid: "addons.immersion_heater.runtime.surface.decision_source", label: "Src " },
 		],
 	},
 	{
 		x: M + 3 * (cardW + GAP), y: cardY, w: cardW, h: cardH, title: "Wallbox", color: C.wb,
 		rows: [
 			{ type: "f", oid: "live.wallbox.charge_power_w", label: "P ", digits: "0", unit: " W", em: true, color: C.wb },
-			{ type: "s", oid: "addons.wallbox.runtime.daily_plan_status", label: "PlanSt " },
+			{ type: "s", oid: "addons.wallbox.runtime.surface.planner_status", label: "PlanSt " },
 			{ type: "f", oid: "live.wallbox.vehicle_soc_pct", label: "SOC ", digits: "0", unit: " %" },
-			{ type: "s", oid: "addons.wallbox.runtime.decision_source", label: "Src " },
+			{ type: "s", oid: "addons.wallbox.runtime.surface.decision_source", label: "Src " },
 		],
 	},
 	{
 		x: M + 4 * (cardW + GAP), y: cardY, w: cardW, h: cardH, title: "Klima", color: C.ac,
 		rows: [
 			{ type: "f", oid: "addons.air_conditioning.units.unit_1.allocated_power_w", label: "Plan ", digits: "0", unit: " W", em: true, color: C.ac },
-			{ type: "s", oid: "addons.air_conditioning.units.unit_1.decision_source", label: "Src " },
-			{ type: "s", oid: "addons.air_conditioning.units.unit_1.daily_plan_status", label: "PlanSt " },
+			{ type: "s", oid: "addons.air_conditioning.runtime.surface.decision_source", label: "Src " },
+			{ type: "s", oid: "addons.air_conditioning.runtime.surface.planner_status", label: "PlanSt " },
 			{ type: "s", oid: "addons.air_conditioning.units.unit_1.running", label: "On " },
 		],
 	},

@@ -187,7 +187,7 @@ Vier Ebenen:
 
 **Entscheidungskette (Auto):** Safety/Fault → Off → Force → Daily Plan → Sicherheits-Default → AUS
 
-**Runtime-States:** `addons.immersion_heater.runtime.*` inkl. `decision_source`, `allocated_power_w`, Daily-Plan-Status
+**Runtime-States:** `addons.immersion_heater.runtime.*` inkl. detailliertem `decision_source`, `allocated_power_w`, Daily-Plan-Status; einheitliche Surface unter `runtime.surface.*` (Block 7)
 
 Details: `docs/EMS_LIGHT_IMMERSION_DAILY_PLAN_RUNTIME.md`
 
@@ -298,6 +298,20 @@ Vollständige Pfad-Konventionen: `src/tree_paths.ts`.
 
 ---
 
+## 12a. Einheitliche Runtime-Surface (Block 7)
+
+**Pfad:** `src/addons/runtime_surface/`
+
+Alle Kern-Add-ons (Wallbox, Heizstab, Batterie, Klima/`air_conditioning`) publizieren am Tick-Ende dieselben Felder unter:
+
+`addons.<runtimeId>.runtime.surface.{decision_source,decision_detail,decision_reason,last_decision_at,planner_status,intent_status,execution_status,profile_ready,telemetry_ready,fault,lockout}`
+
+- `decision_source` = Masterplan-Enum (kanonisch)
+- `decision_detail` = bisherige Add-on-Detailquelle (bestehende `runtime.decision_source`-Leaves bleiben)
+- Ensure: `ensureAddonRuntimeSurfaceStates` in `bootstrap/ensure_static_tree.ts`
+
+---
+
 ## 13. Teststruktur
 
 Tests liegen neben dem Quellcode (`*.test.ts`) und werden nach `build/` kompiliert.
@@ -323,8 +337,8 @@ Keine externen Snapshot-Fixtures im Repository — Tests nutzen Mock-Hosts.
 
 - Modus `observe`
 - (erledigt v0.1.206) Optionale KI-Optimierung mit Write-back nur bei messbarem Plan-B-Vorteil — siehe Masterplan §13
-- Weitere Batterie-Steuerprofile (Sonnen Performance, Fronius, Victron, …) und bestätigte Entladesteuerung
-- Einheitliche Runtime-States (`decision_source`, `planner_status`, …) überall
+- (erledigt v0.1.215) Einheitliche Runtime-States (`addons.<id>.runtime.surface.*`, Masterplan §10 / Roadmap Block 7)
+- Weitere Batterie-Steuerprofile (Sonnen Performance, Fronius, Victron, …) und bestätigte Entladesteuerung (Roadmap Block 8)
 
 **Bereits produktiv (nicht mehr „geplant“):** General Operator (Forecast + Daily Plan + Allocation), Heizstab/Klima/Batterie-Laden über Daily Plan, Wallbox EVCC-Control-Pfad mit echten Live-Writes, Feedback-Verifikation und Safety-Schicht (Ownership/Fault/Restore).
 

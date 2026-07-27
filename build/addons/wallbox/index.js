@@ -5,6 +5,7 @@ const evcc_config_1 = require("./evcc_config");
 const ensure_evcc_states_1 = require("./ensure_evcc_states");
 const evcc_telemetry_1 = require("./evcc_telemetry");
 const governance_1 = require("../governance");
+const runtime_surface_1 = require("../runtime_surface");
 const execution_mode_1 = require("../../execution_mode");
 const tree_paths_1 = require("../../tree_paths");
 const states_1 = require("../../operator/daily_plan/states");
@@ -124,6 +125,49 @@ async function refreshWallboxDailyPlanRuntime(host, snap) {
     await (0, runtime_1.publishWallboxLiveFoundationStates)(host, foundation);
     await runWallboxSafetyTick(host, foundation, now);
     await (0, runtime_1.publishWallboxSafetyStates)(host, wallboxOwnership, wallboxFault);
+    const plannerStatus = (0, runtime_surface_1.plannerStatusFromDailyPlan)({
+        governanceEnabled,
+        addonEnabled: addonEnabledVal,
+        dailyPlanValid: decision.planValid,
+        dailyPlanStatus: decision.dailyPlanStatus,
+    });
+    let intentStatus = "idle";
+    if (decision.decisionSource === "mapping_incomplete" ||
+        decision.decisionSource === "missing_telemetry" ||
+        wallboxFault.active) {
+        intentStatus = "blocked";
+    }
+    else if ((decision.allocatedPowerW ?? 0) > 0 || decision.chargingAllowedByPlan) {
+        intentStatus = "active";
+    }
+    else if (!decision.connected) {
+        intentStatus = "none";
+    }
+    let executionStatus = "idle";
+    if (wallboxFault.active) {
+        executionStatus = "fault";
+    }
+    else if (foundation.phase === "live" && foundation.writeAllowed) {
+        executionStatus = "live";
+    }
+    else if (foundation.phase === "dryrun" || !liveRequested) {
+        executionStatus = "dryrun";
+    }
+    else if (!foundation.writeAllowed) {
+        executionStatus = "blocked";
+    }
+    await (0, runtime_surface_1.publishAddonRuntimeSurface)(host, WALLBOX_ADDON_ID, {
+        decisionDetail: decision.decisionSource,
+        decisionReason: decision.reasonDe,
+        nowIso: now.toISOString(),
+        plannerStatus,
+        intentStatus,
+        executionStatus,
+        profileReady: foundation.mappingSnapshot.validationIssues.length === 0,
+        telemetryReady: decision.decisionSource !== "missing_telemetry",
+        fault: wallboxFault.active,
+        lockout: false,
+    });
 }
 /**
  * Ownership/Fault/Safe-Restore-Verdrahtung nach jedem Foundation-Lauf:

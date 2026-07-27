@@ -101,6 +101,21 @@ function weatherDayMinMax(
 			max: typeof d.tomorrowMaxTempC === "number" ? d.tomorrowMaxTempC : null,
 		};
 	}
+	const horizon = d.horizonDays as
+		| Array<{ dateKey: string; minTempC: number | null; maxTempC: number | null; quality?: string }>
+		| undefined;
+	if (Array.isArray(horizon)) {
+		const hit = horizon.find((h) => h.dateKey === dateKey);
+		if (hit) {
+			if (hit.quality === "missing") {
+				return { min: null, max: null };
+			}
+			return {
+				min: typeof hit.minTempC === "number" ? hit.minTempC : null,
+				max: typeof hit.maxTempC === "number" ? hit.maxTempC : null,
+			};
+		}
+	}
 	return { min: null, max: null };
 }
 
@@ -117,6 +132,19 @@ function buildDays(
 	if (horizonDays) {
 		for (const d of horizonDays) {
 			if (!dayKeys.includes(d.dateKey)) dayKeys.push(d.dateKey);
+		}
+	}
+	const weatherHorizon = weather?.details.horizonDays as
+		| Array<{ dateKey: string; minTempC?: number | null; maxTempC?: number | null }>
+		| undefined;
+	if (weatherHorizon) {
+		for (const d of weatherHorizon) {
+			if (
+				(typeof d.minTempC === "number" || typeof d.maxTempC === "number") &&
+				!dayKeys.includes(d.dateKey)
+			) {
+				dayKeys.push(d.dateKey);
+			}
 		}
 	}
 

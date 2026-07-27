@@ -6,6 +6,7 @@ const battery_1 = require("../addons/battery");
 const immersion_heater_1 = require("../addons/immersion_heater");
 const wallbox_1 = require("../addons/wallbox");
 const governance_1 = require("../addons/governance");
+const runtime_surface_1 = require("../addons/runtime_surface");
 const mapping_sync_1 = require("../mapping_sync");
 const mapping_config_1 = require("../mapping_config");
 const ems_light_1 = require("../ems_light");
@@ -34,6 +35,7 @@ async function ensureStaticStateTree(host) {
     await (0, execution_mode_1.ensureAddonExecutionModeStates)(host);
     await (0, base_ensure_1.ensureAddonBasisStates)(host);
     await (0, governance_1.ensureAddonGovernanceStates)(host);
+    await (0, runtime_surface_1.ensureAddonRuntimeSurfaceStates)(host);
     await (0, ems_light_1.ensureEmsLightStateTree)(host);
     await (0, ensure_states_1.ensureBackupStates)(host);
     await (0, mapping_sync_1.ensureAddonMappingStates)(host, "wallbox", (0, mapping_sync_1.mappingCommandsFromEntries)((0, mapping_config_1.wallboxMappingFromConfig)(cfg)));

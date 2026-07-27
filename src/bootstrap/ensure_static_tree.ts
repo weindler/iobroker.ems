@@ -3,6 +3,7 @@ import { ensureBatteryStateTree } from "../addons/battery";
 import { ensureImmersionHeaterStateTree } from "../addons/immersion_heater";
 import { ensureWallboxStaticStateTree, ensureWallboxDynamicVehicleProfiles } from "../addons/wallbox";
 import { ensureAddonGovernanceStates } from "../addons/governance";
+import { ensureAddonRuntimeSurfaceStates } from "../addons/runtime_surface";
 import {
 	ensureAddonMappingStates,
 	mappingCommandsFromEntries,
@@ -45,6 +46,7 @@ export async function ensureStaticStateTree(host: StaticStateTreeHost): Promise<
 	await ensureAddonExecutionModeStates(host);
 	await ensureAddonBasisStates(host);
 	await ensureAddonGovernanceStates(host);
+	await ensureAddonRuntimeSurfaceStates(host);
 	await ensureEmsLightStateTree(host);
 	await ensureBackupStates(host);
 	await ensureAddonMappingStates(

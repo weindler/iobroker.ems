@@ -1,8 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.dayResultToPersist = exports.writeWeatherDayPersist = exports.healthFromValidHours = exports.confidenceFromValidHours = exports.isValidMetricValue = exports.computeWeatherLearning = exports.runWeatherLearning = exports.stopWeatherLearning = exports.initWeatherLearning = void 0;
+exports.weatherHorizonConfigFromAdapter = exports.runWeatherHorizon = exports.ensureWeatherHorizonStates = exports.dayResultToPersist = exports.writeWeatherDayPersist = exports.healthFromValidHours = exports.confidenceFromValidHours = exports.isValidMetricValue = exports.computeWeatherLearning = exports.runWeatherLearning = exports.stopWeatherLearning = exports.initWeatherLearning = void 0;
 const config_1 = require("./config");
 const ensure_states_1 = require("./ensure_states");
+const horizon_1 = require("./horizon");
 const run_1 = require("./run");
 const data_dir_1 = require("../data_dir");
 const history_bridge_1 = require("../history_bridge");
@@ -10,14 +11,21 @@ let weatherTimer = null;
 async function initWeatherLearning(adapter) {
     const host = (0, history_bridge_1.withHistoryBridge)(adapter, (0, data_dir_1.withLearningDataPath)(adapter, adapter));
     await (0, ensure_states_1.ensureWeatherLearningStates)(host);
+    await (0, horizon_1.ensureWeatherHorizonStates)(host);
     const cfg = (0, config_1.weatherConfigFromAdapter)(adapter.config);
     stopWeatherLearning();
     void (0, run_1.runWeatherLearning)(host).catch((e) => {
         adapter.log.error(`Weather-Learning initial run: ${e}`);
     });
+    void (0, horizon_1.runWeatherHorizon)(host).catch((e) => {
+        adapter.log.error(`Weather-Horizon initial run: ${e}`);
+    });
     weatherTimer = setInterval(() => {
         void (0, run_1.runWeatherLearning)(host).catch((e) => {
             adapter.log.error(`Weather-Learning tick: ${e}`);
+        });
+        void (0, horizon_1.runWeatherHorizon)(host).catch((e) => {
+            adapter.log.error(`Weather-Horizon tick: ${e}`);
         });
     }, cfg.intervalSec * 1000);
     adapter.log.debug?.(`EMS-Light Weather-Learning ready (read-only, interval ${cfg.intervalSec}s)`);
@@ -40,3 +48,7 @@ Object.defineProperty(exports, "healthFromValidHours", { enumerable: true, get: 
 var persist_1 = require("./persist");
 Object.defineProperty(exports, "writeWeatherDayPersist", { enumerable: true, get: function () { return persist_1.writeWeatherDayPersist; } });
 Object.defineProperty(exports, "dayResultToPersist", { enumerable: true, get: function () { return persist_1.dayResultToPersist; } });
+var horizon_2 = require("./horizon");
+Object.defineProperty(exports, "ensureWeatherHorizonStates", { enumerable: true, get: function () { return horizon_2.ensureWeatherHorizonStates; } });
+Object.defineProperty(exports, "runWeatherHorizon", { enumerable: true, get: function () { return horizon_2.runWeatherHorizon; } });
+Object.defineProperty(exports, "weatherHorizonConfigFromAdapter", { enumerable: true, get: function () { return horizon_2.weatherHorizonConfigFromAdapter; } });

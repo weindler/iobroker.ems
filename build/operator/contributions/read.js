@@ -4,6 +4,7 @@ exports.collectContributions = exports.parseHouseLoadForecastHorizonJson = expor
 const state_util_1 = require("../../ems_light/state_util");
 const config_1 = require("../../intent/config");
 const config_2 = require("../../learning/weather/config");
+const horizon_1 = require("../../learning/weather/horizon");
 const constants_1 = require("../../learning/pv_horizon/constants");
 const time_1 = require("../time");
 const pv_1 = require("./pv");
@@ -225,6 +226,34 @@ async function collectContributions(host, now, gridForecast) {
                 (await readForeignNum(host, cloudMetric.forecastStateId)))
             : null,
     ]);
+    const todayKey = (0, time_1.localDateKeyInTimezone)(now, timezone);
+    const weatherHorizonDays = [];
+    for (const dayIndex of horizon_1.WEATHER_HORIZON_DAY_INDEXES) {
+        const prefix = (0, horizon_1.weatherHorizonDayStatePrefix)(dayIndex);
+        const [minTempC, maxTempC, qualityRaw] = await Promise.all([
+            readNum(host, `${prefix}.min_temp_c`),
+            readNum(host, `${prefix}.max_temp_c`),
+            readStr(host, `${prefix}.quality`),
+        ]);
+        const quality = qualityRaw === "valid" || qualityRaw === "degraded" || qualityRaw === "missing"
+            ? qualityRaw
+            : minTempC !== null || maxTempC !== null
+                ? "degraded"
+                : "missing";
+        weatherHorizonDays.push({
+            dayIndex,
+            dateKey: (0, time_1.addDaysToDateKey)(todayKey, dayIndex - 1),
+            minTempC,
+            maxTempC,
+            quality,
+        });
+    }
+    const farthestWeatherDay = weatherHorizonDays
+        .filter((d) => d.minTempC !== null || d.maxTempC !== null)
+        .map((d) => d.dateKey)
+        .sort()
+        .at(-1);
+    const weatherHorizonEnd = (farthestWeatherDay ?? (0, time_1.addDaysToDateKey)(todayKey, 1)) + "T23:59:59.999Z";
     const hourlyPoints = [];
     const constraintInput = {
         now,
@@ -262,8 +291,9 @@ async function collectContributions(host, now, gridForecast) {
             todayMaxTempC: outdoorTempC,
             tomorrowMinTempC: null,
             tomorrowMaxTempC: null,
+            horizonDays: weatherHorizonDays,
             forecastHorizonStart: now.toISOString(),
-            forecastHorizonEnd: (0, time_1.addDaysToDateKey)((0, time_1.localDateKeyInTimezone)(now, timezone), 1) + "T23:59:59.999Z",
+            forecastHorizonEnd: weatherHorizonEnd,
         }),
         (0, constraints_1.buildGridSupplyContribution)(grid),
         (0, constraints_1.buildHouseMainFuseConstraintContribution)(constraintInput),

@@ -12,7 +12,8 @@ function buildWeatherContribution(input) {
     const hasContext = hasTemp ||
         input.cloudPct !== null ||
         input.todayMinTempC !== null ||
-        input.todayMaxTempC !== null;
+        input.todayMaxTempC !== null ||
+        (input.horizonDays?.some((d) => d.minTempC !== null || d.maxTempC !== null) ?? false);
     let status = "missing";
     let reasonDe = "Keine Wetter-Kontextdaten vorhanden.";
     if (hasContext) {
@@ -61,6 +62,7 @@ function buildWeatherContribution(input) {
             todayMaxTempC: input.todayMaxTempC,
             tomorrowMinTempC: input.tomorrowMinTempC,
             tomorrowMaxTempC: input.tomorrowMaxTempC,
+            horizonDays: input.horizonDays ?? [],
             forecastHorizonStart: input.forecastHorizonStart,
             forecastHorizonEnd: input.forecastHorizonEnd,
             hourlyPoints: input.hourlyPoints,

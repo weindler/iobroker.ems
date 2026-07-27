@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.214",
+		"version": "0.1.216",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,14 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.216": {
+				"en": "Roadmap Block 9: optional weather horizon day 3–7 (Admin-mapped min/max °C → learning.weather.horizon.* → Forecast Plan). Unmapped days stay null. Block 8 (battery discharge / Fronius/Victron) dropped — self-consumption covers house discharge; third-party profiles only on community request as beta.",
+				"de": "Roadmap Block 9: optionaler Wetter-Horizon Tag 3–7 (Admin-Mapping Min/Max °C → learning.weather.horizon.* → Forecast Plan). Ohne Mapping bleibt null. Block 8 (Batterie-Entladung / Fronius/Victron) gestrichen — Hausversorgung über Self-Consumption; Fremdprofile nur auf Community-Auftrag als Beta."
+			},
+			"0.1.215": {
+				"en": "Unified runtime surface (Masterplan §10 / Roadmap Block 7): every core addon publishes the same decision_source, planner/intent/execution status, profile/telemetry ready, fault/lockout under addons.<id>.runtime.surface.* — VIS shows canonical Src/PlanSt.",
+				"de": "Einheitliche Runtime-Surface (Masterplan §10 / Roadmap Block 7): alle Kern-Add-ons schreiben dieselben Felder decision_source, Planner-/Intent-/Ausführungsstatus, Profil/Telemetrie bereit, Fault/Lockout unter addons.<id>.runtime.surface.* — VIS zeigt kanonische Src/PlanSt."
+			},
 			"0.1.214": {
 				"en": "Battery Daily Plan cap is taken only from Admin technical hardware limits (bat_hw_max_charge_w) — not from runtime states. Slot power cannot exceed the configured max charge watts.",
 				"de": "Batterie-Daily-Plan-Obergrenze kommt nur aus den technischen Hardwaregrenzen in der Admin-Config (bat_hw_max_charge_w) — nicht aus Runtime-States. Slot-Leistung darf die konfigurierten Max-Lade-Watt nicht überschreiten."

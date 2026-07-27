@@ -1800,7 +1800,7 @@
         "e00024": {
             "tpl": "tplValueString",
             "data": {
-                "oid": "ems.0.addons.battery.runtime.decision_source",
+                "oid": "ems.0.addons.battery.runtime.surface.decision_source",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,
@@ -1875,7 +1875,7 @@
         "e00025": {
             "tpl": "tplValueString",
             "data": {
-                "oid": "ems.0.addons.battery.runtime.daily_plan_status",
+                "oid": "ems.0.addons.battery.runtime.surface.planner_status",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,
@@ -2345,7 +2345,7 @@
         "e00031": {
             "tpl": "tplValueString",
             "data": {
-                "oid": "ems.0.addons.immersion_heater.runtime.decision_source",
+                "oid": "ems.0.addons.immersion_heater.runtime.surface.decision_source",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,
@@ -2657,7 +2657,7 @@
         "e00035": {
             "tpl": "tplValueString",
             "data": {
-                "oid": "ems.0.addons.wallbox.runtime.daily_plan_status",
+                "oid": "ems.0.addons.wallbox.runtime.surface.planner_status",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,
@@ -2811,7 +2811,7 @@
         "e00037": {
             "tpl": "tplValueString",
             "data": {
-                "oid": "ems.0.addons.wallbox.runtime.decision_source",
+                "oid": "ems.0.addons.wallbox.runtime.surface.decision_source",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,
@@ -3123,7 +3123,7 @@
         "e00041": {
             "tpl": "tplValueString",
             "data": {
-                "oid": "ems.0.addons.air_conditioning.units.unit_1.decision_source",
+                "oid": "ems.0.addons.air_conditioning.runtime.surface.decision_source",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,
@@ -3198,7 +3198,7 @@
         "e00042": {
             "tpl": "tplValueString",
             "data": {
-                "oid": "ems.0.addons.air_conditioning.units.unit_1.daily_plan_status",
+                "oid": "ems.0.addons.air_conditioning.runtime.surface.planner_status",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,

@@ -6,6 +6,12 @@ import { ensureWallboxEvccStates, WALLBOX_EVCC_STATES } from "./ensure_evcc_stat
 import { readEvccTelemetrySnapshot, type EvccTelemetryReadHost } from "./evcc_telemetry";
 import type { TelemetryField } from "./normalize";
 import { isAddonGovernanceEnabledFromState, addonGovernanceEnabledState } from "../governance";
+import {
+	plannerStatusFromDailyPlan,
+	publishAddonRuntimeSurface,
+	type ExecutionStatus,
+	type IntentStatus,
+} from "../runtime_surface";
 import { isLiveWriteAllowed } from "../../execution_mode";
 import { addonEnabled, GLOBAL, addonMode } from "../../tree_paths";
 import {
@@ -194,6 +200,47 @@ async function refreshWallboxDailyPlanRuntime(host: WallboxHost, snap: Awaited<R
 	await publishWallboxLiveFoundationStates(host, foundation);
 	await runWallboxSafetyTick(host, foundation, now);
 	await publishWallboxSafetyStates(host, wallboxOwnership, wallboxFault);
+
+	const plannerStatus = plannerStatusFromDailyPlan({
+		governanceEnabled,
+		addonEnabled: addonEnabledVal,
+		dailyPlanValid: decision.planValid,
+		dailyPlanStatus: decision.dailyPlanStatus,
+	});
+	let intentStatus: IntentStatus = "idle";
+	if (
+		decision.decisionSource === "mapping_incomplete" ||
+		decision.decisionSource === "missing_telemetry" ||
+		wallboxFault.active
+	) {
+		intentStatus = "blocked";
+	} else if ((decision.allocatedPowerW ?? 0) > 0 || decision.chargingAllowedByPlan) {
+		intentStatus = "active";
+	} else if (!decision.connected) {
+		intentStatus = "none";
+	}
+	let executionStatus: ExecutionStatus = "idle";
+	if (wallboxFault.active) {
+		executionStatus = "fault";
+	} else if (foundation.phase === "live" && foundation.writeAllowed) {
+		executionStatus = "live";
+	} else if (foundation.phase === "dryrun" || !liveRequested) {
+		executionStatus = "dryrun";
+	} else if (!foundation.writeAllowed) {
+		executionStatus = "blocked";
+	}
+	await publishAddonRuntimeSurface(host, WALLBOX_ADDON_ID, {
+		decisionDetail: decision.decisionSource,
+		decisionReason: decision.reasonDe,
+		nowIso: now.toISOString(),
+		plannerStatus,
+		intentStatus,
+		executionStatus,
+		profileReady: foundation.mappingSnapshot.validationIssues.length === 0,
+		telemetryReady: decision.decisionSource !== "missing_telemetry",
+		fault: wallboxFault.active,
+		lockout: false,
+	});
 }
 
 /**

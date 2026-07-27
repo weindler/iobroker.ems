@@ -353,6 +353,54 @@ function fullContributions(now, opts = {}) {
         strict_1.default.equal(day3?.weatherMinTempC, null);
         strict_1.default.equal(day3?.weatherMaxTempC, null);
     });
+    (0, node_test_1.it)("fills weather min/max for day 3-7 from mapped horizonDays (no fabrication when missing)", () => {
+        const contributions = fullContributions(now, { horizon: true, weather: false }).filter((c) => c.contributor.id !== "weather_forecast");
+        contributions.push((0, weather_1.buildWeatherContribution)({
+            now,
+            learningStatus: "ready",
+            learningHealth: "ok",
+            confidencePct: 90,
+            lastUpdate: now.toISOString(),
+            forecastSource: "test",
+            actualSource: "test",
+            outdoorTempC: 22,
+            cloudPct: 10,
+            hourlyPoints: [],
+            todayMinTempC: 18,
+            todayMaxTempC: 24,
+            tomorrowMinTempC: null,
+            tomorrowMaxTempC: null,
+            horizonDays: [
+                {
+                    dayIndex: 3,
+                    dateKey: "2026-07-13",
+                    minTempC: 11,
+                    maxTempC: 19,
+                    quality: "valid",
+                },
+                {
+                    dayIndex: 4,
+                    dateKey: "2026-07-14",
+                    minTempC: null,
+                    maxTempC: null,
+                    quality: "missing",
+                },
+            ],
+            forecastHorizonStart: now.toISOString(),
+            forecastHorizonEnd: "2026-07-17T23:59:59.999Z",
+        }));
+        const plan = (0, build_1.buildForecastPlan)({
+            now,
+            timezone: "UTC",
+            contributions,
+        });
+        const day3 = plan.days.find((d) => d.date === "2026-07-13");
+        strict_1.default.equal(day3?.weatherMinTempC, 11);
+        strict_1.default.equal(day3?.weatherMaxTempC, 19);
+        const day4 = plan.days.find((d) => d.date === "2026-07-14");
+        strict_1.default.equal(day4?.weatherMinTempC, null);
+        strict_1.default.equal(day4?.weatherMaxTempC, null);
+    });
     (0, node_test_1.it)("horizonEnd reflects the furthest day when horizon data exists", () => {
         const withoutHorizon = (0, build_1.buildForecastPlan)({
             now,

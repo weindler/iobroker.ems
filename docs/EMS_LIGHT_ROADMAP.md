@@ -1,12 +1,16 @@
 # EMS-Light — Verbindliche Produkt-Roadmap
 
-**Stand:** 26.07.2026  
+**Stand:** 27.07.2026  
 **Zweck:** Ein durchgängiges EMS (ein Planner, Learning → Planung, optional KI) — sequenziell, blockweise, messbar.  
 **Regel:** `.cursor/rules/ems-light-roadmap.mdc` (1:1 abarbeiten, kein Block-Skip)
+
+**Aktueller Block:** **10 — KI tiefer** (Phase 2)
 
 ---
 
 ## Fortschritt
+
+### Phase 1 — Ein Planner (erledigt)
 
 | Block | Name | Status | Ziel-Version |
 |-------|------|--------|--------------|
@@ -17,7 +21,22 @@
 | **5** | Horizont + State-Cleanup | **erledigt** | v0.1.205 |
 | **6** | KI Write-back (nur bei messbarem Nutzen) | **erledigt** | v0.1.206 |
 
-**Produkt-Reife heute:** ~60–65 % (Blöcke 1–6) | Roadmap-Blöcke 1–6 abgeschlossen — KI optional und fail-closed
+### Zwischenarbeit nach Phase 1 (kein eigener Block)
+
+Allocation-Qualität, VIS-Planboard, Heizstab-Ownership, Batterie-HW-Ladegrenze (`bat_hw_max_charge_w`) — u. a. v0.1.207–v0.1.214. Bleibt gültig; Phase 2 baut darauf auf.
+
+### Phase 2 — Produkt-Reife (Nutzerauftrag 27.07.2026; Block 8 gestrichen 27.07.2026)
+
+| Block | Name | Status | Ziel-Version |
+|-------|------|--------|--------------|
+| **7** | Einheitliche Runtime-States | **erledigt** | v0.1.215 |
+| **8** | ~~Batterie-Entladung + Profile~~ | **gestrichen** | — |
+| **9** | Wetter Tag 3–7 (Admin-Mapping) | **erledigt** | v0.1.216 |
+| **10** | KI tiefer (über Slot-Shift hinaus) | **aktuell** | TBD |
+
+**Produkt-Reife heute:** ~72–75 % | Phase 1 + Block 7 + 9 | **Aktuell: Block 10**
+
+**Priorität (verbindlich):** 7 → 9 → **10**. Block 8 entfällt. Observe bewusst **nicht** in Phase 2.
 
 ---
 
@@ -217,17 +236,133 @@ mehreren schlechten/bewölkten Tagen auftreten kann. Jahreszeit ist höchstens e
 
 - [x] Messbare Verbesserung in Unit-Tests (Write-back verschiebt Flex-Last in günstigeren/PV-Slot; sonst Suspend)
 - [x] Masterplan §13 KI als „optional, nachweisbar“
-- [x] Roadmap komplett (Blöcke 1–6)
+- [x] Phase 1 komplett (Blöcke 1–6)
 
 ---
 
-## Explizit NICHT in dieser Roadmap
+# Phase 2 — Produkt-Reife (Blöcke 7–10)
 
+**Zielbild nach Phase 2:** einheitliche Add-on-Oberfläche, Batterie laden **und** entladen im Operator, Wetter über die Woche, KI mit messbar breiterem Nutzen — weiterhin ohne Observe als Pflichtpfad.
+
+```text
+Learning → Policy → Forecast Plan → Daily Plan → [KI optional] → Allocation → Intent → einheitliche Runtime-States → Profil → Dryrun/Live
+```
+
+---
+
+## Block 7 — Einheitliche Runtime-States (erledigt, v0.1.215)
+
+**Masterplan:** §10.  
+**Ziel:** Jedes freigegebene Add-on zeigt dieselbe Entscheidungs-/Ausführungs-Oberfläche — VIS und Diagnose ohne Add-on-Sonderpfade.
+
+### 7.1 Gemeinsames State-Schema
+
+Unter `addons.<runtimeId>.runtime.surface.*` für Wallbox, Heizstab, Batterie, Klima (`air_conditioning`):
+
+- [x] `decision_source` (kanonisch: `off` | `manual` | `policy` | `deterministic_planner` | `ai` | `policy_fallback` | `safety`)
+- [x] `decision_detail` (bestehende Add-on-Detailquelle, unverändert parallel unter `runtime.decision_source`)
+- [x] `decision_reason` / `last_decision_at`
+- [x] `planner_status` / `intent_status` / `execution_status`
+- [x] `profile_ready` / `telemetry_ready`
+- [x] `fault` / `lockout`
+
+### 7.2 Anbindung
+
+- [x] Ableitung am Ende jedes Add-on-Ticks aus bestehender Runtime — keine zweite Entscheidungslogik (`src/addons/runtime_surface/`)
+- [x] Detaillierte `runtime.decision_source`-Leaves bleiben Alias/Diagnose
+- [x] VIS / Generator auf `runtime.surface.decision_source` / `planner_status`
+- [x] Ensure in `bootstrap/ensure_static_tree.ts` (keine Purge-Allowlist nötig — neue States)
+
+### 7.3 Tests & Doku
+
+- [x] Unit-Tests Mapping + ensure/publish (`runtime_surface/map_decision.test.ts`)
+- [x] Masterplan §10 Stand aktualisieren
+- [x] ARCHITECTURE.md: Runtime-Oberfläche
+
+### Block-7 Abnahme
+
+- [x] Alle vier Kern-Add-ons publizieren dasselbe Schema
+- [x] Nutzer sieht in VIS/States klar: wer entscheidet, ob Plan gilt
+- [x] `npm test` grün · Version + news de/en
+
+---
+
+## Block 8 — Batterie-Entladung + Profile (**gestrichen**, 27.07.2026)
+
+**Entscheidung Nutzer:** Kein EMS-geplantes Entladen — Hausversorgung über Self-Consumption (z. B. Sonnen Modus 2); Netzausgleich ist eigener Pfad. Keine Victron-/Fronius-Hardware beim Betreiber.
+
+**Nicht umsetzen:** `battery.discharge`-Allocation, Live-Profile Fronius/Victron/Sonnen Performance.
+
+**Später (Community / Beta):** Erst wenn ein Nutzer Mapping + Sollverhalten liefert. Ansteuerung ist prinzipiell bekannt (Fronius Gen24 SunSpec/Modbus; Victron Venus/ESS MQTT/Modbus), aber ohne Test-Hardware keine spekulativen Live-Writes — höchstens read-only/beta nach Auftrag.
+
+---
+
+## Block 9 — Wetter Tag 3–7 (Admin-Mapping) (erledigt, v0.1.216)
+
+**Voraussetzung:** Block 7 (Block 8 entfällt).  
+**Kontext:** PV + Hauslast Tag 0–7 sind seit Block 1 da; Wetter Tag 3–7 war `null` ohne Mapping.
+
+### 9.1 Mapping & Learning
+
+- [x] Admin: `learning_weather_horizon_enabled` + `learning_weather_horizon_day{3–7}_{min|max}_temp_state`
+- [x] Ensure-States `learning.weather.horizon.*` + Quality `valid`/`degraded`/`missing`
+- [x] Forecast Plan: Tag 3–7 Wetter aus Horizon wenn Mapping ok — sonst `null`
+
+### 9.2 Nutzung
+
+- [x] Contribution `horizonDays` → `weatherDayMinMax` (nur non-missing)
+- [x] Planung bleibt ohne Mapping funktionsfähig
+- [x] Tests + Doku
+
+### Block-9 Abnahme
+
+- [x] Bei gültigem Mapping: Wetter Tag 3–7 in Forecast sichtbar
+- [x] Ohne Mapping: weiterhin `null`, kein Fake-0
+- [x] `npm test` grün · Version + news de/en
+
+---
+
+## Block 10 — KI tiefer (AKTUELL)
+
+**Voraussetzung:** Blöcke 7 und 9 (Block 8 entfällt). Block-6-Gerüst bleibt.
+
+### 10.1 Erweiterung der Optimierung
+
+- [ ] Über Heizstab/Klima-Verschiebung hinaus: Batterie-**Lade**-Fenster (kein EMS-Entladen)
+- [ ] Optional Wallbox-Fenster wenn Governance `ai_optimization_allowed`
+- [ ] Grenzen/Caps bleiben — KI darf Limits nicht sprengen
+
+### 10.2 Auslöser & Nachweis
+
+- [ ] Material-Change-Trigger schärfen
+- [ ] Compare/Write-back mit messbaren Metriken; sonst `ai.auto_suspended`
+
+### Block-10 Abnahme
+
+- [ ] Unit-Tests mit messbarem Plan-B-Gewinn jenseits IH/Klima-only
+- [ ] Standard `ai_enabled=false`; ohne KI voll funktionsfähig
+- [ ] Masterplan §13 · `npm test` · Version + news de/en
+
+---
+
+## Explizit NICHT in Phase 2
+
+- **Observe-Modus** — zurückgestellt
+- **Batterie-Entladung / Fronius / Victron** — Block 8 gestrichen; nur Community-Auftrag + Beta
 - Neuer Shadow/Takeover-Stack
-- Wärmepumpe / neue Add-ons (nach Block 4)
-- Fronius/Victron-Profile (separater Auftrag)
-- Observe-Modus (separater Auftrag)
-- Scope ohne Nutzerfreigabe
+- Wärmepumpe / neue Add-ons ohne Auftrag
+- Scope ohne Nutzerfreigabe / Block-Skip
+
+---
+
+## Abnahme-Signal Phase 2
+
+| Block | Nutzer spürt |
+|-------|----------------|
+| 7 | Einheitliche Entscheidungs-/Write-Anzeige |
+| 8 | — (gestrichen) |
+| 9 | Wetter Woche im Forecast, wenn gemappt |
+| 10 | KI verschiebt Speicher-Laden/Wallbox messbar, sonst aus |
 
 ---
 
@@ -237,3 +372,4 @@ mehreren schlechten/bewölkten Tagen auftreten kann. Jahreszeit ist höchstens e
 - Operator: `docs/EMS_LIGHT_OPERATOR_FOUNDATION.md`
 - Architektur Ist: `docs/ARCHITECTURE.md`
 - Cursor-Rule: `.cursor/rules/ems-light-roadmap.mdc`
+

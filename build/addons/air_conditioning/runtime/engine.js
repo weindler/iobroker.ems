@@ -8,6 +8,7 @@ const state_write_1 = require("../../../policy/core/state_write");
 const tree_paths_1 = require("../../../tree_paths");
 const consumer_stats_1 = require("../../../learning/consumer_stats");
 const governance_1 = require("../../../addons/governance");
+const runtime_surface_1 = require("../../../addons/runtime_surface");
 const states_1 = require("../../../operator/daily_plan/states");
 const constants_1 = require("../constants");
 const configured_1 = require("../configured");
@@ -379,6 +380,10 @@ async function runAcRuntimeTickBody(host) {
     let anyDailyPlanActive = false;
     let maxDailyPlanRevision = 0;
     const summaryReasons = [];
+    let primaryDecisionDetail = "safe_default";
+    let anyTelemetryReady = false;
+    let anyFault = false;
+    let anyLockout = false;
     for (const unit of activeUnits) {
         const tempId = (0, sequences_1.resolveAcMappingTarget)(mappingTable, unit.index, "room_temp");
         const humId = (0, sequences_1.resolveAcMappingTarget)(mappingTable, unit.index, "room_humidity");
@@ -473,6 +478,18 @@ async function runAcRuntimeTickBody(host) {
             await applyModePurposeWhileRunning(host, unit, mappingTable, live, up, fsm.modePurpose);
         }
         summaryReasons.push(`U${unit.index}: ${permission.reasonDe}`);
+        if (primaryDecisionDetail === "safe_default") {
+            primaryDecisionDetail = permission.decisionSource;
+        }
+        if (temp.num != null) {
+            anyTelemetryReady = true;
+        }
+        if (permission.decisionSource === "fault") {
+            anyFault = true;
+        }
+        if (permission.decisionSource === "lockout") {
+            anyLockout = true;
+        }
         if ((0, time_1.switchIsOn)(fb.value)) {
             up.running = true;
         }
@@ -525,9 +542,49 @@ async function runAcRuntimeTickBody(host) {
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.AC_RUNTIME_SUMMARY_STATES.governanceAllowed, governanceEnabled);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.AC_RUNTIME_SUMMARY_STATES.dailyPlanActive, anyDailyPlanActive);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.AC_RUNTIME_SUMMARY_STATES.dailyPlanRevision, maxDailyPlanRevision);
-    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.AC_RUNTIME_SUMMARY_STATES.reasonDe, !governanceEnabled
+    const summaryReason = !governanceEnabled
         ? "Klima-Governance deaktiviert — keine EMS-Steueraktion."
-        : summaryReasons.slice(0, 3).join(" | ") || "Klima Runtime aktiv.");
+        : summaryReasons.slice(0, 3).join(" | ") || "Klima Runtime aktiv.";
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.AC_RUNTIME_SUMMARY_STATES.reasonDe, summaryReason);
+    const decisionDetail = !governanceEnabled
+        ? "governance_disabled"
+        : !addonEnabledVal
+            ? "unit_disabled"
+            : primaryDecisionDetail;
+    let intentStatus = "idle";
+    if (!governanceEnabled || !addonEnabledVal) {
+        intentStatus = "none";
+    }
+    else if (anyFault || anyLockout) {
+        intentStatus = "blocked";
+    }
+    else if (runningCount > 0 || anyDailyPlanActive) {
+        intentStatus = "active";
+    }
+    let executionStatus = live ? "live" : "dryrun";
+    if (anyFault) {
+        executionStatus = "fault";
+    }
+    else if (anyLockout) {
+        executionStatus = "lockout";
+    }
+    await (0, runtime_surface_1.publishAddonRuntimeSurface)(host, constants_1.AC_ADDON_ID, {
+        decisionDetail,
+        decisionReason: summaryReason,
+        nowIso: new Date(nowMs).toISOString(),
+        plannerStatus: (0, runtime_surface_1.plannerStatusFromDailyPlan)({
+            governanceEnabled: governanceEnabled && addonEnabledVal,
+            useDailyPlan: anyDailyPlanActive,
+            dailyPlanValid: anyDailyPlanActive,
+            dailyPlanStatus: anyDailyPlanActive ? "valid" : "missing",
+        }),
+        intentStatus,
+        executionStatus,
+        profileReady: (0, configured_1.configuredAcUnitIndexes)(host.config).length > 0,
+        telemetryReady: anyTelemetryReady || activeUnits.length === 0,
+        fault: anyFault,
+        lockout: anyLockout,
+    });
     const dataDir = host.getAbsolutePath?.("air_conditioning");
     if (dataDir) {
         await (0, persist_io_1.writeAcRuntimePersist)(dataDir, persist);

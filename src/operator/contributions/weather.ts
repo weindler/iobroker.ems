@@ -11,6 +11,14 @@ export interface WeatherHourlyPoint {
 	cloudPct: number | null;
 }
 
+export interface WeatherHorizonDayDetail {
+	dayIndex: number;
+	dateKey: string;
+	minTempC: number | null;
+	maxTempC: number | null;
+	quality: "valid" | "degraded" | "missing";
+}
+
 export interface WeatherContributionBuildInput {
 	now: Date;
 	learningStatus: string | null;
@@ -26,6 +34,7 @@ export interface WeatherContributionBuildInput {
 	todayMaxTempC: number | null;
 	tomorrowMinTempC: number | null;
 	tomorrowMaxTempC: number | null;
+	horizonDays?: WeatherHorizonDayDetail[];
 	forecastHorizonStart: string | null;
 	forecastHorizonEnd: string | null;
 }
@@ -38,7 +47,8 @@ export function buildWeatherContribution(input: WeatherContributionBuildInput): 
 		hasTemp ||
 		input.cloudPct !== null ||
 		input.todayMinTempC !== null ||
-		input.todayMaxTempC !== null;
+		input.todayMaxTempC !== null ||
+		(input.horizonDays?.some((d) => d.minTempC !== null || d.maxTempC !== null) ?? false);
 
 	let status: "valid" | "degraded" | "missing" = "missing";
 	let reasonDe = "Keine Wetter-Kontextdaten vorhanden.";
@@ -100,6 +110,7 @@ export function buildWeatherContribution(input: WeatherContributionBuildInput): 
 			todayMaxTempC: input.todayMaxTempC,
 			tomorrowMinTempC: input.tomorrowMinTempC,
 			tomorrowMaxTempC: input.tomorrowMaxTempC,
+			horizonDays: input.horizonDays ?? [],
 			forecastHorizonStart: input.forecastHorizonStart,
 			forecastHorizonEnd: input.forecastHorizonEnd,
 			hourlyPoints: input.hourlyPoints,

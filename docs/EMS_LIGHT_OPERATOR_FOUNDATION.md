@@ -83,9 +83,8 @@ State-Leser → normalisiertes Build-Input → reine Builder-Funktion → `PlanC
 
 - Kontext only — keine kWh-Bilanz
 - Rolle `context` wird nicht mit `supply` verrechnet
-- `weatherMinTempC`/`weatherMaxTempC` pro Forecast-Plan-Tag strukturell für alle Tage vorhanden;
-  Tag 3–7 bleibt bewusst `null` — es existiert (Stand v0.1.201) kein Admin-Mapping für mehrtägige
-  Wetter-Rohdaten (kein erfundener Wert)
+- `weatherMinTempC`/`weatherMaxTempC` pro Forecast-Plan-Tag; Tag 3–7 aus
+  `learning.weather.horizon.*` bei gültigem Admin-Mapping (Block 9), sonst `null`
 
 ### Constraint Contribution
 

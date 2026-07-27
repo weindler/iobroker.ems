@@ -2,6 +2,10 @@ import { asNum } from "../../ems_light/state_util";
 import type { StateHost } from "../../ems_light/state_util";
 import { intentAdminConfigFromAdapter } from "../../intent/config";
 import { weatherConfigFromAdapter } from "../../learning/weather/config";
+import {
+	WEATHER_HORIZON_DAY_INDEXES,
+	weatherHorizonDayStatePrefix,
+} from "../../learning/weather/horizon";
 import { PV_HORIZON_EXTENDED_FIRST_DAY, PV_HORIZON_DAY_COUNT } from "../../learning/pv_horizon/constants";
 import type { DayForecastJson } from "../../learning/house_load/types";
 import type { GridSupplyForecast } from "../types";
@@ -10,7 +14,11 @@ import { buildPvContribution, type PvContributionBuildInput, type PvHorizonDayIn
 import type { PvShapeHourPoint } from "./pv_shape";
 import { pvShapeConfigFromAdapter, pvShapeConfigReady } from "./pv_shape_config";
 import { buildHouseLoadContribution } from "./house_load";
-import { buildWeatherContribution, type WeatherHourlyPoint } from "./weather";
+import {
+	buildWeatherContribution,
+	type WeatherHorizonDayDetail,
+	type WeatherHourlyPoint,
+} from "./weather";
 import {
 	buildGlobalConstraintsContribution,
 	buildGridSupplyContribution,
@@ -297,6 +305,38 @@ export async function collectContributions(
 			: null,
 	]);
 
+	const todayKey = localDateKeyInTimezone(now, timezone);
+	const weatherHorizonDays: WeatherHorizonDayDetail[] = [];
+	for (const dayIndex of WEATHER_HORIZON_DAY_INDEXES) {
+		const prefix = weatherHorizonDayStatePrefix(dayIndex);
+		const [minTempC, maxTempC, qualityRaw] = await Promise.all([
+			readNum(host, `${prefix}.min_temp_c`),
+			readNum(host, `${prefix}.max_temp_c`),
+			readStr(host, `${prefix}.quality`),
+		]);
+		const quality =
+			qualityRaw === "valid" || qualityRaw === "degraded" || qualityRaw === "missing"
+				? qualityRaw
+				: minTempC !== null || maxTempC !== null
+					? "degraded"
+					: "missing";
+		weatherHorizonDays.push({
+			dayIndex,
+			dateKey: addDaysToDateKey(todayKey, dayIndex - 1),
+			minTempC,
+			maxTempC,
+			quality,
+		});
+	}
+
+	const farthestWeatherDay = weatherHorizonDays
+		.filter((d) => d.minTempC !== null || d.maxTempC !== null)
+		.map((d) => d.dateKey)
+		.sort()
+		.at(-1);
+	const weatherHorizonEnd =
+		(farthestWeatherDay ?? addDaysToDateKey(todayKey, 1)) + "T23:59:59.999Z";
+
 	const hourlyPoints: WeatherHourlyPoint[] = [];
 
 	const constraintInput: ConstraintContributionBuildInput = {
@@ -336,8 +376,9 @@ export async function collectContributions(
 			todayMaxTempC: outdoorTempC,
 			tomorrowMinTempC: null,
 			tomorrowMaxTempC: null,
+			horizonDays: weatherHorizonDays,
 			forecastHorizonStart: now.toISOString(),
-			forecastHorizonEnd: addDaysToDateKey(localDateKeyInTimezone(now, timezone), 1) + "T23:59:59.999Z",
+			forecastHorizonEnd: weatherHorizonEnd,
 		}),
 		buildGridSupplyContribution(grid),
 		buildHouseMainFuseConstraintContribution(constraintInput),

@@ -554,6 +554,79 @@ describe("daily plan allocation", () => {
 		assert.ok(result.allocations.every((a) => a.gridPowerW === 0));
 	});
 
+	it("battery charge without maxPowerW must not allocate up to grid fuse", () => {
+		const slots = buildDailyPlanSlots(
+			[{ startIso: slot1Start, endIso: slot1End }],
+			[forecastSlot(slot1Start, slot1End, { pv: 500, load: 800, price: 10, importAllowed: true })],
+			11000,
+			13800,
+		);
+		const bat = buildAllocationCandidate(
+			flexContribution(CONTRIBUTION_IDS.BATTERY_CHARGE, "battery", {
+				gridEligible: true,
+				details: { requiredEnergyKwh: 5, maxChargePowerW: null },
+			}),
+			"balanced",
+			[],
+		);
+		assert.equal(bat.maxPowerW, null);
+		assert.equal(bat.allocatable, false);
+
+		const result = runAllocation({
+			slots,
+			candidates: [bat],
+			globalMode: "balanced",
+			modeAllowsOptimization: true,
+			gridImportAllowedPolicy: true,
+			mutualExclusions: [],
+			nowMs: NOW.getTime(),
+		});
+		assert.equal(result.allocations.length, 0);
+		assert.ok(result.allocations.every((a) => (a.allocatedPowerW ?? 0) < 10000));
+	});
+
+	it("battery charge allocations never exceed maxChargePowerW", () => {
+		const slots = buildDailyPlanSlots(
+			[
+				{ startIso: slot1Start, endIso: slot1End },
+				{ startIso: "2026-07-11T10:15:00.000Z", endIso: "2026-07-11T10:30:00.000Z" },
+			],
+			[
+				forecastSlot(slot1Start, slot1End, { pv: 500, load: 800, price: 8, importAllowed: true }),
+				forecastSlot("2026-07-11T10:15:00.000Z", "2026-07-11T10:30:00.000Z", {
+					pv: 500,
+					load: 800,
+					price: 9,
+					importAllowed: true,
+				}),
+			],
+			11000,
+			13800,
+		);
+		const bat = buildAllocationCandidate(
+			flexContribution(CONTRIBUTION_IDS.BATTERY_CHARGE, "battery", {
+				gridEligible: true,
+				details: { requiredEnergyKwh: 5, maxChargePowerW: 4200 },
+			}),
+			"balanced",
+			[],
+		);
+		assert.equal(bat.maxPowerW, 4200);
+		assert.equal(bat.allocatable, true);
+
+		const result = runAllocation({
+			slots,
+			candidates: [bat],
+			globalMode: "balanced",
+			modeAllowsOptimization: true,
+			gridImportAllowedPolicy: true,
+			mutualExclusions: [],
+			nowMs: NOW.getTime(),
+		});
+		assert.ok(result.allocations.length >= 1);
+		assert.ok(result.allocations.every((a) => (a.allocatedPowerW ?? 0) <= 4200));
+	});
+
 	it("immersion fallback minPower even when contribution omits minPowerW", () => {
 		const slots = buildDailyPlanSlots(
 			[{ startIso: slot1Start, endIso: slot1End }],

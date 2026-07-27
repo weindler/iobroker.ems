@@ -130,9 +130,9 @@ export function buildBatteryChargeContribution(input: BatteryContributionBuildIn
 		telemetryStale: input.telemetryStale,
 	});
 	const requiredKwh = participation.allowed ? requiredChargeEnergyKwh(input) : null;
-	const maxW = input.maxChargeW;
+	const maxW = input.maxChargeW !== null && input.maxChargeW > 0 ? input.maxChargeW : null;
 	const gridEligible = gridChargeEligible(input);
-	const enabled = participation.allowed && input.chargeCapable && requiredKwh !== null;
+	const enabled = participation.allowed && input.chargeCapable && requiredKwh !== null && maxW !== null;
 	const deficitDriven = input.chargeLogic?.active === true;
 
 	let status = participation.status;
@@ -141,6 +141,9 @@ export function buildBatteryChargeContribution(input: BatteryContributionBuildIn
 		if (!input.chargeCapable) {
 			status = "unsupported";
 			reasonDe = "Profil unterstützt keine Ladeleistungssteuerung.";
+		} else if (maxW === null) {
+			status = "degraded";
+			reasonDe = "Hardware-Maximal-Ladeleistung fehlt — keine Batterie-Allocation.";
 		} else if (requiredKwh === null) {
 			status = "degraded";
 			reasonDe = "Ladebedarf nicht berechenbar (SOC oder Kapazität fehlt).";
@@ -149,7 +152,7 @@ export function buildBatteryChargeContribution(input: BatteryContributionBuildIn
 			reasonDe = "Batterie am Ladeziel — kein weiterer Ladebedarf.";
 		} else {
 			status = participation.status === "degraded" ? "degraded" : "valid";
-			reasonDe = `Ladebedarf ${requiredKwh} kWh bis ${chargeTargetSocPct(input)} % SOC.`;
+			reasonDe = `Ladebedarf ${requiredKwh} kWh bis ${chargeTargetSocPct(input)} % SOC (max ${maxW} W).`;
 			if (!input.topOffRequested && learnedTopoffDue(input)) {
 				reasonDe = `${reasonDe} Gelerntes Top-Off-Intervall überschritten (${input.batteryLearning?.topoffDaysRemaining !== null && input.batteryLearning?.topoffDaysRemaining !== undefined ? `${input.batteryLearning.topoffDaysRemaining} Tage überfällig` : "fällig"}).`;
 			}

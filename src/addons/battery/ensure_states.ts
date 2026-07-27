@@ -197,7 +197,7 @@ function batteryStateDefs(): Def[] {
 		{ id: BAT.limits.hardwareMaxDischargeW, common: numS("HW max. Entladeleistung", "W") },
 		{ id: BAT.limits.hardwareMinSocPct, common: numS("HW Mindest-SOC", "%") },
 		{ id: BAT.limits.hardwareMaxSocPct, common: numS("HW Maximal-SOC", "%") },
-		{ id: BAT.limits.effectiveMaxChargeW, common: numS("Effektive max. Ladeleistung", "W") },
+		{ id: BAT.limits.effectiveMaxChargeW, common: numS("Effektive Ladeleistung jetzt (Befehl)", "W") },
 		{ id: BAT.limits.effectiveMaxDischargeW, common: numS("Effektive max. Entladeleistung", "W") },
 		{ id: BAT.limits.effectiveReason, common: txt("Grenzen-Grund"), defVal: "" },
 

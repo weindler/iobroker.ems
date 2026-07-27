@@ -131,6 +131,16 @@ function buildAllocationCandidate(c, globalMode, energyPriority) {
         reasonDe = "Energiebedarf nicht belastbar — keine Allocation.";
     }
     const policyOrder = policyOrderFor(contributionId, addonId, energyPriority);
+    let maxPowerW = maxPowerFromContribution(c);
+    // Batterie-Laden ohne technische Obergrenze darf nie bis zur Haus-/Netzgrenze alloziert werden.
+    if (contributionId === contribution_ids_1.CONTRIBUTION_IDS.BATTERY_CHARGE &&
+        (maxPowerW === null || maxPowerW <= 0) &&
+        allocatable) {
+        allocatable = false;
+        allocationStatus = "missing_data";
+        reasonDe = "Keine technische Max-Ladeleistung — keine Batterie-Allocation.";
+        maxPowerW = null;
+    }
     return {
         contribution: c,
         contributionId,
@@ -142,7 +152,7 @@ function buildAllocationCandidate(c, globalMode, energyPriority) {
         gridEligible,
         pvFirst,
         batteryEligible,
-        maxPowerW: maxPowerFromContribution(c),
+        maxPowerW,
         minPowerW: minPowerFromContribution(c),
         requiredEnergyKwh: requiredEnergyFromContribution(c),
         priorityRank: c.priorityBand ?? null,

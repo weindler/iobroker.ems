@@ -398,6 +398,57 @@ function minimalForecast(overrides = {}) {
         });
         strict_1.default.ok(result.allocations.every((a) => a.gridPowerW === 0));
     });
+    (0, node_test_1.it)("battery charge without maxPowerW must not allocate up to grid fuse", () => {
+        const slots = (0, constraints_2.buildDailyPlanSlots)([{ startIso: slot1Start, endIso: slot1End }], [forecastSlot(slot1Start, slot1End, { pv: 500, load: 800, price: 10, importAllowed: true })], 11000, 13800);
+        const bat = (0, policy_1.buildAllocationCandidate)(flexContribution(contribution_ids_1.CONTRIBUTION_IDS.BATTERY_CHARGE, "battery", {
+            gridEligible: true,
+            details: { requiredEnergyKwh: 5, maxChargePowerW: null },
+        }), "balanced", []);
+        strict_1.default.equal(bat.maxPowerW, null);
+        strict_1.default.equal(bat.allocatable, false);
+        const result = (0, allocation_1.runAllocation)({
+            slots,
+            candidates: [bat],
+            globalMode: "balanced",
+            modeAllowsOptimization: true,
+            gridImportAllowedPolicy: true,
+            mutualExclusions: [],
+            nowMs: NOW.getTime(),
+        });
+        strict_1.default.equal(result.allocations.length, 0);
+        strict_1.default.ok(result.allocations.every((a) => (a.allocatedPowerW ?? 0) < 10000));
+    });
+    (0, node_test_1.it)("battery charge allocations never exceed maxChargePowerW", () => {
+        const slots = (0, constraints_2.buildDailyPlanSlots)([
+            { startIso: slot1Start, endIso: slot1End },
+            { startIso: "2026-07-11T10:15:00.000Z", endIso: "2026-07-11T10:30:00.000Z" },
+        ], [
+            forecastSlot(slot1Start, slot1End, { pv: 500, load: 800, price: 8, importAllowed: true }),
+            forecastSlot("2026-07-11T10:15:00.000Z", "2026-07-11T10:30:00.000Z", {
+                pv: 500,
+                load: 800,
+                price: 9,
+                importAllowed: true,
+            }),
+        ], 11000, 13800);
+        const bat = (0, policy_1.buildAllocationCandidate)(flexContribution(contribution_ids_1.CONTRIBUTION_IDS.BATTERY_CHARGE, "battery", {
+            gridEligible: true,
+            details: { requiredEnergyKwh: 5, maxChargePowerW: 4200 },
+        }), "balanced", []);
+        strict_1.default.equal(bat.maxPowerW, 4200);
+        strict_1.default.equal(bat.allocatable, true);
+        const result = (0, allocation_1.runAllocation)({
+            slots,
+            candidates: [bat],
+            globalMode: "balanced",
+            modeAllowsOptimization: true,
+            gridImportAllowedPolicy: true,
+            mutualExclusions: [],
+            nowMs: NOW.getTime(),
+        });
+        strict_1.default.ok(result.allocations.length >= 1);
+        strict_1.default.ok(result.allocations.every((a) => (a.allocatedPowerW ?? 0) <= 4200));
+    });
     (0, node_test_1.it)("immersion fallback minPower even when contribution omits minPowerW", () => {
         const slots = (0, constraints_2.buildDailyPlanSlots)([{ startIso: slot1Start, endIso: slot1End }], [forecastSlot(slot1Start, slot1End, { pv: 1008, load: 1000 })], // surplus 8 W
         11000, 13800);

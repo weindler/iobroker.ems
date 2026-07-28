@@ -68,6 +68,7 @@ async function ensureImmersionRuntimeStates(host) {
         numState(types_1.IMMERSION_RUNTIME_STATES.flexibleAllocatedPowerW, "Daily-Plan Flexible W"),
         strState(types_1.IMMERSION_RUNTIME_STATES.allocationStatus, "Allocation-Status", "unknown"),
         strState(types_1.IMMERSION_RUNTIME_STATES.allocationReasonDe, "Allocation-Begründung (DE)", ""),
+        boolState(types_1.IMMERSION_RUNTIME_STATES.autoTargetReached, "Tagesziel erreicht (Hysterese-Flag)", false),
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }

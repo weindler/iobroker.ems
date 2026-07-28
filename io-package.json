@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.219",
+		"version": "0.1.220",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.220": {
+				"en": "Immersion planning respects reheat hysteresis: while buffer is still above target−hysteresis after the day target was reached, the flexible contribution requests no Daily Plan slots — plan and runtime stay aligned. Runtime publishes auto_target_reached for the operator.",
+				"de": "Heizstab-Planung berücksichtigt Wiedereinschalt-Hysterese: Solange der Puffer nach erreichtem Tagesziel noch über Ziel−Hysterese liegt, meldet die flexible Contribution keinen Daily-Plan-Bedarf — Plan und Runtime bleiben deckungsgleich. Runtime veröffentlicht auto_target_reached für den Operator."
+			},
 			"0.1.219": {
 				"en": "Fix: immersion heater again follows only the Daily Plan slot (removed runtime surplus override from 0.1.218). Battery PV-cover and climate hours/kWh estimates without mandatory time slots remain. Better immersion surplus use belongs in joint Allocation/Daily Plan later.",
 				"de": "Fix: Heizstab folgt wieder nur dem Daily-Plan-Slot (Runtime-Überschuss-Override aus 0.1.218 entfernt). Batterie-PV-Deckung und Klima Stunden/kWh-Schätzung ohne Pflicht-Zeitslots bleiben. Bessere Heizstab-Überschussnutzung gehört später in die gemeinsame Allocation/Daily Plan."

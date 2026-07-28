@@ -177,4 +177,5 @@ export const IMMERSION_RUNTIME_STATES = {
 	flexibleAllocatedPowerW: `${IMMERSION_RUNTIME_BASE}.flexible_allocated_power_w`,
 	allocationStatus: `${IMMERSION_RUNTIME_BASE}.allocation_status`,
 	allocationReasonDe: `${IMMERSION_RUNTIME_BASE}.allocation_reason_de`,
+	autoTargetReached: `${IMMERSION_RUNTIME_BASE}.auto_target_reached`,
 } as const;

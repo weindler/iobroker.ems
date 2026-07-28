@@ -8,6 +8,7 @@ import type {
 } from "./types";
 import { effectiveForceTarget } from "../device_config";
 import type { RuntimePersistData } from "./types";
+import { isImmersionReheatHysteresisActive } from "./reheat_hysteresis";
 
 export interface FsmInput {
 	nowMs: number;
@@ -143,8 +144,12 @@ export function runImmersionFsm(input: FsmInput): FsmOutput {
 		// Abkühlen unter (Ziel − Hysterese) auch wirklich erreicht wurde. Ein Stopp mangels PV-
 		// Überschuss (Thermal-Fallback) oder Daily-Plan-Allocation VOR Zielerreichung darf das
 		// Nachheizen nicht dauerhaft blockieren — sonst lädt der Heizstab nie vollständig durch.
-		const reheatThresholdC = autoTargetC - config.temperatureHysteresisK;
-		const targetReached = temp < reheatThresholdC ? false : persist.autoTargetReached || temp >= autoTargetC;
+		const hysteresisActive = isImmersionReheatHysteresisActive({
+			bufferTempC: temp,
+			targetTempC: autoTargetC,
+			hysteresisK: config.temperatureHysteresisK,
+			autoTargetReached: persist.autoTargetReached,
+		});
 
 		if (temp >= config.planningMaxTempC) {
 			const minRuntimeActive = persist.minRuntimeUntilMs !== null && nowMs < persist.minRuntimeUntilMs;
@@ -217,7 +222,7 @@ export function runImmersionFsm(input: FsmInput): FsmOutput {
 		// Wiedereinschalt-Hysterese: Nach Zielerreichung erst unterhalb (Ziel − Hysterese) neu starten,
 		// nicht bereits bei minimalem Unterschreiten. Nur relevant, solange gerade nicht geheizt wird —
 		// laufende Heizzyklen (persist.commandedStage > 0) sind davon unberührt.
-		if (persist.commandedStage <= 0 && targetReached) {
+		if (persist.commandedStage <= 0 && hysteresisActive) {
 			return {
 				...base,
 				state: "auto_ready",

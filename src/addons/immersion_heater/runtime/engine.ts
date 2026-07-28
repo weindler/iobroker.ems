@@ -602,11 +602,8 @@ async function publishRuntime(
 		IMMERSION_RUNTIME_STATES.allocationStatus,
 		dailyPlan?.allocationStatus ?? "unknown",
 	);
-	await setStateIfChanged(
-		host,
-		IMMERSION_RUNTIME_STATES.allocationReasonDe,
-		dailyPlan?.allocationReasonDe ?? "",
-	);
+	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.allocationReasonDe, dailyPlan?.allocationReasonDe ?? "");
+	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.autoTargetReached, persist.autoTargetReached);
 
 	const governanceOn = await isAddonGovernanceEnabledFromState(
 		(id) => host.getStateAsync(id),

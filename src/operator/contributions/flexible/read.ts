@@ -321,6 +321,7 @@ export async function collectFlexibleContributions(
 		bufferTemp,
 		immersionFault,
 		immersionState,
+		autoTargetReached,
 		thermalRaw,
 		pvToday,
 		pvTomorrow,
@@ -365,6 +366,7 @@ export async function collectFlexibleContributions(
 		readNum(host, IMMERSION_RUNTIME_STATES.bufferTemperatureC),
 		readBool(host, IMMERSION_RUNTIME_STATES.faultActive),
 		readStr(host, IMMERSION_RUNTIME_STATES.state),
+		readBool(host, IMMERSION_RUNTIME_STATES.autoTargetReached),
 		host.getStateAsync("user_intent.thermal.resolved_json"),
 		readNum(host, "learning.pv_bias.corrected_today_kwh"),
 		readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
@@ -498,6 +500,7 @@ export async function collectFlexibleContributions(
 			forecastModeEnabled: immersionConfig.forecastModeEnabled,
 			aiOptimizationAllowed: aiThermal === true,
 			thermalLearning,
+			autoTargetReached: autoTargetReached === true,
 		},
 		airConditioning: {
 			now,

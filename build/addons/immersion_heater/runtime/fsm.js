@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.controlModeToOperatingRequest = exports.operatingRequestToControlMode = exports.evaluateTemperature = exports.runImmersionFsm = void 0;
 const device_config_1 = require("../device_config");
+const reheat_hysteresis_1 = require("./reheat_hysteresis");
 function runImmersionFsm(input) {
     const { nowMs, addonEnabled, addonAvailable, configValid, failsafeActive, resolvedMode, forceTargetTempC, forceUntilMs, plannerCommandedStage, plannerTargetTempC, temperature, measuredPowerW, hasPowerMeasurement, persist, config, faultLockout, faultCode, } = input;
     const base = {
@@ -71,8 +72,12 @@ function runImmersionFsm(input) {
         // Abkühlen unter (Ziel − Hysterese) auch wirklich erreicht wurde. Ein Stopp mangels PV-
         // Überschuss (Thermal-Fallback) oder Daily-Plan-Allocation VOR Zielerreichung darf das
         // Nachheizen nicht dauerhaft blockieren — sonst lädt der Heizstab nie vollständig durch.
-        const reheatThresholdC = autoTargetC - config.temperatureHysteresisK;
-        const targetReached = temp < reheatThresholdC ? false : persist.autoTargetReached || temp >= autoTargetC;
+        const hysteresisActive = (0, reheat_hysteresis_1.isImmersionReheatHysteresisActive)({
+            bufferTempC: temp,
+            targetTempC: autoTargetC,
+            hysteresisK: config.temperatureHysteresisK,
+            autoTargetReached: persist.autoTargetReached,
+        });
         if (temp >= config.planningMaxTempC) {
             const minRuntimeActive = persist.minRuntimeUntilMs !== null && nowMs < persist.minRuntimeUntilMs;
             if (minRuntimeActive && persist.commandedStage > 0) {
@@ -130,7 +135,7 @@ function runImmersionFsm(input) {
         // Wiedereinschalt-Hysterese: Nach Zielerreichung erst unterhalb (Ziel − Hysterese) neu starten,
         // nicht bereits bei minimalem Unterschreiten. Nur relevant, solange gerade nicht geheizt wird —
         // laufende Heizzyklen (persist.commandedStage > 0) sind davon unberührt.
-        if (persist.commandedStage <= 0 && targetReached) {
+        if (persist.commandedStage <= 0 && hysteresisActive) {
             return {
                 ...base,
                 state: "auto_ready",

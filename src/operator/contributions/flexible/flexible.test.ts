@@ -556,6 +556,51 @@ describe("immersion heater contributions", () => {
 		assert.equal(flexible.enabled, false);
 	});
 
+	it("no flexible slots while reheat hysteresis is active", () => {
+		const [, flexible] = buildImmersionHeaterContributions(
+			immersionInput({
+				bufferTempC: 48,
+				autoTargetReached: true,
+				config: immersionDeviceConfigFromAdapter({
+					ih_stage_count: 1,
+					ih_stage_1_set_state: "relay.0.heater",
+					ih_stage_1_nominal_power_w: 2000,
+					ih_buffer_temp_c_target: "sensor.0.temp",
+					ih_buffer_temp_c_enabled: true,
+					ih_temperature_hysteresis_k: 5,
+					ih_planning_min_temp_c: 44,
+					ih_planning_max_temp_c: 63,
+				}),
+			}),
+		);
+		assert.equal(flexible.enabled, false);
+		assert.equal(flexible.slots.length, 0);
+		assert.equal(flexible.details.reheatHysteresisActive, true);
+		assert.match(flexible.reasonDe, /Wiedereinschalt-Hysterese/);
+	});
+
+	it("flexible demand returns after cooling below hysteresis band", () => {
+		const [, flexible] = buildImmersionHeaterContributions(
+			immersionInput({
+				bufferTempC: 46,
+				autoTargetReached: true,
+				config: immersionDeviceConfigFromAdapter({
+					ih_stage_count: 1,
+					ih_stage_1_set_state: "relay.0.heater",
+					ih_stage_1_nominal_power_w: 2000,
+					ih_buffer_temp_c_target: "sensor.0.temp",
+					ih_buffer_temp_c_enabled: true,
+					ih_temperature_hysteresis_k: 5,
+					ih_planning_min_temp_c: 44,
+					ih_planning_max_temp_c: 63,
+				}),
+			}),
+		);
+		assert.equal(flexible.enabled, true);
+		assert.equal(flexible.slots.length, 1);
+		assert.equal(flexible.details.reheatHysteresisActive, false);
+	});
+
 	it("blocks on fault", () => {
 		const [, flexible] = buildImmersionHeaterContributions(immersionInput({ fault: true }));
 		assert.equal(flexible.enabled, false);

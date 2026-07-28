@@ -220,7 +220,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     const modePolicy = (0, mode_policy_1.plannerModePolicyFromGlobalMode)(globalModeRaw);
     const globalModeOff = modePolicy.mode === "off";
     const batteryCfg = (0, config_1.batteryConfigFromAdapter)(config);
-    const [batteryEnabled, batteryGov, wallboxEnabled, wallboxGov, immersionEnabled, immersionGov, climateEnabled, climateGov, socPct, capacityEffective, capacityNet, capacitySource, minSoc, maxSoc, chargeCapable, dischargeCapable, batteryFault, batteryLockout, telemetryValid, telemetryStale, telemetryReady, ownershipActive, batteryIntentRaw, connected, charging, vehicleSoc, planSoc, planActive, sessionKwh, deadlineRaw, activePhases, maxCurrentA, bufferTemp, immersionFault, immersionState, thermalRaw, pvToday, pvTomorrow, pvBiasStatus, aiThermal, outdoorTemp, outdoorForecastMaxC, houseLoadTodayRaw,] = await Promise.all([
+    const [batteryEnabled, batteryGov, wallboxEnabled, wallboxGov, immersionEnabled, immersionGov, climateEnabled, climateGov, socPct, capacityEffective, capacityNet, capacitySource, minSoc, maxSoc, chargeCapable, dischargeCapable, batteryFault, batteryLockout, telemetryValid, telemetryStale, telemetryReady, ownershipActive, batteryIntentRaw, connected, charging, vehicleSoc, planSoc, planActive, sessionKwh, deadlineRaw, activePhases, maxCurrentA, bufferTemp, immersionFault, immersionState, autoTargetReached, thermalRaw, pvToday, pvTomorrow, pvBiasStatus, aiThermal, outdoorTemp, outdoorForecastMaxC, houseLoadTodayRaw,] = await Promise.all([
         readBool(host, (0, tree_paths_1.addonEnabled)("battery")),
         (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "battery"),
         readBool(host, (0, tree_paths_1.addonEnabled)("wallbox")),
@@ -256,6 +256,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
         readNum(host, types_1.IMMERSION_RUNTIME_STATES.bufferTemperatureC),
         readBool(host, types_1.IMMERSION_RUNTIME_STATES.faultActive),
         readStr(host, types_1.IMMERSION_RUNTIME_STATES.state),
+        readBool(host, types_1.IMMERSION_RUNTIME_STATES.autoTargetReached),
         host.getStateAsync("user_intent.thermal.resolved_json"),
         readNum(host, "learning.pv_bias.corrected_today_kwh"),
         readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
@@ -376,6 +377,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             forecastModeEnabled: immersionConfig.forecastModeEnabled,
             aiOptimizationAllowed: aiThermal === true,
             thermalLearning,
+            autoTargetReached: autoTargetReached === true,
         },
         airConditioning: {
             now,

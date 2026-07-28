@@ -477,6 +477,7 @@ async function publishRuntime(host, s, decisionSource, dailyPlan) {
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.flexibleAllocatedPowerW, dailyPlan?.flexibleAllocatedPowerW ?? null);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.allocationStatus, dailyPlan?.allocationStatus ?? "unknown");
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.allocationReasonDe, dailyPlan?.allocationReasonDe ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.autoTargetReached, persist.autoTargetReached);
     const governanceOn = await (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "immersion_heater");
     const lockout = s.state === "fault_lockout" || decisionSource === "lockout";
     let intentStatus = "idle";

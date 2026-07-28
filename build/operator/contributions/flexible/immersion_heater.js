@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildImmersionHeaterContributions = exports.buildImmersionFlexibleContribution = exports.buildImmersionMandatoryContribution = void 0;
+const reheat_hysteresis_1 = require("../../../addons/immersion_heater/runtime/reheat_hysteresis");
 const thermal_forecast_1 = require("../../planning/thermal_forecast");
 const contribution_ids_1 = require("../../contribution_ids");
 const quality_1 = require("../../quality");
@@ -141,10 +142,17 @@ function buildImmersionFlexibleContribution(input) {
     });
     const atTarget = input.bufferTempC !== null &&
         (input.bufferTempC >= input.config.planningMaxTempC || input.bufferTempC >= target.targetTempC);
+    const hysteresisActive = (0, reheat_hysteresis_1.isImmersionReheatHysteresisActive)({
+        bufferTempC: input.bufferTempC,
+        targetTempC: target.targetTempC,
+        hysteresisK: input.config.temperatureHysteresisK,
+        autoTargetReached: input.autoTargetReached === true,
+    });
     const autoReady = participation.allowed &&
         input.thermalMode === "auto" &&
         input.modePolicy.allowThermalAuto &&
-        !atTarget;
+        !atTarget &&
+        !hysteresisActive;
     const maxW = maxStagePowerW(input.config);
     const minW = minStagePowerW(input.config);
     const requiredEnergyKwh = autoReady && input.bufferTempC !== null && maxW !== null
@@ -159,6 +167,11 @@ function buildImmersionFlexibleContribution(input) {
     else if (atTarget) {
         status = "disabled";
         reasonDe = "Zieltemperatur erreicht — kein flexibler Bedarf.";
+    }
+    else if (hysteresisActive) {
+        status = "disabled";
+        const reheatAt = (0, types_2.round3)(target.targetTempC - Math.max(0, input.config.temperatureHysteresisK));
+        reasonDe = `Wiedereinschalt-Hysterese aktiv — erst unter ${reheatAt} °C wieder planen (Buf ${(0, types_2.round3)(input.bufferTempC)} °C, Ziel ${target.targetTempC} °C, ${input.config.temperatureHysteresisK} K).`;
     }
     else if (autoReady && requiredEnergyKwh !== null && requiredEnergyKwh <= 0) {
         status = "disabled";
@@ -211,6 +224,9 @@ function buildImmersionFlexibleContribution(input) {
             forecastActive: target.forecastActive,
             minimumRuntimeSec: input.config.minimumRuntimeSec,
             batteryEligible: true,
+            autoTargetReached: input.autoTargetReached === true,
+            reheatHysteresisActive: hysteresisActive,
+            reheatHysteresisK: input.config.temperatureHysteresisK,
             ...thermalLearningDetails(input),
         },
         slots: (0, flex_demand_1.buildFlexibleDemandSlot)({

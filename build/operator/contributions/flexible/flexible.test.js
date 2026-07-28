@@ -469,6 +469,45 @@ function acInput(overrides = {}) {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({ bufferTempC: 62 }));
         strict_1.default.equal(flexible.enabled, false);
     });
+    (0, node_test_1.it)("no flexible slots while reheat hysteresis is active", () => {
+        const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
+            bufferTempC: 48,
+            autoTargetReached: true,
+            config: (0, device_config_1.immersionDeviceConfigFromAdapter)({
+                ih_stage_count: 1,
+                ih_stage_1_set_state: "relay.0.heater",
+                ih_stage_1_nominal_power_w: 2000,
+                ih_buffer_temp_c_target: "sensor.0.temp",
+                ih_buffer_temp_c_enabled: true,
+                ih_temperature_hysteresis_k: 5,
+                ih_planning_min_temp_c: 44,
+                ih_planning_max_temp_c: 63,
+            }),
+        }));
+        strict_1.default.equal(flexible.enabled, false);
+        strict_1.default.equal(flexible.slots.length, 0);
+        strict_1.default.equal(flexible.details.reheatHysteresisActive, true);
+        strict_1.default.match(flexible.reasonDe, /Wiedereinschalt-Hysterese/);
+    });
+    (0, node_test_1.it)("flexible demand returns after cooling below hysteresis band", () => {
+        const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
+            bufferTempC: 46,
+            autoTargetReached: true,
+            config: (0, device_config_1.immersionDeviceConfigFromAdapter)({
+                ih_stage_count: 1,
+                ih_stage_1_set_state: "relay.0.heater",
+                ih_stage_1_nominal_power_w: 2000,
+                ih_buffer_temp_c_target: "sensor.0.temp",
+                ih_buffer_temp_c_enabled: true,
+                ih_temperature_hysteresis_k: 5,
+                ih_planning_min_temp_c: 44,
+                ih_planning_max_temp_c: 63,
+            }),
+        }));
+        strict_1.default.equal(flexible.enabled, true);
+        strict_1.default.equal(flexible.slots.length, 1);
+        strict_1.default.equal(flexible.details.reheatHysteresisActive, false);
+    });
     (0, node_test_1.it)("blocks on fault", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({ fault: true }));
         strict_1.default.equal(flexible.enabled, false);

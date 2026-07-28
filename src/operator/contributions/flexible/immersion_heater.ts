@@ -1,4 +1,5 @@
 import type { ImmersionDeviceConfig } from "../../../addons/immersion_heater/runtime/types";
+import { isImmersionReheatHysteresisActive } from "../../../addons/immersion_heater/runtime/reheat_hysteresis";
 import { resolveThermalForecastTarget } from "../../planning/thermal_forecast";
 import type { PlannerModePolicy } from "../../../planner/mode_policy";
 import { CONTRIBUTION_IDS } from "../../contribution_ids";
@@ -29,6 +30,11 @@ export interface ImmersionContributionBuildInput {
 	aiOptimizationAllowed: boolean;
 	/** Thermal-Runtime-Learning (`learning.thermal_runtime.*`) — optional, `null`/fehlend → reine Physik-Schätzung. */
 	thermalLearning?: ThermalLearningSignal | null;
+	/**
+	 * Runtime-Flag: Tagesziel wurde erreicht; Wiedereinschalt-Hysterese aktiv bis Buf < Ziel − Hysterese.
+	 * Damit vergibt der Daily Plan keine Slots, die die Runtime ohnehin sperren würde.
+	 */
+	autoTargetReached?: boolean;
 }
 
 function learningMargin(input: ImmersionContributionBuildInput): ImmersionLearningMargin | null {
@@ -186,11 +192,18 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 	const atTarget =
 		input.bufferTempC !== null &&
 		(input.bufferTempC >= input.config.planningMaxTempC || input.bufferTempC >= target.targetTempC);
+	const hysteresisActive = isImmersionReheatHysteresisActive({
+		bufferTempC: input.bufferTempC,
+		targetTempC: target.targetTempC,
+		hysteresisK: input.config.temperatureHysteresisK,
+		autoTargetReached: input.autoTargetReached === true,
+	});
 	const autoReady =
 		participation.allowed &&
 		input.thermalMode === "auto" &&
 		input.modePolicy.allowThermalAuto &&
-		!atTarget;
+		!atTarget &&
+		!hysteresisActive;
 
 	const maxW = maxStagePowerW(input.config);
 	const minW = minStagePowerW(input.config);
@@ -207,6 +220,10 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 	} else if (atTarget) {
 		status = "disabled";
 		reasonDe = "Zieltemperatur erreicht — kein flexibler Bedarf.";
+	} else if (hysteresisActive) {
+		status = "disabled";
+		const reheatAt = round3(target.targetTempC - Math.max(0, input.config.temperatureHysteresisK));
+		reasonDe = `Wiedereinschalt-Hysterese aktiv — erst unter ${reheatAt} °C wieder planen (Buf ${round3(input.bufferTempC!)} °C, Ziel ${target.targetTempC} °C, ${input.config.temperatureHysteresisK} K).`;
 	} else if (autoReady && requiredEnergyKwh !== null && requiredEnergyKwh <= 0) {
 		status = "disabled";
 		reasonDe = "Zieltemperatur erreicht — kein flexibler Bedarf.";
@@ -266,6 +283,9 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 				forecastActive: target.forecastActive,
 				minimumRuntimeSec: input.config.minimumRuntimeSec,
 				batteryEligible: true,
+				autoTargetReached: input.autoTargetReached === true,
+				reheatHysteresisActive: hysteresisActive,
+				reheatHysteresisK: input.config.temperatureHysteresisK,
 				...thermalLearningDetails(input),
 			},
 			slots: buildFlexibleDemandSlot({

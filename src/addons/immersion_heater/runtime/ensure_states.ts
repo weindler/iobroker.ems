@@ -69,6 +69,7 @@ export async function ensureImmersionRuntimeStates(host: StateHost): Promise<voi
 		numState(IMMERSION_RUNTIME_STATES.flexibleAllocatedPowerW, "Daily-Plan Flexible W"),
 		strState(IMMERSION_RUNTIME_STATES.allocationStatus, "Allocation-Status", "unknown"),
 		strState(IMMERSION_RUNTIME_STATES.allocationReasonDe, "Allocation-Begründung (DE)", ""),
+		boolState(IMMERSION_RUNTIME_STATES.autoTargetReached, "Tagesziel erreicht (Hysterese-Flag)", false),
 	];
 	await ensureStates(host, defs);
 }

@@ -41,4 +41,5 @@ exports.IMMERSION_RUNTIME_STATES = {
     flexibleAllocatedPowerW: `${exports.IMMERSION_RUNTIME_BASE}.flexible_allocated_power_w`,
     allocationStatus: `${exports.IMMERSION_RUNTIME_BASE}.allocation_status`,
     allocationReasonDe: `${exports.IMMERSION_RUNTIME_BASE}.allocation_reason_de`,
+    autoTargetReached: `${exports.IMMERSION_RUNTIME_BASE}.auto_target_reached`,
 };

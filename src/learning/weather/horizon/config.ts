@@ -33,7 +33,7 @@ function boolField(config: Record<string, unknown>, key: string, defaultVal: boo
 	return defaultVal;
 }
 
-/** Admin keys: learning_weather_horizon_day{N}_{min|max}_temp_state */
+/** Admin keys: learning_weather_horizon_day{N}_{min|max}_temp_state (N = 1…7). */
 export function weatherHorizonConfigFromAdapter(config: unknown): WeatherHorizonConfig {
 	const c = config && typeof config === "object" ? (config as Record<string, unknown>) : {};
 	const days: WeatherHorizonDayMapping[] = [];

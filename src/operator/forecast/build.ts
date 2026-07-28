@@ -89,6 +89,18 @@ function weatherDayMinMax(
 ): { min: number | null; max: number | null } {
 	if (!contribution?.enabled) return { min: null, max: null };
 	const d = contribution.details;
+	const horizon = d.horizonDays as
+		| Array<{ dateKey: string; minTempC: number | null; maxTempC: number | null; quality?: string }>
+		| undefined;
+	if (Array.isArray(horizon)) {
+		const hit = horizon.find((h) => h.dateKey === dateKey);
+		if (hit && hit.quality !== "missing") {
+			return {
+				min: typeof hit.minTempC === "number" ? hit.minTempC : null,
+				max: typeof hit.maxTempC === "number" ? hit.maxTempC : null,
+			};
+		}
+	}
 	if (dateKey === todayKey) {
 		return {
 			min: typeof d.todayMinTempC === "number" ? d.todayMinTempC : null,
@@ -100,21 +112,6 @@ function weatherDayMinMax(
 			min: typeof d.tomorrowMinTempC === "number" ? d.tomorrowMinTempC : null,
 			max: typeof d.tomorrowMaxTempC === "number" ? d.tomorrowMaxTempC : null,
 		};
-	}
-	const horizon = d.horizonDays as
-		| Array<{ dateKey: string; minTempC: number | null; maxTempC: number | null; quality?: string }>
-		| undefined;
-	if (Array.isArray(horizon)) {
-		const hit = horizon.find((h) => h.dateKey === dateKey);
-		if (hit) {
-			if (hit.quality === "missing") {
-				return { min: null, max: null };
-			}
-			return {
-				min: typeof hit.minTempC === "number" ? hit.minTempC : null,
-				max: typeof hit.maxTempC === "number" ? hit.maxTempC : null,
-			};
-		}
 	}
 	return { min: null, max: null };
 }

@@ -1,6 +1,6 @@
 # EMS-Light — Forecast Plan
 
-**Stand:** v0.1.216 (Roadmap-Block 9 — Wetter Tag 3–7)
+**Stand:** v0.1.217 (Wetter-Horizon Tag 1–7 + Bias, analog PV)
 
 ## 1. Zweck
 
@@ -12,7 +12,7 @@ Der Forecast Plan führt die **realen** Planungsdaten in die gemeinsame Operator
 |-------------|-----|---------|
 | `pv_forecast` | Add-on | `learning.pv_bias.*`, `learning.pv_horizon.day3–7.*` |
 | `house_load` | System | `learning.house_load.forecast_today_json`/`forecast_tomorrow_json`/`forecast_horizon_json` (Tag 3–7), Confidence, Status |
-| `weather_forecast` | Add-on | `learning.weather.*`, optional `learning.weather.horizon.day3–7.*` (Admin-Mapping) |
+| `weather_forecast` | Add-on | `learning.weather.*`, `learning.weather.horizon.day1–7.*` (Admin-Mapping + Bias) |
 | `grid_supply` | System | Grid-Supply-Schicht (v0.1.125), Tibber/`price_learning`-Fallback/Fixed Tariff, Policy |
 | `house_main_fuse` | Add-on | konfigurierte Sicherungs- und Importgrenzen |
 | `global_constraints` | System | effektive Grenzen nach Global Mode |
@@ -28,9 +28,9 @@ Der Forecast Plan führt die **realen** Planungsdaten in die gemeinsame Operator
 - Hauslast-Tage 3–7 ebenfalls als **Tagesaggregate** aus `learning.house_load.forecast_horizon_json`
   (`houseLoadEnergyKwh`) — dieselbe Saison/Wochentag/Day-Type-Musterlogik wie „morgen", nicht
   erfunden, nur weiter in die Zukunft projiziert
-- Wetter-Kontextfelder (`weatherMinTempC`/`weatherMaxTempC`) für jeden Tag; Tag 3–7 aus
-  `learning.weather.horizon.day{N}.*` wenn Admin-Mapping gesetzt und Qualität nicht `missing`,
-  sonst `null` (nie Fake-0)
+- Wetter-Kontextfelder (`weatherMinTempC`/`weatherMaxTempC`) für jeden Tag aus
+  `learning.weather.horizon.day{1–7}.*` (Tag1=heute … Tag7); Bias aus Tag-1-Freeze vs.
+  Live-Ist (Fallback: `learning.weather.temp_bias_c`); ohne Mapping `null` (nie Fake-0)
 - Grid-Preis-Slots nur soweit echte Daten vorhanden sind
 - Keine künstlichen leeren Slots bis zum Horizontende
 

@@ -1,10 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runWeatherHorizon = exports.weatherHorizonDayStatePrefix = exports.ensureWeatherHorizonStates = exports.weatherHorizonHasAnyMapping = exports.weatherHorizonConfigFromAdapter = exports.WEATHER_HORIZON_LAST_DAY = exports.WEATHER_HORIZON_FIRST_DAY = exports.WEATHER_HORIZON_DAY_INDEXES = void 0;
+exports.emaBiasC = exports.effectiveTempBiasC = exports.dailyTempBiasSample = exports.correctHorizonTempC = exports.runWeatherHorizon = exports.weatherHorizonDayStatePrefix = exports.ensureWeatherHorizonStates = exports.weatherHorizonHasAnyMapping = exports.weatherHorizonConfigFromAdapter = exports.WEATHER_HORIZON_BIAS_WEIGHT_BY_DAY = exports.WEATHER_HORIZON_DAY_COUNT = exports.WEATHER_HORIZON_LAST_DAY = exports.WEATHER_HORIZON_FIRST_DAY = exports.WEATHER_HORIZON_DAY_INDEXES = void 0;
 var constants_1 = require("./constants");
 Object.defineProperty(exports, "WEATHER_HORIZON_DAY_INDEXES", { enumerable: true, get: function () { return constants_1.WEATHER_HORIZON_DAY_INDEXES; } });
 Object.defineProperty(exports, "WEATHER_HORIZON_FIRST_DAY", { enumerable: true, get: function () { return constants_1.WEATHER_HORIZON_FIRST_DAY; } });
 Object.defineProperty(exports, "WEATHER_HORIZON_LAST_DAY", { enumerable: true, get: function () { return constants_1.WEATHER_HORIZON_LAST_DAY; } });
+Object.defineProperty(exports, "WEATHER_HORIZON_DAY_COUNT", { enumerable: true, get: function () { return constants_1.WEATHER_HORIZON_DAY_COUNT; } });
+Object.defineProperty(exports, "WEATHER_HORIZON_BIAS_WEIGHT_BY_DAY", { enumerable: true, get: function () { return constants_1.WEATHER_HORIZON_BIAS_WEIGHT_BY_DAY; } });
 var config_1 = require("./config");
 Object.defineProperty(exports, "weatherHorizonConfigFromAdapter", { enumerable: true, get: function () { return config_1.weatherHorizonConfigFromAdapter; } });
 Object.defineProperty(exports, "weatherHorizonHasAnyMapping", { enumerable: true, get: function () { return config_1.weatherHorizonHasAnyMapping; } });
@@ -13,3 +15,8 @@ Object.defineProperty(exports, "ensureWeatherHorizonStates", { enumerable: true,
 Object.defineProperty(exports, "weatherHorizonDayStatePrefix", { enumerable: true, get: function () { return ensure_states_1.weatherHorizonDayStatePrefix; } });
 var run_1 = require("./run");
 Object.defineProperty(exports, "runWeatherHorizon", { enumerable: true, get: function () { return run_1.runWeatherHorizon; } });
+var math_1 = require("./math");
+Object.defineProperty(exports, "correctHorizonTempC", { enumerable: true, get: function () { return math_1.correctHorizonTempC; } });
+Object.defineProperty(exports, "dailyTempBiasSample", { enumerable: true, get: function () { return math_1.dailyTempBiasSample; } });
+Object.defineProperty(exports, "effectiveTempBiasC", { enumerable: true, get: function () { return math_1.effectiveTempBiasC; } });
+Object.defineProperty(exports, "emaBiasC", { enumerable: true, get: function () { return math_1.emaBiasC; } });

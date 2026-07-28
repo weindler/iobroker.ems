@@ -7488,11 +7488,11 @@
 				"hWeatherHorizon": {
 					"type": "header",
 					"size": 5,
-					"text": "Wetter-Horizon Tag 3–7 (Min/Max °C)"
+					"text": "Wetter-Horizon Tag 1–7 (Min/Max °C)"
 				},
 				"hWeatherHorizonHelp": {
 					"type": "staticText",
-					"text": "Optionale Quellen für Tages-Min/Max ab Tag 3 (wie PV-Horizon). Ohne Mapping bleiben Forecast-Temperaturen null — keine erfundenen Werte. BrightSky-Beispiel: Tag3 = brightsky.0.daily.02.temperature_min / .temperature_max … Tag7 = daily.06.*",
+					"text": "Tages-Min/Max wie PV-Horizon: Tag1=heute, Tag2=morgen, Tag3–7 weiter. BrightSky: Tag1=daily.00 … Tag7=daily.06 (temperature_min/max). Tag-1-Forecast wird eingefroren und mit Live-Ist (actual temp) abgeglichen → Bias auf Tag 1–7. Ohne Mapping: null, keine Fake-Werte.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -7501,13 +7501,53 @@
 				},
 				"learning_weather_horizon_enabled": {
 					"type": "checkbox",
-					"label": "Wetter-Horizon (Tag 3–7) aktiv",
+					"label": "Wetter-Horizon (Tag 1–7) aktiv",
 					"default": true,
 					"xs": 12,
 					"sm": 6,
 					"md": 4,
 					"lg": 4,
 					"xl": 4
+				},
+				"learning_weather_horizon_day1_min_temp_state": {
+					"type": "objectId",
+					"label": "Tag 1 (heute) Min °C — z. B. brightsky.0.daily.00.temperature_min",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_weather_horizon_day1_max_temp_state": {
+					"type": "objectId",
+					"label": "Tag 1 (heute) Max °C — z. B. brightsky.0.daily.00.temperature_max",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_weather_horizon_day2_min_temp_state": {
+					"type": "objectId",
+					"label": "Tag 2 (morgen) Min °C — z. B. brightsky.0.daily.01.temperature_min",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_weather_horizon_day2_max_temp_state": {
+					"type": "objectId",
+					"label": "Tag 2 (morgen) Max °C — z. B. brightsky.0.daily.01.temperature_max",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
 				},
 				"learning_weather_horizon_day3_min_temp_state": {
 					"type": "objectId",

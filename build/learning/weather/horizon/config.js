@@ -21,7 +21,7 @@ function boolField(config, key, defaultVal) {
     }
     return defaultVal;
 }
-/** Admin keys: learning_weather_horizon_day{N}_{min|max}_temp_state */
+/** Admin keys: learning_weather_horizon_day{N}_{min|max}_temp_state (N = 1…7). */
 function weatherHorizonConfigFromAdapter(config) {
     const c = config && typeof config === "object" ? config : {};
     const days = [];

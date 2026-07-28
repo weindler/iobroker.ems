@@ -248,6 +248,12 @@ async function collectContributions(host, now, gridForecast) {
             quality,
         });
     }
+    const day1 = weatherHorizonDays.find((d) => d.dayIndex === 1);
+    const day2 = weatherHorizonDays.find((d) => d.dayIndex === 2);
+    const todayMinTempC = day1 && day1.quality !== "missing" ? day1.minTempC : null;
+    const todayMaxTempC = day1 && day1.quality !== "missing" ? day1.maxTempC : null;
+    const tomorrowMinTempC = day2 && day2.quality !== "missing" ? day2.minTempC : null;
+    const tomorrowMaxTempC = day2 && day2.quality !== "missing" ? day2.maxTempC : null;
     const farthestWeatherDay = weatherHorizonDays
         .filter((d) => d.minTempC !== null || d.maxTempC !== null)
         .map((d) => d.dateKey)
@@ -287,10 +293,10 @@ async function collectContributions(host, now, gridForecast) {
             outdoorTempC,
             cloudPct,
             hourlyPoints,
-            todayMinTempC: null,
-            todayMaxTempC: outdoorTempC,
-            tomorrowMinTempC: null,
-            tomorrowMaxTempC: null,
+            todayMinTempC,
+            todayMaxTempC,
+            tomorrowMinTempC,
+            tomorrowMaxTempC,
             horizonDays: weatherHorizonDays,
             forecastHorizonStart: now.toISOString(),
             forecastHorizonEnd: weatherHorizonEnd,

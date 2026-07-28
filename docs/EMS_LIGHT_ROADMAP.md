@@ -31,7 +31,7 @@ Allocation-Qualität, VIS-Planboard, Heizstab-Ownership, Batterie-HW-Ladegrenze 
 |-------|------|--------|--------------|
 | **7** | Einheitliche Runtime-States | **erledigt** | v0.1.215 |
 | **8** | ~~Batterie-Entladung + Profile~~ | **gestrichen** | — |
-| **9** | Wetter Tag 3–7 (Admin-Mapping) | **erledigt** | v0.1.216 |
+| **9** | Wetter Tag 1–7 (Admin-Mapping + Bias) | **erledigt** | v0.1.216→**v0.1.217** |
 | **10** | KI tiefer (über Slot-Shift hinaus) | **aktuell** | TBD |
 
 **Produkt-Reife heute:** ~72–75 % | Phase 1 + Block 7 + 9 | **Aktuell: Block 10**
@@ -304,21 +304,22 @@ Unter `addons.<runtimeId>.runtime.surface.*` für Wallbox, Heizstab, Batterie, K
 
 ### 9.1 Mapping & Learning
 
-- [x] Admin: `learning_weather_horizon_enabled` + `learning_weather_horizon_day{3–7}_{min|max}_temp_state`
+- [x] Admin: `learning_weather_horizon_enabled` + `learning_weather_horizon_day{1–7}_{min|max}_temp_state`
 - [x] Ensure-States `learning.weather.horizon.*` + Quality `valid`/`degraded`/`missing`
-- [x] Forecast Plan: Tag 3–7 Wetter aus Horizon wenn Mapping ok — sonst `null`
+- [x] Tag-1 Forecast einfrieren vs. Live-Ist → Min/Max-Bias (EMA); Fallback `temp_bias_c`
+- [x] Bias gewichtet auf Tag 1–7 (wie PV); Forecast Plan ohne Live-Fake-Max
 
 ### 9.2 Nutzung
 
-- [x] Contribution `horizonDays` → `weatherDayMinMax` (nur non-missing)
+- [x] Contribution `horizonDays` Tag 1–7 → `weatherDayMinMax`
 - [x] Planung bleibt ohne Mapping funktionsfähig
 - [x] Tests + Doku
 
 ### Block-9 Abnahme
 
-- [x] Bei gültigem Mapping: Wetter Tag 3–7 in Forecast sichtbar
+- [x] Bei gültigem Mapping: Wetter Tag 1–7 in Forecast sichtbar
 - [x] Ohne Mapping: weiterhin `null`, kein Fake-0
-- [x] `npm test` grün · Version + news de/en
+- [x] `npm test` grün · Version + news de/en (v0.1.217)
 
 ---
 

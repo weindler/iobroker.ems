@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.216",
+		"version": "0.1.217",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.217": {
+				"en": "Weather horizon Tag 1–7 (today…+6) like PV: Admin-map BrightSky daily min/max, freeze day-1 forecast vs live outdoor for bias, apply weighted correction. No live temp as fake daily max.",
+				"de": "Wetter-Horizon Tag 1–7 (heute…+6) wie PV: Admin-Mapping BrightSky Tages-Min/Max, Tag-1-Forecast einfrieren vs. Live-Außentemp → Bias, gewichtet korrigieren. Keine Live-Temp als Fake-Tagesmax."
+			},
 			"0.1.216": {
 				"en": "Roadmap Block 9: optional weather horizon day 3–7 (Admin-mapped min/max °C → learning.weather.horizon.* → Forecast Plan). Unmapped days stay null. Block 8 (battery discharge / Fronius/Victron) dropped — self-consumption covers house discharge; third-party profiles only on community request as beta.",
 				"de": "Roadmap Block 9: optionaler Wetter-Horizon Tag 3–7 (Admin-Mapping Min/Max °C → learning.weather.horizon.* → Forecast Plan). Ohne Mapping bleibt null. Block 8 (Batterie-Entladung / Fronius/Victron) gestrichen — Hausversorgung über Self-Consumption; Fremdprofile nur auf Community-Auftrag als Beta."

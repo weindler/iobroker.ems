@@ -8,12 +8,12 @@ import type { PlanContribution } from "../../types";
 import { operatorQuality } from "../../quality";
 import { addonContributorRef } from "../../contributor";
 import { baseContribution } from "../types";
-import { buildFlexibleDemandSlot } from "./flex_demand";
 import { evaluateParticipation, round3 } from "./types";
 
 export interface AcUnitContributionBuildInput {
 	unit: AcUnitConfig;
 	roomTempC: number | null;
+	roomHumidityPct?: number | null;
 	consumerStats: ConsumerPersistEntry | undefined;
 	mappingsReady: boolean;
 	fault: boolean;
@@ -29,6 +29,8 @@ export interface AirConditioningContributionBuildInput {
 	modePolicy: PlannerModePolicy;
 	acConfig: AcGlobalConfig;
 	outdoorTempC: number | null;
+	/** Wetter-Horizon Tag-1 Max (°C), optional. */
+	outdoorForecastMaxC?: number | null;
 	units: AcUnitContributionBuildInput[];
 }
 
@@ -98,9 +100,13 @@ function buildUnitContribution(
 			unitIndex: unit.index,
 			unitName: unit.name,
 			roomTempC: unitInput.roomTempC,
+			roomHumidityPct: unitInput.roomHumidityPct ?? null,
 			onTempC: unit.onTempC,
 			offTempC: unit.offTempC,
 			expectedKwhToday: round3(forecast.expectedKwh),
+			expectedHoursToday: forecast.expectedHours,
+			coolingHours: forecast.coolingHours,
+			dehumidifyHours: forecast.dehumidifyHours,
 			requiredEnergyKwh,
 			expectedPeakW: forecast.powerW,
 			minPowerW: maxPowerW,
@@ -108,17 +114,12 @@ function buildUnitContribution(
 			powerSource: forecast.powerSource,
 			likelyActive: forecast.likelyActive,
 			outdoorTempC: input.outdoorTempC,
+			outdoorForecastMaxC: input.outdoorForecastMaxC ?? null,
+			/** Klima plant Energie/Laufzeit, keine 15-Min-Zeitslots (Runtime steuert hysteresebasiert). */
+			timeAllocation: false,
 			governanceEnabled: input.governanceEnabled,
 		},
-		slots: buildFlexibleDemandSlot({
-			generatedAt,
-			requiredEnergyKwh,
-			maxPowerW,
-			minPowerW: maxPowerW,
-			available: enabled,
-			quality,
-			reasonDe,
-		}),
+		slots: [],
 	});
 }
 
@@ -128,6 +129,7 @@ export function buildAirConditioningContributions(input: AirConditioningContribu
 		.map((u) => ({
 			unit: u.unit,
 			roomTempC: u.roomTempC,
+			roomHumidityPct: u.roomHumidityPct ?? null,
 			consumerStats: u.consumerStats,
 		}));
 
@@ -136,6 +138,7 @@ export function buildAirConditioningContributions(input: AirConditioningContribu
 		acConfig: input.acConfig,
 		governanceEnabled: input.governanceEnabled,
 		outdoorTempC: input.outdoorTempC,
+		outdoorForecastMaxC: input.outdoorForecastMaxC ?? null,
 		units: unitInputs,
 	});
 
@@ -153,6 +156,8 @@ export function buildAirConditioningContributions(input: AirConditioningContribu
 			likelyActive: false,
 			expectedHours: 0,
 			expectedKwh: 0,
+			coolingHours: 0,
+			dehumidifyHours: 0,
 			reasonDe: "Unit nicht im Kühlplan.",
 		};
 		contributions.push(buildUnitContribution(input, unitInput, forecast));

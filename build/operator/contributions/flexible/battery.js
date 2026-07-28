@@ -6,6 +6,7 @@ const contribution_ids_1 = require("../../contribution_ids");
 const quality_1 = require("../../quality");
 const contributor_1 = require("../../contributor");
 const types_1 = require("../types");
+const battery_pv_cover_1 = require("./battery_pv_cover");
 const types_2 = require("./types");
 /** Top-Off durch Nutzer-Intent ODER gelerntes Intervall (`topoff_due`) überschritten. */
 function learnedTopoffDue(input) {
@@ -92,6 +93,15 @@ function buildBatteryChargeContribution(input) {
     const gridEligible = gridChargeEligible(input);
     const enabled = participation.allowed && input.chargeCapable && requiredKwh !== null && maxW !== null;
     const deficitDriven = input.chargeLogic?.active === true;
+    const todayPvSurplusKwh = input.todayPvSurplusKwh ?? null;
+    const pvCovers = (0, battery_pv_cover_1.pvSurplusCoversChargeNeed)({
+        requiredChargeEnergyKwh: requiredKwh,
+        todayPvSurplusKwh,
+        topOffRequested: input.topOffRequested,
+        learnedTopoffDue: learnedTopoffDue(input),
+    });
+    /** Allocation-Energie: 0 wenn Tages-PV den SOC-Bedarf deckt (keine EMS-Lade-Slots). */
+    const allocEnergyKwh = pvCovers ? 0 : requiredKwh;
     let status = participation.status;
     let reasonDe = participation.reasonDe;
     if (participation.allowed) {
@@ -111,6 +121,10 @@ function buildBatteryChargeContribution(input) {
             status = "valid";
             reasonDe = "Batterie am Ladeziel — kein weiterer Ladebedarf.";
         }
+        else if (pvCovers) {
+            status = "valid";
+            reasonDe = `Tages-PV-Überschuss ${todayPvSurplusKwh} kWh deckt Ladebedarf ${requiredKwh} kWh — keine EMS-Lade-Slots.`;
+        }
         else {
             status = participation.status === "degraded" ? "degraded" : "valid";
             reasonDe = `Ladebedarf ${requiredKwh} kWh bis ${chargeTargetSocPct(input)} % SOC (Config-Max ${maxW} W).`;
@@ -127,7 +141,13 @@ function buildBatteryChargeContribution(input) {
      * wenn sie aktuell den Bedarf treibt — sonst füllt die Allocation (Top-Off/Policy-Ziel)
      * weiterhin ohne feste Frist, PV-first.
      */
-    const deadlineIso = deficitDriven && requiredKwh !== null && requiredKwh > 0 ? input.chargeLogic?.bridgeUntilIso ?? null : null;
+    const deadlineIso = !pvCovers && deficitDriven && requiredKwh !== null && requiredKwh > 0
+        ? input.chargeLogic?.bridgeUntilIso ?? null
+        : null;
+    const publishSlots = maxW !== null &&
+        participation.allowed &&
+        allocEnergyKwh !== null &&
+        allocEnergyKwh > 0;
     return (0, types_1.baseContribution)(contribution_ids_1.CONTRIBUTION_IDS.BATTERY_CHARGE, (0, contributor_1.addonContributorRef)("battery"), "consume", ["storage", "demand_flex", "dispatch"], {
         generatedAt,
         validUntil: null,
@@ -141,7 +161,10 @@ function buildBatteryChargeContribution(input) {
         details: {
             socPct: input.socPct,
             targetSocPct: chargeTargetSocPct(input),
-            requiredEnergyKwh: requiredKwh,
+            requiredEnergyKwh: allocEnergyKwh,
+            socGapEnergyKwh: requiredKwh,
+            todayPvSurplusKwh,
+            pvCoversChargeNeed: pvCovers,
             maxChargePowerW: maxW,
             topOffRequested: input.topOffRequested,
             profileId: input.profileId,
@@ -153,14 +176,14 @@ function buildBatteryChargeContribution(input) {
             ...batteryLearningDetails(input),
             ...chargeLogicDetails(input),
         },
-        slots: maxW !== null && participation.allowed
+        slots: publishSlots
             ? [
                 {
                     slot: { startIso: generatedAt, endIso: generatedAt },
                     minPowerW: null,
                     preferredPowerW: null,
                     maxPowerW: maxW,
-                    requiredEnergyKwh: requiredKwh,
+                    requiredEnergyKwh: allocEnergyKwh,
                     availableEnergyKwh: null,
                     priceCtPerKwh: null,
                     available: input.chargeCapable,

@@ -7,7 +7,6 @@ const contribution_ids_1 = require("../../contribution_ids");
 const quality_1 = require("../../quality");
 const contributor_1 = require("../../contributor");
 const types_1 = require("../types");
-const flex_demand_1 = require("./flex_demand");
 const types_2 = require("./types");
 function buildUnitContribution(input, unitInput, forecast) {
     const generatedAt = input.now.toISOString();
@@ -67,9 +66,13 @@ function buildUnitContribution(input, unitInput, forecast) {
             unitIndex: unit.index,
             unitName: unit.name,
             roomTempC: unitInput.roomTempC,
+            roomHumidityPct: unitInput.roomHumidityPct ?? null,
             onTempC: unit.onTempC,
             offTempC: unit.offTempC,
             expectedKwhToday: (0, types_2.round3)(forecast.expectedKwh),
+            expectedHoursToday: forecast.expectedHours,
+            coolingHours: forecast.coolingHours,
+            dehumidifyHours: forecast.dehumidifyHours,
             requiredEnergyKwh,
             expectedPeakW: forecast.powerW,
             minPowerW: maxPowerW,
@@ -77,17 +80,12 @@ function buildUnitContribution(input, unitInput, forecast) {
             powerSource: forecast.powerSource,
             likelyActive: forecast.likelyActive,
             outdoorTempC: input.outdoorTempC,
+            outdoorForecastMaxC: input.outdoorForecastMaxC ?? null,
+            /** Klima plant Energie/Laufzeit, keine 15-Min-Zeitslots (Runtime steuert hysteresebasiert). */
+            timeAllocation: false,
             governanceEnabled: input.governanceEnabled,
         },
-        slots: (0, flex_demand_1.buildFlexibleDemandSlot)({
-            generatedAt,
-            requiredEnergyKwh,
-            maxPowerW,
-            minPowerW: maxPowerW,
-            available: enabled,
-            quality,
-            reasonDe,
-        }),
+        slots: [],
     });
 }
 function buildAirConditioningContributions(input) {
@@ -96,6 +94,7 @@ function buildAirConditioningContributions(input) {
         .map((u) => ({
         unit: u.unit,
         roomTempC: u.roomTempC,
+        roomHumidityPct: u.roomHumidityPct ?? null,
         consumerStats: u.consumerStats,
     }));
     const cooling = (0, cooling_1.planCooling)({
@@ -103,6 +102,7 @@ function buildAirConditioningContributions(input) {
         acConfig: input.acConfig,
         governanceEnabled: input.governanceEnabled,
         outdoorTempC: input.outdoorTempC,
+        outdoorForecastMaxC: input.outdoorForecastMaxC ?? null,
         units: unitInputs,
     });
     const byIndex = new Map(cooling.units.map((u) => [u.unitIndex, u]));
@@ -119,6 +119,8 @@ function buildAirConditioningContributions(input) {
             likelyActive: false,
             expectedHours: 0,
             expectedKwh: 0,
+            coolingHours: 0,
+            dehumidifyHours: 0,
             reasonDe: "Unit nicht im Kühlplan.",
         };
         contributions.push(buildUnitContribution(input, unitInput, forecast));

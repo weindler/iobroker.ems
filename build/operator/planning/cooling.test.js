@@ -66,4 +66,31 @@ const NOW = new Date("2026-07-05T10:00:00");
         strict_1.default.equal(result.likely_active, true);
         strict_1.default.equal(result.expected_peak_w, 1300);
     });
+    (0, node_test_1.it)("uses outdoor forecast max for cooling when room is below on-temp", () => {
+        const unit = (0, config_1.acUnitConfigFromAdapter)({
+            ac_u1_enabled: true,
+            ac_u1_name: "Wohnen",
+            ac_u1_on_temp_c: 26,
+            ac_u1_off_temp_c: 24,
+            ac_u1_estimated_power_w: 900,
+            ac_u1_active_from: "08:00",
+            ac_u1_active_until: "20:00",
+        }, 1);
+        const result = (0, cooling_1.planCooling)({
+            now: NOW,
+            acConfig: {
+                outdoorMaxPowerW: 2000,
+                plannerOutdoorLikelyTempC: 28,
+                defaultProfileId: "generic",
+                units: [unit],
+            },
+            governanceEnabled: true,
+            outdoorTempC: 22,
+            outdoorForecastMaxC: 34,
+            units: [{ unit, roomTempC: 24, consumerStats: undefined }],
+        });
+        strict_1.default.equal(result.likely_active, true);
+        strict_1.default.ok(result.expected_kwh_today > 0);
+        strict_1.default.ok((result.units[0]?.expectedHours ?? 0) > 0);
+    });
 });

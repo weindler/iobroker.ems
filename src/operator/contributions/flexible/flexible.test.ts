@@ -195,6 +195,35 @@ describe("flexible participation", () => {
 });
 
 describe("battery contributions", () => {
+	it("skips EMS charge slots when today's PV surplus covers the SOC gap", () => {
+		const c = buildBatteryChargeContribution(
+			batteryInput({
+				socPct: 55,
+				capacityManualKwh: 10,
+				todayPvSurplusKwh: 12,
+			}),
+		);
+		// balanced target 95% → 4 kWh gap; surplus 12 ≥ 4
+		assert.equal(c.details.pvCoversChargeNeed, true);
+		assert.equal(c.details.requiredEnergyKwh, 0);
+		assert.equal(c.details.socGapEnergyKwh, 4);
+		assert.equal(c.slots.length, 0);
+		assert.match(c.reasonDe, /keine EMS-Lade-Slots/);
+	});
+
+	it("keeps charge slots when top-off requested despite PV surplus", () => {
+		const c = buildBatteryChargeContribution(
+			batteryInput({
+				socPct: 90,
+				topOffRequested: true,
+				todayPvSurplusKwh: 50,
+			}),
+		);
+		assert.equal(c.details.pvCoversChargeNeed, false);
+		assert.ok((c.details.requiredEnergyKwh as number) > 0);
+		assert.equal(c.slots.length, 1);
+	});
+
 	it("builds valid charge contribution", () => {
 		const c = buildBatteryChargeContribution(batteryInput());
 		assert.equal(c.contributionId, CONTRIBUTION_IDS.BATTERY_CHARGE);
@@ -647,7 +676,8 @@ describe("air conditioning contributions", () => {
 		assert.equal(unit1?.flow, "consume");
 		assert.ok(unit1?.details.expectedKwhToday !== undefined);
 		assert.ok((unit1?.details.requiredEnergyKwh as number) > 0);
-		assert.equal(unit1?.slots.length, 1);
+		assert.equal(unit1?.details.timeAllocation, false);
+		assert.equal(unit1?.slots.length, 0);
 	});
 
 	it("degrades when room temp missing", () => {

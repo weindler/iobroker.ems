@@ -136,6 +136,10 @@ export function buildAllocationCandidate(
 	} else if (!c.enabled) {
 		allocatable = false;
 		allocationStatus = "disabled";
+	} else if (c.details.timeAllocation === false) {
+		allocatable = false;
+		allocationStatus = "disabled";
+		reasonDe = "Energiebedarf ohne Zeitslot-Allocation (Laufzeit-/kWh-Schätzung).";
 	} else if (BLOCKING_STATUSES.has(c.quality.status)) {
 		allocatable = false;
 		allocationStatus =

@@ -73,4 +73,35 @@ describe("planCooling", () => {
 		assert.equal(result.likely_active, true);
 		assert.equal(result.expected_peak_w, 1300);
 	});
+
+	it("uses outdoor forecast max for cooling when room is below on-temp", () => {
+		const unit = acUnitConfigFromAdapter(
+			{
+				ac_u1_enabled: true,
+				ac_u1_name: "Wohnen",
+				ac_u1_on_temp_c: 26,
+				ac_u1_off_temp_c: 24,
+				ac_u1_estimated_power_w: 900,
+				ac_u1_active_from: "08:00",
+				ac_u1_active_until: "20:00",
+			},
+			1,
+		);
+		const result = planCooling({
+			now: NOW,
+			acConfig: {
+				outdoorMaxPowerW: 2000,
+				plannerOutdoorLikelyTempC: 28,
+				defaultProfileId: "generic",
+				units: [unit],
+			},
+			governanceEnabled: true,
+			outdoorTempC: 22,
+			outdoorForecastMaxC: 34,
+			units: [{ unit, roomTempC: 24, consumerStats: undefined }],
+		});
+		assert.equal(result.likely_active, true);
+		assert.ok(result.expected_kwh_today > 0);
+		assert.ok((result.units[0]?.expectedHours ?? 0) > 0);
+	});
 });

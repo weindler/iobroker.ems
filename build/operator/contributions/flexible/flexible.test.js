@@ -183,6 +183,29 @@ function acInput(overrides = {}) {
     });
 });
 (0, node_test_1.describe)("battery contributions", () => {
+    (0, node_test_1.it)("skips EMS charge slots when today's PV surplus covers the SOC gap", () => {
+        const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({
+            socPct: 55,
+            capacityManualKwh: 10,
+            todayPvSurplusKwh: 12,
+        }));
+        // balanced target 95% → 4 kWh gap; surplus 12 ≥ 4
+        strict_1.default.equal(c.details.pvCoversChargeNeed, true);
+        strict_1.default.equal(c.details.requiredEnergyKwh, 0);
+        strict_1.default.equal(c.details.socGapEnergyKwh, 4);
+        strict_1.default.equal(c.slots.length, 0);
+        strict_1.default.match(c.reasonDe, /keine EMS-Lade-Slots/);
+    });
+    (0, node_test_1.it)("keeps charge slots when top-off requested despite PV surplus", () => {
+        const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({
+            socPct: 90,
+            topOffRequested: true,
+            todayPvSurplusKwh: 50,
+        }));
+        strict_1.default.equal(c.details.pvCoversChargeNeed, false);
+        strict_1.default.ok(c.details.requiredEnergyKwh > 0);
+        strict_1.default.equal(c.slots.length, 1);
+    });
     (0, node_test_1.it)("builds valid charge contribution", () => {
         const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput());
         strict_1.default.equal(c.contributionId, contribution_ids_1.CONTRIBUTION_IDS.BATTERY_CHARGE);
@@ -546,7 +569,8 @@ function acInput(overrides = {}) {
         strict_1.default.equal(unit1?.flow, "consume");
         strict_1.default.ok(unit1?.details.expectedKwhToday !== undefined);
         strict_1.default.ok(unit1?.details.requiredEnergyKwh > 0);
-        strict_1.default.equal(unit1?.slots.length, 1);
+        strict_1.default.equal(unit1?.details.timeAllocation, false);
+        strict_1.default.equal(unit1?.slots.length, 0);
     });
     (0, node_test_1.it)("degrades when room temp missing", () => {
         const input = acInput();

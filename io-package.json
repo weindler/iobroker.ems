@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.217",
+		"version": "0.1.218",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.218": {
+				"en": "Planning quality: (1) Battery — if today's PV surplus covers the charge need, no EMS charge slots (Top-Off still allocates). (2) Climate — outdoor horizon max → estimated hours/kWh per unit for cooling and dehumidify; energy in the plan without mandatory 15-min slots (runtime stays hysteresis-based). (3) Immersion — when the Daily Plan slot is 0 W but buffer is below target and live PV surplus covers a stage, pull-forward heat now.",
+				"de": "Planungsqualität: (1) Batterie — deckt der Tages-PV-Überschuss den Ladebedarf, keine EMS-Lade-Slots (Top-Off alloziert weiter). (2) Klima — Außen-Horizon-Max → geschätzte Stunden/kWh je Unit für Kühlung und Entfeuchten; Energie im Plan ohne Pflicht-15-Min-Slots (Runtime bleibt hysteresebasiert). (3) Heizstab — wenn Daily-Plan-Slot 0 W, Puffer unter Ziel und Live-PV-Überschuss eine Stufe trägt → nachziehen (Pull-forward)."
+			},
 			"0.1.217": {
 				"en": "Weather horizon Tag 1–7 (today…+6) like PV: Admin-map BrightSky daily min/max, freeze day-1 forecast vs live outdoor for bias, apply weighted correction. No live temp as fake daily max.",
 				"de": "Wetter-Horizon Tag 1–7 (heute…+6) wie PV: Admin-Mapping BrightSky Tages-Min/Max, Tag-1-Forecast einfrieren vs. Live-Außentemp → Bias, gewichtet korrigieren. Keine Live-Temp als Fake-Tagesmax."

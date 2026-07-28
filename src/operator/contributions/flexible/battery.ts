@@ -8,6 +8,7 @@ import type { GridSupplyForecast } from "../../types";
 import { baseContribution } from "../types";
 import type { BatteryChargeLogicDecision } from "./battery_charge_logic";
 import type { BatteryLearningSignal } from "./battery_learning";
+import { pvSurplusCoversChargeNeed } from "./battery_pv_cover";
 import { evaluateParticipation, round3 } from "./types";
 
 export interface BatteryContributionBuildInput {
@@ -48,6 +49,11 @@ export interface BatteryContributionBuildInput {
 	batteryLearning?: BatteryLearningSignal | null;
 	/** PV-Defizit-Ladelogik-Entscheidung (Block 2, `battery_charge_logic.ts`) — optional, `null` → keine Defizit-Anhebung. */
 	chargeLogic?: BatteryChargeLogicDecision | null;
+	/**
+	 * Erwarteter Tages-PV-Überschuss (kWh): korrigierte PV-Tagesenergie − Hauslast-Tagesprognose.
+	 * Wenn ≥ Ladebedarf → keine EMS-Lade-Slots (passive PV-/Eigenverbrauch-Ladung reicht).
+	 */
+	todayPvSurplusKwh?: number | null;
 }
 
 /** Top-Off durch Nutzer-Intent ODER gelerntes Intervall (`topoff_due`) überschritten. */
@@ -134,6 +140,15 @@ export function buildBatteryChargeContribution(input: BatteryContributionBuildIn
 	const gridEligible = gridChargeEligible(input);
 	const enabled = participation.allowed && input.chargeCapable && requiredKwh !== null && maxW !== null;
 	const deficitDriven = input.chargeLogic?.active === true;
+	const todayPvSurplusKwh = input.todayPvSurplusKwh ?? null;
+	const pvCovers = pvSurplusCoversChargeNeed({
+		requiredChargeEnergyKwh: requiredKwh,
+		todayPvSurplusKwh,
+		topOffRequested: input.topOffRequested,
+		learnedTopoffDue: learnedTopoffDue(input),
+	});
+	/** Allocation-Energie: 0 wenn Tages-PV den SOC-Bedarf deckt (keine EMS-Lade-Slots). */
+	const allocEnergyKwh = pvCovers ? 0 : requiredKwh;
 
 	let status = participation.status;
 	let reasonDe = participation.reasonDe;
@@ -150,6 +165,9 @@ export function buildBatteryChargeContribution(input: BatteryContributionBuildIn
 		} else if (requiredKwh === 0) {
 			status = "valid";
 			reasonDe = "Batterie am Ladeziel — kein weiterer Ladebedarf.";
+		} else if (pvCovers) {
+			status = "valid";
+			reasonDe = `Tages-PV-Überschuss ${todayPvSurplusKwh} kWh deckt Ladebedarf ${requiredKwh} kWh — keine EMS-Lade-Slots.`;
 		} else {
 			status = participation.status === "degraded" ? "degraded" : "valid";
 			reasonDe = `Ladebedarf ${requiredKwh} kWh bis ${chargeTargetSocPct(input)} % SOC (Config-Max ${maxW} W).`;
@@ -167,7 +185,16 @@ export function buildBatteryChargeContribution(input: BatteryContributionBuildIn
 	 * wenn sie aktuell den Bedarf treibt — sonst füllt die Allocation (Top-Off/Policy-Ziel)
 	 * weiterhin ohne feste Frist, PV-first.
 	 */
-	const deadlineIso = deficitDriven && requiredKwh !== null && requiredKwh > 0 ? input.chargeLogic?.bridgeUntilIso ?? null : null;
+	const deadlineIso =
+		!pvCovers && deficitDriven && requiredKwh !== null && requiredKwh > 0
+			? input.chargeLogic?.bridgeUntilIso ?? null
+			: null;
+
+	const publishSlots =
+		maxW !== null &&
+		participation.allowed &&
+		allocEnergyKwh !== null &&
+		allocEnergyKwh > 0;
 
 	return baseContribution(
 		CONTRIBUTION_IDS.BATTERY_CHARGE,
@@ -187,7 +214,10 @@ export function buildBatteryChargeContribution(input: BatteryContributionBuildIn
 			details: {
 				socPct: input.socPct,
 				targetSocPct: chargeTargetSocPct(input),
-				requiredEnergyKwh: requiredKwh,
+				requiredEnergyKwh: allocEnergyKwh,
+				socGapEnergyKwh: requiredKwh,
+				todayPvSurplusKwh,
+				pvCoversChargeNeed: pvCovers,
 				maxChargePowerW: maxW,
 				topOffRequested: input.topOffRequested,
 				profileId: input.profileId,
@@ -199,14 +229,14 @@ export function buildBatteryChargeContribution(input: BatteryContributionBuildIn
 				...batteryLearningDetails(input),
 				...chargeLogicDetails(input),
 			},
-			slots: maxW !== null && participation.allowed
+			slots: publishSlots
 				? [
 						{
 							slot: { startIso: generatedAt, endIso: generatedAt },
 							minPowerW: null,
 							preferredPowerW: null,
 							maxPowerW: maxW,
-							requiredEnergyKwh: requiredKwh,
+							requiredEnergyKwh: allocEnergyKwh,
 							availableEnergyKwh: null,
 							priceCtPerKwh: null,
 							available: input.chargeCapable,

@@ -4,10 +4,12 @@ import type { ConsumerPersistEntry } from "../../learning/consumer_stats/types";
 import { resolveConsumerEffectivePowerW } from "../../learning/consumer_stats/learned_power";
 import type { PlannerCoolingDecision } from "../../planner/types";
 import { sumAllocatedConsumerPeakW } from "../../planner/consumer_allocate";
+import { estimateCoolingHours, estimateDehumidifyHours } from "./climate_energy";
 
 export type CoolingUnitPlanInput = {
 	unit: AcUnitConfig;
 	roomTempC: number | null;
+	roomHumidityPct?: number | null;
 	consumerStats: ConsumerPersistEntry | undefined;
 };
 
@@ -15,7 +17,10 @@ export type CoolingPlanInput = {
 	now: Date;
 	acConfig: AcGlobalConfig;
 	governanceEnabled: boolean;
+	/** Spot/Live-Außentemperatur (Fallback, wenn kein Tages-Max). */
 	outdoorTempC: number | null;
+	/** Wetter-Horizon Tag-1 korrigiertes Max — bevorzugte Planungsgröße. */
+	outdoorForecastMaxC?: number | null;
 	units: CoolingUnitPlanInput[];
 };
 
@@ -27,6 +32,8 @@ export type CoolingUnitForecast = {
 	likelyActive: boolean;
 	expectedHours: number;
 	expectedKwh: number;
+	coolingHours: number;
+	dehumidifyHours: number;
 	reasonDe: string;
 };
 
@@ -63,10 +70,11 @@ function parseClockEnd(raw: string): number | null {
 	return h * 60 + min;
 }
 
-function estimateUnitCooling(input: {
+function estimateUnitClimate(input: {
 	unit: AcUnitConfig;
 	roomTempC: number | null;
-	outdoorTempC: number | null;
+	roomHumidityPct: number | null;
+	outdoorMaxC: number | null;
 	outdoorLikelyTempC: number;
 	remainingHours: number;
 	consumerStats: ConsumerPersistEntry | undefined;
@@ -86,6 +94,8 @@ function estimateUnitCooling(input: {
 		likelyActive: false,
 		expectedHours: 0,
 		expectedKwh: 0,
+		coolingHours: 0,
+		dehumidifyHours: 0,
 		reasonDe,
 	});
 
@@ -93,63 +103,66 @@ function estimateUnitCooling(input: {
 		return none("Außerhalb Zeitfenster.");
 	}
 
-	const temp = input.roomTempC;
-	const outdoor = input.outdoorTempC;
 	const learnedHours =
 		learned.medianRuntimeSecPerDay !== null && learned.medianRuntimeSecPerDay > 0
 			? learned.medianRuntimeSecPerDay / 3600
 			: null;
 
-	let likelyActive = false;
-	let expectedHours = 0;
-	let reasonDe = "";
+	const cooling = estimateCoolingHours({
+		outdoorMaxC: input.outdoorMaxC,
+		outdoorLikelyTempC: input.outdoorLikelyTempC,
+		remainingHours: input.remainingHours,
+		learnedHours,
+		roomTempC: input.roomTempC,
+		onTempC: unit.onTempC,
+		offTempC: unit.offTempC,
+	});
 
-	if (temp !== null && temp >= unit.onTempC) {
-		likelyActive = true;
-		expectedHours = Math.min(input.remainingHours, learnedHours ?? input.remainingHours * 0.7);
-		reasonDe = `Raum ${temp.toFixed(1)} °C ≥ ${unit.onTempC} °C`;
-	} else if (temp !== null && temp > unit.offTempC) {
-		likelyActive = learnedHours !== null && learnedHours >= 0.5;
-		expectedHours = likelyActive ? Math.min(input.remainingHours, learnedHours ?? 1) : 0;
-		reasonDe = likelyActive
-			? `Raum ${temp.toFixed(1)} °C in Hysterese — historisch ${Math.round((learnedHours ?? 0) * 10) / 10} h/Tag`
-			: `Raum ${temp.toFixed(1)} °C in Hysterese — heute eher aus`;
-	} else if (outdoor !== null && outdoor >= input.outdoorLikelyTempC) {
-		likelyActive = learnedHours !== null ? learnedHours >= 0.5 : true;
-		expectedHours = likelyActive
-			? Math.min(input.remainingHours, learnedHours ?? input.remainingHours * 0.4)
-			: 0;
-		reasonDe = outdoor !== null
-			? `Außen ${outdoor.toFixed(1)} °C ≥ ${input.outdoorLikelyTempC} °C`
-			: "Außen warm";
-		if (learned.source === "learned" && learnedHours !== null) {
-			reasonDe += ` — Ø ${Math.round(learnedHours * 10) / 10} h/Tag (${learned.sampleDays} Tage)`;
-		}
-	} else if (learnedHours !== null && learnedHours >= 1 && outdoor !== null && outdoor >= input.outdoorLikelyTempC - 2) {
-		likelyActive = true;
-		expectedHours = Math.min(input.remainingHours, learnedHours);
-		reasonDe = `Historie: ${learned.sampleDays} Kühl-Tage, Ø ${Math.round(learnedHours * 10) / 10} h`;
-	} else {
-		return none(
-			temp !== null
-				? `Raum ${temp.toFixed(1)} °C unter Ein-Schwelle ${unit.onTempC} °C`
-				: outdoor !== null
-					? `Außen ${outdoor.toFixed(1)} °C unter ${input.outdoorLikelyTempC} °C`
-					: "Keine Temp-Daten",
-		);
+	const dryConfigured =
+		Boolean(unit.modeWhenDehumidify?.trim()) && unit.maxHumidityPct !== null;
+	const dehumidify = estimateDehumidifyHours({
+		outdoorMaxC: input.outdoorMaxC,
+		outdoorLikelyTempC: input.outdoorLikelyTempC,
+		remainingHours: input.remainingHours,
+		learnedHours,
+		roomHumidityPct: input.roomHumidityPct,
+		maxHumidityPct: unit.maxHumidityPct,
+		dryModeConfigured: dryConfigured,
+	});
+
+	// Kühlung und Entfeuchten teilen oft denselben Verdichter — Stunden nicht doppelt zählen.
+	const expectedHours = Math.min(
+		input.remainingHours,
+		Math.max(cooling.expectedHours, dehumidify.expectedHours),
+	);
+	const likelyActive = (cooling.likelyActive || dehumidify.likelyActive) && expectedHours > 0;
+	if (!likelyActive) {
+		const reason = cooling.reasonDe || dehumidify.reasonDe || "Kein Klima-Bedarf";
+		return none(reason);
 	}
 
-	const expectedKwh = likelyActive ? (learned.powerW * expectedHours) / 1000 : 0;
-	const powerLabel = learned.source === "learned" ? `${learned.powerW} W (gelernt)` : `${learned.powerW} W (Config)`;
+	const expectedKwh = (learned.powerW * expectedHours) / 1000;
+	const powerLabel =
+		learned.source === "learned" ? `${learned.powerW} W (gelernt)` : `${learned.powerW} W (Config)`;
+	const parts: string[] = [];
+	if (cooling.likelyActive) parts.push(`Kühl: ${cooling.reasonDe}`);
+	if (dehumidify.likelyActive) parts.push(`Entfeucht: ${dehumidify.reasonDe}`);
+	if (learned.source === "learned" && learnedHours !== null) {
+		parts.push(`Ø ${Math.round(learnedHours * 10) / 10} h/Tag (${learned.sampleDays} Tage)`);
+	}
+	parts.push(powerLabel);
+
 	return {
 		unitIndex: unit.index,
 		name: unit.name,
 		powerW: learned.powerW,
 		powerSource: learned.source,
-		likelyActive,
+		likelyActive: true,
 		expectedHours: Math.round(expectedHours * 100) / 100,
 		expectedKwh: Math.round(expectedKwh * 1000) / 1000,
-		reasonDe: `${reasonDe}; ${powerLabel}`,
+		coolingHours: cooling.expectedHours,
+		dehumidifyHours: dehumidify.expectedHours,
+		reasonDe: parts.join("; "),
 	};
 }
 
@@ -172,6 +185,13 @@ export function planCooling(input: CoolingPlanInput): CoolingPlanResult {
 		return none("Kein Innengerät aktiv.");
 	}
 
+	const outdoorMaxC =
+		input.outdoorForecastMaxC !== null &&
+		input.outdoorForecastMaxC !== undefined &&
+		Number.isFinite(input.outdoorForecastMaxC)
+			? input.outdoorForecastMaxC
+			: input.outdoorTempC;
+
 	const nowMin = localMinutesNow(input.now);
 	const forecasts: CoolingUnitForecast[] = [];
 
@@ -186,15 +206,18 @@ export function planCooling(input: CoolingPlanInput): CoolingPlanResult {
 				likelyActive: false,
 				expectedHours: 0,
 				expectedKwh: 0,
+				coolingHours: 0,
+				dehumidifyHours: 0,
 				reasonDe: "Außerhalb Betriebszeit.",
 			});
 			continue;
 		}
 		forecasts.push(
-			estimateUnitCooling({
+			estimateUnitClimate({
 				unit,
 				roomTempC: row.roomTempC,
-				outdoorTempC: input.outdoorTempC,
+				roomHumidityPct: row.roomHumidityPct ?? null,
+				outdoorMaxC,
 				outdoorLikelyTempC: input.acConfig.plannerOutdoorLikelyTempC,
 				remainingHours: remainingActiveHours(input.now, unit),
 				consumerStats: row.consumerStats,
@@ -220,7 +243,7 @@ export function planCooling(input: CoolingPlanInput): CoolingPlanResult {
 			parts.push(`${f.name}: ${f.reasonDe}`);
 		}
 	} else {
-		parts.push("Heute voraussichtlich keine Kühlung.");
+		parts.push("Heute voraussichtlich keine Kühlung/Entfeuchtung.");
 	}
 
 	return {
@@ -228,7 +251,9 @@ export function planCooling(input: CoolingPlanInput): CoolingPlanResult {
 		expected_peak_w: expectedPeakW,
 		likely_active: likelyActive,
 		reason_de: parts.join(" | "),
-		forecast_active: input.outdoorTempC !== null || enabledUnits.some((u) => u.roomTempC !== null),
+		forecast_active:
+			outdoorMaxC !== null ||
+			enabledUnits.some((u) => u.roomTempC !== null || (u.roomHumidityPct ?? null) !== null),
 		units: forecasts,
 	};
 }

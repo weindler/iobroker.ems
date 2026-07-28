@@ -33,6 +33,7 @@ import {
 	type BatteryChargeLogicDecision,
 } from "./battery_charge_logic";
 import { batteryChargeLogicConfigFromAdapter } from "./battery_charge_logic_config";
+import { todayPvSurplusKwh } from "./battery_pv_cover";
 import { buildBatteryLearningSignal, type BatteryLearningSignal } from "./battery_learning";
 import { buildThermalLearningSignal, type ThermalLearningSignal } from "./thermal_learning";
 
@@ -326,6 +327,8 @@ export async function collectFlexibleContributions(
 		pvBiasStatus,
 		aiThermal,
 		outdoorTemp,
+		outdoorForecastMaxC,
+		houseLoadTodayRaw,
 	] = await Promise.all([
 		readBool(host, addonEnabled("battery")),
 		isAddonGovernanceEnabledFromState((id) => host.getStateAsync(id), "battery"),
@@ -368,6 +371,8 @@ export async function collectFlexibleContributions(
 		readStr(host, "learning.pv_bias.status"),
 		readBool(host, addonGovernanceAiAllowedState("immersion_heater")),
 		readOutdoorTempC(host),
+		readNum(host, "learning.weather.horizon.day1.max_temp_c"),
+		readStr(host, "learning.house_load.forecast_today_json"),
 	]);
 
 	const batteryIntent = parseResolvedBatteryIntentJson(batteryIntentRaw?.val);
@@ -389,6 +394,9 @@ export async function collectFlexibleContributions(
 	const batteryLearning = await readBatteryLearningSignal(host);
 	const chargeLogic = await readBatteryChargeLogicDecision(host, now, socPct, batteryGov, modePolicy);
 
+	const houseLoadTodayKwh = dailyKwhFromHouseLoadDayForecast(parseHouseLoadForecastJson(houseLoadTodayRaw));
+	const batteryTodayPvSurplusKwh = todayPvSurplusKwh(pvToday, houseLoadTodayKwh);
+
 	// Technische Hardwaregrenze aus Admin-Config (`bat_hw_max_charge_w`) — nie Runtime-Befehl
 	// und nie Netz-/Hausanschluss-Grenze als Planungs-Cap.
 	const hwMaxChargeW =
@@ -401,8 +409,9 @@ export async function collectFlexibleContributions(
 			const index = i + 1;
 			const unit = acConfig.units.find((u) => u.index === index)!;
 			const ids = acUnitRuntimeStates(index);
-			const [roomTempC, faultState, cleaningActive] = await Promise.all([
+			const [roomTempC, roomHumidityPct, faultState, cleaningActive] = await Promise.all([
 				readNum(host, ids.roomTempC),
+				readNum(host, ids.roomHumidityPct),
 				readStr(host, ids.state),
 				readBool(host, ids.cleaningActive),
 			]);
@@ -410,6 +419,7 @@ export async function collectFlexibleContributions(
 			return {
 				unit,
 				roomTempC,
+				roomHumidityPct,
 				consumerStats: stats?.consumers?.[consumerKey],
 				mappingsReady: unit.enabled,
 				fault: faultState === "fault",
@@ -448,6 +458,7 @@ export async function collectFlexibleContributions(
 			legacyDeficitChargeActive: false,
 			batteryLearning,
 			chargeLogic,
+			todayPvSurplusKwh: batteryTodayPvSurplusKwh,
 		},
 		wallbox: {
 			now,
@@ -496,6 +507,7 @@ export async function collectFlexibleContributions(
 			modePolicy,
 			acConfig,
 			outdoorTempC: outdoorTemp,
+			outdoorForecastMaxC,
 			units: acUnits,
 		},
 	});

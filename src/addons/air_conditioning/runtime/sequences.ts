@@ -76,10 +76,11 @@ async function pulseSmartThingsToggle(
 }
 
 /**
- * Ausschalten möglichst robust:
- * - auf allen gemappten Switch-/Cmd-Zielen „off“/false schreiben
- * - zusätzlich Impuls auf dediziertem Off-Button (falls vorhanden)
- * Pulse-true allein auf dem An-Switch würde das Gerät anlassen.
+ * Ausschalten (wie v0.1.163 — vor dem Multi-Target-Schreiben in v0.1.165):
+ * - Dedizierter Off-Befehl (≠ On, ≠ Feedback) → nur boolean-Impuls auf Off.
+ *   SmartThings `switch off` nimmt keine Argumente; Schreiben von "off"/false auf on/status → 422.
+ * - Gemeinsamer Switch → einmal typgerechten Off-Wert setzen (boolean false oder "off").
+ * Feedback-Status allein ist nie ein Schreibziel.
  */
 export async function writeAcUnitSwitchOff(
 	host: DeviceWriteHost,
@@ -87,46 +88,52 @@ export async function writeAcUnitSwitchOff(
 	table: AcMappingTable,
 	live: boolean,
 	log?: { info?: (m: string) => void; debug?: (m: string) => void; warn?: (m: string) => void },
-): Promise<{ attempted: boolean; mode: "set_off" | "none"; targets: string[] }> {
+): Promise<{ attempted: boolean; mode: "pulse" | "set_off" | "none"; targets: string[] }> {
 	const offId = resolveAcMappingTarget(table, unitIndex, "cmd_switch_off");
 	const onId = resolveAcMappingTarget(table, unitIndex, "cmd_switch_on");
 	const fbId = resolveAcMappingTarget(table, unitIndex, "feedback_switch");
-	const targets = [...new Set([offId, onId, fbId].filter((id) => Boolean(id)))];
-	if (targets.length === 0) {
-		log?.warn?.(`ac unit ${unitIndex}: stop skipped — kein switch_off/on/feedback gemappt`);
+	const dedicatedOffButton = Boolean(offId && offId !== onId && offId !== fbId);
+
+	if (dedicatedOffButton) {
+		if (!live) {
+			log?.debug?.(`ac dryrun unit ${unitIndex}: switch_off pulse → ${offId}`);
+			return { attempted: true, mode: "pulse", targets: [offId] };
+		}
+		log?.info?.(`ac unit ${unitIndex}: switch_off pulse → ${offId}`);
+		await pulseSmartThingsToggle(host, unitIndex, "cmd_switch_off", offId);
+		return { attempted: true, mode: "pulse", targets: [offId] };
+	}
+
+	// Gemeinsamer Schalter: On/Off (ggf. = Feedback) — Status allein nicht beschreiben.
+	const targetId = offId || onId;
+	if (!targetId) {
+		log?.warn?.(`ac unit ${unitIndex}: stop skipped — kein switch_off/on gemappt (Feedback allein nicht schreibbar)`);
 		return { attempted: false, mode: "none", targets: [] };
 	}
+
 	if (!live) {
-		log?.debug?.(`ac dryrun unit ${unitIndex}: switch_off → ${targets.join(", ")}`);
-		return { attempted: true, mode: "set_off", targets };
+		log?.debug?.(`ac dryrun unit ${unitIndex}: switch_off set → ${targetId}`);
+		return { attempted: true, mode: "set_off", targets: [targetId] };
 	}
 
-	log?.info?.(
-		`ac unit ${unitIndex}: switch_off writing off/false → ${targets.join(", ")}` +
-			(offId && offId !== onId && offId !== fbId ? ` (+ pulse ${offId})` : ""),
-	);
-
-	for (const stateId of targets) {
-		await writeForeignIfChanged(host, {
-			stateId,
-			value: "off",
-			reason: `ac unit ${unitIndex} switch_off`,
-			force: true,
-		});
-		await writeForeignIfChanged(host, {
-			stateId,
-			value: false,
-			reason: `ac unit ${unitIndex} switch_off bool`,
-			force: true,
-		});
+	let current: unknown = null;
+	try {
+		const st = await host.getForeignStateAsync(targetId);
+		current = st?.val ?? null;
+	} catch {
+		current = null;
 	}
+	const offValue: string | boolean =
+		typeof current === "boolean" || current === 0 || current === 1 ? false : "off";
 
-	// Dedizierter Off-Taster (SmartThings Command) zusätzlich impulsieren.
-	if (offId && offId !== onId && offId !== fbId) {
-		await pulseSmartThingsToggle(host, unitIndex, "cmd_switch_off", offId);
-	}
-
-	return { attempted: true, mode: "set_off", targets };
+	log?.info?.(`ac unit ${unitIndex}: switch_off set ${JSON.stringify(offValue)} → ${targetId}`);
+	await writeForeignIfChanged(host, {
+		stateId: targetId,
+		value: offValue,
+		reason: `ac unit ${unitIndex} switch_off`,
+		force: true,
+	});
+	return { attempted: true, mode: "set_off", targets: [targetId] };
 }
 
 export async function executeAcWriteSteps(

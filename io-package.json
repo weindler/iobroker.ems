@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.220",
+		"version": "0.1.221",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.221": {
+				"en": "Fix AC SmartThings stop: restore dedicated switch-off pulse (as in v0.1.163). Stop writing \"off\"/false onto switch-on and status feedback — that caused HTTP 422 ConstraintViolationError storms.",
+				"de": "Fix Klima-Stop SmartThings: wieder nur Impuls auf dediziertem switch-off (wie v0.1.163). Kein Schreiben von „off“/false mehr auf switch-on und Status-Feedback — das verursachte HTTP-422-ConstraintViolation-Stürme."
+			},
 			"0.1.220": {
 				"en": "Immersion planning respects reheat hysteresis: while buffer is still above target−hysteresis after the day target was reached, the flexible contribution requests no Daily Plan slots — plan and runtime stay aligned. Runtime publishes auto_target_reached for the operator.",
 				"de": "Heizstab-Planung berücksichtigt Wiedereinschalt-Hysterese: Solange der Puffer nach erreichtem Tagesziel noch über Ziel−Hysterese liegt, meldet die flexible Contribution keinen Daily-Plan-Bedarf — Plan und Runtime bleiben deckungsgleich. Runtime veröffentlicht auto_target_reached für den Operator."

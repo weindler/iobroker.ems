@@ -39,7 +39,41 @@ const sequences_1 = require("./sequences");
         await (0, sequences_1.executeAcWriteSteps)(host, 2, table, [{ kind: "toggle", role: "cmd_switch_on" }], false);
         strict_1.default.equal(wrote, false);
     });
-    (0, node_test_1.it)("switch_off writes off/false to all mapped switch targets", async () => {
+    (0, node_test_1.it)("switch_off with dedicated SmartThings off only pulses off (no on/status writes)", async () => {
+        const writes = [];
+        const host = {
+            getForeignStateAsync: async () => ({ val: false, ack: true, ts: 0, lc: 0, from: "test" }),
+            setForeignStateAsync: async (id, state) => {
+                if (state && typeof state === "object" && "val" in state) {
+                    writes.push({
+                        id,
+                        val: state.val,
+                        ack: "ack" in state ? state.ack : undefined,
+                    });
+                }
+            },
+        };
+        const table = {
+            unit_1_cmd_switch_on: {
+                enabled: true,
+                targetStateId: "smartthings.0.dev.capabilities.switch-on",
+            },
+            unit_1_cmd_switch_off: {
+                enabled: true,
+                targetStateId: "smartthings.0.dev.capabilities.switch-off",
+            },
+            unit_1_feedback_switch: {
+                enabled: true,
+                targetStateId: "smartthings.0.dev.status.switch.switch.value",
+            },
+        };
+        await (0, sequences_1.executeAcWriteSteps)(host, 1, table, [{ kind: "switch_off" }], true);
+        strict_1.default.ok(writes.every((w) => w.id.includes("switch-off")));
+        strict_1.default.ok(!writes.some((w) => w.id.includes("switch-on")));
+        strict_1.default.ok(!writes.some((w) => w.id.includes("status.switch")));
+        strict_1.default.ok(writes.some((w) => w.val === true && w.ack === false));
+    });
+    (0, node_test_1.it)("switch_off on shared switch sets typed off once", async () => {
         const writes = [];
         const host = {
             getForeignStateAsync: async () => ({ val: "on", ack: true, ts: 0, lc: 0, from: "test" }),
@@ -54,26 +88,7 @@ const sequences_1 = require("./sequences");
             unit_2_feedback_switch: { enabled: true, targetStateId: "st.switch" },
         };
         await (0, sequences_1.executeAcWriteSteps)(host, 2, table, [{ kind: "switch_off" }], true);
-        strict_1.default.ok(writes.some((w) => w.id === "st.switch" && w.val === "off"));
-        strict_1.default.ok(writes.some((w) => w.id === "st.switch" && w.val === false));
-    });
-    (0, node_test_1.it)("switch_off on dedicated off also pulses after set", async () => {
-        const writes = [];
-        const host = {
-            getForeignStateAsync: async () => ({ val: false, ack: true, ts: 0, lc: 0, from: "test" }),
-            setForeignStateAsync: async (id, state) => {
-                const val = state && typeof state === "object" && "val" in state ? state.val : state;
-                writes.push({ id, val });
-            },
-        };
-        const table = {
-            unit_2_cmd_switch_on: { enabled: true, targetStateId: "st.on" },
-            unit_2_cmd_switch_off: { enabled: true, targetStateId: "st.off" },
-            unit_2_feedback_switch: { enabled: true, targetStateId: "st.switch" },
-        };
-        await (0, sequences_1.executeAcWriteSteps)(host, 2, table, [{ kind: "switch_off" }], true);
-        strict_1.default.ok(writes.some((w) => w.id === "st.off" && w.val === "off"));
-        strict_1.default.ok(writes.some((w) => w.id === "st.switch" && w.val === "off"));
-        strict_1.default.ok(writes.some((w) => w.id === "st.off" && w.val === true));
+        strict_1.default.equal(writes.length, 1);
+        strict_1.default.deepEqual(writes[0], { id: "st.switch", val: "off" });
     });
 });

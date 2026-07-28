@@ -35,7 +35,6 @@ describe("runtime_surface mapDecisionDetailToCanonical", () => {
 		assert.equal(mapDecisionDetailToCanonical("daily_plan"), "deterministic_planner");
 		assert.equal(mapDecisionDetailToCanonical("daily_plan_zero"), "deterministic_planner");
 		assert.equal(mapDecisionDetailToCanonical("daily_plan_passive_pv"), "deterministic_planner");
-		assert.equal(mapDecisionDetailToCanonical("surplus_pull_forward"), "deterministic_planner");
 	});
 
 	it("maps off / manual / fallbacks / safety", () => {

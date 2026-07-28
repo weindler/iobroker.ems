@@ -21,8 +21,6 @@ const safety_1 = require("./safety");
 const types_1 = require("./types");
 const persist_1 = require("./persist");
 const daily_plan_1 = require("./daily_plan");
-const surplus_pull_forward_1 = require("./surplus_pull_forward");
-const surplus_1 = require("../../../operator/planning/surplus");
 const states_1 = require("../../../operator/daily_plan/states");
 const intent_read_1 = require("./intent_read");
 const feedback_1 = require("./feedback");
@@ -286,38 +284,6 @@ async function runImmersionRuntimeTick(host) {
             plannerCommandedStage = dailyPlanContext.commandedStage;
             plannerTargetTempC = planTarget.targetTempC;
             autoDecisionSource = "daily_plan";
-            // Pull-forward: Plan-Slot 0 W, aber Bedarf + Live-Überschuss → Stufe nachziehen.
-            if (plannerCommandedStage === 0) {
-                const [pvSt, loadSt] = await Promise.all([
-                    host.getStateAsync("live.pv.power_w"),
-                    host.getStateAsync("live.battery.house_load_w"),
-                ]);
-                const liveSurplusW = (0, surplus_1.computePvSurplusW)((0, state_util_1.asNum)(pvSt?.val), (0, state_util_1.asNum)(loadSt?.val));
-                const pull = (0, surplus_pull_forward_1.resolveImmersionSurplusPullForward)({
-                    useDailyPlan: true,
-                    commandedStage: 0,
-                    bufferTempC: temperature.valueC,
-                    targetTempC: planTarget.targetTempC,
-                    hysteresisK: config.temperatureHysteresisK,
-                    liveSurplusW,
-                    stages: config.stages.map((s) => ({
-                        index: s.index,
-                        enabled: s.enabled,
-                        nominalPowerW: s.nominalPowerW,
-                        setStateId: s.setStateId,
-                    })),
-                    preferredStage: config.forceDefaultStage,
-                });
-                if (pull.active) {
-                    plannerCommandedStage = pull.stage;
-                    autoDecisionSource = "surplus_pull_forward";
-                    dailyPlanContext = {
-                        ...dailyPlanContext,
-                        allocationReasonDe: pull.reasonDe,
-                        decisionSource: "surplus_pull_forward",
-                    };
-                }
-            }
         }
         else {
             // Daily Plan nicht verwendbar (missing/expired/wrong_date/…) — lokaler

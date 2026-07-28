@@ -33,7 +33,6 @@ export type ImmersionDecisionSource =
 	| "manual_off"
 	| "manual_force"
 	| "daily_plan"
-	| "surplus_pull_forward"
 	| "thermal_fallback"
 	| "safety"
 	| "fault"

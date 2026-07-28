@@ -43,8 +43,6 @@ import {
 	type ImmersionDailyPlanResolution,
 	type ImmersionDecisionSource,
 } from "./daily_plan";
-import { resolveImmersionSurplusPullForward } from "./surplus_pull_forward";
-import { computePvSurplusW } from "../../../operator/planning/surplus";
 import { DAILY_PLAN_STATE_IDS, ALLOCATION_ADDON_STATE_IDS } from "../../../operator/daily_plan/states";
 import {
 	forceTargetFromIntent,
@@ -368,39 +366,6 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 			plannerCommandedStage = dailyPlanContext.commandedStage;
 			plannerTargetTempC = planTarget.targetTempC;
 			autoDecisionSource = "daily_plan";
-
-			// Pull-forward: Plan-Slot 0 W, aber Bedarf + Live-Überschuss → Stufe nachziehen.
-			if (plannerCommandedStage === 0) {
-				const [pvSt, loadSt] = await Promise.all([
-					host.getStateAsync("live.pv.power_w"),
-					host.getStateAsync("live.battery.house_load_w"),
-				]);
-				const liveSurplusW = computePvSurplusW(asNum(pvSt?.val), asNum(loadSt?.val));
-				const pull = resolveImmersionSurplusPullForward({
-					useDailyPlan: true,
-					commandedStage: 0,
-					bufferTempC: temperature.valueC,
-					targetTempC: planTarget.targetTempC,
-					hysteresisK: config.temperatureHysteresisK,
-					liveSurplusW,
-					stages: config.stages.map((s) => ({
-						index: s.index,
-						enabled: s.enabled,
-						nominalPowerW: s.nominalPowerW,
-						setStateId: s.setStateId,
-					})),
-					preferredStage: config.forceDefaultStage,
-				});
-				if (pull.active) {
-					plannerCommandedStage = pull.stage;
-					autoDecisionSource = "surplus_pull_forward";
-					dailyPlanContext = {
-						...dailyPlanContext,
-						allocationReasonDe: pull.reasonDe,
-						decisionSource: "surplus_pull_forward",
-					};
-				}
-			}
 		} else {
 			// Daily Plan nicht verwendbar (missing/expired/wrong_date/…) — lokaler
 			// Sicherheits-Default: nur die Pflicht-Untergrenze halten.

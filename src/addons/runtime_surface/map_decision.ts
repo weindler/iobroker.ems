@@ -14,7 +14,6 @@ const DETERMINISTIC = new Set([
 	"daily_plan",
 	"daily_plan_zero",
 	"daily_plan_passive_pv",
-	"surplus_pull_forward",
 ]);
 
 const AI = new Set(["ai"]);

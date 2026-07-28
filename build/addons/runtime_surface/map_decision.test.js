@@ -29,7 +29,6 @@ function mockHost(initial = {}) {
         strict_1.default.equal((0, index_js_1.mapDecisionDetailToCanonical)("daily_plan"), "deterministic_planner");
         strict_1.default.equal((0, index_js_1.mapDecisionDetailToCanonical)("daily_plan_zero"), "deterministic_planner");
         strict_1.default.equal((0, index_js_1.mapDecisionDetailToCanonical)("daily_plan_passive_pv"), "deterministic_planner");
-        strict_1.default.equal((0, index_js_1.mapDecisionDetailToCanonical)("surplus_pull_forward"), "deterministic_planner");
     });
     (0, node_test_1.it)("maps off / manual / fallbacks / safety", () => {
         strict_1.default.equal((0, index_js_1.mapDecisionDetailToCanonical)("governance_disabled"), "off");

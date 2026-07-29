@@ -20,6 +20,7 @@ function runtimeHost(adapter: ioBroker.Adapter): AcRuntimeHost {
 		namespace: adapter.namespace,
 		log: adapter.log,
 		setObjectNotExistsAsync: (id, obj) => adapter.setObjectNotExistsAsync(id, obj),
+		extendObjectAsync: (id, obj) => adapter.extendObjectAsync(id, obj),
 		getStateAsync: (id) => adapter.getStateAsync(id),
 		getForeignStateAsync: (id) => adapter.getForeignStateAsync(id),
 		setForeignStateAsync: (id, st) => adapter.setForeignStateAsync(id, st),

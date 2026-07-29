@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ensureAcRuntimeStates = exports.AC_RUNTIME_SUMMARY_STATES = exports.acUnitRuntimeStates = exports.acUnitRuntimeBase = exports.AC_RUNTIME_BASE = void 0;
 const tree_paths_1 = require("../../../tree_paths");
+const config_1 = require("../config");
 const configured_1 = require("../configured");
 exports.AC_RUNTIME_BASE = `${(0, tree_paths_1.addonBase)("air_conditioning")}.runtime`;
 function acUnitRuntimeBase(unitIndex) {
@@ -11,6 +12,8 @@ exports.acUnitRuntimeBase = acUnitRuntimeBase;
 function acUnitRuntimeStates(unitIndex) {
     const base = acUnitRuntimeBase(unitIndex);
     return {
+        /** Admin `ac_uN_name` — für VIS/Objektbaum lesbar. */
+        name: `${base}.name`,
         state: `${base}.state`,
         reasonDe: `${base}.reason_de`,
         roomTempC: `${base}.room_temp_c`,
@@ -96,35 +99,43 @@ async function ensureAcRuntimeStates(host, options) {
     for (const i of unitIndexes) {
         const ch = acUnitRuntimeBase(i);
         const ids = acUnitRuntimeStates(i);
+        const configuredName = host.config !== undefined ? (0, config_1.acUnitConfigFromAdapter)(host.config, i).name.trim() : "";
+        const displayName = configuredName || `Innengerät ${i}`;
+        const channelLabel = `Klima ${displayName}`;
         await host.setObjectNotExistsAsync(ch, {
             type: "channel",
-            common: { name: `Klima Unit ${i}` },
+            common: { name: channelLabel },
             native: {},
         });
+        if (typeof host.extendObjectAsync === "function") {
+            await host.extendObjectAsync(ch, { common: { name: channelLabel } });
+        }
+        const label = displayName;
         const defs = [
-            { id: ids.state, common: { name: `Klima ${i} Zustand`, type: "string", role: "text", read: true, write: false, def: "disabled" } },
-            { id: ids.reasonDe, common: { name: `Klima ${i} Grund`, type: "string", role: "text", read: true, write: false, def: "" } },
-            { id: ids.roomTempC, common: { name: `Klima ${i} Raumtemp °C`, type: "number", role: "value", read: true, write: false } },
-            { id: ids.roomHumidityPct, common: { name: `Klima ${i} Feuchte %`, type: "number", role: "value", read: true, write: false } },
-            { id: ids.feedbackSwitch, common: { name: `Klima ${i} Rückmeldung`, type: "string", role: "text", read: true, write: false, def: "" } },
-            { id: ids.running, common: { name: `Klima ${i} läuft`, type: "boolean", role: "state", read: true, write: false, def: false } },
-            { id: ids.cleaningActive, common: { name: `Klima ${i} Reinigung`, type: "boolean", role: "state", read: true, write: false, def: false } },
-            { id: ids.feedbackCleaningState, common: { name: `Klima ${i} Reinigung operatingState`, type: "string", role: "text", read: true, write: false, def: "" } },
-            { id: ids.feedbackCleaningMode, common: { name: `Klima ${i} Reinigung autoCleaningMode`, type: "string", role: "text", read: true, write: false, def: "" } },
-            { id: ids.feedbackCleaningProgressPct, common: { name: `Klima ${i} Reinigung Fortschritt %`, type: "number", role: "value", read: true, write: false, def: 0 } },
-            { id: ids.modePurpose, common: { name: `Klima ${i} Modus-Zweck`, type: "string", role: "text", read: true, write: false, def: "cooling" } },
-            { id: ids.estimatedPowerW, common: { name: `Klima ${i} geschätzte Leistung W`, type: "number", role: "value", read: true, write: false, def: 0 } },
-            { id: ids.decisionSource, common: { name: `Klima ${i} Entscheidungsquelle`, type: "string", role: "text", read: true, write: false, def: "safe_default" } },
-            { id: ids.dailyPlanStatus, common: { name: `Klima ${i} Daily-Plan-Status`, type: "string", role: "text", read: true, write: false, def: "daily_plan_missing" } },
-            { id: ids.dailyPlanRevision, common: { name: `Klima ${i} Daily-Plan-Revision`, type: "number", role: "value", read: true, write: false, def: 0 } },
-            { id: ids.dailyPlanSlotStart, common: { name: `Klima ${i} Daily-Plan-Slot Start`, type: "string", role: "text", read: true, write: false, def: "" } },
-            { id: ids.dailyPlanSlotEnd, common: { name: `Klima ${i} Daily-Plan-Slot Ende`, type: "string", role: "text", read: true, write: false, def: "" } },
-            { id: ids.allocatedPowerW, common: { name: `Klima ${i} Daily-Plan Allocation W`, type: "number", role: "value", read: true, write: false } },
-            { id: ids.expectedPowerW, common: { name: `Klima ${i} erwartete Leistung W`, type: "number", role: "value", read: true, write: false } },
-            { id: ids.powerModelSource, common: { name: `Klima ${i} Leistungsmodell`, type: "string", role: "text", read: true, write: false, def: "config" } },
-            { id: ids.allocationStatus, common: { name: `Klima ${i} Allocation-Status`, type: "string", role: "text", read: true, write: false, def: "unknown" } },
-            { id: ids.allocationReasonDe, common: { name: `Klima ${i} Allocation-Begründung`, type: "string", role: "text", read: true, write: false, def: "" } },
-            { id: ids.governanceAllowed, common: { name: `Klima ${i} Governance erlaubt`, type: "boolean", role: "switch", read: true, write: false, def: false } },
+            { id: ids.name, common: { name: `Klima ${label} Name`, type: "string", role: "text", read: true, write: false, def: displayName } },
+            { id: ids.state, common: { name: `Klima ${label} Zustand`, type: "string", role: "text", read: true, write: false, def: "disabled" } },
+            { id: ids.reasonDe, common: { name: `Klima ${label} Grund`, type: "string", role: "text", read: true, write: false, def: "" } },
+            { id: ids.roomTempC, common: { name: `Klima ${label} Raumtemp °C`, type: "number", role: "value", read: true, write: false } },
+            { id: ids.roomHumidityPct, common: { name: `Klima ${label} Feuchte %`, type: "number", role: "value", read: true, write: false } },
+            { id: ids.feedbackSwitch, common: { name: `Klima ${label} Rückmeldung`, type: "string", role: "text", read: true, write: false, def: "" } },
+            { id: ids.running, common: { name: `Klima ${label} läuft`, type: "boolean", role: "state", read: true, write: false, def: false } },
+            { id: ids.cleaningActive, common: { name: `Klima ${label} Reinigung`, type: "boolean", role: "state", read: true, write: false, def: false } },
+            { id: ids.feedbackCleaningState, common: { name: `Klima ${label} Reinigung operatingState`, type: "string", role: "text", read: true, write: false, def: "" } },
+            { id: ids.feedbackCleaningMode, common: { name: `Klima ${label} Reinigung autoCleaningMode`, type: "string", role: "text", read: true, write: false, def: "" } },
+            { id: ids.feedbackCleaningProgressPct, common: { name: `Klima ${label} Reinigung Fortschritt %`, type: "number", role: "value", read: true, write: false, def: 0 } },
+            { id: ids.modePurpose, common: { name: `Klima ${label} Modus-Zweck`, type: "string", role: "text", read: true, write: false, def: "cooling" } },
+            { id: ids.estimatedPowerW, common: { name: `Klima ${label} geschätzte Leistung W`, type: "number", role: "value", read: true, write: false, def: 0 } },
+            { id: ids.decisionSource, common: { name: `Klima ${label} Entscheidungsquelle`, type: "string", role: "text", read: true, write: false, def: "safe_default" } },
+            { id: ids.dailyPlanStatus, common: { name: `Klima ${label} Daily-Plan-Status`, type: "string", role: "text", read: true, write: false, def: "daily_plan_missing" } },
+            { id: ids.dailyPlanRevision, common: { name: `Klima ${label} Daily-Plan-Revision`, type: "number", role: "value", read: true, write: false, def: 0 } },
+            { id: ids.dailyPlanSlotStart, common: { name: `Klima ${label} Daily-Plan-Slot Start`, type: "string", role: "text", read: true, write: false, def: "" } },
+            { id: ids.dailyPlanSlotEnd, common: { name: `Klima ${label} Daily-Plan-Slot Ende`, type: "string", role: "text", read: true, write: false, def: "" } },
+            { id: ids.allocatedPowerW, common: { name: `Klima ${label} Daily-Plan Allocation W`, type: "number", role: "value", read: true, write: false } },
+            { id: ids.expectedPowerW, common: { name: `Klima ${label} erwartete Leistung W`, type: "number", role: "value", read: true, write: false } },
+            { id: ids.powerModelSource, common: { name: `Klima ${label} Leistungsmodell`, type: "string", role: "text", read: true, write: false, def: "config" } },
+            { id: ids.allocationStatus, common: { name: `Klima ${label} Allocation-Status`, type: "string", role: "text", read: true, write: false, def: "unknown" } },
+            { id: ids.allocationReasonDe, common: { name: `Klima ${label} Allocation-Begründung`, type: "string", role: "text", read: true, write: false, def: "" } },
+            { id: ids.governanceAllowed, common: { name: `Klima ${label} Governance erlaubt`, type: "boolean", role: "switch", read: true, write: false, def: false } },
         ];
         for (const def of defs) {
             await host.setObjectNotExistsAsync(def.id, {

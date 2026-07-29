@@ -506,6 +506,7 @@ async function runAcRuntimeTickBody(host) {
         const estPower = deviceActive
             ? allocatedPowerW(runningCount || 1, config.outdoorMaxPowerW, (0, config_1.acEstimatedPowerForPurpose)(unit, fsm.modePurpose))
             : 0;
+        await (0, state_write_1.setStateIfChanged)(host, ids.name, unit.name);
         await (0, state_write_1.setStateIfChanged)(host, ids.state, fsm.state);
         await (0, state_write_1.setStateIfChanged)(host, ids.reasonDe, permission.reasonDe);
         await (0, state_write_1.setStateIfChanged)(host, ids.roomTempC, temp.num ?? null);

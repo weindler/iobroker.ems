@@ -119,10 +119,24 @@ describe("ac unit fsm", () => {
 	});
 
 	it("stops when humidity drops below configured hysteresis", () => {
+		// Dry-only: with cool also enabled, cool hysteresis would keep running above off-temp.
+		const dryOnly = acUnitConfigFromAdapter(
+			{
+				ac_u1_enabled: true,
+				ac_u1_on_temp_c: 26,
+				ac_u1_off_temp_c: 24,
+				ac_u1_max_humidity_pct: 60,
+				ac_u1_mode_when_cooling: "",
+				ac_u1_active_from: "08:00",
+				ac_u1_active_until: "19:00",
+				ac_u1_hard_off_at: "19:00",
+			},
+			1,
+		);
 		const res = evaluateAcUnitFsm({
 			now: new Date("2026-07-04T12:00:00"),
 			addonEnabled: true,
-			unit: humidUnit,
+			unit: dryOnly,
 			roomTempC: 25,
 			roomHumidityPct: 55,
 			feedbackSwitchRaw: "on",
@@ -133,8 +147,21 @@ describe("ac unit fsm", () => {
 	});
 
 	it("uses unit humidity hysteresis for dry off", () => {
+		const dryOnly = acUnitConfigFromAdapter(
+			{
+				ac_u1_enabled: true,
+				ac_u1_on_temp_c: 26,
+				ac_u1_off_temp_c: 24,
+				ac_u1_max_humidity_pct: 60,
+				ac_u1_mode_when_cooling: "",
+				ac_u1_active_from: "08:00",
+				ac_u1_active_until: "19:00",
+				ac_u1_hard_off_at: "19:00",
+			},
+			1,
+		);
 		const custom = {
-			...humidUnit,
+			...dryOnly,
 			humidityOffHysteresisPct: 10,
 		};
 		const stillOn = evaluateAcUnitFsm({
@@ -166,6 +193,21 @@ describe("ac unit fsm", () => {
 			unit,
 			roomTempC: 23.5,
 			roomHumidityPct: 50,
+			feedbackSwitchRaw: "on",
+			cleaningActive: false,
+		});
+		assert.equal(res.demandStop, false);
+		assert.equal(res.demandStart, false);
+		assert.match(res.reasonDe, /Hysterese/);
+	});
+
+	it("keeps cooling through temp hysteresis even when dry humidity is already low", () => {
+		const res = evaluateAcUnitFsm({
+			now: new Date("2026-07-04T12:00:00"),
+			addonEnabled: true,
+			unit: humidUnit,
+			roomTempC: 24.68,
+			roomHumidityPct: 38.88,
 			feedbackSwitchRaw: "on",
 			cleaningActive: false,
 		});

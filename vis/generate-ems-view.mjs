@@ -216,7 +216,7 @@ function sectionTitle(text, left, top, width, color = C.textMuted) {
 }
 
 /** @typedef {{ type: 'f'|'s', oid: string, label: string, digits?: string, unit?: string, em?: boolean, color?: string }} RowDef */
-/** @typedef {{ x: number, y: number, w: number, h: number, title: string, color: string, rows: RowDef[] }} CardDef */
+/** @typedef {{ x: number, y: number, w: number, h: number, title?: string, titleOid?: string, color: string, rows: RowDef[] }} CardDef */
 
 const widgets = {};
 let n = 1;
@@ -231,7 +231,21 @@ function oid(full) {
 /** @param {CardDef} card */
 function buildCard(card) {
 	widgets[wid()] = cardPanel(card.x, card.y, card.w, card.h);
-	widgets[wid()] = sectionTitle(card.title, card.x + 6, card.y + 4, card.w - 12, card.color);
+	if (card.titleOid) {
+		widgets[wid()] = stringWidget(oid(card.titleOid), "", {
+			left: `${card.x + 6}px`,
+			top: `${card.y + 4}px`,
+			width: `${card.w - 12}px`,
+			height: "12px",
+			"font-size": FS.lbl,
+			"font-weight": "700",
+			color: card.color,
+			"letter-spacing": "0.05em",
+			"text-transform": "uppercase",
+		});
+	} else {
+		widgets[wid()] = sectionTitle(card.title ?? "", card.x + 6, card.y + 4, card.w - 12, card.color);
+	}
 	let ry = card.y + 18;
 	for (const row of card.rows) {
 		const st = {
@@ -353,7 +367,8 @@ for (const c of /** @type {CardDef[]} */ ([
 		],
 	},
 	{
-		x: M + 4 * (cardW + GAP), y: cardY, w: cardW, h: cardH, title: "Klima", color: C.ac,
+		x: M + 4 * (cardW + GAP), y: cardY, w: cardW, h: cardH,
+		titleOid: "addons.air_conditioning.units.unit_1.name", color: C.ac,
 		rows: [
 			{ type: "f", oid: "addons.air_conditioning.units.unit_1.allocated_power_w", label: "Plan ", digits: "0", unit: " W", em: true, color: C.ac },
 			{ type: "s", oid: "addons.air_conditioning.runtime.surface.decision_source", label: "Src " },

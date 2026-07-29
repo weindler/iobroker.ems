@@ -2970,8 +2970,9 @@
             "widgetSet": "vis-inventwo"
         },
         "e00039": {
-            "tpl": "tplHtml",
+            "tpl": "tplValueString",
             "data": {
+                "oid": "ems.0.addons.air_conditioning.units.unit_1.name",
                 "g_fixed": false,
                 "g_visibility": false,
                 "g_css_font_text": true,
@@ -3026,18 +3027,22 @@
                 "lc-border-color": "",
                 "lc-border-radius": 3,
                 "lc-zindex": 0,
-                "refreshInterval": "0",
-                "html": "<div style=\"font-family:system-ui,sans-serif;font-size:9px;font-weight:700;color:#79c0ff;letter-spacing:0.05em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;\">Klima</div>"
+                "html_prepend": "",
+                "html_append": ""
             },
             "style": {
-                "overflow": "hidden",
-                "z-index": "10",
-                "color": "#e6edf3",
+                "height": "12px",
+                "z-index": "12",
+                "font-size": "9px",
+                "font-weight": "700",
+                "color": "#79c0ff",
+                "background-color": "transparent",
+                "border": "none",
                 "left": "858px",
                 "top": "72px",
                 "width": "193px",
-                "height": "12px",
-                "background-color": "transparent"
+                "letter-spacing": "0.05em",
+                "text-transform": "uppercase"
             },
             "widgetSet": "basic"
         },

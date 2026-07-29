@@ -128,15 +128,11 @@ export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
 				reasonDe: `Läuft (${why}).`,
 			};
 		}
-		if (humidityLow) {
-			return {
-				state: "running",
-				demandStart: false,
-				demandStop: true,
-				modePurpose: "dehumidify",
-				reasonDe: `Feuchte ${humidity!.toFixed(0)} % ≤ ${humidityOffPct} % — Entfeuchten fertig.`,
-			};
-		}
+		/*
+		 * Kühl-Hysterese VOR Feuchte-Aus: Sonst schaltet bei konfiguriertem Dry eine niedrige
+		 * Raumfeuchte ab, sobald Temp unter die Ein-Schwelle fällt — obwohl die Kühl-Aus-Schwelle
+		 * noch nicht erreicht ist → Takten + Reinigung, ohne bis offTempC durchzukühlen.
+		 */
 		if (coolEnabled) {
 			if (tempLow) {
 				return {
@@ -153,6 +149,15 @@ export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
 				demandStop: false,
 				modePurpose: "cooling",
 				reasonDe: `Temp ${temp.toFixed(1)} °C im Hysterese-Bereich — läuft weiter.`,
+			};
+		}
+		if (humidityLow) {
+			return {
+				state: "running",
+				demandStart: false,
+				demandStop: true,
+				modePurpose: "dehumidify",
+				reasonDe: `Feuchte ${humidity!.toFixed(0)} % ≤ ${humidityOffPct} % — Entfeuchten fertig.`,
 			};
 		}
 		// Dry-only: hold while humidity still above off-hysteresis.

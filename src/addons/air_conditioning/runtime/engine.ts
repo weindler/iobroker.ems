@@ -70,6 +70,7 @@ export type AcRuntimeHost = DeviceWriteHost & {
 	getAbsolutePath?: (category?: string) => string;
 	log: { info: (m: string) => void; warn: (m: string) => void; debug?: (m: string) => void; error?: (m: string) => void };
 	setObjectNotExistsAsync: (id: string, obj: ioBroker.Object) => Promise<unknown>;
+	extendObjectAsync?: (id: string, obj: Partial<ioBroker.Object>) => Promise<unknown>;
 	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
 	getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
 	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
@@ -732,6 +733,7 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 					acEstimatedPowerForPurpose(unit, fsm.modePurpose),
 				)
 			: 0;
+		await setStateIfChanged(host, ids.name, unit.name);
 		await setStateIfChanged(host, ids.state, fsm.state);
 		await setStateIfChanged(host, ids.reasonDe, permission.reasonDe);
 		await setStateIfChanged(host, ids.roomTempC, temp.num ?? null);

@@ -109,10 +109,21 @@ const fsm_1 = require("./fsm");
         strict_1.default.equal(res.modePurpose, "cooling");
     });
     (0, node_test_1.it)("stops when humidity drops below configured hysteresis", () => {
+        // Dry-only: with cool also enabled, cool hysteresis would keep running above off-temp.
+        const dryOnly = (0, config_1.acUnitConfigFromAdapter)({
+            ac_u1_enabled: true,
+            ac_u1_on_temp_c: 26,
+            ac_u1_off_temp_c: 24,
+            ac_u1_max_humidity_pct: 60,
+            ac_u1_mode_when_cooling: "",
+            ac_u1_active_from: "08:00",
+            ac_u1_active_until: "19:00",
+            ac_u1_hard_off_at: "19:00",
+        }, 1);
         const res = (0, fsm_1.evaluateAcUnitFsm)({
             now: new Date("2026-07-04T12:00:00"),
             addonEnabled: true,
-            unit: humidUnit,
+            unit: dryOnly,
             roomTempC: 25,
             roomHumidityPct: 55,
             feedbackSwitchRaw: "on",
@@ -122,8 +133,18 @@ const fsm_1 = require("./fsm");
         strict_1.default.match(res.reasonDe, /Entfeuchten fertig/);
     });
     (0, node_test_1.it)("uses unit humidity hysteresis for dry off", () => {
+        const dryOnly = (0, config_1.acUnitConfigFromAdapter)({
+            ac_u1_enabled: true,
+            ac_u1_on_temp_c: 26,
+            ac_u1_off_temp_c: 24,
+            ac_u1_max_humidity_pct: 60,
+            ac_u1_mode_when_cooling: "",
+            ac_u1_active_from: "08:00",
+            ac_u1_active_until: "19:00",
+            ac_u1_hard_off_at: "19:00",
+        }, 1);
         const custom = {
-            ...humidUnit,
+            ...dryOnly,
             humidityOffHysteresisPct: 10,
         };
         const stillOn = (0, fsm_1.evaluateAcUnitFsm)({
@@ -154,6 +175,20 @@ const fsm_1 = require("./fsm");
             unit,
             roomTempC: 23.5,
             roomHumidityPct: 50,
+            feedbackSwitchRaw: "on",
+            cleaningActive: false,
+        });
+        strict_1.default.equal(res.demandStop, false);
+        strict_1.default.equal(res.demandStart, false);
+        strict_1.default.match(res.reasonDe, /Hysterese/);
+    });
+    (0, node_test_1.it)("keeps cooling through temp hysteresis even when dry humidity is already low", () => {
+        const res = (0, fsm_1.evaluateAcUnitFsm)({
+            now: new Date("2026-07-04T12:00:00"),
+            addonEnabled: true,
+            unit: humidUnit,
+            roomTempC: 24.68,
+            roomHumidityPct: 38.88,
             feedbackSwitchRaw: "on",
             cleaningActive: false,
         });

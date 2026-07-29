@@ -98,11 +98,22 @@ var stateIds=[
 	INST+".addons.wallbox.runtime.plan_execution_status",
 	INST+".live.wallbox.vehicle_soc_pct",
 	INST+".live.wallbox.charge_power_w",
+	INST+".addons.air_conditioning.units.unit_1.name",
 	INST+".addons.air_conditioning.units.unit_1.decision_source",
 	INST+".addons.air_conditioning.units.unit_1.daily_plan_status",
 	INST+".addons.air_conditioning.units.unit_1.allocated_power_w",
 	INST+".addons.air_conditioning.units.unit_1.allocation_reason_de",
 	INST+".addons.air_conditioning.units.unit_1.reason_de",
+	INST+".addons.air_conditioning.units.unit_1.running",
+	INST+".addons.air_conditioning.units.unit_1.room_temp_c",
+	INST+".addons.air_conditioning.units.unit_2.name",
+	INST+".addons.air_conditioning.units.unit_2.decision_source",
+	INST+".addons.air_conditioning.units.unit_2.daily_plan_status",
+	INST+".addons.air_conditioning.units.unit_2.allocated_power_w",
+	INST+".addons.air_conditioning.units.unit_2.allocation_reason_de",
+	INST+".addons.air_conditioning.units.unit_2.reason_de",
+	INST+".addons.air_conditioning.units.unit_2.running",
+	INST+".addons.air_conditioning.units.unit_2.room_temp_c",
 	INST+".addons.air_conditioning.runtime.reason_de"
 ];
 var cache={},bound=false,socketBound=false;
@@ -215,11 +226,26 @@ function renderGrid(){
 	var ihP=g("addons.immersion_heater.runtime.allocated_power_w");
 	var batP=g("addons.battery.runtime.allocated_charge_power_w");
 	var wbP=g("addons.wallbox.runtime.allocated_power_w");
-	var acP=g("addons.air_conditioning.units.unit_1.allocated_power_w");
 	var ihAl=txt(g("planner.intent.allocation.immersion_heater.status"),"—");
 	var batAl=txt(g("planner.intent.allocation.battery.status"),"—");
 	var wbAl=txt(g("planner.intent.allocation.wallbox.status"),"—");
 	var acAl=txt(g("planner.intent.allocation.air_conditioning.status"),"—");
+	var acWindows=nextWindows(g("planner.intent.allocation.air_conditioning.plan_json"),ON_W);
+
+	function acCard(unitIndex){
+		var base="addons.air_conditioning.units.unit_"+unitIndex;
+		var name=txt(g(base+".name"),"");
+		var title=name?("Klima · "+name):("Klima Unit "+unitIndex);
+		var p=g(base+".allocated_power_w");
+		return card(title,"#79c0ff",planBadge(p,acAl),[
+			["Slot-Plan",fmtW(p)],
+			["Raum",fmtTemp(g(base+".room_temp_c"))],
+			["Läuft",txt(g(base+".running"),"—")],
+			["Quelle",txt(g(base+".decision_source"),"—")],
+			["Nächste Fenster",acWindows],
+			["Allocation",txt(acAl)+" — "+txt(g("planner.intent.allocation.air_conditioning.reason_de"),"")]
+		],txt(g(base+".allocation_reason_de"),txt(g(base+".reason_de"),"")));
+	}
 
 	el.innerHTML=
 		card("Heizstab","#ffa657",planBadge(ihP,ihAl),[
@@ -252,13 +278,8 @@ function renderGrid(){
 			["Nächste Fenster",nextWindows(g("planner.intent.allocation.wallbox.plan_json"),ON_W)],
 			["Allocation",txt(wbAl)+" — "+txt(g("planner.intent.allocation.wallbox.reason_de"),"")]
 		],txt(g("addons.wallbox.runtime.reason_de"),txt(g("addons.wallbox.runtime.plan_execution_status"),"")))
-		+card("Klima","#79c0ff",planBadge(acP,acAl),[
-			["Slot-Plan U1",fmtW(acP)],
-			["Quelle",txt(g("addons.air_conditioning.units.unit_1.decision_source"),"—")],
-			["Nächste Fenster",nextWindows(g("planner.intent.allocation.air_conditioning.plan_json"),ON_W)],
-			["Allocation",txt(acAl)+" — "+txt(g("planner.intent.allocation.air_conditioning.reason_de"),"")],
-			["Runtime",txt(g("addons.air_conditioning.runtime.reason_de"),"—")]
-		],txt(g("addons.air_conditioning.units.unit_1.allocation_reason_de"),txt(g("addons.air_conditioning.units.unit_1.reason_de"),"")));
+		+acCard(1)
+		+acCard(2);
 }
 
 function render(){

@@ -103,6 +103,74 @@ function minimalPlan(overrides = {}) {
         const b = minimalPlan({ activeContributionIds: ["pv", "house_load", "immersion_heater.flexible"] });
         strict_1.default.notEqual((0, trigger_digest_js_1.aiTriggerDigestPayload)(a), (0, trigger_digest_js_1.aiTriggerDigestPayload)(b));
     });
+    (0, node_test_1.it)("changes when wallbox/battery flex family appears (vehicle plugged / charge need)", () => {
+        const a = minimalPlan({ activeContributionIds: ["pv", "house_load"] });
+        const b = minimalPlan({ activeContributionIds: ["pv", "house_load", "wallbox.ev_session"] });
+        const c = minimalPlan({ activeContributionIds: ["pv", "house_load", "battery.charge"] });
+        strict_1.default.notEqual((0, trigger_digest_js_1.aiTriggerDigestPayload)(a), (0, trigger_digest_js_1.aiTriggerDigestPayload)(b));
+        strict_1.default.notEqual((0, trigger_digest_js_1.aiTriggerDigestPayload)(a), (0, trigger_digest_js_1.aiTriggerDigestPayload)(c));
+    });
+    (0, node_test_1.it)("changes when median grid price jumps by more than the price bucket (material price change)", () => {
+        const a = minimalPlan({
+            slots: [
+                {
+                    slot: { startIso: "2026-07-25T10:00:00.000Z", endIso: "2026-07-25T10:15:00.000Z" },
+                    pvForecastPowerW: null,
+                    fixedHouseLoadPowerW: null,
+                    fixedBalancePowerW: null,
+                    gridPriceCtPerKwh: 20,
+                    gridImportAllowed: true,
+                    configuredGridImportLimitW: null,
+                    remainingGridImportPowerW: null,
+                    availablePvSurplusPowerW: null,
+                    allocatedFlexiblePowerW: 0,
+                    allocatedPvPowerW: 0,
+                    allocatedGridPowerW: 0,
+                    allocatedBatteryPowerW: 0,
+                    remainingPvSurplusPowerW: null,
+                    remainingGridImportPowerWAfterAlloc: null,
+                    remainingBatteryDischargePowerW: null,
+                    allocations: [],
+                    quality: { status: "valid", confidencePct: 100, reasonDe: "" },
+                    reasonDe: "",
+                },
+            ],
+        });
+        const b = minimalPlan({
+            slots: [
+                {
+                    ...a.slots[0],
+                    gridPriceCtPerKwh: 28,
+                },
+            ],
+        });
+        strict_1.default.notEqual((0, trigger_digest_js_1.aiTriggerDigestPayload)(a), (0, trigger_digest_js_1.aiTriggerDigestPayload)(b));
+    });
+    (0, node_test_1.it)("is stable for small median price noise within the price bucket", () => {
+        const baseSlot = {
+            slot: { startIso: "2026-07-25T10:00:00.000Z", endIso: "2026-07-25T10:15:00.000Z" },
+            pvForecastPowerW: null,
+            fixedHouseLoadPowerW: null,
+            fixedBalancePowerW: null,
+            gridImportAllowed: true,
+            configuredGridImportLimitW: null,
+            remainingGridImportPowerW: null,
+            availablePvSurplusPowerW: null,
+            allocatedFlexiblePowerW: 0,
+            allocatedPvPowerW: 0,
+            allocatedGridPowerW: 0,
+            allocatedBatteryPowerW: 0,
+            remainingPvSurplusPowerW: null,
+            remainingGridImportPowerWAfterAlloc: null,
+            remainingBatteryDischargePowerW: null,
+            allocations: [],
+            quality: { status: "valid", confidencePct: 100, reasonDe: "" },
+            reasonDe: "",
+        };
+        const a = minimalPlan({ slots: [{ ...baseSlot, gridPriceCtPerKwh: 20 }] });
+        const b = minimalPlan({ slots: [{ ...baseSlot, gridPriceCtPerKwh: 22 }] });
+        strict_1.default.equal((0, trigger_digest_js_1.aiTriggerDigestPayload)(a), (0, trigger_digest_js_1.aiTriggerDigestPayload)(b));
+    });
     (0, node_test_1.it)("changes on date or global mode change", () => {
         const a = minimalPlan({ date: "2026-07-25" });
         const b = minimalPlan({ date: "2026-07-26" });

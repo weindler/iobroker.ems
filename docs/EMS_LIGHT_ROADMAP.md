@@ -4,7 +4,7 @@
 **Zweck:** Ein durchgängiges EMS (ein Planner, Learning → Planung, optional KI) — sequenziell, blockweise, messbar.  
 **Regel:** `.cursor/rules/ems-light-roadmap.mdc` (1:1 abarbeiten, kein Block-Skip)
 
-**Aktueller Block:** **10 — KI tiefer** (Phase 2)
+**Aktueller Block:** Phase 2 abgeschlossen (Block 10 erledigt v0.1.225)
 
 ---
 
@@ -32,11 +32,11 @@ Allocation-Qualität, VIS-Planboard, Heizstab-Ownership, Batterie-HW-Ladegrenze 
 | **7** | Einheitliche Runtime-States | **erledigt** | v0.1.215 |
 | **8** | ~~Batterie-Entladung + Profile~~ | **gestrichen** | — |
 | **9** | Wetter Tag 1–7 (Admin-Mapping + Bias) | **erledigt** | v0.1.216→**v0.1.217** |
-| **10** | KI tiefer (über Slot-Shift hinaus) | **aktuell** | TBD |
+| **10** | KI tiefer (über Slot-Shift hinaus) | **erledigt** | **v0.1.225** |
 
-**Produkt-Reife heute:** ~72–75 % | Phase 1 + Block 7 + 9 | **Aktuell: Block 10**
+**Produkt-Reife heute:** ~80–85 % | Phase 1 + Phase 2 (7, 9, 10; 8 gestrichen)
 
-**Priorität (verbindlich):** 7 → 9 → **10**. Block 8 entfällt. Observe bewusst **nicht** in Phase 2.
+**Priorität (verbindlich):** Phase 2 abgeschlossen. Observe / Block-8-Scope nur mit neuem Nutzerauftrag.
 
 ---
 
@@ -323,26 +323,26 @@ Unter `addons.<runtimeId>.runtime.surface.*` für Wallbox, Heizstab, Batterie, K
 
 ---
 
-## Block 10 — KI tiefer (AKTUELL)
+## Block 10 — KI tiefer (erledigt v0.1.225)
 
 **Voraussetzung:** Blöcke 7 und 9 (Block 8 entfällt). Block-6-Gerüst bleibt.
 
 ### 10.1 Erweiterung der Optimierung
 
-- [ ] Über Heizstab/Klima-Verschiebung hinaus: Batterie-**Lade**-Fenster (kein EMS-Entladen)
-- [ ] Optional Wallbox-Fenster wenn Governance `ai_optimization_allowed`
-- [ ] Grenzen/Caps bleiben — KI darf Limits nicht sprengen
+- [x] Über Heizstab/Klima-Verschiebung hinaus: Batterie-**Lade**-Fenster (kein EMS-Entladen) — `COMPARE_ELIGIBLE` + Write-back nur `battery.charge`
+- [x] Optional Wallbox-Fenster wenn Governance `ai_optimization_allowed` — `wallbox.ev_session`, Deadline-Cap
+- [x] Grenzen/Caps bleiben — KI darf Limits nicht sprengen (Capacity-Envelope aus Plan A; Discharge ausgeschlossen)
 
 ### 10.2 Auslöser & Nachweis
 
-- [ ] Material-Change-Trigger schärfen
-- [ ] Compare/Write-back mit messbaren Metriken; sonst `ai.auto_suspended`
+- [x] Material-Change-Trigger schärfen — Flex-Familien + Median-Preis-Bucket (5 ct), weiterhin grob + `ai_min_interval_minutes`
+- [x] Compare/Write-back mit messbaren Metriken; sonst `ai.auto_suspended` (unverändert aus Block 6, gilt für alle eligible Add-ons)
 
 ### Block-10 Abnahme
 
-- [ ] Unit-Tests mit messbarem Plan-B-Gewinn jenseits IH/Klima-only
-- [ ] Standard `ai_enabled=false`; ohne KI voll funktionsfähig
-- [ ] Masterplan §13 · `npm test` · Version + news de/en
+- [x] Unit-Tests mit messbarem Plan-B-Gewinn jenseits IH/Klima-only (battery + wallbox)
+- [x] Standard `ai_enabled=false`; ohne KI voll funktionsfähig
+- [x] Masterplan §13 · `npm test` · Version + news de/en (v0.1.225)
 
 ---
 

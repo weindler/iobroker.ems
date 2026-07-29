@@ -1,42 +1,41 @@
 ---
-description: Verbindliche Produkt-Roadmap — Phase 2: 7+9 erledigt, 8 gestrichen, Block 10 aktuell
+description: Verbindliche Produkt-Roadmap — Phase 2 abgeschlossen (Block 10 erledigt)
 alwaysApply: true
 ---
 
 # EMS-Light Roadmap (verbindlich)
 
 **Detail:** `docs/EMS_LIGHT_ROADMAP.md`  
-**Aktueller Block:** **10 — KI tiefer** (Phase 2)
+**Aktueller Stand:** Phase 2 **abgeschlossen** (Block 10 = v0.1.225). Kein offener Roadmap-Block — neue Arbeit nur mit Nutzerauftrag.
 
 ## Pflicht für jeden Agent
 
-1. **Nur den aktuellen Block bearbeiten** — Block 8 ist gestrichen (nicht nachholen).
+1. **Kein Scope außerhalb Auftrag** — Block 8 bleibt gestrichen (nicht nachholen).
 2. **Vor erstem Code-Write:** First-Party (Grok 4.5 / Composer 2.5) — `ai-model-before-coding.mdc`.
-3. **Block-Abschluss:** Checkboxen → `npm test` → Version + news de/en → Doku → Fortschritt.
+3. **Release:** Tests grün → Version + news de/en → Doku.
 4. **Commit/Push:** nur auf Nutzerauftrag.
-5. **Kein Scope außerhalb Roadmap** ohne Auftrag.
 
-## Phase 2
+## Phase 2 (Status)
 
 | # | Block | Status |
 |---|-------|--------|
 | 7 | Einheitliche Runtime-States | erledigt v0.1.215 |
-| 8 | Batterie-Entladung + Profile | **gestrichen** |
-| 9 | Wetter Tag 3–7 | erledigt v0.1.216 |
-| **10** | **KI tiefer** | **aktuell** (Batterie-Laden/Wallbox; kein EMS-Entladen) |
+| 8 | ~~Batterie-Entladung + Profile~~ | **gestrichen** |
+| 9 | Wetter Tag 1–7 | erledigt v0.1.216/217 |
+| **10** | **KI tiefer** | **erledigt v0.1.225** |
 
-## Block 10 — konkret (AKTUELL)
+## Block 10 — geliefert
 
-- Optimierung über IH/Klima-Slot-Shift hinaus: Batterie-**Lade**-Fenster, optional Wallbox
-- Material-Change-Trigger; Write-back nur bei messbarem Plan-B-Vorteil
+- KI Plan B: Heizstab/Klima + Batterie-**Laden** + Wallbox (Deadline-sicher)
+- Material-Trigger: Flex-Familien + Median-Preis; Write-back nur bei messbarem Vorteil
 - Standard `ai_enabled=false`
 
-## Verboten
+## Verboten ohne Auftrag
 
-- Block-8-Scope (Entladung / Fronius / Victron Live) ohne Community-Auftrag
-- Observe ohne Auftrag
+- Block-8-Scope (Entladung / Fronius / Victron Live)
+- Observe-Modus
 - Fake-Wetter / Fake-Energiewerte
 
 ## Bei Unklarheit
 
-Roadmap lesen → aktuellen Block fortsetzen.
+Roadmap lesen → Nutzer fragen, bevor neuer Scope startet.

@@ -5,14 +5,16 @@ import type { AiSlotPreference } from "../types";
 import {
 	buildCompareResult,
 	COMPARE_ELIGIBLE_GOVERNED_IDS,
+	contributionPrefixForCompare,
 	planBBeatsPlanA,
+	type CompareEligibleGovernedId,
 } from "../compare/build";
 import { redistributeAddonAcrossSlots } from "../compare/redistribute";
 import type { CompareResult } from "../compare/types";
 import { SINGLE_STAGE_DEFAULT_NOMINAL_W } from "../../addons/immersion_heater/device_config";
 import { RUNNABLE_ALLOCATION_FLOOR_W } from "../../operator/daily_plan/addon_plan_publish";
 
-type EligibleId = (typeof COMPARE_ELIGIBLE_GOVERNED_IDS)[number];
+type EligibleId = CompareEligibleGovernedId;
 
 function inferMinPowerW(ownWPerSlot: number[], runtimeAddonId: string): number {
 	const runnable = ownWPerSlot.filter((w) => w >= RUNNABLE_ALLOCATION_FLOOR_W);
@@ -41,7 +43,7 @@ function ensureFlexEntry(
 	if (existing.length > 0) return existing[0]!;
 	if (!template) return null;
 	const created: DailyAllocationEntry = {
-		...JSON.parse(JSON.stringify(template)) as DailyAllocationEntry,
+		...(JSON.parse(JSON.stringify(template)) as DailyAllocationEntry),
 		slot: { startIso: slot.slot.startIso, endIso: slot.slot.endIso },
 		allocatedPowerW: 0,
 		pvPowerW: 0,
@@ -130,7 +132,8 @@ function redistributeEligible(
 	governedId: EligibleId,
 	slotPreferences: AiSlotPreference[],
 ): number[] {
-	const prefix = governedAddonEntry(governedId).runtimeAddonId;
+	const prefix = contributionPrefixForCompare(governedId);
+	const runtimeId = governedAddonEntry(governedId).runtimeAddonId;
 	const ownWPerSlot: number[] = [];
 	const capacityPerSlot: number[] = [];
 	const multipliers: number[] = [];
@@ -138,25 +141,44 @@ function redistributeEligible(
 		slotPreferences.filter((p) => p.addonId === governedId).map((p) => [p.slotStartIso, p.weight]),
 	);
 
+	let deadlineMs: number | null = null;
+	if (governedId === "wallbox") {
+		for (const slot of plan.slots) {
+			for (const a of flexEntries(slot, prefix)) {
+				if (!a.deadlineIso) continue;
+				const t = Date.parse(a.deadlineIso);
+				if (!Number.isFinite(t)) continue;
+				deadlineMs = deadlineMs === null ? t : Math.min(deadlineMs, t);
+			}
+		}
+	}
+
 	for (const slot of plan.slots) {
 		const ownW = sumFlexW(slot, prefix);
 		const remainingPv = Math.max(0, slot.remainingPvSurplusPowerW ?? 0);
 		const remainingGrid = slot.gridImportAllowed ? Math.max(0, slot.remainingGridImportPowerWAfterAlloc ?? 0) : 0;
 		ownWPerSlot.push(ownW);
-		capacityPerSlot.push(Math.max(ownW, ownW + remainingPv + remainingGrid));
+		let capacityW = Math.max(ownW, ownW + remainingPv + remainingGrid);
+		if (deadlineMs !== null) {
+			const slotStartMs = Date.parse(slot.slot.startIso);
+			if (Number.isFinite(slotStartMs) && slotStartMs >= deadlineMs) {
+				capacityW = ownW;
+			}
+		}
+		capacityPerSlot.push(capacityW);
 		multipliers.push(weightByIso.get(slot.slot.startIso) ?? 1);
 	}
 
 	return redistributeAddonAcrossSlots(
 		ownWPerSlot.map((ownW, i) => ({ ownW, capacityW: capacityPerSlot[i]! })),
 		multipliers,
-		inferMinPowerW(ownWPerSlot, prefix),
+		inferMinPowerW(ownWPerSlot, runtimeId),
 	);
 }
 
 /**
  * Wendet KI-Slot-Präferenzen auf eine Kopie von Plan A an, wenn Plan B messbar gewinnt.
- * Pflicht-Allocationen bleiben unverändert; nur flexible IH/Klima-Leistungen werden verschoben.
+ * Pflicht-Allocationen bleiben unverändert; nur flexible IH/Klima/Batterie-Laden/Wallbox werden verschoben.
  */
 export function applyAiPreferencesToDailyPlan(
 	plan: DailyPlan,
@@ -177,7 +199,7 @@ export function applyAiPreferencesToDailyPlan(
 	const next = clonePlan(plan);
 	const active = COMPARE_ELIGIBLE_GOVERNED_IDS.filter((id) => allowedAddonIds.includes(id));
 	for (const id of active) {
-		const prefix = governedAddonEntry(id).runtimeAddonId;
+		const prefix = contributionPrefixForCompare(id);
 		const template =
 			next.slots.flatMap((s) => flexEntries(s, prefix)).find((a) => (a.allocatedPowerW ?? 0) > 0) ??
 			next.slots.flatMap((s) => flexEntries(s, prefix))[0] ??

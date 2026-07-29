@@ -149,4 +149,86 @@ function plan(slots) {
         strict_1.default.equal(r.writebackApplied, false);
         strict_1.default.equal(r.plan.reasonDe, "Plan A");
     });
+    (0, node_test_1.it)("write-back shifts battery.charge only; discharge row stays put", () => {
+        const p = plan([
+            slot({
+                startIso: T1,
+                gridPriceCtPerKwh: 40,
+                allocatedGridPowerW: 1500,
+                remainingGridImportPowerWAfterAlloc: 5000,
+                allocations: [
+                    allocation({
+                        contributionId: "battery.charge",
+                        slotStart: T1,
+                        allocatedPowerW: 1000,
+                        gridPowerW: 1000,
+                        contributor: { type: "addon", id: "battery", addonId: "battery" },
+                    }),
+                    allocation({
+                        contributionId: "battery.discharge",
+                        slotStart: T1,
+                        allocatedPowerW: 400,
+                        gridPowerW: 0,
+                        contributor: { type: "addon", id: "battery", addonId: "battery" },
+                    }),
+                ],
+            }),
+            slot({
+                startIso: T2,
+                gridPriceCtPerKwh: 10,
+                availablePvSurplusPowerW: 3000,
+                remainingPvSurplusPowerW: 3000,
+                remainingGridImportPowerWAfterAlloc: 5000,
+            }),
+        ]);
+        const prefs = [
+            { addonId: "battery", slotStartIso: T1, weight: 0.1 },
+            { addonId: "battery", slotStartIso: T2, weight: 3 },
+        ];
+        const r = (0, apply_plan_b_js_1.applyAiPreferencesToDailyPlan)(p, ["battery"], prefs);
+        strict_1.default.equal(r.writebackApplied, true);
+        const charge1 = r.plan.slots[0].allocations.find((a) => a.contributionId === "battery.charge");
+        const charge2 = r.plan.slots[1].allocations.find((a) => a.contributionId === "battery.charge");
+        const discharge1 = r.plan.slots[0].allocations.find((a) => a.contributionId === "battery.discharge");
+        strict_1.default.ok((charge1?.allocatedPowerW ?? 0) < 1000);
+        strict_1.default.ok((charge2?.allocatedPowerW ?? 0) > 0);
+        strict_1.default.equal(discharge1?.allocatedPowerW, 400);
+    });
+    (0, node_test_1.it)("write-back shifts wallbox.ev_session when allowed", () => {
+        const p = plan([
+            slot({
+                startIso: T1,
+                gridPriceCtPerKwh: 40,
+                allocatedGridPowerW: 3000,
+                remainingGridImportPowerWAfterAlloc: 5000,
+                allocations: [
+                    allocation({
+                        contributionId: "wallbox.ev_session",
+                        slotStart: T1,
+                        allocatedPowerW: 3000,
+                        gridPowerW: 3000,
+                        deadlineIso: "2026-07-25T12:00:00.000Z",
+                        contributor: { type: "addon", id: "wallbox", addonId: "wallbox" },
+                    }),
+                ],
+            }),
+            slot({
+                startIso: T2,
+                gridPriceCtPerKwh: 10,
+                availablePvSurplusPowerW: 4000,
+                remainingPvSurplusPowerW: 4000,
+                remainingGridImportPowerWAfterAlloc: 5000,
+            }),
+        ]);
+        const prefs = [
+            { addonId: "wallbox", slotStartIso: T1, weight: 0.1 },
+            { addonId: "wallbox", slotStartIso: T2, weight: 3 },
+        ];
+        const r = (0, apply_plan_b_js_1.applyAiPreferencesToDailyPlan)(p, ["wallbox"], prefs);
+        strict_1.default.equal(r.writebackApplied, true);
+        const wb1 = r.plan.slots[0].allocations.find((a) => a.contributionId === "wallbox.ev_session");
+        const wb2 = r.plan.slots[1].allocations.find((a) => a.contributionId === "wallbox.ev_session");
+        strict_1.default.ok((wb1?.allocatedPowerW ?? 0) < 3000);
+        strict_1.default.ok((wb2?.allocatedPowerW ?? 0) > 0);
+    });
 });

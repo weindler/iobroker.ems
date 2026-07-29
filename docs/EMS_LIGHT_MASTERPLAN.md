@@ -465,6 +465,13 @@ replan_only_on_material_change
 > manueller „Jetzt optimieren“ hebt die Sperre für einen erneuten Versuch auf. Zusätzlich:
 > `ai_monthly_cost_limit_eur` (`monthly_cost_limit`, 0 = aus). Geräte-Writes weiterhin nur über
 > Dryrun/Live-Runtime-Gates — die KI schreibt nie direkt auf Geräte. Standard bleibt `ai_enabled=false`.
+>
+> **Stand (v0.1.225 / Roadmap Block 10):** Plan-B-Eligibility erweitert um **Batterie-Laden**
+> (`battery.charge`, nie Entladen) und **Wallbox** (`wallbox.ev_session`, Deadline-Cap: keine
+> Verschiebung hinter `deadlineIso`). Material-Trigger (`aiTriggerDigestPayload`) ergänzt um
+> KI-relevante Flex-Familien und Median-Netzpreis-Bucket (5 ct) — weiterhin grob +
+> `ai_min_interval_minutes`. Write-back-Gate unverändert: nur bei messbarem Vorteil. Standard
+> `ai_enabled=false` und alle `*_ai_optimization_allowed=false`. Phase 2 Roadmap damit abgeschlossen.
 
 ---
 

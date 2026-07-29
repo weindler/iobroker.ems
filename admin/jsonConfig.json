@@ -61,7 +61,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "EMS-Light funktioniert vollständig ohne KI. Wenn aktiviert, darf die KI nur freigegebene Add-ons (Heizstab/Klima-Zeitpunkte) innerhalb der Policies optimieren — nie direkt auf Geräte. Write-back auf die Daily-Plan-Allocation nur, wenn Plan B Plan A messbar schlägt (Kosten/PV/Netz); sonst Auto-KI aus. Aufruf bei relevanter Plan-Änderung (Mindestabstand) oder per Knopf. Kostenschätzung grob (Adapter-Preisliste)."
+					"text": "EMS-Light funktioniert vollständig ohne KI. Wenn aktiviert, darf die KI nur freigegebene Add-ons (Heizstab/Klima/Batterie-Laden/Wallbox) innerhalb der Policies optimieren — nie direkt auf Geräte, kein EMS-Entladen. Write-back auf die Daily-Plan-Allocation nur, wenn Plan B Plan A messbar schlägt (Kosten/PV/Netz); sonst Auto-KI aus. Aufruf bei relevanter Plan-Änderung (Mindestabstand) oder per Knopf. Kostenschätzung grob (Adapter-Preisliste)."
 				},
 				"ai_enabled": {
 					"type": "checkbox",
@@ -8298,7 +8298,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Plan A (deterministisch) ist der Plan, den EMS tatsächlich ausführt — das ändert sich hier NICHT. Plan B ist eine reine Beobachtungs-Simulation: Sie zeigt, wie die von der KI vorgeschlagenen Zeitpunkt-Präferenzen (nur für hier freigegebene Add-ons, nur Heizstab/Klima) den Netzbezug/die Kosten verändern würden — bei exakt derselben Energiemenge, nur zu anderen Zeitpunkten. Ohne KI (oder ohne Freigabe) ist Plan B identisch mit Plan A."
+					"text": "Plan A (deterministisch) ist der Plan, den EMS tatsächlich ausführt — das ändert sich hier NICHT. Plan B ist eine reine Beobachtungs-Simulation: Sie zeigt, wie die von der KI vorgeschlagenen Zeitpunkt-Präferenzen (nur für hier freigegebene Add-ons: Heizstab/Klima/Batterie-Laden/Wallbox) den Netzbezug/die Kosten verändern würden — bei exakt derselben Energiemenge, nur zu anderen Zeitpunkten. Ohne KI (oder ohne Freigabe) ist Plan B identisch mit Plan A."
 				},
 				"compareStates": {
 					"type": "staticText",

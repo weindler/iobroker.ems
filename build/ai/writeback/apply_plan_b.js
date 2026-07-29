@@ -105,24 +105,45 @@ function recomputeSlotAggregates(slot) {
     slot.remainingGridImportPowerWAfterAlloc = remGrid !== null ? Math.max(0, remGrid - grid) : null;
 }
 function redistributeEligible(plan, governedId, slotPreferences) {
-    const prefix = (0, registry_1.governedAddonEntry)(governedId).runtimeAddonId;
+    const prefix = (0, build_1.contributionPrefixForCompare)(governedId);
+    const runtimeId = (0, registry_1.governedAddonEntry)(governedId).runtimeAddonId;
     const ownWPerSlot = [];
     const capacityPerSlot = [];
     const multipliers = [];
     const weightByIso = new Map(slotPreferences.filter((p) => p.addonId === governedId).map((p) => [p.slotStartIso, p.weight]));
+    let deadlineMs = null;
+    if (governedId === "wallbox") {
+        for (const slot of plan.slots) {
+            for (const a of flexEntries(slot, prefix)) {
+                if (!a.deadlineIso)
+                    continue;
+                const t = Date.parse(a.deadlineIso);
+                if (!Number.isFinite(t))
+                    continue;
+                deadlineMs = deadlineMs === null ? t : Math.min(deadlineMs, t);
+            }
+        }
+    }
     for (const slot of plan.slots) {
         const ownW = sumFlexW(slot, prefix);
         const remainingPv = Math.max(0, slot.remainingPvSurplusPowerW ?? 0);
         const remainingGrid = slot.gridImportAllowed ? Math.max(0, slot.remainingGridImportPowerWAfterAlloc ?? 0) : 0;
         ownWPerSlot.push(ownW);
-        capacityPerSlot.push(Math.max(ownW, ownW + remainingPv + remainingGrid));
+        let capacityW = Math.max(ownW, ownW + remainingPv + remainingGrid);
+        if (deadlineMs !== null) {
+            const slotStartMs = Date.parse(slot.slot.startIso);
+            if (Number.isFinite(slotStartMs) && slotStartMs >= deadlineMs) {
+                capacityW = ownW;
+            }
+        }
+        capacityPerSlot.push(capacityW);
         multipliers.push(weightByIso.get(slot.slot.startIso) ?? 1);
     }
-    return (0, redistribute_1.redistributeAddonAcrossSlots)(ownWPerSlot.map((ownW, i) => ({ ownW, capacityW: capacityPerSlot[i] })), multipliers, inferMinPowerW(ownWPerSlot, prefix));
+    return (0, redistribute_1.redistributeAddonAcrossSlots)(ownWPerSlot.map((ownW, i) => ({ ownW, capacityW: capacityPerSlot[i] })), multipliers, inferMinPowerW(ownWPerSlot, runtimeId));
 }
 /**
  * Wendet KI-Slot-Präferenzen auf eine Kopie von Plan A an, wenn Plan B messbar gewinnt.
- * Pflicht-Allocationen bleiben unverändert; nur flexible IH/Klima-Leistungen werden verschoben.
+ * Pflicht-Allocationen bleiben unverändert; nur flexible IH/Klima/Batterie-Laden/Wallbox werden verschoben.
  */
 function applyAiPreferencesToDailyPlan(plan, allowedAddonIds, slotPreferences) {
     const compare = (0, build_1.buildCompareResult)(plan, allowedAddonIds, slotPreferences);
@@ -137,7 +158,7 @@ function applyAiPreferencesToDailyPlan(plan, allowedAddonIds, slotPreferences) {
     const next = clonePlan(plan);
     const active = build_1.COMPARE_ELIGIBLE_GOVERNED_IDS.filter((id) => allowedAddonIds.includes(id));
     for (const id of active) {
-        const prefix = (0, registry_1.governedAddonEntry)(id).runtimeAddonId;
+        const prefix = (0, build_1.contributionPrefixForCompare)(id);
         const template = next.slots.flatMap((s) => flexEntries(s, prefix)).find((a) => (a.allocatedPowerW ?? 0) > 0) ??
             next.slots.flatMap((s) => flexEntries(s, prefix))[0] ??
             null;

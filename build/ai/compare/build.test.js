@@ -183,4 +183,157 @@ function minimalPlan(slots) {
         strict_1.default.equal(result.chartA[0].ihW, 0);
         strict_1.default.equal(result.chartB[0].ihW, 0);
     });
+    (0, node_test_1.it)("shifts battery.charge toward cheap slot when battery AI allowed; leaves discharge untouched", () => {
+        const plan = minimalPlan([
+            slot({
+                startIso: T1,
+                gridPriceCtPerKwh: 40,
+                allocatedGridPowerW: 1500,
+                remainingGridImportPowerWAfterAlloc: 5000,
+                allocations: [
+                    allocation({
+                        contributionId: "battery.charge",
+                        slotStart: T1,
+                        allocatedPowerW: 1000,
+                        gridPowerW: 1000,
+                        contributor: { type: "addon", id: "battery", addonId: "battery" },
+                    }),
+                    allocation({
+                        contributionId: "battery.discharge",
+                        slotStart: T1,
+                        allocatedPowerW: 500,
+                        gridPowerW: 0,
+                        pvPowerW: 0,
+                        contributor: { type: "addon", id: "battery", addonId: "battery" },
+                    }),
+                ],
+            }),
+            slot({
+                startIso: T2,
+                gridPriceCtPerKwh: 10,
+                availablePvSurplusPowerW: 2000,
+                remainingPvSurplusPowerW: 2000,
+                remainingGridImportPowerWAfterAlloc: 5000,
+            }),
+        ]);
+        const prefs = [
+            { addonId: "battery", slotStartIso: T1, weight: 0.2 },
+            { addonId: "battery", slotStartIso: T2, weight: 3 },
+        ];
+        const result = (0, build_js_1.buildCompareResult)(plan, ["battery"], prefs);
+        strict_1.default.ok(Math.abs(result.delta.planA.batKwh - result.delta.planB.batKwh) < 1e-6);
+        strict_1.default.ok(result.chartB[1].batW > result.chartA[1].batW);
+        strict_1.default.ok(result.chartB[0].batW < result.chartA[0].batW);
+        strict_1.default.equal(result.delta.activePlan, "b");
+        strict_1.default.deepEqual(result.delta.aiInvolvedAddonIds, ["battery"]);
+        // IH/AC remain zero when only battery is allowed.
+        strict_1.default.equal(result.chartA[0].ihW, 0);
+        strict_1.default.equal(result.chartB[0].ihW, 0);
+        strict_1.default.equal(result.chartA[0].acW, 0);
+        strict_1.default.equal(result.chartB[0].acW, 0);
+    });
+    (0, node_test_1.it)("IH-only preference is unchanged when battery is also eligible but has no prefs (no regression)", () => {
+        const plan = minimalPlan([
+            slot({
+                startIso: T1,
+                gridPriceCtPerKwh: 40,
+                allocatedGridPowerW: 400,
+                remainingGridImportPowerWAfterAlloc: 5000,
+                allocations: [
+                    allocation({ contributionId: "immersion_heater.flexible", slotStart: T1, allocatedPowerW: 400, gridPowerW: 400 }),
+                ],
+            }),
+            slot({
+                startIso: T2,
+                gridPriceCtPerKwh: 10,
+                availablePvSurplusPowerW: 1000,
+                remainingPvSurplusPowerW: 1000,
+                remainingGridImportPowerWAfterAlloc: 5000,
+            }),
+        ]);
+        const prefs = [
+            { addonId: "immersion_heater", slotStartIso: T1, weight: 0.2 },
+            { addonId: "immersion_heater", slotStartIso: T2, weight: 3 },
+        ];
+        const onlyIh = (0, build_js_1.buildCompareResult)(plan, ["immersion_heater"], prefs);
+        const ihPlusBatEligible = (0, build_js_1.buildCompareResult)(plan, ["immersion_heater", "battery"], prefs);
+        strict_1.default.equal(onlyIh.delta.activePlan, "b");
+        strict_1.default.equal(ihPlusBatEligible.delta.activePlan, "b");
+        strict_1.default.equal(onlyIh.chartB[0].ihW, ihPlusBatEligible.chartB[0].ihW);
+        strict_1.default.equal(onlyIh.chartB[1].ihW, ihPlusBatEligible.chartB[1].ihW);
+        strict_1.default.equal(ihPlusBatEligible.chartB[0].batW, 0);
+        strict_1.default.equal(ihPlusBatEligible.chartB[1].batW, 0);
+    });
+    (0, node_test_1.it)("shifts wallbox.ev_session toward cheap slot when wallbox AI allowed; respects deadline", () => {
+        const deadline = "2026-07-25T10:20:00.000Z"; // before T2 end but after T1 — T2 starts at 10:15, still before deadline
+        const plan = minimalPlan([
+            slot({
+                startIso: T1,
+                gridPriceCtPerKwh: 40,
+                allocatedGridPowerW: 3000,
+                remainingGridImportPowerWAfterAlloc: 5000,
+                allocations: [
+                    allocation({
+                        contributionId: "wallbox.ev_session",
+                        slotStart: T1,
+                        allocatedPowerW: 3000,
+                        gridPowerW: 3000,
+                        deadlineIso: deadline,
+                        contributor: { type: "addon", id: "wallbox", addonId: "wallbox" },
+                    }),
+                ],
+            }),
+            slot({
+                startIso: T2,
+                gridPriceCtPerKwh: 10,
+                availablePvSurplusPowerW: 4000,
+                remainingPvSurplusPowerW: 4000,
+                remainingGridImportPowerWAfterAlloc: 5000,
+            }),
+        ]);
+        const prefs = [
+            { addonId: "wallbox", slotStartIso: T1, weight: 0.2 },
+            { addonId: "wallbox", slotStartIso: T2, weight: 3 },
+        ];
+        const result = (0, build_js_1.buildCompareResult)(plan, ["wallbox"], prefs);
+        strict_1.default.ok(Math.abs(result.delta.planA.wbKwh - result.delta.planB.wbKwh) < 1e-6);
+        strict_1.default.ok(result.chartB[1].wbW > result.chartA[1].wbW);
+        strict_1.default.equal(result.delta.activePlan, "b");
+        strict_1.default.deepEqual(result.delta.aiInvolvedAddonIds, ["wallbox"]);
+    });
+    (0, node_test_1.it)("does not move wallbox energy into slots at/after deadline", () => {
+        const deadline = T2; // T2 start == deadline → capacity locked to ownW (0)
+        const plan = minimalPlan([
+            slot({
+                startIso: T1,
+                gridPriceCtPerKwh: 40,
+                allocatedGridPowerW: 2000,
+                remainingGridImportPowerWAfterAlloc: 5000,
+                allocations: [
+                    allocation({
+                        contributionId: "wallbox.ev_session",
+                        slotStart: T1,
+                        allocatedPowerW: 2000,
+                        gridPowerW: 2000,
+                        deadlineIso: deadline,
+                        contributor: { type: "addon", id: "wallbox", addonId: "wallbox" },
+                    }),
+                ],
+            }),
+            slot({
+                startIso: T2,
+                gridPriceCtPerKwh: 5,
+                availablePvSurplusPowerW: 5000,
+                remainingPvSurplusPowerW: 5000,
+                remainingGridImportPowerWAfterAlloc: 5000,
+            }),
+        ]);
+        const prefs = [
+            { addonId: "wallbox", slotStartIso: T1, weight: 0.1 },
+            { addonId: "wallbox", slotStartIso: T2, weight: 3 },
+        ];
+        const result = (0, build_js_1.buildCompareResult)(plan, ["wallbox"], prefs);
+        strict_1.default.equal(result.chartB[1].wbW, 0);
+        strict_1.default.ok(Math.abs(result.delta.planA.wbKwh - result.delta.planB.wbKwh) < 1e-6);
+    });
 });

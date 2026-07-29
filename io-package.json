@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.223",
+		"version": "0.1.225",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,14 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.225": {
+				"en": "Block 10 complete: AI Plan B may shift battery charge + wallbox (deadline-safe) when AI optimization allowed; material trigger includes flex families + median price bucket; write-back only if B beats A. Defaults AI off. Wallbox/IH/climate unchanged without flags.",
+				"de": "Block 10 fertig: KI Plan B darf Batterie-Laden + Wallbox (deadline-sicher) verschieben wenn KI-Optimierung erlaubt; Material-Trigger mit Flex-Familien + Median-Preis-Bucket; Write-back nur wenn B A schlägt. Standard KI aus. Ohne Freigabe unverändert."
+			},
+			"0.1.224": {
+				"en": "Block 10.1 (safe slice): AI Plan B may shift battery charge windows when battery_ai_optimization_allowed (energy-preserving, no discharge). Immersion/climate behavior unchanged; wallbox still deferred. Defaults remain AI off.",
+				"de": "Block 10.1 (sicherer Schnitt): KI Plan B darf Batterie-Lade-Fenster verschieben wenn battery_ai_optimization_allowed (energieerhaltend, kein Entladen). Heizstab/Klima unverändert; Wallbox noch nicht. Standard bleibt KI aus."
+			},
 			"0.1.223": {
 				"en": "Show climate learning prognosis in operator briefing and VIS cards (hours/kWh per unit) — no slot rebuild, FSM control unchanged.",
 				"de": "Klima-Learning-Prognose im Operator-Briefing und VIS-Karten sichtbar (Stunden/kWh pro Unit) — kein Slot-Umbau, FSM-Steuerung unverändert."

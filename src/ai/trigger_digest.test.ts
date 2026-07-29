@@ -108,6 +108,77 @@ describe("aiTriggerDigestPayload", () => {
 		assert.notEqual(aiTriggerDigestPayload(a), aiTriggerDigestPayload(b));
 	});
 
+	it("changes when wallbox/battery flex family appears (vehicle plugged / charge need)", () => {
+		const a = minimalPlan({ activeContributionIds: ["pv", "house_load"] });
+		const b = minimalPlan({ activeContributionIds: ["pv", "house_load", "wallbox.ev_session"] });
+		const c = minimalPlan({ activeContributionIds: ["pv", "house_load", "battery.charge"] });
+		assert.notEqual(aiTriggerDigestPayload(a), aiTriggerDigestPayload(b));
+		assert.notEqual(aiTriggerDigestPayload(a), aiTriggerDigestPayload(c));
+	});
+
+	it("changes when median grid price jumps by more than the price bucket (material price change)", () => {
+		const a = minimalPlan({
+			slots: [
+				{
+					slot: { startIso: "2026-07-25T10:00:00.000Z", endIso: "2026-07-25T10:15:00.000Z" },
+					pvForecastPowerW: null,
+					fixedHouseLoadPowerW: null,
+					fixedBalancePowerW: null,
+					gridPriceCtPerKwh: 20,
+					gridImportAllowed: true,
+					configuredGridImportLimitW: null,
+					remainingGridImportPowerW: null,
+					availablePvSurplusPowerW: null,
+					allocatedFlexiblePowerW: 0,
+					allocatedPvPowerW: 0,
+					allocatedGridPowerW: 0,
+					allocatedBatteryPowerW: 0,
+					remainingPvSurplusPowerW: null,
+					remainingGridImportPowerWAfterAlloc: null,
+					remainingBatteryDischargePowerW: null,
+					allocations: [],
+					quality: { status: "valid", confidencePct: 100, reasonDe: "" },
+					reasonDe: "",
+				},
+			],
+		});
+		const b = minimalPlan({
+			slots: [
+				{
+					...a.slots[0]!,
+					gridPriceCtPerKwh: 28,
+				},
+			],
+		});
+		assert.notEqual(aiTriggerDigestPayload(a), aiTriggerDigestPayload(b));
+	});
+
+	it("is stable for small median price noise within the price bucket", () => {
+		const baseSlot = {
+			slot: { startIso: "2026-07-25T10:00:00.000Z", endIso: "2026-07-25T10:15:00.000Z" },
+			pvForecastPowerW: null as number | null,
+			fixedHouseLoadPowerW: null as number | null,
+			fixedBalancePowerW: null as number | null,
+			gridImportAllowed: true,
+			configuredGridImportLimitW: null as number | null,
+			remainingGridImportPowerW: null as number | null,
+			availablePvSurplusPowerW: null as number | null,
+			allocatedFlexiblePowerW: 0,
+			allocatedPvPowerW: 0,
+			allocatedGridPowerW: 0,
+			allocatedBatteryPowerW: 0,
+			remainingPvSurplusPowerW: null as number | null,
+			remainingGridImportPowerWAfterAlloc: null as number | null,
+			remainingBatteryDischargePowerW: null as number | null,
+			allocations: [] as [],
+			quality: { status: "valid" as const, confidencePct: 100, reasonDe: "" },
+			reasonDe: "",
+		};
+		const a = minimalPlan({ slots: [{ ...baseSlot, gridPriceCtPerKwh: 20 }] });
+		const b = minimalPlan({ slots: [{ ...baseSlot, gridPriceCtPerKwh: 22 }] });
+		assert.equal(aiTriggerDigestPayload(a), aiTriggerDigestPayload(b));
+	});
+
 	it("changes on date or global mode change", () => {
 		const a = minimalPlan({ date: "2026-07-25" });
 		const b = minimalPlan({ date: "2026-07-26" });

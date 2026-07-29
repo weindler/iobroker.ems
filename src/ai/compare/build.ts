@@ -4,12 +4,26 @@ import type { AiSlotPreference } from "../types";
 import { redistributeAddonAcrossSlots } from "./redistribute";
 import type { CompareDeltaSummary, ComparePlanPoint, ComparePlanTotals, CompareResult } from "./types";
 
-/** Governance-IDs, die für den Plan-Vergleich überhaupt in Frage kommen (siehe Masterplan §13). */
-export const COMPARE_ELIGIBLE_GOVERNED_IDS = ["immersion_heater", "climate"] as const;
-type CompareEligibleGovernedId = (typeof COMPARE_ELIGIBLE_GOVERNED_IDS)[number];
+/**
+ * Governance-IDs für Plan-Vergleich / Write-back.
+ * Block 6: IH + Klima. Block 10: + Batterie-Laden + Wallbox (kein EMS-Entladen).
+ */
+export const COMPARE_ELIGIBLE_GOVERNED_IDS = ["immersion_heater", "climate", "battery", "wallbox"] as const;
+export type CompareEligibleGovernedId = (typeof COMPARE_ELIGIBLE_GOVERNED_IDS)[number];
 
 const COST_EPSILON_CT = 0.01;
 const ENERGY_EPSILON_KWH = 0.001;
+
+/**
+ * Contribution-Präfix für Flex-Zeilen.
+ * Batterie: nur `battery.charge` — nie discharge/reserve.
+ * Wallbox: nur `wallbox.ev_session`.
+ */
+export function contributionPrefixForCompare(governedId: CompareEligibleGovernedId): string {
+	if (governedId === "battery") return "battery.charge";
+	if (governedId === "wallbox") return "wallbox.ev_session";
+	return governedAddonEntry(governedId).runtimeAddonId;
+}
 
 /**
  * Roadmap Block 6: Plan B muss Plan A messbar schlagen (Kosten primär, sonst Netz↓ / PV↑).
@@ -32,7 +46,7 @@ interface SlotOwnUsage {
 	ownPvW: number;
 }
 
-/** Flexible (nicht-mandatory) Leistung/PV-Anteil eines Add-on-Präfixes in einem Slot (Plan A). */
+/** Flexible (nicht-mandatory) Leistung/PV-Anteil eines Contribution-Präfixes in einem Slot (Plan A). */
 function slotOwnUsage(slot: DailyPlanSlot, contributionPrefix: string): SlotOwnUsage {
 	let ownW = 0;
 	let ownPvW = 0;
@@ -46,6 +60,7 @@ function slotOwnUsage(slot: DailyPlanSlot, contributionPrefix: string): SlotOwnU
 }
 
 interface AddonRedistribution {
+	governedId: CompareEligibleGovernedId;
 	prefix: string;
 	ownWPerSlot: number[];
 	ownPvWPerSlot: number[];
@@ -57,7 +72,7 @@ function buildAddonRedistribution(
 	governedId: CompareEligibleGovernedId,
 	slotPreferences: AiSlotPreference[],
 ): AddonRedistribution {
-	const prefix = governedAddonEntry(governedId).runtimeAddonId;
+	const prefix = contributionPrefixForCompare(governedId);
 	const ownWPerSlot: number[] = [];
 	const ownPvWPerSlot: number[] = [];
 	const capacityPerSlot: number[] = [];
@@ -67,27 +82,48 @@ function buildAddonRedistribution(
 		slotPreferences.filter((p) => p.addonId === governedId).map((p) => [p.slotStartIso, p.weight]),
 	);
 
+	/** Früheste Deadline der Flex-Zeilen — Wallbox darf Energie nicht hinter die Deadline schieben. */
+	let deadlineMs: number | null = null;
+	if (governedId === "wallbox") {
+		for (const slot of plan.slots) {
+			for (const a of slot.allocations) {
+				if (a.mandatory || !a.contributionId.startsWith(prefix) || !a.deadlineIso) continue;
+				const t = Date.parse(a.deadlineIso);
+				if (!Number.isFinite(t)) continue;
+				deadlineMs = deadlineMs === null ? t : Math.min(deadlineMs, t);
+			}
+		}
+	}
+
 	for (const slot of plan.slots) {
 		const { ownW, ownPvW } = slotOwnUsage(slot, prefix);
 		const remainingPv = Math.max(0, slot.remainingPvSurplusPowerW ?? 0);
 		const remainingGrid = slot.gridImportAllowed ? Math.max(0, slot.remainingGridImportPowerWAfterAlloc ?? 0) : 0;
 		ownWPerSlot.push(ownW);
 		ownPvWPerSlot.push(ownPvW);
-		capacityPerSlot.push(Math.max(ownW, ownW + remainingPv + remainingGrid));
+		let capacityW = Math.max(ownW, ownW + remainingPv + remainingGrid);
+		if (deadlineMs !== null) {
+			const slotStartMs = Date.parse(slot.slot.startIso);
+			// Nach Deadline: nur vorhandene Leistung halten (kein Zuzug), davor normal.
+			if (Number.isFinite(slotStartMs) && slotStartMs >= deadlineMs) {
+				capacityW = ownW;
+			}
+		}
+		capacityPerSlot.push(capacityW);
 		multipliers.push(weightByIso.get(slot.slot.startIso) ?? 1);
 	}
 
 	// Compare bleibt energieerhaltend (keine Stage-Coalesce) — Coalesce nur beim Write-back.
 	const newWPerSlot = redistributeAddonAcrossSlots(
-		ownWPerSlot.map((ownW, i) => ({ ownW, capacityW: capacityPerSlot[i] })),
+		ownWPerSlot.map((ownW, i) => ({ ownW, capacityW: capacityPerSlot[i]! })),
 		multipliers,
 	);
 
-	return { prefix, ownWPerSlot, ownPvWPerSlot, newWPerSlot };
+	return { governedId, prefix, ownWPerSlot, ownPvWPerSlot, newWPerSlot };
 }
 
 function emptyTotals(): ComparePlanTotals {
-	return { costCt: 0, pvKwh: 0, gridKwh: 0, unallocatedKwh: null, ihKwh: 0, acKwh: 0 };
+	return { costCt: 0, pvKwh: 0, gridKwh: 0, unallocatedKwh: null, ihKwh: 0, acKwh: 0, batKwh: 0, wbKwh: 0 };
 }
 
 function round1(n: number): number {
@@ -111,8 +147,9 @@ export function buildCompareResult(
 	for (const id of activeGovernedIds) {
 		redistributions.set(id, buildAddonRedistribution(plan, id, slotPreferences));
 	}
-	const ihRedist = redistributions.get("immersion_heater") ?? null;
-	const acRedist = redistributions.get("climate") ?? null;
+	const ordered = activeGovernedIds
+		.map((id) => redistributions.get(id))
+		.filter((r): r is AddonRedistribution => r != null);
 
 	const chartA: ComparePlanPoint[] = [];
 	const chartB: ComparePlanPoint[] = [];
@@ -122,45 +159,72 @@ export function buildCompareResult(
 	plan.slots.forEach((slot, idx) => {
 		const priceCt = slot.gridPriceCtPerKwh;
 
-		const ihOwnW = ihRedist ? ihRedist.ownWPerSlot[idx] : 0;
-		const ihOwnPvW = ihRedist ? ihRedist.ownPvWPerSlot[idx] : 0;
-		const ihNewW = ihRedist ? ihRedist.newWPerSlot[idx] : ihOwnW;
+		const byId = (id: CompareEligibleGovernedId): { ownW: number; ownPvW: number; newW: number } => {
+			const r = redistributions.get(id);
+			if (!r) return { ownW: 0, ownPvW: 0, newW: 0 };
+			return {
+				ownW: r.ownWPerSlot[idx] ?? 0,
+				ownPvW: r.ownPvWPerSlot[idx] ?? 0,
+				newW: r.newWPerSlot[idx] ?? 0,
+			};
+		};
 
-		const acOwnW = acRedist ? acRedist.ownWPerSlot[idx] : 0;
-		const acOwnPvW = acRedist ? acRedist.ownPvWPerSlot[idx] : 0;
-		const acNewW = acRedist ? acRedist.newWPerSlot[idx] : acOwnW;
+		const ih = byId("immersion_heater");
+		const ac = byId("climate");
+		const bat = byId("battery");
+		const wb = byId("wallbox");
 
 		const pvWA = slot.allocatedPvPowerW;
 		const gridWA = slot.allocatedGridPowerW;
 
-		const nonAiPvUsed = Math.max(0, pvWA - ihOwnPvW - acOwnPvW);
+		const sumOwnPv = ordered.reduce((s, r) => s + (r.ownPvWPerSlot[idx] ?? 0), 0);
+		const wantW = ordered.reduce((s, r) => s + (r.newWPerSlot[idx] ?? 0), 0);
+		const nonAiPvUsed = Math.max(0, pvWA - sumOwnPv);
 		const pvPoolForAiAddonsB = Math.max(0, (slot.availablePvSurplusPowerW ?? pvWA) - nonAiPvUsed);
-		const wantW = ihNewW + acNewW;
-		const ihPvB = wantW > 0 ? Math.min(ihNewW, pvPoolForAiAddonsB * (ihNewW / wantW)) : 0;
-		const acPvB = wantW > 0 ? Math.min(acNewW, Math.max(0, pvPoolForAiAddonsB - ihPvB)) : 0;
 
-		const ihGridA = Math.max(0, ihOwnW - ihOwnPvW);
-		const acGridA = Math.max(0, acOwnW - acOwnPvW);
-		const ihGridB = Math.max(0, ihNewW - ihPvB);
-		const acGridB = Math.max(0, acNewW - acPvB);
+		// Sequentiell (Reihenfolge COMPARE_ELIGIBLE) — gleiches Muster wie früher IH→Klima.
+		let remainingPvPool = pvPoolForAiAddonsB;
+		const pvBById = new Map<CompareEligibleGovernedId, number>();
+		for (const r of ordered) {
+			const newW = r.newWPerSlot[idx] ?? 0;
+			const pvShare = wantW > 0 ? Math.min(newW, remainingPvPool * (newW / wantW)) : 0;
+			pvBById.set(r.governedId, pvShare);
+			remainingPvPool = Math.max(0, remainingPvPool - pvShare);
+		}
 
-		const pvWB = Math.max(0, pvWA - ihOwnPvW - acOwnPvW + ihPvB + acPvB);
-		const gridWB = Math.max(0, gridWA - ihGridA - acGridA + ihGridB + acGridB);
+		const sumOwnGrid = ordered.reduce((s, r) => {
+			const ownW = r.ownWPerSlot[idx] ?? 0;
+			const ownPv = r.ownPvWPerSlot[idx] ?? 0;
+			return s + Math.max(0, ownW - ownPv);
+		}, 0);
+		const sumGridB = ordered.reduce((s, r) => {
+			const newW = r.newWPerSlot[idx] ?? 0;
+			const pvB = pvBById.get(r.governedId) ?? 0;
+			return s + Math.max(0, newW - pvB);
+		}, 0);
+		const sumPvB = ordered.reduce((s, r) => s + (pvBById.get(r.governedId) ?? 0), 0);
+
+		const pvWB = Math.max(0, pvWA - sumOwnPv + sumPvB);
+		const gridWB = Math.max(0, gridWA - sumOwnGrid + sumGridB);
 
 		chartA.push({
 			t: slot.slot.startIso,
 			pvW: Math.round(pvWA),
 			gridW: Math.round(gridWA),
-			ihW: Math.round(ihOwnW),
-			acW: Math.round(acOwnW),
+			ihW: Math.round(ih.ownW),
+			acW: Math.round(ac.ownW),
+			batW: Math.round(bat.ownW),
+			wbW: Math.round(wb.ownW),
 			priceCt,
 		});
 		chartB.push({
 			t: slot.slot.startIso,
 			pvW: Math.round(pvWB),
 			gridW: Math.round(gridWB),
-			ihW: Math.round(ihNewW),
-			acW: Math.round(acNewW),
+			ihW: Math.round(ih.newW),
+			acW: Math.round(ac.newW),
+			batW: Math.round(bat.newW),
+			wbW: Math.round(wb.newW),
 			priceCt,
 		});
 
@@ -168,14 +232,18 @@ export function buildCompareResult(
 		totalsA.pvKwh += (pvWA / 1000) * durationH;
 		totalsA.gridKwh += (gridWA / 1000) * durationH;
 		totalsA.costCt += (gridWA / 1000) * durationH * priceFactor;
-		totalsA.ihKwh += (ihOwnW / 1000) * durationH;
-		totalsA.acKwh += (acOwnW / 1000) * durationH;
+		totalsA.ihKwh += (ih.ownW / 1000) * durationH;
+		totalsA.acKwh += (ac.ownW / 1000) * durationH;
+		totalsA.batKwh += (bat.ownW / 1000) * durationH;
+		totalsA.wbKwh += (wb.ownW / 1000) * durationH;
 
 		totalsB.pvKwh += (pvWB / 1000) * durationH;
 		totalsB.gridKwh += (gridWB / 1000) * durationH;
 		totalsB.costCt += (gridWB / 1000) * durationH * priceFactor;
-		totalsB.ihKwh += (ihNewW / 1000) * durationH;
-		totalsB.acKwh += (acNewW / 1000) * durationH;
+		totalsB.ihKwh += (ih.newW / 1000) * durationH;
+		totalsB.acKwh += (ac.newW / 1000) * durationH;
+		totalsB.batKwh += (bat.newW / 1000) * durationH;
+		totalsB.wbKwh += (wb.newW / 1000) * durationH;
 	});
 
 	totalsA.unallocatedKwh = plan.totals.flexibleUnallocatedEnergyKwh;
@@ -192,6 +260,10 @@ export function buildCompareResult(
 	totalsB.ihKwh = round1(totalsB.ihKwh);
 	totalsA.acKwh = round1(totalsA.acKwh);
 	totalsB.acKwh = round1(totalsB.acKwh);
+	totalsA.batKwh = round1(totalsA.batKwh);
+	totalsB.batKwh = round1(totalsB.batKwh);
+	totalsA.wbKwh = round1(totalsA.wbKwh);
+	totalsB.wbKwh = round1(totalsB.wbKwh);
 
 	const deltaCostCt = round1(totalsB.costCt - totalsA.costCt);
 	const deltaGridKwh = round1(totalsB.gridKwh - totalsA.gridKwh);

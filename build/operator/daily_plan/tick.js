@@ -194,7 +194,9 @@ async function runDailyPlanTick(host, forecastPlan) {
         await (0, state_write_1.setOptionalNumberIfChanged)(host, "operator.diagnostics.surplus_w", liveSurplus.surplusW);
         await (0, state_write_1.setOptionalNumberIfChanged)(host, "operator.diagnostics.deficit_w", liveSurplus.deficitW);
         await (0, state_write_1.setStateIfChanged)(host, "operator.diagnostics.slot_start_iso", liveSurplus.slotStartIso ?? "");
-        await (0, state_write_1.setStateIfChanged)(host, "operator.briefing_de", (0, briefing_1.buildOperatorBriefingDe)(plan, now, timezone));
+        await (0, state_write_1.setStateIfChanged)(host, "operator.briefing_de", (0, briefing_1.buildOperatorBriefingDe)(plan, now, timezone, {
+            contributions: forecastPlan.contributions,
+        }));
         const addonSummaries = [
             { key: "battery", prefix: "battery" },
             { key: "wallbox", prefix: "wallbox" },

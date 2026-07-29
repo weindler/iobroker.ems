@@ -157,6 +157,38 @@ function plan(over) {
         strict_1.default.ok(!/Wallbox/.test(text));
         strict_1.default.ok(!/Klima/.test(text));
     });
+    (0, node_test_1.it)("Klima-Learning-Prognose erscheint auch ohne Slot-Allocation", () => {
+        const p = plan({ slots: [slot({ allocations: [] })] });
+        const text = (0, briefing_js_1.buildOperatorBriefingDe)(p, NOW, TZ, {
+            contributions: [
+                {
+                    contributionId: "air_conditioning.unit_1",
+                    contributor: (0, contributor_js_1.addonContributorRef)("air_conditioning"),
+                    flow: "consume",
+                    roles: ["demand_flex"],
+                    generatedAt: NOW.toISOString(),
+                    validUntil: null,
+                    revision: 1,
+                    enabled: true,
+                    flexible: true,
+                    gridEligible: true,
+                    priorityBand: null,
+                    deadlineIso: null,
+                    quality: (0, quality_js_1.operatorQuality)("valid", "ok"),
+                    reasonDe: "test",
+                    details: {
+                        unitName: "Wohnzimmer EG",
+                        likelyActive: true,
+                        expectedHoursToday: 2.83,
+                        expectedKwhToday: 2.406,
+                    },
+                    slots: [],
+                },
+            ],
+        });
+        strict_1.default.match(text, /Klima laut Learning:/);
+        strict_1.default.match(text, /Wohnzimmer EG ~2\.8 h \/ 2\.4 kWh/);
+    });
     (0, node_test_1.it)("Text bleibt innerhalb der Längenbegrenzung (480 Zeichen)", () => {
         const longReason = "x".repeat(600);
         const p = plan({ slots: [slot({ reasonDe: longReason })] });

@@ -210,7 +210,13 @@ export async function runDailyPlanTick(
 		await setOptionalNumberIfChanged(host, "operator.diagnostics.surplus_w", liveSurplus.surplusW);
 		await setOptionalNumberIfChanged(host, "operator.diagnostics.deficit_w", liveSurplus.deficitW);
 		await setStateIfChanged(host, "operator.diagnostics.slot_start_iso", liveSurplus.slotStartIso ?? "");
-		await setStateIfChanged(host, "operator.briefing_de", buildOperatorBriefingDe(plan, now, timezone));
+		await setStateIfChanged(
+			host,
+			"operator.briefing_de",
+			buildOperatorBriefingDe(plan, now, timezone, {
+				contributions: forecastPlan.contributions,
+			}),
+		);
 
 		const addonSummaries: Array<{ key: keyof typeof ALLOCATION_ADDON_STATE_IDS; prefix: string }> = [
 			{ key: "battery", prefix: "battery" },

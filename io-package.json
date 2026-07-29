@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.222",
+		"version": "0.1.223",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.223": {
+				"en": "Show climate learning prognosis in operator briefing and VIS cards (hours/kWh per unit) — no slot rebuild, FSM control unchanged.",
+				"de": "Klima-Learning-Prognose im Operator-Briefing und VIS-Karten sichtbar (Stunden/kWh pro Unit) — kein Slot-Umbau, FSM-Steuerung unverändert."
+			},
 			"0.1.222": {
 				"en": "Fix AC cool hysteresis (finish cool to off-temp before humidity-stop). Publish configured unit names (ac_uN_name) to units.unit_N.name for VIS/object tree; plan board shows Wohnzimmer/Josef instead of generic Klima.",
 				"de": "Fix Klima Kühl-Hysterese (bis Ausschalttemperatur durchkühlen vor Feuchte-Aus). Konfigurierte Unit-Namen (ac_uN_name) als units.unit_N.name für VIS/Objektbaum; Plan-Übersicht zeigt Wohnzimmer/Josef statt generischem Klima."

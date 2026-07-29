@@ -1,12 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildOperatorBriefingDe = void 0;
+exports.buildOperatorBriefingDe = exports.climateLearningBriefingDe = void 0;
 const slots_1 = require("./slots");
 /**
  * Roadmap Block 3.3: `operator.briefing_de` kommt ab hier aus Daily Plan + Allocation
  * (aktueller Slot), nicht mehr aus `formatBriefing()` des alten Realtime-Planners
  * (`src/planner/run.ts`). Einzige Quelle für Text-Inhalt ist damit derselbe Daily Plan,
  * den auch die Add-ons für ihre Steuerung lesen — keine zweite, abweichende Zusammenfassung.
+ *
+ * Klima ohne Zeitslots: Learning-/Forecast-Energiebedarf aus Contributions ergänzen
+ * (sonst fehlt Klima komplett im Briefing, obwohl die Prognose läuft).
  */
 const DAILY_PLAN_BRIEFING_MAX_LEN = 480;
 function currentSlot(plan, now, timezone) {
@@ -23,8 +26,42 @@ function addonHighlightDe(entries, contributionPrefix, labelDe) {
     const mandatoryActive = active.some((e) => e.mandatory);
     return `${labelDe} ${Math.round(totalW)} W${mandatoryActive ? " (Pflicht)" : ""}.`;
 }
+function fmtHours(h) {
+    return Number.isInteger(h) ? String(h) : h.toFixed(1).replace(/\.0$/, "");
+}
+function fmtKwh(k) {
+    return k.toFixed(1).replace(/\.0$/, "");
+}
+/**
+ * Klima plant keine 15-Min-Slots — Briefing zeigt trotzdem die Learning-/Forecast-Prognose.
+ * Beispiel: „Klima laut Learning: Wohnzimmer EG ~2.8 h / 2.4 kWh; Josef …“
+ */
+function climateLearningBriefingDe(contributions) {
+    if (!contributions?.length)
+        return null;
+    const parts = [];
+    for (const c of contributions) {
+        if (!c.enabled || !c.contributionId.startsWith("air_conditioning.unit_"))
+            continue;
+        const d = c.details ?? {};
+        if (d.likelyActive !== true)
+            continue;
+        const name = typeof d.unitName === "string" && d.unitName.trim()
+            ? d.unitName.trim()
+            : c.contributionId.replace("air_conditioning.", "");
+        const hours = typeof d.expectedHoursToday === "number" ? d.expectedHoursToday : null;
+        const kwh = typeof d.expectedKwhToday === "number" ? d.expectedKwhToday : null;
+        if (hours === null || kwh === null || hours <= 0)
+            continue;
+        parts.push(`${name} ~${fmtHours(hours)} h / ${fmtKwh(kwh)} kWh`);
+    }
+    if (parts.length === 0)
+        return null;
+    return `Klima laut Learning: ${parts.join("; ")}.`;
+}
+exports.climateLearningBriefingDe = climateLearningBriefingDe;
 /** Baut die Operator-Briefing-Zeile aus dem Daily Plan des aktuellen Slots. */
-function buildOperatorBriefingDe(plan, now, timezone) {
+function buildOperatorBriefingDe(plan, now, timezone, extras) {
     if (!plan) {
         return "Daily Plan noch nicht initialisiert.";
     }
@@ -32,6 +69,9 @@ function buildOperatorBriefingDe(plan, now, timezone) {
     const slot = currentSlot(plan, now, timezone);
     if (!slot) {
         lines.push(plan.reasonDe || "Kein aktueller Daily-Plan-Slot gefunden.");
+        const climateOnly = climateLearningBriefingDe(extras?.contributions);
+        if (climateOnly)
+            lines.push(climateOnly);
         return lines.join(" ").slice(0, DAILY_PLAN_BRIEFING_MAX_LEN);
     }
     lines.push(slot.reasonDe || plan.reasonDe);
@@ -42,6 +82,9 @@ function buildOperatorBriefingDe(plan, now, timezone) {
         addonHighlightDe(slot.allocations, "air_conditioning", "Klima"),
     ].filter((h) => h !== null);
     lines.push(...highlights);
+    const climate = climateLearningBriefingDe(extras?.contributions);
+    if (climate)
+        lines.push(climate);
     return lines.join(" ").slice(0, DAILY_PLAN_BRIEFING_MAX_LEN);
 }
 exports.buildOperatorBriefingDe = buildOperatorBriefingDe;

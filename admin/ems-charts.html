@@ -73,6 +73,8 @@ var stateIds=[
 	INST+".planner.intent.allocation.air_conditioning.status",
 	INST+".planner.intent.allocation.air_conditioning.reason_de",
 	INST+".planner.intent.allocation.air_conditioning.plan_json",
+	INST+".planner.intent.contributions.air_conditioning.contributions_json",
+	INST+".planner.intent.contributions.air_conditioning.reason_de",
 	INST+".addons.immersion_heater.runtime.decision_source",
 	INST+".addons.immersion_heater.runtime.daily_plan_status",
 	INST+".addons.immersion_heater.runtime.allocated_power_w",
@@ -155,6 +157,39 @@ function planBadge(powerW,allocStatus){
 	return{cls:"off",label:"Plant nicht"};
 }
 
+function acContribution(unitIndex){
+	try{
+		var arr=JSON.parse(g("planner.intent.contributions.air_conditioning.contributions_json")||"[]");
+		if(!Array.isArray(arr))return null;
+		for(var i=0;i<arr.length;i++){
+			if(arr[i]&&arr[i].contributionId==="air_conditioning.unit_"+unitIndex)return arr[i];
+		}
+	}catch(e){}
+	return null;
+}
+
+function acPlanLine(unitIndex){
+	var c=acContribution(unitIndex);
+	if(!c)return "—";
+	var d=c.details||{};
+	if(d.likelyActive===true&&num(d.expectedHoursToday)!==null&&num(d.expectedKwhToday)!==null){
+		var h=num(d.expectedHoursToday),k=num(d.expectedKwhToday);
+		return "~"+h.toFixed(1).replace(/\.0$/,"")+" h / "+k.toFixed(1).replace(/\.0$/,"")+" kWh";
+	}
+	return txt(c.reasonDe,"kein Bedarf");
+}
+
+function acBadge(powerW,unitIndex){
+	var p=num(powerW);
+	if(p!==null&&p>=ON_W)return{cls:"on",label:"Plant jetzt"};
+	var c=acContribution(unitIndex);
+	var d=c&&c.details?c.details:{};
+	if(d.likelyActive===true&&num(d.expectedHoursToday)!==null&&num(d.expectedHoursToday)>=0.25){
+		return{cls:"partial",label:"Prognose ja"};
+	}
+	return{cls:"off",label:"Plant nicht"};
+}
+
 /** Nächste fahrbare Fenster aus Allocation-plan_json (≥ ON_W). */
 function nextWindows(planJson,minW){
 	var arr=parseArr(planJson),now=Date.now(), thr=minW||ON_W, list=[],i;
@@ -230,21 +265,20 @@ function renderGrid(){
 	var batAl=txt(g("planner.intent.allocation.battery.status"),"—");
 	var wbAl=txt(g("planner.intent.allocation.wallbox.status"),"—");
 	var acAl=txt(g("planner.intent.allocation.air_conditioning.status"),"—");
-	var acWindows=nextWindows(g("planner.intent.allocation.air_conditioning.plan_json"),ON_W);
 
 	function acCard(unitIndex){
 		var base="addons.air_conditioning.units.unit_"+unitIndex;
 		var name=txt(g(base+".name"),"");
 		var title=name?("Klima · "+name):("Klima Unit "+unitIndex);
 		var p=g(base+".allocated_power_w");
-		return card(title,"#79c0ff",planBadge(p,acAl),[
-			["Slot-Plan",fmtW(p)],
+		return card(title,"#79c0ff",acBadge(p,unitIndex),[
+			["Plan Learning",acPlanLine(unitIndex)],
 			["Raum",fmtTemp(g(base+".room_temp_c"))],
 			["Läuft",txt(g(base+".running"),"—")],
 			["Quelle",txt(g(base+".decision_source"),"—")],
-			["Nächste Fenster",acWindows],
+			["Slot-Plan",fmtW(p)],
 			["Allocation",txt(acAl)+" — "+txt(g("planner.intent.allocation.air_conditioning.reason_de"),"")]
-		],txt(g(base+".allocation_reason_de"),txt(g(base+".reason_de"),"")));
+		],txt(g(base+".reason_de"),txt(g(base+".allocation_reason_de"),"")));
 	}
 
 	el.innerHTML=

@@ -163,6 +163,39 @@ describe("buildOperatorBriefingDe (Roadmap Block 3.3)", () => {
 		assert.ok(!/Klima/.test(text));
 	});
 
+	it("Klima-Learning-Prognose erscheint auch ohne Slot-Allocation", () => {
+		const p = plan({ slots: [slot({ allocations: [] })] });
+		const text = buildOperatorBriefingDe(p, NOW, TZ, {
+			contributions: [
+				{
+					contributionId: "air_conditioning.unit_1",
+					contributor: addonContributorRef("air_conditioning"),
+					flow: "consume",
+					roles: ["demand_flex"],
+					generatedAt: NOW.toISOString(),
+					validUntil: null,
+					revision: 1,
+					enabled: true,
+					flexible: true,
+					gridEligible: true,
+					priorityBand: null,
+					deadlineIso: null,
+					quality: operatorQuality("valid", "ok"),
+					reasonDe: "test",
+					details: {
+						unitName: "Wohnzimmer EG",
+						likelyActive: true,
+						expectedHoursToday: 2.83,
+						expectedKwhToday: 2.406,
+					},
+					slots: [],
+				},
+			],
+		});
+		assert.match(text, /Klima laut Learning:/);
+		assert.match(text, /Wohnzimmer EG ~2\.8 h \/ 2\.4 kWh/);
+	});
+
 	it("Text bleibt innerhalb der Längenbegrenzung (480 Zeichen)", () => {
 		const longReason = "x".repeat(600);
 		const p = plan({ slots: [slot({ reasonDe: longReason })] });

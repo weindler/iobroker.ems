@@ -1,13 +1,18 @@
 import { governedAddonEntry, governedAddonIds } from "../addons/governance/registry";
 import { isAddonAiOptimizationAllowed, isAddonEnabled } from "../addons/governance/config";
+import { WALLBOX_EVCC_STATES } from "../addons/wallbox/ensure_evcc_states";
+import { IMMERSION_RUNTIME_STATES } from "../addons/immersion_heater/runtime/types";
+import { acUnitRuntimeStates } from "../addons/air_conditioning/runtime/ensure_states";
+import { PV_HORIZON_DAY_COUNT } from "../learning/pv_horizon/constants";
 import type {
 	AiDailyPlanDigest,
 	AiDigestSlot,
 	AiLearningDigest,
 	AiOptimizationRequestContext,
+	AiSituationBrief,
 } from "./types";
 import type { DailyPlan, DailyPlanSlot } from "../operator/daily_plan/types";
-import { asNum } from "../ems_light/state_util";
+import { asBool, asNum } from "../ems_light/state_util";
 
 export type ContextHost = {
 	config: unknown;
@@ -114,6 +119,14 @@ async function readNum(host: ContextHost, id: string): Promise<number | null> {
 	}
 }
 
+async function readBool(host: ContextHost, id: string): Promise<boolean | null> {
+	try {
+		return asBool((await host.getStateAsync(id))?.val);
+	} catch {
+		return null;
+	}
+}
+
 async function readJson(host: ContextHost, id: string): Promise<Record<string, unknown>> {
 	try {
 		const st = await host.getStateAsync(id);
@@ -123,6 +136,75 @@ async function readJson(host: ContextHost, id: string): Promise<Record<string, u
 	} catch {
 		return {};
 	}
+}
+
+function validIsoDeadline(raw: string | null): string | null {
+	if (!raw?.trim()) return null;
+	if (raw.startsWith("0001-01-01T00:00:00")) return null;
+	const ms = Date.parse(raw);
+	return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+}
+
+function wallboxDeadlineFromPlan(plan: DailyPlan): string | null {
+	let bestMs: number | null = null;
+	let bestIso: string | null = null;
+	for (const slot of plan.slots) {
+		for (const a of slot.allocations) {
+			if (!a.contributionId.startsWith("wallbox") || !a.deadlineIso) continue;
+			const t = Date.parse(a.deadlineIso);
+			if (!Number.isFinite(t)) continue;
+			if (bestMs === null || t < bestMs) {
+				bestMs = t;
+				bestIso = a.deadlineIso;
+			}
+		}
+	}
+	return bestIso;
+}
+
+function nextHoursFromPlan(plan: DailyPlan): AiSituationBrief["nextHours"] {
+	const slotMs = plan.slotMinutes * 60_000;
+	const windowMs = 4 * 3_600_000;
+	const maxSlots = slotMs > 0 ? Math.ceil(windowMs / slotMs) : 16;
+	const window = plan.slots.slice(0, maxSlots);
+	if (window.length === 0) {
+		return {
+			avgPvForecastPowerW: null,
+			avgAvailablePvSurplusPowerW: null,
+			minPriceCt: null,
+			maxPriceCt: null,
+		};
+	}
+
+	const avgOrNull = (vals: Array<number | null>): number | null => {
+		const nums = vals.filter((v): v is number => v !== null && Number.isFinite(v));
+		if (nums.length === 0) return null;
+		return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length);
+	};
+
+	const prices = window
+		.map((s) => s.gridPriceCtPerKwh)
+		.filter((v): v is number => v !== null && Number.isFinite(v));
+
+	return {
+		avgPvForecastPowerW: avgOrNull(window.map((s) => s.pvForecastPowerW)),
+		avgAvailablePvSurplusPowerW: avgOrNull(window.map((s) => s.availablePvSurplusPowerW)),
+		minPriceCt: prices.length > 0 ? Math.min(...prices) : null,
+		maxPriceCt: prices.length > 0 ? Math.max(...prices) : null,
+	};
+}
+
+async function readPvHorizonDays(
+	host: ContextHost,
+): Promise<Array<{ day: number; correctedKwh: number | null }>> {
+	const days: Array<{ day: number; correctedKwh: number | null }> = [];
+	for (let d = 1; d <= PV_HORIZON_DAY_COUNT; d++) {
+		days.push({
+			day: d,
+			correctedKwh: await readNum(host, `learning.pv_horizon.day${d}.corrected_kwh`),
+		});
+	}
+	return days;
 }
 
 /** Kuratierter Learning-Digest — Skalare aus Learning-States, keine History-Dumps. */
@@ -138,6 +220,7 @@ export async function buildLearningDigest(host: ContextHost): Promise<AiLearning
 		priceStatus,
 		priceAvg,
 		houseStatus,
+		pvHorizonDays,
 	] = await Promise.all([
 		readStr(host, "learning.pv_bias.status"),
 		readNum(host, "learning.pv_bias.corrected_today_kwh"),
@@ -149,11 +232,13 @@ export async function buildLearningDigest(host: ContextHost): Promise<AiLearning
 		readStr(host, "learning.price_learning.status"),
 		readNum(host, "learning.price_learning.avg_price_7d"),
 		readStr(host, "learning.house_load.status"),
+		readPvHorizonDays(host),
 	]);
 	return {
 		pvBiasStatus,
 		pvCorrectedTodayKwh: pvToday,
 		pvCorrectedTomorrowKwh: pvTomorrow,
+		pvHorizonDays,
 		thermalRuntimeStatus: thermalStatus,
 		thermalEstimatedEmptyAt: thermalEmpty,
 		batteryRuntimeStatus: batteryStatus,
@@ -161,6 +246,92 @@ export async function buildLearningDigest(host: ContextHost): Promise<AiLearning
 		priceLearningStatus: priceStatus,
 		priceAvgEurPerKwh7d: priceAvg,
 		houseLoadStatus: houseStatus,
+	};
+}
+
+/** Live + Horizont-Situation — fehlende Werte bleiben null (nie erfundene 0). */
+export async function buildSituationBrief(
+	host: ContextHost,
+	plan: DailyPlan,
+	learning: AiLearningDigest,
+): Promise<AiSituationBrief> {
+	const [
+		pvPowerW,
+		houseLoadW,
+		surplusW,
+		deficitW,
+		wbConnected,
+		wbCharging,
+		wbMode,
+		wbSoc,
+		wbRemaining,
+		wbLimitSoc,
+		wbPlanActive,
+		wbDeadlineRaw,
+		bufferTempLive,
+		bufferTempRuntime,
+		climate1Running,
+		climate1Temp,
+		climate2Running,
+		climate2Temp,
+		priceNowCt,
+	] = await Promise.all([
+		readNum(host, "live.pv.power_w"),
+		readNum(host, "live.battery.house_load_w"),
+		readNum(host, "operator.diagnostics.surplus_w"),
+		readNum(host, "operator.diagnostics.deficit_w"),
+		readBool(host, WALLBOX_EVCC_STATES.connected),
+		readBool(host, WALLBOX_EVCC_STATES.charging),
+		readStr(host, WALLBOX_EVCC_STATES.loadpointMode),
+		readNum(host, WALLBOX_EVCC_STATES.vehicleSocPct),
+		readNum(host, WALLBOX_EVCC_STATES.chargeRemainingEnergyKwh),
+		readNum(host, WALLBOX_EVCC_STATES.effectiveLimitSocPct),
+		readBool(host, WALLBOX_EVCC_STATES.planActive),
+		readStr(host, WALLBOX_EVCC_STATES.effectivePlanTime),
+		readNum(host, "live.thermal.buffer_temp_c"),
+		readNum(host, IMMERSION_RUNTIME_STATES.bufferTemperatureC),
+		readBool(host, acUnitRuntimeStates(1).running),
+		readNum(host, acUnitRuntimeStates(1).roomTempC),
+		readBool(host, acUnitRuntimeStates(2).running),
+		readNum(host, acUnitRuntimeStates(2).roomTempC),
+		readNum(host, "live.price.now_ct_per_kwh"),
+	]);
+
+	const deadlineIso = validIsoDeadline(wbDeadlineRaw) ?? wallboxDeadlineFromPlan(plan);
+
+	return {
+		live: {
+			pvPowerW,
+			houseLoadW,
+			surplusW,
+			deficitW,
+		},
+		wallbox: {
+			connected: wbConnected,
+			charging: wbCharging,
+			mode: wbMode,
+			socPct: wbSoc,
+			remainingEnergyKwh: wbRemaining,
+			effectiveLimitSoc: wbLimitSoc,
+			planActive: wbPlanActive,
+			deadlineIso,
+		},
+		immersion: {
+			bufferTempC: bufferTempLive ?? bufferTempRuntime,
+			thermalEstimatedEmptyAt: learning.thermalEstimatedEmptyAt,
+		},
+		climate: {
+			units: [
+				{ unitIndex: 1, running: climate1Running, roomTempC: climate1Temp },
+				{ unitIndex: 2, running: climate2Running, roomTempC: climate2Temp },
+			],
+		},
+		pvHorizon: learning.pvHorizonDays,
+		pvTodayKwh: learning.pvCorrectedTodayKwh,
+		pvTomorrowKwh: learning.pvCorrectedTomorrowKwh,
+		priceNowCt,
+		priceAvg7d: learning.priceAvgEurPerKwh7d,
+		nextHours: nextHoursFromPlan(plan),
 	};
 }
 
@@ -183,6 +354,7 @@ export async function buildAiOptimizationContext(
 	const policyRaw = await readJson(host, "policy.global.effective_json");
 	const allowedAddonIds = resolveAllowedAddonIds(host.config);
 	const learning = await buildLearningDigest(host);
+	const situation = await buildSituationBrief(host, plan, learning);
 	return {
 		generatedAt: new Date().toISOString(),
 		timezone: plan.timezone,
@@ -190,6 +362,7 @@ export async function buildAiOptimizationContext(
 		allowedAddonIds,
 		dailyPlan: digestFromDailyPlan(plan, allowedAddonIds),
 		learning,
+		situation,
 		policyHighlights: pickPolicyHighlights(policyRaw),
 		triggerReason,
 	};

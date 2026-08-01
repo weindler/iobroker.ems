@@ -1,10 +1,11 @@
 import type { DailyPlan } from "../../operator/daily_plan/types";
 import { resolveAllowedAddonIds } from "../context";
 import { AI_STATES } from "../ensure_states";
-import type { AiSlotPreference } from "../types";
+import { wallboxPvOnlyFromDecisions } from "../strategy_preferences";
+import type { AiAddonDecision, AiSlotPreference } from "../types";
 import { COMPARE_STATES } from "../compare/ensure_states";
 import type { CompareResult } from "../compare/types";
-import { applyAiPreferencesToDailyPlan } from "./apply_plan_b";
+import { applyAiPreferencesToDailyPlan, type ApplyAiPreferencesOptions } from "./apply_plan_b";
 import { republishDailyPlanAfterWriteback, type WritebackPublishHost } from "./publish";
 
 export type WritebackHost = WritebackPublishHost & {
@@ -24,6 +25,25 @@ async function readSlotPreferences(host: WritebackHost): Promise<AiSlotPreferenc
 				typeof (p as AiSlotPreference).addonId === "string" &&
 				typeof (p as AiSlotPreference).slotStartIso === "string" &&
 				typeof (p as AiSlotPreference).weight === "number",
+		);
+	} catch {
+		return [];
+	}
+}
+
+async function readDecisions(host: WritebackHost): Promise<AiAddonDecision[]> {
+	try {
+		const st = await host.getStateAsync(AI_STATES.lastDecisionsJson);
+		if (typeof st?.val !== "string" || !st.val) return [];
+		const parsed = JSON.parse(st.val) as unknown;
+		if (!Array.isArray(parsed)) return [];
+		return parsed.filter(
+			(d): d is AiAddonDecision =>
+				!!d &&
+				typeof d === "object" &&
+				typeof (d as AiAddonDecision).addonId === "string" &&
+				typeof (d as AiAddonDecision).action === "string" &&
+				typeof (d as AiAddonDecision).note === "string",
 		);
 	} catch {
 		return [];
@@ -66,8 +86,17 @@ export async function maybeApplyAiWritebackOnDailyPlan(
 	const prefs = await readSlotPreferences(host);
 	if (prefs.length === 0) return plan;
 
+	const decisions = await readDecisions(host);
+	const options: ApplyAiPreferencesOptions = {
+		wallboxPvOnly: wallboxPvOnlyFromDecisions(decisions),
+	};
 	const allowed = resolveAllowedAddonIds(host.config);
-	const { plan: next, compare, writebackApplied } = applyAiPreferencesToDailyPlan(plan, allowed, prefs);
+	const { plan: next, compare, writebackApplied } = applyAiPreferencesToDailyPlan(
+		plan,
+		allowed,
+		prefs,
+		options,
+	);
 	await writeCompareStates(host, compare);
 	return writebackApplied ? next : plan;
 }
@@ -75,17 +104,20 @@ export async function maybeApplyAiWritebackOnDailyPlan(
 /**
  * Nach einem KI-Lauf: Plan B prüfen — gewinnen → Suspend löschen + sofort publish;
  * verlieren → Auto-Trigger sperren und Präferenzen verwerfen.
+ * Ohne Slot-Präferenzen (nur Denken/Decisions) → kein Auto-Suspend.
  */
 export async function finalizeAiRunWithWritebackGate(
 	host: WritebackHost,
 	plan: DailyPlan,
 	slotPreferences: AiSlotPreference[],
+	options?: ApplyAiPreferencesOptions,
 ): Promise<{ writebackApplied: boolean; suspended: boolean; compare: CompareResult }> {
 	const allowed = resolveAllowedAddonIds(host.config);
 	const { plan: next, compare, writebackApplied } = applyAiPreferencesToDailyPlan(
 		plan,
 		allowed,
 		slotPreferences,
+		options,
 	);
 	await writeCompareStates(host, compare);
 
@@ -95,6 +127,7 @@ export async function finalizeAiRunWithWritebackGate(
 		return { writebackApplied: true, suspended: false, compare };
 	}
 
+	// Auto-suspend nur wenn Präferenzen da sind und Plan B nicht schlägt — nie nur wegen leerem Denken.
 	if (slotPreferences.length > 0) {
 		await suspendAiAuto(host, compare.delta.decisionReasonDe);
 		return { writebackApplied: false, suspended: true, compare };

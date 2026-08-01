@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.227",
+		"version": "0.1.228",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.228": {
+				"en": "Thinking AI: situation+horizon, decisions across wallbox/immersion/battery/climate (today vs tomorrow PV/price); slot prefs derived from strategy; thinking always visible; write-back still only when Plan B beats A. Legacy ai_thinking_mode=false.",
+				"de": "Denkende KI: Situation+Horizont, Entscheidungen über Wallbox/Heizstab/Batterie/Klima (heute vs morgen PV/Preis); Slot-Präferenzen aus Strategie; Denken immer sichtbar; Write-back weiter nur bei messbarem Plan-B-Vorteil. Legacy ai_thinking_mode=false."
+			},
 			"0.1.227": {
 				"en": "Remove fat wallbox vehicle profiles (wb_vehicle_profiles + addons.wallbox.vehicles.*). Optional slim EVCC mini-map wb_vehicle_map for capacity/max AC power only; EVCC-first remaining energy works with empty map. Orphan fat trees purged on cleanup.",
 				"de": "Fette Wallbox-Fahrzeugprofile entfernt (wb_vehicle_profiles + addons.wallbox.vehicles.*). Optionale schlanke EVCC-Mini-Map wb_vehicle_map nur für Kapazität/max. AC-Leistung; EVCC-Restenergie funktioniert ohne Einträge. Verwaiste Fat-Bäume werden beim Cleanup gelöscht."

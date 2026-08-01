@@ -336,4 +336,41 @@ function minimalPlan(slots) {
         strict_1.default.equal(result.chartB[1].wbW, 0);
         strict_1.default.ok(Math.abs(result.delta.planA.wbKwh - result.delta.planB.wbKwh) < 1e-6);
     });
+    (0, node_test_1.it)("wallboxPvOnly: Plan B cannot invent large grid peaks beyond PV room", () => {
+        const plan = minimalPlan([
+            slot({
+                startIso: T1,
+                gridPriceCtPerKwh: 40,
+                allocatedGridPowerW: 3000,
+                remainingGridImportPowerWAfterAlloc: 8000,
+                remainingPvSurplusPowerW: 0,
+                availablePvSurplusPowerW: 0,
+                allocations: [
+                    allocation({
+                        contributionId: "wallbox.ev_session",
+                        slotStart: T1,
+                        allocatedPowerW: 3000,
+                        gridPowerW: 3000,
+                        contributor: { type: "addon", id: "wallbox", addonId: "wallbox" },
+                    }),
+                ],
+            }),
+            slot({
+                startIso: T2,
+                gridPriceCtPerKwh: 10,
+                availablePvSurplusPowerW: 500,
+                remainingPvSurplusPowerW: 500,
+                remainingGridImportPowerWAfterAlloc: 8000,
+            }),
+        ]);
+        const prefs = [
+            { addonId: "wallbox", slotStartIso: T1, weight: 0.1 },
+            { addonId: "wallbox", slotStartIso: T2, weight: 3 },
+        ];
+        const withGrid = (0, build_js_1.buildCompareResult)(plan, ["wallbox"], prefs);
+        const pvOnly = (0, build_js_1.buildCompareResult)(plan, ["wallbox"], prefs, { wallboxPvOnly: true });
+        // Without PV-only, T2 can pull grid room; with PV-only capacity is ownW(0)+500.
+        strict_1.default.ok(withGrid.chartB[1].wbW >= pvOnly.chartB[1].wbW);
+        strict_1.default.ok(pvOnly.chartB[1].wbW <= 500 + 1e-6);
+    });
 });

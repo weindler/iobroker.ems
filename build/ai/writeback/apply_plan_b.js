@@ -104,12 +104,13 @@ function recomputeSlotAggregates(slot) {
     const remGrid = slot.remainingGridImportPowerW;
     slot.remainingGridImportPowerWAfterAlloc = remGrid !== null ? Math.max(0, remGrid - grid) : null;
 }
-function redistributeEligible(plan, governedId, slotPreferences) {
+function redistributeEligible(plan, governedId, slotPreferences, options) {
     const prefix = (0, build_1.contributionPrefixForCompare)(governedId);
     const runtimeId = (0, registry_1.governedAddonEntry)(governedId).runtimeAddonId;
     const ownWPerSlot = [];
     const capacityPerSlot = [];
     const multipliers = [];
+    const wallboxPvOnly = options?.wallboxPvOnly === true && governedId === "wallbox";
     const weightByIso = new Map(slotPreferences.filter((p) => p.addonId === governedId).map((p) => [p.slotStartIso, p.weight]));
     let deadlineMs = null;
     if (governedId === "wallbox") {
@@ -129,7 +130,9 @@ function redistributeEligible(plan, governedId, slotPreferences) {
         const remainingPv = Math.max(0, slot.remainingPvSurplusPowerW ?? 0);
         const remainingGrid = slot.gridImportAllowed ? Math.max(0, slot.remainingGridImportPowerWAfterAlloc ?? 0) : 0;
         ownWPerSlot.push(ownW);
-        let capacityW = Math.max(ownW, ownW + remainingPv + remainingGrid);
+        let capacityW = wallboxPvOnly
+            ? Math.max(ownW, ownW + remainingPv)
+            : Math.max(ownW, ownW + remainingPv + remainingGrid);
         if (deadlineMs !== null) {
             const slotStartMs = Date.parse(slot.slot.startIso);
             if (Number.isFinite(slotStartMs) && slotStartMs >= deadlineMs) {
@@ -145,8 +148,8 @@ function redistributeEligible(plan, governedId, slotPreferences) {
  * Wendet KI-Slot-Präferenzen auf eine Kopie von Plan A an, wenn Plan B messbar gewinnt.
  * Pflicht-Allocationen bleiben unverändert; nur flexible IH/Klima/Batterie-Laden/Wallbox werden verschoben.
  */
-function applyAiPreferencesToDailyPlan(plan, allowedAddonIds, slotPreferences) {
-    const compare = (0, build_1.buildCompareResult)(plan, allowedAddonIds, slotPreferences);
+function applyAiPreferencesToDailyPlan(plan, allowedAddonIds, slotPreferences, options) {
+    const compare = (0, build_1.buildCompareResult)(plan, allowedAddonIds, slotPreferences, options);
     const beats = (0, build_1.planBBeatsPlanA)({
         deltaCostCt: compare.delta.deltaCostCt,
         deltaGridKwh: compare.delta.planB.gridKwh - compare.delta.planA.gridKwh,
@@ -162,7 +165,7 @@ function applyAiPreferencesToDailyPlan(plan, allowedAddonIds, slotPreferences) {
         const template = next.slots.flatMap((s) => flexEntries(s, prefix)).find((a) => (a.allocatedPowerW ?? 0) > 0) ??
             next.slots.flatMap((s) => flexEntries(s, prefix))[0] ??
             null;
-        const newW = redistributeEligible(next, id, slotPreferences);
+        const newW = redistributeEligible(next, id, slotPreferences, options);
         next.slots.forEach((slot, idx) => {
             applyNewPowerToFlex(slot, prefix, newW[idx] ?? 0, next.slotMinutes, template);
             recomputeSlotAggregates(slot);

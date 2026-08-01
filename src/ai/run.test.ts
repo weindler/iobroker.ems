@@ -73,11 +73,24 @@ const ALLOWED_CONFIG = {
 	immersion_heater_ai_optimization_allowed: true,
 };
 
+const emptyOk = {
+	ok: true as const,
+	proposals: [] as AiOptimizationResult["proposals"],
+	slotPreferences: [] as AiOptimizationResult["slotPreferences"],
+	thinkingDe: "",
+	decisions: [] as AiOptimizationResult["decisions"],
+	reasonDe: "x",
+	usage: { promptTokens: 1 as number | null, completionTokens: 1 as number | null },
+};
+
 describe("runAiOptimizationNow — gating", () => {
 	it("disabled globally → status off, provider never called", async () => {
 		let called = false;
-		const provider = fakeProvider({ ok: true, proposals: [], slotPreferences: [], reasonDe: "x", usage: { promptTokens: 1, completionTokens: 1 } });
-		provider.optimize = async () => { called = true; return { ok: true, proposals: [], slotPreferences: [], reasonDe: "x", usage: { promptTokens: 1, completionTokens: 1 } }; };
+		const provider = fakeProvider({ ...emptyOk });
+		provider.optimize = async () => {
+			called = true;
+			return { ...emptyOk };
+		};
 		const host = mockHost({ ai_enabled: false });
 		const outcome = await runAiOptimizationNow(host, minimalPlan(), "test", provider);
 		assert.equal(outcome.status, "off");
@@ -88,7 +101,13 @@ describe("runAiOptimizationNow — gating", () => {
 
 	it("no token → status no_token, provider never called", async () => {
 		let called = false;
-		const provider: AiProvider = { id: "openai", async optimize() { called = true; return { ok: true, proposals: [], slotPreferences: [], reasonDe: "", usage: { promptTokens: null, completionTokens: null } }; } };
+		const provider: AiProvider = {
+			id: "openai",
+			async optimize() {
+				called = true;
+				return { ...emptyOk, reasonDe: "", usage: { promptTokens: null, completionTokens: null } };
+			},
+		};
 		const host = mockHost({ ai_enabled: true, immersion_heater_enabled: true, immersion_heater_ai_optimization_allowed: true });
 		const outcome = await runAiOptimizationNow(host, minimalPlan(), "test", provider);
 		assert.equal(outcome.status, "no_token");
@@ -97,7 +116,13 @@ describe("runAiOptimizationNow — gating", () => {
 
 	it("no addon allowed → status no_addons_allowed, provider never called", async () => {
 		let called = false;
-		const provider: AiProvider = { id: "openai", async optimize() { called = true; return { ok: true, proposals: [], slotPreferences: [], reasonDe: "", usage: { promptTokens: null, completionTokens: null } }; } };
+		const provider: AiProvider = {
+			id: "openai",
+			async optimize() {
+				called = true;
+				return { ...emptyOk, reasonDe: "", usage: { promptTokens: null, completionTokens: null } };
+			},
+		};
 		const host = mockHost({ ai_enabled: true, ai_openai_api_key: "sk-test" });
 		const outcome = await runAiOptimizationNow(host, minimalPlan(), "test", provider);
 		assert.equal(outcome.status, "no_addons_allowed");
@@ -106,7 +131,13 @@ describe("runAiOptimizationNow — gating", () => {
 
 	it("limit reached → status limit_reached, provider never called", async () => {
 		let called = false;
-		const provider: AiProvider = { id: "openai", async optimize() { called = true; return { ok: true, proposals: [], slotPreferences: [], reasonDe: "", usage: { promptTokens: null, completionTokens: null } }; } };
+		const provider: AiProvider = {
+			id: "openai",
+			async optimize() {
+				called = true;
+				return { ...emptyOk, reasonDe: "", usage: { promptTokens: null, completionTokens: null } };
+			},
+		};
 		const host = mockHost({ ...ALLOWED_CONFIG, ai_max_calls_per_day: 1 });
 		host.store.set(AI_STATES.callsToday, 1);
 		host.store.set(AI_STATES.callsTodayDate, new Date().toISOString().slice(0, 10));
@@ -122,6 +153,8 @@ describe("runAiOptimizationNow — successful/failed calls", () => {
 			ok: true,
 			proposals: [{ addonId: "immersion_heater", note: "x" }],
 			slotPreferences: [],
+			thinkingDe: "",
+			decisions: [],
 			reasonDe: "Alles gut.",
 			usage: { promptTokens: 100, completionTokens: 50 },
 		});
@@ -135,11 +168,33 @@ describe("runAiOptimizationNow — successful/failed calls", () => {
 		assert.equal(host.store.get(AI_STATES.lastSlotPreferencesJson), "[]");
 	});
 
+	it("thinking + decisions without derived prefs → ready, not suspended; thinking persisted", async () => {
+		const provider = fakeProvider({
+			ok: true,
+			proposals: [],
+			slotPreferences: [],
+			thinkingDe: "Plan A ist schon sinnvoll — Puffer reicht.",
+			decisions: [{ addonId: "immersion_heater", action: "keep_plan_a", note: "ok" }],
+			reasonDe: "Kein Shift nötig.",
+			usage: { promptTokens: 80, completionTokens: 40 },
+		});
+		const host = mockHost(ALLOWED_CONFIG);
+		const outcome = await runAiOptimizationNow(host, minimalPlan(), "new_daily_plan", provider);
+		assert.equal(outcome.status, "ready");
+		assert.equal(host.store.get(AI_STATES.autoSuspended), undefined);
+		assert.equal(host.store.get(AI_STATES.lastThinkingDe), "Plan A ist schon sinnvoll — Puffer reicht.");
+		assert.equal(host.store.get(AI_STATES.lastThinkingMode), true);
+		assert.ok(String(host.store.get(AI_STATES.lastDecisionsJson)).includes("keep_plan_a"));
+		assert.equal(host.store.get(AI_STATES.lastReasonDe), "Plan A ist schon sinnvoll — Puffer reicht.");
+	});
+
 	it("successful call with prefs that do not beat Plan A → suspended, prefs cleared", async () => {
 		const provider = fakeProvider({
 			ok: true,
 			proposals: [{ addonId: "immersion_heater", note: "x" }],
 			slotPreferences: [{ addonId: "immersion_heater", slotStartIso: "2026-07-25T10:00:00.000Z", weight: 2 }],
+			thinkingDe: "",
+			decisions: [],
 			reasonDe: "Alles gut.",
 			usage: { promptTokens: 100, completionTokens: 50 },
 		});
@@ -157,6 +212,8 @@ describe("runAiOptimizationNow — successful/failed calls", () => {
 			ok: false,
 			proposals: [],
 			slotPreferences: [],
+			thinkingDe: "",
+			decisions: [],
 			reasonDe: "Zeitüberschreitung.",
 			usage: { promptTokens: null, completionTokens: null },
 			error: "timeout",

@@ -100,6 +100,28 @@ describe("ai buildAiOptimizationContext", () => {
 		assert.equal(ctx.policyHighlights.houseFuseLimitW, 30000);
 		assert.equal(ctx.policyHighlights.gridImportAllowed, true);
 		assert.equal(ctx.triggerReason, "test_trigger");
+		assert.ok(ctx.situation);
+		assert.equal(ctx.situation.live.pvPowerW, null);
+		assert.equal(ctx.situation.wallbox.connected, null);
+		assert.equal(ctx.learning.pvHorizonDays.length, 7);
+	});
+
+	it("situation keeps nulls — never invents 0 for missing live values", async () => {
+		const host = {
+			config: {},
+			async getStateAsync(id: string) {
+				if (id === "live.pv.power_w") return { val: 4200, ack: true } as ioBroker.State;
+				if (id === "operator.diagnostics.surplus_w") return { val: 1800, ack: true } as ioBroker.State;
+				return null;
+			},
+		};
+		const ctx = await buildAiOptimizationContext(host, minimalPlan(), "x");
+		assert.equal(ctx.situation.live.pvPowerW, 4200);
+		assert.equal(ctx.situation.live.surplusW, 1800);
+		assert.equal(ctx.situation.live.houseLoadW, null);
+		assert.equal(ctx.situation.live.deficitW, null);
+		assert.equal(ctx.situation.immersion.bufferTempC, null);
+		assert.equal(ctx.situation.priceNowCt, null);
 	});
 
 	it("missing/invalid policy state → empty highlights, never throws", async () => {

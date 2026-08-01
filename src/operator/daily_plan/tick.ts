@@ -19,6 +19,7 @@ import {
 import { immersionDeviceConfigFromAdapter } from "../../addons/immersion_heater/device_config";
 import { IMMERSION_RUNTIME_STATES } from "../../addons/immersion_heater/runtime/types";
 import { asNum } from "../../ems_light/state_util";
+import { AI_STATES } from "../../ai/ensure_states";
 import { buildPlannerConstraints } from "../planning/battery";
 import { WALLBOX_EVCC_STATES } from "../../addons/wallbox/ensure_evcc_states";
 import { WALLBOX_RUNTIME_STATES } from "../../addons/wallbox/runtime/states";
@@ -274,11 +275,15 @@ export async function runDailyPlanTick(
 		await setOptionalNumberIfChanged(host, "operator.diagnostics.surplus_w", liveSurplus.surplusW);
 		await setOptionalNumberIfChanged(host, "operator.diagnostics.deficit_w", liveSurplus.deficitW);
 		await setStateIfChanged(host, "operator.diagnostics.slot_start_iso", liveSurplus.slotStartIso ?? "");
+		const aiThinkingRaw = await host.getStateAsync(AI_STATES.lastThinkingDe);
+		const aiThinkingDe =
+			typeof aiThinkingRaw?.val === "string" && aiThinkingRaw.val.trim() ? aiThinkingRaw.val.trim() : null;
 		await setStateIfChanged(
 			host,
 			"operator.briefing_de",
 			buildOperatorBriefingDe(plan, now, timezone, {
 				contributions: forecastPlan.contributions,
+				aiThinkingDe,
 			}),
 		);
 

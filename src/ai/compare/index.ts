@@ -5,7 +5,7 @@ import type { CompareResult } from "./types";
 
 export { ensureCompareStates } from "./ensure_states";
 export { COMPARE_STATES } from "./ensure_states";
-export { buildCompareResult, COMPARE_ELIGIBLE_GOVERNED_IDS } from "./build";
+export { buildCompareResult, COMPARE_ELIGIBLE_GOVERNED_IDS, type CompareBuildOptions } from "./build";
 export type { CompareResult, CompareDeltaSummary, ComparePlanPoint, ComparePlanTotals } from "./types";
 export { runPlanCompare } from "./run";
 export type { CompareRunHost } from "./run";

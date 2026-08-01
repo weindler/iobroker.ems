@@ -7,6 +7,7 @@ import {
 	COMPARE_ELIGIBLE_GOVERNED_IDS,
 	contributionPrefixForCompare,
 	planBBeatsPlanA,
+	type CompareBuildOptions,
 	type CompareEligibleGovernedId,
 } from "../compare/build";
 import { redistributeAddonAcrossSlots } from "../compare/redistribute";
@@ -15,6 +16,8 @@ import { SINGLE_STAGE_DEFAULT_NOMINAL_W } from "../../addons/immersion_heater/de
 import { RUNNABLE_ALLOCATION_FLOOR_W } from "../../operator/daily_plan/addon_plan_publish";
 
 type EligibleId = CompareEligibleGovernedId;
+
+export type ApplyAiPreferencesOptions = CompareBuildOptions;
 
 function inferMinPowerW(ownWPerSlot: number[], runtimeAddonId: string): number {
 	const runnable = ownWPerSlot.filter((w) => w >= RUNNABLE_ALLOCATION_FLOOR_W);
@@ -131,12 +134,14 @@ function redistributeEligible(
 	plan: DailyPlan,
 	governedId: EligibleId,
 	slotPreferences: AiSlotPreference[],
+	options?: ApplyAiPreferencesOptions,
 ): number[] {
 	const prefix = contributionPrefixForCompare(governedId);
 	const runtimeId = governedAddonEntry(governedId).runtimeAddonId;
 	const ownWPerSlot: number[] = [];
 	const capacityPerSlot: number[] = [];
 	const multipliers: number[] = [];
+	const wallboxPvOnly = options?.wallboxPvOnly === true && governedId === "wallbox";
 	const weightByIso = new Map(
 		slotPreferences.filter((p) => p.addonId === governedId).map((p) => [p.slotStartIso, p.weight]),
 	);
@@ -158,7 +163,9 @@ function redistributeEligible(
 		const remainingPv = Math.max(0, slot.remainingPvSurplusPowerW ?? 0);
 		const remainingGrid = slot.gridImportAllowed ? Math.max(0, slot.remainingGridImportPowerWAfterAlloc ?? 0) : 0;
 		ownWPerSlot.push(ownW);
-		let capacityW = Math.max(ownW, ownW + remainingPv + remainingGrid);
+		let capacityW = wallboxPvOnly
+			? Math.max(ownW, ownW + remainingPv)
+			: Math.max(ownW, ownW + remainingPv + remainingGrid);
 		if (deadlineMs !== null) {
 			const slotStartMs = Date.parse(slot.slot.startIso);
 			if (Number.isFinite(slotStartMs) && slotStartMs >= deadlineMs) {
@@ -184,8 +191,9 @@ export function applyAiPreferencesToDailyPlan(
 	plan: DailyPlan,
 	allowedAddonIds: string[],
 	slotPreferences: AiSlotPreference[],
+	options?: ApplyAiPreferencesOptions,
 ): { plan: DailyPlan; compare: CompareResult; writebackApplied: boolean } {
-	const compare = buildCompareResult(plan, allowedAddonIds, slotPreferences);
+	const compare = buildCompareResult(plan, allowedAddonIds, slotPreferences, options);
 	const beats = planBBeatsPlanA({
 		deltaCostCt: compare.delta.deltaCostCt,
 		deltaGridKwh: compare.delta.planB.gridKwh - compare.delta.planA.gridKwh,
@@ -204,7 +212,7 @@ export function applyAiPreferencesToDailyPlan(
 			next.slots.flatMap((s) => flexEntries(s, prefix)).find((a) => (a.allocatedPowerW ?? 0) > 0) ??
 			next.slots.flatMap((s) => flexEntries(s, prefix))[0] ??
 			null;
-		const newW = redistributeEligible(next, id, slotPreferences);
+		const newW = redistributeEligible(next, id, slotPreferences, options);
 		next.slots.forEach((slot, idx) => {
 			applyNewPowerToFlex(slot, prefix, newW[idx] ?? 0, next.slotMinutes, template);
 			recomputeSlotAggregates(slot);

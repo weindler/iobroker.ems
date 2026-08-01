@@ -12,7 +12,10 @@ export const AI_DEFAULT_MIN_INTERVAL_MINUTES = 60;
 /** 0 = kein Monatslimit (nur Tagesaufrufe). */
 export const AI_DEFAULT_MONTHLY_COST_LIMIT_EUR = 0;
 export const AI_SOFT_WARNING_FRACTION = 0.8;
+/** Legacy-Pfad (slot_preferences only). */
 export const AI_DEFAULT_TIMEOUT_MS = 20_000;
+/** Denkende KI — längerer Timeout für Situation+Horizont. */
+export const AI_THINKING_TIMEOUT_MS = 45_000;
 
 function isAllowedModel(v: unknown): v is AiAllowedModel {
 	return typeof v === "string" && (AI_ALLOWED_MODELS as readonly string[]).includes(v);
@@ -32,6 +35,11 @@ export interface AiAdminConfig {
 	minIntervalMinutes: number;
 	/** Monatliches Kosten-Softlimit in EUR; 0 = aus. Admin-Key: `ai_monthly_cost_limit_eur`. */
 	monthlyCostLimitEur: number;
+	/**
+	 * Denkmodus: Situation+Horizont, Entscheidungen über Add-ons; false = Legacy nur slot_preferences.
+	 * Default true. Admin-Key: `ai_thinking_mode`.
+	 */
+	thinkingMode: boolean;
 }
 
 export function aiConfigFromAdapter(config: unknown): AiAdminConfig {
@@ -56,6 +64,8 @@ export function aiConfigFromAdapter(config: unknown): AiAdminConfig {
 	const monthlyCostLimitEur =
 		monthlyRaw !== null && monthlyRaw >= 0 ? monthlyRaw : AI_DEFAULT_MONTHLY_COST_LIMIT_EUR;
 
+	const thinkingMode = asBool(c.ai_thinking_mode) ?? true;
+
 	return {
 		enabled,
 		provider: "openai",
@@ -64,5 +74,6 @@ export function aiConfigFromAdapter(config: unknown): AiAdminConfig {
 		maxCallsPerDay,
 		minIntervalMinutes,
 		monthlyCostLimitEur,
+		thinkingMode,
 	};
 }

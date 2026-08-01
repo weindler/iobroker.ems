@@ -7,7 +7,7 @@ const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
 const config_js_1 = require("./config.js");
 (0, node_test_1.describe)("ai config", () => {
-    (0, node_test_1.it)("defaults to fully off, no token, default model/limit/interval", () => {
+    (0, node_test_1.it)("defaults to fully off, no token, default model/limit/interval, thinking on", () => {
         const cfg = (0, config_js_1.aiConfigFromAdapter)({});
         strict_1.default.equal(cfg.enabled, false);
         strict_1.default.equal(cfg.provider, "openai");
@@ -16,8 +16,9 @@ const config_js_1 = require("./config.js");
         strict_1.default.equal(cfg.maxCallsPerDay, config_js_1.AI_DEFAULT_MAX_CALLS_PER_DAY);
         strict_1.default.equal(cfg.minIntervalMinutes, config_js_1.AI_DEFAULT_MIN_INTERVAL_MINUTES);
         strict_1.default.equal(cfg.monthlyCostLimitEur, 0);
+        strict_1.default.equal(cfg.thinkingMode, true);
     });
-    (0, node_test_1.it)("reads enabled/model/token/limit/interval/monthly from config", () => {
+    (0, node_test_1.it)("reads enabled/model/token/limit/interval/monthly/thinking from config", () => {
         const cfg = (0, config_js_1.aiConfigFromAdapter)({
             ai_enabled: true,
             ai_model: "gpt-4o-mini",
@@ -25,6 +26,7 @@ const config_js_1 = require("./config.js");
             ai_max_calls_per_day: 5,
             ai_min_interval_minutes: 30,
             ai_monthly_cost_limit_eur: 2.5,
+            ai_thinking_mode: false,
         });
         strict_1.default.equal(cfg.enabled, true);
         strict_1.default.equal(cfg.model, "gpt-4o-mini");
@@ -32,6 +34,7 @@ const config_js_1 = require("./config.js");
         strict_1.default.equal(cfg.maxCallsPerDay, 5);
         strict_1.default.equal(cfg.minIntervalMinutes, 30);
         strict_1.default.equal(cfg.monthlyCostLimitEur, 2.5);
+        strict_1.default.equal(cfg.thinkingMode, false);
     });
     (0, node_test_1.it)("accepts 0 as an explicit, valid min interval (disabled)", () => {
         strict_1.default.equal((0, config_js_1.aiConfigFromAdapter)({ ai_min_interval_minutes: 0 }).minIntervalMinutes, 0);

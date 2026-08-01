@@ -73,6 +73,17 @@
 					"lg": 3,
 					"xl": 3
 				},
+				"ai_thinking_mode": {
+					"type": "checkbox",
+					"label": "Denkmodus (Situation/Horizont)",
+					"default": true,
+					"help": "An: KI denkt wie ein Hausmanager (heute vs. morgen PV/Preis, Entscheidungen). Aus: Legacy nur Slot-Umverteilung.",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
 				"ai_model": {
 					"type": "select",
 					"label": "Modell",
@@ -146,7 +157,7 @@
 					"label": "Jetzt optimieren",
 					"help": "Löst sofort einen einzelnen KI-Versuch aus (zählt gegen das Tageslimit) — zum Testen. Ergebnis unter ai.* im Objektbaum.",
 					"showProcess": true,
-					"timeout": 30000,
+					"timeout": 45000,
 					"variant": "contained",
 					"color": "secondary",
 					"icon": "send",

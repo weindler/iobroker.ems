@@ -71,6 +71,8 @@ export function climateLearningBriefingDe(contributions: PlanContribution[] | un
 export type OperatorBriefingExtras = {
 	/** Forecast-Contributions (für Klima-Energiebedarf ohne Slot-Allocation). */
 	contributions?: PlanContribution[];
+	/** Kurze KI-Denkspur (optional, aus ai.last_thinking_de). */
+	aiThinkingDe?: string | null;
 };
 
 /** Baut die Operator-Briefing-Zeile aus dem Daily Plan des aktuellen Slots. */
@@ -107,6 +109,12 @@ export function buildOperatorBriefingDe(
 
 	const climate = climateLearningBriefingDe(extras?.contributions);
 	if (climate) lines.push(climate);
+
+	const thinking = extras?.aiThinkingDe?.trim();
+	if (thinking) {
+		const short = thinking.length > 120 ? `${thinking.slice(0, 117)}…` : thinking;
+		lines.push(`KI: ${short}`);
+	}
 
 	return lines.join(" ").slice(0, DAILY_PLAN_BRIEFING_MAX_LEN);
 }

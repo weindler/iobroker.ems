@@ -59,6 +59,11 @@ function slotOwnUsage(slot: DailyPlanSlot, contributionPrefix: string): SlotOwnU
 	return { ownW, ownPvW };
 }
 
+export interface CompareBuildOptions {
+	/** Wallbox: Kapazität = ownW + remaining PV only (kein zusätzlicher Netz-Peak in Plan B). */
+	wallboxPvOnly?: boolean;
+}
+
 interface AddonRedistribution {
 	governedId: CompareEligibleGovernedId;
 	prefix: string;
@@ -71,12 +76,14 @@ function buildAddonRedistribution(
 	plan: DailyPlan,
 	governedId: CompareEligibleGovernedId,
 	slotPreferences: AiSlotPreference[],
+	options?: CompareBuildOptions,
 ): AddonRedistribution {
 	const prefix = contributionPrefixForCompare(governedId);
 	const ownWPerSlot: number[] = [];
 	const ownPvWPerSlot: number[] = [];
 	const capacityPerSlot: number[] = [];
 	const multipliers: number[] = [];
+	const wallboxPvOnly = options?.wallboxPvOnly === true && governedId === "wallbox";
 
 	const weightByIso = new Map(
 		slotPreferences.filter((p) => p.addonId === governedId).map((p) => [p.slotStartIso, p.weight]),
@@ -101,7 +108,9 @@ function buildAddonRedistribution(
 		const remainingGrid = slot.gridImportAllowed ? Math.max(0, slot.remainingGridImportPowerWAfterAlloc ?? 0) : 0;
 		ownWPerSlot.push(ownW);
 		ownPvWPerSlot.push(ownPvW);
-		let capacityW = Math.max(ownW, ownW + remainingPv + remainingGrid);
+		let capacityW = wallboxPvOnly
+			? Math.max(ownW, ownW + remainingPv)
+			: Math.max(ownW, ownW + remainingPv + remainingGrid);
 		if (deadlineMs !== null) {
 			const slotStartMs = Date.parse(slot.slot.startIso);
 			// Nach Deadline: nur vorhandene Leistung halten (kein Zuzug), davor normal.
@@ -139,13 +148,14 @@ export function buildCompareResult(
 	plan: DailyPlan,
 	allowedAddonIds: string[],
 	slotPreferences: AiSlotPreference[],
+	options?: CompareBuildOptions,
 ): CompareResult {
 	const durationH = plan.slotMinutes / 60;
 	const activeGovernedIds = COMPARE_ELIGIBLE_GOVERNED_IDS.filter((id) => allowedAddonIds.includes(id));
 
 	const redistributions = new Map<CompareEligibleGovernedId, AddonRedistribution>();
 	for (const id of activeGovernedIds) {
-		redistributions.set(id, buildAddonRedistribution(plan, id, slotPreferences));
+		redistributions.set(id, buildAddonRedistribution(plan, id, slotPreferences, options));
 	}
 	const ordered = activeGovernedIds
 		.map((id) => redistributions.get(id))

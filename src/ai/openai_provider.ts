@@ -1,4 +1,6 @@
 import type {
+	AiAddonAction,
+	AiAddonDecision,
 	AiOptimizationProposal,
 	AiOptimizationRequestContext,
 	AiOptimizationResult,
@@ -9,7 +11,7 @@ import type {
 
 const OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
 
-const SYSTEM_PROMPT = [
+const SYSTEM_PROMPT_LEGACY = [
 	"Du bist die optionale Optimierungsschicht eines Hausenergiemanagers (EMS-Light).",
 	"Du bekommst den vollständigen deterministischen Daily Plan (rollierender Horizont, 15-Min-Slots mit",
 	"Preis, PV, Hauslast, Allokationen) plus einen Learning-Digest (PV-Bias, Thermal-/Battery-Runtime,",
@@ -24,10 +26,68 @@ const SYSTEM_PROMPT = [
 	"note und reason_de sind kurze deutsche Sätze.",
 ].join(" ");
 
+const SYSTEM_PROMPT_THINKING = [
+	"You are the optional thinking layer of EMS-Light (Hausenergiemanager).",
+	"You see the rolling 48h Daily Plan (15-min slots: price, PV, house load, allocations),",
+	"a live+horizon situation brief, and learning scalars. Think like a human house energy manager:",
+	"heat stick today vs tomorrow (is the buffer enough?), PV today vs tomorrow,",
+	"charge EV now on cheap grid vs wait for PV tomorrow, next-hours surplus, climate load —",
+	"do not oversize wallbox vs surplus without deadline pressure.",
+	"You may ONLY reason about allowed_addon_ids. You NEVER control devices or change policies.",
+	"Prefer concrete decisions even if slot_preferences stay empty (EMS derives weights from decisions).",
+	"Empty keep_plan_a is ok when Plan A is already good.",
+	"Return ONLY JSON:",
+	'{"thinking_de":"...","decisions":[{"addon_id":"...","action":"...","note":"..."}],',
+	'"slot_preferences":[{"addon_id":"...","slot_start_iso":"...","weight":0..3}],',
+	'"proposals":[{"addon_id":"...","note":"..."}],"reason_de":"..."}.',
+	"Allowed actions:",
+	"wallbox: charge_cheap_grid_now | prefer_pv_tomorrow | prefer_pv_today | keep_plan_a;",
+	"immersion_heater: heat_today | defer_tomorrow | keep_plan_a;",
+	"battery: charge_now | wait_pv | hold | keep_plan_a;",
+	"climate: advisory | keep_plan_a (notes only; FSM owns runtime).",
+	"thinking_de and reason_de / note are short German prose. slot_start_iso only from daily_plan.slots.t.",
+].join(" ");
+
+const WALLBOX_ACTIONS = new Set<string>([
+	"charge_cheap_grid_now",
+	"prefer_pv_tomorrow",
+	"prefer_pv_today",
+	"keep_plan_a",
+]);
+const IMMERSION_ACTIONS = new Set<string>(["heat_today", "defer_tomorrow", "keep_plan_a"]);
+const BATTERY_ACTIONS = new Set<string>(["charge_now", "wait_pv", "hold", "keep_plan_a"]);
+const CLIMATE_ACTIONS = new Set<string>(["advisory", "keep_plan_a"]);
+
+function allowedActionsForAddon(addonId: string): Set<string> | null {
+	if (addonId === "wallbox") return WALLBOX_ACTIONS;
+	if (addonId === "immersion_heater") return IMMERSION_ACTIONS;
+	if (addonId === "battery") return BATTERY_ACTIONS;
+	if (addonId === "climate") return CLIMATE_ACTIONS;
+	return null;
+}
+
 interface RawOpenAiResponse {
 	proposals?: Array<{ addon_id?: unknown; note?: unknown }>;
 	slot_preferences?: Array<{ addon_id?: unknown; slot_start_iso?: unknown; weight?: unknown }>;
+	decisions?: Array<{ addon_id?: unknown; action?: unknown; note?: unknown }>;
+	thinking_de?: unknown;
 	reason_de?: unknown;
+}
+
+function emptyResult(
+	partial: Omit<AiOptimizationResult, "proposals" | "slotPreferences" | "thinkingDe" | "decisions"> &
+		Partial<Pick<AiOptimizationResult, "proposals" | "slotPreferences" | "thinkingDe" | "decisions">>,
+): AiOptimizationResult {
+	return {
+		ok: partial.ok,
+		proposals: partial.proposals ?? [],
+		slotPreferences: partial.slotPreferences ?? [],
+		thinkingDe: partial.thinkingDe ?? "",
+		decisions: partial.decisions ?? [],
+		reasonDe: partial.reasonDe,
+		usage: partial.usage,
+		error: partial.error,
+	};
 }
 
 function parseProposals(raw: RawOpenAiResponse, allowedAddonIds: string[]): AiOptimizationProposal[] {
@@ -71,6 +131,28 @@ function parseSlotPreferences(
 	return out;
 }
 
+/** Exported for unit tests — validates actions against the per-addon allow-set. */
+export function parseDecisions(raw: RawOpenAiResponse, allowedAddonIds: string[]): AiAddonDecision[] {
+	if (!Array.isArray(raw.decisions)) return [];
+	const allowed = new Set(allowedAddonIds);
+	const out: AiAddonDecision[] = [];
+	for (const d of raw.decisions) {
+		if (!d || typeof d !== "object") continue;
+		const addonId = typeof d.addon_id === "string" ? d.addon_id : "";
+		const action = typeof d.action === "string" ? d.action : "";
+		const note = typeof d.note === "string" ? d.note : "";
+		if (!addonId || !allowed.has(addonId)) continue;
+		const allowedActions = allowedActionsForAddon(addonId);
+		if (!allowedActions || !allowedActions.has(action)) continue;
+		out.push({
+			addonId,
+			action: action as AiAddonAction,
+			note: note.slice(0, 400),
+		});
+	}
+	return out;
+}
+
 export function createOpenAiProvider(fetchImpl: typeof fetch = fetch): AiProvider {
 	return {
 		id: "openai",
@@ -79,22 +161,23 @@ export function createOpenAiProvider(fetchImpl: typeof fetch = fetch): AiProvide
 			opts: AiProviderCallOptions,
 		): Promise<AiOptimizationResult> {
 			if (!opts.apiKey) {
-				return {
+				return emptyResult({
 					ok: false,
-					proposals: [],
-					slotPreferences: [],
 					reasonDe: "Kein API-Token konfiguriert.",
 					usage: { promptTokens: null, completionTokens: null },
 					error: "no_token",
-				};
+				});
 			}
 
+			const thinkingMode = opts.thinkingMode !== false;
 			const userContent = JSON.stringify({
 				generated_at: request.generatedAt,
 				timezone: request.timezone,
 				global_mode: request.globalMode,
 				allowed_addon_ids: request.allowedAddonIds,
 				daily_plan: request.dailyPlan,
+				learning: request.learning,
+				situation: thinkingMode ? request.situation : undefined,
 				policy_highlights: request.policyHighlights,
 				trigger_reason: request.triggerReason,
 			});
@@ -111,7 +194,10 @@ export function createOpenAiProvider(fetchImpl: typeof fetch = fetch): AiProvide
 					body: JSON.stringify({
 						model: opts.model,
 						messages: [
-							{ role: "system", content: SYSTEM_PROMPT },
+							{
+								role: "system",
+								content: thinkingMode ? SYSTEM_PROMPT_THINKING : SYSTEM_PROMPT_LEGACY,
+							},
 							{ role: "user", content: userContent },
 						],
 						response_format: { type: "json_object" },
@@ -122,14 +208,12 @@ export function createOpenAiProvider(fetchImpl: typeof fetch = fetch): AiProvide
 
 				if (!res.ok) {
 					const bodyText = await res.text().catch(() => "");
-					return {
+					return emptyResult({
 						ok: false,
-						proposals: [],
-						slotPreferences: [],
 						reasonDe: `OpenAI-Fehler (${res.status}).`,
 						usage: { promptTokens: null, completionTokens: null },
 						error: `http_${res.status}: ${bodyText.slice(0, 200)}`,
-					};
+					});
 				}
 
 				const json = (await res.json()) as {
@@ -144,51 +228,60 @@ export function createOpenAiProvider(fetchImpl: typeof fetch = fetch): AiProvide
 				};
 
 				if (!content) {
-					return {
+					return emptyResult({
 						ok: false,
-						proposals: [],
-						slotPreferences: [],
 						reasonDe: "Leere Antwort vom Modell.",
 						usage,
 						error: "empty_content",
-					};
+					});
 				}
 
 				let parsed: RawOpenAiResponse;
 				try {
 					parsed = JSON.parse(content) as RawOpenAiResponse;
 				} catch {
-					return {
+					return emptyResult({
 						ok: false,
-						proposals: [],
-						slotPreferences: [],
 						reasonDe: "Antwort war kein gültiges JSON.",
 						usage,
 						error: "invalid_json",
-					};
+					});
 				}
 
 				const validSlotIsoSet = new Set(request.dailyPlan.slots.map((s) => s.t));
 				const proposals = parseProposals(parsed, request.allowedAddonIds);
 				const slotPreferences = parseSlotPreferences(parsed, request.allowedAddonIds, validSlotIsoSet);
+				const decisions = thinkingMode ? parseDecisions(parsed, request.allowedAddonIds) : [];
+				const thinkingDe =
+					thinkingMode && typeof parsed.thinking_de === "string" && parsed.thinking_de.trim()
+						? parsed.thinking_de.trim().slice(0, 1200)
+						: "";
 				const reasonDe =
 					typeof parsed.reason_de === "string" && parsed.reason_de.trim()
 						? parsed.reason_de.trim().slice(0, 400)
-						: proposals.length > 0
-							? `${proposals.length} Vorschlag/Vorschläge erhalten.`
-							: "Kein Optimierungsbedarf gemeldet.";
+						: thinkingDe
+							? thinkingDe.slice(0, 400)
+							: proposals.length > 0 || decisions.length > 0
+								? `${Math.max(proposals.length, decisions.length)} Hinweis(e) erhalten.`
+								: "Kein Optimierungsbedarf gemeldet.";
 
-				return { ok: true, proposals, slotPreferences, reasonDe, usage };
+				return {
+					ok: true,
+					proposals,
+					slotPreferences,
+					thinkingDe,
+					decisions,
+					reasonDe,
+					usage,
+				};
 			} catch (e) {
 				const aborted = e instanceof Error && e.name === "AbortError";
-				return {
+				return emptyResult({
 					ok: false,
-					proposals: [],
-					slotPreferences: [],
 					reasonDe: aborted ? "Zeitüberschreitung beim KI-Aufruf." : "Fehler beim KI-Aufruf.",
 					usage: { promptTokens: null, completionTokens: null },
 					error: aborted ? "timeout" : String(e instanceof Error ? e.message : e),
-				};
+				});
 			} finally {
 				clearTimeout(timer);
 			}

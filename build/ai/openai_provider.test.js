@@ -6,6 +6,34 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
 const openai_provider_js_1 = require("./openai_provider.js");
+function emptySituation() {
+    return {
+        live: { pvPowerW: null, houseLoadW: null, surplusW: null, deficitW: null },
+        wallbox: {
+            connected: null,
+            charging: null,
+            mode: null,
+            socPct: null,
+            remainingEnergyKwh: null,
+            effectiveLimitSoc: null,
+            planActive: null,
+            deadlineIso: null,
+        },
+        immersion: { bufferTempC: null, thermalEstimatedEmptyAt: null },
+        climate: { units: [] },
+        pvHorizon: [],
+        pvTodayKwh: null,
+        pvTomorrowKwh: null,
+        priceNowCt: null,
+        priceAvg7d: null,
+        nextHours: {
+            avgPvForecastPowerW: null,
+            avgAvailablePvSurplusPowerW: null,
+            minPriceCt: null,
+            maxPriceCt: null,
+        },
+    };
+}
 function baseRequest() {
     return {
         generatedAt: "2026-07-25T10:00:00.000Z",
@@ -68,6 +96,7 @@ function baseRequest() {
             pvBiasStatus: null,
             pvCorrectedTodayKwh: null,
             pvCorrectedTomorrowKwh: null,
+            pvHorizonDays: [],
             thermalRuntimeStatus: null,
             thermalEstimatedEmptyAt: null,
             batteryRuntimeStatus: null,
@@ -76,6 +105,7 @@ function baseRequest() {
             priceAvgEurPerKwh7d: null,
             houseLoadStatus: null,
         },
+        situation: emptySituation(),
         policyHighlights: {},
         triggerReason: "test",
     };
@@ -203,6 +233,71 @@ function fakeFetch(response, status = 200) {
         strict_1.default.equal(res.ok, true);
         strict_1.default.equal(res.proposals.length, 0);
         strict_1.default.equal(res.reasonDe, "Kein Optimierungsbedarf gemeldet.");
+        strict_1.default.equal(res.thinkingDe, "");
+        strict_1.default.deepEqual(res.decisions, []);
+    });
+    (0, node_test_1.it)("parses thinking_de + decisions; ignores unknown actions", async () => {
+        const fetchImpl = fakeFetch({
+            choices: [
+                {
+                    message: {
+                        content: JSON.stringify({
+                            thinking_de: "Puffer reicht bis morgen, PV morgen stark.",
+                            decisions: [
+                                { addon_id: "immersion_heater", action: "defer_tomorrow", note: "Morgen heizen." },
+                                { addon_id: "immersion_heater", action: "charge_now", note: "ungültig für IH" },
+                                { addon_id: "wallbox", action: "prefer_pv_today", note: "nicht erlaubt" },
+                            ],
+                            proposals: [],
+                            slot_preferences: [],
+                            reason_de: "Kurzfassung.",
+                        }),
+                    },
+                },
+            ],
+            usage: { prompt_tokens: 50, completion_tokens: 30 },
+        });
+        const provider = (0, openai_provider_js_1.createOpenAiProvider)(fetchImpl);
+        const res = await provider.optimize(baseRequest(), {
+            apiKey: "sk-test",
+            model: "gpt-4.1-mini",
+            timeoutMs: 1000,
+            thinkingMode: true,
+        });
+        strict_1.default.equal(res.ok, true);
+        strict_1.default.equal(res.thinkingDe, "Puffer reicht bis morgen, PV morgen stark.");
+        strict_1.default.equal(res.decisions.length, 1);
+        strict_1.default.equal(res.decisions[0].action, "defer_tomorrow");
+        strict_1.default.equal(res.reasonDe, "Kurzfassung.");
+    });
+    (0, node_test_1.it)("legacy thinkingMode=false ignores decisions even if present", async () => {
+        const fetchImpl = fakeFetch({
+            choices: [
+                {
+                    message: {
+                        content: JSON.stringify({
+                            thinking_de: "sollte ignoriert werden",
+                            decisions: [
+                                { addon_id: "immersion_heater", action: "heat_today", note: "heute" },
+                            ],
+                            proposals: [],
+                            reason_de: "Legacy.",
+                        }),
+                    },
+                },
+            ],
+            usage: { prompt_tokens: 10, completion_tokens: 5 },
+        });
+        const provider = (0, openai_provider_js_1.createOpenAiProvider)(fetchImpl);
+        const res = await provider.optimize(baseRequest(), {
+            apiKey: "sk-test",
+            model: "gpt-4.1-mini",
+            timeoutMs: 1000,
+            thinkingMode: false,
+        });
+        strict_1.default.equal(res.ok, true);
+        strict_1.default.equal(res.thinkingDe, "");
+        strict_1.default.deepEqual(res.decisions, []);
     });
     (0, node_test_1.it)("network error rejects gracefully with ok=false", async () => {
         const provider = (0, openai_provider_js_1.createOpenAiProvider)((async () => {

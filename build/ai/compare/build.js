@@ -53,12 +53,13 @@ function slotOwnUsage(slot, contributionPrefix) {
     }
     return { ownW, ownPvW };
 }
-function buildAddonRedistribution(plan, governedId, slotPreferences) {
+function buildAddonRedistribution(plan, governedId, slotPreferences, options) {
     const prefix = contributionPrefixForCompare(governedId);
     const ownWPerSlot = [];
     const ownPvWPerSlot = [];
     const capacityPerSlot = [];
     const multipliers = [];
+    const wallboxPvOnly = options?.wallboxPvOnly === true && governedId === "wallbox";
     const weightByIso = new Map(slotPreferences.filter((p) => p.addonId === governedId).map((p) => [p.slotStartIso, p.weight]));
     /** Früheste Deadline der Flex-Zeilen — Wallbox darf Energie nicht hinter die Deadline schieben. */
     let deadlineMs = null;
@@ -80,7 +81,9 @@ function buildAddonRedistribution(plan, governedId, slotPreferences) {
         const remainingGrid = slot.gridImportAllowed ? Math.max(0, slot.remainingGridImportPowerWAfterAlloc ?? 0) : 0;
         ownWPerSlot.push(ownW);
         ownPvWPerSlot.push(ownPvW);
-        let capacityW = Math.max(ownW, ownW + remainingPv + remainingGrid);
+        let capacityW = wallboxPvOnly
+            ? Math.max(ownW, ownW + remainingPv)
+            : Math.max(ownW, ownW + remainingPv + remainingGrid);
         if (deadlineMs !== null) {
             const slotStartMs = Date.parse(slot.slot.startIso);
             // Nach Deadline: nur vorhandene Leistung halten (kein Zuzug), davor normal.
@@ -106,12 +109,12 @@ function round1(n) {
  * den zuletzt gespeicherten KI-Zeitpunkt-Präferenzen. `allowedAddonIds` sind die Governance-IDs, die
  * aktiv UND für KI-Optimierung freigegeben sind (siehe src/ai/context.ts resolveAllowedAddonIds).
  */
-function buildCompareResult(plan, allowedAddonIds, slotPreferences) {
+function buildCompareResult(plan, allowedAddonIds, slotPreferences, options) {
     const durationH = plan.slotMinutes / 60;
     const activeGovernedIds = exports.COMPARE_ELIGIBLE_GOVERNED_IDS.filter((id) => allowedAddonIds.includes(id));
     const redistributions = new Map();
     for (const id of activeGovernedIds) {
-        redistributions.set(id, buildAddonRedistribution(plan, id, slotPreferences));
+        redistributions.set(id, buildAddonRedistribution(plan, id, slotPreferences, options));
     }
     const ordered = activeGovernedIds
         .map((id) => redistributions.get(id))

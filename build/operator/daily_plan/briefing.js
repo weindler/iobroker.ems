@@ -85,6 +85,11 @@ function buildOperatorBriefingDe(plan, now, timezone, extras) {
     const climate = climateLearningBriefingDe(extras?.contributions);
     if (climate)
         lines.push(climate);
+    const thinking = extras?.aiThinkingDe?.trim();
+    if (thinking) {
+        const short = thinking.length > 120 ? `${thinking.slice(0, 117)}…` : thinking;
+        lines.push(`KI: ${short}`);
+    }
     return lines.join(" ").slice(0, DAILY_PLAN_BRIEFING_MAX_LEN);
 }
 exports.buildOperatorBriefingDe = buildOperatorBriefingDe;

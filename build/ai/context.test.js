@@ -102,6 +102,29 @@ function minimalPlan(overrides = {}) {
         strict_1.default.equal(ctx.policyHighlights.houseFuseLimitW, 30000);
         strict_1.default.equal(ctx.policyHighlights.gridImportAllowed, true);
         strict_1.default.equal(ctx.triggerReason, "test_trigger");
+        strict_1.default.ok(ctx.situation);
+        strict_1.default.equal(ctx.situation.live.pvPowerW, null);
+        strict_1.default.equal(ctx.situation.wallbox.connected, null);
+        strict_1.default.equal(ctx.learning.pvHorizonDays.length, 7);
+    });
+    (0, node_test_1.it)("situation keeps nulls — never invents 0 for missing live values", async () => {
+        const host = {
+            config: {},
+            async getStateAsync(id) {
+                if (id === "live.pv.power_w")
+                    return { val: 4200, ack: true };
+                if (id === "operator.diagnostics.surplus_w")
+                    return { val: 1800, ack: true };
+                return null;
+            },
+        };
+        const ctx = await (0, context_js_1.buildAiOptimizationContext)(host, minimalPlan(), "x");
+        strict_1.default.equal(ctx.situation.live.pvPowerW, 4200);
+        strict_1.default.equal(ctx.situation.live.surplusW, 1800);
+        strict_1.default.equal(ctx.situation.live.houseLoadW, null);
+        strict_1.default.equal(ctx.situation.live.deficitW, null);
+        strict_1.default.equal(ctx.situation.immersion.bufferTempC, null);
+        strict_1.default.equal(ctx.situation.priceNowCt, null);
     });
     (0, node_test_1.it)("missing/invalid policy state → empty highlights, never throws", async () => {
         const host = { config: {}, async getStateAsync() { return null; } };

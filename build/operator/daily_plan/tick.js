@@ -37,6 +37,7 @@ const battery_consumers_1 = require("../../policy/battery_consumers");
 const device_config_1 = require("../../addons/immersion_heater/device_config");
 const types_1 = require("../../addons/immersion_heater/runtime/types");
 const state_util_1 = require("../../ems_light/state_util");
+const ensure_states_1 = require("../../ai/ensure_states");
 const battery_1 = require("../planning/battery");
 const ensure_evcc_states_1 = require("../../addons/wallbox/ensure_evcc_states");
 const states_2 = require("../../addons/wallbox/runtime/states");
@@ -251,8 +252,11 @@ async function runDailyPlanTick(host, forecastPlan) {
         await (0, state_write_1.setOptionalNumberIfChanged)(host, "operator.diagnostics.surplus_w", liveSurplus.surplusW);
         await (0, state_write_1.setOptionalNumberIfChanged)(host, "operator.diagnostics.deficit_w", liveSurplus.deficitW);
         await (0, state_write_1.setStateIfChanged)(host, "operator.diagnostics.slot_start_iso", liveSurplus.slotStartIso ?? "");
+        const aiThinkingRaw = await host.getStateAsync(ensure_states_1.AI_STATES.lastThinkingDe);
+        const aiThinkingDe = typeof aiThinkingRaw?.val === "string" && aiThinkingRaw.val.trim() ? aiThinkingRaw.val.trim() : null;
         await (0, state_write_1.setStateIfChanged)(host, "operator.briefing_de", (0, briefing_1.buildOperatorBriefingDe)(plan, now, timezone, {
             contributions: forecastPlan.contributions,
+            aiThinkingDe,
         }));
         const addonSummaries = [
             { key: "battery", prefix: "battery" },

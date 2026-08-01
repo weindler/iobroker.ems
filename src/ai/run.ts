@@ -1,9 +1,10 @@
 import type { DailyPlan } from "../operator/daily_plan/types";
-import { aiConfigFromAdapter } from "./config";
+import { aiConfigFromAdapter, AI_DEFAULT_TIMEOUT_MS, AI_THINKING_TIMEOUT_MS } from "./config";
 import { buildAiOptimizationContext, resolveAllowedAddonIds, type ContextHost } from "./context";
 import { AI_STATES } from "./ensure_states";
 import { readAndRolloverDailyCalls, recordDailyCall, type LimiterHost } from "./limiter";
 import { estimateCostEur } from "./pricing";
+import { decisionsToSlotPreferences, wallboxPvOnlyFromDecisions } from "./strategy_preferences";
 import type { AiProvider, AiStatus } from "./types";
 import { clearAiAutoSuspend, finalizeAiRunWithWritebackGate, type WritebackHost } from "./writeback";
 
@@ -23,9 +24,21 @@ async function writeStatus(host: AiRunHost, status: AiStatus): Promise<void> {
 	await host.setStateAsync(AI_STATES.status, { val: status, ack: true });
 }
 
+async function persistThinkingStates(
+	host: AiRunHost,
+	thinkingDe: string,
+	decisionsJson: string,
+	thinkingMode: boolean,
+): Promise<void> {
+	await host.setStateAsync(AI_STATES.lastThinkingDe, { val: thinkingDe.slice(0, 1200), ack: true });
+	await host.setStateAsync(AI_STATES.lastDecisionsJson, { val: decisionsJson, ack: true });
+	await host.setStateAsync(AI_STATES.lastThinkingMode, { val: thinkingMode, ack: true });
+}
+
 /**
- * Orchestriert genau einen KI-Optimierungsversuch (Roadmap Block 6).
- * Fail-closed: ohne messbaren Plan-B-Vorteil kein Write-back, Auto-Trigger gesperrt.
+ * Orchestriert genau einen KI-Optimierungsversuch (Roadmap Block 6 / denkende KI).
+ * Fail-closed: ohne messbaren Plan-B-Vorteil kein Write-back, Auto-Trigger gesperrt
+ * — aber nur wenn Slot-Präferenzen vorhanden sind. Reines Denken bleibt sichtbar (ready).
  * Write-back geht nur über Daily-Plan-Allocation — nie direkt auf Geräte.
  */
 export async function runAiOptimizationNow(
@@ -72,15 +85,23 @@ export async function runAiOptimizationNow(
 	}
 
 	const context = await buildAiOptimizationContext(host, plan, triggerReason);
+	const timeoutMs = cfg.thinkingMode ? AI_THINKING_TIMEOUT_MS : AI_DEFAULT_TIMEOUT_MS;
 
 	let result;
 	try {
-		result = await provider.optimize(context, { apiKey: cfg.apiKey, model: cfg.model, timeoutMs: 20_000 });
+		result = await provider.optimize(context, {
+			apiKey: cfg.apiKey,
+			model: cfg.model,
+			timeoutMs,
+			thinkingMode: cfg.thinkingMode,
+		});
 	} catch (e) {
 		result = {
 			ok: false as const,
 			proposals: [],
 			slotPreferences: [],
+			thinkingDe: "",
+			decisions: [],
 			reasonDe: "Unerwarteter Fehler beim KI-Aufruf.",
 			usage: { promptTokens: null, completionTokens: null },
 			error: String(e instanceof Error ? e.message : e),
@@ -94,6 +115,10 @@ export async function runAiOptimizationNow(
 	await host.setStateAsync(AI_STATES.lastRunAt, { val: nowIso, ack: true });
 	await host.setStateAsync(AI_STATES.lastReasonDe, { val: result.reasonDe.slice(0, 480), ack: true });
 
+	const decisions = cfg.thinkingMode ? result.decisions : [];
+	const thinkingDe = cfg.thinkingMode ? result.thinkingDe : "";
+	await persistThinkingStates(host, thinkingDe, JSON.stringify(decisions), cfg.thinkingMode);
+
 	if (!result.ok) {
 		await host.setStateAsync(AI_STATES.lastRunResult, { val: "error", ack: true });
 		await host.setStateAsync(AI_STATES.lastError, { val: String(result.error ?? "").slice(0, 480), ack: true });
@@ -103,14 +128,19 @@ export async function runAiOptimizationNow(
 		return { ran: true, status: "error", reasonDe: result.reasonDe };
 	}
 
+	const mergedPrefs = cfg.thinkingMode
+		? decisionsToSlotPreferences(plan, decisions, result.slotPreferences)
+		: result.slotPreferences;
+
 	await host.setStateAsync(AI_STATES.lastRunResult, { val: "ok", ack: true });
 	await host.setStateAsync(AI_STATES.lastError, { val: "", ack: true });
 	await host.setStateAsync(AI_STATES.lastSlotPreferencesJson, {
-		val: JSON.stringify(result.slotPreferences),
+		val: JSON.stringify(mergedPrefs),
 		ack: true,
 	});
 
-	const gate = await finalizeAiRunWithWritebackGate(host, plan, result.slotPreferences);
+	const wallboxPvOnly = wallboxPvOnlyFromDecisions(decisions);
+	const gate = await finalizeAiRunWithWritebackGate(host, plan, mergedPrefs, { wallboxPvOnly });
 	if (gate.suspended) {
 		await writeStatus(host, "suspended");
 		const reason = gate.compare.delta.decisionReasonDe;
@@ -120,15 +150,21 @@ export async function runAiOptimizationNow(
 	}
 
 	await writeStatus(host, "ready");
+	const thinkingSummary =
+		mergedPrefs.length === 0 && !gate.writebackApplied && thinkingDe
+			? thinkingDe.slice(0, 480)
+			: result.reasonDe;
+	const reasonDe = gate.writebackApplied
+		? `${result.reasonDe} Write-back auf Allocation angewendet.`
+		: thinkingSummary;
+	await host.setStateAsync(AI_STATES.lastReasonDe, { val: reasonDe.slice(0, 480), ack: true });
 	const wbNote = gate.writebackApplied ? "Write-back aktiv." : "kein Write-back nötig.";
 	host.log?.debug?.(
-		`KI-Optimierung (${triggerReason}): ${result.slotPreferences.length} Slot-Präferenz(en), ${wbNote} — ${result.reasonDe}`,
+		`KI-Optimierung (${triggerReason}): ${mergedPrefs.length} Slot-Präferenz(en), ${decisions.length} Decision(s), ${wbNote} — ${reasonDe}`,
 	);
 	return {
 		ran: true,
 		status: "ready",
-		reasonDe: gate.writebackApplied
-			? `${result.reasonDe} Write-back auf Allocation angewendet.`
-			: result.reasonDe,
+		reasonDe,
 	};
 }

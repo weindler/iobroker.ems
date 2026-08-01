@@ -33,6 +33,8 @@ export interface AiLearningDigest {
 	pvBiasStatus: string | null;
 	pvCorrectedTodayKwh: number | null;
 	pvCorrectedTomorrowKwh: number | null;
+	/** PV-Horizon Tag 1–7 (corrected_kwh), fehlende Tage als null. */
+	pvHorizonDays: Array<{ day: number; correctedKwh: number | null }>;
 	thermalRuntimeStatus: string | null;
 	thermalEstimatedEmptyAt: string | null;
 	batteryRuntimeStatus: string | null;
@@ -41,6 +43,50 @@ export interface AiLearningDigest {
 	/** Ø 7d aus Learning — Einheit €/kWh (Adapter-State). */
 	priceAvgEurPerKwh7d: number | null;
 	houseLoadStatus: string | null;
+}
+
+/** Live + Horizont-Snapshot für die denkende KI (null ok, nie erfundene 0). */
+export interface AiSituationBrief {
+	live: {
+		pvPowerW: number | null;
+		houseLoadW: number | null;
+		surplusW: number | null;
+		deficitW: number | null;
+	};
+	wallbox: {
+		connected: boolean | null;
+		charging: boolean | null;
+		mode: string | null;
+		socPct: number | null;
+		remainingEnergyKwh: number | null;
+		effectiveLimitSoc: number | null;
+		planActive: boolean | null;
+		deadlineIso: string | null;
+	};
+	immersion: {
+		bufferTempC: number | null;
+		thermalEstimatedEmptyAt: string | null;
+	};
+	climate: {
+		units: Array<{
+			unitIndex: number;
+			running: boolean | null;
+			roomTempC: number | null;
+		}>;
+	};
+	/** Tag 1–7 corrected_kwh (day1 = heute). */
+	pvHorizon: Array<{ day: number; correctedKwh: number | null }>;
+	pvTodayKwh: number | null;
+	pvTomorrowKwh: number | null;
+	priceNowCt: number | null;
+	/** Ø 7d aus Learning — €/kWh, nie erfunden. */
+	priceAvg7d: number | null;
+	nextHours: {
+		avgPvForecastPowerW: number | null;
+		avgAvailablePvSurplusPowerW: number | null;
+		minPriceCt: number | null;
+		maxPriceCt: number | null;
+	};
 }
 
 /** Daily-Plan-Auszug für die KI (vollständig genug für Zeitpunkt-Optimierung). */
@@ -81,6 +127,8 @@ export interface AiOptimizationRequestContext {
 	allowedAddonIds: string[];
 	dailyPlan: AiDailyPlanDigest;
 	learning: AiLearningDigest;
+	/** Live + PV-/Preis-Horizont für menschliche Abwägung (heute vs. morgen). */
+	situation: AiSituationBrief;
 	policyHighlights: Record<string, unknown>;
 	triggerReason: string;
 }
@@ -102,10 +150,35 @@ export interface AiSlotPreference {
 	weight: number;
 }
 
+export type AiWallboxAction =
+	| "charge_cheap_grid_now"
+	| "prefer_pv_tomorrow"
+	| "prefer_pv_today"
+	| "keep_plan_a";
+
+export type AiImmersionAction = "heat_today" | "defer_tomorrow" | "keep_plan_a";
+
+export type AiBatteryAction = "charge_now" | "wait_pv" | "hold" | "keep_plan_a";
+
+export type AiClimateAction = "advisory" | "keep_plan_a";
+
+export type AiAddonAction = AiWallboxAction | AiImmersionAction | AiBatteryAction | AiClimateAction;
+
+/** Strategische Entscheidung der denkenden KI — EMS leitet daraus ggf. Slot-Gewichte ab. */
+export interface AiAddonDecision {
+	addonId: string;
+	action: AiAddonAction;
+	note: string;
+}
+
 export interface AiOptimizationResult {
 	ok: boolean;
 	proposals: AiOptimizationProposal[];
 	slotPreferences: AiSlotPreference[];
+	/** Deutsche Denkspur der KI (immer sichtbar, auch ohne Write-back). */
+	thinkingDe: string;
+	/** Konkrete Add-on-Strategien (heute vs. morgen etc.). */
+	decisions: AiAddonDecision[];
 	reasonDe: string;
 	usage: { promptTokens: number | null; completionTokens: number | null };
 	error?: string;
@@ -115,6 +188,8 @@ export interface AiProviderCallOptions {
 	apiKey: string;
 	model: string;
 	timeoutMs: number;
+	/** false → Legacy-Prompt (nur slot_preferences), Decisions werden ignoriert. */
+	thinkingMode?: boolean;
 }
 
 export interface AiProvider {

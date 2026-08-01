@@ -138,14 +138,15 @@ describe("decisionsToSlotPreferences", () => {
 		assert.ok((byIso.get(DAY2_A) ?? 0) >= 2.5);
 	});
 
-	it("prefer_pv_today: high weight on today's high surplus", () => {
+	it("prefer_pv_today: high weight on today's high surplus, demotes later days", () => {
 		const decisions: AiAddonDecision[] = [
 			{ addonId: "wallbox", action: "prefer_pv_today", note: "heute" },
 		];
 		const prefs = decisionsToSlotPreferences(plan, decisions, [], NOW_MS);
-		assert.ok(prefs.every((p) => p.slotStartIso === DAY1_A || p.slotStartIso === DAY1_B));
 		const b = prefs.find((p) => p.slotStartIso === DAY1_B);
 		assert.ok(b && b.weight >= 2.5);
+		const later = prefs.find((p) => p.slotStartIso === DAY2_A);
+		assert.ok(later && later.weight < 0.2);
 	});
 
 	it("charge_cheap_grid_now: prefers cheapest slot in next 12h", () => {
@@ -222,7 +223,11 @@ describe("normalizeAddonDecisions", () => {
 			planActive: true,
 			deadlineIso: null,
 		},
-		immersion: { bufferTempC: 45, thermalEstimatedEmptyAt: null },
+		immersion: {
+			bufferTempC: 45,
+			thermalEstimatedEmptyAt: null,
+			thermalEstimatedRemainingHours: null,
+		},
 		climate: { units: [] },
 		pvHorizon: [],
 		pvTodayKwh: 30,

@@ -1,13 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.configIsValid = exports.thermalRuntimeConfigFromAdapter = exports.isValidTempC = exports.computeThermalRuntimeLearning = exports.estimateRemainingHours = exports.detectRuntimeCycles = exports.runThermalRuntimeLearning = exports.ensureThermalRuntimeLearningStates = void 0;
+exports.configIsValid = exports.thermalRuntimeConfigFromAdapter = exports.isValidTempC = exports.computeThermalRuntimeLearning = exports.liveRemainingHoursFromEmptyAt = exports.estimateRemainingHours = exports.detectRuntimeCycles = exports.refreshThermalRemainingCountdown = exports.runThermalRuntimeLearning = exports.ensureThermalRuntimeLearningStates = void 0;
 var ensure_states_1 = require("./ensure_states");
 Object.defineProperty(exports, "ensureThermalRuntimeLearningStates", { enumerable: true, get: function () { return ensure_states_1.ensureThermalRuntimeLearningStates; } });
 var run_1 = require("./run");
 Object.defineProperty(exports, "runThermalRuntimeLearning", { enumerable: true, get: function () { return run_1.runThermalRuntimeLearning; } });
+Object.defineProperty(exports, "refreshThermalRemainingCountdown", { enumerable: true, get: function () { return run_1.refreshThermalRemainingCountdown; } });
 var math_1 = require("./math");
 Object.defineProperty(exports, "detectRuntimeCycles", { enumerable: true, get: function () { return math_1.detectRuntimeCycles; } });
 Object.defineProperty(exports, "estimateRemainingHours", { enumerable: true, get: function () { return math_1.estimateRemainingHours; } });
+Object.defineProperty(exports, "liveRemainingHoursFromEmptyAt", { enumerable: true, get: function () { return math_1.liveRemainingHoursFromEmptyAt; } });
 Object.defineProperty(exports, "computeThermalRuntimeLearning", { enumerable: true, get: function () { return math_1.computeThermalRuntimeLearning; } });
 var history_1 = require("./history");
 Object.defineProperty(exports, "isValidTempC", { enumerable: true, get: function () { return history_1.isValidTempC; } });

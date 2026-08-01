@@ -119,14 +119,15 @@ function tinyPlan(slots) {
         strict_1.default.ok((byIso.get(DAY1_B) ?? 1) < 1);
         strict_1.default.ok((byIso.get(DAY2_A) ?? 0) >= 2.5);
     });
-    (0, node_test_1.it)("prefer_pv_today: high weight on today's high surplus", () => {
+    (0, node_test_1.it)("prefer_pv_today: high weight on today's high surplus, demotes later days", () => {
         const decisions = [
             { addonId: "wallbox", action: "prefer_pv_today", note: "heute" },
         ];
         const prefs = (0, strategy_preferences_js_1.decisionsToSlotPreferences)(plan, decisions, [], NOW_MS);
-        strict_1.default.ok(prefs.every((p) => p.slotStartIso === DAY1_A || p.slotStartIso === DAY1_B));
         const b = prefs.find((p) => p.slotStartIso === DAY1_B);
         strict_1.default.ok(b && b.weight >= 2.5);
+        const later = prefs.find((p) => p.slotStartIso === DAY2_A);
+        strict_1.default.ok(later && later.weight < 0.2);
     });
     (0, node_test_1.it)("charge_cheap_grid_now: prefers cheapest slot in next 12h", () => {
         const decisions = [
@@ -187,7 +188,11 @@ function tinyPlan(slots) {
             planActive: true,
             deadlineIso: null,
         },
-        immersion: { bufferTempC: 45, thermalEstimatedEmptyAt: null },
+        immersion: {
+            bufferTempC: 45,
+            thermalEstimatedEmptyAt: null,
+            thermalEstimatedRemainingHours: null,
+        },
         climate: { units: [] },
         pvHorizon: [],
         pvTodayKwh: 30,

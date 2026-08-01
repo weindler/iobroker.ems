@@ -1,4 +1,5 @@
 import { dayTypeFromWeekday, weekdayFromDate } from "../../../learning/house_load/time";
+import { liveRemainingHoursFromEmptyAt } from "../../../learning/thermal_runtime/math";
 
 /**
  * Gelernter Thermik-Signal-Zustand für den Heizstab (`learning.thermal_runtime.*`).
@@ -84,6 +85,15 @@ export function buildThermalLearningSignal(input: {
 		}
 	}
 
+	// Reststunden immer live aus empty_at — der State-Snapshot altert zwischen Learning-Läufen.
+	const liveRemaining = liveRemainingHoursFromEmptyAt(estimatedEmptyAt, input.now);
+	const estimatedRemainingHours =
+		liveRemaining !== null
+			? liveRemaining
+			: estimatedEmptyAt === null && input.estimatedEmptyAtRaw
+				? 0 // empty_at in der Vergangenheit / verworfen
+				: input.estimatedRemainingHours;
+
 	const byDayType = parseByDayTypeJson(input.byDayTypeJsonRaw);
 	const currentDayType = dayTypeFromWeekday(weekdayFromDate(input.now));
 	const currentGroup = byDayType?.[currentDayType];
@@ -114,7 +124,7 @@ export function buildThermalLearningSignal(input: {
 		coolingRateCPerHAvg: input.coolingRateCPerHAvg,
 		coolingConstantPerH: input.coolingConstantPerH,
 		coolingAsymptoteC: input.coolingAsymptoteC,
-		estimatedRemainingHours: input.estimatedRemainingHours,
+		estimatedRemainingHours,
 		estimatedEmptyAt,
 		currentDayTypeRuntimeHoursMedian,
 		reasonDe: reasonDeForStatus(status, input.samples, estimatedEmptyAt),

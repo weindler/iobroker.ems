@@ -28,23 +28,28 @@ export function contributionPrefixForCompare(governedId: CompareEligibleGoverned
 /** Max. leichte Kostensteigerung (ct), wenn PV klar steigt und Netz nicht zunimmt. */
 const STRATEGY_COST_SLACK_CT = 2;
 const STRATEGY_PV_GAIN_KWH = 0.2;
+/** Relative Verbesserung der Surplus-Ausrichtung (gewichtete W·kWh), ab der Plan B gewinnt. */
+const SURPLUS_ALIGN_REL = 0.08;
+const SURPLUS_ALIGN_ABS_WHW = 50_000;
+/** L1-Leistungsverschiebung (W über alle Slots), ab der ein Shift „echt“ ist. */
+const MEANINGFUL_SHIFT_W = 200;
 
 /**
- * Plan B muss Plan A messbar schlagen (Kosten primär, sonst Netz↓ / PV↑).
- * Leicht teurer Plan B darf gewinnen, wenn PV klar steigt und Netz nicht zunimmt
- * (Strategie-Nutzen, z. B. Wallbox auf Überschuss statt Netz-Peak).
- * Deutlich teurer ohne PV-Gewinn → nie.
+ * Plan B muss Plan A messbar schlagen (Kosten primär, sonst Netz↓ / PV↑ / Surplus-Ausrichtung).
+ * Leicht teurer Plan B darf gewinnen bei klarem PV- oder Alignment-Gewinn ohne Mehr-Netz.
  */
 export function planBBeatsPlanA(input: {
 	deltaCostCt: number;
 	deltaGridKwh: number;
 	deltaPvKwh: number;
+	/** PlanB − PlanA Surplus-Ausrichtung (Summe Leistung×Überschuss×h); optional. */
+	deltaSurplusAlign?: number;
+	surplusAlignA?: number;
 }): boolean {
 	if (input.deltaCostCt < -COST_EPSILON_CT) return true;
 	if (Math.abs(input.deltaCostCt) <= COST_EPSILON_CT) {
 		if (input.deltaGridKwh < -ENERGY_EPSILON_KWH) return true;
 		if (input.deltaPvKwh > ENERGY_EPSILON_KWH && input.deltaGridKwh <= ENERGY_EPSILON_KWH) return true;
-		return false;
 	}
 	// Leicht teurer, aber klar bessere PV-Ausrichtung und kein Mehr-Netz → Strategie-Win.
 	if (
@@ -54,7 +59,34 @@ export function planBBeatsPlanA(input: {
 	) {
 		return true;
 	}
+	const dAlign = input.deltaSurplusAlign ?? 0;
+	const alignA = input.surplusAlignA ?? 0;
+	const alignWin =
+		dAlign >= SURPLUS_ALIGN_ABS_WHW || (alignA > 0 && dAlign / alignA >= SURPLUS_ALIGN_REL);
+	if (
+		alignWin &&
+		input.deltaCostCt <= STRATEGY_COST_SLACK_CT &&
+		input.deltaGridKwh <= ENERGY_EPSILON_KWH
+	) {
+		return true;
+	}
 	return false;
+}
+
+/** Summe |newW−ownW| über alle KI-Add-ons/Slots — 0 ≈ Identität mit Plan A. */
+export function totalPowerShiftW(redistributions: Iterable<{ ownWPerSlot: number[]; newWPerSlot: number[] }>): number {
+	let sum = 0;
+	for (const r of redistributions) {
+		const n = Math.max(r.ownWPerSlot.length, r.newWPerSlot.length);
+		for (let i = 0; i < n; i++) {
+			sum += Math.abs((r.newWPerSlot[i] ?? 0) - (r.ownWPerSlot[i] ?? 0));
+		}
+	}
+	return sum;
+}
+
+export function isMeaningfulPowerShift(shiftW: number): boolean {
+	return shiftW >= MEANINGFUL_SHIFT_W;
 }
 
 interface SlotOwnUsage {
@@ -181,9 +213,12 @@ export function buildCompareResult(
 	const chartB: ComparePlanPoint[] = [];
 	const totalsA = emptyTotals();
 	const totalsB = emptyTotals();
+	let surplusAlignA = 0;
+	let surplusAlignB = 0;
 
 	plan.slots.forEach((slot, idx) => {
 		const priceCt = slot.gridPriceCtPerKwh;
+		const surplusW = Math.max(0, slot.availablePvSurplusPowerW ?? 0);
 
 		const byId = (id: CompareEligibleGovernedId): { ownW: number; ownPvW: number; newW: number } => {
 			const r = redistributions.get(id);
@@ -232,6 +267,11 @@ export function buildCompareResult(
 
 		const pvWB = Math.max(0, pvWA - sumOwnPv + sumPvB);
 		const gridWB = Math.max(0, gridWA - sumOwnGrid + sumGridB);
+
+		const ownAiW = ordered.reduce((s, r) => s + (r.ownWPerSlot[idx] ?? 0), 0);
+		const newAiW = ordered.reduce((s, r) => s + (r.newWPerSlot[idx] ?? 0), 0);
+		surplusAlignA += ownAiW * surplusW * durationH;
+		surplusAlignB += newAiW * surplusW * durationH;
 
 		chartA.push({
 			t: slot.slot.startIso,
@@ -294,12 +334,27 @@ export function buildCompareResult(
 	const deltaCostCt = round1(totalsB.costCt - totalsA.costCt);
 	const deltaGridKwh = round1(totalsB.gridKwh - totalsA.gridKwh);
 	const deltaPvKwh = round1(totalsB.pvKwh - totalsA.pvKwh);
-	const beats = planBBeatsPlanA({ deltaCostCt, deltaGridKwh, deltaPvKwh });
+	const deltaSurplusAlign = surplusAlignB - surplusAlignA;
+	const shiftW = totalPowerShiftW(ordered);
+	const hasFlexEnergy = ordered.some((r) => r.ownWPerSlot.some((w) => w > 0));
+	const beats = planBBeatsPlanA({
+		deltaCostCt,
+		deltaGridKwh,
+		deltaPvKwh,
+		deltaSurplusAlign,
+		surplusAlignA,
+	});
 
 	let activePlan: "a" | "b" = "a";
 	let decisionReasonDe: string;
 	if (activeGovernedIds.length === 0) {
 		decisionReasonDe = "Kein Add-on für KI-Optimierung freigegeben — Plan-Vergleich zeigt nur Plan A.";
+	} else if (!hasFlexEnergy) {
+		decisionReasonDe =
+			"Keine flexible Allocation (IH/Klima/Batterie/Wallbox) zum Verschieben — Plan A unverändert.";
+	} else if (!isMeaningfulPowerShift(shiftW) && slotPreferences.length > 0) {
+		decisionReasonDe =
+			"Plan A entspricht bereits der KI-Strategie (keine messbare Slot-Verschiebung) — kein Write-back nötig.";
 	} else if (beats) {
 		activePlan = "b";
 		decisionReasonDe =

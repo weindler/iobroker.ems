@@ -12,6 +12,7 @@ import {
 	estimateCoolingConstantPerH,
 	estimateCoolingModel,
 	invalidConfigResult,
+	liveRemainingHoursFromEmptyAt,
 	noSourceResult,
 } from "./math";
 import { readThermalRuntimePersist, writeThermalRuntimePersist } from "./persist";
@@ -300,6 +301,13 @@ describe("thermal runtime compute", () => {
 		assert.equal(r.samples, 0);
 		assert.equal(r.estimatedRemainingHours, 70);
 		assert.equal(r.estimatedEmptyAt, "2026-06-24T06:00:00.000Z");
+	});
+
+	it("liveRemainingHoursFromEmptyAt counts down from absolute empty_at", () => {
+		const now = new Date("2026-07-26T14:00:00.000Z");
+		assert.equal(liveRemainingHoursFromEmptyAt("2026-07-26T16:30:00.000Z", now), 2.5);
+		assert.equal(liveRemainingHoursFromEmptyAt("2026-07-26T13:00:00.000Z", now), 0);
+		assert.equal(liveRemainingHoursFromEmptyAt(null, now), null);
 	});
 
 	it("is ready with Newton cooling model even without completed floor cycles", () => {

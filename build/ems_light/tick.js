@@ -69,6 +69,13 @@ async function runEmsLightPhase1Tick(host) {
         hints.push(`live_cache: ${String(e)}`);
         liveResult.errors.push(String(e));
     }
+    try {
+        const { refreshThermalRemainingCountdown } = await Promise.resolve().then(() => __importStar(require("../learning/thermal_runtime/run.js")));
+        await refreshThermalRemainingCountdown(host);
+    }
+    catch (e) {
+        hints.push(`thermal_remaining_countdown: ${String(e)}`);
+    }
     if (operatorForecastPathEnabled(host.config)) {
         const { runGridSupplyTick } = await Promise.resolve().then(() => __importStar(require("../operator/supply/grid_tick.js")));
         const { runFlexibleContributionsTick } = await Promise.resolve().then(() => __importStar(require("../operator/contributions/flexible/tick.js")));

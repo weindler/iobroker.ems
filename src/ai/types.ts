@@ -37,6 +37,8 @@ export interface AiLearningDigest {
 	pvHorizonDays: Array<{ day: number; correctedKwh: number | null }>;
 	thermalRuntimeStatus: string | null;
 	thermalEstimatedEmptyAt: string | null;
+	/** Live-Countdown aus empty_at − now (h), nie eingefrorener Snapshot. */
+	thermalEstimatedRemainingHours: number | null;
 	batteryRuntimeStatus: string | null;
 	batteryTopOffIntervalDays: number | null;
 	priceLearningStatus: string | null;
@@ -66,6 +68,7 @@ export interface AiSituationBrief {
 	immersion: {
 		bufferTempC: number | null;
 		thermalEstimatedEmptyAt: string | null;
+		thermalEstimatedRemainingHours: number | null;
 	};
 	climate: {
 		units: Array<{

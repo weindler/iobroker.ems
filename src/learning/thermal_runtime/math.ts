@@ -498,6 +498,23 @@ export function estimatedEmptyAtIso(
 	return new Date(ms).toISOString();
 }
 
+/**
+ * Live-Restlaufzeit aus absolutem `estimated_empty_at` (nicht der eingefrorene Snapshot
+ * vom letzten Learning-Lauf). `null` wenn kein gültiger zukünftiger Leer-Zeitpunkt.
+ */
+export function liveRemainingHoursFromEmptyAt(
+	estimatedEmptyAtIso: string | null | undefined,
+	now: Date,
+): number | null {
+	if (!estimatedEmptyAtIso) return null;
+	const ms = Date.parse(estimatedEmptyAtIso);
+	if (!Number.isFinite(ms)) return null;
+	const hours = (ms - now.getTime()) / MS_PER_HOUR;
+	if (!Number.isFinite(hours)) return null;
+	if (hours <= 0) return 0;
+	return round3(hours);
+}
+
 function deriveHealth(
 	samples: number,
 	hasSource: boolean,

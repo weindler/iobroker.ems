@@ -15,6 +15,7 @@ import {
 	estimateActiveCoolingRateCPerH,
 	estimateCoolingModel,
 	invalidConfigResult,
+	liveRemainingHoursFromEmptyAt,
 	noSourceResult,
 	summarizeTempHistory,
 } from "./math";
@@ -52,6 +53,44 @@ async function setNumIfValid(
 ): Promise<void> {
 	if (value !== null && Number.isFinite(value)) {
 		await host.setStateAsync(id, { val: value, ack: true });
+	}
+}
+
+async function setNumOrClear(
+	host: ThermalRuntimeRunHost,
+	id: string,
+	value: number | null,
+): Promise<void> {
+	if (value !== null && Number.isFinite(value)) {
+		await host.setStateAsync(id, { val: value, ack: true });
+	} else {
+		await host.setStateAsync(id, { val: null, ack: true });
+	}
+}
+
+/** Minimaler Host für den Live-Countdown (EMS-Tick, kein History nötig). */
+export type ThermalCountdownHost = {
+	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
+	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
+};
+
+/**
+ * Hält `estimated_remaining_hours` als Live-Countdown zu `estimated_empty_at` aktuell
+ * (zwischen den stündlichen Learning-Läufen). Kein neues Modell — nur Wanduhr.
+ */
+export async function refreshThermalRemainingCountdown(host: ThermalCountdownHost): Promise<void> {
+	try {
+		const st = await host.getStateAsync("learning.thermal_runtime.estimated_empty_at");
+		const raw = typeof st?.val === "string" ? st.val.trim() : "";
+		if (!raw) return;
+		const live = liveRemainingHoursFromEmptyAt(raw, new Date());
+		if (live === null) return;
+		await host.setStateAsync("learning.thermal_runtime.estimated_remaining_hours", {
+			val: live,
+			ack: true,
+		});
+	} catch {
+		// fail-soft — Countdown ist Diagnose, kein Steuerpfad
 	}
 }
 
@@ -102,7 +141,7 @@ async function writeResult(
 		"learning.thermal_runtime.current_temperature_c",
 		result.currentTemperatureC,
 	);
-	await setNumIfValid(
+	await setNumOrClear(
 		host,
 		"learning.thermal_runtime.estimated_remaining_hours",
 		result.estimatedRemainingHours,

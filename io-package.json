@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.229",
+		"version": "0.1.230",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.230": {
+				"en": "AI write-back: prefer_pv_today/heat_today demote later days; surplus-alignment can beat Plan A; clearer reasons when nothing to shift. Thermal remaining hours = live countdown from estimated_empty_at (was a stale learning snapshot).",
+				"de": "KI Write-back: prefer_pv_today/heat_today meiden Folgetage; Surplus-Ausrichtung kann Plan A schlagen; klarere Gründe ohne Shift. Thermal Reststunden = Live-Countdown aus estimated_empty_at (vorher eingefrorener Learning-Snapshot)."
+			},
 			"0.1.229": {
 				"en": "Thinking AI more useful: normalize action/note mismatches (PV→prefer_pv), stronger slot weights, Plan B may win on clear PV gain with small cost slack; thinking mode no longer auto-suspends when write-back skips.",
 				"de": "Denkende KI wirksamer: Action/Note-Widersprüche normalisieren (PV→prefer_pv), stärkere Slot-Gewichte, Plan B darf bei klarem PV-Gewinn mit kleiner Kosten-Toleranz gewinnen; Thinking-Modus sperrt Auto nicht mehr ohne Write-back."

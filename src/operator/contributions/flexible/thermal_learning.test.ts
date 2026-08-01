@@ -72,6 +72,25 @@ describe("thermal learning signal", () => {
 		assert.equal(signal.status, "valid");
 		assert.equal(signal.coolingRateCPerHAvg, 0.9);
 		assert.equal(signal.estimatedEmptyAt, "2026-07-26T16:30:00.000Z");
+		assert.equal(signal.estimatedRemainingHours, 6.5);
+	});
+
+	it("derives live remaining from empty_at when stored remaining is stale", () => {
+		const later = new Date("2026-07-26T14:00:00.000Z"); // 2.5 h before empty_at
+		const signal = buildThermalLearningSignal({
+			now: later,
+			rawStatus: "ready",
+			rawHealth: "ok",
+			samples: 12,
+			coolingRateCPerHAvg: 0.9,
+			coolingConstantPerH: 0.05,
+			coolingAsymptoteC: 18,
+			estimatedRemainingHours: 6.5, // eingefrorener Snapshot vom früheren Lauf
+			estimatedEmptyAtRaw: "2026-07-26T16:30:00.000Z",
+			byDayTypeJsonRaw: null,
+		});
+		assert.equal(signal.estimatedEmptyAt, "2026-07-26T16:30:00.000Z");
+		assert.equal(signal.estimatedRemainingHours, 2.5);
 	});
 
 	it("drops estimated_empty_at when it lies in the past (stale data)", () => {
@@ -89,6 +108,7 @@ describe("thermal learning signal", () => {
 		});
 		assert.equal(signal.status, "valid");
 		assert.equal(signal.estimatedEmptyAt, null);
+		assert.equal(signal.estimatedRemainingHours, 0);
 	});
 
 	it("extracts the current day-type median runtime from by_day_type_json", () => {

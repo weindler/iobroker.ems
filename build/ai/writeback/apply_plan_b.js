@@ -150,12 +150,8 @@ function redistributeEligible(plan, governedId, slotPreferences, options) {
  */
 function applyAiPreferencesToDailyPlan(plan, allowedAddonIds, slotPreferences, options) {
     const compare = (0, build_1.buildCompareResult)(plan, allowedAddonIds, slotPreferences, options);
-    const beats = (0, build_1.planBBeatsPlanA)({
-        deltaCostCt: compare.delta.deltaCostCt,
-        deltaGridKwh: compare.delta.planB.gridKwh - compare.delta.planA.gridKwh,
-        deltaPvKwh: compare.delta.planB.pvKwh - compare.delta.planA.pvKwh,
-    });
-    if (!beats || slotPreferences.length === 0 || compare.delta.activePlan !== "b") {
+    // Gate = activePlan aus Compare (inkl. Surplus-Alignment); kein zweites, engeres Beat-Kriterium.
+    if (slotPreferences.length === 0 || compare.delta.activePlan !== "b") {
         return { plan, compare, writebackApplied: false };
     }
     const next = clonePlan(plan);

@@ -110,6 +110,15 @@ function plan(slots) {
     (0, node_test_1.it)("wins on equal cost with lower grid", () => {
         strict_1.default.equal((0, build_js_1.planBBeatsPlanA)({ deltaCostCt: 0, deltaGridKwh: -0.1, deltaPvKwh: 0 }), true);
     });
+    (0, node_test_1.it)("wins on surplus-alignment gain with cost slack and no more grid", () => {
+        strict_1.default.equal((0, build_js_1.planBBeatsPlanA)({
+            deltaCostCt: 0.5,
+            deltaGridKwh: 0,
+            deltaPvKwh: 0,
+            deltaSurplusAlign: 80_000,
+            surplusAlignA: 100_000,
+        }), true);
+    });
 });
 (0, node_test_1.describe)("applyAiPreferencesToDailyPlan", () => {
     (0, node_test_1.it)("applies write-back when shifting load to cheaper/PV slot", () => {

@@ -202,11 +202,16 @@ function deriveForDecision(plan: DailyPlan, decision: AiAddonDecision, nowMs: nu
 				if (deadlineMs !== null && s.startMs >= deadlineMs) return false;
 				return true;
 			});
+			const windowIso = new Set(window.map((s) => s.startIso));
 			// Günstig + möglichst viel Überschuss (menschlich: „jetzt laden wenn billig UND Sonne“).
 			const blended = blendWeightMaps(window, [
 				{ map: priceQuartileWeights(window), share: 0.55 },
 				{ map: surplusWeights(window, HIGH_W, 0.4), share: 0.45 },
 			]);
+			// Außerhalb Fenster meiden — sonst bleibt Energie mit Default-Gewicht 1 stehen.
+			for (const s of allSlots) {
+				if (!windowIso.has(s.startIso)) blended.set(s.startIso, LOW_W);
+			}
 			return prefsFromMap(addonId, blended);
 		}
 		if (action === "prefer_pv_tomorrow") {
@@ -219,10 +224,12 @@ function deriveForDecision(plan: DailyPlan, decision: AiAddonDecision, nowMs: nu
 		}
 		if (action === "prefer_pv_today") {
 			const todaySlots = allSlots.filter((s) => Number.isFinite(s.startMs) && s.startMs < tomorrowMs);
+			const laterSlots = allSlots.filter((s) => Number.isFinite(s.startMs) && s.startMs >= tomorrowMs);
 			const blended = blendWeightMaps(todaySlots, [
 				{ map: surplusWeights(todaySlots, HIGH_W, LOW_W), share: 0.7 },
 				{ map: priceQuartileWeights(todaySlots), share: 0.3 },
 			]);
+			for (const s of laterSlots) blended.set(s.startIso, LOW_W);
 			return prefsFromMap(addonId, blended);
 		}
 	}
@@ -230,10 +237,12 @@ function deriveForDecision(plan: DailyPlan, decision: AiAddonDecision, nowMs: nu
 	if (addonId === "immersion_heater") {
 		if (action === "heat_today") {
 			const todaySlots = allSlots.filter((s) => Number.isFinite(s.startMs) && s.startMs < tomorrowMs);
+			const laterSlots = allSlots.filter((s) => Number.isFinite(s.startMs) && s.startMs >= tomorrowMs);
 			const blended = blendWeightMaps(todaySlots, [
 				{ map: surplusWeights(todaySlots, HIGH_W, LOW_W), share: 0.65 },
 				{ map: priceQuartileWeights(todaySlots), share: 0.35 },
 			]);
+			for (const s of laterSlots) blended.set(s.startIso, LOW_W);
 			return prefsFromMap(addonId, blended);
 		}
 		if (action === "defer_tomorrow") {

@@ -285,6 +285,12 @@ function coolingCurve(startMs, startTemp, endTemp, hours, steps = 6) {
         strict_1.default.equal(r.estimatedRemainingHours, 70);
         strict_1.default.equal(r.estimatedEmptyAt, "2026-06-24T06:00:00.000Z");
     });
+    (0, node_test_1.it)("liveRemainingHoursFromEmptyAt counts down from absolute empty_at", () => {
+        const now = new Date("2026-07-26T14:00:00.000Z");
+        strict_1.default.equal((0, math_1.liveRemainingHoursFromEmptyAt)("2026-07-26T16:30:00.000Z", now), 2.5);
+        strict_1.default.equal((0, math_1.liveRemainingHoursFromEmptyAt)("2026-07-26T13:00:00.000Z", now), 0);
+        strict_1.default.equal((0, math_1.liveRemainingHoursFromEmptyAt)(null, now), null);
+    });
     (0, node_test_1.it)("is ready with Newton cooling model even without completed floor cycles", () => {
         const r = (0, math_1.computeThermalRuntimeLearning)({
             cycles: [],

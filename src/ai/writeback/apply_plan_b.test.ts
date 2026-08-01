@@ -114,6 +114,18 @@ describe("planBBeatsPlanA", () => {
 	it("wins on equal cost with lower grid", () => {
 		assert.equal(planBBeatsPlanA({ deltaCostCt: 0, deltaGridKwh: -0.1, deltaPvKwh: 0 }), true);
 	});
+	it("wins on surplus-alignment gain with cost slack and no more grid", () => {
+		assert.equal(
+			planBBeatsPlanA({
+				deltaCostCt: 0.5,
+				deltaGridKwh: 0,
+				deltaPvKwh: 0,
+				deltaSurplusAlign: 80_000,
+				surplusAlignA: 100_000,
+			}),
+			true,
+		);
+	});
 });
 
 describe("applyAiPreferencesToDailyPlan", () => {

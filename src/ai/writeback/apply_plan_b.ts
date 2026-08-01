@@ -6,7 +6,6 @@ import {
 	buildCompareResult,
 	COMPARE_ELIGIBLE_GOVERNED_IDS,
 	contributionPrefixForCompare,
-	planBBeatsPlanA,
 	type CompareBuildOptions,
 	type CompareEligibleGovernedId,
 } from "../compare/build";
@@ -194,13 +193,8 @@ export function applyAiPreferencesToDailyPlan(
 	options?: ApplyAiPreferencesOptions,
 ): { plan: DailyPlan; compare: CompareResult; writebackApplied: boolean } {
 	const compare = buildCompareResult(plan, allowedAddonIds, slotPreferences, options);
-	const beats = planBBeatsPlanA({
-		deltaCostCt: compare.delta.deltaCostCt,
-		deltaGridKwh: compare.delta.planB.gridKwh - compare.delta.planA.gridKwh,
-		deltaPvKwh: compare.delta.planB.pvKwh - compare.delta.planA.pvKwh,
-	});
-
-	if (!beats || slotPreferences.length === 0 || compare.delta.activePlan !== "b") {
+	// Gate = activePlan aus Compare (inkl. Surplus-Alignment); kein zweites, engeres Beat-Kriterium.
+	if (slotPreferences.length === 0 || compare.delta.activePlan !== "b") {
 		return { plan, compare, writebackApplied: false };
 	}
 

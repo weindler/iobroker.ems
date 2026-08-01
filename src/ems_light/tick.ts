@@ -47,6 +47,13 @@ export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): 
 		liveResult.errors.push(String(e));
 	}
 
+	try {
+		const { refreshThermalRemainingCountdown } = await import("../learning/thermal_runtime/run.js");
+		await refreshThermalRemainingCountdown(host);
+	} catch (e) {
+		hints.push(`thermal_remaining_countdown: ${String(e)}`);
+	}
+
 	if (operatorForecastPathEnabled(host.config)) {
 		const { runGridSupplyTick } = await import("../operator/supply/grid_tick.js");
 		const { runFlexibleContributionsTick } = await import("../operator/contributions/flexible/tick.js");

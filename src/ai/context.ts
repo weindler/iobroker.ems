@@ -13,6 +13,7 @@ import type {
 } from "./types";
 import type { DailyPlan, DailyPlanSlot } from "../operator/daily_plan/types";
 import { asBool, asNum } from "../ems_light/state_util";
+import { liveRemainingHoursFromEmptyAt } from "../learning/thermal_runtime/math";
 
 export type ContextHost = {
 	config: unknown;
@@ -241,6 +242,7 @@ export async function buildLearningDigest(host: ContextHost): Promise<AiLearning
 		pvHorizonDays,
 		thermalRuntimeStatus: thermalStatus,
 		thermalEstimatedEmptyAt: thermalEmpty,
+		thermalEstimatedRemainingHours: liveRemainingHoursFromEmptyAt(thermalEmpty, new Date()),
 		batteryRuntimeStatus: batteryStatus,
 		batteryTopOffIntervalDays: topOffDays,
 		priceLearningStatus: priceStatus,
@@ -319,6 +321,7 @@ export async function buildSituationBrief(
 		immersion: {
 			bufferTempC: bufferTempLive ?? bufferTempRuntime,
 			thermalEstimatedEmptyAt: learning.thermalEstimatedEmptyAt,
+			thermalEstimatedRemainingHours: learning.thermalEstimatedRemainingHours,
 		},
 		climate: {
 			units: [

@@ -8,6 +8,7 @@ const types_1 = require("../addons/immersion_heater/runtime/types");
 const ensure_states_1 = require("../addons/air_conditioning/runtime/ensure_states");
 const constants_1 = require("../learning/pv_horizon/constants");
 const state_util_1 = require("../ems_light/state_util");
+const math_1 = require("../learning/thermal_runtime/math");
 /** Nur Add-ons, die aktiv UND per Governance für KI-Optimierung freigegeben sind — sonst darf die KI sie nicht mal erwähnen. */
 function resolveAllowedAddonIds(config) {
     return (0, registry_1.governedAddonIds)().filter((id) => (0, config_1.isAddonEnabled)(config, id) && (0, config_1.isAddonAiOptimizationAllowed)(config, id));
@@ -216,6 +217,7 @@ async function buildLearningDigest(host) {
         pvHorizonDays,
         thermalRuntimeStatus: thermalStatus,
         thermalEstimatedEmptyAt: thermalEmpty,
+        thermalEstimatedRemainingHours: (0, math_1.liveRemainingHoursFromEmptyAt)(thermalEmpty, new Date()),
         batteryRuntimeStatus: batteryStatus,
         batteryTopOffIntervalDays: topOffDays,
         priceLearningStatus: priceStatus,
@@ -268,6 +270,7 @@ async function buildSituationBrief(host, plan, learning) {
         immersion: {
             bufferTempC: bufferTempLive ?? bufferTempRuntime,
             thermalEstimatedEmptyAt: learning.thermalEstimatedEmptyAt,
+            thermalEstimatedRemainingHours: learning.thermalEstimatedRemainingHours,
         },
         climate: {
             units: [

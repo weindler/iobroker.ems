@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.errorResult = exports.invalidConfigResult = exports.disabledResult = exports.noSourceResult = exports.computeThermalRuntimeLearning = exports.estimatedEmptyAtIso = exports.estimateRemainingHours = exports.groupByDayType = exports.groupBySeason = exports.estimateCoolingConstantPerH = exports.estimateCoolingModel = exports.estimateActiveCoolingRateCPerH = exports.collectCoolingSegments = exports.detectRuntimeCycles = exports.summarizeTempHistory = exports.median = exports.average = void 0;
+exports.errorResult = exports.invalidConfigResult = exports.disabledResult = exports.noSourceResult = exports.computeThermalRuntimeLearning = exports.liveRemainingHoursFromEmptyAt = exports.estimatedEmptyAtIso = exports.estimateRemainingHours = exports.groupByDayType = exports.groupBySeason = exports.estimateCoolingConstantPerH = exports.estimateCoolingModel = exports.estimateActiveCoolingRateCPerH = exports.collectCoolingSegments = exports.detectRuntimeCycles = exports.summarizeTempHistory = exports.median = exports.average = void 0;
 const time_1 = require("../house_load/time");
 const constants_1 = require("./constants");
 function round2(n) {
@@ -389,6 +389,24 @@ function estimatedEmptyAtIso(now, remainingHours) {
     return new Date(ms).toISOString();
 }
 exports.estimatedEmptyAtIso = estimatedEmptyAtIso;
+/**
+ * Live-Restlaufzeit aus absolutem `estimated_empty_at` (nicht der eingefrorene Snapshot
+ * vom letzten Learning-Lauf). `null` wenn kein gültiger zukünftiger Leer-Zeitpunkt.
+ */
+function liveRemainingHoursFromEmptyAt(estimatedEmptyAtIso, now) {
+    if (!estimatedEmptyAtIso)
+        return null;
+    const ms = Date.parse(estimatedEmptyAtIso);
+    if (!Number.isFinite(ms))
+        return null;
+    const hours = (ms - now.getTime()) / constants_1.MS_PER_HOUR;
+    if (!Number.isFinite(hours))
+        return null;
+    if (hours <= 0)
+        return 0;
+    return round3(hours);
+}
+exports.liveRemainingHoursFromEmptyAt = liveRemainingHoursFromEmptyAt;
 function deriveHealth(samples, hasSource, configValid, hasCoolingModel) {
     if (!configValid)
         return "invalid_config";

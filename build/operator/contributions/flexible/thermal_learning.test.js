@@ -72,6 +72,24 @@ const NOW = new Date("2026-07-26T10:00:00.000Z"); // Sonntag → weekend
         strict_1.default.equal(signal.status, "valid");
         strict_1.default.equal(signal.coolingRateCPerHAvg, 0.9);
         strict_1.default.equal(signal.estimatedEmptyAt, "2026-07-26T16:30:00.000Z");
+        strict_1.default.equal(signal.estimatedRemainingHours, 6.5);
+    });
+    (0, node_test_1.it)("derives live remaining from empty_at when stored remaining is stale", () => {
+        const later = new Date("2026-07-26T14:00:00.000Z"); // 2.5 h before empty_at
+        const signal = (0, thermal_learning_1.buildThermalLearningSignal)({
+            now: later,
+            rawStatus: "ready",
+            rawHealth: "ok",
+            samples: 12,
+            coolingRateCPerHAvg: 0.9,
+            coolingConstantPerH: 0.05,
+            coolingAsymptoteC: 18,
+            estimatedRemainingHours: 6.5, // eingefrorener Snapshot vom früheren Lauf
+            estimatedEmptyAtRaw: "2026-07-26T16:30:00.000Z",
+            byDayTypeJsonRaw: null,
+        });
+        strict_1.default.equal(signal.estimatedEmptyAt, "2026-07-26T16:30:00.000Z");
+        strict_1.default.equal(signal.estimatedRemainingHours, 2.5);
     });
     (0, node_test_1.it)("drops estimated_empty_at when it lies in the past (stale data)", () => {
         const signal = (0, thermal_learning_1.buildThermalLearningSignal)({
@@ -88,6 +106,7 @@ const NOW = new Date("2026-07-26T10:00:00.000Z"); // Sonntag → weekend
         });
         strict_1.default.equal(signal.status, "valid");
         strict_1.default.equal(signal.estimatedEmptyAt, null);
+        strict_1.default.equal(signal.estimatedRemainingHours, 0);
     });
     (0, node_test_1.it)("extracts the current day-type median runtime from by_day_type_json", () => {
         const signal = (0, thermal_learning_1.buildThermalLearningSignal)({

@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildThermalLearningSignal = void 0;
 const time_1 = require("../../../learning/house_load/time");
+const math_1 = require("../../../learning/thermal_runtime/math");
 function parseByDayTypeJson(raw) {
     if (!raw)
         return null;
@@ -49,6 +50,13 @@ function buildThermalLearningSignal(input) {
             estimatedEmptyAt = new Date(ms).toISOString();
         }
     }
+    // Reststunden immer live aus empty_at — der State-Snapshot altert zwischen Learning-Läufen.
+    const liveRemaining = (0, math_1.liveRemainingHoursFromEmptyAt)(estimatedEmptyAt, input.now);
+    const estimatedRemainingHours = liveRemaining !== null
+        ? liveRemaining
+        : estimatedEmptyAt === null && input.estimatedEmptyAtRaw
+            ? 0 // empty_at in der Vergangenheit / verworfen
+            : input.estimatedRemainingHours;
     const byDayType = parseByDayTypeJson(input.byDayTypeJsonRaw);
     const currentDayType = (0, time_1.dayTypeFromWeekday)((0, time_1.weekdayFromDate)(input.now));
     const currentGroup = byDayType?.[currentDayType];
@@ -76,7 +84,7 @@ function buildThermalLearningSignal(input) {
         coolingRateCPerHAvg: input.coolingRateCPerHAvg,
         coolingConstantPerH: input.coolingConstantPerH,
         coolingAsymptoteC: input.coolingAsymptoteC,
-        estimatedRemainingHours: input.estimatedRemainingHours,
+        estimatedRemainingHours,
         estimatedEmptyAt,
         currentDayTypeRuntimeHoursMedian,
         reasonDe: reasonDeForStatus(status, input.samples, estimatedEmptyAt),

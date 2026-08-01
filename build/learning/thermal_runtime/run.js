@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runThermalRuntimeLearning = void 0;
+exports.runThermalRuntimeLearning = exports.refreshThermalRemainingCountdown = void 0;
 const state_util_1 = require("../../ems_light/state_util");
 const config_1 = require("./config");
 const history_1 = require("./history");
@@ -20,6 +20,37 @@ async function setNumIfValid(host, id, value) {
         await host.setStateAsync(id, { val: value, ack: true });
     }
 }
+async function setNumOrClear(host, id, value) {
+    if (value !== null && Number.isFinite(value)) {
+        await host.setStateAsync(id, { val: value, ack: true });
+    }
+    else {
+        await host.setStateAsync(id, { val: null, ack: true });
+    }
+}
+/**
+ * Hält `estimated_remaining_hours` als Live-Countdown zu `estimated_empty_at` aktuell
+ * (zwischen den stündlichen Learning-Läufen). Kein neues Modell — nur Wanduhr.
+ */
+async function refreshThermalRemainingCountdown(host) {
+    try {
+        const st = await host.getStateAsync("learning.thermal_runtime.estimated_empty_at");
+        const raw = typeof st?.val === "string" ? st.val.trim() : "";
+        if (!raw)
+            return;
+        const live = (0, math_1.liveRemainingHoursFromEmptyAt)(raw, new Date());
+        if (live === null)
+            return;
+        await host.setStateAsync("learning.thermal_runtime.estimated_remaining_hours", {
+            val: live,
+            ack: true,
+        });
+    }
+    catch {
+        // fail-soft — Countdown ist Diagnose, kein Steuerpfad
+    }
+}
+exports.refreshThermalRemainingCountdown = refreshThermalRemainingCountdown;
 async function readCurrentTemp(host, stateId) {
     try {
         const st = host.getForeignStateAsync
@@ -48,7 +79,7 @@ async function writeResult(host, result, lastRun) {
         ack: true,
     });
     await setNumIfValid(host, "learning.thermal_runtime.current_temperature_c", result.currentTemperatureC);
-    await setNumIfValid(host, "learning.thermal_runtime.estimated_remaining_hours", result.estimatedRemainingHours);
+    await setNumOrClear(host, "learning.thermal_runtime.estimated_remaining_hours", result.estimatedRemainingHours);
     await host.setStateAsync("learning.thermal_runtime.estimated_empty_at", {
         val: result.estimatedEmptyAt ?? "",
         ack: true,

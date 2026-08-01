@@ -13,11 +13,17 @@ function cfg(over = {}) {
         chargingStateId: "",
         chargePowerWStateId: "",
         sessionEnergyKwhStateId: "",
+        chargeRemainingEnergyKwhStateId: "",
         vehicleSocStateId: "",
+        vehicleNameStateId: "",
+        vehicleTitleStateId: "",
         planActiveStateId: "",
         planSocStateId: "",
         planTimeStateId: "",
         effectivePlanTimeStateId: "",
+        effectiveLimitSocStateId: "",
+        batteryBoostStateId: "",
+        loadpointModeStateId: "",
         activePhasesStateId: "",
         configuredPhasesStateId: "",
         minCurrentAStateId: "",
@@ -72,6 +78,23 @@ function mockHost(states) {
         }), now);
         strict_1.default.equal(snap.session_energy_kwh.status, "valid");
         strict_1.default.equal(snap.session_energy_kwh.value, 8.2);
+    });
+    (0, node_test_1.it)("converts EVCC charge remaining energy from Wh to kWh", async () => {
+        const snap = await (0, evcc_telemetry_1.readEvccTelemetrySnapshot)(mockHost({
+            "evcc.0.status.chargeRemainingEnergy": 12500,
+        }), cfg({
+            chargeRemainingEnergyKwhStateId: "evcc.0.status.chargeRemainingEnergy",
+        }), now);
+        strict_1.default.equal(snap.charge_remaining_energy_kwh.status, "valid");
+        strict_1.default.equal(snap.charge_remaining_energy_kwh.value, 12.5);
+    });
+    (0, node_test_1.it)("normalizes loadpoint mode to trimmed lowercase", async () => {
+        const snap = await (0, evcc_telemetry_1.readEvccTelemetrySnapshot)(mockHost({
+            "evcc.0.status.mode": " MinPV ",
+        }), cfg({
+            loadpointModeStateId: "evcc.0.status.mode",
+        }), now);
+        strict_1.default.equal(snap.loadpoint_mode.value, "minpv");
     });
     (0, node_test_1.it)("reads effectivePlanTime as ISO string", async () => {
         const snap = await (0, evcc_telemetry_1.readEvccTelemetrySnapshot)(mockHost({

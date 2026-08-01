@@ -214,4 +214,26 @@ describe("planner battery", () => {
 		});
 		assert.equal(r.action, "hold");
 	});
+
+	it("activates hold on wallboxChargeHold (boost/external)", () => {
+		const constraints = buildPlannerConstraints({
+			evccBatteryMode: "normal",
+			evccBatteryDischargeControl: false,
+			userIntentBatteryHold: false,
+			wallboxChargeHold: true,
+			wallboxChargeHoldReasonDe: "EVCC Boost aktiv",
+		});
+		assert.equal(constraints.battery_hold_active, true);
+		assert.match(constraints.reason_de, /Boost/);
+	});
+
+	it("does not hold from wallboxChargeHold false", () => {
+		const constraints = buildPlannerConstraints({
+			evccBatteryMode: "normal",
+			evccBatteryDischargeControl: false,
+			userIntentBatteryHold: false,
+			wallboxChargeHold: false,
+		});
+		assert.equal(constraints.battery_hold_active, false);
+	});
 });

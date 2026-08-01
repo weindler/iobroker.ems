@@ -4,7 +4,10 @@ import { batteryConfigFromAdapter, batteryProfileIdFromConfig } from "../../../a
 import { BAT } from "../../../addons/battery/ensure_states";
 import { parseResolvedBatteryIntentJson } from "../../../addons/battery/runtime/intent_read";
 import { WALLBOX_EVCC_STATES } from "../../../addons/wallbox/ensure_evcc_states";
+import { WALLBOX_RUNTIME_STATES } from "../../../addons/wallbox/runtime/states";
 import { wallboxEvccTelemetryConfigFromAdapter } from "../../../addons/wallbox/evcc_config";
+import { vehicleStatePaths } from "../../../addons/wallbox/vehicles/ensure_states";
+import { intentEvccConfigFromAdapter } from "../../../intent/config";
 import { immersionDeviceConfigFromAdapter } from "../../../addons/immersion_heater/device_config";
 import { IMMERSION_RUNTIME_STATES } from "../../../addons/immersion_heater/runtime/types";
 import { acGlobalConfigFromAdapter } from "../../../addons/air_conditioning/config";
@@ -315,9 +318,15 @@ export async function collectFlexibleContributions(
 		planSoc,
 		planActive,
 		sessionKwh,
+		chargeRemainingKwh,
+		effectiveLimitSoc,
 		deadlineRaw,
 		activePhases,
 		maxCurrentA,
+		activeVehicleRequiredKwh,
+		activeVehicleSocEnergyReady,
+		activeVehicleId,
+		activeVehicleProfileValid,
 		bufferTemp,
 		immersionFault,
 		immersionState,
@@ -360,9 +369,15 @@ export async function collectFlexibleContributions(
 		readNum(host, WALLBOX_EVCC_STATES.planSocPct),
 		readBool(host, WALLBOX_EVCC_STATES.planActive),
 		readNum(host, WALLBOX_EVCC_STATES.sessionEnergyKwh),
+		readNum(host, WALLBOX_EVCC_STATES.chargeRemainingEnergyKwh),
+		readNum(host, WALLBOX_EVCC_STATES.effectiveLimitSocPct),
 		readStr(host, WALLBOX_EVCC_STATES.effectivePlanTime),
 		readNum(host, WALLBOX_EVCC_STATES.activePhases),
 		readNum(host, WALLBOX_EVCC_STATES.maxCurrentA),
+		readNum(host, WALLBOX_RUNTIME_STATES.activeVehicleRequiredBatteryEnergyKwh),
+		readBool(host, WALLBOX_RUNTIME_STATES.activeVehicleSocEnergyReady),
+		readStr(host, WALLBOX_RUNTIME_STATES.activeVehicleId),
+		readBool(host, WALLBOX_RUNTIME_STATES.activeVehicleProfileValid),
 		readNum(host, IMMERSION_RUNTIME_STATES.bufferTemperatureC),
 		readBool(host, IMMERSION_RUNTIME_STATES.faultActive),
 		readStr(host, IMMERSION_RUNTIME_STATES.state),
@@ -388,6 +403,37 @@ export async function collectFlexibleContributions(
 
 	const evccCfg = wallboxEvccTelemetryConfigFromAdapter(config);
 	const evccConfigured = evccCfg.enabledStateId.trim().length > 0;
+
+	let remainingEnergyKwh: number | null =
+		chargeRemainingKwh !== null && Number.isFinite(chargeRemainingKwh)
+			? Math.max(0, chargeRemainingKwh)
+			: null;
+	if (
+		remainingEnergyKwh === null &&
+		activeVehicleSocEnergyReady === true &&
+		activeVehicleRequiredKwh !== null &&
+		Number.isFinite(activeVehicleRequiredKwh)
+	) {
+		remainingEnergyKwh = Math.max(0, activeVehicleRequiredKwh);
+	}
+
+	let vehicleCapacityKwh: number | null = null;
+	if (activeVehicleId && activeVehicleProfileValid === true) {
+		const capPath = vehicleStatePaths(activeVehicleId).configBatteryCapacityNetKwh;
+		vehicleCapacityKwh = await readNum(host, capPath);
+		if (vehicleCapacityKwh !== null && !(vehicleCapacityKwh > 0)) {
+			vehicleCapacityKwh = null;
+		}
+	}
+
+	let fallbackTargetSocPct: number | null = null;
+	const intentEvcc = intentEvccConfigFromAdapter(config);
+	if (intentEvcc.targetSocStateId) {
+		fallbackTargetSocPct = await readForeignNum(host, intentEvcc.targetSocStateId);
+		if (fallbackTargetSocPct !== null && !(fallbackTargetSocPct > 0 && fallbackTargetSocPct <= 100)) {
+			fallbackTargetSocPct = null;
+		}
+	}
 
 	const acConfig = acGlobalConfigFromAdapter(config);
 	const stats = await readConsumerStats(host);
@@ -475,8 +521,10 @@ export async function collectFlexibleContributions(
 			planSocPct: planSoc,
 			planActive: planActive === true,
 			sessionEnergyKwh: sessionKwh,
-			remainingEnergyKwh: null,
-			vehicleCapacityKwh: null,
+			remainingEnergyKwh,
+			vehicleCapacityKwh,
+			effectiveLimitSocPct: effectiveLimitSoc,
+			fallbackTargetSocPct,
 			deadlineIso: validIsoDeadline(deadlineRaw),
 			activePhases,
 			maxCurrentA,

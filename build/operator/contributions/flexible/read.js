@@ -6,15 +6,18 @@ const config_1 = require("../../../addons/battery/config");
 const ensure_states_1 = require("../../../addons/battery/ensure_states");
 const intent_read_1 = require("../../../addons/battery/runtime/intent_read");
 const ensure_evcc_states_1 = require("../../../addons/wallbox/ensure_evcc_states");
+const states_1 = require("../../../addons/wallbox/runtime/states");
 const evcc_config_1 = require("../../../addons/wallbox/evcc_config");
+const ensure_states_2 = require("../../../addons/wallbox/vehicles/ensure_states");
+const config_2 = require("../../../intent/config");
 const device_config_1 = require("../../../addons/immersion_heater/device_config");
 const types_1 = require("../../../addons/immersion_heater/runtime/types");
-const config_2 = require("../../../addons/air_conditioning/config");
+const config_3 = require("../../../addons/air_conditioning/config");
 const constants_1 = require("../../../addons/air_conditioning/constants");
-const ensure_states_2 = require("../../../addons/air_conditioning/runtime/ensure_states");
+const ensure_states_3 = require("../../../addons/air_conditioning/runtime/ensure_states");
 const governance_1 = require("../../../addons/governance");
-const ensure_states_3 = require("../../../addons/governance/ensure_states");
-const config_3 = require("../../../learning/weather/config");
+const ensure_states_4 = require("../../../addons/governance/ensure_states");
+const config_4 = require("../../../learning/weather/config");
 const consumer_stats_1 = require("../../../learning/consumer_stats");
 const persist_1 = require("../../../learning/consumer_stats/persist");
 const constants_2 = require("../../../learning/pv_horizon/constants");
@@ -22,7 +25,7 @@ const tree_paths_1 = require("../../../tree_paths");
 const mode_policy_1 = require("../../../planner/mode_policy");
 const intent_read_2 = require("../../../addons/immersion_heater/runtime/intent_read");
 const time_1 = require("../../time");
-const config_4 = require("../../../intent/config");
+const config_5 = require("../../../intent/config");
 const house_load_1 = require("../house_load");
 const read_1 = require("../read");
 const build_1 = require("./build");
@@ -78,7 +81,7 @@ async function readConsumerStats(host) {
     }
 }
 async function readOutdoorTempC(host) {
-    const weather = (0, config_3.weatherConfigFromAdapter)(host.config);
+    const weather = (0, config_4.weatherConfigFromAdapter)(host.config);
     const tempMetric = weather.metrics.temp;
     if (!tempMetric)
         return null;
@@ -162,7 +165,7 @@ async function readBatteryLearningSignal(host) {
  * dem Forecast Plan, siehe `src/ems_light/tick.ts`).
  */
 async function readBatteryChargeLogicDecision(host, now, socPct, governanceEnabled, modePolicy) {
-    const timezone = (0, config_4.intentAdminConfigFromAdapter)(host.config).timezone;
+    const timezone = (0, config_5.intentAdminConfigFromAdapter)(host.config).timezone;
     const [correctedTodayKwh, correctedTomorrowKwh, pvConfidence, forecastTodayRaw, forecastTomorrowRaw, forecastHorizonRaw, snowCoverSuspected,] = await Promise.all([
         readNum(host, "learning.pv_bias.corrected_today_kwh"),
         readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
@@ -220,7 +223,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     const modePolicy = (0, mode_policy_1.plannerModePolicyFromGlobalMode)(globalModeRaw);
     const globalModeOff = modePolicy.mode === "off";
     const batteryCfg = (0, config_1.batteryConfigFromAdapter)(config);
-    const [batteryEnabled, batteryGov, wallboxEnabled, wallboxGov, immersionEnabled, immersionGov, climateEnabled, climateGov, socPct, capacityEffective, capacityNet, capacitySource, minSoc, maxSoc, chargeCapable, dischargeCapable, batteryFault, batteryLockout, telemetryValid, telemetryStale, telemetryReady, ownershipActive, batteryIntentRaw, connected, charging, vehicleSoc, planSoc, planActive, sessionKwh, deadlineRaw, activePhases, maxCurrentA, bufferTemp, immersionFault, immersionState, autoTargetReached, thermalRaw, pvToday, pvTomorrow, pvBiasStatus, aiThermal, outdoorTemp, outdoorForecastMaxC, houseLoadTodayRaw,] = await Promise.all([
+    const [batteryEnabled, batteryGov, wallboxEnabled, wallboxGov, immersionEnabled, immersionGov, climateEnabled, climateGov, socPct, capacityEffective, capacityNet, capacitySource, minSoc, maxSoc, chargeCapable, dischargeCapable, batteryFault, batteryLockout, telemetryValid, telemetryStale, telemetryReady, ownershipActive, batteryIntentRaw, connected, charging, vehicleSoc, planSoc, planActive, sessionKwh, chargeRemainingKwh, effectiveLimitSoc, deadlineRaw, activePhases, maxCurrentA, activeVehicleRequiredKwh, activeVehicleSocEnergyReady, activeVehicleId, activeVehicleProfileValid, bufferTemp, immersionFault, immersionState, autoTargetReached, thermalRaw, pvToday, pvTomorrow, pvBiasStatus, aiThermal, outdoorTemp, outdoorForecastMaxC, houseLoadTodayRaw,] = await Promise.all([
         readBool(host, (0, tree_paths_1.addonEnabled)("battery")),
         (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "battery"),
         readBool(host, (0, tree_paths_1.addonEnabled)("wallbox")),
@@ -250,9 +253,15 @@ async function collectFlexibleContributions(host, now, gridForecast) {
         readNum(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.planSocPct),
         readBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.planActive),
         readNum(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.sessionEnergyKwh),
+        readNum(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargeRemainingEnergyKwh),
+        readNum(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.effectiveLimitSocPct),
         readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.effectivePlanTime),
         readNum(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.activePhases),
         readNum(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.maxCurrentA),
+        readNum(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleRequiredBatteryEnergyKwh),
+        readBool(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleSocEnergyReady),
+        readStr(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleId),
+        readBool(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleProfileValid),
         readNum(host, types_1.IMMERSION_RUNTIME_STATES.bufferTemperatureC),
         readBool(host, types_1.IMMERSION_RUNTIME_STATES.faultActive),
         readStr(host, types_1.IMMERSION_RUNTIME_STATES.state),
@@ -261,7 +270,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
         readNum(host, "learning.pv_bias.corrected_today_kwh"),
         readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
         readStr(host, "learning.pv_bias.status"),
-        readBool(host, (0, ensure_states_3.addonGovernanceAiAllowedState)("immersion_heater")),
+        readBool(host, (0, ensure_states_4.addonGovernanceAiAllowedState)("immersion_heater")),
         readOutdoorTempC(host),
         readNum(host, "learning.weather.horizon.day1.max_temp_c"),
         readStr(host, "learning.house_load.forecast_today_json"),
@@ -274,7 +283,32 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     const relayMapped = immersionConfig.stages.some((s) => s.enabled && s.setStateId.trim() !== "");
     const evccCfg = (0, evcc_config_1.wallboxEvccTelemetryConfigFromAdapter)(config);
     const evccConfigured = evccCfg.enabledStateId.trim().length > 0;
-    const acConfig = (0, config_2.acGlobalConfigFromAdapter)(config);
+    let remainingEnergyKwh = chargeRemainingKwh !== null && Number.isFinite(chargeRemainingKwh)
+        ? Math.max(0, chargeRemainingKwh)
+        : null;
+    if (remainingEnergyKwh === null &&
+        activeVehicleSocEnergyReady === true &&
+        activeVehicleRequiredKwh !== null &&
+        Number.isFinite(activeVehicleRequiredKwh)) {
+        remainingEnergyKwh = Math.max(0, activeVehicleRequiredKwh);
+    }
+    let vehicleCapacityKwh = null;
+    if (activeVehicleId && activeVehicleProfileValid === true) {
+        const capPath = (0, ensure_states_2.vehicleStatePaths)(activeVehicleId).configBatteryCapacityNetKwh;
+        vehicleCapacityKwh = await readNum(host, capPath);
+        if (vehicleCapacityKwh !== null && !(vehicleCapacityKwh > 0)) {
+            vehicleCapacityKwh = null;
+        }
+    }
+    let fallbackTargetSocPct = null;
+    const intentEvcc = (0, config_2.intentEvccConfigFromAdapter)(config);
+    if (intentEvcc.targetSocStateId) {
+        fallbackTargetSocPct = await readForeignNum(host, intentEvcc.targetSocStateId);
+        if (fallbackTargetSocPct !== null && !(fallbackTargetSocPct > 0 && fallbackTargetSocPct <= 100)) {
+            fallbackTargetSocPct = null;
+        }
+    }
+    const acConfig = (0, config_3.acGlobalConfigFromAdapter)(config);
     const stats = await readConsumerStats(host);
     const thermalLearning = await readThermalLearningSignal(host, now);
     const batteryLearning = await readBatteryLearningSignal(host);
@@ -289,7 +323,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     const acUnits = await Promise.all(Array.from({ length: constants_1.AC_UNIT_COUNT }, async (_, i) => {
         const index = i + 1;
         const unit = acConfig.units.find((u) => u.index === index);
-        const ids = (0, ensure_states_2.acUnitRuntimeStates)(index);
+        const ids = (0, ensure_states_3.acUnitRuntimeStates)(index);
         const [roomTempC, roomHumidityPct, faultState, cleaningActive] = await Promise.all([
             readNum(host, ids.roomTempC),
             readNum(host, ids.roomHumidityPct),
@@ -352,8 +386,10 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             planSocPct: planSoc,
             planActive: planActive === true,
             sessionEnergyKwh: sessionKwh,
-            remainingEnergyKwh: null,
-            vehicleCapacityKwh: null,
+            remainingEnergyKwh,
+            vehicleCapacityKwh,
+            effectiveLimitSocPct: effectiveLimitSoc,
+            fallbackTargetSocPct,
             deadlineIso: validIsoDeadline(deadlineRaw),
             activePhases,
             maxCurrentA,

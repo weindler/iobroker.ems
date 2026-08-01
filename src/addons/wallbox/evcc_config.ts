@@ -16,6 +16,16 @@ export const WB_EVCC_MIN_CURRENT_A = "wb_evcc_min_current_a_state";
 export const WB_EVCC_MAX_CURRENT_A = "wb_evcc_max_current_a_state";
 export const WB_EVCC_BATTERY_MODE = "wb_evcc_battery_mode_state";
 export const WB_EVCC_BATTERY_DISCHARGE_CONTROL = "wb_evcc_battery_discharge_control_state";
+export const WB_EVCC_CHARGE_REMAINING_ENERGY = "wb_evcc_charge_remaining_energy_state";
+export const WB_EVCC_VEHICLE_NAME = "wb_evcc_vehicle_name_state";
+export const WB_EVCC_VEHICLE_TITLE = "wb_evcc_vehicle_title_state";
+export const WB_EVCC_EFFECTIVE_LIMIT_SOC = "wb_evcc_effective_limit_soc_state";
+export const WB_EVCC_BATTERY_BOOST = "wb_evcc_battery_boost_state";
+export const WB_EVCC_LOADPOINT_MODE = "wb_evcc_loadpoint_mode_state";
+
+/** Optional foreign signals (not EVCC telemetry roles). */
+export const WB_EXTERNAL_VEHICLE_CHARGE = "wb_external_vehicle_charge_state";
+export const WB_TIBBER_GRID_REWARDS_ACTIVE = "wb_tibber_grid_rewards_active_state";
 
 /** Synced to addons.wallbox.mapping.<role>.target_state */
 export const WALLBOX_EVCC_TELEMETRY_ROLES = [
@@ -24,11 +34,17 @@ export const WALLBOX_EVCC_TELEMETRY_ROLES = [
 	"evcc_charging",
 	"evcc_charge_power_w",
 	"evcc_session_energy_kwh",
+	"evcc_charge_remaining_energy_kwh",
 	"evcc_vehicle_soc",
+	"evcc_vehicle_name",
+	"evcc_vehicle_title",
 	"evcc_plan_active",
 	"evcc_plan_soc",
 	"evcc_plan_time",
 	"evcc_effective_plan_time",
+	"evcc_effective_limit_soc",
+	"evcc_battery_boost",
+	"evcc_loadpoint_mode",
 	"evcc_active_phases",
 	"evcc_configured_phases",
 	"evcc_min_current_a",
@@ -48,17 +64,29 @@ export interface WallboxEvccTelemetryConfig {
 	chargingStateId: string;
 	chargePowerWStateId: string;
 	sessionEnergyKwhStateId: string;
+	chargeRemainingEnergyKwhStateId: string;
 	vehicleSocStateId: string;
+	vehicleNameStateId: string;
+	vehicleTitleStateId: string;
 	planActiveStateId: string;
 	planSocStateId: string;
 	planTimeStateId: string;
 	effectivePlanTimeStateId: string;
+	effectiveLimitSocStateId: string;
+	batteryBoostStateId: string;
+	loadpointModeStateId: string;
 	activePhasesStateId: string;
 	configuredPhasesStateId: string;
 	minCurrentAStateId: string;
 	maxCurrentAStateId: string;
 	batteryModeStateId: string;
 	batteryDischargeControlStateId: string;
+}
+
+/** Optional non-EVCC foreign mappings for hold decision. */
+export interface WallboxHoldSignalConfig {
+	externalVehicleChargeStateId: string;
+	tibberGridRewardsActiveStateId: string;
 }
 
 function strField(c: Record<string, unknown>, key: string): string {
@@ -76,11 +104,17 @@ export function wallboxEvccTelemetryConfigFromAdapter(config: unknown): WallboxE
 		chargingStateId: strField(c, WB_EVCC_CHARGING),
 		chargePowerWStateId: strField(c, WB_EVCC_CHARGE_POWER_W),
 		sessionEnergyKwhStateId: strField(c, WB_EVCC_SESSION_ENERGY_KWH),
+		chargeRemainingEnergyKwhStateId: strField(c, WB_EVCC_CHARGE_REMAINING_ENERGY),
 		vehicleSocStateId: vehicleSoc,
+		vehicleNameStateId: strField(c, WB_EVCC_VEHICLE_NAME),
+		vehicleTitleStateId: strField(c, WB_EVCC_VEHICLE_TITLE),
 		planActiveStateId: strField(c, WB_EVCC_PLAN_ACTIVE),
 		planSocStateId: strField(c, WB_EVCC_PLAN_SOC),
 		planTimeStateId: strField(c, WB_EVCC_PLAN_TIME),
 		effectivePlanTimeStateId: strField(c, WB_EVCC_EFFECTIVE_PLAN_TIME),
+		effectiveLimitSocStateId: strField(c, WB_EVCC_EFFECTIVE_LIMIT_SOC),
+		batteryBoostStateId: strField(c, WB_EVCC_BATTERY_BOOST),
+		loadpointModeStateId: strField(c, WB_EVCC_LOADPOINT_MODE),
 		activePhasesStateId: strField(c, WB_EVCC_ACTIVE_PHASES),
 		configuredPhasesStateId: strField(c, WB_EVCC_CONFIGURED_PHASES),
 		minCurrentAStateId: strField(c, WB_EVCC_MIN_CURRENT_A),
@@ -88,6 +122,21 @@ export function wallboxEvccTelemetryConfigFromAdapter(config: unknown): WallboxE
 		batteryModeStateId: strField(c, WB_EVCC_BATTERY_MODE),
 		batteryDischargeControlStateId: strField(c, WB_EVCC_BATTERY_DISCHARGE_CONTROL),
 	};
+}
+
+export function wallboxHoldSignalConfigFromAdapter(config: unknown): WallboxHoldSignalConfig {
+	const c = config && typeof config === "object" ? (config as Record<string, unknown>) : {};
+	return {
+		externalVehicleChargeStateId: strField(c, WB_EXTERNAL_VEHICLE_CHARGE),
+		tibberGridRewardsActiveStateId: strField(c, WB_TIBBER_GRID_REWARDS_ACTIVE),
+	};
+}
+
+export function configuredWallboxHoldSignalStateIds(cfg: WallboxHoldSignalConfig): string[] {
+	const ids: string[] = [];
+	if (cfg.externalVehicleChargeStateId) ids.push(cfg.externalVehicleChargeStateId);
+	if (cfg.tibberGridRewardsActiveStateId) ids.push(cfg.tibberGridRewardsActiveStateId);
+	return ids;
 }
 
 export function configuredEvccTelemetryStateIds(cfg: WallboxEvccTelemetryConfig): string[] {
@@ -111,8 +160,14 @@ export function stateIdForRole(cfg: WallboxEvccTelemetryConfig, role: WallboxEvc
 			return cfg.chargePowerWStateId;
 		case "evcc_session_energy_kwh":
 			return cfg.sessionEnergyKwhStateId;
+		case "evcc_charge_remaining_energy_kwh":
+			return cfg.chargeRemainingEnergyKwhStateId;
 		case "evcc_vehicle_soc":
 			return cfg.vehicleSocStateId;
+		case "evcc_vehicle_name":
+			return cfg.vehicleNameStateId;
+		case "evcc_vehicle_title":
+			return cfg.vehicleTitleStateId;
 		case "evcc_plan_active":
 			return cfg.planActiveStateId;
 		case "evcc_plan_soc":
@@ -121,6 +176,12 @@ export function stateIdForRole(cfg: WallboxEvccTelemetryConfig, role: WallboxEvc
 			return cfg.planTimeStateId;
 		case "evcc_effective_plan_time":
 			return cfg.effectivePlanTimeStateId;
+		case "evcc_effective_limit_soc":
+			return cfg.effectiveLimitSocStateId;
+		case "evcc_battery_boost":
+			return cfg.batteryBoostStateId;
+		case "evcc_loadpoint_mode":
+			return cfg.loadpointModeStateId;
 		case "evcc_active_phases":
 			return cfg.activePhasesStateId;
 		case "evcc_configured_phases":

@@ -673,7 +673,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Fahrzeug-SOC, Ziel-SOC und Ladeplan aus EVCC. Modus und Ziel-SOC fließen auch in den Wallbox-Intent ein."
+					"text": "Fahrzeug-SOC, Ziel-SOC und Ladeplan aus EVCC. Restenergie (Wh→kWh), vehicleName/Title, effectiveLimitSoc, batteryBoost und Loadpoint-Modus optional mappen. Modus und Ziel-SOC fließen auch in den Wallbox-Intent ein."
 				},
 				"wb_evcc_vehicle_soc_state": {
 					"type": "objectId",
@@ -690,6 +690,66 @@
 				"intent_evcc_target_soc_state": {
 					"type": "objectId",
 					"label": "Ziel-SOC / EVCC-Ladelimit (%)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_charge_remaining_energy_state": {
+					"type": "objectId",
+					"label": "Restenergie chargeRemaining (Wh aus EVCC)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_vehicle_title_state": {
+					"type": "objectId",
+					"label": "EVCC Fahrzeug-Titel (vehicleTitle)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_effective_limit_soc_state": {
+					"type": "objectId",
+					"label": "effectiveLimitSoc (%)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_battery_boost_state": {
+					"type": "objectId",
+					"label": "batteryBoost (bool)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_loadpoint_mode_state": {
+					"type": "objectId",
+					"label": "Loadpoint-Modus (off/pv/minpv/now)",
 					"types": [
 						"state"
 					],
@@ -738,6 +798,30 @@
 				"wb_evcc_effective_plan_time_state": {
 					"type": "objectId",
 					"label": "effectivePlanTime",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_external_vehicle_charge_state": {
+					"type": "objectId",
+					"label": "Externes Fahrzeugladen (z. B. HA Ford elvehcharging)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_tibber_grid_rewards_active_state": {
+					"type": "objectId",
+					"label": "Tibber Grid Rewards aktiv (bool, optional)",
 					"types": [
 						"state"
 					],

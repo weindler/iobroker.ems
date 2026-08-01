@@ -415,9 +415,42 @@ function acInput(overrides = {}) {
         strict_1.default.equal(c.enabled, true);
         strict_1.default.equal(c.details.requiredEnergyKwh, 18.5);
     });
+    (0, node_test_1.it)("prefers remaining energy without capacity", () => {
+        const c = (0, wallbox_1.buildWallboxEvSessionContribution)(wallboxInput({
+            remainingEnergyKwh: 9.2,
+            vehicleCapacityKwh: null,
+            vehicleSocPct: null,
+            planActive: false,
+            planSocPct: 0,
+        }));
+        strict_1.default.equal(c.details.requiredEnergyKwh, 9.2);
+        strict_1.default.equal(c.quality.status, "valid");
+    });
     (0, node_test_1.it)("connected with soc and vehicle capacity", () => {
         const c = (0, wallbox_1.buildWallboxEvSessionContribution)(wallboxInput({ vehicleCapacityKwh: 60, vehicleSocPct: 40, planSocPct: 80 }));
         strict_1.default.equal(c.details.requiredEnergyKwh, 24);
+    });
+    (0, node_test_1.it)("ignores planSoc 0 when plan inactive", () => {
+        const c = (0, wallbox_1.buildWallboxEvSessionContribution)(wallboxInput({
+            vehicleCapacityKwh: 60,
+            vehicleSocPct: 40,
+            planSocPct: 0,
+            planActive: false,
+            remainingEnergyKwh: null,
+        }));
+        strict_1.default.equal(c.details.requiredEnergyKwh, null);
+        strict_1.default.match(c.reasonDe, /Ladeziel|Restenergie|Kapazität/i);
+    });
+    (0, node_test_1.it)("uses effectiveLimitSoc fallback when plan inactive", () => {
+        const c = (0, wallbox_1.buildWallboxEvSessionContribution)(wallboxInput({
+            vehicleCapacityKwh: 50,
+            vehicleSocPct: 40,
+            planSocPct: 0,
+            planActive: false,
+            effectiveLimitSocPct: 80,
+            remainingEnergyKwh: null,
+        }));
+        strict_1.default.equal(c.details.requiredEnergyKwh, 20);
     });
     (0, node_test_1.it)("unknown capacity yields null energy need", () => {
         const c = (0, wallbox_1.buildWallboxEvSessionContribution)(wallboxInput({ vehicleCapacityKwh: null, remainingEnergyKwh: null }));

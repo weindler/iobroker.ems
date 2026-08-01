@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.225",
+		"version": "0.1.226",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.226": {
+				"en": "Wallbox EVCC-first: remaining charge energy (Wh→kWh), hold house battery only on boost/fast or external vehicle charge (not MinPV/PV); Tibber Grid Rewards hold hook prepared.",
+				"de": "Wallbox EVCC-first: Restenergie (Wh→kWh), Hausbatterie-Hold nur bei Boost/Sofortladen oder externem Fahrzeugladen (nicht MinPV/PV); Tibber-Grid-Rewards-Hold vorbereitet."
+			},
 			"0.1.225": {
 				"en": "Block 10 complete: AI Plan B may shift battery charge + wallbox (deadline-safe) when AI optimization allowed; material trigger includes flex families + median price bucket; write-back only if B beats A. Defaults AI off. Wallbox/IH/climate unchanged without flags.",
 				"de": "Block 10 fertig: KI Plan B darf Batterie-Laden + Wallbox (deadline-sicher) verschieben wenn KI-Optimierung erlaubt; Material-Trigger mit Flex-Familien + Median-Preis-Bucket; Write-back nur wenn B A schlägt. Standard KI aus. Ohne Freigabe unverändert."

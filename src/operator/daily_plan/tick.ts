@@ -21,6 +21,12 @@ import { IMMERSION_RUNTIME_STATES } from "../../addons/immersion_heater/runtime/
 import { asNum } from "../../ems_light/state_util";
 import { buildPlannerConstraints } from "../planning/battery";
 import { WALLBOX_EVCC_STATES } from "../../addons/wallbox/ensure_evcc_states";
+import { WALLBOX_RUNTIME_STATES } from "../../addons/wallbox/runtime/states";
+import {
+	wallboxHoldSignalConfigFromAdapter,
+} from "../../addons/wallbox/evcc_config";
+import { resolveWallboxBatteryHold } from "../../addons/wallbox/charge_hold";
+import { normalizeOptionalBool } from "../../addons/wallbox/normalize";
 import { CONTRIBUTION_IDS } from "../contribution_ids";
 
 let lastRevisionPayload = "";
@@ -100,6 +106,56 @@ export async function runDailyPlanTick(
 	const evccMode = await readStr(host, WALLBOX_EVCC_STATES.batteryMode);
 	const evccDischargeRaw = await host.getStateAsync(WALLBOX_EVCC_STATES.batteryDischargeControl);
 	const evccDischarge = evccDischargeRaw?.val === true;
+	const batteryBoostRaw = await host.getStateAsync(WALLBOX_EVCC_STATES.batteryBoost);
+	const batteryBoost =
+		batteryBoostRaw?.val === true ? true : batteryBoostRaw?.val === false ? false : null;
+	const loadpointMode = await readStr(host, WALLBOX_EVCC_STATES.loadpointMode);
+	const holdSignals = wallboxHoldSignalConfigFromAdapter(host.config);
+	let externalVehicleChargeRaw: string | boolean | null = null;
+	if (holdSignals.externalVehicleChargeStateId) {
+		try {
+			const st = await host.getForeignStateAsync?.(holdSignals.externalVehicleChargeStateId);
+			if (st?.val !== undefined && st.val !== null) {
+				externalVehicleChargeRaw =
+					typeof st.val === "boolean" ? st.val : String(st.val);
+			}
+		} catch {
+			externalVehicleChargeRaw = null;
+		}
+	}
+	let tibberGridRewardsActive: boolean | null = null;
+	if (holdSignals.tibberGridRewardsActiveStateId) {
+		try {
+			const st = await host.getForeignStateAsync?.(holdSignals.tibberGridRewardsActiveStateId);
+			const n = normalizeOptionalBool(st?.val);
+			tibberGridRewardsActive = n.status === "valid" ? n.value : null;
+		} catch {
+			tibberGridRewardsActive = null;
+		}
+	}
+	const wallboxHold = resolveWallboxBatteryHold({
+		batteryBoost,
+		loadpointMode,
+		externalVehicleChargeRaw,
+		tibberGridRewardsActive,
+	});
+	try {
+		await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge, wallboxHold.hold);
+		await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.batteryHoldReasonDe, wallboxHold.reasonDe);
+		await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.chargeBoostActive, wallboxHold.boostActive);
+		await setStateIfChanged(
+			host,
+			WALLBOX_RUNTIME_STATES.externalVehicleChargeActive,
+			wallboxHold.externalActive,
+		);
+		await setStateIfChanged(
+			host,
+			WALLBOX_RUNTIME_STATES.tibberGridRewardsActive,
+			wallboxHold.tibberRewardsActive,
+		);
+	} catch {
+		// hold publish best-effort
+	}
 	const batteryIntentRaw = await readStr(host, "user_intent.battery.resolved_json");
 	let userHold = false;
 	if (batteryIntentRaw) {
@@ -114,7 +170,15 @@ export async function runDailyPlanTick(
 		evccBatteryMode: evccMode,
 		evccBatteryDischargeControl: evccDischarge,
 		userIntentBatteryHold: userHold,
+		wallboxChargeHold: wallboxHold.hold,
+		wallboxChargeHoldReasonDe: wallboxHold.reasonDe,
 	});
+	try {
+		await setStateIfChanged(host, "planner.constraints.evcc_battery_hold", hold.evcc_battery_hold);
+		await setStateIfChanged(host, "planner.constraints.battery_hold_active", hold.battery_hold_active);
+	} catch {
+		// constraint publish best-effort
+	}
 	const consumerAccess = resolveAllBatteryConsumerAccess({
 		config: batConsumers,
 		batteryHoldActive: hold.battery_hold_active,

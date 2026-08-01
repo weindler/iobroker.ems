@@ -357,11 +357,13 @@ async function controlTickInner(host) {
     const emsMirrorIntentActive = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.batteryIntentActive);
     const dailyPlanDriven = deviceIntent.source === "daily_plan";
     const dailyPlanAuthoritative = (0, daily_plan_1.isBatteryDailyPlanAuthoritative)(dailyPlanContext);
-    const [batteryHoldActive, evccCharging, priceNowCt] = await Promise.all([
+    const [batteryHoldActive, wallboxBatteryHold, priceNowCt] = await Promise.all([
         readRelBool(host, "planner.constraints.battery_hold_active"),
-        readRelBool(host, "live.wallbox.charging"),
+        readRelBool(host, "addons.wallbox.runtime.battery_hold_for_ev_charge"),
         readRelNumber(host, "live.price.now_ct_per_kwh"),
     ]);
+    /** Nur Boost/externes Laden — nicht jedes EVCC-Laden (MinPV/PV). */
+    const evccCharging = wallboxBatteryHold;
     const gridBalanceSuppressed = batteryHoldActive || evccCharging || runtime.ownership.active || dailyPlanAuthoritative;
     const emsBatteryIntentActive = Boolean(fromManual
         ? wantsCharge

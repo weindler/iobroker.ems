@@ -69,3 +69,19 @@ export function normalizeOptionalBatteryMode(raw: unknown): TelemetryField<strin
 	if (EVCC_BATTERY_MODES.has(s)) return { value: s, status: "valid", raw };
 	return { value: null, status: "invalid", raw };
 }
+
+/** Freitext (Fahrzeugname/Titel) — getrimmt, keine Erfindung. */
+export function normalizeOptionalString(raw: unknown): TelemetryField<string> {
+	if (isEmptySentinel(raw)) return missingField();
+	const s = String(raw).trim();
+	if (!s) return missingField();
+	return { value: s, status: "valid", raw };
+}
+
+/** Loadpoint-Modus (off/pv/minpv/now …) — getrimmt lowercase, kein Inventar. */
+export function normalizeOptionalLoadpointMode(raw: unknown): TelemetryField<string> {
+	if (isEmptySentinel(raw)) return missingField();
+	const s = String(raw).trim().toLowerCase();
+	if (!s) return missingField();
+	return { value: s, status: "valid", raw };
+}

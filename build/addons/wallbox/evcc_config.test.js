@@ -41,6 +41,21 @@ const evcc_config_1 = require("./evcc_config");
         });
         strict_1.default.deepEqual(m.evcc_enabled, { enabled: true, target_state: "evcc.0.status.enabled" });
     });
+    (0, node_test_1.it)("parses new EVCC-first telemetry mappings", () => {
+        const cfg = (0, evcc_config_1.wallboxEvccTelemetryConfigFromAdapter)({
+            wb_evcc_charge_remaining_energy_state: "evcc.0.status.chargeRemainingEnergy",
+            wb_evcc_vehicle_name_state: "evcc.0.status.vehicleName",
+            wb_evcc_vehicle_title_state: "evcc.0.status.vehicleTitle",
+            wb_evcc_effective_limit_soc_state: "evcc.0.status.effectiveLimitSoc",
+            wb_evcc_battery_boost_state: "evcc.0.status.batteryBoost",
+            wb_evcc_loadpoint_mode_state: "evcc.0.status.mode",
+        });
+        strict_1.default.equal(cfg.chargeRemainingEnergyKwhStateId, "evcc.0.status.chargeRemainingEnergy");
+        strict_1.default.equal(cfg.vehicleNameStateId, "evcc.0.status.vehicleName");
+        strict_1.default.equal(cfg.effectiveLimitSocStateId, "evcc.0.status.effectiveLimitSoc");
+        strict_1.default.equal(cfg.batteryBoostStateId, "evcc.0.status.batteryBoost");
+        strict_1.default.equal(cfg.loadpointModeStateId, "evcc.0.status.mode");
+    });
     (0, node_test_1.it)("detects legacy go-e write mappings", () => {
         strict_1.default.equal((0, evcc_config_1.hasLegacyWallboxWriteMapping)({}), false);
         strict_1.default.equal((0, evcc_config_1.hasLegacyWallboxWriteMapping)({ wb_set_enabled_target: "go-e.0.allow_charging" }), true);

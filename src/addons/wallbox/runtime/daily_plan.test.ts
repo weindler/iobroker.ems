@@ -104,11 +104,17 @@ function emptySnap(): EvccTelemetrySnapshot {
 		charging: missingField(),
 		charge_power_w: missingField(),
 		session_energy_kwh: missingField(),
+		charge_remaining_energy_kwh: missingField(),
 		vehicle_soc_pct: missingField(),
+		vehicle_name: missingField(),
+		vehicle_title: missingField(),
 		plan_active: missingField(),
 		plan_soc_pct: missingField(),
 		plan_time: missingField(),
 		effective_plan_time: missingField(),
+		effective_limit_soc_pct: missingField(),
+		battery_boost: missingField(),
+		loadpoint_mode: missingField(),
 		active_phases: missingField(),
 		configured_phases: missingField(),
 		min_current_a: missingField(),
@@ -261,11 +267,17 @@ describe("wallbox daily plan reader", () => {
 			chargingStateId: "",
 			chargePowerWStateId: "",
 			sessionEnergyKwhStateId: "",
+			chargeRemainingEnergyKwhStateId: "",
 			vehicleSocStateId: "",
+			vehicleNameStateId: "",
+			vehicleTitleStateId: "",
 			planActiveStateId: "",
 			planSocStateId: "",
 			planTimeStateId: "",
 			effectivePlanTimeStateId: "",
+			effectiveLimitSocStateId: "",
+			batteryBoostStateId: "",
+			loadpointModeStateId: "",
 			activePhasesStateId: "",
 			configuredPhasesStateId: "",
 			minCurrentAStateId: "",
@@ -325,6 +337,31 @@ describe("wallbox energy and deadline", () => {
 	it("remaining energy from soc and capacity", () => {
 		const rem = computeRemainingEnergyKwh(telemetry({ vehicleSocPct: 40, planSocPct: 80 }), 60);
 		assert.equal(rem, 24);
+	});
+
+	it("ignores inactive planSoc 0 for remaining energy", () => {
+		assert.equal(
+			computeRemainingEnergyKwh(
+				telemetry({ vehicleSocPct: 40, planSocPct: 0, planActive: false }),
+				60,
+			),
+			null,
+		);
+	});
+
+	it("uses effectiveLimitSoc when plan inactive", () => {
+		assert.equal(
+			computeRemainingEnergyKwh(
+				telemetry({
+					vehicleSocPct: 40,
+					planSocPct: 0,
+					planActive: false,
+					effectiveLimitSocPct: 80,
+				}),
+				50,
+			),
+			20,
+		);
 	});
 
 	it("unknown capacity yields null remaining", () => {

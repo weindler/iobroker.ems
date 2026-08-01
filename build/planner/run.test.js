@@ -26,6 +26,8 @@ function baseInputs(overrides = {}) {
         evccBatteryMode: "normal",
         evccBatteryDischargeControl: false,
         userIntentBatteryHold: false,
+        wallboxChargeHold: false,
+        wallboxChargeHoldReasonDe: null,
         userIntentBatteryCharge: false,
         immersionConfig: (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
             ih_set_enabled_target: "r",

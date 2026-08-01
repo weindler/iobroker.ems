@@ -9,10 +9,12 @@ import {
 import {
 	missingField,
 	normalizeOptionalBool,
+	normalizeOptionalLoadpointMode,
 	normalizeOptionalNumber,
 	normalizeOptionalPhases,
 	normalizeOptionalSoc,
 	normalizeOptionalBatteryMode,
+	normalizeOptionalString,
 	type TelemetryField,
 } from "./normalize";
 
@@ -27,11 +29,17 @@ export interface EvccTelemetrySnapshot {
 	charging: TelemetryField<boolean>;
 	charge_power_w: TelemetryField<number>;
 	session_energy_kwh: TelemetryField<number>;
+	charge_remaining_energy_kwh: TelemetryField<number>;
 	vehicle_soc_pct: TelemetryField<number>;
+	vehicle_name: TelemetryField<string>;
+	vehicle_title: TelemetryField<string>;
 	plan_active: TelemetryField<boolean>;
 	plan_soc_pct: TelemetryField<number>;
 	plan_time: TelemetryField<string>;
 	effective_plan_time: TelemetryField<string>;
+	effective_limit_soc_pct: TelemetryField<number>;
+	battery_boost: TelemetryField<boolean>;
+	loadpoint_mode: TelemetryField<string>;
 	active_phases: TelemetryField<number>;
 	configured_phases: TelemetryField<number>;
 	min_current_a: TelemetryField<number>;
@@ -49,11 +57,17 @@ const ROLE_NORMALIZER: Record<
 	evcc_charging: normalizeOptionalBool,
 	evcc_charge_power_w: normalizeOptionalNumber,
 	evcc_session_energy_kwh: normalizeSessionEnergyKwh,
+	evcc_charge_remaining_energy_kwh: normalizeSessionEnergyKwh,
 	evcc_vehicle_soc: normalizeOptionalSoc,
+	evcc_vehicle_name: normalizeOptionalString,
+	evcc_vehicle_title: normalizeOptionalString,
 	evcc_plan_active: normalizeOptionalBool,
 	evcc_plan_soc: normalizeOptionalSoc,
 	evcc_plan_time: normalizePlanTime,
 	evcc_effective_plan_time: normalizePlanTime,
+	evcc_effective_limit_soc: normalizeOptionalSoc,
+	evcc_battery_boost: normalizeOptionalBool,
+	evcc_loadpoint_mode: normalizeOptionalLoadpointMode,
 	evcc_active_phases: normalizeOptionalPhases,
 	evcc_configured_phases: normalizeOptionalPhases,
 	evcc_min_current_a: normalizeOptionalNumber,
@@ -62,7 +76,7 @@ const ROLE_NORMALIZER: Record<
 	evcc_battery_discharge_control: normalizeOptionalBool,
 };
 
-/** EVCC liefert die Sitzungsenergie in Wh; EMS-Light speichert kWh. */
+/** EVCC liefert Sitzungs-/Restenergie in Wh; EMS-Light speichert kWh. */
 function normalizeSessionEnergyKwh(raw: unknown): TelemetryField<number> {
 	const wh = normalizeOptionalNumber(raw);
 	if (wh.status !== "valid" || wh.value === null) {
@@ -129,11 +143,17 @@ function emptySnapshot(observedAt: string): EvccTelemetrySnapshot {
 		charging: m(),
 		charge_power_w: m(),
 		session_energy_kwh: m(),
+		charge_remaining_energy_kwh: m(),
 		vehicle_soc_pct: m(),
+		vehicle_name: m(),
+		vehicle_title: m(),
 		plan_active: m(),
 		plan_soc_pct: m(),
 		plan_time: m(),
 		effective_plan_time: m(),
+		effective_limit_soc_pct: m(),
+		battery_boost: m(),
+		loadpoint_mode: m(),
 		active_phases: m(),
 		configured_phases: m(),
 		min_current_a: m(),
@@ -177,11 +197,17 @@ export async function readEvccTelemetrySnapshot(
 		charging: fields.evcc_charging as TelemetryField<boolean>,
 		charge_power_w: fields.evcc_charge_power_w as TelemetryField<number>,
 		session_energy_kwh: fields.evcc_session_energy_kwh as TelemetryField<number>,
+		charge_remaining_energy_kwh: fields.evcc_charge_remaining_energy_kwh as TelemetryField<number>,
 		vehicle_soc_pct: fields.evcc_vehicle_soc as TelemetryField<number>,
+		vehicle_name: fields.evcc_vehicle_name as TelemetryField<string>,
+		vehicle_title: fields.evcc_vehicle_title as TelemetryField<string>,
 		plan_active: fields.evcc_plan_active as TelemetryField<boolean>,
 		plan_soc_pct: fields.evcc_plan_soc as TelemetryField<number>,
 		plan_time: fields.evcc_plan_time as TelemetryField<string>,
 		effective_plan_time: fields.evcc_effective_plan_time as TelemetryField<string>,
+		effective_limit_soc_pct: fields.evcc_effective_limit_soc as TelemetryField<number>,
+		battery_boost: fields.evcc_battery_boost as TelemetryField<boolean>,
+		loadpoint_mode: fields.evcc_loadpoint_mode as TelemetryField<string>,
 		active_phases: fields.evcc_active_phases as TelemetryField<number>,
 		configured_phases: fields.evcc_configured_phases as TelemetryField<number>,
 		min_current_a: fields.evcc_min_current_a as TelemetryField<number>,

@@ -24,6 +24,8 @@ function baseInputs(overrides: Partial<PlannerInputs> = {}): PlannerInputs {
 		evccBatteryMode: "normal",
 		evccBatteryDischargeControl: false,
 		userIntentBatteryHold: false,
+		wallboxChargeHold: false,
+		wallboxChargeHoldReasonDe: null,
 		userIntentBatteryCharge: false,
 		immersionConfig: immersionDeviceConfigFromAdapter({
 			ih_set_enabled_target: "r",

@@ -478,11 +478,53 @@ describe("wallbox contribution", () => {
 		assert.equal(c.details.requiredEnergyKwh, 18.5);
 	});
 
+	it("prefers remaining energy without capacity", () => {
+		const c = buildWallboxEvSessionContribution(
+			wallboxInput({
+				remainingEnergyKwh: 9.2,
+				vehicleCapacityKwh: null,
+				vehicleSocPct: null,
+				planActive: false,
+				planSocPct: 0,
+			}),
+		);
+		assert.equal(c.details.requiredEnergyKwh, 9.2);
+		assert.equal(c.quality.status, "valid");
+	});
+
 	it("connected with soc and vehicle capacity", () => {
 		const c = buildWallboxEvSessionContribution(
 			wallboxInput({ vehicleCapacityKwh: 60, vehicleSocPct: 40, planSocPct: 80 }),
 		);
 		assert.equal(c.details.requiredEnergyKwh, 24);
+	});
+
+	it("ignores planSoc 0 when plan inactive", () => {
+		const c = buildWallboxEvSessionContribution(
+			wallboxInput({
+				vehicleCapacityKwh: 60,
+				vehicleSocPct: 40,
+				planSocPct: 0,
+				planActive: false,
+				remainingEnergyKwh: null,
+			}),
+		);
+		assert.equal(c.details.requiredEnergyKwh, null);
+		assert.match(c.reasonDe, /Ladeziel|Restenergie|Kapazität/i);
+	});
+
+	it("uses effectiveLimitSoc fallback when plan inactive", () => {
+		const c = buildWallboxEvSessionContribution(
+			wallboxInput({
+				vehicleCapacityKwh: 50,
+				vehicleSocPct: 40,
+				planSocPct: 0,
+				planActive: false,
+				effectiveLimitSocPct: 80,
+				remainingEnergyKwh: null,
+			}),
+		);
+		assert.equal(c.details.requiredEnergyKwh, 20);
 	});
 
 	it("unknown capacity yields null energy need", () => {

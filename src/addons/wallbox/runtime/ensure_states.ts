@@ -115,6 +115,23 @@ export async function ensureWallboxRuntimeStates(host: StateHost): Promise<void>
 			"Wallbox Detail-Diagnose (JSON, für Support-Paket)",
 			"{}",
 		),
+		boolState(
+			WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge,
+			"Wallbox Hausbatterie-Hold für EV-Laden",
+			false,
+		),
+		strState(WALLBOX_RUNTIME_STATES.batteryHoldReasonDe, "Wallbox Batterie-Hold Begründung (DE)"),
+		boolState(WALLBOX_RUNTIME_STATES.chargeBoostActive, "Wallbox Lade-Boost aktiv", false),
+		boolState(
+			WALLBOX_RUNTIME_STATES.externalVehicleChargeActive,
+			"Wallbox externes Fahrzeugladen aktiv",
+			false,
+		),
+		boolState(
+			WALLBOX_RUNTIME_STATES.tibberGridRewardsActive,
+			"Wallbox Tibber Grid Rewards aktiv",
+			false,
+		),
 	];
 	await ensureStates(host, defs);
 }

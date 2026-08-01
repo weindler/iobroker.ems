@@ -193,4 +193,24 @@ function thermalInput(overrides = {}) {
         });
         strict_1.default.equal(r.action, "hold");
     });
+    (0, node_test_1.it)("activates hold on wallboxChargeHold (boost/external)", () => {
+        const constraints = (0, battery_js_1.buildPlannerConstraints)({
+            evccBatteryMode: "normal",
+            evccBatteryDischargeControl: false,
+            userIntentBatteryHold: false,
+            wallboxChargeHold: true,
+            wallboxChargeHoldReasonDe: "EVCC Boost aktiv",
+        });
+        strict_1.default.equal(constraints.battery_hold_active, true);
+        strict_1.default.match(constraints.reason_de, /Boost/);
+    });
+    (0, node_test_1.it)("does not hold from wallboxChargeHold false", () => {
+        const constraints = (0, battery_js_1.buildPlannerConstraints)({
+            evccBatteryMode: "normal",
+            evccBatteryDischargeControl: false,
+            userIntentBatteryHold: false,
+            wallboxChargeHold: false,
+        });
+        strict_1.default.equal(constraints.battery_hold_active, false);
+    });
 });

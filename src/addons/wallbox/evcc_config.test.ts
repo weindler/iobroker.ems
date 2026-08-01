@@ -46,6 +46,22 @@ describe("wallbox evcc_config", () => {
 		assert.deepEqual(m.evcc_enabled, { enabled: true, target_state: "evcc.0.status.enabled" });
 	});
 
+	it("parses new EVCC-first telemetry mappings", () => {
+		const cfg = wallboxEvccTelemetryConfigFromAdapter({
+			wb_evcc_charge_remaining_energy_state: "evcc.0.status.chargeRemainingEnergy",
+			wb_evcc_vehicle_name_state: "evcc.0.status.vehicleName",
+			wb_evcc_vehicle_title_state: "evcc.0.status.vehicleTitle",
+			wb_evcc_effective_limit_soc_state: "evcc.0.status.effectiveLimitSoc",
+			wb_evcc_battery_boost_state: "evcc.0.status.batteryBoost",
+			wb_evcc_loadpoint_mode_state: "evcc.0.status.mode",
+		});
+		assert.equal(cfg.chargeRemainingEnergyKwhStateId, "evcc.0.status.chargeRemainingEnergy");
+		assert.equal(cfg.vehicleNameStateId, "evcc.0.status.vehicleName");
+		assert.equal(cfg.effectiveLimitSocStateId, "evcc.0.status.effectiveLimitSoc");
+		assert.equal(cfg.batteryBoostStateId, "evcc.0.status.batteryBoost");
+		assert.equal(cfg.loadpointModeStateId, "evcc.0.status.mode");
+	});
+
 	it("detects legacy go-e write mappings", () => {
 		assert.equal(hasLegacyWallboxWriteMapping({}), false);
 		assert.equal(hasLegacyWallboxWriteMapping({ wb_set_enabled_target: "go-e.0.allow_charging" }), true);

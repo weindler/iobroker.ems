@@ -23,6 +23,12 @@ export const WALLBOX_EVCC_STATES = {
 	maxCurrentA: `${EVCC_BASE}.max_current_a`,
 	batteryMode: `${EVCC_BASE}.battery_mode`,
 	batteryDischargeControl: `${EVCC_BASE}.battery_discharge_control`,
+	chargeRemainingEnergyKwh: `${EVCC_BASE}.charge_remaining_energy_kwh`,
+	vehicleName: `${EVCC_BASE}.vehicle_name`,
+	vehicleTitle: `${EVCC_BASE}.vehicle_title`,
+	effectiveLimitSocPct: `${EVCC_BASE}.effective_limit_soc_pct`,
+	batteryBoost: `${EVCC_BASE}.battery_boost`,
+	loadpointMode: `${EVCC_BASE}.loadpoint_mode`,
 } as const;
 
 export async function ensureWallboxEvccStates(host: StateHost): Promise<void> {
@@ -158,6 +164,44 @@ export async function ensureWallboxEvccStates(host: StateHost): Promise<void> {
 				read: true,
 				write: false,
 			},
+		},
+		{
+			id: WALLBOX_EVCC_STATES.chargeRemainingEnergyKwh,
+			common: {
+				name: "EVCC Restenergie (chargeRemaining)",
+				type: "number",
+				role: "value",
+				unit: "kWh",
+				read: true,
+				write: false,
+			},
+		},
+		{
+			id: WALLBOX_EVCC_STATES.vehicleName,
+			common: { name: "EVCC Fahrzeugname", type: "string", role: "text", read: true, write: false },
+		},
+		{
+			id: WALLBOX_EVCC_STATES.vehicleTitle,
+			common: { name: "EVCC Fahrzeug-Titel", type: "string", role: "text", read: true, write: false },
+		},
+		{
+			id: WALLBOX_EVCC_STATES.effectiveLimitSocPct,
+			common: {
+				name: "EVCC effectiveLimitSoc",
+				type: "number",
+				role: "value.battery",
+				unit: "%",
+				read: true,
+				write: false,
+			},
+		},
+		{
+			id: WALLBOX_EVCC_STATES.batteryBoost,
+			common: { name: "EVCC batteryBoost", type: "boolean", role: "state", read: true, write: false },
+		},
+		{
+			id: WALLBOX_EVCC_STATES.loadpointMode,
+			common: { name: "EVCC Loadpoint-Modus", type: "string", role: "text", read: true, write: false },
 		},
 	];
 

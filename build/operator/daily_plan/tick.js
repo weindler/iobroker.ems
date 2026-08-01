@@ -39,6 +39,10 @@ const types_1 = require("../../addons/immersion_heater/runtime/types");
 const state_util_1 = require("../../ems_light/state_util");
 const battery_1 = require("../planning/battery");
 const ensure_evcc_states_1 = require("../../addons/wallbox/ensure_evcc_states");
+const states_2 = require("../../addons/wallbox/runtime/states");
+const evcc_config_1 = require("../../addons/wallbox/evcc_config");
+const charge_hold_1 = require("../../addons/wallbox/charge_hold");
+const normalize_1 = require("../../addons/wallbox/normalize");
 const contribution_ids_1 = require("../contribution_ids");
 let lastRevisionPayload = "";
 let revision = 0;
@@ -112,6 +116,50 @@ async function runDailyPlanTick(host, forecastPlan) {
     const evccMode = await readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryMode);
     const evccDischargeRaw = await host.getStateAsync(ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryDischargeControl);
     const evccDischarge = evccDischargeRaw?.val === true;
+    const batteryBoostRaw = await host.getStateAsync(ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryBoost);
+    const batteryBoost = batteryBoostRaw?.val === true ? true : batteryBoostRaw?.val === false ? false : null;
+    const loadpointMode = await readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.loadpointMode);
+    const holdSignals = (0, evcc_config_1.wallboxHoldSignalConfigFromAdapter)(host.config);
+    let externalVehicleChargeRaw = null;
+    if (holdSignals.externalVehicleChargeStateId) {
+        try {
+            const st = await host.getForeignStateAsync?.(holdSignals.externalVehicleChargeStateId);
+            if (st?.val !== undefined && st.val !== null) {
+                externalVehicleChargeRaw =
+                    typeof st.val === "boolean" ? st.val : String(st.val);
+            }
+        }
+        catch {
+            externalVehicleChargeRaw = null;
+        }
+    }
+    let tibberGridRewardsActive = null;
+    if (holdSignals.tibberGridRewardsActiveStateId) {
+        try {
+            const st = await host.getForeignStateAsync?.(holdSignals.tibberGridRewardsActiveStateId);
+            const n = (0, normalize_1.normalizeOptionalBool)(st?.val);
+            tibberGridRewardsActive = n.status === "valid" ? n.value : null;
+        }
+        catch {
+            tibberGridRewardsActive = null;
+        }
+    }
+    const wallboxHold = (0, charge_hold_1.resolveWallboxBatteryHold)({
+        batteryBoost,
+        loadpointMode,
+        externalVehicleChargeRaw,
+        tibberGridRewardsActive,
+    });
+    try {
+        await (0, state_write_1.setStateIfChanged)(host, states_2.WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge, wallboxHold.hold);
+        await (0, state_write_1.setStateIfChanged)(host, states_2.WALLBOX_RUNTIME_STATES.batteryHoldReasonDe, wallboxHold.reasonDe);
+        await (0, state_write_1.setStateIfChanged)(host, states_2.WALLBOX_RUNTIME_STATES.chargeBoostActive, wallboxHold.boostActive);
+        await (0, state_write_1.setStateIfChanged)(host, states_2.WALLBOX_RUNTIME_STATES.externalVehicleChargeActive, wallboxHold.externalActive);
+        await (0, state_write_1.setStateIfChanged)(host, states_2.WALLBOX_RUNTIME_STATES.tibberGridRewardsActive, wallboxHold.tibberRewardsActive);
+    }
+    catch {
+        // hold publish best-effort
+    }
     const batteryIntentRaw = await readStr(host, "user_intent.battery.resolved_json");
     let userHold = false;
     if (batteryIntentRaw) {
@@ -127,7 +175,16 @@ async function runDailyPlanTick(host, forecastPlan) {
         evccBatteryMode: evccMode,
         evccBatteryDischargeControl: evccDischarge,
         userIntentBatteryHold: userHold,
+        wallboxChargeHold: wallboxHold.hold,
+        wallboxChargeHoldReasonDe: wallboxHold.reasonDe,
     });
+    try {
+        await (0, state_write_1.setStateIfChanged)(host, "planner.constraints.evcc_battery_hold", hold.evcc_battery_hold);
+        await (0, state_write_1.setStateIfChanged)(host, "planner.constraints.battery_hold_active", hold.battery_hold_active);
+    }
+    catch {
+        // constraint publish best-effort
+    }
     const consumerAccess = (0, battery_consumers_1.resolveAllBatteryConsumerAccess)({
         config: batConsumers,
         batteryHoldActive: hold.battery_hold_active,

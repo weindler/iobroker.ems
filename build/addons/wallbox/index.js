@@ -4,6 +4,9 @@ exports.handleWallboxStateChange = exports.handleWallboxForeignStateChange = exp
 const evcc_config_1 = require("./evcc_config");
 const ensure_evcc_states_1 = require("./ensure_evcc_states");
 const evcc_telemetry_1 = require("./evcc_telemetry");
+const normalize_1 = require("./normalize");
+const charge_hold_1 = require("./charge_hold");
+const state_write_1 = require("../../policy/core/state_write");
 const governance_1 = require("../governance");
 const runtime_surface_1 = require("../runtime_surface");
 const execution_mode_1 = require("../../execution_mode");
@@ -238,6 +241,49 @@ function handleWallboxFaultReset(host) {
     host.log.info("wallbox: Fault/Lockout manuell zurückgesetzt");
     void (0, runtime_1.publishWallboxSafetyStates)(host, wallboxOwnership, wallboxFault).catch(() => undefined);
 }
+async function readForeignRaw(host, objectId) {
+    if (!objectId.trim())
+        return null;
+    try {
+        const st = host.getForeignStateAsync
+            ? await host.getForeignStateAsync(objectId)
+            : await host.getStateAsync(objectId);
+        if (!st || st.val === undefined)
+            return null;
+        return st.val;
+    }
+    catch {
+        return null;
+    }
+}
+async function publishWallboxBatteryHoldRuntime(host, snap) {
+    const holdCfg = (0, evcc_config_1.wallboxHoldSignalConfigFromAdapter)(host.config);
+    const externalRaw = await readForeignRaw(host, holdCfg.externalVehicleChargeStateId);
+    const tibberRaw = await readForeignRaw(host, holdCfg.tibberGridRewardsActiveStateId);
+    const tibberField = holdCfg.tibberGridRewardsActiveStateId
+        ? (0, normalize_1.normalizeOptionalBool)(tibberRaw)
+        : { value: null, status: "missing", raw: null };
+    const tibberActive = tibberField.status === "valid" && tibberField.value === true
+        ? true
+        : tibberField.status === "valid" && tibberField.value === false
+            ? false
+            : null;
+    const hold = (0, charge_hold_1.resolveWallboxBatteryHold)({
+        batteryBoost: snap.battery_boost.status === "valid" ? snap.battery_boost.value : null,
+        loadpointMode: snap.loadpoint_mode.status === "valid" ? snap.loadpoint_mode.value : null,
+        externalVehicleChargeRaw: externalRaw === null || externalRaw === undefined
+            ? null
+            : typeof externalRaw === "boolean"
+                ? externalRaw
+                : String(externalRaw),
+        tibberGridRewardsActive: tibberActive,
+    });
+    await (0, state_write_1.setStateIfChanged)(host, states_2.WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge, hold.hold);
+    await (0, state_write_1.setStateIfChanged)(host, states_2.WALLBOX_RUNTIME_STATES.batteryHoldReasonDe, hold.reasonDe);
+    await (0, state_write_1.setStateIfChanged)(host, states_2.WALLBOX_RUNTIME_STATES.chargeBoostActive, hold.boostActive);
+    await (0, state_write_1.setStateIfChanged)(host, states_2.WALLBOX_RUNTIME_STATES.externalVehicleChargeActive, hold.externalActive);
+    await (0, state_write_1.setStateIfChanged)(host, states_2.WALLBOX_RUNTIME_STATES.tibberGridRewardsActive, hold.tibberRewardsActive);
+}
 async function refreshWallboxEvccTelemetry(host) {
     const cfg = (0, evcc_config_1.wallboxEvccTelemetryConfigFromAdapter)(host.config);
     const snap = await (0, evcc_telemetry_1.readEvccTelemetrySnapshot)(host, cfg, new Date());
@@ -251,17 +297,24 @@ async function refreshWallboxEvccTelemetry(host) {
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.charging, snap.charging);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW, snap.charge_power_w);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.sessionEnergyKwh, snap.session_energy_kwh);
+    await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargeRemainingEnergyKwh, snap.charge_remaining_energy_kwh);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.vehicleSocPct, snap.vehicle_soc_pct);
+    await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.vehicleName, snap.vehicle_name);
+    await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.vehicleTitle, snap.vehicle_title);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.planActive, snap.plan_active);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.planSocPct, snap.plan_soc_pct);
     await writeTimeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.planTime, snap.plan_time);
     await writeTimeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.effectivePlanTime, snap.effective_plan_time);
+    await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.effectiveLimitSocPct, snap.effective_limit_soc_pct);
+    await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryBoost, snap.battery_boost);
+    await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.loadpointMode, snap.loadpoint_mode);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.activePhases, snap.active_phases);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.configuredPhases, snap.configured_phases);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.minCurrentA, snap.min_current_a);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.maxCurrentA, snap.max_current_a);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryMode, snap.battery_mode);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryDischargeControl, snap.battery_discharge_control);
+    await publishWallboxBatteryHoldRuntime(host, snap);
     await (0, vehicles_1.refreshWallboxVehicleRuntime)(host, snap, host.config);
     await refreshWallboxDailyPlanRuntime(host, snap);
 }
@@ -298,6 +351,9 @@ async function startWallboxModuleRuntime(host) {
     await refreshWallboxEvccTelemetry(host);
     const cfg = (0, evcc_config_1.wallboxEvccTelemetryConfigFromAdapter)(host.config);
     const ids = new Set((0, evcc_config_1.configuredEvccTelemetryStateIds)(cfg));
+    for (const id of (0, evcc_config_1.configuredWallboxHoldSignalStateIds)((0, evcc_config_1.wallboxHoldSignalConfigFromAdapter)(host.config))) {
+        ids.add(id);
+    }
     for (const id of (0, vehicles_1.collectWallboxVehicleForeignStateIds)(host.config)) {
         ids.add(id);
     }

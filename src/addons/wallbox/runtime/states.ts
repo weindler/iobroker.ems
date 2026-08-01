@@ -88,6 +88,12 @@ export const WALLBOX_RUNTIME_STATES = {
 	faultReset: `${WALLBOX_RUNTIME_BASE}.fault_reset`,
 	/** Deep write/feedback/dispatch detail for Support-Diagnose (not individual leaves). */
 	detailJson: `${WALLBOX_RUNTIME_BASE}.detail_json`,
+	/** Hausbatterie-Hold nur bei Boost/externem Laden (nicht MinPV/PV). */
+	batteryHoldForEvCharge: `${WALLBOX_RUNTIME_BASE}.battery_hold_for_ev_charge`,
+	batteryHoldReasonDe: `${WALLBOX_RUNTIME_BASE}.battery_hold_reason_de`,
+	chargeBoostActive: `${WALLBOX_RUNTIME_BASE}.charge_boost_active`,
+	externalVehicleChargeActive: `${WALLBOX_RUNTIME_BASE}.external_vehicle_charge_active`,
+	tibberGridRewardsActive: `${WALLBOX_RUNTIME_BASE}.tibber_grid_rewards_active`,
 } as const;
 
 /** Legacy ballast leaves — purged by surface cleanup, no longer ensured. */

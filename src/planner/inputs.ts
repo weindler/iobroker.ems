@@ -5,6 +5,7 @@ import { isAddonGovernanceEnabledFromState } from "../addons/governance";
 import { immersionDeviceConfigFromAdapter } from "../addons/immersion_heater/device_config";
 import { parseResolvedIntentJson, resolvedModeFromIntent } from "../addons/immersion_heater/runtime/intent_read";
 import { WALLBOX_EVCC_STATES } from "../addons/wallbox/ensure_evcc_states";
+import { WALLBOX_RUNTIME_STATES } from "../addons/wallbox/runtime/states";
 import { addonGovernanceAiAllowedState } from "../addons/governance/ensure_states";
 import type { Price15MinSlot } from "../learning/price_forecast/tibber_parse";
 import { readTibber15MinPriceSlots } from "./battery_winter_price_inputs";
@@ -47,6 +48,9 @@ export interface PlannerInputs {
 	evccBatteryDischargeControl: boolean | null;
 	userIntentBatteryHold: boolean;
 	userIntentBatteryCharge: boolean;
+	/** Published wallbox runtime hold (Boost/extern — not MinPV/PV). */
+	wallboxChargeHold: boolean;
+	wallboxChargeHoldReasonDe: string | null;
 	immersionConfig: ImmersionDeviceConfig;
 	pvTodayKwh: number | null;
 	pvTomorrowKwh: number | null;
@@ -180,7 +184,7 @@ export async function readPlannerInputs(host: PlannerHost): Promise<PlannerInput
 
 	const batteryWinterConfig = batteryWinterPlanConfigFromAdapter(host.config);
 
-	const [thermalGov, batteryGov, coolingGov, houseLoadW, socPct, bufferTempC, evccMode, evccDischarge, pvTodayKwh, pvTomorrowKwh, pvBiasStatus, aiThermalAllowed, batteryAiAllowed, snowCover, outdoorTempC, coolingUnits, batteryWinterDays, batteryWinterPriceSlots] =
+	const [thermalGov, batteryGov, coolingGov, houseLoadW, socPct, bufferTempC, evccMode, evccDischarge, wallboxHold, wallboxHoldReason, pvTodayKwh, pvTomorrowKwh, pvBiasStatus, aiThermalAllowed, batteryAiAllowed, snowCover, outdoorTempC, coolingUnits, batteryWinterDays, batteryWinterPriceSlots] =
 		await Promise.all([
 			isAddonGovernanceEnabledFromState((id) => host.getStateAsync(id), "immersion_heater"),
 			isAddonGovernanceEnabledFromState((id) => host.getStateAsync(id), "battery"),
@@ -190,6 +194,8 @@ export async function readPlannerInputs(host: PlannerHost): Promise<PlannerInput
 			readNum(host, "live.thermal.buffer_temp_c"),
 			readStr(host, WALLBOX_EVCC_STATES.batteryMode),
 			readBool(host, WALLBOX_EVCC_STATES.batteryDischargeControl),
+			readBool(host, WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge),
+			readStr(host, WALLBOX_RUNTIME_STATES.batteryHoldReasonDe),
 			readNum(host, "learning.pv_bias.corrected_today_kwh"),
 			readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
 			readStr(host, "learning.pv_bias.status"),
@@ -217,6 +223,8 @@ export async function readPlannerInputs(host: PlannerHost): Promise<PlannerInput
 		evccBatteryDischargeControl: evccDischarge,
 		userIntentBatteryHold,
 		userIntentBatteryCharge,
+		wallboxChargeHold: wallboxHold === true,
+		wallboxChargeHoldReasonDe: wallboxHoldReason,
 		immersionConfig,
 		pvTodayKwh,
 		pvTomorrowKwh,

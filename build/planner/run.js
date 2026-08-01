@@ -19,6 +19,8 @@ function runPlanner(inputs) {
         evccBatteryMode: inputs.evccBatteryMode,
         evccBatteryDischargeControl: inputs.evccBatteryDischargeControl,
         userIntentBatteryHold: inputs.userIntentBatteryHold,
+        wallboxChargeHold: inputs.wallboxChargeHold === true,
+        wallboxChargeHoldReasonDe: inputs.wallboxChargeHoldReasonDe ?? null,
     });
     const batConsumers = (0, battery_consumers_1.batteryConsumersConfigFromAdapter)(inputs.adapterConfig ?? {});
     const immersionCritical = (0, battery_consumers_1.immersionCriticalNow)(inputs.bufferTempC, inputs.immersionConfig.planningMinTempC, batConsumers.immersion_heater.criticalMarginK);

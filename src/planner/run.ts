@@ -29,6 +29,8 @@ export function runPlanner(inputs: PlannerInputs): PlannerIntent {
 		evccBatteryMode: inputs.evccBatteryMode,
 		evccBatteryDischargeControl: inputs.evccBatteryDischargeControl,
 		userIntentBatteryHold: inputs.userIntentBatteryHold,
+		wallboxChargeHold: inputs.wallboxChargeHold === true,
+		wallboxChargeHoldReasonDe: inputs.wallboxChargeHoldReasonDe ?? null,
 	});
 	const batConsumers = batteryConsumersConfigFromAdapter(inputs.adapterConfig ?? {});
 	const immersionCritical = immersionCriticalNow(

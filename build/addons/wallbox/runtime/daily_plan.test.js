@@ -83,11 +83,17 @@ function emptySnap() {
         charging: (0, normalize_js_1.missingField)(),
         charge_power_w: (0, normalize_js_1.missingField)(),
         session_energy_kwh: (0, normalize_js_1.missingField)(),
+        charge_remaining_energy_kwh: (0, normalize_js_1.missingField)(),
         vehicle_soc_pct: (0, normalize_js_1.missingField)(),
+        vehicle_name: (0, normalize_js_1.missingField)(),
+        vehicle_title: (0, normalize_js_1.missingField)(),
         plan_active: (0, normalize_js_1.missingField)(),
         plan_soc_pct: (0, normalize_js_1.missingField)(),
         plan_time: (0, normalize_js_1.missingField)(),
         effective_plan_time: (0, normalize_js_1.missingField)(),
+        effective_limit_soc_pct: (0, normalize_js_1.missingField)(),
+        battery_boost: (0, normalize_js_1.missingField)(),
+        loadpoint_mode: (0, normalize_js_1.missingField)(),
         active_phases: (0, normalize_js_1.missingField)(),
         configured_phases: (0, normalize_js_1.missingField)(),
         min_current_a: (0, normalize_js_1.missingField)(),
@@ -224,11 +230,17 @@ function emptySnap() {
             chargingStateId: "",
             chargePowerWStateId: "",
             sessionEnergyKwhStateId: "",
+            chargeRemainingEnergyKwhStateId: "",
             vehicleSocStateId: "",
+            vehicleNameStateId: "",
+            vehicleTitleStateId: "",
             planActiveStateId: "",
             planSocStateId: "",
             planTimeStateId: "",
             effectivePlanTimeStateId: "",
+            effectiveLimitSocStateId: "",
+            batteryBoostStateId: "",
+            loadpointModeStateId: "",
             activePhasesStateId: "",
             configuredPhasesStateId: "",
             minCurrentAStateId: "",
@@ -281,6 +293,17 @@ function emptySnap() {
     (0, node_test_1.it)("remaining energy from soc and capacity", () => {
         const rem = (0, daily_plan_js_1.computeRemainingEnergyKwh)(telemetry({ vehicleSocPct: 40, planSocPct: 80 }), 60);
         strict_1.default.equal(rem, 24);
+    });
+    (0, node_test_1.it)("ignores inactive planSoc 0 for remaining energy", () => {
+        strict_1.default.equal((0, daily_plan_js_1.computeRemainingEnergyKwh)(telemetry({ vehicleSocPct: 40, planSocPct: 0, planActive: false }), 60), null);
+    });
+    (0, node_test_1.it)("uses effectiveLimitSoc when plan inactive", () => {
+        strict_1.default.equal((0, daily_plan_js_1.computeRemainingEnergyKwh)(telemetry({
+            vehicleSocPct: 40,
+            planSocPct: 0,
+            planActive: false,
+            effectiveLimitSocPct: 80,
+        }), 50), 20);
     });
     (0, node_test_1.it)("unknown capacity yields null remaining", () => {
         strict_1.default.equal((0, daily_plan_js_1.computeRemainingEnergyKwh)(telemetry({ vehicleSocPct: 40, planSocPct: 80 }), null), null);

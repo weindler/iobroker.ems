@@ -35,6 +35,7 @@ function telemetryInputFromSnapshot(snap, cfg) {
         planSocPct: pickNum(snap.plan_soc_pct),
         planActive: pickBool(snap.plan_active),
         sessionEnergyKwh: pickNum(snap.session_energy_kwh),
+        effectiveLimitSocPct: pickNum(snap.effective_limit_soc_pct),
         effectivePlanTime: pickStr(snap.effective_plan_time),
         planTime: pickStr(snap.plan_time),
         activePhases: pickNum(snap.active_phases),
@@ -47,9 +48,19 @@ function telemetryInputFromSnapshot(snap, cfg) {
     };
 }
 exports.telemetryInputFromSnapshot = telemetryInputFromSnapshot;
+function resolveTargetSocForRemaining(telemetry) {
+    if (telemetry.planActive === true && telemetry.planSocPct !== null && telemetry.planSocPct > 0) {
+        return telemetry.planSocPct;
+    }
+    const limit = telemetry.effectiveLimitSocPct;
+    if (limit !== null && limit !== undefined && limit > 0) {
+        return limit;
+    }
+    return null;
+}
 function computeRemainingEnergyKwh(telemetry, vehicleCapacityKwh = null) {
     if (vehicleCapacityKwh !== null && vehicleCapacityKwh > 0) {
-        const targetSoc = telemetry.planActive && telemetry.planSocPct !== null ? telemetry.planSocPct : telemetry.planSocPct;
+        const targetSoc = resolveTargetSocForRemaining(telemetry);
         if (targetSoc !== null && telemetry.vehicleSocPct !== null) {
             const delta = targetSoc - telemetry.vehicleSocPct;
             if (delta <= 0)

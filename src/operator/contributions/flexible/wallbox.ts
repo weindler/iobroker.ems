@@ -22,20 +22,42 @@ export interface WallboxContributionBuildInput {
 	sessionEnergyKwh: number | null;
 	remainingEnergyKwh: number | null;
 	vehicleCapacityKwh: number | null;
+	/** Fallback-Ziel-SOC wenn kein aktiver Plan (z. B. Intent). */
+	fallbackTargetSocPct?: number | null;
+	/** EVCC effectiveLimitSoc. */
+	effectiveLimitSocPct?: number | null;
 	deadlineIso: string | null;
 	activePhases: number | null;
 	maxCurrentA: number | null;
 	evccConfigured: boolean;
 }
 
+/** Ziel-SOC nur bei aktivem Plan mit positivem planSoc, sonst effectiveLimit/fallback. */
+export function resolveWallboxTargetSocPct(input: {
+	planActive: boolean;
+	planSocPct: number | null;
+	effectiveLimitSocPct?: number | null;
+	fallbackTargetSocPct?: number | null;
+}): number | null {
+	if (input.planActive && input.planSocPct !== null && input.planSocPct > 0) {
+		return input.planSocPct;
+	}
+	const effective = input.effectiveLimitSocPct;
+	if (effective !== null && effective !== undefined && effective > 0) {
+		return effective;
+	}
+	const fallback = input.fallbackTargetSocPct;
+	if (fallback !== null && fallback !== undefined && fallback > 0) {
+		return fallback;
+	}
+	return null;
+}
+
 function requiredEnergyKwh(input: WallboxContributionBuildInput): number | null {
 	if (input.remainingEnergyKwh !== null && Number.isFinite(input.remainingEnergyKwh)) {
 		return round3(Math.max(0, input.remainingEnergyKwh));
 	}
-	const targetSoc =
-		input.planActive && input.planSocPct !== null
-			? input.planSocPct
-			: input.planSocPct;
+	const targetSoc = resolveWallboxTargetSocPct(input);
 	if (
 		targetSoc !== null &&
 		input.vehicleSocPct !== null &&
@@ -47,6 +69,29 @@ function requiredEnergyKwh(input: WallboxContributionBuildInput): number | null 
 		return round3((delta / 100) * input.vehicleCapacityKwh);
 	}
 	return null;
+}
+
+function degradedReasonDe(input: WallboxContributionBuildInput, requiredKwh: number | null): string {
+	const hasRemaining = input.remainingEnergyKwh !== null && Number.isFinite(input.remainingEnergyKwh);
+	const hasCapacity =
+		input.vehicleCapacityKwh !== null &&
+		Number.isFinite(input.vehicleCapacityKwh) &&
+		input.vehicleCapacityKwh > 0;
+	const targetSoc = resolveWallboxTargetSocPct(input);
+
+	if (!hasRemaining && !hasCapacity) {
+		return "Fahrzeug verbunden, aber Restenergie und Fahrzeugkapazität fehlen — Ladebedarf nicht bestimmbar.";
+	}
+	if (!hasRemaining && hasCapacity && targetSoc === null) {
+		return "Fahrzeug verbunden, aber kein gültiges Ladeziel (Plan inaktiv/0, kein effectiveLimit) — Bedarf nicht berechenbar.";
+	}
+	if (!hasRemaining && hasCapacity && input.vehicleSocPct === null) {
+		return "Fahrzeugkapazität bekannt, aber Fahrzeug-SOC fehlt — Restenergie nicht berechenbar.";
+	}
+	if (requiredKwh === null && (input.planActive || input.planSocPct !== null)) {
+		return "Plan/Ziel vorhanden, aber Restenergie ohne belastbare Telemetrie nicht berechenbar.";
+	}
+	return "Fahrzeug verbunden, aber Ladebedarf nicht belastbar bestimmbar.";
 }
 
 function gridEligible(input: WallboxContributionBuildInput): boolean {
@@ -101,16 +146,13 @@ export function buildWallboxEvSessionContribution(input: WallboxContributionBuil
 	if (participation.allowed) {
 		if (requiredKwh === null && input.vehicleSocPct === null && input.sessionEnergyKwh === null) {
 			status = "degraded";
-			reasonDe = "Fahrzeug verbunden, aber Ladebedarf nicht belastbar bestimmbar.";
-		} else if (requiredKwh === null && (input.planActive || input.planSocPct !== null)) {
+			reasonDe = degradedReasonDe(input, requiredKwh);
+		} else if (requiredKwh === null) {
 			status = "degraded";
-			reasonDe = "Plan aktiv, aber Restenergie ohne Fahrzeugkapazität nicht berechenbar.";
+			reasonDe = degradedReasonDe(input, requiredKwh);
 		} else {
 			status = participation.status === "degraded" ? "degraded" : "valid";
-			reasonDe =
-				requiredKwh !== null
-					? `EV-Ladesitzung — Bedarf ${round3(requiredKwh)} kWh.`
-					: "EV-Ladesitzung aktiv — Bedarf eingeschränkt dokumentiert.";
+			reasonDe = `EV-Ladesitzung — Bedarf ${round3(requiredKwh)} kWh.`;
 		}
 	}
 
@@ -138,6 +180,8 @@ export function buildWallboxEvSessionContribution(input: WallboxContributionBuil
 				planSocPct: input.planSocPct,
 				planActive: input.planActive,
 				sessionEnergyKwh: input.sessionEnergyKwh,
+				remainingEnergyKwh: input.remainingEnergyKwh,
+				effectiveLimitSocPct: input.effectiveLimitSocPct ?? null,
 				requiredEnergyKwh: requiredKwh,
 				maxChargePowerW: maxW,
 				activePhases: input.activePhases,

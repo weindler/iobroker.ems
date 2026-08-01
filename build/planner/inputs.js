@@ -8,6 +8,7 @@ const governance_1 = require("../addons/governance");
 const device_config_1 = require("../addons/immersion_heater/device_config");
 const intent_read_1 = require("../addons/immersion_heater/runtime/intent_read");
 const ensure_evcc_states_1 = require("../addons/wallbox/ensure_evcc_states");
+const states_1 = require("../addons/wallbox/runtime/states");
 const ensure_states_2 = require("../addons/governance/ensure_states");
 const battery_winter_price_inputs_1 = require("./battery_winter_price_inputs");
 const battery_winter_config_1 = require("./battery_winter_config");
@@ -120,7 +121,7 @@ async function readPlannerInputs(host) {
     const immersionConfig = (0, device_config_1.immersionDeviceConfigFromAdapter)(host.config);
     const consumerStatsPersist = await readConsumerStatsForPlanner(host);
     const batteryWinterConfig = (0, battery_winter_config_1.batteryWinterPlanConfigFromAdapter)(host.config);
-    const [thermalGov, batteryGov, coolingGov, houseLoadW, socPct, bufferTempC, evccMode, evccDischarge, pvTodayKwh, pvTomorrowKwh, pvBiasStatus, aiThermalAllowed, batteryAiAllowed, snowCover, outdoorTempC, coolingUnits, batteryWinterDays, batteryWinterPriceSlots] = await Promise.all([
+    const [thermalGov, batteryGov, coolingGov, houseLoadW, socPct, bufferTempC, evccMode, evccDischarge, wallboxHold, wallboxHoldReason, pvTodayKwh, pvTomorrowKwh, pvBiasStatus, aiThermalAllowed, batteryAiAllowed, snowCover, outdoorTempC, coolingUnits, batteryWinterDays, batteryWinterPriceSlots] = await Promise.all([
         (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "immersion_heater"),
         (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "battery"),
         (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "climate"),
@@ -129,6 +130,8 @@ async function readPlannerInputs(host) {
         readNum(host, "live.thermal.buffer_temp_c"),
         readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryMode),
         readBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryDischargeControl),
+        readBool(host, states_1.WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge),
+        readStr(host, states_1.WALLBOX_RUNTIME_STATES.batteryHoldReasonDe),
         readNum(host, "learning.pv_bias.corrected_today_kwh"),
         readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
         readStr(host, "learning.pv_bias.status"),
@@ -155,6 +158,8 @@ async function readPlannerInputs(host) {
         evccBatteryDischargeControl: evccDischarge,
         userIntentBatteryHold,
         userIntentBatteryCharge,
+        wallboxChargeHold: wallboxHold === true,
+        wallboxChargeHoldReasonDe: wallboxHoldReason,
         immersionConfig,
         pvTodayKwh,
         pvTomorrowKwh,

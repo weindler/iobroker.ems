@@ -1,7 +1,7 @@
 "use strict";
 /** EVCC telemetry value normalization — missing stays missing, never invent 0/false. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.normalizeOptionalBatteryMode = exports.normalizeOptionalPhases = exports.normalizeOptionalSoc = exports.normalizeOptionalNumber = exports.normalizeOptionalBool = exports.missingField = void 0;
+exports.normalizeOptionalLoadpointMode = exports.normalizeOptionalString = exports.normalizeOptionalBatteryMode = exports.normalizeOptionalPhases = exports.normalizeOptionalSoc = exports.normalizeOptionalNumber = exports.normalizeOptionalBool = exports.missingField = void 0;
 const sentinel_1 = require("../../intent/core/sentinel");
 const validation_1 = require("../../intent/core/validation");
 function missingField() {
@@ -78,3 +78,23 @@ function normalizeOptionalBatteryMode(raw) {
     return { value: null, status: "invalid", raw };
 }
 exports.normalizeOptionalBatteryMode = normalizeOptionalBatteryMode;
+/** Freitext (Fahrzeugname/Titel) — getrimmt, keine Erfindung. */
+function normalizeOptionalString(raw) {
+    if ((0, sentinel_1.isEmptySentinel)(raw))
+        return missingField();
+    const s = String(raw).trim();
+    if (!s)
+        return missingField();
+    return { value: s, status: "valid", raw };
+}
+exports.normalizeOptionalString = normalizeOptionalString;
+/** Loadpoint-Modus (off/pv/minpv/now …) — getrimmt lowercase, kein Inventar. */
+function normalizeOptionalLoadpointMode(raw) {
+    if ((0, sentinel_1.isEmptySentinel)(raw))
+        return missingField();
+    const s = String(raw).trim().toLowerCase();
+    if (!s)
+        return missingField();
+    return { value: s, status: "valid", raw };
+}
+exports.normalizeOptionalLoadpointMode = normalizeOptionalLoadpointMode;

@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildThermalLearningSignal = void 0;
 const time_1 = require("../../../learning/house_load/time");
 const math_1 = require("../../../learning/thermal_runtime/math");
+const time_2 = require("../../time");
 function parseByDayTypeJson(raw) {
     if (!raw)
         return null;
@@ -30,10 +31,11 @@ function deriveStatus(rawStatus, rawHealth) {
         return "degraded";
     return "missing";
 }
-function reasonDeForStatus(status, samples, estimatedEmptyAt) {
+function reasonDeForStatus(status, samples, estimatedEmptyAt, timezone) {
     if (status === "valid") {
-        return estimatedEmptyAt
-            ? `Thermal-Runtime-Learning aktiv (${samples ?? 0} Zyklen) — Puffer voraussichtlich leer um ${estimatedEmptyAt}.`
+        const local = estimatedEmptyAt !== null ? (0, time_2.formatLocalDateTimeDe)(estimatedEmptyAt, timezone) : null;
+        return local
+            ? `Thermal-Runtime-Learning aktiv (${samples ?? 0} Zyklen) — Puffer voraussichtlich leer um ${local}.`
             : `Thermal-Runtime-Learning aktiv (${samples ?? 0} Zyklen).`;
     }
     if (status === "degraded") {
@@ -43,6 +45,7 @@ function reasonDeForStatus(status, samples, estimatedEmptyAt) {
 }
 function buildThermalLearningSignal(input) {
     const status = deriveStatus(input.rawStatus, input.rawHealth);
+    const timezone = input.timezone?.trim() || "Europe/Berlin";
     let estimatedEmptyAt = null;
     if (input.estimatedEmptyAtRaw) {
         const ms = Date.parse(input.estimatedEmptyAtRaw);
@@ -74,7 +77,7 @@ function buildThermalLearningSignal(input) {
             estimatedRemainingHours: null,
             estimatedEmptyAt: null,
             currentDayTypeRuntimeHoursMedian: null,
-            reasonDe: reasonDeForStatus(status, input.samples, null),
+            reasonDe: reasonDeForStatus(status, input.samples, null, timezone),
         };
     }
     return {
@@ -87,7 +90,7 @@ function buildThermalLearningSignal(input) {
         estimatedRemainingHours,
         estimatedEmptyAt,
         currentDayTypeRuntimeHoursMedian,
-        reasonDe: reasonDeForStatus(status, input.samples, estimatedEmptyAt),
+        reasonDe: reasonDeForStatus(status, input.samples, estimatedEmptyAt, timezone),
     };
 }
 exports.buildThermalLearningSignal = buildThermalLearningSignal;

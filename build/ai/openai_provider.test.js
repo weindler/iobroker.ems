@@ -22,6 +22,7 @@ function emptySituation() {
         immersion: {
             bufferTempC: null,
             thermalEstimatedEmptyAt: null,
+            thermalEstimatedEmptyAtLocalDe: null,
             thermalEstimatedRemainingHours: null,
         },
         climate: { units: [] },
@@ -103,6 +104,7 @@ function baseRequest() {
             pvHorizonDays: [],
             thermalRuntimeStatus: null,
             thermalEstimatedEmptyAt: null,
+            thermalEstimatedEmptyAtLocalDe: null,
             thermalEstimatedRemainingHours: null,
             batteryRuntimeStatus: null,
             batteryTopOffIntervalDays: null,

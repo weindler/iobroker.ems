@@ -112,6 +112,7 @@ function validIsoDeadline(raw) {
     return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 async function readThermalLearningSignal(host, now) {
+    const timezone = (0, config_5.intentAdminConfigFromAdapter)(host.config).timezone || "Europe/Berlin";
     const [rawStatus, rawHealth, samples, coolingRateCPerHAvg, coolingConstantPerH, coolingAsymptoteC, estimatedRemainingHours, estimatedEmptyAtRaw, byDayTypeJsonRaw,] = await Promise.all([
         readStr(host, "learning.thermal_runtime.status"),
         readStr(host, "learning.thermal_runtime.health"),
@@ -134,6 +135,7 @@ async function readThermalLearningSignal(host, now) {
         estimatedRemainingHours,
         estimatedEmptyAtRaw,
         byDayTypeJsonRaw,
+        timezone,
     });
 }
 async function readBatteryLearningSignal(host) {

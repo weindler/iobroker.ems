@@ -14,6 +14,7 @@ import type {
 import type { DailyPlan, DailyPlanSlot } from "../operator/daily_plan/types";
 import { asBool, asNum } from "../ems_light/state_util";
 import { liveRemainingHoursFromEmptyAt } from "../learning/thermal_runtime/math";
+import { formatLocalDateTimeDe } from "../operator/time";
 
 export type ContextHost = {
 	config: unknown;
@@ -209,7 +210,10 @@ async function readPvHorizonDays(
 }
 
 /** Kuratierter Learning-Digest — Skalare aus Learning-States, keine History-Dumps. */
-export async function buildLearningDigest(host: ContextHost): Promise<AiLearningDigest> {
+export async function buildLearningDigest(
+	host: ContextHost,
+	timezone: string = "Europe/Berlin",
+): Promise<AiLearningDigest> {
 	const [
 		pvBiasStatus,
 		pvToday,
@@ -242,6 +246,9 @@ export async function buildLearningDigest(host: ContextHost): Promise<AiLearning
 		pvHorizonDays,
 		thermalRuntimeStatus: thermalStatus,
 		thermalEstimatedEmptyAt: thermalEmpty,
+		thermalEstimatedEmptyAtLocalDe: thermalEmpty
+			? formatLocalDateTimeDe(thermalEmpty, timezone)
+			: null,
 		thermalEstimatedRemainingHours: liveRemainingHoursFromEmptyAt(thermalEmpty, new Date()),
 		batteryRuntimeStatus: batteryStatus,
 		batteryTopOffIntervalDays: topOffDays,
@@ -321,6 +328,7 @@ export async function buildSituationBrief(
 		immersion: {
 			bufferTempC: bufferTempLive ?? bufferTempRuntime,
 			thermalEstimatedEmptyAt: learning.thermalEstimatedEmptyAt,
+			thermalEstimatedEmptyAtLocalDe: learning.thermalEstimatedEmptyAtLocalDe,
 			thermalEstimatedRemainingHours: learning.thermalEstimatedRemainingHours,
 		},
 		climate: {
@@ -356,7 +364,7 @@ export async function buildAiOptimizationContext(
 ): Promise<AiOptimizationRequestContext> {
 	const policyRaw = await readJson(host, "policy.global.effective_json");
 	const allowedAddonIds = resolveAllowedAddonIds(host.config);
-	const learning = await buildLearningDigest(host);
+	const learning = await buildLearningDigest(host, plan.timezone || "Europe/Berlin");
 	const situation = await buildSituationBrief(host, plan, learning);
 	return {
 		generatedAt: new Date().toISOString(),

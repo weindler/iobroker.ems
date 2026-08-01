@@ -68,6 +68,10 @@ const time_js_1 = require("./time.js");
         strict_1.default.equal(b, "2026-07-15");
         strict_1.default.equal((0, time_js_1.zonedFormatterCacheSizeForTest)(), 1);
     });
+    (0, node_test_1.it)("formatLocalDateTimeDe converts UTC ISO to Europe/Berlin wall clock", () => {
+        strict_1.default.equal((0, time_js_1.formatLocalDateTimeDe)("2026-08-01T16:37:16.467Z", "Europe/Berlin"), "01.08.2026, 18:37");
+        strict_1.default.equal((0, time_js_1.formatLocalDateTimeDe)("2026-01-15T16:37:00.000Z", "Europe/Berlin"), "15.01.2026, 17:37");
+    });
 });
 function isValidIso(iso) {
     return Number.isFinite(Date.parse(iso));

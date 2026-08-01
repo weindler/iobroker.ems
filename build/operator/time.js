@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.zonedFormatterCacheHasForTest = exports.resetZonedFormatterCacheForTest = exports.zonedFormatterCacheSizeForTest = exports.addDaysToDateKey = exports.isoAtTimezoneLocal = exports.localDateKeyInTimezone = exports.isValidIsoTimestamp = exports.slotEndMsFromStart = exports.isoFromMs = exports.OPERATOR_MS_PER_15MIN = void 0;
+exports.zonedFormatterCacheHasForTest = exports.resetZonedFormatterCacheForTest = exports.zonedFormatterCacheSizeForTest = exports.addDaysToDateKey = exports.isoAtTimezoneLocal = exports.formatLocalDateTimeDe = exports.localDateKeyInTimezone = exports.isValidIsoTimestamp = exports.slotEndMsFromStart = exports.isoFromMs = exports.OPERATOR_MS_PER_15MIN = void 0;
 const tibber_parse_1 = require("../learning/price_forecast/tibber_parse");
 exports.OPERATOR_MS_PER_15MIN = tibber_parse_1.MS_PER_15MIN;
 function isoFromMs(ms) {
@@ -74,6 +74,19 @@ function localDateKeyInTimezone(d, timezone) {
     return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
 }
 exports.localDateKeyInTimezone = localDateKeyInTimezone;
+/**
+ * ISO/UTC → deutsche Ortszeit-Anzeige (TT.MM.JJJJ, HH:MM) in `timezone`.
+ * Für Briefing/KI — nie die UTC-Ziffern aus `…Z` als lokale Uhrzeit vorlesen.
+ */
+function formatLocalDateTimeDe(isoOrMs, timezone) {
+    const ms = typeof isoOrMs === "number" ? isoOrMs : Date.parse(isoOrMs);
+    if (!Number.isFinite(ms))
+        return null;
+    const p = zonedParts(ms, timezone.trim() || "Europe/Berlin");
+    return (`${String(p.day).padStart(2, "0")}.${String(p.month).padStart(2, "0")}.${p.year}, ` +
+        `${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}`);
+}
+exports.formatLocalDateTimeDe = formatLocalDateTimeDe;
 function isoAtTimezoneLocal(dateKey, hour, minute, timezone) {
     const [y, mo, da] = dateKey.split("-").map((x) => parseInt(x, 10));
     let lo = Date.UTC(y, mo - 1, da, 0, 0, 0) - 36 * tibber_parse_1.MS_PER_15MIN;

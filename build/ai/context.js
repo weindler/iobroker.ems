@@ -9,6 +9,7 @@ const ensure_states_1 = require("../addons/air_conditioning/runtime/ensure_state
 const constants_1 = require("../learning/pv_horizon/constants");
 const state_util_1 = require("../ems_light/state_util");
 const math_1 = require("../learning/thermal_runtime/math");
+const time_1 = require("../operator/time");
 /** Nur Add-ons, die aktiv UND per Governance für KI-Optimierung freigegeben sind — sonst darf die KI sie nicht mal erwähnen. */
 function resolveAllowedAddonIds(config) {
     return (0, registry_1.governedAddonIds)().filter((id) => (0, config_1.isAddonEnabled)(config, id) && (0, config_1.isAddonAiOptimizationAllowed)(config, id));
@@ -196,7 +197,7 @@ async function readPvHorizonDays(host) {
     return days;
 }
 /** Kuratierter Learning-Digest — Skalare aus Learning-States, keine History-Dumps. */
-async function buildLearningDigest(host) {
+async function buildLearningDigest(host, timezone = "Europe/Berlin") {
     const [pvBiasStatus, pvToday, pvTomorrow, thermalStatus, thermalEmpty, batteryStatus, topOffDays, priceStatus, priceAvg, houseStatus, pvHorizonDays,] = await Promise.all([
         readStr(host, "learning.pv_bias.status"),
         readNum(host, "learning.pv_bias.corrected_today_kwh"),
@@ -217,6 +218,9 @@ async function buildLearningDigest(host) {
         pvHorizonDays,
         thermalRuntimeStatus: thermalStatus,
         thermalEstimatedEmptyAt: thermalEmpty,
+        thermalEstimatedEmptyAtLocalDe: thermalEmpty
+            ? (0, time_1.formatLocalDateTimeDe)(thermalEmpty, timezone)
+            : null,
         thermalEstimatedRemainingHours: (0, math_1.liveRemainingHoursFromEmptyAt)(thermalEmpty, new Date()),
         batteryRuntimeStatus: batteryStatus,
         batteryTopOffIntervalDays: topOffDays,
@@ -270,6 +274,7 @@ async function buildSituationBrief(host, plan, learning) {
         immersion: {
             bufferTempC: bufferTempLive ?? bufferTempRuntime,
             thermalEstimatedEmptyAt: learning.thermalEstimatedEmptyAt,
+            thermalEstimatedEmptyAtLocalDe: learning.thermalEstimatedEmptyAtLocalDe,
             thermalEstimatedRemainingHours: learning.thermalEstimatedRemainingHours,
         },
         climate: {
@@ -300,7 +305,7 @@ function pickPolicyHighlights(policy) {
 async function buildAiOptimizationContext(host, plan, triggerReason) {
     const policyRaw = await readJson(host, "policy.global.effective_json");
     const allowedAddonIds = resolveAllowedAddonIds(host.config);
-    const learning = await buildLearningDigest(host);
+    const learning = await buildLearningDigest(host, plan.timezone || "Europe/Berlin");
     const situation = await buildSituationBrief(host, plan, learning);
     return {
         generatedAt: new Date().toISOString(),

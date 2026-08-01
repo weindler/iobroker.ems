@@ -19,6 +19,7 @@ function emptySituation(): AiOptimizationRequestContext["situation"] {
 		immersion: {
 			bufferTempC: null,
 			thermalEstimatedEmptyAt: null,
+			thermalEstimatedEmptyAtLocalDe: null,
 			thermalEstimatedRemainingHours: null,
 		},
 		climate: { units: [] },
@@ -101,6 +102,7 @@ function baseRequest(): AiOptimizationRequestContext {
 			pvHorizonDays: [],
 			thermalRuntimeStatus: null,
 			thermalEstimatedEmptyAt: null,
+			thermalEstimatedEmptyAtLocalDe: null,
 			thermalEstimatedRemainingHours: null,
 			batteryRuntimeStatus: null,
 			batteryTopOffIntervalDays: null,

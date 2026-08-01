@@ -121,6 +121,7 @@ async function readThermalLearningSignal(
 	host: FlexibleContributionsReadHost,
 	now: Date,
 ): Promise<ThermalLearningSignal> {
+	const timezone = intentAdminConfigFromAdapter(host.config).timezone || "Europe/Berlin";
 	const [
 		rawStatus,
 		rawHealth,
@@ -154,6 +155,7 @@ async function readThermalLearningSignal(
 		estimatedRemainingHours,
 		estimatedEmptyAtRaw,
 		byDayTypeJsonRaw,
+		timezone,
 	});
 }
 

@@ -1,5 +1,6 @@
 import { dayTypeFromWeekday, weekdayFromDate } from "../../../learning/house_load/time";
 import { liveRemainingHoursFromEmptyAt } from "../../../learning/thermal_runtime/math";
+import { formatLocalDateTimeDe } from "../../time";
 
 /**
  * Gelernter Thermik-Signal-Zustand für den Heizstab (`learning.thermal_runtime.*`).
@@ -51,10 +52,13 @@ function reasonDeForStatus(
 	status: ThermalLearningSignal["status"],
 	samples: number | null,
 	estimatedEmptyAt: string | null,
+	timezone: string,
 ): string {
 	if (status === "valid") {
-		return estimatedEmptyAt
-			? `Thermal-Runtime-Learning aktiv (${samples ?? 0} Zyklen) — Puffer voraussichtlich leer um ${estimatedEmptyAt}.`
+		const local =
+			estimatedEmptyAt !== null ? formatLocalDateTimeDe(estimatedEmptyAt, timezone) : null;
+		return local
+			? `Thermal-Runtime-Learning aktiv (${samples ?? 0} Zyklen) — Puffer voraussichtlich leer um ${local}.`
 			: `Thermal-Runtime-Learning aktiv (${samples ?? 0} Zyklen).`;
 	}
 	if (status === "degraded") {
@@ -74,8 +78,11 @@ export function buildThermalLearningSignal(input: {
 	estimatedRemainingHours: number | null;
 	estimatedEmptyAtRaw: string | null;
 	byDayTypeJsonRaw: string | null;
+	/** Für Ortszeit in reasonDe — Default Europe/Berlin. */
+	timezone?: string;
 }): ThermalLearningSignal {
 	const status = deriveStatus(input.rawStatus, input.rawHealth);
+	const timezone = input.timezone?.trim() || "Europe/Berlin";
 
 	let estimatedEmptyAt: string | null = null;
 	if (input.estimatedEmptyAtRaw) {
@@ -113,7 +120,7 @@ export function buildThermalLearningSignal(input: {
 			estimatedRemainingHours: null,
 			estimatedEmptyAt: null,
 			currentDayTypeRuntimeHoursMedian: null,
-			reasonDe: reasonDeForStatus(status, input.samples, null),
+			reasonDe: reasonDeForStatus(status, input.samples, null, timezone),
 		};
 	}
 
@@ -127,6 +134,6 @@ export function buildThermalLearningSignal(input: {
 		estimatedRemainingHours,
 		estimatedEmptyAt,
 		currentDayTypeRuntimeHoursMedian,
-		reasonDe: reasonDeForStatus(status, input.samples, estimatedEmptyAt),
+		reasonDe: reasonDeForStatus(status, input.samples, estimatedEmptyAt, timezone),
 	};
 }

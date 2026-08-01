@@ -73,6 +73,9 @@ describe("thermal learning signal", () => {
 		assert.equal(signal.coolingRateCPerHAvg, 0.9);
 		assert.equal(signal.estimatedEmptyAt, "2026-07-26T16:30:00.000Z");
 		assert.equal(signal.estimatedRemainingHours, 6.5);
+		// UTC 16:30 → CEST 18:30 — reasonDe darf keine UTC-Ziffern als Ortszeit zeigen.
+		assert.match(signal.reasonDe, /18:30/);
+		assert.doesNotMatch(signal.reasonDe, /16:30/);
 	});
 
 	it("derives live remaining from empty_at when stored remaining is stale", () => {

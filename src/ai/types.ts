@@ -36,7 +36,10 @@ export interface AiLearningDigest {
 	/** PV-Horizon Tag 1–7 (corrected_kwh), fehlende Tage als null. */
 	pvHorizonDays: Array<{ day: number; correctedKwh: number | null }>;
 	thermalRuntimeStatus: string | null;
+	/** ISO/UTC — Maschinenwert. */
 	thermalEstimatedEmptyAt: string | null;
+	/** Ortszeit Europe/Berlin (oder Plan-TZ) für deutsche Prosa — nicht die UTC-Ziffern aus ISO. */
+	thermalEstimatedEmptyAtLocalDe: string | null;
 	/** Live-Countdown aus empty_at − now (h), nie eingefrorener Snapshot. */
 	thermalEstimatedRemainingHours: number | null;
 	batteryRuntimeStatus: string | null;
@@ -68,6 +71,7 @@ export interface AiSituationBrief {
 	immersion: {
 		bufferTempC: number | null;
 		thermalEstimatedEmptyAt: string | null;
+		thermalEstimatedEmptyAtLocalDe: string | null;
 		thermalEstimatedRemainingHours: number | null;
 	};
 	climate: {

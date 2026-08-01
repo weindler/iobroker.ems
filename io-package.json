@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.230",
+		"version": "0.1.231",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.231": {
+				"en": "Thermal empty-at for AI/briefing in local house time (Europe/Berlin); ISO remains UTC. Avoids '16:37' when wall clock is 18:37.",
+				"de": "Thermal Leer-Zeit für KI/Briefing in Ortszeit (Europe/Berlin); ISO bleibt UTC. Verhindert „16:37“, wenn die Wanduhr 18:37 zeigt."
+			},
 			"0.1.230": {
 				"en": "AI write-back: prefer_pv_today/heat_today demote later days; surplus-alignment can beat Plan A; clearer reasons when nothing to shift. Thermal remaining hours = live countdown from estimated_empty_at (was a stale learning snapshot).",
 				"de": "KI Write-back: prefer_pv_today/heat_today meiden Folgetage; Surplus-Ausrichtung kann Plan A schlagen; klarere Gründe ohne Shift. Thermal Reststunden = Live-Countdown aus estimated_empty_at (vorher eingefrorener Learning-Snapshot)."

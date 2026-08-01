@@ -73,6 +73,9 @@ const NOW = new Date("2026-07-26T10:00:00.000Z"); // Sonntag → weekend
         strict_1.default.equal(signal.coolingRateCPerHAvg, 0.9);
         strict_1.default.equal(signal.estimatedEmptyAt, "2026-07-26T16:30:00.000Z");
         strict_1.default.equal(signal.estimatedRemainingHours, 6.5);
+        // UTC 16:30 → CEST 18:30 — reasonDe darf keine UTC-Ziffern als Ortszeit zeigen.
+        strict_1.default.match(signal.reasonDe, /18:30/);
+        strict_1.default.doesNotMatch(signal.reasonDe, /16:30/);
     });
     (0, node_test_1.it)("derives live remaining from empty_at when stored remaining is stale", () => {
         const later = new Date("2026-07-26T14:00:00.000Z"); // 2.5 h before empty_at

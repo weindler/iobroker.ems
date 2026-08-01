@@ -191,6 +191,7 @@ function tinyPlan(slots) {
         immersion: {
             bufferTempC: 45,
             thermalEstimatedEmptyAt: null,
+            thermalEstimatedEmptyAtLocalDe: null,
             thermalEstimatedRemainingHours: null,
         },
         climate: { units: [] },

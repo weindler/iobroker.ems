@@ -83,6 +83,20 @@ export function localDateKeyInTimezone(d: Date, timezone: string): string {
 	return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
 }
 
+/**
+ * ISO/UTC → deutsche Ortszeit-Anzeige (TT.MM.JJJJ, HH:MM) in `timezone`.
+ * Für Briefing/KI — nie die UTC-Ziffern aus `…Z` als lokale Uhrzeit vorlesen.
+ */
+export function formatLocalDateTimeDe(isoOrMs: string | number, timezone: string): string | null {
+	const ms = typeof isoOrMs === "number" ? isoOrMs : Date.parse(isoOrMs);
+	if (!Number.isFinite(ms)) return null;
+	const p = zonedParts(ms, timezone.trim() || "Europe/Berlin");
+	return (
+		`${String(p.day).padStart(2, "0")}.${String(p.month).padStart(2, "0")}.${p.year}, ` +
+		`${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}`
+	);
+}
+
 export function isoAtTimezoneLocal(
 	dateKey: string,
 	hour: number,

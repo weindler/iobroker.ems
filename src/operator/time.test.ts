@@ -1,6 +1,7 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import {
+	formatLocalDateTimeDe,
 	isoAtTimezoneLocal,
 	localDateKeyInTimezone,
 	resetZonedFormatterCacheForTest,
@@ -75,6 +76,17 @@ describe("operator time formatter cache", () => {
 		assert.equal(a, "2026-07-15");
 		assert.equal(b, "2026-07-15");
 		assert.equal(zonedFormatterCacheSizeForTest(), 1);
+	});
+
+	it("formatLocalDateTimeDe converts UTC ISO to Europe/Berlin wall clock", () => {
+		assert.equal(
+			formatLocalDateTimeDe("2026-08-01T16:37:16.467Z", "Europe/Berlin"),
+			"01.08.2026, 18:37",
+		);
+		assert.equal(
+			formatLocalDateTimeDe("2026-01-15T16:37:00.000Z", "Europe/Berlin"),
+			"15.01.2026, 17:37",
+		);
 	});
 });
 

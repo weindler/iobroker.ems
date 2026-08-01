@@ -44,6 +44,27 @@
 					"xl": 12,
 					"text": "Der schwere Planner-Shadow/Takeover-Pfad ist in dieser Produktion abgeschaltet. EMS steuert über Failsafe + Daily-Plan-Logik. Später kann KI pro Add-on (mit Freigabe) Pläne optimieren — ohne direkte Geräte-Writes."
 				},
+				"hVisDashboard": {
+					"type": "header",
+					"size": 2,
+					"text": "VIS-Dashboard",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"vis_show_diagnostics": {
+					"type": "checkbox",
+					"label": "VIS Diagnose / Begründungen anzeigen",
+					"default": false,
+					"help": "Aus: nur Alltag (Jetzt / Demnächst / Add-ons). An: zusätzlich KI-, Plan- und Detail-Begründungen unten im VIS-Board.",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
 				"hAiOptimization": {
 					"type": "header",
 					"size": 2,

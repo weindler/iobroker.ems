@@ -267,7 +267,7 @@ function buildCard(card) {
 
 function planBoardIframeHtml() {
 	const src = `/adapter/ems/ems-charts.html?inst=${encodeURIComponent(PREFIX)}`;
-	return `<iframe src="${src}" title="EMS Plan-Übersicht" style="width:100%;height:100%;border:0;background:#161b22;display:block;"></iframe>`;
+	return `<iframe src="${src}" title="EMS Energie-Übersicht" style="width:100%;height:100%;border:0;background:#161b22;display:block;"></iframe>`;
 }
 
 // --- Layout coordinates (must fit 1276 × 637) ---
@@ -280,38 +280,20 @@ widgets[wid()] = {
 	widgetSet: "vis-inventwo",
 };
 
-// Header
+// Header — Alltag: Mode / Ausführung / Version (keine Diagnose-Chips)
 widgets[wid()] = htmlWidget(
-	`<div style="font-family:system-ui,sans-serif;font-size:15px;font-weight:700;color:${C.text};">⚡ EMS</div>`,
-	{ left: `${M}px`, top: "4px", width: "60px", height: "18px", "background-color": "transparent" },
+	`<div style="font-family:system-ui,sans-serif;font-size:15px;font-weight:700;color:${C.text};">EMS</div>`,
+	{ left: `${M}px`, top: "4px", width: "52px", height: "18px", "background-color": "transparent" },
 );
+widgets[wid()] = stringWidget(oid("planner.global_mode.active"), "Modus ", {
+	left: "64px", top: "5px", width: "120px", height: "16px", "font-size": FS.val,
+});
+widgets[wid()] = stringWidget(oid("global.execution_mode"), "Steuerung ", {
+	left: "196px", top: "5px", width: "110px", height: "16px", "font-size": FS.val,
+});
 widgets[wid()] = stringWidget(oid("system.version"), "v", {
 	left: `${VIEW_W - 72}px`, top: "5px", width: "64px", height: "16px", "font-size": FS.tiny, color: C.textMuted,
 });
-widgets[wid()] = stringWidget(oid("planner.global_mode.active"), "Mode ", {
-	left: "72px", top: "5px", width: "88px", height: "16px", "font-size": FS.val,
-});
-widgets[wid()] = stringWidget(oid("global.execution_mode"), "Exec ", {
-	left: "168px", top: "5px", width: "72px", height: "16px", "font-size": FS.val,
-});
-widgets[wid()] = stringWidget(oid("planner.intent.daily_plan.status"), "Plan ", {
-	left: "248px", top: "5px", width: "100px", height: "16px", "font-size": FS.val, color: C.accent,
-});
-widgets[wid()] = floatWidget(oid("planner.intent.daily_plan.revision"), "Rev ", {
-	left: "356px", top: "5px", width: "56px", height: "16px", "font-size": FS.val,
-}, "0", "");
-widgets[wid()] = stringWidget(oid("planner.intent.forecast_plan.status"), "Fc ", {
-	left: "420px", top: "5px", width: "88px", height: "16px", "font-size": FS.val,
-});
-widgets[wid()] = stringWidget(oid("ai.status"), "KI ", {
-	left: "516px", top: "5px", width: "80px", height: "16px", "font-size": FS.val, color: C.planB,
-});
-widgets[wid()] = floatWidget(oid("ai.calls_today"), "Calls ", {
-	left: "604px", top: "5px", width: "72px", height: "16px", "font-size": FS.val,
-}, "0", "");
-widgets[wid()] = floatWidget(oid("ai.calls_limit"), "/", {
-	left: "676px", top: "5px", width: "40px", height: "16px", "font-size": FS.val, color: C.textMuted,
-}, "0", "");
 
 // Briefing (Operator Daily-Plan-Zusammenfassung, 2 Zeilen — Roadmap Block 3.3)
 widgets[wid()] = cardPanel(M, BRIEF_Y, VIEW_W - 2 * M, BRIEF_H);
@@ -324,77 +306,55 @@ widgets[wid()] = textBlockWidget(oid("operator.briefing_de"), "", {
 	color: C.text,
 });
 
-// 6 live cards
+// Live-Leiste: Energie breit + kompakte Ist-Werte (keine KI-/Src-Diagnose)
 const cardY = BRIEF_Y + BRIEF_H + 4;
-const cardW = Math.floor((VIEW_W - 2 * M - 5 * GAP) / 6);
-const cardH = 96;
+const cardH = 80;
+const energyW = Math.floor((VIEW_W - 2 * M - 3 * GAP) * 0.34);
+const smallW = Math.floor((VIEW_W - 2 * M - 3 * GAP - energyW) / 3);
 
 for (const c of /** @type {CardDef[]} */ ([
 	{
-		x: M, y: cardY, w: cardW, h: cardH, title: "Energie", color: C.pv,
+		x: M, y: cardY, w: energyW, h: cardH, title: "Energie", color: C.pv,
 		rows: [
 			{ type: "f", oid: "live.pv.power_w", label: "PV ", digits: "0", unit: " W", em: true, color: C.pv },
 			{ type: "f", oid: "live.battery.house_load_w", label: "Last ", digits: "0", unit: " W" },
-			{ type: "f", oid: "operator.diagnostics.surplus_w", label: "Üss ", digits: "0", unit: " W", em: true, color: C.surplus },
+			{ type: "f", oid: "operator.diagnostics.surplus_w", label: "Überschuss ", digits: "0", unit: " W", em: true, color: C.surplus },
 			{ type: "f", oid: "live.price.now_ct_per_kwh", label: "Preis ", digits: "2", unit: " ct" },
 		],
 	},
 	{
-		x: M + (cardW + GAP), y: cardY, w: cardW, h: cardH, title: "Batterie", color: C.accent,
+		x: M + energyW + GAP, y: cardY, w: smallW, h: cardH, title: "Heizstab", color: C.ih,
+		rows: [
+			{ type: "f", oid: "addons.immersion_heater.runtime.buffer_temperature_c", label: "Puffer ", digits: "1", unit: "°", em: true, color: C.ih },
+			{ type: "f", oid: "addons.immersion_heater.runtime.commanded_power_w", label: "Jetzt ", digits: "0", unit: " W", color: C.ih },
+			{ type: "f", oid: "addons.immersion_heater.runtime.plan_target_temp_c", label: "Ziel ", digits: "1", unit: "°" },
+		],
+	},
+	{
+		x: M + energyW + GAP + (smallW + GAP), y: cardY, w: smallW, h: cardH, title: "Wallbox", color: C.wb,
+		rows: [
+			{ type: "f", oid: "live.wallbox.charge_power_w", label: "Jetzt ", digits: "0", unit: " W", em: true, color: C.wb },
+			{ type: "f", oid: "live.wallbox.vehicle_soc_pct", label: "Auto ", digits: "0", unit: " %" },
+			{ type: "f", oid: "addons.wallbox.runtime.allocated_power_w", label: "Plan ", digits: "0", unit: " W" },
+		],
+	},
+	{
+		x: M + energyW + GAP + 2 * (smallW + GAP), y: cardY, w: smallW, h: cardH, title: "Batterie", color: C.accent,
 		rows: [
 			{ type: "f", oid: "live.battery.soc_pct", label: "SOC ", digits: "0", unit: " %", em: true, color: C.accent },
-			{ type: "f", oid: "addons.battery.runtime.allocated_charge_power_w", label: "Plan ", digits: "0", unit: " W" },
-			{ type: "s", oid: "addons.battery.runtime.surface.decision_source", label: "Src " },
-			{ type: "s", oid: "addons.battery.runtime.surface.planner_status", label: "PlanSt " },
-		],
-	},
-	{
-		x: M + 2 * (cardW + GAP), y: cardY, w: cardW, h: cardH, title: "Heizstab", color: C.ih,
-		rows: [
-			{ type: "f", oid: "addons.immersion_heater.runtime.buffer_temperature_c", label: "Buf ", digits: "1", unit: "°", em: true, color: C.ih },
-			{ type: "f", oid: "addons.immersion_heater.runtime.plan_target_temp_c", label: "Ziel ", digits: "1", unit: "°", color: C.ih },
-			{ type: "f", oid: "addons.immersion_heater.runtime.allocated_power_w", label: "Plan ", digits: "0", unit: " W", color: C.ih },
-			{ type: "s", oid: "addons.immersion_heater.runtime.surface.decision_source", label: "Src " },
-		],
-	},
-	{
-		x: M + 3 * (cardW + GAP), y: cardY, w: cardW, h: cardH, title: "Wallbox", color: C.wb,
-		rows: [
-			{ type: "f", oid: "live.wallbox.charge_power_w", label: "P ", digits: "0", unit: " W", em: true, color: C.wb },
-			{ type: "s", oid: "addons.wallbox.runtime.surface.planner_status", label: "PlanSt " },
-			{ type: "f", oid: "live.wallbox.vehicle_soc_pct", label: "SOC ", digits: "0", unit: " %" },
-			{ type: "s", oid: "addons.wallbox.runtime.surface.decision_source", label: "Src " },
-		],
-	},
-	{
-		x: M + 4 * (cardW + GAP), y: cardY, w: cardW, h: cardH,
-		titleOid: "addons.air_conditioning.units.unit_1.name", color: C.ac,
-		rows: [
-			{ type: "f", oid: "addons.air_conditioning.units.unit_1.allocated_power_w", label: "Plan ", digits: "0", unit: " W", em: true, color: C.ac },
-			{ type: "s", oid: "addons.air_conditioning.runtime.surface.decision_source", label: "Src " },
-			{ type: "s", oid: "addons.air_conditioning.runtime.surface.planner_status", label: "PlanSt " },
-			{ type: "s", oid: "addons.air_conditioning.units.unit_1.running", label: "On " },
-		],
-	},
-	{
-		x: M + 5 * (cardW + GAP), y: cardY, w: cardW, h: cardH, title: "KI", color: C.planB,
-		rows: [
-			{ type: "s", oid: "ai.status", label: "St ", em: true, color: C.planB },
-			{ type: "s", oid: "compare.active_plan", label: "Aktiv " },
-			{ type: "s", oid: "ai.auto_suspended", label: "AutoAus " },
-			{ type: "f", oid: "ai.cost_estimate_today_eur", label: "€ ", digits: "3", unit: "" },
+			{ type: "f", oid: "addons.battery.runtime.allocated_charge_power_w", label: "Laden ", digits: "0", unit: " W" },
 		],
 	},
 ])) {
 	buildCard(c);
 }
 
-// Plan-Übersicht — fills rest (KI-Fragen + Add-on Daily-Plan-Karten)
+// Energie-Übersicht (Alltag + optionale Diagnose im iframe)
 const boardY = cardY + cardH + GAP;
 const boardH = VIEW_H - boardY - M;
 
 widgets[wid()] = cardPanel(M, boardY, VIEW_W - 2 * M, boardH);
-widgets[wid()] = sectionTitle("Was plant das EMS?", M + 6, boardY + 4, 200, C.text);
+widgets[wid()] = sectionTitle("Energie-Übersicht", M + 6, boardY + 4, 200, C.text);
 widgets[wid()] = htmlWidget(planBoardIframeHtml(), {
 	left: `${M + 2}px`,
 	top: `${boardY + 16}px`,

@@ -26,6 +26,14 @@ function numState(id, name, unit) {
         },
     };
 }
+function boolState(id, name, def) {
+    return {
+        id,
+        common: { name, type: "boolean", role: "indicator", read: true, write: false, def },
+        defaultVal: def,
+        setDefaultIfEmpty: true,
+    };
+}
 async function ensureEmsLightStates(host, adapterVersion) {
     await (0, channels_1.ensureEmsLightChannels)(host);
     const defs = [
@@ -50,6 +58,8 @@ async function ensureEmsLightStates(host, adapterVersion) {
         strState("planner.intent.last_json", "Planner letzter Intent (JSON)"),
         strState("planner.intent.last_reason_de", "Planner letzte Begründung (DE)"),
         strState("operator.briefing_de", "Operator Briefing (DE)", OPERATOR_BRIEFING_DEFAULT),
+        // VIS: Diagnose-/Begründungsblock nur wenn Admin-Haken vis_show_diagnostics an.
+        boolState("operator.vis.show_diagnostics", "VIS Diagnose / Begründungen anzeigen", false),
         // Roadmap Block 3.3: Live-Diagnose (Live-Cache + aktueller Daily-Plan-Slot) — ersetzt
         // die VIS-Anzeige von `planner.surplus_w`/`planner.deficit_w` (auslaufender Realtime-Planner).
         numState("operator.diagnostics.surplus_w", "Operator Live-PV-Überschuss", "W"),

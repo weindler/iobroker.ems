@@ -61,6 +61,14 @@ async function runEmsLightPhase1Tick(host) {
     catch (e) {
         hints.push(`execution.safety.global_execution_mode: ${String(e)}`);
     }
+    try {
+        const cfg = (host.config ?? {});
+        const showDiag = cfg.vis_show_diagnostics === true || cfg.vis_show_diagnostics === 1 || cfg.vis_show_diagnostics === "true";
+        await host.setStateAsync("operator.vis.show_diagnostics", { val: showDiag, ack: true });
+    }
+    catch (e) {
+        hints.push(`operator.vis.show_diagnostics: ${String(e)}`);
+    }
     let liveResult = { updated: [], missing: [], errors: [] };
     try {
         liveResult = await (0, live_cache_1.refreshLiveCache)(host);

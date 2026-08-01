@@ -39,6 +39,14 @@ export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): 
 		hints.push(`execution.safety.global_execution_mode: ${String(e)}`);
 	}
 
+	try {
+		const cfg = (host.config ?? {}) as Record<string, unknown>;
+		const showDiag = cfg.vis_show_diagnostics === true || cfg.vis_show_diagnostics === 1 || cfg.vis_show_diagnostics === "true";
+		await host.setStateAsync("operator.vis.show_diagnostics", { val: showDiag, ack: true });
+	} catch (e) {
+		hints.push(`operator.vis.show_diagnostics: ${String(e)}`);
+	}
+
 	let liveResult = { updated: [] as string[], missing: [] as string[], errors: [] as string[] };
 	try {
 		liveResult = await refreshLiveCache(host);

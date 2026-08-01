@@ -8,6 +8,8 @@ export const EMS_LIGHT_CHANNEL_IDS: Array<{ id: string; nameDe: string }> = [
 	{ id: "planner", nameDe: "EMS-Light Planner" },
 	{ id: "planner.intent", nameDe: "EMS-Light Planner Intents" },
 	{ id: "operator", nameDe: "EMS-Light Operator" },
+	{ id: "operator.vis", nameDe: "EMS-Light Operator VIS" },
+	{ id: "operator.diagnostics", nameDe: "EMS-Light Operator Diagnose" },
 	{ id: "execution", nameDe: "EMS-Light Execution" },
 	{ id: "execution.dryrun", nameDe: "EMS-Light Execution Dryrun" },
 	{ id: "execution.safety", nameDe: "EMS-Light Execution Safety" },

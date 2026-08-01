@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.231",
+		"version": "0.1.232",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.232": {
+				"en": "VIS everyday dashboard: Now / Next / vertical add-on cards; diagnostics/reasons only when Global checkbox vis_show_diagnostics is on. Re-import vis/ems-dashboard-view.json.",
+				"de": "VIS-Alltags-Dashboard: Jetzt / Demnächst / senkrechte Add-on-Karten; Diagnose/Begründungen nur mit Global-Haken „VIS Diagnose anzeigen“. vis/ems-dashboard-view.json neu importieren."
+			},
 			"0.1.231": {
 				"en": "Thermal empty-at for AI/briefing in local house time (Europe/Berlin); ISO remains UTC. Avoids '16:37' when wall clock is 18:37.",
 				"de": "Thermal Leer-Zeit für KI/Briefing in Ortszeit (Europe/Berlin); ISO bleibt UTC. Verhindert „16:37“, wenn die Wanduhr 18:37 zeigt."

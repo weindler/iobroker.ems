@@ -1,3 +1,8 @@
+/**
+ * @deprecated Fat wallbox vehicle profiles (state trees under addons.wallbox.vehicles.*)
+ * were removed in v0.1.227. Use `../vehicle_map` for optional EVCC-id → capacity/maxW.
+ * Modules remain for transitional imports / cleanup helpers only — not called from runtime.
+ */
 export * from "./types";
 export * from "./vehicle_id";
 export * from "./config";

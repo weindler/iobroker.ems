@@ -73,7 +73,7 @@
 	"Standard: alles aus. Bei EVCC-Hold oder SOC ≤ Boden kein Batteriezugriff. Heizstab „nur kritisch“ = Puffer ≤ Planungs-Min + Marge.": "Default: all off. EVCC hold or SOC ≤ floor blocks battery access. Immersion “critical only” = buffer ≤ planning min + margin.",
 	"Sicherung und Diagnose. 1) Voll-Export bleibt auf dem Host (+ Download-Spiegel). 2) Support: erstellen, dann unten herunterladen. 3) Restore: Datei wählen/hochladen → validieren → Plan-ID → ausführen.": "Backup and diagnostics. 1) Full export stays on the host (+ download mirror). 2) Support: create, then download below. 3) Restore: select/upload → validate → plan ID → apply.",
 	"1. Vollständiger Export (für Restore)": "1. Full export (for restore)",
-	"Vor Neuinstallation oder Löschen der Instanz immer zuerst erstellen. Enthalten: Admin-Config, Mappings, Fahrzeugprofile, Policies und Learning.": "Always create this first before reinstalling or deleting the instance. Includes: admin config, mappings, vehicle profiles, policies and learning.",
+	"Vor Neuinstallation oder Löschen der Instanz immer zuerst erstellen. Enthalten: Admin-Config, Mappings, Fahrzeug-Mini-Map, Policies und Learning.": "Always create this first before reinstalling or deleting the instance. Includes: admin config, mappings, vehicle mini-map, policies and learning.",
 	"Backup jetzt erstellen": "Create backup now",
 	"Ablage Host: …/ems-runtime.&lt;Instanz&gt;/exports/backup/  ·  Spiegel: Adapter-Dateien → backup/ (Download möglich)": "Host path: …/ems-runtime.<instance>/exports/backup/  ·  Mirror: adapter files → backup/ (download available)",
 	"Backup-Dateien (Download)": "Backup files (download)",

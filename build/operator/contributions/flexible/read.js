@@ -8,15 +8,15 @@ const intent_read_1 = require("../../../addons/battery/runtime/intent_read");
 const ensure_evcc_states_1 = require("../../../addons/wallbox/ensure_evcc_states");
 const states_1 = require("../../../addons/wallbox/runtime/states");
 const evcc_config_1 = require("../../../addons/wallbox/evcc_config");
-const ensure_states_2 = require("../../../addons/wallbox/vehicles/ensure_states");
+const vehicle_map_1 = require("../../../addons/wallbox/vehicle_map");
 const config_2 = require("../../../intent/config");
 const device_config_1 = require("../../../addons/immersion_heater/device_config");
 const types_1 = require("../../../addons/immersion_heater/runtime/types");
 const config_3 = require("../../../addons/air_conditioning/config");
 const constants_1 = require("../../../addons/air_conditioning/constants");
-const ensure_states_3 = require("../../../addons/air_conditioning/runtime/ensure_states");
+const ensure_states_2 = require("../../../addons/air_conditioning/runtime/ensure_states");
 const governance_1 = require("../../../addons/governance");
-const ensure_states_4 = require("../../../addons/governance/ensure_states");
+const ensure_states_3 = require("../../../addons/governance/ensure_states");
 const config_4 = require("../../../learning/weather/config");
 const consumer_stats_1 = require("../../../learning/consumer_stats");
 const persist_1 = require("../../../learning/consumer_stats/persist");
@@ -223,7 +223,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     const modePolicy = (0, mode_policy_1.plannerModePolicyFromGlobalMode)(globalModeRaw);
     const globalModeOff = modePolicy.mode === "off";
     const batteryCfg = (0, config_1.batteryConfigFromAdapter)(config);
-    const [batteryEnabled, batteryGov, wallboxEnabled, wallboxGov, immersionEnabled, immersionGov, climateEnabled, climateGov, socPct, capacityEffective, capacityNet, capacitySource, minSoc, maxSoc, chargeCapable, dischargeCapable, batteryFault, batteryLockout, telemetryValid, telemetryStale, telemetryReady, ownershipActive, batteryIntentRaw, connected, charging, vehicleSoc, planSoc, planActive, sessionKwh, chargeRemainingKwh, effectiveLimitSoc, deadlineRaw, activePhases, maxCurrentA, activeVehicleRequiredKwh, activeVehicleSocEnergyReady, activeVehicleId, activeVehicleProfileValid, bufferTemp, immersionFault, immersionState, autoTargetReached, thermalRaw, pvToday, pvTomorrow, pvBiasStatus, aiThermal, outdoorTemp, outdoorForecastMaxC, houseLoadTodayRaw,] = await Promise.all([
+    const [batteryEnabled, batteryGov, wallboxEnabled, wallboxGov, immersionEnabled, immersionGov, climateEnabled, climateGov, socPct, capacityEffective, capacityNet, capacitySource, minSoc, maxSoc, chargeCapable, dischargeCapable, batteryFault, batteryLockout, telemetryValid, telemetryStale, telemetryReady, ownershipActive, batteryIntentRaw, connected, charging, vehicleSoc, planSoc, planActive, sessionKwh, chargeRemainingKwh, effectiveLimitSoc, deadlineRaw, activePhases, maxCurrentA, evccVehicleName, evccVehicleTitle, activeVehicleRequiredKwh, activeVehicleSocEnergyReady, bufferTemp, immersionFault, immersionState, autoTargetReached, thermalRaw, pvToday, pvTomorrow, pvBiasStatus, aiThermal, outdoorTemp, outdoorForecastMaxC, houseLoadTodayRaw,] = await Promise.all([
         readBool(host, (0, tree_paths_1.addonEnabled)("battery")),
         (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "battery"),
         readBool(host, (0, tree_paths_1.addonEnabled)("wallbox")),
@@ -258,10 +258,10 @@ async function collectFlexibleContributions(host, now, gridForecast) {
         readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.effectivePlanTime),
         readNum(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.activePhases),
         readNum(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.maxCurrentA),
+        readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.vehicleName),
+        readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.vehicleTitle),
         readNum(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleRequiredBatteryEnergyKwh),
         readBool(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleSocEnergyReady),
-        readStr(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleId),
-        readBool(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleProfileValid),
         readNum(host, types_1.IMMERSION_RUNTIME_STATES.bufferTemperatureC),
         readBool(host, types_1.IMMERSION_RUNTIME_STATES.faultActive),
         readStr(host, types_1.IMMERSION_RUNTIME_STATES.state),
@@ -270,7 +270,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
         readNum(host, "learning.pv_bias.corrected_today_kwh"),
         readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
         readStr(host, "learning.pv_bias.status"),
-        readBool(host, (0, ensure_states_4.addonGovernanceAiAllowedState)("immersion_heater")),
+        readBool(host, (0, ensure_states_3.addonGovernanceAiAllowedState)("immersion_heater")),
         readOutdoorTempC(host),
         readNum(host, "learning.weather.horizon.day1.max_temp_c"),
         readStr(host, "learning.house_load.forecast_today_json"),
@@ -292,14 +292,17 @@ async function collectFlexibleContributions(host, now, gridForecast) {
         Number.isFinite(activeVehicleRequiredKwh)) {
         remainingEnergyKwh = Math.max(0, activeVehicleRequiredKwh);
     }
-    let vehicleCapacityKwh = null;
-    if (activeVehicleId && activeVehicleProfileValid === true) {
-        const capPath = (0, ensure_states_2.vehicleStatePaths)(activeVehicleId).configBatteryCapacityNetKwh;
-        vehicleCapacityKwh = await readNum(host, capPath);
-        if (vehicleCapacityKwh !== null && !(vehicleCapacityKwh > 0)) {
-            vehicleCapacityKwh = null;
-        }
-    }
+    const mapEntry = (0, vehicle_map_1.lookupVehicleMapEntry)((0, vehicle_map_1.wallboxVehicleMapFromAdapter)(config).entries, evccVehicleName, evccVehicleTitle);
+    const vehicleCapacityKwh = mapEntry?.batteryCapacityNetKwh !== null &&
+        mapEntry?.batteryCapacityNetKwh !== undefined &&
+        mapEntry.batteryCapacityNetKwh > 0
+        ? mapEntry.batteryCapacityNetKwh
+        : null;
+    const vehicleMaxAcChargePowerW = mapEntry?.maxAcChargePowerW !== null &&
+        mapEntry?.maxAcChargePowerW !== undefined &&
+        mapEntry.maxAcChargePowerW > 0
+        ? mapEntry.maxAcChargePowerW
+        : null;
     let fallbackTargetSocPct = null;
     const intentEvcc = (0, config_2.intentEvccConfigFromAdapter)(config);
     if (intentEvcc.targetSocStateId) {
@@ -323,7 +326,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     const acUnits = await Promise.all(Array.from({ length: constants_1.AC_UNIT_COUNT }, async (_, i) => {
         const index = i + 1;
         const unit = acConfig.units.find((u) => u.index === index);
-        const ids = (0, ensure_states_3.acUnitRuntimeStates)(index);
+        const ids = (0, ensure_states_2.acUnitRuntimeStates)(index);
         const [roomTempC, roomHumidityPct, faultState, cleaningActive] = await Promise.all([
             readNum(host, ids.roomTempC),
             readNum(host, ids.roomHumidityPct),
@@ -388,6 +391,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             sessionEnergyKwh: sessionKwh,
             remainingEnergyKwh,
             vehicleCapacityKwh,
+            vehicleMaxAcChargePowerW,
             effectiveLimitSocPct: effectiveLimitSoc,
             fallbackTargetSocPct,
             deadlineIso: validIsoDeadline(deadlineRaw),

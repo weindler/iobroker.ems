@@ -30,19 +30,24 @@ const ALLOWED_PREFIXES = [
 	"ai_",
 ];
 
-const ALLOWED_EXACT = new Set(["mapping", "wb_vehicle_profiles"]);
+const ALLOWED_EXACT = new Set(["mapping", "wb_vehicle_map", "wb_vehicle_profiles"]);
 
-/** Explizite Fahrzeugprofil-Felder (kein „alle Felder außer Secrets“). */
-export const VEHICLE_PROFILE_ALLOWED_KEYS = new Set([
-	"vehicle_id",
+/** Slim vehicle mini-map fields (v0.1.227+). */
+export const VEHICLE_MAP_ALLOWED_KEYS = new Set([
+	"evcc_vehicle_id",
 	"display_name",
 	"enabled",
-	"is_guest",
-	"source",
-	"evcc_vehicle_id",
-	"evcc_vehicle_name",
 	"battery_capacity_net_kwh",
 	"max_ac_charge_power_w",
+]);
+
+/** @deprecated fat profile keys — only used when migrating legacy backup rows */
+export const VEHICLE_PROFILE_ALLOWED_KEYS = new Set([
+	...VEHICLE_MAP_ALLOWED_KEYS,
+	"vehicle_id",
+	"is_guest",
+	"source",
+	"evcc_vehicle_name",
 	"supported_phases",
 	"preferred_phases",
 	"min_current_a",
@@ -151,21 +156,54 @@ export function collectMappingsExport(config: unknown): Record<string, unknown> 
 	return out;
 }
 
-export function filterVehicleProfileRow(row: unknown): Record<string, unknown> | unknown {
+export function filterVehicleMapRow(row: unknown): Record<string, unknown> | unknown {
 	if (!row || typeof row !== "object" || Array.isArray(row)) return row;
 	const out: Record<string, unknown> = {};
 	for (const [k, v] of Object.entries(row as Record<string, unknown>)) {
-		if (!VEHICLE_PROFILE_ALLOWED_KEYS.has(k) || isSecretKey(k)) continue;
+		if (!VEHICLE_MAP_ALLOWED_KEYS.has(k) || isSecretKey(k)) continue;
 		if (v !== undefined && v !== null && typeof v === "object") continue;
 		out[k] = v;
 	}
 	return out;
 }
 
-export function collectVehicleProfilesExport(config: unknown): { profiles: unknown[] } {
+/** @deprecated use filterVehicleMapRow */
+export function filterVehicleProfileRow(row: unknown): Record<string, unknown> | unknown {
+	return filterVehicleMapRow(row);
+}
+
+/**
+ * Archive path stays `config/vehicle_profiles.json` for schema stability.
+ * Content is slim `{ entries: [...] }` from `wb_vehicle_map` (v0.1.227+).
+ */
+export function collectVehicleProfilesExport(config: unknown): { entries: unknown[] } {
 	const raw = config && typeof config === "object" ? (config as Record<string, unknown>) : {};
-	const profiles = Array.isArray(raw.wb_vehicle_profiles) ? raw.wb_vehicle_profiles : [];
-	return { profiles: profiles.map((row) => filterVehicleProfileRow(row)) };
+	const mapRows = Array.isArray(raw.wb_vehicle_map) ? raw.wb_vehicle_map : [];
+	if (mapRows.length > 0) {
+		return { entries: mapRows.map((row) => filterVehicleMapRow(row)) };
+	}
+	// Legacy native still holding fat profiles: export slim-migrated rows.
+	const legacy = Array.isArray(raw.wb_vehicle_profiles) ? raw.wb_vehicle_profiles : [];
+	const entries: unknown[] = [];
+	for (const row of legacy) {
+		if (!row || typeof row !== "object") continue;
+		const r = row as Record<string, unknown>;
+		const evcc =
+			(typeof r.evcc_vehicle_id === "string" && r.evcc_vehicle_id.trim()) ||
+			(typeof r.evcc_vehicle_name === "string" && r.evcc_vehicle_name.trim()) ||
+			"";
+		if (!evcc) continue;
+		entries.push(
+			filterVehicleMapRow({
+				evcc_vehicle_id: evcc,
+				display_name: r.display_name,
+				enabled: r.enabled,
+				battery_capacity_net_kwh: r.battery_capacity_net_kwh,
+				max_ac_charge_power_w: r.max_ac_charge_power_w,
+			}),
+		);
+	}
+	return { entries };
 }
 
 export function collectPoliciesExport(config: unknown): Record<string, unknown> {

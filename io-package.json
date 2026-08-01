@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.226",
+		"version": "0.1.227",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.227": {
+				"en": "Remove fat wallbox vehicle profiles (wb_vehicle_profiles + addons.wallbox.vehicles.*). Optional slim EVCC mini-map wb_vehicle_map for capacity/max AC power only; EVCC-first remaining energy works with empty map. Orphan fat trees purged on cleanup.",
+				"de": "Fette Wallbox-Fahrzeugprofile entfernt (wb_vehicle_profiles + addons.wallbox.vehicles.*). Optionale schlanke EVCC-Mini-Map wb_vehicle_map nur für Kapazität/max. AC-Leistung; EVCC-Restenergie funktioniert ohne Einträge. Verwaiste Fat-Bäume werden beim Cleanup gelöscht."
+			},
 			"0.1.226": {
 				"en": "Wallbox EVCC-first: remaining charge energy (Wh→kWh), hold house battery only on boost/fast or external vehicle charge (not MinPV/PV); Tibber Grid Rewards hold hook prepared.",
 				"de": "Wallbox EVCC-first: Restenergie (Wh→kWh), Hausbatterie-Hold nur bei Boost/Sofortladen oder externem Fahrzeugladen (nicht MinPV/PV); Tibber-Grid-Rewards-Hold vorbereitet."

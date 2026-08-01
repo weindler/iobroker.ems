@@ -95,7 +95,15 @@ function buildWallboxEvSessionContribution(input) {
         globalModeOff: input.globalModeOff,
     });
     const requiredKwh = requiredEnergyKwh(input);
-    const maxW = (0, types_2.wallboxMaxChargePowerW)(input.activePhases, input.maxCurrentA);
+    const fromPhases = (0, types_2.wallboxMaxChargePowerW)(input.activePhases, input.maxCurrentA);
+    const vehicleCap = input.vehicleMaxAcChargePowerW !== null &&
+        input.vehicleMaxAcChargePowerW !== undefined &&
+        input.vehicleMaxAcChargePowerW > 0
+        ? input.vehicleMaxAcChargePowerW
+        : null;
+    const maxW = fromPhases !== null && vehicleCap !== null
+        ? Math.min(fromPhases, vehicleCap)
+        : (fromPhases ?? vehicleCap);
     let status = participation.status;
     let reasonDe = participation.reasonDe;
     if (participation.allowed) {

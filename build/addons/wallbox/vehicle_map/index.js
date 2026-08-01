@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.lookupVehicleMapEntry = exports.slimEntryFromLegacyProfileRow = exports.vehicleMapEntryToExportRow = exports.wallboxVehicleMapFromAdapter = exports.WB_VEHICLE_MAP = void 0;
+var config_1 = require("./config");
+Object.defineProperty(exports, "WB_VEHICLE_MAP", { enumerable: true, get: function () { return config_1.WB_VEHICLE_MAP; } });
+Object.defineProperty(exports, "wallboxVehicleMapFromAdapter", { enumerable: true, get: function () { return config_1.wallboxVehicleMapFromAdapter; } });
+Object.defineProperty(exports, "vehicleMapEntryToExportRow", { enumerable: true, get: function () { return config_1.vehicleMapEntryToExportRow; } });
+Object.defineProperty(exports, "slimEntryFromLegacyProfileRow", { enumerable: true, get: function () { return config_1.slimEntryFromLegacyProfileRow; } });
+var lookup_1 = require("./lookup");
+Object.defineProperty(exports, "lookupVehicleMapEntry", { enumerable: true, get: function () { return lookup_1.lookupVehicleMapEntry; } });

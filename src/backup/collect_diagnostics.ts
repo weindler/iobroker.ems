@@ -197,7 +197,11 @@ export async function collectMappingDiagnostics(config: unknown): Promise<Record
 	return {
 		configured_mapping_keys: mappingKeys.length,
 		enabled_mapping_flags: enabledFlags.length,
-		has_vehicle_profiles: Array.isArray(raw.wb_vehicle_profiles) ? raw.wb_vehicle_profiles.length : 0,
+		has_vehicle_profiles: Array.isArray(raw.wb_vehicle_map)
+			? raw.wb_vehicle_map.length
+			: Array.isArray(raw.wb_vehicle_profiles)
+				? raw.wb_vehicle_profiles.length
+				: 0,
 	};
 }
 

@@ -86,21 +86,13 @@ function okBatteryGate(): FinalWriteGate {
 	};
 }
 
-function profileRow(id: string, name: string): Record<string, unknown> {
+function mapRow(evccId: string, name: string): Record<string, unknown> {
 	return {
-		vehicle_id: id,
+		evcc_vehicle_id: evccId,
 		display_name: name,
 		enabled: true,
-		source: "manual",
 		battery_capacity_net_kwh: 60,
 		max_ac_charge_power_w: 11000,
-		supported_phases: "3",
-		preferred_phases: 3,
-		min_current_a: 6,
-		max_current_a: 16,
-		default_target_soc_pct: 80,
-		minimum_departure_soc_pct: 50,
-		maximum_soc_pct: 90,
 	};
 }
 
@@ -246,7 +238,7 @@ describe("restore archive validation", () => {
 			ih_addon_mode: "live",
 			ac_addon_mode: "live",
 			password: "keep-local",
-			wb_vehicle_profiles: [profileRow("car_1", "Car 1")],
+			wb_vehicle_map: [mapRow("car_1", "Car 1")],
 		});
 	});
 
@@ -337,11 +329,11 @@ describe("restore projection and config merge", () => {
 		assert.equal(merged.wb_evcc_connected_state, "mqtt.0.connected");
 	});
 
-	it("supports five and more vehicle profiles", () => {
-		const profiles = Array.from({ length: 6 }, (_, i) => profileRow(`id_${i}`, `Name ${i}`));
+	it("supports five and more vehicle mini-map entries", () => {
+		const entries = Array.from({ length: 6 }, (_, i) => mapRow(`id_${i}`, `Name ${i}`));
 		const cfg = {
 			global_execution_mode: "dryrun",
-			wb_vehicle_profiles: profiles,
+			wb_vehicle_map: entries,
 		};
 		const adapter = collectAdapterConfigExport(cfg);
 		const vp = collectVehicleProfilesExport(cfg);
@@ -352,7 +344,7 @@ describe("restore projection and config merge", () => {
 		payload.set("config/policies.json", Buffer.from("{}"));
 		payload.set("persistence/selected_state_data.json", Buffer.from("{}"));
 		const projection = buildRestoreProjection(payload);
-		assert.equal((projection.native.wb_vehicle_profiles as unknown[]).length, 6);
+		assert.equal((projection.native.wb_vehicle_map as unknown[]).length, 6);
 		assert.equal(projection.configuredModesAtExport.global, "dryrun");
 		assert.equal(projection.native.global_execution_mode, "dryrun");
 	});
@@ -364,7 +356,7 @@ describe("restore projection and config merge", () => {
 		const payload = new Map<string, Buffer>();
 		payload.set("config/adapter.json", Buffer.from(stableJsonStringify(adapter)));
 		payload.set("config/mappings.json", Buffer.from(stableJsonStringify(mappings)));
-		payload.set("config/vehicle_profiles.json", Buffer.from('{"profiles":[]}'));
+		payload.set("config/vehicle_profiles.json", Buffer.from('{"entries":[]}'));
 		payload.set("config/policies.json", Buffer.from("{}"));
 		payload.set("persistence/selected_state_data.json", Buffer.from("{}"));
 		assert.throws(() => buildRestoreProjection(payload), /conflicting projection/);
@@ -529,7 +521,7 @@ describe("restore validate and apply", () => {
 			access_token: "local-token",
 			custom_unknown: "stay",
 			wb_evcc_connected_state: "mqtt.0.old",
-			wb_vehicle_profiles: [profileRow("car_1", "Car 1")],
+			wb_vehicle_map: [mapRow("car_1", "Car 1")],
 		});
 		await host.setStateAsync("command.inbox", { val: "pending", ack: false });
 		await writeLearningFixture(host, "battery_runtime_learning_v1.json", { version: 1, samples: [] });

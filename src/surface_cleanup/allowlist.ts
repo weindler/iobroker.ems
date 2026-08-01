@@ -111,7 +111,7 @@ export function isAllowlistedCleanupRelativeId(relativeId: string): boolean {
 export const CLEANUP_ALLOWLIST_DESCRIPTION = [
 	"addons.air_conditioning.units.unit_{1-5} (only when unit not enabled)",
 	"addons.air_conditioning.mapping.unit_{1-5}_* (+ .enabled/.target_state/.allowed_values)",
-	"addons.wallbox.vehicles.<vehicleId> (only when vehicle_id absent from wb_vehicle_profiles)",
+	"addons.wallbox.vehicles.<vehicleId> (always — fat profiles removed in v0.1.227)",
 	"learning.persistence.*_json (large mirrors → .emsbackup files)",
 	"learning.battery_runtime.power_* diagnostics",
 	"stub addons.* (inverter/heating/… without runtime)",

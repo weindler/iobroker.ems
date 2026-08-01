@@ -29,7 +29,7 @@ export const PERSISTENCE_INVENTORY: readonly PersistenceSourceDef[] = [
 		id: "vehicle_profiles",
 		category: "restorable",
 		archivePath: "config/vehicle_profiles.json",
-		description: "Dynamische Wallbox-Fahrzeugprofile",
+		description: "Wallbox Fahrzeug-Mini-Map (wb_vehicle_map; Archivpfad historisch)",
 	},
 	{
 		id: "learning_mirror",

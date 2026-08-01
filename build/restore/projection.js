@@ -6,6 +6,22 @@ const collect_config_1 = require("../backup/collect_config");
 const collect_persistence_1 = require("../backup/collect_persistence");
 const learning_map_1 = require("./learning_map");
 const limits_1 = require("../backup/limits");
+const vehicle_map_1 = require("../addons/wallbox/vehicle_map");
+function resolveVehicleMapEntriesFromArchive(archive) {
+    if (Array.isArray(archive.entries)) {
+        return archive.entries;
+    }
+    // Legacy fat `{ profiles: [...] }` → slim map rows (EVCC id/name required).
+    if (!Array.isArray(archive.profiles))
+        return [];
+    const out = [];
+    for (const row of archive.profiles) {
+        const slim = (0, vehicle_map_1.slimEntryFromLegacyProfileRow)(row);
+        if (slim)
+            out.push((0, vehicle_map_1.vehicleMapEntryToExportRow)(slim));
+    }
+    return out;
+}
 const EXECUTION_MODE_KEYS = [
     "global_execution_mode",
     "wb_addon_mode",
@@ -26,7 +42,7 @@ function stableEqual(a, b) {
 function buildRestoreProjection(payloadMap) {
     const adapter = parseJsonBuffer(payloadMap.get("config/adapter.json"), "adapter.json");
     const mappings = parseJsonBuffer(payloadMap.get("config/mappings.json"), "mappings.json");
-    const vehicleProfiles = parseJsonBuffer(payloadMap.get("config/vehicle_profiles.json"), "vehicle_profiles.json");
+    const vehicleArchive = parseJsonBuffer(payloadMap.get("config/vehicle_profiles.json"), "vehicle_profiles.json");
     const policies = parseJsonBuffer(payloadMap.get("config/policies.json"), "policies.json");
     const selectedState = parseJsonBuffer(payloadMap.get("persistence/selected_state_data.json"), "selected_state_data.json");
     const warnings = [];
@@ -45,12 +61,15 @@ function buildRestoreProjection(payloadMap) {
             native[k] = v;
         }
     }
-    if (vehicleProfiles.profiles !== undefined) {
-        const fromAdapter = native.wb_vehicle_profiles;
-        if (fromAdapter !== undefined && !stableEqual(fromAdapter, vehicleProfiles.profiles)) {
-            throw new Error("conflicting vehicle profiles");
+    {
+        const slimEntries = resolveVehicleMapEntriesFromArchive(vehicleArchive);
+        const fromAdapter = native.wb_vehicle_map;
+        if (fromAdapter !== undefined && !stableEqual(fromAdapter, slimEntries)) {
+            throw new Error("conflicting vehicle map");
         }
-        native.wb_vehicle_profiles = vehicleProfiles.profiles;
+        native.wb_vehicle_map = slimEntries;
+        // Drop legacy fat table from restored native.
+        delete native.wb_vehicle_profiles;
     }
     for (const [k, v] of Object.entries(policies)) {
         if ((0, collect_config_1.isAllowedConfigKey)(k) && !(0, schema_1.isSecretKey)(k)) {

@@ -47,7 +47,7 @@ async function ensureStaticStateTree(host) {
     await (0, mapping_sync_1.ensureAddonMappingStates)(host, dynamic_tariff_1.DYNAMIC_TARIFF_ADDON_ID, (0, mapping_sync_1.mappingCommandsFromEntries)((0, mapping_config_2.dynamicTariffMappingFromConfig)(cfg)));
 }
 exports.ensureStaticStateTree = ensureStaticStateTree;
-/** Phase C — dynamische Fahrzeugprofil-Ordner aus `wb_vehicle_profiles`. */
+/** Phase C — no-op since v0.1.227 (fat vehicle profile trees removed; see `wb_vehicle_map`). */
 async function ensureDynamicVehicleProfiles(host) {
     await (0, wallbox_1.ensureWallboxDynamicVehicleProfiles)(host);
 }

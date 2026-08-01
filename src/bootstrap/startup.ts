@@ -106,8 +106,8 @@ export async function runAdapterBootstrap(
 		return;
 	}
 
-	trace?.("C", "dynamic_vehicle_profiles");
-	await step("dynamic vehicle profiles", () => ensureDynamicVehicleProfiles(host));
+	trace?.("C", "dynamic_vehicle_profiles_noop");
+	await step("dynamic vehicle profiles (noop)", () => ensureDynamicVehicleProfiles(host));
 
 	trace?.("C2", "dynamic_surface_cleanup");
 	await step("dynamic surface cleanup", () => cleanupDynamicPlaceholders(host));

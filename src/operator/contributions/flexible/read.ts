@@ -6,7 +6,10 @@ import { parseResolvedBatteryIntentJson } from "../../../addons/battery/runtime/
 import { WALLBOX_EVCC_STATES } from "../../../addons/wallbox/ensure_evcc_states";
 import { WALLBOX_RUNTIME_STATES } from "../../../addons/wallbox/runtime/states";
 import { wallboxEvccTelemetryConfigFromAdapter } from "../../../addons/wallbox/evcc_config";
-import { vehicleStatePaths } from "../../../addons/wallbox/vehicles/ensure_states";
+import {
+	lookupVehicleMapEntry,
+	wallboxVehicleMapFromAdapter,
+} from "../../../addons/wallbox/vehicle_map";
 import { intentEvccConfigFromAdapter } from "../../../intent/config";
 import { immersionDeviceConfigFromAdapter } from "../../../addons/immersion_heater/device_config";
 import { IMMERSION_RUNTIME_STATES } from "../../../addons/immersion_heater/runtime/types";
@@ -323,10 +326,10 @@ export async function collectFlexibleContributions(
 		deadlineRaw,
 		activePhases,
 		maxCurrentA,
+		evccVehicleName,
+		evccVehicleTitle,
 		activeVehicleRequiredKwh,
 		activeVehicleSocEnergyReady,
-		activeVehicleId,
-		activeVehicleProfileValid,
 		bufferTemp,
 		immersionFault,
 		immersionState,
@@ -374,10 +377,10 @@ export async function collectFlexibleContributions(
 		readStr(host, WALLBOX_EVCC_STATES.effectivePlanTime),
 		readNum(host, WALLBOX_EVCC_STATES.activePhases),
 		readNum(host, WALLBOX_EVCC_STATES.maxCurrentA),
+		readStr(host, WALLBOX_EVCC_STATES.vehicleName),
+		readStr(host, WALLBOX_EVCC_STATES.vehicleTitle),
 		readNum(host, WALLBOX_RUNTIME_STATES.activeVehicleRequiredBatteryEnergyKwh),
 		readBool(host, WALLBOX_RUNTIME_STATES.activeVehicleSocEnergyReady),
-		readStr(host, WALLBOX_RUNTIME_STATES.activeVehicleId),
-		readBool(host, WALLBOX_RUNTIME_STATES.activeVehicleProfileValid),
 		readNum(host, IMMERSION_RUNTIME_STATES.bufferTemperatureC),
 		readBool(host, IMMERSION_RUNTIME_STATES.faultActive),
 		readStr(host, IMMERSION_RUNTIME_STATES.state),
@@ -417,14 +420,23 @@ export async function collectFlexibleContributions(
 		remainingEnergyKwh = Math.max(0, activeVehicleRequiredKwh);
 	}
 
-	let vehicleCapacityKwh: number | null = null;
-	if (activeVehicleId && activeVehicleProfileValid === true) {
-		const capPath = vehicleStatePaths(activeVehicleId).configBatteryCapacityNetKwh;
-		vehicleCapacityKwh = await readNum(host, capPath);
-		if (vehicleCapacityKwh !== null && !(vehicleCapacityKwh > 0)) {
-			vehicleCapacityKwh = null;
-		}
-	}
+	const mapEntry = lookupVehicleMapEntry(
+		wallboxVehicleMapFromAdapter(config).entries,
+		evccVehicleName,
+		evccVehicleTitle,
+	);
+	const vehicleCapacityKwh =
+		mapEntry?.batteryCapacityNetKwh !== null &&
+		mapEntry?.batteryCapacityNetKwh !== undefined &&
+		mapEntry.batteryCapacityNetKwh > 0
+			? mapEntry.batteryCapacityNetKwh
+			: null;
+	const vehicleMaxAcChargePowerW =
+		mapEntry?.maxAcChargePowerW !== null &&
+		mapEntry?.maxAcChargePowerW !== undefined &&
+		mapEntry.maxAcChargePowerW > 0
+			? mapEntry.maxAcChargePowerW
+			: null;
 
 	let fallbackTargetSocPct: number | null = null;
 	const intentEvcc = intentEvccConfigFromAdapter(config);
@@ -523,6 +535,7 @@ export async function collectFlexibleContributions(
 			sessionEnergyKwh: sessionKwh,
 			remainingEnergyKwh,
 			vehicleCapacityKwh,
+			vehicleMaxAcChargePowerW,
 			effectiveLimitSocPct: effectiveLimitSoc,
 			fallbackTargetSocPct,
 			deadlineIso: validIsoDeadline(deadlineRaw),

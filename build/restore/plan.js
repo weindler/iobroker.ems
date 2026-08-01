@@ -27,8 +27,8 @@ exports.invalidateRestorePlan = invalidateRestorePlan;
 function createRestorePlan(input) {
     const now = Date.now();
     const planId = (0, node_crypto_1.randomUUID)();
-    const vehicleProfileCount = Array.isArray(input.projection.native.wb_vehicle_profiles)
-        ? input.projection.native.wb_vehicle_profiles.length
+    const vehicleProfileCount = Array.isArray(input.projection.native.wb_vehicle_map)
+        ? input.projection.native.wb_vehicle_map.length
         : 0;
     const learningFileCount = Object.keys(input.projection.learning).length;
     const learningFilesToRemove = RESTORE_LEARNING_KEY_COUNT - learningFileCount;

@@ -1,6 +1,5 @@
 import { hydrateAcRuntimePersist, type AcRuntimeHost } from "../addons/air_conditioning/runtime/engine";
 import { hydrateImmersionRuntimePersist, type ImmersionRuntimeHost } from "../addons/immersion_heater/runtime/engine";
-import { hydrateWallboxVehicleSocPersistence } from "../addons/wallbox/vehicles/runtime";
 import { hydrateIntentPersist, type IntentEngineHost } from "../intent/engine";
 import { restoreLearningPersistenceFromStates } from "../learning/persistence_mirror";
 import { learningDataPath } from "../learning/data_dir";
@@ -50,13 +49,10 @@ function acHydrateHost(adapter: PersistHydrateHost): AcRuntimeHost {
 	};
 }
 
-function wallboxVehicleHydrateHost(adapter: PersistHydrateHost): ioBroker.Adapter {
-	return adapter;
-}
-
 /**
  * Phase D — Persistenz aus Dateien/Spiegelstates laden.
  * Läuft nach Ensure (B/C) und vor Sync, Subscriptions und Runtime-Auswertung.
+ * (v0.1.227: vehicle SOC rollforward hydrate removed with fat vehicle profiles.)
  */
 export async function hydratePersistedState(host: PersistHydrateHost): Promise<void> {
 	const learningHost = getLearningStateTreeHost();
@@ -66,5 +62,4 @@ export async function hydratePersistedState(host: PersistHydrateHost): Promise<v
 	await hydrateIntentPersist(intentHydrateHost(host));
 	await hydrateImmersionRuntimePersist(immersionHydrateHost(host));
 	await hydrateAcRuntimePersist(acHydrateHost(host));
-	await hydrateWallboxVehicleSocPersistence(wallboxVehicleHydrateHost(host), host.config);
 }

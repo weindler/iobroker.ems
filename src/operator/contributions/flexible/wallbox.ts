@@ -22,6 +22,8 @@ export interface WallboxContributionBuildInput {
 	sessionEnergyKwh: number | null;
 	remainingEnergyKwh: number | null;
 	vehicleCapacityKwh: number | null;
+	/** Optional planning cap from `wb_vehicle_map.max_ac_charge_power_w`. */
+	vehicleMaxAcChargePowerW?: number | null;
 	/** Fallback-Ziel-SOC wenn kein aktiver Plan (z. B. Intent). */
 	fallbackTargetSocPct?: number | null;
 	/** EVCC effectiveLimitSoc. */
@@ -139,7 +141,17 @@ export function buildWallboxEvSessionContribution(input: WallboxContributionBuil
 	});
 
 	const requiredKwh = requiredEnergyKwh(input);
-	const maxW = wallboxMaxChargePowerW(input.activePhases, input.maxCurrentA);
+	const fromPhases = wallboxMaxChargePowerW(input.activePhases, input.maxCurrentA);
+	const vehicleCap =
+		input.vehicleMaxAcChargePowerW !== null &&
+		input.vehicleMaxAcChargePowerW !== undefined &&
+		input.vehicleMaxAcChargePowerW > 0
+			? input.vehicleMaxAcChargePowerW
+			: null;
+	const maxW =
+		fromPhases !== null && vehicleCap !== null
+			? Math.min(fromPhases, vehicleCap)
+			: (fromPhases ?? vehicleCap);
 	let status = participation.status;
 	let reasonDe = participation.reasonDe;
 

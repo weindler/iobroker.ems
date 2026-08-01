@@ -14,6 +14,7 @@ const constants_js_1 = require("../addons/air_conditioning/constants.js");
 const ensure_states_js_2 = require("../addons/wallbox/vehicles/ensure_states.js");
 const normalize_js_1 = require("../addons/wallbox/vehicles/normalize.js");
 const config_js_1 = require("../addons/wallbox/vehicles/config.js");
+// ensure/normalize kept only to plant legacy fat trees for purge assertions
 class FakeCleanupHost {
     namespace = "ems.0";
     objects = new Map();
@@ -142,29 +143,29 @@ class FakeCleanupHost {
         strict_1.default.ok(host.deleted.includes("addons.air_conditioning.units.unit_1"));
         strict_1.default.ok(stats.deleted >= 1);
     });
-    (0, node_test_1.it)("empty vehicle table creates no profile folders; orphan profiles are cleaned", async () => {
-        const host = new FakeCleanupHost({ wb_vehicle_profiles: [] });
-        await (0, ensure_states_js_2.ensureWallboxVehicleProfileStates)(host, []);
-        strict_1.default.ok(host.objects.has("addons.wallbox.vehicles"));
+    (0, node_test_1.it)("empty vehicle mini-map creates no profile folders; legacy fat trees are purged", async () => {
+        const host = new FakeCleanupHost({ wb_vehicle_map: [] });
         strict_1.default.equal([...host.objects.keys()].some((k) => /^addons\.wallbox\.vehicles\.[^./]+$/.test(k)), false);
         const { profiles } = (0, normalize_js_1.normalizeWallboxVehicleProfiles)((0, config_js_1.wallboxVehicleProfilesConfigFromAdapter)({
             wb_vehicle_profiles: [{ vehicle_id: "old_car", display_name: "Old", enabled: false }],
         }).profiles, new Date().toISOString());
         await (0, ensure_states_js_2.ensureWallboxVehicleProfileStates)(host, profiles);
         strict_1.default.ok(host.objects.has("addons.wallbox.vehicles.old_car"));
-        host.config = { wb_vehicle_profiles: [] };
+        host.config = { wb_vehicle_map: [] };
         await (0, cleanup_js_1.runDynamicSurfaceCleanup)(host);
         strict_1.default.equal(host.objects.has("addons.wallbox.vehicles.old_car"), false);
     });
-    (0, node_test_1.it)("keeps present disabled vehicle profile", async () => {
+    (0, node_test_1.it)("purges legacy fat vehicle folders even if mini-map has entries", async () => {
         const cfg = {
-            wb_vehicle_profiles: [{ vehicle_id: "garage_car", display_name: "Garage", enabled: false }],
+            wb_vehicle_map: [{ evcc_vehicle_id: "garage", display_name: "Garage", enabled: true }],
         };
         const host = new FakeCleanupHost(cfg);
-        const { profiles } = (0, normalize_js_1.normalizeWallboxVehicleProfiles)((0, config_js_1.wallboxVehicleProfilesConfigFromAdapter)(cfg).profiles, new Date().toISOString());
+        const { profiles } = (0, normalize_js_1.normalizeWallboxVehicleProfiles)((0, config_js_1.wallboxVehicleProfilesConfigFromAdapter)({
+            wb_vehicle_profiles: [{ vehicle_id: "garage_car", display_name: "Garage", enabled: false }],
+        }).profiles, new Date().toISOString());
         await (0, ensure_states_js_2.ensureWallboxVehicleProfileStates)(host, profiles);
         await (0, cleanup_js_1.runDynamicSurfaceCleanup)(host);
-        strict_1.default.ok(host.objects.has("addons.wallbox.vehicles.garage_car"));
+        strict_1.default.equal(host.objects.has("addons.wallbox.vehicles.garage_car"), false);
     });
     (0, node_test_1.it)("never deletes compatibility prefixes even if present", async () => {
         const host = new FakeCleanupHost({});

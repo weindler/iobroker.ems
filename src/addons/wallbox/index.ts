@@ -55,14 +55,6 @@ import { WALLBOX_RUNTIME_STATES } from "./runtime/states";
 import { intentEvccConfigFromAdapter } from "../../intent/config";
 import { evccModeChargeValue } from "./evcc_control_config";
 import { resolveWallboxControlObjectMetas } from "./runtime/control_object_meta";
-import {
-	collectWallboxVehicleForeignStateIds,
-	ensureWallboxVehicleProfileStates,
-	normalizeWallboxVehicleProfiles,
-	refreshWallboxVehicleRuntime,
-	wallboxVehicleProfilesConfigFromAdapter,
-} from "./vehicles";
-
 type WallboxHost = EvccTelemetryReadHost &
 	ioBroker.Adapter & {
 		subscribeForeignStatesAsync?: (id: string) => Promise<void>;
@@ -420,7 +412,6 @@ export async function refreshWallboxEvccTelemetry(host: WallboxHost): Promise<vo
 	await writeField(host, WALLBOX_EVCC_STATES.batteryDischargeControl, snap.battery_discharge_control);
 
 	await publishWallboxBatteryHoldRuntime(host, snap);
-	await refreshWallboxVehicleRuntime(host, snap, host.config);
 	await refreshWallboxDailyPlanRuntime(host, snap);
 }
 
@@ -439,14 +430,12 @@ export async function ensureWallboxStaticStateTree(host: WallboxHost): Promise<v
 	await ensureWallboxRuntimeStates(host);
 }
 
-/** Phase C — dynamische Fahrzeugprofil-Ordner aus Admin-Konfiguration. */
-export async function ensureWallboxDynamicVehicleProfiles(host: WallboxHost): Promise<void> {
-	const vehicleCfg = wallboxVehicleProfilesConfigFromAdapter(host.config);
-	const { profiles: vehicleProfiles } = normalizeWallboxVehicleProfiles(
-		vehicleCfg.profiles,
-		new Date().toISOString(),
-	);
-	await ensureWallboxVehicleProfileStates(host, vehicleProfiles);
+/**
+ * Phase C (v0.1.227+) — no-op: fat `addons.wallbox.vehicles.*` trees are no longer created.
+ * Orphan folders are purged by surface cleanup. Optional capacity/maxW live in `wb_vehicle_map`.
+ */
+export async function ensureWallboxDynamicVehicleProfiles(_host: WallboxHost): Promise<void> {
+	void _host;
 }
 
 export async function ensureWallboxStateTree(host: WallboxHost): Promise<void> {
@@ -463,9 +452,6 @@ export async function startWallboxModuleRuntime(host: WallboxHost): Promise<void
 	const cfg = wallboxEvccTelemetryConfigFromAdapter(host.config);
 	const ids = new Set(configuredEvccTelemetryStateIds(cfg));
 	for (const id of configuredWallboxHoldSignalStateIds(wallboxHoldSignalConfigFromAdapter(host.config))) {
-		ids.add(id);
-	}
-	for (const id of collectWallboxVehicleForeignStateIds(host.config)) {
 		ids.add(id);
 	}
 	ids.add(addonEnabled(WALLBOX_ADDON_ID));
@@ -564,11 +550,6 @@ export function handleWallboxForeignStateChange(namespace: string, id: string): 
 	const cfg = wallboxEvccTelemetryConfigFromAdapter(activeHost.config);
 	const ids = configuredEvccTelemetryStateIds(cfg);
 	if (ids.includes(id)) {
-		scheduleRefresh(activeHost);
-		return;
-	}
-	const vehicleIds = collectWallboxVehicleForeignStateIds(activeHost.config);
-	if (vehicleIds.includes(id)) {
 		scheduleRefresh(activeHost);
 		return;
 	}

@@ -5,6 +5,24 @@ import { isKnownLearningKey, RESTORE_LEARNING_KEYS } from "./learning_map";
 import type { RestoreProjection } from "./types";
 import type { AdapterConfigExport } from "../backup/types";
 import { EXPORT_LIMITS, assertWithinLimit } from "../backup/limits";
+import { slimEntryFromLegacyProfileRow, vehicleMapEntryToExportRow } from "../addons/wallbox/vehicle_map";
+
+function resolveVehicleMapEntriesFromArchive(archive: {
+	entries?: unknown[];
+	profiles?: unknown[];
+}): unknown[] {
+	if (Array.isArray(archive.entries)) {
+		return archive.entries;
+	}
+	// Legacy fat `{ profiles: [...] }` → slim map rows (EVCC id/name required).
+	if (!Array.isArray(archive.profiles)) return [];
+	const out: unknown[] = [];
+	for (const row of archive.profiles) {
+		const slim = slimEntryFromLegacyProfileRow(row);
+		if (slim) out.push(vehicleMapEntryToExportRow(slim));
+	}
+	return out;
+}
 
 const EXECUTION_MODE_KEYS = [
 	"global_execution_mode",
@@ -28,7 +46,8 @@ function stableEqual(a: unknown, b: unknown): boolean {
 export function buildRestoreProjection(payloadMap: Map<string, Buffer>): RestoreProjection {
 	const adapter = parseJsonBuffer(payloadMap.get("config/adapter.json")!, "adapter.json") as AdapterConfigExport;
 	const mappings = parseJsonBuffer(payloadMap.get("config/mappings.json")!, "mappings.json") as Record<string, unknown>;
-	const vehicleProfiles = parseJsonBuffer(payloadMap.get("config/vehicle_profiles.json")!, "vehicle_profiles.json") as {
+	const vehicleArchive = parseJsonBuffer(payloadMap.get("config/vehicle_profiles.json")!, "vehicle_profiles.json") as {
+		entries?: unknown[];
 		profiles?: unknown[];
 	};
 	const policies = parseJsonBuffer(payloadMap.get("config/policies.json")!, "policies.json") as Record<string, unknown>;
@@ -55,12 +74,15 @@ export function buildRestoreProjection(payloadMap: Map<string, Buffer>): Restore
 			native[k] = v;
 		}
 	}
-	if (vehicleProfiles.profiles !== undefined) {
-		const fromAdapter = native.wb_vehicle_profiles;
-		if (fromAdapter !== undefined && !stableEqual(fromAdapter, vehicleProfiles.profiles)) {
-			throw new Error("conflicting vehicle profiles");
+	{
+		const slimEntries = resolveVehicleMapEntriesFromArchive(vehicleArchive);
+		const fromAdapter = native.wb_vehicle_map;
+		if (fromAdapter !== undefined && !stableEqual(fromAdapter, slimEntries)) {
+			throw new Error("conflicting vehicle map");
 		}
-		native.wb_vehicle_profiles = vehicleProfiles.profiles;
+		native.wb_vehicle_map = slimEntries;
+		// Drop legacy fat table from restored native.
+		delete native.wb_vehicle_profiles;
 	}
 	for (const [k, v] of Object.entries(policies)) {
 		if (isAllowedConfigKey(k) && !isSecretKey(k)) {

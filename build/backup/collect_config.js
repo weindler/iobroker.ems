@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.collectPoliciesExport = exports.collectVehicleProfilesExport = exports.filterVehicleProfileRow = exports.collectMappingsExport = exports.collectAdapterConfigExport = exports.filterAllowlistedConfig = exports.isAllowedConfigKey = exports.VEHICLE_PROFILE_ALLOWED_KEYS = void 0;
+exports.collectPoliciesExport = exports.collectVehicleProfilesExport = exports.filterVehicleProfileRow = exports.filterVehicleMapRow = exports.collectMappingsExport = exports.collectAdapterConfigExport = exports.filterAllowlistedConfig = exports.isAllowedConfigKey = exports.VEHICLE_PROFILE_ALLOWED_KEYS = exports.VEHICLE_MAP_ALLOWED_KEYS = void 0;
 const execution_mode_1 = require("../execution_mode");
 const schema_1 = require("./schema");
 /** Erlaubte Native-Config-Präfixe (Allowlist). */
@@ -30,18 +30,22 @@ const ALLOWED_PREFIXES = [
     "dt_",
     "ai_",
 ];
-const ALLOWED_EXACT = new Set(["mapping", "wb_vehicle_profiles"]);
-/** Explizite Fahrzeugprofil-Felder (kein „alle Felder außer Secrets“). */
-exports.VEHICLE_PROFILE_ALLOWED_KEYS = new Set([
-    "vehicle_id",
+const ALLOWED_EXACT = new Set(["mapping", "wb_vehicle_map", "wb_vehicle_profiles"]);
+/** Slim vehicle mini-map fields (v0.1.227+). */
+exports.VEHICLE_MAP_ALLOWED_KEYS = new Set([
+    "evcc_vehicle_id",
     "display_name",
     "enabled",
-    "is_guest",
-    "source",
-    "evcc_vehicle_id",
-    "evcc_vehicle_name",
     "battery_capacity_net_kwh",
     "max_ac_charge_power_w",
+]);
+/** @deprecated fat profile keys — only used when migrating legacy backup rows */
+exports.VEHICLE_PROFILE_ALLOWED_KEYS = new Set([
+    ...exports.VEHICLE_MAP_ALLOWED_KEYS,
+    "vehicle_id",
+    "is_guest",
+    "source",
+    "evcc_vehicle_name",
     "supported_phases",
     "preferred_phases",
     "min_current_a",
@@ -151,12 +155,12 @@ function collectMappingsExport(config) {
     return out;
 }
 exports.collectMappingsExport = collectMappingsExport;
-function filterVehicleProfileRow(row) {
+function filterVehicleMapRow(row) {
     if (!row || typeof row !== "object" || Array.isArray(row))
         return row;
     const out = {};
     for (const [k, v] of Object.entries(row)) {
-        if (!exports.VEHICLE_PROFILE_ALLOWED_KEYS.has(k) || (0, schema_1.isSecretKey)(k))
+        if (!exports.VEHICLE_MAP_ALLOWED_KEYS.has(k) || (0, schema_1.isSecretKey)(k))
             continue;
         if (v !== undefined && v !== null && typeof v === "object")
             continue;
@@ -164,11 +168,43 @@ function filterVehicleProfileRow(row) {
     }
     return out;
 }
+exports.filterVehicleMapRow = filterVehicleMapRow;
+/** @deprecated use filterVehicleMapRow */
+function filterVehicleProfileRow(row) {
+    return filterVehicleMapRow(row);
+}
 exports.filterVehicleProfileRow = filterVehicleProfileRow;
+/**
+ * Archive path stays `config/vehicle_profiles.json` for schema stability.
+ * Content is slim `{ entries: [...] }` from `wb_vehicle_map` (v0.1.227+).
+ */
 function collectVehicleProfilesExport(config) {
     const raw = config && typeof config === "object" ? config : {};
-    const profiles = Array.isArray(raw.wb_vehicle_profiles) ? raw.wb_vehicle_profiles : [];
-    return { profiles: profiles.map((row) => filterVehicleProfileRow(row)) };
+    const mapRows = Array.isArray(raw.wb_vehicle_map) ? raw.wb_vehicle_map : [];
+    if (mapRows.length > 0) {
+        return { entries: mapRows.map((row) => filterVehicleMapRow(row)) };
+    }
+    // Legacy native still holding fat profiles: export slim-migrated rows.
+    const legacy = Array.isArray(raw.wb_vehicle_profiles) ? raw.wb_vehicle_profiles : [];
+    const entries = [];
+    for (const row of legacy) {
+        if (!row || typeof row !== "object")
+            continue;
+        const r = row;
+        const evcc = (typeof r.evcc_vehicle_id === "string" && r.evcc_vehicle_id.trim()) ||
+            (typeof r.evcc_vehicle_name === "string" && r.evcc_vehicle_name.trim()) ||
+            "";
+        if (!evcc)
+            continue;
+        entries.push(filterVehicleMapRow({
+            evcc_vehicle_id: evcc,
+            display_name: r.display_name,
+            enabled: r.enabled,
+            battery_capacity_net_kwh: r.battery_capacity_net_kwh,
+            max_ac_charge_power_w: r.max_ac_charge_power_w,
+        }));
+    }
+    return { entries };
 }
 exports.collectVehicleProfilesExport = collectVehicleProfilesExport;
 function collectPoliciesExport(config) {

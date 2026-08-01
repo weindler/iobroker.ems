@@ -1,5 +1,9 @@
 # EMS-Light Wallbox Vehicle Profiles (v0.1.138)
 
+> **Deprecated (v0.1.227):** Fat `wb_vehicle_profiles` + `addons.wallbox.vehicles.<id>.*` state trees are removed.
+> Use slim admin table `wb_vehicle_map` (`evcc_vehicle_id`, optional `display_name` / `battery_capacity_net_kwh` / `max_ac_charge_power_w` / `enabled`).
+> EVCC-first remaining energy works with an empty map. This document is historical.
+
 Read-only / diagnostic foundation for multiple vehicle profiles per wallbox charging point.
 
 ## Separation: Wallbox vs Vehicle

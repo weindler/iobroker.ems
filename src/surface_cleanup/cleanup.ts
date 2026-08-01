@@ -13,8 +13,6 @@ import {
 	isAcUnitConfigured,
 } from "../addons/air_conditioning/configured";
 import { acUnitRuntimeBase } from "../addons/air_conditioning/runtime/ensure_states";
-import { wallboxVehicleProfilesConfigFromAdapter } from "../addons/wallbox/vehicles/config";
-import { normalizeWallboxVehicleProfiles } from "../addons/wallbox/vehicles/normalize";
 import { WALLBOX_VEHICLES_BASE, vehicleBasePath } from "../addons/wallbox/vehicles/ensure_states";
 import { learningPersistenceMirrorRelativeIds } from "../learning/persistence_mirror";
 import { WALLBOX_RUNTIME_BASE, WALLBOX_RUNTIME_BALLAST_SUFFIXES } from "../addons/wallbox/runtime/states";
@@ -101,12 +99,6 @@ async function safeDeleteRelative(
 	}
 }
 
-function configuredVehicleIds(config: unknown): Set<string> {
-	const vehicleCfg = wallboxVehicleProfilesConfigFromAdapter(config);
-	const { profiles } = normalizeWallboxVehicleProfiles(vehicleCfg.profiles, new Date().toISOString());
-	return new Set(profiles.map((p) => p.vehicleId));
-}
-
 async function cleanupUnconfiguredAcUnits(host: SurfaceCleanupHost, stats: SurfaceCleanupStats): Promise<void> {
 	const keepCmds = new Set(acMappingCommandsForConfiguredUnits(host.config));
 	for (let i = 1; i <= AC_UNIT_COUNT; i++) {
@@ -139,8 +131,12 @@ async function cleanupUnconfiguredAcUnits(host: SurfaceCleanupHost, stats: Surfa
 	}
 }
 
+/**
+ * v0.1.227+: fat `addons.wallbox.vehicles.<id>` trees are obsolete.
+ * Always purge vehicle folders (mini-map `wb_vehicle_map` creates no state trees).
+ */
 async function cleanupOrphanVehicles(host: SurfaceCleanupHost, stats: SurfaceCleanupStats): Promise<void> {
-	const keep = configuredVehicleIds(host.config);
+	void host.config;
 	const ids = host.listRelativeObjectIds ? await host.listRelativeObjectIds() : [];
 	const vehicleFolderRe = new RegExp(`^${WALLBOX_VEHICLES_BASE.replace(/\./g, "\\.")}\\.([^./]+)$`);
 	const seen = new Set<string>();
@@ -150,12 +146,7 @@ async function cleanupOrphanVehicles(host: SurfaceCleanupHost, stats: SurfaceCle
 		const vehicleId = m[1];
 		if (seen.has(vehicleId)) continue;
 		seen.add(vehicleId);
-		stats.checked += 1;
-		if (keep.has(vehicleId)) {
-			bump(stats, "vehicle_configured_kept");
-			continue;
-		}
-		await safeDeleteRelative(host, vehicleBasePath(vehicleId), stats, "vehicle_orphan");
+		await safeDeleteRelative(host, vehicleBasePath(vehicleId), stats, "vehicle_fat_profile_purge");
 	}
 }
 

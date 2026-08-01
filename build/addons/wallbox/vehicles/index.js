@@ -14,6 +14,11 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+/**
+ * @deprecated Fat wallbox vehicle profiles (state trees under addons.wallbox.vehicles.*)
+ * were removed in v0.1.227. Use `../vehicle_map` for optional EVCC-id → capacity/maxW.
+ * Modules remain for transitional imports / cleanup helpers only — not called from runtime.
+ */
 __exportStar(require("./types"), exports);
 __exportStar(require("./vehicle_id"), exports);
 __exportStar(require("./config"), exports);

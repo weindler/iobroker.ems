@@ -193,25 +193,9 @@ async function collectVehicleSupportPersistence(host) {
 }
 exports.collectVehicleSupportPersistence = collectVehicleSupportPersistence;
 async function* walkObjects(host, prefix) {
-    if (!host.getObjectAsync)
-        return;
-    // Begrenzte manuelle Abfrage — in Tests via Mock; Produktion optional erweiterbar
-    const knownIds = [];
-    const cfg = host.config && typeof host.config === "object" ? host.config : {};
-    const profiles = Array.isArray(cfg.wb_vehicle_profiles) ? cfg.wb_vehicle_profiles : [];
-    for (const row of profiles) {
-        if (!row || typeof row !== "object")
-            continue;
-        const vid = String(row.vehicle_id ?? "").trim();
-        if (!vid)
-            continue;
-        knownIds.push(`${prefix}${vid}.config.enabled`);
-    }
-    for (const id of knownIds) {
-        const obj = await host.getObjectAsync(id);
-        if (obj)
-            yield obj;
-    }
+    // Fat vehicle trees removed in v0.1.227 — nothing to enumerate from config.
+    void host;
+    void prefix;
 }
 function isTransientStateId(relativeId) {
     if (relativeId.startsWith("command."))

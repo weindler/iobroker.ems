@@ -11,7 +11,6 @@ import { stopEmsLightPhase1 } from "../ems_light/index.js";
 import { stopFailsafeRunner } from "../failsafe_runner.js";
 import { WALLBOX_LIVE_WRITE_RELEASED } from "../addons/wallbox/runtime/execute.js";
 import { resetAllProfileSocPersistence } from "../addons/wallbox/vehicles/baseline.js";
-import { vehicleStatePaths } from "../addons/wallbox/vehicles/ensure_states.js";
 import { IMMERSION_RUNTIME_STATES } from "../addons/immersion_heater/runtime/types.js";
 import {
 	allBootstrapCoreStateIds,
@@ -39,26 +38,18 @@ function defaultConfig(overrides: Record<string, unknown> = {}): Record<string, 
 		bat_addon_mode: "dryrun",
 		ih_addon_mode: "dryrun",
 		ac_addon_mode: "dryrun",
-		wb_vehicle_profiles: [],
+		wb_vehicle_map: [],
 		...overrides,
 	};
 }
 
-function profileRow(id: string, name: string): Record<string, unknown> {
+function mapRow(evccId: string, name: string): Record<string, unknown> {
 	return {
-		vehicle_id: id,
+		evcc_vehicle_id: evccId,
 		display_name: name,
 		enabled: true,
-		source: "manual",
 		battery_capacity_net_kwh: 60,
 		max_ac_charge_power_w: 11000,
-		supported_phases: "3",
-		preferred_phases: 3,
-		min_current_a: 6,
-		max_current_a: 16,
-		default_target_soc_pct: 80,
-		minimum_departure_soc_pct: 50,
-		maximum_soc_pct: 90,
 	};
 }
 
@@ -243,8 +234,8 @@ describe("bootstrap cold start recovery", () => {
 		await stopAllRuntime();
 	});
 
-	it("scenario A — empty namespace, empty vehicle profile list", async () => {
-		const adapter = new FakeBootstrapAdapter(tmp, defaultConfig({ wb_vehicle_profiles: [] }));
+	it("scenario A — empty namespace, empty vehicle mini-map", async () => {
+		const adapter = new FakeBootstrapAdapter(tmp, defaultConfig({ wb_vehicle_map: [] }));
 		await runAdapterBootstrap(adapter as unknown as ioBroker.Adapter, strictStep);
 
 		assert.equal(isBootstrapComplete(), true);
@@ -262,30 +253,24 @@ describe("bootstrap cold start recovery", () => {
 		const vehicleChannels = [...adapter.objects.keys()].filter((id) =>
 			id.startsWith("addons.wallbox.vehicles."),
 		);
-		assert.equal(vehicleChannels.length, 0, "no example vehicle profiles");
+		assert.equal(vehicleChannels.length, 0, "no fat vehicle profile trees");
 	});
 
-	it("scenario B — one and five dynamic vehicle profiles", async () => {
+	it("scenario B — mini-map entries do not create vehicle state trees", async () => {
 		for (const count of [1, 5]) {
 			await stopAllRuntime();
 			const dir = await fs.mkdtemp(path.join(os.tmpdir(), "ems-bootstrap-vp-"));
-			const profiles = Array.from({ length: count }, (_, i) =>
-				profileRow(`car_${i + 1}`, `Car ${i + 1}`),
+			const entries = Array.from({ length: count }, (_, i) =>
+				mapRow(`evcc_car_${i + 1}`, `Car ${i + 1}`),
 			);
-			const adapter = new FakeBootstrapAdapter(dir, defaultConfig({ wb_vehicle_profiles: profiles }));
+			const adapter = new FakeBootstrapAdapter(dir, defaultConfig({ wb_vehicle_map: entries }));
 			await ensureStaticStateTree(adapter as unknown as ioBroker.Adapter);
 			await ensureDynamicVehicleProfiles(adapter as unknown as ioBroker.Adapter);
 
-			for (const p of profiles) {
-				const vid = String(p.vehicle_id);
-				assert.ok(adapter.hasObject(`addons.wallbox.vehicles.${vid}.config.enabled`));
-				assert.ok(adapter.hasObject(`addons.wallbox.vehicles.${vid}.telemetry.soc_pct`));
-			}
-			if (count >= 2) {
-				const a = `addons.wallbox.vehicles.car_1.telemetry.soc_pct`;
-				const b = `addons.wallbox.vehicles.car_2.telemetry.soc_pct`;
-				assert.notEqual(a, b);
-			}
+			const vehicleChannels = [...adapter.objects.keys()].filter((id) =>
+				id.startsWith("addons.wallbox.vehicles."),
+			);
+			assert.equal(vehicleChannels.length, 0, "mini-map must not create fat vehicle trees");
 		}
 	});
 
@@ -355,7 +340,7 @@ describe("bootstrap cold start recovery", () => {
 	});
 
 	it("scenario F — empty namespace with live admin config clamps to dryrun", async () => {
-		const cfg = liveConfig({ wb_vehicle_profiles: [] });
+		const cfg = liveConfig({ wb_vehicle_map: [] });
 		const adapter = new FakeBootstrapAdapter(tmp, cfg);
 		let coldStartDuringSync: boolean | null = null;
 		await runAdapterBootstrap(adapter as unknown as ioBroker.Adapter, async (label, fn) => {
@@ -381,7 +366,7 @@ describe("bootstrap cold start recovery", () => {
 	});
 
 	it("scenario F2 — second start with existing namespace is warm start", async () => {
-		const cfg = liveConfig({ wb_vehicle_profiles: [] });
+		const cfg = liveConfig({ wb_vehicle_map: [] });
 		const adapter = new FakeBootstrapAdapter(tmp, cfg);
 		await runAdapterBootstrap(adapter as unknown as ioBroker.Adapter, strictStep);
 		assert.equal(adapter.states.get("global.execution_mode")?.val, "dryrun");
@@ -433,24 +418,19 @@ describe("bootstrap cold start recovery", () => {
 		assert.equal(adapter.foreignWrites.length, 0);
 	});
 
-	it("scenario H — vehicle SOC persistence hydrated in Phase D before runtime", async () => {
-		const profiles = [profileRow("car_1", "Car 1")];
-		const adapter = new FakeBootstrapAdapter(tmp, defaultConfig({ wb_vehicle_profiles: profiles }));
+	it("scenario H — Phase D hydrate skips fat vehicle SOC persistence", async () => {
+		const adapter = new FakeBootstrapAdapter(
+			tmp,
+			defaultConfig({ wb_vehicle_map: [mapRow("evcc_car", "Car 1")] }),
+		);
 		await ensureStaticStateTree(adapter as unknown as ioBroker.Adapter);
 		await ensureDynamicVehicleProfiles(adapter as unknown as ioBroker.Adapter);
-
-		const p = vehicleStatePaths("car_1");
-		await adapter.setStateAsync(p.estimationBaselineSocPct, { val: 72, ack: true });
-		await adapter.setStateAsync(p.estimationBaselineSocSource, { val: "direct", ack: true });
-		await adapter.setStateAsync(p.estimationBaselineAt, { val: "2026-07-01T10:00:00.000Z", ack: true });
-
 		await hydratePersistedState(adapter as unknown as ioBroker.Adapter);
 
-		const { getRollforwardAnchor } = await import("../addons/wallbox/vehicles/baseline.js");
-		const anchor = getRollforwardAnchor("car_1");
-		assert.ok(anchor);
-		assert.equal(anchor?.socPct, 72);
-		assert.equal(anchor?.rootSource, "direct");
+		const vehicleChannels = [...adapter.objects.keys()].filter((id) =>
+			id.startsWith("addons.wallbox.vehicles."),
+		);
+		assert.equal(vehicleChannels.length, 0);
 	});
 
 	it("scenario I — immersion foreign input during bootstrap reconciled after barrier", async () => {

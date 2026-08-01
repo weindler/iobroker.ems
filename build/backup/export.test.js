@@ -47,21 +47,13 @@ const ensure_states_js_1 = require("./ensure_states.js");
 const execute_js_1 = require("../addons/wallbox/runtime/execute.js");
 const diagnostic_mode_js_1 = require("../support/diagnostic_mode.js");
 const log_rotation_js_1 = require("../support/log_rotation.js");
-function profileRow(id, name) {
+function mapRow(evccId, name) {
     return {
-        vehicle_id: id,
+        evcc_vehicle_id: evccId,
         display_name: name,
         enabled: true,
-        source: "manual",
         battery_capacity_net_kwh: 60,
         max_ac_charge_power_w: 11000,
-        supported_phases: "3",
-        preferred_phases: 3,
-        min_current_a: 6,
-        max_current_a: 16,
-        default_target_soc_pct: 80,
-        minimum_departure_soc_pct: 50,
-        maximum_soc_pct: 90,
     };
 }
 class ExportTestHost {
@@ -123,13 +115,13 @@ class ExportTestHost {
         strict_1.default.ok(names.includes("manifest.json"));
         strict_1.default.ok(names.includes("config/adapter.json"));
     });
-    (0, node_test_1.it)("exports full addon config and five vehicle profiles", async () => {
-        const profiles = Array.from({ length: 5 }, (_, i) => profileRow(`car_${i + 1}`, `Car ${i + 1}`));
+    (0, node_test_1.it)("exports full addon config and five vehicle mini-map entries", async () => {
+        const entries = Array.from({ length: 5 }, (_, i) => mapRow(`car_${i + 1}`, `Car ${i + 1}`));
         const cfg = {
             global_execution_mode: "live",
             wb_addon_mode: "live",
             bat_addon_mode: "dryrun",
-            wb_vehicle_profiles: profiles,
+            wb_vehicle_map: entries,
             wb_evcc_connected_state: "evcc.0.connected",
             api_key: "secret-should-drop",
         };
@@ -138,7 +130,7 @@ class ExportTestHost {
         strict_1.default.equal(exported.configured_modes_at_export.global, "live");
         strict_1.default.equal(exported.allowed_native.api_key, undefined);
         const vp = (0, collect_config_js_1.collectVehicleProfilesExport)(cfg);
-        strict_1.default.equal(vp.profiles.length, 5);
+        strict_1.default.equal(vp.entries.length, 5);
     });
     (0, node_test_1.it)("allowlist excludes secrets and unknown keys", () => {
         const out = (0, collect_config_js_1.filterAllowlistedConfig)({
@@ -163,15 +155,17 @@ class ExportTestHost {
         strict_1.default.equal(out.ai_max_calls_per_day, 20);
         strict_1.default.equal(out.ai_openai_api_key, undefined);
     });
-    (0, node_test_1.it)("vehicle profile allowlist drops unknown and nested fields", () => {
+    (0, node_test_1.it)("vehicle mini-map allowlist drops unknown and nested fields", () => {
         const row = (0, collect_config_js_1.filterVehicleProfileRow)({
-            vehicle_id: "car_1",
+            evcc_vehicle_id: "car_1",
             display_name: "Car",
+            vehicle_id: "legacy_drop",
             unknown_harmless: "drop",
             unknown_secret: "drop",
             nested: { secret: "x" },
         });
-        strict_1.default.equal(row.vehicle_id, "car_1");
+        strict_1.default.equal(row.evcc_vehicle_id, "car_1");
+        strict_1.default.equal(row.vehicle_id, undefined);
         strict_1.default.equal(row.unknown_harmless, undefined);
         strict_1.default.equal(row.nested, undefined);
     });
@@ -197,7 +191,7 @@ class ExportTestHost {
         const secret = "ACCESS_TOKEN_SECRET_XYZ_991_UNIQUE";
         const host = new ExportTestHost(tmp, {
             wb_evcc_connected_state: "mqtt.0.home/evcc/connected",
-            wb_vehicle_profiles: [profileRow("vin123456789012345", "My Car")],
+            wb_vehicle_map: [mapRow("vin123456789012345", "My Car")],
             access_token: secret,
         });
         const { runSupportBundleExport } = await Promise.resolve().then(() => __importStar(require("../support/index.js")));

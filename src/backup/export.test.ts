@@ -58,21 +58,13 @@ import {
 } from "../support/diagnostic_mode.js";
 import { appendNdjsonRotating } from "../support/log_rotation.js";
 
-function profileRow(id: string, name: string): Record<string, unknown> {
+function mapRow(evccId: string, name: string): Record<string, unknown> {
 	return {
-		vehicle_id: id,
+		evcc_vehicle_id: evccId,
 		display_name: name,
 		enabled: true,
-		source: "manual",
 		battery_capacity_net_kwh: 60,
 		max_ac_charge_power_w: 11000,
-		supported_phases: "3",
-		preferred_phases: 3,
-		min_current_a: 6,
-		max_current_a: 16,
-		default_target_soc_pct: 80,
-		minimum_departure_soc_pct: 50,
-		maximum_soc_pct: 90,
 	};
 }
 
@@ -145,13 +137,13 @@ describe("backup export v0.1.141", () => {
 		assert.ok(names.includes("config/adapter.json"));
 	});
 
-	it("exports full addon config and five vehicle profiles", async () => {
-		const profiles = Array.from({ length: 5 }, (_, i) => profileRow(`car_${i + 1}`, `Car ${i + 1}`));
+	it("exports full addon config and five vehicle mini-map entries", async () => {
+		const entries = Array.from({ length: 5 }, (_, i) => mapRow(`car_${i + 1}`, `Car ${i + 1}`));
 		const cfg = {
 			global_execution_mode: "live",
 			wb_addon_mode: "live",
 			bat_addon_mode: "dryrun",
-			wb_vehicle_profiles: profiles,
+			wb_vehicle_map: entries,
 			wb_evcc_connected_state: "evcc.0.connected",
 			api_key: "secret-should-drop",
 		};
@@ -160,7 +152,7 @@ describe("backup export v0.1.141", () => {
 		assert.equal(exported.configured_modes_at_export.global, "live");
 		assert.equal((exported.allowed_native as Record<string, unknown>).api_key, undefined);
 		const vp = collectVehicleProfilesExport(cfg);
-		assert.equal(vp.profiles.length, 5);
+		assert.equal(vp.entries.length, 5);
 	});
 
 	it("allowlist excludes secrets and unknown keys", () => {
@@ -188,15 +180,17 @@ describe("backup export v0.1.141", () => {
 		assert.equal(out.ai_openai_api_key, undefined);
 	});
 
-	it("vehicle profile allowlist drops unknown and nested fields", () => {
+	it("vehicle mini-map allowlist drops unknown and nested fields", () => {
 		const row = filterVehicleProfileRow({
-			vehicle_id: "car_1",
+			evcc_vehicle_id: "car_1",
 			display_name: "Car",
+			vehicle_id: "legacy_drop",
 			unknown_harmless: "drop",
 			unknown_secret: "drop",
 			nested: { secret: "x" },
 		}) as Record<string, unknown>;
-		assert.equal(row.vehicle_id, "car_1");
+		assert.equal(row.evcc_vehicle_id, "car_1");
+		assert.equal(row.vehicle_id, undefined);
 		assert.equal(row.unknown_harmless, undefined);
 		assert.equal(row.nested, undefined);
 	});
@@ -225,7 +219,7 @@ describe("backup export v0.1.141", () => {
 		const secret = "ACCESS_TOKEN_SECRET_XYZ_991_UNIQUE";
 		const host = new ExportTestHost(tmp, {
 			wb_evcc_connected_state: "mqtt.0.home/evcc/connected",
-			wb_vehicle_profiles: [profileRow("vin123456789012345", "My Car")],
+			wb_vehicle_map: [mapRow("vin123456789012345", "My Car")],
 			access_token: secret,
 		});
 		const { runSupportBundleExport } = await import("../support/index.js");

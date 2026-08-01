@@ -66,7 +66,7 @@ export async function ensureStaticStateTree(host: StaticStateTreeHost): Promise<
 	);
 }
 
-/** Phase C — dynamische Fahrzeugprofil-Ordner aus `wb_vehicle_profiles`. */
+/** Phase C — no-op since v0.1.227 (fat vehicle profile trees removed; see `wb_vehicle_map`). */
 export async function ensureDynamicVehicleProfiles(host: StaticStateTreeHost): Promise<void> {
 	await ensureWallboxDynamicVehicleProfiles(host);
 }

@@ -9,6 +9,7 @@ import { AC_ADDON_ID } from "../addons/air_conditioning/constants.js";
 import { ensureWallboxVehicleProfileStates } from "../addons/wallbox/vehicles/ensure_states.js";
 import { normalizeWallboxVehicleProfiles } from "../addons/wallbox/vehicles/normalize.js";
 import { wallboxVehicleProfilesConfigFromAdapter } from "../addons/wallbox/vehicles/config.js";
+// ensure/normalize kept only to plant legacy fat trees for purge assertions
 
 class FakeCleanupHost implements SurfaceCleanupHost {
 	readonly namespace = "ems.0";
@@ -170,10 +171,8 @@ describe("dynamic surface ensure + cleanup", () => {
 		assert.ok(stats.deleted >= 1);
 	});
 
-	it("empty vehicle table creates no profile folders; orphan profiles are cleaned", async () => {
-		const host = new FakeCleanupHost({ wb_vehicle_profiles: [] });
-		await ensureWallboxVehicleProfileStates(host, []);
-		assert.ok(host.objects.has("addons.wallbox.vehicles"));
+	it("empty vehicle mini-map creates no profile folders; legacy fat trees are purged", async () => {
+		const host = new FakeCleanupHost({ wb_vehicle_map: [] });
 		assert.equal(
 			[...host.objects.keys()].some((k) => /^addons\.wallbox\.vehicles\.[^./]+$/.test(k)),
 			false,
@@ -188,23 +187,25 @@ describe("dynamic surface ensure + cleanup", () => {
 		await ensureWallboxVehicleProfileStates(host, profiles);
 		assert.ok(host.objects.has("addons.wallbox.vehicles.old_car"));
 
-		host.config = { wb_vehicle_profiles: [] };
+		host.config = { wb_vehicle_map: [] };
 		await runDynamicSurfaceCleanup(host);
 		assert.equal(host.objects.has("addons.wallbox.vehicles.old_car"), false);
 	});
 
-	it("keeps present disabled vehicle profile", async () => {
+	it("purges legacy fat vehicle folders even if mini-map has entries", async () => {
 		const cfg = {
-			wb_vehicle_profiles: [{ vehicle_id: "garage_car", display_name: "Garage", enabled: false }],
+			wb_vehicle_map: [{ evcc_vehicle_id: "garage", display_name: "Garage", enabled: true }],
 		};
 		const host = new FakeCleanupHost(cfg);
 		const { profiles } = normalizeWallboxVehicleProfiles(
-			wallboxVehicleProfilesConfigFromAdapter(cfg).profiles,
+			wallboxVehicleProfilesConfigFromAdapter({
+				wb_vehicle_profiles: [{ vehicle_id: "garage_car", display_name: "Garage", enabled: false }],
+			}).profiles,
 			new Date().toISOString(),
 		);
 		await ensureWallboxVehicleProfileStates(host, profiles);
 		await runDynamicSurfaceCleanup(host);
-		assert.ok(host.objects.has("addons.wallbox.vehicles.garage_car"));
+		assert.equal(host.objects.has("addons.wallbox.vehicles.garage_car"), false);
 	});
 
 	it("never deletes compatibility prefixes even if present", async () => {

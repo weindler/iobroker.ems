@@ -867,33 +867,24 @@
 					"lg": 6,
 					"xl": 6
 				},
-				"hVehicleProfiles": {
+				"hVehicleMap": {
 					"type": "header",
 					"size": 2,
-					"text": "Fahrzeugprofile (Wallbox)",
+					"text": "Fahrzeug-Mini-Map (Wallbox / EVCC)",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
 					"lg": 12,
 					"xl": 12
 				},
-				"helpVehicleProfiles": {
+				"helpVehicleMap": {
 					"type": "staticText",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Beliebig viele Fahrzeugprofile als Tabelle (wb_vehicle_profiles). Jedes Profil erhält addons.wallbox.vehicles.<vehicle_id>. Keine VIN im Klartext. EVCC-Erkennung hat Vorrang vor manueller Auswahl. Beispiel vehicle_id: ford_explorer — nur als Hinweis, nicht vorkonfiguriert."
-				},
-				"wb_manual_vehicle_id": {
-					"type": "text",
-					"label": "Manuelles aktives Fahrzeug (vehicle_id)",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 3,
-					"xl": 3
+					"text": "Optionale schlanke Zuordnung (wb_vehicle_map): exakte EVCC-Fahrzeug-ID/Name → Kapazität / max. AC-Leistung für die Planung. Leer lassen ist ok — Restenergie kommt von EVCC (chargeRemaining). Keine SOC-/Telemetrie-Mappings, keine State-Bäume unter addons.wallbox.vehicles.*"
 				},
 				"wb_evcc_vehicle_id_state": {
 					"type": "objectId",
@@ -919,9 +910,9 @@
 					"lg": 6,
 					"xl": 6
 				},
-				"wb_vehicle_profiles": {
+				"wb_vehicle_map": {
 					"type": "table",
-					"label": "Fahrzeugprofile",
+					"label": "Fahrzeug-Mini-Map",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -929,7 +920,7 @@
 					"xl": 12,
 					"default": [],
 					"uniqueColumns": [
-						"vehicle_id"
+						"evcc_vehicle_id"
 					],
 					"titleAttribute": "display_name",
 					"useCardFor": [
@@ -939,12 +930,12 @@
 					"items": [
 						{
 							"type": "text",
-							"attr": "vehicle_id",
+							"attr": "evcc_vehicle_id",
 							"title": {
-								"de": "vehicle_id",
-								"en": "vehicle_id"
+								"de": "EVCC Fahrzeug-ID/Name",
+								"en": "EVCC vehicle ID/name"
 							},
-							"width": "140px",
+							"width": "180px",
 							"filter": true,
 							"sort": true,
 							"default": ""
@@ -965,75 +956,13 @@
 							"type": "checkbox",
 							"attr": "enabled",
 							"title": {
-								"de": "Profil aktiv",
-								"en": "Profile enabled"
+								"de": "aktiv",
+								"en": "enabled"
 							},
-							"width": "90px",
+							"width": "80px",
 							"filter": true,
 							"sort": true,
-							"default": false
-						},
-						{
-							"type": "checkbox",
-							"attr": "is_guest",
-							"title": {
-								"de": "Gastprofil",
-								"en": "Guest profile"
-							},
-							"width": "90px",
-							"filter": true,
-							"sort": true,
-							"default": false
-						},
-						{
-							"type": "select",
-							"attr": "source",
-							"title": {
-								"de": "Quelle",
-								"en": "Source"
-							},
-							"width": "110px",
-							"filter": true,
-							"sort": true,
-							"options": [
-								{
-									"label": "manual",
-									"value": "manual"
-								},
-								{
-									"label": "evcc",
-									"value": "evcc"
-								},
-								{
-									"label": "hybrid",
-									"value": "hybrid"
-								}
-							],
-							"default": "manual"
-						},
-						{
-							"type": "text",
-							"attr": "evcc_vehicle_id",
-							"title": {
-								"de": "EVCC Fahrzeug-ID",
-								"en": "EVCC vehicle ID"
-							},
-							"width": "140px",
-							"filter": true,
-							"sort": true,
-							"default": ""
-						},
-						{
-							"type": "text",
-							"attr": "evcc_vehicle_name",
-							"title": {
-								"de": "EVCC Fahrzeugname",
-								"en": "EVCC vehicle name"
-							},
-							"width": "160px",
-							"filter": true,
-							"sort": true,
-							"default": ""
+							"default": true
 						},
 						{
 							"type": "number",
@@ -1042,7 +971,7 @@
 								"de": "Kapazität netto kWh",
 								"en": "Net capacity kWh"
 							},
-							"width": "120px",
+							"width": "130px",
 							"filter": true,
 							"sort": true
 						},
@@ -1053,195 +982,9 @@
 								"de": "max. AC-Leistung W",
 								"en": "Max AC power W"
 							},
-							"width": "120px",
-							"filter": true,
-							"sort": true
-						},
-						{
-							"type": "text",
-							"attr": "supported_phases",
-							"title": {
-								"de": "Phasen (z. B. 1,3)",
-								"en": "Phases (e.g. 1,3)"
-							},
-							"width": "110px",
-							"filter": true,
-							"sort": true,
-							"default": ""
-						},
-						{
-							"type": "number",
-							"attr": "preferred_phases",
-							"title": {
-								"de": "bevorzugte Phasen",
-								"en": "Preferred phases"
-							},
-							"width": "110px",
-							"filter": true,
-							"sort": true
-						},
-						{
-							"type": "number",
-							"attr": "min_current_a",
-							"title": {
-								"de": "min. Strom A",
-								"en": "Min current A"
-							},
-							"width": "100px",
-							"filter": true,
-							"sort": true
-						},
-						{
-							"type": "number",
-							"attr": "max_current_a",
-							"title": {
-								"de": "max. Strom A",
-								"en": "Max current A"
-							},
-							"width": "100px",
-							"filter": true,
-							"sort": true
-						},
-						{
-							"type": "number",
-							"attr": "default_target_soc_pct",
-							"title": {
-								"de": "Ziel-SOC %",
-								"en": "Target SOC %"
-							},
-							"width": "100px",
-							"filter": true,
-							"sort": true
-						},
-						{
-							"type": "number",
-							"attr": "minimum_departure_soc_pct",
-							"title": {
-								"de": "Mindest-SOC Abfahrt %",
-								"en": "Min departure SOC %"
-							},
 							"width": "130px",
 							"filter": true,
 							"sort": true
-						},
-						{
-							"type": "number",
-							"attr": "maximum_soc_pct",
-							"title": {
-								"de": "max. SOC %",
-								"en": "Max SOC %"
-							},
-							"width": "100px",
-							"filter": true,
-							"sort": true
-						},
-						{
-							"type": "number",
-							"attr": "charge_efficiency_pct",
-							"title": {
-								"de": "Ladeeffizienz %",
-								"en": "Charge efficiency %"
-							},
-							"width": "120px",
-							"filter": true,
-							"sort": true
-						},
-						{
-							"type": "number",
-							"attr": "reference_range_at_100_pct_km",
-							"title": {
-								"de": "Referenzreichweite bei 100 % km",
-								"en": "Reference range at 100% km"
-							},
-							"width": "160px",
-							"filter": true,
-							"sort": true
-						},
-						{
-							"type": "number",
-							"attr": "soc_fallback_max_age_min",
-							"title": {
-								"de": "SOC-Fallback max. Alter min",
-								"en": "SOC fallback max age min"
-							},
-							"width": "160px",
-							"filter": true,
-							"sort": true
-						},
-						{
-							"type": "objectId",
-							"attr": "soc_state",
-							"title": {
-								"de": "SOC-State",
-								"en": "SOC state"
-							},
-							"width": "220px",
-							"filter": true,
-							"sort": true,
-							"types": [
-								"state"
-							],
-							"default": ""
-						},
-						{
-							"type": "objectId",
-							"attr": "range_state",
-							"title": {
-								"de": "Reichweite-State",
-								"en": "Range state"
-							},
-							"width": "220px",
-							"filter": true,
-							"sort": true,
-							"types": [
-								"state"
-							],
-							"default": ""
-						},
-						{
-							"type": "objectId",
-							"attr": "connected_state",
-							"title": {
-								"de": "Connected-State",
-								"en": "Connected state"
-							},
-							"width": "220px",
-							"filter": true,
-							"sort": true,
-							"types": [
-								"state"
-							],
-							"default": ""
-						},
-						{
-							"type": "objectId",
-							"attr": "charging_state",
-							"title": {
-								"de": "Charging-State",
-								"en": "Charging state"
-							},
-							"width": "220px",
-							"filter": true,
-							"sort": true,
-							"types": [
-								"state"
-							],
-							"default": ""
-						},
-						{
-							"type": "objectId",
-							"attr": "session_energy_state",
-							"title": {
-								"de": "Sitzungsenergie-State",
-								"en": "Session energy state"
-							},
-							"width": "220px",
-							"filter": true,
-							"sort": true,
-							"types": [
-								"state"
-							],
-							"default": ""
 						}
 					]
 				},
@@ -8445,7 +8188,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Vor Neuinstallation oder Löschen der Instanz immer zuerst erstellen. Enthalten: Admin-Config, Mappings, Fahrzeugprofile, Policies und Learning."
+					"text": "Vor Neuinstallation oder Löschen der Instanz immer zuerst erstellen. Enthalten: Admin-Config, Mappings, Fahrzeug-Mini-Map, Policies und Learning."
 				},
 				"requestBackupExport": {
 					"type": "sendTo",

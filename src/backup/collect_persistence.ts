@@ -179,22 +179,9 @@ async function* walkObjects(
 	host: ExportServiceHost,
 	prefix: string,
 ): AsyncGenerator<ioBroker.Object> {
-	if (!host.getObjectAsync) return;
-	// Begrenzte manuelle Abfrage — in Tests via Mock; Produktion optional erweiterbar
-	const knownIds: string[] = [];
-	const cfg =
-		host.config && typeof host.config === "object" ? (host.config as Record<string, unknown>) : {};
-	const profiles = Array.isArray(cfg.wb_vehicle_profiles) ? cfg.wb_vehicle_profiles : [];
-	for (const row of profiles) {
-		if (!row || typeof row !== "object") continue;
-		const vid = String((row as Record<string, unknown>).vehicle_id ?? "").trim();
-		if (!vid) continue;
-		knownIds.push(`${prefix}${vid}.config.enabled`);
-	}
-	for (const id of knownIds) {
-		const obj = await host.getObjectAsync(id);
-		if (obj) yield obj;
-	}
+	// Fat vehicle trees removed in v0.1.227 — nothing to enumerate from config.
+	void host;
+	void prefix;
 }
 
 export function isTransientStateId(relativeId: string): boolean {

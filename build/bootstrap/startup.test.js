@@ -39,7 +39,6 @@ const index_js_5 = require("../ems_light/index.js");
 const failsafe_runner_js_1 = require("../failsafe_runner.js");
 const execute_js_1 = require("../addons/wallbox/runtime/execute.js");
 const baseline_js_1 = require("../addons/wallbox/vehicles/baseline.js");
-const ensure_states_js_1 = require("../addons/wallbox/vehicles/ensure_states.js");
 const types_js_1 = require("../addons/immersion_heater/runtime/types.js");
 const manifest_js_1 = require("./manifest.js");
 const ensure_static_tree_js_1 = require("./ensure_static_tree.js");
@@ -55,25 +54,17 @@ function defaultConfig(overrides = {}) {
         bat_addon_mode: "dryrun",
         ih_addon_mode: "dryrun",
         ac_addon_mode: "dryrun",
-        wb_vehicle_profiles: [],
+        wb_vehicle_map: [],
         ...overrides,
     };
 }
-function profileRow(id, name) {
+function mapRow(evccId, name) {
     return {
-        vehicle_id: id,
+        evcc_vehicle_id: evccId,
         display_name: name,
         enabled: true,
-        source: "manual",
         battery_capacity_net_kwh: 60,
         max_ac_charge_power_w: 11000,
-        supported_phases: "3",
-        preferred_phases: 3,
-        min_current_a: 6,
-        max_current_a: 16,
-        default_target_soc_pct: 80,
-        minimum_departure_soc_pct: 50,
-        maximum_soc_pct: 90,
     };
 }
 function liveConfig(overrides = {}) {
@@ -227,8 +218,8 @@ function assertCoreCategories(adapter) {
     (0, node_test_1.afterEach)(async () => {
         await stopAllRuntime();
     });
-    (0, node_test_1.it)("scenario A — empty namespace, empty vehicle profile list", async () => {
-        const adapter = new FakeBootstrapAdapter(tmp, defaultConfig({ wb_vehicle_profiles: [] }));
+    (0, node_test_1.it)("scenario A — empty namespace, empty vehicle mini-map", async () => {
+        const adapter = new FakeBootstrapAdapter(tmp, defaultConfig({ wb_vehicle_map: [] }));
         await (0, startup_js_1.runAdapterBootstrap)(adapter, strictStep);
         strict_1.default.equal((0, startup_js_1.isBootstrapComplete)(), true);
         assertCoreCategories(adapter);
@@ -242,26 +233,18 @@ function assertCoreCategories(adapter) {
             }
         }
         const vehicleChannels = [...adapter.objects.keys()].filter((id) => id.startsWith("addons.wallbox.vehicles."));
-        strict_1.default.equal(vehicleChannels.length, 0, "no example vehicle profiles");
+        strict_1.default.equal(vehicleChannels.length, 0, "no fat vehicle profile trees");
     });
-    (0, node_test_1.it)("scenario B — one and five dynamic vehicle profiles", async () => {
+    (0, node_test_1.it)("scenario B — mini-map entries do not create vehicle state trees", async () => {
         for (const count of [1, 5]) {
             await stopAllRuntime();
             const dir = await fs.mkdtemp(path.join(os.tmpdir(), "ems-bootstrap-vp-"));
-            const profiles = Array.from({ length: count }, (_, i) => profileRow(`car_${i + 1}`, `Car ${i + 1}`));
-            const adapter = new FakeBootstrapAdapter(dir, defaultConfig({ wb_vehicle_profiles: profiles }));
+            const entries = Array.from({ length: count }, (_, i) => mapRow(`evcc_car_${i + 1}`, `Car ${i + 1}`));
+            const adapter = new FakeBootstrapAdapter(dir, defaultConfig({ wb_vehicle_map: entries }));
             await (0, ensure_static_tree_js_1.ensureStaticStateTree)(adapter);
             await (0, ensure_static_tree_js_1.ensureDynamicVehicleProfiles)(adapter);
-            for (const p of profiles) {
-                const vid = String(p.vehicle_id);
-                strict_1.default.ok(adapter.hasObject(`addons.wallbox.vehicles.${vid}.config.enabled`));
-                strict_1.default.ok(adapter.hasObject(`addons.wallbox.vehicles.${vid}.telemetry.soc_pct`));
-            }
-            if (count >= 2) {
-                const a = `addons.wallbox.vehicles.car_1.telemetry.soc_pct`;
-                const b = `addons.wallbox.vehicles.car_2.telemetry.soc_pct`;
-                strict_1.default.notEqual(a, b);
-            }
+            const vehicleChannels = [...adapter.objects.keys()].filter((id) => id.startsWith("addons.wallbox.vehicles."));
+            strict_1.default.equal(vehicleChannels.length, 0, "mini-map must not create fat vehicle trees");
         }
     });
     (0, node_test_1.it)("scenario C — idempotent second start preserves user values", async () => {
@@ -322,7 +305,7 @@ function assertCoreCategories(adapter) {
         }
     });
     (0, node_test_1.it)("scenario F — empty namespace with live admin config clamps to dryrun", async () => {
-        const cfg = liveConfig({ wb_vehicle_profiles: [] });
+        const cfg = liveConfig({ wb_vehicle_map: [] });
         const adapter = new FakeBootstrapAdapter(tmp, cfg);
         let coldStartDuringSync = null;
         await (0, startup_js_1.runAdapterBootstrap)(adapter, async (label, fn) => {
@@ -346,7 +329,7 @@ function assertCoreCategories(adapter) {
         strict_1.default.equal(execute_js_1.WALLBOX_LIVE_WRITE_RELEASED, true);
     });
     (0, node_test_1.it)("scenario F2 — second start with existing namespace is warm start", async () => {
-        const cfg = liveConfig({ wb_vehicle_profiles: [] });
+        const cfg = liveConfig({ wb_vehicle_map: [] });
         const adapter = new FakeBootstrapAdapter(tmp, cfg);
         await (0, startup_js_1.runAdapterBootstrap)(adapter, strictStep);
         strict_1.default.equal(adapter.states.get("global.execution_mode")?.val, "dryrun");
@@ -385,21 +368,13 @@ function assertCoreCategories(adapter) {
         strict_1.default.equal(adapter.states.get(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.connected)?.val, true);
         strict_1.default.equal(adapter.foreignWrites.length, 0);
     });
-    (0, node_test_1.it)("scenario H — vehicle SOC persistence hydrated in Phase D before runtime", async () => {
-        const profiles = [profileRow("car_1", "Car 1")];
-        const adapter = new FakeBootstrapAdapter(tmp, defaultConfig({ wb_vehicle_profiles: profiles }));
+    (0, node_test_1.it)("scenario H — Phase D hydrate skips fat vehicle SOC persistence", async () => {
+        const adapter = new FakeBootstrapAdapter(tmp, defaultConfig({ wb_vehicle_map: [mapRow("evcc_car", "Car 1")] }));
         await (0, ensure_static_tree_js_1.ensureStaticStateTree)(adapter);
         await (0, ensure_static_tree_js_1.ensureDynamicVehicleProfiles)(adapter);
-        const p = (0, ensure_states_js_1.vehicleStatePaths)("car_1");
-        await adapter.setStateAsync(p.estimationBaselineSocPct, { val: 72, ack: true });
-        await adapter.setStateAsync(p.estimationBaselineSocSource, { val: "direct", ack: true });
-        await adapter.setStateAsync(p.estimationBaselineAt, { val: "2026-07-01T10:00:00.000Z", ack: true });
         await (0, persist_hydrate_js_1.hydratePersistedState)(adapter);
-        const { getRollforwardAnchor } = await Promise.resolve().then(() => __importStar(require("../addons/wallbox/vehicles/baseline.js")));
-        const anchor = getRollforwardAnchor("car_1");
-        strict_1.default.ok(anchor);
-        strict_1.default.equal(anchor?.socPct, 72);
-        strict_1.default.equal(anchor?.rootSource, "direct");
+        const vehicleChannels = [...adapter.objects.keys()].filter((id) => id.startsWith("addons.wallbox.vehicles."));
+        strict_1.default.equal(vehicleChannels.length, 0);
     });
     (0, node_test_1.it)("scenario I — immersion foreign input during bootstrap reconciled after barrier", async () => {
         const adapter = new FakeBootstrapAdapter(tmp, immersionConfig());

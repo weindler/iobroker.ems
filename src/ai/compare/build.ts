@@ -25,9 +25,15 @@ export function contributionPrefixForCompare(governedId: CompareEligibleGoverned
 	return governedAddonEntry(governedId).runtimeAddonId;
 }
 
+/** Max. leichte Kostensteigerung (ct), wenn PV klar steigt und Netz nicht zunimmt. */
+const STRATEGY_COST_SLACK_CT = 2;
+const STRATEGY_PV_GAIN_KWH = 0.2;
+
 /**
- * Roadmap Block 6: Plan B muss Plan A messbar schlagen (Kosten primär, sonst Netz↓ / PV↑).
- * Teurer Plan B gewinnt nie.
+ * Plan B muss Plan A messbar schlagen (Kosten primär, sonst Netz↓ / PV↑).
+ * Leicht teurer Plan B darf gewinnen, wenn PV klar steigt und Netz nicht zunimmt
+ * (Strategie-Nutzen, z. B. Wallbox auf Überschuss statt Netz-Peak).
+ * Deutlich teurer ohne PV-Gewinn → nie.
  */
 export function planBBeatsPlanA(input: {
 	deltaCostCt: number;
@@ -35,9 +41,19 @@ export function planBBeatsPlanA(input: {
 	deltaPvKwh: number;
 }): boolean {
 	if (input.deltaCostCt < -COST_EPSILON_CT) return true;
-	if (input.deltaCostCt > COST_EPSILON_CT) return false;
-	if (input.deltaGridKwh < -ENERGY_EPSILON_KWH) return true;
-	if (input.deltaPvKwh > ENERGY_EPSILON_KWH && input.deltaGridKwh <= ENERGY_EPSILON_KWH) return true;
+	if (Math.abs(input.deltaCostCt) <= COST_EPSILON_CT) {
+		if (input.deltaGridKwh < -ENERGY_EPSILON_KWH) return true;
+		if (input.deltaPvKwh > ENERGY_EPSILON_KWH && input.deltaGridKwh <= ENERGY_EPSILON_KWH) return true;
+		return false;
+	}
+	// Leicht teurer, aber klar bessere PV-Ausrichtung und kein Mehr-Netz → Strategie-Win.
+	if (
+		input.deltaCostCt <= STRATEGY_COST_SLACK_CT &&
+		input.deltaPvKwh >= STRATEGY_PV_GAIN_KWH &&
+		input.deltaGridKwh <= ENERGY_EPSILON_KWH
+	) {
+		return true;
+	}
 	return false;
 }
 
@@ -291,7 +307,8 @@ export function buildCompareResult(
 			`ΔPV ${deltaPvKwh.toFixed(2)} kWh) — Write-back auf Allocation wenn KI aktiv.`;
 	} else {
 		decisionReasonDe =
-			"Plan B schlägt Plan A nicht messbar (Kosten/PV/Netz) — Plan B verworfen, KI-Auto aus.";
+			`Plan B schlägt Plan A nicht messbar (ΔKosten ${deltaCostCt.toFixed(1)} ct, ` +
+			`ΔNetz ${deltaGridKwh.toFixed(2)} kWh, ΔPV ${deltaPvKwh.toFixed(2)} kWh) — kein Write-back.`;
 	}
 
 	const delta: CompareDeltaSummary = {

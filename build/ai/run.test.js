@@ -179,7 +179,7 @@ const emptyOk = {
         strict_1.default.ok(String(host.store.get(ensure_states_js_1.AI_STATES.lastDecisionsJson)).includes("keep_plan_a"));
         strict_1.default.equal(host.store.get(ensure_states_js_1.AI_STATES.lastReasonDe), "Plan A ist schon sinnvoll — Puffer reicht.");
     });
-    (0, node_test_1.it)("successful call with prefs that do not beat Plan A → suspended, prefs cleared", async () => {
+    (0, node_test_1.it)("legacy: prefs that do not beat Plan A → suspended, prefs cleared", async () => {
         const provider = fakeProvider({
             ok: true,
             proposals: [{ addonId: "immersion_heater", note: "x" }],
@@ -189,13 +189,30 @@ const emptyOk = {
             reasonDe: "Alles gut.",
             usage: { promptTokens: 100, completionTokens: 50 },
         });
-        const host = mockHost(ALLOWED_CONFIG);
+        const host = mockHost({ ...ALLOWED_CONFIG, ai_thinking_mode: false });
         const outcome = await (0, run_js_1.runAiOptimizationNow)(host, minimalPlan(), "new_daily_plan", provider);
         strict_1.default.equal(outcome.status, "suspended");
         strict_1.default.equal(outcome.ran, true);
         strict_1.default.equal(host.store.get(ensure_states_js_1.AI_STATES.autoSuspended), true);
         strict_1.default.equal(host.store.get(ensure_states_js_1.AI_STATES.lastSlotPreferencesJson), "[]");
         strict_1.default.equal(host.store.get(ensure_states_js_1.AI_STATES.callsToday), 1);
+    });
+    (0, node_test_1.it)("thinking: prefs that do not beat Plan A → ready, prefs cleared, not suspended", async () => {
+        const provider = fakeProvider({
+            ok: true,
+            proposals: [],
+            slotPreferences: [{ addonId: "immersion_heater", slotStartIso: "2026-07-25T10:00:00.000Z", weight: 2 }],
+            thinkingDe: "Heizen heute besser.",
+            decisions: [{ addonId: "immersion_heater", action: "heat_today", note: "Puffer leer" }],
+            reasonDe: "Shift versucht.",
+            usage: { promptTokens: 100, completionTokens: 50 },
+        });
+        const host = mockHost(ALLOWED_CONFIG);
+        const outcome = await (0, run_js_1.runAiOptimizationNow)(host, minimalPlan(), "new_daily_plan", provider);
+        strict_1.default.equal(outcome.status, "ready");
+        strict_1.default.equal(host.store.get(ensure_states_js_1.AI_STATES.autoSuspended), undefined);
+        strict_1.default.equal(host.store.get(ensure_states_js_1.AI_STATES.lastSlotPreferencesJson), "[]");
+        strict_1.default.ok(String(host.store.get(ensure_states_js_1.AI_STATES.lastThinkingDe)).includes("Heizen"));
     });
     (0, node_test_1.it)("failed call → status error, still counts against the daily limit, clears slot preferences", async () => {
         const provider = fakeProvider({

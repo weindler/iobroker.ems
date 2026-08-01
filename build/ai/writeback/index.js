@@ -87,7 +87,7 @@ async function maybeApplyAiWritebackOnDailyPlan(host, plan) {
 exports.maybeApplyAiWritebackOnDailyPlan = maybeApplyAiWritebackOnDailyPlan;
 /**
  * Nach einem KI-Lauf: Plan B prüfen — gewinnen → Suspend löschen + sofort publish;
- * verlieren → Auto-Trigger sperren und Präferenzen verwerfen.
+ * verlieren → Präferenzen verwerfen; Auto-Suspend nur im Legacy-Pfad (nicht Thinking).
  * Ohne Slot-Präferenzen (nur Denken/Decisions) → kein Auto-Suspend.
  */
 async function finalizeAiRunWithWritebackGate(host, plan, slotPreferences, options) {
@@ -99,8 +99,12 @@ async function finalizeAiRunWithWritebackGate(host, plan, slotPreferences, optio
         await (0, publish_1.republishDailyPlanAfterWriteback)(host, next);
         return { writebackApplied: true, suspended: false, compare };
     }
-    // Auto-suspend nur wenn Präferenzen da sind und Plan B nicht schlägt — nie nur wegen leerem Denken.
+    // Verwaiste Prefs entfernen, damit Daily-Plan-Rebuild nicht stumpf re-appliziert.
     if (slotPreferences.length > 0) {
+        await host.setStateAsync(ensure_states_1.AI_STATES.lastSlotPreferencesJson, { val: "[]", ack: true });
+    }
+    // Auto-suspend nur Legacy: Prefs da, kein Vorteil — nie nur wegen leerem Denken / Thinking-Modus.
+    if (slotPreferences.length > 0 && options?.skipAutoSuspend !== true) {
         await suspendAiAuto(host, compare.delta.decisionReasonDe);
         return { writebackApplied: false, suspended: true, compare };
     }

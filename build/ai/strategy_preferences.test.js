@@ -174,3 +174,43 @@ function tinyPlan(slots) {
         strict_1.default.equal((0, strategy_preferences_js_1.wallboxPvOnlyFromDecisions)([]), false);
     });
 });
+(0, node_test_1.describe)("normalizeAddonDecisions", () => {
+    const highSurplusSituation = {
+        live: { pvPowerW: 2000, houseLoadW: 500, surplusW: 1500, deficitW: 0 },
+        wallbox: {
+            connected: true,
+            charging: true,
+            mode: "minpv",
+            socPct: 40,
+            remainingEnergyKwh: 7,
+            effectiveLimitSoc: 80,
+            planActive: true,
+            deadlineIso: null,
+        },
+        immersion: { bufferTempC: 45, thermalEstimatedEmptyAt: null },
+        climate: { units: [] },
+        pvHorizon: [],
+        pvTodayKwh: 30,
+        pvTomorrowKwh: 12,
+        priceNowCt: 25,
+        priceAvg7d: 0.28,
+        nextHours: {
+            avgPvForecastPowerW: 2500,
+            avgAvailablePvSurplusPowerW: 1200,
+            minPriceCt: 12,
+            maxPriceCt: 40,
+        },
+    };
+    (0, node_test_1.it)("maps charge_cheap_grid_now + PV note → prefer_pv_today", () => {
+        const out = (0, strategy_preferences_js_1.normalizeAddonDecisions)([{ addonId: "wallbox", action: "charge_cheap_grid_now", note: "PV-Überschuss hoch" }], highSurplusSituation);
+        strict_1.default.equal(out[0]?.action, "prefer_pv_today");
+        strict_1.default.equal((0, strategy_preferences_js_1.wallboxPvOnlyFromDecisions)(out), true);
+    });
+    (0, node_test_1.it)("keeps charge_cheap_grid_now when note is about price", () => {
+        const out = (0, strategy_preferences_js_1.normalizeAddonDecisions)([{ addonId: "wallbox", action: "charge_cheap_grid_now", note: "Tibber günstig" }], {
+            ...highSurplusSituation,
+            nextHours: { ...highSurplusSituation.nextHours, avgAvailablePvSurplusPowerW: 50 },
+        });
+        strict_1.default.equal(out[0]?.action, "charge_cheap_grid_now");
+    });
+});

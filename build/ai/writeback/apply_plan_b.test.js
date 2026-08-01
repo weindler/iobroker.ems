@@ -98,8 +98,14 @@ function plan(slots) {
     (0, node_test_1.it)("wins on lower cost", () => {
         strict_1.default.equal((0, build_js_1.planBBeatsPlanA)({ deltaCostCt: -1, deltaGridKwh: 0, deltaPvKwh: 0 }), true);
     });
-    (0, node_test_1.it)("loses on higher cost even with better PV", () => {
-        strict_1.default.equal((0, build_js_1.planBBeatsPlanA)({ deltaCostCt: 1, deltaGridKwh: -1, deltaPvKwh: 2 }), false);
+    (0, node_test_1.it)("wins on slight cost up with clear PV gain and no more grid", () => {
+        strict_1.default.equal((0, build_js_1.planBBeatsPlanA)({ deltaCostCt: 1, deltaGridKwh: -0.2, deltaPvKwh: 0.5 }), true);
+    });
+    (0, node_test_1.it)("loses on higher cost without meaningful PV gain", () => {
+        strict_1.default.equal((0, build_js_1.planBBeatsPlanA)({ deltaCostCt: 1, deltaGridKwh: -1, deltaPvKwh: 0.05 }), false);
+    });
+    (0, node_test_1.it)("loses when clearly more expensive despite PV", () => {
+        strict_1.default.equal((0, build_js_1.planBBeatsPlanA)({ deltaCostCt: 5, deltaGridKwh: -1, deltaPvKwh: 2 }), false);
     });
     (0, node_test_1.it)("wins on equal cost with lower grid", () => {
         strict_1.default.equal((0, build_js_1.planBBeatsPlanA)({ deltaCostCt: 0, deltaGridKwh: -0.1, deltaPvKwh: 0 }), true);

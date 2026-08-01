@@ -1,8 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { decisionsToSlotPreferences, wallboxPvOnlyFromDecisions } from "./strategy_preferences.js";
+import {
+	decisionsToSlotPreferences,
+	normalizeAddonDecisions,
+	wallboxPvOnlyFromDecisions,
+} from "./strategy_preferences.js";
 import type { DailyAllocationEntry, DailyPlan, DailyPlanSlot } from "../operator/daily_plan/types.js";
-import type { AiAddonDecision, AiSlotPreference } from "./types.js";
+import type { AiAddonDecision, AiSituationBrief, AiSlotPreference } from "./types.js";
 
 /** Local noon Europe/Berlin ≈ 10:00Z in summer. */
 const DAY1_A = "2026-07-25T10:00:00.000Z";
@@ -202,5 +206,54 @@ describe("wallboxPvOnlyFromDecisions", () => {
 			false,
 		);
 		assert.equal(wallboxPvOnlyFromDecisions([]), false);
+	});
+});
+
+describe("normalizeAddonDecisions", () => {
+	const highSurplusSituation: AiSituationBrief = {
+		live: { pvPowerW: 2000, houseLoadW: 500, surplusW: 1500, deficitW: 0 },
+		wallbox: {
+			connected: true,
+			charging: true,
+			mode: "minpv",
+			socPct: 40,
+			remainingEnergyKwh: 7,
+			effectiveLimitSoc: 80,
+			planActive: true,
+			deadlineIso: null,
+		},
+		immersion: { bufferTempC: 45, thermalEstimatedEmptyAt: null },
+		climate: { units: [] },
+		pvHorizon: [],
+		pvTodayKwh: 30,
+		pvTomorrowKwh: 12,
+		priceNowCt: 25,
+		priceAvg7d: 0.28,
+		nextHours: {
+			avgPvForecastPowerW: 2500,
+			avgAvailablePvSurplusPowerW: 1200,
+			minPriceCt: 12,
+			maxPriceCt: 40,
+		},
+	};
+
+	it("maps charge_cheap_grid_now + PV note → prefer_pv_today", () => {
+		const out = normalizeAddonDecisions(
+			[{ addonId: "wallbox", action: "charge_cheap_grid_now", note: "PV-Überschuss hoch" }],
+			highSurplusSituation,
+		);
+		assert.equal(out[0]?.action, "prefer_pv_today");
+		assert.equal(wallboxPvOnlyFromDecisions(out), true);
+	});
+
+	it("keeps charge_cheap_grid_now when note is about price", () => {
+		const out = normalizeAddonDecisions(
+			[{ addonId: "wallbox", action: "charge_cheap_grid_now", note: "Tibber günstig" }],
+			{
+				...highSurplusSituation,
+				nextHours: { ...highSurplusSituation.nextHours, avgAvailablePvSurplusPowerW: 50 },
+			},
+		);
+		assert.equal(out[0]?.action, "charge_cheap_grid_now");
 	});
 });

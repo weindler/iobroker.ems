@@ -4,7 +4,11 @@ import { buildAiOptimizationContext, resolveAllowedAddonIds, type ContextHost } 
 import { AI_STATES } from "./ensure_states";
 import { readAndRolloverDailyCalls, recordDailyCall, type LimiterHost } from "./limiter";
 import { estimateCostEur } from "./pricing";
-import { decisionsToSlotPreferences, wallboxPvOnlyFromDecisions } from "./strategy_preferences";
+import {
+	decisionsToSlotPreferences,
+	normalizeAddonDecisions,
+	wallboxPvOnlyFromDecisions,
+} from "./strategy_preferences";
 import type { AiProvider, AiStatus } from "./types";
 import { clearAiAutoSuspend, finalizeAiRunWithWritebackGate, type WritebackHost } from "./writeback";
 
@@ -115,7 +119,9 @@ export async function runAiOptimizationNow(
 	await host.setStateAsync(AI_STATES.lastRunAt, { val: nowIso, ack: true });
 	await host.setStateAsync(AI_STATES.lastReasonDe, { val: result.reasonDe.slice(0, 480), ack: true });
 
-	const decisions = cfg.thinkingMode ? result.decisions : [];
+	const decisions = cfg.thinkingMode
+		? normalizeAddonDecisions(result.decisions, context.situation)
+		: [];
 	const thinkingDe = cfg.thinkingMode ? result.thinkingDe : "";
 	await persistThinkingStates(host, thinkingDe, JSON.stringify(decisions), cfg.thinkingMode);
 
@@ -140,7 +146,10 @@ export async function runAiOptimizationNow(
 	});
 
 	const wallboxPvOnly = wallboxPvOnlyFromDecisions(decisions);
-	const gate = await finalizeAiRunWithWritebackGate(host, plan, mergedPrefs, { wallboxPvOnly });
+	const gate = await finalizeAiRunWithWritebackGate(host, plan, mergedPrefs, {
+		wallboxPvOnly,
+		skipAutoSuspend: cfg.thinkingMode,
+	});
 	if (gate.suspended) {
 		await writeStatus(host, "suspended");
 		const reason = gate.compare.delta.decisionReasonDe;
@@ -150,15 +159,16 @@ export async function runAiOptimizationNow(
 	}
 
 	await writeStatus(host, "ready");
+	const noWbReason = gate.compare.delta.decisionReasonDe;
 	const thinkingSummary =
-		mergedPrefs.length === 0 && !gate.writebackApplied && thinkingDe
-			? thinkingDe.slice(0, 480)
+		!gate.writebackApplied && thinkingDe
+			? `${thinkingDe.slice(0, 320)}${mergedPrefs.length > 0 ? ` | ${noWbReason}` : ""}`.slice(0, 480)
 			: result.reasonDe;
 	const reasonDe = gate.writebackApplied
 		? `${result.reasonDe} Write-back auf Allocation angewendet.`
 		: thinkingSummary;
 	await host.setStateAsync(AI_STATES.lastReasonDe, { val: reasonDe.slice(0, 480), ack: true });
-	const wbNote = gate.writebackApplied ? "Write-back aktiv." : "kein Write-back nötig.";
+	const wbNote = gate.writebackApplied ? "Write-back aktiv." : "kein Write-back.";
 	host.log?.debug?.(
 		`KI-Optimierung (${triggerReason}): ${mergedPrefs.length} Slot-Präferenz(en), ${decisions.length} Decision(s), ${wbNote} — ${reasonDe}`,
 	);

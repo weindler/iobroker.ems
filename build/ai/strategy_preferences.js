@@ -4,10 +4,11 @@
  * Reine Funktion — keine I/O, keine Geräte-Writes.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.wallboxPvOnlyFromDecisions = exports.decisionsToSlotPreferences = void 0;
+exports.wallboxPvOnlyFromDecisions = exports.decisionsToSlotPreferences = exports.normalizeAddonDecisions = void 0;
 const time_1 = require("../operator/time");
-const HIGH_W = 2.8;
-const LOW_W = 0.2;
+/** Extremere Gewichte → Plan B weicht klar von Plan A ab (sonst oft Identitäts-Compare). */
+const HIGH_W = 3;
+const LOW_W = 0.05;
 const HOLD_W = 0.1;
 const MS_12H = 12 * 3_600_000;
 function wallboxDeadlineMs(plan) {
@@ -78,6 +79,18 @@ function surplusWeights(slots, highW, lowW) {
     }
     return out;
 }
+/** Kombiniert Gewichtskarten (Summe der Anteile = 1 empfohlen Slot → clamp 0.05..3). */
+function blendWeightMaps(slots, parts) {
+    const out = new Map();
+    for (const s of slots) {
+        let sum = 0;
+        for (const p of parts) {
+            sum += (p.map.get(s.startIso) ?? 1) * p.share;
+        }
+        out.set(s.startIso, Math.min(HIGH_W, Math.max(LOW_W, sum)));
+    }
+    return out;
+}
 function prefsFromMap(addonId, weights) {
     return [...weights.entries()].map(([slotStartIso, weight]) => ({
         addonId,
@@ -85,6 +98,70 @@ function prefsFromMap(addonId, weights) {
         weight,
     }));
 }
+/**
+ * Korrigiert Action/Note-Widersprüche (z. B. charge_cheap_grid_now bei „PV-Überschuss hoch“)
+ * anhand Situation + Note — bevor Gewichte abgeleitet werden.
+ */
+function normalizeAddonDecisions(decisions, situation) {
+    const surplus = situation?.nextHours?.avgAvailablePvSurplusPowerW ?? null;
+    const surplusHigh = surplus !== null && Number.isFinite(surplus) && surplus >= 800;
+    const pvToday = situation?.pvTodayKwh ?? null;
+    const pvTomorrow = situation?.pvTomorrowKwh ?? null;
+    const tomorrowMuchBetter = pvToday !== null &&
+        pvTomorrow !== null &&
+        Number.isFinite(pvToday) &&
+        Number.isFinite(pvTomorrow) &&
+        pvTomorrow >= pvToday * 1.35 &&
+        pvTomorrow - pvToday >= 3;
+    return decisions.map((d) => {
+        if (!d || d.action === "keep_plan_a")
+            return d;
+        const note = (d.note ?? "").toLowerCase();
+        const notePv = /pv|überschuss|ueberschuss|sonne|solar/.test(note);
+        const noteCheap = /günstig|guenstig|preis|billig|tibber|netz/.test(note);
+        const noteTomorrow = /morgen|tomorrow|warten|wait/.test(note);
+        if (d.addonId === "wallbox") {
+            if (d.action === "charge_cheap_grid_now" && noteTomorrow && tomorrowMuchBetter) {
+                return {
+                    ...d,
+                    action: "prefer_pv_tomorrow",
+                    note: `${d.note} [→PV morgen]`.slice(0, 400),
+                };
+            }
+            // Action „Netz günstig“ aber Begründung/Situation sagt PV → PV-heute (kein Netz-Peak).
+            if (d.action === "charge_cheap_grid_now" && (notePv || surplusHigh) && !noteCheap) {
+                return {
+                    ...d,
+                    action: "prefer_pv_today",
+                    note: `${d.note} [→PV heute]`.slice(0, 400),
+                };
+            }
+            if (d.action === "prefer_pv_today" && noteTomorrow && tomorrowMuchBetter) {
+                return {
+                    ...d,
+                    action: "prefer_pv_tomorrow",
+                    note: `${d.note} [→PV morgen]`.slice(0, 400),
+                };
+            }
+        }
+        if (d.addonId === "immersion_heater" && d.action === "heat_today" && noteTomorrow && tomorrowMuchBetter) {
+            return {
+                ...d,
+                action: "defer_tomorrow",
+                note: `${d.note} [→aufschieben]`.slice(0, 400),
+            };
+        }
+        if (d.addonId === "battery" && d.action === "charge_now" && notePv && !noteCheap && surplusHigh) {
+            return {
+                ...d,
+                action: "wait_pv",
+                note: `${d.note} [→auf PV warten]`.slice(0, 400),
+            };
+        }
+        return d;
+    });
+}
+exports.normalizeAddonDecisions = normalizeAddonDecisions;
 function deriveForDecision(plan, decision, nowMs) {
     const { addonId, action } = decision;
     if (action === "keep_plan_a")
@@ -107,13 +184,18 @@ function deriveForDecision(plan, decision, nowMs) {
                     return false;
                 return true;
             });
-            return prefsFromMap(addonId, priceQuartileWeights(window));
+            // Günstig + möglichst viel Überschuss (menschlich: „jetzt laden wenn billig UND Sonne“).
+            const blended = blendWeightMaps(window, [
+                { map: priceQuartileWeights(window), share: 0.55 },
+                { map: surplusWeights(window, HIGH_W, 0.4), share: 0.45 },
+            ]);
+            return prefsFromMap(addonId, blended);
         }
         if (action === "prefer_pv_tomorrow") {
             const out = new Map();
             const tomorrowSlots = allSlots.filter((s) => Number.isFinite(s.startMs) && s.startMs >= tomorrowMs);
             const todaySlots = allSlots.filter((s) => Number.isFinite(s.startMs) && s.startMs < tomorrowMs);
-            for (const [iso, w] of surplusWeights(tomorrowSlots, HIGH_W, 1.2))
+            for (const [iso, w] of surplusWeights(tomorrowSlots, HIGH_W, 1))
                 out.set(iso, w);
             for (const s of todaySlots)
                 out.set(s.startIso, LOW_W);
@@ -121,19 +203,27 @@ function deriveForDecision(plan, decision, nowMs) {
         }
         if (action === "prefer_pv_today") {
             const todaySlots = allSlots.filter((s) => Number.isFinite(s.startMs) && s.startMs < tomorrowMs);
-            return prefsFromMap(addonId, surplusWeights(todaySlots, HIGH_W, 0.5));
+            const blended = blendWeightMaps(todaySlots, [
+                { map: surplusWeights(todaySlots, HIGH_W, LOW_W), share: 0.7 },
+                { map: priceQuartileWeights(todaySlots), share: 0.3 },
+            ]);
+            return prefsFromMap(addonId, blended);
         }
     }
     if (addonId === "immersion_heater") {
         if (action === "heat_today") {
             const todaySlots = allSlots.filter((s) => Number.isFinite(s.startMs) && s.startMs < tomorrowMs);
-            return prefsFromMap(addonId, surplusWeights(todaySlots, HIGH_W, 0.5));
+            const blended = blendWeightMaps(todaySlots, [
+                { map: surplusWeights(todaySlots, HIGH_W, LOW_W), share: 0.65 },
+                { map: priceQuartileWeights(todaySlots), share: 0.35 },
+            ]);
+            return prefsFromMap(addonId, blended);
         }
         if (action === "defer_tomorrow") {
             const out = new Map();
             const tomorrowSlots = allSlots.filter((s) => Number.isFinite(s.startMs) && s.startMs >= tomorrowMs);
             const todaySlots = allSlots.filter((s) => Number.isFinite(s.startMs) && s.startMs < tomorrowMs);
-            for (const [iso, w] of surplusWeights(tomorrowSlots, HIGH_W, 1.2))
+            for (const [iso, w] of surplusWeights(tomorrowSlots, HIGH_W, 1))
                 out.set(iso, w);
             for (const s of todaySlots)
                 out.set(s.startIso, LOW_W);
@@ -146,15 +236,11 @@ function deriveForDecision(plan, decision, nowMs) {
         }
         if (action === "charge_now") {
             const window = allSlots.filter((s) => Number.isFinite(s.startMs) && s.startMs >= nowMs && s.startMs < horizonEnd12);
-            const priceMap = priceQuartileWeights(window);
-            const surplusMap = surplusWeights(window, HIGH_W, 0.8);
-            const out = new Map();
-            for (const s of window) {
-                const pw = priceMap.get(s.startIso) ?? 1;
-                const sw = surplusMap.get(s.startIso) ?? 1;
-                out.set(s.startIso, Math.min(3, Math.max(pw, sw)));
-            }
-            return prefsFromMap(addonId, out);
+            const blended = blendWeightMaps(window, [
+                { map: priceQuartileWeights(window), share: 0.5 },
+                { map: surplusWeights(window, HIGH_W, 0.4), share: 0.5 },
+            ]);
+            return prefsFromMap(addonId, blended);
         }
         if (action === "wait_pv") {
             const mean = avgSurplus(plan.slots);

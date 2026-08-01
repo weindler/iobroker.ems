@@ -101,16 +101,24 @@ export async function maybeApplyAiWritebackOnDailyPlan(
 	return writebackApplied ? next : plan;
 }
 
+export type FinalizeWritebackOptions = ApplyAiPreferencesOptions & {
+	/**
+	 * Denkmodus: bei fehlendem Plan-B-Vorteil nicht auto-sperren (Denken bleibt nutzbar).
+	 * Legacy: weiter suspendieren, damit teure Auto-Loops stoppen.
+	 */
+	skipAutoSuspend?: boolean;
+};
+
 /**
  * Nach einem KI-Lauf: Plan B prüfen — gewinnen → Suspend löschen + sofort publish;
- * verlieren → Auto-Trigger sperren und Präferenzen verwerfen.
+ * verlieren → Präferenzen verwerfen; Auto-Suspend nur im Legacy-Pfad (nicht Thinking).
  * Ohne Slot-Präferenzen (nur Denken/Decisions) → kein Auto-Suspend.
  */
 export async function finalizeAiRunWithWritebackGate(
 	host: WritebackHost,
 	plan: DailyPlan,
 	slotPreferences: AiSlotPreference[],
-	options?: ApplyAiPreferencesOptions,
+	options?: FinalizeWritebackOptions,
 ): Promise<{ writebackApplied: boolean; suspended: boolean; compare: CompareResult }> {
 	const allowed = resolveAllowedAddonIds(host.config);
 	const { plan: next, compare, writebackApplied } = applyAiPreferencesToDailyPlan(
@@ -127,8 +135,13 @@ export async function finalizeAiRunWithWritebackGate(
 		return { writebackApplied: true, suspended: false, compare };
 	}
 
-	// Auto-suspend nur wenn Präferenzen da sind und Plan B nicht schlägt — nie nur wegen leerem Denken.
+	// Verwaiste Prefs entfernen, damit Daily-Plan-Rebuild nicht stumpf re-appliziert.
 	if (slotPreferences.length > 0) {
+		await host.setStateAsync(AI_STATES.lastSlotPreferencesJson, { val: "[]", ack: true });
+	}
+
+	// Auto-suspend nur Legacy: Prefs da, kein Vorteil — nie nur wegen leerem Denken / Thinking-Modus.
+	if (slotPreferences.length > 0 && options?.skipAutoSuspend !== true) {
 		await suspendAiAuto(host, compare.delta.decisionReasonDe);
 		return { writebackApplied: false, suspended: true, compare };
 	}

@@ -102,8 +102,14 @@ describe("planBBeatsPlanA", () => {
 	it("wins on lower cost", () => {
 		assert.equal(planBBeatsPlanA({ deltaCostCt: -1, deltaGridKwh: 0, deltaPvKwh: 0 }), true);
 	});
-	it("loses on higher cost even with better PV", () => {
-		assert.equal(planBBeatsPlanA({ deltaCostCt: 1, deltaGridKwh: -1, deltaPvKwh: 2 }), false);
+	it("wins on slight cost up with clear PV gain and no more grid", () => {
+		assert.equal(planBBeatsPlanA({ deltaCostCt: 1, deltaGridKwh: -0.2, deltaPvKwh: 0.5 }), true);
+	});
+	it("loses on higher cost without meaningful PV gain", () => {
+		assert.equal(planBBeatsPlanA({ deltaCostCt: 1, deltaGridKwh: -1, deltaPvKwh: 0.05 }), false);
+	});
+	it("loses when clearly more expensive despite PV", () => {
+		assert.equal(planBBeatsPlanA({ deltaCostCt: 5, deltaGridKwh: -1, deltaPvKwh: 2 }), false);
 	});
 	it("wins on equal cost with lower grid", () => {
 		assert.equal(planBBeatsPlanA({ deltaCostCt: 0, deltaGridKwh: -0.1, deltaPvKwh: 0 }), true);

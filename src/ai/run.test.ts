@@ -188,7 +188,7 @@ describe("runAiOptimizationNow — successful/failed calls", () => {
 		assert.equal(host.store.get(AI_STATES.lastReasonDe), "Plan A ist schon sinnvoll — Puffer reicht.");
 	});
 
-	it("successful call with prefs that do not beat Plan A → suspended, prefs cleared", async () => {
+	it("legacy: prefs that do not beat Plan A → suspended, prefs cleared", async () => {
 		const provider = fakeProvider({
 			ok: true,
 			proposals: [{ addonId: "immersion_heater", note: "x" }],
@@ -198,13 +198,31 @@ describe("runAiOptimizationNow — successful/failed calls", () => {
 			reasonDe: "Alles gut.",
 			usage: { promptTokens: 100, completionTokens: 50 },
 		});
-		const host = mockHost(ALLOWED_CONFIG);
+		const host = mockHost({ ...ALLOWED_CONFIG, ai_thinking_mode: false });
 		const outcome = await runAiOptimizationNow(host, minimalPlan(), "new_daily_plan", provider);
 		assert.equal(outcome.status, "suspended");
 		assert.equal(outcome.ran, true);
 		assert.equal(host.store.get(AI_STATES.autoSuspended), true);
 		assert.equal(host.store.get(AI_STATES.lastSlotPreferencesJson), "[]");
 		assert.equal(host.store.get(AI_STATES.callsToday), 1);
+	});
+
+	it("thinking: prefs that do not beat Plan A → ready, prefs cleared, not suspended", async () => {
+		const provider = fakeProvider({
+			ok: true,
+			proposals: [],
+			slotPreferences: [{ addonId: "immersion_heater", slotStartIso: "2026-07-25T10:00:00.000Z", weight: 2 }],
+			thinkingDe: "Heizen heute besser.",
+			decisions: [{ addonId: "immersion_heater", action: "heat_today", note: "Puffer leer" }],
+			reasonDe: "Shift versucht.",
+			usage: { promptTokens: 100, completionTokens: 50 },
+		});
+		const host = mockHost(ALLOWED_CONFIG);
+		const outcome = await runAiOptimizationNow(host, minimalPlan(), "new_daily_plan", provider);
+		assert.equal(outcome.status, "ready");
+		assert.equal(host.store.get(AI_STATES.autoSuspended), undefined);
+		assert.equal(host.store.get(AI_STATES.lastSlotPreferencesJson), "[]");
+		assert.ok(String(host.store.get(AI_STATES.lastThinkingDe)).includes("Heizen"));
 	});
 
 	it("failed call → status error, still counts against the daily limit, clears slot preferences", async () => {

@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.228",
+		"version": "0.1.229",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.229": {
+				"en": "Thinking AI more useful: normalize action/note mismatches (PV→prefer_pv), stronger slot weights, Plan B may win on clear PV gain with small cost slack; thinking mode no longer auto-suspends when write-back skips.",
+				"de": "Denkende KI wirksamer: Action/Note-Widersprüche normalisieren (PV→prefer_pv), stärkere Slot-Gewichte, Plan B darf bei klarem PV-Gewinn mit kleiner Kosten-Toleranz gewinnen; Thinking-Modus sperrt Auto nicht mehr ohne Write-back."
+			},
 			"0.1.228": {
 				"en": "Thinking AI: situation+horizon, decisions across wallbox/immersion/battery/climate (today vs tomorrow PV/price); slot prefs derived from strategy; thinking always visible; write-back still only when Plan B beats A. Legacy ai_thinking_mode=false.",
 				"de": "Denkende KI: Situation+Horizont, Entscheidungen über Wallbox/Heizstab/Batterie/Klima (heute vs morgen PV/Preis); Slot-Präferenzen aus Strategie; Denken immer sichtbar; Write-back weiter nur bei messbarem Plan-B-Vorteil. Legacy ai_thinking_mode=false."

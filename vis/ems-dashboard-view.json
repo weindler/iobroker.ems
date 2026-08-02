@@ -10,7 +10,7 @@
         "gridSize": "",
         "snapType": null,
         "useBackground": true,
-        "alwaysRender": false
+        "alwaysRender": true
     },
     "widgets": {
         "e00001": {

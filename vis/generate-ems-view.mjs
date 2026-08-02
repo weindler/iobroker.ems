@@ -369,7 +369,9 @@ const view = {
 		gridSize: "",
 		snapType: null,
 		useBackground: true,
-		alwaysRender: false,
+		// true: View bleibt aktiv / subscribed, wenn man kurz woanders hinspringt —
+		// sonst wirken Widget-Werte „eingefroren“, bis der View neu gemountet wird.
+		alwaysRender: true,
 	},
 	widgets,
 	name: "EMS Dashboard",

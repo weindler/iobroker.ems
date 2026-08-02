@@ -461,15 +461,134 @@ function render(){
 	}
 }
 
-function onState(id,val){cache[id]=val;render();}
-function applyStates(states){if(!states)return;var got=false;Object.keys(states).forEach(function(id){if(states[id]){cache[id]=states[id].val;got=true;}});if(got){bound=true;setStatus("");render();}}
-function findVis(){var w=window,i;for(i=0;i<12&&w;i++){try{if(w.vis&&w.vis.states)return w.vis;}catch(e){}if(w===w.parent)break;w=w.parent;}try{if(window.top&&window.top.vis&&window.top.vis.states)return window.top.vis;}catch(e2){}return null;}
-function bindVisWatch(){var v=findVis();if(!v||!v.states)return false;stateIds.forEach(function(id){try{v.states.bind(id,function(e,newVal){var val=newVal!==undefined?newVal:(v.states[id]?v.states[id].val:null);onState(id,val);});}catch(e){}});return true;}
-function fetchViaVisConn(cb){var v=findVis();if(!v||!v.conn||typeof v.conn.getStates!=="function")return false;v.conn.getStates(stateIds,function(err,states){applyStates(states);if(cb)cb(err,states);});stateIds.forEach(function(id){try{if(typeof v.conn.subscribe==="function")v.conn.subscribe(id);}catch(e){}});return true;}
+var POLL_MS=5000;
+var pollTimer=null;
+var visBound=false;
+
+function onState(id,val){
+	if(cache[id]===val)return;
+	cache[id]=val;
+	render();
+}
+function applyStates(states){
+	if(!states)return;
+	var got=false,changed=false;
+	Object.keys(states).forEach(function(id){
+		if(!states[id])return;
+		got=true;
+		var val=states[id].val;
+		if(cache[id]!==val){cache[id]=val;changed=true;}
+	});
+	if(got){bound=true;setStatus("");if(changed||!document.getElementById("ems-content")||document.getElementById("ems-content").style.display==="none")render();}
+}
+function findVis(){
+	var w=window,i;
+	for(i=0;i<12&&w;i++){
+		try{if(w.vis&&w.vis.states)return w.vis;}catch(e){}
+		if(w===w.parent)break;
+		w=w.parent;
+	}
+	try{if(window.top&&window.top.vis&&window.top.vis.states)return window.top.vis;}catch(e2){}
+	return null;
+}
+function subscribeViaConn(conn){
+	if(!conn)return;
+	try{if(typeof conn.subscribe==="function")conn.subscribe(stateIds);}catch(e1){}
+	try{if(typeof conn.subscribeStates==="function")conn.subscribeStates(stateIds);}catch(e2){}
+	// Einzel-IDs — manche VIS/web-Versionen akzeptieren kein Array
+	stateIds.forEach(function(id){
+		try{if(typeof conn.subscribe==="function")conn.subscribe(id);}catch(e3){}
+		try{if(typeof conn.subscribeStates==="function")conn.subscribeStates(id);}catch(e4){}
+	});
+}
+function bindVisWatch(){
+	var v=findVis();
+	if(!v||!v.states||visBound)return !!v;
+	visBound=true;
+	stateIds.forEach(function(id){
+		try{
+			v.states.bind(id,function(e,newVal){
+				var val=newVal!==undefined?newVal:(v.states[id]?v.states[id].val:null);
+				onState(id,val);
+			});
+		}catch(e){}
+		// Bereits im Parent-Cache vorhandene Werte sofort übernehmen
+		try{if(v.states[id]&&v.states[id].val!==undefined)cache[id]=v.states[id].val;}catch(e2){}
+	});
+	// Parent-conn stateChange (zusätzlich zu states.bind — robuster bei VIS-2)
+	try{
+		if(v.conn&&typeof v.conn.on==="function"){
+			v.conn.on("stateChange",function(id,state){
+				if(stateIds.indexOf(id)>=0&&state)onState(id,state.val);
+			});
+		}
+	}catch(e3){}
+	if(Object.keys(cache).length){bound=true;render();}
+	return true;
+}
+function fetchViaVisConn(cb){
+	var v=findVis();
+	if(!v||!v.conn||typeof v.conn.getStates!=="function")return false;
+	subscribeViaConn(v.conn);
+	v.conn.getStates(stateIds,function(err,states){applyStates(states);if(cb)cb(err,states);});
+	return true;
+}
 function getIo(){if(typeof io!=="undefined")return io;try{if(window.top&&window.top.io)return window.top.io;}catch(e){}return null;}
 function getOrigin(){try{return window.top.location.origin;}catch(e){}return window.location.origin;}
-function bindSocket(){var ioLib=getIo();if(!ioLib)return false;if(socketBound)return true;socketBound=true;var socket=ioLib.connect(getOrigin(),{path:"/socket.io"});socket.on("connect",function(){socket.emit("getStates",stateIds,function(err,states){if(err&&!bound)setStatus("States: "+err,true);applyStates(states);});try{socket.emit("subscribe",stateIds);}catch(e1){}try{socket.emit("subscribeStates",stateIds);}catch(e2){}});socket.on("stateChange",function(id,state){if(stateIds.indexOf(id)>=0&&state)onState(id,state.val);});socket.on("connect_error",function(){if(!bound)setStatus("ioBroker nicht erreichbar",true);});return true;}
-function init(){bindVisWatch();if(!fetchViaVisConn())bindSocket();var n=0;(function tick(){if(bound)return;if(fetchViaVisConn())return;if(bindSocket())return;if(++n>40){if(!bound)setStatus("Energie-Übersicht: keine Verbindung",true);return;}setTimeout(tick,250);})();}
+function bindSocket(){
+	var ioLib=getIo();
+	if(!ioLib)return false;
+	if(socketBound)return true;
+	socketBound=true;
+	var socket=ioLib.connect(getOrigin(),{path:"/socket.io",reconnection:true});
+	function pull(){
+		socket.emit("getStates",stateIds,function(err,states){
+			if(err&&!bound)setStatus("States: "+err,true);
+			applyStates(states);
+		});
+		try{socket.emit("subscribe",stateIds);}catch(e1){}
+		try{socket.emit("subscribeStates",stateIds);}catch(e2){}
+	}
+	socket.on("connect",pull);
+	socket.on("reconnect",pull);
+	socket.on("stateChange",function(id,state){if(stateIds.indexOf(id)>=0&&state)onState(id,state.val);});
+	socket.on("connect_error",function(){if(!bound)setStatus("ioBroker nicht erreichbar",true);});
+	return true;
+}
+function startPoll(){
+	if(pollTimer)return;
+	pollTimer=setInterval(function(){
+		if(document.hidden)return;
+		if(!fetchViaVisConn()){
+			var ioLib=getIo();
+			if(!ioLib||!socketBound)bindSocket();
+		}
+	},POLL_MS);
+}
+function refreshNow(){
+	bindVisWatch();
+	if(!fetchViaVisConn())bindSocket();
+	render();
+}
+function init(){
+	// Wichtig: VIS-Conn UND Socket parallel — früher brach init nach einmaligem getStates ab,
+	// wenn conn.subscribe nicht lieferte → Daten erst nach View-Wechsel (iframe-Reload).
+	bindVisWatch();
+	fetchViaVisConn();
+	bindSocket();
+	startPoll();
+	document.addEventListener("visibilitychange",function(){if(!document.hidden)refreshNow();});
+	window.addEventListener("focus",refreshNow);
+	var n=0;
+	(function tick(){
+		if(bound){startPoll();return;}
+		bindVisWatch();
+		fetchViaVisConn();
+		bindSocket();
+		if(++n>40){if(!bound)setStatus("Energie-Übersicht: keine Verbindung",true);startPoll();return;}
+		setTimeout(tick,250);
+	})();
+}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
 </script>

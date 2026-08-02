@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.233",
+		"version": "0.1.234",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.234": {
+				"en": "VIS live updates: iframe keeps polling/subscribing (fix stale data until view switch); view alwaysRender=true. Re-import VIS view.",
+				"de": "VIS Live-Updates: iframe pollt/subscribed zuverlässig (Fix: Daten erst nach View-Wechsel frisch); View alwaysRender=true. VIS-View neu importieren."
+			},
 			"0.1.233": {
 				"en": "Immersion: no comfort deadline far above planning min; soft PV-first after empty_at; live surplus floors current slot; thermal learning with 0 cycles is degraded. VIS: Jetzt/KI/Demnächst side-by-side, add-on grid. Re-import VIS view.",
 				"de": "Heizstab: keine Comfort-Deadline weit über Pflichtgrenze; Soft-PV nach empty_at; Live-Überschuss hebt aktuellen Slot; Thermal-Learning ohne Zyklen = degraded. VIS: Jetzt/KI/Demnächst nebeneinander, Add-on-Raster. VIS-View neu importieren."

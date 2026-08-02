@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.235",
+		"version": "0.1.236",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.236": {
+				"en": "VIS rebuild: Battery/Wallbox then Heizstab/Climate tiles; full-height Demnächst timeline (15-min blocks, climate hours, läuft/geplant); Heizstab empty-at line. Re-import VIS.",
+				"de": "VIS-Umbau: Batterie/Wallbox dann Heizstab/Klima-Kacheln; Demnächst volle Höhe (15-Min-Blöcke, Klima-Stunden, läuft/geplant); Heizstab „Reicht bis“. VIS neu importieren."
+			},
 			"0.1.235": {
 				"en": "VIS shows AI calls today/limit; midnight rollover resets counters and clears previous-day AI display on every Daily Plan tick (Europe/Berlin). Re-import VIS.",
 				"de": "VIS zeigt KI-Abrufe heute/Limit; Mitternacht-Reset setzt Zähler zurück und löscht gestrige KI-Anzeige bei jedem Daily-Plan-Tick (Europe/Berlin). VIS neu importieren."

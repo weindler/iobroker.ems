@@ -351,7 +351,7 @@ const boardY = cardY + cardH + GAP;
 const boardH = VIEW_H - boardY - M;
 
 widgets[wid()] = cardPanel(M, boardY, VIEW_W - 2 * M, boardH);
-widgets[wid()] = sectionTitle("Energie-Übersicht", M + 6, boardY + 4, 200, C.text);
+widgets[wid()] = sectionTitle("Geräte & Demnächst", M + 6, boardY + 4, 220, C.text);
 widgets[wid()] = htmlWidget(planBoardIframeHtml(), {
 	left: `${M + 2}px`,
 	top: `${boardY + 16}px`,

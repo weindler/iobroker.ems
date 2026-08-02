@@ -2032,7 +2032,7 @@
                 "lc-border-radius": 3,
                 "lc-zindex": 0,
                 "refreshInterval": "0",
-                "html": "<div style=\"font-family:system-ui,sans-serif;font-size:9px;font-weight:700;color:#e6edf3;letter-spacing:0.05em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;\">Energie-Übersicht</div>"
+                "html": "<div style=\"font-family:system-ui,sans-serif;font-size:9px;font-weight:700;color:#e6edf3;letter-spacing:0.05em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;\">Geräte & Demnächst</div>"
             },
             "style": {
                 "overflow": "hidden",
@@ -2040,7 +2040,7 @@
                 "color": "#e6edf3",
                 "left": "14px",
                 "top": "142px",
-                "width": "200px",
+                "width": "220px",
                 "height": "12px",
                 "background-color": "transparent"
             },

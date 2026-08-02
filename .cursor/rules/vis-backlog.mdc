@@ -6,6 +6,11 @@ alwaysApply: false
 
 # VIS-Backlog
 
+## Erledigt (v0.1.238)
+
+- Klima Demnächst: nur läuft / geschätzt (kein irreführendes „jetzt“)
+- Wallbox: Modus Aus bei geplanten Fenstern weglassen; Modus nur bei läuft (sonst „aktuell …“ wenn nicht Aus)
+
 ## Erledigt (v0.1.237)
 
 - Demnächst: zusammenhängende Zeitfenster (Slots kollabiert), Farben pro Add-on

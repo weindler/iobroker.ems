@@ -69,11 +69,17 @@ export async function runAiOptimizationNow(
 		return { ran: false, status: "no_addons_allowed", reasonDe: "Kein Add-on hat KI-Optimierung erlaubt." };
 	}
 
+	const tz =
+		typeof (host.config as { timezone?: unknown })?.timezone === "string" &&
+		(host.config as { timezone: string }).timezone.trim()
+			? (host.config as { timezone: string }).timezone.trim()
+			: "Europe/Berlin";
 	const limitState = await readAndRolloverDailyCalls(
 		host,
 		cfg.maxCallsPerDay,
 		new Date(),
 		cfg.monthlyCostLimitEur,
+		tz,
 	);
 	if (limitState.limitReached) {
 		await writeStatus(host, "limit_reached");
@@ -113,7 +119,7 @@ export async function runAiOptimizationNow(
 	}
 
 	const costEur = estimateCostEur(cfg.model, result.usage.promptTokens, result.usage.completionTokens);
-	await recordDailyCall(host, cfg.maxCallsPerDay, costEur, new Date(), cfg.monthlyCostLimitEur);
+	await recordDailyCall(host, cfg.maxCallsPerDay, costEur, new Date(), cfg.monthlyCostLimitEur, tz);
 
 	const nowIso = new Date().toISOString();
 	await host.setStateAsync(AI_STATES.lastRunAt, { val: nowIso, ack: true });

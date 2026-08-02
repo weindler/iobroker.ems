@@ -96,6 +96,10 @@ var stateIds=[
 	INST+".ai.last_thinking_de",
 	INST+".ai.last_run_at",
 	INST+".ai.last_decisions_json",
+	INST+".ai.calls_today",
+	INST+".ai.calls_limit",
+	INST+".ai.cost_estimate_today_eur",
+	INST+".ai.limit_warning",
 	INST+".planner.intent.daily_plan.status",
 	INST+".planner.intent.daily_plan.reason_de",
 	INST+".planner.intent.daily_plan.valid_until",
@@ -325,14 +329,27 @@ function renderAiSummary(){
 	if(!el)return;
 	var v=aiVerdict();
 	var cls=v.better?"yes":(v.shifts?"warn":"no");
+	var calls=num(g("ai.calls_today"));
+	var limit=num(g("ai.calls_limit"));
+	var cost=num(g("ai.cost_estimate_today_eur"));
+	var warn=isOn(g("ai.limit_warning"));
+	var lastRun=g("ai.last_run_at");
+	var callsLine="Abrufe heute —";
+	if(calls!==null&&limit!==null)callsLine="Abrufe heute "+Math.round(calls)+"/"+Math.round(limit)+(warn?" (nahe Limit)":"");
+	else if(calls!==null)callsLine="Abrufe heute "+Math.round(calls);
+	var costLine=cost!==null&&cost>0?" · ~"+cost.toFixed(3).replace(".",",")+" €":"";
+	var runLine=lastRun?(" · zuletzt "+fmtSmartTime(lastRun)):"";
 	el.innerHTML='<div class="ems-k">KI vs. Regelwerk</div>'
 		+'<div class="ems-ai-line '+cls+'">'+esc(v.betterLabel)+'</div>'
+		+'<div class="ems-ai-reason">'
+		+esc(callsLine)+esc(costLine)+esc(runLine)
+		+"</div>"
 		+'<div class="ems-ai-reason">'
 		+esc(v.shiftLabel)
 		+(v.delta!==null?" · Δ "+(v.delta>0?"+":"")+v.delta.toFixed(1)+" ct":"")
 		+(v.decisionLine?" · "+esc(v.decisionLine):"")
 		+"</div>"
-		+'<div class="ems-ai-reason" title="'+esc(v.reason)+'">'+esc(shortNote(v.reason,160))+'</div>';
+		+'<div class="ems-ai-reason" title="'+esc(v.reason)+'">'+esc(shortNote(v.reason,140))+'</div>';
 }
 
 function renderNext(){
@@ -418,13 +435,17 @@ function renderAi(){
 	var el=document.getElementById("ems-ai");
 	if(!el)return;
 	var v=aiVerdict();
+	var calls=num(g("ai.calls_today"));
+	var limit=num(g("ai.calls_limit"));
+	var cost=num(g("ai.cost_estimate_today_eur"));
+	var callsTxt=(calls!==null&&limit!==null)?(Math.round(calls)+"/"+Math.round(limit)):(calls!==null?String(Math.round(calls)):"—");
 	el.innerHTML=
 		'<div class="ems-ai-box"><div class="ems-k">KI verschiebt Zeiten?</div><div class="ems-v '+(v.shifts?"warn":"no")+'">'+esc(v.shiftLabel)+'</div></div>'
 		+'<div class="ems-ai-box"><div class="ems-k">KI besser als Regelwerk?</div><div class="ems-v '+(v.better?"yes":"no")+'">'+esc(v.betterLabel)+'</div>'
 		+(v.delta!==null?'<div class="ems-ai-reason">Δ Kosten B−A: '+(v.delta>0?"+":"")+v.delta.toFixed(1)+' ct</div>':'')
 		+'</div>'
-		+'<div class="ems-ai-box"><div class="ems-k">KI-Status</div><div class="ems-v '+(v.suspended?"warn":(v.aiStatus==="ready"?"ok":"no"))+'">'+esc(v.aiStatus)+(v.suspended?" (auto aus)":"")+'</div>'
-		+'<div class="ems-ai-reason">'+esc(v.reason)+'</div></div>';
+		+'<div class="ems-ai-box"><div class="ems-k">KI-Status / Abrufe</div><div class="ems-v '+(v.suspended?"warn":(v.aiStatus==="ready"?"ok":"no"))+'">'+esc(v.aiStatus)+(v.suspended?" (auto aus)":"")+' · '+esc(callsTxt)+'</div>'
+		+'<div class="ems-ai-reason">'+(cost!==null?'~'+cost.toFixed(3).replace('.',',')+' € heute · ':'')+esc(v.reason)+'</div></div>';
 }
 
 function renderDaily(){

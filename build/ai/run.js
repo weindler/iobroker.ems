@@ -37,7 +37,11 @@ async function runAiOptimizationNow(host, plan, triggerReason, provider) {
         await writeStatus(host, "no_addons_allowed");
         return { ran: false, status: "no_addons_allowed", reasonDe: "Kein Add-on hat KI-Optimierung erlaubt." };
     }
-    const limitState = await (0, limiter_1.readAndRolloverDailyCalls)(host, cfg.maxCallsPerDay, new Date(), cfg.monthlyCostLimitEur);
+    const tz = typeof host.config?.timezone === "string" &&
+        host.config.timezone.trim()
+        ? host.config.timezone.trim()
+        : "Europe/Berlin";
+    const limitState = await (0, limiter_1.readAndRolloverDailyCalls)(host, cfg.maxCallsPerDay, new Date(), cfg.monthlyCostLimitEur, tz);
     if (limitState.limitReached) {
         await writeStatus(host, "limit_reached");
         const reason = limitState.monthlyLimitReached
@@ -73,7 +77,7 @@ async function runAiOptimizationNow(host, plan, triggerReason, provider) {
         };
     }
     const costEur = (0, pricing_1.estimateCostEur)(cfg.model, result.usage.promptTokens, result.usage.completionTokens);
-    await (0, limiter_1.recordDailyCall)(host, cfg.maxCallsPerDay, costEur, new Date(), cfg.monthlyCostLimitEur);
+    await (0, limiter_1.recordDailyCall)(host, cfg.maxCallsPerDay, costEur, new Date(), cfg.monthlyCostLimitEur, tz);
     const nowIso = new Date().toISOString();
     await host.setStateAsync(ensure_states_1.AI_STATES.lastRunAt, { val: nowIso, ack: true });
     await host.setStateAsync(ensure_states_1.AI_STATES.lastReasonDe, { val: result.reasonDe.slice(0, 480), ack: true });

@@ -181,7 +181,7 @@ describe("runAiOptimizationNow — successful/failed calls", () => {
 		const host = mockHost(ALLOWED_CONFIG);
 		const outcome = await runAiOptimizationNow(host, minimalPlan(), "new_daily_plan", provider);
 		assert.equal(outcome.status, "ready");
-		assert.equal(host.store.get(AI_STATES.autoSuspended), undefined);
+		assert.equal(host.store.get(AI_STATES.autoSuspended), false);
 		assert.equal(host.store.get(AI_STATES.lastThinkingDe), "Plan A ist schon sinnvoll — Puffer reicht.");
 		assert.equal(host.store.get(AI_STATES.lastThinkingMode), true);
 		assert.ok(String(host.store.get(AI_STATES.lastDecisionsJson)).includes("keep_plan_a"));
@@ -220,7 +220,7 @@ describe("runAiOptimizationNow — successful/failed calls", () => {
 		const host = mockHost(ALLOWED_CONFIG);
 		const outcome = await runAiOptimizationNow(host, minimalPlan(), "new_daily_plan", provider);
 		assert.equal(outcome.status, "ready");
-		assert.equal(host.store.get(AI_STATES.autoSuspended), undefined);
+		assert.equal(host.store.get(AI_STATES.autoSuspended), false);
 		assert.equal(host.store.get(AI_STATES.lastSlotPreferencesJson), "[]");
 		assert.ok(String(host.store.get(AI_STATES.lastThinkingDe)).includes("Heizen"));
 	});

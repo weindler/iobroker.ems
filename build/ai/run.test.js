@@ -173,7 +173,7 @@ const emptyOk = {
         const host = mockHost(ALLOWED_CONFIG);
         const outcome = await (0, run_js_1.runAiOptimizationNow)(host, minimalPlan(), "new_daily_plan", provider);
         strict_1.default.equal(outcome.status, "ready");
-        strict_1.default.equal(host.store.get(ensure_states_js_1.AI_STATES.autoSuspended), undefined);
+        strict_1.default.equal(host.store.get(ensure_states_js_1.AI_STATES.autoSuspended), false);
         strict_1.default.equal(host.store.get(ensure_states_js_1.AI_STATES.lastThinkingDe), "Plan A ist schon sinnvoll — Puffer reicht.");
         strict_1.default.equal(host.store.get(ensure_states_js_1.AI_STATES.lastThinkingMode), true);
         strict_1.default.ok(String(host.store.get(ensure_states_js_1.AI_STATES.lastDecisionsJson)).includes("keep_plan_a"));
@@ -210,7 +210,7 @@ const emptyOk = {
         const host = mockHost(ALLOWED_CONFIG);
         const outcome = await (0, run_js_1.runAiOptimizationNow)(host, minimalPlan(), "new_daily_plan", provider);
         strict_1.default.equal(outcome.status, "ready");
-        strict_1.default.equal(host.store.get(ensure_states_js_1.AI_STATES.autoSuspended), undefined);
+        strict_1.default.equal(host.store.get(ensure_states_js_1.AI_STATES.autoSuspended), false);
         strict_1.default.equal(host.store.get(ensure_states_js_1.AI_STATES.lastSlotPreferencesJson), "[]");
         strict_1.default.ok(String(host.store.get(ensure_states_js_1.AI_STATES.lastThinkingDe)).includes("Heizen"));
     });

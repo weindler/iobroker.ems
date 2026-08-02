@@ -1,10 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runAiOptimizationManual = exports.handleAiStateChange = exports.isAiRelatedState = exports.maybeTriggerAiOptimizationOnDailyPlanChange = exports.ensureAiStateTree = exports.resetAiPipelineHookForTest = exports.aiTriggerDigestPayload = exports.resolveAllowedAddonIds = exports.AI_DEFAULT_MIN_INTERVAL_MINUTES = exports.AI_DEFAULT_MAX_CALLS_PER_DAY = exports.AI_DEFAULT_MODEL = exports.AI_ALLOWED_MODELS = exports.aiConfigFromAdapter = exports.AI_STATES = exports.ensureAiStates = void 0;
+exports.runAiOptimizationManual = exports.handleAiStateChange = exports.isAiRelatedState = exports.maybeTriggerAiOptimizationOnDailyPlanChange = exports.syncAiDailyCounters = exports.ensureAiStateTree = exports.resetAiPipelineHookForTest = exports.aiTriggerDigestPayload = exports.resolveAllowedAddonIds = exports.AI_DEFAULT_MIN_INTERVAL_MINUTES = exports.AI_DEFAULT_MAX_CALLS_PER_DAY = exports.AI_DEFAULT_MODEL = exports.AI_ALLOWED_MODELS = exports.aiConfigFromAdapter = exports.AI_STATES = exports.ensureAiStates = void 0;
 const states_1 = require("../operator/daily_plan/states");
 const state_util_1 = require("../ems_light/state_util");
 const config_1 = require("./config");
 const ensure_states_1 = require("./ensure_states");
+const limiter_1 = require("./limiter");
 const openai_provider_1 = require("./openai_provider");
 const run_1 = require("./run");
 const trigger_digest_1 = require("./trigger_digest");
@@ -32,6 +33,19 @@ async function ensureAiStateTree(host) {
     await (0, ensure_states_1.ensureAiStates)(host);
 }
 exports.ensureAiStateTree = ensureAiStateTree;
+function houseTimezoneFromConfig(config) {
+    const tz = typeof config?.timezone === "string" ? config.timezone.trim() : "";
+    return tz || "Europe/Berlin";
+}
+/**
+ * Tageszähler/Kosten + gestrige KI-Anzeige beim ersten Tick nach Mitternacht zurücksetzen —
+ * unabhängig davon, ob heute schon ein KI-Abruf stattfindet (sonst bliebe calls_today in der VIS stehen).
+ */
+async function syncAiDailyCounters(host, now = new Date()) {
+    const cfg = (0, config_1.aiConfigFromAdapter)(host.config);
+    return (0, limiter_1.readAndRolloverDailyCalls)(host, cfg.maxCallsPerDay, now, cfg.monthlyCostLimitEur, houseTimezoneFromConfig(host.config));
+}
+exports.syncAiDailyCounters = syncAiDailyCounters;
 /**
  * Wird nach jedem Daily-Plan-Tick aufgerufen. Löst NICHT bei jeder Operator-Revision einen
  * KI-Versuch aus (die wechselt praktisch jeden Tick — Horizont-Roll, Allocation-Fortschritt,
@@ -52,6 +66,13 @@ exports.ensureAiStateTree = ensureAiStateTree;
  */
 async function maybeTriggerAiOptimizationOnDailyPlanChange(host, plan, now = new Date()) {
     const cfg = (0, config_1.aiConfigFromAdapter)(host.config);
+    // Immer zuerst Tages-Rollover — auch wenn KI aus / Digest unverändert / Suspend.
+    try {
+        await syncAiDailyCounters(host, now);
+    }
+    catch {
+        // best-effort — KI-Trigger nicht blockieren
+    }
     const digestPayload = (0, trigger_digest_1.aiTriggerDigestPayload)(plan);
     if (!cfg.enabled) {
         lastTriggerDigestPayload = digestPayload;

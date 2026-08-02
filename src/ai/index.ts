@@ -3,6 +3,7 @@ import type { DailyPlan } from "../operator/daily_plan/types";
 import { asNum } from "../ems_light/state_util";
 import { aiConfigFromAdapter } from "./config";
 import { AI_STATES, ensureAiStates } from "./ensure_states";
+import { readAndRolloverDailyCalls, type DailyLimitState } from "./limiter";
 import { createOpenAiProvider } from "./openai_provider";
 import { runAiOptimizationNow, type AiRunHost, type AiRunOutcome } from "./run";
 import { aiTriggerDigestPayload } from "./trigger_digest";
@@ -31,6 +32,29 @@ export async function ensureAiStateTree(host: Parameters<typeof ensureAiStates>[
 	await ensureAiStates(host);
 }
 
+function houseTimezoneFromConfig(config: Record<string, unknown> | undefined): string {
+	const tz = typeof config?.timezone === "string" ? config.timezone.trim() : "";
+	return tz || "Europe/Berlin";
+}
+
+/**
+ * Tageszähler/Kosten + gestrige KI-Anzeige beim ersten Tick nach Mitternacht zurücksetzen —
+ * unabhängig davon, ob heute schon ein KI-Abruf stattfindet (sonst bliebe calls_today in der VIS stehen).
+ */
+export async function syncAiDailyCounters(
+	host: AiRunHost,
+	now: Date = new Date(),
+): Promise<DailyLimitState> {
+	const cfg = aiConfigFromAdapter(host.config);
+	return readAndRolloverDailyCalls(
+		host,
+		cfg.maxCallsPerDay,
+		now,
+		cfg.monthlyCostLimitEur,
+		houseTimezoneFromConfig(host.config as Record<string, unknown>),
+	);
+}
+
 /**
  * Wird nach jedem Daily-Plan-Tick aufgerufen. Löst NICHT bei jeder Operator-Revision einen
  * KI-Versuch aus (die wechselt praktisch jeden Tick — Horizont-Roll, Allocation-Fortschritt,
@@ -55,6 +79,12 @@ export async function maybeTriggerAiOptimizationOnDailyPlanChange(
 	now: Date = new Date(),
 ): Promise<AiRunOutcome | null> {
 	const cfg = aiConfigFromAdapter(host.config);
+	// Immer zuerst Tages-Rollover — auch wenn KI aus / Digest unverändert / Suspend.
+	try {
+		await syncAiDailyCounters(host, now);
+	} catch {
+		// best-effort — KI-Trigger nicht blockieren
+	}
 	const digestPayload = aiTriggerDigestPayload(plan);
 	if (!cfg.enabled) {
 		lastTriggerDigestPayload = digestPayload;

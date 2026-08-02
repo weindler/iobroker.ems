@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.234",
+		"version": "0.1.235",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.235": {
+				"en": "VIS shows AI calls today/limit; midnight rollover resets counters and clears previous-day AI display on every Daily Plan tick (Europe/Berlin). Re-import VIS.",
+				"de": "VIS zeigt KI-Abrufe heute/Limit; Mitternacht-Reset setzt Zähler zurück und löscht gestrige KI-Anzeige bei jedem Daily-Plan-Tick (Europe/Berlin). VIS neu importieren."
+			},
 			"0.1.234": {
 				"en": "VIS live updates: iframe keeps polling/subscribing (fix stale data until view switch); view alwaysRender=true. Re-import VIS view.",
 				"de": "VIS Live-Updates: iframe pollt/subscribed zuverlässig (Fix: Daten erst nach View-Wechsel frisch); View alwaysRender=true. VIS-View neu importieren."

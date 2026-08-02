@@ -66,6 +66,30 @@ describe("ai limiter", () => {
 		const rolled = await readAndRolloverDailyCalls(host, 5, new Date("2026-07-25T00:30:00+02:00"));
 		assert.equal(rolled.callsToday, 0);
 		assert.equal(rolled.costTodayEur, 0);
+		assert.equal(rolled.rolledOver, true);
+	});
+
+	it("clears previous-day AI display states on local midnight rollover", async () => {
+		const host = mockHost({
+			[AI_STATES.callsToday]: 3,
+			[AI_STATES.callsTodayDate]: "2026-07-24",
+			[AI_STATES.costEstimateTodayEur]: 0.05,
+			[AI_STATES.lastThinkingDe]: "gestern gedacht",
+			[AI_STATES.lastReasonDe]: "gestern begründet",
+			[AI_STATES.lastDecisionsJson]: '[{"addonId":"battery"}]',
+			[AI_STATES.lastSlotPreferencesJson]: '[{"addonId":"battery","weight":2}]',
+			[AI_STATES.autoSuspended]: true,
+			[AI_STATES.autoSuspendReasonDe]: "kein Vorteil",
+		});
+		const rolled = await readAndRolloverDailyCalls(host, 20, new Date("2026-07-25T00:05:00+02:00"));
+		assert.equal(rolled.rolledOver, true);
+		assert.equal(rolled.callsToday, 0);
+		assert.equal((await host.getStateAsync(AI_STATES.lastThinkingDe))?.val, "");
+		assert.equal((await host.getStateAsync(AI_STATES.lastReasonDe))?.val, "");
+		assert.equal((await host.getStateAsync(AI_STATES.lastDecisionsJson))?.val, "[]");
+		assert.equal((await host.getStateAsync(AI_STATES.lastSlotPreferencesJson))?.val, "[]");
+		assert.equal((await host.getStateAsync(AI_STATES.autoSuspended))?.val, false);
+		assert.equal((await host.getStateAsync(AI_STATES.autoSuspendReasonDe))?.val, "");
 	});
 
 	it("writes calls_limit and limit_warning states as a side effect", async () => {

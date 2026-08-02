@@ -6,12 +6,18 @@ alwaysApply: false
 
 # VIS-Backlog
 
+## Erledigt (v0.1.237)
+
+- Demnächst: zusammenhängende Zeitfenster (Slots kollabiert), Farben pro Add-on
+- Wallbox: EVCC-Modus + Rest-kWh bis Limit-SOC in der Meta-Zeile
+- Klima: ein Schätzblock aus expectedHours (keine 15-Min-Flut)
+
 ## Erledigt (v0.1.236)
 
 - Layout: Batterie | Wallbox · Heizstab | Klima1 · leer | Klima2; Demnächst rechts volle Höhe
-- Timeline 15-Min mit Status läuft/geplant, Klima-Blöcke aus Learning-Stunden
-- Heizstab: „Reicht bis“ aus `estimated_empty_at` Ortszeit
+- Timeline Status läuft/geplant; Heizstab „Reicht bis“ aus `estimated_empty_at`
 
 ## Offen
 
-- (leer — neue Wünsche hier sammeln)
+- Klima: echte Startzeit statt „ab jetzt“ (braucht Plan-/Learning-Start, nicht nur Stunden)
+- Optional: Batterie Rest-kWh / Ziel-SOC analog Wallbox in Demnächst-Meta

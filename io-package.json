@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.236",
+		"version": "0.1.237",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.237": {
+				"en": "VIS Demnächst: contiguous time ranges per add-on (not every 15 min), per-add-on colors; Wallbox mode + remaining kWh to limit SOC; climate as one estimated block. Re-import VIS.",
+				"de": "VIS Demnächst: zusammenhängende Zeitfenster pro Add-on (keine 15-Min-Zeilen), Farben pro Add-on; Wallbox Modus + Rest-kWh bis Limit-SOC; Klima als ein Schätzblock. VIS neu importieren."
+			},
 			"0.1.236": {
 				"en": "VIS rebuild: Battery/Wallbox then Heizstab/Climate tiles; full-height Demnächst timeline (15-min blocks, climate hours, läuft/geplant); Heizstab empty-at line. Re-import VIS.",
 				"de": "VIS-Umbau: Batterie/Wallbox dann Heizstab/Klima-Kacheln; Demnächst volle Höhe (15-Min-Blöcke, Klima-Stunden, läuft/geplant); Heizstab „Reicht bis“. VIS neu importieren."

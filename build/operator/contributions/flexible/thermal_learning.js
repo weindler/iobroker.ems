@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildThermalLearningSignal = void 0;
 const time_1 = require("../../../learning/house_load/time");
+const constants_1 = require("../../../learning/thermal_runtime/constants");
 const math_1 = require("../../../learning/thermal_runtime/math");
 const time_2 = require("../../time");
 function parseByDayTypeJson(raw) {
@@ -19,12 +20,15 @@ function parseByDayTypeJson(raw) {
 }
 /**
  * `status`/`health` kommen direkt aus `runThermalRuntimeLearning` (`src/learning/thermal_runtime/run.ts`).
- * `ready`+`ok` → valid. `insufficient_data` oder `health === "degraded"` → degraded (noch genutzbar,
- * aber wenige Zyklen). Alles andere (kein Source, deaktiviert, ungültige Config, Fehler) → missing.
+ * `ready`+`ok` → valid nur mit genug Zyklen (`MIN_CYCLES_OK`). Newton-Fit ohne Historie
+ * (`samples: 0`) darf keine Deadline treiben. `insufficient_data` / wenige Samples → degraded.
+ * Alles andere (kein Source, deaktiviert, ungültige Config, Fehler) → missing.
  */
-function deriveStatus(rawStatus, rawHealth) {
-    if (rawStatus === "ready" && rawHealth === "ok")
-        return "valid";
+function deriveStatus(rawStatus, rawHealth, samples) {
+    const n = samples !== null && Number.isFinite(samples) ? samples : 0;
+    if (rawStatus === "ready" && rawHealth === "ok") {
+        return n >= constants_1.MIN_CYCLES_OK ? "valid" : "degraded";
+    }
     if (rawStatus === "ready" && rawHealth === "degraded")
         return "degraded";
     if (rawStatus === "insufficient_data")
@@ -44,7 +48,7 @@ function reasonDeForStatus(status, samples, estimatedEmptyAt, timezone) {
     return "Thermal-Runtime-Learning ohne belastbares Modell — Fallback auf Physik-Schätzung.";
 }
 function buildThermalLearningSignal(input) {
-    const status = deriveStatus(input.rawStatus, input.rawHealth);
+    const status = deriveStatus(input.rawStatus, input.rawHealth, input.samples);
     const timezone = input.timezone?.trim() || "Europe/Berlin";
     let estimatedEmptyAt = null;
     if (input.estimatedEmptyAtRaw) {

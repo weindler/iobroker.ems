@@ -195,6 +195,15 @@ export async function runDailyPlanTick(
 		},
 	});
 
+	const pvFromPvEarly = asNum((await host.getStateAsync("live.pv.power_w"))?.val);
+	const pvFromBatteryEarly = asNum((await host.getStateAsync("live.battery.pv_ac_power_w"))?.val);
+	const liveSurplusEarly = buildOperatorLiveSurplus({
+		pvPowerW: pvFromPvEarly ?? pvFromBatteryEarly,
+		houseLoadW: asNum((await host.getStateAsync("live.battery.house_load_w"))?.val),
+		now,
+		timezone,
+	});
+
 	let plan = buildDailyPlanFromForecast(now, timezone, modePolicy.mode, forecastPlan, {
 		policySnapshot: effectivePolicy as unknown as Record<string, unknown> | null,
 		energyPriority,
@@ -207,6 +216,7 @@ export async function runDailyPlanTick(
 		modePolicy,
 		batteryConsumerAccess: consumerAccess,
 		batteryDischargeBudgetW: batConsumers.maxDischargePowerW,
+		livePvSurplusW: liveSurplusEarly.surplusW,
 	});
 
 	const payload = dailyPlanRevisionPayload(plan);
@@ -262,20 +272,10 @@ export async function runDailyPlanTick(
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
 		await setOptionalNumberIfChanged(host, DAILY_PLAN_STATE_IDS.revision, revision);
 
-		// Roadmap Block 3.3: Briefing + Live-Überschuss/-Defizit aus Daily Plan + Live-Cache —
-		// kein Rückgriff mehr auf `formatBriefing()`/`planner.surplus_w` des alten Realtime-Planners.
-		const pvFromPv = asNum((await host.getStateAsync("live.pv.power_w"))?.val);
-		const pvFromBattery = asNum((await host.getStateAsync("live.battery.pv_ac_power_w"))?.val);
-		const liveSurplus = buildOperatorLiveSurplus({
-			pvPowerW: pvFromPv ?? pvFromBattery,
-			houseLoadW: asNum((await host.getStateAsync("live.battery.house_load_w"))?.val),
-			now,
-			timezone,
-		});
-		await setOptionalNumberIfChanged(host, "operator.diagnostics.surplus_w", liveSurplus.surplusW);
-		await setOptionalNumberIfChanged(host, "operator.diagnostics.deficit_w", liveSurplus.deficitW);
-		await setStateIfChanged(host, "operator.diagnostics.slot_start_iso", liveSurplus.slotStartIso ?? "");
-		const aiThinkingRaw = await host.getStateAsync(AI_STATES.lastThinkingDe);
+		// Roadmap Block 3.3: Briefing + Live-Überschuss/-Defizit (bereits vor Allocation gelesen).
+		await setOptionalNumberIfChanged(host, "operator.diagnostics.surplus_w", liveSurplusEarly.surplusW);
+		await setOptionalNumberIfChanged(host, "operator.diagnostics.deficit_w", liveSurplusEarly.deficitW);
+		await setStateIfChanged(host, "operator.diagnostics.slot_start_iso", liveSurplusEarly.slotStartIso ?? "");		const aiThinkingRaw = await host.getStateAsync(AI_STATES.lastThinkingDe);
 		const aiThinkingDe =
 			typeof aiThinkingRaw?.val === "string" && aiThinkingRaw.val.trim() ? aiThinkingRaw.val.trim() : null;
 		await setStateIfChanged(

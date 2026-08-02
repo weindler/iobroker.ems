@@ -728,6 +728,49 @@ describe("daily plan allocation", () => {
 		assert.ok(result.allocations.every((a) => (a.allocatedPowerW ?? 0) >= 1700));
 		assert.ok(result.allocations.every((a) => a.slot.startIso !== slot1Start));
 	});
+
+	it("pvFirst soft-deadline allocates after empty_at when earlier surplus is too small", () => {
+		const earlyStart = "2026-07-11T10:00:00.000Z";
+		const earlyEnd = "2026-07-11T10:15:00.000Z";
+		const lateStart = "2026-07-11T11:00:00.000Z";
+		const lateEnd = "2026-07-11T11:15:00.000Z";
+		const slots = buildDailyPlanSlots(
+			[
+				{ startIso: earlyStart, endIso: earlyEnd },
+				{ startIso: lateStart, endIso: lateEnd },
+			],
+			[
+				forecastSlot(earlyStart, earlyEnd, { pv: 1500, load: 1000 }), // surplus 500 < 1700
+				forecastSlot(lateStart, lateEnd, { pv: 4000, load: 1000 }), // 3000 after deadline
+			],
+			11000,
+			13800,
+		);
+		const flex = buildAllocationCandidate(
+			flexContribution(CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, "immersion_heater", {
+				gridEligible: false,
+				deadlineIso: "2026-07-11T10:30:00.000Z",
+				details: { requiredEnergyKwh: 0.425, maxPowerW: 1700, minPowerW: 1700, pvFirst: true },
+			}),
+			"balanced",
+			[],
+		);
+		assert.equal(flex.hasDeadline, true);
+		assert.equal(flex.pvFirst, true);
+
+		const result = runAllocation({
+			slots,
+			candidates: [flex],
+			globalMode: "balanced",
+			modeAllowsOptimization: true,
+			gridImportAllowedPolicy: true,
+			mutualExclusions: [],
+			nowMs: NOW.getTime(),
+		});
+		assert.ok(result.allocations.length >= 1);
+		assert.ok(result.allocations.every((a) => a.slot.startIso === lateStart));
+		assert.ok(result.allocations.every((a) => (a.allocatedPowerW ?? 0) >= 1700));
+	});
 });
 
 describe("daily plan build", () => {

@@ -1,4 +1,5 @@
 import { dayTypeFromWeekday, weekdayFromDate } from "../../../learning/house_load/time";
+import { MIN_CYCLES_OK } from "../../../learning/thermal_runtime/constants";
 import { liveRemainingHoursFromEmptyAt } from "../../../learning/thermal_runtime/math";
 import { formatLocalDateTimeDe } from "../../time";
 
@@ -38,11 +39,19 @@ function parseByDayTypeJson(raw: string | null): Record<string, ThermalRuntimeBy
 
 /**
  * `status`/`health` kommen direkt aus `runThermalRuntimeLearning` (`src/learning/thermal_runtime/run.ts`).
- * `ready`+`ok` → valid. `insufficient_data` oder `health === "degraded"` → degraded (noch genutzbar,
- * aber wenige Zyklen). Alles andere (kein Source, deaktiviert, ungültige Config, Fehler) → missing.
+ * `ready`+`ok` → valid nur mit genug Zyklen (`MIN_CYCLES_OK`). Newton-Fit ohne Historie
+ * (`samples: 0`) darf keine Deadline treiben. `insufficient_data` / wenige Samples → degraded.
+ * Alles andere (kein Source, deaktiviert, ungültige Config, Fehler) → missing.
  */
-function deriveStatus(rawStatus: string | null, rawHealth: string | null): ThermalLearningSignal["status"] {
-	if (rawStatus === "ready" && rawHealth === "ok") return "valid";
+function deriveStatus(
+	rawStatus: string | null,
+	rawHealth: string | null,
+	samples: number | null,
+): ThermalLearningSignal["status"] {
+	const n = samples !== null && Number.isFinite(samples) ? samples : 0;
+	if (rawStatus === "ready" && rawHealth === "ok") {
+		return n >= MIN_CYCLES_OK ? "valid" : "degraded";
+	}
 	if (rawStatus === "ready" && rawHealth === "degraded") return "degraded";
 	if (rawStatus === "insufficient_data") return "degraded";
 	return "missing";
@@ -81,7 +90,7 @@ export function buildThermalLearningSignal(input: {
 	/** Für Ortszeit in reasonDe — Default Europe/Berlin. */
 	timezone?: string;
 }): ThermalLearningSignal {
-	const status = deriveStatus(input.rawStatus, input.rawHealth);
+	const status = deriveStatus(input.rawStatus, input.rawHealth, input.samples);
 	const timezone = input.timezone?.trim() || "Europe/Berlin";
 
 	let estimatedEmptyAt: string | null = null;

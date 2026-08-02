@@ -204,4 +204,6 @@ export type DailyPlanBuildInput = {
 	};
 	batteryConsumerAccess?: Partial<Record<BatteryConsumerId, BatteryConsumerAccess>>;
 	batteryDischargeBudgetW?: number | null;
+	/** Live-PV-Überschuss (W) — Floor für den aktuellen Slot vor Allocation. */
+	livePvSurplusW?: number | null;
 };

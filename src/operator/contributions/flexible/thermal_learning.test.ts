@@ -78,6 +78,23 @@ describe("thermal learning signal", () => {
 		assert.doesNotMatch(signal.reasonDe, /16:30/);
 	});
 
+	it("degrades Newton-only ready+ok with zero cycles (no deadline-grade model)", () => {
+		const signal = buildThermalLearningSignal({
+			now: NOW,
+			rawStatus: "ready",
+			rawHealth: "ok",
+			samples: 0,
+			coolingRateCPerHAvg: null,
+			coolingConstantPerH: 0.09,
+			coolingAsymptoteC: 40,
+			estimatedRemainingHours: 3,
+			estimatedEmptyAtRaw: "2026-07-26T13:00:00.000Z",
+			byDayTypeJsonRaw: null,
+		});
+		assert.equal(signal.status, "degraded");
+		assert.equal(signal.estimatedEmptyAt, "2026-07-26T13:00:00.000Z");
+	});
+
 	it("derives live remaining from empty_at when stored remaining is stale", () => {
 		const later = new Date("2026-07-26T14:00:00.000Z"); // 2.5 h before empty_at
 		const signal = buildThermalLearningSignal({

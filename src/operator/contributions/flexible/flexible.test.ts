@@ -687,9 +687,10 @@ describe("immersion heater contributions", () => {
 		assert.equal(flexible.deadlineIso, null);
 	});
 
-	it("adopts the learned estimated_empty_at as deadline when the model is valid", () => {
+	it("adopts the learned estimated_empty_at as deadline when near planning min and model valid", () => {
 		const [, flexible] = buildImmersionHeaterContributions(
 			immersionInput({
+				bufferTempC: 49, // planningMin 48 + approach 2 → near floor
 				thermalLearning: {
 					status: "valid",
 					health: "ok",
@@ -708,6 +709,28 @@ describe("immersion heater contributions", () => {
 		assert.equal(flexible.details.thermalLearningStatus, "valid");
 		assert.equal(flexible.details.estimatedEmptyAt, "2026-07-26T14:00:00.000Z");
 		assert.equal(flexible.details.coolingRateCPerHAvg, 1.1);
+	});
+
+	it("skips learning deadline for comfort reheat clearly above planning min", () => {
+		const [, flexible] = buildImmersionHeaterContributions(
+			immersionInput({
+				bufferTempC: 52, // > planningMin 48 + 2
+				thermalLearning: {
+					status: "valid",
+					health: "ok",
+					samples: 12,
+					coolingRateCPerHAvg: 1.1,
+					coolingConstantPerH: 0.04,
+					coolingAsymptoteC: 18,
+					estimatedRemainingHours: 8,
+					estimatedEmptyAt: "2026-07-26T14:00:00.000Z",
+					currentDayTypeRuntimeHoursMedian: 12,
+					reasonDe: "belastbares Modell",
+				},
+			}),
+		);
+		assert.equal(flexible.enabled, true);
+		assert.equal(flexible.deadlineIso, null);
 	});
 
 	it("does not set a deadline when the flexible contribution is disabled anyway", () => {

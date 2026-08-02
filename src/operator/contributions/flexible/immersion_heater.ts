@@ -245,13 +245,21 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 	const quality = operatorQuality(status, reasonDe);
 
 	/*
-	 * Gelernte Pflicht-Deadline (`estimated_empty_at`) nur setzen, wenn der Puffer aktuell
-	 * NOCH nicht mandatory ist (sonst regelt die Mandatory-Contribution es bereits) und das
-	 * Lernmodell belastbar ist. So priorisiert die Allocation günstige/PV-Slots vor dem
-	 * gelernten Zeitpunkt statt den flexiblen Bedarf unbegrenzt aufzuschieben.
+	 * Gelernte Pflicht-Deadline (`estimated_empty_at`) nur nahe der Pflicht-Untergrenze.
+	 * Comfort-Nachladen zum Forecast-Ziel (Puffer klar über planningMin) bleibt PV-first ohne
+	 * Deadline — sonst sortiert die Allocation vor empty_at und verpasst spätere PV-Fenster
+	 * (Dump: Bedarf 1.7 kWh, Surplus ≥1700 W erst nach Deadline → 0 W trotz Live-Überschuss).
 	 */
+	const DEADLINE_APPROACH_K = 2;
+	const nearMandatoryFloor =
+		input.bufferTempC !== null &&
+		input.bufferTempC <= input.config.planningMinTempC + DEADLINE_APPROACH_K;
 	const learningDeadlineIso =
-		enabled && input.thermalLearning?.status === "valid" ? input.thermalLearning.estimatedEmptyAt : null;
+		enabled &&
+		nearMandatoryFloor &&
+		input.thermalLearning?.status === "valid"
+			? input.thermalLearning.estimatedEmptyAt
+			: null;
 
 	if (enabled && learningDeadlineIso) {
 		reasonDe = `${reasonDe} Gelernte Pflichtgrenze voraussichtlich ${learningDeadlineIso}.`;

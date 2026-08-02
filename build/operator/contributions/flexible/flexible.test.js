@@ -576,8 +576,9 @@ function acInput(overrides = {}) {
         }));
         strict_1.default.equal(flexible.deadlineIso, null);
     });
-    (0, node_test_1.it)("adopts the learned estimated_empty_at as deadline when the model is valid", () => {
+    (0, node_test_1.it)("adopts the learned estimated_empty_at as deadline when near planning min and model valid", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
+            bufferTempC: 49, // planningMin 48 + approach 2 → near floor
             thermalLearning: {
                 status: "valid",
                 health: "ok",
@@ -595,6 +596,25 @@ function acInput(overrides = {}) {
         strict_1.default.equal(flexible.details.thermalLearningStatus, "valid");
         strict_1.default.equal(flexible.details.estimatedEmptyAt, "2026-07-26T14:00:00.000Z");
         strict_1.default.equal(flexible.details.coolingRateCPerHAvg, 1.1);
+    });
+    (0, node_test_1.it)("skips learning deadline for comfort reheat clearly above planning min", () => {
+        const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
+            bufferTempC: 52, // > planningMin 48 + 2
+            thermalLearning: {
+                status: "valid",
+                health: "ok",
+                samples: 12,
+                coolingRateCPerHAvg: 1.1,
+                coolingConstantPerH: 0.04,
+                coolingAsymptoteC: 18,
+                estimatedRemainingHours: 8,
+                estimatedEmptyAt: "2026-07-26T14:00:00.000Z",
+                currentDayTypeRuntimeHoursMedian: 12,
+                reasonDe: "belastbares Modell",
+            },
+        }));
+        strict_1.default.equal(flexible.enabled, true);
+        strict_1.default.equal(flexible.deadlineIso, null);
     });
     (0, node_test_1.it)("does not set a deadline when the flexible contribution is disabled anyway", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({

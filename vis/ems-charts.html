@@ -9,54 +9,62 @@
 body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:6px 8px;overflow:auto}
 .ems-status{font-size:11px;color:#8b949e;padding:12px;text-align:center}
 .ems-status.err{color:#f85149}
-.ems-section{margin-bottom:8px}
+.ems-top{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:6px;margin-bottom:6px}
+.ems-box{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:7px 9px;min-height:0}
 .ems-k{font-size:8px;color:#8b949e;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
-.ems-now{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:8px 10px}
-.ems-now-line{font-size:13px;font-weight:600;line-height:1.35;color:#e6edf3}
-.ems-now-meta{font-size:11px;color:#c9d1d9;margin-top:4px;line-height:1.35}
-.ems-next{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:8px 10px}
-.ems-next-list{list-style:none;font-size:12px;line-height:1.45}
-.ems-next-list li{padding:2px 0;border-bottom:1px solid #30363d33}
-.ems-next-list li:last-child{border-bottom:none}
-.ems-next-t{color:#58a6ff;font-weight:600;margin-right:6px}
-.ems-stack{display:flex;flex-direction:column;gap:6px}
-.ems-card{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:7px 9px}
-.ems-card-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;gap:8px}
+.ems-now-line{font-size:13px;font-weight:600;line-height:1.3;color:#e6edf3}
+.ems-now-meta{font-size:10px;color:#c9d1d9;margin-top:3px;line-height:1.3}
+.ems-next-list{list-style:none;font-size:11px;line-height:1.4;max-height:4.6em;overflow:hidden}
+.ems-next-list li{padding:1px 0}
+.ems-next-t{color:#58a6ff;font-weight:600;margin-right:5px}
+.ems-ai-line{font-size:12px;font-weight:700;margin-top:2px}
+.ems-ai-line.yes{color:#3fb950}.ems-ai-line.no{color:#8b949e}.ems-ai-line.warn{color:#f0883e}.ems-ai-line.ok{color:#58a6ff}
+.ems-ai-reason{font-size:10px;color:#c9d1d9;line-height:1.3;margin-top:3px;max-height:3.9em;overflow:hidden}
+.ems-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.ems-card{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:7px 8px;min-height:0}
+.ems-card-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;gap:6px}
 .ems-card-title{font-size:12px;font-weight:700}
-.ems-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.03em}
+.ems-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
 .ems-badge.on{background:#238636;color:#fff}
 .ems-badge.off{background:#30363d;color:#8b949e}
 .ems-badge.soon{background:#9e6a03;color:#fff}
 .ems-badge.idle{background:#21262d;border:1px solid #30363d;color:#8b949e}
-.ems-rows{display:grid;grid-template-columns:90px 1fr;gap:2px 8px;font-size:11px}
+.ems-rows{display:grid;grid-template-columns:78px 1fr;gap:1px 6px;font-size:11px}
 .ems-rows .l{color:#8b949e}.ems-rows .r{color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ems-note{margin-top:5px;font-size:11px;color:#c9d1d9;line-height:1.35;max-height:2.8em;overflow:hidden}
-.ems-diag{margin-top:10px;padding-top:8px;border-top:1px dashed #30363d}
+.ems-note{margin-top:4px;font-size:10px;color:#c9d1d9;line-height:1.3;max-height:2.6em;overflow:hidden}
+.ems-diag{margin-top:8px;padding-top:6px;border-top:1px dashed #30363d}
 .ems-diag-h{font-size:9px;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
 .ems-ai{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:6px;margin-bottom:6px}
 .ems-ai-box{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:7px 9px}
 .ems-v{font-size:13px;font-weight:700;margin-top:2px}
 .ems-v.yes{color:#3fb950}.ems-v.no{color:#8b949e}.ems-v.warn{color:#f0883e}.ems-v.ok{color:#58a6ff}
-.ems-ai-reason{font-size:10px;color:#c9d1d9;line-height:1.35;margin-top:3px}
 .ems-daily{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 9px;margin-bottom:6px;display:flex;gap:12px;align-items:flex-start}
 .ems-daily-main{min-width:120px}
 .ems-daily-reason{flex:1;font-size:10px;color:#c9d1d9;line-height:1.35}
 .ems-hint{margin-top:6px;font-size:9px;color:#6e7681;line-height:1.3}
 .ems-muted{color:#8b949e;font-size:11px}
-@media (max-width:900px){.ems-ai{grid-template-columns:1fr}}
+@media (max-width:900px){
+	.ems-top{grid-template-columns:1fr}
+	.ems-grid{grid-template-columns:1fr 1fr}
+	.ems-ai{grid-template-columns:1fr}
+}
+@media (max-width:560px){.ems-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div id="ems-status" class="ems-status">Verbinde…</div>
 <div id="ems-content" style="display:none">
-	<div class="ems-section ems-now" id="ems-now"></div>
-	<div class="ems-section ems-next" id="ems-next"></div>
-	<div class="ems-section ems-stack" id="ems-stack"></div>
+	<div class="ems-top">
+		<div class="ems-box" id="ems-now"></div>
+		<div class="ems-box" id="ems-ai-summary"></div>
+		<div class="ems-box" id="ems-next"></div>
+	</div>
+	<div class="ems-grid" id="ems-stack"></div>
 	<div class="ems-diag" id="ems-diag" style="display:none">
 		<div class="ems-diag-h">Diagnose / Begründungen</div>
 		<div class="ems-ai" id="ems-ai"></div>
 		<div class="ems-daily" id="ems-daily"></div>
-		<div class="ems-hint">Technische Details für Einsteiger. Alltag bleibt oben — dieser Block nur bei Admin-Haken „VIS Diagnose anzeigen“.</div>
+		<div class="ems-hint">Technische Details. Alltag bleibt oben — dieser Block nur bei Admin-Haken „VIS Diagnose anzeigen“.</div>
 	</div>
 </div>
 <script>
@@ -85,6 +93,9 @@ var stateIds=[
 	INST+".ai.status",
 	INST+".ai.auto_suspended",
 	INST+".ai.last_reason_de",
+	INST+".ai.last_thinking_de",
+	INST+".ai.last_run_at",
+	INST+".ai.last_decisions_json",
 	INST+".planner.intent.daily_plan.status",
 	INST+".planner.intent.daily_plan.reason_de",
 	INST+".planner.intent.daily_plan.valid_until",
@@ -200,16 +211,6 @@ function collectWindows(planJson,minW,label){
 	return list;
 }
 
-function nextWindows(planJson,minW){
-	var list=collectWindows(planJson,minW,"");
-	list.sort(function(x,y){return Date.parse(x.t)-Date.parse(y.t);});
-	if(!list.length)return "keine Fenster voraus";
-	var parts=[],i;
-	for(i=0;i<Math.min(3,list.length);i++)parts.push(fmtSmartTime(list[i].t)+" · "+Math.round(list[i].w)+" W");
-	if(list.length>3)parts.push("+"+(list.length-3)+" weitere");
-	return parts.join(" · ");
-}
-
 function firstWindow(planJson,minW){
 	var list=collectWindows(planJson,minW,"");
 	list.sort(function(x,y){return Date.parse(x.t)-Date.parse(y.t);});
@@ -256,6 +257,34 @@ function card(title,color,badge,rows,note){
 	return html+'</div>';
 }
 
+function aiVerdict(){
+	var d=parseObj(g("compare.delta_summary_json"));
+	var ih=seriesOn(g("compare.plan_a.chart_json"),g("compare.plan_b.chart_json"),"ihW");
+	var ac=seriesOn(g("compare.plan_a.chart_json"),g("compare.plan_b.chart_json"),"acW");
+	var wb=seriesOn(g("compare.plan_a.chart_json"),g("compare.plan_b.chart_json"),"wbW");
+	var shifts=ih.diff||ac.diff||wb.diff;
+	var active=txt(g("compare.active_plan"),txt(d.activePlan,"a")).toLowerCase();
+	var better=active==="b";
+	var delta=num(d.deltaCostCt);
+	var aiStatus=txt(g("ai.status"),"—");
+	var suspended=g("ai.auto_suspended")===true||g("ai.auto_suspended")==="true";
+	var reason=txt(d.decisionReasonDe,txt(g("ai.last_thinking_de"),txt(g("ai.last_reason_de"),"Noch kein KI-Vergleich.")));
+	var decisions=parseArr(g("ai.last_decisions_json"));
+	var decisionBits=[];
+	for(var i=0;i<Math.min(3,decisions.length);i++){
+		var x=decisions[i];
+		if(!x||!x.addonId)continue;
+		var name=x.addonId==="immersion_heater"?"Heizstab":(x.addonId==="wallbox"?"Wallbox":(x.addonId==="battery"?"Batterie":(x.addonId==="climate"||x.addonId==="air_conditioning"?"Klima":x.addonId)));
+		decisionBits.push(name+": "+txt(x.action,"—"));
+	}
+	return{
+		shifts:shifts,better:better,delta:delta,aiStatus:aiStatus,suspended:suspended,reason:reason,
+		decisionLine:decisionBits.length?decisionBits.join(" · "):"",
+		shiftLabel:shifts?"Ja — Zeiten anders":"Nein — gleich wie Regelwerk",
+		betterLabel:better?"Ja — Plan B aktiv":(shifts?"Nein — Regelwerk bleibt":"Nein — kein Vorteil")
+	};
+}
+
 function renderNow(){
 	var el=document.getElementById("ems-now");
 	var surplus=num(g("operator.diagnostics.surplus_w"));
@@ -291,6 +320,21 @@ function renderNow(){
 		+'<div class="ems-now-meta">'+esc(meta.join(" · "))+'</div>';
 }
 
+function renderAiSummary(){
+	var el=document.getElementById("ems-ai-summary");
+	if(!el)return;
+	var v=aiVerdict();
+	var cls=v.better?"yes":(v.shifts?"warn":"no");
+	el.innerHTML='<div class="ems-k">KI vs. Regelwerk</div>'
+		+'<div class="ems-ai-line '+cls+'">'+esc(v.betterLabel)+'</div>'
+		+'<div class="ems-ai-reason">'
+		+esc(v.shiftLabel)
+		+(v.delta!==null?" · Δ "+(v.delta>0?"+":"")+v.delta.toFixed(1)+" ct":"")
+		+(v.decisionLine?" · "+esc(v.decisionLine):"")
+		+"</div>"
+		+'<div class="ems-ai-reason" title="'+esc(v.reason)+'">'+esc(shortNote(v.reason,160))+'</div>';
+}
+
 function renderNext(){
 	var el=document.getElementById("ems-next");
 	var items=[]
@@ -298,18 +342,18 @@ function renderNext(){
 		.concat(collectWindows(g("planner.intent.allocation.wallbox.plan_json"),ON_W,"Wallbox"))
 		.concat(collectWindows(g("planner.intent.allocation.battery.plan_json"),ON_W,"Batterie"));
 	items.sort(function(a,b){return Date.parse(a.t)-Date.parse(b.t);});
-	var horizonMs=Date.now()+8*3600*1000;
+	var horizonMs=Date.now()+48*3600*1000;
 	items=items.filter(function(x){return Date.parse(x.t)<=horizonMs;});
-	var html='<div class="ems-k">Als Nächstes (ca. 8 h)</div>';
+	var html='<div class="ems-k">Demnächst (48 h)</div>';
 	if(!items.length){
-		html+='<div class="ems-muted">Keine geplanten Einschaltfenster in den nächsten Stunden.</div>';
+		html+='<div class="ems-muted">Keine Einschaltfenster geplant.</div>';
 	}else{
 		html+='<ul class="ems-next-list">';
-		for(var i=0;i<Math.min(6,items.length);i++){
+		for(var i=0;i<Math.min(5,items.length);i++){
 			html+='<li><span class="ems-next-t">'+esc(fmtSmartTime(items[i].t))+'</span>'
 				+esc(items[i].label)+" · "+Math.round(items[i].w)+" W</li>";
 		}
-		if(items.length>6)html+='<li class="ems-muted">+'+(items.length-6)+' weitere …</li>';
+		if(items.length>5)html+='<li class="ems-muted">+'+(items.length-5)+' weitere …</li>';
 		html+='</ul>';
 	}
 	el.innerHTML=html;
@@ -321,18 +365,18 @@ function renderStack(){
 	var ihCmd=num(g("addons.immersion_heater.runtime.commanded_power_w"));
 	var ihRun=(ihCmd!==null&&ihCmd>=ON_W)||(ihP!==null&&ihP>=ON_W);
 	var ihNext=firstWindow(g("planner.intent.allocation.immersion_heater.plan_json"),ON_W);
-	var ihNote=shortNote(g("addons.immersion_heater.runtime.plan_target_reason_de")||g("addons.immersion_heater.runtime.allocation_reason_de"),140);
+	var ihNote=shortNote(g("addons.immersion_heater.runtime.plan_target_reason_de")||g("addons.immersion_heater.runtime.allocation_reason_de"),110);
 
 	var wbLive=num(g("live.wallbox.charge_power_w"));
 	var wbPlan=num(g("addons.wallbox.runtime.allocated_power_w"));
 	var wbRun=isOn(g("live.wallbox.charging"))||(wbLive!==null&&wbLive>=ON_W);
 	var wbNext=firstWindow(g("planner.intent.allocation.wallbox.plan_json"),ON_W);
-	var wbNote=shortNote(g("addons.wallbox.runtime.reason_de"),140);
+	var wbNote=shortNote(g("addons.wallbox.runtime.reason_de"),110);
 
 	var batP=num(g("addons.battery.runtime.allocated_charge_power_w"));
 	var batRun=batP!==null&&batP>=ON_W;
 	var batNext=firstWindow(g("planner.intent.allocation.battery.plan_json"),ON_W);
-	var batNote=shortNote(g("addons.battery.runtime.reason_de"),140);
+	var batNote=shortNote(g("addons.battery.runtime.reason_de"),110);
 
 	function acCard(unitIndex){
 		var base="addons.air_conditioning.units.unit_"+unitIndex;
@@ -340,7 +384,7 @@ function renderStack(){
 		if(!name&&!g(base+".room_temp_c")&&!g(base+".running"))return"";
 		var title=name?("Klima · "+name):("Klima "+unitIndex);
 		var running=isOn(g(base+".running"));
-		var note=shortNote(g(base+".reason_de")||g(base+".allocation_reason_de")||acPlanLine(unitIndex),140);
+		var note=shortNote(g(base+".reason_de")||g(base+".allocation_reason_de")||acPlanLine(unitIndex),110);
 		return card(title,"#79c0ff",running?{cls:"on",label:"Läuft"}:{cls:"idle",label:"Aus"},[
 			["Raum",fmtTemp(g(base+".room_temp_c"))],
 			["Heute",acPlanLine(unitIndex)],
@@ -353,18 +397,18 @@ function renderStack(){
 			["Jetzt",ihRun?("an · "+fmtW(ihCmd!==null?ihCmd:ihP)):"aus"],
 			["Puffer",fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c"))],
 			["Ziel",fmtTemp(g("addons.immersion_heater.runtime.plan_target_temp_c"))],
-			["Nächstes Fenster",ihNext?(fmtSmartTime(ihNext.t)+" · "+Math.round(ihNext.w)+" W"):"keines"]
+			["Nächstes",ihNext?(fmtSmartTime(ihNext.t)+" · "+Math.round(ihNext.w)+" W"):"keines"]
 		],ihNote)
 		+card("Wallbox / Auto","#d2a8ff",userBadge(wbRun,!!wbNext),[
 			["Jetzt",wbRun?("lädt · "+fmtW(wbLive)):"lädt nicht"],
 			["Fahrzeug",fmtPct(g("live.wallbox.vehicle_soc_pct"))],
-			["Plan jetzt",fmtW(wbPlan)],
-			["Nächstes Fenster",wbNext?(fmtSmartTime(wbNext.t)+" · "+Math.round(wbNext.w)+" W"):"keines"]
+			["Plan",fmtW(wbPlan)],
+			["Nächstes",wbNext?(fmtSmartTime(wbNext.t)+" · "+Math.round(wbNext.w)+" W"):"keines"]
 		],wbNote)
 		+card("Batterie","#58a6ff",userBadge(batRun,!!batNext),[
 			["SOC",fmtPct(g("live.battery.soc_pct"))],
-			["Laden jetzt",batRun?fmtW(batP):"aus"],
-			["Nächstes Fenster",batNext?(fmtSmartTime(batNext.t)+" · "+Math.round(batNext.w)+" W"):"keines"]
+			["Laden",batRun?fmtW(batP):"aus"],
+			["Nächstes",batNext?(fmtSmartTime(batNext.t)+" · "+Math.round(batNext.w)+" W"):"keines"]
 		],batNote||"Batterie folgt dem Hausplan.")
 		+acCard(1)
 		+acCard(2);
@@ -373,25 +417,14 @@ function renderStack(){
 function renderAi(){
 	var el=document.getElementById("ems-ai");
 	if(!el)return;
-	var d=parseObj(g("compare.delta_summary_json"));
-	var ih=seriesOn(g("compare.plan_a.chart_json"),g("compare.plan_b.chart_json"),"ihW");
-	var ac=seriesOn(g("compare.plan_a.chart_json"),g("compare.plan_b.chart_json"),"acW");
-	var shifts=ih.diff||ac.diff;
-	var active=txt(g("compare.active_plan"),txt(d.activePlan,"a"));
-	var better=active==="b";
-	var delta=num(d.deltaCostCt);
-	var aiStatus=txt(g("ai.status"),"—");
-	var suspended=g("ai.auto_suspended")===true||g("ai.auto_suspended")==="true";
-	var reason=txt(d.decisionReasonDe,txt(g("ai.last_reason_de"),"Noch kein KI-Vergleich."));
-	var shiftLabel=shifts?"Ja — Zeiten anders":"Nein — gleich wie Regelwerk";
-	var betterLabel=better?"Ja — Plan B aktiv":(shifts?"Nein — Regelwerk bleibt":"Nein — kein Vorteil");
+	var v=aiVerdict();
 	el.innerHTML=
-		'<div class="ems-ai-box"><div class="ems-k">KI verschiebt Zeiten?</div><div class="ems-v '+(shifts?"warn":"no")+'">'+esc(shiftLabel)+'</div></div>'
-		+'<div class="ems-ai-box"><div class="ems-k">KI besser als Regelwerk?</div><div class="ems-v '+(better?"yes":"no")+'">'+esc(betterLabel)+'</div>'
-		+(delta!==null?'<div class="ems-ai-reason">Δ Kosten B−A: '+(delta>0?"+":"")+delta.toFixed(1)+' ct</div>':'')
+		'<div class="ems-ai-box"><div class="ems-k">KI verschiebt Zeiten?</div><div class="ems-v '+(v.shifts?"warn":"no")+'">'+esc(v.shiftLabel)+'</div></div>'
+		+'<div class="ems-ai-box"><div class="ems-k">KI besser als Regelwerk?</div><div class="ems-v '+(v.better?"yes":"no")+'">'+esc(v.betterLabel)+'</div>'
+		+(v.delta!==null?'<div class="ems-ai-reason">Δ Kosten B−A: '+(v.delta>0?"+":"")+v.delta.toFixed(1)+' ct</div>':'')
 		+'</div>'
-		+'<div class="ems-ai-box"><div class="ems-k">KI-Status</div><div class="ems-v '+(suspended?"warn":(aiStatus==="ready"?"ok":"no"))+'">'+esc(aiStatus)+(suspended?" (auto aus)":"")+'</div>'
-		+'<div class="ems-ai-reason">'+esc(reason)+'</div></div>';
+		+'<div class="ems-ai-box"><div class="ems-k">KI-Status</div><div class="ems-v '+(v.suspended?"warn":(v.aiStatus==="ready"?"ok":"no"))+'">'+esc(v.aiStatus)+(v.suspended?" (auto aus)":"")+'</div>'
+		+'<div class="ems-ai-reason">'+esc(v.reason)+'</div></div>';
 }
 
 function renderDaily(){
@@ -413,6 +446,7 @@ function render(){
 	if(!bound&&g("planner.intent.daily_plan.status")==null&&g("live.pv.power_w")==null)return;
 	showContent();
 	renderNow();
+	renderAiSummary();
 	renderNext();
 	renderStack();
 	var diag=document.getElementById("ems-diag");

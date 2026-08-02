@@ -306,9 +306,9 @@ widgets[wid()] = textBlockWidget(oid("operator.briefing_de"), "", {
 	color: C.text,
 });
 
-// Live-Leiste: Energie breit + kompakte Ist-Werte (keine KI-/Src-Diagnose)
+// Live-Leiste kompakt — Detail + KI steckt im iframe (ems-charts.html)
 const cardY = BRIEF_Y + BRIEF_H + 4;
-const cardH = 80;
+const cardH = 64;
 const energyW = Math.floor((VIEW_W - 2 * M - 3 * GAP) * 0.34);
 const smallW = Math.floor((VIEW_W - 2 * M - 3 * GAP - energyW) / 3);
 
@@ -317,8 +317,7 @@ for (const c of /** @type {CardDef[]} */ ([
 		x: M, y: cardY, w: energyW, h: cardH, title: "Energie", color: C.pv,
 		rows: [
 			{ type: "f", oid: "live.pv.power_w", label: "PV ", digits: "0", unit: " W", em: true, color: C.pv },
-			{ type: "f", oid: "live.battery.house_load_w", label: "Last ", digits: "0", unit: " W" },
-			{ type: "f", oid: "operator.diagnostics.surplus_w", label: "Überschuss ", digits: "0", unit: " W", em: true, color: C.surplus },
+			{ type: "f", oid: "operator.diagnostics.surplus_w", label: "Üss ", digits: "0", unit: " W", em: true, color: C.surplus },
 			{ type: "f", oid: "live.price.now_ct_per_kwh", label: "Preis ", digits: "2", unit: " ct" },
 		],
 	},
@@ -327,7 +326,6 @@ for (const c of /** @type {CardDef[]} */ ([
 		rows: [
 			{ type: "f", oid: "addons.immersion_heater.runtime.buffer_temperature_c", label: "Puffer ", digits: "1", unit: "°", em: true, color: C.ih },
 			{ type: "f", oid: "addons.immersion_heater.runtime.commanded_power_w", label: "Jetzt ", digits: "0", unit: " W", color: C.ih },
-			{ type: "f", oid: "addons.immersion_heater.runtime.plan_target_temp_c", label: "Ziel ", digits: "1", unit: "°" },
 		],
 	},
 	{
@@ -335,7 +333,6 @@ for (const c of /** @type {CardDef[]} */ ([
 		rows: [
 			{ type: "f", oid: "live.wallbox.charge_power_w", label: "Jetzt ", digits: "0", unit: " W", em: true, color: C.wb },
 			{ type: "f", oid: "live.wallbox.vehicle_soc_pct", label: "Auto ", digits: "0", unit: " %" },
-			{ type: "f", oid: "addons.wallbox.runtime.allocated_power_w", label: "Plan ", digits: "0", unit: " W" },
 		],
 	},
 	{

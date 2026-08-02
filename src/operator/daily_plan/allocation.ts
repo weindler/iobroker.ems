@@ -368,6 +368,12 @@ export function runAllocation(input: RunAllocationInput): RunAllocationResult {
 		const deadlineSlots = slots
 			.filter((s) => eligibleKeys.has(slotKeyInternal(s)))
 			.sort((a, b) => {
+				// PV-first: Surplus vor Preis — Nachttarife dürfen Comfort-Heizen nicht vor PV ziehen.
+				if (candidate.pvFirst) {
+					const sa = a.remainingPvSurplusPowerW ?? a.availablePvSurplusPowerW ?? 0;
+					const sb = b.remainingPvSurplusPowerW ?? b.availablePvSurplusPowerW ?? 0;
+					return sb - sa || a.slot.startIso.localeCompare(b.slot.startIso);
+				}
 				const pa = a.gridPriceCtPerKwh ?? 9999;
 				const pb = b.gridPriceCtPerKwh ?? 9999;
 				return pa - pb || a.slot.startIso.localeCompare(b.slot.startIso);
@@ -393,6 +399,26 @@ export function runAllocation(input: RunAllocationInput): RunAllocationResult {
 				batOk(candidate),
 			);
 			if (entry) allEntries.push(entry);
+		}
+
+		// Soft-Deadline für PV-first: Rest nach empty_at noch mit späterem PV zuweisen,
+		// statt unallocated zu bleiben wenn Surplus erst nach der Deadline ≥ minPower ist.
+		if (candidate.pvFirst && rem.remainingKwh > 0.001) {
+			const postDeadline = slots.filter((s) => !eligibleKeys.has(slotKeyInternal(s)));
+			for (const slot of postDeadline) {
+				if (rem.remainingKwh <= 0) break;
+				const entry = tryAllocateInSlot(
+					candidate,
+					slot,
+					rem,
+					gridAllowedForSlot(slot) && candidate.gridEligible,
+					gridAddonIdsInSlot(slot, input.mutualExclusions),
+					input.mutualExclusions,
+					null,
+					batOk(candidate),
+				);
+				if (entry) allEntries.push(entry);
+			}
 		}
 	}
 

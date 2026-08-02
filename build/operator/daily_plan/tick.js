@@ -196,6 +196,14 @@ async function runDailyPlanTick(host, forecastPlan) {
             wallbox: false,
         },
     });
+    const pvFromPvEarly = (0, state_util_1.asNum)((await host.getStateAsync("live.pv.power_w"))?.val);
+    const pvFromBatteryEarly = (0, state_util_1.asNum)((await host.getStateAsync("live.battery.pv_ac_power_w"))?.val);
+    const liveSurplusEarly = (0, live_surplus_1.buildOperatorLiveSurplus)({
+        pvPowerW: pvFromPvEarly ?? pvFromBatteryEarly,
+        houseLoadW: (0, state_util_1.asNum)((await host.getStateAsync("live.battery.house_load_w"))?.val),
+        now,
+        timezone,
+    });
     let plan = (0, build_1.buildDailyPlanFromForecast)(now, timezone, modePolicy.mode, forecastPlan, {
         policySnapshot: effectivePolicy,
         energyPriority,
@@ -206,6 +214,7 @@ async function runDailyPlanTick(host, forecastPlan) {
         modePolicy,
         batteryConsumerAccess: consumerAccess,
         batteryDischargeBudgetW: batConsumers.maxDischargePowerW,
+        livePvSurplusW: liveSurplusEarly.surplusW,
     });
     const payload = (0, build_1.dailyPlanRevisionPayload)(plan);
     if (payload !== lastRevisionPayload) {
@@ -239,19 +248,10 @@ async function runDailyPlanTick(host, forecastPlan) {
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
         await (0, state_write_1.setOptionalNumberIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.revision, revision);
-        // Roadmap Block 3.3: Briefing + Live-Überschuss/-Defizit aus Daily Plan + Live-Cache —
-        // kein Rückgriff mehr auf `formatBriefing()`/`planner.surplus_w` des alten Realtime-Planners.
-        const pvFromPv = (0, state_util_1.asNum)((await host.getStateAsync("live.pv.power_w"))?.val);
-        const pvFromBattery = (0, state_util_1.asNum)((await host.getStateAsync("live.battery.pv_ac_power_w"))?.val);
-        const liveSurplus = (0, live_surplus_1.buildOperatorLiveSurplus)({
-            pvPowerW: pvFromPv ?? pvFromBattery,
-            houseLoadW: (0, state_util_1.asNum)((await host.getStateAsync("live.battery.house_load_w"))?.val),
-            now,
-            timezone,
-        });
-        await (0, state_write_1.setOptionalNumberIfChanged)(host, "operator.diagnostics.surplus_w", liveSurplus.surplusW);
-        await (0, state_write_1.setOptionalNumberIfChanged)(host, "operator.diagnostics.deficit_w", liveSurplus.deficitW);
-        await (0, state_write_1.setStateIfChanged)(host, "operator.diagnostics.slot_start_iso", liveSurplus.slotStartIso ?? "");
+        // Roadmap Block 3.3: Briefing + Live-Überschuss/-Defizit (bereits vor Allocation gelesen).
+        await (0, state_write_1.setOptionalNumberIfChanged)(host, "operator.diagnostics.surplus_w", liveSurplusEarly.surplusW);
+        await (0, state_write_1.setOptionalNumberIfChanged)(host, "operator.diagnostics.deficit_w", liveSurplusEarly.deficitW);
+        await (0, state_write_1.setStateIfChanged)(host, "operator.diagnostics.slot_start_iso", liveSurplusEarly.slotStartIso ?? "");
         const aiThinkingRaw = await host.getStateAsync(ensure_states_1.AI_STATES.lastThinkingDe);
         const aiThinkingDe = typeof aiThinkingRaw?.val === "string" && aiThinkingRaw.val.trim() ? aiThinkingRaw.val.trim() : null;
         await (0, state_write_1.setStateIfChanged)(host, "operator.briefing_de", (0, briefing_1.buildOperatorBriefingDe)(plan, now, timezone, {

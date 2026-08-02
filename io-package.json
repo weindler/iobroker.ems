@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.232",
+		"version": "0.1.233",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.233": {
+				"en": "Immersion: no comfort deadline far above planning min; soft PV-first after empty_at; live surplus floors current slot; thermal learning with 0 cycles is degraded. VIS: Jetzt/KI/Demnächst side-by-side, add-on grid. Re-import VIS view.",
+				"de": "Heizstab: keine Comfort-Deadline weit über Pflichtgrenze; Soft-PV nach empty_at; Live-Überschuss hebt aktuellen Slot; Thermal-Learning ohne Zyklen = degraded. VIS: Jetzt/KI/Demnächst nebeneinander, Add-on-Raster. VIS-View neu importieren."
+			},
 			"0.1.232": {
 				"en": "VIS everyday dashboard: Now / Next / vertical add-on cards; diagnostics/reasons only when Global checkbox vis_show_diagnostics is on. Re-import vis/ems-dashboard-view.json.",
 				"de": "VIS-Alltags-Dashboard: Jetzt / Demnächst / senkrechte Add-on-Karten; Diagnose/Begründungen nur mit Global-Haken „VIS Diagnose anzeigen“. vis/ems-dashboard-view.json neu importieren."

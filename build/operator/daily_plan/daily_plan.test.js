@@ -520,6 +520,38 @@ function minimalForecast(overrides = {}) {
         strict_1.default.ok(result.allocations.every((a) => (a.allocatedPowerW ?? 0) >= 1700));
         strict_1.default.ok(result.allocations.every((a) => a.slot.startIso !== slot1Start));
     });
+    (0, node_test_1.it)("pvFirst soft-deadline allocates after empty_at when earlier surplus is too small", () => {
+        const earlyStart = "2026-07-11T10:00:00.000Z";
+        const earlyEnd = "2026-07-11T10:15:00.000Z";
+        const lateStart = "2026-07-11T11:00:00.000Z";
+        const lateEnd = "2026-07-11T11:15:00.000Z";
+        const slots = (0, constraints_2.buildDailyPlanSlots)([
+            { startIso: earlyStart, endIso: earlyEnd },
+            { startIso: lateStart, endIso: lateEnd },
+        ], [
+            forecastSlot(earlyStart, earlyEnd, { pv: 1500, load: 1000 }), // surplus 500 < 1700
+            forecastSlot(lateStart, lateEnd, { pv: 4000, load: 1000 }), // 3000 after deadline
+        ], 11000, 13800);
+        const flex = (0, policy_1.buildAllocationCandidate)(flexContribution(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, "immersion_heater", {
+            gridEligible: false,
+            deadlineIso: "2026-07-11T10:30:00.000Z",
+            details: { requiredEnergyKwh: 0.425, maxPowerW: 1700, minPowerW: 1700, pvFirst: true },
+        }), "balanced", []);
+        strict_1.default.equal(flex.hasDeadline, true);
+        strict_1.default.equal(flex.pvFirst, true);
+        const result = (0, allocation_1.runAllocation)({
+            slots,
+            candidates: [flex],
+            globalMode: "balanced",
+            modeAllowsOptimization: true,
+            gridImportAllowedPolicy: true,
+            mutualExclusions: [],
+            nowMs: NOW.getTime(),
+        });
+        strict_1.default.ok(result.allocations.length >= 1);
+        strict_1.default.ok(result.allocations.every((a) => a.slot.startIso === lateStart));
+        strict_1.default.ok(result.allocations.every((a) => (a.allocatedPowerW ?? 0) >= 1700));
+    });
 });
 (0, node_test_1.describe)("daily plan build", () => {
     (0, node_test_1.it)("builds full plan from forecast", () => {

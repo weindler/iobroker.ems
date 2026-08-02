@@ -5,6 +5,7 @@ const contribution_ids_1 = require("../contribution_ids");
 const time_1 = require("../time");
 const allocation_1 = require("./allocation");
 const constraints_1 = require("./constraints");
+const live_surplus_1 = require("./live_surplus");
 const policy_1 = require("./policy");
 Object.defineProperty(exports, "buildAllocationCandidate", { enumerable: true, get: function () { return policy_1.buildAllocationCandidate; } });
 const slots_1 = require("./slots");
@@ -111,6 +112,7 @@ function buildDailyPlan(input) {
     const dateKey = (0, time_1.localDateKeyInTimezone)(input.now, input.timezone);
     const horizonSlots = (0, slots_1.buildDailyHorizonSlots)(input.now, input.timezone, SLOT_MINUTES);
     const slots = (0, constraints_1.buildDailyPlanSlots)(horizonSlots, input.forecastPlan.slots, input.effectiveMaxGridImportW, input.configuredHouseFuseLimitW);
+    (0, live_surplus_1.applyLiveSurplusFloorToCurrentSlot)(slots, input.now.getTime(), input.livePvSurplusW ?? null);
     const candidates = (0, allocation_1.buildAllocationCandidates)(input.contributions, input.globalMode, input.energyPriority);
     const allocationResult = (0, allocation_1.runAllocation)({
         slots,
@@ -204,6 +206,7 @@ function buildDailyPlanFromForecast(now, timezone, globalMode, forecastPlan, pol
         modePolicy: policy.modePolicy,
         batteryConsumerAccess: policy.batteryConsumerAccess,
         batteryDischargeBudgetW: policy.batteryDischargeBudgetW ?? null,
+        livePvSurplusW: policy.livePvSurplusW ?? null,
     });
 }
 exports.buildDailyPlanFromForecast = buildDailyPlanFromForecast;

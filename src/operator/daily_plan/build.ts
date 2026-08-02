@@ -8,6 +8,7 @@ import {
 	runAllocation,
 } from "./allocation";
 import { buildDailyPlanSlots } from "./constraints";
+import { applyLiveSurplusFloorToCurrentSlot } from "./live_surplus";
 import {
 	buildAllocationCandidate,
 	resolvePolicySnapshotForPlan,
@@ -146,6 +147,7 @@ export function buildDailyPlan(input: DailyPlanBuildInput): DailyPlan {
 		input.effectiveMaxGridImportW,
 		input.configuredHouseFuseLimitW,
 	);
+	applyLiveSurplusFloorToCurrentSlot(slots, input.now.getTime(), input.livePvSurplusW ?? null);
 
 	const candidates = buildAllocationCandidates(
 		input.contributions,
@@ -260,6 +262,7 @@ export function buildDailyPlanFromForecast(
 		modePolicy: { mode: string; allowOptimization: boolean };
 		batteryConsumerAccess?: DailyPlanBuildInput["batteryConsumerAccess"];
 		batteryDischargeBudgetW?: number | null;
+		livePvSurplusW?: number | null;
 	},
 ): DailyPlan {
 	return buildDailyPlan({
@@ -289,6 +292,7 @@ export function buildDailyPlanFromForecast(
 		modePolicy: policy.modePolicy,
 		batteryConsumerAccess: policy.batteryConsumerAccess,
 		batteryDischargeBudgetW: policy.batteryDischargeBudgetW ?? null,
+		livePvSurplusW: policy.livePvSurplusW ?? null,
 	});
 }
 

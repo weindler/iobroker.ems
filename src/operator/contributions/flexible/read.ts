@@ -288,6 +288,7 @@ export async function collectFlexibleContributions(
 	gridForecast: GridSupplyForecast | null,
 ): Promise<CollectedFlexibleContributions> {
 	const config = host.config;
+	const timezone = intentAdminConfigFromAdapter(config).timezone || "Europe/Berlin";
 	const globalModeRaw = await readStr(host, "global_modes.active");
 	const modePolicy = plannerModePolicyFromGlobalMode(globalModeRaw);
 	const globalModeOff = modePolicy.mode === "off";
@@ -564,6 +565,7 @@ export async function collectFlexibleContributions(
 			aiOptimizationAllowed: aiThermal === true,
 			thermalLearning,
 			autoTargetReached: autoTargetReached === true,
+			timezone,
 		},
 		airConditioning: {
 			now,

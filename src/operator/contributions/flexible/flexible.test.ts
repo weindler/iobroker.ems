@@ -711,7 +711,8 @@ describe("immersion heater contributions", () => {
 		assert.equal(flexible.details.coolingRateCPerHAvg, 1.1);
 	});
 
-	it("skips learning deadline for comfort reheat clearly above planning min", () => {
+	it("skips learning deadline for comfort reheat clearly above planning min when night already covered", () => {
+		// empty_at weit nach nächstem Morgen → keine Nachtbrücke; Buf klar über Min → keine Near-Floor-Deadline
 		const [, flexible] = buildImmersionHeaterContributions(
 			immersionInput({
 				bufferTempC: 52, // > planningMin 48 + 2
@@ -731,6 +732,45 @@ describe("immersion heater contributions", () => {
 		);
 		assert.equal(flexible.enabled, true);
 		assert.equal(flexible.deadlineIso, null);
+		assert.equal(flexible.details.nightBridgeActive, false);
+	});
+
+	it("night bridge raises target and sets deadline when empty_at is before next morning", () => {
+		const now = new Date("2026-08-04T12:00:00.000Z"); // 14:00 CEST
+		const [, flexible] = buildImmersionHeaterContributions(
+			immersionInput({
+				now,
+				bufferTempC: 47,
+				timezone: "Europe/Berlin",
+				config: immersionDeviceConfigFromAdapter({
+					ih_stage_count: 1,
+					ih_stage_1_set_state: "relay.0.heater",
+					ih_stage_1_nominal_power_w: 2000,
+					ih_buffer_temp_c_target: "sensor.0.temp",
+					ih_buffer_temp_c_enabled: true,
+					ih_planning_min_temp_c: 44,
+					ih_planning_max_temp_c: 63,
+				}),
+				thermalLearning: {
+					status: "valid",
+					health: "ok",
+					samples: 12,
+					coolingRateCPerHAvg: 1.0,
+					coolingConstantPerH: 0.04,
+					coolingAsymptoteC: 18,
+					estimatedRemainingHours: 3.5,
+					estimatedEmptyAt: "2026-08-04T18:26:00.000Z", // 20:26 CEST
+					currentDayTypeRuntimeHoursMedian: 12,
+					reasonDe: "belastbares Modell",
+				},
+			}),
+		);
+		assert.equal(flexible.enabled, true);
+		assert.equal(flexible.deadlineIso, "2026-08-04T18:26:00.000Z");
+		assert.equal(flexible.details.nightBridgeActive, true);
+		assert.ok((flexible.details.targetTempC as number) > 51.6);
+		assert.ok((flexible.details.requiredEnergyKwh as number) > 1);
+		assert.match(flexible.reasonDe, /Nachtbrücke/);
 	});
 
 	it("does not set a deadline when the flexible contribution is disabled anyway", () => {

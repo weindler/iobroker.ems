@@ -597,7 +597,8 @@ function acInput(overrides = {}) {
         strict_1.default.equal(flexible.details.estimatedEmptyAt, "2026-07-26T14:00:00.000Z");
         strict_1.default.equal(flexible.details.coolingRateCPerHAvg, 1.1);
     });
-    (0, node_test_1.it)("skips learning deadline for comfort reheat clearly above planning min", () => {
+    (0, node_test_1.it)("skips learning deadline for comfort reheat clearly above planning min when night already covered", () => {
+        // empty_at weit nach nächstem Morgen → keine Nachtbrücke; Buf klar über Min → keine Near-Floor-Deadline
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
             bufferTempC: 52, // > planningMin 48 + 2
             thermalLearning: {
@@ -615,6 +616,42 @@ function acInput(overrides = {}) {
         }));
         strict_1.default.equal(flexible.enabled, true);
         strict_1.default.equal(flexible.deadlineIso, null);
+        strict_1.default.equal(flexible.details.nightBridgeActive, false);
+    });
+    (0, node_test_1.it)("night bridge raises target and sets deadline when empty_at is before next morning", () => {
+        const now = new Date("2026-08-04T12:00:00.000Z"); // 14:00 CEST
+        const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
+            now,
+            bufferTempC: 47,
+            timezone: "Europe/Berlin",
+            config: (0, device_config_1.immersionDeviceConfigFromAdapter)({
+                ih_stage_count: 1,
+                ih_stage_1_set_state: "relay.0.heater",
+                ih_stage_1_nominal_power_w: 2000,
+                ih_buffer_temp_c_target: "sensor.0.temp",
+                ih_buffer_temp_c_enabled: true,
+                ih_planning_min_temp_c: 44,
+                ih_planning_max_temp_c: 63,
+            }),
+            thermalLearning: {
+                status: "valid",
+                health: "ok",
+                samples: 12,
+                coolingRateCPerHAvg: 1.0,
+                coolingConstantPerH: 0.04,
+                coolingAsymptoteC: 18,
+                estimatedRemainingHours: 3.5,
+                estimatedEmptyAt: "2026-08-04T18:26:00.000Z", // 20:26 CEST
+                currentDayTypeRuntimeHoursMedian: 12,
+                reasonDe: "belastbares Modell",
+            },
+        }));
+        strict_1.default.equal(flexible.enabled, true);
+        strict_1.default.equal(flexible.deadlineIso, "2026-08-04T18:26:00.000Z");
+        strict_1.default.equal(flexible.details.nightBridgeActive, true);
+        strict_1.default.ok(flexible.details.targetTempC > 51.6);
+        strict_1.default.ok(flexible.details.requiredEnergyKwh > 1);
+        strict_1.default.match(flexible.reasonDe, /Nachtbrücke/);
     });
     (0, node_test_1.it)("does not set a deadline when the flexible contribution is disabled anyway", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({

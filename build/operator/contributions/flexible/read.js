@@ -221,6 +221,7 @@ async function readBatteryChargeLogicDecision(host, now, socPct, governanceEnabl
 }
 async function collectFlexibleContributions(host, now, gridForecast) {
     const config = host.config;
+    const timezone = (0, config_5.intentAdminConfigFromAdapter)(config).timezone || "Europe/Berlin";
     const globalModeRaw = await readStr(host, "global_modes.active");
     const modePolicy = (0, mode_policy_1.plannerModePolicyFromGlobalMode)(globalModeRaw);
     const globalModeOff = modePolicy.mode === "off";
@@ -420,6 +421,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             aiOptimizationAllowed: aiThermal === true,
             thermalLearning,
             autoTargetReached: autoTargetReached === true,
+            timezone,
         },
         airConditioning: {
             now,

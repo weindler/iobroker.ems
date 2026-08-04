@@ -26,3 +26,4 @@ alwaysApply: false
 
 - Klima: echte Startzeit statt „ab jetzt“ (braucht Plan-/Learning-Start, nicht nur Stunden)
 - Optional: Batterie Rest-kWh / Ziel-SOC analog Wallbox in Demnächst-Meta
+- Optional VIS: Heizstab „Nachtbrücke aktiv / Ziel aus Learning“ aus Contribution-Details

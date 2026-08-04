@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.238",
+		"version": "0.1.239",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.239": {
+				"en": "Immersion night bridge: thermal learning empty_at before next morning raises PV-first target + deadline so daytime surplus preheats and night battery/grid heat is avoided.",
+				"de": "Heizstab-Nachtbrücke: reicht Thermal-Learning empty_at nicht bis zum Morgen, steigt das PV-first-Ziel mit Deadline — Tages-Überschuss vorheizen statt nachts aus Batterie/Netz."
+			},
 			"0.1.238": {
 				"en": "VIS Demnächst: climate shows läuft/geschätzt (not jetzt); Wallbox omits current EVCC mode Off on planned slots. Re-import VIS.",
 				"de": "VIS Demnächst: Klima läuft/geschätzt (nicht jetzt); Wallbox ohne aktuellen EVCC-Modus Aus bei geplanten Fenstern. VIS neu importieren."

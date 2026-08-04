@@ -11,6 +11,12 @@ alwaysApply: true
 - Vollständig ohne KI funktionsfähig und sicher.
 - KI nur als optionale Optimierung von Forecast Plan und Daily Plan.
 
+## Produktziel (verbindlich)
+
+**Ein Plan:** PV × Preise (ganzer Tag) × Hauslast × Batterie/Klima/Heizstab/Wallbox gemeinsam.  
+Siehe `.cursor/rules/ems-light-one-plan.mdc` und `docs/EMS_LIGHT_ONE_PLAN.md`.  
+Keine Add-on-Tunnel, keine Sommer-/Winter-Schubladen.
+
 ## Global Modes
 
 Nur: `off`, `eco`, `balanced`, `comfort`, `forced`. Keine weiteren konkurrierenden Modi.
@@ -18,7 +24,7 @@ Nur: `off`, `eco`, `balanced`, `comfort`, `forced`. Keine weiteren konkurrierend
 ## Gemeinsame Planung
 
 - Ein General Operator (`src/operator/`).
-- Forecast Plan und Daily Plan betrachten alle freigegebenen Add-ons gemeinsam.
+- Forecast Plan und Daily Plan = **eine** Bilanz für alle freigegebenen Add-ons — nicht vier Sonderlogiken.
 - Keine neuen isolierten Add-on-Sonderplanner.
 - Bestehende Sonderlogik schrittweise über Plan Contributions und Allocation integrieren.
 - Funktionierende Module nicht grundlos neu schreiben.
@@ -49,6 +55,8 @@ Ensure-States, `setStateIfChanged`, konfigurierbare Mappings, Admin+i18n, Releas
 
 ## Entwicklungsführung
 
-Code = Ist-Stand. Masterplan + `docs/EMS_LIGHT_OPERATOR_FOUNDATION.md` = Zielbild.
+Code = Ist-Stand. **Zielbild Produkt:** `docs/EMS_LIGHT_ONE_PLAN.md`.  
+Technische Alt-Doku: `docs/_archive/`.
 
-**Verbindliche Roadmap:** `.cursor/rules/ems-light-roadmap.mdc` + `docs/EMS_LIGHT_ROADMAP.md` — Phase 2: 7+9 erledigt, 8 gestrichen, aktuell **10**. Kein Block-Skip. Keine Scope-Erweiterung ohne Auftrag.
+**Roadmap:** Phase 2 historisch erledigt — siehe `docs/_archive/EMS_LIGHT_ROADMAP.md`.  
+Neue Arbeit nur mit Nutzerauftrag und **gegen One Plan**, kein Add-on-Flickwerk.

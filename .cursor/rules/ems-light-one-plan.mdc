@@ -1,0 +1,42 @@
+---
+description: Verbindliches EMS-Denken — ein gemeinsamer Tagesplan (PV×Preise×Last×alle Verbraucher)
+alwaysApply: true
+---
+
+# EMS-Light — Ein Plan (verbindlich)
+
+Diese Regel **überstimmt** Add-on-Tunnel, Sommer/Winter-Schubladen und „Beispiel = Scope“.
+Detail: `docs/EMS_LIGHT_ONE_PLAN.md`. Technische Alt-Docs unter `docs/_archive/` sind Referenz, nicht Produktziel.
+
+## Ein Plan — nicht vier Logiken
+
+Es gibt **keine** getrennte Heizstab-/Klima-/Batterie-/Wallbox-Intelligenz und **keine** Sommer-/Winterlogik.
+
+Eine Entscheidung aus **gleichzeitig**:
+
+1. **PV-Ertrag** — Tagessumme inkl. Bias, Stundenprofil, Erzeugungsstart/-ende, Wetterkippen
+2. **Strompreise** — **ganzer Tag** (alle Fenster); Beispiele wie „0–5 Uhr“ sind nie der Scope
+3. **Hauslast** — gelernt (Unsicherheit mittags/kochen einrechnen)
+4. **Alle flexiblen Verbraucher gemeinsam** — Batterie, Klima, Heizstab, Wallbox
+
+```text
+PV × Preise × Hauslast × (Batterie + Klima + Heizstab + Wallbox) → ein Tagesplan → Nachplanen
+```
+
+## Vorplanen, nicht abends flicken
+
+- Gute PV-/günstige Fenster: Verbraucher **vorplanen** (z. B. Heizstab hoch, solange Surplus da ist).
+- Später kein Surplus / teurer Strom / Batterie leeren für Komfort = **Planversagen früher am Tag**.
+- „Jetzt Heizstab aus weil Üss=0“ ist **nicht** die Lösung für fehlendes Nachmittags-Vorheizen.
+
+## Agent-Verhalten (hart)
+
+- Beispiele des Nutzers **nie** zur Regel verengen.
+- Nicht Add-on für Add-on „fixen“ und das als EMS verkaufen.
+- Nicht „Winterlogik“ / „Sommerlogik“ benennen oder bauen — nur Lagedaten.
+- KI optional **nach** dem deterministischen gemeinsamen Plan — nie Ersatz dafür.
+- „Ich halte das fest“ ohne danach so zu planen/programmieren = verboten.
+
+## Programmieren
+
+Neue Planungscode-Arbeit zielt auf die **gemeinsame Bilanz-/Allocation-Schicht**, nicht auf isolierte Add-on-Sonderpfade.

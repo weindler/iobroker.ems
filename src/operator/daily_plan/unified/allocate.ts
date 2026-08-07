@@ -38,6 +38,8 @@ function vehiclePresent(input: UnifiedDayPlannerInput, slotStartIso: string): bo
 	if (!wb.presenceHardConstraint) {
 		return wb.connectedNow;
 	}
+	// Geplante Presence-Fenster (Future Presence noch unbekannt).
+	// Live-Disconnect: Caller setzt Fenster auf unavailable / leer.
 	for (const w of wb.presenceWindows) {
 		if (w.available && inWindow(slotStartIso, w.startIso, w.endIso)) return true;
 	}
@@ -530,39 +532,97 @@ function buildBatteryTrajectory(
 	return traj;
 }
 
-export function allocateUnifiedDayPlan(input: UnifiedDayPlannerInput): UnifiedDayPlan {
-	const slots = buildSlots(input);
+export type AllocateUnifiedOptions = {
+	/** Fortlaufende Generation bei Replan (gleicher Tag). */
+	generation?: number;
+	extraReasonCodes?: string[];
+	/**
+	 * Vorheriger Plan: Allokationen mit slot.endIso <= now bleiben unverändert
+	 * (Vergangenheit wird nicht umgeplant).
+	 */
+	previousPlan?: UnifiedDayPlan | null;
+};
+
+/** Nur Slots mit end > now — Rest-des-Tages-Horizon. */
+export function trimUnifiedInputToRemainingHorizon(
+	input: UnifiedDayPlannerInput,
+	nowMs: number,
+): UnifiedDayPlannerInput {
+	const keep = (startIso: string, endIso: string): boolean => {
+		const end = Date.parse(endIso);
+		return Number.isFinite(end) && end > nowMs;
+	};
+	const slots = input.time.slots.filter((s) => keep(s.startIso, s.endIso));
+	const slotKeys = new Set(slots.map((s) => s.startIso));
+	return {
+		...input,
+		time: {
+			...input.time,
+			slots,
+			horizonStartIso: slots[0]?.startIso ?? input.time.horizonStartIso,
+			horizonEndIso: slots[slots.length - 1]?.endIso ?? input.time.horizonEndIso,
+		},
+		pv: { ...input.pv, slots: input.pv.slots.filter((s) => slotKeys.has(s.slot.startIso)) },
+		houseLoad: {
+			...input.houseLoad,
+			slots: input.houseLoad.slots.filter((s) => slotKeys.has(s.slot.startIso)),
+		},
+		prices: {
+			...input.prices,
+			slots: input.prices.slots.filter((s) => slotKeys.has(s.slot.startIso)),
+		},
+	};
+}
+
+export function allocateUnifiedDayPlan(
+	input: UnifiedDayPlannerInput,
+	opts?: AllocateUnifiedOptions,
+): UnifiedDayPlan {
+	const nowMs = Date.parse(input.time.nowIso);
+	const trimmed =
+		Number.isFinite(nowMs) ? trimUnifiedInputToRemainingHorizon(input, nowMs) : input;
+	const pastAllocations =
+		opts?.previousPlan && Number.isFinite(nowMs)
+			? opts.previousPlan.allocations.filter((a) => {
+					const end = Date.parse(a.slot.endIso);
+					return Number.isFinite(end) && end <= nowMs;
+				})
+			: [];
+
+	const slots = buildSlots(trimmed);
 	const allocations: UnifiedAllocationCell[] = [];
 	const goals: UnifiedGoalStatus[] = [];
-	const constraints: UnifiedConstraint[] = deriveUnifiedHardConstraints(input);
-	const reasonCodes: string[] = [REASON.HOUSE_LOAD_REQUIRED];
+	const constraints: UnifiedConstraint[] = deriveUnifiedHardConstraints(trimmed);
+	const reasonCodes: string[] = [REASON.HOUSE_LOAD_REQUIRED, ...(opts?.extraReasonCodes ?? [])];
 
-	if (input.pv.uncertainty.status === "degraded" || input.pv.uncertainty.status === "missing") {
+	if (trimmed.pv.uncertainty.status === "degraded" || trimmed.pv.uncertainty.status === "missing") {
 		reasonCodes.push(REASON.PV_FORECAST_DEGRADED);
 	}
-	if (input.houseLoad.uncertainty.status === "degraded" || input.houseLoad.uncertainty.status === "missing") {
+	if (
+		trimmed.houseLoad.uncertainty.status === "degraded" ||
+		trimmed.houseLoad.uncertainty.status === "missing"
+	) {
 		reasonCodes.push(REASON.HOUSE_LOAD_DEGRADED);
 	}
-	if (input.prices.slots.some((s) => s.exportCtPerKwh === null)) {
+	if (trimmed.prices.slots.some((s) => s.exportCtPerKwh === null)) {
 		reasonCodes.push(REASON.EXPORT_TARIFF_UNKNOWN);
 	}
-	if (input.wallbox) {
-		if (!input.wallbox.connectedNow || input.wallbox.presenceWindows.length === 0) {
+	if (trimmed.wallbox) {
+		if (!trimmed.wallbox.connectedNow || trimmed.wallbox.presenceWindows.length === 0) {
 			reasonCodes.push(REASON.VEHICLE_PRESENCE_UNKNOWN);
-		} else if (input.wallbox.presenceWindows.length === 1) {
-			// nur aktueller Slot — Zukunft unknown
+		} else if (trimmed.wallbox.presenceWindows.length === 1) {
 			reasonCodes.push(REASON.VEHICLE_PRESENCE_UNKNOWN);
 		}
 	}
-	if (input.battery.socPct === null || input.battery.usableCapacityKwh === null) {
+	if (trimmed.battery.socPct === null || trimmed.battery.usableCapacityKwh === null) {
 		reasonCodes.push(REASON.BATTERY_TELEMETRY_MISSING);
 	}
 
-	const capacity = input.battery.usableCapacityKwh;
-	const socPct = input.battery.socPct;
+	const capacity = trimmed.battery.usableCapacityKwh;
+	const socPct = trimmed.battery.socPct;
 	const batteryKnown = capacity !== null && capacity > 0 && socPct !== null;
 	let socKwh = batteryKnown ? (socPct / 100) * capacity : 0;
-	const reservePct = input.battery.reserveSocPct ?? input.battery.minSocPct ?? 0;
+	const reservePct = trimmed.battery.reserveSocPct ?? trimmed.battery.minSocPct ?? 0;
 	const reserveKwh = batteryKnown ? capacity * (reservePct / 100) : 0;
 
 	// Phase A: Hauslast bereits in surplusKwh verrechnet
@@ -570,13 +630,13 @@ export function allocateUnifiedDayPlan(input: UnifiedDayPlannerInput): UnifiedDa
 	const pvTotal = slots.reduce((a, s) => a + s.pvKwh, 0);
 
 	// Phase B: Vehicle
-	allocateVehicle(input, slots, allocations, goals);
+	allocateVehicle(trimmed, slots, allocations, goals);
 
 	// Thermal reserve before battery fill (Phase C ordering)
-	const thermalNeed = input.thermal?.headroomEnergyKwh ?? 0;
+	const thermalNeed = trimmed.thermal?.headroomEnergyKwh ?? 0;
 	const surplusAfterVehicle = slots.reduce((a, s) => a + s.remainPvKwh, 0);
 	const batRoom = batteryKnown
-		? Math.max(0, capacity * ((input.battery.maxSocPct ?? 100) / 100) - socKwh)
+		? Math.max(0, capacity * ((trimmed.battery.maxSocPct ?? 100) / 100) - socKwh)
 		: 0;
 	const batNearFull = batteryKnown && socKwh >= capacity * 0.85;
 	const thermalReserve = Math.min(
@@ -587,7 +647,7 @@ export function allocateUnifiedDayPlan(input: UnifiedDayPlannerInput): UnifiedDa
 	// Phase D-ish: Battery charge only with known SOC/capacity (null ≠ 0 %)
 	if (batteryKnown) {
 		socKwh = allocateBatteryCharge(
-			input,
+			trimmed,
 			slots,
 			allocations,
 			socKwh,
@@ -598,10 +658,10 @@ export function allocateUnifiedDayPlan(input: UnifiedDayPlannerInput): UnifiedDa
 	}
 
 	// Phase C: Thermal from remaining PV (never battery at PV≈0)
-	allocateThermal(input, slots, allocations, goals);
+	allocateThermal(trimmed, slots, allocations, goals);
 
-	allocateClimate(input, slots, allocations);
-	allocateOtherFlex(input, slots, allocations);
+	allocateClimate(trimmed, slots, allocations);
+	allocateOtherFlex(trimmed, slots, allocations);
 
 	// Phase F: Export = remaining PV
 	let exportKwh = slots.reduce((a, s) => a + s.remainPvKwh, 0);
@@ -629,17 +689,17 @@ export function allocateUnifiedDayPlan(input: UnifiedDayPlannerInput): UnifiedDa
 	if (exportValueUnknown) exportValueCt = null;
 
 	const traj = batteryKnown
-		? buildBatteryTrajectory(input, slots, allocations, (socPct / 100) * capacity, capacity)
+		? buildBatteryTrajectory(trimmed, slots, allocations, (socPct / 100) * capacity, capacity)
 		: [];
 
-	const confPct = input.pv.uncertainty.confidencePct;
+	const confPct = trimmed.pv.uncertainty.confidencePct;
 	const degraded =
-		input.pv.uncertainty.status !== "valid" ||
-		input.houseLoad.uncertainty.status === "missing" ||
+		trimmed.pv.uncertainty.status !== "valid" ||
+		trimmed.houseLoad.uncertainty.status === "missing" ||
 		!batteryKnown;
 	const quality = operatorQuality(
 		degraded
-			? input.pv.uncertainty.status === "missing"
+			? trimmed.pv.uncertainty.status === "missing"
 				? "missing"
 				: "degraded"
 			: "valid",
@@ -647,15 +707,19 @@ export function allocateUnifiedDayPlan(input: UnifiedDayPlannerInput): UnifiedDa
 		confPct,
 	);
 
+	const mergedAllocations = [...pastAllocations, ...allocations].sort((a, b) =>
+		a.slot.startIso.localeCompare(b.slot.startIso),
+	);
+
 	return {
 		schemaVersion: 1,
-		planId: `unified-${input.time.nowIso}`,
-		generation: 1,
-		inputRevision: input.contributionRevision ?? 1,
-		createdAtIso: input.time.nowIso,
-		timezone: input.time.timezone,
-		horizonStartIso: input.time.horizonStartIso,
-		horizonEndIso: input.time.horizonEndIso,
+		planId: `unified-${trimmed.time.nowIso}`,
+		generation: opts?.generation ?? 1,
+		inputRevision: trimmed.contributionRevision ?? 1,
+		createdAtIso: trimmed.time.nowIso,
+		timezone: trimmed.time.timezone,
+		horizonStartIso: trimmed.time.horizonStartIso,
+		horizonEndIso: trimmed.time.horizonEndIso,
 		slotMinutes: 15,
 		expectedPvEnergyKwh: round3(pvTotal),
 		expectedHouseLoadEnergyKwh: round3(houseTotal),
@@ -664,7 +728,7 @@ export function allocateUnifiedDayPlan(input: UnifiedDayPlannerInput): UnifiedDa
 		// Exportvergütung unknown → nicht als 0-€-Gutschrift erfinden
 		expectedCostCt: round3(exportValueCt === null ? importCostCt : importCostCt - exportValueCt),
 		batteryTrajectory: traj,
-		allocations: allocations.sort((a, b) => a.slot.startIso.localeCompare(b.slot.startIso)),
+		allocations: mergedAllocations,
 		goalStatuses: goals,
 		constraints,
 		reasonCodes: [...new Set(reasonCodes)],

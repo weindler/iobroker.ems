@@ -93,6 +93,10 @@ export type UnifiedForecastContext = {
 	observedPvPowerW?: number | null;
 	observedHouseLoadPowerW?: number | null;
 	contributionRevision?: number | null;
+	/** Vorherige PV-Tageserwartung (für Forecast-Replan-Vergleich). */
+	previousExpectedDayEnergyKwh?: number | null;
+	/** Bereits realisierte PV heute (kWh), falls bekannt. */
+	realizedPvKwhToday?: number | null;
 };
 
 /**
@@ -316,7 +320,7 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 		pv: {
 			slots: pvSlots,
 			expectedDayEnergyKwh: correctedToday,
-			previousExpectedDayEnergyKwh: null,
+			previousExpectedDayEnergyKwh: ctx.previousExpectedDayEnergyKwh ?? null,
 			// ForecastPlan-Slots / Day-Energy stammen aus korrigierten Tages-kWh (pv_bias).
 			biasCorrected: true,
 			biasPct,

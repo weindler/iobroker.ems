@@ -53,6 +53,9 @@ const authority_1 = require("./unified/authority");
 const dispatch_bridge_1 = require("./unified/dispatch_bridge");
 const from_forecast_context_1 = require("./unified/from_forecast_context");
 const cadence_1 = require("./unified/cadence");
+const materiality_1 = require("./unified/materiality");
+const replan_failure_1 = require("./unified/replan_failure");
+const trigger_digest_1 = require("../../ai/trigger_digest");
 const daily_plan_1 = require("../../addons/immersion_heater/runtime/daily_plan");
 const daily_plan_2 = require("../../addons/air_conditioning/runtime/daily_plan");
 const limits_1 = require("../../addons/battery/core/limits");
@@ -62,12 +65,22 @@ let revision = 0;
 let lastCadenceDigest = "";
 let unifiedGeneration = 0;
 let lastUnifiedPlanId = "";
+let lastUnifiedPlan = null;
+let lastBaseline = null;
+let lastReplanAtMs = null;
+let replanCountToday = 0;
+let replanCountDate = "";
 function resetDailyPlanRevisionForTest() {
     lastRevisionPayload = "";
     revision = 0;
     lastCadenceDigest = "";
     unifiedGeneration = 0;
     lastUnifiedPlanId = "";
+    lastUnifiedPlan = null;
+    lastBaseline = null;
+    lastReplanAtMs = null;
+    replanCountToday = 0;
+    replanCountDate = "";
 }
 exports.resetDailyPlanRevisionForTest = resetDailyPlanRevisionForTest;
 function dailyPlanRevisionForTest() {
@@ -250,8 +263,7 @@ async function runDailyPlanTick(host, forecastPlan) {
     }
     plan.revision = revision;
     const cadenceDigest = (0, cadence_1.unifiedPlanCadenceDigest)(plan);
-    const cadenceChanged = cadenceDigest !== lastCadenceDigest;
-    // Live-Diagnose darf jeden Tick — Tagesplan/Unified nur bei Cadence-Änderung.
+    // Live-Diagnose darf jeden Tick — Tagesplan/Unified nur bei Material-Replan.
     try {
         await (0, state_write_1.setOptionalNumberIfChanged)(host, "operator.diagnostics.surplus_w", liveSurplusEarly.surplusW);
         await (0, state_write_1.setOptionalNumberIfChanged)(host, "operator.diagnostics.deficit_w", liveSurplusEarly.deficitW);
@@ -260,11 +272,69 @@ async function runDailyPlanTick(host, forecastPlan) {
     catch {
         // best-effort
     }
-    if (!cadenceChanged) {
-        // Kein neuer Tages-/Unified-Plan: bestehende States/Slices unverändert lassen.
+    const bufferSt = await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.bufferTemperatureC);
+    const batSocSt = await host.getStateAsync(ensure_states_2.BAT.telemetry.socPct);
+    const batCap = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_2.BAT.telemetry.capacityEffectiveKwh))?.val);
+    const hw = (0, limits_1.hardwareLimitsFromConfig)(host.config);
+    const roomTemps = {};
+    for (let u = 1; u <= constants_1.AC_UNIT_COUNT; u++) {
+        roomTemps[u] = (0, state_util_1.asNum)((await host.getStateAsync((0, ensure_states_3.acUnitRuntimeStates)(u).roomTempC))?.val);
+    }
+    const realizedPv = (0, state_util_1.asNum)((await host.getStateAsync("learning.energy_daily.pv_kwh"))?.val);
+    const wbConnectedRaw = await host.getStateAsync(ensure_evcc_states_1.WALLBOX_EVCC_STATES.connected);
+    const wbConnected = wbConnectedRaw?.val === true ? true : wbConnectedRaw?.val === false ? false : null;
+    const probeInput = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)({
+        now,
+        timezone,
+        globalMode: plan.globalMode,
+        forecastPlan,
+        bufferTempC: (0, state_util_1.asNum)(bufferSt?.val),
+        batterySocPct: (0, state_util_1.asNum)(batSocSt?.val),
+        batteryCapacityKwh: batCap,
+        batteryMaxChargePowerW: hw.maxChargeW,
+        batteryMaxDischargePowerW: hw.maxDischargeW,
+        batteryMinSocPct: hw.minSocPct,
+        batteryMaxSocPct: hw.maxSocPct,
+        roomTemps,
+        observedPvPowerW: (0, state_util_1.asNum)((await host.getStateAsync("live.battery.pv_ac_power_w"))?.val),
+        observedHouseLoadPowerW: (0, state_util_1.asNum)((await host.getStateAsync("live.battery.house_load_w"))?.val),
+        contributionRevision: plan.revision,
+        previousExpectedDayEnergyKwh: lastBaseline?.expectedPvDayKwh ?? null,
+        realizedPvKwhToday: realizedPv,
+    });
+    if (wbConnected !== null && probeInput.wallbox) {
+        probeInput.wallbox = {
+            ...probeInput.wallbox,
+            connectedNow: wbConnected,
+            // Live-Disconnect: geplante Fenster entfallen (kein Future-Presence-Hardcode).
+            ...(wbConnected === false ? { presenceWindows: [] } : {}),
+        };
+    }
+    const actualSample = {
+        date: plan.date,
+        nowMs: now.getTime(),
+        forecastPvDayKwh: probeInput.pv.expectedDayEnergyKwh,
+        realizedPvKwh: realizedPv,
+        forecastHouseLoadDayKwh: probeInput.houseLoad.expectedDayEnergyKwh,
+        batterySocPct: probeInput.battery.socPct,
+        thermalHeadroomKwh: probeInput.thermal?.headroomEnergyKwh ?? null,
+        bufferTempC: probeInput.thermal?.bufferTempC ?? null,
+        acMandatoryAny: probeInput.climate?.units.some((u) => u.mandatoryComfort) === true,
+        vehicleConnected: probeInput.wallbox?.connectedNow ?? wbConnected,
+        vehicleRequiredEnergyKwh: probeInput.wallbox?.requiredEnergyKwh ?? null,
+        vehicleDeadlineIso: probeInput.wallbox?.deadlineIso ?? null,
+        vehicleTargetSocPct: probeInput.wallbox?.targetSocPct ?? null,
+        priceMedianCt: (0, trigger_digest_1.medianGridPriceCtPerKwh)(plan),
+        priceStructureDigest: (0, trigger_digest_1.priceStructureDigestFromPlan)(plan),
+        thermalBlocked: probeInput.thermal?.uncertainty.status === "blocked",
+        cadenceDigest,
+    };
+    const decision = (0, materiality_1.evaluateMaterialReplan)(lastBaseline, actualSample, {
+        lastReplanAtMs,
+    });
+    if (!decision.shouldReplan) {
         return plan;
     }
-    lastCadenceDigest = cadenceDigest;
     // Roadmap Block 6: vorhandene KI-Präferenzen → Plan B auf Allocation, wenn messbar besser.
     try {
         const { maybeApplyAiWritebackOnDailyPlan } = await Promise.resolve().then(() => __importStar(require("../../ai/writeback/index.js")));
@@ -281,21 +351,13 @@ async function runDailyPlanTick(host, forecastPlan) {
          */
         let ihAcReasonSuffix = "";
         try {
-            const bufferSt = await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.bufferTemperatureC);
-            const batSocSt = await host.getStateAsync(ensure_states_2.BAT.telemetry.socPct);
-            const batCap = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_2.BAT.telemetry.capacityEffectiveKwh))?.val);
-            const hw = (0, limits_1.hardwareLimitsFromConfig)(host.config);
-            const roomTemps = {};
-            for (let u = 1; u <= constants_1.AC_UNIT_COUNT; u++) {
-                roomTemps[u] = (0, state_util_1.asNum)((await host.getStateAsync((0, ensure_states_3.acUnitRuntimeStates)(u).roomTempC))?.val);
-            }
             const bufferTs = typeof bufferSt?.ts === "number" && Number.isFinite(bufferSt.ts)
                 ? new Date(bufferSt.ts).toISOString()
                 : null;
             const batSocTs = typeof batSocSt?.ts === "number" && Number.isFinite(batSocSt.ts)
                 ? new Date(batSocSt.ts).toISOString()
                 : null;
-            const unifiedInput = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)({
+            const unifiedInputFinal = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)({
                 now,
                 timezone,
                 globalMode: plan.globalMode,
@@ -313,25 +375,102 @@ async function runDailyPlanTick(host, forecastPlan) {
                 observedPvPowerW: (0, state_util_1.asNum)((await host.getStateAsync("live.battery.pv_ac_power_w"))?.val),
                 observedHouseLoadPowerW: (0, state_util_1.asNum)((await host.getStateAsync("live.battery.house_load_w"))?.val),
                 contributionRevision: plan.revision,
+                previousExpectedDayEnergyKwh: lastBaseline?.expectedPvDayKwh ?? null,
+                realizedPvKwhToday: realizedPv,
             });
-            const unifiedPlan = (0, allocate_1.allocateUnifiedDayPlan)(unifiedInput);
+            if (wbConnected !== null && unifiedInputFinal.wallbox) {
+                unifiedInputFinal.wallbox = {
+                    ...unifiedInputFinal.wallbox,
+                    connectedNow: wbConnected,
+                    ...(wbConnected === false
+                        ? { presenceWindows: [] }
+                        : {}),
+                };
+            }
+            const nextGen = (lastUnifiedPlan?.generation ?? 0) + 1;
+            const unifiedPlan = (0, allocate_1.allocateUnifiedDayPlan)(unifiedInputFinal, {
+                generation: nextGen,
+                extraReasonCodes: decision.reasons,
+                previousPlan: lastUnifiedPlan,
+            });
             unifiedGeneration += 1;
             lastUnifiedPlanId = unifiedPlan.planId;
+            lastUnifiedPlan = unifiedPlan;
+            lastReplanAtMs = now.getTime();
+            lastCadenceDigest = cadenceDigest;
+            if (replanCountDate !== plan.date) {
+                replanCountDate = plan.date;
+                replanCountToday = 0;
+            }
+            replanCountToday += 1;
+            lastBaseline = {
+                date: plan.date,
+                planId: unifiedPlan.planId,
+                generation: unifiedPlan.generation,
+                createdAtMs: now.getTime(),
+                expectedPvDayKwh: unifiedInputFinal.pv.expectedDayEnergyKwh,
+                realizedPvKwhAtPlan: realizedPv,
+                expectedHouseLoadDayKwh: unifiedInputFinal.houseLoad.expectedDayEnergyKwh,
+                batterySocPct: unifiedInputFinal.battery.socPct,
+                thermalHeadroomKwh: unifiedInputFinal.thermal?.headroomEnergyKwh ?? null,
+                bufferTempC: unifiedInputFinal.thermal?.bufferTempC ?? null,
+                acMandatoryAny: unifiedInputFinal.climate?.units.some((u) => u.mandatoryComfort) === true,
+                vehicleConnected: unifiedInputFinal.wallbox?.connectedNow ?? null,
+                vehicleRequiredEnergyKwh: unifiedInputFinal.wallbox?.requiredEnergyKwh ?? null,
+                vehicleDeadlineIso: unifiedInputFinal.wallbox?.deadlineIso ?? null,
+                vehicleTargetSocPct: unifiedInputFinal.wallbox?.targetSocPct ?? null,
+                priceMedianCt: (0, trigger_digest_1.medianGridPriceCtPerKwh)(plan),
+                priceStructureDigest: (0, trigger_digest_1.priceStructureDigestFromPlan)(plan),
+                cadenceDigest,
+            };
             const pub = (0, dispatch_bridge_1.buildUnifiedIhAcDispatchPublish)(unifiedPlan);
             plan = (0, authority_1.applyUnifiedIhAcAuthority)(plan, pub.immersionEntries, pub.climateEntries, {
                 dailyPlanRevision: plan.revision,
                 unifiedPlanId: unifiedPlan.planId,
             });
             ihAcReasonSuffix =
-                ` ${(0, from_forecast_context_1.summarizeUnifiedDayPlanForReason)(unifiedPlan)} IH/AC autoritativ.`;
+                ` ${(0, from_forecast_context_1.summarizeUnifiedDayPlanForReason)(unifiedPlan)} IH/AC autoritativ` +
+                    (decision.reasons.length ? ` [${decision.reasons.join(",")}]` : "") +
+                    ` replansToday=${replanCountToday}.`;
         }
         catch (e) {
-            // AUTH-003: kein klassischer IH/AC-Fallback, kein Festhalten an veraltetem Unified.
-            plan = (0, authority_1.clearIhAcAuthority)(plan);
-            unifiedGeneration += 1;
-            lastUnifiedPlanId = "unified-failed";
-            ihAcReasonSuffix = ` Unified IH/AC fehlgeschlagen — idle (kein klassischer Fallback): ${String(e)}`.slice(0, 200);
-            host.log?.warn?.(`unified ih/ac authority: ${String(e)}`);
+            /*
+             * Replan fehlgeschlagen: keine neue Unified-Generation.
+             * IH: im Zweifel idle (kein veralteter energetischer Slice).
+             * AC: planbasierten Flex leeren bei Komfortbedarf → lokaler Runtime-Komfort-Pfad.
+             * Wenn Restplan noch sicher: nichts publishen (letzter Publish bleibt).
+             */
+            host.log?.warn?.(`unified ih/ac replan failed — assess rest safety: ${String(e)}`);
+            const disposition = (0, replan_failure_1.assessUnifiedReplanFailure)({
+                nowMs: now.getTime(),
+                lastUnifiedPlan,
+                actual: actualSample,
+                thermal: probeInput.thermal,
+                climate: probeInput.climate,
+                replanReasons: decision.reasons,
+            });
+            ihAcReasonSuffix = ` ${disposition.reasonDe}`;
+            if (!disposition.clearImmersion && !disposition.clearClimate) {
+                // FAIL-003: Restplan weiter gültig — kein Authority-Publish, keine neue Generation.
+                return plan;
+            }
+            plan = (0, replan_failure_1.applyReplanFailureAuthority)(plan, lastUnifiedPlan, disposition);
+            if (disposition.clearImmersion && lastUnifiedPlan) {
+                const nowMs = now.getTime();
+                lastUnifiedPlan = {
+                    ...lastUnifiedPlan,
+                    allocations: lastUnifiedPlan.allocations.filter((a) => a.kind !== "immersion_heater" ||
+                        !(Number.isFinite(Date.parse(a.slot.endIso)) && Date.parse(a.slot.endIso) > nowMs)),
+                };
+            }
+            if (disposition.clearClimate && lastUnifiedPlan) {
+                const nowMs = now.getTime();
+                lastUnifiedPlan = {
+                    ...lastUnifiedPlan,
+                    allocations: lastUnifiedPlan.allocations.filter((a) => a.kind !== "climate" ||
+                        !(Number.isFinite(Date.parse(a.slot.endIso)) && Date.parse(a.slot.endIso) > nowMs)),
+                };
+            }
         }
         const publishReasonDe = `${plan.reasonDe}${ihAcReasonSuffix}`.slice(0, 480);
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.status, plan.status);

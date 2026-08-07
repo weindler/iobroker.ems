@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.244",
+		"version": "0.1.245",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.245": {
+				"en": "Unified material replanning: plan-vs-actual thresholds, anti-chatter cooldown, remaining-horizon allocation, replan reason codes; IH/AC live; battery/EVCC simulation only.",
+				"de": "Unified Material-Replanning: Plan-vs-Actual-Schwellen, Anti-Chatter-Cooldown, Rest-Horizont-Allocation, Replan-Reason-Codes; IH/AC live; Batterie/EVCC nur Simulation."
+			},
 			"0.1.244": {
 				"en": "Unified real-data bridge: ForecastPlan/contributions → UnifiedDayPlannerInput (PV bias once, Tibber, battery/IH/AC/EV mapping); IH/AC live; battery/EVCC simulation only.",
 				"de": "Unified Real-Data-Bridge: ForecastPlan/Contributions → UnifiedDayPlannerInput (PV-Bias einmal, Tibber, Batterie/IH/AC/EV); IH/AC live; Batterie/EVCC nur Simulation."

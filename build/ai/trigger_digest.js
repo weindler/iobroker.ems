@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.aiTriggerDigestPayload = exports.aiMaterialFlexFamilies = exports.medianGridPriceCtPerKwh = exports.AI_TRIGGER_PRICE_MEDIAN_BUCKET_CT = exports.AI_TRIGGER_PV_BUCKET_KWH = exports.AI_TRIGGER_ENERGY_BUCKET_KWH = void 0;
+exports.aiTriggerDigestPayload = exports.aiMaterialFlexFamilies = exports.priceStructureDigestFromPlan = exports.medianGridPriceCtPerKwh = exports.AI_TRIGGER_PRICE_MEDIAN_BUCKET_CT = exports.AI_TRIGGER_PV_BUCKET_KWH = exports.AI_TRIGGER_ENERGY_BUCKET_KWH = void 0;
 /** Grobes Energie-Raster (kWh) — Änderungen unterhalb gelten als Rauschen, nicht als neuer Plan. */
 exports.AI_TRIGGER_ENERGY_BUCKET_KWH = 0.3;
 /** Grobes PV-Tagesprognose-Raster (kWh) — deutlich größer, da Tagessummen im zweistelligen kWh-Bereich liegen. */
@@ -29,6 +29,48 @@ function medianGridPriceCtPerKwh(plan) {
     return prices[Math.floor(prices.length / 2)];
 }
 exports.medianGridPriceCtPerKwh = medianGridPriceCtPerKwh;
+/**
+ * Kompakter Preisstruktur-Digest: Median-Bucket + Lage günstiger/teurer Bereiche.
+ * Erkennt Verschiebungen günstiger Fenster bei ähnlichem Median — ohne fixe Nachtregel.
+ */
+function priceStructureDigestFromPlan(plan) {
+    const priced = [];
+    for (const slot of plan.slots) {
+        const p = slot.gridPriceCtPerKwh;
+        if (p !== null && Number.isFinite(p)) {
+            priced.push({ startIso: slot.slot.startIso, p });
+        }
+    }
+    if (priced.length === 0) {
+        return JSON.stringify({ empty: true });
+    }
+    const sorted = [...priced].sort((a, b) => a.p - b.p);
+    const prices = sorted.map((x) => x.p);
+    const q25 = prices[Math.floor((prices.length - 1) * 0.25)];
+    const q75 = prices[Math.floor((prices.length - 1) * 0.75)];
+    const median = prices[Math.floor(prices.length / 2)];
+    // Stunde (UTC ISO) der günstigsten/teuersten Quartile — Zeitlage ohne Tageszeit-Hardcode
+    const cheapHours = [
+        ...new Set(priced
+            .filter((x) => x.p <= q25 + 1e-9)
+            .map((x) => x.startIso.slice(0, 13))),
+    ].sort();
+    const dearHours = [
+        ...new Set(priced
+            .filter((x) => x.p >= q75 - 1e-9)
+            .map((x) => x.startIso.slice(0, 13))),
+    ].sort();
+    const cheapestStart = sorted[0].startIso.slice(0, 13);
+    return JSON.stringify({
+        medianBucket: bucket(median, exports.AI_TRIGGER_PRICE_MEDIAN_BUCKET_CT),
+        q25Bucket: bucket(q25, exports.AI_TRIGGER_PRICE_MEDIAN_BUCKET_CT),
+        q75Bucket: bucket(q75, exports.AI_TRIGGER_PRICE_MEDIAN_BUCKET_CT),
+        cheapestHour: cheapestStart,
+        cheapHours,
+        dearHours,
+    });
+}
+exports.priceStructureDigestFromPlan = priceStructureDigestFromPlan;
 /**
  * Welche KI-relevanten Contribution-Familien im Plan aktiv sind (Vehicle angesteckt,
  * Batterie-Ladebedarf, IH/Klima flex) — grober Material-Change ohne Slot-Watt-Rauschen.
@@ -81,6 +123,7 @@ function aiTriggerDigestPayload(plan) {
         flexibleRequestedEnergyKwhBucket: bucket(plan.totals.flexibleRequestedEnergyKwh, exports.AI_TRIGGER_ENERGY_BUCKET_KWH),
         pvForecastEnergyKwhBucket: bucket(plan.totals.pvForecastEnergyKwh, exports.AI_TRIGGER_PV_BUCKET_KWH),
         priceMedianCtBucket: bucket(medianGridPriceCtPerKwh(plan), exports.AI_TRIGGER_PRICE_MEDIAN_BUCKET_CT),
+        priceStructure: priceStructureDigestFromPlan(plan),
     });
 }
 exports.aiTriggerDigestPayload = aiTriggerDigestPayload;

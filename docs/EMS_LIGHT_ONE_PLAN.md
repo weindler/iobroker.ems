@@ -77,10 +77,17 @@ IH/AC: Unified wird vor dem Publish in `daily_plan.allocations` gemerged und ist
 PV: bereits bias-korrigierte Werte aus `learning.pv_bias` (keine Doppelkorrektur).  
 Battery/EVCC: Planung/Simulation; IH/AC: Live. Future vehicle presence: unknown (kein Hardcode).
 
+### Schritt 4 — Material Replanning + Plan-vs-Actual
+
+`evaluateMaterialReplan()` (Cadence-Digest + kleine Schwellen) entscheidet, ob ein neuer Unified-Plan nötig ist.  
+Anti-Chatter-Cooldown für weiche Abweichungen; harte Events (Tag, Vehicle, AC-Komfort) sofort.  
+Replan: neue Generation, `previousExpectedDayEnergyKwh`, Rest-Horizont ab jetzt, Vergangenheit unverändert.  
+Tagesbewertungs-Struktur für späteres Learning (noch ohne Persistenz).
+
 ### Nächste Schritte
 
-1. Nachplanung verdrahten wenn Live vom Plan abweicht.
-2. Belastbare Fahrzeug-Presence (ohne erfundene Fenster).
-3. Battery/Wallbox Unified-Live erst nach Validierung.
+1. Belastbare Fahrzeug-Presence (ohne erfundene Fenster).
+2. Battery/Wallbox Unified-Live erst nach Validierung.
+3. Learning aus Tagesbewertung (Schritt 8).
 
 Nicht: isolierte Add-on-Patches als „EMS fertig“.

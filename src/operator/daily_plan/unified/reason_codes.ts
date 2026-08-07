@@ -19,6 +19,17 @@ export const REASON = {
 	EXPORT_TARIFF_UNKNOWN: "export_tariff_unknown",
 	VEHICLE_PRESENCE_UNKNOWN: "vehicle_presence_unknown",
 	BATTERY_TELEMETRY_MISSING: "battery_telemetry_missing",
+	REPLAN_DAY_ROLLOVER: "replan_day_rollover",
+	REPLAN_PV_FORECAST_CHANGED: "replan_pv_forecast_changed",
+	REPLAN_PV_ACTUAL_DEVIATION: "replan_pv_actual_deviation",
+	REPLAN_HOUSE_LOAD_DEVIATION: "replan_house_load_deviation",
+	REPLAN_BATTERY_SOC_DEVIATION: "replan_battery_soc_deviation",
+	REPLAN_THERMAL_DEVIATION: "replan_thermal_deviation",
+	REPLAN_AC_COMFORT_CHANGE: "replan_ac_comfort_change",
+	REPLAN_VEHICLE_CONNECTED: "replan_vehicle_connected",
+	REPLAN_VEHICLE_DISCONNECTED: "replan_vehicle_disconnected",
+	REPLAN_VEHICLE_GOAL_CHANGED: "replan_vehicle_goal_changed",
+	REPLAN_PRICE_REVISION: "replan_price_revision",
 } as const;
 
 export type UnifiedReasonCode = (typeof REASON)[keyof typeof REASON];

@@ -254,7 +254,7 @@ function buildUnifiedInputFromForecastContext(ctx) {
         pv: {
             slots: pvSlots,
             expectedDayEnergyKwh: correctedToday,
-            previousExpectedDayEnergyKwh: null,
+            previousExpectedDayEnergyKwh: ctx.previousExpectedDayEnergyKwh ?? null,
             // ForecastPlan-Slots / Day-Energy stammen aus korrigierten Tages-kWh (pv_bias).
             biasCorrected: true,
             biasPct,

@@ -19,6 +19,28 @@ export {
 } from "./from_forecast_context";
 export { unifiedPlanCadenceDigest } from "./cadence";
 export {
+	evaluateMaterialReplan,
+	pvRevisionContext,
+	REPLAN_COOLDOWN_MS,
+	MATERIAL_HOUSE_LOAD_KWH,
+	MATERIAL_BATTERY_SOC_PP,
+	MATERIAL_THERMAL_HEADROOM_KWH,
+	type PlanBaseline,
+	type PlanActualSample,
+	type MaterialReplanDecision,
+} from "./materiality";
+export {
+	assessUnifiedReplanFailure,
+	applyReplanFailureAuthority,
+	immersionRestStillSafe,
+	climatePlanDispatchStillSafe,
+} from "./replan_failure";
+export { buildDayEvaluationDraft, type UnifiedDayEvaluation } from "./day_evaluation";
+export {
+	trimUnifiedInputToRemainingHorizon,
+	type AllocateUnifiedOptions,
+} from "./allocate";
+export {
 	buildUnifiedIhAcDispatchPublish,
 	unifiedPlanToImmersionAllocations,
 	unifiedPlanToClimateAllocations,

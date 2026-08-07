@@ -28,6 +28,52 @@ export function medianGridPriceCtPerKwh(plan: DailyPlan): number | null {
 }
 
 /**
+ * Kompakter Preisstruktur-Digest: Median-Bucket + Lage günstiger/teurer Bereiche.
+ * Erkennt Verschiebungen günstiger Fenster bei ähnlichem Median — ohne fixe Nachtregel.
+ */
+export function priceStructureDigestFromPlan(plan: DailyPlan): string {
+	const priced: Array<{ startIso: string; p: number }> = [];
+	for (const slot of plan.slots) {
+		const p = slot.gridPriceCtPerKwh;
+		if (p !== null && Number.isFinite(p)) {
+			priced.push({ startIso: slot.slot.startIso, p });
+		}
+	}
+	if (priced.length === 0) {
+		return JSON.stringify({ empty: true });
+	}
+	const sorted = [...priced].sort((a, b) => a.p - b.p);
+	const prices = sorted.map((x) => x.p);
+	const q25 = prices[Math.floor((prices.length - 1) * 0.25)]!;
+	const q75 = prices[Math.floor((prices.length - 1) * 0.75)]!;
+	const median = prices[Math.floor(prices.length / 2)]!;
+	// Stunde (UTC ISO) der günstigsten/teuersten Quartile — Zeitlage ohne Tageszeit-Hardcode
+	const cheapHours = [
+		...new Set(
+			priced
+				.filter((x) => x.p <= q25 + 1e-9)
+				.map((x) => x.startIso.slice(0, 13)),
+		),
+	].sort();
+	const dearHours = [
+		...new Set(
+			priced
+				.filter((x) => x.p >= q75 - 1e-9)
+				.map((x) => x.startIso.slice(0, 13)),
+		),
+	].sort();
+	const cheapestStart = sorted[0]!.startIso.slice(0, 13);
+	return JSON.stringify({
+		medianBucket: bucket(median, AI_TRIGGER_PRICE_MEDIAN_BUCKET_CT),
+		q25Bucket: bucket(q25, AI_TRIGGER_PRICE_MEDIAN_BUCKET_CT),
+		q75Bucket: bucket(q75, AI_TRIGGER_PRICE_MEDIAN_BUCKET_CT),
+		cheapestHour: cheapestStart,
+		cheapHours,
+		dearHours,
+	});
+}
+
+/**
  * Welche KI-relevanten Contribution-Familien im Plan aktiv sind (Vehicle angesteckt,
  * Batterie-Ladebedarf, IH/Klima flex) — grober Material-Change ohne Slot-Watt-Rauschen.
  */
@@ -78,5 +124,6 @@ export function aiTriggerDigestPayload(plan: DailyPlan): string {
 		),
 		pvForecastEnergyKwhBucket: bucket(plan.totals.pvForecastEnergyKwh, AI_TRIGGER_PV_BUCKET_KWH),
 		priceMedianCtBucket: bucket(medianGridPriceCtPerKwh(plan), AI_TRIGGER_PRICE_MEDIAN_BUCKET_CT),
+		priceStructure: priceStructureDigestFromPlan(plan),
 	});
 }

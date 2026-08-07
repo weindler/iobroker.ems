@@ -324,11 +324,14 @@ async function loadSharedPlanData(host) {
     if (planCache && planCache.revision === revision) {
         return { meta, entries: planCache.entries };
     }
+    const allocationStatus = (await readStr(host, states_1.ALLOCATION_ADDON_STATE_IDS.air_conditioning.status)) ?? "";
     const allocationRaw = parseJson(await readStr(host, states_1.ALLOCATION_ADDON_STATE_IDS.air_conditioning.planJson));
     const allocationEntries = parseDailyAllocationEntries(allocationRaw);
     const fullPlanRaw = parseJson(await readStr(host, states_1.DAILY_PLAN_STATE_IDS.planJson));
     const fullPlan = parseFullDailyPlan(fullPlanRaw);
-    const entries = acEntriesFromSources(allocationEntries, fullPlan);
+    // ready/idle = Addon-Slice besitzt die Steuerung (auch bei [] = bewusst keine Fenster).
+    const allocationOwns = allocationStatus === "ready" || allocationStatus === "idle";
+    const entries = acEntriesFromSources(allocationEntries, allocationOwns ? null : fullPlan);
     planCache = { revision, entries, fullPlan };
     return { meta, entries };
 }

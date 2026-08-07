@@ -29,11 +29,10 @@ export async function republishDailyPlanAfterWriteback(
 		await setStateIfChanged(h, DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
 		await setOptionalNumberIfChanged(h, DAILY_PLAN_STATE_IDS.revision, plan.revision);
 
+		// IH/AC: nicht hier publizieren — autoritativ erst nach Unified-Merge im Daily-Plan-Tick.
 		const addonSummaries: Array<{ key: keyof typeof ALLOCATION_ADDON_STATE_IDS; prefix: string }> = [
 			{ key: "battery", prefix: "battery" },
 			{ key: "wallbox", prefix: "wallbox" },
-			{ key: "immersion_heater", prefix: "immersion_heater" },
-			{ key: "air_conditioning", prefix: "air_conditioning" },
 		];
 		for (const { key, prefix } of addonSummaries) {
 			const ids = ALLOCATION_ADDON_STATE_IDS[key];

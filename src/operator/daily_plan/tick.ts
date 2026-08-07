@@ -29,6 +29,15 @@ import {
 import { resolveWallboxBatteryHold } from "../../addons/wallbox/charge_hold";
 import { normalizeOptionalBool } from "../../addons/wallbox/normalize";
 import { CONTRIBUTION_IDS } from "../contribution_ids";
+import { BAT } from "../../addons/battery/ensure_states";
+import { acUnitRuntimeStates } from "../../addons/air_conditioning/runtime/ensure_states";
+import { AC_UNIT_COUNT } from "../../addons/air_conditioning/constants";
+import { allocateUnifiedDayPlan } from "./unified/allocate";
+import { applyUnifiedIhAcAuthority, clearIhAcAuthority } from "./unified/authority";
+import { buildUnifiedIhAcDispatchPublish } from "./unified/dispatch_bridge";
+import { buildUnifiedInputFromForecastContext } from "./unified/from_forecast_context";
+import { resetImmersionDailyPlanCache } from "../../addons/immersion_heater/runtime/daily_plan";
+import { resetAcDailyPlanCache } from "../../addons/air_conditioning/runtime/daily_plan";
 
 let lastRevisionPayload = "";
 let revision = 0;
@@ -238,6 +247,50 @@ export async function runDailyPlanTick(
 	}
 
 	try {
+		/*
+		 * IH/AC Authority: Unified zuerst in Memory mergen, dann einmal publizieren.
+		 * Kein klassischer IH/AC-Live-Publish vor Unified (Race vermeiden).
+		 * Battery/Wallbox bleiben klassisch im Plan.
+		 */
+		let ihAcReasonSuffix = "";
+		try {
+			const bufferTemp = asNum((await host.getStateAsync(IMMERSION_RUNTIME_STATES.bufferTemperatureC))?.val);
+			const batSoc = asNum((await host.getStateAsync(BAT.telemetry.socPct))?.val);
+			const batCap = asNum((await host.getStateAsync(BAT.telemetry.capacityEffectiveKwh))?.val);
+			const roomTemps: Partial<Record<number, number | null>> = {};
+			for (let u = 1; u <= AC_UNIT_COUNT; u++) {
+				roomTemps[u] = asNum((await host.getStateAsync(acUnitRuntimeStates(u).roomTempC))?.val);
+			}
+			const unifiedInput = buildUnifiedInputFromForecastContext({
+				now,
+				timezone,
+				globalMode: plan.globalMode,
+				forecastPlan,
+				bufferTempC: bufferTemp,
+				batterySocPct: batSoc,
+				batteryCapacityKwh: batCap,
+				roomTemps,
+			});
+			unifiedInput.contributionRevision = plan.revision;
+			const unifiedPlan = allocateUnifiedDayPlan(unifiedInput);
+			const pub = buildUnifiedIhAcDispatchPublish(unifiedPlan);
+			plan = applyUnifiedIhAcAuthority(plan, pub.immersionEntries, pub.climateEntries, {
+				dailyPlanRevision: plan.revision,
+				unifiedPlanId: unifiedPlan.planId,
+			});
+			ihAcReasonSuffix = ` Unified IH/AC autoritativ (planId=${unifiedPlan.planId}, rev=${plan.revision}).`;
+		} catch (e) {
+			// AUTH-003: kein klassischer IH/AC-Fallback, kein Festhalten an veraltetem Unified.
+			plan = clearIhAcAuthority(plan);
+			ihAcReasonSuffix = ` Unified IH/AC fehlgeschlagen — idle (kein klassischer Fallback): ${String(e)}`.slice(
+				0,
+				200,
+			);
+			host.log?.warn?.(`unified ih/ac authority: ${String(e)}`);
+		}
+
+		const publishReasonDe = `${plan.reasonDe}${ihAcReasonSuffix}`.slice(0, 480);
+
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.status, plan.status);
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "");
@@ -269,13 +322,14 @@ export async function runDailyPlanTick(
 			JSON.stringify(plan.constraintSnapshot),
 		);
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
+		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.reasonDe, publishReasonDe);
 		await setOptionalNumberIfChanged(host, DAILY_PLAN_STATE_IDS.revision, revision);
 
 		// Roadmap Block 3.3: Briefing + Live-Überschuss/-Defizit (bereits vor Allocation gelesen).
 		await setOptionalNumberIfChanged(host, "operator.diagnostics.surplus_w", liveSurplusEarly.surplusW);
 		await setOptionalNumberIfChanged(host, "operator.diagnostics.deficit_w", liveSurplusEarly.deficitW);
-		await setStateIfChanged(host, "operator.diagnostics.slot_start_iso", liveSurplusEarly.slotStartIso ?? "");		const aiThinkingRaw = await host.getStateAsync(AI_STATES.lastThinkingDe);
+		await setStateIfChanged(host, "operator.diagnostics.slot_start_iso", liveSurplusEarly.slotStartIso ?? "");
+		const aiThinkingRaw = await host.getStateAsync(AI_STATES.lastThinkingDe);
 		const aiThinkingDe =
 			typeof aiThinkingRaw?.val === "string" && aiThinkingRaw.val.trim() ? aiThinkingRaw.val.trim() : null;
 		await setStateIfChanged(
@@ -287,6 +341,7 @@ export async function runDailyPlanTick(
 			}),
 		);
 
+		// Finale Addon-Slices aus dem (bereits gemergten) Plan — eine Wahrheit.
 		const addonSummaries: Array<{ key: keyof typeof ALLOCATION_ADDON_STATE_IDS; prefix: string }> = [
 			{ key: "battery", prefix: "battery" },
 			{ key: "wallbox", prefix: "wallbox" },
@@ -297,10 +352,18 @@ export async function runDailyPlanTick(
 		for (const { key, prefix } of addonSummaries) {
 			const ids = ALLOCATION_ADDON_STATE_IDS[key];
 			const view = addonAllocationPublishView(plan, prefix);
+			let reasonDe = view.reasonDe;
+			if (key === "immersion_heater" || key === "air_conditioning") {
+				reasonDe = ihAcReasonSuffix.trim()
+					? `${view.reasonDe} ${ihAcReasonSuffix.trim()}`
+					: view.reasonDe;
+			}
 			await setStateIfChanged(host, ids.status, view.status);
 			await setStateIfChanged(host, ids.planJson, JSON.stringify(view.runnable));
-			await setStateIfChanged(host, ids.reasonDe, view.reasonDe);
+			await setStateIfChanged(host, ids.reasonDe, reasonDe.slice(0, 480));
 		}
+		resetImmersionDailyPlanCache();
+		resetAcDailyPlanCache();
 
 		// Heizstab-Tagesziel aus Contribution-Details (gleiche Forecast-Logik wie Allocation).
 		const ihFlex = forecastPlan.contributions.find(

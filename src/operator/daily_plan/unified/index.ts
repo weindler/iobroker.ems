@@ -1,10 +1,25 @@
 /**
- * Unified Day Planner Contract (Schritt 1) — Typen, Prinzip-Bewertung, Replan-Trigger.
- * Allocation-Algorithmus = Schritt 2. Keine Live-Writes hier.
+ * Unified Day Planner — Contract (Schritt 1) + Allocation Core (Schritt 2).
+ * IH/AC: Dispatch nur über planner.intent.allocation.* → bestehende Runtimes.
+ * Battery/Wallbox: kein Unified-Live-Takeover in dieser Beta-Stufe.
  */
 
 export * from "./types";
 export * from "./evaluate";
+export * from "./reason_codes";
+export { allocateUnifiedDayPlan } from "./allocate";
+export {
+	applyUnifiedIhAcAuthority,
+	clearIhAcAuthority,
+	isIhAcContributionId,
+} from "./authority";
+export { buildUnifiedInputFromForecastContext } from "./from_forecast_context";
+export {
+	buildUnifiedIhAcDispatchPublish,
+	unifiedPlanToImmersionAllocations,
+	unifiedPlanToClimateAllocations,
+} from "./dispatch_bridge";
+export { publishUnifiedIhAcDispatch } from "./publish_ih_ac";
 export {
 	buildSlots,
 	golden001Input,

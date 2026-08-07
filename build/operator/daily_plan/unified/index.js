@@ -1,7 +1,8 @@
 "use strict";
 /**
- * Unified Day Planner Contract (Schritt 1) — Typen, Prinzip-Bewertung, Replan-Trigger.
- * Allocation-Algorithmus = Schritt 2. Keine Live-Writes hier.
+ * Unified Day Planner — Contract (Schritt 1) + Allocation Core (Schritt 2).
+ * IH/AC: Dispatch nur über planner.intent.allocation.* → bestehende Runtimes.
+ * Battery/Wallbox: kein Unified-Live-Takeover in dieser Beta-Stufe.
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -18,9 +19,24 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.golden005GoodDayPvHeat = exports.golden005BadNightBatteryHeat = exports.golden005Input = exports.golden004StalePlanNoReplan = exports.golden004ReplanPlan = exports.golden004Input = exports.golden003GoodPv = exports.golden003BadEarlyGrid = exports.golden003Input = exports.golden002GoodPlan = exports.golden002BadPlanAbsentCharge = exports.golden002Input = exports.golden001ScaledBadPlan = exports.golden001ScaledInput = exports.golden001GoodPlan = exports.golden001BadPlan = exports.golden001Input = exports.buildSlots = void 0;
+exports.golden005GoodDayPvHeat = exports.golden005BadNightBatteryHeat = exports.golden005Input = exports.golden004StalePlanNoReplan = exports.golden004ReplanPlan = exports.golden004Input = exports.golden003GoodPv = exports.golden003BadEarlyGrid = exports.golden003Input = exports.golden002GoodPlan = exports.golden002BadPlanAbsentCharge = exports.golden002Input = exports.golden001ScaledBadPlan = exports.golden001ScaledInput = exports.golden001GoodPlan = exports.golden001BadPlan = exports.golden001Input = exports.buildSlots = exports.publishUnifiedIhAcDispatch = exports.unifiedPlanToClimateAllocations = exports.unifiedPlanToImmersionAllocations = exports.buildUnifiedIhAcDispatchPublish = exports.buildUnifiedInputFromForecastContext = exports.isIhAcContributionId = exports.clearIhAcAuthority = exports.applyUnifiedIhAcAuthority = exports.allocateUnifiedDayPlan = void 0;
 __exportStar(require("./types"), exports);
 __exportStar(require("./evaluate"), exports);
+__exportStar(require("./reason_codes"), exports);
+var allocate_1 = require("./allocate");
+Object.defineProperty(exports, "allocateUnifiedDayPlan", { enumerable: true, get: function () { return allocate_1.allocateUnifiedDayPlan; } });
+var authority_1 = require("./authority");
+Object.defineProperty(exports, "applyUnifiedIhAcAuthority", { enumerable: true, get: function () { return authority_1.applyUnifiedIhAcAuthority; } });
+Object.defineProperty(exports, "clearIhAcAuthority", { enumerable: true, get: function () { return authority_1.clearIhAcAuthority; } });
+Object.defineProperty(exports, "isIhAcContributionId", { enumerable: true, get: function () { return authority_1.isIhAcContributionId; } });
+var from_forecast_context_1 = require("./from_forecast_context");
+Object.defineProperty(exports, "buildUnifiedInputFromForecastContext", { enumerable: true, get: function () { return from_forecast_context_1.buildUnifiedInputFromForecastContext; } });
+var dispatch_bridge_1 = require("./dispatch_bridge");
+Object.defineProperty(exports, "buildUnifiedIhAcDispatchPublish", { enumerable: true, get: function () { return dispatch_bridge_1.buildUnifiedIhAcDispatchPublish; } });
+Object.defineProperty(exports, "unifiedPlanToImmersionAllocations", { enumerable: true, get: function () { return dispatch_bridge_1.unifiedPlanToImmersionAllocations; } });
+Object.defineProperty(exports, "unifiedPlanToClimateAllocations", { enumerable: true, get: function () { return dispatch_bridge_1.unifiedPlanToClimateAllocations; } });
+var publish_ih_ac_1 = require("./publish_ih_ac");
+Object.defineProperty(exports, "publishUnifiedIhAcDispatch", { enumerable: true, get: function () { return publish_ih_ac_1.publishUnifiedIhAcDispatch; } });
 var fixtures_1 = require("./fixtures");
 Object.defineProperty(exports, "buildSlots", { enumerable: true, get: function () { return fixtures_1.buildSlots; } });
 Object.defineProperty(exports, "golden001Input", { enumerable: true, get: function () { return fixtures_1.golden001Input; } });

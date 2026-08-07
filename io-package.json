@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.240",
+		"version": "0.1.243",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,18 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.243": {
+				"en": "Unified IH/AC plan authority: single publish after merge into daily_plan.allocations_json; no classic IH/AC race; idle on unified failure; battery/wallbox unchanged.",
+				"de": "Unified IH/AC Plan-Authority: ein Publish nach Merge in daily_plan.allocations_json; kein klassisches IH/AC-Race; bei Unified-Fehler idle; Batterie/Wallbox unverändert."
+			},
+			"0.1.242": {
+				"en": "Unified Day Plan live dispatch for immersion heater and climate via existing allocation→runtime paths; battery/wallbox unchanged; planner still never writes devices.",
+				"de": "Unified Day Plan Live-Dispatch für Heizstab und Klima über bestehende Allocation→Runtime-Pfade; Batterie/Wallbox unverändert; Planner schreibt weiterhin keine Geräte."
+			},
+			"0.1.241": {
+				"en": "Unified Day Planner allocation core (step 2): deterministic shared PV×price×load×flex allocation; golden+ALLOC tests; still no live takeover.",
+				"de": "Unified Day Planner Allocation-Core (Schritt 2): deterministische gemeinsame Allocation; Golden+ALLOC-Tests; weiterhin kein Live-Takeover."
+			},
 			"0.1.240": {
 				"en": "Unified Day Planner contract + golden tests (step 1): shared PV×prices×load×flex input/output, no live control change yet.",
 				"de": "Unified Day Planner Vertrag + Golden Tests (Schritt 1): gemeinsamer Input/Output PV×Preise×Last×Flex — noch keine Live-Steuerungsänderung."

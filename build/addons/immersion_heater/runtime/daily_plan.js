@@ -359,11 +359,15 @@ async function loadPlanData(host) {
     if (planCache && planCache.revision === revision) {
         return { meta, entries: planCache.entries, fullPlan: planCache.fullPlan };
     }
+    const allocationStatus = (await readStr(host, states_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.status)) ?? "";
     const allocationRaw = parseJson(await readStr(host, states_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson));
     const allocationEntries = parseDailyAllocationEntries(allocationRaw);
     const fullPlanRaw = parseJson(await readStr(host, states_1.DAILY_PLAN_STATE_IDS.planJson));
     const fullPlan = parseFullDailyPlan(fullPlanRaw);
-    const entries = immersionEntriesFromSources(allocationEntries, fullPlan);
+    // ready/idle = Addon-Slice besitzt die Steuerung (auch bei [] = bewusst aus).
+    // Sonst Fallback auf fullPlan-Merge (Legacy / fehlende Slice-Publish).
+    const allocationOwns = allocationStatus === "ready" || allocationStatus === "idle";
+    const entries = immersionEntriesFromSources(allocationEntries, allocationOwns ? null : fullPlan);
     planCache = { revision, entries, fullPlan };
     return { meta, entries, fullPlan };
 }

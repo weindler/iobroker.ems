@@ -62,13 +62,18 @@ Deterministischer gemeinsamer Plan zuerst. KI nur optionale Optimierung **innerh
 ### Schritt 1 — erledigt (Contract + Golden Tests)
 
 Code: `src/operator/daily_plan/unified/`  
-Gemeinsamer Input-/Output-Vertrag, Constraints/Objectives, Replan-Trigger, Golden Tests 001–005.  
-**Noch keine** Live-Steuerung / Allocation-Engine / Takeover.
+Gemeinsamer Input-/Output-Vertrag, Constraints/Objectives, Replan-Trigger, Golden Tests 001–005.
+
+### Schritt 2 — Allocation + IH/AC Live-Authority
+
+`allocateUnifiedDayPlan()` — deterministische gemeinsame Allocation (Phasen A–F), ALLOC-001…007.  
+IH/AC: Unified wird vor dem Publish in `daily_plan.allocations` gemerged und ist autoritativ  
+(`allocations_json` ≡ Addon-Slices). Battery/Wallbox bleiben klassisch. Bei Unified-Fehler: IH/AC idle.
 
 ### Nächste Schritte
 
-1. Gemeinsame Tagesbilanz-Schicht (ein Surplus-/Energie-Topf) — verdrahten auf ForecastPlan/DailyPlan.
-2. Allocation aller flexiblen Verbraucher aus diesem Topf in PV- und Preis-Fenster.
-3. Nachplanung wenn Live vom Plan abweicht.
+1. Nachplanung verdrahten wenn Live vom Plan abweicht.
+2. Battery/Wallbox Unified-Live erst nach Validierung.
+3. Kein isolierter Add-on-Patch als Ersatz für den gemeinsamen Plan.
 
 Nicht: isolierte Add-on-Patches als „EMS fertig“.

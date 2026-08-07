@@ -45,6 +45,15 @@ const evcc_config_1 = require("../../addons/wallbox/evcc_config");
 const charge_hold_1 = require("../../addons/wallbox/charge_hold");
 const normalize_1 = require("../../addons/wallbox/normalize");
 const contribution_ids_1 = require("../contribution_ids");
+const ensure_states_2 = require("../../addons/battery/ensure_states");
+const ensure_states_3 = require("../../addons/air_conditioning/runtime/ensure_states");
+const constants_1 = require("../../addons/air_conditioning/constants");
+const allocate_1 = require("./unified/allocate");
+const authority_1 = require("./unified/authority");
+const dispatch_bridge_1 = require("./unified/dispatch_bridge");
+const from_forecast_context_1 = require("./unified/from_forecast_context");
+const daily_plan_1 = require("../../addons/immersion_heater/runtime/daily_plan");
+const daily_plan_2 = require("../../addons/air_conditioning/runtime/daily_plan");
 let lastRevisionPayload = "";
 let revision = 0;
 function resetDailyPlanRevisionForTest() {
@@ -231,6 +240,46 @@ async function runDailyPlanTick(host, forecastPlan) {
         host.log?.warn?.(`ai_writeback: ${String(e)}`);
     }
     try {
+        /*
+         * IH/AC Authority: Unified zuerst in Memory mergen, dann einmal publizieren.
+         * Kein klassischer IH/AC-Live-Publish vor Unified (Race vermeiden).
+         * Battery/Wallbox bleiben klassisch im Plan.
+         */
+        let ihAcReasonSuffix = "";
+        try {
+            const bufferTemp = (0, state_util_1.asNum)((await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.bufferTemperatureC))?.val);
+            const batSoc = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_2.BAT.telemetry.socPct))?.val);
+            const batCap = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_2.BAT.telemetry.capacityEffectiveKwh))?.val);
+            const roomTemps = {};
+            for (let u = 1; u <= constants_1.AC_UNIT_COUNT; u++) {
+                roomTemps[u] = (0, state_util_1.asNum)((await host.getStateAsync((0, ensure_states_3.acUnitRuntimeStates)(u).roomTempC))?.val);
+            }
+            const unifiedInput = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)({
+                now,
+                timezone,
+                globalMode: plan.globalMode,
+                forecastPlan,
+                bufferTempC: bufferTemp,
+                batterySocPct: batSoc,
+                batteryCapacityKwh: batCap,
+                roomTemps,
+            });
+            unifiedInput.contributionRevision = plan.revision;
+            const unifiedPlan = (0, allocate_1.allocateUnifiedDayPlan)(unifiedInput);
+            const pub = (0, dispatch_bridge_1.buildUnifiedIhAcDispatchPublish)(unifiedPlan);
+            plan = (0, authority_1.applyUnifiedIhAcAuthority)(plan, pub.immersionEntries, pub.climateEntries, {
+                dailyPlanRevision: plan.revision,
+                unifiedPlanId: unifiedPlan.planId,
+            });
+            ihAcReasonSuffix = ` Unified IH/AC autoritativ (planId=${unifiedPlan.planId}, rev=${plan.revision}).`;
+        }
+        catch (e) {
+            // AUTH-003: kein klassischer IH/AC-Fallback, kein Festhalten an veraltetem Unified.
+            plan = (0, authority_1.clearIhAcAuthority)(plan);
+            ihAcReasonSuffix = ` Unified IH/AC fehlgeschlagen — idle (kein klassischer Fallback): ${String(e)}`.slice(0, 200);
+            host.log?.warn?.(`unified ih/ac authority: ${String(e)}`);
+        }
+        const publishReasonDe = `${plan.reasonDe}${ihAcReasonSuffix}`.slice(0, 480);
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.status, plan.status);
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "");
@@ -246,7 +295,7 @@ async function runDailyPlanTick(host, forecastPlan) {
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.policySnapshotJson, JSON.stringify(plan.policySnapshot));
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.constraintSnapshotJson, JSON.stringify(plan.constraintSnapshot));
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
+        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.reasonDe, publishReasonDe);
         await (0, state_write_1.setOptionalNumberIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.revision, revision);
         // Roadmap Block 3.3: Briefing + Live-Überschuss/-Defizit (bereits vor Allocation gelesen).
         await (0, state_write_1.setOptionalNumberIfChanged)(host, "operator.diagnostics.surplus_w", liveSurplusEarly.surplusW);
@@ -258,6 +307,7 @@ async function runDailyPlanTick(host, forecastPlan) {
             contributions: forecastPlan.contributions,
             aiThinkingDe,
         }));
+        // Finale Addon-Slices aus dem (bereits gemergten) Plan — eine Wahrheit.
         const addonSummaries = [
             { key: "battery", prefix: "battery" },
             { key: "wallbox", prefix: "wallbox" },
@@ -267,10 +317,18 @@ async function runDailyPlanTick(host, forecastPlan) {
         for (const { key, prefix } of addonSummaries) {
             const ids = states_1.ALLOCATION_ADDON_STATE_IDS[key];
             const view = (0, addon_plan_publish_1.addonAllocationPublishView)(plan, prefix);
+            let reasonDe = view.reasonDe;
+            if (key === "immersion_heater" || key === "air_conditioning") {
+                reasonDe = ihAcReasonSuffix.trim()
+                    ? `${view.reasonDe} ${ihAcReasonSuffix.trim()}`
+                    : view.reasonDe;
+            }
             await (0, state_write_1.setStateIfChanged)(host, ids.status, view.status);
             await (0, state_write_1.setStateIfChanged)(host, ids.planJson, JSON.stringify(view.runnable));
-            await (0, state_write_1.setStateIfChanged)(host, ids.reasonDe, view.reasonDe);
+            await (0, state_write_1.setStateIfChanged)(host, ids.reasonDe, reasonDe.slice(0, 480));
         }
+        (0, daily_plan_1.resetImmersionDailyPlanCache)();
+        (0, daily_plan_2.resetAcDailyPlanCache)();
         // Heizstab-Tagesziel aus Contribution-Details (gleiche Forecast-Logik wie Allocation).
         const ihFlex = forecastPlan.contributions.find((c) => c.contributionId === contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE);
         const ihMand = forecastPlan.contributions.find((c) => c.contributionId === contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_MANDATORY);

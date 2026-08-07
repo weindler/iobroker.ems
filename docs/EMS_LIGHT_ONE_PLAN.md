@@ -57,9 +57,17 @@ Deterministischer gemeinsamer Plan zuerst. KI nur optionale Optimierung **innerh
 
 ---
 
-## Umsetzung (nächster Code)
+## Umsetzung
 
-1. Gemeinsame Tagesbilanz-Schicht (ein Surplus-/Energie-Topf).
+### Schritt 1 — erledigt (Contract + Golden Tests)
+
+Code: `src/operator/daily_plan/unified/`  
+Gemeinsamer Input-/Output-Vertrag, Constraints/Objectives, Replan-Trigger, Golden Tests 001–005.  
+**Noch keine** Live-Steuerung / Allocation-Engine / Takeover.
+
+### Nächste Schritte
+
+1. Gemeinsame Tagesbilanz-Schicht (ein Surplus-/Energie-Topf) — verdrahten auf ForecastPlan/DailyPlan.
 2. Allocation aller flexiblen Verbraucher aus diesem Topf in PV- und Preis-Fenster.
 3. Nachplanung wenn Live vom Plan abweicht.
 

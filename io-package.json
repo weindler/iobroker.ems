@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.239",
+		"version": "0.1.240",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.240": {
+				"en": "Unified Day Planner contract + golden tests (step 1): shared PV×prices×load×flex input/output, no live control change yet.",
+				"de": "Unified Day Planner Vertrag + Golden Tests (Schritt 1): gemeinsamer Input/Output PV×Preise×Last×Flex — noch keine Live-Steuerungsänderung."
+			},
 			"0.1.239": {
 				"en": "Immersion night bridge: thermal learning empty_at before next morning raises PV-first target + deadline so daytime surplus preheats and night battery/grid heat is avoided.",
 				"de": "Heizstab-Nachtbrücke: reicht Thermal-Learning empty_at nicht bis zum Morgen, steigt das PV-first-Ziel mit Deadline — Tages-Überschuss vorheizen statt nachts aus Batterie/Netz."

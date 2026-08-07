@@ -12,6 +12,7 @@ exports.allocateUnifiedDayPlan = exports.trimUnifiedInputToRemainingHorizon = vo
 const quality_1 = require("../../quality");
 const types_1 = require("./types");
 const reason_codes_1 = require("./reason_codes");
+const vehicle_availability_1 = require("./vehicle_availability");
 const SLOT_H = 0.25;
 const EPS = 1e-6;
 function round3(n) {
@@ -25,16 +26,7 @@ function vehiclePresent(input, slotStartIso) {
     const wb = input.wallbox;
     if (!wb)
         return false;
-    if (!wb.presenceHardConstraint) {
-        return wb.connectedNow;
-    }
-    // Geplante Presence-Fenster (Future Presence noch unbekannt).
-    // Live-Disconnect: Caller setzt Fenster auf unavailable / leer.
-    for (const w of wb.presenceWindows) {
-        if (w.available && inWindow(slotStartIso, w.startIso, w.endIso))
-            return true;
-    }
-    return false;
+    return (0, vehicle_availability_1.vehicleSlotAllocatable)(wb, slotStartIso);
 }
 function energyFromPowerW(powerW) {
     return (powerW / 1000) * SLOT_H;
@@ -127,7 +119,7 @@ function takePv(slot, wantKwh) {
 /**
  * Phase B: Fahrzeug rückwärts / PV-first vor Deadline, sonst günstige Import-Slots.
  */
-function allocateVehicle(input, slots, allocations, goals) {
+function allocateVehicle(input, slots, allocations, goals, reasonCodes) {
     const wb = input.wallbox;
     if (!wb)
         return;
@@ -156,6 +148,8 @@ function allocateVehicle(input, slots, allocations, goals) {
     const conf = pvConfidenceFactor(input);
     const maxW = wb.maxChargePowerW;
     const minW = wb.minChargePowerW;
+    const feasibility = (0, vehicle_availability_1.evaluateVehicleGoalFeasibility)(input);
+    const presenceCodes = (0, vehicle_availability_1.collectPresenceReasonCodes)(wb.presenceWindows);
     // Sichere PV vor Deadline: nur confidence-Anteil als „sicher“ für harte Ziele zählen
     const safePvBudget = useSlots.reduce((a, s) => a + s.remainPvKwh, 0) * conf;
     let pvAllocated = 0;
@@ -175,7 +169,13 @@ function allocateVehicle(input, slots, allocations, goals) {
         take = takePv(s, take);
         if (take <= EPS)
             continue;
-        pushAlloc(allocations, s, "wallbox", "wallbox", take, "pv_surplus", ["wallbox.presence"], [reason_codes_1.REASON.VEHICLE_PRESENCE_REQUIRED, reason_codes_1.REASON.PV_EXPECTED_BEFORE_DEADLINE, reason_codes_1.REASON.PV_SURPLUS_AVAILABLE], maxW);
+        pushAlloc(allocations, s, "wallbox", "wallbox", take, "pv_surplus", ["wallbox.presence"], [
+            reason_codes_1.REASON.VEHICLE_PRESENCE_REQUIRED,
+            reason_codes_1.REASON.PV_EXPECTED_BEFORE_DEADLINE,
+            reason_codes_1.REASON.PV_SURPLUS_AVAILABLE,
+            reason_codes_1.REASON.VEHICLE_PV_WINDOW_AVAILABLE,
+            ...presenceCodes.filter((c) => c.includes("predicted") || c.includes("explicit") || c.includes("available_now")),
+        ], maxW);
         remaining -= take;
         pvAllocated += take;
     }
@@ -202,18 +202,34 @@ function allocateVehicle(input, slots, allocations, goals) {
             pushAlloc(allocations, s, "wallbox", "wallbox", take, "grid", ["wallbox.presence", "wallbox.energy_goal"], [
                 reason_codes_1.REASON.VEHICLE_DEADLINE_REQUIRED,
                 reason_codes_1.REASON.VEHICLE_PRESENCE_REQUIRED,
+                reason_codes_1.REASON.VEHICLE_IMPORT_WINDOW_AVAILABLE,
                 conf < 0.7 ? reason_codes_1.REASON.GRID_IMPORT_CONSERVATIVE_DEADLINE : reason_codes_1.REASON.GRID_IMPORT_COST_OPTIMAL,
             ], maxW);
             remaining -= take;
         }
     }
+    for (const c of feasibility.reasonCodes)
+        reasonCodes.push(c);
+    for (const c of presenceCodes)
+        reasonCodes.push(c);
+    const met = feasibility.status === "unreachable"
+        ? false
+        : feasibility.status === "at_risk" || feasibility.status === "at_risk_unknown"
+            ? null
+            : remaining <= 0.05;
     goals.push({
         consumerId: "wallbox",
         goalId: "energy_deadline",
-        met: remaining <= 0.05,
-        detailDe: remaining <= 0.05
-            ? "Fahrzeugziel im Plan gedeckt."
-            : `Fahrzeugziel unvollständig, Rest ~${remaining.toFixed(2)} kWh.`,
+        met,
+        detailDe: feasibility.status === "unreachable"
+            ? `Fahrzeugziel physisch unerreichbar (max ~${feasibility.maxFeasibleEnergyKwh.toFixed(2)} kWh).`
+            : feasibility.status === "at_risk_unknown"
+                ? "Fahrzeugziel unsicher wegen unknown Presence."
+                : feasibility.status === "at_risk"
+                    ? "Fahrzeugziel abhängig von predicted Presence."
+                    : remaining <= 0.05
+                        ? "Fahrzeugziel im Plan gedeckt."
+                        : `Fahrzeugziel unvollständig, Rest ~${remaining.toFixed(2)} kWh.`,
     });
 }
 function allocateBatteryCharge(input, slots, allocations, socKwh, capacityKwh, reserveKwh, thermalReserveKwh) {
@@ -453,10 +469,15 @@ function allocateUnifiedDayPlan(input, opts) {
         reasonCodes.push(reason_codes_1.REASON.EXPORT_TARIFF_UNKNOWN);
     }
     if (trimmed.wallbox) {
-        if (!trimmed.wallbox.connectedNow || trimmed.wallbox.presenceWindows.length === 0) {
-            reasonCodes.push(reason_codes_1.REASON.VEHICLE_PRESENCE_UNKNOWN);
-        }
-        else if (trimmed.wallbox.presenceWindows.length === 1) {
+        const hasUnknown = trimmed.wallbox.presenceWindows.some((w) => {
+            const st = w.status ?? (w.available ? "available" : "unavailable");
+            return st === "unknown";
+        });
+        const hasFutureAvailable = trimmed.wallbox.presenceWindows.some((w) => {
+            const st = w.status ?? (w.available ? "available" : "unavailable");
+            return st === "available" && Date.parse(w.endIso) > Date.parse(trimmed.time.nowIso);
+        });
+        if (hasUnknown || (!trimmed.wallbox.connectedNow && !hasFutureAvailable)) {
             reasonCodes.push(reason_codes_1.REASON.VEHICLE_PRESENCE_UNKNOWN);
         }
     }
@@ -473,7 +494,7 @@ function allocateUnifiedDayPlan(input, opts) {
     const houseTotal = slots.reduce((a, s) => a + s.houseKwh, 0);
     const pvTotal = slots.reduce((a, s) => a + s.pvKwh, 0);
     // Phase B: Vehicle
-    allocateVehicle(trimmed, slots, allocations, goals);
+    allocateVehicle(trimmed, slots, allocations, goals, reasonCodes);
     // Thermal reserve before battery fill (Phase C ordering)
     const thermalNeed = trimmed.thermal?.headroomEnergyKwh ?? 0;
     const surplusAfterVehicle = slots.reduce((a, s) => a + s.remainPvKwh, 0);

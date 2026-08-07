@@ -57,6 +57,14 @@ import {
 import { resetImmersionDailyPlanCache } from "../../addons/immersion_heater/runtime/daily_plan";
 import { resetAcDailyPlanCache } from "../../addons/air_conditioning/runtime/daily_plan";
 import { hardwareLimitsFromConfig } from "../../addons/battery/core/limits";
+import {
+	loadOrEmptyVehiclePresenceStore,
+	observeConnected,
+	writeVehiclePresencePersist,
+} from "../../learning/vehicle_presence";
+import { presenceDigest } from "./unified/vehicle_availability";
+import { wallboxVehicleMapFromAdapter } from "../../addons/wallbox/vehicle_map/config";
+import { lookupVehicleMapEntry } from "../../addons/wallbox/vehicle_map/lookup";
 
 let lastRevisionPayload = "";
 let revision = 0;
@@ -304,6 +312,36 @@ export async function runDailyPlanTick(
 	const wbConnected =
 		wbConnectedRaw?.val === true ? true : wbConnectedRaw?.val === false ? false : null;
 
+	const absPath = (host as { getAbsolutePath?: (c?: string) => string }).getAbsolutePath;
+	const presenceDir = typeof absPath === "function" ? absPath("learning/vehicle_presence") : null;
+	let presenceStore = await loadOrEmptyVehiclePresenceStore(presenceDir);
+	const vehicleName = await readStr(host, WALLBOX_EVCC_STATES.vehicleName);
+	const vehicleTitle = await readStr(host, WALLBOX_EVCC_STATES.vehicleTitle);
+	const mapEntry = lookupVehicleMapEntry(
+		wallboxVehicleMapFromAdapter(host.config).entries,
+		vehicleName,
+		vehicleTitle,
+	);
+	// Ohne Map-Treffer: keine erfundene ID — Learning/Prediction aussetzen.
+	const presenceVehicleKey = mapEntry?.evccVehicleId ?? null;
+	if (wbConnected !== null && presenceVehicleKey) {
+		const nextStore = observeConnected(
+			presenceStore,
+			now.getTime(),
+			timezone,
+			wbConnected,
+			presenceVehicleKey,
+		);
+		if (nextStore !== presenceStore && presenceDir) {
+			try {
+				await writeVehiclePresencePersist(presenceDir, nextStore);
+			} catch (e) {
+				host.log?.warn?.(`vehicle_presence persist: ${String(e)}`);
+			}
+		}
+		presenceStore = nextStore;
+	}
+
 	const probeInput = buildUnifiedInputFromForecastContext({
 		now,
 		timezone,
@@ -322,15 +360,10 @@ export async function runDailyPlanTick(
 		contributionRevision: plan.revision,
 		previousExpectedDayEnergyKwh: lastBaseline?.expectedPvDayKwh ?? null,
 		realizedPvKwhToday: realizedPv,
+		vehiclePresenceLearning: presenceStore,
+		vehiclePresenceVehicleKey: presenceVehicleKey,
+		connectedNowOverride: wbConnected,
 	});
-	if (wbConnected !== null && probeInput.wallbox) {
-		probeInput.wallbox = {
-			...probeInput.wallbox,
-			connectedNow: wbConnected,
-			// Live-Disconnect: geplante Fenster entfallen (kein Future-Presence-Hardcode).
-			...(wbConnected === false ? { presenceWindows: [] as typeof probeInput.wallbox.presenceWindows } : {}),
-		};
-	}
 
 	const actualSample: PlanActualSample = {
 		date: plan.date,
@@ -348,6 +381,7 @@ export async function runDailyPlanTick(
 		vehicleTargetSocPct: probeInput.wallbox?.targetSocPct ?? null,
 		priceMedianCt: medianGridPriceCtPerKwh(plan),
 		priceStructureDigest: priceStructureDigestFromPlan(plan),
+		presenceDigest: presenceDigest(probeInput.wallbox?.presenceWindows ?? []),
 		thermalBlocked: probeInput.thermal?.uncertainty.status === "blocked",
 		cadenceDigest,
 	};
@@ -407,16 +441,10 @@ export async function runDailyPlanTick(
 				contributionRevision: plan.revision,
 				previousExpectedDayEnergyKwh: lastBaseline?.expectedPvDayKwh ?? null,
 				realizedPvKwhToday: realizedPv,
+				vehiclePresenceLearning: presenceStore,
+				vehiclePresenceVehicleKey: presenceVehicleKey,
+				connectedNowOverride: wbConnected,
 			});
-			if (wbConnected !== null && unifiedInputFinal.wallbox) {
-				unifiedInputFinal.wallbox = {
-					...unifiedInputFinal.wallbox,
-					connectedNow: wbConnected,
-					...(wbConnected === false
-						? { presenceWindows: [] as typeof unifiedInputFinal.wallbox.presenceWindows }
-						: {}),
-				};
-			}
 
 			const nextGen = (lastUnifiedPlan?.generation ?? 0) + 1;
 			const unifiedPlan = allocateUnifiedDayPlan(unifiedInputFinal, {
@@ -452,6 +480,7 @@ export async function runDailyPlanTick(
 				vehicleTargetSocPct: unifiedInputFinal.wallbox?.targetSocPct ?? null,
 				priceMedianCt: medianGridPriceCtPerKwh(plan),
 				priceStructureDigest: priceStructureDigestFromPlan(plan),
+				presenceDigest: presenceDigest(unifiedInputFinal.wallbox?.presenceWindows ?? []),
 				cadenceDigest,
 			};
 

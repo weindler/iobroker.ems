@@ -46,6 +46,7 @@ function baseline(overrides: Partial<PlanBaseline> = {}): PlanBaseline {
 		vehicleTargetSocPct: null,
 		priceMedianCt: 22,
 		priceStructureDigest: "price-struct-v1",
+		presenceDigest: "presence-v1",
 		cadenceDigest: "digest-v1",
 		...overrides,
 	};
@@ -68,6 +69,7 @@ function actual(overrides: Partial<PlanActualSample> = {}): PlanActualSample {
 		vehicleTargetSocPct: null,
 		priceMedianCt: 22,
 		priceStructureDigest: "price-struct-v1",
+		presenceDigest: "presence-v1",
 		thermalBlocked: false,
 		cadenceDigest: "digest-v1",
 		...overrides,

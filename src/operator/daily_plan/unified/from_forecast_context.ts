@@ -20,6 +20,11 @@ import type {
 	UnifiedWallboxInput,
 } from "./types";
 import { AC_UNIT_COUNT } from "../../../addons/air_conditioning/constants";
+import type { VehiclePresenceLearningStore } from "../../../learning/vehicle_presence";
+import {
+	buildVehicleAvailabilityWindows,
+	type ExplicitPresenceWindow,
+} from "./vehicle_availability";
 
 function num(d: Record<string, unknown> | null | undefined, key: string): number | null {
 	if (!d) return null;
@@ -97,6 +102,14 @@ export type UnifiedForecastContext = {
 	previousExpectedDayEnergyKwh?: number | null;
 	/** Bereits realisierte PV heute (kWh), falls bekannt. */
 	realizedPvKwhToday?: number | null;
+	/** Explizite Presence-Fenster (Admin/Intent), schlagen Learning. */
+	explicitVehiclePresenceWindows?: ExplicitPresenceWindow[] | null;
+	/** Gelerntes Presence-Profil (Wochentag×Bucket×Fahrzeug). */
+	vehiclePresenceLearning?: VehiclePresenceLearningStore | null;
+	/** Sichere Map-ID für Learning/Prediction; null = kein predicted Learning. */
+	vehiclePresenceVehicleKey?: string | null;
+	/** Live-Override für connected (EVCC), schlägt Contribution-Detail. */
+	connectedNowOverride?: boolean | null;
 };
 
 /**
@@ -223,8 +236,8 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 		allowedModes.push("discharge");
 	}
 
-	// --- Wallbox (Simulation; Presence future = unknown) ---
-	const wallbox = mapWallbox(wbC, wbD, nowIso, slots, currentSlotStart);
+	// --- Wallbox (Simulation; Future Presence: live > explicit > predicted > unknown) ---
+	const wallbox = mapWallbox(wbC, wbD, nowIso, slots, currentSlotStart, ctx);
 
 	// --- Thermal ---
 	const bufferTempC = ctx.bufferTempC !== undefined ? ctx.bufferTempC : num(ihD, "bufferTempC");
@@ -395,27 +408,51 @@ function mergeWorstQuality(list: OperatorDataQuality[]): OperatorDataQuality {
 }
 
 /**
- * Fahrzeug: connectedNow ≠ zukünftige Presence.
- * Nur der aktuelle Slot gilt als available, wenn jetzt verbunden —
- * keine erfundene Anwesenheitsprognose.
+ * Fahrzeug-Presence: live (aktueller Slot) > explicit > predicted Learning > unknown.
+ * Keine erfundenen Anwesenheitszeiten.
  */
 function mapWallbox(
 	wbC: PlanContribution | undefined,
 	wbD: Record<string, unknown> | null,
 	nowIso: string,
 	slots: Array<{ startIso: string; endIso: string }>,
-	currentSlotStart: string | undefined,
+	_currentSlotStart: string | undefined,
+	ctx: UnifiedForecastContext,
 ): UnifiedWallboxInput | null {
 	if (!wbC && !wbD) {
-		// Contribution fehlt komplett → unknown wallbox (nicht null-erzwingen wenn nie konfiguriert)
 		return null;
 	}
-	const connectedNow = bool(wbD, "connected") === true;
-	const currentSlot = slots.find((s) => s.startIso === currentSlotStart) ?? null;
-	const presenceWindows =
-		connectedNow && currentSlot
-			? [{ available: true, startIso: currentSlot.startIso, endIso: currentSlot.endIso }]
-			: [];
+	const connectedNow =
+		ctx.connectedNowOverride !== undefined && ctx.connectedNowOverride !== null
+			? ctx.connectedNowOverride === true
+			: bool(wbD, "connected") === true;
+	const explicitFromDetails = parseExplicitWindows(wbD);
+	const explicit =
+		ctx.explicitVehiclePresenceWindows ??
+		explicitFromDetails;
+
+	const presenceWindows = buildVehicleAvailabilityWindows({
+		nowIso,
+		timezone: ctx.timezone,
+		slots,
+		connectedNow,
+		explicitWindows: explicit,
+		learningStore: ctx.vehiclePresenceLearning ?? null,
+		learningVehicleKey: ctx.vehiclePresenceVehicleKey ?? null,
+		observedAtIso: wbC?.generatedAt ?? nowIso,
+	});
+
+	const hasHardFuture = presenceWindows.some(
+		(w) =>
+			(w.source === "explicit" || w.hard === true) &&
+			(w.status ?? (w.available ? "available" : "unavailable")) === "available" &&
+			Date.parse(w.endIso) > Date.parse(nowIso),
+	);
+	const hasPredictedFuture = presenceWindows.some(
+		(w) =>
+			w.source === "predicted" &&
+			(w.status ?? (w.available ? "available" : "unavailable")) === "available",
+	);
 
 	return {
 		connectedNow,
@@ -427,22 +464,46 @@ function mapWallbox(
 		targetSocPct: num(wbD, "planSocPct") ?? num(wbD, "effectiveLimitSocPct"),
 		requiredEnergyKwh: num(wbD, "requiredEnergyKwh") ?? num(wbD, "remainingEnergyKwh"),
 		deadlineIso: wbC?.deadlineIso ?? null,
-		energyGoalHard: false, // ohne belastbare Presence-Prognose kein hartes Zukunftsziel
+		// Hartes Ziel nur mit belastbarer Presence (explicit/live-Zukunft oder predicted)
+		energyGoalHard: connectedNow || hasHardFuture || hasPredictedFuture,
 		minChargePowerW: null,
 		maxChargePowerW: num(wbD, "maxChargePowerW"),
 		chargeLossFactor: null,
 		evccExecutionMaster: true,
 		uncertainty: wbC
-			? connectedNow
+			? connectedNow || hasHardFuture || hasPredictedFuture
 				? wbC.quality
 				: operatorQuality(
-						"disabled",
-						"Fahrzeug nicht verbunden — zukünftige Presence unknown.",
+						"degraded",
+						"Fahrzeug-Presence teilweise unknown — keine Phantom-Ladung.",
 						wbC.quality.confidencePct,
 					)
 			: operatorQuality("missing", "Wallbox-Contribution fehlt.", null),
-		freshness: freshnessFrom(Date.parse(nowIso), wbC?.generatedAt ?? nowIso, wbC?.quality ?? operatorQuality("missing", "wb", null)),
+		freshness: freshnessFrom(
+			Date.parse(nowIso),
+			wbC?.generatedAt ?? nowIso,
+			wbC?.quality ?? operatorQuality("missing", "wb", null),
+		),
 	};
+}
+
+function parseExplicitWindows(
+	wbD: Record<string, unknown> | null,
+): ExplicitPresenceWindow[] | null {
+	if (!wbD) return null;
+	const raw = wbD.explicitPresenceWindows ?? wbD.presenceWindowsExplicit;
+	if (!Array.isArray(raw)) return null;
+	const out: ExplicitPresenceWindow[] = [];
+	for (const item of raw) {
+		if (!item || typeof item !== "object") continue;
+		const o = item as Record<string, unknown>;
+		const startIso = typeof o.startIso === "string" ? o.startIso : null;
+		const endIso = typeof o.endIso === "string" ? o.endIso : null;
+		const available = typeof o.available === "boolean" ? o.available : null;
+		if (!startIso || !endIso || available === null) continue;
+		out.push({ available, startIso, endIso });
+	}
+	return out.length ? out : null;
 }
 
 /** Kurzsummary für Daily-Plan reason_de (keine neuen States). */

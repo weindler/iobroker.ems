@@ -102,11 +102,29 @@ export type UnifiedBatteryInput = {
 	freshness: UnifiedDataFreshness;
 };
 
+/** Future Presence: available / unavailable / unknown — nie still als available. */
+export type UnifiedVehicleAvailabilityStatus = "available" | "unavailable" | "unknown";
+
+export type UnifiedVehicleAvailabilitySource =
+	| "live_connected"
+	| "live_disconnected"
+	| "explicit"
+	| "predicted"
+	| "unknown";
+
 export type UnifiedVehiclePresenceWindow = {
-	/** Fahrzeug an Wallbox verfügbar. */
+	/**
+	 * Kompatibilität: true nur bei status=available.
+	 * Legacy-Fixtures ohne status werden als hard explicit interpretiert.
+	 */
 	available: boolean;
 	startIso: string;
 	endIso: string;
+	status?: UnifiedVehicleAvailabilityStatus;
+	source?: UnifiedVehicleAvailabilitySource;
+	confidencePct?: number | null;
+	/** live/explicit = hard; predicted = soft. */
+	hard?: boolean;
 };
 
 export type UnifiedWallboxInput = {
@@ -115,7 +133,7 @@ export type UnifiedWallboxInput = {
 	presenceWindows: UnifiedVehiclePresenceWindow[];
 	/**
 	 * Presence ist ein **harter** Availability-Constraint (nicht nur Reason Code).
-	 * Allocation außerhalb available=true ist Vertragsverletzung.
+	 * Allocation außerhalb status=available ist Vertragsverletzung.
 	 */
 	presenceHardConstraint: true;
 	vehicleSocPct: number | null;

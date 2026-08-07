@@ -19,6 +19,11 @@ import type {
 } from "./types";
 import { deriveUnifiedHardConstraints } from "./types";
 import { REASON } from "./reason_codes";
+import {
+	collectPresenceReasonCodes,
+	evaluateVehicleGoalFeasibility,
+	vehicleSlotAllocatable,
+} from "./vehicle_availability";
 
 const SLOT_H = 0.25;
 const EPS = 1e-6;
@@ -35,15 +40,7 @@ function inWindow(iso: string, startIso: string, endIso: string): boolean {
 function vehiclePresent(input: UnifiedDayPlannerInput, slotStartIso: string): boolean {
 	const wb = input.wallbox;
 	if (!wb) return false;
-	if (!wb.presenceHardConstraint) {
-		return wb.connectedNow;
-	}
-	// Geplante Presence-Fenster (Future Presence noch unbekannt).
-	// Live-Disconnect: Caller setzt Fenster auf unavailable / leer.
-	for (const w of wb.presenceWindows) {
-		if (w.available && inWindow(slotStartIso, w.startIso, w.endIso)) return true;
-	}
-	return false;
+	return vehicleSlotAllocatable(wb, slotStartIso);
 }
 
 function energyFromPowerW(powerW: number): number {
@@ -164,6 +161,7 @@ function allocateVehicle(
 	slots: SlotWork[],
 	allocations: UnifiedAllocationCell[],
 	goals: UnifiedGoalStatus[],
+	reasonCodes: string[],
 ): void {
 	const wb = input.wallbox;
 	if (!wb) return;
@@ -195,6 +193,8 @@ function allocateVehicle(
 	const conf = pvConfidenceFactor(input);
 	const maxW = wb.maxChargePowerW;
 	const minW = wb.minChargePowerW;
+	const feasibility = evaluateVehicleGoalFeasibility(input);
+	const presenceCodes = collectPresenceReasonCodes(wb.presenceWindows);
 
 	// Sichere PV vor Deadline: nur confidence-Anteil als „sicher“ für harte Ziele zählen
 	const safePvBudget = useSlots.reduce((a, s) => a + s.remainPvKwh, 0) * conf;
@@ -220,7 +220,13 @@ function allocateVehicle(
 			take,
 			"pv_surplus",
 			["wallbox.presence"],
-			[REASON.VEHICLE_PRESENCE_REQUIRED, REASON.PV_EXPECTED_BEFORE_DEADLINE, REASON.PV_SURPLUS_AVAILABLE],
+			[
+				REASON.VEHICLE_PRESENCE_REQUIRED,
+				REASON.PV_EXPECTED_BEFORE_DEADLINE,
+				REASON.PV_SURPLUS_AVAILABLE,
+				REASON.VEHICLE_PV_WINDOW_AVAILABLE,
+				...presenceCodes.filter((c) => c.includes("predicted") || c.includes("explicit") || c.includes("available_now")),
+			],
 			maxW,
 		);
 		remaining -= take;
@@ -255,6 +261,7 @@ function allocateVehicle(
 				[
 					REASON.VEHICLE_DEADLINE_REQUIRED,
 					REASON.VEHICLE_PRESENCE_REQUIRED,
+					REASON.VEHICLE_IMPORT_WINDOW_AVAILABLE,
 					conf < 0.7 ? REASON.GRID_IMPORT_CONSERVATIVE_DEADLINE : REASON.GRID_IMPORT_COST_OPTIMAL,
 				],
 				maxW,
@@ -263,14 +270,29 @@ function allocateVehicle(
 		}
 	}
 
+	for (const c of feasibility.reasonCodes) reasonCodes.push(c);
+	for (const c of presenceCodes) reasonCodes.push(c);
+
+	const met: boolean | null =
+		feasibility.status === "unreachable"
+			? false
+			: feasibility.status === "at_risk" || feasibility.status === "at_risk_unknown"
+				? null
+				: remaining <= 0.05;
 	goals.push({
 		consumerId: "wallbox",
 		goalId: "energy_deadline",
-		met: remaining <= 0.05,
+		met,
 		detailDe:
-			remaining <= 0.05
-				? "Fahrzeugziel im Plan gedeckt."
-				: `Fahrzeugziel unvollständig, Rest ~${remaining.toFixed(2)} kWh.`,
+			feasibility.status === "unreachable"
+				? `Fahrzeugziel physisch unerreichbar (max ~${feasibility.maxFeasibleEnergyKwh.toFixed(2)} kWh).`
+				: feasibility.status === "at_risk_unknown"
+					? "Fahrzeugziel unsicher wegen unknown Presence."
+					: feasibility.status === "at_risk"
+						? "Fahrzeugziel abhängig von predicted Presence."
+						: remaining <= 0.05
+							? "Fahrzeugziel im Plan gedeckt."
+							: `Fahrzeugziel unvollständig, Rest ~${remaining.toFixed(2)} kWh.`,
 	});
 }
 
@@ -608,9 +630,15 @@ export function allocateUnifiedDayPlan(
 		reasonCodes.push(REASON.EXPORT_TARIFF_UNKNOWN);
 	}
 	if (trimmed.wallbox) {
-		if (!trimmed.wallbox.connectedNow || trimmed.wallbox.presenceWindows.length === 0) {
-			reasonCodes.push(REASON.VEHICLE_PRESENCE_UNKNOWN);
-		} else if (trimmed.wallbox.presenceWindows.length === 1) {
+		const hasUnknown = trimmed.wallbox.presenceWindows.some((w) => {
+			const st = w.status ?? (w.available ? "available" : "unavailable");
+			return st === "unknown";
+		});
+		const hasFutureAvailable = trimmed.wallbox.presenceWindows.some((w) => {
+			const st = w.status ?? (w.available ? "available" : "unavailable");
+			return st === "available" && Date.parse(w.endIso) > Date.parse(trimmed.time.nowIso);
+		});
+		if (hasUnknown || (!trimmed.wallbox.connectedNow && !hasFutureAvailable)) {
 			reasonCodes.push(REASON.VEHICLE_PRESENCE_UNKNOWN);
 		}
 	}
@@ -630,7 +658,7 @@ export function allocateUnifiedDayPlan(
 	const pvTotal = slots.reduce((a, s) => a + s.pvKwh, 0);
 
 	// Phase B: Vehicle
-	allocateVehicle(trimmed, slots, allocations, goals);
+	allocateVehicle(trimmed, slots, allocations, goals, reasonCodes);
 
 	// Thermal reserve before battery fill (Phase C ordering)
 	const thermalNeed = trimmed.thermal?.headroomEnergyKwh ?? 0;

@@ -75,6 +75,12 @@ export const LEARNING_PERSISTENCE_ARTIFACTS: readonly ArtifactDef[] = [
 		fileName: "energy_daily_v1.json",
 		nameDe: "Energy-Tages-Rollup (Backup-Spiegel)",
 	},
+	{
+		key: "vehicle_presence",
+		category: "learning/vehicle_presence",
+		fileName: "vehicle_presence_learning_v1.json",
+		nameDe: "Fahrzeug-Presence-Learning (Backup-Spiegel)",
+	},
 ] as const;
 
 const BASE = "learning.persistence";

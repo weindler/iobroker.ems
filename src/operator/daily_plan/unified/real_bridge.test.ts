@@ -278,23 +278,39 @@ describe("REAL-005 Real AC Mapping", () => {
 });
 
 describe("REAL-006 Vehicle Connected vs Unknown Presence", () => {
-	it("connectedNow does not invent future presence windows", () => {
+	it("connectedNow does not invent future presence as available", () => {
 		const input = buildUnifiedInputFromForecastContext(
 			realisticSnapshot({ connected: true, vehicleSoc: 40 }),
 		);
 		assert.ok(input.wallbox);
 		assert.equal(input.wallbox!.connectedNow, true);
 		assert.equal(input.wallbox!.presenceHardConstraint, true);
-		assert.equal(input.wallbox!.presenceWindows.length, 1);
 		assert.equal(input.wallbox!.vehicleSocPct, 40);
-		// Nur aktueller Slot — nicht voller Tag
-		assert.ok(input.wallbox!.presenceWindows[0].endIso <= input.time.slots[1]?.endIso || true);
+		assert.ok(input.wallbox!.presenceWindows.some((w) => w.source === "live_connected"));
+		// Zukunft ohne History/Explicit → unknown, nicht still available
+		assert.ok(
+			input.wallbox!.presenceWindows.some(
+				(w) => (w.status ?? (w.available ? "available" : "unavailable")) === "unknown",
+			),
+		);
+		assert.equal(
+			input.wallbox!.presenceWindows.some((w) => w.source === "predicted"),
+			false,
+		);
 		const plan = allocateUnifiedDayPlan(input);
 		assert.ok(plan.reasonCodes.includes(REASON.VEHICLE_PRESENCE_UNKNOWN));
 
 		const disc = buildUnifiedInputFromForecastContext(realisticSnapshot({ connected: false }));
 		assert.equal(disc.wallbox!.connectedNow, false);
-		assert.equal(disc.wallbox!.presenceWindows.length, 0);
+		assert.ok(disc.wallbox!.presenceWindows.some((w) => w.source === "live_disconnected"));
+		assert.equal(
+			disc.wallbox!.presenceWindows.some(
+				(w) =>
+					(w.status ?? (w.available ? "available" : "unavailable")) === "available" &&
+					w.source !== "live_connected",
+			),
+			false,
+		);
 	});
 });
 

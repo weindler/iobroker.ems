@@ -25,8 +25,11 @@ function vehicleAbsentDuring(input, slotStartIso) {
     if (!wb)
         return true;
     for (const w of wb.presenceWindows) {
-        if (w.available && inWindow(slotStartIso, w.startIso, w.endIso))
-            return false;
+        if (!inWindow(slotStartIso, w.startIso, w.endIso))
+            continue;
+        const status = w.status ?? (w.available ? "available" : "unavailable");
+        // nur status=available zählt als anwesend; unknown ≠ available
+        return status !== "available";
     }
     return true;
 }

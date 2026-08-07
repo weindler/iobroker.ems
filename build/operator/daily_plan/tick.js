@@ -59,6 +59,10 @@ const trigger_digest_1 = require("../../ai/trigger_digest");
 const daily_plan_1 = require("../../addons/immersion_heater/runtime/daily_plan");
 const daily_plan_2 = require("../../addons/air_conditioning/runtime/daily_plan");
 const limits_1 = require("../../addons/battery/core/limits");
+const vehicle_presence_1 = require("../../learning/vehicle_presence");
+const vehicle_availability_1 = require("./unified/vehicle_availability");
+const config_3 = require("../../addons/wallbox/vehicle_map/config");
+const lookup_1 = require("../../addons/wallbox/vehicle_map/lookup");
 let lastRevisionPayload = "";
 let revision = 0;
 /** Material-Cadence: ohne relevanten Grund kein neuer Unified-/Tagesplan-Publish. */
@@ -283,6 +287,26 @@ async function runDailyPlanTick(host, forecastPlan) {
     const realizedPv = (0, state_util_1.asNum)((await host.getStateAsync("learning.energy_daily.pv_kwh"))?.val);
     const wbConnectedRaw = await host.getStateAsync(ensure_evcc_states_1.WALLBOX_EVCC_STATES.connected);
     const wbConnected = wbConnectedRaw?.val === true ? true : wbConnectedRaw?.val === false ? false : null;
+    const absPath = host.getAbsolutePath;
+    const presenceDir = typeof absPath === "function" ? absPath("learning/vehicle_presence") : null;
+    let presenceStore = await (0, vehicle_presence_1.loadOrEmptyVehiclePresenceStore)(presenceDir);
+    const vehicleName = await readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.vehicleName);
+    const vehicleTitle = await readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.vehicleTitle);
+    const mapEntry = (0, lookup_1.lookupVehicleMapEntry)((0, config_3.wallboxVehicleMapFromAdapter)(host.config).entries, vehicleName, vehicleTitle);
+    // Ohne Map-Treffer: keine erfundene ID — Learning/Prediction aussetzen.
+    const presenceVehicleKey = mapEntry?.evccVehicleId ?? null;
+    if (wbConnected !== null && presenceVehicleKey) {
+        const nextStore = (0, vehicle_presence_1.observeConnected)(presenceStore, now.getTime(), timezone, wbConnected, presenceVehicleKey);
+        if (nextStore !== presenceStore && presenceDir) {
+            try {
+                await (0, vehicle_presence_1.writeVehiclePresencePersist)(presenceDir, nextStore);
+            }
+            catch (e) {
+                host.log?.warn?.(`vehicle_presence persist: ${String(e)}`);
+            }
+        }
+        presenceStore = nextStore;
+    }
     const probeInput = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)({
         now,
         timezone,
@@ -301,15 +325,10 @@ async function runDailyPlanTick(host, forecastPlan) {
         contributionRevision: plan.revision,
         previousExpectedDayEnergyKwh: lastBaseline?.expectedPvDayKwh ?? null,
         realizedPvKwhToday: realizedPv,
+        vehiclePresenceLearning: presenceStore,
+        vehiclePresenceVehicleKey: presenceVehicleKey,
+        connectedNowOverride: wbConnected,
     });
-    if (wbConnected !== null && probeInput.wallbox) {
-        probeInput.wallbox = {
-            ...probeInput.wallbox,
-            connectedNow: wbConnected,
-            // Live-Disconnect: geplante Fenster entfallen (kein Future-Presence-Hardcode).
-            ...(wbConnected === false ? { presenceWindows: [] } : {}),
-        };
-    }
     const actualSample = {
         date: plan.date,
         nowMs: now.getTime(),
@@ -326,6 +345,7 @@ async function runDailyPlanTick(host, forecastPlan) {
         vehicleTargetSocPct: probeInput.wallbox?.targetSocPct ?? null,
         priceMedianCt: (0, trigger_digest_1.medianGridPriceCtPerKwh)(plan),
         priceStructureDigest: (0, trigger_digest_1.priceStructureDigestFromPlan)(plan),
+        presenceDigest: (0, vehicle_availability_1.presenceDigest)(probeInput.wallbox?.presenceWindows ?? []),
         thermalBlocked: probeInput.thermal?.uncertainty.status === "blocked",
         cadenceDigest,
     };
@@ -377,16 +397,10 @@ async function runDailyPlanTick(host, forecastPlan) {
                 contributionRevision: plan.revision,
                 previousExpectedDayEnergyKwh: lastBaseline?.expectedPvDayKwh ?? null,
                 realizedPvKwhToday: realizedPv,
+                vehiclePresenceLearning: presenceStore,
+                vehiclePresenceVehicleKey: presenceVehicleKey,
+                connectedNowOverride: wbConnected,
             });
-            if (wbConnected !== null && unifiedInputFinal.wallbox) {
-                unifiedInputFinal.wallbox = {
-                    ...unifiedInputFinal.wallbox,
-                    connectedNow: wbConnected,
-                    ...(wbConnected === false
-                        ? { presenceWindows: [] }
-                        : {}),
-                };
-            }
             const nextGen = (lastUnifiedPlan?.generation ?? 0) + 1;
             const unifiedPlan = (0, allocate_1.allocateUnifiedDayPlan)(unifiedInputFinal, {
                 generation: nextGen,
@@ -421,6 +435,7 @@ async function runDailyPlanTick(host, forecastPlan) {
                 vehicleTargetSocPct: unifiedInputFinal.wallbox?.targetSocPct ?? null,
                 priceMedianCt: (0, trigger_digest_1.medianGridPriceCtPerKwh)(plan),
                 priceStructureDigest: (0, trigger_digest_1.priceStructureDigestFromPlan)(plan),
+                presenceDigest: (0, vehicle_availability_1.presenceDigest)(unifiedInputFinal.wallbox?.presenceWindows ?? []),
                 cadenceDigest,
             };
             const pub = (0, dispatch_bridge_1.buildUnifiedIhAcDispatchPublish)(unifiedPlan);

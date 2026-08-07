@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.245",
+		"version": "0.1.246",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.246": {
+				"en": "Future vehicle presence: live/explicit/predicted/unknown availability windows for unified planning; small weekday×slot learning; no EVCC live takeover.",
+				"de": "Future Vehicle Presence: live/explizit/predicted/unknown Verfügbarkeitsfenster für Unified-Planung; kleines Wochentag×Slot-Learning; kein EVCC-Live-Takeover."
+			},
 			"0.1.245": {
 				"en": "Unified material replanning: plan-vs-actual thresholds, anti-chatter cooldown, remaining-horizon allocation, replan reason codes; IH/AC live; battery/EVCC simulation only.",
 				"de": "Unified Material-Replanning: Plan-vs-Actual-Schwellen, Anti-Chatter-Cooldown, Rest-Horizont-Allocation, Replan-Reason-Codes; IH/AC live; Batterie/EVCC nur Simulation."

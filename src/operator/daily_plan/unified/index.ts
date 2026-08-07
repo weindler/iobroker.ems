@@ -35,6 +35,13 @@ export {
 	immersionRestStillSafe,
 	climatePlanDispatchStillSafe,
 } from "./replan_failure";
+export {
+	buildVehicleAvailabilityWindows,
+	evaluateVehicleGoalFeasibility,
+	vehicleSlotAllocatable,
+	presenceDigest,
+	normalizePresenceWindow,
+} from "./vehicle_availability";
 export { buildDayEvaluationDraft, type UnifiedDayEvaluation } from "./day_evaluation";
 export {
 	trimUnifiedInputToRemainingHorizon,

@@ -76,6 +76,12 @@ exports.LEARNING_PERSISTENCE_ARTIFACTS = [
         fileName: "energy_daily_v1.json",
         nameDe: "Energy-Tages-Rollup (Backup-Spiegel)",
     },
+    {
+        key: "vehicle_presence",
+        category: "learning/vehicle_presence",
+        fileName: "vehicle_presence_learning_v1.json",
+        nameDe: "Fahrzeug-Presence-Learning (Backup-Spiegel)",
+    },
 ];
 const BASE = "learning.persistence";
 function mirrorStateId(key) {

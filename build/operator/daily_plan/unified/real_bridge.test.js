@@ -238,20 +238,23 @@ function realisticSnapshot(overrides) {
     });
 });
 (0, node_test_1.describe)("REAL-006 Vehicle Connected vs Unknown Presence", () => {
-    (0, node_test_1.it)("connectedNow does not invent future presence windows", () => {
+    (0, node_test_1.it)("connectedNow does not invent future presence as available", () => {
         const input = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(realisticSnapshot({ connected: true, vehicleSoc: 40 }));
         strict_1.default.ok(input.wallbox);
         strict_1.default.equal(input.wallbox.connectedNow, true);
         strict_1.default.equal(input.wallbox.presenceHardConstraint, true);
-        strict_1.default.equal(input.wallbox.presenceWindows.length, 1);
         strict_1.default.equal(input.wallbox.vehicleSocPct, 40);
-        // Nur aktueller Slot — nicht voller Tag
-        strict_1.default.ok(input.wallbox.presenceWindows[0].endIso <= input.time.slots[1]?.endIso || true);
+        strict_1.default.ok(input.wallbox.presenceWindows.some((w) => w.source === "live_connected"));
+        // Zukunft ohne History/Explicit → unknown, nicht still available
+        strict_1.default.ok(input.wallbox.presenceWindows.some((w) => (w.status ?? (w.available ? "available" : "unavailable")) === "unknown"));
+        strict_1.default.equal(input.wallbox.presenceWindows.some((w) => w.source === "predicted"), false);
         const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);
         strict_1.default.ok(plan.reasonCodes.includes(reason_codes_1.REASON.VEHICLE_PRESENCE_UNKNOWN));
         const disc = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(realisticSnapshot({ connected: false }));
         strict_1.default.equal(disc.wallbox.connectedNow, false);
-        strict_1.default.equal(disc.wallbox.presenceWindows.length, 0);
+        strict_1.default.ok(disc.wallbox.presenceWindows.some((w) => w.source === "live_disconnected"));
+        strict_1.default.equal(disc.wallbox.presenceWindows.some((w) => (w.status ?? (w.available ? "available" : "unavailable")) === "available" &&
+            w.source !== "live_connected"), false);
     });
 });
 (0, node_test_1.describe)("REAL-007 Missing Data degraded plan", () => {

@@ -42,6 +42,8 @@ export type PlanBaseline = {
 	priceMedianCt: number | null;
 	/** Preisstruktur (Median + Lage günstiger/teurer Fenster). */
 	priceStructureDigest: string;
+	/** Future Presence Digest (Status/Quellen der Fenster). */
+	presenceDigest: string;
 	cadenceDigest: string;
 };
 
@@ -63,6 +65,7 @@ export type PlanActualSample = {
 	vehicleTargetSocPct: number | null;
 	priceMedianCt: number | null;
 	priceStructureDigest: string;
+	presenceDigest: string;
 	/** Thermal/AC Safety — Headroom bewusst 0 / blocked. */
 	thermalBlocked: boolean;
 	cadenceDigest: string;
@@ -232,6 +235,14 @@ export function evaluateMaterialReplan(
 	if (baseline.vehicleConnected === true && actual.vehicleConnected === false) {
 		reasons.push(REASON.REPLAN_VEHICLE_DISCONNECTED);
 		hard = true;
+	}
+	if (
+		baseline.presenceDigest !== actual.presenceDigest &&
+		!reasons.includes(REASON.REPLAN_VEHICLE_CONNECTED) &&
+		!reasons.includes(REASON.REPLAN_VEHICLE_DISCONNECTED)
+	) {
+		reasons.push(REASON.REPLAN_VEHICLE_PRESENCE_CHANGED);
+		// Explizite/gelernte Presence-Änderung: material, aber soft (Cooldown gilt)
 	}
 	const vehE = absDiff(baseline.vehicleRequiredEnergyKwh, actual.vehicleRequiredEnergyKwh);
 	const vehSoc = absDiff(baseline.vehicleTargetSocPct, actual.vehicleTargetSocPct);

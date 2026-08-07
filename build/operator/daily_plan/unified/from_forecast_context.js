@@ -14,6 +14,7 @@ const contribution_ids_1 = require("../../contribution_ids");
 const quality_1 = require("../../quality");
 const flex_demand_1 = require("../../contributions/flexible/flex_demand");
 const constants_1 = require("../../../addons/air_conditioning/constants");
+const vehicle_availability_1 = require("./vehicle_availability");
 function num(d, key) {
     if (!d)
         return null;
@@ -167,8 +168,8 @@ function buildUnifiedInputFromForecastContext(ctx) {
     if (batDischarge && batDischarge.quality.status !== "unsupported" && batDischarge.enabled) {
         allowedModes.push("discharge");
     }
-    // --- Wallbox (Simulation; Presence future = unknown) ---
-    const wallbox = mapWallbox(wbC, wbD, nowIso, slots, currentSlotStart);
+    // --- Wallbox (Simulation; Future Presence: live > explicit > predicted > unknown) ---
+    const wallbox = mapWallbox(wbC, wbD, nowIso, slots, currentSlotStart, ctx);
     // --- Thermal ---
     const bufferTempC = ctx.bufferTempC !== undefined ? ctx.bufferTempC : num(ihD, "bufferTempC");
     const targetTempC = num(ihD, "targetTempC");
@@ -329,20 +330,34 @@ function mergeWorstQuality(list) {
     return best;
 }
 /**
- * Fahrzeug: connectedNow ≠ zukünftige Presence.
- * Nur der aktuelle Slot gilt als available, wenn jetzt verbunden —
- * keine erfundene Anwesenheitsprognose.
+ * Fahrzeug-Presence: live (aktueller Slot) > explicit > predicted Learning > unknown.
+ * Keine erfundenen Anwesenheitszeiten.
  */
-function mapWallbox(wbC, wbD, nowIso, slots, currentSlotStart) {
+function mapWallbox(wbC, wbD, nowIso, slots, _currentSlotStart, ctx) {
     if (!wbC && !wbD) {
-        // Contribution fehlt komplett → unknown wallbox (nicht null-erzwingen wenn nie konfiguriert)
         return null;
     }
-    const connectedNow = bool(wbD, "connected") === true;
-    const currentSlot = slots.find((s) => s.startIso === currentSlotStart) ?? null;
-    const presenceWindows = connectedNow && currentSlot
-        ? [{ available: true, startIso: currentSlot.startIso, endIso: currentSlot.endIso }]
-        : [];
+    const connectedNow = ctx.connectedNowOverride !== undefined && ctx.connectedNowOverride !== null
+        ? ctx.connectedNowOverride === true
+        : bool(wbD, "connected") === true;
+    const explicitFromDetails = parseExplicitWindows(wbD);
+    const explicit = ctx.explicitVehiclePresenceWindows ??
+        explicitFromDetails;
+    const presenceWindows = (0, vehicle_availability_1.buildVehicleAvailabilityWindows)({
+        nowIso,
+        timezone: ctx.timezone,
+        slots,
+        connectedNow,
+        explicitWindows: explicit,
+        learningStore: ctx.vehiclePresenceLearning ?? null,
+        learningVehicleKey: ctx.vehiclePresenceVehicleKey ?? null,
+        observedAtIso: wbC?.generatedAt ?? nowIso,
+    });
+    const hasHardFuture = presenceWindows.some((w) => (w.source === "explicit" || w.hard === true) &&
+        (w.status ?? (w.available ? "available" : "unavailable")) === "available" &&
+        Date.parse(w.endIso) > Date.parse(nowIso));
+    const hasPredictedFuture = presenceWindows.some((w) => w.source === "predicted" &&
+        (w.status ?? (w.available ? "available" : "unavailable")) === "available");
     return {
         connectedNow,
         presenceWindows,
@@ -353,18 +368,39 @@ function mapWallbox(wbC, wbD, nowIso, slots, currentSlotStart) {
         targetSocPct: num(wbD, "planSocPct") ?? num(wbD, "effectiveLimitSocPct"),
         requiredEnergyKwh: num(wbD, "requiredEnergyKwh") ?? num(wbD, "remainingEnergyKwh"),
         deadlineIso: wbC?.deadlineIso ?? null,
-        energyGoalHard: false, // ohne belastbare Presence-Prognose kein hartes Zukunftsziel
+        // Hartes Ziel nur mit belastbarer Presence (explicit/live-Zukunft oder predicted)
+        energyGoalHard: connectedNow || hasHardFuture || hasPredictedFuture,
         minChargePowerW: null,
         maxChargePowerW: num(wbD, "maxChargePowerW"),
         chargeLossFactor: null,
         evccExecutionMaster: true,
         uncertainty: wbC
-            ? connectedNow
+            ? connectedNow || hasHardFuture || hasPredictedFuture
                 ? wbC.quality
-                : (0, quality_1.operatorQuality)("disabled", "Fahrzeug nicht verbunden — zukünftige Presence unknown.", wbC.quality.confidencePct)
+                : (0, quality_1.operatorQuality)("degraded", "Fahrzeug-Presence teilweise unknown — keine Phantom-Ladung.", wbC.quality.confidencePct)
             : (0, quality_1.operatorQuality)("missing", "Wallbox-Contribution fehlt.", null),
         freshness: freshnessFrom(Date.parse(nowIso), wbC?.generatedAt ?? nowIso, wbC?.quality ?? (0, quality_1.operatorQuality)("missing", "wb", null)),
     };
+}
+function parseExplicitWindows(wbD) {
+    if (!wbD)
+        return null;
+    const raw = wbD.explicitPresenceWindows ?? wbD.presenceWindowsExplicit;
+    if (!Array.isArray(raw))
+        return null;
+    const out = [];
+    for (const item of raw) {
+        if (!item || typeof item !== "object")
+            continue;
+        const o = item;
+        const startIso = typeof o.startIso === "string" ? o.startIso : null;
+        const endIso = typeof o.endIso === "string" ? o.endIso : null;
+        const available = typeof o.available === "boolean" ? o.available : null;
+        if (!startIso || !endIso || available === null)
+            continue;
+        out.push({ available, startIso, endIso });
+    }
+    return out.length ? out : null;
 }
 /** Kurzsummary für Daily-Plan reason_de (keine neuen States). */
 function summarizeUnifiedDayPlanForReason(plan) {

@@ -142,6 +142,12 @@ function evaluateMaterialReplan(baseline, actual, opts) {
         reasons.push(reason_codes_1.REASON.REPLAN_VEHICLE_DISCONNECTED);
         hard = true;
     }
+    if (baseline.presenceDigest !== actual.presenceDigest &&
+        !reasons.includes(reason_codes_1.REASON.REPLAN_VEHICLE_CONNECTED) &&
+        !reasons.includes(reason_codes_1.REASON.REPLAN_VEHICLE_DISCONNECTED)) {
+        reasons.push(reason_codes_1.REASON.REPLAN_VEHICLE_PRESENCE_CHANGED);
+        // Explizite/gelernte Presence-Änderung: material, aber soft (Cooldown gilt)
+    }
     const vehE = absDiff(baseline.vehicleRequiredEnergyKwh, actual.vehicleRequiredEnergyKwh);
     const vehSoc = absDiff(baseline.vehicleTargetSocPct, actual.vehicleTargetSocPct);
     const vehDeadlineChanged = (baseline.vehicleDeadlineIso ?? "") !== (actual.vehicleDeadlineIso ?? "");

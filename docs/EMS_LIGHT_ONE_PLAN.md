@@ -84,10 +84,16 @@ Anti-Chatter-Cooldown für weiche Abweichungen; harte Events (Tag, Vehicle, AC-K
 Replan: neue Generation, `previousExpectedDayEnergyKwh`, Rest-Horizont ab jetzt, Vergangenheit unverändert.  
 Tagesbewertungs-Struktur für späteres Learning (noch ohne Persistenz).
 
+### Schritt 5 — Future Vehicle Presence
+
+Availability pro Fenster: `available` / `unavailable` / `unknown` mit Quelle live|explicit|predicted.  
+Priorität live > explicit > predicted Learning > unknown. Keine erfundenen Anwesenheitszeiten.  
+Allocator lädt nur in `available`-Slots; Zielerreichbarkeit mit hard/predicted/unknown getrennt.
+
 ### Nächste Schritte
 
-1. Belastbare Fahrzeug-Presence (ohne erfundene Fenster).
-2. Battery/Wallbox Unified-Live erst nach Validierung.
-3. Learning aus Tagesbewertung (Schritt 8).
+1. Battery/Wallbox Unified-Live erst nach Validierung.
+2. Learning aus Tagesbewertung (Schritt 8).
+3. Optional: Intent-Deadline stärker in Contribution verdrahten.
 
 Nicht: isolierte Add-on-Patches als „EMS fertig“.

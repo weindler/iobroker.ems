@@ -65,13 +65,22 @@ function buildSlots(input) {
         const w = byStart.get(p.slot.startIso);
         if (!w)
             continue;
-        w.pvKwh = p.energyKwh ?? energyFromPowerW(p.forecastPowerW ?? 0);
+        // null ≠ 0: fehlende Prognose bleibt 0-Energie im Slot, aber ohne Fake-Leistung
+        if (p.energyKwh !== null && p.energyKwh !== undefined)
+            w.pvKwh = p.energyKwh;
+        else if (p.forecastPowerW !== null && p.forecastPowerW !== undefined) {
+            w.pvKwh = energyFromPowerW(p.forecastPowerW);
+        }
     }
     for (const h of input.houseLoad.slots) {
         const w = byStart.get(h.slot.startIso);
         if (!w)
             continue;
-        w.houseKwh = h.energyKwh ?? energyFromPowerW(h.forecastPowerW ?? 0);
+        if (h.energyKwh !== null && h.energyKwh !== undefined)
+            w.houseKwh = h.energyKwh;
+        else if (h.forecastPowerW !== null && h.forecastPowerW !== undefined) {
+            w.houseKwh = energyFromPowerW(h.forecastPowerW);
+        }
     }
     for (const pr of input.prices.slots) {
         const w = byStart.get(pr.slot.startIso);
@@ -296,7 +305,9 @@ function allocateClimate(input, slots, allocations) {
     // Pflicht-Komfort zuerst (zeitkritisch), dann verschiebbarer Flex
     const units = [...cl.units].sort((a, b) => Number(b.mandatoryComfort) - Number(a.mandatoryComfort));
     for (const u of units) {
-        const maxW = u.typicalPowerW ?? 900;
+        const maxW = u.typicalPowerW;
+        if (maxW === null || !(maxW > 0))
+            continue; // kein erfundener Default-Power
         const slotEnergy = energyFromPowerW(maxW);
         let need = u.expectedEnergyKwh ?? (u.mandatoryComfort ? slotEnergy * 4 : 0);
         if (need <= EPS)
@@ -393,11 +404,33 @@ function allocateUnifiedDayPlan(input) {
     const goals = [];
     const constraints = (0, types_1.deriveUnifiedHardConstraints)(input);
     const reasonCodes = [reason_codes_1.REASON.HOUSE_LOAD_REQUIRED];
-    const capacity = input.battery.usableCapacityKwh ?? 0;
-    const socPct = input.battery.socPct ?? 0;
-    let socKwh = capacity > 0 ? (socPct / 100) * capacity : 0;
+    if (input.pv.uncertainty.status === "degraded" || input.pv.uncertainty.status === "missing") {
+        reasonCodes.push(reason_codes_1.REASON.PV_FORECAST_DEGRADED);
+    }
+    if (input.houseLoad.uncertainty.status === "degraded" || input.houseLoad.uncertainty.status === "missing") {
+        reasonCodes.push(reason_codes_1.REASON.HOUSE_LOAD_DEGRADED);
+    }
+    if (input.prices.slots.some((s) => s.exportCtPerKwh === null)) {
+        reasonCodes.push(reason_codes_1.REASON.EXPORT_TARIFF_UNKNOWN);
+    }
+    if (input.wallbox) {
+        if (!input.wallbox.connectedNow || input.wallbox.presenceWindows.length === 0) {
+            reasonCodes.push(reason_codes_1.REASON.VEHICLE_PRESENCE_UNKNOWN);
+        }
+        else if (input.wallbox.presenceWindows.length === 1) {
+            // nur aktueller Slot — Zukunft unknown
+            reasonCodes.push(reason_codes_1.REASON.VEHICLE_PRESENCE_UNKNOWN);
+        }
+    }
+    if (input.battery.socPct === null || input.battery.usableCapacityKwh === null) {
+        reasonCodes.push(reason_codes_1.REASON.BATTERY_TELEMETRY_MISSING);
+    }
+    const capacity = input.battery.usableCapacityKwh;
+    const socPct = input.battery.socPct;
+    const batteryKnown = capacity !== null && capacity > 0 && socPct !== null;
+    let socKwh = batteryKnown ? (socPct / 100) * capacity : 0;
     const reservePct = input.battery.reserveSocPct ?? input.battery.minSocPct ?? 0;
-    const reserveKwh = capacity * (reservePct / 100);
+    const reserveKwh = batteryKnown ? capacity * (reservePct / 100) : 0;
     // Phase A: Hauslast bereits in surplusKwh verrechnet
     const houseTotal = slots.reduce((a, s) => a + s.houseKwh, 0);
     const pvTotal = slots.reduce((a, s) => a + s.pvKwh, 0);
@@ -406,12 +439,15 @@ function allocateUnifiedDayPlan(input) {
     // Thermal reserve before battery fill (Phase C ordering)
     const thermalNeed = input.thermal?.headroomEnergyKwh ?? 0;
     const surplusAfterVehicle = slots.reduce((a, s) => a + s.remainPvKwh, 0);
-    const batRoom = capacity > 0 ? Math.max(0, capacity * ((input.battery.maxSocPct ?? 100) / 100) - socKwh) : 0;
-    // If battery nearly full or thermal need competes, reserve PV for thermal
-    const batNearFull = capacity > 0 && socKwh >= capacity * 0.85;
+    const batRoom = batteryKnown
+        ? Math.max(0, capacity * ((input.battery.maxSocPct ?? 100) / 100) - socKwh)
+        : 0;
+    const batNearFull = batteryKnown && socKwh >= capacity * 0.85;
     const thermalReserve = Math.min(thermalNeed, surplusAfterVehicle * (batNearFull || thermalNeed > batRoom * 0.5 ? 1 : 0.55));
-    // Phase D-ish: Battery charge with reserve for thermal
-    socKwh = allocateBatteryCharge(input, slots, allocations, socKwh, capacity, reserveKwh, thermalReserve);
+    // Phase D-ish: Battery charge only with known SOC/capacity (null ≠ 0 %)
+    if (batteryKnown) {
+        socKwh = allocateBatteryCharge(input, slots, allocations, socKwh, capacity, reserveKwh, thermalReserve);
+    }
     // Phase C: Thermal from remaining PV (never battery at PV≈0)
     allocateThermal(input, slots, allocations, goals);
     allocateClimate(input, slots, allocations);
@@ -444,9 +480,18 @@ function allocateUnifiedDayPlan(input) {
     }
     if (exportValueUnknown)
         exportValueCt = null;
-    const traj = buildBatteryTrajectory(input, slots, allocations, (socPct / 100) * capacity, capacity);
+    const traj = batteryKnown
+        ? buildBatteryTrajectory(input, slots, allocations, (socPct / 100) * capacity, capacity)
+        : [];
     const confPct = input.pv.uncertainty.confidencePct;
-    const quality = (0, quality_1.operatorQuality)(input.pv.uncertainty.status === "valid" ? "valid" : input.pv.uncertainty.status, `Unified allocation; PV confidence ${confPct ?? "n/a"}%.`, confPct);
+    const degraded = input.pv.uncertainty.status !== "valid" ||
+        input.houseLoad.uncertainty.status === "missing" ||
+        !batteryKnown;
+    const quality = (0, quality_1.operatorQuality)(degraded
+        ? input.pv.uncertainty.status === "missing"
+            ? "missing"
+            : "degraded"
+        : "valid", `Unified allocation; PV confidence ${confPct ?? "n/a"}%.`, confPct);
     return {
         schemaVersion: 1,
         planId: `unified-${input.time.nowIso}`,
@@ -461,7 +506,8 @@ function allocateUnifiedDayPlan(input) {
         expectedHouseLoadEnergyKwh: round3(houseTotal),
         expectedGridImportEnergyKwh: round3(importKwh),
         expectedGridExportEnergyKwh: round3(exportKwh),
-        expectedCostCt: round3(importCostCt - (exportValueCt ?? 0)),
+        // Exportvergütung unknown → nicht als 0-€-Gutschrift erfinden
+        expectedCostCt: round3(exportValueCt === null ? importCostCt : importCostCt - exportValueCt),
         batteryTrajectory: traj,
         allocations: allocations.sort((a, b) => a.slot.startIso.localeCompare(b.slot.startIso)),
         goalStatuses: goals,

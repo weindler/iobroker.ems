@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.243",
+		"version": "0.1.244",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.244": {
+				"en": "Unified real-data bridge: ForecastPlan/contributions → UnifiedDayPlannerInput (PV bias once, Tibber, battery/IH/AC/EV mapping); IH/AC live; battery/EVCC simulation only.",
+				"de": "Unified Real-Data-Bridge: ForecastPlan/Contributions → UnifiedDayPlannerInput (PV-Bias einmal, Tibber, Batterie/IH/AC/EV); IH/AC live; Batterie/EVCC nur Simulation."
+			},
 			"0.1.243": {
 				"en": "Unified IH/AC plan authority: single publish after merge into daily_plan.allocations_json; no classic IH/AC race; idle on unified failure; battery/wallbox unchanged.",
 				"de": "Unified IH/AC Plan-Authority: ein Publish nach Merge in daily_plan.allocations_json; kein klassisches IH/AC-Race; bei Unified-Fehler idle; Batterie/Wallbox unverändert."

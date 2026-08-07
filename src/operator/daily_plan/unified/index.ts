@@ -13,7 +13,11 @@ export {
 	clearIhAcAuthority,
 	isIhAcContributionId,
 } from "./authority";
-export { buildUnifiedInputFromForecastContext } from "./from_forecast_context";
+export {
+	buildUnifiedInputFromForecastContext,
+	summarizeUnifiedDayPlanForReason,
+} from "./from_forecast_context";
+export { unifiedPlanCadenceDigest } from "./cadence";
 export {
 	buildUnifiedIhAcDispatchPublish,
 	unifiedPlanToImmersionAllocations,

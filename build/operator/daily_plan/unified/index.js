@@ -19,7 +19,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.golden005GoodDayPvHeat = exports.golden005BadNightBatteryHeat = exports.golden005Input = exports.golden004StalePlanNoReplan = exports.golden004ReplanPlan = exports.golden004Input = exports.golden003GoodPv = exports.golden003BadEarlyGrid = exports.golden003Input = exports.golden002GoodPlan = exports.golden002BadPlanAbsentCharge = exports.golden002Input = exports.golden001ScaledBadPlan = exports.golden001ScaledInput = exports.golden001GoodPlan = exports.golden001BadPlan = exports.golden001Input = exports.buildSlots = exports.publishUnifiedIhAcDispatch = exports.unifiedPlanToClimateAllocations = exports.unifiedPlanToImmersionAllocations = exports.buildUnifiedIhAcDispatchPublish = exports.buildUnifiedInputFromForecastContext = exports.isIhAcContributionId = exports.clearIhAcAuthority = exports.applyUnifiedIhAcAuthority = exports.allocateUnifiedDayPlan = void 0;
+exports.golden005GoodDayPvHeat = exports.golden005BadNightBatteryHeat = exports.golden005Input = exports.golden004StalePlanNoReplan = exports.golden004ReplanPlan = exports.golden004Input = exports.golden003GoodPv = exports.golden003BadEarlyGrid = exports.golden003Input = exports.golden002GoodPlan = exports.golden002BadPlanAbsentCharge = exports.golden002Input = exports.golden001ScaledBadPlan = exports.golden001ScaledInput = exports.golden001GoodPlan = exports.golden001BadPlan = exports.golden001Input = exports.buildSlots = exports.publishUnifiedIhAcDispatch = exports.unifiedPlanToClimateAllocations = exports.unifiedPlanToImmersionAllocations = exports.buildUnifiedIhAcDispatchPublish = exports.unifiedPlanCadenceDigest = exports.summarizeUnifiedDayPlanForReason = exports.buildUnifiedInputFromForecastContext = exports.isIhAcContributionId = exports.clearIhAcAuthority = exports.applyUnifiedIhAcAuthority = exports.allocateUnifiedDayPlan = void 0;
 __exportStar(require("./types"), exports);
 __exportStar(require("./evaluate"), exports);
 __exportStar(require("./reason_codes"), exports);
@@ -31,6 +31,9 @@ Object.defineProperty(exports, "clearIhAcAuthority", { enumerable: true, get: fu
 Object.defineProperty(exports, "isIhAcContributionId", { enumerable: true, get: function () { return authority_1.isIhAcContributionId; } });
 var from_forecast_context_1 = require("./from_forecast_context");
 Object.defineProperty(exports, "buildUnifiedInputFromForecastContext", { enumerable: true, get: function () { return from_forecast_context_1.buildUnifiedInputFromForecastContext; } });
+Object.defineProperty(exports, "summarizeUnifiedDayPlanForReason", { enumerable: true, get: function () { return from_forecast_context_1.summarizeUnifiedDayPlanForReason; } });
+var cadence_1 = require("./cadence");
+Object.defineProperty(exports, "unifiedPlanCadenceDigest", { enumerable: true, get: function () { return cadence_1.unifiedPlanCadenceDigest; } });
 var dispatch_bridge_1 = require("./dispatch_bridge");
 Object.defineProperty(exports, "buildUnifiedIhAcDispatchPublish", { enumerable: true, get: function () { return dispatch_bridge_1.buildUnifiedIhAcDispatchPublish; } });
 Object.defineProperty(exports, "unifiedPlanToImmersionAllocations", { enumerable: true, get: function () { return dispatch_bridge_1.unifiedPlanToImmersionAllocations; } });

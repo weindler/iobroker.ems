@@ -14,6 +14,11 @@ export const REASON = {
 	CLIMATE_FLEX: "climate_flex",
 	OTHER_FLEX: "other_flex",
 	MIN_POWER_SLOT: "min_power_slot",
+	PV_FORECAST_DEGRADED: "pv_forecast_degraded",
+	HOUSE_LOAD_DEGRADED: "house_load_degraded",
+	EXPORT_TARIFF_UNKNOWN: "export_tariff_unknown",
+	VEHICLE_PRESENCE_UNKNOWN: "vehicle_presence_unknown",
+	BATTERY_TELEMETRY_MISSING: "battery_telemetry_missing",
 } as const;
 
 export type UnifiedReasonCode = (typeof REASON)[keyof typeof REASON];

@@ -70,10 +70,17 @@ Gemeinsamer Input-/Output-Vertrag, Constraints/Objectives, Replan-Trigger, Golde
 IH/AC: Unified wird vor dem Publish in `daily_plan.allocations` gemerged und ist autoritativ  
 (`allocations_json` ≡ Addon-Slices). Battery/Wallbox bleiben klassisch. Bei Unified-Fehler: IH/AC idle.
 
+### Schritt 3 — Real Data Bridge
+
+`buildUnifiedInputFromForecastContext()` mappt den produktiven ForecastPlan-Snapshot  
+(+ Contribution-Details, Live-Overrides) → `UnifiedDayPlannerInput`.  
+PV: bereits bias-korrigierte Werte aus `learning.pv_bias` (keine Doppelkorrektur).  
+Battery/EVCC: Planung/Simulation; IH/AC: Live. Future vehicle presence: unknown (kein Hardcode).
+
 ### Nächste Schritte
 
 1. Nachplanung verdrahten wenn Live vom Plan abweicht.
-2. Battery/Wallbox Unified-Live erst nach Validierung.
-3. Kein isolierter Add-on-Patch als Ersatz für den gemeinsamen Plan.
+2. Belastbare Fahrzeug-Presence (ohne erfundene Fenster).
+3. Battery/Wallbox Unified-Live erst nach Validierung.
 
 Nicht: isolierte Add-on-Patches als „EMS fertig“.

@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runDailyPlanTick = exports.dailyPlanRevisionForTest = exports.resetDailyPlanRevisionForTest = void 0;
+exports.runDailyPlanTick = exports.lastUnifiedPlanIdForTest = exports.unifiedPlanGenerationForTest = exports.dailyPlanRevisionForTest = exports.resetDailyPlanRevisionForTest = void 0;
 const config_1 = require("../../policy/global/config");
 const config_2 = require("../../intent/config");
 const mode_policy_1 = require("../../planner/mode_policy");
@@ -52,19 +52,37 @@ const allocate_1 = require("./unified/allocate");
 const authority_1 = require("./unified/authority");
 const dispatch_bridge_1 = require("./unified/dispatch_bridge");
 const from_forecast_context_1 = require("./unified/from_forecast_context");
+const cadence_1 = require("./unified/cadence");
 const daily_plan_1 = require("../../addons/immersion_heater/runtime/daily_plan");
 const daily_plan_2 = require("../../addons/air_conditioning/runtime/daily_plan");
+const limits_1 = require("../../addons/battery/core/limits");
 let lastRevisionPayload = "";
 let revision = 0;
+/** Material-Cadence: ohne relevanten Grund kein neuer Unified-/Tagesplan-Publish. */
+let lastCadenceDigest = "";
+let unifiedGeneration = 0;
+let lastUnifiedPlanId = "";
 function resetDailyPlanRevisionForTest() {
     lastRevisionPayload = "";
     revision = 0;
+    lastCadenceDigest = "";
+    unifiedGeneration = 0;
+    lastUnifiedPlanId = "";
 }
 exports.resetDailyPlanRevisionForTest = resetDailyPlanRevisionForTest;
 function dailyPlanRevisionForTest() {
     return revision;
 }
 exports.dailyPlanRevisionForTest = dailyPlanRevisionForTest;
+/** Test-Hook: wie oft Unified allocate+publish seit Reset gelaufen ist. */
+function unifiedPlanGenerationForTest() {
+    return unifiedGeneration;
+}
+exports.unifiedPlanGenerationForTest = unifiedPlanGenerationForTest;
+function lastUnifiedPlanIdForTest() {
+    return lastUnifiedPlanId;
+}
+exports.lastUnifiedPlanIdForTest = lastUnifiedPlanIdForTest;
 async function readStr(host, relId) {
     try {
         const st = await host.getStateAsync(relId);
@@ -231,6 +249,22 @@ async function runDailyPlanTick(host, forecastPlan) {
         lastRevisionPayload = payload;
     }
     plan.revision = revision;
+    const cadenceDigest = (0, cadence_1.unifiedPlanCadenceDigest)(plan);
+    const cadenceChanged = cadenceDigest !== lastCadenceDigest;
+    // Live-Diagnose darf jeden Tick — Tagesplan/Unified nur bei Cadence-Änderung.
+    try {
+        await (0, state_write_1.setOptionalNumberIfChanged)(host, "operator.diagnostics.surplus_w", liveSurplusEarly.surplusW);
+        await (0, state_write_1.setOptionalNumberIfChanged)(host, "operator.diagnostics.deficit_w", liveSurplusEarly.deficitW);
+        await (0, state_write_1.setStateIfChanged)(host, "operator.diagnostics.slot_start_iso", liveSurplusEarly.slotStartIso ?? "");
+    }
+    catch {
+        // best-effort
+    }
+    if (!cadenceChanged) {
+        // Kein neuer Tages-/Unified-Plan: bestehende States/Slices unverändert lassen.
+        return plan;
+    }
+    lastCadenceDigest = cadenceDigest;
     // Roadmap Block 6: vorhandene KI-Präferenzen → Plan B auf Allocation, wenn messbar besser.
     try {
         const { maybeApplyAiWritebackOnDailyPlan } = await Promise.resolve().then(() => __importStar(require("../../ai/writeback/index.js")));
@@ -247,35 +281,55 @@ async function runDailyPlanTick(host, forecastPlan) {
          */
         let ihAcReasonSuffix = "";
         try {
-            const bufferTemp = (0, state_util_1.asNum)((await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.bufferTemperatureC))?.val);
-            const batSoc = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_2.BAT.telemetry.socPct))?.val);
+            const bufferSt = await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.bufferTemperatureC);
+            const batSocSt = await host.getStateAsync(ensure_states_2.BAT.telemetry.socPct);
             const batCap = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_2.BAT.telemetry.capacityEffectiveKwh))?.val);
+            const hw = (0, limits_1.hardwareLimitsFromConfig)(host.config);
             const roomTemps = {};
             for (let u = 1; u <= constants_1.AC_UNIT_COUNT; u++) {
                 roomTemps[u] = (0, state_util_1.asNum)((await host.getStateAsync((0, ensure_states_3.acUnitRuntimeStates)(u).roomTempC))?.val);
             }
+            const bufferTs = typeof bufferSt?.ts === "number" && Number.isFinite(bufferSt.ts)
+                ? new Date(bufferSt.ts).toISOString()
+                : null;
+            const batSocTs = typeof batSocSt?.ts === "number" && Number.isFinite(batSocSt.ts)
+                ? new Date(batSocSt.ts).toISOString()
+                : null;
             const unifiedInput = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)({
                 now,
                 timezone,
                 globalMode: plan.globalMode,
                 forecastPlan,
-                bufferTempC: bufferTemp,
-                batterySocPct: batSoc,
+                bufferTempC: (0, state_util_1.asNum)(bufferSt?.val),
+                bufferTempObservedAtIso: bufferTs,
+                batterySocPct: (0, state_util_1.asNum)(batSocSt?.val),
                 batteryCapacityKwh: batCap,
+                batterySocObservedAtIso: batSocTs,
+                batteryMaxChargePowerW: hw.maxChargeW,
+                batteryMaxDischargePowerW: hw.maxDischargeW,
+                batteryMinSocPct: hw.minSocPct,
+                batteryMaxSocPct: hw.maxSocPct,
                 roomTemps,
+                observedPvPowerW: (0, state_util_1.asNum)((await host.getStateAsync("live.battery.pv_ac_power_w"))?.val),
+                observedHouseLoadPowerW: (0, state_util_1.asNum)((await host.getStateAsync("live.battery.house_load_w"))?.val),
+                contributionRevision: plan.revision,
             });
-            unifiedInput.contributionRevision = plan.revision;
             const unifiedPlan = (0, allocate_1.allocateUnifiedDayPlan)(unifiedInput);
+            unifiedGeneration += 1;
+            lastUnifiedPlanId = unifiedPlan.planId;
             const pub = (0, dispatch_bridge_1.buildUnifiedIhAcDispatchPublish)(unifiedPlan);
             plan = (0, authority_1.applyUnifiedIhAcAuthority)(plan, pub.immersionEntries, pub.climateEntries, {
                 dailyPlanRevision: plan.revision,
                 unifiedPlanId: unifiedPlan.planId,
             });
-            ihAcReasonSuffix = ` Unified IH/AC autoritativ (planId=${unifiedPlan.planId}, rev=${plan.revision}).`;
+            ihAcReasonSuffix =
+                ` ${(0, from_forecast_context_1.summarizeUnifiedDayPlanForReason)(unifiedPlan)} IH/AC autoritativ.`;
         }
         catch (e) {
             // AUTH-003: kein klassischer IH/AC-Fallback, kein Festhalten an veraltetem Unified.
             plan = (0, authority_1.clearIhAcAuthority)(plan);
+            unifiedGeneration += 1;
+            lastUnifiedPlanId = "unified-failed";
             ihAcReasonSuffix = ` Unified IH/AC fehlgeschlagen — idle (kein klassischer Fallback): ${String(e)}`.slice(0, 200);
             host.log?.warn?.(`unified ih/ac authority: ${String(e)}`);
         }
@@ -297,10 +351,6 @@ async function runDailyPlanTick(host, forecastPlan) {
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.reasonDe, publishReasonDe);
         await (0, state_write_1.setOptionalNumberIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.revision, revision);
-        // Roadmap Block 3.3: Briefing + Live-Überschuss/-Defizit (bereits vor Allocation gelesen).
-        await (0, state_write_1.setOptionalNumberIfChanged)(host, "operator.diagnostics.surplus_w", liveSurplusEarly.surplusW);
-        await (0, state_write_1.setOptionalNumberIfChanged)(host, "operator.diagnostics.deficit_w", liveSurplusEarly.deficitW);
-        await (0, state_write_1.setStateIfChanged)(host, "operator.diagnostics.slot_start_iso", liveSurplusEarly.slotStartIso ?? "");
         const aiThinkingRaw = await host.getStateAsync(ensure_states_1.AI_STATES.lastThinkingDe);
         const aiThinkingDe = typeof aiThinkingRaw?.val === "string" && aiThinkingRaw.val.trim() ? aiThinkingRaw.val.trim() : null;
         await (0, state_write_1.setStateIfChanged)(host, "operator.briefing_de", (0, briefing_1.buildOperatorBriefingDe)(plan, now, timezone, {

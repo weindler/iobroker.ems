@@ -241,6 +241,9 @@ function allocateBatteryCharge(input, slots, allocations, socKwh, capacityKwh, r
     const maxChargeW = bat.maxChargePowerW;
     const eff = bat.chargeEfficiency ?? 1;
     let soc = socKwh;
+    const chargedPvStart = allocations
+        .filter((a) => a.kind === "battery_charge")
+        .reduce((a, c) => a + c.allocatedEnergyKwh, 0);
     // Leave thermalReserveKwh of PV across horizon for thermal
     let pvLeftForBat = slots.reduce((a, s) => a + s.remainPvKwh, 0) - thermalReserveKwh;
     if (pvLeftForBat < 0)
@@ -262,9 +265,50 @@ function allocateBatteryCharge(input, slots, allocations, socKwh, capacityKwh, r
         pvLeftForBat -= take;
         pushAlloc(allocations, s, "battery", "battery_charge", take, "pv_surplus", ["battery.limits"], [reason_codes_1.REASON.BATTERY_SOC_TARGET, reason_codes_1.REASON.PV_SURPLUS_AVAILABLE], maxChargeW);
     }
-    // Never below reserve via discharge in this core (we don't discharge for thermal)
-    if (soc < reserveKwh) {
-        /* reserve protected — no action */
+    /*
+     * Netz-Nachladung nur wenn Contribution Bedarf + Deadline setzt (PV-Defizit-Ladelogik)
+     * oder SOC unter Reserve — nie „billig = laden“ ohne Bedarf.
+     * Spätere PV nicht verdrängen: nur Restbedarf nach PV-Phase.
+     */
+    const chargedPv = allocations
+        .filter((a) => a.kind === "battery_charge")
+        .reduce((a, c) => a + c.allocatedEnergyKwh, 0) - chargedPvStart;
+    let gridNeedKwh = null;
+    if (bat.gridChargeAllowed) {
+        const fromContrib = bat.requiredChargeEnergyKwh;
+        if (fromContrib !== null && fromContrib > EPS) {
+            gridNeedKwh = Math.max(0, fromContrib - chargedPv);
+        }
+        else if (soc < reserveKwh - EPS) {
+            gridNeedKwh = reserveKwh - soc;
+        }
+    }
+    if (gridNeedKwh !== null && gridNeedKwh > EPS) {
+        const deadlineMs = bat.chargeDeadlineIso ? Date.parse(bat.chargeDeadlineIso) : Number.POSITIVE_INFINITY;
+        const importSlots = slots
+            .filter((s) => s.gridAllowed && s.importCt !== null && Date.parse(s.startIso) < deadlineMs)
+            .slice()
+            .sort((a, b) => (a.importCt ?? 999) - (b.importCt ?? 999) || a.startIso.localeCompare(b.startIso));
+        let remaining = gridNeedKwh;
+        for (const s of importSlots) {
+            if (remaining <= EPS)
+                break;
+            if (soc >= targetKwh - EPS)
+                break;
+            const room = (targetKwh - soc) / eff;
+            let take = Math.min(remaining, room);
+            if (maxChargeW)
+                take = Math.min(take, energyFromPowerW(maxChargeW));
+            if (take <= EPS)
+                continue;
+            pushAlloc(allocations, s, "battery", "battery_charge", take, "grid", ["battery.limits", "battery.reserve_or_deficit"], [
+                reason_codes_1.REASON.BATTERY_SOC_TARGET,
+                reason_codes_1.REASON.GRID_IMPORT_COST_OPTIMAL,
+                ...(bat.chargeDeadlineIso ? [reason_codes_1.REASON.BATTERY_CHARGE_DEADLINE] : [reason_codes_1.REASON.BATTERY_RESERVE_PROTECTED]),
+            ], maxChargeW);
+            soc += take * eff;
+            remaining -= take;
+        }
     }
     return soc;
 }
@@ -484,6 +528,15 @@ function allocateUnifiedDayPlan(input, opts) {
     if (trimmed.battery.socPct === null || trimmed.battery.usableCapacityKwh === null) {
         reasonCodes.push(reason_codes_1.REASON.BATTERY_TELEMETRY_MISSING);
     }
+    if (!trimmed.battery.dischargeLiveSupported) {
+        constraints.push({
+            id: "battery.discharge_unsupported",
+            kind: "technical",
+            hard: true,
+            descriptionDe: "Battery Discharge Live nicht supported (z. B. Sonnen EM) — kein Discharge-Dispatch.",
+        });
+        reasonCodes.push(reason_codes_1.REASON.BATTERY_DISCHARGE_LIVE_UNSUPPORTED);
+    }
     const capacity = trimmed.battery.usableCapacityKwh;
     const socPct = trimmed.battery.socPct;
     const batteryKnown = capacity !== null && capacity > 0 && socPct !== null;
@@ -552,6 +605,7 @@ function allocateUnifiedDayPlan(input, opts) {
             : "degraded"
         : "valid", `Unified allocation; PV confidence ${confPct ?? "n/a"}%.`, confPct);
     const mergedAllocations = [...pastAllocations, ...allocations].sort((a, b) => a.slot.startIso.localeCompare(b.slot.startIso));
+    const vehicleChargeEconomics = buildVehicleChargeEconomics(trimmed, slots, allocations);
     return {
         schemaVersion: 1,
         planId: `unified-${trimmed.time.nowIso}`,
@@ -574,8 +628,115 @@ function allocateUnifiedDayPlan(input, opts) {
         constraints,
         reasonCodes: [...new Set(reasonCodes)],
         confidence: quality,
+        vehicleChargeEconomics,
         totals: null,
         legacyDailyPlan: null,
     };
 }
 exports.allocateUnifiedDayPlan = allocateUnifiedDayPlan;
+/**
+ * Earliest-feasible Baseline: gleiche Netzenergie chronologisch ab erstem
+ * verfügbaren Slot (Presence + Deadline + maxPower + echte Preise).
+ * null wenn physisch/preislich nicht vollständig bewertbar.
+ */
+function earliestFeasibleGridCostCt(input, slots, gridNeedKwh) {
+    const wb = input.wallbox;
+    if (!wb || gridNeedKwh <= EPS)
+        return 0;
+    const deadlineMs = wb.deadlineIso ? Date.parse(wb.deadlineIso) : Number.POSITIVE_INFINITY;
+    const maxW = wb.maxChargePowerW;
+    const minW = wb.minChargePowerW;
+    const chrono = slots
+        .filter((s) => s.gridAllowed &&
+        s.importCt !== null &&
+        Date.parse(s.startIso) < deadlineMs &&
+        (0, vehicle_availability_1.vehicleSlotAllocatable)(wb, s.startIso))
+        .slice()
+        .sort((a, b) => a.startIso.localeCompare(b.startIso));
+    let remaining = gridNeedKwh;
+    let cost = 0;
+    for (const s of chrono) {
+        if (remaining <= EPS)
+            break;
+        let take = remaining;
+        if (maxW)
+            take = Math.min(take, energyFromPowerW(maxW));
+        if (minW && take > 0 && take < energyFromPowerW(minW)) {
+            if (remaining >= energyFromPowerW(minW))
+                take = energyFromPowerW(minW);
+            else
+                break;
+        }
+        if (maxW)
+            take = Math.min(take, energyFromPowerW(maxW));
+        if (take <= EPS)
+            continue;
+        cost += take * s.importCt;
+        remaining -= take;
+    }
+    if (remaining > 0.05)
+        return null;
+    return round3(cost);
+}
+function buildVehicleChargeEconomics(input, slots, allocations) {
+    const wb = input.wallbox;
+    if (!wb)
+        return null;
+    const wbAlloc = allocations.filter((a) => a.kind === "wallbox");
+    let pvKwh = 0;
+    let gridKwh = 0;
+    let gridCost = 0;
+    let gridPricedKwh = 0;
+    const slotCosts = {};
+    for (const a of wbAlloc) {
+        const slot = slots.find((s) => s.startIso === a.slot.startIso);
+        if (a.energySource === "pv_surplus")
+            pvKwh += a.allocatedEnergyKwh;
+        if (a.energySource === "grid" || a.energySource === "mixed") {
+            gridKwh += a.allocatedEnergyKwh;
+            if (slot?.importCt != null) {
+                const c = a.allocatedEnergyKwh * slot.importCt;
+                gridCost += c;
+                gridPricedKwh += a.allocatedEnergyKwh;
+                slotCosts[a.slot.startIso] = round3(c);
+            }
+        }
+    }
+    const exportKnown = slots.some((s) => s.exportCt !== null);
+    const required = wb.requiredEnergyKwh ?? 0;
+    const loss = wb.chargeLossFactor ?? 1;
+    const needKwh = required > EPS ? required * loss : 0;
+    const unmetNeed = needKwh > EPS ? Math.max(0, needKwh - pvKwh - gridKwh) : 0;
+    const neededImportButUnpriced = unmetNeed > 0.05 && gridKwh <= EPS;
+    const optimizedGridComplete = !neededImportButUnpriced &&
+        (gridKwh <= EPS || Math.abs(gridPricedKwh - gridKwh) <= 0.05);
+    const optimizedCostCt = neededImportButUnpriced
+        ? null
+        : gridKwh <= EPS
+            ? 0
+            : optimizedGridComplete
+                ? round3(gridCost)
+                : null;
+    const earliestCostCt = neededImportButUnpriced
+        ? null
+        : earliestFeasibleGridCostCt(input, slots, gridKwh);
+    const comparable = optimizedCostCt !== null && earliestCostCt !== null;
+    const savings = comparable ? round3(earliestCostCt - optimizedCostCt) : null;
+    let completeness = "unknown";
+    if (comparable) {
+        completeness = exportKnown ? "full" : "grid_only";
+    }
+    return {
+        deadlineIso: wb.deadlineIso,
+        requiredEnergyKwh: wb.requiredEnergyKwh,
+        expectedPvChargeKwh: round3(pvKwh),
+        expectedGridChargeKwh: round3(gridKwh),
+        expectedGridCostCt: optimizedCostCt,
+        alternativeGridCostCt: earliestCostCt,
+        savingsVsAlternativeCt: savings,
+        exportTariffKnown: exportKnown,
+        economicsCompleteness: completeness,
+        baselineId: "earliest_feasible",
+        slotCostsCtByStartIso: slotCosts,
+    };
+}

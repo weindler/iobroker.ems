@@ -1,6 +1,6 @@
 # EMS-Light — Ein Plan (Kanondokument)
 
-**Stand:** 04.08.2026  
+**Stand:** 07.08.2026  
 **Status:** Verbindliches Produkt- und Programmierziel für Agenten.  
 **Alt-Docs:** `docs/_archive/` (technisch/historisch, nicht das Zielbild).
 
@@ -90,10 +90,18 @@ Availability pro Fenster: `available` / `unavailable` / `unknown` mit Quelle liv
 Priorität live > explicit > predicted Learning > unknown. Keine erfundenen Anwesenheitszeiten.  
 Allocator lädt nur in `available`-Slots; Zielerreichbarkeit mit hard/predicted/unknown getrennt.
 
+### Schritt 6 — Unified Battery + EVCC Live Authority
+
+Bei gültigem Unified Day Plan sind IH/AC/**Battery**/**Wallbox** autoritativ über dieselbe Generation  
+(`daily_plan.allocations_json` ≡ Addon-`plan_json`). Dispatch nur über bestehende Runtimes  
+(Sonnen EM charge/hold/grid_balance; EVCC `mode`/`maxCurrent`). Kein Discharge-Live, keine Planner-Gerätewrites.  
+Fahrzeugziel inkl. SOC-Qualität/Deadline/Presence verdrahtet; `vehicleChargeEconomics` im Plan.  
+Replan-Failure: sicherer Hold/idle je Slice; EVCC bleibt manuell nutzbar.
+
 ### Nächste Schritte
 
-1. Battery/Wallbox Unified-Live erst nach Validierung.
-2. Learning aus Tagesbewertung (Schritt 8).
+1. Beta-Schritt 7 (noch offen — siehe Abschlussbericht Schritt 6).
+2. Learning aus Tagesbewertung.
 3. Optional: Intent-Deadline stärker in Contribution verdrahten.
 
 Nicht: isolierte Add-on-Patches als „EMS fertig“.

@@ -1,6 +1,7 @@
 /**
- * Unified Day Plan → bestehende DailyAllocationEntry-Form für IH + Klima.
+ * Unified Day Plan → bestehende DailyAllocationEntry-Form für IH/AC/Battery/Wallbox.
  * Keine Geräte-Writes — nur Plan-/Dispatch-Übersetzung.
+ * Battery: nur charge (kein Discharge-Live). Wallbox: Intent für EVCC-Runtime.
  */
 
 import { CONTRIBUTION_IDS, acUnitContributionId } from "../../contribution_ids";
@@ -21,7 +22,24 @@ const AC_CONTRIBUTOR: OperatorContributorRef = {
 	addonId: "air_conditioning",
 };
 
-function cellToEntry(cell: UnifiedAllocationCell, contributionId: string, contributor: OperatorContributorRef): DailyAllocationEntry {
+const BAT_CONTRIBUTOR: OperatorContributorRef = {
+	type: "addon",
+	id: "battery",
+	addonId: "battery",
+};
+
+const WB_CONTRIBUTOR: OperatorContributorRef = {
+	type: "addon",
+	id: "wallbox",
+	addonId: "wallbox",
+};
+
+function cellToEntry(
+	cell: UnifiedAllocationCell,
+	contributionId: string,
+	contributor: OperatorContributorRef,
+	opts?: { deadlineIso?: string | null; estimatedCostCt?: number | null },
+): DailyAllocationEntry {
 	const source = cell.energySource;
 	const pv = source === "pv_surplus" || source === "mixed" ? cell.allocatedPowerW : 0;
 	const grid = source === "grid" || source === "mixed" ? cell.allocatedPowerW : 0;
@@ -39,10 +57,12 @@ function cellToEntry(cell: UnifiedAllocationCell, contributionId: string, contri
 		gridPowerW: grid,
 		pvPowerW: pv,
 		batteryPowerW: bat,
-		mandatory: cell.constraintIds.some((id) => id.includes("mandatory") || id.includes("comfort") || id.includes("min_temp")),
+		mandatory: cell.constraintIds.some(
+			(id) => id.includes("mandatory") || id.includes("comfort") || id.includes("min_temp") || id.includes("energy_goal"),
+		),
 		priorityRank: null,
-		deadlineIso: null,
-		estimatedCostCt: null,
+		deadlineIso: opts?.deadlineIso ?? null,
+		estimatedCostCt: opts?.estimatedCostCt ?? null,
 		reasonDe: cell.reasonCodes.join(", ") || "unified_day_plan",
 	};
 }
@@ -52,7 +72,8 @@ export function unifiedPlanToImmersionAllocations(plan: UnifiedDayPlan): DailyAl
 	const out: DailyAllocationEntry[] = [];
 	for (const cell of plan.allocations) {
 		if (cell.kind !== "immersion_heater") continue;
-		const mandatory = cell.constraintIds.includes("thermal.min_temp") || cell.reasonCodes.includes("thermal_mandatory");
+		const mandatory =
+			cell.constraintIds.includes("thermal.min_temp") || cell.reasonCodes.includes("thermal_mandatory");
 		const id = mandatory ? CONTRIBUTION_IDS.IMMERSION_MANDATORY : CONTRIBUTION_IDS.IMMERSION_FLEXIBLE;
 		out.push(cellToEntry(cell, id, IH_CONTRIBUTOR));
 	}
@@ -64,10 +85,46 @@ export function unifiedPlanToClimateAllocations(plan: UnifiedDayPlan): DailyAllo
 	const out: DailyAllocationEntry[] = [];
 	for (const cell of plan.allocations) {
 		if (cell.kind !== "climate") continue;
-		const m = /^air_conditioning\.unit_(\d+)$/.exec(cell.consumerId) || /^unit_(\d+)$/.exec(cell.consumerId);
+		const m =
+			/^air_conditioning\.unit_(\d+)$/.exec(cell.consumerId) || /^unit_(\d+)$/.exec(cell.consumerId);
 		const unitIndex = m ? Number(m[1]) : Number(String(cell.consumerId).replace(/\D/g, "")) || 0;
 		if (unitIndex < 1 || unitIndex > 5) continue;
 		out.push(cellToEntry(cell, acUnitContributionId(unitIndex), AC_CONTRIBUTOR));
+	}
+	return filterRunnableAllocations(out, RUNNABLE_ALLOCATION_FLOOR_W);
+}
+
+/**
+ * Battery Charge only — Discharge-Zellen werden bewusst nicht als Live-Dispatch publiziert
+ * (Sonnen EM: discharge_unverified / unsupported).
+ */
+export function unifiedPlanToBatteryAllocations(plan: UnifiedDayPlan): DailyAllocationEntry[] {
+	const out: DailyAllocationEntry[] = [];
+	for (const cell of plan.allocations) {
+		if (cell.kind !== "battery_charge") continue;
+		out.push(cellToEntry(cell, CONTRIBUTION_IDS.BATTERY_CHARGE, BAT_CONTRIBUTOR));
+	}
+	return filterRunnableAllocations(out, RUNNABLE_ALLOCATION_FLOOR_W);
+}
+
+/** Wallbox → wallbox.ev_session für bestehende EVCC-Runtime. */
+export function unifiedPlanToWallboxAllocations(plan: UnifiedDayPlan): DailyAllocationEntry[] {
+	const deadline =
+		plan.vehicleChargeEconomics?.deadlineIso ??
+		null;
+	const out: DailyAllocationEntry[] = [];
+	for (const cell of plan.allocations) {
+		if (cell.kind !== "wallbox") continue;
+		const cost =
+			cell.energySource === "grid" || cell.energySource === "mixed"
+				? plan.vehicleChargeEconomics?.slotCostsCtByStartIso?.[cell.slot.startIso] ?? null
+				: null;
+		out.push(
+			cellToEntry(cell, CONTRIBUTION_IDS.WALLBOX_EV_SESSION, WB_CONTRIBUTOR, {
+				deadlineIso: deadline,
+				estimatedCostCt: cost,
+			}),
+		);
 	}
 	return filterRunnableAllocations(out, RUNNABLE_ALLOCATION_FLOOR_W);
 }
@@ -79,6 +136,15 @@ export type UnifiedIhAcDispatchPublish = {
 	climateStatus: "ready" | "idle";
 	immersionReasonDe: string;
 	climateReasonDe: string;
+};
+
+export type UnifiedDispatchPublish = UnifiedIhAcDispatchPublish & {
+	batteryEntries: DailyAllocationEntry[];
+	wallboxEntries: DailyAllocationEntry[];
+	batteryStatus: "ready" | "idle";
+	wallboxStatus: "ready" | "idle";
+	batteryReasonDe: string;
+	wallboxReasonDe: string;
 };
 
 export function buildUnifiedIhAcDispatchPublish(plan: UnifiedDayPlan): UnifiedIhAcDispatchPublish {
@@ -97,5 +163,26 @@ export function buildUnifiedIhAcDispatchPublish(plan: UnifiedDayPlan): UnifiedIh
 			climateEntries.length > 0
 				? `Unified Day Plan: ${climateEntries.length} fahrbare Klima-Fenster.`
 				: "Unified Day Plan: kein fahrbares Klima-Fenster.",
+	};
+}
+
+export function buildUnifiedDispatchPublish(plan: UnifiedDayPlan): UnifiedDispatchPublish {
+	const ihAc = buildUnifiedIhAcDispatchPublish(plan);
+	const batteryEntries = unifiedPlanToBatteryAllocations(plan);
+	const wallboxEntries = unifiedPlanToWallboxAllocations(plan);
+	return {
+		...ihAc,
+		batteryEntries,
+		wallboxEntries,
+		batteryStatus: batteryEntries.length > 0 ? "ready" : "idle",
+		wallboxStatus: wallboxEntries.length > 0 ? "ready" : "idle",
+		batteryReasonDe:
+			batteryEntries.length > 0
+				? `Unified Day Plan: ${batteryEntries.length} fahrbare Batterie-Lade-Fenster (charge/hold; kein Discharge-Live).`
+				: "Unified Day Plan: kein fahrbares Batterie-Lade-Fenster.",
+		wallboxReasonDe:
+			wallboxEntries.length > 0
+				? `Unified Day Plan: ${wallboxEntries.length} fahrbare Wallbox-Fenster (EVCC).`
+				: "Unified Day Plan: kein fahrbares Wallbox-Fenster.",
 	};
 }

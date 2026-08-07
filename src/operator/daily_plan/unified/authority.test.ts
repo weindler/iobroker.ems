@@ -207,8 +207,8 @@ describe("AUTH-003 Unified Fehler → idle, nicht classic", () => {
 	});
 });
 
-describe("AUTH-004 Battery/Wallbox unverändert", () => {
-	it("Battery/Wallbox-Einträge bleiben byte-gleich nach Authority-Merge", () => {
+describe("AUTH-004 IH/AC-only helper keeps Battery/Wallbox", () => {
+	it("applyUnifiedIhAcAuthority lässt Battery/Wallbox unverändert (null=keep)", () => {
 		const plan = basePlan([
 			classicEntry(
 				CONTRIBUTION_IDS.IMMERSION_FLEXIBLE,

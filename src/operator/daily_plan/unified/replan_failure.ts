@@ -1,26 +1,32 @@
 /**
- * Sicheres Verhalten bei fehlgeschlagenem Unified Replan (LIVE IH/AC).
- * Kein zweiter Klima-Tagesplaner — nur Authority-Bereinigung + bestehender AC-Runtime-Fallback.
+ * Sicheres Verhalten bei fehlgeschlagenem Unified Replan (LIVE IH/AC/Battery/Wallbox).
+ * Kein Classic-Planner-Takeover. Planner schreibt keine Geräte.
  */
 
 import type { DailyPlan } from "../types";
 import {
-	applyUnifiedIhAcAuthority,
+	applyUnifiedDayAuthority,
+	clearAllUnifiedAuthority,
 	clearIhAcAuthority,
 } from "./authority";
-import { buildUnifiedIhAcDispatchPublish } from "./dispatch_bridge";
+import { buildUnifiedDispatchPublish, buildUnifiedIhAcDispatchPublish } from "./dispatch_bridge";
 import type { PlanActualSample } from "./materiality";
 import { REASON } from "./reason_codes";
-import type { UnifiedClimateInput, UnifiedDayPlan, UnifiedThermalInput } from "./types";
+import type {
+	UnifiedBatteryInput,
+	UnifiedClimateInput,
+	UnifiedDayPlan,
+	UnifiedThermalInput,
+	UnifiedWallboxInput,
+} from "./types";
 
 export type ReplanFailureDisposition = {
-	/** IH-Plan-Slices entfernen → Runtime idle (kein veralteter energetischer Dispatch). */
 	clearImmersion: boolean;
-	/**
-	 * Planbasierte Klima-Slices entfernen → AC-Runtime nutzt lokalen Komfort-Fallback
-	 * (`useDailyPlan=false` bei 0-W-Allocation). Kein stumpfes Abschalten der Komfortregel.
-	 */
 	clearClimate: boolean;
+	/** Battery Charge-Slice entfernen → Runtime Hold/kein veralteter Charge-Intent. */
+	clearBattery: boolean;
+	/** Wallbox-Slice entfernen → EVCC bleibt manuell nutzbar, kein stale EMS-Charge. */
+	clearWallbox: boolean;
 	reasonDe: string;
 };
 
@@ -37,14 +43,10 @@ function thermalFreshnessOk(thermal: UnifiedThermalInput | null | undefined): bo
 	if (q === "missing" || q === "blocked" || q === "unsupported" || q === "disabled") return false;
 	if (thermal.bufferTempC === null || !Number.isFinite(thermal.bufferTempC)) return false;
 	const age = thermal.freshness?.ageSec;
-	// Sehr altes Telemetrie-Signal → nicht auf veraltetem Slice beharren
 	if (age !== null && age !== undefined && Number.isFinite(age) && age > 30 * 60) return false;
 	return true;
 }
 
-/**
- * IH: im Zweifel idle. Alter Rest-Slice nur behalten, wenn aktuell noch fachlich zulässig.
- */
 export function immersionRestStillSafe(args: {
 	nowMs: number;
 	lastUnifiedPlan: UnifiedDayPlan | null;
@@ -63,7 +65,6 @@ export function immersionRestStillSafe(args: {
 	if (!thermalFreshnessOk(thermal)) return false;
 
 	const head = thermal.headroomEnergyKwh ?? actual.thermalHeadroomKwh;
-	// Ziel erreicht / kein Bedarf → energetischer Slice unzulässig
 	if (head !== null && Number.isFinite(head) && head < 0.05) return false;
 
 	const energyPremiseBroken = replanReasons.some(
@@ -77,10 +78,6 @@ export function immersionRestStillSafe(args: {
 	return true;
 }
 
-/**
- * Klima: planbasierten Flex-Dispatch nicht ungeprüft halten, wenn Komfortbedarf besteht.
- * Leeren Plan → bestehende Runtime-Komfort-FSM (Climate-Fallback), kein zweiter Planner.
- */
 export function climatePlanDispatchStillSafe(args: {
 	nowMs: number;
 	lastUnifiedPlan: UnifiedDayPlan | null;
@@ -90,7 +87,6 @@ export function climatePlanDispatchStillSafe(args: {
 }): boolean {
 	const { nowMs, lastUnifiedPlan, actual, climate, replanReasons } = args;
 	if (!hasFutureKind(lastUnifiedPlan, "climate", nowMs) && !hasFutureKind(lastUnifiedPlan, "air_conditioning", nowMs)) {
-		// Auch ohne zukünftige Slice: bei Komfortbedarf Plan-Authority leeren, damit lokaler Pfad greift
 		if (actual.acMandatoryAny) return false;
 		return true;
 	}
@@ -103,57 +99,175 @@ export function climatePlanDispatchStillSafe(args: {
 	return true;
 }
 
+/** Battery Charge: im Zweifel idle/hold — kein veralteter Charge-Dispatch. */
+export function batteryRestStillSafe(args: {
+	nowMs: number;
+	lastUnifiedPlan: UnifiedDayPlan | null;
+	actual: PlanActualSample;
+	battery: UnifiedBatteryInput | null | undefined;
+	replanReasons: string[];
+}): boolean {
+	const { nowMs, lastUnifiedPlan, actual, battery, replanReasons } = args;
+	if (!hasFutureKind(lastUnifiedPlan, "battery_charge", nowMs)) return true;
+	if (!battery) return false;
+	if (battery.socPct === null || battery.usableCapacityKwh === null) return false;
+	const q = battery.uncertainty.status;
+	if (q === "blocked" || q === "missing") return false;
+	const age = battery.freshness?.ageSec;
+	if (age !== null && age !== undefined && age > 30 * 60) return false;
+	if (replanReasons.includes(REASON.REPLAN_BATTERY_SOC_DEVIATION)) return false;
+	if (
+		replanReasons.includes(REASON.REPLAN_PV_FORECAST_CHANGED) ||
+		replanReasons.includes(REASON.REPLAN_PV_ACTUAL_DEVIATION)
+	) {
+		return false;
+	}
+	void actual;
+	return true;
+}
+
+/**
+ * Wallbox: veralteten EMS-Charge-Intent entfernen bei Disconnect/Presence/Goal-Bruch.
+ * EVCC bleibt manuell bedienbar (kein Geräte-Lock).
+ */
+export function wallboxRestStillSafe(args: {
+	nowMs: number;
+	lastUnifiedPlan: UnifiedDayPlan | null;
+	actual: PlanActualSample;
+	wallbox: UnifiedWallboxInput | null | undefined;
+	replanReasons: string[];
+}): boolean {
+	const { nowMs, lastUnifiedPlan, actual, wallbox, replanReasons } = args;
+	if (!hasFutureKind(lastUnifiedPlan, "wallbox", nowMs)) return true;
+	if (actual.vehicleConnected === false) return false;
+	if (
+		replanReasons.includes(REASON.REPLAN_VEHICLE_DISCONNECTED) ||
+		replanReasons.includes(REASON.REPLAN_VEHICLE_PRESENCE_CHANGED) ||
+		replanReasons.includes(REASON.REPLAN_VEHICLE_GOAL_CHANGED)
+	) {
+		return false;
+	}
+	if (!wallbox) return false;
+	if (!wallbox.connectedNow && wallbox.presenceWindows.every((w) => !w.available && w.status !== "available")) {
+		return false;
+	}
+	return true;
+}
+
 export function assessUnifiedReplanFailure(args: {
 	nowMs: number;
 	lastUnifiedPlan: UnifiedDayPlan | null;
 	actual: PlanActualSample;
 	thermal: UnifiedThermalInput | null | undefined;
 	climate: UnifiedClimateInput | null | undefined;
+	battery?: UnifiedBatteryInput | null;
+	wallbox?: UnifiedWallboxInput | null;
 	replanReasons: string[];
 }): ReplanFailureDisposition {
 	const clearImmersion = !immersionRestStillSafe(args);
 	const clearClimate = !climatePlanDispatchStillSafe(args);
+	const clearBattery = !batteryRestStillSafe({
+		nowMs: args.nowMs,
+		lastUnifiedPlan: args.lastUnifiedPlan,
+		actual: args.actual,
+		battery: args.battery,
+		replanReasons: args.replanReasons,
+	});
+	const clearWallbox = !wallboxRestStillSafe({
+		nowMs: args.nowMs,
+		lastUnifiedPlan: args.lastUnifiedPlan,
+		actual: args.actual,
+		wallbox: args.wallbox,
+		replanReasons: args.replanReasons,
+	});
 
 	const parts: string[] = ["Unified Replan fehlgeschlagen"];
-	if (clearImmersion) parts.push("IH idle (Rest-Slice nicht mehr zulässig)");
-	else parts.push("IH Restplan behalten");
-	if (clearClimate) parts.push("Klima Plan-Dispatch geleert (lokaler Komfort-Pfad)");
-	else parts.push("Klima Restplan behalten");
+	if (clearImmersion) parts.push("IH idle");
+	else parts.push("IH behalten");
+	if (clearClimate) parts.push("Klima Plan geleert");
+	else parts.push("Klima behalten");
+	if (clearBattery) parts.push("Battery Charge idle/hold");
+	else parts.push("Battery behalten");
+	if (clearWallbox) parts.push("Wallbox EMS-Intent idle (EVCC manuell ok)");
+	else parts.push("Wallbox behalten");
 
 	return {
 		clearImmersion,
 		clearClimate,
+		clearBattery,
+		clearWallbox,
 		reasonDe: `${parts.join(" — ")}.`,
 	};
 }
 
-/**
- * Wendet Failure-Disposition auf den frischen Classic-Daily-Plan an.
- * Nutzt den letzten gültigen Unified-Plan als Quelle verbleibender Slices.
- * Publiziert nie eine neue Unified-Generation.
- */
 export function applyReplanFailureAuthority(
 	classicPlan: DailyPlan,
 	lastUnifiedPlan: UnifiedDayPlan | null,
 	disposition: ReplanFailureDisposition,
 ): DailyPlan {
 	if (!lastUnifiedPlan) {
-		if (disposition.clearImmersion || disposition.clearClimate) {
-			return clearIhAcAuthority(classicPlan);
+		if (
+			disposition.clearImmersion ||
+			disposition.clearClimate ||
+			disposition.clearBattery ||
+			disposition.clearWallbox
+		) {
+			return clearAllUnifiedAuthority(classicPlan);
 		}
 		return classicPlan;
 	}
 
-	const pub = buildUnifiedIhAcDispatchPublish(lastUnifiedPlan);
+	const pub = buildUnifiedDispatchPublish(lastUnifiedPlan);
 	const ih = disposition.clearImmersion ? [] : pub.immersionEntries;
 	const ac = disposition.clearClimate ? [] : pub.climateEntries;
+	const bat = disposition.clearBattery ? [] : pub.batteryEntries;
+	const wb = disposition.clearWallbox ? [] : pub.wallboxEntries;
 
-	if (disposition.clearImmersion && disposition.clearClimate) {
-		return clearIhAcAuthority(classicPlan);
+	if (
+		disposition.clearImmersion &&
+		disposition.clearClimate &&
+		disposition.clearBattery &&
+		disposition.clearWallbox
+	) {
+		return clearAllUnifiedAuthority(classicPlan);
 	}
 
-	return applyUnifiedIhAcAuthority(classicPlan, ih, ac, {
-		dailyPlanRevision: classicPlan.revision,
-		unifiedPlanId: `${lastUnifiedPlan.planId}:replan-fail-safe`,
-	});
+	// Compat: wenn nur IH/AC betroffen und battery/wallbox keep via legacy path
+	if (
+		!disposition.clearBattery &&
+		!disposition.clearWallbox &&
+		(disposition.clearImmersion || disposition.clearClimate)
+	) {
+		const ihAc = buildUnifiedIhAcDispatchPublish(lastUnifiedPlan);
+		return applyUnifiedDayAuthority(
+			classicPlan,
+			{
+				immersionEntries: disposition.clearImmersion ? [] : ihAc.immersionEntries,
+				climateEntries: disposition.clearClimate ? [] : ihAc.climateEntries,
+				batteryEntries: null,
+				wallboxEntries: null,
+			},
+			{
+				dailyPlanRevision: classicPlan.revision,
+				unifiedPlanId: `${lastUnifiedPlan.planId}:replan-fail-safe`,
+			},
+		);
+	}
+
+	return applyUnifiedDayAuthority(
+		classicPlan,
+		{
+			immersionEntries: ih,
+			climateEntries: ac,
+			batteryEntries: bat,
+			wallboxEntries: wb,
+		},
+		{
+			dailyPlanRevision: classicPlan.revision,
+			unifiedPlanId: `${lastUnifiedPlan.planId}:replan-fail-safe`,
+		},
+	);
 }
+
+/** @deprecated — use clearAllUnifiedAuthority when clearing all live slices. */
+export { clearIhAcAuthority };

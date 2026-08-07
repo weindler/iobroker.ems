@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.246",
+		"version": "0.1.247",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.247": {
+				"en": "Unified Battery+EVCC live authority: one day plan drives IH/AC/battery/wallbox slices via existing runtimes; charge/hold only (no discharge live); vehicle economics + SOC quality; safe replan failure.",
+				"de": "Unified Battery+EVCC Live-Authority: ein Tagesplan steuert IH/AC/Batterie/Wallbox über bestehende Runtimes; nur Laden/Hold (kein Discharge-Live); Fahrzeug-Wirtschaftlichkeit + SOC-Qualität; sicheres Replan-Failure."
+			},
 			"0.1.246": {
 				"en": "Future vehicle presence: live/explicit/predicted/unknown availability windows for unified planning; small weekday×slot learning; no EVCC live takeover.",
 				"de": "Future Vehicle Presence: live/explizit/predicted/unknown Verfügbarkeitsfenster für Unified-Planung; kleines Wochentag×Slot-Learning; kein EVCC-Live-Takeover."

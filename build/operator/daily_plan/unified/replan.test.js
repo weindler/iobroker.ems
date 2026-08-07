@@ -461,7 +461,7 @@ function stubDailyPlan() {
     });
 });
 (0, node_test_1.describe)("REPLAN-FAIL-003 rest plan still safe", () => {
-    (0, node_test_1.it)("keeps IH/AC authority; no new generation publish signal (mustPublish=false path)", () => {
+    (0, node_test_1.it)("keeps all live slices; no new generation publish signal (mustPublish=false path)", () => {
         const unified = (0, allocate_1.allocateUnifiedDayPlan)((0, alloc_fixtures_1.alloc001Input)());
         const disp = (0, replan_failure_1.assessUnifiedReplanFailure)({
             nowMs: Date.parse("2026-08-04T08:00:00.000Z"),
@@ -472,10 +472,15 @@ function stubDailyPlan() {
             }),
             thermal: thermalOk(4),
             climate: null,
-            replanReasons: [reason_codes_1.REASON.REPLAN_BATTERY_SOC_DEVIATION],
+            battery: (0, alloc_fixtures_1.alloc001Input)().battery,
+            wallbox: null,
+            // Soft reason that does not invalidate battery/IH rest slices
+            replanReasons: [reason_codes_1.REASON.REPLAN_HOUSE_LOAD_DEVIATION],
         });
         strict_1.default.equal(disp.clearImmersion, false);
         strict_1.default.equal(disp.clearClimate, false);
+        strict_1.default.equal(disp.clearBattery, false);
+        strict_1.default.equal(disp.clearWallbox, false);
         const classic = stubDailyPlan();
         const after = (0, replan_failure_1.applyReplanFailureAuthority)(classic, unified, disp);
         const pub = (0, dispatch_bridge_1.buildUnifiedIhAcDispatchPublish)(unified);
@@ -485,7 +490,7 @@ function stubDailyPlan() {
         });
         // Disposition says keep — tick returns without publish; authority helper still can rebuild same slices
         strict_1.default.ok(kept.allocations.some((a) => a.contributionId.startsWith("immersion_heater")));
-        strict_1.default.equal(disp.clearImmersion || disp.clearClimate, false);
+        strict_1.default.equal(disp.clearImmersion || disp.clearClimate || disp.clearBattery || disp.clearWallbox, false);
         void after;
     });
 });

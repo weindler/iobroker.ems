@@ -1,10 +1,11 @@
 "use strict";
 /**
- * Unified Day Plan → bestehende DailyAllocationEntry-Form für IH + Klima.
+ * Unified Day Plan → bestehende DailyAllocationEntry-Form für IH/AC/Battery/Wallbox.
  * Keine Geräte-Writes — nur Plan-/Dispatch-Übersetzung.
+ * Battery: nur charge (kein Discharge-Live). Wallbox: Intent für EVCC-Runtime.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildUnifiedIhAcDispatchPublish = exports.unifiedPlanToClimateAllocations = exports.unifiedPlanToImmersionAllocations = void 0;
+exports.buildUnifiedDispatchPublish = exports.buildUnifiedIhAcDispatchPublish = exports.unifiedPlanToWallboxAllocations = exports.unifiedPlanToBatteryAllocations = exports.unifiedPlanToClimateAllocations = exports.unifiedPlanToImmersionAllocations = void 0;
 const contribution_ids_1 = require("../../contribution_ids");
 const addon_plan_publish_1 = require("../addon_plan_publish");
 const IH_CONTRIBUTOR = {
@@ -17,7 +18,17 @@ const AC_CONTRIBUTOR = {
     id: "air_conditioning",
     addonId: "air_conditioning",
 };
-function cellToEntry(cell, contributionId, contributor) {
+const BAT_CONTRIBUTOR = {
+    type: "addon",
+    id: "battery",
+    addonId: "battery",
+};
+const WB_CONTRIBUTOR = {
+    type: "addon",
+    id: "wallbox",
+    addonId: "wallbox",
+};
+function cellToEntry(cell, contributionId, contributor, opts) {
     const source = cell.energySource;
     const pv = source === "pv_surplus" || source === "mixed" ? cell.allocatedPowerW : 0;
     const grid = source === "grid" || source === "mixed" ? cell.allocatedPowerW : 0;
@@ -35,10 +46,10 @@ function cellToEntry(cell, contributionId, contributor) {
         gridPowerW: grid,
         pvPowerW: pv,
         batteryPowerW: bat,
-        mandatory: cell.constraintIds.some((id) => id.includes("mandatory") || id.includes("comfort") || id.includes("min_temp")),
+        mandatory: cell.constraintIds.some((id) => id.includes("mandatory") || id.includes("comfort") || id.includes("min_temp") || id.includes("energy_goal")),
         priorityRank: null,
-        deadlineIso: null,
-        estimatedCostCt: null,
+        deadlineIso: opts?.deadlineIso ?? null,
+        estimatedCostCt: opts?.estimatedCostCt ?? null,
         reasonDe: cell.reasonCodes.join(", ") || "unified_day_plan",
     };
 }
@@ -70,6 +81,39 @@ function unifiedPlanToClimateAllocations(plan) {
     return (0, addon_plan_publish_1.filterRunnableAllocations)(out, addon_plan_publish_1.RUNNABLE_ALLOCATION_FLOOR_W);
 }
 exports.unifiedPlanToClimateAllocations = unifiedPlanToClimateAllocations;
+/**
+ * Battery Charge only — Discharge-Zellen werden bewusst nicht als Live-Dispatch publiziert
+ * (Sonnen EM: discharge_unverified / unsupported).
+ */
+function unifiedPlanToBatteryAllocations(plan) {
+    const out = [];
+    for (const cell of plan.allocations) {
+        if (cell.kind !== "battery_charge")
+            continue;
+        out.push(cellToEntry(cell, contribution_ids_1.CONTRIBUTION_IDS.BATTERY_CHARGE, BAT_CONTRIBUTOR));
+    }
+    return (0, addon_plan_publish_1.filterRunnableAllocations)(out, addon_plan_publish_1.RUNNABLE_ALLOCATION_FLOOR_W);
+}
+exports.unifiedPlanToBatteryAllocations = unifiedPlanToBatteryAllocations;
+/** Wallbox → wallbox.ev_session für bestehende EVCC-Runtime. */
+function unifiedPlanToWallboxAllocations(plan) {
+    const deadline = plan.vehicleChargeEconomics?.deadlineIso ??
+        null;
+    const out = [];
+    for (const cell of plan.allocations) {
+        if (cell.kind !== "wallbox")
+            continue;
+        const cost = cell.energySource === "grid" || cell.energySource === "mixed"
+            ? plan.vehicleChargeEconomics?.slotCostsCtByStartIso?.[cell.slot.startIso] ?? null
+            : null;
+        out.push(cellToEntry(cell, contribution_ids_1.CONTRIBUTION_IDS.WALLBOX_EV_SESSION, WB_CONTRIBUTOR, {
+            deadlineIso: deadline,
+            estimatedCostCt: cost,
+        }));
+    }
+    return (0, addon_plan_publish_1.filterRunnableAllocations)(out, addon_plan_publish_1.RUNNABLE_ALLOCATION_FLOOR_W);
+}
+exports.unifiedPlanToWallboxAllocations = unifiedPlanToWallboxAllocations;
 function buildUnifiedIhAcDispatchPublish(plan) {
     const immersionEntries = unifiedPlanToImmersionAllocations(plan);
     const climateEntries = unifiedPlanToClimateAllocations(plan);
@@ -87,3 +131,22 @@ function buildUnifiedIhAcDispatchPublish(plan) {
     };
 }
 exports.buildUnifiedIhAcDispatchPublish = buildUnifiedIhAcDispatchPublish;
+function buildUnifiedDispatchPublish(plan) {
+    const ihAc = buildUnifiedIhAcDispatchPublish(plan);
+    const batteryEntries = unifiedPlanToBatteryAllocations(plan);
+    const wallboxEntries = unifiedPlanToWallboxAllocations(plan);
+    return {
+        ...ihAc,
+        batteryEntries,
+        wallboxEntries,
+        batteryStatus: batteryEntries.length > 0 ? "ready" : "idle",
+        wallboxStatus: wallboxEntries.length > 0 ? "ready" : "idle",
+        batteryReasonDe: batteryEntries.length > 0
+            ? `Unified Day Plan: ${batteryEntries.length} fahrbare Batterie-Lade-Fenster (charge/hold; kein Discharge-Live).`
+            : "Unified Day Plan: kein fahrbares Batterie-Lade-Fenster.",
+        wallboxReasonDe: wallboxEntries.length > 0
+            ? `Unified Day Plan: ${wallboxEntries.length} fahrbare Wallbox-Fenster (EVCC).`
+            : "Unified Day Plan: kein fahrbares Wallbox-Fenster.",
+    };
+}
+exports.buildUnifiedDispatchPublish = buildUnifiedDispatchPublish;

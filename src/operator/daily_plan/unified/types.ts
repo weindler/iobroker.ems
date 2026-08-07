@@ -98,6 +98,19 @@ export type UnifiedBatteryInput = {
 	/** Erlaubte Betriebsarten — frei erweiterbar, keine Sommer/Winter-Enums. */
 	allowedModes: string[];
 	reserveSocPct: number | null;
+	/** z. B. sonnen_em — für Capability-Gates. */
+	profileId: string | null;
+	/** Live Discharge supported? false → kein Discharge-Dispatch. */
+	dischargeLiveSupported: boolean;
+	/**
+	 * Ladebedarf aus Contribution (Policy/Top-Off/PV-Defizit-Logik) — kWh AC-Seite.
+	 * null = kein expliziter Bedarf / unknown (nicht als 0 erfinden).
+	 */
+	requiredChargeEnergyKwh: number | null;
+	/** Deadline für Netz-Nachladung (z. B. chargeLogic bridgeUntil); null = PV-first ohne Frist. */
+	chargeDeadlineIso: string | null;
+	/** Netzladen laut Contribution/Policy erlaubt. */
+	gridChargeAllowed: boolean;
 	uncertainty: OperatorDataQuality;
 	freshness: UnifiedDataFreshness;
 };
@@ -127,6 +140,14 @@ export type UnifiedVehiclePresenceWindow = {
 	hard?: boolean;
 };
 
+/** SOC-Quelle — bestehende Wallbox-Fallback-Kette, keine zweite Logik. */
+export type UnifiedVehicleSocSource =
+	| "direct"
+	| "energy_rollforward"
+	| "range_estimate"
+	| "last_trusted"
+	| "unknown";
+
 export type UnifiedWallboxInput = {
 	connectedNow: boolean;
 	/** Zeitfenster der erwarteten Verfügbarkeit an der Wallbox. */
@@ -136,7 +157,10 @@ export type UnifiedWallboxInput = {
 	 * Allocation außerhalb status=available ist Vertragsverletzung.
 	 */
 	presenceHardConstraint: true;
+	/** wb_vehicle_map / EVCC-ID; null wenn unbekannt. */
+	vehicleProfileId: string | null;
 	vehicleSocPct: number | null;
+	socSource: UnifiedVehicleSocSource;
 	/** Fallback-Energiebedarf wenn kein SOC — nie Fake-0 erfinden; null = missing. */
 	fallbackEnergyNeedKwh: number | null;
 	vehicleCapacityKwh: number | null;
@@ -155,6 +179,42 @@ export type UnifiedWallboxInput = {
 	evccExecutionMaster: true;
 	uncertainty: OperatorDataQuality;
 	freshness: UnifiedDataFreshness;
+};
+
+/**
+ * Wirtschaftliche Fahrzeugladung.
+ * Baseline = earliest_feasible (gleiche Netzenergie ab erstem verfügbaren Slot) —
+ * nie teuerster theoretischer Slot. Keine fiktiven PV-/Export-Opportunitätskosten.
+ */
+export type UnifiedVehicleChargeEconomics = {
+	deadlineIso: string | null;
+	requiredEnergyKwh: number | null;
+	/** PV-Anteil (kWh) — nicht als € bewertet ohne Exporttarif. */
+	expectedPvChargeKwh: number | null;
+	expectedGridChargeKwh: number | null;
+	/** Netzladekosten des optimierten Plans (nur Slots mit echten Preisen). */
+	expectedGridCostCt: number | null;
+	/**
+	 * Baseline-Kosten: gleiche Netzenergie chronologisch ab earliest feasible
+	 * (`charge_as_soon_as_possible`). null wenn nicht physisch/preislich bewertbar.
+	 */
+	alternativeGridCostCt: number | null;
+	/**
+	 * earliest_feasible − optimized. Nur bei gleicher Energie, beiden erreichbar,
+	 * vollständigen Preisen; sonst null (nie geschätzt).
+	 */
+	savingsVsAlternativeCt: number | null;
+	/** true nur wenn mindestens ein Slot echten Exporttarif hat. */
+	exportTariffKnown: boolean;
+	/**
+	 * full = Exporttarif bekannt (Gesamtwirtschaftlichkeit inkl. Export möglich);
+	 * grid_only = nur Netz€ belastbar, PV nur als Energieanteil;
+	 * unknown = Preise/Baseline unvollständig.
+	 */
+	economicsCompleteness: "full" | "grid_only" | "unknown";
+	/** Feste Baseline-ID für UI/Briefing. */
+	baselineId: "earliest_feasible";
+	slotCostsCtByStartIso: Record<string, number>;
 };
 
 export type UnifiedThermalInput = {
@@ -361,6 +421,9 @@ export type UnifiedDayPlan = {
 	/** Maschinenlesbare Codes — UI/Briefing später. */
 	reasonCodes: string[];
 	confidence: OperatorDataQuality;
+
+	/** Fahrzeug-Ladewirtschaftlichkeit (null wenn kein Wallbox-Ziel). */
+	vehicleChargeEconomics: UnifiedVehicleChargeEconomics | null;
 
 	totals: DailyPlanTotals | null;
 	/** Optionaler Link zum bestehenden DailyPlan-Objekt (gleiche Generation). */

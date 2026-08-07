@@ -58,6 +58,8 @@ const replan_failure_1 = require("./unified/replan_failure");
 const trigger_digest_1 = require("../../ai/trigger_digest");
 const daily_plan_1 = require("../../addons/immersion_heater/runtime/daily_plan");
 const daily_plan_2 = require("../../addons/air_conditioning/runtime/daily_plan");
+const daily_plan_3 = require("../../addons/battery/runtime/daily_plan");
+const daily_plan_4 = require("../../addons/wallbox/runtime/daily_plan");
 const limits_1 = require("../../addons/battery/core/limits");
 const vehicle_presence_1 = require("../../learning/vehicle_presence");
 const vehicle_availability_1 = require("./unified/vehicle_availability");
@@ -438,54 +440,69 @@ async function runDailyPlanTick(host, forecastPlan) {
                 presenceDigest: (0, vehicle_availability_1.presenceDigest)(unifiedInputFinal.wallbox?.presenceWindows ?? []),
                 cadenceDigest,
             };
-            const pub = (0, dispatch_bridge_1.buildUnifiedIhAcDispatchPublish)(unifiedPlan);
-            plan = (0, authority_1.applyUnifiedIhAcAuthority)(plan, pub.immersionEntries, pub.climateEntries, {
+            const pub = (0, dispatch_bridge_1.buildUnifiedDispatchPublish)(unifiedPlan);
+            plan = (0, authority_1.applyUnifiedDayAuthority)(plan, {
+                immersionEntries: pub.immersionEntries,
+                climateEntries: pub.climateEntries,
+                batteryEntries: pub.batteryEntries,
+                wallboxEntries: pub.wallboxEntries,
+            }, {
                 dailyPlanRevision: plan.revision,
                 unifiedPlanId: unifiedPlan.planId,
             });
             ihAcReasonSuffix =
-                ` ${(0, from_forecast_context_1.summarizeUnifiedDayPlanForReason)(unifiedPlan)} IH/AC autoritativ` +
+                ` ${(0, from_forecast_context_1.summarizeUnifiedDayPlanForReason)(unifiedPlan)} IH/AC/Battery/Wallbox autoritativ` +
                     (decision.reasons.length ? ` [${decision.reasons.join(",")}]` : "") +
                     ` replansToday=${replanCountToday}.`;
         }
         catch (e) {
             /*
              * Replan fehlgeschlagen: keine neue Unified-Generation.
-             * IH: im Zweifel idle (kein veralteter energetischer Slice).
+             * IH/Battery/Wallbox: im Zweifel idle (kein veralteter energetischer Slice).
              * AC: planbasierten Flex leeren bei Komfortbedarf → lokaler Runtime-Komfort-Pfad.
+             * Wallbox: EMS-Intent idle — EVCC bleibt manuell bedienbar.
              * Wenn Restplan noch sicher: nichts publishen (letzter Publish bleibt).
              */
-            host.log?.warn?.(`unified ih/ac replan failed — assess rest safety: ${String(e)}`);
+            host.log?.warn?.(`unified day replan failed — assess rest safety: ${String(e)}`);
             const disposition = (0, replan_failure_1.assessUnifiedReplanFailure)({
                 nowMs: now.getTime(),
                 lastUnifiedPlan,
                 actual: actualSample,
                 thermal: probeInput.thermal,
                 climate: probeInput.climate,
+                battery: probeInput.battery,
+                wallbox: probeInput.wallbox,
                 replanReasons: decision.reasons,
             });
             ihAcReasonSuffix = ` ${disposition.reasonDe}`;
-            if (!disposition.clearImmersion && !disposition.clearClimate) {
+            if (!disposition.clearImmersion &&
+                !disposition.clearClimate &&
+                !disposition.clearBattery &&
+                !disposition.clearWallbox) {
                 // FAIL-003: Restplan weiter gültig — kein Authority-Publish, keine neue Generation.
                 return plan;
             }
             plan = (0, replan_failure_1.applyReplanFailureAuthority)(plan, lastUnifiedPlan, disposition);
-            if (disposition.clearImmersion && lastUnifiedPlan) {
+            const trimFuture = (kind) => {
+                if (!lastUnifiedPlan)
+                    return;
                 const nowMs = now.getTime();
                 lastUnifiedPlan = {
                     ...lastUnifiedPlan,
-                    allocations: lastUnifiedPlan.allocations.filter((a) => a.kind !== "immersion_heater" ||
+                    allocations: lastUnifiedPlan.allocations.filter((a) => a.kind !== kind ||
                         !(Number.isFinite(Date.parse(a.slot.endIso)) && Date.parse(a.slot.endIso) > nowMs)),
                 };
+            };
+            if (disposition.clearImmersion)
+                trimFuture("immersion_heater");
+            if (disposition.clearClimate) {
+                trimFuture("climate");
+                trimFuture("air_conditioning");
             }
-            if (disposition.clearClimate && lastUnifiedPlan) {
-                const nowMs = now.getTime();
-                lastUnifiedPlan = {
-                    ...lastUnifiedPlan,
-                    allocations: lastUnifiedPlan.allocations.filter((a) => a.kind !== "climate" ||
-                        !(Number.isFinite(Date.parse(a.slot.endIso)) && Date.parse(a.slot.endIso) > nowMs)),
-                };
-            }
+            if (disposition.clearBattery)
+                trimFuture("battery_charge");
+            if (disposition.clearWallbox)
+                trimFuture("wallbox");
         }
         const publishReasonDe = `${plan.reasonDe}${ihAcReasonSuffix}`.slice(0, 480);
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.status, plan.status);
@@ -522,7 +539,10 @@ async function runDailyPlanTick(host, forecastPlan) {
             const ids = states_1.ALLOCATION_ADDON_STATE_IDS[key];
             const view = (0, addon_plan_publish_1.addonAllocationPublishView)(plan, prefix);
             let reasonDe = view.reasonDe;
-            if (key === "immersion_heater" || key === "air_conditioning") {
+            if (key === "immersion_heater" ||
+                key === "air_conditioning" ||
+                key === "battery" ||
+                key === "wallbox") {
                 reasonDe = ihAcReasonSuffix.trim()
                     ? `${view.reasonDe} ${ihAcReasonSuffix.trim()}`
                     : view.reasonDe;
@@ -533,6 +553,8 @@ async function runDailyPlanTick(host, forecastPlan) {
         }
         (0, daily_plan_1.resetImmersionDailyPlanCache)();
         (0, daily_plan_2.resetAcDailyPlanCache)();
+        (0, daily_plan_3.resetBatteryDailyPlanCache)();
+        (0, daily_plan_4.resetWallboxDailyPlanCache)();
         // Heizstab-Tagesziel aus Contribution-Details (gleiche Forecast-Logik wie Allocation).
         const ihFlex = forecastPlan.contributions.find((c) => c.contributionId === contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE);
         const ihMand = forecastPlan.contributions.find((c) => c.contributionId === contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_MANDATORY);

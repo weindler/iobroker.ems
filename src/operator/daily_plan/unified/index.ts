@@ -1,7 +1,7 @@
 /**
- * Unified Day Planner — Contract (Schritt 1) + Allocation Core (Schritt 2).
- * IH/AC: Dispatch nur über planner.intent.allocation.* → bestehende Runtimes.
- * Battery/Wallbox: kein Unified-Live-Takeover in dieser Beta-Stufe.
+ * Unified Day Planner — Contract + Allocation + Live Authority (Schritt 1–6).
+ * IH/AC/Battery/Wallbox: Dispatch nur über planner.intent.allocation.* → bestehende Runtimes.
+ * Planner schreibt keine Geräte-States.
  */
 
 export * from "./types";
@@ -9,9 +9,14 @@ export * from "./evaluate";
 export * from "./reason_codes";
 export { allocateUnifiedDayPlan } from "./allocate";
 export {
+	applyUnifiedDayAuthority,
 	applyUnifiedIhAcAuthority,
 	clearIhAcAuthority,
+	clearAllUnifiedAuthority,
 	isIhAcContributionId,
+	isBatteryContributionId,
+	isWallboxContributionId,
+	isUnifiedManagedContributionId,
 } from "./authority";
 export {
 	buildUnifiedInputFromForecastContext,
@@ -34,6 +39,8 @@ export {
 	applyReplanFailureAuthority,
 	immersionRestStillSafe,
 	climatePlanDispatchStillSafe,
+	batteryRestStillSafe,
+	wallboxRestStillSafe,
 } from "./replan_failure";
 export {
 	buildVehicleAvailabilityWindows,
@@ -49,8 +56,11 @@ export {
 } from "./allocate";
 export {
 	buildUnifiedIhAcDispatchPublish,
+	buildUnifiedDispatchPublish,
 	unifiedPlanToImmersionAllocations,
 	unifiedPlanToClimateAllocations,
+	unifiedPlanToBatteryAllocations,
+	unifiedPlanToWallboxAllocations,
 } from "./dispatch_bridge";
 export { publishUnifiedIhAcDispatch } from "./publish_ih_ac";
 export {

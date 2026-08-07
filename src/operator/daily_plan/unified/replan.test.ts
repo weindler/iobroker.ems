@@ -566,7 +566,7 @@ describe("REPLAN-FAIL-002 AC comfort on failed replan", () => {
 });
 
 describe("REPLAN-FAIL-003 rest plan still safe", () => {
-	it("keeps IH/AC authority; no new generation publish signal (mustPublish=false path)", () => {
+	it("keeps all live slices; no new generation publish signal (mustPublish=false path)", () => {
 		const unified = allocateUnifiedDayPlan(alloc001Input());
 		const disp = assessUnifiedReplanFailure({
 			nowMs: Date.parse("2026-08-04T08:00:00.000Z"),
@@ -577,10 +577,15 @@ describe("REPLAN-FAIL-003 rest plan still safe", () => {
 			}),
 			thermal: thermalOk(4),
 			climate: null,
-			replanReasons: [REASON.REPLAN_BATTERY_SOC_DEVIATION],
+			battery: alloc001Input().battery,
+			wallbox: null,
+			// Soft reason that does not invalidate battery/IH rest slices
+			replanReasons: [REASON.REPLAN_HOUSE_LOAD_DEVIATION],
 		});
 		assert.equal(disp.clearImmersion, false);
 		assert.equal(disp.clearClimate, false);
+		assert.equal(disp.clearBattery, false);
+		assert.equal(disp.clearWallbox, false);
 		const classic = stubDailyPlan();
 		const after = applyReplanFailureAuthority(classic, unified, disp);
 		const pub = buildUnifiedIhAcDispatchPublish(unified);
@@ -590,7 +595,10 @@ describe("REPLAN-FAIL-003 rest plan still safe", () => {
 		});
 		// Disposition says keep — tick returns without publish; authority helper still can rebuild same slices
 		assert.ok(kept.allocations.some((a) => a.contributionId.startsWith("immersion_heater")));
-		assert.equal(disp.clearImmersion || disp.clearClimate, false);
+		assert.equal(
+			disp.clearImmersion || disp.clearClimate || disp.clearBattery || disp.clearWallbox,
+			false,
+		);
 		void after;
 	});
 });

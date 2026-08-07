@@ -169,8 +169,8 @@ function basePlan(classicIh, classicAc = []) {
         strict_1.default.ok(failed.allocations.some((a) => a.contributionId === "battery.charge"));
     });
 });
-(0, node_test_1.describe)("AUTH-004 Battery/Wallbox unverändert", () => {
-    (0, node_test_1.it)("Battery/Wallbox-Einträge bleiben byte-gleich nach Authority-Merge", () => {
+(0, node_test_1.describe)("AUTH-004 IH/AC-only helper keeps Battery/Wallbox", () => {
+    (0, node_test_1.it)("applyUnifiedIhAcAuthority lässt Battery/Wallbox unverändert (null=keep)", () => {
         const plan = basePlan([
             classicEntry(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, 1700, "2026-08-04T10:00:00.000Z", "2026-08-04T10:15:00.000Z"),
         ]);

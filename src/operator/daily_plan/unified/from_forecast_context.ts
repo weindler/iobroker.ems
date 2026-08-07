@@ -196,7 +196,7 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 	const timeQuality = mergeWorstQuality([pvQuality, loadQuality, priceQuality]);
 	const timeFresh = freshnessFrom(nowMs, nowIso, timeQuality);
 
-	// --- Battery (Simulation only) ---
+	// --- Battery (Unified Live via bestehende Runtime; Discharge Live unsupported) ---
 	const socPct =
 		ctx.batterySocPct !== undefined && ctx.batterySocPct !== null
 			? ctx.batterySocPct
@@ -236,7 +236,7 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 		allowedModes.push("discharge");
 	}
 
-	// --- Wallbox (Simulation; Future Presence: live > explicit > predicted > unknown) ---
+	// --- Wallbox (Unified Live via EVCC-Runtime; Presence: live > explicit > predicted > unknown) ---
 	const wallbox = mapWallbox(wbC, wbD, nowIso, slots, currentSlotStart, ctx);
 
 	// --- Thermal ---
@@ -362,6 +362,14 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 			dischargeEfficiency: null,
 			allowedModes,
 			reserveSocPct: minSocPct,
+			profileId: str(batD, "profileId") ?? str(resD, "profileId"),
+			// Produktiv: Discharge Live unsupported (Sonnen EM discharge_unverified) — nie erfinden
+			dischargeLiveSupported: false,
+			requiredChargeEnergyKwh: num(batD, "requiredEnergyKwh") ?? num(batD, "socGapEnergyKwh"),
+			chargeDeadlineIso: batCharge?.deadlineIso ?? str(batD, "chargeLogicBridgeUntilIso"),
+			gridChargeAllowed:
+				bool(batD, "gridImportAllowed") !== false &&
+				(batCharge?.gridEligible !== false),
 			uncertainty: batQuality,
 			freshness: batFresh,
 		},
@@ -454,31 +462,69 @@ function mapWallbox(
 			(w.status ?? (w.available ? "available" : "unavailable")) === "available",
 	);
 
+	const socSourceRaw = str(wbD, "socSource") ?? str(wbD, "vehicleSocSource");
+	const socSource =
+		socSourceRaw === "direct" ||
+		socSourceRaw === "energy_rollforward" ||
+		socSourceRaw === "range_estimate" ||
+		socSourceRaw === "last_trusted"
+			? socSourceRaw
+			: num(wbD, "vehicleSocPct") !== null
+				? ("direct" as const)
+				: ("unknown" as const);
+	const vehicleSocPct = num(wbD, "vehicleSocPct");
+	const requiredFromSoc =
+		vehicleSocPct !== null &&
+		num(wbD, "vehicleCapacityKwh") !== null &&
+		(num(wbD, "planSocPct") ?? num(wbD, "effectiveLimitSocPct")) !== null
+			? (Math.max(
+					0,
+					(num(wbD, "planSocPct") ?? num(wbD, "effectiveLimitSocPct")!) - vehicleSocPct,
+				) /
+					100) *
+				num(wbD, "vehicleCapacityKwh")!
+			: null;
+	const requiredEnergyKwh =
+		num(wbD, "requiredEnergyKwh") ??
+		num(wbD, "remainingEnergyKwh") ??
+		(socSource === "unknown" ? null : requiredFromSoc);
+
+	let uncertainty = wbC
+		? connectedNow || hasHardFuture || hasPredictedFuture
+			? wbC.quality
+			: operatorQuality(
+					"degraded",
+					"Fahrzeug-Presence teilweise unknown — keine Phantom-Ladung.",
+					wbC.quality.confidencePct,
+				)
+		: operatorQuality("missing", "Wallbox-Contribution fehlt.", null);
+	if (socSource === "unknown" && requiredEnergyKwh === null) {
+		uncertainty = operatorQuality(
+			"degraded",
+			"Fahrzeug-SOC unknown und kein belastbarer Energiebedarf.",
+			uncertainty.confidencePct,
+		);
+	}
+
 	return {
 		connectedNow,
 		presenceWindows,
 		presenceHardConstraint: true,
-		vehicleSocPct: num(wbD, "vehicleSocPct"),
+		vehicleProfileId: ctx.vehiclePresenceVehicleKey ?? str(wbD, "vehicleProfileId") ?? str(wbD, "evccVehicleId"),
+		vehicleSocPct,
+		socSource,
 		fallbackEnergyNeedKwh: num(wbD, "sessionEnergyKwh"),
 		vehicleCapacityKwh: num(wbD, "vehicleCapacityKwh"),
 		targetSocPct: num(wbD, "planSocPct") ?? num(wbD, "effectiveLimitSocPct"),
-		requiredEnergyKwh: num(wbD, "requiredEnergyKwh") ?? num(wbD, "remainingEnergyKwh"),
-		deadlineIso: wbC?.deadlineIso ?? null,
+		requiredEnergyKwh,
+		deadlineIso: wbC?.deadlineIso ?? str(wbD, "deadlineIso") ?? str(wbD, "effectivePlanTime"),
 		// Hartes Ziel nur mit belastbarer Presence (explicit/live-Zukunft oder predicted)
 		energyGoalHard: connectedNow || hasHardFuture || hasPredictedFuture,
-		minChargePowerW: null,
-		maxChargePowerW: num(wbD, "maxChargePowerW"),
-		chargeLossFactor: null,
+		minChargePowerW: num(wbD, "minChargePowerW"),
+		maxChargePowerW: num(wbD, "maxChargePowerW") ?? num(wbD, "vehicleMaxAcChargePowerW"),
+		chargeLossFactor: num(wbD, "chargeLossFactor"),
 		evccExecutionMaster: true,
-		uncertainty: wbC
-			? connectedNow || hasHardFuture || hasPredictedFuture
-				? wbC.quality
-				: operatorQuality(
-						"degraded",
-						"Fahrzeug-Presence teilweise unknown — keine Phantom-Ladung.",
-						wbC.quality.confidencePct,
-					)
-			: operatorQuality("missing", "Wallbox-Contribution fehlt.", null),
+		uncertainty,
 		freshness: freshnessFrom(
 			Date.parse(nowIso),
 			wbC?.generatedAt ?? nowIso,

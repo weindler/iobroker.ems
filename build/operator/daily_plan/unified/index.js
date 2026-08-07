@@ -1,8 +1,8 @@
 "use strict";
 /**
- * Unified Day Planner — Contract (Schritt 1) + Allocation Core (Schritt 2).
- * IH/AC: Dispatch nur über planner.intent.allocation.* → bestehende Runtimes.
- * Battery/Wallbox: kein Unified-Live-Takeover in dieser Beta-Stufe.
+ * Unified Day Planner — Contract + Allocation + Live Authority (Schritt 1–6).
+ * IH/AC/Battery/Wallbox: Dispatch nur über planner.intent.allocation.* → bestehende Runtimes.
+ * Planner schreibt keine Geräte-States.
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -19,16 +19,22 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.golden005GoodDayPvHeat = exports.golden005BadNightBatteryHeat = exports.golden005Input = exports.golden004StalePlanNoReplan = exports.golden004ReplanPlan = exports.golden004Input = exports.golden003GoodPv = exports.golden003BadEarlyGrid = exports.golden003Input = exports.golden002GoodPlan = exports.golden002BadPlanAbsentCharge = exports.golden002Input = exports.golden001ScaledBadPlan = exports.golden001ScaledInput = exports.golden001GoodPlan = exports.golden001BadPlan = exports.golden001Input = exports.buildSlots = exports.publishUnifiedIhAcDispatch = exports.unifiedPlanToClimateAllocations = exports.unifiedPlanToImmersionAllocations = exports.buildUnifiedIhAcDispatchPublish = exports.trimUnifiedInputToRemainingHorizon = exports.buildDayEvaluationDraft = exports.normalizePresenceWindow = exports.presenceDigest = exports.vehicleSlotAllocatable = exports.evaluateVehicleGoalFeasibility = exports.buildVehicleAvailabilityWindows = exports.climatePlanDispatchStillSafe = exports.immersionRestStillSafe = exports.applyReplanFailureAuthority = exports.assessUnifiedReplanFailure = exports.MATERIAL_THERMAL_HEADROOM_KWH = exports.MATERIAL_BATTERY_SOC_PP = exports.MATERIAL_HOUSE_LOAD_KWH = exports.REPLAN_COOLDOWN_MS = exports.pvRevisionContext = exports.evaluateMaterialReplan = exports.unifiedPlanCadenceDigest = exports.summarizeUnifiedDayPlanForReason = exports.buildUnifiedInputFromForecastContext = exports.isIhAcContributionId = exports.clearIhAcAuthority = exports.applyUnifiedIhAcAuthority = exports.allocateUnifiedDayPlan = void 0;
+exports.golden003GoodPv = exports.golden003BadEarlyGrid = exports.golden003Input = exports.golden002GoodPlan = exports.golden002BadPlanAbsentCharge = exports.golden002Input = exports.golden001ScaledBadPlan = exports.golden001ScaledInput = exports.golden001GoodPlan = exports.golden001BadPlan = exports.golden001Input = exports.buildSlots = exports.publishUnifiedIhAcDispatch = exports.unifiedPlanToWallboxAllocations = exports.unifiedPlanToBatteryAllocations = exports.unifiedPlanToClimateAllocations = exports.unifiedPlanToImmersionAllocations = exports.buildUnifiedDispatchPublish = exports.buildUnifiedIhAcDispatchPublish = exports.trimUnifiedInputToRemainingHorizon = exports.buildDayEvaluationDraft = exports.normalizePresenceWindow = exports.presenceDigest = exports.vehicleSlotAllocatable = exports.evaluateVehicleGoalFeasibility = exports.buildVehicleAvailabilityWindows = exports.wallboxRestStillSafe = exports.batteryRestStillSafe = exports.climatePlanDispatchStillSafe = exports.immersionRestStillSafe = exports.applyReplanFailureAuthority = exports.assessUnifiedReplanFailure = exports.MATERIAL_THERMAL_HEADROOM_KWH = exports.MATERIAL_BATTERY_SOC_PP = exports.MATERIAL_HOUSE_LOAD_KWH = exports.REPLAN_COOLDOWN_MS = exports.pvRevisionContext = exports.evaluateMaterialReplan = exports.unifiedPlanCadenceDigest = exports.summarizeUnifiedDayPlanForReason = exports.buildUnifiedInputFromForecastContext = exports.isUnifiedManagedContributionId = exports.isWallboxContributionId = exports.isBatteryContributionId = exports.isIhAcContributionId = exports.clearAllUnifiedAuthority = exports.clearIhAcAuthority = exports.applyUnifiedIhAcAuthority = exports.applyUnifiedDayAuthority = exports.allocateUnifiedDayPlan = void 0;
+exports.golden005GoodDayPvHeat = exports.golden005BadNightBatteryHeat = exports.golden005Input = exports.golden004StalePlanNoReplan = exports.golden004ReplanPlan = exports.golden004Input = void 0;
 __exportStar(require("./types"), exports);
 __exportStar(require("./evaluate"), exports);
 __exportStar(require("./reason_codes"), exports);
 var allocate_1 = require("./allocate");
 Object.defineProperty(exports, "allocateUnifiedDayPlan", { enumerable: true, get: function () { return allocate_1.allocateUnifiedDayPlan; } });
 var authority_1 = require("./authority");
+Object.defineProperty(exports, "applyUnifiedDayAuthority", { enumerable: true, get: function () { return authority_1.applyUnifiedDayAuthority; } });
 Object.defineProperty(exports, "applyUnifiedIhAcAuthority", { enumerable: true, get: function () { return authority_1.applyUnifiedIhAcAuthority; } });
 Object.defineProperty(exports, "clearIhAcAuthority", { enumerable: true, get: function () { return authority_1.clearIhAcAuthority; } });
+Object.defineProperty(exports, "clearAllUnifiedAuthority", { enumerable: true, get: function () { return authority_1.clearAllUnifiedAuthority; } });
 Object.defineProperty(exports, "isIhAcContributionId", { enumerable: true, get: function () { return authority_1.isIhAcContributionId; } });
+Object.defineProperty(exports, "isBatteryContributionId", { enumerable: true, get: function () { return authority_1.isBatteryContributionId; } });
+Object.defineProperty(exports, "isWallboxContributionId", { enumerable: true, get: function () { return authority_1.isWallboxContributionId; } });
+Object.defineProperty(exports, "isUnifiedManagedContributionId", { enumerable: true, get: function () { return authority_1.isUnifiedManagedContributionId; } });
 var from_forecast_context_1 = require("./from_forecast_context");
 Object.defineProperty(exports, "buildUnifiedInputFromForecastContext", { enumerable: true, get: function () { return from_forecast_context_1.buildUnifiedInputFromForecastContext; } });
 Object.defineProperty(exports, "summarizeUnifiedDayPlanForReason", { enumerable: true, get: function () { return from_forecast_context_1.summarizeUnifiedDayPlanForReason; } });
@@ -46,6 +52,8 @@ Object.defineProperty(exports, "assessUnifiedReplanFailure", { enumerable: true,
 Object.defineProperty(exports, "applyReplanFailureAuthority", { enumerable: true, get: function () { return replan_failure_1.applyReplanFailureAuthority; } });
 Object.defineProperty(exports, "immersionRestStillSafe", { enumerable: true, get: function () { return replan_failure_1.immersionRestStillSafe; } });
 Object.defineProperty(exports, "climatePlanDispatchStillSafe", { enumerable: true, get: function () { return replan_failure_1.climatePlanDispatchStillSafe; } });
+Object.defineProperty(exports, "batteryRestStillSafe", { enumerable: true, get: function () { return replan_failure_1.batteryRestStillSafe; } });
+Object.defineProperty(exports, "wallboxRestStillSafe", { enumerable: true, get: function () { return replan_failure_1.wallboxRestStillSafe; } });
 var vehicle_availability_1 = require("./vehicle_availability");
 Object.defineProperty(exports, "buildVehicleAvailabilityWindows", { enumerable: true, get: function () { return vehicle_availability_1.buildVehicleAvailabilityWindows; } });
 Object.defineProperty(exports, "evaluateVehicleGoalFeasibility", { enumerable: true, get: function () { return vehicle_availability_1.evaluateVehicleGoalFeasibility; } });
@@ -58,8 +66,11 @@ var allocate_2 = require("./allocate");
 Object.defineProperty(exports, "trimUnifiedInputToRemainingHorizon", { enumerable: true, get: function () { return allocate_2.trimUnifiedInputToRemainingHorizon; } });
 var dispatch_bridge_1 = require("./dispatch_bridge");
 Object.defineProperty(exports, "buildUnifiedIhAcDispatchPublish", { enumerable: true, get: function () { return dispatch_bridge_1.buildUnifiedIhAcDispatchPublish; } });
+Object.defineProperty(exports, "buildUnifiedDispatchPublish", { enumerable: true, get: function () { return dispatch_bridge_1.buildUnifiedDispatchPublish; } });
 Object.defineProperty(exports, "unifiedPlanToImmersionAllocations", { enumerable: true, get: function () { return dispatch_bridge_1.unifiedPlanToImmersionAllocations; } });
 Object.defineProperty(exports, "unifiedPlanToClimateAllocations", { enumerable: true, get: function () { return dispatch_bridge_1.unifiedPlanToClimateAllocations; } });
+Object.defineProperty(exports, "unifiedPlanToBatteryAllocations", { enumerable: true, get: function () { return dispatch_bridge_1.unifiedPlanToBatteryAllocations; } });
+Object.defineProperty(exports, "unifiedPlanToWallboxAllocations", { enumerable: true, get: function () { return dispatch_bridge_1.unifiedPlanToWallboxAllocations; } });
 var publish_ih_ac_1 = require("./publish_ih_ac");
 Object.defineProperty(exports, "publishUnifiedIhAcDispatch", { enumerable: true, get: function () { return publish_ih_ac_1.publishUnifiedIhAcDispatch; } });
 var fixtures_1 = require("./fixtures");

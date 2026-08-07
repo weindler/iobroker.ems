@@ -1,6 +1,7 @@
 /**
- * IH/AC Plan-Authority: Unified ersetzt klassische Heizstab-/Klima-Allocations
- * in der bestehenden DailyPlan-Struktur. Battery/Wallbox bleiben klassisch.
+ * Unified Plan-Authority: ersetzt klassische Add-on-Allocations in DailyPlan.
+ * IH/AC/Battery/Wallbox — eine Wahrheit für allocations_json + Addon-Slices.
+ * Planner schreibt keine Geräte-States.
  */
 
 import type { DailyAllocationEntry, DailyPlan } from "../types";
@@ -9,6 +10,22 @@ export function isIhAcContributionId(contributionId: string): boolean {
 	return (
 		contributionId.startsWith("immersion_heater.") ||
 		contributionId.startsWith("air_conditioning.")
+	);
+}
+
+export function isBatteryContributionId(contributionId: string): boolean {
+	return contributionId.startsWith("battery.");
+}
+
+export function isWallboxContributionId(contributionId: string): boolean {
+	return contributionId.startsWith("wallbox.");
+}
+
+export function isUnifiedManagedContributionId(contributionId: string): boolean {
+	return (
+		isIhAcContributionId(contributionId) ||
+		isBatteryContributionId(contributionId) ||
+		isWallboxContributionId(contributionId)
 	);
 }
 
@@ -30,29 +47,50 @@ function sumEnergyKwh(entries: DailyAllocationEntry[]): number {
 	return entries.reduce((s, e) => s + (e.allocatedEnergyKwh ?? 0), 0);
 }
 
+export type UnifiedDayAuthorityParts = {
+	immersionEntries: DailyAllocationEntry[];
+	climateEntries: DailyAllocationEntry[];
+	/** null = klassische Battery-Einträge behalten; [] = idle. */
+	batteryEntries?: DailyAllocationEntry[] | null;
+	/** null = klassische Wallbox-Einträge behalten; [] = idle. */
+	wallboxEntries?: DailyAllocationEntry[] | null;
+};
+
 /**
- * Ersetzt IH/AC in plan.allocations (+ Slot-Allocations) durch Unified-Entries.
- * Battery/Wallbox und sonstige Contributions bleiben unverändert.
+ * Ersetzt Unified-managed Contributions in plan.allocations (+ Slot-Allocations).
  */
-export function applyUnifiedIhAcAuthority(
+export function applyUnifiedDayAuthority(
 	plan: DailyPlan,
-	immersionEntries: DailyAllocationEntry[],
-	climateEntries: DailyAllocationEntry[],
+	parts: UnifiedDayAuthorityParts,
 	meta: UnifiedAuthorityMeta,
 ): DailyPlan {
-	const stampedIh = stampAuthority(immersionEntries, meta);
-	const stampedAc = stampAuthority(climateEntries, meta);
-	const kept = plan.allocations.filter((a) => !isIhAcContributionId(a.contributionId));
-	const allocations = [...kept, ...stampedIh, ...stampedAc];
+	const stampedIh = stampAuthority(parts.immersionEntries, meta);
+	const stampedAc = stampAuthority(parts.climateEntries, meta);
+	const stampedBat =
+		parts.batteryEntries === null || parts.batteryEntries === undefined
+			? plan.allocations.filter((a) => isBatteryContributionId(a.contributionId))
+			: stampAuthority(parts.batteryEntries, meta);
+	const stampedWb =
+		parts.wallboxEntries === null || parts.wallboxEntries === undefined
+			? plan.allocations.filter((a) => isWallboxContributionId(a.contributionId))
+			: stampAuthority(parts.wallboxEntries, meta);
+
+	const kept = plan.allocations.filter((a) => !isUnifiedManagedContributionId(a.contributionId));
+	const allocations = [...kept, ...stampedIh, ...stampedAc, ...stampedBat, ...stampedWb];
 
 	const slots = plan.slots.map((slot) => {
-		const slotKept = slot.allocations.filter((a) => !isIhAcContributionId(a.contributionId));
+		const slotKept = slot.allocations.filter((a) => !isUnifiedManagedContributionId(a.contributionId));
 		const start = slot.slot.startIso;
-		const slotIh = stampedIh.filter((a) => a.slot.startIso === start);
-		const slotAc = stampedAc.filter((a) => a.slot.startIso === start);
+		const pick = (entries: DailyAllocationEntry[]) => entries.filter((a) => a.slot.startIso === start);
 		return {
 			...slot,
-			allocations: [...slotKept, ...slotIh, ...slotAc],
+			allocations: [
+				...slotKept,
+				...pick(stampedIh),
+				...pick(stampedAc),
+				...pick(stampedBat),
+				...pick(stampedWb),
+			],
 		};
 	});
 
@@ -64,14 +102,56 @@ export function applyUnifiedIhAcAuthority(
 			...plan.totals,
 			immersionHeaterEnergyKwh: sumEnergyKwh(stampedIh),
 			airConditioningEnergyKwh: sumEnergyKwh(stampedAc),
+			batteryChargeEnergyKwh: sumEnergyKwh(
+				stampedBat.filter((a) => a.contributionId === "battery.charge"),
+			),
+			wallboxEnergyKwh: sumEnergyKwh(stampedWb),
 		},
 	};
 }
 
-/** AUTH-003: IH/AC aus dem Plan entfernen (bewusst idle, kein klassischer Fallback). */
+/**
+ * IH/AC Authority (Schritt 2/3): Battery/Wallbox bleiben unverändert (null = keep).
+ */
+export function applyUnifiedIhAcAuthority(
+	plan: DailyPlan,
+	immersionEntries: DailyAllocationEntry[],
+	climateEntries: DailyAllocationEntry[],
+	meta: UnifiedAuthorityMeta,
+): DailyPlan {
+	return applyUnifiedDayAuthority(
+		plan,
+		{
+			immersionEntries,
+			climateEntries,
+			batteryEntries: null,
+			wallboxEntries: null,
+		},
+		meta,
+	);
+}
+
+/** AUTH-003: IH/AC idle. */
 export function clearIhAcAuthority(plan: DailyPlan): DailyPlan {
 	return applyUnifiedIhAcAuthority(plan, [], [], {
 		dailyPlanRevision: plan.revision,
 		unifiedPlanId: "unified-failed",
 	});
+}
+
+/** Battery + Wallbox + IH/AC idle — kein Classic-Fallback. */
+export function clearAllUnifiedAuthority(plan: DailyPlan): DailyPlan {
+	return applyUnifiedDayAuthority(
+		plan,
+		{
+			immersionEntries: [],
+			climateEntries: [],
+			batteryEntries: [],
+			wallboxEntries: [],
+		},
+		{
+			dailyPlanRevision: plan.revision,
+			unifiedPlanId: "unified-failed",
+		},
+	);
 }

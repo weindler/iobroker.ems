@@ -8,6 +8,8 @@ export const REASON = {
 	THERMAL_FLEX_AVAILABLE: "thermal_flex_available",
 	BATTERY_SOC_TARGET: "battery_soc_target",
 	BATTERY_RESERVE_PROTECTED: "battery_reserve_protected",
+	BATTERY_CHARGE_DEADLINE: "battery_charge_deadline",
+	BATTERY_DISCHARGE_LIVE_UNSUPPORTED: "battery_discharge_live_unsupported",
 	GRID_IMPORT_COST_OPTIMAL: "grid_import_cost_optimal",
 	GRID_IMPORT_CONSERVATIVE_DEADLINE: "grid_import_conservative_deadline",
 	EXPORT_UNAVOIDABLE: "export_unavoidable",

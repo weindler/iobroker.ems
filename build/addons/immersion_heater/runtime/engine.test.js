@@ -190,3 +190,80 @@ async function decisionState(host, id) {
         strict_1.default.equal((0, engine_js_1.getImmersionPersistForTest)().commandedStage, 0);
     });
 });
+(0, node_test_1.describe)("immersion runtime — BETA-GATE-003 effective live reconcile", () => {
+    (0, node_test_1.beforeEach)(() => {
+        (0, engine_js_1.resetImmersionRuntimeForTest)();
+    });
+    function seedStage1Plan(host) {
+        const now = realNow();
+        const slotStartIso = (0, slots_js_1.slotStartIsoFloored)(now, TZ);
+        const slotEndIso = new Date(Date.parse(slotStartIso) + slots_js_1.DAILY_PLAN_SLOT_MS).toISOString();
+        host.set("addons.immersion_heater.governance.enabled", true);
+        host.set("immersion.stage1", false);
+        host.set(states_js_1.DAILY_PLAN_STATE_IDS.status, "ready");
+        host.set(states_js_1.DAILY_PLAN_STATE_IDS.date, (0, time_js_1.localDateKeyInTimezone)(now, TZ));
+        host.set(states_js_1.DAILY_PLAN_STATE_IDS.revision, 1);
+        host.set(states_js_1.DAILY_PLAN_STATE_IDS.validUntil, "");
+        host.set(states_js_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson, JSON.stringify([allocationEntry(slotStartIso, slotEndIso, 2000)]));
+        return { slotStartIso, slotEndIso };
+    }
+    function trackWrites(host) {
+        const foreignWrites = [];
+        const origSetForeign = host.setForeignStateAsync;
+        host.setForeignStateAsync = async (id, state) => {
+            const val = state && typeof state === "object" && "val" in state
+                ? state.val
+                : state;
+            foreignWrites.push({ id, val });
+            return origSetForeign(id, state);
+        };
+        return foreignWrites;
+    }
+    (0, node_test_1.it)("global edge: global dryrun→live with IH already live reconciles once", async () => {
+        const host = baseHost(40);
+        host.set("global.execution_mode", "dryrun");
+        host.set("addons.immersion_heater.mode", "live");
+        seedStage1Plan(host);
+        const foreignWrites = trackWrites(host);
+        await (0, engine_js_1.runImmersionRuntimeTick)(host);
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 1);
+        strict_1.default.equal(foreignWrites.filter((w) => w.id === "immersion.stage1").length, 0);
+        host.set("global.execution_mode", "live");
+        await (0, engine_js_1.runImmersionRuntimeTick)(host);
+        const liveWrites = foreignWrites.filter((w) => w.id === "immersion.stage1");
+        strict_1.default.equal(liveWrites.length, 1);
+        strict_1.default.equal(liveWrites[0].val, true);
+        const beforeSecond = foreignWrites.length;
+        await (0, engine_js_1.runImmersionRuntimeTick)(host);
+        strict_1.default.equal(foreignWrites.length, beforeSecond);
+    });
+    (0, node_test_1.it)("addon edge: IH dryrun→live with global already live reconciles once", async () => {
+        const host = baseHost(40);
+        host.set("global.execution_mode", "live");
+        host.set("addons.immersion_heater.mode", "dryrun");
+        seedStage1Plan(host);
+        const foreignWrites = trackWrites(host);
+        await (0, engine_js_1.runImmersionRuntimeTick)(host);
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 1);
+        strict_1.default.equal(foreignWrites.filter((w) => w.id === "immersion.stage1").length, 0);
+        host.set("addons.immersion_heater.mode", "live");
+        await (0, engine_js_1.runImmersionRuntimeTick)(host);
+        const liveWrites = foreignWrites.filter((w) => w.id === "immersion.stage1");
+        strict_1.default.equal(liveWrites.length, 1);
+        strict_1.default.equal(liveWrites[0].val, true);
+    });
+    (0, node_test_1.it)("live→dryrun (global) blocks subsequent hardware writes", async () => {
+        const host = baseHost(40);
+        host.set("global.execution_mode", "live");
+        host.set("addons.immersion_heater.mode", "live");
+        const { slotStartIso, slotEndIso } = seedStage1Plan(host);
+        const foreignWrites = trackWrites(host);
+        await (0, engine_js_1.runImmersionRuntimeTick)(host);
+        strict_1.default.ok(foreignWrites.some((w) => w.id === "immersion.stage1" && w.val === true));
+        host.set("global.execution_mode", "dryrun");
+        host.set(states_js_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson, JSON.stringify([allocationEntry(slotStartIso, slotEndIso, 0)]));
+        const n = foreignWrites.length;
+        await (0, engine_js_1.runImmersionRuntimeTick)(host);
+        strict_1.default.equal(foreignWrites.length, n, "global dryrun must block further writes");
+    });
+});

@@ -13,11 +13,11 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Beta — Muss konfiguriert werden: 1) PV/Grid/Hauslast-Datenquellen (Mappings). 2) Vorhandene Geräte: Batterie, Heizstab, Klima, EVCC/Fahrzeug. 3) Preisquelle (z. B. Tibber). 4) Strategie (eco/balanced/comfort/forced) und Ausführung Dryrun/Live. Neuinstallation und Restore starten immer in Dryrun. Global Dryrun = keine Gerätewrites, auch wenn ein Add-on auf live steht. Optional/Advanced: Learning, KI (nur Erklärung/Empfehlung, keine Plan-Authority), Support-Diagnose. Shadow/Takeover/Authority sind keine normale Produktoberfläche."
+					"text": "Beta — Muss konfiguriert werden: 1) PV/Grid/Hauslast-Datenquellen (Mappings). 2) Vorhandene Geräte: Batterie, Heizstab, Klima, EVCC/Fahrzeug. 3) Preisquelle (z. B. Tibber). 4) Strategie (eco/balanced/comfort/forced) und Ausführung Dryrun/Live. Neuinstallation und Restore starten immer in Dryrun. Hierarchie: Global Dryrun sperrt immer alle Gerätewrites. Global Live erlaubt nur Add-ons, die selbst auf Live stehen. Pro Add-on bleiben Dryrun/Live, Aktivierung und KI-Freigabe. Optional/Advanced: Learning, KI (nur Erklärung/Empfehlung, keine Plan-Authority), Support-Diagnose."
 				},
 				"global_execution_mode": {
 					"type": "select",
-					"label": "Ausführung (alle Addons)",
+					"label": "Global: Ausführung (Dryrun sperrt alles)",
 					"options": [
 						{
 							"label": "Dryrun",
@@ -482,7 +482,8 @@
 				},
 				"wb_addon_mode": {
 					"type": "select",
-					"label": "Wallbox Ausführung",
+					"label": "Wallbox: Dryrun / Live (nur wirksam bei Global Live)",
+					"help": "Global Dryrun sperrt Writes immer. Bei Global Live entscheidet dieser Schalter.",
 					"options": [
 						{
 							"label": "Dryrun",
@@ -1147,7 +1148,8 @@
 				},
 				"bat_addon_mode": {
 					"type": "select",
-					"label": "Batterie Ausführung",
+					"label": "Batterie: Dryrun / Live (nur wirksam bei Global Live)",
+					"help": "Global Dryrun sperrt Writes immer. Bei Global Live entscheidet dieser Schalter.",
 					"options": [
 						{
 							"label": "Dryrun",
@@ -2199,7 +2201,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Aktor: Steckdose ein/aus (set_enabled). Lesen: Puffer-Temperatur (buffer_temp_c). Ausführung unten und unter GLOBAL — Admin und Objektbaum (addons.immersion_heater.mode) bleiben synchron. Failsafe nur bei Live: EMS &gt;300 s weg → Relais aus."
+					"text": "Aktor: Steckdose ein/aus (set_enabled). Lesen: Puffer-Temperatur (buffer_temp_c). Writes nur bei Global Live und Heizstab Live. Failsafe nur bei effektiver Live-Authority: EMS &gt;300 s weg → Relais aus."
 				},
 				"immersionGovernanceHint": {
 					"type": "staticText",
@@ -2208,11 +2210,12 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Dieses Add-on wird zentral unter GLOBAL aktiviert."
+					"text": "Dieses Add-on wird zentral unter GLOBAL aktiviert. Ausführung: Global Dryrun sperrt immer; bei Global Live gilt der Heizstab-Schalter unten."
 				},
 				"ih_addon_mode": {
 					"type": "select",
-					"label": "Heizstab Ausführung",
+					"label": "Heizstab: Dryrun / Live (nur wirksam bei Global Live)",
+					"help": "Global Dryrun sperrt Writes immer. Bei Global Live entscheidet dieser Schalter.",
 					"options": [
 						{
 							"label": "Dryrun",
@@ -2839,7 +2842,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Klimaanlage: bis zu 5 Innengeräte. GLOBAL aktivieren, dann pro Gerät Abschnitte Kühlen / Trocknen / Heizen / Reinigung setzen. Mapping unten. Dry: Max-Feuchte &gt; 0 und Modus gesetzt. Leer-Modus = Zweck aus. Reinigung typisch nach Cool/Dry (Kondensat), nicht nach Heizen. Erst dryrun, dann live."
+					"text": "Klimaanlage: bis zu 5 Innengeräte. GLOBAL aktivieren, dann pro Gerät Abschnitte Kühlen / Trocknen / Heizen / Reinigung setzen. Mapping unten. Dry: Max-Feuchte &gt; 0 und Modus gesetzt. Leer-Modus = Zweck aus. Reinigung typisch nach Cool/Dry (Kondensat), nicht nach Heizen. Writes nur bei Global Live und Klima Live."
 				},
 				"climateGovernanceHint": {
 					"type": "staticText",
@@ -2848,11 +2851,12 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Dieses Add-on wird zentral unter GLOBAL aktiviert."
+					"text": "Dieses Add-on wird zentral unter GLOBAL aktiviert. Ausführung: Global Dryrun sperrt immer; bei Global Live gilt der Klima-Schalter unten."
 				},
 				"ac_addon_mode": {
 					"type": "select",
-					"label": "Ausführung (dryrun/live)",
+					"label": "Klima: Dryrun / Live (nur wirksam bei Global Live)",
+					"help": "Global Dryrun sperrt Writes immer. Bei Global Live entscheidet dieser Schalter.",
 					"options": [
 						{
 							"label": "Dryrun",

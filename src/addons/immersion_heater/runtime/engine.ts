@@ -95,6 +95,11 @@ let emsOffWriteAtMs: number | null = null;
 let chatter: ChatterTracker = { timestampsMs: [] };
 /** -1 = noch nie geschrieben → erster Tick stellt EMS-Besitz her (Live schreibt aktuellen Stand). */
 let lastCommandedStage = -1;
+/**
+ * Vorherige effektive Write-Authority (global∧addon live).
+ * Edge false→true erzwingt Hardware-Reconcile (auch bei unveränderter Sollstufe).
+ */
+let prevImmersionLiveWriteAllowed = false;
 let lastDailyPlanContext: ImmersionDailyPlanResolution | null = null;
 /** Nach Upgrade einmalig Ensure nachziehen (plan_target_*), danach nicht jeden Tick. */
 let runtimeStatesEnsuredThisProcess = false;
@@ -311,6 +316,8 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 	const enabled = await readBool(host, addonEnabled("immersion_heater"));
 	const available = await readBool(host, addonAvailable("immersion_heater"));
 	const live = await isLiveWriteAllowed((id) => host.getStateAsync(id), "immersion_heater");
+	const liveEdge = live && !prevImmersionLiveWriteAllowed;
+	prevImmersionLiveWriteAllowed = live;
 	const failsafeActive = await readBool(host, IMMERSION_STATUS_STATES.failsafeActive);
 
 	const intentRaw = await host.getStateAsync("user_intent.thermal.resolved_json");
@@ -408,15 +415,24 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 	const effectiveStage = persist.faultLockout || failsafeActive || resolvedMode === "off" ? 0 : commandedStage;
 	const commandedOn = effectiveStage > 0;
 
-	// Realer Relais-Übergang → Buchhaltung, Chatter, physischer Write (nur Live) + Write-Zeitstempel.
-	if (effectiveStage !== lastCommandedStage) {
-		if (effectiveStage === 0) {
-			persist.lastOffAtMs = nowMs;
-			persist.pauseUntilMs = nowMs + config.minimumPauseSec * 1000;
-		} else {
-			persist.lastSwitchAtMs = nowMs;
+	// Stage-Wechsel oder effectiveLive false→true: gewünschten Soll physisch anwenden.
+	// Solange nicht (global∧addon) live, besitzt EMS keine Hardware-Authority.
+	// writeForeignIfChanged schreibt nur wenn Ist ≠ Soll (kein Tick-Spam nach erfolgreichem Apply).
+	const stageChanged = effectiveStage !== lastCommandedStage;
+	if (stageChanged || liveEdge) {
+		if (stageChanged) {
+			if (effectiveStage === 0) {
+				persist.lastOffAtMs = nowMs;
+				persist.pauseUntilMs = nowMs + config.minimumPauseSec * 1000;
+			} else {
+				persist.lastSwitchAtMs = nowMs;
+			}
+			chatter = recordChatterEvent(chatter, nowMs, config.relayChatterWindowSec);
+		} else if (liveEdge) {
+			host.log.info?.(
+				`immersion: effective live authority gained — reconcile stage ${effectiveStage} (desired unchanged)`,
+			);
 		}
-		chatter = recordChatterEvent(chatter, nowMs, config.relayChatterWindowSec);
 		await applyStageWrites(host, effectiveStage, live);
 		if (live) {
 			if (effectiveStage === 0) emsOffWriteAtMs = nowMs;
@@ -768,6 +784,7 @@ export function stopImmersionRuntimeEngine(): void {
 	runtimeStatesEnsuredThisProcess = false;
 	persist = emptyPersist();
 	lastCommandedStage = -1;
+	prevImmersionLiveWriteAllowed = false;
 	lastDailyPlanContext = null;
 	resetImmersionDailyPlanCache();
 	emsOnWriteAtMs = null;

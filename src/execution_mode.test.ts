@@ -40,8 +40,13 @@ describe("execution mode", () => {
 		assert.equal(isExecutionModeStateRelativeId("global_modes.requested"), false);
 	});
 
-	it("acks global execution mode from object tree", async () => {
-		const store = new Map<string, ioBroker.State>();
+	it("acks global execution mode from object tree without cascading addon modes", async () => {
+		const store = new Map<string, ioBroker.State>([
+			["addons.immersion_heater.mode", { val: "live", ack: true } as ioBroker.State],
+			["addons.air_conditioning.mode", { val: "dryrun", ack: true } as ioBroker.State],
+			["addons.battery.mode", { val: "live", ack: true } as ioBroker.State],
+			["addons.wallbox.mode", { val: "dryrun", ack: true } as ioBroker.State],
+		]);
 		const adapter = {
 			namespace: "ems.0",
 			log: { info: () => {}, warn: () => {} },
@@ -58,6 +63,10 @@ describe("execution mode", () => {
 		assert.equal(store.get("global.execution_mode")?.val, "live");
 		assert.equal(store.get("global.execution_mode")?.ack, true);
 		assert.equal(store.get("execution.safety.global_execution_mode")?.val, "live");
+		assert.equal(store.get("addons.immersion_heater.mode")?.val, "live");
+		assert.equal(store.get("addons.air_conditioning.mode")?.val, "dryrun");
+		assert.equal(store.get("addons.battery.mode")?.val, "live");
+		assert.equal(store.get("addons.wallbox.mode")?.val, "dryrun");
 	});
 
 	it("acks addon execution mode from object tree", async () => {

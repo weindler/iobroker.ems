@@ -288,7 +288,7 @@ describe("BETA-DAY-014 restart mid-day idempotent evaluation", () => {
 	});
 });
 
-describe("BETA-DAY-015 restore dryrun barrier principle", () => {
+describe("BETA-DAY-015 hierarchical effective execution", () => {
 	it("global dryrun overrides addon live in effective snapshot", async () => {
 		const { buildEffectiveExecutionSnapshot } = await import("./execution_effective.js");
 		const snap = buildEffectiveExecutionSnapshot({
@@ -302,7 +302,41 @@ describe("BETA-DAY-015 restore dryrun barrier principle", () => {
 		});
 		assert.equal(snap.globalLive, false);
 		assert.equal(snap.addons.battery!.liveWritesPossible, false);
-		assert.match(snap.summaryDe, /Dryrun/i);
+		assert.equal(snap.addons.battery!.effectiveWriteMode, "dryrun");
+		assert.equal(snap.addons.battery!.blockReasonDe, "Global Dryrun");
+		assert.match(snap.summaryDe, /Global Dryrun/i);
+	});
+
+	it("global live + addon dryrun → effective dryrun", async () => {
+		const { buildEffectiveExecutionSnapshot } = await import("./execution_effective.js");
+		const snap = buildEffectiveExecutionSnapshot({
+			globalMode: "live",
+			addonModes: {
+				wallbox: "dryrun",
+				battery: "dryrun",
+				immersion_heater: "dryrun",
+				air_conditioning: "dryrun",
+			},
+		});
+		assert.equal(snap.globalLive, true);
+		assert.equal(snap.addons.immersion_heater!.liveWritesPossible, false);
+		assert.equal(snap.addons.immersion_heater!.effectiveWriteMode, "dryrun");
+		assert.equal(snap.addons.immersion_heater!.blockReasonDe, "Add-on Dryrun");
+	});
+
+	it("global live + addon live → effective live", async () => {
+		const { buildEffectiveExecutionSnapshot } = await import("./execution_effective.js");
+		const snap = buildEffectiveExecutionSnapshot({
+			globalMode: "live",
+			addonModes: {
+				wallbox: "live",
+				battery: "live",
+				immersion_heater: "live",
+				air_conditioning: "live",
+			},
+		});
+		assert.equal(snap.addons.immersion_heater!.liveWritesPossible, true);
+		assert.equal(snap.addons.immersion_heater!.blockReasonDe, null);
 	});
 });
 

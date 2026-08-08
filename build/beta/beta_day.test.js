@@ -283,7 +283,7 @@ function sumKind(plan, kind) {
         strict_1.default.equal(b.inserted, false);
     });
 });
-(0, node_test_1.describe)("BETA-DAY-015 restore dryrun barrier principle", () => {
+(0, node_test_1.describe)("BETA-DAY-015 hierarchical effective execution", () => {
     (0, node_test_1.it)("global dryrun overrides addon live in effective snapshot", async () => {
         const { buildEffectiveExecutionSnapshot } = await Promise.resolve().then(() => __importStar(require("./execution_effective.js")));
         const snap = buildEffectiveExecutionSnapshot({
@@ -297,7 +297,39 @@ function sumKind(plan, kind) {
         });
         strict_1.default.equal(snap.globalLive, false);
         strict_1.default.equal(snap.addons.battery.liveWritesPossible, false);
-        strict_1.default.match(snap.summaryDe, /Dryrun/i);
+        strict_1.default.equal(snap.addons.battery.effectiveWriteMode, "dryrun");
+        strict_1.default.equal(snap.addons.battery.blockReasonDe, "Global Dryrun");
+        strict_1.default.match(snap.summaryDe, /Global Dryrun/i);
+    });
+    (0, node_test_1.it)("global live + addon dryrun → effective dryrun", async () => {
+        const { buildEffectiveExecutionSnapshot } = await Promise.resolve().then(() => __importStar(require("./execution_effective.js")));
+        const snap = buildEffectiveExecutionSnapshot({
+            globalMode: "live",
+            addonModes: {
+                wallbox: "dryrun",
+                battery: "dryrun",
+                immersion_heater: "dryrun",
+                air_conditioning: "dryrun",
+            },
+        });
+        strict_1.default.equal(snap.globalLive, true);
+        strict_1.default.equal(snap.addons.immersion_heater.liveWritesPossible, false);
+        strict_1.default.equal(snap.addons.immersion_heater.effectiveWriteMode, "dryrun");
+        strict_1.default.equal(snap.addons.immersion_heater.blockReasonDe, "Add-on Dryrun");
+    });
+    (0, node_test_1.it)("global live + addon live → effective live", async () => {
+        const { buildEffectiveExecutionSnapshot } = await Promise.resolve().then(() => __importStar(require("./execution_effective.js")));
+        const snap = buildEffectiveExecutionSnapshot({
+            globalMode: "live",
+            addonModes: {
+                wallbox: "live",
+                battery: "live",
+                immersion_heater: "live",
+                air_conditioning: "live",
+            },
+        });
+        strict_1.default.equal(snap.addons.immersion_heater.liveWritesPossible, true);
+        strict_1.default.equal(snap.addons.immersion_heater.blockReasonDe, null);
     });
 });
 (0, node_test_1.describe)("BETA-DAY notification surface", () => {

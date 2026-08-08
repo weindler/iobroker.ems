@@ -31,8 +31,13 @@ const LIVE_IH_FP = (0, execution_mode_js_1.executionModesConfigFingerprint)({
         strict_1.default.equal((0, execution_mode_js_1.isExecutionModeStateRelativeId)("addons.immersion_heater.mode"), true);
         strict_1.default.equal((0, execution_mode_js_1.isExecutionModeStateRelativeId)("global_modes.requested"), false);
     });
-    (0, node_test_1.it)("acks global execution mode from object tree", async () => {
-        const store = new Map();
+    (0, node_test_1.it)("acks global execution mode from object tree without cascading addon modes", async () => {
+        const store = new Map([
+            ["addons.immersion_heater.mode", { val: "live", ack: true }],
+            ["addons.air_conditioning.mode", { val: "dryrun", ack: true }],
+            ["addons.battery.mode", { val: "live", ack: true }],
+            ["addons.wallbox.mode", { val: "dryrun", ack: true }],
+        ]);
         const adapter = {
             namespace: "ems.0",
             log: { info: () => { }, warn: () => { } },
@@ -49,6 +54,10 @@ const LIVE_IH_FP = (0, execution_mode_js_1.executionModesConfigFingerprint)({
         strict_1.default.equal(store.get("global.execution_mode")?.val, "live");
         strict_1.default.equal(store.get("global.execution_mode")?.ack, true);
         strict_1.default.equal(store.get("execution.safety.global_execution_mode")?.val, "live");
+        strict_1.default.equal(store.get("addons.immersion_heater.mode")?.val, "live");
+        strict_1.default.equal(store.get("addons.air_conditioning.mode")?.val, "dryrun");
+        strict_1.default.equal(store.get("addons.battery.mode")?.val, "live");
+        strict_1.default.equal(store.get("addons.wallbox.mode")?.val, "dryrun");
     });
     (0, node_test_1.it)("acks addon execution mode from object tree", async () => {
         const store = new Map();

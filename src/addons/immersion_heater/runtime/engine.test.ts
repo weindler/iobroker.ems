@@ -226,3 +226,100 @@ describe("immersion runtime engine — Daily Plan vs. Sicherheits-Default (Roadm
 		assert.equal(getImmersionPersistForTest().commandedStage, 0);
 	});
 });
+
+describe("immersion runtime — BETA-GATE-003 effective live reconcile", () => {
+	beforeEach(() => {
+		resetImmersionRuntimeForTest();
+	});
+
+	function seedStage1Plan(host: FakeHost): { slotStartIso: string; slotEndIso: string } {
+		const now = realNow();
+		const slotStartIso = slotStartIsoFloored(now, TZ);
+		const slotEndIso = new Date(Date.parse(slotStartIso) + DAILY_PLAN_SLOT_MS).toISOString();
+		host.set("addons.immersion_heater.governance.enabled", true);
+		host.set("immersion.stage1", false);
+		host.set(DAILY_PLAN_STATE_IDS.status, "ready");
+		host.set(DAILY_PLAN_STATE_IDS.date, localDateKeyInTimezone(now, TZ));
+		host.set(DAILY_PLAN_STATE_IDS.revision, 1);
+		host.set(DAILY_PLAN_STATE_IDS.validUntil, "");
+		host.set(
+			ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson,
+			JSON.stringify([allocationEntry(slotStartIso, slotEndIso, 2000)]),
+		);
+		return { slotStartIso, slotEndIso };
+	}
+
+	function trackWrites(host: FakeHost): Array<{ id: string; val: unknown }> {
+		const foreignWrites: Array<{ id: string; val: unknown }> = [];
+		const origSetForeign = host.setForeignStateAsync;
+		host.setForeignStateAsync = async (id, state) => {
+			const val =
+				state && typeof state === "object" && "val" in state
+					? (state as { val: unknown }).val
+					: state;
+			foreignWrites.push({ id, val });
+			return origSetForeign(id, state);
+		};
+		return foreignWrites;
+	}
+
+	it("global edge: global dryrun→live with IH already live reconciles once", async () => {
+		const host = baseHost(40);
+		host.set("global.execution_mode", "dryrun");
+		host.set("addons.immersion_heater.mode", "live");
+		seedStage1Plan(host);
+		const foreignWrites = trackWrites(host);
+
+		await runImmersionRuntimeTick(host);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), 1);
+		assert.equal(foreignWrites.filter((w) => w.id === "immersion.stage1").length, 0);
+
+		host.set("global.execution_mode", "live");
+		await runImmersionRuntimeTick(host);
+		const liveWrites = foreignWrites.filter((w) => w.id === "immersion.stage1");
+		assert.equal(liveWrites.length, 1);
+		assert.equal(liveWrites[0]!.val, true);
+
+		const beforeSecond = foreignWrites.length;
+		await runImmersionRuntimeTick(host);
+		assert.equal(foreignWrites.length, beforeSecond);
+	});
+
+	it("addon edge: IH dryrun→live with global already live reconciles once", async () => {
+		const host = baseHost(40);
+		host.set("global.execution_mode", "live");
+		host.set("addons.immersion_heater.mode", "dryrun");
+		seedStage1Plan(host);
+		const foreignWrites = trackWrites(host);
+
+		await runImmersionRuntimeTick(host);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), 1);
+		assert.equal(foreignWrites.filter((w) => w.id === "immersion.stage1").length, 0);
+
+		host.set("addons.immersion_heater.mode", "live");
+		await runImmersionRuntimeTick(host);
+		const liveWrites = foreignWrites.filter((w) => w.id === "immersion.stage1");
+		assert.equal(liveWrites.length, 1);
+		assert.equal(liveWrites[0]!.val, true);
+	});
+
+	it("live→dryrun (global) blocks subsequent hardware writes", async () => {
+		const host = baseHost(40);
+		host.set("global.execution_mode", "live");
+		host.set("addons.immersion_heater.mode", "live");
+		const { slotStartIso, slotEndIso } = seedStage1Plan(host);
+		const foreignWrites = trackWrites(host);
+
+		await runImmersionRuntimeTick(host);
+		assert.ok(foreignWrites.some((w) => w.id === "immersion.stage1" && w.val === true));
+
+		host.set("global.execution_mode", "dryrun");
+		host.set(
+			ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson,
+			JSON.stringify([allocationEntry(slotStartIso, slotEndIso, 0)]),
+		);
+		const n = foreignWrites.length;
+		await runImmersionRuntimeTick(host);
+		assert.equal(foreignWrites.length, n, "global dryrun must block further writes");
+	});
+});

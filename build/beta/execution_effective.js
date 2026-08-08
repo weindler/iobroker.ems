@@ -1,7 +1,12 @@
 "use strict";
 /**
  * Effektive Ausführungs-Wahrheit für Beta-UI.
- * Global dryrun → kein Add-on schreibt live (auch wenn Addon-State „live“ zeigt).
+ *
+ * Hierarchie:
+ * - Global Dryrun → alle Add-ons effektiv dryrun (auch wenn Add-on „live“ zeigt)
+ * - Global Live → Add-on schreibt nur, wenn es selbst live ist
+ *
+ * Modes werden hier nicht mutiert — nur die kombinierte Wirkung dargestellt.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildEffectiveExecutionSnapshot = void 0;
@@ -10,24 +15,42 @@ function buildEffectiveExecutionSnapshot(input) {
     const globalMode = (0, execution_mode_1.parseMode)(input.globalMode);
     const globalLive = globalMode === "live";
     const addons = {};
-    const conflicts = [];
+    const blockedByGlobal = [];
+    const blockedByAddon = [];
     for (const id of execution_mode_1.EXECUTION_MODE_ADDON_IDS) {
         const configuredMode = (0, execution_mode_1.parseMode)(input.addonModes[id]);
         const liveWritesPossible = globalLive && configuredMode === "live";
+        let blockReasonDe = null;
+        if (!globalLive) {
+            blockReasonDe = "Global Dryrun";
+            if (configuredMode === "live")
+                blockedByGlobal.push(id);
+        }
+        else if (configuredMode !== "live") {
+            blockReasonDe = "Add-on Dryrun";
+            blockedByAddon.push(id);
+        }
         addons[id] = {
             configuredMode,
             effectiveWriteMode: liveWritesPossible ? "live" : "dryrun",
             liveWritesPossible,
+            blockReasonDe,
         };
-        if (!globalLive && configuredMode === "live") {
-            conflicts.push(id);
+    }
+    let summaryDe;
+    if (!globalLive) {
+        summaryDe =
+            "Ausführung: Global Dryrun — keine realen Gerätewrites (sperrt alle Add-ons).";
+        if (blockedByGlobal.length) {
+            summaryDe += ` Hinweis: ${blockedByGlobal.join(", ")} steht auf live, ist aber durch Global Dryrun wirkungslos.`;
         }
     }
-    let summaryDe = globalMode === "dryrun"
-        ? "Ausführung: Dryrun — keine realen Gerätewrites (auch wenn einzelne Add-ons auf live stehen)."
-        : "Ausführung: Live — Writes nur für Add-ons, die ebenfalls live sind und technisch freigegeben.";
-    if (conflicts.length) {
-        summaryDe += ` Hinweis: ${conflicts.join(", ")} als live konfiguriert, aber durch Global-Dryrun wirkungslos.`;
+    else {
+        summaryDe =
+            "Ausführung: Global Live — Writes nur für Add-ons, die selbst auf Live stehen und technisch freigegeben sind.";
+        if (blockedByAddon.length) {
+            summaryDe += ` Dryrun: ${blockedByAddon.join(", ")}.`;
+        }
     }
     return { schemaVersion: 1, globalMode, globalLive, addons, summaryDe };
 }

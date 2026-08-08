@@ -337,6 +337,11 @@ async function runAcRuntimeTick(host) {
     }
 }
 exports.runAcRuntimeTick = runAcRuntimeTick;
+/**
+ * Vorherige effektive Write-Authority (global∧addon live).
+ * Edge false→true gibt Start-Retry frei, wenn Hardware noch aus ist.
+ */
+let prevAcLiveWriteAllowed = false;
 async function runAcRuntimeTickBody(host) {
     (0, ems_activity_1.touchEmsActivity)();
     const now = new Date();
@@ -348,6 +353,8 @@ async function runAcRuntimeTickBody(host) {
     const addonEnabledVal = addonOn?.val !== false;
     const governanceEnabled = await (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "climate");
     const live = await (0, execution_mode_1.isLiveWriteAllowed)((id) => host.getStateAsync(id), constants_1.AC_ADDON_ID);
+    const liveEdge = live && !prevAcLiveWriteAllowed;
+    prevAcLiveWriteAllowed = live;
     const allowNewCleaning = governanceEnabled && addonEnabledVal;
     // Disabled units that still have objects (e.g. just turned off): close sticky stats / optional stop.
     // Unconfigured placeholders are not ensured and are removed by surface cleanup.
@@ -400,6 +407,12 @@ async function runAcRuntimeTickBody(host) {
         const up = unitPersist(unit.index);
         if ((0, time_1.switchIsOn)(fb.value))
             runningCount += 1;
+        // Dryrun darf lastStartAtMs/running setzen ohne Hardware —
+        // effective live false→true gibt Start sofort frei (kein 120s-Retry-Stau).
+        if (liveEdge && (0, time_1.switchIsOff)(fb.value) && (up.running || up.lastStartAtMs != null)) {
+            up.lastStartAtMs = null;
+            host.log.info?.(`ac unit ${unit.index}: effective live authority gained — allow immediate start (hardware still off)`);
+        }
         await tickCleaning(host, unit, mappingTable, live, up, nowMs, cleaningState.value, cleaningMode.value, cleaningProgress.num, allowNewCleaning, (0, time_1.switchIsOn)(fb.value));
         // Cleaning-Flag sperrt FSM-Stop — Gerät trotzdem ausschalten, sonst Deadlock.
         if (up.cleaningActive &&
@@ -673,6 +686,7 @@ function stopAcRuntimeEngine() {
     hostRef = null;
     persist = { version: 1, units: {} };
     acPersistHydrated = false;
+    prevAcLiveWriteAllowed = false;
     subscribedIds.length = 0;
     (0, daily_plan_1.resetAcDailyPlanCache)();
 }

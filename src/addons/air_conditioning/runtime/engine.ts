@@ -519,6 +519,12 @@ export async function runAcRuntimeTick(host: AcRuntimeHost): Promise<void> {
 	}
 }
 
+/**
+ * Vorherige effektive Write-Authority (global∧addon live).
+ * Edge false→true gibt Start-Retry frei, wenn Hardware noch aus ist.
+ */
+let prevAcLiveWriteAllowed = false;
+
 async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 	touchEmsActivity();
 	const now = new Date();
@@ -533,6 +539,8 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		"climate",
 	);
 	const live = await isLiveWriteAllowed((id) => host.getStateAsync(id), AC_ADDON_ID);
+	const liveEdge = live && !prevAcLiveWriteAllowed;
+	prevAcLiveWriteAllowed = live;
 	const allowNewCleaning = governanceEnabled && addonEnabledVal;
 
 	// Disabled units that still have objects (e.g. just turned off): close sticky stats / optional stop.
@@ -587,6 +595,15 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		const cleaningProgress = await readForeign(host, cleaningProgressId);
 		const up = unitPersist(unit.index);
 		if (switchIsOn(fb.value)) runningCount += 1;
+
+		// Dryrun darf lastStartAtMs/running setzen ohne Hardware —
+		// effective live false→true gibt Start sofort frei (kein 120s-Retry-Stau).
+		if (liveEdge && switchIsOff(fb.value) && (up.running || up.lastStartAtMs != null)) {
+			up.lastStartAtMs = null;
+			host.log.info?.(
+				`ac unit ${unit.index}: effective live authority gained — allow immediate start (hardware still off)`,
+			);
+		}
 
 		await tickCleaning(
 			host,
@@ -898,6 +915,7 @@ export function stopAcRuntimeEngine(): void {
 	hostRef = null;
 	persist = { version: 1, units: {} };
 	acPersistHydrated = false;
+	prevAcLiveWriteAllowed = false;
 	subscribedIds.length = 0;
 	resetAcDailyPlanCache();
 }

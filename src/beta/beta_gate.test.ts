@@ -85,13 +85,24 @@ describe("BETA-GATE-002 global dryrun blocks all writes", () => {
 	});
 });
 
-describe("BETA-GATE-003 global live requires addon live", () => {
-	it("global live + addon dryrun → blocked; both live → allowed", async () => {
+describe("BETA-GATE-003 hierarchical execution (global AND addon)", () => {
+	it("global live + addon dryrun → blocked", async () => {
 		const blocked = await isLiveWriteAllowed(async (id) => {
 			if (id === "global.execution_mode") return { val: "live" } as ioBroker.State;
 			return { val: "dryrun" } as ioBroker.State;
 		}, "battery");
 		assert.equal(blocked, false);
+	});
+
+	it("global dryrun + addon live → blocked", async () => {
+		const blocked = await isLiveWriteAllowed(async (id) => {
+			if (id === "global.execution_mode") return { val: "dryrun" } as ioBroker.State;
+			return { val: "live" } as ioBroker.State;
+		}, "immersion_heater");
+		assert.equal(blocked, false);
+	});
+
+	it("global live + addon live → allowed", async () => {
 		const allowed = await isLiveWriteAllowed(async () => {
 			return { val: "live" } as ioBroker.State;
 		}, "battery");
@@ -205,6 +216,33 @@ describe("BETA-GATE-008 restore dryrun clamp", () => {
 		assert.equal(modes.global, "dryrun");
 		assert.equal(modes.wallbox, "dryrun");
 		assert.equal(modes.battery, "dryrun");
+	});
+
+	it("restore barrier blocks device writes even when global live", async () => {
+		const { setRestoreInProgress, resetRestoreBarrierForTest } = await import("../restore/barrier.js");
+		const { writeForeignIfChanged } = await import("../device_write.js");
+		resetRestoreBarrierForTest();
+		setRestoreInProgress(true);
+		let wrote = false;
+		try {
+			const r = await writeForeignIfChanged(
+				{
+					getForeignStateAsync: async () => ({ val: false, ack: true } as ioBroker.State),
+					setForeignStateAsync: async () => {
+						wrote = true;
+					},
+				},
+				{ stateId: "dev.relay", value: true, reason: "gate-test" },
+			);
+			assert.equal(r.skipped, true);
+			assert.equal(wrote, false);
+		} finally {
+			resetRestoreBarrierForTest();
+		}
+		assert.equal(
+			await isLiveWriteAllowed(async () => ({ val: "live" } as ioBroker.State), "immersion_heater"),
+			true,
+		);
 	});
 });
 

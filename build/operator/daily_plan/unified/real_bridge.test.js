@@ -279,8 +279,9 @@ function realisticSnapshot(overrides) {
         const ctx = realisticSnapshot({ connected: true, vehicleSoc: 55 });
         const input = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(ctx);
         const unified = (0, allocate_1.allocateUnifiedDayPlan)(input);
-        strict_1.default.ok((unified.expectedPvEnergyKwh ?? 0) > 0);
-        strict_1.default.ok((unified.expectedHouseLoadEnergyKwh ?? 0) > 0);
+        strict_1.default.ok((unified.expectedPvEnergyTodayKwh ?? 0) > 0 || (unified.expectedPvEnergyHorizonKwh ?? 0) > 0);
+        strict_1.default.ok((unified.expectedHouseLoadEnergyTodayKwh ?? 0) > 0 ||
+            (unified.expectedHouseLoadEnergyHorizonKwh ?? 0) > 0);
         strict_1.default.equal(unified.inputRevision, 99);
         strict_1.default.ok(unified.allocations.some((a) => a.kind === "immersion_heater" || a.kind === "climate"));
         const pub = (0, dispatch_bridge_1.buildUnifiedIhAcDispatchPublish)(unified);

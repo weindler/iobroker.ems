@@ -1,9 +1,16 @@
 /**
  * Deterministische, maschinenlesbare Tagesplan-Erklärung (Schritt 7 §13).
  * KI formuliert daraus Text — erfindet keine Zahlen.
+ *
+ * Scope-Semantik:
+ * - `heute.*` = Day Scope (lokaler Kalendertag)
+ * - `horizon.*` = Planning Horizon (Rest-Unified-Horizont)
+ * - `fahrzeug.*` = Goal Scope (Deadline-/Zielbezogen)
  */
 
 import type { UnifiedDayPlan } from "../../operator/daily_plan/unified/types";
+import { localDateKeyFromIso } from "../../operator/daily_plan/unified/energy_scopes";
+import { localDateKeyInTimezone } from "../../operator/time";
 
 export type DeterministicDayExplanation = {
 	schemaVersion: 1;
@@ -16,6 +23,14 @@ export type DeterministicDayExplanation = {
 		batteryStartSocPct: number | null;
 		batteryEndSocPct: number | null;
 		flexibleAllocatedKwh: number | null;
+		expectedImportKwh: number | null;
+		expectedExportKwh: number | null;
+		expectedCostCt: number | null;
+	};
+	/** Planning-Horizon-Aggregate — nie als „Heute“ ausgeben. */
+	horizon: {
+		pvExpectedKwh: number | null;
+		houseLoadExpectedKwh: number | null;
 		expectedImportKwh: number | null;
 		expectedExportKwh: number | null;
 		expectedCostCt: number | null;
@@ -39,6 +54,8 @@ export type DeterministicDayExplanation = {
 		earliestFeasibleCostCt: number | null;
 		savingsCt: number | null;
 		economicsCompleteness: string | null;
+		/** Goal-Scope PV bis Deadline (Forecast-Slots), falls bekannt. */
+		pvToGoalKwh: number | null;
 		availabilityNotes: string[];
 	};
 	risiken: string[];
@@ -52,6 +69,29 @@ function sumKind(plan: UnifiedDayPlan, kind: string): number {
 		.reduce((s, a) => s + a.allocatedEnergyKwh, 0);
 }
 
+function sumKindOnLocalDay(plan: UnifiedDayPlan, kind: string, dateKey: string): number {
+	return plan.allocations
+		.filter((a) => a.kind === kind && localDateKeyFromIso(a.slot.startIso, plan.timezone) === dateKey)
+		.reduce((s, a) => s + a.allocatedEnergyKwh, 0);
+}
+
+function batterySocAtLocalDayEnd(
+	plan: UnifiedDayPlan,
+	dateKey: string,
+	fallbackStart: number | null | undefined,
+): number | null {
+	const traj = plan.batteryTrajectory;
+	if (!traj.length) return fallbackStart ?? null;
+	let lastToday: number | null = null;
+	for (const p of traj) {
+		if (localDateKeyFromIso(p.slotStartIso, plan.timezone) === dateKey && p.socPct !== null) {
+			lastToday = p.socPct;
+		}
+	}
+	if (lastToday !== null) return lastToday;
+	return traj[traj.length - 1]?.socPct ?? fallbackStart ?? null;
+}
+
 export function buildDeterministicDayExplanation(
 	plan: UnifiedDayPlan,
 	opts?: { batteryStartSocPct?: number | null },
@@ -60,6 +100,7 @@ export function buildDeterministicDayExplanation(
 	const ih = plan.allocations.filter((a) => a.kind === "immersion_heater");
 	const ac = plan.allocations.filter((a) => a.kind === "climate");
 	const batTraj = plan.batteryTrajectory;
+	const dateKey = localDateKeyInTimezone(new Date(Date.parse(plan.createdAtIso) || Date.now()), plan.timezone);
 	const risks: string[] = [];
 	for (const c of plan.reasonCodes) {
 		if (
@@ -93,28 +134,37 @@ export function buildDeterministicDayExplanation(
 		}
 	}
 
+	const flexToday =
+		sumKindOnLocalDay(plan, "immersion_heater", dateKey) +
+		sumKindOnLocalDay(plan, "climate", dateKey) +
+		sumKindOnLocalDay(plan, "wallbox", dateKey) +
+		sumKindOnLocalDay(plan, "battery_charge", dateKey);
+
 	return {
 		schemaVersion: 1,
-		date: plan.createdAtIso.slice(0, 10),
+		date: dateKey,
 		timezone: plan.timezone,
 		planId: plan.planId,
 		heute: {
-			pvExpectedKwh: plan.expectedPvEnergyKwh,
-			houseLoadExpectedKwh: plan.expectedHouseLoadEnergyKwh,
+			pvExpectedKwh: plan.expectedPvEnergyTodayKwh,
+			houseLoadExpectedKwh: plan.expectedHouseLoadEnergyTodayKwh,
 			batteryStartSocPct: opts?.batteryStartSocPct ?? batTraj[0]?.socPct ?? null,
-			batteryEndSocPct: batTraj.length ? batTraj[batTraj.length - 1]?.socPct ?? null : null,
-			flexibleAllocatedKwh: Math.round(
-				(sumKind(plan, "immersion_heater") +
-					sumKind(plan, "climate") +
-					sumKind(plan, "wallbox") +
-					sumKind(plan, "battery_charge")) *
-					1000,
-			) / 1000,
+			batteryEndSocPct: batterySocAtLocalDayEnd(plan, dateKey, opts?.batteryStartSocPct),
+			flexibleAllocatedKwh: Math.round(flexToday * 1000) / 1000,
+			// Import/Export/Cost am Plan sind Horizon-Aggregate — nicht unter „heute“ spiegeln.
+			expectedImportKwh: null,
+			expectedExportKwh: null,
+			expectedCostCt: null,
+		},
+		horizon: {
+			pvExpectedKwh: plan.expectedPvEnergyHorizonKwh,
+			houseLoadExpectedKwh: plan.expectedHouseLoadEnergyHorizonKwh,
 			expectedImportKwh: plan.expectedGridImportEnergyKwh,
 			expectedExportKwh: plan.expectedGridExportEnergyKwh,
 			expectedCostCt: plan.expectedCostCt,
 		},
 		heizstab: {
+			// Geplante Fenster über den Horizon (nicht nur heute) — Texte ohne „Heute“-Label.
 			windows: ih.map((a) => ({
 				startIso: a.slot.startIso,
 				endIso: a.slot.endIso,
@@ -143,6 +193,7 @@ export function buildDeterministicDayExplanation(
 			earliestFeasibleCostCt: eco?.alternativeGridCostCt ?? null,
 			savingsCt: eco?.savingsVsAlternativeCt ?? null,
 			economicsCompleteness: eco?.economicsCompleteness ?? null,
+			pvToGoalKwh: plan.expectedPvEnergyToGoalKwh,
 			availabilityNotes,
 		},
 		risiken: [...new Set(risks)],

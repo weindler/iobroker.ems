@@ -408,10 +408,34 @@ export type UnifiedDayPlan = {
 	horizonEndIso: string;
 	slotMinutes: UnifiedSlotMinutes;
 
-	expectedPvEnergyKwh: number | null;
-	expectedHouseLoadEnergyKwh: number | null;
+	/**
+	 * Day Scope: erwartete PV-Energie für den lokalen Kalendertag (`timezone`).
+	 * Für „Heute“, Day Evaluation, PV-Learning — nie Horizon-Summe.
+	 */
+	expectedPvEnergyTodayKwh: number | null;
+	/**
+	 * Day Scope: erwartete Hauslast für den lokalen Kalendertag.
+	 */
+	expectedHouseLoadEnergyTodayKwh: number | null;
+	/**
+	 * Goal Scope: PV-Energie in Slots bis zur frühesten Wallbox-Deadline (darf Mitternacht überschreiten).
+	 * null wenn kein Deadline-Ziel.
+	 */
+	expectedPvEnergyToGoalKwh: number | null;
+	/**
+	 * Planning Horizon: Summe der PV-Energie über den (verbleibenden) Unified-Horizont (~bis 7 Tage).
+	 * Nie als „Heute“ ausgeben.
+	 */
+	expectedPvEnergyHorizonKwh: number | null;
+	/**
+	 * Planning Horizon: Hauslast-Summe über den verbleibenden Unified-Horizont.
+	 */
+	expectedHouseLoadEnergyHorizonKwh: number | null;
+	/** Horizon-Scope (Allocation über Rest-Horizon); nicht Day-Scope. */
 	expectedGridImportEnergyKwh: number | null;
+	/** Horizon-Scope (Allocation über Rest-Horizon); nicht Day-Scope. */
 	expectedGridExportEnergyKwh: number | null;
+	/** Horizon-Scope Kostenaggregat; nicht Day-Scope. */
 	expectedCostCt: number | null;
 
 	batteryTrajectory: UnifiedBatteryTrajectoryPoint[];

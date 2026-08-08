@@ -184,7 +184,7 @@ export function evaluateReplanWhenForecastCollapses(
 		};
 	}
 
-	const planPv = plan.expectedPvEnergyKwh;
+	const planPv = plan.expectedPvEnergyTodayKwh;
 	const reflectsRevision =
 		planPv !== null && Math.abs(planPv - cur) / Math.max(cur, 0.1) <= 0.25;
 	const staleHighPv =

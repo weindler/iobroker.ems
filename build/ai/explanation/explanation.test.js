@@ -14,7 +14,7 @@ const validate_1 = require("./validate");
         const plan = (0, allocate_1.allocateUnifiedDayPlan)((0, alloc_fixtures_1.alloc003Input)());
         const ctx = (0, context_1.buildAiExplanationContext)({ plan });
         strict_1.default.equal(ctx.facts.planId, plan.planId);
-        strict_1.default.equal(ctx.facts.heute.pvExpectedKwh, plan.expectedPvEnergyKwh);
+        strict_1.default.equal(ctx.facts.heute.pvExpectedKwh, plan.expectedPvEnergyTodayKwh);
         strict_1.default.equal(ctx.facts.fahrzeug.savingsCt, plan.vehicleChargeEconomics?.savingsVsAlternativeCt ?? null);
         strict_1.default.equal(ctx.constraints.aiMustNotPlan, true);
         strict_1.default.equal(ctx.constraints.dischargeLiveUnsupported, true);

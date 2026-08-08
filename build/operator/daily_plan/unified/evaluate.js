@@ -150,7 +150,7 @@ function evaluateReplanWhenForecastCollapses(input, plan) {
             detailDe: `PV-Revision ${prev.toFixed(1)}→${cur.toFixed(1)} kWh (Ratio ${ratio.toFixed(2)}) — kein relevanter Kollaps.`,
         };
     }
-    const planPv = plan.expectedPvEnergyKwh;
+    const planPv = plan.expectedPvEnergyTodayKwh;
     const reflectsRevision = planPv !== null && Math.abs(planPv - cur) / Math.max(cur, 0.1) <= 0.25;
     const staleHighPv = planPv !== null && planPv > cur * 1.35 && Math.abs(planPv - prev) / prev <= 0.25;
     const dutyNeedKwh = input.thermal?.headroomEnergyKwh ?? 0;

@@ -17,13 +17,13 @@ function sumKind(plan, kind, pred) {
     (0, node_test_1.it)("covers house implicitly, charges battery/thermal, limits avoidable export", () => {
         const input = (0, alloc_fixtures_1.alloc001Input)();
         const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);
-        strict_1.default.ok((plan.expectedHouseLoadEnergyKwh ?? 0) > 0);
+        strict_1.default.ok((plan.expectedHouseLoadEnergyTodayKwh ?? 0) > 0 || (plan.expectedHouseLoadEnergyHorizonKwh ?? 0) > 0);
         strict_1.default.ok(sumKind(plan, "battery_charge") > 0.5 || sumKind(plan, "immersion_heater") > 0.5);
         strict_1.default.ok(sumKind(plan, "immersion_heater") > 1);
         const v = (0, evaluate_1.evaluatePreallocateForeseeablePv)(input, plan);
         strict_1.default.equal(v.passed, true, v.detailDe);
         // Nach Hauslast+Flex soll der Großteil des Surplus nicht als vermeidbarer Export übrig bleiben
-        const surplus = (plan.expectedPvEnergyKwh ?? 0) - (plan.expectedHouseLoadEnergyKwh ?? 0);
+        const surplus = (plan.expectedPvEnergyHorizonKwh ?? 0) - (plan.expectedHouseLoadEnergyHorizonKwh ?? 0);
         strict_1.default.ok((plan.expectedGridExportEnergyKwh ?? 0) < surplus * 0.7, `export ${plan.expectedGridExportEnergyKwh} too high vs surplus ${surplus}`);
     });
 });

@@ -31,14 +31,14 @@ describe("ALLOC-001 full PV summer day", () => {
 	it("covers house implicitly, charges battery/thermal, limits avoidable export", () => {
 		const input = alloc001Input();
 		const plan = allocateUnifiedDayPlan(input);
-		assert.ok((plan.expectedHouseLoadEnergyKwh ?? 0) > 0);
+		assert.ok((plan.expectedHouseLoadEnergyTodayKwh ?? 0) > 0 || (plan.expectedHouseLoadEnergyHorizonKwh ?? 0) > 0);
 		assert.ok(sumKind(plan, "battery_charge") > 0.5 || sumKind(plan, "immersion_heater") > 0.5);
 		assert.ok(sumKind(plan, "immersion_heater") > 1);
 		const v = evaluatePreallocateForeseeablePv(input, plan);
 		assert.equal(v.passed, true, v.detailDe);
 		// Nach Hauslast+Flex soll der Großteil des Surplus nicht als vermeidbarer Export übrig bleiben
 		const surplus =
-			(plan.expectedPvEnergyKwh ?? 0) - (plan.expectedHouseLoadEnergyKwh ?? 0);
+			(plan.expectedPvEnergyHorizonKwh ?? 0) - (plan.expectedHouseLoadEnergyHorizonKwh ?? 0);
 		assert.ok(
 			(plan.expectedGridExportEnergyKwh ?? 0) < surplus * 0.7,
 			`export ${plan.expectedGridExportEnergyKwh} too high vs surplus ${surplus}`,

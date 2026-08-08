@@ -105,7 +105,7 @@ export function buildNotificationCandidates(input: {
 	}
 
 	const prev = input.previousExpectedPvKwh;
-	const cur = plan.expectedPvEnergyKwh;
+	const cur = plan.expectedPvEnergyTodayKwh;
 	if (
 		prev !== null &&
 		prev !== undefined &&

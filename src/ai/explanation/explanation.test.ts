@@ -10,7 +10,7 @@ describe("AI-EXPLAIN-001 context matches unified plan", () => {
 		const plan = allocateUnifiedDayPlan(alloc003Input());
 		const ctx = buildAiExplanationContext({ plan });
 		assert.equal(ctx.facts.planId, plan.planId);
-		assert.equal(ctx.facts.heute.pvExpectedKwh, plan.expectedPvEnergyKwh);
+		assert.equal(ctx.facts.heute.pvExpectedKwh, plan.expectedPvEnergyTodayKwh);
 		assert.equal(ctx.facts.fahrzeug.savingsCt, plan.vehicleChargeEconomics?.savingsVsAlternativeCt ?? null);
 		assert.equal(ctx.constraints.aiMustNotPlan, true);
 		assert.equal(ctx.constraints.dischargeLiveUnsupported, true);

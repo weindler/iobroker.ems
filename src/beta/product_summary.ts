@@ -46,7 +46,7 @@ export function buildProductSummaryDe(
 
 	const batEnd = x.heute.batteryEndSocPct;
 	if (batEnd !== null && Number.isFinite(batEnd)) {
-		parts.push(`Batterie voraussichtlich Ende ~${Math.round(batEnd)} %.`);
+		parts.push(`Batterie zum Tagesende ~${Math.round(batEnd)} %.`);
 	}
 
 	if (x.heizstab.windows.length > 0) {

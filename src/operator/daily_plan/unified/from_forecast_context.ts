@@ -556,8 +556,9 @@ function parseExplicitWindows(
 export function summarizeUnifiedDayPlanForReason(plan: {
 	planId: string;
 	inputRevision: number;
-	expectedPvEnergyKwh: number | null;
-	expectedHouseLoadEnergyKwh: number | null;
+	expectedPvEnergyTodayKwh: number | null;
+	expectedHouseLoadEnergyTodayKwh: number | null;
+	expectedPvEnergyHorizonKwh?: number | null;
 	expectedGridImportEnergyKwh: number | null;
 	expectedGridExportEnergyKwh: number | null;
 	expectedCostCt: number | null;
@@ -570,9 +571,14 @@ export function summarizeUnifiedDayPlanForReason(plan: {
 			? "EV-Ziel ok"
 			: "EV-Ziel offen/unknown"
 		: "EV n/a";
+	const horizonPv =
+		plan.expectedPvEnergyHorizonKwh !== undefined && plan.expectedPvEnergyHorizonKwh !== null
+			? ` PV_H=${plan.expectedPvEnergyHorizonKwh}kWh`
+			: "";
 	return (
 		`Unified ${plan.planId} rev=${plan.inputRevision}: ` +
-		`PV=${plan.expectedPvEnergyKwh ?? "?"}kWh Load=${plan.expectedHouseLoadEnergyKwh ?? "?"}kWh ` +
+		`PV_today=${plan.expectedPvEnergyTodayKwh ?? "?"}kWh Load_today=${plan.expectedHouseLoadEnergyTodayKwh ?? "?"}kWh` +
+		`${horizonPv} ` +
 		`Imp=${plan.expectedGridImportEnergyKwh ?? "?"} Exp=${plan.expectedGridExportEnergyKwh ?? "?"} ` +
 		`Cost=${plan.expectedCostCt ?? "?"}ct ${vehicleTxt}`
 	).slice(0, 320);

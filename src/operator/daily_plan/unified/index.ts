@@ -7,6 +7,14 @@
 export * from "./types";
 export * from "./evaluate";
 export * from "./reason_codes";
+export {
+	energyOverlapKwh,
+	sumEnergyForLocalDay,
+	sumEnergyToDeadline,
+	sumEnergyHorizon,
+	localDayBoundsMs,
+	localDateKeyFromIso,
+} from "./energy_scopes";
 export { allocateUnifiedDayPlan } from "./allocate";
 export {
 	applyUnifiedDayAuthority,

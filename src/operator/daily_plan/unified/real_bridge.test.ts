@@ -339,8 +339,11 @@ describe("REAL-008 End-to-End Real Day Plan + IH/AC Authority", () => {
 		const ctx = realisticSnapshot({ connected: true, vehicleSoc: 55 });
 		const input = buildUnifiedInputFromForecastContext(ctx);
 		const unified = allocateUnifiedDayPlan(input);
-		assert.ok((unified.expectedPvEnergyKwh ?? 0) > 0);
-		assert.ok((unified.expectedHouseLoadEnergyKwh ?? 0) > 0);
+		assert.ok((unified.expectedPvEnergyTodayKwh ?? 0) > 0 || (unified.expectedPvEnergyHorizonKwh ?? 0) > 0);
+		assert.ok(
+			(unified.expectedHouseLoadEnergyTodayKwh ?? 0) > 0 ||
+				(unified.expectedHouseLoadEnergyHorizonKwh ?? 0) > 0,
+		);
 		assert.equal(unified.inputRevision, 99);
 		assert.ok(unified.allocations.some((a) => a.kind === "immersion_heater" || a.kind === "climate"));
 		const pub = buildUnifiedIhAcDispatchPublish(unified);

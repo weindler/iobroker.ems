@@ -42,7 +42,7 @@ function buildProductSummaryDe(plan, opts) {
     parts.push(pv !== null ? `Heute ${pv} kWh PV erwartet.` : "Heute PV-Erwartung unbekannt.");
     const batEnd = x.heute.batteryEndSocPct;
     if (batEnd !== null && Number.isFinite(batEnd)) {
-        parts.push(`Batterie voraussichtlich Ende ~${Math.round(batEnd)} %.`);
+        parts.push(`Batterie zum Tagesende ~${Math.round(batEnd)} %.`);
     }
     if (x.heizstab.windows.length > 0) {
         const w0 = x.heizstab.windows[0];

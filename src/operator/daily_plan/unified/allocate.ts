@@ -8,6 +8,7 @@
  */
 
 import { operatorQuality } from "../../quality";
+import { localDateKeyInTimezone } from "../../time";
 import type {
 	UnifiedAllocationCell,
 	UnifiedBatteryTrajectoryPoint,
@@ -20,6 +21,7 @@ import type {
 } from "./types";
 import { deriveUnifiedHardConstraints } from "./types";
 import { REASON } from "./reason_codes";
+import { sumEnergyForLocalDay, sumEnergyToDeadline } from "./energy_scopes";
 import {
 	collectPresenceReasonCodes,
 	evaluateVehicleGoalFeasibility,
@@ -716,8 +718,38 @@ export function allocateUnifiedDayPlan(
 	const reserveKwh = batteryKnown ? capacity * (reservePct / 100) : 0;
 
 	// Phase A: Hauslast bereits in surplusKwh verrechnet
-	const houseTotal = slots.reduce((a, s) => a + s.houseKwh, 0);
-	const pvTotal = slots.reduce((a, s) => a + s.pvKwh, 0);
+	// Horizon-Aggregate = Rest-Horizon nach Trim (Mehrtagesplanung bleibt erhalten).
+	const houseHorizonTotal = slots.reduce((a, s) => a + s.houseKwh, 0);
+	const pvHorizonTotal = slots.reduce((a, s) => a + s.pvKwh, 0);
+
+	// Day Scope: lokaler Kalendertag — nicht Horizon-Summe, nicht now+24h.
+	const todayKey = localDateKeyInTimezone(
+		new Date(Number.isFinite(nowMs) ? nowMs : Date.now()),
+		trimmed.time.timezone,
+	);
+	const pvTodayFromSlots = sumEnergyForLocalDay(input.pv.slots, todayKey, trimmed.time.timezone);
+	const houseTodayFromSlots = sumEnergyForLocalDay(
+		input.houseLoad.slots,
+		todayKey,
+		trimmed.time.timezone,
+	);
+	const pvToday =
+		trimmed.pv.expectedDayEnergyKwh !== null && Number.isFinite(trimmed.pv.expectedDayEnergyKwh)
+			? trimmed.pv.expectedDayEnergyKwh
+			: input.pv.slots.length > 0
+				? pvTodayFromSlots
+				: null;
+	const houseToday =
+		trimmed.houseLoad.expectedDayEnergyKwh !== null &&
+		Number.isFinite(trimmed.houseLoad.expectedDayEnergyKwh)
+			? trimmed.houseLoad.expectedDayEnergyKwh
+			: input.houseLoad.slots.length > 0
+				? houseTodayFromSlots
+				: null;
+
+	// Goal Scope: PV bis Wallbox-Deadline (volle Input-Slots, nicht auf „heute“ gekappt).
+	const goalDeadline = trimmed.wallbox?.deadlineIso ?? null;
+	const pvToGoal = sumEnergyToDeadline(input.pv.slots, goalDeadline);
 
 	// Phase B: Vehicle
 	allocateVehicle(trimmed, slots, allocations, goals, reasonCodes);
@@ -813,11 +845,15 @@ export function allocateUnifiedDayPlan(
 		horizonStartIso: trimmed.time.horizonStartIso,
 		horizonEndIso: trimmed.time.horizonEndIso,
 		slotMinutes: 15,
-		expectedPvEnergyKwh: round3(pvTotal),
-		expectedHouseLoadEnergyKwh: round3(houseTotal),
+		expectedPvEnergyTodayKwh: pvToday === null ? null : round3(pvToday),
+		expectedHouseLoadEnergyTodayKwh: houseToday === null ? null : round3(houseToday),
+		expectedPvEnergyToGoalKwh: pvToGoal,
+		expectedPvEnergyHorizonKwh: round3(pvHorizonTotal),
+		expectedHouseLoadEnergyHorizonKwh: round3(houseHorizonTotal),
 		expectedGridImportEnergyKwh: round3(importKwh),
 		expectedGridExportEnergyKwh: round3(exportKwh),
 		// Exportvergütung unknown → nicht als 0-€-Gutschrift erfinden
+		// Import/Export/Cost = Horizon-Allocation (nicht Day-Scope).
 		expectedCostCt: round3(exportValueCt === null ? importCostCt : importCostCt - exportValueCt),
 		batteryTrajectory: traj,
 		allocations: mergedAllocations,

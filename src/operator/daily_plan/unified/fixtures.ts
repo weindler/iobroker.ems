@@ -67,8 +67,11 @@ export function basePlan(overrides: Partial<UnifiedDayPlan> = {}): UnifiedDayPla
 		horizonStartIso: "2026-08-04T00:00:00.000Z",
 		horizonEndIso: "2026-08-05T00:00:00.000Z",
 		slotMinutes: 15,
-		expectedPvEnergyKwh: null,
-		expectedHouseLoadEnergyKwh: null,
+		expectedPvEnergyTodayKwh: null,
+		expectedHouseLoadEnergyTodayKwh: null,
+		expectedPvEnergyToGoalKwh: null,
+		expectedPvEnergyHorizonKwh: null,
+		expectedHouseLoadEnergyHorizonKwh: null,
 		expectedGridImportEnergyKwh: null,
 		expectedGridExportEnergyKwh: null,
 		expectedCostCt: null,
@@ -199,8 +202,10 @@ export function golden001BadPlan(input: UnifiedDayPlannerInput): UnifiedDayPlan 
 	];
 	return basePlan({
 		planId: "golden-001-bad",
-		expectedPvEnergyKwh: input.pv.expectedDayEnergyKwh,
-		expectedHouseLoadEnergyKwh: input.houseLoad.expectedDayEnergyKwh,
+		expectedPvEnergyTodayKwh: input.pv.expectedDayEnergyKwh,
+		expectedHouseLoadEnergyTodayKwh: input.houseLoad.expectedDayEnergyKwh,
+		expectedPvEnergyHorizonKwh: input.pv.expectedDayEnergyKwh,
+		expectedHouseLoadEnergyHorizonKwh: input.houseLoad.expectedDayEnergyKwh,
 		expectedGridExportEnergyKwh: 22,
 		expectedGridImportEnergyKwh: 0,
 		batteryTrajectory: bat,
@@ -243,8 +248,10 @@ export function golden001GoodPlan(input: UnifiedDayPlannerInput): UnifiedDayPlan
 	}
 	return basePlan({
 		planId: "golden-001-good",
-		expectedPvEnergyKwh: input.pv.expectedDayEnergyKwh,
-		expectedHouseLoadEnergyKwh: input.houseLoad.expectedDayEnergyKwh,
+		expectedPvEnergyTodayKwh: input.pv.expectedDayEnergyKwh,
+		expectedHouseLoadEnergyTodayKwh: input.houseLoad.expectedDayEnergyKwh,
+		expectedPvEnergyHorizonKwh: input.pv.expectedDayEnergyKwh,
+		expectedHouseLoadEnergyHorizonKwh: input.houseLoad.expectedDayEnergyKwh,
 		expectedGridExportEnergyKwh: 2,
 		expectedGridImportEnergyKwh: 0,
 		allocations: thermalSlots,
@@ -472,7 +479,8 @@ export function golden004Input(): UnifiedDayPlannerInput {
 export function golden004ReplanPlan(): UnifiedDayPlan {
 	return basePlan({
 		planId: "golden-004-replan",
-		expectedPvEnergyKwh: 12,
+		expectedPvEnergyTodayKwh: 12,
+		expectedPvEnergyHorizonKwh: 12,
 		allocations: [
 			{
 				slot: slot("2026-08-04T02:00:00.000Z", "2026-08-04T02:15:00.000Z"),
@@ -492,7 +500,8 @@ export function golden004ReplanPlan(): UnifiedDayPlan {
 export function golden004StalePlanNoReplan(): UnifiedDayPlan {
 	return basePlan({
 		planId: "golden-004-stale",
-		expectedPvEnergyKwh: 40,
+		expectedPvEnergyTodayKwh: 40,
+		expectedPvEnergyHorizonKwh: 40,
 		allocations: [],
 	});
 }
@@ -550,7 +559,8 @@ export function golden001ScaledInput(): UnifiedDayPlannerInput {
 export function golden001ScaledBadPlan(input: UnifiedDayPlannerInput): UnifiedDayPlan {
 	return basePlan({
 		planId: "golden-001-scaled-bad",
-		expectedPvEnergyKwh: input.pv.expectedDayEnergyKwh,
+		expectedPvEnergyTodayKwh: input.pv.expectedDayEnergyKwh,
+		expectedPvEnergyHorizonKwh: input.pv.expectedDayEnergyKwh,
 		expectedGridExportEnergyKwh: 14,
 		allocations: [
 			{

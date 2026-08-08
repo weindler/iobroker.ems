@@ -65,7 +65,7 @@ function sessionFor(plan, date = "2026-08-04") {
         initialGeneration: 1,
         replanCount: 0,
         replanReasons: [],
-        initialExpectedPvKwh: plan.expectedPvEnergyKwh,
+        initialExpectedPvKwh: plan.expectedPvEnergyTodayKwh,
         batteryStartSocPct: 40,
         plannedImmersionTargetTempC: 56,
     });
@@ -315,9 +315,9 @@ const nullActuals = {
 (0, node_test_1.describe)("NOTIFY-002 small PV change → no forecast_collapse", () => {
     (0, node_test_1.it)("ignores micro deviation", () => {
         const plan = (0, allocate_1.allocateUnifiedDayPlan)((0, alloc_fixtures_1.alloc003Input)());
-        const cur = plan.expectedPvEnergyKwh ?? 20;
+        const cur = plan.expectedPvEnergyTodayKwh ?? 20;
         const c = (0, notify_1.buildNotificationCandidates)({
-            plan: { ...plan, expectedPvEnergyKwh: cur },
+            plan: { ...plan, expectedPvEnergyTodayKwh: cur },
             date: "2026-08-04",
             nowIso: "2026-08-04T12:00:00.000Z",
             previousExpectedPvKwh: cur + 1,

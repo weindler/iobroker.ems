@@ -1,0 +1,13 @@
+---
+description: Bei Commit+Push immer Adapter-Version erhöhen
+alwaysApply: true
+---
+
+# Version-Bump bei Push
+
+Wenn der Nutzer **Commit und Push** (oder nur Push nach Feature-Arbeit) verlangt:
+
+1. **Immer** vorher Patch-Version erhöhen in `package.json` **und** `io-package.json` (`common.version`).
+2. News-Eintrag `common.news["x.y.z"]` mit **de** und **en** für genau diese Version anlegen (kurz, was der User nach Install prüfen kann).
+3. Version-Bump gehört in denselben Push wie die Code-Änderung (oder unmittelbar danach im selben Auftrag) — nie Feature ohne neue Version pushen.
+4. Commit-Message darf `chore: release vX.Y.Z …` sein bzw. Feature-Commit mit Version im selben Commit, solange die installierte Adapter-Version eindeutig neu ist.

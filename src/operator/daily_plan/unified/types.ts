@@ -98,6 +98,11 @@ export type UnifiedBatteryInput = {
 	/** Erlaubte Betriebsarten — frei erweiterbar, keine Sommer/Winter-Enums. */
 	allowedModes: string[];
 	reserveSocPct: number | null;
+	/**
+	 * Gelernter Nacht-/Reservebedarf (kWh) aus battery_runtime — null = unknown.
+	 * Unified schützt diese Energie als zeitliche Reserve (nicht nur minSoc%).
+	 */
+	nightReserveKwh: number | null;
 	/** z. B. sonnen_em — für Capability-Gates. */
 	profileId: string | null;
 	/** Live Discharge supported? false → kein Discharge-Dispatch. */
@@ -177,6 +182,10 @@ export type UnifiedWallboxInput = {
 	chargeLossFactor: number | null;
 	/** EVCC bleibt Ausführungs-Master — nur Planungsbedarf. */
 	evccExecutionMaster: true;
+	/** EVCC-Lademodus (Planungshinweis); null = unbekannt. */
+	evccChargeMode?: "pv" | "minpv" | "now" | "off" | null;
+	/** Sofort/Schnell — Batterie-Hold während Wallbox-Priorität. */
+	batteryHoldRequested?: boolean;
 	uncertainty: OperatorDataQuality;
 	freshness: UnifiedDataFreshness;
 };
@@ -228,9 +237,19 @@ export type UnifiedThermalInput = {
 	/** Zusätzliche kWh bis Tagesziel, falls schätzbar. */
 	headroomEnergyKwh: number | null;
 	estimatedEmptyAtIso: string | null;
+	/**
+	 * Planning-Deadline (empty_at / Nachtbrücke) — Unified priorisiert PV davor.
+	 * null = kein zeitlicher Zwang (nur Surplus-Greedy).
+	 */
+	deadlineIso: string | null;
+	/** learned = valid Learning; estimated = degraded; null = unbekannt/fehlt. */
+	emptyAtSource: "learned" | "estimated" | null;
+	nightBridgeActive: boolean;
 	coolingRateCPerH: number | null;
 	minimumRuntimeSec: number | null;
 	hysteresisK: number | null;
+	/** Runtime-Anti-Takt — darf headroom nicht nullen. */
+	reheatHysteresisActive: boolean;
 	uncertainty: OperatorDataQuality;
 	freshness: UnifiedDataFreshness;
 };
@@ -363,6 +382,26 @@ export function deriveUnifiedHardConstraints(input: UnifiedDayPlannerInput): Uni
 			kind: "safety",
 			hard: true,
 			descriptionDe: `Thermische Pflicht-Untergrenze ${input.thermal.minTempC} °C.`,
+		});
+	}
+	if (input.thermal?.deadlineIso) {
+		out.push({
+			id: "thermal.deadline",
+			kind: "deadline",
+			hard: input.thermal.emptyAtSource === "learned",
+			descriptionDe:
+				input.thermal.emptyAtSource === "learned"
+					? `Thermische Leerzeit ${input.thermal.deadlineIso} — PV-Vorladen priorisieren.`
+					: `Geschätzte thermische Leerzeit ${input.thermal.deadlineIso} — best-effort Vorladen.`,
+			ref: input.thermal.deadlineIso,
+		});
+	}
+	if (input.battery.nightReserveKwh !== null && input.battery.nightReserveKwh > 0) {
+		out.push({
+			id: "battery.night_reserve",
+			kind: "policy",
+			hard: false,
+			descriptionDe: `Batterie-Nachtreserve ~${input.battery.nightReserveKwh.toFixed(1).replace(".", ",")} kWh schützen.`,
 		});
 	}
 	return out;

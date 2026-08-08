@@ -1,4 +1,4 @@
-export { buildProductSummaryDe } from "./product_summary";
+export { buildProductSummaryDe, buildUnifiedDayAgendaDe } from "./product_summary";
 export { buildProductNotificationSurface } from "./notification_surface";
 export type { ProductNotificationSurface } from "./notification_surface";
 export { buildEffectiveExecutionSnapshot } from "./execution_effective";

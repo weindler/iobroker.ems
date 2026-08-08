@@ -99,6 +99,7 @@ function realisticSnapshot(overrides?: {
 				details: {
 					socPct: o.socPct === undefined ? 42 : o.socPct,
 					maxChargePowerW: 4600,
+					avgNightDischargeKwh: 2.5,
 				},
 			}),
 			contrib(CONTRIBUTION_IDS.BATTERY_RESERVE, {
@@ -115,6 +116,7 @@ function realisticSnapshot(overrides?: {
 		contrib(CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, {
 			enabled: o.ihEnabled !== false,
 			quality: operatorQuality(o.ihQuality ?? "valid", "IH", 80),
+			deadlineIso: "2026-08-07T22:00:00.000Z",
 			details: {
 				bufferTempC: o.bufferTempC === undefined ? 48 : o.bufferTempC,
 				targetTempC: 56,
@@ -124,9 +126,13 @@ function realisticSnapshot(overrides?: {
 				minPowerW: 1700,
 				requiredEnergyKwh: 3,
 				estimatedEmptyAt: "2026-08-07T22:00:00.000Z",
+				emptyAtSource: "learned",
+				thermalLearningStatus: "valid",
 				coolingRateCPerHAvg: 0.4,
 				minimumRuntimeSec: 60,
 				reheatHysteresisK: 2,
+				reheatHysteresisActive: false,
+				nightBridgeActive: false,
 			},
 		}),
 		contrib(CONTRIBUTION_IDS.AC_UNIT(1), {
@@ -230,7 +236,7 @@ describe("REAL-002 Real Tibber Mapping", () => {
 });
 
 describe("REAL-003 Real Battery Mapping", () => {
-	it("SOC 0 is real zero; unknown stays null", () => {
+	it("SOC 0 is real zero; unknown stays null; night reserve mapped", () => {
 		const zero = buildUnifiedInputFromForecastContext(
 			realisticSnapshot({ socPct: 0, capacity: 18 }),
 		);
@@ -238,6 +244,7 @@ describe("REAL-003 Real Battery Mapping", () => {
 		assert.equal(zero.battery.usableCapacityKwh, 18);
 		assert.equal(zero.battery.maxChargePowerW, 4600);
 		assert.equal(zero.battery.minSocPct, 10);
+		assert.equal(zero.battery.nightReserveKwh, 2.5);
 
 		const unknown = buildUnifiedInputFromForecastContext(
 			realisticSnapshot({ socPct: null, capacity: null, omitBattery: true }),
@@ -249,13 +256,15 @@ describe("REAL-003 Real Battery Mapping", () => {
 });
 
 describe("REAL-004 Real Thermal Mapping", () => {
-	it("headroom from contribution requiredEnergyKwh; blocked clears flex", () => {
+	it("headroom from contribution requiredEnergyKwh; blocked clears flex; deadline mapped", () => {
 		const ok = buildUnifiedInputFromForecastContext(realisticSnapshot({ bufferTempC: 50 }));
 		assert.ok(ok.thermal);
 		assert.equal(ok.thermal!.bufferTempC, 50);
 		assert.equal(ok.thermal!.dayTargetTempC, 56);
 		// Fixture liefert Contribution-requiredEnergyKwh=3 (keine Bridge-eigene 0.38-Formel)
 		assert.equal(ok.thermal!.headroomEnergyKwh, 3);
+		assert.equal(ok.thermal!.deadlineIso, "2026-08-07T22:00:00.000Z");
+		assert.equal(ok.thermal!.emptyAtSource, "learned");
 
 		const blocked = buildUnifiedInputFromForecastContext(
 			realisticSnapshot({ ihQuality: "blocked", bufferTempC: 50 }),

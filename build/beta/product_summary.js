@@ -4,9 +4,9 @@
  * Baut auf UnifiedDayPlan + Day-Explanation-Fakten auf.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildProductSummaryDe = void 0;
+exports.buildProductSummaryDe = exports.buildUnifiedDayAgendaDe = void 0;
 const explain_1 = require("../learning/day_evaluation/explain");
-const MAX_LEN = 720;
+const MAX_LEN = 900;
 function fmtKwh(n) {
     if (n === null || !Number.isFinite(n))
         return null;
@@ -34,6 +34,85 @@ function fmtClock(iso, timezone) {
         return iso.slice(11, 16);
     }
 }
+function mergeWindows(cells, kind) {
+    const sorted = cells
+        .filter((a) => a.kind === kind && a.allocatedEnergyKwh > 0.02)
+        .slice()
+        .sort((a, b) => a.slot.startIso.localeCompare(b.slot.startIso));
+    const out = [];
+    for (const c of sorted) {
+        const last = out[out.length - 1];
+        if (last && last.endIso === c.slot.startIso) {
+            last.endIso = c.slot.endIso;
+            last.energyKwh += c.allocatedEnergyKwh;
+        }
+        else {
+            out.push({
+                startIso: c.slot.startIso,
+                endIso: c.slot.endIso,
+                energyKwh: c.allocatedEnergyKwh,
+            });
+        }
+    }
+    return out;
+}
+function windowLine(label, w, timezone) {
+    const a = fmtClock(w.startIso, timezone);
+    const b = fmtClock(w.endIso, timezone);
+    const e = fmtKwh(w.energyKwh);
+    if (a && b)
+        return `${label} ${a}–${b}${e ? ` (${e} kWh)` : ""}`;
+    return `${label} geplant${e ? ` (${e} kWh)` : ""}`;
+}
+/**
+ * Kompakte, nutzerlesbare Tagesagenda aus Unified-Allocationen.
+ * Kein Debug-Dump — nur zeitliche Hauptaktionen.
+ */
+function buildUnifiedDayAgendaDe(plan) {
+    const tz = plan.timezone || "Europe/Berlin";
+    const lines = [];
+    const bat = mergeWindows(plan.allocations, "battery_charge");
+    const ih = mergeWindows(plan.allocations, "immersion_heater");
+    const ac = mergeWindows(plan.allocations, "climate");
+    const wb = mergeWindows(plan.allocations, "wallbox");
+    for (const w of bat.slice(0, 2))
+        lines.push(windowLine("Batterie laden", w, tz));
+    for (const w of ih.slice(0, 2))
+        lines.push(windowLine("Heizstab thermisch vorladen", w, tz));
+    if (ac.length > 0) {
+        const first = ac[0];
+        const a = fmtClock(first.startIso, tz);
+        const total = fmtKwh(ac.reduce((s, w) => s + w.energyKwh, 0));
+        lines.push(a
+            ? `Klima ab ${a} freigegeben${total ? ` (~${total} kWh)` : ""}`
+            : `Klima geplant${total ? ` (~${total} kWh)` : ""}`);
+    }
+    for (const w of wb.slice(0, 2)) {
+        const cells = plan.allocations.filter((a) => a.kind === "wallbox" && a.slot.startIso >= w.startIso && a.slot.endIso <= w.endIso);
+        const gridOptimal = cells.some((a) => a.energySource === "grid" && a.reasonCodes.includes("grid_import_cost_optimal"));
+        const dead = fmtClock(plan.vehicleChargeEconomics?.deadlineIso ?? null, tz);
+        let label = gridOptimal ? "Fahrzeugladung (günstiger Netzbezug)" : "Fahrzeugladung";
+        if (dead && gridOptimal)
+            label = `Fahrzeugladung — Abfahrt/Ziel ${dead}, günstiges Preisfenster`;
+        else if (dead)
+            label = `Fahrzeugladung — Ziel bis ${dead}`;
+        lines.push(windowLine(label, w, tz));
+    }
+    const night = plan.constraints.find((c) => c.id === "battery.night_reserve");
+    if (night)
+        lines.push(night.descriptionDe.replace(/\.$/, ""));
+    else if (plan.reasonCodes.includes("battery_night_reserve")) {
+        lines.push("Batterie-Nachtreserve im Plan berücksichtigt");
+    }
+    const thermalDeadline = plan.constraints.find((c) => c.id === "thermal.deadline");
+    if (thermalDeadline?.ref) {
+        const clock = fmtClock(thermalDeadline.ref, tz);
+        if (clock)
+            lines.push(`Puffer leer voraussichtlich ~${clock}`);
+    }
+    return lines;
+}
+exports.buildUnifiedDayAgendaDe = buildUnifiedDayAgendaDe;
 /** Kurze, nutzerlesbare Tageszusammenfassung. */
 function buildProductSummaryDe(plan, opts) {
     const x = (0, explain_1.buildDeterministicDayExplanation)(plan, opts);
@@ -44,20 +123,26 @@ function buildProductSummaryDe(plan, opts) {
     if (batEnd !== null && Number.isFinite(batEnd)) {
         parts.push(`Batterie zum Tagesende ~${Math.round(batEnd)} %.`);
     }
-    if (x.heizstab.windows.length > 0) {
-        const w0 = x.heizstab.windows[0];
-        const a = fmtClock(w0.startIso, x.timezone);
-        const b = fmtClock(w0.endIso, x.timezone);
-        const e = fmtKwh(x.heizstab.totalKwh);
-        parts.push(a && b
-            ? `Heizstab ${a}–${b}${e ? ` (${e} kWh)` : ""}.`
-            : `Heizstab geplant${e ? ` (${e} kWh)` : ""}.`);
+    const agenda = buildUnifiedDayAgendaDe(plan);
+    if (agenda.length > 0) {
+        parts.push(`Plan: ${agenda.join("; ")}.`);
     }
-    if (x.klima.totalKwh > 0) {
-        parts.push(`Klima ~${fmtKwh(x.klima.totalKwh)} kWh geplant.`);
+    else {
+        if (x.heizstab.windows.length > 0) {
+            const w0 = x.heizstab.windows[0];
+            const a = fmtClock(w0.startIso, x.timezone);
+            const b = fmtClock(w0.endIso, x.timezone);
+            const e = fmtKwh(x.heizstab.totalKwh);
+            parts.push(a && b
+                ? `Heizstab ${a}–${b}${e ? ` (${e} kWh)` : ""}.`
+                : `Heizstab geplant${e ? ` (${e} kWh)` : ""}.`);
+        }
+        if (x.klima.totalKwh > 0) {
+            parts.push(`Klima ~${fmtKwh(x.klima.totalKwh)} kWh geplant.`);
+        }
     }
     const req = fmtKwh(x.fahrzeug.requiredEnergyKwh);
-    if (req !== null) {
+    if (req !== null && !agenda.some((l) => l.startsWith("Fahrzeugladung"))) {
         const dead = fmtClock(x.fahrzeug.deadlineIso, x.timezone);
         const pvE = fmtKwh(x.fahrzeug.plannedPvKwh);
         const gridE = fmtKwh(x.fahrzeug.plannedGridKwh);

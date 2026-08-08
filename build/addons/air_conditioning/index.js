@@ -15,6 +15,10 @@ function runtimeHost(adapter) {
         config: adapter.config,
         namespace: adapter.namespace,
         log: adapter.log,
+        updateConfig: typeof adapter
+            .updateConfig === "function"
+            ? (next) => adapter.updateConfig(next)
+            : undefined,
         setObjectNotExistsAsync: (id, obj) => adapter.setObjectNotExistsAsync(id, obj),
         extendObjectAsync: (id, obj) => adapter.extendObjectAsync(id, obj),
         getStateAsync: (id) => adapter.getStateAsync(id),

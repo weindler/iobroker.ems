@@ -132,10 +132,15 @@ function runImmersionFsm(input) {
                 autoTargetReached: true,
             };
         }
-        // Wiedereinschalt-Hysterese: Nach Zielerreichung erst unterhalb (Ziel − Hysterese) neu starten,
-        // nicht bereits bei minimalem Unterschreiten. Nur relevant, solange gerade nicht geheizt wird —
-        // laufende Heizzyklen (persist.commandedStage > 0) sind davon unberührt.
-        if (persist.commandedStage <= 0 && hysteresisActive) {
+        const desiredStage = Math.max(0, Math.round(plannerCommandedStage));
+        /*
+         * Wiedereinschalt-Hysterese = lokaler Taktschutz / Fallback-Sperre.
+         * Eine explizite Planner-/Daily-Plan-Allocation (desiredStage > 0) darf sie nicht
+         * pauschal auf 0 setzen — sonst wird strategisches Vorladen (Unified) in der Runtime
+         * wieder verworfen. Safety-Ceilings (planningMax / Tagesziel erreicht) bleiben oben.
+         * Greift nur, wenn der Planner absichtlich 0 will bzw. kein Soll vorliegt.
+         */
+        if (desiredStage <= 0 && persist.commandedStage <= 0 && hysteresisActive) {
             return {
                 ...base,
                 state: "auto_ready",
@@ -145,7 +150,6 @@ function runImmersionFsm(input) {
                 autoTargetReached: true,
             };
         }
-        const desiredStage = Math.max(0, Math.round(plannerCommandedStage));
         const desiredCfg = config.stages.find((s) => s.index === desiredStage && s.enabled);
         if (desiredStage > 0 && desiredCfg && desiredCfg.nominalPowerW > 0 && desiredCfg.setStateId) {
             if (persist.commandedStage <= 0 && persist.pauseUntilMs !== null && nowMs < persist.pauseUntilMs) {

@@ -362,6 +362,7 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 			dischargeEfficiency: null,
 			allowedModes,
 			reserveSocPct: minSocPct,
+			nightReserveKwh: num(batD, "avgNightDischargeKwh"),
 			profileId: str(batD, "profileId") ?? str(resD, "profileId"),
 			// Produktiv: Discharge Live unsupported (Sonnen EM discharge_unverified) — nie erfinden
 			dischargeLiveSupported: false,
@@ -384,9 +385,23 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 					minPowerW: minPowerW,
 					headroomEnergyKwh: headroom,
 					estimatedEmptyAtIso: str(ihD, "estimatedEmptyAt"),
+					deadlineIso:
+						headroom !== null && headroom > 0
+							? ih.deadlineIso ?? str(ihD, "estimatedEmptyAt")
+							: ih.deadlineIso,
+					emptyAtSource: (() => {
+						const s = str(ihD, "emptyAtSource");
+						if (s === "learned" || s === "estimated") return s;
+						const st = str(ihD, "thermalLearningStatus");
+						if (st === "valid" && str(ihD, "estimatedEmptyAt")) return "learned";
+						if (st === "degraded" && str(ihD, "estimatedEmptyAt")) return "estimated";
+						return null;
+					})(),
+					nightBridgeActive: bool(ihD, "nightBridgeActive") === true,
 					coolingRateCPerH: num(ihD, "coolingRateCPerHAvg"),
 					minimumRuntimeSec: num(ihD, "minimumRuntimeSec"),
 					hysteresisK: num(ihD, "reheatHysteresisK") ?? num(ihD, "temperatureHysteresisK"),
+					reheatHysteresisActive: bool(ihD, "reheatHysteresisActive") === true,
 					uncertainty: thermalQuality,
 					freshness: thermalFresh,
 				}

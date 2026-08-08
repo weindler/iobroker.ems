@@ -47,9 +47,12 @@ function metaFor(now, timezone) {
     };
 }
 function alignNowToFirstAllocSlot(plan) {
-    const cell = plan.allocations.find((a) => a.kind === "immersion_heater" || a.kind === "climate");
+    const cell = plan.allocations.find((a) => (a.kind === "immersion_heater" || a.kind === "climate") && a.allocatedPowerW >= 50);
     strict_1.default.ok(cell, "expected at least one IH/climate allocation");
-    return new Date(Date.parse(cell.slot.startIso) + 60_000);
+    /** Bevorzuge volle Heizstab-Mindeststufe, damit Runtime stage > 0 liefert. */
+    const fullIh = plan.allocations.find((a) => a.kind === "immersion_heater" && a.allocatedPowerW >= 1700);
+    const pick = fullIh ?? cell;
+    return new Date(Date.parse(pick.slot.startIso) + 60_000);
 }
 (0, node_test_1.describe)("LIVE-IH-001 unified IH dispatch via existing daily-plan path", () => {
     (0, node_test_1.it)("produces immersion allocations that resolve to commanded stage > 0", () => {
@@ -154,7 +157,8 @@ function alignNowToFirstAllocSlot(plan) {
         const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);
         const pub = (0, dispatch_bridge_1.buildUnifiedIhAcDispatchPublish)(plan);
         strict_1.default.ok(pub.climateEntries.length > 0);
-        const now = new Date(Date.parse(slot0.startIso) + 30_000);
+        const climateSlot = plan.allocations.find((a) => a.kind === "climate")?.slot.startIso ?? slot0.startIso;
+        const now = new Date(Date.parse(climateSlot) + 30_000);
         const tz = input.time.timezone;
         const dailyPlan = (0, daily_plan_2.resolveAcUnitDailyPlanFromData)({
             unitIndex: 1,

@@ -502,7 +502,7 @@ function acInput(overrides = {}) {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({ bufferTempC: 62 }));
         strict_1.default.equal(flexible.enabled, false);
     });
-    (0, node_test_1.it)("no flexible slots while reheat hysteresis is active", () => {
+    (0, node_test_1.it)("keeps strategic headroom while reheat hysteresis is runtime-active", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
             bufferTempC: 48,
             autoTargetReached: true,
@@ -517,10 +517,12 @@ function acInput(overrides = {}) {
                 ih_planning_max_temp_c: 63,
             }),
         }));
-        strict_1.default.equal(flexible.enabled, false);
-        strict_1.default.equal(flexible.slots.length, 0);
+        strict_1.default.equal(flexible.enabled, true);
+        strict_1.default.equal(flexible.slots.length, 1);
+        strict_1.default.ok(flexible.details.requiredEnergyKwh > 0);
         strict_1.default.equal(flexible.details.reheatHysteresisActive, true);
-        strict_1.default.match(flexible.reasonDe, /Wiedereinschalt-Hysterese/);
+        strict_1.default.equal(flexible.details.reheatHysteresisRuntimeOnly, true);
+        strict_1.default.match(flexible.reasonDe, /Runtime-Hysterese/);
     });
     (0, node_test_1.it)("flexible demand returns after cooling below hysteresis band", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
@@ -559,12 +561,13 @@ function acInput(overrides = {}) {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput());
         strict_1.default.equal(flexible.deadlineIso, null);
     });
-    (0, node_test_1.it)("has no deadline when the learning model is only degraded", () => {
+    (0, node_test_1.it)("uses estimated empty_at as soft planning deadline when learning is degraded", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
+            bufferTempC: 49,
             thermalLearning: {
                 status: "degraded",
                 health: "degraded",
-                samples: 2,
+                samples: 0,
                 coolingRateCPerHAvg: 1.1,
                 coolingConstantPerH: null,
                 coolingAsymptoteC: null,
@@ -574,11 +577,14 @@ function acInput(overrides = {}) {
                 reasonDe: "wenige Zyklen",
             },
         }));
-        strict_1.default.equal(flexible.deadlineIso, null);
+        strict_1.default.equal(flexible.enabled, true);
+        strict_1.default.equal(flexible.deadlineIso, "2026-07-26T14:00:00.000Z");
+        strict_1.default.equal(flexible.details.emptyAtSource, "estimated");
+        strict_1.default.equal(flexible.quality.status, "degraded");
     });
-    (0, node_test_1.it)("adopts the learned estimated_empty_at as deadline when near planning min and model valid", () => {
+    (0, node_test_1.it)("adopts the learned estimated_empty_at as deadline when model valid", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
-            bufferTempC: 49, // planningMin 48 + approach 2 → near floor
+            bufferTempC: 49,
             thermalLearning: {
                 status: "valid",
                 health: "ok",
@@ -594,13 +600,13 @@ function acInput(overrides = {}) {
         }));
         strict_1.default.equal(flexible.deadlineIso, "2026-07-26T14:00:00.000Z");
         strict_1.default.equal(flexible.details.thermalLearningStatus, "valid");
+        strict_1.default.equal(flexible.details.emptyAtSource, "learned");
         strict_1.default.equal(flexible.details.estimatedEmptyAt, "2026-07-26T14:00:00.000Z");
         strict_1.default.equal(flexible.details.coolingRateCPerHAvg, 1.1);
     });
-    (0, node_test_1.it)("skips learning deadline for comfort reheat clearly above planning min when night already covered", () => {
-        // empty_at weit nach nächstem Morgen → keine Nachtbrücke; Buf klar über Min → keine Near-Floor-Deadline
+    (0, node_test_1.it)("keeps empty_at deadline for comfort reheat when learning is valid (strategic preload)", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
-            bufferTempC: 52, // > planningMin 48 + 2
+            bufferTempC: 52,
             thermalLearning: {
                 status: "valid",
                 health: "ok",
@@ -615,8 +621,8 @@ function acInput(overrides = {}) {
             },
         }));
         strict_1.default.equal(flexible.enabled, true);
-        strict_1.default.equal(flexible.deadlineIso, null);
-        strict_1.default.equal(flexible.details.nightBridgeActive, false);
+        strict_1.default.equal(flexible.deadlineIso, "2026-07-26T14:00:00.000Z");
+        strict_1.default.equal(flexible.details.emptyAtSource, "learned");
     });
     (0, node_test_1.it)("night bridge raises target and sets deadline when empty_at is before next morning", () => {
         const now = new Date("2026-08-04T12:00:00.000Z"); // 14:00 CEST

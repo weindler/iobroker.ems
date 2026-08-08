@@ -164,7 +164,7 @@ describe("immersion fsm", () => {
 		assert.equal(r.commandedStage, 0);
 	});
 
-	it("auto reheat hysteresis blocks restart just below target — but only once target was actually reached", () => {
+	it("auto reheat hysteresis blocks only when planner wants OFF (local/fallback taktschutz)", () => {
 		// CFG: ih_temperature_hysteresis_k default = 2 K, autoTargetC = 60 (kein plannerTargetTempC).
 		const r = runImmersionFsm({
 			nowMs: NOW,
@@ -176,7 +176,7 @@ describe("immersion fsm", () => {
 			resolvedMode: "auto",
 			forceTargetTempC: null,
 			forceUntilMs: null,
-			plannerCommandedStage: 1,
+			plannerCommandedStage: 0,
 			plannerTargetTempC: null,
 			temperature: { valueC: 59, status: "valid", observedAtMs: NOW },
 			measuredPowerW: 0,
@@ -189,6 +189,39 @@ describe("immersion fsm", () => {
 		assert.equal(r.state, "auto_ready");
 		assert.equal(r.reason, "auto_reheat_hysteresis");
 		assert.equal(r.commandedStage, 0);
+	});
+
+	it("explicit planner stage > 0 is NOT blocked by reheat hysteresis (unified preload)", () => {
+		// Beta-Fall: Buf 49 °C, Re-Enable erst unter 46,6 °C, Unified will 1700 W jetzt.
+		const r = runImmersionFsm({
+			nowMs: NOW,
+			addonEnabled: true,
+			addonAvailable: true,
+			configValid: true,
+			executionLive: true,
+			failsafeActive: false,
+			resolvedMode: "auto",
+			forceTargetTempC: null,
+			forceUntilMs: null,
+			plannerCommandedStage: 1,
+			plannerTargetTempC: 51.6,
+			temperature: { valueC: 49, status: "valid", observedAtMs: NOW },
+			measuredPowerW: 0,
+			hasPowerMeasurement: false,
+			persist: { ...emptyPersist(), autoTargetReached: true, commandedStage: 0 },
+			config: {
+				...CFG,
+				temperatureHysteresisK: 5,
+				planningMinTempC: 44,
+				planningMaxTempC: 63,
+			},
+			faultLockout: false,
+			faultCode: "none",
+		});
+		assert.equal(r.state, "auto_heating");
+		assert.equal(r.commandedStage, 1);
+		assert.equal(r.reason, "auto_planner_heating");
+		assert.notEqual(r.reason, "auto_reheat_hysteresis");
 	});
 
 	it("auto reheat hysteresis does NOT block restart if target was never reached (PV dip before full charge)", () => {

@@ -19,6 +19,16 @@ function runtimeHost(adapter: ioBroker.Adapter): AcRuntimeHost {
 		config: adapter.config,
 		namespace: adapter.namespace,
 		log: adapter.log,
+		updateConfig:
+			typeof (adapter as ioBroker.Adapter & { updateConfig?: AcRuntimeHost["updateConfig"] })
+				.updateConfig === "function"
+				? (next) =>
+						(
+							adapter as ioBroker.Adapter & {
+								updateConfig: NonNullable<AcRuntimeHost["updateConfig"]>;
+							}
+						).updateConfig(next)
+				: undefined,
 		setObjectNotExistsAsync: (id, obj) => adapter.setObjectNotExistsAsync(id, obj),
 		extendObjectAsync: (id, obj) => adapter.extendObjectAsync(id, obj),
 		getStateAsync: (id) => adapter.getStateAsync(id),

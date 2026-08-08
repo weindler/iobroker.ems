@@ -404,9 +404,13 @@ function thermalOk(headroom = 4) {
 		minPowerW: 400,
 		headroomEnergyKwh: headroom,
 		estimatedEmptyAtIso: null,
+		deadlineIso: null,
+		emptyAtSource: null as "learned" | "estimated" | null,
+		nightBridgeActive: false,
 		coolingRateCPerH: null,
 		minimumRuntimeSec: null,
 		hysteresisK: null,
+		reheatHysteresisActive: false,
 		uncertainty: operatorQuality("valid", "ok", 80),
 		freshness: {
 			observedAtIso: "2026-08-07T10:00:00.000Z",

@@ -107,8 +107,9 @@ function fsmDemandStart() {
         strict_1.default.equal(r.allocationAllowsStart, false);
         strict_1.default.match(r.allocationReasonDe, /Climate-Fallback/);
     });
-    (0, node_test_1.it)("blocks start when allocation below expected power", () => {
+    (0, node_test_1.it)("blocks start when allocation below configured (config-source) power", () => {
         const expected = (0, daily_plan_js_1.resolveUnitExpectedPower)(UNIT, undefined, NOW.getTime());
+        strict_1.default.equal(expected.source, "config");
         const r = (0, daily_plan_js_1.resolveAcUnitDailyPlanFromData)({
             unitIndex: 1,
             now: NOW,
@@ -120,6 +121,64 @@ function fsmDemandStart() {
         strict_1.default.equal(r.useDailyPlan, true);
         strict_1.default.equal(r.allocationAllowsStart, false);
         strict_1.default.equal(r.dailyPlanStatus, "allocation_below_expected_power");
+    });
+    (0, node_test_1.it)("Unit 2: allocation 700 W vs learned 715 W still allows start", () => {
+        const r = (0, daily_plan_js_1.resolveAcUnitDailyPlanFromData)({
+            unitIndex: 2,
+            now: NOW,
+            timezone: TZ,
+            meta: { status: "ready", date: "2026-07-11", revision: 1, validUntil: null, timezone: TZ },
+            entries: [allocationEntry(2, 700)],
+            expectedPower: {
+                powerW: 715,
+                source: "learned",
+                sampleDays: 8,
+                medianRuntimeSecPerDay: 3600,
+                valid: true,
+            },
+        });
+        strict_1.default.equal(r.useDailyPlan, true);
+        strict_1.default.equal(r.allocationAllowsStart, true);
+        strict_1.default.equal(r.dailyPlanStatus, "daily_plan_valid");
+        strict_1.default.equal(r.allocatedPowerW, 700);
+        strict_1.default.equal(r.expectedPowerW, 715);
+        strict_1.default.equal(r.powerModelSource, "learned");
+    });
+    (0, node_test_1.it)("Unit 1: config 850 W / learned ~727 W → allocation 850 W allows start via daily_plan", () => {
+        const r = (0, daily_plan_js_1.resolveAcUnitDailyPlanFromData)({
+            unitIndex: 1,
+            now: NOW,
+            timezone: TZ,
+            meta: { status: "ready", date: "2026-07-11", revision: 1, validUntil: null, timezone: TZ },
+            entries: [allocationEntry(1, 850)],
+            expectedPower: {
+                powerW: 727,
+                source: "learned",
+                sampleDays: 10,
+                medianRuntimeSecPerDay: 4200,
+                valid: true,
+            },
+        });
+        strict_1.default.equal(r.allocationAllowsStart, true);
+        strict_1.default.equal(r.dailyPlanStatus, "daily_plan_valid");
+        const perm = (0, daily_plan_js_1.evaluateAcCoolingPermission)({
+            unitEnabled: true,
+            governanceEnabled: true,
+            addonEnabled: true,
+            cleaningActive: false,
+            startRetryReady: true,
+            stopRetryReady: true,
+            fsm: {
+                state: "idle",
+                demandStart: true,
+                demandStop: false,
+                modePurpose: "cooling",
+                reasonDe: "Raum über Komfortgrenze.",
+            },
+            dailyPlan: r,
+        });
+        strict_1.default.equal(perm.allowStart, true);
+        strict_1.default.equal(perm.decisionSource, "daily_plan");
     });
     (0, node_test_1.it)("falls back on wrong date", () => {
         const expected = (0, daily_plan_js_1.resolveUnitExpectedPower)(UNIT, undefined, NOW.getTime());

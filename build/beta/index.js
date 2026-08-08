@@ -1,8 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.countBySurfaceClass = exports.BETA_SURFACE_CLASSES = exports.buildEffectiveExecutionSnapshot = exports.buildProductNotificationSurface = exports.buildProductSummaryDe = void 0;
+exports.countBySurfaceClass = exports.BETA_SURFACE_CLASSES = exports.buildEffectiveExecutionSnapshot = exports.buildProductNotificationSurface = exports.buildUnifiedDayAgendaDe = exports.buildProductSummaryDe = void 0;
 var product_summary_1 = require("./product_summary");
 Object.defineProperty(exports, "buildProductSummaryDe", { enumerable: true, get: function () { return product_summary_1.buildProductSummaryDe; } });
+Object.defineProperty(exports, "buildUnifiedDayAgendaDe", { enumerable: true, get: function () { return product_summary_1.buildUnifiedDayAgendaDe; } });
 var notification_surface_1 = require("./notification_surface");
 Object.defineProperty(exports, "buildProductNotificationSurface", { enumerable: true, get: function () { return notification_surface_1.buildProductNotificationSurface; } });
 var execution_effective_1 = require("./execution_effective");

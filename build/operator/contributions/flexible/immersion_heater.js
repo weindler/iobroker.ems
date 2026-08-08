@@ -18,6 +18,19 @@ function learningMargin(input) {
         coolingRateCPerHAvg: input.thermalLearning.coolingRateCPerHAvg,
     };
 }
+/**
+ * Transparenz: empty_at aus belastbarem Learning vs. eingeschätztem/degradiertem Signal.
+ * Nie „learned“ ohne status=valid.
+ */
+function emptyAtSourceOf(learning) {
+    if (!learning?.estimatedEmptyAt)
+        return null;
+    if (learning.status === "valid")
+        return "learned";
+    if (learning.status === "degraded")
+        return "estimated";
+    return null;
+}
 function thermalLearningDetails(input) {
     const learning = input.thermalLearning ?? null;
     return {
@@ -27,8 +40,17 @@ function thermalLearningDetails(input) {
         coolingRateCPerHAvg: learning?.coolingRateCPerHAvg ?? null,
         estimatedRemainingHours: learning?.estimatedRemainingHours ?? null,
         estimatedEmptyAt: learning?.estimatedEmptyAt ?? null,
+        emptyAtSource: emptyAtSourceOf(learning),
         learnedDayTypeRuntimeHoursMedian: learning?.currentDayTypeRuntimeHoursMedian ?? null,
     };
+}
+/** Planning darf empty_at bei valid und degraded nutzen; missing nie. */
+function thermalEmptyAtUsableForPlanning(learning) {
+    return (!!learning &&
+        (learning.status === "valid" || learning.status === "degraded") &&
+        !!learning.estimatedEmptyAt &&
+        learning.coolingRateCPerHAvg !== null &&
+        learning.coolingRateCPerHAvg > 0);
 }
 function enabledStages(config) {
     return config.stages.filter((s) => s.enabled && s.nominalPowerW > 0 && s.setStateId);
@@ -144,14 +166,11 @@ function buildImmersionFlexibleContribution(input) {
     const maxW = maxStagePowerW(input.config);
     const minW = minStagePowerW(input.config);
     /*
-     * Nachtbrücke aus Thermal Learning: reicht estimated_empty_at nicht bis zum nächsten Morgen,
-     * Ziel anheben + Deadline = empty_at — Allocation priorisiert PV-Surplus vor der Nacht
-     * (Soft-Rest nach Deadline bleibt in allocation.ts für pvFirst erhalten).
+     * Nachtbrücke: empty_at vor nächstem Morgen → Ziel anheben + Deadline.
+     * Auch degraded Learning (mit empty_at) — Qualität steht in emptyAtSource/thermalLearningStatus;
+     * Unified gewichtet Deadline danach (valid stärker als estimated).
      */
-    const nightBridge = input.bufferTempC !== null &&
-        input.thermalLearning?.status === "valid" &&
-        input.thermalLearning.estimatedEmptyAt &&
-        input.thermalLearning.coolingRateCPerHAvg !== null
+    const nightBridge = input.bufferTempC !== null && thermalEmptyAtUsableForPlanning(input.thermalLearning)
         ? (0, immersion_night_bridge_1.resolveImmersionNightBridge)({
             now: input.now,
             bufferTempC: input.bufferTempC,
@@ -166,7 +185,6 @@ function buildImmersionFlexibleContribution(input) {
     const effectiveTargetTempC = nightBridge?.active
         ? nightBridge.effectiveTargetTempC
         : target.targetTempC;
-    const bridgeOverridesHysteresis = nightBridge?.active === true;
     const hysteresisActive = (0, reheat_hysteresis_1.isImmersionReheatHysteresisActive)({
         bufferTempC: input.bufferTempC,
         targetTempC: target.targetTempC,
@@ -175,15 +193,18 @@ function buildImmersionFlexibleContribution(input) {
     });
     const atEffectiveTarget = input.bufferTempC !== null &&
         (input.bufferTempC >= input.config.planningMaxTempC || input.bufferTempC >= effectiveTargetTempC);
-    const autoReady = participation.allowed &&
+    /*
+     * Strategischer Planbedarf: Hysterese ist Runtime-Anti-Takt — sie darf Headroom/Deadline
+     * für den Unified Planner nicht auf 0 setzen. Runtime FSM bleibt für Writes zuständig.
+     */
+    const planningReady = participation.allowed &&
         input.thermalMode === "auto" &&
         input.modePolicy.allowThermalAuto &&
-        !atEffectiveTarget &&
-        (!hysteresisActive || bridgeOverridesHysteresis);
-    const requiredEnergyKwh = autoReady && input.bufferTempC !== null && maxW !== null
+        !atEffectiveTarget;
+    const requiredEnergyKwh = planningReady && input.bufferTempC !== null && maxW !== null
         ? (0, flex_demand_1.estimateImmersionRequiredEnergyKwh)(input.bufferTempC, effectiveTargetTempC, maxW, learningMargin(input))
         : null;
-    let status = autoReady ? "valid" : "disabled";
+    let status = planningReady ? "valid" : "disabled";
     let reasonDe = "Kein flexibler Heizstab-Bedarf.";
     if (participation.allowed && input.thermalMode !== "auto") {
         status = "disabled";
@@ -193,51 +214,50 @@ function buildImmersionFlexibleContribution(input) {
         status = "disabled";
         reasonDe = "Zieltemperatur erreicht — kein flexibler Bedarf.";
     }
-    else if (hysteresisActive && !bridgeOverridesHysteresis) {
-        status = "disabled";
-        const reheatAt = (0, types_2.round3)(target.targetTempC - Math.max(0, input.config.temperatureHysteresisK));
-        reasonDe = `Wiedereinschalt-Hysterese aktiv — erst unter ${reheatAt} °C wieder planen (Buf ${(0, types_2.round3)(input.bufferTempC)} °C, Ziel ${target.targetTempC} °C, ${input.config.temperatureHysteresisK} K).`;
-    }
-    else if (autoReady && requiredEnergyKwh !== null && requiredEnergyKwh <= 0) {
+    else if (planningReady && requiredEnergyKwh !== null && requiredEnergyKwh <= 0) {
         status = "disabled";
         reasonDe = "Zieltemperatur erreicht — kein flexibler Bedarf.";
     }
-    else if (autoReady && input.bufferTempC === null) {
+    else if (planningReady && input.bufferTempC === null) {
         status = "degraded";
         reasonDe = "Puffertemperatur fehlt — flexibler Bedarf nicht belastbar.";
     }
-    else if (autoReady) {
+    else if (planningReady) {
         reasonDe = `Flexibler Warmwasserbedarf bis ${effectiveTargetTempC} °C (${requiredEnergyKwh?.toFixed(1) ?? "?"} kWh, PV-first).`;
         if (nightBridge?.active)
             reasonDe = `${reasonDe} ${nightBridge.reasonDe}`;
+        if (hysteresisActive) {
+            const reheatAt = (0, types_2.round3)(target.targetTempC - Math.max(0, input.config.temperatureHysteresisK));
+            reasonDe = `${reasonDe} Runtime-Hysterese aktiv (Write erst unter ${reheatAt} °C) — Planung bleibt.`;
+        }
+        if (input.thermalLearning?.status === "degraded") {
+            status = "degraded";
+            reasonDe = `${reasonDe} Thermal Learning degraded — empty_at geschätzt.`;
+        }
     }
     else if (!participation.allowed) {
         status = participation.status;
         reasonDe = participation.reasonDe;
     }
-    const enabled = autoReady &&
+    const enabled = planningReady &&
         requiredEnergyKwh !== null &&
         requiredEnergyKwh > 0 &&
         input.bufferTempC !== null;
     const quality = (0, quality_1.operatorQuality)(status, reasonDe);
     /*
-     * Deadline-Priorität:
-     * 1) Nachtbrücke (empty_at vor Morgen) — auch klar über planningMin
-     * 2) sonst gelernte empty_at nur nahe Pflicht-Untergrenze (Comfort ohne Brücke bleibt ohne Deadline,
-     *    Soft-Post-Deadline in Allocation verhindert das frühere „PV nach Deadline verpassen“)
+     * Deadline für Unified:
+     * 1) Nachtbrücke (empty_at vor Morgen)
+     * 2) sonst empty_at wenn Planung aktiv und Quelle usable (learned/estimated) —
+     *    nicht nur Near-Floor: Vorladen vor Leerzeit ist strategisch.
      */
-    const DEADLINE_APPROACH_K = 2;
-    const nearMandatoryFloor = input.bufferTempC !== null &&
-        input.bufferTempC <= input.config.planningMinTempC + DEADLINE_APPROACH_K;
-    const nearFloorDeadlineIso = enabled &&
-        !nightBridge?.active &&
-        nearMandatoryFloor &&
-        input.thermalLearning?.status === "valid"
-        ? input.thermalLearning.estimatedEmptyAt
-        : null;
-    const learningDeadlineIso = enabled && nightBridge?.active ? nightBridge.deadlineIso : nearFloorDeadlineIso;
-    if (enabled && learningDeadlineIso && !nightBridge?.active) {
-        reasonDe = `${reasonDe} Gelernte Pflichtgrenze voraussichtlich ${learningDeadlineIso}.`;
+    const planningDeadlineIso = enabled && nightBridge?.active
+        ? nightBridge.deadlineIso
+        : enabled && thermalEmptyAtUsableForPlanning(input.thermalLearning)
+            ? input.thermalLearning.estimatedEmptyAt
+            : null;
+    if (enabled && planningDeadlineIso && !nightBridge?.active) {
+        const src = emptyAtSourceOf(input.thermalLearning);
+        reasonDe = `${reasonDe} Puffer voraussichtlich leer ${planningDeadlineIso} (${src ?? "unknown"}).`;
     }
     return (0, types_1.baseContribution)(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, (0, contributor_1.addonContributorRef)("immersion_heater"), "consume", ["demand_flex", "dispatch"], {
         generatedAt,
@@ -246,7 +266,7 @@ function buildImmersionFlexibleContribution(input) {
         enabled,
         flexible: true,
         gridEligible: false,
-        deadlineIso: learningDeadlineIso,
+        deadlineIso: planningDeadlineIso,
         quality,
         reasonDe,
         details: {
@@ -264,7 +284,8 @@ function buildImmersionFlexibleContribution(input) {
             minimumRuntimeSec: input.config.minimumRuntimeSec,
             batteryEligible: true,
             autoTargetReached: input.autoTargetReached === true,
-            reheatHysteresisActive: hysteresisActive && !bridgeOverridesHysteresis,
+            reheatHysteresisActive: hysteresisActive,
+            reheatHysteresisRuntimeOnly: true,
             reheatHysteresisK: input.config.temperatureHysteresisK,
             nightBridgeActive: nightBridge?.active === true,
             nightBridgeUntilIso: nightBridge?.bridgeUntilIso ?? null,

@@ -73,6 +73,7 @@ function econBase(hours = 8): UnifiedDayPlannerInput {
 			dischargeEfficiency: 0.95,
 			allowedModes: ["charge", "idle"],
 			reserveSocPct: 20,
+			nightReserveKwh: null,
 			profileId: "sonnen_em",
 			dischargeLiveSupported: false,
 			requiredChargeEnergyKwh: null,

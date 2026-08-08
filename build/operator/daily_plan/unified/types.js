@@ -52,6 +52,25 @@ function deriveUnifiedHardConstraints(input) {
             descriptionDe: `Thermische Pflicht-Untergrenze ${input.thermal.minTempC} °C.`,
         });
     }
+    if (input.thermal?.deadlineIso) {
+        out.push({
+            id: "thermal.deadline",
+            kind: "deadline",
+            hard: input.thermal.emptyAtSource === "learned",
+            descriptionDe: input.thermal.emptyAtSource === "learned"
+                ? `Thermische Leerzeit ${input.thermal.deadlineIso} — PV-Vorladen priorisieren.`
+                : `Geschätzte thermische Leerzeit ${input.thermal.deadlineIso} — best-effort Vorladen.`,
+            ref: input.thermal.deadlineIso,
+        });
+    }
+    if (input.battery.nightReserveKwh !== null && input.battery.nightReserveKwh > 0) {
+        out.push({
+            id: "battery.night_reserve",
+            kind: "policy",
+            hard: false,
+            descriptionDe: `Batterie-Nachtreserve ~${input.battery.nightReserveKwh.toFixed(1).replace(".", ",")} kWh schützen.`,
+        });
+    }
     return out;
 }
 exports.deriveUnifiedHardConstraints = deriveUnifiedHardConstraints;

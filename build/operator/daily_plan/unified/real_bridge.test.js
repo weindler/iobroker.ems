@@ -80,6 +80,7 @@ function realisticSnapshot(overrides) {
             details: {
                 socPct: o.socPct === undefined ? 42 : o.socPct,
                 maxChargePowerW: 4600,
+                avgNightDischargeKwh: 2.5,
             },
         }), contrib(contribution_ids_1.CONTRIBUTION_IDS.BATTERY_RESERVE, {
             details: {
@@ -93,6 +94,7 @@ function realisticSnapshot(overrides) {
     contributions.push(contrib(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, {
         enabled: o.ihEnabled !== false,
         quality: (0, quality_1.operatorQuality)(o.ihQuality ?? "valid", "IH", 80),
+        deadlineIso: "2026-08-07T22:00:00.000Z",
         details: {
             bufferTempC: o.bufferTempC === undefined ? 48 : o.bufferTempC,
             targetTempC: 56,
@@ -102,9 +104,13 @@ function realisticSnapshot(overrides) {
             minPowerW: 1700,
             requiredEnergyKwh: 3,
             estimatedEmptyAt: "2026-08-07T22:00:00.000Z",
+            emptyAtSource: "learned",
+            thermalLearningStatus: "valid",
             coolingRateCPerHAvg: 0.4,
             minimumRuntimeSec: 60,
             reheatHysteresisK: 2,
+            reheatHysteresisActive: false,
+            nightBridgeActive: false,
         },
     }), contrib(contribution_ids_1.CONTRIBUTION_IDS.AC_UNIT(1), {
         details: {
@@ -201,12 +207,13 @@ function realisticSnapshot(overrides) {
     });
 });
 (0, node_test_1.describe)("REAL-003 Real Battery Mapping", () => {
-    (0, node_test_1.it)("SOC 0 is real zero; unknown stays null", () => {
+    (0, node_test_1.it)("SOC 0 is real zero; unknown stays null; night reserve mapped", () => {
         const zero = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(realisticSnapshot({ socPct: 0, capacity: 18 }));
         strict_1.default.equal(zero.battery.socPct, 0);
         strict_1.default.equal(zero.battery.usableCapacityKwh, 18);
         strict_1.default.equal(zero.battery.maxChargePowerW, 4600);
         strict_1.default.equal(zero.battery.minSocPct, 10);
+        strict_1.default.equal(zero.battery.nightReserveKwh, 2.5);
         const unknown = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(realisticSnapshot({ socPct: null, capacity: null, omitBattery: true }));
         strict_1.default.equal(unknown.battery.socPct, null);
         strict_1.default.equal(unknown.battery.usableCapacityKwh, null);
@@ -214,13 +221,15 @@ function realisticSnapshot(overrides) {
     });
 });
 (0, node_test_1.describe)("REAL-004 Real Thermal Mapping", () => {
-    (0, node_test_1.it)("headroom from contribution requiredEnergyKwh; blocked clears flex", () => {
+    (0, node_test_1.it)("headroom from contribution requiredEnergyKwh; blocked clears flex; deadline mapped", () => {
         const ok = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(realisticSnapshot({ bufferTempC: 50 }));
         strict_1.default.ok(ok.thermal);
         strict_1.default.equal(ok.thermal.bufferTempC, 50);
         strict_1.default.equal(ok.thermal.dayTargetTempC, 56);
         // Fixture liefert Contribution-requiredEnergyKwh=3 (keine Bridge-eigene 0.38-Formel)
         strict_1.default.equal(ok.thermal.headroomEnergyKwh, 3);
+        strict_1.default.equal(ok.thermal.deadlineIso, "2026-08-07T22:00:00.000Z");
+        strict_1.default.equal(ok.thermal.emptyAtSource, "learned");
         const blocked = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(realisticSnapshot({ ihQuality: "blocked", bufferTempC: 50 }));
         strict_1.default.equal(blocked.thermal.headroomEnergyKwh, 0);
         strict_1.default.equal(blocked.thermal.uncertainty.status, "blocked");

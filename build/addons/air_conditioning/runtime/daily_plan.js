@@ -285,10 +285,18 @@ function resolveAcUnitDailyPlanFromData(input) {
     let dailyPlanStatus = merge.allocatedPowerW <= 0 ? "daily_plan_zero_allocation" : "daily_plan_valid";
     let allocationReasonDe = merge.reasonDe;
     let allocationAllowsStart = merge.allocatedPowerW > 0;
-    if (merge.allocatedPowerW > 0 && merge.allocatedPowerW < expectedPower.powerW) {
+    /*
+     * Config = Planner-/Fallback-Nominal. Learned = operative Prognose.
+     * Abweichung Config↔Learned und insbesondere allocated < learned darf
+     * Start/Permission NICHT pauschal blockieren (z. B. 700 W Alloc vs. 715 W learned).
+     * Unter-Config-Allocation bleibt ein hartes Gate nur gegen Config-Quelle.
+     */
+    if (merge.allocatedPowerW > 0 &&
+        expectedPower.source === "config" &&
+        merge.allocatedPowerW < expectedPower.powerW) {
         dailyPlanStatus = "allocation_below_expected_power";
         allocationAllowsStart = false;
-        allocationReasonDe = `Allocation ${merge.allocatedPowerW} W kleiner als erwartete Unit-Leistung ${expectedPower.powerW} W (${expectedPower.source}).`;
+        allocationReasonDe = `Allocation ${merge.allocatedPowerW} W kleiner als konfigurierte Unit-Leistung ${expectedPower.powerW} W.`;
     }
     if (merge.allocatedPowerW <= 0) {
         allocationReasonDe = `${merge.reasonDe} Climate-Fallback aktiv.`;

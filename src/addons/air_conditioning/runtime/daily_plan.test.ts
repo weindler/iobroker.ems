@@ -138,8 +138,9 @@ describe("ac daily plan reader", () => {
 		assert.match(r.allocationReasonDe, /Climate-Fallback/);
 	});
 
-	it("blocks start when allocation below expected power", () => {
+	it("blocks start when allocation below configured (config-source) power", () => {
 		const expected = resolveUnitExpectedPower(UNIT, undefined, NOW.getTime());
+		assert.equal(expected.source, "config");
 		const r = resolveAcUnitDailyPlanFromData({
 			unitIndex: 1,
 			now: NOW,
@@ -151,6 +152,66 @@ describe("ac daily plan reader", () => {
 		assert.equal(r.useDailyPlan, true);
 		assert.equal(r.allocationAllowsStart, false);
 		assert.equal(r.dailyPlanStatus, "allocation_below_expected_power");
+	});
+
+	it("Unit 2: allocation 700 W vs learned 715 W still allows start", () => {
+		const r = resolveAcUnitDailyPlanFromData({
+			unitIndex: 2,
+			now: NOW,
+			timezone: TZ,
+			meta: { status: "ready", date: "2026-07-11", revision: 1, validUntil: null, timezone: TZ },
+			entries: [allocationEntry(2, 700)],
+			expectedPower: {
+				powerW: 715,
+				source: "learned",
+				sampleDays: 8,
+				medianRuntimeSecPerDay: 3600,
+				valid: true,
+			},
+		});
+		assert.equal(r.useDailyPlan, true);
+		assert.equal(r.allocationAllowsStart, true);
+		assert.equal(r.dailyPlanStatus, "daily_plan_valid");
+		assert.equal(r.allocatedPowerW, 700);
+		assert.equal(r.expectedPowerW, 715);
+		assert.equal(r.powerModelSource, "learned");
+	});
+
+	it("Unit 1: config 850 W / learned ~727 W → allocation 850 W allows start via daily_plan", () => {
+		const r = resolveAcUnitDailyPlanFromData({
+			unitIndex: 1,
+			now: NOW,
+			timezone: TZ,
+			meta: { status: "ready", date: "2026-07-11", revision: 1, validUntil: null, timezone: TZ },
+			entries: [allocationEntry(1, 850)],
+			expectedPower: {
+				powerW: 727,
+				source: "learned",
+				sampleDays: 10,
+				medianRuntimeSecPerDay: 4200,
+				valid: true,
+			},
+		});
+		assert.equal(r.allocationAllowsStart, true);
+		assert.equal(r.dailyPlanStatus, "daily_plan_valid");
+		const perm = evaluateAcCoolingPermission({
+			unitEnabled: true,
+			governanceEnabled: true,
+			addonEnabled: true,
+			cleaningActive: false,
+			startRetryReady: true,
+			stopRetryReady: true,
+			fsm: {
+				state: "idle",
+				demandStart: true,
+				demandStop: false,
+				modePurpose: "cooling",
+				reasonDe: "Raum über Komfortgrenze.",
+			},
+			dailyPlan: r,
+		});
+		assert.equal(perm.allowStart, true);
+		assert.equal(perm.decisionSource, "daily_plan");
 	});
 
 	it("falls back on wrong date", () => {

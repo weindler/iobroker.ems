@@ -29,9 +29,17 @@ function metaFor(now: Date, timezone: string) {
 }
 
 function alignNowToFirstAllocSlot(plan: ReturnType<typeof allocateUnifiedDayPlan>): Date {
-	const cell = plan.allocations.find((a) => a.kind === "immersion_heater" || a.kind === "climate");
+	const cell = plan.allocations.find(
+		(a) =>
+			(a.kind === "immersion_heater" || a.kind === "climate") && a.allocatedPowerW >= 50,
+	);
 	assert.ok(cell, "expected at least one IH/climate allocation");
-	return new Date(Date.parse(cell.slot.startIso) + 60_000);
+	/** Bevorzuge volle Heizstab-Mindeststufe, damit Runtime stage > 0 liefert. */
+	const fullIh = plan.allocations.find(
+		(a) => a.kind === "immersion_heater" && a.allocatedPowerW >= 1700,
+	);
+	const pick = fullIh ?? cell;
+	return new Date(Date.parse(pick.slot.startIso) + 60_000);
 }
 
 describe("LIVE-IH-001 unified IH dispatch via existing daily-plan path", () => {
@@ -143,7 +151,9 @@ describe("LIVE-AC-001 comfort breach uses existing permission path", () => {
 		const plan = allocateUnifiedDayPlan(input);
 		const pub = buildUnifiedIhAcDispatchPublish(plan);
 		assert.ok(pub.climateEntries.length > 0);
-		const now = new Date(Date.parse(slot0.startIso) + 30_000);
+		const climateSlot =
+			plan.allocations.find((a) => a.kind === "climate")?.slot.startIso ?? slot0.startIso;
+		const now = new Date(Date.parse(climateSlot) + 30_000);
 		const tz = input.time.timezone;
 		const dailyPlan = resolveAcUnitDailyPlanFromData({
 			unitIndex: 1,

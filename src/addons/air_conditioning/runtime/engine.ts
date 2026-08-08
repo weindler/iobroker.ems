@@ -63,11 +63,17 @@ import {
 	shouldMarkCleaningProgressActive,
 } from "./cleaning";
 import { switchIsOff, switchIsOn } from "./time";
+import {
+	flushQueuedAcPowerConfigReconcile,
+	queueAcPowerConfigReconcile,
+} from "./power_reconcile";
 
 export type AcRuntimeHost = DeviceWriteHost & {
 	config?: unknown;
 	namespace?: string;
 	getAbsolutePath?: (category?: string) => string;
+	/** Persistierte Admin-Native (Learning→Config); optional — ohne Write kein Restart. */
+	updateConfig?: (newConfig: Record<string, unknown>) => Promise<unknown>;
 	log: { info: (m: string) => void; warn: (m: string) => void; debug?: (m: string) => void; error?: (m: string) => void };
 	setObjectNotExistsAsync: (id: string, obj: ioBroker.Object) => Promise<unknown>;
 	extendObjectAsync?: (id: string, obj: Partial<ioBroker.Object>) => Promise<unknown>;
@@ -574,6 +580,8 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 	let runningCount = 0;
 	let anyDailyPlanActive = false;
 	let maxDailyPlanRevision = 0;
+	/** true → kein updateConfig (js-controller-Neustart) in diesem Tick. */
+	let acDeviceBusy = false;
 	const summaryReasons: string[] = [];
 	let primaryDecisionDetail = "safe_default";
 	let anyTelemetryReady = false;
@@ -783,7 +791,33 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 			measuredPowerW: null,
 			commandedPowerW: estPower,
 		});
+
+		if (deviceActive || up.cleaningActive || up.running || switchIsOn(fb.value)) {
+			acDeviceBusy = true;
+		}
+
+		/*
+		 * Learning → Config nur vormerken. updateConfig löst Instanz-Neustart aus —
+		 * Flush erst am Tick-Ende im Idle (siehe flushQueuedAcPowerConfigReconcile).
+		 */
+		const statsEntry = await peekConsumerStatsEntry(host, acUnitConsumerKey(unit.index));
+		queueAcPowerConfigReconcile({
+			unitIndex: unit.index,
+			configPowerW: unit.estimatedPowerW,
+			consumerStats: statsEntry,
+			nowMs,
+		});
 	}
+
+	/*
+	 * updateConfig → js-controller Instanz-Neustart.
+	 * Flush-Gate: Global != live, kein Restore; devicesBusy kann zusätzlich blocken.
+	 */
+	await flushQueuedAcPowerConfigReconcile({
+		host,
+		nowMs,
+		devicesBusy: acDeviceBusy,
+	});
 
 	await setStateIfChanged(host, `${AC_RUNTIME_BASE}.outdoor_allocated_power_w`, config.outdoorMaxPowerW);
 	await setStateIfChanged(host, AC_RUNTIME_SUMMARY_STATES.governanceAllowed, governanceEnabled);

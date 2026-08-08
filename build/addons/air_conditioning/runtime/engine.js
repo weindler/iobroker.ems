@@ -24,6 +24,7 @@ const sequences_1 = require("./sequences");
 const stats_active_1 = require("./stats_active");
 const cleaning_1 = require("./cleaning");
 const time_1 = require("./time");
+const power_reconcile_1 = require("./power_reconcile");
 let engineActive = false;
 let hostRef = null;
 let persist = { version: 1, units: {} };
@@ -386,6 +387,8 @@ async function runAcRuntimeTickBody(host) {
     let runningCount = 0;
     let anyDailyPlanActive = false;
     let maxDailyPlanRevision = 0;
+    /** true → kein updateConfig (js-controller-Neustart) in diesem Tick. */
+    let acDeviceBusy = false;
     const summaryReasons = [];
     let primaryDecisionDetail = "safe_default";
     let anyTelemetryReady = false;
@@ -551,7 +554,30 @@ async function runAcRuntimeTickBody(host) {
             measuredPowerW: null,
             commandedPowerW: estPower,
         });
+        if (deviceActive || up.cleaningActive || up.running || (0, time_1.switchIsOn)(fb.value)) {
+            acDeviceBusy = true;
+        }
+        /*
+         * Learning → Config nur vormerken. updateConfig löst Instanz-Neustart aus —
+         * Flush erst am Tick-Ende im Idle (siehe flushQueuedAcPowerConfigReconcile).
+         */
+        const statsEntry = await (0, consumer_stats_1.peekConsumerStatsEntry)(host, (0, constants_1.acUnitConsumerKey)(unit.index));
+        (0, power_reconcile_1.queueAcPowerConfigReconcile)({
+            unitIndex: unit.index,
+            configPowerW: unit.estimatedPowerW,
+            consumerStats: statsEntry,
+            nowMs,
+        });
     }
+    /*
+     * updateConfig → js-controller Instanz-Neustart.
+     * Flush-Gate: Global != live, kein Restore; devicesBusy kann zusätzlich blocken.
+     */
+    await (0, power_reconcile_1.flushQueuedAcPowerConfigReconcile)({
+        host,
+        nowMs,
+        devicesBusy: acDeviceBusy,
+    });
     await (0, state_write_1.setStateIfChanged)(host, `${ensure_states_1.AC_RUNTIME_BASE}.outdoor_allocated_power_w`, config.outdoorMaxPowerW);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.AC_RUNTIME_SUMMARY_STATES.governanceAllowed, governanceEnabled);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.AC_RUNTIME_SUMMARY_STATES.dailyPlanActive, anyDailyPlanActive);

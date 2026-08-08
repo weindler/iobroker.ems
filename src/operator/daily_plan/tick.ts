@@ -80,6 +80,7 @@ import { buildAiExplanationContext } from "../../ai/explanation/context";
 import { buildProductSummaryDe } from "../../beta/product_summary";
 import { buildProductNotificationSurface } from "../../beta/notification_surface";
 import { buildEffectiveExecutionSnapshot } from "../../beta/execution_effective";
+import { buildAgendaExecutionHints } from "../../beta/execution_display";
 import { GLOBAL, addonMode } from "../../tree_paths";
 import { atomicWriteFile } from "../../persistence/atomic_write";
 import * as path from "node:path";
@@ -574,8 +575,56 @@ export async function runDailyPlanTick(
 					replanReasons: sess?.replanReasons ?? decision.reasons,
 					initialPlanId: sess?.initialPlanId ?? null,
 				});
+				const globalMode = (await host.getStateAsync(GLOBAL.executionMode))?.val;
+				const ihAllocated = asNum((await host.getStateAsync(IMMERSION_RUNTIME_STATES.allocatedPowerW))?.val);
+				const batAllocated = asNum((await host.getStateAsync(BAT.runtime.allocatedChargePowerW))?.val);
+				const wbAllocated = asNum((await host.getStateAsync(WALLBOX_RUNTIME_STATES.allocatedPowerW))?.val);
+				let acAllocatedSum = 0;
+				let acAllocatedAny = false;
+				const acRunning: boolean[] = [];
+				for (let u = 1; u <= AC_UNIT_COUNT; u++) {
+					const ids = acUnitRuntimeStates(u);
+					const aw = asNum((await host.getStateAsync(ids.allocatedPowerW))?.val);
+					if (aw != null) {
+						acAllocatedSum += aw;
+						acAllocatedAny = true;
+					}
+					acRunning.push((await host.getStateAsync(ids.running))?.val === true);
+				}
+				const agendaExecution = buildAgendaExecutionHints({
+					globalMode,
+					addonModes: {
+						wallbox: (await host.getStateAsync(addonMode("wallbox")))?.val,
+						battery: (await host.getStateAsync(addonMode("battery")))?.val,
+						immersion_heater: (await host.getStateAsync(addonMode("immersion_heater")))?.val,
+						air_conditioning: (await host.getStateAsync(addonMode("air_conditioning")))?.val,
+					},
+					hardware: {
+						immersion: {
+							feedbackStage: asNum((await host.getStateAsync(IMMERSION_RUNTIME_STATES.feedbackStage))?.val),
+							measuredPowerW: asNum((await host.getStateAsync(IMMERSION_RUNTIME_STATES.measuredPowerW))?.val),
+							commandedPowerW: asNum((await host.getStateAsync(IMMERSION_RUNTIME_STATES.commandedPowerW))?.val),
+							allocatedPowerW: ihAllocated,
+						},
+						battery: {
+							chargingPowerW: asNum((await host.getStateAsync(BAT.telemetry.chargingPowerW))?.val),
+							allocatedChargePowerW: batAllocated,
+						},
+						wallbox: {
+							charging: (await host.getStateAsync("live.wallbox.charging"))?.val === true,
+							chargePowerW: asNum((await host.getStateAsync("live.wallbox.charge_power_w"))?.val),
+							allocatedPowerW: wbAllocated,
+						},
+						climate: {
+							unitRunning: acRunning,
+							allocatedPowerW: acAllocatedAny ? acAllocatedSum : null,
+						},
+					},
+					nowMs: now.getTime(),
+				});
 				const productSummary = buildProductSummaryDe(unifiedPlan, {
 					batteryStartSocPct: unifiedInputFinal.battery.socPct,
+					execution: agendaExecution,
 				});
 				await setStateIfChanged(host, "operator.product_summary_de", productSummary);
 				const notifySurface = buildProductNotificationSurface(

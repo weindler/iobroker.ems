@@ -5,8 +5,31 @@
 
 import type { UnifiedAllocationCell, UnifiedDayPlan } from "../operator/daily_plan/unified/types";
 import { buildDeterministicDayExplanation } from "../learning/day_evaluation/explain";
+import {
+	formatAgendaSlotMetaDe,
+	isPowerActive,
+	resolveExecutionDisplayPhase,
+	type ExecutionDisplayPhase,
+} from "./execution_display";
 
 const MAX_LEN = 900;
+const AGENDA_ON_W = 50;
+
+/** Optional: Plan ≠ Ausführung für Agenda-Status (GEPLANT / DRYRUN / LÄUFT). */
+export type AgendaExecutionAddon = {
+	liveWriteAllowed: boolean;
+	hardwareActive: boolean;
+	/** Aktuelle Slot-Allocation in W; fehlt → aus Plan-Zellen abgeleitet. */
+	currentAllocatedW?: number | null;
+};
+
+export type AgendaExecutionContext = {
+	nowMs?: number;
+	immersion_heater?: AgendaExecutionAddon;
+	battery?: AgendaExecutionAddon;
+	climate?: AgendaExecutionAddon;
+	wallbox?: AgendaExecutionAddon;
+};
 
 function fmtKwh(n: number | null): string | null {
 	if (n === null || !Number.isFinite(n)) return null;
@@ -64,36 +87,114 @@ function windowLine(
 	label: string,
 	w: { startIso: string; endIso: string; energyKwh: number },
 	timezone: string,
+	statusPrefix?: string | null,
 ): string {
 	const a = fmtClock(w.startIso, timezone);
 	const b = fmtClock(w.endIso, timezone);
 	const e = fmtKwh(w.energyKwh);
-	if (a && b) return `${label} ${a}–${b}${e ? ` (${e} kWh)` : ""}`;
-	return `${label} geplant${e ? ` (${e} kWh)` : ""}`;
+	const prefix = statusPrefix ? `${statusPrefix} · ` : "";
+	if (a && b) return `${prefix}${label} ${a}–${b}${e ? ` (${e} kWh)` : ""}`;
+	return `${prefix}${label} geplant${e ? ` (${e} kWh)` : ""}`;
+}
+
+function windowContainsNow(w: { startIso: string; endIso: string }, nowMs: number): boolean {
+	const a = Date.parse(w.startIso);
+	const b = Date.parse(w.endIso);
+	return Number.isFinite(a) && Number.isFinite(b) && nowMs >= a && nowMs < b;
+}
+
+function currentAllocatedWFromPlan(
+	plan: UnifiedDayPlan,
+	kind: AgendaKind,
+	nowMs: number,
+): number | null {
+	let sum = 0;
+	let any = false;
+	for (const c of plan.allocations) {
+		if (c.kind !== kind) continue;
+		const a = Date.parse(c.slot.startIso);
+		const b = Date.parse(c.slot.endIso);
+		if (!Number.isFinite(a) || !Number.isFinite(b) || nowMs < a || nowMs >= b) continue;
+		if (c.allocatedPowerW != null && Number.isFinite(c.allocatedPowerW)) {
+			sum += c.allocatedPowerW;
+			any = true;
+		}
+	}
+	return any ? sum : null;
+}
+
+function agendaPhaseForKind(
+	windows: Array<{ startIso: string; endIso: string; energyKwh: number }>,
+	exec: AgendaExecutionAddon | undefined,
+	plan: UnifiedDayPlan,
+	kind: AgendaKind,
+	nowMs: number,
+): { phase: ExecutionDisplayPhase; plannerW: number | null; statusMeta: string | null } {
+	const currentWin = windows.find((w) => windowContainsNow(w, nowMs));
+	const hasFuture = windows.some((w) => Date.parse(w.startIso) > nowMs);
+	const fromPlan = currentAllocatedWFromPlan(plan, kind, nowMs);
+	const plannerW =
+		exec?.currentAllocatedW != null && Number.isFinite(exec.currentAllocatedW)
+			? exec.currentAllocatedW
+			: fromPlan;
+	const currentPlannedActive = Boolean(currentWin) || isPowerActive(plannerW, AGENDA_ON_W);
+	const phase = resolveExecutionDisplayPhase({
+		currentPlannedActive,
+		hasFuturePlan: hasFuture,
+		liveWriteAllowed: exec?.liveWriteAllowed === true,
+		hardwareActive: exec?.hardwareActive === true,
+	});
+	// Ohne Execution-Kontext keine Status-Behauptung (Rückwärtskompatibilität).
+	if (!exec) return { phase: "planned", plannerW, statusMeta: null };
+	const statusMeta =
+		currentPlannedActive || phase === "running"
+			? formatAgendaSlotMetaDe({ phase, plannerPowerW: plannerW })
+			: phase === "planned" && hasFuture
+				? formatAgendaSlotMetaDe({ phase, plannerPowerW: null })
+				: null;
+	return { phase, plannerW, statusMeta };
 }
 
 /**
  * Kompakte, nutzerlesbare Tagesagenda aus Unified-Allocationen.
  * Kein Debug-Dump — nur zeitliche Hauptaktionen.
+ * Mit `execution`: aktueller Slot als GEPLANT / DRYRUN / LÄUFT (nie LÄUFT ohne Live-Authority).
  */
-export function buildUnifiedDayAgendaDe(plan: UnifiedDayPlan): string[] {
+export function buildUnifiedDayAgendaDe(
+	plan: UnifiedDayPlan,
+	execution?: AgendaExecutionContext,
+): string[] {
 	const tz = plan.timezone || "Europe/Berlin";
+	const nowMs = execution?.nowMs ?? Date.now();
 	const lines: string[] = [];
 	const bat = mergeWindows(plan.allocations, "battery_charge");
 	const ih = mergeWindows(plan.allocations, "immersion_heater");
 	const ac = mergeWindows(plan.allocations, "climate");
 	const wb = mergeWindows(plan.allocations, "wallbox");
 
-	for (const w of bat.slice(0, 2)) lines.push(windowLine("Batterie laden", w, tz));
-	for (const w of ih.slice(0, 2)) lines.push(windowLine("Heizstab thermisch vorladen", w, tz));
+	const batSt = agendaPhaseForKind(bat, execution?.battery, plan, "battery_charge", nowMs);
+	const ihSt = agendaPhaseForKind(ih, execution?.immersion_heater, plan, "immersion_heater", nowMs);
+	const acSt = agendaPhaseForKind(ac, execution?.climate, plan, "climate", nowMs);
+	const wbSt = agendaPhaseForKind(wb, execution?.wallbox, plan, "wallbox", nowMs);
+
+	for (const w of bat.slice(0, 2)) {
+		const active = windowContainsNow(w, nowMs);
+		lines.push(windowLine("Batterie laden", w, tz, active ? batSt.statusMeta : null));
+	}
+	for (const w of ih.slice(0, 2)) {
+		const active = windowContainsNow(w, nowMs);
+		lines.push(windowLine("Heizstab thermisch vorladen", w, tz, active ? ihSt.statusMeta : null));
+	}
 	if (ac.length > 0) {
 		const first = ac[0]!;
 		const a = fmtClock(first.startIso, tz);
 		const total = fmtKwh(ac.reduce((s, w) => s + w.energyKwh, 0));
+		const active = ac.some((w) => windowContainsNow(w, nowMs));
+		const prefix = active && acSt.statusMeta ? `${acSt.statusMeta} · ` : "";
 		lines.push(
 			a
-				? `Klima ab ${a} freigegeben${total ? ` (~${total} kWh)` : ""}`
-				: `Klima geplant${total ? ` (~${total} kWh)` : ""}`,
+				? `${prefix}Klima ab ${a} freigegeben${total ? ` (~${total} kWh)` : ""}`
+				: `${prefix}Klima geplant${total ? ` (~${total} kWh)` : ""}`,
 		);
 	}
 	for (const w of wb.slice(0, 2)) {
@@ -107,7 +208,8 @@ export function buildUnifiedDayAgendaDe(plan: UnifiedDayPlan): string[] {
 		let label = gridOptimal ? "Fahrzeugladung (günstiger Netzbezug)" : "Fahrzeugladung";
 		if (dead && gridOptimal) label = `Fahrzeugladung — Abfahrt/Ziel ${dead}, günstiges Preisfenster`;
 		else if (dead) label = `Fahrzeugladung — Ziel bis ${dead}`;
-		lines.push(windowLine(label, w, tz));
+		const active = windowContainsNow(w, nowMs);
+		lines.push(windowLine(label, w, tz, active ? wbSt.statusMeta : null));
 	}
 
 	const night = plan.constraints.find((c) => c.id === "battery.night_reserve");
@@ -128,7 +230,7 @@ export function buildUnifiedDayAgendaDe(plan: UnifiedDayPlan): string[] {
 /** Kurze, nutzerlesbare Tageszusammenfassung. */
 export function buildProductSummaryDe(
 	plan: UnifiedDayPlan,
-	opts?: { batteryStartSocPct?: number | null },
+	opts?: { batteryStartSocPct?: number | null; execution?: AgendaExecutionContext },
 ): string {
 	const x = buildDeterministicDayExplanation(plan, opts);
 	const parts: string[] = [];
@@ -141,7 +243,7 @@ export function buildProductSummaryDe(
 		parts.push(`Batterie zum Tagesende ~${Math.round(batEnd)} %.`);
 	}
 
-	const agenda = buildUnifiedDayAgendaDe(plan);
+	const agenda = buildUnifiedDayAgendaDe(plan, opts?.execution);
 	if (agenda.length > 0) {
 		parts.push(`Plan: ${agenda.join("; ")}.`);
 	} else {

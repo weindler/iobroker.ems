@@ -27,6 +27,7 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:6
 .ems-badge.on{background:#238636;color:#fff}
 .ems-badge.off{background:#30363d;color:#8b949e}
 .ems-badge.soon{background:#9e6a03;color:#fff}
+.ems-badge.dryrun{background:#6e40c9;color:#fff}
 .ems-badge.idle{background:#21262d;border:1px solid #30363d;color:#8b949e}
 .ems-badge.plan{background:#1f6feb33;color:#58a6ff;border:1px solid #1f6feb66}
 .ems-rows{display:grid;grid-template-columns:78px 1fr;gap:1px 6px;font-size:11px}
@@ -40,7 +41,7 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:6
 .ems-next-name{font-weight:600}
 .ems-next-meta{display:block;font-size:10px;color:#c9d1d9;margin-top:2px;line-height:1.3}
 .ems-next-st{font-size:9px;font-weight:700;text-transform:uppercase;margin-left:4px;letter-spacing:.03em}
-.ems-next-st.on{color:#3fb950}.ems-next-st.plan{color:#8b949e}.ems-next-st.soon{color:#f0883e}.ems-next-st.est{color:#8b949e}
+.ems-next-st.on{color:#3fb950}.ems-next-st.plan{color:#8b949e}.ems-next-st.soon{color:#f0883e}.ems-next-st.dryrun{color:#a371f7}.ems-next-st.est{color:#8b949e}
 .ems-diag{margin-top:8px;padding-top:6px;border-top:1px dashed #30363d}
 .ems-diag-h{font-size:9px;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
 .ems-ai{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:6px;margin-bottom:6px}
@@ -92,6 +93,11 @@ var stateIds=[
 	INST+".operator.diagnostics.surplus_w",
 	INST+".operator.diagnostics.deficit_w",
 	INST+".operator.diagnostics.slot_start_iso",
+	INST+".global.execution_mode",
+	INST+".addons.immersion_heater.mode",
+	INST+".addons.battery.mode",
+	INST+".addons.wallbox.mode",
+	INST+".addons.air_conditioning.mode",
 	INST+".live.pv.power_w",
 	INST+".live.battery.house_load_w",
 	INST+".live.battery.soc_pct",
@@ -99,6 +105,7 @@ var stateIds=[
 	INST+".live.wallbox.charge_power_w",
 	INST+".live.wallbox.vehicle_soc_pct",
 	INST+".live.wallbox.charging",
+	INST+".addons.battery.telemetry.charging_power_w",
 	INST+".compare.plan_a.chart_json",
 	INST+".compare.plan_b.chart_json",
 	INST+".compare.delta_summary_json",
@@ -133,6 +140,8 @@ var stateIds=[
 	INST+".addons.immersion_heater.runtime.daily_plan_status",
 	INST+".addons.immersion_heater.runtime.allocated_power_w",
 	INST+".addons.immersion_heater.runtime.commanded_power_w",
+	INST+".addons.immersion_heater.runtime.feedback_stage",
+	INST+".addons.immersion_heater.runtime.measured_power_w",
 	INST+".addons.immersion_heater.runtime.buffer_temperature_c",
 	INST+".addons.immersion_heater.runtime.plan_target_temp_c",
 	INST+".addons.immersion_heater.runtime.plan_target_reason_de",
@@ -248,11 +257,49 @@ function firstWindow(planJson,minW){
 	return list.length?list[0]:null;
 }
 
-function userBadge(runningNow,hasUpcoming){
-	if(runningNow)return{cls:"on",label:"Läuft"};
-	if(hasUpcoming)return{cls:"soon",label:"Gleich an"};
+/** Plan ≠ Ausführung — Semantik analog src/beta/execution_display.ts */
+function isLiveMode(v){return String(v==null?"dryrun":v).toLowerCase()==="live";}
+function effectiveLiveWrite(addonId){
+	return isLiveMode(g("global.execution_mode"))&&isLiveMode(g("addons."+addonId+".mode"));
+}
+function isPowerOn(w){return w!==null&&w>=ON_W;}
+function immersionHardwareActive(liveOk){
+	var fb=num(g("addons.immersion_heater.runtime.feedback_stage"))||0;
+	var meas=num(g("addons.immersion_heater.runtime.measured_power_w"));
+	var cmd=num(g("addons.immersion_heater.runtime.commanded_power_w"));
+	if(fb>0)return true;
+	if(isPowerOn(meas))return true;
+	if(liveOk&&isPowerOn(cmd))return true;
+	return false;
+}
+function resolveExecPhase(currentPlanned,hasFuture,liveOk,hwActive){
+	if(liveOk&&hwActive)return"running";
+	if(currentPlanned&&!liveOk)return"dryrun";
+	if(currentPlanned||hasFuture)return"planned";
+	return"idle";
+}
+function execBadge(phase){
+	if(phase==="running")return{cls:"on",label:"Läuft"};
+	if(phase==="dryrun")return{cls:"dryrun",label:"Dryrun"};
+	if(phase==="planned")return{cls:"plan",label:"Geplant"};
 	return{cls:"idle",label:"Pausiert"};
 }
+function execNowLine(phase,plannerW,hardwareLabel){
+	var pw=(plannerW!==null&&plannerW>0)?Math.round(plannerW):null;
+	if(phase==="running")return hardwareLabel;
+	if(phase==="dryrun")return(pw!==null?("Planner: "+pw+" W"):"Planner: aktiv")+" · Hardware: "+hardwareLabel;
+	if(phase==="planned"&&pw!==null)return"geplant "+pw+" W · Hardware: "+hardwareLabel;
+	return hardwareLabel;
+}
+function execAgendaMeta(phase,plannerW){
+	var st=phase==="running"?"LÄUFT":(phase==="dryrun"?"DRYRUN":(phase==="planned"?"GEPLANT":null));
+	if(!st)return null;
+	var pw=(plannerW!==null&&plannerW>0)?Math.round(plannerW):null;
+	if(phase==="dryrun"&&pw!==null)return st+" · geplant "+pw+" W";
+	if(pw!==null&&(phase==="planned"||phase==="running"))return st+" · "+pw+" W";
+	return st;
+}
+function userBadge(phase){return execBadge(phase);}
 
 function acContribution(unitIndex){
 	try{
@@ -274,6 +321,92 @@ function acPlanLine(unitIndex){
 		return "~"+h.toFixed(1).replace(/\.0$/,"")+" h / "+k.toFixed(1).replace(/\.0$/,"")+" kWh heute";
 	}
 	return "kein Kühlbedarf geplant";
+}
+
+/** Klima: Plan-Budget ≠ Kühlbedarf ≠ Hardware — analog src/beta/execution_display.ts */
+function climateHoldReason(reason){
+	var r=String(reason||"");
+	if(/Hysterese/i.test(r))return"Hysterese";
+	if(/Mindes|Restlauf|min(?:imum)?[-\s]?runtime/i.test(r))return"Mindeslaufzeit";
+	if(/Reinigung|cleaning/i.test(r))return"Reinigung";
+	if(/kein Kühlbedarf/i.test(r))return"Restlauf/Hysterese";
+	return"Restlauf/Hysterese";
+}
+function classifyClimateDemand(running,decisionSource,reasonDe){
+	var src=String(decisionSource||"").toLowerCase();
+	var reason=String(reasonDe||"");
+	var noDemand=src==="temperature_no_demand"||/aktuell kein Kühlbedarf|kein cool\/dry-Bedarf/i.test(reason);
+	var holdHint=/Hysterese|läuft weiter|Mindes|Restlauf|Reinigung/i.test(reason);
+	if(running){
+		if(noDemand||holdHint)return"hold";
+		return"active";
+	}
+	if(/Einschalten/i.test(reason)&&!noDemand)return"active";
+	return"none";
+}
+function resolveClimateUnitDisplay(unitIndex){
+	var base="addons.air_conditioning.units.unit_"+unitIndex;
+	var running=isOn(g(base+".running"));
+	var alloc=num(g(base+".allocated_power_w"));
+	var decisionSource=txt(g(base+".decision_source"),"");
+	var reasonDe=txt(g(base+".reason_de"),"");
+	if(reasonDe==="—")reasonDe="";
+	var c=acContribution(unitIndex);
+	var d=c&&c.details?c.details:{};
+	var likely=d.likelyActive===true;
+	var liveOk=effectiveLiveWrite("air_conditioning");
+	var demand=classifyClimateDemand(running,decisionSource,reasonDe);
+	var heute=acPlanLine(unitIndex);
+	var plan=isPowerOn(alloc)?("Budget "+Math.round(alloc)+" W"):"kein Budget";
+	if(!liveOk){
+		var phase=resolveExecPhase(isPowerOn(alloc),likely,false,false);
+		var badge=execBadge(phase);
+		return{
+			phase:phase,badge:badge,demand:demand,
+			nowLine:execNowLine(phase,alloc,running?"eingeschaltet":"aus"),
+			note:shortNote(reasonDe||(phase==="dryrun"?"Dryrun — keine realen Klima-Writes.":"Klima im Dryrun."),110),
+			planLine:plan,heuteLine:heute
+		};
+	}
+	if(running){
+		if(demand==="active"){
+			return{
+				phase:"running",badge:execBadge("running"),demand:demand,
+				nowLine:"Läuft · Kühlbedarf aktiv",
+				note:shortNote(reasonDe||"Kühlbedarf aktiv.",110),
+				planLine:plan,heuteLine:heute
+			};
+		}
+		var hold=climateHoldReason(reasonDe);
+		return{
+			phase:"running",badge:execBadge("running"),demand:"hold",
+			nowLine:"Läuft · kein neuer Kühlbedarf, läuft wegen "+hold+" weiter",
+			note:shortNote(reasonDe||("Kein neuer Kühlbedarf — läuft wegen "+hold+" weiter."),110),
+			planLine:plan,heuteLine:heute
+		};
+	}
+	if(isPowerOn(alloc)&&demand==="none"){
+		return{
+			phase:"planned",badge:{cls:"plan",label:"Bereit"},demand:demand,
+			nowLine:"aktuell kein Kühlbedarf",
+			note:shortNote(reasonDe||("Daily Plan stellt "+Math.round(alloc)+" W bereit, aktuell kein Kühlbedarf."),110),
+			planLine:plan,heuteLine:heute
+		};
+	}
+	if(isPowerOn(alloc)||likely){
+		return{
+			phase:"planned",badge:execBadge("planned"),demand:demand,
+			nowLine:demand==="active"?"Kühlbedarf — Start ausstehend":"aus",
+			note:shortNote(reasonDe||"Klima geplant.",110),
+			planLine:plan,heuteLine:heute
+		};
+	}
+	return{
+		phase:"idle",badge:{cls:"idle",label:"Aus"},demand:demand,
+		nowLine:"aus",
+		note:shortNote(reasonDe||"Klima aus.",110),
+		planLine:plan,heuteLine:heute
+	};
 }
 
 function acUnitLabel(unitIndex){
@@ -367,10 +500,12 @@ function mergeMs(){
 	return out;
 }
 
-function rangeStatus(startMs,endMs,runningNow){
+function rangeStatus(startMs,endMs,phase){
 	var now=Date.now();
-	if(runningNow&&now>=startMs&&now<endMs)return"on";
-	if(now>=startMs&&now<endMs)return"soon";
+	var current=now>=startMs&&now<endMs;
+	if(current&&phase==="running")return"on";
+	if(current&&phase==="dryrun")return"dryrun";
+	if(current&&phase==="planned")return"plan";
 	return"plan";
 }
 
@@ -378,12 +513,13 @@ function rangeStatus(startMs,endMs,runningNow){
 function climateRange(unitIndex,horizonMs){
 	var c=acContribution(unitIndex);
 	var running=isOn(g("addons.air_conditioning.units.unit_"+unitIndex+".running"));
+	var alloc=num(g("addons.air_conditioning.units.unit_"+unitIndex+".allocated_power_w"));
 	var hours=0,kwh=null;
 	if(c&&c.details&&c.details.likelyActive===true&&num(c.details.expectedHoursToday)!==null){
 		hours=num(c.details.expectedHoursToday);
 		kwh=num(c.details.expectedKwhToday);
 	}
-	if(!running&&hours<=0)return null;
+	if(!running&&hours<=0&&!isPowerOn(alloc))return null;
 	var startMs=floorSlotMs(Date.now());
 	var durMs=Math.max(SLOT_MS,Math.round((hours>0?hours:0.25)*3600*1000));
 	var endMs=Math.min(startMs+durMs,horizonMs+SLOT_MS);
@@ -393,39 +529,58 @@ function climateRange(unitIndex,horizonMs){
 		endMs:endMs,
 		hours:hours,
 		kwh:kwh,
-		running:running
+		running:running,
+		allocatedW:alloc
 	};
 }
 
 function buildTimelineRanges(horizonMs){
 	var items=[];
+	var now=Date.now();
 	var ihA=slotsFromAllocation(g("planner.intent.allocation.immersion_heater.plan_json"),ON_W);
 	var ihC=slotsFromChart("ihW",horizonMs);
 	var ihMs=mergeMs(ihA.ms,ihC.ms);
-	var ihRun=(num(g("addons.immersion_heater.runtime.commanded_power_w"))||0)>=ON_W;
+	var ihLive=effectiveLiveWrite("immersion_heater");
+	var ihHw=immersionHardwareActive(ihLive);
+	var ihAlloc=num(g("addons.immersion_heater.runtime.allocated_power_w"));
 	collapseSlots(ihMs).forEach(function(r){
+		var current=now>=r.startMs&&now<r.endMs;
+		var phase=resolveExecPhase(current,!current,ihLive,ihHw);
+		var st=rangeStatus(r.startMs,r.endMs,phase);
+		var metaBits=[];
+		if(current){
+			var m=execAgendaMeta(phase,ihAlloc);
+			if(m)metaBits.push(m);
+		}
+		if(ihA.maxW||ihC.maxW)metaBits.push(Math.round(ihA.maxW||ihC.maxW)+" W");
 		items.push({
 			addon:"immersion",color:ADDON_COLORS.immersion,name:"Heizstab",
 			startMs:r.startMs,endMs:r.endMs,
-			status:rangeStatus(r.startMs,r.endMs,ihRun),
-			meta:(ihA.maxW||ihC.maxW)?(Math.round(ihA.maxW||ihC.maxW)+" W"):null
+			status:st,
+			meta:metaBits.length?metaBits.join(" · "):null
 		});
 	});
 
 	var wbA=slotsFromAllocation(g("planner.intent.allocation.wallbox.plan_json"),ON_W);
 	var wbC=slotsFromChart("wbW",horizonMs);
 	var wbMs=mergeMs(wbA.ms,wbC.ms);
-	var wbRun=isOn(g("live.wallbox.charging"))||(num(g("live.wallbox.charge_power_w"))||0)>=ON_W;
+	var wbLive=effectiveLiveWrite("wallbox");
+	var wbHw=isOn(g("live.wallbox.charging"))||isPowerOn(num(g("live.wallbox.charge_power_w")));
+	var wbAlloc=num(g("addons.wallbox.runtime.allocated_power_w"));
 	var mode=wallboxModeLabel(g("addons.wallbox.status.evcc.loadpoint_mode"));
 	var remKwh=num(g("addons.wallbox.status.evcc.charge_remaining_energy_kwh"));
 	var limSoc=num(g("addons.wallbox.status.evcc.effective_limit_soc_pct"));
 	var vehSoc=num(g("addons.wallbox.status.evcc.vehicle_soc_pct"));
 	if(vehSoc===null)vehSoc=num(g("live.wallbox.vehicle_soc_pct"));
-	function wbMeta(status,extraW){
+	function wbMeta(status,phase,extraW){
 		var bits=[];
-		// Aktueller EVCC-Modus nur sinnvoll wenn Slot läuft; „Aus“ bei geplant nie zeigen
+		if(status==="dryrun"){
+			var dm=execAgendaMeta(phase,wbAlloc);
+			if(dm)bits.push(dm);
+		}
+		// Aktueller EVCC-Modus nur sinnvoll wenn Slot wirklich läuft; „Aus“ bei geplant nie zeigen
 		if(mode&&status==="on")bits.push("Modus "+mode);
-		else if(mode&&mode!=="Aus"&&(status==="soon"||status==="plan"))bits.push("aktuell "+mode);
+		else if(mode&&mode!=="Aus"&&(status==="plan"||status==="dryrun"))bits.push("aktuell "+mode);
 		if(remKwh!==null&&remKwh>0)bits.push("noch ~"+remKwh.toFixed(1).replace(".",",")+" kWh");
 		if(limSoc!==null)bits.push("bis "+Math.round(limSoc)+" % SOC");
 		else if(vehSoc!==null)bits.push("Auto "+Math.round(vehSoc)+" %");
@@ -433,46 +588,68 @@ function buildTimelineRanges(horizonMs){
 		return bits.length?bits.join(" · "):null;
 	}
 	var wbRanges=collapseSlots(wbMs);
-	if(!wbRanges.length&&(wbRun||(remKwh!==null&&remKwh>0))){
+	if(!wbRanges.length&&((wbLive&&wbHw)||(remKwh!==null&&remKwh>0)||isPowerOn(wbAlloc))){
 		var n0=floorSlotMs(Date.now());
 		wbRanges=[{startMs:n0,endMs:n0+SLOT_MS}];
 	}
 	wbRanges.forEach(function(r){
-		var st=rangeStatus(r.startMs,r.endMs,wbRun);
+		var current=now>=r.startMs&&now<r.endMs;
+		var phase=resolveExecPhase(current,!current,wbLive,wbHw);
+		var st=rangeStatus(r.startMs,r.endMs,phase);
 		items.push({
 			addon:"wallbox",color:ADDON_COLORS.wallbox,name:"Wallbox / Auto",
 			startMs:r.startMs,endMs:r.endMs,
 			status:st,
-			meta:wbMeta(st,wbA.maxW||wbC.maxW)
+			meta:wbMeta(st,phase,wbA.maxW||wbC.maxW)
 		});
 	});
 
 	var batA=slotsFromAllocation(g("planner.intent.allocation.battery.plan_json"),ON_W);
 	var batC=slotsFromChart("batW",horizonMs);
 	var batMs=mergeMs(batA.ms,batC.ms);
-	var batRun=(num(g("addons.battery.runtime.allocated_charge_power_w"))||0)>=ON_W;
+	var batLive=effectiveLiveWrite("battery");
+	var batHw=isPowerOn(num(g("addons.battery.telemetry.charging_power_w")));
+	var batAlloc=num(g("addons.battery.runtime.allocated_charge_power_w"));
 	collapseSlots(batMs).forEach(function(r){
+		var current=now>=r.startMs&&now<r.endMs;
+		var phase=resolveExecPhase(current,!current,batLive,batHw);
+		var st=rangeStatus(r.startMs,r.endMs,phase);
+		var metaBits=[];
+		if(current){
+			var bm=execAgendaMeta(phase,batAlloc);
+			if(bm)metaBits.push(bm);
+		}
+		if(batA.maxW||batC.maxW)metaBits.push(Math.round(batA.maxW||batC.maxW)+" W");
 		items.push({
 			addon:"battery",color:ADDON_COLORS.battery,name:"Batterie laden",
 			startMs:r.startMs,endMs:r.endMs,
-			status:rangeStatus(r.startMs,r.endMs,batRun),
-			meta:(batA.maxW||batC.maxW)?(Math.round(batA.maxW||batC.maxW)+" W"):null
+			status:st,
+			meta:metaBits.length?metaBits.join(" · "):null
 		});
 	});
 
 	[1,2].forEach(function(unitIndex){
 		var cr=climateRange(unitIndex,horizonMs);
 		if(!cr)return;
+		var disp=resolveClimateUnitDisplay(unitIndex);
 		var bits=[];
+		var st=disp.phase==="running"?"on":(disp.phase==="dryrun"?"dryrun":(cr.hours>0?"est":"plan"));
+		if(disp.phase==="running"&&disp.demand==="hold")bits.push("Restlauf/Hysterese");
+		else if(disp.phase==="running"&&disp.demand==="active")bits.push("Kühlbedarf aktiv");
+		else if(disp.badge.label==="Bereit")bits.push("bereit · kein Kühlbedarf");
+		else if(st==="dryrun"){
+			var cm=execAgendaMeta(disp.phase,cr.allocatedW);
+			if(cm)bits.push(cm);
+		}
+		if(isPowerOn(cr.allocatedW))bits.push("Budget "+Math.round(cr.allocatedW)+" W");
 		if(cr.hours>0)bits.push("~"+cr.hours.toFixed(1).replace(/\.0$/,"")+" h geschätzt");
 		if(cr.kwh!==null)bits.push(cr.kwh.toFixed(1).replace(".",",")+" kWh");
-		// Learning = Tagesbedarf, kein Slot: nie „jetzt“, nur läuft / geschätzt
 		items.push({
 			addon:"climate"+unitIndex,
 			color:unitIndex===1?ADDON_COLORS.climate1:ADDON_COLORS.climate2,
 			name:acUnitLabel(unitIndex),
 			startMs:cr.startMs,endMs:cr.endMs,
-			status:cr.running?"on":"est",
+			status:st,
 			meta:bits.length?bits.join(" · "):null
 		});
 	});
@@ -527,12 +704,16 @@ function renderNow(){
 	var pv=num(g("live.pv.power_w"));
 	var load=num(g("live.battery.house_load_w"));
 	var price=num(g("live.price.now_ct_per_kwh"));
-	var ihCmd=num(g("addons.immersion_heater.runtime.commanded_power_w"));
+	var ihLiveOk=effectiveLiveWrite("immersion_heater");
+	var ihHw=immersionHardwareActive(ihLiveOk);
+	var ihAlloc=num(g("addons.immersion_heater.runtime.allocated_power_w"));
 	var ihBuf=fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c"));
 	var remH=num(g("learning.thermal_runtime.estimated_remaining_hours"));
 	var wbP=num(g("live.wallbox.charge_power_w"));
-	var wbCharging=isOn(g("live.wallbox.charging"))||(wbP!==null&&wbP>=ON_W);
+	var wbLiveOk=effectiveLiveWrite("wallbox");
+	var wbHw=isOn(g("live.wallbox.charging"))||(wbP!==null&&wbP>=ON_W);
 	var batSoc=fmtPct(g("live.battery.soc_pct"));
+	var acLiveOk=effectiveLiveWrite("air_conditioning");
 	var ac1=isOn(g("addons.air_conditioning.units.unit_1.running"));
 	var ac2=isOn(g("addons.air_conditioning.units.unit_2.running"));
 
@@ -540,11 +721,14 @@ function renderNow(){
 	if(surplus!==null&&surplus>200)bits.push("PV-Überschuss ca. "+Math.round(surplus)+" W");
 	else if(surplus!==null&&surplus<=0)bits.push("kein PV-Überschuss");
 	else if(pv!==null)bits.push("PV "+Math.round(pv)+" W");
-	if(ihCmd!==null&&ihCmd>=ON_W)bits.push("Heizstab an");
+	if(ihLiveOk&&ihHw)bits.push("Heizstab an");
+	else if(isPowerOn(ihAlloc)&&!ihLiveOk)bits.push("Heizstab Dryrun");
 	else bits.push("Heizstab aus");
-	if(wbCharging)bits.push("Auto lädt");
+	if(wbLiveOk&&wbHw)bits.push("Auto lädt");
+	else if(isPowerOn(num(g("addons.wallbox.runtime.allocated_power_w")))&&!wbLiveOk)bits.push("Auto Dryrun");
 	else bits.push("Auto lädt nicht");
-	if(ac1||ac2)bits.push("Klima läuft");
+	if(acLiveOk&&(ac1||ac2))bits.push("Klima läuft");
+	else if(!acLiveOk&&(isPowerOn(num(g("addons.air_conditioning.units.unit_1.allocated_power_w")))||isPowerOn(num(g("addons.air_conditioning.units.unit_2.allocated_power_w")))))bits.push("Klima Dryrun");
 	var line=bits.length?bits.join(" · "):"Keine Live-Daten";
 
 	var meta=[];
@@ -595,8 +779,8 @@ function renderNext(){
 		html+='<ul class="ems-next-list">';
 		for(var i=0;i<Math.min(16,items.length);i++){
 			var it=items[i];
-			var stLabel=it.status==="on"?"läuft":(it.status==="soon"?"jetzt":(it.status==="est"?"geschätzt":"geplant"));
-			var stCls=it.status==="on"?"on":(it.status==="soon"?"soon":(it.status==="est"?"est":"plan"));
+			var stLabel=it.status==="on"?"läuft":(it.status==="dryrun"?"dryrun":(it.status==="soon"?"jetzt":(it.status==="est"?"geschätzt":"geplant")));
+			var stCls=it.status==="on"?"on":(it.status==="dryrun"?"dryrun":(it.status==="soon"?"soon":(it.status==="est"?"est":"plan")));
 			html+='<li style="border-left-color:'+it.color+'">'
 				+'<span class="ems-next-t">'+esc(fmtRange(it.startMs,it.endMs))+'</span>'
 				+'<span class="ems-next-name" style="color:'+it.color+'">'+esc(it.name)+'</span>'
@@ -614,22 +798,35 @@ function renderStack(){
 	var el=document.getElementById("ems-stack");
 	var ihP=num(g("addons.immersion_heater.runtime.allocated_power_w"));
 	var ihCmd=num(g("addons.immersion_heater.runtime.commanded_power_w"));
-	var ihRun=(ihCmd!==null&&ihCmd>=ON_W)||(ihP!==null&&ihP>=ON_W);
+	var ihFb=num(g("addons.immersion_heater.runtime.feedback_stage"))||0;
+	var ihMeas=num(g("addons.immersion_heater.runtime.measured_power_w"));
+	var ihLive=effectiveLiveWrite("immersion_heater");
+	var ihHw=immersionHardwareActive(ihLive);
 	var ihNext=firstWindow(g("planner.intent.allocation.immersion_heater.plan_json"),ON_W);
+	var ihPhase=resolveExecPhase(isPowerOn(ihP),!!ihNext,ihLive,ihHw);
+	var ihHwLabel=ihHw?(isPowerOn(ihMeas)?("an · "+fmtW(ihMeas)):(ihFb>0?("Stufe "+ihFb+(isPowerOn(ihCmd)?(" · "+fmtW(ihCmd)):"")):"an")):"unverändert";
+	if(ihHw&&ihLive&&isPowerOn(ihCmd)&&!isPowerOn(ihMeas)&&ihFb<=0)ihHwLabel="an · "+fmtW(ihCmd);
 	var ihNote=shortNote(g("addons.immersion_heater.runtime.plan_target_reason_de")||g("addons.immersion_heater.runtime.allocation_reason_de"),110);
 	var emptyAt=fmtEmptyAt(g("learning.thermal_runtime.estimated_empty_at"));
 	var remH=num(g("learning.thermal_runtime.estimated_remaining_hours"));
 	var reichtBis=emptyAt?(emptyAt+(remH!==null?" · ~"+remH.toFixed(1).replace(".",",")+" h":"")):(remH!==null?"noch ~"+remH.toFixed(1).replace(".",",")+" h":"—");
 
-	var wbLive=num(g("live.wallbox.charge_power_w"));
+	var wbLiveP=num(g("live.wallbox.charge_power_w"));
 	var wbPlan=num(g("addons.wallbox.runtime.allocated_power_w"));
-	var wbRun=isOn(g("live.wallbox.charging"))||(wbLive!==null&&wbLive>=ON_W);
+	var wbLiveOk=effectiveLiveWrite("wallbox");
+	var wbHw=isOn(g("live.wallbox.charging"))||isPowerOn(wbLiveP);
 	var wbNext=firstWindow(g("planner.intent.allocation.wallbox.plan_json"),ON_W);
+	var wbPhase=resolveExecPhase(isPowerOn(wbPlan),!!wbNext,wbLiveOk,wbHw);
+	var wbHwLabel=wbHw?("lädt · "+fmtW(wbLiveP)):"lädt nicht";
 	var wbNote=shortNote(g("addons.wallbox.runtime.reason_de"),110);
 
 	var batP=num(g("addons.battery.runtime.allocated_charge_power_w"));
-	var batRun=batP!==null&&batP>=ON_W;
+	var batCharge=num(g("addons.battery.telemetry.charging_power_w"));
+	var batLiveOk=effectiveLiveWrite("battery");
+	var batHw=isPowerOn(batCharge);
 	var batNext=firstWindow(g("planner.intent.allocation.battery.plan_json"),ON_W);
+	var batPhase=resolveExecPhase(isPowerOn(batP),!!batNext,batLiveOk,batHw);
+	var batHwLabel=batHw?fmtW(batCharge):"unverändert";
 	var batNote=shortNote(g("addons.battery.runtime.reason_de"),110);
 
 	function acCard(unitIndex){
@@ -637,32 +834,29 @@ function renderStack(){
 		var name=txt(g(base+".name"),"");
 		if(!name&&!g(base+".room_temp_c")&&!g(base+".running"))return'<div class="ems-card-empty"></div>';
 		var title=name?("Klima · "+name):("Klima "+unitIndex);
-		var running=isOn(g(base+".running"));
-		var c=acContribution(unitIndex);
-		var planned=c&&c.details&&c.details.likelyActive===true;
-		var badge=running?{cls:"on",label:"Läuft"}:(planned?{cls:"soon",label:"Geplant"}:{cls:"idle",label:"Aus"});
-		var note=shortNote(g(base+".reason_de")||g(base+".allocation_reason_de")||acPlanLine(unitIndex),110);
-		return card(title,"#79c0ff",badge,[
+		var d=resolveClimateUnitDisplay(unitIndex);
+		return card(title,"#79c0ff",d.badge,[
 			["Raum",fmtTemp(g(base+".room_temp_c"))],
-			["Heute",acPlanLine(unitIndex)],
-			["Jetzt",running?"eingeschaltet":"aus"]
-		],note);
+			["Heute",d.heuteLine],
+			["Plan",d.planLine],
+			["Jetzt",d.nowLine]
+		],d.note);
 	}
 
 	el.innerHTML=
-		card("Batterie","#58a6ff",userBadge(batRun,!!batNext),[
+		card("Batterie","#58a6ff",userBadge(batPhase),[
 			["SOC",fmtPct(g("live.battery.soc_pct"))],
-			["Laden",batRun?fmtW(batP):"aus"],
+			["Laden",execNowLine(batPhase,batP,batHwLabel)],
 			["Nächstes",batNext?(fmtSmartTime(batNext.t)+" · "+Math.round(batNext.w)+" W"):"keines"]
 		],batNote||"Batterie folgt dem Hausplan.")
-		+card("Wallbox / Auto","#d2a8ff",userBadge(wbRun,!!wbNext),[
-			["Jetzt",wbRun?("lädt · "+fmtW(wbLive)):"lädt nicht"],
+		+card("Wallbox / Auto","#d2a8ff",userBadge(wbPhase),[
+			["Jetzt",execNowLine(wbPhase,wbPlan,wbHwLabel)],
 			["Fahrzeug",fmtPct(g("live.wallbox.vehicle_soc_pct"))],
 			["Plan",fmtW(wbPlan)],
 			["Nächstes",wbNext?(fmtSmartTime(wbNext.t)+" · "+Math.round(wbNext.w)+" W"):"keines"]
 		],wbNote)
-		+card("Heizstab","#ffa657",userBadge(ihRun,!!ihNext),[
-			["Jetzt",ihRun?("an · "+fmtW(ihCmd!==null?ihCmd:ihP)):"aus"],
+		+card("Heizstab","#ffa657",userBadge(ihPhase),[
+			["Jetzt",execNowLine(ihPhase,ihP,ihHwLabel)],
 			["Puffer",fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c"))],
 			["Ziel",fmtTemp(g("addons.immersion_heater.runtime.plan_target_temp_c"))],
 			["Reicht bis",reichtBis],

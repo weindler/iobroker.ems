@@ -7,6 +7,12 @@ const history_1 = require("./history");
 const mapping_1 = require("./mapping");
 const math_1 = require("./math");
 const persist_1 = require("./persist");
+const decompose_1 = require("./decompose");
+const types_1 = require("../../addons/immersion_heater/runtime/types");
+const ensure_states_1 = require("../../addons/air_conditioning/runtime/ensure_states");
+const constants_2 = require("../../addons/air_conditioning/constants");
+const ensure_states_2 = require("../../addons/battery/ensure_states");
+const state_util_1 = require("../../ems_light/state_util");
 const JSON_STATE_LIMIT = 12_000;
 function truncateJson(obj) {
     const raw = JSON.stringify(obj);
@@ -92,7 +98,57 @@ async function runHouseLoadLearning(host) {
     }
     try {
         host.log.debug?.(`House-Load-Learning: loading history (${cfg.lookbackDays}d, ${(0, config_1.sourceLabelFromStateId)(resolved.stateId)})…`);
-        const { samples, lastValidTs, stats } = await (0, history_1.fetchHouseLoadSamples)(host, resolved.stateId, cfg.lookbackDays);
+        const { samples: rawSamples, lastValidTs, stats } = await (0, history_1.fetchHouseLoadSamples)(host, resolved.stateId, cfg.lookbackDays);
+        /*
+         * Flex-Dekomposition: bekannte EMS-Istwerte vom aktuellen Stundenfenster
+         * (keine erfundenen Historien). Ältere Samples bleiben unverändert, bis
+         * stundenweise Flex-Historie verfügbar ist.
+         */
+        const flexMap = new Map();
+        const currentHour = Math.floor(now.getTime() / constants_1.MS_PER_HOUR) * constants_1.MS_PER_HOUR;
+        /*
+         * Nur belastbare Istwerte abziehen. Aktiv ohne Leistungstelemetrie → null
+         * (quality partial). Inaktiv/unmapped → weglassen (nicht als missing markieren).
+         */
+        const climateUnitsW = [];
+        for (let u = 1; u <= constants_2.AC_UNIT_COUNT; u++) {
+            const ids = (0, ensure_states_1.acUnitRuntimeStates)(u);
+            const running = (await host.getStateAsync(ids.running))?.val === true;
+            const est = (0, state_util_1.asNum)((await host.getStateAsync(ids.estimatedPowerW))?.val);
+            if (!running)
+                climateUnitsW.push(undefined);
+            else
+                climateUnitsW.push(est != null && est >= 0 ? est : null);
+        }
+        const ihMeas = (0, state_util_1.asNum)((await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.measuredPowerW))?.val);
+        const ihCmd = (0, state_util_1.asNum)((await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.commandedPowerW))?.val);
+        const ihStage = (0, state_util_1.asNum)((await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.feedbackStage))?.val) ?? 0;
+        const ihActive = ihStage > 0 || (ihMeas != null && ihMeas > 0);
+        const wbCharge = (0, state_util_1.asNum)((await host.getStateAsync("live.wallbox.charge_power_w"))?.val);
+        const batCharge = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_2.BAT.telemetry.chargingPowerW))?.val);
+        const flex = {
+            climateUnitsW,
+            immersionHeaterW: ihMeas != null && ihMeas >= 0
+                ? ihMeas
+                : ihActive
+                    ? ihCmd != null && ihCmd >= 0
+                        ? ihCmd
+                        : null
+                    : undefined,
+        };
+        if (wbCharge != null && wbCharge >= 0)
+            flex.wallboxChargeW = wbCharge;
+        if (batCharge != null && batCharge >= 0)
+            flex.batteryChargeW = batCharge;
+        flexMap.set(currentHour, flex);
+        const decomp = (0, decompose_1.applyFlexDecompositionToSamples)(rawSamples, flexMap);
+        const samples = decomp.samples.map((s, i) => ({
+            ...rawSamples[i],
+            powerW: s.powerW,
+        }));
+        if (decomp.decomposedCount > 0) {
+            host.log.debug?.(`House-Load-Learning: Flex-Dekomposition auf ${decomp.decomposedCount} Samples (partial=${decomp.partialCount})`);
+        }
         const sampleDays = (0, history_1.distinctSampleDays)(samples);
         const sampleDaysMinHours = (0, history_1.distinctSampleDaysWithMinHours)(samples, constants_1.MIN_DAY_HOURS);
         const result = (0, math_1.computeHouseLoadLearning)({

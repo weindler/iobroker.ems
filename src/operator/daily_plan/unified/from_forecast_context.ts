@@ -25,6 +25,7 @@ import {
 	buildVehicleAvailabilityWindows,
 	type ExplicitPresenceWindow,
 } from "./vehicle_availability";
+import { isLiveNowTelemetryUsable } from "../live_surplus";
 
 function num(d: Record<string, unknown> | null | undefined, key: string): number | null {
 	if (!d) return null;
@@ -97,6 +98,16 @@ export type UnifiedForecastContext = {
 	/** Ist-Werte für aktuellen Slot (Replanning); null = unbekannt. */
 	observedPvPowerW?: number | null;
 	observedHouseLoadPowerW?: number | null;
+	observedPvAgeSec?: number | null;
+	observedHouseAgeSec?: number | null;
+	/** Klima Runtime-Ist für Hold-Bilanz (kein FSM-Eingriff). */
+	acRuntime?: Array<{
+		unitIndex: number;
+		running: boolean;
+		decisionSource?: string | null;
+		allocatedPowerW?: number | null;
+		estimatedPowerW?: number | null;
+	}>;
 	contributionRevision?: number | null;
 	/** Vorherige PV-Tageserwartung (für Forecast-Replan-Vergleich). */
 	previousExpectedDayEnergyKwh?: number | null;
@@ -146,30 +157,39 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 		return Number.isFinite(a) && Number.isFinite(b) && nowMs >= a && nowMs < b;
 	})?.startIso;
 
+	const liveNowUsable = isLiveNowTelemetryUsable({
+		pvPowerW: ctx.observedPvPowerW ?? null,
+		houseLoadW: ctx.observedHouseLoadPowerW ?? null,
+		pvAgeSec: ctx.observedPvAgeSec,
+		houseAgeSec: ctx.observedHouseAgeSec,
+	});
+
 	const pvSlots = ctx.forecastPlan.slots.map((s) => {
 		const power = s.pvPowerW;
 		const observed =
-			currentSlotStart && s.slot.startIso === currentSlotStart
+			liveNowUsable && currentSlotStart && s.slot.startIso === currentSlotStart
 				? (ctx.observedPvPowerW ?? null)
 				: null;
+		const effective = observed ?? power;
 		return {
 			slot: s.slot,
 			forecastPowerW: power,
 			observedPowerW: observed,
-			energyKwh: slotEnergyKwh(power),
+			energyKwh: slotEnergyKwh(effective),
 		};
 	});
 	const loadSlots = ctx.forecastPlan.slots.map((s) => {
 		const power = s.houseLoadPowerW;
 		const observed =
-			currentSlotStart && s.slot.startIso === currentSlotStart
+			liveNowUsable && currentSlotStart && s.slot.startIso === currentSlotStart
 				? (ctx.observedHouseLoadPowerW ?? null)
 				: null;
+		const effective = observed ?? power;
 		return {
 			slot: s.slot,
 			forecastPowerW: power,
 			observedPowerW: observed,
-			energyKwh: slotEnergyKwh(power),
+			energyKwh: slotEnergyKwh(effective),
 		};
 	});
 	const priceSlots = ctx.forecastPlan.slots.map((s) => ({
@@ -284,6 +304,7 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 	);
 
 	// --- Climate ---
+	const acRtByUnit = new Map((ctx.acRuntime ?? []).map((r) => [r.unitIndex, r]));
 	const climateUnits: UnifiedClimateUnitInput[] = [];
 	for (let u = 1; u <= AC_UNIT_COUNT; u++) {
 		const c = contribById.get(CONTRIBUTION_IDS.AC_UNIT(u));
@@ -295,6 +316,15 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 		const typical = num(d, "estimatedPowerW") ?? num(d, "typicalPowerW") ?? num(d, "expectedPeakW");
 		const expected = num(d, "expectedKwhToday") ?? num(d, "expectedEnergyKwh");
 		const overComfort = room !== null && onTemp !== null && room >= onTemp;
+		const rt = acRtByUnit.get(u);
+		const hardwareRunning = rt?.running === true;
+		const allocW = rt?.allocatedPowerW;
+		const noNewDemand =
+			rt?.decisionSource === "temperature_no_demand" ||
+			(allocW != null && Number.isFinite(allocW) && allocW < 50);
+		const runtimeHold = hardwareRunning && noNewDemand;
+		const holdPowerW =
+			rt?.estimatedPowerW ?? typical ?? (allocW != null && allocW > 0 ? allocW : null);
 		climateUnits.push({
 			unitId: CONTRIBUTION_IDS.AC_UNIT(u),
 			label: str(d, "name") ?? `unit_${u}`,
@@ -307,6 +337,9 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 			typicalPowerW: typical,
 			maxShiftHours: overComfort ? 0 : 3,
 			uncertainty: c.quality,
+			hardwareRunning,
+			runtimeHold,
+			holdPowerW,
 		});
 	}
 	const climateFresh = freshnessFrom(

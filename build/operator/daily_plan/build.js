@@ -112,7 +112,9 @@ function buildDailyPlan(input) {
     const dateKey = (0, time_1.localDateKeyInTimezone)(input.now, input.timezone);
     const horizonSlots = (0, slots_1.buildDailyHorizonSlots)(input.now, input.timezone, SLOT_MINUTES);
     const slots = (0, constraints_1.buildDailyPlanSlots)(horizonSlots, input.forecastPlan.slots, input.effectiveMaxGridImportW, input.configuredHouseFuseLimitW);
-    (0, live_surplus_1.applyLiveSurplusFloorToCurrentSlot)(slots, input.now.getTime(), input.livePvSurplusW ?? null);
+    if (input.liveNow) {
+        (0, live_surplus_1.applyLiveNowBalanceToCurrentSlot)(slots, input.now.getTime(), input.liveNow);
+    }
     const candidates = (0, allocation_1.buildAllocationCandidates)(input.contributions, input.globalMode, input.energyPriority);
     const allocationResult = (0, allocation_1.runAllocation)({
         slots,
@@ -207,6 +209,7 @@ function buildDailyPlanFromForecast(now, timezone, globalMode, forecastPlan, pol
         batteryConsumerAccess: policy.batteryConsumerAccess,
         batteryDischargeBudgetW: policy.batteryDischargeBudgetW ?? null,
         livePvSurplusW: policy.livePvSurplusW ?? null,
+        liveNow: policy.liveNow ?? null,
     });
 }
 exports.buildDailyPlanFromForecast = buildDailyPlanFromForecast;

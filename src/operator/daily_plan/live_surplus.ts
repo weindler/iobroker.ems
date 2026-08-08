@@ -1,14 +1,26 @@
 import { computeDeficitW } from "../planning/battery";
 import { computePvSurplusW } from "../planning/surplus";
-import type { DailyPlanSlot } from "./types";
 import { slotStartIsoFloored } from "./slots";
+import {
+	applyLiveNowBalanceToCurrentSlot,
+	applyLiveSurplusFloorToCurrentSlot,
+	type LiveNowTelemetry,
+} from "./live_now_balance";
+
+export {
+	applyLiveNowBalanceToCurrentSlot,
+	applyLiveSurplusFloorToCurrentSlot,
+	computeLiveNowBalanceW,
+	isLiveNowTelemetryUsable,
+	isPlausibleLivePowerW,
+	LIVE_NOW_MAX_AGE_SEC,
+	slotBalanceIsConsistent,
+} from "./live_now_balance";
+export type { LiveNowTelemetry, NowBalanceW } from "./live_now_balance";
 
 /**
  * Roadmap Block 3.3: Live-PV-Überschuss/-Defizit für Diagnose/VIS kommt ab hier direkt aus dem
- * Live-Cache (`live.pv.power_w` / `live.battery.pv_ac_power_w` / `live.battery.house_load_w`,
- * dieselben Quellen, die zuvor nur der alte Realtime-Planner für `planner.surplus_w` /
- * `planner.deficit_w` gelesen hat) statt aus dessen Tick — kontextualisiert mit dem aktuellen
- * Daily-Plan-Slot (`slotStartIso`). Reine Anzeige/Diagnose, keine Steuerentscheidung.
+ * Live-Cache (`live.pv.power_w` / `live.battery.pv_ac_power_w` / `live.battery.house_load_w`).
  */
 export interface OperatorLiveSurplusResult {
 	pvPowerW: number | null;
@@ -37,29 +49,17 @@ export function buildOperatorLiveSurplus(input: {
 	};
 }
 
-/**
- * Hebt den aktuellen Horizont-Slot auf den Live-PV-Überschuss an, wenn der Forecast zu niedrig
- * liegt (morgens oft). Nur Floor nach oben — nie Forecast absenken. Mutiert `slots` in-place.
- */
-export function applyLiveSurplusFloorToCurrentSlot(
-	slots: DailyPlanSlot[],
+/** Convenience: Live-NOW-Bilanz auf Daily-Plan-Slots anwenden. */
+export function applyLiveNowFromSurplusResult(
+	slots: Parameters<typeof applyLiveNowBalanceToCurrentSlot>[0],
 	nowMs: number,
-	liveSurplusW: number | null,
-): void {
-	if (liveSurplusW === null || !Number.isFinite(liveSurplusW) || liveSurplusW <= 0) return;
-	const floor = Math.round(liveSurplusW);
-	for (const slot of slots) {
-		const start = Date.parse(slot.slot.startIso);
-		const end = Date.parse(slot.slot.endIso);
-		if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
-		if (nowMs < start || nowMs >= end) continue;
-		const forecast = slot.availablePvSurplusPowerW;
-		const next = forecast === null ? floor : Math.max(forecast, floor);
-		slot.availablePvSurplusPowerW = next;
-		slot.remainingPvSurplusPowerW = next;
-		if (slot.fixedBalancePowerW !== null) {
-			slot.fixedBalancePowerW = Math.max(slot.fixedBalancePowerW, floor);
-		}
-		return;
-	}
+	live: OperatorLiveSurplusResult & { pvAgeSec?: number | null; houseAgeSec?: number | null },
+): boolean {
+	const telemetry: LiveNowTelemetry = {
+		pvPowerW: live.pvPowerW,
+		houseLoadW: live.houseLoadW,
+		pvAgeSec: live.pvAgeSec,
+		houseAgeSec: live.houseAgeSec,
+	};
+	return applyLiveNowBalanceToCurrentSlot(slots, nowMs, telemetry);
 }

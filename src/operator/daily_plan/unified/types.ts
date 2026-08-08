@@ -268,6 +268,15 @@ export type UnifiedClimateUnitInput = {
 	/** Max. Verschiebung in Stunden; null = unbekannt. */
 	maxShiftHours: number | null;
 	uncertainty: OperatorDataQuality;
+	/** Hardware läuft (Feedback). */
+	hardwareRunning?: boolean;
+	/**
+	 * Runtime-Hold: läuft wegen Hysterese/Min-Runtime ohne neuen Kühlbedarf /
+	 * ohne Plan-Allocation — reale Last, keine neue Flex-Allocation im NOW-Slot.
+	 */
+	runtimeHold?: boolean;
+	/** Geschätzte Hold-Leistung für Forecast-NOW-Reserve (wenn Live-HL die AC nicht enthält). */
+	holdPowerW?: number | null;
 };
 
 export type UnifiedClimateInput = {

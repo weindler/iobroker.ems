@@ -204,6 +204,16 @@ export type DailyPlanBuildInput = {
 	};
 	batteryConsumerAccess?: Partial<Record<BatteryConsumerId, BatteryConsumerAccess>>;
 	batteryDischargeBudgetW?: number | null;
-	/** Live-PV-Überschuss (W) — Floor für den aktuellen Slot vor Allocation. */
+	/**
+	 * @deprecated Beta-Befund 002 — nutze liveNow (konsistente Live-PV+HL).
+	 * Wird ignoriert, wenn liveNow gesetzt ist.
+	 */
 	livePvSurplusW?: number | null;
+	/** Frische Live-Telemetrie für konsistente NOW-Bilanz (PV+HL derselben Welt). */
+	liveNow?: {
+		pvPowerW: number | null;
+		houseLoadW: number | null;
+		pvAgeSec?: number | null;
+		houseAgeSec?: number | null;
+	} | null;
 };

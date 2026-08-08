@@ -9,22 +9,24 @@ const quality_1 = require("../quality");
 const live_surplus_js_1 = require("./live_surplus.js");
 const TZ = "UTC";
 const NOW = new Date("2026-07-11T10:07:00.000Z");
-function slotStub(startIso, endIso, surplus) {
+function slotStub(startIso, endIso, pv, house) {
+    const bal = pv - house;
+    const avail = Math.max(0, bal);
     return {
         slot: { startIso, endIso },
-        pvForecastPowerW: surplus,
-        fixedHouseLoadPowerW: 0,
-        fixedBalancePowerW: surplus,
+        pvForecastPowerW: pv,
+        fixedHouseLoadPowerW: house,
+        fixedBalancePowerW: bal,
         gridPriceCtPerKwh: 20,
         gridImportAllowed: true,
         configuredGridImportLimitW: 11000,
         remainingGridImportPowerW: 11000,
-        availablePvSurplusPowerW: surplus,
+        availablePvSurplusPowerW: avail,
         allocatedFlexiblePowerW: 0,
         allocatedPvPowerW: 0,
         allocatedGridPowerW: 0,
         allocatedBatteryPowerW: 0,
-        remainingPvSurplusPowerW: surplus,
+        remainingPvSurplusPowerW: avail,
         remainingGridImportPowerWAfterAlloc: 11000,
         remainingBatteryDischargePowerW: 0,
         allocations: [],
@@ -56,20 +58,32 @@ function slotStub(startIso, endIso, surplus) {
         strict_1.default.equal(r.slotStartIso, "2026-07-11T10:00:00.000Z");
     });
 });
-(0, node_test_1.describe)("applyLiveSurplusFloorToCurrentSlot", () => {
-    (0, node_test_1.it)("raises only the current slot when live surplus exceeds forecast", () => {
+(0, node_test_1.describe)("applyLiveNowBalanceToCurrentSlot (Beta-Befund 002)", () => {
+    (0, node_test_1.it)("setzt NOW konsistent live-live, Zukunft unverändert", () => {
         const slots = [
-            slotStub("2026-07-11T10:00:00.000Z", "2026-07-11T10:15:00.000Z", 600),
-            slotStub("2026-07-11T10:15:00.000Z", "2026-07-11T10:30:00.000Z", 800),
+            slotStub("2026-07-11T10:00:00.000Z", "2026-07-11T10:15:00.000Z", 2000, 800),
+            slotStub("2026-07-11T10:15:00.000Z", "2026-07-11T10:30:00.000Z", 2000, 800),
         ];
-        (0, live_surplus_js_1.applyLiveSurplusFloorToCurrentSlot)(slots, NOW.getTime(), 4200);
-        strict_1.default.equal(slots[0].availablePvSurplusPowerW, 4200);
-        strict_1.default.equal(slots[0].remainingPvSurplusPowerW, 4200);
-        strict_1.default.equal(slots[1].availablePvSurplusPowerW, 800);
+        const ok = (0, live_surplus_js_1.applyLiveNowBalanceToCurrentSlot)(slots, NOW.getTime(), {
+            pvPowerW: 5000,
+            houseLoadW: 1000,
+            pvAgeSec: 5,
+            houseAgeSec: 5,
+        });
+        strict_1.default.equal(ok, true);
+        strict_1.default.equal(slots[0].pvForecastPowerW, 5000);
+        strict_1.default.equal(slots[0].fixedHouseLoadPowerW, 1000);
+        strict_1.default.equal(slots[0].availablePvSurplusPowerW, 4000);
+        strict_1.default.equal((0, live_surplus_js_1.slotBalanceIsConsistent)(slots[0]), true);
+        strict_1.default.equal(slots[1].availablePvSurplusPowerW, 1200);
     });
-    (0, node_test_1.it)("does not lower a higher forecast", () => {
-        const slots = [slotStub("2026-07-11T10:00:00.000Z", "2026-07-11T10:15:00.000Z", 5000)];
-        (0, live_surplus_js_1.applyLiveSurplusFloorToCurrentSlot)(slots, NOW.getTime(), 2000);
-        strict_1.default.equal(slots[0].availablePvSurplusPowerW, 5000);
+    (0, node_test_1.it)("kein Mix mehr: Live-Surplus ohne Live-PV/HL wird nicht angewandt", () => {
+        const slots = [slotStub("2026-07-11T10:00:00.000Z", "2026-07-11T10:15:00.000Z", 2000, 800)];
+        const ok = (0, live_surplus_js_1.applyLiveNowBalanceToCurrentSlot)(slots, NOW.getTime(), {
+            pvPowerW: null,
+            houseLoadW: 1000,
+        });
+        strict_1.default.equal(ok, false);
+        strict_1.default.equal(slots[0].availablePvSurplusPowerW, 1200);
     });
 });

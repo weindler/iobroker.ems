@@ -142,7 +142,7 @@ function buildHouseLoadContribution(input) {
             fallbackLevelTomorrow: worstFallbackLevel(input.forecastTomorrow),
             slotResolution: slots.length > 0 ? "segment_baseline" : "daily_only",
             slotNoteDe: slots.length > 0
-                ? "Segment-Baselines — keine künstliche 15-Minuten-Auflösung innerhalb der Segmente."
+                ? "Segment-Baselines (nicht-steuerbare Grundlast, EMS-Flex separat) — keine künstliche 15-Minuten-Auflösung innerhalb der Segmente."
                 : "Keine belastbaren Segment-Zeitfenster — nur Tagesaggregate.",
         },
         slots,

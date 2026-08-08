@@ -73,6 +73,7 @@ const product_summary_1 = require("../../beta/product_summary");
 const notification_surface_1 = require("../../beta/notification_surface");
 const execution_effective_1 = require("../../beta/execution_effective");
 const execution_display_1 = require("../../beta/execution_display");
+const recompute_remainings_1 = require("./recompute_remainings");
 const tree_paths_1 = require("../../tree_paths");
 const atomic_write_1 = require("../../persistence/atomic_write");
 const path = __importStar(require("node:path"));
@@ -257,11 +258,23 @@ async function runDailyPlanTick(host, forecastPlan) {
             wallbox: false,
         },
     });
-    const pvFromPvEarly = (0, state_util_1.asNum)((await host.getStateAsync("live.pv.power_w"))?.val);
-    const pvFromBatteryEarly = (0, state_util_1.asNum)((await host.getStateAsync("live.battery.pv_ac_power_w"))?.val);
+    const pvStateEarly = await host.getStateAsync("live.pv.power_w");
+    const pvBatStateEarly = await host.getStateAsync("live.battery.pv_ac_power_w");
+    const houseStateEarly = await host.getStateAsync("live.battery.house_load_w");
+    const pvFromPvEarly = (0, state_util_1.asNum)(pvStateEarly?.val);
+    const pvFromBatteryEarly = (0, state_util_1.asNum)(pvBatStateEarly?.val);
+    const livePvPowerW = pvFromPvEarly ?? pvFromBatteryEarly;
+    const liveHouseLoadW = (0, state_util_1.asNum)(houseStateEarly?.val);
+    const nowMsEarly = now.getTime();
+    const ageSec = (st) => {
+        const ts = typeof st?.ts === "number" ? st.ts : null;
+        if (ts === null || !Number.isFinite(ts))
+            return null;
+        return Math.max(0, Math.round((nowMsEarly - ts) / 1000));
+    };
     const liveSurplusEarly = (0, live_surplus_1.buildOperatorLiveSurplus)({
-        pvPowerW: pvFromPvEarly ?? pvFromBatteryEarly,
-        houseLoadW: (0, state_util_1.asNum)((await host.getStateAsync("live.battery.house_load_w"))?.val),
+        pvPowerW: livePvPowerW,
+        houseLoadW: liveHouseLoadW,
         now,
         timezone,
     });
@@ -275,7 +288,12 @@ async function runDailyPlanTick(host, forecastPlan) {
         modePolicy,
         batteryConsumerAccess: consumerAccess,
         batteryDischargeBudgetW: batConsumers.maxDischargePowerW,
-        livePvSurplusW: liveSurplusEarly.surplusW,
+        liveNow: {
+            pvPowerW: livePvPowerW,
+            houseLoadW: liveHouseLoadW,
+            pvAgeSec: ageSec(pvFromPvEarly != null ? pvStateEarly : pvBatStateEarly),
+            houseAgeSec: ageSec(houseStateEarly),
+        },
     });
     const payload = (0, build_1.dailyPlanRevisionPayload)(plan);
     if (payload !== lastRevisionPayload) {
@@ -324,6 +342,17 @@ async function runDailyPlanTick(host, forecastPlan) {
         }
         presenceStore = nextStore;
     }
+    const acRuntime = [];
+    for (let u = 1; u <= constants_1.AC_UNIT_COUNT; u++) {
+        const ids = (0, ensure_states_3.acUnitRuntimeStates)(u);
+        acRuntime.push({
+            unitIndex: u,
+            running: (await host.getStateAsync(ids.running))?.val === true,
+            decisionSource: String((await host.getStateAsync(ids.decisionSource))?.val ?? "") || null,
+            allocatedPowerW: (0, state_util_1.asNum)((await host.getStateAsync(ids.allocatedPowerW))?.val),
+            estimatedPowerW: (0, state_util_1.asNum)((await host.getStateAsync(ids.estimatedPowerW))?.val),
+        });
+    }
     const probeInput = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)({
         now,
         timezone,
@@ -337,8 +366,11 @@ async function runDailyPlanTick(host, forecastPlan) {
         batteryMinSocPct: hw.minSocPct,
         batteryMaxSocPct: hw.maxSocPct,
         roomTemps,
-        observedPvPowerW: (0, state_util_1.asNum)((await host.getStateAsync("live.battery.pv_ac_power_w"))?.val),
-        observedHouseLoadPowerW: (0, state_util_1.asNum)((await host.getStateAsync("live.battery.house_load_w"))?.val),
+        observedPvPowerW: livePvPowerW,
+        observedHouseLoadPowerW: liveHouseLoadW,
+        observedPvAgeSec: ageSec(pvFromPvEarly != null ? pvStateEarly : pvBatStateEarly),
+        observedHouseAgeSec: ageSec(houseStateEarly),
+        acRuntime,
         contributionRevision: plan.revision,
         previousExpectedDayEnergyKwh: lastBaseline?.expectedPvDayKwh ?? null,
         realizedPvKwhToday: realizedPv,
@@ -408,8 +440,11 @@ async function runDailyPlanTick(host, forecastPlan) {
                 batteryMinSocPct: hw.minSocPct,
                 batteryMaxSocPct: hw.maxSocPct,
                 roomTemps,
-                observedPvPowerW: (0, state_util_1.asNum)((await host.getStateAsync("live.battery.pv_ac_power_w"))?.val),
-                observedHouseLoadPowerW: (0, state_util_1.asNum)((await host.getStateAsync("live.battery.house_load_w"))?.val),
+                observedPvPowerW: livePvPowerW,
+                observedHouseLoadPowerW: liveHouseLoadW,
+                observedPvAgeSec: ageSec(pvFromPvEarly != null ? pvStateEarly : pvBatStateEarly),
+                observedHouseAgeSec: ageSec(houseStateEarly),
+                acRuntime,
                 contributionRevision: plan.revision,
                 previousExpectedDayEnergyKwh: lastBaseline?.expectedPvDayKwh ?? null,
                 realizedPvKwhToday: realizedPv,
@@ -586,7 +621,7 @@ async function runDailyPlanTick(host, forecastPlan) {
                 host.log?.warn?.(`day_evaluation/explain/notify: ${String(e)}`);
             }
             const pub = (0, dispatch_bridge_1.buildUnifiedDispatchPublish)(unifiedPlan);
-            plan = (0, authority_1.applyUnifiedDayAuthority)(plan, {
+            plan = (0, recompute_remainings_1.recomputeDailyPlanSlotRemainings)((0, authority_1.applyUnifiedDayAuthority)(plan, {
                 immersionEntries: pub.immersionEntries,
                 climateEntries: pub.climateEntries,
                 batteryEntries: pub.batteryEntries,
@@ -594,7 +629,7 @@ async function runDailyPlanTick(host, forecastPlan) {
             }, {
                 dailyPlanRevision: plan.revision,
                 unifiedPlanId: unifiedPlan.planId,
-            });
+            }));
             ihAcReasonSuffix =
                 ` ${(0, from_forecast_context_1.summarizeUnifiedDayPlanForReason)(unifiedPlan)} IH/AC/Battery/Wallbox autoritativ` +
                     (decision.reasons.length ? ` [${decision.reasons.join(",")}]` : "") +
@@ -627,7 +662,7 @@ async function runDailyPlanTick(host, forecastPlan) {
                 // FAIL-003: Restplan weiter gültig — kein Authority-Publish, keine neue Generation.
                 return plan;
             }
-            plan = (0, replan_failure_1.applyReplanFailureAuthority)(plan, lastUnifiedPlan, disposition);
+            plan = (0, recompute_remainings_1.recomputeDailyPlanSlotRemainings)((0, replan_failure_1.applyReplanFailureAuthority)(plan, lastUnifiedPlan, disposition));
             const trimFuture = (kind) => {
                 if (!lastUnifiedPlan)
                     return;

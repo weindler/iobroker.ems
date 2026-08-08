@@ -1,5 +1,5 @@
 import { sourceLabelFromStateId, houseLoadConfigFromAdapter } from "./config";
-import { MIN_DAY_HOURS } from "./constants";
+import { MIN_DAY_HOURS, MS_PER_HOUR } from "./constants";
 import { distinctSampleDays, distinctSampleDaysWithMinHours, fetchHouseLoadSamples, type HouseLoadHistoryStats } from "./history";
 import { resolveHouseLoadPowerStateId } from "./mapping";
 import {
@@ -10,6 +10,15 @@ import {
 } from "./math";
 import { readHouseLoadPersist, writeHouseLoadPersist } from "./persist";
 import type { HouseLoadComputeResult } from "./types";
+import {
+	applyFlexDecompositionToSamples,
+	type KnownFlexibleEmsLoadsW,
+} from "./decompose";
+import { IMMERSION_RUNTIME_STATES } from "../../addons/immersion_heater/runtime/types";
+import { acUnitRuntimeStates } from "../../addons/air_conditioning/runtime/ensure_states";
+import { AC_UNIT_COUNT } from "../../addons/air_conditioning/constants";
+import { BAT } from "../../addons/battery/ensure_states";
+import { asNum } from "../../ems_light/state_util";
 
 import type { HistoryQueryHost } from "../history_query";
 
@@ -119,11 +128,59 @@ export async function runHouseLoadLearning(host: HouseLoadRunHost): Promise<void
 
 	try {
 		host.log.debug?.(`House-Load-Learning: loading history (${cfg.lookbackDays}d, ${sourceLabelFromStateId(resolved.stateId)})…`);
-		const { samples, lastValidTs, stats } = await fetchHouseLoadSamples(
+		const { samples: rawSamples, lastValidTs, stats } = await fetchHouseLoadSamples(
 			host,
 			resolved.stateId,
 			cfg.lookbackDays,
 		);
+		/*
+		 * Flex-Dekomposition: bekannte EMS-Istwerte vom aktuellen Stundenfenster
+		 * (keine erfundenen Historien). Ältere Samples bleiben unverändert, bis
+		 * stundenweise Flex-Historie verfügbar ist.
+		 */
+		const flexMap = new Map<number, KnownFlexibleEmsLoadsW>();
+		const currentHour = Math.floor(now.getTime() / MS_PER_HOUR) * MS_PER_HOUR;
+		/*
+		 * Nur belastbare Istwerte abziehen. Aktiv ohne Leistungstelemetrie → null
+		 * (quality partial). Inaktiv/unmapped → weglassen (nicht als missing markieren).
+		 */
+		const climateUnitsW: Array<number | null | undefined> = [];
+		for (let u = 1; u <= AC_UNIT_COUNT; u++) {
+			const ids = acUnitRuntimeStates(u);
+			const running = (await host.getStateAsync(ids.running))?.val === true;
+			const est = asNum((await host.getStateAsync(ids.estimatedPowerW))?.val);
+			if (!running) climateUnitsW.push(undefined);
+			else climateUnitsW.push(est != null && est >= 0 ? est : null);
+		}
+		const ihMeas = asNum((await host.getStateAsync(IMMERSION_RUNTIME_STATES.measuredPowerW))?.val);
+		const ihCmd = asNum((await host.getStateAsync(IMMERSION_RUNTIME_STATES.commandedPowerW))?.val);
+		const ihStage = asNum((await host.getStateAsync(IMMERSION_RUNTIME_STATES.feedbackStage))?.val) ?? 0;
+		const ihActive = ihStage > 0 || (ihMeas != null && ihMeas > 0);
+		const wbCharge = asNum((await host.getStateAsync("live.wallbox.charge_power_w"))?.val);
+		const batCharge = asNum((await host.getStateAsync(BAT.telemetry.chargingPowerW))?.val);
+		const flex: KnownFlexibleEmsLoadsW = {
+			climateUnitsW,
+			immersionHeaterW: ihMeas != null && ihMeas >= 0
+				? ihMeas
+				: ihActive
+					? ihCmd != null && ihCmd >= 0
+						? ihCmd
+						: null
+					: undefined,
+		};
+		if (wbCharge != null && wbCharge >= 0) flex.wallboxChargeW = wbCharge;
+		if (batCharge != null && batCharge >= 0) flex.batteryChargeW = batCharge;
+		flexMap.set(currentHour, flex);
+		const decomp = applyFlexDecompositionToSamples(rawSamples, flexMap);
+		const samples = decomp.samples.map((s, i) => ({
+			...rawSamples[i]!,
+			powerW: s.powerW,
+		}));
+		if (decomp.decomposedCount > 0) {
+			host.log.debug?.(
+				`House-Load-Learning: Flex-Dekomposition auf ${decomp.decomposedCount} Samples (partial=${decomp.partialCount})`,
+			);
+		}
 		const sampleDays = distinctSampleDays(samples);
 		const sampleDaysMinHours = distinctSampleDaysWithMinHours(samples, MIN_DAY_HOURS);
 		const result = computeHouseLoadLearning({

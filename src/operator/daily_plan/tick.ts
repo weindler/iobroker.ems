@@ -81,6 +81,7 @@ import { buildProductSummaryDe } from "../../beta/product_summary";
 import { buildProductNotificationSurface } from "../../beta/notification_surface";
 import { buildEffectiveExecutionSnapshot } from "../../beta/execution_effective";
 import { buildAgendaExecutionHints } from "../../beta/execution_display";
+import { recomputeDailyPlanSlotRemainings } from "./recompute_remainings";
 import { GLOBAL, addonMode } from "../../tree_paths";
 import { atomicWriteFile } from "../../persistence/atomic_write";
 import * as path from "node:path";
@@ -281,11 +282,22 @@ export async function runDailyPlanTick(
 		},
 	});
 
-	const pvFromPvEarly = asNum((await host.getStateAsync("live.pv.power_w"))?.val);
-	const pvFromBatteryEarly = asNum((await host.getStateAsync("live.battery.pv_ac_power_w"))?.val);
+	const pvStateEarly = await host.getStateAsync("live.pv.power_w");
+	const pvBatStateEarly = await host.getStateAsync("live.battery.pv_ac_power_w");
+	const houseStateEarly = await host.getStateAsync("live.battery.house_load_w");
+	const pvFromPvEarly = asNum(pvStateEarly?.val);
+	const pvFromBatteryEarly = asNum(pvBatStateEarly?.val);
+	const livePvPowerW = pvFromPvEarly ?? pvFromBatteryEarly;
+	const liveHouseLoadW = asNum(houseStateEarly?.val);
+	const nowMsEarly = now.getTime();
+	const ageSec = (st: ioBroker.State | null | undefined): number | null => {
+		const ts = typeof st?.ts === "number" ? st.ts : null;
+		if (ts === null || !Number.isFinite(ts)) return null;
+		return Math.max(0, Math.round((nowMsEarly - ts) / 1000));
+	};
 	const liveSurplusEarly = buildOperatorLiveSurplus({
-		pvPowerW: pvFromPvEarly ?? pvFromBatteryEarly,
-		houseLoadW: asNum((await host.getStateAsync("live.battery.house_load_w"))?.val),
+		pvPowerW: livePvPowerW,
+		houseLoadW: liveHouseLoadW,
 		now,
 		timezone,
 	});
@@ -302,7 +314,12 @@ export async function runDailyPlanTick(
 		modePolicy,
 		batteryConsumerAccess: consumerAccess,
 		batteryDischargeBudgetW: batConsumers.maxDischargePowerW,
-		livePvSurplusW: liveSurplusEarly.surplusW,
+		liveNow: {
+			pvPowerW: livePvPowerW,
+			houseLoadW: liveHouseLoadW,
+			pvAgeSec: ageSec(pvFromPvEarly != null ? pvStateEarly : pvBatStateEarly),
+			houseAgeSec: ageSec(houseStateEarly),
+		},
 	});
 
 	const payload = dailyPlanRevisionPayload(plan);
@@ -366,6 +383,24 @@ export async function runDailyPlanTick(
 		presenceStore = nextStore;
 	}
 
+	const acRuntime: Array<{
+		unitIndex: number;
+		running: boolean;
+		decisionSource?: string | null;
+		allocatedPowerW?: number | null;
+		estimatedPowerW?: number | null;
+	}> = [];
+	for (let u = 1; u <= AC_UNIT_COUNT; u++) {
+		const ids = acUnitRuntimeStates(u);
+		acRuntime.push({
+			unitIndex: u,
+			running: (await host.getStateAsync(ids.running))?.val === true,
+			decisionSource: String((await host.getStateAsync(ids.decisionSource))?.val ?? "") || null,
+			allocatedPowerW: asNum((await host.getStateAsync(ids.allocatedPowerW))?.val),
+			estimatedPowerW: asNum((await host.getStateAsync(ids.estimatedPowerW))?.val),
+		});
+	}
+
 	const probeInput = buildUnifiedInputFromForecastContext({
 		now,
 		timezone,
@@ -379,8 +414,11 @@ export async function runDailyPlanTick(
 		batteryMinSocPct: hw.minSocPct,
 		batteryMaxSocPct: hw.maxSocPct,
 		roomTemps,
-		observedPvPowerW: asNum((await host.getStateAsync("live.battery.pv_ac_power_w"))?.val),
-		observedHouseLoadPowerW: asNum((await host.getStateAsync("live.battery.house_load_w"))?.val),
+		observedPvPowerW: livePvPowerW,
+		observedHouseLoadPowerW: liveHouseLoadW,
+		observedPvAgeSec: ageSec(pvFromPvEarly != null ? pvStateEarly : pvBatStateEarly),
+		observedHouseAgeSec: ageSec(houseStateEarly),
+		acRuntime,
 		contributionRevision: plan.revision,
 		previousExpectedDayEnergyKwh: lastBaseline?.expectedPvDayKwh ?? null,
 		realizedPvKwhToday: realizedPv,
@@ -459,8 +497,11 @@ export async function runDailyPlanTick(
 				batteryMinSocPct: hw.minSocPct,
 				batteryMaxSocPct: hw.maxSocPct,
 				roomTemps,
-				observedPvPowerW: asNum((await host.getStateAsync("live.battery.pv_ac_power_w"))?.val),
-				observedHouseLoadPowerW: asNum((await host.getStateAsync("live.battery.house_load_w"))?.val),
+				observedPvPowerW: livePvPowerW,
+				observedHouseLoadPowerW: liveHouseLoadW,
+				observedPvAgeSec: ageSec(pvFromPvEarly != null ? pvStateEarly : pvBatStateEarly),
+				observedHouseAgeSec: ageSec(houseStateEarly),
+				acRuntime,
 				contributionRevision: plan.revision,
 				previousExpectedDayEnergyKwh: lastBaseline?.expectedPvDayKwh ?? null,
 				realizedPvKwhToday: realizedPv,
@@ -672,18 +713,20 @@ export async function runDailyPlanTick(
 			}
 
 			const pub = buildUnifiedDispatchPublish(unifiedPlan);
-			plan = applyUnifiedDayAuthority(
-				plan,
-				{
-					immersionEntries: pub.immersionEntries,
-					climateEntries: pub.climateEntries,
-					batteryEntries: pub.batteryEntries,
-					wallboxEntries: pub.wallboxEntries,
-				},
-				{
-					dailyPlanRevision: plan.revision,
-					unifiedPlanId: unifiedPlan.planId,
-				},
+			plan = recomputeDailyPlanSlotRemainings(
+				applyUnifiedDayAuthority(
+					plan,
+					{
+						immersionEntries: pub.immersionEntries,
+						climateEntries: pub.climateEntries,
+						batteryEntries: pub.batteryEntries,
+						wallboxEntries: pub.wallboxEntries,
+					},
+					{
+						dailyPlanRevision: plan.revision,
+						unifiedPlanId: unifiedPlan.planId,
+					},
+				),
 			);
 			ihAcReasonSuffix =
 				` ${summarizeUnifiedDayPlanForReason(unifiedPlan)} IH/AC/Battery/Wallbox autoritativ` +
@@ -718,7 +761,9 @@ export async function runDailyPlanTick(
 				// FAIL-003: Restplan weiter gültig — kein Authority-Publish, keine neue Generation.
 				return plan;
 			}
-			plan = applyReplanFailureAuthority(plan, lastUnifiedPlan, disposition);
+			plan = recomputeDailyPlanSlotRemainings(
+				applyReplanFailureAuthority(plan, lastUnifiedPlan, disposition),
+			);
 			const trimFuture = (kind: string) => {
 				if (!lastUnifiedPlan) return;
 				const nowMs = now.getTime();

@@ -27,8 +27,22 @@ function pvConfidenceFactor(input) {
         return 1;
     return Math.max(0.2, Math.min(1, c / 100));
 }
+/** Observed vor Forecast — eine Welt pro Slot (NOW live-live oder forecast-forecast). */
+function pickSlotPowerW(forecastPowerW, observedPowerW, energyKwh) {
+    if (observedPowerW != null && Number.isFinite(observedPowerW) && observedPowerW >= 0) {
+        return { powerW: observedPowerW, fromObserved: true };
+    }
+    if (forecastPowerW != null && Number.isFinite(forecastPowerW)) {
+        return { powerW: forecastPowerW, fromObserved: false };
+    }
+    if (energyKwh != null && Number.isFinite(energyKwh)) {
+        return { powerW: powerFromEnergyKwh(energyKwh), fromObserved: false };
+    }
+    return { powerW: null, fromObserved: false };
+}
 function buildSlots(input) {
     const byStart = new Map();
+    const nowUsesLive = new Set();
     for (const s of input.time.slots) {
         byStart.set(s.startIso, {
             startIso: s.startIso,
@@ -47,21 +61,21 @@ function buildSlots(input) {
         const w = byStart.get(p.slot.startIso);
         if (!w)
             continue;
-        if (p.energyKwh !== null && p.energyKwh !== undefined)
-            w.pvKwh = p.energyKwh;
-        else if (p.forecastPowerW !== null && p.forecastPowerW !== undefined) {
-            w.pvKwh = energyFromPowerW(p.forecastPowerW);
-        }
+        const pick = pickSlotPowerW(p.forecastPowerW, p.observedPowerW, p.energyKwh);
+        if (pick.powerW !== null)
+            w.pvKwh = energyFromPowerW(pick.powerW);
+        if (pick.fromObserved)
+            nowUsesLive.add(p.slot.startIso);
     }
     for (const h of input.houseLoad.slots) {
         const w = byStart.get(h.slot.startIso);
         if (!w)
             continue;
-        if (h.energyKwh !== null && h.energyKwh !== undefined)
-            w.houseKwh = h.energyKwh;
-        else if (h.forecastPowerW !== null && h.forecastPowerW !== undefined) {
-            w.houseKwh = energyFromPowerW(h.forecastPowerW);
-        }
+        const pick = pickSlotPowerW(h.forecastPowerW, h.observedPowerW, h.energyKwh);
+        if (pick.powerW !== null)
+            w.houseKwh = energyFromPowerW(pick.powerW);
+        if (!pick.fromObserved)
+            nowUsesLive.delete(h.slot.startIso);
     }
     for (const pr of input.prices.slots) {
         const w = byStart.get(pr.slot.startIso);
@@ -75,6 +89,25 @@ function buildSlots(input) {
     for (const w of slots) {
         w.surplusKwh = Math.max(0, w.pvKwh - w.houseKwh);
         w.remainPvKwh = w.surplusKwh;
+    }
+    /*
+     * Runtime-Hold AC: bei Forecast-NOW (ohne Live-HL) reale Hold-Last von Surplus nehmen.
+     * Bei Live-HL ist AC bereits in observedHouse enthalten — keine Extra-Reserve.
+     */
+    const nowMs = Date.parse(input.time.nowIso);
+    const nowSlot = slots.find((s) => nowMs >= s.startMs && nowMs < Date.parse(s.endIso));
+    if (nowSlot && input.climate && !nowUsesLive.has(nowSlot.startIso)) {
+        for (const u of input.climate.units) {
+            if (!u.runtimeHold)
+                continue;
+            const holdW = u.holdPowerW ?? u.typicalPowerW;
+            if (holdW == null || !(holdW > 0))
+                continue;
+            const e = energyFromPowerW(holdW);
+            nowSlot.houseKwh += e;
+            nowSlot.surplusKwh = Math.max(0, nowSlot.pvKwh - nowSlot.houseKwh);
+            nowSlot.remainPvKwh = nowSlot.surplusKwh;
+        }
     }
     return slots;
 }
@@ -205,6 +238,7 @@ function buildConsumerStates(input, slots) {
     }
     const cl = input.climate;
     if (cl) {
+        const nowSlotStart = slots.find((s) => nowMs >= s.startMs && nowMs < Date.parse(s.endIso))?.startIso;
         for (const u of cl.units) {
             const maxW = u.typicalPowerW;
             if (maxW === null || !(maxW > 0))
@@ -217,6 +251,7 @@ function buildConsumerStates(input, slots) {
             /*
              * Pflicht-Komfort: kein künstliches now+2h-Deadline-Hard-Cutoff
              * (sonst 00:05-Plan mit Slots ab 06:00 → 0 Klima). Urgency nur über Score.
+             * Runtime-Hold: keine zusätzliche Flex-Allocation im NOW-Slot.
              */
             out.push({
                 consumerId: u.unitId,
@@ -233,6 +268,9 @@ function buildConsumerStates(input, slots) {
                 maxShiftHours: u.maxShiftHours,
                 earliestSlotIdx: 0,
                 thermalBeforeDeadline: false,
+                slotAllowed: u.runtimeHold === true && nowSlotStart
+                    ? (slotStartIso) => slotStartIso !== nowSlotStart
+                    : undefined,
             });
         }
     }

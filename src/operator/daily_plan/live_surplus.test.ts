@@ -1,28 +1,34 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { operatorQuality } from "../quality";
-import { applyLiveSurplusFloorToCurrentSlot, buildOperatorLiveSurplus } from "./live_surplus.js";
+import {
+	applyLiveNowBalanceToCurrentSlot,
+	buildOperatorLiveSurplus,
+	slotBalanceIsConsistent,
+} from "./live_surplus.js";
 import type { DailyPlanSlot } from "./types.js";
 
 const TZ = "UTC";
 const NOW = new Date("2026-07-11T10:07:00.000Z");
 
-function slotStub(startIso: string, endIso: string, surplus: number | null): DailyPlanSlot {
+function slotStub(startIso: string, endIso: string, pv: number, house: number): DailyPlanSlot {
+	const bal = pv - house;
+	const avail = Math.max(0, bal);
 	return {
 		slot: { startIso, endIso },
-		pvForecastPowerW: surplus,
-		fixedHouseLoadPowerW: 0,
-		fixedBalancePowerW: surplus,
+		pvForecastPowerW: pv,
+		fixedHouseLoadPowerW: house,
+		fixedBalancePowerW: bal,
 		gridPriceCtPerKwh: 20,
 		gridImportAllowed: true,
 		configuredGridImportLimitW: 11000,
 		remainingGridImportPowerW: 11000,
-		availablePvSurplusPowerW: surplus,
+		availablePvSurplusPowerW: avail,
 		allocatedFlexiblePowerW: 0,
 		allocatedPvPowerW: 0,
 		allocatedGridPowerW: 0,
 		allocatedBatteryPowerW: 0,
-		remainingPvSurplusPowerW: surplus,
+		remainingPvSurplusPowerW: avail,
 		remainingGridImportPowerWAfterAlloc: 11000,
 		remainingBatteryDischargePowerW: 0,
 		allocations: [],
@@ -59,21 +65,33 @@ describe("buildOperatorLiveSurplus (Roadmap Block 3.3 — Live-Cache statt altem
 	});
 });
 
-describe("applyLiveSurplusFloorToCurrentSlot", () => {
-	it("raises only the current slot when live surplus exceeds forecast", () => {
+describe("applyLiveNowBalanceToCurrentSlot (Beta-Befund 002)", () => {
+	it("setzt NOW konsistent live-live, Zukunft unverändert", () => {
 		const slots = [
-			slotStub("2026-07-11T10:00:00.000Z", "2026-07-11T10:15:00.000Z", 600),
-			slotStub("2026-07-11T10:15:00.000Z", "2026-07-11T10:30:00.000Z", 800),
+			slotStub("2026-07-11T10:00:00.000Z", "2026-07-11T10:15:00.000Z", 2000, 800),
+			slotStub("2026-07-11T10:15:00.000Z", "2026-07-11T10:30:00.000Z", 2000, 800),
 		];
-		applyLiveSurplusFloorToCurrentSlot(slots, NOW.getTime(), 4200);
-		assert.equal(slots[0].availablePvSurplusPowerW, 4200);
-		assert.equal(slots[0].remainingPvSurplusPowerW, 4200);
-		assert.equal(slots[1].availablePvSurplusPowerW, 800);
+		const ok = applyLiveNowBalanceToCurrentSlot(slots, NOW.getTime(), {
+			pvPowerW: 5000,
+			houseLoadW: 1000,
+			pvAgeSec: 5,
+			houseAgeSec: 5,
+		});
+		assert.equal(ok, true);
+		assert.equal(slots[0]!.pvForecastPowerW, 5000);
+		assert.equal(slots[0]!.fixedHouseLoadPowerW, 1000);
+		assert.equal(slots[0]!.availablePvSurplusPowerW, 4000);
+		assert.equal(slotBalanceIsConsistent(slots[0]!), true);
+		assert.equal(slots[1]!.availablePvSurplusPowerW, 1200);
 	});
 
-	it("does not lower a higher forecast", () => {
-		const slots = [slotStub("2026-07-11T10:00:00.000Z", "2026-07-11T10:15:00.000Z", 5000)];
-		applyLiveSurplusFloorToCurrentSlot(slots, NOW.getTime(), 2000);
-		assert.equal(slots[0].availablePvSurplusPowerW, 5000);
+	it("kein Mix mehr: Live-Surplus ohne Live-PV/HL wird nicht angewandt", () => {
+		const slots = [slotStub("2026-07-11T10:00:00.000Z", "2026-07-11T10:15:00.000Z", 2000, 800)];
+		const ok = applyLiveNowBalanceToCurrentSlot(slots, NOW.getTime(), {
+			pvPowerW: null,
+			houseLoadW: 1000,
+		});
+		assert.equal(ok, false);
+		assert.equal(slots[0]!.availablePvSurplusPowerW, 1200);
 	});
 });

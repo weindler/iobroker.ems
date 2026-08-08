@@ -15,6 +15,7 @@ const quality_1 = require("../../quality");
 const flex_demand_1 = require("../../contributions/flexible/flex_demand");
 const constants_1 = require("../../../addons/air_conditioning/constants");
 const vehicle_availability_1 = require("./vehicle_availability");
+const live_surplus_1 = require("../live_surplus");
 function num(d, key) {
     if (!d)
         return null;
@@ -92,28 +93,36 @@ function buildUnifiedInputFromForecastContext(ctx) {
         const b = Date.parse(s.endIso);
         return Number.isFinite(a) && Number.isFinite(b) && nowMs >= a && nowMs < b;
     })?.startIso;
+    const liveNowUsable = (0, live_surplus_1.isLiveNowTelemetryUsable)({
+        pvPowerW: ctx.observedPvPowerW ?? null,
+        houseLoadW: ctx.observedHouseLoadPowerW ?? null,
+        pvAgeSec: ctx.observedPvAgeSec,
+        houseAgeSec: ctx.observedHouseAgeSec,
+    });
     const pvSlots = ctx.forecastPlan.slots.map((s) => {
         const power = s.pvPowerW;
-        const observed = currentSlotStart && s.slot.startIso === currentSlotStart
+        const observed = liveNowUsable && currentSlotStart && s.slot.startIso === currentSlotStart
             ? (ctx.observedPvPowerW ?? null)
             : null;
+        const effective = observed ?? power;
         return {
             slot: s.slot,
             forecastPowerW: power,
             observedPowerW: observed,
-            energyKwh: slotEnergyKwh(power),
+            energyKwh: slotEnergyKwh(effective),
         };
     });
     const loadSlots = ctx.forecastPlan.slots.map((s) => {
         const power = s.houseLoadPowerW;
-        const observed = currentSlotStart && s.slot.startIso === currentSlotStart
+        const observed = liveNowUsable && currentSlotStart && s.slot.startIso === currentSlotStart
             ? (ctx.observedHouseLoadPowerW ?? null)
             : null;
+        const effective = observed ?? power;
         return {
             slot: s.slot,
             forecastPowerW: power,
             observedPowerW: observed,
-            energyKwh: slotEnergyKwh(power),
+            energyKwh: slotEnergyKwh(effective),
         };
     });
     const priceSlots = ctx.forecastPlan.slots.map((s) => ({
@@ -211,6 +220,7 @@ function buildUnifiedInputFromForecastContext(ctx) {
         : (0, quality_1.operatorQuality)("missing", "Heizstab-Contribution fehlt.", null);
     const thermalFresh = freshnessFrom(nowMs, ctx.bufferTempObservedAtIso ?? ih?.generatedAt ?? null, thermalQuality);
     // --- Climate ---
+    const acRtByUnit = new Map((ctx.acRuntime ?? []).map((r) => [r.unitIndex, r]));
     const climateUnits = [];
     for (let u = 1; u <= constants_1.AC_UNIT_COUNT; u++) {
         const c = contribById.get(contribution_ids_1.CONTRIBUTION_IDS.AC_UNIT(u));
@@ -223,6 +233,13 @@ function buildUnifiedInputFromForecastContext(ctx) {
         const typical = num(d, "estimatedPowerW") ?? num(d, "typicalPowerW") ?? num(d, "expectedPeakW");
         const expected = num(d, "expectedKwhToday") ?? num(d, "expectedEnergyKwh");
         const overComfort = room !== null && onTemp !== null && room >= onTemp;
+        const rt = acRtByUnit.get(u);
+        const hardwareRunning = rt?.running === true;
+        const allocW = rt?.allocatedPowerW;
+        const noNewDemand = rt?.decisionSource === "temperature_no_demand" ||
+            (allocW != null && Number.isFinite(allocW) && allocW < 50);
+        const runtimeHold = hardwareRunning && noNewDemand;
+        const holdPowerW = rt?.estimatedPowerW ?? typical ?? (allocW != null && allocW > 0 ? allocW : null);
         climateUnits.push({
             unitId: contribution_ids_1.CONTRIBUTION_IDS.AC_UNIT(u),
             label: str(d, "name") ?? `unit_${u}`,
@@ -235,6 +252,9 @@ function buildUnifiedInputFromForecastContext(ctx) {
             typicalPowerW: typical,
             maxShiftHours: overComfort ? 0 : 3,
             uncertainty: c.quality,
+            hardwareRunning,
+            runtimeHold,
+            holdPowerW,
         });
     }
     const climateFresh = freshnessFrom(nowMs, nowIso, climateUnits[0]?.uncertainty ?? (0, quality_1.operatorQuality)("missing", "Keine Klima-Units.", null));

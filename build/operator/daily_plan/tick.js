@@ -69,6 +69,10 @@ const session_1 = require("../../learning/day_evaluation/session");
 const explain_1 = require("../../learning/day_evaluation/explain");
 const notify_1 = require("../../learning/day_evaluation/notify");
 const context_1 = require("../../ai/explanation/context");
+const product_summary_1 = require("../../beta/product_summary");
+const notification_surface_1 = require("../../beta/notification_surface");
+const execution_effective_1 = require("../../beta/execution_effective");
+const tree_paths_1 = require("../../tree_paths");
 const atomic_write_1 = require("../../persistence/atomic_write");
 const path = __importStar(require("node:path"));
 let lastRevisionPayload = "";
@@ -377,9 +381,8 @@ async function runDailyPlanTick(host, forecastPlan) {
     }
     try {
         /*
-         * IH/AC Authority: Unified zuerst in Memory mergen, dann einmal publizieren.
-         * Kein klassischer IH/AC-Live-Publish vor Unified (Race vermeiden).
-         * Battery/Wallbox bleiben klassisch im Plan.
+         * Unified Authority: IH/AC/Battery/Wallbox in Memory mergen, dann einmal publizieren.
+         * Kein klassischer Add-on-Live-Publish vor Unified (Race vermeiden).
          */
         let ihAcReasonSuffix = "";
         try {
@@ -515,8 +518,19 @@ async function runDailyPlanTick(host, forecastPlan) {
                     replanReasons: sess?.replanReasons ?? decision.reasons,
                     initialPlanId: sess?.initialPlanId ?? null,
                 });
+                const productSummary = (0, product_summary_1.buildProductSummaryDe)(unifiedPlan, {
+                    batteryStartSocPct: unifiedInputFinal.battery.socPct,
+                });
+                await (0, state_write_1.setStateIfChanged)(host, "operator.product_summary_de", productSummary);
+                const notifySurface = (0, notification_surface_1.buildProductNotificationSurface)(lastNotifyCandidates, now.toISOString());
+                await (0, state_write_1.setStateIfChanged)(host, "operator.notification.candidates_json", JSON.stringify(notifySurface));
+                await (0, state_write_1.setStateIfChanged)(host, "operator.notification.last_reason_de", notifySurface.lastReasonDe ?? "");
+                await (0, state_write_1.setStateIfChanged)(host, "operator.notification.last_severity", notifySurface.lastSeverity ?? "");
+                await (0, state_write_1.setStateIfChanged)(host, "operator.notification.last_kind", notifySurface.lastKind ?? "");
+                await (0, state_write_1.setStateIfChanged)(host, "operator.notification.last_dedup_key", notifySurface.lastDedupKey ?? "");
+                await (0, state_write_1.setStateIfChanged)(host, "operator.notification.last_at", notifySurface.lastCreatedAtIso ?? "");
                 if (dayEvalDir) {
-                    await (0, atomic_write_1.atomicWriteFile)(path.join(dayEvalDir, "latest_explain_v1.json"), `${JSON.stringify({ explain, aiContext: aiCtx, notifications: lastNotifyCandidates }, null, 2)}\n`);
+                    await (0, atomic_write_1.atomicWriteFile)(path.join(dayEvalDir, "latest_explain_v1.json"), `${JSON.stringify({ explain, aiContext: aiCtx, notifications: lastNotifyCandidates, productSummary }, null, 2)}\n`);
                 }
             }
             catch (e) {
@@ -610,6 +624,23 @@ async function runDailyPlanTick(host, forecastPlan) {
             contributions: forecastPlan.contributions,
             aiThinkingDe,
         }));
+        try {
+            const globalMode = (await host.getStateAsync(tree_paths_1.GLOBAL.executionMode))?.val;
+            const eff = (0, execution_effective_1.buildEffectiveExecutionSnapshot)({
+                globalMode,
+                addonModes: {
+                    wallbox: (await host.getStateAsync((0, tree_paths_1.addonMode)("wallbox")))?.val,
+                    battery: (await host.getStateAsync((0, tree_paths_1.addonMode)("battery")))?.val,
+                    immersion_heater: (await host.getStateAsync((0, tree_paths_1.addonMode)("immersion_heater")))?.val,
+                    air_conditioning: (await host.getStateAsync((0, tree_paths_1.addonMode)("air_conditioning")))?.val,
+                },
+            });
+            await (0, state_write_1.setStateIfChanged)(host, "operator.execution.effective_json", JSON.stringify(eff));
+            await (0, state_write_1.setStateIfChanged)(host, "operator.execution.summary_de", eff.summaryDe);
+        }
+        catch (e) {
+            host.log?.warn?.(`operator.execution effective: ${String(e)}`);
+        }
         // Finale Addon-Slices aus dem (bereits gemergten) Plan — eine Wahrheit.
         const addonSummaries = [
             { key: "battery", prefix: "battery" },

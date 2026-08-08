@@ -157,6 +157,11 @@ class FakeBootstrapAdapter {
 		return s ? ({ val: s.val, ack: s.ack, ts: 0, lc: 0, from: "test" } as ioBroker.State) : null;
 	}
 
+	/** Wie echter Adapter: Native-Config persistieren (Cold-Start/Restore Dryrun-Klemme). */
+	async updateConfig(newConfig: Record<string, unknown>): Promise<void> {
+		this.config = { ...this.config, ...newConfig };
+	}
+
 	async setStateAsync(id: string, st: ioBroker.SettableState): Promise<void> {
 		this.states.set(id, { val: st.val as ioBroker.StateValue, ack: st.ack ?? false });
 	}
@@ -353,8 +358,9 @@ describe("bootstrap cold start recovery", () => {
 		assert.equal(isBootstrapComplete(), true);
 		assert.equal(coldStartDuringSync, true);
 		assert.equal(getBootstrapRunContext(), null);
-		assert.equal(adapter.config.global_execution_mode, "live");
-		assert.equal(adapter.config.wb_addon_mode, "live");
+		// Beta: Cold-Start klemmt Native + States auf dryrun (keine Admin↔Baum-Divergenz).
+		assert.equal(adapter.config.global_execution_mode, "dryrun");
+		assert.equal(adapter.config.wb_addon_mode, "dryrun");
 		assert.equal(adapter.states.get("global.execution_mode")?.val, "dryrun");
 		assert.equal(adapter.states.get("addons.wallbox.mode")?.val, "dryrun");
 		assert.equal(adapter.states.get("addons.battery.mode")?.val, "dryrun");

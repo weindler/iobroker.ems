@@ -108,9 +108,16 @@ AI Authority Boundary: Plan B / Slot-Prefs nur advisory (Compare); keine Live-Mu
 `allocations` / IH/AC/Battery/Wallbox-Slices. Unified = alleinige Planwahrheit.  
 Learning → Input → Unified bleibt aktiv.
 
+### Schritt 8 — Beta Hardening + Production Surface + Release Candidate
+
+Produkt-States: `operator.product_summary_de`, `operator.notification.*`,  
+`operator.execution.effective_json` (Global∧Add-on). Cold-Start/Restore → Dryrun Native+States.  
+Surface-Klassen PRODUCT/ADVANCED/…; BETA-DAY + BETA-GATE Tests.  
+Details: `docs/EMS_LIGHT_BETA_CANDIDATE.md`.
+
 ### Nächste Schritte
 
-1. Beta Candidate / Schritt 8.
+1. Nach Prüfung: Beta Candidate committen / ggf. installieren.
 2. Optional: Intent-Deadline stärker in Contribution verdrahten.
 
 Nicht: isolierte Add-on-Patches als „EMS fertig“.

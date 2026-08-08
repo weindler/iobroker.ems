@@ -13,7 +13,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "So starten Sie: 1) Geräte-Mappings setzen (welche ioBroker-States EMS lesen/schreiben darf). 2) Pro Gerät dryrun lassen, bis alles stimmt. 3) Erst dann auf live umschalten. dryrun = EMS plant und zeigt, schreibt aber nicht auf Geräte. live = Writes erlaubt. Global und pro Add-on müssen live sein, sonst bleibt es dryrun. KI-Optimierung (falls später aktiv) braucht zusätzlich die Freigabe „KI-Optimierung erlaubt“ pro Add-on."
+					"text": "Beta — Muss konfiguriert werden: 1) PV/Grid/Hauslast-Datenquellen (Mappings). 2) Vorhandene Geräte: Batterie, Heizstab, Klima, EVCC/Fahrzeug. 3) Preisquelle (z. B. Tibber). 4) Strategie (eco/balanced/comfort/forced) und Ausführung Dryrun/Live. Neuinstallation und Restore starten immer in Dryrun. Global Dryrun = keine Gerätewrites, auch wenn ein Add-on auf live steht. Optional/Advanced: Learning, KI (nur Erklärung/Empfehlung, keine Plan-Authority), Support-Diagnose. Shadow/Takeover/Authority sind keine normale Produktoberfläche."
 				},
 				"global_execution_mode": {
 					"type": "select",
@@ -42,7 +42,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Der schwere Planner-Shadow/Takeover-Pfad ist in dieser Produktion abgeschaltet. EMS steuert über Failsafe + Daily-Plan-Logik. Später kann KI pro Add-on (mit Freigabe) Pläne optimieren — ohne direkte Geräte-Writes."
+					"text": "Ein Unified Day Planner steuert Batterie, Heizstab, Klima und Wallbox gemeinsam. AI erklärt und empfiehlt nur — sie verändert keine Allocations. Battery Discharge LIVE ist in der Beta nicht unterstützt. EVCC bleibt alleiniger Wallbox-Controller."
 				},
 				"hVisDashboard": {
 					"type": "header",

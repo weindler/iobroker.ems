@@ -281,14 +281,18 @@ export async function syncExecutionModesFromConfig(
 		(options.coldStartRecovery ? ("namespace_cold_start" as ForceDryrunReason) : null);
 
 	if (forceReason) {
-		const dryrunNative =
-			forceReason === "restore_recovery" ? clampNativeExecutionModesDryrun(config) : config;
-		if (forceReason === "restore_recovery" && typeof host.updateConfig === "function") {
+		// Beta: Cold-Start und Restore klemmen Native+States auf dryrun — keine stille Divergenz Admin↔Baum.
+		const dryrunNative = clampNativeExecutionModesDryrun(config);
+		let nativeClamped = false;
+		if (typeof host.updateConfig === "function") {
 			await host.updateConfig(dryrunNative);
+			nativeClamped = true;
 		}
 		await applyExecutionModesFromConfig(host, ALL_DRYRUN_MODES);
+		// Fingerprint nur auf Dryrun setzen, wenn Admin wirklich geklemmt wurde —
+		// sonst würde ein Warm-Start die unveränderte Live-Admin-Config zurückspielen.
 		await host.setStateAsync(EXECUTION_MODE_CONFIG_FINGERPRINT, {
-			val: executionModesConfigFingerprint(dryrunNative),
+			val: executionModesConfigFingerprint(nativeClamped ? dryrunNative : config),
 			ack: true,
 		});
 		await mirrorGlobalExecutionSafety(host);
@@ -298,7 +302,9 @@ export async function syncExecutionModesFromConfig(
 			);
 		} else {
 			host.log?.info?.(
-				"Cold-Start-Recovery: Ausführungsmodi auf dryrun geklemmt (Admin-Konfiguration unverändert)",
+				nativeClamped
+					? "Cold-Start-Recovery: Ausführungsmodi in Native und Objektbaum auf dryrun gesetzt"
+					: "Cold-Start-Recovery: Ausführungsmodi auf dryrun geklemmt (Admin-Config ohne updateConfig unverändert)",
 			);
 		}
 		return;

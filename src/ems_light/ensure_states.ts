@@ -71,6 +71,27 @@ export async function ensureEmsLightStates(host: StateHost, adapterVersion: stri
 		strState("planner.intent.last_reason_de", "Planner letzte Begründung (DE)"),
 
 		strState("operator.briefing_de", "Operator Briefing (DE)", OPERATOR_BRIEFING_DEFAULT),
+		strState(
+			"operator.product_summary_de",
+			"Produkt-Tageszusammenfassung (DE, deterministisch)",
+			"Noch kein Unified Day Plan.",
+		),
+		strState("operator.notification.last_reason_de", "Letzter Notification-Hinweis (DE)", ""),
+		strState("operator.notification.last_severity", "Letzte Notification-Severity", ""),
+		strState("operator.notification.last_kind", "Letzte Notification-Art", ""),
+		strState("operator.notification.last_dedup_key", "Letzte Notification Dedup-ID", ""),
+		strState("operator.notification.last_at", "Letzte Notification Zeit (ISO)", ""),
+		strState("operator.notification.candidates_json", "Notification Candidates (JSON, kein Push)", "[]"),
+		strState(
+			"operator.execution.effective_json",
+			"Effektive Ausführungsmodi (Global∧Add-on)",
+			"{}",
+		),
+		strState(
+			"operator.execution.summary_de",
+			"Effektive Ausführung Zusammenfassung (DE)",
+			"Ausführung noch nicht synchronisiert.",
+		),
 		// VIS: Diagnose-/Begründungsblock nur wenn Admin-Haken vis_show_diagnostics an.
 		boolState("operator.vis.show_diagnostics", "VIS Diagnose / Begründungen anzeigen", false),
 		// Roadmap Block 3.3: Live-Diagnose (Live-Cache + aktueller Daily-Plan-Slot) — ersetzt

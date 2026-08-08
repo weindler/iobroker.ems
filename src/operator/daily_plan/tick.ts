@@ -77,6 +77,10 @@ import type { DayEvalActuals } from "../../learning/day_evaluation/build";
 import { buildDeterministicDayExplanation } from "../../learning/day_evaluation/explain";
 import { buildNotificationCandidates, mergeNotificationCandidates } from "../../learning/day_evaluation/notify";
 import { buildAiExplanationContext } from "../../ai/explanation/context";
+import { buildProductSummaryDe } from "../../beta/product_summary";
+import { buildProductNotificationSurface } from "../../beta/notification_surface";
+import { buildEffectiveExecutionSnapshot } from "../../beta/execution_effective";
+import { GLOBAL, addonMode } from "../../tree_paths";
 import { atomicWriteFile } from "../../persistence/atomic_write";
 import * as path from "node:path";
 
@@ -426,9 +430,8 @@ export async function runDailyPlanTick(
 
 	try {
 		/*
-		 * IH/AC Authority: Unified zuerst in Memory mergen, dann einmal publizieren.
-		 * Kein klassischer IH/AC-Live-Publish vor Unified (Race vermeiden).
-		 * Battery/Wallbox bleiben klassisch im Plan.
+		 * Unified Authority: IH/AC/Battery/Wallbox in Memory mergen, dann einmal publizieren.
+		 * Kein klassischer Add-on-Live-Publish vor Unified (Race vermeiden).
 		 */
 		let ihAcReasonSuffix = "";
 		try {
@@ -571,10 +574,48 @@ export async function runDailyPlanTick(
 					replanReasons: sess?.replanReasons ?? decision.reasons,
 					initialPlanId: sess?.initialPlanId ?? null,
 				});
+				const productSummary = buildProductSummaryDe(unifiedPlan, {
+					batteryStartSocPct: unifiedInputFinal.battery.socPct,
+				});
+				await setStateIfChanged(host, "operator.product_summary_de", productSummary);
+				const notifySurface = buildProductNotificationSurface(
+					lastNotifyCandidates,
+					now.toISOString(),
+				);
+				await setStateIfChanged(
+					host,
+					"operator.notification.candidates_json",
+					JSON.stringify(notifySurface),
+				);
+				await setStateIfChanged(
+					host,
+					"operator.notification.last_reason_de",
+					notifySurface.lastReasonDe ?? "",
+				);
+				await setStateIfChanged(
+					host,
+					"operator.notification.last_severity",
+					notifySurface.lastSeverity ?? "",
+				);
+				await setStateIfChanged(
+					host,
+					"operator.notification.last_kind",
+					notifySurface.lastKind ?? "",
+				);
+				await setStateIfChanged(
+					host,
+					"operator.notification.last_dedup_key",
+					notifySurface.lastDedupKey ?? "",
+				);
+				await setStateIfChanged(
+					host,
+					"operator.notification.last_at",
+					notifySurface.lastCreatedAtIso ?? "",
+				);
 				if (dayEvalDir) {
 					await atomicWriteFile(
 						path.join(dayEvalDir, "latest_explain_v1.json"),
-						`${JSON.stringify({ explain, aiContext: aiCtx, notifications: lastNotifyCandidates }, null, 2)}\n`,
+						`${JSON.stringify({ explain, aiContext: aiCtx, notifications: lastNotifyCandidates, productSummary }, null, 2)}\n`,
 					);
 				}
 			} catch (e) {
@@ -697,6 +738,23 @@ export async function runDailyPlanTick(
 				aiThinkingDe,
 			}),
 		);
+
+		try {
+			const globalMode = (await host.getStateAsync(GLOBAL.executionMode))?.val;
+			const eff = buildEffectiveExecutionSnapshot({
+				globalMode,
+				addonModes: {
+					wallbox: (await host.getStateAsync(addonMode("wallbox")))?.val,
+					battery: (await host.getStateAsync(addonMode("battery")))?.val,
+					immersion_heater: (await host.getStateAsync(addonMode("immersion_heater")))?.val,
+					air_conditioning: (await host.getStateAsync(addonMode("air_conditioning")))?.val,
+				},
+			});
+			await setStateIfChanged(host, "operator.execution.effective_json", JSON.stringify(eff));
+			await setStateIfChanged(host, "operator.execution.summary_de", eff.summaryDe);
+		} catch (e) {
+			host.log?.warn?.(`operator.execution effective: ${String(e)}`);
+		}
 
 		// Finale Addon-Slices aus dem (bereits gemergten) Plan — eine Wahrheit.
 		const addonSummaries: Array<{ key: keyof typeof ALLOCATION_ADDON_STATE_IDS; prefix: string }> = [

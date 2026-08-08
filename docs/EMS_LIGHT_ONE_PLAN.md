@@ -98,10 +98,19 @@ Bei gültigem Unified Day Plan sind IH/AC/**Battery**/**Wallbox** autoritativ ü
 Fahrzeugziel inkl. SOC-Qualität/Deadline/Presence verdrahtet; `vehicleChargeEconomics` im Plan.  
 Replan-Failure: sicherer Hold/idle je Slice; EVCC bleibt manuell nutzbar.
 
+### Schritt 7 — Day Evaluation + Learning + AI Explanation + Notification Data
+
+Persistierte Tagesbewertung (`learning/day_evaluation/`, 120d), idempotenter Tagesabschluss,  
+Feedback an bestehendes `pv_bias` + geglätteter IH-kWh/°C-Faktor (Bounds).  
+Deterministische Erklärung + AI-Explanation-Context mit Fakt-Validation.  
+Notification-Candidates mit Dedup — kein Push.  
+AI Authority Boundary: Plan B / Slot-Prefs nur advisory (Compare); keine Live-Mutation von  
+`allocations` / IH/AC/Battery/Wallbox-Slices. Unified = alleinige Planwahrheit.  
+Learning → Input → Unified bleibt aktiv.
+
 ### Nächste Schritte
 
-1. Beta-Schritt 7 (noch offen — siehe Abschlussbericht Schritt 6).
-2. Learning aus Tagesbewertung.
-3. Optional: Intent-Deadline stärker in Contribution verdrahten.
+1. Beta Candidate / Schritt 8.
+2. Optional: Intent-Deadline stärker in Contribution verdrahten.
 
 Nicht: isolierte Add-on-Patches als „EMS fertig“.

@@ -410,6 +410,8 @@ describe("backup export v0.1.141", () => {
 			"power_hourly_v1.json",
 			"energy_daily_v1.json",
 			"consumer_stats_v1.json",
+			"day_evaluation_v1.json",
+			"vehicle_presence_learning_v1.json",
 		]);
 	});
 

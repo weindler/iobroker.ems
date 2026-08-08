@@ -655,7 +655,7 @@ describe("restore learning target paths", () => {
 			assert.ok(!paths.has(rel), `duplicate target for ${key}`);
 			paths.add(rel);
 		}
-		assert.equal(paths.size, 9);
+		assert.equal(paths.size, 11);
 	});
 
 	it("writes only to fixed targets and preserves unknown neighbor files", async () => {

@@ -7,7 +7,10 @@ const states_1 = require("../../operator/daily_plan/states");
 function asStateHost(host) {
     return host;
 }
-/** Schreibt Daily-Plan- + Allocation-States nach KI-Write-back (Plan B) neu. */
+/**
+ * Legacy: Daily-Plan- + Allocation-States nach KI-Write-back neu schreiben.
+ * Beta: von Live-Gates nicht aufgerufen (`AI_ALLOCATION_LIVE_MUTATION_ENABLED = false`).
+ */
 async function republishDailyPlanAfterWriteback(host, plan) {
     const h = asStateHost(host);
     try {

@@ -1,5 +1,6 @@
 /**
- * Tagesbewertung (Struktur für späteres Learning) — noch keine Persistenz/DB.
+ * @deprecated Draft-Typ — produktive Persistenz: `src/learning/day_evaluation/`.
+ * Bleibt für bestehende Replan-Tests kompatibel.
  */
 
 export type UnifiedDayEvaluation = {

@@ -15,7 +15,10 @@ function asStateHost(host: WritebackPublishHost): StateHost {
 	return host as unknown as StateHost;
 }
 
-/** Schreibt Daily-Plan- + Allocation-States nach KI-Write-back (Plan B) neu. */
+/**
+ * Legacy: Daily-Plan- + Allocation-States nach KI-Write-back neu schreiben.
+ * Beta: von Live-Gates nicht aufgerufen (`AI_ALLOCATION_LIVE_MUTATION_ENABLED = false`).
+ */
 export async function republishDailyPlanAfterWriteback(
 	host: WritebackPublishHost,
 	plan: DailyPlan,

@@ -6,6 +6,11 @@ import type { AiAddonDecision, AiSlotPreference } from "../types";
 import { COMPARE_STATES } from "../compare/ensure_states";
 import type { CompareResult } from "../compare/types";
 import { applyAiPreferencesToDailyPlan, type ApplyAiPreferencesOptions } from "./apply_plan_b";
+import {
+	AI_ALLOCATION_LIVE_MUTATION_ENABLED,
+	buildPlanBAdvisory,
+	type PlanBAdvisory,
+} from "./authority";
 import { republishDailyPlanAfterWriteback, type WritebackPublishHost } from "./publish";
 
 export type WritebackHost = WritebackPublishHost & {
@@ -76,8 +81,8 @@ export async function clearAiAutoSuspend(host: WritebackHost): Promise<void> {
 }
 
 /**
- * Nach Daily-Plan-Build: vorhandene KI-Präferenzen auswerten — bei messbarem Plan-B-Vorteil
- * Allocation umschreiben (Write-back), sonst Plan A unverändert.
+ * Nach Daily-Plan-Build: Plan-B-Compare schreiben (advisory).
+ * Beta: Allocation wird nie mutiert — Unified bleibt alleinige Planwahrheit.
  */
 export async function maybeApplyAiWritebackOnDailyPlan(
 	host: WritebackHost,
@@ -97,7 +102,13 @@ export async function maybeApplyAiWritebackOnDailyPlan(
 		prefs,
 		options,
 	);
+	const advisory = buildPlanBAdvisory(compare);
+	compare.delta.decisionReasonDe = advisory.decisionReasonDe;
 	await writeCompareStates(host, compare);
+
+	if (!AI_ALLOCATION_LIVE_MUTATION_ENABLED) {
+		return plan;
+	}
 	return writebackApplied ? next : plan;
 }
 
@@ -109,17 +120,27 @@ export type FinalizeWritebackOptions = ApplyAiPreferencesOptions & {
 	skipAutoSuspend?: boolean;
 };
 
+export type FinalizeWritebackResult = {
+	/** Live-Allocation-Mutation — Beta immer false. */
+	writebackApplied: boolean;
+	/** Compare bevorzugte Plan B (advisory). */
+	planBPreferred: boolean;
+	suspended: boolean;
+	compare: CompareResult;
+	advisory: PlanBAdvisory;
+};
+
 /**
- * Nach einem KI-Lauf: Plan B prüfen — gewinnen → Suspend löschen + sofort publish;
- * verlieren → Präferenzen verwerfen; Auto-Suspend nur im Legacy-Pfad (nicht Thinking).
- * Ohne Slot-Präferenzen (nur Denken/Decisions) → kein Auto-Suspend.
+ * Nach einem KI-Lauf: Plan B vergleichen — advisory Compare publizieren.
+ * Beta: kein republish mutierter Allocations; Prefs bleiben als Empfehlung erhalten,
+ * wenn Plan B bevorzugt wird (für spätere Unified-Replan-Inputs).
  */
 export async function finalizeAiRunWithWritebackGate(
 	host: WritebackHost,
 	plan: DailyPlan,
 	slotPreferences: AiSlotPreference[],
 	options?: FinalizeWritebackOptions,
-): Promise<{ writebackApplied: boolean; suspended: boolean; compare: CompareResult }> {
+): Promise<FinalizeWritebackResult> {
 	const allowed = resolveAllowedAddonIds(host.config);
 	const { plan: next, compare, writebackApplied } = applyAiPreferencesToDailyPlan(
 		plan,
@@ -127,12 +148,34 @@ export async function finalizeAiRunWithWritebackGate(
 		slotPreferences,
 		options,
 	);
+	const advisory = buildPlanBAdvisory(compare);
+	compare.delta.decisionReasonDe = advisory.decisionReasonDe;
 	await writeCompareStates(host, compare);
 
-	if (writebackApplied) {
+	const planBPreferred = compare.delta.activePlan === "b";
+
+	if (AI_ALLOCATION_LIVE_MUTATION_ENABLED && writebackApplied) {
 		await clearAiAutoSuspend(host);
 		await republishDailyPlanAfterWriteback(host, next);
-		return { writebackApplied: true, suspended: false, compare };
+		return {
+			writebackApplied: true,
+			planBPreferred: true,
+			suspended: false,
+			compare,
+			advisory,
+		};
+	}
+
+	if (planBPreferred) {
+		// Advisory win: Prefs behalten (späterer Unified-Input), kein Live-Republish.
+		await clearAiAutoSuspend(host);
+		return {
+			writebackApplied: false,
+			planBPreferred: true,
+			suspended: false,
+			compare,
+			advisory,
+		};
 	}
 
 	// Verwaiste Prefs entfernen, damit Daily-Plan-Rebuild nicht stumpf re-appliziert.
@@ -143,11 +186,28 @@ export async function finalizeAiRunWithWritebackGate(
 	// Auto-suspend nur Legacy: Prefs da, kein Vorteil — nie nur wegen leerem Denken / Thinking-Modus.
 	if (slotPreferences.length > 0 && options?.skipAutoSuspend !== true) {
 		await suspendAiAuto(host, compare.delta.decisionReasonDe);
-		return { writebackApplied: false, suspended: true, compare };
+		return {
+			writebackApplied: false,
+			planBPreferred: false,
+			suspended: true,
+			compare,
+			advisory,
+		};
 	}
 
-	return { writebackApplied: false, suspended: false, compare };
+	return {
+		writebackApplied: false,
+		planBPreferred: false,
+		suspended: false,
+		compare,
+		advisory,
+	};
 }
 
 export { applyAiPreferencesToDailyPlan } from "./apply_plan_b";
 export { republishDailyPlanAfterWriteback } from "./publish";
+export {
+	AI_ALLOCATION_LIVE_MUTATION_ENABLED,
+	buildPlanBAdvisory,
+	type PlanBAdvisory,
+} from "./authority";

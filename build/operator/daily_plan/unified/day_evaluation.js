@@ -1,6 +1,7 @@
 "use strict";
 /**
- * Tagesbewertung (Struktur für späteres Learning) — noch keine Persistenz/DB.
+ * @deprecated Draft-Typ — produktive Persistenz: `src/learning/day_evaluation/`.
+ * Bleibt für bestehende Replan-Tests kompatibel.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildDayEvaluationDraft = void 0;

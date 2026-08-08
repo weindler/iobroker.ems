@@ -150,6 +150,28 @@ export function evaluateMaterialReplan(
 		}
 	}
 
+	// Unified-Input-PV/Hauslast auch ohne Cadence-Digest-Wechsel (z. B. Contribution-Day-kWh
+	// geändert, während Daily-Plan-Totals wegen fehlendem Day-Match null bleiben).
+	const pvForecastDiff = absDiff(baseline.expectedPvDayKwh, actual.forecastPvDayKwh);
+	if (
+		pvForecastDiff !== null &&
+		pvForecastDiff >= AI_TRIGGER_PV_BUCKET_KWH &&
+		!reasons.includes(REASON.REPLAN_PV_FORECAST_CHANGED)
+	) {
+		reasons.push(REASON.REPLAN_PV_FORECAST_CHANGED);
+	}
+	const houseLoadForecastDiff = absDiff(
+		baseline.expectedHouseLoadDayKwh,
+		actual.forecastHouseLoadDayKwh,
+	);
+	if (
+		houseLoadForecastDiff !== null &&
+		houseLoadForecastDiff >= MATERIAL_HOUSE_LOAD_KWH &&
+		!reasons.includes(REASON.REPLAN_HOUSE_LOAD_DEVIATION)
+	) {
+		reasons.push(REASON.REPLAN_HOUSE_LOAD_DEVIATION);
+	}
+
 	// Preisstruktur auch ohne generischen Digest-Parse (expliziter Baseline-Vergleich)
 	if (
 		baseline.priceStructureDigest !== actual.priceStructureDigest &&
@@ -264,12 +286,17 @@ export function evaluateMaterialReplan(
 	}
 
 	const cadenceMoved = actual.cadenceDigest !== baseline.cadenceDigest;
+	const forecastRevision =
+		cadenceMoved ||
+		unique.includes(REASON.REPLAN_PV_FORECAST_CHANGED) ||
+		unique.includes(REASON.REPLAN_PRICE_REVISION) ||
+		unique.includes(REASON.REPLAN_HOUSE_LOAD_DEVIATION);
 	const lastReplan = opts?.lastReplanAtMs ?? null;
 	// Anti-Chatter: Cooldown nur für weiche Plan-vs-Actual-Abweichungen.
 	// Cadence-/Forecast-Revision und harte Events (Vehicle, Tag, Komfort) immer erlaubt.
 	if (
 		!hard &&
-		!cadenceMoved &&
+		!forecastRevision &&
 		lastReplan !== null &&
 		actual.nowMs - lastReplan < REPLAN_COOLDOWN_MS
 	) {

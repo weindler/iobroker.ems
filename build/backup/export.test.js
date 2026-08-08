@@ -366,6 +366,8 @@ class ExportTestHost {
             "power_hourly_v1.json",
             "energy_daily_v1.json",
             "consumer_stats_v1.json",
+            "day_evaluation_v1.json",
+            "vehicle_presence_learning_v1.json",
         ]);
     });
     (0, node_test_1.it)("excludes active runtime state from restore files", async () => {

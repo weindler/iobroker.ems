@@ -82,6 +82,12 @@ exports.LEARNING_PERSISTENCE_ARTIFACTS = [
         fileName: "vehicle_presence_learning_v1.json",
         nameDe: "Fahrzeug-Presence-Learning (Backup-Spiegel)",
     },
+    {
+        key: "day_evaluation",
+        category: "learning/day_evaluation",
+        fileName: "day_evaluation_v1.json",
+        nameDe: "Tagesbewertung (Backup-Spiegel)",
+    },
 ];
 const BASE = "learning.persistence";
 function mirrorStateId(key) {

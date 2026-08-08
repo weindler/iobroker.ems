@@ -15,10 +15,16 @@ function estimateImmersionRequiredEnergyKwh(bufferTempC, targetTempC, maxPowerW,
     const delta = targetTempC - bufferTempC;
     if (delta <= 0)
         return 0;
-    let kwh = (0, types_1.round3)(delta * exports.IMMERSION_DEFAULT_KWH_PER_DEGREE_C);
+    const kwhPerC = learning?.kwhPerDegreeC !== null &&
+        learning?.kwhPerDegreeC !== undefined &&
+        Number.isFinite(learning.kwhPerDegreeC) &&
+        learning.kwhPerDegreeC > 0
+        ? learning.kwhPerDegreeC
+        : exports.IMMERSION_DEFAULT_KWH_PER_DEGREE_C;
+    let kwh = (0, types_1.round3)(delta * kwhPerC);
     if (learning?.status === "valid" && learning.coolingRateCPerHAvg !== null && learning.coolingRateCPerHAvg > 0) {
         const projectedLossC = (0, types_1.round3)(learning.coolingRateCPerHAvg * LEARNED_LOSS_MARGIN_HOURS);
-        kwh = (0, types_1.round3)(kwh + projectedLossC * exports.IMMERSION_DEFAULT_KWH_PER_DEGREE_C);
+        kwh = (0, types_1.round3)(kwh + projectedLossC * kwhPerC);
     }
     if (maxPowerW !== null && maxPowerW > 0) {
         const cap = (0, types_1.round3)((maxPowerW / 1000) * MAX_HEATING_HOURS_PER_DAY);

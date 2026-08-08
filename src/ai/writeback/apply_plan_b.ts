@@ -183,8 +183,9 @@ function redistributeEligible(
 }
 
 /**
- * Wendet KI-Slot-Präferenzen auf eine Kopie von Plan A an, wenn Plan B messbar gewinnt.
+ * Simuliert KI-Slot-Präferenzen auf einer Kopie von Plan A, wenn Plan B messbar gewinnt.
  * Pflicht-Allocationen bleiben unverändert; nur flexible IH/Klima/Batterie-Laden/Wallbox werden verschoben.
+ * Beta Live-Gates wenden dieses Ergebnis nicht als Authority an (siehe `authority.ts`).
  */
 export function applyAiPreferencesToDailyPlan(
 	plan: DailyPlan,

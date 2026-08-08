@@ -67,6 +67,18 @@ import {
 import { presenceDigest } from "./unified/vehicle_availability";
 import { wallboxVehicleMapFromAdapter } from "../../addons/wallbox/vehicle_map/config";
 import { lookupVehicleMapEntry } from "../../addons/wallbox/vehicle_map/lookup";
+import {
+	closeSessionIfNeeded,
+	getDayPlanSession,
+	noteUnifiedPlanPublished,
+	resetDayPlanSessionForTest,
+} from "../../learning/day_evaluation/session";
+import type { DayEvalActuals } from "../../learning/day_evaluation/build";
+import { buildDeterministicDayExplanation } from "../../learning/day_evaluation/explain";
+import { buildNotificationCandidates, mergeNotificationCandidates } from "../../learning/day_evaluation/notify";
+import { buildAiExplanationContext } from "../../ai/explanation/context";
+import { atomicWriteFile } from "../../persistence/atomic_write";
+import * as path from "node:path";
 
 let lastRevisionPayload = "";
 let revision = 0;
@@ -91,7 +103,12 @@ export function resetDailyPlanRevisionForTest(): void {
 	lastReplanAtMs = null;
 	replanCountToday = 0;
 	replanCountDate = "";
+	resetDayPlanSessionForTest();
+	lastNotifyCandidates = [];
 }
+
+/** Deduplizierte Notification-Candidates des laufenden Tages (kein Push). */
+let lastNotifyCandidates: ReturnType<typeof buildNotificationCandidates> = [];
 
 export function dailyPlanRevisionForTest(): number {
 	return revision;
@@ -396,7 +413,7 @@ export async function runDailyPlanTick(
 		return plan;
 	}
 
-	// Roadmap Block 6: vorhandene KI-Präferenzen → Plan B auf Allocation, wenn messbar besser.
+	// Beta: Plan-B-Compare advisory only — keine Allocation-Mutation vor Unified Authority.
 	try {
 		const { maybeApplyAiWritebackOnDailyPlan } = await import("../../ai/writeback/index.js");
 		plan = await maybeApplyAiWritebackOnDailyPlan(
@@ -485,6 +502,84 @@ export async function runDailyPlanTick(
 				presenceDigest: presenceDigest(unifiedInputFinal.wallbox?.presenceWindows ?? []),
 				cadenceDigest,
 			};
+
+			/* Schritt 7: Day-Session + optionaler Tagesabschluss (Fehler isoliert). */
+			try {
+				const { rolloverFrom } = noteUnifiedPlanPublished({
+					date: plan.date,
+					timezone,
+					plan: unifiedPlan,
+					expectedPvKwh: unifiedInputFinal.pv.expectedDayEnergyKwh,
+					batteryStartSocPct: unifiedInputFinal.battery.socPct,
+					immersionTargetTempC: unifiedInputFinal.thermal?.dayTargetTempC ?? null,
+					replanReasons: decision.reasons,
+				});
+				const dayEvalDir =
+					typeof absPath === "function" ? absPath("learning/day_evaluation") : null;
+				const pvBiasDir = typeof absPath === "function" ? absPath("learning/pv_bias") : null;
+				const thermalDir =
+					typeof absPath === "function" ? absPath("learning/thermal_runtime") : null;
+				if (rolloverFrom && dayEvalDir && pvBiasDir && thermalDir) {
+					const actuals: DayEvalActuals = {
+						actualPvKwh: realizedPv,
+						actualHouseLoadKwh: null,
+						actualGridImportKwh: null,
+						actualGridExportKwh: null,
+						actualGridCostCt: null,
+						actualBatteryEndSocPct: unifiedInputFinal.battery.socPct,
+						actualBatteryChargedKwh: null,
+						actualImmersionKwh: null,
+						actualImmersionEndTempC: unifiedInputFinal.thermal?.bufferTempC ?? null,
+						actualClimateKwh: null,
+						climateComfortViolations: null,
+						actualVehicleChargeKwh: null,
+						actualVehicleGridCostCt: null,
+						actualVehicleSocPct: unifiedInputFinal.wallbox?.vehicleSocPct ?? null,
+					};
+					await closeSessionIfNeeded({
+						sessionToClose: rolloverFrom,
+						actuals,
+						now,
+						dayEvalDir,
+						pvBiasDir,
+						thermalDir,
+						log: host.log,
+					});
+					lastNotifyCandidates = [];
+				}
+				const prevPv = rolloverFrom?.initialExpectedPvKwh ?? lastBaseline?.expectedPvDayKwh ?? null;
+				const candidates = buildNotificationCandidates({
+					plan: unifiedPlan,
+					date: plan.date,
+					nowIso: now.toISOString(),
+					previousExpectedPvKwh:
+						decision.reasons.includes("replan_pv_forecast_changed") ||
+						decision.reasons.includes("replan_pv_actual_deviation")
+							? prevPv
+							: unifiedInputFinal.pv.previousExpectedDayEnergyKwh,
+				});
+				lastNotifyCandidates = mergeNotificationCandidates(lastNotifyCandidates, candidates);
+				const explain = buildDeterministicDayExplanation(unifiedPlan, {
+					batteryStartSocPct: unifiedInputFinal.battery.socPct,
+				});
+				const sess = getDayPlanSession();
+				const aiCtx = buildAiExplanationContext({
+					plan: unifiedPlan,
+					batteryStartSocPct: unifiedInputFinal.battery.socPct,
+					notificationCandidates: lastNotifyCandidates,
+					replanCount: Math.max(0, (sess?.publishCount ?? 1) - 1),
+					replanReasons: sess?.replanReasons ?? decision.reasons,
+					initialPlanId: sess?.initialPlanId ?? null,
+				});
+				if (dayEvalDir) {
+					await atomicWriteFile(
+						path.join(dayEvalDir, "latest_explain_v1.json"),
+						`${JSON.stringify({ explain, aiContext: aiCtx, notifications: lastNotifyCandidates }, null, 2)}\n`,
+					);
+				}
+			} catch (e) {
+				host.log?.warn?.(`day_evaluation/explain/notify: ${String(e)}`);
+			}
 
 			const pub = buildUnifiedDispatchPublish(unifiedPlan);
 			plan = applyUnifiedDayAuthority(

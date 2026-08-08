@@ -65,6 +65,12 @@ const vehicle_presence_1 = require("../../learning/vehicle_presence");
 const vehicle_availability_1 = require("./unified/vehicle_availability");
 const config_3 = require("../../addons/wallbox/vehicle_map/config");
 const lookup_1 = require("../../addons/wallbox/vehicle_map/lookup");
+const session_1 = require("../../learning/day_evaluation/session");
+const explain_1 = require("../../learning/day_evaluation/explain");
+const notify_1 = require("../../learning/day_evaluation/notify");
+const context_1 = require("../../ai/explanation/context");
+const atomic_write_1 = require("../../persistence/atomic_write");
+const path = __importStar(require("node:path"));
 let lastRevisionPayload = "";
 let revision = 0;
 /** Material-Cadence: ohne relevanten Grund kein neuer Unified-/Tagesplan-Publish. */
@@ -87,8 +93,12 @@ function resetDailyPlanRevisionForTest() {
     lastReplanAtMs = null;
     replanCountToday = 0;
     replanCountDate = "";
+    (0, session_1.resetDayPlanSessionForTest)();
+    lastNotifyCandidates = [];
 }
 exports.resetDailyPlanRevisionForTest = resetDailyPlanRevisionForTest;
+/** Deduplizierte Notification-Candidates des laufenden Tages (kein Push). */
+let lastNotifyCandidates = [];
 function dailyPlanRevisionForTest() {
     return revision;
 }
@@ -357,7 +367,7 @@ async function runDailyPlanTick(host, forecastPlan) {
     if (!decision.shouldReplan) {
         return plan;
     }
-    // Roadmap Block 6: vorhandene KI-Präferenzen → Plan B auf Allocation, wenn messbar besser.
+    // Beta: Plan-B-Compare advisory only — keine Allocation-Mutation vor Unified Authority.
     try {
         const { maybeApplyAiWritebackOnDailyPlan } = await Promise.resolve().then(() => __importStar(require("../../ai/writeback/index.js")));
         plan = await maybeApplyAiWritebackOnDailyPlan(host, plan);
@@ -440,6 +450,78 @@ async function runDailyPlanTick(host, forecastPlan) {
                 presenceDigest: (0, vehicle_availability_1.presenceDigest)(unifiedInputFinal.wallbox?.presenceWindows ?? []),
                 cadenceDigest,
             };
+            /* Schritt 7: Day-Session + optionaler Tagesabschluss (Fehler isoliert). */
+            try {
+                const { rolloverFrom } = (0, session_1.noteUnifiedPlanPublished)({
+                    date: plan.date,
+                    timezone,
+                    plan: unifiedPlan,
+                    expectedPvKwh: unifiedInputFinal.pv.expectedDayEnergyKwh,
+                    batteryStartSocPct: unifiedInputFinal.battery.socPct,
+                    immersionTargetTempC: unifiedInputFinal.thermal?.dayTargetTempC ?? null,
+                    replanReasons: decision.reasons,
+                });
+                const dayEvalDir = typeof absPath === "function" ? absPath("learning/day_evaluation") : null;
+                const pvBiasDir = typeof absPath === "function" ? absPath("learning/pv_bias") : null;
+                const thermalDir = typeof absPath === "function" ? absPath("learning/thermal_runtime") : null;
+                if (rolloverFrom && dayEvalDir && pvBiasDir && thermalDir) {
+                    const actuals = {
+                        actualPvKwh: realizedPv,
+                        actualHouseLoadKwh: null,
+                        actualGridImportKwh: null,
+                        actualGridExportKwh: null,
+                        actualGridCostCt: null,
+                        actualBatteryEndSocPct: unifiedInputFinal.battery.socPct,
+                        actualBatteryChargedKwh: null,
+                        actualImmersionKwh: null,
+                        actualImmersionEndTempC: unifiedInputFinal.thermal?.bufferTempC ?? null,
+                        actualClimateKwh: null,
+                        climateComfortViolations: null,
+                        actualVehicleChargeKwh: null,
+                        actualVehicleGridCostCt: null,
+                        actualVehicleSocPct: unifiedInputFinal.wallbox?.vehicleSocPct ?? null,
+                    };
+                    await (0, session_1.closeSessionIfNeeded)({
+                        sessionToClose: rolloverFrom,
+                        actuals,
+                        now,
+                        dayEvalDir,
+                        pvBiasDir,
+                        thermalDir,
+                        log: host.log,
+                    });
+                    lastNotifyCandidates = [];
+                }
+                const prevPv = rolloverFrom?.initialExpectedPvKwh ?? lastBaseline?.expectedPvDayKwh ?? null;
+                const candidates = (0, notify_1.buildNotificationCandidates)({
+                    plan: unifiedPlan,
+                    date: plan.date,
+                    nowIso: now.toISOString(),
+                    previousExpectedPvKwh: decision.reasons.includes("replan_pv_forecast_changed") ||
+                        decision.reasons.includes("replan_pv_actual_deviation")
+                        ? prevPv
+                        : unifiedInputFinal.pv.previousExpectedDayEnergyKwh,
+                });
+                lastNotifyCandidates = (0, notify_1.mergeNotificationCandidates)(lastNotifyCandidates, candidates);
+                const explain = (0, explain_1.buildDeterministicDayExplanation)(unifiedPlan, {
+                    batteryStartSocPct: unifiedInputFinal.battery.socPct,
+                });
+                const sess = (0, session_1.getDayPlanSession)();
+                const aiCtx = (0, context_1.buildAiExplanationContext)({
+                    plan: unifiedPlan,
+                    batteryStartSocPct: unifiedInputFinal.battery.socPct,
+                    notificationCandidates: lastNotifyCandidates,
+                    replanCount: Math.max(0, (sess?.publishCount ?? 1) - 1),
+                    replanReasons: sess?.replanReasons ?? decision.reasons,
+                    initialPlanId: sess?.initialPlanId ?? null,
+                });
+                if (dayEvalDir) {
+                    await (0, atomic_write_1.atomicWriteFile)(path.join(dayEvalDir, "latest_explain_v1.json"), `${JSON.stringify({ explain, aiContext: aiCtx, notifications: lastNotifyCandidates }, null, 2)}\n`);
+                }
+            }
+            catch (e) {
+                host.log?.warn?.(`day_evaluation/explain/notify: ${String(e)}`);
+            }
             const pub = (0, dispatch_bridge_1.buildUnifiedDispatchPublish)(unifiedPlan);
             plan = (0, authority_1.applyUnifiedDayAuthority)(plan, {
                 immersionEntries: pub.immersionEntries,

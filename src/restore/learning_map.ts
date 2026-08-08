@@ -10,6 +10,11 @@ export const RESTORE_LEARNING_TARGETS: Readonly<Record<string, { category: strin
 	"power_hourly_v1.json": { category: "learning/power_rollup", fileName: "power_hourly_v1.json" },
 	"energy_daily_v1.json": { category: "learning/energy_daily_rollup", fileName: "energy_daily_v1.json" },
 	"consumer_stats_v1.json": { category: "learning/consumer_stats", fileName: "consumer_stats_v1.json" },
+	"day_evaluation_v1.json": { category: "learning/day_evaluation", fileName: "day_evaluation_v1.json" },
+	"vehicle_presence_learning_v1.json": {
+		category: "learning/vehicle_presence",
+		fileName: "vehicle_presence_learning_v1.json",
+	},
 };
 
 export const RESTORE_LEARNING_KEYS = Object.keys(RESTORE_LEARNING_TARGETS);

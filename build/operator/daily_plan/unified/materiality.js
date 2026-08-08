@@ -75,6 +75,20 @@ function evaluateMaterialReplan(baseline, actual, opts) {
             reasons.push(reason_codes_1.REASON.REPLAN_PV_FORECAST_CHANGED);
         }
     }
+    // Unified-Input-PV/Hauslast auch ohne Cadence-Digest-Wechsel (z. B. Contribution-Day-kWh
+    // geändert, während Daily-Plan-Totals wegen fehlendem Day-Match null bleiben).
+    const pvForecastDiff = absDiff(baseline.expectedPvDayKwh, actual.forecastPvDayKwh);
+    if (pvForecastDiff !== null &&
+        pvForecastDiff >= trigger_digest_1.AI_TRIGGER_PV_BUCKET_KWH &&
+        !reasons.includes(reason_codes_1.REASON.REPLAN_PV_FORECAST_CHANGED)) {
+        reasons.push(reason_codes_1.REASON.REPLAN_PV_FORECAST_CHANGED);
+    }
+    const houseLoadForecastDiff = absDiff(baseline.expectedHouseLoadDayKwh, actual.forecastHouseLoadDayKwh);
+    if (houseLoadForecastDiff !== null &&
+        houseLoadForecastDiff >= exports.MATERIAL_HOUSE_LOAD_KWH &&
+        !reasons.includes(reason_codes_1.REASON.REPLAN_HOUSE_LOAD_DEVIATION)) {
+        reasons.push(reason_codes_1.REASON.REPLAN_HOUSE_LOAD_DEVIATION);
+    }
     // Preisstruktur auch ohne generischen Digest-Parse (expliziter Baseline-Vergleich)
     if (baseline.priceStructureDigest !== actual.priceStructureDigest &&
         !reasons.includes(reason_codes_1.REASON.REPLAN_PRICE_REVISION)) {
@@ -163,11 +177,15 @@ function evaluateMaterialReplan(baseline, actual, opts) {
         return { shouldReplan: false, reasons: [], hard: false };
     }
     const cadenceMoved = actual.cadenceDigest !== baseline.cadenceDigest;
+    const forecastRevision = cadenceMoved ||
+        unique.includes(reason_codes_1.REASON.REPLAN_PV_FORECAST_CHANGED) ||
+        unique.includes(reason_codes_1.REASON.REPLAN_PRICE_REVISION) ||
+        unique.includes(reason_codes_1.REASON.REPLAN_HOUSE_LOAD_DEVIATION);
     const lastReplan = opts?.lastReplanAtMs ?? null;
     // Anti-Chatter: Cooldown nur für weiche Plan-vs-Actual-Abweichungen.
     // Cadence-/Forecast-Revision und harte Events (Vehicle, Tag, Komfort) immer erlaubt.
     if (!hard &&
-        !cadenceMoved &&
+        !forecastRevision &&
         lastReplan !== null &&
         actual.nowMs - lastReplan < exports.REPLAN_COOLDOWN_MS) {
         return { shouldReplan: false, reasons: unique, hard: false };

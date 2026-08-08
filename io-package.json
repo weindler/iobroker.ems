@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.247",
+		"version": "0.1.248",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.248": {
+				"en": "Day evaluation + AI authority boundary: persist plan-vs-actual, feed learning, explain/validate; Plan B advisory only — Unified remains sole allocation authority.",
+				"de": "Tagesbewertung + KI-Authority-Grenze: Plan-vs-Ist persistieren, Learning speisen, erklären/validieren; Plan B nur advisory — Unified bleibt alleinige Allocation-Authority."
+			},
 			"0.1.247": {
 				"en": "Unified Battery+EVCC live authority: one day plan drives IH/AC/battery/wallbox slices via existing runtimes; charge/hold only (no discharge live); vehicle economics + SOC quality; safe replan failure.",
 				"de": "Unified Battery+EVCC Live-Authority: ein Tagesplan steuert IH/AC/Batterie/Wallbox über bestehende Runtimes; nur Laden/Hold (kein Discharge-Live); Fahrzeug-Wirtschaftlichkeit + SOC-Qualität; sicheres Replan-Failure."

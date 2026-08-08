@@ -145,8 +145,9 @@ function redistributeEligible(plan, governedId, slotPreferences, options) {
     return (0, redistribute_1.redistributeAddonAcrossSlots)(ownWPerSlot.map((ownW, i) => ({ ownW, capacityW: capacityPerSlot[i] })), multipliers, inferMinPowerW(ownWPerSlot, runtimeId));
 }
 /**
- * Wendet KI-Slot-Präferenzen auf eine Kopie von Plan A an, wenn Plan B messbar gewinnt.
+ * Simuliert KI-Slot-Präferenzen auf einer Kopie von Plan A, wenn Plan B messbar gewinnt.
  * Pflicht-Allocationen bleiben unverändert; nur flexible IH/Klima/Batterie-Laden/Wallbox werden verschoben.
+ * Beta Live-Gates wenden dieses Ergebnis nicht als Authority an (siehe `authority.ts`).
  */
 function applyAiPreferencesToDailyPlan(plan, allowedAddonIds, slotPreferences, options) {
     const compare = (0, build_1.buildCompareResult)(plan, allowedAddonIds, slotPreferences, options);

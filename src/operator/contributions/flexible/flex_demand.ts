@@ -16,6 +16,11 @@ const LEARNED_LOSS_MARGIN_HOURS = 0.25;
 export interface ImmersionLearningMargin {
 	status: "valid" | "degraded" | "missing";
 	coolingRateCPerHAvg: number | null;
+	/**
+	 * Geglätteter kWh/°C-Faktor aus Day-Evaluation (Schritt 7), nur wenn Sample-Bounds erfüllt.
+	 * null → Default 0.38. Bounds werden im Learning-Modul erzwungen.
+	 */
+	kwhPerDegreeC?: number | null;
 }
 
 export function estimateImmersionRequiredEnergyKwh(
@@ -26,11 +31,18 @@ export function estimateImmersionRequiredEnergyKwh(
 ): number {
 	const delta = targetTempC - bufferTempC;
 	if (delta <= 0) return 0;
-	let kwh = round3(delta * IMMERSION_DEFAULT_KWH_PER_DEGREE_C);
+	const kwhPerC =
+		learning?.kwhPerDegreeC !== null &&
+		learning?.kwhPerDegreeC !== undefined &&
+		Number.isFinite(learning.kwhPerDegreeC) &&
+		learning.kwhPerDegreeC > 0
+			? learning.kwhPerDegreeC
+			: IMMERSION_DEFAULT_KWH_PER_DEGREE_C;
+	let kwh = round3(delta * kwhPerC);
 
 	if (learning?.status === "valid" && learning.coolingRateCPerHAvg !== null && learning.coolingRateCPerHAvg > 0) {
 		const projectedLossC = round3(learning.coolingRateCPerHAvg * LEARNED_LOSS_MARGIN_HOURS);
-		kwh = round3(kwh + projectedLossC * IMMERSION_DEFAULT_KWH_PER_DEGREE_C);
+		kwh = round3(kwh + projectedLossC * kwhPerC);
 	}
 
 	if (maxPowerW !== null && maxPowerW > 0) {

@@ -122,9 +122,15 @@ async function runAiOptimizationNow(host, plan, triggerReason, provider) {
         : result.reasonDe;
     const reasonDe = gate.writebackApplied
         ? `${result.reasonDe} Write-back auf Allocation angewendet.`
-        : thinkingSummary;
+        : gate.planBPreferred
+            ? `${result.reasonDe} Plan B advisory (Unified bleibt autoritativ).`.slice(0, 480)
+            : thinkingSummary;
     await host.setStateAsync(ensure_states_1.AI_STATES.lastReasonDe, { val: reasonDe.slice(0, 480), ack: true });
-    const wbNote = gate.writebackApplied ? "Write-back aktiv." : "kein Write-back.";
+    const wbNote = gate.writebackApplied
+        ? "Write-back aktiv."
+        : gate.planBPreferred
+            ? "Plan B advisory."
+            : "kein Write-back.";
     host.log?.debug?.(`KI-Optimierung (${triggerReason}): ${mergedPrefs.length} Slot-Präferenz(en), ${decisions.length} Decision(s), ${wbNote} — ${reasonDe}`);
     return {
         ran: true,

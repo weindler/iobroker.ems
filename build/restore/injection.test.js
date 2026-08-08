@@ -581,7 +581,7 @@ async function assertNoDeviceWritesDuring(fn) {
             strict_1.default.ok(!paths.has(rel), `duplicate target for ${key}`);
             paths.add(rel);
         }
-        strict_1.default.equal(paths.size, 9);
+        strict_1.default.equal(paths.size, 11);
     });
     (0, node_test_1.it)("writes only to fixed targets and preserves unknown neighbor files", async () => {
         const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-restore-learn-"));

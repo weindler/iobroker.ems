@@ -43,6 +43,7 @@ import {
 	type ImmersionDailyPlanResolution,
 	type ImmersionDecisionSource,
 } from "./daily_plan";
+import { resolveAuthoritativeThermalTarget } from "./thermal_target_authority";
 import { DAILY_PLAN_STATE_IDS, ALLOCATION_ADDON_STATE_IDS } from "../../../operator/daily_plan/states";
 import {
 	forceTargetFromIntent,
@@ -355,34 +356,47 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 	let autoDecisionSource: ImmersionDecisionSource = "thermal_fallback";
 	let dailyPlanContext: ImmersionDailyPlanResolution | null = null;
 	let plannerCommandedStage = 0;
-	const planTarget = await resolveImmersionPlanTarget(
+	const forecastPlanTarget = await resolveImmersionPlanTarget(
 		host,
 		config,
 		temperature.valueC,
 		resolvedMode,
 		forceTarget,
 	);
-	let plannerTargetTempC: number | null = planTarget.targetTempC;
 
 	if (resolvedMode === "auto") {
 		dailyPlanContext = await resolveImmersionDailyPlanAllocation(host, config, now);
 		lastDailyPlanContext = dailyPlanContext;
 		if (dailyPlanContext.useDailyPlan) {
 			// Daily Plan besitzt den Slot: Stufe aus Allocation (0 = absichtlich aus).
-			// FSM-Ceiling = Forecast-Tagesziel (nicht pauschal planningMax).
 			plannerCommandedStage = dailyPlanContext.commandedStage;
-			plannerTargetTempC = planTarget.targetTempC;
 			autoDecisionSource = "daily_plan";
 		} else {
-			// Daily Plan nicht verwendbar (missing/expired/wrong_date/…) — lokaler
-			// Sicherheits-Default: nur die Pflicht-Untergrenze halten.
+			// Daily Plan nicht verwendbar — lokaler Sicherheits-Default (Pflicht-Untergrenze).
 			const safeDefault = safeDefaultAutoTarget(config);
 			plannerCommandedStage = safeDefault.stage;
-			plannerTargetTempC = safeDefault.targetTempC;
 			autoDecisionSource = "thermal_fallback";
 		}
-	} else if (resolvedMode === "force") {
-		plannerTargetTempC = planTarget.targetTempC;
+	}
+
+	const authority = resolveAuthoritativeThermalTarget({
+		useDailyPlan: dailyPlanContext?.useDailyPlan === true,
+		dailyPlanRevision: dailyPlanContext?.dailyPlanRevision ?? null,
+		planEffectiveTargetTempC: dailyPlanContext?.effectiveTargetTempC ?? null,
+		planTargetRevision: dailyPlanContext?.targetRevision ?? null,
+		forecastTargetTempC: forecastPlanTarget.targetTempC,
+		forceTargetTempC: forceTarget,
+		resolvedMode,
+		planningMinTempC: config.planningMinTempC,
+		planningMaxTempC: config.planningMaxTempC,
+		planTargetReasonDe: dailyPlanContext?.targetReasonDe ?? null,
+		forecastReasonDe: forecastPlanTarget.reasonDe,
+	});
+
+	let plannerTargetTempC = authority.authoritativeTargetTempC;
+	if (resolvedMode === "auto" && autoDecisionSource === "thermal_fallback") {
+		// Kein gültiger Plan: Pflicht-Untergrenze, nicht Forecast-Precharge.
+		plannerTargetTempC = safeDefaultAutoTarget(config).targetTempC;
 	}
 
 	const fsm = runImmersionFsm({
@@ -510,14 +524,12 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 		temperature_status: temperature.status,
 		planning_min_temp_c: config.planningMinTempC,
 		planning_max_temp_c: config.planningMaxTempC,
-		plan_target_temp_c:
-			resolvedMode === "auto" && autoDecisionSource === "thermal_fallback"
-				? plannerTargetTempC
-				: planTarget.targetTempC,
+		plan_target_temp_c: plannerTargetTempC,
 		plan_target_reason_de:
 			resolvedMode === "auto" && autoDecisionSource === "thermal_fallback"
 				? `Sicherheits-Default ${plannerTargetTempC ?? config.planningMinTempC} °C (Daily Plan nicht nutzbar).`
-				: planTarget.reasonDe,
+				: authority.reasonDe,
+		forecast_target_temp_c: authority.forecastTargetTempC,
 		force_target_temp_c: forceTarget,
 		force_until: forceUntil,
 		commanded_stage: persist.faultLockout ? 0 : effectiveStage,
@@ -573,6 +585,11 @@ async function publishRuntime(
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.planningMaxTempC, s.planning_max_temp_c);
 	await setOptionalNumberIfChanged(host, IMMERSION_RUNTIME_STATES.planTargetTempC, s.plan_target_temp_c);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.planTargetReasonDe, s.plan_target_reason_de || "");
+	await setOptionalNumberIfChanged(
+		host,
+		IMMERSION_RUNTIME_STATES.forecastTargetTempC,
+		s.forecast_target_temp_c,
+	);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.forceTargetTempC, s.force_target_temp_c ?? null);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.forceUntil, s.force_until ?? "");
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.commandedStage, s.commanded_stage);

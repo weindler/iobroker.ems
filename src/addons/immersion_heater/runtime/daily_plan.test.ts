@@ -252,6 +252,27 @@ describe("immersion daily plan reader", () => {
 		assert.equal(r.flexibleAllocatedPowerW, 1700);
 	});
 
+	it("attaches effective thermal target from same plan revision", () => {
+		const r = resolveImmersionDailyPlanFromData({
+			now: NOW,
+			timezone: TZ,
+			meta: { status: "ready", date: "2026-07-11", revision: 7, validUntil: null, timezone: TZ },
+			entries: [allocationEntry(CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, 1700)],
+			config: MULTI_STAGE_CFG,
+			thermalTarget: {
+				effectiveTargetTempC: 59,
+				forecastTargetTempC: 51.6,
+				targetReasonDe: "PV-Vorladung: Wärme für Abend/Nacht speichern",
+				targetRevision: 7,
+			},
+		});
+		assert.equal(r.useDailyPlan, true);
+		assert.equal(r.effectiveTargetTempC, 59);
+		assert.equal(r.forecastTargetTempC, 51.6);
+		assert.equal(r.targetRevision, 7);
+		assert.match(r.targetReasonDe ?? "", /PV-Vorladung/);
+	});
+
 	it("rejects unknown contribution in merge path via invalid allocation", () => {
 		const bad = allocationEntry("wallbox.ev_session", 1000);
 		const merge = mergeSlotAllocations([bad], SLOT_START, SLOT_END);

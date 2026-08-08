@@ -52,6 +52,14 @@ export interface ImmersionDailyPlanRuntimeContext {
 	allocationReasonDe: string;
 	commandedStage: number;
 	useDailyPlan: boolean;
+	/**
+	 * Effektives Thermal-Ziel der Planrevision (Forecast→Bridge→Precharge).
+	 * null wenn nicht publiziert oder Revision mismatch.
+	 */
+	effectiveTargetTempC: number | null;
+	forecastTargetTempC: number | null;
+	targetReasonDe: string | null;
+	targetRevision: number | null;
 }
 
 export interface ImmersionDailyPlanResolution extends ImmersionDailyPlanRuntimeContext {}
@@ -313,32 +321,67 @@ export function mergeSlotAllocations(
 	};
 }
 
+export type ImmersionPlanThermalTarget = {
+	effectiveTargetTempC: number | null;
+	forecastTargetTempC: number | null;
+	targetReasonDe: string | null;
+	targetRevision: number | null;
+};
+
 export interface ResolveDailyPlanInput {
 	now: Date;
 	timezone: string;
 	meta: DailyPlanMeta;
 	entries: DailyAllocationEntry[];
 	config: ImmersionDeviceConfig;
+	thermalTarget?: ImmersionPlanThermalTarget | null;
+}
+
+function attachThermalTarget(
+	r: ImmersionDailyPlanResolution,
+	thermal: ImmersionPlanThermalTarget | null | undefined,
+): ImmersionDailyPlanResolution {
+	const t = thermal ?? {
+		effectiveTargetTempC: null,
+		forecastTargetTempC: null,
+		targetReasonDe: null,
+		targetRevision: null,
+	};
+	return {
+		...r,
+		effectiveTargetTempC: t.effectiveTargetTempC,
+		forecastTargetTempC: t.forecastTargetTempC,
+		targetReasonDe: t.targetReasonDe,
+		targetRevision: t.targetRevision,
+	};
 }
 
 export function resolveImmersionDailyPlanFromData(input: ResolveDailyPlanInput): ImmersionDailyPlanResolution {
 	const { now, timezone, meta, entries, config } = input;
 	const nowMs = now.getTime();
+	const thermal = input.thermalTarget ?? null;
 
-	const base: ImmersionDailyPlanResolution = {
-		dailyPlanStatus: "daily_plan_missing",
-		decisionSource: "thermal_fallback",
-		dailyPlanRevision: meta.revision,
-		slotStartIso: null,
-		slotEndIso: null,
-		allocatedPowerW: null,
-		mandatoryAllocatedPowerW: null,
-		flexibleAllocatedPowerW: null,
-		allocationStatus: "unknown",
-		allocationReasonDe: "",
-		commandedStage: 0,
-		useDailyPlan: false,
-	};
+	const base: ImmersionDailyPlanResolution = attachThermalTarget(
+		{
+			dailyPlanStatus: "daily_plan_missing",
+			decisionSource: "thermal_fallback",
+			dailyPlanRevision: meta.revision,
+			slotStartIso: null,
+			slotEndIso: null,
+			allocatedPowerW: null,
+			mandatoryAllocatedPowerW: null,
+			flexibleAllocatedPowerW: null,
+			allocationStatus: "unknown",
+			allocationReasonDe: "",
+			commandedStage: 0,
+			useDailyPlan: false,
+			effectiveTargetTempC: null,
+			forecastTargetTempC: null,
+			targetReasonDe: null,
+			targetRevision: null,
+		},
+		thermal,
+	);
 
 	if (!USABLE_DAILY_PLAN_STATUSES.has(meta.status as DailyPlanStatus)) {
 		return {
@@ -431,19 +474,36 @@ export function resolveImmersionDailyPlanFromData(input: ResolveDailyPlanInput):
 		allocationReasonDe = `${stagePick.reasonDe} Daily Plan aktiv — keine fahrbare Stufe (aus).`;
 	}
 
+	return attachThermalTarget(
+		{
+			dailyPlanStatus,
+			decisionSource: "daily_plan",
+			dailyPlanRevision: meta.revision,
+			slotStartIso,
+			slotEndIso,
+			allocatedPowerW: cappedPowerW,
+			mandatoryAllocatedPowerW: merge.mandatoryPowerW,
+			flexibleAllocatedPowerW: merge.flexiblePowerW,
+			allocationStatus: merge.allocationStatus,
+			allocationReasonDe,
+			commandedStage: stagePick.stageIndex,
+			useDailyPlan: true,
+			effectiveTargetTempC: null,
+			forecastTargetTempC: null,
+			targetReasonDe: null,
+			targetRevision: null,
+		},
+		thermal,
+	);
+}
+
+async function loadThermalTarget(host: DailyPlanReadHost): Promise<ImmersionPlanThermalTarget> {
+	const ids = ALLOCATION_ADDON_STATE_IDS.immersion_heater;
 	return {
-		dailyPlanStatus,
-		decisionSource: "daily_plan",
-		dailyPlanRevision: meta.revision,
-		slotStartIso,
-		slotEndIso,
-		allocatedPowerW: cappedPowerW,
-		mandatoryAllocatedPowerW: merge.mandatoryPowerW,
-		flexibleAllocatedPowerW: merge.flexiblePowerW,
-		allocationStatus: merge.allocationStatus,
-		allocationReasonDe,
-		commandedStage: stagePick.stageIndex,
-		useDailyPlan: true,
+		effectiveTargetTempC: await readNum(host, ids.effectiveTargetTempC),
+		forecastTargetTempC: await readNum(host, ids.forecastTargetTempC),
+		targetReasonDe: await readStr(host, ids.targetReasonDe),
+		targetRevision: await readNum(host, ids.targetRevision),
 	};
 }
 
@@ -451,6 +511,7 @@ async function loadPlanData(host: DailyPlanReadHost): Promise<{
 	meta: DailyPlanMeta;
 	entries: DailyAllocationEntry[];
 	fullPlan: DailyPlan | null;
+	thermalTarget: ImmersionPlanThermalTarget;
 }> {
 	const adminCfg = intentAdminConfigFromAdapter(host.config);
 	const timezone = adminCfg.timezone || "Europe/Berlin";
@@ -462,9 +523,10 @@ async function loadPlanData(host: DailyPlanReadHost): Promise<{
 	const validUntil = validUntilRaw && validUntilRaw.trim() ? validUntilRaw : null;
 
 	const meta: DailyPlanMeta = { status, date, revision, validUntil, timezone };
+	const thermalTarget = await loadThermalTarget(host);
 
 	if (planCache && planCache.revision === revision) {
-		return { meta, entries: planCache.entries, fullPlan: planCache.fullPlan };
+		return { meta, entries: planCache.entries, fullPlan: planCache.fullPlan, thermalTarget };
 	}
 
 	const allocationStatus = (await readStr(host, ALLOCATION_ADDON_STATE_IDS.immersion_heater.status)) ?? "";
@@ -479,7 +541,7 @@ async function loadPlanData(host: DailyPlanReadHost): Promise<{
 	const allocationOwns = allocationStatus === "ready" || allocationStatus === "idle";
 	const entries = immersionEntriesFromSources(allocationEntries, allocationOwns ? null : fullPlan);
 	planCache = { revision, entries, fullPlan };
-	return { meta, entries, fullPlan };
+	return { meta, entries, fullPlan, thermalTarget };
 }
 
 export async function resolveImmersionDailyPlanAllocation(
@@ -487,23 +549,30 @@ export async function resolveImmersionDailyPlanAllocation(
 	config: ImmersionDeviceConfig,
 	now: Date,
 ): Promise<ImmersionDailyPlanResolution> {
-	const { meta, entries } = await loadPlanData(host);
+	const { meta, entries, thermalTarget } = await loadPlanData(host);
 
 	if (!meta.status || meta.status === "not_initialized") {
-		return {
-			dailyPlanStatus: "daily_plan_missing",
-			decisionSource: "thermal_fallback",
-			dailyPlanRevision: meta.revision,
-			slotStartIso: null,
-			slotEndIso: null,
-			allocatedPowerW: null,
-			mandatoryAllocatedPowerW: null,
-			flexibleAllocatedPowerW: null,
-			allocationStatus: "missing",
-			allocationReasonDe: "Daily Plan fehlt – lokaler Sicherheits-Default aktiv.",
-			commandedStage: 0,
-			useDailyPlan: false,
-		};
+		return attachThermalTarget(
+			{
+				dailyPlanStatus: "daily_plan_missing",
+				decisionSource: "thermal_fallback",
+				dailyPlanRevision: meta.revision,
+				slotStartIso: null,
+				slotEndIso: null,
+				allocatedPowerW: null,
+				mandatoryAllocatedPowerW: null,
+				flexibleAllocatedPowerW: null,
+				allocationStatus: "missing",
+				allocationReasonDe: "Daily Plan fehlt – lokaler Sicherheits-Default aktiv.",
+				commandedStage: 0,
+				useDailyPlan: false,
+				effectiveTargetTempC: null,
+				forecastTargetTempC: null,
+				targetReasonDe: null,
+				targetRevision: null,
+			},
+			thermalTarget,
+		);
 	}
 
 	return resolveImmersionDailyPlanFromData({
@@ -512,6 +581,7 @@ export async function resolveImmersionDailyPlanAllocation(
 		meta,
 		entries,
 		config,
+		thermalTarget,
 	});
 }
 

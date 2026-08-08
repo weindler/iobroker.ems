@@ -232,10 +232,26 @@ function mergeSlotAllocations(entries, slotStartIso, slotEndIso) {
     };
 }
 exports.mergeSlotAllocations = mergeSlotAllocations;
+function attachThermalTarget(r, thermal) {
+    const t = thermal ?? {
+        effectiveTargetTempC: null,
+        forecastTargetTempC: null,
+        targetReasonDe: null,
+        targetRevision: null,
+    };
+    return {
+        ...r,
+        effectiveTargetTempC: t.effectiveTargetTempC,
+        forecastTargetTempC: t.forecastTargetTempC,
+        targetReasonDe: t.targetReasonDe,
+        targetRevision: t.targetRevision,
+    };
+}
 function resolveImmersionDailyPlanFromData(input) {
     const { now, timezone, meta, entries, config } = input;
     const nowMs = now.getTime();
-    const base = {
+    const thermal = input.thermalTarget ?? null;
+    const base = attachThermalTarget({
         dailyPlanStatus: "daily_plan_missing",
         decisionSource: "thermal_fallback",
         dailyPlanRevision: meta.revision,
@@ -248,7 +264,11 @@ function resolveImmersionDailyPlanFromData(input) {
         allocationReasonDe: "",
         commandedStage: 0,
         useDailyPlan: false,
-    };
+        effectiveTargetTempC: null,
+        forecastTargetTempC: null,
+        targetReasonDe: null,
+        targetRevision: null,
+    }, thermal);
     if (!USABLE_DAILY_PLAN_STATUSES.has(meta.status)) {
         return {
             ...base,
@@ -331,7 +351,7 @@ function resolveImmersionDailyPlanFromData(input) {
     else {
         allocationReasonDe = `${stagePick.reasonDe} Daily Plan aktiv — keine fahrbare Stufe (aus).`;
     }
-    return {
+    return attachThermalTarget({
         dailyPlanStatus,
         decisionSource: "daily_plan",
         dailyPlanRevision: meta.revision,
@@ -344,9 +364,22 @@ function resolveImmersionDailyPlanFromData(input) {
         allocationReasonDe,
         commandedStage: stagePick.stageIndex,
         useDailyPlan: true,
-    };
+        effectiveTargetTempC: null,
+        forecastTargetTempC: null,
+        targetReasonDe: null,
+        targetRevision: null,
+    }, thermal);
 }
 exports.resolveImmersionDailyPlanFromData = resolveImmersionDailyPlanFromData;
+async function loadThermalTarget(host) {
+    const ids = states_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater;
+    return {
+        effectiveTargetTempC: await readNum(host, ids.effectiveTargetTempC),
+        forecastTargetTempC: await readNum(host, ids.forecastTargetTempC),
+        targetReasonDe: await readStr(host, ids.targetReasonDe),
+        targetRevision: await readNum(host, ids.targetRevision),
+    };
+}
 async function loadPlanData(host) {
     const adminCfg = (0, config_1.intentAdminConfigFromAdapter)(host.config);
     const timezone = adminCfg.timezone || "Europe/Berlin";
@@ -356,8 +389,9 @@ async function loadPlanData(host) {
     const validUntilRaw = await readStr(host, states_1.DAILY_PLAN_STATE_IDS.validUntil);
     const validUntil = validUntilRaw && validUntilRaw.trim() ? validUntilRaw : null;
     const meta = { status, date, revision, validUntil, timezone };
+    const thermalTarget = await loadThermalTarget(host);
     if (planCache && planCache.revision === revision) {
-        return { meta, entries: planCache.entries, fullPlan: planCache.fullPlan };
+        return { meta, entries: planCache.entries, fullPlan: planCache.fullPlan, thermalTarget };
     }
     const allocationStatus = (await readStr(host, states_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.status)) ?? "";
     const allocationRaw = parseJson(await readStr(host, states_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson));
@@ -369,12 +403,12 @@ async function loadPlanData(host) {
     const allocationOwns = allocationStatus === "ready" || allocationStatus === "idle";
     const entries = immersionEntriesFromSources(allocationEntries, allocationOwns ? null : fullPlan);
     planCache = { revision, entries, fullPlan };
-    return { meta, entries, fullPlan };
+    return { meta, entries, fullPlan, thermalTarget };
 }
 async function resolveImmersionDailyPlanAllocation(host, config, now) {
-    const { meta, entries } = await loadPlanData(host);
+    const { meta, entries, thermalTarget } = await loadPlanData(host);
     if (!meta.status || meta.status === "not_initialized") {
-        return {
+        return attachThermalTarget({
             dailyPlanStatus: "daily_plan_missing",
             decisionSource: "thermal_fallback",
             dailyPlanRevision: meta.revision,
@@ -387,7 +421,11 @@ async function resolveImmersionDailyPlanAllocation(host, config, now) {
             allocationReasonDe: "Daily Plan fehlt – lokaler Sicherheits-Default aktiv.",
             commandedStage: 0,
             useDailyPlan: false,
-        };
+            effectiveTargetTempC: null,
+            forecastTargetTempC: null,
+            targetReasonDe: null,
+            targetRevision: null,
+        }, thermalTarget);
     }
     return resolveImmersionDailyPlanFromData({
         now,
@@ -395,6 +433,7 @@ async function resolveImmersionDailyPlanAllocation(host, config, now) {
         meta,
         entries,
         config,
+        thermalTarget,
     });
 }
 exports.resolveImmersionDailyPlanAllocation = resolveImmersionDailyPlanAllocation;

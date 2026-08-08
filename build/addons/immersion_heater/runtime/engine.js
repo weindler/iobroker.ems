@@ -21,6 +21,7 @@ const safety_1 = require("./safety");
 const types_1 = require("./types");
 const persist_1 = require("./persist");
 const daily_plan_1 = require("./daily_plan");
+const thermal_target_authority_1 = require("./thermal_target_authority");
 const states_1 = require("../../../operator/daily_plan/states");
 const intent_read_1 = require("./intent_read");
 const feedback_1 = require("./feedback");
@@ -280,29 +281,39 @@ async function runImmersionRuntimeTick(host) {
     let autoDecisionSource = "thermal_fallback";
     let dailyPlanContext = null;
     let plannerCommandedStage = 0;
-    const planTarget = await resolveImmersionPlanTarget(host, config, temperature.valueC, resolvedMode, forceTarget);
-    let plannerTargetTempC = planTarget.targetTempC;
+    const forecastPlanTarget = await resolveImmersionPlanTarget(host, config, temperature.valueC, resolvedMode, forceTarget);
     if (resolvedMode === "auto") {
         dailyPlanContext = await (0, daily_plan_1.resolveImmersionDailyPlanAllocation)(host, config, now);
         lastDailyPlanContext = dailyPlanContext;
         if (dailyPlanContext.useDailyPlan) {
             // Daily Plan besitzt den Slot: Stufe aus Allocation (0 = absichtlich aus).
-            // FSM-Ceiling = Forecast-Tagesziel (nicht pauschal planningMax).
             plannerCommandedStage = dailyPlanContext.commandedStage;
-            plannerTargetTempC = planTarget.targetTempC;
             autoDecisionSource = "daily_plan";
         }
         else {
-            // Daily Plan nicht verwendbar (missing/expired/wrong_date/…) — lokaler
-            // Sicherheits-Default: nur die Pflicht-Untergrenze halten.
+            // Daily Plan nicht verwendbar — lokaler Sicherheits-Default (Pflicht-Untergrenze).
             const safeDefault = safeDefaultAutoTarget(config);
             plannerCommandedStage = safeDefault.stage;
-            plannerTargetTempC = safeDefault.targetTempC;
             autoDecisionSource = "thermal_fallback";
         }
     }
-    else if (resolvedMode === "force") {
-        plannerTargetTempC = planTarget.targetTempC;
+    const authority = (0, thermal_target_authority_1.resolveAuthoritativeThermalTarget)({
+        useDailyPlan: dailyPlanContext?.useDailyPlan === true,
+        dailyPlanRevision: dailyPlanContext?.dailyPlanRevision ?? null,
+        planEffectiveTargetTempC: dailyPlanContext?.effectiveTargetTempC ?? null,
+        planTargetRevision: dailyPlanContext?.targetRevision ?? null,
+        forecastTargetTempC: forecastPlanTarget.targetTempC,
+        forceTargetTempC: forceTarget,
+        resolvedMode,
+        planningMinTempC: config.planningMinTempC,
+        planningMaxTempC: config.planningMaxTempC,
+        planTargetReasonDe: dailyPlanContext?.targetReasonDe ?? null,
+        forecastReasonDe: forecastPlanTarget.reasonDe,
+    });
+    let plannerTargetTempC = authority.authoritativeTargetTempC;
+    if (resolvedMode === "auto" && autoDecisionSource === "thermal_fallback") {
+        // Kein gültiger Plan: Pflicht-Untergrenze, nicht Forecast-Precharge.
+        plannerTargetTempC = safeDefaultAutoTarget(config).targetTempC;
     }
     const fsm = (0, fsm_1.runImmersionFsm)({
         nowMs,
@@ -414,12 +425,11 @@ async function runImmersionRuntimeTick(host) {
         temperature_status: temperature.status,
         planning_min_temp_c: config.planningMinTempC,
         planning_max_temp_c: config.planningMaxTempC,
-        plan_target_temp_c: resolvedMode === "auto" && autoDecisionSource === "thermal_fallback"
-            ? plannerTargetTempC
-            : planTarget.targetTempC,
+        plan_target_temp_c: plannerTargetTempC,
         plan_target_reason_de: resolvedMode === "auto" && autoDecisionSource === "thermal_fallback"
             ? `Sicherheits-Default ${plannerTargetTempC ?? config.planningMinTempC} °C (Daily Plan nicht nutzbar).`
-            : planTarget.reasonDe,
+            : authority.reasonDe,
+        forecast_target_temp_c: authority.forecastTargetTempC,
         force_target_temp_c: forceTarget,
         force_until: forceUntil,
         commanded_stage: persist.faultLockout ? 0 : effectiveStage,
@@ -466,6 +476,7 @@ async function publishRuntime(host, s, decisionSource, dailyPlan) {
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planningMaxTempC, s.planning_max_temp_c);
     await (0, state_write_1.setOptionalNumberIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planTargetTempC, s.plan_target_temp_c);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planTargetReasonDe, s.plan_target_reason_de || "");
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.forecastTargetTempC, s.forecast_target_temp_c);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.forceTargetTempC, s.force_target_temp_c ?? null);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.forceUntil, s.force_until ?? "");
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.commandedStage, s.commanded_stage);

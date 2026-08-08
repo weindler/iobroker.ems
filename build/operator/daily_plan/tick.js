@@ -759,25 +759,38 @@ async function runDailyPlanTick(host, forecastPlan) {
             await (0, state_write_1.setStateIfChanged)(host, ids.planJson, JSON.stringify(view.runnable));
             await (0, state_write_1.setStateIfChanged)(host, ids.reasonDe, reasonDe.slice(0, 480));
         }
+        /*
+         * Heizstab-Zielautorität (Befund 004): Effective-/Forecast-Ziel an Allocation-States
+         * derselben Daily-Plan-Revision. Runtime/FSM ist alleiniger Writer von
+         * runtime.plan_target_temp_c — kein zweiter Writer mehr.
+         */
+        const ihFlex = forecastPlan.contributions.find((c) => c.contributionId === contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE);
+        const ihMand = forecastPlan.contributions.find((c) => c.contributionId === contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_MANDATORY);
+        const ihDetails = ihFlex?.details ?? ihMand?.details ?? null;
+        const ihAlloc = states_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater;
+        const effectiveTarget = ihDetails && typeof ihDetails.targetTempC === "number" && Number.isFinite(ihDetails.targetTempC)
+            ? ihDetails.targetTempC
+            : null;
+        const forecastTarget = ihDetails &&
+            typeof ihDetails.forecastTargetTempC === "number" &&
+            Number.isFinite(ihDetails.forecastTargetTempC)
+            ? ihDetails.forecastTargetTempC
+            : null;
+        const targetReason = ihDetails && typeof ihDetails.targetReasonDe === "string" && ihDetails.targetReasonDe.trim()
+            ? ihDetails.targetReasonDe.trim()
+            : typeof ihFlex?.reasonDe === "string" && ihFlex.reasonDe.trim()
+                ? ihFlex.reasonDe.trim()
+                : effectiveTarget !== null
+                    ? `Unified-Plan-Ziel ${effectiveTarget} °C.`
+                    : "";
+        await (0, state_write_1.setOptionalNumberIfChanged)(host, ihAlloc.effectiveTargetTempC, effectiveTarget);
+        await (0, state_write_1.setOptionalNumberIfChanged)(host, ihAlloc.forecastTargetTempC, forecastTarget);
+        await (0, state_write_1.setStateIfChanged)(host, ihAlloc.targetReasonDe, targetReason.slice(0, 480));
+        await (0, state_write_1.setOptionalNumberIfChanged)(host, ihAlloc.targetRevision, plan.revision);
         (0, daily_plan_1.resetImmersionDailyPlanCache)();
         (0, daily_plan_2.resetAcDailyPlanCache)();
         (0, daily_plan_3.resetBatteryDailyPlanCache)();
         (0, daily_plan_4.resetWallboxDailyPlanCache)();
-        // Heizstab-Tagesziel aus Contribution-Details (gleiche Forecast-Logik wie Allocation).
-        const ihFlex = forecastPlan.contributions.find((c) => c.contributionId === contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE);
-        const ihMand = forecastPlan.contributions.find((c) => c.contributionId === contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_MANDATORY);
-        const ihDetails = ihFlex?.details ?? ihMand?.details ?? null;
-        const targetTemp = ihDetails && typeof ihDetails.targetTempC === "number" && Number.isFinite(ihDetails.targetTempC)
-            ? ihDetails.targetTempC
-            : null;
-        if (targetTemp !== null) {
-            await (0, state_write_1.setOptionalNumberIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planTargetTempC, targetTemp);
-            const reasonFromDetails = ihDetails && typeof ihDetails.targetReasonDe === "string" ? ihDetails.targetReasonDe : "";
-            const reason = reasonFromDetails.trim() ||
-                (typeof ihFlex?.reasonDe === "string" && ihFlex.reasonDe.trim() ? ihFlex.reasonDe : "") ||
-                `Plan-Tagesziel ${targetTemp} °C.`;
-            await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.planTargetReasonDe, reason);
-        }
     }
     catch (e) {
         host.log?.warn?.(`daily plan state write: ${String(e)}`);

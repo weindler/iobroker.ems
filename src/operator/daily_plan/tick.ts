@@ -899,12 +899,12 @@ export async function runDailyPlanTick(
 			await setStateIfChanged(host, ids.planJson, JSON.stringify(view.runnable));
 			await setStateIfChanged(host, ids.reasonDe, reasonDe.slice(0, 480));
 		}
-		resetImmersionDailyPlanCache();
-		resetAcDailyPlanCache();
-		resetBatteryDailyPlanCache();
-		resetWallboxDailyPlanCache();
 
-		// Heizstab-Tagesziel aus Contribution-Details (gleiche Forecast-Logik wie Allocation).
+		/*
+		 * Heizstab-Zielautorität (Befund 004): Effective-/Forecast-Ziel an Allocation-States
+		 * derselben Daily-Plan-Revision. Runtime/FSM ist alleiniger Writer von
+		 * runtime.plan_target_temp_c — kein zweiter Writer mehr.
+		 */
 		const ihFlex = forecastPlan.contributions.find(
 			(c) => c.contributionId === CONTRIBUTION_IDS.IMMERSION_FLEXIBLE,
 		);
@@ -912,20 +912,34 @@ export async function runDailyPlanTick(
 			(c) => c.contributionId === CONTRIBUTION_IDS.IMMERSION_MANDATORY,
 		);
 		const ihDetails = ihFlex?.details ?? ihMand?.details ?? null;
-		const targetTemp =
+		const ihAlloc = ALLOCATION_ADDON_STATE_IDS.immersion_heater;
+		const effectiveTarget =
 			ihDetails && typeof ihDetails.targetTempC === "number" && Number.isFinite(ihDetails.targetTempC)
 				? ihDetails.targetTempC
 				: null;
-		if (targetTemp !== null) {
-			await setOptionalNumberIfChanged(host, IMMERSION_RUNTIME_STATES.planTargetTempC, targetTemp);
-			const reasonFromDetails =
-				ihDetails && typeof ihDetails.targetReasonDe === "string" ? ihDetails.targetReasonDe : "";
-			const reason =
-				reasonFromDetails.trim() ||
-				(typeof ihFlex?.reasonDe === "string" && ihFlex.reasonDe.trim() ? ihFlex.reasonDe : "") ||
-				`Plan-Tagesziel ${targetTemp} °C.`;
-			await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.planTargetReasonDe, reason);
-		}
+		const forecastTarget =
+			ihDetails &&
+			typeof ihDetails.forecastTargetTempC === "number" &&
+			Number.isFinite(ihDetails.forecastTargetTempC)
+				? ihDetails.forecastTargetTempC
+				: null;
+		const targetReason =
+			ihDetails && typeof ihDetails.targetReasonDe === "string" && ihDetails.targetReasonDe.trim()
+				? ihDetails.targetReasonDe.trim()
+				: typeof ihFlex?.reasonDe === "string" && ihFlex.reasonDe.trim()
+					? ihFlex.reasonDe.trim()
+					: effectiveTarget !== null
+						? `Unified-Plan-Ziel ${effectiveTarget} °C.`
+						: "";
+		await setOptionalNumberIfChanged(host, ihAlloc.effectiveTargetTempC, effectiveTarget);
+		await setOptionalNumberIfChanged(host, ihAlloc.forecastTargetTempC, forecastTarget);
+		await setStateIfChanged(host, ihAlloc.targetReasonDe, targetReason.slice(0, 480));
+		await setOptionalNumberIfChanged(host, ihAlloc.targetRevision, plan.revision);
+
+		resetImmersionDailyPlanCache();
+		resetAcDailyPlanCache();
+		resetBatteryDailyPlanCache();
+		resetWallboxDailyPlanCache();
 	} catch (e) {
 		host.log?.warn?.(`daily plan state write: ${String(e)}`);
 		try {

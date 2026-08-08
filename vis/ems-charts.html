@@ -151,6 +151,7 @@ var stateIds=[
 	INST+".addons.immersion_heater.runtime.buffer_temperature_c",
 	INST+".addons.immersion_heater.runtime.plan_target_temp_c",
 	INST+".addons.immersion_heater.runtime.plan_target_reason_de",
+	INST+".addons.immersion_heater.runtime.forecast_target_temp_c",
 	INST+".addons.immersion_heater.runtime.planning_min_temp_c",
 	INST+".addons.immersion_heater.runtime.planning_max_temp_c",
 	INST+".addons.immersion_heater.runtime.allocation_reason_de",
@@ -918,6 +919,7 @@ function renderStack(){
 			["Jetzt",execNowLine(ihPhase,ihP,ihHwLabel)],
 			["Puffer",fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c"))],
 			["Ziel",fmtTemp(g("addons.immersion_heater.runtime.plan_target_temp_c"))],
+			["Basis",fmtTemp(g("addons.immersion_heater.runtime.forecast_target_temp_c"))],
 			["Reicht bis",reichtBis],
 			["Nächstes",ihNext?(fmtSmartTime(ihNext.t)+" · "+Math.round(ihNext.w)+" W"):"keines"]
 		],ihNote)

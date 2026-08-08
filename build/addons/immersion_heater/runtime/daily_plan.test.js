@@ -198,6 +198,26 @@ function allocationEntry(contributionId, allocatedPowerW, status = "allocated") 
         strict_1.default.equal(r.useDailyPlan, true);
         strict_1.default.equal(r.flexibleAllocatedPowerW, 1700);
     });
+    (0, node_test_1.it)("attaches effective thermal target from same plan revision", () => {
+        const r = (0, daily_plan_js_1.resolveImmersionDailyPlanFromData)({
+            now: NOW,
+            timezone: TZ,
+            meta: { status: "ready", date: "2026-07-11", revision: 7, validUntil: null, timezone: TZ },
+            entries: [allocationEntry(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, 1700)],
+            config: MULTI_STAGE_CFG,
+            thermalTarget: {
+                effectiveTargetTempC: 59,
+                forecastTargetTempC: 51.6,
+                targetReasonDe: "PV-Vorladung: Wärme für Abend/Nacht speichern",
+                targetRevision: 7,
+            },
+        });
+        strict_1.default.equal(r.useDailyPlan, true);
+        strict_1.default.equal(r.effectiveTargetTempC, 59);
+        strict_1.default.equal(r.forecastTargetTempC, 51.6);
+        strict_1.default.equal(r.targetRevision, 7);
+        strict_1.default.match(r.targetReasonDe ?? "", /PV-Vorladung/);
+    });
     (0, node_test_1.it)("rejects unknown contribution in merge path via invalid allocation", () => {
         const bad = allocationEntry("wallbox.ev_session", 1000);
         const merge = (0, daily_plan_js_1.mergeSlotAllocations)([bad], SLOT_START, SLOT_END);

@@ -51,6 +51,11 @@ exports.ALLOCATION_ADDON_STATE_IDS = {
         status: "planner.intent.allocation.immersion_heater.status",
         planJson: "planner.intent.allocation.immersion_heater.plan_json",
         reasonDe: "planner.intent.allocation.immersion_heater.reason_de",
+        /** Effektives Thermal-Ziel (°C) derselben Revision wie der Daily Plan — Runtime/FSM-Autorität. */
+        effectiveTargetTempC: "planner.intent.allocation.immersion_heater.effective_target_temp_c",
+        forecastTargetTempC: "planner.intent.allocation.immersion_heater.forecast_target_temp_c",
+        targetReasonDe: "planner.intent.allocation.immersion_heater.target_reason_de",
+        targetRevision: "planner.intent.allocation.immersion_heater.target_revision",
     },
     air_conditioning: {
         status: "planner.intent.allocation.air_conditioning.status",
@@ -84,6 +89,10 @@ async function ensureDailyPlanStates(host) {
     const allocDefs = [];
     for (const [addon, ids] of Object.entries(exports.ALLOCATION_ADDON_STATE_IDS)) {
         allocDefs.push(strState(ids.status, `Allocation ${addon} Status`, "not_initialized"), strState(ids.planJson, `Allocation ${addon} Plan (JSON)`, "{}"), strState(ids.reasonDe, `Allocation ${addon} Begründung (DE)`, ""));
+        if (addon === "immersion_heater" && "effectiveTargetTempC" in ids) {
+            const ih = ids;
+            allocDefs.push(numState(ih.effectiveTargetTempC, "Allocation Heizstab effektives Ziel °C"), numState(ih.forecastTargetTempC, "Allocation Heizstab Forecast-Basisziel °C"), strState(ih.targetReasonDe, "Allocation Heizstab Ziel-Begründung (DE)", ""), numState(ih.targetRevision, "Allocation Heizstab Ziel-Revision", 0));
+        }
     }
     await (0, state_util_1.ensureStates)(host, allocDefs);
 }

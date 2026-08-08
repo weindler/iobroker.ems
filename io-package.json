@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.249",
+		"version": "0.1.250",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.250": {
+				"en": "Fix thermal split-brain: immersion FSM/VIS use Unified effectiveTargetTempC (same plan revision) instead of lower forecast basis; plan_target_temp_c owned by runtime only.",
+				"de": "Fix Thermal-Split-Brain: Heizstab-FSM/VIS nutzen Unified effectiveTargetTempC derselben Planrevision statt niedrigerem Forecast-Basisziel; plan_target_temp_c nur noch Runtime-Writer."
+			},
 			"0.1.249": {
 				"en": "Beta Candidate: product summary + notification surface, effective dryrun/live clarity, cold-start dryrun congruence, BETA-DAY/GATE matrix. Unified remains sole plan authority; AI advisory only.",
 				"de": "Beta Candidate: Produkt-Summary + Notification-Surface, effektive Dryrun/Live-Klarheit, Cold-Start-Dryrun-Kongruenz, BETA-DAY/GATE-Matrix. Unified bleibt alleinige Plan-Authority; KI nur advisory."

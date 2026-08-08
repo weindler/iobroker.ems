@@ -14,6 +14,7 @@ exports.EMS_LIGHT_CHANNEL_IDS = [
     { id: "operator.diagnostics", nameDe: "EMS-Light Operator Diagnose" },
     { id: "operator.notification", nameDe: "EMS-Light Operator Notifications" },
     { id: "operator.execution", nameDe: "EMS-Light Operator Ausführung effektiv" },
+    { id: "operator.plan", nameDe: "EMS-Light Operator Strategischer Plan" },
     { id: "execution", nameDe: "EMS-Light Execution" },
     { id: "execution.dryrun", nameDe: "EMS-Light Execution Dryrun" },
     { id: "execution.safety", nameDe: "EMS-Light Execution Safety" },

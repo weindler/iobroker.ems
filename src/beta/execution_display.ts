@@ -1,13 +1,19 @@
 /**
  * Operator-/VIS-Darstellung Plan ≠ reale Ausführung.
  *
- * Keine Write-Gates — nur kombinierte Semantik für Badges/Agenda:
- * - GEPLANT: zukünftige (oder noch unbestätigte) Planner-Allocation
- * - DRYRUN: aktuelle Allocation > 0, aber effectiveLiveWriteAllowed == false
- * - LÄUFT: nur Global Live ∧ Addon Live ∧ bestätigter Runtime-Istzustand
+ * Befund 003 — zwei getrennte Ebenen:
+ * - Execution-Authority: LIVE | DRYRUN (nur aus global∧addon mode)
+ * - Operation/Plan: läuft / geplant / hold / wartet / … (strategischer Status + Runtime)
+ *
+ * Legacy `resolveExecutionDisplayPhase` bleibt für Heizstab-Agenda-Meta kompatibel.
+ * Keine Write-Gates.
  */
 
 import { parseMode } from "../execution_mode";
+import type {
+	BatteryStrategicStatus,
+	WallboxStrategicStatus,
+} from "./strategic_status";
 
 export type ExecutionDisplayPhase = "idle" | "planned" | "dryrun" | "running";
 
@@ -19,11 +25,109 @@ export type ExecutionDisplayBadge = {
 	labelDe: string;
 };
 
+/** Nur Write-Authority — nie mit Operation vermischen. */
+export type ExecutionAuthority = "live" | "dryrun";
+
+export type ExecutionAuthorityBadge = {
+	authority: ExecutionAuthority;
+	cls: "live" | "dryrun";
+	labelDe: "LIVE" | "DRYRUN";
+};
+
+export type OperationDisplayKind =
+	| "running"
+	| "planned"
+	| "ready"
+	| "hold"
+	| "reserve_protected"
+	| "waiting"
+	| "idle";
+
+export type OperationDisplay = {
+	kind: OperationDisplayKind;
+	labelDe: string;
+	detailDe: string;
+};
+
 const DEFAULT_ON_W = 50;
 
 /** Hierarchie wie Execution-Gate: nur Global Live ∧ Addon Live → echte Writes. */
 export function isEffectiveLiveWriteAllowed(globalMode: unknown, addonMode: unknown): boolean {
 	return parseMode(globalMode) === "live" && parseMode(addonMode) === "live";
+}
+
+/** Execution-Badge ausschließlich aus Modes — unabhängig von Allocation/Hardware. */
+export function resolveExecutionAuthority(liveWriteAllowed: boolean): ExecutionAuthority {
+	return liveWriteAllowed ? "live" : "dryrun";
+}
+
+export function executionAuthorityBadge(authority: ExecutionAuthority): ExecutionAuthorityBadge {
+	return authority === "live"
+		? { authority: "live", cls: "live", labelDe: "LIVE" }
+		: { authority: "dryrun", cls: "dryrun", labelDe: "DRYRUN" };
+}
+
+export function operationFromBatteryStrategy(
+	status: BatteryStrategicStatus,
+	hardwareActive: boolean,
+): OperationDisplay {
+	if (hardwareActive) {
+		return { kind: "running", labelDe: "Läuft", detailDe: "Hardware lädt." };
+	}
+	switch (status) {
+		case "charge":
+			return { kind: "planned", labelDe: "Geplant", detailDe: "Ladung im Unified-Plan." };
+		case "hold":
+			return {
+				kind: "hold",
+				labelDe: "Hold",
+				detailDe: "Strategie: Hold · aktuell keine Ladeaktion",
+			};
+		case "reserve_protected":
+			return {
+				kind: "reserve_protected",
+				labelDe: "Reserve geschützt",
+				detailDe: "Strategie: Reserve/Hold · aktuell keine Ladeaktion",
+			};
+		case "available_for_discharge":
+			return {
+				kind: "ready",
+				labelDe: "Bereit",
+				detailDe: "Entladung/Defizitdeckung im Plan vorgesehen (kein neuer Write).",
+			};
+		default:
+			return { kind: "idle", labelDe: "Kein Bedarf", detailDe: "Kein strategischer Ladebedarf." };
+	}
+}
+
+export function operationFromWallboxStrategy(
+	status: WallboxStrategicStatus,
+	hardwareActive: boolean,
+): OperationDisplay {
+	if (hardwareActive && (status === "charging" || status === "scheduled")) {
+		return { kind: "running", labelDe: "Läuft", detailDe: "Fahrzeug lädt." };
+	}
+	if (hardwareActive) {
+		return { kind: "running", labelDe: "Läuft", detailDe: "Fahrzeug lädt (Hardware)." };
+	}
+	switch (status) {
+		case "charging":
+			return { kind: "planned", labelDe: "Geplant", detailDe: "Plan-Allocation aktiv." };
+		case "scheduled":
+			return { kind: "planned", labelDe: "Geplant", detailDe: "Ladung in späteren Fenstern." };
+		case "waiting_for_vehicle":
+			return {
+				kind: "waiting",
+				labelDe: "Wartet auf Fahrzeug",
+				detailDe: "Kein Ladeplan erforderlich",
+			};
+		case "waiting_for_goal":
+			return { kind: "waiting", labelDe: "Wartet auf Ladeziel", detailDe: "Ziel/Deadline fehlt." };
+		case "goal_satisfied":
+			return { kind: "ready", labelDe: "Ziel erreicht", detailDe: "Kein weiterer Ladebedarf." };
+		default:
+			return { kind: "idle", labelDe: "Kein Bedarf", detailDe: "Kein Wallbox-Ladebedarf." };
+	}
 }
 
 export function isPowerActive(powerW: number | null | undefined, thresholdW: number = DEFAULT_ON_W): boolean {

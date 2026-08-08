@@ -9,6 +9,7 @@ const contributor_1 = require("../../contributor");
 const types_1 = require("../types");
 const flex_demand_1 = require("./flex_demand");
 const immersion_night_bridge_1 = require("./immersion_night_bridge");
+const thermal_pv_precharge_1 = require("./thermal_pv_precharge");
 const types_2 = require("./types");
 function learningMargin(input) {
     if (!input.thermalLearning)
@@ -182,9 +183,39 @@ function buildImmersionFlexibleContribution(input) {
             timezone: input.timezone,
         })
         : null;
-    const effectiveTargetTempC = nightBridge?.active
+    const afterBridgeTempC = nightBridge?.active
         ? nightBridge.effectiveTargetTempC
         : target.targetTempC;
+    /*
+     * Puffer als Flexspeicher: Vorladung auch ohne emptyAt, wenn PV-Überschuss
+     * und Batterie-Kontext vorliegen. emptyAt bleibt Reichweiten-Info.
+     */
+    const canConsiderPrecharge = input.bufferTempC !== null &&
+        (thermalEmptyAtUsableForPlanning(input.thermalLearning) ||
+            (input.todayPvSurplusKwh != null && input.todayPvSurplusKwh >= 3));
+    const pvPrecharge = canConsiderPrecharge
+        ? (0, thermal_pv_precharge_1.resolveThermalPvPrecharge)({
+            now: input.now,
+            bufferTempC: input.bufferTempC,
+            planningMinTempC: input.config.planningMinTempC,
+            planningMaxTempC: input.config.planningMaxTempC,
+            baseTargetTempC: afterBridgeTempC,
+            coolingRateCPerHAvg: input.thermalLearning?.coolingRateCPerHAvg ?? null,
+            estimatedEmptyAtIso: input.thermalLearning?.estimatedEmptyAt ?? null,
+            nextPvHeatOpportunityIso: input.nextPvHeatOpportunityIso ?? null,
+            pvTodayKwh: input.pvTodayKwh,
+            pvTomorrowKwh: input.pvTomorrowKwh,
+            todayPvSurplusKwh: input.todayPvSurplusKwh ?? null,
+            batterySocPct: input.batterySocPct ?? null,
+            batteryEndSocTargetPct: input.batteryEndSocTargetPct ?? null,
+            vehicleUrgentEnergyKwh: input.vehicleUrgentEnergyKwh ?? null,
+            exportTariffCtPerKwh: input.exportTariffCtPerKwh ?? null,
+            importTariffCtPerKwh: input.importTariffCtPerKwh ?? null,
+            futureElectricalFlexHintKwh: input.futureElectricalFlexHintKwh ?? null,
+            globalMode: input.modePolicy.mode,
+        })
+        : null;
+    const effectiveTargetTempC = pvPrecharge?.active === true ? pvPrecharge.targetTempC : afterBridgeTempC;
     const hysteresisActive = (0, reheat_hysteresis_1.isImmersionReheatHysteresisActive)({
         bufferTempC: input.bufferTempC,
         targetTempC: target.targetTempC,
@@ -226,6 +257,8 @@ function buildImmersionFlexibleContribution(input) {
         reasonDe = `Flexibler Warmwasserbedarf bis ${effectiveTargetTempC} °C (${requiredEnergyKwh?.toFixed(1) ?? "?"} kWh, PV-first).`;
         if (nightBridge?.active)
             reasonDe = `${reasonDe} ${nightBridge.reasonDe}`;
+        if (pvPrecharge?.active)
+            reasonDe = `${reasonDe} ${pvPrecharge.reasonDe}`;
         if (hysteresisActive) {
             const reheatAt = (0, types_2.round3)(target.targetTempC - Math.max(0, input.config.temperatureHysteresisK));
             reasonDe = `${reasonDe} Runtime-Hysterese aktiv (Write erst unter ${reheatAt} °C) — Planung bleibt.`;
@@ -273,9 +306,13 @@ function buildImmersionFlexibleContribution(input) {
             bufferTempC: input.bufferTempC,
             targetTempC: effectiveTargetTempC,
             forecastTargetTempC: target.targetTempC,
-            targetReasonDe: nightBridge?.active
-                ? `${target.targetReasonDe} ${nightBridge.reasonDe}`
-                : target.targetReasonDe,
+            targetReasonDe: [
+                target.targetReasonDe,
+                nightBridge?.active ? nightBridge.reasonDe : null,
+                pvPrecharge?.active ? pvPrecharge.reasonDe : null,
+            ]
+                .filter(Boolean)
+                .join(" "),
             requiredEnergyKwh,
             maxPowerW: maxW,
             minPowerW: minW,
@@ -291,6 +328,8 @@ function buildImmersionFlexibleContribution(input) {
             nightBridgeUntilIso: nightBridge?.bridgeUntilIso ?? null,
             nightBridgeTargetTempC: nightBridge?.bridgeTargetTempC ?? null,
             nightBridgeShortfallHours: nightBridge?.shortfallHours ?? null,
+            pvPrechargeActive: pvPrecharge?.active === true,
+            pvPrechargeExtraK: pvPrecharge?.prechargeExtraK ?? null,
             ...thermalLearningDetails(input),
         },
         slots: (0, flex_demand_1.buildFlexibleDemandSlot)({

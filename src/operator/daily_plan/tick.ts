@@ -81,6 +81,7 @@ import { buildProductSummaryDe } from "../../beta/product_summary";
 import { buildProductNotificationSurface } from "../../beta/notification_surface";
 import { buildEffectiveExecutionSnapshot } from "../../beta/execution_effective";
 import { buildAgendaExecutionHints } from "../../beta/execution_display";
+import { buildAddonStrategicPlanSnapshot } from "../../beta/strategic_status";
 import { recomputeDailyPlanSlotRemainings } from "./recompute_remainings";
 import { GLOBAL, addonMode } from "../../tree_paths";
 import { atomicWriteFile } from "../../persistence/atomic_write";
@@ -663,11 +664,33 @@ export async function runDailyPlanTick(
 					},
 					nowMs: now.getTime(),
 				});
+				const strategy = buildAddonStrategicPlanSnapshot({
+					plan: unifiedPlan,
+					plannerInput: unifiedInputFinal,
+					nowMs: now.getTime(),
+					generatedAtIso: now.toISOString(),
+				});
 				const productSummary = buildProductSummaryDe(unifiedPlan, {
 					batteryStartSocPct: unifiedInputFinal.battery.socPct,
 					execution: agendaExecution,
+					strategy,
 				});
 				await setStateIfChanged(host, "operator.product_summary_de", productSummary);
+				await setStateIfChanged(
+					host,
+					"operator.plan.strategy_json",
+					JSON.stringify(strategy),
+				);
+				await setStateIfChanged(
+					host,
+					"operator.plan.battery_strategy_de",
+					`${strategy.battery.summaryDe}. ${strategy.battery.reasonDe}`,
+				);
+				await setStateIfChanged(
+					host,
+					"operator.plan.wallbox_strategy_de",
+					`${strategy.wallbox.summaryDe}. ${strategy.wallbox.reasonDe}`,
+				);
 				const notifySurface = buildProductNotificationSurface(
 					lastNotifyCandidates,
 					now.toISOString(),

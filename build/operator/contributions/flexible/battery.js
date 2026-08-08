@@ -1,30 +1,86 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildBatteryContributions = exports.buildBatteryReserveContribution = exports.buildBatteryDischargeContribution = exports.buildBatteryChargeContribution = void 0;
+exports.buildBatteryContributions = exports.buildBatteryReserveContribution = exports.buildBatteryDischargeContribution = exports.buildBatteryChargeContribution = exports.chargeTargetSocPct = void 0;
 const capacity_1 = require("../../../addons/battery/core/capacity");
 const contribution_ids_1 = require("../../contribution_ids");
 const quality_1 = require("../../quality");
 const contributor_1 = require("../../contributor");
 const types_1 = require("../types");
+const battery_end_soc_1 = require("./battery_end_soc");
 const battery_pv_cover_1 = require("./battery_pv_cover");
 const types_2 = require("./types");
 /** Top-Off durch Nutzer-Intent ODER gelerntes Intervall (`topoff_due`) überschritten. */
 function learnedTopoffDue(input) {
     return input.batteryLearning?.status === "valid" && input.batteryLearning.topoffDue === true;
 }
-function deficitChargeSocTarget(input) {
-    if (!input.chargeLogic?.active)
-        return null;
-    return input.chargeLogic.socTargetPct;
+function resolveCapacityKwh(input) {
+    const cap = (0, capacity_1.resolveCapacity)({
+        source: input.capacitySource === "mapped" ? "mapped" : "manual",
+        manualKwh: input.capacityManualKwh,
+        mappedKwh: input.capacityMappedKwh,
+    });
+    return cap.valid && cap.effectiveKwh !== null && cap.effectiveKwh > 0 ? cap.effectiveKwh : null;
 }
-/** Höchstes Ziel aus Policy, Top-Off und PV-Defizit-Ladelogik — nie niedriger als die Policy. */
+/**
+ * Dynamisches Ladeziel (Befund 004): Nacht + Recovery-Bilanz; 100 % nur Top-off.
+ * Keine pauschale Policy-Untergrenze mehr (90/95 %), außer Fallback ohne Daten.
+ */
 function chargeTargetSocPct(input) {
     if (input.topOffRequested || learnedTopoffDue(input))
         return 100;
-    const deficitTarget = deficitChargeSocTarget(input);
-    if (deficitTarget !== null)
-        return Math.max(deficitTarget, input.modePolicy.chargeTargetSocPct);
-    return input.modePolicy.chargeTargetSocPct;
+    const cap = resolveCapacityKwh(input);
+    if (cap === null || input.socPct === null) {
+        return input.modePolicy.chargeTargetSocPct;
+    }
+    const dyn = (0, battery_end_soc_1.planDynamicBatteryEndSoc)({
+        capacityKwh: cap,
+        socPct: input.socPct,
+        minSocPct: input.minSocPct ?? 0,
+        maxSocPct: input.maxSocPct ?? 100,
+        modePolicy: input.modePolicy,
+        avgNightDischargeKwh: input.batteryLearning?.status === "valid"
+            ? (input.batteryLearning.avgNightDischargeKwh ?? null)
+            : null,
+        chargeLogic: input.chargeLogic ?? null,
+        deferForCheapFutureGrid: input.deferForCheapFutureGrid === true,
+    });
+    return dyn.socTargetPct;
+}
+exports.chargeTargetSocPct = chargeTargetSocPct;
+function dynamicEndSocDetails(input) {
+    const cap = resolveCapacityKwh(input);
+    if (cap === null || input.socPct === null) {
+        return {
+            endSocDynamic: false,
+            endSocReasonDe: null,
+            endSocUsedPolicyFallback: null,
+        };
+    }
+    if (input.topOffRequested || learnedTopoffDue(input)) {
+        return {
+            endSocDynamic: true,
+            endSocReasonDe: "Top-off fällig — Ziel 100 %.",
+            endSocUsedPolicyFallback: false,
+        };
+    }
+    const dyn = (0, battery_end_soc_1.planDynamicBatteryEndSoc)({
+        capacityKwh: cap,
+        socPct: input.socPct,
+        minSocPct: input.minSocPct ?? 0,
+        maxSocPct: input.maxSocPct ?? 100,
+        modePolicy: input.modePolicy,
+        avgNightDischargeKwh: input.batteryLearning?.status === "valid"
+            ? (input.batteryLearning.avgNightDischargeKwh ?? null)
+            : null,
+        chargeLogic: input.chargeLogic ?? null,
+        deferForCheapFutureGrid: input.deferForCheapFutureGrid === true,
+    });
+    return {
+        endSocDynamic: true,
+        endSocReasonDe: dyn.reasonDe,
+        endSocUsedPolicyFallback: dyn.usedPolicyFallback,
+        endSocEnergyTargetKwh: dyn.energyTargetKwh,
+    };
 }
 function batteryLearningDetails(input) {
     const learning = input.batteryLearning ?? null;
@@ -175,6 +231,7 @@ function buildBatteryChargeContribution(input) {
             deficitChargeActive: input.deficitChargeActive,
             ...batteryLearningDetails(input),
             ...chargeLogicDetails(input),
+            ...dynamicEndSocDetails(input),
         },
         slots: publishSlots
             ? [

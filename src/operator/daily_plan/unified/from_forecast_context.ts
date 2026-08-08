@@ -400,6 +400,7 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 			// Produktiv: Discharge Live unsupported (Sonnen EM discharge_unverified) — nie erfinden
 			dischargeLiveSupported: false,
 			requiredChargeEnergyKwh: num(batD, "requiredEnergyKwh") ?? num(batD, "socGapEnergyKwh"),
+			endSocTargetPct: num(batD, "targetSocPct"),
 			chargeDeadlineIso: batCharge?.deadlineIso ?? str(batD, "chargeLogicBridgeUntilIso"),
 			gridChargeAllowed:
 				bool(batD, "gridImportAllowed") !== false &&

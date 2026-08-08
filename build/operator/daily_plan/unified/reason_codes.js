@@ -16,6 +16,9 @@ exports.REASON = {
     BATTERY_NIGHT_RESERVE: "battery_night_reserve",
     BATTERY_CHARGE_DEADLINE: "battery_charge_deadline",
     BATTERY_DISCHARGE_LIVE_UNSUPPORTED: "battery_discharge_live_unsupported",
+    /** Plan: kWh oberhalb des zeitabhängigen Reserve-Floors für Flex-Verbraucher nutzbar. */
+    BATTERY_FLEX_USABLE: "battery_flex_usable",
+    BATTERY_FROM_RESERVE_FLEX: "battery_from_reserve_flex",
     GRID_IMPORT_COST_OPTIMAL: "grid_import_cost_optimal",
     GRID_IMPORT_CONSERVATIVE_DEADLINE: "grid_import_conservative_deadline",
     EXPORT_UNAVOIDABLE: "export_unavoidable",

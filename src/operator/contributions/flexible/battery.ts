@@ -7,6 +7,7 @@ import type { PlannerModePolicy } from "../../../planner/mode_policy";
 import type { GridSupplyForecast } from "../../types";
 import { baseContribution } from "../types";
 import type { BatteryChargeLogicDecision } from "./battery_charge_logic";
+import { planDynamicBatteryEndSoc } from "./battery_end_soc";
 import type { BatteryLearningSignal } from "./battery_learning";
 import { pvSurplusCoversChargeNeed } from "./battery_pv_cover";
 import { evaluateParticipation, round3 } from "./types";
@@ -54,6 +55,11 @@ export interface BatteryContributionBuildInput {
 	 * Wenn ≥ Ladebedarf → keine EMS-Lade-Slots (passive PV-/Eigenverbrauch-Ladung reicht).
 	 */
 	todayPvSurplusKwh?: number | null;
+	/**
+	 * Eco/Preis: späterer Netzstrom klar günstiger — dynamisches Ziel auf Nacht-/Safety-Floor
+	 * (Befund 004). Keine Write-Änderung.
+	 */
+	deferForCheapFutureGrid?: boolean;
 }
 
 /** Top-Off durch Nutzer-Intent ODER gelerntes Intervall (`topoff_due`) überschritten. */
@@ -61,17 +67,76 @@ function learnedTopoffDue(input: BatteryContributionBuildInput): boolean {
 	return input.batteryLearning?.status === "valid" && input.batteryLearning.topoffDue === true;
 }
 
-function deficitChargeSocTarget(input: BatteryContributionBuildInput): number | null {
-	if (!input.chargeLogic?.active) return null;
-	return input.chargeLogic.socTargetPct;
+function resolveCapacityKwh(input: BatteryContributionBuildInput): number | null {
+	const cap = resolveCapacity({
+		source: input.capacitySource === "mapped" ? "mapped" : "manual",
+		manualKwh: input.capacityManualKwh,
+		mappedKwh: input.capacityMappedKwh,
+	});
+	return cap.valid && cap.effectiveKwh !== null && cap.effectiveKwh > 0 ? cap.effectiveKwh : null;
 }
 
-/** Höchstes Ziel aus Policy, Top-Off und PV-Defizit-Ladelogik — nie niedriger als die Policy. */
-function chargeTargetSocPct(input: BatteryContributionBuildInput): number {
+/**
+ * Dynamisches Ladeziel (Befund 004): Nacht + Recovery-Bilanz; 100 % nur Top-off.
+ * Keine pauschale Policy-Untergrenze mehr (90/95 %), außer Fallback ohne Daten.
+ */
+export function chargeTargetSocPct(input: BatteryContributionBuildInput): number {
 	if (input.topOffRequested || learnedTopoffDue(input)) return 100;
-	const deficitTarget = deficitChargeSocTarget(input);
-	if (deficitTarget !== null) return Math.max(deficitTarget, input.modePolicy.chargeTargetSocPct);
-	return input.modePolicy.chargeTargetSocPct;
+	const cap = resolveCapacityKwh(input);
+	if (cap === null || input.socPct === null) {
+		return input.modePolicy.chargeTargetSocPct;
+	}
+	const dyn = planDynamicBatteryEndSoc({
+		capacityKwh: cap,
+		socPct: input.socPct,
+		minSocPct: input.minSocPct ?? 0,
+		maxSocPct: input.maxSocPct ?? 100,
+		modePolicy: input.modePolicy,
+		avgNightDischargeKwh:
+			input.batteryLearning?.status === "valid"
+				? (input.batteryLearning.avgNightDischargeKwh ?? null)
+				: null,
+		chargeLogic: input.chargeLogic ?? null,
+		deferForCheapFutureGrid: input.deferForCheapFutureGrid === true,
+	});
+	return dyn.socTargetPct;
+}
+
+function dynamicEndSocDetails(input: BatteryContributionBuildInput): Record<string, unknown> {
+	const cap = resolveCapacityKwh(input);
+	if (cap === null || input.socPct === null) {
+		return {
+			endSocDynamic: false,
+			endSocReasonDe: null,
+			endSocUsedPolicyFallback: null,
+		};
+	}
+	if (input.topOffRequested || learnedTopoffDue(input)) {
+		return {
+			endSocDynamic: true,
+			endSocReasonDe: "Top-off fällig — Ziel 100 %.",
+			endSocUsedPolicyFallback: false,
+		};
+	}
+	const dyn = planDynamicBatteryEndSoc({
+		capacityKwh: cap,
+		socPct: input.socPct,
+		minSocPct: input.minSocPct ?? 0,
+		maxSocPct: input.maxSocPct ?? 100,
+		modePolicy: input.modePolicy,
+		avgNightDischargeKwh:
+			input.batteryLearning?.status === "valid"
+				? (input.batteryLearning.avgNightDischargeKwh ?? null)
+				: null,
+		chargeLogic: input.chargeLogic ?? null,
+		deferForCheapFutureGrid: input.deferForCheapFutureGrid === true,
+	});
+	return {
+		endSocDynamic: true,
+		endSocReasonDe: dyn.reasonDe,
+		endSocUsedPolicyFallback: dyn.usedPolicyFallback,
+		endSocEnergyTargetKwh: dyn.energyTargetKwh,
+	};
 }
 
 function batteryLearningDetails(input: BatteryContributionBuildInput): Record<string, unknown> {
@@ -228,6 +293,7 @@ export function buildBatteryChargeContribution(input: BatteryContributionBuildIn
 				deficitChargeActive: input.deficitChargeActive,
 				...batteryLearningDetails(input),
 				...chargeLogicDetails(input),
+				...dynamicEndSocDetails(input),
 			},
 			slots: publishSlots
 				? [

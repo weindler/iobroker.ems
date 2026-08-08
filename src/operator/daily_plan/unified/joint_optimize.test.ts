@@ -100,6 +100,7 @@ function scenarioAInput(overrides: Partial<UnifiedDayPlannerInput> = {}): Unifie
 		nightReserveKwh: 2.5,
 		maxChargePowerW: 4600,
 		requiredChargeEnergyKwh: null,
+		endSocTargetPct: null,
 		chargeDeadlineIso: null,
 		gridChargeAllowed: true,
 		uncertainty: Q,

@@ -267,6 +267,7 @@ describe("Beta-Befund 002 Score-Allocator NOW observed", () => {
 				dischargeEfficiency: 0.95,
 				allowedModes: ["idle", "charge"],
 				requiredChargeEnergyKwh: null,
+				endSocTargetPct: null,
 				chargeDeadlineIso: null,
 				gridChargeAllowed: true,
 				profileId: "sonnen_em",

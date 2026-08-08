@@ -236,6 +236,7 @@ function slotStub(startIso, endIso, pv, house) {
                 dischargeEfficiency: 0.95,
                 allowedModes: ["idle", "charge"],
                 requiredChargeEnergyKwh: null,
+                endSocTargetPct: null,
                 chargeDeadlineIso: null,
                 gridChargeAllowed: true,
                 profileId: "sonnen_em",

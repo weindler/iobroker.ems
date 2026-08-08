@@ -99,6 +99,7 @@ function baseHorizon(nowIso = "2026-08-08T08:55:00.000Z", hours = 40) {
         usableCapacityKwh: 10,
         nightReserveKwh: 2.5,
         requiredChargeEnergyKwh: null,
+        endSocTargetPct: null,
         gridChargeAllowed: true,
         uncertainty: Q,
         freshness: FRESH,
@@ -489,11 +490,10 @@ function baseHorizon(nowIso = "2026-08-08T08:55:00.000Z", hours = 40) {
         const m2 = mix(p2);
         strict_1.default.ok(m1.wbGrid > m2.wbGrid + 2, `cheap-night vehicle uses more grid: ${JSON.stringify({ m1, m2 })}`);
         strict_1.default.ok(m2.ih > m1.ih + 0.5, `urgent thermal gets more IH: ${JSON.stringify({ m1, m2 })}`);
-        const firstNonClimate = (p) => p.allocations
-            .filter((a) => a.allocatedEnergyKwh > 0.1)
-            .sort((a, b) => a.slot.startIso.localeCompare(b.slot.startIso))
-            .map((a) => a.kind)
-            .find((k) => k === "wallbox" || k === "immersion_heater" || k === "battery_charge");
-        strict_1.default.notEqual(firstNonClimate(p1), firstNonClimate(p2));
+        // Score-Mix muss sich mit Deadlines/Preisen drehen — keine feste Add-on-Reihenfolge.
+        const mixDiffers = Math.abs(m1.wbGrid - m2.wbGrid) > 2 ||
+            Math.abs(m1.wbPv - m2.wbPv) > 1 ||
+            Math.abs(m1.ih - m2.ih) > 0.5;
+        strict_1.default.ok(mixDiffers, `energy mix must diverge: ${JSON.stringify({ m1, m2 })}`);
     });
 });

@@ -28,8 +28,10 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:6
 .ems-badge.off{background:#30363d;color:#8b949e}
 .ems-badge.soon{background:#9e6a03;color:#fff}
 .ems-badge.dryrun{background:#6e40c9;color:#fff}
+.ems-badge.live{background:#1f6feb;color:#fff}
 .ems-badge.idle{background:#21262d;border:1px solid #30363d;color:#8b949e}
 .ems-badge.plan{background:#1f6feb33;color:#58a6ff;border:1px solid #1f6feb66}
+.ems-badges{display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .ems-rows{display:grid;grid-template-columns:78px 1fr;gap:1px 6px;font-size:11px}
 .ems-rows .l{color:#8b949e}.ems-rows .r{color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ems-note{margin-top:4px;font-size:10px;color:#c9d1d9;line-height:1.3;max-height:2.6em;overflow:hidden}
@@ -136,6 +138,10 @@ var stateIds=[
 	INST+".planner.intent.allocation.air_conditioning.reason_de",
 	INST+".planner.intent.allocation.air_conditioning.plan_json",
 	INST+".planner.intent.contributions.air_conditioning.contributions_json",
+	INST+".operator.plan.strategy_json",
+	INST+".operator.plan.battery_strategy_de",
+	INST+".operator.plan.wallbox_strategy_de",
+	INST+".operator.product_summary_de",
 	INST+".addons.immersion_heater.runtime.decision_source",
 	INST+".addons.immersion_heater.runtime.daily_plan_status",
 	INST+".addons.immersion_heater.runtime.allocated_power_w",
@@ -257,10 +263,20 @@ function firstWindow(planJson,minW){
 	return list.length?list[0]:null;
 }
 
-/** Plan ≠ Ausführung — Semantik analog src/beta/execution_display.ts */
+/** Plan ≠ Ausführung — Semantik analog src/beta/execution_display.ts (Befund 003) */
 function isLiveMode(v){return String(v==null?"dryrun":v).toLowerCase()==="live";}
 function effectiveLiveWrite(addonId){
 	return isLiveMode(g("global.execution_mode"))&&isLiveMode(g("addons."+addonId+".mode"));
+}
+/** Execution-Authority nur aus Modes — nie mit Operation vermischen. */
+function execAuthorityBadge(addonId){
+	return effectiveLiveWrite(addonId)
+		?{cls:"live",label:"LIVE"}
+		:{cls:"dryrun",label:"DRYRUN"};
+}
+function strategyObj(){
+	try{var o=JSON.parse(String(g("operator.plan.strategy_json")||"{}"));return o&&typeof o==="object"?o:{};}
+	catch(e){return{};}
 }
 function isPowerOn(w){return w!==null&&w>=ON_W;}
 function immersionHardwareActive(liveOk){
@@ -283,6 +299,21 @@ function execBadge(phase){
 	if(phase==="dryrun")return{cls:"dryrun",label:"Dryrun"};
 	if(phase==="planned")return{cls:"plan",label:"Geplant"};
 	return{cls:"idle",label:"Pausiert"};
+}
+function opBadgeFromStrategy(kind,status,hwActive){
+	if(hwActive)return{cls:"on",label:"Läuft"};
+	if(kind==="battery"){
+		if(status==="charge")return{cls:"plan",label:"Geplant"};
+		if(status==="hold")return{cls:"idle",label:"Hold"};
+		if(status==="reserve_protected")return{cls:"plan",label:"Reserve"};
+		if(status==="available_for_discharge")return{cls:"plan",label:"Bereit"};
+		return{cls:"idle",label:"Kein Bedarf"};
+	}
+	if(status==="charging"||status==="scheduled")return{cls:"plan",label:status==="charging"?"Geplant":"Geplant"};
+	if(status==="waiting_for_vehicle")return{cls:"idle",label:"Wartet"};
+	if(status==="waiting_for_goal")return{cls:"idle",label:"Ziel?"};
+	if(status==="goal_satisfied")return{cls:"plan",label:"Ziel ok"};
+	return{cls:"idle",label:"Kein Bedarf"};
 }
 function execNowLine(phase,plannerW,hardwareLabel){
 	var pw=(plannerW!==null&&plannerW>0)?Math.round(plannerW):null;
@@ -659,9 +690,19 @@ function buildTimelineRanges(horizonMs){
 }
 
 function card(title,color,badge,rows,note){
+	/** badge: single {cls,label} oder {exec,op} für Execution+Operation (Befund 003). */
+	var badgesHtml="";
+	if(badge&&badge.exec){
+		badgesHtml='<div class="ems-badges">'
+			+'<div class="ems-badge '+badge.exec.cls+'">'+esc(badge.exec.label)+'</div>'
+			+(badge.op?'<div class="ems-badge '+badge.op.cls+'">'+esc(badge.op.label)+'</div>':"")
+			+"</div>";
+	}else{
+		badgesHtml='<div class="ems-badge '+badge.cls+'">'+esc(badge.label)+'</div>';
+	}
 	var html='<div class="ems-card" style="border-color:'+color+'44"><div class="ems-card-h">'
 		+'<div class="ems-card-title" style="color:'+color+'">'+esc(title)+'</div>'
-		+'<div class="ems-badge '+badge.cls+'">'+esc(badge.label)+'</div></div><div class="ems-rows">';
+		+badgesHtml+'</div><div class="ems-rows">';
 	for(var i=0;i<rows.length;i++){
 		html+='<div class="l">'+esc(rows[i][0])+'</div><div class="r" title="'+esc(rows[i][1])+'">'+esc(rows[i][1])+'</div>';
 	}
@@ -807,27 +848,44 @@ function renderStack(){
 	var ihHwLabel=ihHw?(isPowerOn(ihMeas)?("an · "+fmtW(ihMeas)):(ihFb>0?("Stufe "+ihFb+(isPowerOn(ihCmd)?(" · "+fmtW(ihCmd)):"")):"an")):"unverändert";
 	if(ihHw&&ihLive&&isPowerOn(ihCmd)&&!isPowerOn(ihMeas)&&ihFb<=0)ihHwLabel="an · "+fmtW(ihCmd);
 	var ihNote=shortNote(g("addons.immersion_heater.runtime.plan_target_reason_de")||g("addons.immersion_heater.runtime.allocation_reason_de"),110);
+	var ihOpBadge=ihHw
+		?{cls:"on",label:"Läuft"}
+		:(isPowerOn(ihP)||ihNext?{cls:"plan",label:"Geplant"}:{cls:"idle",label:"Aus"});
+	var ihBadges={exec:execAuthorityBadge("immersion_heater"),op:ihOpBadge};
 	var emptyAt=fmtEmptyAt(g("learning.thermal_runtime.estimated_empty_at"));
 	var remH=num(g("learning.thermal_runtime.estimated_remaining_hours"));
 	var reichtBis=emptyAt?(emptyAt+(remH!==null?" · ~"+remH.toFixed(1).replace(".",",")+" h":"")):(remH!==null?"noch ~"+remH.toFixed(1).replace(".",",")+" h":"—");
+
+	var strat=strategyObj();
+	var batStrat=strat.battery||{};
+	var wbStrat=strat.wallbox||{};
 
 	var wbLiveP=num(g("live.wallbox.charge_power_w"));
 	var wbPlan=num(g("addons.wallbox.runtime.allocated_power_w"));
 	var wbLiveOk=effectiveLiveWrite("wallbox");
 	var wbHw=isOn(g("live.wallbox.charging"))||isPowerOn(wbLiveP);
 	var wbNext=firstWindow(g("planner.intent.allocation.wallbox.plan_json"),ON_W);
-	var wbPhase=resolveExecPhase(isPowerOn(wbPlan),!!wbNext,wbLiveOk,wbHw);
 	var wbHwLabel=wbHw?("lädt · "+fmtW(wbLiveP)):"lädt nicht";
-	var wbNote=shortNote(g("addons.wallbox.runtime.reason_de"),110);
+	var wbStratDe=txt(g("operator.plan.wallbox_strategy_de"),wbStrat.summaryDe||"");
+	var wbNote=shortNote(wbStratDe||g("addons.wallbox.runtime.reason_de"),120);
+	var wbOpLine=wbStrat.summaryDe||(wbNext?(fmtSmartTime(wbNext.t)+" · "+Math.round(wbNext.w)+" W"):"kein Ladeplan");
+	var wbBadges={exec:execAuthorityBadge("wallbox"),op:opBadgeFromStrategy("wallbox",wbStrat.status,wbHw)};
 
 	var batP=num(g("addons.battery.runtime.allocated_charge_power_w"));
 	var batCharge=num(g("addons.battery.telemetry.charging_power_w"));
 	var batLiveOk=effectiveLiveWrite("battery");
 	var batHw=isPowerOn(batCharge);
 	var batNext=firstWindow(g("planner.intent.allocation.battery.plan_json"),ON_W);
-	var batPhase=resolveExecPhase(isPowerOn(batP),!!batNext,batLiveOk,batHw);
 	var batHwLabel=batHw?fmtW(batCharge):"unverändert";
-	var batNote=shortNote(g("addons.battery.runtime.reason_de"),110);
+	var batStratDe=txt(g("operator.plan.battery_strategy_de"),batStrat.summaryDe||"");
+	var batNote=shortNote(batStratDe||g("addons.battery.runtime.reason_de"),120);
+	var batOpLine=batStrat.summaryDe||(batNext?(fmtSmartTime(batNext.t)+" · "+Math.round(batNext.w)+" W"):"keine Ladeaktion");
+	var batLoadLine=batHw
+		?batHwLabel
+		:(isPowerOn(batP)
+			?(batLiveOk?("geplant "+Math.round(batP)+" W · Hardware: "+batHwLabel):("Planner: "+Math.round(batP)+" W · Hardware: "+batHwLabel))
+			:batOpLine);
+	var batBadges={exec:execAuthorityBadge("battery"),op:opBadgeFromStrategy("battery",batStrat.status,batHw)};
 
 	function acCard(unitIndex){
 		var base="addons.air_conditioning.units.unit_"+unitIndex;
@@ -844,18 +902,19 @@ function renderStack(){
 	}
 
 	el.innerHTML=
-		card("Batterie","#58a6ff",userBadge(batPhase),[
+		card("Batterie","#58a6ff",batBadges,[
 			["SOC",fmtPct(g("live.battery.soc_pct"))],
-			["Laden",execNowLine(batPhase,batP,batHwLabel)],
+			["Strategie",batOpLine],
+			["Laden",batLoadLine],
 			["Nächstes",batNext?(fmtSmartTime(batNext.t)+" · "+Math.round(batNext.w)+" W"):"keines"]
 		],batNote||"Batterie folgt dem Hausplan.")
-		+card("Wallbox / Auto","#d2a8ff",userBadge(wbPhase),[
-			["Jetzt",execNowLine(wbPhase,wbPlan,wbHwLabel)],
+		+card("Wallbox / Auto","#d2a8ff",wbBadges,[
+			["Strategie",wbOpLine],
+			["Jetzt",wbHw?wbHwLabel:(isPowerOn(wbPlan)?(wbLiveOk?("geplant "+Math.round(wbPlan)+" W"):("Planner: "+Math.round(wbPlan)+" W · Hardware: "+wbHwLabel)):wbHwLabel)],
 			["Fahrzeug",fmtPct(g("live.wallbox.vehicle_soc_pct"))],
-			["Plan",fmtW(wbPlan)],
 			["Nächstes",wbNext?(fmtSmartTime(wbNext.t)+" · "+Math.round(wbNext.w)+" W"):"keines"]
 		],wbNote)
-		+card("Heizstab","#ffa657",userBadge(ihPhase),[
+		+card("Heizstab","#ffa657",ihBadges,[
 			["Jetzt",execNowLine(ihPhase,ihP,ihHwLabel)],
 			["Puffer",fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c"))],
 			["Ziel",fmtTemp(g("addons.immersion_heater.runtime.plan_target_temp_c"))],

@@ -9,6 +9,7 @@ import { addonContributorRef } from "../../contributor";
 import { baseContribution } from "../types";
 import { buildFlexibleDemandSlot, estimateImmersionRequiredEnergyKwh, type ImmersionLearningMargin } from "./flex_demand";
 import { resolveImmersionNightBridge } from "./immersion_night_bridge";
+import { resolveThermalPvPrecharge } from "./thermal_pv_precharge";
 import type { ThermalLearningSignal } from "./thermal_learning";
 import { evaluateParticipation, round3 } from "./types";
 
@@ -38,6 +39,16 @@ export interface ImmersionContributionBuildInput {
 	autoTargetReached?: boolean;
 	/** Hauszeitzone für Nachtbrücke (Default Europe/Berlin). */
 	timezone?: string;
+	/** Befund 004: Kontext für thermische PV-Vorladung (optional). */
+	todayPvSurplusKwh?: number | null;
+	batterySocPct?: number | null;
+	batteryEndSocTargetPct?: number | null;
+	vehicleUrgentEnergyKwh?: number | null;
+	exportTariffCtPerKwh?: number | null;
+	importTariffCtPerKwh?: number | null;
+	/** Späterer elektrischer Flexbedarf (Klima/Fahrzeug) als Hinweis für Vorladung. */
+	futureElectricalFlexHintKwh?: number | null;
+	nextPvHeatOpportunityIso?: string | null;
 }
 
 function learningMargin(input: ImmersionContributionBuildInput): ImmersionLearningMargin | null {
@@ -239,9 +250,43 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 				})
 			: null;
 
-	const effectiveTargetTempC = nightBridge?.active
+	const afterBridgeTempC = nightBridge?.active
 		? nightBridge.effectiveTargetTempC
 		: target.targetTempC;
+
+	/*
+	 * Puffer als Flexspeicher: Vorladung auch ohne emptyAt, wenn PV-Überschuss
+	 * und Batterie-Kontext vorliegen. emptyAt bleibt Reichweiten-Info.
+	 */
+	const canConsiderPrecharge =
+		input.bufferTempC !== null &&
+		(thermalEmptyAtUsableForPlanning(input.thermalLearning) ||
+			(input.todayPvSurplusKwh != null && input.todayPvSurplusKwh >= 3));
+	const pvPrecharge = canConsiderPrecharge
+		? resolveThermalPvPrecharge({
+				now: input.now,
+				bufferTempC: input.bufferTempC!,
+				planningMinTempC: input.config.planningMinTempC,
+				planningMaxTempC: input.config.planningMaxTempC,
+				baseTargetTempC: afterBridgeTempC,
+				coolingRateCPerHAvg: input.thermalLearning?.coolingRateCPerHAvg ?? null,
+				estimatedEmptyAtIso: input.thermalLearning?.estimatedEmptyAt ?? null,
+				nextPvHeatOpportunityIso: input.nextPvHeatOpportunityIso ?? null,
+				pvTodayKwh: input.pvTodayKwh,
+				pvTomorrowKwh: input.pvTomorrowKwh,
+				todayPvSurplusKwh: input.todayPvSurplusKwh ?? null,
+				batterySocPct: input.batterySocPct ?? null,
+				batteryEndSocTargetPct: input.batteryEndSocTargetPct ?? null,
+				vehicleUrgentEnergyKwh: input.vehicleUrgentEnergyKwh ?? null,
+				exportTariffCtPerKwh: input.exportTariffCtPerKwh ?? null,
+				importTariffCtPerKwh: input.importTariffCtPerKwh ?? null,
+				futureElectricalFlexHintKwh: input.futureElectricalFlexHintKwh ?? null,
+				globalMode: input.modePolicy.mode,
+			})
+		: null;
+
+	const effectiveTargetTempC =
+		pvPrecharge?.active === true ? pvPrecharge.targetTempC : afterBridgeTempC;
 
 	const hysteresisActive = isImmersionReheatHysteresisActive({
 		bufferTempC: input.bufferTempC,
@@ -286,6 +331,7 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 	} else if (planningReady) {
 		reasonDe = `Flexibler Warmwasserbedarf bis ${effectiveTargetTempC} °C (${requiredEnergyKwh?.toFixed(1) ?? "?"} kWh, PV-first).`;
 		if (nightBridge?.active) reasonDe = `${reasonDe} ${nightBridge.reasonDe}`;
+		if (pvPrecharge?.active) reasonDe = `${reasonDe} ${pvPrecharge.reasonDe}`;
 		if (hysteresisActive) {
 			const reheatAt = round3(target.targetTempC - Math.max(0, input.config.temperatureHysteresisK));
 			reasonDe = `${reasonDe} Runtime-Hysterese aktiv (Write erst unter ${reheatAt} °C) — Planung bleibt.`;
@@ -343,9 +389,13 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 				bufferTempC: input.bufferTempC,
 				targetTempC: effectiveTargetTempC,
 				forecastTargetTempC: target.targetTempC,
-				targetReasonDe: nightBridge?.active
-					? `${target.targetReasonDe} ${nightBridge.reasonDe}`
-					: target.targetReasonDe,
+				targetReasonDe: [
+					target.targetReasonDe,
+					nightBridge?.active ? nightBridge.reasonDe : null,
+					pvPrecharge?.active ? pvPrecharge.reasonDe : null,
+				]
+					.filter(Boolean)
+					.join(" "),
 				requiredEnergyKwh,
 				maxPowerW: maxW,
 				minPowerW: minW,
@@ -361,6 +411,8 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 				nightBridgeUntilIso: nightBridge?.bridgeUntilIso ?? null,
 				nightBridgeTargetTempC: nightBridge?.bridgeTargetTempC ?? null,
 				nightBridgeShortfallHours: nightBridge?.shortfallHours ?? null,
+				pvPrechargeActive: pvPrecharge?.active === true,
+				pvPrechargeExtraK: pvPrecharge?.prechargeExtraK ?? null,
 				...thermalLearningDetails(input),
 			},
 			slots: buildFlexibleDemandSlot({

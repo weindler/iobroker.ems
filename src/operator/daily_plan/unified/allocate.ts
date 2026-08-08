@@ -54,6 +54,14 @@ function buildBatteryTrajectory(
 			if (a.slot.startIso !== s.startIso) continue;
 			if (a.kind === "battery_charge") charge += a.allocatedEnergyKwh * effC;
 			if (a.kind === "battery_discharge") discharge += a.allocatedEnergyKwh / Math.max(effD, 0.1);
+			// Flex-Verbraucher aus Batterie (Planung) — kein separates battery_discharge-Kind.
+			if (
+				a.kind !== "battery_charge" &&
+				a.kind !== "battery_discharge" &&
+				(a.energySource === "battery" || a.energySource === "mixed")
+			) {
+				discharge += a.allocatedEnergyKwh / Math.max(effD, 0.1);
+			}
 		}
 		soc += charge - discharge;
 		soc = Math.max(0, Math.min(capacityKwh, soc));

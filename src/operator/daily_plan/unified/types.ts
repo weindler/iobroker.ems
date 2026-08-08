@@ -112,6 +112,11 @@ export type UnifiedBatteryInput = {
 	 * null = kein expliziter Bedarf / unknown (nicht als 0 erfinden).
 	 */
 	requiredChargeEnergyKwh: number | null;
+	/**
+	 * Dynamisches End-/Ladeziel SOC % (Befund 004) — Contribution `targetSocPct`.
+	 * null = Fallback auf Mode-Policy in score_allocate.
+	 */
+	endSocTargetPct: number | null;
 	/** Deadline für Netz-Nachladung (z. B. chargeLogic bridgeUntil); null = PV-first ohne Frist. */
 	chargeDeadlineIso: string | null;
 	/** Netzladen laut Contribution/Policy erlaubt. */

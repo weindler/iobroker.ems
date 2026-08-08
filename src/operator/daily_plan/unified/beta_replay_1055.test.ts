@@ -87,6 +87,7 @@ export function betaReplay1055Input(): UnifiedDayPlannerInput {
 		nightReserveKwh: 2.5,
 		maxChargePowerW: 4600,
 		requiredChargeEnergyKwh: 0,
+		endSocTargetPct: null,
 		chargeDeadlineIso: null,
 		gridChargeAllowed: true,
 		uncertainty: Q,

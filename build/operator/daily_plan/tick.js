@@ -73,6 +73,7 @@ const product_summary_1 = require("../../beta/product_summary");
 const notification_surface_1 = require("../../beta/notification_surface");
 const execution_effective_1 = require("../../beta/execution_effective");
 const execution_display_1 = require("../../beta/execution_display");
+const strategic_status_1 = require("../../beta/strategic_status");
 const recompute_remainings_1 = require("./recompute_remainings");
 const tree_paths_1 = require("../../tree_paths");
 const atomic_write_1 = require("../../persistence/atomic_write");
@@ -601,11 +602,21 @@ async function runDailyPlanTick(host, forecastPlan) {
                     },
                     nowMs: now.getTime(),
                 });
+                const strategy = (0, strategic_status_1.buildAddonStrategicPlanSnapshot)({
+                    plan: unifiedPlan,
+                    plannerInput: unifiedInputFinal,
+                    nowMs: now.getTime(),
+                    generatedAtIso: now.toISOString(),
+                });
                 const productSummary = (0, product_summary_1.buildProductSummaryDe)(unifiedPlan, {
                     batteryStartSocPct: unifiedInputFinal.battery.socPct,
                     execution: agendaExecution,
+                    strategy,
                 });
                 await (0, state_write_1.setStateIfChanged)(host, "operator.product_summary_de", productSummary);
+                await (0, state_write_1.setStateIfChanged)(host, "operator.plan.strategy_json", JSON.stringify(strategy));
+                await (0, state_write_1.setStateIfChanged)(host, "operator.plan.battery_strategy_de", `${strategy.battery.summaryDe}. ${strategy.battery.reasonDe}`);
+                await (0, state_write_1.setStateIfChanged)(host, "operator.plan.wallbox_strategy_de", `${strategy.wallbox.summaryDe}. ${strategy.wallbox.reasonDe}`);
                 const notifySurface = (0, notification_surface_1.buildProductNotificationSurface)(lastNotifyCandidates, now.toISOString());
                 await (0, state_write_1.setStateIfChanged)(host, "operator.notification.candidates_json", JSON.stringify(notifySurface));
                 await (0, state_write_1.setStateIfChanged)(host, "operator.notification.last_reason_de", notifySurface.lastReasonDe ?? "");

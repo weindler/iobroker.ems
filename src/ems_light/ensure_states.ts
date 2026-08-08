@@ -76,6 +76,21 @@ export async function ensureEmsLightStates(host: StateHost, adapterVersion: stri
 			"Produkt-Tageszusammenfassung (DE, deterministisch)",
 			"Noch kein Unified Day Plan.",
 		),
+		strState(
+			"operator.plan.strategy_json",
+			"Strategischer Addon-Planstatus (Batterie/Wallbox, JSON)",
+			"{}",
+		),
+		strState(
+			"operator.plan.battery_strategy_de",
+			"Strategischer Batterieplan (DE)",
+			"",
+		),
+		strState(
+			"operator.plan.wallbox_strategy_de",
+			"Strategischer Wallboxplan (DE)",
+			"",
+		),
 		strState("operator.notification.last_reason_de", "Letzter Notification-Hinweis (DE)", ""),
 		strState("operator.notification.last_severity", "Letzte Notification-Severity", ""),
 		strState("operator.notification.last_kind", "Letzte Notification-Art", ""),

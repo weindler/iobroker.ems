@@ -337,7 +337,7 @@ describe("battery contributions", () => {
 		assert.match(c.reasonDe, /Top-Off/);
 	});
 
-	it("does not raise target when the learned model says top-off is not due", () => {
+	it("uses dynamic end-SOC from night need when top-off is not due (not policy 95%)", () => {
 		const c = buildBatteryChargeContribution(
 			batteryInput({
 				socPct: 85,
@@ -352,9 +352,28 @@ describe("battery contributions", () => {
 					estimatedRuntimeDays: 5,
 					reasonDe: "nicht fällig",
 				},
+				chargeLogic: {
+					active: false,
+					forecastActive: true,
+					horizonDays: 2,
+					bridgeUntilIso: null,
+					pvRecoveryDay: 1,
+					energyStoredKwh: 8.5,
+					energyDeficitKwh: 0,
+					energyReserveKwh: 0.5,
+					energyTargetKwh: 8.5,
+					socTargetPct: 85,
+					chargeEnergyKwh: null,
+					confidenceMinPct: 85,
+					reasonDe: "kein Defizit",
+				},
 			}),
 		);
-		assert.equal(c.details.targetSocPct, plannerModePolicyFromGlobalMode("balanced").chargeTargetSocPct);
+		assert.ok(
+			(c.details.targetSocPct as number) < plannerModePolicyFromGlobalMode("balanced").chargeTargetSocPct,
+		);
+		assert.ok((c.details.targetSocPct as number) < 50);
+		assert.equal(c.details.endSocDynamic, true);
 	});
 
 	it("grid import blocked in eco without active PV-deficit charge logic", () => {

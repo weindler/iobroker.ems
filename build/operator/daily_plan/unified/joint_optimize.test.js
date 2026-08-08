@@ -95,6 +95,7 @@ function scenarioAInput(overrides = {}) {
         nightReserveKwh: 2.5,
         maxChargePowerW: 4600,
         requiredChargeEnergyKwh: null,
+        endSocTargetPct: null,
         chargeDeadlineIso: null,
         gridChargeAllowed: true,
         uncertainty: Q,

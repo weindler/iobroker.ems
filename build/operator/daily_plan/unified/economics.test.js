@@ -78,6 +78,7 @@ function econBase(hours = 8) {
             profileId: "sonnen_em",
             dischargeLiveSupported: false,
             requiredChargeEnergyKwh: null,
+            endSocTargetPct: null,
             chargeDeadlineIso: null,
             gridChargeAllowed: true,
             uncertainty: Q,

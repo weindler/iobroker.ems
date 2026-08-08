@@ -1,6 +1,10 @@
 /**
  * Deterministische Produkt-Zusammenfassung für Beta (kein KI-Zwang).
  * Baut auf UnifiedDayPlan + Day-Explanation-Fakten auf.
+ *
+ * Befund 003: Agenda priorisiert Rest-heute / Nacht / morgen / Goals —
+ * vergangene Fenster verdrängen keine Zukunft. Strategische Bat/Wb-Zeilen
+ * ohne Fake-Leistungs-Allocations.
  */
 
 import type { UnifiedAllocationCell, UnifiedDayPlan } from "../operator/daily_plan/unified/types";
@@ -8,12 +12,20 @@ import { buildDeterministicDayExplanation } from "../learning/day_evaluation/exp
 import {
 	formatAgendaSlotMetaDe,
 	isPowerActive,
+	resolveExecutionAuthority,
 	resolveExecutionDisplayPhase,
 	type ExecutionDisplayPhase,
 } from "./execution_display";
+import type {
+	AddonStrategicPlanSnapshot,
+	BatteryStrategicSnapshot,
+	WallboxStrategicSnapshot,
+} from "./strategic_status";
 
 const MAX_LEN = 900;
 const AGENDA_ON_W = 50;
+/** Max. Leistungsfenster je Consumer in der Produkt-Agenda (nur current+future). */
+const MAX_WINDOWS_PER_KIND = 3;
 
 /** Optional: Plan ≠ Ausführung für Agenda-Status (GEPLANT / DRYRUN / LÄUFT). */
 export type AgendaExecutionAddon = {
@@ -29,6 +41,12 @@ export type AgendaExecutionContext = {
 	battery?: AgendaExecutionAddon;
 	climate?: AgendaExecutionAddon;
 	wallbox?: AgendaExecutionAddon;
+};
+
+export type AgendaWindow = {
+	startIso: string;
+	endIso: string;
+	energyKwh: number;
 };
 
 function fmtKwh(n: number | null): string | null {
@@ -56,17 +74,82 @@ function fmtClock(iso: string | null, timezone: string): string | null {
 	}
 }
 
+function fmtDayClock(iso: string, timezone: string): string | null {
+	const ms = Date.parse(iso);
+	if (!Number.isFinite(ms)) return null;
+	try {
+		return new Intl.DateTimeFormat("de-DE", {
+			timeZone: timezone || "Europe/Berlin",
+			weekday: "short",
+			hour: "2-digit",
+			minute: "2-digit",
+		}).format(new Date(ms));
+	} catch {
+		return fmtClock(iso, timezone);
+	}
+}
+
 type AgendaKind = "battery_charge" | "immersion_heater" | "climate" | "wallbox";
 
-function mergeWindows(
+function localDateKey(ms: number, timezone: string): string {
+	try {
+		return new Intl.DateTimeFormat("en-CA", {
+			timeZone: timezone || "Europe/Berlin",
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+		}).format(new Date(ms));
+	} catch {
+		return new Date(ms).toISOString().slice(0, 10);
+	}
+}
+
+function localHour(ms: number, timezone: string): number {
+	try {
+		const parts = new Intl.DateTimeFormat("en-GB", {
+			timeZone: timezone || "Europe/Berlin",
+			hour: "2-digit",
+			hourCycle: "h23",
+		}).formatToParts(new Date(ms));
+		return Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+	} catch {
+		return new Date(ms).getUTCHours();
+	}
+}
+
+/** Bucket für strategische Zusammenfassung — Past zählt nicht. */
+export type AgendaBucket = "now" | "rest_today" | "tonight" | "tomorrow" | "later";
+
+export function agendaBucketForWindow(
+	w: AgendaWindow,
+	nowMs: number,
+	timezone: string,
+): AgendaBucket {
+	const start = Date.parse(w.startIso);
+	const end = Date.parse(w.endIso);
+	if (nowMs >= start && nowMs < end) return "now";
+	const today = localDateKey(nowMs, timezone);
+	const startDay = localDateKey(start, timezone);
+	const hour = localHour(start, timezone);
+	if (startDay === today) {
+		if (hour >= 18) return "tonight";
+		return "rest_today";
+	}
+	const tomorrowMs = nowMs + 24 * 3600_000;
+	const tomorrow = localDateKey(tomorrowMs, timezone);
+	if (startDay === tomorrow) return "tomorrow";
+	return "later";
+}
+
+export function mergeWindows(
 	cells: UnifiedAllocationCell[],
 	kind: AgendaKind,
-): Array<{ startIso: string; endIso: string; energyKwh: number }> {
+): AgendaWindow[] {
 	const sorted = cells
 		.filter((a) => a.kind === kind && a.allocatedEnergyKwh > 0.02)
 		.slice()
 		.sort((a, b) => a.slot.startIso.localeCompare(b.slot.startIso));
-	const out: Array<{ startIso: string; endIso: string; energyKwh: number }> = [];
+	const out: AgendaWindow[] = [];
 	for (const c of sorted) {
 		const last = out[out.length - 1];
 		if (last && last.endIso === c.slot.startIso) {
@@ -83,21 +166,76 @@ function mergeWindows(
 	return out;
 }
 
+/**
+ * Nur current+future; priorisiert now → rest_today → tonight → tomorrow → goal/deadline → later.
+ * Vergangene Fenster verdrängen Zukunft nicht.
+ */
+export function selectRelevantAgendaWindows(
+	windows: AgendaWindow[],
+	nowMs: number,
+	timezone: string,
+	opts?: { max?: number; deadlineIso?: string | null },
+): AgendaWindow[] {
+	const max = opts?.max ?? MAX_WINDOWS_PER_KIND;
+	const deadlineMs = opts?.deadlineIso ? Date.parse(opts.deadlineIso) : NaN;
+	const active = windows.filter((w) => {
+		const end = Date.parse(w.endIso);
+		return Number.isFinite(end) && end > nowMs;
+	});
+	const rank = (w: AgendaWindow): number => {
+		const bucket = agendaBucketForWindow(w, nowMs, timezone);
+		const base =
+			bucket === "now"
+				? 0
+				: bucket === "rest_today"
+					? 1
+					: bucket === "tonight"
+						? 2
+						: bucket === "tomorrow"
+							? 3
+							: 4;
+		const start = Date.parse(w.startIso);
+		const nearDeadline =
+			Number.isFinite(deadlineMs) &&
+			Number.isFinite(start) &&
+			start <= deadlineMs &&
+			deadlineMs - start < 36 * 3600_000
+				? -0.5
+				: 0;
+		return base + nearDeadline;
+	};
+	return active
+		.slice()
+		.sort((a, b) => {
+			const ra = rank(a);
+			const rb = rank(b);
+			if (ra !== rb) return ra - rb;
+			return a.startIso.localeCompare(b.startIso);
+		})
+		.slice(0, max);
+}
+
 function windowLine(
 	label: string,
-	w: { startIso: string; endIso: string; energyKwh: number },
+	w: AgendaWindow,
 	timezone: string,
 	statusPrefix?: string | null,
+	nowMs?: number,
 ): string {
-	const a = fmtClock(w.startIso, timezone);
-	const b = fmtClock(w.endIso, timezone);
+	const startMs = Date.parse(w.startIso);
+	const sameDay =
+		nowMs != null && Number.isFinite(startMs)
+			? localDateKey(startMs, timezone) === localDateKey(nowMs, timezone)
+			: true;
+	const a = sameDay ? fmtClock(w.startIso, timezone) : fmtDayClock(w.startIso, timezone);
+	const b = sameDay ? fmtClock(w.endIso, timezone) : fmtDayClock(w.endIso, timezone);
 	const e = fmtKwh(w.energyKwh);
 	const prefix = statusPrefix ? `${statusPrefix} · ` : "";
 	if (a && b) return `${prefix}${label} ${a}–${b}${e ? ` (${e} kWh)` : ""}`;
 	return `${prefix}${label} geplant${e ? ` (${e} kWh)` : ""}`;
 }
 
-function windowContainsNow(w: { startIso: string; endIso: string }, nowMs: number): boolean {
+function windowContainsNow(w: AgendaWindow, nowMs: number): boolean {
 	const a = Date.parse(w.startIso);
 	const b = Date.parse(w.endIso);
 	return Number.isFinite(a) && Number.isFinite(b) && nowMs >= a && nowMs < b;
@@ -124,7 +262,7 @@ function currentAllocatedWFromPlan(
 }
 
 function agendaPhaseForKind(
-	windows: Array<{ startIso: string; endIso: string; energyKwh: number }>,
+	windows: AgendaWindow[],
 	exec: AgendaExecutionAddon | undefined,
 	plan: UnifiedDayPlan,
 	kind: AgendaKind,
@@ -144,7 +282,6 @@ function agendaPhaseForKind(
 		liveWriteAllowed: exec?.liveWriteAllowed === true,
 		hardwareActive: exec?.hardwareActive === true,
 	});
-	// Ohne Execution-Kontext keine Status-Behauptung (Rückwärtskompatibilität).
 	if (!exec) return { phase: "planned", plannerW, statusMeta: null };
 	const statusMeta =
 		currentPlannedActive || phase === "running"
@@ -155,39 +292,80 @@ function agendaPhaseForKind(
 	return { phase, plannerW, statusMeta };
 }
 
+function strategyAgendaLines(
+	battery: BatteryStrategicSnapshot | undefined,
+	wallbox: WallboxStrategicSnapshot | undefined,
+	batWindows: AgendaWindow[],
+	wbWindows: AgendaWindow[],
+	execution?: AgendaExecutionContext,
+): string[] {
+	const lines: string[] = [];
+	if (battery && batWindows.length === 0) {
+		const auth =
+			execution?.battery != null
+				? resolveExecutionAuthority(execution.battery.liveWriteAllowed === true)
+				: null;
+		const prefix = auth === "dryrun" ? "DRYRUN · " : auth === "live" ? "LIVE · " : "";
+		lines.push(`${prefix}Batterie: ${battery.summaryDe}`);
+	}
+	if (wallbox && wbWindows.length === 0) {
+		const auth =
+			execution?.wallbox != null
+				? resolveExecutionAuthority(execution.wallbox.liveWriteAllowed === true)
+				: null;
+		const prefix = auth === "dryrun" ? "DRYRUN · " : auth === "live" ? "LIVE · " : "";
+		lines.push(`${prefix}Wallbox: ${wallbox.summaryDe}`);
+	}
+	return lines;
+}
+
 /**
- * Kompakte, nutzerlesbare Tagesagenda aus Unified-Allocationen.
- * Kein Debug-Dump — nur zeitliche Hauptaktionen.
- * Mit `execution`: aktueller Slot als GEPLANT / DRYRUN / LÄUFT (nie LÄUFT ohne Live-Authority).
+ * Kompakte, nutzerlesbare Tagesagenda aus Unified-Allocationen + Strategie.
  */
 export function buildUnifiedDayAgendaDe(
 	plan: UnifiedDayPlan,
 	execution?: AgendaExecutionContext,
+	strategy?: AddonStrategicPlanSnapshot | null,
 ): string[] {
 	const tz = plan.timezone || "Europe/Berlin";
-	const nowMs = execution?.nowMs ?? Date.now();
+	// Prefer explicit execution clock, then plan generation time (tests/replay), never bare wall-clock alone.
+	const planNowMs = Date.parse(plan.createdAtIso);
+	const nowMs =
+		execution?.nowMs ??
+		(Number.isFinite(planNowMs) ? planNowMs : Date.now());
 	const lines: string[] = [];
-	const bat = mergeWindows(plan.allocations, "battery_charge");
-	const ih = mergeWindows(plan.allocations, "immersion_heater");
-	const ac = mergeWindows(plan.allocations, "climate");
-	const wb = mergeWindows(plan.allocations, "wallbox");
+	const batAll = mergeWindows(plan.allocations, "battery_charge");
+	const ihAll = mergeWindows(plan.allocations, "immersion_heater");
+	const acAll = mergeWindows(plan.allocations, "climate");
+	const wbAll = mergeWindows(plan.allocations, "wallbox");
+
+	const deadline = plan.vehicleChargeEconomics?.deadlineIso ?? null;
+	const bat = selectRelevantAgendaWindows(batAll, nowMs, tz);
+	const ih = selectRelevantAgendaWindows(ihAll, nowMs, tz);
+	const ac = selectRelevantAgendaWindows(acAll, nowMs, tz, { max: 4 });
+	const wb = selectRelevantAgendaWindows(wbAll, nowMs, tz, { deadlineIso: deadline });
 
 	const batSt = agendaPhaseForKind(bat, execution?.battery, plan, "battery_charge", nowMs);
 	const ihSt = agendaPhaseForKind(ih, execution?.immersion_heater, plan, "immersion_heater", nowMs);
 	const acSt = agendaPhaseForKind(ac, execution?.climate, plan, "climate", nowMs);
 	const wbSt = agendaPhaseForKind(wb, execution?.wallbox, plan, "wallbox", nowMs);
 
-	for (const w of bat.slice(0, 2)) {
+	for (const w of bat) {
 		const active = windowContainsNow(w, nowMs);
-		lines.push(windowLine("Batterie laden", w, tz, active ? batSt.statusMeta : null));
+		lines.push(windowLine("Batterie laden", w, tz, active ? batSt.statusMeta : null, nowMs));
 	}
-	for (const w of ih.slice(0, 2)) {
+	for (const w of ih) {
 		const active = windowContainsNow(w, nowMs);
-		lines.push(windowLine("Heizstab thermisch vorladen", w, tz, active ? ihSt.statusMeta : null));
+		lines.push(
+			windowLine("Heizstab thermisch vorladen", w, tz, active ? ihSt.statusMeta : null, nowMs),
+		);
 	}
 	if (ac.length > 0) {
 		const first = ac[0]!;
-		const a = fmtClock(first.startIso, tz);
+		const a =
+			localDateKey(Date.parse(first.startIso), tz) === localDateKey(nowMs, tz)
+				? fmtClock(first.startIso, tz)
+				: fmtDayClock(first.startIso, tz);
 		const total = fmtKwh(ac.reduce((s, w) => s + w.energyKwh, 0));
 		const active = ac.some((w) => windowContainsNow(w, nowMs));
 		const prefix = active && acSt.statusMeta ? `${acSt.statusMeta} · ` : "";
@@ -197,7 +375,7 @@ export function buildUnifiedDayAgendaDe(
 				: `${prefix}Klima geplant${total ? ` (~${total} kWh)` : ""}`,
 		);
 	}
-	for (const w of wb.slice(0, 2)) {
+	for (const w of wb) {
 		const cells = plan.allocations.filter(
 			(a) => a.kind === "wallbox" && a.slot.startIso >= w.startIso && a.slot.endIso <= w.endIso,
 		);
@@ -209,8 +387,10 @@ export function buildUnifiedDayAgendaDe(
 		if (dead && gridOptimal) label = `Fahrzeugladung — Abfahrt/Ziel ${dead}, günstiges Preisfenster`;
 		else if (dead) label = `Fahrzeugladung — Ziel bis ${dead}`;
 		const active = windowContainsNow(w, nowMs);
-		lines.push(windowLine(label, w, tz, active ? wbSt.statusMeta : null));
+		lines.push(windowLine(label, w, tz, active ? wbSt.statusMeta : null, nowMs));
 	}
+
+	lines.push(...strategyAgendaLines(strategy?.battery, strategy?.wallbox, bat, wb, execution));
 
 	const night = plan.constraints.find((c) => c.id === "battery.night_reserve");
 	if (night) lines.push(night.descriptionDe.replace(/\.$/, ""));
@@ -230,7 +410,11 @@ export function buildUnifiedDayAgendaDe(
 /** Kurze, nutzerlesbare Tageszusammenfassung. */
 export function buildProductSummaryDe(
 	plan: UnifiedDayPlan,
-	opts?: { batteryStartSocPct?: number | null; execution?: AgendaExecutionContext },
+	opts?: {
+		batteryStartSocPct?: number | null;
+		execution?: AgendaExecutionContext;
+		strategy?: AddonStrategicPlanSnapshot | null;
+	},
 ): string {
 	const x = buildDeterministicDayExplanation(plan, opts);
 	const parts: string[] = [];
@@ -243,7 +427,7 @@ export function buildProductSummaryDe(
 		parts.push(`Batterie zum Tagesende ~${Math.round(batEnd)} %.`);
 	}
 
-	const agenda = buildUnifiedDayAgendaDe(plan, opts?.execution);
+	const agenda = buildUnifiedDayAgendaDe(plan, opts?.execution, opts?.strategy ?? null);
 	if (agenda.length > 0) {
 		parts.push(`Plan: ${agenda.join("; ")}.`);
 	} else {
@@ -264,7 +448,7 @@ export function buildProductSummaryDe(
 	}
 
 	const req = fmtKwh(x.fahrzeug.requiredEnergyKwh);
-	if (req !== null && !agenda.some((l) => l.startsWith("Fahrzeugladung"))) {
+	if (req !== null && !agenda.some((l) => /Fahrzeugladung|Wallbox/i.test(l))) {
 		const dead = fmtClock(x.fahrzeug.deadlineIso, x.timezone);
 		const pvE = fmtKwh(x.fahrzeug.plannedPvKwh);
 		const gridE = fmtKwh(x.fahrzeug.plannedGridKwh);

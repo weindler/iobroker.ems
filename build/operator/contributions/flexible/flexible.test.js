@@ -299,7 +299,7 @@ function acInput(overrides = {}) {
         strict_1.default.equal(c.details.avgNightDischargeKwh, 2.4);
         strict_1.default.match(c.reasonDe, /Top-Off/);
     });
-    (0, node_test_1.it)("does not raise target when the learned model says top-off is not due", () => {
+    (0, node_test_1.it)("uses dynamic end-SOC from night need when top-off is not due (not policy 95%)", () => {
         const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({
             socPct: 85,
             batteryLearning: {
@@ -313,8 +313,25 @@ function acInput(overrides = {}) {
                 estimatedRuntimeDays: 5,
                 reasonDe: "nicht fällig",
             },
+            chargeLogic: {
+                active: false,
+                forecastActive: true,
+                horizonDays: 2,
+                bridgeUntilIso: null,
+                pvRecoveryDay: 1,
+                energyStoredKwh: 8.5,
+                energyDeficitKwh: 0,
+                energyReserveKwh: 0.5,
+                energyTargetKwh: 8.5,
+                socTargetPct: 85,
+                chargeEnergyKwh: null,
+                confidenceMinPct: 85,
+                reasonDe: "kein Defizit",
+            },
         }));
-        strict_1.default.equal(c.details.targetSocPct, (0, mode_policy_1.plannerModePolicyFromGlobalMode)("balanced").chargeTargetSocPct);
+        strict_1.default.ok(c.details.targetSocPct < (0, mode_policy_1.plannerModePolicyFromGlobalMode)("balanced").chargeTargetSocPct);
+        strict_1.default.ok(c.details.targetSocPct < 50);
+        strict_1.default.equal(c.details.endSocDynamic, true);
     });
     (0, node_test_1.it)("grid import blocked in eco without active PV-deficit charge logic", () => {
         const c = (0, battery_1.buildBatteryChargeContribution)(batteryInput({ modePolicy: (0, mode_policy_1.plannerModePolicyFromGlobalMode)("eco"), deficitChargeActive: false }));

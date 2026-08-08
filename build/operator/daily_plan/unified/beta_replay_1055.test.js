@@ -93,6 +93,7 @@ function betaReplay1055Input() {
         nightReserveKwh: 2.5,
         maxChargePowerW: 4600,
         requiredChargeEnergyKwh: 0,
+        endSocTargetPct: null,
         chargeDeadlineIso: null,
         gridChargeAllowed: true,
         uncertainty: Q,

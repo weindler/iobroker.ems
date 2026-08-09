@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.254",
+		"version": "0.1.255",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.255": {
+				"en": "Immersion ON apply: lastCommandedStage/emsOnWriteAtMs advance only after successful foreign write or confirmed relay readback; blocked/skipped-without-readback retries next tick. Power verification unchanged.",
+				"de": "Heizstab-ON-Apply: lastCommandedStage/emsOnWriteAtMs nur nach erfolgreichem Foreign-Write oder bestätigtem Relais-Readback; blockiert/Skip ohne Readback → Retry im nächsten Tick. Power-Verification unverändert."
+			},
 			"0.1.254": {
 				"en": "Startup live-surplus prefer one-shot is consumed only when the stability bypass actually applies; incomplete first replan leaves the exception available for the next ready tick. Normal 90s debounce unchanged afterward.",
 				"de": "Startup-Live-Überschuss-Prefer-One-Shot wird erst verbraucht, wenn der Stabilitäts-Bypass wirklich greift; unvollständiger erster Replan lässt die Ausnahme für den nächsten bereiten Tick verfügbar. Normale 90s-Entprellung danach unverändert."

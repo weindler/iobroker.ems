@@ -1,6 +1,7 @@
 import { touchEmsActivity } from "../../../ems_activity";
 import { isAddonExecutionOff, isLiveWriteAllowed } from "../../../execution_mode";
-import { writeForeignIfChanged } from "../../../device_write";
+import { deviceValuesMatch, writeForeignIfChanged } from "../../../device_write";
+import { assertDeviceActionAllowed } from "../../../restore/barrier";
 import { isAddonGovernanceEnabledFromState } from "../../../addons/governance";
 import {
 	plannerStatusFromDailyPlan,
@@ -255,53 +256,126 @@ async function resolveImmersionPlanTarget(
 	return { targetTempC: forecast.targetTempC, reasonDe: forecast.targetReasonDe };
 }
 
-async function applyStageWrites(host: ImmersionRuntimeHost, stageIndex: number, live: boolean): Promise<void> {
+/** Ergebnis eines Hardware-Apply: nur bei Write-Erfolg oder bestätigtem Readback „angewandt“. */
+export type ApplyStageWriteResult = {
+	applied: boolean;
+	/** Gewünschte Stufe > 0 und Apply bestätigt (Write oder Readback ON). */
+	confirmedOn: boolean;
+};
+
+async function readbackMatchesDesired(
+	host: ImmersionRuntimeHost,
+	stateId: string,
+	desiredOn: boolean,
+): Promise<boolean> {
+	if (!host.getForeignStateAsync) return false;
+	try {
+		const st = await host.getForeignStateAsync(stateId);
+		if (!st) return false;
+		return deviceValuesMatch(st.val ?? null, desiredOn);
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Schreibt Stufen-Relais. Rückgabe applied=false bei Governance-/Restore-Block,
+ * fehlgeschlagenem Write oder Skip ohne bestätigtes Readback — Caller darf dann
+ * lastCommandedStage / emsOnWriteAtMs nicht fortschreiben (Retry im nächsten Tick).
+ */
+async function applyStageWrites(
+	host: ImmersionRuntimeHost,
+	stageIndex: number,
+	live: boolean,
+): Promise<ApplyStageWriteResult> {
+	const notApplied: ApplyStageWriteResult = { applied: false, confirmedOn: false };
 	// Dryrun: EMS besitzt das Relais nicht — keine physischen Writes.
-	if (!live) return;
+	if (!live) return notApplied;
+
 	const governanceEnabled = await isAddonGovernanceEnabledFromState(
 		(id) => host.getStateAsync(id),
 		"immersion_heater",
 	);
-	if (!governanceEnabled) return;
+	if (!governanceEnabled) {
+		host.log.debug?.("immersion apply skipped: governance disabled");
+		return notApplied;
+	}
+
+	const gate = assertDeviceActionAllowed();
+	if (!gate.ok) {
+		host.log.debug?.(`immersion apply skipped: ${gate.reason}`);
+		return notApplied;
+	}
+
+	if (!host.setForeignStateAsync || !host.getForeignStateAsync) {
+		host.log.debug?.("immersion apply skipped: foreign state API unavailable");
+		return notApplied;
+	}
+
 	const config = immersionDeviceConfigFromAdapter(host.config);
-	for (const stage of config.stages) {
-		if (!stage.setStateId) continue;
-		const on = stage.index === stageIndex;
-		if (!host.setForeignStateAsync) continue;
-		try {
-			const writeResult = await writeForeignIfChanged(
-				{
-					getForeignStateAsync: (id) => host.getForeignStateAsync!(id),
-					setForeignStateAsync: async (id, state) => {
-						if (state && typeof state === "object" && "val" in state) {
-							await host.setForeignStateAsync!(id, state as ioBroker.SettableState);
-							return;
-						}
-						await host.setForeignStateAsync!(id, { val: (state as ioBroker.StateValue) ?? null, ack: false });
-					},
-					log: {
-						info: (m) => host.log.debug?.(m),
-						warn: (m) => host.log.warn?.(m),
-						error: (m) => host.log.error?.(m),
-						debug: (m) => host.log.debug?.(m),
-					},
-				},
-				{
-					stateId: stage.setStateId,
-					value: on,
-					reason: `immersion stage ${stage.index}`,
-				},
-			);
-			if (writeResult.skipped) {
-				host.log.debug?.(`immersion stage ${stage.index} already ${on ? "ON" : "OFF"} — skip`);
+	const stages = config.stages.filter((s) => Boolean(s.setStateId));
+	if (stages.length === 0) {
+		return notApplied;
+	}
+
+	const writeHost = {
+		getForeignStateAsync: (id: string) => host.getForeignStateAsync!(id),
+		setForeignStateAsync: async (id: string, state: ioBroker.SettableState | ioBroker.StateValue) => {
+			if (state && typeof state === "object" && "val" in state) {
+				await host.setForeignStateAsync!(id, state as ioBroker.SettableState);
+				return;
 			}
+			await host.setForeignStateAsync!(id, { val: (state as ioBroker.StateValue) ?? null, ack: false });
+		},
+		log: {
+			info: (m: string) => host.log.debug?.(m),
+			warn: (m: string) => host.log.warn?.(m),
+			error: (m: string) => host.log.error?.(m),
+			debug: (m: string) => host.log.debug?.(m),
+		},
+	};
+
+	for (const stage of stages) {
+		const on = stage.index === stageIndex;
+		try {
+			const writeResult = await writeForeignIfChanged(writeHost, {
+				stateId: stage.setStateId,
+				value: on,
+				reason: `immersion stage ${stage.index}`,
+			});
+			if (writeResult.blocked) {
+				host.log.debug?.(
+					`immersion stage ${stage.index} blocked (${writeResult.blockReason ?? "blocked"}) — not applied`,
+				);
+				return notApplied;
+			}
+			if (writeResult.written) {
+				continue;
+			}
+			if (writeResult.skipped) {
+				// Skip allein reicht nicht — frisches Readback muss Soll bestätigen (TOCTOU / unklar).
+				const confirmed = await readbackMatchesDesired(host, stage.setStateId, on);
+				if (!confirmed) {
+					host.log.debug?.(
+						`immersion stage ${stage.index} skip without confirmed readback — not applied`,
+					);
+					return notApplied;
+				}
+				host.log.debug?.(`immersion stage ${stage.index} already ${on ? "ON" : "OFF"} — confirmed`);
+				continue;
+			}
+			host.log.debug?.(`immersion stage ${stage.index} write neither written nor confirmed skip — not applied`);
+			return notApplied;
 		} catch (e) {
 			host.log.error?.(`immersion write stage ${stage.index}: ${e}`);
 			persist.faultLockout = true;
 			persist.faultCode = "write_failed";
 			persist.faultSince = new Date().toISOString();
+			return notApplied;
 		}
 	}
+
+	return { applied: true, confirmedOn: stageIndex > 0 };
 }
 
 export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promise<void> {
@@ -437,28 +511,37 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 
 	// Stage-Wechsel oder effectiveLive false→true: gewünschten Soll physisch anwenden.
 	// Solange nicht (global∧addon) live, besitzt EMS keine Hardware-Authority.
-	// writeForeignIfChanged schreibt nur wenn Ist ≠ Soll (kein Tick-Spam nach erfolgreichem Apply).
+	// lastCommandedStage / emsOnWriteAtMs nur nach bestätigtem Apply (Write oder Readback),
+	// sonst Retry im nächsten normalen Runtime-Tick (kein Spam-Loop).
 	const stageChanged = effectiveStage !== lastCommandedStage;
 	if (stageChanged || liveEdge) {
-		if (stageChanged) {
-			if (effectiveStage === 0) {
-				persist.lastOffAtMs = nowMs;
-				persist.pauseUntilMs = nowMs + config.minimumPauseSec * 1000;
-			} else {
-				persist.lastSwitchAtMs = nowMs;
-			}
-			chatter = recordChatterEvent(chatter, nowMs, config.relayChatterWindowSec);
-		} else if (liveEdge) {
+		if (liveEdge && !stageChanged) {
 			host.log.info?.(
 				`immersion: effective live authority gained — reconcile stage ${effectiveStage} (desired unchanged)`,
 			);
 		}
-		await applyStageWrites(host, effectiveStage, live);
-		if (live) {
-			if (effectiveStage === 0) emsOffWriteAtMs = nowMs;
-			else emsOnWriteAtMs = nowMs;
+		const applyResult = await applyStageWrites(host, effectiveStage, live);
+		if (applyResult.applied) {
+			if (stageChanged) {
+				if (effectiveStage === 0) {
+					persist.lastOffAtMs = nowMs;
+					persist.pauseUntilMs = nowMs + config.minimumPauseSec * 1000;
+				} else {
+					persist.lastSwitchAtMs = nowMs;
+				}
+				chatter = recordChatterEvent(chatter, nowMs, config.relayChatterWindowSec);
+			}
+			if (effectiveStage === 0) {
+				emsOffWriteAtMs = nowMs;
+			} else if (applyResult.confirmedOn) {
+				emsOnWriteAtMs = nowMs;
+			}
+			lastCommandedStage = effectiveStage;
+		} else if (live) {
+			host.log.debug?.(
+				`immersion: stage ${effectiveStage} apply not confirmed — retry next tick (lastApplied=${lastCommandedStage})`,
+			);
 		}
-		lastCommandedStage = effectiveStage;
 	}
 
 	if (isRelayChatter(chatter, config.relayChatterMaxChanges)) {
@@ -827,4 +910,14 @@ export function getImmersionPersistForTest(): RuntimePersistData {
 
 export function getImmersionDailyPlanContextForTest(): ImmersionDailyPlanResolution | null {
 	return lastDailyPlanContext;
+}
+
+/** Test-Hook: zuletzt erfolgreich angewandte Stufe (−1 = noch nie bestätigt). */
+export function getImmersionLastCommandedStageForTest(): number {
+	return lastCommandedStage;
+}
+
+/** Test-Hook: Zeitpunkt des letzten bestätigten EMS-ON-Writes / ON-Readbacks. */
+export function getImmersionEmsOnWriteAtMsForTest(): number | null {
+	return emsOnWriteAtMs;
 }

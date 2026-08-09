@@ -54,12 +54,18 @@ function deviceValuesMatch(current, requested, options = {}) {
 exports.deviceValuesMatch = deviceValuesMatch;
 /**
  * Liest den aktuellen Geräte-State und schreibt nur bei Abweichung.
- * skipped=true bedeutet: Ziel bereits erreicht, kein Bus-Traffic nötig.
+ * skipped=true ohne blocked bedeutet: Ziel bereits erreicht, kein Bus-Traffic nötig.
  */
 async function writeForeignIfChanged(host, params) {
     const gate = (0, barrier_1.assertDeviceActionAllowed)();
     if (!gate.ok) {
-        return { written: false, skipped: true, currentValue: null };
+        return {
+            written: false,
+            skipped: true,
+            blocked: true,
+            blockReason: gate.reason,
+            currentValue: null,
+        };
     }
     if (!params.stateId.trim()) {
         return { written: false, skipped: false, currentValue: null };

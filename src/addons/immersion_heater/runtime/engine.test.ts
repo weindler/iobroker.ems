@@ -4,6 +4,8 @@ import {
 	runImmersionRuntimeTick,
 	resetImmersionRuntimeForTest,
 	getImmersionPersistForTest,
+	getImmersionLastCommandedStageForTest,
+	getImmersionEmsOnWriteAtMsForTest,
 	type ImmersionRuntimeHost,
 } from "./engine.js";
 import { IMMERSION_RUNTIME_STATES } from "./types.js";
@@ -14,6 +16,9 @@ import { slotStartIsoFloored, DAILY_PLAN_SLOT_MS } from "../../../operator/daily
 import { localDateKeyInTimezone } from "../../../operator/time.js";
 import { addonEnabled, addonAvailable } from "../../../tree_paths.js";
 import type { DailyAllocationEntry } from "../../../operator/daily_plan/types.js";
+import { checkPowerFault } from "./safety.js";
+import { immersionDeviceConfigFromAdapter } from "../device_config.js";
+import { resetRestoreBarrierForTest, setRestoreInProgress } from "../../../restore/barrier.js";
 
 /**
  * Roadmap Block 3.1: `runImmersionRuntimeTick` darf im Auto-Modus nur noch den Daily Plan oder
@@ -321,5 +326,182 @@ describe("immersion runtime — BETA-GATE-003 effective live reconcile", () => {
 		const n = foreignWrites.length;
 		await runImmersionRuntimeTick(host);
 		assert.equal(foreignWrites.length, n, "global dryrun must block further writes");
+	});
+});
+
+describe("immersion runtime — Root Cause A write apply confirmation", () => {
+	beforeEach(() => {
+		resetImmersionRuntimeForTest();
+		resetRestoreBarrierForTest();
+	});
+
+	function seedLiveStage1(host: FakeHost): void {
+		const now = realNow();
+		const slotStartIso = slotStartIsoFloored(now, TZ);
+		const slotEndIso = new Date(Date.parse(slotStartIso) + DAILY_PLAN_SLOT_MS).toISOString();
+		host.set("global.execution_mode", "live");
+		host.set("addons.immersion_heater.mode", "live");
+		host.set("addons.immersion_heater.governance.enabled", true);
+		host.set("immersion.stage1", false);
+		host.set(DAILY_PLAN_STATE_IDS.status, "ready");
+		host.set(DAILY_PLAN_STATE_IDS.date, localDateKeyInTimezone(now, TZ));
+		host.set(DAILY_PLAN_STATE_IDS.revision, 1);
+		host.set(DAILY_PLAN_STATE_IDS.validUntil, "");
+		host.set(
+			ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson,
+			JSON.stringify([allocationEntry(slotStartIso, slotEndIso, 2000)]),
+		);
+	}
+
+	function trackWrites(host: FakeHost): Array<{ id: string; val: unknown }> {
+		const foreignWrites: Array<{ id: string; val: unknown }> = [];
+		const origSetForeign = host.setForeignStateAsync;
+		host.setForeignStateAsync = async (id, state) => {
+			const val =
+				state && typeof state === "object" && "val" in state
+					? (state as { val: unknown }).val
+					: state;
+			foreignWrites.push({ id, val });
+			return origSetForeign(id, state);
+		};
+		return foreignWrites;
+	}
+
+	it("A) governance blocked → no write, no apply markers; later retry when allowed", async () => {
+		const host = baseHost(40);
+		seedLiveStage1(host);
+		host.set("addons.immersion_heater.governance.enabled", false);
+		const foreignWrites = trackWrites(host);
+
+		await runImmersionRuntimeTick(host);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), 1);
+		assert.equal(foreignWrites.filter((w) => w.id === "immersion.stage1").length, 0);
+		assert.equal(getImmersionLastCommandedStageForTest(), -1);
+		assert.equal(getImmersionEmsOnWriteAtMsForTest(), null);
+
+		host.set("addons.immersion_heater.governance.enabled", true);
+		await runImmersionRuntimeTick(host);
+		const onWrites = foreignWrites.filter((w) => w.id === "immersion.stage1" && w.val === true);
+		assert.equal(onWrites.length, 1);
+		assert.equal(getImmersionLastCommandedStageForTest(), 1);
+		assert.ok(getImmersionEmsOnWriteAtMsForTest() !== null);
+	});
+
+	it("B) restore blocked → no apply markers", async () => {
+		const host = baseHost(40);
+		seedLiveStage1(host);
+		const foreignWrites = trackWrites(host);
+		setRestoreInProgress(true);
+		try {
+			await runImmersionRuntimeTick(host);
+			assert.equal(foreignWrites.filter((w) => w.id === "immersion.stage1").length, 0);
+			assert.equal(getImmersionLastCommandedStageForTest(), -1);
+			assert.equal(getImmersionEmsOnWriteAtMsForTest(), null);
+		} finally {
+			resetRestoreBarrierForTest();
+		}
+	});
+
+	it("C) skip without confirmed readback → not applied; next tick retries write", async () => {
+		const host = baseHost(40);
+		seedLiveStage1(host);
+		const foreignWrites = trackWrites(host);
+		let stageReads = 0;
+		const origGetForeign = host.getForeignStateAsync;
+		host.getForeignStateAsync = async (id) => {
+			if (id === "immersion.stage1") {
+				stageReads += 1;
+				// 1st read (write helper): pretend already ON → skip; 2nd (readback): OFF → reject
+				const val = stageReads === 1;
+				return { val, ack: true, ts: Date.now(), lc: Date.now(), from: "test", q: 0 } as ioBroker.State;
+			}
+			return origGetForeign(id);
+		};
+
+		await runImmersionRuntimeTick(host);
+		assert.equal(foreignWrites.filter((w) => w.id === "immersion.stage1").length, 0);
+		assert.equal(getImmersionLastCommandedStageForTest(), -1);
+		assert.equal(getImmersionEmsOnWriteAtMsForTest(), null);
+
+		// Stable OFF → next tick must write ON
+		host.getForeignStateAsync = origGetForeign;
+		host.set("immersion.stage1", false);
+		await runImmersionRuntimeTick(host);
+		assert.ok(foreignWrites.some((w) => w.id === "immersion.stage1" && w.val === true));
+		assert.equal(getImmersionLastCommandedStageForTest(), 1);
+		assert.ok(getImmersionEmsOnWriteAtMsForTest() !== null);
+	});
+
+	it("D) skip with readback already ON → accept as applied without new write", async () => {
+		const host = baseHost(40);
+		seedLiveStage1(host);
+		host.set("immersion.stage1", true);
+		const foreignWrites = trackWrites(host);
+
+		await runImmersionRuntimeTick(host);
+		assert.equal(foreignWrites.filter((w) => w.id === "immersion.stage1").length, 0);
+		assert.equal(getImmersionLastCommandedStageForTest(), 1);
+		assert.ok(getImmersionEmsOnWriteAtMsForTest() !== null);
+	});
+
+	it("E) successful ON write → lastCommandedStage=1 and emsOnWriteAtMs set", async () => {
+		const host = baseHost(40);
+		seedLiveStage1(host);
+		const foreignWrites = trackWrites(host);
+
+		await runImmersionRuntimeTick(host);
+		assert.ok(foreignWrites.some((w) => w.id === "immersion.stage1" && w.val === true));
+		assert.equal(getImmersionLastCommandedStageForTest(), 1);
+		assert.ok(getImmersionEmsOnWriteAtMsForTest() !== null);
+	});
+
+	it("F) write error → write_failed lockout unchanged", async () => {
+		const host = baseHost(40);
+		seedLiveStage1(host);
+		host.setForeignStateAsync = async () => {
+			throw new Error("bus offline");
+		};
+
+		await runImmersionRuntimeTick(host);
+		assert.equal(getImmersionPersistForTest().faultCode, "write_failed");
+		assert.equal(getImmersionPersistForTest().faultLockout, true);
+		assert.equal(getImmersionLastCommandedStageForTest(), -1);
+		assert.equal(getImmersionEmsOnWriteAtMsForTest(), null);
+	});
+
+	it("G) successful ON write + fresh measured 0 → no_power_when_on still locks", async () => {
+		const host = baseHost(40);
+		seedLiveStage1(host);
+		host.config = {
+			...CONFIG,
+			ih_actual_power_state: "immersion.power",
+			ih_switch_on_check_delay_sec: 1,
+		};
+		host.set("immersion.power", 0);
+
+		await runImmersionRuntimeTick(host);
+		assert.equal(getImmersionLastCommandedStageForTest(), 1);
+		const onAt = getImmersionEmsOnWriteAtMsForTest();
+		assert.ok(onAt !== null);
+
+		// Safety-Pfad unverändert: nach Delay + frischem 0-W-Sample → Lockout
+		const cfg = immersionDeviceConfigFromAdapter(host.config);
+		const fault = checkPowerFault({
+			nowMs: (onAt as number) + 5_000,
+			executionLive: true,
+			commandedOn: true,
+			commandedStage: 1,
+			nominalPowerW: 2000,
+			measuredPowerW: 0,
+			hasPowerMeasurement: true,
+			feedbackActive: false,
+			emsOnWriteAtMs: onAt,
+			emsOffWriteAtMs: null,
+			powerObservedAtMs: (onAt as number) + 1_000,
+			mismatchSinceMs: null,
+			config: cfg,
+		});
+		assert.equal(fault.faultCode, "no_power_when_on");
+		assert.equal(fault.lockout, true);
 	});
 });

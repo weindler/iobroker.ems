@@ -81,11 +81,14 @@ export interface WriteForeignIfChangedResult {
 	written: boolean;
 	skipped: boolean;
 	currentValue: unknown;
+	/** true = Write bewusst unterlassen (Restore-Barrier o. ä.), kein „bereits am Ziel“. */
+	blocked?: boolean;
+	blockReason?: string;
 }
 
 /**
  * Liest den aktuellen Geräte-State und schreibt nur bei Abweichung.
- * skipped=true bedeutet: Ziel bereits erreicht, kein Bus-Traffic nötig.
+ * skipped=true ohne blocked bedeutet: Ziel bereits erreicht, kein Bus-Traffic nötig.
  */
 export async function writeForeignIfChanged(
 	host: DeviceWriteHost,
@@ -93,7 +96,13 @@ export async function writeForeignIfChanged(
 ): Promise<WriteForeignIfChangedResult> {
 	const gate = assertDeviceActionAllowed();
 	if (!gate.ok) {
-		return { written: false, skipped: true, currentValue: null };
+		return {
+			written: false,
+			skipped: true,
+			blocked: true,
+			blockReason: gate.reason,
+			currentValue: null,
+		};
 	}
 	if (!params.stateId.trim()) {
 		return { written: false, skipped: false, currentValue: null };

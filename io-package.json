@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.258",
+		"version": "0.1.259",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.259": {
+				"en": "VIS hotfix: fix quote typo in renderAiSummary so Geräte & Demnächst iframe script starts again (was stuck on Verbinde…). No planner/runtime/AI-authority change.",
+				"de": "VIS-Hotfix: Quote-Tippfehler in renderAiSummary behoben, damit das iframe „Geräte & Demnächst“ wieder startet (hing auf Verbinde…). Keine Planner-/Runtime-/KI-Authority-Änderung."
+			},
 			"0.1.258": {
 				"en": "AI on/off via runtime ai.user_enabled (VIS “KI benutzen”) without adapter restart; one-shot migration from native.ai_enabled; enable-epoch discards in-flight results. Plan A remains authority; AI_ALLOCATION_LIVE_MUTATION_ENABLED stays false.",
 				"de": "KI EIN/AUS über Runtime ai.user_enabled (VIS „KI benutzen“) ohne Adapter-Neustart; einmalige Migration von native.ai_enabled; Enable-Epoch verwirft laufende Ergebnisse. Plan A bleibt Authority; AI_ALLOCATION_LIVE_MUTATION_ENABLED bleibt false."

@@ -12,9 +12,21 @@ const dir = dirname(fileURLToPath(import.meta.url));
 const visHtml = readFileSync(join(dir, "ems-charts.html"), "utf8");
 const adminHtml = readFileSync(join(dir, "..", "admin", "ems-charts.html"), "utf8");
 
+function extractScript(html) {
+	const start = html.indexOf("<script>");
+	const end = html.lastIndexOf("</script>");
+	assert.ok(start >= 0 && end > start, "ems-charts.html must contain a script block");
+	return html.slice(start + "<script>".length, end);
+}
+
 describe("VIS AI advisory vs control-plan semantics", () => {
 	it("vis and admin ems-charts.html stay in sync", () => {
 		assert.equal(visHtml, adminHtml);
+	});
+
+	it("ems-charts.html script parses (no syntax error / Verbinde hang)", () => {
+		assert.doesNotThrow(() => new Function(extractScript(visHtml)));
+		assert.doesNotThrow(() => new Function(extractScript(adminHtml)));
 	});
 
 	it("A) never claims Plan B is actively controlling in product copy", () => {

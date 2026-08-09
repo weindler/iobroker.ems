@@ -60,4 +60,47 @@ describe("VIS immersion fault/lockout display", () => {
 		assert.match(visHtml, /Heizstab wegen Gerätestörung gesperrt/);
 		assert.match(visHtml, /status==="fault"/);
 	});
+
+	it("G-A) reset button only via immersionFaultResetActionsHtml when fault active", () => {
+		assert.match(visHtml, /function immersionFaultResetActionsHtml/);
+		assert.match(visHtml, /if\(!immersionFaultActive\(\)\)return ""/);
+		assert.match(visHtml, /immersionFaultResetActionsHtml\(\)/);
+	});
+
+	it("G-B) fault UI offers Fehler zurücksetzen", () => {
+		assert.match(visHtml, />Fehler zurücksetzen</);
+		assert.match(visHtml, /data-ems-action="ih-fault-reset"/);
+	});
+
+	it("G-C) button writes only fault_reset=true", () => {
+		const fn = visHtml.match(
+			/function requestImmersionFaultReset\(\)\{[\s\S]*?\n\}/,
+		)?.[0];
+		assert.ok(fn);
+		assert.match(
+			fn,
+			/setVisState\(INST\+"\.addons\.immersion_heater\.runtime\.fault_reset",true\)/,
+		);
+		assert.equal(fn.includes("fault_active"), false);
+		assert.equal(fn.includes("commanded_stage"), false);
+		assert.equal(fn.includes("fault_code"), false);
+		assert.equal([...fn.matchAll(/setVisState\(/g)].length, 1);
+	});
+
+	it("G-D/E) soft hint from existing states; backend canResetFault remains authority", () => {
+		assert.match(visHtml, /function immersionFaultResetSoftBlocked/);
+		assert.match(visHtml, /Reset erst möglich, wenn Relais\/Stufe aus ist/);
+		assert.match(visHtml, /keine Leistung mehr gemessen wird/);
+		assert.match(visHtml, /runtime\.fault_reset/);
+	});
+
+	it("G-F) reset copy does not claim immediate heater ON", () => {
+		assert.match(visHtml, /Einschalten entscheidet danach der normale Plan/);
+		assert.equal(/Heizstab jetzt einschalten/i.test(visHtml), false);
+	});
+
+	it("G-G) no_power_when_on product label preserved", () => {
+		assert.match(visHtml, /no_power_when_on:"Keine Leistung nach Einschaltbefehl"/);
+		assert.match(visHtml, /Sicherheits-Lockout aktiv/);
+	});
 });

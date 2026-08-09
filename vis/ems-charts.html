@@ -57,6 +57,11 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:6
 .ems-daily-reason{flex:1;font-size:10px;color:#c9d1d9;line-height:1.35}
 .ems-hint{margin-top:6px;font-size:9px;color:#6e7681;line-height:1.3}
 .ems-muted{color:#8b949e;font-size:11px}
+.ems-card-actions{margin-top:6px;display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.ems-btn{font-size:10px;font-weight:700;padding:4px 8px;border-radius:4px;border:1px solid #f8514966;background:#da363322;color:#ff7b72;cursor:pointer;letter-spacing:.02em}
+.ems-btn:hover{background:#da363344}
+.ems-btn:disabled{opacity:.45;cursor:not-allowed}
+.ems-btn-hint{font-size:9px;color:#c9d1d9;line-height:1.3;max-width:100%}
 @media (max-width:900px){
 	.ems-top{grid-template-columns:1fr}
 	.ems-main{grid-template-columns:1fr;min-height:0}
@@ -161,6 +166,8 @@ var stateIds=[
 	INST+".addons.immersion_heater.runtime.fault_active",
 	INST+".addons.immersion_heater.runtime.fault_code",
 	INST+".addons.immersion_heater.runtime.fault_message",
+	INST+".addons.immersion_heater.runtime.fault_reset",
+	INST+".addons.immersion_heater.runtime.commanded_stage",
 	INST+".addons.battery.runtime.decision_source",
 	INST+".addons.battery.runtime.daily_plan_status",
 	INST+".addons.battery.runtime.allocated_charge_power_w",
@@ -854,7 +861,7 @@ function buildTimelineRanges(horizonMs){
 	return items;
 }
 
-function card(title,color,badge,rows,note){
+function card(title,color,badge,rows,note,actionsHtml){
 	/** badge: single {cls,label} oder {exec,op} für Execution+Operation (Befund 003). */
 	var badgesHtml="";
 	if(badge&&badge.exec){
@@ -873,20 +880,67 @@ function card(title,color,badge,rows,note){
 	}
 	html+='</div>';
 	if(note)html+='<div class="ems-note" title="'+esc(note)+'">'+esc(note)+'</div>';
+	if(actionsHtml)html+=actionsHtml;
 	return html+'</div>';
 }
 
+/** Soft-Hinweis aus vorhandenen Runtime-States (Backend entscheidet weiter via canResetFault). */
+function immersionFaultResetSoftBlocked(){
+	var cmd=num(g("addons.immersion_heater.runtime.commanded_stage"))||0;
+	var fb=num(g("addons.immersion_heater.runtime.feedback_stage"))||0;
+	var meas=num(g("addons.immersion_heater.runtime.measured_power_w"));
+	if(cmd>0||fb>0)return "Reset erst möglich, wenn Relais/Stufe aus ist.";
+	if(meas!==null&&meas>20)return "Reset erst möglich, wenn keine Leistung mehr gemessen wird.";
+	return "";
+}
+
+function immersionFaultResetActionsHtml(){
+	if(!immersionFaultActive())return "";
+	var soft=immersionFaultResetSoftBlocked();
+	var html='<div class="ems-card-actions">'
+		+'<button type="button" class="ems-btn" data-ems-action="ih-fault-reset"'
+		+(soft?' title="'+esc(soft)+'"':"")
+		+">Fehler zurücksetzen</button>";
+	if(soft)html+='<div class="ems-btn-hint">'+esc(soft)+"</div>";
+	else html+='<div class="ems-btn-hint">Setzt nur den Sicherheits-Lockout zurück. Einschalten entscheidet danach der normale Plan.</div>';
+	html+="</div>";
+	return html;
+}
+
+/**
+ * KI-Anzeige: Compare/Advisory vs. realer Steuerplan (immer Plan A / Regelwerk).
+ * AI_ALLOCATION_LIVE_MUTATION_ENABLED=false — Compare-Winner ist keine Live-Authority.
+ */
 function aiVerdict(){
 	var d=parseObj(g("compare.delta_summary_json"));
 	var ih=seriesOn(g("compare.plan_a.chart_json"),g("compare.plan_b.chart_json"),"ihW");
 	var ac=seriesOn(g("compare.plan_a.chart_json"),g("compare.plan_b.chart_json"),"acW");
 	var wb=seriesOn(g("compare.plan_a.chart_json"),g("compare.plan_b.chart_json"),"wbW");
 	var shifts=ih.diff||ac.diff||wb.diff;
-	var active=txt(g("compare.active_plan"),txt(d.activePlan,"a")).toLowerCase();
-	var better=active==="b";
-	var delta=num(d.deltaCostCt);
-	var aiStatus=txt(g("ai.status"),"—");
+	var compareWinner=txt(g("compare.active_plan"),txt(d.activePlan,"a")).toLowerCase();
+	var prefersB=compareWinner==="b";
+	var deltaCost=num(d.deltaCostCt);
+	var deltaGrid=num(d.deltaGridKwh);
+	var deltaPv=num(d.deltaPvKwh);
+	var aiStatus=txt(g("ai.status"),"off").toLowerCase();
 	var suspended=g("ai.auto_suspended")===true||g("ai.auto_suspended")==="true";
+	var aiOff=aiStatus==="off"||aiStatus===""||aiStatus==="—";
+	var noMeasurable=!prefersB&&!shifts&&(deltaCost===null||Math.abs(deltaCost)<0.05)
+		&&(deltaGrid===null||Math.abs(deltaGrid)<0.05)
+		&&(deltaPv===null||Math.abs(deltaPv)<0.05);
+	var statusLabel="KI deaktiviert";
+	if(!aiOff)statusLabel=suspended||aiStatus==="suspended"?"KI aktiv – Auto ausgesetzt":"KI aktiv – Vergleich läuft";
+	var controlPlanLabel="Regelwerk (Plan A)";
+	var compareLabel="";
+	if(aiOff){
+		compareLabel="";
+	}else if(prefersB){
+		compareLabel="KI-Vorschlag: Plan B wäre günstiger/besser";
+	}else if(noMeasurable){
+		compareLabel="KI geprüft – kein messbarer Vorteil";
+	}else{
+		compareLabel="Vergleich bevorzugt Regelwerk (Plan A)";
+	}
 	var reason=txt(d.decisionReasonDe,txt(g("ai.last_thinking_de"),txt(g("ai.last_reason_de"),"Noch kein KI-Vergleich.")));
 	var decisions=parseArr(g("ai.last_decisions_json"));
 	var decisionBits=[];
@@ -896,11 +950,21 @@ function aiVerdict(){
 		var name=x.addonId==="immersion_heater"?"Heizstab":(x.addonId==="wallbox"?"Wallbox":(x.addonId==="battery"?"Batterie":(x.addonId==="climate"||x.addonId==="air_conditioning"?"Klima":x.addonId)));
 		decisionBits.push(name+": "+txt(x.action,"—"));
 	}
+	var deltaBits=[];
+	if(deltaCost!==null)deltaBits.push("Δ Kosten "+(deltaCost>0?"+":"")+deltaCost.toFixed(1)+" ct");
+	if(deltaGrid!==null)deltaBits.push("Δ Netz "+(deltaGrid>0?"+":"")+deltaGrid.toFixed(2)+" kWh");
+	if(deltaPv!==null)deltaBits.push("Δ PV "+(deltaPv>0?"+":"")+deltaPv.toFixed(2)+" kWh");
 	return{
-		shifts:shifts,better:better,delta:delta,aiStatus:aiStatus,suspended:suspended,reason:reason,
+		shifts:shifts,prefersB:prefersB,better:prefersB,delta:deltaCost,deltaCost:deltaCost,deltaGrid:deltaGrid,deltaPv:deltaPv,
+		aiStatus:aiStatus,aiOff:aiOff,suspended:suspended,reason:reason,
 		decisionLine:decisionBits.length?decisionBits.join(" · "):"",
-		shiftLabel:shifts?"Ja — Zeiten anders":"Nein — gleich wie Regelwerk",
-		betterLabel:better?"Ja — Plan B aktiv":(shifts?"Nein — Regelwerk bleibt":"Nein — kein Vorteil")
+		shiftLabel:shifts?"Vergleich: Zeiten anders als Regelwerk":"Vergleich: Zeiten wie Regelwerk",
+		statusLabel:statusLabel,
+		controlPlanLabel:controlPlanLabel,
+		compareLabel:compareLabel,
+		deltaCompareLine:deltaBits.length?("Vergleich "+deltaBits.join(" · ")):"",
+		/* legacy key — nur Advisory-Formulierungen, nie Live-Steuerung suggerieren */
+		betterLabel:aiOff?"KI deaktiviert":(prefersB?"KI-Vorschlag: Plan B":(noMeasurable?"KI geprüft – kein messbarer Vorteil":"Vergleich bevorzugt Regelwerk"))
 	};
 }
 
@@ -951,7 +1015,7 @@ function renderAiSummary(){
 	var el=document.getElementById("ems-ai-summary");
 	if(!el)return;
 	var v=aiVerdict();
-	var cls=v.better?"yes":(v.shifts?"warn":"no");
+	var cls=v.aiOff?"no":(v.prefersB?"warn":(v.shifts?"warn":"ok"));
 	var calls=num(g("ai.calls_today"));
 	var limit=num(g("ai.calls_limit"));
 	var cost=num(g("ai.cost_estimate_today_eur"));
@@ -962,14 +1026,16 @@ function renderAiSummary(){
 	else if(calls!==null)callsLine="Abrufe heute "+Math.round(calls);
 	var costLine=cost!==null&&cost>0?" · ~"+cost.toFixed(3).replace(".",",")+" €":"";
 	var runLine=lastRun?(" · zuletzt "+fmtSmartTime(lastRun)):"";
-	el.innerHTML='<div class="ems-k">KI vs. Regelwerk</div>'
-		+'<div class="ems-ai-line '+cls+'">'+esc(v.betterLabel)+'</div>'
+	el.innerHTML='<div class="ems-k">KI</div>'
+		+'<div class="ems-ai-line '+cls+'">'+esc(v.statusLabel)+'</div>'
+		+'<div class="ems-ai-reason">Steuerung: '+esc(v.controlPlanLabel)+'</div>'
+		+(v.compareLabel?'<div class="ems-ai-line '+(v.prefersB?"warn":"no")+'">'+esc(v.compareLabel)+'</div>':"")
 		+'<div class="ems-ai-reason">'
 		+esc(callsLine)+esc(costLine)+esc(runLine)
 		+"</div>"
+		+(v.deltaCompareLine?'<div class="ems-ai-reason">'+esc(v.deltaCompareLine)+"</div>":"")
 		+'<div class="ems-ai-reason">'
 		+esc(v.shiftLabel)
-		+(v.delta!==null?" · Δ "+(v.delta>0?"+":"")+v.delta.toFixed(1)+" ct":"")
 		+(v.decisionLine?" · "+esc(v.decisionLine):"")
 		+"</div>"
 		+'<div class="ems-ai-reason" title="'+esc(v.reason)+'">'+esc(shortNote(v.reason,140))+'</div>';
@@ -1110,7 +1176,7 @@ function renderStack(){
 			["Fahrzeug",fmtPct(g("live.wallbox.vehicle_soc_pct"))],
 			["Nächstes",wbNext?(fmtSmartTime(wbNext.t)+" · "+Math.round(wbNext.w)+" W"):"keines"]
 		],wbNote)
-		+card("Heizstab","#ffa657",ihBadges,ihRows,ihNote)
+		+card("Heizstab","#ffa657",ihBadges,ihRows,ihNote,immersionFaultResetActionsHtml())
 		+acCard(1)
 		+'<div class="ems-card-empty" aria-hidden="true"></div>'
 		+acCard(2);
@@ -1125,12 +1191,14 @@ function renderAi(){
 	var cost=num(g("ai.cost_estimate_today_eur"));
 	var callsTxt=(calls!==null&&limit!==null)?(Math.round(calls)+"/"+Math.round(limit)):(calls!==null?String(Math.round(calls)):"—");
 	el.innerHTML=
-		'<div class="ems-ai-box"><div class="ems-k">KI verschiebt Zeiten?</div><div class="ems-v '+(v.shifts?"warn":"no")+'">'+esc(v.shiftLabel)+'</div></div>'
-		+'<div class="ems-ai-box"><div class="ems-k">KI besser als Regelwerk?</div><div class="ems-v '+(v.better?"yes":"no")+'">'+esc(v.betterLabel)+'</div>'
-		+(v.delta!==null?'<div class="ems-ai-reason">Δ Kosten B−A: '+(v.delta>0?"+":"")+v.delta.toFixed(1)+' ct</div>':'')
-		+'</div>'
-		+'<div class="ems-ai-box"><div class="ems-k">KI-Status / Abrufe</div><div class="ems-v '+(v.suspended?"warn":(v.aiStatus==="ready"?"ok":"no"))+'">'+esc(v.aiStatus)+(v.suspended?" (auto aus)":"")+' · '+esc(callsTxt)+'</div>'
-		+'<div class="ems-ai-reason">'+(cost!==null?'~'+cost.toFixed(3).replace('.',',')+' € heute · ':'')+esc(v.reason)+'</div></div>';
+		'<div class="ems-ai-box"><div class="ems-k">KI-Status</div><div class="ems-v '+(v.aiOff?"no":(v.suspended?"warn":"ok"))+'">'+esc(v.statusLabel)+'</div>'
+		+'<div class="ems-ai-reason">Abrufe '+esc(callsTxt)+(cost!==null?' · ~'+cost.toFixed(3).replace('.',',')+' € heute':'')+'</div></div>'
+		+'<div class="ems-ai-box"><div class="ems-k">Aktiver Steuerplan</div><div class="ems-v ok">'+esc(v.controlPlanLabel)+'</div>'
+		+'<div class="ems-ai-reason">EMS führt Plan A aus (KI nur Vergleich).</div></div>'
+		+'<div class="ems-ai-box"><div class="ems-k">KI-Vergleich</div><div class="ems-v '+(v.prefersB?"warn":"no")+'">'+esc(v.compareLabel||v.betterLabel)+'</div>'
+		+(v.deltaCompareLine?'<div class="ems-ai-reason">'+esc(v.deltaCompareLine)+'</div>':'')
+		+'<div class="ems-ai-reason">'+esc(v.shiftLabel)+'</div>'
+		+'<div class="ems-ai-reason">'+esc(shortNote(v.reason,160))+'</div></div>';
 }
 
 function renderDaily(){
@@ -1151,6 +1219,7 @@ function renderDaily(){
 function render(){
 	if(!bound&&g("planner.intent.daily_plan.status")==null&&g("live.pv.power_w")==null)return;
 	showContent();
+	bindUiActions();
 	renderNow();
 	renderAiSummary();
 	renderStack();
@@ -1170,6 +1239,47 @@ function render(){
 var POLL_MS=5000;
 var pollTimer=null;
 var visBound=false;
+var liveSocket=null;
+
+function setVisState(id,val){
+	try{
+		var v=findVis();
+		if(v&&v.conn&&typeof v.conn.setState==="function"){
+			v.conn.setState(id,val);
+			return true;
+		}
+	}catch(e1){}
+	try{
+		if(liveSocket&&typeof liveSocket.emit==="function"){
+			liveSocket.emit("setState",id,{val:val,ack:false});
+			return true;
+		}
+	}catch(e2){}
+	setStatus("Fehler-Reset: keine Schreibverbindung",true);
+	return false;
+}
+
+function requestImmersionFaultReset(){
+	if(!immersionFaultActive())return;
+	setVisState(INST+".addons.immersion_heater.runtime.fault_reset",true);
+}
+
+function bindUiActions(){
+	var stack=document.getElementById("ems-stack");
+	if(!stack||stack.getAttribute("data-ems-actions")==="1")return;
+	stack.setAttribute("data-ems-actions","1");
+	stack.addEventListener("click",function(ev){
+		var t=ev.target;
+		while(t&&t!==stack){
+			if(t.getAttribute&&t.getAttribute("data-ems-action")==="ih-fault-reset"){
+				ev.preventDefault();
+				requestImmersionFaultReset();
+				return;
+			}
+			t=t.parentNode;
+		}
+	});
+}
 
 function onState(id,val){
 	if(cache[id]===val)return;
@@ -1244,6 +1354,7 @@ function bindSocket(){
 	if(socketBound)return true;
 	socketBound=true;
 	var socket=ioLib.connect(getOrigin(),{path:"/socket.io",reconnection:true});
+	liveSocket=socket;
 	function pull(){
 		socket.emit("getStates",stateIds,function(err,states){
 			if(err&&!bound)setStatus("States: "+err,true);

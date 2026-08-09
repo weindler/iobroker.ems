@@ -96,6 +96,8 @@ export type AllocationState = {
 	nowMs: number;
 	batteryHold: boolean;
 	dischargeLiveSupported: boolean;
+	/** Self-Consumption passiv nutzbar? Sonst keine battery-Energiequelle für Verbraucher. */
+	passiveBatteryEnergyAvailable: boolean;
 	pvConfidence: number;
 	modePolicy: PlannerModePolicy;
 	/**
@@ -651,6 +653,7 @@ export function scoreCandidate(
 	}
 
 	if (candidate.source === "battery") {
+		if (!state.passiveBatteryEnergyAvailable) return -Infinity;
 		if (!consumer.batteryEligible) return -Infinity;
 		if (!weights.allowOptimization) return -Infinity;
 		const floor = dischargeFloorKwh(state, candidate.slotIdx);
@@ -1384,6 +1387,7 @@ export function runScoreBasedAllocation(
 		nowMs: Date.parse(input.time.nowIso),
 		batteryHold: wb ? wallboxImmediate(wb) : false,
 		dischargeLiveSupported: bat.dischargeLiveSupported,
+		passiveBatteryEnergyAvailable: bat.passiveBatteryEnergyAvailable === true,
 		pvConfidence: pvConfidenceFactor(input),
 		modePolicy: policy,
 		modeDischargeMinKwh,

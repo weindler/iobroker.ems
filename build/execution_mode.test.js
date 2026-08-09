@@ -21,8 +21,9 @@ const LIVE_IH_FP = (0, execution_mode_js_1.executionModesConfigFingerprint)({
     ac_addon_mode: "dryrun",
 });
 (0, node_test_1.describe)("execution mode", () => {
-    (0, node_test_1.it)("parseMode accepts live and defaults unknown to dryrun", () => {
+    (0, node_test_1.it)("parseMode accepts live/off and defaults unknown to dryrun", () => {
         strict_1.default.equal((0, execution_mode_js_1.parseMode)("live"), "live");
+        strict_1.default.equal((0, execution_mode_js_1.parseMode)("off"), "off");
         strict_1.default.equal((0, execution_mode_js_1.parseMode)("DRYRUN"), "dryrun");
         strict_1.default.equal((0, execution_mode_js_1.parseMode)("invalid"), "dryrun");
     });

@@ -6,7 +6,12 @@ import {
 	type IntentStatus,
 } from "../runtime_surface";
 import { touchEmsActivity } from "../../ems_activity";
-import { isLiveWriteAllowed, isExecutionModeStateRelativeId } from "../../execution_mode";
+import {
+	isAddonExecutionOff,
+	isLiveWriteAllowed,
+	isExecutionModeStateRelativeId,
+} from "../../execution_mode";
+import { addonMode } from "../../tree_paths";
 import { ensureAddonMappingStates, syncNativeMappingToStates } from "../../mapping_sync";
 import { batteryConfigFromAdapter, type BatteryConfig } from "./config";
 import { isChargingAction } from "./core/intent";
@@ -298,6 +303,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		BATTERY_ADDON_ID,
 	);
 	const liveWriteAllowed = await isLiveWriteAllowed((id) => host.getStateAsync(id), BATTERY_ADDON_ID);
+	const executionOff = isAddonExecutionOff((await host.getStateAsync(addonMode(BATTERY_ADDON_ID)))?.val);
 
 	if (
 		liveWriteAllowed &&
@@ -383,7 +389,7 @@ async function controlTickInner(host: Host): Promise<void> {
 				deviceIntent = { ...deviceIntent, maxChargeW: mirrorW };
 			}
 		}
-	} else if (dailyPlanContext.useDailyPlan) {
+	} else if (!executionOff && dailyPlanContext.useDailyPlan) {
 		deviceIntent = deviceIntentFromDailyPlan(dailyPlanContext, nowMs);
 		wantsCharge = dailyPlanContext.chargingAllowed && (dailyPlanContext.effectiveChargePowerW ?? 0) > 0;
 		requestId = deviceIntent.requestId;
@@ -429,6 +435,25 @@ async function controlTickInner(host: Host): Promise<void> {
 		dailyPlanContext.legacyFallbackActive = !dailyPlanContext.useDailyPlan;
 		dailyPlanContext.legacyFallbackSource = wantsCharge ? "ems_mirror" : "safe_default";
 		dailyPlanContext.legacyFallbackReasonDe = dailyPlanContext.allocationReasonDe;
+	}
+
+	/*
+	 * Befund 005: mode=off — keine neue Lade-Strategie.
+	 * Nur wenn EMS-Ownership noch aktiv: einmalige Steuerungsübergabe (Restore).
+	 */
+	if (executionOff) {
+		wantsCharge = false;
+		if (runtime.ownership.active || ownershipLive) {
+			runtimeDecisionSource = "restore";
+			deviceIntent = {
+				...deviceIntent,
+				action: "self_consumption",
+				maxChargeW: null,
+				reason: "Add-on Aus — Ownership-Steuerungsübergabe an Self-Consumption",
+			};
+		} else {
+			runtimeDecisionSource = "safe_default";
+		}
 	}
 
 	if (runtime.faultCode !== null) runtimeDecisionSource = "fault";
@@ -483,8 +508,15 @@ async function controlTickInner(host: Host): Promise<void> {
 		gridBalanceSuppressed,
 	});
 
+	/*
+	 * Leave-Live / LIVE→OFF: Restore nur wenn EMS zuvor real Ownership hatte (`ownershipLive`).
+	 * Dryrun-Ownership allein darf nie safetyOverride öffnen (sonst Dryrun→echte Writes).
+	 */
 	const safetyOverride = ownershipLive && !liveWriteAllowed;
 	const effectiveLive = liveWriteAllowed || safetyOverride;
+	if (executionOff && safetyOverride) {
+		host.log.info("battery: Add-on Aus — einmalige Ownership-Steuerungsübergabe (Restore)");
+	}
 
 	const targetSocReached =
 		deviceIntent.targetSocPct != null &&
@@ -592,7 +624,12 @@ async function controlTickInner(host: Host): Promise<void> {
 	let gbWouldWrite = false;
 	let gbTarget = 0;
 	let gbState = "";
-	if (controller === "grid_balance" && !runtime.ownership.active && !gridBalancePausedByFsm) {
+	if (
+		controller === "grid_balance" &&
+		!runtime.ownership.active &&
+		!gridBalancePausedByFsm &&
+		!executionOff
+	) {
 		const consumption = (await readMappedNumber(host, table, "consumption_w")).val ?? 0;
 		const pv = (await readMappedNumber(host, table, "pv_ac_power_w")).val ?? 0;
 		const capacityWh = (snapshot.capacity.effectiveKwh ?? 0) * 1000;

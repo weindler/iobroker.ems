@@ -53,9 +53,9 @@ async function runCommandPipeline(intent, ctx) {
     checks_passed.push("addon_governance_enabled");
     const modeRaw = await ctx.getState(`addons.${addonId}.mode`);
     const mode = String(modeRaw?.val ?? "dryrun").toLowerCase();
-    if (mode === "disabled") {
-        checks_failed.push("addon_mode_disabled");
-        return fail("blocked", "addon_mode_disabled", checks_passed, checks_failed, { addon_mode: mode });
+    if (mode === "disabled" || mode === "off") {
+        checks_failed.push(mode === "off" ? "addon_mode_off" : "addon_mode_disabled");
+        return fail("blocked", mode === "off" ? "addon_mode_off" : "addon_mode_disabled", checks_passed, checks_failed, { addon_mode: mode });
     }
     checks_passed.push(`addon_mode_${mode}`);
     const requiredCap = (0, registry_1.commandNeedsCapability)(addonId, command);

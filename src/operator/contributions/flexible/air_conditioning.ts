@@ -26,6 +26,7 @@ export interface AirConditioningContributionBuildInput {
 	addonEnabled: boolean;
 	governanceEnabled: boolean;
 	globalModeOff: boolean;
+	addonExecutionOff: boolean;
 	modePolicy: PlannerModePolicy;
 	acConfig: AcGlobalConfig;
 	outdoorTempC: number | null;
@@ -66,6 +67,7 @@ function buildUnitContribution(
 		fault: unitInput.fault,
 		lockout: unitInput.lockout || unitInput.cleaningBlocked,
 		globalModeOff: input.globalModeOff,
+		addonExecutionOff: input.addonExecutionOff,
 	});
 
 	const hasDemand = forecast.likelyActive && forecast.expectedKwh > 0;

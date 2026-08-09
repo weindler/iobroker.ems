@@ -12,6 +12,13 @@ function evaluateParticipation(input) {
     if (!input.governanceEnabled) {
         return { allowed: false, status: "disabled", reasonDe: "Governance deaktiviert." };
     }
+    if (input.addonExecutionOff === true) {
+        return {
+            allowed: false,
+            status: "disabled",
+            reasonDe: "Add-on-Modus Aus — EMS-Light übernimmt dieses Gerät nicht.",
+        };
+    }
     if (input.globalModeOff) {
         return { allowed: false, status: "disabled", reasonDe: "Global Mode off — keine flexiblen Contributions." };
     }

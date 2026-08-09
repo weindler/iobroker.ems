@@ -10,6 +10,7 @@
 import type { UnifiedAllocationCell, UnifiedDayPlan } from "../operator/daily_plan/unified/types";
 import { buildDeterministicDayExplanation } from "../learning/day_evaluation/explain";
 import {
+	addonOffSummaryDe,
 	formatAgendaSlotMetaDe,
 	isPowerActive,
 	resolveExecutionAuthority,
@@ -33,6 +34,8 @@ export type AgendaExecutionAddon = {
 	hardwareActive: boolean;
 	/** Aktuelle Slot-Allocation in W; fehlt → aus Plan-Zellen abgeleitet. */
 	currentAllocatedW?: number | null;
+	/** Add-on mode=off — keine erfundenen EMS-Planfenster. */
+	executionOff?: boolean;
 };
 
 export type AgendaExecutionContext = {
@@ -334,10 +337,15 @@ export function buildUnifiedDayAgendaDe(
 		execution?.nowMs ??
 		(Number.isFinite(planNowMs) ? planNowMs : Date.now());
 	const lines: string[] = [];
-	const batAll = mergeWindows(plan.allocations, "battery_charge");
-	const ihAll = mergeWindows(plan.allocations, "immersion_heater");
-	const acAll = mergeWindows(plan.allocations, "climate");
-	const wbAll = mergeWindows(plan.allocations, "wallbox");
+	const batOff = execution?.battery?.executionOff === true;
+	const ihOff = execution?.immersion_heater?.executionOff === true;
+	const acOff = execution?.climate?.executionOff === true;
+	const wbOff = execution?.wallbox?.executionOff === true;
+
+	const batAll = batOff ? [] : mergeWindows(plan.allocations, "battery_charge");
+	const ihAll = ihOff ? [] : mergeWindows(plan.allocations, "immersion_heater");
+	const acAll = acOff ? [] : mergeWindows(plan.allocations, "climate");
+	const wbAll = wbOff ? [] : mergeWindows(plan.allocations, "wallbox");
 
 	const deadline = plan.vehicleChargeEconomics?.deadlineIso ?? null;
 	const bat = selectRelevantAgendaWindows(batAll, nowMs, tz);
@@ -349,6 +357,11 @@ export function buildUnifiedDayAgendaDe(
 	const ihSt = agendaPhaseForKind(ih, execution?.immersion_heater, plan, "immersion_heater", nowMs);
 	const acSt = agendaPhaseForKind(ac, execution?.climate, plan, "climate", nowMs);
 	const wbSt = agendaPhaseForKind(wb, execution?.wallbox, plan, "wallbox", nowMs);
+
+	if (ihOff) lines.push(addonOffSummaryDe("immersion_heater"));
+	if (batOff) lines.push(addonOffSummaryDe("battery"));
+	if (wbOff) lines.push(addonOffSummaryDe("wallbox"));
+	if (acOff) lines.push(addonOffSummaryDe("air_conditioning"));
 
 	for (const w of bat) {
 		const active = windowContainsNow(w, nowMs);
@@ -390,7 +403,15 @@ export function buildUnifiedDayAgendaDe(
 		lines.push(windowLine(label, w, tz, active ? wbSt.statusMeta : null, nowMs));
 	}
 
-	lines.push(...strategyAgendaLines(strategy?.battery, strategy?.wallbox, bat, wb, execution));
+	lines.push(
+		...strategyAgendaLines(
+			batOff ? undefined : strategy?.battery,
+			wbOff ? undefined : strategy?.wallbox,
+			bat,
+			wb,
+			execution,
+		),
+	);
 
 	const night = plan.constraints.find((c) => c.id === "battery.night_reserve");
 	if (night) lines.push(night.descriptionDe.replace(/\.$/, ""));

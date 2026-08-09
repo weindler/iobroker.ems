@@ -372,6 +372,7 @@ function baseHorizon(nowIso = "2026-08-08T08:55:00.000Z", hours = 40) {
             socPct: 70,
             nightReserveKwh: 2.5,
             dischargeLiveSupported: true,
+            passiveBatteryEnergyAvailable: true,
         };
         input.prices.slots = input.prices.slots.map((s) => {
             const h = new Date(s.slot.startIso).getUTCHours();

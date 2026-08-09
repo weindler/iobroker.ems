@@ -22,6 +22,7 @@ const consumer_stats_1 = require("../../../learning/consumer_stats");
 const persist_1 = require("../../../learning/consumer_stats/persist");
 const constants_2 = require("../../../learning/pv_horizon/constants");
 const tree_paths_1 = require("../../../tree_paths");
+const execution_mode_1 = require("../../../execution_mode");
 const mode_policy_1 = require("../../../planner/mode_policy");
 const intent_read_2 = require("../../../addons/immersion_heater/runtime/intent_read");
 const time_1 = require("../../time");
@@ -278,6 +279,12 @@ async function collectFlexibleContributions(host, now, gridForecast) {
         readNum(host, "learning.weather.horizon.day1.max_temp_c"),
         readStr(host, "learning.house_load.forecast_today_json"),
     ]);
+    const [batteryModeRaw, wallboxModeRaw, immersionModeRaw, climateModeRaw] = await Promise.all([
+        readStr(host, (0, tree_paths_1.addonMode)("battery")),
+        readStr(host, (0, tree_paths_1.addonMode)("wallbox")),
+        readStr(host, (0, tree_paths_1.addonMode)("immersion_heater")),
+        readStr(host, (0, tree_paths_1.addonMode)("air_conditioning")),
+    ]);
     const batteryIntent = (0, intent_read_1.parseResolvedBatteryIntentJson)(batteryIntentRaw?.val);
     const topOff = batteryIntent?.top_off_requested?.status === "valid" && batteryIntent.top_off_requested.value === true;
     const thermalIntent = (0, intent_read_2.parseResolvedIntentJson)(thermalRaw?.val);
@@ -354,6 +361,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             addonEnabled: batteryEnabled !== false,
             governanceEnabled: batteryGov,
             globalModeOff,
+            addonExecutionOff: (0, execution_mode_1.parseAddonMode)(batteryModeRaw) === "off",
             modePolicy,
             gridForecast,
             profileId: (0, config_1.batteryProfileIdFromConfig)(config),
@@ -384,6 +392,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             addonEnabled: wallboxEnabled !== false,
             governanceEnabled: wallboxGov,
             globalModeOff,
+            addonExecutionOff: (0, execution_mode_1.parseAddonMode)(wallboxModeRaw) === "off",
             modePolicy,
             gridForecast,
             connected: connected === true,
@@ -407,6 +416,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             addonEnabled: immersionEnabled !== false,
             governanceEnabled: immersionGov,
             globalModeOff,
+            addonExecutionOff: (0, execution_mode_1.parseAddonMode)(immersionModeRaw) === "off",
             modePolicy,
             config: immersionConfig,
             bufferTempC: bufferTemp,
@@ -428,6 +438,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             addonEnabled: climateEnabled !== false,
             governanceEnabled: climateGov,
             globalModeOff,
+            addonExecutionOff: (0, execution_mode_1.parseAddonMode)(climateModeRaw) === "off",
             modePolicy,
             acConfig,
             outdoorTempC: outdoorTemp,

@@ -247,21 +247,68 @@ function seriesOn(a,b,key){
 	return{diff:diff,anyA:anyA,anyB:anyB};
 }
 
-function collectWindows(planJson,minW,label){
+function collectWindows(planJson,minW,label,contributionExact){
 	var arr=parseArr(planJson),now=Date.now(),thr=minW||ON_W,list=[],i;
 	for(i=0;i<arr.length;i++){
 		var a=arr[i],w=+(a.allocatedPowerW||0),t=a.slot&&a.slot.startIso;
+		var cid=a.contributionId||"";
+		if(contributionExact&&cid!==contributionExact)continue;
 		if(!t||w<thr)continue;
-		if(Date.parse(t)+SLOT_MS<=now)continue;
-		list.push({t:t,ms:Date.parse(t),w:w,label:label,kind:"alloc"});
+		var start=Date.parse(t);
+		var endIso=a.slot&&a.slot.endIso;
+		var end=endIso?Date.parse(endIso):(start+SLOT_MS);
+		if(!isFinite(start)||!isFinite(end)||end<=now)continue;
+		list.push({t:t,ms:start,endMs:end,endIso:endIso||new Date(end).toISOString(),w:w,label:label,kind:"alloc",cid:cid});
 	}
 	return list;
 }
 
-function firstWindow(planJson,minW){
-	var list=collectWindows(planJson,minW,"");
+function firstWindow(planJson,minW,contributionExact){
+	var list=collectWindows(planJson,minW,"",contributionExact);
 	list.sort(function(x,y){return x.ms-y.ms;});
 	return list.length?list[0]:null;
+}
+
+/** Autoritativ: plan_json-Slots → Fenster mit Leistung nur dieses Fensters (kein globaler maxW). */
+function collapseAllocWindows(slots){
+	if(!slots.length)return[];
+	var sorted=slots.slice().sort(function(a,b){return a.ms-b.ms;});
+	var ranges=[],cur={startMs:sorted[0].ms,endMs:sorted[0].endMs,startIso:sorted[0].t,endIso:sorted[0].endIso,powerW:sorted[0].w,cid:sorted[0].cid||null},i;
+	for(i=1;i<sorted.length;i++){
+		var s=sorted[i];
+		var same=!cur.cid||!s.cid||cur.cid===s.cid;
+		if(same&&s.ms<=cur.endMs+1000){
+			if(s.endMs>=cur.endMs){cur.endMs=s.endMs;cur.endIso=s.endIso;}
+			cur.powerW=Math.max(cur.powerW,s.w);
+			if(cur.cid&&s.cid&&cur.cid!==s.cid)cur.cid=null;
+		}else{
+			ranges.push(cur);
+			cur={startMs:s.ms,endMs:s.endMs,startIso:s.t,endIso:s.endIso,powerW:s.w,cid:s.cid||null};
+		}
+	}
+	ranges.push(cur);
+	return ranges;
+}
+
+function authoritativeImmersionWindows(planJson){
+	return collapseAllocWindows(collectWindows(planJson,ON_W,""));
+}
+
+function authoritativeClimateWindows(unitIndex){
+	return collapseAllocWindows(
+		collectWindows(g("planner.intent.allocation.air_conditioning.plan_json"),ON_W,"","air_conditioning.unit_"+unitIndex)
+	);
+}
+
+function nextFutureWindow(windows){
+	var now=Date.now(),list=[],i;
+	for(i=0;i<windows.length;i++)if(windows[i].startMs>now)list.push(windows[i]);
+	list.sort(function(a,b){return a.startMs-b.startMs;});
+	return list.length?list[0]:null;
+}
+
+function isOutsideClockWindowReason(reason){
+	return /Außerhalb Zeitfenster|außerhalb Betriebszeit/i.test(String(reason||""));
 }
 
 /** Plan ≠ Ausführung — Semantik analog src/beta/execution_display.ts (Befund 003) */
@@ -269,8 +316,10 @@ function isLiveMode(v){return String(v==null?"dryrun":v).toLowerCase()==="live";
 function effectiveLiveWrite(addonId){
 	return isLiveMode(g("global.execution_mode"))&&isLiveMode(g("addons."+addonId+".mode"));
 }
-/** Execution-Authority nur aus Modes — nie mit Operation vermischen. */
+/** Execution-Authority nur aus Modes — nie mit Operation vermischen (Befund 005: AUS|DRYRUN|LIVE). */
 function execAuthorityBadge(addonId){
+	var mode=String(g("addons."+addonId+".mode")||"dryrun").toLowerCase();
+	if(mode==="off")return{cls:"idle",label:"AUS"};
 	return effectiveLiveWrite(addonId)
 		?{cls:"live",label:"LIVE"}
 		:{cls:"dryrun",label:"DRYRUN"};
@@ -344,15 +393,21 @@ function acContribution(unitIndex){
 	return null;
 }
 
-function acPlanLine(unitIndex){
+function acHeuteLine(unitIndex,hasPlanToday){
 	var c=acContribution(unitIndex);
-	if(!c)return "—";
-	var d=c.details||{};
+	var d=c&&c.details?c.details:{};
 	if(d.likelyActive===true&&num(d.expectedHoursToday)!==null&&num(d.expectedKwhToday)!==null){
 		var h=num(d.expectedHoursToday),k=num(d.expectedKwhToday);
 		return "~"+h.toFixed(1).replace(/\.0$/,"")+" h / "+k.toFixed(1).replace(/\.0$/,"")+" kWh heute";
 	}
-	return "kein Kühlbedarf geplant";
+	if(hasPlanToday)return"Klima im Tagesplan";
+	return"heute keine geplante Klimaaktion";
+}
+
+function acPlanLineFromWindows(allocW,nextWin){
+	if(isPowerOn(allocW))return"Budget "+Math.round(allocW)+" W";
+	if(nextWin)return"nächstes "+fmtRange(nextWin.startMs,nextWin.endMs)+" · "+Math.round(nextWin.powerW)+" W";
+	return"kein Budget";
 }
 
 /** Klima: Plan-Budget ≠ Kühlbedarf ≠ Hardware — analog src/beta/execution_display.ts */
@@ -386,58 +441,94 @@ function resolveClimateUnitDisplay(unitIndex){
 	var c=acContribution(unitIndex);
 	var d=c&&c.details?c.details:{};
 	var likely=d.likelyActive===true;
+	var modeOff=String(g("addons.air_conditioning.mode")||"").toLowerCase()==="off";
+	var wins=modeOff?[]:authoritativeClimateWindows(unitIndex);
+	var nextWin=nextFutureWindow(wins);
+	var hasFuture=!!nextWin;
+	var hasPlanToday=!modeOff&&(isPowerOn(alloc)||hasFuture);
 	var liveOk=effectiveLiveWrite("air_conditioning");
 	var demand=classifyClimateDemand(running,decisionSource,reasonDe);
-	var heute=acPlanLine(unitIndex);
-	var plan=isPowerOn(alloc)?("Budget "+Math.round(alloc)+" W"):"kein Budget";
-	if(!liveOk){
-		var phase=resolveExecPhase(isPowerOn(alloc),likely,false,false);
-		var badge=execBadge(phase);
+	var heute=modeOff?"EMS-Steuerung deaktiviert":acHeuteLine(unitIndex,hasPlanToday);
+	var plan=modeOff?"kein Plan":acPlanLineFromWindows(alloc,isPowerOn(alloc)?null:nextWin);
+	var nextLine=modeOff?"keines":(nextWin?("nächstes "+fmtRange(nextWin.startMs,nextWin.endMs)+" · "+Math.round(nextWin.powerW)+" W"):"keines");
+	var outside=isOutsideClockWindowReason(reasonDe);
+	var execBadgeObj=execAuthorityBadge("air_conditioning");
+	if(modeOff){
 		return{
-			phase:phase,badge:badge,demand:demand,
+			phase:"idle",badge:{exec:execBadgeObj,op:{cls:"idle",label:"Aus"}},demand:"none",
+			operationLine:"EMS-Steuerung deaktiviert",
+			nowLine:running?"Hardware an · EMS aus":"aus",
+			note:shortNote("Add-on Aus — EMS plant/steuert Klima nicht.",110),
+			planLine:plan,heuteLine:heute,nextLine:nextLine
+		};
+	}
+	if(!liveOk){
+		var phase=resolveExecPhase(isPowerOn(alloc),hasFuture||likely,false,false);
+		var badge=execBadge(phase);
+		var opLabel=outside?"Gesperrt · außerhalb Zeitfenster":badge.label;
+		return{
+			phase:phase,badge:{exec:execBadgeObj,op:{cls:outside?"plan":badge.cls,label:opLabel}},demand:demand,
+			operationLine:opLabel,
 			nowLine:execNowLine(phase,alloc,running?"eingeschaltet":"aus"),
 			note:shortNote(reasonDe||(phase==="dryrun"?"Dryrun — keine realen Klima-Writes.":"Klima im Dryrun."),110),
-			planLine:plan,heuteLine:heute
+			planLine:plan,heuteLine:heute,nextLine:nextLine
 		};
 	}
 	if(running){
 		if(demand==="active"){
 			return{
-				phase:"running",badge:execBadge("running"),demand:demand,
+				phase:"running",badge:{exec:execBadgeObj,op:execBadge("running")},demand:demand,
+				operationLine:"Läuft",
 				nowLine:"Läuft · Kühlbedarf aktiv",
 				note:shortNote(reasonDe||"Kühlbedarf aktiv.",110),
-				planLine:plan,heuteLine:heute
+				planLine:plan,heuteLine:heute,nextLine:nextLine
 			};
 		}
 		var hold=climateHoldReason(reasonDe);
 		return{
-			phase:"running",badge:execBadge("running"),demand:"hold",
+			phase:"running",badge:{exec:execBadgeObj,op:execBadge("running")},demand:"hold",
+			operationLine:"Läuft",
 			nowLine:"Läuft · kein neuer Kühlbedarf, läuft wegen "+hold+" weiter",
 			note:shortNote(reasonDe||("Kein neuer Kühlbedarf — läuft wegen "+hold+" weiter."),110),
-			planLine:plan,heuteLine:heute
+			planLine:plan,heuteLine:heute,nextLine:nextLine
+		};
+	}
+	if(outside){
+		var opOut="Gesperrt · außerhalb Zeitfenster";
+		return{
+			phase:hasPlanToday?"planned":"idle",
+			badge:{exec:execBadgeObj,op:{cls:hasPlanToday?"plan":"idle",label:"Gesperrt"}},
+			demand:demand,
+			operationLine:opOut,
+			nowLine:"gesperrt · außerhalb Zeitfenster",
+			note:shortNote(reasonDe||"Außerhalb Zeitfenster — kein Start.",110),
+			planLine:plan,heuteLine:heute,nextLine:nextLine
 		};
 	}
 	if(isPowerOn(alloc)&&demand==="none"){
 		return{
-			phase:"planned",badge:{cls:"plan",label:"Bereit"},demand:demand,
+			phase:"planned",badge:{exec:execBadgeObj,op:{cls:"plan",label:"Bereit"}},demand:demand,
+			operationLine:"Bereit",
 			nowLine:"aktuell kein Kühlbedarf",
 			note:shortNote(reasonDe||("Daily Plan stellt "+Math.round(alloc)+" W bereit, aktuell kein Kühlbedarf."),110),
-			planLine:plan,heuteLine:heute
+			planLine:plan,heuteLine:heute,nextLine:nextLine
 		};
 	}
-	if(isPowerOn(alloc)||likely){
+	if(isPowerOn(alloc)||hasFuture||likely){
 		return{
-			phase:"planned",badge:execBadge("planned"),demand:demand,
+			phase:"planned",badge:{exec:execBadgeObj,op:execBadge("planned")},demand:demand,
+			operationLine:"Geplant",
 			nowLine:demand==="active"?"Kühlbedarf — Start ausstehend":"aus",
 			note:shortNote(reasonDe||"Klima geplant.",110),
-			planLine:plan,heuteLine:heute
+			planLine:plan,heuteLine:heute,nextLine:nextLine
 		};
 	}
 	return{
-		phase:"idle",badge:{cls:"idle",label:"Aus"},demand:demand,
+		phase:"idle",badge:{exec:execBadgeObj,op:{cls:"idle",label:"Aus"}},demand:demand,
+		operationLine:"Aus",
 		nowLine:"aus",
 		note:shortNote(reasonDe||"Klima aus.",110),
-		planLine:plan,heuteLine:heute
+		planLine:plan,heuteLine:heute,nextLine:nextLine
 	};
 }
 
@@ -541,50 +632,29 @@ function rangeStatus(startMs,endMs,phase){
 	return"plan";
 }
 
-/** Klima: ein zusammenhängendes Fenster aus erwarteten Stunden (keine 24 Einzelzeilen). */
-function climateRange(unitIndex,horizonMs){
-	var c=acContribution(unitIndex);
-	var running=isOn(g("addons.air_conditioning.units.unit_"+unitIndex+".running"));
-	var alloc=num(g("addons.air_conditioning.units.unit_"+unitIndex+".allocated_power_w"));
-	var hours=0,kwh=null;
-	if(c&&c.details&&c.details.likelyActive===true&&num(c.details.expectedHoursToday)!==null){
-		hours=num(c.details.expectedHoursToday);
-		kwh=num(c.details.expectedKwhToday);
-	}
-	if(!running&&hours<=0&&!isPowerOn(alloc))return null;
-	var startMs=floorSlotMs(Date.now());
-	var durMs=Math.max(SLOT_MS,Math.round((hours>0?hours:0.25)*3600*1000));
-	var endMs=Math.min(startMs+durMs,horizonMs+SLOT_MS);
-	if(endMs<=startMs)return null;
-	return{
-		startMs:startMs,
-		endMs:endMs,
-		hours:hours,
-		kwh:kwh,
-		running:running,
-		allocatedW:alloc
-	};
-}
-
 function buildTimelineRanges(horizonMs){
 	var items=[];
 	var now=Date.now();
-	var ihA=slotsFromAllocation(g("planner.intent.allocation.immersion_heater.plan_json"),ON_W);
-	var ihC=slotsFromChart("ihW",horizonMs);
-	var ihMs=mergeMs(ihA.ms,ihC.ms);
+	/* Heizstab: nur autoritatives plan_json — Chart darf keine GEPLANT-Fenster erfinden. */
+	var ihWindows=authoritativeImmersionWindows(g("planner.intent.allocation.immersion_heater.plan_json"));
 	var ihLive=effectiveLiveWrite("immersion_heater");
 	var ihHw=immersionHardwareActive(ihLive);
 	var ihAlloc=num(g("addons.immersion_heater.runtime.allocated_power_w"));
-	collapseSlots(ihMs).forEach(function(r){
+	ihWindows.forEach(function(r){
+		if(r.startMs>horizonMs+SLOT_MS)return;
 		var current=now>=r.startMs&&now<r.endMs;
 		var phase=resolveExecPhase(current,!current,ihLive,ihHw);
 		var st=rangeStatus(r.startMs,r.endMs,phase);
 		var metaBits=[];
+		/* Leistung nur dieses autoritative Fensters — kein globaler maxW. */
+		var windowW=r.powerW||null;
 		if(current){
-			var m=execAgendaMeta(phase,ihAlloc);
+			var m=execAgendaMeta(phase,isPowerOn(ihAlloc)?ihAlloc:windowW);
 			if(m)metaBits.push(m);
+			else if(windowW)metaBits.push(Math.round(windowW)+" W");
+		}else if(windowW){
+			metaBits.push(Math.round(windowW)+" W");
 		}
-		if(ihA.maxW||ihC.maxW)metaBits.push(Math.round(ihA.maxW||ihC.maxW)+" W");
 		items.push({
 			addon:"immersion",color:ADDON_COLORS.immersion,name:"Heizstab",
 			startMs:r.startMs,endMs:r.endMs,
@@ -661,28 +731,30 @@ function buildTimelineRanges(horizonMs){
 	});
 
 	[1,2].forEach(function(unitIndex){
-		var cr=climateRange(unitIndex,horizonMs);
-		if(!cr)return;
+		var wins=authoritativeClimateWindows(unitIndex);
 		var disp=resolveClimateUnitDisplay(unitIndex);
-		var bits=[];
-		var st=disp.phase==="running"?"on":(disp.phase==="dryrun"?"dryrun":(cr.hours>0?"est":"plan"));
-		if(disp.phase==="running"&&disp.demand==="hold")bits.push("Restlauf/Hysterese");
-		else if(disp.phase==="running"&&disp.demand==="active")bits.push("Kühlbedarf aktiv");
-		else if(disp.badge.label==="Bereit")bits.push("bereit · kein Kühlbedarf");
-		else if(st==="dryrun"){
-			var cm=execAgendaMeta(disp.phase,cr.allocatedW);
-			if(cm)bits.push(cm);
-		}
-		if(isPowerOn(cr.allocatedW))bits.push("Budget "+Math.round(cr.allocatedW)+" W");
-		if(cr.hours>0)bits.push("~"+cr.hours.toFixed(1).replace(/\.0$/,"")+" h geschätzt");
-		if(cr.kwh!==null)bits.push(cr.kwh.toFixed(1).replace(".",",")+" kWh");
-		items.push({
-			addon:"climate"+unitIndex,
-			color:unitIndex===1?ADDON_COLORS.climate1:ADDON_COLORS.climate2,
-			name:acUnitLabel(unitIndex),
-			startMs:cr.startMs,endMs:cr.endMs,
-			status:st,
-			meta:bits.length?bits.join(" · "):null
+		var alloc=num(g("addons.air_conditioning.units.unit_"+unitIndex+".allocated_power_w"));
+		wins.forEach(function(cr){
+			if(cr.startMs>horizonMs+SLOT_MS)return;
+			var current=now>=cr.startMs&&now<cr.endMs;
+			var bits=[];
+			var st=disp.phase==="running"&&current?"on":(disp.phase==="dryrun"&&current?"dryrun":"plan");
+			if(current&&disp.phase==="running"&&disp.demand==="hold")bits.push("Restlauf/Hysterese");
+			else if(current&&disp.phase==="running"&&disp.demand==="active")bits.push("Kühlbedarf aktiv");
+			else if(current&&disp.operationLine&&/Gesperrt/i.test(disp.operationLine))bits.push("gesperrt");
+			else if(current&&st==="dryrun"){
+				var cm=execAgendaMeta(disp.phase,alloc);
+				if(cm)bits.push(cm);
+			}
+			bits.push(Math.round(cr.powerW)+" W");
+			items.push({
+				addon:"climate"+unitIndex,
+				color:unitIndex===1?ADDON_COLORS.climate1:ADDON_COLORS.climate2,
+				name:acUnitLabel(unitIndex),
+				startMs:cr.startMs,endMs:cr.endMs,
+				status:st,
+				meta:bits.join(" · ")
+			});
 		});
 	});
 
@@ -896,8 +968,10 @@ function renderStack(){
 		var d=resolveClimateUnitDisplay(unitIndex);
 		return card(title,"#79c0ff",d.badge,[
 			["Raum",fmtTemp(g(base+".room_temp_c"))],
-			["Heute",d.heuteLine],
+			["Operation",d.operationLine],
 			["Plan",d.planLine],
+			["Nächstes",d.nextLine],
+			["Heute",d.heuteLine],
 			["Jetzt",d.nowLine]
 		],d.note);
 	}

@@ -189,10 +189,16 @@ export interface ResolveWallboxRuntimePhaseInput {
 	addonEnabled: boolean;
 	governanceEnabled: boolean;
 	liveRequested: boolean;
+	/** Add-on mode=off → observe (EVCC autonom). */
+	addonExecutionOff?: boolean;
 }
 
 export function resolveWallboxRuntimePhase(input: ResolveWallboxRuntimePhaseInput): WallboxRuntimePhase {
 	if (!input.addonEnabled || !input.governanceEnabled) {
+		return "observe";
+	}
+	/** Befund 005: Off = EVCC autonom — keine EMS-Steuerung, kein Dryrun-Dispatch-Write. */
+	if (input.addonExecutionOff === true) {
 		return "observe";
 	}
 	if (!input.liveRequested) {
@@ -204,6 +210,8 @@ export function resolveWallboxRuntimePhase(input: ResolveWallboxRuntimePhaseInpu
 export interface WallboxLiveFoundationResult {
 	phase: WallboxRuntimePhase;
 	liveRequested: boolean;
+	/** true wenn Add-on-Modus Aus — Ownership ohne EVCC-Restore freigeben. */
+	addonExecutionOff: boolean;
 	candidate: WallboxCommandCandidate | null;
 	writePlan: WallboxWritePlan | null;
 	feedbackContract: WallboxFeedbackContract | null;
@@ -225,6 +233,7 @@ export interface RunWallboxLiveFoundationInput {
 	addonEnabled: boolean;
 	governanceEnabled: boolean;
 	liveRequested: boolean;
+	addonExecutionOff?: boolean;
 	now: Date;
 	/** Aktiver Fault/Lockout — sperrt Live-Writes, unabhängig von Mapping/Plan. */
 	faultActive?: boolean;
@@ -234,16 +243,19 @@ export async function runWallboxLiveFoundation(
 	host: WallboxWriteHost,
 	input: RunWallboxLiveFoundationInput,
 ): Promise<WallboxLiveFoundationResult> {
+	const addonExecutionOff = input.addonExecutionOff === true;
 	const phase = resolveWallboxRuntimePhase({
 		addonEnabled: input.addonEnabled,
 		governanceEnabled: input.governanceEnabled,
 		liveRequested: input.liveRequested,
+		addonExecutionOff,
 	});
 
 	if (phase === "observe") {
 		return {
 			phase,
 			liveRequested: input.liveRequested,
+			addonExecutionOff,
 			candidate: null,
 			writePlan: null,
 			feedbackContract: null,
@@ -289,6 +301,7 @@ export async function runWallboxLiveFoundation(
 	return {
 		phase,
 		liveRequested: input.liveRequested,
+		addonExecutionOff,
 		candidate,
 		writePlan,
 		feedbackContract,

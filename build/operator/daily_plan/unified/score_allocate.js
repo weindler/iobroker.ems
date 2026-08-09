@@ -519,6 +519,8 @@ function scoreCandidate(input, state, candidate, weights) {
             return -Infinity;
     }
     if (candidate.source === "battery") {
+        if (!state.passiveBatteryEnergyAvailable)
+            return -Infinity;
         if (!consumer.batteryEligible)
             return -Infinity;
         if (!weights.allowOptimization)
@@ -1179,6 +1181,7 @@ function runScoreBasedAllocation(input, slots, opts) {
         nowMs: Date.parse(input.time.nowIso),
         batteryHold: wb ? wallboxImmediate(wb) : false,
         dischargeLiveSupported: bat.dischargeLiveSupported,
+        passiveBatteryEnergyAvailable: bat.passiveBatteryEnergyAvailable === true,
         pvConfidence: pvConfidenceFactor(input),
         modePolicy: policy,
         modeDischargeMinKwh,

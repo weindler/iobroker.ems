@@ -1,8 +1,8 @@
 import { touchEmsActivity } from "../../../ems_activity";
-import { isLiveWriteAllowed } from "../../../execution_mode";
+import { isAddonExecutionOff, isLiveWriteAllowed } from "../../../execution_mode";
 import { asNum } from "../../../ems_light/state_util";
 import { setStateIfChanged } from "../../../policy/core/state_write";
-import { addonEnabled, addonAvailable } from "../../../tree_paths";
+import { addonEnabled, addonAvailable, addonMode } from "../../../tree_paths";
 import {
 	tickConsumerStats,
 	initConsumerStatsForKey,
@@ -545,9 +545,12 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		"climate",
 	);
 	const live = await isLiveWriteAllowed((id) => host.getStateAsync(id), AC_ADDON_ID);
-	const liveEdge = live && !prevAcLiveWriteAllowed;
-	prevAcLiveWriteAllowed = live;
-	const allowNewCleaning = governanceEnabled && addonEnabledVal;
+	const executionOff = isAddonExecutionOff((await host.getStateAsync(addonMode(AC_ADDON_ID)))?.val);
+	/** Off: keine EMS-Start/Stop-Writes; Telemetrie bleibt. */
+	const writeLive = live && !executionOff;
+	const liveEdge = writeLive && !prevAcLiveWriteAllowed;
+	prevAcLiveWriteAllowed = writeLive;
+	const allowNewCleaning = governanceEnabled && addonEnabledVal && !executionOff;
 
 	// Disabled units that still have objects (e.g. just turned off): close sticky stats / optional stop.
 	// Unconfigured placeholders are not ensured and are removed by surface cleanup.
@@ -632,7 +635,7 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 			up.cleaningActive &&
 			switchIsOn(fb.value) &&
 			stopRetryReady(up, nowMs) &&
-			live &&
+			writeLive &&
 			governanceEnabled &&
 			addonEnabledVal
 		) {
@@ -641,12 +644,12 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		}
 
 		if (!addonEnabledVal && switchIsOn(fb.value) && stopRetryReady(up, nowMs)) {
-			await stopUnit(host, unit, mappingTable, live, up);
+			await stopUnit(host, unit, mappingTable, writeLive, up);
 		}
 
 		const fsm = evaluateAcUnitFsm({
 			now,
-			addonEnabled: addonEnabledVal && governanceEnabled,
+			addonEnabled: addonEnabledVal && governanceEnabled && !executionOff,
 			unit,
 			roomTempC: temp.num,
 			roomHumidityPct: hum.num,
@@ -688,7 +691,7 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 							`ac unit ${unit.index}: retry stop (${Math.round((nowMs - up.lastStopAtMs) / 1000)}s since last attempt)`,
 						);
 					}
-					await stopUnit(host, unit, mappingTable, live && permission.deviceWritesAllowed, up);
+					await stopUnit(host, unit, mappingTable, writeLive && permission.deviceWritesAllowed, up);
 				}
 			} else {
 				up.running = false;
@@ -696,29 +699,37 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		} else if (fsm.demandStop) {
 			// Governance blockiert Stop-Writes — laufende Unit nicht blind abschalten.
 		} else if (permission.allowStart && switchIsOff(fb.value)) {
-			if (live) {
+			if (writeLive) {
 				if (startRetryReady) {
 					if (up.lastStartAtMs) {
 						host.log.info(
 							`ac unit ${unit.index}: retry start (${Math.round((nowMs - up.lastStartAtMs) / 1000)}s since last attempt)`,
 						);
 					}
-					await startUnit(host, unit, mappingTable, live && permission.deviceWritesAllowed, up, fsm.modePurpose);
+					await startUnit(
+						host,
+						unit,
+						mappingTable,
+						writeLive && permission.deviceWritesAllowed,
+						up,
+						fsm.modePurpose,
+					);
 				}
-			} else if (!up.running) {
+			} else if (!executionOff && !up.running) {
 				await startUnit(host, unit, mappingTable, false, up, fsm.modePurpose);
 			}
 		} else if (
 			switchIsOn(fb.value) &&
 			!fsm.demandStop &&
 			!up.cleaningActive &&
-			permission.deviceWritesAllowed
+			permission.deviceWritesAllowed &&
+			!executionOff
 		) {
 			await applyModePurposeWhileRunning(
 				host,
 				unit,
 				mappingTable,
-				live,
+				writeLive,
 				up,
 				fsm.modePurpose,
 			);

@@ -12,6 +12,7 @@ export interface WallboxContributionBuildInput {
 	addonEnabled: boolean;
 	governanceEnabled: boolean;
 	globalModeOff: boolean;
+	addonExecutionOff: boolean;
 	modePolicy: PlannerModePolicy;
 	gridForecast: GridSupplyForecast | null;
 	connected: boolean;
@@ -138,6 +139,7 @@ export function buildWallboxEvSessionContribution(input: WallboxContributionBuil
 		fault: false,
 		lockout: false,
 		globalModeOff: input.globalModeOff,
+		addonExecutionOff: input.addonExecutionOff,
 	});
 
 	const requiredKwh = requiredEnergyKwh(input);

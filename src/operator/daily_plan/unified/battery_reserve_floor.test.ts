@@ -126,6 +126,7 @@ describe("Beta-004 flex — Klima aus Batterie bei späterer PV-Recovery", () =>
 			endSocTargetPct: 40,
 			requiredChargeEnergyKwh: 0,
 			dischargeLiveSupported: true,
+			passiveBatteryEnergyAvailable: true,
 			uncertainty: Q,
 			freshness: FRESH,
 		};
@@ -193,6 +194,7 @@ describe("Beta-004 flex — Wallbox aus Batterie ohne %-Cap", () => {
 			endSocTargetPct: 35,
 			requiredChargeEnergyKwh: 0,
 			dischargeLiveSupported: true,
+			passiveBatteryEnergyAvailable: true,
 			uncertainty: Q,
 			freshness: FRESH,
 		};
@@ -275,6 +277,7 @@ describe("Beta-004 flex — Thermal aus Batterie bei kritischer Deadline", () =>
 			endSocTargetPct: 40,
 			requiredChargeEnergyKwh: 0,
 			dischargeLiveSupported: true,
+			passiveBatteryEnergyAvailable: true,
 			uncertainty: Q,
 			freshness: FRESH,
 		};
@@ -331,6 +334,7 @@ describe("Beta-004 flex — Reserve schützen bei niedrigem SOC", () => {
 			endSocTargetPct: 40,
 			requiredChargeEnergyKwh: 0,
 			dischargeLiveSupported: true,
+			passiveBatteryEnergyAvailable: true,
 			uncertainty: Q,
 			freshness: FRESH,
 		};
@@ -435,6 +439,7 @@ describe("Beta-004 thermal flex storage — replan yields PV to vehicle", () => 
 				endSocTargetPct: 36,
 				requiredChargeEnergyKwh: 0,
 				dischargeLiveSupported: true,
+				passiveBatteryEnergyAvailable: true,
 				uncertainty: Q,
 				freshness: FRESH,
 			};

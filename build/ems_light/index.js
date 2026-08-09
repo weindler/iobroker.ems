@@ -33,8 +33,10 @@ const policy_1 = require("../policy");
 const intent_1 = require("../intent");
 const planner_1 = require("../planner");
 const global_modes_1 = require("../global_modes");
+const execution_mode_1 = require("../execution_mode");
+const tick_1 = require("../operator/daily_plan/tick");
 const ensure_states_1 = require("./ensure_states");
-const tick_1 = require("./tick");
+const tick_2 = require("./tick");
 const DEFAULT_TICK_SEC = 60;
 const GLOBAL_MODES_REQUESTED_STATE = "global_modes.requested";
 const INTENT_WALLBOX_REQUEST_STATE = "user_intent.inputs.iobroker.wallbox.request_json";
@@ -140,6 +142,20 @@ async function ensureEmsLightStateTree(adapter) {
 exports.ensureEmsLightStateTree = ensureEmsLightStateTree;
 /** Phase F — Runtime, Ticks und initiale Auswertung (nach Bootstrap-Barriere). */
 async function startEmsLightPhase1Runtime(adapter) {
+    (0, execution_mode_1.setAddonModeReplanHook)((info) => {
+        const reason = `replan_addon_execution_mode:${info.addonId}:${info.previous ?? "?"}→${info.next}`;
+        if (info.next === "off" && info.addonId !== "global") {
+            // Zuerst publizierte Plan-Darstellung leeren, dann Cache für frischen Replan verwerfen.
+            void (0, tick_1.invalidatePublishedPlanForAddonOff)(adapter, info.addonId)
+                .then(() => (0, tick_1.requestForcedUnifiedReplan)(reason))
+                .catch((e) => {
+                adapter.log.warn(`invalidate plan on addon off: ${e}`);
+                (0, tick_1.requestForcedUnifiedReplan)(reason);
+            });
+            return;
+        }
+        (0, tick_1.requestForcedUnifiedReplan)(reason);
+    });
     const host = adapter;
     energyDailyRollupHost = buildRollupHost(adapter);
     powerRollupHost = energyDailyRollupHost;
@@ -175,7 +191,7 @@ async function startEmsLightPhase1Runtime(adapter) {
     catch (e) {
         adapter.log.warn(`EMS-Light state subscribe: ${e}`);
     }
-    await (0, tick_1.runEmsLightPhase1Tick)(host);
+    await (0, tick_2.runEmsLightPhase1Tick)(host);
     if (energyDailyRollupHost) {
         await (0, energy_daily_rollup_1.tickEnergyDailyRollup)(energyDailyRollupHost);
     }
@@ -187,7 +203,7 @@ async function startEmsLightPhase1Runtime(adapter) {
     const dailyHostForTick = energyDailyRollupHost;
     const powerHostForTick = powerRollupHost;
     tickTimer = setInterval(() => {
-        void (0, tick_1.runEmsLightPhase1Tick)(host).catch((e) => {
+        void (0, tick_2.runEmsLightPhase1Tick)(host).catch((e) => {
             adapter.log.error(`EMS-Light tick: ${e}`);
         });
         if (dailyHostForTick) {

@@ -141,6 +141,7 @@ function buildBatteryChargeContribution(input) {
         fault: input.fault,
         lockout: input.lockout,
         globalModeOff: input.globalModeOff,
+        addonExecutionOff: input.addonExecutionOff,
         telemetryValid: input.telemetryValid,
         telemetryStale: input.telemetryStale,
     });
@@ -293,6 +294,7 @@ function buildBatteryReserveContribution(input) {
         fault: input.fault,
         lockout: input.lockout,
         globalModeOff: false,
+        addonExecutionOff: input.addonExecutionOff,
     });
     const enabled = participation.allowed || input.minSocPct !== null;
     let status = enabled ? "valid" : "missing";

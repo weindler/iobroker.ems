@@ -22,6 +22,11 @@ import { ensurePolicyStateTree, initPolicyEngine, stopPolicyEngine, type PolicyE
 import { ensureIntentStates, initIntentEngine, stopIntentEngine, type IntentEngineHost } from "../intent";
 import { ensurePlannerStateTree, stopPlanner, type PlannerHost } from "../planner";
 import { resetGlobalModesRuntime } from "../global_modes";
+import { setAddonModeReplanHook } from "../execution_mode";
+import {
+	invalidatePublishedPlanForAddonOff,
+	requestForcedUnifiedReplan,
+} from "../operator/daily_plan/tick";
 import { ensureEmsLightStates } from "./ensure_states";
 import { runEmsLightPhase1Tick } from "./tick";
 import type { LiveCacheHost } from "./live_cache";
@@ -145,6 +150,23 @@ export async function ensureEmsLightStateTree(adapter: ioBroker.Adapter): Promis
 
 /** Phase F — Runtime, Ticks und initiale Auswertung (nach Bootstrap-Barriere). */
 export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Promise<void> {
+	setAddonModeReplanHook((info) => {
+		const reason = `replan_addon_execution_mode:${info.addonId}:${info.previous ?? "?"}→${info.next}`;
+		if (info.next === "off" && info.addonId !== "global") {
+			// Zuerst publizierte Plan-Darstellung leeren, dann Cache für frischen Replan verwerfen.
+			void invalidatePublishedPlanForAddonOff(
+				adapter as unknown as Parameters<typeof invalidatePublishedPlanForAddonOff>[0],
+				info.addonId,
+			)
+				.then(() => requestForcedUnifiedReplan(reason))
+				.catch((e) => {
+					adapter.log.warn(`invalidate plan on addon off: ${e}`);
+					requestForcedUnifiedReplan(reason);
+				});
+			return;
+		}
+		requestForcedUnifiedReplan(reason);
+	});
 	const host = adapter as unknown as LiveCacheHost;
 	energyDailyRollupHost = buildRollupHost(adapter);
 	powerRollupHost = energyDailyRollupHost;

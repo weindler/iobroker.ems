@@ -108,6 +108,12 @@ export type UnifiedBatteryInput = {
 	/** Live Discharge supported? false → kein Discharge-Dispatch. */
 	dischargeLiveSupported: boolean;
 	/**
+	 * Passive Entladung plausibel (Self-Consumption, kein Ownership/Hold/Manual)?
+	 * false → Unified plant keine Live-Verbraucher auf battery-Energiequelle.
+	 * Kein Discharge-Write — nur Planungs-Verfügbarkeit.
+	 */
+	passiveBatteryEnergyAvailable: boolean;
+	/**
 	 * Ladebedarf aus Contribution (Policy/Top-Off/PV-Defizit-Logik) — kWh AC-Seite.
 	 * null = kein expliziter Bedarf / unknown (nicht als 0 erfinden).
 	 */

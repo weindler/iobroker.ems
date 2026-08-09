@@ -5,6 +5,7 @@ export type { ProductNotificationSurface } from "./notification_surface";
 export { buildEffectiveExecutionSnapshot } from "./execution_effective";
 export type { EffectiveExecutionSnapshot } from "./execution_effective";
 export {
+	addonOffSummaryDe,
 	agendaStatusLabelDe,
 	buildAgendaExecutionHints,
 	classifyClimateDemand,
@@ -18,6 +19,7 @@ export {
 	operationFromWallboxStrategy,
 	resolveClimateUnitDisplay,
 	resolveExecutionAuthority,
+	resolveExecutionAuthorityFromModes,
 	resolveExecutionDisplayPhase,
 } from "./execution_display";
 export type {
@@ -47,5 +49,18 @@ export {
 	mergeWindows,
 	selectRelevantAgendaWindows,
 } from "./product_summary";
+export {
+	chartStartsAbsentFromPlan,
+	climatePlanLineFromWindowsDe,
+	climateHeuteLineFromPlanDe,
+	climateUnitTimelineWindowsFromPlanJson,
+	collectPlanVisSlots,
+	collapsePlanVisWindows,
+	firstOpenPlanVisWindow,
+	immersionTimelineWindowsFromPlanJson,
+	isOutsideClockWindowReason,
+	nextPlanVisWindow,
+} from "./plan_visibility";
+export type { PlanVisSlot, PlanVisWindow } from "./plan_visibility";
 export { BETA_SURFACE_CLASSES, countBySurfaceClass } from "./surface_classes";
 export type { SurfaceClass, SurfaceClassEntry } from "./surface_classes";

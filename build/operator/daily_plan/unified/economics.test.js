@@ -77,6 +77,7 @@ function econBase(hours = 8) {
             nightReserveKwh: null,
             profileId: "sonnen_em",
             dischargeLiveSupported: false,
+            passiveBatteryEnergyAvailable: true,
             requiredChargeEnergyKwh: null,
             endSocTargetPct: null,
             chargeDeadlineIso: null,

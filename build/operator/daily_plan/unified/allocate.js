@@ -130,6 +130,15 @@ function allocateUnifiedDayPlan(input, opts) {
         });
         reasonCodes.push(reason_codes_1.REASON.BATTERY_DISCHARGE_LIVE_UNSUPPORTED);
     }
+    if (!trimmed.battery.passiveBatteryEnergyAvailable) {
+        constraints.push({
+            id: "battery.passive_energy_unavailable",
+            kind: "technical",
+            hard: true,
+            descriptionDe: "Passive Batterie-Energiequelle nicht verlässlich (kein Self-Consumption / Manual/Hold/unbekannt).",
+        });
+        reasonCodes.push(reason_codes_1.REASON.BATTERY_PASSIVE_ENERGY_UNAVAILABLE);
+    }
     const capacity = trimmed.battery.usableCapacityKwh;
     const socPct = trimmed.battery.socPct;
     const batteryKnown = capacity !== null && capacity > 0 && socPct !== null;

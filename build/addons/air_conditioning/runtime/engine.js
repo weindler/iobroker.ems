@@ -354,9 +354,12 @@ async function runAcRuntimeTickBody(host) {
     const addonEnabledVal = addonOn?.val !== false;
     const governanceEnabled = await (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "climate");
     const live = await (0, execution_mode_1.isLiveWriteAllowed)((id) => host.getStateAsync(id), constants_1.AC_ADDON_ID);
-    const liveEdge = live && !prevAcLiveWriteAllowed;
-    prevAcLiveWriteAllowed = live;
-    const allowNewCleaning = governanceEnabled && addonEnabledVal;
+    const executionOff = (0, execution_mode_1.isAddonExecutionOff)((await host.getStateAsync((0, tree_paths_1.addonMode)(constants_1.AC_ADDON_ID)))?.val);
+    /** Off: keine EMS-Start/Stop-Writes; Telemetrie bleibt. */
+    const writeLive = live && !executionOff;
+    const liveEdge = writeLive && !prevAcLiveWriteAllowed;
+    prevAcLiveWriteAllowed = writeLive;
+    const allowNewCleaning = governanceEnabled && addonEnabledVal && !executionOff;
     // Disabled units that still have objects (e.g. just turned off): close sticky stats / optional stop.
     // Unconfigured placeholders are not ensured and are removed by surface cleanup.
     for (const unit of config.units.filter((u) => !u.enabled)) {
@@ -421,18 +424,18 @@ async function runAcRuntimeTickBody(host) {
         if (up.cleaningActive &&
             (0, time_1.switchIsOn)(fb.value) &&
             stopRetryReady(up, nowMs) &&
-            live &&
+            writeLive &&
             governanceEnabled &&
             addonEnabledVal) {
             host.log.info(`ac unit ${unit.index}: stop while cleaning flag set (device still on)`);
             await stopUnit(host, unit, mappingTable, true, up);
         }
         if (!addonEnabledVal && (0, time_1.switchIsOn)(fb.value) && stopRetryReady(up, nowMs)) {
-            await stopUnit(host, unit, mappingTable, live, up);
+            await stopUnit(host, unit, mappingTable, writeLive, up);
         }
         const fsm = (0, fsm_1.evaluateAcUnitFsm)({
             now,
-            addonEnabled: addonEnabledVal && governanceEnabled,
+            addonEnabled: addonEnabledVal && governanceEnabled && !executionOff,
             unit,
             roomTempC: temp.num,
             roomHumidityPct: hum.num,
@@ -464,7 +467,7 @@ async function runAcRuntimeTickBody(host) {
                     if (up.lastStopAtMs) {
                         host.log.info(`ac unit ${unit.index}: retry stop (${Math.round((nowMs - up.lastStopAtMs) / 1000)}s since last attempt)`);
                     }
-                    await stopUnit(host, unit, mappingTable, live && permission.deviceWritesAllowed, up);
+                    await stopUnit(host, unit, mappingTable, writeLive && permission.deviceWritesAllowed, up);
                 }
             }
             else {
@@ -475,23 +478,24 @@ async function runAcRuntimeTickBody(host) {
             // Governance blockiert Stop-Writes — laufende Unit nicht blind abschalten.
         }
         else if (permission.allowStart && (0, time_1.switchIsOff)(fb.value)) {
-            if (live) {
+            if (writeLive) {
                 if (startRetryReady) {
                     if (up.lastStartAtMs) {
                         host.log.info(`ac unit ${unit.index}: retry start (${Math.round((nowMs - up.lastStartAtMs) / 1000)}s since last attempt)`);
                     }
-                    await startUnit(host, unit, mappingTable, live && permission.deviceWritesAllowed, up, fsm.modePurpose);
+                    await startUnit(host, unit, mappingTable, writeLive && permission.deviceWritesAllowed, up, fsm.modePurpose);
                 }
             }
-            else if (!up.running) {
+            else if (!executionOff && !up.running) {
                 await startUnit(host, unit, mappingTable, false, up, fsm.modePurpose);
             }
         }
         else if ((0, time_1.switchIsOn)(fb.value) &&
             !fsm.demandStop &&
             !up.cleaningActive &&
-            permission.deviceWritesAllowed) {
-            await applyModePurposeWhileRunning(host, unit, mappingTable, live, up, fsm.modePurpose);
+            permission.deviceWritesAllowed &&
+            !executionOff) {
+            await applyModePurposeWhileRunning(host, unit, mappingTable, writeLive, up, fsm.modePurpose);
         }
         summaryReasons.push(`U${unit.index}: ${permission.reasonDe}`);
         if (primaryDecisionDetail === "safe_default") {

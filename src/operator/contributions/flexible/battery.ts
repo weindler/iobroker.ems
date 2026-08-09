@@ -17,6 +17,7 @@ export interface BatteryContributionBuildInput {
 	addonEnabled: boolean;
 	governanceEnabled: boolean;
 	globalModeOff: boolean;
+	addonExecutionOff: boolean;
 	modePolicy: PlannerModePolicy;
 	gridForecast: GridSupplyForecast | null;
 	profileId: string;
@@ -197,6 +198,7 @@ export function buildBatteryChargeContribution(input: BatteryContributionBuildIn
 		fault: input.fault,
 		lockout: input.lockout,
 		globalModeOff: input.globalModeOff,
+		addonExecutionOff: input.addonExecutionOff,
 		telemetryValid: input.telemetryValid,
 		telemetryStale: input.telemetryStale,
 	});
@@ -363,6 +365,7 @@ export function buildBatteryReserveContribution(input: BatteryContributionBuildI
 		fault: input.fault,
 		lockout: input.lockout,
 		globalModeOff: false,
+		addonExecutionOff: input.addonExecutionOff,
 	});
 
 	const enabled = participation.allowed || input.minSocPct !== null;

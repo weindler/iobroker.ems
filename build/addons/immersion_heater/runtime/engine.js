@@ -244,6 +244,9 @@ async function runImmersionRuntimeTick(host) {
     const validation = (0, validate_config_1.validateImmersionDeviceConfig)(config);
     const enabled = await readBool(host, (0, tree_paths_1.addonEnabled)("immersion_heater"));
     const available = await readBool(host, (0, tree_paths_1.addonAvailable)("immersion_heater"));
+    const executionOff = (0, execution_mode_1.isAddonExecutionOff)((await host.getStateAsync((0, tree_paths_1.addonMode)("immersion_heater")))?.val);
+    /** Off = keine EMS-Steuerung (auch kein Fallback); Telemetrie bleibt. */
+    const controlEnabled = enabled && !executionOff;
     const live = await (0, execution_mode_1.isLiveWriteAllowed)((id) => host.getStateAsync(id), "immersion_heater");
     const liveEdge = live && !prevImmersionLiveWriteAllowed;
     prevImmersionLiveWriteAllowed = live;
@@ -282,7 +285,11 @@ async function runImmersionRuntimeTick(host) {
     let dailyPlanContext = null;
     let plannerCommandedStage = 0;
     const forecastPlanTarget = await resolveImmersionPlanTarget(host, config, temperature.valueC, resolvedMode, forceTarget);
-    if (resolvedMode === "auto") {
+    if (executionOff) {
+        plannerCommandedStage = 0;
+        autoDecisionSource = "safe_default";
+    }
+    else if (resolvedMode === "auto") {
         dailyPlanContext = await (0, daily_plan_1.resolveImmersionDailyPlanAllocation)(host, config, now);
         lastDailyPlanContext = dailyPlanContext;
         if (dailyPlanContext.useDailyPlan) {
@@ -317,7 +324,7 @@ async function runImmersionRuntimeTick(host) {
     }
     const fsm = (0, fsm_1.runImmersionFsm)({
         nowMs,
-        addonEnabled: enabled,
+        addonEnabled: controlEnabled,
         addonAvailable: available,
         configValid: validation.valid,
         executionLive: live,

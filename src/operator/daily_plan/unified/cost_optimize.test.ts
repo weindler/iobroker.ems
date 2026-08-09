@@ -389,6 +389,7 @@ describe("COST-BAT-OPP no battery drain to free PV export", () => {
 			socPct: 70,
 			nightReserveKwh: 2.5,
 			dischargeLiveSupported: true,
+			passiveBatteryEnergyAvailable: true,
 		};
 		input.prices.slots = input.prices.slots.map((s) => {
 			const h = new Date(s.slot.startIso).getUTCHours();

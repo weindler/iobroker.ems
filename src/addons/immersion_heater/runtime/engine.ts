@@ -1,5 +1,5 @@
 import { touchEmsActivity } from "../../../ems_activity";
-import { isLiveWriteAllowed } from "../../../execution_mode";
+import { isAddonExecutionOff, isLiveWriteAllowed } from "../../../execution_mode";
 import { writeForeignIfChanged } from "../../../device_write";
 import { isAddonGovernanceEnabledFromState } from "../../../addons/governance";
 import {
@@ -10,7 +10,7 @@ import {
 } from "../../../addons/runtime_surface";
 import { setOptionalNumberIfChanged, setStateIfChanged } from "../../../policy/core/state_write";
 import { INTENT_SCHEMA_VERSION, IOBROKER_THERMAL_REQUEST_STATE } from "../../../intent/core/constants";
-import { addonAvailable, addonEnabled } from "../../../tree_paths";
+import { addonAvailable, addonEnabled, addonMode } from "../../../tree_paths";
 import { immersionDeviceConfigFromAdapter } from "../device_config";
 import { validateImmersionDeviceConfig } from "../validate_config";
 import { IMMERSION_STATUS_STATES } from "../status";
@@ -316,6 +316,9 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 	const validation = validateImmersionDeviceConfig(config);
 	const enabled = await readBool(host, addonEnabled("immersion_heater"));
 	const available = await readBool(host, addonAvailable("immersion_heater"));
+	const executionOff = isAddonExecutionOff((await host.getStateAsync(addonMode("immersion_heater")))?.val);
+	/** Off = keine EMS-Steuerung (auch kein Fallback); Telemetrie bleibt. */
+	const controlEnabled = enabled && !executionOff;
 	const live = await isLiveWriteAllowed((id) => host.getStateAsync(id), "immersion_heater");
 	const liveEdge = live && !prevImmersionLiveWriteAllowed;
 	prevImmersionLiveWriteAllowed = live;
@@ -364,7 +367,10 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 		forceTarget,
 	);
 
-	if (resolvedMode === "auto") {
+	if (executionOff) {
+		plannerCommandedStage = 0;
+		autoDecisionSource = "safe_default";
+	} else if (resolvedMode === "auto") {
 		dailyPlanContext = await resolveImmersionDailyPlanAllocation(host, config, now);
 		lastDailyPlanContext = dailyPlanContext;
 		if (dailyPlanContext.useDailyPlan) {
@@ -401,7 +407,7 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 
 	const fsm = runImmersionFsm({
 		nowMs,
-		addonEnabled: enabled,
+		addonEnabled: controlEnabled,
 		addonAvailable: available,
 		configValid: validation.valid,
 		executionLive: live,

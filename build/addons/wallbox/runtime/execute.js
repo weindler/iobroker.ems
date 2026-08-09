@@ -123,6 +123,10 @@ function resolveWallboxRuntimePhase(input) {
     if (!input.addonEnabled || !input.governanceEnabled) {
         return "observe";
     }
+    /** Befund 005: Off = EVCC autonom — keine EMS-Steuerung, kein Dryrun-Dispatch-Write. */
+    if (input.addonExecutionOff === true) {
+        return "observe";
+    }
     if (!input.liveRequested) {
         return "dryrun";
     }
@@ -130,15 +134,18 @@ function resolveWallboxRuntimePhase(input) {
 }
 exports.resolveWallboxRuntimePhase = resolveWallboxRuntimePhase;
 async function runWallboxLiveFoundation(host, input) {
+    const addonExecutionOff = input.addonExecutionOff === true;
     const phase = resolveWallboxRuntimePhase({
         addonEnabled: input.addonEnabled,
         governanceEnabled: input.governanceEnabled,
         liveRequested: input.liveRequested,
+        addonExecutionOff,
     });
     if (phase === "observe") {
         return {
             phase,
             liveRequested: input.liveRequested,
+            addonExecutionOff,
             candidate: null,
             writePlan: null,
             feedbackContract: null,
@@ -179,6 +186,7 @@ async function runWallboxLiveFoundation(host, input) {
     return {
         phase,
         liveRequested: input.liveRequested,
+        addonExecutionOff,
         candidate,
         writePlan,
         feedbackContract,

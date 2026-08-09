@@ -76,6 +76,7 @@ function econBase(hours = 8): UnifiedDayPlannerInput {
 			nightReserveKwh: null,
 			profileId: "sonnen_em",
 			dischargeLiveSupported: false,
+			passiveBatteryEnergyAvailable: true,
 			requiredChargeEnergyKwh: null,
 			endSocTargetPct: null,
 			chargeDeadlineIso: null,

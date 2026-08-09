@@ -272,6 +272,7 @@ describe("Beta-Befund 002 Score-Allocator NOW observed", () => {
 				gridChargeAllowed: true,
 				profileId: "sonnen_em",
 				dischargeLiveSupported: false,
+				passiveBatteryEnergyAvailable: true,
 				uncertainty: Q,
 				freshness: FRESH,
 			},

@@ -22,6 +22,7 @@ const CONFIG = {
     bat_power_target: "dev.power",
     bat_operating_mode_target: "dev.mode",
     bat_battery_charging_target: "dev.charge",
+    bat_charging_power_target: "dev.charge",
     battery_capacity_source: "manual",
     battery_capacity_net_kwh: 10,
 };
@@ -144,5 +145,43 @@ async function runTicks(a, n, simulateDevice) {
         const modeWrites = a.foreignWrites.filter((w) => w.id === "dev.mode");
         strict_1.default.ok(modeWrites.length >= 1);
         strict_1.default.equal(modeWrites[0].val, 1);
+    });
+});
+(0, node_test_1.describe)("battery control tick — LIVE → OFF ownership handover", () => {
+    (0, node_test_1.it)("live ownership → off: one restore cycle, then 0 further device writes", async () => {
+        (0, index_js_1.__resetBatteryRuntimeForTest)();
+        const a = setupCharge("live", true, "live");
+        await runTicks(a, 14, true);
+        strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.runtime.state), "active");
+        strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.runtime.ownershipActive), true);
+        const writesBeforeOff = a.foreignWrites.filter((w) => DEVICE_TARGETS.has(w.id)).length;
+        a.rel.set("addons.battery.mode", "off");
+        // Drive restore: charge→0, mode→self-consumption (2)
+        for (let i = 0; i < 20; i++) {
+            await (0, index_js_1.runBatteryControlTick)(a);
+            if (a.foreign.has("dev.charge")) {
+                a.foreign.set("dev.power", a.foreign.get("dev.charge") ?? 0);
+            }
+            if (a.rel.get(ensure_states_js_1.BAT.runtime.ownershipActive) !== true)
+                break;
+        }
+        const restoreWrites = a.foreignWrites.slice(writesBeforeOff).filter((w) => DEVICE_TARGETS.has(w.id));
+        strict_1.default.ok(restoreWrites.length >= 1, "restore must write at least charge stop / mode");
+        strict_1.default.ok(restoreWrites.some((w) => w.id === "dev.charge" && w.val === 0) ||
+            restoreWrites.some((w) => w.id === "dev.mode" && w.val === 2), "restore cycle must stop charge or set self-consumption");
+        strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.runtime.ownershipActive), false);
+        const afterRestore = a.foreignWrites.length;
+        await runTicks(a, 10, true);
+        const further = a.foreignWrites.slice(afterRestore).filter((w) => DEVICE_TARGETS.has(w.id));
+        strict_1.default.equal(further.length, 0, "after OFF handover: no further battery device writes");
+    });
+    (0, node_test_1.it)("off without ownership → 0 device writes", async () => {
+        (0, index_js_1.__resetBatteryRuntimeForTest)();
+        const a = setupCharge("live", true, "off");
+        a.rel.set("ems_mirror.battery_intent_active", true);
+        await runTicks(a, 14, true);
+        const deviceWrites = a.foreignWrites.filter((w) => DEVICE_TARGETS.has(w.id));
+        strict_1.default.equal(deviceWrites.length, 0);
+        strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.runtime.ownershipActive), false);
     });
 });

@@ -45,6 +45,7 @@ import {
 	type PlanBaseline,
 	type PlanActualSample,
 } from "./unified/materiality";
+import { REASON } from "./unified/reason_codes";
 import {
 	assessUnifiedReplanFailure,
 	applyReplanFailureAuthority,
@@ -80,12 +81,16 @@ import { buildAiExplanationContext } from "../../ai/explanation/context";
 import { buildProductSummaryDe } from "../../beta/product_summary";
 import { buildProductNotificationSurface } from "../../beta/notification_surface";
 import { buildEffectiveExecutionSnapshot } from "../../beta/execution_effective";
-import { buildAgendaExecutionHints } from "../../beta/execution_display";
+import { addonOffSummaryDe, buildAgendaExecutionHints } from "../../beta/execution_display";
 import { buildAddonStrategicPlanSnapshot } from "../../beta/strategic_status";
 import { recomputeDailyPlanSlotRemainings } from "./recompute_remainings";
 import { GLOBAL, addonMode } from "../../tree_paths";
 import { atomicWriteFile } from "../../persistence/atomic_write";
 import * as path from "node:path";
+import type { ExecutionModeAddonId } from "../../execution_mode";
+import { stripAddonFromDailyPlan, stripAddonFromUnifiedPlan } from "./invalidate_addon_off";
+import { batteryConfigFromAdapter } from "../../addons/battery/config";
+import { resolvePassiveBatteryEnergyAvailable } from "./unified/passive_battery_energy";
 
 let lastRevisionPayload = "";
 let revision = 0;
@@ -98,6 +103,117 @@ let lastBaseline: PlanBaseline | null = null;
 let lastReplanAtMs: number | null = null;
 let replanCountToday = 0;
 let replanCountDate = "";
+/** Befund 005: Mode-Wechsel erzwingt frischen Replan (keine stale Allocation). */
+let forcedReplanReasons: string[] = [];
+
+/**
+ * Nach OFF↔DRYRUN/LIVE: Baseline/Cache verwerfen und nächsten Tick material replanen.
+ */
+export function requestForcedUnifiedReplan(reason: string): void {
+	const r = reason.trim() || "replan_forced";
+	forcedReplanReasons.push(r);
+	lastBaseline = null;
+	lastUnifiedPlan = null;
+	lastCadenceDigest = "";
+	lastRevisionPayload = "";
+}
+
+export type PlanInvalidateHost = {
+	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
+	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
+	config?: unknown;
+	log?: { warn?: (msg: string) => void; info?: (msg: string) => void; debug?: (msg: string) => void };
+};
+
+/**
+ * Sofortige Invalidierung der aktiven Plan-Darstellung für ein Add-on auf OFF.
+ * Historische Compare-Dateien bleiben; publizierte Allocation/Agenda werden geleert.
+ */
+async function setPlanState(host: PlanInvalidateHost, id: string, val: ioBroker.StateValue): Promise<void> {
+	const cur = await host.getStateAsync(id);
+	if (cur?.val === val) return;
+	await host.setStateAsync(id, { val, ack: true });
+}
+
+export async function invalidatePublishedPlanForAddonOff(
+	host: PlanInvalidateHost,
+	addonId: ExecutionModeAddonId,
+): Promise<void> {
+	const offReason = addonOffSummaryDe(addonId);
+
+	if (lastUnifiedPlan) {
+		lastUnifiedPlan = stripAddonFromUnifiedPlan(lastUnifiedPlan, addonId);
+	}
+
+	try {
+		const planRaw = await host.getStateAsync(DAILY_PLAN_STATE_IDS.planJson);
+		const planStr = typeof planRaw?.val === "string" ? planRaw.val : "";
+		if (planStr.trim() && planStr.trim() !== "{}") {
+			const parsed = JSON.parse(planStr) as DailyPlan;
+			if (parsed && Array.isArray(parsed.allocations)) {
+				const stripped = stripAddonFromDailyPlan(parsed, addonId);
+				await setPlanState(host, DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(stripped));
+				await setPlanState(host, DAILY_PLAN_STATE_IDS.allocationsJson, JSON.stringify(stripped.allocations));
+			}
+		}
+	} catch (e) {
+		host.log?.warn?.(`invalidate addon off (daily plan_json): ${String(e)}`);
+	}
+
+	const allocIds = ALLOCATION_ADDON_STATE_IDS[addonId];
+	if (allocIds) {
+		await setPlanState(host, allocIds.planJson, "[]");
+		await setPlanState(host, allocIds.status, "idle");
+		await setPlanState(host, allocIds.reasonDe, offReason);
+	}
+
+	// Runtime-Allocation-Anzeige sofort neutralisieren (Steuerung ohnehin OFF-gegated).
+	try {
+		if (addonId === "immersion_heater") {
+			await setPlanState(host, IMMERSION_RUNTIME_STATES.allocatedPowerW, null);
+		} else if (addonId === "battery") {
+			await setPlanState(host, BAT.runtime.allocatedChargePowerW, null);
+			await setPlanState(host, BAT.runtime.allocatedEnergyKwh, null);
+		} else if (addonId === "wallbox") {
+			await setPlanState(host, WALLBOX_RUNTIME_STATES.allocatedPowerW, null);
+		} else if (addonId === "air_conditioning") {
+			for (let u = 1; u <= AC_UNIT_COUNT; u++) {
+				await setPlanState(host, acUnitRuntimeStates(u).allocatedPowerW, null);
+			}
+		}
+	} catch (e) {
+		host.log?.warn?.(`invalidate addon off (runtime alloc): ${String(e)}`);
+	}
+
+	try {
+		const globalMode = (await host.getStateAsync(GLOBAL.executionMode))?.val;
+		const modes = {
+			wallbox: (await host.getStateAsync(addonMode("wallbox")))?.val,
+			battery: (await host.getStateAsync(addonMode("battery")))?.val,
+			immersion_heater: (await host.getStateAsync(addonMode("immersion_heater")))?.val,
+			air_conditioning: (await host.getStateAsync(addonMode("air_conditioning")))?.val,
+		};
+		modes[addonId] = "off";
+		const agendaExecution = buildAgendaExecutionHints({
+			globalMode,
+			addonModes: modes,
+			hardware: {},
+			nowMs: Date.now(),
+		});
+		if (lastUnifiedPlan) {
+			const productSummary = buildProductSummaryDe(lastUnifiedPlan, {
+				batteryStartSocPct: null,
+				execution: agendaExecution,
+			});
+			await setPlanState(host, "operator.product_summary_de", productSummary);
+		} else {
+			await setPlanState(host, "operator.product_summary_de", `Plan: ${offReason}.`);
+		}
+		host.log?.info?.(`Add-on ${addonId} Aus — aktive Plan-Darstellung sofort invalidiert`);
+	} catch (e) {
+		host.log?.warn?.(`invalidate addon off (product summary): ${String(e)}`);
+	}
+}
 
 export function resetDailyPlanRevisionForTest(): void {
 	lastRevisionPayload = "";
@@ -110,6 +226,7 @@ export function resetDailyPlanRevisionForTest(): void {
 	lastReplanAtMs = null;
 	replanCountToday = 0;
 	replanCountDate = "";
+	forcedReplanReasons = [];
 	resetDayPlanSessionForTest();
 	lastNotifyCandidates = [];
 }
@@ -268,6 +385,17 @@ export async function runDailyPlanTick(
 	} catch {
 		// constraint publish best-effort
 	}
+	const batCfgModes = batteryConfigFromAdapter(host.config);
+	const batOperatingMode = asNum((await host.getStateAsync(BAT.telemetry.operatingMode))?.val);
+	const batOwnershipActive = (await host.getStateAsync(BAT.runtime.ownershipActive))?.val === true;
+	const passiveBatteryEnergy = resolvePassiveBatteryEnergyAvailable({
+		operatingMode: batOperatingMode,
+		selfConsumptionModeValue: batCfgModes.sonnenModeValues.selfConsumption,
+		manualModeValue: batCfgModes.sonnenModeValues.manual,
+		ownershipActive: batOwnershipActive,
+		batteryHoldActive: hold.battery_hold_active,
+	});
+
 	const consumerAccess = resolveAllBatteryConsumerAccess({
 		config: batConsumers,
 		batteryHoldActive: hold.battery_hold_active,
@@ -426,6 +554,7 @@ export async function runDailyPlanTick(
 		vehiclePresenceLearning: presenceStore,
 		vehiclePresenceVehicleKey: presenceVehicleKey,
 		connectedNowOverride: wbConnected,
+		passiveBatteryEnergyAvailable: passiveBatteryEnergy.available,
 	});
 
 	const actualSample: PlanActualSample = {
@@ -449,9 +578,18 @@ export async function runDailyPlanTick(
 		cadenceDigest,
 	};
 
-	const decision = evaluateMaterialReplan(lastBaseline, actualSample, {
+	let decision = evaluateMaterialReplan(lastBaseline, actualSample, {
 		lastReplanAtMs,
 	});
+	if (forcedReplanReasons.length > 0) {
+		const forced = forcedReplanReasons.slice();
+		forcedReplanReasons = [];
+		decision = {
+			shouldReplan: true,
+			hard: true,
+			reasons: [REASON.REPLAN_ADDON_EXECUTION_MODE, ...forced, ...decision.reasons],
+		};
+	}
 
 	if (!decision.shouldReplan) {
 		return plan;
@@ -509,6 +647,7 @@ export async function runDailyPlanTick(
 				vehiclePresenceLearning: presenceStore,
 				vehiclePresenceVehicleKey: presenceVehicleKey,
 				connectedNowOverride: wbConnected,
+				passiveBatteryEnergyAvailable: passiveBatteryEnergy.available,
 			});
 
 			const nextGen = (lastUnifiedPlan?.generation ?? 0) + 1;

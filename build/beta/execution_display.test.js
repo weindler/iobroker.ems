@@ -286,7 +286,7 @@ const product_summary_1 = require("./product_summary");
         strict_1.default.equal(d.demand, "hold");
         strict_1.default.match(d.nowLineDe, /Läuft · kein neuer Kühlbedarf, läuft wegen .+ weiter/);
         strict_1.default.doesNotMatch(d.nowLineDe, /^eingeschaltet$/);
-        strict_1.default.equal(d.heuteLineDe, "kein Kühlbedarf geplant");
+        strict_1.default.equal(d.heuteLineDe, "Klima im Tagesplan");
         strict_1.default.equal(d.planLineDe, "Budget 700 W");
     });
     (0, node_test_1.it)("hardware on + explicit hysteresis reason → hold with Hysterese", () => {
@@ -339,8 +339,48 @@ const product_summary_1 = require("./product_summary");
             reasonDe: "Daily Plan stellt 700 W bereit, aktuell kein Kühlbedarf.",
             likelyActiveToday: false,
         });
-        strict_1.default.equal(d.heuteLineDe, "kein Kühlbedarf geplant");
+        strict_1.default.equal(d.heuteLineDe, "Klima im Tagesplan");
         strict_1.default.equal(d.planLineDe, "Budget 700 W");
         strict_1.default.notEqual(d.heuteLineDe, d.planLineDe);
+    });
+    (0, node_test_1.it)("outside clock window + future plan → Gesperrt, not Aus; plan shows next window", () => {
+        const d = (0, execution_display_1.resolveClimateUnitDisplay)({
+            liveWriteAllowed: true,
+            hardwareRunning: false,
+            allocatedPowerW: 0,
+            decisionSource: "climate_fallback",
+            reasonDe: "Außerhalb Zeitfenster 08:00–20:00.",
+            likelyActiveToday: false,
+            hasFuturePlan: true,
+            nextPlanWindow: {
+                startIso: "2026-08-09T09:00:00.000Z",
+                endIso: "2026-08-09T11:00:00.000Z",
+                startMs: Date.parse("2026-08-09T09:00:00.000Z"),
+                endMs: Date.parse("2026-08-09T11:00:00.000Z"),
+                powerW: 700,
+                contributionId: "air_conditioning.unit_1",
+            },
+            timezone: "UTC",
+        });
+        strict_1.default.match(d.operationLabelDe, /Gesperrt/i);
+        strict_1.default.match(d.operationLabelDe, /Zeitfenster/i);
+        strict_1.default.notEqual(d.badge.labelDe, "Aus");
+        strict_1.default.match(d.planLineDe, /nächstes/);
+        strict_1.default.match(d.planLineDe, /700 W/);
+        strict_1.default.equal(d.heuteLineDe, "Klima im Tagesplan");
+    });
+    (0, node_test_1.it)("outside clock window + no future plan → Gesperrt, wirklich kein Budget", () => {
+        const d = (0, execution_display_1.resolveClimateUnitDisplay)({
+            liveWriteAllowed: true,
+            hardwareRunning: false,
+            allocatedPowerW: 0,
+            reasonDe: "Außerhalb Zeitfenster 08:00–20:00.",
+            likelyActiveToday: false,
+            hasFuturePlan: false,
+            nextPlanWindow: null,
+        });
+        strict_1.default.match(d.operationLabelDe, /Gesperrt/i);
+        strict_1.default.equal(d.planLineDe, "kein Budget");
+        strict_1.default.equal(d.heuteLineDe, "heute keine geplante Klimaaktion");
     });
 });

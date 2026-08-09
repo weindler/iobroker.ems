@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runDailyPlanTick = exports.lastUnifiedPlanIdForTest = exports.unifiedPlanGenerationForTest = exports.dailyPlanRevisionForTest = exports.resetDailyPlanRevisionForTest = void 0;
+exports.runDailyPlanTick = exports.lastUnifiedPlanIdForTest = exports.unifiedPlanGenerationForTest = exports.dailyPlanRevisionForTest = exports.resetDailyPlanRevisionForTest = exports.invalidatePublishedPlanForAddonOff = exports.requestForcedUnifiedReplan = void 0;
 const config_1 = require("../../policy/global/config");
 const config_2 = require("../../intent/config");
 const mode_policy_1 = require("../../planner/mode_policy");
@@ -54,6 +54,7 @@ const dispatch_bridge_1 = require("./unified/dispatch_bridge");
 const from_forecast_context_1 = require("./unified/from_forecast_context");
 const cadence_1 = require("./unified/cadence");
 const materiality_1 = require("./unified/materiality");
+const reason_codes_1 = require("./unified/reason_codes");
 const replan_failure_1 = require("./unified/replan_failure");
 const trigger_digest_1 = require("../../ai/trigger_digest");
 const daily_plan_1 = require("../../addons/immersion_heater/runtime/daily_plan");
@@ -78,6 +79,9 @@ const recompute_remainings_1 = require("./recompute_remainings");
 const tree_paths_1 = require("../../tree_paths");
 const atomic_write_1 = require("../../persistence/atomic_write");
 const path = __importStar(require("node:path"));
+const invalidate_addon_off_1 = require("./invalidate_addon_off");
+const config_4 = require("../../addons/battery/config");
+const passive_battery_energy_1 = require("./unified/passive_battery_energy");
 let lastRevisionPayload = "";
 let revision = 0;
 /** Material-Cadence: ohne relevanten Grund kein neuer Unified-/Tagesplan-Publish. */
@@ -89,6 +93,109 @@ let lastBaseline = null;
 let lastReplanAtMs = null;
 let replanCountToday = 0;
 let replanCountDate = "";
+/** Befund 005: Mode-Wechsel erzwingt frischen Replan (keine stale Allocation). */
+let forcedReplanReasons = [];
+/**
+ * Nach OFF↔DRYRUN/LIVE: Baseline/Cache verwerfen und nächsten Tick material replanen.
+ */
+function requestForcedUnifiedReplan(reason) {
+    const r = reason.trim() || "replan_forced";
+    forcedReplanReasons.push(r);
+    lastBaseline = null;
+    lastUnifiedPlan = null;
+    lastCadenceDigest = "";
+    lastRevisionPayload = "";
+}
+exports.requestForcedUnifiedReplan = requestForcedUnifiedReplan;
+/**
+ * Sofortige Invalidierung der aktiven Plan-Darstellung für ein Add-on auf OFF.
+ * Historische Compare-Dateien bleiben; publizierte Allocation/Agenda werden geleert.
+ */
+async function setPlanState(host, id, val) {
+    const cur = await host.getStateAsync(id);
+    if (cur?.val === val)
+        return;
+    await host.setStateAsync(id, { val, ack: true });
+}
+async function invalidatePublishedPlanForAddonOff(host, addonId) {
+    const offReason = (0, execution_display_1.addonOffSummaryDe)(addonId);
+    if (lastUnifiedPlan) {
+        lastUnifiedPlan = (0, invalidate_addon_off_1.stripAddonFromUnifiedPlan)(lastUnifiedPlan, addonId);
+    }
+    try {
+        const planRaw = await host.getStateAsync(states_1.DAILY_PLAN_STATE_IDS.planJson);
+        const planStr = typeof planRaw?.val === "string" ? planRaw.val : "";
+        if (planStr.trim() && planStr.trim() !== "{}") {
+            const parsed = JSON.parse(planStr);
+            if (parsed && Array.isArray(parsed.allocations)) {
+                const stripped = (0, invalidate_addon_off_1.stripAddonFromDailyPlan)(parsed, addonId);
+                await setPlanState(host, states_1.DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(stripped));
+                await setPlanState(host, states_1.DAILY_PLAN_STATE_IDS.allocationsJson, JSON.stringify(stripped.allocations));
+            }
+        }
+    }
+    catch (e) {
+        host.log?.warn?.(`invalidate addon off (daily plan_json): ${String(e)}`);
+    }
+    const allocIds = states_1.ALLOCATION_ADDON_STATE_IDS[addonId];
+    if (allocIds) {
+        await setPlanState(host, allocIds.planJson, "[]");
+        await setPlanState(host, allocIds.status, "idle");
+        await setPlanState(host, allocIds.reasonDe, offReason);
+    }
+    // Runtime-Allocation-Anzeige sofort neutralisieren (Steuerung ohnehin OFF-gegated).
+    try {
+        if (addonId === "immersion_heater") {
+            await setPlanState(host, types_1.IMMERSION_RUNTIME_STATES.allocatedPowerW, null);
+        }
+        else if (addonId === "battery") {
+            await setPlanState(host, ensure_states_2.BAT.runtime.allocatedChargePowerW, null);
+            await setPlanState(host, ensure_states_2.BAT.runtime.allocatedEnergyKwh, null);
+        }
+        else if (addonId === "wallbox") {
+            await setPlanState(host, states_2.WALLBOX_RUNTIME_STATES.allocatedPowerW, null);
+        }
+        else if (addonId === "air_conditioning") {
+            for (let u = 1; u <= constants_1.AC_UNIT_COUNT; u++) {
+                await setPlanState(host, (0, ensure_states_3.acUnitRuntimeStates)(u).allocatedPowerW, null);
+            }
+        }
+    }
+    catch (e) {
+        host.log?.warn?.(`invalidate addon off (runtime alloc): ${String(e)}`);
+    }
+    try {
+        const globalMode = (await host.getStateAsync(tree_paths_1.GLOBAL.executionMode))?.val;
+        const modes = {
+            wallbox: (await host.getStateAsync((0, tree_paths_1.addonMode)("wallbox")))?.val,
+            battery: (await host.getStateAsync((0, tree_paths_1.addonMode)("battery")))?.val,
+            immersion_heater: (await host.getStateAsync((0, tree_paths_1.addonMode)("immersion_heater")))?.val,
+            air_conditioning: (await host.getStateAsync((0, tree_paths_1.addonMode)("air_conditioning")))?.val,
+        };
+        modes[addonId] = "off";
+        const agendaExecution = (0, execution_display_1.buildAgendaExecutionHints)({
+            globalMode,
+            addonModes: modes,
+            hardware: {},
+            nowMs: Date.now(),
+        });
+        if (lastUnifiedPlan) {
+            const productSummary = (0, product_summary_1.buildProductSummaryDe)(lastUnifiedPlan, {
+                batteryStartSocPct: null,
+                execution: agendaExecution,
+            });
+            await setPlanState(host, "operator.product_summary_de", productSummary);
+        }
+        else {
+            await setPlanState(host, "operator.product_summary_de", `Plan: ${offReason}.`);
+        }
+        host.log?.info?.(`Add-on ${addonId} Aus — aktive Plan-Darstellung sofort invalidiert`);
+    }
+    catch (e) {
+        host.log?.warn?.(`invalidate addon off (product summary): ${String(e)}`);
+    }
+}
+exports.invalidatePublishedPlanForAddonOff = invalidatePublishedPlanForAddonOff;
 function resetDailyPlanRevisionForTest() {
     lastRevisionPayload = "";
     revision = 0;
@@ -100,6 +207,7 @@ function resetDailyPlanRevisionForTest() {
     lastReplanAtMs = null;
     replanCountToday = 0;
     replanCountDate = "";
+    forcedReplanReasons = [];
     (0, session_1.resetDayPlanSessionForTest)();
     lastNotifyCandidates = [];
 }
@@ -249,6 +357,16 @@ async function runDailyPlanTick(host, forecastPlan) {
     catch {
         // constraint publish best-effort
     }
+    const batCfgModes = (0, config_4.batteryConfigFromAdapter)(host.config);
+    const batOperatingMode = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_2.BAT.telemetry.operatingMode))?.val);
+    const batOwnershipActive = (await host.getStateAsync(ensure_states_2.BAT.runtime.ownershipActive))?.val === true;
+    const passiveBatteryEnergy = (0, passive_battery_energy_1.resolvePassiveBatteryEnergyAvailable)({
+        operatingMode: batOperatingMode,
+        selfConsumptionModeValue: batCfgModes.sonnenModeValues.selfConsumption,
+        manualModeValue: batCfgModes.sonnenModeValues.manual,
+        ownershipActive: batOwnershipActive,
+        batteryHoldActive: hold.battery_hold_active,
+    });
     const consumerAccess = (0, battery_consumers_1.resolveAllBatteryConsumerAccess)({
         config: batConsumers,
         batteryHoldActive: hold.battery_hold_active,
@@ -378,6 +496,7 @@ async function runDailyPlanTick(host, forecastPlan) {
         vehiclePresenceLearning: presenceStore,
         vehiclePresenceVehicleKey: presenceVehicleKey,
         connectedNowOverride: wbConnected,
+        passiveBatteryEnergyAvailable: passiveBatteryEnergy.available,
     });
     const actualSample = {
         date: plan.date,
@@ -399,9 +518,18 @@ async function runDailyPlanTick(host, forecastPlan) {
         thermalBlocked: probeInput.thermal?.uncertainty.status === "blocked",
         cadenceDigest,
     };
-    const decision = (0, materiality_1.evaluateMaterialReplan)(lastBaseline, actualSample, {
+    let decision = (0, materiality_1.evaluateMaterialReplan)(lastBaseline, actualSample, {
         lastReplanAtMs,
     });
+    if (forcedReplanReasons.length > 0) {
+        const forced = forcedReplanReasons.slice();
+        forcedReplanReasons = [];
+        decision = {
+            shouldReplan: true,
+            hard: true,
+            reasons: [reason_codes_1.REASON.REPLAN_ADDON_EXECUTION_MODE, ...forced, ...decision.reasons],
+        };
+    }
     if (!decision.shouldReplan) {
         return plan;
     }
@@ -452,6 +580,7 @@ async function runDailyPlanTick(host, forecastPlan) {
                 vehiclePresenceLearning: presenceStore,
                 vehiclePresenceVehicleKey: presenceVehicleKey,
                 connectedNowOverride: wbConnected,
+                passiveBatteryEnergyAvailable: passiveBatteryEnergy.available,
             });
             const nextGen = (lastUnifiedPlan?.generation ?? 0) + 1;
             const unifiedPlan = (0, allocate_1.allocateUnifiedDayPlan)(unifiedInputFinal, {

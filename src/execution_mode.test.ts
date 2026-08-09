@@ -28,8 +28,9 @@ const LIVE_IH_FP = executionModesConfigFingerprint({
 });
 
 describe("execution mode", () => {
-	it("parseMode accepts live and defaults unknown to dryrun", () => {
+	it("parseMode accepts live/off and defaults unknown to dryrun", () => {
 		assert.equal(parseMode("live"), "live");
+		assert.equal(parseMode("off"), "off");
 		assert.equal(parseMode("DRYRUN"), "dryrun");
 		assert.equal(parseMode("invalid"), "dryrun");
 	});

@@ -93,6 +93,7 @@ function buildWallboxEvSessionContribution(input) {
         fault: false,
         lockout: false,
         globalModeOff: input.globalModeOff,
+        addonExecutionOff: input.addonExecutionOff,
     });
     const requiredKwh = requiredEnergyKwh(input);
     const fromPhases = (0, types_2.wallboxMaxChargePowerW)(input.activePhases, input.maxCurrentA);

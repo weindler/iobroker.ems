@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.250",
+		"version": "0.1.251",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.251": {
+				"en": "Addon modes off|dryrun|live: OFF ends EMS control (battery ownership restore once), clears active plan display immediately; passive battery energy only in self-consumption; plan_json is authoritative for VIS timelines.",
+				"de": "Add-on-Modi Aus|Dryrun|Live: OFF beendet EMS-Steuerung (Batterie-Ownership einmalig Restore), leert aktive Plan-Darstellung sofort; passive Batterie-Energie nur im Self-Consumption; plan_json autoritativ für VIS-Timelines."
+			},
 			"0.1.250": {
 				"en": "Fix thermal split-brain: immersion FSM/VIS use Unified effectiveTargetTempC (same plan revision) instead of lower forecast basis; plan_target_temp_c owned by runtime only.",
 				"de": "Fix Thermal-Split-Brain: Heizstab-FSM/VIS nutzen Unified effectiveTargetTempC derselben Planrevision statt niedrigerem Forecast-Basisziel; plan_target_temp_c nur noch Runtime-Writer."

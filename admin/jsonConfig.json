@@ -17,7 +17,7 @@
 				},
 				"global_execution_mode": {
 					"type": "select",
-					"label": "Global: Ausführung (Dryrun sperrt alles)",
+					"label": "Global: Ausführung (Dryrun sperrt Writes)",
 					"options": [
 						{
 							"label": "Dryrun",
@@ -33,7 +33,8 @@
 					"sm": 6,
 					"md": 4,
 					"lg": 4,
-					"xl": 4
+					"xl": 4,
+					"help": "Global Dryrun: keine realen Schaltbefehle. Global Live: reale Steuerung nur für Add-ons, die selbst auf Live stehen."
 				},
 				"introPlannerOff": {
 					"type": "staticText",
@@ -110,10 +111,22 @@
 					"label": "Modell",
 					"default": "gpt-4.1-mini",
 					"options": [
-						{ "label": "GPT-4.1 mini (günstig, empfohlen)", "value": "gpt-4.1-mini" },
-						{ "label": "GPT-4o mini (günstig)", "value": "gpt-4o-mini" },
-						{ "label": "GPT-5 mini", "value": "gpt-5-mini" },
-						{ "label": "GPT-4.1", "value": "gpt-4.1" }
+						{
+							"label": "GPT-4.1 mini (günstig, empfohlen)",
+							"value": "gpt-4.1-mini"
+						},
+						{
+							"label": "GPT-4o mini (günstig)",
+							"value": "gpt-4o-mini"
+						},
+						{
+							"label": "GPT-5 mini",
+							"value": "gpt-5-mini"
+						},
+						{
+							"label": "GPT-4.1",
+							"value": "gpt-4.1"
+						}
 					],
 					"xs": 12,
 					"sm": 6,
@@ -482,9 +495,13 @@
 				},
 				"wb_addon_mode": {
 					"type": "select",
-					"label": "Wallbox: Dryrun / Live (nur wirksam bei Global Live)",
-					"help": "Global Dryrun sperrt Writes immer. Bei Global Live entscheidet dieser Schalter.",
+					"label": "Wallbox: Aus / Dryrun / Live",
+					"help": "Aus: EMS-Light übernimmt dieses Gerät nicht. Dryrun: plant und simuliert, keine Schaltbefehle. Live: plant und steuert, sofern auch Global auf Live steht.",
 					"options": [
+						{
+							"label": "Aus",
+							"value": "off"
+						},
 						{
 							"label": "Dryrun",
 							"value": "dryrun"
@@ -1148,9 +1165,13 @@
 				},
 				"bat_addon_mode": {
 					"type": "select",
-					"label": "Batterie: Dryrun / Live (nur wirksam bei Global Live)",
-					"help": "Global Dryrun sperrt Writes immer. Bei Global Live entscheidet dieser Schalter.",
+					"label": "Batterie: Aus / Dryrun / Live",
+					"help": "Aus: EMS-Light übernimmt dieses Gerät nicht. Dryrun: plant und simuliert, keine Schaltbefehle. Live: plant und steuert, sofern auch Global auf Live steht.",
 					"options": [
+						{
+							"label": "Aus",
+							"value": "off"
+						},
 						{
 							"label": "Dryrun",
 							"value": "dryrun"
@@ -2214,9 +2235,13 @@
 				},
 				"ih_addon_mode": {
 					"type": "select",
-					"label": "Heizstab: Dryrun / Live (nur wirksam bei Global Live)",
-					"help": "Global Dryrun sperrt Writes immer. Bei Global Live entscheidet dieser Schalter.",
+					"label": "Heizstab: Aus / Dryrun / Live",
+					"help": "Aus: EMS-Light übernimmt dieses Gerät nicht. Dryrun: plant und simuliert, keine Schaltbefehle. Live: plant und steuert, sofern auch Global auf Live steht.",
 					"options": [
+						{
+							"label": "Aus",
+							"value": "off"
+						},
 						{
 							"label": "Dryrun",
 							"value": "dryrun"
@@ -2855,9 +2880,13 @@
 				},
 				"ac_addon_mode": {
 					"type": "select",
-					"label": "Klima: Dryrun / Live (nur wirksam bei Global Live)",
-					"help": "Global Dryrun sperrt Writes immer. Bei Global Live entscheidet dieser Schalter.",
+					"label": "Klima: Aus / Dryrun / Live",
+					"help": "Aus: EMS-Light übernimmt dieses Gerät nicht. Dryrun: plant und simuliert, keine Schaltbefehle. Live: plant und steuert, sofern auch Global auf Live steht.",
 					"options": [
+						{
+							"label": "Aus",
+							"value": "off"
+						},
 						{
 							"label": "Dryrun",
 							"value": "dryrun"
@@ -7375,7 +7404,9 @@
 				"learning_weather_horizon_day1_min_temp_state": {
 					"type": "objectId",
 					"label": "Tag 1 (heute) Min °C — z. B. brightsky.0.daily.00.temperature_min",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -7385,7 +7416,9 @@
 				"learning_weather_horizon_day1_max_temp_state": {
 					"type": "objectId",
 					"label": "Tag 1 (heute) Max °C — z. B. brightsky.0.daily.00.temperature_max",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -7395,7 +7428,9 @@
 				"learning_weather_horizon_day2_min_temp_state": {
 					"type": "objectId",
 					"label": "Tag 2 (morgen) Min °C — z. B. brightsky.0.daily.01.temperature_min",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -7405,7 +7440,9 @@
 				"learning_weather_horizon_day2_max_temp_state": {
 					"type": "objectId",
 					"label": "Tag 2 (morgen) Max °C — z. B. brightsky.0.daily.01.temperature_max",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -7415,7 +7452,9 @@
 				"learning_weather_horizon_day3_min_temp_state": {
 					"type": "objectId",
 					"label": "Tag 3 Min °C — z. B. brightsky.0.daily.02.temperature_min",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -7425,7 +7464,9 @@
 				"learning_weather_horizon_day3_max_temp_state": {
 					"type": "objectId",
 					"label": "Tag 3 Max °C — z. B. brightsky.0.daily.02.temperature_max",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -7435,7 +7476,9 @@
 				"learning_weather_horizon_day4_min_temp_state": {
 					"type": "objectId",
 					"label": "Tag 4 Min °C — z. B. brightsky.0.daily.03.temperature_min",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -7445,7 +7488,9 @@
 				"learning_weather_horizon_day4_max_temp_state": {
 					"type": "objectId",
 					"label": "Tag 4 Max °C — z. B. brightsky.0.daily.03.temperature_max",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -7455,7 +7500,9 @@
 				"learning_weather_horizon_day5_min_temp_state": {
 					"type": "objectId",
 					"label": "Tag 5 Min °C — z. B. brightsky.0.daily.04.temperature_min",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -7465,7 +7512,9 @@
 				"learning_weather_horizon_day5_max_temp_state": {
 					"type": "objectId",
 					"label": "Tag 5 Max °C — z. B. brightsky.0.daily.04.temperature_max",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -7475,7 +7524,9 @@
 				"learning_weather_horizon_day6_min_temp_state": {
 					"type": "objectId",
 					"label": "Tag 6 Min °C — z. B. brightsky.0.daily.05.temperature_min",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -7485,7 +7536,9 @@
 				"learning_weather_horizon_day6_max_temp_state": {
 					"type": "objectId",
 					"label": "Tag 6 Max °C — z. B. brightsky.0.daily.05.temperature_max",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -7495,7 +7548,9 @@
 				"learning_weather_horizon_day7_min_temp_state": {
 					"type": "objectId",
 					"label": "Tag 7 Min °C — z. B. brightsky.0.daily.06.temperature_min",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -7505,7 +7560,9 @@
 				"learning_weather_horizon_day7_max_temp_state": {
 					"type": "objectId",
 					"label": "Tag 7 Max °C — z. B. brightsky.0.daily.06.temperature_max",
-					"types": ["state"],
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -8288,10 +8345,22 @@
 					"label": "Dauer Diagnosemodus",
 					"default": 60,
 					"options": [
-						{ "label": "15 Minuten", "value": 15 },
-						{ "label": "30 Minuten", "value": 30 },
-						{ "label": "60 Minuten", "value": 60 },
-						{ "label": "120 Minuten", "value": 120 }
+						{
+							"label": "15 Minuten",
+							"value": 15
+						},
+						{
+							"label": "30 Minuten",
+							"value": 30
+						},
+						{
+							"label": "60 Minuten",
+							"value": 60
+						},
+						{
+							"label": "120 Minuten",
+							"value": 120
+						}
 					],
 					"xs": 12,
 					"sm": 6,

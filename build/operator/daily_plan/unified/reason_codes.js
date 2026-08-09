@@ -16,6 +16,8 @@ exports.REASON = {
     BATTERY_NIGHT_RESERVE: "battery_night_reserve",
     BATTERY_CHARGE_DEADLINE: "battery_charge_deadline",
     BATTERY_DISCHARGE_LIVE_UNSUPPORTED: "battery_discharge_live_unsupported",
+    /** Passive Battery-Energiequelle gesperrt (Manual/Hold/Ownership/unknown Mode). */
+    BATTERY_PASSIVE_ENERGY_UNAVAILABLE: "battery_passive_energy_unavailable",
     /** Plan: kWh oberhalb des zeitabhängigen Reserve-Floors für Flex-Verbraucher nutzbar. */
     BATTERY_FLEX_USABLE: "battery_flex_usable",
     BATTERY_FROM_RESERVE_FLEX: "battery_from_reserve_flex",
@@ -53,4 +55,6 @@ exports.REASON = {
     REPLAN_VEHICLE_DISCONNECTED: "replan_vehicle_disconnected",
     REPLAN_VEHICLE_GOAL_CHANGED: "replan_vehicle_goal_changed",
     REPLAN_PRICE_REVISION: "replan_price_revision",
+    /** Add-on execution mode off|dryrun|live geändert — frische Participation/Allocation. */
+    REPLAN_ADDON_EXECUTION_MODE: "replan_addon_execution_mode",
 };

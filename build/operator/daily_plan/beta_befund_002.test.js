@@ -241,6 +241,7 @@ function slotStub(startIso, endIso, pv, house) {
                 gridChargeAllowed: true,
                 profileId: "sonnen_em",
                 dischargeLiveSupported: false,
+                passiveBatteryEnergyAvailable: true,
                 uncertainty: Q,
                 freshness: FRESH,
             },

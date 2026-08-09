@@ -9,6 +9,11 @@ export interface ParticipationInput {
 	fault: boolean;
 	lockout: boolean;
 	globalModeOff: boolean;
+	/**
+	 * Add-on execution mode = off — EMS übernimmt nicht (Participation-Gate, kein reines Write-Gate).
+	 * Telemetrie/Hausbilanz bleiben erlaubt; keine Flex-Contribution.
+	 */
+	addonExecutionOff?: boolean;
 	telemetryValid?: boolean;
 	telemetryStale?: boolean;
 	unsupported?: boolean;
@@ -29,6 +34,13 @@ export function evaluateParticipation(input: ParticipationInput): ParticipationR
 	}
 	if (!input.governanceEnabled) {
 		return { allowed: false, status: "disabled", reasonDe: "Governance deaktiviert." };
+	}
+	if (input.addonExecutionOff === true) {
+		return {
+			allowed: false,
+			status: "disabled",
+			reasonDe: "Add-on-Modus Aus — EMS-Light übernimmt dieses Gerät nicht.",
+		};
 	}
 	if (input.globalModeOff) {
 		return { allowed: false, status: "disabled", reasonDe: "Global Mode off — keine flexiblen Contributions." };

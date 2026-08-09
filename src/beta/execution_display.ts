@@ -9,7 +9,13 @@
  * Keine Write-Gates.
  */
 
-import { parseMode } from "../execution_mode";
+import { parseAddonMode, parseGlobalMode } from "../execution_mode";
+import {
+	climateHeuteLineFromPlanDe,
+	climatePlanLineFromWindowsDe,
+	isOutsideClockWindowReason,
+	type PlanVisWindow,
+} from "./plan_visibility";
 import type {
 	BatteryStrategicStatus,
 	WallboxStrategicStatus,
@@ -25,13 +31,13 @@ export type ExecutionDisplayBadge = {
 	labelDe: string;
 };
 
-/** Nur Write-Authority — nie mit Operation vermischen. */
-export type ExecutionAuthority = "live" | "dryrun";
+/** Add-on-Modus / effektive Execution — nie mit Operation vermischen. */
+export type ExecutionAuthority = "live" | "dryrun" | "off";
 
 export type ExecutionAuthorityBadge = {
 	authority: ExecutionAuthority;
-	cls: "live" | "dryrun";
-	labelDe: "LIVE" | "DRYRUN";
+	cls: "live" | "dryrun" | "idle";
+	labelDe: "LIVE" | "DRYRUN" | "AUS";
 };
 
 export type OperationDisplayKind =
@@ -52,19 +58,46 @@ export type OperationDisplay = {
 const DEFAULT_ON_W = 50;
 
 /** Hierarchie wie Execution-Gate: nur Global Live ∧ Addon Live → echte Writes. */
-export function isEffectiveLiveWriteAllowed(globalMode: unknown, addonMode: unknown): boolean {
-	return parseMode(globalMode) === "live" && parseMode(addonMode) === "live";
+export function isEffectiveLiveWriteAllowed(globalMode: unknown, addonModeVal: unknown): boolean {
+	return parseGlobalMode(globalMode) === "live" && parseAddonMode(addonModeVal) === "live";
 }
 
-/** Execution-Badge ausschließlich aus Modes — unabhängig von Allocation/Hardware. */
+/**
+ * Execution-Badge aus Modes — unabhängig von Operation (Gesperrt/Hold/…).
+ * Add-on off → AUS; sonst LIVE nur bei global∧addon live, sonst DRYRUN.
+ */
+export function resolveExecutionAuthorityFromModes(
+	globalMode: unknown,
+	addonModeVal: unknown,
+): ExecutionAuthority {
+	if (parseAddonMode(addonModeVal) === "off") return "off";
+	return isEffectiveLiveWriteAllowed(globalMode, addonModeVal) ? "live" : "dryrun";
+}
+
+/** @deprecated Prefer resolveExecutionAuthorityFromModes — liveWriteAllowed allein kennt Off nicht. */
 export function resolveExecutionAuthority(liveWriteAllowed: boolean): ExecutionAuthority {
 	return liveWriteAllowed ? "live" : "dryrun";
 }
 
 export function executionAuthorityBadge(authority: ExecutionAuthority): ExecutionAuthorityBadge {
-	return authority === "live"
-		? { authority: "live", cls: "live", labelDe: "LIVE" }
-		: { authority: "dryrun", cls: "dryrun", labelDe: "DRYRUN" };
+	if (authority === "live") return { authority: "live", cls: "live", labelDe: "LIVE" };
+	if (authority === "off") return { authority: "off", cls: "idle", labelDe: "AUS" };
+	return { authority: "dryrun", cls: "dryrun", labelDe: "DRYRUN" };
+}
+
+export function addonOffSummaryDe(addonId: string): string {
+	switch (addonId) {
+		case "wallbox":
+			return "Wallbox: AUS · EVCC autonom";
+		case "immersion_heater":
+			return "Heizstab: AUS · EMS-Steuerung deaktiviert";
+		case "battery":
+			return "Batterie: AUS · EMS-Steuerung deaktiviert";
+		case "air_conditioning":
+			return "Klima: AUS · EMS-Steuerung deaktiviert";
+		default:
+			return `${addonId}: AUS · EMS-Steuerung deaktiviert`;
+	}
 }
 
 export function operationFromBatteryStrategy(
@@ -279,24 +312,32 @@ export function buildAgendaExecutionHints(input: {
 		liveWriteAllowed: boolean;
 		hardwareActive: boolean;
 		currentAllocatedW: number | null;
+		executionOff: boolean;
 	};
 	battery: {
 		liveWriteAllowed: boolean;
 		hardwareActive: boolean;
 		currentAllocatedW: number | null;
+		executionOff: boolean;
 	};
 	wallbox: {
 		liveWriteAllowed: boolean;
 		hardwareActive: boolean;
 		currentAllocatedW: number | null;
+		executionOff: boolean;
 	};
 	climate: {
 		liveWriteAllowed: boolean;
 		hardwareActive: boolean;
 		currentAllocatedW: number | null;
+		executionOff: boolean;
 	};
 } {
 	const thr = input.thresholdW ?? DEFAULT_ON_W;
+	const ihOff = parseAddonMode(input.addonModes.immersion_heater) === "off";
+	const batOff = parseAddonMode(input.addonModes.battery) === "off";
+	const wbOff = parseAddonMode(input.addonModes.wallbox) === "off";
+	const acOff = parseAddonMode(input.addonModes.air_conditioning) === "off";
 	const ihLive = isEffectiveLiveWriteAllowed(input.globalMode, input.addonModes.immersion_heater);
 	const batLive = isEffectiveLiveWriteAllowed(input.globalMode, input.addonModes.battery);
 	const wbLive = isEffectiveLiveWriteAllowed(input.globalMode, input.addonModes.wallbox);
@@ -317,22 +358,26 @@ export function buildAgendaExecutionHints(input: {
 				commandedPowerW: ih.commandedPowerW,
 				thresholdW: thr,
 			}),
-			currentAllocatedW: ih.allocatedPowerW ?? null,
+			currentAllocatedW: ihOff ? null : (ih.allocatedPowerW ?? null),
+			executionOff: ihOff,
 		},
 		battery: {
 			liveWriteAllowed: batLive,
 			hardwareActive: isPowerActive(bat.chargingPowerW, thr),
-			currentAllocatedW: bat.allocatedChargePowerW ?? null,
+			currentAllocatedW: batOff ? null : (bat.allocatedChargePowerW ?? null),
+			executionOff: batOff,
 		},
 		wallbox: {
 			liveWriteAllowed: wbLive,
 			hardwareActive: wb.charging === true || isPowerActive(wb.chargePowerW, thr),
-			currentAllocatedW: wb.allocatedPowerW ?? null,
+			currentAllocatedW: wbOff ? null : (wb.allocatedPowerW ?? null),
+			executionOff: wbOff,
 		},
 		climate: {
 			liveWriteAllowed: acLive,
 			hardwareActive: acRunning,
-			currentAllocatedW: ac.allocatedPowerW ?? null,
+			currentAllocatedW: acOff ? null : (ac.allocatedPowerW ?? null),
+			executionOff: acOff,
 		},
 	};
 }
@@ -344,13 +389,17 @@ export type ClimateUnitDisplay = {
 	phase: ExecutionDisplayPhase;
 	badge: ExecutionDisplayBadge;
 	demand: ClimateDemandKind;
+	/** Operativer Zustand (nicht Execution-Authority). */
+	operationLabelDe: string;
 	/** Jetzt-Zeile — Plan, Runtime und Ist konsistent. */
 	nowLineDe: string;
 	/** Hinweis unter der Karte. */
 	noteDe: string;
-	/** Planner-Energiebudget (nicht gleich Kühlbedarf). */
+	/** Aktuelle Allocation oder nächstes Planfenster. */
 	planLineDe: string;
-	/** Tagesprognose aus Learning/Contribution. */
+	/** Nächstes zukünftiges Fenster (leer wenn keines). */
+	nextPlanLineDe: string;
+	/** Tagesprognose / Tagesplan — nicht mit „jetzt außerhalb Fenster“ vermischen. */
 	heuteLineDe: string;
 };
 
@@ -390,37 +439,13 @@ export function classifyClimateDemand(input: {
 	return "none";
 }
 
-function climateHeuteLineDe(input: {
-	likelyActiveToday?: boolean | null;
-	expectedHoursToday?: number | null;
-	expectedKwhToday?: number | null;
-}): string {
-	if (
-		input.likelyActiveToday === true &&
-		input.expectedHoursToday != null &&
-		Number.isFinite(input.expectedHoursToday) &&
-		input.expectedKwhToday != null &&
-		Number.isFinite(input.expectedKwhToday)
-	) {
-		const h = input.expectedHoursToday;
-		const k = input.expectedKwhToday;
-		return `~${h.toFixed(1).replace(/\.0$/, "")} h / ${k.toFixed(1).replace(".", ",")} kWh heute`;
-	}
-	return "kein Kühlbedarf geplant";
-}
-
-function climatePlanLineDe(allocatedPowerW: number | null | undefined): string {
-	if (isPowerActive(allocatedPowerW)) return `Budget ${Math.round(allocatedPowerW!)} W`;
-	return "kein Budget";
-}
-
 /**
  * Klima-Unit-Karte: Hardware-Ist + Runtime-Bedarf + Planner-Budget — ohne Widerspruch.
  *
  * - Hardware on + Bedarf → LÄUFT · Kühlbedarf aktiv
- * - Hardware on + kein neuer Bedarf (Hysterese/Restlauf) → LÄUFT · läuft wegen &lt;Grund&gt; weiter
- * - Hardware off + Budget + kein Bedarf → Bereit · aktuell kein Kühlbedarf
+ * - Außerhalb Zeitfenster ≠ Addon-Aus: „GESPERRT“, Future-Plan bleibt sichtbar
  * - Dryrun: niemals LÄUFT allein aus Allocation
+ * - Execution-Authority (LIVE/DRYRUN) bleibt getrennt von Operation
  */
 export function resolveClimateUnitDisplay(input: {
 	liveWriteAllowed: boolean;
@@ -432,21 +457,55 @@ export function resolveClimateUnitDisplay(input: {
 	expectedHoursToday?: number | null;
 	expectedKwhToday?: number | null;
 	hasFuturePlan?: boolean;
+	/** Nächstes zukünftiges Fenster aus autoritativem plan_json. */
+	nextPlanWindow?: PlanVisWindow | null;
+	timezone?: string;
 }): ClimateUnitDisplay {
 	const allocOn = isPowerActive(input.allocatedPowerW);
+	const hasFuture = input.hasFuturePlan === true || Boolean(input.nextPlanWindow);
 	const demand = classifyClimateDemand({
 		hardwareRunning: input.hardwareRunning,
 		decisionSource: input.decisionSource,
 		reasonDe: input.reasonDe,
 	});
-	const heuteLineDe = climateHeuteLineDe(input);
-	const planLineDe = climatePlanLineDe(input.allocatedPowerW ?? null);
+	const heuteLineDe = climateHeuteLineFromPlanDe({
+		likelyActiveToday: input.likelyActiveToday,
+		expectedHoursToday: input.expectedHoursToday,
+		expectedKwhToday: input.expectedKwhToday,
+		hasPlanToday: allocOn || hasFuture,
+	});
+	const planLineDe = climatePlanLineFromWindowsDe({
+		currentAllocatedPowerW: input.allocatedPowerW,
+		nextWindow: allocOn ? null : (input.nextPlanWindow ?? null),
+		timezone: input.timezone,
+	});
+	const nextPlanLineDe =
+		input.nextPlanWindow != null
+			? climatePlanLineFromWindowsDe({
+					currentAllocatedPowerW: null,
+					nextWindow: input.nextPlanWindow,
+					timezone: input.timezone,
+				})
+			: "keines";
 	const reason = String(input.reasonDe ?? "").trim();
+	const outsideWindow = isOutsideClockWindowReason(reason);
+
+	const finish = (
+		partial: Omit<ClimateUnitDisplay, "planLineDe" | "heuteLineDe" | "nextPlanLineDe" | "operationLabelDe"> & {
+			operationLabelDe?: string;
+		},
+	): ClimateUnitDisplay => ({
+		...partial,
+		operationLabelDe: partial.operationLabelDe ?? partial.badge.labelDe,
+		planLineDe,
+		heuteLineDe,
+		nextPlanLineDe,
+	});
 
 	if (!input.liveWriteAllowed) {
 		const phase = resolveExecutionDisplayPhase({
 			currentPlannedActive: allocOn,
-			hasFuturePlan: input.hasFuturePlan === true,
+			hasFuturePlan: hasFuture,
 			liveWriteAllowed: false,
 			hardwareActive: false,
 		});
@@ -457,72 +516,90 @@ export function resolveClimateUnitDisplay(input: {
 			plannerPowerW: input.allocatedPowerW,
 			hardwareLabelDe: hw,
 		});
+		const operationLabelDe = outsideWindow
+			? "Gesperrt · außerhalb Zeitfenster"
+			: badge.labelDe;
 		const noteDe =
 			demand === "none" && allocOn
 				? `Dryrun · Budget freigegeben, aktuell kein Kühlbedarf.`
 				: reason || (phase === "dryrun" ? "Dryrun — keine realen Klima-Writes." : "Klima im Dryrun.");
-		return { phase, badge, demand, nowLineDe, noteDe, planLineDe, heuteLineDe };
+		return finish({ phase, badge, demand, nowLineDe, noteDe, operationLabelDe });
 	}
 
 	if (input.hardwareRunning) {
 		const badge = executionDisplayBadge("running");
 		if (demand === "active") {
-			return {
+			return finish({
 				phase: "running",
 				badge,
 				demand,
+				operationLabelDe: "Läuft",
 				nowLineDe: "Läuft · Kühlbedarf aktiv",
 				noteDe: reason || "Kühlbedarf aktiv.",
-				planLineDe,
-				heuteLineDe,
-			};
+			});
 		}
 		const hold = climateHoldReasonDe(input.reasonDe);
-		return {
+		return finish({
 			phase: "running",
 			badge,
 			demand: "hold",
+			operationLabelDe: "Läuft",
 			nowLineDe: `Läuft · kein neuer Kühlbedarf, läuft wegen ${hold} weiter`,
 			noteDe: reason || `Kein neuer Kühlbedarf — läuft wegen ${hold} weiter.`,
-			planLineDe,
-			heuteLineDe,
-		};
+		});
+	}
+
+	if (outsideWindow) {
+		const phase = resolveExecutionDisplayPhase({
+			currentPlannedActive: allocOn,
+			hasFuturePlan: hasFuture,
+			liveWriteAllowed: true,
+			hardwareActive: false,
+		});
+		const badge: ExecutionDisplayBadge = hasFuture || allocOn
+			? { phase: phase === "idle" ? "planned" : phase, cls: "plan", labelDe: "Gesperrt" }
+			: { phase: "idle", cls: "idle", labelDe: "Gesperrt" };
+		return finish({
+			phase: badge.phase,
+			badge,
+			demand,
+			operationLabelDe: "Gesperrt · außerhalb Zeitfenster",
+			nowLineDe: "gesperrt · außerhalb Zeitfenster",
+			noteDe: reason || "Außerhalb Zeitfenster — kein Start.",
+		});
 	}
 
 	if (allocOn && demand === "none") {
-		return {
+		return finish({
 			phase: "planned",
 			badge: { phase: "planned", cls: "plan", labelDe: "Bereit" },
 			demand,
+			operationLabelDe: "Bereit",
 			nowLineDe: "aktuell kein Kühlbedarf",
 			noteDe:
 				reason ||
 				`Daily Plan stellt ${Math.round(input.allocatedPowerW!)} W bereit, aktuell kein Kühlbedarf.`,
-			planLineDe,
-			heuteLineDe,
-		};
+		});
 	}
 
-	if (allocOn || input.hasFuturePlan === true || input.likelyActiveToday === true) {
+	if (allocOn || hasFuture || input.likelyActiveToday === true) {
 		const phase: ExecutionDisplayPhase = "planned";
-		return {
+		return finish({
 			phase,
 			badge: executionDisplayBadge(phase),
 			demand,
+			operationLabelDe: "Geplant",
 			nowLineDe: demand === "active" ? "Kühlbedarf — Start ausstehend" : "aus",
 			noteDe: reason || "Klima geplant.",
-			planLineDe,
-			heuteLineDe,
-		};
+		});
 	}
 
-	return {
+	return finish({
 		phase: "idle",
 		badge: { phase: "idle", cls: "idle", labelDe: "Aus" },
 		demand,
+		operationLabelDe: "Aus",
 		nowLineDe: "aus",
 		noteDe: reason || "Klima aus.",
-		planLineDe,
-		heuteLineDe,
-	};
+	});
 }

@@ -334,6 +334,7 @@ describe("JOINT contribution: hysteresis must not zero planning demand", () => {
 			addonEnabled: true,
 			governanceEnabled: true,
 			globalModeOff: false,
+			addonExecutionOff: false,
 			modePolicy: plannerModePolicyFromGlobalMode("balanced"),
 			config: immersionDeviceConfigFromAdapter({
 				ih_stage_count: 1,

@@ -117,6 +117,7 @@ function sumKind(plan, kind, pred) {
             endSocTargetPct: 40,
             requiredChargeEnergyKwh: 0,
             dischargeLiveSupported: true,
+            passiveBatteryEnergyAvailable: true,
             uncertainty: Q,
             freshness: FRESH,
         };
@@ -183,6 +184,7 @@ function sumKind(plan, kind, pred) {
             endSocTargetPct: 35,
             requiredChargeEnergyKwh: 0,
             dischargeLiveSupported: true,
+            passiveBatteryEnergyAvailable: true,
             uncertainty: Q,
             freshness: FRESH,
         };
@@ -264,6 +266,7 @@ function sumKind(plan, kind, pred) {
             endSocTargetPct: 40,
             requiredChargeEnergyKwh: 0,
             dischargeLiveSupported: true,
+            passiveBatteryEnergyAvailable: true,
             uncertainty: Q,
             freshness: FRESH,
         };
@@ -315,6 +318,7 @@ function sumKind(plan, kind, pred) {
             endSocTargetPct: 40,
             requiredChargeEnergyKwh: 0,
             dischargeLiveSupported: true,
+            passiveBatteryEnergyAvailable: true,
             uncertainty: Q,
             freshness: FRESH,
         };
@@ -418,6 +422,7 @@ function sumKind(plan, kind, pred) {
                 endSocTargetPct: 36,
                 requiredChargeEnergyKwh: 0,
                 dischargeLiveSupported: true,
+                passiveBatteryEnergyAvailable: true,
                 uncertainty: Q,
                 freshness: FRESH,
             };

@@ -34,6 +34,7 @@ function buildUnitContribution(input, unitInput, forecast) {
         fault: unitInput.fault,
         lockout: unitInput.lockout || unitInput.cleaningBlocked,
         globalModeOff: input.globalModeOff,
+        addonExecutionOff: input.addonExecutionOff,
     });
     const hasDemand = forecast.likelyActive && forecast.expectedKwh > 0;
     let status = participation.status;

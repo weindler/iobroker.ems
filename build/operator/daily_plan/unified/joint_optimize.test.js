@@ -308,6 +308,7 @@ function scenarioAInput(overrides = {}) {
             addonEnabled: true,
             governanceEnabled: true,
             globalModeOff: false,
+            addonExecutionOff: false,
             modePolicy: (0, mode_policy_1.plannerModePolicyFromGlobalMode)("balanced"),
             config: (0, device_config_1.immersionDeviceConfigFromAdapter)({
                 ih_stage_count: 1,

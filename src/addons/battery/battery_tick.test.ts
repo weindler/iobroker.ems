@@ -19,6 +19,7 @@ const CONFIG = {
 	bat_power_target: "dev.power",
 	bat_operating_mode_target: "dev.mode",
 	bat_battery_charging_target: "dev.charge",
+	bat_charging_power_target: "dev.charge",
 	battery_capacity_source: "manual",
 	battery_capacity_net_kwh: 10,
 };
@@ -62,7 +63,7 @@ class MockAdapter {
 function setupCharge(
 	global: "dryrun" | "live",
 	govEnabled = true,
-	addonMode: "dryrun" | "live" = global,
+	addonMode: "off" | "dryrun" | "live" = global,
 ): MockAdapter {
 	const a = new MockAdapter(CONFIG);
 	a.rel.set("global.execution_mode", global);
@@ -155,5 +156,49 @@ describe("battery control tick — live", () => {
 		const modeWrites = a.foreignWrites.filter((w) => w.id === "dev.mode");
 		assert.ok(modeWrites.length >= 1);
 		assert.equal(modeWrites[0].val, 1);
+	});
+});
+
+describe("battery control tick — LIVE → OFF ownership handover", () => {
+	it("live ownership → off: one restore cycle, then 0 further device writes", async () => {
+		__resetBatteryRuntimeForTest();
+		const a = setupCharge("live", true, "live");
+		await runTicks(a, 14, true);
+		assert.equal(a.rel.get(BAT.runtime.state), "active");
+		assert.equal(a.rel.get(BAT.runtime.ownershipActive), true);
+
+		const writesBeforeOff = a.foreignWrites.filter((w) => DEVICE_TARGETS.has(w.id)).length;
+		a.rel.set("addons.battery.mode", "off");
+		// Drive restore: charge→0, mode→self-consumption (2)
+		for (let i = 0; i < 20; i++) {
+			await runBatteryControlTick(a as unknown as ioBroker.Adapter & { config: unknown });
+			if (a.foreign.has("dev.charge")) {
+				a.foreign.set("dev.power", a.foreign.get("dev.charge") ?? 0);
+			}
+			if (a.rel.get(BAT.runtime.ownershipActive) !== true) break;
+		}
+		const restoreWrites = a.foreignWrites.slice(writesBeforeOff).filter((w) => DEVICE_TARGETS.has(w.id));
+		assert.ok(restoreWrites.length >= 1, "restore must write at least charge stop / mode");
+		assert.ok(
+			restoreWrites.some((w) => w.id === "dev.charge" && w.val === 0) ||
+				restoreWrites.some((w) => w.id === "dev.mode" && w.val === 2),
+			"restore cycle must stop charge or set self-consumption",
+		);
+		assert.equal(a.rel.get(BAT.runtime.ownershipActive), false);
+
+		const afterRestore = a.foreignWrites.length;
+		await runTicks(a, 10, true);
+		const further = a.foreignWrites.slice(afterRestore).filter((w) => DEVICE_TARGETS.has(w.id));
+		assert.equal(further.length, 0, "after OFF handover: no further battery device writes");
+	});
+
+	it("off without ownership → 0 device writes", async () => {
+		__resetBatteryRuntimeForTest();
+		const a = setupCharge("live", true, "off");
+		a.rel.set("ems_mirror.battery_intent_active", true);
+		await runTicks(a, 14, true);
+		const deviceWrites = a.foreignWrites.filter((w) => DEVICE_TARGETS.has(w.id));
+		assert.equal(deviceWrites.length, 0);
+		assert.equal(a.rel.get(BAT.runtime.ownershipActive), false);
 	});
 });

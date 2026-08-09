@@ -97,6 +97,8 @@ async function refreshWallboxDailyPlanRuntime(host, snap) {
     });
     await (0, runtime_1.publishWallboxDispatchStates)(host, decision, dispatch);
     const liveRequested = await (0, execution_mode_1.isLiveWriteAllowed)((id) => host.getStateAsync(id), WALLBOX_ADDON_ID);
+    const modeSt = await host.getStateAsync((0, tree_paths_1.addonMode)(WALLBOX_ADDON_ID));
+    const addonExecutionOff = (0, execution_mode_1.isAddonExecutionOff)(modeSt?.val);
     const configRecord = host.config && typeof host.config === "object" ? host.config : {};
     const intentCfg = (0, config_1.intentEvccConfigFromAdapter)(configRecord);
     const targetStateIds = (0, runtime_1.collectConfiguredControlTargetStateIds)(configRecord);
@@ -121,6 +123,7 @@ async function refreshWallboxDailyPlanRuntime(host, snap) {
         addonEnabled: addonEnabledVal,
         governanceEnabled,
         liveRequested,
+        addonExecutionOff,
         now,
         faultActive: wallboxFault.active,
     });
@@ -208,6 +211,16 @@ async function runWallboxSafetyTick(host, foundation, now) {
         }
     }
     if (foundation.phase !== "live" && wallboxOwnership.active) {
+        /*
+         * Befund 005: mode=off → Steuerhoheit abgeben ohne künstlichen EVCC-Sollzustand.
+         * Dryrun-/Enabled-Wechsel behalten Safe-Restore.
+         */
+        if (foundation.addonExecutionOff) {
+            host.log.info("wallbox: Add-on Aus — Ownership ohne EVCC-Restore freigegeben (EVCC autonom)");
+            wallboxOwnership = (0, runtime_1.emptyWallboxOwnership)();
+            pendingWallboxFeedback = null;
+            return;
+        }
         const restorePlan = (0, runtime_1.planWallboxSafeRestore)(wallboxOwnership, foundation.mappingSnapshot);
         if (restorePlan.required) {
             if (restorePlan.possible && restorePlan.operation) {

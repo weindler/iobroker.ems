@@ -308,6 +308,7 @@ function buildUnifiedInputFromForecastContext(ctx) {
             profileId: str(batD, "profileId") ?? str(resD, "profileId"),
             // Produktiv: Discharge Live unsupported (Sonnen EM discharge_unverified) — nie erfinden
             dischargeLiveSupported: false,
+            passiveBatteryEnergyAvailable: ctx.passiveBatteryEnergyAvailable === true,
             requiredChargeEnergyKwh: num(batD, "requiredEnergyKwh") ?? num(batD, "socGapEnergyKwh"),
             endSocTargetPct: num(batD, "targetSocPct"),
             chargeDeadlineIso: batCharge?.deadlineIso ?? str(batD, "chargeLogicBridgeUntilIso"),

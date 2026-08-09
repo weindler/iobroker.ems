@@ -1,34 +1,75 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureChannelTree = exports.handleExecutionModeStateChange = exports.isExecutionModeStateRelativeId = exports.persistExecutionModeToAdminConfig = exports.executionModeConfigKeyForRelativeId = exports.syncExecutionModesFromConfig = exports.ensureAddonExecutionModeStates = exports.ensureGlobalExecutionStates = exports.clampNativeExecutionModesDryrun = exports.NATIVE_EXECUTION_MODE_KEYS = exports.isLiveWriteAllowed = exports.executionModeCommon = exports.parseMode = exports.executionModesConfigFingerprint = exports.executionModesFromConfig = exports.EXECUTION_MODE_CONFIG_FINGERPRINT = exports.EXECUTION_MODE_ADDON_IDS = exports.EXECUTION_MODE_STATES = exports.EXECUTION_MODE_STATE_LABELS = exports.EXECUTION_MODES = void 0;
+exports.ensureChannelTree = exports.handleExecutionModeStateChange = exports.setAddonModeReplanHook = exports.isExecutionModeStateRelativeId = exports.persistExecutionModeToAdminConfig = exports.executionModeConfigKeyForRelativeId = exports.syncExecutionModesFromConfig = exports.ensureAddonExecutionModeStates = exports.ensureGlobalExecutionStates = exports.clampNativeExecutionModesDryrun = exports.NATIVE_EXECUTION_MODE_KEYS = exports.isLiveWriteAllowed = exports.executionModeCommon = exports.executionModesConfigFingerprint = exports.executionModesFromConfig = exports.isAddonExecutionOff = exports.parseMode = exports.parseAddonMode = exports.parseGlobalMode = exports.EXECUTION_MODE_CONFIG_FINGERPRINT = exports.EXECUTION_MODE_ADDON_IDS = exports.EXECUTION_MODE_STATES = exports.ADDON_EXECUTION_MODE_STATES = exports.GLOBAL_EXECUTION_MODE_STATES = exports.EXECUTION_MODE_STATE_LABELS = exports.ADDON_EXECUTION_MODE_STATE_LABELS = exports.GLOBAL_EXECUTION_MODE_STATE_LABELS = exports.EXECUTION_MODES = exports.ADDON_EXECUTION_MODES = exports.GLOBAL_EXECUTION_MODES = void 0;
 const tree_paths_1 = require("./tree_paths");
-exports.EXECUTION_MODES = ["dryrun", "live"];
-exports.EXECUTION_MODE_STATE_LABELS = {
-    dryrun: "Dryrun (kein Schreiben)",
-    live: "Live (Schreiben erlaubt)",
+exports.GLOBAL_EXECUTION_MODES = ["dryrun", "live"];
+exports.ADDON_EXECUTION_MODES = ["off", "dryrun", "live"];
+/** @deprecated use ADDON_EXECUTION_MODES / GLOBAL_EXECUTION_MODES */
+exports.EXECUTION_MODES = exports.ADDON_EXECUTION_MODES;
+exports.GLOBAL_EXECUTION_MODE_STATE_LABELS = {
+    dryrun: "Dryrun (keine realen Schaltbefehle)",
+    live: "Live (Writes nur für Add-ons auf Live)",
 };
-exports.EXECUTION_MODE_STATES = {
-    dryrun: exports.EXECUTION_MODE_STATE_LABELS.dryrun,
-    live: exports.EXECUTION_MODE_STATE_LABELS.live,
+exports.ADDON_EXECUTION_MODE_STATE_LABELS = {
+    off: "Aus (EMS-Light übernimmt nicht)",
+    dryrun: "Dryrun (plant/simuliert, keine Writes)",
+    live: "Live (plant und steuert bei Global Live)",
 };
-/** Addons mit dryrun/live-Schalter (Admin + Objektbaum). */
+exports.EXECUTION_MODE_STATE_LABELS = exports.ADDON_EXECUTION_MODE_STATE_LABELS;
+exports.GLOBAL_EXECUTION_MODE_STATES = {
+    dryrun: exports.GLOBAL_EXECUTION_MODE_STATE_LABELS.dryrun,
+    live: exports.GLOBAL_EXECUTION_MODE_STATE_LABELS.live,
+};
+exports.ADDON_EXECUTION_MODE_STATES = {
+    off: exports.ADDON_EXECUTION_MODE_STATE_LABELS.off,
+    dryrun: exports.ADDON_EXECUTION_MODE_STATE_LABELS.dryrun,
+    live: exports.ADDON_EXECUTION_MODE_STATE_LABELS.live,
+};
+/** @deprecated use ADDON_EXECUTION_MODE_STATES for addon objects */
+exports.EXECUTION_MODE_STATES = exports.ADDON_EXECUTION_MODE_STATES;
+/** Addons mit off|dryrun|live-Schalter (Admin + Objektbaum). */
 exports.EXECUTION_MODE_ADDON_IDS = ["wallbox", "battery", "immersion_heater", "air_conditioning"];
 const ADDON_EXECUTION_MODE_NAMES = {
-    wallbox: "Wallbox: Ausführung (dryrun|live)",
-    battery: "Batterie: Ausführung (dryrun|live)",
-    immersion_heater: "Heizstab: Ausführung (dryrun|live)",
-    air_conditioning: "Klima: Ausführung (dryrun|live)",
+    wallbox: "Wallbox: Aus | Dryrun | Live",
+    battery: "Batterie: Aus | Dryrun | Live",
+    immersion_heater: "Heizstab: Aus | Dryrun | Live",
+    air_conditioning: "Klima: Aus | Dryrun | Live",
 };
 /** Interner Fingerabdruck der zuletzt synchronisierten Admin-Config (nicht manuell setzen). */
 exports.EXECUTION_MODE_CONFIG_FINGERPRINT = "global.execution_mode_config_fingerprint";
+function parseGlobalMode(raw) {
+    return String(raw ?? "dryrun").toLowerCase() === "live" ? "live" : "dryrun";
+}
+exports.parseGlobalMode = parseGlobalMode;
+function parseAddonMode(raw) {
+    const s = String(raw ?? "dryrun").toLowerCase();
+    if (s === "live")
+        return "live";
+    if (s === "off")
+        return "off";
+    return "dryrun";
+}
+exports.parseAddonMode = parseAddonMode;
+/**
+ * Add-on-Modus (inkl. off). Für Global immer parseGlobalMode verwenden —
+ * „off“ am Global-State wird zu dryrun geklemmt.
+ */
+function parseMode(raw) {
+    return parseAddonMode(raw);
+}
+exports.parseMode = parseMode;
+function isAddonExecutionOff(raw) {
+    return parseAddonMode(raw) === "off";
+}
+exports.isAddonExecutionOff = isAddonExecutionOff;
 function executionModesFromConfig(config) {
     const c = config;
     return {
-        global: parseMode(c.global_execution_mode ?? "dryrun"),
-        wallbox: parseMode(c.wb_addon_mode ?? "dryrun"),
-        battery: parseMode(c.bat_addon_mode ?? "dryrun"),
-        immersion_heater: parseMode(c.ih_addon_mode ?? "dryrun"),
-        air_conditioning: parseMode(c.ac_addon_mode ?? "dryrun"),
+        global: parseGlobalMode(c.global_execution_mode ?? "dryrun"),
+        wallbox: parseAddonMode(c.wb_addon_mode ?? "dryrun"),
+        battery: parseAddonMode(c.bat_addon_mode ?? "dryrun"),
+        immersion_heater: parseAddonMode(c.ih_addon_mode ?? "dryrun"),
+        air_conditioning: parseAddonMode(c.ac_addon_mode ?? "dryrun"),
     };
 }
 exports.executionModesFromConfig = executionModesFromConfig;
@@ -36,29 +77,25 @@ function executionModesConfigFingerprint(config) {
     return JSON.stringify(executionModesFromConfig(config));
 }
 exports.executionModesConfigFingerprint = executionModesConfigFingerprint;
-function parseMode(raw) {
-    return String(raw ?? "dryrun").toLowerCase() === "live" ? "live" : "dryrun";
-}
-exports.parseMode = parseMode;
-function executionModeCommon(name, def = "dryrun") {
+function executionModeCommon(name, def = "dryrun", kind = "addon") {
     return {
         name,
         type: "string",
         role: "value",
         read: true,
         write: true,
-        def,
-        states: exports.EXECUTION_MODE_STATES,
+        def: kind === "global" ? parseGlobalMode(def) : def,
+        states: kind === "global" ? exports.GLOBAL_EXECUTION_MODE_STATES : exports.ADDON_EXECUTION_MODE_STATES,
     };
 }
 exports.executionModeCommon = executionModeCommon;
 async function isLiveWriteAllowed(getState, addonId) {
     const global = await getState(tree_paths_1.GLOBAL.executionMode);
-    if (parseMode(global?.val) !== "live") {
+    if (parseGlobalMode(global?.val) !== "live") {
         return false;
     }
     const addon = await getState((0, tree_paths_1.addonMode)(addonId));
-    return parseMode(addon?.val) === "live";
+    return parseAddonMode(addon?.val) === "live";
 }
 exports.isLiveWriteAllowed = isLiveWriteAllowed;
 async function ensureExecutionModeObject(host, id, common) {
@@ -71,9 +108,16 @@ async function ensureExecutionModeObject(host, id, common) {
         await host.extendObjectAsync(id, { common });
     }
 }
-function hasExecutionModeValue(val) {
+function hasGlobalExecutionModeValue(val) {
     const s = String(val ?? "").trim().toLowerCase();
     return s === "dryrun" || s === "live";
+}
+function hasAddonExecutionModeValue(val) {
+    const s = String(val ?? "").trim().toLowerCase();
+    return s === "off" || s === "dryrun" || s === "live";
+}
+function hasExecutionModeValue(val) {
+    return hasAddonExecutionModeValue(val) || hasGlobalExecutionModeValue(val);
 }
 const ALL_DRYRUN_MODES = {
     global: "dryrun",
@@ -109,27 +153,25 @@ async function applyExecutionModesFromConfig(host, modes) {
     await host.setStateAsync((0, tree_paths_1.addonMode)("air_conditioning"), { val: modes.air_conditioning, ack: true });
 }
 async function anyExecutionModeEmpty(host) {
-    const ids = [
-        tree_paths_1.GLOBAL.executionMode,
-        ...exports.EXECUTION_MODE_ADDON_IDS.map((addonId) => (0, tree_paths_1.addonMode)(addonId)),
-    ];
-    for (const id of ids) {
-        const cur = await host.getStateAsync(id);
-        if (!hasExecutionModeValue(cur?.val)) {
+    const global = await host.getStateAsync(tree_paths_1.GLOBAL.executionMode);
+    if (!hasGlobalExecutionModeValue(global?.val))
+        return true;
+    for (const addonId of exports.EXECUTION_MODE_ADDON_IDS) {
+        const cur = await host.getStateAsync((0, tree_paths_1.addonMode)(addonId));
+        if (!hasAddonExecutionModeValue(cur?.val))
             return true;
-        }
     }
     return false;
 }
 async function mirrorGlobalExecutionSafety(host) {
     const global = await host.getStateAsync(tree_paths_1.GLOBAL.executionMode);
     await host.setStateAsync("execution.safety.global_execution_mode", {
-        val: parseMode(global?.val),
+        val: parseGlobalMode(global?.val),
         ack: true,
     });
 }
 async function ensureGlobalExecutionStates(host) {
-    await ensureExecutionModeObject(host, tree_paths_1.GLOBAL.executionMode, executionModeCommon("Global: Ausführung (dryrun|live)"));
+    await ensureExecutionModeObject(host, tree_paths_1.GLOBAL.executionMode, executionModeCommon("Global: Ausführung (dryrun|live)", "dryrun", "global"));
     await ensureExecutionModeObject(host, exports.EXECUTION_MODE_CONFIG_FINGERPRINT, {
         name: "Intern: Admin-Fingerprint Ausführungsmodi",
         type: "string",
@@ -141,7 +183,7 @@ async function ensureGlobalExecutionStates(host) {
 exports.ensureGlobalExecutionStates = ensureGlobalExecutionStates;
 async function ensureAddonExecutionModeStates(host) {
     for (const addonId of exports.EXECUTION_MODE_ADDON_IDS) {
-        await ensureExecutionModeObject(host, (0, tree_paths_1.addonMode)(addonId), executionModeCommon(ADDON_EXECUTION_MODE_NAMES[addonId]));
+        await ensureExecutionModeObject(host, (0, tree_paths_1.addonMode)(addonId), executionModeCommon(ADDON_EXECUTION_MODE_NAMES[addonId], "dryrun", "addon"));
     }
 }
 exports.ensureAddonExecutionModeStates = ensureAddonExecutionModeStates;
@@ -153,20 +195,26 @@ async function alignAdminConfigWithRuntimeStates(host, config) {
         ? { ...host.config }
         : { ...config };
     let changed = false;
-    const pairs = [
-        [tree_paths_1.GLOBAL.executionMode, "global_execution_mode"],
+    const globalSt = await host.getStateAsync(tree_paths_1.GLOBAL.executionMode);
+    if (globalSt && hasGlobalExecutionModeValue(globalSt.val)) {
+        const mode = parseGlobalMode(globalSt.val);
+        if (parseGlobalMode(base.global_execution_mode) !== mode) {
+            base.global_execution_mode = mode;
+            changed = true;
+        }
+    }
+    const addonPairs = [
         [(0, tree_paths_1.addonMode)("wallbox"), "wb_addon_mode"],
         [(0, tree_paths_1.addonMode)("battery"), "bat_addon_mode"],
         [(0, tree_paths_1.addonMode)("immersion_heater"), "ih_addon_mode"],
         [(0, tree_paths_1.addonMode)("air_conditioning"), "ac_addon_mode"],
     ];
-    for (const [stateId, configKey] of pairs) {
+    for (const [stateId, configKey] of addonPairs) {
         const st = await host.getStateAsync(stateId);
-        if (!st || !hasExecutionModeValue(st.val)) {
+        if (!st || !hasAddonExecutionModeValue(st.val))
             continue;
-        }
-        const mode = parseMode(st.val);
-        if (parseMode(base[configKey]) !== mode) {
+        const mode = parseAddonMode(st.val);
+        if (parseAddonMode(base[configKey]) !== mode) {
             base[configKey] = mode;
             changed = true;
         }
@@ -196,7 +244,6 @@ async function syncExecutionModesFromConfig(host, config, options = {}) {
     const forceReason = options.forceDryrunReason ??
         (options.coldStartRecovery ? "namespace_cold_start" : null);
     if (forceReason) {
-        // Beta: Cold-Start und Restore klemmen Native+States auf dryrun — keine stille Divergenz Admin↔Baum.
         const dryrunNative = clampNativeExecutionModesDryrun(config);
         let nativeClamped = false;
         if (typeof host.updateConfig === "function") {
@@ -204,8 +251,6 @@ async function syncExecutionModesFromConfig(host, config, options = {}) {
             nativeClamped = true;
         }
         await applyExecutionModesFromConfig(host, ALL_DRYRUN_MODES);
-        // Fingerprint nur auf Dryrun setzen, wenn Admin wirklich geklemmt wurde —
-        // sonst würde ein Warm-Start die unveränderte Live-Admin-Config zurückspielen.
         await host.setStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT, {
             val: executionModesConfigFingerprint(nativeClamped ? dryrunNative : config),
             ack: true,
@@ -222,7 +267,6 @@ async function syncExecutionModesFromConfig(host, config, options = {}) {
         return;
     }
     if (!prevFingerprint && !empty) {
-        // Upgrade: Laufzeitwerte schon gesetzt, Fingerabdruck fehlt — nicht überschreiben
         await host.setStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT, { val: fingerprint, ack: true });
         await alignAdminConfigWithRuntimeStates(host, config);
         await mirrorGlobalExecutionSafety(host);
@@ -268,14 +312,18 @@ async function persistExecutionModeToAdminConfig(adapter, relativeId, mode) {
     const base = adapter.config && typeof adapter.config === "object"
         ? { ...adapter.config }
         : {};
-    if (parseMode(base[configKey]) === mode) {
+    const next = configKey === "global_execution_mode" ? parseGlobalMode(mode) : parseAddonMode(mode);
+    const prev = configKey === "global_execution_mode"
+        ? parseGlobalMode(base[configKey])
+        : parseAddonMode(base[configKey]);
+    if (prev === next) {
         await adapter.setStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT, {
             val: executionModesConfigFingerprint(base),
             ack: true,
         });
         return false;
     }
-    base[configKey] = mode;
+    base[configKey] = next;
     await adapter.updateConfig(base);
     await adapter.setStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT, {
         val: executionModesConfigFingerprint(base),
@@ -291,6 +339,12 @@ function isExecutionModeStateRelativeId(relativeId) {
     return exports.EXECUTION_MODE_ADDON_IDS.some((addonId) => relativeId === (0, tree_paths_1.addonMode)(addonId));
 }
 exports.isExecutionModeStateRelativeId = isExecutionModeStateRelativeId;
+let addonModeReplanHook = null;
+/** Daily-Plan-Tick registriert sich hier, um bei Mode-Wechsel frisch zu replannen. */
+function setAddonModeReplanHook(hook) {
+    addonModeReplanHook = hook;
+}
+exports.setAddonModeReplanHook = setAddonModeReplanHook;
 async function handleExecutionModeStateChange(adapter, id, state) {
     if (!state || state.ack) {
         return;
@@ -304,18 +358,47 @@ async function handleExecutionModeStateChange(adapter, id, state) {
         return;
     }
     const requested = String(state.val ?? "").trim().toLowerCase();
-    const mode = parseMode(state.val);
-    if (requested !== "" && requested !== "dryrun" && requested !== "live") {
-        adapter.log.warn?.(`${relativeId}: ungültiger Wert „${state.val}“ — Fallback auf ${mode}`);
+    const isGlobal = relativeId === tree_paths_1.GLOBAL.executionMode;
+    let mode;
+    if (isGlobal) {
+        if (requested === "off") {
+            adapter.log.warn?.(`${relativeId}: „off“ ist nur für Add-ons gültig — Global bleibt dryrun|live (Fallback dryrun)`);
+            mode = "dryrun";
+        }
+        else {
+            mode = parseGlobalMode(state.val);
+            if (requested !== "" && requested !== "dryrun" && requested !== "live") {
+                adapter.log.warn?.(`${relativeId}: ungültiger Wert „${state.val}“ — Fallback auf ${mode}`);
+            }
+        }
     }
+    else {
+        mode = parseAddonMode(state.val);
+        if (requested !== "" && requested !== "off" && requested !== "dryrun" && requested !== "live") {
+            adapter.log.warn?.(`${relativeId}: ungültiger Wert „${state.val}“ — Fallback auf ${mode}`);
+        }
+    }
+    const prevRaw = await adapter.getStateAsync(relativeId);
+    const previous = prevRaw?.val != null ? String(prevRaw.val) : null;
     await adapter.setStateAsync(relativeId, { val: mode, ack: true });
-    if (relativeId === tree_paths_1.GLOBAL.executionMode) {
+    if (isGlobal) {
         await adapter.setStateAsync("execution.safety.global_execution_mode", { val: mode, ack: true });
     }
     const adminUpdated = await persistExecutionModeToAdminConfig(adapter, relativeId, mode);
     adapter.log.info(adminUpdated
         ? `${relativeId} → ${mode} (Objektbaum, Admin übernommen)`
         : `${relativeId} → ${mode} (Objektbaum)`);
+    if (addonModeReplanHook) {
+        const addonId = isGlobal
+            ? "global"
+            : (exports.EXECUTION_MODE_ADDON_IDS.find((a) => relativeId === (0, tree_paths_1.addonMode)(a)) ?? "global");
+        try {
+            addonModeReplanHook({ addonId, relativeId, previous, next: mode });
+        }
+        catch {
+            // best-effort
+        }
+    }
 }
 exports.handleExecutionModeStateChange = handleExecutionModeStateChange;
 async function ensureChannelTree(setObjectNotExistsAsync) {

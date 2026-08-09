@@ -23,7 +23,8 @@ import { PERSIST_CATEGORY as CONSUMER_STATS_PERSIST } from "../../../learning/co
 import { readConsumerStatsPersist } from "../../../learning/consumer_stats/persist";
 import type { ConsumerStatsPersist } from "../../../learning/consumer_stats/types";
 import { PV_HORIZON_DAY_COUNT, PV_HORIZON_EXTENDED_FIRST_DAY } from "../../../learning/pv_horizon/constants";
-import { addonEnabled } from "../../../tree_paths";
+import { addonEnabled, addonMode } from "../../../tree_paths";
+import { parseAddonMode } from "../../../execution_mode";
 import { plannerModePolicyFromGlobalMode, type PlannerModePolicy } from "../../../planner/mode_policy";
 import { parseResolvedIntentJson, resolvedModeFromIntent } from "../../../addons/immersion_heater/runtime/intent_read";
 import type { GridSupplyForecast } from "../../types";
@@ -398,6 +399,13 @@ export async function collectFlexibleContributions(
 		readStr(host, "learning.house_load.forecast_today_json"),
 	]);
 
+	const [batteryModeRaw, wallboxModeRaw, immersionModeRaw, climateModeRaw] = await Promise.all([
+		readStr(host, addonMode("battery")),
+		readStr(host, addonMode("wallbox")),
+		readStr(host, addonMode("immersion_heater")),
+		readStr(host, addonMode("air_conditioning")),
+	]);
+
 	const batteryIntent = parseResolvedBatteryIntentJson(batteryIntentRaw?.val);
 	const topOff =
 		batteryIntent?.top_off_requested?.status === "valid" && batteryIntent.top_off_requested.value === true;
@@ -498,6 +506,7 @@ export async function collectFlexibleContributions(
 			addonEnabled: batteryEnabled !== false,
 			governanceEnabled: batteryGov,
 			globalModeOff,
+			addonExecutionOff: parseAddonMode(batteryModeRaw) === "off",
 			modePolicy,
 			gridForecast,
 			profileId: batteryProfileIdFromConfig(config),
@@ -528,6 +537,7 @@ export async function collectFlexibleContributions(
 			addonEnabled: wallboxEnabled !== false,
 			governanceEnabled: wallboxGov,
 			globalModeOff,
+			addonExecutionOff: parseAddonMode(wallboxModeRaw) === "off",
 			modePolicy,
 			gridForecast,
 			connected: connected === true,
@@ -551,6 +561,7 @@ export async function collectFlexibleContributions(
 			addonEnabled: immersionEnabled !== false,
 			governanceEnabled: immersionGov,
 			globalModeOff,
+			addonExecutionOff: parseAddonMode(immersionModeRaw) === "off",
 			modePolicy,
 			config: immersionConfig,
 			bufferTempC: bufferTemp,
@@ -572,6 +583,7 @@ export async function collectFlexibleContributions(
 			addonEnabled: climateEnabled !== false,
 			governanceEnabled: climateGov,
 			globalModeOff,
+			addonExecutionOff: parseAddonMode(climateModeRaw) === "off",
 			modePolicy,
 			acConfig,
 			outdoorTempC: outdoorTemp,

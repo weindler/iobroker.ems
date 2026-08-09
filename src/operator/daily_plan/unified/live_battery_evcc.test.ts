@@ -241,6 +241,7 @@ function energyDayInput(): UnifiedDayPlannerInput {
 		chargeDeadlineIso: null,
 		gridChargeAllowed: true,
 		dischargeLiveSupported: false,
+		passiveBatteryEnergyAvailable: true,
 	};
 	base.thermal = {
 		...base.thermal!,

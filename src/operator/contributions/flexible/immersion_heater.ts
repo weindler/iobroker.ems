@@ -18,6 +18,7 @@ export interface ImmersionContributionBuildInput {
 	addonEnabled: boolean;
 	governanceEnabled: boolean;
 	globalModeOff: boolean;
+	addonExecutionOff: boolean;
 	modePolicy: PlannerModePolicy;
 	config: ImmersionDeviceConfig;
 	bufferTempC: number | null;
@@ -145,6 +146,7 @@ export function buildImmersionMandatoryContribution(input: ImmersionContribution
 		fault: input.fault,
 		lockout: input.lockout,
 		globalModeOff: input.globalModeOff,
+		addonExecutionOff: input.addonExecutionOff,
 		telemetryValid: input.bufferTempC !== null,
 	});
 
@@ -226,6 +228,7 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 		fault: input.fault,
 		lockout: input.lockout,
 		globalModeOff: input.globalModeOff,
+		addonExecutionOff: input.addonExecutionOff,
 	});
 
 	const maxW = maxStagePowerW(input.config);

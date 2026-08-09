@@ -3,8 +3,10 @@
  * Effektive Ausführungs-Wahrheit für Beta-UI.
  *
  * Hierarchie:
- * - Global Dryrun → alle Add-ons effektiv dryrun (auch wenn Add-on „live“ zeigt)
- * - Global Live → Add-on schreibt nur, wenn es selbst live ist
+ * - Global Dryrun → keine Writes (Add-on live plant weiter)
+ * - Global Live + Add-on off → keine Participation/Writes
+ * - Global Live + Add-on dryrun → planen, keine Writes
+ * - Global Live + Add-on live → Writes möglich
  *
  * Modes werden hier nicht mutiert — nur die kombinierte Wirkung dargestellt.
  */
@@ -12,27 +14,40 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildEffectiveExecutionSnapshot = void 0;
 const execution_mode_1 = require("../execution_mode");
 function buildEffectiveExecutionSnapshot(input) {
-    const globalMode = (0, execution_mode_1.parseMode)(input.globalMode);
+    const globalMode = (0, execution_mode_1.parseGlobalMode)(input.globalMode);
     const globalLive = globalMode === "live";
     const addons = {};
     const blockedByGlobal = [];
-    const blockedByAddon = [];
+    const blockedByAddonDryrun = [];
+    const blockedByAddonOff = [];
     for (const id of execution_mode_1.EXECUTION_MODE_ADDON_IDS) {
-        const configuredMode = (0, execution_mode_1.parseMode)(input.addonModes[id]);
+        const configuredMode = (0, execution_mode_1.parseAddonMode)(input.addonModes[id]);
         const liveWritesPossible = globalLive && configuredMode === "live";
         let blockReasonDe = null;
-        if (!globalLive) {
+        let effectiveWriteMode = "dryrun";
+        if (configuredMode === "off") {
+            effectiveWriteMode = "off";
+            blockReasonDe = "Add-on Aus — EMS übernimmt nicht";
+            blockedByAddonOff.push(id);
+        }
+        else if (!globalLive) {
+            effectiveWriteMode = "dryrun";
             blockReasonDe = "Global Dryrun";
             if (configuredMode === "live")
                 blockedByGlobal.push(id);
         }
-        else if (configuredMode !== "live") {
+        else if (configuredMode === "dryrun") {
+            effectiveWriteMode = "dryrun";
             blockReasonDe = "Add-on Dryrun";
-            blockedByAddon.push(id);
+            blockedByAddonDryrun.push(id);
+        }
+        else {
+            effectiveWriteMode = "live";
+            blockReasonDe = null;
         }
         addons[id] = {
             configuredMode,
-            effectiveWriteMode: liveWritesPossible ? "live" : "dryrun",
+            effectiveWriteMode,
             liveWritesPossible,
             blockReasonDe,
         };
@@ -48,8 +63,11 @@ function buildEffectiveExecutionSnapshot(input) {
     else {
         summaryDe =
             "Ausführung: Global Live — Writes nur für Add-ons, die selbst auf Live stehen und technisch freigegeben sind.";
-        if (blockedByAddon.length) {
-            summaryDe += ` Dryrun: ${blockedByAddon.join(", ")}.`;
+        if (blockedByAddonOff.length) {
+            summaryDe += ` Aus: ${blockedByAddonOff.join(", ")}.`;
+        }
+        if (blockedByAddonDryrun.length) {
+            summaryDe += ` Dryrun: ${blockedByAddonDryrun.join(", ")}.`;
         }
     }
     return { schemaVersion: 1, globalMode, globalLive, addons, summaryDe };

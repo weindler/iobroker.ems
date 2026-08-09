@@ -319,7 +319,7 @@ describe("climate unit display — Plan ≠ Bedarf ≠ Hardware", () => {
 		assert.equal(d.demand, "hold");
 		assert.match(d.nowLineDe, /Läuft · kein neuer Kühlbedarf, läuft wegen .+ weiter/);
 		assert.doesNotMatch(d.nowLineDe, /^eingeschaltet$/);
-		assert.equal(d.heuteLineDe, "kein Kühlbedarf geplant");
+		assert.equal(d.heuteLineDe, "Klima im Tagesplan");
 		assert.equal(d.planLineDe, "Budget 700 W");
 	});
 
@@ -376,8 +376,50 @@ describe("climate unit display — Plan ≠ Bedarf ≠ Hardware", () => {
 			reasonDe: "Daily Plan stellt 700 W bereit, aktuell kein Kühlbedarf.",
 			likelyActiveToday: false,
 		});
-		assert.equal(d.heuteLineDe, "kein Kühlbedarf geplant");
+		assert.equal(d.heuteLineDe, "Klima im Tagesplan");
 		assert.equal(d.planLineDe, "Budget 700 W");
 		assert.notEqual(d.heuteLineDe, d.planLineDe);
+	});
+
+	it("outside clock window + future plan → Gesperrt, not Aus; plan shows next window", () => {
+		const d = resolveClimateUnitDisplay({
+			liveWriteAllowed: true,
+			hardwareRunning: false,
+			allocatedPowerW: 0,
+			decisionSource: "climate_fallback",
+			reasonDe: "Außerhalb Zeitfenster 08:00–20:00.",
+			likelyActiveToday: false,
+			hasFuturePlan: true,
+			nextPlanWindow: {
+				startIso: "2026-08-09T09:00:00.000Z",
+				endIso: "2026-08-09T11:00:00.000Z",
+				startMs: Date.parse("2026-08-09T09:00:00.000Z"),
+				endMs: Date.parse("2026-08-09T11:00:00.000Z"),
+				powerW: 700,
+				contributionId: "air_conditioning.unit_1",
+			},
+			timezone: "UTC",
+		});
+		assert.match(d.operationLabelDe, /Gesperrt/i);
+		assert.match(d.operationLabelDe, /Zeitfenster/i);
+		assert.notEqual(d.badge.labelDe, "Aus");
+		assert.match(d.planLineDe, /nächstes/);
+		assert.match(d.planLineDe, /700 W/);
+		assert.equal(d.heuteLineDe, "Klima im Tagesplan");
+	});
+
+	it("outside clock window + no future plan → Gesperrt, wirklich kein Budget", () => {
+		const d = resolveClimateUnitDisplay({
+			liveWriteAllowed: true,
+			hardwareRunning: false,
+			allocatedPowerW: 0,
+			reasonDe: "Außerhalb Zeitfenster 08:00–20:00.",
+			likelyActiveToday: false,
+			hasFuturePlan: false,
+			nextPlanWindow: null,
+		});
+		assert.match(d.operationLabelDe, /Gesperrt/i);
+		assert.equal(d.planLineDe, "kein Budget");
+		assert.equal(d.heuteLineDe, "heute keine geplante Klimaaktion");
 	});
 });

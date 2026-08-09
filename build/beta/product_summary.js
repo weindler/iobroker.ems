@@ -256,10 +256,14 @@ function buildUnifiedDayAgendaDe(plan, execution, strategy) {
     const nowMs = execution?.nowMs ??
         (Number.isFinite(planNowMs) ? planNowMs : Date.now());
     const lines = [];
-    const batAll = mergeWindows(plan.allocations, "battery_charge");
-    const ihAll = mergeWindows(plan.allocations, "immersion_heater");
-    const acAll = mergeWindows(plan.allocations, "climate");
-    const wbAll = mergeWindows(plan.allocations, "wallbox");
+    const batOff = execution?.battery?.executionOff === true;
+    const ihOff = execution?.immersion_heater?.executionOff === true;
+    const acOff = execution?.climate?.executionOff === true;
+    const wbOff = execution?.wallbox?.executionOff === true;
+    const batAll = batOff ? [] : mergeWindows(plan.allocations, "battery_charge");
+    const ihAll = ihOff ? [] : mergeWindows(plan.allocations, "immersion_heater");
+    const acAll = acOff ? [] : mergeWindows(plan.allocations, "climate");
+    const wbAll = wbOff ? [] : mergeWindows(plan.allocations, "wallbox");
     const deadline = plan.vehicleChargeEconomics?.deadlineIso ?? null;
     const bat = selectRelevantAgendaWindows(batAll, nowMs, tz);
     const ih = selectRelevantAgendaWindows(ihAll, nowMs, tz);
@@ -269,6 +273,14 @@ function buildUnifiedDayAgendaDe(plan, execution, strategy) {
     const ihSt = agendaPhaseForKind(ih, execution?.immersion_heater, plan, "immersion_heater", nowMs);
     const acSt = agendaPhaseForKind(ac, execution?.climate, plan, "climate", nowMs);
     const wbSt = agendaPhaseForKind(wb, execution?.wallbox, plan, "wallbox", nowMs);
+    if (ihOff)
+        lines.push((0, execution_display_1.addonOffSummaryDe)("immersion_heater"));
+    if (batOff)
+        lines.push((0, execution_display_1.addonOffSummaryDe)("battery"));
+    if (wbOff)
+        lines.push((0, execution_display_1.addonOffSummaryDe)("wallbox"));
+    if (acOff)
+        lines.push((0, execution_display_1.addonOffSummaryDe)("air_conditioning"));
     for (const w of bat) {
         const active = windowContainsNow(w, nowMs);
         lines.push(windowLine("Batterie laden", w, tz, active ? batSt.statusMeta : null, nowMs));
@@ -301,7 +313,7 @@ function buildUnifiedDayAgendaDe(plan, execution, strategy) {
         const active = windowContainsNow(w, nowMs);
         lines.push(windowLine(label, w, tz, active ? wbSt.statusMeta : null, nowMs));
     }
-    lines.push(...strategyAgendaLines(strategy?.battery, strategy?.wallbox, bat, wb, execution));
+    lines.push(...strategyAgendaLines(batOff ? undefined : strategy?.battery, wbOff ? undefined : strategy?.wallbox, bat, wb, execution));
     const night = plan.constraints.find((c) => c.id === "battery.night_reserve");
     if (night)
         lines.push(night.descriptionDe.replace(/\.$/, ""));

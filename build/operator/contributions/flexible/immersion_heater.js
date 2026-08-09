@@ -96,6 +96,7 @@ function buildImmersionMandatoryContribution(input) {
         fault: input.fault,
         lockout: input.lockout,
         globalModeOff: input.globalModeOff,
+        addonExecutionOff: input.addonExecutionOff,
         telemetryValid: input.bufferTempC !== null,
     });
     const mandatory = mandatoryReason !== null;
@@ -163,6 +164,7 @@ function buildImmersionFlexibleContribution(input) {
         fault: input.fault,
         lockout: input.lockout,
         globalModeOff: input.globalModeOff,
+        addonExecutionOff: input.addonExecutionOff,
     });
     const maxW = maxStagePowerW(input.config);
     const minW = minStagePowerW(input.config);

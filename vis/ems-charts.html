@@ -31,6 +31,8 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:6
 .ems-badge.live{background:#1f6feb;color:#fff}
 .ems-badge.idle{background:#21262d;border:1px solid #30363d;color:#8b949e}
 .ems-badge.plan{background:#1f6feb33;color:#58a6ff;border:1px solid #1f6feb66}
+.ems-badge.fault{background:#da3633;color:#fff}
+.ems-badge.lockout{background:#cf222e;color:#fff;border:1px solid #ff7b72}
 .ems-badges{display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .ems-rows{display:grid;grid-template-columns:78px 1fr;gap:1px 6px;font-size:11px}
 .ems-rows .l{color:#8b949e}.ems-rows .r{color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -43,7 +45,7 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:6
 .ems-next-name{font-weight:600}
 .ems-next-meta{display:block;font-size:10px;color:#c9d1d9;margin-top:2px;line-height:1.3}
 .ems-next-st{font-size:9px;font-weight:700;text-transform:uppercase;margin-left:4px;letter-spacing:.03em}
-.ems-next-st.on{color:#3fb950}.ems-next-st.plan{color:#8b949e}.ems-next-st.soon{color:#f0883e}.ems-next-st.dryrun{color:#a371f7}.ems-next-st.est{color:#8b949e}
+.ems-next-st.on{color:#3fb950}.ems-next-st.plan{color:#8b949e}.ems-next-st.soon{color:#f0883e}.ems-next-st.dryrun{color:#a371f7}.ems-next-st.est{color:#8b949e}.ems-next-st.fault{color:#f85149}
 .ems-diag{margin-top:8px;padding-top:6px;border-top:1px dashed #30363d}
 .ems-diag-h{font-size:9px;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
 .ems-ai{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:6px;margin-bottom:6px}
@@ -156,6 +158,9 @@ var stateIds=[
 	INST+".addons.immersion_heater.runtime.planning_max_temp_c",
 	INST+".addons.immersion_heater.runtime.allocation_reason_de",
 	INST+".addons.immersion_heater.runtime.state",
+	INST+".addons.immersion_heater.runtime.fault_active",
+	INST+".addons.immersion_heater.runtime.fault_code",
+	INST+".addons.immersion_heater.runtime.fault_message",
 	INST+".addons.battery.runtime.decision_source",
 	INST+".addons.battery.runtime.daily_plan_status",
 	INST+".addons.battery.runtime.allocated_charge_power_w",
@@ -366,6 +371,56 @@ function immersionHardwareActive(liveOk){
 	if(isPowerOn(meas))return true;
 	if(liveOk&&isPowerOn(cmd))return true;
 	return false;
+}
+/** Fault/Lockout aus vorhandenen Runtime-States — kein neuer Diagnose-State. */
+function immersionFaultActive(){
+	var fa=g("addons.immersion_heater.runtime.fault_active");
+	if(fa===true||fa==="true"||fa===1||fa==="1")return true;
+	var st=String(g("addons.immersion_heater.runtime.state")||"").toLowerCase();
+	if(st==="fault_lockout")return true;
+	var ds=String(g("addons.immersion_heater.runtime.decision_source")||"").toLowerCase();
+	return ds==="lockout"||ds==="fault";
+}
+function immersionFaultIsLockout(){
+	var st=String(g("addons.immersion_heater.runtime.state")||"").toLowerCase();
+	if(st==="fault_lockout")return true;
+	return String(g("addons.immersion_heater.runtime.decision_source")||"").toLowerCase()==="lockout";
+}
+function immersionFaultCode(){
+	var code=String(g("addons.immersion_heater.runtime.fault_code")||"").trim();
+	if(code&&code!=="none")return code;
+	var msg=String(g("addons.immersion_heater.runtime.fault_message")||"").trim();
+	if(!msg)return "";
+	var m=msg.match(/^([a-z0-9_]+)/i);
+	return m?m[1]:"";
+}
+function immersionFaultLabelDe(code){
+	var c=String(code||"").trim().toLowerCase();
+	var map={
+		no_power_when_on:"Keine Leistung nach Einschaltbefehl",
+		power_when_off:"Leistung trotz Ausschaltbefehl",
+		power_mismatch:"Leistung weicht von der Nennleistung ab",
+		relay_chatter:"Relais schaltet zu häufig",
+		write_failed:"Schaltbefehl fehlgeschlagen",
+		feedback_mismatch:"Rückmeldung stimmt nicht überein",
+		invalid_configuration:"Konfiguration ungültig",
+		temperature_missing:"Puffertemperatur fehlt",
+		temperature_stale:"Puffertemperatur veraltet",
+		temperature_implausible:"Puffertemperatur unplausibel"
+	};
+	if(map[c])return map[c];
+	if(c&&c!=="none")return "Gerätestörung ("+c+")";
+	return "Gerätestörung";
+}
+function immersionFaultOpBadge(){
+	if(immersionFaultIsLockout())return{cls:"lockout",label:"LOCKOUT"};
+	return{cls:"fault",label:"FEHLER"};
+}
+function immersionFaultNowLine(){
+	return immersionFaultIsLockout()?"gesperrt (Lockout)":"gesperrt";
+}
+function immersionFaultStatusDe(){
+	return immersionFaultIsLockout()?"Sicherheits-Lockout aktiv":"Störung aktiv";
 }
 function resolveExecPhase(currentPlanned,hasFuture,liveOk,hwActive){
 	if(liveOk&&hwActive)return"running";
@@ -669,20 +724,28 @@ function buildTimelineRanges(horizonMs){
 	var ihLive=effectiveLiveWrite("immersion_heater");
 	var ihHw=immersionHardwareActive(ihLive);
 	var ihAlloc=num(g("addons.immersion_heater.runtime.allocated_power_w"));
+	var ihFault=immersionFaultActive();
+	var ihFaultHintAdded=false;
 	ihWindows.forEach(function(r){
 		if(r.startMs>horizonMs+SLOT_MS)return;
 		var current=now>=r.startMs&&now<r.endMs;
 		var phase=resolveExecPhase(current,!current,ihLive,ihHw);
-		var st=rangeStatus(r.startMs,r.endMs,phase);
+		var st=ihFault?(current?"fault":"plan"):rangeStatus(r.startMs,r.endMs,phase);
 		var metaBits=[];
 		/* Leistung nur dieses autoritative Fensters — kein globaler maxW. */
 		var windowW=r.powerW||null;
-		if(current){
+		if(ihFault&&current){
+			metaBits.push("gesperrt");
+		}else if(current){
 			var m=execAgendaMeta(phase,isPowerOn(ihAlloc)?ihAlloc:windowW);
 			if(m)metaBits.push(m);
 			else if(windowW)metaBits.push(Math.round(windowW)+" W");
 		}else if(windowW){
 			metaBits.push(Math.round(windowW)+" W");
+		}
+		if(ihFault&&!ihFaultHintAdded){
+			metaBits.push("Heizstab wegen Gerätestörung gesperrt");
+			ihFaultHintAdded=true;
 		}
 		items.push({
 			addon:"immersion",color:ADDON_COLORS.immersion,name:"Heizstab",
@@ -864,7 +927,8 @@ function renderNow(){
 	if(surplus!==null&&surplus>200)bits.push("PV-Überschuss ca. "+Math.round(surplus)+" W");
 	else if(surplus!==null&&surplus<=0)bits.push("kein PV-Überschuss");
 	else if(pv!==null)bits.push("PV "+Math.round(pv)+" W");
-	if(ihLiveOk&&ihHw)bits.push("Heizstab an");
+	if(immersionFaultActive())bits.push(immersionFaultIsLockout()?"Heizstab gesperrt (Lockout)":"Heizstab FEHLER");
+	else if(ihLiveOk&&ihHw)bits.push("Heizstab an");
 	else if(isPowerOn(ihAlloc)&&!ihLiveOk)bits.push("Heizstab Dryrun");
 	else bits.push("Heizstab aus");
 	if(wbLiveOk&&wbHw)bits.push("Auto lädt");
@@ -922,8 +986,8 @@ function renderNext(){
 		html+='<ul class="ems-next-list">';
 		for(var i=0;i<Math.min(16,items.length);i++){
 			var it=items[i];
-			var stLabel=it.status==="on"?"läuft":(it.status==="dryrun"?"dryrun":(it.status==="soon"?"jetzt":(it.status==="est"?"geschätzt":"geplant")));
-			var stCls=it.status==="on"?"on":(it.status==="dryrun"?"dryrun":(it.status==="soon"?"soon":(it.status==="est"?"est":"plan")));
+			var stLabel=it.status==="on"?"läuft":(it.status==="fault"?"fehler":(it.status==="dryrun"?"dryrun":(it.status==="soon"?"jetzt":(it.status==="est"?"geschätzt":"geplant"))));
+			var stCls=it.status==="on"?"on":(it.status==="fault"?"fault":(it.status==="dryrun"?"dryrun":(it.status==="soon"?"soon":(it.status==="est"?"est":"plan"))));
 			html+='<li style="border-left-color:'+it.color+'">'
 				+'<span class="ems-next-t">'+esc(fmtRange(it.startMs,it.endMs))+'</span>'
 				+'<span class="ems-next-name" style="color:'+it.color+'">'+esc(it.name)+'</span>'
@@ -945,6 +1009,7 @@ function renderStack(){
 	var ihMeas=num(g("addons.immersion_heater.runtime.measured_power_w"));
 	var ihLive=effectiveLiveWrite("immersion_heater");
 	var ihHw=immersionHardwareActive(ihLive);
+	var ihFault=immersionFaultActive();
 	var ihPlanJson=g("planner.intent.allocation.immersion_heater.plan_json");
 	var ihSched=immersionScheduleRow(ihPlanJson);
 	var ihHasWindow=ihSched.value!=="keines";
@@ -955,10 +1020,35 @@ function renderStack(){
 	var ihOpBadge=ihHw
 		?{cls:"on",label:"Läuft"}
 		:(isPowerOn(ihP)||ihHasWindow?{cls:"plan",label:"Geplant"}:{cls:"idle",label:"Aus"});
+	var ihRows=[
+		["Jetzt",execNowLine(ihPhase,ihP,ihHwLabel)],
+		["Puffer",fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c"))],
+		["Ziel",fmtTemp(g("addons.immersion_heater.runtime.plan_target_temp_c"))],
+		["Basis",fmtTemp(g("addons.immersion_heater.runtime.forecast_target_temp_c"))],
+		["Reicht bis",null],
+		[ihSched.label,ihSched.value]
+	];
+	if(ihFault){
+		ihOpBadge=immersionFaultOpBadge();
+		ihHwLabel=immersionFaultNowLine();
+		ihNote=shortNote(immersionFaultLabelDe(immersionFaultCode())+" — "+immersionFaultStatusDe(),140);
+		ihRows=[
+			["Jetzt",ihHwLabel],
+			["Puffer",fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c"))],
+			["Fehler",immersionFaultLabelDe(immersionFaultCode())],
+			["Status",immersionFaultStatusDe()],
+			[ihSched.label,ihSched.value]
+		];
+	}
 	var ihBadges={exec:execAuthorityBadge("immersion_heater"),op:ihOpBadge};
 	var emptyAt=fmtEmptyAt(g("learning.thermal_runtime.estimated_empty_at"));
 	var remH=num(g("learning.thermal_runtime.estimated_remaining_hours"));
 	var reichtBis=emptyAt?(emptyAt+(remH!==null?" · ~"+remH.toFixed(1).replace(".",",")+" h":"")):(remH!==null?"noch ~"+remH.toFixed(1).replace(".",",")+" h":"—");
+	if(!ihFault){
+		for(var ihRi=0;ihRi<ihRows.length;ihRi++){
+			if(ihRows[ihRi][0]==="Reicht bis")ihRows[ihRi][1]=reichtBis;
+		}
+	}
 
 	var strat=strategyObj();
 	var batStrat=strat.battery||{};
@@ -1020,14 +1110,7 @@ function renderStack(){
 			["Fahrzeug",fmtPct(g("live.wallbox.vehicle_soc_pct"))],
 			["Nächstes",wbNext?(fmtSmartTime(wbNext.t)+" · "+Math.round(wbNext.w)+" W"):"keines"]
 		],wbNote)
-		+card("Heizstab","#ffa657",ihBadges,[
-			["Jetzt",execNowLine(ihPhase,ihP,ihHwLabel)],
-			["Puffer",fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c"))],
-			["Ziel",fmtTemp(g("addons.immersion_heater.runtime.plan_target_temp_c"))],
-			["Basis",fmtTemp(g("addons.immersion_heater.runtime.forecast_target_temp_c"))],
-			["Reicht bis",reichtBis],
-			[ihSched.label,ihSched.value]
-		],ihNote)
+		+card("Heizstab","#ffa657",ihBadges,ihRows,ihNote)
 		+acCard(1)
 		+'<div class="ems-card-empty" aria-hidden="true"></div>'
 		+acCard(2);

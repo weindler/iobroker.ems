@@ -115,6 +115,11 @@ let forcedReplanReasons: string[] = [];
 let thermalSurplusQualifySinceMs: number | null = null;
 let lastThermalSurplusReplanAtMs: number | null = null;
 let preferImmersionLiveSurplusNow = false;
+/**
+ * Einmalige Startup-Ausnahme: Stabilitäts-Bypass nur für den ersten Hard-Replan
+ * nach Prozessstart (baseline == null). Danach normale 90-s-Entprellung.
+ */
+let startupLiveSurplusPreferUsed = false;
 
 /**
  * Nach OFF↔DRYRUN/LIVE: Baseline/Cache verwerfen und nächsten Tick material replanen.
@@ -240,6 +245,7 @@ export function resetDailyPlanRevisionForTest(): void {
 	thermalSurplusQualifySinceMs = null;
 	lastThermalSurplusReplanAtMs = null;
 	preferImmersionLiveSurplusNow = false;
+	startupLiveSurplusPreferUsed = false;
 	resetDayPlanSessionForTest();
 	lastNotifyCandidates = [];
 }
@@ -635,6 +641,11 @@ export async function runDailyPlanTick(
 		}
 	}
 
+	/*
+	 * Startup: erster Hard-Replan nach Prozessstart (baseline == null) darf die 90-s-
+	 * Stabilität einmal überspringen — alle übrigen B1-Gates bleiben Pflicht.
+	 */
+	const allowStartupStabilityBypass = lastBaseline === null && !startupLiveSurplusPreferUsed;
 	const surplusReplan = evaluateLiveThermalSurplusReplan({
 		nowMs: now.getTime(),
 		liveSurplusW: liveSurplusEarly.surplusW,
@@ -650,6 +661,7 @@ export async function runDailyPlanTick(
 		higherPriorityLiveDemandW,
 		surplusQualifySinceMs: thermalSurplusQualifySinceMs,
 		lastThermalSurplusReplanAtMs,
+		bypassStabilityMs: allowStartupStabilityBypass,
 	});
 	thermalSurplusQualifySinceMs = surplusReplan.nextSurplusQualifySinceMs;
 	preferImmersionLiveSurplusNow = surplusReplan.preferImmersionNow;
@@ -673,6 +685,14 @@ export async function runDailyPlanTick(
 			reasons: [REASON.REPLAN_LIVE_THERMAL_SURPLUS, ...decision.reasons],
 		};
 		lastThermalSurplusReplanAtMs = now.getTime();
+	}
+
+	/*
+	 * One-shot verbrauchen sobald der erste Prozess-Hard-Replan (baseline war null)
+	 * tatsächlich läuft — Bypass gilt nie für spätere baseline=null-Zwänge.
+	 */
+	if (allowStartupStabilityBypass && decision.shouldReplan) {
+		startupLiveSurplusPreferUsed = true;
 	}
 
 	if (!decision.shouldReplan) {

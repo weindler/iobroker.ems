@@ -103,6 +103,11 @@ let thermalSurplusQualifySinceMs = null;
 let lastThermalSurplusReplanAtMs = null;
 let preferImmersionLiveSurplusNow = false;
 /**
+ * Einmalige Startup-Ausnahme: Stabilitäts-Bypass nur für den ersten Hard-Replan
+ * nach Prozessstart (baseline == null). Danach normale 90-s-Entprellung.
+ */
+let startupLiveSurplusPreferUsed = false;
+/**
  * Nach OFF↔DRYRUN/LIVE: Baseline/Cache verwerfen und nächsten Tick material replanen.
  */
 function requestForcedUnifiedReplan(reason) {
@@ -218,6 +223,7 @@ function resetDailyPlanRevisionForTest() {
     thermalSurplusQualifySinceMs = null;
     lastThermalSurplusReplanAtMs = null;
     preferImmersionLiveSurplusNow = false;
+    startupLiveSurplusPreferUsed = false;
     (0, session_1.resetDayPlanSessionForTest)();
     lastNotifyCandidates = [];
 }
@@ -564,6 +570,11 @@ async function runDailyPlanTick(host, forecastPlan) {
             higherPriorityLiveDemandW += Math.max(u.typicalPowerW ?? 700, 500);
         }
     }
+    /*
+     * Startup: erster Hard-Replan nach Prozessstart (baseline == null) darf die 90-s-
+     * Stabilität einmal überspringen — alle übrigen B1-Gates bleiben Pflicht.
+     */
+    const allowStartupStabilityBypass = lastBaseline === null && !startupLiveSurplusPreferUsed;
     const surplusReplan = (0, live_thermal_surplus_replan_1.evaluateLiveThermalSurplusReplan)({
         nowMs: now.getTime(),
         liveSurplusW: liveSurplusEarly.surplusW,
@@ -579,6 +590,7 @@ async function runDailyPlanTick(host, forecastPlan) {
         higherPriorityLiveDemandW,
         surplusQualifySinceMs: thermalSurplusQualifySinceMs,
         lastThermalSurplusReplanAtMs,
+        bypassStabilityMs: allowStartupStabilityBypass,
     });
     thermalSurplusQualifySinceMs = surplusReplan.nextSurplusQualifySinceMs;
     preferImmersionLiveSurplusNow = surplusReplan.preferImmersionNow;
@@ -601,6 +613,13 @@ async function runDailyPlanTick(host, forecastPlan) {
             reasons: [reason_codes_1.REASON.REPLAN_LIVE_THERMAL_SURPLUS, ...decision.reasons],
         };
         lastThermalSurplusReplanAtMs = now.getTime();
+    }
+    /*
+     * One-shot verbrauchen sobald der erste Prozess-Hard-Replan (baseline war null)
+     * tatsächlich läuft — Bypass gilt nie für spätere baseline=null-Zwänge.
+     */
+    if (allowStartupStabilityBypass && decision.shouldReplan) {
+        startupLiveSurplusPreferUsed = true;
     }
     if (!decision.shouldReplan) {
         return plan;

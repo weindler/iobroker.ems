@@ -203,7 +203,8 @@ function runImmersionFsm(input) {
             ...base,
             state: "auto_ready",
             available: true,
-            reason: desiredStage > 0 ? "auto_planner_stage_unavailable" : "auto_ready_no_surplus",
+            // Semantik: kein Plan-Soll / Stage 0 — kein Live-Surplus-Sensor (Name historisch irreführend).
+            reason: desiredStage > 0 ? "auto_planner_stage_unavailable" : "auto_ready_zero_plan_allocation",
             commandedStage: 0,
             autoTargetReached: false,
         };

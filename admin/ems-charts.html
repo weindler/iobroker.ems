@@ -269,6 +269,35 @@ function firstWindow(planJson,minW,contributionExact){
 	return list.length?list[0]:null;
 }
 
+/** Aktuelles vs. zukünftiges Allocation-Fenster (gemergt) — reine Darstellung. */
+function splitCurrentFutureWindows(windows){
+	var now=Date.now(),current=null,future=null,i;
+	for(i=0;i<windows.length;i++){
+		var w=windows[i];
+		if(now>=w.startMs&&now<w.endMs){current=w;continue;}
+		if(w.startMs>now&&!future)future=w;
+	}
+	return{current:current,future:future};
+}
+
+/** Heizstab-Zeile: aktuelles Fenster als „Jetzt bis …“, sonst „Nächstes …“. */
+function immersionScheduleRow(planJson){
+	var parts=splitCurrentFutureWindows(authoritativeImmersionWindows(planJson));
+	if(parts.current){
+		return{
+			label:"Jetzt bis",
+			value:fmtSmartTime(new Date(parts.current.endMs).toISOString())+" · "+Math.round(parts.current.powerW)+" W"
+		};
+	}
+	if(parts.future){
+		return{
+			label:"Nächstes",
+			value:fmtSmartTime(parts.future.startIso||new Date(parts.future.startMs).toISOString())+" · "+Math.round(parts.future.powerW)+" W"
+		};
+	}
+	return{label:"Nächstes",value:"keines"};
+}
+
 /** Autoritativ: plan_json-Slots → Fenster mit Leistung nur dieses Fensters (kein globaler maxW). */
 function collapseAllocWindows(slots){
 	if(!slots.length)return[];
@@ -916,14 +945,16 @@ function renderStack(){
 	var ihMeas=num(g("addons.immersion_heater.runtime.measured_power_w"));
 	var ihLive=effectiveLiveWrite("immersion_heater");
 	var ihHw=immersionHardwareActive(ihLive);
-	var ihNext=firstWindow(g("planner.intent.allocation.immersion_heater.plan_json"),ON_W);
-	var ihPhase=resolveExecPhase(isPowerOn(ihP),!!ihNext,ihLive,ihHw);
+	var ihPlanJson=g("planner.intent.allocation.immersion_heater.plan_json");
+	var ihSched=immersionScheduleRow(ihPlanJson);
+	var ihHasWindow=ihSched.value!=="keines";
+	var ihPhase=resolveExecPhase(isPowerOn(ihP),ihHasWindow,ihLive,ihHw);
 	var ihHwLabel=ihHw?(isPowerOn(ihMeas)?("an · "+fmtW(ihMeas)):(ihFb>0?("Stufe "+ihFb+(isPowerOn(ihCmd)?(" · "+fmtW(ihCmd)):"")):"an")):"unverändert";
 	if(ihHw&&ihLive&&isPowerOn(ihCmd)&&!isPowerOn(ihMeas)&&ihFb<=0)ihHwLabel="an · "+fmtW(ihCmd);
 	var ihNote=shortNote(g("addons.immersion_heater.runtime.plan_target_reason_de")||g("addons.immersion_heater.runtime.allocation_reason_de"),110);
 	var ihOpBadge=ihHw
 		?{cls:"on",label:"Läuft"}
-		:(isPowerOn(ihP)||ihNext?{cls:"plan",label:"Geplant"}:{cls:"idle",label:"Aus"});
+		:(isPowerOn(ihP)||ihHasWindow?{cls:"plan",label:"Geplant"}:{cls:"idle",label:"Aus"});
 	var ihBadges={exec:execAuthorityBadge("immersion_heater"),op:ihOpBadge};
 	var emptyAt=fmtEmptyAt(g("learning.thermal_runtime.estimated_empty_at"));
 	var remH=num(g("learning.thermal_runtime.estimated_remaining_hours"));
@@ -995,7 +1026,7 @@ function renderStack(){
 			["Ziel",fmtTemp(g("addons.immersion_heater.runtime.plan_target_temp_c"))],
 			["Basis",fmtTemp(g("addons.immersion_heater.runtime.forecast_target_temp_c"))],
 			["Reicht bis",reichtBis],
-			["Nächstes",ihNext?(fmtSmartTime(ihNext.t)+" · "+Math.round(ihNext.w)+" W"):"keines"]
+			[ihSched.label,ihSched.value]
 		],ihNote)
 		+acCard(1)
 		+'<div class="ems-card-empty" aria-hidden="true"></div>'

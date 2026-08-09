@@ -35,6 +35,12 @@ export type LiveThermalSurplusReplanInput = {
 	/** Interne Entprellung: seit wann Surplus die IH-Min-Stufe dauerhaft deckt. */
 	surplusQualifySinceMs: number | null;
 	lastThermalSurplusReplanAtMs: number | null;
+	/**
+	 * Einmalige Startup-Ausnahme (nur erster Hard-Replan nach Prozessstart):
+	 * Stabilitätsdauer überspringen — alle anderen Gates bleiben Pflicht.
+	 * Normale 90-s-Entprellung für Folgeticks unverändert.
+	 */
+	bypassStabilityMs?: boolean;
 };
 
 export type LiveThermalSurplusReplanResult = {
@@ -44,6 +50,8 @@ export type LiveThermalSurplusReplanResult = {
 	nextSurplusQualifySinceMs: number | null;
 	reasonDe: string;
 	blockReasonDe: string | null;
+	/** true wenn prefer nur wegen Startup-Stability-Bypass gesetzt wurde. */
+	startupStabilityBypassApplied: boolean;
 };
 
 function batteryNearFullOrNoUptake(input: LiveThermalSurplusReplanInput): boolean {
@@ -77,6 +85,7 @@ export function evaluateLiveThermalSurplusReplan(
 		nextSurplusQualifySinceMs,
 		reasonDe: "",
 		blockReasonDe,
+		startupStabilityBypassApplied: false,
 	});
 
 	if (!input.ihGovernanceEnabled || !input.ihLiveWriteAllowed) {
@@ -117,13 +126,15 @@ export function evaluateLiveThermalSurplusReplan(
 			? input.surplusQualifySinceMs
 			: input.nowMs;
 	const stableMs = input.nowMs - qualifySince;
-	if (stableMs < LIVE_THERMAL_SURPLUS_STABLE_MS) {
+	const bypassStability = input.bypassStabilityMs === true;
+	if (stableMs < LIVE_THERMAL_SURPLUS_STABLE_MS && !bypassStability) {
 		return {
 			shouldReplan: false,
 			preferImmersionNow: false,
 			nextSurplusQualifySinceMs: qualifySince,
 			reasonDe: "",
 			blockReasonDe: `Überschuss noch nicht stabil (${Math.round(stableMs / 1000)}s/${LIVE_THERMAL_SURPLUS_STABLE_MS / 1000}s)`,
+			startupStabilityBypassApplied: false,
 		};
 	}
 
@@ -135,14 +146,20 @@ export function evaluateLiveThermalSurplusReplan(
 			nextSurplusQualifySinceMs: qualifySince,
 			reasonDe: "",
 			blockReasonDe: "Surplus-Replan Cooldown aktiv",
+			startupStabilityBypassApplied: false,
 		};
 	}
 
+	const startupBypass =
+		bypassStability && stableMs < LIVE_THERMAL_SURPLUS_STABLE_MS;
 	return {
 		shouldReplan: true,
 		preferImmersionNow: true,
 		nextSurplusQualifySinceMs: qualifySince,
-		reasonDe: `Live-Überschuss ${Math.round(available)} W ≥ IH ${Math.round(ihMin)} W, Batterie nahe voll, Headroom ${headroom.toFixed(2)} kWh — NOW bevorzugen`,
+		reasonDe: startupBypass
+			? `Startup-Hard-Replan: Live-Überschuss ${Math.round(available)} W ≥ IH ${Math.round(ihMin)} W — NOW bevorzugen (90s-Entprellung nur diesmal übersprungen)`
+			: `Live-Überschuss ${Math.round(available)} W ≥ IH ${Math.round(ihMin)} W, Batterie nahe voll, Headroom ${headroom.toFixed(2)} kWh — NOW bevorzugen`,
 		blockReasonDe: null,
+		startupStabilityBypassApplied: startupBypass,
 	};
 }

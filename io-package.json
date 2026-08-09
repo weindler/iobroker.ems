@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.252",
+		"version": "0.1.253",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.253": {
+				"en": "Fix mid-slot adapter restart: first hard replan may prefer immersion NOW when all B1 gates pass (one-shot, 90s debounce unchanged afterward). IH card shows current window as \"Jetzt bis\" not \"Nächstes\".",
+				"de": "Fix Mid-Slot-Adapterstart: erster Hard-Replan darf Heizstab-NOW bevorzugen wenn alle B1-Gates greifen (einmalig, 90s-Entprellung danach unverändert). Heizstab-Karte zeigt aktuelles Fenster als „Jetzt bis“ statt „Nächstes“."
+			},
 			"0.1.252": {
 				"en": "A1/B1/D1: Newton empty_at planning-usable without cycle-valid claim; stable live surplus can material-replan immersion NOW when bat near full; degraded briefing names exact thermal cause. No grid-IH/Tibber or dryrun-competition change.",
 				"de": "A1/B1/D1: Newton-empty_at planungswirksam ohne cycle-valid-Behauptung; stabiler Live-Überschuss kann Heizstab-NOW material replannen bei Bat nahe voll; degraded-Briefing nennt konkrete Thermal-Ursache. Kein Grid-IH/Tibber- oder Dryrun-Konkurrenz-Wechsel."

@@ -126,3 +126,111 @@ function baseOk(overrides = {}) {
         strict_1.default.ok(nowIh(withNow) >= nowIh(peakOnly), `NOW preference should not reduce NOW IH (${nowIh(withNow)} vs ${nowIh(peakOnly)})`);
     });
 });
+(0, node_test_1.describe)("B1 startup mid-slot: adapter starts during active planned slot", () => {
+    const runtimeNowMs = Date.parse("2026-08-09T07:27:00.000Z"); // 09:27 Europe/Berlin
+    (0, node_test_1.it)("first hard-replan after process start may bypass 90s stability once", () => {
+        const blocked = baseOk({
+            nowMs: runtimeNowMs,
+            surplusQualifySinceMs: null,
+            liveSurplusW: 4205,
+            bypassStabilityMs: false,
+        });
+        strict_1.default.equal(blocked.preferImmersionNow, false);
+        strict_1.default.match(blocked.blockReasonDe ?? "", /nicht stabil/);
+        strict_1.default.equal(blocked.startupStabilityBypassApplied, false);
+        const startup = baseOk({
+            nowMs: runtimeNowMs,
+            surplusQualifySinceMs: null,
+            liveSurplusW: 4205,
+            bypassStabilityMs: true,
+        });
+        strict_1.default.equal(startup.shouldReplan, true);
+        strict_1.default.equal(startup.preferImmersionNow, true);
+        strict_1.default.equal(startup.startupStabilityBypassApplied, true);
+        strict_1.default.match(startup.reasonDe, /Startup-Hard-Replan/);
+    });
+    (0, node_test_1.it)("startup bypass still requires all other B1 gates (not bat-full-only)", () => {
+        const r = baseOk({
+            nowMs: runtimeNowMs,
+            surplusQualifySinceMs: null,
+            bypassStabilityMs: true,
+            batterySocPct: 40,
+            batteryRequiredChargeKwh: 4,
+            batteryMaxSocPct: 100,
+        });
+        strict_1.default.equal(r.preferImmersionNow, false);
+        strict_1.default.equal(r.startupStabilityBypassApplied, false);
+        strict_1.default.match(r.blockReasonDe ?? "", /Batterie/);
+    });
+    (0, node_test_1.it)("normal short spike after startup remains debounced (no bypass)", () => {
+        const r = baseOk({
+            nowMs: runtimeNowMs + 5_000,
+            surplusQualifySinceMs: null,
+            liveSurplusW: 4205,
+            bypassStabilityMs: false,
+        });
+        strict_1.default.equal(r.shouldReplan, false);
+        strict_1.default.equal(r.preferImmersionNow, false);
+        strict_1.default.equal(r.startupStabilityBypassApplied, false);
+        strict_1.default.match(r.blockReasonDe ?? "", /nicht stabil/);
+    });
+    (0, node_test_1.it)("startup prefer allocates IH into NOW; without prefer NOW stays empty", () => {
+        const slots = (0, fixtures_2.buildSlots)("2026-08-09T07:15:00.000Z", 6);
+        const nowIso = "2026-08-09T07:27:00.000Z";
+        const nowStart = slots[0].startIso;
+        const input = (0, fixtures_1.golden001Input)();
+        input.time = {
+            ...input.time,
+            nowIso,
+            horizonStartIso: slots[0].startIso,
+            horizonEndIso: slots[slots.length - 1].endIso,
+            slots,
+        };
+        // Flaches PV-Profil: ohne Prefer gewinnt späterer Peak-Score; mit Prefer → NOW.
+        input.pv.slots = slots.map((s) => ({
+            slot: s,
+            forecastPowerW: 4500,
+            observedPowerW: s.startIso === nowStart ? 4509 : null,
+            energyKwh: 1.125,
+        }));
+        input.houseLoad.slots = slots.map((s) => ({
+            slot: s,
+            forecastPowerW: 300,
+            observedPowerW: s.startIso === nowStart ? 304 : null,
+            energyKwh: 0.075,
+        }));
+        input.prices.slots = slots.map((s) => ({
+            slot: s,
+            importCtPerKwh: 18.95,
+            exportCtPerKwh: 8,
+            gridImportAllowed: true,
+        }));
+        input.battery = {
+            ...input.battery,
+            socPct: 100,
+            requiredChargeEnergyKwh: 0,
+            endSocTargetPct: 100,
+            maxChargePowerW: 0,
+        };
+        input.thermal = {
+            ...input.thermal,
+            bufferTempC: 51,
+            headroomEnergyKwh: 3.5,
+            minPowerW: 1700,
+            availablePowerW: 1700,
+            deadlineIso: "2026-08-09T16:44:00.000Z",
+        };
+        input.climate = null;
+        input.wallbox = null;
+        const without = (0, allocate_1.allocateUnifiedDayPlan)({ ...input, preferImmersionLiveSurplusNow: false });
+        const withStartupPrefer = (0, allocate_1.allocateUnifiedDayPlan)({
+            ...input,
+            preferImmersionLiveSurplusNow: true,
+        });
+        const nowIh = (plan) => plan.allocations
+            .filter((a) => a.kind === "immersion_heater" && a.slot.startIso === nowStart)
+            .reduce((s, a) => s + a.allocatedPowerW, 0);
+        strict_1.default.equal(nowIh(without), 0, "without prefer NOW must stay empty (mid-slot restart bug)");
+        strict_1.default.ok(nowIh(withStartupPrefer) + 1 >= 1700, `startup prefer NOW ≥ 1700, got ${nowIh(withStartupPrefer)}`);
+    });
+});

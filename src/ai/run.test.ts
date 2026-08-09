@@ -47,6 +47,10 @@ function minimalPlan(): DailyPlan {
 
 function mockHost(config: Record<string, unknown>): AiRunHost & { store: Map<string, ioBroker.StateValue> } {
 	const store = new Map<string, ioBroker.StateValue>();
+	// Runtime-SSOT seit v0.1.258 — Tests, die KI erwarten, setzen user_enabled=true.
+	if (config.ai_enabled === true) {
+		store.set(AI_STATES.userEnabled, true);
+	}
 	return {
 		config,
 		store,

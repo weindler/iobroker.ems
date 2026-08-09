@@ -20,6 +20,7 @@ function isAllowedModel(v) {
 }
 function aiConfigFromAdapter(config) {
     const c = config && typeof config === "object" ? config : {};
+    /** Legacy native — nicht für Runtime-Gates verwenden. */
     const enabled = (0, state_util_1.asBool)(c.ai_enabled) ?? false;
     const model = isAllowedModel(c.ai_model) ? c.ai_model : exports.AI_DEFAULT_MODEL;
     const apiKeyRaw = c.ai_openai_api_key;

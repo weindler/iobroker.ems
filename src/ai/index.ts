@@ -7,6 +7,12 @@ import { readAndRolloverDailyCalls, type DailyLimitState } from "./limiter";
 import { createOpenAiProvider } from "./openai_provider";
 import { runAiOptimizationNow, type AiRunHost, type AiRunOutcome } from "./run";
 import { aiTriggerDigestPayload } from "./trigger_digest";
+import {
+	applyAiUserEnabledToggle,
+	migrateAiUserEnabledOnce,
+	readAiUserEnabled,
+	resetAiEnableEpochForTest,
+} from "./user_enabled";
 import { isAiAutoSuspended } from "./writeback";
 
 export { ensureAiStates } from "./ensure_states";
@@ -21,15 +27,39 @@ export {
 export { resolveAllowedAddonIds } from "./context";
 export { aiTriggerDigestPayload } from "./trigger_digest";
 export type { AiRunHost, AiRunOutcome } from "./run";
+export {
+	migrateAiUserEnabledOnce,
+	readAiUserEnabled,
+	applyAiUserEnabledToggle,
+	currentAiEnableEpoch,
+	bumpAiEnableEpoch,
+	isAiPublishAllowed,
+	resetAiEnableEpochForTest,
+} from "./user_enabled";
 
 let lastTriggerDigestPayload = "";
 
 export function resetAiPipelineHookForTest(): void {
 	lastTriggerDigestPayload = "";
+	resetAiEnableEpochForTest();
 }
 
-export async function ensureAiStateTree(host: Parameters<typeof ensureAiStates>[0]): Promise<void> {
+export async function ensureAiStateTree(
+	host: Parameters<typeof ensureAiStates>[0] & {
+		config?: unknown;
+		getStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
+		setStateAsync?: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
+		log?: { info?: (m: string) => void; warn?: (m: string) => void; debug?: (m: string) => void };
+	},
+): Promise<void> {
 	await ensureAiStates(host);
+	if (
+		typeof host.getStateAsync === "function" &&
+		typeof host.setStateAsync === "function" &&
+		"config" in host
+	) {
+		await migrateAiUserEnabledOnce(host as Parameters<typeof migrateAiUserEnabledOnce>[0]);
+	}
 }
 
 function houseTimezoneFromConfig(config: Record<string, unknown> | undefined): string {
@@ -72,6 +102,8 @@ export async function syncAiDailyCounters(
  * Zeitpunkt des letzten automatischen Triggers wird persistiert (`AI_STATES.lastAutoTriggerAtMs`),
  * damit ein Adapter-Neustart das Limit nicht aushebelt. Der manuelle "Jetzt optimieren"-Button
  * ignoriert Digest und Mindestabstand vollständig (unverändert).
+ *
+ * Seit v0.1.258: Enable-Gate ist `ai.user_enabled` (Runtime), nicht mehr native.ai_enabled.
  */
 export async function maybeTriggerAiOptimizationOnDailyPlanChange(
 	host: AiRunHost,
@@ -86,7 +118,7 @@ export async function maybeTriggerAiOptimizationOnDailyPlanChange(
 		// best-effort — KI-Trigger nicht blockieren
 	}
 	const digestPayload = aiTriggerDigestPayload(plan);
-	if (!cfg.enabled) {
+	if (!(await readAiUserEnabled(host))) {
 		lastTriggerDigestPayload = digestPayload;
 		return null;
 	}
@@ -112,15 +144,16 @@ export async function maybeTriggerAiOptimizationOnDailyPlanChange(
 }
 
 const AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX = "ai.optimize_now_request";
+const AI_USER_ENABLED_ID_SUFFIX = "ai.user_enabled";
 
-/** Erlaubt das Auslösen von "Jetzt optimieren" auch direkt über den Objektbaum (analog Backup export_request). */
+/** Erlaubt Runtime-Toggle und "Jetzt optimieren" direkt über den Objektbaum. */
 export function isAiRelatedState(relativeId: string): boolean {
-	return relativeId === AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX;
+	return relativeId === AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX || relativeId === AI_USER_ENABLED_ID_SUFFIX;
 }
 
 export type AiStateChangeHost = AiRunHost & {
 	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
-	log?: { debug?: (m: string) => void; warn?: (m: string) => void; error?: (m: string) => void };
+	log?: { debug?: (m: string) => void; warn?: (m: string) => void; error?: (m: string) => void; info?: (m: string) => void };
 };
 
 export async function handleAiStateChange(
@@ -129,6 +162,15 @@ export async function handleAiStateChange(
 	val: unknown,
 	ack: boolean,
 ): Promise<boolean> {
+	if (relativeId === AI_USER_ENABLED_ID_SUFFIX) {
+		if (ack) return false;
+		try {
+			await applyAiUserEnabledToggle(host, val === true);
+		} catch (e) {
+			host.log?.error?.(`ai user_enabled: ${e instanceof Error ? e.message : String(e)}`);
+		}
+		return true;
+	}
 	if (relativeId !== AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX || ack || val !== true) {
 		return false;
 	}

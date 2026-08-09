@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runAiOptimizationManual = exports.handleAiStateChange = exports.isAiRelatedState = exports.maybeTriggerAiOptimizationOnDailyPlanChange = exports.syncAiDailyCounters = exports.ensureAiStateTree = exports.resetAiPipelineHookForTest = exports.aiTriggerDigestPayload = exports.resolveAllowedAddonIds = exports.AI_DEFAULT_MIN_INTERVAL_MINUTES = exports.AI_DEFAULT_MAX_CALLS_PER_DAY = exports.AI_DEFAULT_MODEL = exports.AI_ALLOWED_MODELS = exports.aiConfigFromAdapter = exports.AI_STATES = exports.ensureAiStates = void 0;
+exports.runAiOptimizationManual = exports.handleAiStateChange = exports.isAiRelatedState = exports.maybeTriggerAiOptimizationOnDailyPlanChange = exports.syncAiDailyCounters = exports.ensureAiStateTree = exports.resetAiPipelineHookForTest = exports.resetAiEnableEpochForTest = exports.isAiPublishAllowed = exports.bumpAiEnableEpoch = exports.currentAiEnableEpoch = exports.applyAiUserEnabledToggle = exports.readAiUserEnabled = exports.migrateAiUserEnabledOnce = exports.aiTriggerDigestPayload = exports.resolveAllowedAddonIds = exports.AI_DEFAULT_MIN_INTERVAL_MINUTES = exports.AI_DEFAULT_MAX_CALLS_PER_DAY = exports.AI_DEFAULT_MODEL = exports.AI_ALLOWED_MODELS = exports.aiConfigFromAdapter = exports.AI_STATES = exports.ensureAiStates = void 0;
 const states_1 = require("../operator/daily_plan/states");
 const state_util_1 = require("../ems_light/state_util");
 const config_1 = require("./config");
@@ -9,6 +9,7 @@ const limiter_1 = require("./limiter");
 const openai_provider_1 = require("./openai_provider");
 const run_1 = require("./run");
 const trigger_digest_1 = require("./trigger_digest");
+const user_enabled_1 = require("./user_enabled");
 const writeback_1 = require("./writeback");
 var ensure_states_2 = require("./ensure_states");
 Object.defineProperty(exports, "ensureAiStates", { enumerable: true, get: function () { return ensure_states_2.ensureAiStates; } });
@@ -24,13 +25,27 @@ var context_1 = require("./context");
 Object.defineProperty(exports, "resolveAllowedAddonIds", { enumerable: true, get: function () { return context_1.resolveAllowedAddonIds; } });
 var trigger_digest_2 = require("./trigger_digest");
 Object.defineProperty(exports, "aiTriggerDigestPayload", { enumerable: true, get: function () { return trigger_digest_2.aiTriggerDigestPayload; } });
+var user_enabled_2 = require("./user_enabled");
+Object.defineProperty(exports, "migrateAiUserEnabledOnce", { enumerable: true, get: function () { return user_enabled_2.migrateAiUserEnabledOnce; } });
+Object.defineProperty(exports, "readAiUserEnabled", { enumerable: true, get: function () { return user_enabled_2.readAiUserEnabled; } });
+Object.defineProperty(exports, "applyAiUserEnabledToggle", { enumerable: true, get: function () { return user_enabled_2.applyAiUserEnabledToggle; } });
+Object.defineProperty(exports, "currentAiEnableEpoch", { enumerable: true, get: function () { return user_enabled_2.currentAiEnableEpoch; } });
+Object.defineProperty(exports, "bumpAiEnableEpoch", { enumerable: true, get: function () { return user_enabled_2.bumpAiEnableEpoch; } });
+Object.defineProperty(exports, "isAiPublishAllowed", { enumerable: true, get: function () { return user_enabled_2.isAiPublishAllowed; } });
+Object.defineProperty(exports, "resetAiEnableEpochForTest", { enumerable: true, get: function () { return user_enabled_2.resetAiEnableEpochForTest; } });
 let lastTriggerDigestPayload = "";
 function resetAiPipelineHookForTest() {
     lastTriggerDigestPayload = "";
+    (0, user_enabled_1.resetAiEnableEpochForTest)();
 }
 exports.resetAiPipelineHookForTest = resetAiPipelineHookForTest;
 async function ensureAiStateTree(host) {
     await (0, ensure_states_1.ensureAiStates)(host);
+    if (typeof host.getStateAsync === "function" &&
+        typeof host.setStateAsync === "function" &&
+        "config" in host) {
+        await (0, user_enabled_1.migrateAiUserEnabledOnce)(host);
+    }
 }
 exports.ensureAiStateTree = ensureAiStateTree;
 function houseTimezoneFromConfig(config) {
@@ -63,6 +78,8 @@ exports.syncAiDailyCounters = syncAiDailyCounters;
  * Zeitpunkt des letzten automatischen Triggers wird persistiert (`AI_STATES.lastAutoTriggerAtMs`),
  * damit ein Adapter-Neustart das Limit nicht aushebelt. Der manuelle "Jetzt optimieren"-Button
  * ignoriert Digest und Mindestabstand vollständig (unverändert).
+ *
+ * Seit v0.1.258: Enable-Gate ist `ai.user_enabled` (Runtime), nicht mehr native.ai_enabled.
  */
 async function maybeTriggerAiOptimizationOnDailyPlanChange(host, plan, now = new Date()) {
     const cfg = (0, config_1.aiConfigFromAdapter)(host.config);
@@ -74,7 +91,7 @@ async function maybeTriggerAiOptimizationOnDailyPlanChange(host, plan, now = new
         // best-effort — KI-Trigger nicht blockieren
     }
     const digestPayload = (0, trigger_digest_1.aiTriggerDigestPayload)(plan);
-    if (!cfg.enabled) {
+    if (!(await (0, user_enabled_1.readAiUserEnabled)(host))) {
         lastTriggerDigestPayload = digestPayload;
         return null;
     }
@@ -100,12 +117,24 @@ async function maybeTriggerAiOptimizationOnDailyPlanChange(host, plan, now = new
 }
 exports.maybeTriggerAiOptimizationOnDailyPlanChange = maybeTriggerAiOptimizationOnDailyPlanChange;
 const AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX = "ai.optimize_now_request";
-/** Erlaubt das Auslösen von "Jetzt optimieren" auch direkt über den Objektbaum (analog Backup export_request). */
+const AI_USER_ENABLED_ID_SUFFIX = "ai.user_enabled";
+/** Erlaubt Runtime-Toggle und "Jetzt optimieren" direkt über den Objektbaum. */
 function isAiRelatedState(relativeId) {
-    return relativeId === AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX;
+    return relativeId === AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX || relativeId === AI_USER_ENABLED_ID_SUFFIX;
 }
 exports.isAiRelatedState = isAiRelatedState;
 async function handleAiStateChange(host, relativeId, val, ack) {
+    if (relativeId === AI_USER_ENABLED_ID_SUFFIX) {
+        if (ack)
+            return false;
+        try {
+            await (0, user_enabled_1.applyAiUserEnabledToggle)(host, val === true);
+        }
+        catch (e) {
+            host.log?.error?.(`ai user_enabled: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        return true;
+    }
     if (relativeId !== AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX || ack || val !== true) {
         return false;
     }

@@ -7,6 +7,7 @@ const ensure_states_1 = require("./ensure_states");
 const limiter_1 = require("./limiter");
 const pricing_1 = require("./pricing");
 const strategy_preferences_1 = require("./strategy_preferences");
+const user_enabled_1 = require("./user_enabled");
 const writeback_1 = require("./writeback");
 async function writeStatus(host, status) {
     await host.setStateAsync(ensure_states_1.AI_STATES.status, { val: status, ack: true });
@@ -24,9 +25,10 @@ async function persistThinkingStates(host, thinkingDe, decisionsJson, thinkingMo
  */
 async function runAiOptimizationNow(host, plan, triggerReason, provider) {
     const cfg = (0, config_1.aiConfigFromAdapter)(host.config);
-    if (!cfg.enabled) {
+    const requestEpoch = (0, user_enabled_1.currentAiEnableEpoch)();
+    if (!(await (0, user_enabled_1.readAiUserEnabled)(host))) {
         await writeStatus(host, "off");
-        return { ran: false, status: "off", reasonDe: "KI global deaktiviert." };
+        return { ran: false, status: "off", reasonDe: "KI deaktiviert (ai.user_enabled)." };
     }
     if (!cfg.apiKey) {
         await writeStatus(host, "no_token");
@@ -76,6 +78,17 @@ async function runAiOptimizationNow(host, plan, triggerReason, provider) {
             error: String(e instanceof Error ? e.message : e),
         };
     }
+    // Publish-Guard: Toggle während Request → Ergebnis verwerfen (auch nach erneutem ON).
+    if (!(await (0, user_enabled_1.isAiPublishAllowed)(host, requestEpoch))) {
+        const costEurDiscard = (0, pricing_1.estimateCostEur)(cfg.model, result.usage.promptTokens, result.usage.completionTokens);
+        await (0, limiter_1.recordDailyCall)(host, cfg.maxCallsPerDay, costEurDiscard, new Date(), cfg.monthlyCostLimitEur, tz);
+        host.log?.info?.(`KI-Ergebnis verworfen (${triggerReason}): user_enabled/epoch ungültig (requestEpoch=${requestEpoch}, now=${(0, user_enabled_1.currentAiEnableEpoch)()}).`);
+        return {
+            ran: false,
+            status: "off",
+            reasonDe: "KI während Request deaktiviert — Ergebnis verworfen.",
+        };
+    }
     const costEur = (0, pricing_1.estimateCostEur)(cfg.model, result.usage.promptTokens, result.usage.completionTokens);
     await (0, limiter_1.recordDailyCall)(host, cfg.maxCallsPerDay, costEur, new Date(), cfg.monthlyCostLimitEur, tz);
     const nowIso = new Date().toISOString();
@@ -103,6 +116,14 @@ async function runAiOptimizationNow(host, plan, triggerReason, provider) {
         val: JSON.stringify(mergedPrefs),
         ack: true,
     });
+    if (!(await (0, user_enabled_1.isAiPublishAllowed)(host, requestEpoch))) {
+        host.log?.info?.(`KI-Publish abgebrochen vor Compare (${triggerReason}): epoch/user_enabled ungültig.`);
+        return {
+            ran: false,
+            status: "off",
+            reasonDe: "KI während Request deaktiviert — Ergebnis verworfen.",
+        };
+    }
     const wallboxPvOnly = (0, strategy_preferences_1.wallboxPvOnlyFromDecisions)(decisions);
     const gate = await (0, writeback_1.finalizeAiRunWithWritebackGate)(host, plan, mergedPrefs, {
         wallboxPvOnly,

@@ -25,6 +25,10 @@ exports.AI_STATES = {
     autoSuspended: `${exports.AI_BASE}.auto_suspended`,
     autoSuspendReasonDe: `${exports.AI_BASE}.auto_suspend_reason_de`,
     optimizeNowRequest: `${exports.AI_BASE}.optimize_now_request`,
+    /** Runtime-Bedienzustand „KI benutzen“ — einzige Wahrheit nach Migration (v0.1.258). */
+    userEnabled: `${exports.AI_BASE}.user_enabled`,
+    /** Einmalige Migration von native.ai_enabled abgeschlossen. */
+    userEnabledMigratedV1: `${exports.AI_BASE}.user_enabled_migrated_v1`,
 };
 async function ensureAiStates(host) {
     await (0, state_util_1.ensureChannel)(host, exports.AI_BASE, "EMS KI-Optimierung (optional)");
@@ -227,6 +231,28 @@ async function ensureAiStates(host) {
                 role: "button",
                 read: true,
                 write: true,
+                def: false,
+            },
+        },
+        {
+            id: exports.AI_STATES.userEnabled,
+            common: {
+                name: "KI benutzen (Runtime, ohne Adapter-Neustart)",
+                type: "boolean",
+                role: "switch",
+                read: true,
+                write: true,
+                def: false,
+            },
+        },
+        {
+            id: exports.AI_STATES.userEnabledMigratedV1,
+            common: {
+                name: "KI user_enabled Migration v1 abgeschlossen (intern)",
+                type: "boolean",
+                role: "indicator",
+                read: true,
+                write: false,
                 def: false,
             },
         },

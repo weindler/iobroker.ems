@@ -9,8 +9,9 @@ const index_js_1 = require("./index.js");
 const ensure_states_js_1 = require("./ensure_states.js");
 const states_js_1 = require("../operator/daily_plan/states.js");
 (0, node_test_1.describe)("ai state change routing", () => {
-    (0, node_test_1.it)("isAiRelatedState only matches the optimize-now button id", () => {
+    (0, node_test_1.it)("isAiRelatedState matches optimize-now and user_enabled", () => {
         strict_1.default.equal((0, index_js_1.isAiRelatedState)(ensure_states_js_1.AI_STATES.optimizeNowRequest), true);
+        strict_1.default.equal((0, index_js_1.isAiRelatedState)(ensure_states_js_1.AI_STATES.userEnabled), true);
         strict_1.default.equal((0, index_js_1.isAiRelatedState)("ai.status"), false);
         strict_1.default.equal((0, index_js_1.isAiRelatedState)("backup.export_request"), false);
     });
@@ -96,6 +97,9 @@ function minimalPlan(overrides = {}) {
 }
 function mockRunHost(config) {
     const store = new Map();
+    if (config.ai_enabled === true) {
+        store.set(ensure_states_js_1.AI_STATES.userEnabled, true);
+    }
     return {
         config,
         store,
@@ -162,20 +166,41 @@ const NO_INTERVAL = { ai_min_interval_minutes: 0 };
     });
     (0, node_test_1.it)("while disabled, tracks the digest so re-enabling with the same unchanged plan doesn't immediately fire", async () => {
         (0, index_js_1.resetAiPipelineHookForTest)();
-        const disabledHost = mockRunHost({ ai_enabled: false });
-        const plan = minimalPlan({ revision: 1 });
-        const whileDisabled = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(disabledHost, plan);
-        strict_1.default.equal(whileDisabled, null);
-        const enabledHost = mockRunHost({
-            ai_enabled: true,
+        const host = mockRunHost({
             immersion_heater_enabled: true,
             immersion_heater_ai_optimization_allowed: true,
             ...NO_INTERVAL,
         });
-        const afterEnableUnchanged = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(enabledHost, plan);
+        host.store.set(ensure_states_js_1.AI_STATES.userEnabled, false);
+        const plan = minimalPlan({ revision: 1 });
+        const whileDisabled = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, plan);
+        strict_1.default.equal(whileDisabled, null);
+        host.store.set(ensure_states_js_1.AI_STATES.userEnabled, true);
+        const afterEnableUnchanged = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, plan);
         strict_1.default.equal(afterEnableUnchanged, null);
-        const afterEnableChanged = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(enabledHost, minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 5 } }));
+        const afterEnableChanged = await (0, index_js_1.maybeTriggerAiOptimizationOnDailyPlanChange)(host, minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 5 } }));
         strict_1.default.ok(afterEnableChanged !== null);
+    });
+    (0, node_test_1.it)("user_enabled toggle via state change bumps epoch and sets status off", async () => {
+        (0, index_js_1.resetAiPipelineHookForTest)();
+        const store = new Map();
+        store.set(ensure_states_js_1.AI_STATES.userEnabled, true);
+        store.set(ensure_states_js_1.AI_STATES.status, "ready");
+        const host = {
+            config: {},
+            log: { debug() { }, warn() { }, error() { }, info() { } },
+            async getStateAsync(id) {
+                const v = store.get(id);
+                return v === undefined ? null : { val: v, ack: true };
+            },
+            async setStateAsync(id, state) {
+                store.set(id, state.val);
+            },
+        };
+        const handled = await (0, index_js_1.handleAiStateChange)(host, ensure_states_js_1.AI_STATES.userEnabled, false, false);
+        strict_1.default.equal(handled, true);
+        strict_1.default.equal(store.get(ensure_states_js_1.AI_STATES.userEnabled), false);
+        strict_1.default.equal(store.get(ensure_states_js_1.AI_STATES.status), "off");
     });
 });
 (0, node_test_1.describe)("maybeTriggerAiOptimizationOnDailyPlanChange — minimum interval throttling (v0.1.196)", () => {

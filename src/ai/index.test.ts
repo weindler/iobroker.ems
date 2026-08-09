@@ -13,8 +13,9 @@ import type { AiRunHost } from "./run.js";
 import type { DailyPlan } from "../operator/daily_plan/types.js";
 
 describe("ai state change routing", () => {
-	it("isAiRelatedState only matches the optimize-now button id", () => {
+	it("isAiRelatedState matches optimize-now and user_enabled", () => {
 		assert.equal(isAiRelatedState(AI_STATES.optimizeNowRequest), true);
+		assert.equal(isAiRelatedState(AI_STATES.userEnabled), true);
 		assert.equal(isAiRelatedState("ai.status"), false);
 		assert.equal(isAiRelatedState("backup.export_request"), false);
 	});
@@ -104,6 +105,9 @@ function minimalPlan(overrides: Partial<DailyPlan> = {}): DailyPlan {
 
 function mockRunHost(config: Record<string, unknown>): AiRunHost & { store: Map<string, ioBroker.StateValue> } {
 	const store = new Map<string, ioBroker.StateValue>();
+	if (config.ai_enabled === true) {
+		store.set(AI_STATES.userEnabled, true);
+	}
 	return {
 		config,
 		store,
@@ -190,25 +194,47 @@ describe("maybeTriggerAiOptimizationOnDailyPlanChange — digest-based throttlin
 
 	it("while disabled, tracks the digest so re-enabling with the same unchanged plan doesn't immediately fire", async () => {
 		resetAiPipelineHookForTest();
-		const disabledHost = mockRunHost({ ai_enabled: false });
-		const plan = minimalPlan({ revision: 1 });
-		const whileDisabled = await maybeTriggerAiOptimizationOnDailyPlanChange(disabledHost, plan);
-		assert.equal(whileDisabled, null);
-
-		const enabledHost = mockRunHost({
-			ai_enabled: true,
+		const host = mockRunHost({
 			immersion_heater_enabled: true,
 			immersion_heater_ai_optimization_allowed: true,
 			...NO_INTERVAL,
 		});
-		const afterEnableUnchanged = await maybeTriggerAiOptimizationOnDailyPlanChange(enabledHost, plan);
+		host.store.set(AI_STATES.userEnabled, false);
+		const plan = minimalPlan({ revision: 1 });
+		const whileDisabled = await maybeTriggerAiOptimizationOnDailyPlanChange(host, plan);
+		assert.equal(whileDisabled, null);
+
+		host.store.set(AI_STATES.userEnabled, true);
+		const afterEnableUnchanged = await maybeTriggerAiOptimizationOnDailyPlanChange(host, plan);
 		assert.equal(afterEnableUnchanged, null);
 
 		const afterEnableChanged = await maybeTriggerAiOptimizationOnDailyPlanChange(
-			enabledHost,
+			host,
 			minimalPlan({ totals: { ...minimalPlan().totals, flexibleRequestedEnergyKwh: 5 } }),
 		);
 		assert.ok(afterEnableChanged !== null);
+	});
+
+	it("user_enabled toggle via state change bumps epoch and sets status off", async () => {
+		resetAiPipelineHookForTest();
+		const store = new Map<string, ioBroker.StateValue>();
+		store.set(AI_STATES.userEnabled, true);
+		store.set(AI_STATES.status, "ready");
+		const host: AiStateChangeHost = {
+			config: {},
+			log: { debug() {}, warn() {}, error() {}, info() {} },
+			async getStateAsync(id: string) {
+				const v = store.get(id);
+				return v === undefined ? null : ({ val: v, ack: true } as ioBroker.State);
+			},
+			async setStateAsync(id: string, state: ioBroker.SettableState) {
+				store.set(id, state.val as ioBroker.StateValue);
+			},
+		};
+		const handled = await handleAiStateChange(host, AI_STATES.userEnabled, false, false);
+		assert.equal(handled, true);
+		assert.equal(store.get(AI_STATES.userEnabled), false);
+		assert.equal(store.get(AI_STATES.status), "off");
 	});
 });
 

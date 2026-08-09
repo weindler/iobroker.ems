@@ -85,15 +85,14 @@
 					"xl": 12,
 					"text": "EMS-Light funktioniert vollständig ohne KI. Wenn aktiviert, darf die KI nur freigegebene Add-ons (Heizstab/Klima/Batterie-Laden/Wallbox) innerhalb der Policies optimieren — nie direkt auf Geräte, kein EMS-Entladen. Write-back auf die Daily-Plan-Allocation nur, wenn Plan B Plan A messbar schlägt (Kosten/PV/Netz); sonst Auto-KI aus. Aufruf bei relevanter Plan-Änderung (Mindestabstand) oder per Knopf. Kostenschätzung grob (Adapter-Preisliste)."
 				},
-				"ai_enabled": {
-					"type": "checkbox",
-					"label": "KI global aktiv",
-					"default": false,
+				"ai_user_enabled_hint": {
+					"type": "staticText",
 					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "<b>KI benutzen</b> wird in der EMS-Light-Bedienoberfläche (VIS) bzw. über den Runtime-State <code>ai.user_enabled</code> geschaltet — <b>ohne Adapter-Neustart</b>. Das frühere Admin-Feld „KI global aktiv“ (<code>ai_enabled</code>) ist nur noch Legacy/Migration und steuert den laufenden Betrieb nicht mehr. Token, Modell und Limits unten bleiben Admin-Konfiguration (Speichern kann die Instanz neu starten)."
 				},
 				"ai_thinking_mode": {
 					"type": "checkbox",

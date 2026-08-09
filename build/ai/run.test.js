@@ -48,6 +48,10 @@ function minimalPlan() {
 }
 function mockHost(config) {
     const store = new Map();
+    // Runtime-SSOT seit v0.1.258 — Tests, die KI erwarten, setzen user_enabled=true.
+    if (config.ai_enabled === true) {
+        store.set(ensure_states_js_1.AI_STATES.userEnabled, true);
+    }
     return {
         config,
         store,

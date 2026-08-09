@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.257",
+		"version": "0.1.258",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.258": {
+				"en": "AI on/off via runtime ai.user_enabled (VIS “KI benutzen”) without adapter restart; one-shot migration from native.ai_enabled; enable-epoch discards in-flight results. Plan A remains authority; AI_ALLOCATION_LIVE_MUTATION_ENABLED stays false.",
+				"de": "KI EIN/AUS über Runtime ai.user_enabled (VIS „KI benutzen“) ohne Adapter-Neustart; einmalige Migration von native.ai_enabled; Enable-Epoch verwirft laufende Ergebnisse. Plan A bleibt Authority; AI_ALLOCATION_LIVE_MUTATION_ENABLED bleibt false."
+			},
 			"0.1.257": {
 				"en": "VIS: AI shows advisory compare vs Plan A control (no “Plan B active”); immersion lockout reset via existing fault_reset. No planner/safety/AI-authority change.",
 				"de": "VIS: KI zeigt Vergleich/Advisory vs. Steuerplan Plan A (kein „Plan B aktiv“); Heizstab-Lockout-Reset über bestehenden fault_reset. Keine Planner-/Safety-/KI-Authority-Änderung."

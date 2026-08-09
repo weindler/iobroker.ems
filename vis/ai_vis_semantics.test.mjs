@@ -60,4 +60,13 @@ describe("VIS AI advisory vs control-plan semantics", () => {
 		assert.match(visHtml, /Δ Netz/);
 		assert.match(visHtml, /Δ PV/);
 	});
+
+	it("runtime KI toggle writes ai.user_enabled only", () => {
+		assert.match(visHtml, /KI benutzen/);
+		assert.match(visHtml, /data-ems-action="ai-user-enabled"/);
+		assert.match(visHtml, /function setAiUserEnabled/);
+		assert.match(visHtml, /setVisState\(INST\+"\.ai\.user_enabled",!!on\)/);
+		assert.match(visHtml, /g\("ai\.user_enabled"\)/);
+		assert.equal(visHtml.includes("ai_enabled"), false);
+	});
 });

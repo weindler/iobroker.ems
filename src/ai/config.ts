@@ -22,6 +22,10 @@ function isAllowedModel(v: unknown): v is AiAllowedModel {
 }
 
 export interface AiAdminConfig {
+	/**
+	 * @deprecated Legacy-Native `ai_enabled` — nur noch Bootstrap/Migration.
+	 * Laufende Enable-Wahrheit: `ai.user_enabled` (siehe `readAiUserEnabled`).
+	 */
 	enabled: boolean;
 	provider: AiProviderId;
 	model: AiAllowedModel;
@@ -45,6 +49,7 @@ export interface AiAdminConfig {
 export function aiConfigFromAdapter(config: unknown): AiAdminConfig {
 	const c = config && typeof config === "object" ? (config as Record<string, unknown>) : {};
 
+	/** Legacy native — nicht für Runtime-Gates verwenden. */
 	const enabled = asBool(c.ai_enabled) ?? false;
 	const model = isAllowedModel(c.ai_model) ? c.ai_model : AI_DEFAULT_MODEL;
 	const apiKeyRaw = c.ai_openai_api_key;

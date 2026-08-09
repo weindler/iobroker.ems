@@ -9,6 +9,7 @@ const live_surplus_1 = require("./live_surplus");
 const policy_1 = require("./policy");
 Object.defineProperty(exports, "buildAllocationCandidate", { enumerable: true, get: function () { return policy_1.buildAllocationCandidate; } });
 const slots_1 = require("./slots");
+const degraded_reason_1 = require("./degraded_reason");
 const SLOT_MINUTES = 15;
 function round3(n) {
     return Math.round(n * 1000) / 1000;
@@ -148,6 +149,12 @@ function buildDailyPlan(input) {
     const horizonEndIso = allocationResult.slots.length > 0
         ? allocationResult.slots[allocationResult.slots.length - 1].slot.endIso
         : null;
+    const degradedFlags = {
+        hasMandatoryGap,
+        hasDegradedContributions,
+        hasUnallocated,
+        noPvSlots,
+    };
     let reasonDe = `Deterministischer Daily Plan, rollierender Horizont ${slots_1.DAILY_PLAN_HORIZON_HOURS} h.`;
     if (input.globalMode === "off") {
         reasonDe = "Global Mode off — Plan dokumentiert, keine flexible Allocation.";
@@ -156,7 +163,8 @@ function buildDailyPlan(input) {
         reasonDe = "Forecast Plan unvollständig — Daily Plan eingeschränkt.";
     }
     else if (status === "degraded") {
-        reasonDe = "Daily Plan nutzbar mit Lücken oder unalloziertem Bedarf.";
+        const cause = (0, degraded_reason_1.explainDailyPlanDegradedDe)(input.contributions, degradedFlags);
+        reasonDe = `Daily Plan nutzbar mit Lücken — degraded: ${cause}.`;
     }
     return {
         generatedAt: input.now.toISOString(),

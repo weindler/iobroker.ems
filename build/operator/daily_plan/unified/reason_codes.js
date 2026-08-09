@@ -57,4 +57,6 @@ exports.REASON = {
     REPLAN_PRICE_REVISION: "replan_price_revision",
     /** Add-on execution mode off|dryrun|live geändert — frische Participation/Allocation. */
     REPLAN_ADDON_EXECUTION_MODE: "replan_addon_execution_mode",
+    /** Stabiler Live-Überschuss bei Bat nahe voll / IH-Headroom — NOW vs Forecast-Peak. */
+    REPLAN_LIVE_THERMAL_SURPLUS: "replan_live_thermal_surplus",
 };

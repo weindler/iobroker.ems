@@ -78,7 +78,7 @@ describe("thermal learning signal", () => {
 		assert.doesNotMatch(signal.reasonDe, /16:30/);
 	});
 
-	it("degrades Newton-only ready+ok with zero cycles (no deadline-grade model)", () => {
+	it("degrades Newton-only ready+ok with zero cycles (not cycle-valid; empty_at kept)", () => {
 		const signal = buildThermalLearningSignal({
 			now: NOW,
 			rawStatus: "ready",
@@ -93,6 +93,7 @@ describe("thermal learning signal", () => {
 		});
 		assert.equal(signal.status, "degraded");
 		assert.equal(signal.estimatedEmptyAt, "2026-07-26T13:00:00.000Z");
+		assert.match(signal.reasonDe, /Newton|0 abgeschlossene/);
 	});
 
 	it("derives live remaining from empty_at when stored remaining is stale", () => {

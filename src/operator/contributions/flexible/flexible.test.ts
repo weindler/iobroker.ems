@@ -716,6 +716,33 @@ describe("immersion heater contributions", () => {
 		assert.equal(flexible.quality.status, "degraded");
 	});
 
+	it("A1: Newton empty_at with samples=0 is planning-usable without cycle-valid status", () => {
+		const [, flexible] = buildImmersionHeaterContributions(
+			immersionInput({
+				bufferTempC: 49,
+				thermalLearning: {
+					status: "degraded",
+					health: "degraded",
+					samples: 0,
+					coolingRateCPerHAvg: null,
+					coolingConstantPerH: 0.09,
+					coolingAsymptoteC: 40,
+					estimatedRemainingHours: 4,
+					estimatedEmptyAt: "2026-07-26T14:00:00.000Z",
+					currentDayTypeRuntimeHoursMedian: null,
+					reasonDe: "Newton ohne Zyklen",
+				},
+			}),
+		);
+		assert.equal(flexible.enabled, true);
+		assert.equal(flexible.deadlineIso, "2026-07-26T14:00:00.000Z");
+		assert.equal(flexible.details.emptyAtPlanningUsable, true);
+		assert.equal(flexible.details.thermalLearningModel, "newton");
+		assert.equal(flexible.quality.status, "degraded");
+		assert.notEqual(flexible.details.thermalLearningStatus, "valid");
+		assert.match(String(flexible.details.thermalLearningDegradedCauseDe ?? ""), /Newton estimate/);
+	});
+
 	it("adopts the learned estimated_empty_at as deadline when model valid", () => {
 		const [, flexible] = buildImmersionHeaterContributions(
 			immersionInput({

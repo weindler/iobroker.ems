@@ -603,6 +603,30 @@ function acInput(overrides = {}) {
         strict_1.default.equal(flexible.details.emptyAtSource, "estimated");
         strict_1.default.equal(flexible.quality.status, "degraded");
     });
+    (0, node_test_1.it)("A1: Newton empty_at with samples=0 is planning-usable without cycle-valid status", () => {
+        const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
+            bufferTempC: 49,
+            thermalLearning: {
+                status: "degraded",
+                health: "degraded",
+                samples: 0,
+                coolingRateCPerHAvg: null,
+                coolingConstantPerH: 0.09,
+                coolingAsymptoteC: 40,
+                estimatedRemainingHours: 4,
+                estimatedEmptyAt: "2026-07-26T14:00:00.000Z",
+                currentDayTypeRuntimeHoursMedian: null,
+                reasonDe: "Newton ohne Zyklen",
+            },
+        }));
+        strict_1.default.equal(flexible.enabled, true);
+        strict_1.default.equal(flexible.deadlineIso, "2026-07-26T14:00:00.000Z");
+        strict_1.default.equal(flexible.details.emptyAtPlanningUsable, true);
+        strict_1.default.equal(flexible.details.thermalLearningModel, "newton");
+        strict_1.default.equal(flexible.quality.status, "degraded");
+        strict_1.default.notEqual(flexible.details.thermalLearningStatus, "valid");
+        strict_1.default.match(String(flexible.details.thermalLearningDegradedCauseDe ?? ""), /Newton estimate/);
+    });
     (0, node_test_1.it)("adopts the learned estimated_empty_at as deadline when model valid", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
             bufferTempC: 49,

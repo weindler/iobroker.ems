@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildImmersionHeaterContributions = exports.buildImmersionFlexibleContribution = exports.buildImmersionMandatoryContribution = void 0;
+exports.buildImmersionHeaterContributions = exports.buildImmersionFlexibleContribution = exports.buildImmersionMandatoryContribution = exports.thermalEmptyAtUsableForPlanning = void 0;
 const reheat_hysteresis_1 = require("../../../addons/immersion_heater/runtime/reheat_hysteresis");
 const thermal_forecast_1 = require("../../planning/thermal_forecast");
 const contribution_ids_1 = require("../../contribution_ids");
@@ -10,7 +10,10 @@ const types_1 = require("../types");
 const flex_demand_1 = require("./flex_demand");
 const immersion_night_bridge_1 = require("./immersion_night_bridge");
 const thermal_pv_precharge_1 = require("./thermal_pv_precharge");
+const thermal_empty_at_1 = require("./thermal_empty_at");
 const types_2 = require("./types");
+var thermal_empty_at_2 = require("./thermal_empty_at");
+Object.defineProperty(exports, "thermalEmptyAtUsableForPlanning", { enumerable: true, get: function () { return thermal_empty_at_2.thermalEmptyAtUsableForPlanning; } });
 function learningMargin(input) {
     if (!input.thermalLearning)
         return null;
@@ -39,19 +42,19 @@ function thermalLearningDetails(input) {
         thermalLearningHealth: learning?.health ?? null,
         thermalLearningSamples: learning?.samples ?? null,
         coolingRateCPerHAvg: learning?.coolingRateCPerHAvg ?? null,
+        coolingConstantPerH: learning?.coolingConstantPerH ?? null,
         estimatedRemainingHours: learning?.estimatedRemainingHours ?? null,
         estimatedEmptyAt: learning?.estimatedEmptyAt ?? null,
         emptyAtSource: emptyAtSourceOf(learning),
+        emptyAtPlanningUsable: (0, thermal_empty_at_1.thermalEmptyAtUsableForPlanning)(learning),
+        thermalLearningModel: (0, thermal_empty_at_1.hasCycleCoolingModel)(learning)
+            ? "cycle"
+            : (0, thermal_empty_at_1.hasNewtonEmptyAtModel)(learning)
+                ? "newton"
+                : "none",
+        thermalLearningDegradedCauseDe: (0, thermal_empty_at_1.thermalLearningDegradedCauseDe)(learning),
         learnedDayTypeRuntimeHoursMedian: learning?.currentDayTypeRuntimeHoursMedian ?? null,
     };
-}
-/** Planning darf empty_at bei valid und degraded nutzen; missing nie. */
-function thermalEmptyAtUsableForPlanning(learning) {
-    return (!!learning &&
-        (learning.status === "valid" || learning.status === "degraded") &&
-        !!learning.estimatedEmptyAt &&
-        learning.coolingRateCPerHAvg !== null &&
-        learning.coolingRateCPerHAvg > 0);
 }
 function enabledStages(config) {
     return config.stages.filter((s) => s.enabled && s.nominalPowerW > 0 && s.setStateId);
@@ -173,7 +176,13 @@ function buildImmersionFlexibleContribution(input) {
      * Auch degraded Learning (mit empty_at) — Qualität steht in emptyAtSource/thermalLearningStatus;
      * Unified gewichtet Deadline danach (valid stärker als estimated).
      */
-    const nightBridge = input.bufferTempC !== null && thermalEmptyAtUsableForPlanning(input.thermalLearning)
+    /*
+     * Nachtbrücke braucht lineare Cycle-Rate. Newton-empty_at allein setzt Deadline (unten),
+     * ohne Nachtbrücken-Zielanhebung — Semantik getrennt (A1).
+     */
+    const nightBridge = input.bufferTempC !== null &&
+        (0, thermal_empty_at_1.thermalEmptyAtUsableForPlanning)(input.thermalLearning) &&
+        (0, thermal_empty_at_1.hasCycleCoolingModel)(input.thermalLearning)
         ? (0, immersion_night_bridge_1.resolveImmersionNightBridge)({
             now: input.now,
             bufferTempC: input.bufferTempC,
@@ -193,7 +202,7 @@ function buildImmersionFlexibleContribution(input) {
      * und Batterie-Kontext vorliegen. emptyAt bleibt Reichweiten-Info.
      */
     const canConsiderPrecharge = input.bufferTempC !== null &&
-        (thermalEmptyAtUsableForPlanning(input.thermalLearning) ||
+        ((0, thermal_empty_at_1.thermalEmptyAtUsableForPlanning)(input.thermalLearning) ||
             (input.todayPvSurplusKwh != null && input.todayPvSurplusKwh >= 3));
     const pvPrecharge = canConsiderPrecharge
         ? (0, thermal_pv_precharge_1.resolveThermalPvPrecharge)({
@@ -267,7 +276,10 @@ function buildImmersionFlexibleContribution(input) {
         }
         if (input.thermalLearning?.status === "degraded") {
             status = "degraded";
-            reasonDe = `${reasonDe} Thermal Learning degraded — empty_at geschätzt.`;
+            const cause = (0, thermal_empty_at_1.thermalLearningDegradedCauseDe)(input.thermalLearning);
+            reasonDe = cause
+                ? `${reasonDe} degraded: ${cause}.`
+                : `${reasonDe} Thermal Learning degraded — empty_at geschätzt.`;
         }
     }
     else if (!participation.allowed) {
@@ -287,7 +299,7 @@ function buildImmersionFlexibleContribution(input) {
      */
     const planningDeadlineIso = enabled && nightBridge?.active
         ? nightBridge.deadlineIso
-        : enabled && thermalEmptyAtUsableForPlanning(input.thermalLearning)
+        : enabled && (0, thermal_empty_at_1.thermalEmptyAtUsableForPlanning)(input.thermalLearning)
             ? input.thermalLearning.estimatedEmptyAt
             : null;
     if (enabled && planningDeadlineIso && !nightBridge?.active) {

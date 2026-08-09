@@ -39,9 +39,10 @@ function parseByDayTypeJson(raw: string | null): Record<string, ThermalRuntimeBy
 
 /**
  * `status`/`health` kommen direkt aus `runThermalRuntimeLearning` (`src/learning/thermal_runtime/run.ts`).
- * `ready`+`ok` → valid nur mit genug Zyklen (`MIN_CYCLES_OK`). Newton-Fit ohne Historie
- * (`samples: 0`) darf keine Deadline treiben. `insufficient_data` / wenige Samples → degraded.
- * Alles andere (kein Source, deaktiviert, ungültige Config, Fehler) → missing.
+ * `ready`+`ok` → valid nur mit genug Zyklen (`MIN_CYCLES_OK`).
+ * Newton-Fit ohne Peak→Floor-Zyklen bleibt status=degraded (kein falsches „cycle-valid“),
+ * empty_at kann trotzdem planungswirksam sein (`thermal_empty_at.ts`, A1).
+ * `insufficient_data` / wenige Samples → degraded. Alles andere → missing.
  */
 function deriveStatus(
 	rawStatus: string | null,
@@ -71,7 +72,11 @@ function reasonDeForStatus(
 			: `Thermal-Runtime-Learning aktiv (${samples ?? 0} Zyklen).`;
 	}
 	if (status === "degraded") {
-		return `Thermal-Runtime-Learning mit wenigen Zyklen (${samples ?? 0}) — eingeschränkt belastbar.`;
+		const n = samples ?? 0;
+		if (n === 0 && estimatedEmptyAt) {
+			return `Thermal-Runtime-Learning: Newton-Schätzung nutzbar, ${n} abgeschlossene Abkühlzyklen — Status degraded (nicht cycle-valid).`;
+		}
+		return `Thermal-Runtime-Learning mit wenigen Zyklen (${n}) — eingeschränkt belastbar.`;
 	}
 	return "Thermal-Runtime-Learning ohne belastbares Modell — Fallback auf Physik-Schätzung.";
 }

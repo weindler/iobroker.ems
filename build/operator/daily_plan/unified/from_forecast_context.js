@@ -355,6 +355,7 @@ function buildUnifiedInputFromForecastContext(ctx) {
         otherFlex: [],
         contributionRevision: ctx.contributionRevision ?? 1,
         globalMode: ctx.globalMode,
+        preferImmersionLiveSurplusNow: ctx.preferImmersionLiveSurplusNow === true,
     };
 }
 exports.buildUnifiedInputFromForecastContext = buildUnifiedInputFromForecastContext;

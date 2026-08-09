@@ -337,6 +337,11 @@ export type UnifiedDayPlannerInput = {
 	/** Optionale Verknüpfung zur bestehenden Contribution-Revision. */
 	contributionRevision: number | null;
 	globalMode: string;
+	/**
+	 * B1: Stabiler Live-Überschuss + Bat nahe voll → IH-NOW im Score bevorzugen
+	 * (gegenüber reinem Forecast-Peak). Kein EV-Fake-Bedarf.
+	 */
+	preferImmersionLiveSurplusNow?: boolean;
 };
 
 /** Prioritätsordnung — Vertrag + Tests; noch kein Solver. */

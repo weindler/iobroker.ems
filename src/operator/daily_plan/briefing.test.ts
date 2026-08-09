@@ -202,4 +202,38 @@ describe("buildOperatorBriefingDe (Roadmap Block 3.3)", () => {
 		const text = buildOperatorBriefingDe(p, NOW, TZ);
 		assert.ok(text.length <= 480);
 	});
+
+	it("D1: degraded status names concrete thermal learning cause", () => {
+		const p = plan({
+			status: "degraded",
+			slots: [slot({ allocations: [] })],
+		});
+		const text = buildOperatorBriefingDe(p, NOW, TZ, {
+			contributions: [
+				{
+					contributionId: "immersion_heater.flexible",
+					contributor: addonContributorRef("immersion_heater"),
+					flow: "consume",
+					roles: ["demand_flex"],
+					generatedAt: NOW.toISOString(),
+					validUntil: null,
+					revision: 1,
+					enabled: true,
+					flexible: true,
+					gridEligible: false,
+					priorityBand: null,
+					deadlineIso: null,
+					quality: operatorQuality("degraded", "thermal"),
+					reasonDe: "thermal",
+					details: {
+						thermalLearningStatus: "degraded",
+						thermalLearningDegradedCauseDe:
+							"thermal learning usable only via Newton estimate, 0 completed cooling cycles",
+					},
+					slots: [],
+				},
+			],
+		});
+		assert.match(text, /Daily Plan \(degraded: thermal learning usable only via Newton estimate, 0 completed cooling cycles\)/);
+	});
 });

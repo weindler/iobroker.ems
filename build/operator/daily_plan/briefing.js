@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildOperatorBriefingDe = exports.climateLearningBriefingDe = void 0;
 const slots_1 = require("./slots");
+const degraded_reason_1 = require("./degraded_reason");
 /**
  * Roadmap Block 3.3: `operator.briefing_de` kommt ab hier aus Daily Plan + Allocation
  * (aktueller Slot), nicht mehr aus `formatBriefing()` des alten Realtime-Planners
@@ -65,7 +66,14 @@ function buildOperatorBriefingDe(plan, now, timezone, extras) {
     if (!plan) {
         return "Daily Plan noch nicht initialisiert.";
     }
-    const lines = [`Daily Plan (${plan.status}). Mode: ${plan.globalMode}.`];
+    let statusLabel = plan.status;
+    if (plan.status === "degraded") {
+        const cause = (0, degraded_reason_1.explainDailyPlanDegradedDe)(extras?.contributions, {
+            hasDegradedContributions: true,
+        });
+        statusLabel = `degraded: ${cause}`;
+    }
+    const lines = [`Daily Plan (${statusLabel}). Mode: ${plan.globalMode}.`];
     const slot = currentSlot(plan, now, timezone);
     if (!slot) {
         lines.push(plan.reasonDe || "Kein aktueller Daily-Plan-Slot gefunden.");

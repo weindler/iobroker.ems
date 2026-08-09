@@ -126,6 +126,8 @@ export type UnifiedForecastContext = {
 	 * Wenn nicht gesetzt → konservativ false.
 	 */
 	passiveBatteryEnergyAvailable?: boolean | null;
+	/** B1: IH-NOW bei stabilem Live-Überschuss bevorzugen. */
+	preferImmersionLiveSurplusNow?: boolean | null;
 };
 
 /**
@@ -450,6 +452,7 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 		otherFlex: [],
 		contributionRevision: ctx.contributionRevision ?? 1,
 		globalMode: ctx.globalMode,
+		preferImmersionLiveSurplusNow: ctx.preferImmersionLiveSurplusNow === true,
 	};
 }
 

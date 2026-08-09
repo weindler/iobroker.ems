@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.251",
+		"version": "0.1.252",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.252": {
+				"en": "A1/B1/D1: Newton empty_at planning-usable without cycle-valid claim; stable live surplus can material-replan immersion NOW when bat near full; degraded briefing names exact thermal cause. No grid-IH/Tibber or dryrun-competition change.",
+				"de": "A1/B1/D1: Newton-empty_at planungswirksam ohne cycle-valid-Behauptung; stabiler Live-Überschuss kann Heizstab-NOW material replannen bei Bat nahe voll; degraded-Briefing nennt konkrete Thermal-Ursache. Kein Grid-IH/Tibber- oder Dryrun-Konkurrenz-Wechsel."
+			},
 			"0.1.251": {
 				"en": "Addon modes off|dryrun|live: OFF ends EMS control (battery ownership restore once), clears active plan display immediately; passive battery energy only in self-consumption; plan_json is authoritative for VIS timelines.",
 				"de": "Add-on-Modi Aus|Dryrun|Live: OFF beendet EMS-Steuerung (Batterie-Ownership einmalig Restore), leert aktive Plan-Darstellung sofort; passive Batterie-Energie nur im Self-Consumption; plan_json autoritativ für VIS-Timelines."

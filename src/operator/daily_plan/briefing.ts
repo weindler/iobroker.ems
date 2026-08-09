@@ -1,6 +1,7 @@
 import type { PlanContribution } from "../types";
 import type { DailyAllocationEntry, DailyPlan, DailyPlanSlot } from "./types";
 import { slotStartIsoFloored } from "./slots";
+import { explainDailyPlanDegradedDe } from "./degraded_reason";
 
 /**
  * Roadmap Block 3.3: `operator.briefing_de` kommt ab hier aus Daily Plan + Allocation
@@ -86,7 +87,14 @@ export function buildOperatorBriefingDe(
 		return "Daily Plan noch nicht initialisiert.";
 	}
 
-	const lines: string[] = [`Daily Plan (${plan.status}). Mode: ${plan.globalMode}.`];
+	let statusLabel: string = plan.status;
+	if (plan.status === "degraded") {
+		const cause = explainDailyPlanDegradedDe(extras?.contributions, {
+			hasDegradedContributions: true,
+		});
+		statusLabel = `degraded: ${cause}`;
+	}
+	const lines: string[] = [`Daily Plan (${statusLabel}). Mode: ${plan.globalMode}.`];
 
 	const slot = currentSlot(plan, now, timezone);
 	if (!slot) {

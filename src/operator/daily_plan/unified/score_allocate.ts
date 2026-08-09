@@ -773,6 +773,19 @@ export function scoreCandidate(
 			if (hardVehicle) {
 				score -= e * weights.vehicleUrgencyBoost * 0.65;
 			}
+			/*
+			 * B1: Stabiler Live-Überschuss — aktuellen Slot klar vor Forecast-Peak bevorzugen.
+			 * Kein simples Bat-full-only; Flag kommt aus getakteter Surplus-Gate-Logik.
+			 */
+			const slotEndMs = Date.parse(slot.endIso);
+			if (
+				input.preferImmersionLiveSurplusNow === true &&
+				Number.isFinite(slotEndMs) &&
+				slotMs <= state.nowMs &&
+				state.nowMs < slotEndMs
+			) {
+				score += e * weights.flexShiftWeight * 2.4 + 0.55;
+			}
 		}
 	}
 

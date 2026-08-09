@@ -11,7 +11,15 @@ import { buildFlexibleDemandSlot, estimateImmersionRequiredEnergyKwh, type Immer
 import { resolveImmersionNightBridge } from "./immersion_night_bridge";
 import { resolveThermalPvPrecharge } from "./thermal_pv_precharge";
 import type { ThermalLearningSignal } from "./thermal_learning";
+import {
+	hasCycleCoolingModel,
+	hasNewtonEmptyAtModel,
+	thermalEmptyAtUsableForPlanning,
+	thermalLearningDegradedCauseDe,
+} from "./thermal_empty_at";
 import { evaluateParticipation, round3 } from "./types";
+
+export { thermalEmptyAtUsableForPlanning } from "./thermal_empty_at";
 
 export interface ImmersionContributionBuildInput {
 	now: Date;
@@ -80,22 +88,19 @@ function thermalLearningDetails(input: ImmersionContributionBuildInput): Record<
 		thermalLearningHealth: learning?.health ?? null,
 		thermalLearningSamples: learning?.samples ?? null,
 		coolingRateCPerHAvg: learning?.coolingRateCPerHAvg ?? null,
+		coolingConstantPerH: learning?.coolingConstantPerH ?? null,
 		estimatedRemainingHours: learning?.estimatedRemainingHours ?? null,
 		estimatedEmptyAt: learning?.estimatedEmptyAt ?? null,
 		emptyAtSource: emptyAtSourceOf(learning),
+		emptyAtPlanningUsable: thermalEmptyAtUsableForPlanning(learning),
+		thermalLearningModel: hasCycleCoolingModel(learning)
+			? "cycle"
+			: hasNewtonEmptyAtModel(learning)
+				? "newton"
+				: "none",
+		thermalLearningDegradedCauseDe: thermalLearningDegradedCauseDe(learning),
 		learnedDayTypeRuntimeHoursMedian: learning?.currentDayTypeRuntimeHoursMedian ?? null,
 	};
-}
-
-/** Planning darf empty_at bei valid und degraded nutzen; missing nie. */
-function thermalEmptyAtUsableForPlanning(learning: ThermalLearningSignal | null | undefined): boolean {
-	return (
-		!!learning &&
-		(learning.status === "valid" || learning.status === "degraded") &&
-		!!learning.estimatedEmptyAt &&
-		learning.coolingRateCPerHAvg !== null &&
-		learning.coolingRateCPerHAvg > 0
-	);
 }
 
 function enabledStages(config: ImmersionDeviceConfig) {
@@ -239,8 +244,14 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 	 * Auch degraded Learning (mit empty_at) — Qualität steht in emptyAtSource/thermalLearningStatus;
 	 * Unified gewichtet Deadline danach (valid stärker als estimated).
 	 */
+	/*
+	 * Nachtbrücke braucht lineare Cycle-Rate. Newton-empty_at allein setzt Deadline (unten),
+	 * ohne Nachtbrücken-Zielanhebung — Semantik getrennt (A1).
+	 */
 	const nightBridge =
-		input.bufferTempC !== null && thermalEmptyAtUsableForPlanning(input.thermalLearning)
+		input.bufferTempC !== null &&
+		thermalEmptyAtUsableForPlanning(input.thermalLearning) &&
+		hasCycleCoolingModel(input.thermalLearning)
 			? resolveImmersionNightBridge({
 					now: input.now,
 					bufferTempC: input.bufferTempC,
@@ -341,7 +352,10 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 		}
 		if (input.thermalLearning?.status === "degraded") {
 			status = "degraded";
-			reasonDe = `${reasonDe} Thermal Learning degraded — empty_at geschätzt.`;
+			const cause = thermalLearningDegradedCauseDe(input.thermalLearning);
+			reasonDe = cause
+				? `${reasonDe} degraded: ${cause}.`
+				: `${reasonDe} Thermal Learning degraded — empty_at geschätzt.`;
 		}
 	} else if (!participation.allowed) {
 		status = participation.status;

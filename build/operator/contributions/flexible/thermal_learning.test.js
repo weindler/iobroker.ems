@@ -77,7 +77,7 @@ const NOW = new Date("2026-07-26T10:00:00.000Z"); // Sonntag → weekend
         strict_1.default.match(signal.reasonDe, /18:30/);
         strict_1.default.doesNotMatch(signal.reasonDe, /16:30/);
     });
-    (0, node_test_1.it)("degrades Newton-only ready+ok with zero cycles (no deadline-grade model)", () => {
+    (0, node_test_1.it)("degrades Newton-only ready+ok with zero cycles (not cycle-valid; empty_at kept)", () => {
         const signal = (0, thermal_learning_1.buildThermalLearningSignal)({
             now: NOW,
             rawStatus: "ready",
@@ -92,6 +92,7 @@ const NOW = new Date("2026-07-26T10:00:00.000Z"); // Sonntag → weekend
         });
         strict_1.default.equal(signal.status, "degraded");
         strict_1.default.equal(signal.estimatedEmptyAt, "2026-07-26T13:00:00.000Z");
+        strict_1.default.match(signal.reasonDe, /Newton|0 abgeschlossene/);
     });
     (0, node_test_1.it)("derives live remaining from empty_at when stored remaining is stale", () => {
         const later = new Date("2026-07-26T14:00:00.000Z"); // 2.5 h before empty_at

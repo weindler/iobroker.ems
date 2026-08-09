@@ -195,4 +195,36 @@ function plan(over) {
         const text = (0, briefing_js_1.buildOperatorBriefingDe)(p, NOW, TZ);
         strict_1.default.ok(text.length <= 480);
     });
+    (0, node_test_1.it)("D1: degraded status names concrete thermal learning cause", () => {
+        const p = plan({
+            status: "degraded",
+            slots: [slot({ allocations: [] })],
+        });
+        const text = (0, briefing_js_1.buildOperatorBriefingDe)(p, NOW, TZ, {
+            contributions: [
+                {
+                    contributionId: "immersion_heater.flexible",
+                    contributor: (0, contributor_js_1.addonContributorRef)("immersion_heater"),
+                    flow: "consume",
+                    roles: ["demand_flex"],
+                    generatedAt: NOW.toISOString(),
+                    validUntil: null,
+                    revision: 1,
+                    enabled: true,
+                    flexible: true,
+                    gridEligible: false,
+                    priorityBand: null,
+                    deadlineIso: null,
+                    quality: (0, quality_js_1.operatorQuality)("degraded", "thermal"),
+                    reasonDe: "thermal",
+                    details: {
+                        thermalLearningStatus: "degraded",
+                        thermalLearningDegradedCauseDe: "thermal learning usable only via Newton estimate, 0 completed cooling cycles",
+                    },
+                    slots: [],
+                },
+            ],
+        });
+        strict_1.default.match(text, /Daily Plan \(degraded: thermal learning usable only via Newton estimate, 0 completed cooling cycles\)/);
+    });
 });

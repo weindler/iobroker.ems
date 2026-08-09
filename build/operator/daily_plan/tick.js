@@ -82,6 +82,9 @@ const path = __importStar(require("node:path"));
 const invalidate_addon_off_1 = require("./invalidate_addon_off");
 const config_4 = require("../../addons/battery/config");
 const passive_battery_energy_1 = require("./unified/passive_battery_energy");
+const live_thermal_surplus_replan_1 = require("./unified/live_thermal_surplus_replan");
+const execution_mode_1 = require("../../execution_mode");
+const ensure_states_4 = require("../../addons/governance/ensure_states");
 let lastRevisionPayload = "";
 let revision = 0;
 /** Material-Cadence: ohne relevanten Grund kein neuer Unified-/Tagesplan-Publish. */
@@ -95,6 +98,10 @@ let replanCountToday = 0;
 let replanCountDate = "";
 /** Befund 005: Mode-Wechsel erzwingt frischen Replan (keine stale Allocation). */
 let forcedReplanReasons = [];
+/** B1: Entprellung Live-Überschuss → IH-NOW-Replan. */
+let thermalSurplusQualifySinceMs = null;
+let lastThermalSurplusReplanAtMs = null;
+let preferImmersionLiveSurplusNow = false;
 /**
  * Nach OFF↔DRYRUN/LIVE: Baseline/Cache verwerfen und nächsten Tick material replanen.
  */
@@ -208,6 +215,9 @@ function resetDailyPlanRevisionForTest() {
     replanCountToday = 0;
     replanCountDate = "";
     forcedReplanReasons = [];
+    thermalSurplusQualifySinceMs = null;
+    lastThermalSurplusReplanAtMs = null;
+    preferImmersionLiveSurplusNow = false;
     (0, session_1.resetDayPlanSessionForTest)();
     lastNotifyCandidates = [];
 }
@@ -518,6 +528,60 @@ async function runDailyPlanTick(host, forecastPlan) {
         thermalBlocked: probeInput.thermal?.uncertainty.status === "blocked",
         cadenceDigest,
     };
+    const ihStages = (0, device_config_1.activeStages)(immersionCfg);
+    const ihMinPowerW = probeInput.thermal?.minPowerW ??
+        (ihStages.length > 0
+            ? Math.min(...ihStages.map((s) => s.nominalPowerW).filter((w) => w > 0))
+            : null);
+    const ihAllocatedNow = (0, state_util_1.asNum)((await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.allocatedPowerW))?.val);
+    const ihAutoTargetReached = (await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.autoTargetReached))?.val === true;
+    const ihLiveWriteAllowed = await (0, execution_mode_1.isLiveWriteAllowed)((id) => host.getStateAsync(id), "immersion_heater");
+    const ihGovernanceEnabled = await (0, ensure_states_4.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "immersion_heater");
+    let higherPriorityLiveDemandW = 0;
+    const wbLiveWriteAllowed = await (0, execution_mode_1.isLiveWriteAllowed)((id) => host.getStateAsync(id), "wallbox");
+    if (wbLiveWriteAllowed && wbConnected === true) {
+        const need = probeInput.wallbox?.requiredEnergyKwh;
+        if (need != null && need > 0.5) {
+            const maxW = probeInput.wallbox?.maxChargePowerW;
+            const minW = probeInput.wallbox?.minChargePowerW;
+            let reserve = 3500;
+            if (minW != null && minW > 0)
+                reserve = Math.max(reserve, minW);
+            if (maxW != null && maxW > 0)
+                reserve = Math.min(reserve, maxW);
+            higherPriorityLiveDemandW += reserve;
+        }
+    }
+    const acLiveWriteAllowed = await (0, execution_mode_1.isLiveWriteAllowed)((id) => host.getStateAsync(id), "air_conditioning");
+    if (acLiveWriteAllowed && probeInput.climate) {
+        for (const u of probeInput.climate.units) {
+            if (!u.mandatoryComfort)
+                continue;
+            if (u.roomTempC == null || u.comfortMaxC == null)
+                continue;
+            if (u.roomTempC <= u.comfortMaxC)
+                continue;
+            higherPriorityLiveDemandW += Math.max(u.typicalPowerW ?? 700, 500);
+        }
+    }
+    const surplusReplan = (0, live_thermal_surplus_replan_1.evaluateLiveThermalSurplusReplan)({
+        nowMs: now.getTime(),
+        liveSurplusW: liveSurplusEarly.surplusW,
+        ihMinPowerW: ihMinPowerW != null && Number.isFinite(ihMinPowerW) ? ihMinPowerW : null,
+        thermalHeadroomKwh: probeInput.thermal?.headroomEnergyKwh ?? null,
+        currentIhAllocatedW: ihAllocatedNow,
+        batterySocPct: probeInput.battery.socPct,
+        batteryMaxSocPct: probeInput.battery.maxSocPct ?? hw.maxSocPct,
+        batteryRequiredChargeKwh: probeInput.battery.requiredChargeEnergyKwh,
+        ihLiveWriteAllowed,
+        ihGovernanceEnabled,
+        ihRuntimeWriteBlocked: ihAutoTargetReached || probeInput.thermal?.reheatHysteresisActive === true,
+        higherPriorityLiveDemandW,
+        surplusQualifySinceMs: thermalSurplusQualifySinceMs,
+        lastThermalSurplusReplanAtMs,
+    });
+    thermalSurplusQualifySinceMs = surplusReplan.nextSurplusQualifySinceMs;
+    preferImmersionLiveSurplusNow = surplusReplan.preferImmersionNow;
     let decision = (0, materiality_1.evaluateMaterialReplan)(lastBaseline, actualSample, {
         lastReplanAtMs,
     });
@@ -529,6 +593,14 @@ async function runDailyPlanTick(host, forecastPlan) {
             hard: true,
             reasons: [reason_codes_1.REASON.REPLAN_ADDON_EXECUTION_MODE, ...forced, ...decision.reasons],
         };
+    }
+    if (surplusReplan.shouldReplan) {
+        decision = {
+            shouldReplan: true,
+            hard: true,
+            reasons: [reason_codes_1.REASON.REPLAN_LIVE_THERMAL_SURPLUS, ...decision.reasons],
+        };
+        lastThermalSurplusReplanAtMs = now.getTime();
     }
     if (!decision.shouldReplan) {
         return plan;
@@ -581,6 +653,7 @@ async function runDailyPlanTick(host, forecastPlan) {
                 vehiclePresenceVehicleKey: presenceVehicleKey,
                 connectedNowOverride: wbConnected,
                 passiveBatteryEnergyAvailable: passiveBatteryEnergy.available,
+                preferImmersionLiveSurplusNow,
             });
             const nextGen = (lastUnifiedPlan?.generation ?? 0) + 1;
             const unifiedPlan = (0, allocate_1.allocateUnifiedDayPlan)(unifiedInputFinal, {

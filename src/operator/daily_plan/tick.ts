@@ -116,8 +116,10 @@ let thermalSurplusQualifySinceMs: number | null = null;
 let lastThermalSurplusReplanAtMs: number | null = null;
 let preferImmersionLiveSurplusNow = false;
 /**
- * Einmalige Startup-Ausnahme: Stabilitäts-Bypass nur für den ersten Hard-Replan
- * nach Prozessstart (baseline == null). Danach normale 90-s-Entprellung.
+ * Einmalige Startup-Ausnahme für die 90-s-Stabilität: bleibt verfügbar bis
+ * `startupStabilityBypassApplied` einmal true war — nicht schon beim ersten
+ * Hard-Replan mit unvollständigen Gates (baseline wird trotzdem gesetzt).
+ * Danach normale 90-s-Entprellung.
  */
 let startupLiveSurplusPreferUsed = false;
 
@@ -248,6 +250,21 @@ export function resetDailyPlanRevisionForTest(): void {
 	startupLiveSurplusPreferUsed = false;
 	resetDayPlanSessionForTest();
 	lastNotifyCandidates = [];
+}
+
+/** Test-Hook: Startup-One-Shot noch verfügbar? */
+export function startupLiveSurplusPreferAvailableForTest(): boolean {
+	return !startupLiveSurplusPreferUsed;
+}
+
+/**
+ * Test-Hook: spiegelt Tick-Verbrauch — Flag nur bei erfolgreichem Startup-Bypass.
+ * Production: identisch zu `if (surplusReplan.startupStabilityBypassApplied)`.
+ */
+export function noteStartupLiveSurplusPreferResultForTest(startupStabilityBypassApplied: boolean): void {
+	if (startupStabilityBypassApplied) {
+		startupLiveSurplusPreferUsed = true;
+	}
 }
 
 /** Deduplizierte Notification-Candidates des laufenden Tages (kein Push). */
@@ -642,10 +659,12 @@ export async function runDailyPlanTick(
 	}
 
 	/*
-	 * Startup: erster Hard-Replan nach Prozessstart (baseline == null) darf die 90-s-
-	 * Stabilität einmal überspringen — alle übrigen B1-Gates bleiben Pflicht.
+	 * Startup: 90-s-Stabilität einmal überspringen, solange der One-Shot noch nicht
+	 * erfolgreich angewendet wurde — alle übrigen B1-Gates bleiben Pflicht.
+	 * Nicht an baseline==null koppeln: der erste Hard-Replan setzt die Baseline oft
+	 * schon bevor SOC/Surplus/Headroom bereit sind.
 	 */
-	const allowStartupStabilityBypass = lastBaseline === null && !startupLiveSurplusPreferUsed;
+	const allowStartupStabilityBypass = !startupLiveSurplusPreferUsed;
 	const surplusReplan = evaluateLiveThermalSurplusReplan({
 		nowMs: now.getTime(),
 		liveSurplusW: liveSurplusEarly.surplusW,
@@ -688,10 +707,11 @@ export async function runDailyPlanTick(
 	}
 
 	/*
-	 * One-shot verbrauchen sobald der erste Prozess-Hard-Replan (baseline war null)
-	 * tatsächlich läuft — Bypass gilt nie für spätere baseline=null-Zwänge.
+	 * One-shot erst verbrauchen, wenn der Startup-Stability-Bypass wirklich Prefer gesetzt hat.
+	 * Fehlgeschlagene erste Hard-Replans (SOC/Surplus/Headroom noch missing) lassen
+	 * die Ausnahme für den nächsten geeigneten Tick verfügbar.
 	 */
-	if (allowStartupStabilityBypass && decision.shouldReplan) {
+	if (surplusReplan.startupStabilityBypassApplied) {
 		startupLiveSurplusPreferUsed = true;
 	}
 

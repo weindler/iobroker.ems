@@ -8,6 +8,17 @@ import {
 import { allocateUnifiedDayPlan } from "./allocate";
 import { golden001Input } from "./fixtures";
 import { buildSlots } from "./fixtures";
+import {
+	noteStartupLiveSurplusPreferResultForTest,
+	resetDailyPlanRevisionForTest,
+	startupLiveSurplusPreferAvailableForTest,
+} from "../tick";
+import { resolveImmersionDailyPlanFromData } from "../../../addons/immersion_heater/runtime/daily_plan";
+import { immersionDeviceConfigFromAdapter } from "../../../addons/immersion_heater/device_config";
+import { CONTRIBUTION_IDS } from "../../contribution_ids";
+import { addonContributorRef } from "../../contributor";
+import type { DailyAllocationEntry } from "../types";
+import { DAILY_PLAN_SLOT_MS, slotStartIsoFloored } from "../slots";
 
 const NOW_MS = Date.parse("2026-08-09T10:07:00.000Z");
 
@@ -181,6 +192,23 @@ describe("B1 startup mid-slot: adapter starts during active planned slot", () =>
 		assert.match(r.blockReasonDe ?? "", /Batterie/);
 	});
 
+	it("startup bypass does not weaken governance / write gates", () => {
+		for (const [label, overrides] of [
+			["governance off", { ihGovernanceEnabled: false }],
+			["live write denied", { ihLiveWriteAllowed: false }],
+			["runtime write blocked", { ihRuntimeWriteBlocked: true }],
+		] as const) {
+			const r = baseOk({
+				nowMs: runtimeNowMs,
+				surplusQualifySinceMs: null,
+				bypassStabilityMs: true,
+				...overrides,
+			});
+			assert.equal(r.preferImmersionNow, false, label);
+			assert.equal(r.startupStabilityBypassApplied, false, label);
+		}
+	});
+
 	it("normal short spike after startup remains debounced (no bypass)", () => {
 		const r = baseOk({
 			nowMs: runtimeNowMs + 5_000,
@@ -255,5 +283,88 @@ describe("B1 startup mid-slot: adapter starts during active planned slot", () =>
 
 		assert.equal(nowIh(without), 0, "without prefer NOW must stay empty (mid-slot restart bug)");
 		assert.ok(nowIh(withStartupPrefer) + 1 >= 1700, `startup prefer NOW ≥ 1700, got ${nowIh(withStartupPrefer)}`);
+	});
+
+	it("incomplete first startup replan does not consume one-shot; next ready tick bypasses once", () => {
+		resetDailyPlanRevisionForTest();
+		assert.equal(startupLiveSurplusPreferAvailableForTest(), true);
+
+		const incomplete = baseOk({
+			nowMs: runtimeNowMs,
+			surplusQualifySinceMs: null,
+			bypassStabilityMs: true,
+			batterySocPct: null, // Gates unvollständig
+			liveSurplusW: null,
+			thermalHeadroomKwh: null,
+		});
+		assert.equal(incomplete.preferImmersionNow, false);
+		assert.equal(incomplete.startupStabilityBypassApplied, false);
+		noteStartupLiveSurplusPreferResultForTest(incomplete.startupStabilityBypassApplied);
+		assert.equal(startupLiveSurplusPreferAvailableForTest(), true, "one-shot must remain available");
+
+		const ready = baseOk({
+			nowMs: runtimeNowMs + 60_000,
+			surplusQualifySinceMs: null,
+			liveSurplusW: 4205,
+			bypassStabilityMs: startupLiveSurplusPreferAvailableForTest(),
+		});
+		assert.equal(ready.startupStabilityBypassApplied, true);
+		assert.equal(ready.preferImmersionNow, true);
+		noteStartupLiveSurplusPreferResultForTest(ready.startupStabilityBypassApplied);
+		assert.equal(startupLiveSurplusPreferAvailableForTest(), false, "one-shot consumed after success");
+
+		const third = baseOk({
+			nowMs: runtimeNowMs + 120_000,
+			surplusQualifySinceMs: null,
+			liveSurplusW: 4205,
+			bypassStabilityMs: startupLiveSurplusPreferAvailableForTest(),
+		});
+		assert.equal(third.startupStabilityBypassApplied, false);
+		assert.equal(third.preferImmersionNow, false);
+		assert.match(third.blockReasonDe ?? "", /nicht stabil/);
+	});
+
+	it("NOW plan 1700 W → runtime daily_plan_valid and commandedStage ≥ 1", () => {
+		const now = new Date("2026-08-09T07:27:00.000Z");
+		const tz = "Europe/Berlin";
+		const start = slotStartIsoFloored(now, tz);
+		const end = new Date(Date.parse(start) + DAILY_PLAN_SLOT_MS).toISOString();
+		const entry: DailyAllocationEntry = {
+			contributionId: CONTRIBUTION_IDS.IMMERSION_FLEXIBLE,
+			contributor: addonContributorRef("immersion_heater"),
+			slot: { startIso: start, endIso: end },
+			status: "allocated",
+			energySource: "pv_surplus",
+			requestedPowerW: 1700,
+			allocatedPowerW: 1700,
+			requestedEnergyKwh: 0.425,
+			allocatedEnergyKwh: 0.425,
+			gridPowerW: 0,
+			pvPowerW: 1700,
+			batteryPowerW: 0,
+			mandatory: false,
+			priorityRank: null,
+			deadlineIso: null,
+			estimatedCostCt: null,
+			reasonDe: "test",
+		};
+		const cfg = immersionDeviceConfigFromAdapter({
+			ih_stage_count: 1,
+			ih_stage_1_set_state: "relay.0.heater",
+			ih_stage_1_nominal_power_w: 1700,
+			ih_buffer_temp_c_target: "sensor.0.temp",
+			ih_buffer_temp_c_enabled: true,
+		});
+		const r = resolveImmersionDailyPlanFromData({
+			now,
+			timezone: tz,
+			meta: { status: "degraded", date: "2026-08-09", revision: 1, validUntil: null, timezone: tz },
+			entries: [entry],
+			config: cfg,
+		});
+		assert.equal(r.dailyPlanStatus, "daily_plan_valid");
+		assert.equal(r.decisionSource, "daily_plan");
+		assert.equal(r.allocatedPowerW, 1700);
+		assert.ok(r.commandedStage >= 1);
 	});
 });

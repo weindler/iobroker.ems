@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.253",
+		"version": "0.1.254",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.254": {
+				"en": "Startup live-surplus prefer one-shot is consumed only when the stability bypass actually applies; incomplete first replan leaves the exception available for the next ready tick. Normal 90s debounce unchanged afterward.",
+				"de": "Startup-Live-Überschuss-Prefer-One-Shot wird erst verbraucht, wenn der Stabilitäts-Bypass wirklich greift; unvollständiger erster Replan lässt die Ausnahme für den nächsten bereiten Tick verfügbar. Normale 90s-Entprellung danach unverändert."
+			},
 			"0.1.253": {
 				"en": "Fix mid-slot adapter restart: first hard replan may prefer immersion NOW when all B1 gates pass (one-shot, 90s debounce unchanged afterward). IH card shows current window as \"Jetzt bis\" not \"Nächstes\".",
 				"de": "Fix Mid-Slot-Adapterstart: erster Hard-Replan darf Heizstab-NOW bevorzugen wenn alle B1-Gates greifen (einmalig, 90s-Entprellung danach unverändert). Heizstab-Karte zeigt aktuelles Fenster als „Jetzt bis“ statt „Nächstes“."

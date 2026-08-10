@@ -6,6 +6,7 @@ import { startImmersionHeaterModuleRuntime } from "../addons/immersion_heater";
 import { startWallboxModuleRuntime } from "../addons/wallbox";
 import { syncAddonGovernanceFromConfig } from "../addons/governance";
 import { startEmsLightPhase1Runtime } from "../ems_light";
+import { migrateAndSyncEconomicsFeedInFromConfig } from "../ems_light/economics_feed_in";
 import { startFailsafeRunner } from "../failsafe_runner";
 import {
 	EXECUTION_MODE_ADDON_IDS,
@@ -124,6 +125,21 @@ export async function runAdapterBootstrap(
 		return syncExecutionModesFromConfig(host, adapterConfig, { forceDryrunReason });
 	});
 	await step("sync mappings", () => syncAllMappingsFromConfig(host));
+	await step("sync economics feed-in", () => {
+		const h = host as AdapterBootstrapHost & {
+			updateConfig?: (c: Record<string, unknown>) => Promise<unknown>;
+		};
+		return migrateAndSyncEconomicsFeedInFromConfig({
+			setObjectNotExistsAsync: host.setObjectNotExistsAsync.bind(host),
+			getStateAsync: host.getStateAsync.bind(host),
+			setStateAsync: host.setStateAsync.bind(host),
+			extendObjectAsync: host.extendObjectAsync?.bind(host),
+			config: adapterConfig,
+			updateConfig:
+				typeof h.updateConfig === "function" ? h.updateConfig.bind(host) : undefined,
+			log: host.log,
+		});
+	});
 
 	if (bootstrapFailurePhase()) {
 		host.log.error(`Bootstrap abgebrochen vor Runtime (${bootstrapFailurePhase()})`);

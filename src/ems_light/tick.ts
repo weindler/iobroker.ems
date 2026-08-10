@@ -47,6 +47,36 @@ export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): 
 		hints.push(`operator.vis.show_diagnostics: ${String(e)}`);
 	}
 
+	try {
+		const { syncEconomicsFeedInFromConfig } = await import("./economics_feed_in.js");
+		const feedHost = host as typeof host & {
+			config?: unknown;
+			updateConfig?: (c: Record<string, unknown>) => Promise<unknown>;
+			log?: { info?: (m: string) => void; warn?: (m: string) => void };
+			setObjectNotExistsAsync?: (
+				id: string,
+				obj: ioBroker.Object,
+			) => Promise<unknown>;
+			extendObjectAsync?: (id: string, obj: Partial<ioBroker.Object>) => Promise<unknown>;
+		};
+		if (typeof feedHost.setObjectNotExistsAsync === "function") {
+			await syncEconomicsFeedInFromConfig({
+				setObjectNotExistsAsync: feedHost.setObjectNotExistsAsync.bind(feedHost),
+				getStateAsync: host.getStateAsync.bind(host),
+				setStateAsync: host.setStateAsync.bind(host),
+				extendObjectAsync: feedHost.extendObjectAsync?.bind(feedHost),
+				config: feedHost.config ?? {},
+				updateConfig:
+					typeof feedHost.updateConfig === "function"
+						? feedHost.updateConfig.bind(feedHost)
+						: undefined,
+				log: feedHost.log,
+			});
+		}
+	} catch (e) {
+		hints.push(`economics.feed_in: ${String(e)}`);
+	}
+
 	let liveResult = { updated: [] as string[], missing: [] as string[], errors: [] as string[] };
 	try {
 		liveResult = await refreshLiveCache(host);

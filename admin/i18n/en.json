@@ -179,5 +179,9 @@
 	"Status gelesen — Details unter compare.* im Objektbaum": "Status read — details under compare.* in the object tree",
 	"VIS-Dashboard": "VIS dashboard",
 	"VIS Diagnose / Begründungen anzeigen": "Show VIS diagnostics / reasons",
-	"Aus: nur Alltag (Jetzt / Demnächst / Add-ons). An: zusätzlich KI-, Plan- und Detail-Begründungen unten im VIS-Board.": "Off: everyday view only (Now / Next / add-ons). On: also show AI, plan and detail reasons at the bottom of the VIS board."
+	"Aus: nur Alltag (Jetzt / Demnächst / Add-ons). An: zusätzlich KI-, Plan- und Detail-Begründungen unten im VIS-Board.": "Off: everyday view only (Now / Next / add-ons). On: also show AI, plan and detail reasons at the bottom of the VIS board.",
+	"Einspeisevergütung (Planner)": "Feed-in tariff (planner)",
+	"Einspeisevergütung": "Feed-in tariff",
+	"Fester Anlagenwert in ct/kWh (z. B. 9,3). Keine Umrechnung von €/kWh — 9,3 bedeutet 9,3 ct/kWh. Leer = Planner ohne bekannte Einspeisevergütung (bisheriger Fallback).": "Fixed site value in ct/kWh (e.g. 9.3). No conversion from €/kWh — 9.3 means 9.3 ct/kWh. Empty = planner without a known feed-in tariff (existing fallback).",
+	"Vergütung für ins öffentliche Netz eingespeisten PV-Strom. Wird vom Planner als Opportunitätskosten für PV-Energie berücksichtigt. Einheit: ct/kWh.": "Compensation for PV energy exported to the public grid. Used by the planner as opportunity cost for PV energy. Unit: ct/kWh."
 }

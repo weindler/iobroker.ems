@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.261",
+		"version": "0.1.262",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.262": {
+				"en": "Admin: feed-in tariff (ct/kWh) on Tariff tab; mirrors to economics.config.feed_in_ct_per_kwh for the Unified Planner. One-shot migration of existing state values. No planner algorithm change.",
+				"de": "Admin: Einspeisevergütung (ct/kWh) im Tarif-Tab; Spiegel nach economics.config.feed_in_ct_per_kwh für den Unified Planner. Einmalige Migration bestehender State-Werte. Keine Planner-Algorithmus-Änderung."
+			},
 			"0.1.261": {
 				"en": "Planner: thermal energy until next reliable PV, forecast-dependent battery reserve, feasibility pressure against rolling-horizon starvation, causal SOC propagation. No lockout/EVCC/governance/climate-authority change.",
 				"de": "Planner: Thermal-Mindestenergie bis nächster belastbarer PV, forecastabhängige Batterie-Reserve, Feasibility-Pressure gegen Rolling-Horizon-Starvation, zeitkausale SOC-Propagation. Keine Lockout-/EVCC-/Governance-/Climate-Authority-Änderung."

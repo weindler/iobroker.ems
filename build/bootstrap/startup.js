@@ -7,6 +7,7 @@ const immersion_heater_1 = require("../addons/immersion_heater");
 const wallbox_1 = require("../addons/wallbox");
 const governance_1 = require("../addons/governance");
 const ems_light_1 = require("../ems_light");
+const economics_feed_in_1 = require("../ems_light/economics_feed_in");
 const failsafe_runner_1 = require("../failsafe_runner");
 const execution_mode_1 = require("../execution_mode");
 const dryrun_context_1 = require("../restore/dryrun_context");
@@ -72,6 +73,18 @@ async function runAdapterBootstrap(host, step, options = {}) {
         return (0, execution_mode_1.syncExecutionModesFromConfig)(host, adapterConfig, { forceDryrunReason });
     });
     await step("sync mappings", () => (0, ensure_static_tree_1.syncAllMappingsFromConfig)(host));
+    await step("sync economics feed-in", () => {
+        const h = host;
+        return (0, economics_feed_in_1.migrateAndSyncEconomicsFeedInFromConfig)({
+            setObjectNotExistsAsync: host.setObjectNotExistsAsync.bind(host),
+            getStateAsync: host.getStateAsync.bind(host),
+            setStateAsync: host.setStateAsync.bind(host),
+            extendObjectAsync: host.extendObjectAsync?.bind(host),
+            config: adapterConfig,
+            updateConfig: typeof h.updateConfig === "function" ? h.updateConfig.bind(host) : undefined,
+            log: host.log,
+        });
+    });
     if ((0, barrier_1.bootstrapFailurePhase)()) {
         host.log.error(`Bootstrap abgebrochen vor Runtime (${(0, barrier_1.bootstrapFailurePhase)()})`);
         (0, context_1.endBootstrapRun)();

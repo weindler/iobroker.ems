@@ -97,5 +97,9 @@
 	"Innengerät 5 — Mapping": "Innengerät 5 — Mapping",
 	"VIS-Dashboard": "VIS-Dashboard",
 	"VIS Diagnose / Begründungen anzeigen": "VIS Diagnose / Begründungen anzeigen",
-	"Aus: nur Alltag (Jetzt / Demnächst / Add-ons). An: zusätzlich KI-, Plan- und Detail-Begründungen unten im VIS-Board.": "Aus: nur Alltag (Jetzt / Demnächst / Add-ons). An: zusätzlich KI-, Plan- und Detail-Begründungen unten im VIS-Board."
+	"Aus: nur Alltag (Jetzt / Demnächst / Add-ons). An: zusätzlich KI-, Plan- und Detail-Begründungen unten im VIS-Board.": "Aus: nur Alltag (Jetzt / Demnächst / Add-ons). An: zusätzlich KI-, Plan- und Detail-Begründungen unten im VIS-Board.",
+	"Einspeisevergütung (Planner)": "Einspeisevergütung (Planner)",
+	"Einspeisevergütung": "Einspeisevergütung",
+	"Fester Anlagenwert in ct/kWh (z. B. 9,3). Keine Umrechnung von €/kWh — 9,3 bedeutet 9,3 ct/kWh. Leer = Planner ohne bekannte Einspeisevergütung (bisheriger Fallback).": "Fester Anlagenwert in ct/kWh (z. B. 9,3). Keine Umrechnung von €/kWh — 9,3 bedeutet 9,3 ct/kWh. Leer = Planner ohne bekannte Einspeisevergütung (bisheriger Fallback).",
+	"Vergütung für ins öffentliche Netz eingespeisten PV-Strom. Wird vom Planner als Opportunitätskosten für PV-Energie berücksichtigt. Einheit: ct/kWh.": "Vergütung für ins öffentliche Netz eingespeisten PV-Strom. Wird vom Planner als Opportunitätskosten für PV-Energie berücksichtigt. Einheit: ct/kWh."
 }

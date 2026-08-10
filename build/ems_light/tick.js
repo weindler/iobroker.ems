@@ -69,6 +69,26 @@ async function runEmsLightPhase1Tick(host) {
     catch (e) {
         hints.push(`operator.vis.show_diagnostics: ${String(e)}`);
     }
+    try {
+        const { syncEconomicsFeedInFromConfig } = await Promise.resolve().then(() => __importStar(require("./economics_feed_in.js")));
+        const feedHost = host;
+        if (typeof feedHost.setObjectNotExistsAsync === "function") {
+            await syncEconomicsFeedInFromConfig({
+                setObjectNotExistsAsync: feedHost.setObjectNotExistsAsync.bind(feedHost),
+                getStateAsync: host.getStateAsync.bind(host),
+                setStateAsync: host.setStateAsync.bind(host),
+                extendObjectAsync: feedHost.extendObjectAsync?.bind(feedHost),
+                config: feedHost.config ?? {},
+                updateConfig: typeof feedHost.updateConfig === "function"
+                    ? feedHost.updateConfig.bind(feedHost)
+                    : undefined,
+                log: feedHost.log,
+            });
+        }
+    }
+    catch (e) {
+        hints.push(`economics.feed_in: ${String(e)}`);
+    }
     let liveResult = { updated: [], missing: [], errors: [] };
     try {
         liveResult = await (0, live_cache_1.refreshLiveCache)(host);

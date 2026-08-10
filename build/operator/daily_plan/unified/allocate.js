@@ -37,10 +37,15 @@ function buildBatteryTrajectory(input, slots, allocations, startSocKwh, capacity
                 charge += a.allocatedEnergyKwh * effC;
             if (a.kind === "battery_discharge")
                 discharge += a.allocatedEnergyKwh / Math.max(effD, 0.1);
-            // Flex-Verbraucher aus Batterie (Planung) — kein separates battery_discharge-Kind.
+            /*
+             * Flex-Verbraucher aus Batterie — kein separates battery_discharge-Kind.
+             * "mixed" = Zelle enthält PV+Batterie ohne Split (pushAlloc-Merge) → hier absichtlich
+             * NICHT voll als Batterie-Discharge zählen (Diagnose würde SOC überschätzen).
+             * Planungs-SOC nutzt projectedSocAt/socDeltaBySlot, nicht diese Trajectory.
+             */
             if (a.kind !== "battery_charge" &&
                 a.kind !== "battery_discharge" &&
-                (a.energySource === "battery" || a.energySource === "mixed")) {
+                a.energySource === "battery") {
                 discharge += a.allocatedEnergyKwh / Math.max(effD, 0.1);
             }
         }

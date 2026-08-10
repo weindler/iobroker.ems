@@ -56,27 +56,40 @@ function findPvRecoverySlotIdx(slots, fromIdx) {
 }
 exports.findPvRecoverySlotIdx = findPvRecoverySlotIdx;
 /**
- * Unvermeidbarer Nacht-/Brückenbedarf am Slot i bis Recovery.
- * Nachmittag vor Nacht: voller Night-Reserve halten.
- * In der Nacht: anteilig abschmelzen.
- * Morgen vor Recovery: kleiner Rest-Puffer.
+ * Unvermeidbarer Brückenbedarf am Slot i bis Recovery.
+ *
+ * Primär (wenn Nettobedarf bekannt): Energie bis zur nächsten Versorgung
+ *   min(nightAnker, net + confidence-Unsicherheit)
+ *   — zu jeder Tageszeit gleich, kein pauschaler %-Floor der Nachtmenge.
+ * Safety/minSoc liegt separat in buildBatteryReserveFloor (safetyKwh).
+ *
+ * Fallback ohne Netto: gelernte nightReserve zeitlich abschmelzen (statistischer Anker).
  */
 function unavoidableNeedKwh(opts) {
     const night = opts.nightReserveKwh;
     if (!(night > exports.FLOOR_EPS))
         return 0;
+    const conf = opts.pvConfidence01 != null && Number.isFinite(opts.pvConfidence01)
+        ? Math.max(0.2, Math.min(1, opts.pvConfidence01))
+        : 0.7;
+    const net = opts.netDemandUntilRecoveryKwh != null && Number.isFinite(opts.netDemandUntilRecoveryKwh)
+        ? Math.max(0, opts.netDemandUntilRecoveryKwh)
+        : null;
+    if (net !== null) {
+        /** Charge-Logic-Muster: Unsicherheitskissen nur bei conf < 70 %. */
+        const uncertainty = conf < 0.7 ? night * ((0.7 - conf) / 0.7) * 0.35 : 0;
+        return round3(Math.min(night, Math.max(0, net + uncertainty)));
+    }
+    /** Fallback ohne Forecast-Netto: Anker nach lokaler Tagesphase abschmelzen. */
     const hour = localHour(opts.slotStartIso, opts.timeZone);
     const inNight = hour >= 22 || hour < 6;
-    // Tag (10–22): volle Nachtreserve für die kommende Nacht — auch wenn Recovery-Heuristik „jetzt“ sagt.
     if (hour >= 10 && hour < 22)
         return round3(night);
     if (inNight) {
-        // Restanteil der Nacht bis 06:00 (8 h Fenster).
         const hoursLeft = hour >= 22 ? 24 - hour + 6 : 6 - hour;
         const frac = Math.max(0, Math.min(1, hoursLeft / 8));
         return round3(night * frac);
     }
-    // Morgen 06–10: Kissen bis PV anzieht; nach Recovery kleiner.
     if (opts.slotMs >= opts.recoveryMs)
         return round3(night * 0.1);
     const hoursToRec = Math.max(0, (opts.recoveryMs - opts.slotMs) / 3600_000);
@@ -116,7 +129,11 @@ function buildBatteryReserveFloor(input, slots) {
     const tz = input.time.timezone || "Europe/Berlin";
     const nowMs = Date.parse(input.time.nowIso);
     const fromIdx = Math.max(0, slots.findIndex((s) => s.startMs + 15 * 60_000 > nowMs));
-    const recoverySlotIdx = findPvRecoverySlotIdx(slots, fromIdx);
+    const pvConfRaw = input.pv.uncertainty.confidencePct;
+    const pvConfidence01 = pvConfRaw !== null && Number.isFinite(pvConfRaw) ? Math.max(0.2, Math.min(1, pvConfRaw / 100)) : 0.7;
+    /** Confidence-abgewertete Recovery (stärkerer Forecast → frühere Recovery). */
+    const recoverySlots = slots.map((s) => ({ ...s, pvKwh: s.pvKwh * pvConfidence01 }));
+    const recoverySlotIdx = findPvRecoverySlotIdx(recoverySlots, fromIdx);
     const recoveryMs = recoverySlotIdx !== null && slots[recoverySlotIdx]
         ? slots[recoverySlotIdx].startMs
         : slots.length > 0
@@ -126,12 +143,16 @@ function buildBatteryReserveFloor(input, slots) {
     const replacementCtBySlot = [];
     for (let i = 0; i < slots.length; i++) {
         const s = slots[i];
+        /** null = Hauslast fehlend/leer → kein Fake-Nuller als „kein Bedarf“. */
+        const netDemand = netDemandUntilRecoveryKwh(slots, i, recoverySlotIdx, pvConfidence01);
         const unavoidable = unavoidableNeedKwh({
             slotStartIso: s.startIso,
             slotMs: s.startMs,
             recoveryMs,
             nightReserveKwh: night,
             timeZone: tz,
+            netDemandUntilRecoveryKwh: netDemand,
+            pvConfidence01,
         });
         const required = round3(Math.min(cap ?? unavoidable + safetyKwh, Math.max(safetyKwh, unavoidable)));
         requiredKwhBySlot.push(required);
@@ -140,7 +161,7 @@ function buildBatteryReserveFloor(input, slots) {
     }
     const parts = [];
     if (night > 0)
-        parts.push(`Nachtreserve ~${night.toFixed(1)} kWh zeitabhängig`);
+        parts.push(`Nachtreserve-Anker ~${night.toFixed(1)} kWh forecastabhängig`);
     if (recoverySlotIdx !== null && slots[recoverySlotIdx]) {
         parts.push(`PV-Recovery ab ${slots[recoverySlotIdx].startIso}`);
     }
@@ -153,6 +174,28 @@ function buildBatteryReserveFloor(input, slots) {
     };
 }
 exports.buildBatteryReserveFloor = buildBatteryReserveFloor;
+/**
+ * Intern: Haus − conf×PV bis Recovery.
+ * null wenn keine belastbare Hauslast (nie 0 als Missing-Sentinel).
+ * 0 ist gültig, wenn Recovery bereits jetzt/erreicht ist (kein Brückenbedarf).
+ */
+function netDemandUntilRecoveryKwh(slots, fromIdx, recoveryIdx, pvConfidence01) {
+    if (slots.length === 0)
+        return null;
+    const houseKnown = slots.some((s) => s.houseKwh > exports.FLOOR_EPS);
+    if (!houseKnown)
+        return null;
+    /** Recovery läuft / ist erreicht → kein Intervall zu brücken. */
+    if (recoveryIdx !== null && recoveryIdx <= fromIdx)
+        return 0;
+    const end = recoveryIdx !== null ? Math.max(fromIdx, recoveryIdx) : slots.length - 1;
+    let net = 0;
+    for (let j = fromIdx; j < end && j < slots.length; j++) {
+        const s = slots[j];
+        net += Math.max(0, s.houseKwh - s.pvKwh * pvConfidence01);
+    }
+    return round3(net);
+}
 function reserveFloorAt(floor, slotIdx, fallback) {
     const v = floor.requiredKwhBySlot[slotIdx];
     return v !== undefined && Number.isFinite(v) ? v : fallback;

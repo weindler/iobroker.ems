@@ -31,6 +31,17 @@ export {
 	normalizeFeedInCtPerKwh,
 	summarizeUnifiedDayPlanForReason,
 } from "./from_forecast_context";
+export {
+	findNextReliablePvOpportunity,
+	findNextReliablePvAfterCurrentWindow,
+	findEndOfCurrentSurplusWindowIdx,
+	findStartOfNextSurplusWindowIdx,
+	estimateHardPvBoundKwhBySlot,
+	applyHardPvBoundsToSlots,
+	expectedNetDemandUntilPvKwh,
+	resolveThermalPlannerEnergy,
+} from "./next_reliable_pv";
+export { projectedSocAt, hardPvConsumersFromInput } from "./score_allocate";
 export { unifiedPlanCadenceDigest } from "./cadence";
 export {
 	evaluateMaterialReplan,

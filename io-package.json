@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.260",
+		"version": "0.1.261",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.261": {
+				"en": "Planner: thermal energy until next reliable PV, forecast-dependent battery reserve, feasibility pressure against rolling-horizon starvation, causal SOC propagation. No lockout/EVCC/governance/climate-authority change.",
+				"de": "Planner: Thermal-Mindestenergie bis nächster belastbarer PV, forecastabhängige Batterie-Reserve, Feasibility-Pressure gegen Rolling-Horizon-Starvation, zeitkausale SOC-Propagation. Keine Lockout-/EVCC-/Governance-/Climate-Authority-Änderung."
+			},
 			"0.1.260": {
 				"en": "P0: wire economics feed-in tariff (ct/kWh) into Unified Planner exportCtPerKwh; valid Unified plan with 0 W climate allocation is Planner-OFF (no comfort climate_fallback). No lockout/thermal/reserve/EVCC/governance change.",
 				"de": "P0: Economics-Einspeisevergütung (ct/kWh) produktiv in Unified exportCtPerKwh verdrahtet; gültiger Unified-Plan mit 0 W Klima-Allocation = Planner-OFF (kein Komfort-climate_fallback). Keine Lockout-/Thermal-/Reserve-/EVCC-/Governance-Änderung."

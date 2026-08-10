@@ -3,14 +3,32 @@
  * Score-basierte iterative Unified-Allocation — kein fester Add-on-Phasen-Order.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runScoreBasedAllocation = exports.scoreCandidate = exports.takePv = exports.pushAlloc = exports.allocatedInSlotKwh = exports.buildSlots = exports.powerFromEnergyKwh = exports.energyFromPowerW = exports.EPS = exports.SLOT_H = void 0;
+exports.runScoreBasedAllocation = exports.scoreCandidate = exports.hardPvConsumersFromInput = exports.takePv = exports.pushAlloc = exports.allocatedInSlotKwh = exports.buildSlots = exports.powerFromEnergyKwh = exports.energyFromPowerW = exports.projectedSocAt = exports.EPS = exports.SLOT_H = void 0;
 const mode_policy_1 = require("../../../planner/mode_policy");
 const battery_reserve_floor_1 = require("./battery_reserve_floor");
+const next_reliable_pv_1 = require("./next_reliable_pv");
 const optimize_weights_1 = require("./optimize_weights");
 const reason_codes_1 = require("./reason_codes");
 const vehicle_availability_1 = require("./vehicle_availability");
 exports.SLOT_H = 0.25;
 exports.EPS = 1e-6;
+/** SOC am Ende von slotIdx nach chronologischer Propagation der gebuchten Deltas. */
+function projectedSocAt(state, slotIdx) {
+    let soc = state.initialSocKwh;
+    const last = Math.min(slotIdx, state.socDeltaBySlot.length - 1);
+    for (let i = 0; i <= last; i++) {
+        soc += state.socDeltaBySlot[i] ?? 0;
+        soc = Math.max(0, Math.min(state.capacityKwh, soc));
+    }
+    return soc;
+}
+exports.projectedSocAt = projectedSocAt;
+function syncFinalSoc(state) {
+    state.socKwh =
+        state.slots.length === 0
+            ? state.initialSocKwh
+            : projectedSocAt(state, state.slots.length - 1);
+}
 function floorKwhAt(state, slotIdx) {
     return (0, battery_reserve_floor_1.reserveFloorAt)(state.reserveFloor, slotIdx, state.reserveKwh);
 }
@@ -210,6 +228,50 @@ function wallboxImmediate(wb) {
     /** Nur Schnell/immediate → Batterie-Hold; min+PV ist PV-orientiert. */
     return wb.evccChargeMode === "now";
 }
+/**
+ * Nicht-thermische Pflichtlasten für Opportunity-Surplus (vor next-PV / Reserve).
+ * Thermal absichtlich ausgenommen — Bridge hängt von next-PV ab (keine Zirkularität).
+ */
+function hardPvConsumersFromInput(input) {
+    const out = [];
+    const wb = input.wallbox;
+    if (wb?.energyGoalHard) {
+        const need = resolveVehicleNeedKwh(input);
+        const loss = wb.chargeLossFactor ?? 1;
+        if (need !== null && need > exports.EPS) {
+            out.push({
+                remainingKwh: need * loss,
+                maxPowerW: wb.maxChargePowerW,
+                deadlineMs: wb.deadlineIso ? Date.parse(wb.deadlineIso) : Number.POSITIVE_INFINITY,
+                slotAllowed: (slotStartIso) => (0, vehicle_availability_1.vehicleSlotAllocatable)(wb, slotStartIso),
+            });
+        }
+    }
+    const cl = input.climate;
+    if (cl) {
+        for (const u of cl.units) {
+            if (u.mandatoryComfort !== true)
+                continue;
+            const maxW = u.typicalPowerW;
+            if (maxW === null || !(maxW > 0))
+                continue;
+            const need = u.expectedEnergyKwh ?? energyFromPowerW(maxW) * 4;
+            if (!(need > exports.EPS))
+                continue;
+            out.push({
+                remainingKwh: need,
+                maxPowerW: maxW,
+                deadlineMs: Number.POSITIVE_INFINITY,
+            });
+        }
+    }
+    return out;
+}
+exports.hardPvConsumersFromInput = hardPvConsumersFromInput;
+function hardPvBoundForPlanning(input, slots) {
+    const nowMs = Date.parse(input.time.nowIso);
+    return (0, next_reliable_pv_1.estimateHardPvBoundKwhBySlot)(slots, nowMs, hardPvConsumersFromInput(input));
+}
 function buildConsumerStates(input, slots) {
     const out = [];
     const nowMs = Date.parse(input.time.nowIso);
@@ -237,6 +299,7 @@ function buildConsumerStates(input, slots) {
                 maxShiftHours: null,
                 earliestSlotIdx: 0,
                 thermalBeforeDeadline: false,
+                thermalSoftOnly: false,
                 slotAllowed: (slotStartIso) => (0, vehicle_availability_1.vehicleSlotAllocatable)(wb, slotStartIso),
             });
         }
@@ -244,23 +307,56 @@ function buildConsumerStates(input, slots) {
     const th = input.thermal;
     if (th && th.headroomEnergyKwh !== null && th.headroomEnergyKwh > exports.EPS) {
         const deadlineMs = th.deadlineIso ? Date.parse(th.deadlineIso) : Number.NaN;
-        out.push({
-            consumerId: "immersion_heater",
-            kind: "immersion_heater",
-            remainingKwh: th.headroomEnergyKwh,
-            maxPowerW: th.availablePowerW,
-            minPowerW: th.minPowerW ?? th.availablePowerW,
-            deadlineMs: Number.isFinite(deadlineMs) ? deadlineMs : Number.POSITIVE_INFINITY,
-            mandatory: false,
-            gridEligible: false,
-            pvFirst: true,
-            /** Thermal darf Batterie nutzen, wenn Floor + Opportunity Cost es erlauben. */
-            batteryEligible: true,
-            energyGoalHard: th.emptyAtSource === "learned",
-            maxShiftHours: null,
-            earliestSlotIdx: 0,
-            thermalBeforeDeadline: Number.isFinite(deadlineMs),
+        const nowMsLocal = Date.parse(input.time.nowIso);
+        const fromIdx = Math.max(0, slots.findIndex((s) => s.startMs + 15 * 60_000 > nowMsLocal));
+        const conf = pvConfidenceFactor(input);
+        /** Fenster roh; Zuverlässigkeit nach nicht-thermischer Pflichtbindung. */
+        const bound = hardPvBoundForPlanning(input, slots);
+        const nextPv = (0, next_reliable_pv_1.findNextReliablePvAfterCurrentWindow)(slots, fromIdx, conf, nowMsLocal, bound);
+        const emptyMs = th.estimatedEmptyAtIso ? Date.parse(th.estimatedEmptyAtIso) : Number.NaN;
+        const bridge = (0, next_reliable_pv_1.resolveThermalPlannerEnergy)({
+            nowMs: nowMsLocal,
+            bufferTempC: th.bufferTempC,
+            minTempC: th.minTempC,
+            headroomEnergyKwh: th.headroomEnergyKwh,
+            coolingRateCPerH: th.coolingRateCPerH,
+            estimatedEmptyAtMs: Number.isFinite(emptyMs) ? emptyMs : null,
+            nextReliablePvMs: nextPv.startMs,
+            pvConfidence01: conf,
         });
+        const softOnly = bridge.coversUntilNextPv;
+        /*
+         * Puffer hält bis nächster PV → kein Pflicht-Target-Fill (mandatory=false, softOnly).
+         * Headroom = Soft-Deckel; Score konkurriert wirtschaftlich mit Batterie/Export
+         * (kein Batterie-zuerst-Hardcode). Sonst Bridge-Energie.
+         */
+        const plannedThermal = softOnly
+            ? Math.max(bridge.mandatoryEnergyKwh, th.headroomEnergyKwh ?? 0)
+            : bridge.plannerEnergyKwh;
+        if (plannedThermal > exports.EPS) {
+            const hardBridge = !softOnly && bridge.mandatoryEnergyKwh > exports.EPS;
+            out.push({
+                consumerId: "immersion_heater",
+                kind: "immersion_heater",
+                remainingKwh: plannedThermal,
+                maxPowerW: th.availablePowerW,
+                minPowerW: th.minPowerW ?? th.availablePowerW,
+                /** Soft/optional: keine Deadline-Urgency — reine Wirtschafts-Konkurrenz. */
+                deadlineMs: softOnly || !Number.isFinite(deadlineMs)
+                    ? Number.POSITIVE_INFINITY
+                    : deadlineMs,
+                mandatory: hardBridge,
+                gridEligible: false,
+                pvFirst: true,
+                /** Thermal darf Batterie nutzen, wenn Floor + Opportunity Cost es erlauben. */
+                batteryEligible: !softOnly,
+                energyGoalHard: hardBridge && (th.emptyAtSource === "learned" || bridge.mandatoryEnergyKwh > exports.EPS),
+                maxShiftHours: null,
+                earliestSlotIdx: 0,
+                thermalBeforeDeadline: Number.isFinite(deadlineMs) && !softOnly,
+                thermalSoftOnly: softOnly,
+            });
+        }
     }
     const cl = input.climate;
     if (cl) {
@@ -295,6 +391,7 @@ function buildConsumerStates(input, slots) {
                 maxShiftHours: u.maxShiftHours,
                 earliestSlotIdx: 0,
                 thermalBeforeDeadline: false,
+                thermalSoftOnly: false,
                 slotAllowed: u.runtimeHold === true && nowSlotStart
                     ? (slotStartIso) => slotStartIso !== nowSlotStart
                     : undefined,
@@ -356,6 +453,7 @@ function buildConsumerStates(input, slots) {
                 maxShiftHours: null,
                 earliestSlotIdx: 0,
                 thermalBeforeDeadline: false,
+                thermalSoftOnly: false,
             });
         }
     }
@@ -379,6 +477,7 @@ function buildConsumerStates(input, slots) {
             maxShiftHours: null,
             earliestSlotIdx: 0,
             thermalBeforeDeadline: false,
+            thermalSoftOnly: false,
             slotAllowed: o.availableWindows.length
                 ? (slotStartIso) => o.availableWindows.some((w) => w.startIso === slotStartIso)
                 : undefined,
@@ -488,6 +587,30 @@ function pvBeforeDeadlineKwh(state, deadlineMs, slotAllowed) {
     }
     return sum;
 }
+/** Verbleibende lieferbare PV-Kapazität vor Deadline vs. Restbedarf (Starvation-Druck). */
+function thermalFeasibility(state, consumer) {
+    const minE = consumer.minPowerW && consumer.minPowerW > 0 ? energyFromPowerW(consumer.minPowerW) : 0.05;
+    const maxSlotE = consumer.maxPowerW && consumer.maxPowerW > 0 ? energyFromPowerW(consumer.maxPowerW) : minE;
+    let capKwh = 0;
+    let slotsN = 0;
+    let peakRemainPv = 0;
+    for (const s of state.slots) {
+        if (s.startMs < state.nowMs - 60_000)
+            continue;
+        if (s.startMs >= consumer.deadlineMs)
+            break;
+        if (consumer.slotAllowed && !consumer.slotAllowed(s.startIso))
+            continue;
+        peakRemainPv = Math.max(peakRemainPv, s.remainPvKwh);
+        const add = Math.min(maxSlotE, s.remainPvKwh);
+        if (add + exports.EPS >= minE) {
+            capKwh += add;
+            slotsN += 1;
+        }
+    }
+    const pressure = consumer.remainingKwh / Math.max(capKwh, exports.EPS);
+    return { capKwh, pressure, peakRemainPv, slotsN };
+}
 /** Bewertet einen Einzel-Kandidaten (höher = besser). -Infinity = hart unzulässig. */
 function scoreCandidate(input, state, candidate, weights) {
     const slot = state.slots[candidate.slotIdx];
@@ -527,9 +650,10 @@ function scoreCandidate(input, state, candidate, weights) {
             return -Infinity;
         const floor = dischargeFloorKwh(state, candidate.slotIdx);
         const draw = candidate.energyKwh / Math.max(state.dischargeEff, 0.1);
-        if (state.socKwh - draw < floor - exports.EPS)
+        const socAt = projectedSocAt(state, candidate.slotIdx);
+        if (socAt - draw < floor - exports.EPS)
             return -Infinity;
-        const usable = (0, battery_reserve_floor_1.usableBatteryEnergyKwh)(state.socKwh, floor, state.dischargeEff);
+        const usable = (0, battery_reserve_floor_1.usableBatteryEnergyKwh)(socAt, floor, state.dischargeEff);
         if (usable + exports.EPS < candidate.energyKwh)
             return -Infinity;
         /*
@@ -538,6 +662,12 @@ function scoreCandidate(input, state, candidate, weights) {
          */
         const need = Math.min(candidate.energyKwh, consumer.remainingKwh);
         if (slot.remainPvKwh + exports.EPS >= need)
+            return -Infinity;
+        /*
+         * Wallbox: in PV-Surplus-Slots nicht aus Batterie (auch wenn remainPv schon
+         * von battery_charge verbraucht wurde — sonst Roundtrip statt Direktladung).
+         */
+        if (candidate.kind === "wallbox" && slot.surplusKwh > 0.05)
             return -Infinity;
     }
     if (state.batteryHold && candidate.kind === "battery_charge")
@@ -561,7 +691,16 @@ function scoreCandidate(input, state, candidate, weights) {
         priority = 2.6 * weights.comfortWeight;
     }
     else if (candidate.kind === "immersion_heater") {
-        priority = consumer.thermalBeforeDeadline ? 1.75 * weights.thermalDeadlineWeight : 1.25 * weights.comfortWeight;
+        if (consumer.thermalBeforeDeadline) {
+            priority = 1.75 * weights.thermalDeadlineWeight;
+        }
+        else if (consumer.thermalSoftOnly) {
+            /** Soft: Peer zu Flex/Batterie-Charge — Wirtschaftlichkeit im Score, nicht Komfort-Boost. */
+            priority = 1.0 * weights.flexShiftWeight;
+        }
+        else {
+            priority = 1.25 * weights.comfortWeight;
+        }
     }
     else if (candidate.kind === "battery_charge") {
         priority =
@@ -613,47 +752,110 @@ function scoreCandidate(input, state, candidate, weights) {
         }
     }
     if (candidate.kind === "immersion_heater") {
-        if (consumer.thermalBeforeDeadline && slotMs < consumer.deadlineMs) {
-            score += e * weights.thermalDeadlineWeight * 0.42;
-            /** Frühere PV-Fenster vor Deadline bevorzugen (nicht erst kurz vor empty_at). */
-            const hoursToDeadline = (consumer.deadlineMs - slotMs) / 3600_000;
-            if (hoursToDeadline > 1)
-                score += e * Math.min(1.2, hoursToDeadline / 8) * 0.22;
-        }
-        if (slot.remainPvKwh > exports.EPS && slot.surplusKwh > exports.EPS) {
-            score += e * (slot.remainPvKwh / Math.max(slot.surplusKwh, exports.EPS)) * weights.flexShiftWeight * 0.28;
-        }
-        /** Volle Mindeststufe belohnen. */
-        if (consumer.minPowerW && e + exports.EPS >= energyFromPowerW(consumer.minPowerW)) {
-            score += 0.08;
-        }
-        /*
-         * Thermischer Flexspeicher: bei PV und Batterie über Reserve-Floor
-         * Wärme vorladen → spätere elektrische Flexibilität. Bei hartem Fahrzeugziel
-         * PV bewusst freigeben (kein festes Add-on-Ranking — Score).
-         */
-        if (candidate.source === "pv_surplus") {
-            const floor = dischargeFloorKwh(state, candidate.slotIdx);
-            const batAboveFloor = state.socKwh > floor + 0.5;
-            const batNearTarget = state.batteryTargetKwh > exports.EPS && state.socKwh + 0.25 >= state.batteryTargetKwh;
-            const wb = state.consumers.find((c) => c.kind === "wallbox");
-            const hardVehicle = wb != null && wb.energyGoalHard && wb.remainingKwh > 1.0;
-            if (batAboveFloor && (batNearTarget || state.socKwh >= state.capacityKwh * 0.8)) {
-                score += e * weights.flexShiftWeight * 0.42;
+        if (consumer.thermalSoftOnly) {
+            /*
+             * Optionale Wärme (Bridge bis next-PV bereits gedeckt): kein Basis-Prioritäts-Push.
+             * Wert skaliert mit post-PV-Kühlbrücke (emptyAt − Recovery): kurz → wenig Nutzen
+             * für Target-Fill; lang (z. B. Leerung abends nach Morgen-PV) → Speichern sinnvoll.
+             * Opportunity vs. PV→Batterie über gemeinsamen Peak-/SOC-Wert — kein Hardcode.
+             */
+            if (candidate.source !== "pv_surplus")
+                return -Infinity;
+            score -= e * priority * 0.38;
+            const peakEur = peakFutureImportCt(state, candidate.slotIdx) * 0.01;
+            const socAt = projectedSocAt(state, candidate.slotIdx);
+            const batRoom = Math.max(0, Math.min(state.capacityKwh - socAt, state.batteryTargetKwh - socAt));
+            const batConsumer = state.consumers.find((c) => c.kind === "battery_charge");
+            const batStillWants = batConsumer != null && batConsumer.remainingKwh > 0.4;
+            const recMs = state.nextReliablePvMs;
+            const emptyMs = input.thermal?.estimatedEmptyAtIso
+                ? Date.parse(input.thermal.estimatedEmptyAtIso)
+                : Number.NaN;
+            const postPvBridgeH = recMs != null && Number.isFinite(emptyMs) && emptyMs > recMs
+                ? (emptyMs - recMs) / 3600_000
+                : 0;
+            /** 0…1: Kühlbrücke nach next-PV (emptyAt − nextReliablePv), keine Uhrzeit-Heuristik. */
+            const needScale = Math.max(0, Math.min(1, postPvBridgeH / 10));
+            const storeEur = peakEur * weights.costWeight * (0.25 + 0.55 * needScale);
+            score += e * storeEur;
+            if (batRoom > 0.4 || batStillWants) {
+                score -= e * peakEur * weights.costWeight * weights.socTargetWeight * 0.65;
             }
-            if (hardVehicle) {
-                score -= e * weights.vehicleUrgencyBoost * 0.65;
+        }
+        else if (consumer.thermalBeforeDeadline && slotMs < consumer.deadlineMs) {
+            score += e * weights.thermalDeadlineWeight * 0.42;
+            /*
+             * Kontinuierliche Feasibility-Pressure (kein if pressure≥X-Sprung):
+             * pressure = remaining / lieferbare PV-Kapazität vor Deadline.
+             * slackWeight→1 bei viel Kapazität, tightWeight→1 bei Knappheit.
+             */
+            const feas = thermalFeasibility(state, consumer);
+            const pressure = Math.max(0, feas.pressure);
+            const slackWeight = 1 / (1 + pressure);
+            const tightWeight = pressure / (1 + pressure);
+            const hoursToDeadline = (consumer.deadlineMs - slotMs) / 3600_000;
+            const slackH = Math.max(exports.SLOT_H, (consumer.deadlineMs - Math.max(slotMs, state.nowMs)) / 3600_000);
+            const needH = consumer.remainingKwh / Math.max((consumer.maxPowerW ?? 1700) / 1000, exports.EPS);
+            const timePressure = needH / slackH;
+            /** Earliness relativ zur Deadline-Restzeit — keine feste Stundenkonstante. */
+            const horizonToDeadlineMs = Math.max(exports.SLOT_H * 3600_000, consumer.deadlineMs - state.nowMs);
+            const earliness = Math.max(0, 1 - (slotMs - state.nowMs) / horizonToDeadlineMs);
+            if (hoursToDeadline > 1) {
+                score +=
+                    e *
+                        slackWeight *
+                        Math.min(1.0, hoursToDeadline / Math.max(horizonH, 8)) *
+                        0.12;
+            }
+            score +=
+                e *
+                    weights.thermalDeadlineWeight *
+                    tightWeight *
+                    (0.55 * Math.min(2.0, pressure) +
+                        0.35 * Math.min(2.0, timePressure) +
+                        0.4 * earliness);
+            if (slot.remainPvKwh > exports.EPS && feas.peakRemainPv > exports.EPS) {
+                score -=
+                    e * tightWeight * (slot.remainPvKwh / feas.peakRemainPv) * 0.15;
+            }
+        }
+        if (!consumer.thermalSoftOnly) {
+            if (slot.remainPvKwh > exports.EPS && slot.surplusKwh > exports.EPS) {
+                score +=
+                    e *
+                        (slot.remainPvKwh / Math.max(slot.surplusKwh, exports.EPS)) *
+                        weights.flexShiftWeight *
+                        0.28;
+            }
+            /** Volle Mindeststufe belohnen. */
+            if (consumer.minPowerW && e + exports.EPS >= energyFromPowerW(consumer.minPowerW)) {
+                score += 0.08;
             }
             /*
-             * B1: Stabiler Live-Überschuss — aktuellen Slot klar vor Forecast-Peak bevorzugen.
-             * Kein simples Bat-full-only; Flag kommt aus getakteter Surplus-Gate-Logik.
+             * Thermischer Flexspeicher: bei PV und Batterie über Reserve-Floor
+             * Wärme vorladen → spätere elektrische Flexibilität. Bei hartem Fahrzeugziel
+             * PV bewusst freigeben (kein festes Add-on-Ranking — Score).
              */
-            const slotEndMs = Date.parse(slot.endIso);
-            if (input.preferImmersionLiveSurplusNow === true &&
-                Number.isFinite(slotEndMs) &&
-                slotMs <= state.nowMs &&
-                state.nowMs < slotEndMs) {
-                score += e * weights.flexShiftWeight * 2.4 + 0.55;
+            if (candidate.source === "pv_surplus") {
+                const floor = dischargeFloorKwh(state, candidate.slotIdx);
+                const socAt = projectedSocAt(state, candidate.slotIdx);
+                const batAboveFloor = socAt > floor + 0.5;
+                const batNearTarget = state.batteryTargetKwh > exports.EPS && socAt + 0.25 >= state.batteryTargetKwh;
+                const wbC = state.consumers.find((c) => c.kind === "wallbox");
+                const hardVehicle = wbC != null && wbC.energyGoalHard && wbC.remainingKwh > 1.0;
+                if (batAboveFloor && (batNearTarget || socAt >= state.capacityKwh * 0.8)) {
+                    score += e * weights.flexShiftWeight * 0.42;
+                }
+                if (hardVehicle) {
+                    score -= e * weights.vehicleUrgencyBoost * 0.65;
+                }
+                const slotEndMs = Date.parse(slot.endIso);
+                if (input.preferImmersionLiveSurplusNow === true &&
+                    Number.isFinite(slotEndMs) &&
+                    slotMs <= state.nowMs &&
+                    state.nowMs < slotEndMs) {
+                    score += e * weights.flexShiftWeight * 2.4 + 0.55;
+                }
             }
         }
     }
@@ -668,11 +870,12 @@ function scoreCandidate(input, state, candidate, weights) {
         }
     }
     if (candidate.kind === "battery_charge") {
-        const room = state.batteryTargetKwh - state.socKwh;
+        const socBefore = projectedSocAt(state, candidate.slotIdx);
+        const room = state.batteryTargetKwh - socBefore;
         if (room > exports.EPS) {
             score += e * (Math.min(e, room) / room) * weights.socTargetWeight * 0.28;
         }
-        if (state.socKwh < state.reserveKwh - exports.EPS) {
+        if (socBefore < state.reserveKwh - exports.EPS) {
             score += e * weights.reserveProtectWeight * 0.35;
         }
         if (candidate.source === "pv_surplus" && weights.batterySurplusMinFactor > 1) {
@@ -680,7 +883,7 @@ function scoreCandidate(input, state, candidate, weights) {
             if (pvRatio < 0.5)
                 score -= e * (weights.batterySurplusMinFactor - 1) * 0.12;
         }
-        if (candidate.source === "grid" && state.socKwh >= state.reserveKwh - exports.EPS) {
+        if (candidate.source === "grid" && socBefore >= state.reserveKwh - exports.EPS) {
             score -= e * 0.06 * weights.costWeight;
         }
     }
@@ -807,7 +1010,7 @@ function generateCandidatesForConsumer(input, state, consumer, slotIdx, wbPresen
         sources.push("grid");
     }
     const batFloor = dischargeFloorKwh(state, slotIdx);
-    const usableBat = (0, battery_reserve_floor_1.usableBatteryEnergyKwh)(state.socKwh, batFloor, state.dischargeEff);
+    const usableBat = (0, battery_reserve_floor_1.usableBatteryEnergyKwh)(projectedSocAt(state, slotIdx), batFloor, state.dischargeEff);
     if (consumer.batteryEligible &&
         usableBat > exports.EPS &&
         // PV im Slot deckt den Chunk → keine Batterie-Kandidaten (Export-Arbitrage).
@@ -909,9 +1112,12 @@ function applyCandidate(state, candidate, allocations) {
     else if (candidate.source === "battery") {
         const draw = e / Math.max(state.dischargeEff, 0.1);
         const floor = dischargeFloorKwh(state, candidate.slotIdx);
-        if (state.socKwh - draw < floor - exports.EPS)
+        const socAt = projectedSocAt(state, candidate.slotIdx);
+        if (socAt - draw < floor - exports.EPS)
             return false;
-        state.socKwh = Math.max(0, state.socKwh - draw);
+        state.socDeltaBySlot[candidate.slotIdx] =
+            (state.socDeltaBySlot[candidate.slotIdx] ?? 0) - draw;
+        syncFinalSoc(state);
     }
     if (e <= exports.EPS)
         return false;
@@ -935,7 +1141,12 @@ function applyCandidate(state, candidate, allocations) {
     e = booked;
     if (candidate.kind === "battery_charge") {
         const stored = e * state.chargeEff;
-        state.socKwh = Math.min(state.capacityKwh, state.socKwh + stored);
+        const socBefore = projectedSocAt(state, candidate.slotIdx);
+        const room = Math.max(0, state.capacityKwh - socBefore);
+        const storedClamped = Math.min(stored, room);
+        state.socDeltaBySlot[candidate.slotIdx] =
+            (state.socDeltaBySlot[candidate.slotIdx] ?? 0) + storedClamped;
+        syncFinalSoc(state);
     }
     consumer.remainingKwh = Math.max(0, consumer.remainingKwh - e);
     dropSubMinRemainder([consumer]);
@@ -1054,8 +1265,21 @@ function slotIndicesForConsumer(consumer, state, pvActive, allocations) {
         push(pvRanked[i].si);
     }
     if (consumer.kind === "immersion_heater") {
+        /*
+         * Alle PV-Slots vor Deadline in die Shortlist (Peak-Beam allein reicht nicht).
+         * Auswahl bleibt kontinuierlich über Score/Pressure — keine pressure≥X-Schwelle.
+         */
+        for (let si = 0; si < slots.length; si++) {
+            const slot = slots[si];
+            if (slot.startMs < state.nowMs - 60_000)
+                continue;
+            if (slot.startMs >= consumer.deadlineMs)
+                break;
+            if (slot.remainPvKwh > exports.EPS)
+                push(si);
+        }
         // Zusätzlich Batterie-Slots ohne PV, wenn Reserve-Floor Freiraum lässt.
-        if (consumer.batteryEligible && state.socKwh > floorKwhAt(state, 0) + exports.EPS) {
+        if (consumer.batteryEligible && projectedSocAt(state, 0) > floorKwhAt(state, 0) + exports.EPS) {
             let added = 0;
             for (let si = 0; si < slots.length && added < 10; si++) {
                 const slot = slots[si];
@@ -1098,7 +1322,7 @@ function slotIndicesForConsumer(consumer, state, pvActive, allocations) {
         if (bestSi !== null)
             push(bestSi);
     }
-    if (consumer.batteryEligible && state.socKwh > floorKwhAt(state, 0) + exports.EPS) {
+    if (consumer.batteryEligible && projectedSocAt(state, 0) > floorKwhAt(state, 0) + exports.EPS) {
         let added = 0;
         for (let si = 0; si < slots.length && added < 8; si++) {
             const slot = slots[si];
@@ -1106,7 +1330,8 @@ function slotIndicesForConsumer(consumer, state, pvActive, allocations) {
                 continue;
             if (slot.startMs < state.nowMs - 60_000)
                 continue;
-            if ((0, battery_reserve_floor_1.usableBatteryEnergyKwh)(state.socKwh, floorKwhAt(state, si), state.dischargeEff) <= exports.EPS) {
+            const socAt = projectedSocAt(state, si);
+            if ((0, battery_reserve_floor_1.usableBatteryEnergyKwh)(socAt, floorKwhAt(state, si), state.dischargeEff) <= exports.EPS) {
                 continue;
             }
             push(si);
@@ -1175,13 +1400,21 @@ function runScoreBasedAllocation(input, slots, opts) {
         reasonCodes.push(reason_codes_1.REASON.THERMAL_EMPTY_AT_ESTIMATED);
     if (th?.deadlineIso)
         reasonCodes.push(reason_codes_1.REASON.THERMAL_DEADLINE_PV_WINDOW);
-    const reserveFloor = (0, battery_reserve_floor_1.buildBatteryReserveFloor)(input, slots);
+    /** Reserve: freier Surplus nach Pflichtbindung. next-PV: Fenster roh, Check gebunden. */
+    const hardBound = hardPvBoundForPlanning(input, slots);
+    const reserveFloor = (0, battery_reserve_floor_1.buildBatteryReserveFloor)(input, (0, next_reliable_pv_1.applyHardPvBoundsToSlots)(slots, hardBound));
+    const nowMsPlan = Date.parse(input.time.nowIso);
+    const fromIdxPlan = Math.max(0, slots.findIndex((s) => s.startMs + 15 * 60_000 > nowMsPlan));
+    const nextPvPlan = (0, next_reliable_pv_1.findNextReliablePvAfterCurrentWindow)(slots, fromIdxPlan, pvConfidenceFactor(input), nowMsPlan, hardBound);
     const modeDischargeMinKwh = weights.batteryMinSocForDeficitPct < 99 && capacity > 0
         ? capacity * (weights.batteryMinSocForDeficitPct / 100)
         : 0;
+    const initialSocKwh = opts?.initialSocKwh ?? (batteryKnown ? (socPct / 100) * capacity : 0);
     const state = {
         slots,
-        socKwh: opts?.initialSocKwh ?? (batteryKnown ? (socPct / 100) * capacity : 0),
+        socKwh: initialSocKwh,
+        initialSocKwh,
+        socDeltaBySlot: slots.map(() => 0),
         capacityKwh: capacity,
         reserveKwh: opts?.reserveKwh ?? 0,
         reserveFloor,
@@ -1189,13 +1422,14 @@ function runScoreBasedAllocation(input, slots, opts) {
         chargeEff,
         dischargeEff,
         consumers: buildConsumerStates(input, slots),
-        nowMs: Date.parse(input.time.nowIso),
+        nowMs: nowMsPlan,
         batteryHold: wb ? wallboxImmediate(wb) : false,
         dischargeLiveSupported: bat.dischargeLiveSupported,
         passiveBatteryEnergyAvailable: bat.passiveBatteryEnergyAvailable === true,
         pvConfidence: pvConfidenceFactor(input),
         modePolicy: policy,
         modeDischargeMinKwh,
+        nextReliablePvMs: nextPvPlan.startMs,
     };
     if (!weights.allowOptimization) {
         return {

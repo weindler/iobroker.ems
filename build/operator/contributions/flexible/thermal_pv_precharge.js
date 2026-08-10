@@ -75,6 +75,30 @@ function resolveThermalPvPrecharge(input) {
             batSoc >= 85);
     const batteryCompetes = batSoc != null && batTarget != null && batSoc + 5 < batTarget;
     /*
+     * Puffer hält bis zur nächsten belastbaren PV-Gelegenheit über planningMin:
+     * kein Target-/Max-Precharge — nur noch wirtschaftlich wenn Batterie satt + starker Surplus.
+     */
+    const rateEarly = input.coolingRateCPerHAvg;
+    if (Number.isFinite(nextPvMs) &&
+        nextPvMs > nowMs &&
+        rateEarly != null &&
+        rateEarly > 0 &&
+        input.bufferTempC >= input.planningMinTempC) {
+        const hoursToPv = (nextPvMs - nowMs) / 3600_000;
+        const tempAtPv = input.bufferTempC - rateEarly * hoursToPv;
+        if (tempAtPv >= input.planningMinTempC - 0.05) {
+            const emptyAfterPv = !Number.isFinite(emptyMs) || emptyMs >= nextPvMs - 60_000;
+            if (emptyAfterPv && !(batterySated && surplus != null && surplus >= 8)) {
+                return {
+                    active: false,
+                    targetTempC: base,
+                    prechargeExtraK: 0,
+                    reasonDe: "Puffer reicht bis nächster belastbarer PV — kein wirtschaftliches Target-Precharge.",
+                };
+            }
+        }
+    }
+    /*
      * Horizont: emptyAt (Reichweite) und/oder nächstes PV-Fenster.
      * Fehlt emptyAt, reicht starkes PV + Batterie-satt für Flex-Vorladung.
      */

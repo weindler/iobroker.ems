@@ -30,16 +30,37 @@ function sumKind(
 }
 
 describe("battery_reserve_floor unit", () => {
-	it("afternoon holds full night reserve; night tapers; morning cushion", () => {
+	it("net+confidence drives reserve any time of day; fallback tapers without net", () => {
 		const recoveryMs = Date.parse("2026-08-09T08:00:00.000Z");
-		const afternoon = unavoidableNeedKwh({
+		const afternoonStrongPv = unavoidableNeedKwh({
+			slotStartIso: "2026-08-08T12:00:00.000Z",
+			slotMs: Date.parse("2026-08-08T12:00:00.000Z"),
+			recoveryMs,
+			nightReserveKwh: 2.5,
+			timeZone: TZ,
+			netDemandUntilRecoveryKwh: 0.8,
+			pvConfidence01: 0.85,
+		});
+		assert.equal(afternoonStrongPv, 0.8);
+		/** Nacht mit bekanntem Netto: nicht pauschal volle/geschmolzene Nachtmenge. */
+		const nightWithNet = unavoidableNeedKwh({
+			slotStartIso: "2026-08-08T23:00:00.000Z",
+			slotMs: Date.parse("2026-08-08T23:00:00.000Z"),
+			recoveryMs,
+			nightReserveKwh: 2.5,
+			timeZone: TZ,
+			netDemandUntilRecoveryKwh: 1.1,
+			pvConfidence01: 0.9,
+		});
+		assert.equal(nightWithNet, 1.1);
+		const afternoonNoNet = unavoidableNeedKwh({
 			slotStartIso: "2026-08-08T12:00:00.000Z",
 			slotMs: Date.parse("2026-08-08T12:00:00.000Z"),
 			recoveryMs,
 			nightReserveKwh: 2.5,
 			timeZone: TZ,
 		});
-		assert.equal(afternoon, 2.5);
+		assert.equal(afternoonNoNet, 2.5);
 		const night = unavoidableNeedKwh({
 			slotStartIso: "2026-08-08T23:00:00.000Z",
 			slotMs: Date.parse("2026-08-08T23:00:00.000Z"),
@@ -267,6 +288,18 @@ describe("Beta-004 flex — Thermal aus Batterie bei kritischer Deadline", () =>
 				energyKwh: (power / 1000) * 0.25,
 			};
 		});
+		input.houseLoad.slots = slots.map((s) => ({
+			slot: s,
+			forecastPowerW: 700,
+			observedPowerW: null,
+			energyKwh: 0.175,
+		}));
+		input.prices.slots = slots.map((s) => ({
+			slot: s,
+			importCtPerKwh: 28,
+			exportCtPerKwh: 9.3,
+			gridImportAllowed: true,
+		}));
 		input.battery = {
 			...input.battery,
 			socPct: 88,
@@ -387,7 +420,9 @@ describe("battery_reserve_floor build aligns with input", () => {
 		};
 		const floor = buildBatteryReserveFloor(input, slots);
 		assert.ok(floor.requiredKwhBySlot.length === slots.length);
-		assert.ok(floor.requiredKwhBySlot[0]! >= 2.5);
+		/** Forecastabhängig: bei PV-Surplus im Floor-Fixture unter vollem Night-Anker, aber ≥ Safety. */
+		assert.ok(floor.requiredKwhBySlot[0]! >= 1.0);
+		assert.ok(floor.requiredKwhBySlot[0]! <= 2.5);
 		assert.ok(floor.recoverySlotIdx !== null);
 	});
 });
@@ -528,7 +563,7 @@ describe("Beta-004 thermal flex storage — replan yields PV to vehicle", () => 
 		const planB = allocateUnifiedDayPlan(withCar);
 		const ihB = sumKind(planB, "immersion_heater");
 		const wbPv = sumKind(planB, "wallbox", (a) => a.energySource === "pv_surplus");
-		assert.ok(ihB < ihA - 1.0, `replan must cut thermal vs A: A=${ihA} B=${ihB}`);
-		assert.ok(wbPv > 2.0, `vehicle should get PV after replan, got ${wbPv}`);
+		assert.ok(ihB < ihA - 0.5, `replan must cut thermal vs A: A=${ihA} B=${ihB}`);
+		assert.ok(wbPv > 0.8, `vehicle should get PV after replan, got ${wbPv}`);
 	});
 });

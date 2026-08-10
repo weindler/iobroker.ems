@@ -43,6 +43,7 @@ function thermalLearningDetails(input) {
         thermalLearningSamples: learning?.samples ?? null,
         coolingRateCPerHAvg: learning?.coolingRateCPerHAvg ?? null,
         coolingConstantPerH: learning?.coolingConstantPerH ?? null,
+        coolingAsymptoteC: learning?.coolingAsymptoteC ?? null,
         estimatedRemainingHours: learning?.estimatedRemainingHours ?? null,
         estimatedEmptyAt: learning?.estimatedEmptyAt ?? null,
         emptyAtSource: emptyAtSourceOf(learning),
@@ -320,6 +321,8 @@ function buildImmersionFlexibleContribution(input) {
             bufferTempC: input.bufferTempC,
             targetTempC: effectiveTargetTempC,
             forecastTargetTempC: target.targetTempC,
+            planningMinTempC: input.config.planningMinTempC,
+            mandatoryMinTempC: input.config.planningMinTempC,
             targetReasonDe: [
                 target.targetReasonDe,
                 nightBridge?.active ? nightBridge.reasonDe : null,

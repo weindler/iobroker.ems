@@ -69,15 +69,36 @@ function cellToEntry(
 
 /** Immersion: flexible Contribution (PV-first Soft); Pflicht separat wenn min_temp. */
 export function unifiedPlanToImmersionAllocations(plan: UnifiedDayPlan): DailyAllocationEntry[] {
-	const out: DailyAllocationEntry[] = [];
+	const byKey = new Map<string, DailyAllocationEntry>();
 	for (const cell of plan.allocations) {
 		if (cell.kind !== "immersion_heater") continue;
 		const mandatory =
 			cell.constraintIds.includes("thermal.min_temp") || cell.reasonCodes.includes("thermal_mandatory");
 		const id = mandatory ? CONTRIBUTION_IDS.IMMERSION_MANDATORY : CONTRIBUTION_IDS.IMMERSION_FLEXIBLE;
-		out.push(cellToEntry(cell, id, IH_CONTRIBUTOR));
+		const entry = cellToEntry(cell, id, IH_CONTRIBUTOR);
+		const key = `${id}|${entry.slot.startIso}`;
+		const existing = byKey.get(key);
+		if (!existing) {
+			byKey.set(key, entry);
+			continue;
+		}
+		/** Hard+Soft-Zellen im selben Slot → eine Dispatch-Zeile (Leistungsstufe). */
+		const eKwh = (existing.allocatedEnergyKwh ?? 0) + (entry.allocatedEnergyKwh ?? 0);
+		const eW = (existing.allocatedPowerW ?? 0) + (entry.allocatedPowerW ?? 0);
+		existing.allocatedEnergyKwh = Math.round(eKwh * 1000) / 1000;
+		existing.allocatedPowerW = Math.round(eW * 10) / 10;
+		existing.requestedEnergyKwh = existing.allocatedEnergyKwh;
+		existing.requestedPowerW = existing.allocatedPowerW;
+		existing.pvPowerW = (existing.pvPowerW ?? 0) + (entry.pvPowerW ?? 0);
+		existing.gridPowerW = (existing.gridPowerW ?? 0) + (entry.gridPowerW ?? 0);
+		existing.batteryPowerW = (existing.batteryPowerW ?? 0) + (entry.batteryPowerW ?? 0);
+		if (existing.energySource !== entry.energySource) existing.energySource = "mixed";
+		existing.mandatory = existing.mandatory || entry.mandatory;
+		if (entry.reasonDe && !existing.reasonDe.includes(entry.reasonDe)) {
+			existing.reasonDe = `${existing.reasonDe}; ${entry.reasonDe}`;
+		}
 	}
-	return filterRunnableAllocations(out, RUNNABLE_ALLOCATION_FLOOR_W);
+	return filterRunnableAllocations([...byKey.values()], RUNNABLE_ALLOCATION_FLOOR_W);
 }
 
 /** Klima: air_conditioning.unit_N */

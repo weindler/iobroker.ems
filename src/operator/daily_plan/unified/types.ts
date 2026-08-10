@@ -241,16 +241,20 @@ export type UnifiedThermalInput = {
 	bufferTempC: number | null;
 	minTempC: number | null;
 	maxTempC: number | null;
-	/** Sinnvolles Tagesziel °C (Forecast/Learning), nicht hart 60. */
+	/** Effektives Planungsziel °C (inkl. Precharge, falls aktiv). */
 	dayTargetTempC: number | null;
+	/** Forecast-/Basisziel ohne optionales Precharge (Explain). */
+	forecastTargetTempC?: number | null;
+	/** true wenn dayTarget > forecast durch thermische PV-Vorladung. */
+	pvPrechargeActive?: boolean;
 	availablePowerW: number | null;
 	minPowerW: number | null;
-	/** Zusätzliche kWh bis Tagesziel, falls schätzbar. */
+	/** Zusätzliche kWh bis effectiveTarget, falls schätzbar (kann Soft-Precharge enthalten). */
 	headroomEnergyKwh: number | null;
 	estimatedEmptyAtIso: string | null;
 	/**
-	 * Planning-Deadline (empty_at / Nachtbrücke) — Unified priorisiert PV davor.
-	 * null = kein zeitlicher Zwang (nur Surplus-Greedy).
+	 * empty_at / Nachtbrücke — nur für Hard-Bridge-Deadline, nicht für Soft-Precharge.
+	 * null = kein zeitlicher Zwang.
 	 */
 	deadlineIso: string | null;
 	/** learned = valid Learning; estimated = degraded; null = unbekannt/fehlt. */

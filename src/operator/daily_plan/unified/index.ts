@@ -40,8 +40,14 @@ export {
 	applyHardPvBoundsToSlots,
 	expectedNetDemandUntilPvKwh,
 	resolveThermalPlannerEnergy,
+	thermalHardCoverUntilMs,
 } from "./next_reliable_pv";
-export { projectedSocAt, hardPvConsumersFromInput } from "./score_allocate";
+export {
+	projectedSocAt,
+	hardPvConsumersFromInput,
+	IMMERSION_HARD_CONSUMER_ID,
+	IMMERSION_SOFT_CONSUMER_ID,
+} from "./score_allocate";
 export { unifiedPlanCadenceDigest } from "./cadence";
 export {
 	evaluateMaterialReplan,

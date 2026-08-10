@@ -89,6 +89,7 @@ function thermalLearningDetails(input: ImmersionContributionBuildInput): Record<
 		thermalLearningSamples: learning?.samples ?? null,
 		coolingRateCPerHAvg: learning?.coolingRateCPerHAvg ?? null,
 		coolingConstantPerH: learning?.coolingConstantPerH ?? null,
+		coolingAsymptoteC: learning?.coolingAsymptoteC ?? null,
 		estimatedRemainingHours: learning?.estimatedRemainingHours ?? null,
 		estimatedEmptyAt: learning?.estimatedEmptyAt ?? null,
 		emptyAtSource: emptyAtSourceOf(learning),
@@ -406,6 +407,8 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 				bufferTempC: input.bufferTempC,
 				targetTempC: effectiveTargetTempC,
 				forecastTargetTempC: target.targetTempC,
+				planningMinTempC: input.config.planningMinTempC,
+				mandatoryMinTempC: input.config.planningMinTempC,
 				targetReasonDe: [
 					target.targetReasonDe,
 					nightBridge?.active ? nightBridge.reasonDe : null,

@@ -13,10 +13,15 @@ import {
 import {
 	applyHardPvBoundsToSlots,
 	estimateHardPvBoundKwhBySlot,
+	findEndOfCurrentSurplusWindowIdx,
 	findNextReliablePvAfterCurrentWindow,
 	resolveThermalPlannerEnergy,
 	type HardPvBoundConsumer,
 } from "./next_reliable_pv";
+
+/** Soft-Precharge-Consumer — kind bleibt immersion_heater; Power teilt sich mit Hard. */
+export const IMMERSION_SOFT_CONSUMER_ID = "immersion_heater_soft";
+export const IMMERSION_HARD_CONSUMER_ID = "immersion_heater";
 import { optimizeWeightsFromInput, type UnifiedOptimizeWeights } from "./optimize_weights";
 import { REASON } from "./reason_codes";
 import {
@@ -292,6 +297,20 @@ export function allocatedInSlotKwh(
 	return cell?.allocatedEnergyKwh ?? 0;
 }
 
+/** Heizstab Hard+Soft teilen dieselbe Leistungsstufe pro Slot. */
+export function immersionAllocatedInSlotKwh(
+	out: UnifiedAllocationCell[],
+	slotStartIso: string,
+): number {
+	let sum = 0;
+	for (const a of out) {
+		if (a.kind === "immersion_heater" && a.slot.startIso === slotStartIso) {
+			sum += a.allocatedEnergyKwh;
+		}
+	}
+	return sum;
+}
+
 /**
  * Schreibt/merged Allocation — maximal eine Zelle pro (consumerId, slot).
  * Verhindert Runtime-„duplicate“-Rejects im Daily-Plan-Merge.
@@ -447,7 +466,11 @@ function buildConsumerStates(input: UnifiedDayPlannerInput, slots: SlotWork[]): 
 
 	const th = input.thermal;
 	if (th && th.headroomEnergyKwh !== null && th.headroomEnergyKwh > EPS) {
-		const deadlineMs = th.deadlineIso ? Date.parse(th.deadlineIso) : Number.NaN;
+		const emptyDeadlineMs = th.estimatedEmptyAtIso
+			? Date.parse(th.estimatedEmptyAtIso)
+			: th.deadlineIso
+				? Date.parse(th.deadlineIso)
+				: Number.NaN;
 		const nowMsLocal = Date.parse(input.time.nowIso);
 		const fromIdx = Math.max(
 			0,
@@ -463,6 +486,11 @@ function buildConsumerStates(input: UnifiedDayPlannerInput, slots: SlotWork[]): 
 			nowMsLocal,
 			bound,
 		);
+		const windowEndIdx = findEndOfCurrentSurplusWindowIdx(slots, fromIdx);
+		const currentWindowEndMs =
+			windowEndIdx > fromIdx && slots[windowEndIdx - 1]
+				? Date.parse(slots[windowEndIdx - 1]!.endIso)
+				: null;
 		const emptyMs = th.estimatedEmptyAtIso ? Date.parse(th.estimatedEmptyAtIso) : Number.NaN;
 		const bridge = resolveThermalPlannerEnergy({
 			nowMs: nowMsLocal,
@@ -472,41 +500,55 @@ function buildConsumerStates(input: UnifiedDayPlannerInput, slots: SlotWork[]): 
 			coolingRateCPerH: th.coolingRateCPerH,
 			estimatedEmptyAtMs: Number.isFinite(emptyMs) ? emptyMs : null,
 			nextReliablePvMs: nextPv.startMs,
+			currentWindowEndMs,
 			pvConfidence01: conf,
 		});
-		const softOnly = bridge.coversUntilNextPv;
+		const hardKwh = bridge.mandatoryEnergyKwh;
+		const softKwh = bridge.economicHeadroomKwh;
 		/*
-		 * Puffer hält bis nächster PV → kein Pflicht-Target-Fill (mandatory=false, softOnly).
-		 * Headroom = Soft-Deckel; Score konkurriert wirtschaftlich mit Batterie/Export
-		 * (kein Batterie-zuerst-Hardcode). Sonst Bridge-Energie.
+		 * Hard-Bridge und Soft-Precharge getrennt:
+		 * - Hard: nur MinTemp bis Cover-Horizont, Deadline = emptyAt
+		 * - Soft: Target-Headroom, keine emptyAt-Urgency, Wirtschafts-Score
 		 */
-		const plannedThermal = softOnly
-			? Math.max(bridge.mandatoryEnergyKwh, th.headroomEnergyKwh ?? 0)
-			: bridge.plannerEnergyKwh;
-		if (plannedThermal > EPS) {
-			const hardBridge = !softOnly && bridge.mandatoryEnergyKwh > EPS;
+		if (hardKwh > EPS) {
+			const hardDeadline = Number.isFinite(emptyDeadlineMs)
+				? emptyDeadlineMs
+				: Number.POSITIVE_INFINITY;
 			out.push({
-				consumerId: "immersion_heater",
+				consumerId: IMMERSION_HARD_CONSUMER_ID,
 				kind: "immersion_heater",
-				remainingKwh: plannedThermal,
+				remainingKwh: hardKwh,
 				maxPowerW: th.availablePowerW,
 				minPowerW: th.minPowerW ?? th.availablePowerW,
-				/** Soft/optional: keine Deadline-Urgency — reine Wirtschafts-Konkurrenz. */
-				deadlineMs:
-					softOnly || !Number.isFinite(deadlineMs)
-						? Number.POSITIVE_INFINITY
-						: deadlineMs,
-				mandatory: hardBridge,
+				deadlineMs: hardDeadline,
+				mandatory: true,
 				gridEligible: false,
 				pvFirst: true,
-				/** Thermal darf Batterie nutzen, wenn Floor + Opportunity Cost es erlauben. */
-				batteryEligible: !softOnly,
-				energyGoalHard:
-					hardBridge && (th.emptyAtSource === "learned" || bridge.mandatoryEnergyKwh > EPS),
+				batteryEligible: true,
+				energyGoalHard: th.emptyAtSource === "learned" || hardKwh > EPS,
 				maxShiftHours: null,
 				earliestSlotIdx: 0,
-				thermalBeforeDeadline: Number.isFinite(deadlineMs) && !softOnly,
-				thermalSoftOnly: softOnly,
+				thermalBeforeDeadline: Number.isFinite(hardDeadline),
+				thermalSoftOnly: false,
+			});
+		}
+		if (softKwh > EPS) {
+			out.push({
+				consumerId: IMMERSION_SOFT_CONSUMER_ID,
+				kind: "immersion_heater",
+				remainingKwh: softKwh,
+				maxPowerW: th.availablePowerW,
+				minPowerW: th.minPowerW ?? th.availablePowerW,
+				deadlineMs: Number.POSITIVE_INFINITY,
+				mandatory: false,
+				gridEligible: false,
+				pvFirst: true,
+				batteryEligible: false,
+				energyGoalHard: false,
+				maxShiftHours: null,
+				earliestSlotIdx: 0,
+				thermalBeforeDeadline: false,
+				thermalSoftOnly: true,
 			});
 		}
 	}
@@ -938,16 +980,33 @@ export function scoreCandidate(
 			const emptyMs = input.thermal?.estimatedEmptyAtIso
 				? Date.parse(input.thermal.estimatedEmptyAtIso)
 				: Number.NaN;
-			const postPvBridgeH =
-				recMs != null && Number.isFinite(emptyMs) && emptyMs > recMs
-					? (emptyMs - recMs) / 3600_000
-					: 0;
-			/** 0…1: Kühlbrücke nach next-PV (emptyAt − nextReliablePv), keine Uhrzeit-Heuristik. */
-			const needScale = Math.max(0, Math.min(1, postPvBridgeH / 10));
-			const storeEur = peakEur * weights.costWeight * (0.25 + 0.55 * needScale);
+			/*
+			 * Speichernutzen ohne emptyAt-Deadline-Urgency:
+			 * - emptyAt nach Recovery → Kühlbrücke danach (kurz = wenig Soft-Nutzen)
+			 * - emptyAt vor Recovery (typisch: reicht durch heutiges PV-Fenster, Nachtlücke)
+			 *   → Overnight-Shortfall skaliert Soft-Nutzen (PV jetzt speichern sinnvoll)
+			 */
+			let bridgeH = 0;
+			if (recMs != null && Number.isFinite(emptyMs)) {
+				bridgeH =
+					emptyMs > recMs
+						? (emptyMs - recMs) / 3600_000
+						: (recMs - emptyMs) / 3600_000;
+			}
+			const needScale = Math.max(0, Math.min(1, bridgeH / 10));
+			/*
+			 * Kein fixer 0.25-Floor: bei needScale≈0 (Puffer hält über Recovery) kein Soft-Dump
+			 * gegen Export. Bei Overnight-Lücke (needScale hoch) wirtschaftlich speichern.
+			 */
+			const storeEur = peakEur * weights.costWeight * (0.85 * needScale - 0.05);
 			score += e * storeEur;
 			if (batRoom > 0.4 || batStillWants) {
-				score -= e * peakEur * weights.costWeight * weights.socTargetWeight * 0.65;
+				/** Bei Overnight-Lücke (needScale hoch) Soft weniger gegen Batterie abstrafen. */
+				const batPen = 0.65 * (1 - 0.55 * needScale);
+				score -= e * peakEur * weights.costWeight * weights.socTargetWeight * batPen;
+			} else if (batRoom <= 0.4 && !batStillWants && needScale > 0.2) {
+				/** Batterie satt + Speichernutzen: Soft belohnen (skaliert). */
+				score += e * weights.flexShiftWeight * 0.42 * needScale;
 			}
 		} else if (consumer.thermalBeforeDeadline && slotMs < consumer.deadlineMs) {
 			score += e * weights.thermalDeadlineWeight * 0.42;
@@ -1022,15 +1081,18 @@ export function scoreCandidate(
 				if (hardVehicle) {
 					score -= e * weights.vehicleUrgencyBoost * 0.65;
 				}
-				const slotEndMs = Date.parse(slot.endIso);
-				if (
-					input.preferImmersionLiveSurplusNow === true &&
-					Number.isFinite(slotEndMs) &&
-					slotMs <= state.nowMs &&
-					state.nowMs < slotEndMs
-				) {
-					score += e * weights.flexShiftWeight * 2.4 + 0.55;
-				}
+			}
+		}
+		/** Live-NOW-Boost auch für Soft-Precharge (B1) — kein emptyAt-Deadline-Druck. */
+		if (candidate.source === "pv_surplus") {
+			const slotEndMs = Date.parse(slot.endIso);
+			if (
+				input.preferImmersionLiveSurplusNow === true &&
+				Number.isFinite(slotEndMs) &&
+				slotMs <= state.nowMs &&
+				state.nowMs < slotEndMs
+			) {
+				score += e * weights.flexShiftWeight * 2.4 + 0.55;
 			}
 		}
 	}
@@ -1116,7 +1178,12 @@ function reasonCodesForCandidate(
 		codes.push(REASON.THERMAL_FLEX_AVAILABLE, REASON.MIN_POWER_SLOT);
 		if (candidate.source === "pv_surplus") codes.push(REASON.PV_SURPLUS_AVAILABLE);
 		if (candidate.source === "battery") codes.push(REASON.BATTERY_FROM_RESERVE_FLEX);
-		if (input.thermal?.deadlineIso && slot.startMs < Date.parse(input.thermal.deadlineIso)) {
+		const cons = state.consumers.find((c) => c.consumerId === candidate.consumerId);
+		if (
+			cons?.thermalBeforeDeadline &&
+			Number.isFinite(cons.deadlineMs) &&
+			slot.startMs < cons.deadlineMs
+		) {
 			codes.push(REASON.THERMAL_DEADLINE_PV_WINDOW);
 		}
 	}
@@ -1176,7 +1243,23 @@ function generateCandidatesForConsumer(
 	if (slot.startMs >= consumer.deadlineMs) return [];
 	if (slotIdx < consumer.earliestSlotIdx) return [];
 
-	const already = allocatedInSlotKwh(allocations, consumer.consumerId, slot.startIso);
+	/*
+	 * Soft-Precharge: laufenden Slot ohne Live-Prefer nicht anbrechen
+	 * (Mid-Slot-Restart / B1 — Prefer setzt den NOW-Boost bewusst).
+	 */
+	if (
+		consumer.kind === "immersion_heater" &&
+		consumer.thermalSoftOnly &&
+		slot.startMs < state.nowMs &&
+		input.preferImmersionLiveSurplusNow !== true
+	) {
+		return [];
+	}
+
+	const already =
+		consumer.kind === "immersion_heater"
+			? immersionAllocatedInSlotKwh(allocations, slot.startIso)
+			: allocatedInSlotKwh(allocations, consumer.consumerId, slot.startIso);
 	if (consumer.maxPowerW !== null && consumer.maxPowerW > 0) {
 		const headroom = energyFromPowerW(consumer.maxPowerW) - already;
 		if (headroom <= EPS) return [];
@@ -1297,7 +1380,10 @@ function applyCandidate(
 	const consumer = state.consumers.find((c) => c.consumerId === candidate.consumerId);
 	if (!consumer) return false;
 
-	const already = allocatedInSlotKwh(allocations, candidate.consumerId, slot.startIso);
+	const already =
+		candidate.kind === "immersion_heater"
+			? immersionAllocatedInSlotKwh(allocations, slot.startIso)
+			: allocatedInSlotKwh(allocations, candidate.consumerId, slot.startIso);
 	let e = candidate.energyKwh;
 	if (candidate.maxPowerW !== null && candidate.maxPowerW > 0) {
 		e = Math.min(e, Math.max(0, energyFromPowerW(candidate.maxPowerW) - already));
@@ -1419,8 +1505,13 @@ function buildGoals(
 
 	const th = input.thermal;
 	if (th) {
-		const tc = state.consumers.find((c) => c.consumerId === "immersion_heater");
-		if (th.headroomEnergyKwh === null || th.headroomEnergyKwh <= EPS) {
+		const hardC = state.consumers.find((c) => c.consumerId === IMMERSION_HARD_CONSUMER_ID);
+		const softC = state.consumers.find((c) => c.consumerId === IMMERSION_SOFT_CONSUMER_ID);
+		const legacyC = state.consumers.find((c) => c.consumerId === "immersion_heater");
+		const remaining =
+			(hardC?.remainingKwh ?? 0) + (softC?.remainingKwh ?? 0) + (legacyC?.remainingKwh ?? 0);
+		const headroom = th.headroomEnergyKwh ?? 0;
+		if (headroom <= EPS && remaining <= EPS) {
 			goals.push({
 				consumerId: "immersion_heater",
 				goalId: "thermal_day",
@@ -1428,18 +1519,34 @@ function buildGoals(
 				detailDe: "Kein thermischer Headroom.",
 			});
 		} else {
-			const remaining = tc?.remainingKwh ?? th.headroomEnergyKwh;
-			const hasDeadline = th.deadlineIso !== null;
+			const bridgeRem = hardC?.remainingKwh ?? 0;
+			const softRem = softC?.remainingKwh ?? legacyC?.remainingKwh ?? 0;
+			const baseT = th.forecastTargetTempC ?? th.minTempC;
+			const effT = th.dayTargetTempC;
+			const prechargeNote =
+				th.pvPrechargeActive === true && effT != null && baseT != null && effT > baseT + 0.15
+					? ` Basisziel ${baseT} °C, optionales Precharge-Ziel ${effT} °C.`
+					: "";
+			const parts: string[] = [];
+			if (hardC) {
+				parts.push(
+					bridgeRem <= EPS
+						? "Hard-Bridge aus PV geplant"
+						: `Hard-Bridge Rest ~${bridgeRem.toFixed(2)} kWh`,
+				);
+			}
+			if (softC || (legacyC && !hardC)) {
+				parts.push(
+					softRem <= EPS
+						? "Soft-Precharge aus PV geplant"
+						: `Soft-Precharge Rest ~${softRem.toFixed(2)} kWh`,
+				);
+			}
 			goals.push({
 				consumerId: "immersion_heater",
 				goalId: "thermal_day",
-				met: remaining <= th.headroomEnergyKwh * 0.15,
-				detailDe:
-					remaining <= EPS
-						? hasDeadline
-							? `Thermisches Vorladen vor ${th.deadlineIso} aus PV geplant.`
-							: "Thermischer Headroom aus PV geplant."
-						: `Thermisch Rest ~${remaining.toFixed(2)} kWh (PV knapp — Batterie-Flex nur oberhalb Reserve-Floor).`,
+				met: remaining <= Math.max(headroom, 0.01) * 0.15,
+				detailDe: `${parts.join("; ") || "Thermisch"}.${prechargeNote}`,
 			});
 		}
 	}
@@ -1650,7 +1757,6 @@ export function runScoreBasedAllocation(
 
 	const th = input.thermal;
 	if (th?.emptyAtSource === "estimated") reasonCodes.push(REASON.THERMAL_EMPTY_AT_ESTIMATED);
-	if (th?.deadlineIso) reasonCodes.push(REASON.THERMAL_DEADLINE_PV_WINDOW);
 
 	/** Reserve: freier Surplus nach Pflichtbindung. next-PV: Fenster roh, Check gebunden. */
 	const hardBound = hardPvBoundForPlanning(input, slots);
@@ -1672,6 +1778,10 @@ export function runScoreBasedAllocation(
 			? capacity * (weights.batteryMinSocForDeficitPct / 100)
 			: 0;
 	const initialSocKwh = opts?.initialSocKwh ?? (batteryKnown ? (socPct! / 100) * capacity : 0);
+	const consumers = buildConsumerStates(input, slots);
+	if (consumers.some((c) => c.kind === "immersion_heater" && c.thermalBeforeDeadline)) {
+		reasonCodes.push(REASON.THERMAL_DEADLINE_PV_WINDOW);
+	}
 	const state: AllocationState = {
 		slots,
 		socKwh: initialSocKwh,
@@ -1683,7 +1793,7 @@ export function runScoreBasedAllocation(
 		batteryTargetKwh: targetKwh,
 		chargeEff,
 		dischargeEff,
-		consumers: buildConsumerStates(input, slots),
+		consumers,
 		nowMs: nowMsPlan,
 		batteryHold: wb ? wallboxImmediate(wb) : false,
 		dischargeLiveSupported: bat.dischargeLiveSupported,

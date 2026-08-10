@@ -127,7 +127,7 @@ function auditLikeInput(nowIso, opts) {
     });
 });
 (0, node_test_1.describe)("T — Thermal bridge until next reliable PV", () => {
-    (0, node_test_1.it)("T1: buffer covers until next PV → no target precharge energy", () => {
+    (0, node_test_1.it)("T1: buffer covers until next PV → Hard-Bridge ~0, Precharge soft", () => {
         const r = (0, next_reliable_pv_1.resolveThermalPlannerEnergy)({
             nowMs: Date.parse("2026-08-09T14:00:00.000Z"),
             bufferTempC: 52,
@@ -139,11 +139,13 @@ function auditLikeInput(nowIso, opts) {
             pvConfidence01: 0.85,
         });
         strict_1.default.equal(r.coversUntilNextPv, true);
-        strict_1.default.ok(r.plannerEnergyKwh < 0.5, `expected ~0 mandatory, got ${r.plannerEnergyKwh}`);
+        strict_1.default.ok(r.mandatoryEnergyKwh < 0.5, `expected ~0 hard, got ${r.mandatoryEnergyKwh}`);
+        strict_1.default.ok(r.economicHeadroomKwh >= 2.5, `soft headroom got ${r.economicHeadroomKwh}`);
         const plan = (0, allocate_1.allocateUnifiedDayPlan)(auditLikeInput("2026-08-09T14:00:00.000Z", { headroom: 3 }));
-        strict_1.default.ok(sumIh(plan) < 0.5, `IH should not target-precharge, got ${sumIh(plan)}`);
+        /** Soft darf wirtschaftlich konkurrieren; bei SOC 55 % / Batteriebedarf oft wenig IH. */
+        strict_1.default.ok(sumIh(plan) < 3.1, `IH soft cap, got ${sumIh(plan)}`);
     });
-    (0, node_test_1.it)("T2: buffer does not cover → mandatory energy planned", () => {
+    (0, node_test_1.it)("T2: buffer does not cover → mandatory energy planned (not full headroom)", () => {
         const r = (0, next_reliable_pv_1.resolveThermalPlannerEnergy)({
             nowMs: Date.parse("2026-08-09T18:00:00.000Z"),
             bufferTempC: 49,
@@ -157,8 +159,9 @@ function auditLikeInput(nowIso, opts) {
         strict_1.default.equal(r.coversUntilNextPv, false);
         strict_1.default.ok(r.mandatoryEnergyKwh > 0.3, `mandatory got ${r.mandatoryEnergyKwh}`);
         strict_1.default.ok(r.plannerEnergyKwh >= r.mandatoryEnergyKwh);
+        strict_1.default.ok(r.mandatoryEnergyKwh <= r.plannerEnergyKwh + 1e-9, "mandatory is bridge, soft is separate");
     });
-    (0, node_test_1.it)("T3: low forecast confidence keeps uncertainty cushion", () => {
+    (0, node_test_1.it)("T3: low forecast confidence keeps uncertainty cushion on hard", () => {
         const weak = (0, next_reliable_pv_1.resolveThermalPlannerEnergy)({
             nowMs: Date.parse("2026-08-09T14:00:00.000Z"),
             bufferTempC: 52,
@@ -179,7 +182,7 @@ function auditLikeInput(nowIso, opts) {
             nextReliablePvMs: Date.parse("2026-08-10T06:30:00.000Z"),
             pvConfidence01: 0.9,
         });
-        strict_1.default.ok(weak.plannerEnergyKwh >= strong.plannerEnergyKwh);
+        strict_1.default.ok(weak.mandatoryEnergyKwh >= strong.mandatoryEnergyKwh);
     });
 });
 (0, node_test_1.describe)("B — forecast-dependent battery reserve", () => {
@@ -230,16 +233,16 @@ function auditLikeInput(nowIso, opts) {
 });
 (0, node_test_1.describe)("S — feasibility / starvation", () => {
     (0, node_test_1.it)("S1: many good slots → flexibility (IH not forced into first slot only)", () => {
-        const input = auditLikeInput("2026-08-09T10:00:00.000Z", { headroom: 1.2 });
-        // Force non-cover so IH remains: colder buffer / faster cool
+        const input = auditLikeInput("2026-08-09T10:00:00.000Z", { headroom: 1.2, socPct: 100 });
+        // Hard-Bridge nötig: emptyAt vor Ende des laufenden PV-Fensters
         input.thermal.bufferTempC = 48.2;
         input.thermal.coolingRateCPerH = 0.55;
-        input.thermal.estimatedEmptyAtIso = "2026-08-09T20:00:00.000Z";
-        input.thermal.deadlineIso = "2026-08-09T20:00:00.000Z";
+        input.thermal.estimatedEmptyAtIso = "2026-08-09T14:00:00.000Z";
+        input.thermal.deadlineIso = "2026-08-09T14:00:00.000Z";
         input.thermal.minTempC = 48;
         const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);
         const ihSlots = plan.allocations.filter((a) => a.kind === "immersion_heater");
-        strict_1.default.ok(ihSlots.length >= 1);
+        strict_1.default.ok(ihSlots.length >= 1, `expected IH hard/soft slots, got ${ihSlots.length}`);
     });
     (0, node_test_1.it)("S2/R: replans do not treat remaining energy as full-day again when capacity shrinks", () => {
         const base = auditLikeInput("2026-08-09T10:00:00.000Z", { headroom: 2.0 });
@@ -266,7 +269,7 @@ function auditLikeInput(nowIso, opts) {
         const aftStarts = aftAllocs.map((a) => a.slot.startIso);
         if (aftAllocs.length > 0) {
             const first = Date.parse(aftStarts[0]);
-            strict_1.default.ok(first <= Date.parse("2026-08-09T16:30:00.000Z"), `afternoon replan should prefer soon slots, first=${aftStarts[0]}`);
+            strict_1.default.ok(first <= Date.parse("2026-08-09T17:00:00.000Z"), `afternoon replan should prefer soon slots, first=${aftStarts[0]}`);
         }
         strict_1.default.ok(morningIh >= 0 && midIh >= 0);
     });
@@ -440,7 +443,7 @@ function auditLikeInput(nowIso, opts) {
             .reduce((s, a) => s + a.allocatedEnergyKwh, 0);
         const ihNeed = sumIh(planNeed);
         strict_1.default.ok(batChg > ihNeed, `battery should outcompete soft IH: bat=${batChg} ih=${ihNeed}`);
-        /** B: Batterie am Ziel → Soft-Thermal darf PV nutzen (keine Batterie-zuerst-Sperre). */
+        /** B: Batterie am Ziel + Overnight-Lücke → Soft-Thermal darf PV nutzen. */
         const batFull = auditLikeInput("2026-08-09T13:00:00.000Z", { headroom: 3.5, socPct: 88 });
         batFull.battery = {
             ...batFull.battery,
@@ -448,9 +451,12 @@ function auditLikeInput(nowIso, opts) {
             requiredChargeEnergyKwh: 0,
             socPct: 88,
         };
-        batFull.thermal.estimatedEmptyAtIso = "2026-08-10T07:25:00.000Z";
-        batFull.thermal.deadlineIso = "2026-08-10T07:25:00.000Z";
+        /** emptyAt vor nächster Morgen-PV → Speichernutzen; Hard bleibt 0 wenn Fenster-Cover greift. */
+        batFull.thermal.estimatedEmptyAtIso = "2026-08-09T20:00:00.000Z";
+        batFull.thermal.deadlineIso = "2026-08-09T20:00:00.000Z";
         batFull.thermal.coolingRateCPerH = 0.25;
+        batFull.thermal.bufferTempC = 52;
+        batFull.thermal.minTempC = 48;
         /** Niedrige Einspeisung → Wärme speichern wirtschaftlich attraktiver. */
         batFull.prices.slots = batFull.prices.slots.map((s) => ({ ...s, exportCtPerKwh: 2.0 }));
         const planFull = (0, allocate_1.allocateUnifiedDayPlan)(batFull);

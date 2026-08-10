@@ -26,6 +26,7 @@ import {
 	type ExplicitPresenceWindow,
 } from "./vehicle_availability";
 import { isLiveNowTelemetryUsable } from "../live_surplus";
+import { effectiveCoolingRateCPerH } from "../../contributions/flexible/thermal_cooling_rate";
 
 function num(d: Record<string, unknown> | null | undefined, key: string): number | null {
 	if (!d) return null;
@@ -431,35 +432,53 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 		},
 		wallbox,
 		thermal: ih
-			? {
-					bufferTempC,
-					minTempC: num(ihD, "mandatoryMinTempC") ?? num(ihD, "planningMinTempC"),
-					maxTempC: num(ihD, "planningMaxTempC"),
-					dayTargetTempC: targetTempC,
-					availablePowerW: maxPowerW,
-					minPowerW: minPowerW,
-					headroomEnergyKwh: headroom,
-					estimatedEmptyAtIso: str(ihD, "estimatedEmptyAt"),
-					deadlineIso:
-						headroom !== null && headroom > 0
-							? ih.deadlineIso ?? str(ihD, "estimatedEmptyAt")
-							: ih.deadlineIso,
-					emptyAtSource: (() => {
-						const s = str(ihD, "emptyAtSource");
-						if (s === "learned" || s === "estimated") return s;
-						const st = str(ihD, "thermalLearningStatus");
-						if (st === "valid" && str(ihD, "estimatedEmptyAt")) return "learned";
-						if (st === "degraded" && str(ihD, "estimatedEmptyAt")) return "estimated";
-						return null;
-					})(),
-					nightBridgeActive: bool(ihD, "nightBridgeActive") === true,
-					coolingRateCPerH: num(ihD, "coolingRateCPerHAvg"),
-					minimumRuntimeSec: num(ihD, "minimumRuntimeSec"),
-					hysteresisK: num(ihD, "reheatHysteresisK") ?? num(ihD, "temperatureHysteresisK"),
-					reheatHysteresisActive: bool(ihD, "reheatHysteresisActive") === true,
-					uncertainty: thermalQuality,
-					freshness: thermalFresh,
-				}
+			? (() => {
+					const minTempC =
+						num(ihD, "mandatoryMinTempC") ?? num(ihD, "planningMinTempC");
+					const estimatedEmptyAtIso = str(ihD, "estimatedEmptyAt");
+					const emptyMs = estimatedEmptyAtIso ? Date.parse(estimatedEmptyAtIso) : Number.NaN;
+					const coolingRateCPerH = effectiveCoolingRateCPerH({
+						coolingRateCPerHAvg: num(ihD, "coolingRateCPerHAvg"),
+						coolingConstantPerH: num(ihD, "coolingConstantPerH"),
+						coolingAsymptoteC: num(ihD, "coolingAsymptoteC"),
+						bufferTempC,
+						minTempC,
+						estimatedEmptyAtMs: Number.isFinite(emptyMs) ? emptyMs : null,
+						nowMs,
+					});
+					const forecastTargetTempC = num(ihD, "forecastTargetTempC");
+					return {
+						bufferTempC,
+						minTempC,
+						maxTempC: num(ihD, "planningMaxTempC"),
+						dayTargetTempC: targetTempC,
+						forecastTargetTempC,
+						pvPrechargeActive: bool(ihD, "pvPrechargeActive") === true,
+						availablePowerW: maxPowerW,
+						minPowerW: minPowerW,
+						headroomEnergyKwh: headroom,
+						estimatedEmptyAtIso,
+						deadlineIso:
+							headroom !== null && headroom > 0
+								? ih.deadlineIso ?? estimatedEmptyAtIso
+								: ih.deadlineIso,
+						emptyAtSource: (() => {
+							const s = str(ihD, "emptyAtSource");
+							if (s === "learned" || s === "estimated") return s;
+							const st = str(ihD, "thermalLearningStatus");
+							if (st === "valid" && estimatedEmptyAtIso) return "learned";
+							if (st === "degraded" && estimatedEmptyAtIso) return "estimated";
+							return null;
+						})(),
+						nightBridgeActive: bool(ihD, "nightBridgeActive") === true,
+						coolingRateCPerH,
+						minimumRuntimeSec: num(ihD, "minimumRuntimeSec"),
+						hysteresisK: num(ihD, "reheatHysteresisK") ?? num(ihD, "temperatureHysteresisK"),
+						reheatHysteresisActive: bool(ihD, "reheatHysteresisActive") === true,
+						uncertainty: thermalQuality,
+						freshness: thermalFresh,
+					};
+				})()
 			: null,
 		climate: climateUnits.length ? { units: climateUnits, freshness: climateFresh } : null,
 		otherFlex: [],

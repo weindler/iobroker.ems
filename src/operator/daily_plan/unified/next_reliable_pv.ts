@@ -258,28 +258,60 @@ export type ThermalBridgeEnergyInput = {
 	nowMs: number;
 	bufferTempC: number | null;
 	minTempC: number | null;
-	/** Contribution-/Bridge-Headroom Richtung Target (kann Precharge enthalten). */
+	/** Contribution-Headroom Richtung effectiveTarget (kann optionales Precharge enthalten). */
 	headroomEnergyKwh: number | null;
 	coolingRateCPerH: number | null;
 	estimatedEmptyAtMs: number | null;
+	/** Nächste PV nach dem aktuellen Surplus-Fenster (Overnight-/Recovery-Bezug). */
 	nextReliablePvMs: number | null;
+	/**
+	 * Ende des noch laufenden Surplus-Fensters (Slot-Ende-Index → startMs des Endes).
+	 * Wenn > now: Cover-Prüfung für Hard-Bridge nutzt dieses Fenster (Rest-PV heute),
+	 * nicht automatisch „morgen“.
+	 */
+	currentWindowEndMs?: number | null;
 	pvConfidence01: number;
 	kwhPerDegreeC?: number | null;
 };
 
 export type ThermalBridgeEnergyResult = {
-	/** Energie, die der Unified Planner als Thermal-Bedarf setzt. */
+	/** Pflicht-Bridge + optionaler Soft-Headroom (Summe). */
 	plannerEnergyKwh: number;
+	/** Nur MinTemp/Safety-Bridge — nie automatisch voller Target-Headroom. */
 	mandatoryEnergyKwh: number;
+	/** Optionaler Precharge-Rest (effectiveTarget) — Soft-Thermal. */
 	economicHeadroomKwh: number;
+	/** true: Hard-Bridge ≈ 0 / gedeckt; Soft darf wirtschaftlich konkurrieren. */
 	coversUntilNextPv: boolean;
+	/** Zeitpunkt, gegen den die Cover-/Bridge-Rechnung lief. */
+	coverUntilMs: number | null;
 	reasonDe: string;
 };
 
 /**
- * Mindestenergie bis zur nächsten belastbaren PV vs. wirtschaftlichem Precharge-Rest.
- * Wenn der Puffer bis nextReliablePv ≥ minTemp hält und emptyAt nicht davor liegt:
- * kein Zwang Richtung Target — nur kleine Unsicherheitsmarge.
+ * Cover-Horizont für Hard-Bridge:
+ * - Solange das aktuelle Surplus-Fenster noch Rest hat → Fensterende (heutige PV-Phase).
+ * - Sonst nextReliablePv (nächstes Fenster nach Lücke / morgen).
+ */
+export function thermalHardCoverUntilMs(input: {
+	nowMs: number;
+	nextReliablePvMs: number | null;
+	currentWindowEndMs?: number | null;
+}): number | null {
+	const windowEnd = input.currentWindowEndMs;
+	if (windowEnd != null && Number.isFinite(windowEnd) && windowEnd > input.nowMs + 60_000) {
+		return windowEnd;
+	}
+	if (input.nextReliablePvMs != null && Number.isFinite(input.nextReliablePvMs)) {
+		return input.nextReliablePvMs;
+	}
+	return null;
+}
+
+/**
+ * Mindestenergie bis Cover-Horizont vs. wirtschaftlichem Precharge-Rest.
+ * emptyAt = Reichweite bis MinTemp — nicht „bis dahin auf Target laden“.
+ * Fehlt Physik: Soft-Headroom, kein Fake-Hard aus vollständigem Target-Headroom.
  */
 export function resolveThermalPlannerEnergy(input: ThermalBridgeEnergyInput): ThermalBridgeEnergyResult {
 	const headroom =
@@ -294,84 +326,90 @@ export function resolveThermalPlannerEnergy(input: ThermalBridgeEnergyInput): Th
 		? Math.max(0.2, Math.min(1, input.pvConfidence01))
 		: 0.7;
 
-	const fallback = (reasonDe: string): ThermalBridgeEnergyResult => ({
+	const softOnlyFallback = (reasonDe: string): ThermalBridgeEnergyResult => ({
 		plannerEnergyKwh: headroom,
-		mandatoryEnergyKwh: headroom,
-		economicHeadroomKwh: 0,
-		coversUntilNextPv: false,
+		mandatoryEnergyKwh: 0,
+		economicHeadroomKwh: headroom,
+		coversUntilNextPv: true,
+		coverUntilMs: null,
 		reasonDe,
 	});
 
+	const coverUntilMs = thermalHardCoverUntilMs(input);
 	if (
 		input.bufferTempC === null ||
 		input.minTempC === null ||
 		input.coolingRateCPerH === null ||
 		!(input.coolingRateCPerH > 0) ||
-		input.nextReliablePvMs === null ||
-		!(input.nextReliablePvMs >= input.nowMs - 60_000)
+		coverUntilMs === null ||
+		!(coverUntilMs >= input.nowMs - 60_000)
 	) {
-		return fallback("Thermal-Bridge ohne belastbare PV/Kühlrate — Contribution-Headroom.");
+		return softOnlyFallback(
+			"Thermal-Bridge ohne belastbare Kühlrate/Min/PV — optionaler Headroom (soft).",
+		);
 	}
 
-	const hoursToPv = (input.nextReliablePvMs - input.nowMs) / 3600_000;
+	const hoursToCover = (coverUntilMs - input.nowMs) / 3600_000;
 	const emptyAtKnown =
 		input.estimatedEmptyAtMs !== null &&
 		Number.isFinite(input.estimatedEmptyAtMs) &&
 		input.estimatedEmptyAtMs > input.nowMs;
 
+	const pack = (
+		mandatory: number,
+		covers: boolean,
+		reasonDe: string,
+	): ThermalBridgeEnergyResult => {
+		const m = round3(Math.max(0, mandatory));
+		const soft = round3(Math.max(0, headroom - m));
+		return {
+			plannerEnergyKwh: round3(m + soft),
+			mandatoryEnergyKwh: m,
+			economicHeadroomKwh: soft,
+			coversUntilNextPv: covers,
+			coverUntilMs,
+			reasonDe,
+		};
+	};
+
 	/*
-	 * Primär: Learning-emptyAt. Liegt emptyAt nach nextReliablePv, reicht der Puffer
-	 * bis zur PV-Gelegenheit — kein Target-Precharge-Zwang (Audit 09.08.).
+	 * emptyAt nach Cover-Horizont (Rest des laufenden PV-Fensters bzw. next PV):
+	 * Hard-Bridge 0 (+ Unsicherheitsmarge) — Target-Precharge bleibt Soft.
 	 */
-	if (emptyAtKnown && input.estimatedEmptyAtMs! >= input.nextReliablePvMs - 60_000) {
+	if (emptyAtKnown && input.estimatedEmptyAtMs! >= coverUntilMs - 60_000) {
 		const uncertaintyK =
-			conf < 0.7 ? input.coolingRateCPerH * hoursToPv * ((0.7 - conf) / 0.7) * 0.35 : 0;
-		const mandatory = Math.round(Math.max(0, uncertaintyK) * kwhPerC * 1000) / 1000;
-		return {
-			plannerEnergyKwh: mandatory,
-			mandatoryEnergyKwh: mandatory,
-			economicHeadroomKwh: 0,
-			coversUntilNextPv: true,
-			reasonDe: `emptyAt nach nächster PV — kein Target-Precharge (conf=${(conf * 100).toFixed(0)} %).`,
-		};
+			conf < 0.7
+				? input.coolingRateCPerH * Math.max(0, hoursToCover) * ((0.7 - conf) / 0.7) * 0.35
+				: 0;
+		const mandatory = uncertaintyK * kwhPerC;
+		return pack(
+			mandatory,
+			true,
+			`emptyAt nach Cover (${new Date(coverUntilMs).toISOString()}) — Hard-Bridge ~0, Precharge soft (conf=${(conf * 100).toFixed(0)} %).`,
+		);
 	}
 
-	if (emptyAtKnown && input.estimatedEmptyAtMs! < input.nextReliablePvMs) {
-		return {
-			plannerEnergyKwh: headroom,
-			mandatoryEnergyKwh: headroom,
-			economicHeadroomKwh: 0,
-			coversUntilNextPv: false,
-			reasonDe: "emptyAt vor nächster PV — voller Mindest-/Bridge-Bedarf.",
-		};
-	}
-
-	/** Fallback ohne emptyAt: Kühlrate bis PV. */
-	const tempAtPv = input.bufferTempC - input.coolingRateCPerH * hoursToPv;
+	/** emptyAt vor Cover oder ohne emptyAt: Physik bis Cover-Horizont. */
+	const tempAtCover = input.bufferTempC - input.coolingRateCPerH * Math.max(0, hoursToCover);
 	const marginK =
-		conf < 0.7 ? input.coolingRateCPerH * hoursToPv * ((0.7 - conf) / 0.7) * 0.5 : 0;
-	const covers = tempAtPv >= input.minTempC + marginK - FLOOR_EPS;
+		conf < 0.7
+			? input.coolingRateCPerH * Math.max(0, hoursToCover) * ((0.7 - conf) / 0.7) * 0.5
+			: 0;
+	const covers = tempAtCover >= input.minTempC + marginK - FLOOR_EPS;
 
 	if (covers) {
-		const uncertaintyK = marginK;
-		const mandatory = Math.round(Math.max(0, uncertaintyK) * kwhPerC * 1000) / 1000;
-		return {
-			plannerEnergyKwh: mandatory,
-			mandatoryEnergyKwh: mandatory,
-			economicHeadroomKwh: 0,
-			coversUntilNextPv: true,
-			reasonDe: `Puffer hält bis PV (~${tempAtPv.toFixed(1)} °C ≥ ${input.minTempC} °C) — kein Target-Precharge.`,
-		};
+		return pack(
+			marginK * kwhPerC,
+			true,
+			`Puffer hält bis Cover (~${tempAtCover.toFixed(1)} °C ≥ ${input.minTempC} °C) — Precharge soft.`,
+		);
 	}
 
-	const needDeltaC = input.minTempC + marginK - tempAtPv;
-	const mandatory = Math.round(Math.max(0, needDeltaC) * kwhPerC * 1000) / 1000;
-	const economic = Math.max(0, headroom - mandatory);
-	return {
-		plannerEnergyKwh: Math.max(mandatory, headroom),
-		mandatoryEnergyKwh: mandatory,
-		economicHeadroomKwh: economic,
-		coversUntilNextPv: false,
-		reasonDe: `Mindestenergie ~${mandatory.toFixed(2)} kWh bis PV (Δ${needDeltaC.toFixed(1)} K).`,
-	};
+	const needDeltaC = input.minTempC + marginK - tempAtCover;
+	const mandatory = Math.max(0, needDeltaC) * kwhPerC;
+	return pack(
+		mandatory,
+		false,
+		`Hard-Bridge ~${round3(mandatory).toFixed(2)} kWh bis Cover (Δ${needDeltaC.toFixed(1)} K); Precharge soft.`,
+	);
 }

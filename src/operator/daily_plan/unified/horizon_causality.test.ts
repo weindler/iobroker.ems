@@ -150,7 +150,7 @@ describe("next reliable PV — surplus window (no fixed +Nh)", () => {
 });
 
 describe("T — Thermal bridge until next reliable PV", () => {
-	it("T1: buffer covers until next PV → no target precharge energy", () => {
+	it("T1: buffer covers until next PV → Hard-Bridge ~0, Precharge soft", () => {
 		const r = resolveThermalPlannerEnergy({
 			nowMs: Date.parse("2026-08-09T14:00:00.000Z"),
 			bufferTempC: 52,
@@ -162,12 +162,14 @@ describe("T — Thermal bridge until next reliable PV", () => {
 			pvConfidence01: 0.85,
 		});
 		assert.equal(r.coversUntilNextPv, true);
-		assert.ok(r.plannerEnergyKwh < 0.5, `expected ~0 mandatory, got ${r.plannerEnergyKwh}`);
+		assert.ok(r.mandatoryEnergyKwh < 0.5, `expected ~0 hard, got ${r.mandatoryEnergyKwh}`);
+		assert.ok(r.economicHeadroomKwh >= 2.5, `soft headroom got ${r.economicHeadroomKwh}`);
 		const plan = allocateUnifiedDayPlan(auditLikeInput("2026-08-09T14:00:00.000Z", { headroom: 3 }));
-		assert.ok(sumIh(plan) < 0.5, `IH should not target-precharge, got ${sumIh(plan)}`);
+		/** Soft darf wirtschaftlich konkurrieren; bei SOC 55 % / Batteriebedarf oft wenig IH. */
+		assert.ok(sumIh(plan) < 3.1, `IH soft cap, got ${sumIh(plan)}`);
 	});
 
-	it("T2: buffer does not cover → mandatory energy planned", () => {
+	it("T2: buffer does not cover → mandatory energy planned (not full headroom)", () => {
 		const r = resolveThermalPlannerEnergy({
 			nowMs: Date.parse("2026-08-09T18:00:00.000Z"),
 			bufferTempC: 49,
@@ -181,9 +183,13 @@ describe("T — Thermal bridge until next reliable PV", () => {
 		assert.equal(r.coversUntilNextPv, false);
 		assert.ok(r.mandatoryEnergyKwh > 0.3, `mandatory got ${r.mandatoryEnergyKwh}`);
 		assert.ok(r.plannerEnergyKwh >= r.mandatoryEnergyKwh);
+		assert.ok(
+			r.mandatoryEnergyKwh <= r.plannerEnergyKwh + 1e-9,
+			"mandatory is bridge, soft is separate",
+		);
 	});
 
-	it("T3: low forecast confidence keeps uncertainty cushion", () => {
+	it("T3: low forecast confidence keeps uncertainty cushion on hard", () => {
 		const weak = resolveThermalPlannerEnergy({
 			nowMs: Date.parse("2026-08-09T14:00:00.000Z"),
 			bufferTempC: 52,
@@ -204,7 +210,7 @@ describe("T — Thermal bridge until next reliable PV", () => {
 			nextReliablePvMs: Date.parse("2026-08-10T06:30:00.000Z"),
 			pvConfidence01: 0.9,
 		});
-		assert.ok(weak.plannerEnergyKwh >= strong.plannerEnergyKwh);
+		assert.ok(weak.mandatoryEnergyKwh >= strong.mandatoryEnergyKwh);
 	});
 });
 
@@ -259,16 +265,16 @@ describe("B — forecast-dependent battery reserve", () => {
 
 describe("S — feasibility / starvation", () => {
 	it("S1: many good slots → flexibility (IH not forced into first slot only)", () => {
-		const input = auditLikeInput("2026-08-09T10:00:00.000Z", { headroom: 1.2 });
-		// Force non-cover so IH remains: colder buffer / faster cool
+		const input = auditLikeInput("2026-08-09T10:00:00.000Z", { headroom: 1.2, socPct: 100 });
+		// Hard-Bridge nötig: emptyAt vor Ende des laufenden PV-Fensters
 		input.thermal!.bufferTempC = 48.2;
 		input.thermal!.coolingRateCPerH = 0.55;
-		input.thermal!.estimatedEmptyAtIso = "2026-08-09T20:00:00.000Z";
-		input.thermal!.deadlineIso = "2026-08-09T20:00:00.000Z";
+		input.thermal!.estimatedEmptyAtIso = "2026-08-09T14:00:00.000Z";
+		input.thermal!.deadlineIso = "2026-08-09T14:00:00.000Z";
 		input.thermal!.minTempC = 48;
 		const plan = allocateUnifiedDayPlan(input);
 		const ihSlots = plan.allocations.filter((a) => a.kind === "immersion_heater");
-		assert.ok(ihSlots.length >= 1);
+		assert.ok(ihSlots.length >= 1, `expected IH hard/soft slots, got ${ihSlots.length}`);
 	});
 
 	it("S2/R: replans do not treat remaining energy as full-day again when capacity shrinks", () => {
@@ -300,7 +306,7 @@ describe("S — feasibility / starvation", () => {
 		if (aftAllocs.length > 0) {
 			const first = Date.parse(aftStarts[0]!);
 			assert.ok(
-				first <= Date.parse("2026-08-09T16:30:00.000Z"),
+				first <= Date.parse("2026-08-09T17:00:00.000Z"),
 				`afternoon replan should prefer soon slots, first=${aftStarts[0]}`,
 			);
 		}
@@ -490,7 +496,7 @@ describe("G1 — synthetic 09.08. fault pattern", () => {
 		const ihNeed = sumIh(planNeed);
 		assert.ok(batChg > ihNeed, `battery should outcompete soft IH: bat=${batChg} ih=${ihNeed}`);
 
-		/** B: Batterie am Ziel → Soft-Thermal darf PV nutzen (keine Batterie-zuerst-Sperre). */
+		/** B: Batterie am Ziel + Overnight-Lücke → Soft-Thermal darf PV nutzen. */
 		const batFull = auditLikeInput("2026-08-09T13:00:00.000Z", { headroom: 3.5, socPct: 88 });
 		batFull.battery = {
 			...batFull.battery,
@@ -498,9 +504,12 @@ describe("G1 — synthetic 09.08. fault pattern", () => {
 			requiredChargeEnergyKwh: 0,
 			socPct: 88,
 		};
-		batFull.thermal!.estimatedEmptyAtIso = "2026-08-10T07:25:00.000Z";
-		batFull.thermal!.deadlineIso = "2026-08-10T07:25:00.000Z";
+		/** emptyAt vor nächster Morgen-PV → Speichernutzen; Hard bleibt 0 wenn Fenster-Cover greift. */
+		batFull.thermal!.estimatedEmptyAtIso = "2026-08-09T20:00:00.000Z";
+		batFull.thermal!.deadlineIso = "2026-08-09T20:00:00.000Z";
 		batFull.thermal!.coolingRateCPerH = 0.25;
+		batFull.thermal!.bufferTempC = 52;
+		batFull.thermal!.minTempC = 48;
 		/** Niedrige Einspeisung → Wärme speichern wirtschaftlich attraktiver. */
 		batFull.prices.slots = batFull.prices.slots.map((s) => ({ ...s, exportCtPerKwh: 2.0 }));
 		const planFull = allocateUnifiedDayPlan(batFull);

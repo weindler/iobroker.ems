@@ -505,6 +505,7 @@ async function runDailyPlanTick(host, forecastPlan) {
             estimatedPowerW: (0, state_util_1.asNum)((await host.getStateAsync(ids.estimatedPowerW))?.val),
         });
     }
+    const feedInCtPerKwh = (0, from_forecast_context_1.normalizeFeedInCtPerKwh)((0, state_util_1.asNum)((await host.getStateAsync("economics.config.feed_in_ct_per_kwh"))?.val));
     const probeInput = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)({
         now,
         timezone,
@@ -530,6 +531,7 @@ async function runDailyPlanTick(host, forecastPlan) {
         vehiclePresenceVehicleKey: presenceVehicleKey,
         connectedNowOverride: wbConnected,
         passiveBatteryEnergyAvailable: passiveBatteryEnergy.available,
+        feedInCtPerKwh,
     });
     const actualSample = {
         date: plan.date,
@@ -693,6 +695,7 @@ async function runDailyPlanTick(host, forecastPlan) {
                 connectedNowOverride: wbConnected,
                 passiveBatteryEnergyAvailable: passiveBatteryEnergy.available,
                 preferImmersionLiveSurplusNow,
+                feedInCtPerKwh,
             });
             const nextGen = (lastUnifiedPlan?.generation ?? 0) + 1;
             const unifiedPlan = (0, allocate_1.allocateUnifiedDayPlan)(unifiedInputFinal, {

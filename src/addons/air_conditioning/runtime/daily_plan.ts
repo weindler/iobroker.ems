@@ -410,7 +410,7 @@ export function resolveAcUnitDailyPlanFromData(input: ResolveAcUnitDailyPlanInpu
 	}
 
 	if (merge.allocatedPowerW <= 0) {
-		allocationReasonDe = `${merge.reasonDe} Climate-Fallback aktiv.`;
+		allocationReasonDe = `${merge.reasonDe} Planner-OFF für diesen Slot — kein Climate-Fallback.`;
 	}
 
 	return {
@@ -425,8 +425,11 @@ export function resolveAcUnitDailyPlanFromData(input: ResolveAcUnitDailyPlanInpu
 		powerModelSource: expectedPower.source,
 		allocationStatus: merge.allocationStatus,
 		allocationReasonDe,
-		/** Positive allocation owns control (may still block start); 0 W → climate FSM. */
-		useDailyPlan: merge.allocatedPowerW > 0,
+		/**
+		 * Gültiger anwendbarer Unified Plan besitzt Authority — auch bei 0 W (Planner-OFF).
+		 * Climate-Fallback nur wenn Plan fehlt/ungültig/nicht anwendbar (früher return).
+		 */
+		useDailyPlan: true,
 		powerModelValid: true,
 		allocationAllowsStart,
 	};
@@ -592,6 +595,11 @@ export function evaluateAcCoolingPermission(input: AcCoolingPermissionInput): Ac
 	let allowStart = fsm.demandStart;
 	let decisionSource: AcDecisionSource = "climate_fallback";
 	let reasonDe = fsm.reasonDe;
+	/** Gültiger Plan mit 0 W = Planner-OFF — stoppt normalen Komfortlauf (nicht nur Neustarts). */
+	const plannerOff =
+		dailyPlan.useDailyPlan &&
+		dailyPlan.allocatedPowerW !== null &&
+		dailyPlan.allocatedPowerW <= 0;
 
 	if (fsm.demandStart) {
 		if (dailyPlan.useDailyPlan) {
@@ -620,7 +628,7 @@ export function evaluateAcCoolingPermission(input: AcCoolingPermissionInput): Ac
 		decisionSource,
 		reasonDe,
 		allowStart: allowStart && deviceWritesAllowed,
-		allowStop: fsm.demandStop && deviceWritesAllowed,
+		allowStop: (fsm.demandStop || plannerOff) && deviceWritesAllowed,
 		allowCleaningWrites: deviceWritesAllowed,
 		deviceWritesAllowed,
 	};

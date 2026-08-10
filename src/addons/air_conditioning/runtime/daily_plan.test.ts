@@ -122,7 +122,25 @@ describe("ac daily plan reader", () => {
 		assert.equal(r.allocatedPowerW, 800);
 	});
 
-	it("zero allocation falls back to climate FSM", () => {
+	it("C2: valid plan + 0 W allocation = Planner-OFF (no climate fallback)", () => {
+		const expected = resolveUnitExpectedPower(UNIT, undefined, NOW.getTime());
+		const r = resolveAcUnitDailyPlanFromData({
+			unitIndex: 1,
+			now: NOW,
+			timezone: TZ,
+			meta: { status: "ready", date: "2026-07-11", revision: 1, validUntil: null, timezone: TZ },
+			entries: [allocationEntry(1, 0)],
+			expectedPower: expected,
+		});
+		assert.equal(r.useDailyPlan, true);
+		assert.equal(r.dailyPlanStatus, "daily_plan_zero_allocation");
+		assert.equal(r.allocationAllowsStart, false);
+		assert.equal(r.allocatedPowerW, 0);
+		assert.match(r.allocationReasonDe, /Planner-OFF/);
+		assert.equal(/Fallback aktiv/.test(r.allocationReasonDe), false);
+	});
+
+	it("valid plan with no slot entry is also Planner-OFF (0 W authority)", () => {
 		const expected = resolveUnitExpectedPower(UNIT, undefined, NOW.getTime());
 		const r = resolveAcUnitDailyPlanFromData({
 			unitIndex: 1,
@@ -132,10 +150,9 @@ describe("ac daily plan reader", () => {
 			entries: [],
 			expectedPower: expected,
 		});
-		assert.equal(r.useDailyPlan, false);
+		assert.equal(r.useDailyPlan, true);
 		assert.equal(r.dailyPlanStatus, "daily_plan_zero_allocation");
 		assert.equal(r.allocationAllowsStart, false);
-		assert.match(r.allocationReasonDe, /Climate-Fallback/);
 	});
 
 	it("blocks start when allocation below configured (config-source) power", () => {
@@ -214,7 +231,7 @@ describe("ac daily plan reader", () => {
 		assert.equal(perm.decisionSource, "daily_plan");
 	});
 
-	it("falls back on wrong date", () => {
+	it("C4: falls back when plan not applicable (wrong date)", () => {
 		const expected = resolveUnitExpectedPower(UNIT, undefined, NOW.getTime());
 		const r = resolveAcUnitDailyPlanFromData({
 			unitIndex: 1,
@@ -226,6 +243,49 @@ describe("ac daily plan reader", () => {
 		});
 		assert.equal(r.useDailyPlan, false);
 		assert.match(r.allocationReasonDe, /Klima-Fallback/);
+		const perm = evaluateAcCoolingPermission({
+			unitEnabled: true,
+			governanceEnabled: true,
+			addonEnabled: true,
+			cleaningActive: false,
+			fsm: fsmDemandStart(),
+			dailyPlan: r,
+			startRetryReady: true,
+			stopRetryReady: true,
+		});
+		assert.equal(perm.allowStart, true);
+		assert.equal(perm.decisionSource, "climate_fallback");
+	});
+
+	it("C5: cleaning remains independent of planner comfort authority", () => {
+		const expected = resolveUnitExpectedPower(UNIT, undefined, NOW.getTime());
+		const dailyPlan = resolveAcUnitDailyPlanFromData({
+			unitIndex: 1,
+			now: NOW,
+			timezone: TZ,
+			meta: { status: "ready", date: "2026-07-11", revision: 1, validUntil: null, timezone: TZ },
+			entries: [allocationEntry(1, 0)],
+			expectedPower: expected,
+		});
+		const perm = evaluateAcCoolingPermission({
+			unitEnabled: true,
+			governanceEnabled: true,
+			addonEnabled: true,
+			cleaningActive: true,
+			fsm: {
+				state: "cleaning",
+				demandStart: false,
+				demandStop: false,
+				modePurpose: "cooling",
+				reasonDe: "Reinigung aktiv — Kühlung gesperrt.",
+			},
+			dailyPlan,
+			startRetryReady: true,
+			stopRetryReady: true,
+		});
+		assert.equal(perm.decisionSource, "cleaning");
+		assert.equal(perm.allowStart, false);
+		assert.equal(perm.allowCleaningWrites, true);
 	});
 
 	it("uses configured power when stats missing", () => {
@@ -288,7 +348,7 @@ describe("ac cooling permission", () => {
 		assert.equal(perm.decisionSource, "daily_plan");
 	});
 
-	it("climate fallback on zero allocation with thermal demand", () => {
+	it("C1: valid plan + allocation > 0 with demand → daily_plan start", () => {
 		const fsm = fsmDemandStart();
 		const expected = resolveUnitExpectedPower(UNIT, undefined, NOW.getTime());
 		const dailyPlan = resolveAcUnitDailyPlanFromData({
@@ -296,10 +356,9 @@ describe("ac cooling permission", () => {
 			now: NOW,
 			timezone: TZ,
 			meta: { status: "ready", date: "2026-07-11", revision: 1, validUntil: null, timezone: TZ },
-			entries: [],
+			entries: [allocationEntry(1, 800)],
 			expectedPower: expected,
 		});
-		assert.equal(dailyPlan.useDailyPlan, false);
 		const perm = evaluateAcCoolingPermission({
 			unitEnabled: true,
 			governanceEnabled: true,
@@ -311,10 +370,72 @@ describe("ac cooling permission", () => {
 			stopRetryReady: true,
 		});
 		assert.equal(perm.allowStart, true);
-		assert.equal(perm.decisionSource, "climate_fallback");
+		assert.equal(perm.decisionSource, "daily_plan");
 	});
 
-	it("climate fallback when plan missing", () => {
+	it("C2: valid 0 W plan + room above on-temp → no climate_fallback start", () => {
+		const fsm = fsmDemandStart();
+		assert.equal(fsm.demandStart, true);
+		const expected = resolveUnitExpectedPower(UNIT, undefined, NOW.getTime());
+		const dailyPlan = resolveAcUnitDailyPlanFromData({
+			unitIndex: 1,
+			now: NOW,
+			timezone: TZ,
+			meta: { status: "ready", date: "2026-07-11", revision: 1, validUntil: null, timezone: TZ },
+			entries: [allocationEntry(1, 0)],
+			expectedPower: expected,
+		});
+		assert.equal(dailyPlan.useDailyPlan, true);
+		const perm = evaluateAcCoolingPermission({
+			unitEnabled: true,
+			governanceEnabled: true,
+			addonEnabled: true,
+			cleaningActive: false,
+			fsm,
+			dailyPlan,
+			startRetryReady: true,
+			stopRetryReady: true,
+		});
+		assert.equal(perm.allowStart, false);
+		assert.equal(perm.decisionSource, "daily_plan");
+		assert.equal(perm.allowStop, true);
+	});
+
+	it("C6: valid 0 W plan stops already-running comfort cooling", () => {
+		const fsm = evaluateAcUnitFsm({
+			now: NOW,
+			addonEnabled: true,
+			unit: UNIT,
+			roomTempC: 26,
+			roomHumidityPct: 50,
+			feedbackSwitchRaw: "on",
+			cleaningActive: false,
+		});
+		const expected = resolveUnitExpectedPower(UNIT, undefined, NOW.getTime());
+		const dailyPlan = resolveAcUnitDailyPlanFromData({
+			unitIndex: 1,
+			now: NOW,
+			timezone: TZ,
+			meta: { status: "ready", date: "2026-07-11", revision: 1, validUntil: null, timezone: TZ },
+			entries: [allocationEntry(1, 0)],
+			expectedPower: expected,
+		});
+		const perm = evaluateAcCoolingPermission({
+			unitEnabled: true,
+			governanceEnabled: true,
+			addonEnabled: true,
+			cleaningActive: false,
+			fsm,
+			dailyPlan,
+			startRetryReady: true,
+			stopRetryReady: true,
+		});
+		assert.equal(perm.allowStart, false);
+		assert.equal(perm.allowStop, true);
+		assert.equal(perm.decisionSource, "daily_plan");
+	});
+
+	it("C3: climate fallback when plan missing", () => {
 		const fsm = fsmDemandStart();
 		const expected = resolveUnitExpectedPower(UNIT, undefined, NOW.getTime());
 		const dailyPlan = resolveAcUnitDailyPlanFromData({

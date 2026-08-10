@@ -128,7 +128,18 @@ export type UnifiedForecastContext = {
 	passiveBatteryEnergyAvailable?: boolean | null;
 	/** B1: IH-NOW bei stabilem Live-Überschuss bevorzugen. */
 	preferImmersionLiveSurplusNow?: boolean | null;
+	/**
+	 * Einspeisevergütung aus `economics.config.feed_in_ct_per_kwh` (ct/kWh).
+	 * null/ungültig → exportCtPerKwh bleibt null (Scorer-Fallback 6 ct).
+	 */
+	feedInCtPerKwh?: number | null;
 };
+
+/** ct/kWh → Planner; ungültig/negativ → null (kein NaN in Allocation). */
+export function normalizeFeedInCtPerKwh(raw: unknown): number | null {
+	if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0) return null;
+	return raw;
+}
 
 /**
  * Baut UnifiedDayPlannerInput aus dem bestehenden ForecastPlan-Snapshot.
@@ -199,10 +210,12 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 			energyKwh: slotEnergyKwh(effective),
 		};
 	});
+	const exportCtPerKwh = normalizeFeedInCtPerKwh(ctx.feedInCtPerKwh ?? null);
 	const priceSlots = ctx.forecastPlan.slots.map((s) => ({
 		slot: s.slot,
 		importCtPerKwh: s.gridPriceCtPerKwh,
-		exportCtPerKwh: null as number | null, // keine produktive Exporttarif-Quelle
+		/** ct/kWh — gleiche Einheit wie importCt; Scorer: exportCt * 0.01 → €/kWh. */
+		exportCtPerKwh,
 		gridImportAllowed: s.gridImportAllowed,
 	}));
 

@@ -299,7 +299,7 @@ function resolveAcUnitDailyPlanFromData(input) {
         allocationReasonDe = `Allocation ${merge.allocatedPowerW} W kleiner als konfigurierte Unit-Leistung ${expectedPower.powerW} W.`;
     }
     if (merge.allocatedPowerW <= 0) {
-        allocationReasonDe = `${merge.reasonDe} Climate-Fallback aktiv.`;
+        allocationReasonDe = `${merge.reasonDe} Planner-OFF für diesen Slot — kein Climate-Fallback.`;
     }
     return {
         unitIndex,
@@ -313,8 +313,11 @@ function resolveAcUnitDailyPlanFromData(input) {
         powerModelSource: expectedPower.source,
         allocationStatus: merge.allocationStatus,
         allocationReasonDe,
-        /** Positive allocation owns control (may still block start); 0 W → climate FSM. */
-        useDailyPlan: merge.allocatedPowerW > 0,
+        /**
+         * Gültiger anwendbarer Unified Plan besitzt Authority — auch bei 0 W (Planner-OFF).
+         * Climate-Fallback nur wenn Plan fehlt/ungültig/nicht anwendbar (früher return).
+         */
+        useDailyPlan: true,
         powerModelValid: true,
         allocationAllowsStart,
     };
@@ -430,6 +433,10 @@ function evaluateAcCoolingPermission(input) {
     let allowStart = fsm.demandStart;
     let decisionSource = "climate_fallback";
     let reasonDe = fsm.reasonDe;
+    /** Gültiger Plan mit 0 W = Planner-OFF — stoppt normalen Komfortlauf (nicht nur Neustarts). */
+    const plannerOff = dailyPlan.useDailyPlan &&
+        dailyPlan.allocatedPowerW !== null &&
+        dailyPlan.allocatedPowerW <= 0;
     if (fsm.demandStart) {
         if (dailyPlan.useDailyPlan) {
             decisionSource = "daily_plan";
@@ -461,7 +468,7 @@ function evaluateAcCoolingPermission(input) {
         decisionSource,
         reasonDe,
         allowStart: allowStart && deviceWritesAllowed,
-        allowStop: fsm.demandStop && deviceWritesAllowed,
+        allowStop: (fsm.demandStop || plannerOff) && deviceWritesAllowed,
         allowCleaningWrites: deviceWritesAllowed,
         deviceWritesAllowed,
     };

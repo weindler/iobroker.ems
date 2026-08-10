@@ -9,7 +9,10 @@ import type { OperatorContributorRef } from "../../types";
 import { allocateUnifiedDayPlan } from "./allocate";
 import { applyUnifiedIhAcAuthority } from "./authority";
 import { buildUnifiedIhAcDispatchPublish } from "./dispatch_bridge";
-import { buildUnifiedInputFromForecastContext } from "./from_forecast_context";
+import {
+	buildUnifiedInputFromForecastContext,
+	normalizeFeedInCtPerKwh,
+} from "./from_forecast_context";
 import { REASON } from "./reason_codes";
 import { buildSlots } from "./fixtures";
 
@@ -61,6 +64,8 @@ function realisticSnapshot(overrides?: {
 	vehicleSoc?: number | null;
 	omitBattery?: boolean;
 	omitPv?: boolean;
+	/** ct/kWh aus economics.config.feed_in_ct_per_kwh; weglassen = fehlende Config. */
+	feedInCtPerKwh?: number | null;
 }) {
 	// 4 Stunden → 16×15-Min-Slots (kompaktes Real-Snapshot-Fixture)
 	const slots = buildSlots("2026-08-07T08:00:00.000Z", 4);
@@ -196,6 +201,7 @@ function realisticSnapshot(overrides?: {
 		batteryMaxSocPct: 100,
 		roomTemps: { 1: 27 },
 		contributionRevision: 99,
+		feedInCtPerKwh: o.feedInCtPerKwh,
 	};
 }
 
@@ -227,10 +233,38 @@ describe("REAL-002 Real Tibber Mapping", () => {
 		assert.equal(input.prices.slots.length, 16);
 		assert.equal(input.prices.slots[2].importCtPerKwh, null);
 		assert.equal(input.prices.slots[3].importCtPerKwh, 8);
+		// Ohne feed_in Config bleibt export null → Scorer-Fallback 6 ct (nicht verdrahtet als 0)
 		assert.ok(input.prices.slots.every((s) => s.exportCtPerKwh === null));
 		// Reihenfolge = Slot-Zeit
 		for (let i = 1; i < input.prices.slots.length; i++) {
 			assert.ok(input.prices.slots[i].slot.startIso > input.prices.slots[i - 1].slot.startIso);
+		}
+	});
+
+	it("A: feed_in 9.3 ct/kWh reaches unified exportCtPerKwh (no silent € conversion)", () => {
+		assert.equal(normalizeFeedInCtPerKwh(9.3), 9.3);
+		const input = buildUnifiedInputFromForecastContext(realisticSnapshot({ feedInCtPerKwh: 9.3 }));
+		assert.ok(input.prices.slots.every((s) => s.exportCtPerKwh === 9.3));
+		const plan = allocateUnifiedDayPlan(input);
+		assert.equal(plan.reasonCodes.includes(REASON.EXPORT_TARIFF_UNKNOWN), false);
+	});
+
+	it("B: missing feed_in keeps export null and EXPORT_TARIFF_UNKNOWN", () => {
+		const input = buildUnifiedInputFromForecastContext(realisticSnapshot());
+		assert.ok(input.prices.slots.every((s) => s.exportCtPerKwh === null));
+		const plan = allocateUnifiedDayPlan(input);
+		assert.ok(plan.reasonCodes.includes(REASON.EXPORT_TARIFF_UNKNOWN));
+	});
+
+	it("C: invalid feed_in (NaN/negative/non-number) → null, no NaN in context", () => {
+		assert.equal(normalizeFeedInCtPerKwh(Number.NaN), null);
+		assert.equal(normalizeFeedInCtPerKwh(-1), null);
+		assert.equal(normalizeFeedInCtPerKwh("9.3"), null);
+		assert.equal(normalizeFeedInCtPerKwh(Infinity), null);
+		for (const bad of [Number.NaN, -0.1, null] as const) {
+			const input = buildUnifiedInputFromForecastContext(realisticSnapshot({ feedInCtPerKwh: bad }));
+			assert.ok(input.prices.slots.every((s) => s.exportCtPerKwh === null));
+			assert.ok(input.prices.slots.every((s) => !Number.isNaN(s.exportCtPerKwh as number)));
 		}
 	});
 });

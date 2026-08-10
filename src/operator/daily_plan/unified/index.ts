@@ -28,6 +28,7 @@ export {
 } from "./authority";
 export {
 	buildUnifiedInputFromForecastContext,
+	normalizeFeedInCtPerKwh,
 	summarizeUnifiedDayPlanForReason,
 } from "./from_forecast_context";
 export { unifiedPlanCadenceDigest } from "./cadence";

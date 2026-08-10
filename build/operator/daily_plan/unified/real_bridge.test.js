@@ -170,6 +170,7 @@ function realisticSnapshot(overrides) {
         batteryMaxSocPct: 100,
         roomTemps: { 1: 27 },
         contributionRevision: 99,
+        feedInCtPerKwh: o.feedInCtPerKwh,
     };
 }
 (0, node_test_1.describe)("REAL-001 Real PV Mapping", () => {
@@ -199,10 +200,35 @@ function realisticSnapshot(overrides) {
         strict_1.default.equal(input.prices.slots.length, 16);
         strict_1.default.equal(input.prices.slots[2].importCtPerKwh, null);
         strict_1.default.equal(input.prices.slots[3].importCtPerKwh, 8);
+        // Ohne feed_in Config bleibt export null → Scorer-Fallback 6 ct (nicht verdrahtet als 0)
         strict_1.default.ok(input.prices.slots.every((s) => s.exportCtPerKwh === null));
         // Reihenfolge = Slot-Zeit
         for (let i = 1; i < input.prices.slots.length; i++) {
             strict_1.default.ok(input.prices.slots[i].slot.startIso > input.prices.slots[i - 1].slot.startIso);
+        }
+    });
+    (0, node_test_1.it)("A: feed_in 9.3 ct/kWh reaches unified exportCtPerKwh (no silent € conversion)", () => {
+        strict_1.default.equal((0, from_forecast_context_1.normalizeFeedInCtPerKwh)(9.3), 9.3);
+        const input = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(realisticSnapshot({ feedInCtPerKwh: 9.3 }));
+        strict_1.default.ok(input.prices.slots.every((s) => s.exportCtPerKwh === 9.3));
+        const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);
+        strict_1.default.equal(plan.reasonCodes.includes(reason_codes_1.REASON.EXPORT_TARIFF_UNKNOWN), false);
+    });
+    (0, node_test_1.it)("B: missing feed_in keeps export null and EXPORT_TARIFF_UNKNOWN", () => {
+        const input = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(realisticSnapshot());
+        strict_1.default.ok(input.prices.slots.every((s) => s.exportCtPerKwh === null));
+        const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);
+        strict_1.default.ok(plan.reasonCodes.includes(reason_codes_1.REASON.EXPORT_TARIFF_UNKNOWN));
+    });
+    (0, node_test_1.it)("C: invalid feed_in (NaN/negative/non-number) → null, no NaN in context", () => {
+        strict_1.default.equal((0, from_forecast_context_1.normalizeFeedInCtPerKwh)(Number.NaN), null);
+        strict_1.default.equal((0, from_forecast_context_1.normalizeFeedInCtPerKwh)(-1), null);
+        strict_1.default.equal((0, from_forecast_context_1.normalizeFeedInCtPerKwh)("9.3"), null);
+        strict_1.default.equal((0, from_forecast_context_1.normalizeFeedInCtPerKwh)(Infinity), null);
+        for (const bad of [Number.NaN, -0.1, null]) {
+            const input = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(realisticSnapshot({ feedInCtPerKwh: bad }));
+            strict_1.default.ok(input.prices.slots.every((s) => s.exportCtPerKwh === null));
+            strict_1.default.ok(input.prices.slots.every((s) => !Number.isNaN(s.exportCtPerKwh)));
         }
     });
 });

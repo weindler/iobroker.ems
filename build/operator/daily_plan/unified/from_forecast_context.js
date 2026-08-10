@@ -9,7 +9,7 @@
  * Wallbox/Battery: Planung/Simulation — kein Unified-Live-Takeover.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.summarizeUnifiedDayPlanForReason = exports.buildUnifiedInputFromForecastContext = void 0;
+exports.summarizeUnifiedDayPlanForReason = exports.buildUnifiedInputFromForecastContext = exports.normalizeFeedInCtPerKwh = void 0;
 const contribution_ids_1 = require("../../contribution_ids");
 const quality_1 = require("../../quality");
 const flex_demand_1 = require("../../contributions/flexible/flex_demand");
@@ -63,6 +63,13 @@ function biasPctFromRawCorrected(raw, corrected) {
         return null;
     return Math.round(((corrected - raw) / raw) * 1000) / 10;
 }
+/** ct/kWh → Planner; ungültig/negativ → null (kein NaN in Allocation). */
+function normalizeFeedInCtPerKwh(raw) {
+    if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0)
+        return null;
+    return raw;
+}
+exports.normalizeFeedInCtPerKwh = normalizeFeedInCtPerKwh;
 /**
  * Baut UnifiedDayPlannerInput aus dem bestehenden ForecastPlan-Snapshot.
  * Keine parallelen 30-State-Reads — Contributions + optionale Live-Overrides.
@@ -125,10 +132,12 @@ function buildUnifiedInputFromForecastContext(ctx) {
             energyKwh: slotEnergyKwh(effective),
         };
     });
+    const exportCtPerKwh = normalizeFeedInCtPerKwh(ctx.feedInCtPerKwh ?? null);
     const priceSlots = ctx.forecastPlan.slots.map((s) => ({
         slot: s.slot,
         importCtPerKwh: s.gridPriceCtPerKwh,
-        exportCtPerKwh: null, // keine produktive Exporttarif-Quelle
+        /** ct/kWh — gleiche Einheit wie importCt; Scorer: exportCt * 0.01 → €/kWh. */
+        exportCtPerKwh,
         gridImportAllowed: s.gridImportAllowed,
     }));
     const rawToday = num(pvD, "rawTodayKwh");

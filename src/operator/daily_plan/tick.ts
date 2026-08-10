@@ -40,6 +40,7 @@ import { applyUnifiedDayAuthority } from "./unified/authority";
 import { buildUnifiedDispatchPublish } from "./unified/dispatch_bridge";
 import {
 	buildUnifiedInputFromForecastContext,
+	normalizeFeedInCtPerKwh,
 	summarizeUnifiedDayPlanForReason,
 } from "./unified/from_forecast_context";
 import { unifiedPlanCadenceDigest } from "./unified/cadence";
@@ -566,6 +567,9 @@ export async function runDailyPlanTick(
 		});
 	}
 
+	const feedInCtPerKwh = normalizeFeedInCtPerKwh(
+		asNum((await host.getStateAsync("economics.config.feed_in_ct_per_kwh"))?.val),
+	);
 	const probeInput = buildUnifiedInputFromForecastContext({
 		now,
 		timezone,
@@ -591,6 +595,7 @@ export async function runDailyPlanTick(
 		vehiclePresenceVehicleKey: presenceVehicleKey,
 		connectedNowOverride: wbConnected,
 		passiveBatteryEnergyAvailable: passiveBatteryEnergy.available,
+		feedInCtPerKwh,
 	});
 
 	const actualSample: PlanActualSample = {
@@ -773,6 +778,7 @@ export async function runDailyPlanTick(
 				connectedNowOverride: wbConnected,
 				passiveBatteryEnergyAvailable: passiveBatteryEnergy.available,
 				preferImmersionLiveSurplusNow,
+				feedInCtPerKwh,
 			});
 
 			const nextGen = (lastUnifiedPlan?.generation ?? 0) + 1;

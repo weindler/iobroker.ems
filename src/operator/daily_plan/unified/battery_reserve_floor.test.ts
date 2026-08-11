@@ -319,12 +319,17 @@ describe("Beta-004 flex — Thermal aus Batterie bei kritischer Deadline", () =>
 		input.thermal = {
 			...input.thermal!,
 			bufferTempC: 45,
+			boilerTempC: 45,
+			minTempC: 44,
+			boilerMinTempC: 44,
 			headroomEnergyKwh: 3.5,
 			availablePowerW: 1700,
 			minPowerW: 1700,
 			deadlineIso: emptyAt,
 			estimatedEmptyAtIso: emptyAt,
 			emptyAtSource: "estimated",
+			boilerEmptyAtUsable: true,
+			coolingRateCPerH: 0.8,
 			nightBridgeActive: true,
 		};
 		const plan = allocateUnifiedDayPlan(input);

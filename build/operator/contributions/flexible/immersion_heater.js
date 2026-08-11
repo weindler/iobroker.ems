@@ -35,6 +35,7 @@ function emptyAtSourceOf(learning) {
         return "estimated";
     return null;
 }
+/** Puffer-Learning-Details — keine Hard-Deadline-Felder (estimatedEmptyAt / emptyAtPlanningUsable). */
 function thermalLearningDetails(input) {
     const learning = input.thermalLearning ?? null;
     return {
@@ -45,9 +46,7 @@ function thermalLearningDetails(input) {
         coolingConstantPerH: learning?.coolingConstantPerH ?? null,
         coolingAsymptoteC: learning?.coolingAsymptoteC ?? null,
         estimatedRemainingHours: learning?.estimatedRemainingHours ?? null,
-        estimatedEmptyAt: learning?.estimatedEmptyAt ?? null,
-        emptyAtSource: emptyAtSourceOf(learning),
-        emptyAtPlanningUsable: (0, thermal_empty_at_1.thermalEmptyAtUsableForPlanning)(learning),
+        bufferEstimatedEmptyAt: learning?.estimatedEmptyAt ?? null,
         thermalLearningModel: (0, thermal_empty_at_1.hasCycleCoolingModel)(learning)
             ? "cycle"
             : (0, thermal_empty_at_1.hasNewtonEmptyAtModel)(learning)
@@ -87,11 +86,16 @@ function buildImmersionMandatoryContribution(input) {
         forecastModeEnabled: input.forecastModeEnabled,
         aiOptimizationAllowed: input.aiOptimizationAllowed,
     });
+    const boilerTemp = input.boilerTempC ?? null;
+    const boilerMin = input.config.boilerMinTempC;
+    const hygieneDue = input.hygieneDue === true;
     const mandatoryReason = input.thermalMode === "force"
         ? "Betreiberbefehl force — Pflichtbedarf."
-        : input.bufferTempC !== null && input.bufferTempC < input.config.planningMinTempC
-            ? `Puffer ${(0, types_2.round3)(input.bufferTempC)} °C unter Pflicht-Untergrenze ${input.config.planningMinTempC} °C.`
-            : null;
+        : hygieneDue
+            ? input.hygieneReasonDe ?? "Hygiene-Pflicht (Boiler)."
+            : boilerTemp !== null && boilerTemp < boilerMin
+                ? `Boiler ${(0, types_2.round3)(boilerTemp)} °C unter Mindesttemperatur ${boilerMin} °C.`
+                : null;
     const participation = (0, types_2.evaluateParticipation)({
         addonEnabled: input.addonEnabled,
         governanceEnabled: input.governanceEnabled,
@@ -101,7 +105,8 @@ function buildImmersionMandatoryContribution(input) {
         lockout: input.lockout,
         globalModeOff: input.globalModeOff,
         addonExecutionOff: input.addonExecutionOff,
-        telemetryValid: input.bufferTempC !== null,
+        /** Soft/Safety braucht Puffer; Hard braucht Boiler — Participation erlaubt wenn eines da. */
+        telemetryValid: input.bufferTempC !== null || boilerTemp !== null,
     });
     const mandatory = mandatoryReason !== null;
     const maxW = maxStagePowerW(input.config);
@@ -109,10 +114,15 @@ function buildImmersionMandatoryContribution(input) {
     const enabled = mandatory && participation.allowed && !input.globalModeOff;
     const mandatoryTargetC = input.thermalMode === "force"
         ? input.config.planningMaxTempC
-        : input.config.planningMinTempC;
-    const requiredEnergyKwh = mandatory && input.bufferTempC !== null && maxW !== null
-        ? (0, flex_demand_1.estimateImmersionRequiredEnergyKwh)(input.bufferTempC, mandatoryTargetC, maxW, learningMargin(input))
-        : null;
+        : hygieneDue
+            ? input.config.hygieneTargetTempC
+            : boilerMin;
+    const energyFromTemp = boilerTemp !== null ? boilerTemp : null;
+    const requiredEnergyKwh = mandatory && energyFromTemp !== null && maxW !== null
+        ? (0, flex_demand_1.estimateImmersionRequiredEnergyKwh)(energyFromTemp, mandatoryTargetC, maxW, learningMargin(input))
+        : hygieneDue
+            ? (input.hygieneMandatoryKwh ?? null)
+            : null;
     const quality = (0, quality_1.operatorQuality)(!mandatory ? "disabled" : enabled ? "valid" : participation.status, mandatory ? (mandatoryReason ?? "") : "Kein Pflichtbedarf.");
     return (0, types_1.baseContribution)(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_MANDATORY, (0, contributor_1.addonContributorRef)("immersion_heater"), "consume", ["demand_flex", "dispatch"], {
         generatedAt,
@@ -125,7 +135,15 @@ function buildImmersionMandatoryContribution(input) {
         reasonDe: mandatory ? (mandatoryReason ?? "") : "Kein Pflichtbedarf für Heizstab.",
         details: {
             bufferTempC: input.bufferTempC,
-            mandatoryMinTempC: input.config.planningMinTempC,
+            boilerTempC: boilerTemp,
+            boilerMinTempC: boilerMin,
+            mandatoryMinTempC: boilerMin,
+            planningMaxTempC: input.config.planningMaxTempC,
+            hygieneTargetTempC: input.config.hygieneTargetTempC,
+            hygieneDue,
+            hygieneMandatoryKwh: input.hygieneMandatoryKwh ?? null,
+            hygieneReasonDe: input.hygieneReasonDe ?? null,
+            boilerSensorDegraded: input.boilerSensorDegraded === true,
             targetTempC: target.targetTempC,
             targetReasonDe: target.targetReasonDe,
             requiredEnergyKwh,
@@ -293,19 +311,20 @@ function buildImmersionFlexibleContribution(input) {
         input.bufferTempC !== null;
     const quality = (0, quality_1.operatorQuality)(status, reasonDe);
     /*
-     * Deadline für Unified:
-     * 1) Nachtbrücke (empty_at vor Morgen)
-     * 2) sonst empty_at wenn Planung aktiv und Quelle usable (learned/estimated) —
-     *    nicht nur Near-Floor: Vorladen vor Leerzeit ist strategisch.
+     * Soft-Beitrag: keine Hard-Deadline.
+     * Buffer-emptyAt / Nachtbrücke dürfen Soft-Ziel anheben, aber NICHT
+     * immersion_heater Hard-Deadline setzen (I4).
+     * Boiler-emptyAt nur in Details → Unified Hard-Consumer.
      */
-    const planningDeadlineIso = enabled && nightBridge?.active
-        ? nightBridge.deadlineIso
-        : enabled && (0, thermal_empty_at_1.thermalEmptyAtUsableForPlanning)(input.thermalLearning)
-            ? input.thermalLearning.estimatedEmptyAt
-            : null;
-    if (enabled && planningDeadlineIso && !nightBridge?.active) {
-        const src = emptyAtSourceOf(input.thermalLearning);
-        reasonDe = `${reasonDe} Puffer voraussichtlich leer ${planningDeadlineIso} (${src ?? "unknown"}).`;
+    const boilerLearning = input.boilerLearning ?? null;
+    const boilerEmptyUsable = (0, thermal_empty_at_1.thermalEmptyAtUsableForPlanning)(boilerLearning);
+    const boilerEstimatedEmptyAt = boilerEmptyUsable ? boilerLearning.estimatedEmptyAt : null;
+    const boilerEmptyAtSource = emptyAtSourceOf(boilerLearning);
+    if (enabled && input.thermalLearning?.estimatedEmptyAt) {
+        reasonDe = `${reasonDe} Puffer-Learning nur Soft (kein Hard-Deadline).`;
+    }
+    if (boilerEstimatedEmptyAt) {
+        reasonDe = `${reasonDe} Boiler-Reichweite ${boilerEstimatedEmptyAt} (${boilerEmptyAtSource ?? "unknown"}).`;
     }
     return (0, types_1.baseContribution)(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, (0, contributor_1.addonContributorRef)("immersion_heater"), "consume", ["demand_flex", "dispatch"], {
         generatedAt,
@@ -314,15 +333,33 @@ function buildImmersionFlexibleContribution(input) {
         enabled,
         flexible: true,
         gridEligible: false,
-        deadlineIso: planningDeadlineIso,
+        /** Soft: keine Hard-Deadline aus Buffer. */
+        deadlineIso: null,
         quality,
         reasonDe,
         details: {
+            ...thermalLearningDetails(input),
             bufferTempC: input.bufferTempC,
+            boilerTempC: input.boilerTempC ?? null,
+            boilerMinTempC: input.config.boilerMinTempC,
+            boilerSensorDegraded: input.boilerSensorDegraded === true,
             targetTempC: effectiveTargetTempC,
             forecastTargetTempC: target.targetTempC,
             planningMinTempC: input.config.planningMinTempC,
-            mandatoryMinTempC: input.config.planningMinTempC,
+            planningMaxTempC: input.config.planningMaxTempC,
+            mandatoryMinTempC: input.config.boilerMinTempC,
+            hygieneTargetTempC: input.config.hygieneTargetTempC,
+            hygieneDue: input.hygieneDue === true,
+            hygieneMandatoryKwh: input.hygieneMandatoryKwh ?? null,
+            hygieneReasonDe: input.hygieneReasonDe ?? null,
+            /** Buffer-emptyAt nur Explain — nie Hard. */
+            bufferEstimatedEmptyAt: input.thermalLearning?.estimatedEmptyAt ?? null,
+            /** Boiler-emptyAt für Hard-Deadline (nur wenn usable). */
+            boilerEstimatedEmptyAt,
+            estimatedEmptyAt: boilerEstimatedEmptyAt,
+            emptyAtSource: boilerEmptyAtSource,
+            emptyAtPlanningUsable: boilerEmptyUsable,
+            boilerCoolingRateCPerHAvg: boilerLearning?.coolingRateCPerHAvg ?? null,
             targetReasonDe: [
                 target.targetReasonDe,
                 nightBridge?.active ? nightBridge.reasonDe : null,
@@ -347,7 +384,6 @@ function buildImmersionFlexibleContribution(input) {
             nightBridgeShortfallHours: nightBridge?.shortfallHours ?? null,
             pvPrechargeActive: pvPrecharge?.active === true,
             pvPrechargeExtraK: pvPrecharge?.prechargeExtraK ?? null,
-            ...thermalLearningDetails(input),
         },
         slots: (0, flex_demand_1.buildFlexibleDemandSlot)({
             generatedAt,

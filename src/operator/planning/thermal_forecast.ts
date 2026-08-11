@@ -8,7 +8,7 @@ export interface ThermalForecastInput {
 	pvBiasStatus: string | null;
 	forecastModeEnabled: boolean;
 	/**
-	 * Reserviert für eine zukünftige echte KI-Zieltemperatur. Aktuell (v0.1.190) liefert die KI
+	 * Reserviert für eine zukünftige echte KI-Zieltemperatur. Aktuell liefert die KI
 	 * kein Tagesziel — dieses Feld beeinflusst `resolveThermalForecastTarget` bewusst nicht.
 	 */
 	aiOptimizationAllowed: boolean;
@@ -20,42 +20,48 @@ export interface ThermalForecastResult {
 	forecastActive: boolean;
 }
 
-function targetFromFraction(config: ImmersionDeviceConfig, fraction: number): number {
-	const span = config.planningMaxTempC - config.planningMinTempC;
-	return Math.round((config.planningMinTempC + span * fraction) * 10) / 10;
+/**
+ * Soft-Pufferziel zwischen aktuellem Puffer und Puffer-Max.
+ * planningMinTempC ist kein Warmwasser-Hard und kein tägliches Boiler-Hochheizen.
+ */
+function softFloorC(config: ImmersionDeviceConfig, bufferTempC: number | null): number {
+	if (bufferTempC !== null && Number.isFinite(bufferTempC)) {
+		return Math.min(config.planningMaxTempC, Math.max(0, bufferTempC));
+	}
+	/** Ohne Sensor: legacy Soft-Floor nur als Span-Basis, nie Hard. */
+	return config.planningMinTempC;
 }
 
-function clampTarget(config: ImmersionDeviceConfig, targetC: number): number {
-	return Math.min(config.planningMaxTempC, Math.max(config.planningMinTempC, targetC));
+function targetFromFraction(
+	config: ImmersionDeviceConfig,
+	fraction: number,
+	bufferTempC: number | null,
+): number {
+	const floor = softFloorC(config, bufferTempC);
+	const span = config.planningMaxTempC - floor;
+	if (span <= 0) return config.planningMaxTempC;
+	return Math.round((floor + span * fraction) * 10) / 10;
+}
+
+function clampSoftTarget(config: ImmersionDeviceConfig, bufferTempC: number | null, targetC: number): number {
+	const floor = softFloorC(config, bufferTempC);
+	return Math.min(config.planningMaxTempC, Math.max(floor, targetC));
 }
 
 /**
- * Regelbasiertes Tagesziel (Phase B) — läuft unabhängig von der KI-Governance-Freigabe.
- *
- * `aiOptimizationAllowed` schaltet hier absichtlich nichts um: die KI liefert (Stand v0.1.190)
- * ausschließlich Slot-Präferenzen für den reinen Beobachtungs-Plan-Vergleich (`src/ai/compare/`),
- * nie ein eigenes Tagesziel. Solange keine echte KI-Zieltemperatur existiert, muss der bewährte
- * PV-Forecast (moderates Ziel bei ähnlicher PV-Prognose morgen) weiterlaufen — sonst heizt der
- * Heizstab bei aktivierter KI-Freigabe dauerhaft auf die Planungsobergrenze und erzeugt unnötige
- * Wärmeverluste, ohne dass die KI dafür etwas beigetragen hätte.
+ * Regelbasiertes Soft-Tagesziel für den Puffer (Phase B).
+ * Boiler wird hier nicht künstlich hochgeheizt — nur Puffer Soft zwischen Ist und Max.
  */
 export function resolveThermalForecastTarget(input: ThermalForecastInput): ThermalForecastResult {
 	const { config } = input;
 	const max = config.planningMaxTempC;
+	const buffer = input.bufferTempC;
 
 	if (!input.forecastModeEnabled) {
 		return {
 			targetTempC: max,
-			targetReasonDe: "Forecast-Modus aus — Ziel = Planungsobergrenze.",
+			targetReasonDe: "Forecast-Modus aus — Soft-Ziel = Puffer-Max.",
 			forecastActive: false,
-		};
-	}
-
-	if (input.bufferTempC !== null && input.bufferTempC < config.planningMinTempC) {
-		return {
-			targetTempC: config.planningMinTempC,
-			targetReasonDe: `Puffer ${input.bufferTempC.toFixed(1)} °C unter Mindeststand ${config.planningMinTempC} °C — aufholen.`,
-			forecastActive: true,
 		};
 	}
 
@@ -70,10 +76,10 @@ export function resolveThermalForecastTarget(input: ThermalForecastInput): Therm
 		input.pvBiasStatus !== "no_config";
 
 	if (!hasPvForecast) {
-		const target = clampTarget(config, max - config.forecastNoDataOffsetC);
+		const target = clampSoftTarget(config, buffer, max - config.forecastNoDataOffsetC);
 		return {
 			targetTempC: target,
-			targetReasonDe: `Keine PV-Prognose — konservatives Tagesziel ${target} °C.`,
+			targetReasonDe: `Keine PV-Prognose — konservatives Soft-Pufferziel ${target} °C.`,
 			forecastActive: true,
 		};
 	}
@@ -81,24 +87,24 @@ export function resolveThermalForecastTarget(input: ThermalForecastInput): Therm
 	if (tomorrow < today * config.forecastLowTomorrowRatio) {
 		return {
 			targetTempC: max,
-			targetReasonDe: `PV morgen (${tomorrow.toFixed(1)} kWh) deutlich unter heute (${today.toFixed(1)} kWh) — Speicher voll (${max} °C).`,
+			targetReasonDe: `PV morgen (${tomorrow.toFixed(1)} kWh) deutlich unter heute (${today.toFixed(1)} kWh) — Soft-Puffer voll (${max} °C).`,
 			forecastActive: true,
 		};
 	}
 
 	if (tomorrow >= today * config.forecastHighTomorrowRatio) {
-		const target = targetFromFraction(config, config.forecastTargetFractionModerate);
+		const target = targetFromFraction(config, config.forecastTargetFractionModerate, buffer);
 		return {
 			targetTempC: target,
-			targetReasonDe: `PV morgen (${tomorrow.toFixed(1)} kWh) ähnlich/höher wie heute (${today.toFixed(1)} kWh) — moderates Ziel ${target} °C.`,
+			targetReasonDe: `PV morgen (${tomorrow.toFixed(1)} kWh) ähnlich/höher wie heute (${today.toFixed(1)} kWh) — moderates Soft-Ziel ${target} °C.`,
 			forecastActive: true,
 		};
 	}
 
-	const target = targetFromFraction(config, config.forecastTargetFractionDefault);
+	const target = targetFromFraction(config, config.forecastTargetFractionDefault, buffer);
 	return {
 		targetTempC: target,
-		targetReasonDe: `Standard-Tagesziel ${target} °C (PV heute ${today.toFixed(1)}, morgen ${tomorrow.toFixed(1)} kWh).`,
+		targetReasonDe: `Standard Soft-Pufferziel ${target} °C (PV heute ${today.toFixed(1)}, morgen ${tomorrow.toFixed(1)} kWh).`,
 		forecastActive: true,
 	};
 }

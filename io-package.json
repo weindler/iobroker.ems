@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.267",
+		"version": "0.1.268",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.268": {
+				"en": "Boiler/buffer thermal separation: Hard Warmwasser from boiler_temp_c + boiler learning/hygiene; Soft headroom from buffer; buffer emptyAt never Hard deadline; Puffer-Max safety unchanged.",
+				"de": "Boiler/Puffer Thermal-Trennung: Hard-Warmwasser aus boiler_temp_c + Boiler-Learning/Hygiene; Soft-Headroom aus Puffer; Puffer-emptyAt nie Hard-Deadline; Puffer-Max-Safety unverändert."
+			},
 			"0.1.267": {
 				"en": "Climate stabilization: single computeAcCoolingDesired authority; fresh feedback after await (no stale running=false); missing NOW allocation is HOLD not Planner-OFF (breaks runtimeHold loop); plan-revision wakes reconcile. Deterministic T1–T14 simulator.",
 				"de": "Klima-Stabilisierung: eine computeAcCoolingDesired-Authority; frisches Feedback nach await (kein stale running=false); fehlende NOW-Allocation = HOLD statt Planner-OFF (bricht runtimeHold-Schleife); Plan-Revision weckt Reconcile. Deterministischer T1–T14-Simulator."

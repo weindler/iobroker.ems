@@ -2321,39 +2321,99 @@
 					"lg": 3,
 					"xl": 3
 				},
-				"hIhThermalPlanning": {
+				"hIhBoilerTemp": {
 					"type": "header",
-					"size": 2,
-					"text": "Temperatur und Planungsfenster",
+					"size": 3,
+					"text": "boiler_temp_c — Boiler-Temperatur Brauchwasser (Lesen)",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
 					"lg": 12,
 					"xl": 12
 				},
+				"ih_boiler_temp_c_target": {
+					"type": "objectId",
+					"label": "Ziel-State",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9
+				},
+				"ih_boiler_temp_c_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"hIhThermalPlanning": {
+					"type": "header",
+					"size": 2,
+					"text": "Boiler-Bedarf / Puffer-Grenze",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"ih_boiler_min_temp_c": {
+					"type": "number",
+					"label": "Boiler Mindesttemperatur (°C)",
+					"help": "Hard-Warmwasserbedarf. Nicht die Puffer-Untergrenze.",
+					"min": 0,
+					"max": 110,
+					"default": 50,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ih_hygiene_target_temp_c": {
+					"type": "number",
+					"label": "Hygiene-Ziel Boiler (°C)",
+					"help": "Mindestens einmal / 7 Tage Boiler ≥ diesem Wert. Puffer-Max bleibt harte Grenze.",
+					"min": 50,
+					"max": 80,
+					"default": 60,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
 				"ih_planning_min_temp_c": {
 					"type": "number",
-					"label": "Planungsuntergrenze (°C)",
+					"label": "Legacy Planungsuntergrenze (°C)",
+					"help": "Veraltet — Hard nutzt Boiler-Min. Feld bleibt kompatibel, steuert keinen Warmwasser-Hard mehr.",
 					"min": 0,
 					"max": 110,
 					"default": 48,
 					"xs": 12,
 					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
+					"md": 3,
+					"lg": 3,
+					"xl": 3
 				},
 				"ih_planning_max_temp_c": {
 					"type": "number",
-					"label": "Planungsobergrenze / Force-Default (°C)",
+					"label": "Puffer-Max / Heizstab-Obergrenze (°C)",
+					"help": "Safety-Stop und Soft-Cap am Heizstabfühler/Puffer.",
 					"min": 1,
 					"max": 110,
 					"default": 60,
 					"xs": 12,
 					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
+					"md": 3,
+					"lg": 3,
+					"xl": 3
 				},
 				"hIhForecast": {
 					"type": "header",

@@ -1105,10 +1105,11 @@ function renderStack(){
 		:(isPowerOn(ihP)||ihHasWindow?{cls:"plan",label:"Geplant"}:{cls:"idle",label:"Aus"});
 	var ihRows=[
 		["Jetzt",execNowLine(ihPhase,ihP,ihHwLabel)],
+		["Boiler",fmtTemp(g("addons.immersion_heater.runtime.boiler_temperature_c")||g("live.thermal.boiler_temp_c"))],
 		["Puffer",fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c"))],
-		["Ziel",fmtTemp(g("addons.immersion_heater.runtime.plan_target_temp_c"))],
-		["Basis",fmtTemp(g("addons.immersion_heater.runtime.forecast_target_temp_c"))],
-		["Reicht bis",null],
+		["Soft-Ziel",fmtTemp(g("addons.immersion_heater.runtime.plan_target_temp_c"))],
+		["Puffer-Max",fmtTemp(g("addons.immersion_heater.runtime.planning_max_temp_c"))],
+		["Boiler reicht bis",null],
 		[ihSched.label,ihSched.value]
 	];
 	if(ihFault){
@@ -1117,6 +1118,7 @@ function renderStack(){
 		ihNote=shortNote(immersionFaultLabelDe(immersionFaultCode())+" — "+immersionFaultStatusDe(),140);
 		ihRows=[
 			["Jetzt",ihHwLabel],
+			["Boiler",fmtTemp(g("addons.immersion_heater.runtime.boiler_temperature_c")||g("live.thermal.boiler_temp_c"))],
 			["Puffer",fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c"))],
 			["Fehler",immersionFaultLabelDe(immersionFaultCode())],
 			["Status",immersionFaultStatusDe()],
@@ -1124,12 +1126,15 @@ function renderStack(){
 		];
 	}
 	var ihBadges={exec:execAuthorityBadge("immersion_heater"),op:ihOpBadge};
-	var emptyAt=fmtEmptyAt(g("learning.thermal_runtime.estimated_empty_at"));
-	var remH=num(g("learning.thermal_runtime.estimated_remaining_hours"));
-	var reichtBis=emptyAt?(emptyAt+(remH!==null?" · ~"+remH.toFixed(1).replace(".",",")+" h":"")):(remH!==null?"noch ~"+remH.toFixed(1).replace(".",",")+" h":"—");
+	var boilerEmptyAt=fmtEmptyAt(g("learning.thermal_boiler.estimated_empty_at"));
+	var boilerRemH=num(g("learning.thermal_boiler.estimated_remaining_hours"));
+	var boilerLearnReason=String(g("learning.thermal_boiler.reason_de")||"");
+	var reichtBis=boilerEmptyAt
+		?(boilerEmptyAt+(boilerRemH!==null?" · ~"+boilerRemH.toFixed(1).replace(".",",")+" h":""))
+		:(boilerLearnReason?shortNote(boilerLearnReason,80):(boilerRemH!==null?"noch ~"+boilerRemH.toFixed(1).replace(".",",")+" h":"lernt / keine belastbare Reichweite"));
 	if(!ihFault){
 		for(var ihRi=0;ihRi<ihRows.length;ihRi++){
-			if(ihRows[ihRi][0]==="Reicht bis")ihRows[ihRi][1]=reichtBis;
+			if(ihRows[ihRi][0]==="Boiler reicht bis")ihRows[ihRi][1]=reichtBis;
 		}
 	}
 

@@ -18,6 +18,8 @@ const fsm_1 = require("./fsm");
 const thermal_forecast_1 = require("../../../operator/planning/thermal_forecast");
 const governance_2 = require("../../governance");
 const state_util_1 = require("../../../ems_light/state_util");
+const hygiene_1 = require("../hygiene");
+const flex_demand_1 = require("../../../operator/contributions/flexible/flex_demand");
 const safety_1 = require("./safety");
 const types_1 = require("./types");
 const persist_1 = require("./persist");
@@ -105,6 +107,8 @@ function immersionRuntimeWatchedForeignIds(config) {
     const ids = new Set();
     if (config.bufferTempStateId)
         ids.add(config.bufferTempStateId);
+    if (config.boilerTempStateId)
+        ids.add(config.boilerTempStateId);
     if (config.actualPowerStateId)
         ids.add(config.actualPowerStateId);
     for (const stage of config.stages) {
@@ -115,14 +119,37 @@ function immersionRuntimeWatchedForeignIds(config) {
 }
 exports.immersionRuntimeWatchedForeignIds = immersionRuntimeWatchedForeignIds;
 /**
- * Lokaler Sicherheits-Default für den Auto-Modus, wenn der Daily Plan nicht verwendbar ist
- * (Roadmap Block 3.1) — bewusst kein Rückgriff auf den alten Realtime-Planner
- * (`planner.intent.thermal.*`). Ziel ist nur die Pflicht-Untergrenze (`planningMinTempC`,
- * gleiche Schwelle wie die Operator-Pflicht-Contribution), nicht der volle Komfortbereich.
- * Die Stufe nutzt die bereits vorhandene, admin-konfigurierte `forceDefaultStage`.
+ * Lokaler Sicherheits-Default wenn Daily Plan nicht verwendbar.
+ * Hard nur bei Boiler unter Min und gültigem Puffer unter Max — nie allein wegen kaltem Puffer.
  */
-function safeDefaultAutoTarget(config) {
-    return { stage: config.forceDefaultStage, targetTempC: config.planningMinTempC };
+function safeDefaultAutoTarget(config, opts) {
+    if (!opts.bufferTempOk || opts.bufferTempC === null) {
+        return { stage: 0, targetTempC: config.planningMaxTempC };
+    }
+    if (opts.bufferTempC >= config.planningMaxTempC - 0.05) {
+        return { stage: 0, targetTempC: config.planningMaxTempC };
+    }
+    const boilerHard = opts.boilerTempC !== null && opts.boilerTempC < config.boilerMinTempC - 0.05;
+    if (boilerHard) {
+        return {
+            stage: config.forceDefaultStage,
+            targetTempC: config.planningMaxTempC,
+        };
+    }
+    return { stage: 0, targetTempC: opts.bufferTempC };
+}
+function readHygienePersist(raw) {
+    if (!raw)
+        return (0, hygiene_1.emptyHygienePersist)();
+    try {
+        const j = JSON.parse(raw);
+        return {
+            lastBoilerHygieneAtIso: typeof j.lastBoilerHygieneAtIso === "string" ? j.lastBoilerHygieneAtIso : null,
+        };
+    }
+    catch {
+        return (0, hygiene_1.emptyHygienePersist)();
+    }
 }
 async function submitAutoRevertToAuto(host, now) {
     const issuedAt = now.toISOString();
@@ -317,6 +344,31 @@ async function runImmersionRuntimeTick(host) {
         tempObsMs = tr.tsMs;
     }
     const temperature = (0, fsm_1.evaluateTemperature)(tempVal, tempObsMs, nowMs, config);
+    let boilerTempC = null;
+    if (config.boilerTempEnabled && config.boilerTempStateId) {
+        const br = await readForeignNum(host, config.boilerTempStateId);
+        const boilerReading = (0, fsm_1.evaluateTemperature)(br.value, br.tsMs, nowMs, config);
+        boilerTempC = boilerReading.status === "valid" ? boilerReading.valueC : null;
+    }
+    else {
+        boilerTempC = await readLocalNum(host, "live.thermal.boiler_temp_c");
+    }
+    let hygienePersist = readHygienePersist(await readLocalStr(host, types_1.IMMERSION_RUNTIME_STATES.hygieneJson));
+    hygienePersist = (0, hygiene_1.recordBoilerHygieneIfMet)({
+        boilerTempC,
+        hygieneTargetTempC: config.hygieneTargetTempC,
+        nowIso: now.toISOString(),
+        persist: hygienePersist,
+    });
+    const hygiene = (0, hygiene_1.evaluateHygieneDuty)({
+        nowMs,
+        boilerTempC,
+        hygieneTargetTempC: config.hygieneTargetTempC,
+        bufferTempC: temperature.valueC,
+        bufferMaxTempC: config.planningMaxTempC,
+        lastBoilerHygieneAtIso: hygienePersist.lastBoilerHygieneAtIso,
+        kwhPerDegreeC: flex_demand_1.IMMERSION_DEFAULT_KWH_PER_DEGREE_C,
+    });
     const powerRead = config.actualPowerStateId ? await readForeignNum(host, config.actualPowerStateId) : { value: null, tsMs: null };
     const measuredPower = powerRead.value;
     const hasPower = Boolean(config.actualPowerStateId);
@@ -335,6 +387,12 @@ async function runImmersionRuntimeTick(host) {
     let dailyPlanContext = null;
     let plannerCommandedStage = 0;
     const forecastPlanTarget = await resolveImmersionPlanTarget(host, config, temperature.valueC, resolvedMode, forceTarget);
+    const bufferTempOk = temperature.status === "valid";
+    const safeDefault = safeDefaultAutoTarget(config, {
+        boilerTempC,
+        bufferTempC: temperature.valueC,
+        bufferTempOk,
+    });
     if (executionOff) {
         plannerCommandedStage = 0;
         autoDecisionSource = "safe_default";
@@ -348,8 +406,7 @@ async function runImmersionRuntimeTick(host) {
             autoDecisionSource = "daily_plan";
         }
         else {
-            // Daily Plan nicht verwendbar — lokaler Sicherheits-Default (Pflicht-Untergrenze).
-            const safeDefault = safeDefaultAutoTarget(config);
+            // Daily Plan nicht verwendbar — Boiler-Hard-Default, kein Puffer-Hard.
             plannerCommandedStage = safeDefault.stage;
             autoDecisionSource = "thermal_fallback";
         }
@@ -369,8 +426,7 @@ async function runImmersionRuntimeTick(host) {
     });
     let plannerTargetTempC = authority.authoritativeTargetTempC;
     if (resolvedMode === "auto" && autoDecisionSource === "thermal_fallback") {
-        // Kein gültiger Plan: Pflicht-Untergrenze, nicht Forecast-Precharge.
-        plannerTargetTempC = safeDefaultAutoTarget(config).targetTempC;
+        plannerTargetTempC = safeDefault.targetTempC;
     }
     const fsm = (0, fsm_1.runImmersionFsm)({
         nowMs,
@@ -512,6 +568,11 @@ async function runImmersionRuntimeTick(host) {
         updated_at: now.toISOString(),
     };
     await publishRuntime(host, snapshot, decisionSource, dailyPlanContext);
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.boilerTemperatureC, boilerTempC);
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.boilerMinTempC, config.boilerMinTempC);
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.hygieneJson, JSON.stringify(hygienePersist));
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.hygieneStatusDe, hygiene.reasonDe + (hygiene.blockedByBufferMax ? " [Puffer-Max]" : ""));
+    await (0, state_write_1.setStateIfChanged)(host, "live.thermal.boiler_temp_c", boilerTempC);
     await (0, consumer_stats_1.tickConsumerStats)(host, {
         consumerKey: "immersion_heater",
         nowMs,
@@ -675,6 +736,8 @@ async function initImmersionRuntimeEngine(host) {
     ]);
     if (config.bufferTempStateId)
         subs.add(config.bufferTempStateId);
+    if (config.boilerTempStateId)
+        subs.add(config.boilerTempStateId);
     if (config.actualPowerStateId)
         subs.add(config.actualPowerStateId);
     for (const s of config.stages) {

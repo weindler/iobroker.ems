@@ -1,4 +1,27 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.stopPvBiasLearning = exports.initPvBiasLearning = exports.startPvBiasLearningRuntime = exports.ensureLearningStateTree = void 0;
 const ensure_states_1 = require("./ensure_states");
@@ -55,6 +78,8 @@ async function runLearningTick(host) {
     // House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
     await (0, house_load_1.runHouseLoadLearning)(host);
     await (0, thermal_runtime_1.runThermalRuntimeLearning)(host);
+    const { runThermalBoilerLearning } = await Promise.resolve().then(() => __importStar(require("../thermal_boiler/run")));
+    await runThermalBoilerLearning(host);
     await (0, battery_runtime_1.runBatteryRuntimeLearning)(host);
     await (0, price_forecast_1.runPriceForecastLearning)(host);
     await (0, persistence_mirror_1.mirrorLearningPersistenceToStates)(host);

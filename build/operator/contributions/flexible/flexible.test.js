@@ -107,6 +107,8 @@ function immersionInput(overrides = {}) {
         modePolicy: (0, mode_policy_1.plannerModePolicyFromGlobalMode)("balanced"),
         config: immersionConfig(),
         bufferTempC: 50,
+        boilerTempC: 58,
+        boilerSensorDegraded: false,
         thermalMode: "auto",
         fault: false,
         lockout: false,
@@ -500,14 +502,18 @@ function acInput(overrides = {}) {
     });
 });
 (0, node_test_1.describe)("immersion heater contributions", () => {
-    (0, node_test_1.it)("mandatory below planning min temp includes energy slot", () => {
-        const [mandatory] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({ bufferTempC: 45, thermalMode: "auto" }));
+    (0, node_test_1.it)("mandatory below boiler min includes energy slot (not buffer alone)", () => {
+        const [mandatory] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({ bufferTempC: 55, boilerTempC: 45, thermalMode: "auto" }));
         strict_1.default.equal(mandatory.contributionId, contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_MANDATORY);
         strict_1.default.equal(mandatory.enabled, true);
         strict_1.default.equal(mandatory.details.mandatory, true);
         strict_1.default.ok(mandatory.details.requiredEnergyKwh > 0);
         strict_1.default.equal(mandatory.slots.length, 1);
         strict_1.default.equal(mandatory.slots[0].mandatory, true);
+    });
+    (0, node_test_1.it)("cold buffer alone does not create mandatory hard demand", () => {
+        const [mandatory] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({ bufferTempC: 40, boilerTempC: 58, thermalMode: "auto" }));
+        strict_1.default.equal(mandatory.enabled, false);
     });
     (0, node_test_1.it)("flexible demand in auto mode", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput());
@@ -525,7 +531,8 @@ function acInput(overrides = {}) {
     });
     (0, node_test_1.it)("keeps strategic headroom while reheat hysteresis is runtime-active", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
-            bufferTempC: 48,
+            /** Soft-Ziel liegt knapp über Ist → Hysterese greift bei autoTargetReached. */
+            bufferTempC: 56,
             autoTargetReached: true,
             config: (0, device_config_1.immersionDeviceConfigFromAdapter)({
                 ih_stage_count: 1,
@@ -582,7 +589,7 @@ function acInput(overrides = {}) {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput());
         strict_1.default.equal(flexible.deadlineIso, null);
     });
-    (0, node_test_1.it)("uses estimated empty_at as soft planning deadline when learning is degraded", () => {
+    (0, node_test_1.it)("buffer empty_at is soft-only — no flexible Hard-Deadline", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
             bufferTempC: 49,
             thermalLearning: {
@@ -599,11 +606,12 @@ function acInput(overrides = {}) {
             },
         }));
         strict_1.default.equal(flexible.enabled, true);
-        strict_1.default.equal(flexible.deadlineIso, "2026-07-26T14:00:00.000Z");
-        strict_1.default.equal(flexible.details.emptyAtSource, "estimated");
+        strict_1.default.equal(flexible.deadlineIso, null);
+        strict_1.default.equal(flexible.details.bufferEstimatedEmptyAt, "2026-07-26T14:00:00.000Z");
+        strict_1.default.equal(flexible.details.emptyAtPlanningUsable, false);
         strict_1.default.equal(flexible.quality.status, "degraded");
     });
-    (0, node_test_1.it)("A1: Newton empty_at with samples=0 is planning-usable without cycle-valid status", () => {
+    (0, node_test_1.it)("A1: Newton buffer empty_at supports soft precharge, not Hard-Deadline", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
             bufferTempC: 49,
             thermalLearning: {
@@ -620,17 +628,17 @@ function acInput(overrides = {}) {
             },
         }));
         strict_1.default.equal(flexible.enabled, true);
-        strict_1.default.equal(flexible.deadlineIso, "2026-07-26T14:00:00.000Z");
-        strict_1.default.equal(flexible.details.emptyAtPlanningUsable, true);
+        strict_1.default.equal(flexible.deadlineIso, null);
+        strict_1.default.equal(flexible.details.bufferEstimatedEmptyAt, "2026-07-26T14:00:00.000Z");
         strict_1.default.equal(flexible.details.thermalLearningModel, "newton");
         strict_1.default.equal(flexible.quality.status, "degraded");
         strict_1.default.notEqual(flexible.details.thermalLearningStatus, "valid");
         strict_1.default.match(String(flexible.details.thermalLearningDegradedCauseDe ?? ""), /Newton estimate/);
     });
-    (0, node_test_1.it)("adopts the learned estimated_empty_at as deadline when model valid", () => {
+    (0, node_test_1.it)("boiler empty_at usable sets Hard-Deadline fields; flexible deadline stays null", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
             bufferTempC: 49,
-            thermalLearning: {
+            boilerLearning: {
                 status: "valid",
                 health: "ok",
                 samples: 12,
@@ -640,16 +648,29 @@ function acInput(overrides = {}) {
                 estimatedRemainingHours: 4,
                 estimatedEmptyAt: "2026-07-26T14:00:00.000Z",
                 currentDayTypeRuntimeHoursMedian: 12,
-                reasonDe: "belastbares Modell",
+                reasonDe: "belastbares Boiler-Modell",
+            },
+            thermalLearning: {
+                status: "valid",
+                health: "ok",
+                samples: 12,
+                coolingRateCPerHAvg: 1.1,
+                coolingConstantPerH: 0.04,
+                coolingAsymptoteC: 18,
+                estimatedRemainingHours: 4,
+                estimatedEmptyAt: "2026-07-26T18:00:00.000Z",
+                currentDayTypeRuntimeHoursMedian: 12,
+                reasonDe: "Puffer-Modell",
             },
         }));
-        strict_1.default.equal(flexible.deadlineIso, "2026-07-26T14:00:00.000Z");
-        strict_1.default.equal(flexible.details.thermalLearningStatus, "valid");
-        strict_1.default.equal(flexible.details.emptyAtSource, "learned");
+        strict_1.default.equal(flexible.deadlineIso, null);
+        strict_1.default.equal(flexible.details.boilerEstimatedEmptyAt, "2026-07-26T14:00:00.000Z");
         strict_1.default.equal(flexible.details.estimatedEmptyAt, "2026-07-26T14:00:00.000Z");
-        strict_1.default.equal(flexible.details.coolingRateCPerHAvg, 1.1);
+        strict_1.default.equal(flexible.details.emptyAtSource, "learned");
+        strict_1.default.equal(flexible.details.emptyAtPlanningUsable, true);
+        strict_1.default.equal(flexible.details.bufferEstimatedEmptyAt, "2026-07-26T18:00:00.000Z");
     });
-    (0, node_test_1.it)("keeps empty_at deadline for comfort reheat when learning is valid (strategic preload)", () => {
+    (0, node_test_1.it)("soft preload remains without Hard-Deadline when buffer learning valid", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
             bufferTempC: 52,
             thermalLearning: {
@@ -666,10 +687,10 @@ function acInput(overrides = {}) {
             },
         }));
         strict_1.default.equal(flexible.enabled, true);
-        strict_1.default.equal(flexible.deadlineIso, "2026-07-26T14:00:00.000Z");
-        strict_1.default.equal(flexible.details.emptyAtSource, "learned");
+        strict_1.default.equal(flexible.deadlineIso, null);
+        strict_1.default.equal(flexible.details.bufferEstimatedEmptyAt, "2026-07-26T14:00:00.000Z");
     });
-    (0, node_test_1.it)("night bridge raises target and sets deadline when empty_at is before next morning", () => {
+    (0, node_test_1.it)("night bridge raises soft target; no Hard-Deadline from buffer empty_at", () => {
         const now = new Date("2026-08-04T12:00:00.000Z"); // 14:00 CEST
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
             now,
@@ -698,7 +719,7 @@ function acInput(overrides = {}) {
             },
         }));
         strict_1.default.equal(flexible.enabled, true);
-        strict_1.default.equal(flexible.deadlineIso, "2026-08-04T18:26:00.000Z");
+        strict_1.default.equal(flexible.deadlineIso, null);
         strict_1.default.equal(flexible.details.nightBridgeActive, true);
         strict_1.default.ok(flexible.details.targetTempC > 51.6);
         strict_1.default.ok(flexible.details.requiredEnergyKwh > 1);

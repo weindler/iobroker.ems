@@ -36,6 +36,9 @@ const CONFIG = {
     ih_stage_1_nominal_power_w: 2000,
     ih_buffer_temp_c_enabled: true,
     ih_buffer_temp_c_target: "buffer.temp",
+    ih_boiler_temp_c_enabled: true,
+    ih_boiler_temp_c_target: "boiler.temp",
+    ih_boiler_min_temp_c: 50,
     ih_planning_min_temp_c: 48,
     ih_planning_max_temp_c: 60,
     ih_force_default_stage: 1,
@@ -96,11 +99,12 @@ class FakeHost {
     unsubscribeStatesAsync = async () => { };
     unsubscribeForeignStatesAsync = async () => { };
 }
-function baseHost(bufferTempC) {
+function baseHost(bufferTempC, boilerTempC = 58) {
     const host = new FakeHost();
     host.set((0, tree_paths_js_1.addonEnabled)("immersion_heater"), true);
     host.set((0, tree_paths_js_1.addonAvailable)("immersion_heater"), true);
     host.set("buffer.temp", bufferTempC);
+    host.set("boiler.temp", boilerTempC);
     // Auslaufender Realtime-Planner (Legacy) — engine.ts darf diese Werte seit Block 3.1 nicht
     // mehr lesen. Absichtlich auf Werte gesetzt, die ein anderes Ergebnis erzeugen würden,
     // falls sie doch (fälschlich) gelesen würden.
@@ -116,19 +120,26 @@ async function decisionState(host, id) {
     (0, node_test_1.beforeEach)(() => {
         (0, engine_js_1.resetImmersionRuntimeForTest)();
     });
-    (0, node_test_1.it)("daily_plan_missing: kein Daily Plan initialisiert -> lokaler Sicherheits-Default, Legacy-Planner ignoriert", async () => {
-        const host = baseHost(40); // unter planningMinTempC (48) -> Heizen erwartet
+    (0, node_test_1.it)("daily_plan_missing: kalter Puffer + warmer Boiler → kein Hard-Heizen nur wegen Puffer", async () => {
+        const host = baseHost(40, 58);
         host.set(states_js_1.DAILY_PLAN_STATE_IDS.status, "");
         await (0, engine_js_1.runImmersionRuntimeTick)(host);
         strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.dailyPlanStatus), "daily_plan_missing");
         strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.decisionSource), "thermal_fallback");
-        // Sicherheits-Default: ih_force_default_stage (1), NICHT der Legacy-Wert (3).
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 0);
+        strict_1.default.notEqual(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), LEGACY_PLANNER_STAGE);
+    });
+    (0, node_test_1.it)("daily_plan_missing: Boiler unter Min → Sicherheits-Default heizt (nicht Legacy-Planner)", async () => {
+        const host = baseHost(40, 48);
+        host.set(states_js_1.DAILY_PLAN_STATE_IDS.status, "");
+        await (0, engine_js_1.runImmersionRuntimeTick)(host);
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.decisionSource), "thermal_fallback");
         strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 1);
         strict_1.default.notEqual(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), LEGACY_PLANNER_STAGE);
     });
-    (0, node_test_1.it)("daily_plan_expired: abgelaufener Plan -> lokaler Sicherheits-Default, Legacy-Planner ignoriert", async () => {
+    (0, node_test_1.it)("daily_plan_expired: Boiler unter Min → Sicherheits-Default, Legacy-Planner ignoriert", async () => {
         const now = realNow();
-        const host = baseHost(40);
+        const host = baseHost(40, 48);
         host.set(states_js_1.DAILY_PLAN_STATE_IDS.status, "ready");
         host.set(states_js_1.DAILY_PLAN_STATE_IDS.date, (0, time_js_1.localDateKeyInTimezone)(now, TZ));
         host.set(states_js_1.DAILY_PLAN_STATE_IDS.revision, 1);
@@ -183,10 +194,8 @@ async function decisionState(host, id) {
         strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 1);
         strict_1.default.notEqual(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), LEGACY_PLANNER_STAGE);
     });
-    (0, node_test_1.it)("Sicherheits-Default heizt nur bis planningMinTempC, nicht bis planningMaxTempC (Pflicht-Untergrenze, kein Komfortziel)", async () => {
-        // Puffer bereits über der Pflicht-Untergrenze (48), aber unter der Komfort-Obergrenze (60):
-        // der Sicherheits-Default darf hier NICHT weiterheizen.
-        const host = baseHost(50);
+    (0, node_test_1.it)("Sicherheits-Default: Boiler über Min → kein Fallback-Heizen trotz Puffer unter Max", async () => {
+        const host = baseHost(50, 58);
         host.set(states_js_1.DAILY_PLAN_STATE_IDS.status, "");
         await (0, engine_js_1.runImmersionRuntimeTick)(host);
         strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 0);

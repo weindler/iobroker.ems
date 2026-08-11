@@ -57,21 +57,28 @@ function contrib(
 function ihDetails(over: Record<string, unknown> = {}): Record<string, unknown> {
 	return {
 		bufferTempC: 54,
+		boilerTempC: 58,
+		boilerMinTempC: 50,
 		targetTempC: 61.803,
 		forecastTargetTempC: 51.6,
 		planningMinTempC: 44,
-		mandatoryMinTempC: 44,
+		mandatoryMinTempC: 50,
+		planningMaxTempC: 63,
 		requiredEnergyKwh: 2.965,
 		maxPowerW: 1700,
 		minPowerW: 1700,
 		pvPrechargeActive: true,
 		pvPrechargeExtraK: 10.2,
+		/** Puffer-Newton nur Soft — nicht Hard-usable. */
 		coolingRateCPerHAvg: null,
 		coolingConstantPerH: 0.08853,
 		coolingAsymptoteC: 40.35,
-		estimatedEmptyAt: "2026-08-10T18:56:50.898Z",
-		emptyAtSource: "estimated",
-		emptyAtPlanningUsable: true,
+		bufferEstimatedEmptyAt: "2026-08-10T18:56:50.898Z",
+		boilerEstimatedEmptyAt: null,
+		estimatedEmptyAt: null,
+		emptyAtSource: null,
+		emptyAtPlanningUsable: false,
+		boilerSensorDegraded: false,
 		thermalLearningStatus: "degraded",
 		thermalLearningModel: "newton",
 		nightBridgeActive: false,
@@ -163,8 +170,8 @@ function sumIh(plan: { allocations: { kind: string; allocatedEnergyKwh: number }
 		.reduce((s, a) => s + a.allocatedEnergyKwh, 0);
 }
 
-describe("v0.1.263 thermal cooling rate wiring (T1)", () => {
-	it("Newton degraded → effective rate reaches Unified", () => {
+describe("v0.1.268 thermal cooling / Boiler-Puffer-Trennung (T1)", () => {
+	it("Puffer-Newton berechenbar; Hard nutzt Boiler (kein Buffer-emptyAt)", () => {
 		const rate = effectiveCoolingRateCPerH({
 			coolingRateCPerHAvg: null,
 			coolingConstantPerH: 0.08853,
@@ -176,23 +183,29 @@ describe("v0.1.263 thermal cooling rate wiring (T1)", () => {
 		});
 		assert.ok(rate != null && rate > 0.5, `newton instant rate got ${rate}`);
 		const input = buildUnifiedInputFromForecastContext(realCaseContext());
-		assert.ok(input.thermal?.coolingRateCPerH != null && input.thermal.coolingRateCPerH > 0);
-		assert.equal(input.thermal?.minTempC, 44);
+		assert.equal(input.thermal?.coolingRateCPerH, null);
+		assert.equal(input.thermal?.boilerMinTempC ?? input.thermal?.minTempC, 50);
+		assert.equal(input.thermal?.boilerTempC, 58);
+		assert.equal(input.thermal?.boilerEmptyAtUsable, false);
 		assert.equal(input.thermal?.forecastTargetTempC, 51.6);
 		assert.equal(input.thermal?.dayTargetTempC, 61.803);
 		assert.equal(input.thermal?.pvPrechargeActive, true);
 	});
 });
 
-describe("v0.1.263 hard bridge vs soft (T2/T3/T6)", () => {
-	it("T2: buffer above min + covers current window → hard ~0", () => {
+describe("v0.1.268 hard bridge vs soft — Boiler Hard / Puffer Soft", () => {
+	it("T2: Boiler über Min, Learning nicht usable → hard ~0, Soft aus Headroom", () => {
 		const r = resolveThermalPlannerEnergy({
 			nowMs: Date.parse("2026-08-10T08:45:00.000Z"),
 			bufferTempC: 54,
-			minTempC: 44,
+			boilerTempC: 58,
+			minTempC: 50,
+			boilerMinTempC: 50,
+			bufferMaxTempC: 63,
 			headroomEnergyKwh: 2.965,
 			coolingRateCPerH: 1.21,
 			estimatedEmptyAtMs: Date.parse("2026-08-10T18:56:50.898Z"),
+			boilerEmptyAtUsable: false,
 			nextReliablePvMs: Date.parse("2026-08-11T05:00:00.000Z"),
 			currentWindowEndMs: Date.parse("2026-08-10T18:30:00.000Z"),
 			pvConfidence01: 0.81,
@@ -202,14 +215,18 @@ describe("v0.1.263 hard bridge vs soft (T2/T3/T6)", () => {
 		assert.ok(r.economicHeadroomKwh >= 2.7, `soft got ${r.economicHeadroomKwh}`);
 	});
 
-	it("T3: buffer does not cover → hard bridge > 0, not full headroom", () => {
+	it("T3: Boiler unter Cover mit usable Learning → hard > 0, nicht full headroom", () => {
 		const r = resolveThermalPlannerEnergy({
 			nowMs: Date.parse("2026-08-10T16:00:00.000Z"),
-			bufferTempC: 45,
-			minTempC: 44,
+			bufferTempC: 55,
+			boilerTempC: 51,
+			minTempC: 50,
+			boilerMinTempC: 50,
+			bufferMaxTempC: 63,
 			headroomEnergyKwh: 2.0,
 			coolingRateCPerH: 0.8,
 			estimatedEmptyAtMs: Date.parse("2026-08-10T17:00:00.000Z"),
+			boilerEmptyAtUsable: true,
 			nextReliablePvMs: Date.parse("2026-08-11T05:00:00.000Z"),
 			currentWindowEndMs: Date.parse("2026-08-10T18:30:00.000Z"),
 			pvConfidence01: 0.85,
@@ -219,14 +236,18 @@ describe("v0.1.263 hard bridge vs soft (T2/T3/T6)", () => {
 		assert.ok(r.mandatoryEnergyKwh < 2.0, `hard must not swallow full headroom`);
 	});
 
-	it("T6: minTemp safety — hard covers shortfall before window end", () => {
+	it("T6: Boiler nahe Min + usable cooling → hard shortfall vor Fensterende", () => {
 		const r = resolveThermalPlannerEnergy({
 			nowMs: Date.parse("2026-08-10T12:00:00.000Z"),
-			bufferTempC: 44.2,
-			minTempC: 44,
+			bufferTempC: 55,
+			boilerTempC: 50.2,
+			minTempC: 50,
+			boilerMinTempC: 50,
+			bufferMaxTempC: 63,
 			headroomEnergyKwh: 1.0,
 			coolingRateCPerH: 0.6,
 			estimatedEmptyAtMs: Date.parse("2026-08-10T12:30:00.000Z"),
+			boilerEmptyAtUsable: true,
 			nextReliablePvMs: Date.parse("2026-08-11T05:00:00.000Z"),
 			currentWindowEndMs: Date.parse("2026-08-10T18:00:00.000Z"),
 			pvConfidence01: 0.9,
@@ -258,14 +279,18 @@ describe("v0.1.263 current PV window (T4)", () => {
 		assert.ok(endIdx > 1, `window end idx ${endIdx}`);
 		const windowEndMs = Date.parse(slots[endIdx - 1]!.endIso);
 		const next = findNextReliablePvAfterCurrentWindow(slots, 0, 0.85, start);
-		/** Cover über Fensterende: hard ~0 trotz nextPv morgen. */
+		/** Cover über Fensterende: hard ~0 trotz nextPv morgen (Boiler warm, Learning nicht usable). */
 		const rWindow = resolveThermalPlannerEnergy({
 			nowMs: start,
 			bufferTempC: 54,
-			minTempC: 44,
+			boilerTempC: 58,
+			minTempC: 50,
+			boilerMinTempC: 50,
+			bufferMaxTempC: 63,
 			headroomEnergyKwh: 2.965,
 			coolingRateCPerH: 1.2,
 			estimatedEmptyAtMs: Date.parse("2026-08-10T18:56:50.898Z"),
+			boilerEmptyAtUsable: false,
 			nextReliablePvMs: next.startMs ?? Date.parse("2026-08-11T05:00:00.000Z"),
 			currentWindowEndMs: windowEndMs,
 			pvConfidence01: 0.85,
@@ -273,10 +298,14 @@ describe("v0.1.263 current PV window (T4)", () => {
 		const rTomorrowOnly = resolveThermalPlannerEnergy({
 			nowMs: start,
 			bufferTempC: 54,
-			minTempC: 44,
+			boilerTempC: 58,
+			minTempC: 50,
+			boilerMinTempC: 50,
+			bufferMaxTempC: 63,
 			headroomEnergyKwh: 2.965,
 			coolingRateCPerH: 1.2,
 			estimatedEmptyAtMs: Date.parse("2026-08-10T18:56:50.898Z"),
+			boilerEmptyAtUsable: false,
 			nextReliablePvMs: Date.parse("2026-08-11T05:00:00.000Z"),
 			currentWindowEndMs: null,
 			pvConfidence01: 0.85,
@@ -290,8 +319,8 @@ describe("v0.1.263 current PV window (T4)", () => {
 	});
 });
 
-describe("v0.1.263 real-case regression 2026-08-10 ~10:45", () => {
-	it("hard ≠ full 2.965; soft; no emptyAt-only evening pile-up", () => {
+describe("v0.1.268 real-case regression 2026-08-10 ~10:45", () => {
+	it("hard ≠ full 2.965; soft; no buffer-emptyAt evening pile-up", () => {
 		const input = buildUnifiedInputFromForecastContext(realCaseContext());
 		input.battery = {
 			...input.battery,
@@ -312,8 +341,9 @@ describe("v0.1.263 real-case regression 2026-08-10 ~10:45", () => {
 			},
 		};
 
-		assert.ok(input.thermal?.coolingRateCPerH != null);
-		assert.equal(input.thermal?.minTempC, 44);
+		assert.equal(input.thermal?.coolingRateCPerH, null);
+		assert.equal(input.thermal?.boilerTempC, 58);
+		assert.equal(input.thermal?.boilerEmptyAtUsable, false);
 
 		const plan = allocateUnifiedDayPlan(input as UnifiedDayPlannerInput);
 		const ih = plan.allocations.filter((a) => a.kind === "immersion_heater");

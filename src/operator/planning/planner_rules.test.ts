@@ -118,16 +118,18 @@ describe("planner thermal", () => {
 		const r = planThermal(
 			thermalInput({
 				surplusW: 5000,
-				bufferTempC: 61,
+				bufferTempC: 55,
 				config: cfg,
 				forecastModeEnabled: true,
 				pvTodayKwh: 20,
 				pvTomorrowKwh: 18,
 			}),
 		);
-		assert.equal(r.target_temp_c, 54);
-		assert.equal(r.commanded_stage, 0);
-		assert.match(r.reason_de, /Tagesziel 54/);
+		/** Soft-Ziel zwischen Ist (55) und Max (63), moderater Anteil → 58.2 °C (< Max). */
+		assert.equal(r.target_temp_c, 58.2);
+		assert.ok(r.target_temp_c < 63);
+		assert.equal(r.commanded_stage, 1);
+		assert.match(r.reason_de, /Ziel 58\.2/);
 	});
 });
 

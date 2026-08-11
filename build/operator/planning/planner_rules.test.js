@@ -103,15 +103,17 @@ function thermalInput(overrides = {}) {
         });
         const r = (0, thermal_js_1.planThermal)(thermalInput({
             surplusW: 5000,
-            bufferTempC: 61,
+            bufferTempC: 55,
             config: cfg,
             forecastModeEnabled: true,
             pvTodayKwh: 20,
             pvTomorrowKwh: 18,
         }));
-        strict_1.default.equal(r.target_temp_c, 54);
-        strict_1.default.equal(r.commanded_stage, 0);
-        strict_1.default.match(r.reason_de, /Tagesziel 54/);
+        /** Soft-Ziel zwischen Ist (55) und Max (63), moderater Anteil → 58.2 °C (< Max). */
+        strict_1.default.equal(r.target_temp_c, 58.2);
+        strict_1.default.ok(r.target_temp_c < 63);
+        strict_1.default.equal(r.commanded_stage, 1);
+        strict_1.default.match(r.reason_de, /Ziel 58\.2/);
     });
 });
 (0, node_test_1.describe)("planner surplus", () => {

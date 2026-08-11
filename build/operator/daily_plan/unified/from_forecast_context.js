@@ -336,22 +336,35 @@ function buildUnifiedInputFromForecastContext(ctx) {
         wallbox,
         thermal: ih
             ? (() => {
-                const minTempC = num(ihD, "mandatoryMinTempC") ?? num(ihD, "planningMinTempC");
-                const estimatedEmptyAtIso = str(ihD, "estimatedEmptyAt");
-                const emptyMs = estimatedEmptyAtIso ? Date.parse(estimatedEmptyAtIso) : Number.NaN;
+                const boilerMinTempC = num(ihD, "boilerMinTempC") ?? num(ihD, "mandatoryMinTempC");
+                const boilerTempC = num(ihD, "boilerTempC");
+                const estimatedEmptyAtIso = str(ihD, "boilerEstimatedEmptyAt") ?? str(ihD, "estimatedEmptyAt");
+                const emptyUsable = bool(ihD, "emptyAtPlanningUsable") === true;
+                const emptyMs = emptyUsable && estimatedEmptyAtIso ? Date.parse(estimatedEmptyAtIso) : Number.NaN;
+                const boilerRate = num(ihD, "boilerCoolingRateCPerHAvg") ?? num(ihD, "coolingRateCPerHAvg");
                 const coolingRateCPerH = (0, thermal_cooling_rate_1.effectiveCoolingRateCPerH)({
-                    coolingRateCPerHAvg: num(ihD, "coolingRateCPerHAvg"),
+                    coolingRateCPerHAvg: boilerRate,
                     coolingConstantPerH: num(ihD, "coolingConstantPerH"),
                     coolingAsymptoteC: num(ihD, "coolingAsymptoteC"),
-                    bufferTempC,
-                    minTempC,
+                    bufferTempC: boilerTempC ?? bufferTempC,
+                    minTempC: boilerMinTempC,
                     estimatedEmptyAtMs: Number.isFinite(emptyMs) ? emptyMs : null,
                     nowMs,
                 });
                 const forecastTargetTempC = num(ihD, "forecastTargetTempC");
+                const emptyAtSource = (() => {
+                    const s = str(ihD, "emptyAtSource");
+                    if (!emptyUsable || !estimatedEmptyAtIso)
+                        return null;
+                    if (s === "learned" || s === "estimated")
+                        return s;
+                    return null;
+                })();
                 return {
                     bufferTempC,
-                    minTempC,
+                    boilerTempC,
+                    minTempC: boilerMinTempC,
+                    boilerMinTempC,
                     maxTempC: num(ihD, "planningMaxTempC"),
                     dayTargetTempC: targetTempC,
                     forecastTargetTempC,
@@ -359,23 +372,15 @@ function buildUnifiedInputFromForecastContext(ctx) {
                     availablePowerW: maxPowerW,
                     minPowerW: minPowerW,
                     headroomEnergyKwh: headroom,
-                    estimatedEmptyAtIso,
-                    deadlineIso: headroom !== null && headroom > 0
-                        ? ih.deadlineIso ?? estimatedEmptyAtIso
-                        : ih.deadlineIso,
-                    emptyAtSource: (() => {
-                        const s = str(ihD, "emptyAtSource");
-                        if (s === "learned" || s === "estimated")
-                            return s;
-                        const st = str(ihD, "thermalLearningStatus");
-                        if (st === "valid" && estimatedEmptyAtIso)
-                            return "learned";
-                        if (st === "degraded" && estimatedEmptyAtIso)
-                            return "estimated";
-                        return null;
-                    })(),
+                    estimatedEmptyAtIso: emptyUsable ? estimatedEmptyAtIso : null,
+                    deadlineIso: emptyUsable ? estimatedEmptyAtIso : null,
+                    emptyAtSource,
+                    boilerEmptyAtUsable: emptyUsable,
+                    boilerSensorDegraded: bool(ihD, "boilerSensorDegraded") === true || boilerTempC === null,
+                    hygieneMandatoryKwh: num(ihD, "hygieneMandatoryKwh"),
+                    hygieneDue: bool(ihD, "hygieneDue") === true,
                     nightBridgeActive: bool(ihD, "nightBridgeActive") === true,
-                    coolingRateCPerH,
+                    coolingRateCPerH: emptyUsable ? coolingRateCPerH : null,
                     minimumRuntimeSec: num(ihD, "minimumRuntimeSec"),
                     hysteresisK: num(ihD, "reheatHysteresisK") ?? num(ihD, "temperatureHysteresisK"),
                     reheatHysteresisActive: bool(ihD, "reheatHysteresisActive") === true,

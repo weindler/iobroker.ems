@@ -103,7 +103,9 @@ function scenarioAInput(overrides = {}) {
     };
     base.thermal = {
         bufferTempC: 49,
+        boilerTempC: 49,
         minTempC: 44,
+        boilerMinTempC: 44,
         maxTempC: 63,
         dayTargetTempC: 58,
         availablePowerW: 1700,
@@ -112,6 +114,7 @@ function scenarioAInput(overrides = {}) {
         estimatedEmptyAtIso: emptyAt,
         deadlineIso: emptyAt,
         emptyAtSource: "estimated",
+        boilerEmptyAtUsable: true,
         nightBridgeActive: true,
         coolingRateCPerH: 0.7,
         minimumRuntimeSec: 300,
@@ -321,6 +324,7 @@ function scenarioAInput(overrides = {}) {
                 ih_planning_max_temp_c: 63,
             }),
             bufferTempC: 49,
+            boilerTempC: 58,
             thermalMode: "auto",
             fault: false,
             lockout: false,
@@ -347,8 +351,9 @@ function scenarioAInput(overrides = {}) {
         });
         strict_1.default.equal(flex.enabled, true);
         strict_1.default.ok(flex.details.requiredEnergyKwh > 0);
-        strict_1.default.equal(flex.deadlineIso, "2026-08-08T15:25:00.000Z");
-        strict_1.default.equal(flex.details.emptyAtSource, "estimated");
+        strict_1.default.equal(flex.deadlineIso, null);
+        strict_1.default.equal(flex.details.bufferEstimatedEmptyAt, "2026-08-08T15:25:00.000Z");
+        strict_1.default.equal(flex.details.emptyAtPlanningUsable, false);
         strict_1.default.equal(flex.details.reheatHysteresisRuntimeOnly, true);
     });
 });

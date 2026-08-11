@@ -23,7 +23,7 @@ function target(overrides: Partial<Parameters<typeof resolveThermalForecastTarge
 	});
 }
 
-describe("thermal forecast target", () => {
+describe("thermal forecast target — Soft Puffer", () => {
 	it("uses max when forecast mode disabled", () => {
 		const r = target({ forecastModeEnabled: false });
 		assert.equal(r.targetTempC, 63);
@@ -37,10 +37,11 @@ describe("thermal forecast target", () => {
 		assert.equal(withAi.forecastActive, true);
 	});
 
-	it("targets min when buffer below planning min", () => {
-		const r = target({ bufferTempC: 46 });
-		assert.equal(r.targetTempC, 48);
-		assert.match(r.targetReasonDe, /Mindeststand/);
+	it("soft target stays between current buffer and max (no hard catch-up to planningMin)", () => {
+		const r = target({ bufferTempC: 46, pvTodayKwh: 20, pvTomorrowKwh: 18 });
+		assert.ok(r.targetTempC >= 46);
+		assert.ok(r.targetTempC <= 63);
+		assert.match(r.targetReasonDe, /Soft/i);
 	});
 
 	it("targets max when tomorrow pv much lower", () => {
@@ -48,17 +49,19 @@ describe("thermal forecast target", () => {
 		assert.equal(r.targetTempC, 63);
 	});
 
-	it("targets moderate when tomorrow pv similar", () => {
+	it("targets moderate soft span when tomorrow pv similar", () => {
 		const r = target({ pvTodayKwh: 20, pvTomorrowKwh: 18 });
-		assert.equal(r.targetTempC, 54);
+		/** Floor = buffer 55, span 8, fraction 0.4 → 58.2 */
+		assert.equal(r.targetTempC, 58.2);
 	});
 
-	it("targets default fraction in middle case", () => {
+	it("targets default fraction soft span in middle case", () => {
 		const r = target({ pvTodayKwh: 20, pvTomorrowKwh: 12 });
-		assert.equal(r.targetTempC, 58.5);
+		/** Floor = 55, span 8, fraction 0.7 → 60.6 */
+		assert.equal(r.targetTempC, 60.6);
 	});
 
-	it("conservative target without forecast data", () => {
+	it("conservative soft target without forecast data", () => {
 		const r = target({ pvTodayKwh: null, pvTomorrowKwh: null, pvBiasStatus: "no_data" });
 		assert.equal(r.targetTempC, 61);
 	});

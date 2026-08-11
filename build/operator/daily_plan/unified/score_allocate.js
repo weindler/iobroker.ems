@@ -396,12 +396,13 @@ function buildConsumerStates(input, slots) {
         }
     }
     const th = input.thermal;
-    if (th && th.headroomEnergyKwh !== null && th.headroomEnergyKwh > exports.EPS) {
-        const emptyDeadlineMs = th.estimatedEmptyAtIso
+    if (th &&
+        ((th.headroomEnergyKwh !== null && th.headroomEnergyKwh > exports.EPS) ||
+            th.boilerTempC != null ||
+            th.hygieneDue === true)) {
+        const emptyDeadlineMs = th.boilerEmptyAtUsable === true && th.estimatedEmptyAtIso
             ? Date.parse(th.estimatedEmptyAtIso)
-            : th.deadlineIso
-                ? Date.parse(th.deadlineIso)
-                : Number.NaN;
+            : Number.NaN;
         const nowMsLocal = Date.parse(input.time.nowIso);
         const fromIdx = Math.max(0, slots.findIndex((s) => s.startMs + 15 * 60_000 > nowMsLocal));
         const conf = pvConfidenceFactor(input);
@@ -412,14 +413,22 @@ function buildConsumerStates(input, slots) {
         const currentWindowEndMs = windowEndIdx > fromIdx && slots[windowEndIdx - 1]
             ? Date.parse(slots[windowEndIdx - 1].endIso)
             : null;
-        const emptyMs = th.estimatedEmptyAtIso ? Date.parse(th.estimatedEmptyAtIso) : Number.NaN;
+        const emptyMs = th.boilerEmptyAtUsable === true && th.estimatedEmptyAtIso
+            ? Date.parse(th.estimatedEmptyAtIso)
+            : Number.NaN;
         const bridge = (0, next_reliable_pv_1.resolveThermalPlannerEnergy)({
             nowMs: nowMsLocal,
             bufferTempC: th.bufferTempC,
-            minTempC: th.minTempC,
+            minTempC: th.boilerMinTempC ?? th.minTempC,
+            boilerTempC: th.boilerTempC ?? null,
+            boilerMinTempC: th.boilerMinTempC ?? th.minTempC,
+            bufferMaxTempC: th.maxTempC,
             headroomEnergyKwh: th.headroomEnergyKwh,
             coolingRateCPerH: th.coolingRateCPerH,
             estimatedEmptyAtMs: Number.isFinite(emptyMs) ? emptyMs : null,
+            boilerEmptyAtUsable: th.boilerEmptyAtUsable === true,
+            boilerSensorDegraded: th.boilerSensorDegraded === true,
+            hygieneMandatoryKwh: th.hygieneMandatoryKwh ?? 0,
             nextReliablePvMs: nextPv.startMs,
             currentWindowEndMs,
             pvConfidence01: conf,
@@ -427,12 +436,11 @@ function buildConsumerStates(input, slots) {
         const hardKwh = bridge.mandatoryEnergyKwh;
         const softKwh = bridge.economicHeadroomKwh;
         /*
-         * Hard-Bridge und Soft-Precharge getrennt:
-         * - Hard: nur MinTemp bis Cover-Horizont, Deadline = emptyAt
-         * - Soft: Target-Headroom, keine emptyAt-Urgency, Wirtschafts-Score
+         * Hard = Boiler (+ Hygiene), Deadline nur Boiler-emptyAt wenn usable.
+         * Soft = Puffer-Headroom, keine Buffer-emptyAt-Urgency.
          */
         if (hardKwh > exports.EPS) {
-            const hardDeadline = Number.isFinite(emptyDeadlineMs)
+            const hardDeadline = th.boilerEmptyAtUsable === true && Number.isFinite(emptyDeadlineMs)
                 ? emptyDeadlineMs
                 : Number.POSITIVE_INFINITY;
             out.push({

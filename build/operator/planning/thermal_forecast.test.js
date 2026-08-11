@@ -25,7 +25,7 @@ function target(overrides = {}) {
         ...overrides,
     });
 }
-(0, node_test_1.describe)("thermal forecast target", () => {
+(0, node_test_1.describe)("thermal forecast target — Soft Puffer", () => {
     (0, node_test_1.it)("uses max when forecast mode disabled", () => {
         const r = target({ forecastModeEnabled: false });
         strict_1.default.equal(r.targetTempC, 63);
@@ -37,24 +37,27 @@ function target(overrides = {}) {
         strict_1.default.deepEqual(withAi, withoutAi);
         strict_1.default.equal(withAi.forecastActive, true);
     });
-    (0, node_test_1.it)("targets min when buffer below planning min", () => {
-        const r = target({ bufferTempC: 46 });
-        strict_1.default.equal(r.targetTempC, 48);
-        strict_1.default.match(r.targetReasonDe, /Mindeststand/);
+    (0, node_test_1.it)("soft target stays between current buffer and max (no hard catch-up to planningMin)", () => {
+        const r = target({ bufferTempC: 46, pvTodayKwh: 20, pvTomorrowKwh: 18 });
+        strict_1.default.ok(r.targetTempC >= 46);
+        strict_1.default.ok(r.targetTempC <= 63);
+        strict_1.default.match(r.targetReasonDe, /Soft/i);
     });
     (0, node_test_1.it)("targets max when tomorrow pv much lower", () => {
         const r = target({ pvTodayKwh: 20, pvTomorrowKwh: 8 });
         strict_1.default.equal(r.targetTempC, 63);
     });
-    (0, node_test_1.it)("targets moderate when tomorrow pv similar", () => {
+    (0, node_test_1.it)("targets moderate soft span when tomorrow pv similar", () => {
         const r = target({ pvTodayKwh: 20, pvTomorrowKwh: 18 });
-        strict_1.default.equal(r.targetTempC, 54);
+        /** Floor = buffer 55, span 8, fraction 0.4 → 58.2 */
+        strict_1.default.equal(r.targetTempC, 58.2);
     });
-    (0, node_test_1.it)("targets default fraction in middle case", () => {
+    (0, node_test_1.it)("targets default fraction soft span in middle case", () => {
         const r = target({ pvTodayKwh: 20, pvTomorrowKwh: 12 });
-        strict_1.default.equal(r.targetTempC, 58.5);
+        /** Floor = 55, span 8, fraction 0.7 → 60.6 */
+        strict_1.default.equal(r.targetTempC, 60.6);
     });
-    (0, node_test_1.it)("conservative target without forecast data", () => {
+    (0, node_test_1.it)("conservative soft target without forecast data", () => {
         const r = target({ pvTodayKwh: null, pvTomorrowKwh: null, pvBiasStatus: "no_data" });
         strict_1.default.equal(r.targetTempC, 61);
     });

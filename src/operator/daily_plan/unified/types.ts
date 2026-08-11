@@ -239,31 +239,35 @@ export type UnifiedVehicleChargeEconomics = {
 
 export type UnifiedThermalInput = {
 	bufferTempC: number | null;
+	/** Boiler Brauchwasser — Hard. */
+	boilerTempC?: number | null;
+	/** @deprecated semantic: boiler min — keep name for callers; = boilerMinTempC */
 	minTempC: number | null;
+	boilerMinTempC?: number | null;
+	/** Puffer-Max / Heizstab-Safety. */
 	maxTempC: number | null;
-	/** Effektives Planungsziel °C (inkl. Precharge, falls aktiv). */
+	/** Effektives Soft-Ziel °C (Puffer-Precharge). */
 	dayTargetTempC: number | null;
-	/** Forecast-/Basisziel ohne optionales Precharge (Explain). */
 	forecastTargetTempC?: number | null;
-	/** true wenn dayTarget > forecast durch thermische PV-Vorladung. */
 	pvPrechargeActive?: boolean;
 	availablePowerW: number | null;
 	minPowerW: number | null;
-	/** Zusätzliche kWh bis effectiveTarget, falls schätzbar (kann Soft-Precharge enthalten). */
+	/** Soft-Headroom (Puffer). */
 	headroomEnergyKwh: number | null;
+	/** Nur Boiler-emptyAt wenn belastbar — nie Buffer-emptyAt. */
 	estimatedEmptyAtIso: string | null;
-	/**
-	 * empty_at / Nachtbrücke — nur für Hard-Bridge-Deadline, nicht für Soft-Precharge.
-	 * null = kein zeitlicher Zwang.
-	 */
+	/** Hard-Deadline nur Boiler-emptyAt. */
 	deadlineIso: string | null;
-	/** learned = valid Learning; estimated = degraded; null = unbekannt/fehlt. */
 	emptyAtSource: "learned" | "estimated" | null;
+	boilerEmptyAtUsable?: boolean;
+	boilerSensorDegraded?: boolean;
+	hygieneMandatoryKwh?: number | null;
+	hygieneDue?: boolean;
 	nightBridgeActive: boolean;
+	/** Boiler-Kühlrate wenn Learning belastbar. */
 	coolingRateCPerH: number | null;
 	minimumRuntimeSec: number | null;
 	hysteresisK: number | null;
-	/** Runtime-Anti-Takt — darf headroom nicht nullen. */
 	reheatHysteresisActive: boolean;
 	uncertainty: OperatorDataQuality;
 	freshness: UnifiedDataFreshness;

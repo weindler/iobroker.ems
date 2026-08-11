@@ -60,6 +60,7 @@ export async function ensureEmsLightStates(host: StateHost, adapterVersion: stri
 		numState("live.wallbox.charge_power_w", "Live Wallbox Ladeleistung", "W"),
 		numState("live.wallbox.vehicle_soc_pct", "Live Fahrzeug-SOC", "%"),
 		numState("live.thermal.buffer_temp_c", "Live Puffer-Temperatur", "°C"),
+		numState("live.thermal.boiler_temp_c", "Live Boiler-Temperatur", "°C"),
 		numState("live.pv.power_w", "Live PV-Leistung", "W"),
 		numState("live.price.now_ct_per_kwh", "Live Strompreis jetzt", "ct/kWh"),
 

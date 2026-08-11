@@ -73,6 +73,8 @@ async function runLearningTick(host: PvBiasRunHost & StateHost): Promise<void> {
 	// House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
 	await runHouseLoadLearning(host);
 	await runThermalRuntimeLearning(host);
+	const { runThermalBoilerLearning } = await import("../thermal_boiler/run");
+	await runThermalBoilerLearning(host);
 	await runBatteryRuntimeLearning(host);
 	await runPriceForecastLearning(host);
 	await mirrorLearningPersistenceToStates(host as unknown as PersistenceMirrorHost);

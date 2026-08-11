@@ -62,8 +62,16 @@ export function immersionDeviceConfigFromAdapter(config: unknown): ImmersionDevi
 		phaseCount: parsePhaseCount(numField(c, "ih_phase_count", 1)),
 		stageCount,
 		stages,
+		/** Legacy — nicht Hard-Boiler-Min. */
 		planningMinTempC: numField(c, "ih_planning_min_temp_c", 48),
+		/** Puffer-Max / Heizstab-Safety. */
 		planningMaxTempC: numField(c, "ih_planning_max_temp_c", 60),
+		/**
+		 * Boiler-Min: eigenes Feld, Default 50 °C.
+		 * Bewusst KEIN stilles Umdeuten von ih_planning_min_temp_c.
+		 */
+		boilerMinTempC: numField(c, "ih_boiler_min_temp_c", 50),
+		hygieneTargetTempC: numField(c, "ih_hygiene_target_temp_c", 60),
 		temperatureHysteresisK: numField(c, "ih_temperature_hysteresis_k", 2),
 		temperatureMaxAgeSec: numField(c, "ih_temperature_max_age_sec", 300),
 		temperaturePlausibleMinC: numField(c, "ih_temperature_plausible_min_c", 0),
@@ -82,6 +90,8 @@ export function immersionDeviceConfigFromAdapter(config: unknown): ImmersionDevi
 		relayChatterMaxChanges: numField(c, "ih_relay_chatter_max_changes", 6),
 		bufferTempStateId: strField(c, "ih_buffer_temp_c_target"),
 		bufferTempEnabled: boolField(c, "ih_buffer_temp_c_enabled", true),
+		boilerTempStateId: strField(c, "ih_boiler_temp_c_target"),
+		boilerTempEnabled: boolField(c, "ih_boiler_temp_c_enabled", true),
 		forecastModeEnabled: boolField(c, "ih_forecast_mode_enabled", true),
 		forecastLowTomorrowRatio: numField(c, "ih_forecast_low_tomorrow_ratio", 0.5),
 		forecastHighTomorrowRatio: numField(c, "ih_forecast_high_tomorrow_ratio", 0.8),

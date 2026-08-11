@@ -68,6 +68,12 @@ const IMMERSION_SLOTS: MappingSlot[] = [
 		liveId: "live.thermal.buffer_temp_c",
 		labelDe: "Puffer-Temperatur",
 	},
+	{
+		addonId: "immersion_heater",
+		role: "boiler_temp_c",
+		liveId: "live.thermal.boiler_temp_c",
+		labelDe: "Boiler-Temperatur",
+	},
 ];
 
 const TARIFF_SLOTS: MappingSlot[] = [

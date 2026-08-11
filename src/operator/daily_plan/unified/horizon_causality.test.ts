@@ -150,14 +150,18 @@ describe("next reliable PV — surplus window (no fixed +Nh)", () => {
 });
 
 describe("T — Thermal bridge until next reliable PV", () => {
-	it("T1: buffer covers until next PV → Hard-Bridge ~0, Precharge soft", () => {
+	it("T1: Boiler covers until next PV → Hard-Bridge ~0, Precharge soft", () => {
 		const r = resolveThermalPlannerEnergy({
 			nowMs: Date.parse("2026-08-09T14:00:00.000Z"),
 			bufferTempC: 52,
+			boilerTempC: 52,
 			minTempC: 48,
+			boilerMinTempC: 48,
+			bufferMaxTempC: 63,
 			headroomEnergyKwh: 3.0,
 			coolingRateCPerH: 0.3,
 			estimatedEmptyAtMs: Date.parse("2026-08-10T07:25:00.000Z"),
+			boilerEmptyAtUsable: true,
 			nextReliablePvMs: Date.parse("2026-08-10T06:30:00.000Z"),
 			pvConfidence01: 0.85,
 		});
@@ -169,14 +173,18 @@ describe("T — Thermal bridge until next reliable PV", () => {
 		assert.ok(sumIh(plan) < 3.1, `IH soft cap, got ${sumIh(plan)}`);
 	});
 
-	it("T2: buffer does not cover → mandatory energy planned (not full headroom)", () => {
+	it("T2: Boiler does not cover → mandatory energy planned (not full headroom)", () => {
 		const r = resolveThermalPlannerEnergy({
 			nowMs: Date.parse("2026-08-09T18:00:00.000Z"),
-			bufferTempC: 49,
+			bufferTempC: 55,
+			boilerTempC: 49,
 			minTempC: 48,
+			boilerMinTempC: 48,
+			bufferMaxTempC: 63,
 			headroomEnergyKwh: 0.5,
 			coolingRateCPerH: 0.5,
 			estimatedEmptyAtMs: Date.parse("2026-08-10T02:00:00.000Z"),
+			boilerEmptyAtUsable: true,
 			nextReliablePvMs: Date.parse("2026-08-10T08:00:00.000Z"),
 			pvConfidence01: 0.8,
 		});
@@ -193,20 +201,28 @@ describe("T — Thermal bridge until next reliable PV", () => {
 		const weak = resolveThermalPlannerEnergy({
 			nowMs: Date.parse("2026-08-09T14:00:00.000Z"),
 			bufferTempC: 52,
+			boilerTempC: 50,
 			minTempC: 48,
+			boilerMinTempC: 48,
+			bufferMaxTempC: 63,
 			headroomEnergyKwh: 3,
 			coolingRateCPerH: 0.3,
-			estimatedEmptyAtMs: Date.parse("2026-08-10T07:25:00.000Z"),
+			estimatedEmptyAtMs: Date.parse("2026-08-10T04:00:00.000Z"),
+			boilerEmptyAtUsable: true,
 			nextReliablePvMs: Date.parse("2026-08-10T06:30:00.000Z"),
 			pvConfidence01: 0.4,
 		});
 		const strong = resolveThermalPlannerEnergy({
 			nowMs: Date.parse("2026-08-09T14:00:00.000Z"),
 			bufferTempC: 52,
+			boilerTempC: 50,
 			minTempC: 48,
+			boilerMinTempC: 48,
+			bufferMaxTempC: 63,
 			headroomEnergyKwh: 3,
 			coolingRateCPerH: 0.3,
-			estimatedEmptyAtMs: Date.parse("2026-08-10T07:25:00.000Z"),
+			estimatedEmptyAtMs: Date.parse("2026-08-10T04:00:00.000Z"),
+			boilerEmptyAtUsable: true,
 			nextReliablePvMs: Date.parse("2026-08-10T06:30:00.000Z"),
 			pvConfidence01: 0.9,
 		});
@@ -524,7 +540,10 @@ describe("G1 — synthetic 09.08. fault pattern", () => {
 		input.thermal!.estimatedEmptyAtIso = "2026-08-10T09:00:00.000Z";
 		input.thermal!.deadlineIso = "2026-08-10T09:00:00.000Z";
 		input.thermal!.bufferTempC = 50;
+		input.thermal!.boilerTempC = 50;
 		input.thermal!.minTempC = 48;
+		input.thermal!.boilerMinTempC = 48;
+		input.thermal!.boilerEmptyAtUsable = true;
 		input.thermal!.coolingRateCPerH = 0.35;
 		/** Pflicht-Klima bindet morgen früh den Großteil des Surplus. */
 		input.climate = {
@@ -582,20 +601,28 @@ describe("G1 — synthetic 09.08. fault pattern", () => {
 		const bridgeRaw = resolveThermalPlannerEnergy({
 			nowMs: Date.parse(nowIso),
 			bufferTempC: 50,
+			boilerTempC: 50,
 			minTempC: 48,
+			boilerMinTempC: 48,
+			bufferMaxTempC: 63,
 			headroomEnergyKwh: 2.0,
 			coolingRateCPerH: 0.35,
 			estimatedEmptyAtMs: emptyMs,
+			boilerEmptyAtUsable: true,
 			nextReliablePvMs: rawNext.startMs,
 			pvConfidence01: 0.85,
 		});
 		const bridgeOpp = resolveThermalPlannerEnergy({
 			nowMs: Date.parse(nowIso),
 			bufferTempC: 50,
+			boilerTempC: 50,
 			minTempC: 48,
+			boilerMinTempC: 48,
+			bufferMaxTempC: 63,
 			headroomEnergyKwh: 2.0,
 			coolingRateCPerH: 0.35,
 			estimatedEmptyAtMs: emptyMs,
+			boilerEmptyAtUsable: true,
 			nextReliablePvMs: oppNext.startMs,
 			pvConfidence01: 0.85,
 		});

@@ -50,8 +50,17 @@ export interface ImmersionDeviceConfig {
 	phaseCount: 1 | 3;
 	stageCount: 1 | 2 | 3;
 	stages: ImmersionStageConfig[];
+	/**
+	 * @deprecated Legacy-Feld — nicht mehr Hard-Warmwasser-Min.
+	 * Hard nutzt boilerMinTempC. Bleibt für Kompatibilität/Force-Floor-Hinweise.
+	 */
 	planningMinTempC: number;
+	/** Puffer / Heizstab-Obergrenze (Safety + Soft-Cap). */
 	planningMaxTempC: number;
+	/** Brauchwasser-Mindesttemperatur (Hard). */
+	boilerMinTempC: number;
+	/** Hygiene-Ziel Boiler °C (typ. >60). */
+	hygieneTargetTempC: number;
 	temperatureHysteresisK: number;
 	temperatureMaxAgeSec: number;
 	temperaturePlausibleMinC: number;
@@ -70,6 +79,8 @@ export interface ImmersionDeviceConfig {
 	relayChatterMaxChanges: number;
 	bufferTempStateId: string;
 	bufferTempEnabled: boolean;
+	boilerTempStateId: string;
+	boilerTempEnabled: boolean;
 	forecastModeEnabled: boolean;
 	forecastLowTomorrowRatio: number;
 	forecastHighTomorrowRatio: number;
@@ -147,6 +158,10 @@ export const IMMERSION_RUNTIME_STATES = {
 	requestedMode: `${IMMERSION_RUNTIME_BASE}.requested_mode`,
 	resolvedMode: `${IMMERSION_RUNTIME_BASE}.resolved_mode`,
 	bufferTemperatureC: `${IMMERSION_RUNTIME_BASE}.buffer_temperature_c`,
+	boilerTemperatureC: `${IMMERSION_RUNTIME_BASE}.boiler_temperature_c`,
+	boilerMinTempC: `${IMMERSION_RUNTIME_BASE}.boiler_min_temp_c`,
+	hygieneJson: `${IMMERSION_RUNTIME_BASE}.hygiene_json`,
+	hygieneStatusDe: `${IMMERSION_RUNTIME_BASE}.hygiene_status_de`,
 	temperatureStatus: `${IMMERSION_RUNTIME_BASE}.temperature_status`,
 	planningMinTempC: `${IMMERSION_RUNTIME_BASE}.planning_min_temp_c`,
 	planningMaxTempC: `${IMMERSION_RUNTIME_BASE}.planning_max_temp_c`,

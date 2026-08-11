@@ -11,7 +11,9 @@ const evcc_config_1 = require("../../../addons/wallbox/evcc_config");
 const vehicle_map_1 = require("../../../addons/wallbox/vehicle_map");
 const config_2 = require("../../../intent/config");
 const device_config_1 = require("../../../addons/immersion_heater/device_config");
+const hygiene_1 = require("../../../addons/immersion_heater/hygiene");
 const types_1 = require("../../../addons/immersion_heater/runtime/types");
+const flex_demand_1 = require("./flex_demand");
 const config_3 = require("../../../addons/air_conditioning/config");
 const constants_1 = require("../../../addons/air_conditioning/constants");
 const ensure_states_2 = require("../../../addons/air_conditioning/runtime/ensure_states");
@@ -113,17 +115,24 @@ function validIsoDeadline(raw) {
     return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 async function readThermalLearningSignal(host, now) {
+    return readVesselLearningSignal(host, now, "learning.thermal_runtime");
+}
+/** Boiler-Learning — Hard-Deadline; nie aus Puffer-States lesen. */
+async function readBoilerLearningSignal(host, now) {
+    return readVesselLearningSignal(host, now, "learning.thermal_boiler");
+}
+async function readVesselLearningSignal(host, now, base) {
     const timezone = (0, config_5.intentAdminConfigFromAdapter)(host.config).timezone || "Europe/Berlin";
     const [rawStatus, rawHealth, samples, coolingRateCPerHAvg, coolingConstantPerH, coolingAsymptoteC, estimatedRemainingHours, estimatedEmptyAtRaw, byDayTypeJsonRaw,] = await Promise.all([
-        readStr(host, "learning.thermal_runtime.status"),
-        readStr(host, "learning.thermal_runtime.health"),
-        readNum(host, "learning.thermal_runtime.samples"),
-        readNum(host, "learning.thermal_runtime.cooling_rate_c_per_h_avg"),
-        readNum(host, "learning.thermal_runtime.cooling_k_per_h"),
-        readNum(host, "learning.thermal_runtime.cooling_asymptote_c"),
-        readNum(host, "learning.thermal_runtime.estimated_remaining_hours"),
-        readStr(host, "learning.thermal_runtime.estimated_empty_at"),
-        readStr(host, "learning.thermal_runtime.by_day_type_json"),
+        readStr(host, `${base}.status`),
+        readStr(host, `${base}.health`),
+        readNum(host, `${base}.samples`),
+        readNum(host, `${base}.cooling_rate_c_per_h_avg`),
+        readNum(host, `${base}.cooling_k_per_h`),
+        readNum(host, `${base}.cooling_asymptote_c`),
+        readNum(host, `${base}.estimated_remaining_hours`),
+        readStr(host, `${base}.estimated_empty_at`),
+        readStr(host, `${base}.by_day_type_json`),
     ]);
     return (0, thermal_learning_1.buildThermalLearningSignal)({
         now,
@@ -324,6 +333,32 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     const acConfig = (0, config_3.acGlobalConfigFromAdapter)(config);
     const stats = await readConsumerStats(host);
     const thermalLearning = await readThermalLearningSignal(host, now);
+    const boilerLearning = await readBoilerLearningSignal(host, now);
+    const boilerTempLive = await readNum(host, "live.thermal.boiler_temp_c");
+    const boilerTemp = boilerTempLive ??
+        (immersionConfig.boilerTempEnabled && immersionConfig.boilerTempStateId
+            ? await readForeignNum(host, immersionConfig.boilerTempStateId)
+            : null);
+    const boilerSensorDegraded = boilerTemp === null;
+    const hygienePersistRaw = await readStr(host, "addons.immersion_heater.runtime.hygiene_json");
+    let lastHygieneIso = null;
+    try {
+        const hj = hygienePersistRaw ? JSON.parse(hygienePersistRaw) : null;
+        if (hj && typeof hj.lastBoilerHygieneAtIso === "string")
+            lastHygieneIso = hj.lastBoilerHygieneAtIso;
+    }
+    catch {
+        /* ignore */
+    }
+    const hygiene = (0, hygiene_1.evaluateHygieneDuty)({
+        nowMs: now.getTime(),
+        boilerTempC: boilerTemp,
+        hygieneTargetTempC: immersionConfig.hygieneTargetTempC,
+        bufferTempC: bufferTemp,
+        bufferMaxTempC: immersionConfig.planningMaxTempC,
+        lastBoilerHygieneAtIso: lastHygieneIso,
+        kwhPerDegreeC: flex_demand_1.IMMERSION_DEFAULT_KWH_PER_DEGREE_C,
+    });
     const batteryLearning = await readBatteryLearningSignal(host);
     const chargeLogic = await readBatteryChargeLogicDecision(host, now, socPct, batteryGov, modePolicy);
     const houseLoadTodayKwh = (0, house_load_1.dailyKwhFromHouseLoadDayForecast)((0, read_1.parseHouseLoadForecastJson)(houseLoadTodayRaw));
@@ -420,6 +455,8 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             modePolicy,
             config: immersionConfig,
             bufferTempC: bufferTemp,
+            boilerTempC: boilerTemp,
+            boilerSensorDegraded,
             thermalMode,
             fault: immersionFault === true,
             lockout: immersionState === "fault_lockout",
@@ -430,6 +467,10 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             forecastModeEnabled: immersionConfig.forecastModeEnabled,
             aiOptimizationAllowed: aiThermal === true,
             thermalLearning,
+            boilerLearning,
+            hygieneDue: hygiene.due,
+            hygieneMandatoryKwh: hygiene.mandatoryEnergyKwh,
+            hygieneReasonDe: hygiene.reasonDe,
             autoTargetReached: autoTargetReached === true,
             timezone,
         },

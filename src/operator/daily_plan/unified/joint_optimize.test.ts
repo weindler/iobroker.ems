@@ -108,7 +108,9 @@ function scenarioAInput(overrides: Partial<UnifiedDayPlannerInput> = {}): Unifie
 	};
 	base.thermal = {
 		bufferTempC: 49,
+		boilerTempC: 49,
 		minTempC: 44,
+		boilerMinTempC: 44,
 		maxTempC: 63,
 		dayTargetTempC: 58,
 		availablePowerW: 1700,
@@ -117,6 +119,7 @@ function scenarioAInput(overrides: Partial<UnifiedDayPlannerInput> = {}): Unifie
 		estimatedEmptyAtIso: emptyAt,
 		deadlineIso: emptyAt,
 		emptyAtSource: "estimated",
+		boilerEmptyAtUsable: true,
 		nightBridgeActive: true,
 		coolingRateCPerH: 0.7,
 		minimumRuntimeSec: 300,
@@ -347,6 +350,7 @@ describe("JOINT contribution: hysteresis must not zero planning demand", () => {
 				ih_planning_max_temp_c: 63,
 			}),
 			bufferTempC: 49,
+			boilerTempC: 58,
 			thermalMode: "auto",
 			fault: false,
 			lockout: false,
@@ -373,8 +377,9 @@ describe("JOINT contribution: hysteresis must not zero planning demand", () => {
 		});
 		assert.equal(flex.enabled, true);
 		assert.ok((flex.details.requiredEnergyKwh as number) > 0);
-		assert.equal(flex.deadlineIso, "2026-08-08T15:25:00.000Z");
-		assert.equal(flex.details.emptyAtSource, "estimated");
+		assert.equal(flex.deadlineIso, null);
+		assert.equal(flex.details.bufferEstimatedEmptyAt, "2026-08-08T15:25:00.000Z");
+		assert.equal(flex.details.emptyAtPlanningUsable, false);
 		assert.equal(flex.details.reheatHysteresisRuntimeOnly, true);
 	});
 });

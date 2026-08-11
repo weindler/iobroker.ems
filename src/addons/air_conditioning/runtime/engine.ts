@@ -48,6 +48,13 @@ import { evaluateAcUnitFsm } from "./fsm";
 import { emptyUnitPersist, type AcRuntimePersist, type AcUnitPersist } from "./persist";
 import { readAcRuntimePersist, writeAcRuntimePersist } from "./persist_io";
 import {
+	advanceCoolingDesired,
+	clearStopIntentAfterStart,
+	decideStopWrite,
+	ensureStopIntentFields,
+	resolveCoolingDesired,
+} from "./stop_intent";
+import {
 	buildAcMappingTableFromConfig,
 	executeAcWriteSteps,
 	resolveAcMappingTarget,
@@ -128,6 +135,7 @@ function unitPersist(index: number): AcUnitPersist {
 	if (up.lastModePurpose === undefined) {
 		up.lastModePurpose = null;
 	}
+	ensureStopIntentFields(up);
 	return up;
 }
 
@@ -298,6 +306,7 @@ async function startUnit(
 	await executeAcWriteSteps(host, unit.index, table, steps, live, host.log);
 	up.lastStartAtMs = Date.now();
 	up.lastModePurpose = modePurpose;
+	clearStopIntentAfterStart(up);
 	if (!live) {
 		up.running = true;
 		return;
@@ -683,20 +692,40 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 			stopRetryReady: stopRetryReady(up, nowMs),
 		});
 
-		if (permission.allowStop) {
-			if (switchIsOn(fb.value)) {
-				if (stopRetryReady(up, nowMs)) {
-					if (up.lastStopAtMs) {
-						host.log.info(
-							`ac unit ${unit.index}: retry stop (${Math.round((nowMs - up.lastStopAtMs) / 1000)}s since last attempt)`,
-						);
-					}
-					await stopUnit(host, unit, mappingTable, writeLive && permission.deviceWritesAllowed, up);
-				}
-			} else {
-				up.running = false;
+		const feedbackOn = switchIsOn(fb.value);
+		const desired = resolveCoolingDesired({
+			permission,
+			fsm,
+			dailyPlan,
+			feedbackOn,
+		});
+		const desiredAdv = advanceCoolingDesired(up, desired);
+		if (desiredAdv.stopCleared) {
+			host.log.info(
+				`ac unit ${unit.index}: stop retry cancelled — current planner intent is ON`,
+			);
+		}
+
+		const stopDecision = decideStopWrite({
+			up,
+			desired,
+			feedbackOn,
+			stopRetryReady: stopRetryReady(up, nowMs),
+			lastStopAtMs: up.lastStopAtMs,
+			nowMs,
+		});
+		if (stopDecision.action === "cancel_stale") {
+			host.log.info(`ac unit ${unit.index}: ${stopDecision.reasonDe}`);
+		} else if (stopDecision.action === "execute_stop") {
+			if (stopDecision.isRetry && up.lastStopAtMs) {
+				host.log.info(
+					`ac unit ${unit.index}: retry stop (${Math.round((nowMs - up.lastStopAtMs) / 1000)}s since last attempt) — ${stopDecision.reasonDe}`,
+				);
 			}
-		} else if (fsm.demandStop) {
+			await stopUnit(host, unit, mappingTable, writeLive && permission.deviceWritesAllowed, up);
+		} else if (!feedbackOn && permission.allowStop) {
+			up.running = false;
+		} else if (fsm.demandStop && !permission.allowStop) {
 			// Governance blockiert Stop-Writes — laufende Unit nicht blind abschalten.
 		} else if (permission.allowStart && switchIsOff(fb.value)) {
 			if (writeLive) {

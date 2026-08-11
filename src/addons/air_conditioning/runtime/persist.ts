@@ -1,5 +1,8 @@
 import type { AcUnitModePurpose } from "../types";
 
+/** Spiegel von stop_intent.AcCoolingDesired — hier lokal, kein Import-Zyklus. */
+export type AcPersistCoolingDesired = "on" | "off" | "hold" | "idle";
+
 export type AcUnitPersist = {
 	index: number;
 	running: boolean;
@@ -14,6 +17,12 @@ export type AcUnitPersist = {
 	lastStopAtMs: number | null;
 	/** Last mode purpose written to the device (cool/dry switch while running). */
 	lastModePurpose: AcUnitModePurpose | null;
+	/** Monotone Desired-Wechsel — stale STOP-Kampagnen erkennen. */
+	commandGeneration: number;
+	/** Generation, unter der der aktuelle STOP bewaffnet wurde; null = keine Kampagne. */
+	stopArmedGeneration: number | null;
+	/** Letztes aufgelöstes Desired (für Generation-Bump). */
+	lastDesired: AcPersistCoolingDesired | null;
 };
 
 export type AcRuntimePersist = {
@@ -37,6 +46,9 @@ export function emptyUnitPersist(index: number): AcUnitPersist {
 		lastStartAtMs: null,
 		lastStopAtMs: null,
 		lastModePurpose: null,
+		commandGeneration: 0,
+		stopArmedGeneration: null,
+		lastDesired: null,
 	};
 }
 

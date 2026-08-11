@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.264",
+		"version": "0.1.265",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.265": {
+				"en": "Climate: invalidate stale STOP-retry campaigns when current planner intent is ON/HOLD; stop writes only under the current command generation. No min-runtime workaround; real Planner-OFF still stops.",
+				"de": "Klima: veraltete STOP-Retry-Kampagnen bei aktuellem Planner-ON/HOLD invalidieren; Stop-Writes nur unter aktueller Kommando-Generation. Kein Mindestlaufzeit-Workaround; echtes Planner-OFF stoppt weiterhin."
+			},
 			"0.1.264": {
 				"en": "Fix: Unified executable timeline is strictly 15-minute slots. House-load midday segments no longer overwrite quarter-hour bounds (real case: climate 10:00–14:00 @850 W with only 0.213 kWh). Dispatch rejects non-canonical geometry.",
 				"de": "Fix: Ausführbare Unified-Zeitachse strikt 15-Minuten-Slots. Hauslast-Midday-Segmente überschreiben keine Quarter-Hour-Grenzen mehr (Realfall: Klima 10:00–14:00 @850 W mit nur 0,213 kWh). Dispatch verwirft nicht-kanonische Geometrie."

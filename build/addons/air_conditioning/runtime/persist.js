@@ -16,6 +16,9 @@ function emptyUnitPersist(index) {
         lastStartAtMs: null,
         lastStopAtMs: null,
         lastModePurpose: null,
+        commandGeneration: 0,
+        stopArmedGeneration: null,
+        lastDesired: null,
     };
 }
 exports.emptyUnitPersist = emptyUnitPersist;

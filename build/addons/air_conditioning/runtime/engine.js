@@ -20,6 +20,7 @@ const daily_plan_1 = require("./daily_plan");
 const fsm_1 = require("./fsm");
 const persist_1 = require("./persist");
 const persist_io_1 = require("./persist_io");
+const stop_intent_1 = require("./stop_intent");
 const sequences_1 = require("./sequences");
 const stats_active_1 = require("./stats_active");
 const cleaning_1 = require("./cleaning");
@@ -68,6 +69,7 @@ function unitPersist(index) {
     if (up.lastModePurpose === undefined) {
         up.lastModePurpose = null;
     }
+    (0, stop_intent_1.ensureStopIntentFields)(up);
     return up;
 }
 function allocatedPowerW(runningCount, outdoorMax, unitEstimated) {
@@ -193,6 +195,7 @@ async function startUnit(host, unit, table, live, up, modePurpose) {
     await (0, sequences_1.executeAcWriteSteps)(host, unit.index, table, steps, live, host.log);
     up.lastStartAtMs = Date.now();
     up.lastModePurpose = modePurpose;
+    (0, stop_intent_1.clearStopIntentAfterStart)(up);
     if (!live) {
         up.running = true;
         return;
@@ -461,20 +464,38 @@ async function runAcRuntimeTickBody(host) {
             startRetryReady,
             stopRetryReady: stopRetryReady(up, nowMs),
         });
-        if (permission.allowStop) {
-            if ((0, time_1.switchIsOn)(fb.value)) {
-                if (stopRetryReady(up, nowMs)) {
-                    if (up.lastStopAtMs) {
-                        host.log.info(`ac unit ${unit.index}: retry stop (${Math.round((nowMs - up.lastStopAtMs) / 1000)}s since last attempt)`);
-                    }
-                    await stopUnit(host, unit, mappingTable, writeLive && permission.deviceWritesAllowed, up);
-                }
-            }
-            else {
-                up.running = false;
-            }
+        const feedbackOn = (0, time_1.switchIsOn)(fb.value);
+        const desired = (0, stop_intent_1.resolveCoolingDesired)({
+            permission,
+            fsm,
+            dailyPlan,
+            feedbackOn,
+        });
+        const desiredAdv = (0, stop_intent_1.advanceCoolingDesired)(up, desired);
+        if (desiredAdv.stopCleared) {
+            host.log.info(`ac unit ${unit.index}: stop retry cancelled — current planner intent is ON`);
         }
-        else if (fsm.demandStop) {
+        const stopDecision = (0, stop_intent_1.decideStopWrite)({
+            up,
+            desired,
+            feedbackOn,
+            stopRetryReady: stopRetryReady(up, nowMs),
+            lastStopAtMs: up.lastStopAtMs,
+            nowMs,
+        });
+        if (stopDecision.action === "cancel_stale") {
+            host.log.info(`ac unit ${unit.index}: ${stopDecision.reasonDe}`);
+        }
+        else if (stopDecision.action === "execute_stop") {
+            if (stopDecision.isRetry && up.lastStopAtMs) {
+                host.log.info(`ac unit ${unit.index}: retry stop (${Math.round((nowMs - up.lastStopAtMs) / 1000)}s since last attempt) — ${stopDecision.reasonDe}`);
+            }
+            await stopUnit(host, unit, mappingTable, writeLive && permission.deviceWritesAllowed, up);
+        }
+        else if (!feedbackOn && permission.allowStop) {
+            up.running = false;
+        }
+        else if (fsm.demandStop && !permission.allowStop) {
             // Governance blockiert Stop-Writes — laufende Unit nicht blind abschalten.
         }
         else if (permission.allowStart && (0, time_1.switchIsOff)(fb.value)) {

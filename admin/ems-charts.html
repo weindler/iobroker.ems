@@ -159,6 +159,9 @@ var stateIds=[
 	INST+".addons.immersion_heater.runtime.feedback_stage",
 	INST+".addons.immersion_heater.runtime.measured_power_w",
 	INST+".addons.immersion_heater.runtime.buffer_temperature_c",
+	INST+".addons.immersion_heater.runtime.boiler_temperature_c",
+	INST+".addons.immersion_heater.runtime.boiler_min_temp_c",
+	INST+".addons.immersion_heater.runtime.hygiene_status_de",
 	INST+".addons.immersion_heater.runtime.plan_target_temp_c",
 	INST+".addons.immersion_heater.runtime.plan_target_reason_de",
 	INST+".addons.immersion_heater.runtime.forecast_target_temp_c",
@@ -171,6 +174,8 @@ var stateIds=[
 	INST+".addons.immersion_heater.runtime.fault_message",
 	INST+".addons.immersion_heater.runtime.fault_reset",
 	INST+".addons.immersion_heater.runtime.commanded_stage",
+	INST+".live.thermal.boiler_temp_c",
+	INST+".live.thermal.buffer_temp_c",
 	INST+".addons.battery.runtime.decision_source",
 	INST+".addons.battery.runtime.daily_plan_status",
 	INST+".addons.battery.runtime.allocated_charge_power_w",
@@ -204,7 +209,11 @@ var stateIds=[
 	INST+".addons.air_conditioning.units.unit_2.room_temp_c",
 	INST+".addons.air_conditioning.runtime.reason_de",
 	INST+".learning.thermal_runtime.estimated_remaining_hours",
-	INST+".learning.thermal_runtime.estimated_empty_at"
+	INST+".learning.thermal_runtime.estimated_empty_at",
+	INST+".learning.thermal_boiler.estimated_remaining_hours",
+	INST+".learning.thermal_boiler.estimated_empty_at",
+	INST+".learning.thermal_boiler.reason_de",
+	INST+".learning.thermal_boiler.status"
 ];
 var cache={},bound=false,socketBound=false;
 
@@ -1105,8 +1114,8 @@ function renderStack(){
 		:(isPowerOn(ihP)||ihHasWindow?{cls:"plan",label:"Geplant"}:{cls:"idle",label:"Aus"});
 	var ihRows=[
 		["Jetzt",execNowLine(ihPhase,ihP,ihHwLabel)],
-		["Boiler",fmtTemp(g("addons.immersion_heater.runtime.boiler_temperature_c")||g("live.thermal.boiler_temp_c"))],
-		["Puffer",fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c"))],
+		["Boiler",fmtTemp(g("addons.immersion_heater.runtime.boiler_temperature_c")!=null?g("addons.immersion_heater.runtime.boiler_temperature_c"):g("live.thermal.boiler_temp_c"))],
+		["Puffer",fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c")!=null?g("addons.immersion_heater.runtime.buffer_temperature_c"):g("live.thermal.buffer_temp_c"))],
 		["Soft-Ziel",fmtTemp(g("addons.immersion_heater.runtime.plan_target_temp_c"))],
 		["Puffer-Max",fmtTemp(g("addons.immersion_heater.runtime.planning_max_temp_c"))],
 		["Boiler reicht bis",null],
@@ -1118,8 +1127,8 @@ function renderStack(){
 		ihNote=shortNote(immersionFaultLabelDe(immersionFaultCode())+" — "+immersionFaultStatusDe(),140);
 		ihRows=[
 			["Jetzt",ihHwLabel],
-			["Boiler",fmtTemp(g("addons.immersion_heater.runtime.boiler_temperature_c")||g("live.thermal.boiler_temp_c"))],
-			["Puffer",fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c"))],
+			["Boiler",fmtTemp(g("addons.immersion_heater.runtime.boiler_temperature_c")!=null?g("addons.immersion_heater.runtime.boiler_temperature_c"):g("live.thermal.boiler_temp_c"))],
+			["Puffer",fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c")!=null?g("addons.immersion_heater.runtime.buffer_temperature_c"):g("live.thermal.buffer_temp_c"))],
 			["Fehler",immersionFaultLabelDe(immersionFaultCode())],
 			["Status",immersionFaultStatusDe()],
 			[ihSched.label,ihSched.value]

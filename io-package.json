@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.268",
+		"version": "0.1.269",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.269": {
+				"en": "VIS: subscribe boiler/live thermal + boiler learning states so Boiler °C is shown; Wallbox runtime: write null not empty string for optional number states (fixes type warnings in dryrun).",
+				"de": "VIS: Boiler-/Live-Thermal- und Boiler-Learning-States abonnieren, damit Boiler °C angezeigt wird; Wallbox-Runtime: optionale Zahlen als null statt \"\" (behebt Typ-Warnungen im Dryrun)."
+			},
 			"0.1.268": {
 				"en": "Boiler/buffer thermal separation: Hard Warmwasser from boiler_temp_c + boiler learning/hygiene; Soft headroom from buffer; buffer emptyAt never Hard deadline; Puffer-Max safety unchanged.",
 				"de": "Boiler/Puffer Thermal-Trennung: Hard-Warmwasser aus boiler_temp_c + Boiler-Learning/Hygiene; Soft-Headroom aus Puffer; Puffer-emptyAt nie Hard-Deadline; Puffer-Max-Safety unverändert."

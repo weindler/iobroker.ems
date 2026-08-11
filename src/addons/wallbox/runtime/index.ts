@@ -1,4 +1,4 @@
-import { setStateIfChanged } from "../../../policy/core/state_write";
+import { setOptionalNumberIfChanged, setStateIfChanged } from "../../../policy/core/state_write";
 import type { StateHost } from "../../../ems_light/state_util";
 import { WALLBOX_RUNTIME_STATES } from "./states";
 import type { WallboxPlanDecision } from "./daily_plan";
@@ -29,7 +29,11 @@ export async function publishWallboxRuntimeStates(
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.allocatedGridPowerW, decision.gridPowerW ?? 0);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.energySource, decision.energySource);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.deadlineIso, decision.deadlineIso ?? "");
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.remainingEnergyKwh, decision.remainingEnergyKwh ?? "");
+	await setOptionalNumberIfChanged(
+		host,
+		WALLBOX_RUNTIME_STATES.remainingEnergyKwh,
+		decision.remainingEnergyKwh,
+	);
 	await setStateIfChanged(
 		host,
 		WALLBOX_RUNTIME_STATES.plannedEnergyUntilDeadlineKwh,
@@ -45,10 +49,10 @@ export async function publishWallboxRuntimeStates(
 		WALLBOX_RUNTIME_STATES.plannedGridEnergyUntilDeadlineKwh,
 		decision.plannedGridEnergyUntilDeadlineKwh,
 	);
-	await setStateIfChanged(
+	await setOptionalNumberIfChanged(
 		host,
 		WALLBOX_RUNTIME_STATES.plannedCostUntilDeadlineCt,
-		decision.plannedCostUntilDeadlineCt ?? "",
+		decision.plannedCostUntilDeadlineCt,
 	);
 	await setStateIfChanged(
 		host,
@@ -63,8 +67,8 @@ export async function publishWallboxRuntimeStates(
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.lastPlannedSlot, decision.lastPlannedSlot ?? "");
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.activePlannedSlots, decision.activePlannedSlots);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.maxPlannedPowerW, decision.maxPlannedPowerW);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.minChargePowerW, decision.minChargePowerW ?? "");
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.maxChargePowerW, decision.maxChargePowerW ?? "");
+	await setOptionalNumberIfChanged(host, WALLBOX_RUNTIME_STATES.minChargePowerW, decision.minChargePowerW);
+	await setOptionalNumberIfChanged(host, WALLBOX_RUNTIME_STATES.maxChargePowerW, decision.maxChargePowerW);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.planExecutionStatus, decision.planExecutionStatus);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.externalPlanActive, decision.externalPlanActive);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.externalPlanTime, decision.externalPlanTime ?? "");
@@ -83,8 +87,12 @@ export async function publishWallboxDispatchStates(
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.dispatchAction, dispatch.intent.action);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.targetEnabled, dispatch.target.enableCharging);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.targetPowerW, dispatch.target.targetPowerW ?? 0);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.targetCurrentA, dispatch.target.targetCurrentA ?? "");
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.targetPhases, dispatch.target.phases ?? "");
+	await setOptionalNumberIfChanged(
+		host,
+		WALLBOX_RUNTIME_STATES.targetCurrentA,
+		dispatch.target.targetCurrentA,
+	);
+	await setOptionalNumberIfChanged(host, WALLBOX_RUNTIME_STATES.targetPhases, dispatch.target.phases);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.targetEvccMode, dispatch.target.desiredEvccMode ?? "");
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.dispatchSource, decision.decisionSource);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.dispatchValidUntil, dispatch.intent.validUntil ?? "");

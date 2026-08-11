@@ -21,11 +21,11 @@ async function publishWallboxRuntimeStates(host, decision, governanceAllowed) {
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.allocatedGridPowerW, decision.gridPowerW ?? 0);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.energySource, decision.energySource);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.deadlineIso, decision.deadlineIso ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.remainingEnergyKwh, decision.remainingEnergyKwh ?? "");
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.remainingEnergyKwh, decision.remainingEnergyKwh);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.plannedEnergyUntilDeadlineKwh, decision.plannedEnergyUntilDeadlineKwh);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.plannedPvEnergyUntilDeadlineKwh, decision.plannedPvEnergyUntilDeadlineKwh);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.plannedGridEnergyUntilDeadlineKwh, decision.plannedGridEnergyUntilDeadlineKwh);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.plannedCostUntilDeadlineCt, decision.plannedCostUntilDeadlineCt ?? "");
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.plannedCostUntilDeadlineCt, decision.plannedCostUntilDeadlineCt);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.deadlineReachable, decision.deadlineReachable === null
         ? "unknown"
         : decision.deadlineReachable
@@ -35,8 +35,8 @@ async function publishWallboxRuntimeStates(host, decision, governanceAllowed) {
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.lastPlannedSlot, decision.lastPlannedSlot ?? "");
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.activePlannedSlots, decision.activePlannedSlots);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.maxPlannedPowerW, decision.maxPlannedPowerW);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.minChargePowerW, decision.minChargePowerW ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.maxChargePowerW, decision.maxChargePowerW ?? "");
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.minChargePowerW, decision.minChargePowerW);
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.maxChargePowerW, decision.maxChargePowerW);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.planExecutionStatus, decision.planExecutionStatus);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.externalPlanActive, decision.externalPlanActive);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.externalPlanTime, decision.externalPlanTime ?? "");
@@ -51,8 +51,8 @@ async function publishWallboxDispatchStates(host, decision, dispatch) {
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.dispatchAction, dispatch.intent.action);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.targetEnabled, dispatch.target.enableCharging);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.targetPowerW, dispatch.target.targetPowerW ?? 0);
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.targetCurrentA, dispatch.target.targetCurrentA ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.targetPhases, dispatch.target.phases ?? "");
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.targetCurrentA, dispatch.target.targetCurrentA);
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.targetPhases, dispatch.target.phases);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.targetEvccMode, dispatch.target.desiredEvccMode ?? "");
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.dispatchSource, decision.decisionSource);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.dispatchValidUntil, dispatch.intent.validUntil ?? "");

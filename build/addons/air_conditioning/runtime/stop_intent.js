@@ -18,8 +18,8 @@ function plannerCoolingBudgetOn(dailyPlan) {
 }
 exports.plannerCoolingBudgetOn = plannerCoolingBudgetOn;
 /**
- * Aktuelle gewünschte Kühl-Kommando-Lage aus Permission + FSM + Feedback.
- * Planner-ON mit laufendem Gerät ohne demandStop → hold (kein Stop).
+ * @deprecated Engine nutzt computeAcCoolingDesired. Bleibt für Stop-Intent-Tests.
+ * Desired folgt Permission (eine Authority) — hold wenn FB on und kein allowStop.
  */
 function resolveCoolingDesired(input) {
     const { permission, fsm, dailyPlan, feedbackOn } = input;
@@ -27,10 +27,13 @@ function resolveCoolingDesired(input) {
         return "off";
     if (permission.allowStart)
         return "on";
-    if (feedbackOn && plannerCoolingBudgetOn(dailyPlan) && !fsm.demandStop)
+    if (feedbackOn && !fsm.demandStop && (plannerCoolingBudgetOn(dailyPlan) || !dailyPlan.useDailyPlan)) {
         return "hold";
-    if (feedbackOn && !fsm.demandStop && !dailyPlan.useDailyPlan)
+    }
+    /** Fehlender NOW-Eintrag (allocationStatus none) ist kein OFF — halten. */
+    if (feedbackOn && !fsm.demandStop && dailyPlan.useDailyPlan && dailyPlan.allocationStatus === "none") {
         return "hold";
+    }
     return "idle";
 }
 exports.resolveCoolingDesired = resolveCoolingDesired;

@@ -245,10 +245,16 @@ function buildUnifiedInputFromForecastContext(ctx) {
         const overComfort = room !== null && onTemp !== null && room >= onTemp;
         const rt = acRtByUnit.get(u);
         const hardwareRunning = rt?.running === true;
-        const allocW = rt?.allocatedPowerW;
-        const noNewDemand = rt?.decisionSource === "temperature_no_demand" ||
-            (allocW != null && Number.isFinite(allocW) && allocW < 50);
+        /*
+         * Runtime-Hold: Gerät läuft, kein neuer Startbedarf.
+         * Wichtig: allocW<50 darf Hold NICHT triggern — sonst erzeugt ein kurzzeitig
+         * fehlender NOW-Eintrag Hold→leerer NOW→Runtime-Planner-OFF-Schleife.
+         * Hold reduziert nur Flex-Mehr-Allocation im NOW-Slot (score_allocate);
+         * Runtime behandelt fehlenden NOW-Eintrag als HOLD, nicht als Planner-OFF.
+         */
+        const noNewDemand = rt?.decisionSource === "temperature_no_demand";
         const runtimeHold = hardwareRunning && noNewDemand;
+        const allocW = rt?.allocatedPowerW;
         const holdPowerW = rt?.estimatedPowerW ?? typical ?? (allocW != null && allocW > 0 ? allocW : null);
         climateUnits.push({
             unitId: contribution_ids_1.CONTRIBUTION_IDS.AC_UNIT(u),

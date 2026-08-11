@@ -15,6 +15,7 @@ import {
 import type { AcUnitConfig } from "../types";
 import type { AcUnitFsmResult } from "./fsm";
 import { AC_UNIT_COUNT } from "../constants";
+import { computeAcCoolingDesired, controlToPermission } from "./compute_desired";
 
 const ACTIVE_ALLOCATION_STATUSES = new Set<AllocationStatus>(["allocated", "partially_allocated"]);
 const USABLE_DAILY_PLAN_STATUSES = new Set<DailyPlanStatus>(["ready", "degraded"]);
@@ -524,114 +525,22 @@ export interface AcCoolingPermissionResult {
 	deviceWritesAllowed: boolean;
 }
 
+/**
+ * Permission leitet sich ausschließlich aus computeAcCoolingDesired ab.
+ * feedbackOn aus FSM-State (running ≈ Feedback ON) — Engine nutzt computeAcCoolingDesired direkt.
+ */
 export function evaluateAcCoolingPermission(input: AcCoolingPermissionInput): AcCoolingPermissionResult {
-	const {
-		unitEnabled,
-		governanceEnabled,
-		addonEnabled,
-		cleaningActive,
-		fsm,
-		dailyPlan,
-		startRetryReady,
-	} = input;
-
-	const deviceWritesAllowed = governanceEnabled && addonEnabled;
-
-	if (!unitEnabled) {
-		return {
-			decisionSource: "unit_disabled",
-			reasonDe: "Innengerät deaktiviert.",
-			allowStart: false,
-			allowStop: deviceWritesAllowed && fsm.demandStop,
-			allowCleaningWrites: false,
-			deviceWritesAllowed,
-		};
-	}
-
-	if (!governanceEnabled) {
-		return {
-			decisionSource: "governance_disabled",
-			reasonDe: "Klima-Governance deaktiviert — keine EMS-Steueraktion.",
-			allowStart: false,
-			allowStop: false,
-			allowCleaningWrites: false,
-			deviceWritesAllowed: false,
-		};
-	}
-
-	if (!addonEnabled) {
-		return {
-			decisionSource: "unit_disabled",
-			reasonDe: "Klima-Add-on deaktiviert.",
-			allowStart: false,
-			allowStop: fsm.demandStop,
-			allowCleaningWrites: false,
-			deviceWritesAllowed: false,
-		};
-	}
-
-	if (cleaningActive) {
-		return {
-			decisionSource: "cleaning",
-			reasonDe: fsm.reasonDe,
-			allowStart: false,
-			allowStop: false,
-			allowCleaningWrites: deviceWritesAllowed,
-			deviceWritesAllowed,
-		};
-	}
-
-	if (fsm.demandStart && !startRetryReady) {
-		return {
-			decisionSource: "rate_limited",
-			reasonDe: "Start-Rate-Limit aktiv.",
-			allowStart: false,
-			allowStop: fsm.demandStop,
-			allowCleaningWrites: deviceWritesAllowed,
-			deviceWritesAllowed,
-		};
-	}
-
-	let allowStart = fsm.demandStart;
-	let decisionSource: AcDecisionSource = "climate_fallback";
-	let reasonDe = fsm.reasonDe;
-	/** Gültiger Plan mit 0 W = Planner-OFF — stoppt normalen Komfortlauf (nicht nur Neustarts). */
-	const plannerOff =
-		dailyPlan.useDailyPlan &&
-		dailyPlan.allocatedPowerW !== null &&
-		dailyPlan.allocatedPowerW <= 0;
-
-	if (fsm.demandStart) {
-		if (dailyPlan.useDailyPlan) {
-			decisionSource = "daily_plan";
-			if (!dailyPlan.allocationAllowsStart) {
-				allowStart = false;
-				reasonDe = dailyPlan.allocationReasonDe;
-			} else {
-				reasonDe = `${fsm.reasonDe} Daily Plan: ${dailyPlan.allocatedPowerW} W freigegeben.`;
-			}
-		} else {
-			decisionSource = "climate_fallback";
-			reasonDe = `${fsm.reasonDe} ${dailyPlan.allocationReasonDe}`.trim();
-		}
-	} else if (dailyPlan.useDailyPlan && dailyPlan.allocatedPowerW !== null && dailyPlan.allocatedPowerW > 0) {
-		decisionSource = "temperature_no_demand";
-		reasonDe = `Daily Plan stellt ${dailyPlan.allocatedPowerW} W bereit, aktuell kein Kühlbedarf.`;
-	} else if (dailyPlan.useDailyPlan) {
-		decisionSource = "daily_plan";
-		reasonDe = dailyPlan.allocationReasonDe || fsm.reasonDe;
-	} else if (!fsm.demandStop && !fsm.demandStart) {
-		decisionSource = dailyPlan.useDailyPlan ? "daily_plan" : "climate_fallback";
-	}
-
-	return {
-		decisionSource,
-		reasonDe,
-		allowStart: allowStart && deviceWritesAllowed,
-		allowStop: (fsm.demandStop || plannerOff) && deviceWritesAllowed,
-		allowCleaningWrites: deviceWritesAllowed,
-		deviceWritesAllowed,
-	};
+	const decision = computeAcCoolingDesired({
+		unitEnabled: input.unitEnabled,
+		governanceEnabled: input.governanceEnabled,
+		addonEnabled: input.addonEnabled,
+		cleaningActive: input.cleaningActive,
+		fsm: input.fsm,
+		dailyPlan: input.dailyPlan,
+		feedbackOn: input.fsm.state === "running",
+		startRetryReady: input.startRetryReady,
+	});
+	return controlToPermission(decision);
 }
 
 export function acUnitContributionIds(): string[] {

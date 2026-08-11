@@ -357,7 +357,8 @@ function fsmDemandStart() {
         });
         strict_1.default.equal(perm.allowStart, false);
         strict_1.default.equal(perm.decisionSource, "daily_plan");
-        strict_1.default.equal(perm.allowStop, true);
+        /** fb off → kein Stop-Write; Planner-OFF blockiert nur Starts. */
+        strict_1.default.equal(perm.allowStop, false);
     });
     (0, node_test_1.it)("C6: valid 0 W plan stops already-running comfort cooling", () => {
         const fsm = (0, fsm_js_1.evaluateAcUnitFsm)({

@@ -8,6 +8,7 @@ const slots_1 = require("../../../operator/daily_plan/slots");
 const time_1 = require("../../../operator/time");
 const learned_power_1 = require("../../../learning/consumer_stats/learned_power");
 const constants_1 = require("../constants");
+const compute_desired_1 = require("./compute_desired");
 const ACTIVE_ALLOCATION_STATUSES = new Set(["allocated", "partially_allocated"]);
 const USABLE_DAILY_PLAN_STATUSES = new Set(["ready", "degraded"]);
 let planCache = null;
@@ -377,101 +378,22 @@ async function resolveAcUnitDailyPlanAllocation(host, unit, consumerStats, now) 
     });
 }
 exports.resolveAcUnitDailyPlanAllocation = resolveAcUnitDailyPlanAllocation;
+/**
+ * Permission leitet sich ausschließlich aus computeAcCoolingDesired ab.
+ * feedbackOn aus FSM-State (running ≈ Feedback ON) — Engine nutzt computeAcCoolingDesired direkt.
+ */
 function evaluateAcCoolingPermission(input) {
-    const { unitEnabled, governanceEnabled, addonEnabled, cleaningActive, fsm, dailyPlan, startRetryReady, } = input;
-    const deviceWritesAllowed = governanceEnabled && addonEnabled;
-    if (!unitEnabled) {
-        return {
-            decisionSource: "unit_disabled",
-            reasonDe: "Innengerät deaktiviert.",
-            allowStart: false,
-            allowStop: deviceWritesAllowed && fsm.demandStop,
-            allowCleaningWrites: false,
-            deviceWritesAllowed,
-        };
-    }
-    if (!governanceEnabled) {
-        return {
-            decisionSource: "governance_disabled",
-            reasonDe: "Klima-Governance deaktiviert — keine EMS-Steueraktion.",
-            allowStart: false,
-            allowStop: false,
-            allowCleaningWrites: false,
-            deviceWritesAllowed: false,
-        };
-    }
-    if (!addonEnabled) {
-        return {
-            decisionSource: "unit_disabled",
-            reasonDe: "Klima-Add-on deaktiviert.",
-            allowStart: false,
-            allowStop: fsm.demandStop,
-            allowCleaningWrites: false,
-            deviceWritesAllowed: false,
-        };
-    }
-    if (cleaningActive) {
-        return {
-            decisionSource: "cleaning",
-            reasonDe: fsm.reasonDe,
-            allowStart: false,
-            allowStop: false,
-            allowCleaningWrites: deviceWritesAllowed,
-            deviceWritesAllowed,
-        };
-    }
-    if (fsm.demandStart && !startRetryReady) {
-        return {
-            decisionSource: "rate_limited",
-            reasonDe: "Start-Rate-Limit aktiv.",
-            allowStart: false,
-            allowStop: fsm.demandStop,
-            allowCleaningWrites: deviceWritesAllowed,
-            deviceWritesAllowed,
-        };
-    }
-    let allowStart = fsm.demandStart;
-    let decisionSource = "climate_fallback";
-    let reasonDe = fsm.reasonDe;
-    /** Gültiger Plan mit 0 W = Planner-OFF — stoppt normalen Komfortlauf (nicht nur Neustarts). */
-    const plannerOff = dailyPlan.useDailyPlan &&
-        dailyPlan.allocatedPowerW !== null &&
-        dailyPlan.allocatedPowerW <= 0;
-    if (fsm.demandStart) {
-        if (dailyPlan.useDailyPlan) {
-            decisionSource = "daily_plan";
-            if (!dailyPlan.allocationAllowsStart) {
-                allowStart = false;
-                reasonDe = dailyPlan.allocationReasonDe;
-            }
-            else {
-                reasonDe = `${fsm.reasonDe} Daily Plan: ${dailyPlan.allocatedPowerW} W freigegeben.`;
-            }
-        }
-        else {
-            decisionSource = "climate_fallback";
-            reasonDe = `${fsm.reasonDe} ${dailyPlan.allocationReasonDe}`.trim();
-        }
-    }
-    else if (dailyPlan.useDailyPlan && dailyPlan.allocatedPowerW !== null && dailyPlan.allocatedPowerW > 0) {
-        decisionSource = "temperature_no_demand";
-        reasonDe = `Daily Plan stellt ${dailyPlan.allocatedPowerW} W bereit, aktuell kein Kühlbedarf.`;
-    }
-    else if (dailyPlan.useDailyPlan) {
-        decisionSource = "daily_plan";
-        reasonDe = dailyPlan.allocationReasonDe || fsm.reasonDe;
-    }
-    else if (!fsm.demandStop && !fsm.demandStart) {
-        decisionSource = dailyPlan.useDailyPlan ? "daily_plan" : "climate_fallback";
-    }
-    return {
-        decisionSource,
-        reasonDe,
-        allowStart: allowStart && deviceWritesAllowed,
-        allowStop: (fsm.demandStop || plannerOff) && deviceWritesAllowed,
-        allowCleaningWrites: deviceWritesAllowed,
-        deviceWritesAllowed,
-    };
+    const decision = (0, compute_desired_1.computeAcCoolingDesired)({
+        unitEnabled: input.unitEnabled,
+        governanceEnabled: input.governanceEnabled,
+        addonEnabled: input.addonEnabled,
+        cleaningActive: input.cleaningActive,
+        fsm: input.fsm,
+        dailyPlan: input.dailyPlan,
+        feedbackOn: input.fsm.state === "running",
+        startRetryReady: input.startRetryReady,
+    });
+    return (0, compute_desired_1.controlToPermission)(decision);
 }
 exports.evaluateAcCoolingPermission = evaluateAcCoolingPermission;
 function acUnitContributionIds() {

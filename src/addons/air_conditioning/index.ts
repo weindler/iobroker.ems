@@ -5,6 +5,7 @@ import { AC_ADDON_ID } from "./constants";
 import { acMappingCommandsForConfiguredUnits } from "./configured";
 import { acMappingFromConfig } from "./mapping_config";
 import { addonAvailable, addonEnabled } from "../../tree_paths";
+import { DAILY_PLAN_STATE_IDS, ALLOCATION_ADDON_STATE_IDS } from "../../operator/daily_plan/states";
 import { ensureAcRuntimeStates } from "./runtime/ensure_states";
 import {
 	acRuntimeWatchedForeignIds,
@@ -71,9 +72,16 @@ export function stopAirConditioningModule(): void {
 
 export function handleAirConditioningStateChange(adapter: ioBroker.Adapter, stateId: string): void {
 	const ns = `${adapter.namespace}.`;
+	const planWake =
+		stateId === `${ns}${DAILY_PLAN_STATE_IDS.revision}` ||
+		stateId === `${ns}${DAILY_PLAN_STATE_IDS.status}` ||
+		stateId === `${ns}${DAILY_PLAN_STATE_IDS.planJson}` ||
+		stateId === `${ns}${ALLOCATION_ADDON_STATE_IDS.air_conditioning.status}` ||
+		stateId === `${ns}${ALLOCATION_ADDON_STATE_IDS.air_conditioning.planJson}`;
 	if (
 		stateId === `${ns}${addonEnabled(AC_ADDON_ID)}` ||
 		stateId === `${ns}${addonAvailable(AC_ADDON_ID)}` ||
+		planWake ||
 		acRuntimeWatchedForeignIds(adapter.config).includes(stateId)
 	) {
 		void runAcRuntimeTick(runtimeHost(adapter)).catch((e) => adapter.log.warn(`ac runtime tick: ${e}`));

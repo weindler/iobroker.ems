@@ -21,6 +21,8 @@ const fsm_1 = require("./fsm");
 const persist_1 = require("./persist");
 const persist_io_1 = require("./persist_io");
 const stop_intent_1 = require("./stop_intent");
+const compute_desired_1 = require("./compute_desired");
+const diag_trace_1 = require("./diag_trace");
 const sequences_1 = require("./sequences");
 const stats_active_1 = require("./stats_active");
 const cleaning_1 = require("./cleaning");
@@ -38,7 +40,7 @@ function clearTick() {
         tickTimer = null;
     }
 }
-function scheduleTick() {
+function scheduleTick(delayMs = constants_1.AC_TICK_MS) {
     clearTick();
     if (!engineActive)
         return;
@@ -47,7 +49,11 @@ function scheduleTick() {
         if (!engineActive || !hostRef)
             return;
         void runAcRuntimeTick(hostRef).catch((e) => hostRef?.log.warn(`ac runtime tick: ${e}`));
-    }, constants_1.AC_TICK_MS);
+    }, delayMs);
+}
+/** Nach Hardware-Aktion: neuer Reconcile mit frischen Inputs, kein Weiterrechnen mit Pre-await-Snapshot. */
+function scheduleImmediateReconcile() {
+    scheduleTick(50);
 }
 async function readForeign(host, id) {
     if (!id)
@@ -189,6 +195,35 @@ async function applyModePurposeWhileRunning(host, unit, table, live, up, modePur
         host.log.info(`ac unit ${unit.index}: mode → ${modePurpose} (${mode})`);
     }
 }
+function plannerOffFromDailyPlan(dailyPlan) {
+    return (dailyPlan.useDailyPlan &&
+        dailyPlan.allocatedPowerW !== null &&
+        dailyPlan.allocatedPowerW <= 0);
+}
+function emitAcCoolingDiag(host, tag, unitIndex, nowMs, up, dailyPlan, desired, permission, feedback, demandStop) {
+    (0, stop_intent_1.ensureStopIntentFields)(up);
+    (0, diag_trace_1.logAcCoolingDiag)(host.log, {
+        tag,
+        unitIndex,
+        nowMs,
+        slotStartIso: dailyPlan.slotStartIso,
+        slotEndIso: dailyPlan.slotEndIso,
+        allocatedPowerW: dailyPlan.allocatedPowerW,
+        dailyPlanRevision: dailyPlan.dailyPlanRevision,
+        dailyPlanStatus: dailyPlan.dailyPlanStatus,
+        desired,
+        lastDesired: up.lastDesired,
+        commandGeneration: up.commandGeneration,
+        stopArmedGeneration: up.stopArmedGeneration,
+        feedback,
+        decisionSource: permission.decisionSource,
+        allowStart: permission.allowStart,
+        allowStop: permission.allowStop,
+        demandStop,
+        plannerOff: plannerOffFromDailyPlan(dailyPlan),
+        reasonDe: permission.reasonDe,
+    });
+}
 async function startUnit(host, unit, table, live, up, modePurpose) {
     const profile = (0, registry_1.getAcProfile)(unit.profileId);
     const steps = profile.coolingStartSequence(unit, modePurpose);
@@ -198,18 +233,18 @@ async function startUnit(host, unit, table, live, up, modePurpose) {
     (0, stop_intent_1.clearStopIntentAfterStart)(up);
     if (!live) {
         up.running = true;
-        return;
+        return "dryrun";
     }
     const fbId = (0, sequences_1.resolveAcMappingTarget)(table, unit.index, "feedback_switch");
     const fb = await waitForFeedbackOn(host, fbId);
     if (fb.on) {
         up.running = true;
         host.log.info(`ac unit ${unit.index}: started — feedback on`);
+        return "feedback_on";
     }
-    else {
-        up.running = false;
-        host.log.warn(`ac unit ${unit.index}: start sequence sent but feedback still off after ${Math.round((constants_1.AC_FEEDBACK_POLL_MS * constants_1.AC_FEEDBACK_POLL_ATTEMPTS) / 1000)}s (last=${String(fb.value ?? "")})`);
-    }
+    up.running = false;
+    host.log.warn(`ac unit ${unit.index}: start sequence sent but feedback still off after ${Math.round((constants_1.AC_FEEDBACK_POLL_MS * constants_1.AC_FEEDBACK_POLL_ATTEMPTS) / 1000)}s (last=${String(fb.value ?? "")})`);
+    return "feedback_off";
 }
 async function finishCleaning(host, unit, table, live, up, reason, sendStop, allowWrite) {
     if (sendStop && live && allowWrite) {
@@ -409,7 +444,7 @@ async function runAcRuntimeTickBody(host) {
         const cleaningProgressId = (0, sequences_1.resolveAcMappingTarget)(mappingTable, unit.index, "feedback_cleaning_progress");
         const temp = await readForeign(host, tempId);
         const hum = await readForeign(host, humId);
-        const fb = await readForeign(host, fbId);
+        let fb = await readForeign(host, fbId);
         const cleaningState = await readForeign(host, cleaningStateId);
         const cleaningMode = await readForeign(host, cleaningModeId);
         const cleaningProgress = await readForeign(host, cleaningProgressId);
@@ -446,7 +481,7 @@ async function runAcRuntimeTickBody(host) {
             cleaningActive: up.cleaningActive,
         });
         const consumerStats = await (0, consumer_stats_1.peekConsumerStatsEntry)(host, (0, constants_1.acUnitConsumerKey)(unit.index));
-        const dailyPlan = await (0, daily_plan_1.resolveAcUnitDailyPlanAllocation)(host, unit, consumerStats, now);
+        let dailyPlan = await (0, daily_plan_1.resolveAcUnitDailyPlanAllocation)(host, unit, consumerStats, now);
         if (dailyPlan.useDailyPlan) {
             anyDailyPlanActive = true;
             if (dailyPlan.dailyPlanRevision !== null) {
@@ -454,27 +489,25 @@ async function runAcRuntimeTickBody(host) {
             }
         }
         const startRetryReady = !up.lastStartAtMs || nowMs - up.lastStartAtMs >= constants_1.AC_START_RETRY_MS;
-        const permission = (0, daily_plan_1.evaluateAcCoolingPermission)({
+        let feedbackOn = (0, time_1.switchIsOn)(fb.value);
+        let control = (0, compute_desired_1.computeAcCoolingDesired)({
             unitEnabled: unit.enabled,
             governanceEnabled,
             addonEnabled: addonEnabledVal,
             cleaningActive: up.cleaningActive,
             fsm,
             dailyPlan,
-            startRetryReady,
-            stopRetryReady: stopRetryReady(up, nowMs),
-        });
-        const feedbackOn = (0, time_1.switchIsOn)(fb.value);
-        const desired = (0, stop_intent_1.resolveCoolingDesired)({
-            permission,
-            fsm,
-            dailyPlan,
             feedbackOn,
+            startRetryReady,
         });
+        let permission = (0, compute_desired_1.controlToPermission)(control);
+        let desired = control.desired;
         const desiredAdv = (0, stop_intent_1.advanceCoolingDesired)(up, desired);
         if (desiredAdv.stopCleared) {
             host.log.info(`ac unit ${unit.index}: stop retry cancelled — current planner intent is ON`);
         }
+        /** Nach await start/stop: keine weitere Aktion mit Pre-await-Inputs. */
+        let hardwareActionTaken = false;
         const stopDecision = (0, stop_intent_1.decideStopWrite)({
             up,
             desired,
@@ -490,33 +523,85 @@ async function runAcRuntimeTickBody(host) {
             if (stopDecision.isRetry && up.lastStopAtMs) {
                 host.log.info(`ac unit ${unit.index}: retry stop (${Math.round((nowMs - up.lastStopAtMs) / 1000)}s since last attempt) — ${stopDecision.reasonDe}`);
             }
+            emitAcCoolingDiag(host, "stop", unit.index, Date.now(), up, dailyPlan, desired, permission, feedbackOn ? "on" : "off", fsm.demandStop);
+            emitAcCoolingDiag(host, "switch_off", unit.index, Date.now(), up, dailyPlan, desired, permission, feedbackOn ? "on" : "off", fsm.demandStop);
             await stopUnit(host, unit, mappingTable, writeLive && permission.deviceWritesAllowed, up);
+            hardwareActionTaken = true;
+            const fbAfter = await readForeign(host, fbId);
+            fb = fbAfter;
+            feedbackOn = (0, time_1.switchIsOn)(fbAfter.value);
+            up.running = feedbackOn;
         }
         else if (!feedbackOn && permission.allowStop) {
             up.running = false;
         }
-        else if (fsm.demandStop && !permission.allowStop) {
-            // Governance blockiert Stop-Writes — laufende Unit nicht blind abschalten.
-        }
-        else if (permission.allowStart && (0, time_1.switchIsOff)(fb.value)) {
+        else if (permission.allowStart && !feedbackOn) {
             if (writeLive) {
                 if (startRetryReady) {
                     if (up.lastStartAtMs) {
                         host.log.info(`ac unit ${unit.index}: retry start (${Math.round((nowMs - up.lastStartAtMs) / 1000)}s since last attempt)`);
                     }
-                    await startUnit(host, unit, mappingTable, writeLive && permission.deviceWritesAllowed, up, fsm.modePurpose);
+                    emitAcCoolingDiag(host, "start", unit.index, Date.now(), up, dailyPlan, desired, permission, "off", fsm.demandStop);
+                    const startOutcome = await startUnit(host, unit, mappingTable, writeLive && permission.deviceWritesAllowed, up, fsm.modePurpose);
+                    hardwareActionTaken = true;
+                    /*
+                     * Frische States nach await — Pre-START-Snapshot verwerfen (I3).
+                     * Kein running=false aus altem fb=OFF.
+                     */
+                    const fbAfter = await readForeign(host, fbId);
+                    fb = fbAfter;
+                    feedbackOn = (0, time_1.switchIsOn)(fbAfter.value);
+                    up.running = feedbackOn || startOutcome === "feedback_on" || startOutcome === "dryrun";
+                    const planAfter = await (0, daily_plan_1.resolveAcUnitDailyPlanAllocation)(host, unit, consumerStats, new Date());
+                    const fsmAfter = (0, fsm_1.evaluateAcUnitFsm)({
+                        now: new Date(),
+                        addonEnabled: addonEnabledVal && governanceEnabled && !executionOff,
+                        unit,
+                        roomTempC: temp.num,
+                        roomHumidityPct: hum.num,
+                        feedbackSwitchRaw: fb.value,
+                        cleaningActive: up.cleaningActive,
+                    });
+                    control = (0, compute_desired_1.computeAcCoolingDesired)({
+                        unitEnabled: unit.enabled,
+                        governanceEnabled,
+                        addonEnabled: addonEnabledVal,
+                        cleaningActive: up.cleaningActive,
+                        fsm: fsmAfter,
+                        dailyPlan: planAfter,
+                        feedbackOn,
+                        startRetryReady: false,
+                    });
+                    permission = (0, compute_desired_1.controlToPermission)(control);
+                    desired = control.desired;
+                    (0, stop_intent_1.advanceCoolingDesired)(up, desired);
+                    if (startOutcome === "feedback_on") {
+                        emitAcCoolingDiag(host, "feedback_on", unit.index, Date.now(), up, planAfter, desired, permission, "on", fsmAfter.demandStop);
+                    }
+                    /*
+                     * Echter Replan-OFF während START: nächsten Reconcile entscheiden lassen
+                     * (eine Aktion pro Reconcile — kein Stop im selben Tick nach Start).
+                     */
+                    dailyPlan = planAfter;
                 }
             }
             else if (!executionOff && !up.running) {
                 await startUnit(host, unit, mappingTable, false, up, fsm.modePurpose);
+                hardwareActionTaken = true;
+                up.running = true;
+                feedbackOn = true;
             }
         }
-        else if ((0, time_1.switchIsOn)(fb.value) &&
+        else if (feedbackOn &&
             !fsm.demandStop &&
             !up.cleaningActive &&
             permission.deviceWritesAllowed &&
-            !executionOff) {
+            !executionOff &&
+            !hardwareActionTaken) {
             await applyModePurposeWhileRunning(host, unit, mappingTable, writeLive, up, fsm.modePurpose);
+        }
+        if (hardwareActionTaken) {
+            scheduleImmediateReconcile();
         }
         summaryReasons.push(`U${unit.index}: ${permission.reasonDe}`);
         if (primaryDecisionDetail === "safe_default") {
@@ -531,14 +616,21 @@ async function runAcRuntimeTickBody(host) {
         if (permission.decisionSource === "lockout") {
             anyLockout = true;
         }
-        if ((0, time_1.switchIsOn)(fb.value)) {
+        /*
+         * running nur aus aktuellem (ggf. nach await frisch gelesenem) Feedback.
+         * Nie Pre-await-Snapshot nach START/STOP persistieren.
+         */
+        if (feedbackOn) {
             up.running = true;
         }
-        else if (live && (0, time_1.switchIsOff)(fb.value)) {
+        else if (live && !hardwareActionTaken) {
             up.running = false;
         }
+        else if (live && hardwareActionTaken) {
+            up.running = feedbackOn;
+        }
         const ids = (0, ensure_states_1.acUnitRuntimeStates)(unit.index);
-        const fbOn = (0, time_1.switchIsOn)(fb.value);
+        const fbOn = feedbackOn;
         const deviceActive = (0, stats_active_1.acStatsDeviceActive)(up, fbOn, up.running, nowMs);
         // Live + feedback off: do not keep a forever-open stats session after the start grace.
         if (!fbOn && !deviceActive && up.lastStartAtMs && (up.lastStopAtMs == null || up.lastStopAtMs < up.lastStartAtMs)) {

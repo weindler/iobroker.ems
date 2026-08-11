@@ -8,6 +8,7 @@ const constants_1 = require("./constants");
 const configured_1 = require("./configured");
 const mapping_config_1 = require("./mapping_config");
 const tree_paths_1 = require("../../tree_paths");
+const states_1 = require("../../operator/daily_plan/states");
 const ensure_states_1 = require("./runtime/ensure_states");
 const engine_1 = require("./runtime/engine");
 function runtimeHost(adapter) {
@@ -60,8 +61,14 @@ function stopAirConditioningModule() {
 exports.stopAirConditioningModule = stopAirConditioningModule;
 function handleAirConditioningStateChange(adapter, stateId) {
     const ns = `${adapter.namespace}.`;
+    const planWake = stateId === `${ns}${states_1.DAILY_PLAN_STATE_IDS.revision}` ||
+        stateId === `${ns}${states_1.DAILY_PLAN_STATE_IDS.status}` ||
+        stateId === `${ns}${states_1.DAILY_PLAN_STATE_IDS.planJson}` ||
+        stateId === `${ns}${states_1.ALLOCATION_ADDON_STATE_IDS.air_conditioning.status}` ||
+        stateId === `${ns}${states_1.ALLOCATION_ADDON_STATE_IDS.air_conditioning.planJson}`;
     if (stateId === `${ns}${(0, tree_paths_1.addonEnabled)(constants_1.AC_ADDON_ID)}` ||
         stateId === `${ns}${(0, tree_paths_1.addonAvailable)(constants_1.AC_ADDON_ID)}` ||
+        planWake ||
         (0, engine_1.acRuntimeWatchedForeignIds)(adapter.config).includes(stateId)) {
         void (0, engine_1.runAcRuntimeTick)(runtimeHost(adapter)).catch((e) => adapter.log.warn(`ac runtime tick: ${e}`));
     }

@@ -398,7 +398,8 @@ describe("ac cooling permission", () => {
 		});
 		assert.equal(perm.allowStart, false);
 		assert.equal(perm.decisionSource, "daily_plan");
-		assert.equal(perm.allowStop, true);
+		/** fb off → kein Stop-Write; Planner-OFF blockiert nur Starts. */
+		assert.equal(perm.allowStop, false);
 	});
 
 	it("C6: valid 0 W plan stops already-running comfort cooling", () => {

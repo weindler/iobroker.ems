@@ -80,7 +80,8 @@ describe("plan_visibility — Heizstab autoritative Timeline", () => {
 describe("plan_visibility — Klima Future plan_json", () => {
 	it("D: outside window + future allocation → Gesperrt + next plan visible", () => {
 		const planJson = JSON.stringify([
-			acEntry(1, "2026-08-09T09:00:00.000Z", 700, "2026-08-09T11:00:00.000Z"),
+			acEntry(1, "2026-08-09T09:00:00.000Z", 700),
+			acEntry(1, "2026-08-09T09:15:00.000Z", 700),
 		]);
 		const wins = climateUnitTimelineWindowsFromPlanJson(planJson, 1, NOW);
 		const next = nextPlanVisWindow(wins, NOW);

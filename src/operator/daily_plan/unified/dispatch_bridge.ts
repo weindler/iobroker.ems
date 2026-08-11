@@ -9,6 +9,10 @@ import type { DailyAllocationEntry } from "../types";
 import type { OperatorContributorRef } from "../../types";
 import type { UnifiedAllocationCell, UnifiedDayPlan } from "./types";
 import { filterRunnableAllocations, RUNNABLE_ALLOCATION_FLOOR_W } from "../addon_plan_publish";
+import {
+	executableGeometryRejectReasonDe,
+	isExecutableDailyEntry,
+} from "./slot_geometry";
 
 const IH_CONTRIBUTOR: OperatorContributorRef = {
 	type: "addon",
@@ -67,6 +71,14 @@ function cellToEntry(
 	};
 }
 
+/** Nur kanonische 15-Min-Zellen mit konsistenter Energy↔Power — nie Multi-Hour-Dispatch. */
+function filterExecutableGeometry(entries: DailyAllocationEntry[]): DailyAllocationEntry[] {
+	return entries.filter((e) => {
+		if (isExecutableDailyEntry(e)) return true;
+		return false;
+	});
+}
+
 /** Immersion: flexible Contribution (PV-first Soft); Pflicht separat wenn min_temp. */
 export function unifiedPlanToImmersionAllocations(plan: UnifiedDayPlan): DailyAllocationEntry[] {
 	const byKey = new Map<string, DailyAllocationEntry>();
@@ -98,10 +110,13 @@ export function unifiedPlanToImmersionAllocations(plan: UnifiedDayPlan): DailyAl
 			existing.reasonDe = `${existing.reasonDe}; ${entry.reasonDe}`;
 		}
 	}
-	return filterRunnableAllocations([...byKey.values()], RUNNABLE_ALLOCATION_FLOOR_W);
+	return filterRunnableAllocations(
+		filterExecutableGeometry([...byKey.values()]),
+		RUNNABLE_ALLOCATION_FLOOR_W,
+	);
 }
 
-/** Klima: air_conditioning.unit_N */
+/** Klima: air_conditioning.unit_N — Multi-Hour / Energy-Inkonsistenz nie publizieren. */
 export function unifiedPlanToClimateAllocations(plan: UnifiedDayPlan): DailyAllocationEntry[] {
 	const out: DailyAllocationEntry[] = [];
 	for (const cell of plan.allocations) {
@@ -110,7 +125,17 @@ export function unifiedPlanToClimateAllocations(plan: UnifiedDayPlan): DailyAllo
 			/^air_conditioning\.unit_(\d+)$/.exec(cell.consumerId) || /^unit_(\d+)$/.exec(cell.consumerId);
 		const unitIndex = m ? Number(m[1]) : Number(String(cell.consumerId).replace(/\D/g, "")) || 0;
 		if (unitIndex < 1 || unitIndex > 5) continue;
-		out.push(cellToEntry(cell, acUnitContributionId(unitIndex), AC_CONTRIBUTOR));
+		const entry = cellToEntry(cell, acUnitContributionId(unitIndex), AC_CONTRIBUTOR);
+		if (!isExecutableDailyEntry(entry)) {
+			entry.reasonDe = `${entry.reasonDe}; ${executableGeometryRejectReasonDe({
+				startIso: entry.slot.startIso,
+				endIso: entry.slot.endIso,
+				allocatedPowerW: entry.allocatedPowerW,
+				allocatedEnergyKwh: entry.allocatedEnergyKwh,
+			})}`;
+			continue;
+		}
+		out.push(entry);
 	}
 	return filterRunnableAllocations(out, RUNNABLE_ALLOCATION_FLOOR_W);
 }
@@ -125,7 +150,7 @@ export function unifiedPlanToBatteryAllocations(plan: UnifiedDayPlan): DailyAllo
 		if (cell.kind !== "battery_charge") continue;
 		out.push(cellToEntry(cell, CONTRIBUTION_IDS.BATTERY_CHARGE, BAT_CONTRIBUTOR));
 	}
-	return filterRunnableAllocations(out, RUNNABLE_ALLOCATION_FLOOR_W);
+	return filterRunnableAllocations(filterExecutableGeometry(out), RUNNABLE_ALLOCATION_FLOOR_W);
 }
 
 /** Wallbox → wallbox.ev_session für bestehende EVCC-Runtime. */
@@ -147,7 +172,7 @@ export function unifiedPlanToWallboxAllocations(plan: UnifiedDayPlan): DailyAllo
 			}),
 		);
 	}
-	return filterRunnableAllocations(out, RUNNABLE_ALLOCATION_FLOOR_W);
+	return filterRunnableAllocations(filterExecutableGeometry(out), RUNNABLE_ALLOCATION_FLOOR_W);
 }
 
 export type UnifiedIhAcDispatchPublish = {

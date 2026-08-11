@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.263",
+		"version": "0.1.264",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.264": {
+				"en": "Fix: Unified executable timeline is strictly 15-minute slots. House-load midday segments no longer overwrite quarter-hour bounds (real case: climate 10:00–14:00 @850 W with only 0.213 kWh). Dispatch rejects non-canonical geometry.",
+				"de": "Fix: Ausführbare Unified-Zeitachse strikt 15-Minuten-Slots. Hauslast-Midday-Segmente überschreiben keine Quarter-Hour-Grenzen mehr (Realfall: Klima 10:00–14:00 @850 W mit nur 0,213 kWh). Dispatch verwirft nicht-kanonische Geometrie."
+			},
 			"0.1.263": {
 				"en": "Thermal: wire Newton cooling into Unified; separate hard bridge from soft precharge; cover uses remaining current PV window — no emptyAt deadline for full target headroom.",
 				"de": "Thermal: Newton-Kühlrate in Unified verdrahtet; Hard-Bridge und Soft-Precharge getrennt; Cover nutzt Rest des laufenden PV-Fensters — kein emptyAt-Deadline-Druck auf vollen Target-Headroom."

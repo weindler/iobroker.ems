@@ -13,7 +13,8 @@ exports.IMMERSION_HARD_CONSUMER_ID = "immersion_heater";
 const optimize_weights_1 = require("./optimize_weights");
 const reason_codes_1 = require("./reason_codes");
 const vehicle_availability_1 = require("./vehicle_availability");
-exports.SLOT_H = 0.25;
+const slot_geometry_1 = require("./slot_geometry");
+exports.SLOT_H = slot_geometry_1.CANONICAL_SLOT_H;
 exports.EPS = 1e-6;
 /** SOC am Ende von slotIdx nach chronologischer Propagation der gebuchten Deltas. */
 function projectedSocAt(state, slotIdx) {
@@ -85,24 +86,78 @@ function pickSlotPowerW(forecastPowerW, observedPowerW, energyKwh) {
     }
     return { powerW: null, fromObserved: false };
 }
+function emptySlotWork(startIso, endIso) {
+    return {
+        startIso,
+        endIso,
+        startMs: Date.parse(startIso),
+        pvKwh: 0,
+        houseKwh: 0,
+        surplusKwh: 0,
+        importCt: null,
+        exportCt: null,
+        gridAllowed: true,
+        remainPvKwh: 0,
+    };
+}
+/**
+ * Ausführbare Unified-Zeitachse: ausschließlich kanonische 15-Min-Slots.
+ * Mehrstündige Hauslast-Segmente (z. B. midday 10–14) liefern Leistung auf
+ * überlappende Quarters — sie überschreiben niemals endIso.
+ */
 function buildSlots(input) {
     const byStart = new Map();
     const nowUsesLive = new Set();
+    const ensureQuarter = (startIso, endIso) => {
+        if (!(0, slot_geometry_1.isCanonicalQuarterSlot)(startIso, endIso))
+            return;
+        if (byStart.has(startIso))
+            return;
+        byStart.set(startIso, emptySlotWork(startIso, endIso));
+    };
+    /** 1) Kanonische Geometrie nur aus 15-Min-Zeitachsen (PV/Preis/time). */
     for (const s of input.time.slots) {
-        byStart.set(s.startIso, {
-            startIso: s.startIso,
-            endIso: s.endIso,
-            startMs: Date.parse(s.startIso),
-            pvKwh: 0,
-            houseKwh: 0,
-            surplusKwh: 0,
-            importCt: null,
-            exportCt: null,
-            gridAllowed: true,
-            remainPvKwh: 0,
-        });
+        ensureQuarter(s.startIso, s.endIso);
     }
     for (const p of input.pv.slots) {
+        ensureQuarter(p.slot.startIso, p.slot.endIso);
+    }
+    for (const pr of input.prices.slots) {
+        ensureQuarter(pr.slot.startIso, pr.slot.endIso);
+    }
+    /**
+     * 2) Mehrstündige Segmente → fehlende Quarters auffüllen (ohne endIso-Overwrite).
+     *    startIso allein ist kein Schlüssel für Geometrie.
+     */
+    for (const s of input.time.slots) {
+        if ((0, slot_geometry_1.isCanonicalQuarterSlot)(s.startIso, s.endIso))
+            continue;
+        const start = Date.parse(s.startIso);
+        const end = Date.parse(s.endIso);
+        if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start)
+            continue;
+        for (let t = start; t < end; t += slot_geometry_1.CANONICAL_SLOT_MS) {
+            const startIso = new Date(t).toISOString();
+            const endIso = new Date(t + slot_geometry_1.CANONICAL_SLOT_MS).toISOString();
+            ensureQuarter(startIso, endIso);
+        }
+    }
+    for (const h of input.houseLoad.slots) {
+        if ((0, slot_geometry_1.isCanonicalQuarterSlot)(h.slot.startIso, h.slot.endIso))
+            continue;
+        const start = Date.parse(h.slot.startIso);
+        const end = Date.parse(h.slot.endIso);
+        if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start)
+            continue;
+        for (let t = start; t < end; t += slot_geometry_1.CANONICAL_SLOT_MS) {
+            const startIso = new Date(t).toISOString();
+            const endIso = new Date(t + slot_geometry_1.CANONICAL_SLOT_MS).toISOString();
+            ensureQuarter(startIso, endIso);
+        }
+    }
+    for (const p of input.pv.slots) {
+        if (!(0, slot_geometry_1.isCanonicalQuarterSlot)(p.slot.startIso, p.slot.endIso))
+            continue;
         const w = byStart.get(p.slot.startIso);
         if (!w)
             continue;
@@ -112,17 +167,36 @@ function buildSlots(input) {
         if (pick.fromObserved)
             nowUsesLive.add(p.slot.startIso);
     }
+    /** Hauslast: Segmente auf alle überlappenden Quarters projizieren. */
     for (const h of input.houseLoad.slots) {
-        const w = byStart.get(h.slot.startIso);
-        if (!w)
-            continue;
         const pick = pickSlotPowerW(h.forecastPowerW, h.observedPowerW, h.energyKwh);
-        if (pick.powerW !== null)
-            w.houseKwh = energyFromPowerW(pick.powerW);
-        if (!pick.fromObserved)
-            nowUsesLive.delete(h.slot.startIso);
+        if (pick.powerW === null)
+            continue;
+        const e = energyFromPowerW(pick.powerW);
+        const hStart = Date.parse(h.slot.startIso);
+        const hEnd = Date.parse(h.slot.endIso);
+        if (!Number.isFinite(hStart) || !Number.isFinite(hEnd))
+            continue;
+        if ((0, slot_geometry_1.isCanonicalQuarterSlot)(h.slot.startIso, h.slot.endIso)) {
+            const w = byStart.get(h.slot.startIso);
+            if (!w)
+                continue;
+            w.houseKwh = e;
+            if (!pick.fromObserved)
+                nowUsesLive.delete(h.slot.startIso);
+            continue;
+        }
+        for (const w of byStart.values()) {
+            if (w.startMs >= hStart && w.startMs < hEnd) {
+                w.houseKwh = e;
+                if (!pick.fromObserved)
+                    nowUsesLive.delete(w.startIso);
+            }
+        }
     }
     for (const pr of input.prices.slots) {
+        if (!(0, slot_geometry_1.isCanonicalQuarterSlot)(pr.slot.startIso, pr.slot.endIso))
+            continue;
         const w = byStart.get(pr.slot.startIso);
         if (!w)
             continue;
@@ -206,8 +280,11 @@ function pushAlloc(out, slot, consumerId, kind, energyKwh, source, constraintIds
         }
         return e;
     }
+    const endIso = (0, slot_geometry_1.isCanonicalQuarterSlot)(slot.startIso, slot.endIso)
+        ? slot.endIso
+        : new Date(slot.startMs + slot_geometry_1.CANONICAL_SLOT_MS).toISOString();
     out.push({
-        slot: { startIso: slot.startIso, endIso: slot.endIso },
+        slot: { startIso: slot.startIso, endIso },
         consumerId,
         kind,
         allocatedPowerW: round3(powerFromEnergyKwh(e)),

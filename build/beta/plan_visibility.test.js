@@ -60,7 +60,8 @@ function acEntry(unit, startIso, powerW, endIso) {
 (0, node_test_1.describe)("plan_visibility — Klima Future plan_json", () => {
     (0, node_test_1.it)("D: outside window + future allocation → Gesperrt + next plan visible", () => {
         const planJson = JSON.stringify([
-            acEntry(1, "2026-08-09T09:00:00.000Z", 700, "2026-08-09T11:00:00.000Z"),
+            acEntry(1, "2026-08-09T09:00:00.000Z", 700),
+            acEntry(1, "2026-08-09T09:15:00.000Z", 700),
         ]);
         const wins = (0, plan_visibility_1.climateUnitTimelineWindowsFromPlanJson)(planJson, 1, NOW);
         const next = (0, plan_visibility_1.nextPlanVisWindow)(wins, NOW);

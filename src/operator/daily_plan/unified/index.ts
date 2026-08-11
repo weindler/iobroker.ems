@@ -32,6 +32,16 @@ export {
 	summarizeUnifiedDayPlanForReason,
 } from "./from_forecast_context";
 export {
+	CANONICAL_SLOT_H,
+	CANONICAL_SLOT_MS,
+	ENERGY_POWER_TOLERANCE_KWH,
+	expectedEnergyKwhForPower,
+	isCanonicalQuarterSlot,
+	isExecutableAllocationGeometry,
+	isExecutableDailyEntry,
+	isExecutableUnifiedCell,
+} from "./slot_geometry";
+export {
 	findNextReliablePvOpportunity,
 	findNextReliablePvAfterCurrentWindow,
 	findEndOfCurrentSurplusWindowIdx,

@@ -273,6 +273,8 @@ function collectWindows(planJson,minW,label,contributionExact){
 		var endIso=a.slot&&a.slot.endIso;
 		var end=endIso?Date.parse(endIso):(start+SLOT_MS);
 		if(!isFinite(start)||!isFinite(end)||end<=now)continue;
+		/* Nur kanonische 15-Min-Executable-Slots — Multi-Hour-Leaks nicht als Fenster. */
+		if(end-start!==SLOT_MS)continue;
 		list.push({t:t,ms:start,endMs:end,endIso:endIso||new Date(end).toISOString(),w:w,label:label,kind:"alloc",cid:cid});
 	}
 	return list;

@@ -86,6 +86,8 @@ export function collectPlanVisSlots(
 		const endParsed = finiteMs(endIsoRaw);
 		const endMs = endParsed ?? startMs + PLAN_SLOT_MS;
 		const endIso = endIsoRaw && Number.isFinite(endParsed as number) ? endIsoRaw : new Date(endMs).toISOString();
+		/** Nur kanonische 15-Min-Executable-Slots — Multi-Hour-Leaks nicht als Fenster zeigen. */
+		if (endMs - startMs !== PLAN_SLOT_MS) continue;
 		if (endMs <= nowMs) continue;
 		out.push({
 			startIso,

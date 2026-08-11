@@ -8,6 +8,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildUnifiedDispatchPublish = exports.buildUnifiedIhAcDispatchPublish = exports.unifiedPlanToWallboxAllocations = exports.unifiedPlanToBatteryAllocations = exports.unifiedPlanToClimateAllocations = exports.unifiedPlanToImmersionAllocations = void 0;
 const contribution_ids_1 = require("../../contribution_ids");
 const addon_plan_publish_1 = require("../addon_plan_publish");
+const slot_geometry_1 = require("./slot_geometry");
 const IH_CONTRIBUTOR = {
     type: "addon",
     id: "immersion_heater",
@@ -53,6 +54,14 @@ function cellToEntry(cell, contributionId, contributor, opts) {
         reasonDe: cell.reasonCodes.join(", ") || "unified_day_plan",
     };
 }
+/** Nur kanonische 15-Min-Zellen mit konsistenter Energy↔Power — nie Multi-Hour-Dispatch. */
+function filterExecutableGeometry(entries) {
+    return entries.filter((e) => {
+        if ((0, slot_geometry_1.isExecutableDailyEntry)(e))
+            return true;
+        return false;
+    });
+}
 /** Immersion: flexible Contribution (PV-first Soft); Pflicht separat wenn min_temp. */
 function unifiedPlanToImmersionAllocations(plan) {
     const byKey = new Map();
@@ -85,10 +94,10 @@ function unifiedPlanToImmersionAllocations(plan) {
             existing.reasonDe = `${existing.reasonDe}; ${entry.reasonDe}`;
         }
     }
-    return (0, addon_plan_publish_1.filterRunnableAllocations)([...byKey.values()], addon_plan_publish_1.RUNNABLE_ALLOCATION_FLOOR_W);
+    return (0, addon_plan_publish_1.filterRunnableAllocations)(filterExecutableGeometry([...byKey.values()]), addon_plan_publish_1.RUNNABLE_ALLOCATION_FLOOR_W);
 }
 exports.unifiedPlanToImmersionAllocations = unifiedPlanToImmersionAllocations;
-/** Klima: air_conditioning.unit_N */
+/** Klima: air_conditioning.unit_N — Multi-Hour / Energy-Inkonsistenz nie publizieren. */
 function unifiedPlanToClimateAllocations(plan) {
     const out = [];
     for (const cell of plan.allocations) {
@@ -98,7 +107,17 @@ function unifiedPlanToClimateAllocations(plan) {
         const unitIndex = m ? Number(m[1]) : Number(String(cell.consumerId).replace(/\D/g, "")) || 0;
         if (unitIndex < 1 || unitIndex > 5)
             continue;
-        out.push(cellToEntry(cell, (0, contribution_ids_1.acUnitContributionId)(unitIndex), AC_CONTRIBUTOR));
+        const entry = cellToEntry(cell, (0, contribution_ids_1.acUnitContributionId)(unitIndex), AC_CONTRIBUTOR);
+        if (!(0, slot_geometry_1.isExecutableDailyEntry)(entry)) {
+            entry.reasonDe = `${entry.reasonDe}; ${(0, slot_geometry_1.executableGeometryRejectReasonDe)({
+                startIso: entry.slot.startIso,
+                endIso: entry.slot.endIso,
+                allocatedPowerW: entry.allocatedPowerW,
+                allocatedEnergyKwh: entry.allocatedEnergyKwh,
+            })}`;
+            continue;
+        }
+        out.push(entry);
     }
     return (0, addon_plan_publish_1.filterRunnableAllocations)(out, addon_plan_publish_1.RUNNABLE_ALLOCATION_FLOOR_W);
 }
@@ -114,7 +133,7 @@ function unifiedPlanToBatteryAllocations(plan) {
             continue;
         out.push(cellToEntry(cell, contribution_ids_1.CONTRIBUTION_IDS.BATTERY_CHARGE, BAT_CONTRIBUTOR));
     }
-    return (0, addon_plan_publish_1.filterRunnableAllocations)(out, addon_plan_publish_1.RUNNABLE_ALLOCATION_FLOOR_W);
+    return (0, addon_plan_publish_1.filterRunnableAllocations)(filterExecutableGeometry(out), addon_plan_publish_1.RUNNABLE_ALLOCATION_FLOOR_W);
 }
 exports.unifiedPlanToBatteryAllocations = unifiedPlanToBatteryAllocations;
 /** Wallbox → wallbox.ev_session für bestehende EVCC-Runtime. */
@@ -133,7 +152,7 @@ function unifiedPlanToWallboxAllocations(plan) {
             estimatedCostCt: cost,
         }));
     }
-    return (0, addon_plan_publish_1.filterRunnableAllocations)(out, addon_plan_publish_1.RUNNABLE_ALLOCATION_FLOOR_W);
+    return (0, addon_plan_publish_1.filterRunnableAllocations)(filterExecutableGeometry(out), addon_plan_publish_1.RUNNABLE_ALLOCATION_FLOOR_W);
 }
 exports.unifiedPlanToWallboxAllocations = unifiedPlanToWallboxAllocations;
 function buildUnifiedIhAcDispatchPublish(plan) {

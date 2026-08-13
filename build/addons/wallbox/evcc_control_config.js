@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.collectConfiguredControlTargetStateIds = exports.evccModeHoldValue = exports.evccModeChargeValue = exports.evccControlTargetForRole = exports.resolveWallboxControlModel = exports.hasEvccControlWriteMapping = exports.resolveControlContractModel = exports.resolveEvccControlContractV1 = exports.matchesEvccControlSuffix = exports.strConfigField = exports.WALLBOX_EVCC_CONTROL_ROLES = exports.WALLBOX_CONTROL_MODELS = exports.WB_EVCC_MODE_HOLD_VALUE = exports.WB_EVCC_MODE_CHARGE_VALUE = exports.EVCC_CONTROL_V1_SUFFIXES = exports.WB_EVCC_CONTROL_PHASES_CONFIGURED = exports.WB_EVCC_CONTROL_MAX_CURRENT = exports.WB_EVCC_CONTROL_PV_CONTROL = exports.WB_EVCC_SET_PHASE = exports.WB_EVCC_SET_MAX_CURRENT_A = exports.WB_EVCC_SET_MODE = exports.WB_CONTROL_MODEL = void 0;
+exports.collectConfiguredControlTargetStateIds = exports.evccModeHoldValue = exports.evccModeChargeValue = exports.evccControlTargetForRole = exports.resolveWallboxControlModel = exports.hasEvccControlWriteMapping = exports.resolveControlContractModel = exports.resolveEvccControlContractV1 = exports.matchesEvccControlSuffix = exports.strConfigField = exports.WALLBOX_EVCC_CONTROL_ROLES = exports.WALLBOX_CONTROL_MODELS = exports.WB_EVCC_MODE_HOLD_VALUE = exports.WB_EVCC_MODE_CHARGE_VALUE = exports.EVCC_BUTTON_SUFFIXES = exports.EVCC_CONTROL_V1_SUFFIXES = exports.WB_EVCC_CONTROL_NOW = exports.WB_EVCC_CONTROL_MIN = exports.WB_EVCC_CONTROL_PV = exports.WB_EVCC_CONTROL_OFF = exports.WB_EVCC_MODE_CONTROL = exports.WB_EVCC_CONTROL_PHASES_CONFIGURED = exports.WB_EVCC_CONTROL_MAX_CURRENT = exports.WB_EVCC_CONTROL_PV_CONTROL = exports.WB_EVCC_SET_PHASE = exports.WB_EVCC_SET_MAX_CURRENT_A = exports.WB_EVCC_SET_MODE = exports.WB_CONTROL_MODEL = void 0;
 const evcc_config_1 = require("./evcc_config");
 const mapping_config_1 = require("../../mapping_config");
 /** Auswahl des Wallbox-Steuerpfads (Admin: wb_control_model). */
@@ -13,10 +13,22 @@ exports.WB_EVCC_SET_PHASE = "wb_evcc_set_phase_target";
 exports.WB_EVCC_CONTROL_PV_CONTROL = "wb_evcc_control_pv_control_target";
 exports.WB_EVCC_CONTROL_MAX_CURRENT = "wb_evcc_control_max_current_target";
 exports.WB_EVCC_CONTROL_PHASES_CONFIGURED = "wb_evcc_control_phases_configured_target";
+/** Current EVCC ioBroker mode buttons (v0.1.274: diagnose only — not live-released). */
+exports.WB_EVCC_MODE_CONTROL = "wb_evcc_mode_control";
+exports.WB_EVCC_CONTROL_OFF = "wb_evcc_control_off_target";
+exports.WB_EVCC_CONTROL_PV = "wb_evcc_control_pv_target";
+exports.WB_EVCC_CONTROL_MIN = "wb_evcc_control_min_target";
+exports.WB_EVCC_CONTROL_NOW = "wb_evcc_control_now_target";
 exports.EVCC_CONTROL_V1_SUFFIXES = {
     pvControl: "control.pvControl",
     maxCurrent: "control.maxCurrent",
     phasesConfigured: "control.phasesConfigured",
+};
+exports.EVCC_BUTTON_SUFFIXES = {
+    off: "control.off",
+    pv: "control.pv",
+    min: "control.min",
+    now: "control.now",
 };
 /** Explizite Mode-Werte — keine hardcodierten Modusnamen im Runtime-Code. */
 exports.WB_EVCC_MODE_CHARGE_VALUE = "wb_evcc_mode_charge_value";
@@ -106,6 +118,10 @@ function hasEvccControlWriteMapping(config) {
         exports.WB_EVCC_CONTROL_PV_CONTROL,
         exports.WB_EVCC_CONTROL_MAX_CURRENT,
         exports.WB_EVCC_CONTROL_PHASES_CONFIGURED,
+        exports.WB_EVCC_CONTROL_OFF,
+        exports.WB_EVCC_CONTROL_PV,
+        exports.WB_EVCC_CONTROL_MIN,
+        exports.WB_EVCC_CONTROL_NOW,
     ];
     return keys.some((k) => strTarget(c, k).length > 0);
 }
@@ -151,6 +167,11 @@ function collectConfiguredControlTargetStateIds(config) {
         }
         const contract = resolveEvccControlContractV1(config);
         for (const id of [contract.pvControlStateId, contract.maxCurrentStateId, contract.phasesConfiguredStateId]) {
+            if (id)
+                ids.push(id);
+        }
+        for (const key of [exports.WB_EVCC_CONTROL_OFF, exports.WB_EVCC_CONTROL_PV, exports.WB_EVCC_CONTROL_MIN, exports.WB_EVCC_CONTROL_NOW]) {
+            const id = rejectDirectGoeId(strTarget(config, key));
             if (id)
                 ids.push(id);
         }

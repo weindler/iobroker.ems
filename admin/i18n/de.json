@@ -139,6 +139,15 @@
 	"EVCC control.pvControl (nur vorbereiten)": "EVCC control.pvControl (nur vorbereiten)",
 	"EVCC control.maxCurrent (nur vorbereiten)": "EVCC control.maxCurrent (nur vorbereiten)",
 	"EVCC control.phasesConfigured (nur vorbereiten)": "EVCC control.phasesConfigured (nur vorbereiten)",
+	"EVCC Mode-Control-Variante": "EVCC Mode-Control-Variante",
+	"EVCC Mode-Buttons (aktueller Contract, Diagnose)": "EVCC Mode-Buttons (aktueller Contract, Diagnose)",
+	"EVCC OFF (Write/Button)": "EVCC OFF (Write/Button)",
+	"EVCC PV (Write/Button)": "EVCC PV (Write/Button)",
+	"EVCC MIN+PV (Write/Button)": "EVCC MIN+PV (Write/Button)",
+	"EVCC NOW/Schnell (Write/Button)": "EVCC NOW/Schnell (Write/Button)",
+	"EVCC Modus (Read)": "EVCC Modus (Read)",
+	"EVCC Modus / status.mode (Read)": "EVCC Modus / status.mode (Read)",
+	"EVCC Phasen (Write)": "EVCC Phasen (Write)",
 	"Externe Quelle Heartbeat / Updated-At (optional)": "Externe Quelle Heartbeat / Updated-At (optional)",
 	"Externer Smart-Charging-Mindest-SOC (optional, nicht Abfahrt)": "Externer Smart-Charging-Mindest-SOC (optional, nicht Abfahrt)"
 }

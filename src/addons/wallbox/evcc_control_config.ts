@@ -17,13 +17,32 @@ export const WB_EVCC_CONTROL_PV_CONTROL = "wb_evcc_control_pv_control_target";
 export const WB_EVCC_CONTROL_MAX_CURRENT = "wb_evcc_control_max_current_target";
 export const WB_EVCC_CONTROL_PHASES_CONFIGURED = "wb_evcc_control_phases_configured_target";
 
+/** Current EVCC ioBroker mode buttons (v0.1.274: diagnose only — not live-released). */
+export const WB_EVCC_MODE_CONTROL = "wb_evcc_mode_control";
+export const WB_EVCC_CONTROL_OFF = "wb_evcc_control_off_target";
+export const WB_EVCC_CONTROL_PV = "wb_evcc_control_pv_target";
+export const WB_EVCC_CONTROL_MIN = "wb_evcc_control_min_target";
+export const WB_EVCC_CONTROL_NOW = "wb_evcc_control_now_target";
+
 export const EVCC_CONTROL_V1_SUFFIXES = {
 	pvControl: "control.pvControl",
 	maxCurrent: "control.maxCurrent",
 	phasesConfigured: "control.phasesConfigured",
 } as const;
 
-export type EvccControlContractModel = "none" | "legacy_direct" | "evcc_string_mode" | "evcc_control_v1";
+export const EVCC_BUTTON_SUFFIXES = {
+	off: "control.off",
+	pv: "control.pv",
+	min: "control.min",
+	now: "control.now",
+} as const;
+
+export type EvccControlContractModel =
+	| "none"
+	| "legacy_direct"
+	| "evcc_string_mode"
+	| "evcc_control_v1"
+	| "evcc_buttons";
 
 /** Explizite Mode-Werte — keine hardcodierten Modusnamen im Runtime-Code. */
 export const WB_EVCC_MODE_CHARGE_VALUE = "wb_evcc_mode_charge_value";
@@ -134,6 +153,10 @@ export function hasEvccControlWriteMapping(config: unknown): boolean {
 		WB_EVCC_CONTROL_PV_CONTROL,
 		WB_EVCC_CONTROL_MAX_CURRENT,
 		WB_EVCC_CONTROL_PHASES_CONFIGURED,
+		WB_EVCC_CONTROL_OFF,
+		WB_EVCC_CONTROL_PV,
+		WB_EVCC_CONTROL_MIN,
+		WB_EVCC_CONTROL_NOW,
 	];
 	return keys.some((k) => strTarget(c, k).length > 0);
 }
@@ -181,6 +204,10 @@ export function collectConfiguredControlTargetStateIds(config: Record<string, un
 		}
 		const contract = resolveEvccControlContractV1(config);
 		for (const id of [contract.pvControlStateId, contract.maxCurrentStateId, contract.phasesConfiguredStateId]) {
+			if (id) ids.push(id);
+		}
+		for (const key of [WB_EVCC_CONTROL_OFF, WB_EVCC_CONTROL_PV, WB_EVCC_CONTROL_MIN, WB_EVCC_CONTROL_NOW]) {
+			const id = rejectDirectGoeId(strTarget(config, key));
 			if (id) ids.push(id);
 		}
 		return [...new Set(ids)];

@@ -55,6 +55,13 @@ async function publishEvFoundationDiagnosis(host, model, capabilities, observedA
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.controlContractModel, model.controlContractModel);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evccControlContractReady, model.evccControlContractReady);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.legacyDirectControlPresent, model.legacyDirectControlPresent);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evccModeControlVariant, model.evccModeControlVariant);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evccModeFeedbackState, model.evccModeFeedbackState);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evccModeButtonsReady, model.evccModeButtonsReady);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evccModeOffTargetReady, model.evccModeOffTargetReady);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evccModePvTargetReady, model.evccModePvTargetReady);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evccModeMinTargetReady, model.evccModeMinTargetReady);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evccModeNowTargetReady, model.evccModeNowTargetReady);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.preparedEvState, model.preparedEvState);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.takeoverReason, model.takeoverReason ?? "");
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.dataQuality, model.dataQuality);

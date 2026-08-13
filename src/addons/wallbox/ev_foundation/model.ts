@@ -109,5 +109,12 @@ export function buildEvModelV1(input: {
 		controlContractModel: "none",
 		evccControlContractReady: false,
 		legacyDirectControlPresent: false,
+		evccModeControlVariant: "none",
+		evccModeFeedbackState: "",
+		evccModeButtonsReady: false,
+		evccModeOffTargetReady: false,
+		evccModePvTargetReady: false,
+		evccModeMinTargetReady: false,
+		evccModeNowTargetReady: false,
 	};
 }

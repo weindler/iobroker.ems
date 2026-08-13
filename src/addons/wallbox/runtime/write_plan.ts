@@ -246,6 +246,18 @@ function buildEvccChargePlan(
 	const unsupportedReasons: string[] = [];
 	const missingRoles = [...mapping.missingRoles];
 
+	if (mapping.evccModeControlVariant === "buttons" || mapping.evccModeControlVariant === "pv_control") {
+		const reason =
+			mapping.evccModeControlVariant === "buttons"
+				? "evcc_buttons_not_live_released"
+				: "evcc_pv_control_not_live_released";
+		return {
+			...emptyPlan("charge", createdAt, commandRevision, reason, mapping.evccControlContractReady, mapping, false),
+			missingRoles,
+			unsupportedReasons,
+		};
+	}
+
 	if (mapping.controlModel === "none") {
 		return {
 			...emptyPlan("charge", createdAt, commandRevision, "control_model_not_selected", false, mapping),

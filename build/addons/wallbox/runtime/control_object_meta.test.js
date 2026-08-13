@@ -78,4 +78,32 @@ const control_object_meta_js_1 = require("./control_object_meta.js");
         strict_1.default.equal(r.valid, false);
         strict_1.default.equal(r.reason, "enum_values_unconfirmed");
     });
+    (0, node_test_1.it)("accepts EVCC button write=true read=false", () => {
+        const meta = (0, control_object_meta_js_1.metaFromObject)("evcc.0.loadpoint.1.control.now", {
+            _type: "state",
+            common: { type: "boolean", read: false, write: true },
+        });
+        strict_1.default.equal(meta.writable, true);
+        strict_1.default.equal(meta.readable, false);
+        const r = (0, control_object_meta_js_1.validateEvccButtonTargetMeta)("evcc.0.loadpoint.1.control.now", "now", meta);
+        strict_1.default.equal(r.valid, true);
+    });
+    (0, node_test_1.it)("rejects status.mode as a write target", () => {
+        const meta = (0, control_object_meta_js_1.metaFromObject)("evcc.0.loadpoint.1.status.mode", {
+            _type: "state",
+            common: { type: "string", read: true, write: false },
+        });
+        const r = (0, control_object_meta_js_1.validateEvccControlTargetMeta)("evcc.0.loadpoint.1.status.mode", "string", meta, "set_mode");
+        strict_1.default.equal(r.valid, false);
+        strict_1.default.equal(r.reason, "mode_feedback_not_a_write_target");
+    });
+    (0, node_test_1.it)("recognizes writable maxCurrent as present", () => {
+        const meta = (0, control_object_meta_js_1.metaFromObject)("evcc.0.loadpoint.1.control.maxCurrent", {
+            _type: "state",
+            common: { type: "number", read: true, write: true },
+        });
+        const r = (0, control_object_meta_js_1.validateEvccControlTargetMeta)("evcc.0.loadpoint.1.control.maxCurrent", "number", meta, "set_max_current_a");
+        strict_1.default.equal(r.valid, true);
+        strict_1.default.notEqual(r.reason, "target_object_missing");
+    });
 });

@@ -262,6 +262,7 @@ describe("wallbox feedback normalization", () => {
 			stateId: EVCC_MODE,
 			objectPresent: true,
 			writable: true,
+			readable: true,
 			commonType: "string",
 			allowedStateKeys: ["pv", "off"],
 		};

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.expectedTypeForEvccRole = exports.validateEnumValueAgainstMeta = exports.validateEvccControlTargetMeta = exports.validateControlObjectMeta = exports.isEvccNamespaceStateId = exports.isDirectGoeStateId = exports.resolveWallboxControlObjectMetas = exports.resolveWallboxControlObjectMeta = exports.metaFromObject = exports.validateEvccSemanticRole = exports.requiredSemanticForEvccRole = exports.inferEvccSemanticRole = exports.classifyWallboxControlTargetKind = void 0;
+exports.expectedTypeForEvccRole = exports.validateEnumValueAgainstMeta = exports.validateEvccControlTargetMeta = exports.validateEvccModeFeedbackMeta = exports.validateEvccButtonTargetMeta = exports.validateControlObjectMeta = exports.isEvccNamespaceStateId = exports.isDirectGoeStateId = exports.resolveWallboxControlObjectMetas = exports.resolveWallboxControlObjectMeta = exports.metaFromObject = exports.validateEvccSemanticRole = exports.requiredSemanticForEvccRole = exports.inferEvccSemanticRole = exports.classifyWallboxControlTargetKind = void 0;
+const evcc_mode_control_1 = require("../evcc_mode_control");
 function classifyWallboxControlTargetKind(stateId) {
     const id = stateId.trim().toLowerCase();
     if (id.startsWith("evcc."))
@@ -13,6 +14,16 @@ exports.classifyWallboxControlTargetKind = classifyWallboxControlTargetKind;
 /** Heuristische EVCC-Semantik aus State-ID — nicht allein aus common.write oder evcc.*-Präfix. */
 function inferEvccSemanticRole(stateId) {
     const id = stateId.trim().toLowerCase();
+    if ((0, evcc_mode_control_1.isEvccModeFeedbackStateId)(stateId))
+        return "evcc_mode_feedback";
+    if ((0, evcc_mode_control_1.isEvccModeButtonStateId)(stateId, "off"))
+        return "evcc_mode_button_off";
+    if ((0, evcc_mode_control_1.isEvccModeButtonStateId)(stateId, "pv"))
+        return "evcc_mode_button_pv";
+    if ((0, evcc_mode_control_1.isEvccModeButtonStateId)(stateId, "now"))
+        return "evcc_mode_button_now";
+    if ((0, evcc_mode_control_1.isEvccModeButtonStateId)(stateId, "min"))
+        return "evcc_mode_button_min";
     if (id.includes("mincurrent"))
         return "evcc_min_current";
     if (id.includes("maxcurrent"))
@@ -60,6 +71,7 @@ function metaFromObject(stateId, obj) {
             stateId,
             objectPresent: false,
             writable: false,
+            readable: false,
             commonType: null,
             allowedStateKeys: null,
         };
@@ -74,6 +86,7 @@ function metaFromObject(stateId, obj) {
         stateId,
         objectPresent: true,
         writable: common.write === true,
+        readable: common.read !== false,
         commonType: typeof common.type === "string" ? common.type : null,
         allowedStateKeys,
     };
@@ -86,6 +99,7 @@ async function resolveWallboxControlObjectMeta(getObjectAsync, stateId) {
             stateId: id,
             objectPresent: false,
             writable: false,
+            readable: false,
             commonType: null,
             allowedStateKeys: null,
         };
@@ -123,18 +137,65 @@ function validateControlObjectMeta(meta, expectedType) {
     if (!meta.writable) {
         return { valid: false, reason: "target_not_writable" };
     }
-    if (meta.commonType !== expectedType) {
+    if (meta.commonType &&
+        meta.commonType !== expectedType &&
+        meta.commonType !== "mixed") {
         return { valid: false, reason: "target_type_mismatch" };
     }
     return { valid: true, reason: null };
 }
 exports.validateControlObjectMeta = validateControlObjectMeta;
+/** Button-States: write=true / read=false are valid write targets. */
+function validateEvccButtonTargetMeta(stateId, button, meta) {
+    const semanticRole = inferEvccSemanticRole(stateId);
+    if (isDirectGoeStateId(stateId)) {
+        return { valid: false, reason: "goe_target_not_evcc_compatible", semanticRole };
+    }
+    if (!isEvccNamespaceStateId(stateId)) {
+        return { valid: false, reason: "evcc_namespace_not_confirmed", semanticRole };
+    }
+    if ((0, evcc_mode_control_1.isEvccModeFeedbackStateId)(stateId)) {
+        return { valid: false, reason: "mode_feedback_not_a_write_target", semanticRole };
+    }
+    if (!(0, evcc_mode_control_1.isEvccModeButtonStateId)(stateId, button)) {
+        return { valid: false, reason: `${evcc_mode_control_1.EVCC_BUTTON_SUFFIXES[button]}_semantics_unconfirmed`, semanticRole };
+    }
+    const base = validateControlObjectMeta(meta, "boolean");
+    if (!base.valid) {
+        return { ...base, semanticRole };
+    }
+    return { valid: true, reason: null, semanticRole };
+}
+exports.validateEvccButtonTargetMeta = validateEvccButtonTargetMeta;
+function validateEvccModeFeedbackMeta(stateId, meta) {
+    if (isDirectGoeStateId(stateId)) {
+        return { valid: false, reason: "goe_target_not_evcc_compatible" };
+    }
+    if (!stateId.trim()) {
+        return { valid: false, reason: "mode_feedback_unmapped" };
+    }
+    if (!meta || !meta.objectPresent) {
+        return { valid: false, reason: "mode_feedback_object_missing" };
+    }
+    if (meta.writable && !meta.readable) {
+        return { valid: false, reason: "mode_feedback_not_readable" };
+    }
+    return { valid: true, reason: null };
+}
+exports.validateEvccModeFeedbackMeta = validateEvccModeFeedbackMeta;
 function validateEvccControlTargetMeta(stateId, expectedType, meta, role) {
     if (isDirectGoeStateId(stateId)) {
         return { valid: false, reason: "goe_target_not_evcc_compatible", semanticRole: inferEvccSemanticRole(stateId) };
     }
     if (!isEvccNamespaceStateId(stateId)) {
         return { valid: false, reason: "evcc_namespace_not_confirmed", semanticRole: inferEvccSemanticRole(stateId) };
+    }
+    if ((0, evcc_mode_control_1.isEvccModeFeedbackStateId)(stateId)) {
+        return {
+            valid: false,
+            reason: "mode_feedback_not_a_write_target",
+            semanticRole: inferEvccSemanticRole(stateId),
+        };
     }
     const semantic = validateEvccSemanticRole(role, stateId);
     if (!semantic.valid) {

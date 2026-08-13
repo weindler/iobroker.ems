@@ -8,6 +8,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.applyEvFoundationIntegration = exports.assessVehicleModelPath = void 0;
 const evcc_config_1 = require("../evcc_config");
 const evcc_control_config_1 = require("../evcc_control_config");
+const evcc_mode_control_1 = require("../evcc_mode_control");
 const config_1 = require("../vehicles/config");
 /**
  * Foundation is usable as later planner input when EVCC telemetry is present.
@@ -30,12 +31,8 @@ function assessVehicleModelPath(input) {
 exports.assessVehicleModelPath = assessVehicleModelPath;
 /** Overlay control-contract and vehicle-path diagnosis onto EvModelV1. No planner decision. */
 function applyEvFoundationIntegration(model, capabilities, adapterConfig) {
-    const c = adapterConfig && typeof adapterConfig === "object" ? adapterConfig : {};
     const controlModel = (0, evcc_control_config_1.resolveWallboxControlModel)(adapterConfig);
-    const contract = (0, evcc_control_config_1.resolveEvccControlContractV1)(adapterConfig);
-    const stringModeComplete = (0, evcc_control_config_1.evccControlTargetForRole)(c, "set_mode").length > 0 &&
-        (0, evcc_control_config_1.evccControlTargetForRole)(c, "set_max_current_a").length > 0 &&
-        (0, evcc_control_config_1.evccModeChargeValue)(c).length > 0;
+    const contract = (0, evcc_mode_control_1.resolveEvccModeControlContract)(adapterConfig);
     const profiles = (0, config_1.wallboxVehicleProfilesConfigFromAdapter)(adapterConfig);
     const path = assessVehicleModelPath({
         capabilities,
@@ -45,9 +42,16 @@ function applyEvFoundationIntegration(model, capabilities, adapterConfig) {
     });
     return {
         ...model,
-        controlContractModel: (0, evcc_control_config_1.resolveControlContractModel)(controlModel, contract.ready, stringModeComplete),
-        evccControlContractReady: controlModel === "evcc" && contract.ready,
+        controlContractModel: (0, evcc_mode_control_1.controlContractModelFromVariant)(controlModel, contract.resolvedVariant),
+        evccControlContractReady: controlModel === "evcc" && contract.writeContractReady,
         legacyDirectControlPresent: (0, evcc_config_1.hasLegacyWallboxWriteMapping)(adapterConfig),
+        evccModeControlVariant: controlModel === "evcc" ? contract.resolvedVariant : "none",
+        evccModeFeedbackState: contract.modeFeedbackStateId,
+        evccModeButtonsReady: controlModel === "evcc" && contract.buttonsReady,
+        evccModeOffTargetReady: contract.buttonReady.off,
+        evccModePvTargetReady: contract.buttonReady.pv,
+        evccModeMinTargetReady: contract.buttonReady.min,
+        evccModeNowTargetReady: contract.buttonReady.now,
         vehicleModelSource: path.source,
         vehicleModelReady: path.ready,
     };

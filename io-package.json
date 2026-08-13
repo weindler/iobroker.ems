@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.273",
+		"version": "0.1.274",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.274": {
+				"en": "EVCC button control contract: map control.off/pv/min/now with status.mode feedback. pvControl remains a legacy variant. Diagnosis only — no live EVCC/Tibber/Sonnen/go-e writes.",
+				"de": "EVCC-Button-Control-Contract: control.off/pv/min/now mappen, Feedback über status.mode. pvControl bleibt Legacy-Variante. Nur Diagnose — keine Live-Writes auf EVCC/Tibber/Sonnen/go-e."
+			},
 			"0.1.273": {
 				"en": "Admin: optional EV numbers (departure min SOC, target SOC, capacity, …) are text fields so empty really saves. jsonConfig number cannot be empty. No takeover or new writes.",
 				"de": "Admin: optionale EV-Zahlen (Mindest-SOC zur Abfahrt, Ziel-SOC, Kapazität, …) sind Textfelder, damit leer wirklich speicherbar ist. jsonConfig-Number kann nicht leer sein. Kein Takeover, keine neuen Writes."

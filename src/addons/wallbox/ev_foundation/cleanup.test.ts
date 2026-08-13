@@ -285,12 +285,11 @@ describe("EV foundation v0.1.272 cleanup", () => {
 		assert.equal(resolveWallboxControlModel({ wb_control_model: "legacy_direct" }), "legacy_direct");
 	});
 
-	it("T10: EVCC write allowlist remains pvControl/maxCurrent/phasesConfigured", () => {
-		assert.deepEqual([...EVCC_FUTURE_PLANNER_WRITE_SUFFIXES], [
-			"control.pvControl",
-			"control.maxCurrent",
-			"control.phasesConfigured",
-		]);
+	it("T10: EVCC write allowlist includes buttons plus pvControl/maxCurrent/phasesConfigured", () => {
+		assert.ok(EVCC_FUTURE_PLANNER_WRITE_SUFFIXES.includes("control.off"));
+		assert.ok(EVCC_FUTURE_PLANNER_WRITE_SUFFIXES.includes("control.pvControl"));
+		assert.ok(EVCC_FUTURE_PLANNER_WRITE_SUFFIXES.includes("control.maxCurrent"));
+		assert.equal(isFuturePlannerWriteAllowed("evcc.0.loadpoint.1.control.off"), true);
 		assert.equal(isFuturePlannerWriteAllowed("evcc.0.loadpoint.1.control.pvControl"), true);
 		assert.equal(isFuturePlannerWriteAllowed("evcc.0.loadpoint.1.control.limitSoc"), false);
 		assert.equal(isFuturePlannerWriteAllowed("go-e.0.amperePV"), false);

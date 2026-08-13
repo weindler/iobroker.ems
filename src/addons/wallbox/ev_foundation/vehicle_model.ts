@@ -5,13 +5,8 @@
  */
 
 import { hasLegacyWallboxWriteMapping } from "../evcc_config";
-import {
-	evccControlTargetForRole,
-	evccModeChargeValue,
-	resolveControlContractModel,
-	resolveEvccControlContractV1,
-	resolveWallboxControlModel,
-} from "../evcc_control_config";
+import { resolveWallboxControlModel } from "../evcc_control_config";
+import { controlContractModelFromVariant, resolveEvccModeControlContract } from "../evcc_mode_control";
 import { wallboxVehicleProfilesConfigFromAdapter } from "../vehicles/config";
 import type { EvCapabilities, EvModelV1 } from "./types";
 
@@ -58,14 +53,8 @@ export function applyEvFoundationIntegration(
 	capabilities: EvCapabilities,
 	adapterConfig: unknown,
 ): EvModelV1 {
-	const c =
-		adapterConfig && typeof adapterConfig === "object" ? (adapterConfig as Record<string, unknown>) : {};
 	const controlModel = resolveWallboxControlModel(adapterConfig);
-	const contract = resolveEvccControlContractV1(adapterConfig);
-	const stringModeComplete =
-		evccControlTargetForRole(c, "set_mode").length > 0 &&
-		evccControlTargetForRole(c, "set_max_current_a").length > 0 &&
-		evccModeChargeValue(c).length > 0;
+	const contract = resolveEvccModeControlContract(adapterConfig);
 	const profiles = wallboxVehicleProfilesConfigFromAdapter(adapterConfig);
 	const path = assessVehicleModelPath({
 		capabilities,
@@ -75,9 +64,16 @@ export function applyEvFoundationIntegration(
 	});
 	return {
 		...model,
-		controlContractModel: resolveControlContractModel(controlModel, contract.ready, stringModeComplete),
-		evccControlContractReady: controlModel === "evcc" && contract.ready,
+		controlContractModel: controlContractModelFromVariant(controlModel, contract.resolvedVariant),
+		evccControlContractReady: controlModel === "evcc" && contract.writeContractReady,
 		legacyDirectControlPresent: hasLegacyWallboxWriteMapping(adapterConfig),
+		evccModeControlVariant: controlModel === "evcc" ? contract.resolvedVariant : "none",
+		evccModeFeedbackState: contract.modeFeedbackStateId,
+		evccModeButtonsReady: controlModel === "evcc" && contract.buttonsReady,
+		evccModeOffTargetReady: contract.buttonReady.off,
+		evccModePvTargetReady: contract.buttonReady.pv,
+		evccModeMinTargetReady: contract.buttonReady.min,
+		evccModeNowTargetReady: contract.buttonReady.now,
 		vehicleModelSource: path.source,
 		vehicleModelReady: path.ready,
 	};

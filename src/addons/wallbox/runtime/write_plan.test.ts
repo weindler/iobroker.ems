@@ -16,6 +16,7 @@ function meta(id: string, commonType: "boolean" | "number" | "string", allowedSt
 		stateId: id,
 		objectPresent: true,
 		writable: true,
+		readable: true,
 		commonType,
 		allowedStateKeys,
 	};
@@ -224,6 +225,7 @@ describe("wallbox write plan", () => {
 		const mapping = buildWallboxControlMappingSnapshot({
 			config: {
 				wb_control_model: "evcc",
+				wb_evcc_mode_control: "string_mode",
 				wb_evcc_set_mode_target: EVCC_MODE,
 				wb_evcc_set_max_current_a_target: EVCC_MAX_CURRENT,
 			},

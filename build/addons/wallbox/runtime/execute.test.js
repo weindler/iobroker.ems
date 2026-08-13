@@ -37,6 +37,7 @@ function testMapping() {
                 stateId: "go-e.0.allow_charging",
                 objectPresent: true,
                 writable: true,
+                readable: true,
                 commonType: "boolean",
                 allowedStateKeys: null,
             },
@@ -44,6 +45,7 @@ function testMapping() {
                 stateId: "go-e.0.amperePV",
                 objectPresent: true,
                 writable: true,
+                readable: true,
                 commonType: "number",
                 allowedStateKeys: null,
             },
@@ -54,7 +56,7 @@ const EVCC_MODE = "evcc.0.loadpoint.1.mode";
 const EVCC_MAX_CURRENT = "evcc.0.loadpoint.1.maxCurrent";
 const MODE_STATES = ["pv", "off", "now"];
 function meta(id, commonType, writable = true, allowedStateKeys = null) {
-    return { stateId: id, objectPresent: true, writable, commonType, allowedStateKeys };
+    return { stateId: id, objectPresent: true, writable, readable: true, commonType, allowedStateKeys };
 }
 function testEvccMapping() {
     return (0, control_mapping_js_1.buildWallboxControlMappingSnapshot)({

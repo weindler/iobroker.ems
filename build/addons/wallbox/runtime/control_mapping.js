@@ -4,6 +4,7 @@ exports.collectConfiguredControlTargetStateIds = exports.buildWallboxControlMapp
 const mapping_config_1 = require("../../../mapping_config");
 const evcc_control_config_1 = require("../evcc_control_config");
 Object.defineProperty(exports, "collectConfiguredControlTargetStateIds", { enumerable: true, get: function () { return evcc_control_config_1.collectConfiguredControlTargetStateIds; } });
+const evcc_mode_control_1 = require("../evcc_mode_control");
 const evcc_config_1 = require("../evcc_config");
 const control_object_meta_1 = require("./control_object_meta");
 var control_object_meta_2 = require("./control_object_meta");
@@ -106,14 +107,15 @@ function collectValidationIssues(entries) {
     return issues;
 }
 function contractDiagnosis(config, controlModel) {
-    const contract = (0, evcc_control_config_1.resolveEvccControlContractV1)(config);
-    const stringModeComplete = (0, evcc_control_config_1.evccControlTargetForRole)(config, "set_mode").length > 0 &&
-        (0, evcc_control_config_1.evccControlTargetForRole)(config, "set_max_current_a").length > 0 &&
-        (0, evcc_control_config_1.evccModeChargeValue)(config).length > 0;
+    const contract = (0, evcc_mode_control_1.resolveEvccModeControlContract)(config);
     return {
-        controlContractModel: (0, evcc_control_config_1.resolveControlContractModel)(controlModel, contract.ready, stringModeComplete),
-        evccControlContractReady: controlModel === "evcc" && contract.ready,
+        controlContractModel: (0, evcc_mode_control_1.controlContractModelFromVariant)(controlModel, contract.resolvedVariant),
+        evccControlContractReady: controlModel === "evcc" && contract.writeContractReady,
         legacyDirectControlPresent: (0, evcc_config_1.hasLegacyWallboxWriteMapping)(config),
+        evccModeControlVariant: controlModel === "evcc" ? contract.resolvedVariant : "none",
+        evccModeFeedbackStateId: contract.modeFeedbackStateId,
+        evccModeButtonsReady: controlModel === "evcc" && contract.buttonsReady,
+        evccModeButtonReady: contract.buttonReady,
     };
 }
 function emptyEvccFields() {
@@ -147,43 +149,96 @@ function buildNoneSnapshot(config) {
         ...contractDiagnosis(config, "none"),
     };
 }
+function evccEntryFromStateId(role, targetStateId, readbackStateId, required, meta) {
+    if (!targetStateId)
+        return null;
+    return applyMetaValidation({
+        role,
+        configured: true,
+        targetStateId,
+        targetValueType: role === "set_mode" ? "string" : "number",
+        targetKind: (0, control_object_meta_1.classifyWallboxControlTargetKind)(targetStateId),
+        allowedValuesRaw: null,
+        readbackStateId: readbackStateId?.trim() || null,
+        required,
+    }, meta, true, role);
+}
+function buttonValidationIssues(config, objectMetas) {
+    const issues = [];
+    for (const button of ["off", "pv", "min", "now"]) {
+        const id = (0, evcc_mode_control_1.pickEvccButtonStateId)(config, button);
+        if (!id)
+            continue;
+        const v = (0, control_object_meta_1.validateEvccButtonTargetMeta)(id, button, objectMetas[id]);
+        if (!v.valid && v.reason)
+            issues.push(`control.${button}:${v.reason}`);
+    }
+    return issues;
+}
 function buildEvccSnapshot(config, telemetryCfg, objectMetas) {
     const meta = (id) => objectMetas[id];
-    const setMode = evccEntryFromConfig("set_mode", config, telemetryCfg.modeReadbackStateId, true, meta((0, evcc_control_config_1.evccControlTargetForRole)(config, "set_mode")));
-    const setMaxCurrentA = evccEntryFromConfig("set_max_current_a", config, telemetryCfg.maxCurrentAStateId, true, meta((0, evcc_control_config_1.evccControlTargetForRole)(config, "set_max_current_a")));
-    const setPhase = evccEntryFromConfig("set_phase", config, "", false, meta((0, evcc_control_config_1.evccControlTargetForRole)(config, "set_phase")));
+    const contract = (0, evcc_mode_control_1.resolveEvccModeControlContract)(config);
+    const diagnosis = contractDiagnosis(config, "evcc");
+    const setMode = evccEntryFromConfig("set_mode", config, telemetryCfg.modeReadbackStateId || contract.modeFeedbackStateId, contract.resolvedVariant === "string_mode", meta((0, evcc_control_config_1.evccControlTargetForRole)(config, "set_mode")));
+    const maxCurrentId = contract.maxCurrentStateId || (0, evcc_control_config_1.evccControlTargetForRole)(config, "set_max_current_a");
+    const setMaxCurrentA = evccEntryFromStateId("set_max_current_a", maxCurrentId, telemetryCfg.maxCurrentAStateId, true, meta(maxCurrentId));
+    const phaseId = contract.phasesConfiguredStateId || (0, evcc_control_config_1.evccControlTargetForRole)(config, "set_phase");
+    const setPhase = evccEntryFromStateId("set_phase", phaseId, "", false, meta(phaseId));
     const chargeModeValue = (0, evcc_control_config_1.evccModeChargeValue)(config) || null;
     const holdModeValue = (0, evcc_control_config_1.evccModeHoldValue)(config) || null;
     const modeMeta = setMode ? meta(setMode.targetStateId) : undefined;
     const modeValueIssues = [];
     let chargeModeValueConfirmed = false;
     let holdModeValueConfirmed = false;
-    if (chargeModeValue && setMode) {
-        const v = (0, control_object_meta_1.validateEnumValueAgainstMeta)(chargeModeValue, modeMeta);
-        chargeModeValueConfirmed = v.valid;
-        if (!v.valid)
-            modeValueIssues.push(`charge_mode:${v.reason}`);
+    if (contract.resolvedVariant === "string_mode") {
+        if (chargeModeValue && setMode) {
+            const v = (0, control_object_meta_1.validateEnumValueAgainstMeta)(chargeModeValue, modeMeta);
+            chargeModeValueConfirmed = v.valid;
+            if (!v.valid)
+                modeValueIssues.push(`charge_mode:${v.reason}`);
+        }
+        else if (!chargeModeValue) {
+            modeValueIssues.push("charge_mode:evcc_charge_mode_mapping_missing");
+        }
+        if (holdModeValue && setMode) {
+            const v = (0, control_object_meta_1.validateEnumValueAgainstMeta)(holdModeValue, modeMeta);
+            holdModeValueConfirmed = v.valid;
+            if (!v.valid)
+                modeValueIssues.push(`hold_mode:${v.reason}`);
+        }
     }
-    else if (!chargeModeValue) {
-        modeValueIssues.push("charge_mode:evcc_charge_mode_mapping_missing");
-    }
-    if (holdModeValue && setMode) {
-        const v = (0, control_object_meta_1.validateEnumValueAgainstMeta)(holdModeValue, modeMeta);
-        holdModeValueConfirmed = v.valid;
-        if (!v.valid)
-            modeValueIssues.push(`hold_mode:${v.reason}`);
-    }
-    const missingRoles = [];
-    if (!setMode)
-        missingRoles.push("set_mode");
-    if (!setMaxCurrentA)
-        missingRoles.push("set_max_current_a");
-    const validationIssues = [...collectValidationIssues([setMode, setMaxCurrentA]), ...modeValueIssues];
-    const contractStructurallyComplete = missingRoles.length === 0 && validationIssues.length === 0 && chargeModeValueConfirmed;
-    const evccControlPathConfirmed = Boolean(setMode?.contractValid && setMaxCurrentA?.contractValid && chargeModeValueConfirmed) &&
+    const missingRoles = [...contract.missing];
+    const buttonIssues = contract.resolvedVariant === "buttons" ? buttonValidationIssues(config, objectMetas) : [];
+    const validationIssues = [
+        ...collectValidationIssues(contract.resolvedVariant === "string_mode" ? [setMode, setMaxCurrentA] : [setMaxCurrentA]),
+        ...modeValueIssues,
+        ...buttonIssues,
+    ];
+    const stringPathConfirmed = contract.resolvedVariant === "string_mode" &&
+        Boolean(setMode?.contractValid && setMaxCurrentA?.contractValid && chargeModeValueConfirmed) &&
         setMode?.semanticRole === "evcc_mode" &&
         setMaxCurrentA?.semanticRole === "evcc_max_current";
-    const liveEligible = evccControlPathConfirmed && contractStructurallyComplete;
+    const evccControlPathConfirmed = contract.resolvedVariant === "string_mode"
+        ? stringPathConfirmed
+        : contract.writeContractReady && buttonIssues.length === 0;
+    const liveEligible = contract.resolvedVariant === "string_mode" && stringPathConfirmed && validationIssues.length === 0;
+    let controlPathReason = "evcc_control_path_unconfirmed";
+    if (liveEligible)
+        controlPathReason = "evcc_control_path_confirmed";
+    else if (contract.resolvedVariant === "buttons") {
+        controlPathReason = contract.writeContractReady
+            ? "evcc_buttons_not_live_released"
+            : contract.missing[0] ?? "evcc_buttons_incomplete";
+    }
+    else if (contract.resolvedVariant === "pv_control") {
+        controlPathReason = contract.writeContractReady
+            ? "evcc_pv_control_not_live_released"
+            : contract.missing[0] ?? "evcc_pv_control_incomplete";
+    }
+    else {
+        controlPathReason =
+            validationIssues[0] ?? (missingRoles.length > 0 ? "mapping_incomplete" : "evcc_control_path_unconfirmed");
+    }
     return {
         controlModel: "evcc",
         legacyMappingsPresent: (0, evcc_config_1.hasLegacyWallboxWriteMapping)(config),
@@ -204,11 +259,9 @@ function buildEvccSnapshot(config, telemetryCfg, objectMetas) {
         mappingConflictReason: null,
         evccControlPathConfirmed,
         liveEligible,
-        controlPathReason: contractStructurallyComplete && evccControlPathConfirmed
-            ? "evcc_control_path_confirmed"
-            : validationIssues[0] ?? (missingRoles.length > 0 ? "mapping_incomplete" : "evcc_control_path_unconfirmed"),
+        controlPathReason,
         validationIssues,
-        ...contractDiagnosis(config, "evcc"),
+        ...diagnosis,
     };
 }
 function buildLegacyDirectSnapshot(config, telemetryCfg, objectMetas) {

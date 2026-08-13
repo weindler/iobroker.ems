@@ -1,9 +1,15 @@
 import type { WallboxEvccControlRole } from "../evcc_control_config";
+import { EVCC_BUTTON_SUFFIXES, isEvccModeButtonStateId, isEvccModeFeedbackStateId } from "../evcc_mode_control";
 
 export type WallboxControlTargetKind = "evcc" | "goe_direct" | "user_configured";
 
 export type WallboxEvccSemanticRole =
 	| "evcc_mode"
+	| "evcc_mode_feedback"
+	| "evcc_mode_button_off"
+	| "evcc_mode_button_pv"
+	| "evcc_mode_button_min"
+	| "evcc_mode_button_now"
 	| "evcc_max_current"
 	| "evcc_min_current"
 	| "evcc_enabled_status"
@@ -22,6 +28,11 @@ export function classifyWallboxControlTargetKind(stateId: string): WallboxContro
 /** Heuristische EVCC-Semantik aus State-ID — nicht allein aus common.write oder evcc.*-Präfix. */
 export function inferEvccSemanticRole(stateId: string): WallboxEvccSemanticRole {
 	const id = stateId.trim().toLowerCase();
+	if (isEvccModeFeedbackStateId(stateId)) return "evcc_mode_feedback";
+	if (isEvccModeButtonStateId(stateId, "off")) return "evcc_mode_button_off";
+	if (isEvccModeButtonStateId(stateId, "pv")) return "evcc_mode_button_pv";
+	if (isEvccModeButtonStateId(stateId, "now")) return "evcc_mode_button_now";
+	if (isEvccModeButtonStateId(stateId, "min")) return "evcc_mode_button_min";
 	if (id.includes("mincurrent")) return "evcc_min_current";
 	if (id.includes("maxcurrent")) return "evcc_max_current";
 	if (id.includes(".enabled") || id.endsWith("enabled")) return "evcc_enabled_status";
@@ -65,6 +76,7 @@ export interface WallboxControlObjectMeta {
 	stateId: string;
 	objectPresent: boolean;
 	writable: boolean;
+	readable: boolean;
 	commonType: string | null;
 	allowedStateKeys: string[] | null;
 }
@@ -79,6 +91,7 @@ export function metaFromObject(stateId: string, obj: ioBroker.Object | null | un
 			stateId,
 			objectPresent: false,
 			writable: false,
+			readable: false,
 			commonType: null,
 			allowedStateKeys: null,
 		};
@@ -93,6 +106,7 @@ export function metaFromObject(stateId: string, obj: ioBroker.Object | null | un
 		stateId,
 		objectPresent: true,
 		writable: common.write === true,
+		readable: common.read !== false,
 		commonType: typeof common.type === "string" ? common.type : null,
 		allowedStateKeys,
 	};
@@ -108,6 +122,7 @@ export async function resolveWallboxControlObjectMeta(
 			stateId: id,
 			objectPresent: false,
 			writable: false,
+			readable: false,
 			commonType: null,
 			allowedStateKeys: null,
 		};
@@ -152,8 +167,57 @@ export function validateControlObjectMeta(
 	if (!meta.writable) {
 		return { valid: false, reason: "target_not_writable" };
 	}
-	if (meta.commonType !== expectedType) {
+	if (
+		meta.commonType &&
+		meta.commonType !== expectedType &&
+		meta.commonType !== "mixed"
+	) {
 		return { valid: false, reason: "target_type_mismatch" };
+	}
+	return { valid: true, reason: null };
+}
+
+/** Button-States: write=true / read=false are valid write targets. */
+export function validateEvccButtonTargetMeta(
+	stateId: string,
+	button: keyof typeof EVCC_BUTTON_SUFFIXES,
+	meta: WallboxControlObjectMeta | undefined,
+): { valid: boolean; reason: string | null; semanticRole: WallboxEvccSemanticRole } {
+	const semanticRole = inferEvccSemanticRole(stateId);
+	if (isDirectGoeStateId(stateId)) {
+		return { valid: false, reason: "goe_target_not_evcc_compatible", semanticRole };
+	}
+	if (!isEvccNamespaceStateId(stateId)) {
+		return { valid: false, reason: "evcc_namespace_not_confirmed", semanticRole };
+	}
+	if (isEvccModeFeedbackStateId(stateId)) {
+		return { valid: false, reason: "mode_feedback_not_a_write_target", semanticRole };
+	}
+	if (!isEvccModeButtonStateId(stateId, button)) {
+		return { valid: false, reason: `${EVCC_BUTTON_SUFFIXES[button]}_semantics_unconfirmed`, semanticRole };
+	}
+	const base = validateControlObjectMeta(meta, "boolean");
+	if (!base.valid) {
+		return { ...base, semanticRole };
+	}
+	return { valid: true, reason: null, semanticRole };
+}
+
+export function validateEvccModeFeedbackMeta(
+	stateId: string,
+	meta: WallboxControlObjectMeta | undefined,
+): { valid: boolean; reason: string | null } {
+	if (isDirectGoeStateId(stateId)) {
+		return { valid: false, reason: "goe_target_not_evcc_compatible" };
+	}
+	if (!stateId.trim()) {
+		return { valid: false, reason: "mode_feedback_unmapped" };
+	}
+	if (!meta || !meta.objectPresent) {
+		return { valid: false, reason: "mode_feedback_object_missing" };
+	}
+	if (meta.writable && !meta.readable) {
+		return { valid: false, reason: "mode_feedback_not_readable" };
 	}
 	return { valid: true, reason: null };
 }
@@ -169,6 +233,13 @@ export function validateEvccControlTargetMeta(
 	}
 	if (!isEvccNamespaceStateId(stateId)) {
 		return { valid: false, reason: "evcc_namespace_not_confirmed", semanticRole: inferEvccSemanticRole(stateId) };
+	}
+	if (isEvccModeFeedbackStateId(stateId)) {
+		return {
+			valid: false,
+			reason: "mode_feedback_not_a_write_target",
+			semanticRole: inferEvccSemanticRole(stateId),
+		};
 	}
 	const semantic = validateEvccSemanticRole(role, stateId);
 	if (!semantic.valid) {

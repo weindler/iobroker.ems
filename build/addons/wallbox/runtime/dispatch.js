@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.runWallboxDryrunDispatch = exports.powerToTargetCurrentA = exports.evaluateWallboxDispatchReadiness = exports.resetWallboxDispatchCache = exports.WALLBOX_AC_VOLTAGE_V = exports.WALLBOX_CURRENT_STEP_A = void 0;
 const mapping_config_1 = require("../../../mapping_config");
 const evcc_control_config_1 = require("../evcc_control_config");
+const evcc_mode_control_1 = require("../evcc_mode_control");
 /** EVCC/go-e typischerweise ganzzahlige Ampere — dokumentiert in EMS_LIGHT_WALLBOX_DRYRUN_DISPATCH.md */
 exports.WALLBOX_CURRENT_STEP_A = 1;
 exports.WALLBOX_AC_VOLTAGE_V = 230;
@@ -37,29 +38,32 @@ function evaluateWallboxDispatchReadiness(config) {
         };
     }
     if (controlModel === "evcc") {
-        const modeMappingAvailable = (0, evcc_control_config_1.evccControlTargetForRole)(c, "set_mode").length > 0;
-        const maxCurrentMappingAvailable = (0, evcc_control_config_1.evccControlTargetForRole)(c, "set_max_current_a").length > 0;
-        const chargeModeValue = (0, evcc_control_config_1.evccModeChargeValue)(c);
-        const stringModeComplete = modeMappingAvailable && maxCurrentMappingAvailable && chargeModeValue.length > 0;
-        const contractV1 = (0, evcc_control_config_1.resolveEvccControlContractV1)(c);
-        const controlMappingComplete = stringModeComplete || contractV1.ready;
-        const missing = [];
-        if (!controlMappingComplete) {
-            missing.push(...contractV1.missing);
-        }
+        const contract = (0, evcc_mode_control_1.resolveEvccModeControlContract)(c);
+        const modeMappingAvailable = contract.resolvedVariant === "buttons"
+            ? contract.buttonsReady
+            : contract.resolvedVariant === "pv_control"
+                ? Boolean(contract.pvControlStateId)
+                : (0, evcc_control_config_1.evccControlTargetForRole)(c, "set_mode").length > 0;
+        const maxCurrentMappingAvailable = Boolean(contract.maxCurrentStateId) ||
+            (0, evcc_control_config_1.evccControlTargetForRole)(c, "set_max_current_a").length > 0;
+        const controlMappingComplete = contract.writeContractReady;
+        const missing = controlMappingComplete ? [] : [...contract.missing];
+        const reasonDe = controlMappingComplete
+            ? contract.resolvedVariant === "buttons"
+                ? "EVCC-Button-Contract erkannt (control.off/pv/min/now + status.mode + maxCurrent/phases); produktive Writes weiterhin gesperrt."
+                : contract.resolvedVariant === "pv_control"
+                    ? "EVCC-Control-Contract (pvControl/maxCurrent/phasesConfigured) erkannt; produktive Writes weiterhin gesperrt."
+                    : "EVCC-String-Mode-Mapping grundsätzlich vorhanden; Live-Dispatch weiterhin gesperrt."
+            : `Fehlende EVCC-Control-Mappings (${contract.resolvedVariant}): ${missing.join(", ")}.`;
         return {
             controlMappingComplete,
             enableMappingAvailable: false,
-            currentMappingAvailable: maxCurrentMappingAvailable || Boolean(contractV1.maxCurrentStateId),
+            currentMappingAvailable: maxCurrentMappingAvailable,
             powerMappingAvailable: false,
-            modeMappingAvailable: modeMappingAvailable || Boolean(contractV1.pvControlStateId),
+            modeMappingAvailable,
             liveDispatchSupported: false,
             missingMappings: missing,
-            reasonDe: controlMappingComplete
-                ? contractV1.ready
-                    ? "EVCC-Control-Contract (pvControl/maxCurrent/phasesConfigured) erkannt; produktive Writes weiterhin gesperrt."
-                    : "EVCC-String-Mode-Mapping grundsätzlich vorhanden; Live-Dispatch weiterhin gesperrt."
-                : `Fehlende EVCC-Control-Contract-Mappings: ${missing.join(", ")}.`,
+            reasonDe,
         };
     }
     const legacy = (0, mapping_config_1.legacyWallboxMappingFromConfig)(c);

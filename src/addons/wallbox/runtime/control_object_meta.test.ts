@@ -4,6 +4,7 @@ import {
 	metaFromObject,
 	validateControlObjectMeta,
 	validateEnumValueAgainstMeta,
+	validateEvccButtonTargetMeta,
 	validateEvccControlTargetMeta,
 } from "./control_object_meta.js";
 
@@ -91,5 +92,46 @@ describe("wallbox control object meta", () => {
 		const r = validateEnumValueAgainstMeta("pv", meta);
 		assert.equal(r.valid, false);
 		assert.equal(r.reason, "enum_values_unconfirmed");
+	});
+
+	it("accepts EVCC button write=true read=false", () => {
+		const meta = metaFromObject("evcc.0.loadpoint.1.control.now", {
+			_type: "state",
+			common: { type: "boolean", read: false, write: true },
+		} as unknown as ioBroker.Object);
+		assert.equal(meta.writable, true);
+		assert.equal(meta.readable, false);
+		const r = validateEvccButtonTargetMeta("evcc.0.loadpoint.1.control.now", "now", meta);
+		assert.equal(r.valid, true);
+	});
+
+	it("rejects status.mode as a write target", () => {
+		const meta = metaFromObject("evcc.0.loadpoint.1.status.mode", {
+			_type: "state",
+			common: { type: "string", read: true, write: false },
+		} as unknown as ioBroker.Object);
+		const r = validateEvccControlTargetMeta(
+			"evcc.0.loadpoint.1.status.mode",
+			"string",
+			meta,
+			"set_mode",
+		);
+		assert.equal(r.valid, false);
+		assert.equal(r.reason, "mode_feedback_not_a_write_target");
+	});
+
+	it("recognizes writable maxCurrent as present", () => {
+		const meta = metaFromObject("evcc.0.loadpoint.1.control.maxCurrent", {
+			_type: "state",
+			common: { type: "number", read: true, write: true },
+		} as unknown as ioBroker.Object);
+		const r = validateEvccControlTargetMeta(
+			"evcc.0.loadpoint.1.control.maxCurrent",
+			"number",
+			meta,
+			"set_max_current_a",
+		);
+		assert.equal(r.valid, true);
+		assert.notEqual(r.reason, "target_object_missing");
 	});
 });

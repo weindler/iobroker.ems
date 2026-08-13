@@ -103,7 +103,11 @@ async function refreshWallboxDailyPlanRuntime(host, snap) {
     const configRecord = host.config && typeof host.config === "object" ? host.config : {};
     const intentCfg = (0, config_1.intentEvccConfigFromAdapter)(configRecord);
     const targetStateIds = (0, runtime_1.collectConfiguredControlTargetStateIds)(configRecord);
-    const objectMetas = await (0, control_object_meta_1.resolveWallboxControlObjectMetas)(typeof host.getObjectAsync === "function" ? host.getObjectAsync.bind(host) : undefined, targetStateIds);
+    const objectMetas = await (0, control_object_meta_1.resolveWallboxControlObjectMetas)(typeof host.getForeignObjectAsync === "function"
+        ? host.getForeignObjectAsync.bind(host)
+        : typeof host.getObjectAsync === "function"
+            ? host.getObjectAsync.bind(host)
+            : undefined, targetStateIds);
     const mappingSnapshot = (0, runtime_1.buildWallboxControlMappingSnapshot)({
         config: configRecord,
         telemetryCfg: {

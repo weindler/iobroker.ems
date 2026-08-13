@@ -166,6 +166,41 @@ export async function publishEvFoundationDiagnosis(
 		WALLBOX_EV_FOUNDATION_STATES.legacyDirectControlPresent,
 		model.legacyDirectControlPresent,
 	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.evccModeControlVariant,
+		model.evccModeControlVariant,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.evccModeFeedbackState,
+		model.evccModeFeedbackState,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.evccModeButtonsReady,
+		model.evccModeButtonsReady,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.evccModeOffTargetReady,
+		model.evccModeOffTargetReady,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.evccModePvTargetReady,
+		model.evccModePvTargetReady,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.evccModeMinTargetReady,
+		model.evccModeMinTargetReady,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.evccModeNowTargetReady,
+		model.evccModeNowTargetReady,
+	);
 	await setStateIfChanged(host, WALLBOX_EV_FOUNDATION_STATES.preparedEvState, model.preparedEvState);
 	await setStateIfChanged(host, WALLBOX_EV_FOUNDATION_STATES.takeoverReason, model.takeoverReason ?? "");
 	await setStateIfChanged(host, WALLBOX_EV_FOUNDATION_STATES.dataQuality, model.dataQuality);

@@ -170,7 +170,11 @@ async function refreshWallboxDailyPlanRuntime(host: WallboxHost, snap: Awaited<R
 	const intentCfg = intentEvccConfigFromAdapter(configRecord);
 	const targetStateIds = collectConfiguredControlTargetStateIds(configRecord);
 	const objectMetas = await resolveWallboxControlObjectMetas(
-		typeof host.getObjectAsync === "function" ? host.getObjectAsync.bind(host) : undefined,
+		typeof host.getForeignObjectAsync === "function"
+			? host.getForeignObjectAsync.bind(host)
+			: typeof host.getObjectAsync === "function"
+				? host.getObjectAsync.bind(host)
+				: undefined,
 		targetStateIds,
 	);
 	const mappingSnapshot = buildWallboxControlMappingSnapshot({

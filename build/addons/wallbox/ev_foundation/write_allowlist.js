@@ -19,6 +19,10 @@ exports.EVCC_PHASES_CONFIGURED_WRITE = {
 };
 /** Suffixes under evcc.*.loadpoint.*.control.* that a later planner may write. */
 exports.EVCC_FUTURE_PLANNER_WRITE_SUFFIXES = [
+    "control.off",
+    "control.pv",
+    "control.min",
+    "control.now",
     "control.pvControl",
     "control.maxCurrent",
     "control.phasesConfigured",
@@ -31,10 +35,6 @@ exports.EVCC_PLANNER_WRITE_TABOO_SUFFIXES = [
     "control.disableThreshold",
     "control.smartCostLimit",
     "control.vehicleName",
-    "control.off",
-    "control.pv",
-    "control.min",
-    "control.now",
 ];
 function normalizedId(stateId) {
     return stateId.trim().replace(/\.+/g, ".").toLowerCase();

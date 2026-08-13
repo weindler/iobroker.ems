@@ -42,6 +42,7 @@ function testMapping() {
 				stateId: "go-e.0.allow_charging",
 				objectPresent: true,
 				writable: true,
+				readable: true,
 				commonType: "boolean",
 				allowedStateKeys: null,
 			},
@@ -49,6 +50,7 @@ function testMapping() {
 				stateId: "go-e.0.amperePV",
 				objectPresent: true,
 				writable: true,
+				readable: true,
 				commonType: "number",
 				allowedStateKeys: null,
 			},
@@ -66,7 +68,7 @@ function meta(
 	writable = true,
 	allowedStateKeys: string[] | null = null,
 ): WallboxControlObjectMeta {
-	return { stateId: id, objectPresent: true, writable, commonType, allowedStateKeys };
+	return { stateId: id, objectPresent: true, writable, readable: true, commonType, allowedStateKeys };
 }
 
 function testEvccMapping() {

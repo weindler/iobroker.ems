@@ -221,15 +221,21 @@ describe("EV foundation Phase 1", () => {
 		assert.ok(!Object.keys(capabilities).some((k) => k.toLowerCase().includes("ford")));
 	});
 
-	it("T8: future write allowlist contains only the three control states", () => {
+	it("T8: future write allowlist contains button and control.* states", () => {
 		assert.deepEqual([...EVCC_FUTURE_PLANNER_WRITE_SUFFIXES].sort(), [
 			"control.maxCurrent",
+			"control.min",
+			"control.now",
+			"control.off",
 			"control.phasesConfigured",
+			"control.pv",
 			"control.pvControl",
 		]);
 		assert.equal(isFuturePlannerWriteAllowed("evcc.0.loadpoint.1.control.pvControl"), true);
 		assert.equal(isFuturePlannerWriteAllowed("evcc.0.loadpoint.1.control.maxCurrent"), true);
 		assert.equal(isFuturePlannerWriteAllowed("evcc.0.loadpoint.1.control.phasesConfigured"), true);
+		assert.equal(isFuturePlannerWriteAllowed("evcc.0.loadpoint.1.control.off"), true);
+		assert.equal(isFuturePlannerWriteAllowed("evcc.0.loadpoint.1.control.now"), true);
 		assert.equal(encodePvControl("off"), EVCC_PV_CONTROL.off);
 		assert.equal(encodePvControl("pv"), 1);
 		assert.equal(encodePvControl("min"), 2);

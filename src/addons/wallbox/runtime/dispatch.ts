@@ -1,10 +1,9 @@
 import { legacyWallboxMappingFromConfig, WALLBOX_FLAT_PREFIX } from "../../../mapping_config";
 import {
 	evccControlTargetForRole,
-	evccModeChargeValue,
-	resolveEvccControlContractV1,
 	resolveWallboxControlModel,
 } from "../evcc_control_config";
+import { resolveEvccModeControlContract } from "../evcc_mode_control";
 import type { WallboxDispatchIntent, WallboxChargeSource } from "./intent";
 import type { WallboxPlanDecision, WallboxTelemetryInput } from "./daily_plan";
 
@@ -107,30 +106,33 @@ export function evaluateWallboxDispatchReadiness(config: unknown): WallboxDispat
 	}
 
 	if (controlModel === "evcc") {
-		const modeMappingAvailable = evccControlTargetForRole(c, "set_mode").length > 0;
-		const maxCurrentMappingAvailable = evccControlTargetForRole(c, "set_max_current_a").length > 0;
-		const chargeModeValue = evccModeChargeValue(c);
-		const stringModeComplete =
-			modeMappingAvailable && maxCurrentMappingAvailable && chargeModeValue.length > 0;
-		const contractV1 = resolveEvccControlContractV1(c);
-		const controlMappingComplete = stringModeComplete || contractV1.ready;
-		const missing: string[] = [];
-		if (!controlMappingComplete) {
-			missing.push(...contractV1.missing);
-		}
+		const contract = resolveEvccModeControlContract(c);
+		const modeMappingAvailable =
+			contract.resolvedVariant === "buttons"
+				? contract.buttonsReady
+				: contract.resolvedVariant === "pv_control"
+					? Boolean(contract.pvControlStateId)
+					: evccControlTargetForRole(c, "set_mode").length > 0;
+		const maxCurrentMappingAvailable = Boolean(contract.maxCurrentStateId) ||
+			evccControlTargetForRole(c, "set_max_current_a").length > 0;
+		const controlMappingComplete = contract.writeContractReady;
+		const missing = controlMappingComplete ? [] : [...contract.missing];
+		const reasonDe = controlMappingComplete
+			? contract.resolvedVariant === "buttons"
+				? "EVCC-Button-Contract erkannt (control.off/pv/min/now + status.mode + maxCurrent/phases); produktive Writes weiterhin gesperrt."
+				: contract.resolvedVariant === "pv_control"
+					? "EVCC-Control-Contract (pvControl/maxCurrent/phasesConfigured) erkannt; produktive Writes weiterhin gesperrt."
+					: "EVCC-String-Mode-Mapping grundsätzlich vorhanden; Live-Dispatch weiterhin gesperrt."
+			: `Fehlende EVCC-Control-Mappings (${contract.resolvedVariant}): ${missing.join(", ")}.`;
 		return {
 			controlMappingComplete,
 			enableMappingAvailable: false,
-			currentMappingAvailable: maxCurrentMappingAvailable || Boolean(contractV1.maxCurrentStateId),
+			currentMappingAvailable: maxCurrentMappingAvailable,
 			powerMappingAvailable: false,
-			modeMappingAvailable: modeMappingAvailable || Boolean(contractV1.pvControlStateId),
+			modeMappingAvailable,
 			liveDispatchSupported: false,
 			missingMappings: missing,
-			reasonDe: controlMappingComplete
-				? contractV1.ready
-					? "EVCC-Control-Contract (pvControl/maxCurrent/phasesConfigured) erkannt; produktive Writes weiterhin gesperrt."
-					: "EVCC-String-Mode-Mapping grundsätzlich vorhanden; Live-Dispatch weiterhin gesperrt."
-				: `Fehlende EVCC-Control-Contract-Mappings: ${missing.join(", ")}.`,
+			reasonDe,
 		};
 	}
 

@@ -11,6 +11,7 @@ function meta(id, commonType, writable = true, allowedStateKeys = null) {
         stateId: id,
         objectPresent: true,
         writable,
+        readable: true,
         commonType,
         allowedStateKeys,
     };
@@ -54,8 +55,9 @@ function validEvccMetas(over = {}) {
         strict_1.default.equal(snap.controlModel, "evcc");
         strict_1.default.equal(snap.evccControlPathConfirmed, false);
         strict_1.default.equal(snap.liveEligible, false);
-        strict_1.default.ok(snap.missingRoles.includes("set_mode"));
-        strict_1.default.ok(snap.missingRoles.includes("set_max_current_a"));
+        strict_1.default.equal(snap.evccModeControlVariant, "buttons");
+        strict_1.default.ok(snap.missingRoles.includes("control.off"));
+        strict_1.default.ok(!snap.validationIssues.some((i) => i.includes("evcc_charge_mode_mapping_missing")));
     });
     (0, node_test_1.it)("evcc model with maxCurrent and mode is confirmed and live-eligible", () => {
         const snap = (0, control_mapping_js_1.buildWallboxControlMappingSnapshot)({

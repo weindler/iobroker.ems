@@ -23,6 +23,10 @@ export type EvccPhasesConfiguredWrite = keyof typeof EVCC_PHASES_CONFIGURED_WRIT
 
 /** Suffixes under evcc.*.loadpoint.*.control.* that a later planner may write. */
 export const EVCC_FUTURE_PLANNER_WRITE_SUFFIXES = [
+	"control.off",
+	"control.pv",
+	"control.min",
+	"control.now",
 	"control.pvControl",
 	"control.maxCurrent",
 	"control.phasesConfigured",
@@ -38,10 +42,6 @@ export const EVCC_PLANNER_WRITE_TABOO_SUFFIXES = [
 	"control.disableThreshold",
 	"control.smartCostLimit",
 	"control.vehicleName",
-	"control.off",
-	"control.pv",
-	"control.min",
-	"control.now",
 ] as const;
 
 export type EvccPlannerWriteTabooSuffix = (typeof EVCC_PLANNER_WRITE_TABOO_SUFFIXES)[number];

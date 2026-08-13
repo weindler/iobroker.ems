@@ -104,9 +104,16 @@ export interface EvModelV1 {
 	departureMinSocConfigured: boolean;
 	vehicleModelSource: "ev_model_v1" | "vehicle_profile" | "none" | "conflict";
 	vehicleModelReady: boolean;
-	controlContractModel: "none" | "legacy_direct" | "evcc_string_mode" | "evcc_control_v1";
+	controlContractModel: "none" | "legacy_direct" | "evcc_string_mode" | "evcc_control_v1" | "evcc_buttons";
 	evccControlContractReady: boolean;
 	legacyDirectControlPresent: boolean;
+	evccModeControlVariant: "none" | "buttons" | "pv_control" | "string_mode";
+	evccModeFeedbackState: string;
+	evccModeButtonsReady: boolean;
+	evccModeOffTargetReady: boolean;
+	evccModePvTargetReady: boolean;
+	evccModeMinTargetReady: boolean;
+	evccModeNowTargetReady: boolean;
 }
 
 export const EMPTY_EV_CAPABILITIES: EvCapabilities = {

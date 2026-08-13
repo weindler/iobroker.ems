@@ -50,6 +50,10 @@ function baseMapping(over = {}) {
         controlContractModel: "evcc_string_mode",
         evccControlContractReady: false,
         legacyDirectControlPresent: false,
+        evccModeControlVariant: "string_mode",
+        evccModeFeedbackStateId: "evcc.0.loadpoint.1.status.mode",
+        evccModeButtonsReady: false,
+        evccModeButtonReady: { off: false, pv: false, min: false, now: false },
         ...over,
     };
 }

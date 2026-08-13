@@ -198,15 +198,21 @@ async function modelFrom(admin, foreign) {
         strict_1.default.ok(!Object.keys(model).some((k) => k.toLowerCase().includes("ford")));
         strict_1.default.ok(!Object.keys(capabilities).some((k) => k.toLowerCase().includes("ford")));
     });
-    (0, node_test_1.it)("T8: future write allowlist contains only the three control states", () => {
+    (0, node_test_1.it)("T8: future write allowlist contains button and control.* states", () => {
         strict_1.default.deepEqual([...write_allowlist_1.EVCC_FUTURE_PLANNER_WRITE_SUFFIXES].sort(), [
             "control.maxCurrent",
+            "control.min",
+            "control.now",
+            "control.off",
             "control.phasesConfigured",
+            "control.pv",
             "control.pvControl",
         ]);
         strict_1.default.equal((0, write_allowlist_1.isFuturePlannerWriteAllowed)("evcc.0.loadpoint.1.control.pvControl"), true);
         strict_1.default.equal((0, write_allowlist_1.isFuturePlannerWriteAllowed)("evcc.0.loadpoint.1.control.maxCurrent"), true);
         strict_1.default.equal((0, write_allowlist_1.isFuturePlannerWriteAllowed)("evcc.0.loadpoint.1.control.phasesConfigured"), true);
+        strict_1.default.equal((0, write_allowlist_1.isFuturePlannerWriteAllowed)("evcc.0.loadpoint.1.control.off"), true);
+        strict_1.default.equal((0, write_allowlist_1.isFuturePlannerWriteAllowed)("evcc.0.loadpoint.1.control.now"), true);
         strict_1.default.equal((0, write_allowlist_1.encodePvControl)("off"), write_allowlist_1.EVCC_PV_CONTROL.off);
         strict_1.default.equal((0, write_allowlist_1.encodePvControl)("pv"), 1);
         strict_1.default.equal((0, write_allowlist_1.encodePvControl)("min"), 2);

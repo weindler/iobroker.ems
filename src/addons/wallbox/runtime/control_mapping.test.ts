@@ -13,6 +13,7 @@ function meta(
 		stateId: id,
 		objectPresent: true,
 		writable,
+		readable: true,
 		commonType,
 		allowedStateKeys,
 	};
@@ -61,8 +62,9 @@ describe("wallbox control mapping snapshot", () => {
 		assert.equal(snap.controlModel, "evcc");
 		assert.equal(snap.evccControlPathConfirmed, false);
 		assert.equal(snap.liveEligible, false);
-		assert.ok(snap.missingRoles.includes("set_mode"));
-		assert.ok(snap.missingRoles.includes("set_max_current_a"));
+		assert.equal(snap.evccModeControlVariant, "buttons");
+		assert.ok(snap.missingRoles.includes("control.off"));
+		assert.ok(!snap.validationIssues.some((i) => i.includes("evcc_charge_mode_mapping_missing")));
 	});
 
 	it("evcc model with maxCurrent and mode is confirmed and live-eligible", () => {

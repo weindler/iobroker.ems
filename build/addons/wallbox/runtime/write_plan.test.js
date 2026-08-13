@@ -13,6 +13,7 @@ function meta(id, commonType, allowedStateKeys = null) {
         stateId: id,
         objectPresent: true,
         writable: true,
+        readable: true,
         commonType,
         allowedStateKeys,
     };
@@ -207,6 +208,7 @@ function candidate(over = {}) {
         const mapping = (0, control_mapping_js_1.buildWallboxControlMappingSnapshot)({
             config: {
                 wb_control_model: "evcc",
+                wb_evcc_mode_control: "string_mode",
                 wb_evcc_set_mode_target: EVCC_MODE,
                 wb_evcc_set_max_current_a_target: EVCC_MAX_CURRENT,
             },

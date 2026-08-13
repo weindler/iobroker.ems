@@ -224,12 +224,11 @@ function evalJsonConfigValidator(expr, data) {
         strict_1.default.equal(r.controlMappingComplete, true);
         strict_1.default.equal((0, evcc_control_config_1.resolveWallboxControlModel)({ wb_control_model: "legacy_direct" }), "legacy_direct");
     });
-    (0, node_test_1.it)("T10: EVCC write allowlist remains pvControl/maxCurrent/phasesConfigured", () => {
-        strict_1.default.deepEqual([...write_allowlist_1.EVCC_FUTURE_PLANNER_WRITE_SUFFIXES], [
-            "control.pvControl",
-            "control.maxCurrent",
-            "control.phasesConfigured",
-        ]);
+    (0, node_test_1.it)("T10: EVCC write allowlist includes buttons plus pvControl/maxCurrent/phasesConfigured", () => {
+        strict_1.default.ok(write_allowlist_1.EVCC_FUTURE_PLANNER_WRITE_SUFFIXES.includes("control.off"));
+        strict_1.default.ok(write_allowlist_1.EVCC_FUTURE_PLANNER_WRITE_SUFFIXES.includes("control.pvControl"));
+        strict_1.default.ok(write_allowlist_1.EVCC_FUTURE_PLANNER_WRITE_SUFFIXES.includes("control.maxCurrent"));
+        strict_1.default.equal((0, write_allowlist_1.isFuturePlannerWriteAllowed)("evcc.0.loadpoint.1.control.off"), true);
         strict_1.default.equal((0, write_allowlist_1.isFuturePlannerWriteAllowed)("evcc.0.loadpoint.1.control.pvControl"), true);
         strict_1.default.equal((0, write_allowlist_1.isFuturePlannerWriteAllowed)("evcc.0.loadpoint.1.control.limitSoc"), false);
         strict_1.default.equal((0, write_allowlist_1.isFuturePlannerWriteAllowed)("go-e.0.amperePV"), false);

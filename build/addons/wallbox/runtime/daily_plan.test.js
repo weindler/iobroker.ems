@@ -10,7 +10,8 @@ const contributor_1 = require("../../../operator/contributor");
 const slots_1 = require("../../../operator/daily_plan/slots");
 const time_1 = require("../../../operator/time");
 const daily_plan_js_1 = require("./daily_plan.js");
-const normalize_js_1 = require("../normalize.js");
+const evcc_telemetry_js_1 = require("../evcc_telemetry.js");
+const evcc_config_js_1 = require("../evcc_config.js");
 const TZ = "UTC";
 const NOW = new Date("2026-07-11T10:07:00.000Z");
 const SLOT_START = (0, slots_1.slotStartIsoFloored)(NOW, TZ);
@@ -76,31 +77,7 @@ function evaluate(entries, tel = telemetry(), meta = {
     });
 }
 function emptySnap() {
-    return {
-        observed_at: NOW.toISOString(),
-        enabled: (0, normalize_js_1.missingField)(),
-        connected: (0, normalize_js_1.missingField)(),
-        charging: (0, normalize_js_1.missingField)(),
-        charge_power_w: (0, normalize_js_1.missingField)(),
-        session_energy_kwh: (0, normalize_js_1.missingField)(),
-        charge_remaining_energy_kwh: (0, normalize_js_1.missingField)(),
-        vehicle_soc_pct: (0, normalize_js_1.missingField)(),
-        vehicle_name: (0, normalize_js_1.missingField)(),
-        vehicle_title: (0, normalize_js_1.missingField)(),
-        plan_active: (0, normalize_js_1.missingField)(),
-        plan_soc_pct: (0, normalize_js_1.missingField)(),
-        plan_time: (0, normalize_js_1.missingField)(),
-        effective_plan_time: (0, normalize_js_1.missingField)(),
-        effective_limit_soc_pct: (0, normalize_js_1.missingField)(),
-        battery_boost: (0, normalize_js_1.missingField)(),
-        loadpoint_mode: (0, normalize_js_1.missingField)(),
-        active_phases: (0, normalize_js_1.missingField)(),
-        configured_phases: (0, normalize_js_1.missingField)(),
-        min_current_a: (0, normalize_js_1.missingField)(),
-        max_current_a: (0, normalize_js_1.missingField)(),
-        battery_mode: (0, normalize_js_1.missingField)(),
-        battery_discharge_control: (0, normalize_js_1.missingField)(),
-    };
+    return (0, evcc_telemetry_js_1.emptyEvccTelemetrySnapshot)(NOW.toISOString());
 }
 (0, node_test_1.describe)("wallbox connected gate", () => {
     (0, node_test_1.it)("disconnected with soc 0 is safe", () => {
@@ -225,28 +202,9 @@ function emptySnap() {
         snap.max_current_a = { status: "valid", value: 16, raw: 16 };
         snap.effective_plan_time = { status: "valid", value: DEADLINE, raw: DEADLINE };
         const cfg = {
+            ...(0, evcc_config_js_1.emptyWallboxEvccTelemetryConfig)(),
             enabledStateId: "evcc.0.enabled",
             connectedStateId: "evcc.0.connected",
-            chargingStateId: "",
-            chargePowerWStateId: "",
-            sessionEnergyKwhStateId: "",
-            chargeRemainingEnergyKwhStateId: "",
-            vehicleSocStateId: "",
-            vehicleNameStateId: "",
-            vehicleTitleStateId: "",
-            planActiveStateId: "",
-            planSocStateId: "",
-            planTimeStateId: "",
-            effectivePlanTimeStateId: "",
-            effectiveLimitSocStateId: "",
-            batteryBoostStateId: "",
-            loadpointModeStateId: "",
-            activePhasesStateId: "",
-            configuredPhasesStateId: "",
-            minCurrentAStateId: "",
-            maxCurrentAStateId: "",
-            batteryModeStateId: "",
-            batteryDischargeControlStateId: "",
         };
         const d = await (0, daily_plan_js_1.resolveWallboxDailyPlanDecision)(host, snap, cfg, NOW, {
             governanceEnabled: true,

@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evccTelemetryConfigFromAdapter = exports.readEvccTelemetrySnapshot = void 0;
+exports.emptyWallboxEvccTelemetryConfig = exports.evccTelemetryConfigFromAdapter = exports.readEvccTelemetrySnapshot = exports.emptyEvccTelemetrySnapshot = void 0;
 const evcc_config_1 = require("./evcc_config");
+Object.defineProperty(exports, "emptyWallboxEvccTelemetryConfig", { enumerable: true, get: function () { return evcc_config_1.emptyWallboxEvccTelemetryConfig; } });
 const normalize_1 = require("./normalize");
 const ROLE_NORMALIZER = {
     evcc_enabled: normalize_1.normalizeOptionalBool,
@@ -26,6 +27,20 @@ const ROLE_NORMALIZER = {
     evcc_max_current_a: normalize_1.normalizeOptionalNumber,
     evcc_battery_mode: normalize_1.normalizeOptionalBatteryMode,
     evcc_battery_discharge_control: normalize_1.normalizeOptionalBool,
+    evcc_connection: normalize_1.normalizeOptionalBool,
+    evcc_vehicle_range_km: normalize_1.normalizeOptionalNumber,
+    evcc_vehicle_odometer_km: normalize_1.normalizeOptionalNumber,
+    evcc_charge_remaining_duration_s: normalize_1.normalizeOptionalNumber,
+    evcc_effective_max_current_a: normalize_1.normalizeOptionalNumber,
+    evcc_effective_min_current_a: normalize_1.normalizeOptionalNumber,
+    evcc_offered_current_a: normalize_1.normalizeOptionalNumber,
+    evcc_charge_currents: normalize_1.normalizeOptionalJsonString,
+    evcc_charge_voltages: normalize_1.normalizeOptionalJsonString,
+    evcc_session_price: normalize_1.normalizeOptionalNumber,
+    evcc_session_price_per_kwh: normalize_1.normalizeOptionalNumber,
+    evcc_vehicle_detection_active: normalize_1.normalizeOptionalBool,
+    evcc_smart_cost_limit: normalize_1.normalizeOptionalNumber,
+    evcc_smart_cost_active: normalize_1.normalizeOptionalBool,
 };
 /** EVCC liefert Sitzungs-/Restenergie in Wh; EMS-Light speichert kWh. */
 function normalizeSessionEnergyKwh(raw) {
@@ -81,7 +96,7 @@ async function readForeign(host, objectId) {
         return null;
     return { val: st.val, ts: st.ts };
 }
-function emptySnapshot(observedAt) {
+function emptyEvccTelemetrySnapshot(observedAt) {
     const m = () => (0, normalize_1.missingField)();
     return {
         observed_at: observedAt,
@@ -107,13 +122,28 @@ function emptySnapshot(observedAt) {
         max_current_a: m(),
         battery_mode: m(),
         battery_discharge_control: m(),
+        connection: m(),
+        vehicle_range_km: m(),
+        vehicle_odometer_km: m(),
+        charge_remaining_duration_s: m(),
+        effective_max_current_a: m(),
+        effective_min_current_a: m(),
+        offered_current_a: m(),
+        charge_currents_json: m(),
+        charge_voltages_json: m(),
+        session_price: m(),
+        session_price_per_kwh: m(),
+        vehicle_detection_active: m(),
+        smart_cost_limit: m(),
+        smart_cost_active: m(),
     };
 }
+exports.emptyEvccTelemetrySnapshot = emptyEvccTelemetrySnapshot;
 async function readEvccTelemetrySnapshot(host, cfg, now) {
     const observedAt = now.toISOString();
     const ids = (0, evcc_config_1.configuredEvccTelemetryStateIds)(cfg);
     if (ids.length === 0) {
-        return emptySnapshot(observedAt);
+        return emptyEvccTelemetrySnapshot(observedAt);
     }
     const fields = {};
     for (const role of Object.keys(ROLE_NORMALIZER)) {
@@ -153,6 +183,20 @@ async function readEvccTelemetrySnapshot(host, cfg, now) {
         max_current_a: fields.evcc_max_current_a,
         battery_mode: fields.evcc_battery_mode,
         battery_discharge_control: fields.evcc_battery_discharge_control,
+        connection: fields.evcc_connection,
+        vehicle_range_km: fields.evcc_vehicle_range_km,
+        vehicle_odometer_km: fields.evcc_vehicle_odometer_km,
+        charge_remaining_duration_s: fields.evcc_charge_remaining_duration_s,
+        effective_max_current_a: fields.evcc_effective_max_current_a,
+        effective_min_current_a: fields.evcc_effective_min_current_a,
+        offered_current_a: fields.evcc_offered_current_a,
+        charge_currents_json: fields.evcc_charge_currents,
+        charge_voltages_json: fields.evcc_charge_voltages,
+        session_price: fields.evcc_session_price,
+        session_price_per_kwh: fields.evcc_session_price_per_kwh,
+        vehicle_detection_active: fields.evcc_vehicle_detection_active,
+        smart_cost_limit: fields.evcc_smart_cost_limit,
+        smart_cost_active: fields.evcc_smart_cost_active,
     };
 }
 exports.readEvccTelemetrySnapshot = readEvccTelemetrySnapshot;

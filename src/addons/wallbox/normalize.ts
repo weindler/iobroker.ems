@@ -85,3 +85,21 @@ export function normalizeOptionalLoadpointMode(raw: unknown): TelemetryField<str
 	if (!s) return missingField();
 	return { value: s, status: "valid", raw };
 }
+
+/** Arrays/Objekte (chargeCurrents/chargeVoltages) als JSON-String — kein Fake-[] . */
+export function normalizeOptionalJsonString(raw: unknown): TelemetryField<string> {
+	if (isEmptySentinel(raw)) return missingField();
+	if (typeof raw === "string") {
+		const s = raw.trim();
+		if (!s) return missingField();
+		return { value: s, status: "valid", raw };
+	}
+	if (Array.isArray(raw) || (typeof raw === "object" && raw !== null)) {
+		try {
+			return { value: JSON.stringify(raw), status: "valid", raw };
+		} catch {
+			return { value: null, status: "invalid", raw };
+		}
+	}
+	return { value: null, status: "invalid", raw };
+}

@@ -337,6 +337,10 @@ export const STATE_SURFACE_FAMILIES: StateSurfaceFamily[] = [
 			"addons.wallbox.runtime.dispatch_intent_json",
 			"addons.wallbox.runtime.write_plan_json",
 			"addons.wallbox.status.evcc.snapshot_json",
+			"addons.wallbox.status.ev_foundation.model_json",
+			"addons.wallbox.status.ev_foundation.capabilities_json",
+			"addons.wallbox.status.ev_foundation.external_smart_plan_json",
+			"addons.wallbox.status.ev_foundation.external_raw_diagnostics_json",
 		],
 	},
 	{

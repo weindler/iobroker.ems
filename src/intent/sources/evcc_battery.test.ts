@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readEvccBatteryIntentSnapshot } from "./evcc_battery.js";
 import type { WallboxEvccTelemetryConfig } from "../../addons/wallbox/evcc_config.js";
+import { emptyWallboxEvccTelemetryConfig } from "../../addons/wallbox/evcc_config.js";
 
 const NOW = new Date("2026-06-27T12:00:00Z");
 
@@ -27,26 +28,7 @@ class MockHost {
 }
 
 const CFG: WallboxEvccTelemetryConfig = {
-	enabledStateId: "",
-	connectedStateId: "",
-	chargingStateId: "",
-	chargePowerWStateId: "",
-	sessionEnergyKwhStateId: "",
-	chargeRemainingEnergyKwhStateId: "",
-	vehicleSocStateId: "",
-	vehicleNameStateId: "",
-	vehicleTitleStateId: "",
-	planActiveStateId: "",
-	planSocStateId: "",
-	planTimeStateId: "",
-	effectivePlanTimeStateId: "",
-	effectiveLimitSocStateId: "",
-	batteryBoostStateId: "",
-	loadpointModeStateId: "",
-	activePhasesStateId: "",
-	configuredPhasesStateId: "",
-	minCurrentAStateId: "",
-	maxCurrentAStateId: "",
+	...emptyWallboxEvccTelemetryConfig(),
 	batteryModeStateId: "evcc.0.status.batteryMode",
 	batteryDischargeControlStateId: "evcc.0.status.batteryDischargeControl",
 };

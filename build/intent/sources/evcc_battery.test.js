@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
 const evcc_battery_js_1 = require("./evcc_battery.js");
+const evcc_config_js_1 = require("../../addons/wallbox/evcc_config.js");
 const NOW = new Date("2026-06-27T12:00:00Z");
 class MockHost {
     foreign = new Map();
@@ -25,26 +26,7 @@ class MockHost {
     }
 }
 const CFG = {
-    enabledStateId: "",
-    connectedStateId: "",
-    chargingStateId: "",
-    chargePowerWStateId: "",
-    sessionEnergyKwhStateId: "",
-    chargeRemainingEnergyKwhStateId: "",
-    vehicleSocStateId: "",
-    vehicleNameStateId: "",
-    vehicleTitleStateId: "",
-    planActiveStateId: "",
-    planSocStateId: "",
-    planTimeStateId: "",
-    effectivePlanTimeStateId: "",
-    effectiveLimitSocStateId: "",
-    batteryBoostStateId: "",
-    loadpointModeStateId: "",
-    activePhasesStateId: "",
-    configuredPhasesStateId: "",
-    minCurrentAStateId: "",
-    maxCurrentAStateId: "",
+    ...(0, evcc_config_js_1.emptyWallboxEvccTelemetryConfig)(),
     batteryModeStateId: "evcc.0.status.batteryMode",
     batteryDischargeControlStateId: "evcc.0.status.batteryDischargeControl",
 };

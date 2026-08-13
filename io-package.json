@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.269",
+		"version": "0.1.271",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,14 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.271": {
+				"en": "EV foundation phase 2 (read-only): map optional external control/smart-plan sources into the neutral EV model, parse slots, compute remaining plan energy. No takeover, Tibber activation, or new EVCC writes.",
+				"de": "EV-Fundament Phase 2 (nur lesen): optionale externe Steuerung/Smart-Plan-Quellen ins neutrale EV-Modell mappen, Slots parsen, Rest-Planenergie berechnen. Kein Takeover, keine Tibber-Aktivsteuerung, keine neuen EVCC-Writes."
+			},
+			"0.1.270": {
+				"en": "EV/EVCC foundation phase 1: internal EV model, capabilities, EVCC read-surface and write-allowlist (pvControl/maxCurrent/phasesConfigured). Diagnosis only — no Tibber/takeover/new EVCC write logic.",
+				"de": "EV/EVCC-Fundament Phase 1: internes EV-Modell, Capabilities, EVCC-Read-Surface und Write-Allowlist (pvControl/maxCurrent/phasesConfigured). Nur Diagnose — keine Tibber-/Takeover-/neue EVCC-Write-Logik."
+			},
 			"0.1.269": {
 				"en": "VIS: subscribe boiler/live thermal + boiler learning states so Boiler °C is shown; Wallbox runtime: write null not empty string for optional number states (fixes type warnings in dryrun).",
 				"de": "VIS: Boiler-/Live-Thermal- und Boiler-Learning-States abonnieren, damit Boiler °C angezeigt wird; Wallbox-Runtime: optionale Zahlen als null statt \"\" (behebt Typ-Warnungen im Dryrun)."

@@ -2,8 +2,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { missingField, type TelemetryField } from "../normalize.js";
 import type { EvccTelemetrySnapshot } from "../evcc_telemetry.js";
+import { emptyEvccTelemetrySnapshot } from "../evcc_telemetry.js";
 import {
 	normalizeWallboxVehicleProfile,
 	normalizeWallboxVehicleProfiles,
@@ -118,34 +118,7 @@ function profile(overrides: Partial<WallboxVehicleProfile> = {}): WallboxVehicle
 }
 
 function emptySnap(): EvccTelemetrySnapshot {
-	const m = () => missingField() as TelemetryField<boolean>;
-	const mn = () => missingField() as TelemetryField<number>;
-	const ms = () => missingField() as TelemetryField<string>;
-	return {
-		observed_at: NOW,
-		enabled: m(),
-		connected: m(),
-		charging: m(),
-		charge_power_w: mn(),
-		session_energy_kwh: mn(),
-		charge_remaining_energy_kwh: mn(),
-		vehicle_soc_pct: mn(),
-		vehicle_name: ms(),
-		vehicle_title: ms(),
-		plan_active: m(),
-		plan_soc_pct: mn(),
-		plan_time: ms(),
-		effective_plan_time: ms(),
-		effective_limit_soc_pct: mn(),
-		battery_boost: m(),
-		loadpoint_mode: ms(),
-		active_phases: mn(),
-		configured_phases: mn(),
-		min_current_a: mn(),
-		max_current_a: mn(),
-		battery_mode: ms(),
-		battery_discharge_control: m(),
-	};
+	return emptyEvccTelemetrySnapshot(NOW);
 }
 
 describe("normalizeWallboxVehicleProfile", () => {

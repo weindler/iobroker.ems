@@ -17,8 +17,9 @@ import {
 	type WallboxTelemetryInput,
 } from "./daily_plan.js";
 import type { EvccTelemetrySnapshot } from "../evcc_telemetry.js";
+import { emptyEvccTelemetrySnapshot } from "../evcc_telemetry.js";
 import type { WallboxEvccTelemetryConfig } from "../evcc_config.js";
-import { missingField } from "../normalize.js";
+import { emptyWallboxEvccTelemetryConfig } from "../evcc_config.js";
 
 const TZ = "UTC";
 const NOW = new Date("2026-07-11T10:07:00.000Z");
@@ -97,31 +98,7 @@ function evaluate(
 }
 
 function emptySnap(): EvccTelemetrySnapshot {
-	return {
-		observed_at: NOW.toISOString(),
-		enabled: missingField(),
-		connected: missingField(),
-		charging: missingField(),
-		charge_power_w: missingField(),
-		session_energy_kwh: missingField(),
-		charge_remaining_energy_kwh: missingField(),
-		vehicle_soc_pct: missingField(),
-		vehicle_name: missingField(),
-		vehicle_title: missingField(),
-		plan_active: missingField(),
-		plan_soc_pct: missingField(),
-		plan_time: missingField(),
-		effective_plan_time: missingField(),
-		effective_limit_soc_pct: missingField(),
-		battery_boost: missingField(),
-		loadpoint_mode: missingField(),
-		active_phases: missingField(),
-		configured_phases: missingField(),
-		min_current_a: missingField(),
-		max_current_a: missingField(),
-		battery_mode: missingField(),
-		battery_discharge_control: missingField(),
-	};
+	return emptyEvccTelemetrySnapshot(NOW.toISOString());
 }
 
 describe("wallbox connected gate", () => {
@@ -262,28 +239,9 @@ describe("wallbox daily plan reader", () => {
 		snap.max_current_a = { status: "valid", value: 16, raw: 16 };
 		snap.effective_plan_time = { status: "valid", value: DEADLINE, raw: DEADLINE };
 		const cfg: WallboxEvccTelemetryConfig = {
+			...emptyWallboxEvccTelemetryConfig(),
 			enabledStateId: "evcc.0.enabled",
 			connectedStateId: "evcc.0.connected",
-			chargingStateId: "",
-			chargePowerWStateId: "",
-			sessionEnergyKwhStateId: "",
-			chargeRemainingEnergyKwhStateId: "",
-			vehicleSocStateId: "",
-			vehicleNameStateId: "",
-			vehicleTitleStateId: "",
-			planActiveStateId: "",
-			planSocStateId: "",
-			planTimeStateId: "",
-			effectivePlanTimeStateId: "",
-			effectiveLimitSocStateId: "",
-			batteryBoostStateId: "",
-			loadpointModeStateId: "",
-			activePhasesStateId: "",
-			configuredPhasesStateId: "",
-			minCurrentAStateId: "",
-			maxCurrentAStateId: "",
-			batteryModeStateId: "",
-			batteryDischargeControlStateId: "",
 		};
 		const d = await resolveWallboxDailyPlanDecision(host, snap, cfg, NOW, {
 			governanceEnabled: true,

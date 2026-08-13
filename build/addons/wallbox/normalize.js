@@ -1,7 +1,7 @@
 "use strict";
 /** EVCC telemetry value normalization — missing stays missing, never invent 0/false. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.normalizeOptionalLoadpointMode = exports.normalizeOptionalString = exports.normalizeOptionalBatteryMode = exports.normalizeOptionalPhases = exports.normalizeOptionalSoc = exports.normalizeOptionalNumber = exports.normalizeOptionalBool = exports.missingField = void 0;
+exports.normalizeOptionalJsonString = exports.normalizeOptionalLoadpointMode = exports.normalizeOptionalString = exports.normalizeOptionalBatteryMode = exports.normalizeOptionalPhases = exports.normalizeOptionalSoc = exports.normalizeOptionalNumber = exports.normalizeOptionalBool = exports.missingField = void 0;
 const sentinel_1 = require("../../intent/core/sentinel");
 const validation_1 = require("../../intent/core/validation");
 function missingField() {
@@ -98,3 +98,24 @@ function normalizeOptionalLoadpointMode(raw) {
     return { value: s, status: "valid", raw };
 }
 exports.normalizeOptionalLoadpointMode = normalizeOptionalLoadpointMode;
+/** Arrays/Objekte (chargeCurrents/chargeVoltages) als JSON-String — kein Fake-[] . */
+function normalizeOptionalJsonString(raw) {
+    if ((0, sentinel_1.isEmptySentinel)(raw))
+        return missingField();
+    if (typeof raw === "string") {
+        const s = raw.trim();
+        if (!s)
+            return missingField();
+        return { value: s, status: "valid", raw };
+    }
+    if (Array.isArray(raw) || (typeof raw === "object" && raw !== null)) {
+        try {
+            return { value: JSON.stringify(raw), status: "valid", raw };
+        }
+        catch {
+            return { value: null, status: "invalid", raw };
+        }
+    }
+    return { value: null, status: "invalid", raw };
+}
+exports.normalizeOptionalJsonString = normalizeOptionalJsonString;

@@ -6,30 +6,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const strict_1 = __importDefault(require("node:assert/strict"));
 const node_test_1 = require("node:test");
 const evcc_telemetry_1 = require("./evcc_telemetry");
+const evcc_config_1 = require("./evcc_config");
 function cfg(over = {}) {
     return {
-        enabledStateId: "",
-        connectedStateId: "",
-        chargingStateId: "",
-        chargePowerWStateId: "",
-        sessionEnergyKwhStateId: "",
-        chargeRemainingEnergyKwhStateId: "",
-        vehicleSocStateId: "",
-        vehicleNameStateId: "",
-        vehicleTitleStateId: "",
-        planActiveStateId: "",
-        planSocStateId: "",
-        planTimeStateId: "",
-        effectivePlanTimeStateId: "",
-        effectiveLimitSocStateId: "",
-        batteryBoostStateId: "",
-        loadpointModeStateId: "",
-        activePhasesStateId: "",
-        configuredPhasesStateId: "",
-        minCurrentAStateId: "",
-        maxCurrentAStateId: "",
-        batteryModeStateId: "",
-        batteryDischargeControlStateId: "",
+        ...(0, evcc_config_1.emptyWallboxEvccTelemetryConfig)(),
         ...over,
     };
 }

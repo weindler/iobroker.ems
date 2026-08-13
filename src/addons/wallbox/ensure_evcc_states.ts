@@ -29,6 +29,20 @@ export const WALLBOX_EVCC_STATES = {
 	effectiveLimitSocPct: `${EVCC_BASE}.effective_limit_soc_pct`,
 	batteryBoost: `${EVCC_BASE}.battery_boost`,
 	loadpointMode: `${EVCC_BASE}.loadpoint_mode`,
+	connection: `${EVCC_BASE}.connection`,
+	vehicleRangeKm: `${EVCC_BASE}.vehicle_range_km`,
+	vehicleOdometerKm: `${EVCC_BASE}.vehicle_odometer_km`,
+	chargeRemainingDurationS: `${EVCC_BASE}.charge_remaining_duration_s`,
+	effectiveMaxCurrentA: `${EVCC_BASE}.effective_max_current_a`,
+	effectiveMinCurrentA: `${EVCC_BASE}.effective_min_current_a`,
+	offeredCurrentA: `${EVCC_BASE}.offered_current_a`,
+	chargeCurrentsJson: `${EVCC_BASE}.charge_currents_json`,
+	chargeVoltagesJson: `${EVCC_BASE}.charge_voltages_json`,
+	sessionPrice: `${EVCC_BASE}.session_price`,
+	sessionPricePerKwh: `${EVCC_BASE}.session_price_per_kwh`,
+	vehicleDetectionActive: `${EVCC_BASE}.vehicle_detection_active`,
+	smartCostLimit: `${EVCC_BASE}.smart_cost_limit`,
+	smartCostActive: `${EVCC_BASE}.smart_cost_active`,
 } as const;
 
 export async function ensureWallboxEvccStates(host: StateHost): Promise<void> {
@@ -202,6 +216,110 @@ export async function ensureWallboxEvccStates(host: StateHost): Promise<void> {
 		{
 			id: WALLBOX_EVCC_STATES.loadpointMode,
 			common: { name: "EVCC Loadpoint-Modus", type: "string", role: "text", read: true, write: false },
+		},
+		{
+			id: WALLBOX_EVCC_STATES.connection,
+			common: { name: "EVCC Verbindung (info.connection)", type: "boolean", role: "state", read: true, write: false },
+		},
+		{
+			id: WALLBOX_EVCC_STATES.vehicleRangeKm,
+			common: {
+				name: "EVCC Fahrzeugreichweite",
+				type: "number",
+				role: "value",
+				unit: "km",
+				read: true,
+				write: false,
+			},
+		},
+		{
+			id: WALLBOX_EVCC_STATES.vehicleOdometerKm,
+			common: {
+				name: "EVCC Kilometerstand",
+				type: "number",
+				role: "value",
+				unit: "km",
+				read: true,
+				write: false,
+			},
+		},
+		{
+			id: WALLBOX_EVCC_STATES.chargeRemainingDurationS,
+			common: {
+				name: "EVCC Restladezeit",
+				type: "number",
+				role: "value",
+				unit: "s",
+				read: true,
+				write: false,
+			},
+		},
+		{
+			id: WALLBOX_EVCC_STATES.effectiveMaxCurrentA,
+			common: {
+				name: "EVCC effectiveMaxCurrent",
+				type: "number",
+				role: "value.current",
+				unit: "A",
+				read: true,
+				write: false,
+			},
+		},
+		{
+			id: WALLBOX_EVCC_STATES.effectiveMinCurrentA,
+			common: {
+				name: "EVCC effectiveMinCurrent",
+				type: "number",
+				role: "value.current",
+				unit: "A",
+				read: true,
+				write: false,
+			},
+		},
+		{
+			id: WALLBOX_EVCC_STATES.offeredCurrentA,
+			common: {
+				name: "EVCC offeredCurrent",
+				type: "number",
+				role: "value.current",
+				unit: "A",
+				read: true,
+				write: false,
+			},
+		},
+		{
+			id: WALLBOX_EVCC_STATES.chargeCurrentsJson,
+			common: { name: "EVCC chargeCurrents (JSON)", type: "string", role: "json", read: true, write: false },
+		},
+		{
+			id: WALLBOX_EVCC_STATES.chargeVoltagesJson,
+			common: { name: "EVCC chargeVoltages (JSON)", type: "string", role: "json", read: true, write: false },
+		},
+		{
+			id: WALLBOX_EVCC_STATES.sessionPrice,
+			common: { name: "EVCC sessionPrice", type: "number", role: "value", read: true, write: false },
+		},
+		{
+			id: WALLBOX_EVCC_STATES.sessionPricePerKwh,
+			common: { name: "EVCC sessionPricePerKWh", type: "number", role: "value", read: true, write: false },
+		},
+		{
+			id: WALLBOX_EVCC_STATES.vehicleDetectionActive,
+			common: {
+				name: "EVCC vehicleDetectionActive (nicht connected-Ersatz)",
+				type: "boolean",
+				role: "state",
+				read: true,
+				write: false,
+			},
+		},
+		{
+			id: WALLBOX_EVCC_STATES.smartCostLimit,
+			common: { name: "EVCC smartCostLimit (nur Diagnose)", type: "number", role: "value", read: true, write: false },
+		},
+		{
+			id: WALLBOX_EVCC_STATES.smartCostActive,
+			common: { name: "EVCC smartCostActive (nur Diagnose)", type: "boolean", role: "state", read: true, write: false },
 		},
 	];
 

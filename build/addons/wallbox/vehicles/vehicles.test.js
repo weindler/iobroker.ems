@@ -7,8 +7,8 @@ const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
 const node_fs_1 = require("node:fs");
 const node_path_1 = require("node:path");
-const normalize_js_1 = require("../normalize.js");
-const normalize_js_2 = require("./normalize.js");
+const evcc_telemetry_js_1 = require("../evcc_telemetry.js");
+const normalize_js_1 = require("./normalize.js");
 const readiness_js_1 = require("./readiness.js");
 const resolve_js_1 = require("./resolve.js");
 const snapshot_js_1 = require("./snapshot.js");
@@ -108,55 +108,28 @@ function profile(overrides = {}) {
     };
 }
 function emptySnap() {
-    const m = () => (0, normalize_js_1.missingField)();
-    const mn = () => (0, normalize_js_1.missingField)();
-    const ms = () => (0, normalize_js_1.missingField)();
-    return {
-        observed_at: NOW,
-        enabled: m(),
-        connected: m(),
-        charging: m(),
-        charge_power_w: mn(),
-        session_energy_kwh: mn(),
-        charge_remaining_energy_kwh: mn(),
-        vehicle_soc_pct: mn(),
-        vehicle_name: ms(),
-        vehicle_title: ms(),
-        plan_active: m(),
-        plan_soc_pct: mn(),
-        plan_time: ms(),
-        effective_plan_time: ms(),
-        effective_limit_soc_pct: mn(),
-        battery_boost: m(),
-        loadpoint_mode: ms(),
-        active_phases: mn(),
-        configured_phases: mn(),
-        min_current_a: mn(),
-        max_current_a: mn(),
-        battery_mode: ms(),
-        battery_discharge_control: m(),
-    };
+    return (0, evcc_telemetry_js_1.emptyEvccTelemetrySnapshot)(NOW);
 }
 (0, node_test_1.describe)("normalizeWallboxVehicleProfile", () => {
     (0, node_test_1.it)("normalizes valid manual profile", () => {
-        const r = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput(), NOW);
+        const r = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput(), NOW);
         strict_1.default.ok(r.profile);
         strict_1.default.equal(r.profile.vehicleId, "ford_explorer");
         strict_1.default.equal(r.profile.source, "manual");
         strict_1.default.equal(r.invalidFields.length, 0);
     });
     (0, node_test_1.it)("normalizes valid evcc profile", () => {
-        const r = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput({ source: "evcc", evccVehicleName: "explorer" }), NOW);
+        const r = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput({ source: "evcc", evccVehicleName: "explorer" }), NOW);
         strict_1.default.ok(r.profile);
         strict_1.default.equal(r.profile.source, "evcc");
     });
     (0, node_test_1.it)("normalizes hybrid profile", () => {
-        const r = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput({ source: "hybrid", evccVehicleName: "explorer", socState: "evcc.0.soc" }), NOW);
+        const r = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput({ source: "hybrid", evccVehicleName: "explorer", socState: "evcc.0.soc" }), NOW);
         strict_1.default.ok(r.profile);
         strict_1.default.equal(r.profile.source, "hybrid");
     });
     (0, node_test_1.it)("keeps optional values null not 0", () => {
-        const r = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput({
+        const r = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput({
             batteryCapacityNetKwh: null,
             maxAcChargePowerW: null,
             defaultTargetSocPct: null,
@@ -166,47 +139,47 @@ function emptySnap() {
         strict_1.default.equal(r.profile.defaultTargetSocPct, null);
     });
     (0, node_test_1.it)("accepts soc 0 as valid", () => {
-        const r = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput({ defaultTargetSocPct: 0 }), NOW);
+        const r = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput({ defaultTargetSocPct: 0 }), NOW);
         strict_1.default.equal(r.profile.defaultTargetSocPct, 0);
     });
     (0, node_test_1.it)("rejects battery capacity 0", () => {
-        const r = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput({ batteryCapacityNetKwh: 0 }), NOW);
+        const r = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput({ batteryCapacityNetKwh: 0 }), NOW);
         strict_1.default.ok(r.invalidFields.includes("batteryCapacityNetKwh"));
     });
     (0, node_test_1.it)("rejects negative battery capacity", () => {
-        const r = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput({ batteryCapacityNetKwh: -10 }), NOW);
+        const r = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput({ batteryCapacityNetKwh: -10 }), NOW);
         strict_1.default.ok(r.invalidFields.includes("batteryCapacityNetKwh"));
     });
     (0, node_test_1.it)("rejects negative charge power", () => {
-        const r = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput({ maxAcChargePowerW: -1 }), NOW);
+        const r = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput({ maxAcChargePowerW: -1 }), NOW);
         strict_1.default.ok(r.invalidFields.includes("maxAcChargePowerW"));
     });
     (0, node_test_1.it)("rejects soc below 0", () => {
-        const r = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput({ defaultTargetSocPct: -1 }), NOW);
+        const r = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput({ defaultTargetSocPct: -1 }), NOW);
         strict_1.default.ok(r.invalidFields.includes("defaultTargetSocPct"));
     });
     (0, node_test_1.it)("rejects soc above 100", () => {
-        const r = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput({ defaultTargetSocPct: 101 }), NOW);
+        const r = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput({ defaultTargetSocPct: 101 }), NOW);
         strict_1.default.ok(r.invalidFields.includes("defaultTargetSocPct"));
     });
     (0, node_test_1.it)("rejects invalid charge efficiency", () => {
-        const r = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput({ chargeEfficiencyPct: 150 }), NOW);
+        const r = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput({ chargeEfficiencyPct: 150 }), NOW);
         strict_1.default.ok(r.invalidFields.includes("chargeEfficiencyPct"));
     });
     (0, node_test_1.it)("rejects maxCurrentA below minCurrentA", () => {
-        const r = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput({ minCurrentA: 16, maxCurrentA: 6 }), NOW);
+        const r = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput({ minCurrentA: 16, maxCurrentA: 6 }), NOW);
         strict_1.default.ok(r.invalidFields.includes("maxCurrentA"));
     });
     (0, node_test_1.it)("rejects invalid phases", () => {
-        const r = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput({ supportedPhases: "0,3" }), NOW);
+        const r = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput({ supportedPhases: "0,3" }), NOW);
         strict_1.default.ok(r.invalidFields.includes("supportedPhases"));
     });
     (0, node_test_1.it)("rejects invalid vehicle id / sanitizes unsafe chars", () => {
-        const r = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput({ vehicleId: "My Car!" }), NOW);
+        const r = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput({ vehicleId: "My Car!" }), NOW);
         strict_1.default.equal(r.profile.vehicleId, "my_car");
     });
     (0, node_test_1.it)("rejects VIN as vehicle id", () => {
-        const r = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput({ vehicleId: "1HGBH41JXMN109186" }), NOW);
+        const r = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput({ vehicleId: "1HGBH41JXMN109186" }), NOW);
         strict_1.default.equal(r.profile, null);
         strict_1.default.ok(r.reasons.includes("vehicle_id_invalid"));
     });
@@ -357,26 +330,26 @@ function emptySnap() {
 });
 (0, node_test_1.describe)("multiple vehicles isolation", () => {
     (0, node_test_1.it)("vehicle A and B keep separate charge power", () => {
-        const a = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput({ vehicleId: "a", maxAcChargePowerW: 3600 }), NOW).profile;
-        const b = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput({ vehicleId: "b", maxAcChargePowerW: 11000 }), NOW).profile;
+        const a = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput({ vehicleId: "a", maxAcChargePowerW: 3600 }), NOW).profile;
+        const b = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput({ vehicleId: "b", maxAcChargePowerW: 11000 }), NOW).profile;
         strict_1.default.equal(a.maxAcChargePowerW, 3600);
         strict_1.default.equal(b.maxAcChargePowerW, 11000);
     });
     (0, node_test_1.it)("target soc and capacity stay profile-specific", () => {
-        const a = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput({ vehicleId: "a", defaultTargetSocPct: 50, batteryCapacityNetKwh: 40 }), NOW).profile;
-        const b = (0, normalize_js_2.normalizeWallboxVehicleProfile)(baseInput({ vehicleId: "b", defaultTargetSocPct: 80, batteryCapacityNetKwh: 77 }), NOW).profile;
+        const a = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput({ vehicleId: "a", defaultTargetSocPct: 50, batteryCapacityNetKwh: 40 }), NOW).profile;
+        const b = (0, normalize_js_1.normalizeWallboxVehicleProfile)(baseInput({ vehicleId: "b", defaultTargetSocPct: 80, batteryCapacityNetKwh: 77 }), NOW).profile;
         strict_1.default.equal(a.defaultTargetSocPct, 50);
         strict_1.default.equal(b.defaultTargetSocPct, 80);
         strict_1.default.equal(a.batteryCapacityNetKwh, 40);
         strict_1.default.equal(b.batteryCapacityNetKwh, 77);
     });
     (0, node_test_1.it)("two profiles produce distinct ids", () => {
-        const { profiles } = (0, normalize_js_2.normalizeWallboxVehicleProfiles)([baseInput({ vehicleId: "a", slotIndex: 1 }), baseInput({ vehicleId: "b", slotIndex: 2 })], NOW);
+        const { profiles } = (0, normalize_js_1.normalizeWallboxVehicleProfiles)([baseInput({ vehicleId: "a", slotIndex: 1 }), baseInput({ vehicleId: "b", slotIndex: 2 })], NOW);
         strict_1.default.equal(profiles.length, 2);
         strict_1.default.notEqual(profiles[0].vehicleId, profiles[1].vehicleId);
     });
     (0, node_test_1.it)("duplicate vehicle id is rejected in batch", () => {
-        const { profiles, errors } = (0, normalize_js_2.normalizeWallboxVehicleProfiles)([baseInput({ vehicleId: "same", slotIndex: 1 }), baseInput({ vehicleId: "same", slotIndex: 2 })], NOW);
+        const { profiles, errors } = (0, normalize_js_1.normalizeWallboxVehicleProfiles)([baseInput({ vehicleId: "same", slotIndex: 1 }), baseInput({ vehicleId: "same", slotIndex: 2 })], NOW);
         strict_1.default.equal(profiles.length, 1);
         strict_1.default.equal(errors.length, 1);
     });
@@ -541,7 +514,7 @@ function emptySnap() {
     });
     (0, node_test_1.it)("supports five or more profiles without truncation", () => {
         const rows = Array.from({ length: 5 }, (_, i) => profileRow({ vehicle_id: `car_${i + 1}` }));
-        const { profiles } = (0, normalize_js_2.normalizeWallboxVehicleProfiles)(inputsFromRows(rows), NOW);
+        const { profiles } = (0, normalize_js_1.normalizeWallboxVehicleProfiles)(inputsFromRows(rows), NOW);
         strict_1.default.equal(profiles.length, 5);
     });
     (0, node_test_1.it)("does not depend on legacy wb_vehicle_1_* keys", () => {

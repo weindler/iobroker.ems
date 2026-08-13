@@ -693,6 +693,18 @@
 					"lg": 6,
 					"xl": 6
 				},
+				"wb_evcc_connection_state": {
+					"type": "objectId",
+					"label": "EVCC Verbindung (info.connection)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
 				"wb_evcc_session_energy_kwh_state": {
 					"type": "objectId",
 					"label": "Geladene Energie der Sitzung (kWh)",
@@ -722,11 +734,47 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Fahrzeug-SOC, Ziel-SOC und Ladeplan aus EVCC. Restenergie (Wh→kWh), vehicleName/Title, effectiveLimitSoc, batteryBoost und Loadpoint-Modus optional mappen. Modus und Ziel-SOC fließen auch in den Wallbox-Intent ein."
+					"text": "Fahrzeug-SOC, Ziel-SOC und Ladeplan aus EVCC. Restenergie (Wh→kWh), vehicleName/Title, effectiveLimitSoc, batteryBoost und Loadpoint-Modus optional mappen. vehicleDetectionActive ist kein Ersatz für connected. Modus und Ziel-SOC fließen auch in den Wallbox-Intent ein."
 				},
 				"wb_evcc_vehicle_soc_state": {
 					"type": "objectId",
 					"label": "Fahrzeug-SOC (%)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_vehicle_range_state": {
+					"type": "objectId",
+					"label": "Fahrzeugreichweite (km, optional)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_vehicle_odometer_state": {
+					"type": "objectId",
+					"label": "Kilometerstand (optional)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_vehicle_detection_active_state": {
+					"type": "objectId",
+					"label": "vehicleDetectionActive (Diagnose, nicht connected)",
 					"types": [
 						"state"
 					],
@@ -751,6 +799,18 @@
 				"wb_evcc_charge_remaining_energy_state": {
 					"type": "objectId",
 					"label": "Restenergie chargeRemaining (Wh aus EVCC)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_charge_remaining_duration_state": {
+					"type": "objectId",
+					"label": "Restladezeit chargeRemainingDuration (s, optional)",
 					"types": [
 						"state"
 					],
@@ -1103,6 +1163,437 @@
 					"md": 6,
 					"lg": 6,
 					"xl": 6
+				},
+				"wb_evcc_effective_max_current_state": {
+					"type": "objectId",
+					"label": "effectiveMaxCurrent (A, optional)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_effective_min_current_state": {
+					"type": "objectId",
+					"label": "effectiveMinCurrent (A, optional)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_offered_current_state": {
+					"type": "objectId",
+					"label": "offeredCurrent (A, optional)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_charge_currents_state": {
+					"type": "objectId",
+					"label": "chargeCurrents (Diagnose)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_charge_voltages_state": {
+					"type": "objectId",
+					"label": "chargeVoltages (Diagnose)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_session_price_state": {
+					"type": "objectId",
+					"label": "sessionPrice (Diagnose)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_session_price_per_kwh_state": {
+					"type": "objectId",
+					"label": "sessionPricePerKWh (Diagnose)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_smart_cost_limit_state": {
+					"type": "objectId",
+					"label": "smartCostLimit (nur lesen, nicht steuern)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_smart_cost_active_state": {
+					"type": "objectId",
+					"label": "smartCostActive (nur lesen, nicht steuern)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"hEvFoundation": {
+					"type": "header",
+					"size": 2,
+					"text": "EV-Fundament (Phase 2, nur lesen)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"helpEvFoundation": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Read-only: optionale externe Ladeoptimierer (z. B. Tibber/HA) auf das neutrale EV-Modell mappen. Keine Takeover-, Tibber-Aktiv- oder EVCC-Write-Logik. Ohne Mapping bleiben Capabilities unavailable und Werte unknown — keine Pflicht für Ford, Tibber oder Home Assistant. Ford-Ladepause ist nur Diagnose, nie External-Control."
+				},
+				"wb_evcc_integration_enabled": {
+					"type": "checkbox",
+					"label": "EVCC-Integration aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"wb_tibber_grid_rewards_vehicle_enabled": {
+					"type": "checkbox",
+					"label": "Tibber Grid Rewards über Fahrzeug eingerichtet",
+					"default": false,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"wb_tibber_grid_rewards_wallbox_enabled": {
+					"type": "checkbox",
+					"label": "Tibber Grid Rewards über Wallbox eingerichtet",
+					"default": false,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"wb_vehicle_live_data_available": {
+					"type": "checkbox",
+					"label": "Live-Daten vom Fahrzeug verfügbar",
+					"default": false,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"wb_external_smart_plan_available": {
+					"type": "checkbox",
+					"label": "Externer Smart-Plan verfügbar",
+					"default": false,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"wb_ha_data_source_enabled": {
+					"type": "checkbox",
+					"label": "Home-Assistant-Datenquelle verfügbar",
+					"default": false,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"wb_external_control_type": {
+					"type": "select",
+					"label": "Externer Steuerungstyp",
+					"options": [
+						{
+							"label": "Keine",
+							"value": "none"
+						},
+						{
+							"label": "Fahrzeug",
+							"value": "vehicle"
+						},
+						{
+							"label": "Wallbox",
+							"value": "wallbox"
+						},
+						{
+							"label": "Unbekannt",
+							"value": "unknown"
+						}
+					],
+					"default": "none",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"wb_external_smart_plan_state": {
+					"type": "objectId",
+					"label": "Externer Smart-Plan (JSON, nur lesen)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_external_control_active_state": {
+					"type": "objectId",
+					"label": "Externe Steuerung aktiv (bool, optional)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_external_grid_rewards_active_state": {
+					"type": "objectId",
+					"label": "Grid Rewards aktiv (bool, optional)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_external_smart_plan_enabled_state": {
+					"type": "objectId",
+					"label": "Smart-Plan enabled (optional)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_external_smart_charging_status_state": {
+					"type": "objectId",
+					"label": "Smart-Charging-Status (optional)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_external_plan_deadline_state": {
+					"type": "objectId",
+					"label": "Externe Deadline (optional)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_external_target_soc_state": {
+					"type": "objectId",
+					"label": "Externes Ziel-SOC (optional)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_external_smart_plan_start_state": {
+					"type": "objectId",
+					"label": "Smart-Plan Start (einzelnes Fenster, optional)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_external_smart_plan_end_state": {
+					"type": "objectId",
+					"label": "Smart-Plan Ende (einzelnes Fenster, optional)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_vehicle_charge_pause_state": {
+					"type": "objectId",
+					"label": "Fahrzeug-Ladepause (nur Diagnose, kein External-Control)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_external_source_stale_after_min": {
+					"type": "number",
+					"label": "Externe Quelle stale nach (Minuten)",
+					"default": 30,
+					"min": 1,
+					"max": 1440,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"wb_ev_target_soc_pct": {
+					"type": "number",
+					"label": "Ziel-SOC (%)",
+					"min": 0,
+					"max": 100,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"wb_ev_minimum_departure_soc_pct": {
+					"type": "number",
+					"label": "Mindest-SOC zur Abfahrt (%)",
+					"min": 0,
+					"max": 100,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"wb_ev_battery_capacity_kwh": {
+					"type": "number",
+					"label": "Batteriekapazität (kWh)",
+					"min": 0,
+					"max": 200,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"wb_ev_max_ac_charge_power_kw": {
+					"type": "number",
+					"label": "Maximale AC-Ladeleistung (kW)",
+					"min": 0,
+					"max": 50,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"wb_ev_charging_efficiency": {
+					"type": "number",
+					"label": "Ladeeffizienz (0,5–1 oder %)",
+					"min": 0.5,
+					"max": 100,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"wb_ev_safety_margin_min": {
+					"type": "number",
+					"label": "Sicherheitsmarge (Minuten)",
+					"min": 0,
+					"max": 180,
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"wb_ev_departure_at": {
+					"type": "text",
+					"label": "Abfahrtszeit (z. B. 07:00)",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"wb_ev_available_until": {
+					"type": "text",
+					"label": "Verfügbar bis / Verfügbarkeitsfenster",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
 				},
 				"hEvccHomeBattery": {
 					"type": "header",

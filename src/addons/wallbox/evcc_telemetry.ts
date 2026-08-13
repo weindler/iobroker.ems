@@ -1,6 +1,7 @@
 import type { StateHost } from "../../ems_light/state_util";
 import {
 	configuredEvccTelemetryStateIds,
+	emptyWallboxEvccTelemetryConfig,
 	stateIdForRole,
 	type WallboxEvccTelemetryConfig,
 	type WallboxEvccTelemetryRole,
@@ -9,6 +10,7 @@ import {
 import {
 	missingField,
 	normalizeOptionalBool,
+	normalizeOptionalJsonString,
 	normalizeOptionalLoadpointMode,
 	normalizeOptionalNumber,
 	normalizeOptionalPhases,
@@ -46,6 +48,20 @@ export interface EvccTelemetrySnapshot {
 	max_current_a: TelemetryField<number>;
 	battery_mode: TelemetryField<string>;
 	battery_discharge_control: TelemetryField<boolean>;
+	connection: TelemetryField<boolean>;
+	vehicle_range_km: TelemetryField<number>;
+	vehicle_odometer_km: TelemetryField<number>;
+	charge_remaining_duration_s: TelemetryField<number>;
+	effective_max_current_a: TelemetryField<number>;
+	effective_min_current_a: TelemetryField<number>;
+	offered_current_a: TelemetryField<number>;
+	charge_currents_json: TelemetryField<string>;
+	charge_voltages_json: TelemetryField<string>;
+	session_price: TelemetryField<number>;
+	session_price_per_kwh: TelemetryField<number>;
+	vehicle_detection_active: TelemetryField<boolean>;
+	smart_cost_limit: TelemetryField<number>;
+	smart_cost_active: TelemetryField<boolean>;
 }
 
 const ROLE_NORMALIZER: Record<
@@ -74,6 +90,20 @@ const ROLE_NORMALIZER: Record<
 	evcc_max_current_a: normalizeOptionalNumber,
 	evcc_battery_mode: normalizeOptionalBatteryMode,
 	evcc_battery_discharge_control: normalizeOptionalBool,
+	evcc_connection: normalizeOptionalBool,
+	evcc_vehicle_range_km: normalizeOptionalNumber,
+	evcc_vehicle_odometer_km: normalizeOptionalNumber,
+	evcc_charge_remaining_duration_s: normalizeOptionalNumber,
+	evcc_effective_max_current_a: normalizeOptionalNumber,
+	evcc_effective_min_current_a: normalizeOptionalNumber,
+	evcc_offered_current_a: normalizeOptionalNumber,
+	evcc_charge_currents: normalizeOptionalJsonString,
+	evcc_charge_voltages: normalizeOptionalJsonString,
+	evcc_session_price: normalizeOptionalNumber,
+	evcc_session_price_per_kwh: normalizeOptionalNumber,
+	evcc_vehicle_detection_active: normalizeOptionalBool,
+	evcc_smart_cost_limit: normalizeOptionalNumber,
+	evcc_smart_cost_active: normalizeOptionalBool,
 };
 
 /** EVCC liefert Sitzungs-/Restenergie in Wh; EMS-Light speichert kWh. */
@@ -134,7 +164,7 @@ async function readForeign(
 	return { val: st.val, ts: st.ts };
 }
 
-function emptySnapshot(observedAt: string): EvccTelemetrySnapshot {
+export function emptyEvccTelemetrySnapshot(observedAt: string): EvccTelemetrySnapshot {
 	const m = <T>() => missingField<T>();
 	return {
 		observed_at: observedAt,
@@ -160,6 +190,20 @@ function emptySnapshot(observedAt: string): EvccTelemetrySnapshot {
 		max_current_a: m(),
 		battery_mode: m(),
 		battery_discharge_control: m(),
+		connection: m(),
+		vehicle_range_km: m(),
+		vehicle_odometer_km: m(),
+		charge_remaining_duration_s: m(),
+		effective_max_current_a: m(),
+		effective_min_current_a: m(),
+		offered_current_a: m(),
+		charge_currents_json: m(),
+		charge_voltages_json: m(),
+		session_price: m(),
+		session_price_per_kwh: m(),
+		vehicle_detection_active: m(),
+		smart_cost_limit: m(),
+		smart_cost_active: m(),
 	};
 }
 
@@ -171,7 +215,7 @@ export async function readEvccTelemetrySnapshot(
 	const observedAt = now.toISOString();
 	const ids = configuredEvccTelemetryStateIds(cfg);
 	if (ids.length === 0) {
-		return emptySnapshot(observedAt);
+		return emptyEvccTelemetrySnapshot(observedAt);
 	}
 
 	const fields: Partial<Record<WallboxEvccTelemetryRole, TelemetryField<unknown>>> = {};
@@ -214,9 +258,25 @@ export async function readEvccTelemetrySnapshot(
 		max_current_a: fields.evcc_max_current_a as TelemetryField<number>,
 		battery_mode: fields.evcc_battery_mode as TelemetryField<string>,
 		battery_discharge_control: fields.evcc_battery_discharge_control as TelemetryField<boolean>,
+		connection: fields.evcc_connection as TelemetryField<boolean>,
+		vehicle_range_km: fields.evcc_vehicle_range_km as TelemetryField<number>,
+		vehicle_odometer_km: fields.evcc_vehicle_odometer_km as TelemetryField<number>,
+		charge_remaining_duration_s: fields.evcc_charge_remaining_duration_s as TelemetryField<number>,
+		effective_max_current_a: fields.evcc_effective_max_current_a as TelemetryField<number>,
+		effective_min_current_a: fields.evcc_effective_min_current_a as TelemetryField<number>,
+		offered_current_a: fields.evcc_offered_current_a as TelemetryField<number>,
+		charge_currents_json: fields.evcc_charge_currents as TelemetryField<string>,
+		charge_voltages_json: fields.evcc_charge_voltages as TelemetryField<string>,
+		session_price: fields.evcc_session_price as TelemetryField<number>,
+		session_price_per_kwh: fields.evcc_session_price_per_kwh as TelemetryField<number>,
+		vehicle_detection_active: fields.evcc_vehicle_detection_active as TelemetryField<boolean>,
+		smart_cost_limit: fields.evcc_smart_cost_limit as TelemetryField<number>,
+		smart_cost_active: fields.evcc_smart_cost_active as TelemetryField<boolean>,
 	};
 }
 
 export function evccTelemetryConfigFromAdapter(config: unknown): WallboxEvccTelemetryConfig {
 	return wallboxEvccTelemetryConfigFromAdapter(config);
 }
+
+export { emptyWallboxEvccTelemetryConfig };

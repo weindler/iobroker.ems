@@ -1,7 +1,7 @@
 "use strict";
 /** EVCC read-only telemetry config (Phase 3B.1). Intent fields stay on intent_evcc_* keys. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.hasLegacyWallboxWriteMapping = exports.wallboxEvccTelemetryMappingFromConfig = exports.stateIdForRole = exports.configuredEvccTelemetryStateIds = exports.configuredWallboxHoldSignalStateIds = exports.wallboxHoldSignalConfigFromAdapter = exports.wallboxEvccTelemetryConfigFromAdapter = exports.WB_LEGACY_VEHICLE_SOC = exports.WALLBOX_EVCC_TELEMETRY_ROLES = exports.WB_TIBBER_GRID_REWARDS_ACTIVE = exports.WB_EXTERNAL_VEHICLE_CHARGE = exports.WB_EVCC_LOADPOINT_MODE = exports.WB_EVCC_BATTERY_BOOST = exports.WB_EVCC_EFFECTIVE_LIMIT_SOC = exports.WB_EVCC_VEHICLE_TITLE = exports.WB_EVCC_VEHICLE_NAME = exports.WB_EVCC_CHARGE_REMAINING_ENERGY = exports.WB_EVCC_BATTERY_DISCHARGE_CONTROL = exports.WB_EVCC_BATTERY_MODE = exports.WB_EVCC_MAX_CURRENT_A = exports.WB_EVCC_MIN_CURRENT_A = exports.WB_EVCC_CONFIGURED_PHASES = exports.WB_EVCC_ACTIVE_PHASES = exports.WB_EVCC_EFFECTIVE_PLAN_TIME = exports.WB_EVCC_PLAN_TIME = exports.WB_EVCC_PLAN_SOC = exports.WB_EVCC_PLAN_ACTIVE = exports.WB_EVCC_VEHICLE_SOC = exports.WB_EVCC_SESSION_ENERGY_KWH = exports.WB_EVCC_CHARGE_POWER_W = exports.WB_EVCC_CHARGING = exports.WB_EVCC_CONNECTED = exports.WB_EVCC_ENABLED = void 0;
+exports.hasLegacyWallboxWriteMapping = exports.wallboxEvccTelemetryMappingFromConfig = exports.stateIdForRole = exports.configuredEvccTelemetryStateIds = exports.configuredWallboxHoldSignalStateIds = exports.wallboxHoldSignalConfigFromAdapter = exports.wallboxEvccTelemetryConfigFromAdapter = exports.emptyWallboxEvccTelemetryConfig = exports.EVCC_TELEMETRY_ROLE_CONFIG_FIELD = exports.WB_LEGACY_VEHICLE_SOC = exports.WALLBOX_EVCC_TELEMETRY_ROLES = exports.WB_TIBBER_GRID_REWARDS_ACTIVE = exports.WB_EXTERNAL_VEHICLE_CHARGE = exports.WB_EVCC_SMART_COST_ACTIVE = exports.WB_EVCC_SMART_COST_LIMIT = exports.WB_EVCC_VEHICLE_DETECTION_ACTIVE = exports.WB_EVCC_SESSION_PRICE_PER_KWH = exports.WB_EVCC_SESSION_PRICE = exports.WB_EVCC_CHARGE_VOLTAGES = exports.WB_EVCC_CHARGE_CURRENTS = exports.WB_EVCC_OFFERED_CURRENT = exports.WB_EVCC_EFFECTIVE_MIN_CURRENT = exports.WB_EVCC_EFFECTIVE_MAX_CURRENT = exports.WB_EVCC_CHARGE_REMAINING_DURATION = exports.WB_EVCC_VEHICLE_ODOMETER = exports.WB_EVCC_VEHICLE_RANGE = exports.WB_EVCC_CONNECTION = exports.WB_EVCC_LOADPOINT_MODE = exports.WB_EVCC_BATTERY_BOOST = exports.WB_EVCC_EFFECTIVE_LIMIT_SOC = exports.WB_EVCC_VEHICLE_TITLE = exports.WB_EVCC_VEHICLE_NAME = exports.WB_EVCC_CHARGE_REMAINING_ENERGY = exports.WB_EVCC_BATTERY_DISCHARGE_CONTROL = exports.WB_EVCC_BATTERY_MODE = exports.WB_EVCC_MAX_CURRENT_A = exports.WB_EVCC_MIN_CURRENT_A = exports.WB_EVCC_CONFIGURED_PHASES = exports.WB_EVCC_ACTIVE_PHASES = exports.WB_EVCC_EFFECTIVE_PLAN_TIME = exports.WB_EVCC_PLAN_TIME = exports.WB_EVCC_PLAN_SOC = exports.WB_EVCC_PLAN_ACTIVE = exports.WB_EVCC_VEHICLE_SOC = exports.WB_EVCC_SESSION_ENERGY_KWH = exports.WB_EVCC_CHARGE_POWER_W = exports.WB_EVCC_CHARGING = exports.WB_EVCC_CONNECTED = exports.WB_EVCC_ENABLED = void 0;
 exports.WB_EVCC_ENABLED = "wb_evcc_enabled_state";
 exports.WB_EVCC_CONNECTED = "wb_evcc_connected_state";
 exports.WB_EVCC_CHARGING = "wb_evcc_charging_state";
@@ -24,6 +24,20 @@ exports.WB_EVCC_VEHICLE_TITLE = "wb_evcc_vehicle_title_state";
 exports.WB_EVCC_EFFECTIVE_LIMIT_SOC = "wb_evcc_effective_limit_soc_state";
 exports.WB_EVCC_BATTERY_BOOST = "wb_evcc_battery_boost_state";
 exports.WB_EVCC_LOADPOINT_MODE = "wb_evcc_loadpoint_mode_state";
+exports.WB_EVCC_CONNECTION = "wb_evcc_connection_state";
+exports.WB_EVCC_VEHICLE_RANGE = "wb_evcc_vehicle_range_state";
+exports.WB_EVCC_VEHICLE_ODOMETER = "wb_evcc_vehicle_odometer_state";
+exports.WB_EVCC_CHARGE_REMAINING_DURATION = "wb_evcc_charge_remaining_duration_state";
+exports.WB_EVCC_EFFECTIVE_MAX_CURRENT = "wb_evcc_effective_max_current_state";
+exports.WB_EVCC_EFFECTIVE_MIN_CURRENT = "wb_evcc_effective_min_current_state";
+exports.WB_EVCC_OFFERED_CURRENT = "wb_evcc_offered_current_state";
+exports.WB_EVCC_CHARGE_CURRENTS = "wb_evcc_charge_currents_state";
+exports.WB_EVCC_CHARGE_VOLTAGES = "wb_evcc_charge_voltages_state";
+exports.WB_EVCC_SESSION_PRICE = "wb_evcc_session_price_state";
+exports.WB_EVCC_SESSION_PRICE_PER_KWH = "wb_evcc_session_price_per_kwh_state";
+exports.WB_EVCC_VEHICLE_DETECTION_ACTIVE = "wb_evcc_vehicle_detection_active_state";
+exports.WB_EVCC_SMART_COST_LIMIT = "wb_evcc_smart_cost_limit_state";
+exports.WB_EVCC_SMART_COST_ACTIVE = "wb_evcc_smart_cost_active_state";
 /** Optional foreign signals (not EVCC telemetry roles). */
 exports.WB_EXTERNAL_VEHICLE_CHARGE = "wb_external_vehicle_charge_state";
 exports.WB_TIBBER_GRID_REWARDS_ACTIVE = "wb_tibber_grid_rewards_active_state";
@@ -51,9 +65,102 @@ exports.WALLBOX_EVCC_TELEMETRY_ROLES = [
     "evcc_max_current_a",
     "evcc_battery_mode",
     "evcc_battery_discharge_control",
+    "evcc_connection",
+    "evcc_vehicle_range_km",
+    "evcc_vehicle_odometer_km",
+    "evcc_charge_remaining_duration_s",
+    "evcc_effective_max_current_a",
+    "evcc_effective_min_current_a",
+    "evcc_offered_current_a",
+    "evcc_charge_currents",
+    "evcc_charge_voltages",
+    "evcc_session_price",
+    "evcc_session_price_per_kwh",
+    "evcc_vehicle_detection_active",
+    "evcc_smart_cost_limit",
+    "evcc_smart_cost_active",
 ];
 /** @deprecated Legacy read mapping — compat only, not shown in admin. */
 exports.WB_LEGACY_VEHICLE_SOC = "wb_vehicle_soc_target";
+exports.EVCC_TELEMETRY_ROLE_CONFIG_FIELD = {
+    evcc_enabled: "enabledStateId",
+    evcc_connected: "connectedStateId",
+    evcc_charging: "chargingStateId",
+    evcc_charge_power_w: "chargePowerWStateId",
+    evcc_session_energy_kwh: "sessionEnergyKwhStateId",
+    evcc_charge_remaining_energy_kwh: "chargeRemainingEnergyKwhStateId",
+    evcc_vehicle_soc: "vehicleSocStateId",
+    evcc_vehicle_name: "vehicleNameStateId",
+    evcc_vehicle_title: "vehicleTitleStateId",
+    evcc_plan_active: "planActiveStateId",
+    evcc_plan_soc: "planSocStateId",
+    evcc_plan_time: "planTimeStateId",
+    evcc_effective_plan_time: "effectivePlanTimeStateId",
+    evcc_effective_limit_soc: "effectiveLimitSocStateId",
+    evcc_battery_boost: "batteryBoostStateId",
+    evcc_loadpoint_mode: "loadpointModeStateId",
+    evcc_active_phases: "activePhasesStateId",
+    evcc_configured_phases: "configuredPhasesStateId",
+    evcc_min_current_a: "minCurrentAStateId",
+    evcc_max_current_a: "maxCurrentAStateId",
+    evcc_battery_mode: "batteryModeStateId",
+    evcc_battery_discharge_control: "batteryDischargeControlStateId",
+    evcc_connection: "connectionStateId",
+    evcc_vehicle_range_km: "vehicleRangeKmStateId",
+    evcc_vehicle_odometer_km: "vehicleOdometerKmStateId",
+    evcc_charge_remaining_duration_s: "chargeRemainingDurationSStateId",
+    evcc_effective_max_current_a: "effectiveMaxCurrentAStateId",
+    evcc_effective_min_current_a: "effectiveMinCurrentAStateId",
+    evcc_offered_current_a: "offeredCurrentAStateId",
+    evcc_charge_currents: "chargeCurrentsStateId",
+    evcc_charge_voltages: "chargeVoltagesStateId",
+    evcc_session_price: "sessionPriceStateId",
+    evcc_session_price_per_kwh: "sessionPricePerKwhStateId",
+    evcc_vehicle_detection_active: "vehicleDetectionActiveStateId",
+    evcc_smart_cost_limit: "smartCostLimitStateId",
+    evcc_smart_cost_active: "smartCostActiveStateId",
+};
+function emptyWallboxEvccTelemetryConfig() {
+    return {
+        enabledStateId: "",
+        connectedStateId: "",
+        chargingStateId: "",
+        chargePowerWStateId: "",
+        sessionEnergyKwhStateId: "",
+        chargeRemainingEnergyKwhStateId: "",
+        vehicleSocStateId: "",
+        vehicleNameStateId: "",
+        vehicleTitleStateId: "",
+        planActiveStateId: "",
+        planSocStateId: "",
+        planTimeStateId: "",
+        effectivePlanTimeStateId: "",
+        effectiveLimitSocStateId: "",
+        batteryBoostStateId: "",
+        loadpointModeStateId: "",
+        activePhasesStateId: "",
+        configuredPhasesStateId: "",
+        minCurrentAStateId: "",
+        maxCurrentAStateId: "",
+        batteryModeStateId: "",
+        batteryDischargeControlStateId: "",
+        connectionStateId: "",
+        vehicleRangeKmStateId: "",
+        vehicleOdometerKmStateId: "",
+        chargeRemainingDurationSStateId: "",
+        effectiveMaxCurrentAStateId: "",
+        effectiveMinCurrentAStateId: "",
+        offeredCurrentAStateId: "",
+        chargeCurrentsStateId: "",
+        chargeVoltagesStateId: "",
+        sessionPriceStateId: "",
+        sessionPricePerKwhStateId: "",
+        vehicleDetectionActiveStateId: "",
+        smartCostLimitStateId: "",
+        smartCostActiveStateId: "",
+    };
+}
+exports.emptyWallboxEvccTelemetryConfig = emptyWallboxEvccTelemetryConfig;
 function strField(c, key) {
     const v = c[key];
     return typeof v === "string" ? v.trim() : "";
@@ -62,6 +169,7 @@ function wallboxEvccTelemetryConfigFromAdapter(config) {
     const c = config && typeof config === "object" ? config : {};
     const vehicleSoc = strField(c, exports.WB_EVCC_VEHICLE_SOC) || strField(c, exports.WB_LEGACY_VEHICLE_SOC);
     return {
+        ...emptyWallboxEvccTelemetryConfig(),
         enabledStateId: strField(c, exports.WB_EVCC_ENABLED),
         connectedStateId: strField(c, exports.WB_EVCC_CONNECTED),
         chargingStateId: strField(c, exports.WB_EVCC_CHARGING),
@@ -84,6 +192,20 @@ function wallboxEvccTelemetryConfigFromAdapter(config) {
         maxCurrentAStateId: strField(c, exports.WB_EVCC_MAX_CURRENT_A),
         batteryModeStateId: strField(c, exports.WB_EVCC_BATTERY_MODE),
         batteryDischargeControlStateId: strField(c, exports.WB_EVCC_BATTERY_DISCHARGE_CONTROL),
+        connectionStateId: strField(c, exports.WB_EVCC_CONNECTION),
+        vehicleRangeKmStateId: strField(c, exports.WB_EVCC_VEHICLE_RANGE),
+        vehicleOdometerKmStateId: strField(c, exports.WB_EVCC_VEHICLE_ODOMETER),
+        chargeRemainingDurationSStateId: strField(c, exports.WB_EVCC_CHARGE_REMAINING_DURATION),
+        effectiveMaxCurrentAStateId: strField(c, exports.WB_EVCC_EFFECTIVE_MAX_CURRENT),
+        effectiveMinCurrentAStateId: strField(c, exports.WB_EVCC_EFFECTIVE_MIN_CURRENT),
+        offeredCurrentAStateId: strField(c, exports.WB_EVCC_OFFERED_CURRENT),
+        chargeCurrentsStateId: strField(c, exports.WB_EVCC_CHARGE_CURRENTS),
+        chargeVoltagesStateId: strField(c, exports.WB_EVCC_CHARGE_VOLTAGES),
+        sessionPriceStateId: strField(c, exports.WB_EVCC_SESSION_PRICE),
+        sessionPricePerKwhStateId: strField(c, exports.WB_EVCC_SESSION_PRICE_PER_KWH),
+        vehicleDetectionActiveStateId: strField(c, exports.WB_EVCC_VEHICLE_DETECTION_ACTIVE),
+        smartCostLimitStateId: strField(c, exports.WB_EVCC_SMART_COST_LIMIT),
+        smartCostActiveStateId: strField(c, exports.WB_EVCC_SMART_COST_ACTIVE),
     };
 }
 exports.wallboxEvccTelemetryConfigFromAdapter = wallboxEvccTelemetryConfigFromAdapter;
@@ -115,54 +237,7 @@ function configuredEvccTelemetryStateIds(cfg) {
 }
 exports.configuredEvccTelemetryStateIds = configuredEvccTelemetryStateIds;
 function stateIdForRole(cfg, role) {
-    switch (role) {
-        case "evcc_enabled":
-            return cfg.enabledStateId;
-        case "evcc_connected":
-            return cfg.connectedStateId;
-        case "evcc_charging":
-            return cfg.chargingStateId;
-        case "evcc_charge_power_w":
-            return cfg.chargePowerWStateId;
-        case "evcc_session_energy_kwh":
-            return cfg.sessionEnergyKwhStateId;
-        case "evcc_charge_remaining_energy_kwh":
-            return cfg.chargeRemainingEnergyKwhStateId;
-        case "evcc_vehicle_soc":
-            return cfg.vehicleSocStateId;
-        case "evcc_vehicle_name":
-            return cfg.vehicleNameStateId;
-        case "evcc_vehicle_title":
-            return cfg.vehicleTitleStateId;
-        case "evcc_plan_active":
-            return cfg.planActiveStateId;
-        case "evcc_plan_soc":
-            return cfg.planSocStateId;
-        case "evcc_plan_time":
-            return cfg.planTimeStateId;
-        case "evcc_effective_plan_time":
-            return cfg.effectivePlanTimeStateId;
-        case "evcc_effective_limit_soc":
-            return cfg.effectiveLimitSocStateId;
-        case "evcc_battery_boost":
-            return cfg.batteryBoostStateId;
-        case "evcc_loadpoint_mode":
-            return cfg.loadpointModeStateId;
-        case "evcc_active_phases":
-            return cfg.activePhasesStateId;
-        case "evcc_configured_phases":
-            return cfg.configuredPhasesStateId;
-        case "evcc_min_current_a":
-            return cfg.minCurrentAStateId;
-        case "evcc_max_current_a":
-            return cfg.maxCurrentAStateId;
-        case "evcc_battery_mode":
-            return cfg.batteryModeStateId;
-        case "evcc_battery_discharge_control":
-            return cfg.batteryDischargeControlStateId;
-        default:
-            return "";
-    }
+    return cfg[exports.EVCC_TELEMETRY_ROLE_CONFIG_FIELD[role]] ?? "";
 }
 exports.stateIdForRole = stateIdForRole;
 /** Builds addons.wallbox.mapping.* entries from flat wb_evcc_* config keys. */

@@ -1,32 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { readEvccTelemetrySnapshot, type EvccTelemetryReadHost } from "./evcc_telemetry";
-import type { WallboxEvccTelemetryConfig } from "./evcc_config";
+import { emptyWallboxEvccTelemetryConfig, type WallboxEvccTelemetryConfig } from "./evcc_config";
 
 function cfg(over: Partial<WallboxEvccTelemetryConfig> = {}): WallboxEvccTelemetryConfig {
 	return {
-		enabledStateId: "",
-		connectedStateId: "",
-		chargingStateId: "",
-		chargePowerWStateId: "",
-		sessionEnergyKwhStateId: "",
-		chargeRemainingEnergyKwhStateId: "",
-		vehicleSocStateId: "",
-		vehicleNameStateId: "",
-		vehicleTitleStateId: "",
-		planActiveStateId: "",
-		planSocStateId: "",
-		planTimeStateId: "",
-		effectivePlanTimeStateId: "",
-		effectiveLimitSocStateId: "",
-		batteryBoostStateId: "",
-		loadpointModeStateId: "",
-		activePhasesStateId: "",
-		configuredPhasesStateId: "",
-		minCurrentAStateId: "",
-		maxCurrentAStateId: "",
-		batteryModeStateId: "",
-		batteryDischargeControlStateId: "",
+		...emptyWallboxEvccTelemetryConfig(),
 		...over,
 	};
 }

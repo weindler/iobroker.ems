@@ -6,6 +6,7 @@ import { evFoundationConfigFromAdapter, resolveEvPlanningHints } from "./config"
 import { buildEvModelV1 } from "./model";
 import { publishEvFoundationDiagnosis } from "./publish";
 import { readExternalEvInformation, timezoneFromAdapterConfig } from "./external";
+import { applyEvFoundationIntegration } from "./vehicle_model";
 
 export * from "./types";
 export * from "./catalog";
@@ -14,6 +15,7 @@ export * from "./config";
 export * from "./capabilities";
 export * from "./model";
 export * from "./external";
+export * from "./vehicle_model";
 export { WALLBOX_EV_FOUNDATION_STATES, ensureWallboxEvFoundationStates } from "./ensure_states";
 export { publishEvFoundationDiagnosis } from "./publish";
 
@@ -37,12 +39,13 @@ export async function refreshEvFoundation(
 		timezone: timezoneFromAdapterConfig(adapterConfig),
 	});
 	const capabilities = resolveEvCapabilities(telemetryCfg, snap, foundation, external);
-	const model = buildEvModelV1({
+	const built = buildEvModelV1({
 		snap,
 		foundation,
 		capabilities,
 		adapterConfig,
 		external,
 	});
+	const model = applyEvFoundationIntegration(built, capabilities, adapterConfig);
 	await publishEvFoundationDiagnosis(host, model, capabilities, snap.observed_at, external);
 }

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.collectConfiguredControlTargetStateIds = exports.evccModeHoldValue = exports.evccModeChargeValue = exports.evccControlTargetForRole = exports.resolveWallboxControlModel = exports.hasEvccControlWriteMapping = exports.strConfigField = exports.WALLBOX_EVCC_CONTROL_ROLES = exports.WALLBOX_CONTROL_MODELS = exports.WB_EVCC_MODE_HOLD_VALUE = exports.WB_EVCC_MODE_CHARGE_VALUE = exports.WB_EVCC_SET_PHASE = exports.WB_EVCC_SET_MAX_CURRENT_A = exports.WB_EVCC_SET_MODE = exports.WB_CONTROL_MODEL = void 0;
+exports.collectConfiguredControlTargetStateIds = exports.evccModeHoldValue = exports.evccModeChargeValue = exports.evccControlTargetForRole = exports.resolveWallboxControlModel = exports.hasEvccControlWriteMapping = exports.resolveControlContractModel = exports.resolveEvccControlContractV1 = exports.matchesEvccControlSuffix = exports.strConfigField = exports.WALLBOX_EVCC_CONTROL_ROLES = exports.WALLBOX_CONTROL_MODELS = exports.WB_EVCC_MODE_HOLD_VALUE = exports.WB_EVCC_MODE_CHARGE_VALUE = exports.EVCC_CONTROL_V1_SUFFIXES = exports.WB_EVCC_CONTROL_PHASES_CONFIGURED = exports.WB_EVCC_CONTROL_MAX_CURRENT = exports.WB_EVCC_CONTROL_PV_CONTROL = exports.WB_EVCC_SET_PHASE = exports.WB_EVCC_SET_MAX_CURRENT_A = exports.WB_EVCC_SET_MODE = exports.WB_CONTROL_MODEL = void 0;
 const evcc_config_1 = require("./evcc_config");
 const mapping_config_1 = require("../../mapping_config");
 /** Auswahl des Wallbox-Steuerpfads (Admin: wb_control_model). */
@@ -9,6 +9,15 @@ exports.WB_CONTROL_MODEL = "wb_control_model";
 exports.WB_EVCC_SET_MODE = "wb_evcc_set_mode_target";
 exports.WB_EVCC_SET_MAX_CURRENT_A = "wb_evcc_set_max_current_a_target";
 exports.WB_EVCC_SET_PHASE = "wb_evcc_set_phase_target";
+/** Future EVCC control.* contract (v0.1.272: diagnose only — not live-released). */
+exports.WB_EVCC_CONTROL_PV_CONTROL = "wb_evcc_control_pv_control_target";
+exports.WB_EVCC_CONTROL_MAX_CURRENT = "wb_evcc_control_max_current_target";
+exports.WB_EVCC_CONTROL_PHASES_CONFIGURED = "wb_evcc_control_phases_configured_target";
+exports.EVCC_CONTROL_V1_SUFFIXES = {
+    pvControl: "control.pvControl",
+    maxCurrent: "control.maxCurrent",
+    phasesConfigured: "control.phasesConfigured",
+};
 /** Explizite Mode-Werte — keine hardcodierten Modusnamen im Runtime-Code. */
 exports.WB_EVCC_MODE_CHARGE_VALUE = "wb_evcc_mode_charge_value";
 exports.WB_EVCC_MODE_HOLD_VALUE = "wb_evcc_mode_hold_value";
@@ -23,9 +32,81 @@ function strConfigField(c, key) {
     return strTarget(c, key);
 }
 exports.strConfigField = strConfigField;
+function rejectDirectGoeId(stateId) {
+    const id = stateId.trim();
+    if (!id)
+        return "";
+    if (id.toLowerCase().startsWith("go-e."))
+        return "";
+    return id;
+}
+function matchesEvccControlSuffix(stateId, suffix) {
+    const id = stateId.trim().replace(/\.+/g, ".").toLowerCase();
+    if (!id.startsWith("evcc."))
+        return false;
+    const s = suffix.trim().replace(/\.+/g, ".").toLowerCase();
+    return id.endsWith(`.${s}`) || id.endsWith(s);
+}
+exports.matchesEvccControlSuffix = matchesEvccControlSuffix;
+function pickControlV1Id(c, dedicatedKey, suffix, fallbackKey) {
+    const dedicated = rejectDirectGoeId(strTarget(c, dedicatedKey));
+    if (dedicated && matchesEvccControlSuffix(dedicated, suffix))
+        return dedicated;
+    if (fallbackKey) {
+        const fallback = rejectDirectGoeId(strTarget(c, fallbackKey));
+        if (fallback && matchesEvccControlSuffix(fallback, suffix))
+            return fallback;
+    }
+    return "";
+}
+/**
+ * Structural EVCC control.* contract. Never falls back to go-e mappings.
+ * Ready when all three targets are mapped; not a live-write release.
+ */
+function resolveEvccControlContractV1(config) {
+    const c = config && typeof config === "object" ? config : {};
+    const pvControlStateId = pickControlV1Id(c, exports.WB_EVCC_CONTROL_PV_CONTROL, exports.EVCC_CONTROL_V1_SUFFIXES.pvControl);
+    const maxCurrentStateId = pickControlV1Id(c, exports.WB_EVCC_CONTROL_MAX_CURRENT, exports.EVCC_CONTROL_V1_SUFFIXES.maxCurrent, exports.WB_EVCC_SET_MAX_CURRENT_A);
+    const phasesConfiguredStateId = pickControlV1Id(c, exports.WB_EVCC_CONTROL_PHASES_CONFIGURED, exports.EVCC_CONTROL_V1_SUFFIXES.phasesConfigured, exports.WB_EVCC_SET_PHASE);
+    const missing = [];
+    if (!pvControlStateId)
+        missing.push(exports.EVCC_CONTROL_V1_SUFFIXES.pvControl);
+    if (!maxCurrentStateId)
+        missing.push(exports.EVCC_CONTROL_V1_SUFFIXES.maxCurrent);
+    if (!phasesConfiguredStateId)
+        missing.push(exports.EVCC_CONTROL_V1_SUFFIXES.phasesConfigured);
+    return {
+        pvControlStateId,
+        maxCurrentStateId,
+        phasesConfiguredStateId,
+        ready: missing.length === 0,
+        missing,
+        usesLegacyGoeFallback: false,
+    };
+}
+exports.resolveEvccControlContractV1 = resolveEvccControlContractV1;
+function resolveControlContractModel(controlModel, contractV1Ready, stringModeComplete) {
+    if (controlModel === "none")
+        return "none";
+    if (controlModel === "legacy_direct")
+        return "legacy_direct";
+    if (contractV1Ready)
+        return "evcc_control_v1";
+    if (stringModeComplete)
+        return "evcc_string_mode";
+    return "evcc_control_v1";
+}
+exports.resolveControlContractModel = resolveControlContractModel;
 function hasEvccControlWriteMapping(config) {
     const c = config && typeof config === "object" ? config : {};
-    const keys = [exports.WB_EVCC_SET_MODE, exports.WB_EVCC_SET_MAX_CURRENT_A, exports.WB_EVCC_SET_PHASE];
+    const keys = [
+        exports.WB_EVCC_SET_MODE,
+        exports.WB_EVCC_SET_MAX_CURRENT_A,
+        exports.WB_EVCC_SET_PHASE,
+        exports.WB_EVCC_CONTROL_PV_CONTROL,
+        exports.WB_EVCC_CONTROL_MAX_CURRENT,
+        exports.WB_EVCC_CONTROL_PHASES_CONFIGURED,
+    ];
     return keys.some((k) => strTarget(c, k).length > 0);
 }
 exports.hasEvccControlWriteMapping = hasEvccControlWriteMapping;
@@ -64,11 +145,16 @@ function collectConfiguredControlTargetStateIds(config) {
     const ids = [];
     if (model === "evcc") {
         for (const role of exports.WALLBOX_EVCC_CONTROL_ROLES) {
-            const id = evccControlTargetForRole(config, role);
+            const id = rejectDirectGoeId(evccControlTargetForRole(config, role));
             if (id)
                 ids.push(id);
         }
-        return ids;
+        const contract = resolveEvccControlContractV1(config);
+        for (const id of [contract.pvControlStateId, contract.maxCurrentStateId, contract.phasesConfiguredStateId]) {
+            if (id)
+                ids.push(id);
+        }
+        return [...new Set(ids)];
     }
     if (model === "legacy_direct") {
         const legacy = (0, mapping_config_1.legacyWallboxMappingFromConfig)(config);

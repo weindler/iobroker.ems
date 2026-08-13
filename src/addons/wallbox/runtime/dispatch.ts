@@ -2,6 +2,7 @@ import { legacyWallboxMappingFromConfig, WALLBOX_FLAT_PREFIX } from "../../../ma
 import {
 	evccControlTargetForRole,
 	evccModeChargeValue,
+	resolveEvccControlContractV1,
 	resolveWallboxControlModel,
 } from "../evcc_control_config";
 import type { WallboxDispatchIntent, WallboxChargeSource } from "./intent";
@@ -109,22 +110,27 @@ export function evaluateWallboxDispatchReadiness(config: unknown): WallboxDispat
 		const modeMappingAvailable = evccControlTargetForRole(c, "set_mode").length > 0;
 		const maxCurrentMappingAvailable = evccControlTargetForRole(c, "set_max_current_a").length > 0;
 		const chargeModeValue = evccModeChargeValue(c);
+		const stringModeComplete =
+			modeMappingAvailable && maxCurrentMappingAvailable && chargeModeValue.length > 0;
+		const contractV1 = resolveEvccControlContractV1(c);
+		const controlMappingComplete = stringModeComplete || contractV1.ready;
 		const missing: string[] = [];
-		if (!modeMappingAvailable) missing.push("set_mode");
-		if (!maxCurrentMappingAvailable) missing.push("set_max_current_a");
-		if (!chargeModeValue) missing.push("evcc_charge_mode_value");
-		const controlMappingComplete = modeMappingAvailable && maxCurrentMappingAvailable && chargeModeValue.length > 0;
+		if (!controlMappingComplete) {
+			missing.push(...contractV1.missing);
+		}
 		return {
 			controlMappingComplete,
 			enableMappingAvailable: false,
-			currentMappingAvailable: maxCurrentMappingAvailable,
+			currentMappingAvailable: maxCurrentMappingAvailable || Boolean(contractV1.maxCurrentStateId),
 			powerMappingAvailable: false,
-			modeMappingAvailable,
+			modeMappingAvailable: modeMappingAvailable || Boolean(contractV1.pvControlStateId),
 			liveDispatchSupported: false,
 			missingMappings: missing,
 			reasonDe: controlMappingComplete
-				? "EVCC-Control-Mapping grundsätzlich vorhanden; Live-Dispatch weiterhin gesperrt."
-				: `Fehlende EVCC-Steuer-Mappings: ${missing.join(", ")}.`,
+				? contractV1.ready
+					? "EVCC-Control-Contract (pvControl/maxCurrent/phasesConfigured) erkannt; produktive Writes weiterhin gesperrt."
+					: "EVCC-String-Mode-Mapping grundsätzlich vorhanden; Live-Dispatch weiterhin gesperrt."
+				: `Fehlende EVCC-Control-Contract-Mappings: ${missing.join(", ")}.`,
 		};
 	}
 

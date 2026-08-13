@@ -101,5 +101,13 @@ export function buildEvModelV1(input: {
 		vehicleDetectionActive: pick(snap.vehicle_detection_active),
 		dataQuality: resolveEvDataQuality(snap, capabilities),
 		vehicleSocQuality,
+		externalSmartChargingMinSocPct: external?.externalSmartChargingMinSocPct ?? null,
+		externalSmartChargingMinSocQuality: external?.externalSmartChargingMinSocQuality ?? "unconfigured",
+		departureMinSocConfigured: foundation.minimumDepartureSocPct !== null,
+		vehicleModelSource: "none",
+		vehicleModelReady: false,
+		controlContractModel: "none",
+		evccControlContractReady: false,
+		legacyDirectControlPresent: false,
 	};
 }

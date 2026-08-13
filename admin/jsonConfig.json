@@ -534,7 +534,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Getrennte Steuerziele für den EVCC-Control-Pfad (Write Contract). EMS setzt maxCurrent (Stromobergrenze) und Lademodus — EVCC regelt den tatsächlichen Ladestrom. Legacy go-e-Mappings (wb_set_*) bleiben unter legacy_direct."
+					"text": "Getrennte Steuerziele für den EVCC-Control-Pfad. Kanonischer zukünftiger Contract: control.pvControl / control.maxCurrent / control.phasesConfigured (noch nicht live). Bestehende String-Mode-Writes (wb_evcc_set_mode_target) bleiben unverändert. Bei Steuerpfad EVCC niemals Fallback auf Legacy go-e (wb_set_*)."
 				},
 				"wb_control_model": {
 					"type": "select",
@@ -605,6 +605,61 @@
 				"wb_evcc_set_phase_target": {
 					"type": "objectId",
 					"label": "EVCC Phasen (Write, optional)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"hEvccControlV1": {
+					"type": "header",
+					"size": 3,
+					"text": "EVCC Control-Contract v1 (Diagnose, noch keine Writes)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"helpEvccControlV1": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "pvControl: 0=off, 1=pv, 2=min, 3=now. phasesConfigured: 0=auto, 1=1p, 3=3p. Nur erkennen, nicht schreiben. EMS steuert später nur EVCC — keine direkten go-e- oder Sonnen-Hold-Writes."
+				},
+				"wb_evcc_control_pv_control_target": {
+					"type": "objectId",
+					"label": "EVCC control.pvControl (nur vorbereiten)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_control_max_current_target": {
+					"type": "objectId",
+					"label": "EVCC control.maxCurrent (nur vorbereiten)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_control_phases_configured_target": {
+					"type": "objectId",
+					"label": "EVCC control.phasesConfigured (nur vorbereiten)",
 					"types": [
 						"state"
 					],
@@ -1289,7 +1344,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Read-only: optionale externe Ladeoptimierer (z. B. Tibber/HA) auf das neutrale EV-Modell mappen. Keine Takeover-, Tibber-Aktiv- oder EVCC-Write-Logik. Ohne Mapping bleiben Capabilities unavailable und Werte unknown — keine Pflicht für Ford, Tibber oder Home Assistant. Ford-Ladepause ist nur Diagnose, nie External-Control."
+					"text": "Read-only: optionale externe Ladeoptimierer auf das neutrale EV-Modell mappen. Keine Takeover-/Tibber-Aktiv-/EVCC-Write-Logik. Optionale Zahlenfelder dürfen leer bleiben (intern null). Mindest-SOC zur Abfahrt ist nicht Tibber „Minimales Ladeniveau“. Bool-Zustände werden nicht allein wegen unverändertem Wert stale."
 				},
 				"wb_evcc_integration_enabled": {
 					"type": "checkbox",
@@ -1505,17 +1560,44 @@
 					"default": 30,
 					"min": 1,
 					"max": 1440,
+					"empty": true,
 					"xs": 12,
 					"sm": 6,
 					"md": 3,
 					"lg": 3,
 					"xl": 3
 				},
+				"wb_external_source_updated_at_state": {
+					"type": "objectId",
+					"label": "Externe Quelle Heartbeat / Updated-At (optional)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_external_smart_charging_min_soc_state": {
+					"type": "objectId",
+					"label": "Externer Smart-Charging-Mindest-SOC (optional, nicht Abfahrt)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
 				"wb_ev_target_soc_pct": {
 					"type": "number",
 					"label": "Ziel-SOC (%)",
 					"min": 0,
 					"max": 100,
+					"empty": true,
+					"placeholder": "leer = nicht gesetzt",
 					"xs": 12,
 					"sm": 6,
 					"md": 3,
@@ -1527,6 +1609,9 @@
 					"label": "Mindest-SOC zur Abfahrt (%)",
 					"min": 0,
 					"max": 100,
+					"empty": true,
+					"placeholder": "leer = nicht gesetzt",
+					"help": "Optional. Leer speichern ist erlaubt (intern null). Nicht identisch mit Tibber „Minimales Ladeniveau“.",
 					"xs": 12,
 					"sm": 6,
 					"md": 3,
@@ -1538,6 +1623,8 @@
 					"label": "Batteriekapazität (kWh)",
 					"min": 0,
 					"max": 200,
+					"empty": true,
+					"placeholder": "leer = nicht gesetzt",
 					"xs": 12,
 					"sm": 6,
 					"md": 3,
@@ -1549,6 +1636,8 @@
 					"label": "Maximale AC-Ladeleistung (kW)",
 					"min": 0,
 					"max": 50,
+					"empty": true,
+					"placeholder": "leer = nicht gesetzt",
 					"xs": 12,
 					"sm": 6,
 					"md": 3,
@@ -1560,6 +1649,8 @@
 					"label": "Ladeeffizienz (0,5–1 oder %)",
 					"min": 0.5,
 					"max": 100,
+					"empty": true,
+					"placeholder": "leer = nicht gesetzt",
 					"xs": 12,
 					"sm": 6,
 					"md": 3,
@@ -1571,6 +1662,8 @@
 					"label": "Sicherheitsmarge (Minuten)",
 					"min": 0,
 					"max": 180,
+					"empty": true,
+					"placeholder": "leer = nicht gesetzt",
 					"xs": 12,
 					"sm": 6,
 					"md": 3,

@@ -35,6 +35,7 @@ export interface ReadExternalEvOptions {
 interface ForeignRead {
 	val: unknown;
 	tsMs: number | null;
+	lcMs: number | null;
 }
 
 async function readForeign(
@@ -48,7 +49,7 @@ async function readForeign(
 	if (!st || st.val === undefined) return null;
 	const lc = typeof st.lc === "number" && Number.isFinite(st.lc) ? st.lc : null;
 	const ts = typeof st.ts === "number" && Number.isFinite(st.ts) ? st.ts : null;
-	return { val: st.val, tsMs: lc ?? ts };
+	return { val: st.val, tsMs: ts, lcMs: lc };
 }
 
 function mapped(id: string): boolean {
@@ -183,6 +184,12 @@ export async function readExternalEvInformation(
 	const pauseRead = mapped(foundation.vehicleChargePauseStateId)
 		? await readForeign(host, foundation.vehicleChargePauseStateId)
 		: null;
+	const heartbeatRead = mapped(foundation.externalSourceUpdatedAtStateId)
+		? await readForeign(host, foundation.externalSourceUpdatedAtStateId)
+		: null;
+	const minSocRead = mapped(foundation.externalSmartChargingMinSocStateId)
+		? await readForeign(host, foundation.externalSmartChargingMinSocStateId)
+		: null;
 
 	const planMappingConfigured =
 		mapped(foundation.externalSmartPlanStateId) ||
@@ -199,7 +206,9 @@ export async function readExternalEvInformation(
 		chargingMapped ||
 		planMappingConfigured ||
 		mapped(foundation.externalPlanDeadlineStateId) ||
-		mapped(foundation.externalTargetSocStateId);
+		mapped(foundation.externalTargetSocStateId) ||
+		mapped(foundation.externalSmartChargingMinSocStateId) ||
+		mapped(foundation.externalSourceUpdatedAtStateId);
 
 	const externalControlActive = controlMapped
 		? controlRead
@@ -254,7 +263,20 @@ export async function readExternalEvInformation(
 		startRead?.tsMs ?? null,
 		endRead?.tsMs ?? null,
 		deadlineRead?.tsMs ?? null,
+		heartbeatRead?.tsMs ?? null,
+		minSocRead?.tsMs ?? null,
 	]);
+
+	const freshnessConfigured = mapped(foundation.externalSourceUpdatedAtStateId);
+	let freshnessMs: number | null = null;
+	if (heartbeatRead) {
+		const fromValue = parseTimestampToMs(heartbeatRead.val);
+		freshnessMs = fromValue ?? heartbeatRead.tsMs;
+	}
+	const stale =
+		freshnessConfigured && heartbeatRead != null
+			? isStale(freshnessMs, nowMs, foundation.externalSourceStaleAfterMin)
+			: false;
 
 	const anyMappedMissing =
 		(controlMapped && controlRead === null) ||
@@ -275,7 +297,6 @@ export async function readExternalEvInformation(
 		smartPlan.remainingEnergyEstimated ||
 		(smartPlan.payloadParseable && !smartPlan.validPlanPresent);
 
-	const stale = isStale(updatedAtMs, nowMs, foundation.externalSourceStaleAfterMin);
 	const quality = resolveExternalSourceQuality({
 		configured,
 		anyMappedReadable,
@@ -285,6 +306,9 @@ export async function readExternalEvInformation(
 		planDegraded,
 		stale,
 	});
+
+	const minSocMapped = mapped(foundation.externalSmartChargingMinSocStateId);
+	const minSocPct = minSocRead ? normalizeOptionalSocOrNull(minSocRead.val) : null;
 
 	return {
 		externalControlConfigured: configured,
@@ -299,6 +323,13 @@ export async function readExternalEvInformation(
 		vehicleChargePauseDiagnostic,
 		smartPlan,
 		externalTargetSocPct: targetRead ? normalizeOptionalSocOrNull(targetRead.val) : null,
+		externalSmartChargingMinSocPct: minSocPct,
+		externalSmartChargingMinSocQuality: !minSocMapped
+			? "unconfigured"
+			: minSocPct !== null
+				? "valid"
+				: "unknown",
+		freshnessSignalConfigured: freshnessConfigured,
 	};
 }
 

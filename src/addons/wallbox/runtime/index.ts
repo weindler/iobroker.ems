@@ -155,13 +155,16 @@ export async function publishWallboxLiveFoundationStates(
 		commandCandidate: candidate,
 		writeResult: foundation.writeResult,
 		writePlan: plan,
-		mapping: {
-			controlModel: mapping.controlModel,
-			legacyMappingsPresent: mapping.legacyMappingsPresent,
-			evccMappingsPresent: mapping.evccMappingsPresent,
-			missingRoles: mapping.missingRoles,
-			validationIssues: mapping.validationIssues,
-		},
+			mapping: {
+				controlModel: mapping.controlModel,
+				legacyMappingsPresent: mapping.legacyMappingsPresent,
+				evccMappingsPresent: mapping.evccMappingsPresent,
+				missingRoles: mapping.missingRoles,
+				validationIssues: mapping.validationIssues,
+				controlContractModel: mapping.controlContractModel,
+				evccControlContractReady: mapping.evccControlContractReady,
+				legacyDirectControlPresent: mapping.legacyDirectControlPresent,
+			},
 		feedback: fb
 			? {
 					required: fb.required,

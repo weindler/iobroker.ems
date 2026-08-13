@@ -45,7 +45,16 @@ async function publishEvFoundationDiagnosis(host, model, capabilities, observedA
         remainingEnergyEstimated: plan.remainingEnergyEstimated,
         deadlineIso: plan.deadlineIso,
         vehicleChargePauseDiagnostic: external?.vehicleChargePauseDiagnostic ?? null,
+        freshnessSignalConfigured: external?.freshnessSignalConfigured ?? false,
     }));
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.departureMinSocConfigured, model.departureMinSocConfigured);
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.externalMinSocPct, model.externalSmartChargingMinSocPct);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.externalMinSocQuality, model.externalSmartChargingMinSocQuality);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.vehicleModelSource, model.vehicleModelSource);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.vehicleModelReady, model.vehicleModelReady);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.controlContractModel, model.controlContractModel);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evccControlContractReady, model.evccControlContractReady);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.legacyDirectControlPresent, model.legacyDirectControlPresent);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.preparedEvState, model.preparedEvState);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.takeoverReason, model.takeoverReason ?? "");
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.dataQuality, model.dataQuality);

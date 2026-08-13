@@ -92,6 +92,9 @@ async function publishWallboxLiveFoundationStates(host, foundation) {
             evccMappingsPresent: mapping.evccMappingsPresent,
             missingRoles: mapping.missingRoles,
             validationIssues: mapping.validationIssues,
+            controlContractModel: mapping.controlContractModel,
+            evccControlContractReady: mapping.evccControlContractReady,
+            legacyDirectControlPresent: mapping.legacyDirectControlPresent,
         },
         feedback: fb
             ? {

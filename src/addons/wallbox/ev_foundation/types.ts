@@ -99,6 +99,14 @@ export interface EvModelV1 {
 	vehicleDetectionActive: boolean | null;
 	dataQuality: EvDataQuality;
 	vehicleSocQuality: EvFieldQuality;
+	externalSmartChargingMinSocPct: number | null;
+	externalSmartChargingMinSocQuality: "valid" | "unknown" | "unconfigured";
+	departureMinSocConfigured: boolean;
+	vehicleModelSource: "ev_model_v1" | "vehicle_profile" | "none" | "conflict";
+	vehicleModelReady: boolean;
+	controlContractModel: "none" | "legacy_direct" | "evcc_string_mode" | "evcc_control_v1";
+	evccControlContractReady: boolean;
+	legacyDirectControlPresent: boolean;
 }
 
 export const EMPTY_EV_CAPABILITIES: EvCapabilities = {

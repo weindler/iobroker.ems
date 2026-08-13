@@ -20,6 +20,7 @@ const config_1 = require("./config");
 const model_1 = require("./model");
 const publish_1 = require("./publish");
 const external_1 = require("./external");
+const vehicle_model_1 = require("./vehicle_model");
 __exportStar(require("./types"), exports);
 __exportStar(require("./catalog"), exports);
 __exportStar(require("./write_allowlist"), exports);
@@ -27,6 +28,7 @@ __exportStar(require("./config"), exports);
 __exportStar(require("./capabilities"), exports);
 __exportStar(require("./model"), exports);
 __exportStar(require("./external"), exports);
+__exportStar(require("./vehicle_model"), exports);
 var ensure_states_1 = require("./ensure_states");
 Object.defineProperty(exports, "WALLBOX_EV_FOUNDATION_STATES", { enumerable: true, get: function () { return ensure_states_1.WALLBOX_EV_FOUNDATION_STATES; } });
 Object.defineProperty(exports, "ensureWallboxEvFoundationStates", { enumerable: true, get: function () { return ensure_states_1.ensureWallboxEvFoundationStates; } });
@@ -44,13 +46,14 @@ async function refreshEvFoundation(host, snap, telemetryCfg) {
         timezone: (0, external_1.timezoneFromAdapterConfig)(adapterConfig),
     });
     const capabilities = (0, capabilities_1.resolveEvCapabilities)(telemetryCfg, snap, foundation, external);
-    const model = (0, model_1.buildEvModelV1)({
+    const built = (0, model_1.buildEvModelV1)({
         snap,
         foundation,
         capabilities,
         adapterConfig,
         external,
     });
+    const model = (0, vehicle_model_1.applyEvFoundationIntegration)(built, capabilities, adapterConfig);
     await (0, publish_1.publishEvFoundationDiagnosis)(host, model, capabilities, snap.observed_at, external);
 }
 exports.refreshEvFoundation = refreshEvFoundation;

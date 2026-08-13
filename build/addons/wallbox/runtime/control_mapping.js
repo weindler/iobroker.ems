@@ -105,6 +105,17 @@ function collectValidationIssues(entries) {
     }
     return issues;
 }
+function contractDiagnosis(config, controlModel) {
+    const contract = (0, evcc_control_config_1.resolveEvccControlContractV1)(config);
+    const stringModeComplete = (0, evcc_control_config_1.evccControlTargetForRole)(config, "set_mode").length > 0 &&
+        (0, evcc_control_config_1.evccControlTargetForRole)(config, "set_max_current_a").length > 0 &&
+        (0, evcc_control_config_1.evccModeChargeValue)(config).length > 0;
+    return {
+        controlContractModel: (0, evcc_control_config_1.resolveControlContractModel)(controlModel, contract.ready, stringModeComplete),
+        evccControlContractReady: controlModel === "evcc" && contract.ready,
+        legacyDirectControlPresent: (0, evcc_config_1.hasLegacyWallboxWriteMapping)(config),
+    };
+}
 function emptyEvccFields() {
     return {
         setMode: null,
@@ -133,6 +144,7 @@ function buildNoneSnapshot(config) {
         liveEligible: false,
         controlPathReason: "control_model_not_selected",
         validationIssues: [],
+        ...contractDiagnosis(config, "none"),
     };
 }
 function buildEvccSnapshot(config, telemetryCfg, objectMetas) {
@@ -196,6 +208,7 @@ function buildEvccSnapshot(config, telemetryCfg, objectMetas) {
             ? "evcc_control_path_confirmed"
             : validationIssues[0] ?? (missingRoles.length > 0 ? "mapping_incomplete" : "evcc_control_path_unconfirmed"),
         validationIssues,
+        ...contractDiagnosis(config, "evcc"),
     };
 }
 function buildLegacyDirectSnapshot(config, telemetryCfg, objectMetas) {
@@ -229,6 +242,7 @@ function buildLegacyDirectSnapshot(config, telemetryCfg, objectMetas) {
         liveEligible: false,
         controlPathReason: "legacy_direct_not_live_eligible",
         validationIssues,
+        ...contractDiagnosis(config, "legacy_direct"),
     };
 }
 function buildWallboxControlMappingSnapshot(input) {

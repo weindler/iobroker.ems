@@ -134,5 +134,11 @@
 	"Smart-Charging-Status (optional)": "Smart-Charging-Status (optional)",
 	"Externe Deadline (optional)": "Externe Deadline (optional)",
 	"Fahrzeug-Ladepause (nur Diagnose, kein External-Control)": "Fahrzeug-Ladepause (nur Diagnose, kein External-Control)",
-	"Externer Smart-Plan (JSON, nur lesen)": "Externer Smart-Plan (JSON, nur lesen)"
+	"Externer Smart-Plan (JSON, nur lesen)": "Externer Smart-Plan (JSON, nur lesen)",
+	"EVCC Control-Contract v1 (Diagnose, noch keine Writes)": "EVCC Control-Contract v1 (Diagnose, noch keine Writes)",
+	"EVCC control.pvControl (nur vorbereiten)": "EVCC control.pvControl (nur vorbereiten)",
+	"EVCC control.maxCurrent (nur vorbereiten)": "EVCC control.maxCurrent (nur vorbereiten)",
+	"EVCC control.phasesConfigured (nur vorbereiten)": "EVCC control.phasesConfigured (nur vorbereiten)",
+	"Externe Quelle Heartbeat / Updated-At (optional)": "Externe Quelle Heartbeat / Updated-At (optional)",
+	"Externer Smart-Charging-Mindest-SOC (optional, nicht Abfahrt)": "Externer Smart-Charging-Mindest-SOC (optional, nicht Abfahrt)"
 }

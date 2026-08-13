@@ -47,6 +47,9 @@ function baseMapping(over = {}) {
         liveEligible: true,
         controlPathReason: "evcc_control_path_confirmed",
         validationIssues: [],
+        controlContractModel: "evcc_string_mode",
+        evccControlContractReady: false,
+        legacyDirectControlPresent: false,
         ...over,
     };
 }

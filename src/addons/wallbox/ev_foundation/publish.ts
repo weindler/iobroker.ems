@@ -131,7 +131,40 @@ export async function publishEvFoundationDiagnosis(
 			remainingEnergyEstimated: plan.remainingEnergyEstimated,
 			deadlineIso: plan.deadlineIso,
 			vehicleChargePauseDiagnostic: external?.vehicleChargePauseDiagnostic ?? null,
+			freshnessSignalConfigured: external?.freshnessSignalConfigured ?? false,
 		}),
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.departureMinSocConfigured,
+		model.departureMinSocConfigured,
+	);
+	await setOptionalNumberIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.externalMinSocPct,
+		model.externalSmartChargingMinSocPct,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.externalMinSocQuality,
+		model.externalSmartChargingMinSocQuality,
+	);
+	await setStateIfChanged(host, WALLBOX_EV_FOUNDATION_STATES.vehicleModelSource, model.vehicleModelSource);
+	await setStateIfChanged(host, WALLBOX_EV_FOUNDATION_STATES.vehicleModelReady, model.vehicleModelReady);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.controlContractModel,
+		model.controlContractModel,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.evccControlContractReady,
+		model.evccControlContractReady,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.legacyDirectControlPresent,
+		model.legacyDirectControlPresent,
 	);
 	await setStateIfChanged(host, WALLBOX_EV_FOUNDATION_STATES.preparedEvState, model.preparedEvState);
 	await setStateIfChanged(host, WALLBOX_EV_FOUNDATION_STATES.takeoverReason, model.takeoverReason ?? "");

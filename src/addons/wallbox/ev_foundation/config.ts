@@ -40,6 +40,8 @@ export const WB_EXTERNAL_SMART_PLAN_START_STATE = "wb_external_smart_plan_start_
 export const WB_EXTERNAL_SMART_PLAN_END_STATE = "wb_external_smart_plan_end_state";
 export const WB_VEHICLE_CHARGE_PAUSE_STATE = "wb_vehicle_charge_pause_state";
 export const WB_EXTERNAL_SOURCE_STALE_AFTER_MIN = "wb_external_source_stale_after_min";
+export const WB_EXTERNAL_SOURCE_UPDATED_AT_STATE = "wb_external_source_updated_at_state";
+export const WB_EXTERNAL_SMART_CHARGING_MIN_SOC_STATE = "wb_external_smart_charging_min_soc_state";
 
 export interface EvFoundationConfig {
 	evccIntegrationEnabled: boolean;
@@ -68,6 +70,8 @@ export interface EvFoundationConfig {
 	externalSmartPlanEndStateId: string;
 	vehicleChargePauseStateId: string;
 	externalSourceStaleAfterMin: number;
+	externalSourceUpdatedAtStateId: string;
+	externalSmartChargingMinSocStateId: string;
 	holdSignals: WallboxHoldSignalConfig;
 }
 
@@ -83,11 +87,22 @@ function boolField(c: Record<string, unknown>, key: string, defaultVal: boolean)
 	return defaultVal;
 }
 
+/** Empty / whitespace / NaN → null. Never invents 0. */
+export function parseOptionalAdminNumber(raw: unknown): number | null {
+	if (raw === null || raw === undefined) return null;
+	if (typeof raw === "boolean") return null;
+	if (typeof raw === "string") {
+		const s = raw.trim();
+		if (!s) return null;
+		const n = parseFloat(s.replace(",", "."));
+		return Number.isFinite(n) ? n : null;
+	}
+	if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
+	return null;
+}
+
 function optionalNumber(c: Record<string, unknown>, key: string): number | null {
-	const v = c[key];
-	if (v === null || v === undefined || v === "") return null;
-	const n = typeof v === "number" ? v : parseFloat(String(v).replace(",", ".").trim());
-	return Number.isFinite(n) ? n : null;
+	return parseOptionalAdminNumber(c[key]);
 }
 
 function optionalString(c: Record<string, unknown>, key: string): string | null {
@@ -158,6 +173,8 @@ export function evFoundationConfigFromAdapter(config: unknown): EvFoundationConf
 			const n = optionalNumber(c, WB_EXTERNAL_SOURCE_STALE_AFTER_MIN);
 			return n !== null && n > 0 ? n : 30;
 		})(),
+		externalSourceUpdatedAtStateId: strField(c, WB_EXTERNAL_SOURCE_UPDATED_AT_STATE),
+		externalSmartChargingMinSocStateId: strField(c, WB_EXTERNAL_SMART_CHARGING_MIN_SOC_STATE),
 		holdSignals: wallboxHoldSignalConfigFromAdapter(c),
 	};
 }
@@ -174,6 +191,8 @@ export function configuredExternalSourceStateIds(cfg: EvFoundationConfig): strin
 		cfg.externalSmartPlanStartStateId,
 		cfg.externalSmartPlanEndStateId,
 		cfg.vehicleChargePauseStateId,
+		cfg.externalSourceUpdatedAtStateId,
+		cfg.externalSmartChargingMinSocStateId,
 	];
 	return [...new Set(ids.filter((id) => id.trim().length > 0))];
 }

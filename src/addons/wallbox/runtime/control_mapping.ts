@@ -10,7 +10,10 @@ import {
 	evccModeChargeValue,
 	evccModeHoldValue,
 	hasEvccControlWriteMapping,
+	resolveControlContractModel,
+	resolveEvccControlContractV1,
 	resolveWallboxControlModel,
+	type EvccControlContractModel,
 	type WallboxControlModel,
 	type WallboxEvccControlRole,
 } from "../evcc_control_config";
@@ -74,6 +77,9 @@ export interface WallboxControlMappingSnapshot {
 	liveEligible: boolean;
 	controlPathReason: string | null;
 	validationIssues: string[];
+	controlContractModel: EvccControlContractModel;
+	evccControlContractReady: boolean;
+	legacyDirectControlPresent: boolean;
 }
 
 export { classifyWallboxControlTargetKind } from "./control_object_meta";
@@ -219,6 +225,19 @@ function collectValidationIssues(entries: (WallboxControlMappingEntry | null)[])
 	return issues;
 }
 
+function contractDiagnosis(config: Record<string, unknown>, controlModel: WallboxControlModel) {
+	const contract = resolveEvccControlContractV1(config);
+	const stringModeComplete =
+		evccControlTargetForRole(config, "set_mode").length > 0 &&
+		evccControlTargetForRole(config, "set_max_current_a").length > 0 &&
+		evccModeChargeValue(config).length > 0;
+	return {
+		controlContractModel: resolveControlContractModel(controlModel, contract.ready, stringModeComplete),
+		evccControlContractReady: controlModel === "evcc" && contract.ready,
+		legacyDirectControlPresent: hasLegacyWallboxWriteMapping(config),
+	};
+}
+
 function emptyEvccFields() {
 	return {
 		setMode: null,
@@ -248,6 +267,7 @@ function buildNoneSnapshot(config: Record<string, unknown>): WallboxControlMappi
 		liveEligible: false,
 		controlPathReason: "control_model_not_selected",
 		validationIssues: [],
+		...contractDiagnosis(config, "none"),
 	};
 }
 
@@ -312,6 +332,7 @@ function buildEvccSnapshot(
 			? "evcc_control_path_confirmed"
 			: validationIssues[0] ?? (missingRoles.length > 0 ? "mapping_incomplete" : "evcc_control_path_unconfirmed"),
 		validationIssues,
+		...contractDiagnosis(config, "evcc"),
 	};
 }
 
@@ -348,6 +369,7 @@ function buildLegacyDirectSnapshot(
 		liveEligible: false,
 		controlPathReason: "legacy_direct_not_live_eligible",
 		validationIssues,
+		...contractDiagnosis(config, "legacy_direct"),
 	};
 }
 

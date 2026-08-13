@@ -60,6 +60,10 @@ export interface ExternalEvInformation {
 	vehicleChargePauseDiagnostic: boolean | null;
 	smartPlan: ExternalSmartPlanEval;
 	externalTargetSocPct: number | null;
+	/** External optimizer floor SOC — not departure min. Never copied onto minimumDepartureSocPct. */
+	externalSmartChargingMinSocPct: number | null;
+	externalSmartChargingMinSocQuality: "valid" | "unknown" | "unconfigured";
+	freshnessSignalConfigured: boolean;
 }
 
 export function emptySmartPlanEval(): ExternalSmartPlanEval {

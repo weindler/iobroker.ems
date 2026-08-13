@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.271",
+		"version": "0.1.272",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.272": {
+				"en": "EV cleanup: optional departure min SOC may be empty (null), boolean external states are not stale from last-change, EVCC control.* contract is diagnosed without go-e fallback. No takeover or new writes.",
+				"de": "EV-Bereinigung: optionaler Mindest-SOC zur Abfahrt darf leer sein (null), boolesche External-States werden nicht stale durch Last-Change, EVCC-control.*-Contract wird ohne go-e-Fallback erkannt. Kein Takeover, keine neuen Writes."
+			},
 			"0.1.271": {
 				"en": "EV foundation phase 2 (read-only): map optional external control/smart-plan sources into the neutral EV model, parse slots, compute remaining plan energy. No takeover, Tibber activation, or new EVCC writes.",
 				"de": "EV-Fundament Phase 2 (nur lesen): optionale externe Steuerung/Smart-Plan-Quellen ins neutrale EV-Modell mappen, Slots parsen, Rest-Planenergie berechnen. Kein Takeover, keine Tibber-Aktivsteuerung, keine neuen EVCC-Writes."

@@ -3,7 +3,7 @@
  * EV-foundation admin config — extends existing Wallbox/EVCC keys, no parallel addon.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveEvPlanningHints = exports.configuredExternalSourceStateIds = exports.evFoundationConfigFromAdapter = exports.normalizeChargingEfficiency = exports.WB_EXTERNAL_SOURCE_STALE_AFTER_MIN = exports.WB_VEHICLE_CHARGE_PAUSE_STATE = exports.WB_EXTERNAL_SMART_PLAN_END_STATE = exports.WB_EXTERNAL_SMART_PLAN_START_STATE = exports.WB_EXTERNAL_TARGET_SOC_STATE = exports.WB_EXTERNAL_PLAN_DEADLINE_STATE = exports.WB_EXTERNAL_SMART_CHARGING_STATUS_STATE = exports.WB_EXTERNAL_SMART_PLAN_ENABLED_STATE = exports.WB_EXTERNAL_GRID_REWARDS_ACTIVE_STATE = exports.WB_EXTERNAL_CONTROL_ACTIVE_STATE = exports.WB_EXTERNAL_SMART_PLAN_STATE = exports.WB_HA_DATA_SOURCE_ENABLED = exports.WB_EV_AVAILABLE_UNTIL = exports.WB_EV_DEPARTURE_AT = exports.WB_EV_SAFETY_MARGIN_MIN = exports.WB_EV_CHARGING_EFFICIENCY = exports.WB_EV_MAX_AC_CHARGE_POWER_KW = exports.WB_EV_BATTERY_CAPACITY_KWH = exports.WB_EV_MINIMUM_DEPARTURE_SOC_PCT = exports.WB_EV_TARGET_SOC_PCT = exports.WB_EXTERNAL_CONTROL_TYPE = exports.WB_EXTERNAL_SMART_PLAN_AVAILABLE = exports.WB_VEHICLE_LIVE_DATA_AVAILABLE = exports.WB_TIBBER_GRID_REWARDS_WALLBOX_ENABLED = exports.WB_TIBBER_GRID_REWARDS_VEHICLE_ENABLED = exports.WB_EVCC_INTEGRATION_ENABLED = void 0;
+exports.resolveEvPlanningHints = exports.configuredExternalSourceStateIds = exports.evFoundationConfigFromAdapter = exports.normalizeChargingEfficiency = exports.parseOptionalAdminNumber = exports.WB_EXTERNAL_SMART_CHARGING_MIN_SOC_STATE = exports.WB_EXTERNAL_SOURCE_UPDATED_AT_STATE = exports.WB_EXTERNAL_SOURCE_STALE_AFTER_MIN = exports.WB_VEHICLE_CHARGE_PAUSE_STATE = exports.WB_EXTERNAL_SMART_PLAN_END_STATE = exports.WB_EXTERNAL_SMART_PLAN_START_STATE = exports.WB_EXTERNAL_TARGET_SOC_STATE = exports.WB_EXTERNAL_PLAN_DEADLINE_STATE = exports.WB_EXTERNAL_SMART_CHARGING_STATUS_STATE = exports.WB_EXTERNAL_SMART_PLAN_ENABLED_STATE = exports.WB_EXTERNAL_GRID_REWARDS_ACTIVE_STATE = exports.WB_EXTERNAL_CONTROL_ACTIVE_STATE = exports.WB_EXTERNAL_SMART_PLAN_STATE = exports.WB_HA_DATA_SOURCE_ENABLED = exports.WB_EV_AVAILABLE_UNTIL = exports.WB_EV_DEPARTURE_AT = exports.WB_EV_SAFETY_MARGIN_MIN = exports.WB_EV_CHARGING_EFFICIENCY = exports.WB_EV_MAX_AC_CHARGE_POWER_KW = exports.WB_EV_BATTERY_CAPACITY_KWH = exports.WB_EV_MINIMUM_DEPARTURE_SOC_PCT = exports.WB_EV_TARGET_SOC_PCT = exports.WB_EXTERNAL_CONTROL_TYPE = exports.WB_EXTERNAL_SMART_PLAN_AVAILABLE = exports.WB_VEHICLE_LIVE_DATA_AVAILABLE = exports.WB_TIBBER_GRID_REWARDS_WALLBOX_ENABLED = exports.WB_TIBBER_GRID_REWARDS_VEHICLE_ENABLED = exports.WB_EVCC_INTEGRATION_ENABLED = void 0;
 const config_1 = require("../../../intent/config");
 const evcc_config_1 = require("../evcc_config");
 const lookup_1 = require("../vehicle_map/lookup");
@@ -35,6 +35,8 @@ exports.WB_EXTERNAL_SMART_PLAN_START_STATE = "wb_external_smart_plan_start_state
 exports.WB_EXTERNAL_SMART_PLAN_END_STATE = "wb_external_smart_plan_end_state";
 exports.WB_VEHICLE_CHARGE_PAUSE_STATE = "wb_vehicle_charge_pause_state";
 exports.WB_EXTERNAL_SOURCE_STALE_AFTER_MIN = "wb_external_source_stale_after_min";
+exports.WB_EXTERNAL_SOURCE_UPDATED_AT_STATE = "wb_external_source_updated_at_state";
+exports.WB_EXTERNAL_SMART_CHARGING_MIN_SOC_STATE = "wb_external_smart_charging_min_soc_state";
 function strField(c, key) {
     const v = c[key];
     return typeof v === "string" ? v.trim() : "";
@@ -47,12 +49,26 @@ function boolField(c, key, defaultVal) {
         return false;
     return defaultVal;
 }
-function optionalNumber(c, key) {
-    const v = c[key];
-    if (v === null || v === undefined || v === "")
+/** Empty / whitespace / NaN → null. Never invents 0. */
+function parseOptionalAdminNumber(raw) {
+    if (raw === null || raw === undefined)
         return null;
-    const n = typeof v === "number" ? v : parseFloat(String(v).replace(",", ".").trim());
-    return Number.isFinite(n) ? n : null;
+    if (typeof raw === "boolean")
+        return null;
+    if (typeof raw === "string") {
+        const s = raw.trim();
+        if (!s)
+            return null;
+        const n = parseFloat(s.replace(",", "."));
+        return Number.isFinite(n) ? n : null;
+    }
+    if (typeof raw === "number")
+        return Number.isFinite(raw) ? raw : null;
+    return null;
+}
+exports.parseOptionalAdminNumber = parseOptionalAdminNumber;
+function optionalNumber(c, key) {
+    return parseOptionalAdminNumber(c[key]);
 }
 function optionalString(c, key) {
     const s = strField(c, key);
@@ -122,6 +138,8 @@ function evFoundationConfigFromAdapter(config) {
             const n = optionalNumber(c, exports.WB_EXTERNAL_SOURCE_STALE_AFTER_MIN);
             return n !== null && n > 0 ? n : 30;
         })(),
+        externalSourceUpdatedAtStateId: strField(c, exports.WB_EXTERNAL_SOURCE_UPDATED_AT_STATE),
+        externalSmartChargingMinSocStateId: strField(c, exports.WB_EXTERNAL_SMART_CHARGING_MIN_SOC_STATE),
         holdSignals: (0, evcc_config_1.wallboxHoldSignalConfigFromAdapter)(c),
     };
 }
@@ -138,6 +156,8 @@ function configuredExternalSourceStateIds(cfg) {
         cfg.externalSmartPlanStartStateId,
         cfg.externalSmartPlanEndStateId,
         cfg.vehicleChargePauseStateId,
+        cfg.externalSourceUpdatedAtStateId,
+        cfg.externalSmartChargingMinSocStateId,
     ];
     return [...new Set(ids.filter((id) => id.trim().length > 0))];
 }

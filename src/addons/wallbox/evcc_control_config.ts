@@ -12,6 +12,19 @@ export const WB_EVCC_SET_MODE = "wb_evcc_set_mode_target";
 export const WB_EVCC_SET_MAX_CURRENT_A = "wb_evcc_set_max_current_a_target";
 export const WB_EVCC_SET_PHASE = "wb_evcc_set_phase_target";
 
+/** Future EVCC control.* contract (v0.1.272: diagnose only — not live-released). */
+export const WB_EVCC_CONTROL_PV_CONTROL = "wb_evcc_control_pv_control_target";
+export const WB_EVCC_CONTROL_MAX_CURRENT = "wb_evcc_control_max_current_target";
+export const WB_EVCC_CONTROL_PHASES_CONFIGURED = "wb_evcc_control_phases_configured_target";
+
+export const EVCC_CONTROL_V1_SUFFIXES = {
+	pvControl: "control.pvControl",
+	maxCurrent: "control.maxCurrent",
+	phasesConfigured: "control.phasesConfigured",
+} as const;
+
+export type EvccControlContractModel = "none" | "legacy_direct" | "evcc_string_mode" | "evcc_control_v1";
+
 /** Explizite Mode-Werte — keine hardcodierten Modusnamen im Runtime-Code. */
 export const WB_EVCC_MODE_CHARGE_VALUE = "wb_evcc_mode_charge_value";
 export const WB_EVCC_MODE_HOLD_VALUE = "wb_evcc_mode_hold_value";
@@ -34,9 +47,94 @@ export function strConfigField(c: Record<string, unknown>, key: string): string 
 	return strTarget(c, key);
 }
 
+function rejectDirectGoeId(stateId: string): string {
+	const id = stateId.trim();
+	if (!id) return "";
+	if (id.toLowerCase().startsWith("go-e.")) return "";
+	return id;
+}
+
+export function matchesEvccControlSuffix(stateId: string, suffix: string): boolean {
+	const id = stateId.trim().replace(/\.+/g, ".").toLowerCase();
+	if (!id.startsWith("evcc.")) return false;
+	const s = suffix.trim().replace(/\.+/g, ".").toLowerCase();
+	return id.endsWith(`.${s}`) || id.endsWith(s);
+}
+
+export interface EvccControlContractV1 {
+	pvControlStateId: string;
+	maxCurrentStateId: string;
+	phasesConfiguredStateId: string;
+	ready: boolean;
+	missing: string[];
+	usesLegacyGoeFallback: false;
+}
+
+function pickControlV1Id(c: Record<string, unknown>, dedicatedKey: string, suffix: string, fallbackKey?: string): string {
+	const dedicated = rejectDirectGoeId(strTarget(c, dedicatedKey));
+	if (dedicated && matchesEvccControlSuffix(dedicated, suffix)) return dedicated;
+	if (fallbackKey) {
+		const fallback = rejectDirectGoeId(strTarget(c, fallbackKey));
+		if (fallback && matchesEvccControlSuffix(fallback, suffix)) return fallback;
+	}
+	return "";
+}
+
+/**
+ * Structural EVCC control.* contract. Never falls back to go-e mappings.
+ * Ready when all three targets are mapped; not a live-write release.
+ */
+export function resolveEvccControlContractV1(config: unknown): EvccControlContractV1 {
+	const c = config && typeof config === "object" ? (config as Record<string, unknown>) : {};
+	const pvControlStateId = pickControlV1Id(c, WB_EVCC_CONTROL_PV_CONTROL, EVCC_CONTROL_V1_SUFFIXES.pvControl);
+	const maxCurrentStateId = pickControlV1Id(
+		c,
+		WB_EVCC_CONTROL_MAX_CURRENT,
+		EVCC_CONTROL_V1_SUFFIXES.maxCurrent,
+		WB_EVCC_SET_MAX_CURRENT_A,
+	);
+	const phasesConfiguredStateId = pickControlV1Id(
+		c,
+		WB_EVCC_CONTROL_PHASES_CONFIGURED,
+		EVCC_CONTROL_V1_SUFFIXES.phasesConfigured,
+		WB_EVCC_SET_PHASE,
+	);
+	const missing: string[] = [];
+	if (!pvControlStateId) missing.push(EVCC_CONTROL_V1_SUFFIXES.pvControl);
+	if (!maxCurrentStateId) missing.push(EVCC_CONTROL_V1_SUFFIXES.maxCurrent);
+	if (!phasesConfiguredStateId) missing.push(EVCC_CONTROL_V1_SUFFIXES.phasesConfigured);
+	return {
+		pvControlStateId,
+		maxCurrentStateId,
+		phasesConfiguredStateId,
+		ready: missing.length === 0,
+		missing,
+		usesLegacyGoeFallback: false,
+	};
+}
+
+export function resolveControlContractModel(
+	controlModel: WallboxControlModel,
+	contractV1Ready: boolean,
+	stringModeComplete: boolean,
+): EvccControlContractModel {
+	if (controlModel === "none") return "none";
+	if (controlModel === "legacy_direct") return "legacy_direct";
+	if (contractV1Ready) return "evcc_control_v1";
+	if (stringModeComplete) return "evcc_string_mode";
+	return "evcc_control_v1";
+}
+
 export function hasEvccControlWriteMapping(config: unknown): boolean {
 	const c = config && typeof config === "object" ? (config as Record<string, unknown>) : {};
-	const keys = [WB_EVCC_SET_MODE, WB_EVCC_SET_MAX_CURRENT_A, WB_EVCC_SET_PHASE];
+	const keys = [
+		WB_EVCC_SET_MODE,
+		WB_EVCC_SET_MAX_CURRENT_A,
+		WB_EVCC_SET_PHASE,
+		WB_EVCC_CONTROL_PV_CONTROL,
+		WB_EVCC_CONTROL_MAX_CURRENT,
+		WB_EVCC_CONTROL_PHASES_CONFIGURED,
+	];
 	return keys.some((k) => strTarget(c, k).length > 0);
 }
 
@@ -78,10 +176,14 @@ export function collectConfiguredControlTargetStateIds(config: Record<string, un
 	const ids: string[] = [];
 	if (model === "evcc") {
 		for (const role of WALLBOX_EVCC_CONTROL_ROLES) {
-			const id = evccControlTargetForRole(config, role);
+			const id = rejectDirectGoeId(evccControlTargetForRole(config, role));
 			if (id) ids.push(id);
 		}
-		return ids;
+		const contract = resolveEvccControlContractV1(config);
+		for (const id of [contract.pvControlStateId, contract.maxCurrentStateId, contract.phasesConfiguredStateId]) {
+			if (id) ids.push(id);
+		}
+		return [...new Set(ids)];
 	}
 	if (model === "legacy_direct") {
 		const legacy = legacyWallboxMappingFromConfig(config);

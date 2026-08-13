@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.272",
+		"version": "0.1.273",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.273": {
+				"en": "Admin: optional EV numbers (departure min SOC, target SOC, capacity, …) are text fields so empty really saves. jsonConfig number cannot be empty. No takeover or new writes.",
+				"de": "Admin: optionale EV-Zahlen (Mindest-SOC zur Abfahrt, Ziel-SOC, Kapazität, …) sind Textfelder, damit leer wirklich speicherbar ist. jsonConfig-Number kann nicht leer sein. Kein Takeover, keine neuen Writes."
+			},
 			"0.1.272": {
 				"en": "EV cleanup: optional departure min SOC may be empty (null), boolean external states are not stale from last-change, EVCC control.* contract is diagnosed without go-e fallback. No takeover or new writes.",
 				"de": "EV-Bereinigung: optionaler Mindest-SOC zur Abfahrt darf leer sein (null), boolesche External-States werden nicht stale durch Last-Change, EVCC-control.*-Contract wird ohne go-e-Fallback erkannt. Kein Takeover, keine neuen Writes."

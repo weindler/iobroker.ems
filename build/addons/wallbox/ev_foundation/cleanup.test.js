@@ -92,6 +92,9 @@ function jsonConfigItems() {
     const raw = JSON.parse((0, node_fs_1.readFileSync)(ADMIN_JSON, "utf8"));
     return raw.items?.wallboxTab?.items ?? {};
 }
+function evalJsonConfigValidator(expr, data) {
+    return Boolean(new Function("data", `"use strict"; return (${expr});`)(data));
+}
 (0, node_test_1.describe)("EV foundation v0.1.272 cleanup", () => {
     (0, node_test_1.it)("T1: empty minimumDepartureSocPct → null", () => {
         const cfg = (0, config_1.evFoundationConfigFromAdapter)(minEvccAdminConfig({ wb_ev_minimum_departure_soc_pct: "" }));
@@ -100,7 +103,7 @@ function jsonConfigItems() {
         strict_1.default.equal((0, config_1.parseOptionalAdminNumber)(null), null);
         strict_1.default.equal((0, config_1.parseOptionalAdminNumber)("   "), null);
     });
-    (0, node_test_1.it)("T2: admin jsonConfig allows empty optional EV numbers", () => {
+    (0, node_test_1.it)("T2: admin jsonConfig optional EV fields are text so empty does not fail validation", () => {
         const items = jsonConfigItems();
         for (const key of [
             "wb_ev_minimum_departure_soc_pct",
@@ -110,9 +113,15 @@ function jsonConfigItems() {
             "wb_ev_charging_efficiency",
             "wb_ev_safety_margin_min",
         ]) {
-            strict_1.default.equal(items[key]?.type, "number", key);
-            strict_1.default.equal(items[key]?.empty, true, `${key} must allow empty`);
+            strict_1.default.equal(items[key]?.type, "text", `${key} must be text; jsonConfig number cannot be empty`);
+            strict_1.default.ok(items[key]?.validator, `${key} must validate empty-or-range`);
+            strict_1.default.equal(evalJsonConfigValidator(items[key].validator, { [key]: "" }), true, `${key} empty string must pass validator`);
+            strict_1.default.equal(evalJsonConfigValidator(items[key].validator, { [key]: null }), true, `${key} null must pass validator`);
         }
+        strict_1.default.equal(evalJsonConfigValidator(items.wb_ev_minimum_departure_soc_pct.validator, {
+            wb_ev_minimum_departure_soc_pct: "abc",
+        }), false);
+        strict_1.default.equal(evalJsonConfigValidator(items.wb_ev_target_soc_pct.validator, { wb_ev_target_soc_pct: "90" }), true);
     });
     (0, node_test_1.it)("T3: empty optional number does not become 0", () => {
         const cfg = (0, config_1.evFoundationConfigFromAdapter)(minEvccAdminConfig({

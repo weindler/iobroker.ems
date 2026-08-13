@@ -1129,7 +1129,7 @@
 							"default": true
 						},
 						{
-							"type": "number",
+							"type": "text",
 							"attr": "battery_capacity_net_kwh",
 							"title": {
 								"de": "Kapazität netto kWh",
@@ -1137,10 +1137,11 @@
 							},
 							"width": "130px",
 							"filter": true,
-							"sort": true
+							"sort": true,
+							"default": ""
 						},
 						{
-							"type": "number",
+							"type": "text",
 							"attr": "max_ac_charge_power_w",
 							"title": {
 								"de": "max. AC-Leistung W",
@@ -1148,7 +1149,8 @@
 							},
 							"width": "130px",
 							"filter": true,
-							"sort": true
+							"sort": true,
+							"default": ""
 						}
 					]
 				},
@@ -1560,7 +1562,6 @@
 					"default": 30,
 					"min": 1,
 					"max": 1440,
-					"empty": true,
 					"xs": 12,
 					"sm": 6,
 					"md": 3,
@@ -1592,12 +1593,12 @@
 					"xl": 6
 				},
 				"wb_ev_target_soc_pct": {
-					"type": "number",
+					"type": "text",
 					"label": "Ziel-SOC (%)",
-					"min": 0,
-					"max": 100,
-					"empty": true,
 					"placeholder": "leer = nicht gesetzt",
+					"help": "Optional. Leer speichern ist erlaubt (intern null). jsonConfig-Zahlenfelder können nicht leer sein — daher Text.",
+					"validator": "data.wb_ev_target_soc_pct === null || data.wb_ev_target_soc_pct === undefined || String(data.wb_ev_target_soc_pct).trim() === '' || (Number(String(data.wb_ev_target_soc_pct).replace(',', '.')) >= 0 && Number(String(data.wb_ev_target_soc_pct).replace(',', '.')) <= 100)",
+					"validatorErrorText": "Leer oder Zahl 0–100",
 					"xs": 12,
 					"sm": 6,
 					"md": 3,
@@ -1605,13 +1606,12 @@
 					"xl": 3
 				},
 				"wb_ev_minimum_departure_soc_pct": {
-					"type": "number",
+					"type": "text",
 					"label": "Mindest-SOC zur Abfahrt (%)",
-					"min": 0,
-					"max": 100,
-					"empty": true,
 					"placeholder": "leer = nicht gesetzt",
-					"help": "Optional. Leer speichern ist erlaubt (intern null). Nicht identisch mit Tibber „Minimales Ladeniveau“.",
+					"help": "Optional. Leer speichern ist erlaubt (intern null). Nicht identisch mit Tibber „Minimales Ladeniveau“. jsonConfig-Zahlenfelder blockieren leere Werte — daher Text.",
+					"validator": "data.wb_ev_minimum_departure_soc_pct === null || data.wb_ev_minimum_departure_soc_pct === undefined || String(data.wb_ev_minimum_departure_soc_pct).trim() === '' || (Number(String(data.wb_ev_minimum_departure_soc_pct).replace(',', '.')) >= 0 && Number(String(data.wb_ev_minimum_departure_soc_pct).replace(',', '.')) <= 100)",
+					"validatorErrorText": "Leer oder Zahl 0–100",
 					"xs": 12,
 					"sm": 6,
 					"md": 3,
@@ -1619,12 +1619,11 @@
 					"xl": 3
 				},
 				"wb_ev_battery_capacity_kwh": {
-					"type": "number",
+					"type": "text",
 					"label": "Batteriekapazität (kWh)",
-					"min": 0,
-					"max": 200,
-					"empty": true,
 					"placeholder": "leer = nicht gesetzt",
+					"validator": "data.wb_ev_battery_capacity_kwh === null || data.wb_ev_battery_capacity_kwh === undefined || String(data.wb_ev_battery_capacity_kwh).trim() === '' || (Number(String(data.wb_ev_battery_capacity_kwh).replace(',', '.')) > 0 && Number(String(data.wb_ev_battery_capacity_kwh).replace(',', '.')) <= 200)",
+					"validatorErrorText": "Leer oder Zahl > 0 bis 200",
 					"xs": 12,
 					"sm": 6,
 					"md": 3,
@@ -1632,12 +1631,11 @@
 					"xl": 3
 				},
 				"wb_ev_max_ac_charge_power_kw": {
-					"type": "number",
+					"type": "text",
 					"label": "Maximale AC-Ladeleistung (kW)",
-					"min": 0,
-					"max": 50,
-					"empty": true,
 					"placeholder": "leer = nicht gesetzt",
+					"validator": "data.wb_ev_max_ac_charge_power_kw === null || data.wb_ev_max_ac_charge_power_kw === undefined || String(data.wb_ev_max_ac_charge_power_kw).trim() === '' || (Number(String(data.wb_ev_max_ac_charge_power_kw).replace(',', '.')) > 0 && Number(String(data.wb_ev_max_ac_charge_power_kw).replace(',', '.')) <= 50)",
+					"validatorErrorText": "Leer oder Zahl > 0 bis 50",
 					"xs": 12,
 					"sm": 6,
 					"md": 3,
@@ -1645,12 +1643,11 @@
 					"xl": 3
 				},
 				"wb_ev_charging_efficiency": {
-					"type": "number",
+					"type": "text",
 					"label": "Ladeeffizienz (0,5–1 oder %)",
-					"min": 0.5,
-					"max": 100,
-					"empty": true,
 					"placeholder": "leer = nicht gesetzt",
+					"validator": "data.wb_ev_charging_efficiency === null || data.wb_ev_charging_efficiency === undefined || String(data.wb_ev_charging_efficiency).trim() === '' || ((Number(String(data.wb_ev_charging_efficiency).replace(',', '.')) >= 0.5 && Number(String(data.wb_ev_charging_efficiency).replace(',', '.')) <= 1) || (Number(String(data.wb_ev_charging_efficiency).replace(',', '.')) >= 50 && Number(String(data.wb_ev_charging_efficiency).replace(',', '.')) <= 100))",
+					"validatorErrorText": "Leer oder 0,5–1 bzw. 50–100 %",
 					"xs": 12,
 					"sm": 6,
 					"md": 3,
@@ -1658,12 +1655,11 @@
 					"xl": 3
 				},
 				"wb_ev_safety_margin_min": {
-					"type": "number",
+					"type": "text",
 					"label": "Sicherheitsmarge (Minuten)",
-					"min": 0,
-					"max": 180,
-					"empty": true,
 					"placeholder": "leer = nicht gesetzt",
+					"validator": "data.wb_ev_safety_margin_min === null || data.wb_ev_safety_margin_min === undefined || String(data.wb_ev_safety_margin_min).trim() === '' || (Number(String(data.wb_ev_safety_margin_min).replace(',', '.')) >= 0 && Number(String(data.wb_ev_safety_margin_min).replace(',', '.')) <= 180)",
+					"validatorErrorText": "Leer oder Zahl 0–180",
 					"xs": 12,
 					"sm": 6,
 					"md": 3,

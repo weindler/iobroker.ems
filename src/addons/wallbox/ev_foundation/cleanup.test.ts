@@ -102,11 +102,17 @@ async function load(admin: Record<string, unknown>, foreign: Record<string, unkn
 	return { model, capabilities, external, foundation };
 }
 
-function jsonConfigItems(): Record<string, { empty?: boolean; type?: string }> {
+function jsonConfigItems(): Record<string, { empty?: boolean; type?: string; validator?: string }> {
 	const raw = JSON.parse(readFileSync(ADMIN_JSON, "utf8")) as {
-		items?: { wallboxTab?: { items?: Record<string, { empty?: boolean; type?: string }> } };
+		items?: {
+			wallboxTab?: { items?: Record<string, { empty?: boolean; type?: string; validator?: string }> };
+		};
 	};
 	return raw.items?.wallboxTab?.items ?? {};
+}
+
+function evalJsonConfigValidator(expr: string, data: Record<string, unknown>): boolean {
+	return Boolean(new Function("data", `"use strict"; return (${expr});`)(data));
 }
 
 describe("EV foundation v0.1.272 cleanup", () => {
@@ -120,7 +126,7 @@ describe("EV foundation v0.1.272 cleanup", () => {
 		assert.equal(parseOptionalAdminNumber("   "), null);
 	});
 
-	it("T2: admin jsonConfig allows empty optional EV numbers", () => {
+	it("T2: admin jsonConfig optional EV fields are text so empty does not fail validation", () => {
 		const items = jsonConfigItems();
 		for (const key of [
 			"wb_ev_minimum_departure_soc_pct",
@@ -130,9 +136,29 @@ describe("EV foundation v0.1.272 cleanup", () => {
 			"wb_ev_charging_efficiency",
 			"wb_ev_safety_margin_min",
 		]) {
-			assert.equal(items[key]?.type, "number", key);
-			assert.equal(items[key]?.empty, true, `${key} must allow empty`);
+			assert.equal(items[key]?.type, "text", `${key} must be text; jsonConfig number cannot be empty`);
+			assert.ok(items[key]?.validator, `${key} must validate empty-or-range`);
+			assert.equal(
+				evalJsonConfigValidator(items[key]!.validator!, { [key]: "" }),
+				true,
+				`${key} empty string must pass validator`,
+			);
+			assert.equal(
+				evalJsonConfigValidator(items[key]!.validator!, { [key]: null }),
+				true,
+				`${key} null must pass validator`,
+			);
 		}
+		assert.equal(
+			evalJsonConfigValidator(items.wb_ev_minimum_departure_soc_pct!.validator!, {
+				wb_ev_minimum_departure_soc_pct: "abc",
+			}),
+			false,
+		);
+		assert.equal(
+			evalJsonConfigValidator(items.wb_ev_target_soc_pct!.validator!, { wb_ev_target_soc_pct: "90" }),
+			true,
+		);
 	});
 
 	it("T3: empty optional number does not become 0", () => {

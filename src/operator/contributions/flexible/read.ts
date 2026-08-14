@@ -5,6 +5,8 @@ import { BAT } from "../../../addons/battery/ensure_states";
 import { parseResolvedBatteryIntentJson } from "../../../addons/battery/runtime/intent_read";
 import { WALLBOX_EVCC_STATES } from "../../../addons/wallbox/ensure_evcc_states";
 import { WALLBOX_RUNTIME_STATES } from "../../../addons/wallbox/runtime/states";
+import { WALLBOX_EV_FOUNDATION_STATES } from "../../../addons/wallbox/ev_foundation/ensure_states";
+import { evFoundationConfigFromAdapter } from "../../../addons/wallbox/ev_foundation/config";
 import { wallboxEvccTelemetryConfigFromAdapter } from "../../../addons/wallbox/evcc_config";
 import {
 	lookupVehicleMapEntry,
@@ -435,6 +437,25 @@ export async function collectFlexibleContributions(
 
 	const evccCfg = wallboxEvccTelemetryConfigFromAdapter(config);
 	const evccConfigured = evccCfg.enabledStateId.trim().length > 0;
+	const evFoundation = evFoundationConfigFromAdapter(config);
+
+	const [
+		energyToTargetKwh,
+		energyToDepartureMinimumKwh,
+		externalAuthorityState,
+		takeoverSeverity,
+		externalSmartPlanJson,
+		externalPlanQuality,
+		externalMinSocPct,
+	] = await Promise.all([
+		readNum(host, WALLBOX_EV_FOUNDATION_STATES.energyToTargetKwh),
+		readNum(host, WALLBOX_EV_FOUNDATION_STATES.energyToDepartureMinimumKwh),
+		readStr(host, WALLBOX_EV_FOUNDATION_STATES.externalAuthorityState),
+		readStr(host, WALLBOX_EV_FOUNDATION_STATES.takeoverSeverity),
+		readStr(host, WALLBOX_EV_FOUNDATION_STATES.externalSmartPlanJson),
+		readStr(host, WALLBOX_EV_FOUNDATION_STATES.externalSourceQuality),
+		readNum(host, WALLBOX_EV_FOUNDATION_STATES.externalMinSocPct),
+	]);
 
 	let remainingEnergyKwh: number | null =
 		chargeRemainingKwh !== null && Number.isFinite(chargeRemainingKwh)
@@ -594,10 +615,20 @@ export async function collectFlexibleContributions(
 			vehicleMaxAcChargePowerW,
 			effectiveLimitSocPct: effectiveLimitSoc,
 			fallbackTargetSocPct,
-			deadlineIso: validIsoDeadline(deadlineRaw),
+			deadlineIso: validIsoDeadline(evFoundation.departureAt) ?? validIsoDeadline(deadlineRaw),
 			activePhases,
 			maxCurrentA,
 			evccConfigured,
+			minimumDepartureSocPct: evFoundation.minimumDepartureSocPct,
+			departureAt: validIsoDeadline(evFoundation.departureAt),
+			chargingEfficiency: evFoundation.chargingEfficiency,
+			energyToTargetKwh,
+			energyToDepartureMinimumKwh,
+			externalSmartChargingMinSocPct: externalMinSocPct,
+			externalAuthorityState,
+			takeoverSeverity,
+			externalSmartPlanJson,
+			externalPlanQuality,
 		},
 		immersion: {
 			now,

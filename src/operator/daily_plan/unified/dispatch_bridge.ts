@@ -8,6 +8,7 @@ import { CONTRIBUTION_IDS, acUnitContributionId } from "../../contribution_ids";
 import type { DailyAllocationEntry } from "../types";
 import type { OperatorContributorRef } from "../../types";
 import type { UnifiedAllocationCell, UnifiedDayPlan } from "./types";
+import { evDispatchWallboxEntries } from "./ev_energy";
 import { filterRunnableAllocations, RUNNABLE_ALLOCATION_FLOOR_W } from "../addon_plan_publish";
 import {
 	executableGeometryRejectReasonDe,
@@ -153,8 +154,16 @@ export function unifiedPlanToBatteryAllocations(plan: UnifiedDayPlan): DailyAllo
 	return filterRunnableAllocations(filterExecutableGeometry(out), RUNNABLE_ALLOCATION_FLOOR_W);
 }
 
-/** Wallbox → wallbox.ev_session für bestehende EVCC-Runtime. */
+/** Wallbox → wallbox.ev_session für bestehende EVCC-Runtime. Phase 4: kein Dispatch bei externer Hoheit / Takeover-Kandidat. */
 export function unifiedPlanToWallboxAllocations(plan: UnifiedDayPlan): DailyAllocationEntry[] {
+	const mode =
+		plan.evPlanner?.managementMode ??
+		(plan.reasonCodes.includes("vehicle_externally_managed")
+			? "externally_managed"
+			: plan.reasonCodes.includes("vehicle_takeover_candidate")
+				? "takeover_candidate"
+				: "ems_candidate");
+	if (!evDispatchWallboxEntries(mode)) return [];
 	const deadline =
 		plan.vehicleChargeEconomics?.deadlineIso ??
 		null;

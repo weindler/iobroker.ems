@@ -38,6 +38,7 @@ import { AC_UNIT_COUNT } from "../../addons/air_conditioning/constants";
 import { allocateUnifiedDayPlan } from "./unified/allocate";
 import { applyUnifiedDayAuthority } from "./unified/authority";
 import { buildUnifiedDispatchPublish } from "./unified/dispatch_bridge";
+import { publishEvPlannerDiagnosis } from "./unified/ev_planner_publish";
 import {
 	buildUnifiedInputFromForecastContext,
 	normalizeFeedInCtPerKwh,
@@ -787,6 +788,11 @@ export async function runDailyPlanTick(
 				extraReasonCodes: decision.reasons,
 				previousPlan: lastUnifiedPlan,
 			});
+			try {
+				await publishEvPlannerDiagnosis(host, unifiedPlan.evPlanner);
+			} catch (e) {
+				host.log?.warn?.(`ev planner diagnosis publish: ${String(e)}`);
+			}
 			unifiedGeneration += 1;
 			lastUnifiedPlanId = unifiedPlan.planId;
 			lastUnifiedPlan = unifiedPlan;

@@ -100,6 +100,19 @@ export {
 } from "./dispatch_bridge";
 export { publishUnifiedIhAcDispatch } from "./publish_ih_ac";
 export {
+	resolveEvEnergyClasses,
+	resolveEvManagementMode,
+	evManagementFromWallbox,
+	evEmsAllocates,
+	evDispatchWallboxEntries,
+	parseExternalReservations,
+	buildEvPlannerDiagnosis,
+	WALLBOX_HARD_CONSUMER_ID,
+	WALLBOX_TARGET_CONSUMER_ID,
+	EV_PLANNER_ROLE,
+} from "./ev_energy";
+export { publishEvPlannerDiagnosis } from "./ev_planner_publish";
+export {
 	buildSlots,
 	golden001Input,
 	golden001BadPlan,

@@ -8,7 +8,13 @@
  * Produktziel: docs/EMS_LIGHT_ONE_PLAN.md
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UNIFIED_REPLAN_TRIGGERS = exports.deriveUnifiedHardConstraints = exports.UNIFIED_OBJECTIVE_PRIORITY = void 0;
+exports.UNIFIED_REPLAN_TRIGGERS = exports.deriveUnifiedHardConstraints = exports.UNIFIED_OBJECTIVE_PRIORITY = exports.EV_MANAGEMENT_MODES = void 0;
+exports.EV_MANAGEMENT_MODES = [
+    "externally_managed",
+    "ems_candidate",
+    "takeover_candidate",
+    "unavailable",
+];
 /** Prioritätsordnung — Vertrag + Tests; noch kein Solver. */
 exports.UNIFIED_OBJECTIVE_PRIORITY = [
     "safety_constraints",
@@ -32,14 +38,14 @@ function deriveUnifiedHardConstraints(input) {
             descriptionDe: "Wallbox-Allocation nur in Presence-Fenstern mit available=true (harter Constraint).",
             ref: "presenceHardConstraint",
         });
-        if (wb.deadlineIso || wb.requiredEnergyKwh !== null) {
+        if (wb.deadlineIso || wb.requiredEnergyKwh !== null || (wb.hardRequiredEnergyKwh ?? 0) > 0) {
             out.push({
                 id: "wallbox.energy_goal",
                 kind: "deadline",
                 hard: wb.energyGoalHard,
                 descriptionDe: wb.energyGoalHard
                     ? "Fahrzeug Zielenergie/Deadline ist hartes Goal (soweit physisch möglich)."
-                    : "Fahrzeug Zielenergie/Deadline ist weiches Goal (best effort).",
+                    : "Fahrzeug Zielenergie ist weiches Goal (best effort) — keine künstliche Deadline.",
                 ref: wb.deadlineIso ?? "requiredEnergyKwh",
             });
         }

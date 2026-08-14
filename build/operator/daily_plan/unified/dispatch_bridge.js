@@ -7,6 +7,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildUnifiedDispatchPublish = exports.buildUnifiedIhAcDispatchPublish = exports.unifiedPlanToWallboxAllocations = exports.unifiedPlanToBatteryAllocations = exports.unifiedPlanToClimateAllocations = exports.unifiedPlanToImmersionAllocations = void 0;
 const contribution_ids_1 = require("../../contribution_ids");
+const ev_energy_1 = require("./ev_energy");
 const addon_plan_publish_1 = require("../addon_plan_publish");
 const slot_geometry_1 = require("./slot_geometry");
 const IH_CONTRIBUTOR = {
@@ -136,8 +137,16 @@ function unifiedPlanToBatteryAllocations(plan) {
     return (0, addon_plan_publish_1.filterRunnableAllocations)(filterExecutableGeometry(out), addon_plan_publish_1.RUNNABLE_ALLOCATION_FLOOR_W);
 }
 exports.unifiedPlanToBatteryAllocations = unifiedPlanToBatteryAllocations;
-/** Wallbox → wallbox.ev_session für bestehende EVCC-Runtime. */
+/** Wallbox → wallbox.ev_session für bestehende EVCC-Runtime. Phase 4: kein Dispatch bei externer Hoheit / Takeover-Kandidat. */
 function unifiedPlanToWallboxAllocations(plan) {
+    const mode = plan.evPlanner?.managementMode ??
+        (plan.reasonCodes.includes("vehicle_externally_managed")
+            ? "externally_managed"
+            : plan.reasonCodes.includes("vehicle_takeover_candidate")
+                ? "takeover_candidate"
+                : "ems_candidate");
+    if (!(0, ev_energy_1.evDispatchWallboxEntries)(mode))
+        return [];
     const deadline = plan.vehicleChargeEconomics?.deadlineIso ??
         null;
     const out = [];

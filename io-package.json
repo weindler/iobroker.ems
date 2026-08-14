@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.276",
+		"version": "0.1.277",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.277": {
+				"en": "EV as a Unified flexible consumer (planning only): hard/soft energy, external reservations, EV vs house battery cost sharing. No EVCC/Tibber/Sonnen/Ford/go-e writes.",
+				"de": "EV als flexibler Unified-Verbraucher (nur Planung): Hard-/Soft-Energie, externe Reservierungen, Kostenverteilung EV vs. Hausbatterie. Keine Writes auf EVCC/Tibber/Sonnen/Ford/go-e."
+			},
 			"0.1.276": {
 				"en": "EV Phase 3 diagnosis: decide whether an external charger should keep authority or EMS would theoretically take over. Read-only — no EVCC/Tibber/Sonnen/Ford/go-e writes.",
 				"de": "EV-Phase 3 Diagnose: entscheidet, ob die externe Ladehoheit bleiben soll oder EMS theoretisch übernehmen müsste. Nur lesen — keine Writes auf EVCC/Tibber/Sonnen/Ford/go-e."

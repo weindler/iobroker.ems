@@ -21,6 +21,7 @@ import { deriveUnifiedHardConstraints } from "./types";
 import { REASON } from "./reason_codes";
 import { sumEnergyForLocalDay, sumEnergyToDeadline } from "./energy_scopes";
 import { vehicleSlotAllocatable } from "./vehicle_availability";
+import { buildEvPlannerDiagnosis } from "./ev_energy";
 import {
 	buildSlots,
 	EPS,
@@ -292,6 +293,11 @@ export function allocateUnifiedDayPlan(
 	);
 
 	const vehicleChargeEconomics = buildVehicleChargeEconomics(trimmed, slots, allocations);
+	const evPlanner = buildEvPlannerDiagnosis({
+		wallbox: trimmed.wallbox,
+		allocations,
+		slots,
+	});
 
 	return {
 		schemaVersion: 1,
@@ -318,6 +324,7 @@ export function allocateUnifiedDayPlan(
 		reasonCodes: [...new Set(reasonCodes)],
 		confidence: quality,
 		vehicleChargeEconomics,
+		evPlanner,
 		totals: null,
 		legacyDailyPlan: null,
 	};

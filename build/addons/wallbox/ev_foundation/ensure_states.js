@@ -71,6 +71,21 @@ exports.WALLBOX_EV_FOUNDATION_STATES = {
     dataQuality: `${EV_FOUNDATION_BASE}.data_quality`,
     modelJson: `${EV_FOUNDATION_BASE}.model_json`,
     updatedAt: `${EV_FOUNDATION_BASE}.updated_at`,
+    evPlannerParticipating: `${EV_FOUNDATION_BASE}.ev_planner_participating`,
+    evPlannerRole: `${EV_FOUNDATION_BASE}.ev_planner_role`,
+    evManagementMode: `${EV_FOUNDATION_BASE}.ev_management_mode`,
+    evHardEnergyKwh: `${EV_FOUNDATION_BASE}.ev_hard_energy_kwh`,
+    evTargetEnergyKwh: `${EV_FOUNDATION_BASE}.ev_target_energy_kwh`,
+    evAcEnergyRequiredKwh: `${EV_FOUNDATION_BASE}.ev_ac_energy_required_kwh`,
+    evPlannedEnergyKwh: `${EV_FOUNDATION_BASE}.ev_planned_energy_kwh`,
+    evUnplannedEnergyKwh: `${EV_FOUNDATION_BASE}.ev_unplanned_energy_kwh`,
+    evPlannedCostEur: `${EV_FOUNDATION_BASE}.ev_planned_cost_eur`,
+    evPlannedPvEnergyKwh: `${EV_FOUNDATION_BASE}.ev_planned_pv_energy_kwh`,
+    evPlannedGridEnergyKwh: `${EV_FOUNDATION_BASE}.ev_planned_grid_energy_kwh`,
+    evPlannedFirstStart: `${EV_FOUNDATION_BASE}.ev_planned_first_start`,
+    evPlannedLastEnd: `${EV_FOUNDATION_BASE}.ev_planned_last_end`,
+    evPlanQuality: `${EV_FOUNDATION_BASE}.ev_plan_quality`,
+    evPlanJson: `${EV_FOUNDATION_BASE}.ev_plan_json`,
 };
 function boolState(id, name) {
     return {
@@ -166,6 +181,21 @@ async function ensureWallboxEvFoundationStates(host) {
         strState(exports.WALLBOX_EV_FOUNDATION_STATES.dataQuality, "EV-Datenqualität"),
         strState(exports.WALLBOX_EV_FOUNDATION_STATES.modelJson, "EV-Datenmodell V1 (JSON)", "json"),
         strState(exports.WALLBOX_EV_FOUNDATION_STATES.updatedAt, "EV-Fundament zuletzt gelesen", "date"),
+        boolState(exports.WALLBOX_EV_FOUNDATION_STATES.evPlannerParticipating, "EV-Planner nimmt teil"),
+        strState(exports.WALLBOX_EV_FOUNDATION_STATES.evPlannerRole, "EV-Planner-Rolle"),
+        strState(exports.WALLBOX_EV_FOUNDATION_STATES.evManagementMode, "EV-Management-Modus"),
+        numState(exports.WALLBOX_EV_FOUNDATION_STATES.evHardEnergyKwh, "EV Hard-Energie", "kWh"),
+        numState(exports.WALLBOX_EV_FOUNDATION_STATES.evTargetEnergyKwh, "EV Ziel-Energie", "kWh"),
+        numState(exports.WALLBOX_EV_FOUNDATION_STATES.evAcEnergyRequiredKwh, "EV AC-Bedarf", "kWh"),
+        numState(exports.WALLBOX_EV_FOUNDATION_STATES.evPlannedEnergyKwh, "EV geplante Energie", "kWh"),
+        numState(exports.WALLBOX_EV_FOUNDATION_STATES.evUnplannedEnergyKwh, "EV ungeplante Energie", "kWh"),
+        numState(exports.WALLBOX_EV_FOUNDATION_STATES.evPlannedCostEur, "EV geplante Kosten", "EUR"),
+        numState(exports.WALLBOX_EV_FOUNDATION_STATES.evPlannedPvEnergyKwh, "EV geplante PV-Energie", "kWh"),
+        numState(exports.WALLBOX_EV_FOUNDATION_STATES.evPlannedGridEnergyKwh, "EV geplante Netzenergie", "kWh"),
+        strState(exports.WALLBOX_EV_FOUNDATION_STATES.evPlannedFirstStart, "EV geplanter Start", "date"),
+        strState(exports.WALLBOX_EV_FOUNDATION_STATES.evPlannedLastEnd, "EV geplantes Ende", "date"),
+        strState(exports.WALLBOX_EV_FOUNDATION_STATES.evPlanQuality, "EV-Planqualität"),
+        strState(exports.WALLBOX_EV_FOUNDATION_STATES.evPlanJson, "EV-Plan (JSON)", "json"),
     ]);
 }
 exports.ensureWallboxEvFoundationStates = ensureWallboxEvFoundationStates;

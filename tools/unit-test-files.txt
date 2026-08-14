@@ -168,6 +168,7 @@ build/operator/daily_plan/unified/live_thermal_surplus_replan.test.js
 build/operator/daily_plan/unified/dryrun_allocation_competition.test.js
 build/operator/daily_plan/degraded_reason.test.js
 build/operator/daily_plan/unified/beta_replay_1055.test.js
+build/operator/daily_plan/unified/ev_phase4.test.js
 build/operator/daily_plan/unified/cost_optimize.test.js
 build/operator/daily_plan/unified/energy_scopes.test.js
 build/operator/daily_plan/unified/live_dispatch.test.js

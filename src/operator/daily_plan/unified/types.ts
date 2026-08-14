@@ -197,8 +197,66 @@ export type UnifiedWallboxInput = {
 	evccChargeMode?: "pv" | "minpv" | "now" | "off" | null;
 	/** Sofort/Schnell — Batterie-Hold während Wallbox-Priorität. */
 	batteryHoldRequested?: boolean;
+	/**
+	 * EMS-Abfahrts-Mindest-SOC. null = nicht konfiguriert.
+	 * Niemals mit externalSmartChargingMinSocPct (z. B. Tibber 25 %) vermischen.
+	 */
+	minimumDepartureSocPct?: number | null;
+	/** Externes Smart-Charging-Minimum — Diagnose, nie Hard-Requirement. */
+	externalSmartChargingMinSocPct?: number | null;
+	/** Ladewirkungsgrad 0–1. Wenn gesetzt, AC = usable/η — nicht zusätzlich chargeLossFactor. */
+	chargingEfficiency?: number | null;
+	/**
+	 * Vorberechnete Hard-AC-kWh (Phase 3). 0 = keine Hard-Anforderung.
+	 * null = aus SOC/Deadline ableiten.
+	 */
+	hardRequiredEnergyKwh?: number | null;
+	/** Vorberechnete Target-AC-kWh (Phase 3). null = aus SOC/Ziel ableiten. */
+	targetEnergyKwh?: number | null;
+	externalAuthorityState?: string | null;
+	takeoverSeverity?: string | null;
+	managementMode?: EvManagementMode;
+	externalReservations?: UnifiedEvReservation[];
+	externalPlanQuality?: "ok" | "degraded" | "unknown" | null;
 	uncertainty: OperatorDataQuality;
 	freshness: UnifiedDataFreshness;
+};
+
+export const EV_MANAGEMENT_MODES = [
+	"externally_managed",
+	"ems_candidate",
+	"takeover_candidate",
+	"unavailable",
+] as const;
+
+export type EvManagementMode = (typeof EV_MANAGEMENT_MODES)[number];
+
+export type UnifiedEvReservation = {
+	startIso: string;
+	endIso: string;
+	powerW: number | null;
+	energyKwh: number | null;
+	quality: "ok" | "degraded" | "unknown";
+};
+
+export type UnifiedEvPlannerDiagnosis = {
+	participating: boolean;
+	role: "electric_vehicle";
+	managementMode: EvManagementMode;
+	hardEnergyKwh: number;
+	targetEnergyKwh: number | null;
+	acEnergyRequiredKwh: number | null;
+	plannedEnergyKwh: number;
+	unplannedEnergyKwh: number | null;
+	plannedCostEur: number | null;
+	plannedPvEnergyKwh: number;
+	plannedGridEnergyKwh: number;
+	plannedFirstStart: string | null;
+	plannedLastEnd: string | null;
+	planQuality: "ok" | "degraded" | "unknown";
+	externalAuthorityState: string | null;
+	takeoverSeverity: string | null;
+	explain: Record<string, unknown>;
 };
 
 /**
@@ -397,14 +455,14 @@ export function deriveUnifiedHardConstraints(input: UnifiedDayPlannerInput): Uni
 				"Wallbox-Allocation nur in Presence-Fenstern mit available=true (harter Constraint).",
 			ref: "presenceHardConstraint",
 		});
-		if (wb.deadlineIso || wb.requiredEnergyKwh !== null) {
+		if (wb.deadlineIso || wb.requiredEnergyKwh !== null || (wb.hardRequiredEnergyKwh ?? 0) > 0) {
 			out.push({
 				id: "wallbox.energy_goal",
 				kind: "deadline",
 				hard: wb.energyGoalHard,
 				descriptionDe: wb.energyGoalHard
 					? "Fahrzeug Zielenergie/Deadline ist hartes Goal (soweit physisch möglich)."
-					: "Fahrzeug Zielenergie/Deadline ist weiches Goal (best effort).",
+					: "Fahrzeug Zielenergie ist weiches Goal (best effort) — keine künstliche Deadline.",
 				ref: wb.deadlineIso ?? "requiredEnergyKwh",
 			});
 		}
@@ -520,6 +578,8 @@ export type UnifiedDayPlan = {
 
 	/** Fahrzeug-Ladewirtschaftlichkeit (null wenn kein Wallbox-Ziel). */
 	vehicleChargeEconomics: UnifiedVehicleChargeEconomics | null;
+	/** Phase-4 EV planner diagnosis (planning-only). */
+	evPlanner?: UnifiedEvPlannerDiagnosis | null;
 
 	totals: DailyPlanTotals | null;
 	/** Optionaler Link zum bestehenden DailyPlan-Objekt (gleiche Generation). */

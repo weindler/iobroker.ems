@@ -7,6 +7,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.collectPresenceReasonCodes = exports.vehicleSlotAllocatable = exports.evaluateVehicleGoalFeasibility = exports.presenceDigest = exports.buildVehicleAvailabilityWindows = exports.normalizePresenceWindow = void 0;
 const vehicle_presence_1 = require("../../../learning/vehicle_presence");
 const reason_codes_1 = require("./reason_codes");
+const ev_energy_1 = require("./ev_energy");
 const SLOT_H = 0.25;
 const EPS = 1e-6;
 function normalizePresenceWindow(w) {
@@ -151,12 +152,7 @@ function energyFromPowerW(powerW) {
     return (powerW / 1000) * SLOT_H;
 }
 function resolveNeedKwh(wb) {
-    if (wb.requiredEnergyKwh !== null && wb.requiredEnergyKwh > 0)
-        return wb.requiredEnergyKwh;
-    if (wb.targetSocPct !== null && wb.vehicleSocPct !== null && wb.vehicleCapacityKwh !== null) {
-        return (Math.max(0, wb.targetSocPct - wb.vehicleSocPct) / 100) * wb.vehicleCapacityKwh;
-    }
-    return wb.fallbackEnergyNeedKwh;
+    return (0, ev_energy_1.totalEvAcNeedKwh)((0, ev_energy_1.resolveEvEnergyClasses)(wb));
 }
 function windowForSlot(windows, slotStartIso) {
     for (const w of windows) {
@@ -183,8 +179,7 @@ function evaluateVehicleGoalFeasibility(input, opts) {
     if (!wb)
         return empty;
     const needRaw = resolveNeedKwh(wb);
-    const loss = wb.chargeLossFactor ?? 1;
-    const needKwh = needRaw === null ? null : needRaw * loss;
+    const needKwh = needRaw;
     const maxW = wb.maxChargePowerW;
     const slotCap = maxW !== null && maxW > 0 ? energyFromPowerW(maxW) : null;
     const deadlineMs = wb.deadlineIso ? Date.parse(wb.deadlineIso) : Number.POSITIVE_INFINITY;

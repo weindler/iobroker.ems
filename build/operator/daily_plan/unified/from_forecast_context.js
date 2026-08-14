@@ -15,6 +15,7 @@ const quality_1 = require("../../quality");
 const flex_demand_1 = require("../../contributions/flexible/flex_demand");
 const constants_1 = require("../../../addons/air_conditioning/constants");
 const vehicle_availability_1 = require("./vehicle_availability");
+const ev_energy_1 = require("./ev_energy");
 const live_surplus_1 = require("../live_surplus");
 const thermal_cooling_rate_1 = require("../../contributions/flexible/thermal_cooling_rate");
 function num(d, key) {
@@ -463,35 +464,64 @@ function mapWallbox(wbC, wbD, nowIso, slots, _currentSlotStart, ctx) {
     const requiredEnergyKwh = num(wbD, "requiredEnergyKwh") ??
         num(wbD, "remainingEnergyKwh") ??
         (socSource === "unknown" ? null : requiredFromSoc);
+    const chargingEfficiency = num(wbD, "chargingEfficiency");
+    const minimumDepartureSocPct = num(wbD, "minimumDepartureSocPct");
+    const externalSmartChargingMinSocPct = num(wbD, "externalSmartChargingMinSocPct");
+    const departureAt = str(wbD, "departureAt");
+    const deadlineIso = departureAt ??
+        (minimumDepartureSocPct != null
+            ? (wbC?.deadlineIso ?? str(wbD, "deadlineIso"))
+            : null);
     let uncertainty = wbC
         ? connectedNow || hasHardFuture || hasPredictedFuture
             ? wbC.quality
             : (0, quality_1.operatorQuality)("degraded", "Fahrzeug-Presence teilweise unknown — keine Phantom-Ladung.", wbC.quality.confidencePct)
         : (0, quality_1.operatorQuality)("missing", "Wallbox-Contribution fehlt.", null);
-    if (socSource === "unknown" && requiredEnergyKwh === null) {
+    if (socSource === "unknown" && requiredEnergyKwh === null && num(wbD, "energyToTargetKwh") === null) {
         uncertainty = (0, quality_1.operatorQuality)("degraded", "Fahrzeug-SOC unknown und kein belastbarer Energiebedarf.", uncertainty.confidencePct);
     }
-    return {
+    const reservations = (0, ev_energy_1.parseExternalReservations)(wbD?.externalReservations ?? wbD?.externalSmartPlanJson ?? wbD?.externalSmartPlanSlots);
+    const planQualityRaw = str(wbD, "externalPlanQuality") ?? str(wbD, "externalSourceQuality");
+    const externalPlanQuality = planQualityRaw === "ok" || planQualityRaw === "degraded" || planQualityRaw === "unknown"
+        ? planQualityRaw
+        : reservations.some((r) => r.quality === "degraded")
+            ? "degraded"
+            : reservations.length
+                ? "ok"
+                : null;
+    const draft = {
         connectedNow,
         presenceWindows,
         presenceHardConstraint: true,
         vehicleProfileId: ctx.vehiclePresenceVehicleKey ?? str(wbD, "vehicleProfileId") ?? str(wbD, "evccVehicleId"),
         vehicleSocPct,
         socSource,
-        fallbackEnergyNeedKwh: num(wbD, "sessionEnergyKwh"),
+        fallbackEnergyNeedKwh: null,
         vehicleCapacityKwh: num(wbD, "vehicleCapacityKwh"),
         targetSocPct: num(wbD, "planSocPct") ?? num(wbD, "effectiveLimitSocPct"),
         requiredEnergyKwh,
-        deadlineIso: wbC?.deadlineIso ?? str(wbD, "deadlineIso") ?? str(wbD, "effectivePlanTime"),
-        // Hartes Ziel nur mit belastbarer Presence (explicit/live-Zukunft oder predicted)
-        energyGoalHard: connectedNow || hasHardFuture || hasPredictedFuture,
+        deadlineIso,
+        energyGoalHard: false,
         minChargePowerW: num(wbD, "minChargePowerW"),
         maxChargePowerW: num(wbD, "maxChargePowerW") ?? num(wbD, "vehicleMaxAcChargePowerW"),
-        chargeLossFactor: num(wbD, "chargeLossFactor"),
+        chargeLossFactor: chargingEfficiency != null ? 1 : num(wbD, "chargeLossFactor"),
         evccExecutionMaster: true,
+        minimumDepartureSocPct,
+        externalSmartChargingMinSocPct,
+        chargingEfficiency,
+        hardRequiredEnergyKwh: num(wbD, "energyToDepartureMinimumKwh") ?? num(wbD, "hardRequiredEnergyKwh"),
+        targetEnergyKwh: num(wbD, "energyToTargetKwh") ?? num(wbD, "targetEnergyKwh"),
+        externalAuthorityState: str(wbD, "externalAuthorityState"),
+        takeoverSeverity: str(wbD, "takeoverSeverity"),
+        externalReservations: reservations.length ? reservations : undefined,
+        externalPlanQuality,
         uncertainty,
         freshness: freshnessFrom(Date.parse(nowIso), wbC?.generatedAt ?? nowIso, wbC?.quality ?? (0, quality_1.operatorQuality)("missing", "wb", null)),
     };
+    draft.managementMode = (0, ev_energy_1.evManagementFromWallbox)(draft);
+    const classes = (0, ev_energy_1.resolveEvEnergyClasses)(draft);
+    draft.energyGoalHard = classes.energyGoalHard;
+    return draft;
 }
 function parseExplicitWindows(wbD) {
     if (!wbD)

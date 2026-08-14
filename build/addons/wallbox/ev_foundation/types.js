@@ -1,8 +1,9 @@
 "use strict";
 /**
- * Neutral EV data model V1 (Phase 1 foundation).
+ * Neutral EV data model V1.
  * Planner later consumes these fields and capabilities only — never Ford/Tibber/HA state IDs.
- * No takeover / external-control transition logic in this phase.
+ * Phase 3 may overlay diagnostic takeover fields; preparedEvState stays the EVCC mapping.
+ * emsTakeoverActive remains false until a later phase explicitly enables writes.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EMPTY_EV_CAPABILITIES = exports.EV_PHASE1_PREPARED_STATES = exports.EV_FIELD_QUALITY = exports.EV_DATA_QUALITY = exports.EV_EXTERNAL_CONTROL_TYPES = exports.EV_TAKEOVER_SEVERITIES = exports.EV_EXTERNAL_AUTHORITY_STATES = exports.EV_TAKEOVER_REASONS = exports.EV_MODULE_STATES = void 0;

@@ -15,6 +15,7 @@ const types_1 = require("./types");
 const reason_codes_1 = require("./reason_codes");
 const energy_scopes_1 = require("./energy_scopes");
 const vehicle_availability_1 = require("./vehicle_availability");
+const ev_energy_1 = require("./ev_energy");
 const score_allocate_1 = require("./score_allocate");
 function round3(n) {
     return Math.round(n * 1000) / 1000;
@@ -222,6 +223,11 @@ function allocateUnifiedDayPlan(input, opts) {
         : "valid", `Unified allocation; PV confidence ${confPct ?? "n/a"}%.`, confPct);
     const mergedAllocations = [...pastAllocations, ...allocations].sort((a, b) => a.slot.startIso.localeCompare(b.slot.startIso));
     const vehicleChargeEconomics = buildVehicleChargeEconomics(trimmed, slots, allocations);
+    const evPlanner = (0, ev_energy_1.buildEvPlannerDiagnosis)({
+        wallbox: trimmed.wallbox,
+        allocations,
+        slots,
+    });
     return {
         schemaVersion: 1,
         planId: `unified-${trimmed.time.nowIso}`,
@@ -247,6 +253,7 @@ function allocateUnifiedDayPlan(input, opts) {
         reasonCodes: [...new Set(reasonCodes)],
         confidence: quality,
         vehicleChargeEconomics,
+        evPlanner,
         totals: null,
         legacyDailyPlan: null,
     };

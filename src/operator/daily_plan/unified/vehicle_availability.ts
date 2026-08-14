@@ -8,6 +8,7 @@ import {
 	type VehiclePresenceLearningStore,
 } from "../../../learning/vehicle_presence";
 import { REASON } from "./reason_codes";
+import { resolveEvEnergyClasses, totalEvAcNeedKwh } from "./ev_energy";
 import type {
 	UnifiedDayPlannerInput,
 	UnifiedVehicleAvailabilitySource,
@@ -218,11 +219,7 @@ function energyFromPowerW(powerW: number): number {
 }
 
 function resolveNeedKwh(wb: UnifiedWallboxInput): number | null {
-	if (wb.requiredEnergyKwh !== null && wb.requiredEnergyKwh > 0) return wb.requiredEnergyKwh;
-	if (wb.targetSocPct !== null && wb.vehicleSocPct !== null && wb.vehicleCapacityKwh !== null) {
-		return (Math.max(0, wb.targetSocPct - wb.vehicleSocPct) / 100) * wb.vehicleCapacityKwh;
-	}
-	return wb.fallbackEnergyNeedKwh;
+	return totalEvAcNeedKwh(resolveEvEnergyClasses(wb));
 }
 
 function windowForSlot(
@@ -256,8 +253,7 @@ export function evaluateVehicleGoalFeasibility(
 	if (!wb) return empty;
 
 	const needRaw = resolveNeedKwh(wb);
-	const loss = wb.chargeLossFactor ?? 1;
-	const needKwh = needRaw === null ? null : needRaw * loss;
+	const needKwh = needRaw;
 	const maxW = wb.maxChargePowerW;
 	const slotCap = maxW !== null && maxW > 0 ? energyFromPowerW(maxW) : null;
 

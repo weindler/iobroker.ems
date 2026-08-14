@@ -51,6 +51,7 @@ const constants_1 = require("../../addons/air_conditioning/constants");
 const allocate_1 = require("./unified/allocate");
 const authority_1 = require("./unified/authority");
 const dispatch_bridge_1 = require("./unified/dispatch_bridge");
+const ev_planner_publish_1 = require("./unified/ev_planner_publish");
 const from_forecast_context_1 = require("./unified/from_forecast_context");
 const cadence_1 = require("./unified/cadence");
 const materiality_1 = require("./unified/materiality");
@@ -703,6 +704,12 @@ async function runDailyPlanTick(host, forecastPlan) {
                 extraReasonCodes: decision.reasons,
                 previousPlan: lastUnifiedPlan,
             });
+            try {
+                await (0, ev_planner_publish_1.publishEvPlannerDiagnosis)(host, unifiedPlan.evPlanner);
+            }
+            catch (e) {
+                host.log?.warn?.(`ev planner diagnosis publish: ${String(e)}`);
+            }
             unifiedGeneration += 1;
             lastUnifiedPlanId = unifiedPlan.planId;
             lastUnifiedPlan = unifiedPlan;

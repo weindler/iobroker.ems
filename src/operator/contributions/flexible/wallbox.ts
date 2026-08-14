@@ -33,6 +33,16 @@ export interface WallboxContributionBuildInput {
 	activePhases: number | null;
 	maxCurrentA: number | null;
 	evccConfigured: boolean;
+	minimumDepartureSocPct?: number | null;
+	departureAt?: string | null;
+	chargingEfficiency?: number | null;
+	energyToTargetKwh?: number | null;
+	energyToDepartureMinimumKwh?: number | null;
+	externalSmartChargingMinSocPct?: number | null;
+	externalAuthorityState?: string | null;
+	takeoverSeverity?: string | null;
+	externalSmartPlanJson?: string | null;
+	externalPlanQuality?: string | null;
 }
 
 /** Ziel-SOC nur bei aktivem Plan mit positivem planSoc, sonst effectiveLimit/fallback. */
@@ -125,6 +135,16 @@ export function buildWallboxEvSessionContribution(input: WallboxContributionBuil
 					connected: false,
 					vehicleSocPct: input.vehicleSocPct,
 					runtimeControlAvailable: false,
+					minimumDepartureSocPct: input.minimumDepartureSocPct ?? null,
+					departureAt: input.departureAt ?? null,
+					chargingEfficiency: input.chargingEfficiency ?? null,
+					energyToTargetKwh: input.energyToTargetKwh ?? null,
+					energyToDepartureMinimumKwh: input.energyToDepartureMinimumKwh ?? null,
+					externalSmartChargingMinSocPct: input.externalSmartChargingMinSocPct ?? null,
+					externalAuthorityState: input.externalAuthorityState ?? null,
+					takeoverSeverity: input.takeoverSeverity ?? null,
+					externalSmartPlanJson: input.externalSmartPlanJson ?? null,
+					externalPlanQuality: input.externalPlanQuality ?? null,
 				},
 				slots: [],
 			},
@@ -201,6 +221,16 @@ export function buildWallboxEvSessionContribution(input: WallboxContributionBuil
 				activePhases: input.activePhases,
 				maxCurrentA: input.maxCurrentA,
 				runtimeControlAvailable: false,
+				minimumDepartureSocPct: input.minimumDepartureSocPct ?? null,
+				departureAt: input.departureAt ?? null,
+				chargingEfficiency: input.chargingEfficiency ?? null,
+				energyToTargetKwh: input.energyToTargetKwh ?? null,
+				energyToDepartureMinimumKwh: input.energyToDepartureMinimumKwh ?? null,
+				externalSmartChargingMinSocPct: input.externalSmartChargingMinSocPct ?? null,
+				externalAuthorityState: input.externalAuthorityState ?? null,
+				takeoverSeverity: input.takeoverSeverity ?? null,
+				externalSmartPlanJson: input.externalSmartPlanJson ?? null,
+				externalPlanQuality: input.externalPlanQuality ?? null,
 			},
 			slots:
 				maxW !== null && enabled

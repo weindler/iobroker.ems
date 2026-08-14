@@ -3,7 +3,7 @@
  * Score-basierte iterative Unified-Allocation — kein fester Add-on-Phasen-Order.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runScoreBasedAllocation = exports.scoreCandidate = exports.hardPvConsumersFromInput = exports.takePv = exports.pushAlloc = exports.immersionAllocatedInSlotKwh = exports.allocatedInSlotKwh = exports.buildSlots = exports.powerFromEnergyKwh = exports.energyFromPowerW = exports.projectedSocAt = exports.EPS = exports.SLOT_H = exports.IMMERSION_HARD_CONSUMER_ID = exports.IMMERSION_SOFT_CONSUMER_ID = void 0;
+exports.runScoreBasedAllocation = exports.scoreCandidate = exports.hardPvConsumersFromInput = exports.takePv = exports.pushAlloc = exports.wallboxAllocatedInSlotKwh = exports.immersionAllocatedInSlotKwh = exports.allocatedInSlotKwh = exports.buildSlots = exports.powerFromEnergyKwh = exports.energyFromPowerW = exports.projectedSocAt = exports.EPS = exports.SLOT_H = exports.IMMERSION_HARD_CONSUMER_ID = exports.IMMERSION_SOFT_CONSUMER_ID = void 0;
 const mode_policy_1 = require("../../../planner/mode_policy");
 const battery_reserve_floor_1 = require("./battery_reserve_floor");
 const next_reliable_pv_1 = require("./next_reliable_pv");
@@ -13,6 +13,7 @@ exports.IMMERSION_HARD_CONSUMER_ID = "immersion_heater";
 const optimize_weights_1 = require("./optimize_weights");
 const reason_codes_1 = require("./reason_codes");
 const vehicle_availability_1 = require("./vehicle_availability");
+const ev_energy_1 = require("./ev_energy");
 const slot_geometry_1 = require("./slot_geometry");
 exports.SLOT_H = slot_geometry_1.CANONICAL_SLOT_H;
 exports.EPS = 1e-6;
@@ -98,6 +99,8 @@ function emptySlotWork(startIso, endIso) {
         exportCt: null,
         gridAllowed: true,
         remainPvKwh: 0,
+        reservedEvKwh: 0,
+        evGridReserved: false,
     };
 }
 /**
@@ -248,6 +251,46 @@ function immersionAllocatedInSlotKwh(out, slotStartIso) {
     return sum;
 }
 exports.immersionAllocatedInSlotKwh = immersionAllocatedInSlotKwh;
+/** Wallbox Hard+Target teilen dieselbe AC-Ladeleistung pro Slot. */
+function wallboxAllocatedInSlotKwh(out, slotStartIso) {
+    let sum = 0;
+    for (const a of out) {
+        if (a.kind === "wallbox" && a.slot.startIso === slotStartIso) {
+            sum += a.allocatedEnergyKwh;
+        }
+    }
+    return sum;
+}
+exports.wallboxAllocatedInSlotKwh = wallboxAllocatedInSlotKwh;
+function wallboxGridInSlotKwh(out, slotStartIso) {
+    let sum = 0;
+    for (const a of out) {
+        if (a.kind === "wallbox" &&
+            a.slot.startIso === slotStartIso &&
+            (a.energySource === "grid" || a.energySource === "mixed")) {
+            sum += a.allocatedEnergyKwh;
+        }
+    }
+    return sum;
+}
+function batteryGridInSlotKwh(out, slotStartIso) {
+    let sum = 0;
+    for (const a of out) {
+        if (a.kind === "battery_charge" &&
+            a.slot.startIso === slotStartIso &&
+            (a.energySource === "grid" || a.energySource === "mixed")) {
+            sum += a.allocatedEnergyKwh;
+        }
+    }
+    return sum;
+}
+function alreadyAllocatedForConsumer(out, consumer, slotStartIso) {
+    if (consumer.kind === "immersion_heater")
+        return immersionAllocatedInSlotKwh(out, slotStartIso);
+    if (consumer.kind === "wallbox")
+        return wallboxAllocatedInSlotKwh(out, slotStartIso);
+    return allocatedInSlotKwh(out, consumer.consumerId, slotStartIso);
+}
 /**
  * Schreibt/merged Allocation — maximal eine Zelle pro (consumerId, slot).
  * Verhindert Runtime-„duplicate“-Rejects im Daily-Plan-Merge.
@@ -306,18 +349,56 @@ function resolveVehicleNeedKwh(input) {
     const wb = input.wallbox;
     if (!wb)
         return null;
-    if (wb.requiredEnergyKwh !== null && wb.requiredEnergyKwh > 0)
-        return wb.requiredEnergyKwh;
-    if (wb.targetSocPct !== null && wb.vehicleSocPct !== null && wb.vehicleCapacityKwh !== null) {
-        return (Math.max(0, wb.targetSocPct - wb.vehicleSocPct) / 100) * wb.vehicleCapacityKwh;
-    }
-    return wb.fallbackEnergyNeedKwh;
+    return (0, ev_energy_1.totalEvAcNeedKwh)((0, ev_energy_1.resolveEvEnergyClasses)(wb));
 }
 function wallboxImmediate(wb) {
     if (wb.batteryHoldRequested === true)
         return true;
     /** Nur Schnell/immediate → Batterie-Hold; min+PV ist PV-orientiert. */
     return wb.evccChargeMode === "now";
+}
+function applyExternalEvReservations(input, slots, reasonCodes) {
+    const wb = input.wallbox;
+    if (!wb?.externalReservations?.length)
+        return;
+    const mode = (0, ev_energy_1.evManagementFromWallbox)(wb);
+    /**
+     * EMS-Kandidat/Takeover-Kandidat belegt den Slot selbst.
+     * Reservierung gilt für andere Verbraucher nur bei externer Hoheit.
+     */
+    if ((0, ev_energy_1.evEmsAllocates)(mode))
+        return;
+    let any = false;
+    for (const slot of slots) {
+        const slotEndMs = Date.parse(slot.endIso);
+        let reserved = 0;
+        let grid = false;
+        for (const r of wb.externalReservations) {
+            const h = (0, ev_energy_1.overlapHours)(slot.startMs, slotEndMs, Date.parse(r.startIso), Date.parse(r.endIso));
+            if (h <= exports.EPS)
+                continue;
+            let e = 0;
+            if (r.powerW != null && r.powerW > 0)
+                e = (r.powerW / 1000) * h;
+            else if (r.energyKwh != null && r.energyKwh > 0) {
+                const durH = (Date.parse(r.endIso) - Date.parse(r.startIso)) / 3_600_000;
+                e = durH > 0 ? r.energyKwh * (h / durH) : 0;
+            }
+            if (e > exports.EPS || r.powerW != null) {
+                reserved += e;
+                grid = true;
+            }
+        }
+        if (reserved > exports.EPS || grid) {
+            slot.reservedEvKwh = reserved;
+            slot.evGridReserved = true;
+            any = true;
+        }
+    }
+    if (any) {
+        reasonCodes.push(reason_codes_1.REASON.VEHICLE_EXTERNAL_RESERVATION);
+        reasonCodes.push(reason_codes_1.REASON.VEHICLE_EXTERNALLY_MANAGED);
+    }
 }
 /**
  * Nicht-thermische Pflichtlasten für Opportunity-Surplus (vor next-PV / Reserve).
@@ -326,12 +407,11 @@ function wallboxImmediate(wb) {
 function hardPvConsumersFromInput(input) {
     const out = [];
     const wb = input.wallbox;
-    if (wb?.energyGoalHard) {
-        const need = resolveVehicleNeedKwh(input);
-        const loss = wb.chargeLossFactor ?? 1;
-        if (need !== null && need > exports.EPS) {
+    if (wb && (0, ev_energy_1.evEmsAllocates)((0, ev_energy_1.evManagementFromWallbox)(wb))) {
+        const classes = (0, ev_energy_1.resolveEvEnergyClasses)(wb);
+        if (classes.energyGoalHard && classes.hardRequiredEnergyKwh > exports.EPS) {
             out.push({
-                remainingKwh: need * loss,
+                remainingKwh: classes.hardRequiredEnergyKwh,
                 maxPowerW: wb.maxChargePowerW,
                 deadlineMs: wb.deadlineIso ? Date.parse(wb.deadlineIso) : Number.POSITIVE_INFINITY,
                 slotAllowed: (slotStartIso) => (0, vehicle_availability_1.vehicleSlotAllocatable)(wb, slotStartIso),
@@ -368,31 +448,51 @@ function buildConsumerStates(input, slots) {
     const nowMs = Date.parse(input.time.nowIso);
     const wb = input.wallbox;
     if (wb) {
-        const need = resolveVehicleNeedKwh(input);
-        const loss = wb.chargeLossFactor ?? 1;
-        if (need !== null && need > exports.EPS) {
-            const deadlineMs = wb.deadlineIso ? Date.parse(wb.deadlineIso) : Number.POSITIVE_INFINITY;
+        const mode = (0, ev_energy_1.evManagementFromWallbox)(wb);
+        const classes = (0, ev_energy_1.resolveEvEnergyClasses)(wb);
+        if (mode === "externally_managed") {
+            /* Reservierung separat; keine parallele EMS-EV-Energie. */
+        }
+        else if (mode === "unavailable" || classes.insufficientData) {
+            /* Keine Fake-kWh. */
+        }
+        else if ((0, ev_energy_1.evEmsAllocates)(mode)) {
             const chargeMode = wb.evccChargeMode ?? null;
             const gridOk = chargeMode !== "pv" && chargeMode !== "off";
-            out.push({
-                consumerId: "wallbox",
+            const hardDeadlineMs = wb.deadlineIso ? Date.parse(wb.deadlineIso) : Number.POSITIVE_INFINITY;
+            const base = {
                 kind: "wallbox",
-                remainingKwh: need * loss,
                 maxPowerW: wb.maxChargePowerW,
                 minPowerW: wb.minChargePowerW,
-                deadlineMs,
-                mandatory: wb.energyGoalHard,
                 gridEligible: gridOk,
                 pvFirst: chargeMode === "pv" || chargeMode === "minpv" || chargeMode === null,
-                /** Batterie-Flex oberhalb Reserve-Floor — Anteil score-/recovery-basiert, keine %-Cap. */
                 batteryEligible: chargeMode !== "off",
-                energyGoalHard: wb.energyGoalHard,
                 maxShiftHours: null,
                 earliestSlotIdx: 0,
                 thermalBeforeDeadline: false,
                 thermalSoftOnly: false,
                 slotAllowed: (slotStartIso) => (0, vehicle_availability_1.vehicleSlotAllocatable)(wb, slotStartIso),
-            });
+            };
+            if (classes.energyGoalHard && classes.hardRequiredEnergyKwh > exports.EPS) {
+                out.push({
+                    ...base,
+                    consumerId: ev_energy_1.WALLBOX_HARD_CONSUMER_ID,
+                    remainingKwh: classes.hardRequiredEnergyKwh,
+                    deadlineMs: hardDeadlineMs,
+                    mandatory: true,
+                    energyGoalHard: true,
+                });
+            }
+            if (classes.targetFlexEnergyKwh > exports.EPS) {
+                out.push({
+                    ...base,
+                    consumerId: classes.hardRequiredEnergyKwh > exports.EPS ? ev_energy_1.WALLBOX_TARGET_CONSUMER_ID : ev_energy_1.WALLBOX_HARD_CONSUMER_ID,
+                    remainingKwh: classes.targetFlexEnergyKwh,
+                    deadlineMs: Number.POSITIVE_INFINITY,
+                    mandatory: false,
+                    energyGoalHard: false,
+                });
+            }
         }
     }
     const th = input.thermal;
@@ -671,6 +771,95 @@ function peakFutureImportCt(state, fromSlotIdx) {
     return peak > 0 ? peak : 35;
 }
 /**
+ * Gemeinsame Verdrängungskosten: wenn dieser Consumer den aktuellen (günstigen)
+ * Slot nicht bekommt, wie viel Restenergie in teurere Slots kippt.
+ * Kein EV-Sonderpfad — gilt für Wallbox und Batterie-Charge.
+ */
+function gridSpillCostEur(state, consumer, slotIdx, takeKwh) {
+    const slot = state.slots[slotIdx];
+    if (!slot || slot.importCt == null)
+        return 0;
+    const leftover = Math.max(0, consumer.remainingKwh - takeKwh);
+    if (leftover <= exports.EPS)
+        return 0;
+    const maxSlotE = consumer.maxPowerW && consumer.maxPowerW > 0 ? energyFromPowerW(consumer.maxPowerW) : leftover;
+    let cheapCap = 0;
+    let expensiveCt = null;
+    for (let i = 0; i < state.slots.length; i++) {
+        if (i === slotIdx)
+            continue;
+        const s = state.slots[i];
+        if (s.startMs < state.nowMs - 60_000)
+            continue;
+        if (s.startMs >= consumer.deadlineMs)
+            continue;
+        if (!s.gridAllowed || s.importCt == null)
+            continue;
+        if (s.evGridReserved && consumer.kind !== "wallbox")
+            continue;
+        if (consumer.slotAllowed && !consumer.slotAllowed(s.startIso))
+            continue;
+        if (s.importCt <= slot.importCt + 1e-6)
+            cheapCap += maxSlotE;
+        else
+            expensiveCt = expensiveCt == null ? s.importCt : Math.min(expensiveCt, s.importCt);
+    }
+    const spill = Math.max(0, leftover - cheapCap);
+    if (spill <= exports.EPS)
+        return 0;
+    /*
+     * Teurere Slots vor der Deadline: echte Verdrängung.
+     * Keine teureren Slots mehr vor der Deadline (Rest wäre unplatziert):
+     * Peak-Import im Horizont als implizite Fehlmengen-/Opportunitätskosten —
+     * sonst wäre ein harter Batterie-/EV-Slot gegen weiche große Chunks unsichtbar.
+     */
+    let displCt = expensiveCt;
+    if (displCt == null) {
+        const peak = peakFutureImportCt(state, slotIdx);
+        if (peak > slot.importCt + 1e-6)
+            displCt = peak;
+    }
+    if (displCt == null)
+        return 0;
+    return (spill * (displCt - slot.importCt)) / 100;
+}
+function laterCheapestGridCt(state, consumer, fromSlotIdx) {
+    let minCt = null;
+    for (let i = 0; i < state.slots.length; i++) {
+        if (i === fromSlotIdx)
+            continue;
+        const s = state.slots[i];
+        if (s.startMs < state.nowMs - 60_000)
+            continue;
+        if (s.startMs >= consumer.deadlineMs)
+            continue;
+        if (!s.gridAllowed || s.importCt == null)
+            continue;
+        if (s.evGridReserved && consumer.kind !== "wallbox")
+            continue;
+        if (consumer.slotAllowed && !consumer.slotAllowed(s.startIso))
+            continue;
+        minCt = minCt == null ? s.importCt : Math.min(minCt, s.importCt);
+    }
+    return minCt;
+}
+/**
+ * Soft + grid-fähig: PV jetzt verbraucht Export, obwohl später billigeres Netz existiert.
+ * Volume-Push (e×priority) darf das nicht überstimmen — gilt für Wallbox und Batterie-Charge.
+ */
+function softPvDeferToCheaperGridDelta(state, consumer, slot, slotIdx, energyKwh, priority, weights) {
+    if (consumer.energyGoalHard || !consumer.gridEligible)
+        return 0;
+    if (slot.exportCt == null)
+        return 0;
+    const laterGridCt = laterCheapestGridCt(state, consumer, slotIdx);
+    if (laterGridCt == null || !(slot.exportCt > laterGridCt + 1e-6))
+        return 0;
+    const oppEur = energyKwh * ((slot.exportCt - laterGridCt) / 100) * weights.costWeight * 2.8;
+    const volumePush = energyKwh * priority * 0.38;
+    return -(oppEur + volumePush);
+}
+/**
  * Opportunity-Kosten einer Batterie-kWh jetzt (zeitabhängig bis PV-Recovery):
  * Ersatzkosten bis Recovery (niedrig bei starker PV, hoch bei Knappheit) + Roundtrip + Zyklus.
  * Verhindert „Batterie für Klima → PV exportieren“-Arbitrage, erlaubt aber Flex-Einsatz
@@ -795,6 +984,9 @@ function scoreCandidate(input, state, candidate, weights) {
     }
     if (state.batteryHold && candidate.kind === "battery_charge")
         return -Infinity;
+    if (candidate.source === "grid" && candidate.kind === "battery_charge" && slot.evGridReserved) {
+        return -Infinity;
+    }
     if (candidate.kind === "immersion_heater" &&
         candidate.source !== "pv_surplus" &&
         candidate.source !== "battery") {
@@ -808,7 +1000,7 @@ function scoreCandidate(input, state, candidate, weights) {
     const urg = slotUrgency(consumer.deadlineMs, slotMs, horizonH);
     let priority = 0.85;
     if (candidate.kind === "wallbox") {
-        priority = consumer.energyGoalHard ? 4.2 * weights.vehicleUrgencyBoost : 2.4 * weights.vehicleUrgencyBoost;
+        priority = consumer.energyGoalHard ? 4.2 * weights.vehicleUrgencyBoost : 1.15 * weights.vehicleUrgencyBoost;
     }
     else if (candidate.kind === "climate" && consumer.mandatory) {
         priority = 2.6 * weights.comfortWeight;
@@ -851,16 +1043,22 @@ function scoreCandidate(input, state, candidate, weights) {
     if (candidate.kind === "wallbox") {
         const pvRem = pvBeforeDeadlineKwh(state, consumer.deadlineMs, consumer.slotAllowed);
         const safePv = pvRem * state.pvConfidence;
-        if (candidate.source === "grid" && state.pvConfidence >= 0.7 && safePv + exports.EPS >= consumer.remainingKwh) {
+        if (consumer.energyGoalHard &&
+            candidate.source === "grid" &&
+            state.pvConfidence >= 0.7 &&
+            safePv + exports.EPS >= consumer.remainingKwh) {
             score -= e * 4.5 * weights.costWeight;
         }
         else if (candidate.source === "grid" && state.pvConfidence >= 0.7 && safePv > exports.EPS) {
             score -= e * Math.max(0, consumer.remainingKwh - safePv) * 0.05 * weights.costWeight;
         }
         if (candidate.source === "pv_surplus") {
-            score += e * 0.55 * weights.pvOpportunityWeight;
-            if (pvRem > exports.EPS)
-                score += e * 0.25;
+            if (consumer.energyGoalHard) {
+                score += e * 0.55 * weights.pvOpportunityWeight;
+                if (pvRem > exports.EPS)
+                    score += e * 0.25;
+            }
+            score += softPvDeferToCheaperGridDelta(state, consumer, slot, candidate.slotIdx, e, priority, weights);
         }
         if (consumer.energyGoalHard && state.pvConfidence < 0.7 && candidate.source === "grid") {
             score += e * (0.7 - state.pvConfidence) * weights.deadlineWeight * 0.35;
@@ -868,10 +1066,11 @@ function scoreCandidate(input, state, candidate, weights) {
         /** Netzbedarf: günstige Slots stark bevorzugen (marginale ct). */
         if (candidate.source === "grid" && slot.importCt !== null) {
             const deficit = Math.max(0, consumer.remainingKwh - safePv);
-            if (deficit > exports.EPS || state.pvConfidence < 0.7) {
+            if (consumer.energyGoalHard && (deficit > exports.EPS || state.pvConfidence < 0.7)) {
                 score += e * 1.1 * weights.deadlineWeight;
             }
             score -= e * (slot.importCt / 100) * weights.costWeight * 2.8;
+            score += gridSpillCostEur(state, consumer, candidate.slotIdx, e) * weights.costWeight * 2.2;
         }
     }
     if (candidate.kind === "immersion_heater") {
@@ -1028,8 +1227,14 @@ function scoreCandidate(input, state, candidate, weights) {
             if (pvRatio < 0.5)
                 score -= e * (weights.batterySurplusMinFactor - 1) * 0.12;
         }
+        if (candidate.source === "pv_surplus") {
+            score += softPvDeferToCheaperGridDelta(state, consumer, slot, candidate.slotIdx, e, priority, weights);
+        }
         if (candidate.source === "grid" && socBefore >= state.reserveKwh - exports.EPS) {
             score -= e * 0.06 * weights.costWeight;
+        }
+        if (candidate.source === "grid") {
+            score += gridSpillCostEur(state, consumer, candidate.slotIdx, e) * weights.costWeight * 2.2;
         }
     }
     if (candidate.source === "grid" && candidate.kind !== "wallbox") {
@@ -1057,18 +1262,24 @@ function reasonCodesForCandidate(input, candidate, state, wbPresenceCodes) {
     const slot = state.slots[candidate.slotIdx];
     if (candidate.kind === "wallbox") {
         codes.push(reason_codes_1.REASON.VEHICLE_PRESENCE_REQUIRED);
+        if (!candidate.mandatory)
+            codes.push(reason_codes_1.REASON.VEHICLE_TARGET_SOFT);
         if (candidate.source === "pv_surplus") {
             codes.push(reason_codes_1.REASON.PV_EXPECTED_BEFORE_DEADLINE, reason_codes_1.REASON.PV_SURPLUS_AVAILABLE, reason_codes_1.REASON.VEHICLE_PV_WINDOW_AVAILABLE);
             codes.push(...wbPresenceCodes.filter((c) => /predicted|explicit|available_now/.test(c)));
         }
         if (candidate.source === "grid") {
-            codes.push(reason_codes_1.REASON.VEHICLE_DEADLINE_REQUIRED, reason_codes_1.REASON.VEHICLE_IMPORT_WINDOW_AVAILABLE);
+            codes.push(reason_codes_1.REASON.VEHICLE_IMPORT_WINDOW_AVAILABLE);
+            if (candidate.mandatory)
+                codes.push(reason_codes_1.REASON.VEHICLE_DEADLINE_REQUIRED);
             codes.push(candidate.conservativeGrid || state.pvConfidence < 0.7
                 ? reason_codes_1.REASON.GRID_IMPORT_CONSERVATIVE_DEADLINE
                 : reason_codes_1.REASON.GRID_IMPORT_COST_OPTIMAL);
         }
         if (candidate.source === "battery") {
-            codes.push(reason_codes_1.REASON.BATTERY_FROM_RESERVE_FLEX, reason_codes_1.REASON.VEHICLE_DEADLINE_REQUIRED);
+            codes.push(reason_codes_1.REASON.BATTERY_FROM_RESERVE_FLEX);
+            if (candidate.mandatory)
+                codes.push(reason_codes_1.REASON.VEHICLE_DEADLINE_REQUIRED);
         }
     }
     if (candidate.kind === "immersion_heater") {
@@ -1144,9 +1355,7 @@ function generateCandidatesForConsumer(input, state, consumer, slotIdx, wbPresen
         input.preferImmersionLiveSurplusNow !== true) {
         return [];
     }
-    const already = consumer.kind === "immersion_heater"
-        ? immersionAllocatedInSlotKwh(allocations, slot.startIso)
-        : allocatedInSlotKwh(allocations, consumer.consumerId, slot.startIso);
+    const already = alreadyAllocatedForConsumer(allocations, consumer, slot.startIso);
     if (consumer.maxPowerW !== null && consumer.maxPowerW > 0) {
         const headroom = energyFromPowerW(consumer.maxPowerW) - already;
         if (headroom <= exports.EPS)
@@ -1167,7 +1376,11 @@ function generateCandidatesForConsumer(input, state, consumer, slotIdx, wbPresen
     if (slot.remainPvKwh > exports.EPS)
         sources.push("pv_surplus");
     if (consumer.gridEligible && slot.gridAllowed && slot.importCt !== null) {
-        sources.push("grid");
+        const mutexBattery = consumer.kind === "wallbox" && batteryGridInSlotKwh(allocations, slot.startIso) > exports.EPS;
+        const mutexEv = consumer.kind === "battery_charge" &&
+            (slot.evGridReserved || wallboxGridInSlotKwh(allocations, slot.startIso) > exports.EPS);
+        if (!mutexBattery && !mutexEv)
+            sources.push("grid");
     }
     const batFloor = dischargeFloorKwh(state, slotIdx);
     const usableBat = (0, battery_reserve_floor_1.usableBatteryEnergyKwh)(projectedSocAt(state, slotIdx), batFloor, state.dischargeEff);
@@ -1195,8 +1408,13 @@ function generateCandidatesForConsumer(input, state, consumer, slotIdx, wbPresen
         sources.length = 0;
         if (slot.remainPvKwh > exports.EPS && state.modePolicy.allowPvCharge)
             sources.push("pv_surplus");
-        if (consumer.gridEligible && slot.gridAllowed && slot.importCt !== null)
+        if (consumer.gridEligible &&
+            slot.gridAllowed &&
+            slot.importCt !== null &&
+            !slot.evGridReserved &&
+            wallboxGridInSlotKwh(allocations, slot.startIso) <= exports.EPS) {
             sources.push("grid");
+        }
     }
     for (const source of sources) {
         let take = chunk;
@@ -1252,9 +1470,7 @@ function applyCandidate(state, candidate, allocations) {
     const consumer = state.consumers.find((c) => c.consumerId === candidate.consumerId);
     if (!consumer)
         return false;
-    const already = candidate.kind === "immersion_heater"
-        ? immersionAllocatedInSlotKwh(allocations, slot.startIso)
-        : allocatedInSlotKwh(allocations, candidate.consumerId, slot.startIso);
+    const already = alreadyAllocatedForConsumer(allocations, consumer, slot.startIso);
     let e = candidate.energyKwh;
     if (candidate.maxPowerW !== null && candidate.maxPowerW > 0) {
         e = Math.min(e, Math.max(0, energyFromPowerW(candidate.maxPowerW) - already));
@@ -1280,6 +1496,15 @@ function applyCandidate(state, candidate, allocations) {
         state.socDeltaBySlot[candidate.slotIdx] =
             (state.socDeltaBySlot[candidate.slotIdx] ?? 0) - draw;
         syncFinalSoc(state);
+    }
+    else if (candidate.source === "grid") {
+        if (candidate.kind === "wallbox" && batteryGridInSlotKwh(allocations, slot.startIso) > exports.EPS) {
+            return false;
+        }
+        if (candidate.kind === "battery_charge" &&
+            (slot.evGridReserved || wallboxGridInSlotKwh(allocations, slot.startIso) > exports.EPS)) {
+            return false;
+        }
     }
     if (e <= exports.EPS)
         return false;
@@ -1310,6 +1535,9 @@ function applyCandidate(state, candidate, allocations) {
             (state.socDeltaBySlot[candidate.slotIdx] ?? 0) + storedClamped;
         syncFinalSoc(state);
     }
+    if (candidate.kind === "wallbox" && candidate.source === "grid") {
+        slot.evGridReserved = true;
+    }
     consumer.remainingKwh = Math.max(0, consumer.remainingKwh - e);
     dropSubMinRemainder([consumer]);
     return true;
@@ -1318,39 +1546,53 @@ function buildGoals(input, state, reasonCodes) {
     const goals = [];
     const wb = input.wallbox;
     if (wb) {
-        const wc = state.consumers.find((c) => c.consumerId === "wallbox");
+        const mode = (0, ev_energy_1.evManagementFromWallbox)(wb);
         const need = resolveVehicleNeedKwh(input);
-        if (need === null || need <= exports.EPS) {
+        const remaining = state.consumers
+            .filter((c) => c.kind === "wallbox")
+            .reduce((a, c) => a + c.remainingKwh, 0);
+        if (mode === "externally_managed") {
             goals.push({
                 consumerId: "wallbox",
                 goalId: "energy",
                 met: true,
-                detailDe: "Kein Fahrzeug-Energiebedarf.",
+                detailDe: "Fahrzeug extern verwaltet — kein konkurrierender EMS-Ladeplan.",
+            });
+        }
+        else if (mode === "unavailable" || need === null || need <= exports.EPS) {
+            goals.push({
+                consumerId: "wallbox",
+                goalId: "energy",
+                met: true,
+                detailDe: mode === "unavailable"
+                    ? "Fahrzeug nicht verfügbar — keine EV-Planung."
+                    : "Kein Fahrzeug-Energiebedarf.",
             });
         }
         else {
             const feasibility = (0, vehicle_availability_1.evaluateVehicleGoalFeasibility)(input);
             for (const c of feasibility.reasonCodes)
                 reasonCodes.push(c);
-            const remaining = wc?.remainingKwh ?? need * (wb.chargeLossFactor ?? 1);
+            const classes = (0, ev_energy_1.resolveEvEnergyClasses)(wb);
             const met = feasibility.status === "unreachable"
                 ? false
                 : feasibility.status === "at_risk" || feasibility.status === "at_risk_unknown"
                     ? null
                     : remaining <= 0.05;
+            const prefix = mode === "takeover_candidate" ? "Takeover-Kandidat: " : "";
             goals.push({
                 consumerId: "wallbox",
-                goalId: "energy_deadline",
+                goalId: classes.energyGoalHard ? "energy_deadline" : "energy",
                 met,
                 detailDe: feasibility.status === "unreachable"
-                    ? `Fahrzeugziel physisch unerreichbar (max ~${feasibility.maxFeasibleEnergyKwh.toFixed(2)} kWh).`
+                    ? `${prefix}Fahrzeugziel physisch unerreichbar (max ~${feasibility.maxFeasibleEnergyKwh.toFixed(2)} kWh).`
                     : feasibility.status === "at_risk_unknown"
-                        ? "Fahrzeugziel unsicher wegen unknown Presence."
+                        ? `${prefix}Fahrzeugziel unsicher wegen unknown Presence.`
                         : feasibility.status === "at_risk"
-                            ? "Fahrzeugziel abhängig von predicted Presence."
+                            ? `${prefix}Fahrzeugziel abhängig von predicted Presence.`
                             : remaining <= 0.05
-                                ? "Fahrzeugziel im Plan gedeckt."
-                                : `Fahrzeugziel unvollständig, Rest ~${remaining.toFixed(2)} kWh.`,
+                                ? `${prefix}Fahrzeugziel im Plan gedeckt.`
+                                : `${prefix}Fahrzeugziel unvollständig, Rest ~${remaining.toFixed(2)} kWh.`,
             });
         }
     }
@@ -1572,7 +1814,16 @@ function runScoreBasedAllocation(input, slots, opts) {
     if (wb) {
         for (const c of wbPresenceCodes)
             reasonCodes.push(c);
+        const mode = (0, ev_energy_1.evManagementFromWallbox)(wb);
+        if (mode === "externally_managed")
+            reasonCodes.push(reason_codes_1.REASON.VEHICLE_EXTERNALLY_MANAGED);
+        if (mode === "takeover_candidate")
+            reasonCodes.push(reason_codes_1.REASON.VEHICLE_TAKEOVER_CANDIDATE);
+        if (mode === "ems_candidate" && !(0, ev_energy_1.resolveEvEnergyClasses)(wb).energyGoalHard) {
+            reasonCodes.push(reason_codes_1.REASON.VEHICLE_TARGET_SOFT);
+        }
     }
+    applyExternalEvReservations(input, slots, reasonCodes);
     const th = input.thermal;
     if (th?.emptyAtSource === "estimated")
         reasonCodes.push(reason_codes_1.REASON.THERMAL_EMPTY_AT_ESTIMATED);
@@ -1680,6 +1931,10 @@ function runScoreBasedAllocation(input, slots, opts) {
     if (allocations.some((a) => a.energySource === "battery" ||
         (a.energySource === "mixed" && a.kind !== "battery_charge"))) {
         reasonCodes.push(reason_codes_1.REASON.BATTERY_FROM_RESERVE_FLEX);
+    }
+    if (state.consumers.some((c) => c.kind === "battery_charge") &&
+        slots.some((s) => s.evGridReserved)) {
+        reasonCodes.push(reason_codes_1.REASON.VEHICLE_GRID_MUTEX_BATTERY);
     }
     const goals = buildGoals(input, state, reasonCodes);
     return {

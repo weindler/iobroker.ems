@@ -7,19 +7,21 @@ const ensure_states_1 = require("../../../addons/battery/ensure_states");
 const intent_read_1 = require("../../../addons/battery/runtime/intent_read");
 const ensure_evcc_states_1 = require("../../../addons/wallbox/ensure_evcc_states");
 const states_1 = require("../../../addons/wallbox/runtime/states");
+const ensure_states_2 = require("../../../addons/wallbox/ev_foundation/ensure_states");
+const config_2 = require("../../../addons/wallbox/ev_foundation/config");
 const evcc_config_1 = require("../../../addons/wallbox/evcc_config");
 const vehicle_map_1 = require("../../../addons/wallbox/vehicle_map");
-const config_2 = require("../../../intent/config");
+const config_3 = require("../../../intent/config");
 const device_config_1 = require("../../../addons/immersion_heater/device_config");
 const hygiene_1 = require("../../../addons/immersion_heater/hygiene");
 const types_1 = require("../../../addons/immersion_heater/runtime/types");
 const flex_demand_1 = require("./flex_demand");
-const config_3 = require("../../../addons/air_conditioning/config");
+const config_4 = require("../../../addons/air_conditioning/config");
 const constants_1 = require("../../../addons/air_conditioning/constants");
-const ensure_states_2 = require("../../../addons/air_conditioning/runtime/ensure_states");
+const ensure_states_3 = require("../../../addons/air_conditioning/runtime/ensure_states");
 const governance_1 = require("../../../addons/governance");
-const ensure_states_3 = require("../../../addons/governance/ensure_states");
-const config_4 = require("../../../learning/weather/config");
+const ensure_states_4 = require("../../../addons/governance/ensure_states");
+const config_5 = require("../../../learning/weather/config");
 const consumer_stats_1 = require("../../../learning/consumer_stats");
 const persist_1 = require("../../../learning/consumer_stats/persist");
 const constants_2 = require("../../../learning/pv_horizon/constants");
@@ -28,7 +30,7 @@ const execution_mode_1 = require("../../../execution_mode");
 const mode_policy_1 = require("../../../planner/mode_policy");
 const intent_read_2 = require("../../../addons/immersion_heater/runtime/intent_read");
 const time_1 = require("../../time");
-const config_5 = require("../../../intent/config");
+const config_6 = require("../../../intent/config");
 const house_load_1 = require("../house_load");
 const read_1 = require("../read");
 const build_1 = require("./build");
@@ -84,7 +86,7 @@ async function readConsumerStats(host) {
     }
 }
 async function readOutdoorTempC(host) {
-    const weather = (0, config_4.weatherConfigFromAdapter)(host.config);
+    const weather = (0, config_5.weatherConfigFromAdapter)(host.config);
     const tempMetric = weather.metrics.temp;
     if (!tempMetric)
         return null;
@@ -122,7 +124,7 @@ async function readBoilerLearningSignal(host, now) {
     return readVesselLearningSignal(host, now, "learning.thermal_boiler");
 }
 async function readVesselLearningSignal(host, now, base) {
-    const timezone = (0, config_5.intentAdminConfigFromAdapter)(host.config).timezone || "Europe/Berlin";
+    const timezone = (0, config_6.intentAdminConfigFromAdapter)(host.config).timezone || "Europe/Berlin";
     const [rawStatus, rawHealth, samples, coolingRateCPerHAvg, coolingConstantPerH, coolingAsymptoteC, estimatedRemainingHours, estimatedEmptyAtRaw, byDayTypeJsonRaw,] = await Promise.all([
         readStr(host, `${base}.status`),
         readStr(host, `${base}.health`),
@@ -177,7 +179,7 @@ async function readBatteryLearningSignal(host) {
  * dem Forecast Plan, siehe `src/ems_light/tick.ts`).
  */
 async function readBatteryChargeLogicDecision(host, now, socPct, governanceEnabled, modePolicy) {
-    const timezone = (0, config_5.intentAdminConfigFromAdapter)(host.config).timezone;
+    const timezone = (0, config_6.intentAdminConfigFromAdapter)(host.config).timezone;
     const [correctedTodayKwh, correctedTomorrowKwh, pvConfidence, forecastTodayRaw, forecastTomorrowRaw, forecastHorizonRaw, snowCoverSuspected,] = await Promise.all([
         readNum(host, "learning.pv_bias.corrected_today_kwh"),
         readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
@@ -231,7 +233,7 @@ async function readBatteryChargeLogicDecision(host, now, socPct, governanceEnabl
 }
 async function collectFlexibleContributions(host, now, gridForecast) {
     const config = host.config;
-    const timezone = (0, config_5.intentAdminConfigFromAdapter)(config).timezone || "Europe/Berlin";
+    const timezone = (0, config_6.intentAdminConfigFromAdapter)(config).timezone || "Europe/Berlin";
     const globalModeRaw = await readStr(host, "global_modes.active");
     const modePolicy = (0, mode_policy_1.plannerModePolicyFromGlobalMode)(globalModeRaw);
     const globalModeOff = modePolicy.mode === "off";
@@ -283,7 +285,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
         readNum(host, "learning.pv_bias.corrected_today_kwh"),
         readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
         readStr(host, "learning.pv_bias.status"),
-        readBool(host, (0, ensure_states_3.addonGovernanceAiAllowedState)("immersion_heater")),
+        readBool(host, (0, ensure_states_4.addonGovernanceAiAllowedState)("immersion_heater")),
         readOutdoorTempC(host),
         readNum(host, "learning.weather.horizon.day1.max_temp_c"),
         readStr(host, "learning.house_load.forecast_today_json"),
@@ -302,6 +304,16 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     const relayMapped = immersionConfig.stages.some((s) => s.enabled && s.setStateId.trim() !== "");
     const evccCfg = (0, evcc_config_1.wallboxEvccTelemetryConfigFromAdapter)(config);
     const evccConfigured = evccCfg.enabledStateId.trim().length > 0;
+    const evFoundation = (0, config_2.evFoundationConfigFromAdapter)(config);
+    const [energyToTargetKwh, energyToDepartureMinimumKwh, externalAuthorityState, takeoverSeverity, externalSmartPlanJson, externalPlanQuality, externalMinSocPct,] = await Promise.all([
+        readNum(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.energyToTargetKwh),
+        readNum(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.energyToDepartureMinimumKwh),
+        readStr(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.externalAuthorityState),
+        readStr(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.takeoverSeverity),
+        readStr(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.externalSmartPlanJson),
+        readStr(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.externalSourceQuality),
+        readNum(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.externalMinSocPct),
+    ]);
     let remainingEnergyKwh = chargeRemainingKwh !== null && Number.isFinite(chargeRemainingKwh)
         ? Math.max(0, chargeRemainingKwh)
         : null;
@@ -323,14 +335,14 @@ async function collectFlexibleContributions(host, now, gridForecast) {
         ? mapEntry.maxAcChargePowerW
         : null;
     let fallbackTargetSocPct = null;
-    const intentEvcc = (0, config_2.intentEvccConfigFromAdapter)(config);
+    const intentEvcc = (0, config_3.intentEvccConfigFromAdapter)(config);
     if (intentEvcc.targetSocStateId) {
         fallbackTargetSocPct = await readForeignNum(host, intentEvcc.targetSocStateId);
         if (fallbackTargetSocPct !== null && !(fallbackTargetSocPct > 0 && fallbackTargetSocPct <= 100)) {
             fallbackTargetSocPct = null;
         }
     }
-    const acConfig = (0, config_3.acGlobalConfigFromAdapter)(config);
+    const acConfig = (0, config_4.acGlobalConfigFromAdapter)(config);
     const stats = await readConsumerStats(host);
     const thermalLearning = await readThermalLearningSignal(host, now);
     const boilerLearning = await readBoilerLearningSignal(host, now);
@@ -371,7 +383,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     const acUnits = await Promise.all(Array.from({ length: constants_1.AC_UNIT_COUNT }, async (_, i) => {
         const index = i + 1;
         const unit = acConfig.units.find((u) => u.index === index);
-        const ids = (0, ensure_states_2.acUnitRuntimeStates)(index);
+        const ids = (0, ensure_states_3.acUnitRuntimeStates)(index);
         const [roomTempC, roomHumidityPct, faultState, cleaningActive] = await Promise.all([
             readNum(host, ids.roomTempC),
             readNum(host, ids.roomHumidityPct),
@@ -441,10 +453,20 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             vehicleMaxAcChargePowerW,
             effectiveLimitSocPct: effectiveLimitSoc,
             fallbackTargetSocPct,
-            deadlineIso: validIsoDeadline(deadlineRaw),
+            deadlineIso: validIsoDeadline(evFoundation.departureAt) ?? validIsoDeadline(deadlineRaw),
             activePhases,
             maxCurrentA,
             evccConfigured,
+            minimumDepartureSocPct: evFoundation.minimumDepartureSocPct,
+            departureAt: validIsoDeadline(evFoundation.departureAt),
+            chargingEfficiency: evFoundation.chargingEfficiency,
+            energyToTargetKwh,
+            energyToDepartureMinimumKwh,
+            externalSmartChargingMinSocPct: externalMinSocPct,
+            externalAuthorityState,
+            takeoverSeverity,
+            externalSmartPlanJson,
+            externalPlanQuality,
         },
         immersion: {
             now,

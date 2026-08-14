@@ -1,7 +1,8 @@
 /**
- * Neutral EV data model V1 (Phase 1 foundation).
+ * Neutral EV data model V1.
  * Planner later consumes these fields and capabilities only — never Ford/Tibber/HA state IDs.
- * No takeover / external-control transition logic in this phase.
+ * Phase 3 may overlay diagnostic takeover fields; preparedEvState stays the EVCC mapping.
+ * emsTakeoverActive remains false until a later phase explicitly enables writes.
  */
 
 import type { EvSmartPlanSlot, ExternalSourceQuality } from "./external/types";
@@ -26,6 +27,21 @@ export const EV_TAKEOVER_REASONS = [
 ] as const;
 
 export type EvTakeoverReason = (typeof EV_TAKEOVER_REASONS)[number];
+
+export const EV_EXTERNAL_AUTHORITY_STATES = [
+	"inactive",
+	"active",
+	"planned",
+	"active_without_plan",
+	"unavailable",
+	"unknown",
+] as const;
+
+export type EvExternalAuthorityState = (typeof EV_EXTERNAL_AUTHORITY_STATES)[number];
+
+export const EV_TAKEOVER_SEVERITIES = ["none", "observe", "recommended", "required"] as const;
+
+export type EvTakeoverSeverity = (typeof EV_TAKEOVER_SEVERITIES)[number];
 
 export const EV_EXTERNAL_CONTROL_TYPES = ["none", "vehicle", "wallbox", "unknown"] as const;
 
@@ -69,6 +85,8 @@ export interface EvModelV1 {
 	phasesActive: number | null;
 	maxCurrentA: number | null;
 	minCurrentA: number | null;
+	effectiveMaxCurrentA: number | null;
+	offeredCurrentA: number | null;
 	vehicleSocPct: number | null;
 	targetSocPct: number | null;
 	minimumDepartureSocPct: number | null;
@@ -95,6 +113,12 @@ export interface EvModelV1 {
 	manualOverrideActive: boolean | null;
 	emsTakeoverActive: boolean;
 	preparedEvState: EvModuleState;
+	/** Diagnostic only — never executed in Phase 3. preparedEvState stays the EVCC mapping. */
+	recommendedEvState: EvModuleState;
+	externalAuthorityState: EvExternalAuthorityState;
+	takeoverSeverity: EvTakeoverSeverity;
+	takeoverRecommended: boolean;
+	takeoverRequired: boolean;
 	takeoverReason: EvTakeoverReason | null;
 	vehicleDetectionActive: boolean | null;
 	dataQuality: EvDataQuality;

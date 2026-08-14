@@ -323,7 +323,7 @@ export const STATE_SURFACE_FAMILIES: StateSurfaceFamily[] = [
 		id: "wallbox",
 		label: "Wallbox runtime / status / EVCC / mapping",
 		idPattern: "addons.wallbox.* (excl. vehicles)",
-		estimatedStaticCount: 200,
+		estimatedStaticCount: 220,
 		dataTypes: ["string", "number", "boolean"],
 		readWrite: "mixed",
 		producer: "addons/wallbox/*ensure*",
@@ -341,6 +341,7 @@ export const STATE_SURFACE_FAMILIES: StateSurfaceFamily[] = [
 			"addons.wallbox.status.ev_foundation.capabilities_json",
 			"addons.wallbox.status.ev_foundation.external_smart_plan_json",
 			"addons.wallbox.status.ev_foundation.external_raw_diagnostics_json",
+			"addons.wallbox.status.ev_foundation.takeover_decision_json",
 		],
 	},
 	{

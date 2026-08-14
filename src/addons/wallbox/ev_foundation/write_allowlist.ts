@@ -78,7 +78,7 @@ export function isPlannerWriteTaboo(stateId: string): boolean {
 	return classifyEvccPlannerWriteTarget(stateId) === "taboo";
 }
 
-/** Phase 1+2: no new productive planner writes are issued. */
+/** Phase 1–3: no new productive planner writes are issued. */
 export const EV_FOUNDATION_PHASE1_PLANNER_WRITES_ENABLED = false;
 export const EV_FOUNDATION_PLANNER_WRITES_ENABLED = EV_FOUNDATION_PHASE1_PLANNER_WRITES_ENABLED;
 

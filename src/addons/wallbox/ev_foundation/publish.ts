@@ -3,6 +3,7 @@ import { setOptionalNumberIfChanged, setStateIfChanged } from "../../../policy/c
 import type { EvCapabilities, EvModelV1 } from "./types";
 import { WALLBOX_EV_FOUNDATION_STATES } from "./ensure_states";
 import { emptySmartPlanEval, type ExternalEvInformation } from "./external/types";
+import type { EvTakeoverDecision } from "./decision/types";
 
 function boolOrNull(v: boolean | null): boolean | null {
 	return v === true || v === false ? v : null;
@@ -14,6 +15,7 @@ export async function publishEvFoundationDiagnosis(
 	capabilities: EvCapabilities,
 	observedAt: string,
 	external?: ExternalEvInformation | null,
+	decision?: EvTakeoverDecision | null,
 ): Promise<void> {
 	const plan = external?.smartPlan ?? emptySmartPlanEval();
 	await setStateIfChanged(host, WALLBOX_EV_FOUNDATION_STATES.evccReachable, capabilities.evccAvailable);
@@ -203,6 +205,96 @@ export async function publishEvFoundationDiagnosis(
 	);
 	await setStateIfChanged(host, WALLBOX_EV_FOUNDATION_STATES.preparedEvState, model.preparedEvState);
 	await setStateIfChanged(host, WALLBOX_EV_FOUNDATION_STATES.takeoverReason, model.takeoverReason ?? "");
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.externalAuthorityState,
+		decision?.externalAuthorityState ?? model.externalAuthorityState,
+	);
+	await setOptionalNumberIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.energyToTargetKwh,
+		decision?.energyToTargetKWh ?? null,
+	);
+	await setOptionalNumberIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.energyToDepartureMinimumKwh,
+		decision?.energyToDepartureMinimumKWh ?? null,
+	);
+	await setOptionalNumberIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.requiredChargingMinutes,
+		decision?.requiredChargingMinutes ?? null,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.latestRequiredStart,
+		decision?.latestRequiredStart ?? "",
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.deadlineRisk,
+		boolOrNull(decision?.deadlineRisk ?? null) as ioBroker.StateValue,
+	);
+	await setOptionalNumberIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.externalPlanExpectedSocGainPct,
+		decision?.externalPlanExpectedSocGainPct ?? null,
+	);
+	await setOptionalNumberIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.externalPlanExpectedFinalSocPct,
+		decision?.externalPlanExpectedFinalSocPct ?? null,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.externalPlanCoversTarget,
+		boolOrNull(decision?.externalPlanCoversTarget ?? null) as ioBroker.StateValue,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.externalPlanCoversDepartureMinimum,
+		boolOrNull(decision?.externalPlanCoversDepartureMinimum ?? null) as ioBroker.StateValue,
+	);
+	await setOptionalNumberIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.remainingFeasibleEnergyKwh,
+		decision?.remainingFeasibleEnergyKWh ?? null,
+	);
+	await setOptionalNumberIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.remainingCheapEnergyKwh,
+		decision?.remainingCheapEnergyKWh ?? null,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.economicWindowLossRisk,
+		boolOrNull(decision?.economicWindowLossRisk ?? null) as ioBroker.StateValue,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.takeoverRecommended,
+		decision?.takeoverRecommended === true,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.takeoverRequired,
+		decision?.takeoverRequired === true,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.takeoverSeverity,
+		decision?.takeoverSeverity ?? model.takeoverSeverity,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.recommendedEvState,
+		decision?.recommendedEvState ?? model.recommendedEvState,
+	);
+	await setStateIfChanged(
+		host,
+		WALLBOX_EV_FOUNDATION_STATES.takeoverDecisionJson,
+		JSON.stringify(decision?.explain ?? { phase: "decision_diagnostic_only", pending: decision == null }),
+	);
 	await setStateIfChanged(host, WALLBOX_EV_FOUNDATION_STATES.dataQuality, model.dataQuality);
 	await setStateIfChanged(host, WALLBOX_EV_FOUNDATION_STATES.modelJson, JSON.stringify(model));
 	await setStateIfChanged(host, WALLBOX_EV_FOUNDATION_STATES.updatedAt, observedAt);

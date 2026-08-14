@@ -1,6 +1,6 @@
 /**
- * EVCC mode-control variants (v0.1.274).
- * buttons = current ioBroker/EVCC interface; pv_control and string_mode remain legacy.
+ * EVCC mode-control variants (v0.1.275).
+ * buttons = current recommended ioBroker/EVCC interface; pv_control and string_mode remain legacy.
  * Diagnosis only — no live writes in this phase.
  */
 
@@ -9,6 +9,7 @@ import { WB_EVCC_LOADPOINT_MODE } from "./evcc_config";
 import {
 	evccControlTargetForRole,
 	evccModeChargeValue,
+	evccModeHoldValue,
 	EVCC_BUTTON_SUFFIXES,
 	EVCC_CONTROL_V1_SUFFIXES,
 	matchesEvccControlSuffix,
@@ -138,12 +139,24 @@ export interface EvccModeControlContract {
 	detail: Record<string, unknown>;
 }
 
+function compactRecord(input: Record<string, unknown>): Record<string, unknown> {
+	const out: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(input)) {
+		if (value === null || value === undefined || value === "" || value === false) continue;
+		if (typeof value === "object" && !Array.isArray(value) && Object.keys(value as object).length === 0) {
+			continue;
+		}
+		out[key] = value;
+	}
+	return out;
+}
+
 function autoDetectVariant(input: {
-	anyButtonMapped: boolean;
+	buttonsComplete: boolean;
 	pvControlMapped: boolean;
 	stringModeComplete: boolean;
 }): EvccModeControlVariant {
-	if (input.anyButtonMapped) return "buttons";
+	if (input.buttonsComplete) return "buttons";
 	if (input.pvControlMapped) return "pv_control";
 	if (input.stringModeComplete) return "string_mode";
 	return "buttons";
@@ -166,21 +179,19 @@ export function resolveEvccModeControlContract(config: unknown): EvccModeControl
 		min: Boolean(minStateId),
 		now: Boolean(nowStateId),
 	};
-	const anyButtonMapped = Object.values(buttonReady).some(Boolean);
 	const modeFeedbackStateId = resolveEvccModeFeedbackStateId(c);
 	const v1 = resolveEvccControlContractV1(c);
 	const stringComplete = stringModeContractComplete(c);
+	const buttonsModeReady = buttonReady.off && buttonReady.pv && buttonReady.min && buttonReady.now;
+	const buttonsReady = buttonsModeReady && Boolean(modeFeedbackStateId);
 	const resolvedVariant: EvccModeControlVariant =
 		requestedVariant === "auto"
 			? autoDetectVariant({
-					anyButtonMapped,
+					buttonsComplete: buttonsReady,
 					pvControlMapped: Boolean(v1.pvControlStateId),
 					stringModeComplete: stringComplete,
 				})
 			: requestedVariant;
-
-	const buttonsModeReady = buttonReady.off && buttonReady.pv && buttonReady.min && buttonReady.now;
-	const buttonsReady = buttonsModeReady && Boolean(modeFeedbackStateId);
 	const maxCurrentStateId = v1.maxCurrentStateId;
 	const phasesConfiguredStateId = v1.phasesConfiguredStateId;
 
@@ -210,6 +221,59 @@ export function resolveEvccModeControlContract(config: unknown): EvccModeControl
 		writeContractReady = stringComplete;
 	}
 
+	const storedSetMode = evccControlTargetForRole(c, "set_mode");
+	const storedChargeValue = evccModeChargeValue(c);
+	const storedHoldValue = evccModeHoldValue(c);
+	const storedButtons = compactRecord({
+		off: offStateId,
+		pv: pvStateId,
+		min: minStateId,
+		now: nowStateId,
+	});
+	let activeInputs: Record<string, unknown> = {};
+	let ignoredLegacyConfig: Record<string, unknown> = {};
+	if (resolvedVariant === "buttons") {
+		activeInputs = compactRecord({
+			off: offStateId,
+			pv: pvStateId,
+			min: minStateId,
+			now: nowStateId,
+			feedback: modeFeedbackStateId,
+			maxCurrent: maxCurrentStateId,
+			phasesConfigured: phasesConfiguredStateId,
+		});
+		ignoredLegacyConfig = compactRecord({
+			pvControl: v1.pvControlStateId,
+			setMode: storedSetMode,
+			chargeValue: storedChargeValue,
+			holdValue: storedHoldValue,
+		});
+	} else if (resolvedVariant === "pv_control") {
+		activeInputs = compactRecord({
+			pvControl: v1.pvControlStateId,
+			maxCurrent: maxCurrentStateId,
+			phasesConfigured: phasesConfiguredStateId,
+		});
+		ignoredLegacyConfig = compactRecord({
+			buttons: storedButtons,
+			setMode: storedSetMode,
+			chargeValue: storedChargeValue,
+			holdValue: storedHoldValue,
+		});
+	} else if (resolvedVariant === "string_mode") {
+		activeInputs = compactRecord({
+			setMode: storedSetMode,
+			maxCurrent: evccControlTargetForRole(c, "set_max_current_a") || maxCurrentStateId,
+			phases: evccControlTargetForRole(c, "set_phase"),
+			chargeValue: storedChargeValue,
+			holdValue: storedHoldValue,
+		});
+		ignoredLegacyConfig = compactRecord({
+			buttons: storedButtons,
+			pvControl: v1.pvControlStateId,
+		});
+	}
+
 	const detail = {
 		requestedVariant,
 		resolvedVariant,
@@ -221,13 +285,16 @@ export function resolveEvccModeControlContract(config: unknown): EvccModeControl
 			now: nowStateId || null,
 			ready: buttonsReady,
 		},
-		pvControlStateId: v1.pvControlStateId || null,
+		activeInputs,
+		ignoredLegacyConfig,
+		pvControlStateId: resolvedVariant === "pv_control" ? v1.pvControlStateId || null : null,
 		maxCurrentStateId: maxCurrentStateId || null,
 		phasesConfiguredStateId: phasesConfiguredStateId || null,
 		modeContractReady,
 		writeContractReady,
 		missing,
 		pvControlIgnoredForButtons: resolvedVariant === "buttons",
+		stringModeIgnoredForButtons: resolvedVariant === "buttons",
 		requiresChargeModeValue: resolvedVariant === "string_mode",
 		requiresPvControl: resolvedVariant === "pv_control",
 		usesLegacyGoeFallback: false,

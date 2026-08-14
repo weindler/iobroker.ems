@@ -168,6 +168,8 @@ export async function publishWallboxLiveFoundationStates(
 				evccModeFeedbackStateId: mapping.evccModeFeedbackStateId,
 				evccModeButtonsReady: mapping.evccModeButtonsReady,
 				evccModeButtonReady: mapping.evccModeButtonReady,
+				activeContractInputs: mapping.activeContractInputs,
+				ignoredLegacyConfig: mapping.ignoredLegacyConfig,
 			},
 		feedback: fb
 			? {

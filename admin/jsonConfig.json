@@ -534,7 +534,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Aktueller EVCC/ioBroker-Mode-Pfad: Buttons control.off / control.pv / control.min / control.now, Feedback nur über status.mode. pvControl und String-Mode bleiben als Legacy-Varianten. maxCurrent und Phasen weiter mappen. Bei Steuerpfad EVCC niemals Fallback auf Legacy go-e. Keine produktiven Writes in dieser Version."
+					"text": "Empfohlener aktueller EVCC-Pfad: Buttons control.off / control.pv / control.min / control.now, Feedback nur über status.mode, plus maxCurrent und Phasen. pvControl und String-Mode bleiben als Legacy-Varianten im Backend, sind in der Admin-UI aber nur sichtbar, wenn die Mode-Control-Variante ausdrücklich darauf steht. Auto zeigt die Button-Felder. Bei Steuerpfad EVCC niemals Fallback auf Legacy go-e. Keine produktiven Writes in dieser Version."
 				},
 				"wb_control_model": {
 					"type": "select",
@@ -563,26 +563,27 @@
 				"wb_evcc_mode_control": {
 					"type": "select",
 					"label": "EVCC Mode-Control-Variante",
-					"help": "buttons = aktuelle Schnittstelle (control.off/pv/min/now, Feedback status.mode). pv_control und string_mode nur für andere EVCC/ioBroker-Versionen. Auto erkennt anhand der Mappings. Noch keine produktiven Writes.",
+					"help": "Auto erkennt zuerst einen vollständigen Button-Contract, sonst pvControl, sonst String-Mode. Die Felder unten folgen der gewählten Variante (Auto = Button-Felder). Gespeicherte Legacy-Werte bleiben erhalten und werden bei Buttons ignoriert. Noch keine produktiven Writes.",
 					"options": [
 						{
-							"label": "Auto (Buttons bevorzugen)",
+							"label": "Auto – Buttons bevorzugen",
 							"value": "auto"
 						},
 						{
-							"label": "Buttons (control.off/pv/min/now)",
+							"label": "Buttons – empfohlen/aktuell",
 							"value": "buttons"
 						},
 						{
-							"label": "pvControl (Legacy)",
+							"label": "pvControl – Legacy",
 							"value": "pv_control"
 						},
 						{
-							"label": "String-Mode (Legacy)",
+							"label": "String-Mode – Legacy",
 							"value": "string_mode"
 						}
 					],
 					"default": "auto",
+					"hidden": "data.wb_control_model !== 'evcc'",
 					"xs": 12,
 					"sm": 6,
 					"md": 4,
@@ -592,7 +593,8 @@
 				"hEvccModeButtons": {
 					"type": "header",
 					"size": 3,
-					"text": "EVCC Mode-Buttons (aktueller Contract, Diagnose)",
+					"text": "EVCC Mode-Buttons (aktueller Contract)",
+					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control === 'pv_control' || data.wb_evcc_mode_control === 'string_mode'",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -606,11 +608,13 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Einmaliger Button-Trigger, kein persistenter Sollwert. Feedback ausschließlich über status.mode (Read). Button-States dürfen write=true und read=false haben. Typisch: evcc.&lt;instanz&gt;.loadpoint.1.control.off|pv|min|now."
+					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control === 'pv_control' || data.wb_evcc_mode_control === 'string_mode'",
+					"text": "Empfohlener aktueller Contract. Einmaliger Button-Trigger, kein persistenter Sollwert. Feedback ausschließlich über status.mode (Read). Button-States dürfen write=true und read=false haben. Typisch: evcc.&lt;instanz&gt;.loadpoint.1.control.off|pv|min|now."
 				},
 				"wb_evcc_control_off_target": {
 					"type": "objectId",
 					"label": "EVCC OFF (Write/Button)",
+					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control === 'pv_control' || data.wb_evcc_mode_control === 'string_mode'",
 					"types": [
 						"state"
 					],
@@ -623,6 +627,7 @@
 				"wb_evcc_control_pv_target": {
 					"type": "objectId",
 					"label": "EVCC PV (Write/Button)",
+					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control === 'pv_control' || data.wb_evcc_mode_control === 'string_mode'",
 					"types": [
 						"state"
 					],
@@ -635,6 +640,7 @@
 				"wb_evcc_control_min_target": {
 					"type": "objectId",
 					"label": "EVCC MIN+PV (Write/Button)",
+					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control === 'pv_control' || data.wb_evcc_mode_control === 'string_mode'",
 					"types": [
 						"state"
 					],
@@ -647,6 +653,7 @@
 				"wb_evcc_control_now_target": {
 					"type": "objectId",
 					"label": "EVCC NOW/Schnell (Write/Button)",
+					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control === 'pv_control' || data.wb_evcc_mode_control === 'string_mode'",
 					"types": [
 						"state"
 					],
@@ -656,9 +663,10 @@
 					"lg": 6,
 					"xl": 6
 				},
-				"wb_evcc_set_max_current_a_target": {
+				"wb_evcc_control_max_current_target": {
 					"type": "objectId",
 					"label": "EVCC maxCurrent (Write)",
+					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control === 'string_mode'",
 					"types": [
 						"state"
 					],
@@ -667,10 +675,45 @@
 					"md": 6,
 					"lg": 6,
 					"xl": 6
+				},
+				"wb_evcc_control_phases_configured_target": {
+					"type": "objectId",
+					"label": "EVCC Phasen (Write)",
+					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control === 'string_mode'",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"hEvccStringMode": {
+					"type": "header",
+					"size": 3,
+					"text": "EVCC String-Mode (Legacy)",
+					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control !== 'string_mode'",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"helpEvccStringMode": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control !== 'string_mode'",
+					"text": "Legacy-Variante: String-Sollwert auf den Mode-State plus explizite Mode-Werte. Nicht der aktuelle Button-Contract. Gespeicherte Werte bleiben erhalten, wenn Sie später wieder auf Buttons wechseln."
 				},
 				"wb_evcc_set_mode_target": {
 					"type": "objectId",
 					"label": "EVCC Lademodus (Write)",
+					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control !== 'string_mode'",
 					"types": [
 						"state"
 					],
@@ -683,6 +726,7 @@
 				"wb_evcc_mode_charge_value": {
 					"type": "text",
 					"label": "EVCC Modus-Wert: Laden",
+					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control !== 'string_mode'",
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -692,6 +736,20 @@
 				"wb_evcc_mode_hold_value": {
 					"type": "text",
 					"label": "EVCC Modus-Wert: Hold/Off",
+					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control !== 'string_mode'",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"wb_evcc_set_max_current_a_target": {
+					"type": "objectId",
+					"label": "EVCC maxCurrent (Write)",
+					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control !== 'string_mode'",
+					"types": [
+						"state"
+					],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -701,6 +759,7 @@
 				"wb_evcc_set_phase_target": {
 					"type": "objectId",
 					"label": "EVCC Phasen (Write)",
+					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control !== 'string_mode'",
 					"types": [
 						"state"
 					],
@@ -713,7 +772,8 @@
 				"hEvccControlV1": {
 					"type": "header",
 					"size": 3,
-					"text": "EVCC Control-Contract v1 / pvControl (Legacy, Diagnose, noch keine Writes)",
+					"text": "EVCC pvControl (Legacy)",
+					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control !== 'pv_control'",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -727,35 +787,13 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Nur für andere EVCC/ioBroker-Versionen, die noch pvControl schreiben. Button-Control funktioniert vollständig ohne pvControl. Ein verwaister pvControl-State beeinflusst den Button-Contract nicht. phasesConfigured: 0=auto, 1=1p, 3=3p. EMS steuert später nur EVCC — keine direkten go-e- oder Sonnen-Hold-Writes."
+					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control !== 'pv_control'",
+					"text": "Legacy-Variante für andere EVCC/ioBroker-Versionen, die pvControl schreiben. In der hier getesteten Installation kein geeigneter aktueller Control-Pfad. phasesConfigured: 0=auto, 1=1p, 3=3p. Gespeicherte Werte bleiben erhalten, wenn Sie später auf Buttons wechseln."
 				},
 				"wb_evcc_control_pv_control_target": {
 					"type": "objectId",
-					"label": "EVCC control.pvControl (nur vorbereiten)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"wb_evcc_control_max_current_target": {
-					"type": "objectId",
-					"label": "EVCC control.maxCurrent (nur vorbereiten)",
-					"types": [
-						"state"
-					],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"wb_evcc_control_phases_configured_target": {
-					"type": "objectId",
-					"label": "EVCC control.phasesConfigured (nur vorbereiten)",
+					"label": "EVCC control.pvControl (Legacy)",
+					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control !== 'pv_control'",
 					"types": [
 						"state"
 					],

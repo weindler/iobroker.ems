@@ -61,6 +61,8 @@ function baseMapping(over: Partial<WallboxControlMappingSnapshot> = {}): Wallbox
 		evccModeFeedbackStateId: "evcc.0.loadpoint.1.status.mode",
 		evccModeButtonsReady: false,
 		evccModeButtonReady: { off: false, pv: false, min: false, now: false },
+		activeContractInputs: {},
+		ignoredLegacyConfig: {},
 		...over,
 	};
 }

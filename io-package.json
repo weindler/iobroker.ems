@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.274",
+		"version": "0.1.276",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,14 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.276": {
+				"en": "EV Phase 3 diagnosis: decide whether an external charger should keep authority or EMS would theoretically take over. Read-only — no EVCC/Tibber/Sonnen/Ford/go-e writes.",
+				"de": "EV-Phase 3 Diagnose: entscheidet, ob die externe Ladehoheit bleiben soll oder EMS theoretisch übernehmen müsste. Nur lesen — keine Writes auf EVCC/Tibber/Sonnen/Ford/go-e."
+			},
+			"0.1.275": {
+				"en": "EVCC admin cleanup: button contract is the recommended UI; pvControl and string-mode stay as hidden legacy variants. Stored legacy values are ignored, not deleted. Diagnosis only — no new live writes.",
+				"de": "EVCC-Admin-Bereinigung: Button-Contract ist die empfohlene Oberfläche; pvControl und String-Mode bleiben als verborgene Legacy-Varianten. Gespeicherte Legacy-Werte werden ignoriert, nicht gelöscht. Nur Diagnose — keine neuen Live-Writes."
+			},
 			"0.1.274": {
 				"en": "EVCC button control contract: map control.off/pv/min/now with status.mode feedback. pvControl remains a legacy variant. Diagnosis only — no live EVCC/Tibber/Sonnen/go-e writes.",
 				"de": "EVCC-Button-Control-Contract: control.off/pv/min/now mappen, Feedback über status.mode. pvControl bleibt Legacy-Variante. Nur Diagnose — keine Live-Writes auf EVCC/Tibber/Sonnen/go-e."

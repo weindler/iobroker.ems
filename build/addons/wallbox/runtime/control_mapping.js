@@ -116,6 +116,8 @@ function contractDiagnosis(config, controlModel) {
         evccModeFeedbackStateId: contract.modeFeedbackStateId,
         evccModeButtonsReady: controlModel === "evcc" && contract.buttonsReady,
         evccModeButtonReady: contract.buttonReady,
+        activeContractInputs: contract.detail.activeInputs ?? {},
+        ignoredLegacyConfig: contract.detail.ignoredLegacyConfig ?? {},
     };
 }
 function emptyEvccFields() {
@@ -179,13 +181,18 @@ function buildEvccSnapshot(config, telemetryCfg, objectMetas) {
     const meta = (id) => objectMetas[id];
     const contract = (0, evcc_mode_control_1.resolveEvccModeControlContract)(config);
     const diagnosis = contractDiagnosis(config, "evcc");
-    const setMode = evccEntryFromConfig("set_mode", config, telemetryCfg.modeReadbackStateId || contract.modeFeedbackStateId, contract.resolvedVariant === "string_mode", meta((0, evcc_control_config_1.evccControlTargetForRole)(config, "set_mode")));
-    const maxCurrentId = contract.maxCurrentStateId || (0, evcc_control_config_1.evccControlTargetForRole)(config, "set_max_current_a");
+    const setMode = contract.resolvedVariant === "string_mode"
+        ? evccEntryFromConfig("set_mode", config, telemetryCfg.modeReadbackStateId || contract.modeFeedbackStateId, true, meta((0, evcc_control_config_1.evccControlTargetForRole)(config, "set_mode")))
+        : null;
+    const maxCurrentId = contract.maxCurrentStateId ||
+        (contract.resolvedVariant === "string_mode" ? (0, evcc_control_config_1.evccControlTargetForRole)(config, "set_max_current_a") : "");
     const setMaxCurrentA = evccEntryFromStateId("set_max_current_a", maxCurrentId, telemetryCfg.maxCurrentAStateId, true, meta(maxCurrentId));
-    const phaseId = contract.phasesConfiguredStateId || (0, evcc_control_config_1.evccControlTargetForRole)(config, "set_phase");
+    const phaseId = contract.resolvedVariant === "string_mode"
+        ? (0, evcc_control_config_1.evccControlTargetForRole)(config, "set_phase")
+        : contract.phasesConfiguredStateId;
     const setPhase = evccEntryFromStateId("set_phase", phaseId, "", false, meta(phaseId));
-    const chargeModeValue = (0, evcc_control_config_1.evccModeChargeValue)(config) || null;
-    const holdModeValue = (0, evcc_control_config_1.evccModeHoldValue)(config) || null;
+    const chargeModeValue = contract.resolvedVariant === "string_mode" ? (0, evcc_control_config_1.evccModeChargeValue)(config) || null : null;
+    const holdModeValue = contract.resolvedVariant === "string_mode" ? (0, evcc_control_config_1.evccModeHoldValue)(config) || null : null;
     const modeMeta = setMode ? meta(setMode.targetStateId) : undefined;
     const modeValueIssues = [];
     let chargeModeValueConfirmed = false;

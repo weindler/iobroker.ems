@@ -1,12 +1,19 @@
 import type { EvccTelemetrySnapshot, EvccTelemetryReadHost } from "../evcc_telemetry";
 import type { WallboxEvccTelemetryConfig } from "../evcc_config";
 import type { StateHost } from "../../../ems_light/state_util";
+import { readDynamicTariffPrice15MinSlots } from "../../../operator/supply/grid_read";
 import { resolveEvCapabilities } from "./capabilities";
 import { evFoundationConfigFromAdapter, resolveEvPlanningHints } from "./config";
 import { buildEvModelV1 } from "./model";
 import { publishEvFoundationDiagnosis } from "./publish";
 import { readExternalEvInformation, timezoneFromAdapterConfig } from "./external";
 import { applyEvFoundationIntegration } from "./vehicle_model";
+import {
+	applyEvTakeoverDiagnosis,
+	evaluateEvTakeoverDecision,
+	priceWindowsFrom15MinSlots,
+	type EvPriceWindow,
+} from "./decision";
 
 export * from "./types";
 export * from "./catalog";
@@ -16,6 +23,7 @@ export * from "./capabilities";
 export * from "./model";
 export * from "./external";
 export * from "./vehicle_model";
+export * from "./decision";
 export { WALLBOX_EV_FOUNDATION_STATES, ensureWallboxEvFoundationStates } from "./ensure_states";
 export { publishEvFoundationDiagnosis } from "./publish";
 
@@ -47,5 +55,20 @@ export async function refreshEvFoundation(
 		external,
 	});
 	const model = applyEvFoundationIntegration(built, capabilities, adapterConfig);
-	await publishEvFoundationDiagnosis(host, model, capabilities, snap.observed_at, external);
+	const nowDate = Number.isFinite(now.getTime()) ? now : new Date();
+	let priceWindows: EvPriceWindow[] = [];
+	try {
+		const slots = await readDynamicTariffPrice15MinSlots(host, nowDate);
+		priceWindows = priceWindowsFrom15MinSlots(slots);
+	} catch {
+		priceWindows = [];
+	}
+	const decision = evaluateEvTakeoverDecision({
+		model,
+		nowMs: nowDate.getTime(),
+		priceWindows,
+		externalDeadlineIso: external.smartPlan.deadlineIso,
+	});
+	const diagnosed = applyEvTakeoverDiagnosis(model, decision);
+	await publishEvFoundationDiagnosis(host, diagnosed, capabilities, snap.observed_at, external, decision);
 }

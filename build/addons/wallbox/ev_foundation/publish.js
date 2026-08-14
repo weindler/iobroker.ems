@@ -7,7 +7,7 @@ const types_1 = require("./external/types");
 function boolOrNull(v) {
     return v === true || v === false ? v : null;
 }
-async function publishEvFoundationDiagnosis(host, model, capabilities, observedAt, external) {
+async function publishEvFoundationDiagnosis(host, model, capabilities, observedAt, external, decision) {
     const plan = external?.smartPlan ?? (0, types_1.emptySmartPlanEval)();
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evccReachable, capabilities.evccAvailable);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.vehicleConnected, boolOrNull(model.vehicleConnected));
@@ -64,6 +64,24 @@ async function publishEvFoundationDiagnosis(host, model, capabilities, observedA
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evccModeNowTargetReady, model.evccModeNowTargetReady);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.preparedEvState, model.preparedEvState);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.takeoverReason, model.takeoverReason ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.externalAuthorityState, decision?.externalAuthorityState ?? model.externalAuthorityState);
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.energyToTargetKwh, decision?.energyToTargetKWh ?? null);
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.energyToDepartureMinimumKwh, decision?.energyToDepartureMinimumKWh ?? null);
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.requiredChargingMinutes, decision?.requiredChargingMinutes ?? null);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.latestRequiredStart, decision?.latestRequiredStart ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.deadlineRisk, boolOrNull(decision?.deadlineRisk ?? null));
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.externalPlanExpectedSocGainPct, decision?.externalPlanExpectedSocGainPct ?? null);
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.externalPlanExpectedFinalSocPct, decision?.externalPlanExpectedFinalSocPct ?? null);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.externalPlanCoversTarget, boolOrNull(decision?.externalPlanCoversTarget ?? null));
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.externalPlanCoversDepartureMinimum, boolOrNull(decision?.externalPlanCoversDepartureMinimum ?? null));
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.remainingFeasibleEnergyKwh, decision?.remainingFeasibleEnergyKWh ?? null);
+    await (0, state_write_1.setOptionalNumberIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.remainingCheapEnergyKwh, decision?.remainingCheapEnergyKWh ?? null);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.economicWindowLossRisk, boolOrNull(decision?.economicWindowLossRisk ?? null));
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.takeoverRecommended, decision?.takeoverRecommended === true);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.takeoverRequired, decision?.takeoverRequired === true);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.takeoverSeverity, decision?.takeoverSeverity ?? model.takeoverSeverity);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.recommendedEvState, decision?.recommendedEvState ?? model.recommendedEvState);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.takeoverDecisionJson, JSON.stringify(decision?.explain ?? { phase: "decision_diagnostic_only", pending: decision == null }));
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.dataQuality, model.dataQuality);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.modelJson, JSON.stringify(model));
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.updatedAt, observedAt);

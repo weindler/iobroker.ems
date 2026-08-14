@@ -15,12 +15,14 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.refreshEvFoundation = exports.publishEvFoundationDiagnosis = exports.ensureWallboxEvFoundationStates = exports.WALLBOX_EV_FOUNDATION_STATES = void 0;
+const grid_read_1 = require("../../../operator/supply/grid_read");
 const capabilities_1 = require("./capabilities");
 const config_1 = require("./config");
 const model_1 = require("./model");
 const publish_1 = require("./publish");
 const external_1 = require("./external");
 const vehicle_model_1 = require("./vehicle_model");
+const decision_1 = require("./decision");
 __exportStar(require("./types"), exports);
 __exportStar(require("./catalog"), exports);
 __exportStar(require("./write_allowlist"), exports);
@@ -29,6 +31,7 @@ __exportStar(require("./capabilities"), exports);
 __exportStar(require("./model"), exports);
 __exportStar(require("./external"), exports);
 __exportStar(require("./vehicle_model"), exports);
+__exportStar(require("./decision"), exports);
 var ensure_states_1 = require("./ensure_states");
 Object.defineProperty(exports, "WALLBOX_EV_FOUNDATION_STATES", { enumerable: true, get: function () { return ensure_states_1.WALLBOX_EV_FOUNDATION_STATES; } });
 Object.defineProperty(exports, "ensureWallboxEvFoundationStates", { enumerable: true, get: function () { return ensure_states_1.ensureWallboxEvFoundationStates; } });
@@ -54,6 +57,22 @@ async function refreshEvFoundation(host, snap, telemetryCfg) {
         external,
     });
     const model = (0, vehicle_model_1.applyEvFoundationIntegration)(built, capabilities, adapterConfig);
-    await (0, publish_1.publishEvFoundationDiagnosis)(host, model, capabilities, snap.observed_at, external);
+    const nowDate = Number.isFinite(now.getTime()) ? now : new Date();
+    let priceWindows = [];
+    try {
+        const slots = await (0, grid_read_1.readDynamicTariffPrice15MinSlots)(host, nowDate);
+        priceWindows = (0, decision_1.priceWindowsFrom15MinSlots)(slots);
+    }
+    catch {
+        priceWindows = [];
+    }
+    const decision = (0, decision_1.evaluateEvTakeoverDecision)({
+        model,
+        nowMs: nowDate.getTime(),
+        priceWindows,
+        externalDeadlineIso: external.smartPlan.deadlineIso,
+    });
+    const diagnosed = (0, decision_1.applyEvTakeoverDiagnosis)(model, decision);
+    await (0, publish_1.publishEvFoundationDiagnosis)(host, diagnosed, capabilities, snap.observed_at, external, decision);
 }
 exports.refreshEvFoundation = refreshEvFoundation;

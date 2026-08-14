@@ -5,7 +5,7 @@
  * No takeover / external-control transition logic in this phase.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EMPTY_EV_CAPABILITIES = exports.EV_PHASE1_PREPARED_STATES = exports.EV_FIELD_QUALITY = exports.EV_DATA_QUALITY = exports.EV_EXTERNAL_CONTROL_TYPES = exports.EV_TAKEOVER_REASONS = exports.EV_MODULE_STATES = void 0;
+exports.EMPTY_EV_CAPABILITIES = exports.EV_PHASE1_PREPARED_STATES = exports.EV_FIELD_QUALITY = exports.EV_DATA_QUALITY = exports.EV_EXTERNAL_CONTROL_TYPES = exports.EV_TAKEOVER_SEVERITIES = exports.EV_EXTERNAL_AUTHORITY_STATES = exports.EV_TAKEOVER_REASONS = exports.EV_MODULE_STATES = void 0;
 exports.EV_MODULE_STATES = [
     "idle",
     "pv",
@@ -21,6 +21,15 @@ exports.EV_TAKEOVER_REASONS = [
     "economic_window_loss",
     "external_unavailable",
 ];
+exports.EV_EXTERNAL_AUTHORITY_STATES = [
+    "inactive",
+    "active",
+    "planned",
+    "active_without_plan",
+    "unavailable",
+    "unknown",
+];
+exports.EV_TAKEOVER_SEVERITIES = ["none", "observe", "recommended", "required"];
 exports.EV_EXTERNAL_CONTROL_TYPES = ["none", "vehicle", "wallbox", "unknown"];
 exports.EV_DATA_QUALITY = ["ok", "degraded", "unknown"];
 exports.EV_FIELD_QUALITY = ["valid", "unknown", "invalid"];

@@ -749,6 +749,9 @@ describe("immersion heater contributions", () => {
 		assert.equal(flexible.deadlineIso, null);
 		assert.equal(flexible.details.bufferEstimatedEmptyAt, "2026-07-26T14:00:00.000Z");
 		assert.equal(flexible.details.thermalLearningModel, "newton");
+		assert.equal(flexible.details.bufferLearningModel, "newton");
+		assert.equal(flexible.details.hardThermalSource, "boiler");
+		assert.equal(flexible.details.softThermalSource, "buffer");
 		assert.equal(flexible.quality.status, "degraded");
 		assert.notEqual(flexible.details.thermalLearningStatus, "valid");
 		assert.match(String(flexible.details.thermalLearningDegradedCauseDe ?? ""), /Newton estimate/);

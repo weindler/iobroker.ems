@@ -86,7 +86,7 @@ function resolveRestoreSourcePath(input, fileName) {
 }
 exports.resolveRestoreSourcePath = resolveRestoreSourcePath;
 async function assertRestoreSourceSafe(resolvedPath, allowedRoot) {
-    const { realpath, lstat } = await Promise.resolve().then(() => __importStar(require("node:fs/promises")));
+    const { realpath, lstat } = await import("node:fs/promises");
     const st = await lstat(resolvedPath);
     if (st.isSymbolicLink()) {
         throw new Error("restore source symlink not allowed");
@@ -105,7 +105,7 @@ async function readRestoreArchiveFile(input, fileName) {
         ? path.join(layout.runtimeExportsDir, "backup")
         : layout.runtimeRestoreInboxDir;
     await assertRestoreSourceSafe(resolved, allowedRoot);
-    const { stat, readFile } = await Promise.resolve().then(() => __importStar(require("node:fs/promises")));
+    const { stat, readFile } = await import("node:fs/promises");
     const st = await stat(resolved);
     const buffer = await readFile(resolved);
     return { buffer, rootKind, sizeBytes: st.size, mtimeMs: st.mtimeMs, resolvedPath: resolved };

@@ -52,6 +52,11 @@ function thermalLearningDetails(input) {
             : (0, thermal_empty_at_1.hasNewtonEmptyAtModel)(learning)
                 ? "newton"
                 : "none",
+        bufferLearningModel: (0, thermal_empty_at_1.hasCycleCoolingModel)(learning)
+            ? "cycle"
+            : (0, thermal_empty_at_1.hasNewtonEmptyAtModel)(learning)
+                ? "newton"
+                : "none",
         thermalLearningDegradedCauseDe: (0, thermal_empty_at_1.thermalLearningDegradedCauseDe)(learning),
         learnedDayTypeRuntimeHoursMedian: learning?.currentDayTypeRuntimeHoursMedian ?? null,
     };
@@ -360,6 +365,16 @@ function buildImmersionFlexibleContribution(input) {
             emptyAtSource: boilerEmptyAtSource,
             emptyAtPlanningUsable: boilerEmptyUsable,
             boilerCoolingRateCPerHAvg: boilerLearning?.coolingRateCPerHAvg ?? null,
+            boilerCoolingConstantPerH: boilerLearning?.coolingConstantPerH ?? null,
+            boilerCoolingAsymptoteC: boilerLearning?.coolingAsymptoteC ?? null,
+            boilerLearningModel: (0, thermal_empty_at_1.hasCycleCoolingModel)(boilerLearning)
+                ? "cycle"
+                : (0, thermal_empty_at_1.hasNewtonEmptyAtModel)(boilerLearning)
+                    ? "newton"
+                    : "none",
+            boilerLearningSamples: boilerLearning?.samples ?? null,
+            hardThermalSource: "boiler",
+            softThermalSource: "buffer",
             targetReasonDe: [
                 target.targetReasonDe,
                 nightBridge?.active ? nightBridge.reasonDe : null,

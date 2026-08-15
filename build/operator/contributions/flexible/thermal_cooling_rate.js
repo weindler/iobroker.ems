@@ -16,7 +16,7 @@ function effectiveCoolingRateCPerH(input) {
         return avg;
     }
     const k = input.coolingConstantPerH;
-    const buf = input.bufferTempC;
+    const buf = input.currentTempC ?? input.bufferTempC;
     if (typeof k === "number" && Number.isFinite(k) && k > 0 && typeof buf === "number" && Number.isFinite(buf)) {
         const asym = typeof input.coolingAsymptoteC === "number" && Number.isFinite(input.coolingAsymptoteC)
             ? input.coolingAsymptoteC

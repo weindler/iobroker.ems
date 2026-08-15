@@ -649,7 +649,7 @@ async function runDailyPlanTick(host, forecastPlan) {
     }
     // Beta: Plan-B-Compare advisory only — keine Allocation-Mutation vor Unified Authority.
     try {
-        const { maybeApplyAiWritebackOnDailyPlan } = await Promise.resolve().then(() => __importStar(require("../../ai/writeback/index.js")));
+        const { maybeApplyAiWritebackOnDailyPlan } = await import("../../ai/writeback/index.js");
         plan = await maybeApplyAiWritebackOnDailyPlan(host, plan);
     }
     catch (e) {

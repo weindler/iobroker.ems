@@ -148,6 +148,7 @@ async function readVesselLearningSignal(host, now, base) {
         estimatedEmptyAtRaw,
         byDayTypeJsonRaw,
         timezone,
+        vessel: base.endsWith("thermal_boiler") ? "boiler" : "buffer",
     });
 }
 async function readBatteryLearningSignal(host) {

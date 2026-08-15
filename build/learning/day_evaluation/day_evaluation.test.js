@@ -291,7 +291,7 @@ const nullActuals = {
         rec.immersion.targetReached = false;
         const before = await (0, feedback_1.loadHeatFactorStore)(dirs.thermalDir);
         await (0, feedback_1.writeHeatFactorStore)(dirs.thermalDir, before);
-        const { applyThermalHeatFactorFeedback } = await Promise.resolve().then(() => __importStar(require("./feedback.js")));
+        const { applyThermalHeatFactorFeedback } = await import("./feedback.js");
         strict_1.default.equal(await applyThermalHeatFactorFeedback(dirs.thermalDir, rec), false);
     });
 });

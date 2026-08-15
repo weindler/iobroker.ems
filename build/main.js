@@ -79,7 +79,7 @@ class Ems extends utils.Adapter {
         if (obj.command === "requestBackupExport") {
             void (async () => {
                 try {
-                    const { handleBackupExportRequest } = await Promise.resolve().then(() => __importStar(require("./backup/export_handler.js")));
+                    const { handleBackupExportRequest } = await import("./backup/export_handler.js");
                     await handleBackupExportRequest(this, true, false);
                     const file = String((await this.getStateAsync("backup.last_file_name"))?.val ?? "");
                     const err = String((await this.getStateAsync("backup.last_error"))?.val ?? "");
@@ -113,7 +113,7 @@ class Ems extends utils.Adapter {
                     const msg = (obj.message && typeof obj.message === "object" ? obj.message : {});
                     const raw = msg.durationMin ?? msg.diagnostic_duration_min ?? 60;
                     const durationMin = typeof raw === "number" ? raw : Number(raw);
-                    const { handleDiagnosticModeRequest, syncDiagnosticStatus } = await Promise.resolve().then(() => __importStar(require("./backup/export_handler.js")));
+                    const { handleDiagnosticModeRequest, syncDiagnosticStatus } = await import("./backup/export_handler.js");
                     const started = await handleDiagnosticModeRequest(this, true, false, durationMin);
                     await syncDiagnosticStatus(this);
                     if (obj.callback) {
@@ -144,7 +144,7 @@ class Ems extends utils.Adapter {
         if (obj.command === "stopDiagnosticMode") {
             void (async () => {
                 try {
-                    const { handleDiagnosticStopRequest } = await Promise.resolve().then(() => __importStar(require("./backup/export_handler.js")));
+                    const { handleDiagnosticStopRequest } = await import("./backup/export_handler.js");
                     const stopped = await handleDiagnosticStopRequest(this);
                     if (obj.callback) {
                         this.sendTo(obj.from, obj.command, {
@@ -169,8 +169,8 @@ class Ems extends utils.Adapter {
         if (obj.command === "getDiagnosticModeStatus") {
             void (async () => {
                 try {
-                    const { syncDiagnosticStatus } = await Promise.resolve().then(() => __importStar(require("./backup/export_handler.js")));
-                    const { diagnosticModeStatus } = await Promise.resolve().then(() => __importStar(require("./support/diagnostic_mode.js")));
+                    const { syncDiagnosticStatus } = await import("./backup/export_handler.js");
+                    const { diagnosticModeStatus } = await import("./support/diagnostic_mode.js");
                     await syncDiagnosticStatus(this);
                     const st = diagnosticModeStatus();
                     if (obj.callback) {
@@ -196,11 +196,11 @@ class Ems extends utils.Adapter {
         if (obj.command === "requestSupportExport") {
             void (async () => {
                 try {
-                    const { handleSupportExportRequest } = await Promise.resolve().then(() => __importStar(require("./backup/export_handler.js")));
+                    const { handleSupportExportRequest } = await import("./backup/export_handler.js");
                     await handleSupportExportRequest(this, true, false);
                     const file = String((await this.getStateAsync("backup.last_file_name"))?.val ?? "");
                     const err = String((await this.getStateAsync("backup.last_error"))?.val ?? "");
-                    const { readSupportFileBase64 } = await Promise.resolve().then(() => __importStar(require("./backup/admin_files.js")));
+                    const { readSupportFileBase64 } = await import("./backup/admin_files.js");
                     const dl = err ? null : await readSupportFileBase64(this, file);
                     const payload = {
                         result: err ? "error" : "ok",
@@ -240,7 +240,7 @@ class Ems extends utils.Adapter {
         if (obj.command === "listRestoreFiles" || obj.command === "syncRestoreInbox") {
             void (async () => {
                 try {
-                    const { listRestoreFileOptions } = await Promise.resolve().then(() => __importStar(require("./backup/admin_files.js")));
+                    const { listRestoreFileOptions } = await import("./backup/admin_files.js");
                     const options = await listRestoreFileOptions(this);
                     if (obj.callback) {
                         if (obj.command === "syncRestoreInbox") {
@@ -277,7 +277,7 @@ class Ems extends utils.Adapter {
                 try {
                     const msg = (obj.message && typeof obj.message === "object" ? obj.message : {});
                     const data = String(msg.data ?? msg.restore_upload ?? "");
-                    const { writeRestoreUploadToInbox } = await Promise.resolve().then(() => __importStar(require("./backup/admin_files.js")));
+                    const { writeRestoreUploadToInbox } = await import("./backup/admin_files.js");
                     const res = await writeRestoreUploadToInbox(this, String(msg.fileName ?? ""), data);
                     if (res.ok) {
                         await this.setStateAsync("backup.restore.selected_file", { val: res.fileName, ack: true });
@@ -307,7 +307,7 @@ class Ems extends utils.Adapter {
                         return;
                     }
                     await this.setStateAsync("backup.restore.selected_file", { val: fileName, ack: true });
-                    const { handleRestoreValidateRequest } = await Promise.resolve().then(() => __importStar(require("./restore/handler.js")));
+                    const { handleRestoreValidateRequest } = await import("./restore/handler.js");
                     await handleRestoreValidateRequest(this, true, false);
                     const status = String((await this.getStateAsync("backup.restore.status"))?.val ?? "");
                     const planId = String((await this.getStateAsync("backup.restore.plan_id"))?.val ?? "");
@@ -338,7 +338,7 @@ class Ems extends utils.Adapter {
         if (obj.command === "getAiStatus") {
             void (async () => {
                 try {
-                    const { AI_STATES } = await Promise.resolve().then(() => __importStar(require("./ai/index.js")));
+                    const { AI_STATES } = await import("./ai/index.js");
                     const status = String((await this.getStateAsync(AI_STATES.status))?.val ?? "off");
                     const callsToday = Number((await this.getStateAsync(AI_STATES.callsToday))?.val ?? 0);
                     const callsLimit = Number((await this.getStateAsync(AI_STATES.callsLimit))?.val ?? 0);
@@ -367,7 +367,7 @@ class Ems extends utils.Adapter {
         if (obj.command === "aiOptimizeNow") {
             void (async () => {
                 try {
-                    const { runAiOptimizationManual } = await Promise.resolve().then(() => __importStar(require("./ai/index.js")));
+                    const { runAiOptimizationManual } = await import("./ai/index.js");
                     const outcome = await runAiOptimizationManual(this);
                     if (obj.callback) {
                         this.sendTo(obj.from, obj.command, {
@@ -390,7 +390,7 @@ class Ems extends utils.Adapter {
         if (obj.command === "getPlanCompareStatus") {
             void (async () => {
                 try {
-                    const { COMPARE_STATES } = await Promise.resolve().then(() => __importStar(require("./ai/compare/index.js")));
+                    const { COMPARE_STATES } = await import("./ai/compare/index.js");
                     const generatedAt = String((await this.getStateAsync(COMPARE_STATES.generatedAt))?.val ?? "");
                     const activePlan = String((await this.getStateAsync(COMPARE_STATES.activePlan))?.val ?? "a");
                     const deltaRaw = (await this.getStateAsync(COMPARE_STATES.deltaSummaryJson))?.val;
@@ -452,7 +452,7 @@ class Ems extends utils.Adapter {
                     }
                     await this.setStateAsync("backup.restore.selected_file", { val: fileName, ack: true });
                     await this.setStateAsync("backup.restore.confirm_plan_id", { val: planId, ack: true });
-                    const { handleRestoreApplyRequest } = await Promise.resolve().then(() => __importStar(require("./restore/handler.js")));
+                    const { handleRestoreApplyRequest } = await import("./restore/handler.js");
                     await handleRestoreApplyRequest(this, true, false);
                     const status = String((await this.getStateAsync("backup.restore.status"))?.val ?? "");
                     const err = String((await this.getStateAsync("backup.restore.last_error"))?.val ?? "");
@@ -544,7 +544,7 @@ class Ems extends utils.Adapter {
         }
         await this.step("backup export init", async () => {
             await (0, retention_1.cleanupTempExports)(this);
-            const { ensureAdapterFilesMeta } = await Promise.resolve().then(() => __importStar(require("./backup/admin_files.js")));
+            const { ensureAdapterFilesMeta } = await import("./backup/admin_files.js");
             await ensureAdapterFilesMeta(this);
             await (0, export_handler_1.initBackupExportRuntime)(this);
             await (0, handler_1.initRestoreRuntime)(this);
@@ -582,7 +582,7 @@ class Ems extends utils.Adapter {
                 await (0, handler_1.handleRestoreStateChange)(this, rel, state.val, state.ack);
                 return;
             }
-            const { isAiRelatedState, handleAiStateChange } = await Promise.resolve().then(() => __importStar(require("./ai/index.js")));
+            const { isAiRelatedState, handleAiStateChange } = await import("./ai/index.js");
             if (isAiRelatedState(rel)) {
                 await handleAiStateChange(this, rel, state.val, state.ack);
                 return;

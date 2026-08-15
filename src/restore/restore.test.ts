@@ -733,7 +733,7 @@ describe("restore startup recovery", () => {
 
 describe("restore learning keys", () => {
 	it("maps exactly eleven known learning keys", () => {
-		assert.equal(RESTORE_LEARNING_KEYS.length, 11);
+		assert.equal(RESTORE_LEARNING_KEYS.length, 12);
 		for (const key of RESTORE_LEARNING_KEYS) {
 			assert.ok(RESTORE_LEARNING_TARGETS[key]);
 			assert.ok(key.endsWith(".json"));

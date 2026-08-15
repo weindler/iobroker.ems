@@ -631,6 +631,9 @@ function acInput(overrides = {}) {
         strict_1.default.equal(flexible.deadlineIso, null);
         strict_1.default.equal(flexible.details.bufferEstimatedEmptyAt, "2026-07-26T14:00:00.000Z");
         strict_1.default.equal(flexible.details.thermalLearningModel, "newton");
+        strict_1.default.equal(flexible.details.bufferLearningModel, "newton");
+        strict_1.default.equal(flexible.details.hardThermalSource, "boiler");
+        strict_1.default.equal(flexible.details.softThermalSource, "buffer");
         strict_1.default.equal(flexible.quality.status, "degraded");
         strict_1.default.notEqual(flexible.details.thermalLearningStatus, "valid");
         strict_1.default.match(String(flexible.details.thermalLearningDegradedCauseDe ?? ""), /Newton estimate/);

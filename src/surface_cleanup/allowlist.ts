@@ -29,7 +29,7 @@ export const LEAN_PLANNER_PURGE_ROOTS = [
 
 /** Large learning JSON mirrors — replaced by file-backed .emsbackup. */
 export const LEARNING_MIRROR_PURGE_RE =
-	/^learning\.persistence\.(battery_runtime|house_load|thermal_runtime|price_learning|price_forecast|pv_bias_daily|power_hourly|energy_daily)_json$/;
+	/^learning\.persistence\.(battery_runtime|house_load|thermal_runtime|thermal_boiler|price_learning|price_forecast|pv_bias_daily|power_hourly|energy_daily)_json$/;
 
 /** Battery-runtime power diagnostics (lean KPI surface). */
 export const BATTERY_RUNTIME_DIAG_PURGE_RE =

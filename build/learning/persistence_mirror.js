@@ -47,6 +47,12 @@ exports.LEARNING_PERSISTENCE_ARTIFACTS = [
         nameDe: "Thermal-Runtime-Learning (Backup-Spiegel)",
     },
     {
+        key: "thermal_boiler",
+        category: "learning/thermal_boiler",
+        fileName: "thermal_boiler_learning_v1.json",
+        nameDe: "Boiler-Learning (Backup-Spiegel)",
+    },
+    {
         key: "price_learning",
         category: "learning/price_learning",
         fileName: "price_learning_v1.json",

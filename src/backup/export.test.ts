@@ -404,6 +404,7 @@ describe("backup export v0.1.141", () => {
 			"battery_runtime_learning_v1.json",
 			"house_load_learning_v1.json",
 			"thermal_runtime_learning_v1.json",
+			"thermal_boiler_learning_v1.json",
 			"price_learning_v1.json",
 			"price_forecast_learning_v1.json",
 			"pv_bias_daily_v1.json",

@@ -96,6 +96,19 @@ async function writeResult(host, result, lastRun) {
         val: truncateJson(result.historyJson),
         ack: true,
     });
+    const model = (result.samples ?? 0) > 0 && result.coolingRateCPerHAvg != null && result.coolingRateCPerHAvg > 0
+        ? "cycle"
+        : result.coolingConstantPerH != null && result.coolingConstantPerH > 0
+            ? "newton"
+            : "none";
+    await host.setStateAsync("learning.thermal_runtime.vessel", { val: "buffer", ack: true });
+    await host.setStateAsync("learning.thermal_runtime.model", { val: model, ack: true });
+    await host.setStateAsync("learning.thermal_runtime.quality", {
+        val: model === "cycle" ? "cycle" : model === "newton" ? "newton_fallback" : result.status,
+        ack: true,
+    });
+    await host.setStateAsync("learning.thermal_runtime.hard_relevance", { val: false, ack: true });
+    await host.setStateAsync("learning.thermal_runtime.soft_relevance", { val: true, ack: true });
 }
 async function runThermalRuntimeLearning(host) {
     const cfg = (0, config_1.thermalRuntimeConfigFromAdapter)(host.config);

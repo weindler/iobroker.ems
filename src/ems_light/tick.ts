@@ -88,6 +88,8 @@ export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): 
 	try {
 		const { refreshThermalRemainingCountdown } = await import("../learning/thermal_runtime/run.js");
 		await refreshThermalRemainingCountdown(host);
+		const { refreshThermalBoilerRemainingCountdown } = await import("../learning/thermal_boiler/run.js");
+		await refreshThermalBoilerRemainingCountdown(host);
 	} catch (e) {
 		hints.push(`thermal_remaining_countdown: ${String(e)}`);
 	}

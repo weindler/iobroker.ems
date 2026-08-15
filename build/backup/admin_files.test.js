@@ -41,7 +41,7 @@ const source_1 = require("../restore/source");
                 getAbsoluteInstanceDataDir: () => path.join(tmp, "ems.0"),
                 namespace: "ems.0",
             };
-            const { resolveEmsPaths } = await Promise.resolve().then(() => __importStar(require("../backup_integration/paths.js")));
+            const { resolveEmsPaths } = await import("../backup_integration/paths.js");
             const layout = resolveEmsPaths(host);
             await fs.mkdir(path.join(layout.runtimeExportsDir, "backup"), { recursive: true });
             await fs.mkdir(layout.runtimeRestoreInboxDir, { recursive: true });
@@ -64,7 +64,7 @@ const source_1 = require("../restore/source");
                 getAbsoluteInstanceDataDir: () => path.join(tmp, "ems.0"),
                 namespace: "ems.0",
             };
-            const { resolveEmsPaths } = await Promise.resolve().then(() => __importStar(require("../backup_integration/paths.js")));
+            const { resolveEmsPaths } = await import("../backup_integration/paths.js");
             const layout = resolveEmsPaths(host);
             await fs.mkdir(path.join(layout.runtimeExportsDir, "backup"), { recursive: true });
             await fs.writeFile(path.join(layout.runtimeExportsDir, "backup", "ems-light-0.1.1-backup-2026-07-19T100000000Z.emsbackup"), "a");

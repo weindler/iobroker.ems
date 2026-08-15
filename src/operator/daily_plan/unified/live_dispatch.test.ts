@@ -230,7 +230,7 @@ describe("LIVE-AC-002 shiftable cooling prefers PV-rich slots", () => {
 describe("LIVE-IH ownership vs classic fullPlan", () => {
 	it("idle unified slice blocks classic fullPlan immersion entries", async () => {
 		const { resolveImmersionDailyPlanAllocation } = await import(
-			"../../../addons/immersion_heater/runtime/daily_plan"
+			"../../../addons/immersion_heater/runtime/daily_plan.js"
 		);
 		resetImmersionDailyPlanCache();
 		const now = new Date("2026-08-04T12:07:00.000Z");

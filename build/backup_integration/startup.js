@@ -232,7 +232,7 @@ async function updateBootGuardAfterBootstrap(host, manifest) {
         adapterVersion: String(host.common?.version ?? manifest.adapterVersion),
         lastSuccessfulBootstrapAt: new Date().toISOString(),
     };
-    const { writeBootGuardAtomic } = await Promise.resolve().then(() => __importStar(require("./boot_guard")));
+    const { writeBootGuardAtomic } = await import("./boot_guard.js");
     await writeBootGuardAtomic(layout.bootGuardPath, record);
 }
 exports.updateBootGuardAfterBootstrap = updateBootGuardAfterBootstrap;

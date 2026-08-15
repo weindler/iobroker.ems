@@ -68,7 +68,7 @@ async function evaluateTransactionFenceAtStartup(manifest, transactionsDir) {
 }
 exports.evaluateTransactionFenceAtStartup = evaluateTransactionFenceAtStartup;
 async function clearOrphanTransactionFence(manifestPath, manifest) {
-    const { writeManifestAtomic } = await Promise.resolve().then(() => __importStar(require("./manifest")));
+    const { writeManifestAtomic } = await import("./manifest.js");
     const cleared = { ...manifest, transactionFence: null };
     await writeManifestAtomic(manifestPath, cleared);
     return cleared;

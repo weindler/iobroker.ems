@@ -1,27 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.stopDiagnosticMode = exports.handleBackupStateChange = exports.isBackupRelatedState = exports.initBackupExportRuntime = exports.syncDiagnosticStatus = exports.handleDiagnosticStopRequest = exports.handleDiagnosticModeRequest = exports.handleSupportExportRequest = exports.handleBackupExportRequest = void 0;
 const types_1 = require("./types");
@@ -66,7 +43,7 @@ async function handleBackupExportRequest(host, val, ack) {
             });
             await publishExportRegisterStatus(host, true, `ems-runtime.%INSTANCE%/exports/backup/${result.fileName}`);
             try {
-                const { mirrorHostExportFile } = await Promise.resolve().then(() => __importStar(require("./admin_files.js")));
+                const { mirrorHostExportFile } = await import("./admin_files.js");
                 await mirrorHostExportFile(host, "backup", result.fileName);
             }
             catch (e) {
@@ -110,7 +87,7 @@ async function handleSupportExportRequest(host, val, ack) {
             await host.setStateAsync(ensure_states_1.SUPPORT_STATES.lastBundleAt, { val: result.createdAt, ack: true });
             await host.setStateAsync(ensure_states_1.SUPPORT_STATES.lastError, { val: "", ack: true });
             try {
-                const { mirrorHostExportFile } = await Promise.resolve().then(() => __importStar(require("./admin_files.js")));
+                const { mirrorHostExportFile } = await import("./admin_files.js");
                 await mirrorHostExportFile(host, "support", result.fileName);
             }
             catch (e) {

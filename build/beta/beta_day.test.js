@@ -3,29 +3,6 @@
  * BETA-DAY-001…015 — realistische Szenario-Matrix (Schritt 8).
  * Nutzt bestehende Unified-Fixtures; keine neuen Planner-Features.
  */
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -285,7 +262,7 @@ function sumKind(plan, kind) {
 });
 (0, node_test_1.describe)("BETA-DAY-015 hierarchical effective execution", () => {
     (0, node_test_1.it)("global dryrun overrides addon live in effective snapshot", async () => {
-        const { buildEffectiveExecutionSnapshot } = await Promise.resolve().then(() => __importStar(require("./execution_effective.js")));
+        const { buildEffectiveExecutionSnapshot } = await import("./execution_effective.js");
         const snap = buildEffectiveExecutionSnapshot({
             globalMode: "dryrun",
             addonModes: {
@@ -302,7 +279,7 @@ function sumKind(plan, kind) {
         strict_1.default.match(snap.summaryDe, /Global Dryrun/i);
     });
     (0, node_test_1.it)("global live + addon dryrun → effective dryrun", async () => {
-        const { buildEffectiveExecutionSnapshot } = await Promise.resolve().then(() => __importStar(require("./execution_effective.js")));
+        const { buildEffectiveExecutionSnapshot } = await import("./execution_effective.js");
         const snap = buildEffectiveExecutionSnapshot({
             globalMode: "live",
             addonModes: {
@@ -318,7 +295,7 @@ function sumKind(plan, kind) {
         strict_1.default.equal(snap.addons.immersion_heater.blockReasonDe, "Add-on Dryrun");
     });
     (0, node_test_1.it)("global live + addon live → effective live", async () => {
-        const { buildEffectiveExecutionSnapshot } = await Promise.resolve().then(() => __importStar(require("./execution_effective.js")));
+        const { buildEffectiveExecutionSnapshot } = await import("./execution_effective.js");
         const snap = buildEffectiveExecutionSnapshot({
             globalMode: "live",
             addonModes: {

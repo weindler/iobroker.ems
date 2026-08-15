@@ -177,6 +177,7 @@ async function readVesselLearningSignal(
 		estimatedEmptyAtRaw,
 		byDayTypeJsonRaw,
 		timezone,
+		vessel: base.endsWith("thermal_boiler") ? "boiler" : "buffer",
 	});
 }
 

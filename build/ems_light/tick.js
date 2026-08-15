@@ -1,27 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runEmsLightPhase1Tick = void 0;
 const ems_activity_1 = require("../ems_activity");
@@ -70,7 +47,7 @@ async function runEmsLightPhase1Tick(host) {
         hints.push(`operator.vis.show_diagnostics: ${String(e)}`);
     }
     try {
-        const { syncEconomicsFeedInFromConfig } = await Promise.resolve().then(() => __importStar(require("./economics_feed_in.js")));
+        const { syncEconomicsFeedInFromConfig } = await import("./economics_feed_in.js");
         const feedHost = host;
         if (typeof feedHost.setObjectNotExistsAsync === "function") {
             await syncEconomicsFeedInFromConfig({
@@ -98,17 +75,19 @@ async function runEmsLightPhase1Tick(host) {
         liveResult.errors.push(String(e));
     }
     try {
-        const { refreshThermalRemainingCountdown } = await Promise.resolve().then(() => __importStar(require("../learning/thermal_runtime/run.js")));
+        const { refreshThermalRemainingCountdown } = await import("../learning/thermal_runtime/run.js");
         await refreshThermalRemainingCountdown(host);
+        const { refreshThermalBoilerRemainingCountdown } = await import("../learning/thermal_boiler/run.js");
+        await refreshThermalBoilerRemainingCountdown(host);
     }
     catch (e) {
         hints.push(`thermal_remaining_countdown: ${String(e)}`);
     }
     if (operatorForecastPathEnabled(host.config)) {
-        const { runGridSupplyTick } = await Promise.resolve().then(() => __importStar(require("../operator/supply/grid_tick.js")));
-        const { runFlexibleContributionsTick } = await Promise.resolve().then(() => __importStar(require("../operator/contributions/flexible/tick.js")));
-        const { runForecastPlanTick } = await Promise.resolve().then(() => __importStar(require("../operator/forecast/tick.js")));
-        const { runDailyPlanTick } = await Promise.resolve().then(() => __importStar(require("../operator/daily_plan/tick.js")));
+        const { runGridSupplyTick } = await import("../operator/supply/grid_tick.js");
+        const { runFlexibleContributionsTick } = await import("../operator/contributions/flexible/tick.js");
+        const { runForecastPlanTick } = await import("../operator/forecast/tick.js");
+        const { runDailyPlanTick } = await import("../operator/daily_plan/tick.js");
         let gridForecast;
         try {
             gridForecast = await runGridSupplyTick(host);
@@ -140,14 +119,14 @@ async function runEmsLightPhase1Tick(host) {
             }
             if (plan) {
                 try {
-                    const { maybeTriggerAiOptimizationOnDailyPlanChange } = await Promise.resolve().then(() => __importStar(require("../ai/index.js")));
+                    const { maybeTriggerAiOptimizationOnDailyPlanChange } = await import("../ai/index.js");
                     await maybeTriggerAiOptimizationOnDailyPlanChange(host, plan);
                 }
                 catch (e) {
                     hints.push(`ai_optimization: ${String(e)}`);
                 }
                 try {
-                    const { maybeUpdatePlanCompareOnDailyPlanChange } = await Promise.resolve().then(() => __importStar(require("../ai/compare/index.js")));
+                    const { maybeUpdatePlanCompareOnDailyPlanChange } = await import("../ai/compare/index.js");
                     await maybeUpdatePlanCompareOnDailyPlanChange(host, plan);
                 }
                 catch (e) {

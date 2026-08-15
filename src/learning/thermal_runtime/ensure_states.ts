@@ -52,6 +52,17 @@ export async function ensureThermalRuntimeLearningStates(host: StateHost): Promi
 		strState("learning.thermal_runtime.by_season_json", "Thermal-Runtime nach Saison (JSON)"),
 		strState("learning.thermal_runtime.by_day_type_json", "Thermal-Runtime nach Day-Type (JSON)"),
 		strState("learning.thermal_runtime.history_json", "Thermal-Runtime Zyklen-Historie (JSON)"),
+		strState("learning.thermal_runtime.vessel", "Speichergefäß", "buffer"),
+		strState("learning.thermal_runtime.model", "Puffer-Kühlmodell", "none"),
+		strState("learning.thermal_runtime.quality", "Puffer-Learning Qualität", "insufficient_data"),
+		{
+			id: "learning.thermal_runtime.hard_relevance",
+			common: { name: "Hard-Warmwasser-Relevanz", type: "boolean", role: "indicator", read: true, write: false },
+		},
+		{
+			id: "learning.thermal_runtime.soft_relevance",
+			common: { name: "Soft-Precharge-Relevanz", type: "boolean", role: "indicator", read: true, write: false },
+		},
 	];
 
 	await ensureStates(host, defs);

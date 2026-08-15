@@ -432,7 +432,7 @@ async function assertNoDeviceWritesDuring(fn) {
         strict_1.default.equal(host.config.access_token, before.native.access_token);
         await assertDryrunModes(host);
         (0, dryrun_context_js_1.resetRestoreDryrunContextForTest)();
-        const { syncExecutionModesFromConfig } = await Promise.resolve().then(() => __importStar(require("../execution_mode.js")));
+        const { syncExecutionModesFromConfig } = await import("../execution_mode.js");
         await syncExecutionModesFromConfig(host, host.config, {});
         await assertDryrunModes(host);
     });
@@ -520,7 +520,7 @@ async function assertNoDeviceWritesDuring(fn) {
             gate: okBatteryGate(),
         });
         strict_1.default.equal(battery.rejectCode, "restore_in_progress");
-        const { syncExecutionModesFromConfig } = await Promise.resolve().then(() => __importStar(require("../execution_mode.js")));
+        const { syncExecutionModesFromConfig } = await import("../execution_mode.js");
         await syncExecutionModesFromConfig(host, host.config, {
             forceDryrunReason: (0, dryrun_context_js_1.getPendingForceDryrunReason)(),
         });
@@ -581,7 +581,7 @@ async function assertNoDeviceWritesDuring(fn) {
             strict_1.default.ok(!paths.has(rel), `duplicate target for ${key}`);
             paths.add(rel);
         }
-        strict_1.default.equal(paths.size, 11);
+        strict_1.default.equal(paths.size, 12);
     });
     (0, node_test_1.it)("writes only to fixed targets and preserves unknown neighbor files", async () => {
         const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-restore-learn-"));
@@ -675,7 +675,7 @@ async function assertNoDeviceWritesDuring(fn) {
         const second = await (0, startup_recovery_js_1.runRestoreStartupRecovery)(host);
         strict_1.default.equal(second.ok, true);
         strict_1.default.equal(second.action, "none");
-        const { syncExecutionModesFromConfig } = await Promise.resolve().then(() => __importStar(require("../execution_mode.js")));
+        const { syncExecutionModesFromConfig } = await import("../execution_mode.js");
         await syncExecutionModesFromConfig(host, host.config, {});
         await assertDryrunModes(host);
         strict_1.default.equal(host.config.access_token, "keep");

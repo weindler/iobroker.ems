@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.277",
+		"version": "0.1.278",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.278": {
+				"en": "Boiler Newton learning is separate from buffer: hard warm-water reach follows the boiler sensor; buffer stays soft/safety only. No EV execution changes.",
+				"de": "Boiler-Newton getrennt vom Puffer: Hard-Warmwasser-Reichweite folgt dem Boiler-Sensor; Puffer bleibt Soft/Safety. Keine EV-Execution-Änderung."
+			},
 			"0.1.277": {
 				"en": "EV as a Unified flexible consumer (planning only): hard/soft energy, external reservations, EV vs house battery cost sharing. No EVCC/Tibber/Sonnen/Ford/go-e writes.",
 				"de": "EV als flexibler Unified-Verbraucher (nur Planung): Hard-/Soft-Energie, externe Reservierungen, Kostenverteilung EV vs. Hausbatterie. Keine Writes auf EVCC/Tibber/Sonnen/Ford/go-e."

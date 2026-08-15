@@ -65,7 +65,7 @@ export async function evaluateTransactionFenceAtStartup(
 }
 
 export async function clearOrphanTransactionFence(manifestPath: string, manifest: EmsInstanceManifest): Promise<EmsInstanceManifest> {
-	const { writeManifestAtomic } = await import("./manifest");
+	const { writeManifestAtomic } = await import("./manifest.js");
 	const cleared: EmsInstanceManifest = { ...manifest, transactionFence: null };
 	await writeManifestAtomic(manifestPath, cleared);
 	return cleared;

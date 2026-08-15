@@ -16,6 +16,12 @@ function strState(id, name, def) {
         setDefaultIfEmpty: true,
     };
 }
+function boolState(id, name) {
+    return {
+        id,
+        common: { name, type: "boolean", role: "indicator", read: true, write: false },
+    };
+}
 /** Boiler-Learning A — getrennt von Puffer `learning.thermal_runtime.*`. */
 async function ensureThermalBoilerLearningStates(host) {
     await (0, state_util_1.ensureChannel)(host, "learning.thermal_boiler", "EMS-Light Learning Boiler-Runtime");
@@ -28,11 +34,19 @@ async function ensureThermalBoilerLearningStates(host) {
         numState("learning.thermal_boiler.cooling_rate_c_per_h_avg", "Boiler Ø Kühlrate", "°C/h"),
         numState("learning.thermal_boiler.cooling_k_per_h", "Boiler Newton-k", "1/h"),
         numState("learning.thermal_boiler.cooling_asymptote_c", "Boiler Asymptote", "°C"),
+        strState("learning.thermal_boiler.cooling_asymptote_source", "Boiler Asymptote-Quelle"),
+        numState("learning.thermal_boiler.cooling_segments", "Boiler Kühl-Segmente"),
         numState("learning.thermal_boiler.current_temperature_c", "Boiler aktuelle Temperatur", "°C"),
         numState("learning.thermal_boiler.estimated_remaining_hours", "Boiler Restlaufzeit", "h"),
         strState("learning.thermal_boiler.estimated_empty_at", "Boiler geschätzt leer um (ISO)"),
         strState("learning.thermal_boiler.by_day_type_json", "Boiler nach Day-Type (JSON)", "{}"),
-        strState("learning.thermal_boiler.reason_de", "Boiler-Learning Begründung", "Noch keine Boiler-Zyklen — lernt."),
+        strState("learning.thermal_boiler.history_json", "Boiler Zyklen-Historie (JSON)", "[]"),
+        strState("learning.thermal_boiler.model", "Boiler-Kühlmodell", "none"),
+        strState("learning.thermal_boiler.quality", "Boiler-Learning Qualität", "insufficient_data"),
+        strState("learning.thermal_boiler.vessel", "Speichergefäß", "boiler"),
+        boolState("learning.thermal_boiler.hard_relevance", "Hard-Warmwasser-Relevanz"),
+        boolState("learning.thermal_boiler.soft_relevance", "Soft-Precharge-Relevanz"),
+        strState("learning.thermal_boiler.reason_de", "Boiler-Learning Begründung", "Noch keine Boiler-Daten — lernt."),
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }

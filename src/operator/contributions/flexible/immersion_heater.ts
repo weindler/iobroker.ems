@@ -109,6 +109,11 @@ function thermalLearningDetails(input: ImmersionContributionBuildInput): Record<
 			: hasNewtonEmptyAtModel(learning)
 				? "newton"
 				: "none",
+		bufferLearningModel: hasCycleCoolingModel(learning)
+			? "cycle"
+			: hasNewtonEmptyAtModel(learning)
+				? "newton"
+				: "none",
 		thermalLearningDegradedCauseDe: thermalLearningDegradedCauseDe(learning),
 		learnedDayTypeRuntimeHoursMedian: learning?.currentDayTypeRuntimeHoursMedian ?? null,
 	};
@@ -456,6 +461,16 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 				emptyAtSource: boilerEmptyAtSource,
 				emptyAtPlanningUsable: boilerEmptyUsable,
 				boilerCoolingRateCPerHAvg: boilerLearning?.coolingRateCPerHAvg ?? null,
+				boilerCoolingConstantPerH: boilerLearning?.coolingConstantPerH ?? null,
+				boilerCoolingAsymptoteC: boilerLearning?.coolingAsymptoteC ?? null,
+				boilerLearningModel: hasCycleCoolingModel(boilerLearning)
+					? "cycle"
+					: hasNewtonEmptyAtModel(boilerLearning)
+						? "newton"
+						: "none",
+				boilerLearningSamples: boilerLearning?.samples ?? null,
+				hardThermalSource: "boiler",
+				softThermalSource: "buffer",
 				targetReasonDe: [
 					target.targetReasonDe,
 					nightBridge?.active ? nightBridge.reasonDe : null,

@@ -6,6 +6,7 @@ exports.RESTORE_LEARNING_TARGETS = {
     "battery_runtime_learning_v1.json": { category: "learning/battery_runtime", fileName: "battery_runtime_learning_v1.json" },
     "house_load_learning_v1.json": { category: "learning/house_load", fileName: "house_load_learning_v1.json" },
     "thermal_runtime_learning_v1.json": { category: "learning/thermal_runtime", fileName: "thermal_runtime_learning_v1.json" },
+    "thermal_boiler_learning_v1.json": { category: "learning/thermal_boiler", fileName: "thermal_boiler_learning_v1.json" },
     "price_learning_v1.json": { category: "learning/price_learning", fileName: "price_learning_v1.json" },
     "price_forecast_learning_v1.json": { category: "learning/price_forecast", fileName: "price_forecast_learning_v1.json" },
     "pv_bias_daily_v1.json": { category: "learning/pv_bias", fileName: "pv_bias_daily_v1.json" },

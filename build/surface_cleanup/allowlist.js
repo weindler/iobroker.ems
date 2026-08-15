@@ -27,7 +27,7 @@ exports.LEAN_PLANNER_PURGE_ROOTS = [
     "planner.coordinator",
 ];
 /** Large learning JSON mirrors — replaced by file-backed .emsbackup. */
-exports.LEARNING_MIRROR_PURGE_RE = /^learning\.persistence\.(battery_runtime|house_load|thermal_runtime|price_learning|price_forecast|pv_bias_daily|power_hourly|energy_daily)_json$/;
+exports.LEARNING_MIRROR_PURGE_RE = /^learning\.persistence\.(battery_runtime|house_load|thermal_runtime|thermal_boiler|price_learning|price_forecast|pv_bias_daily|power_hourly|energy_daily)_json$/;
 /** Battery-runtime power diagnostics (lean KPI surface). */
 exports.BATTERY_RUNTIME_DIAG_PURGE_RE = /^learning\.battery_runtime\.power_(history_raw_rows|history_normalized_rows|raw_charge_samples|raw_discharge_samples|hourly_charge_points|hourly_discharge_points|invert_applied|invert_auto)$/;
 /** Stub addon folders without full runtime (basis no longer ensured). */

@@ -96,7 +96,7 @@ function logsDir(host: DiagnosticRecorderHost): string {
 
 export async function recordDiagnosticEvent(host: DiagnosticRecorderHost, event: DiagnosticEvent): Promise<void> {
 	if (!isDiagnosticModeActive()) return;
-	const { appendNdjsonRotating } = await import("./log_rotation");
+	const { appendNdjsonRotating } = await import("./log_rotation.js");
 	await appendNdjsonRotating(logsDir(host), "diagnostics", event, {
 		maxFiles: 4,
 		maxFileBytes: 512 * 1024,
@@ -105,7 +105,7 @@ export async function recordDiagnosticEvent(host: DiagnosticRecorderHost, event:
 }
 
 export async function recordErrorLog(host: DiagnosticRecorderHost, event: DiagnosticEvent): Promise<void> {
-	const { appendNdjsonRotating } = await import("./log_rotation");
+	const { appendNdjsonRotating } = await import("./log_rotation.js");
 	await appendNdjsonRotating(logsDir(host), "errors", event, {
 		maxFiles: 4,
 		maxFileBytes: 256 * 1024,

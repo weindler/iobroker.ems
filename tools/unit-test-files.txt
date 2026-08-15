@@ -115,6 +115,7 @@ build/learning/price_forecast/compare.test.js
 build/learning/house_load/history.test.js
 build/learning/house_load/math.test.js
 build/learning/thermal_runtime/math.test.js
+build/learning/thermal_boiler/boiler_split.test.js
 build/learning/battery_runtime/math.test.js
 build/learning/battery_runtime/history.test.js
 build/learning/power_rollup/power_rollup.test.js

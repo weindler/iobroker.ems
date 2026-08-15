@@ -194,7 +194,7 @@ class ExportTestHost {
             wb_vehicle_map: [mapRow("vin123456789012345", "My Car")],
             access_token: secret,
         });
-        const { runSupportBundleExport } = await Promise.resolve().then(() => __importStar(require("../support/index.js")));
+        const { runSupportBundleExport } = await import("../support/index.js");
         const result = await runSupportBundleExport(host);
         strict_1.default.equal(result.ok, true);
         if (!result.ok)
@@ -360,6 +360,7 @@ class ExportTestHost {
             "battery_runtime_learning_v1.json",
             "house_load_learning_v1.json",
             "thermal_runtime_learning_v1.json",
+            "thermal_boiler_learning_v1.json",
             "price_learning_v1.json",
             "price_forecast_learning_v1.json",
             "pv_bias_daily_v1.json",
@@ -435,7 +436,7 @@ class ExportTestHost {
         const manifest = JSON.parse((0, archive_js_1.readZipEntryData)(buf, "manifest.json").toString("utf8"));
         strict_1.default.equal(manifest.safety.restore_must_start_dryrun, true);
         strict_1.default.equal(manifest.safety.automatic_live_resume_allowed, false);
-        const { runSupportBundleExport } = await Promise.resolve().then(() => __importStar(require("../support/index.js")));
+        const { runSupportBundleExport } = await import("../support/index.js");
         const support = await runSupportBundleExport(host);
         strict_1.default.equal(support.ok, true);
         if (!support.ok)
@@ -481,7 +482,7 @@ class ExportTestHost {
         const logDir = path.join((0, retention_js_1.supportDir)(tmp), "logs");
         await fs.mkdir(logDir, { recursive: true });
         await fs.writeFile(path.join(logDir, "errors-001.ndjson"), '{"detail":"password: \\"still-leaked\\""}\n', "utf8");
-        const { runSupportBundleExport } = await Promise.resolve().then(() => __importStar(require("../support/index.js")));
+        const { runSupportBundleExport } = await import("../support/index.js");
         const result = await runSupportBundleExport(host);
         strict_1.default.equal(result.ok, false);
     });

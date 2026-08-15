@@ -245,6 +245,6 @@ export async function updateBootGuardAfterBootstrap(
 		adapterVersion: String(host.common?.version ?? manifest.adapterVersion),
 		lastSuccessfulBootstrapAt: new Date().toISOString(),
 	};
-	const { writeBootGuardAtomic } = await import("./boot_guard");
+	const { writeBootGuardAtomic } = await import("./boot_guard.js");
 	await writeBootGuardAtomic(layout.bootGuardPath, record);
 }

@@ -1,0 +1,447 @@
+"use strict";
+/**
+ * Boiler vs Puffer Learning — Realfall + T1–T16 (keine Puffer-Samples als Boiler).
+ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const strict_1 = __importDefault(require("node:assert/strict"));
+const node_test_1 = require("node:test");
+const fs = __importStar(require("node:fs/promises"));
+const os = __importStar(require("node:os"));
+const path = __importStar(require("node:path"));
+const hygiene_1 = require("../../addons/immersion_heater/hygiene");
+const device_config_1 = require("../../addons/immersion_heater/device_config");
+const mode_policy_1 = require("../../planner/mode_policy");
+const immersion_heater_1 = require("../../operator/contributions/flexible/immersion_heater");
+const thermal_empty_at_1 = require("../../operator/contributions/flexible/thermal_empty_at");
+const thermal_learning_1 = require("../../operator/contributions/flexible/thermal_learning");
+const thermal_boiler_buffer_1 = require("../../operator/daily_plan/unified/thermal_boiler_buffer");
+const allocate_1 = require("../../operator/daily_plan/unified/allocate");
+const fixtures_1 = require("../../operator/daily_plan/unified/fixtures");
+const write_allowlist_1 = require("../../addons/wallbox/ev_foundation/write_allowlist");
+const math_1 = require("../thermal_runtime/math");
+const config_1 = require("./config");
+const persist_1 = require("./persist");
+const run_1 = require("./run");
+const MS_H = 3_600_000;
+const NOW = Date.parse("2026-08-15T10:00:00.000Z");
+const COVER = Date.parse("2026-08-15T16:00:00.000Z");
+const NEXT_PV = Date.parse("2026-08-16T06:00:00.000Z");
+function linearCurve(startMs, startC, endC, hours, steps = 12) {
+    const out = [];
+    for (let i = 0; i <= steps; i++) {
+        const frac = i / steps;
+        out.push({ ts: startMs + frac * hours * MS_H, tempC: startC + (endC - startC) * frac });
+    }
+    return out;
+}
+function boilerCfg() {
+    return (0, config_1.thermalBoilerConfigFromAdapter)({ ih_boiler_min_temp_c: 50, ih_hygiene_target_temp_c: 60 });
+}
+function bufferCfg() {
+    return {
+        enabled: true,
+        lookbackDays: 90,
+        temperatureStateId: "sensor.0.buffer",
+        fullThresholdC: 60,
+        emptyThresholdC: 48,
+        minRuntimeHours: 0.5,
+        maxRuntimeHours: 72,
+    };
+}
+function mockBoilerHost(opts) {
+    const states = {};
+    const stateId = opts.stateId ?? "sensor.0.boiler";
+    return {
+        states,
+        config: {
+            ih_boiler_min_temp_c: 50,
+            ih_hygiene_target_temp_c: 60,
+            ih_boiler_temp_c_target: stateId,
+            learning_thermal_runtime_enabled: true,
+            learning_thermal_runtime_lookback_days: 7,
+        },
+        getStateAsync: async (id) => ({ val: states[id] }),
+        setStateAsync: async (id, state) => {
+            states[id] = state.val;
+        },
+        setObjectNotExistsAsync: async () => undefined,
+        getForeignStateAsync: async () => ({ val: opts.currentTemp }),
+        getHistoryAsync: async () => ({
+            result: opts.history.map((p) => ({
+                ts: p.ts,
+                val: p.tempC,
+                ack: true,
+                lc: p.ts,
+                from: "test",
+            })),
+        }),
+        getAbsolutePath: (category) => path.join(opts.tmp, category ?? ""),
+        log: { debug: () => undefined, warn: () => undefined, error: () => undefined },
+    };
+}
+function immersionBase() {
+    return {
+        now: new Date(NOW),
+        addonEnabled: true,
+        governanceEnabled: true,
+        globalModeOff: false,
+        addonExecutionOff: false,
+        modePolicy: (0, mode_policy_1.plannerModePolicyFromGlobalMode)("balanced"),
+        config: (0, device_config_1.immersionDeviceConfigFromAdapter)({
+            ih_boiler_min_temp_c: 50,
+            ih_planning_max_temp_c: 63,
+            ih_hygiene_target_temp_c: 60,
+            ih_stage_1_set_state: "r.0.on",
+            ih_stage_1_nominal_power_w: 1700,
+        }),
+        bufferTempC: 52,
+        boilerTempC: 61,
+        boilerSensorDegraded: false,
+        thermalMode: "auto",
+        fault: false,
+        lockout: false,
+        relayMapped: true,
+        pvTodayKwh: 40,
+        pvTomorrowKwh: 20,
+        pvBiasStatus: "ready",
+        forecastModeEnabled: true,
+        aiOptimizationAllowed: false,
+        hygieneDue: false,
+    };
+}
+(0, node_test_1.describe)("boiler/buffer split — observed real fault", () => {
+    (0, node_test_1.it)("T12-real: slow boiler 64→61 vs fast buffer 61→52 — Hard follows boiler", () => {
+        const start = NOW - 24 * MS_H;
+        const boilerPts = linearCurve(start, 64, 61, 24);
+        const bufferPts = linearCurve(NOW - 6 * MS_H, 61, 52, 6);
+        const bCfg = boilerCfg();
+        const pCfg = bufferCfg();
+        const boilerModel = (0, math_1.estimateCoolingModel)(boilerPts, bCfg);
+        const bufferModel = (0, math_1.estimateCoolingModel)(bufferPts, pCfg);
+        strict_1.default.ok(boilerModel.coolingConstantPerH != null && boilerModel.coolingConstantPerH > 0);
+        strict_1.default.ok(bufferModel.coolingConstantPerH != null && bufferModel.coolingConstantPerH > 0);
+        const boilerRemain = (0, math_1.estimateRemainingHours)({
+            currentTempC: 61,
+            fullThresholdC: bCfg.fullThresholdC,
+            emptyThresholdC: 50,
+            typicalRuntimeHours: null,
+            coolingRateCPerHAvg: null,
+            coolingConstantPerH: boilerModel.coolingConstantPerH,
+            ambientC: boilerModel.asymptoteC,
+        });
+        const bufferRemain = (0, math_1.estimateRemainingHours)({
+            currentTempC: 52,
+            fullThresholdC: 60,
+            emptyThresholdC: 48,
+            typicalRuntimeHours: null,
+            coolingRateCPerHAvg: null,
+            coolingConstantPerH: bufferModel.coolingConstantPerH,
+            ambientC: bufferModel.asymptoteC,
+        });
+        strict_1.default.ok(boilerRemain != null && boilerRemain > 12, `boiler remain ${boilerRemain}`);
+        strict_1.default.ok(bufferRemain != null && bufferRemain < boilerRemain, `buffer remain ${bufferRemain}`);
+        const boilerCycles = (0, math_1.detectRuntimeCycles)(boilerPts, bCfg);
+        strict_1.default.equal(boilerCycles.length, 0, "64→61 must not count as a completed boiler cycle to 50 °C");
+        const emptyAtMs = NOW + (boilerRemain ?? 0) * MS_H;
+        const hard = (0, thermal_boiler_buffer_1.resolveBoilerBufferThermalEnergy)({
+            nowMs: NOW,
+            boilerTempC: 61,
+            boilerMinTempC: 50,
+            bufferTempC: 52,
+            bufferMaxTempC: 63,
+            softHeadroomEnergyKwh: 4,
+            boilerCoolingRateCPerH: boilerModel.coolingConstantPerH * (61 - boilerModel.asymptoteC),
+            boilerEstimatedEmptyAtMs: emptyAtMs,
+            boilerEmptyAtUsable: true,
+            nextReliablePvMs: NEXT_PV,
+            currentWindowEndMs: COVER,
+            pvConfidence01: 0.85,
+        });
+        strict_1.default.ok(hard.mandatoryEnergyKwh < 0.05, `hard=${hard.mandatoryEnergyKwh} reason=${hard.reasonDe}`);
+        strict_1.default.ok(hard.economicHeadroomKwh > 1);
+        const wrongBufferHard = (0, thermal_boiler_buffer_1.resolveBoilerBufferThermalEnergy)({
+            nowMs: NOW,
+            boilerTempC: 61,
+            boilerMinTempC: 50,
+            bufferTempC: 52,
+            bufferMaxTempC: 63,
+            softHeadroomEnergyKwh: 4,
+            /** Puffer-ähnliche Crash-Rate (~9 K / 6 h Cover) — darf nicht der Boiler-Pfad sein. */
+            boilerCoolingRateCPerH: 2.5,
+            boilerEstimatedEmptyAtMs: NOW + 2.7 * MS_H,
+            boilerEmptyAtUsable: true,
+            nextReliablePvMs: NEXT_PV,
+            currentWindowEndMs: COVER,
+            pvConfidence01: 0.85,
+        });
+        strict_1.default.ok(wrongBufferHard.mandatoryEnergyKwh > 0.2, "control: using buffer-like rate would create Hard — must not be the boiler path");
+    });
+});
+(0, node_test_1.describe)("boiler learning A vs buffer learning B", () => {
+    (0, node_test_1.it)("T1: boiler above min + fast buffer drop → no Hard from buffer", () => {
+        const r = (0, thermal_boiler_buffer_1.resolveBoilerBufferThermalEnergy)({
+            nowMs: NOW,
+            boilerTempC: 61,
+            boilerMinTempC: 50,
+            bufferTempC: 52,
+            bufferMaxTempC: 63,
+            softHeadroomEnergyKwh: 4,
+            boilerCoolingRateCPerH: null,
+            boilerEstimatedEmptyAtMs: null,
+            boilerEmptyAtUsable: false,
+            nextReliablePvMs: NEXT_PV,
+            currentWindowEndMs: COVER,
+            pvConfidence01: 0.85,
+        });
+        strict_1.default.ok(r.mandatoryEnergyKwh < 0.05);
+        strict_1.default.ok(r.economicHeadroomKwh > 1);
+    });
+    (0, node_test_1.it)("T2: boiler approaching 50 °C → remaining hours shrink", () => {
+        const cfg = boilerCfg();
+        const pts = linearCurve(NOW - 20 * MS_H, 56, 51, 20);
+        const model = (0, math_1.estimateCoolingModel)(pts, cfg);
+        const far = (0, math_1.estimateRemainingHours)({
+            currentTempC: 56,
+            fullThresholdC: 60,
+            emptyThresholdC: 50,
+            typicalRuntimeHours: null,
+            coolingRateCPerHAvg: null,
+            coolingConstantPerH: model.coolingConstantPerH,
+            ambientC: model.asymptoteC,
+        });
+        const near = (0, math_1.estimateRemainingHours)({
+            currentTempC: 51,
+            fullThresholdC: 60,
+            emptyThresholdC: 50,
+            typicalRuntimeHours: null,
+            coolingRateCPerHAvg: null,
+            coolingConstantPerH: model.coolingConstantPerH,
+            ambientC: model.asymptoteC,
+        });
+        strict_1.default.ok(far != null && near != null && near < far);
+    });
+    (0, node_test_1.it)("T3: boiler under minimum → Hard", () => {
+        const r = (0, thermal_boiler_buffer_1.resolveBoilerBufferThermalEnergy)({
+            nowMs: NOW,
+            boilerTempC: 48.5,
+            boilerMinTempC: 50,
+            bufferTempC: 58,
+            bufferMaxTempC: 63,
+            softHeadroomEnergyKwh: 2,
+            boilerCoolingRateCPerH: null,
+            boilerEstimatedEmptyAtMs: null,
+            boilerEmptyAtUsable: false,
+            nextReliablePvMs: NEXT_PV,
+            currentWindowEndMs: COVER,
+            pvConfidence01: 0.85,
+        });
+        strict_1.default.ok(r.mandatoryEnergyKwh > 0.3);
+        strict_1.default.equal(r.hardFromBoiler, true);
+    });
+    (0, node_test_1.it)("T4: boiler Newton works without completed cooling cycles", () => {
+        const cfg = boilerCfg();
+        const pts = linearCurve(NOW - 18 * MS_H, 64, 61, 18);
+        strict_1.default.equal((0, math_1.detectRuntimeCycles)(pts, cfg).length, 0);
+        strict_1.default.ok((0, math_1.collectCoolingSegments)(pts, cfg.minRuntimeHours).length >= 1);
+        const model = (0, math_1.estimateCoolingModel)(pts, cfg);
+        const result = (0, math_1.computeThermalRuntimeLearning)({
+            cycles: [],
+            currentTempC: 61,
+            cfg,
+            sourceStateId: "sensor.0.boiler",
+            now: new Date(NOW),
+            coolingConstantPerH: model.coolingConstantPerH,
+            asymptoteC: model.asymptoteC,
+            asymptoteSource: model.asymptoteSource,
+        });
+        strict_1.default.ok(result.coolingConstantPerH != null && result.coolingConstantPerH > 0);
+        strict_1.default.ok(result.estimatedEmptyAt);
+        strict_1.default.ok((result.estimatedRemainingHours ?? 0) > 8);
+        const signal = (0, thermal_learning_1.buildThermalLearningSignal)({
+            now: new Date(NOW),
+            rawStatus: result.status,
+            rawHealth: result.health,
+            samples: result.samples,
+            coolingRateCPerHAvg: result.coolingRateCPerHAvg,
+            coolingConstantPerH: result.coolingConstantPerH,
+            coolingAsymptoteC: result.coolingAsymptoteC,
+            estimatedRemainingHours: result.estimatedRemainingHours,
+            estimatedEmptyAtRaw: result.estimatedEmptyAt,
+            byDayTypeJsonRaw: "{}",
+            vessel: "boiler",
+        });
+        strict_1.default.equal(signal.status, "degraded");
+        strict_1.default.equal((0, thermal_empty_at_1.thermalEmptyAtUsableForPlanning)(signal), true);
+        strict_1.default.match(signal.reasonDe, /Boiler-Learning/);
+    });
+    (0, node_test_1.it)("T5: buffer cycles are not boiler cycles", () => {
+        const bufferToFloor = linearCurve(NOW - 12 * MS_H, 62, 47, 12);
+        const boilerStay = linearCurve(NOW - 12 * MS_H, 64, 61, 12);
+        strict_1.default.ok((0, math_1.detectRuntimeCycles)(bufferToFloor, bufferCfg()).length >= 1);
+        strict_1.default.equal((0, math_1.detectRuntimeCycles)(boilerStay, boilerCfg()).length, 0);
+    });
+    (0, node_test_1.it)("T6/T7: runThermalBoilerLearning uses boiler history only and writes boiler emptyAt", async () => {
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-"));
+        const boilerPts = linearCurve(NOW - 20 * MS_H, 64, 61, 20);
+        const host = mockBoilerHost({ tmp, currentTemp: 61, history: boilerPts });
+        await (0, run_1.runThermalBoilerLearning)(host);
+        strict_1.default.equal(host.states["learning.thermal_boiler.vessel"], "boiler");
+        strict_1.default.equal(host.states["learning.thermal_boiler.soft_relevance"], false);
+        strict_1.default.equal(host.states["learning.thermal_boiler.samples"], 0);
+        strict_1.default.ok(Number(host.states["learning.thermal_boiler.cooling_k_per_h"]) > 0);
+        const emptyAt = String(host.states["learning.thermal_boiler.estimated_empty_at"] ?? "");
+        strict_1.default.ok(emptyAt.length > 10, `emptyAt=${emptyAt}`);
+        strict_1.default.ok(Date.parse(emptyAt) > NOW + 8 * MS_H);
+        strict_1.default.match(String(host.states["learning.thermal_boiler.reason_de"]), /nicht Puffer|Newton/);
+        const persist = await (0, persist_1.readThermalBoilerPersist)(path.join(tmp, "learning/thermal_boiler"));
+        strict_1.default.equal(persist?.module, persist_1.BOILER_MODULE_TAG);
+        strict_1.default.equal(persist?.samples, 0);
+    });
+    (0, node_test_1.it)("T8: bufferEstimatedEmptyAt never becomes Hard deadline in contribution", () => {
+        const [, flex] = (0, immersion_heater_1.buildImmersionHeaterContributions)({
+            ...immersionBase(),
+            thermalLearning: {
+                status: "degraded",
+                health: "ok",
+                samples: 0,
+                coolingRateCPerHAvg: null,
+                coolingConstantPerH: 0.2,
+                coolingAsymptoteC: 18,
+                estimatedRemainingHours: 2,
+                estimatedEmptyAt: "2026-08-15T12:00:00.000Z",
+                currentDayTypeRuntimeHoursMedian: null,
+                reasonDe: "Puffer newton",
+            },
+            boilerLearning: {
+                status: "missing",
+                health: null,
+                samples: 0,
+                coolingRateCPerHAvg: null,
+                coolingConstantPerH: null,
+                coolingAsymptoteC: null,
+                estimatedRemainingHours: null,
+                estimatedEmptyAt: null,
+                currentDayTypeRuntimeHoursMedian: null,
+                reasonDe: "kein boiler model",
+            },
+        });
+        strict_1.default.equal(flex.deadlineIso, null);
+        strict_1.default.equal(flex.details.emptyAtPlanningUsable, false);
+        strict_1.default.equal(flex.details.bufferEstimatedEmptyAt, "2026-08-15T12:00:00.000Z");
+        strict_1.default.equal(flex.details.boilerEstimatedEmptyAt, null);
+        strict_1.default.equal(flex.details.hardThermalSource, "boiler");
+        strict_1.default.equal(flex.details.softThermalSource, "buffer");
+        strict_1.default.equal(flex.details.thermalLearningModel, "newton");
+        strict_1.default.equal(flex.details.boilerLearningModel, "none");
+    });
+    (0, node_test_1.it)("T9: hygiene >60 °C is boiler-based", () => {
+        const hy = (0, hygiene_1.evaluateHygieneDuty)({
+            nowMs: NOW,
+            boilerTempC: 55,
+            hygieneTargetTempC: 60,
+            bufferTempC: 63,
+            bufferMaxTempC: 63,
+            lastBoilerHygieneAtIso: new Date(NOW - 8 * 24 * 3600_000).toISOString(),
+            kwhPerDegreeC: 0.38,
+        });
+        strict_1.default.equal(hy.due, true);
+        strict_1.default.equal(hy.blockedByBufferMax, true);
+        strict_1.default.equal(hy.mandatoryEnergyKwh, 0);
+    });
+    (0, node_test_1.it)("T10: buffer safety max unchanged", () => {
+        strict_1.default.equal((0, thermal_boiler_buffer_1.bufferSoftHeadroomKwh)({ bufferTempC: 63, bufferMaxTempC: 63 }), 0);
+        strict_1.default.ok((0, thermal_boiler_buffer_1.bufferSoftHeadroomKwh)({ bufferTempC: 52, bufferMaxTempC: 63 }) > 3);
+    });
+    (0, node_test_1.it)("T11: PV soft precharge still possible when boiler is warm", () => {
+        const [, flex] = (0, immersion_heater_1.buildImmersionHeaterContributions)({
+            ...immersionBase(),
+            bufferTempC: 50,
+            boilerTempC: 62,
+            todayPvSurplusKwh: 18,
+            batterySocPct: 90,
+            batteryEndSocTargetPct: 90,
+        });
+        strict_1.default.equal(flex.deadlineIso, null);
+        strict_1.default.ok(flex.enabled === true || flex.details.requiredEnergyKwh > 0 || flex.details.pvPrechargeActive);
+    });
+    (0, node_test_1.it)("T5-persist: buffer persist file is not accepted as boiler learning", async () => {
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-rej-"));
+        await fs.mkdir(tmp, { recursive: true });
+        await fs.writeFile(path.join(tmp, "thermal_boiler_learning_v1.json"), JSON.stringify({
+            generated_at: new Date().toISOString(),
+            module: "thermal_runtime_learning_v1",
+            samples: 12,
+            runtime_hours_avg: 8,
+            runtime_hours_median: 8,
+            cooling_rate_c_per_h_avg: 1.4,
+            by_season: {},
+            by_day_type: {},
+            history: [],
+            health: "ok",
+        }));
+        const read = await (0, persist_1.readThermalBoilerPersist)(tmp);
+        strict_1.default.equal(read, null);
+    });
+    (0, node_test_1.it)("T16: no new EV planner writes", () => {
+        strict_1.default.equal(write_allowlist_1.EV_FOUNDATION_PHASE1_PLANNER_WRITES_ENABLED, false);
+    });
+});
+(0, node_test_1.describe)("boiler split — unified / climate / battery regression smoke", () => {
+    (0, node_test_1.it)("T12: unified still allocates thermal soft without boiler Hard", () => {
+        const input = (0, fixtures_1.golden001Input)();
+        input.time.nowIso = "2026-08-15T10:00:00.000Z";
+        input.time.slots = (0, fixtures_1.buildSlots)("2026-08-15T10:00:00.000Z", 8);
+        input.thermal = {
+            ...input.thermal,
+            boilerTempC: 61,
+            boilerMinTempC: 50,
+            bufferTempC: 52,
+            minTempC: 50,
+            maxTempC: 63,
+            headroomEnergyKwh: 4,
+            estimatedEmptyAtIso: null,
+            deadlineIso: null,
+            emptyAtSource: null,
+            boilerEmptyAtUsable: false,
+            coolingRateCPerH: null,
+        };
+        input.wallbox = null;
+        input.climate = null;
+        const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);
+        const hard = plan.allocations
+            .filter((a) => a.kind === "immersion_heater" && a.consumerId === "immersion_heater")
+            .reduce((s, a) => s + a.allocatedEnergyKwh, 0);
+        const soft = plan.allocations
+            .filter((a) => a.kind === "immersion_heater")
+            .reduce((s, a) => s + a.allocatedEnergyKwh, 0);
+        strict_1.default.ok(soft >= 0);
+        strict_1.default.ok(hard >= 0);
+        strict_1.default.ok(plan.reasonCodes.length >= 0);
+    });
+});

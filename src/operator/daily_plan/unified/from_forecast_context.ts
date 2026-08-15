@@ -451,12 +451,12 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 					const emptyUsable = bool(ihD, "emptyAtPlanningUsable") === true;
 					const emptyMs =
 						emptyUsable && estimatedEmptyAtIso ? Date.parse(estimatedEmptyAtIso) : Number.NaN;
-					const boilerRate = num(ihD, "boilerCoolingRateCPerHAvg") ?? num(ihD, "coolingRateCPerHAvg");
 					const coolingRateCPerH = effectiveCoolingRateCPerH({
-						coolingRateCPerHAvg: boilerRate,
-						coolingConstantPerH: num(ihD, "coolingConstantPerH"),
-						coolingAsymptoteC: num(ihD, "coolingAsymptoteC"),
-						bufferTempC: boilerTempC ?? bufferTempC,
+						coolingRateCPerHAvg: num(ihD, "boilerCoolingRateCPerHAvg"),
+						coolingConstantPerH: num(ihD, "boilerCoolingConstantPerH"),
+						coolingAsymptoteC: num(ihD, "boilerCoolingAsymptoteC"),
+						currentTempC: boilerTempC,
+						bufferTempC: boilerTempC,
 						minTempC: boilerMinTempC,
 						estimatedEmptyAtMs: Number.isFinite(emptyMs) ? emptyMs : null,
 						nowMs,

@@ -5,6 +5,7 @@ import { ensurePriceLearningStates, runPriceLearning } from "../price_learning";
 import { ensurePriceForecastLearningStates, runPriceForecastLearning } from "../price_forecast";
 import { ensureHouseLoadLearningStates, runHouseLoadLearning } from "../house_load";
 import { ensureThermalRuntimeLearningStates, runThermalRuntimeLearning } from "../thermal_runtime";
+import { ensureThermalBoilerLearningStates, runThermalBoilerLearning } from "../thermal_boiler";
 import { ensureBatteryRuntimeLearningStates, runBatteryRuntimeLearning } from "../battery_runtime";
 import { ensureEnergyDailyRollupForLearning } from "../energy_daily_rollup";
 import { ensurePowerRollupForLearning } from "../power_rollup";
@@ -35,6 +36,7 @@ export async function ensureLearningStateTree(adapter: ioBroker.Adapter): Promis
 	await ensurePriceForecastLearningStates(host);
 	await ensureHouseLoadLearningStates(host);
 	await ensureThermalRuntimeLearningStates(host);
+	await ensureThermalBoilerLearningStates(host);
 	await ensureBatteryRuntimeLearningStates(host);
 	await ensureLearningPersistenceStates(host);
 	return host;
@@ -73,7 +75,6 @@ async function runLearningTick(host: PvBiasRunHost & StateHost): Promise<void> {
 	// House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
 	await runHouseLoadLearning(host);
 	await runThermalRuntimeLearning(host);
-	const { runThermalBoilerLearning } = await import("../thermal_boiler/run");
 	await runThermalBoilerLearning(host);
 	await runBatteryRuntimeLearning(host);
 	await runPriceForecastLearning(host);

@@ -36,25 +36,28 @@ function deriveStatus(rawStatus, rawHealth, samples) {
         return "degraded";
     return "missing";
 }
-function reasonDeForStatus(status, samples, estimatedEmptyAt, timezone) {
+function reasonDeForStatus(status, samples, estimatedEmptyAt, timezone, vessel) {
+    const label = vessel === "boiler" ? "Boiler-Learning" : "Puffer-Learning";
+    const reach = vessel === "boiler" ? "Boiler" : "Puffer";
     if (status === "valid") {
         const local = estimatedEmptyAt !== null ? (0, time_2.formatLocalDateTimeDe)(estimatedEmptyAt, timezone) : null;
         return local
-            ? `Thermal-Runtime-Learning aktiv (${samples ?? 0} Zyklen) — Puffer voraussichtlich leer um ${local}.`
-            : `Thermal-Runtime-Learning aktiv (${samples ?? 0} Zyklen).`;
+            ? `${label} aktiv (${samples ?? 0} Zyklen) — ${reach} voraussichtlich leer um ${local}.`
+            : `${label} aktiv (${samples ?? 0} Zyklen).`;
     }
     if (status === "degraded") {
         const n = samples ?? 0;
         if (n === 0 && estimatedEmptyAt) {
-            return `Thermal-Runtime-Learning: Newton-Schätzung nutzbar, ${n} abgeschlossene Abkühlzyklen — Status degraded (nicht cycle-valid).`;
+            return `${label}: Newton-Schätzung nutzbar, ${n} abgeschlossene Abkühlzyklen — Status degraded (nicht cycle-valid).`;
         }
-        return `Thermal-Runtime-Learning mit wenigen Zyklen (${n}) — eingeschränkt belastbar.`;
+        return `${label} mit wenigen Zyklen (${n}) — eingeschränkt belastbar.`;
     }
-    return "Thermal-Runtime-Learning ohne belastbares Modell — Fallback auf Physik-Schätzung.";
+    return `${label} ohne belastbares Modell — Fallback auf Physik-Schätzung.`;
 }
 function buildThermalLearningSignal(input) {
     const status = deriveStatus(input.rawStatus, input.rawHealth, input.samples);
     const timezone = input.timezone?.trim() || "Europe/Berlin";
+    const vessel = input.vessel === "boiler" ? "boiler" : "buffer";
     let estimatedEmptyAt = null;
     if (input.estimatedEmptyAtRaw) {
         const ms = Date.parse(input.estimatedEmptyAtRaw);
@@ -86,7 +89,7 @@ function buildThermalLearningSignal(input) {
             estimatedRemainingHours: null,
             estimatedEmptyAt: null,
             currentDayTypeRuntimeHoursMedian: null,
-            reasonDe: reasonDeForStatus(status, input.samples, null, timezone),
+            reasonDe: reasonDeForStatus(status, input.samples, null, timezone, vessel),
         };
     }
     return {
@@ -99,7 +102,7 @@ function buildThermalLearningSignal(input) {
         estimatedRemainingHours,
         estimatedEmptyAt,
         currentDayTypeRuntimeHoursMedian,
-        reasonDe: reasonDeForStatus(status, input.samples, estimatedEmptyAt, timezone),
+        reasonDe: reasonDeForStatus(status, input.samples, estimatedEmptyAt, timezone, vessel),
     };
 }
 exports.buildThermalLearningSignal = buildThermalLearningSignal;

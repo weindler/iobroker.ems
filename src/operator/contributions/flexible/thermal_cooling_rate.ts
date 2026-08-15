@@ -9,6 +9,9 @@ export type EffectiveCoolingRateInput = {
 	coolingRateCPerHAvg: number | null | undefined;
 	coolingConstantPerH: number | null | undefined;
 	coolingAsymptoteC: number | null | undefined;
+	/** Aktuelle Gefäßtemperatur (Boiler oder Puffer). */
+	currentTempC?: number | null | undefined;
+	/** @deprecated Alias für currentTempC — Tests/Alt. */
 	bufferTempC: number | null | undefined;
 	minTempC: number | null | undefined;
 	estimatedEmptyAtMs: number | null | undefined;
@@ -26,7 +29,7 @@ export function effectiveCoolingRateCPerH(input: EffectiveCoolingRateInput): num
 	}
 
 	const k = input.coolingConstantPerH;
-	const buf = input.bufferTempC;
+	const buf = input.currentTempC ?? input.bufferTempC;
 	if (typeof k === "number" && Number.isFinite(k) && k > 0 && typeof buf === "number" && Number.isFinite(buf)) {
 		const asym =
 			typeof input.coolingAsymptoteC === "number" && Number.isFinite(input.coolingAsymptoteC)

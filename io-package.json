@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.278",
+		"version": "0.1.282",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,22 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.282": {
+				"en": "EV controlled live test: operator can arm exactly one productive EVCC button command. After that pulse, Phase-5 execution locks again. Dauerbetrieb stays off (EV_EXECUTION_PHASE5_ENABLED=false).",
+				"de": "EV Controlled Live Test: Operator kann genau einen produktiven EVCC-Button-Befehl armen. Nach diesem Pulse sperrt Phase-5-Execution wieder. Dauerbetrieb bleibt aus (EV_EXECUTION_PHASE5_ENABLED=false)."
+			},
+			"0.1.281": {
+				"en": "EV execution ownership: EMS releases only a charge mode it confirmed itself when a valid plan ends the wallbox slot. No blind OFF on restart, uncertainty, or Tibber takeover. Productive writes stay off.",
+				"de": "EV-Execution-Ownership: EMS gibt nur einen selbst bestätigten Lademodus frei, wenn ein gültiger Plan den Wallbox-Slot beendet. Kein Blind-OFF bei Neustart, Unsicherheit oder Tibber-Übernahme. Produktive Writes bleiben aus."
+			},
+			"0.1.280": {
+				"en": "EV execution preflight: hold/none no longer always force OFF; No-Op when EMS has nothing to execute. status.mode.ts is not a 10-min stale signal — EVCC source freshness is separate. Productive writes stay off.",
+				"de": "EV-Execution-Preflight: hold/none erzwingen nicht mehr immer OFF; No-Op wenn EMS nichts auszuführen hat. status.mode.ts ist kein 10-Min-Stale-Signal — EVCC-Quellenfrische ist getrennt. Produktive Writes bleiben aus."
+			},
+			"0.1.279": {
+				"en": "EV execution & safety foundation: Unified desired mode → authority → governance → EVCC buttons → status.mode feedback. Productive EV writes stay off (EV_EXECUTION_PHASE5_ENABLED=false).",
+				"de": "EV-Execution- und Safety-Fundament: Unified Desired → Authority → Governance → EVCC-Buttons → status.mode-Feedback. Produktive EV-Writes bleiben aus (EV_EXECUTION_PHASE5_ENABLED=false)."
+			},
 			"0.1.278": {
 				"en": "Boiler Newton learning is separate from buffer: hard warm-water reach follows the boiler sensor; buffer stays soft/safety only. No EV execution changes.",
 				"de": "Boiler-Newton getrennt vom Puffer: Hard-Warmwasser-Reichweite folgt dem Boiler-Sensor; Puffer bleibt Soft/Safety. Keine EV-Execution-Änderung."

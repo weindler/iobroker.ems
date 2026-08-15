@@ -1,6 +1,7 @@
 import type { EvccTelemetrySnapshot, EvccTelemetryReadHost } from "../evcc_telemetry";
 import type { WallboxEvccTelemetryConfig } from "../evcc_config";
 import type { StateHost } from "../../../ems_light/state_util";
+import type { EvModelV1 } from "./types";
 import { readDynamicTariffPrice15MinSlots } from "../../../operator/supply/grid_read";
 import { resolveEvCapabilities } from "./capabilities";
 import { evFoundationConfigFromAdapter, resolveEvPlanningHints } from "./config";
@@ -26,12 +27,13 @@ export * from "./vehicle_model";
 export * from "./decision";
 export { WALLBOX_EV_FOUNDATION_STATES, ensureWallboxEvFoundationStates } from "./ensure_states";
 export { publishEvFoundationDiagnosis } from "./publish";
+export * from "./execution";
 
 export async function refreshEvFoundation(
 	host: StateHost & { config?: unknown; getForeignStateAsync?: EvccTelemetryReadHost["getForeignStateAsync"] },
 	snap: EvccTelemetrySnapshot,
 	telemetryCfg: WallboxEvccTelemetryConfig,
-): Promise<void> {
+): Promise<{ model: EvModelV1 }> {
 	const adapterConfig = host.config ?? {};
 	const foundation = evFoundationConfigFromAdapter(adapterConfig);
 	const hints = resolveEvPlanningHints(
@@ -71,4 +73,5 @@ export async function refreshEvFoundation(
 	});
 	const diagnosed = applyEvTakeoverDiagnosis(model, decision);
 	await publishEvFoundationDiagnosis(host, diagnosed, capabilities, snap.observed_at, external, decision);
+	return { model: diagnosed };
 }

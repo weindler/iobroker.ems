@@ -64,6 +64,7 @@ build/addons/wallbox/ev_foundation/cleanup.test.js
 build/addons/wallbox/ev_foundation/button_contract.test.js
 build/addons/wallbox/ev_foundation/admin_cleanup.test.js
 build/addons/wallbox/ev_foundation/decision/decide.test.js
+build/addons/wallbox/ev_foundation/execution/execution.test.js
 build/addons/wallbox/vehicle_map/vehicle_map.test.js
 build/addons/wallbox/charge_hold.test.js
 build/addons/immersion_heater/device_config.test.js

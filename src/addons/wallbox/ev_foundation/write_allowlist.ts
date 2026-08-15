@@ -78,9 +78,16 @@ export function isPlannerWriteTaboo(stateId: string): boolean {
 	return classifyEvccPlannerWriteTarget(stateId) === "taboo";
 }
 
-/** Phase 1–3: no new productive planner writes are issued. */
+/** Phase 1–4: no new productive planner writes are issued. */
 export const EV_FOUNDATION_PHASE1_PLANNER_WRITES_ENABLED = false;
 export const EV_FOUNDATION_PLANNER_WRITES_ENABLED = EV_FOUNDATION_PHASE1_PLANNER_WRITES_ENABLED;
+
+/**
+ * Dauerbetrieb for Phase-5 EVCC button writes. Stays false.
+ * Phase 5B uses the in-memory live-test one-shot instead of flipping this.
+ * Never flip PHASE1 to true as a substitute for this gate.
+ */
+export const EV_EXECUTION_PHASE5_ENABLED = false;
 
 export function encodePvControl(mode: EvccPvControlMode): number {
 	return EVCC_PV_CONTROL[mode];

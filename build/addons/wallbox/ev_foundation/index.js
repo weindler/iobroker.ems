@@ -37,6 +37,7 @@ Object.defineProperty(exports, "WALLBOX_EV_FOUNDATION_STATES", { enumerable: tru
 Object.defineProperty(exports, "ensureWallboxEvFoundationStates", { enumerable: true, get: function () { return ensure_states_1.ensureWallboxEvFoundationStates; } });
 var publish_2 = require("./publish");
 Object.defineProperty(exports, "publishEvFoundationDiagnosis", { enumerable: true, get: function () { return publish_2.publishEvFoundationDiagnosis; } });
+__exportStar(require("./execution"), exports);
 async function refreshEvFoundation(host, snap, telemetryCfg) {
     const adapterConfig = host.config ?? {};
     const foundation = (0, config_1.evFoundationConfigFromAdapter)(adapterConfig);
@@ -74,5 +75,6 @@ async function refreshEvFoundation(host, snap, telemetryCfg) {
     });
     const diagnosed = (0, decision_1.applyEvTakeoverDiagnosis)(model, decision);
     await (0, publish_1.publishEvFoundationDiagnosis)(host, diagnosed, capabilities, snap.observed_at, external, decision);
+    return { model: diagnosed };
 }
 exports.refreshEvFoundation = refreshEvFoundation;

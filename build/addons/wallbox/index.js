@@ -178,6 +178,13 @@ async function refreshWallboxDailyPlanRuntime(host, snap) {
         fault: wallboxFault.active,
         lockout: false,
     });
+    return {
+        decision,
+        intent,
+        liveRequested,
+        addonEnabled: addonEnabledVal,
+        governanceEnabled,
+    };
 }
 /**
  * Ownership/Fault/Safe-Restore-Verdrahtung nach jedem Foundation-Lauf:
@@ -346,8 +353,19 @@ async function refreshWallboxEvccTelemetry(host) {
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.smartCostLimit, snap.smart_cost_limit);
     await writeField(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.smartCostActive, snap.smart_cost_active);
     await publishWallboxBatteryHoldRuntime(host, snap);
-    await refreshWallboxDailyPlanRuntime(host, snap);
-    await (0, ev_foundation_1.refreshEvFoundation)(host, snap, cfg);
+    const runtime = await refreshWallboxDailyPlanRuntime(host, snap);
+    const foundation = await (0, ev_foundation_1.refreshEvFoundation)(host, snap, cfg);
+    const nowMs = Number.isFinite(Date.parse(snap.observed_at)) ? Date.parse(snap.observed_at) : Date.now();
+    await (0, ev_foundation_1.tickEvExecution)(host, {
+        nowMs,
+        snap,
+        model: foundation.model,
+        planDecision: runtime.decision,
+        intent: runtime.intent,
+        faultActive: wallboxFault.active,
+        addonEnabled: runtime.addonEnabled,
+        governanceEnabled: runtime.governanceEnabled,
+    });
 }
 exports.refreshWallboxEvccTelemetry = refreshWallboxEvccTelemetry;
 function scheduleRefresh(host) {
@@ -380,6 +398,7 @@ exports.ensureWallboxStateTree = ensureWallboxStateTree;
 async function startWallboxModuleRuntime(host) {
     if (activeHost === host)
         return;
+    (0, ev_foundation_1.resetEvExecutionSession)();
     activeHost = host;
     await refreshWallboxEvccTelemetry(host);
     const cfg = (0, evcc_config_1.wallboxEvccTelemetryConfigFromAdapter)(host.config);
@@ -398,6 +417,8 @@ async function startWallboxModuleRuntime(host) {
     ids.add(states_1.DAILY_PLAN_STATE_IDS.status);
     ids.add(states_1.ALLOCATION_ADDON_STATE_IDS.wallbox.planJson);
     ids.add(states_2.WALLBOX_RUNTIME_STATES.faultReset);
+    ids.add(ev_foundation_1.WALLBOX_EV_FOUNDATION_STATES.evExecutionLiveTestArmed);
+    ids.add(ev_foundation_1.WALLBOX_EV_FOUNDATION_STATES.evExecutionLiveTestDisarm);
     for (const id of ids) {
         if (subscribedIds.includes(id))
             continue;
@@ -471,6 +492,7 @@ function stopWallboxModule() {
     wallboxOwnership = (0, runtime_1.emptyWallboxOwnership)();
     wallboxFault = (0, runtime_1.emptyWallboxFault)();
     pendingWallboxFeedback = null;
+    (0, ev_foundation_1.resetEvExecutionSession)();
 }
 exports.stopWallboxModule = stopWallboxModule;
 const DAILY_PLAN_TRIGGER_IDS = new Set([
@@ -499,6 +521,11 @@ function handleWallboxStateChange(namespace, id) {
         return;
     const ns = `${namespace}.`;
     const bareId = id.startsWith(ns) ? id.slice(ns.length) : id;
+    if (bareId === ev_foundation_1.WALLBOX_EV_FOUNDATION_STATES.evExecutionLiveTestArmed ||
+        bareId === ev_foundation_1.WALLBOX_EV_FOUNDATION_STATES.evExecutionLiveTestDisarm) {
+        scheduleRefresh(activeHost);
+        return;
+    }
     if (bareId === states_2.WALLBOX_RUNTIME_STATES.faultReset) {
         void activeHost.getStateAsync(states_2.WALLBOX_RUNTIME_STATES.faultReset).then((st) => {
             if (st?.val === true && activeHost) {

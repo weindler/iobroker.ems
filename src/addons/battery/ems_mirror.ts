@@ -18,11 +18,11 @@ export async function ensureBatteryEmsMirrorStates(adapter: ioBroker.Adapter): P
 		{
 			_id: EMS_MIRROR_BATTERY.gridBalanceEnabled,
 			common: {
-				name: "EMS: Netzausgleich erlaubt",
+				name: "EMS: Netzausgleich (abgeleitet vom Admin-Schalter, nicht separat schalten)",
 				type: "boolean",
-				role: "switch",
+				role: "indicator",
 				read: true,
-				write: true,
+				write: false,
 				def: false,
 			},
 			defVal: false,

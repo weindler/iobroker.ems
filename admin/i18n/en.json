@@ -42,6 +42,8 @@
 	"Sonnen-Umschaltsequenz": "Sonnen switching sequence",
 	"Optionaler Sonnen-Netzausgleich": "Optional Sonnen grid balance",
 	"Netzausgleich aktiviert": "Grid balance enabled",
+	"Netzausgleich aktiv": "Grid balance active",
+	"Maximaler Strompreis für Netzausgleich (ct/kWh)": "Maximum electricity price for grid balance (ct/kWh)",
 	"SOC-Schwelle (%)": "SOC threshold (%)",
 	"Maximale Sollleistung (W)": "Maximum setpoint power (W)",
 	"Aktualisierungsintervall (s)": "Update interval (s)",

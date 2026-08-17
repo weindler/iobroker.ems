@@ -5,6 +5,7 @@ import { isLiveWriteAllowed } from "../../execution_mode";
 import { writeForeignIfChanged } from "../../device_write";
 import { isEmsUnreachable, setEdgeBool } from "../../failsafe_common";
 import { BAT } from "./ensure_states";
+import { markFailsafeSetpointTakeover } from "./runtime/setpoint_session";
 
 const ADDON_ID = "battery";
 /** Config-Präfix für `failsafeTimeoutsFromConfig` — analog "wb"/"ih". */
@@ -97,6 +98,7 @@ export async function runBatteryFailsafeCheck(adapter: ioBroker.Adapter): Promis
 	if (wrote) {
 		await adapter.setStateAsync(BAT.failsafe.active, { val: true, ack: true });
 		await adapter.setStateAsync(BAT.failsafe.lastFailsafeAt, { val: ts, ack: true });
+		markFailsafeSetpointTakeover(ts);
 	}
 }
 

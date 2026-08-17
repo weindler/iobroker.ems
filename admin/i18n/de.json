@@ -43,6 +43,8 @@
 	"Sonnen-Umschaltsequenz": "Sonnen-Umschaltsequenz",
 	"Optionaler Sonnen-Netzausgleich": "Optionaler Sonnen-Netzausgleich",
 	"Netzausgleich aktiviert": "Netzausgleich aktiviert",
+	"Netzausgleich aktiv": "Netzausgleich aktiv",
+	"Maximaler Strompreis für Netzausgleich (ct/kWh)": "Maximaler Strompreis für Netzausgleich (ct/kWh)",
 	"SOC-Schwelle (%)": "SOC-Schwelle (%)",
 	"Maximale Sollleistung (W)": "Maximale Sollleistung (W)",
 	"Aktualisierungsintervall (s)": "Aktualisierungsintervall (s)",

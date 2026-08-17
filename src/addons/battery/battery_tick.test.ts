@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { __resetBatteryRuntimeForTest, runBatteryControlTick } from "./index.js";
 import { BAT } from "./ensure_states.js";
+import { WALLBOX_EV_FOUNDATION_STATES } from "../wallbox/ev_foundation/ensure_states.js";
 
 const DEVICE_TARGETS = new Set(["dev.mode", "dev.charge"]);
 
@@ -199,6 +200,106 @@ describe("battery control tick — LIVE → OFF ownership handover", () => {
 		await runTicks(a, 14, true);
 		const deviceWrites = a.foreignWrites.filter((w) => DEVICE_TARGETS.has(w.id));
 		assert.equal(deviceWrites.length, 0);
+		assert.equal(a.rel.get(BAT.runtime.ownershipActive), false);
+	});
+});
+
+describe("battery setpoint release safety", () => {
+	it("regular end after own >0 write: exactly one 0 W, diagnosis cleared", async () => {
+		__resetBatteryRuntimeForTest();
+		const a = setupCharge("live", true, "live");
+		await runTicks(a, 14, true);
+		assert.equal(a.rel.get(BAT.runtime.state), "active");
+		assert.equal(a.rel.get(BAT.runtime.batterySetpointOwner), "planned_charge");
+		assert.equal(a.rel.get(BAT.runtime.batterySetpointW), 2000);
+
+		const before = a.foreignWrites.length;
+		a.rel.set("ems_mirror.battery_intent_active", false);
+		a.rel.set("ems_mirror.operating_mode_target", 2);
+		a.rel.set("ems_mirror.charge_power_w_request", 0);
+		for (let i = 0; i < 20; i++) {
+			await runBatteryControlTick(a as unknown as ioBroker.Adapter & { config: unknown });
+			if (a.foreign.has("dev.charge")) a.foreign.set("dev.power", a.foreign.get("dev.charge") ?? 0);
+			if (a.rel.get(BAT.runtime.ownershipActive) !== true) break;
+		}
+		const zeros = a.foreignWrites.slice(before).filter((w) => w.id === "dev.charge" && w.val === 0);
+		assert.equal(zeros.length, 1);
+		assert.equal(a.rel.get(BAT.runtime.batterySetpointOwner), "none");
+		assert.equal(a.rel.get(BAT.runtime.batterySetpointW), 0);
+		assert.equal(a.rel.get(BAT.runtime.batteryReleasePending), false);
+		assert.ok(String(a.rel.get(BAT.runtime.batteryLastReleaseAt) ?? "").length > 0);
+	});
+
+	it("grid_charge/hold: no competing 0 W against Hold", async () => {
+		__resetBatteryRuntimeForTest();
+		const a = setupCharge("live", true, "live");
+		await runTicks(a, 14, true);
+		assert.equal(a.rel.get(BAT.runtime.state), "active");
+		const before = a.foreignWrites.length;
+		a.rel.set("planner.constraints.battery_hold_active", true);
+		for (let i = 0; i < 8; i++) {
+			await runBatteryControlTick(a as unknown as ioBroker.Adapter & { config: unknown });
+			if (a.foreign.has("dev.charge")) a.foreign.set("dev.power", a.foreign.get("dev.charge") ?? 0);
+		}
+		const after = a.foreignWrites.slice(before).filter((w) => DEVICE_TARGETS.has(w.id));
+		assert.equal(
+			after.filter((w) => w.id === "dev.charge" && w.val === 0).length,
+			0,
+			"Hold takeover must not write 0 W",
+		);
+		assert.equal(after.filter((w) => w.id === "dev.mode" && w.val === 2).length, 0);
+		assert.equal(a.rel.get(BAT.runtime.batterySetpointOwner), "none");
+		assert.equal(String(a.rel.get(BAT.runtime.batteryReleaseReason)), "handover_hold");
+	});
+
+	it("grid_charge/external: no competing 0 W against External", async () => {
+		__resetBatteryRuntimeForTest();
+		const a = setupCharge("live", true, "live");
+		await runTicks(a, 14, true);
+		const before = a.foreignWrites.length;
+		a.rel.set(WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority, "external");
+		for (let i = 0; i < 8; i++) {
+			await runBatteryControlTick(a as unknown as ioBroker.Adapter & { config: unknown });
+		}
+		const zeros = a.foreignWrites
+			.slice(before)
+			.filter((w) => w.id === "dev.charge" && w.val === 0);
+		assert.equal(zeros.length, 0);
+		assert.equal(a.rel.get(BAT.runtime.batterySetpointOwner), "none");
+		assert.equal(String(a.rel.get(BAT.runtime.batteryReleaseReason)), "handover_external");
+	});
+
+	it("Live → Dryrun during live charge: 0 W restore write", async () => {
+		__resetBatteryRuntimeForTest();
+		const a = setupCharge("live", true, "live");
+		await runTicks(a, 14, true);
+		assert.equal(a.rel.get(BAT.runtime.batterySetpointOwner), "planned_charge");
+		const before = a.foreignWrites.length;
+		a.rel.set("global.execution_mode", "dryrun");
+		a.rel.set("addons.battery.mode", "dryrun");
+		for (let i = 0; i < 20; i++) {
+			await runBatteryControlTick(a as unknown as ioBroker.Adapter & { config: unknown });
+			if (a.foreign.has("dev.charge")) a.foreign.set("dev.power", a.foreign.get("dev.charge") ?? 0);
+			if (a.rel.get(BAT.runtime.ownershipActive) !== true) break;
+		}
+		const zeros = a.foreignWrites.slice(before).filter((w) => w.id === "dev.charge" && w.val === 0);
+		assert.equal(zeros.length, 1);
+		assert.equal(a.rel.get(BAT.runtime.batterySetpointOwner), "none");
+	});
+
+	it("adapter restart leftover setpoint without ownership: no blind 0 W", async () => {
+		__resetBatteryRuntimeForTest();
+		const a = setupCharge("live", true, "live");
+		a.rel.set("ems_mirror.battery_intent_active", false);
+		a.rel.set("ems_mirror.operating_mode_target", 2);
+		a.rel.set("ems_mirror.charge_power_w_request", 0);
+		a.foreign.set("dev.charge", 2000);
+		a.foreign.set("dev.power", 0);
+		a.foreign.set("dev.mode", 2);
+		await runTicks(a, 8, true);
+		const zeros = a.foreignWrites.filter((w) => w.id === "dev.charge" && w.val === 0);
+		assert.equal(zeros.length, 0);
+		assert.equal(a.rel.get(BAT.runtime.batterySetpointOwner), "none");
 		assert.equal(a.rel.get(BAT.runtime.ownershipActive), false);
 	});
 });

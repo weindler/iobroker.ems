@@ -15,6 +15,8 @@ export interface GridBalanceInputs {
 	capacityWh: number;
 	snowCoverSuspected: boolean;
 	consumptionW: number;
+	/** Hauslast nach Abzug frischer EV-Ladeleistung, sonst consumptionW. */
+	adjustedConsumptionW?: number;
 	pvAcPowerW: number;
 	socPct: number | null;
 	emsGridBalanceEnabled: boolean;
@@ -75,7 +77,23 @@ export function evaluateGridBalancePriceGate(params: {
 		return { passed: true, reasonDe: "Preisgate ohne Schwellen — durchgelassen" };
 	}
 
-	if (hasMax && price <= params.gate.maxPriceCtPerKwh!) {
+	if (hasMax && price > params.gate.maxPriceCtPerKwh!) {
+		return {
+			passed: false,
+			reasonDe: `Preis ${price.toFixed(1)} ct/kWh zu hoch (>${params.gate.maxPriceCtPerKwh} ct/kWh)`,
+		};
+	}
+	if (hasMedian) {
+		const limit = params.referenceMedianCt! * params.gate.medianFactor;
+		if (price > limit) {
+			return {
+				passed: false,
+				reasonDe: `Preis ${price.toFixed(1)} ct/kWh zu hoch (>${limit.toFixed(1)} ct/kWh, Median×${params.gate.medianFactor})`,
+			};
+		}
+	}
+
+	if (hasMax) {
 		return {
 			passed: true,
 			reasonDe: `Preis ${price.toFixed(1)} ct/kWh ≤ ${params.gate.maxPriceCtPerKwh} ct/kWh`,
@@ -83,25 +101,12 @@ export function evaluateGridBalancePriceGate(params: {
 	}
 	if (hasMedian) {
 		const limit = params.referenceMedianCt! * params.gate.medianFactor;
-		if (price <= limit) {
-			return {
-				passed: true,
-				reasonDe: `Preis ${price.toFixed(1)} ct/kWh ≤ Median×${params.gate.medianFactor} (${limit.toFixed(1)} ct/kWh)`,
-			};
-		}
+		return {
+			passed: true,
+			reasonDe: `Preis ${price.toFixed(1)} ct/kWh ≤ Median×${params.gate.medianFactor} (${limit.toFixed(1)} ct/kWh)`,
+		};
 	}
-
-	const parts: string[] = [];
-	if (hasMax) parts.push(`>${params.gate.maxPriceCtPerKwh} ct/kWh`);
-	if (hasMedian) {
-		parts.push(
-			`>${(params.referenceMedianCt! * params.gate.medianFactor).toFixed(1)} ct/kWh (Median×${params.gate.medianFactor})`,
-		);
-	}
-	return {
-		passed: false,
-		reasonDe: `Preis ${price.toFixed(1)} ct/kWh zu hoch (${parts.join(", ")})`,
-	};
+	return { passed: true, reasonDe: "Preisgate ohne Schwellen — durchgelassen" };
 }
 
 export function computeGridBalanceTarget(inputs: GridBalanceInputs): GridBalanceResult {
@@ -180,9 +185,10 @@ export function computeGridBalanceTarget(inputs: GridBalanceInputs): GridBalance
 	}
 	checksPassed.push("pv_forecast_gate");
 
-	if (!(inputs.consumptionW > inputs.pvAcPowerW)) {
+	const loadW = inputs.adjustedConsumptionW ?? inputs.consumptionW;
+	if (!(loadW > inputs.pvAcPowerW)) {
 		checksFailed.push("no_grid_import");
-		return inactive("consumption_w <= pv_ac_power_w", checksPassed, checksFailed);
+		return inactive("adjusted_consumption_w <= pv_ac_power_w", checksPassed, checksFailed);
 	}
 	checksPassed.push("consumption_gt_pv");
 
@@ -203,7 +209,7 @@ export function computeGridBalanceTarget(inputs: GridBalanceInputs): GridBalance
 			: inputs.offsetLowSocW;
 	checksPassed.push(`offset_${offset}w`);
 
-	const target = Math.max(0, Math.round(inputs.consumptionW - inputs.pvAcPowerW + offset));
+	const target = Math.max(0, Math.round(loadW - inputs.pvAcPowerW + offset));
 	return {
 		active: true,
 		gatePassed: true,

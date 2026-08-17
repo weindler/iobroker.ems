@@ -30,5 +30,7 @@ const config_js_1 = require("./config.js");
         const c = (0, config_js_1.batteryConfigFromAdapter)({});
         strict_1.default.equal(c.gridBalance.enabled, false);
         strict_1.default.equal(c.gridBalance.offsetHighSocW, 25);
+        strict_1.default.equal(c.gridBalance.maxPriceCtPerKwh, 30);
+        strict_1.default.equal(c.gridBalance.priceGateEnabled, true);
     });
 });

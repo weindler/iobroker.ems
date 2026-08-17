@@ -40,10 +40,11 @@ function truncateJson(obj: unknown): string {
 	return `${raw.slice(0, JSON_STATE_LIMIT - 20)}…truncated"}`;
 }
 
+/**
+ * Nur `addons.immersion_heater.mapping.boiler_temp_c`.
+ * Native Admin `ih_boiler_temp_c_target` und Puffer-Max (`ih_planning_max_temp_c`) sind keine Quelle.
+ */
 export async function resolveBoilerTempStateId(host: ThermalBoilerRunHost): Promise<string> {
-	const c = host.config && typeof host.config === "object" ? (host.config as Record<string, unknown>) : {};
-	const admin = typeof c.ih_boiler_temp_c_target === "string" ? c.ih_boiler_temp_c_target.trim() : "";
-	if (admin) return admin;
 	const base = mappingBase("immersion_heater", "boiler_temp_c");
 	const en = await host.getStateAsync(`${base}.enabled`);
 	if (en?.val === false) return "";
@@ -51,20 +52,18 @@ export async function resolveBoilerTempStateId(host: ThermalBoilerRunHost): Prom
 	return typeof t?.val === "string" ? t.val.trim() : "";
 }
 
+/** Ist-Temperatur nur vom Mapping-Ziel — kein Live-Cache, kein Admin-Alias, kein planningMaxTempC. */
 async function readCurrentTemp(host: ThermalBoilerRunHost, stateId: string): Promise<number | null> {
-	if (stateId) {
-		try {
-			const st = host.getForeignStateAsync
-				? await host.getForeignStateAsync(stateId)
-				: await host.getStateAsync(stateId);
-			const n = asNum(st?.val);
-			if (isValidTempC(n)) return n;
-		} catch {
-			/* live fallback */
-		}
+	if (!stateId) return null;
+	try {
+		const st = host.getForeignStateAsync
+			? await host.getForeignStateAsync(stateId)
+			: await host.getStateAsync(stateId);
+		const n = asNum(st?.val);
+		return isValidTempC(n) ? n : null;
+	} catch {
+		return null;
 	}
-	const live = asNum((await host.getStateAsync("live.thermal.boiler_temp_c"))?.val);
-	return isValidTempC(live) ? live : null;
 }
 
 function classifyModel(result: ThermalRuntimeComputeResult): "cycle" | "newton" | "none" {
@@ -222,7 +221,7 @@ export async function runThermalBoilerLearning(host: ThermalBoilerRunHost): Prom
 		return;
 	}
 
-	if (!stateId && currentTempC === null) {
+	if (!stateId) {
 		await writeBoilerResult(
 			host,
 			{
@@ -242,7 +241,7 @@ export async function runThermalBoilerLearning(host: ThermalBoilerRunHost): Prom
 				byDayTypeJson: {},
 				historyJson: [],
 				sourceStateId: "",
-				lastError: "Keine Boiler-Temperaturquelle — mapping.boiler_temp_c oder ih_boiler_temp_c_target.",
+				lastError: "Keine Boiler-Temperaturquelle — addons.immersion_heater.mapping.boiler_temp_c.",
 			},
 			{ lastRun, segments: 0, hasSource: false, emptyThresholdC: cfg.emptyThresholdC },
 		);
@@ -280,8 +279,8 @@ export async function runThermalBoilerLearning(host: ThermalBoilerRunHost): Prom
 		asymptoteSource: coolingModel.asymptoteSource,
 	});
 
-	if (host.getAbsolutePath) {
-		await writeThermalBoilerPersist(host.getAbsolutePath("learning/thermal_boiler"), result, lastRun);
+	if (host.getAbsolutePath && stateId) {
+		await writeThermalBoilerPersist(host.getAbsolutePath("learning/thermal_boiler"), result, lastRun, stateId);
 	}
 
 	await writeBoilerResult(host, result, {

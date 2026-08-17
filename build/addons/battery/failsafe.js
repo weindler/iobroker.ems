@@ -8,6 +8,7 @@ const execution_mode_1 = require("../../execution_mode");
 const device_write_1 = require("../../device_write");
 const failsafe_common_1 = require("../../failsafe_common");
 const ensure_states_1 = require("./ensure_states");
+const setpoint_session_1 = require("./runtime/setpoint_session");
 const ADDON_ID = "battery";
 /** Config-Präfix für `failsafeTimeoutsFromConfig` — analog "wb"/"ih". */
 const CONFIG_PREFIX = "bat";
@@ -91,6 +92,7 @@ async function runBatteryFailsafeCheck(adapter) {
     if (wrote) {
         await adapter.setStateAsync(ensure_states_1.BAT.failsafe.active, { val: true, ack: true });
         await adapter.setStateAsync(ensure_states_1.BAT.failsafe.lastFailsafeAt, { val: ts, ack: true });
+        (0, setpoint_session_1.markFailsafeSetpointTakeover)(ts);
     }
 }
 exports.runBatteryFailsafeCheck = runBatteryFailsafeCheck;

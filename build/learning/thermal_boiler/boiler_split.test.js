@@ -45,9 +45,11 @@ const allocate_1 = require("../../operator/daily_plan/unified/allocate");
 const fixtures_1 = require("../../operator/daily_plan/unified/fixtures");
 const write_allowlist_1 = require("../../addons/wallbox/ev_foundation/write_allowlist");
 const math_1 = require("../thermal_runtime/math");
+const tree_paths_1 = require("../../tree_paths");
 const config_1 = require("./config");
 const persist_1 = require("./persist");
 const run_1 = require("./run");
+const BOILER_MAP_BASE = (0, tree_paths_1.mappingBase)("immersion_heater", "boiler_temp_c");
 const MS_H = 3_600_000;
 const NOW = Date.parse("2026-08-15T10:00:00.000Z");
 const COVER = Date.parse("2026-08-15T16:00:00.000Z");
@@ -74,15 +76,41 @@ function bufferCfg() {
         maxRuntimeHours: 72,
     };
 }
+function historyResult(history) {
+    return {
+        result: history.map((p) => ({
+            ts: p.ts,
+            val: p.tempC,
+            ack: true,
+            lc: p.ts,
+            from: "test",
+        })),
+    };
+}
 function mockBoilerHost(opts) {
     const states = {};
     const stateId = opts.stateId ?? "sensor.0.boiler";
+    const mappingTarget = opts.mappingTarget === undefined ? stateId : opts.mappingTarget;
+    if (opts.mappingEnabled !== false && mappingTarget) {
+        states[`${BOILER_MAP_BASE}.enabled`] = true;
+        states[`${BOILER_MAP_BASE}.target_state`] = mappingTarget;
+    }
+    else if (opts.mappingEnabled === false) {
+        states[`${BOILER_MAP_BASE}.enabled`] = false;
+        states[`${BOILER_MAP_BASE}.target_state`] = mappingTarget ?? "";
+    }
+    if (opts.liveBoilerTempC !== undefined) {
+        states["live.thermal.boiler_temp_c"] = opts.liveBoilerTempC;
+    }
+    const historyIds = [];
     return {
         states,
+        historyIds,
         config: {
             ih_boiler_min_temp_c: 50,
             ih_hygiene_target_temp_c: 60,
-            ih_boiler_temp_c_target: stateId,
+            ih_planning_max_temp_c: opts.planningMaxTempC ?? 63,
+            ih_boiler_temp_c_target: opts.adminBoilerTempTarget ?? "sensor.0.buffer",
             learning_thermal_runtime_enabled: true,
             learning_thermal_runtime_lookback_days: 7,
         },
@@ -91,16 +119,25 @@ function mockBoilerHost(opts) {
             states[id] = state.val;
         },
         setObjectNotExistsAsync: async () => undefined,
-        getForeignStateAsync: async () => ({ val: opts.currentTemp }),
-        getHistoryAsync: async () => ({
-            result: opts.history.map((p) => ({
-                ts: p.ts,
-                val: p.tempC,
-                ack: true,
-                lc: p.ts,
-                from: "test",
-            })),
-        }),
+        getForeignStateAsync: async (id) => {
+            if (opts.foreignTemps && Object.prototype.hasOwnProperty.call(opts.foreignTemps, id)) {
+                return { val: opts.foreignTemps[id] };
+            }
+            if (id === stateId || id === mappingTarget) {
+                return { val: opts.currentTemp };
+            }
+            return { val: null };
+        },
+        getHistoryAsync: async (id) => {
+            historyIds.push(id);
+            if (opts.historyById && Object.prototype.hasOwnProperty.call(opts.historyById, id)) {
+                return historyResult(opts.historyById[id]);
+            }
+            if (id === stateId || id === mappingTarget) {
+                return historyResult(opts.history);
+            }
+            return { result: [] };
+        },
         getAbsolutePath: (category) => path.join(opts.tmp, category ?? ""),
         log: { debug: () => undefined, warn: () => undefined, error: () => undefined },
     };
@@ -321,7 +358,63 @@ function immersionBase() {
         strict_1.default.match(String(host.states["learning.thermal_boiler.reason_de"]), /nicht Puffer|Newton/);
         const persist = await (0, persist_1.readThermalBoilerPersist)(path.join(tmp, "learning/thermal_boiler"));
         strict_1.default.equal(persist?.module, persist_1.BOILER_MODULE_TAG);
+        strict_1.default.equal(persist?.source_kind, "mapping.boiler_temp_c");
+        strict_1.default.equal(persist?.source_state_id, "sensor.0.boiler");
         strict_1.default.equal(persist?.samples, 0);
+    });
+    (0, node_test_1.it)("T17: explain and Newton use mapping.boiler_temp_c=60, never admin/buffer 63 or planningMax", async () => {
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-src-"));
+        const boilerPts = linearCurve(NOW - 8 * MS_H, 60.2, 60, 8);
+        const bufferPts = linearCurve(NOW - 8 * MS_H, 63, 63, 8);
+        const host = mockBoilerHost({
+            tmp,
+            stateId: "sensor.0.boiler",
+            currentTemp: 60,
+            history: boilerPts,
+            adminBoilerTempTarget: "sensor.0.buffer",
+            planningMaxTempC: 63,
+            liveBoilerTempC: 60,
+            foreignTemps: {
+                "sensor.0.boiler": 60,
+                "sensor.0.buffer": 63,
+            },
+            historyById: {
+                "sensor.0.boiler": boilerPts,
+                "sensor.0.buffer": bufferPts,
+            },
+        });
+        await (0, run_1.runThermalBoilerLearning)(host);
+        strict_1.default.equal(host.states["learning.thermal_boiler.current_temperature_c"], 60);
+        strict_1.default.equal(host.states["learning.thermal_boiler.model"], "none");
+        strict_1.default.equal(host.states["learning.thermal_boiler.samples"], 0);
+        const reason = String(host.states["learning.thermal_boiler.reason_de"] ?? "");
+        strict_1.default.match(reason, /Boiler 60\.0 °C/);
+        strict_1.default.doesNotMatch(reason, /63/);
+        strict_1.default.deepEqual(host.historyIds, ["sensor.0.boiler"]);
+    });
+    (0, node_test_1.it)("T18: without mapping.boiler_temp_c, admin 63 / live 60 / planningMax 63 are not used", async () => {
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-nomap-"));
+        const host = mockBoilerHost({
+            tmp,
+            currentTemp: 60,
+            history: linearCurve(NOW - 8 * MS_H, 60, 60, 8),
+            mappingEnabled: false,
+            mappingTarget: "sensor.0.boiler",
+            adminBoilerTempTarget: "sensor.0.buffer",
+            planningMaxTempC: 63,
+            liveBoilerTempC: 60,
+            foreignTemps: {
+                "sensor.0.boiler": 60,
+                "sensor.0.buffer": 63,
+            },
+        });
+        await (0, run_1.runThermalBoilerLearning)(host);
+        strict_1.default.equal(host.states["learning.thermal_boiler.current_temperature_c"], null);
+        strict_1.default.equal(host.states["learning.thermal_boiler.model"], "none");
+        strict_1.default.equal(host.states["learning.thermal_boiler.samples"], 0);
+        strict_1.default.match(String(host.states["learning.thermal_boiler.reason_de"]), /Boiler-Sensor fehlt/);
+        strict_1.default.doesNotMatch(String(host.states["learning.thermal_boiler.reason_de"]), /63/);
+        strict_1.default.deepEqual(host.historyIds, []);
     });
     (0, node_test_1.it)("T8: bufferEstimatedEmptyAt never becomes Hard deadline in contribution", () => {
         const [, flex] = (0, immersion_heater_1.buildImmersionHeaterContributions)({
@@ -407,6 +500,47 @@ function immersionBase() {
         }));
         const read = await (0, persist_1.readThermalBoilerPersist)(tmp);
         strict_1.default.equal(read, null);
+    });
+    (0, node_test_1.it)("T19: old boiler persist without mapping source_kind is discarded", async () => {
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-oldsrc-"));
+        await fs.mkdir(tmp, { recursive: true });
+        await fs.writeFile(path.join(tmp, "thermal_boiler_learning_v1.json"), JSON.stringify({
+            generated_at: new Date().toISOString(),
+            module: persist_1.BOILER_MODULE_TAG,
+            samples: 4,
+            runtime_hours_avg: 10,
+            runtime_hours_median: 10,
+            cooling_rate_c_per_h_avg: 0.4,
+            by_season: {},
+            by_day_type: {},
+            history: [],
+            health: "ok",
+        }));
+        strict_1.default.equal(await (0, persist_1.readThermalBoilerPersist)(tmp), null);
+        strict_1.default.equal((0, persist_1.isTrustedBoilerPersist)({
+            generated_at: "",
+            module: persist_1.BOILER_MODULE_TAG,
+            samples: 1,
+            runtime_hours_avg: null,
+            runtime_hours_median: null,
+            cooling_rate_c_per_h_avg: null,
+            by_season: {},
+            by_day_type: {},
+            history: [],
+            health: "ok",
+            source_kind: "ih_boiler_temp_c_target",
+            source_state_id: "sensor.0.buffer",
+        }), false);
+    });
+    (0, node_test_1.it)("T20: persist is trusted only for mapping.boiler_temp_c", async () => {
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-oksrc-"));
+        const boilerPts = linearCurve(NOW - 20 * MS_H, 64, 61, 20);
+        const host = mockBoilerHost({ tmp, currentTemp: 60, history: boilerPts });
+        await (0, run_1.runThermalBoilerLearning)(host);
+        const persist = await (0, persist_1.readThermalBoilerPersist)(path.join(tmp, "learning/thermal_boiler"));
+        strict_1.default.equal(persist?.source_kind, persist_1.BOILER_SOURCE_KIND);
+        strict_1.default.equal(persist?.source_state_id, "sensor.0.boiler");
+        strict_1.default.equal((0, persist_1.isTrustedBoilerPersist)(persist), true);
     });
     (0, node_test_1.it)("T16: no new EV planner writes", () => {
         strict_1.default.equal(write_allowlist_1.EV_FOUNDATION_PHASE1_PLANNER_WRITES_ENABLED, false);

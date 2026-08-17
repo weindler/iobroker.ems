@@ -1,5 +1,10 @@
 import { hardwareLimitsFromConfig } from "./core/limits";
 import type { BatteryHardwareLimits, BatteryProfileId, CapacitySource, PowerSignConvention } from "./core/types";
+import { parseGridBalanceMaxPriceCt } from "./grid_balance_contract";
+import {
+	GRID_BALANCE_DEADBAND_DEFAULT_W,
+	GRID_BALANCE_MIN_DURATION_DEFAULT_S,
+} from "./grid_balance_power";
 
 function rec(config: unknown): Record<string, unknown> {
 	return config && typeof config === "object" ? (config as Record<string, unknown>) : {};
@@ -71,8 +76,10 @@ export interface GridBalanceConfig {
 	maxTargetW: number;
 	updateIntervalSec: number;
 	priceGateEnabled: boolean;
-	maxPriceCtPerKwh: number | null;
+	maxPriceCtPerKwh: number;
 	priceMedianFactor: number;
+	deadbandW: number;
+	minDurationSec: number;
 }
 
 export interface BatteryConfig {
@@ -141,8 +148,10 @@ export function batteryConfigFromAdapter(config: unknown): BatteryConfig {
 			maxTargetW: intIn(c, "bat_grid_balance_max_w", 5000, 0, 50_000),
 			updateIntervalSec: intIn(c, "bat_grid_balance_update_interval_sec", 5, 3, 15),
 			priceGateEnabled: bool(c, "bat_grid_balance_price_gate_enabled", true),
-			maxPriceCtPerKwh: num(c, "bat_grid_balance_max_price_ct_per_kwh"),
+			maxPriceCtPerKwh: parseGridBalanceMaxPriceCt(c.bat_grid_balance_max_price_ct_per_kwh),
 			priceMedianFactor: floatIn(c, "bat_grid_balance_price_median_factor", 1.05, 0, 3),
+			deadbandW: intIn(c, "bat_grid_balance_deadband_w", GRID_BALANCE_DEADBAND_DEFAULT_W, 0, 5000),
+			minDurationSec: intIn(c, "bat_grid_balance_min_duration_s", GRID_BALANCE_MIN_DURATION_DEFAULT_S, 0, 120),
 		},
 	};
 }

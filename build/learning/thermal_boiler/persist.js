@@ -23,12 +23,24 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readThermalBoilerPersist = exports.writeThermalBoilerPersist = exports.BOILER_MODULE_TAG = void 0;
+exports.readThermalBoilerPersist = exports.writeThermalBoilerPersist = exports.isTrustedBoilerPersist = exports.BOILER_SOURCE_KIND = exports.BOILER_MODULE_TAG = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const atomic_write_1 = require("../../persistence/atomic_write");
 exports.BOILER_MODULE_TAG = "thermal_boiler_learning_v1";
-async function writeThermalBoilerPersist(baseDir, result, lastRun) {
+exports.BOILER_SOURCE_KIND = "mapping.boiler_temp_c";
+function isTrustedBoilerPersist(parsed) {
+    if (!parsed || parsed.module !== exports.BOILER_MODULE_TAG)
+        return false;
+    if (parsed.source_kind !== exports.BOILER_SOURCE_KIND)
+        return false;
+    return typeof parsed.source_state_id === "string" && parsed.source_state_id.trim().length > 0;
+}
+exports.isTrustedBoilerPersist = isTrustedBoilerPersist;
+async function writeThermalBoilerPersist(baseDir, result, lastRun, sourceStateId) {
+    const source = sourceStateId.trim();
+    if (!source)
+        return;
     await fs.mkdir(baseDir, { recursive: true });
     const payload = {
         generated_at: lastRun,
@@ -41,6 +53,8 @@ async function writeThermalBoilerPersist(baseDir, result, lastRun) {
         by_day_type: result.byDayTypeJson,
         history: result.historyJson,
         health: result.health,
+        source_kind: exports.BOILER_SOURCE_KIND,
+        source_state_id: source,
     };
     await (0, atomic_write_1.atomicWriteFile)(path.join(baseDir, "thermal_boiler_learning_v1.json"), `${JSON.stringify(payload, null, 2)}\n`);
 }
@@ -49,7 +63,7 @@ async function readThermalBoilerPersist(baseDir) {
     try {
         const raw = await fs.readFile(path.join(baseDir, "thermal_boiler_learning_v1.json"), "utf8");
         const parsed = JSON.parse(raw);
-        if (parsed.module !== exports.BOILER_MODULE_TAG)
+        if (!isTrustedBoilerPersist(parsed))
             return null;
         return parsed;
     }

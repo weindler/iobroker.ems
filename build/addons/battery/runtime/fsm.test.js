@@ -104,6 +104,51 @@ function drive(rt, overFor, steps, startMs) {
         const modeWrites = res.writes.filter((w) => w.kind === "operating_mode");
         strict_1.default.equal(modeWrites[modeWrites.length - 1].value, MODE.selfConsumption);
         strict_1.default.ok(res.gb.includes("restore"));
+        strict_1.default.ok(res.writes.some((w) => w.kind === "charge_power" && w.value === 0));
+    });
+    (0, node_test_1.it)("regular stop writes 0 W even when telemetry already shows 0", () => {
+        let rt = (0, fsm_js_1.initialSonnenRuntime)(0);
+        rt = drive(rt, () => ({}), 12, 0).rt;
+        strict_1.default.equal(rt.state, "active");
+        const res = drive(rt, () => ({
+            chargingActionRequested: false,
+            intentValid: false,
+            stopReason: "intent_revoked",
+            actualChargingW: 0,
+            actualMode: MODE.manual,
+        }), 2, 20_000);
+        strict_1.default.equal(res.writes.filter((w) => w.kind === "charge_power" && w.value === 0).length, 1);
+        strict_1.default.equal(res.rt.state, "verify_charge_stopped");
+    });
+    (0, node_test_1.it)("hold handover drops ownership without 0 W or mode restore", () => {
+        let rt = (0, fsm_js_1.initialSonnenRuntime)(0);
+        rt = drive(rt, () => ({}), 12, 0).rt;
+        strict_1.default.equal(rt.state, "active");
+        strict_1.default.equal(rt.ownership.active, true);
+        const res = drive(rt, () => ({
+            chargingActionRequested: false,
+            intentValid: false,
+            stopReason: "authority_hold",
+            stopDisposition: "drop_ownership",
+            actualChargingW: 2000,
+            actualMode: MODE.manual,
+        }), 2, 20_000);
+        strict_1.default.equal(res.rt.state, "completed");
+        strict_1.default.equal(res.rt.ownership.active, false);
+        strict_1.default.equal(res.writes.filter((w) => w.kind === "charge_power" && w.value === 0).length, 0);
+        strict_1.default.equal(res.writes.filter((w) => w.kind === "operating_mode").length, 0);
+    });
+    (0, node_test_1.it)("external handover drops ownership without competing 0 W", () => {
+        let rt = (0, fsm_js_1.initialSonnenRuntime)(0);
+        rt = drive(rt, () => ({}), 12, 0).rt;
+        const res = drive(rt, () => ({
+            stopReason: "authority_external",
+            stopDisposition: "drop_ownership",
+            actualChargingW: 2000,
+            actualMode: MODE.manual,
+        }), 2, 20_000);
+        strict_1.default.equal(res.rt.ownership.active, false);
+        strict_1.default.equal(res.writes.some((w) => w.kind === "charge_power" && w.value === 0), false);
     });
     (0, node_test_1.it)("mode feedback timeout → fault → restore → lockout", () => {
         let rt = (0, fsm_js_1.initialSonnenRuntime)(0);

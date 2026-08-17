@@ -29,6 +29,7 @@ build/addons/battery/runtime/feedback.test.js
 build/addons/battery/runtime/ownership.test.js
 build/addons/battery/runtime/execute.test.js
 build/addons/battery/runtime/fsm.test.js
+build/addons/battery/runtime/setpoint_session.test.js
 build/addons/battery/runtime/safety.test.js
 build/addons/battery/runtime/restore.test.js
 build/addons/battery/failsafe.test.js
@@ -188,6 +189,8 @@ build/ems_light/off_legacy_lazy.test.js
 build/planner/run.test.js
 build/planner/mode_policy.test.js
 build/addons/battery/grid_balance.test.js
+build/addons/battery/grid_balance_contract.test.js
+build/addons/battery/grid_balance_power.test.js
 build/addons/battery/runtime/daily_plan.test.js
 build/addons/battery/runtime/winter_intent.test.js
 build/ai/config.test.js

@@ -2,6 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.batteryConfigFromAdapter = exports.batteryProfileIdFromConfig = void 0;
 const limits_1 = require("./core/limits");
+const grid_balance_contract_1 = require("./grid_balance_contract");
+const grid_balance_power_1 = require("./grid_balance_power");
 function rec(config) {
     return config && typeof config === "object" ? config : {};
 }
@@ -93,8 +95,10 @@ function batteryConfigFromAdapter(config) {
             maxTargetW: intIn(c, "bat_grid_balance_max_w", 5000, 0, 50_000),
             updateIntervalSec: intIn(c, "bat_grid_balance_update_interval_sec", 5, 3, 15),
             priceGateEnabled: bool(c, "bat_grid_balance_price_gate_enabled", true),
-            maxPriceCtPerKwh: num(c, "bat_grid_balance_max_price_ct_per_kwh"),
+            maxPriceCtPerKwh: (0, grid_balance_contract_1.parseGridBalanceMaxPriceCt)(c.bat_grid_balance_max_price_ct_per_kwh),
             priceMedianFactor: floatIn(c, "bat_grid_balance_price_median_factor", 1.05, 0, 3),
+            deadbandW: intIn(c, "bat_grid_balance_deadband_w", grid_balance_power_1.GRID_BALANCE_DEADBAND_DEFAULT_W, 0, 5000),
+            minDurationSec: intIn(c, "bat_grid_balance_min_duration_s", grid_balance_power_1.GRID_BALANCE_MIN_DURATION_DEFAULT_S, 0, 120),
         },
     };
 }

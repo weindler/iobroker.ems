@@ -14,6 +14,12 @@ const diagnostics_1 = require("./diagnostics");
 const ensure_states_1 = require("./ensure_states");
 const ems_mirror_1 = require("./ems_mirror");
 const grid_balance_1 = require("./grid_balance");
+const grid_balance_contract_1 = require("./grid_balance_contract");
+const grid_balance_power_1 = require("./grid_balance_power");
+const barrier_1 = require("../../restore/barrier");
+const ensure_evcc_states_1 = require("../wallbox/ensure_evcc_states");
+const states_1 = require("../wallbox/runtime/states");
+const ensure_states_2 = require("../wallbox/ev_foundation/ensure_states");
 const battery_winter_price_inputs_1 = require("../../planner/battery_winter_price_inputs");
 const mapping_1 = require("./mapping");
 const registry_1 = require("./profiles/registry");
@@ -21,9 +27,10 @@ const fsm_1 = require("./runtime/fsm");
 const execute_1 = require("./runtime/execute");
 const ownership_1 = require("./runtime/ownership");
 const safety_1 = require("./runtime/safety");
+const setpoint_session_1 = require("./runtime/setpoint_session");
 const intent_read_1 = require("./runtime/intent_read");
 const grid_balance_watch_1 = require("./runtime/grid_balance_watch");
-const states_1 = require("../../operator/daily_plan/states");
+const states_2 = require("../../operator/daily_plan/states");
 const daily_plan_1 = require("./runtime/daily_plan");
 const state_write_1 = require("../../policy/core/state_write");
 exports.BATTERY_ADDON_ID = "battery";
@@ -38,10 +45,15 @@ let ownershipLive = false;
 let prevLiveWriteAllowed = false;
 let ticking = false;
 let lastGridBalanceWriteW = null;
+let lastGridBalanceAction = "";
+let lastGridBalanceActionAt = "";
+let gridBalanceOwnsSetpoint = false;
+let gridBalanceStabilization = (0, grid_balance_power_1.emptyStabilization)();
+let gridBalanceLiveTest = (0, grid_balance_power_1.emptyGridBalanceLiveTest)();
 const DAILY_PLAN_TRIGGER_IDS = new Set([
-    states_1.DAILY_PLAN_STATE_IDS.revision,
-    states_1.DAILY_PLAN_STATE_IDS.status,
-    states_1.ALLOCATION_ADDON_STATE_IDS.battery.planJson,
+    states_2.DAILY_PLAN_STATE_IDS.revision,
+    states_2.DAILY_PLAN_STATE_IDS.status,
+    states_2.ALLOCATION_ADDON_STATE_IDS.battery.planJson,
 ]);
 /** Nur für Tests: internen Laufzeitzustand zurücksetzen. */
 function __resetBatteryRuntimeForTest(now = Date.now()) {
@@ -50,7 +62,13 @@ function __resetBatteryRuntimeForTest(now = Date.now()) {
     ownershipLive = false;
     prevLiveWriteAllowed = false;
     lastGridBalanceWriteW = null;
+    lastGridBalanceAction = "";
+    lastGridBalanceActionAt = "";
+    gridBalanceOwnsSetpoint = false;
+    gridBalanceStabilization = (0, grid_balance_power_1.emptyStabilization)();
+    gridBalanceLiveTest = (0, grid_balance_power_1.emptyGridBalanceLiveTest)();
     (0, daily_plan_1.resetBatteryDailyPlanCache)();
+    (0, setpoint_session_1.resetBatterySetpointSession)();
 }
 exports.__resetBatteryRuntimeForTest = __resetBatteryRuntimeForTest;
 async function ensureBatteryStateTree(adapter) {
@@ -65,11 +83,19 @@ async function startBatteryModuleRuntime(adapter) {
     gridBalancePausedByFsm = false;
     ownershipLive = false;
     prevLiveWriteAllowed = false;
+    lastGridBalanceWriteW = null;
+    lastGridBalanceAction = "";
+    lastGridBalanceActionAt = "";
+    gridBalanceOwnsSetpoint = false;
+    gridBalanceStabilization = (0, grid_balance_power_1.emptyStabilization)();
+    gridBalanceLiveTest = (0, grid_balance_power_1.emptyGridBalanceLiveTest)();
+    (0, setpoint_session_1.resetBatterySetpointSession)();
     const host = adapter;
     for (const relId of ems_mirror_1.EMS_MIRROR_BATTERY_IDS) {
         await adapter.subscribeStatesAsync(relId);
     }
     await adapter.subscribeStatesAsync(ensure_states_1.BAT.control.faultReset);
+    await adapter.subscribeStatesAsync(ensure_states_1.BAT.gridBalance.liveTestArmed);
     for (const id of DAILY_PLAN_TRIGGER_IDS) {
         await adapter.subscribeStatesAsync(id);
     }
@@ -106,6 +132,7 @@ function handleBatteryAdapterStateChange(adapter, stateId) {
     const ns = `${adapter.namespace}.`;
     const rel = stateId.startsWith(ns) ? stateId.slice(ns.length) : stateId;
     if (rel === ensure_states_1.BAT.control.faultReset ||
+        rel === ensure_states_1.BAT.gridBalance.liveTestArmed ||
         (0, execution_mode_1.isExecutionModeStateRelativeId)(rel) ||
         ems_mirror_1.EMS_MIRROR_BATTERY_IDS.includes(rel) ||
         DAILY_PLAN_TRIGGER_IDS.has(rel)) {
@@ -167,6 +194,23 @@ async function readRelNumber(host, id) {
     const n = Number(st.val);
     return Number.isFinite(n) ? n : null;
 }
+async function readRelNumberTs(host, id, nowMs) {
+    const st = await host.getStateAsync(id);
+    if (st?.val == null)
+        return { val: null, ageMs: null };
+    const n = Number(st.val);
+    const val = Number.isFinite(n) ? n : null;
+    const ts = typeof st.ts === "number" && Number.isFinite(st.ts) ? st.ts : null;
+    const ageMs = ts != null ? Math.max(0, nowMs - ts) : null;
+    return { val, ageMs };
+}
+async function readRelString(host, id) {
+    const st = await host.getStateAsync(id);
+    if (st?.val == null)
+        return null;
+    const s = String(st.val).trim();
+    return s.length > 0 ? s : null;
+}
 async function readRelBool(host, id) {
     const st = await host.getStateAsync(id);
     return st?.val === true;
@@ -218,6 +262,18 @@ async function runBatteryControlTick(host) {
 exports.runBatteryControlTick = runBatteryControlTick;
 async function controlTickInner(host) {
     (0, ems_activity_1.touchEmsActivity)();
+    if ((0, setpoint_session_1.consumeFailsafeSetpointTakeover)()) {
+        runtime = {
+            ...runtime,
+            state: "completed",
+            ownership: (0, ownership_1.emptyOwnership)(),
+            effectivePowerW: 0,
+        };
+        ownershipLive = false;
+        gridBalanceOwnsSetpoint = false;
+        lastGridBalanceWriteW = null;
+        gridBalancePausedByFsm = false;
+    }
     const nowMs = Date.now();
     const config = (0, config_1.batteryConfigFromAdapter)(host.config);
     const profile = (0, registry_1.getBatteryProfile)(config.profile);
@@ -232,6 +288,7 @@ async function controlTickInner(host) {
         host.log.info("battery: live write enabled — restarting charge sequence (prior dryrun progress discarded)");
         runtime = (0, fsm_1.initialSonnenRuntime)(nowMs);
         gridBalancePausedByFsm = false;
+        (0, setpoint_session_1.resetBatterySetpointSession)();
     }
     prevLiveWriteAllowed = liveWriteAllowed;
     // Fault reset button.
@@ -378,14 +435,47 @@ async function controlTickInner(host) {
     const emsMirrorIntentActive = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.batteryIntentActive);
     const dailyPlanDriven = deviceIntent.source === "daily_plan";
     const dailyPlanAuthoritative = (0, daily_plan_1.isBatteryDailyPlanAuthoritative)(dailyPlanContext);
-    const [batteryHoldActive, wallboxBatteryHold, priceNowCt] = await Promise.all([
+    const [batteryHoldActive, wallboxBatteryHold, priceNowCt, evccLoadpointMode, evccChargingFlag, evccChargePowerW, evccBatteryMode, evccDischargeControl, evccBatteryBoost, evccSmartCostActive, evAuthority, wallboxEnergySource, wallboxAllocatedGridW, globalModeRaw, addonModeRaw,] = await Promise.all([
         readRelBool(host, "planner.constraints.battery_hold_active"),
-        readRelBool(host, "addons.wallbox.runtime.battery_hold_for_ev_charge"),
+        readRelBool(host, states_1.WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge),
         readRelNumber(host, "live.price.now_ct_per_kwh"),
+        readRelString(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.loadpointMode),
+        readRelBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.charging),
+        readRelNumber(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW),
+        readRelString(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryMode),
+        readRelBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryDischargeControl),
+        readRelBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryBoost),
+        readRelBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.smartCostActive),
+        readRelString(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority),
+        readRelString(host, states_1.WALLBOX_RUNTIME_STATES.energySource),
+        readRelNumber(host, states_1.WALLBOX_RUNTIME_STATES.allocatedGridPowerW),
+        host.getStateAsync(tree_paths_1.GLOBAL.executionMode),
+        host.getStateAsync((0, tree_paths_1.addonMode)(exports.BATTERY_ADDON_ID)),
     ]);
-    /** Nur Boost/externes Laden — nicht jedes EVCC-Laden (MinPV/PV). */
-    const evccCharging = wallboxBatteryHold;
-    const gridBalanceSuppressed = batteryHoldActive || evccCharging || runtime.ownership.active || dailyPlanAuthoritative;
+    const globalLive = (0, execution_mode_1.parseGlobalMode)(globalModeRaw?.val) === "live";
+    const addonLive = (0, execution_mode_1.parseAddonMode)(addonModeRaw?.val) === "live";
+    const evccBatteryModeHold = (evccBatteryMode ?? "").toLowerCase() === "hold";
+    const holdPlanned = deviceIntent.action === "hold";
+    const holdActive = batteryHoldActive || wallboxBatteryHold || evccBatteryModeHold || evccDischargeControl;
+    if (holdPlanned || holdActive || (evAuthority ?? "").toLowerCase() === "external") {
+        wantsCharge = false;
+    }
+    const evConflict = (0, grid_balance_contract_1.classifyGridBalanceEvConflict)({
+        loadpointMode: evccLoadpointMode,
+        charging: evccChargingFlag,
+        chargePowerW: evccChargePowerW,
+        wallboxHold: wallboxBatteryHold,
+        batteryBoost: evccBatteryBoost,
+        externalAuthority: (evAuthority ?? "").toLowerCase() === "external",
+        tibberRewardsActive: evccSmartCostActive,
+        wallboxEnergySource,
+        wallboxAllocatedGridW,
+    });
+    const gridBalanceSuppressed = holdActive ||
+        holdPlanned ||
+        evConflict.conflict ||
+        runtime.ownership.active ||
+        dailyPlanAuthoritative;
     const emsBatteryIntentActive = Boolean(fromManual
         ? wantsCharge
         : dailyPlanDriven
@@ -393,12 +483,12 @@ async function controlTickInner(host) {
             : deviceIntent.source === "winter_planner"
                 ? wantsCharge || runtime.ownership.active
                 : emsMirrorIntentActive && wantsCharge);
-    // Grid balance controller.
+    // Grid balance controller — Admin-Schalter ist die einzige Feature-Freigabe.
     const adapterFeature = snapshot.capabilities.control_grid_balance.available;
-    const emsGb = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.gridBalanceEnabled);
+    await (0, state_write_1.setStateIfChanged)(host, ems_mirror_1.EMS_MIRROR_BATTERY.gridBalanceEnabled, config.gridBalance.enabled);
     const controller = (0, grid_balance_1.resolveController)({
         emsBatteryIntentActive,
-        emsGridBalanceEnabled: emsGb,
+        emsGridBalanceEnabled: config.gridBalance.enabled,
         adapterFeatureEnabled: adapterFeature,
         batteryAddonEnabled: governanceEnabled,
         gridBalancePaused: gridBalancePausedByFsm || runtime.ownership.active,
@@ -422,7 +512,7 @@ async function controlTickInner(host) {
         snapshot.limits.maxSocPct != null &&
         snapshot.telemetry.socPct != null &&
         snapshot.telemetry.socPct >= snapshot.limits.maxSocPct;
-    const stopReason = (0, safety_1.evaluateStopCondition)({
+    const stopReasonRaw = (0, safety_1.evaluateStopCondition)({
         targetSocReached,
         intentExpired: deviceIntent.validUntil != null && Date.parse(deviceIntent.validUntil) <= nowMs,
         intentRevoked: runtime.ownership.active && !wantsCharge,
@@ -435,6 +525,35 @@ async function controlTickInner(host) {
         unloading: false,
         higherPriorityIntent: false,
     });
+    const setpointHandover = (0, setpoint_session_1.resolveBatterySetpointHandover)({
+        hold: holdPlanned || holdActive,
+        external: (evAuthority ?? "").toLowerCase() === "external",
+        restoreOrFault: (0, barrier_1.isRestoreInProgress)(),
+        higherPriority: false,
+    });
+    const sessionNow = (0, setpoint_session_1.getBatterySetpointSession)();
+    const fsmOwnsSetpoint = sessionNow.wrotePositive &&
+        (sessionNow.owner === "grid_charge" || sessionNow.owner === "planned_charge");
+    let stopReason = stopReasonRaw;
+    let stopDisposition;
+    const inChargeSequence = runtime.state !== "idle" &&
+        runtime.state !== "completed" &&
+        runtime.state !== "rejected" &&
+        runtime.state !== "lockout" &&
+        runtime.state !== "fault";
+    if (setpointHandover !== "none" &&
+        (runtime.ownership.active || fsmOwnsSetpoint || inChargeSequence)) {
+        stopDisposition = "drop_ownership";
+        if (!stopReason)
+            stopReason = `authority_${setpointHandover}`;
+    }
+    else if (stopReason) {
+        stopDisposition = "release_zero";
+    }
+    const forceZeroSetpointWrite = stopDisposition === "release_zero" && fsmOwnsSetpoint && sessionNow.setpointW > 0;
+    if (forceZeroSetpointWrite) {
+        (0, setpoint_session_1.setBatterySetpointSession)((0, setpoint_session_1.markReleasePending)((0, setpoint_session_1.getBatterySetpointSession)(), stopReason ?? "regular_end"));
+    }
     const ctx = {
         nowMs,
         intentValid,
@@ -452,7 +571,10 @@ async function controlTickInner(host) {
         tolerance: config.feedbackTolerance,
         gridBalanceActive: controller === "grid_balance",
         simulateFeedback: !effectiveLive,
+        stopDisposition,
+        forceZeroSetpointWrite: stopDisposition === "release_zero" ? forceZeroSetpointWrite : undefined,
     };
+    const fsmStateBefore = runtime.state;
     const step = profile.supportsLive ? (0, fsm_1.stepSonnenFsm)(runtime, ctx) : { runtime, writes: [], gridBalance: null, log: null, transitioned: false };
     runtime = step.runtime;
     if (step.gridBalance === "pause")
@@ -502,84 +624,232 @@ async function controlTickInner(host) {
         if (result.executed && w.kind === "operating_mode" && w.value === config.sonnenModeValues.manual) {
             ownershipLive = true;
         }
+        if (w.kind === "charge_power") {
+            const accepted = result.executed || result.written || result.simulated;
+            const owner = (0, setpoint_session_1.setpointOwnerFromAction)(runtime.action) === "none"
+                ? "planned_charge"
+                : (0, setpoint_session_1.setpointOwnerFromAction)(runtime.action);
+            if (accepted && w.value > 0) {
+                (0, setpoint_session_1.setBatterySetpointSession)((0, setpoint_session_1.notePositiveSetpointWrite)((0, setpoint_session_1.getBatterySetpointSession)(), owner, w.value, Boolean(result.executed || result.written)));
+            }
+            if (accepted && w.value === 0) {
+                (0, setpoint_session_1.setBatterySetpointSession)((0, setpoint_session_1.applyZeroRelease)((0, setpoint_session_1.getBatterySetpointSession)(), new Date(nowMs).toISOString(), stopReason ?? "regular_end"));
+            }
+        }
+    }
+    if (fsmStateBefore === "set_charge_power" &&
+        runtime.state === "active" &&
+        runtime.effectivePowerW > 0 &&
+        !step.writes.some((w) => w.kind === "charge_power" && w.value > 0)) {
+        const owner = (0, setpoint_session_1.setpointOwnerFromAction)(runtime.action) === "none"
+            ? "planned_charge"
+            : (0, setpoint_session_1.setpointOwnerFromAction)(runtime.action);
+        (0, setpoint_session_1.setBatterySetpointSession)((0, setpoint_session_1.notePositiveSetpointWrite)((0, setpoint_session_1.getBatterySetpointSession)(), owner, runtime.effectivePowerW, effectiveLive));
+    }
+    if (stopDisposition === "drop_ownership" && (0, setpoint_session_1.getBatterySetpointSession)().owner !== "none") {
+        (0, setpoint_session_1.setBatterySetpointSession)((0, setpoint_session_1.applyHandover)((0, setpoint_session_1.getBatterySetpointSession)(), `handover_${setpointHandover}`));
     }
     if (!runtime.ownership.active) {
         ownershipLive = false;
     }
-    // Grid balance write path (only when EMS-FSM not owning the battery).
+    // Grid balance: safety + EV-Abzug + Deadband; Writes nur One-Shot oder EXECUTION-Flag.
+    const consumption = (await readMappedNumber(host, table, "consumption_w")).val ?? 0;
+    const pv = (await readMappedNumber(host, table, "pv_ac_power_w")).val ?? 0;
+    const evPower = await readRelNumberTs(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW, nowMs);
+    const armedSt = await host.getStateAsync(ensure_states_1.BAT.gridBalance.liveTestArmed);
+    gridBalanceLiveTest = (0, grid_balance_power_1.applyGridBalanceLiveTestPulse)(gridBalanceLiveTest, armedSt?.val, armedSt?.ack, nowMs);
+    if (armedSt?.ack === false) {
+        await host.setStateAsync(ensure_states_1.BAT.gridBalance.liveTestArmed, {
+            val: gridBalanceLiveTest.armed,
+            ack: true,
+        });
+    }
+    const capacityWh = (snapshot.capacity.effectiveKwh ?? 0) * 1000;
+    const restKwh = (await readRelNumber(host, ems_mirror_1.EMS_MIRROR_BATTERY.effectivePvRestOfDayKwh)) ?? 0;
+    const snow = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.snowCoverSuspected);
+    const priceSlots = config.gridBalance.priceGateEnabled && config.gridBalance.priceMedianFactor > 0
+        ? await (0, battery_winter_price_inputs_1.readTibber15MinPriceSlots)({ ...host, config: host.config, getForeignStateAsync: (id) => host.getForeignStateAsync(id) }, new Date(nowMs))
+        : [];
+    const offset = snapshot.telemetry.socPct != null && snapshot.telemetry.socPct > config.gridBalance.socThresholdPct
+        ? config.gridBalance.offsetHighSocW
+        : config.gridBalance.offsetLowSocW;
+    const forecastProbe = (0, grid_balance_1.computeGridBalanceTarget)({
+        effectiveRestOfDayKwh: restKwh,
+        capacityWh,
+        snowCoverSuspected: snow,
+        consumptionW: consumption,
+        adjustedConsumptionW: consumption,
+        pvAcPowerW: pv,
+        socPct: snapshot.telemetry.socPct,
+        emsGridBalanceEnabled: config.gridBalance.enabled,
+        adapterFeatureEnabled: adapterFeature,
+        controller: "grid_balance",
+        offsetHighSocW: config.gridBalance.offsetHighSocW,
+        offsetLowSocW: config.gridBalance.offsetLowSocW,
+        socThresholdPct: config.gridBalance.socThresholdPct,
+        evccCharging: false,
+        batteryHoldActive: false,
+        winterGridPlanActive: false,
+        mode1Active: false,
+        dailyPlanAuthoritative: false,
+        priceNowCt,
+        priceMedianCt: (0, grid_balance_1.medianCtFromPriceSlots)(priceSlots),
+        priceGate: { enabled: false, maxPriceCtPerKwh: null, medianFactor: 0 },
+    });
+    let forecastBlockReason = "";
+    if (forecastProbe.checksFailed.includes("snow_cover_suspected"))
+        forecastBlockReason = "snow_cover_suspected";
+    else if (forecastProbe.checksFailed.includes("capacity_missing"))
+        forecastBlockReason = "capacity_missing";
+    else if (forecastProbe.checksFailed.includes("pv_forecast_below_capacity")) {
+        forecastBlockReason = "pv_forecast_below_capacity";
+    }
+    const safetyInput = {
+        adminEnabled: config.gridBalance.enabled,
+        emsMirrorEnabled: config.gridBalance.enabled,
+        globalLive,
+        addonLive,
+        addonEnabled: !executionOff,
+        governanceEnabled,
+        faultActive: runtime.faultCode !== null,
+        lockoutActive: runtime.lockout,
+        restoreInProgress: (0, barrier_1.isRestoreInProgress)(),
+        sourceStale: snapshot.telemetry.stale,
+        sourceOffline: online === false,
+        holdPlanned,
+        holdActive,
+        evccBatteryModeHold,
+        plannedBatteryAction: emsBatteryIntentActive,
+        ownershipActive: runtime.ownership.active,
+        dailyPlanAuthoritative,
+        mode1Active: runtime.ownership.active,
+        priceNowCt,
+        priceLimitCt: config.gridBalance.maxPriceCtPerKwh,
+        priceGateEnabled: config.gridBalance.priceGateEnabled,
+        evConflictKind: evConflict.kind,
+        externalEvAuthority: (evAuthority ?? "").toLowerCase() === "external",
+    };
+    const gbSession = (0, setpoint_session_1.getBatterySetpointSession)();
+    const leavingLiveWithOwnership = gridBalanceOwnsSetpoint &&
+        gbSession.owner === "grid_balance" &&
+        gbSession.wroteLive &&
+        !liveWriteAllowed;
+    const gbDecision = (0, grid_balance_power_1.evaluateGridBalanceTick)({
+        nowMs,
+        safety: safetyInput,
+        consumptionW: consumption,
+        pvAcPowerW: pv,
+        charging: evccChargingFlag,
+        chargePowerW: evPower.val ?? evccChargePowerW,
+        chargePowerAgeMs: evPower.ageMs,
+        deadbandW: config.gridBalance.deadbandW,
+        minDurationMs: config.gridBalance.minDurationSec * 1000,
+        offsetW: offset,
+        configuredMaxW: config.gridBalance.maxTargetW,
+        hardwareMaxChargeW: snapshot.limits.maxChargeW,
+        hardwareMaxDischargeW: snapshot.limits.maxDischargeW,
+        minChangeW: config.gridBalance.minChangeW,
+        lastWrittenW: lastGridBalanceWriteW,
+        ownsSetpoint: gridBalanceOwnsSetpoint,
+        stabilization: gridBalanceStabilization,
+        liveTest: gridBalanceLiveTest,
+        controllerIsGridBalance: controller === "grid_balance" && !gridBalancePausedByFsm && !executionOff,
+        forecastBlockReason,
+        leavingLiveWithOwnership,
+    });
+    gridBalanceStabilization = gbDecision.stabilizationNext;
+    gridBalanceLiveTest = gbDecision.liveTestNext;
+    const gbState = table.set_charge_power.targetState;
     let gbWouldWrite = false;
-    let gbTarget = 0;
-    let gbState = "";
-    if (controller === "grid_balance" &&
-        !runtime.ownership.active &&
-        !gridBalancePausedByFsm &&
-        !executionOff) {
-        const consumption = (await readMappedNumber(host, table, "consumption_w")).val ?? 0;
-        const pv = (await readMappedNumber(host, table, "pv_ac_power_w")).val ?? 0;
-        const capacityWh = (snapshot.capacity.effectiveKwh ?? 0) * 1000;
-        const restKwh = (await readRelNumber(host, ems_mirror_1.EMS_MIRROR_BATTERY.effectivePvRestOfDayKwh)) ?? 0;
-        const snow = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.snowCoverSuspected);
-        const priceSlots = config.gridBalance.priceGateEnabled && config.gridBalance.priceMedianFactor > 0
-            ? await (0, battery_winter_price_inputs_1.readTibber15MinPriceSlots)({ ...host, config: host.config, getForeignStateAsync: (id) => host.getForeignStateAsync(id) }, new Date(nowMs))
-            : [];
-        const result = (0, grid_balance_1.computeGridBalanceTarget)({
-            effectiveRestOfDayKwh: restKwh,
-            capacityWh,
-            snowCoverSuspected: snow,
-            consumptionW: consumption,
-            pvAcPowerW: pv,
-            socPct: snapshot.telemetry.socPct,
-            emsGridBalanceEnabled: emsGb,
-            adapterFeatureEnabled: adapterFeature,
-            controller,
-            offsetHighSocW: config.gridBalance.offsetHighSocW,
-            offsetLowSocW: config.gridBalance.offsetLowSocW,
-            socThresholdPct: config.gridBalance.socThresholdPct,
-            evccCharging,
-            batteryHoldActive,
-            winterGridPlanActive: false,
-            mode1Active: runtime.ownership.active,
-            dailyPlanAuthoritative,
-            priceNowCt,
-            priceMedianCt: (0, grid_balance_1.medianCtFromPriceSlots)(priceSlots),
-            priceGate: {
-                enabled: config.gridBalance.priceGateEnabled,
-                maxPriceCtPerKwh: config.gridBalance.maxPriceCtPerKwh,
-                medianFactor: config.gridBalance.priceMedianFactor,
+    let gbEffective = gbDecision.effectivePowerW;
+    if ((gbDecision.shouldWrite || gbDecision.shouldRelease) && gbState.length > 0) {
+        if (gbDecision.shouldRelease && (0, setpoint_session_1.getBatterySetpointSession)().owner === "grid_balance") {
+            (0, setpoint_session_1.setBatterySetpointSession)((0, setpoint_session_1.markReleasePending)((0, setpoint_session_1.getBatterySetpointSession)(), "grid_balance_idle"));
+        }
+        const gbReleaseLive = gbDecision.shouldRelease && (0, setpoint_session_1.getBatterySetpointSession)().wroteLive;
+        const gbWriteLive = liveWriteAllowed || gbReleaseLive;
+        const wr = await (0, execute_1.executeBatteryWrite)(host, {
+            kind: "charge_power",
+            stateId: gbState,
+            value: gbDecision.writePowerW,
+            requestId: "grid_balance",
+            reason: gbDecision.shouldRelease ? "grid_balance_release" : "grid_balance",
+            expectedFeedback: gbDecision.writePowerW,
+            dryrun: !gbWriteLive,
+            gate: {
+                ...gate,
+                globalLive: gbWriteLive,
+                intentValid: true,
+                fault: false,
+                lockout: false,
+                targetMappingConfigured: true,
             },
         });
-        if (result.gatePassed) {
-            gbTarget = Math.min(config.gridBalance.maxTargetW, result.targetBatteryChargingW);
-            gbState = table.set_charge_power.targetState;
-            const minChange = config.gridBalance.minChangeW;
-            const delta = lastGridBalanceWriteW === null ? Number.POSITIVE_INFINITY : Math.abs(gbTarget - lastGridBalanceWriteW);
-            const shouldWrite = gbState.length > 0 && delta >= minChange;
-            gbWouldWrite = shouldWrite;
-            if (shouldWrite) {
-                await (0, execute_1.executeBatteryWrite)(host, {
-                    kind: "charge_power",
-                    stateId: gbState,
-                    value: gbTarget,
-                    requestId: "grid_balance",
-                    reason: "grid_balance",
-                    expectedFeedback: gbTarget,
-                    dryrun: !liveWriteAllowed,
-                    gate: { ...gate, targetMappingConfigured: true },
-                });
-                lastGridBalanceWriteW = gbTarget;
+        if (wr.executed || wr.written || wr.simulated) {
+            gbWouldWrite = gbDecision.shouldWrite;
+            lastGridBalanceWriteW = gbDecision.shouldRelease ? null : gbDecision.writePowerW;
+            gbEffective = gbDecision.shouldRelease ? 0 : gbDecision.writePowerW;
+            if (gbDecision.shouldWrite) {
+                gridBalanceOwnsSetpoint = true;
+                (0, setpoint_session_1.setBatterySetpointSession)((0, setpoint_session_1.notePositiveSetpointWrite)((0, setpoint_session_1.getBatterySetpointSession)(), "grid_balance", gbDecision.writePowerW, Boolean(wr.executed || wr.written)));
+                if (!grid_balance_contract_1.GRID_BALANCE_EXECUTION_ENABLED) {
+                    gridBalanceLiveTest = (0, grid_balance_power_1.consumeGridBalanceLiveTest)(gridBalanceLiveTest, nowMs);
+                }
+            }
+            if (gbDecision.shouldRelease) {
+                gridBalanceOwnsSetpoint = false;
+                (0, setpoint_session_1.setBatterySetpointSession)((0, setpoint_session_1.applyZeroRelease)((0, setpoint_session_1.getBatterySetpointSession)(), new Date(nowMs).toISOString(), "grid_balance_idle"));
             }
         }
-        else {
-            lastGridBalanceWriteW = null;
+        else if (gbDecision.shouldWrite) {
+            gridBalanceOwnsSetpoint = false;
+        }
+        else if (gbDecision.shouldRelease) {
+            gridBalanceOwnsSetpoint = true;
         }
     }
+    else if (gbDecision.shouldWrite || gbDecision.shouldRelease) {
+        lastGridBalanceWriteW = null;
+    }
+    else {
+        gridBalanceOwnsSetpoint = gbDecision.ownsSetpointNext;
+        if (!gbDecision.ownsSetpointNext && (0, setpoint_session_1.getBatterySetpointSession)().owner === "grid_balance") {
+            const gbHandover = (0, setpoint_session_1.resolveBatterySetpointHandover)({
+                hold: gbDecision.holdDetected,
+                external: gbDecision.authority === "external_ev",
+                restoreOrFault: gbDecision.authority === "safety" &&
+                    (safetyInput.restoreInProgress || safetyInput.faultActive || safetyInput.lockoutActive),
+                higherPriority: gbDecision.authority === "planned_battery",
+            });
+            const reason = gbHandover === "none" ? "grid_balance_drop" : `handover_${gbHandover}`;
+            (0, setpoint_session_1.setBatterySetpointSession)((0, setpoint_session_1.applyHandover)((0, setpoint_session_1.getBatterySetpointSession)(), reason));
+        }
+    }
+    const isoNow = new Date(nowMs).toISOString();
+    lastGridBalanceAction = gbDecision.lastAction;
+    lastGridBalanceActionAt = isoNow;
+    const gbSafety = {
+        ...gbDecision.safety,
+        ready: gbDecision.ready,
+        active: gbDecision.active,
+        blockReason: gbDecision.blockReason,
+        explain: gbDecision.explain,
+    };
     await persist(host, snapshot, {
         nowMs,
         globalLive: liveWriteAllowed,
         governanceEnabled,
         controller,
         lastWrite,
-        gb: { wouldWrite: gbWouldWrite, target: gbTarget, state: gbState },
+        gb: {
+            wouldWrite: gbWouldWrite,
+            target: gbDecision.requestedPowerW,
+            state: gbState,
+            effective: gbEffective,
+            importW: gbDecision.rawGridDeltaW,
+            safety: gbSafety,
+            decision: gbDecision,
+        },
         clamps: validation.clamps,
         requestedPowerW: deviceIntent.maxChargeW ?? 0,
         effectiveChargeW,
@@ -588,6 +858,8 @@ async function controlTickInner(host) {
         actualChargingW: snapshot.telemetry.chargingPowerW,
         dailyPlan: dailyPlanContext,
         decisionSource: runtimeDecisionSource,
+        priceNowCt,
+        priceLimitCt: config.gridBalance.maxPriceCtPerKwh,
     });
 }
 async function persist(host, s, x) {
@@ -646,6 +918,12 @@ async function persist(host, s, x) {
     await set(ensure_states_1.BAT.runtime.lastTransitionAt, iso);
     await set(ensure_states_1.BAT.runtime.reason, runtime.faultReason ?? s.readiness.reason);
     await set(ensure_states_1.BAT.runtime.ownershipActive, runtime.ownership.active);
+    const sp = (0, setpoint_session_1.getBatterySetpointSession)();
+    await set(ensure_states_1.BAT.runtime.batterySetpointOwner, sp.owner);
+    await set(ensure_states_1.BAT.runtime.batterySetpointW, sp.setpointW);
+    await set(ensure_states_1.BAT.runtime.batteryReleasePending, sp.releasePending);
+    await set(ensure_states_1.BAT.runtime.batteryReleaseReason, sp.releaseReason);
+    await set(ensure_states_1.BAT.runtime.batteryLastReleaseAt, sp.lastReleaseAt ?? "");
     const dp = x.dailyPlan;
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.decisionSource, x.decisionSource);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.runtime.reasonDe, dp.allocationReasonDe || "");
@@ -730,10 +1008,44 @@ async function persist(host, s, x) {
     await set(ensure_states_1.BAT.diagnostics.lastFeedbackAt, iso);
     await set(ensure_states_1.BAT.diagnostics.faultCode, runtime.faultCode ?? "");
     await set(ensure_states_1.BAT.diagnostics.faultReason, runtime.faultReason ?? "");
+    const d = x.gb.decision;
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.enabled, d.enabled);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.active, d.active);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.ready, d.ready);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.blockReason, d.blockReason);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.currentPriceCtKwh, x.priceNowCt);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.priceLimitCtKwh, x.priceLimitCt);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.priceAllowed, d.priceAllowed);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.gridPowerW, d.rawGridDeltaW);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.rawConsumptionW, d.rawConsumptionW);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.evChargePowerW, d.evChargePowerW);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.adjustedConsumptionW, d.adjustedConsumptionW);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.pvPowerW, d.pvPowerW);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.rawGridDeltaW, d.rawGridDeltaW);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.deadbandW, d.deadbandW);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.requestedPowerW, d.requestedPowerW);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.configuredMaxW, d.configuredMaxW);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.hardwareMaxW, d.hardwareMaxW);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.effectiveMaxW, d.effectiveMaxW);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.effectivePowerW, d.effectivePowerW);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.authority, d.authority);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.holdDetected, d.holdDetected);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.evConflict, d.evConflict);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.ownership, d.ownership);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.lastAction, lastGridBalanceAction);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.lastActionAt, lastGridBalanceActionAt);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.explain, d.explain);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.liveTestArmed, gridBalanceLiveTest.armed);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.liveTestArmedAt, gridBalanceLiveTest.armedAtMs != null ? new Date(gridBalanceLiveTest.armedAtMs).toISOString() : "");
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.liveTestResult, gridBalanceLiveTest.result);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.mirrorFollowsAdmin, true);
 }
 /** Adapter-Unload: best-effort Safe Restore nur bei aktiver Live-Ownership. */
 async function batteryUnloadRestore(host) {
-    if (!runtime.ownership.active || !ownershipLive) {
+    const session = (0, setpoint_session_1.getBatterySetpointSession)();
+    const fsmLive = runtime.ownership.active && ownershipLive;
+    const setpointLive = session.wroteLive && session.owner !== "none";
+    if (!fsmLive && !setpointLive) {
         return;
     }
     const config = (0, config_1.batteryConfigFromAdapter)(host.config);
@@ -752,27 +1064,32 @@ async function batteryUnloadRestore(host) {
         fault: false,
         lockout: false,
         targetMappingConfigured: true,
-        ownershipValid: runtime.ownership.active,
+        ownershipValid: runtime.ownership.active || setpointLive,
     };
     try {
-        await (0, execute_1.executeBatteryWrite)(host, {
-            kind: "charge_power",
-            stateId: table.set_charge_power.targetState,
-            value: 0,
-            requestId: "unload",
-            reason: "unload_stop",
-            dryrun: false,
-            gate,
-        });
-        await (0, execute_1.executeBatteryWrite)(host, {
-            kind: "operating_mode",
-            stateId: table.set_operating_mode.targetState,
-            value: config.sonnenModeValues.selfConsumption,
-            requestId: "unload",
-            reason: "unload_restore",
-            dryrun: false,
-            gate,
-        });
+        if (setpointLive || fsmLive) {
+            await (0, execute_1.executeBatteryWrite)(host, {
+                kind: "charge_power",
+                stateId: table.set_charge_power.targetState,
+                value: 0,
+                requestId: "unload",
+                reason: "unload_stop",
+                dryrun: false,
+                gate,
+            });
+            (0, setpoint_session_1.setBatterySetpointSession)((0, setpoint_session_1.applyZeroRelease)(session, new Date().toISOString(), "unload_stop"));
+        }
+        if (fsmLive) {
+            await (0, execute_1.executeBatteryWrite)(host, {
+                kind: "operating_mode",
+                stateId: table.set_operating_mode.targetState,
+                value: config.sonnenModeValues.selfConsumption,
+                requestId: "unload",
+                reason: "unload_restore",
+                dryrun: false,
+                gate,
+            });
+        }
     }
     catch (e) {
         host.log.warn(`battery unload restore best-effort failed: ${String(e)}`);

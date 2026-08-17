@@ -6,4 +6,10 @@ export {
 	type ThermalBoilerRunHost,
 } from "./run";
 export { thermalBoilerConfigFromAdapter } from "./config";
-export { writeThermalBoilerPersist, readThermalBoilerPersist, BOILER_MODULE_TAG } from "./persist";
+export {
+	writeThermalBoilerPersist,
+	readThermalBoilerPersist,
+	isTrustedBoilerPersist,
+	BOILER_MODULE_TAG,
+	BOILER_SOURCE_KIND,
+} from "./persist";

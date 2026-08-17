@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.282",
+		"version": "0.1.284",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,14 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.284": {
+				"en": "Battery setpoint release: after an EMS charge write >0, regular end writes exactly one 0 W; Hold/External/Restore/higher action take over without competing cleanup. Diagnosis: battery_setpoint_owner/w, battery_release_pending/reason, battery_last_release_at. Grid-balance live hardening (EV subtract, 250 W deadband, 8 s stabilization) and boiler mapping.boiler_temp_c remain. Productive GB Dauerbetrieb stays off.",
+				"de": "Batterie-Setpoint-Release: Nach eigenem EMS-Leistungs-Write >0 schreibt das reguläre Aktionsende genau einmal 0 W; Hold/External/Restore/höhere Aktion übernehmen ohne konkurrierendes Cleanup. Diagnose: battery_setpoint_owner/w, battery_release_pending/reason, battery_last_release_at. Netzausgleich-Härtung (EV-Abzug, Deadband 250 W, 8 s) und Boiler mapping.boiler_temp_c bleiben. Produktiver GB-Dauerbetrieb bleibt aus."
+			},
+			"0.1.283": {
+				"en": "Grid balance audit and safety contract: Hold, EV NOW/Tibber and planned battery actions outrank grid balance. Admin switch stays off by default; max price default 30 ct/kWh. Productive grid-balance writes stay locked until 0.1.284.",
+				"de": "Netzausgleich Audit und Safety-Contract: Hold, EV NOW/Tibber und geplante Batterieaktionen haben Vorrang. Admin-Schalter bleibt standardmäßig aus; Preisgrenze Default 30 ct/kWh. Produktive Netzausgleich-Writes bleiben bis 0.1.284 gesperrt."
+			},
 			"0.1.282": {
 				"en": "EV controlled live test: operator can arm exactly one productive EVCC button command. After that pulse, Phase-5 execution locks again. Dauerbetrieb stays off (EV_EXECUTION_PHASE5_ENABLED=false).",
 				"de": "EV Controlled Live Test: Operator kann genau einen produktiven EVCC-Button-Befehl armen. Nach diesem Pulse sperrt Phase-5-Execution wieder. Dauerbetrieb bleibt aus (EV_EXECUTION_PHASE5_ENABLED=false)."

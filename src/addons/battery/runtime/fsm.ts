@@ -87,6 +87,16 @@ export interface SonnenFsmContext {
 	gridBalanceActive: boolean;
 	/** Dryrun: Rückmeldungen werden simuliert (Gerät spiegelt keine Writes). */
 	simulateFeedback: boolean;
+	/**
+	 * release_zero (Default bei stopReason): 0 W dann Mode-2.
+	 * drop_ownership: Hold/External/Restore übernehmen — keine konkurrierenden Writes.
+	 */
+	stopDisposition?: "release_zero" | "drop_ownership";
+	/**
+	 * true/undefined: immer 0 W schreiben (Telemetrie 0 ≠ Setpoint 0).
+	 * false: kein eigener Leistungs-Write > 0 — 0-W überspringen, Mode restore bleibt.
+	 */
+	forceZeroSetpointWrite?: boolean;
 }
 
 export interface SonnenFsmStep {
@@ -138,6 +148,22 @@ export function stepSonnenFsm(prev: SonnenRuntime, ctx: SonnenFsmContext): Sonne
 		rt.faultReason = reason;
 		rt.faultSinceMs = ctx.nowMs;
 	};
+
+	const dropOwnership = ctx.stopDisposition === "drop_ownership";
+	const inChargeSequence =
+		rt.state !== "idle" &&
+		rt.state !== "completed" &&
+		rt.state !== "rejected" &&
+		rt.state !== "lockout" &&
+		rt.state !== "fault";
+	if (dropOwnership && (inChargeSequence || rt.ownership.active)) {
+		log = { level: "info", msg: `battery stop: ${ctx.stopReason ?? "handover"} (handover, no competing setpoint write)` };
+		if (rt.gridBalanceWasActive) gridBalance = "restore";
+		rt.ownership = emptyOwnership();
+		rt.effectivePowerW = 0;
+		enter("completed");
+		return { runtime: rt, writes, gridBalance, log, transitioned: from !== rt.state };
+	}
 
 	// Sicherheitsabbruch in aktiven Sequenzzuständen.
 	if (ctx.stopReason && STOPPABLE_STATES.has(rt.state)) {
@@ -294,8 +320,8 @@ export function stepSonnenFsm(prev: SonnenRuntime, ctx: SonnenFsmContext): Sonne
 			break;
 
 		case "stop_charge":
-			if (ctx.actualChargingW !== null && chargeWithinTolerance(0, ctx.actualChargingW, ctx.tolerance)) {
-				log = { level: "debug", msg: "battery charge already stopped — skip write" };
+			if (ctx.forceZeroSetpointWrite === false) {
+				log = { level: "debug", msg: "battery charge stop: no own setpoint write — skip 0 W" };
 				enter("restore_self_consumption");
 			} else {
 				writes.push({ kind: "charge_power", value: 0, expectedFeedback: 0 });

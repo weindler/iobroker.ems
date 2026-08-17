@@ -134,6 +134,72 @@ describe("sonnen FSM", () => {
 		const modeWrites = res.writes.filter((w) => w.kind === "operating_mode");
 		assert.equal(modeWrites[modeWrites.length - 1].value, MODE.selfConsumption);
 		assert.ok(res.gb.includes("restore"));
+		assert.ok(res.writes.some((w) => w.kind === "charge_power" && w.value === 0));
+	});
+
+	it("regular stop writes 0 W even when telemetry already shows 0", () => {
+		let rt = initialSonnenRuntime(0);
+		rt = drive(rt, () => ({}), 12, 0).rt;
+		assert.equal(rt.state, "active");
+		const res = drive(
+			rt,
+			() => ({
+				chargingActionRequested: false,
+				intentValid: false,
+				stopReason: "intent_revoked",
+				actualChargingW: 0,
+				actualMode: MODE.manual,
+			}),
+			2,
+			20_000,
+		);
+		assert.equal(res.writes.filter((w) => w.kind === "charge_power" && w.value === 0).length, 1);
+		assert.equal(res.rt.state, "verify_charge_stopped");
+	});
+
+	it("hold handover drops ownership without 0 W or mode restore", () => {
+		let rt = initialSonnenRuntime(0);
+		rt = drive(rt, () => ({}), 12, 0).rt;
+		assert.equal(rt.state, "active");
+		assert.equal(rt.ownership.active, true);
+		const res = drive(
+			rt,
+			() => ({
+				chargingActionRequested: false,
+				intentValid: false,
+				stopReason: "authority_hold",
+				stopDisposition: "drop_ownership",
+				actualChargingW: 2000,
+				actualMode: MODE.manual,
+			}),
+			2,
+			20_000,
+		);
+		assert.equal(res.rt.state, "completed");
+		assert.equal(res.rt.ownership.active, false);
+		assert.equal(
+			res.writes.filter((w) => w.kind === "charge_power" && w.value === 0).length,
+			0,
+		);
+		assert.equal(res.writes.filter((w) => w.kind === "operating_mode").length, 0);
+	});
+
+	it("external handover drops ownership without competing 0 W", () => {
+		let rt = initialSonnenRuntime(0);
+		rt = drive(rt, () => ({}), 12, 0).rt;
+		const res = drive(
+			rt,
+			() => ({
+				stopReason: "authority_external",
+				stopDisposition: "drop_ownership",
+				actualChargingW: 2000,
+				actualMode: MODE.manual,
+			}),
+			2,
+			20_000,
+		);
+		assert.equal(res.rt.ownership.active, false);
+		assert.equal(res.writes.some((w) => w.kind === "charge_power" && w.value === 0), false);
 	});
 
 	it("mode feedback timeout → fault → restore → lockout", () => {

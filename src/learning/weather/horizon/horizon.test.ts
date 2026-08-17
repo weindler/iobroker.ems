@@ -86,11 +86,9 @@ describe("weather horizon run", () => {
 		await runWeatherHorizon(mock.host as unknown as import("./run.js").WeatherHorizonRunHost);
 
 		const d1 = weatherHorizonDayStatePrefix(1);
-		assert.equal(mock.states.get(`${d1}.raw_min_temp_c`)?.val, 8);
 		assert.equal(mock.states.get(`${d1}.min_temp_c`)?.val, 9); // +1°C full weight
 		assert.equal(mock.states.get(`${d1}.quality`)?.val, "valid");
 		const d3 = weatherHorizonDayStatePrefix(3);
-		assert.equal(mock.states.get(`${d3}.raw_min_temp_c`)?.val, 12.5);
 		assert.equal(mock.states.get(`${d3}.min_temp_c`)?.val, 13.3); // +1 * 0.8
 		const d2 = weatherHorizonDayStatePrefix(2);
 		assert.equal(mock.states.get(`${d2}.quality`)?.val, "missing");

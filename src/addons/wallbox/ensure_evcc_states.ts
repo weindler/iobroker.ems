@@ -45,6 +45,33 @@ export const WALLBOX_EVCC_STATES = {
 	smartCostActive: `${EVCC_BASE}.smart_cost_active`,
 } as const;
 
+/** Kanonische EV-Telemetrie für VIS/Planner — kein Snapshot-JSON, keine Strom/Spannungs-Arrays. */
+export const WALLBOX_EVCC_PUBLIC_STATE_IDS = new Set<string>([
+	WALLBOX_EVCC_STATES.updatedAt,
+	WALLBOX_EVCC_STATES.enabled,
+	WALLBOX_EVCC_STATES.connected,
+	WALLBOX_EVCC_STATES.charging,
+	WALLBOX_EVCC_STATES.chargePowerW,
+	WALLBOX_EVCC_STATES.sessionEnergyKwh,
+	WALLBOX_EVCC_STATES.vehicleSocPct,
+	WALLBOX_EVCC_STATES.planActive,
+	WALLBOX_EVCC_STATES.planSocPct,
+	WALLBOX_EVCC_STATES.planTime,
+	WALLBOX_EVCC_STATES.effectivePlanTime,
+	WALLBOX_EVCC_STATES.activePhases,
+	WALLBOX_EVCC_STATES.maxCurrentA,
+	WALLBOX_EVCC_STATES.batteryMode,
+	WALLBOX_EVCC_STATES.chargeRemainingEnergyKwh,
+	WALLBOX_EVCC_STATES.vehicleName,
+	WALLBOX_EVCC_STATES.effectiveLimitSocPct,
+	WALLBOX_EVCC_STATES.batteryBoost,
+	WALLBOX_EVCC_STATES.loadpointMode,
+]);
+
+export const WALLBOX_EVCC_BALLAST_SUFFIXES = Object.values(WALLBOX_EVCC_STATES)
+	.filter((id) => !WALLBOX_EVCC_PUBLIC_STATE_IDS.has(id))
+	.map((id) => id.slice(EVCC_BASE.length + 1));
+
 export async function ensureWallboxEvccStates(host: StateHost): Promise<void> {
 	const defs: StateDef[] = [
 		{
@@ -323,5 +350,8 @@ export async function ensureWallboxEvccStates(host: StateHost): Promise<void> {
 		},
 	];
 
-	await ensureStates(host, defs);
+	await ensureStates(
+		host,
+		defs.filter((d) => WALLBOX_EVCC_PUBLIC_STATE_IDS.has(d.id)),
+	);
 }

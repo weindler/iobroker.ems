@@ -145,7 +145,6 @@ async function invalidatePublishedPlanForAddonOff(host, addonId) {
             if (parsed && Array.isArray(parsed.allocations)) {
                 const stripped = (0, invalidate_addon_off_1.stripAddonFromDailyPlan)(parsed, addonId);
                 await setPlanState(host, states_1.DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(stripped));
-                await setPlanState(host, states_1.DAILY_PLAN_STATE_IDS.allocationsJson, JSON.stringify(stripped.allocations));
             }
         }
     }
@@ -165,7 +164,6 @@ async function invalidatePublishedPlanForAddonOff(host, addonId) {
         }
         else if (addonId === "battery") {
             await setPlanState(host, ensure_states_2.BAT.runtime.allocatedChargePowerW, null);
-            await setPlanState(host, ensure_states_2.BAT.runtime.allocatedEnergyKwh, null);
         }
         else if (addonId === "wallbox") {
             await setPlanState(host, states_2.WALLBOX_RUNTIME_STATES.allocatedPowerW, null);
@@ -858,8 +856,8 @@ async function runDailyPlanTick(host, forecastPlan) {
                             allocatedChargePowerW: batAllocated,
                         },
                         wallbox: {
-                            charging: (await host.getStateAsync("live.wallbox.charging"))?.val === true,
-                            chargePowerW: (0, state_util_1.asNum)((await host.getStateAsync("live.wallbox.charge_power_w"))?.val),
+                            charging: (await host.getStateAsync(ensure_evcc_states_1.WALLBOX_EVCC_STATES.charging))?.val === true,
+                            chargePowerW: (0, state_util_1.asNum)((await host.getStateAsync(ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW))?.val),
                             allocatedPowerW: wbAllocated,
                         },
                         climate: {
@@ -881,15 +879,11 @@ async function runDailyPlanTick(host, forecastPlan) {
                     strategy,
                 });
                 await (0, state_write_1.setStateIfChanged)(host, "operator.product_summary_de", productSummary);
-                await (0, state_write_1.setStateIfChanged)(host, "operator.plan.strategy_json", JSON.stringify(strategy));
                 await (0, state_write_1.setStateIfChanged)(host, "operator.plan.battery_strategy_de", `${strategy.battery.summaryDe}. ${strategy.battery.reasonDe}`);
                 await (0, state_write_1.setStateIfChanged)(host, "operator.plan.wallbox_strategy_de", `${strategy.wallbox.summaryDe}. ${strategy.wallbox.reasonDe}`);
                 const notifySurface = (0, notification_surface_1.buildProductNotificationSurface)(lastNotifyCandidates, now.toISOString());
-                await (0, state_write_1.setStateIfChanged)(host, "operator.notification.candidates_json", JSON.stringify(notifySurface));
                 await (0, state_write_1.setStateIfChanged)(host, "operator.notification.last_reason_de", notifySurface.lastReasonDe ?? "");
                 await (0, state_write_1.setStateIfChanged)(host, "operator.notification.last_severity", notifySurface.lastSeverity ?? "");
-                await (0, state_write_1.setStateIfChanged)(host, "operator.notification.last_kind", notifySurface.lastKind ?? "");
-                await (0, state_write_1.setStateIfChanged)(host, "operator.notification.last_dedup_key", notifySurface.lastDedupKey ?? "");
                 await (0, state_write_1.setStateIfChanged)(host, "operator.notification.last_at", notifySurface.lastCreatedAtIso ?? "");
                 if (dayEvalDir) {
                     await (0, atomic_write_1.atomicWriteFile)(path.join(dayEvalDir, "latest_explain_v1.json"), `${JSON.stringify({ explain, aiContext: aiCtx, notifications: lastNotifyCandidates, productSummary }, null, 2)}\n`);
@@ -967,16 +961,6 @@ async function runDailyPlanTick(host, forecastPlan) {
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "");
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.date, plan.date);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.globalMode, plan.globalMode);
-        await (0, state_write_1.setOptionalNumberIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.activeContributionsJson, JSON.stringify(plan.activeContributionIds));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.excludedContributionsJson, JSON.stringify(plan.excludedContributions));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.slotsJson, JSON.stringify(plan.slots));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.allocationsJson, JSON.stringify(plan.allocations));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.totalsJson, JSON.stringify(plan.totals));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.unallocatedJson, JSON.stringify(plan.unallocated));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.policySnapshotJson, JSON.stringify(plan.policySnapshot));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.constraintSnapshotJson, JSON.stringify(plan.constraintSnapshot));
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.reasonDe, publishReasonDe);
         await (0, state_write_1.setOptionalNumberIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.revision, revision);

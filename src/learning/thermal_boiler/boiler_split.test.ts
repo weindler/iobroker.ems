@@ -26,7 +26,6 @@ import {
 	estimateRemainingHours,
 } from "../thermal_runtime/math";
 import type { TempPoint, ThermalRuntimeConfig } from "../thermal_runtime/types";
-import { mappingBase } from "../../tree_paths";
 import { thermalBoilerConfigFromAdapter } from "./config";
 import {
 	BOILER_MODULE_TAG,
@@ -40,8 +39,6 @@ import {
 	BOILER_SAMPLE_MIN_INTERVAL_MS,
 	mergeBoilerTempPoints,
 } from "./samples";
-
-const BOILER_MAP_BASE = mappingBase("immersion_heater", "boiler_temp_c");
 
 const MS_H = 3_600_000;
 const NOW = Date.parse("2026-08-15T10:00:00.000Z");
@@ -102,13 +99,7 @@ function mockBoilerHost(opts: {
 	const states: Record<string, unknown> = {};
 	const stateId = opts.stateId ?? "sensor.0.boiler";
 	const mappingTarget = opts.mappingTarget === undefined ? stateId : opts.mappingTarget;
-	if (opts.mappingEnabled !== false && mappingTarget) {
-		states[`${BOILER_MAP_BASE}.enabled`] = true;
-		states[`${BOILER_MAP_BASE}.target_state`] = mappingTarget;
-	} else if (opts.mappingEnabled === false) {
-		states[`${BOILER_MAP_BASE}.enabled`] = false;
-		states[`${BOILER_MAP_BASE}.target_state`] = mappingTarget ?? "";
-	}
+	const mappingEnabled = opts.mappingEnabled !== false && Boolean(mappingTarget);
 	if (opts.liveBoilerTempC !== undefined) {
 		states["live.thermal.boiler_temp_c"] = opts.liveBoilerTempC;
 	}
@@ -120,7 +111,9 @@ function mockBoilerHost(opts: {
 			ih_boiler_min_temp_c: 50,
 			ih_hygiene_target_temp_c: 60,
 			ih_planning_max_temp_c: opts.planningMaxTempC ?? 63,
-			ih_boiler_temp_c_target: opts.adminBoilerTempTarget ?? "sensor.0.buffer",
+			ih_boiler_temp_c_enabled: mappingEnabled,
+			ih_boiler_temp_c_target: mappingEnabled ? mappingTarget : "",
+			ih_buffer_temp_c_target: opts.adminBoilerTempTarget ?? "sensor.0.buffer",
 			learning_thermal_runtime_enabled: true,
 			learning_thermal_runtime_lookback_days: 7,
 		},
@@ -379,8 +372,7 @@ describe("boiler learning A vs buffer learning B", () => {
 		const boilerPts = linearCurve(NOW - 20 * MS_H, 64, 61, 20);
 		const host = mockBoilerHost({ tmp, currentTemp: 61, history: boilerPts });
 		await runThermalBoilerLearning(host);
-		assert.equal(host.states["learning.thermal_boiler.vessel"], "boiler");
-		assert.equal(host.states["learning.thermal_boiler.soft_relevance"], false);
+		assert.equal(host.states["learning.thermal_boiler.model"], "newton");
 		assert.equal(host.states["learning.thermal_boiler.samples"], 0);
 		assert.ok(Number(host.states["learning.thermal_boiler.cooling_k_per_h"]) > 0);
 		const emptyAt = String(host.states["learning.thermal_boiler.estimated_empty_at"] ?? "");
@@ -602,20 +594,16 @@ describe("boiler learning A vs buffer learning B", () => {
 		assert.equal(host.states["learning.thermal_boiler.current_temperature_c"], 59);
 		assert.match(String(host.states["learning.thermal_boiler.reason_de"]), /Boiler 59\.0 °C/);
 		assert.doesNotMatch(String(host.states["learning.thermal_boiler.reason_de"]), /63/);
-		assert.equal(host.states["learning.thermal_boiler.trigger_source"], "startup");
 		assert.equal(host.states["learning.thermal_boiler.last_run"], new Date(NOW).toISOString());
-		assert.equal(host.states["learning.thermal_boiler.next_run"], new Date(NOW + 3_600_000).toISOString());
 		assert.equal(host.states["learning.thermal_boiler.last_sample_at"], new Date(NOW).toISOString());
 	});
 
-	it("T22: mapping valid regular run updates last_run and history_points", async () => {
+	it("T22: mapping valid regular run updates last_run", async () => {
 		__resetThermalBoilerRunLockForTest();
 		const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-reg-"));
 		const host = mockBoilerHost({ tmp, currentTemp: 58, history: [] });
 		await runThermalBoilerLearning(host, { trigger: "learning_tick", nowMs: NOW });
 		assert.equal(host.states["learning.thermal_boiler.current_temperature_c"], 58);
-		assert.equal(host.states["learning.thermal_boiler.trigger_source"], "learning_tick");
-		assert.ok(Number(host.states["learning.thermal_boiler.history_points"]) >= 1);
 		const firstRun = String(host.states["learning.thermal_boiler.last_run"]);
 		assert.equal(firstRun, new Date(NOW).toISOString());
 		__resetThermalBoilerRunLockForTest();
@@ -632,10 +620,8 @@ describe("boiler learning A vs buffer learning B", () => {
 			currentTemp: 59,
 			history: [],
 			mappingTarget: null,
-			mappingEnabled: true,
+			mappingEnabled: false,
 		});
-		host.states[`${BOILER_MAP_BASE}.enabled`] = true;
-		host.states[`${BOILER_MAP_BASE}.target_state`] = "";
 		await runThermalBoilerLearning(host, { nowMs: NOW });
 		assert.equal(host.states["learning.thermal_boiler.current_temperature_c"], null);
 		assert.doesNotMatch(String(host.states["learning.thermal_boiler.reason_de"]), /59/);
@@ -647,17 +633,15 @@ describe("boiler learning A vs buffer learning B", () => {
 		const host = mockBoilerHost({ tmp, currentTemp: 57, history: [] });
 		await runThermalBoilerLearning(host, { nowMs: NOW });
 		assert.equal(detectRuntimeCycles([], boilerCfg()).length, 0);
-		assert.ok(Number(host.states["learning.thermal_boiler.history_points"]) >= 1);
 		assert.equal(host.states["learning.thermal_boiler.samples"], 0);
+		const persist1 = await readThermalBoilerPersist(path.join(tmp, "learning/thermal_boiler"));
+		assert.ok((persist1?.temp_samples?.length ?? 0) >= 1);
 		host.getForeignStateAsync = async (id: string) =>
 			id === "sensor.0.boiler" ? ({ val: 56 } as ioBroker.State) : ({ val: null } as ioBroker.State);
 		__resetThermalBoilerRunLockForTest();
 		await runThermalBoilerLearning(host, { nowMs: NOW + BOILER_SAMPLE_MIN_INTERVAL_MS });
-		assert.ok(Number(host.states["learning.thermal_boiler.history_points"]) >= 2);
 		const persist = await readThermalBoilerPersist(path.join(tmp, "learning/thermal_boiler"));
 		assert.ok((persist?.temp_samples?.length ?? 0) >= 2);
-		const hist = JSON.parse(String(host.states["learning.thermal_boiler.history_json"] ?? "[]"));
-		assert.ok(Array.isArray(hist) && hist.length >= 2);
 	});
 
 	it("T25: Newton-Fallback from persisted boiler samples without ioBroker history cycles", async () => {

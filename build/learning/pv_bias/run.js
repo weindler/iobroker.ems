@@ -32,7 +32,6 @@ async function writePvBiasResult(host, result) {
     await setNumIfValid(host, "learning.pv_bias.confidence_pct", result.confidencePct);
     await setNumIfValid(host, "learning.pv_bias.raw_today_kwh", result.rawTodayKwh);
     await setNumIfValid(host, "learning.pv_bias.raw_tomorrow_kwh", result.rawTomorrowKwh);
-    await setNumIfValid(host, "learning.pv_bias.sample_days_7d", result.sampleDays7d);
     await setNumIfValid(host, "learning.pv_bias.sample_days_30d", result.sampleDays30d);
     await host.setStateAsync("learning.pv_bias.last_update_ts", {
         val: new Date().toISOString(),

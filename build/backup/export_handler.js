@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.stopDiagnosticMode = exports.handleBackupStateChange = exports.isBackupRelatedState = exports.initBackupExportRuntime = exports.syncDiagnosticStatus = exports.handleDiagnosticStopRequest = exports.handleDiagnosticModeRequest = exports.handleSupportExportRequest = exports.handleBackupExportRequest = void 0;
-const types_1 = require("./types");
 const ensure_states_1 = require("./ensure_states");
 const operation_lock_1 = require("./operation_lock");
 const diagnostic_mode_1 = require("../support/diagnostic_mode");
@@ -175,7 +174,6 @@ async function initBackupExportRuntime(host) {
     await host.setStateAsync(ensure_states_1.BACKUP_STATES.supportExportRequest, { val: false, ack: true });
     await host.setStateAsync(ensure_states_1.SUPPORT_STATES.diagnosticMode, { val: false, ack: true });
     await host.setStateAsync(ensure_states_1.SUPPORT_STATES.diagnosticExpiresAt, { val: "", ack: true });
-    await host.setStateAsync(ensure_states_1.BACKUP_STATES.schemaVersion, { val: types_1.EXPORT_SCHEMA_VERSION, ack: true });
     await syncDiagnosticStatus(host);
 }
 exports.initBackupExportRuntime = initBackupExportRuntime;

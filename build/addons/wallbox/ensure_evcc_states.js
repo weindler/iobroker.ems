@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureWallboxEvccStates = exports.WALLBOX_EVCC_STATES = void 0;
+exports.ensureWallboxEvccStates = exports.WALLBOX_EVCC_BALLAST_SUFFIXES = exports.WALLBOX_EVCC_PUBLIC_STATE_IDS = exports.WALLBOX_EVCC_STATES = void 0;
 const tree_paths_1 = require("../../tree_paths");
 const state_util_1 = require("../../ems_light/state_util");
 const EVCC_BASE = `${(0, tree_paths_1.addonStatusBase)("wallbox")}.evcc`;
@@ -44,6 +44,31 @@ exports.WALLBOX_EVCC_STATES = {
     smartCostLimit: `${EVCC_BASE}.smart_cost_limit`,
     smartCostActive: `${EVCC_BASE}.smart_cost_active`,
 };
+/** Kanonische EV-Telemetrie für VIS/Planner — kein Snapshot-JSON, keine Strom/Spannungs-Arrays. */
+exports.WALLBOX_EVCC_PUBLIC_STATE_IDS = new Set([
+    exports.WALLBOX_EVCC_STATES.updatedAt,
+    exports.WALLBOX_EVCC_STATES.enabled,
+    exports.WALLBOX_EVCC_STATES.connected,
+    exports.WALLBOX_EVCC_STATES.charging,
+    exports.WALLBOX_EVCC_STATES.chargePowerW,
+    exports.WALLBOX_EVCC_STATES.sessionEnergyKwh,
+    exports.WALLBOX_EVCC_STATES.vehicleSocPct,
+    exports.WALLBOX_EVCC_STATES.planActive,
+    exports.WALLBOX_EVCC_STATES.planSocPct,
+    exports.WALLBOX_EVCC_STATES.planTime,
+    exports.WALLBOX_EVCC_STATES.effectivePlanTime,
+    exports.WALLBOX_EVCC_STATES.activePhases,
+    exports.WALLBOX_EVCC_STATES.maxCurrentA,
+    exports.WALLBOX_EVCC_STATES.batteryMode,
+    exports.WALLBOX_EVCC_STATES.chargeRemainingEnergyKwh,
+    exports.WALLBOX_EVCC_STATES.vehicleName,
+    exports.WALLBOX_EVCC_STATES.effectiveLimitSocPct,
+    exports.WALLBOX_EVCC_STATES.batteryBoost,
+    exports.WALLBOX_EVCC_STATES.loadpointMode,
+]);
+exports.WALLBOX_EVCC_BALLAST_SUFFIXES = Object.values(exports.WALLBOX_EVCC_STATES)
+    .filter((id) => !exports.WALLBOX_EVCC_PUBLIC_STATE_IDS.has(id))
+    .map((id) => id.slice(EVCC_BASE.length + 1));
 async function ensureWallboxEvccStates(host) {
     const defs = [
         {
@@ -321,6 +346,6 @@ async function ensureWallboxEvccStates(host) {
             common: { name: "EVCC smartCostActive (nur Diagnose)", type: "boolean", role: "state", read: true, write: false },
         },
     ];
-    await (0, state_util_1.ensureStates)(host, defs);
+    await (0, state_util_1.ensureStates)(host, defs.filter((d) => exports.WALLBOX_EVCC_PUBLIC_STATE_IDS.has(d.id)));
 }
 exports.ensureWallboxEvccStates = ensureWallboxEvccStates;

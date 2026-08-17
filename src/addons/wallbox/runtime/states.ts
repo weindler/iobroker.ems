@@ -95,6 +95,33 @@ export const WALLBOX_RUNTIME_STATES = {
 	tibberGridRewardsActive: `${WALLBOX_RUNTIME_BASE}.tibber_grid_rewards_active`,
 } as const;
 
+/** Öffentliche Runtime-Leaves — VIS, Safety, Hold. Telemetrie liegt unter status.evcc. */
+export const WALLBOX_RUNTIME_PUBLIC_STATE_IDS = new Set<string>([
+	WALLBOX_RUNTIME_STATES.decisionSource,
+	WALLBOX_RUNTIME_STATES.reasonDe,
+	WALLBOX_RUNTIME_STATES.dailyPlanStatus,
+	WALLBOX_RUNTIME_STATES.dailyPlanRevision,
+	WALLBOX_RUNTIME_STATES.allocatedPowerW,
+	WALLBOX_RUNTIME_STATES.energySource,
+	WALLBOX_RUNTIME_STATES.writeAllowed,
+	WALLBOX_RUNTIME_STATES.writeLiveEligible,
+	WALLBOX_RUNTIME_STATES.executionBlockReason,
+	WALLBOX_RUNTIME_STATES.ownershipActive,
+	WALLBOX_RUNTIME_STATES.faultActive,
+	WALLBOX_RUNTIME_STATES.faultCode,
+	WALLBOX_RUNTIME_STATES.faultMessage,
+	WALLBOX_RUNTIME_STATES.faultReset,
+	WALLBOX_RUNTIME_STATES.detailJson,
+	WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge,
+	WALLBOX_RUNTIME_STATES.batteryHoldReasonDe,
+	WALLBOX_RUNTIME_STATES.externalVehicleChargeActive,
+	WALLBOX_RUNTIME_STATES.tibberGridRewardsActive,
+]);
+
+function runtimeSuffix(id: string): string {
+	return id.startsWith(`${WALLBOX_RUNTIME_BASE}.`) ? id.slice(WALLBOX_RUNTIME_BASE.length + 1) : id;
+}
+
 /** Legacy ballast leaves — purged by surface cleanup, no longer ensured. */
 export const WALLBOX_RUNTIME_BALLAST_SUFFIXES = [
 	"charge_boost_active",
@@ -130,4 +157,7 @@ export const WALLBOX_RUNTIME_BALLAST_SUFFIXES = [
 	"feedback_settle_time_ms",
 	"feedback_timeout_ms",
 	"active_vehicle_snapshot_json",
+	...Object.values(WALLBOX_RUNTIME_STATES)
+		.filter((id) => !WALLBOX_RUNTIME_PUBLIC_STATE_IDS.has(id))
+		.map(runtimeSuffix),
 ] as const;

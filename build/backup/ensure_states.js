@@ -57,10 +57,6 @@ async function ensureBackupStates(host) {
             common: { name: "Export läuft", type: "boolean", role: "indicator", read: true, write: false, def: false },
         },
         {
-            id: exports.BACKUP_STATES.lastKind,
-            common: { name: "Letzter Export-Typ", type: "string", role: "text", read: true, write: false, def: "" },
-        },
-        {
             id: exports.BACKUP_STATES.lastExportAt,
             common: { name: "Letzter Export", type: "string", role: "date", read: true, write: false, def: "" },
         },
@@ -69,20 +65,8 @@ async function ensureBackupStates(host) {
             common: { name: "Letzte Export-Datei", type: "string", role: "text", read: true, write: false, def: "" },
         },
         {
-            id: exports.BACKUP_STATES.lastSizeBytes,
-            common: { name: "Letzte Export-Größe", type: "number", role: "value", read: true, write: false, def: 0 },
-        },
-        {
-            id: exports.BACKUP_STATES.lastSha256,
-            common: { name: "Letzte Export-Prüfsumme", type: "string", role: "text", read: true, write: false, def: "" },
-        },
-        {
             id: exports.BACKUP_STATES.lastError,
             common: { name: "Letzter Export-Fehler", type: "string", role: "text", read: true, write: false, def: "" },
-        },
-        {
-            id: exports.BACKUP_STATES.schemaVersion,
-            common: { name: "Backup-Schema", type: "number", role: "value", read: true, write: false, def: 1 },
         },
         {
             id: exports.BACKUP_STATES.exportRequest,
@@ -150,14 +134,6 @@ async function ensureBackupStates(host) {
             common: { name: "Restore-Plan-ID", type: "string", role: "text", read: true, write: false, def: "" },
         },
         {
-            id: exports.RESTORE_STATES.planExpiresAt,
-            common: { name: "Restore-Plan gültig bis", type: "string", role: "date", read: true, write: false, def: "" },
-        },
-        {
-            id: exports.RESTORE_STATES.archiveSha256,
-            common: { name: "Restore-Archiv-SHA256", type: "string", role: "text", read: true, write: false, def: "" },
-        },
-        {
             id: exports.RESTORE_STATES.summaryJson,
             common: { name: "Restore-Vorschau", type: "string", role: "json", read: true, write: false, def: "{}" },
         },
@@ -168,10 +144,6 @@ async function ensureBackupStates(host) {
         {
             id: exports.RESTORE_STATES.applyRequest,
             common: { name: "Restore anwenden", type: "boolean", role: "button", read: true, write: true, def: false },
-        },
-        {
-            id: exports.RESTORE_STATES.transactionId,
-            common: { name: "Restore-Transaktion", type: "string", role: "text", read: true, write: false, def: "" },
         },
         {
             id: exports.RESTORE_STATES.lastRestoreAt,
@@ -203,16 +175,10 @@ async function setBackupExportStatus(host, patch) {
         map.push([exports.BACKUP_STATES.status, patch.status]);
     if (patch.running !== undefined)
         map.push([exports.BACKUP_STATES.running, patch.running]);
-    if (patch.lastKind !== undefined)
-        map.push([exports.BACKUP_STATES.lastKind, patch.lastKind]);
     if (patch.lastExportAt !== undefined)
         map.push([exports.BACKUP_STATES.lastExportAt, patch.lastExportAt]);
     if (patch.lastFileName !== undefined)
         map.push([exports.BACKUP_STATES.lastFileName, patch.lastFileName]);
-    if (patch.lastSizeBytes !== undefined)
-        map.push([exports.BACKUP_STATES.lastSizeBytes, patch.lastSizeBytes]);
-    if (patch.lastSha256 !== undefined)
-        map.push([exports.BACKUP_STATES.lastSha256, patch.lastSha256]);
     if (patch.lastError !== undefined)
         map.push([exports.BACKUP_STATES.lastError, patch.lastError]);
     for (const [id, val] of map) {

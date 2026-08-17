@@ -112,13 +112,11 @@ async function setNumIfValid(host, id, value) {
         await host.setStateAsync(id, { val: Math.round(value * 1000) / 1000, ack: true });
     }
 }
-async function writeFreezeMeta(host, status, reason) {
+async function writeFreezeMeta(host, status, _reason) {
     await host.setStateAsync("learning.pv_bias.freeze_status", { val: status, ack: true });
-    await host.setStateAsync("learning.pv_bias.freeze_reason", { val: reason, ack: true });
 }
 /** Snapshot nur zum konfigurierten Freeze-Zeitpunkt — danach unverändert bis zum nächsten Tag. */
 async function runForecastFreeze(host, cfg) {
-    await host.setStateAsync("learning.pv_bias.freeze_time", { val: cfg.freezeTime, ack: true });
     const frozenAtSt = await host.getStateAsync("learning.pv_bias.frozen_at_ts");
     const frozenAtTs = typeof frozenAtSt?.val === "string" ? frozenAtSt.val : null;
     const decision = decideForecastFreeze(new Date(), cfg.freezeEnabled, cfg.freezeTime, frozenAtTs);
@@ -141,7 +139,6 @@ async function runForecastFreeze(host, cfg) {
     await setNumIfValid(host, exports.FROZEN_TODAY_STATE_ID, snap.frozenTodayKwh);
     await setNumIfValid(host, exports.FROZEN_TOMORROW_STATE_ID, snap.frozenTomorrowKwh);
     await host.setStateAsync("learning.pv_bias.frozen_at_ts", { val: snap.frozenAtTs, ack: true });
-    await host.setStateAsync("learning.pv_bias.frozen_source", { val: snap.frozenSource, ack: true });
     await writeFreezeMeta(host, "ready", `Forecast-Snapshot um ${snap.frozenAtTs} erstellt.`);
     host.log.debug?.(`PV-Bias Freeze: today=${snap.frozenTodayKwh} kWh source=${snap.frozenSource}`);
     await (0, snapshot_1.recordForecastDailySnapshot)(host, cfg, snap.frozenTodayKwh, snap.frozenSource);

@@ -1,7 +1,5 @@
-import { setStateIfChanged } from "../../policy/core/state_write";
 import type { StateHost } from "../../ems_light/state_util";
 import { mapDecisionDetailToCanonical } from "./map_decision";
-import { runtimeSurfaceStateMap } from "./paths";
 import type { AddonRuntimeSurfaceInput, AddonRuntimeSurfaceSnapshot } from "./types";
 
 export function buildAddonRuntimeSurfaceSnapshot(
@@ -22,24 +20,11 @@ export function buildAddonRuntimeSurfaceSnapshot(
 	};
 }
 
-/** Publish unified §10 surface — call at end of each addon tick (after detailed leaves). */
+/** Snapshot intern — keine ioBroker-Spiegel unter runtime.surface.*. */
 export async function publishAddonRuntimeSurface(
-	host: StateHost,
-	runtimeAddonId: string,
+	_host: StateHost,
+	_runtimeAddonId: string,
 	input: AddonRuntimeSurfaceInput,
 ): Promise<AddonRuntimeSurfaceSnapshot> {
-	const snap = buildAddonRuntimeSurfaceSnapshot(input);
-	const ids = runtimeSurfaceStateMap(runtimeAddonId);
-	await setStateIfChanged(host, ids.decisionSource, snap.decisionSource);
-	await setStateIfChanged(host, ids.decisionDetail, snap.decisionDetail);
-	await setStateIfChanged(host, ids.decisionReason, snap.decisionReason);
-	await setStateIfChanged(host, ids.lastDecisionAt, snap.lastDecisionAt);
-	await setStateIfChanged(host, ids.plannerStatus, snap.plannerStatus);
-	await setStateIfChanged(host, ids.intentStatus, snap.intentStatus);
-	await setStateIfChanged(host, ids.executionStatus, snap.executionStatus);
-	await setStateIfChanged(host, ids.profileReady, snap.profileReady);
-	await setStateIfChanged(host, ids.telemetryReady, snap.telemetryReady);
-	await setStateIfChanged(host, ids.fault, snap.fault);
-	await setStateIfChanged(host, ids.lockout, snap.lockout);
-	return snap;
+	return buildAddonRuntimeSurfaceSnapshot(input);
 }

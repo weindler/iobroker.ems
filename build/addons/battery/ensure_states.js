@@ -1,7 +1,7 @@
 "use strict";
 /** Runtime-, Status- und Diagnose-States der neuen Batteriearchitektur. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureBatteryArchitectureStates = exports.BAT = exports.BATTERY_BASE = void 0;
+exports.ensureBatteryArchitectureStates = exports.BATTERY_BALLAST_STATE_IDS = exports.BATTERY_PUBLIC_STATE_IDS = exports.BAT = exports.BATTERY_BASE = void 0;
 exports.BATTERY_BASE = "addons.battery";
 exports.BAT = {
     identity: {
@@ -176,6 +176,69 @@ exports.BAT = {
         updatedAt: `${exports.BATTERY_BASE}.failsafe.updated_at`,
     },
 };
+exports.BATTERY_PUBLIC_STATE_IDS = new Set([
+    exports.BAT.identity.manufacturer,
+    exports.BAT.identity.model,
+    exports.BAT.identity.controllerProfile,
+    exports.BAT.identity.capacityNetKwh,
+    exports.BAT.identity.capacitySource,
+    exports.BAT.telemetry.socPct,
+    exports.BAT.telemetry.powerW,
+    exports.BAT.telemetry.chargingPowerW,
+    exports.BAT.telemetry.dischargingPowerW,
+    exports.BAT.telemetry.capacityEffectiveKwh,
+    exports.BAT.telemetry.operatingMode,
+    exports.BAT.telemetry.online,
+    exports.BAT.telemetry.valid,
+    exports.BAT.telemetry.stale,
+    exports.BAT.telemetry.lastUpdate,
+    exports.BAT.status.telemetryReady,
+    exports.BAT.status.effectiveExecutionMode,
+    exports.BAT.status.state,
+    exports.BAT.status.reason,
+    exports.BAT.status.fault,
+    exports.BAT.status.lockout,
+    exports.BAT.runtime.action,
+    exports.BAT.runtime.state,
+    exports.BAT.runtime.ownershipActive,
+    exports.BAT.runtime.decisionSource,
+    exports.BAT.runtime.reasonDe,
+    exports.BAT.runtime.dailyPlanStatus,
+    exports.BAT.runtime.dailyPlanValid,
+    exports.BAT.runtime.dailyPlanRevision,
+    exports.BAT.runtime.allocatedChargePowerW,
+    exports.BAT.runtime.energySource,
+    exports.BAT.runtime.batterySetpointOwner,
+    exports.BAT.runtime.batterySetpointKind,
+    exports.BAT.runtime.batterySetpointW,
+    exports.BAT.diagnostics.faultCode,
+    exports.BAT.diagnostics.faultReason,
+    exports.BAT.gridBalance.enabled,
+    exports.BAT.gridBalance.active,
+    exports.BAT.gridBalance.ready,
+    exports.BAT.gridBalance.blockReason,
+    exports.BAT.gridBalance.currentPriceCtKwh,
+    exports.BAT.gridBalance.priceMinCtKwh,
+    exports.BAT.gridBalance.priceAllowed,
+    exports.BAT.gridBalance.gridPowerW,
+    exports.BAT.gridBalance.effectivePowerW,
+    exports.BAT.gridBalance.holdDetected,
+    exports.BAT.gridBalance.evConflict,
+    exports.BAT.gridBalance.lastAction,
+    exports.BAT.gridBalance.explain,
+    exports.BAT.gridBalance.liveTestArmed,
+    exports.BAT.gridBalance.liveTestArmedAt,
+    exports.BAT.gridBalance.liveTestResult,
+    exports.BAT.control.faultReset,
+    exports.BAT.failsafe.emsReachable,
+    exports.BAT.failsafe.wouldTrip,
+    exports.BAT.failsafe.active,
+    exports.BAT.failsafe.lastFailsafeAt,
+    exports.BAT.failsafe.updatedAt,
+]);
+exports.BATTERY_BALLAST_STATE_IDS = Object.values(exports.BAT)
+    .flatMap((group) => Object.values(group))
+    .filter((id) => !exports.BATTERY_PUBLIC_STATE_IDS.has(id));
 const bool = (name) => ({
     name,
     type: "boolean",
@@ -379,10 +442,7 @@ async function ensureBatteryArchitectureStates(adapter) {
         "identity",
         "telemetry",
         "status",
-        "capabilities",
-        "limits",
         "runtime",
-        "dryrun",
         "diagnostics",
         "grid_balance",
         "control",
@@ -395,7 +455,7 @@ async function ensureBatteryArchitectureStates(adapter) {
             native: {},
         });
     }
-    for (const def of batteryStateDefs()) {
+    for (const def of batteryStateDefs().filter((d) => exports.BATTERY_PUBLIC_STATE_IDS.has(d.id))) {
         await adapter.setObjectNotExistsAsync(def.id, {
             type: "state",
             common: def.common,

@@ -73,11 +73,9 @@ function mockHost(config, foreign = {}) {
         await (0, index_js_1.ensureWeatherHorizonStates)(mock.host);
         await (0, index_js_1.runWeatherHorizon)(mock.host);
         const d1 = (0, index_js_1.weatherHorizonDayStatePrefix)(1);
-        strict_1.default.equal(mock.states.get(`${d1}.raw_min_temp_c`)?.val, 8);
         strict_1.default.equal(mock.states.get(`${d1}.min_temp_c`)?.val, 9); // +1°C full weight
         strict_1.default.equal(mock.states.get(`${d1}.quality`)?.val, "valid");
         const d3 = (0, index_js_1.weatherHorizonDayStatePrefix)(3);
-        strict_1.default.equal(mock.states.get(`${d3}.raw_min_temp_c`)?.val, 12.5);
         strict_1.default.equal(mock.states.get(`${d3}.min_temp_c`)?.val, 13.3); // +1 * 0.8
         const d2 = (0, index_js_1.weatherHorizonDayStatePrefix)(2);
         strict_1.default.equal(mock.states.get(`${d2}.quality`)?.val, "missing");

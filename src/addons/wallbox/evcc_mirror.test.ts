@@ -133,13 +133,6 @@ describe("wallbox evcc mirror states (plan times)", () => {
 		assert.equal(writes.get(WALLBOX_EVCC_STATES.sessionEnergyKwh), 0.219683);
 		assert.equal(writes.get(WALLBOX_EVCC_STATES.vehicleSocPct), 55);
 		assert.equal(writes.get(WALLBOX_EVCC_STATES.chargePowerW), 0);
-
-		const snapshotRaw = writes.get(WALLBOX_EVCC_STATES.snapshotJson);
-		assert.equal(typeof snapshotRaw, "string");
-		const snap = JSON.parse(String(snapshotRaw));
-		assert.equal(snap.plan_time.value, null);
-		assert.equal(snap.effective_plan_time.value, null);
-		assert.equal(snap.plan_active.value, false);
-		assert.equal(snap.session_energy_kwh.value, 0.219683);
+		assert.equal(writes.has(WALLBOX_EVCC_STATES.snapshotJson), false);
 	});
 });

@@ -15,6 +15,7 @@ export interface PipelineContext {
 	getForeignState?: (stateId: string) => Promise<ioBroker.State | null | undefined>;
 	setForeignState?: (stateId: string, value: ioBroker.StateValue) => Promise<void>;
 	isLiveAllowed?: (addonId: string) => Promise<boolean>;
+	config?: unknown;
 }
 
 /**

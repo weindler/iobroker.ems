@@ -172,7 +172,6 @@ export async function invalidatePublishedPlanForAddonOff(
 			if (parsed && Array.isArray(parsed.allocations)) {
 				const stripped = stripAddonFromDailyPlan(parsed, addonId);
 				await setPlanState(host, DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(stripped));
-				await setPlanState(host, DAILY_PLAN_STATE_IDS.allocationsJson, JSON.stringify(stripped.allocations));
 			}
 		}
 	} catch (e) {
@@ -192,7 +191,6 @@ export async function invalidatePublishedPlanForAddonOff(
 			await setPlanState(host, IMMERSION_RUNTIME_STATES.allocatedPowerW, null);
 		} else if (addonId === "battery") {
 			await setPlanState(host, BAT.runtime.allocatedChargePowerW, null);
-			await setPlanState(host, BAT.runtime.allocatedEnergyKwh, null);
 		} else if (addonId === "wallbox") {
 			await setPlanState(host, WALLBOX_RUNTIME_STATES.allocatedPowerW, null);
 		} else if (addonId === "air_conditioning") {
@@ -947,8 +945,8 @@ export async function runDailyPlanTick(
 							allocatedChargePowerW: batAllocated,
 						},
 						wallbox: {
-							charging: (await host.getStateAsync("live.wallbox.charging"))?.val === true,
-							chargePowerW: asNum((await host.getStateAsync("live.wallbox.charge_power_w"))?.val),
+							charging: (await host.getStateAsync(WALLBOX_EVCC_STATES.charging))?.val === true,
+							chargePowerW: asNum((await host.getStateAsync(WALLBOX_EVCC_STATES.chargePowerW))?.val),
 							allocatedPowerW: wbAllocated,
 						},
 						climate: {
@@ -972,11 +970,6 @@ export async function runDailyPlanTick(
 				await setStateIfChanged(host, "operator.product_summary_de", productSummary);
 				await setStateIfChanged(
 					host,
-					"operator.plan.strategy_json",
-					JSON.stringify(strategy),
-				);
-				await setStateIfChanged(
-					host,
 					"operator.plan.battery_strategy_de",
 					`${strategy.battery.summaryDe}. ${strategy.battery.reasonDe}`,
 				);
@@ -991,11 +984,6 @@ export async function runDailyPlanTick(
 				);
 				await setStateIfChanged(
 					host,
-					"operator.notification.candidates_json",
-					JSON.stringify(notifySurface),
-				);
-				await setStateIfChanged(
-					host,
 					"operator.notification.last_reason_de",
 					notifySurface.lastReasonDe ?? "",
 				);
@@ -1003,16 +991,6 @@ export async function runDailyPlanTick(
 					host,
 					"operator.notification.last_severity",
 					notifySurface.lastSeverity ?? "",
-				);
-				await setStateIfChanged(
-					host,
-					"operator.notification.last_kind",
-					notifySurface.lastKind ?? "",
-				);
-				await setStateIfChanged(
-					host,
-					"operator.notification.last_dedup_key",
-					notifySurface.lastDedupKey ?? "",
 				);
 				await setStateIfChanged(
 					host,
@@ -1108,32 +1086,6 @@ export async function runDailyPlanTick(
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "");
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.date, plan.date);
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.globalMode, plan.globalMode);
-		await setOptionalNumberIfChanged(host, DAILY_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes);
-		await setStateIfChanged(
-			host,
-			DAILY_PLAN_STATE_IDS.activeContributionsJson,
-			JSON.stringify(plan.activeContributionIds),
-		);
-		await setStateIfChanged(
-			host,
-			DAILY_PLAN_STATE_IDS.excludedContributionsJson,
-			JSON.stringify(plan.excludedContributions),
-		);
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.slotsJson, JSON.stringify(plan.slots));
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.allocationsJson, JSON.stringify(plan.allocations));
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.totalsJson, JSON.stringify(plan.totals));
-		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.unallocatedJson, JSON.stringify(plan.unallocated));
-		await setStateIfChanged(
-			host,
-			DAILY_PLAN_STATE_IDS.policySnapshotJson,
-			JSON.stringify(plan.policySnapshot),
-		);
-		await setStateIfChanged(
-			host,
-			DAILY_PLAN_STATE_IDS.constraintSnapshotJson,
-			JSON.stringify(plan.constraintSnapshot),
-		);
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.reasonDe, publishReasonDe);
 		await setOptionalNumberIfChanged(host, DAILY_PLAN_STATE_IDS.revision, revision);

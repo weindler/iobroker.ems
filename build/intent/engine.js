@@ -18,13 +18,10 @@ const iobroker_1 = require("./sources/iobroker");
 const iobroker_thermal_1 = require("./sources/iobroker_thermal");
 const iobroker_battery_1 = require("./sources/iobroker_battery");
 const resolve_1 = require("./wallbox/resolve");
-const validation_1 = require("./wallbox/validation");
 const types_1 = require("./wallbox/types");
 const resolve_2 = require("./thermal/resolve");
-const validation_2 = require("./thermal/validation");
 const types_2 = require("./thermal/types");
 const resolve_3 = require("./battery/resolve");
-const validation_3 = require("./battery/validation");
 const types_3 = require("./battery/types");
 const control_1 = require("./thermal/control");
 let intentPersistLoaded = false;
@@ -116,27 +113,18 @@ function scheduleExpiryRerun(host, now) {
 }
 async function writeWallboxMirror(host, intent) {
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.resolved_json", JSON.stringify(intent));
-    await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.revision", intent.revision);
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.intent_state", intent.intent_state);
-    await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.last_changed", (0, validation_1.lastChangedAt)(intent));
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.manual_override_active", intent.manual_override.active);
-    await (0, state_write_1.setStateIfChanged)(host, "user_intent.wallbox.source_summary", JSON.stringify(intent.source_summary));
 }
 async function writeThermalMirror(host, intent) {
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.thermal.resolved_json", JSON.stringify(intent));
-    await (0, state_write_1.setStateIfChanged)(host, "user_intent.thermal.revision", intent.revision);
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.thermal.intent_state", intent.intent_state);
-    await (0, state_write_1.setStateIfChanged)(host, "user_intent.thermal.last_changed", (0, validation_2.lastThermalChangedAt)(intent));
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.thermal.manual_override_active", intent.manual_override.active);
-    await (0, state_write_1.setStateIfChanged)(host, "user_intent.thermal.source_summary", JSON.stringify(intent.source_summary));
 }
 async function writeBatteryMirror(host, intent) {
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.battery.resolved_json", JSON.stringify(intent));
-    await (0, state_write_1.setStateIfChanged)(host, "user_intent.battery.revision", intent.revision);
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.battery.intent_state", intent.intent_state);
-    await (0, state_write_1.setStateIfChanged)(host, "user_intent.battery.last_changed", (0, validation_3.lastBatteryChangedAt)(intent));
     await (0, state_write_1.setStateIfChanged)(host, "user_intent.battery.manual_override_active", intent.manual_override.active);
-    await (0, state_write_1.setStateIfChanged)(host, "user_intent.battery.source_summary", JSON.stringify(intent.source_summary));
 }
 async function runIntentEngine(host) {
     const now = new Date();

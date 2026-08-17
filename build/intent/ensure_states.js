@@ -50,11 +50,8 @@ function boolState(id, name, def) {
 function domainMirrorStates(prefix, label) {
     return [
         strState(`${prefix}.resolved_json`, `${label} Intent (aufgelöst, JSON)`, "{}"),
-        numState(`${prefix}.revision`, `${label} Intent Revision`, 0),
         strState(`${prefix}.intent_state`, `${label} Intent State`, "none"),
-        strState(`${prefix}.last_changed`, `${label} Intent zuletzt geändert (ISO)`, ""),
         boolState(`${prefix}.manual_override_active`, `${label} Manual Override aktiv`, false),
-        strState(`${prefix}.source_summary`, `${label} Intent Quellen (JSON)`, "[]"),
     ];
 }
 function domainRequestStates(prefix, label) {

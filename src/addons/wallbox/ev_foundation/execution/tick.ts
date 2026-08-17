@@ -74,11 +74,6 @@ export function peekEvLiveTestState(): EvLiveTestState {
 	return liveTest;
 }
 
-function isoOrEmpty(ms: number | null): string {
-	if (ms == null || !Number.isFinite(ms)) return "";
-	return new Date(ms).toISOString();
-}
-
 async function publishSession(
 	host: StateHost,
 	s: EvExecutionSession,
@@ -95,27 +90,8 @@ async function publishSession(
 	await setStateIfChanged(host, st.evExecutionReady, extra.ready);
 	await setStateIfChanged(host, st.evExecutionBlockReason, s.blockReason);
 	await setStateIfChanged(host, st.evExecutionDesiredMode, extra.desired ?? "");
-	await setStateIfChanged(host, st.evExecutionDesiredReason, s.desiredReason);
-	await setStateIfChanged(host, st.evExecutionActualMode, extra.actual ?? "");
-	await setStateIfChanged(host, st.evExecutionSourceFresh, s.sourceFresh);
-	await setStateIfChanged(host, st.evExecutionOwnership, s.ownership);
-	await setStateIfChanged(host, st.evExecutionOwnedMode, s.ownedMode ?? "");
-	await setStateIfChanged(host, st.evExecutionOwnedSince, isoOrEmpty(s.ownedSinceMs));
-	await setStateIfChanged(host, st.evExecutionReleaseReason, s.releaseReason);
-	await setStateIfChanged(host, st.evExecutionPendingMode, s.pendingMode ?? "");
-	await setStateIfChanged(host, st.evExecutionPendingSince, isoOrEmpty(s.pendingSinceMs));
-	await setStateIfChanged(host, st.evExecutionLastCommand, s.lastCommand ?? "");
-	await setStateIfChanged(host, st.evExecutionLastCommandAt, isoOrEmpty(s.lastCommandAtMs));
-	await setStateIfChanged(host, st.evExecutionLastFeedbackAt, isoOrEmpty(s.lastFeedbackAtMs));
-	await setStateIfChanged(host, st.evExecutionRetryCount, s.retryCount);
-	await setStateIfChanged(host, st.evExecutionLastResult, s.lastResult);
-	await setStateIfChanged(host, st.evExecutionFailsafeReason, s.failsafeReason);
-	await setStateIfChanged(host, st.evExecutionPhase, s.phase);
 	await setStateIfChanged(host, st.evExecutionExplain, s.explain);
 	await setStateIfChanged(host, st.evExecutionLiveTestConsumed, liveTest.consumed);
-	await setStateIfChanged(host, st.evExecutionLiveTestArmedAt, isoOrEmpty(liveTest.armedAtMs));
-	await setStateIfChanged(host, st.evExecutionLiveTestConsumedAt, isoOrEmpty(liveTest.consumedAtMs));
-	await setStateIfChanged(host, st.evExecutionLiveTestCommand, liveTest.command ?? "");
 	await setStateIfChanged(host, st.evExecutionLiveTestResult, liveTest.result);
 	await setStateIfChanged(host, st.evExecutionLiveTestBlockReason, liveTest.blockReason);
 }

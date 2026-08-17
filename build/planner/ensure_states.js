@@ -10,13 +10,6 @@ function strState(id, name, def) {
         setDefaultIfEmpty: true,
     };
 }
-function numState(id, name, def) {
-    return {
-        id,
-        common: { name, type: "number", role: "value", read: true, write: false, def },
-        defaultVal: def,
-    };
-}
 function boolState(id, name, def) {
     return {
         id,
@@ -31,17 +24,11 @@ function boolState(id, name, def) {
 async function ensurePlannerStates(host, _options) {
     await (0, state_util_1.ensureChannel)(host, "planner", "EMS Planner");
     await (0, state_util_1.ensureChannel)(host, "planner.intent", "Planner Intents");
-    await (0, state_util_1.ensureChannel)(host, "planner.intent.battery", "Planner Batterie");
     await (0, state_util_1.ensureChannel)(host, "planner.constraints", "Planner Constraints");
     const defs = [
         strState("planner.status", "Planner Status", "initializing"),
         strState("planner.last_run_at", "Planner letzter Lauf (ISO)"),
         strState("planner.global_mode.active", "Planner Global Mode", "balanced"),
-        strState("planner.intent.last_json", "Planner letzter Intent (JSON)", "{}"),
-        strState("planner.intent.last_reason_de", "Planner letzte Begründung (DE)", ""),
-        strState("planner.intent.battery.action", "Planner Batterie Aktion (Diagnose)", "none"),
-        numState("planner.intent.battery.max_charge_w", "Planner Batterie max. Ladeleistung W", 0),
-        strState("planner.intent.battery.reason_de", "Planner Batterie Begründung", ""),
         boolState("planner.constraints.evcc_battery_hold", "Planner EVCC Batterie-Hold", false),
         boolState("planner.constraints.battery_hold_active", "Planner Batterie-Hold gesamt", false),
         boolState("planner.constraints.battery_consumer_immersion_allowed", "Batterie für Heizstab jetzt erlaubt", false),

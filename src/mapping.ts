@@ -1,5 +1,5 @@
 import type { PipelineContext } from "./pipeline";
-import { mappingBase } from "./tree_paths";
+import { resolveMappingTargetFromConfig } from "./mapping_resolve";
 
 export interface MappingConfig {
 	mappingId: string;
@@ -13,18 +13,15 @@ export async function loadMapping(
 	addonId: string,
 	mappingId: string,
 ): Promise<MappingConfig | null> {
-	const base = mappingBase(addonId, mappingId);
-	const enabledState = await ctx.getState(`${base}.enabled`);
-	const targetState = await ctx.getState(`${base}.target_state`);
-	if (!targetState?.val || String(targetState.val).trim() === "") {
+	const resolved = resolveMappingTargetFromConfig(ctx.config, addonId, mappingId);
+	if (!resolved) {
 		return null;
 	}
-	const allowed = await ctx.getState(`${base}.allowed_values`);
 	return {
 		mappingId,
-		enabled: enabledState?.val !== false,
-		targetState: String(targetState.val).trim(),
-		allowedValues: parseAllowedValues(allowed?.val),
+		enabled: resolved.enabled,
+		targetState: resolved.targetState,
+		allowedValues: parseAllowedValues(resolved.allowedValues),
 	};
 }
 

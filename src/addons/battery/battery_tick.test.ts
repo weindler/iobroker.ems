@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { __resetBatteryRuntimeForTest, runBatteryControlTick } from "./index.js";
 import { BAT } from "./ensure_states.js";
+import { getBatterySetpointSession } from "./runtime/setpoint_session.js";
 import { WALLBOX_EV_FOUNDATION_STATES } from "../wallbox/ev_foundation/ensure_states.js";
 import { WALLBOX_EVCC_STATES } from "../wallbox/ensure_evcc_states.js";
 import { WALLBOX_RUNTIME_STATES } from "../wallbox/runtime/states.js";
@@ -113,8 +114,8 @@ describe("battery control tick — dryrun", () => {
 		__resetBatteryRuntimeForTest();
 		const a = setupCharge("dryrun");
 		await runTicks(a, 14, false);
-		assert.equal(a.rel.get(BAT.dryrun.requestedAction), "charge");
-		assert.equal(a.rel.get(BAT.dryrun.effectivePowerW), 2000);
+		assert.equal(a.rel.get(BAT.runtime.action), "charge");
+		assert.equal(a.rel.get(BAT.runtime.batterySetpointW), 2000);
 		assert.equal(a.rel.get(BAT.runtime.state), "active");
 		assert.equal(a.rel.get(BAT.status.effectiveExecutionMode), "dryrun");
 		// Telemetry still mirrored.
@@ -234,8 +235,8 @@ describe("battery setpoint release safety", () => {
 		assert.equal(zeros.length, 1);
 		assert.equal(a.rel.get(BAT.runtime.batterySetpointOwner), "none");
 		assert.equal(a.rel.get(BAT.runtime.batterySetpointW), 0);
-		assert.equal(a.rel.get(BAT.runtime.batteryReleasePending), false);
-		assert.ok(String(a.rel.get(BAT.runtime.batteryLastReleaseAt) ?? "").length > 0);
+		assert.equal(getBatterySetpointSession().releasePending, false);
+		assert.ok(String(getBatterySetpointSession().lastReleaseAt ?? "").length > 0);
 	});
 
 	it("stale planner Hold constraint does not set hold_detected", async () => {
@@ -252,7 +253,7 @@ describe("battery setpoint release safety", () => {
 		a.rel.set(WALLBOX_EVCC_STATES.batteryDischargeControl, false);
 		a.rel.set(WALLBOX_EVCC_STATES.batteryMode, "normal");
 		a.rel.set(WALLBOX_EVCC_STATES.connected, false);
-		a.rel.set(WALLBOX_EVCC_STATES.smartCostActive, false);
+		a.rel.set(WALLBOX_RUNTIME_STATES.tibberGridRewardsActive, false);
 		a.rel.set(WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority, "none");
 		await runBatteryControlTick(a as unknown as ioBroker.Adapter & { config: unknown });
 		assert.equal(a.rel.get(BAT.gridBalance.holdDetected), false);
@@ -269,7 +270,7 @@ describe("battery setpoint release safety", () => {
 		a.rel.set(WALLBOX_RUNTIME_STATES.externalVehicleChargeActive, false);
 		a.rel.set(WALLBOX_EVCC_STATES.connected, false);
 		a.rel.set(WALLBOX_EVCC_STATES.charging, false);
-		a.rel.set(WALLBOX_EVCC_STATES.smartCostActive, false);
+		a.rel.set(WALLBOX_RUNTIME_STATES.tibberGridRewardsActive, false);
 		a.rel.set(WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority, "none");
 		await runBatteryControlTick(a as unknown as ioBroker.Adapter & { config: unknown });
 		assert.equal(a.rel.get(BAT.gridBalance.holdDetected), false);
@@ -319,7 +320,7 @@ describe("battery setpoint release safety", () => {
 		a.rel.set(WALLBOX_EVCC_STATES.connected, false);
 		a.rel.set(WALLBOX_EVCC_STATES.charging, false);
 		a.rel.set(WALLBOX_EVCC_STATES.chargePowerW, 0);
-		a.rel.set(WALLBOX_EVCC_STATES.smartCostActive, false);
+		a.rel.set(WALLBOX_RUNTIME_STATES.tibberGridRewardsActive, false);
 		a.rel.set(WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority, "none");
 		await runBatteryControlTick(a as unknown as ioBroker.Adapter & { config: unknown });
 		assert.equal(a.rel.get(BAT.gridBalance.holdDetected), false);
@@ -345,7 +346,7 @@ describe("battery setpoint release safety", () => {
 		);
 		assert.equal(after.filter((w) => w.id === "dev.mode" && w.val === 2).length, 0);
 		assert.equal(a.rel.get(BAT.runtime.batterySetpointOwner), "none");
-		assert.equal(String(a.rel.get(BAT.runtime.batteryReleaseReason)), "handover_hold");
+		assert.equal(String(getBatterySetpointSession().releaseReason), "handover_hold");
 	});
 
 	it("grid_charge/external: no competing 0 W against External", async () => {
@@ -362,7 +363,7 @@ describe("battery setpoint release safety", () => {
 			.filter((w) => w.id === "dev.charge" && w.val === 0);
 		assert.equal(zeros.length, 0);
 		assert.equal(a.rel.get(BAT.runtime.batterySetpointOwner), "none");
-		assert.equal(String(a.rel.get(BAT.runtime.batteryReleaseReason)), "handover_external");
+		assert.equal(String(getBatterySetpointSession().releaseReason), "handover_external");
 	});
 
 	it("Live → Dryrun during live charge: 0 W restore write", async () => {

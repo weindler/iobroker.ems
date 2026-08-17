@@ -1,20 +1,17 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isValueAllowed = exports.resolvePlannedValue = exports.loadMapping = void 0;
-const tree_paths_1 = require("./tree_paths");
+const mapping_resolve_1 = require("./mapping_resolve");
 async function loadMapping(ctx, addonId, mappingId) {
-    const base = (0, tree_paths_1.mappingBase)(addonId, mappingId);
-    const enabledState = await ctx.getState(`${base}.enabled`);
-    const targetState = await ctx.getState(`${base}.target_state`);
-    if (!targetState?.val || String(targetState.val).trim() === "") {
+    const resolved = (0, mapping_resolve_1.resolveMappingTargetFromConfig)(ctx.config, addonId, mappingId);
+    if (!resolved) {
         return null;
     }
-    const allowed = await ctx.getState(`${base}.allowed_values`);
     return {
         mappingId,
-        enabled: enabledState?.val !== false,
-        targetState: String(targetState.val).trim(),
-        allowedValues: parseAllowedValues(allowed?.val),
+        enabled: resolved.enabled,
+        targetState: resolved.targetState,
+        allowedValues: parseAllowedValues(resolved.allowedValues),
     };
 }
 exports.loadMapping = loadMapping;

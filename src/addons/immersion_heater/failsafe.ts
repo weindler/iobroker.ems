@@ -1,7 +1,7 @@
 import { isLiveWriteAllowed } from "../../execution_mode";
 import { writeForeignIfChanged } from "../../device_write";
 import { failsafeTimeoutsFromConfig, isEmsUnreachable, setEdgeBool } from "../../failsafe_common";
-import { mappingBase } from "../../tree_paths";
+import { resolveMappingTargetFromConfig } from "../../mapping_resolve";
 import { IMMERSION_STATUS_STATES } from "./status";
 
 const ADDON_ID = "immersion_heater";
@@ -13,13 +13,11 @@ export type ImmersionFailsafeHost = ioBroker.Adapter & {
 let lastEmsReachable: boolean | null = null;
 
 async function mappedEnableTarget(adapter: ImmersionFailsafeHost): Promise<string> {
-	const base = mappingBase(ADDON_ID, "set_enabled");
-	const en = await adapter.getStateAsync(`${base}.enabled`);
-	if (en?.val === false) {
+	const mapped = resolveMappingTargetFromConfig(adapter.config, ADDON_ID, "set_enabled");
+	if (!mapped || !mapped.enabled) {
 		return "";
 	}
-	const ts = await adapter.getStateAsync(`${base}.target_state`);
-	return typeof ts?.val === "string" ? ts.val.trim() : "";
+	return mapped.targetState;
 }
 
 export async function forceImmersionHeaterOff(

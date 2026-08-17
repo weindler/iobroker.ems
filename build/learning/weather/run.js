@@ -10,28 +10,12 @@ async function setNumIfValid(host, id, value) {
         await host.setStateAsync(id, { val: Math.round(value * 1000) / 1000, ack: true });
     }
 }
-function joinFields(keys) {
-    return keys.join(",");
-}
 async function writeWeatherResult(host, result) {
     await setNumIfValid(host, "learning.weather.temp_bias_c", result.tempBiasC);
-    await setNumIfValid(host, "learning.weather.cloud_bias_pct", result.cloudBiasPct);
-    await setNumIfValid(host, "learning.weather.rain_bias_mm", result.rainBiasMm);
-    await setNumIfValid(host, "learning.weather.wind_bias_kmh", result.windBiasKmh);
     await setNumIfValid(host, "learning.weather.confidence_pct", result.confidencePct);
-    await setNumIfValid(host, "learning.weather.sample_days_7d", result.sampleDays7d);
     await setNumIfValid(host, "learning.weather.sample_days_30d", result.sampleDays30d);
     await host.setStateAsync("learning.weather.status", { val: result.status, ack: true });
     await host.setStateAsync("learning.weather.health", { val: result.health, ack: true });
-    await host.setStateAsync("learning.weather.quality_level", { val: result.qualityLevel, ack: true });
-    await host.setStateAsync("learning.weather.valid_fields", { val: joinFields(result.validFields), ack: true });
-    await host.setStateAsync("learning.weather.missing_fields", {
-        val: joinFields(result.missingFields),
-        ack: true,
-    });
-    await host.setStateAsync("learning.weather.forecast_source", { val: result.forecastSource, ack: true });
-    await host.setStateAsync("learning.weather.actual_source", { val: result.actualSource, ack: true });
-    await host.setStateAsync("learning.weather.summary_yesterday", { val: result.summaryYesterday, ack: true });
     await host.setStateAsync("learning.weather.error", { val: result.error, ack: true });
     await host.setStateAsync("learning.weather.last_update", {
         val: new Date().toISOString(),

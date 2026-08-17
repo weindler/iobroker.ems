@@ -53,12 +53,6 @@ async function writeProviderPolicyStates(host, provider, configured, effective, 
     host.log.debug?.(`Policy provider ${provider.id}: revision=${revision} mode=${globalModes.active}`);
 }
 async function writeSystemStates(host, providers, engineIssues, valid) {
-    const registryJson = (0, hash_2.stableStringify)(providers.map((p) => ({
-        id: p.id,
-        addonType: p.addonType,
-        instanceId: p.instanceId,
-        schemaVersion: p.schemaVersion,
-    })));
     const payload = {
         schemaVersion: constants_1.POLICY_SCHEMA_VERSION,
         engineVersion: constants_1.POLICY_ENGINE_VERSION,
@@ -82,12 +76,9 @@ async function writeSystemStates(host, providers, engineIssues, valid) {
     }, { valid, status: valid ? "valid" : "invalid", issues: engineIssues }));
     const ts = new Date().toISOString();
     const writes = [
-        { id: "policy.system.schema_version", val: constants_1.POLICY_SCHEMA_VERSION },
-        { id: "policy.system.engine_version", val: constants_1.POLICY_ENGINE_VERSION },
         { id: "policy.system.status", val: valid ? "ready" : "invalid" },
         { id: "policy.system.valid", val: valid },
         { id: "policy.system.issues_json", val: (0, hash_2.stableStringify)(payload.issues) },
-        { id: "policy.system.registered_providers_json", val: registryJson },
     ];
     await (0, state_write_1.setStatesIfRevisionChanged)(host, "policy.system.revision", hash, writes, "policy.system.updated_at", ts);
     if (lastSystemRevision !== null && lastSystemRevision !== hash) {
@@ -104,7 +95,6 @@ async function writeGlobalPolicyStates(host, configured, effective) {
     const writes = [
         { id: "policy.global.configured_json", val: snapshotForJson(configured) },
         { id: "policy.global.effective_json", val: snapshotForJson(effective) },
-        { id: "policy.global.provenance_json", val: (0, hash_2.stableStringify)(effective.provenance ?? {}) },
         { id: "policy.global.status", val: effective.status },
         { id: "policy.global.valid", val: validation.valid },
         { id: "policy.global.issues_json", val: (0, hash_2.stableStringify)(validation.issues) },

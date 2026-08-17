@@ -55,10 +55,6 @@ export async function ensureEmsLightStates(host: StateHost, adapterVersion: stri
 		numState("live.battery.capacity_kwh", "Live Batteriekapazität", "kWh"),
 		numState("live.battery.pv_ac_power_w", "Live PV AC Leistung", "W"),
 		numState("live.battery.house_load_w", "Live Hauslast (Verbrauch)", "W"),
-		numState("live.wallbox.enabled", "Live Wallbox freigegeben (0/1)"),
-		numState("live.wallbox.charging", "Live Wallbox laden aktiv (0/1)"),
-		numState("live.wallbox.charge_power_w", "Live Wallbox Ladeleistung", "W"),
-		numState("live.wallbox.vehicle_soc_pct", "Live Fahrzeug-SOC", "%"),
 		numState("live.thermal.buffer_temp_c", "Live Puffer-Temperatur", "°C"),
 		numState("live.thermal.boiler_temp_c", "Live Boiler-Temperatur", "°C"),
 		numState("live.pv.power_w", "Live PV-Leistung", "W"),
@@ -68,19 +64,11 @@ export async function ensureEmsLightStates(host: StateHost, adapterVersion: stri
 		strState("learning.battery_runtime.status", "Learning Batterie Runtime Status", "not_initialized"),
 		strState("learning.thermal_runtime.status", "Learning Thermik Runtime Status", "not_initialized"),
 
-		strState("planner.intent.last_json", "Planner letzter Intent (JSON)"),
-		strState("planner.intent.last_reason_de", "Planner letzte Begründung (DE)"),
-
 		strState("operator.briefing_de", "Operator Briefing (DE)", OPERATOR_BRIEFING_DEFAULT),
 		strState(
 			"operator.product_summary_de",
 			"Produkt-Tageszusammenfassung (DE, deterministisch)",
 			"Noch kein Unified Day Plan.",
-		),
-		strState(
-			"operator.plan.strategy_json",
-			"Strategischer Addon-Planstatus (Batterie/Wallbox, JSON)",
-			"{}",
 		),
 		strState(
 			"operator.plan.battery_strategy_de",
@@ -94,10 +82,7 @@ export async function ensureEmsLightStates(host: StateHost, adapterVersion: stri
 		),
 		strState("operator.notification.last_reason_de", "Letzter Notification-Hinweis (DE)", ""),
 		strState("operator.notification.last_severity", "Letzte Notification-Severity", ""),
-		strState("operator.notification.last_kind", "Letzte Notification-Art", ""),
-		strState("operator.notification.last_dedup_key", "Letzte Notification Dedup-ID", ""),
 		strState("operator.notification.last_at", "Letzte Notification Zeit (ISO)", ""),
-		strState("operator.notification.candidates_json", "Notification Candidates (JSON, kein Push)", "[]"),
 		strState(
 			"operator.execution.effective_json",
 			"Effektive Ausführungsmodi (Global∧Add-on)",
@@ -129,8 +114,6 @@ export async function ensureEmsLightStates(host: StateHost, adapterVersion: stri
 		numState("economics.today.dynamic_cost_eur", "Economics heute dynamisch", "EUR"),
 		numState("economics.today.fixed_tariff_cost_eur", "Economics heute Festpreis", "EUR"),
 		numState("economics.today.savings_eur", "Economics heute Ersparnis", "EUR"),
-		numState("economics.month.savings_eur", "Economics Monat Ersparnis", "EUR"),
-		numState("economics.year.savings_eur", "Economics Jahr Ersparnis", "EUR"),
 		strState("economics.reason_de", "Economics Hinweis (DE)"),
 	];
 

@@ -176,6 +176,71 @@ export const BAT = {
 	},
 } as const;
 
+export const BATTERY_PUBLIC_STATE_IDS = new Set<string>([
+	BAT.identity.manufacturer,
+	BAT.identity.model,
+	BAT.identity.controllerProfile,
+	BAT.identity.capacityNetKwh,
+	BAT.identity.capacitySource,
+	BAT.telemetry.socPct,
+	BAT.telemetry.powerW,
+	BAT.telemetry.chargingPowerW,
+	BAT.telemetry.dischargingPowerW,
+	BAT.telemetry.capacityEffectiveKwh,
+	BAT.telemetry.operatingMode,
+	BAT.telemetry.online,
+	BAT.telemetry.valid,
+	BAT.telemetry.stale,
+	BAT.telemetry.lastUpdate,
+	BAT.status.telemetryReady,
+	BAT.status.effectiveExecutionMode,
+	BAT.status.state,
+	BAT.status.reason,
+	BAT.status.fault,
+	BAT.status.lockout,
+	BAT.runtime.action,
+	BAT.runtime.state,
+	BAT.runtime.ownershipActive,
+	BAT.runtime.decisionSource,
+	BAT.runtime.reasonDe,
+	BAT.runtime.dailyPlanStatus,
+	BAT.runtime.dailyPlanValid,
+	BAT.runtime.dailyPlanRevision,
+	BAT.runtime.allocatedChargePowerW,
+	BAT.runtime.energySource,
+	BAT.runtime.batterySetpointOwner,
+	BAT.runtime.batterySetpointKind,
+	BAT.runtime.batterySetpointW,
+	BAT.diagnostics.faultCode,
+	BAT.diagnostics.faultReason,
+	BAT.gridBalance.enabled,
+	BAT.gridBalance.active,
+	BAT.gridBalance.ready,
+	BAT.gridBalance.blockReason,
+	BAT.gridBalance.currentPriceCtKwh,
+	BAT.gridBalance.priceMinCtKwh,
+	BAT.gridBalance.priceAllowed,
+	BAT.gridBalance.gridPowerW,
+	BAT.gridBalance.effectivePowerW,
+	BAT.gridBalance.holdDetected,
+	BAT.gridBalance.evConflict,
+	BAT.gridBalance.lastAction,
+	BAT.gridBalance.explain,
+	BAT.gridBalance.liveTestArmed,
+	BAT.gridBalance.liveTestArmedAt,
+	BAT.gridBalance.liveTestResult,
+	BAT.control.faultReset,
+	BAT.failsafe.emsReachable,
+	BAT.failsafe.wouldTrip,
+	BAT.failsafe.active,
+	BAT.failsafe.lastFailsafeAt,
+	BAT.failsafe.updatedAt,
+]);
+
+export const BATTERY_BALLAST_STATE_IDS = Object.values(BAT)
+	.flatMap((group) => Object.values(group))
+	.filter((id) => !BATTERY_PUBLIC_STATE_IDS.has(id));
+
 type Def = { id: string; common: ioBroker.StateCommon; defVal?: ioBroker.StateValue };
 
 const bool = (name: string): ioBroker.StateCommon => ({
@@ -393,10 +458,7 @@ export async function ensureBatteryArchitectureStates(adapter: ioBroker.Adapter)
 		"identity",
 		"telemetry",
 		"status",
-		"capabilities",
-		"limits",
 		"runtime",
-		"dryrun",
 		"diagnostics",
 		"grid_balance",
 		"control",
@@ -410,7 +472,7 @@ export async function ensureBatteryArchitectureStates(adapter: ioBroker.Adapter)
 		} as ioBroker.Object);
 	}
 
-	for (const def of batteryStateDefs()) {
+	for (const def of batteryStateDefs().filter((d) => BATTERY_PUBLIC_STATE_IDS.has(d.id))) {
 		await adapter.setObjectNotExistsAsync(def.id, {
 			type: "state",
 			common: def.common,

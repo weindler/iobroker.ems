@@ -70,30 +70,17 @@ async function writeResult(host, result, lastRun) {
     await host.setStateAsync("learning.thermal_runtime.last_error", { val: result.lastError, ack: true });
     await setNumIfValid(host, "learning.thermal_runtime.samples", result.samples);
     await setNumIfValid(host, "learning.thermal_runtime.runtime_hours_avg", result.runtimeHoursAvg);
-    await setNumIfValid(host, "learning.thermal_runtime.runtime_hours_median", result.runtimeHoursMedian);
     await setNumIfValid(host, "learning.thermal_runtime.cooling_rate_c_per_h_avg", result.coolingRateCPerHAvg);
     await setNumIfValid(host, "learning.thermal_runtime.cooling_k_per_h", result.coolingConstantPerH);
     await setNumIfValid(host, "learning.thermal_runtime.cooling_asymptote_c", result.coolingAsymptoteC);
-    await host.setStateAsync("learning.thermal_runtime.cooling_asymptote_source", {
-        val: result.coolingAsymptoteSource ?? "",
-        ack: true,
-    });
     await setNumIfValid(host, "learning.thermal_runtime.current_temperature_c", result.currentTemperatureC);
     await setNumOrClear(host, "learning.thermal_runtime.estimated_remaining_hours", result.estimatedRemainingHours);
     await host.setStateAsync("learning.thermal_runtime.estimated_empty_at", {
         val: result.estimatedEmptyAt ?? "",
         ack: true,
     });
-    await host.setStateAsync("learning.thermal_runtime.by_season_json", {
-        val: truncateJson(result.bySeasonJson),
-        ack: true,
-    });
     await host.setStateAsync("learning.thermal_runtime.by_day_type_json", {
         val: truncateJson(result.byDayTypeJson),
-        ack: true,
-    });
-    await host.setStateAsync("learning.thermal_runtime.history_json", {
-        val: truncateJson(result.historyJson),
         ack: true,
     });
     const model = (result.samples ?? 0) > 0 && result.coolingRateCPerHAvg != null && result.coolingRateCPerHAvg > 0
@@ -101,14 +88,11 @@ async function writeResult(host, result, lastRun) {
         : result.coolingConstantPerH != null && result.coolingConstantPerH > 0
             ? "newton"
             : "none";
-    await host.setStateAsync("learning.thermal_runtime.vessel", { val: "buffer", ack: true });
     await host.setStateAsync("learning.thermal_runtime.model", { val: model, ack: true });
     await host.setStateAsync("learning.thermal_runtime.quality", {
         val: model === "cycle" ? "cycle" : model === "newton" ? "newton_fallback" : result.status,
         ack: true,
     });
-    await host.setStateAsync("learning.thermal_runtime.hard_relevance", { val: false, ack: true });
-    await host.setStateAsync("learning.thermal_runtime.soft_relevance", { val: true, ack: true });
 }
 async function runThermalRuntimeLearning(host) {
     const cfg = (0, config_1.thermalRuntimeConfigFromAdapter)(host.config);

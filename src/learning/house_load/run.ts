@@ -18,6 +18,7 @@ import { IMMERSION_RUNTIME_STATES } from "../../addons/immersion_heater/runtime/
 import { acUnitRuntimeStates } from "../../addons/air_conditioning/runtime/ensure_states";
 import { AC_UNIT_COUNT } from "../../addons/air_conditioning/constants";
 import { BAT } from "../../addons/battery/ensure_states";
+import { WALLBOX_EVCC_STATES } from "../../addons/wallbox/ensure_evcc_states";
 import { asNum } from "../../ems_light/state_util";
 
 import type { HistoryQueryHost } from "../history_query";
@@ -50,31 +51,14 @@ async function setNumIfValid(host: HouseLoadRunHost, id: string, value: number |
 async function writeResult(
 	host: HouseLoadRunHost,
 	result: HouseLoadComputeResult,
-	historyMode?: HouseLoadHistoryStats["historySource"],
+	_historyMode?: HouseLoadHistoryStats["historySource"],
 ): Promise<void> {
 	const lastRun = new Date().toISOString();
-	await setNumIfValid(host, "learning.house_load.sample_count", result.sampleCount);
 	await setNumIfValid(host, "learning.house_load.sample_days", result.sampleDays);
 	await setNumIfValid(host, "learning.house_load.confidence", result.confidence);
 	await host.setStateAsync("learning.house_load.status", { val: result.status, ack: true });
-	await host.setStateAsync("learning.house_load.current_segment", {
-		val: result.currentSegment,
-		ack: true,
-	});
-	await host.setStateAsync("learning.house_load.current_season", {
-		val: result.currentSeason,
-		ack: true,
-	});
-	await host.setStateAsync("learning.house_load.current_weekday", {
-		val: result.currentWeekday,
-		ack: true,
-	});
 	await host.setStateAsync("learning.house_load.current_day_type", {
 		val: result.currentDayType,
-		ack: true,
-	});
-	await host.setStateAsync("learning.house_load.profile_json", {
-		val: truncateJson(result.profileJson),
 		ack: true,
 	});
 	await host.setStateAsync("learning.house_load.forecast_today_json", {
@@ -87,18 +71,6 @@ async function writeResult(
 	});
 	await host.setStateAsync("learning.house_load.forecast_horizon_json", {
 		val: truncateJson(result.forecastHorizonJson),
-		ack: true,
-	});
-	await host.setStateAsync("learning.house_load.health_json", {
-		val: truncateJson(result.healthJson),
-		ack: true,
-	});
-	await host.setStateAsync("learning.house_load.source_state", {
-		val: result.sourceStateId,
-		ack: true,
-	});
-	await host.setStateAsync("learning.house_load.history_mode", {
-		val: historyMode ?? "",
 		ack: true,
 	});
 	await host.setStateAsync("learning.house_load.error", { val: result.error, ack: true });
@@ -156,7 +128,7 @@ export async function runHouseLoadLearning(host: HouseLoadRunHost): Promise<void
 		const ihCmd = asNum((await host.getStateAsync(IMMERSION_RUNTIME_STATES.commandedPowerW))?.val);
 		const ihStage = asNum((await host.getStateAsync(IMMERSION_RUNTIME_STATES.feedbackStage))?.val) ?? 0;
 		const ihActive = ihStage > 0 || (ihMeas != null && ihMeas > 0);
-		const wbCharge = asNum((await host.getStateAsync("live.wallbox.charge_power_w"))?.val);
+		const wbCharge = asNum((await host.getStateAsync(WALLBOX_EVCC_STATES.chargePowerW))?.val);
 		const batCharge = asNum((await host.getStateAsync(BAT.telemetry.chargingPowerW))?.val);
 		const flex: KnownFlexibleEmsLoadsW = {
 			climateUnitsW,

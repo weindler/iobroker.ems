@@ -16,8 +16,6 @@ async function republishDailyPlanAfterWriteback(host, plan) {
     try {
         await (0, state_write_1.setStateIfChanged)(h, states_1.DAILY_PLAN_STATE_IDS.status, plan.status);
         await (0, state_write_1.setStateIfChanged)(h, states_1.DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
-        await (0, state_write_1.setStateIfChanged)(h, states_1.DAILY_PLAN_STATE_IDS.slotsJson, JSON.stringify(plan.slots));
-        await (0, state_write_1.setStateIfChanged)(h, states_1.DAILY_PLAN_STATE_IDS.allocationsJson, JSON.stringify(plan.allocations));
         await (0, state_write_1.setStateIfChanged)(h, states_1.DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
         await (0, state_write_1.setOptionalNumberIfChanged)(h, states_1.DAILY_PLAN_STATE_IDS.revision, plan.revision);
         // IH/AC: nicht hier publizieren — autoritativ erst nach Unified-Merge im Daily-Plan-Tick.

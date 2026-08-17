@@ -72,18 +72,16 @@ function mockHost(initial = {}) {
     });
 });
 (0, node_test_1.describe)("runtime_surface ensure + publish", () => {
-    (0, node_test_1.it)("ensures surface states for all governed runtime ids", async () => {
+    (0, node_test_1.it)("does not create ioBroker runtime.surface states", async () => {
         const mock = mockHost();
         await (0, index_js_1.ensureAddonRuntimeSurfaceStates)(mock.host);
+        strict_1.default.equal(mock.objects.size, 0);
         for (const entry of registry_js_1.GOVERNED_ADDON_REGISTRY) {
             const ids = (0, index_js_1.runtimeSurfaceStateMap)(entry.runtimeAddonId);
-            strict_1.default.ok(mock.objects.has(ids.decisionSource), entry.runtimeAddonId);
-            strict_1.default.ok(mock.objects.has(ids.plannerStatus), entry.runtimeAddonId);
-            strict_1.default.ok(mock.objects.has(ids.fault), entry.runtimeAddonId);
+            strict_1.default.equal(mock.objects.has(ids.decisionSource), false, entry.runtimeAddonId);
         }
-        strict_1.default.ok(mock.objects.has("addons.air_conditioning.runtime.surface.decision_source"));
     });
-    (0, node_test_1.it)("publishes canonical surface and only writes on change", async () => {
+    (0, node_test_1.it)("publishes an in-memory snapshot without ioBroker writes", async () => {
         const mock = mockHost();
         await (0, index_js_1.ensureAddonRuntimeSurfaceStates)(mock.host);
         let writes = 0;
@@ -109,15 +107,6 @@ function mockHost(initial = {}) {
         const snap = await (0, index_js_1.publishAddonRuntimeSurface)(countingHost, "immersion_heater", input);
         strict_1.default.equal(snap.decisionSource, "deterministic_planner");
         strict_1.default.equal(snap.decisionDetail, "daily_plan");
-        const ids = (0, index_js_1.runtimeSurfaceStateMap)("immersion_heater");
-        strict_1.default.equal(mock.states.get(ids.decisionSource)?.val, "deterministic_planner");
-        strict_1.default.equal(mock.states.get(ids.decisionDetail)?.val, "daily_plan");
-        strict_1.default.equal(mock.states.get(ids.plannerStatus)?.val, "valid");
-        strict_1.default.equal(mock.states.get(ids.lastDecisionAt)?.val, "2026-07-27T12:00:00.000Z");
-        const firstWrites = writes;
-        strict_1.default.ok(firstWrites >= 11);
-        writes = 0;
-        await (0, index_js_1.publishAddonRuntimeSurface)(countingHost, "immersion_heater", input);
         strict_1.default.equal(writes, 0);
         const built = (0, index_js_1.buildAddonRuntimeSurfaceSnapshot)({
             ...input,

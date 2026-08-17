@@ -481,7 +481,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "EMS-Light liest die Wallbox ausschließlich über EVCC (read-only). Die konkrete Wallbox wird in EVCC konfiguriert. Ziel-States aus dem ioBroker-Objektbaum wählen — typischer Präfix evcc.&lt;instanz&gt;.status.*. Ausgabe: addons.wallbox.evcc.* und live.wallbox.*"
+					"text": "EMS-Light liest die Wallbox ausschließlich über EVCC (read-only). Die konkrete Wallbox wird in EVCC konfiguriert. Ziel-States aus dem ioBroker-Objektbaum wählen — typischer Präfix evcc.&lt;instanz&gt;.status.*. Kanonische Ausgabe: addons.wallbox.status.evcc.*"
 				},
 				"wallboxGovernanceHint": {
 					"type": "staticText",

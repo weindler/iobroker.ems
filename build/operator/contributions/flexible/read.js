@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.collectFlexibleContributions = void 0;
 const state_util_1 = require("../../../ems_light/state_util");
 const config_1 = require("../../../addons/battery/config");
+const limits_1 = require("../../../addons/battery/core/limits");
 const ensure_states_1 = require("../../../addons/battery/ensure_states");
 const intent_read_1 = require("../../../addons/battery/runtime/intent_read");
 const ensure_evcc_states_1 = require("../../../addons/wallbox/ensure_evcc_states");
@@ -239,7 +240,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     const modePolicy = (0, mode_policy_1.plannerModePolicyFromGlobalMode)(globalModeRaw);
     const globalModeOff = modePolicy.mode === "off";
     const batteryCfg = (0, config_1.batteryConfigFromAdapter)(config);
-    const [batteryEnabled, batteryGov, wallboxEnabled, wallboxGov, immersionEnabled, immersionGov, climateEnabled, climateGov, socPct, capacityEffective, capacityNet, capacitySource, minSoc, maxSoc, chargeCapable, dischargeCapable, batteryFault, batteryLockout, telemetryValid, telemetryStale, telemetryReady, ownershipActive, batteryIntentRaw, connected, charging, vehicleSoc, planSoc, planActive, sessionKwh, chargeRemainingKwh, effectiveLimitSoc, deadlineRaw, activePhases, maxCurrentA, evccVehicleName, evccVehicleTitle, activeVehicleRequiredKwh, activeVehicleSocEnergyReady, bufferTemp, immersionFault, immersionState, autoTargetReached, thermalRaw, pvToday, pvTomorrow, pvBiasStatus, aiThermal, outdoorTemp, outdoorForecastMaxC, houseLoadTodayRaw,] = await Promise.all([
+    const [batteryEnabled, batteryGov, wallboxEnabled, wallboxGov, immersionEnabled, immersionGov, climateEnabled, climateGov, socPct, capacityEffective, capacityNet, capacitySource, batteryFault, batteryLockout, telemetryValid, telemetryStale, telemetryReady, ownershipActive, batteryIntentRaw, connected, charging, vehicleSoc, planSoc, planActive, sessionKwh, chargeRemainingKwh, effectiveLimitSoc, deadlineRaw, activePhases, maxCurrentA, evccVehicleName, evccVehicleTitle, bufferTemp, immersionFault, immersionState, autoTargetReached, thermalRaw, pvToday, pvTomorrow, pvBiasStatus, aiThermal, outdoorTemp, outdoorForecastMaxC, houseLoadTodayRaw,] = await Promise.all([
         readBool(host, (0, tree_paths_1.addonEnabled)("battery")),
         (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "battery"),
         readBool(host, (0, tree_paths_1.addonEnabled)("wallbox")),
@@ -252,10 +253,6 @@ async function collectFlexibleContributions(host, now, gridForecast) {
         readNum(host, ensure_states_1.BAT.telemetry.capacityEffectiveKwh),
         readNum(host, ensure_states_1.BAT.identity.capacityNetKwh),
         readStr(host, ensure_states_1.BAT.identity.capacitySource),
-        readNum(host, ensure_states_1.BAT.limits.hardwareMinSocPct),
-        readNum(host, ensure_states_1.BAT.limits.hardwareMaxSocPct),
-        readBool(host, ensure_states_1.BAT.capabilities.setChargePower),
-        readBool(host, ensure_states_1.BAT.capabilities.setDischargePower),
         readBool(host, ensure_states_1.BAT.status.fault),
         readBool(host, ensure_states_1.BAT.status.lockout),
         readBool(host, ensure_states_1.BAT.telemetry.valid),
@@ -276,8 +273,6 @@ async function collectFlexibleContributions(host, now, gridForecast) {
         readNum(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.maxCurrentA),
         readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.vehicleName),
         readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.vehicleTitle),
-        readNum(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleRequiredBatteryEnergyKwh),
-        readBool(host, states_1.WALLBOX_RUNTIME_STATES.activeVehicleSocEnergyReady),
         readNum(host, types_1.IMMERSION_RUNTIME_STATES.bufferTemperatureC),
         readBool(host, types_1.IMMERSION_RUNTIME_STATES.faultActive),
         readStr(host, types_1.IMMERSION_RUNTIME_STATES.state),
@@ -306,28 +301,23 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     const evccCfg = (0, evcc_config_1.wallboxEvccTelemetryConfigFromAdapter)(config);
     const evccConfigured = evccCfg.enabledStateId.trim().length > 0;
     const evFoundation = (0, config_2.evFoundationConfigFromAdapter)(config);
-    const [energyToTargetKwh, energyToDepartureMinimumKwh, externalAuthorityState, takeoverSeverity, externalSmartPlanJson, externalPlanQuality, externalMinSocPct, evccChargePowerW, evccLoadpointMode, evccBatteryBoost, tibberRewardsRuntime,] = await Promise.all([
-        readNum(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.energyToTargetKwh),
-        readNum(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.energyToDepartureMinimumKwh),
+    const [externalAuthorityState, takeoverSeverity, externalSmartPlanJson, externalMinSocPct, evccChargePowerW, evccLoadpointMode, evccBatteryBoost, tibberRewardsRuntime,] = await Promise.all([
         readStr(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.externalAuthorityState),
         readStr(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.takeoverSeverity),
         readStr(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.externalSmartPlanJson),
-        readStr(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.externalSourceQuality),
         readNum(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.externalMinSocPct),
         readNum(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW),
         readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.loadpointMode),
         readBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryBoost),
         readBool(host, states_1.WALLBOX_RUNTIME_STATES.tibberGridRewardsActive),
     ]);
-    let remainingEnergyKwh = chargeRemainingKwh !== null && Number.isFinite(chargeRemainingKwh)
+    const remainingEnergyKwh = chargeRemainingKwh !== null && Number.isFinite(chargeRemainingKwh)
         ? Math.max(0, chargeRemainingKwh)
         : null;
-    if (remainingEnergyKwh === null &&
-        activeVehicleSocEnergyReady === true &&
-        activeVehicleRequiredKwh !== null &&
-        Number.isFinite(activeVehicleRequiredKwh)) {
-        remainingEnergyKwh = Math.max(0, activeVehicleRequiredKwh);
-    }
+    const minSoc = batteryCfg.limits.minSocPct;
+    const maxSoc = batteryCfg.limits.maxSocPct;
+    const chargeCapable = batteryCfg.profile !== "generic_readonly";
+    const dischargeCapable = (0, limits_1.hasDischargeCapability)(batteryCfg.limits);
     const mapEntry = (0, vehicle_map_1.lookupVehicleMapEntry)((0, vehicle_map_1.wallboxVehicleMapFromAdapter)(config).entries, evccVehicleName, evccVehicleTitle);
     const vehicleCapacityKwh = mapEntry?.batteryCapacityNetKwh !== null &&
         mapEntry?.batteryCapacityNetKwh !== undefined &&
@@ -338,6 +328,14 @@ async function collectFlexibleContributions(host, now, gridForecast) {
         mapEntry?.maxAcChargePowerW !== undefined &&
         mapEntry.maxAcChargePowerW > 0
         ? mapEntry.maxAcChargePowerW
+        : null;
+    const energyToTargetKwh = remainingEnergyKwh;
+    const minDepartureSoc = evFoundation.minimumDepartureSocPct;
+    const energyToDepartureMinimumKwh = minDepartureSoc !== null &&
+        minDepartureSoc !== undefined &&
+        vehicleSoc !== null &&
+        vehicleCapacityKwh !== null
+        ? Math.max(0, ((minDepartureSoc - vehicleSoc) / 100) * vehicleCapacityKwh)
         : null;
     let fallbackTargetSocPct = null;
     const intentEvcc = (0, config_3.intentEvccConfigFromAdapter)(config);
@@ -471,7 +469,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             externalAuthorityState,
             takeoverSeverity,
             externalSmartPlanJson,
-            externalPlanQuality,
+            externalPlanQuality: null,
             loadpointMode: evccLoadpointMode,
             batteryBoost: evccBatteryBoost,
             chargePowerW: evccChargePowerW,

@@ -49,11 +49,6 @@ function peekEvLiveTestState() {
     return liveTest;
 }
 exports.peekEvLiveTestState = peekEvLiveTestState;
-function isoOrEmpty(ms) {
-    if (ms == null || !Number.isFinite(ms))
-        return "";
-    return new Date(ms).toISOString();
-}
 async function publishSession(host, s, extra) {
     const st = ensure_states_1.WALLBOX_EV_FOUNDATION_STATES;
     await (0, state_write_1.setStateIfChanged)(host, st.evExecutionEnabled, extra.enabled);
@@ -61,27 +56,8 @@ async function publishSession(host, s, extra) {
     await (0, state_write_1.setStateIfChanged)(host, st.evExecutionReady, extra.ready);
     await (0, state_write_1.setStateIfChanged)(host, st.evExecutionBlockReason, s.blockReason);
     await (0, state_write_1.setStateIfChanged)(host, st.evExecutionDesiredMode, extra.desired ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionDesiredReason, s.desiredReason);
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionActualMode, extra.actual ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionSourceFresh, s.sourceFresh);
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionOwnership, s.ownership);
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionOwnedMode, s.ownedMode ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionOwnedSince, isoOrEmpty(s.ownedSinceMs));
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionReleaseReason, s.releaseReason);
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionPendingMode, s.pendingMode ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionPendingSince, isoOrEmpty(s.pendingSinceMs));
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionLastCommand, s.lastCommand ?? "");
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionLastCommandAt, isoOrEmpty(s.lastCommandAtMs));
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionLastFeedbackAt, isoOrEmpty(s.lastFeedbackAtMs));
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionRetryCount, s.retryCount);
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionLastResult, s.lastResult);
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionFailsafeReason, s.failsafeReason);
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionPhase, s.phase);
     await (0, state_write_1.setStateIfChanged)(host, st.evExecutionExplain, s.explain);
     await (0, state_write_1.setStateIfChanged)(host, st.evExecutionLiveTestConsumed, liveTest.consumed);
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionLiveTestArmedAt, isoOrEmpty(liveTest.armedAtMs));
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionLiveTestConsumedAt, isoOrEmpty(liveTest.consumedAtMs));
-    await (0, state_write_1.setStateIfChanged)(host, st.evExecutionLiveTestCommand, liveTest.command ?? "");
     await (0, state_write_1.setStateIfChanged)(host, st.evExecutionLiveTestResult, liveTest.result);
     await (0, state_write_1.setStateIfChanged)(host, st.evExecutionLiveTestBlockReason, liveTest.blockReason);
 }

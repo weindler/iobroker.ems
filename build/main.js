@@ -655,6 +655,7 @@ class Ems extends utils.Adapter {
                 await this.setForeignStateAsync(stateId, { val: value, ack: true });
             },
             isLiveAllowed: (addonId) => (0, execution_mode_1.isLiveWriteAllowed)((id) => this.getStateAsync(id), addonId),
+            config: this.config,
         });
         await this.writeAudit({
             result: outcome.result,

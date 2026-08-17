@@ -5,7 +5,7 @@
 
 import { asNum, type StateHost } from "../../ems_light/state_util";
 import { setStateIfChanged } from "../../policy/core/state_write";
-import { mappingBase } from "../../tree_paths";
+import { resolveMappingTargetFromConfig } from "../../mapping_resolve";
 import { fetchTemperatureHistory, isValidTempC } from "../thermal_runtime/history";
 import {
 	collectCoolingSegments,
@@ -52,15 +52,12 @@ function truncateJson(obj: unknown): string {
 }
 
 /**
- * Nur `addons.immersion_heater.mapping.boiler_temp_c`.
- * Native Admin `ih_boiler_temp_c_target` und Puffer-Max (`ih_planning_max_temp_c`) sind keine Quelle.
+ * Native Mapping `ih_boiler_temp_c_*` — nicht Puffer, nicht planningMax, nicht Live-Cache.
  */
 export async function resolveBoilerTempStateId(host: ThermalBoilerRunHost): Promise<string> {
-	const base = mappingBase("immersion_heater", "boiler_temp_c");
-	const en = await host.getStateAsync(`${base}.enabled`);
-	if (en?.val === false) return "";
-	const t = await host.getStateAsync(`${base}.target_state`);
-	return typeof t?.val === "string" ? t.val.trim() : "";
+	const mapped = resolveMappingTargetFromConfig(host.config, "immersion_heater", "boiler_temp_c");
+	if (!mapped || !mapped.enabled) return "";
+	return mapped.targetState;
 }
 
 /** Ist-Temperatur nur vom Mapping-Ziel — kein Live-Cache, kein Admin-Alias, kein planningMaxTempC. */
@@ -144,12 +141,9 @@ async function writeBoilerResult(
 	await host.setStateAsync("learning.thermal_boiler.status", { val: result.status, ack: true });
 	await host.setStateAsync("learning.thermal_boiler.health", { val: result.health, ack: true });
 	await host.setStateAsync("learning.thermal_boiler.last_run", { val: meta.lastRun, ack: true });
-	await host.setStateAsync("learning.thermal_boiler.next_run", { val: meta.nextRun, ack: true });
 	await host.setStateAsync("learning.thermal_boiler.last_sample_at", { val: meta.lastSampleAt, ack: true });
-	await host.setStateAsync("learning.thermal_boiler.trigger_source", { val: meta.trigger, ack: true });
 	await host.setStateAsync("learning.thermal_boiler.last_error", { val: result.lastError, ack: true });
 	await host.setStateAsync("learning.thermal_boiler.samples", { val: result.samples, ack: true });
-	await host.setStateAsync("learning.thermal_boiler.history_points", { val: meta.historyPoints, ack: true });
 	await host.setStateAsync("learning.thermal_boiler.cooling_rate_c_per_h_avg", {
 		val: result.coolingRateCPerHAvg,
 		ack: true,
@@ -162,11 +156,6 @@ async function writeBoilerResult(
 		val: result.coolingAsymptoteC,
 		ack: true,
 	});
-	await host.setStateAsync("learning.thermal_boiler.cooling_asymptote_source", {
-		val: result.coolingAsymptoteSource ?? "",
-		ack: true,
-	});
-	await host.setStateAsync("learning.thermal_boiler.cooling_segments", { val: meta.segments, ack: true });
 	await host.setStateAsync("learning.thermal_boiler.current_temperature_c", {
 		val: result.currentTemperatureC,
 		ack: true,
@@ -183,15 +172,8 @@ async function writeBoilerResult(
 		val: truncateJson(result.byDayTypeJson),
 		ack: true,
 	});
-	await host.setStateAsync("learning.thermal_boiler.history_json", {
-		val: truncateJson(meta.historyJsonOverride ?? result.historyJson),
-		ack: true,
-	});
 	await host.setStateAsync("learning.thermal_boiler.model", { val: model, ack: true });
 	await host.setStateAsync("learning.thermal_boiler.quality", { val: quality, ack: true });
-	await host.setStateAsync("learning.thermal_boiler.vessel", { val: "boiler", ack: true });
-	await host.setStateAsync("learning.thermal_boiler.hard_relevance", { val: model !== "none", ack: true });
-	await host.setStateAsync("learning.thermal_boiler.soft_relevance", { val: false, ack: true });
 	await setStateIfChanged(host, "learning.thermal_boiler.reason_de", reasonDe);
 }
 
@@ -333,7 +315,7 @@ async function runThermalBoilerLearningInner(
 				health: "no_source",
 				currentTemperatureC: null,
 				sourceStateId: "",
-				lastError: "Keine Boiler-Temperaturquelle — addons.immersion_heater.mapping.boiler_temp_c.",
+				lastError: "Keine Boiler-Temperaturquelle — ih_boiler_temp_c_target.",
 			}),
 			resultMeta(host, now, { ...metaBase, hasSource: false, lastSampleAt: "" }),
 		);

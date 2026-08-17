@@ -7,6 +7,7 @@ const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
 const index_js_1 = require("./index.js");
 const ensure_states_js_1 = require("./ensure_states.js");
+const setpoint_session_js_1 = require("./runtime/setpoint_session.js");
 const ensure_states_js_2 = require("../wallbox/ev_foundation/ensure_states.js");
 const ensure_evcc_states_js_1 = require("../wallbox/ensure_evcc_states.js");
 const states_js_1 = require("../wallbox/runtime/states.js");
@@ -107,8 +108,8 @@ async function runTicks(a, n, simulateDevice) {
         (0, index_js_1.__resetBatteryRuntimeForTest)();
         const a = setupCharge("dryrun");
         await runTicks(a, 14, false);
-        strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.dryrun.requestedAction), "charge");
-        strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.dryrun.effectivePowerW), 2000);
+        strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.runtime.action), "charge");
+        strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.runtime.batterySetpointW), 2000);
         strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.runtime.state), "active");
         strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.status.effectiveExecutionMode), "dryrun");
         // Telemetry still mirrored.
@@ -218,8 +219,8 @@ async function runTicks(a, n, simulateDevice) {
         strict_1.default.equal(zeros.length, 1);
         strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.runtime.batterySetpointOwner), "none");
         strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.runtime.batterySetpointW), 0);
-        strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.runtime.batteryReleasePending), false);
-        strict_1.default.ok(String(a.rel.get(ensure_states_js_1.BAT.runtime.batteryLastReleaseAt) ?? "").length > 0);
+        strict_1.default.equal((0, setpoint_session_js_1.getBatterySetpointSession)().releasePending, false);
+        strict_1.default.ok(String((0, setpoint_session_js_1.getBatterySetpointSession)().lastReleaseAt ?? "").length > 0);
     });
     (0, node_test_1.it)("stale planner Hold constraint does not set hold_detected", async () => {
         (0, index_js_1.__resetBatteryRuntimeForTest)();
@@ -235,7 +236,7 @@ async function runTicks(a, n, simulateDevice) {
         a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.batteryDischargeControl, false);
         a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.batteryMode, "normal");
         a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.connected, false);
-        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.smartCostActive, false);
+        a.rel.set(states_js_1.WALLBOX_RUNTIME_STATES.tibberGridRewardsActive, false);
         a.rel.set(ensure_states_js_2.WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority, "none");
         await (0, index_js_1.runBatteryControlTick)(a);
         strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.gridBalance.holdDetected), false);
@@ -251,7 +252,7 @@ async function runTicks(a, n, simulateDevice) {
         a.rel.set(states_js_1.WALLBOX_RUNTIME_STATES.externalVehicleChargeActive, false);
         a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.connected, false);
         a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.charging, false);
-        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.smartCostActive, false);
+        a.rel.set(states_js_1.WALLBOX_RUNTIME_STATES.tibberGridRewardsActive, false);
         a.rel.set(ensure_states_js_2.WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority, "none");
         await (0, index_js_1.runBatteryControlTick)(a);
         strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.gridBalance.holdDetected), false);
@@ -297,7 +298,7 @@ async function runTicks(a, n, simulateDevice) {
         a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.connected, false);
         a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.charging, false);
         a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.chargePowerW, 0);
-        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.smartCostActive, false);
+        a.rel.set(states_js_1.WALLBOX_RUNTIME_STATES.tibberGridRewardsActive, false);
         a.rel.set(ensure_states_js_2.WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority, "none");
         await (0, index_js_1.runBatteryControlTick)(a);
         strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.gridBalance.holdDetected), false);
@@ -319,7 +320,7 @@ async function runTicks(a, n, simulateDevice) {
         strict_1.default.equal(after.filter((w) => w.id === "dev.charge" && w.val === 0).length, 0, "Hold takeover must not write 0 W");
         strict_1.default.equal(after.filter((w) => w.id === "dev.mode" && w.val === 2).length, 0);
         strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.runtime.batterySetpointOwner), "none");
-        strict_1.default.equal(String(a.rel.get(ensure_states_js_1.BAT.runtime.batteryReleaseReason)), "handover_hold");
+        strict_1.default.equal(String((0, setpoint_session_js_1.getBatterySetpointSession)().releaseReason), "handover_hold");
     });
     (0, node_test_1.it)("grid_charge/external: no competing 0 W against External", async () => {
         (0, index_js_1.__resetBatteryRuntimeForTest)();
@@ -335,7 +336,7 @@ async function runTicks(a, n, simulateDevice) {
             .filter((w) => w.id === "dev.charge" && w.val === 0);
         strict_1.default.equal(zeros.length, 0);
         strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.runtime.batterySetpointOwner), "none");
-        strict_1.default.equal(String(a.rel.get(ensure_states_js_1.BAT.runtime.batteryReleaseReason)), "handover_external");
+        strict_1.default.equal(String((0, setpoint_session_js_1.getBatterySetpointSession)().releaseReason), "handover_external");
     });
     (0, node_test_1.it)("Live → Dryrun during live charge: 0 W restore write", async () => {
         (0, index_js_1.__resetBatteryRuntimeForTest)();

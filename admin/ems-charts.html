@@ -154,9 +154,9 @@ var stateIds=[
 	INST+".live.battery.house_load_w",
 	INST+".live.battery.soc_pct",
 	INST+".live.price.now_ct_per_kwh",
-	INST+".live.wallbox.charge_power_w",
-	INST+".live.wallbox.vehicle_soc_pct",
-	INST+".live.wallbox.charging",
+	INST+".addons.wallbox.status.evcc.charge_power_w",
+	INST+".addons.wallbox.status.evcc.vehicle_soc_pct",
+	INST+".addons.wallbox.status.evcc.charging",
 	INST+".addons.battery.telemetry.charging_power_w",
 	INST+".addons.battery.telemetry.discharging_power_w",
 	INST+".addons.battery.telemetry.power_w",
@@ -210,7 +210,6 @@ var stateIds=[
 	INST+".planner.intent.allocation.air_conditioning.plan_json",
 	INST+".planner.intent.contributions.air_conditioning.contributions_json",
 	INST+".planner.intent.contributions.immersion_heater.contributions_json",
-	INST+".operator.plan.strategy_json",
 	INST+".operator.plan.battery_strategy_de",
 	INST+".operator.plan.wallbox_strategy_de",
 	INST+".operator.product_summary_de",
@@ -248,11 +247,7 @@ var stateIds=[
 	INST+".addons.wallbox.runtime.daily_plan_status",
 	INST+".addons.wallbox.runtime.allocated_power_w",
 	INST+".addons.wallbox.runtime.reason_de",
-	INST+".addons.wallbox.runtime.dispatch_status",
-	INST+".addons.wallbox.runtime.plan_execution_status",
-	INST+".addons.wallbox.runtime.connected",
 	INST+".addons.wallbox.runtime.fault_active",
-	INST+".addons.wallbox.runtime.first_planned_slot",
 	INST+".addons.wallbox.runtime.tibber_grid_rewards_active",
 	INST+".addons.wallbox.runtime.external_vehicle_charge_active",
 	INST+".addons.wallbox.runtime.battery_hold_for_ev_charge",
@@ -316,9 +311,7 @@ var stateIds=[
 		}
 	}
 	extra=[
-		INST+".addons.immersion_heater.runtime.reason",
-		INST+".addons.wallbox.status.ev_foundation.energy_to_target_kwh",
-		INST+".addons.wallbox.status.ev_foundation.grid_rewards_active"
+		INST+".addons.immersion_heater.runtime.reason"
 	];
 	for(i=0;i<extra.length;i++){
 		if(stateIds.indexOf(extra[i])<0)stateIds.push(extra[i]);
@@ -492,10 +485,6 @@ function execAuthorityBadge(addonId){
 	return effectiveLiveWrite(addonId)
 		?{cls:"live",label:"LIVE"}
 		:{cls:"dryrun",label:"DRYRUN"};
-}
-function strategyObj(){
-	try{var o=JSON.parse(String(g("operator.plan.strategy_json")||"{}"));return o&&typeof o==="object"?o:{};}
-	catch(e){return{};}
 }
 function isPowerOn(w){return w!==null&&w>=ON_W;}
 function immersionHardwareActive(liveOk){
@@ -833,13 +822,12 @@ function buildTimelineRanges(horizonMs){
 	/* Wallbox/EV: nur Daily-Plan-Allocation, kein Chart-Merge, kein synthetisches Jetzt-Fenster. */
 	var wbWindows=collapseAllocWindows(collectWindows(g("planner.intent.allocation.wallbox.plan_json"),ON_W,""));
 	var wbLive=effectiveLiveWrite("wallbox");
-	var wbHw=isOn(g("live.wallbox.charging"))||isPowerOn(num(g("live.wallbox.charge_power_w")));
+	var wbHw=isOn(g("addons.wallbox.status.evcc.charging"))||isPowerOn(num(g("addons.wallbox.status.evcc.charge_power_w")));
 	var wbAlloc=num(g("addons.wallbox.runtime.allocated_power_w"));
 	var mode=wallboxModeLabel(g("addons.wallbox.status.evcc.loadpoint_mode"));
 	var remKwh=num(g("addons.wallbox.status.evcc.charge_remaining_energy_kwh"));
 	var limSoc=num(g("addons.wallbox.status.evcc.effective_limit_soc_pct"));
 	var vehSoc=num(g("addons.wallbox.status.evcc.vehicle_soc_pct"));
-	if(vehSoc===null)vehSoc=num(g("live.wallbox.vehicle_soc_pct"));
 	function wbMeta(status,phase,windowW){
 		var bits=[];
 		if(status==="dryrun"){
@@ -1450,7 +1438,6 @@ function wallboxAuthorityLine(){
 	return "—";
 }
 function wallboxConnected(){
-	if(g("addons.wallbox.runtime.connected")!=null)return isOn(g("addons.wallbox.runtime.connected"));
 	return isOn(g("addons.wallbox.status.evcc.connected"));
 }
 function collectActionAlerts(){
@@ -1711,7 +1698,7 @@ function renderNext(){
 			batLabel:motion.label,
 			boilerC:num(boilerRaw),
 			boilerMinC:num(g("addons.immersion_heater.runtime.boiler_min_temp_c")),
-			wbConnected:g("addons.wallbox.runtime.connected")!=null||g("addons.wallbox.status.evcc.connected")!=null?wallboxConnected():null
+			wbConnected:g("addons.wallbox.status.evcc.connected")!=null?wallboxConnected():null
 		});
 		html+='<div class="ems-next-sec">Keine Aktion geplant</div><div class="ems-next-idle">';
 		if(facts.length){
@@ -1770,19 +1757,18 @@ function renderStack(){
 	}
 	var ihBadges={exec:execAuthorityBadge("immersion_heater"),op:ihOpBadge};
 
-	var wbLiveP=num(g("live.wallbox.charge_power_w"));
-	var wbHw=isOn(g("live.wallbox.charging"))||isPowerOn(wbLiveP);
+	var wbLiveP=num(g("addons.wallbox.status.evcc.charge_power_w"));
+	var wbHw=isOn(g("addons.wallbox.status.evcc.charging"))||isPowerOn(wbLiveP);
 	var wbNext=firstWindow(g("planner.intent.allocation.wallbox.plan_json"),ON_W);
 	var wbConnected=wallboxConnected();
 	var wbMode=wallboxModeLabel(g("addons.wallbox.status.evcc.loadpoint_mode"))||"—";
-	var wbSoc=fmtPct(g("live.wallbox.vehicle_soc_pct")!=null?g("live.wallbox.vehicle_soc_pct"):g("addons.wallbox.status.evcc.vehicle_soc_pct"));
+	var wbSoc=fmtPct(g("addons.wallbox.status.evcc.vehicle_soc_pct"));
 	var wbTarget=fmtPct(g("addons.wallbox.status.evcc.effective_limit_soc_pct"));
 	var wbRemain=num(g("addons.wallbox.status.evcc.charge_remaining_energy_kwh"));
-	if(wbRemain===null)wbRemain=num(g("addons.wallbox.status.ev_foundation.energy_to_target_kwh"));
-	var wbRewards=isOn(g("addons.wallbox.runtime.tibber_grid_rewards_active"))||isOn(g("addons.wallbox.status.ev_foundation.grid_rewards_active"));
+	var wbRewards=isOn(g("addons.wallbox.runtime.tibber_grid_rewards_active"));
 	var wbOpBadge=wbHw?{cls:"on",label:"LÄUFT"}:{cls:"idle",label:"AUS"};
 	var wbBadges={exec:execAuthorityBadge("wallbox"),op:wbOpBadge};
-	var wbNextLine=wbNext?(fmtSmartTime(wbNext.t)+" · "+Math.round(wbNext.w)+" W"):(txt(g("addons.wallbox.runtime.first_planned_slot"),"")&&txt(g("addons.wallbox.runtime.first_planned_slot"),"")!=="—"?fmtSmartTime(g("addons.wallbox.runtime.first_planned_slot")):"keines");
+	var wbNextLine=wbNext?(fmtSmartTime(wbNext.t)+" · "+Math.round(wbNext.w)+" W"):"keines";
 	var wbReason=txt(g("addons.wallbox.runtime.reason_de"),"");
 	if(wbReason==="—")wbReason="";
 	if(/ev_execution|ev_foundation|decision_source/i.test(wbReason))wbReason="";

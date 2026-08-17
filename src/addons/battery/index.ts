@@ -14,7 +14,6 @@ import {
 	parseGlobalMode,
 } from "../../execution_mode";
 import { addonMode, GLOBAL } from "../../tree_paths";
-import { ensureAddonMappingStates, syncNativeMappingToStates } from "../../mapping_sync";
 import { batteryConfigFromAdapter, type BatteryConfig } from "./config";
 import { isChargingAction } from "./core/intent";
 import { validateBatteryIntent } from "./core/validation";
@@ -43,12 +42,7 @@ import { isRestoreInProgress } from "../../restore/barrier";
 import { WALLBOX_EVCC_STATES } from "../wallbox/ensure_evcc_states";
 import { WALLBOX_RUNTIME_STATES } from "../wallbox/runtime/states";
 import { WALLBOX_EV_FOUNDATION_STATES } from "../wallbox/ev_foundation/ensure_states";
-import {
-	batteryMappingFromConfig,
-	batteryMappingCommandsForEnsure,
-	batteryMappingNativeFromConfig,
-	type BatteryMappingTable,
-} from "./mapping";
+import { batteryMappingFromConfig, type BatteryMappingTable } from "./mapping";
 import { getBatteryProfile } from "./profiles/registry";
 import {
 	clearBatteryFault,
@@ -133,7 +127,6 @@ let prevLiveWriteAllowed = false;
 let ticking = false;
 let lastGridBalanceWriteW: number | null = null;
 let lastGridBalanceWriteAtMs: number | null = null;
-let lastGridBalanceKeepaliveAt = "";
 let lastGridBalanceAction = "";
 let lastGridBalanceActionAt = "";
 let gridBalanceOwnsSetpoint = false;
@@ -154,7 +147,6 @@ export function __resetBatteryRuntimeForTest(now = Date.now()): void {
 	prevLiveWriteAllowed = false;
 	lastGridBalanceWriteW = null;
 	lastGridBalanceWriteAtMs = null;
-	lastGridBalanceKeepaliveAt = "";
 	lastGridBalanceAction = "";
 	lastGridBalanceActionAt = "";
 	gridBalanceOwnsSetpoint = false;
@@ -165,21 +157,17 @@ export function __resetBatteryRuntimeForTest(now = Date.now()): void {
 }
 
 export async function ensureBatteryStateTree(adapter: ioBroker.Adapter): Promise<void> {
-	await ensureAddonMappingStates(adapter, BATTERY_ADDON_ID, batteryMappingCommandsForEnsure(adapter.config));
 	await ensureBatteryEmsMirrorStates(adapter);
 	await ensureBatteryArchitectureStates(adapter);
 }
 
 export async function startBatteryModuleRuntime(adapter: ioBroker.Adapter): Promise<null> {
-	await syncNativeMappingToStates(adapter, BATTERY_ADDON_ID, batteryMappingNativeFromConfig);
-
 	runtime = initialSonnenRuntime(Date.now());
 	gridBalancePausedByFsm = false;
 	ownershipLive = false;
 	prevLiveWriteAllowed = false;
 	lastGridBalanceWriteW = null;
 	lastGridBalanceWriteAtMs = null;
-	lastGridBalanceKeepaliveAt = "";
 	lastGridBalanceAction = "";
 	lastGridBalanceActionAt = "";
 	gridBalanceOwnsSetpoint = false;
@@ -198,7 +186,7 @@ export async function startBatteryModuleRuntime(adapter: ioBroker.Adapter): Prom
 	await adapter.subscribeStatesAsync(WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge);
 	await adapter.subscribeStatesAsync(WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority);
 	await adapter.subscribeStatesAsync(WALLBOX_EVCC_STATES.batteryMode);
-	await adapter.subscribeStatesAsync(WALLBOX_EVCC_STATES.smartCostActive);
+	await adapter.subscribeStatesAsync(WALLBOX_RUNTIME_STATES.tibberGridRewardsActive);
 	for (const id of DAILY_PLAN_TRIGGER_IDS) {
 		await adapter.subscribeStatesAsync(id);
 	}
@@ -248,7 +236,7 @@ export function handleBatteryAdapterStateChange(adapter: ioBroker.Adapter, state
 		rel === WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge ||
 		rel === WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority ||
 		rel === WALLBOX_EVCC_STATES.batteryMode ||
-		rel === WALLBOX_EVCC_STATES.smartCostActive ||
+		rel === WALLBOX_RUNTIME_STATES.tibberGridRewardsActive ||
 		isExecutionModeStateRelativeId(rel) ||
 		(EMS_MIRROR_BATTERY_IDS as readonly string[]).includes(rel) ||
 		DAILY_PLAN_TRIGGER_IDS.has(rel)
@@ -619,10 +607,9 @@ async function controlTickInner(host: Host): Promise<void> {
 		evccConnectedFlag,
 		evccBatteryMode,
 		evccBatteryBoost,
-		evccSmartCostActive,
+		tibberRewardsRuntime,
 		evAuthority,
 		wallboxEnergySource,
-		wallboxAllocatedGridW,
 		globalModeRaw,
 		addonModeRaw,
 	] = await Promise.all([
@@ -635,10 +622,9 @@ async function controlTickInner(host: Host): Promise<void> {
 		readRelOptionalBool(host, WALLBOX_EVCC_STATES.connected),
 		readRelString(host, WALLBOX_EVCC_STATES.batteryMode),
 		readRelBool(host, WALLBOX_EVCC_STATES.batteryBoost),
-		readRelBool(host, WALLBOX_EVCC_STATES.smartCostActive),
+		readRelBool(host, WALLBOX_RUNTIME_STATES.tibberGridRewardsActive),
 		readRelString(host, WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority),
 		readRelString(host, WALLBOX_RUNTIME_STATES.energySource),
-		readRelNumber(host, WALLBOX_RUNTIME_STATES.allocatedGridPowerW),
 		host.getStateAsync(GLOBAL.executionMode),
 		host.getStateAsync(addonMode(BATTERY_ADDON_ID)),
 	]);
@@ -666,9 +652,9 @@ async function controlTickInner(host: Host): Promise<void> {
 		wallboxHold: wallboxBatteryHold,
 		batteryBoost: evccBatteryBoost,
 		externalAuthority: (evAuthority ?? "").toLowerCase() === "external",
-		tibberRewardsActive: evccSmartCostActive,
+		tibberRewardsActive: tibberRewardsRuntime,
 		wallboxEnergySource,
-		wallboxAllocatedGridW,
+		wallboxAllocatedGridW: null,
 		vehicleConnected: evccConnectedFlag,
 	});
 	const gridBalanceSuppressed =
@@ -1055,9 +1041,7 @@ async function controlTickInner(host: Host): Promise<void> {
 						Boolean(wr.executed || wr.written),
 					),
 				);
-				if (gbDecision.lastAction === "keepalive") {
-					lastGridBalanceKeepaliveAt = new Date(nowMs).toISOString();
-				} else if (!GRID_BALANCE_EXECUTION_ENABLED) {
+				if (gbDecision.lastAction !== "keepalive" && !GRID_BALANCE_EXECUTION_ENABLED) {
 					gridBalanceLiveTest = consumeGridBalanceLiveTest(gridBalanceLiveTest, nowMs);
 				}
 				scheduleGridBalanceKeepalive(host);
@@ -1065,7 +1049,6 @@ async function controlTickInner(host: Host): Promise<void> {
 			if (gbDecision.shouldRelease) {
 				lastGridBalanceWriteW = null;
 				lastGridBalanceWriteAtMs = null;
-				lastGridBalanceKeepaliveAt = "";
 				gridBalanceOwnsSetpoint = false;
 				clearGridBalanceKeepalive();
 				setBatterySetpointSession(
@@ -1093,7 +1076,6 @@ async function controlTickInner(host: Host): Promise<void> {
 			clearGridBalanceKeepalive();
 			lastGridBalanceWriteW = null;
 			lastGridBalanceWriteAtMs = null;
-			lastGridBalanceKeepaliveAt = "";
 			if (getBatterySetpointSession().owner === "grid_balance") {
 				const gbHandover = resolveBatterySetpointHandover({
 					hold: gbDecision.holdDetected,
@@ -1197,79 +1179,29 @@ async function persist(host: Host, s: BatterySnapshot, x: PersistExtra): Promise
 	await set(BAT.telemetry.stale, s.telemetry.stale);
 	if (s.telemetry.updatedAt) await set(BAT.telemetry.lastUpdate, s.telemetry.updatedAt);
 
-	await set(BAT.status.profile, s.profileId);
-	await set(BAT.status.profileLoaded, true);
 	await set(BAT.status.telemetryReady, s.readiness.telemetryReady);
-	await set(BAT.status.controlReady, s.readiness.controlReady);
-	await set(BAT.status.dryrunReady, s.readiness.dryrunReady);
-	await set(BAT.status.liveReady, s.readiness.liveReady);
 	await set(BAT.status.effectiveExecutionMode, s.effectiveExecutionMode);
 	await set(BAT.status.state, runtime.state);
 	await set(BAT.status.reason, s.readiness.reason);
 	await set(BAT.status.fault, runtime.faultCode !== null);
 	await set(BAT.status.lockout, runtime.lockout);
 
-	await set(BAT.capabilities.readSoc, s.capabilities.read_soc.available);
-	await set(BAT.capabilities.readPower, s.capabilities.read_power.available);
-	await set(BAT.capabilities.setOperatingMode, s.capabilities.set_operating_mode.available);
-	await set(BAT.capabilities.setChargePower, s.capabilities.set_charge_power.available);
-	await set(BAT.capabilities.setDischargePower, s.capabilities.set_discharge_power.available);
-	await set(BAT.capabilities.controlGridBalance, s.capabilities.control_grid_balance.available);
-	await set(BAT.capabilities.safeRestore, s.capabilities.safe_restore.available);
-	await set(BAT.capabilities.liveControl, s.capabilities.live_control.available);
-
-	await set(BAT.limits.hardwareMaxChargeW, s.limits.maxChargeW);
-	await set(BAT.limits.hardwareMaxDischargeW, s.limits.maxDischargeW);
-	await set(BAT.limits.hardwareMinSocPct, s.limits.minSocPct);
-	await set(BAT.limits.hardwareMaxSocPct, s.limits.maxSocPct);
-	await set(BAT.limits.effectiveMaxChargeW, x.effectiveChargeW);
-	await set(BAT.limits.effectiveMaxDischargeW, 0);
-	await set(BAT.limits.effectiveReason, x.clamps.map((c) => `${c.field}:${c.reason}`).join(",") || "ok");
-
-	await set(BAT.runtime.requestId, runtime.requestId ?? "");
 	await set(BAT.runtime.action, runtime.action ?? "");
 	await set(BAT.runtime.state, runtime.state);
-	await set(BAT.runtime.step, runtime.state);
-	await set(BAT.runtime.requestedPowerW, x.requestedPowerW);
-	await set(BAT.runtime.effectivePowerW, runtime.effectivePowerW);
-	await set(BAT.runtime.targetSocPct, runtime.targetSocPct);
-	await set(BAT.runtime.startedAt, runtime.ownership.startedAt ?? "");
-	await set(BAT.runtime.lastTransitionAt, iso);
-	await set(BAT.runtime.reason, runtime.faultReason ?? s.readiness.reason);
 	await set(BAT.runtime.ownershipActive, runtime.ownership.active);
 	const sp = getBatterySetpointSession();
 	await set(BAT.runtime.batterySetpointOwner, sp.owner);
 	await set(BAT.runtime.batterySetpointKind, sp.kind);
 	await set(BAT.runtime.batterySetpointW, sp.setpointW);
-	await set(BAT.runtime.batteryReleasePending, sp.releasePending);
-	await set(BAT.runtime.batteryReleaseReason, sp.releaseReason);
-	await set(BAT.runtime.batteryLastReleaseAt, sp.lastReleaseAt ?? "");
 
 	const dp = x.dailyPlan;
 	await setStateIfChanged(host, BAT.runtime.decisionSource, x.decisionSource);
 	await setStateIfChanged(host, BAT.runtime.reasonDe, dp.allocationReasonDe || "");
 	await setStateIfChanged(host, BAT.runtime.dailyPlanStatus, dp.dailyPlanStatus);
-	await setStateIfChanged(host, BAT.runtime.dailyPlanAuthoritative, dp.dailyPlanAuthoritative);
 	await setStateIfChanged(host, BAT.runtime.dailyPlanValid, dp.useDailyPlan);
 	await setStateIfChanged(host, BAT.runtime.dailyPlanRevision, dp.dailyPlanRevision ?? 0);
-	await setStateIfChanged(host, BAT.runtime.dailyPlanSlotStart, dp.slotStartIso ?? "");
-	await setStateIfChanged(host, BAT.runtime.dailyPlanSlotEnd, dp.slotEndIso ?? "");
-	await setStateIfChanged(host, BAT.runtime.allocationStatus, dp.allocationStatus);
 	await setStateIfChanged(host, BAT.runtime.allocatedChargePowerW, dp.allocatedChargePowerW ?? null);
-	await setStateIfChanged(host, BAT.runtime.allocatedEnergyKwh, dp.allocatedEnergyKwh ?? null);
-	await setStateIfChanged(host, BAT.runtime.allocatedPvPowerW, dp.pvPowerW ?? null);
-	await setStateIfChanged(host, BAT.runtime.allocatedGridPowerW, dp.gridPowerW ?? null);
 	await setStateIfChanged(host, BAT.runtime.energySource, dp.energySource);
-	await setStateIfChanged(host, BAT.runtime.estimatedCostCt, dp.estimatedCostCt ?? null);
-	await setStateIfChanged(host, BAT.runtime.requestedChargePowerW, dp.requestedChargePowerW ?? null);
-	await setStateIfChanged(host, BAT.runtime.effectiveChargePowerW, dp.effectiveChargePowerW ?? null);
-	await setStateIfChanged(host, BAT.runtime.chargePowerCapped, dp.chargePowerCapped);
-	await setStateIfChanged(host, BAT.runtime.topOffActive, dp.topOffActive);
-	await setStateIfChanged(host, BAT.runtime.legacyFallbackActive, dp.legacyFallbackActive);
-	await setStateIfChanged(host, BAT.runtime.legacyFallbackSource, dp.legacyFallbackSource);
-	await setStateIfChanged(host, BAT.runtime.legacyFallbackReasonDe, dp.legacyFallbackReasonDe);
-	await setStateIfChanged(host, BAT.runtime.dailyPlanBlocksGridBalance, dp.dailyPlanBlocksGridBalance);
-	await setStateIfChanged(host, BAT.runtime.runtimeControlAvailable, dp.runtimeControlAvailable);
 
 	const fault = runtime.faultCode !== null;
 	const lockout = runtime.lockout === true;
@@ -1305,28 +1237,6 @@ async function persist(host: Host, s: BatterySnapshot, x: PersistExtra): Promise
 		lockout,
 	});
 
-	const wouldWrite = !x.globalLive && (isChargingAction(x.action) || x.gb.wouldWrite);
-	await set(BAT.dryrun.wouldWrite, wouldWrite);
-	await set(BAT.dryrun.wouldWriteState, x.gb.state || x.lastWrite?.state || "");
-	await set(BAT.dryrun.wouldWriteValue, x.gb.wouldWrite ? x.gb.target : x.lastWrite?.value ?? null);
-	await set(BAT.dryrun.sequenceStep, runtime.state);
-	await set(BAT.dryrun.requestedAction, x.action);
-	await set(BAT.dryrun.requestedPowerW, x.requestedPowerW);
-	await set(BAT.dryrun.effectivePowerW, x.effectiveChargeW);
-	await set(BAT.dryrun.wouldRestore, !x.globalLive && runtime.ownership.active);
-	await set(BAT.dryrun.reason, `controller=${x.controller}`);
-	await set(BAT.dryrun.updatedAt, iso);
-
-	await set(BAT.diagnostics.missingMappings, s.missingMappings.join(",") || "");
-	if (x.lastWrite) {
-		await set(BAT.diagnostics.lastWriteState, x.lastWrite.state);
-		await set(BAT.diagnostics.lastWriteValue, x.lastWrite.value);
-		await set(BAT.diagnostics.lastWriteAt, iso);
-		await set(BAT.diagnostics.lastWriteSuccess, x.lastWrite.success);
-		await set(BAT.diagnostics.expectedFeedback, x.lastWrite.expected);
-	}
-	await set(BAT.diagnostics.actualFeedback, x.actualChargingW);
-	await set(BAT.diagnostics.lastFeedbackAt, iso);
 	await set(BAT.diagnostics.faultCode, runtime.faultCode ?? "");
 	await set(BAT.diagnostics.faultReason, runtime.faultReason ?? "");
 
@@ -1337,54 +1247,12 @@ async function persist(host: Host, s: BatterySnapshot, x: PersistExtra): Promise
 	await setStateIfChanged(host, BAT.gridBalance.blockReason, d.blockReason);
 	await setStateIfChanged(host, BAT.gridBalance.currentPriceCtKwh, x.priceNowCt);
 	await setStateIfChanged(host, BAT.gridBalance.priceMinCtKwh, x.priceMinCt);
-	await setStateIfChanged(host, BAT.gridBalance.priceLimitCtKwh, x.priceMinCt);
 	await setStateIfChanged(host, BAT.gridBalance.priceAllowed, d.priceAllowed);
 	await setStateIfChanged(host, BAT.gridBalance.gridPowerW, d.rawGridDeltaW);
-	await setStateIfChanged(host, BAT.gridBalance.rawConsumptionW, d.rawConsumptionW);
-	await setStateIfChanged(host, BAT.gridBalance.evChargePowerW, d.evChargePowerW);
-	await setStateIfChanged(host, BAT.gridBalance.adjustedConsumptionW, d.adjustedConsumptionW);
-	await setStateIfChanged(host, BAT.gridBalance.pvPowerW, d.pvPowerW);
-	await setStateIfChanged(host, BAT.gridBalance.rawGridDeltaW, d.rawGridDeltaW);
-	await setStateIfChanged(host, BAT.gridBalance.deadbandW, d.deadbandW);
-	await setStateIfChanged(host, BAT.gridBalance.requestedPowerW, d.requestedPowerW);
-	await setStateIfChanged(host, BAT.gridBalance.configuredMaxW, d.configuredMaxW);
-	await setStateIfChanged(host, BAT.gridBalance.hardwareMaxW, d.hardwareMaxW);
-	await setStateIfChanged(host, BAT.gridBalance.effectiveMaxW, d.effectiveMaxW);
 	await setStateIfChanged(host, BAT.gridBalance.effectivePowerW, d.effectivePowerW);
-	await setStateIfChanged(host, BAT.gridBalance.authority, d.authority);
 	await setStateIfChanged(host, BAT.gridBalance.holdDetected, d.holdDetected);
 	await setStateIfChanged(host, BAT.gridBalance.evConflict, d.evConflict);
-	await setStateIfChanged(host, BAT.gridBalance.ownership, d.ownership);
-	await setStateIfChanged(host, BAT.gridBalance.setpointKind, d.ownership ? "discharge" : "none");
-	await setStateIfChanged(host, BAT.gridBalance.mode2Confirmed, d.mode2Confirmed);
-	await setStateIfChanged(host, BAT.gridBalance.requestedDischargeW, d.requestedPowerW);
-	await setStateIfChanged(host, BAT.gridBalance.effectiveDischargeW, d.effectivePowerW);
-	await setStateIfChanged(
-		host,
-		BAT.gridBalance.lastDischargeWriteW,
-		lastGridBalanceWriteW,
-	);
-	await setStateIfChanged(
-		host,
-		BAT.gridBalance.lastDischargeWriteAt,
-		lastGridBalanceWriteAtMs != null ? new Date(lastGridBalanceWriteAtMs).toISOString() : "",
-	);
-	await setStateIfChanged(host, BAT.gridBalance.lastKeepaliveAt, lastGridBalanceKeepaliveAt);
-	await setStateIfChanged(
-		host,
-		BAT.gridBalance.lastRefreshAt,
-		lastGridBalanceWriteAtMs != null ? new Date(lastGridBalanceWriteAtMs).toISOString() : "",
-	);
-	await setStateIfChanged(
-		host,
-		BAT.gridBalance.nextRefreshAt,
-		gridBalanceOwnsSetpoint && lastGridBalanceWriteAtMs != null
-			? new Date(lastGridBalanceWriteAtMs + GRID_BALANCE_KEEPALIVE_MAX_MS).toISOString()
-			: "",
-	);
-	await setStateIfChanged(host, BAT.gridBalance.writeKind, "discharge");
 	await setStateIfChanged(host, BAT.gridBalance.lastAction, lastGridBalanceAction);
-	await setStateIfChanged(host, BAT.gridBalance.lastActionAt, lastGridBalanceActionAt);
 	await setStateIfChanged(host, BAT.gridBalance.explain, d.explain);
 	await setStateIfChanged(host, BAT.gridBalance.liveTestArmed, gridBalanceLiveTest.armed);
 	await setStateIfChanged(
@@ -1393,7 +1261,6 @@ async function persist(host: Host, s: BatterySnapshot, x: PersistExtra): Promise
 		gridBalanceLiveTest.armedAtMs != null ? new Date(gridBalanceLiveTest.armedAtMs).toISOString() : "",
 	);
 	await setStateIfChanged(host, BAT.gridBalance.liveTestResult, gridBalanceLiveTest.result);
-	await setStateIfChanged(host, BAT.gridBalance.mirrorFollowsAdmin, true);
 }
 
 /** Adapter-Unload: best-effort Safe Restore nur bei aktiver Live-Ownership. */

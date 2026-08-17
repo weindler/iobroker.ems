@@ -92,7 +92,7 @@ const REQUIRED_STATE_PATHS = [
 	"addons.air_conditioning.units.unit_1.stats.today_energy_kwh",
 	"addons.air_conditioning.units.unit_2.mode_purpose",
 	"addons.air_conditioning.units.unit_1.expected_power_w",
-	"addons.wallbox.runtime.connected",
+	"addons.wallbox.status.evcc.connected",
 	"addons.wallbox.status.evcc.loadpoint_mode",
 	"addons.wallbox.status.evcc.battery_mode",
 	"addons.wallbox.runtime.battery_hold_for_ev_charge",

@@ -82,14 +82,8 @@ async function runFlexibleContributionsTick(host, gridForecast) {
     const overallStatus = active.length > 0 ? "ready" : excluded.length > 0 ? "degraded" : "missing";
     try {
         await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.status, overallStatus);
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.generatedAt, now.toISOString());
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.contributionsJson, JSON.stringify(contributions));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.activeJson, JSON.stringify(active.map((c) => c.contributionId)));
-        await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.excludedJson, JSON.stringify(excluded));
         await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.reasonDe, `${active.length} aktiv, ${excluded.length} ausgeschlossen.`);
         await (0, state_write_1.setStateIfChanged)(host, states_1.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.revision, revision);
-        await writeAddonStates(host, "battery", contributions);
-        await writeAddonStates(host, "wallbox", contributions);
         await writeAddonStates(host, "immersion_heater", contributions);
         await writeAddonStates(host, "air_conditioning", contributions);
     }

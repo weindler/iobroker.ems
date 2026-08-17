@@ -232,8 +232,6 @@ export async function collectContributions(
 		weatherHealth,
 		weatherConfidence,
 		weatherLastUpdate,
-		weatherForecastSource,
-		weatherActualSource,
 		globalMode,
 	] = await Promise.all([
 		readNum(host, "learning.pv_bias.corrected_today_kwh"),
@@ -253,8 +251,6 @@ export async function collectContributions(
 		readStr(host, "learning.weather.health"),
 		readNum(host, "learning.weather.confidence_pct"),
 		readStr(host, "learning.weather.last_update"),
-		readStr(host, "learning.weather.forecast_source"),
-		readStr(host, "learning.weather.actual_source"),
 		readStr(host, "global_modes.active"),
 	]);
 
@@ -378,8 +374,8 @@ export async function collectContributions(
 			learningHealth: weatherHealth,
 			confidencePct: weatherConfidence,
 			lastUpdate: weatherLastUpdate,
-			forecastSource: weatherForecastSource,
-			actualSource: weatherActualSource,
+			forecastSource: "",
+			actualSource: "",
 			outdoorTempC,
 			cloudPct,
 			hourlyPoints,

@@ -90,7 +90,11 @@ describe("surface cleanup allowlist", () => {
 		assert.equal(isAllowlistedCleanupRelativeId("addons.wallbox.mapping.evcc_connected.allowed_values"), true);
 		assert.equal(isAllowlistedCleanupRelativeId("info.backup.export_register_ready"), true);
 		assert.equal(isAllowlistedCleanupRelativeId("addons.wallbox.runtime.dispatch_intent_json"), true);
+		assert.equal(isAllowlistedCleanupRelativeId("addons.wallbox.runtime.connected"), true);
 		assert.equal(isAllowlistedCleanupRelativeId("addons.wallbox.runtime.detail_json"), false);
+		assert.equal(isAllowlistedCleanupRelativeId("addons.battery.mapping.soc_pct.target_state"), true);
+		assert.equal(isAllowlistedCleanupRelativeId("planner.intent.forecast_plan.plan_json"), true);
+		assert.equal(isAllowlistedCleanupRelativeId("learning.thermal_boiler.history_json"), true);
 		assert.equal(isAllowlistedCleanupRelativeId("user_intent.resolved_all_json"), true);
 		assert.equal(isAllowlistedCleanupRelativeId("user_intent.wallbox.resolved_json"), false);
 		assert.equal(isAllowlistedCleanupRelativeId("ems.0.addons.air_conditioning.units.unit_1"), false);
@@ -146,6 +150,10 @@ describe("dynamic surface ensure + cleanup", () => {
 		assert.equal(host.objects.has("addons.air_conditioning.units.unit_5"), false);
 		assert.equal(
 			host.objects.has("addons.air_conditioning.mapping.unit_5_cmd_switch_on.enabled"),
+			false,
+		);
+		assert.equal(
+			host.objects.has("addons.air_conditioning.mapping.unit_1_cmd_switch_on.enabled"),
 			false,
 		);
 		assert.equal(
@@ -221,12 +229,10 @@ describe("dynamic surface ensure + cleanup", () => {
 
 	it("state budget: configured-only AC ensure is smaller than full 5-slot ensure", async () => {
 		const empty = new FakeCleanupHost({});
-		await ensureAddonMappingStates(empty, AC_ADDON_ID, acMappingCommandsForConfiguredUnits({}));
 		await ensureAcRuntimeStates(empty);
 		const emptyCount = empty.objects.size;
 
 		const one = new FakeCleanupHost({ ac_u1_enabled: true });
-		await ensureAddonMappingStates(one, AC_ADDON_ID, acMappingCommandsForConfiguredUnits(one.config));
 		await ensureAcRuntimeStates(one);
 		const oneCount = one.objects.size;
 

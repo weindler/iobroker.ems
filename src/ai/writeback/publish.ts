@@ -27,8 +27,6 @@ export async function republishDailyPlanAfterWriteback(
 	try {
 		await setStateIfChanged(h, DAILY_PLAN_STATE_IDS.status, plan.status);
 		await setStateIfChanged(h, DAILY_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
-		await setStateIfChanged(h, DAILY_PLAN_STATE_IDS.slotsJson, JSON.stringify(plan.slots));
-		await setStateIfChanged(h, DAILY_PLAN_STATE_IDS.allocationsJson, JSON.stringify(plan.allocations));
 		await setStateIfChanged(h, DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
 		await setOptionalNumberIfChanged(h, DAILY_PLAN_STATE_IDS.revision, plan.revision);
 

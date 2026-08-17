@@ -44,15 +44,12 @@ async function runGlobalModes(host) {
         await host.setStateAsync("global_modes.requested", { val: resolution.requested, ack: true });
     }
     const ts = new Date().toISOString();
-    const issuesJson = JSON.stringify(resolution.issues);
     const profileJson = JSON.stringify((0, schema_1.profileForMode)(resolution.active));
     const writes = [
         { id: "global_modes.active", val: resolution.active },
-        { id: "global_modes.available_json", val: (0, schema_1.availableModesJson)() },
         { id: "global_modes.effective_profile_json", val: profileJson },
         { id: "global_modes.status", val: resolution.status },
         { id: "global_modes.valid", val: resolution.valid },
-        { id: "global_modes.issues_json", val: issuesJson },
     ];
     const { changed } = await (0, state_write_1.setStatesIfRevisionChanged)(host, "global_modes.revision", resolution.revision, writes, "global_modes.updated_at", ts);
     if (lastActiveMode !== null && lastActiveMode !== resolution.active) {

@@ -1019,7 +1019,7 @@ function tickHost(opts) {
         strict_1.default.equal(s.failsafeReason, "");
         strict_1.default.equal(s.pendingMode, null);
         strict_1.default.equal((await host.getStateAsync(ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evExecutionDesiredMode))?.val, "noop");
-        strict_1.default.equal((await host.getStateAsync(ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evExecutionDesiredReason))?.val, "no_wallbox_action");
+        strict_1.default.equal(s.desiredReason, "no_wallbox_action");
         strict_1.default.match(String((await host.getStateAsync(ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evExecutionExplain))?.val), /desired=noop/);
     });
     (0, node_test_1.it)("tick: old status.mode ts stays valid when connection is up", async () => {
@@ -1051,7 +1051,6 @@ function tickHost(opts) {
         strict_1.default.notEqual(s.failsafeReason, "status_mode_stale");
         strict_1.default.notEqual(s.failsafeReason, "evcc_source_stale");
         strict_1.default.equal((await host.getStateAsync(ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evExecutionDesiredMode))?.val, "off");
-        strict_1.default.equal((await host.getStateAsync(ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evExecutionSourceFresh))?.val, true);
     });
 });
 function owningSession(mode) {
@@ -1531,8 +1530,8 @@ function noSlotProjection() {
         });
         strict_1.default.equal(foreignWrites.length, 0);
         strict_1.default.equal(s.releaseReason, "release_off");
-        strict_1.default.equal((await host.getStateAsync(ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evExecutionOwnership))?.val, "ems");
-        strict_1.default.equal((await host.getStateAsync(ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evExecutionOwnedMode))?.val, "pv");
+        strict_1.default.equal(s.ownership, "ems");
+        strict_1.default.equal(s.ownedMode, "pv");
         strict_1.default.match(String((await host.getStateAsync(ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evExecutionExplain))?.val), /action=release_off/);
     });
     (0, node_test_1.it)("already_confirmed matching mode does not invent ownership", () => {
@@ -1717,7 +1716,7 @@ async function bootThenArm(host, setLocal, input) {
         strict_1.default.equal(s.explain, "live_test=consumed, command=pv, awaiting_feedback");
         strict_1.default.equal((await host.getStateAsync(ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evExecutionLiveTestArmed))?.val, false);
         strict_1.default.equal((await host.getStateAsync(ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evExecutionLiveTestConsumed))?.val, true);
-        strict_1.default.equal((await host.getStateAsync(ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evExecutionLastCommand))?.val, "pv");
+        strict_1.default.equal(s.lastCommand, "pv");
     });
     (0, node_test_1.it)("L8: armed + valid now → exactly one first button pulse, consumed", async () => {
         const { host, foreignWrites, setLocal } = tickHost({

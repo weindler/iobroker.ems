@@ -37,6 +37,8 @@ function stubHost(): LearningStateTreeHost {
 			learning_pv_horizon_enabled: false,
 			ih_boiler_min_temp_c: 50,
 			ih_hygiene_target_temp_c: 60,
+			ih_boiler_temp_c_enabled: true,
+			ih_boiler_temp_c_target: "sensor.0.boiler",
 		},
 		states,
 		getStateAsync: async (id: string) => ({ val: states[id] ?? null }) as ioBroker.State,
@@ -103,7 +105,6 @@ describe("thermal boiler learning scheduling", () => {
 		await waitUntil(() => states["learning.thermal_boiler.current_temperature_c"] === 59, 2_000);
 		assert.equal(states["learning.thermal_boiler.current_temperature_c"], 59);
 		assert.match(String(states["learning.thermal_boiler.reason_de"] ?? ""), /59\.0/);
-		assert.equal(states["learning.thermal_boiler.trigger_source"], "startup");
 		await waitUntil(() => !__isLearningTickInFlightForTest(), 2_000);
 		stopPvBiasLearning();
 	});

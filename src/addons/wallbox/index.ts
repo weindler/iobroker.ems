@@ -4,7 +4,7 @@ import {
 	wallboxEvccTelemetryConfigFromAdapter,
 	wallboxHoldSignalConfigFromAdapter,
 } from "./evcc_config";
-import { ensureWallboxEvccStates, WALLBOX_EVCC_STATES } from "./ensure_evcc_states";
+import { ensureWallboxEvccStates, WALLBOX_EVCC_PUBLIC_STATE_IDS, WALLBOX_EVCC_STATES } from "./ensure_evcc_states";
 import { readEvccTelemetrySnapshot, type EvccTelemetryReadHost, type EvccTelemetrySnapshot } from "./evcc_telemetry";
 import {
 	ensureWallboxEvFoundationStates,
@@ -93,6 +93,9 @@ async function writeField(
 	stateId: string,
 	field: TelemetryField<boolean | number | string>,
 ): Promise<void> {
+	if (!WALLBOX_EVCC_PUBLIC_STATE_IDS.has(stateId)) {
+		return;
+	}
 	if (field.status === "missing" || field.value === null) {
 		return;
 	}
@@ -110,6 +113,9 @@ async function writeTimeField(
 	stateId: string,
 	field: TelemetryField<string>,
 ): Promise<void> {
+	if (!WALLBOX_EVCC_PUBLIC_STATE_IDS.has(stateId)) {
+		return;
+	}
 	const val = field.status === "valid" && typeof field.value === "string" ? field.value : "";
 	await host.setStateAsync(stateId, { val, ack: true });
 }
@@ -428,10 +434,6 @@ export async function refreshWallboxEvccTelemetry(host: WallboxHost): Promise<vo
 	const cfg = wallboxEvccTelemetryConfigFromAdapter(host.config);
 	const snap = await readEvccTelemetrySnapshot(host, cfg, new Date());
 
-	await host.setStateAsync(WALLBOX_EVCC_STATES.snapshotJson, {
-		val: JSON.stringify(snap),
-		ack: true,
-	});
 	await host.setStateAsync(WALLBOX_EVCC_STATES.updatedAt, { val: snap.observed_at, ack: true });
 
 	await writeField(host, WALLBOX_EVCC_STATES.enabled, snap.enabled);
@@ -451,23 +453,8 @@ export async function refreshWallboxEvccTelemetry(host: WallboxHost): Promise<vo
 	await writeField(host, WALLBOX_EVCC_STATES.batteryBoost, snap.battery_boost);
 	await writeField(host, WALLBOX_EVCC_STATES.loadpointMode, snap.loadpoint_mode);
 	await writeField(host, WALLBOX_EVCC_STATES.activePhases, snap.active_phases);
-	await writeField(host, WALLBOX_EVCC_STATES.configuredPhases, snap.configured_phases);
-	await writeField(host, WALLBOX_EVCC_STATES.minCurrentA, snap.min_current_a);
 	await writeField(host, WALLBOX_EVCC_STATES.maxCurrentA, snap.max_current_a);
 	await writeField(host, WALLBOX_EVCC_STATES.batteryMode, snap.battery_mode);
-	await writeField(host, WALLBOX_EVCC_STATES.batteryDischargeControl, snap.battery_discharge_control);
-	await writeField(host, WALLBOX_EVCC_STATES.connection, snap.connection);
-	await writeField(host, WALLBOX_EVCC_STATES.vehicleRangeKm, snap.vehicle_range_km);
-	await writeField(host, WALLBOX_EVCC_STATES.vehicleOdometerKm, snap.vehicle_odometer_km);
-	await writeField(host, WALLBOX_EVCC_STATES.chargeRemainingDurationS, snap.charge_remaining_duration_s);
-	await writeField(host, WALLBOX_EVCC_STATES.effectiveMaxCurrentA, snap.effective_max_current_a);
-	await writeField(host, WALLBOX_EVCC_STATES.effectiveMinCurrentA, snap.effective_min_current_a);
-	await writeField(host, WALLBOX_EVCC_STATES.offeredCurrentA, snap.offered_current_a);
-	await writeField(host, WALLBOX_EVCC_STATES.chargeCurrentsJson, snap.charge_currents_json);
-	await writeField(host, WALLBOX_EVCC_STATES.chargeVoltagesJson, snap.charge_voltages_json);
-	await writeField(host, WALLBOX_EVCC_STATES.sessionPrice, snap.session_price);
-	await writeField(host, WALLBOX_EVCC_STATES.sessionPricePerKwh, snap.session_price_per_kwh);
-	await writeField(host, WALLBOX_EVCC_STATES.vehicleDetectionActive, snap.vehicle_detection_active);
 	await writeField(host, WALLBOX_EVCC_STATES.smartCostLimit, snap.smart_cost_limit);
 	await writeField(host, WALLBOX_EVCC_STATES.smartCostActive, snap.smart_cost_active);
 

@@ -60,15 +60,12 @@ export async function ensureFlexibleContributionStates(host: StateHost): Promise
 
 	const defs: StateDef[] = [
 		strState(FLEXIBLE_CONTRIBUTIONS_STATE_IDS.status, "Flexible Contributions Status", "not_initialized"),
-		strState(FLEXIBLE_CONTRIBUTIONS_STATE_IDS.generatedAt, "Flexible Contributions erzeugt (ISO)"),
-		strState(FLEXIBLE_CONTRIBUTIONS_STATE_IDS.contributionsJson, "Flexible Contributions (JSON)", "[]"),
-		strState(FLEXIBLE_CONTRIBUTIONS_STATE_IDS.activeJson, "Flexible Contributions aktiv (JSON)", "[]"),
-		strState(FLEXIBLE_CONTRIBUTIONS_STATE_IDS.excludedJson, "Flexible Contributions ausgeschlossen (JSON)", "[]"),
 		strState(FLEXIBLE_CONTRIBUTIONS_STATE_IDS.reasonDe, "Flexible Contributions Begründung (DE)", ""),
 		numState(FLEXIBLE_CONTRIBUTIONS_STATE_IDS.revision, "Flexible Contributions Revision", 0),
 	];
 
-	for (const [addon, ids] of Object.entries(FLEXIBLE_ADDON_STATE_IDS)) {
+	for (const addon of ["immersion_heater", "air_conditioning"] as const) {
+		const ids = FLEXIBLE_ADDON_STATE_IDS[addon];
 		await ensureChannel(host, `planner.intent.contributions.${addon}`, `Planner Contributions ${addon}`);
 		defs.push(
 			strState(ids.status, `${addon} Contributions Status`, "not_initialized"),

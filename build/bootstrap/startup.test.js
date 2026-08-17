@@ -400,4 +400,28 @@ function assertCoreCategories(adapter) {
         const dupes = adapter.subscriptions.filter((s, i) => adapter.subscriptions.indexOf(s) !== i);
         strict_1.default.equal(dupes.length, 0, "no duplicate subscriptions");
     });
+    (0, node_test_1.it)("productive surface stays within 350–550 states (empty config)", async () => {
+        const adapter = new FakeBootstrapAdapter(tmp);
+        await (0, ensure_static_tree_js_1.ensureStaticStateTree)(adapter);
+        await (0, ensure_static_tree_js_1.cleanupDynamicPlaceholders)(adapter);
+        const byType = {};
+        const byArea = {};
+        for (const [id, obj] of adapter.objects) {
+            const t = obj.type ?? "unknown";
+            byType[t] = (byType[t] ?? 0) + 1;
+            const area = id.split(".")[0] ?? id;
+            if (obj.type === "state") {
+                byArea[area] = (byArea[area] ?? 0) + 1;
+            }
+        }
+        const states = byType.state ?? 0;
+        const channels = byType.channel ?? 0;
+        console.log(`empty-config surface states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
+        strict_1.default.ok(states <= 500, `empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
+        strict_1.default.ok(states >= 250, `unexpectedly small surface states=${states}`);
+        strict_1.default.ok(![...adapter.objects.keys()].some((id) => id.includes(".mapping.")), "mapping shadows remain");
+        strict_1.default.ok(!adapter.objects.has("planner.intent.last_json"));
+        strict_1.default.ok(!adapter.objects.has("addons.wallbox.runtime.connected"));
+        strict_1.default.ok(!adapter.objects.has("addons.wallbox.status.evcc.snapshot_json"));
+    });
 });

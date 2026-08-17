@@ -34,7 +34,6 @@ export async function ensureWeatherHorizonStates(host: StateHost): Promise<void>
 
 	const defs: StateDef[] = [
 		strState("learning.weather.horizon.status", "Wetter-Horizon Status", "no_data"),
-		numState("learning.weather.horizon.days_available", "Wetter-Horizon verfügbare Tage"),
 		strState("learning.weather.horizon.last_update", "Wetter-Horizon letztes Update (ISO)"),
 		numState("learning.weather.horizon.min_bias_c", "Wetter-Horizon Min-Bias (Ist−Forecast)", "°C"),
 		numState("learning.weather.horizon.max_bias_c", "Wetter-Horizon Max-Bias (Ist−Forecast)", "°C"),
@@ -52,8 +51,6 @@ export async function ensureWeatherHorizonStates(host: StateHost): Promise<void>
 		const label =
 			day === 1 ? "heute" : day === 2 ? "morgen" : `Tag ${day}`;
 		defs.push(
-			numState(`${prefix}.raw_min_temp_c`, `Wetter-Horizon ${label} Roh Min °C`, "°C"),
-			numState(`${prefix}.raw_max_temp_c`, `Wetter-Horizon ${label} Roh Max °C`, "°C"),
 			numState(`${prefix}.min_temp_c`, `Wetter-Horizon ${label} korr. Min °C`, "°C"),
 			numState(`${prefix}.max_temp_c`, `Wetter-Horizon ${label} korr. Max °C`, "°C"),
 			strState(`${prefix}.quality`, `Wetter-Horizon ${label} Qualität`, "missing"),

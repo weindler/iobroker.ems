@@ -3,8 +3,8 @@ import { batteryRuntimeConfigFromAdapter } from "../battery_runtime/config";
 import { DEFAULT_LOOKBACK_DAYS as HOUSE_DEFAULT_LOOKBACK } from "../house_load/constants";
 import { houseLoadConfigFromAdapter } from "../house_load/config";
 import { detectPowerUnit, resolveHouseLoadPowerUnit } from "../house_load/history";
-import { mappingBase } from "../../tree_paths";
 import { DEFAULT_LOOKBACK_DAYS } from "../battery_runtime/constants";
+import { resolveMappingTargetFromConfig } from "../../mapping_resolve";
 import type { DensePowerSourceDef, ResolvedDensePowerSource } from "./types";
 
 export const DENSE_POWER_SOURCES: readonly DensePowerSourceDef[] = [
@@ -23,18 +23,12 @@ export type PowerRollupRegistryHost = {
 	getObjectAsync?: (id: string) => Promise<ioBroker.Object | null | undefined>;
 };
 
-async function resolveMappedRole(
-	host: PowerRollupRegistryHost,
-	addonId: string,
-	role: string,
-): Promise<string> {
-	const base = mappingBase(addonId, role);
-	const enabledSt = await host.getStateAsync(`${base}.enabled`);
-	if (enabledSt?.val === false) {
+function mappedTarget(host: PowerRollupRegistryHost, addonId: string, role: string): string {
+	const mapped = resolveMappingTargetFromConfig(host.config, addonId, role);
+	if (!mapped || !mapped.enabled) {
 		return "";
 	}
-	const targetSt = await host.getStateAsync(`${base}.target_state`);
-	return typeof targetSt?.val === "string" ? targetSt.val.trim() : "";
+	return mapped.targetState;
 }
 
 function rec(config: unknown): Record<string, unknown> {
@@ -96,7 +90,7 @@ export async function resolveDensePowerSources(
 			stateId = houseLearning.powerStateId;
 		}
 		if (!stateId) {
-			stateId = await resolveMappedRole(host, def.addonId, def.role);
+			stateId = mappedTarget(host, def.addonId, def.role);
 		}
 		if (!stateId) {
 			continue;

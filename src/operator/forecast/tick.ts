@@ -43,27 +43,6 @@ export async function runForecastPlanTick(
 		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.status, plan.status);
 		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
 		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "");
-		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.horizonStart, plan.horizonStart);
-		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.horizonEnd, plan.horizonEnd);
-		await setOptionalNumberIfChanged(host, FORECAST_PLAN_STATE_IDS.slotMinutes, plan.slotMinutes);
-		await setStateIfChanged(
-			host,
-			FORECAST_PLAN_STATE_IDS.activeContributorsJson,
-			JSON.stringify(plan.activeContributors),
-		);
-		await setStateIfChanged(
-			host,
-			FORECAST_PLAN_STATE_IDS.excludedContributorsJson,
-			JSON.stringify(plan.excludedContributors),
-		);
-		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.daysJson, JSON.stringify(plan.days));
-		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.slotsJson, JSON.stringify(plan.slots));
-		await setStateIfChanged(
-			host,
-			FORECAST_PLAN_STATE_IDS.contributionsJson,
-			JSON.stringify(plan.contributions),
-		);
-		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
 		await setStateIfChanged(host, FORECAST_PLAN_STATE_IDS.reasonDe, plan.reasonDe);
 		await setOptionalNumberIfChanged(host, FORECAST_PLAN_STATE_IDS.revision, revision);
 	} catch (e) {

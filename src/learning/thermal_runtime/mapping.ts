@@ -1,7 +1,7 @@
-import { mappingBase } from "../../tree_paths";
+import { resolveMappingTargetFromConfig } from "../../mapping_resolve";
 
 export type ThermalMappingHost = {
-	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
+	config?: unknown;
 };
 
 export type ResolvedThermalSource = {
@@ -9,7 +9,7 @@ export type ResolvedThermalSource = {
 	sourceKind: "admin" | "immersion_mapping" | "none";
 };
 
-/** Admin-State oder addons.immersion_heater.mapping.buffer_temp_c — keine harte Pfad-Annahme. */
+/** Admin-State oder native Heizstab-Mapping buffer_temp_c. */
 export async function resolveThermalTemperatureStateId(
 	host: ThermalMappingHost,
 	configuredStateId: string,
@@ -17,16 +17,9 @@ export async function resolveThermalTemperatureStateId(
 	if (configuredStateId) {
 		return { stateId: configuredStateId, sourceKind: "admin" };
 	}
-
-	const base = mappingBase("immersion_heater", "buffer_temp_c");
-	const enabledSt = await host.getStateAsync(`${base}.enabled`);
-	if (enabledSt?.val === false) {
+	const mapped = resolveMappingTargetFromConfig(host.config, "immersion_heater", "buffer_temp_c");
+	if (!mapped || !mapped.enabled) {
 		return { stateId: "", sourceKind: "none" };
 	}
-	const targetSt = await host.getStateAsync(`${base}.target_state`);
-	const targetId = typeof targetSt?.val === "string" ? targetSt.val.trim() : "";
-	if (!targetId) {
-		return { stateId: "", sourceKind: "none" };
-	}
-	return { stateId: targetId, sourceKind: "immersion_mapping" };
+	return { stateId: mapped.targetState, sourceKind: "immersion_mapping" };
 }

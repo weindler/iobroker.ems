@@ -79,7 +79,11 @@ class FakeCleanupHost {
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.wallbox.mapping.evcc_connected.allowed_values"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("info.backup.export_register_ready"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.wallbox.runtime.dispatch_intent_json"), true);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.wallbox.runtime.connected"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.wallbox.runtime.detail_json"), false);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.battery.mapping.soc_pct.target_state"), true);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("planner.intent.forecast_plan.plan_json"), true);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("learning.thermal_boiler.history_json"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("user_intent.resolved_all_json"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("user_intent.wallbox.resolved_json"), false);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("ems.0.addons.air_conditioning.units.unit_1"), false);
@@ -126,6 +130,7 @@ class FakeCleanupHost {
         strict_1.default.ok(host.objects.has("addons.air_conditioning.units.unit_1"));
         strict_1.default.equal(host.objects.has("addons.air_conditioning.units.unit_5"), false);
         strict_1.default.equal(host.objects.has("addons.air_conditioning.mapping.unit_5_cmd_switch_on.enabled"), false);
+        strict_1.default.equal(host.objects.has("addons.air_conditioning.mapping.unit_1_cmd_switch_on.enabled"), false);
         strict_1.default.equal(host.objects.has("addons.air_conditioning.mapping.unit_3_cmd_cleaning_mode.target_state"), false);
         const before = host.objects.size;
         const second = await (0, cleanup_js_1.runDynamicSurfaceCleanup)(host);
@@ -179,11 +184,9 @@ class FakeCleanupHost {
     });
     (0, node_test_1.it)("state budget: configured-only AC ensure is smaller than full 5-slot ensure", async () => {
         const empty = new FakeCleanupHost({});
-        await (0, mapping_sync_js_1.ensureAddonMappingStates)(empty, constants_js_1.AC_ADDON_ID, (0, mapping_config_js_1.acMappingCommandsForConfiguredUnits)({}));
         await (0, ensure_states_js_1.ensureAcRuntimeStates)(empty);
         const emptyCount = empty.objects.size;
         const one = new FakeCleanupHost({ ac_u1_enabled: true });
-        await (0, mapping_sync_js_1.ensureAddonMappingStates)(one, constants_js_1.AC_ADDON_ID, (0, mapping_config_js_1.acMappingCommandsForConfiguredUnits)(one.config));
         await (0, ensure_states_js_1.ensureAcRuntimeStates)(one);
         const oneCount = one.objects.size;
         const legacy = new FakeCleanupHost({});

@@ -33,6 +33,8 @@ function stubHost() {
             learning_pv_horizon_enabled: false,
             ih_boiler_min_temp_c: 50,
             ih_hygiene_target_temp_c: 60,
+            ih_boiler_temp_c_enabled: true,
+            ih_boiler_temp_c_target: "sensor.0.boiler",
         },
         states,
         getStateAsync: async (id) => ({ val: states[id] ?? null }),
@@ -92,7 +94,6 @@ async function waitUntil(predicate, timeoutMs) {
         await waitUntil(() => states["learning.thermal_boiler.current_temperature_c"] === 59, 2_000);
         strict_1.default.equal(states["learning.thermal_boiler.current_temperature_c"], 59);
         strict_1.default.match(String(states["learning.thermal_boiler.reason_de"] ?? ""), /59\.0/);
-        strict_1.default.equal(states["learning.thermal_boiler.trigger_source"], "startup");
         await waitUntil(() => !(0, index_1.__isLearningTickInFlightForTest)(), 2_000);
         (0, index_1.stopPvBiasLearning)();
     });

@@ -11,6 +11,7 @@ const ensure_states_1 = require("../addons/air_conditioning/runtime/ensure_state
 const ensure_states_2 = require("../addons/wallbox/vehicles/ensure_states");
 const persistence_mirror_1 = require("../learning/persistence_mirror");
 const states_1 = require("../addons/wallbox/runtime/states");
+const ensure_states_3 = require("../addons/battery/ensure_states");
 const tree_paths_1 = require("../tree_paths");
 const allowlist_1 = require("./allowlist");
 function bump(stats, reason) {
@@ -199,10 +200,59 @@ async function runDynamicSurfaceCleanup(host) {
     await cleanupLegacyInfoBackup(host, stats);
     await cleanupWallboxRuntimeBallast(host, stats);
     await cleanupUserIntentBallast(host, stats);
+    await cleanupAllowlistedFromEnumeration(host, stats);
     host.log.info(`surface cleanup: checked=${stats.checked} deleted=${stats.deleted} skipped=${stats.skipped}`);
     return stats;
 }
 exports.runDynamicSurfaceCleanup = runDynamicSurfaceCleanup;
+const MAPPING_ROOTS = [
+    "addons.battery.mapping",
+    "addons.wallbox.mapping",
+    "addons.immersion_heater.mapping",
+    "addons.air_conditioning.mapping",
+    "addons.dynamic_tariff.mapping",
+];
+const SURFACE_CUT_KNOWN_IDS = [
+    "planner.intent.last_json",
+    "planner.intent.last_reason_de",
+    "planner.intent.forecast_plan.plan_json",
+    "planner.intent.forecast_plan.days_json",
+    "planner.intent.forecast_plan.slots_json",
+    "planner.intent.forecast_plan.contributions_json",
+    "planner.intent.daily_plan.slots_json",
+    "planner.intent.daily_plan.allocations_json",
+    "planner.intent.contributions.flexible.contributions_json",
+    "planner.intent.contributions.battery",
+    "planner.intent.contributions.wallbox",
+    "learning.thermal_boiler.history_json",
+    "learning.thermal_runtime.history_json",
+    "learning.house_load.profile_json",
+    "learning.house_load.health_json",
+    "addons.wallbox.status.charging_mode",
+    "addons.wallbox.status.charging_mode_label",
+    "addons.wallbox.status.vehicle_soc_pct",
+    "addons.wallbox.status.evcc.snapshot_json",
+];
+async function cleanupAllowlistedFromEnumeration(host, stats) {
+    for (const root of MAPPING_ROOTS) {
+        await safeDeleteRelative(host, root, stats, "mapping_tree");
+    }
+    for (const id of SURFACE_CUT_KNOWN_IDS) {
+        await safeDeleteRelative(host, id, stats, "surface_cut_known");
+    }
+    for (const id of ensure_states_3.BATTERY_BALLAST_STATE_IDS) {
+        await safeDeleteRelative(host, id, stats, "battery_ballast");
+    }
+    const ids = host.listRelativeObjectIds ? await host.listRelativeObjectIds() : [];
+    const sorted = [...ids].sort((a, b) => a.split(".").length - b.split(".").length);
+    for (const id of sorted) {
+        if (/^addons\.air_conditioning\.units\.unit_[1-5](\.|$)/.test(id))
+            continue;
+        if (!(0, allowlist_1.isAllowlistedCleanupRelativeId)(id))
+            continue;
+        await safeDeleteRelative(host, id, stats, "enumerated_surface_cut");
+    }
+}
 async function cleanupWallboxRuntimeBallast(host, stats) {
     for (const suffix of states_1.WALLBOX_RUNTIME_BALLAST_SUFFIXES) {
         await safeDeleteRelative(host, `${states_1.WALLBOX_RUNTIME_BASE}.${suffix}`, stats, "wallbox_runtime_ballast");

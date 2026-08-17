@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.WALLBOX_RUNTIME_BALLAST_SUFFIXES = exports.WALLBOX_RUNTIME_STATES = exports.WALLBOX_RUNTIME_BASE = void 0;
+exports.WALLBOX_RUNTIME_BALLAST_SUFFIXES = exports.WALLBOX_RUNTIME_PUBLIC_STATE_IDS = exports.WALLBOX_RUNTIME_STATES = exports.WALLBOX_RUNTIME_BASE = void 0;
 exports.WALLBOX_RUNTIME_BASE = "addons.wallbox.runtime";
 /**
  * Lean surface: Betrieb + sinnvolle Diagnose als Einzelstates.
@@ -96,6 +96,31 @@ exports.WALLBOX_RUNTIME_STATES = {
     externalVehicleChargeActive: `${exports.WALLBOX_RUNTIME_BASE}.external_vehicle_charge_active`,
     tibberGridRewardsActive: `${exports.WALLBOX_RUNTIME_BASE}.tibber_grid_rewards_active`,
 };
+/** Öffentliche Runtime-Leaves — VIS, Safety, Hold. Telemetrie liegt unter status.evcc. */
+exports.WALLBOX_RUNTIME_PUBLIC_STATE_IDS = new Set([
+    exports.WALLBOX_RUNTIME_STATES.decisionSource,
+    exports.WALLBOX_RUNTIME_STATES.reasonDe,
+    exports.WALLBOX_RUNTIME_STATES.dailyPlanStatus,
+    exports.WALLBOX_RUNTIME_STATES.dailyPlanRevision,
+    exports.WALLBOX_RUNTIME_STATES.allocatedPowerW,
+    exports.WALLBOX_RUNTIME_STATES.energySource,
+    exports.WALLBOX_RUNTIME_STATES.writeAllowed,
+    exports.WALLBOX_RUNTIME_STATES.writeLiveEligible,
+    exports.WALLBOX_RUNTIME_STATES.executionBlockReason,
+    exports.WALLBOX_RUNTIME_STATES.ownershipActive,
+    exports.WALLBOX_RUNTIME_STATES.faultActive,
+    exports.WALLBOX_RUNTIME_STATES.faultCode,
+    exports.WALLBOX_RUNTIME_STATES.faultMessage,
+    exports.WALLBOX_RUNTIME_STATES.faultReset,
+    exports.WALLBOX_RUNTIME_STATES.detailJson,
+    exports.WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge,
+    exports.WALLBOX_RUNTIME_STATES.batteryHoldReasonDe,
+    exports.WALLBOX_RUNTIME_STATES.externalVehicleChargeActive,
+    exports.WALLBOX_RUNTIME_STATES.tibberGridRewardsActive,
+]);
+function runtimeSuffix(id) {
+    return id.startsWith(`${exports.WALLBOX_RUNTIME_BASE}.`) ? id.slice(exports.WALLBOX_RUNTIME_BASE.length + 1) : id;
+}
 /** Legacy ballast leaves — purged by surface cleanup, no longer ensured. */
 exports.WALLBOX_RUNTIME_BALLAST_SUFFIXES = [
     "charge_boost_active",
@@ -131,4 +156,7 @@ exports.WALLBOX_RUNTIME_BALLAST_SUFFIXES = [
     "feedback_settle_time_ms",
     "feedback_timeout_ms",
     "active_vehicle_snapshot_json",
+    ...Object.values(exports.WALLBOX_RUNTIME_STATES)
+        .filter((id) => !exports.WALLBOX_RUNTIME_PUBLIC_STATE_IDS.has(id))
+        .map(runtimeSuffix),
 ];

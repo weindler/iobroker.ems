@@ -1,5 +1,5 @@
 import { ensureChannel, ensureStates, type StateDef, type StateHost } from "../../../ems_light/state_util";
-import { WALLBOX_RUNTIME_BASE, WALLBOX_RUNTIME_STATES } from "./states";
+import { WALLBOX_RUNTIME_BASE, WALLBOX_RUNTIME_PUBLIC_STATE_IDS, WALLBOX_RUNTIME_STATES } from "./states";
 
 function strState(id: string, name: string, def = ""): StateDef {
 	return {
@@ -33,7 +33,6 @@ export async function ensureWallboxRuntimeStates(host: StateHost): Promise<void>
 		strState(WALLBOX_RUNTIME_STATES.decisionSource, "Wallbox Entscheidungsquelle", "safe_default"),
 		strState(WALLBOX_RUNTIME_STATES.reasonDe, "Wallbox Runtime Begründung (DE)"),
 		strState(WALLBOX_RUNTIME_STATES.dailyPlanStatus, "Wallbox Daily-Plan-Status", "daily_plan_missing"),
-		boolState(WALLBOX_RUNTIME_STATES.dailyPlanValid, "Wallbox Daily Plan gültig", false),
 		numState(WALLBOX_RUNTIME_STATES.dailyPlanRevision, "Wallbox Daily-Plan-Revision", 0),
 		strState(WALLBOX_RUNTIME_STATES.dailyPlanSlotStart, "Wallbox Daily-Plan-Slot Start (ISO)"),
 		strState(WALLBOX_RUNTIME_STATES.dailyPlanSlotEnd, "Wallbox Daily-Plan-Slot Ende (ISO)"),
@@ -132,5 +131,8 @@ export async function ensureWallboxRuntimeStates(host: StateHost): Promise<void>
 			false,
 		),
 	];
-	await ensureStates(host, defs);
+	await ensureStates(
+		host,
+		defs.filter((d) => WALLBOX_RUNTIME_PUBLIC_STATE_IDS.has(d.id)),
+	);
 }

@@ -1,7 +1,7 @@
-import { mappingBase } from "../../tree_paths";
+import { resolveMappingTargetFromConfig } from "../../mapping_resolve";
 
 export type BatteryMappingHost = {
-	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
+	config?: unknown;
 };
 
 export type ResolvedBatterySources = {
@@ -11,21 +11,15 @@ export type ResolvedBatterySources = {
 	secondsSinceFullStateId: string;
 };
 
-async function resolveMappedRole(
-	host: BatteryMappingHost,
-	addonId: string,
-	role: string,
-): Promise<string> {
-	const base = mappingBase(addonId, role);
-	const enabledSt = await host.getStateAsync(`${base}.enabled`);
-	if (enabledSt?.val === false) {
+function mappedTarget(host: BatteryMappingHost, role: string): string {
+	const mapped = resolveMappingTargetFromConfig(host.config, "battery", role);
+	if (!mapped || !mapped.enabled) {
 		return "";
 	}
-	const targetSt = await host.getStateAsync(`${base}.target_state`);
-	return typeof targetSt?.val === "string" ? targetSt.val.trim() : "";
+	return mapped.targetState;
 }
 
-/** Admin-States oder addons.battery.mapping — keine harten Geräte-Pfade. */
+/** Admin-States oder native Batterie-Mappings — keine ioBroker-Spiegel. */
 export async function resolveBatteryRuntimeSources(
 	host: BatteryMappingHost,
 	configured: {
@@ -35,22 +29,11 @@ export async function resolveBatteryRuntimeSources(
 		secondsSinceFullStateId: string;
 	},
 ): Promise<ResolvedBatterySources> {
-	const socStateId =
-		configured.socStateId || (await resolveMappedRole(host, "battery", "soc_pct"));
-	const capacityStateId =
-		configured.capacityStateId ||
-		(await resolveMappedRole(host, "battery", "capacity_kwh"));
-	const secondsSinceFullStateId =
-		configured.secondsSinceFullStateId ||
-		(await resolveMappedRole(host, "battery", "seconds_since_full_charge"));
-	// Leistung: Admin oder addons.battery.mapping.power_w (kein charging_power_w — oft Sollwert).
-	const powerStateId =
-		configured.powerStateId || (await resolveMappedRole(host, "battery", "power_w"));
-
 	return {
-		socStateId,
-		powerStateId,
-		capacityStateId,
-		secondsSinceFullStateId,
+		socStateId: configured.socStateId || mappedTarget(host, "soc_pct"),
+		capacityStateId: configured.capacityStateId || mappedTarget(host, "capacity_kwh"),
+		secondsSinceFullStateId:
+			configured.secondsSinceFullStateId || mappedTarget(host, "seconds_since_full_charge"),
+		powerStateId: configured.powerStateId || mappedTarget(host, "power_w"),
 	};
 }

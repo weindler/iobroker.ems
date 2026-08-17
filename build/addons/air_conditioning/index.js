@@ -3,10 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleAirConditioningStateChange = exports.stopAirConditioningModule = exports.initAirConditioningModule = exports.refreshAirConditioningRuntime = exports.startAirConditioningModuleRuntime = exports.ensureAirConditioningStateTree = void 0;
 const ems_activity_1 = require("../../ems_activity");
 const data_dir_1 = require("../../learning/data_dir");
-const mapping_sync_1 = require("../../mapping_sync");
 const constants_1 = require("./constants");
-const configured_1 = require("./configured");
-const mapping_config_1 = require("./mapping_config");
 const tree_paths_1 = require("../../tree_paths");
 const states_1 = require("../../operator/daily_plan/states");
 const ensure_states_1 = require("./runtime/ensure_states");
@@ -33,13 +30,10 @@ function runtimeHost(adapter) {
     return (0, data_dir_1.withLearningDataPath)(adapter, base);
 }
 async function ensureAirConditioningStateTree(adapter) {
-    const cmds = (0, configured_1.acMappingCommandsForConfiguredUnits)(adapter.config);
-    await (0, mapping_sync_1.ensureAddonMappingStates)(adapter, constants_1.AC_ADDON_ID, cmds);
     await (0, ensure_states_1.ensureAcRuntimeStates)(runtimeHost(adapter));
 }
 exports.ensureAirConditioningStateTree = ensureAirConditioningStateTree;
 async function startAirConditioningModuleRuntime(adapter) {
-    await (0, mapping_sync_1.syncNativeMappingToStates)(adapter, constants_1.AC_ADDON_ID, mapping_config_1.acMappingFromConfig);
     await (0, engine_1.initAcRuntimeEngine)(runtimeHost(adapter));
     (0, ems_activity_1.touchEmsActivity)();
     return null;

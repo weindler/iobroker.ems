@@ -120,12 +120,6 @@ function mirrorHost(opts) {
         strict_1.default.equal(writes.get(ensure_evcc_states_1.WALLBOX_EVCC_STATES.sessionEnergyKwh), 0.219683);
         strict_1.default.equal(writes.get(ensure_evcc_states_1.WALLBOX_EVCC_STATES.vehicleSocPct), 55);
         strict_1.default.equal(writes.get(ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW), 0);
-        const snapshotRaw = writes.get(ensure_evcc_states_1.WALLBOX_EVCC_STATES.snapshotJson);
-        strict_1.default.equal(typeof snapshotRaw, "string");
-        const snap = JSON.parse(String(snapshotRaw));
-        strict_1.default.equal(snap.plan_time.value, null);
-        strict_1.default.equal(snap.effective_plan_time.value, null);
-        strict_1.default.equal(snap.plan_active.value, false);
-        strict_1.default.equal(snap.session_energy_kwh.value, 0.219683);
+        strict_1.default.equal(writes.has(ensure_evcc_states_1.WALLBOX_EVCC_STATES.snapshotJson), false);
     });
 });

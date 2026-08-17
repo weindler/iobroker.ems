@@ -18,10 +18,6 @@ async function setRestoreStatus(host, patch) {
         map.push([ensure_states_1.RESTORE_STATES.running, patch.running]);
     if (patch.planId !== undefined)
         map.push([ensure_states_1.RESTORE_STATES.planId, patch.planId]);
-    if (patch.planExpiresAt !== undefined)
-        map.push([ensure_states_1.RESTORE_STATES.planExpiresAt, patch.planExpiresAt]);
-    if (patch.archiveSha256 !== undefined)
-        map.push([ensure_states_1.RESTORE_STATES.archiveSha256, patch.archiveSha256]);
     if (patch.summaryJson !== undefined)
         map.push([ensure_states_1.RESTORE_STATES.summaryJson, patch.summaryJson]);
     if (patch.lastError !== undefined)
@@ -32,8 +28,6 @@ async function setRestoreStatus(host, patch) {
         map.push([ensure_states_1.RESTORE_STATES.lastRestoreAt, patch.lastRestoreAt]);
     if (patch.lastFileName !== undefined)
         map.push([ensure_states_1.RESTORE_STATES.lastFileName, patch.lastFileName]);
-    if (patch.transactionId !== undefined)
-        map.push([ensure_states_1.RESTORE_STATES.transactionId, patch.transactionId]);
     if (patch.restartRequired !== undefined)
         map.push([ensure_states_1.RESTORE_STATES.restartRequired, patch.restartRequired]);
     for (const [id, val] of map) {

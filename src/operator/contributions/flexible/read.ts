@@ -1,6 +1,7 @@
 import { asNum } from "../../../ems_light/state_util";
 import type { StateHost } from "../../../ems_light/state_util";
 import { batteryConfigFromAdapter, batteryProfileIdFromConfig } from "../../../addons/battery/config";
+import { hasDischargeCapability } from "../../../addons/battery/core/limits";
 import { BAT } from "../../../addons/battery/ensure_states";
 import { parseResolvedBatteryIntentJson } from "../../../addons/battery/runtime/intent_read";
 import { WALLBOX_EVCC_STATES } from "../../../addons/wallbox/ensure_evcc_states";
@@ -329,10 +330,6 @@ export async function collectFlexibleContributions(
 		capacityEffective,
 		capacityNet,
 		capacitySource,
-		minSoc,
-		maxSoc,
-		chargeCapable,
-		dischargeCapable,
 		batteryFault,
 		batteryLockout,
 		telemetryValid,
@@ -353,8 +350,6 @@ export async function collectFlexibleContributions(
 		maxCurrentA,
 		evccVehicleName,
 		evccVehicleTitle,
-		activeVehicleRequiredKwh,
-		activeVehicleSocEnergyReady,
 		bufferTemp,
 		immersionFault,
 		immersionState,
@@ -380,10 +375,6 @@ export async function collectFlexibleContributions(
 		readNum(host, BAT.telemetry.capacityEffectiveKwh),
 		readNum(host, BAT.identity.capacityNetKwh),
 		readStr(host, BAT.identity.capacitySource),
-		readNum(host, BAT.limits.hardwareMinSocPct),
-		readNum(host, BAT.limits.hardwareMaxSocPct),
-		readBool(host, BAT.capabilities.setChargePower),
-		readBool(host, BAT.capabilities.setDischargePower),
 		readBool(host, BAT.status.fault),
 		readBool(host, BAT.status.lockout),
 		readBool(host, BAT.telemetry.valid),
@@ -404,8 +395,6 @@ export async function collectFlexibleContributions(
 		readNum(host, WALLBOX_EVCC_STATES.maxCurrentA),
 		readStr(host, WALLBOX_EVCC_STATES.vehicleName),
 		readStr(host, WALLBOX_EVCC_STATES.vehicleTitle),
-		readNum(host, WALLBOX_RUNTIME_STATES.activeVehicleRequiredBatteryEnergyKwh),
-		readBool(host, WALLBOX_RUNTIME_STATES.activeVehicleSocEnergyReady),
 		readNum(host, IMMERSION_RUNTIME_STATES.bufferTemperatureC),
 		readBool(host, IMMERSION_RUNTIME_STATES.faultActive),
 		readStr(host, IMMERSION_RUNTIME_STATES.state),
@@ -441,24 +430,18 @@ export async function collectFlexibleContributions(
 	const evFoundation = evFoundationConfigFromAdapter(config);
 
 	const [
-		energyToTargetKwh,
-		energyToDepartureMinimumKwh,
 		externalAuthorityState,
 		takeoverSeverity,
 		externalSmartPlanJson,
-		externalPlanQuality,
 		externalMinSocPct,
 		evccChargePowerW,
 		evccLoadpointMode,
 		evccBatteryBoost,
 		tibberRewardsRuntime,
 	] = await Promise.all([
-		readNum(host, WALLBOX_EV_FOUNDATION_STATES.energyToTargetKwh),
-		readNum(host, WALLBOX_EV_FOUNDATION_STATES.energyToDepartureMinimumKwh),
 		readStr(host, WALLBOX_EV_FOUNDATION_STATES.externalAuthorityState),
 		readStr(host, WALLBOX_EV_FOUNDATION_STATES.takeoverSeverity),
 		readStr(host, WALLBOX_EV_FOUNDATION_STATES.externalSmartPlanJson),
-		readStr(host, WALLBOX_EV_FOUNDATION_STATES.externalSourceQuality),
 		readNum(host, WALLBOX_EV_FOUNDATION_STATES.externalMinSocPct),
 		readNum(host, WALLBOX_EVCC_STATES.chargePowerW),
 		readStr(host, WALLBOX_EVCC_STATES.loadpointMode),
@@ -466,18 +449,14 @@ export async function collectFlexibleContributions(
 		readBool(host, WALLBOX_RUNTIME_STATES.tibberGridRewardsActive),
 	]);
 
-	let remainingEnergyKwh: number | null =
+	const remainingEnergyKwh: number | null =
 		chargeRemainingKwh !== null && Number.isFinite(chargeRemainingKwh)
 			? Math.max(0, chargeRemainingKwh)
 			: null;
-	if (
-		remainingEnergyKwh === null &&
-		activeVehicleSocEnergyReady === true &&
-		activeVehicleRequiredKwh !== null &&
-		Number.isFinite(activeVehicleRequiredKwh)
-	) {
-		remainingEnergyKwh = Math.max(0, activeVehicleRequiredKwh);
-	}
+	const minSoc = batteryCfg.limits.minSocPct;
+	const maxSoc = batteryCfg.limits.maxSocPct;
+	const chargeCapable = batteryCfg.profile !== "generic_readonly";
+	const dischargeCapable = hasDischargeCapability(batteryCfg.limits);
 
 	const mapEntry = lookupVehicleMapEntry(
 		wallboxVehicleMapFromAdapter(config).entries,
@@ -495,6 +474,15 @@ export async function collectFlexibleContributions(
 		mapEntry?.maxAcChargePowerW !== undefined &&
 		mapEntry.maxAcChargePowerW > 0
 			? mapEntry.maxAcChargePowerW
+			: null;
+	const energyToTargetKwh = remainingEnergyKwh;
+	const minDepartureSoc = evFoundation.minimumDepartureSocPct;
+	const energyToDepartureMinimumKwh =
+		minDepartureSoc !== null &&
+		minDepartureSoc !== undefined &&
+		vehicleSoc !== null &&
+		vehicleCapacityKwh !== null
+			? Math.max(0, ((minDepartureSoc - vehicleSoc) / 100) * vehicleCapacityKwh)
 			: null;
 
 	let fallbackTargetSocPct: number | null = null;
@@ -637,7 +625,7 @@ export async function collectFlexibleContributions(
 			externalAuthorityState,
 			takeoverSeverity,
 			externalSmartPlanJson,
-			externalPlanQuality,
+			externalPlanQuality: null,
 			loadpointMode: evccLoadpointMode,
 			batteryBoost: evccBatteryBoost,
 			chargePowerW: evccChargePowerW,

@@ -13,23 +13,10 @@ async function setNumIfValid(host, id, value) {
 async function writePriceLearningResult(host, result, lastRun) {
     await setNumIfValid(host, "learning.price_learning.confidence", result.confidence);
     await setNumIfValid(host, "learning.price_learning.sample_days", result.sampleDays);
-    await setNumIfValid(host, "learning.price_learning.coverage_pct", result.coveragePct);
-    await setNumIfValid(host, "learning.price_learning.missing_days", result.missingDays);
     await setNumIfValid(host, "learning.price_learning.avg_price_7d", result.avgPrice7d);
     await setNumIfValid(host, "learning.price_learning.avg_price_30d", result.avgPrice30d);
-    await setNumIfValid(host, "learning.price_learning.avg_price_90d", result.avgPrice90d);
-    await setNumIfValid(host, "learning.price_learning.volatility_30d", result.volatility30d);
     await host.setStateAsync("learning.price_learning.status", { val: result.status, ack: true });
     await host.setStateAsync("learning.price_learning.health", { val: result.health, ack: true });
-    await host.setStateAsync("learning.price_learning.cheap_hours", {
-        val: JSON.stringify(result.cheapHours),
-        ack: true,
-    });
-    await host.setStateAsync("learning.price_learning.expensive_hours", {
-        val: JSON.stringify(result.expensiveHours),
-        ack: true,
-    });
-    await host.setStateAsync("learning.price_learning.price_source", { val: result.priceSource, ack: true });
     await host.setStateAsync("learning.price_learning.error", { val: result.error, ack: true });
     await host.setStateAsync("learning.price_learning.last_run", { val: lastRun, ack: true });
 }

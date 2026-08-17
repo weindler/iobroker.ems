@@ -57,14 +57,11 @@ async function ensureFlexibleContributionStates(host) {
     await (0, state_util_1.ensureChannel)(host, "planner.intent.contributions.flexible", "Planner Flexible Contributions");
     const defs = [
         strState(exports.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.status, "Flexible Contributions Status", "not_initialized"),
-        strState(exports.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.generatedAt, "Flexible Contributions erzeugt (ISO)"),
-        strState(exports.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.contributionsJson, "Flexible Contributions (JSON)", "[]"),
-        strState(exports.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.activeJson, "Flexible Contributions aktiv (JSON)", "[]"),
-        strState(exports.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.excludedJson, "Flexible Contributions ausgeschlossen (JSON)", "[]"),
         strState(exports.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.reasonDe, "Flexible Contributions Begründung (DE)", ""),
         numState(exports.FLEXIBLE_CONTRIBUTIONS_STATE_IDS.revision, "Flexible Contributions Revision", 0),
     ];
-    for (const [addon, ids] of Object.entries(exports.FLEXIBLE_ADDON_STATE_IDS)) {
+    for (const addon of ["immersion_heater", "air_conditioning"]) {
+        const ids = exports.FLEXIBLE_ADDON_STATE_IDS[addon];
         await (0, state_util_1.ensureChannel)(host, `planner.intent.contributions.${addon}`, `Planner Contributions ${addon}`);
         defs.push(strState(ids.status, `${addon} Contributions Status`, "not_initialized"), strState(ids.contributionsJson, `${addon} Contributions (JSON)`, "[]"), strState(ids.reasonDe, `${addon} Contributions Begründung (DE)`, ""), numState(ids.revision, `${addon} Contributions Revision`, 0));
     }

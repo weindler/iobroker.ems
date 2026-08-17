@@ -2,12 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ensureWallboxStatusStates = exports.WALLBOX_STATUS_STATES = void 0;
 const tree_paths_1 = require("./tree_paths");
-/** Read-only EMS status mirror for ioBroker Vis (filled by EMS via Simple API). */
+/** Failsafe-/Erreichbarkeits-Spiegel für VIS und Safety — keine Telemetrie-Duplikate. */
 const STATUS = (0, tree_paths_1.addonStatusBase)("wallbox");
 exports.WALLBOX_STATUS_STATES = {
-    chargingMode: `${STATUS}.charging_mode`,
-    chargingModeLabel: `${STATUS}.charging_mode_label`,
-    vehicleSocPct: `${STATUS}.vehicle_soc_pct`,
     updatedAt: `${STATUS}.updated_at`,
     emsReachable: `${STATUS}.ems_reachable`,
     actuatorReachable: `${STATUS}.actuator_reachable`,
@@ -18,41 +15,6 @@ exports.WALLBOX_STATUS_STATES = {
 };
 async function ensureWallboxStatusStates(adapter) {
     const defs = [
-        {
-            _id: exports.WALLBOX_STATUS_STATES.chargingMode,
-            common: {
-                name: "Wallbox Lademodus (EMS)",
-                type: "string",
-                role: "text",
-                read: true,
-                write: false,
-                def: "off",
-            },
-            defVal: "off",
-        },
-        {
-            _id: exports.WALLBOX_STATUS_STATES.chargingModeLabel,
-            common: {
-                name: "Wallbox Lademodus Anzeige (DE)",
-                type: "string",
-                role: "text",
-                read: true,
-                write: false,
-                def: "Aus",
-            },
-            defVal: "Aus",
-        },
-        {
-            _id: exports.WALLBOX_STATUS_STATES.vehicleSocPct,
-            common: {
-                name: "Fahrzeug-SOC (%)",
-                type: "number",
-                role: "value.battery",
-                unit: "%",
-                read: true,
-                write: false,
-            },
-        },
         {
             _id: exports.WALLBOX_STATUS_STATES.updatedAt,
             common: {

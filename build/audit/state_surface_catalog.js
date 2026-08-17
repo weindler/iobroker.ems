@@ -86,11 +86,10 @@ exports.STATE_SURFACE_FAMILIES = [
         producer: "planner/ensure_states",
         consumers: ["operator constraints", "diagnose"],
         persistenceNeed: "session",
-        avgOrMaxSizeHint: "planner.intent.last_json large",
+        avgOrMaxSizeHint: "scalars",
         publicFeature: true,
-        targetClass: "F_compatibility_contract",
+        targetClass: "A_core_user",
         migrationStrategy: "Block 5: thermal/cooling/winter + surplus/deficit purged; Daily Plan / operator.diagnostics are control path.",
-        largeJsonIds: ["planner.intent.last_json"],
     },
     {
         id: "planner_coordinator",
@@ -269,7 +268,6 @@ exports.STATE_SURFACE_FAMILIES = [
         migrationStrategy: "Keep status+key scalars; stop dual-writing large JSON to states when files already exist under durable learning/.",
         largeJsonIds: [
             "learning.house_load.forecast_today_json",
-            "learning.thermal_runtime.history_json",
             "learning.persistence.*_json",
         ],
     },
@@ -303,14 +301,8 @@ exports.STATE_SURFACE_FAMILIES = [
         targetClass: "A_core_user",
         migrationStrategy: "Keep operational status; expert-gate mapping matrices and dryrun JSON.",
         largeJsonIds: [
-            "addons.wallbox.runtime.dispatch_intent_json",
-            "addons.wallbox.runtime.write_plan_json",
-            "addons.wallbox.status.evcc.snapshot_json",
-            "addons.wallbox.status.ev_foundation.model_json",
-            "addons.wallbox.status.ev_foundation.capabilities_json",
+            "addons.wallbox.runtime.detail_json",
             "addons.wallbox.status.ev_foundation.external_smart_plan_json",
-            "addons.wallbox.status.ev_foundation.external_raw_diagnostics_json",
-            "addons.wallbox.status.ev_foundation.takeover_decision_json",
         ],
     },
     {

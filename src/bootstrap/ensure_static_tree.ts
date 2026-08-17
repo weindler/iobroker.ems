@@ -4,12 +4,6 @@ import { ensureImmersionHeaterStateTree } from "../addons/immersion_heater";
 import { ensureWallboxStaticStateTree, ensureWallboxDynamicVehicleProfiles } from "../addons/wallbox";
 import { ensureAddonGovernanceStates } from "../addons/governance";
 import { ensureAddonRuntimeSurfaceStates } from "../addons/runtime_surface";
-import {
-	ensureAddonMappingStates,
-	mappingCommandsFromEntries,
-	syncNativeMappingToStates,
-} from "../mapping_sync";
-import { wallboxMappingFromConfig } from "../mapping_config";
 import { ensureEmsLightStateTree } from "../ems_light";
 import {
 	ensureChannelTree,
@@ -17,14 +11,6 @@ import {
 	ensureAddonExecutionModeStates,
 } from "../execution_mode";
 import { ensureWallboxStatusStates } from "../status_wallbox";
-import { DYNAMIC_TARIFF_ADDON_ID } from "../addons/dynamic_tariff";
-import { DYNAMIC_TARIFF_MAPPING_ROLES, dynamicTariffMappingFromConfig } from "../addons/dynamic_tariff/mapping_config";
-import { BATTERY_ADDON_ID } from "../addons/battery";
-import { batteryMappingNativeFromConfig } from "../addons/battery/mapping";
-import { IMMERSION_ADDON_ID } from "../addons/immersion_heater";
-import { immersionHeaterMappingFromConfig } from "../addons/immersion_heater/mapping_config";
-import { AC_ADDON_ID } from "../addons/air_conditioning/constants";
-import { acMappingFromConfig } from "../addons/air_conditioning/mapping_config";
 import { ensureCommandBaseStates, ensureAddonBasisStates } from "./base_ensure";
 import { ensureBackupStates } from "../backup/ensure_states";
 import { runDynamicSurfaceCleanup, type SurfaceCleanupHost } from "../surface_cleanup/cleanup";
@@ -33,13 +19,8 @@ export type StaticStateTreeHost = ioBroker.Adapter & {
 	config: unknown;
 };
 
-function configRecord(config: unknown): Record<string, unknown> {
-	return config && typeof config === "object" ? (config as Record<string, unknown>) : {};
-}
-
 /** Phase B — statischer EMS-State-Tree ohne dynamische Fahrzeugprofile. */
 export async function ensureStaticStateTree(host: StaticStateTreeHost): Promise<void> {
-	const cfg = configRecord(host.config);
 	await ensureChannelTree(host.setObjectNotExistsAsync.bind(host));
 	await ensureCommandBaseStates(host);
 	await ensureGlobalExecutionStates(host);
@@ -49,21 +30,11 @@ export async function ensureStaticStateTree(host: StaticStateTreeHost): Promise<
 	await ensureAddonRuntimeSurfaceStates(host);
 	await ensureEmsLightStateTree(host);
 	await ensureBackupStates(host);
-	await ensureAddonMappingStates(
-		host,
-		"wallbox",
-		mappingCommandsFromEntries(wallboxMappingFromConfig(cfg)),
-	);
 	await ensureWallboxStatusStates(host);
 	await ensureWallboxStaticStateTree(host);
 	await ensureBatteryStateTree(host);
 	await ensureImmersionHeaterStateTree(host);
 	await ensureAirConditioningStateTree(host);
-	await ensureAddonMappingStates(
-		host,
-		DYNAMIC_TARIFF_ADDON_ID,
-		mappingCommandsFromEntries(dynamicTariffMappingFromConfig(cfg)),
-	);
 }
 
 /** Phase C — no-op since v0.1.227 (fat vehicle profile trees removed; see `wb_vehicle_map`). */
@@ -109,11 +80,7 @@ export async function cleanupDynamicPlaceholders(host: StaticStateTreeHost): Pro
 	await runDynamicSurfaceCleanup(cleanupHost);
 }
 
-/** Phase sync — Mapping-Werte aus Admin-Config (nach Objekterzeugung). */
-export async function syncAllMappingsFromConfig(host: StaticStateTreeHost): Promise<void> {
-	await syncNativeMappingToStates(host, "wallbox", wallboxMappingFromConfig);
-	await syncNativeMappingToStates(host, BATTERY_ADDON_ID, batteryMappingNativeFromConfig);
-	await syncNativeMappingToStates(host, IMMERSION_ADDON_ID, immersionHeaterMappingFromConfig);
-	await syncNativeMappingToStates(host, AC_ADDON_ID, acMappingFromConfig);
-	await syncNativeMappingToStates(host, DYNAMIC_TARIFF_ADDON_ID, dynamicTariffMappingFromConfig);
+/** Mapping kommt aus der Adapterkonfiguration — keine ioBroker-Spiegel mehr. */
+export async function syncAllMappingsFromConfig(_host: StaticStateTreeHost): Promise<void> {
+	return;
 }

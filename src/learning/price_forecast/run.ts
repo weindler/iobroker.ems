@@ -42,40 +42,18 @@ async function writeResult(
 	host: PriceForecastRunHost,
 	result: PriceForecastResult,
 	lastRun: string,
-	cfg: ReturnType<typeof priceForecastConfigFromAdapter>,
+	_cfg: ReturnType<typeof priceForecastConfigFromAdapter>,
 ): Promise<void> {
 	await setNumIfValid(host, "learning.price_forecast.forecast_confidence", result.forecastConfidence);
 	await setNumIfValid(host, "learning.price_forecast.sample_days", result.sampleDays);
-	await setNumIfValid(host, "learning.price_forecast.coverage_pct", result.coveragePct);
-	await setNumIfValid(host, "learning.price_forecast.missing_days", result.missingDays);
 	await setNumIfValid(host, "learning.price_forecast.forecast_accuracy_7d", result.forecastAccuracy7d);
 	await setNumIfValid(host, "learning.price_forecast.forecast_accuracy_30d", result.forecastAccuracy30d);
-	await setNumIfValid(host, "learning.price_forecast.forecast_accuracy_90d", result.forecastAccuracy90d);
 	await setNumIfValid(host, "learning.price_forecast.avg_error_ct_7d", result.avgErrorCt7d);
 	await setNumIfValid(host, "learning.price_forecast.avg_error_ct_30d", result.avgErrorCt30d);
-	await setNumIfValid(host, "learning.price_forecast.avg_error_ct_90d", result.avgErrorCt90d);
 	await host.setStateAsync("learning.price_forecast.status", { val: result.status, ack: true });
 	await host.setStateAsync("learning.price_forecast.health", { val: result.health, ack: true });
-	await host.setStateAsync("learning.price_forecast.stability", { val: result.stability, ack: true });
-	await host.setStateAsync("learning.price_forecast.forecast_source", {
-		val: result.forecastSource,
-		ack: true,
-	});
-	await host.setStateAsync("learning.price_forecast.actual_source", { val: result.actualSource, ack: true });
 	await host.setStateAsync("learning.price_forecast.error", { val: result.error, ack: true });
 	await host.setStateAsync("learning.price_forecast.last_run", { val: lastRun, ack: true });
-	await host.setStateAsync("learning.price_forecast.freeze_time", {
-		val: `${cfg.todayFreezeTime}/${cfg.tomorrowFreezeTime}`,
-		ack: true,
-	});
-	await host.setStateAsync("learning.price_forecast.today_freeze_time", {
-		val: cfg.todayFreezeTime,
-		ack: true,
-	});
-	await host.setStateAsync("learning.price_forecast.tomorrow_freeze_time", {
-		val: cfg.tomorrowFreezeTime,
-		ack: true,
-	});
 }
 
 function resolveForecastSource(cfg: ReturnType<typeof priceForecastConfigFromAdapter>): string {

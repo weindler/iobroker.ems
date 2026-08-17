@@ -8,7 +8,7 @@ import {
 	readForeignNumber,
 	setEdgeBool,
 } from "../../failsafe_common";
-import { mappingBase } from "../../tree_paths";
+import { resolveMappingTargetFromConfig } from "../../mapping_resolve";
 import { WALLBOX_STATUS_STATES } from "../../status_wallbox";
 import type { CommandIntent, PipelineOutcome } from "../../types";
 
@@ -41,11 +41,9 @@ function maxChargeWFromConfig(config: Record<string, unknown>): number {
 }
 
 async function enableTargetId(adapter: ioBroker.Adapter): Promise<string> {
-	const base = mappingBase(ADDON_ID, "set_enabled");
-	const en = await adapter.getStateAsync(`${base}.enabled`);
-	if (en?.val === false) return "";
-	const ts = await adapter.getStateAsync(`${base}.target_state`);
-	return typeof ts?.val === "string" ? ts.val.trim() : "";
+	const mapped = resolveMappingTargetFromConfig(adapter.config, ADDON_ID, "set_enabled");
+	if (!mapped || !mapped.enabled) return "";
+	return mapped.targetState;
 }
 
 function powerFeedbackIdFromConfig(config: Record<string, unknown>): string {

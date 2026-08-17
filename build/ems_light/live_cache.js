@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deriveHealth = exports.formatLiveCacheSummary = exports.refreshLiveCache = void 0;
-const tree_paths_1 = require("../tree_paths");
 const state_util_1 = require("./state_util");
+const mapping_resolve_1 = require("../mapping_resolve");
 const BATTERY_SLOTS = [
     { addonId: "battery", role: "soc_pct", liveId: "live.battery.soc_pct", labelDe: "Batterie SOC" },
     {
@@ -22,32 +22,6 @@ const BATTERY_SLOTS = [
         role: "capacity_kwh",
         liveId: "live.battery.capacity_kwh",
         labelDe: "Batteriekapazität",
-    },
-];
-const WALLBOX_SLOTS = [
-    {
-        addonId: "wallbox",
-        role: "evcc_enabled",
-        liveId: "live.wallbox.enabled",
-        labelDe: "Wallbox Freigabe (EVCC)",
-    },
-    {
-        addonId: "wallbox",
-        role: "evcc_vehicle_soc",
-        liveId: "live.wallbox.vehicle_soc_pct",
-        labelDe: "Fahrzeug-SOC (EVCC)",
-    },
-    {
-        addonId: "wallbox",
-        role: "evcc_charging",
-        liveId: "live.wallbox.charging",
-        labelDe: "Laden aktiv (EVCC)",
-    },
-    {
-        addonId: "wallbox",
-        role: "evcc_charge_power_w",
-        liveId: "live.wallbox.charge_power_w",
-        labelDe: "Ladeleistung (EVCC)",
     },
 ];
 const IMMERSION_SLOTS = [
@@ -73,16 +47,11 @@ const TARIFF_SLOTS = [
     },
 ];
 async function readMappedForeign(host, addonId, role) {
-    const base = (0, tree_paths_1.mappingBase)(addonId, role);
-    const enabledSt = await host.getStateAsync(`${base}.enabled`);
-    if (enabledSt?.val === false) {
+    const mapped = (0, mapping_resolve_1.resolveMappingTargetFromConfig)(host.config, addonId, role);
+    if (!mapped || !mapped.enabled) {
         return null;
     }
-    const targetSt = await host.getStateAsync(`${base}.target_state`);
-    const target = targetSt?.val != null ? String(targetSt.val).trim() : "";
-    if (!target) {
-        return null;
-    }
+    const target = mapped.targetState;
     try {
         const foreign = await host.getForeignStateAsync(target);
         if (!foreign || foreign.val === undefined || foreign.val === null) {
@@ -97,10 +66,6 @@ async function readMappedForeign(host, addonId, role) {
 function normalizeLiveValue(liveId, raw) {
     if (raw === null || raw === undefined) {
         return null;
-    }
-    if (liveId === "live.wallbox.enabled" || liveId === "live.wallbox.charging") {
-        const b = (0, state_util_1.asBool)(raw);
-        return b === null ? null : b ? 1 : 0;
     }
     if (liveId === "live.price.now_ct_per_kwh") {
         const eurPerKwh = (0, state_util_1.asNum)(raw);
@@ -148,7 +113,7 @@ async function mirrorPvPower(host, result) {
 }
 async function refreshLiveCache(host) {
     const result = { updated: [], missing: [], errors: [] };
-    for (const slot of [...BATTERY_SLOTS, ...WALLBOX_SLOTS, ...IMMERSION_SLOTS, ...TARIFF_SLOTS]) {
+    for (const slot of [...BATTERY_SLOTS, ...IMMERSION_SLOTS, ...TARIFF_SLOTS]) {
         await applySlot(host, slot, result);
     }
     await mirrorPvPower(host, result);

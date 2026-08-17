@@ -95,15 +95,6 @@ async function writeSystemStates(
 	engineIssues: import("./core/types").PolicyIssue[],
 	valid: boolean,
 ): Promise<string> {
-	const registryJson = stableStringify(
-		providers.map((p) => ({
-			id: p.id,
-			addonType: p.addonType,
-			instanceId: p.instanceId,
-			schemaVersion: p.schemaVersion,
-		})),
-	);
-
 	const payload = {
 		schemaVersion: POLICY_SCHEMA_VERSION,
 		engineVersion: POLICY_ENGINE_VERSION,
@@ -134,12 +125,9 @@ async function writeSystemStates(
 
 	const ts = new Date().toISOString();
 	const writes = [
-		{ id: "policy.system.schema_version", val: POLICY_SCHEMA_VERSION },
-		{ id: "policy.system.engine_version", val: POLICY_ENGINE_VERSION },
 		{ id: "policy.system.status", val: valid ? "ready" : "invalid" },
 		{ id: "policy.system.valid", val: valid },
 		{ id: "policy.system.issues_json", val: stableStringify(payload.issues) },
-		{ id: "policy.system.registered_providers_json", val: registryJson },
 	];
 
 	await setStatesIfRevisionChanged(host, "policy.system.revision", hash, writes, "policy.system.updated_at", ts);
@@ -164,7 +152,6 @@ async function writeGlobalPolicyStates(
 	const writes = [
 		{ id: "policy.global.configured_json", val: snapshotForJson(configured) },
 		{ id: "policy.global.effective_json", val: snapshotForJson(effective) },
-		{ id: "policy.global.provenance_json", val: stableStringify(effective.provenance ?? {}) },
 		{ id: "policy.global.status", val: effective.status },
 		{ id: "policy.global.valid", val: validation.valid },
 		{ id: "policy.global.issues_json", val: stableStringify(validation.issues) },

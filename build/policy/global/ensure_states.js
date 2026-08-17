@@ -25,12 +25,9 @@ exports.ensurePolicyChannels = ensurePolicyChannels;
 async function ensureSystemPolicyStates(host) {
     await ensurePolicyChannels(host);
     const defs = [
-        strState("policy.system.schema_version", "Policy Schema-Version"),
-        strState("policy.system.engine_version", "Policy Engine-Version"),
         strState("policy.system.status", "Policy Engine Status", "not_initialized"),
         boolState("policy.system.valid", "Policy Engine gültig", false),
         strState("policy.system.issues_json", "Policy Engine Issues (JSON)", "[]"),
-        strState("policy.system.registered_providers_json", "Policy Provider Registry (JSON)", "[]"),
         strState("policy.system.revision", "Policy Engine Revision", ""),
         strState("policy.system.updated_at", "Policy Engine aktualisiert (ISO)", ""),
     ];
@@ -42,7 +39,6 @@ async function ensureGlobalPolicyStates(host) {
     const defs = [
         strState("policy.global.configured_json", "Globale Policy konfiguriert (JSON)", "{}"),
         strState("policy.global.effective_json", "Globale Policy effektiv (JSON)", "{}"),
-        strState("policy.global.provenance_json", "Globale Policy Herkunft (JSON)", "{}"),
         strState("policy.global.status", "Globale Policy Status", "not_initialized"),
         boolState("policy.global.valid", "Globale Policy gültig", false),
         strState("policy.global.issues_json", "Globale Policy Issues (JSON)", "[]"),

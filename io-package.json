@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.292",
+		"version": "0.1.293",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.293": {
+				"en": "Production state surface cut: empty-config ~500 states (was ~1036). Mapping is adapter config only. EV telemetry is addons.wallbox.status.evcc; EMS decision/safety stays on wallbox.runtime. Planner/learning no longer publish large JSON/history mirrors. Startup cleanup removes the old object tree. Decision chain unchanged (vehicleConnected=false + EVCC now → no EV action, no battery Hold). Reload VIS after update.",
+				"de": "Produktive State-Fläche geschnitten: Leerkonfig ca. 500 States (vorher ca. 1036). Mapping nur noch Adapter-Konfiguration. EV-Telemetrie ist addons.wallbox.status.evcc; EMS-Entscheidung/Safety bleibt auf wallbox.runtime. Planner/Learning veröffentlichen keine großen JSON-/History-Spiegel mehr. Startup räumt den alten Objektbaum auf. Entscheidungskette unverändert (vehicleConnected=false + EVCC now → keine EV-Aktion, kein Batterie-Hold). VIS nach Update neu laden."
+			},
 			"0.1.292": {
 				"en": "One decision chain: leftover EVCC now with a disconnected vehicle no longer invents EV fast-charge, battery Hold, or grid-balance EV conflict. Planner/Daily Plan remains the device authority; Hold is only observed real charging (or Tibber Rewards). VIS EV-Schnellladen follows that Hold, not EVCC battery_mode. Removed unused wallbox.runtime.charge_boost_active. Productive GB/EV Dauerbetrieb stay off.",
 				"de": "Eine Entscheidungskette: Übrig gebliebenes EVCC now bei getrenntem Fahrzeug erzeugt kein EV-Schnellladen, keinen Batterie-Hold und keinen Netzausgleich-EV-Konflikt. Planner/Daily Plan bleibt Geräte-Authority; Hold nur bei nachweisbarer Ladung (oder Tibber Rewards). VIS EV-Schnellladen folgt diesem Hold, nicht EVCC battery_mode. Ungenutzter State wallbox.runtime.charge_boost_active entfernt. Produktiver GB-/EV-Dauerbetrieb bleibt aus."

@@ -10,6 +10,7 @@ const constants_1 = require("../learning/pv_horizon/constants");
 const state_util_1 = require("../ems_light/state_util");
 const math_1 = require("../learning/thermal_runtime/math");
 const time_1 = require("../operator/time");
+const config_2 = require("../learning/battery_runtime/config");
 /** Nur Add-ons, die aktiv UND per Governance für KI-Optimierung freigegeben sind — sonst darf die KI sie nicht mal erwähnen. */
 function resolveAllowedAddonIds(config) {
     return (0, registry_1.governedAddonIds)().filter((id) => (0, config_1.isAddonEnabled)(config, id) && (0, config_1.isAddonAiOptimizationAllowed)(config, id));
@@ -198,19 +199,19 @@ async function readPvHorizonDays(host) {
 }
 /** Kuratierter Learning-Digest — Skalare aus Learning-States, keine History-Dumps. */
 async function buildLearningDigest(host, timezone = "Europe/Berlin") {
-    const [pvBiasStatus, pvToday, pvTomorrow, thermalStatus, thermalEmpty, batteryStatus, topOffDays, priceStatus, priceAvg, houseStatus, pvHorizonDays,] = await Promise.all([
+    const [pvBiasStatus, pvToday, pvTomorrow, thermalStatus, thermalEmpty, batteryStatus, priceStatus, priceAvg, houseStatus, pvHorizonDays,] = await Promise.all([
         readStr(host, "learning.pv_bias.status"),
         readNum(host, "learning.pv_bias.corrected_today_kwh"),
         readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
         readStr(host, "learning.thermal_runtime.status"),
         readStr(host, "learning.thermal_runtime.estimated_empty_at"),
         readStr(host, "learning.battery_runtime.status"),
-        readNum(host, "learning.battery_runtime.topoff_interval_days"),
         readStr(host, "learning.price_learning.status"),
         readNum(host, "learning.price_learning.avg_price_7d"),
         readStr(host, "learning.house_load.status"),
         readPvHorizonDays(host),
     ]);
+    const topOffDays = (0, config_2.batteryRuntimeConfigFromAdapter)(host.config).topoffIntervalDays;
     return {
         pvBiasStatus,
         pvCorrectedTodayKwh: pvToday,

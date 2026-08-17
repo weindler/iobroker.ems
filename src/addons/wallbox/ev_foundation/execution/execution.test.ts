@@ -1163,10 +1163,7 @@ describe("Phase 5B preflight: noop vs OFF and source freshness", () => {
 		assert.equal(s.failsafeReason, "");
 		assert.equal(s.pendingMode, null);
 		assert.equal((await host.getStateAsync(WALLBOX_EV_FOUNDATION_STATES.evExecutionDesiredMode))?.val, "noop");
-		assert.equal(
-			(await host.getStateAsync(WALLBOX_EV_FOUNDATION_STATES.evExecutionDesiredReason))?.val,
-			"no_wallbox_action",
-		);
+		assert.equal(s.desiredReason, "no_wallbox_action");
 		assert.match(String((await host.getStateAsync(WALLBOX_EV_FOUNDATION_STATES.evExecutionExplain))?.val), /desired=noop/);
 	});
 
@@ -1199,7 +1196,6 @@ describe("Phase 5B preflight: noop vs OFF and source freshness", () => {
 		assert.notEqual(s.failsafeReason, "status_mode_stale");
 		assert.notEqual(s.failsafeReason, "evcc_source_stale");
 		assert.equal((await host.getStateAsync(WALLBOX_EV_FOUNDATION_STATES.evExecutionDesiredMode))?.val, "off");
-		assert.equal((await host.getStateAsync(WALLBOX_EV_FOUNDATION_STATES.evExecutionSourceFresh))?.val, true);
 	});
 });
 
@@ -1711,8 +1707,8 @@ describe("Phase 5B ownership & release", () => {
 		});
 		assert.equal(foreignWrites.length, 0);
 		assert.equal(s.releaseReason, "release_off");
-		assert.equal((await host.getStateAsync(WALLBOX_EV_FOUNDATION_STATES.evExecutionOwnership))?.val, "ems");
-		assert.equal((await host.getStateAsync(WALLBOX_EV_FOUNDATION_STATES.evExecutionOwnedMode))?.val, "pv");
+		assert.equal(s.ownership, "ems");
+		assert.equal(s.ownedMode, "pv");
 		assert.match(
 			String((await host.getStateAsync(WALLBOX_EV_FOUNDATION_STATES.evExecutionExplain))?.val),
 			/action=release_off/,
@@ -1919,7 +1915,7 @@ describe("Phase 5B controlled live test", () => {
 		assert.equal(s.explain, "live_test=consumed, command=pv, awaiting_feedback");
 		assert.equal((await host.getStateAsync(WALLBOX_EV_FOUNDATION_STATES.evExecutionLiveTestArmed))?.val, false);
 		assert.equal((await host.getStateAsync(WALLBOX_EV_FOUNDATION_STATES.evExecutionLiveTestConsumed))?.val, true);
-		assert.equal((await host.getStateAsync(WALLBOX_EV_FOUNDATION_STATES.evExecutionLastCommand))?.val, "pv");
+		assert.equal(s.lastCommand, "pv");
 	});
 
 	it("L8: armed + valid now → exactly one first button pulse, consumed", async () => {

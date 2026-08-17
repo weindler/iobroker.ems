@@ -39,15 +39,12 @@ import {
 	snapshotToBatteryManualOverride,
 } from "./sources/iobroker_battery";
 import { resolveWallboxIntent } from "./wallbox/resolve";
-import { lastChangedAt } from "./wallbox/validation";
 import type { IobrokerIntentSnapshot, ResolvedWallboxIntent } from "./wallbox/types";
 import { emptyResolvedWallboxIntent } from "./wallbox/types";
 import { resolveThermalIntent } from "./thermal/resolve";
-import { lastThermalChangedAt } from "./thermal/validation";
 import type { IobrokerThermalSnapshot, ResolvedThermalIntent } from "./thermal/types";
 import { emptyResolvedThermalIntent } from "./thermal/types";
 import { resolveBatteryIntent } from "./battery/resolve";
-import { lastBatteryChangedAt } from "./battery/validation";
 import type { IobrokerBatterySnapshot, ResolvedBatteryIntent } from "./battery/types";
 import { emptyResolvedBatteryIntent } from "./battery/types";
 import type { ThermalControlMode } from "../addons/immersion_heater/runtime/types";
@@ -175,29 +172,20 @@ function scheduleExpiryRerun(host: IntentEngineHost, now: Date): void {
 
 async function writeWallboxMirror(host: IntentEngineHost, intent: ResolvedWallboxIntent): Promise<void> {
 	await setStateIfChanged(host, "user_intent.wallbox.resolved_json", JSON.stringify(intent));
-	await setStateIfChanged(host, "user_intent.wallbox.revision", intent.revision);
 	await setStateIfChanged(host, "user_intent.wallbox.intent_state", intent.intent_state);
-	await setStateIfChanged(host, "user_intent.wallbox.last_changed", lastChangedAt(intent));
 	await setStateIfChanged(host, "user_intent.wallbox.manual_override_active", intent.manual_override.active);
-	await setStateIfChanged(host, "user_intent.wallbox.source_summary", JSON.stringify(intent.source_summary));
 }
 
 async function writeThermalMirror(host: IntentEngineHost, intent: ResolvedThermalIntent): Promise<void> {
 	await setStateIfChanged(host, "user_intent.thermal.resolved_json", JSON.stringify(intent));
-	await setStateIfChanged(host, "user_intent.thermal.revision", intent.revision);
 	await setStateIfChanged(host, "user_intent.thermal.intent_state", intent.intent_state);
-	await setStateIfChanged(host, "user_intent.thermal.last_changed", lastThermalChangedAt(intent));
 	await setStateIfChanged(host, "user_intent.thermal.manual_override_active", intent.manual_override.active);
-	await setStateIfChanged(host, "user_intent.thermal.source_summary", JSON.stringify(intent.source_summary));
 }
 
 async function writeBatteryMirror(host: IntentEngineHost, intent: ResolvedBatteryIntent): Promise<void> {
 	await setStateIfChanged(host, "user_intent.battery.resolved_json", JSON.stringify(intent));
-	await setStateIfChanged(host, "user_intent.battery.revision", intent.revision);
 	await setStateIfChanged(host, "user_intent.battery.intent_state", intent.intent_state);
-	await setStateIfChanged(host, "user_intent.battery.last_changed", lastBatteryChangedAt(intent));
 	await setStateIfChanged(host, "user_intent.battery.manual_override_active", intent.manual_override.active);
-	await setStateIfChanged(host, "user_intent.battery.source_summary", JSON.stringify(intent.source_summary));
 }
 
 export interface IntentEngineResult {

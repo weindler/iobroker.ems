@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureWallboxEvFoundationStates = exports.WALLBOX_EV_FOUNDATION_STATES = void 0;
+exports.ensureWallboxEvFoundationStates = exports.WALLBOX_EV_FOUNDATION_BALLAST_SUFFIXES = exports.WALLBOX_EV_FOUNDATION_PUBLIC_STATE_IDS = exports.WALLBOX_EV_FOUNDATION_STATES = void 0;
 const tree_paths_1 = require("../../../tree_paths");
 const state_util_1 = require("../../../ems_light/state_util");
 const EV_FOUNDATION_BASE = `${(0, tree_paths_1.addonStatusBase)("wallbox")}.ev_foundation`;
@@ -117,6 +117,28 @@ exports.WALLBOX_EV_FOUNDATION_STATES = {
     evExecutionLiveTestResult: `${EV_FOUNDATION_BASE}.ev_execution_live_test_result`,
     evExecutionLiveTestBlockReason: `${EV_FOUNDATION_BASE}.ev_execution_live_test_block_reason`,
 };
+/** Öffentliche EV-Foundation: Authority, Smart-Plan-Inputs, kompakte Execution, Live-Test. */
+exports.WALLBOX_EV_FOUNDATION_PUBLIC_STATE_IDS = new Set([
+    exports.WALLBOX_EV_FOUNDATION_STATES.externalSmartPlanJson,
+    exports.WALLBOX_EV_FOUNDATION_STATES.externalMinSocPct,
+    exports.WALLBOX_EV_FOUNDATION_STATES.externalAuthorityState,
+    exports.WALLBOX_EV_FOUNDATION_STATES.takeoverSeverity,
+    exports.WALLBOX_EV_FOUNDATION_STATES.preparedEvState,
+    exports.WALLBOX_EV_FOUNDATION_STATES.evExecutionEnabled,
+    exports.WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority,
+    exports.WALLBOX_EV_FOUNDATION_STATES.evExecutionReady,
+    exports.WALLBOX_EV_FOUNDATION_STATES.evExecutionBlockReason,
+    exports.WALLBOX_EV_FOUNDATION_STATES.evExecutionDesiredMode,
+    exports.WALLBOX_EV_FOUNDATION_STATES.evExecutionExplain,
+    exports.WALLBOX_EV_FOUNDATION_STATES.evExecutionLiveTestArmed,
+    exports.WALLBOX_EV_FOUNDATION_STATES.evExecutionLiveTestDisarm,
+    exports.WALLBOX_EV_FOUNDATION_STATES.evExecutionLiveTestConsumed,
+    exports.WALLBOX_EV_FOUNDATION_STATES.evExecutionLiveTestResult,
+    exports.WALLBOX_EV_FOUNDATION_STATES.evExecutionLiveTestBlockReason,
+]);
+exports.WALLBOX_EV_FOUNDATION_BALLAST_SUFFIXES = Object.values(exports.WALLBOX_EV_FOUNDATION_STATES)
+    .filter((id) => !exports.WALLBOX_EV_FOUNDATION_PUBLIC_STATE_IDS.has(id))
+    .map((id) => id.slice(EV_FOUNDATION_BASE.length + 1));
 function boolState(id, name, write = false, role = "state") {
     return {
         id,
@@ -256,6 +278,6 @@ async function ensureWallboxEvFoundationStates(host) {
         strState(exports.WALLBOX_EV_FOUNDATION_STATES.evExecutionLiveTestCommand, "EV Phase-5B Live-Test Command"),
         strState(exports.WALLBOX_EV_FOUNDATION_STATES.evExecutionLiveTestResult, "EV Phase-5B Live-Test Ergebnis"),
         strState(exports.WALLBOX_EV_FOUNDATION_STATES.evExecutionLiveTestBlockReason, "EV Phase-5B Live-Test Sperrgrund"),
-    ]);
+    ].filter((d) => exports.WALLBOX_EV_FOUNDATION_PUBLIC_STATE_IDS.has(d.id)));
 }
 exports.ensureWallboxEvFoundationStates = ensureWallboxEvFoundationStates;

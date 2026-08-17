@@ -56,11 +56,9 @@ async function ensureGlobalModesStates(host, adminDefault) {
         strState("global_modes.requested", "Global Mode (Benutzerwunsch)", adminDefault, true, GLOBAL_MODE_STATES),
         strState("global_modes.admin_default", "Global Mode Admin-Default (zuletzt gesehen)"),
         strState("global_modes.active", "Global Mode aktiv", adminDefault),
-        strState("global_modes.available_json", "Global Modes verfügbar (JSON)", "[]"),
         strState("global_modes.effective_profile_json", "Global Mode Profil (JSON)", "{}"),
         strState("global_modes.status", "Global Modes Status", "not_initialized"),
         boolState("global_modes.valid", "Global Modes gültig", false),
-        strState("global_modes.issues_json", "Global Modes Issues (JSON)", "[]"),
         strState("global_modes.revision", "Global Modes Revision", ""),
         strState("global_modes.updated_at", "Global Modes aktualisiert (ISO)", ""),
     ];

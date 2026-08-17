@@ -57,29 +57,14 @@ async function writeResult(
 	await host.setStateAsync("learning.battery_runtime.status", { val: result.status, ack: true });
 	await host.setStateAsync("learning.battery_runtime.last_run", { val: lastRun, ack: true });
 	await setNumIfValid(host, "learning.battery_runtime.sample_days", result.sampleDays);
-	await setNumIfValid(host, "learning.battery_runtime.avg_night_discharge_pct", result.avgNightDischargePct);
 	await setNumIfValid(host, "learning.battery_runtime.avg_night_discharge_kwh", result.avgNightDischargeKwh);
-	await setNumIfValid(host, "learning.battery_runtime.avg_charge_rate_pct_h", result.avgChargeRatePctH);
-	await setNumIfValid(
-		host,
-		"learning.battery_runtime.avg_discharge_rate_pct_h",
-		result.avgDischargeRatePctH,
-	);
 	await setNumIfValid(host, "learning.battery_runtime.avg_charge_power_w", result.avgChargePowerW);
-	await setNumIfValid(host, "learning.battery_runtime.avg_discharge_power_w", result.avgDischargePowerW);
 	await setNumIfValid(host, "learning.battery_runtime.max_charge_power_w", result.maxChargePowerW);
-	await setNumIfValid(host, "learning.battery_runtime.max_discharge_power_w", result.maxDischargePowerW);
 	await host.setStateAsync("learning.battery_runtime.last_full_charge", {
 		val: result.lastFullCharge ?? "",
 		ack: true,
 	});
 	await setNumIfValid(host, "learning.battery_runtime.days_since_full", result.daysSinceFull);
-	await setNumIfValid(host, "learning.battery_runtime.seconds_since_full_charge", result.secondsSinceFullCharge);
-	await host.setStateAsync("learning.battery_runtime.full_charge_source", {
-		val: result.fullChargeSource ?? "",
-		ack: true,
-	});
-	await setNumIfValid(host, "learning.battery_runtime.topoff_interval_days", result.topoffIntervalDays);
 	await setNumIfValid(host, "learning.battery_runtime.topoff_days_remaining", result.topoffDaysRemaining);
 	if (result.topoffDue !== null) {
 		await host.setStateAsync("learning.battery_runtime.topoff_due", {
@@ -88,10 +73,6 @@ async function writeResult(
 		});
 	}
 	await setNumIfValid(host, "learning.battery_runtime.estimated_runtime_days", result.estimatedRuntimeDays);
-	await host.setStateAsync("learning.battery_runtime.power_history_mode", {
-		val: result.powerHistoryMode ?? "",
-		ack: true,
-	});
 }
 
 export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Promise<void> {

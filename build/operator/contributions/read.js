@@ -170,7 +170,7 @@ function pvHorizonDays(now, timezone, horizonValues, horizonConfidence) {
 async function collectContributions(host, now, gridForecast) {
     const timezone = (0, config_1.intentAdminConfigFromAdapter)(host.config).timezone;
     const grid = gridForecast ?? (0, grid_1.buildGridSupplyForecast)(await (0, grid_read_1.collectGridSupplyBuildInput)(host, now));
-    const [correctedTodayKwh, correctedTomorrowKwh, rawTodayKwh, rawTomorrowKwh, pvConfidence, pvStatus, pvLastUpdate, houseStatus, houseConfidence, forecastTodayRaw, forecastTomorrowRaw, forecastHorizonRaw, houseLastUpdate, weatherStatus, weatherHealth, weatherConfidence, weatherLastUpdate, weatherForecastSource, weatherActualSource, globalMode,] = await Promise.all([
+    const [correctedTodayKwh, correctedTomorrowKwh, rawTodayKwh, rawTomorrowKwh, pvConfidence, pvStatus, pvLastUpdate, houseStatus, houseConfidence, forecastTodayRaw, forecastTomorrowRaw, forecastHorizonRaw, houseLastUpdate, weatherStatus, weatherHealth, weatherConfidence, weatherLastUpdate, globalMode,] = await Promise.all([
         readNum(host, "learning.pv_bias.corrected_today_kwh"),
         readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
         readNum(host, "learning.pv_bias.raw_today_kwh"),
@@ -188,8 +188,6 @@ async function collectContributions(host, now, gridForecast) {
         readStr(host, "learning.weather.health"),
         readNum(host, "learning.weather.confidence_pct"),
         readStr(host, "learning.weather.last_update"),
-        readStr(host, "learning.weather.forecast_source"),
-        readStr(host, "learning.weather.actual_source"),
         readStr(host, "global_modes.active"),
     ]);
     const horizonValues = await Promise.all(Array.from({ length: constants_1.PV_HORIZON_DAY_COUNT - constants_1.PV_HORIZON_EXTENDED_FIRST_DAY + 1 }, (_, i) => readNum(host, `learning.pv_horizon.day${constants_1.PV_HORIZON_EXTENDED_FIRST_DAY + i}.corrected_kwh`)));
@@ -288,8 +286,8 @@ async function collectContributions(host, now, gridForecast) {
             learningHealth: weatherHealth,
             confidencePct: weatherConfidence,
             lastUpdate: weatherLastUpdate,
-            forecastSource: weatherForecastSource,
-            actualSource: weatherActualSource,
+            forecastSource: "",
+            actualSource: "",
             outdoorTempC,
             cloudPct,
             hourlyPoints,

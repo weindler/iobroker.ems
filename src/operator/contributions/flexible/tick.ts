@@ -104,14 +104,6 @@ export async function runFlexibleContributionsTick(
 
 	try {
 		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.status, overallStatus);
-		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.generatedAt, now.toISOString());
-		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.contributionsJson, JSON.stringify(contributions));
-		await setStateIfChanged(
-			host,
-			FLEXIBLE_CONTRIBUTIONS_STATE_IDS.activeJson,
-			JSON.stringify(active.map((c) => c.contributionId)),
-		);
-		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.excludedJson, JSON.stringify(excluded));
 		await setStateIfChanged(
 			host,
 			FLEXIBLE_CONTRIBUTIONS_STATE_IDS.reasonDe,
@@ -119,8 +111,6 @@ export async function runFlexibleContributionsTick(
 		);
 		await setStateIfChanged(host, FLEXIBLE_CONTRIBUTIONS_STATE_IDS.revision, revision);
 
-		await writeAddonStates(host, "battery", contributions);
-		await writeAddonStates(host, "wallbox", contributions);
 		await writeAddonStates(host, "immersion_heater", contributions);
 		await writeAddonStates(host, "air_conditioning", contributions);
 	} catch (e) {

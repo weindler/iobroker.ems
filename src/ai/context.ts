@@ -15,6 +15,7 @@ import type { DailyPlan, DailyPlanSlot } from "../operator/daily_plan/types";
 import { asBool, asNum } from "../ems_light/state_util";
 import { liveRemainingHoursFromEmptyAt } from "../learning/thermal_runtime/math";
 import { formatLocalDateTimeDe } from "../operator/time";
+import { batteryRuntimeConfigFromAdapter } from "../learning/battery_runtime/config";
 
 export type ContextHost = {
 	config: unknown;
@@ -221,7 +222,6 @@ export async function buildLearningDigest(
 		thermalStatus,
 		thermalEmpty,
 		batteryStatus,
-		topOffDays,
 		priceStatus,
 		priceAvg,
 		houseStatus,
@@ -233,12 +233,12 @@ export async function buildLearningDigest(
 		readStr(host, "learning.thermal_runtime.status"),
 		readStr(host, "learning.thermal_runtime.estimated_empty_at"),
 		readStr(host, "learning.battery_runtime.status"),
-		readNum(host, "learning.battery_runtime.topoff_interval_days"),
 		readStr(host, "learning.price_learning.status"),
 		readNum(host, "learning.price_learning.avg_price_7d"),
 		readStr(host, "learning.house_load.status"),
 		readPvHorizonDays(host),
 	]);
+	const topOffDays = batteryRuntimeConfigFromAdapter(host.config).topoffIntervalDays;
 	return {
 		pvBiasStatus,
 		pvCorrectedTodayKwh: pvToday,

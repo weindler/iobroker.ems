@@ -5,7 +5,7 @@ import { globalModeDefaultFromConfig } from "./config";
 import { ensureGlobalModesStates } from "./ensure_states";
 import { writeGlobalModesPersist, readGlobalModesPersistRevision } from "./persist";
 import { decideRequestedWrite, resolveGlobalModes } from "./resolve";
-import { availableModesJson, profileForMode } from "./schema";
+import { profileForMode } from "./schema";
 import type { GlobalModeResolution } from "./types";
 
 export type GlobalModesHost = StateHost & {
@@ -59,16 +59,13 @@ export async function runGlobalModes(host: GlobalModesHost): Promise<GlobalModeR
 	}
 
 	const ts = new Date().toISOString();
-	const issuesJson = JSON.stringify(resolution.issues);
 	const profileJson = JSON.stringify(profileForMode(resolution.active));
 
 	const writes = [
 		{ id: "global_modes.active", val: resolution.active },
-		{ id: "global_modes.available_json", val: availableModesJson() },
 		{ id: "global_modes.effective_profile_json", val: profileJson },
 		{ id: "global_modes.status", val: resolution.status },
 		{ id: "global_modes.valid", val: resolution.valid },
-		{ id: "global_modes.issues_json", val: issuesJson },
 	];
 
 	const { changed } = await setStatesIfRevisionChanged(

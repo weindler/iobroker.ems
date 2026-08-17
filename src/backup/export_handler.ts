@@ -1,4 +1,3 @@
-import { EXPORT_SCHEMA_VERSION } from "./types";
 import { BACKUP_STATES, SUPPORT_STATES, setBackupExportStatus } from "./ensure_states";
 import { isOperationRunning } from "./operation_lock";
 import type { ExportServiceHost } from "./types";
@@ -203,7 +202,6 @@ export async function initBackupExportRuntime(host: ExportServiceHost): Promise<
 	await host.setStateAsync(BACKUP_STATES.supportExportRequest, { val: false, ack: true });
 	await host.setStateAsync(SUPPORT_STATES.diagnosticMode, { val: false, ack: true });
 	await host.setStateAsync(SUPPORT_STATES.diagnosticExpiresAt, { val: "", ack: true });
-	await host.setStateAsync(BACKUP_STATES.schemaVersion, { val: EXPORT_SCHEMA_VERSION, ack: true });
 	await syncDiagnosticStatus(host);
 }
 

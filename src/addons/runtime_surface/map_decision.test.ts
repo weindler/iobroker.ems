@@ -99,19 +99,17 @@ describe("runtime_surface plannerStatusFromDailyPlan", () => {
 });
 
 describe("runtime_surface ensure + publish", () => {
-	it("ensures surface states for all governed runtime ids", async () => {
+	it("does not create ioBroker runtime.surface states", async () => {
 		const mock = mockHost();
 		await ensureAddonRuntimeSurfaceStates(mock.host as import("../../ems_light/state_util.js").StateHost);
+		assert.equal(mock.objects.size, 0);
 		for (const entry of GOVERNED_ADDON_REGISTRY) {
 			const ids = runtimeSurfaceStateMap(entry.runtimeAddonId);
-			assert.ok(mock.objects.has(ids.decisionSource), entry.runtimeAddonId);
-			assert.ok(mock.objects.has(ids.plannerStatus), entry.runtimeAddonId);
-			assert.ok(mock.objects.has(ids.fault), entry.runtimeAddonId);
+			assert.equal(mock.objects.has(ids.decisionSource), false, entry.runtimeAddonId);
 		}
-		assert.ok(mock.objects.has("addons.air_conditioning.runtime.surface.decision_source"));
 	});
 
-	it("publishes canonical surface and only writes on change", async () => {
+	it("publishes an in-memory snapshot without ioBroker writes", async () => {
 		const mock = mockHost();
 		await ensureAddonRuntimeSurfaceStates(mock.host as import("../../ems_light/state_util.js").StateHost);
 		let writes = 0;
@@ -137,16 +135,6 @@ describe("runtime_surface ensure + publish", () => {
 		const snap = await publishAddonRuntimeSurface(countingHost, "immersion_heater", input);
 		assert.equal(snap.decisionSource, "deterministic_planner");
 		assert.equal(snap.decisionDetail, "daily_plan");
-		const ids = runtimeSurfaceStateMap("immersion_heater");
-		assert.equal(mock.states.get(ids.decisionSource)?.val, "deterministic_planner");
-		assert.equal(mock.states.get(ids.decisionDetail)?.val, "daily_plan");
-		assert.equal(mock.states.get(ids.plannerStatus)?.val, "valid");
-		assert.equal(mock.states.get(ids.lastDecisionAt)?.val, "2026-07-27T12:00:00.000Z");
-		const firstWrites = writes;
-		assert.ok(firstWrites >= 11);
-
-		writes = 0;
-		await publishAddonRuntimeSurface(countingHost, "immersion_heater", input);
 		assert.equal(writes, 0);
 
 		const built = buildAddonRuntimeSurfaceSnapshot({

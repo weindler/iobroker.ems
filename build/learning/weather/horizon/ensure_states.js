@@ -33,7 +33,6 @@ async function ensureWeatherHorizonStates(host) {
     await (0, state_util_1.ensureChannel)(host, "learning.weather.horizon", "EMS-Light Weather Horizon (Tag 1–7)");
     const defs = [
         strState("learning.weather.horizon.status", "Wetter-Horizon Status", "no_data"),
-        numState("learning.weather.horizon.days_available", "Wetter-Horizon verfügbare Tage"),
         strState("learning.weather.horizon.last_update", "Wetter-Horizon letztes Update (ISO)"),
         numState("learning.weather.horizon.min_bias_c", "Wetter-Horizon Min-Bias (Ist−Forecast)", "°C"),
         numState("learning.weather.horizon.max_bias_c", "Wetter-Horizon Max-Bias (Ist−Forecast)", "°C"),
@@ -48,7 +47,7 @@ async function ensureWeatherHorizonStates(host) {
     for (const day of constants_1.WEATHER_HORIZON_DAY_INDEXES) {
         const prefix = weatherHorizonDayStatePrefix(day);
         const label = day === 1 ? "heute" : day === 2 ? "morgen" : `Tag ${day}`;
-        defs.push(numState(`${prefix}.raw_min_temp_c`, `Wetter-Horizon ${label} Roh Min °C`, "°C"), numState(`${prefix}.raw_max_temp_c`, `Wetter-Horizon ${label} Roh Max °C`, "°C"), numState(`${prefix}.min_temp_c`, `Wetter-Horizon ${label} korr. Min °C`, "°C"), numState(`${prefix}.max_temp_c`, `Wetter-Horizon ${label} korr. Max °C`, "°C"), strState(`${prefix}.quality`, `Wetter-Horizon ${label} Qualität`, "missing"));
+        defs.push(numState(`${prefix}.min_temp_c`, `Wetter-Horizon ${label} korr. Min °C`, "°C"), numState(`${prefix}.max_temp_c`, `Wetter-Horizon ${label} korr. Max °C`, "°C"), strState(`${prefix}.quality`, `Wetter-Horizon ${label} Qualität`, "missing"));
     }
     await (0, state_util_1.ensureStates)(host, defs);
 }

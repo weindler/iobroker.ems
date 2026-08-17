@@ -84,7 +84,7 @@ async function setNumIfValid(host: PvHorizonRunHost, id: string, value: number |
 
 async function clearHorizonDay(host: PvHorizonRunHost, dayIndex: number): Promise<void> {
 	const prefix = `learning.pv_horizon.day${dayIndex}`;
-	for (const suffix of ["raw_kwh", "corrected_kwh", "confidence_pct"] as const) {
+	for (const suffix of ["corrected_kwh", "confidence_pct"] as const) {
 		await host.setStateAsync(`${prefix}.${suffix}`, { val: null, ack: true });
 	}
 }
@@ -97,13 +97,10 @@ async function writePvHorizonResult(host: PvHorizonRunHost, result: PvHorizonCom
 			await clearHorizonDay(host, day.dayIndex);
 			continue;
 		}
-		await setNumIfValid(host, `${prefix}.raw_kwh`, day.rawKwh);
 		await setNumIfValid(host, `${prefix}.corrected_kwh`, day.correctedKwh);
 		await setNumIfValid(host, `${prefix}.confidence_pct`, day.confidencePct);
 	}
-	await setNumIfValid(host, "learning.pv_horizon.total_7d_raw_kwh", result.total7dRawKwh);
 	await setNumIfValid(host, "learning.pv_horizon.total_7d_corrected_kwh", result.total7dCorrectedKwh);
-	await setNumIfValid(host, "learning.pv_horizon.days_available", result.daysAvailable);
 	await host.setStateAsync("learning.pv_horizon.status", { val: result.status, ack: true });
 	await host.setStateAsync("learning.pv_horizon.last_update", {
 		val: new Date().toISOString(),

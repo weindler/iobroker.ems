@@ -146,9 +146,7 @@ type FreezeTrack = {
 	jsonStateId: string;
 	freezeTime: string;
 	frozenAtStateId: string;
-	targetDateStateId: string;
 	statusStateId: string;
-	reasonStateId: string;
 	targetDate: (now: Date) => string;
 };
 
@@ -167,7 +165,6 @@ async function runFreezeTrack(
 	const decision = decideForecastFreeze(now, cfg.freezeEnabled, track.freezeTime, frozenAtTs);
 
 	await host.setStateAsync(track.statusStateId, { val: decision.status, ack: true });
-	await host.setStateAsync(track.reasonStateId, { val: decision.reason, ack: true });
 
 	if (!decision.shouldFreeze) {
 		return false;
@@ -186,10 +183,6 @@ async function runFreezeTrack(
 				`gefundene Tage=[${diag.distinctDateKeys.join(", ") || "keine"}], gesucht=${diag.targetDateKey}`,
 		);
 		await host.setStateAsync(track.statusStateId, { val: "error", ack: true });
-		await host.setStateAsync(track.reasonStateId, {
-			val: `Keine Forecast-Slots für ${targetDate} (${track.label}).`,
-			ack: true,
-		});
 		return false;
 	}
 
@@ -205,12 +198,7 @@ async function runFreezeTrack(
 	await writeForecastFreezeFile(baseDir, payload);
 
 	await host.setStateAsync(track.frozenAtStateId, { val: now.toISOString(), ack: true });
-	await host.setStateAsync(track.targetDateStateId, { val: targetDate, ack: true });
 	await host.setStateAsync(track.statusStateId, { val: "ready", ack: true });
-	await host.setStateAsync(track.reasonStateId, {
-		val: `${track.label}: Forecast für ${targetDate} eingefroren (${slots.length}h).`,
-		ack: true,
-	});
 	host.log.debug?.(`Price Forecast Freeze (${track.label}): ${targetDate} ${slots.length} Stunden`);
 	return true;
 }
@@ -229,9 +217,7 @@ export async function runPriceForecastFreeze(
 			jsonStateId: cfg.todayJsonStateId,
 			freezeTime: cfg.todayFreezeTime,
 			frozenAtStateId: "learning.price_forecast.frozen_today_at_ts",
-			targetDateStateId: "learning.price_forecast.frozen_today_target_date",
 			statusStateId: "learning.price_forecast.freeze_today_status",
-			reasonStateId: "learning.price_forecast.freeze_today_reason",
 			targetDate: targetDateForTodayFreeze,
 		});
 	}
@@ -242,9 +228,7 @@ export async function runPriceForecastFreeze(
 			jsonStateId: cfg.tomorrowJsonStateId,
 			freezeTime: cfg.tomorrowFreezeTime,
 			frozenAtStateId: "learning.price_forecast.frozen_at_ts",
-			targetDateStateId: "learning.price_forecast.frozen_target_date",
 			statusStateId: "learning.price_forecast.freeze_status",
-			reasonStateId: "learning.price_forecast.freeze_reason",
 			targetDate: targetDateForTomorrowFreeze,
 		});
 	}

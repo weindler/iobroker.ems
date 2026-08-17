@@ -6,8 +6,8 @@ const config_2 = require("../battery_runtime/config");
 const constants_1 = require("../house_load/constants");
 const config_3 = require("../house_load/config");
 const history_1 = require("../house_load/history");
-const tree_paths_1 = require("../../tree_paths");
 const constants_2 = require("../battery_runtime/constants");
+const mapping_resolve_1 = require("../../mapping_resolve");
 exports.DENSE_POWER_SOURCES = [
     { sourceKey: "battery.power_w", addonId: "battery", role: "power_w", rollupMode: "bidirectional_max" },
     {
@@ -17,14 +17,12 @@ exports.DENSE_POWER_SOURCES = [
         rollupMode: "unidirectional_avg",
     },
 ];
-async function resolveMappedRole(host, addonId, role) {
-    const base = (0, tree_paths_1.mappingBase)(addonId, role);
-    const enabledSt = await host.getStateAsync(`${base}.enabled`);
-    if (enabledSt?.val === false) {
+function mappedTarget(host, addonId, role) {
+    const mapped = (0, mapping_resolve_1.resolveMappingTargetFromConfig)(host.config, addonId, role);
+    if (!mapped || !mapped.enabled) {
         return "";
     }
-    const targetSt = await host.getStateAsync(`${base}.target_state`);
-    return typeof targetSt?.val === "string" ? targetSt.val.trim() : "";
+    return mapped.targetState;
 }
 function rec(config) {
     return config && typeof config === "object" ? config : {};
@@ -76,7 +74,7 @@ async function resolveDensePowerSources(host) {
             stateId = houseLearning.powerStateId;
         }
         if (!stateId) {
-            stateId = await resolveMappedRole(host, def.addonId, def.role);
+            stateId = mappedTarget(host, def.addonId, def.role);
         }
         if (!stateId) {
             continue;

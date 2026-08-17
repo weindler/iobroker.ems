@@ -32,7 +32,6 @@ async function ensureWallboxRuntimeStates(host) {
         strState(states_1.WALLBOX_RUNTIME_STATES.decisionSource, "Wallbox Entscheidungsquelle", "safe_default"),
         strState(states_1.WALLBOX_RUNTIME_STATES.reasonDe, "Wallbox Runtime Begründung (DE)"),
         strState(states_1.WALLBOX_RUNTIME_STATES.dailyPlanStatus, "Wallbox Daily-Plan-Status", "daily_plan_missing"),
-        boolState(states_1.WALLBOX_RUNTIME_STATES.dailyPlanValid, "Wallbox Daily Plan gültig", false),
         numState(states_1.WALLBOX_RUNTIME_STATES.dailyPlanRevision, "Wallbox Daily-Plan-Revision", 0),
         strState(states_1.WALLBOX_RUNTIME_STATES.dailyPlanSlotStart, "Wallbox Daily-Plan-Slot Start (ISO)"),
         strState(states_1.WALLBOX_RUNTIME_STATES.dailyPlanSlotEnd, "Wallbox Daily-Plan-Slot Ende (ISO)"),
@@ -115,6 +114,6 @@ async function ensureWallboxRuntimeStates(host) {
         boolState(states_1.WALLBOX_RUNTIME_STATES.externalVehicleChargeActive, "Wallbox externes Fahrzeugladen aktiv", false),
         boolState(states_1.WALLBOX_RUNTIME_STATES.tibberGridRewardsActive, "Wallbox Tibber Grid Rewards aktiv", false),
     ];
-    await (0, state_util_1.ensureStates)(host, defs);
+    await (0, state_util_1.ensureStates)(host, defs.filter((d) => states_1.WALLBOX_RUNTIME_PUBLIC_STATE_IDS.has(d.id)));
 }
 exports.ensureWallboxRuntimeStates = ensureWallboxRuntimeStates;

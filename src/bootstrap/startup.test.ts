@@ -17,7 +17,7 @@ import {
 	BOOTSTRAP_CORE_STATE_CATEGORIES,
 	LEGACY_WALLBOX_VEHICLE_SLOT_PREFIXES,
 } from "./manifest.js";
-import { ensureStaticStateTree, ensureDynamicVehicleProfiles } from "./ensure_static_tree.js";
+import { ensureStaticStateTree, ensureDynamicVehicleProfiles, cleanupDynamicPlaceholders } from "./ensure_static_tree.js";
 import { endBootstrapRun } from "./context.js";
 import { hydratePersistedState } from "./persist_hydrate.js";
 import { runPostBootstrapReconciliation } from "./reconcile.js";
@@ -459,5 +459,33 @@ describe("bootstrap cold start recovery", () => {
 		assert.equal(adapter.states.get(IMMERSION_RUNTIME_STATES.bufferTemperatureC)?.val, 52.5);
 		const dupes = adapter.subscriptions.filter((s, i) => adapter.subscriptions.indexOf(s) !== i);
 		assert.equal(dupes.length, 0, "no duplicate subscriptions");
+	});
+
+	it("productive surface stays within 350–550 states (empty config)", async () => {
+		const adapter = new FakeBootstrapAdapter(tmp);
+		await ensureStaticStateTree(adapter as unknown as ioBroker.Adapter);
+		await cleanupDynamicPlaceholders(adapter as unknown as ioBroker.Adapter);
+		const byType: Record<string, number> = {};
+		const byArea: Record<string, number> = {};
+		for (const [id, obj] of adapter.objects) {
+			const t = obj.type ?? "unknown";
+			byType[t] = (byType[t] ?? 0) + 1;
+			const area = id.split(".")[0] ?? id;
+			if (obj.type === "state") {
+				byArea[area] = (byArea[area] ?? 0) + 1;
+			}
+		}
+		const states = byType.state ?? 0;
+		const channels = byType.channel ?? 0;
+		console.log(`empty-config surface states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
+		assert.ok(
+			states <= 500,
+			`empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`,
+		);
+		assert.ok(states >= 250, `unexpectedly small surface states=${states}`);
+		assert.ok(![...adapter.objects.keys()].some((id) => id.includes(".mapping.")), "mapping shadows remain");
+		assert.ok(!adapter.objects.has("planner.intent.last_json"));
+		assert.ok(!adapter.objects.has("addons.wallbox.runtime.connected"));
+		assert.ok(!adapter.objects.has("addons.wallbox.status.evcc.snapshot_json"));
 	});
 });

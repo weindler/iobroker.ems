@@ -137,11 +137,8 @@ async function runWeatherHorizon(host) {
     }
     if (!(0, config_2.weatherHorizonHasAnyMapping)(cfg)) {
         await host.setStateAsync("learning.weather.horizon.status", { val: "no_mapping", ack: true });
-        await host.setStateAsync("learning.weather.horizon.days_available", { val: 0, ack: true });
         for (const day of constants_1.WEATHER_HORIZON_DAY_INDEXES) {
             const prefix = (0, ensure_states_1.weatherHorizonDayStatePrefix)(day);
-            await setNumOrClear(host, `${prefix}.raw_min_temp_c`, null);
-            await setNumOrClear(host, `${prefix}.raw_max_temp_c`, null);
             await setNumOrClear(host, `${prefix}.min_temp_c`, null);
             await setNumOrClear(host, `${prefix}.max_temp_c`, null);
             await host.setStateAsync(`${prefix}.quality`, { val: "missing", ack: true });
@@ -171,15 +168,12 @@ async function runWeatherHorizon(host) {
             available += 1;
         }
         const prefix = (0, ensure_states_1.weatherHorizonDayStatePrefix)(day);
-        await setNumOrClear(host, `${prefix}.raw_min_temp_c`, raw.min);
-        await setNumOrClear(host, `${prefix}.raw_max_temp_c`, raw.max);
         await setNumOrClear(host, `${prefix}.min_temp_c`, corrMin);
         await setNumOrClear(host, `${prefix}.max_temp_c`, corrMax);
         await host.setStateAsync(`${prefix}.quality`, { val: quality, ack: true });
     }
     const status = available > 0 ? (minBiasC !== null || maxBiasC !== null ? "ready" : "no_bias") : "no_data";
     await host.setStateAsync("learning.weather.horizon.status", { val: status, ack: true });
-    await host.setStateAsync("learning.weather.horizon.days_available", { val: available, ack: true });
     await host.setStateAsync("learning.weather.horizon.last_update", {
         val: new Date().toISOString(),
         ack: true,

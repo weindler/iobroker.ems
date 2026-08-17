@@ -42,10 +42,7 @@ const SUPPORT_STATE_CORE = [
     "addons.wallbox.status",
     "addons.wallbox.runtime.reason_de",
     "addons.wallbox.runtime.detail_json",
-    "addons.wallbox.runtime.dispatch_status",
-    "addons.wallbox.runtime.dispatch_reason_de",
     "addons.wallbox.runtime.execution_block_reason",
-    "addons.wallbox.runtime.feedback_status",
     "addons.wallbox.runtime.write_allowed",
     "addons.wallbox.runtime.write_live_eligible",
     "addons.battery.status.state",
@@ -54,7 +51,7 @@ const SUPPORT_STATE_CORE = [
     "addons.battery.runtime.reason_de",
     "addons.immersion_heater.runtime.state",
     "addons.immersion_heater.runtime.reason",
-    "addons.immersion_heater.runtime.snapshot_json",
+    "addons.immersion_heater.runtime.reason",
     "addons.air_conditioning.runtime.reason_de",
     "addons.air_conditioning.runtime.governance_allowed",
     "global_modes.active",
@@ -247,10 +244,6 @@ exports.collectAddonDiagnostics = collectAddonDiagnostics;
 async function collectParsedJsonStateDiagnostics(host) {
     const specs = [
         { rel: "addons.wallbox.runtime.detail_json", archivePath: "diagnostics/wallbox_detail.json" },
-        {
-            rel: "addons.immersion_heater.runtime.snapshot_json",
-            archivePath: "diagnostics/immersion_snapshot.json",
-        },
         {
             rel: "addons.wallbox.runtime.control_mapping_missing_json",
             archivePath: "diagnostics/wallbox_missing_mappings.json",

@@ -31,23 +31,14 @@ export async function ensureBatteryRuntimeLearningStates(host: StateHost): Promi
 		strState("learning.battery_runtime.status", "Battery-Runtime-Learning Status", "not_initialized"),
 		strState("learning.battery_runtime.last_run", "Battery-Runtime letzter Lauf (ISO)"),
 		numState("learning.battery_runtime.sample_days", "Battery-Runtime Sample-Tage"),
-		numState("learning.battery_runtime.avg_night_discharge_pct", "Battery-Runtime Ø Nachtentladung", "%"),
 		numState("learning.battery_runtime.avg_night_discharge_kwh", "Battery-Runtime Ø Nachtentladung", "kWh"),
-		numState("learning.battery_runtime.avg_charge_rate_pct_h", "Battery-Runtime Ø Laderate", "%/h"),
-		numState("learning.battery_runtime.avg_discharge_rate_pct_h", "Battery-Runtime Ø Entladerate", "%/h"),
 		numState("learning.battery_runtime.avg_charge_power_w", "Battery-Runtime Ø Ladeleistung", "W"),
-		numState("learning.battery_runtime.avg_discharge_power_w", "Battery-Runtime Ø Entladeleistung", "W"),
 		numState("learning.battery_runtime.max_charge_power_w", "Battery-Runtime max. Ladeleistung (Ist)", "W"),
-		numState("learning.battery_runtime.max_discharge_power_w", "Battery-Runtime max. Entladeleistung (Ist)", "W"),
 		strState("learning.battery_runtime.last_full_charge", "Battery-Runtime letzte Vollladung (ISO)"),
 		numState("learning.battery_runtime.days_since_full", "Battery-Runtime Tage seit Vollladung"),
-		numState("learning.battery_runtime.seconds_since_full_charge", "Sekunden seit Vollladung (Gerät)", "s"),
-		strState("learning.battery_runtime.full_charge_source", "Vollladung Quelle (device|soc_history)"),
-		numState("learning.battery_runtime.topoff_interval_days", "Battery-Runtime Top-Off Intervall (Konfig)"),
 		numState("learning.battery_runtime.topoff_days_remaining", "Battery-Runtime Top-Off Tage verbleibend"),
 		numState("learning.battery_runtime.topoff_due", "Battery-Runtime Top-Off fällig (0/1)"),
 		numState("learning.battery_runtime.estimated_runtime_days", "Battery-Runtime geschätzte Laufzeit", "Tage"),
-		strState("learning.battery_runtime.power_history_mode", "Battery-Runtime Power-Quelle (ems_rollup|history_fallback)"),
 	];
 
 	await ensureStates(host, defs);

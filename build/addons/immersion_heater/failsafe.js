@@ -4,18 +4,16 @@ exports.runImmersionFailsafeCheck = exports.forceImmersionHeaterOff = void 0;
 const execution_mode_1 = require("../../execution_mode");
 const device_write_1 = require("../../device_write");
 const failsafe_common_1 = require("../../failsafe_common");
-const tree_paths_1 = require("../../tree_paths");
+const mapping_resolve_1 = require("../../mapping_resolve");
 const status_1 = require("./status");
 const ADDON_ID = "immersion_heater";
 let lastEmsReachable = null;
 async function mappedEnableTarget(adapter) {
-    const base = (0, tree_paths_1.mappingBase)(ADDON_ID, "set_enabled");
-    const en = await adapter.getStateAsync(`${base}.enabled`);
-    if (en?.val === false) {
+    const mapped = (0, mapping_resolve_1.resolveMappingTargetFromConfig)(adapter.config, ADDON_ID, "set_enabled");
+    if (!mapped || !mapped.enabled) {
         return "";
     }
-    const ts = await adapter.getStateAsync(`${base}.target_state`);
-    return typeof ts?.val === "string" ? ts.val.trim() : "";
+    return mapped.targetState;
 }
 async function forceImmersionHeaterOff(adapter, reason) {
     const targetId = await mappedEnableTarget(adapter);

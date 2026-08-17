@@ -1,8 +1,9 @@
-import { mappingBase } from "../tree_paths";
-import { asBool, asNum, type StateHost } from "./state_util";
+import { asNum, type StateHost } from "./state_util";
+import { resolveMappingTargetFromConfig } from "../mapping_resolve";
 
 export type LiveCacheHost = StateHost & {
 	getForeignStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
+	config?: unknown;
 };
 
 type MappingSlot = {
@@ -31,33 +32,6 @@ const BATTERY_SLOTS: MappingSlot[] = [
 		role: "capacity_kwh",
 		liveId: "live.battery.capacity_kwh",
 		labelDe: "Batteriekapazität",
-	},
-];
-
-const WALLBOX_SLOTS: MappingSlot[] = [
-	{
-		addonId: "wallbox",
-		role: "evcc_enabled",
-		liveId: "live.wallbox.enabled",
-		labelDe: "Wallbox Freigabe (EVCC)",
-	},
-	{
-		addonId: "wallbox",
-		role: "evcc_vehicle_soc",
-		liveId: "live.wallbox.vehicle_soc_pct",
-		labelDe: "Fahrzeug-SOC (EVCC)",
-	},
-	{
-		addonId: "wallbox",
-		role: "evcc_charging",
-		liveId: "live.wallbox.charging",
-		labelDe: "Laden aktiv (EVCC)",
-	},
-	{
-		addonId: "wallbox",
-		role: "evcc_charge_power_w",
-		liveId: "live.wallbox.charge_power_w",
-		labelDe: "Ladeleistung (EVCC)",
 	},
 ];
 
@@ -96,16 +70,11 @@ async function readMappedForeign(
 	addonId: string,
 	role: string,
 ): Promise<{ value: unknown; target: string } | null> {
-	const base = mappingBase(addonId, role);
-	const enabledSt = await host.getStateAsync(`${base}.enabled`);
-	if (enabledSt?.val === false) {
+	const mapped = resolveMappingTargetFromConfig(host.config, addonId, role);
+	if (!mapped || !mapped.enabled) {
 		return null;
 	}
-	const targetSt = await host.getStateAsync(`${base}.target_state`);
-	const target = targetSt?.val != null ? String(targetSt.val).trim() : "";
-	if (!target) {
-		return null;
-	}
+	const target = mapped.targetState;
 	try {
 		const foreign = await host.getForeignStateAsync(target);
 		if (!foreign || foreign.val === undefined || foreign.val === null) {
@@ -120,10 +89,6 @@ async function readMappedForeign(
 function normalizeLiveValue(liveId: string, raw: unknown): ioBroker.StateValue | null {
 	if (raw === null || raw === undefined) {
 		return null;
-	}
-	if (liveId === "live.wallbox.enabled" || liveId === "live.wallbox.charging") {
-		const b = asBool(raw);
-		return b === null ? null : b ? 1 : 0;
 	}
 	if (liveId === "live.price.now_ct_per_kwh") {
 		const eurPerKwh = asNum(raw);
@@ -177,7 +142,7 @@ async function mirrorPvPower(host: LiveCacheHost, result: LiveCacheResult): Prom
 export async function refreshLiveCache(host: LiveCacheHost): Promise<LiveCacheResult> {
 	const result: LiveCacheResult = { updated: [], missing: [], errors: [] };
 
-	for (const slot of [...BATTERY_SLOTS, ...WALLBOX_SLOTS, ...IMMERSION_SLOTS, ...TARIFF_SLOTS]) {
+	for (const slot of [...BATTERY_SLOTS, ...IMMERSION_SLOTS, ...TARIFF_SLOTS]) {
 		await applySlot(host, slot, result);
 	}
 

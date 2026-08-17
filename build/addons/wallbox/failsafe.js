@@ -5,7 +5,7 @@ const evcc_config_1 = require("./evcc_config");
 const execution_mode_1 = require("../../execution_mode");
 const device_write_1 = require("../../device_write");
 const failsafe_common_1 = require("../../failsafe_common");
-const tree_paths_1 = require("../../tree_paths");
+const mapping_resolve_1 = require("../../mapping_resolve");
 const status_wallbox_1 = require("../../status_wallbox");
 const ADDON_ID = "wallbox";
 let pending = null;
@@ -16,12 +16,10 @@ function maxChargeWFromConfig(config) {
     return Number.isFinite(n) && n > 0 ? n : 11000;
 }
 async function enableTargetId(adapter) {
-    const base = (0, tree_paths_1.mappingBase)(ADDON_ID, "set_enabled");
-    const en = await adapter.getStateAsync(`${base}.enabled`);
-    if (en?.val === false)
+    const mapped = (0, mapping_resolve_1.resolveMappingTargetFromConfig)(adapter.config, ADDON_ID, "set_enabled");
+    if (!mapped || !mapped.enabled)
         return "";
-    const ts = await adapter.getStateAsync(`${base}.target_state`);
-    return typeof ts?.val === "string" ? ts.val.trim() : "";
+    return mapped.targetState;
 }
 function powerFeedbackIdFromConfig(config) {
     const t = config.wb_feedback_power_target;

@@ -27,6 +27,10 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:6
 .ems-chip.on{border-color:#3fb95066}
 .ems-chip.price{flex:1.4 1 140px}
 .ems-chip.gb{flex:1.3 1 130px}
+.ems-chip.gb-off .ems-chip-v{color:#8b949e}
+.ems-chip.gb-block{border-color:#f0883e66}
+.ems-chip.gb-ready{border-color:#1f6feb66}
+.ems-chip.gb-on{border-color:#3fb95066}
 .ems-price{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 8px 4px;margin-bottom:6px}
 .ems-price-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:4px}
 .ems-price-meta{font-size:10px;color:#c9d1d9;line-height:1.3}
@@ -130,6 +134,7 @@ var SLOT_MS=15*60*1000;
 var stateIds=[
 	INST+".operator.vis.show_diagnostics",
 	INST+".operator.vis.price_timeline_json",
+	INST+".operator.briefing_de",
 	INST+".operator.diagnostics.surplus_w",
 	INST+".operator.diagnostics.deficit_w",
 	INST+".operator.diagnostics.slot_start_iso",
@@ -163,6 +168,7 @@ var stateIds=[
 	INST+".addons.battery.grid_balance.price_min_ct_kwh",
 	INST+".addons.battery.grid_balance.current_price_ct_kwh",
 	INST+".addons.battery.grid_balance.grid_power_w",
+	INST+".addons.battery.grid_balance.effective_power_w",
 	INST+".addons.battery.grid_balance.hold_detected",
 	INST+".addons.battery.grid_balance.last_action",
 	INST+".compare.plan_a.chart_json",
@@ -242,8 +248,10 @@ var stateIds=[
 	INST+".addons.wallbox.runtime.first_planned_slot",
 	INST+".addons.wallbox.runtime.tibber_grid_rewards_active",
 	INST+".addons.wallbox.runtime.external_vehicle_charge_active",
+	INST+".addons.wallbox.runtime.battery_hold_for_ev_charge",
 	INST+".addons.wallbox.status.evcc.connected",
 	INST+".addons.wallbox.status.evcc.loadpoint_mode",
+	INST+".addons.wallbox.status.evcc.battery_mode",
 	INST+".addons.wallbox.status.evcc.charge_remaining_energy_kwh",
 	INST+".addons.wallbox.status.evcc.effective_limit_soc_pct",
 	INST+".addons.wallbox.status.evcc.vehicle_soc_pct",
@@ -350,7 +358,10 @@ function collectWindows(planJson,minW,label,contributionExact){
 		if(!isFinite(start)||!isFinite(end)||end<=now)continue;
 		/* Nur kanonische 15-Min-Executable-Slots — Multi-Hour-Leaks nicht als Fenster. */
 		if(end-start!==SLOT_MS)continue;
-		list.push({t:t,ms:start,endMs:end,endIso:endIso||new Date(end).toISOString(),w:w,label:label,kind:"alloc",cid:cid});
+		var src=String(a.energySource||"");
+		var gridW=+(a.gridPowerW||0);
+		var isGrid=src==="grid"||gridW>=thr;
+		list.push({t:t,ms:start,endMs:end,endIso:endIso||new Date(end).toISOString(),w:w,label:label,kind:"alloc",cid:cid,isGrid:isGrid,gridW:gridW});
 	}
 	return list;
 }
@@ -394,17 +405,18 @@ function immersionScheduleRow(planJson){
 function collapseAllocWindows(slots){
 	if(!slots.length)return[];
 	var sorted=slots.slice().sort(function(a,b){return a.ms-b.ms;});
-	var ranges=[],cur={startMs:sorted[0].ms,endMs:sorted[0].endMs,startIso:sorted[0].t,endIso:sorted[0].endIso,powerW:sorted[0].w,cid:sorted[0].cid||null},i;
+	var ranges=[],cur={startMs:sorted[0].ms,endMs:sorted[0].endMs,startIso:sorted[0].t,endIso:sorted[0].endIso,powerW:sorted[0].w,cid:sorted[0].cid||null,isGrid:!!sorted[0].isGrid},i;
 	for(i=1;i<sorted.length;i++){
 		var s=sorted[i];
 		var same=!cur.cid||!s.cid||cur.cid===s.cid;
 		if(same&&s.ms<=cur.endMs+1000){
 			if(s.endMs>=cur.endMs){cur.endMs=s.endMs;cur.endIso=s.endIso;}
 			cur.powerW=Math.max(cur.powerW,s.w);
+			if(s.isGrid)cur.isGrid=true;
 			if(cur.cid&&s.cid&&cur.cid!==s.cid)cur.cid=null;
 		}else{
 			ranges.push(cur);
-			cur={startMs:s.ms,endMs:s.endMs,startIso:s.t,endIso:s.endIso,powerW:s.w,cid:s.cid||null};
+			cur={startMs:s.ms,endMs:s.endMs,startIso:s.t,endIso:s.endIso,powerW:s.w,cid:s.cid||null,isGrid:!!s.isGrid};
 		}
 	}
 	ranges.push(cur);
@@ -734,66 +746,6 @@ function wallboxModeLabel(raw){
 	return String(raw).trim();
 }
 
-/** Aufeinanderfolgende 15-Min-Starts → ein Zeitfenster. */
-function collapseSlots(slotMsList){
-	if(!slotMsList.length)return[];
-	var sorted=slotMsList.slice().sort(function(a,b){return a-b;});
-	var ranges=[],curStart=sorted[0],curEnd=sorted[0]+SLOT_MS,i;
-	for(i=1;i<sorted.length;i++){
-		if(sorted[i]<=curEnd+1000){
-			curEnd=Math.max(curEnd,sorted[i]+SLOT_MS);
-		}else{
-			ranges.push({startMs:curStart,endMs:curEnd});
-			curStart=sorted[i];
-			curEnd=sorted[i]+SLOT_MS;
-		}
-	}
-	ranges.push({startMs:curStart,endMs:curEnd});
-	return ranges;
-}
-
-function slotsFromAllocation(planJson,minW){
-	var arr=parseArr(planJson),now=Date.now(),thr=minW||ON_W,ms=[],maxW=0,i;
-	for(i=0;i<arr.length;i++){
-		var a=arr[i],w=+(a.allocatedPowerW||0),t=a.slot&&a.slot.startIso;
-		if(!t||w<thr)continue;
-		var start=Date.parse(t);
-		if(!isFinite(start)||start+SLOT_MS<=now)continue;
-		ms.push(floorSlotMs(start));
-		if(w>maxW)maxW=w;
-	}
-	return{ms:ms,maxW:maxW};
-}
-
-function slotsFromChart(key,horizonMs){
-	var active=txt(g("compare.active_plan"),"a").toLowerCase();
-	var chart=parseArr(g(active==="b"?"compare.plan_b.chart_json":"compare.plan_a.chart_json"));
-	var now=Date.now(),ms=[],maxW=0,i;
-	for(i=0;i<chart.length;i++){
-		var p=chart[i],t=p.t||p.startIso,w=+(p[key]||0);
-		if(!t||w<ON_W)continue;
-		var start=Date.parse(t);
-		if(!isFinite(start)||start+SLOT_MS<=now||start>horizonMs)continue;
-		ms.push(floorSlotMs(start));
-		if(w>maxW)maxW=w;
-	}
-	return{ms:ms,maxW:maxW};
-}
-
-function mergeMs(){
-	var out=[],seen={},i,j,args=arguments;
-	for(i=0;i<args.length;i++){
-		var list=args[i]||[];
-		for(j=0;j<list.length;j++){
-			var v=list[j];
-			if(seen[v])continue;
-			seen[v]=1;
-			out.push(v);
-		}
-	}
-	return out;
-}
-
 function rangeStatus(startMs,endMs,phase){
 	var now=Date.now();
 	var current=now>=startMs&&now<endMs;
@@ -842,9 +794,8 @@ function buildTimelineRanges(horizonMs){
 		});
 	});
 
-	var wbA=slotsFromAllocation(g("planner.intent.allocation.wallbox.plan_json"),ON_W);
-	var wbC=slotsFromChart("wbW",horizonMs);
-	var wbMs=mergeMs(wbA.ms,wbC.ms);
+	/* Wallbox/EV: nur Daily-Plan-Allocation, kein Chart-Merge, kein synthetisches Jetzt-Fenster. */
+	var wbWindows=collapseAllocWindows(collectWindows(g("planner.intent.allocation.wallbox.plan_json"),ON_W,""));
 	var wbLive=effectiveLiveWrite("wallbox");
 	var wbHw=isOn(g("live.wallbox.charging"))||isPowerOn(num(g("live.wallbox.charge_power_w")));
 	var wbAlloc=num(g("addons.wallbox.runtime.allocated_power_w"));
@@ -853,56 +804,50 @@ function buildTimelineRanges(horizonMs){
 	var limSoc=num(g("addons.wallbox.status.evcc.effective_limit_soc_pct"));
 	var vehSoc=num(g("addons.wallbox.status.evcc.vehicle_soc_pct"));
 	if(vehSoc===null)vehSoc=num(g("live.wallbox.vehicle_soc_pct"));
-	function wbMeta(status,phase,extraW){
+	function wbMeta(status,phase,windowW){
 		var bits=[];
 		if(status==="dryrun"){
-			var dm=execAgendaMeta(phase,wbAlloc);
+			var dm=execAgendaMeta(phase,isPowerOn(wbAlloc)?wbAlloc:windowW);
 			if(dm)bits.push(dm);
 		}
-		// Aktueller EVCC-Modus nur sinnvoll wenn Slot wirklich läuft; „Aus“ bei geplant nie zeigen
 		if(mode&&status==="on")bits.push("Modus "+mode);
 		else if(mode&&mode!=="Aus"&&(status==="plan"||status==="dryrun"))bits.push("aktuell "+mode);
 		if(remKwh!==null&&remKwh>0)bits.push("noch ~"+remKwh.toFixed(1).replace(".",",")+" kWh");
 		if(limSoc!==null)bits.push("bis "+Math.round(limSoc)+" % SOC");
 		else if(vehSoc!==null)bits.push("Auto "+Math.round(vehSoc)+" %");
-		if(extraW)bits.push(Math.round(extraW)+" W");
+		if(windowW)bits.push(Math.round(windowW)+" W");
 		return bits.length?bits.join(" · "):null;
 	}
-	var wbRanges=collapseSlots(wbMs);
-	if(!wbRanges.length&&((wbLive&&wbHw)||(remKwh!==null&&remKwh>0)||isPowerOn(wbAlloc))){
-		var n0=floorSlotMs(Date.now());
-		wbRanges=[{startMs:n0,endMs:n0+SLOT_MS}];
-	}
-	wbRanges.forEach(function(r){
+	wbWindows.forEach(function(r){
+		if(r.startMs>horizonMs+SLOT_MS)return;
 		var current=now>=r.startMs&&now<r.endMs;
 		var phase=resolveExecPhase(current,!current,wbLive,wbHw);
 		var st=rangeStatus(r.startMs,r.endMs,phase);
 		items.push({
-			addon:"wallbox",color:ADDON_COLORS.wallbox,name:"Wallbox / Auto",
+			addon:"wallbox",color:ADDON_COLORS.wallbox,name:"Wallbox",
 			startMs:r.startMs,endMs:r.endMs,
 			status:st,
-			meta:wbMeta(st,phase,wbA.maxW||wbC.maxW)
+			meta:wbMeta(st,phase,r.powerW)
 		});
 	});
 
-	var batA=slotsFromAllocation(g("planner.intent.allocation.battery.plan_json"),ON_W);
-	var batC=slotsFromChart("batW",horizonMs);
-	var batMs=mergeMs(batA.ms,batC.ms);
+	var batWindows=collapseAllocWindows(collectWindows(g("planner.intent.allocation.battery.plan_json"),ON_W,""));
 	var batLive=effectiveLiveWrite("battery");
 	var batHw=isPowerOn(num(g("addons.battery.telemetry.charging_power_w")));
 	var batAlloc=num(g("addons.battery.runtime.allocated_charge_power_w"));
-	collapseSlots(batMs).forEach(function(r){
+	batWindows.forEach(function(r){
+		if(r.startMs>horizonMs+SLOT_MS)return;
 		var current=now>=r.startMs&&now<r.endMs;
 		var phase=resolveExecPhase(current,!current,batLive,batHw);
 		var st=rangeStatus(r.startMs,r.endMs,phase);
 		var metaBits=[];
 		if(current){
-			var bm=execAgendaMeta(phase,batAlloc);
+			var bm=execAgendaMeta(phase,isPowerOn(batAlloc)?batAlloc:r.powerW);
 			if(bm)metaBits.push(bm);
 		}
-		if(batA.maxW||batC.maxW)metaBits.push(Math.round(batA.maxW||batC.maxW)+" W");
+		if(r.powerW)metaBits.push(Math.round(r.powerW)+" W");
 		items.push({
-			addon:"battery",color:ADDON_COLORS.battery,name:"Batterie laden",
+			addon:"battery",color:ADDON_COLORS.battery,name:r.isGrid?"Batterie-Netzladung":"Batterie laden",
 			startMs:r.startMs,endMs:r.endMs,
 			status:st,
 			meta:metaBits.length?metaBits.join(" · "):null
@@ -1062,37 +1007,51 @@ function fmtCt(v){
 	var n=num(v);
 	return n===null?"—":n.toFixed(1).replace(".",",")+" ct/kWh";
 }
-function chip(label,value,sub,extraCls){
-	return '<div class="ems-chip'+(extraCls?" "+extraCls:"")+'"><div class="ems-k">'+esc(label)+'</div><div class="ems-chip-v">'+esc(value)+'</div>'
-		+(sub?'<div class="ems-chip-s">'+esc(sub)+"</div>":"")+"</div>";
+/* vis-ops-display */
+function visNorm(s){return String(s==null?"":s).trim().toLowerCase();}
+function visChargeW(s){
+	if(s.chargingW!=null&&s.chargingW>0)return s.chargingW;
+	if(s.powerW!=null&&s.powerW>0)return s.powerW;
+	return 0;
 }
-function batteryMotion(){
-	if(isOn(g("addons.battery.grid_balance.hold_detected")))return{label:"HOLD",cls:"warn"};
-	var ch=num(g("addons.battery.telemetry.charging_power_w"));
-	var dis=num(g("addons.battery.telemetry.discharging_power_w"));
-	if(isPowerOn(ch))return{label:"LÄDT",cls:"on"};
-	if(isPowerOn(dis))return{label:"ENTLÄDT",cls:"on"};
-	return{label:"IDLE",cls:""};
+function visDischargeW(s){
+	if(s.dischargingW!=null&&s.dischargingW>0)return s.dischargingW;
+	if(s.powerW!=null&&s.powerW<0)return -s.powerW;
+	return 0;
 }
-function batteryPowerW(){
-	var p=num(g("addons.battery.telemetry.power_w"));
-	if(p!==null)return p;
-	var ch=num(g("addons.battery.telemetry.charging_power_w"));
-	var dis=num(g("addons.battery.telemetry.discharging_power_w"));
-	if(isPowerOn(ch))return ch;
-	if(isPowerOn(dis))return dis!==null?-dis:null;
-	return ch!==null?ch:(dis!==null?dis:null);
+function visTargetedHold(s){
+	var mode=visNorm(s.operatingMode);
+	var evcc=visNorm(s.evccBatteryMode);
+	var action=visNorm(s.action);
+	if(mode==="hold")return true;
+	if(evcc==="hold"||evcc==="holdcharge")return true;
+	if(s.batteryHoldForEv)return true;
+	if(s.tibber||s.externalEv)return true;
+	if(action==="hold")return true;
+	return false;
 }
-function batteryOwnerLabel(){
-	var owner=txt(g("addons.battery.runtime.battery_setpoint_owner"),"");
-	if(owner&&owner!=="—"&&owner!=="none")return owner;
-	var action=txt(g("addons.battery.runtime.action"),"");
-	if(action&&action!=="—"&&action!=="none")return action;
-	var last=txt(g("addons.battery.grid_balance.last_action"),"");
-	if(last&&last!=="—"&&last!=="none")return last;
-	return "self-consumption";
+function visBatteryMotion(s,onW){
+	onW=onW||50;
+	var mode=visNorm(s.operatingMode);
+	var ch=visChargeW(s);
+	var dis=visDischargeW(s);
+	if(dis>=onW||mode==="discharging")return{label:"ENTLADEN",cls:"on"};
+	if(ch>=onW||mode==="charging"||mode==="grid_charging")return{label:"LADEN",cls:"on"};
+	if(visTargetedHold(s))return{label:"HALTEN",cls:"warn"};
+	if(mode==="self_consumption")return{label:"EIGENVERBRAUCH",cls:""};
+	return{label:"RUHE",cls:""};
 }
-function gbBlockReasonDe(code){
+function visEmsAction(s){
+	var evcc=visNorm(s.evccBatteryMode);
+	if(s.tibber||s.externalEv||s.batteryHoldForEv||evcc==="hold"||evcc==="holdcharge")return"EV-Schnellladen";
+	var owner=visNorm(s.owner);
+	var action=visNorm(s.action);
+	if(s.gbActive||owner==="grid_balance"||action==="grid_balance")return"Netzausgleich";
+	if(owner==="grid_charge"||action==="grid_charge")return"Batterie-Netzladung";
+	if(owner==="planned_charge"||action==="charge"||action==="topoff")return"Batterie-Ladung";
+	return"keine";
+}
+function visGbBlockReasonDe(code){
 	var c=String(code||"").trim();
 	var map={
 		disabled:"AUS",
@@ -1114,31 +1073,82 @@ function gbBlockReasonDe(code){
 	};
 	return map[c]||(c||"");
 }
-function gbStatus(){
-	var enabled=isOn(g("addons.battery.grid_balance.enabled"));
-	var active=isOn(g("addons.battery.grid_balance.active"));
-	var ready=isOn(g("addons.battery.grid_balance.ready"));
-	var reason=txt(g("addons.battery.grid_balance.block_reason"),"");
+function visFmtCtNum(v){
+	if(v==null||!isFinite(v))return null;
+	return Number(v).toFixed(1).replace(".",",");
+}
+function visGbStatus(s){
+	var reason=String(s.gbReason==null?"":s.gbReason).trim();
 	if(reason==="—")reason="";
-	if(!enabled||reason==="disabled")return{label:"AUS",cls:"gb-off",reason:reason==="disabled"?"":gbBlockReasonDe(reason)};
-	if(active)return{label:"AKTIV",cls:"gb-on",reason:gbBlockReasonDe(reason)};
-	if(ready)return{label:"BEREIT",cls:"gb-ready",reason:""};
-	return{label:"BLOCKIERT",cls:"gb-block",reason:gbBlockReasonDe(reason)};
-}
-function gridFlowLine(){
-	var grid=num(g("addons.battery.grid_balance.grid_power_w"));
-	if(grid!==null){
-		if(grid>50)return{v:Math.round(grid)+" W Bezug",cls:"warn"};
-		if(grid<-50)return{v:Math.round(Math.abs(grid))+" W Einsp.",cls:"on"};
-		return{v:"~0 W",cls:""};
+	if(!s.gbEnabled)return{label:"AUS",cls:"gb-off",reason:""};
+	if(s.gbActive){
+		var w=s.gbEffectiveW!=null&&isFinite(s.gbEffectiveW)&&s.gbEffectiveW>0?Math.round(s.gbEffectiveW)+" W":"";
+		return{label:"AKTIV",cls:"gb-on",reason:w};
 	}
-	var surplus=num(g("operator.diagnostics.surplus_w"));
-	var deficit=num(g("operator.diagnostics.deficit_w"));
-	if(surplus!==null&&surplus>50)return{v:"~"+Math.round(surplus)+" W Einsp.",cls:"on"};
-	if(deficit!==null&&deficit>50)return{v:"~"+Math.round(deficit)+" W Bezug",cls:"warn"};
-	if(surplus===null&&deficit===null)return{v:"—",cls:""};
-	return{v:"~0 W",cls:""};
+	var idle={
+		"":1,inside_deadband:1,below_min_benefit:1,not_stable:1,
+		diagnosis_only:1,controller_not_grid_balance:1
+	};
+	if(s.gbReady||idle[reason]){
+		return{label:"BEREIT",cls:"gb-ready",reason:s.gbPriceAllowed===true?"preislich erlaubt":""};
+	}
+	var reasonDe=visGbBlockReasonDe(reason);
+	if(reason==="price_below_minimum"){
+		var p=visFmtCtNum(s.gbPrice),m=visFmtCtNum(s.gbMin);
+		if(p&&m)reasonDe="Preis "+p+" < "+m+" ct";
+	}
+	return{label:"BLOCKIERT",cls:"gb-block",reason:reasonDe};
 }
+function visGridFlow(s,onW){
+	onW=onW||50;
+	if(s.surplusW==null&&s.deficitW==null)return{v:"—",cls:""};
+	if(s.deficitW!=null&&s.deficitW>0)return{v:"BEZUG "+Math.round(s.deficitW)+" W",cls:s.deficitW>=onW?"warn":""};
+	if(s.surplusW!=null&&s.surplusW>0)return{v:"EINSPEISUNG "+Math.round(s.surplusW)+" W",cls:s.surplusW>=onW?"on":""};
+	return{v:"0 W",cls:""};
+}
+/* /vis-ops-display */
+function chip(label,value,sub,extraCls){
+	return '<div class="ems-chip'+(extraCls?" "+extraCls:"")+'"><div class="ems-k">'+esc(label)+'</div><div class="ems-chip-v">'+esc(value)+'</div>'
+		+(sub?'<div class="ems-chip-s">'+esc(sub)+"</div>":"")+"</div>";
+}
+function visLiveSnap(){
+	return{
+		chargingW:num(g("addons.battery.telemetry.charging_power_w")),
+		dischargingW:num(g("addons.battery.telemetry.discharging_power_w")),
+		powerW:num(g("addons.battery.telemetry.power_w")),
+		operatingMode:txt(g("addons.battery.telemetry.operating_mode"),""),
+		action:txt(g("addons.battery.runtime.action"),""),
+		owner:txt(g("addons.battery.runtime.battery_setpoint_owner"),""),
+		evccBatteryMode:txt(g("addons.wallbox.status.evcc.battery_mode"),""),
+		batteryHoldForEv:isOn(g("addons.wallbox.runtime.battery_hold_for_ev_charge")),
+		tibber:isOn(g("addons.wallbox.runtime.tibber_grid_rewards_active")),
+		externalEv:isOn(g("addons.wallbox.runtime.external_vehicle_charge_active")),
+		gbActive:isOn(g("addons.battery.grid_balance.active")),
+		gbEnabled:isOn(g("addons.battery.grid_balance.enabled")),
+		gbReady:isOn(g("addons.battery.grid_balance.ready")),
+		gbReason:txt(g("addons.battery.grid_balance.block_reason"),""),
+		gbPriceAllowed:g("addons.battery.grid_balance.price_allowed"),
+		gbPrice:num(g("addons.battery.grid_balance.current_price_ct_kwh")),
+		gbMin:num(g("addons.battery.grid_balance.price_min_ct_kwh")),
+		gbEffectiveW:num(g("addons.battery.grid_balance.effective_power_w")),
+		surplusW:num(g("operator.diagnostics.surplus_w")),
+		deficitW:num(g("operator.diagnostics.deficit_w"))
+	};
+}
+function batteryMotion(){return visBatteryMotion(visLiveSnap(),ON_W);}
+function batteryPowerW(){
+	var p=num(g("addons.battery.telemetry.power_w"));
+	if(p!==null)return p;
+	var ch=num(g("addons.battery.telemetry.charging_power_w"));
+	var dis=num(g("addons.battery.telemetry.discharging_power_w"));
+	if(ch!==null&&ch>0)return ch;
+	if(dis!==null&&dis>0)return -dis;
+	return ch!==null?ch:(dis!==null?dis:null);
+}
+function emsActionLabel(){return visEmsAction(visLiveSnap());}
+function gbBlockReasonDe(code){return visGbBlockReasonDe(code);}
+function gbStatus(){return visGbStatus(visLiveSnap());}
+function gridFlowLine(){return visGridFlow(visLiveSnap(),ON_W);}
 function climateHvacBadge(unitIndex){
 	var p=String(g("addons.air_conditioning.units.unit_"+unitIndex+".mode_purpose")||"").toLowerCase();
 	if(p==="dehumidify")return{cls:"hvac-dry",label:"DRY"};
@@ -1315,15 +1325,9 @@ function renderLiveStrip(){
 	var soc=fmtPct(g("live.battery.soc_pct"));
 	var motion=batteryMotion();
 	var batP=batteryPowerW();
-	var owner=batteryOwnerLabel();
+	var action=emsActionLabel();
 	var gb=gbStatus();
 	var grid=gridFlowLine();
-	var gbMin=num(g("addons.battery.grid_balance.price_min_ct_kwh"));
-	var gbAllowed=g("addons.battery.grid_balance.price_allowed");
-	var priceGate="";
-	if(price!==null&&gbMin!==null){
-		priceGate=gbAllowed===true?"preislich erlaubt":(gbAllowed===false?"preislich gesperrt":(price>=gbMin?"preislich erlaubt":"preislich gesperrt"));
-	}
 	el.innerHTML=
 		chip("PV",pv===null?"—":Math.round(pv)+" W","","")
 		+chip("Haus",load===null?"—":Math.round(load)+" W","","")
@@ -1331,8 +1335,8 @@ function renderLiveStrip(){
 		+chip("Tibber jetzt",price===null?"—":price.toFixed(1).replace(".",",")+" ct","","price")
 		+chip("Batterie SOC",soc,"","")
 		+chip("Batterie",motion.label,batP===null?"—":Math.round(Math.abs(batP))+" W",motion.cls)
-		+chip("Owner / Aktion",owner,"","")
-		+chip("Netzausgleich",gb.label,(gb.reason?gb.reason+(priceGate?" · ":""):"")+priceGate,"gb");
+		+chip("EMS-Aktion",action,"","")
+		+chip("Netzausgleich",gb.label,gb.reason||"","gb "+gb.cls);
 }
 
 function renderAiSummary(){
@@ -1371,7 +1375,7 @@ function renderNext(){
 		html+='<div class="ems-muted">Keine Fenster geplant.</div>';
 	}else{
 		html+='<ul class="ems-next-list">';
-		for(var i=0;i<Math.min(16,items.length);i++){
+		for(var i=0;i<Math.min(24,items.length);i++){
 			var it=items[i];
 			var stLabel=it.status==="on"?"läuft":(it.status==="fault"?"fehler":(it.status==="dryrun"?"dryrun":(it.status==="soon"?"jetzt":(it.status==="est"?"geschätzt":"geplant"))));
 			var stCls=it.status==="on"?"on":(it.status==="fault"?"fault":(it.status==="dryrun"?"dryrun":(it.status==="soon"?"soon":(it.status==="est"?"est":"plan"))));
@@ -1382,7 +1386,7 @@ function renderNext(){
 				+(it.meta?'<span class="ems-next-meta">'+esc(it.meta)+'</span>':'')
 				+'</li>';
 		}
-		if(items.length>16)html+='<li class="ems-muted" style="border:none;background:transparent">+'+(items.length-16)+' weitere …</li>';
+		if(items.length>24)html+='<li class="ems-muted" style="border:none;background:transparent">+'+(items.length-24)+' weitere …</li>';
 		html+='</ul>';
 	}
 	el.innerHTML=html;
@@ -1494,10 +1498,23 @@ function renderDaily(){
 	var end=slot?slotEndIso(slot):null;
 	var slotLine=slot?(fmtTime(slot)+"–"+(end?fmtTime(end):"?")):"—";
 	var untilLine=until?("Horizont bis "+fmtDayTime(until)):"";
+	var brief=txt(g("operator.briefing_de"),"");
+	var summary=txt(g("operator.product_summary_de"),"");
+	var owner=txt(g("addons.battery.runtime.battery_setpoint_owner"),"—");
+	var action=txt(g("addons.battery.runtime.action"),"—");
+	var last=txt(g("addons.battery.grid_balance.last_action"),"—");
+	var hold=txt(g("addons.battery.grid_balance.hold_detected"),"—");
+	var gbGrid=txt(g("addons.battery.grid_balance.grid_power_w"),"—");
 	el.innerHTML=
 		'<div class="ems-daily-main"><div class="ems-k">Daily Plan</div><div class="ems-v ok">'+esc(stt)+'</div>'
 		+'<div class="ems-ai-reason">Aktueller Slot '+esc(slotLine)+(untilLine?" · "+esc(untilLine):"")+'</div></div>'
-		+'<div class="ems-daily-reason">'+esc(txt(g("planner.intent.daily_plan.reason_de"),"Keine Begründung."))+'</div>';
+		+'<div class="ems-daily-reason">'+esc(txt(g("planner.intent.daily_plan.reason_de"),"Keine Begründung."))
+		+(brief&&brief!=="—"?'<div style="margin-top:6px">'+esc(brief)+"</div>":"")
+		+(summary&&summary!=="—"?'<div style="margin-top:4px">'+esc(summary)+"</div>":"")
+		+'<div style="margin-top:6px;color:#8b949e">Batterie intern: owner='+esc(owner)+" · action="+esc(action)
+		+" · GB last_action="+esc(last)+" · hold_detected="+esc(String(hold))
+		+" · grid_power_w="+esc(String(gbGrid))+"</div>"
+		+"</div>";
 }
 
 function render(){

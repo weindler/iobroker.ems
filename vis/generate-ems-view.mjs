@@ -17,8 +17,7 @@ const VIEW_H = 637;
 const M = 8;
 const GAP = 6;
 const ROW_H = 16;
-const BRIEF_Y = 22;
-const BRIEF_H = 42;
+const HEAD_H = 22;
 const REASON_H = 28;
 
 const C = {
@@ -271,7 +270,7 @@ function planBoardIframeHtml() {
 }
 
 // --- Layout coordinates (must fit 1276 × 637) ---
-// y=0-20 header | briefing | operations iframe
+// y=0-22 compact header | operations iframe (live chips start immediately)
 
 widgets[wid()] = {
 	tpl: "i-vis-image-new",
@@ -280,43 +279,30 @@ widgets[wid()] = {
 	widgetSet: "vis-inventwo",
 };
 
-// Header — Alltag: Mode / Ausführung / Version (keine Diagnose-Chips)
+// Header — EMS | Modus … | Steuerung … | v…
 widgets[wid()] = htmlWidget(
-	`<div style="font-family:system-ui,sans-serif;font-size:15px;font-weight:700;color:${C.text};">EMS</div>`,
-	{ left: `${M}px`, top: "4px", width: "52px", height: "18px", "background-color": "transparent" },
+	`<div style="font-family:system-ui,sans-serif;font-size:14px;font-weight:700;color:${C.text};">EMS</div>`,
+	{ left: `${M}px`, top: "4px", width: "40px", height: "16px", "background-color": "transparent" },
 );
-widgets[wid()] = stringWidget(oid("planner.global_mode.active"), "Modus ", {
-	left: "64px", top: "5px", width: "120px", height: "16px", "font-size": FS.val,
+widgets[wid()] = stringWidget(oid("planner.global_mode.active"), " | Modus ", {
+	left: "48px", top: "5px", width: "168px", height: "16px", "font-size": FS.val,
 });
-widgets[wid()] = stringWidget(oid("global.execution_mode"), "Steuerung ", {
-	left: "196px", top: "5px", width: "110px", height: "16px", "font-size": FS.val,
+widgets[wid()] = stringWidget(oid("global.execution_mode"), " | Steuerung ", {
+	left: "220px", top: "5px", width: "168px", height: "16px", "font-size": FS.val,
 });
-widgets[wid()] = stringWidget(oid("system.version"), "v", {
-	left: `${VIEW_W - 72}px`, top: "5px", width: "64px", height: "16px", "font-size": FS.tiny, color: C.textMuted,
-});
-
-// Briefing (Operator Daily-Plan-Zusammenfassung, 2 Zeilen)
-widgets[wid()] = cardPanel(M, BRIEF_Y, VIEW_W - 2 * M, BRIEF_H);
-widgets[wid()] = textBlockWidget(oid("operator.briefing_de"), "", {
-	left: `${M + 6}px`,
-	top: `${BRIEF_Y + 4}px`,
-	width: `${VIEW_W - 2 * M - 12}px`,
-	height: `${BRIEF_H - 8}px`,
-	"font-size": "10px",
-	color: C.text,
+widgets[wid()] = stringWidget(oid("system.version"), " | v", {
+	left: `${VIEW_W - 88}px`, top: "5px", width: "80px", height: "16px", "font-size": FS.tiny, color: C.textMuted,
 });
 
-// Energie-Übersicht (Live-Leiste, Tibber-Preisachse, Geräte) im iframe
-const boardY = BRIEF_Y + BRIEF_H + GAP;
+const boardY = HEAD_H;
 const boardH = VIEW_H - boardY - M;
 
 widgets[wid()] = cardPanel(M, boardY, VIEW_W - 2 * M, boardH);
-widgets[wid()] = sectionTitle("Betrieb", M + 6, boardY + 4, 220, C.text);
 widgets[wid()] = htmlWidget(planBoardIframeHtml(), {
 	left: `${M + 2}px`,
-	top: `${boardY + 16}px`,
+	top: `${boardY + 2}px`,
 	width: `${VIEW_W - 2 * M - 4}px`,
-	height: `${boardH - 20}px`,
+	height: `${boardH - 4}px`,
 	"background-color": "transparent",
 }, "0", { fixed: true });
 

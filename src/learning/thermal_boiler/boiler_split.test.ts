@@ -3,7 +3,8 @@
  */
 
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { afterEach, describe, it } from "node:test";
+import { resetHistoryQueryQueueForTests } from "../history_query";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -33,7 +34,12 @@ import {
 	isTrustedBoilerPersist,
 	readThermalBoilerPersist,
 } from "./persist";
-import { runThermalBoilerLearning, type ThermalBoilerRunHost } from "./run";
+import { runThermalBoilerLearning, __resetThermalBoilerRunLockForTest, type ThermalBoilerRunHost } from "./run";
+import {
+	appendBoilerTempSample,
+	BOILER_SAMPLE_MIN_INTERVAL_MS,
+	mergeBoilerTempPoints,
+} from "./samples";
 
 const BOILER_MAP_BASE = mappingBase("immersion_heater", "boiler_temp_c");
 
@@ -179,6 +185,11 @@ function immersionBase() {
 }
 
 describe("boiler/buffer split — observed real fault", () => {
+	afterEach(() => {
+		__resetThermalBoilerRunLockForTest();
+		resetHistoryQueryQueueForTests();
+	});
+
 	it("T12-real: slow boiler 64→61 vs fast buffer 61→52 — Hard follows boiler", () => {
 		const start = NOW - 24 * MS_H;
 		const boilerPts = linearCurve(start, 64, 61, 24);
@@ -579,6 +590,176 @@ describe("boiler learning A vs buffer learning B", () => {
 		assert.equal(persist?.source_kind, BOILER_SOURCE_KIND);
 		assert.equal(persist?.source_state_id, "sensor.0.boiler");
 		assert.equal(isTrustedBoilerPersist(persist), true);
+	});
+
+	it("T21: startup with stale 63 diagnose writes mapping 59 immediately", async () => {
+		__resetThermalBoilerRunLockForTest();
+		const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-startup-"));
+		const host = mockBoilerHost({ tmp, currentTemp: 59, history: [] });
+		host.states["learning.thermal_boiler.current_temperature_c"] = 63;
+		host.states["learning.thermal_boiler.reason_de"] = "Boiler 63.0 °C — Altzustand";
+		await runThermalBoilerLearning(host, { trigger: "startup", nowMs: NOW });
+		assert.equal(host.states["learning.thermal_boiler.current_temperature_c"], 59);
+		assert.match(String(host.states["learning.thermal_boiler.reason_de"]), /Boiler 59\.0 °C/);
+		assert.doesNotMatch(String(host.states["learning.thermal_boiler.reason_de"]), /63/);
+		assert.equal(host.states["learning.thermal_boiler.trigger_source"], "startup");
+		assert.equal(host.states["learning.thermal_boiler.last_run"], new Date(NOW).toISOString());
+		assert.equal(host.states["learning.thermal_boiler.next_run"], new Date(NOW + 3_600_000).toISOString());
+		assert.equal(host.states["learning.thermal_boiler.last_sample_at"], new Date(NOW).toISOString());
+	});
+
+	it("T22: mapping valid regular run updates last_run and history_points", async () => {
+		__resetThermalBoilerRunLockForTest();
+		const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-reg-"));
+		const host = mockBoilerHost({ tmp, currentTemp: 58, history: [] });
+		await runThermalBoilerLearning(host, { trigger: "learning_tick", nowMs: NOW });
+		assert.equal(host.states["learning.thermal_boiler.current_temperature_c"], 58);
+		assert.equal(host.states["learning.thermal_boiler.trigger_source"], "learning_tick");
+		assert.ok(Number(host.states["learning.thermal_boiler.history_points"]) >= 1);
+		const firstRun = String(host.states["learning.thermal_boiler.last_run"]);
+		assert.equal(firstRun, new Date(NOW).toISOString());
+		__resetThermalBoilerRunLockForTest();
+		await runThermalBoilerLearning(host, { trigger: "learning_tick", nowMs: NOW + 3_600_000 });
+		assert.equal(host.states["learning.thermal_boiler.last_run"], new Date(NOW + 3_600_000).toISOString());
+		assert.notEqual(String(host.states["learning.thermal_boiler.last_run"]), firstRun);
+	});
+
+	it("T23: mapping missing → no fake temperature", async () => {
+		__resetThermalBoilerRunLockForTest();
+		const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-miss-"));
+		const host = mockBoilerHost({
+			tmp,
+			currentTemp: 59,
+			history: [],
+			mappingTarget: null,
+			mappingEnabled: true,
+		});
+		host.states[`${BOILER_MAP_BASE}.enabled`] = true;
+		host.states[`${BOILER_MAP_BASE}.target_state`] = "";
+		await runThermalBoilerLearning(host, { nowMs: NOW });
+		assert.equal(host.states["learning.thermal_boiler.current_temperature_c"], null);
+		assert.doesNotMatch(String(host.states["learning.thermal_boiler.reason_de"]), /59/);
+	});
+
+	it("T24: history grows from live samples without a completed cycle", async () => {
+		__resetThermalBoilerRunLockForTest();
+		const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-grow-"));
+		const host = mockBoilerHost({ tmp, currentTemp: 57, history: [] });
+		await runThermalBoilerLearning(host, { nowMs: NOW });
+		assert.equal(detectRuntimeCycles([], boilerCfg()).length, 0);
+		assert.ok(Number(host.states["learning.thermal_boiler.history_points"]) >= 1);
+		assert.equal(host.states["learning.thermal_boiler.samples"], 0);
+		host.getForeignStateAsync = async (id: string) =>
+			id === "sensor.0.boiler" ? ({ val: 56 } as ioBroker.State) : ({ val: null } as ioBroker.State);
+		__resetThermalBoilerRunLockForTest();
+		await runThermalBoilerLearning(host, { nowMs: NOW + BOILER_SAMPLE_MIN_INTERVAL_MS });
+		assert.ok(Number(host.states["learning.thermal_boiler.history_points"]) >= 2);
+		const persist = await readThermalBoilerPersist(path.join(tmp, "learning/thermal_boiler"));
+		assert.ok((persist?.temp_samples?.length ?? 0) >= 2);
+		const hist = JSON.parse(String(host.states["learning.thermal_boiler.history_json"] ?? "[]"));
+		assert.ok(Array.isArray(hist) && hist.length >= 2);
+	});
+
+	it("T25: Newton-Fallback from persisted boiler samples without ioBroker history cycles", async () => {
+		__resetThermalBoilerRunLockForTest();
+		const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-newton-"));
+		const dir = path.join(tmp, "learning/thermal_boiler");
+		await fs.mkdir(dir, { recursive: true });
+		const samples = linearCurve(NOW - 20 * MS_H, 64, 51, 20, 20);
+		await fs.writeFile(
+			path.join(dir, "thermal_boiler_learning_v1.json"),
+			JSON.stringify({
+				generated_at: new Date(NOW).toISOString(),
+				module: BOILER_MODULE_TAG,
+				samples: 0,
+				runtime_hours_avg: null,
+				runtime_hours_median: null,
+				cooling_rate_c_per_h_avg: null,
+				by_season: {},
+				by_day_type: {},
+				history: [],
+				health: "no_samples",
+				source_kind: BOILER_SOURCE_KIND,
+				source_state_id: "sensor.0.boiler",
+				temp_samples: samples,
+			}),
+		);
+		const host = mockBoilerHost({ tmp, currentTemp: 51, history: [] });
+		await runThermalBoilerLearning(host, { nowMs: NOW });
+		assert.equal(host.states["learning.thermal_boiler.model"], "newton");
+		assert.ok(Number(host.states["learning.thermal_boiler.cooling_k_per_h"]) > 0);
+		assert.match(String(host.states["learning.thermal_boiler.reason_de"]), /Newton|51\.0/);
+	});
+
+	it("T26: untrusted persist without source metadata is discarded on first run", async () => {
+		__resetThermalBoilerRunLockForTest();
+		const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-discard-"));
+		const dir = path.join(tmp, "learning/thermal_boiler");
+		await fs.mkdir(dir, { recursive: true });
+		await fs.writeFile(
+			path.join(dir, "thermal_boiler_learning_v1.json"),
+			JSON.stringify({
+				generated_at: "2026-08-16T19:07:50.076Z",
+				module: BOILER_MODULE_TAG,
+				samples: 9,
+				runtime_hours_avg: 8,
+				runtime_hours_median: 8,
+				cooling_rate_c_per_h_avg: 1.2,
+				by_season: {},
+				by_day_type: {},
+				history: [],
+				health: "ok",
+				temp_samples: [{ ts: NOW - MS_H, tempC: 63 }],
+			}),
+		);
+		assert.equal(await readThermalBoilerPersist(dir), null);
+		const host = mockBoilerHost({ tmp, currentTemp: 59, history: [] });
+		await runThermalBoilerLearning(host, { nowMs: NOW });
+		const persist = await readThermalBoilerPersist(dir);
+		assert.equal(persist?.source_kind, BOILER_SOURCE_KIND);
+		assert.equal(persist?.samples, 0);
+		assert.ok((persist?.temp_samples ?? []).every((p) => p.tempC !== 63));
+		assert.equal(host.states["learning.thermal_boiler.current_temperature_c"], 59);
+	});
+
+	it("T27: hanging history still publishes live mapping temp (no stale 63)", async () => {
+		__resetThermalBoilerRunLockForTest();
+		const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-hang-"));
+		const host = mockBoilerHost({ tmp, currentTemp: 59, history: [] });
+		host.states["learning.thermal_boiler.current_temperature_c"] = 63;
+		host.getHistoryAsync = async () => {
+			await new Promise((r) => setTimeout(r, 80));
+			return historyResult([]);
+		};
+		await runThermalBoilerLearning(host, { nowMs: NOW, historyTimeoutMs: 25, trigger: "startup" });
+		assert.equal(host.states["learning.thermal_boiler.current_temperature_c"], 59);
+		assert.match(String(host.states["learning.thermal_boiler.reason_de"]), /59\.0/);
+		assert.ok(String(host.states["learning.thermal_boiler.last_run"]).length > 10);
+	});
+
+	it("T28: overlapping runs do not double-append samples", async () => {
+		__resetThermalBoilerRunLockForTest();
+		const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-ovl-"));
+		const host = mockBoilerHost({ tmp, currentTemp: 56, history: [] });
+		host.getHistoryAsync = async () => {
+			await new Promise((r) => setTimeout(r, 60));
+			return historyResult([]);
+		};
+		const first = runThermalBoilerLearning(host, { nowMs: NOW, historyTimeoutMs: 5_000 });
+		await new Promise((r) => setTimeout(r, 15));
+		await runThermalBoilerLearning(host, { nowMs: NOW + 1 });
+		await first;
+		const persist = await readThermalBoilerPersist(path.join(tmp, "learning/thermal_boiler"));
+		assert.equal(persist?.temp_samples?.length, 1);
+	});
+
+	it("T29: sample debounce prevents write storm", () => {
+		const a = appendBoilerTempSample([], { ts: NOW, tempC: 55 }, NOW, 7);
+		const b = appendBoilerTempSample(a, { ts: NOW + 1_000, tempC: 55.1 }, NOW + 1_000, 7);
+		assert.equal(b.length, 1);
+		const c = appendBoilerTempSample(b, { ts: NOW + BOILER_SAMPLE_MIN_INTERVAL_MS, tempC: 54 }, NOW + BOILER_SAMPLE_MIN_INTERVAL_MS, 7);
+		assert.equal(c.length, 2);
+		assert.equal(mergeBoilerTempPoints(c, c).length, 2);
 	});
 
 	it("T16: no new EV planner writes", () => {

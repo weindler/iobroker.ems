@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { atomicWriteFile } from "../../persistence/atomic_write";
-import type { ThermalRuntimeComputeResult, ThermalRuntimePersist } from "../thermal_runtime/types";
+import type { TempPoint, ThermalRuntimeComputeResult, ThermalRuntimePersist } from "../thermal_runtime/types";
 
 export const BOILER_MODULE_TAG = "thermal_boiler_learning_v1";
 export const BOILER_SOURCE_KIND = "mapping.boiler_temp_c";
@@ -14,6 +14,8 @@ export const BOILER_SOURCE_KIND = "mapping.boiler_temp_c";
 export type ThermalBoilerPersist = ThermalRuntimePersist & {
 	source_kind?: string;
 	source_state_id?: string;
+	/** Kontinuierliche Boiler-Istwerte — nicht Zyklen. */
+	temp_samples?: TempPoint[];
 };
 
 export function isTrustedBoilerPersist(parsed: ThermalBoilerPersist | null | undefined): parsed is ThermalBoilerPersist {
@@ -27,6 +29,7 @@ export async function writeThermalBoilerPersist(
 	result: ThermalRuntimeComputeResult,
 	lastRun: string,
 	sourceStateId: string,
+	tempSamples: TempPoint[] = [],
 ): Promise<void> {
 	const source = sourceStateId.trim();
 	if (!source) return;
@@ -44,6 +47,7 @@ export async function writeThermalBoilerPersist(
 		health: result.health,
 		source_kind: BOILER_SOURCE_KIND,
 		source_state_id: source,
+		temp_samples: tempSamples,
 	};
 	await atomicWriteFile(path.join(baseDir, "thermal_boiler_learning_v1.json"), `${JSON.stringify(payload, null, 2)}\n`);
 }

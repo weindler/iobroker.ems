@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.284",
+		"version": "0.1.285",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.285": {
+				"en": "Thermal boiler learning runs at the start of the shared learning tick and after adapter start, so stale 63 °C diagnosis is replaced by mapping.boiler_temp_c. Samples are stored without a completed heater cycle. Productive grid-balance/EV Dauerbetrieb stay off.",
+				"de": "Boiler-Learning läuft am Anfang des gemeinsamen Learning-Takts und nach Adapterstart, damit veraltete 63-°C-Diagnose durch mapping.boiler_temp_c ersetzt wird. Samples ohne abgeschlossenen Heizstab-Zyklus. Produktiver Netzausgleich-/EV-Dauerbetrieb bleibt aus."
+			},
 			"0.1.284": {
 				"en": "Battery setpoint release: after an EMS charge write >0, regular end writes exactly one 0 W; Hold/External/Restore/higher action take over without competing cleanup. Diagnosis: battery_setpoint_owner/w, battery_release_pending/reason, battery_last_release_at. Grid-balance live hardening (EV subtract, 250 W deadband, 8 s stabilization) and boiler mapping.boiler_temp_c remain. Productive GB Dauerbetrieb stays off.",
 				"de": "Batterie-Setpoint-Release: Nach eigenem EMS-Leistungs-Write >0 schreibt das reguläre Aktionsende genau einmal 0 W; Hold/External/Restore/höhere Aktion übernehmen ohne konkurrierendes Cleanup. Diagnose: battery_setpoint_owner/w, battery_release_pending/reason, battery_last_release_at. Netzausgleich-Härtung (EV-Abzug, Deadband 250 W, 8 s) und Boiler mapping.boiler_temp_c bleiben. Produktiver GB-Dauerbetrieb bleibt aus."

@@ -21,6 +21,7 @@ import {
 import type { StateHost } from "../../ems_light/state_util";
 
 let pvBiasTimer: NodeJS.Timeout | null = null;
+let learningTickInFlight = false;
 
 export type LearningStateTreeHost = PvBiasRunHost & StateHost & PersistenceMirrorHost;
 
@@ -50,12 +51,12 @@ export async function startPvBiasLearningRuntime(
 	const cfg = pvBiasConfigFromAdapter(adapter.config);
 	stopPvBiasLearning();
 
-	void runLearningTick(host).catch((e) => {
+	void runLearningTick(host, "startup").catch((e) => {
 		adapter.log.error(`PV-Bias/Horizon initial run: ${e}`);
 	});
 
 	pvBiasTimer = setInterval(() => {
-		void runLearningTick(host).catch((e) => {
+		void runLearningTick(host, "interval").catch((e) => {
 			adapter.log.error(`PV-Bias/Horizon tick: ${e}`);
 		});
 	}, cfg.intervalSec * 1000);
@@ -65,20 +66,37 @@ export async function startPvBiasLearningRuntime(
 	);
 }
 
-async function runLearningTick(host: PvBiasRunHost & StateHost): Promise<void> {
-	await ensureEnergyDailyRollupForLearning(host);
-	await runPvBiasLearning(host);
-	await runPvHorizon(host);
-	await runPriceLearning(host);
-	// Rollup-Backfill vor House-Load/Battery — sonst fällt der erste Lauf auf history.0 zurück.
-	await ensurePowerRollupForLearning(host);
-	// House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
-	await runHouseLoadLearning(host);
-	await runThermalRuntimeLearning(host);
-	await runThermalBoilerLearning(host);
-	await runBatteryRuntimeLearning(host);
-	await runPriceForecastLearning(host);
-	await mirrorLearningPersistenceToStates(host as unknown as PersistenceMirrorHost);
+async function runLearningTick(
+	host: PvBiasRunHost & StateHost,
+	trigger: "startup" | "interval" = "interval",
+): Promise<void> {
+	if (learningTickInFlight) return;
+	learningTickInFlight = true;
+	try {
+		/*
+		 * Boiler zuerst: Live-Diagnose darf nicht hinter PV-Bias/House-Load/90-Tage-Puffer-History
+		 * in der gemeinsamen History-Queue stecken bleiben.
+		 */
+		try {
+			await runThermalBoilerLearning(host, { trigger: trigger === "startup" ? "startup" : "learning_tick" });
+		} catch (e) {
+			host.log.error(`Boiler-Learning tick: ${e instanceof Error ? e.message : String(e)}`);
+		}
+		await ensureEnergyDailyRollupForLearning(host);
+		await runPvBiasLearning(host);
+		await runPvHorizon(host);
+		await runPriceLearning(host);
+		// Rollup-Backfill vor House-Load/Battery — sonst fällt der erste Lauf auf history.0 zurück.
+		await ensurePowerRollupForLearning(host);
+		// House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
+		await runHouseLoadLearning(host);
+		await runThermalRuntimeLearning(host);
+		await runBatteryRuntimeLearning(host);
+		await runPriceForecastLearning(host);
+		await mirrorLearningPersistenceToStates(host as unknown as PersistenceMirrorHost);
+	} finally {
+		learningTickInFlight = false;
+	}
 }
 
 export async function initPvBiasLearning(adapter: ioBroker.Adapter): Promise<void> {
@@ -91,4 +109,18 @@ export function stopPvBiasLearning(): void {
 		clearInterval(pvBiasTimer);
 		pvBiasTimer = null;
 	}
+}
+
+/** Nur für Tests. */
+export function __resetLearningRuntimeForTest(): void {
+	stopPvBiasLearning();
+	learningTickInFlight = false;
+}
+
+export function __hasPvBiasLearningTimerForTest(): boolean {
+	return pvBiasTimer != null;
+}
+
+export function __isLearningTickInFlightForTest(): boolean {
+	return learningTickInFlight;
 }

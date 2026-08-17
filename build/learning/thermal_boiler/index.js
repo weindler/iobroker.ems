@@ -1,12 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.BOILER_SOURCE_KIND = exports.BOILER_MODULE_TAG = exports.isTrustedBoilerPersist = exports.readThermalBoilerPersist = exports.writeThermalBoilerPersist = exports.thermalBoilerConfigFromAdapter = exports.resolveBoilerTempStateId = exports.refreshThermalBoilerRemainingCountdown = exports.runThermalBoilerLearning = exports.ensureThermalBoilerLearningStates = void 0;
+exports.BOILER_SOURCE_KIND = exports.BOILER_MODULE_TAG = exports.isTrustedBoilerPersist = exports.readThermalBoilerPersist = exports.writeThermalBoilerPersist = exports.thermalBoilerConfigFromAdapter = exports.__resetThermalBoilerRunLockForTest = exports.resolveBoilerTempStateId = exports.refreshThermalBoilerRemainingCountdown = exports.runThermalBoilerLearning = exports.ensureThermalBoilerLearningStates = void 0;
 var ensure_states_1 = require("./ensure_states");
 Object.defineProperty(exports, "ensureThermalBoilerLearningStates", { enumerable: true, get: function () { return ensure_states_1.ensureThermalBoilerLearningStates; } });
 var run_1 = require("./run");
 Object.defineProperty(exports, "runThermalBoilerLearning", { enumerable: true, get: function () { return run_1.runThermalBoilerLearning; } });
 Object.defineProperty(exports, "refreshThermalBoilerRemainingCountdown", { enumerable: true, get: function () { return run_1.refreshThermalBoilerRemainingCountdown; } });
 Object.defineProperty(exports, "resolveBoilerTempStateId", { enumerable: true, get: function () { return run_1.resolveBoilerTempStateId; } });
+Object.defineProperty(exports, "__resetThermalBoilerRunLockForTest", { enumerable: true, get: function () { return run_1.__resetThermalBoilerRunLockForTest; } });
 var config_1 = require("./config");
 Object.defineProperty(exports, "thermalBoilerConfigFromAdapter", { enumerable: true, get: function () { return config_1.thermalBoilerConfigFromAdapter; } });
 var persist_1 = require("./persist");

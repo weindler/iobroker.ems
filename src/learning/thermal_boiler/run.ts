@@ -19,7 +19,18 @@ import {
 import type { ThermalRuntimeComputeResult } from "../thermal_runtime/types";
 import { thermalBoilerConfigFromAdapter } from "./config";
 import { ensureThermalBoilerLearningStates } from "./ensure_states";
-import { writeThermalBoilerPersist } from "./persist";
+import { readThermalBoilerPersist, writeThermalBoilerPersist } from "./persist";
+import {
+	appendBoilerTempSample,
+	BOILER_HISTORY_FETCH_LOOKBACK_DAYS,
+	BOILER_HISTORY_FETCH_TIMEOUT_MS,
+	historyJsonFromBoilerPoints,
+	mergeBoilerTempPoints,
+	trimBoilerTempSamples,
+	withTimeoutFallback,
+} from "./samples";
+import { pvBiasConfigFromAdapter } from "../pv_bias/config";
+import type { TempPoint } from "../thermal_runtime/types";
 
 export type ThermalBoilerRunHost = StateHost & {
 	config?: unknown;
@@ -108,7 +119,17 @@ function reasonDeOf(input: {
 async function writeBoilerResult(
 	host: ThermalBoilerRunHost,
 	result: ThermalRuntimeComputeResult,
-	meta: { lastRun: string; segments: number; hasSource: boolean; emptyThresholdC: number },
+	meta: {
+		lastRun: string;
+		nextRun: string;
+		segments: number;
+		hasSource: boolean;
+		emptyThresholdC: number;
+		historyPoints: number;
+		lastSampleAt: string;
+		trigger: string;
+		historyJsonOverride?: unknown;
+	},
 ): Promise<void> {
 	const model = classifyModel(result);
 	const quality = qualityOf(model, result.samples, meta.hasSource);
@@ -123,8 +144,12 @@ async function writeBoilerResult(
 	await host.setStateAsync("learning.thermal_boiler.status", { val: result.status, ack: true });
 	await host.setStateAsync("learning.thermal_boiler.health", { val: result.health, ack: true });
 	await host.setStateAsync("learning.thermal_boiler.last_run", { val: meta.lastRun, ack: true });
+	await host.setStateAsync("learning.thermal_boiler.next_run", { val: meta.nextRun, ack: true });
+	await host.setStateAsync("learning.thermal_boiler.last_sample_at", { val: meta.lastSampleAt, ack: true });
+	await host.setStateAsync("learning.thermal_boiler.trigger_source", { val: meta.trigger, ack: true });
 	await host.setStateAsync("learning.thermal_boiler.last_error", { val: result.lastError, ack: true });
 	await host.setStateAsync("learning.thermal_boiler.samples", { val: result.samples, ack: true });
+	await host.setStateAsync("learning.thermal_boiler.history_points", { val: meta.historyPoints, ack: true });
 	await host.setStateAsync("learning.thermal_boiler.cooling_rate_c_per_h_avg", {
 		val: result.coolingRateCPerHAvg,
 		ack: true,
@@ -159,7 +184,7 @@ async function writeBoilerResult(
 		ack: true,
 	});
 	await host.setStateAsync("learning.thermal_boiler.history_json", {
-		val: truncateJson(result.historyJson),
+		val: truncateJson(meta.historyJsonOverride ?? result.historyJson),
 		ack: true,
 	});
 	await host.setStateAsync("learning.thermal_boiler.model", { val: model, ack: true });
@@ -186,37 +211,116 @@ export async function refreshThermalBoilerRemainingCountdown(host: {
 	}
 }
 
-export async function runThermalBoilerLearning(host: ThermalBoilerRunHost): Promise<void> {
+let boilerRunInFlight = false;
+
+export type ThermalBoilerRunOptions = {
+	trigger?: "startup" | "learning_tick" | "interval";
+	historyTimeoutMs?: number;
+	nowMs?: number;
+};
+
+function nextRunIso(now: Date, host: ThermalBoilerRunHost): string {
+	const intervalSec = pvBiasConfigFromAdapter(host.config).intervalSec;
+	return new Date(now.getTime() + intervalSec * 1000).toISOString();
+}
+
+function emptyBoilerCompute(input: {
+	status: ThermalRuntimeComputeResult["status"];
+	health: ThermalRuntimeComputeResult["health"];
+	currentTemperatureC: number | null;
+	sourceStateId: string;
+	lastError: string;
+}): ThermalRuntimeComputeResult {
+	return {
+		status: input.status,
+		health: input.health,
+		samples: 0,
+		runtimeHoursAvg: null,
+		runtimeHoursMedian: null,
+		coolingRateCPerHAvg: null,
+		coolingConstantPerH: null,
+		coolingAsymptoteC: null,
+		coolingAsymptoteSource: null,
+		currentTemperatureC: input.currentTemperatureC,
+		estimatedRemainingHours: null,
+		estimatedEmptyAt: null,
+		bySeasonJson: {},
+		byDayTypeJson: {},
+		historyJson: [],
+		sourceStateId: input.sourceStateId,
+		lastError: input.lastError,
+	};
+}
+
+function resultMeta(
+	host: ThermalBoilerRunHost,
+	now: Date,
+	over: {
+		segments: number;
+		hasSource: boolean;
+		emptyThresholdC: number;
+		historyPoints: number;
+		lastSampleAt: string;
+		trigger: string;
+		historyJsonOverride?: unknown;
+	},
+) {
+	return {
+		lastRun: now.toISOString(),
+		nextRun: nextRunIso(now, host),
+		...over,
+	};
+}
+
+/** Nur für Tests: Overlap-Lock zurücksetzen. */
+export function __resetThermalBoilerRunLockForTest(): void {
+	boilerRunInFlight = false;
+}
+
+export async function runThermalBoilerLearning(
+	host: ThermalBoilerRunHost,
+	opts: ThermalBoilerRunOptions = {},
+): Promise<void> {
+	if (boilerRunInFlight) return;
+	boilerRunInFlight = true;
+	try {
+		await runThermalBoilerLearningInner(host, opts);
+	} finally {
+		boilerRunInFlight = false;
+	}
+}
+
+async function runThermalBoilerLearningInner(
+	host: ThermalBoilerRunHost,
+	opts: ThermalBoilerRunOptions,
+): Promise<void> {
 	await ensureThermalBoilerLearningStates(host);
 	const cfg = thermalBoilerConfigFromAdapter(host.config);
-	const now = new Date();
-	const lastRun = now.toISOString();
+	const now = opts.nowMs != null ? new Date(opts.nowMs) : new Date();
+	const trigger = opts.trigger ?? "learning_tick";
+	const historyTimeoutMs = opts.historyTimeoutMs ?? BOILER_HISTORY_FETCH_TIMEOUT_MS;
 	const stateId = await resolveBoilerTempStateId(host);
 	const currentTempC = await readCurrentTemp(host, stateId);
+	const metaBase = {
+		emptyThresholdC: cfg.emptyThresholdC,
+		trigger,
+		lastSampleAt: currentTempC != null ? now.toISOString() : "",
+		historyPoints: 0,
+		segments: 0,
+		hasSource: Boolean(stateId),
+	};
 
 	if (!cfg.enabled) {
 		await writeBoilerResult(
 			host,
-			{
+			emptyBoilerCompute({
 				status: "disabled",
 				health: "no_source",
-				samples: 0,
-				runtimeHoursAvg: null,
-				runtimeHoursMedian: null,
-				coolingRateCPerHAvg: null,
-				coolingConstantPerH: null,
-				coolingAsymptoteC: null,
-				coolingAsymptoteSource: null,
 				currentTemperatureC: currentTempC,
-				estimatedRemainingHours: null,
-				estimatedEmptyAt: null,
-				bySeasonJson: {},
-				byDayTypeJson: {},
-				historyJson: [],
 				sourceStateId: stateId,
 				lastError: "Thermal Learning in Admin deaktiviert.",
-			},
-			{ lastRun, segments: 0, hasSource: Boolean(stateId), emptyThresholdC: cfg.emptyThresholdC },
+			}),
+			resultMeta(host, now, { ...metaBase, hasSource: Boolean(stateId) }),
 		);
 		return;
 	}
@@ -224,44 +328,68 @@ export async function runThermalBoilerLearning(host: ThermalBoilerRunHost): Prom
 	if (!stateId) {
 		await writeBoilerResult(
 			host,
-			{
+			emptyBoilerCompute({
 				status: "no_source",
 				health: "no_source",
-				samples: 0,
-				runtimeHoursAvg: null,
-				runtimeHoursMedian: null,
-				coolingRateCPerHAvg: null,
-				coolingConstantPerH: null,
-				coolingAsymptoteC: null,
-				coolingAsymptoteSource: null,
 				currentTemperatureC: null,
-				estimatedRemainingHours: null,
-				estimatedEmptyAt: null,
-				bySeasonJson: {},
-				byDayTypeJson: {},
-				historyJson: [],
 				sourceStateId: "",
 				lastError: "Keine Boiler-Temperaturquelle — addons.immersion_heater.mapping.boiler_temp_c.",
-			},
-			{ lastRun, segments: 0, hasSource: false, emptyThresholdC: cfg.emptyThresholdC },
+			}),
+			resultMeta(host, now, { ...metaBase, hasSource: false, lastSampleAt: "" }),
 		);
 		return;
 	}
 
-	let points: { ts: number; tempC: number }[] = [];
-	if (stateId && host.getHistoryAsync) {
+	/*
+	 * Sofort live schreiben — darf nicht hinter 90-Tage-History-Queue warten.
+	 * Sonst bleibt ein Alt-Diagnosewert (z. B. 63 °C) nach Adapterstart stehen.
+	 */
+	await writeBoilerResult(
+		host,
+		emptyBoilerCompute({
+			status: "insufficient_data",
+			health: "no_samples",
+			currentTemperatureC: currentTempC,
+			sourceStateId: stateId,
+			lastError: "",
+		}),
+		resultMeta(host, now, { ...metaBase, hasSource: true }),
+	);
+
+	let storedSamples: TempPoint[] = [];
+	if (host.getAbsolutePath) {
+		const persist = await readThermalBoilerPersist(host.getAbsolutePath("learning/thermal_boiler"));
+		storedSamples = persist?.temp_samples ?? [];
+	}
+	if (currentTempC != null) {
+		storedSamples = appendBoilerTempSample(
+			storedSamples,
+			{ ts: now.getTime(), tempC: currentTempC },
+			now.getTime(),
+			cfg.lookbackDays,
+		);
+	}
+
+	let historyPoints: TempPoint[] = [];
+	if (host.getHistoryAsync) {
 		try {
-			const fetched = await fetchTemperatureHistory(
-				{ getHistoryAsync: host.getHistoryAsync },
-				stateId,
-				cfg.lookbackDays,
+			const historyLookbackDays = Math.min(cfg.lookbackDays, BOILER_HISTORY_FETCH_LOOKBACK_DAYS);
+			const fetched = await withTimeoutFallback(
+				fetchTemperatureHistory({ getHistoryAsync: host.getHistoryAsync }, stateId, historyLookbackDays),
+				historyTimeoutMs,
+				{ points: [] as TempPoint[], lastValidTs: null },
 			);
-			points = fetched.points;
+			historyPoints = fetched.points;
 		} catch (e) {
 			host.log?.warn?.(`Boiler-Learning Historie: ${e instanceof Error ? e.message : String(e)}`);
 		}
 	}
 
+	const points = trimBoilerTempSamples(
+		mergeBoilerTempPoints(storedSamples, historyPoints),
+		now.getTime(),
+		cfg.lookbackDays,
+	);
 	const cycles = detectRuntimeCycles(points, cfg);
 	const coolingSegments = collectCoolingSegments(points, cfg.minRuntimeHours);
 	const activeCoolingRateCPerH = estimateActiveCoolingRateCPerH(points, cfg);
@@ -279,18 +407,28 @@ export async function runThermalBoilerLearning(host: ThermalBoilerRunHost): Prom
 		asymptoteSource: coolingModel.asymptoteSource,
 	});
 
-	if (host.getAbsolutePath && stateId) {
-		await writeThermalBoilerPersist(host.getAbsolutePath("learning/thermal_boiler"), result, lastRun, stateId);
+	if (host.getAbsolutePath) {
+		await writeThermalBoilerPersist(
+			host.getAbsolutePath("learning/thermal_boiler"),
+			result,
+			now.toISOString(),
+			stateId,
+			points,
+		);
 	}
 
-	await writeBoilerResult(host, result, {
-		lastRun,
+	const lastSample = points.length > 0 ? points[points.length - 1] : null;
+	await writeBoilerResult(host, result, resultMeta(host, now, {
 		segments: coolingSegments.length,
-		hasSource: Boolean(stateId) || currentTempC !== null,
+		hasSource: true,
 		emptyThresholdC: cfg.emptyThresholdC,
-	});
+		historyPoints: points.length,
+		lastSampleAt: lastSample ? new Date(lastSample.ts).toISOString() : currentTempC != null ? now.toISOString() : "",
+		trigger,
+		historyJsonOverride: historyJsonFromBoilerPoints(points),
+	}));
 
 	host.log?.debug?.(
-		`Boiler-Learning: status=${result.status} model=${classifyModel(result)} cycles=${result.samples} segments=${coolingSegments.length} k=${coolingModel.coolingConstantPerH ?? "—"}/h remaining=${result.estimatedRemainingHours ?? "—"}h hist=${hist.minC ?? "—"}–${hist.maxC ?? "—"}°C floor=${cfg.emptyThresholdC}°C`,
+		`Boiler-Learning: status=${result.status} model=${classifyModel(result)} cycles=${result.samples} points=${points.length} segments=${coolingSegments.length} k=${coolingModel.coolingConstantPerH ?? "—"}/h remaining=${result.estimatedRemainingHours ?? "—"}h hist=${hist.minC ?? "—"}–${hist.maxC ?? "—"}°C floor=${cfg.emptyThresholdC}°C trigger=${trigger}`,
 	);
 }

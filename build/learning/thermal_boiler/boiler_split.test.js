@@ -31,6 +31,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const strict_1 = __importDefault(require("node:assert/strict"));
 const node_test_1 = require("node:test");
+const history_query_1 = require("../history_query");
 const fs = __importStar(require("node:fs/promises"));
 const os = __importStar(require("node:os"));
 const path = __importStar(require("node:path"));
@@ -49,6 +50,7 @@ const tree_paths_1 = require("../../tree_paths");
 const config_1 = require("./config");
 const persist_1 = require("./persist");
 const run_1 = require("./run");
+const samples_1 = require("./samples");
 const BOILER_MAP_BASE = (0, tree_paths_1.mappingBase)("immersion_heater", "boiler_temp_c");
 const MS_H = 3_600_000;
 const NOW = Date.parse("2026-08-15T10:00:00.000Z");
@@ -173,6 +175,10 @@ function immersionBase() {
     };
 }
 (0, node_test_1.describe)("boiler/buffer split — observed real fault", () => {
+    (0, node_test_1.afterEach)(() => {
+        (0, run_1.__resetThermalBoilerRunLockForTest)();
+        (0, history_query_1.resetHistoryQueryQueueForTests)();
+    });
     (0, node_test_1.it)("T12-real: slow boiler 64→61 vs fast buffer 61→52 — Hard follows boiler", () => {
         const start = NOW - 24 * MS_H;
         const boilerPts = linearCurve(start, 64, 61, 24);
@@ -541,6 +547,160 @@ function immersionBase() {
         strict_1.default.equal(persist?.source_kind, persist_1.BOILER_SOURCE_KIND);
         strict_1.default.equal(persist?.source_state_id, "sensor.0.boiler");
         strict_1.default.equal((0, persist_1.isTrustedBoilerPersist)(persist), true);
+    });
+    (0, node_test_1.it)("T21: startup with stale 63 diagnose writes mapping 59 immediately", async () => {
+        (0, run_1.__resetThermalBoilerRunLockForTest)();
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-startup-"));
+        const host = mockBoilerHost({ tmp, currentTemp: 59, history: [] });
+        host.states["learning.thermal_boiler.current_temperature_c"] = 63;
+        host.states["learning.thermal_boiler.reason_de"] = "Boiler 63.0 °C — Altzustand";
+        await (0, run_1.runThermalBoilerLearning)(host, { trigger: "startup", nowMs: NOW });
+        strict_1.default.equal(host.states["learning.thermal_boiler.current_temperature_c"], 59);
+        strict_1.default.match(String(host.states["learning.thermal_boiler.reason_de"]), /Boiler 59\.0 °C/);
+        strict_1.default.doesNotMatch(String(host.states["learning.thermal_boiler.reason_de"]), /63/);
+        strict_1.default.equal(host.states["learning.thermal_boiler.trigger_source"], "startup");
+        strict_1.default.equal(host.states["learning.thermal_boiler.last_run"], new Date(NOW).toISOString());
+        strict_1.default.equal(host.states["learning.thermal_boiler.next_run"], new Date(NOW + 3_600_000).toISOString());
+        strict_1.default.equal(host.states["learning.thermal_boiler.last_sample_at"], new Date(NOW).toISOString());
+    });
+    (0, node_test_1.it)("T22: mapping valid regular run updates last_run and history_points", async () => {
+        (0, run_1.__resetThermalBoilerRunLockForTest)();
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-reg-"));
+        const host = mockBoilerHost({ tmp, currentTemp: 58, history: [] });
+        await (0, run_1.runThermalBoilerLearning)(host, { trigger: "learning_tick", nowMs: NOW });
+        strict_1.default.equal(host.states["learning.thermal_boiler.current_temperature_c"], 58);
+        strict_1.default.equal(host.states["learning.thermal_boiler.trigger_source"], "learning_tick");
+        strict_1.default.ok(Number(host.states["learning.thermal_boiler.history_points"]) >= 1);
+        const firstRun = String(host.states["learning.thermal_boiler.last_run"]);
+        strict_1.default.equal(firstRun, new Date(NOW).toISOString());
+        (0, run_1.__resetThermalBoilerRunLockForTest)();
+        await (0, run_1.runThermalBoilerLearning)(host, { trigger: "learning_tick", nowMs: NOW + 3_600_000 });
+        strict_1.default.equal(host.states["learning.thermal_boiler.last_run"], new Date(NOW + 3_600_000).toISOString());
+        strict_1.default.notEqual(String(host.states["learning.thermal_boiler.last_run"]), firstRun);
+    });
+    (0, node_test_1.it)("T23: mapping missing → no fake temperature", async () => {
+        (0, run_1.__resetThermalBoilerRunLockForTest)();
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-miss-"));
+        const host = mockBoilerHost({
+            tmp,
+            currentTemp: 59,
+            history: [],
+            mappingTarget: null,
+            mappingEnabled: true,
+        });
+        host.states[`${BOILER_MAP_BASE}.enabled`] = true;
+        host.states[`${BOILER_MAP_BASE}.target_state`] = "";
+        await (0, run_1.runThermalBoilerLearning)(host, { nowMs: NOW });
+        strict_1.default.equal(host.states["learning.thermal_boiler.current_temperature_c"], null);
+        strict_1.default.doesNotMatch(String(host.states["learning.thermal_boiler.reason_de"]), /59/);
+    });
+    (0, node_test_1.it)("T24: history grows from live samples without a completed cycle", async () => {
+        (0, run_1.__resetThermalBoilerRunLockForTest)();
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-grow-"));
+        const host = mockBoilerHost({ tmp, currentTemp: 57, history: [] });
+        await (0, run_1.runThermalBoilerLearning)(host, { nowMs: NOW });
+        strict_1.default.equal((0, math_1.detectRuntimeCycles)([], boilerCfg()).length, 0);
+        strict_1.default.ok(Number(host.states["learning.thermal_boiler.history_points"]) >= 1);
+        strict_1.default.equal(host.states["learning.thermal_boiler.samples"], 0);
+        host.getForeignStateAsync = async (id) => id === "sensor.0.boiler" ? { val: 56 } : { val: null };
+        (0, run_1.__resetThermalBoilerRunLockForTest)();
+        await (0, run_1.runThermalBoilerLearning)(host, { nowMs: NOW + samples_1.BOILER_SAMPLE_MIN_INTERVAL_MS });
+        strict_1.default.ok(Number(host.states["learning.thermal_boiler.history_points"]) >= 2);
+        const persist = await (0, persist_1.readThermalBoilerPersist)(path.join(tmp, "learning/thermal_boiler"));
+        strict_1.default.ok((persist?.temp_samples?.length ?? 0) >= 2);
+        const hist = JSON.parse(String(host.states["learning.thermal_boiler.history_json"] ?? "[]"));
+        strict_1.default.ok(Array.isArray(hist) && hist.length >= 2);
+    });
+    (0, node_test_1.it)("T25: Newton-Fallback from persisted boiler samples without ioBroker history cycles", async () => {
+        (0, run_1.__resetThermalBoilerRunLockForTest)();
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-newton-"));
+        const dir = path.join(tmp, "learning/thermal_boiler");
+        await fs.mkdir(dir, { recursive: true });
+        const samples = linearCurve(NOW - 20 * MS_H, 64, 51, 20, 20);
+        await fs.writeFile(path.join(dir, "thermal_boiler_learning_v1.json"), JSON.stringify({
+            generated_at: new Date(NOW).toISOString(),
+            module: persist_1.BOILER_MODULE_TAG,
+            samples: 0,
+            runtime_hours_avg: null,
+            runtime_hours_median: null,
+            cooling_rate_c_per_h_avg: null,
+            by_season: {},
+            by_day_type: {},
+            history: [],
+            health: "no_samples",
+            source_kind: persist_1.BOILER_SOURCE_KIND,
+            source_state_id: "sensor.0.boiler",
+            temp_samples: samples,
+        }));
+        const host = mockBoilerHost({ tmp, currentTemp: 51, history: [] });
+        await (0, run_1.runThermalBoilerLearning)(host, { nowMs: NOW });
+        strict_1.default.equal(host.states["learning.thermal_boiler.model"], "newton");
+        strict_1.default.ok(Number(host.states["learning.thermal_boiler.cooling_k_per_h"]) > 0);
+        strict_1.default.match(String(host.states["learning.thermal_boiler.reason_de"]), /Newton|51\.0/);
+    });
+    (0, node_test_1.it)("T26: untrusted persist without source metadata is discarded on first run", async () => {
+        (0, run_1.__resetThermalBoilerRunLockForTest)();
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-discard-"));
+        const dir = path.join(tmp, "learning/thermal_boiler");
+        await fs.mkdir(dir, { recursive: true });
+        await fs.writeFile(path.join(dir, "thermal_boiler_learning_v1.json"), JSON.stringify({
+            generated_at: "2026-08-16T19:07:50.076Z",
+            module: persist_1.BOILER_MODULE_TAG,
+            samples: 9,
+            runtime_hours_avg: 8,
+            runtime_hours_median: 8,
+            cooling_rate_c_per_h_avg: 1.2,
+            by_season: {},
+            by_day_type: {},
+            history: [],
+            health: "ok",
+            temp_samples: [{ ts: NOW - MS_H, tempC: 63 }],
+        }));
+        strict_1.default.equal(await (0, persist_1.readThermalBoilerPersist)(dir), null);
+        const host = mockBoilerHost({ tmp, currentTemp: 59, history: [] });
+        await (0, run_1.runThermalBoilerLearning)(host, { nowMs: NOW });
+        const persist = await (0, persist_1.readThermalBoilerPersist)(dir);
+        strict_1.default.equal(persist?.source_kind, persist_1.BOILER_SOURCE_KIND);
+        strict_1.default.equal(persist?.samples, 0);
+        strict_1.default.ok((persist?.temp_samples ?? []).every((p) => p.tempC !== 63));
+        strict_1.default.equal(host.states["learning.thermal_boiler.current_temperature_c"], 59);
+    });
+    (0, node_test_1.it)("T27: hanging history still publishes live mapping temp (no stale 63)", async () => {
+        (0, run_1.__resetThermalBoilerRunLockForTest)();
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-hang-"));
+        const host = mockBoilerHost({ tmp, currentTemp: 59, history: [] });
+        host.states["learning.thermal_boiler.current_temperature_c"] = 63;
+        host.getHistoryAsync = async () => {
+            await new Promise((r) => setTimeout(r, 80));
+            return historyResult([]);
+        };
+        await (0, run_1.runThermalBoilerLearning)(host, { nowMs: NOW, historyTimeoutMs: 25, trigger: "startup" });
+        strict_1.default.equal(host.states["learning.thermal_boiler.current_temperature_c"], 59);
+        strict_1.default.match(String(host.states["learning.thermal_boiler.reason_de"]), /59\.0/);
+        strict_1.default.ok(String(host.states["learning.thermal_boiler.last_run"]).length > 10);
+    });
+    (0, node_test_1.it)("T28: overlapping runs do not double-append samples", async () => {
+        (0, run_1.__resetThermalBoilerRunLockForTest)();
+        const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-ovl-"));
+        const host = mockBoilerHost({ tmp, currentTemp: 56, history: [] });
+        host.getHistoryAsync = async () => {
+            await new Promise((r) => setTimeout(r, 60));
+            return historyResult([]);
+        };
+        const first = (0, run_1.runThermalBoilerLearning)(host, { nowMs: NOW, historyTimeoutMs: 5_000 });
+        await new Promise((r) => setTimeout(r, 15));
+        await (0, run_1.runThermalBoilerLearning)(host, { nowMs: NOW + 1 });
+        await first;
+        const persist = await (0, persist_1.readThermalBoilerPersist)(path.join(tmp, "learning/thermal_boiler"));
+        strict_1.default.equal(persist?.temp_samples?.length, 1);
+    });
+    (0, node_test_1.it)("T29: sample debounce prevents write storm", () => {
+        const a = (0, samples_1.appendBoilerTempSample)([], { ts: NOW, tempC: 55 }, NOW, 7);
+        const b = (0, samples_1.appendBoilerTempSample)(a, { ts: NOW + 1_000, tempC: 55.1 }, NOW + 1_000, 7);
+        strict_1.default.equal(b.length, 1);
+        const c = (0, samples_1.appendBoilerTempSample)(b, { ts: NOW + samples_1.BOILER_SAMPLE_MIN_INTERVAL_MS, tempC: 54 }, NOW + samples_1.BOILER_SAMPLE_MIN_INTERVAL_MS, 7);
+        strict_1.default.equal(c.length, 2);
+        strict_1.default.equal((0, samples_1.mergeBoilerTempPoints)(c, c).length, 2);
     });
     (0, node_test_1.it)("T16: no new EV planner writes", () => {
         strict_1.default.equal(write_allowlist_1.EV_FOUNDATION_PHASE1_PLANNER_WRITES_ENABLED, false);

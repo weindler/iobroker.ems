@@ -37,7 +37,7 @@ function isTrustedBoilerPersist(parsed) {
     return typeof parsed.source_state_id === "string" && parsed.source_state_id.trim().length > 0;
 }
 exports.isTrustedBoilerPersist = isTrustedBoilerPersist;
-async function writeThermalBoilerPersist(baseDir, result, lastRun, sourceStateId) {
+async function writeThermalBoilerPersist(baseDir, result, lastRun, sourceStateId, tempSamples = []) {
     const source = sourceStateId.trim();
     if (!source)
         return;
@@ -55,6 +55,7 @@ async function writeThermalBoilerPersist(baseDir, result, lastRun, sourceStateId
         health: result.health,
         source_kind: exports.BOILER_SOURCE_KIND,
         source_state_id: source,
+        temp_samples: tempSamples,
     };
     await (0, atomic_write_1.atomicWriteFile)(path.join(baseDir, "thermal_boiler_learning_v1.json"), `${JSON.stringify(payload, null, 2)}\n`);
 }

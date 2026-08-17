@@ -3,7 +3,9 @@ export {
 	runThermalBoilerLearning,
 	refreshThermalBoilerRemainingCountdown,
 	resolveBoilerTempStateId,
+	__resetThermalBoilerRunLockForTest,
 	type ThermalBoilerRunHost,
+	type ThermalBoilerRunOptions,
 } from "./run";
 export { thermalBoilerConfigFromAdapter } from "./config";
 export {

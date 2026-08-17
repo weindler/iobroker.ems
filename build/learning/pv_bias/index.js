@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopPvBiasLearning = exports.initPvBiasLearning = exports.startPvBiasLearningRuntime = exports.ensureLearningStateTree = void 0;
+exports.__isLearningTickInFlightForTest = exports.__hasPvBiasLearningTimerForTest = exports.__resetLearningRuntimeForTest = exports.stopPvBiasLearning = exports.initPvBiasLearning = exports.startPvBiasLearningRuntime = exports.ensureLearningStateTree = void 0;
 const ensure_states_1 = require("./ensure_states");
 const run_1 = require("./run");
 const config_1 = require("./config");
@@ -17,6 +17,7 @@ const data_dir_1 = require("../data_dir");
 const history_bridge_1 = require("../history_bridge");
 const persistence_mirror_1 = require("../persistence_mirror");
 let pvBiasTimer = null;
+let learningTickInFlight = false;
 /** Phase B — Learning-States ohne Timer oder Persist-Restore. */
 async function ensureLearningStateTree(adapter) {
     const host = (0, history_bridge_1.withHistoryBridge)(adapter, (0, data_dir_1.withLearningDataPath)(adapter, adapter));
@@ -36,31 +37,48 @@ exports.ensureLearningStateTree = ensureLearningStateTree;
 async function startPvBiasLearningRuntime(adapter, host) {
     const cfg = (0, config_1.pvBiasConfigFromAdapter)(adapter.config);
     stopPvBiasLearning();
-    void runLearningTick(host).catch((e) => {
+    void runLearningTick(host, "startup").catch((e) => {
         adapter.log.error(`PV-Bias/Horizon initial run: ${e}`);
     });
     pvBiasTimer = setInterval(() => {
-        void runLearningTick(host).catch((e) => {
+        void runLearningTick(host, "interval").catch((e) => {
             adapter.log.error(`PV-Bias/Horizon tick: ${e}`);
         });
     }, cfg.intervalSec * 1000);
     adapter.log.debug?.(`EMS-Light PV-Bias + PV-Horizon + Price + House-Load + Thermal + Battery-Runtime ready (read-only, interval ${cfg.intervalSec}s)`);
 }
 exports.startPvBiasLearningRuntime = startPvBiasLearningRuntime;
-async function runLearningTick(host) {
-    await (0, energy_daily_rollup_1.ensureEnergyDailyRollupForLearning)(host);
-    await (0, run_1.runPvBiasLearning)(host);
-    await (0, pv_horizon_1.runPvHorizon)(host);
-    await (0, price_learning_1.runPriceLearning)(host);
-    // Rollup-Backfill vor House-Load/Battery — sonst fällt der erste Lauf auf history.0 zurück.
-    await (0, power_rollup_1.ensurePowerRollupForLearning)(host);
-    // House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
-    await (0, house_load_1.runHouseLoadLearning)(host);
-    await (0, thermal_runtime_1.runThermalRuntimeLearning)(host);
-    await (0, thermal_boiler_1.runThermalBoilerLearning)(host);
-    await (0, battery_runtime_1.runBatteryRuntimeLearning)(host);
-    await (0, price_forecast_1.runPriceForecastLearning)(host);
-    await (0, persistence_mirror_1.mirrorLearningPersistenceToStates)(host);
+async function runLearningTick(host, trigger = "interval") {
+    if (learningTickInFlight)
+        return;
+    learningTickInFlight = true;
+    try {
+        /*
+         * Boiler zuerst: Live-Diagnose darf nicht hinter PV-Bias/House-Load/90-Tage-Puffer-History
+         * in der gemeinsamen History-Queue stecken bleiben.
+         */
+        try {
+            await (0, thermal_boiler_1.runThermalBoilerLearning)(host, { trigger: trigger === "startup" ? "startup" : "learning_tick" });
+        }
+        catch (e) {
+            host.log.error(`Boiler-Learning tick: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        await (0, energy_daily_rollup_1.ensureEnergyDailyRollupForLearning)(host);
+        await (0, run_1.runPvBiasLearning)(host);
+        await (0, pv_horizon_1.runPvHorizon)(host);
+        await (0, price_learning_1.runPriceLearning)(host);
+        // Rollup-Backfill vor House-Load/Battery — sonst fällt der erste Lauf auf history.0 zurück.
+        await (0, power_rollup_1.ensurePowerRollupForLearning)(host);
+        // House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
+        await (0, house_load_1.runHouseLoadLearning)(host);
+        await (0, thermal_runtime_1.runThermalRuntimeLearning)(host);
+        await (0, battery_runtime_1.runBatteryRuntimeLearning)(host);
+        await (0, price_forecast_1.runPriceForecastLearning)(host);
+        await (0, persistence_mirror_1.mirrorLearningPersistenceToStates)(host);
+    }
+    finally {
+        learningTickInFlight = false;
+    }
 }
 async function initPvBiasLearning(adapter) {
     const host = await ensureLearningStateTree(adapter);
@@ -74,3 +92,17 @@ function stopPvBiasLearning() {
     }
 }
 exports.stopPvBiasLearning = stopPvBiasLearning;
+/** Nur für Tests. */
+function __resetLearningRuntimeForTest() {
+    stopPvBiasLearning();
+    learningTickInFlight = false;
+}
+exports.__resetLearningRuntimeForTest = __resetLearningRuntimeForTest;
+function __hasPvBiasLearningTimerForTest() {
+    return pvBiasTimer != null;
+}
+exports.__hasPvBiasLearningTimerForTest = __hasPvBiasLearningTimerForTest;
+function __isLearningTickInFlightForTest() {
+    return learningTickInFlight;
+}
+exports.__isLearningTickInFlightForTest = __isLearningTickInFlightForTest;

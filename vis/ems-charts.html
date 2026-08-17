@@ -6,47 +6,50 @@
 <script src="/socket.io/socket.io.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:6px 8px;overflow:auto}
+html,body{height:100%;overflow:hidden}
+body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4px 6px}
 .ems-status{font-size:11px;color:#8b949e;padding:12px;text-align:center}
 .ems-status.err{color:#f85149}
+#ems-content{display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden}
 .ems-top{display:grid;grid-template-columns:1.15fr 1fr;gap:6px;margin-bottom:6px}
 .ems-box{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:7px 9px;min-height:0}
-.ems-k{font-size:8px;color:#8b949e;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.ems-k{font-size:8px;color:#8b949e;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
 .ems-now-line{font-size:13px;font-weight:600;line-height:1.3;color:#e6edf3}
 .ems-now-meta{font-size:10px;color:#c9d1d9;margin-top:3px;line-height:1.3}
 .ems-ai-line{font-size:12px;font-weight:700;margin-top:2px}
 .ems-ai-line.yes{color:#3fb950}.ems-ai-line.no{color:#8b949e}.ems-ai-line.warn{color:#f0883e}.ems-ai-line.ok{color:#58a6ff}
 .ems-ai-reason{font-size:10px;color:#c9d1d9;line-height:1.3;margin-top:3px;max-height:3.9em;overflow:hidden}
-.ems-alerts{background:#3d1114;border:1px solid #f85149;border-radius:6px;padding:6px 8px;margin-bottom:6px;font-size:11px;color:#ffb1af;line-height:1.35}
-.ems-live{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
-.ems-chip{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:5px 8px;min-width:88px;flex:1 1 92px}
-.ems-chip .ems-k{margin-bottom:1px}
-.ems-chip .ems-chip-v{font-size:13px;font-weight:700;line-height:1.2;color:#e6edf3}
-.ems-chip .ems-chip-s{font-size:9px;color:#8b949e;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ems-alerts{flex:0 0 auto;background:#3d1114;border:1px solid #f85149;border-radius:6px;padding:4px 8px;margin-bottom:4px;font-size:11px;color:#ffb1af;line-height:1.3}
+.ems-live{display:flex;flex-wrap:nowrap;gap:4px;margin-bottom:4px;flex:0 0 auto;overflow:hidden}
+.ems-chip{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:3px 6px;min-width:0;flex:1 1 0}
+.ems-chip .ems-k{margin-bottom:0}
+.ems-chip .ems-chip-v{font-size:12px;font-weight:700;line-height:1.15;color:#e6edf3}
+.ems-chip .ems-chip-s{font-size:8px;color:#8b949e;margin-top:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ems-chip.warn{border-color:#f85149}
 .ems-chip.on{border-color:#3fb95066}
-.ems-chip.price{flex:1.4 1 140px}
-.ems-chip.gb{flex:1.3 1 130px}
+.ems-chip.price{flex:1.3 1 0}
+.ems-chip.gb{flex:1.2 1 0}
 .ems-chip.gb-off .ems-chip-v{color:#8b949e}
 .ems-chip.gb-block{border-color:#f0883e66}
 .ems-chip.gb-ready{border-color:#1f6feb66}
 .ems-chip.gb-on{border-color:#3fb95066}
-.ems-price{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 8px 4px;margin-bottom:6px}
-.ems-price-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:4px}
-.ems-price-meta{font-size:10px;color:#c9d1d9;line-height:1.3}
+.ems-price{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:4px 6px 3px;margin-bottom:4px;flex:0 0 auto}
+.ems-price-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:2px}
+.ems-price-meta{font-size:9px;color:#c9d1d9;line-height:1.25}
 .ems-price-svg{width:100%;height:84px;display:block}
-.ems-price-legend{display:flex;flex-wrap:wrap;gap:8px;font-size:9px;color:#8b949e;margin-top:3px}
-.ems-price-legend span{display:inline-flex;align-items:center;gap:4px}
-.ems-sw{width:8px;height:8px;border-radius:2px;display:inline-block}
-.ems-ai-compact{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:4px 8px;margin-bottom:6px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.ems-price-legend{display:flex;flex-wrap:wrap;gap:6px;font-size:8px;color:#8b949e;margin-top:1px}
+.ems-price-legend span{display:inline-flex;align-items:center;gap:3px}
+.ems-sw{width:7px;height:7px;border-radius:2px;display:inline-block}
+.ems-ai-compact{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:2px 6px;margin-bottom:4px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;flex:0 0 auto}
 .ems-ai-compact .ems-ai-toggle{margin:0}
-.ems-main{display:grid;grid-template-columns:minmax(0,2fr) minmax(200px,1fr);gap:6px;align-items:stretch;min-height:240px}
-.ems-tiles{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto;gap:6px;min-height:0}
-.ems-card{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:7px 8px;min-height:0}
-.ems-card-empty{background:transparent;border:1px dashed #30363d55;border-radius:6px;min-height:48px}
-.ems-card-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;gap:6px}
-.ems-card-title{font-size:12px;font-weight:700}
-.ems-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
+.ems-main{display:grid;grid-template-columns:minmax(0,1fr) 148px;gap:4px;align-items:stretch;flex:1 1 auto;min-height:0;overflow:hidden}
+.ems-tiles{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(0,1fr);gap:4px;min-height:0;height:100%;overflow:hidden}
+.ems-tiles.ems-tiles-dense{grid-template-columns:1fr 1fr 1fr}
+.ems-card{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:4px 6px;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.ems-card-empty{display:none}
+.ems-card-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;gap:6px;flex:0 0 auto}
+.ems-card-title{font-size:11px;font-weight:700}
+.ems-badge{font-size:8px;font-weight:700;padding:1px 5px;border-radius:4px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
 .ems-badge.on{background:#238636;color:#fff}
 .ems-badge.off{background:#30363d;color:#8b949e}
 .ems-badge.soon{background:#9e6a03;color:#fff}
@@ -65,19 +68,19 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:6
 .ems-badge.gb-ready{background:#1f6feb;color:#fff}
 .ems-badge.gb-on{background:#238636;color:#fff}
 .ems-badges{display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
-.ems-rows{display:grid;grid-template-columns:78px 1fr;gap:1px 6px;font-size:11px}
+.ems-rows{display:grid;grid-template-columns:68px 1fr;gap:0 6px;font-size:10px;flex:1 1 auto;min-height:0;align-content:start}
 .ems-rows .l{color:#8b949e}.ems-rows .r{color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ems-note{margin-top:4px;font-size:10px;color:#c9d1d9;line-height:1.3;max-height:2.6em;overflow:hidden}
-.ems-timeline{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:7px 9px;display:flex;flex-direction:column;min-height:0;max-height:100%;overflow:hidden}
+.ems-note{margin-top:2px;font-size:9px;color:#c9d1d9;line-height:1.25;max-height:1.3em;overflow:hidden;flex:0 0 auto}
+.ems-timeline{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:4px 5px;display:flex;flex-direction:column;min-height:0;max-height:100%;overflow:hidden;min-width:0}
 .ems-timeline .ems-k{flex:0 0 auto}
-.ems-next-list{list-style:none;font-size:11px;line-height:1.35;flex:1 1 auto;overflow:auto;margin-top:2px;padding-right:2px}
-.ems-next-list li{padding:5px 6px 5px 8px;margin-bottom:4px;border-radius:5px;background:#161b22;border:1px solid #30363d;border-left-width:3px}
-.ems-next-t{font-weight:700;margin-right:6px;white-space:nowrap;color:#e6edf3}
+.ems-next-list{list-style:none;font-size:9px;line-height:1.25;flex:1 1 auto;overflow:auto;margin-top:2px;padding-right:2px}
+.ems-next-list li{padding:3px 4px 3px 5px;margin-bottom:2px;border-radius:4px;background:#161b22;border:1px solid #30363d;border-left-width:3px}
+.ems-next-t{font-weight:700;margin-right:3px;white-space:nowrap;color:#e6edf3}
 .ems-next-name{font-weight:600}
-.ems-next-meta{display:block;font-size:10px;color:#c9d1d9;margin-top:2px;line-height:1.3}
-.ems-next-st{font-size:9px;font-weight:700;text-transform:uppercase;margin-left:4px;letter-spacing:.03em}
+.ems-next-meta{display:block;font-size:8px;color:#c9d1d9;margin-top:1px;line-height:1.2}
+.ems-next-st{font-size:8px;font-weight:700;text-transform:uppercase;margin-left:3px;letter-spacing:.03em}
 .ems-next-st.on{color:#3fb950}.ems-next-st.plan{color:#8b949e}.ems-next-st.soon{color:#f0883e}.ems-next-st.dryrun{color:#a371f7}.ems-next-st.est{color:#8b949e}.ems-next-st.fault{color:#f85149}
-.ems-diag{margin-top:8px;padding-top:6px;border-top:1px dashed #30363d}
+.ems-diag{flex:0 1 auto;max-height:32%;overflow:auto;margin-top:4px;padding-top:4px;border-top:1px dashed #30363d}
 .ems-diag-h{font-size:9px;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
 .ems-ai{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:6px;margin-bottom:6px}
 .ems-ai-box{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:7px 9px}
@@ -100,7 +103,8 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:6
 	.ems-main{grid-template-columns:1fr;min-height:0}
 	.ems-timeline{max-height:220px}
 	.ems-ai{grid-template-columns:1fr}
-	.ems-price-svg{height:72px}
+	.ems-price-svg{height:84px}
+	.ems-live{flex-wrap:wrap}
 }
 @media (max-width:560px){.ems-tiles{grid-template-columns:1fr}}
 </style>
@@ -268,6 +272,8 @@ var stateIds=[
 	INST+".addons.air_conditioning.units.unit_1.running",
 	INST+".addons.air_conditioning.units.unit_1.room_temp_c",
 	INST+".addons.air_conditioning.units.unit_1.mode_purpose",
+	INST+".addons.air_conditioning.units.unit_1.cleaning_active",
+	INST+".addons.air_conditioning.units.unit_1.governance_allowed",
 	INST+".addons.air_conditioning.units.unit_2.name",
 	INST+".addons.air_conditioning.units.unit_2.decision_source",
 	INST+".addons.air_conditioning.units.unit_2.daily_plan_status",
@@ -279,6 +285,8 @@ var stateIds=[
 	INST+".addons.air_conditioning.units.unit_2.running",
 	INST+".addons.air_conditioning.units.unit_2.room_temp_c",
 	INST+".addons.air_conditioning.units.unit_2.mode_purpose",
+	INST+".addons.air_conditioning.units.unit_2.cleaning_active",
+	INST+".addons.air_conditioning.units.unit_2.governance_allowed",
 	INST+".addons.air_conditioning.runtime.reason_de",
 	INST+".learning.thermal_runtime.estimated_remaining_hours",
 	INST+".learning.thermal_runtime.estimated_empty_at",
@@ -292,7 +300,7 @@ var stateIds=[
 var cache={},bound=false,socketBound=false;
 
 function setStatus(msg,isErr){var el=document.getElementById("ems-status");if(!el)return;el.textContent=msg;el.className="ems-status"+(isErr?" err":"");}
-function showContent(){document.getElementById("ems-status").style.display="none";document.getElementById("ems-content").style.display="block";}
+function showContent(){document.getElementById("ems-status").style.display="none";document.getElementById("ems-content").style.display="flex";}
 function st(id){return cache[id]!==undefined?cache[id]:null;}
 function g(path){return st(INST+"."+path);}
 function parseArr(raw){try{var a=JSON.parse(raw||"[]");return Array.isArray(a)?a:[];}catch(e){return[];}}
@@ -1106,6 +1114,74 @@ function visGridFlow(s,onW){
 	if(s.surplusW!=null&&s.surplusW>0)return{v:"EINSPEISUNG "+Math.round(s.surplusW)+" W",cls:s.surplusW>=onW?"on":""};
 	return{v:"0 W",cls:""};
 }
+function visPriceBand(ct,pMin,pMax){
+	if(ct==null||!isFinite(ct))return"medium";
+	var span=pMax-pMin;
+	if(!(span>0.5))return"medium";
+	var t=(ct-pMin)/span;
+	if(t<=0.25)return"cheap";
+	if(t<=0.5)return"medium";
+	if(t<=0.75)return"expensive";
+	return"very";
+}
+function visPriceBandFill(band){
+	if(band==="cheap")return"#3fb950cc";
+	if(band==="medium")return"#e3b341cc";
+	if(band==="expensive")return"#f0883ecc";
+	if(band==="very")return"#f85149cc";
+	return"#8b949e99";
+}
+function visPriceAxisRange(prices,gbMin){
+	var nums=[],i;
+	if(prices){
+		for(i=0;i<prices.length;i++){
+			var n=prices[i];
+			if(n!=null&&isFinite(n))nums.push(Number(n));
+		}
+	}
+	var dataMin=nums.length?Math.min.apply(null,nums):0;
+	var dataMax=nums.length?Math.max.apply(null,nums):1;
+	var hasGb=gbMin!=null&&isFinite(gbMin);
+	var lo=hasGb?Math.min(dataMin,gbMin):dataMin;
+	var hi=hasGb?Math.max(dataMax,gbMin):dataMax;
+	var span=hi-lo;
+	if(!(span>0))span=8;
+	var pad=Math.max(8,span*0.45);
+	var axisMin=lo-pad;
+	if(axisMin<0)axisMin=0;
+	var axisMax=hi+pad;
+	if(hasGb){
+		var minBelow=Math.max(10,gbMin*0.28);
+		if(gbMin-axisMin<minBelow)axisMin=Math.max(0,gbMin-minBelow);
+		var s=axisMax-axisMin;
+		if(s>0&&(axisMax-gbMin)/s<0.22)axisMax=gbMin+Math.max(10,(gbMin-axisMin)*0.4);
+		s=axisMax-axisMin;
+		if(s>0){
+			var pos=(gbMin-axisMin)/s;
+			if(pos>0.7)axisMin=Math.max(0,gbMin-0.55*s);
+			if(pos<0.3&&axisMin>0)axisMin=Math.max(0,gbMin-0.45*(axisMax-axisMin));
+		}
+	}
+	if(axisMax<=axisMin)axisMax=axisMin+8;
+	return{axisMin:axisMin,axisMax:axisMax};
+}
+function visClimateNote(s){
+	var src=visNorm(s.decisionSource);
+	var reason=String(s.reasonDe||"");
+	var alloc=String(s.allocationReasonDe||"");
+	var combined=reason+" "+alloc;
+	if(s.cleaningActive||src==="cleaning"||/Reinigung|cleaning/i.test(combined))return"Reinigung aktiv";
+	if(s.modeOff||s.governanceAllowed===false||/Governance deaktiviert|Add-on deaktiviert|Innengerät deaktiviert/i.test(combined))return"Durch EMS gesperrt";
+	if(s.outsideWindow||/Außerhalb Zeitfenster|Hard-Off/i.test(combined))return"Durch EMS gesperrt";
+	if(s.running){
+		if(s.demand==="hold"||/Hysterese|läuft weiter|Mindes|Restlauf|halten \(kein Planner|NOW-Allocation/i.test(reason))return"Läuft weiter bis Abschaltgrenze";
+		if(s.demand==="active"||/Einschalten|Kühlbedarf|Läuft\s*\(/i.test(reason))return"Kühlbedarf vorhanden";
+		return"Läuft weiter bis Abschaltgrenze";
+	}
+	if(s.hasFuture&&!s.allocOn)return"Wartet auf geplanten Slot";
+	if(s.demand==="active")return"Kühlbedarf vorhanden";
+	return"Keine Kühlung erforderlich";
+}
 /* /vis-ops-display */
 function chip(label,value,sub,extraCls){
 	return '<div class="ems-chip'+(extraCls?" "+extraCls:"")+'"><div class="ems-k">'+esc(label)+'</div><div class="ems-chip-v">'+esc(value)+'</div>'
@@ -1149,6 +1225,27 @@ function emsActionLabel(){return visEmsAction(visLiveSnap());}
 function gbBlockReasonDe(code){return visGbBlockReasonDe(code);}
 function gbStatus(){return visGbStatus(visLiveSnap());}
 function gridFlowLine(){return visGridFlow(visLiveSnap(),ON_W);}
+function climateCardNote(unitIndex){
+	var base="addons.air_conditioning.units.unit_"+unitIndex;
+	var running=isOn(g(base+".running"));
+	var reasonDe=txt(g(base+".reason_de"),"");
+	if(reasonDe==="—")reasonDe="";
+	var d=resolveClimateUnitDisplay(unitIndex);
+	var next=d&&d.nextLine&&d.nextLine!=="keines";
+	return visClimateNote({
+		running:running,
+		cleaningActive:isOn(g(base+".cleaning_active")),
+		decisionSource:txt(g(base+".decision_source"),""),
+		reasonDe:reasonDe,
+		allocationReasonDe:txt(g(base+".allocation_reason_de"),""),
+		modeOff:String(g("addons.air_conditioning.mode")||"").toLowerCase()==="off",
+		governanceAllowed:g(base+".governance_allowed"),
+		outsideWindow:isOutsideClockWindowReason(reasonDe),
+		demand:d?d.demand:"none",
+		hasFuture:!!next,
+		allocOn:isPowerOn(num(g(base+".allocated_power_w")))
+	});
+}
 function climateHvacBadge(unitIndex){
 	var p=String(g("addons.air_conditioning.units.unit_"+unitIndex+".mode_purpose")||"").toLowerCase();
 	if(p==="dehumidify")return{cls:"hvac-dry",label:"DRY"};
@@ -1250,16 +1347,37 @@ function renderPriceBoard(){
 	var prices=[];
 	var i;
 	for(i=0;i<slots.length;i++){var p=num(slots[i].priceCt);if(p!==null)prices.push(p);}
-	var pMin=prices.length?Math.min.apply(null,prices):0;
-	var pMax=prices.length?Math.max.apply(null,prices):1;
-	if(gbMin!==null){pMin=Math.min(pMin,gbMin);pMax=Math.max(pMax,gbMin);}
+	var bandLo=prices.length?Math.min.apply(null,prices):0;
+	var bandHi=prices.length?Math.max.apply(null,prices):1;
+	var axis=visPriceAxisRange(prices,gbMin);
+	var pMin=axis.axisMin,pMax=axis.axisMax;
 	if(pMax<=pMin)pMax=pMin+1;
-	var padL=28,padR=6,padT=6,padB=18;
+	var padL=36,padR=8,padT=12,padB=16;
 	var W=640,H=84;
 	var innerW=W-padL-padR,innerH=H-padT-padB;
 	function yOf(ct){return padT+innerH-((ct-pMin)/(pMax-pMin))*innerH;}
 	function xOf(idx){return padL+(idx+0.5)*(innerW/slots.length);}
-	var bars="",acts="",labels="",j;
+	var zones="";
+	if(gbMin!==null){
+		var zy=yOf(gbMin);
+		var belowH=padT+innerH-zy;
+		var aboveH=zy-padT;
+		if(belowH>0)zones+='<rect x="'+padL+'" y="'+zy.toFixed(1)+'" width="'+innerW+'" height="'+belowH.toFixed(1)+'" fill="#f8514914"/>';
+		if(aboveH>0)zones+='<rect x="'+padL+'" y="'+padT+'" width="'+innerW+'" height="'+aboveH.toFixed(1)+'" fill="#8b949e12"/>';
+	}
+	var hourBg="",hourStart=-1,hourEnd=-1,hi;
+	for(hi=0;hi<slots.length;hi++){
+		if(slots[hi].currentHour){
+			if(hourStart<0)hourStart=hi;
+			hourEnd=hi;
+		}
+	}
+	if(hourStart>=0){
+		var hx0=padL+hourStart*(innerW/slots.length);
+		var hx1=padL+(hourEnd+1)*(innerW/slots.length);
+		hourBg='<rect x="'+hx0.toFixed(1)+'" y="'+padT+'" width="'+(hx1-hx0).toFixed(1)+'" height="'+innerH.toFixed(1)+'" fill="#58a6ff22"/>';
+	}
+	var bars="",acts="",labels="",gbMarks="",currentBg="",j;
 	var lastHour="";
 	for(j=0;j<slots.length;j++){
 		var s=slots[j];
@@ -1268,9 +1386,15 @@ function renderPriceBoard(){
 		var bw=Math.max(1.2,innerW/slots.length-0.6);
 		var h=ct===null?0:((ct-pMin)/(pMax-pMin))*innerH;
 		var y=padT+innerH-h;
-		var fill=s.currentHour?"#58a6ff":(s.gbPriceOk?"#3fb95099":"#8b949e99");
-		if(s.current)fill="#f0b429";
-		bars+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0,h).toFixed(1)+'" rx="1" fill="'+fill+'"/>';
+		var fill=visPriceBandFill(visPriceBand(ct,bandLo,bandHi));
+		if(s.current){
+			currentBg='<rect x="'+x.toFixed(1)+'" y="'+padT+'" width="'+bw.toFixed(1)+'" height="'+innerH.toFixed(1)+'" fill="#f0b42955"/>';
+		}
+		bars+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0,h).toFixed(1)+'" rx="1" fill="'+fill+'"'+(s.current?' stroke="#f0b429" stroke-width="1.6"':'')+'/>';
+		if(s.current&&s.gbPriceOk&&gbMin!==null){
+			var mx=(x+bw/2).toFixed(1),my=yOf(gbMin).toFixed(1);
+			gbMarks+='<circle cx="'+mx+'" cy="'+my+'" r="2.2" fill="#f85149" stroke="#0d1117" stroke-width="0.7"/>';
+		}
 		if(s.actions&&s.actions.length){
 			var ax=x+bw/2,k;
 			for(k=0;k<s.actions.length;k++){
@@ -1289,8 +1413,10 @@ function renderPriceBoard(){
 	var thr="";
 	if(gbMin!==null){
 		var ty=yOf(gbMin);
-		thr='<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+ty.toFixed(1)+'" y2="'+ty.toFixed(1)+'" stroke="#f85149" stroke-dasharray="3 3" stroke-width="1"/>'
-			+'<text x="'+(W-padR)+'" y="'+(ty-2).toFixed(1)+'" text-anchor="end" fill="#f85149" font-size="8">'+esc(Number(gbMin).toFixed(1).replace(".",","))+"</text>";
+		thr='<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+ty.toFixed(1)+'" y2="'+ty.toFixed(1)+'" stroke="#f85149" stroke-dasharray="3 3" stroke-width="1.2"/>'
+			+'<text x="'+(W-padR)+'" y="'+(ty-3).toFixed(1)+'" text-anchor="end" fill="#f85149" font-size="8">'+esc(Number(gbMin).toFixed(1).replace(".",","))+' ct</text>'
+			+'<text x="'+(padL+4)+'" y="'+(ty-4).toFixed(1)+'" fill="#8b949e" font-size="7">GB preislich erlaubt</text>'
+			+'<text x="'+(padL+4)+'" y="'+(ty+11).toFixed(1)+'" fill="#8b949e" font-size="7">GB gesperrt</text>';
 	}
 	var yLab='<text x="2" y="'+(padT+8)+'" fill="#8b949e" font-size="8">'+esc(pMax.toFixed(0))+'</text>'
 		+'<text x="2" y="'+(padT+innerH)+'" fill="#8b949e" font-size="8">'+esc(pMin.toFixed(0))+"</text>";
@@ -1298,11 +1424,15 @@ function renderPriceBoard(){
 		+esc([gateLine,thrLine,minLine,maxLine].filter(Boolean).join(" · "))
 		+"</div></div>"
 		+'<svg class="ems-price-svg" viewBox="0 0 '+W+" "+H+'" preserveAspectRatio="none" role="img" aria-label="Tibber-Preisachse">'
-		+yLab+bars+thr+acts+labels+"</svg>"
+		+zones+hourBg+currentBg+yLab+bars+thr+gbMarks+acts+labels+"</svg>"
 		+'<div class="ems-price-legend">'
 		+'<span><i class="ems-sw" style="background:#f0b429"></i>jetzt</span>'
-		+'<span><i class="ems-sw" style="background:#58a6ff"></i>aktuelle Stunde</span>'
-		+'<span><i class="ems-sw" style="background:#3fb950"></i>GB preislich ok</span>'
+		+'<span><i class="ems-sw" style="background:#58a6ff44;border:1px solid #58a6ff"></i>aktuelle Stunde</span>'
+		+'<span><i class="ems-sw" style="background:#3fb950"></i>günstig</span>'
+		+'<span><i class="ems-sw" style="background:#e3b341"></i>mittel</span>'
+		+'<span><i class="ems-sw" style="background:#f0883e"></i>teuer</span>'
+		+'<span><i class="ems-sw" style="background:#f85149"></i>sehr teuer</span>'
+		+'<span><i class="ems-sw" style="background:transparent;border-top:2px dashed #f85149;height:0;width:10px;border-radius:0"></i>GB-Schwelle</span>'
 		+'<span><i class="ems-sw" style="background:#58a6ff"></i>Batterie Netz</span>'
 		+'<span><i class="ems-sw" style="background:#d2a8ff"></i>Wallbox</span>'
 		+'<span><i class="ems-sw" style="background:#ffa657"></i>Heizstab</span>'
@@ -1438,7 +1568,7 @@ function renderStack(){
 	function acCard(unitIndex){
 		var base="addons.air_conditioning.units.unit_"+unitIndex;
 		var name=txt(g(base+".name"),"");
-		if(!name&&!g(base+".room_temp_c")&&!g(base+".running"))return'<div class="ems-card-empty"></div>';
+		if(!name&&!g(base+".room_temp_c")&&!g(base+".running"))return"";
 		var title=name?("Klima · "+name):("Klima "+unitIndex);
 		var d=resolveClimateUnitDisplay(unitIndex);
 		var running=isOn(g(base+".running"));
@@ -1453,7 +1583,7 @@ function renderStack(){
 			["Leistung",pLine],
 			["Heute",d.heuteLine],
 			["Nächstes",d.nextLine]
-		],shortNote(g(base+".reason_de")||d.note,90));
+		],climateCardNote(unitIndex));
 	}
 
 	el.innerHTML=
@@ -1467,7 +1597,11 @@ function renderStack(){
 			["Nächstes",wbNextLine]
 		],"")
 		+acCard(1)
-		+acCard(2);
+		+acCard(2)
+		+acCard(3)
+		+acCard(4)
+		+acCard(5);
+	el.className="ems-tiles"+(el.querySelectorAll(".ems-card").length>4?" ems-tiles-dense":"");
 }
 
 function renderAi(){
@@ -1505,6 +1639,10 @@ function renderDaily(){
 	var last=txt(g("addons.battery.grid_balance.last_action"),"—");
 	var hold=txt(g("addons.battery.grid_balance.hold_detected"),"—");
 	var gbGrid=txt(g("addons.battery.grid_balance.grid_power_w"),"—");
+	var ac1r=txt(g("addons.air_conditioning.units.unit_1.reason_de"),"—");
+	var ac1a=txt(g("addons.air_conditioning.units.unit_1.allocation_reason_de"),"—");
+	var ac2r=txt(g("addons.air_conditioning.units.unit_2.reason_de"),"—");
+	var ac2a=txt(g("addons.air_conditioning.units.unit_2.allocation_reason_de"),"—");
 	el.innerHTML=
 		'<div class="ems-daily-main"><div class="ems-k">Daily Plan</div><div class="ems-v ok">'+esc(stt)+'</div>'
 		+'<div class="ems-ai-reason">Aktueller Slot '+esc(slotLine)+(untilLine?" · "+esc(untilLine):"")+'</div></div>'
@@ -1514,6 +1652,8 @@ function renderDaily(){
 		+'<div style="margin-top:6px;color:#8b949e">Batterie intern: owner='+esc(owner)+" · action="+esc(action)
 		+" · GB last_action="+esc(last)+" · hold_detected="+esc(String(hold))
 		+" · grid_power_w="+esc(String(gbGrid))+"</div>"
+		+'<div style="margin-top:6px;color:#8b949e">Klima 1 intern: '+esc(ac1r)+" · "+esc(ac1a)+"</div>"
+		+'<div style="margin-top:4px;color:#8b949e">Klima 2 intern: '+esc(ac2r)+" · "+esc(ac2a)+"</div>"
 		+"</div>";
 }
 

@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.286",
+		"version": "0.1.287",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.287": {
+				"en": "Operator dashboard: Tibber bars colored by visible price (cheap/medium/expensive/very expensive), not by grid-balance allowance. GB min price stays a red line. Current slot highlighted. Main view fits 1276x637 without scrolling; only Diagnose may scroll. Reload the VIS iframe after update.",
+				"de": "Betriebsdashboard: Tibber-Balken nach sichtbarem Preisniveau (günstig/mittel/teuer/sehr teuer), nicht nach Netzausgleich-Erlaubnis. GB-Mindestpreis bleibt rote Linie. Aktueller Slot hervorgehoben. Hauptansicht 1276×637 ohne Scrollen; nur Diagnose darf scrollen. VIS-iframe nach Update neu laden."
+			},
 			"0.1.286": {
 				"en": "Operations dashboard: live PV/house/grid/price/battery/GB strip and Tibber price axis from the Daily Plan (no second optimiser). Re-import vis/ems-dashboard-view.json. Grid balance uses a minimum electricity price (default 30 ct/kWh): below it, no grid balance; at/above it, grid balance may run if all other safety conditions pass. Price-gate switch and median factor removed. Productive grid-balance/EV Dauerbetrieb stay off.",
 				"de": "Betriebsdashboard: Live-Leiste PV/Haus/Netz/Preis/Batterie/GB und Tibber-Preisachse aus dem Daily Plan (keine zweite Optimierung). vis/ems-dashboard-view.json neu importieren. Netzausgleich nutzt einen Mindeststrompreis (Default 30 ct/kWh): darunter kein Netzausgleich; ab der Grenze darf er arbeiten, wenn alle übrigen Safety-Bedingungen erfüllt sind. Preisgate-Schalter und Median-Faktor entfernt. Produktiver Netzausgleich-/EV-Dauerbetrieb bleibt aus."

@@ -25,7 +25,7 @@ function loadOpsDisplay(html) {
 	assert.ok(start >= 0 && end > start, "vis-ops-display markers required");
 	const code = html.slice(start, end);
 	return new Function(
-		`${code}; return { visBatteryMotion, visEmsAction, visGbStatus, visGridFlow, visTargetedHold };`,
+		`${code}; return { visBatteryMotion, visEmsAction, visGbStatus, visGridFlow, visTargetedHold, visPriceBand, visPriceAxisRange, visClimateNote };`,
 	)();
 }
 
@@ -148,6 +148,22 @@ describe("VIS operations dashboard", () => {
 		assert.match(visHtml, /operator\.vis\.price_timeline_json/);
 		assert.match(visHtml, /gbPriceOk/);
 		assert.match(visHtml, /battery_grid/);
+		assert.match(visHtml, />günstig</);
+		assert.match(visHtml, />mittel</);
+		assert.match(visHtml, />teuer</);
+		assert.match(visHtml, />sehr teuer</);
+		assert.match(visHtml, /GB-Schwelle/);
+		assert.equal(visHtml.includes('s.gbPriceOk?"#3fb95099"'), false);
+		assert.equal(visHtml.includes("GB preislich ok"), false);
+		assert.equal(visHtml.includes(">normal</"), false);
+		assert.match(visHtml, /function visPriceBand/);
+		assert.match(visHtml, /grid-template-columns:minmax\(0,1fr\) 148px/);
+		assert.match(visHtml, /html,body\{height:100%;overflow:hidden\}/);
+		assert.match(visHtml, /\.ems-price-svg\{width:100%;height:84px/);
+		assert.match(visHtml, /var W=640,H=84/);
+		assert.equal(visHtml.includes("H=108"), false);
+		assert.match(visHtml, /display="flex"/);
+		assert.match(visHtml, /ems-tiles-dense/);
 	});
 
 	it("does not put long Newton/planner explain text in the live header", () => {
@@ -275,5 +291,111 @@ describe("VIS battery / grid / GB presentation", () => {
 		assert.equal(body.includes("grid_power_w"), false);
 		assert.equal(ops.visGridFlow(snap({ surplusW: 2795, deficitW: 0 }), 50).v, "EINSPEISUNG 2795 W");
 		assert.equal(ops.visGridFlow(snap({ surplusW: 0, deficitW: 400 }), 50).v, "BEZUG 400 W");
+	});
+
+	it("colors price bars by günstig/mittel/teuer/sehr teuer, not gbPriceOk", () => {
+		assert.equal(ops.visPriceBand(10, 10, 40), "cheap");
+		assert.equal(ops.visPriceBand(18, 10, 40), "medium");
+		assert.equal(ops.visPriceBand(25, 10, 40), "medium");
+		assert.equal(ops.visPriceBand(32, 10, 40), "expensive");
+		assert.equal(ops.visPriceBand(40, 10, 40), "very");
+		assert.match(visHtml, /visPriceBandFill\(visPriceBand\(ct,bandLo,bandHi\)\)/);
+		assert.match(visHtml, /s\.current&&s\.gbPriceOk/);
+		assert.equal(visHtml.includes('if(s.current)fill="#f0b429"'), false);
+		assert.match(visHtml, /stroke="#f0b429"/);
+	});
+
+	it("scales Tibber bars against the configured GB min price, not a hardcoded 30 ct", () => {
+		const r = ops.visPriceAxisRange([27, 34], 30);
+		const span = r.axisMax - r.axisMin;
+		const h27 = (27 - r.axisMin) / span;
+		const h30 = (30 - r.axisMin) / span;
+		const h34 = (34 - r.axisMin) / span;
+		assert.ok(r.axisMin < 27, "scale keeps room below 27 ct");
+		assert.ok(h27 < h30, "27 ct bar stays below the 30 ct threshold");
+		assert.ok(h34 > h30, "34 ct bar extends above the 30 ct threshold");
+		assert.ok(h30 > 0.28 && h30 < 0.72, "threshold sits in the readable mid band");
+
+		const r40 = ops.visPriceAxisRange([36, 45], 40);
+		const s40 = r40.axisMax - r40.axisMin;
+		assert.ok((36 - r40.axisMin) / s40 < (40 - r40.axisMin) / s40);
+		assert.ok((45 - r40.axisMin) / s40 > (40 - r40.axisMin) / s40);
+
+		assert.match(visHtml, /visPriceAxisRange\(prices,gbMin\)/);
+		assert.match(visHtml, /price_min_ct_kwh/);
+		assert.match(visHtml, /GB preislich erlaubt/);
+		assert.match(visHtml, /GB gesperrt/);
+		const axisFn = visHtml.slice(visHtml.indexOf("function visPriceAxisRange"), visHtml.indexOf("function visClimateNote"));
+		assert.equal(/gbMin\s*===\s*30|axisMin\s*=\s*30/.test(axisFn), false);
+	});
+
+	it("translates climate runtime states to short everyday notes", () => {
+		assert.equal(
+			ops.visClimateNote({
+				running: true,
+				cleaningActive: true,
+				decisionSource: "cleaning",
+				reasonDe: "Reinigung aktiv — Kühlung gesperrt.",
+				demand: "none",
+			}),
+			"Reinigung aktiv",
+		);
+		assert.equal(
+			ops.visClimateNote({
+				running: true,
+				cleaningActive: false,
+				decisionSource: "temperature_no_demand",
+				reasonDe: "Kein NOW-Allocation-Eintrag — laufendes Gerät halten (kein Planner-OFF).",
+				demand: "hold",
+			}),
+			"Läuft weiter bis Abschaltgrenze",
+		);
+		assert.equal(
+			ops.visClimateNote({
+				running: true,
+				cleaningActive: false,
+				decisionSource: "daily_plan",
+				reasonDe: "Läuft (Temp 26.0 °C ≥ 24.5 °C — cool).",
+				demand: "active",
+			}),
+			"Kühlbedarf vorhanden",
+		);
+		assert.equal(
+			ops.visClimateNote({
+				running: false,
+				cleaningActive: false,
+				decisionSource: "daily_plan",
+				reasonDe: "Daily Plan: keine aktive Allocation für air_conditioning.unit_2 (0 W).",
+				allocationReasonDe: "Daily Plan: keine aktive Allocation für air_conditioning.unit_2 (0 W).",
+				demand: "none",
+				hasFuture: false,
+				allocOn: false,
+			}),
+			"Keine Kühlung erforderlich",
+		);
+		assert.equal(
+			ops.visClimateNote({
+				running: false,
+				cleaningActive: false,
+				decisionSource: "daily_plan",
+				reasonDe: "",
+				demand: "none",
+				hasFuture: true,
+				allocOn: false,
+			}),
+			"Wartet auf geplanten Slot",
+		);
+		assert.equal(
+			ops.visClimateNote({
+				running: false,
+				outsideWindow: true,
+				reasonDe: "Außerhalb Zeitfenster 08:00–22:00.",
+				demand: "none",
+			}),
+			"Durch EMS gesperrt",
+		);
+		assert.match(visHtml, /climateCardNote\(unitIndex\)/);
+		assert.equal(visHtml.includes('shortNote(g(base+".reason_de")'), false);
+		assert.match(visHtml, /Klima 1 intern/);
 	});
 });

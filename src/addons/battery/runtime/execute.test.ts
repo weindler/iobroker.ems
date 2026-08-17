@@ -119,4 +119,45 @@ describe("executeBatteryWrite", () => {
 		assert.equal(r.executed, false);
 		assert.equal(r.rejectCode, "addon_disabled");
 	});
+
+	it("force rewrites discharge even if device already shows the value", async () => {
+		const writes: Array<{ id: string; val: ioBroker.StateValue }> = [];
+		const host: BatteryWriteHost = {
+			getForeignStateAsync: async () => ({ val: 48, ack: true } as ioBroker.State),
+			setForeignStateAsync: async (id, state) => {
+				const val =
+					state && typeof state === "object" && "val" in state
+						? (state as ioBroker.SettableState).val
+						: (state as ioBroker.StateValue);
+				writes.push({ id, val: val ?? null });
+			},
+			log: { info: () => undefined, warn: () => undefined, error: () => undefined, debug: () => undefined },
+		};
+		const skipped = await executeBatteryWrite(host, {
+			kind: "discharge_power",
+			stateId: "sonnen.0.control.discharge",
+			value: 48,
+			requestId: "grid_balance",
+			reason: "grid_balance_keepalive",
+			dryrun: false,
+			gate: okGate(),
+		});
+		assert.equal(skipped.skipped, true);
+		assert.equal(writes.length, 0);
+		const forced = await executeBatteryWrite(host, {
+			kind: "discharge_power",
+			stateId: "sonnen.0.control.discharge",
+			value: 48,
+			requestId: "grid_balance",
+			reason: "grid_balance_keepalive",
+			dryrun: false,
+			force: true,
+			gate: okGate(),
+		});
+		assert.equal(forced.written, true);
+		assert.equal(forced.skipped, false);
+		assert.equal(writes.length, 1);
+		assert.equal(writes[0].id, "sonnen.0.control.discharge");
+		assert.equal(writes[0].val, 48);
+	});
 });

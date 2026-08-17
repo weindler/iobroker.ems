@@ -1,9 +1,11 @@
 /**
- * Einheitlicher Batterie-Setpoint-Release (alle EMS-Pfade, die control.charge > 0 schreiben).
+ * Batterie-Setpoint-Release, typisiert nach Charge- vs. Discharge-Kanal.
  *
- * Vertrag:
- *   eigener erfolgreicher Leistungs-Write > 0 → Ownership → reguläres Aktionsende
- *   → genau ein Release-Write 0 W → Ownership frei.
+ * Grid Charge / geplante Ladung: control.charge > 0 → Ownership kind=charge
+ *   → reguläres Ende → genau ein charge=0.
+ *
+ * Grid Balance: control.discharge > 0 → Ownership kind=discharge
+ *   → reguläres Ende → genau ein discharge=0.
  *
  * Kein 0-W-Write gegen eine neue Authority (Hold / External / Restore-Fault /
  * höhere Batterieaktion) — Ownership wird nur abgegeben.
@@ -15,10 +17,14 @@ import type { BatteryAction } from "../core/types";
 
 export type BatterySetpointOwner = "none" | "grid_balance" | "grid_charge" | "planned_charge";
 
+/** Charge-Kanal (Mode 1 / Netzladung) vs. Discharge-Kanal (Mode 2 / Netzausgleich). */
+export type BatterySetpointKind = "none" | "charge" | "discharge";
+
 export type BatterySetpointHandover = "none" | "hold" | "external" | "restore_fault" | "higher_priority";
 
 export interface BatterySetpointSession {
 	owner: BatterySetpointOwner;
+	kind: BatterySetpointKind;
 	setpointW: number;
 	wrotePositive: boolean;
 	wroteLive: boolean;
@@ -27,9 +33,16 @@ export interface BatterySetpointSession {
 	lastReleaseAt: string | null;
 }
 
+export function setpointKindFromOwner(owner: BatterySetpointOwner): BatterySetpointKind {
+	if (owner === "grid_balance") return "discharge";
+	if (owner === "grid_charge" || owner === "planned_charge") return "charge";
+	return "none";
+}
+
 export function emptySetpointSession(): BatterySetpointSession {
 	return {
 		owner: "none",
+		kind: "none",
 		setpointW: 0,
 		wrotePositive: false,
 		wroteLive: false,
@@ -67,9 +80,11 @@ export function notePositiveSetpointWrite(
 	live: boolean,
 ): BatterySetpointSession {
 	if (owner === "none" || !(powerW > 0) || !Number.isFinite(powerW)) return session;
+	const kind = setpointKindFromOwner(owner);
 	return {
 		...session,
 		owner,
+		kind,
 		setpointW: Math.round(powerW),
 		wrotePositive: true,
 		wroteLive: live || session.wroteLive,
@@ -111,6 +126,7 @@ export function applyZeroRelease(
 ): BatterySetpointSession {
 	return {
 		owner: "none",
+		kind: "none",
 		setpointW: 0,
 		wrotePositive: false,
 		wroteLive: false,
@@ -127,6 +143,7 @@ export function applyHandover(
 ): BatterySetpointSession {
 	return {
 		owner: "none",
+		kind: "none",
 		setpointW: 0,
 		wrotePositive: false,
 		wroteLive: false,

@@ -30,14 +30,13 @@ import {
 	type GridBalanceSafetyResult,
 } from "./grid_balance_contract";
 import {
+	GRID_BALANCE_KEEPALIVE_MAX_MS,
 	applyGridBalanceLiveTestPulse,
 	consumeGridBalanceLiveTest,
 	emptyGridBalanceLiveTest,
-	emptyStabilization,
 	evaluateGridBalanceTick,
 	type GridBalanceLiveTestState,
 	type GridBalanceTickDecision,
-	type StabilizationState,
 } from "./grid_balance_power";
 import { isRestoreInProgress } from "../../restore/barrier";
 import { WALLBOX_EVCC_STATES } from "../wallbox/ensure_evcc_states";
@@ -107,6 +106,22 @@ function batteryControlIntervalMs(config: BatteryConfig): number {
 	return Math.min(15_000, Math.max(3000, sec * 1000));
 }
 
+function clearGridBalanceKeepalive(): void {
+	if (gbKeepaliveTimer) {
+		clearTimeout(gbKeepaliveTimer);
+		gbKeepaliveTimer = null;
+	}
+}
+
+function scheduleGridBalanceKeepalive(host: Host): void {
+	clearGridBalanceKeepalive();
+	gbKeepaliveTimer = setTimeout(() => {
+		gbKeepaliveTimer = null;
+		if (!gridBalanceOwnsSetpoint) return;
+		void runBatteryControlTick(host).catch((e) => host.log.error(`battery grid_balance keepalive: ${e}`));
+	}, GRID_BALANCE_KEEPALIVE_MAX_MS);
+}
+
 type Host = ioBroker.Adapter & { config: unknown };
 
 let controlTimer: NodeJS.Timeout | null = null;
@@ -116,11 +131,13 @@ let ownershipLive = false;
 let prevLiveWriteAllowed = false;
 let ticking = false;
 let lastGridBalanceWriteW: number | null = null;
+let lastGridBalanceWriteAtMs: number | null = null;
+let lastGridBalanceKeepaliveAt = "";
 let lastGridBalanceAction = "";
 let lastGridBalanceActionAt = "";
 let gridBalanceOwnsSetpoint = false;
-let gridBalanceStabilization: StabilizationState = emptyStabilization();
 let gridBalanceLiveTest: GridBalanceLiveTestState = emptyGridBalanceLiveTest();
+let gbKeepaliveTimer: NodeJS.Timeout | null = null;
 
 const DAILY_PLAN_TRIGGER_IDS = new Set<string>([
 	DAILY_PLAN_STATE_IDS.revision,
@@ -135,11 +152,13 @@ export function __resetBatteryRuntimeForTest(now = Date.now()): void {
 	ownershipLive = false;
 	prevLiveWriteAllowed = false;
 	lastGridBalanceWriteW = null;
+	lastGridBalanceWriteAtMs = null;
+	lastGridBalanceKeepaliveAt = "";
 	lastGridBalanceAction = "";
 	lastGridBalanceActionAt = "";
 	gridBalanceOwnsSetpoint = false;
-	gridBalanceStabilization = emptyStabilization();
 	gridBalanceLiveTest = emptyGridBalanceLiveTest();
+	clearGridBalanceKeepalive();
 	resetBatteryDailyPlanCache();
 	resetBatterySetpointSession();
 }
@@ -158,11 +177,13 @@ export async function startBatteryModuleRuntime(adapter: ioBroker.Adapter): Prom
 	ownershipLive = false;
 	prevLiveWriteAllowed = false;
 	lastGridBalanceWriteW = null;
+	lastGridBalanceWriteAtMs = null;
+	lastGridBalanceKeepaliveAt = "";
 	lastGridBalanceAction = "";
 	lastGridBalanceActionAt = "";
 	gridBalanceOwnsSetpoint = false;
-	gridBalanceStabilization = emptyStabilization();
 	gridBalanceLiveTest = emptyGridBalanceLiveTest();
+	clearGridBalanceKeepalive();
 	resetBatterySetpointSession();
 
 	const host = adapter as Host;
@@ -171,6 +192,12 @@ export async function startBatteryModuleRuntime(adapter: ioBroker.Adapter): Prom
 	}
 	await adapter.subscribeStatesAsync(BAT.control.faultReset);
 	await adapter.subscribeStatesAsync(BAT.gridBalance.liveTestArmed);
+	await adapter.subscribeStatesAsync("live.price.now_ct_per_kwh");
+	await adapter.subscribeStatesAsync("planner.constraints.battery_hold_active");
+	await adapter.subscribeStatesAsync(WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge);
+	await adapter.subscribeStatesAsync(WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority);
+	await adapter.subscribeStatesAsync(WALLBOX_EVCC_STATES.batteryMode);
+	await adapter.subscribeStatesAsync(WALLBOX_EVCC_STATES.smartCostActive);
 	for (const id of DAILY_PLAN_TRIGGER_IDS) {
 		await adapter.subscribeStatesAsync(id);
 	}
@@ -202,8 +229,10 @@ export function stopBatteryModule(_timer: NodeJS.Timeout | null): void {
 		clearInterval(controlTimer);
 		controlTimer = null;
 	}
+	clearGridBalanceKeepalive();
 	clearGridBalanceWatch();
 	lastGridBalanceWriteW = null;
+	lastGridBalanceWriteAtMs = null;
 	resetBatteryDailyPlanCache();
 }
 
@@ -213,6 +242,12 @@ export function handleBatteryAdapterStateChange(adapter: ioBroker.Adapter, state
 	if (
 		rel === BAT.control.faultReset ||
 		rel === BAT.gridBalance.liveTestArmed ||
+		rel === "live.price.now_ct_per_kwh" ||
+		rel === "planner.constraints.battery_hold_active" ||
+		rel === WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge ||
+		rel === WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority ||
+		rel === WALLBOX_EVCC_STATES.batteryMode ||
+		rel === WALLBOX_EVCC_STATES.smartCostActive ||
 		isExecutionModeStateRelativeId(rel) ||
 		(EMS_MIRROR_BATTERY_IDS as readonly string[]).includes(rel) ||
 		DAILY_PLAN_TRIGGER_IDS.has(rel)
@@ -223,7 +258,7 @@ export function handleBatteryAdapterStateChange(adapter: ioBroker.Adapter, state
 	}
 }
 
-/** Reagiert auf Änderungen an gemapptem consumption_w / pv_ac_power_w (Netzausgleich on-change). */
+/** Reagiert auf Änderungen an gemapptem consumption/PV/SOC/Mode (Netzausgleich on-change). */
 export function handleBatteryGridBalanceForeignStateChange(adapter: ioBroker.Adapter, stateId: string): void {
 	if (!isGridBalanceWatchState(stateId)) {
 		return;
@@ -377,6 +412,8 @@ async function controlTickInner(host: Host): Promise<void> {
 		ownershipLive = false;
 		gridBalanceOwnsSetpoint = false;
 		lastGridBalanceWriteW = null;
+		lastGridBalanceWriteAtMs = null;
+		clearGridBalanceKeepalive();
 		gridBalancePausedByFsm = false;
 	}
 	const nowMs = Date.now();
@@ -918,6 +955,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		gbSession.owner === "grid_balance" &&
 		gbSession.wroteLive &&
 		!liveWriteAllowed;
+	const mode2Confirmed = snapshot.telemetry.operatingMode === "self_consumption";
 	const gbDecision = evaluateGridBalanceTick({
 		nowMs,
 		safety: safetyInput,
@@ -927,24 +965,24 @@ async function controlTickInner(host: Host): Promise<void> {
 		chargePowerW: evPower.val ?? evccChargePowerW,
 		chargePowerAgeMs: evPower.ageMs,
 		deadbandW: config.gridBalance.deadbandW,
-		minDurationMs: config.gridBalance.minDurationSec * 1000,
 		offsetW: offset,
 		configuredMaxW: config.gridBalance.maxTargetW,
 		hardwareMaxChargeW: snapshot.limits.maxChargeW,
 		hardwareMaxDischargeW: snapshot.limits.maxDischargeW,
 		minChangeW: config.gridBalance.minChangeW,
 		lastWrittenW: lastGridBalanceWriteW,
+		lastWriteAtMs: lastGridBalanceWriteAtMs,
 		ownsSetpoint: gridBalanceOwnsSetpoint,
-		stabilization: gridBalanceStabilization,
 		liveTest: gridBalanceLiveTest,
 		controllerIsGridBalance: controller === "grid_balance" && !gridBalancePausedByFsm && !executionOff,
+		mode2Confirmed,
+		keepaliveMaxMs: GRID_BALANCE_KEEPALIVE_MAX_MS,
 		forecastBlockReason,
 		leavingLiveWithOwnership,
 	});
-	gridBalanceStabilization = gbDecision.stabilizationNext;
 	gridBalanceLiveTest = gbDecision.liveTestNext;
 
-	const gbState = table.set_charge_power.targetState;
+	const gbState = table.set_discharge_power.targetState;
 	let gbWouldWrite = false;
 	let gbEffective = gbDecision.effectivePowerW;
 	if ((gbDecision.shouldWrite || gbDecision.shouldRelease) && gbState.length > 0) {
@@ -956,13 +994,18 @@ async function controlTickInner(host: Host): Promise<void> {
 		const gbReleaseLive = gbDecision.shouldRelease && getBatterySetpointSession().wroteLive;
 		const gbWriteLive = liveWriteAllowed || gbReleaseLive;
 		const wr = await executeBatteryWrite(host as unknown as BatteryWriteHost, {
-			kind: "charge_power",
+			kind: "discharge_power",
 			stateId: gbState,
 			value: gbDecision.writePowerW,
 			requestId: "grid_balance",
-			reason: gbDecision.shouldRelease ? "grid_balance_release" : "grid_balance",
+			reason: gbDecision.shouldRelease
+				? "grid_balance_release"
+				: gbDecision.lastAction === "keepalive"
+					? "grid_balance_keepalive"
+					: "grid_balance",
 			expectedFeedback: gbDecision.writePowerW,
 			dryrun: !gbWriteLive,
+			force: gbDecision.forceWrite === true,
 			gate: {
 				...gate,
 				globalLive: gbWriteLive,
@@ -972,11 +1015,18 @@ async function controlTickInner(host: Host): Promise<void> {
 				targetMappingConfigured: true,
 			},
 		});
+		lastWrite = {
+			state: gbState,
+			value: gbDecision.writePowerW,
+			success: Boolean(wr.executed || wr.written || wr.simulated),
+			expected: gbDecision.writePowerW,
+		};
 		if (wr.executed || wr.written || wr.simulated) {
 			gbWouldWrite = gbDecision.shouldWrite;
-			lastGridBalanceWriteW = gbDecision.shouldRelease ? null : gbDecision.writePowerW;
 			gbEffective = gbDecision.shouldRelease ? 0 : gbDecision.writePowerW;
 			if (gbDecision.shouldWrite) {
+				lastGridBalanceWriteW = gbDecision.writePowerW;
+				lastGridBalanceWriteAtMs = nowMs;
 				gridBalanceOwnsSetpoint = true;
 				setBatterySetpointSession(
 					notePositiveSetpointWrite(
@@ -986,12 +1036,19 @@ async function controlTickInner(host: Host): Promise<void> {
 						Boolean(wr.executed || wr.written),
 					),
 				);
-				if (!GRID_BALANCE_EXECUTION_ENABLED) {
+				if (gbDecision.lastAction === "keepalive") {
+					lastGridBalanceKeepaliveAt = new Date(nowMs).toISOString();
+				} else if (!GRID_BALANCE_EXECUTION_ENABLED) {
 					gridBalanceLiveTest = consumeGridBalanceLiveTest(gridBalanceLiveTest, nowMs);
 				}
+				scheduleGridBalanceKeepalive(host);
 			}
 			if (gbDecision.shouldRelease) {
+				lastGridBalanceWriteW = null;
+				lastGridBalanceWriteAtMs = null;
+				lastGridBalanceKeepaliveAt = "";
 				gridBalanceOwnsSetpoint = false;
+				clearGridBalanceKeepalive();
 				setBatterySetpointSession(
 					applyZeroRelease(
 						getBatterySetpointSession(),
@@ -1002,24 +1059,34 @@ async function controlTickInner(host: Host): Promise<void> {
 			}
 		} else if (gbDecision.shouldWrite) {
 			gridBalanceOwnsSetpoint = false;
+			clearGridBalanceKeepalive();
 		} else if (gbDecision.shouldRelease) {
 			gridBalanceOwnsSetpoint = true;
 		}
 	} else if (gbDecision.shouldWrite || gbDecision.shouldRelease) {
 		lastGridBalanceWriteW = null;
+		lastGridBalanceWriteAtMs = null;
+		gridBalanceOwnsSetpoint = false;
+		clearGridBalanceKeepalive();
 	} else {
 		gridBalanceOwnsSetpoint = gbDecision.ownsSetpointNext;
-		if (!gbDecision.ownsSetpointNext && getBatterySetpointSession().owner === "grid_balance") {
-			const gbHandover = resolveBatterySetpointHandover({
-				hold: gbDecision.holdDetected,
-				external: gbDecision.authority === "external_ev",
-				restoreOrFault:
-					gbDecision.authority === "safety" &&
-					(safetyInput.restoreInProgress || safetyInput.faultActive || safetyInput.lockoutActive),
-				higherPriority: gbDecision.authority === "planned_battery",
-			});
-			const reason = gbHandover === "none" ? "grid_balance_drop" : `handover_${gbHandover}`;
-			setBatterySetpointSession(applyHandover(getBatterySetpointSession(), reason));
+		if (!gbDecision.ownsSetpointNext) {
+			clearGridBalanceKeepalive();
+			lastGridBalanceWriteW = null;
+			lastGridBalanceWriteAtMs = null;
+			lastGridBalanceKeepaliveAt = "";
+			if (getBatterySetpointSession().owner === "grid_balance") {
+				const gbHandover = resolveBatterySetpointHandover({
+					hold: gbDecision.holdDetected,
+					external: gbDecision.authority === "external_ev",
+					restoreOrFault:
+						gbDecision.authority === "safety" &&
+						(safetyInput.restoreInProgress || safetyInput.faultActive || safetyInput.lockoutActive),
+					higherPriority: gbDecision.authority === "planned_battery",
+				});
+				const reason = gbHandover === "none" ? "grid_balance_drop" : `handover_${gbHandover}`;
+				setBatterySetpointSession(applyHandover(getBatterySetpointSession(), reason));
+			}
 		}
 	}
 
@@ -1153,6 +1220,7 @@ async function persist(host: Host, s: BatterySnapshot, x: PersistExtra): Promise
 	await set(BAT.runtime.ownershipActive, runtime.ownership.active);
 	const sp = getBatterySetpointSession();
 	await set(BAT.runtime.batterySetpointOwner, sp.owner);
+	await set(BAT.runtime.batterySetpointKind, sp.kind);
 	await set(BAT.runtime.batterySetpointW, sp.setpointW);
 	await set(BAT.runtime.batteryReleasePending, sp.releasePending);
 	await set(BAT.runtime.batteryReleaseReason, sp.releaseReason);
@@ -1268,6 +1336,34 @@ async function persist(host: Host, s: BatterySnapshot, x: PersistExtra): Promise
 	await setStateIfChanged(host, BAT.gridBalance.holdDetected, d.holdDetected);
 	await setStateIfChanged(host, BAT.gridBalance.evConflict, d.evConflict);
 	await setStateIfChanged(host, BAT.gridBalance.ownership, d.ownership);
+	await setStateIfChanged(host, BAT.gridBalance.setpointKind, d.ownership ? "discharge" : "none");
+	await setStateIfChanged(host, BAT.gridBalance.mode2Confirmed, d.mode2Confirmed);
+	await setStateIfChanged(host, BAT.gridBalance.requestedDischargeW, d.requestedPowerW);
+	await setStateIfChanged(host, BAT.gridBalance.effectiveDischargeW, d.effectivePowerW);
+	await setStateIfChanged(
+		host,
+		BAT.gridBalance.lastDischargeWriteW,
+		lastGridBalanceWriteW,
+	);
+	await setStateIfChanged(
+		host,
+		BAT.gridBalance.lastDischargeWriteAt,
+		lastGridBalanceWriteAtMs != null ? new Date(lastGridBalanceWriteAtMs).toISOString() : "",
+	);
+	await setStateIfChanged(host, BAT.gridBalance.lastKeepaliveAt, lastGridBalanceKeepaliveAt);
+	await setStateIfChanged(
+		host,
+		BAT.gridBalance.lastRefreshAt,
+		lastGridBalanceWriteAtMs != null ? new Date(lastGridBalanceWriteAtMs).toISOString() : "",
+	);
+	await setStateIfChanged(
+		host,
+		BAT.gridBalance.nextRefreshAt,
+		gridBalanceOwnsSetpoint && lastGridBalanceWriteAtMs != null
+			? new Date(lastGridBalanceWriteAtMs + GRID_BALANCE_KEEPALIVE_MAX_MS).toISOString()
+			: "",
+	);
+	await setStateIfChanged(host, BAT.gridBalance.writeKind, "discharge");
 	await setStateIfChanged(host, BAT.gridBalance.lastAction, lastGridBalanceAction);
 	await setStateIfChanged(host, BAT.gridBalance.lastActionAt, lastGridBalanceActionAt);
 	await setStateIfChanged(host, BAT.gridBalance.explain, d.explain);
@@ -1308,7 +1404,21 @@ export async function batteryUnloadRestore(host: Host): Promise<void> {
 		ownershipValid: runtime.ownership.active || setpointLive,
 	};
 	try {
-		if (setpointLive || fsmLive) {
+		const gbDischarge =
+			session.kind === "discharge" || session.owner === "grid_balance";
+		if (setpointLive && gbDischarge) {
+			await executeBatteryWrite(host as unknown as BatteryWriteHost, {
+				kind: "discharge_power",
+				stateId: table.set_discharge_power.targetState,
+				value: 0,
+				requestId: "unload",
+				reason: "unload_stop_discharge",
+				dryrun: false,
+				force: true,
+				gate,
+			});
+			setBatterySetpointSession(applyZeroRelease(session, new Date().toISOString(), "unload_stop"));
+		} else if (setpointLive || fsmLive) {
 			await executeBatteryWrite(host as unknown as BatteryWriteHost, {
 				kind: "charge_power",
 				stateId: table.set_charge_power.targetState,

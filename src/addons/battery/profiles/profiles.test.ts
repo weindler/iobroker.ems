@@ -58,10 +58,29 @@ describe("sonnen_em profile", () => {
 		assert.equal(caps.safe_restore.available, true);
 	});
 
-	it("discharge not supported", () => {
+	it("discharge available when mapped; grid balance needs discharge mapping", () => {
+		const withDischarge = {
+			...FULL_SONNEN,
+			bat_feature_grid_balance_enabled: true,
+			bat_battery_discharging_target: "sonnen.0.control.discharge",
+			bat_consumption_target: "sonnen.0.consumption",
+			bat_pv_ac_target: "sonnen.0.production",
+		};
+		const caps = profile.buildCapabilities({
+			config: batteryConfigFromAdapter(withDischarge),
+			mapping: batteryMappingFromConfig(withDischarge),
+			limits: batteryConfigFromAdapter(withDischarge).limits,
+		});
+		assert.equal(caps.set_discharge_power.supported, true);
+		assert.equal(caps.set_discharge_power.available, true);
+		assert.equal(caps.control_grid_balance.available, true);
+	});
+
+	it("discharge supported but unavailable without mapping", () => {
 		const caps = profile.buildCapabilities(input);
-		assert.equal(caps.set_discharge_power.supported, false);
+		assert.equal(caps.set_discharge_power.supported, true);
 		assert.equal(caps.set_discharge_power.available, false);
+		assert.equal(caps.control_grid_balance.available, false);
 	});
 
 	it("missing write mapping prevents live readiness", () => {

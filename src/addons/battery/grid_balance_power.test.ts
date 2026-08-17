@@ -11,18 +11,16 @@ import {
 } from "./grid_balance_contract.js";
 import {
 	GRID_BALANCE_DEADBAND_DEFAULT_W,
-	GRID_BALANCE_MIN_DURATION_DEFAULT_S,
+	GRID_BALANCE_KEEPALIVE_MAX_MS,
 	adjustConsumptionForEv,
 	applyGridBalanceLiveTestPulse,
 	consumeGridBalanceLiveTest,
 	effectiveGridBalanceMaxW,
 	emptyGridBalanceLiveTest,
-	emptyStabilization,
 	evaluateGridBalanceTick,
 	gridBalanceCleanupAllowed,
 	gridBalanceSessionReleasePermit,
 	gridBalanceSetpointPermit,
-	stepStabilization,
 	type GridBalanceLiveTestState,
 	type GridBalanceTickInput,
 } from "./grid_balance_power.js";
@@ -78,34 +76,37 @@ function tick(over: Partial<GridBalanceTickInput> = {}): GridBalanceTickInput {
 		chargePowerW: null,
 		chargePowerAgeMs: null,
 		deadbandW: GRID_BALANCE_DEADBAND_DEFAULT_W,
-		minDurationMs: 0,
 		offsetW: 25,
 		configuredMaxW: 5000,
 		hardwareMaxChargeW: 3300,
 		hardwareMaxDischargeW: 3300,
 		minChangeW: 50,
 		lastWrittenW: null,
+		lastWriteAtMs: null,
 		ownsSetpoint: false,
-		stabilization: emptyStabilization(),
 		liveTest: { ...emptyGridBalanceLiveTest(), armed: true },
 		controllerIsGridBalance: true,
+		mode2Confirmed: true,
+		keepaliveMaxMs: GRID_BALANCE_KEEPALIVE_MAX_MS,
 		forecastBlockReason: "",
 		...over,
 	};
 }
 
-describe("grid balance live hardening v0.1.284", () => {
+describe("grid balance live hardening v0.1.289", () => {
 	it("L1: Admin disabled → kein Write", () => {
 		const d = evaluateGridBalanceTick(tick({ safety: safety({ adminEnabled: false, liveTestPermit: true }) }));
 		assert.equal(d.shouldWrite, false);
 		assert.equal(d.blockReason, "disabled");
 	});
 
-	it("L2: Preis unter Mindestpreis → block", () => {
+	it("L2: Preis unter Mindestpreis → kein discharge", () => {
 		const d = evaluateGridBalanceTick(tick({ safety: safety({ priceNowCt: 20, priceMinCt: 30 }) }));
 		assert.equal(d.shouldWrite, false);
 		assert.equal(d.priceAllowed, false);
 		assert.equal(d.blockReason, "price_below_minimum");
+		assert.equal(d.writeKind, "discharge");
+		assert.match(d.explain, /reason=price_below_minimum/);
 	});
 
 	it("L3: Hold planned → block", () => {
@@ -146,7 +147,9 @@ describe("grid balance live hardening v0.1.284", () => {
 			wallboxAllocatedGridW: 11000,
 		});
 		assert.equal(now.kind, "ev_now");
-		const d = evaluateGridBalanceTick(tick({ safety: safety({ evConflictKind: "ev_now" }), charging: true, chargePowerW: 11000, chargePowerAgeMs: 1000 }));
+		const d = evaluateGridBalanceTick(
+			tick({ safety: safety({ evConflictKind: "ev_now" }), charging: true, chargePowerW: 11000, chargePowerAgeMs: 1000 }),
+		);
 		assert.equal(d.blockReason, "ev_now_grid_charge");
 		assert.equal(d.shouldWrite, false);
 	});
@@ -173,6 +176,7 @@ describe("grid balance live hardening v0.1.284", () => {
 		assert.equal(d.rawGridDeltaW, 500);
 		assert.equal(d.blockReason, "");
 		assert.equal(d.shouldWrite, true);
+		assert.equal(d.writeKind, "discharge");
 	});
 
 	it("L9: EV charging + stale chargePower → block", () => {
@@ -183,9 +187,7 @@ describe("grid balance live hardening v0.1.284", () => {
 			chargePowerAgeMs: 60_000,
 		});
 		assert.equal(ev.blockReason, "ev_power_unknown");
-		const d = evaluateGridBalanceTick(
-			tick({ charging: true, chargePowerW: 3500, chargePowerAgeMs: 60_000 }),
-		);
+		const d = evaluateGridBalanceTick(tick({ charging: true, chargePowerW: 3500, chargePowerAgeMs: 60_000 }));
 		assert.equal(d.blockReason, "ev_power_unknown");
 		assert.equal(d.shouldWrite, false);
 	});
@@ -196,44 +198,28 @@ describe("grid balance live hardening v0.1.284", () => {
 		assert.equal(d.shouldWrite, false);
 	});
 
-	it("L11: Deadband nicht überschritten → kein Write", () => {
-		const d = evaluateGridBalanceTick(tick({ consumptionW: 200, pvAcPowerW: 0, deadbandW: 250 }));
+	it("L11: optionales Deadband 250 W blockiert kleinen Restbezug", () => {
+		const d = evaluateGridBalanceTick(tick({ consumptionW: 200, pvAcPowerW: 0, deadbandW: 250, offsetW: 0 }));
 		assert.equal(d.blockReason, "inside_deadband");
 		assert.equal(d.shouldWrite, false);
 		assert.equal(d.requestedPowerW, 0);
 	});
 
-	it("L12: Deadband überschritten, Stabilisierung fehlt → kein Write", () => {
+	it("L12: keine 8-s-Stabilisierung — Telemetriepunkt schreibt sofort", () => {
 		const d = evaluateGridBalanceTick(
 			tick({
 				nowMs: 1000,
-				minDurationMs: 8000,
-				stabilization: emptyStabilization(),
-				consumptionW: 2000,
-				pvAcPowerW: 0,
-			}),
-		);
-		assert.equal(d.blockReason, "not_stable");
-		assert.equal(d.shouldWrite, false);
-		assert.ok(d.stabilizationNext.excessSinceMs === 1000);
-	});
-
-	it("L13: Stabilisierung erfüllt → eligible", () => {
-		const d = evaluateGridBalanceTick(
-			tick({
-				nowMs: 10_000,
-				minDurationMs: 8000,
-				stabilization: { excessSinceMs: 1000 },
 				consumptionW: 2000,
 				pvAcPowerW: 0,
 			}),
 		);
 		assert.equal(d.blockReason, "");
-		assert.equal(d.ready, true);
 		assert.equal(d.shouldWrite, true);
+		assert.equal(d.writeKind, "discharge");
+		assert.equal("stabilizationNext" in d, false);
 	});
 
-	it("L14: Maxleistung clamp auf Hardware", () => {
+	it("L14: Maxleistung clamp auf Hardware-Discharge", () => {
 		const max = effectiveGridBalanceMaxW({
 			configuredMaxW: 5000,
 			hardwareMaxChargeW: 3300,
@@ -247,10 +233,11 @@ describe("grid balance live hardening v0.1.284", () => {
 		);
 		assert.equal(d.effectiveMaxW, 2800);
 		assert.equal(d.requestedPowerW, 2800);
+		assert.equal(d.writeKind, "discharge");
 	});
 
 	it("L15: GB Ownership entsteht nur nach eigenem Write", () => {
-		const idle = evaluateGridBalanceTick(tick({ ownsSetpoint: false, consumptionW: 100, pvAcPowerW: 0 }));
+		const idle = evaluateGridBalanceTick(tick({ ownsSetpoint: false, consumptionW: 100, pvAcPowerW: 100, offsetW: 0 }));
 		assert.equal(idle.ownsSetpointNext, false);
 		const written = evaluateGridBalanceTick(tick({ ownsSetpoint: false, consumptionW: 2000, pvAcPowerW: 0 }));
 		assert.equal(written.shouldWrite, true);
@@ -268,27 +255,33 @@ describe("grid balance live hardening v0.1.284", () => {
 		assert.equal(d.shouldWrite, false);
 	});
 
-	it("L17: Exit mit Ownership → Release nur wenn erlaubt", () => {
+	it("L17: reguläres GB-Ende mit Ownership → genau ein discharge=0", () => {
 		const ok = evaluateGridBalanceTick(
 			tick({
 				ownsSetpoint: true,
+				lastWrittenW: 800,
+				lastWriteAtMs: 1000,
 				safety: safety({ adminEnabled: false, liveTestPermit: true }),
 			}),
 		);
 		assert.equal(ok.shouldRelease, true);
 		assert.equal(ok.writePowerW, 0);
+		assert.equal(ok.writeKind, "discharge");
 		assert.equal(ok.ownsSetpointNext, false);
 	});
 
-	it("L18: Hold während GB aktiv → keine konkurrierenden Writes", () => {
+	it("L18: Hold während GB aktiv → keine Keepalives, kein konkurrierendes 0", () => {
 		const d = evaluateGridBalanceTick(
 			tick({
 				ownsSetpoint: true,
+				lastWrittenW: 800,
+				lastWriteAtMs: 1000,
 				safety: safety({ holdActive: true, liveTestPermit: true }),
 			}),
 		);
 		assert.equal(d.shouldWrite, false);
 		assert.equal(d.shouldRelease, false);
+		assert.equal(d.keepaliveDue, false);
 		assert.equal(d.blockReason, "battery_hold");
 		assert.equal(
 			gridBalanceCleanupAllowed({ ownsSetpoint: true, holdDetected: true, authority: "battery_hold" }),
@@ -300,17 +293,22 @@ describe("grid balance live hardening v0.1.284", () => {
 		const d = evaluateGridBalanceTick(
 			tick({
 				ownsSetpoint: true,
+				lastWrittenW: 800,
 				safety: safety({ externalEvAuthority: true, evConflictKind: "ev_external" }),
 			}),
 		);
 		assert.equal(d.shouldRelease, false);
+		assert.equal(d.shouldWrite, false);
+		assert.equal(d.keepaliveDue, false);
 		assert.equal(d.authority, "external_ev");
 	});
 
 	it("L20: kein EVCC/go-e/Ford/Tibber-Direktwrite", () => {
-		const src = readFileSync(join(SRC, "grid_balance_power.ts"), "utf8");
-		assert.equal(/setForeignStateAsync/.test(src), false);
-		assert.equal(/go-e\.|fordpass\.|tibber\.|evcc\./.test(src), false);
+		for (const file of ["grid_balance_power.ts", "grid_balance.ts", "grid_balance_contract.ts", "index.ts"]) {
+			const src = readFileSync(join(SRC, file), "utf8");
+			assert.equal(/go-e\.|fordpass\.|tibber\.|evcc\./.test(src), false, file);
+		}
+		assert.equal(/setForeignStateAsync/.test(readFileSync(join(SRC, "grid_balance_power.ts"), "utf8")), false);
 	});
 
 	it("L21: 30-ct-Mindestpreis nicht unterschreitbar", () => {
@@ -319,21 +317,15 @@ describe("grid balance live hardening v0.1.284", () => {
 		assert.equal(batteryConfigFromAdapter({}).gridBalance.minPriceCtPerKwh, 30);
 	});
 
-	it("L22: Mirror/Admin-Gate konsistent — nur Admin zählt", () => {
+	it("L22: Default Deadband = 0, keine minDuration", () => {
 		const r = evaluateGridBalanceSafety(safety({ adminEnabled: true, emsMirrorEnabled: false, liveTestPermit: true }));
 		assert.equal(r.blockReason, "");
 		assert.equal(r.policyAllowed, true);
 		const cfg = batteryConfigFromAdapter({ bat_feature_grid_balance_enabled: true });
 		assert.equal(cfg.gridBalance.enabled, true);
-		assert.equal(cfg.gridBalance.deadbandW, GRID_BALANCE_DEADBAND_DEFAULT_W);
-		assert.equal(cfg.gridBalance.minDurationSec, GRID_BALANCE_MIN_DURATION_DEFAULT_S);
-	});
-
-	it("L23: 0,8-kWh-Mikroregelung liegt im Deadband", () => {
-		const d = evaluateGridBalanceTick(tick({ consumptionW: 80, pvAcPowerW: 0, deadbandW: 250 }));
-		assert.equal(d.shouldWrite, false);
-		assert.equal(d.blockReason, "inside_deadband");
-		assert.equal(80 * 24 / 1000 < 2, true);
+		assert.equal(cfg.gridBalance.deadbandW, 0);
+		assert.equal(GRID_BALANCE_DEADBAND_DEFAULT_W, 0);
+		assert.equal("minDurationSec" in cfg.gridBalance, false);
 	});
 
 	it("PV/MIN charging is not an automatic EV conflict", () => {
@@ -372,30 +364,51 @@ describe("grid balance live hardening v0.1.284", () => {
 		assert.equal(locked.lastAction, "diagnosis_only");
 	});
 
-	it("one-shot session: second setpoint blocked after consume, 0-release still allowed", () => {
+	it("one-shot session: keepalive after consume allowed, new session blocked, 0-release allowed", () => {
 		const armed = applyGridBalanceLiveTestPulse(emptyGridBalanceLiveTest(), true, false, 1);
 		assert.equal(gridBalanceSetpointPermit(armed), true);
 		const first = evaluateGridBalanceTick(tick({ liveTest: armed, consumptionW: 2000, pvAcPowerW: 0 }));
 		assert.equal(first.shouldWrite, true);
 		assert.equal(first.shouldRelease, false);
 		assert.equal(first.ownsSetpointNext, true);
+		assert.equal(first.writeKind, "discharge");
 		const consumed = consumeGridBalanceLiveTest(armed, 2);
 		assert.equal(gridBalanceSetpointPermit(consumed), false);
+		assert.equal(gridBalanceSetpointPermit(consumed, true), true);
 		assert.equal(consumed.consumed, true);
 
-		const second = evaluateGridBalanceTick(
+		const sameWIdle = evaluateGridBalanceTick(
 			tick({
+				nowMs: 10_000,
 				liveTest: consumed,
 				ownsSetpoint: true,
 				lastWrittenW: first.writePowerW,
+				lastWriteAtMs: 10_000,
 				consumptionW: 2000,
 				pvAcPowerW: 0,
 				safety: safety({ liveTestPermit: false }),
 			}),
 		);
-		assert.equal(second.shouldWrite, false);
-		assert.equal(second.shouldRelease, false);
-		assert.equal(second.ownsSetpointNext, true);
+		assert.equal(sameWIdle.shouldWrite, false);
+		assert.equal(sameWIdle.keepaliveDue, false);
+		assert.equal(sameWIdle.ownsSetpointNext, true);
+
+		const keepalive = evaluateGridBalanceTick(
+			tick({
+				nowMs: 18_000,
+				liveTest: consumed,
+				ownsSetpoint: true,
+				lastWrittenW: first.writePowerW,
+				lastWriteAtMs: 10_000,
+				consumptionW: 2000,
+				pvAcPowerW: 0,
+				safety: safety({ liveTestPermit: false }),
+			}),
+		);
+		assert.equal(keepalive.shouldWrite, true);
+		assert.equal(keepalive.lastAction, "keepalive");
+		assert.equal(keepalive.forceWrite, true);
+		assert.equal(keepalive.writePowerW, first.writePowerW);
 
 		const release = evaluateGridBalanceTick(
 			tick({
@@ -403,13 +416,15 @@ describe("grid balance live hardening v0.1.284", () => {
 				ownsSetpoint: true,
 				lastWrittenW: first.writePowerW,
 				consumptionW: 100,
-				pvAcPowerW: 0,
+				pvAcPowerW: 100,
+				offsetW: 0,
 				safety: safety({ liveTestPermit: false }),
 			}),
 		);
 		assert.equal(release.shouldWrite, false);
 		assert.equal(release.shouldRelease, true);
 		assert.equal(release.writePowerW, 0);
+		assert.equal(release.writeKind, "discharge");
 		assert.equal(release.ownsSetpointNext, false);
 		assert.equal(
 			gridBalanceSessionReleasePermit({
@@ -513,10 +528,108 @@ describe("grid balance live hardening v0.1.284", () => {
 		const ignored = applyGridBalanceLiveTestPulse(emptyGridBalanceLiveTest(), true, true, 5);
 		assert.equal(ignored.armed, false);
 	});
+});
 
-	it("stabilization resets when load drops into deadband", () => {
-		const s = stepStabilization({ excessSinceMs: 1000 }, 5000, false, 8000);
-		assert.equal(s.next.excessSinceMs, null);
-		assert.equal(s.stable, false);
+describe("grid balance Mode-2 discharge contract v0.1.289", () => {
+	it("writes only discharge, never charge, never Mode 1", () => {
+		const d = evaluateGridBalanceTick(tick({ consumptionW: 188, pvAcPowerW: 140, offsetW: 0 }));
+		assert.equal(d.writeKind, "discharge");
+		assert.equal(d.shouldWrite, true);
+		assert.equal(d.mode2Confirmed, true);
+		const powerSrc = readFileSync(join(SRC, "grid_balance_power.ts"), "utf8");
+		const idx = readFileSync(join(SRC, "index.ts"), "utf8");
+		assert.equal(/writeKind: "charge"/.test(powerSrc), false);
+		assert.match(idx, /kind: "discharge_power"/);
+		assert.match(idx, /table\.set_discharge_power\.targetState/);
+		assert.equal(/const gbState = table\.set_charge_power/.test(idx), false);
+		assert.equal(/gridBalanceStabilization|minDurationMs|emptyStabilization/.test(idx), false);
+		assert.equal(/GRID_BALANCE_KEEPALIVE_MAX_MS/.test(idx), true);
+	});
+
+	it("48 W Restnetzbezug → erster discharge-Write 48 W", () => {
+		const d = evaluateGridBalanceTick(
+			tick({ consumptionW: 188, pvAcPowerW: 140, offsetW: 0, minChangeW: 50, ownsSetpoint: false, lastWrittenW: null }),
+		);
+		assert.equal(d.rawGridDeltaW, 48);
+		assert.equal(d.requestedPowerW, 48);
+		assert.equal(d.shouldWrite, true);
+		assert.equal(d.writePowerW, 48);
+		assert.equal(d.forceWrite, true);
+		assert.equal(d.lastAction, "written");
+		assert.match(d.explain, /discharge=48W/);
+	});
+
+	it("20 W Restnetzbezug → grundsätzlich möglich", () => {
+		const d = evaluateGridBalanceTick(tick({ consumptionW: 160, pvAcPowerW: 140, offsetW: 0, minChangeW: 50 }));
+		assert.equal(d.rawGridDeltaW, 20);
+		assert.equal(d.requestedPowerW, 20);
+		assert.equal(d.shouldWrite, true);
+		assert.equal(d.writePowerW, 20);
+	});
+
+	it("erster kleiner Sollwert wird nicht von Write-Hysterese blockiert", () => {
+		const d = evaluateGridBalanceTick(
+			tick({
+				consumptionW: 188,
+				pvAcPowerW: 140,
+				offsetW: 0,
+				minChangeW: 50,
+				ownsSetpoint: false,
+				lastWrittenW: null,
+			}),
+		);
+		assert.equal(d.shouldWrite, true);
+		assert.equal(d.writePowerW, 48);
+	});
+
+	it("Write-Hysterese filtert nur Änderungen eines aktiven Setpoints", () => {
+		const d = evaluateGridBalanceTick(
+			tick({
+				nowMs: 10_000,
+				consumptionW: 165,
+				pvAcPowerW: 0,
+				offsetW: 0,
+				minChangeW: 50,
+				ownsSetpoint: true,
+				lastWrittenW: 150,
+				lastWriteAtMs: 10_000,
+			}),
+		);
+		assert.equal(d.requestedPowerW, 165);
+		assert.equal(d.shouldWrite, false);
+		assert.equal(d.effectivePowerW, 150);
+	});
+
+	it("Keepalive desselben Setpoints wird nicht von Hysterese blockiert", () => {
+		const d = evaluateGridBalanceTick(
+			tick({
+				nowMs: 18_000,
+				consumptionW: 150,
+				pvAcPowerW: 0,
+				offsetW: 0,
+				minChangeW: 50,
+				ownsSetpoint: true,
+				lastWrittenW: 150,
+				lastWriteAtMs: 10_000,
+			}),
+		);
+		assert.equal(d.keepaliveDue, true);
+		assert.equal(d.shouldWrite, true);
+		assert.equal(d.forceWrite, true);
+		assert.equal(d.writePowerW, 150);
+		assert.equal(d.lastAction, "keepalive");
+		assert.equal(GRID_BALANCE_KEEPALIVE_MAX_MS, 8000);
+	});
+
+	it("Mode 2 nicht bestätigt → kein discharge", () => {
+		const d = evaluateGridBalanceTick(tick({ mode2Confirmed: false, consumptionW: 2000, pvAcPowerW: 0 }));
+		assert.equal(d.shouldWrite, false);
+		assert.equal(d.blockReason, "mode_not_self_consumption");
+	});
+
+	it("power module has no 8 s stabilization", () => {
+		const src = readFileSync(join(SRC, "grid_balance_power.ts"), "utf8");
+		assert.equal(/not_stable|stepStabilization|emptyStabilization|minDurationMs/.test(src), false);
+		assert.equal(/GRID_BALANCE_MIN_DURATION/.test(src), false);
 	});
 });

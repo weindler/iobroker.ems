@@ -13,8 +13,10 @@ import {
 } from "./setpoint_session.js";
 
 function owned(over: Partial<BatterySetpointSession> = {}): BatterySetpointSession {
+	const owner = over.owner ?? "grid_charge";
 	return {
-		owner: "grid_charge",
+		owner,
+		kind: owner === "grid_balance" ? "discharge" : "charge",
 		setpointW: 2000,
 		wrotePositive: true,
 		wroteLive: true,
@@ -38,6 +40,7 @@ describe("battery setpoint release contract", () => {
 	it("ownership only after own successful write > 0", () => {
 		const s = notePositiveSetpointWrite(emptySetpointSession(), "planned_charge", 2000, true);
 		assert.equal(s.owner, "planned_charge");
+		assert.equal(s.kind, "charge");
 		assert.equal(s.setpointW, 2000);
 		assert.equal(s.wrotePositive, true);
 		assert.equal(s.wroteLive, true);
@@ -68,6 +71,18 @@ describe("battery setpoint release contract", () => {
 			regularEnd: true,
 		});
 		assert.equal(d.shouldWriteZero, true);
+		assert.equal(owned({ owner: "grid_balance" }).kind, "discharge");
+		assert.equal(owned().kind, "charge");
+	});
+
+	it("charge and discharge ownership cannot be confused", () => {
+		const gb = notePositiveSetpointWrite(emptySetpointSession(), "grid_balance", 48, true);
+		const gc = notePositiveSetpointWrite(emptySetpointSession(), "grid_charge", 2000, true);
+		assert.equal(gb.kind, "discharge");
+		assert.equal(gb.owner, "grid_balance");
+		assert.equal(gc.kind, "charge");
+		assert.equal(gc.owner, "grid_charge");
+		assert.notEqual(gb.kind, gc.kind);
 	});
 
 	it("grid_charge → hold: drop ownership, no 0 W", () => {

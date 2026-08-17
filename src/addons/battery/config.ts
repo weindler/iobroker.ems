@@ -1,10 +1,7 @@
 import { hardwareLimitsFromConfig } from "./core/limits";
 import type { BatteryHardwareLimits, BatteryProfileId, CapacitySource, PowerSignConvention } from "./core/types";
 import { parseGridBalanceMinPriceCt } from "./grid_balance_contract";
-import {
-	GRID_BALANCE_DEADBAND_DEFAULT_W,
-	GRID_BALANCE_MIN_DURATION_DEFAULT_S,
-} from "./grid_balance_power";
+import { GRID_BALANCE_DEADBAND_DEFAULT_W } from "./grid_balance_power";
 
 function rec(config: unknown): Record<string, unknown> {
 	return config && typeof config === "object" ? (config as Record<string, unknown>) : {};
@@ -77,7 +74,6 @@ export interface GridBalanceConfig {
 	updateIntervalSec: number;
 	minPriceCtPerKwh: number;
 	deadbandW: number;
-	minDurationSec: number;
 }
 
 export interface BatteryConfig {
@@ -149,7 +145,6 @@ export function batteryConfigFromAdapter(config: unknown): BatteryConfig {
 			updateIntervalSec: intIn(c, "bat_grid_balance_update_interval_sec", 5, 3, 15),
 			minPriceCtPerKwh: migrateGridBalanceMinPriceCt(c),
 			deadbandW: intIn(c, "bat_grid_balance_deadband_w", GRID_BALANCE_DEADBAND_DEFAULT_W, 0, 5000),
-			minDurationSec: intIn(c, "bat_grid_balance_min_duration_s", GRID_BALANCE_MIN_DURATION_DEFAULT_S, 0, 120),
 		},
 	};
 }

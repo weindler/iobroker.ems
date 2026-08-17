@@ -33,4 +33,13 @@ describe("battery mapping", () => {
 		assert.equal(t.seconds_since_full_charge.targetState, "sonnen.0.latestData.secondsSinceFullCharge");
 		assert.equal(isMappingConfigured(t, "seconds_since_full_charge"), true);
 	});
+
+	it("parses set_discharge_power mapping", () => {
+		const t = batteryMappingFromConfig({
+			bat_battery_discharging_target: "sonnen.0.control.discharge",
+			bat_battery_discharging_enabled: true,
+		});
+		assert.equal(t.set_discharge_power.targetState, "sonnen.0.control.discharge");
+		assert.equal(isMappingConfigured(t, "set_discharge_power"), true);
+	});
 });

@@ -1,5 +1,7 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { runBatteryFailsafeCheck, __resetBatteryFailsafeForTest } from "./failsafe.js";
 import { touchEmsActivity } from "../../ems_activity.js";
 import { BAT } from "./ensure_states.js";
@@ -98,5 +100,12 @@ describe("runBatteryFailsafeCheck", () => {
 		});
 		await runBatteryFailsafeCheck(adapter);
 		assert.equal(states.get(BAT.failsafe.active)?.val, true);
+	});
+
+	it("failsafe zeros charge and discharge mappings", () => {
+		const src = readFileSync(join(__dirname, "..", "..", "..", "src", "addons", "battery", "failsafe.ts"), "utf8");
+		assert.match(src, /set_discharge_power/);
+		assert.match(src, /set_charge_power/);
+		assert.match(src, /selfConsumption/);
 	});
 });

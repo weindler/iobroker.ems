@@ -1,10 +1,12 @@
 "use strict";
 /**
- * Einheitlicher Batterie-Setpoint-Release (alle EMS-Pfade, die control.charge > 0 schreiben).
+ * Batterie-Setpoint-Release, typisiert nach Charge- vs. Discharge-Kanal.
  *
- * Vertrag:
- *   eigener erfolgreicher Leistungs-Write > 0 → Ownership → reguläres Aktionsende
- *   → genau ein Release-Write 0 W → Ownership frei.
+ * Grid Charge / geplante Ladung: control.charge > 0 → Ownership kind=charge
+ *   → reguläres Ende → genau ein charge=0.
+ *
+ * Grid Balance: control.discharge > 0 → Ownership kind=discharge
+ *   → reguläres Ende → genau ein discharge=0.
  *
  * Kein 0-W-Write gegen eine neue Authority (Hold / External / Restore-Fault /
  * höhere Batterieaktion) — Ownership wird nur abgegeben.
@@ -12,10 +14,19 @@
  * Ohne Ownership (z. B. Adapterrestart mit altem Geräte-Setpoint) kein Blind-0.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.consumeFailsafeSetpointTakeover = exports.markFailsafeSetpointTakeover = exports.resetBatterySetpointSession = exports.setBatterySetpointSession = exports.getBatterySetpointSession = exports.applyHandover = exports.applyZeroRelease = exports.markReleasePending = exports.decideSetpointRelease = exports.notePositiveSetpointWrite = exports.resolveBatterySetpointHandover = exports.setpointOwnerFromAction = exports.emptySetpointSession = void 0;
+exports.consumeFailsafeSetpointTakeover = exports.markFailsafeSetpointTakeover = exports.resetBatterySetpointSession = exports.setBatterySetpointSession = exports.getBatterySetpointSession = exports.applyHandover = exports.applyZeroRelease = exports.markReleasePending = exports.decideSetpointRelease = exports.notePositiveSetpointWrite = exports.resolveBatterySetpointHandover = exports.setpointOwnerFromAction = exports.emptySetpointSession = exports.setpointKindFromOwner = void 0;
+function setpointKindFromOwner(owner) {
+    if (owner === "grid_balance")
+        return "discharge";
+    if (owner === "grid_charge" || owner === "planned_charge")
+        return "charge";
+    return "none";
+}
+exports.setpointKindFromOwner = setpointKindFromOwner;
 function emptySetpointSession() {
     return {
         owner: "none",
+        kind: "none",
         setpointW: 0,
         wrotePositive: false,
         wroteLive: false,
@@ -51,9 +62,11 @@ exports.resolveBatterySetpointHandover = resolveBatterySetpointHandover;
 function notePositiveSetpointWrite(session, owner, powerW, live) {
     if (owner === "none" || !(powerW > 0) || !Number.isFinite(powerW))
         return session;
+    const kind = setpointKindFromOwner(owner);
     return {
         ...session,
         owner,
+        kind,
         setpointW: Math.round(powerW),
         wrotePositive: true,
         wroteLive: live || session.wroteLive,
@@ -88,6 +101,7 @@ exports.markReleasePending = markReleasePending;
 function applyZeroRelease(session, nowIso, reason) {
     return {
         owner: "none",
+        kind: "none",
         setpointW: 0,
         wrotePositive: false,
         wroteLive: false,
@@ -101,6 +115,7 @@ exports.applyZeroRelease = applyZeroRelease;
 function applyHandover(session, reason) {
     return {
         owner: "none",
+        kind: "none",
         setpointW: 0,
         wrotePositive: false,
         wroteLive: false,

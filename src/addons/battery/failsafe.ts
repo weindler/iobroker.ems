@@ -14,28 +14,39 @@ const CONFIG_PREFIX = "bat";
 let lastEmsReachable: boolean | null = null;
 
 /**
- * Erzwingt den sicheren Ruhezustand (Ladung 0 W, Self-Consumption-Modus) direkt,
- * ohne die FSM — analog `forceWallboxSafeOff` / `forceImmersionHeaterOff`. Läuft
+ * Erzwingt den sicheren Ruhezustand (charge 0 W, discharge 0 W, Self-Consumption)
+ * direkt, ohne die FSM — analog `forceWallboxSafeOff` / `forceImmersionHeaterOff`. Läuft
  * unabhängig vom regulären Control-Tick, damit ein hängender Adapter-Loop die
  * Batterie nicht dauerhaft im aktiven Lade-Zustand belässt.
  */
 async function forceBatterySafeState(adapter: ioBroker.Adapter, reason: string): Promise<boolean> {
 	const config = batteryConfigFromAdapter(adapter.config);
 	const table = batteryMappingFromConfig(adapter.config);
-	const powerTarget = table.set_charge_power.targetState;
+	const chargeTarget = table.set_charge_power.targetState;
+	const dischargeTarget = table.set_discharge_power.targetState;
 	const modeTarget = table.set_operating_mode.targetState;
-	if (!powerTarget && !modeTarget) {
-		adapter.log.warn(`battery failsafe (${reason}): no set_charge_power/set_operating_mode mapping`);
+	if (!chargeTarget && !dischargeTarget && !modeTarget) {
+		adapter.log.warn(
+			`battery failsafe (${reason}): no set_charge_power/set_discharge_power/set_operating_mode mapping`,
+		);
 		return false;
 	}
 
 	let wrote = false;
 	try {
-		if (powerTarget) {
+		if (chargeTarget) {
 			const r = await writeForeignIfChanged(adapter, {
-				stateId: powerTarget,
+				stateId: chargeTarget,
 				value: 0,
 				reason: `battery failsafe: ${reason}`,
+			});
+			if (r.written) wrote = true;
+		}
+		if (dischargeTarget) {
+			const r = await writeForeignIfChanged(adapter, {
+				stateId: dischargeTarget,
+				value: 0,
+				reason: `battery failsafe discharge: ${reason}`,
 			});
 			if (r.written) wrote = true;
 		}
@@ -47,7 +58,7 @@ async function forceBatterySafeState(adapter: ioBroker.Adapter, reason: string):
 			});
 			if (r.written) wrote = true;
 		}
-		adapter.log.warn(`battery failsafe (${reason}): charge power 0, self-consumption forced`);
+		adapter.log.warn(`battery failsafe (${reason}): charge/discharge 0, self-consumption forced`);
 		return true;
 	} catch (e) {
 		adapter.log.error(`battery failsafe write failed: ${String(e)}`);

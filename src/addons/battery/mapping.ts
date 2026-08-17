@@ -13,7 +13,7 @@ export const BATTERY_READ_ROLES = [
 	"pv_ac_power_w",
 ] as const;
 
-export const BATTERY_WRITE_ROLES = ["set_operating_mode", "set_charge_power"] as const;
+export const BATTERY_WRITE_ROLES = ["set_operating_mode", "set_charge_power", "set_discharge_power"] as const;
 
 export const BATTERY_MAPPING_ROLES = [...BATTERY_READ_ROLES, ...BATTERY_WRITE_ROLES] as const;
 
@@ -33,6 +33,7 @@ export const BATTERY_MAPPING_FLAT_PREFIX: Record<BatteryMappingRole, string> = {
 	pv_ac_power_w: "bat_pv_ac",
 	set_operating_mode: "bat_operating_mode",
 	set_charge_power: "bat_battery_charging",
+	set_discharge_power: "bat_battery_discharging",
 };
 
 export interface NativeMappingEntry {

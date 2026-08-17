@@ -2,7 +2,7 @@ import type { BatteryProfileId } from "../core/types";
 import { writeForeignIfChanged, type DeviceWriteHost } from "../../../device_write";
 import { isRestoreInProgress } from "../../../restore/barrier";
 
-export type BatteryWriteKind = "operating_mode" | "charge_power";
+export type BatteryWriteKind = "operating_mode" | "charge_power" | "discharge_power";
 
 export interface BatteryWriteHost extends DeviceWriteHost {
 	log: Pick<ioBroker.Logger, "info" | "warn" | "error" | "debug">;
@@ -54,6 +54,8 @@ export interface ExecuteBatteryWriteParams {
 	dryrun: boolean;
 	gate: FinalWriteGate;
 	numericTolerance?: number;
+	/** Sonnen Mode-2 Override: gleichen Wert erneut schreiben, auch wenn das Gerät ihn noch anzeigt. */
+	force?: boolean;
 }
 
 export interface BatteryWriteResult {
@@ -153,6 +155,7 @@ export async function executeBatteryWrite(
 			value: params.value,
 			reason: `battery ${params.kind}: ${params.reason}`,
 			numericTolerance: params.numericTolerance ?? 0,
+			force: params.force === true,
 		});
 		if (writeResult.skipped) {
 			host.log.debug(
@@ -187,7 +190,12 @@ export async function executeBatteryWrite(
 			skipped: false,
 			simulated: false,
 			gatePassed: true,
-			rejectCode: params.kind === "operating_mode" ? "mode_write_failed" : "charge_write_failed",
+			rejectCode:
+				params.kind === "operating_mode"
+					? "mode_write_failed"
+					: params.kind === "discharge_power"
+						? "discharge_write_failed"
+						: "charge_write_failed",
 		};
 	}
 }

@@ -12,7 +12,7 @@ export async function setupGridBalanceWatch(
 	table: BatteryMappingTable,
 ): Promise<void> {
 	watchedStateIds.clear();
-	for (const role of ["consumption_w", "pv_ac_power_w"] as const) {
+	for (const role of ["consumption_w", "pv_ac_power_w", "soc_pct", "operating_mode_read"] as const) {
 		const slot = table[role];
 		if (!slot.enabled || !slot.targetState.trim()) continue;
 		watchedStateIds.add(slot.targetState.trim());

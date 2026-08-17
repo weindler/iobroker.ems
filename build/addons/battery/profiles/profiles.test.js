@@ -55,10 +55,28 @@ const FULL_SONNEN = {
         strict_1.default.equal(caps.live_control.available, true);
         strict_1.default.equal(caps.safe_restore.available, true);
     });
-    (0, node_test_1.it)("discharge not supported", () => {
+    (0, node_test_1.it)("discharge available when mapped; grid balance needs discharge mapping", () => {
+        const withDischarge = {
+            ...FULL_SONNEN,
+            bat_feature_grid_balance_enabled: true,
+            bat_battery_discharging_target: "sonnen.0.control.discharge",
+            bat_consumption_target: "sonnen.0.consumption",
+            bat_pv_ac_target: "sonnen.0.production",
+        };
+        const caps = profile.buildCapabilities({
+            config: (0, config_js_1.batteryConfigFromAdapter)(withDischarge),
+            mapping: (0, mapping_js_1.batteryMappingFromConfig)(withDischarge),
+            limits: (0, config_js_1.batteryConfigFromAdapter)(withDischarge).limits,
+        });
+        strict_1.default.equal(caps.set_discharge_power.supported, true);
+        strict_1.default.equal(caps.set_discharge_power.available, true);
+        strict_1.default.equal(caps.control_grid_balance.available, true);
+    });
+    (0, node_test_1.it)("discharge supported but unavailable without mapping", () => {
         const caps = profile.buildCapabilities(input);
-        strict_1.default.equal(caps.set_discharge_power.supported, false);
+        strict_1.default.equal(caps.set_discharge_power.supported, true);
         strict_1.default.equal(caps.set_discharge_power.available, false);
+        strict_1.default.equal(caps.control_grid_balance.available, false);
     });
     (0, node_test_1.it)("missing write mapping prevents live readiness", () => {
         const cfgNoWrite = { ...FULL_SONNEN, bat_battery_charging_target: "" };

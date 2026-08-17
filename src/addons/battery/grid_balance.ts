@@ -29,7 +29,7 @@ export interface GridBalanceInputs {
 export interface GridBalanceResult {
 	active: boolean;
 	gatePassed: boolean;
-	targetBatteryChargingW: number;
+	targetDischargeW: number;
 	reasonDe: string;
 	checksPassed: string[];
 	checksFailed: string[];
@@ -159,7 +159,7 @@ export function computeGridBalanceTarget(inputs: GridBalanceInputs): GridBalance
 	return {
 		active: true,
 		gatePassed: true,
-		targetBatteryChargingW: target,
+		targetDischargeW: target,
 		reasonDe: `Netzausgleich: ${target} W (consumption − pv + ${offset} W); ${priceCheck.reasonDe}`,
 		checksPassed,
 		checksFailed,
@@ -174,7 +174,7 @@ function inactive(
 	return {
 		active: false,
 		gatePassed: false,
-		targetBatteryChargingW: 0,
+		targetDischargeW: 0,
 		reasonDe,
 		checksPassed,
 		checksFailed,

@@ -52,14 +52,18 @@ export const SONNEN_EM_PROFILE: BatteryProfile = {
 
 		const modeWrite = isMappingConfigured(mapping, "set_operating_mode");
 		const chargeWrite = isMappingConfigured(mapping, "set_charge_power");
+		const dischargeWrite = isMappingConfigured(mapping, "set_discharge_power");
 
 		m.set_operating_mode = capability(true, modeWrite && limitsValid, modeWrite ? "limits_invalid" : "mapping_missing");
 		m.set_charge_power = capability(true, chargeWrite && limitsValid, chargeWrite ? "limits_invalid" : "mapping_missing");
 		m.enable_grid_charge = capability(true, modeWrite && chargeWrite && limitsValid, "mapping_or_limits");
 		m.hold_battery = capability(true, modeWrite && limitsValid, "mapping_or_limits");
 
-		// Entladesteuerung ohne geprüfte technische Grundlage nicht aktivieren.
-		m.set_discharge_power = capability(false, false, "discharge_unverified");
+		m.set_discharge_power = capability(
+			true,
+			dischargeWrite && limitsValid,
+			dischargeWrite ? "limits_invalid" : "mapping_missing",
+		);
 
 		m.verify_operating_mode = capability(true, isMappingConfigured(mapping, "operating_mode_read"), "mapping_missing");
 		m.verify_charge_power = capability(true, isMappingConfigured(mapping, "power_w"), "mapping_missing");
@@ -68,7 +72,7 @@ export const SONNEN_EM_PROFILE: BatteryProfile = {
 
 		const gbConfigured =
 			config.gridBalance.enabled &&
-			chargeWrite &&
+			dischargeWrite &&
 			GRID_BALANCE_READ.every((r) => isMappingConfigured(mapping, r));
 		m.control_grid_balance = capability(true, gbConfigured, "grid_balance_not_configured");
 

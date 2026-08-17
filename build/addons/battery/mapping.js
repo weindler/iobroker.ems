@@ -14,7 +14,7 @@ exports.BATTERY_READ_ROLES = [
     "consumption_w",
     "pv_ac_power_w",
 ];
-exports.BATTERY_WRITE_ROLES = ["set_operating_mode", "set_charge_power"];
+exports.BATTERY_WRITE_ROLES = ["set_operating_mode", "set_charge_power", "set_discharge_power"];
 exports.BATTERY_MAPPING_ROLES = [...exports.BATTERY_READ_ROLES, ...exports.BATTERY_WRITE_ROLES];
 /** Admin-Flat-Präfixe; bewusst rückwärtskompatibel zu v0.1.64-Schlüsseln. */
 exports.BATTERY_MAPPING_FLAT_PREFIX = {
@@ -30,6 +30,7 @@ exports.BATTERY_MAPPING_FLAT_PREFIX = {
     pv_ac_power_w: "bat_pv_ac",
     set_operating_mode: "bat_operating_mode",
     set_charge_power: "bat_battery_charging",
+    set_discharge_power: "bat_battery_discharging",
 };
 function rec(config) {
     return config && typeof config === "object" ? config : {};

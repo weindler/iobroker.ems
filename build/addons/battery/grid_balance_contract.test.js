@@ -73,7 +73,7 @@ function baseSafety(over = {}) {
         strict_1.default.equal(r.priceAllowed, false);
         strict_1.default.equal(r.policyAllowed, false);
         strict_1.default.equal(r.blockReason, "price_below_minimum");
-        strict_1.default.equal(r.explain, "grid_balance=blocked, price=20.0ct, minimum=30.0ct");
+        strict_1.default.equal(r.explain, "grid_balance=blocked, reason=price_below_minimum");
         strict_1.default.equal(r.writeAllowed, false);
     });
     (0, node_test_1.it)("29.99 ct → price_allowed=false", () => {
@@ -214,6 +214,25 @@ function baseSafety(over = {}) {
         const r = (0, grid_balance_js_1.evaluateGridBalanceMinPrice)({ minPriceCtPerKwh: 30, priceNowCt: 42 });
         strict_1.default.equal(r.passed, true);
     });
+    (0, node_test_1.it)("explain active uses Mode-2 discharge, never charge", () => {
+        strict_1.default.equal((0, grid_balance_contract_js_1.formatGridBalanceExplain)({
+            enabled: true,
+            blockReason: "",
+            priceNowCt: 36.7,
+            priceMinCt: 30,
+            gridImportW: 48,
+            active: true,
+            mode2Confirmed: true,
+            dischargeW: 48,
+        }), "grid_balance=active, mode=2, discharge=48W");
+        strict_1.default.equal((0, grid_balance_contract_js_1.formatGridBalanceExplain)({
+            enabled: true,
+            blockReason: "battery_hold",
+            priceNowCt: 36.7,
+            priceMinCt: 30,
+            gridImportW: 48,
+        }), "grid_balance=blocked, reason=battery_hold");
+    });
     (0, node_test_1.it)("explain ready includes price, minimum and grid import", () => {
         strict_1.default.equal((0, grid_balance_contract_js_1.formatGridBalanceExplain)({
             enabled: true,
@@ -238,7 +257,10 @@ function baseSafety(over = {}) {
         strict_1.default.match(cfg, /bat_offset_low_soc_w/);
         strict_1.default.match(cfg, /bat_grid_balance_min_change_w/);
         strict_1.default.match(cfg, /bat_grid_balance_deadband_w/);
-        strict_1.default.match(cfg, /bat_grid_balance_min_duration_s/);
+        strict_1.default.equal(/bat_grid_balance_min_duration_s/.test(cfg), false);
+        strict_1.default.match(cfg, /bat_battery_discharging_target/);
+        strict_1.default.match(cfg, /control\.discharge/);
+        strict_1.default.match(cfg, /"bat_grid_balance_deadband_w"[\s\S]*?"default": 0/);
         strict_1.default.match(cfg, /bat_grid_balance_max_w/);
         strict_1.default.match(cfg, /bat_grid_balance_update_interval_sec/);
     });

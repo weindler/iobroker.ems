@@ -31,5 +31,7 @@ const config_js_1 = require("./config.js");
         strict_1.default.equal(c.gridBalance.enabled, false);
         strict_1.default.equal(c.gridBalance.offsetHighSocW, 25);
         strict_1.default.equal(c.gridBalance.minPriceCtPerKwh, 30);
+        strict_1.default.equal(c.gridBalance.deadbandW, 0);
+        strict_1.default.equal("minDurationSec" in c.gridBalance, false);
     });
 });

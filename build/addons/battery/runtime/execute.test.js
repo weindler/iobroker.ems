@@ -117,4 +117,43 @@ function mockHost() {
         strict_1.default.equal(r.executed, false);
         strict_1.default.equal(r.rejectCode, "addon_disabled");
     });
+    (0, node_test_1.it)("force rewrites discharge even if device already shows the value", async () => {
+        const writes = [];
+        const host = {
+            getForeignStateAsync: async () => ({ val: 48, ack: true }),
+            setForeignStateAsync: async (id, state) => {
+                const val = state && typeof state === "object" && "val" in state
+                    ? state.val
+                    : state;
+                writes.push({ id, val: val ?? null });
+            },
+            log: { info: () => undefined, warn: () => undefined, error: () => undefined, debug: () => undefined },
+        };
+        const skipped = await (0, execute_js_1.executeBatteryWrite)(host, {
+            kind: "discharge_power",
+            stateId: "sonnen.0.control.discharge",
+            value: 48,
+            requestId: "grid_balance",
+            reason: "grid_balance_keepalive",
+            dryrun: false,
+            gate: okGate(),
+        });
+        strict_1.default.equal(skipped.skipped, true);
+        strict_1.default.equal(writes.length, 0);
+        const forced = await (0, execute_js_1.executeBatteryWrite)(host, {
+            kind: "discharge_power",
+            stateId: "sonnen.0.control.discharge",
+            value: 48,
+            requestId: "grid_balance",
+            reason: "grid_balance_keepalive",
+            dryrun: false,
+            force: true,
+            gate: okGate(),
+        });
+        strict_1.default.equal(forced.written, true);
+        strict_1.default.equal(forced.skipped, false);
+        strict_1.default.equal(writes.length, 1);
+        strict_1.default.equal(writes[0].id, "sonnen.0.control.discharge");
+        strict_1.default.equal(writes[0].val, 48);
+    });
 });

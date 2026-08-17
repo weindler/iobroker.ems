@@ -84,7 +84,7 @@ describe("grid balance safety contract v0.1.284", () => {
 		assert.equal(r.priceAllowed, false);
 		assert.equal(r.policyAllowed, false);
 		assert.equal(r.blockReason, "price_below_minimum");
-		assert.equal(r.explain, "grid_balance=blocked, price=20.0ct, minimum=30.0ct");
+		assert.equal(r.explain, "grid_balance=blocked, reason=price_below_minimum");
 		assert.equal(r.writeAllowed, false);
 	});
 
@@ -246,6 +246,32 @@ describe("grid balance safety contract v0.1.284", () => {
 		assert.equal(r.passed, true);
 	});
 
+	it("explain active uses Mode-2 discharge, never charge", () => {
+		assert.equal(
+			formatGridBalanceExplain({
+				enabled: true,
+				blockReason: "",
+				priceNowCt: 36.7,
+				priceMinCt: 30,
+				gridImportW: 48,
+				active: true,
+				mode2Confirmed: true,
+				dischargeW: 48,
+			}),
+			"grid_balance=active, mode=2, discharge=48W",
+		);
+		assert.equal(
+			formatGridBalanceExplain({
+				enabled: true,
+				blockReason: "battery_hold",
+				priceNowCt: 36.7,
+				priceMinCt: 30,
+				gridImportW: 48,
+			}),
+			"grid_balance=blocked, reason=battery_hold",
+		);
+	});
+
 	it("explain ready includes price, minimum and grid import", () => {
 		assert.equal(
 			formatGridBalanceExplain({
@@ -274,7 +300,10 @@ describe("grid balance safety contract v0.1.284", () => {
 		assert.match(cfg, /bat_offset_low_soc_w/);
 		assert.match(cfg, /bat_grid_balance_min_change_w/);
 		assert.match(cfg, /bat_grid_balance_deadband_w/);
-		assert.match(cfg, /bat_grid_balance_min_duration_s/);
+		assert.equal(/bat_grid_balance_min_duration_s/.test(cfg), false);
+		assert.match(cfg, /bat_battery_discharging_target/);
+		assert.match(cfg, /control\.discharge/);
+		assert.match(cfg, /"bat_grid_balance_deadband_w"[\s\S]*?"default": 0/);
 		assert.match(cfg, /bat_grid_balance_max_w/);
 		assert.match(cfg, /bat_grid_balance_update_interval_sec/);
 	});

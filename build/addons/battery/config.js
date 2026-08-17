@@ -97,7 +97,6 @@ function batteryConfigFromAdapter(config) {
             updateIntervalSec: intIn(c, "bat_grid_balance_update_interval_sec", 5, 3, 15),
             minPriceCtPerKwh: migrateGridBalanceMinPriceCt(c),
             deadbandW: intIn(c, "bat_grid_balance_deadband_w", grid_balance_power_1.GRID_BALANCE_DEADBAND_DEFAULT_W, 0, 5000),
-            minDurationSec: intIn(c, "bat_grid_balance_min_duration_s", grid_balance_power_1.GRID_BALANCE_MIN_DURATION_DEFAULT_S, 0, 120),
         },
     };
 }

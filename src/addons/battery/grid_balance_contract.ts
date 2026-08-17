@@ -6,19 +6,18 @@
  *
  * Existing path (do not replace with a second optimiser):
  *   src/addons/battery/grid_balance.ts  — formula + legacy gates
- *   src/addons/battery/grid_balance_power.ts — EV-Abzug, Deadband, Stabilisierung, Clamp, Ownership
- *   src/addons/battery/index.ts         — Sonnen control.charge writes in Mode 2
- *   src/addons/battery/runtime/grid_balance_watch.ts — on-change 500 ms + 5 s tick
+ *   src/addons/battery/grid_balance_power.ts — EV-Abzug, Deadband 0, Mode-2 keepalive ≤8 s, Clamp, Ownership
+ *   src/addons/battery/index.ts         — Sonnen Mode-2 control.discharge writes (never Mode 1 / charge)
+ *   src/addons/battery/runtime/grid_balance_watch.ts — on-change 500 ms + keepalive ≤ 8 s
  *
  * Authority (lowest wins last): Safety/Fault/Restore → External EV → Battery Hold
  * → planned EMS battery action → grid balance.
  *
  * GRID_BALANCE_EXECUTION_ENABLED stays false: no Dauerbetrieb. Productive writes
  * only via one-shot `grid_balance.live_test_armed` (ack:false) after all gates.
- * One-shot is a session: at most one regular setpoint. The matching 0-release
- * stays allowed after `consumed` while GB still owns and no higher authority
- * (Hold / External / Planned) is active. Unified with planned/grid_charge via
- * `runtime/setpoint_session.ts` (diagnosis: addons.battery.runtime.battery_setpoint_*).
+ * One-shot is a session: first regular discharge setpoint, Mode-2 keepalives of
+ * that session, then matching discharge=0. Unified with planned/grid_charge via
+ * `runtime/setpoint_session.ts` (kind=discharge vs kind=charge).
  */
 
 export const GRID_BALANCE_EXECUTION_ENABLED = false;
@@ -142,16 +141,19 @@ export function formatGridBalanceExplain(input: {
 	priceNowCt: number | null;
 	priceMinCt: number;
 	gridImportW: number;
+	active?: boolean;
+	mode2Confirmed?: boolean;
+	dischargeW?: number;
 }): string {
 	const reason = input.blockReason;
 	if (!input.enabled || reason === "disabled") {
 		return "grid_balance=blocked, reason=disabled";
 	}
-	if (reason === "price_below_minimum") {
-		return `grid_balance=blocked, price=${formatPriceCt(input.priceNowCt)}ct, minimum=${input.priceMinCt.toFixed(1)}ct`;
-	}
 	if (reason) {
 		return `grid_balance=blocked, reason=${reason}`;
+	}
+	if (input.active && input.mode2Confirmed && input.dischargeW != null && input.dischargeW > 0) {
+		return `grid_balance=active, mode=2, discharge=${Math.round(input.dischargeW)}W`;
 	}
 	const importW = Number.isFinite(input.gridImportW) ? Math.round(input.gridImportW) : 0;
 	return `grid_balance=ready, price=${formatPriceCt(input.priceNowCt)}ct, minimum=${input.priceMinCt.toFixed(1)}ct, grid_import=${importW}W`;

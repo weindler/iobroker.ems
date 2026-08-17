@@ -99,6 +99,7 @@ async function executeBatteryWrite(host, params) {
             value: params.value,
             reason: `battery ${params.kind}: ${params.reason}`,
             numericTolerance: params.numericTolerance ?? 0,
+            force: params.force === true,
         });
         if (writeResult.skipped) {
             host.log.debug(`battery write skipped (already at target) ${params.kind}=${params.value} → ${params.stateId} (${params.reason})`);
@@ -132,7 +133,11 @@ async function executeBatteryWrite(host, params) {
             skipped: false,
             simulated: false,
             gatePassed: true,
-            rejectCode: params.kind === "operating_mode" ? "mode_write_failed" : "charge_write_failed",
+            rejectCode: params.kind === "operating_mode"
+                ? "mode_write_failed"
+                : params.kind === "discharge_power"
+                    ? "discharge_write_failed"
+                    : "charge_write_failed",
         };
     }
 }

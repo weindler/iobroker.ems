@@ -103,7 +103,7 @@ function computeGridBalanceTarget(inputs) {
     return {
         active: true,
         gatePassed: true,
-        targetBatteryChargingW: target,
+        targetDischargeW: target,
         reasonDe: `Netzausgleich: ${target} W (consumption − pv + ${offset} W); ${priceCheck.reasonDe}`,
         checksPassed,
         checksFailed,
@@ -114,7 +114,7 @@ function inactive(reasonDe, checksPassed, checksFailed) {
     return {
         active: false,
         gatePassed: false,
-        targetBatteryChargingW: 0,
+        targetDischargeW: 0,
         reasonDe,
         checksPassed,
         checksFailed,

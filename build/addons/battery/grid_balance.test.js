@@ -70,6 +70,6 @@ const grid_balance_js_1 = require("./grid_balance.js");
     (0, node_test_1.it)("computes target when all gates pass", () => {
         const r = (0, grid_balance_js_1.computeGridBalanceTarget)(baseInputs);
         strict_1.default.equal(r.gatePassed, true);
-        strict_1.default.ok(r.targetBatteryChargingW > 0);
+        strict_1.default.ok(r.targetDischargeW > 0);
     });
 });

@@ -6,7 +6,7 @@ let debounceTimer = null;
 const watchedStateIds = new Set();
 async function setupGridBalanceWatch(adapter, table) {
     watchedStateIds.clear();
-    for (const role of ["consumption_w", "pv_ac_power_w"]) {
+    for (const role of ["consumption_w", "pv_ac_power_w", "soc_pct", "operating_mode_read"]) {
         const slot = table[role];
         if (!slot.enabled || !slot.targetState.trim())
             continue;

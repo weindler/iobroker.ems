@@ -5,6 +5,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
+const node_fs_1 = require("node:fs");
+const node_path_1 = require("node:path");
 const failsafe_js_1 = require("./failsafe.js");
 const ems_activity_js_1 = require("../../ems_activity.js");
 const ensure_states_js_1 = require("./ensure_states.js");
@@ -81,5 +83,11 @@ function liveConfig(over = {}) {
         });
         await (0, failsafe_js_1.runBatteryFailsafeCheck)(adapter);
         strict_1.default.equal(states.get(ensure_states_js_1.BAT.failsafe.active)?.val, true);
+    });
+    (0, node_test_1.it)("failsafe zeros charge and discharge mappings", () => {
+        const src = (0, node_fs_1.readFileSync)((0, node_path_1.join)(__dirname, "..", "..", "..", "src", "addons", "battery", "failsafe.ts"), "utf8");
+        strict_1.default.match(src, /set_discharge_power/);
+        strict_1.default.match(src, /set_charge_power/);
+        strict_1.default.match(src, /selfConsumption/);
     });
 });

@@ -1,20 +1,22 @@
 "use strict";
 /**
- * Grid-balance live hardening (v0.1.284) — EV-Abzug, Deadband, Stabilisierung,
- * Mindestnutzen, Hardware-Clamp, Ownership/Exit. Rein, ohne ioBroker.
+ * Grid-balance live power (v0.1.289) — Mode-2 discharge-Override.
  *
- * Deadband-Default 250 W: über typischem Sonnen-/Zählerrauschen (~50–150 W) und
- * über der 50-W-Write-Hysterese; unterhalb sinnvoller Hauslast. 80-W-Mikroregelung
- * (~0,8 kWh/Tag bei Dauerbetrieb) liegt klar im Deadband.
+ * Formel (Referenzscript): deficitW = max(0, consumptionW − pvW);
+ * targetW = clamp(round(deficitW + offsetW), 0, maxW).
  *
- * Stabilisierung Default 8 s: länger als 500-ms-Debounce und Kompressorstarts
- * (1–3 s), kurz genug für echte Last.
+ * Deadband-Default 0 W: auch kleine Restnetzbezüge (z. B. 20–48 W) sind
+ * ausregelbar. Admin darf bewusst ein Deadband setzen.
+ *
+ * Keine 8-s-Stabilisierung. Mode-2-Override muss innerhalb von ~10 s
+ * erneut geschrieben werden (Keepalive, unabhängig von der Write-Hysterese).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluateGridBalanceTick = exports.gridBalanceSessionReleasePermit = exports.gridBalanceCleanupAllowed = exports.gridBalanceExecutionReleased = exports.gridBalanceSetpointPermit = exports.consumeGridBalanceLiveTest = exports.applyGridBalanceLiveTestPulse = exports.emptyGridBalanceLiveTest = exports.stepStabilization = exports.emptyStabilization = exports.effectiveGridBalanceMaxW = exports.adjustConsumptionForEv = exports.GRID_BALANCE_EV_ACTIVE_MIN_W = exports.GRID_BALANCE_EV_POWER_MAX_AGE_MS = exports.GRID_BALANCE_MIN_DURATION_DEFAULT_S = exports.GRID_BALANCE_DEADBAND_DEFAULT_W = void 0;
+exports.evaluateGridBalanceTick = exports.gridBalanceSessionReleasePermit = exports.gridBalanceCleanupAllowed = exports.gridBalanceExecutionReleased = exports.gridBalanceSetpointPermit = exports.consumeGridBalanceLiveTest = exports.applyGridBalanceLiveTestPulse = exports.emptyGridBalanceLiveTest = exports.effectiveGridBalanceMaxW = exports.adjustConsumptionForEv = exports.GRID_BALANCE_EV_ACTIVE_MIN_W = exports.GRID_BALANCE_EV_POWER_MAX_AGE_MS = exports.GRID_BALANCE_KEEPALIVE_MAX_MS = exports.GRID_BALANCE_DEADBAND_DEFAULT_W = void 0;
 const grid_balance_contract_1 = require("./grid_balance_contract");
-exports.GRID_BALANCE_DEADBAND_DEFAULT_W = 250;
-exports.GRID_BALANCE_MIN_DURATION_DEFAULT_S = 8;
+exports.GRID_BALANCE_DEADBAND_DEFAULT_W = 0;
+/** Sonnen Mode-2 Override erlischt nach ~10 s — Refresh spätestens hier. */
+exports.GRID_BALANCE_KEEPALIVE_MAX_MS = 8_000;
 exports.GRID_BALANCE_EV_POWER_MAX_AGE_MS = 15_000;
 /** Unterhalb gilt chargePower nicht als echte Ladeleistung. */
 exports.GRID_BALANCE_EV_ACTIVE_MIN_W = 200;
@@ -58,30 +60,12 @@ function effectiveGridBalanceMaxW(input) {
     const configuredMaxW = Math.max(0, Math.round(Number.isFinite(input.configuredMaxW) ? input.configuredMaxW : 0));
     const discharge = input.hardwareMaxDischargeW != null && input.hardwareMaxDischargeW > 0 ? input.hardwareMaxDischargeW : null;
     const charge = input.hardwareMaxChargeW != null && input.hardwareMaxChargeW > 0 ? input.hardwareMaxChargeW : null;
-    /** Sonnen schreibt control.charge; HW-Entladegrenze gilt, sonst Ladegrenze. */
+    /** Sonnen Mode-2 discharge-Override; Hardware-Entladegrenze gilt, sonst Ladegrenze. */
     const hardwareMaxW = discharge ?? charge;
     const effectiveMaxW = hardwareMaxW != null ? Math.min(configuredMaxW, Math.round(hardwareMaxW)) : configuredMaxW;
     return { configuredMaxW, hardwareMaxW, effectiveMaxW: Math.max(0, effectiveMaxW) };
 }
 exports.effectiveGridBalanceMaxW = effectiveGridBalanceMaxW;
-function emptyStabilization() {
-    return { excessSinceMs: null };
-}
-exports.emptyStabilization = emptyStabilization;
-function stepStabilization(prev, nowMs, exceedsDeadband, minDurationMs) {
-    if (!exceedsDeadband) {
-        return { next: { excessSinceMs: null }, stable: false, elapsedMs: 0 };
-    }
-    const started = prev.excessSinceMs ?? nowMs;
-    const elapsedMs = Math.max(0, nowMs - started);
-    const need = Math.max(0, minDurationMs);
-    return {
-        next: { excessSinceMs: started },
-        stable: elapsedMs >= need,
-        elapsedMs,
-    };
-}
-exports.stepStabilization = stepStabilization;
 function emptyGridBalanceLiveTest() {
     return { armed: false, consumed: false, armedAtMs: null, consumedAtMs: null, result: "" };
 }
@@ -117,9 +101,9 @@ function consumeGridBalanceLiveTest(prev, nowMs) {
     };
 }
 exports.consumeGridBalanceLiveTest = consumeGridBalanceLiveTest;
-/** Nur der reguläre GB-Setpoint (≠ 0). Der Session-Release auf 0 hängt nicht daran. */
-function gridBalanceSetpointPermit(liveTest) {
-    return grid_balance_contract_1.GRID_BALANCE_EXECUTION_ENABLED || (liveTest.armed && !liveTest.consumed);
+/** Regulärer GB-Discharge-Setpoint (≠ 0) und Mode-2-Keepalive derselben Session. */
+function gridBalanceSetpointPermit(liveTest, ownsSetpoint = false) {
+    return grid_balance_contract_1.GRID_BALANCE_EXECUTION_ENABLED || (liveTest.armed && !liveTest.consumed) || (ownsSetpoint && liveTest.consumed);
 }
 exports.gridBalanceSetpointPermit = gridBalanceSetpointPermit;
 /** @deprecated Use gridBalanceSetpointPermit — does not gate the 0-release. */
@@ -162,7 +146,7 @@ function roundW(n) {
     return Math.max(0, Math.round(n));
 }
 function evaluateGridBalanceTick(input) {
-    const liveTestPermit = gridBalanceSetpointPermit(input.liveTest);
+    const liveTestPermit = gridBalanceSetpointPermit(input.liveTest, input.ownsSetpoint);
     const safety = (0, grid_balance_contract_1.evaluateGridBalanceSafety)({ ...input.safety, liveTestPermit });
     const ev = adjustConsumptionForEv({
         consumptionW: input.consumptionW,
@@ -179,11 +163,12 @@ function evaluateGridBalanceTick(input) {
         hardwareMaxDischargeW: input.hardwareMaxDischargeW,
     });
     const exceeds = rawGridDeltaW > deadbandW;
-    const stab = stepStabilization(input.stabilization, input.nowMs, exceeds, input.minDurationMs);
     const unclamped = exceeds ? roundW(rawGridDeltaW + Math.max(0, input.offsetW)) : 0;
     const requestedPowerW = Math.min(max.effectiveMaxW, unclamped);
     const minBenefitW = deadbandW;
     let blockReason = safety.blockReason;
+    if (!blockReason && !input.mode2Confirmed)
+        blockReason = "mode_not_self_consumption";
     if (!blockReason && ev.blockReason)
         blockReason = ev.blockReason;
     if (!blockReason && input.forecastBlockReason)
@@ -192,10 +177,8 @@ function evaluateGridBalanceTick(input) {
         blockReason = "inside_deadband";
     if (!blockReason && max.effectiveMaxW <= 0)
         blockReason = "no_hardware_headroom";
-    if (!blockReason && requestedPowerW < minBenefitW)
+    if (!blockReason && minBenefitW > 0 && requestedPowerW < minBenefitW)
         blockReason = "below_min_benefit";
-    if (!blockReason && !stab.stable)
-        blockReason = "not_stable";
     if (!blockReason && !input.controllerIsGridBalance)
         blockReason = "controller_not_grid_balance";
     const powerEligible = blockReason === "";
@@ -203,11 +186,18 @@ function evaluateGridBalanceTick(input) {
     const writeAllowed = safety.writeAllowed && powerEligible;
     let shouldWrite = false;
     let shouldRelease = false;
+    let forceWrite = false;
     let writePowerW = 0;
     let ownsNext = input.ownsSetpoint;
-    let liveTestNext = input.liveTest;
+    const liveTestNext = input.liveTest;
     let lastAction = "idle";
     let effectivePowerW = 0;
+    const keepaliveMaxMs = input.keepaliveMaxMs ?? exports.GRID_BALANCE_KEEPALIVE_MAX_MS;
+    const elapsedSinceWrite = input.lastWriteAtMs != null && Number.isFinite(input.lastWriteAtMs) ? input.nowMs - input.lastWriteAtMs : null;
+    const keepaliveDue = input.ownsSetpoint &&
+        requestedPowerW > 0 &&
+        writeAllowed &&
+        (elapsedSinceWrite === null || elapsedSinceWrite >= keepaliveMaxMs);
     const releasePermit = gridBalanceSessionReleasePermit({
         ownsSetpoint: input.ownsSetpoint,
         holdDetected: safety.holdDetected,
@@ -220,7 +210,11 @@ function evaluateGridBalanceTick(input) {
         blockReason: safety.blockReason,
         leavingLiveWithOwnership: input.leavingLiveWithOwnership === true,
     });
-    if (!safety.policyAllowed || ev.blockReason || input.forecastBlockReason || !input.controllerIsGridBalance) {
+    if (!safety.policyAllowed ||
+        !input.mode2Confirmed ||
+        ev.blockReason ||
+        input.forecastBlockReason ||
+        !input.controllerIsGridBalance) {
         if (releasePermit) {
             shouldRelease = true;
             writePowerW = 0;
@@ -230,13 +224,13 @@ function evaluateGridBalanceTick(input) {
         else {
             ownsNext = false;
             lastAction = "blocked";
-            if (!safety.writeAllowed && safety.policyAllowed && !ev.blockReason) {
+            if (!safety.writeAllowed && safety.policyAllowed && !ev.blockReason && input.mode2Confirmed) {
                 lastAction = grid_balance_contract_1.GRID_BALANCE_EXECUTION_ENABLED ? "idle" : "diagnosis_only";
             }
         }
     }
-    else if (blockReason === "inside_deadband" || blockReason === "below_min_benefit" || blockReason === "not_stable") {
-        if (releasePermit && blockReason !== "not_stable") {
+    else if (blockReason === "inside_deadband" || blockReason === "below_min_benefit") {
+        if (releasePermit) {
             shouldRelease = true;
             writePowerW = 0;
             ownsNext = false;
@@ -251,33 +245,40 @@ function evaluateGridBalanceTick(input) {
     }
     else if (writeAllowed && requestedPowerW > 0) {
         const minChange = Math.max(0, input.minChangeW);
-        const delta = input.lastWrittenW === null ? Number.POSITIVE_INFINITY : Math.abs(requestedPowerW - input.lastWrittenW);
-        if (delta >= minChange) {
+        const firstWrite = !input.ownsSetpoint || input.lastWrittenW === null;
+        const delta = firstWrite ? Number.POSITIVE_INFINITY : Math.abs(requestedPowerW - (input.lastWrittenW ?? 0));
+        const materialChange = delta >= minChange;
+        if (firstWrite || materialChange || keepaliveDue) {
             shouldWrite = true;
+            forceWrite = true;
             writePowerW = requestedPowerW;
             effectivePowerW = requestedPowerW;
             ownsNext = true;
-            lastAction = "written";
+            lastAction = !firstWrite && !materialChange && keepaliveDue ? "keepalive" : "written";
         }
         else {
             effectivePowerW = input.lastWrittenW ?? 0;
-            lastAction = input.ownsSetpoint ? "idle" : "idle";
+            lastAction = "idle";
         }
     }
     else if (powerEligible && !safety.writeAllowed) {
         lastAction = input.ownsSetpoint ? "idle" : grid_balance_contract_1.GRID_BALANCE_EXECUTION_ENABLED ? "idle" : "diagnosis_only";
         effectivePowerW = input.ownsSetpoint ? (input.lastWrittenW ?? requestedPowerW) : requestedPowerW;
     }
+    const active = shouldWrite || (ownsNext && lastAction !== "released" && lastAction !== "blocked");
     const explain = (0, grid_balance_contract_1.formatGridBalanceExplain)({
         enabled: safety.enabled,
         blockReason,
         priceNowCt: input.safety.priceNowCt,
         priceMinCt: input.safety.priceMinCt,
         gridImportW: rawGridDeltaW,
+        active,
+        mode2Confirmed: input.mode2Confirmed,
+        dischargeW: effectivePowerW || requestedPowerW,
     });
     return {
         enabled: safety.enabled,
-        active: shouldWrite || (input.ownsSetpoint && lastAction !== "released" && lastAction !== "blocked"),
+        active,
         ready,
         blockReason,
         currentPriceCt: input.safety.priceNowCt,
@@ -301,11 +302,14 @@ function evaluateGridBalanceTick(input) {
         ownership: ownsNext,
         shouldWrite,
         shouldRelease,
+        forceWrite,
         writePowerW,
+        writeKind: "discharge",
         ownsSetpointNext: ownsNext,
-        stabilizationNext: stab.next,
         liveTestNext,
         lastAction,
+        mode2Confirmed: input.mode2Confirmed,
+        keepaliveDue,
         safety,
         evConflictKind: input.safety.evConflictKind,
     };

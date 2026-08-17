@@ -2472,6 +2472,30 @@
 					"xl": 3,
 					"hidden": "data.battery_profile !== 'sonnen_em'"
 				},
+				"bat_battery_discharging_target": {
+					"type": "objectId",
+					"label": "control.discharge – Ziel-State (Netzausgleich Mode 2)",
+					"types": [
+						"state"
+					],
+					"xs": 12,
+					"sm": 12,
+					"md": 9,
+					"lg": 9,
+					"xl": 9,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
+				"bat_battery_discharging_enabled": {
+					"type": "checkbox",
+					"label": "Mapping aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
 				"bat_sonnen_manual_mode_value": {
 					"type": "number",
 					"label": "Manueller Modus (Wert)",
@@ -2677,6 +2701,7 @@
 				"bat_grid_balance_min_change_w": {
 					"type": "number",
 					"label": "Mindeständerung vor Neuschreiben (W, Write-Hysterese)",
+					"help": "Nur für Änderungen eines bereits aktiven Discharge-Setpoints. Der erste Sollwert und Mode-2-Keepalives desselben Werts werden nicht blockiert.",
 					"min": 0,
 					"max": 5000,
 					"default": 50,
@@ -2690,24 +2715,10 @@
 				"bat_grid_balance_deadband_w": {
 					"type": "number",
 					"label": "Deadband (W) — darunter keine Batterieaktion",
-					"help": "Default 250 W: über typischem Zähler-/Sonnen-Rauschen (ca. 50–150 W) und über der 50-W-Write-Hysterese. Verhindert Mikroregelung im Bereich ~0,8 kWh/Tag.",
+					"help": "Default 0 W: auch kleine Restnetzbezüge (z. B. 20–48 W) sollen ausregelbar sein. Nur setzen, wenn bewusst ein Totband gewünscht ist.",
 					"min": 0,
 					"max": 5000,
-					"default": 250,
-					"xs": 12,
-					"sm": 12,
-					"md": 4,
-					"lg": 4,
-					"xl": 4,
-					"hidden": "data.battery_profile !== 'sonnen_em'"
-				},
-				"bat_grid_balance_min_duration_s": {
-					"type": "number",
-					"label": "Stabilisierung (s) — Last muss über Deadband anliegen",
-					"help": "Default 8 s: länger als 500-ms-Debounce und kurze Kompressorstarts, ohne echte Last zu ignorieren.",
-					"min": 0,
-					"max": 120,
-					"default": 8,
+					"default": 0,
 					"xs": 12,
 					"sm": 12,
 					"md": 4,
@@ -2731,6 +2742,7 @@
 				"bat_grid_balance_update_interval_sec": {
 					"type": "number",
 					"label": "Steuerungs-Takt (s, Herzschlag)",
+					"help": "Herzschlag der Batterie-Steuerung (3–15 s). Der Mode-2-Discharge-Override wird unabhängig spätestens alle 8 s erneuert, solange Grid Balance den Setpoint besitzt. Keine zusätzliche Berechnungsschleife.",
 					"min": 3,
 					"max": 15,
 					"default": 5,
@@ -2757,7 +2769,7 @@
 				},
 				"batGridBalancePriceHint": {
 					"type": "staticText",
-					"text": "Admin-Schalter ist die einzige Feature-Freigabe (ems_mirror.grid_balance_enabled folgt ihm). Unterhalb des Mindestpreises keine Netzausgleich-Aktion; ab der Grenze darf er arbeiten, sofern alle weiteren Bedingungen erfüllt sind. Hold, EVCC NOW/Tibber und geplante Batterieaktionen haben Vorrang. Produktiver Dauerbetrieb bleibt aus (GRID_BALANCE_EXECUTION_ENABLED=false). Einmal-Test: addons.battery.grid_balance.live_test_armed = true mit ack:false.",
+					"text": "Admin-Schalter ist die einzige Feature-Freigabe (ems_mirror.grid_balance_enabled folgt ihm). Netzausgleich bleibt in Sonnen Mode 2 (Eigenverbrauch) und schreibt nur control.discharge als temporären Override (Keepalive ≤ 8 s). Kein Mode 1, kein control.charge. Unterhalb des Mindestpreises keine Netzausgleich-Aktion; ab der Grenze darf er arbeiten, sofern alle weiteren Bedingungen erfüllt sind. Hold, EVCC NOW/Tibber und geplante Batterieaktionen haben Vorrang. Produktiver Dauerbetrieb bleibt aus (GRID_BALANCE_EXECUTION_ENABLED=false). Einmal-Test: addons.battery.grid_balance.live_test_armed = true mit ack:false.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,

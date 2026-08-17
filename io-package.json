@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.288",
+		"version": "0.1.289",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.289": {
+				"en": "Critical safety fix: grid balance stays in Sonnen Mode 2 (self consumption) and writes only control.discharge as a temporary override, refreshed at least every 8 s. Deadband default is 0 W so small residual grid import (e.g. 20–48 W) can be balanced. The 8 s stabilization wait is removed. Grid charge still uses control.charge. Productive GB/EV Dauerbetrieb stay off.",
+				"de": "Kritischer Safety-Fix: Netzausgleich bleibt in Sonnen Mode 2 (Eigenverbrauch) und schreibt nur control.discharge als temporären Override, spätestens alle 8 s erneuert. Deadband-Default 0 W, damit kleine Restnetzbezüge (z. B. 20–48 W) ausregelbar sind. Die 8-s-Stabilisierung entfällt. Batterie-Netzladung nutzt weiterhin control.charge. Produktiver GB-/EV-Dauerbetrieb bleibt aus."
+			},
 			"0.1.288": {
 				"en": "Operator dashboard: climate cards only for units with a real configured name. Empty Klima · — placeholders from reserved unit slots are gone. Reload the VIS iframe after update.",
 				"de": "Betriebsdashboard: Klima-Karten nur für Units mit echtem konfigurierten Namen. Leere Platzhalter Klima · — aus reservierten Unit-Slots entfallen. VIS-iframe nach Update neu laden."

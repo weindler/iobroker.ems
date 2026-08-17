@@ -7,8 +7,10 @@ const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
 const setpoint_session_js_1 = require("./setpoint_session.js");
 function owned(over = {}) {
+    const owner = over.owner ?? "grid_charge";
     return {
-        owner: "grid_charge",
+        owner,
+        kind: owner === "grid_balance" ? "discharge" : "charge",
         setpointW: 2000,
         wrotePositive: true,
         wroteLive: true,
@@ -30,6 +32,7 @@ function owned(over = {}) {
     (0, node_test_1.it)("ownership only after own successful write > 0", () => {
         const s = (0, setpoint_session_js_1.notePositiveSetpointWrite)((0, setpoint_session_js_1.emptySetpointSession)(), "planned_charge", 2000, true);
         strict_1.default.equal(s.owner, "planned_charge");
+        strict_1.default.equal(s.kind, "charge");
         strict_1.default.equal(s.setpointW, 2000);
         strict_1.default.equal(s.wrotePositive, true);
         strict_1.default.equal(s.wroteLive, true);
@@ -58,6 +61,17 @@ function owned(over = {}) {
             regularEnd: true,
         });
         strict_1.default.equal(d.shouldWriteZero, true);
+        strict_1.default.equal(owned({ owner: "grid_balance" }).kind, "discharge");
+        strict_1.default.equal(owned().kind, "charge");
+    });
+    (0, node_test_1.it)("charge and discharge ownership cannot be confused", () => {
+        const gb = (0, setpoint_session_js_1.notePositiveSetpointWrite)((0, setpoint_session_js_1.emptySetpointSession)(), "grid_balance", 48, true);
+        const gc = (0, setpoint_session_js_1.notePositiveSetpointWrite)((0, setpoint_session_js_1.emptySetpointSession)(), "grid_charge", 2000, true);
+        strict_1.default.equal(gb.kind, "discharge");
+        strict_1.default.equal(gb.owner, "grid_balance");
+        strict_1.default.equal(gc.kind, "charge");
+        strict_1.default.equal(gc.owner, "grid_charge");
+        strict_1.default.notEqual(gb.kind, gc.kind);
     });
     (0, node_test_1.it)("grid_charge → hold: drop ownership, no 0 W", () => {
         const d = (0, setpoint_session_js_1.decideSetpointRelease)({ session: owned(), handover: "hold", regularEnd: true });

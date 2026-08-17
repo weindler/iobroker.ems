@@ -80,6 +80,6 @@ describe("grid balance", () => {
 	it("computes target when all gates pass", () => {
 		const r = computeGridBalanceTarget(baseInputs);
 		assert.equal(r.gatePassed, true);
-		assert.ok(r.targetBatteryChargingW > 0);
+		assert.ok(r.targetDischargeW > 0);
 	});
 });

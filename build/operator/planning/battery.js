@@ -1,25 +1,24 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.planBattery = exports.computeDeficitW = exports.buildPlannerConstraints = void 0;
+const hold_freshness_1 = require("../../addons/battery/hold_freshness");
 function buildPlannerConstraints(input) {
-    const modeHold = (input.evccBatteryMode ?? "").toLowerCase() === "hold";
+    const modeHold = (0, hold_freshness_1.isEvccBatteryHoldMode)(input.evccBatteryMode);
     const dischargeControl = input.evccBatteryDischargeControl === true;
     const userHold = input.userIntentBatteryHold;
     const wallboxHold = input.wallboxChargeHold === true;
-    const batteryHoldActive = modeHold || dischargeControl || userHold || wallboxHold;
+    const batteryHoldActive = modeHold || userHold || wallboxHold;
     const parts = [];
     if (userHold)
         parts.push("user_intent hold (z. B. günstiger Strompreis)");
     if (modeHold)
         parts.push(`EVCC batteryMode=${input.evccBatteryMode}`);
-    if (dischargeControl)
-        parts.push("EVCC Entladesteuerung aktiv");
     if (wallboxHold) {
         const frag = (input.wallboxChargeHoldReasonDe ?? "").trim();
         parts.push(frag || "Wallbox Boost/externes Fahrzeugladen");
     }
     return {
-        evcc_battery_hold: modeHold || dischargeControl,
+        evcc_battery_hold: modeHold,
         evcc_battery_discharge_control: dischargeControl,
         user_intent_battery_hold: userHold,
         battery_hold_active: batteryHoldActive,

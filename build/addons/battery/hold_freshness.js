@@ -28,8 +28,7 @@ function resolveGridBalanceHoldSignals(input) {
     const holdPlanned = input.deviceIntentHold === true;
     const holdActive = constraintHoldFresh ||
         input.batteryHoldForEvCharge === true ||
-        evccBatteryModeHold ||
-        input.evccDischargeControl === true;
+        evccBatteryModeHold;
     return {
         constraintHoldFresh,
         evccBatteryModeHold,

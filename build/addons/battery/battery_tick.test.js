@@ -8,6 +8,8 @@ const strict_1 = __importDefault(require("node:assert/strict"));
 const index_js_1 = require("./index.js");
 const ensure_states_js_1 = require("./ensure_states.js");
 const ensure_states_js_2 = require("../wallbox/ev_foundation/ensure_states.js");
+const ensure_evcc_states_js_1 = require("../wallbox/ensure_evcc_states.js");
+const states_js_1 = require("../wallbox/runtime/states.js");
 const DEVICE_TARGETS = new Set(["dev.mode", "dev.charge"]);
 const CONFIG = {
     battery_profile: "sonnen_em",
@@ -222,22 +224,63 @@ async function runTicks(a, n, simulateDevice) {
     (0, node_test_1.it)("stale planner Hold constraint does not set hold_detected", async () => {
         (0, index_js_1.__resetBatteryRuntimeForTest)();
         const a = setupCharge("live", true, "live");
-        const staleTs = Date.now() - 40 * 24 * 3600_000;
+        const staleTs = Date.now() - 16 * 60 * 1000;
         a.rel.set("planner.constraints.battery_hold_active", true);
         a.relTs.set("planner.constraints.battery_hold_active", staleTs);
         a.rel.set("planner.constraints.evcc_battery_hold", true);
         a.relTs.set("planner.constraints.evcc_battery_hold", staleTs);
-        a.rel.set("addons.wallbox.runtime.battery_hold_for_ev_charge", false);
-        a.rel.set("addons.wallbox.runtime.tibber_grid_rewards_active", false);
-        a.rel.set("addons.wallbox.runtime.external_vehicle_charge_active", false);
+        a.rel.set(states_js_1.WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge, false);
+        a.rel.set(states_js_1.WALLBOX_RUNTIME_STATES.tibberGridRewardsActive, false);
+        a.rel.set(states_js_1.WALLBOX_RUNTIME_STATES.externalVehicleChargeActive, false);
+        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.batteryDischargeControl, false);
+        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.batteryMode, "normal");
+        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.connected, false);
+        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.smartCostActive, false);
+        a.rel.set(ensure_states_js_2.WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority, "none");
         await (0, index_js_1.runBatteryControlTick)(a);
         strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.gridBalance.holdDetected), false);
+    });
+    (0, node_test_1.it)("discharge control alone does not set hold_detected (live case)", async () => {
+        (0, index_js_1.__resetBatteryRuntimeForTest)();
+        const a = setupCharge("live", true, "live");
+        a.rel.set("planner.constraints.battery_hold_active", false);
+        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.batteryDischargeControl, true);
+        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.batteryMode, "unknown");
+        a.rel.set(states_js_1.WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge, false);
+        a.rel.set(states_js_1.WALLBOX_RUNTIME_STATES.tibberGridRewardsActive, false);
+        a.rel.set(states_js_1.WALLBOX_RUNTIME_STATES.externalVehicleChargeActive, false);
+        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.connected, false);
+        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.charging, false);
+        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.smartCostActive, false);
+        a.rel.set(ensure_states_js_2.WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority, "none");
+        await (0, index_js_1.runBatteryControlTick)(a);
+        strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.gridBalance.holdDetected), false);
+    });
+    (0, node_test_1.it)("EVCC battery_mode hold sets hold_detected", async () => {
+        (0, index_js_1.__resetBatteryRuntimeForTest)();
+        const a = setupCharge("live", true, "live");
+        a.rel.set("planner.constraints.battery_hold_active", false);
+        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.batteryDischargeControl, true);
+        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.batteryMode, "hold");
+        a.rel.set(states_js_1.WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge, false);
+        await (0, index_js_1.runBatteryControlTick)(a);
+        strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.gridBalance.holdDetected), true);
+    });
+    (0, node_test_1.it)("EVCC battery_mode holdcharge sets hold_detected", async () => {
+        (0, index_js_1.__resetBatteryRuntimeForTest)();
+        const a = setupCharge("live", true, "live");
+        a.rel.set("planner.constraints.battery_hold_active", false);
+        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.batteryDischargeControl, true);
+        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.batteryMode, "holdcharge");
+        a.rel.set(states_js_1.WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge, false);
+        await (0, index_js_1.runBatteryControlTick)(a);
+        strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.gridBalance.holdDetected), true);
     });
     (0, node_test_1.it)("current EV-charge Hold sets hold_detected", async () => {
         (0, index_js_1.__resetBatteryRuntimeForTest)();
         const a = setupCharge("live", true, "live");
         a.rel.set("planner.constraints.battery_hold_active", false);
-        a.rel.set("addons.wallbox.runtime.battery_hold_for_ev_charge", true);
+        a.rel.set(states_js_1.WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge, true);
         await (0, index_js_1.runBatteryControlTick)(a);
         strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.gridBalance.holdDetected), true);
     });

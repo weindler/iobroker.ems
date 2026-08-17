@@ -215,4 +215,33 @@ function thermalInput(overrides = {}) {
         });
         strict_1.default.equal(constraints.battery_hold_active, false);
     });
+    (0, node_test_1.it)("does not mint battery_hold_active from discharge control alone", () => {
+        const constraints = (0, battery_js_1.buildPlannerConstraints)({
+            evccBatteryMode: "unknown",
+            evccBatteryDischargeControl: true,
+            userIntentBatteryHold: false,
+        });
+        strict_1.default.equal(constraints.battery_hold_active, false);
+        strict_1.default.equal(constraints.evcc_battery_hold, false);
+        strict_1.default.equal(constraints.evcc_battery_discharge_control, true);
+        const r = (0, battery_js_1.planBattery)({
+            surplusW: 3000,
+            deficitW: 0,
+            socPct: 80,
+            governanceEnabled: true,
+            constraints,
+            consumerAllocatedW: 2000,
+            modePolicy: BALANCED,
+        });
+        strict_1.default.equal(r.action, "none");
+    });
+    (0, node_test_1.it)("keeps hold on EVCC battery_mode holdcharge", () => {
+        const constraints = (0, battery_js_1.buildPlannerConstraints)({
+            evccBatteryMode: "holdcharge",
+            evccBatteryDischargeControl: false,
+            userIntentBatteryHold: false,
+        });
+        strict_1.default.equal(constraints.battery_hold_active, true);
+        strict_1.default.equal(constraints.evcc_battery_hold, true);
+    });
 });

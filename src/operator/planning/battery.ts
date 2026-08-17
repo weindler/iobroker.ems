@@ -1,5 +1,6 @@
 import type { PlannerBatteryDecision, PlannerConstraints } from "../../planner/types";
 import type { PlannerModePolicy } from "../../planner/mode_policy";
+import { isEvccBatteryHoldMode } from "../../addons/battery/hold_freshness";
 
 export interface BatteryPlanInput {
 	surplusW: number | null;
@@ -20,23 +21,22 @@ export function buildPlannerConstraints(input: {
 	wallboxChargeHold?: boolean;
 	wallboxChargeHoldReasonDe?: string | null;
 }): PlannerConstraints {
-	const modeHold = (input.evccBatteryMode ?? "").toLowerCase() === "hold";
+	const modeHold = isEvccBatteryHoldMode(input.evccBatteryMode);
 	const dischargeControl = input.evccBatteryDischargeControl === true;
 	const userHold = input.userIntentBatteryHold;
 	const wallboxHold = input.wallboxChargeHold === true;
-	const batteryHoldActive = modeHold || dischargeControl || userHold || wallboxHold;
+	const batteryHoldActive = modeHold || userHold || wallboxHold;
 
 	const parts: string[] = [];
 	if (userHold) parts.push("user_intent hold (z. B. günstiger Strompreis)");
 	if (modeHold) parts.push(`EVCC batteryMode=${input.evccBatteryMode}`);
-	if (dischargeControl) parts.push("EVCC Entladesteuerung aktiv");
 	if (wallboxHold) {
 		const frag = (input.wallboxChargeHoldReasonDe ?? "").trim();
 		parts.push(frag || "Wallbox Boost/externes Fahrzeugladen");
 	}
 
 	return {
-		evcc_battery_hold: modeHold || dischargeControl,
+		evcc_battery_hold: modeHold,
 		evcc_battery_discharge_control: dischargeControl,
 		user_intent_battery_hold: userHold,
 		battery_hold_active: batteryHoldActive,

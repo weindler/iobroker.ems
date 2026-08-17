@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.290",
+		"version": "0.1.291",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.291": {
+				"en": "Grid-balance Hold: EVCC battery_discharge_control=true alone is no longer treated as battery Hold. hold_detected and planner.constraints.battery_hold_active follow real Hold signals (battery_mode hold/holdcharge, EV-charge hold, DeviceIntent hold). Productive GB/EV Dauerbetrieb stay off.",
+				"de": "Netzausgleich-Hold: EVCC battery_discharge_control=true allein gilt nicht mehr als Batterie-Hold. hold_detected und planner.constraints.battery_hold_active folgen echten Hold-Signalen (battery_mode hold/holdcharge, EV-Lade-Hold, DeviceIntent hold). Produktiver GB-/EV-Dauerbetrieb bleibt aus."
+			},
 			"0.1.290": {
 				"en": "Grid-balance Hold no longer sticks on months-old planner.constraints true values; hold_detected follows current Hold signals. Operator VIS: ~6h past + ~18h future Tibber axis, next EMS actions instead of empty 48h column, climate HVAC badges only while running. Reload the VIS iframe after update. Productive GB/EV Dauerbetrieb stay off.",
 				"de": "Netzausgleich-Hold klebt nicht mehr an monatealten planner.constraints-true-Werten; hold_detected folgt aktuellen Hold-Signalen. Operator-VIS: ca. 6 h Vergangenheit + 18 h Zukunft auf der Tibber-Achse, nächste EMS-Aktionen statt leerer 48-h-Spalte, Klima-HVAC-Badges nur bei laufendem Gerät. VIS-iframe nach Update neu laden. Produktiver GB-/EV-Dauerbetrieb bleibt aus."

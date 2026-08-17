@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { __resetBatteryRuntimeForTest, runBatteryControlTick } from "./index.js";
 import { BAT } from "./ensure_states.js";
 import { WALLBOX_EV_FOUNDATION_STATES } from "../wallbox/ev_foundation/ensure_states.js";
+import { WALLBOX_EVCC_STATES } from "../wallbox/ensure_evcc_states.js";
+import { WALLBOX_RUNTIME_STATES } from "../wallbox/runtime/states.js";
 
 const DEVICE_TARGETS = new Set(["dev.mode", "dev.charge"]);
 
@@ -239,23 +241,67 @@ describe("battery setpoint release safety", () => {
 	it("stale planner Hold constraint does not set hold_detected", async () => {
 		__resetBatteryRuntimeForTest();
 		const a = setupCharge("live", true, "live");
-		const staleTs = Date.now() - 40 * 24 * 3600_000;
+		const staleTs = Date.now() - 16 * 60 * 1000;
 		a.rel.set("planner.constraints.battery_hold_active", true);
 		a.relTs.set("planner.constraints.battery_hold_active", staleTs);
 		a.rel.set("planner.constraints.evcc_battery_hold", true);
 		a.relTs.set("planner.constraints.evcc_battery_hold", staleTs);
-		a.rel.set("addons.wallbox.runtime.battery_hold_for_ev_charge", false);
-		a.rel.set("addons.wallbox.runtime.tibber_grid_rewards_active", false);
-		a.rel.set("addons.wallbox.runtime.external_vehicle_charge_active", false);
+		a.rel.set(WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge, false);
+		a.rel.set(WALLBOX_RUNTIME_STATES.tibberGridRewardsActive, false);
+		a.rel.set(WALLBOX_RUNTIME_STATES.externalVehicleChargeActive, false);
+		a.rel.set(WALLBOX_EVCC_STATES.batteryDischargeControl, false);
+		a.rel.set(WALLBOX_EVCC_STATES.batteryMode, "normal");
+		a.rel.set(WALLBOX_EVCC_STATES.connected, false);
+		a.rel.set(WALLBOX_EVCC_STATES.smartCostActive, false);
+		a.rel.set(WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority, "none");
 		await runBatteryControlTick(a as unknown as ioBroker.Adapter & { config: unknown });
 		assert.equal(a.rel.get(BAT.gridBalance.holdDetected), false);
+	});
+
+	it("discharge control alone does not set hold_detected (live case)", async () => {
+		__resetBatteryRuntimeForTest();
+		const a = setupCharge("live", true, "live");
+		a.rel.set("planner.constraints.battery_hold_active", false);
+		a.rel.set(WALLBOX_EVCC_STATES.batteryDischargeControl, true);
+		a.rel.set(WALLBOX_EVCC_STATES.batteryMode, "unknown");
+		a.rel.set(WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge, false);
+		a.rel.set(WALLBOX_RUNTIME_STATES.tibberGridRewardsActive, false);
+		a.rel.set(WALLBOX_RUNTIME_STATES.externalVehicleChargeActive, false);
+		a.rel.set(WALLBOX_EVCC_STATES.connected, false);
+		a.rel.set(WALLBOX_EVCC_STATES.charging, false);
+		a.rel.set(WALLBOX_EVCC_STATES.smartCostActive, false);
+		a.rel.set(WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority, "none");
+		await runBatteryControlTick(a as unknown as ioBroker.Adapter & { config: unknown });
+		assert.equal(a.rel.get(BAT.gridBalance.holdDetected), false);
+	});
+
+	it("EVCC battery_mode hold sets hold_detected", async () => {
+		__resetBatteryRuntimeForTest();
+		const a = setupCharge("live", true, "live");
+		a.rel.set("planner.constraints.battery_hold_active", false);
+		a.rel.set(WALLBOX_EVCC_STATES.batteryDischargeControl, true);
+		a.rel.set(WALLBOX_EVCC_STATES.batteryMode, "hold");
+		a.rel.set(WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge, false);
+		await runBatteryControlTick(a as unknown as ioBroker.Adapter & { config: unknown });
+		assert.equal(a.rel.get(BAT.gridBalance.holdDetected), true);
+	});
+
+	it("EVCC battery_mode holdcharge sets hold_detected", async () => {
+		__resetBatteryRuntimeForTest();
+		const a = setupCharge("live", true, "live");
+		a.rel.set("planner.constraints.battery_hold_active", false);
+		a.rel.set(WALLBOX_EVCC_STATES.batteryDischargeControl, true);
+		a.rel.set(WALLBOX_EVCC_STATES.batteryMode, "holdcharge");
+		a.rel.set(WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge, false);
+		await runBatteryControlTick(a as unknown as ioBroker.Adapter & { config: unknown });
+		assert.equal(a.rel.get(BAT.gridBalance.holdDetected), true);
 	});
 
 	it("current EV-charge Hold sets hold_detected", async () => {
 		__resetBatteryRuntimeForTest();
 		const a = setupCharge("live", true, "live");
 		a.rel.set("planner.constraints.battery_hold_active", false);
-		a.rel.set("addons.wallbox.runtime.battery_hold_for_ev_charge", true);
+		a.rel.set(WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge, true);
 		await runBatteryControlTick(a as unknown as ioBroker.Adapter & { config: unknown });
 		assert.equal(a.rel.get(BAT.gridBalance.holdDetected), true);
 	});

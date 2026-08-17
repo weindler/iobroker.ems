@@ -79,6 +79,18 @@ describe("planner run", () => {
 		assert.equal(intent.thermal.commanded_stage, 1);
 	});
 
+	it("does not skip battery on discharge control alone", () => {
+		resetPlannerRevisionForTest();
+		const intent = runPlanner(
+			baseInputs({
+				evccBatteryMode: "normal",
+				evccBatteryDischargeControl: true,
+			}),
+		);
+		assert.equal(intent.constraints.battery_hold_active, false);
+		assert.equal(intent.battery.action, "none");
+	});
+
 	it("comfort keeps battery passive on cloud deficit", () => {
 		resetPlannerRevisionForTest();
 		const intent = runPlanner(

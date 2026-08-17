@@ -610,7 +610,6 @@ async function controlTickInner(host: Host): Promise<void> {
 		evccChargingFlag,
 		evccChargePowerW,
 		evccBatteryMode,
-		evccDischargeControl,
 		evccBatteryBoost,
 		evccSmartCostActive,
 		evAuthority,
@@ -626,7 +625,6 @@ async function controlTickInner(host: Host): Promise<void> {
 		readRelBool(host, WALLBOX_EVCC_STATES.charging),
 		readRelNumber(host, WALLBOX_EVCC_STATES.chargePowerW),
 		readRelString(host, WALLBOX_EVCC_STATES.batteryMode),
-		readRelBool(host, WALLBOX_EVCC_STATES.batteryDischargeControl),
 		readRelBool(host, WALLBOX_EVCC_STATES.batteryBoost),
 		readRelBool(host, WALLBOX_EVCC_STATES.smartCostActive),
 		readRelString(host, WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority),
@@ -643,7 +641,6 @@ async function controlTickInner(host: Host): Promise<void> {
 		deviceIntentHold: deviceIntent.action === "hold",
 		batteryHoldForEvCharge: wallboxBatteryHold,
 		evccBatteryMode,
-		evccDischargeControl,
 	});
 	const evccBatteryModeHold = holdSignals.evccBatteryModeHold;
 	const holdPlanned = holdSignals.holdPlanned;

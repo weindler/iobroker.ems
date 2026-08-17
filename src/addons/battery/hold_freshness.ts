@@ -34,7 +34,6 @@ export function resolveGridBalanceHoldSignals(input: {
 	deviceIntentHold: boolean;
 	batteryHoldForEvCharge: boolean;
 	evccBatteryMode: string | null | undefined;
-	evccDischargeControl: boolean;
 }): {
 	constraintHoldFresh: boolean;
 	evccBatteryModeHold: boolean;
@@ -48,8 +47,7 @@ export function resolveGridBalanceHoldSignals(input: {
 	const holdActive =
 		constraintHoldFresh ||
 		input.batteryHoldForEvCharge === true ||
-		evccBatteryModeHold ||
-		input.evccDischargeControl === true;
+		evccBatteryModeHold;
 	return {
 		constraintHoldFresh,
 		evccBatteryModeHold,

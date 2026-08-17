@@ -472,7 +472,7 @@ async function controlTickInner(host) {
     const emsMirrorIntentActive = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.batteryIntentActive);
     const dailyPlanDriven = deviceIntent.source === "daily_plan";
     const dailyPlanAuthoritative = (0, daily_plan_1.isBatteryDailyPlanAuthoritative)(dailyPlanContext);
-    const [batteryHoldConstraintSt, wallboxBatteryHold, priceNowCt, evccLoadpointMode, evccChargingFlag, evccChargePowerW, evccBatteryMode, evccDischargeControl, evccBatteryBoost, evccSmartCostActive, evAuthority, wallboxEnergySource, wallboxAllocatedGridW, globalModeRaw, addonModeRaw,] = await Promise.all([
+    const [batteryHoldConstraintSt, wallboxBatteryHold, priceNowCt, evccLoadpointMode, evccChargingFlag, evccChargePowerW, evccBatteryMode, evccBatteryBoost, evccSmartCostActive, evAuthority, wallboxEnergySource, wallboxAllocatedGridW, globalModeRaw, addonModeRaw,] = await Promise.all([
         host.getStateAsync("planner.constraints.battery_hold_active"),
         readRelBool(host, states_1.WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge),
         readRelNumber(host, "live.price.now_ct_per_kwh"),
@@ -480,7 +480,6 @@ async function controlTickInner(host) {
         readRelBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.charging),
         readRelNumber(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW),
         readRelString(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryMode),
-        readRelBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryDischargeControl),
         readRelBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryBoost),
         readRelBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.smartCostActive),
         readRelString(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority),
@@ -497,7 +496,6 @@ async function controlTickInner(host) {
         deviceIntentHold: deviceIntent.action === "hold",
         batteryHoldForEvCharge: wallboxBatteryHold,
         evccBatteryMode,
-        evccDischargeControl,
     });
     const evccBatteryModeHold = holdSignals.evccBatteryModeHold;
     const holdPlanned = holdSignals.holdPlanned;

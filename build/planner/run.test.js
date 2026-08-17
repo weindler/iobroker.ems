@@ -76,6 +76,15 @@ function baseInputs(overrides = {}) {
         strict_1.default.equal(intent.battery.action, "hold");
         strict_1.default.equal(intent.thermal.commanded_stage, 1);
     });
+    (0, node_test_1.it)("does not skip battery on discharge control alone", () => {
+        (0, run_js_1.resetPlannerRevisionForTest)();
+        const intent = (0, run_js_1.runPlanner)(baseInputs({
+            evccBatteryMode: "normal",
+            evccBatteryDischargeControl: true,
+        }));
+        strict_1.default.equal(intent.constraints.battery_hold_active, false);
+        strict_1.default.equal(intent.battery.action, "none");
+    });
     (0, node_test_1.it)("comfort keeps battery passive on cloud deficit", () => {
         (0, run_js_1.resetPlannerRevisionForTest)();
         const intent = (0, run_js_1.runPlanner)(baseInputs({

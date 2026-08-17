@@ -238,4 +238,35 @@ describe("planner battery", () => {
 		});
 		assert.equal(constraints.battery_hold_active, false);
 	});
+
+	it("does not mint battery_hold_active from discharge control alone", () => {
+		const constraints = buildPlannerConstraints({
+			evccBatteryMode: "unknown",
+			evccBatteryDischargeControl: true,
+			userIntentBatteryHold: false,
+		});
+		assert.equal(constraints.battery_hold_active, false);
+		assert.equal(constraints.evcc_battery_hold, false);
+		assert.equal(constraints.evcc_battery_discharge_control, true);
+		const r = planBattery({
+			surplusW: 3000,
+			deficitW: 0,
+			socPct: 80,
+			governanceEnabled: true,
+			constraints,
+			consumerAllocatedW: 2000,
+			modePolicy: BALANCED,
+		});
+		assert.equal(r.action, "none");
+	});
+
+	it("keeps hold on EVCC battery_mode holdcharge", () => {
+		const constraints = buildPlannerConstraints({
+			evccBatteryMode: "holdcharge",
+			evccBatteryDischargeControl: false,
+			userIntentBatteryHold: false,
+		});
+		assert.equal(constraints.battery_hold_active, true);
+		assert.equal(constraints.evcc_battery_hold, true);
+	});
 });

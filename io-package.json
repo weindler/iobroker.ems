@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.287",
+		"version": "0.1.288",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.288": {
+				"en": "Operator dashboard: climate cards only for units with a real configured name. Empty Klima · — placeholders from reserved unit slots are gone. Reload the VIS iframe after update.",
+				"de": "Betriebsdashboard: Klima-Karten nur für Units mit echtem konfigurierten Namen. Leere Platzhalter Klima · — aus reservierten Unit-Slots entfallen. VIS-iframe nach Update neu laden."
+			},
 			"0.1.287": {
 				"en": "Operator dashboard: Tibber bars colored by visible price (cheap/medium/expensive/very expensive), not by grid-balance allowance. GB min price stays a red line. Current slot highlighted. Main view fits 1276x637 without scrolling; only Diagnose may scroll. Reload the VIS iframe after update.",
 				"de": "Betriebsdashboard: Tibber-Balken nach sichtbarem Preisniveau (günstig/mittel/teuer/sehr teuer), nicht nach Netzausgleich-Erlaubnis. GB-Mindestpreis bleibt rote Linie. Aktueller Slot hervorgehoben. Hauptansicht 1276×637 ohne Scrollen; nur Diagnose darf scrollen. VIS-iframe nach Update neu laden."

@@ -25,7 +25,7 @@ function loadOpsDisplay(html) {
 	assert.ok(start >= 0 && end > start, "vis-ops-display markers required");
 	const code = html.slice(start, end);
 	return new Function(
-		`${code}; return { visBatteryMotion, visEmsAction, visGbStatus, visGridFlow, visTargetedHold, visPriceBand, visPriceAxisRange, visClimateNote };`,
+		`${code}; return { visBatteryMotion, visEmsAction, visGbStatus, visGridFlow, visTargetedHold, visPriceBand, visPriceAxisRange, visClimateNote, visAcConfiguredName };`,
 	)();
 }
 
@@ -397,5 +397,18 @@ describe("VIS battery / grid / GB presentation", () => {
 		assert.match(visHtml, /climateCardNote\(unitIndex\)/);
 		assert.equal(visHtml.includes('shortNote(g(base+".reason_de")'), false);
 		assert.match(visHtml, /Klima 1 intern/);
+	});
+
+	it("renders climate cards only for units with a real configured name", () => {
+		assert.equal(ops.visAcConfiguredName(null), "");
+		assert.equal(ops.visAcConfiguredName(""), "");
+		assert.equal(ops.visAcConfiguredName("—"), "");
+		assert.equal(ops.visAcConfiguredName(" Wohnzimmer EG "), "Wohnzimmer EG");
+		assert.equal(ops.visAcConfiguredName("Josef Zimmer OG"), "Josef Zimmer OG");
+		assert.match(visHtml, /visAcConfiguredName\(g\(base\+"\.name"\)\)/);
+		assert.equal(visHtml.includes('if(!name&&!g(base+".room_temp_c")'), false);
+		assert.equal(visHtml.includes("Klima · —"), false);
+		assert.match(visHtml, /acCard\(5\)/);
+		assert.match(visHtml, /ems-tiles-dense/);
 	});
 });

@@ -1182,6 +1182,12 @@ function visClimateNote(s){
 	if(s.demand==="active")return"Kühlbedarf vorhanden";
 	return"Keine Kühlung erforderlich";
 }
+function visAcConfiguredName(raw){
+	if(raw==null||raw===undefined)return"";
+	var s=String(raw).trim();
+	if(!s||s==="—"||s==="-"||s==="–")return"";
+	return s;
+}
 /* /vis-ops-display */
 function chip(label,value,sub,extraCls){
 	return '<div class="ems-chip'+(extraCls?" "+extraCls:"")+'"><div class="ems-k">'+esc(label)+'</div><div class="ems-chip-v">'+esc(value)+'</div>'
@@ -1567,9 +1573,9 @@ function renderStack(){
 
 	function acCard(unitIndex){
 		var base="addons.air_conditioning.units.unit_"+unitIndex;
-		var name=txt(g(base+".name"),"");
-		if(!name&&!g(base+".room_temp_c")&&!g(base+".running"))return"";
-		var title=name?("Klima · "+name):("Klima "+unitIndex);
+		var name=visAcConfiguredName(g(base+".name"));
+		if(!name)return"";
+		var title="Klima · "+name;
 		var d=resolveClimateUnitDisplay(unitIndex);
 		var running=isOn(g(base+".running"));
 		var badges={exec:execAuthorityBadge("air_conditioning"),op:climateDeviceBadge(running),hvac:climateHvacBadge(unitIndex)};

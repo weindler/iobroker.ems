@@ -2741,21 +2741,10 @@
 					"xl": 4,
 					"hidden": "data.battery_profile !== 'sonnen_em'"
 				},
-				"bat_grid_balance_price_gate_enabled": {
-					"type": "checkbox",
-					"label": "Preisgate aktiv",
-					"default": true,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4,
-					"hidden": "data.battery_profile !== 'sonnen_em'"
-				},
-				"bat_grid_balance_max_price_ct_per_kwh": {
+				"bat_grid_balance_min_price_ct_per_kwh": {
 					"type": "number",
-					"label": "Maximaler Strompreis für Netzausgleich (ct/kWh)",
-					"help": "Oberhalb dieses Strompreises wird die Batterie nicht für den kurzfristigen Netzausgleich verwendet.",
+					"label": "Mindeststrompreis für Netzausgleich (ct/kWh)",
+					"help": "Unterhalb dieses Strompreises wird die Batterie nicht für den kurzfristigen Netzausgleich verwendet. Ab dieser Preisgrenze darf der Netzausgleich arbeiten, sofern alle weiteren Bedingungen erfüllt sind.",
 					"min": 0,
 					"max": 200,
 					"default": 30,
@@ -2766,22 +2755,9 @@
 					"xl": 4,
 					"hidden": "data.battery_profile !== 'sonnen_em'"
 				},
-				"bat_grid_balance_price_median_factor": {
-					"type": "number",
-					"label": "Preis relativ (× Median heute)",
-					"min": 0,
-					"max": 3,
-					"default": 1.05,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4,
-					"hidden": "data.battery_profile !== 'sonnen_em'"
-				},
 				"batGridBalancePriceHint": {
 					"type": "staticText",
-					"text": "Admin-Schalter ist die einzige Feature-Freigabe (ems_mirror.grid_balance_enabled folgt ihm). Oberhalb der Preisgrenze keine Netzausgleich-Aktion. Hold, EVCC NOW/Tibber und geplante Batterieaktionen haben Vorrang. Produktiver Dauerbetrieb bleibt aus (GRID_BALANCE_EXECUTION_ENABLED=false). Einmal-Test: addons.battery.grid_balance.live_test_armed = true mit ack:false.",
+					"text": "Admin-Schalter ist die einzige Feature-Freigabe (ems_mirror.grid_balance_enabled folgt ihm). Unterhalb des Mindestpreises keine Netzausgleich-Aktion; ab der Grenze darf er arbeiten, sofern alle weiteren Bedingungen erfüllt sind. Hold, EVCC NOW/Tibber und geplante Batterieaktionen haben Vorrang. Produktiver Dauerbetrieb bleibt aus (GRID_BALANCE_EXECUTION_ENABLED=false). Einmal-Test: addons.battery.grid_balance.live_test_armed = true mit ack:false.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,

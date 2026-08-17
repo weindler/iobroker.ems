@@ -33,7 +33,6 @@ describe("battery config", () => {
 		const c = batteryConfigFromAdapter({});
 		assert.equal(c.gridBalance.enabled, false);
 		assert.equal(c.gridBalance.offsetHighSocW, 25);
-		assert.equal(c.gridBalance.maxPriceCtPerKwh, 30);
-		assert.equal(c.gridBalance.priceGateEnabled, true);
+		assert.equal(c.gridBalance.minPriceCtPerKwh, 30);
 	});
 });

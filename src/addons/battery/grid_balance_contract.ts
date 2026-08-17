@@ -1,5 +1,8 @@
 /**
- * Grid-balance safety contract (v0.1.284).
+ * Grid-balance safety contract (v0.1.286).
+ *
+ * Price rule: current_price_ct_kwh >= configured_min_price_ct_kwh.
+ * No median / relative factor, no second price-gate switch.
  *
  * Existing path (do not replace with a second optimiser):
  *   src/addons/battery/grid_balance.ts  — formula + legacy gates
@@ -20,9 +23,11 @@
 
 export const GRID_BALANCE_EXECUTION_ENABLED = false;
 
-export const GRID_BALANCE_MAX_PRICE_DEFAULT_CT = 30;
-export const GRID_BALANCE_MAX_PRICE_MIN_CT = 0;
-export const GRID_BALANCE_MAX_PRICE_MAX_CT = 200;
+export const GRID_BALANCE_MIN_PRICE_DEFAULT_CT = 30;
+export const GRID_BALANCE_MIN_PRICE_MIN_CT = 0;
+export const GRID_BALANCE_MIN_PRICE_MAX_CT = 200;
+/** @deprecated same numeric default as min-price policy */
+export const GRID_BALANCE_MAX_PRICE_DEFAULT_CT = GRID_BALANCE_MIN_PRICE_DEFAULT_CT;
 
 export type GridBalanceAuthority =
 	| "safety"
@@ -58,8 +63,7 @@ export interface GridBalanceSafetyInput {
 	dailyPlanAuthoritative: boolean;
 	mode1Active: boolean;
 	priceNowCt: number | null;
-	priceLimitCt: number;
-	priceGateEnabled: boolean;
+	priceMinCt: number;
 	evConflictKind: GridBalanceEvConflictKind;
 	externalEvAuthority: boolean;
 	/** One-shot: regular setpoint only. Session 0-release does not use this. */
@@ -80,12 +84,17 @@ export interface GridBalanceSafetyResult {
 	explain: string;
 }
 
-export function parseGridBalanceMaxPriceCt(raw: unknown, fallback = GRID_BALANCE_MAX_PRICE_DEFAULT_CT): number {
+export function parseGridBalanceMinPriceCt(raw: unknown, fallback = GRID_BALANCE_MIN_PRICE_DEFAULT_CT): number {
 	if (raw === null || raw === undefined || raw === "") return fallback;
 	if (typeof raw === "boolean") return fallback;
 	const n = typeof raw === "number" ? raw : parseFloat(String(raw).replace(",", "."));
 	if (!Number.isFinite(n) || n < 0) return fallback;
-	return Math.min(GRID_BALANCE_MAX_PRICE_MAX_CT, Math.max(GRID_BALANCE_MAX_PRICE_MIN_CT, n));
+	return Math.min(GRID_BALANCE_MIN_PRICE_MAX_CT, Math.max(GRID_BALANCE_MIN_PRICE_MIN_CT, n));
+}
+
+/** @deprecated alias — value is not inverted */
+export function parseGridBalanceMaxPriceCt(raw: unknown, fallback = GRID_BALANCE_MIN_PRICE_DEFAULT_CT): number {
+	return parseGridBalanceMinPriceCt(raw, fallback);
 }
 
 export function normalizeLoadpointMode(raw: unknown): string {
@@ -123,26 +132,29 @@ export function classifyGridBalanceEvConflict(input: {
 	return { conflict: false, kind: "" };
 }
 
+function formatPriceCt(priceNowCt: number | null): string {
+	return priceNowCt != null && Number.isFinite(priceNowCt) ? priceNowCt.toFixed(1) : "?";
+}
+
 export function formatGridBalanceExplain(input: {
 	enabled: boolean;
 	blockReason: string;
 	priceNowCt: number | null;
-	priceLimitCt: number;
+	priceMinCt: number;
 	gridImportW: number;
 }): string {
 	const reason = input.blockReason;
 	if (!input.enabled || reason === "disabled") {
 		return "grid_balance=blocked, reason=disabled";
 	}
-	if (reason === "price_above_limit") {
-		const price = input.priceNowCt != null && Number.isFinite(input.priceNowCt) ? input.priceNowCt.toFixed(1) : "?";
-		return `grid_balance=blocked, price=${price}ct, limit=${input.priceLimitCt.toFixed(1)}ct`;
+	if (reason === "price_below_minimum") {
+		return `grid_balance=blocked, price=${formatPriceCt(input.priceNowCt)}ct, minimum=${input.priceMinCt.toFixed(1)}ct`;
 	}
 	if (reason) {
 		return `grid_balance=blocked, reason=${reason}`;
 	}
 	const importW = Number.isFinite(input.gridImportW) ? Math.round(input.gridImportW) : 0;
-	return `grid_balance=ready, grid_import=${importW}W`;
+	return `grid_balance=ready, price=${formatPriceCt(input.priceNowCt)}ct, minimum=${input.priceMinCt.toFixed(1)}ct, grid_import=${importW}W`;
 }
 
 function firstBlock(input: GridBalanceSafetyInput): { reason: string; authority: GridBalanceAuthority } {
@@ -173,8 +185,8 @@ function firstBlock(input: GridBalanceSafetyInput): { reason: string; authority:
 
 	const priceKnown = input.priceNowCt != null && Number.isFinite(input.priceNowCt);
 	if (!priceKnown) return { reason: "price_unknown", authority: "grid_balance" };
-	if (input.priceNowCt! > input.priceLimitCt) {
-		return { reason: "price_above_limit", authority: "grid_balance" };
+	if (input.priceNowCt! < input.priceMinCt) {
+		return { reason: "price_below_minimum", authority: "grid_balance" };
 	}
 
 	return { reason: "", authority: "grid_balance" };
@@ -186,7 +198,7 @@ export function evaluateGridBalanceSafety(input: GridBalanceSafetyInput): GridBa
 	const { reason, authority } = firstBlock(input);
 	const enabled = input.adminEnabled;
 	const priceKnown = input.priceNowCt != null && Number.isFinite(input.priceNowCt);
-	const priceAllowed = priceKnown && input.priceNowCt! <= input.priceLimitCt;
+	const priceAllowed = priceKnown && input.priceNowCt! >= input.priceMinCt;
 	const policyAllowed = reason === "";
 	const ready = policyAllowed;
 	const executionReleased = GRID_BALANCE_EXECUTION_ENABLED || input.liveTestPermit === true;
@@ -196,7 +208,7 @@ export function evaluateGridBalanceSafety(input: GridBalanceSafetyInput): GridBa
 		enabled,
 		blockReason: reason,
 		priceNowCt: input.priceNowCt,
-		priceLimitCt: input.priceLimitCt,
+		priceMinCt: input.priceMinCt,
 		gridImportW: 0,
 	});
 	return {
@@ -218,7 +230,7 @@ export function withGridImportExplain(
 	result: GridBalanceSafetyResult,
 	gridImportW: number,
 	priceNowCt: number | null,
-	priceLimitCt: number,
+	priceMinCt: number,
 ): GridBalanceSafetyResult {
 	return {
 		...result,
@@ -226,7 +238,7 @@ export function withGridImportExplain(
 			enabled: result.enabled,
 			blockReason: result.blockReason,
 			priceNowCt,
-			priceLimitCt,
+			priceMinCt,
 			gridImportW,
 		}),
 	};

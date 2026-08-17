@@ -1,6 +1,9 @@
 "use strict";
 /**
- * Grid-balance safety contract (v0.1.284).
+ * Grid-balance safety contract (v0.1.286).
+ *
+ * Price rule: current_price_ct_kwh >= configured_min_price_ct_kwh.
+ * No median / relative factor, no second price-gate switch.
  *
  * Existing path (do not replace with a second optimiser):
  *   src/addons/battery/grid_balance.ts  — formula + legacy gates
@@ -19,12 +22,14 @@
  * `runtime/setpoint_session.ts` (diagnosis: addons.battery.runtime.battery_setpoint_*).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.withGridImportExplain = exports.evaluateGridBalanceSafety = exports.formatGridBalanceExplain = exports.classifyGridBalanceEvConflict = exports.normalizeLoadpointMode = exports.parseGridBalanceMaxPriceCt = exports.GRID_BALANCE_MAX_PRICE_MAX_CT = exports.GRID_BALANCE_MAX_PRICE_MIN_CT = exports.GRID_BALANCE_MAX_PRICE_DEFAULT_CT = exports.GRID_BALANCE_EXECUTION_ENABLED = void 0;
+exports.withGridImportExplain = exports.evaluateGridBalanceSafety = exports.formatGridBalanceExplain = exports.classifyGridBalanceEvConflict = exports.normalizeLoadpointMode = exports.parseGridBalanceMaxPriceCt = exports.parseGridBalanceMinPriceCt = exports.GRID_BALANCE_MAX_PRICE_DEFAULT_CT = exports.GRID_BALANCE_MIN_PRICE_MAX_CT = exports.GRID_BALANCE_MIN_PRICE_MIN_CT = exports.GRID_BALANCE_MIN_PRICE_DEFAULT_CT = exports.GRID_BALANCE_EXECUTION_ENABLED = void 0;
 exports.GRID_BALANCE_EXECUTION_ENABLED = false;
-exports.GRID_BALANCE_MAX_PRICE_DEFAULT_CT = 30;
-exports.GRID_BALANCE_MAX_PRICE_MIN_CT = 0;
-exports.GRID_BALANCE_MAX_PRICE_MAX_CT = 200;
-function parseGridBalanceMaxPriceCt(raw, fallback = exports.GRID_BALANCE_MAX_PRICE_DEFAULT_CT) {
+exports.GRID_BALANCE_MIN_PRICE_DEFAULT_CT = 30;
+exports.GRID_BALANCE_MIN_PRICE_MIN_CT = 0;
+exports.GRID_BALANCE_MIN_PRICE_MAX_CT = 200;
+/** @deprecated same numeric default as min-price policy */
+exports.GRID_BALANCE_MAX_PRICE_DEFAULT_CT = exports.GRID_BALANCE_MIN_PRICE_DEFAULT_CT;
+function parseGridBalanceMinPriceCt(raw, fallback = exports.GRID_BALANCE_MIN_PRICE_DEFAULT_CT) {
     if (raw === null || raw === undefined || raw === "")
         return fallback;
     if (typeof raw === "boolean")
@@ -32,7 +37,12 @@ function parseGridBalanceMaxPriceCt(raw, fallback = exports.GRID_BALANCE_MAX_PRI
     const n = typeof raw === "number" ? raw : parseFloat(String(raw).replace(",", "."));
     if (!Number.isFinite(n) || n < 0)
         return fallback;
-    return Math.min(exports.GRID_BALANCE_MAX_PRICE_MAX_CT, Math.max(exports.GRID_BALANCE_MAX_PRICE_MIN_CT, n));
+    return Math.min(exports.GRID_BALANCE_MIN_PRICE_MAX_CT, Math.max(exports.GRID_BALANCE_MIN_PRICE_MIN_CT, n));
+}
+exports.parseGridBalanceMinPriceCt = parseGridBalanceMinPriceCt;
+/** @deprecated alias — value is not inverted */
+function parseGridBalanceMaxPriceCt(raw, fallback = exports.GRID_BALANCE_MIN_PRICE_DEFAULT_CT) {
+    return parseGridBalanceMinPriceCt(raw, fallback);
 }
 exports.parseGridBalanceMaxPriceCt = parseGridBalanceMaxPriceCt;
 function normalizeLoadpointMode(raw) {
@@ -60,20 +70,22 @@ function classifyGridBalanceEvConflict(input) {
     return { conflict: false, kind: "" };
 }
 exports.classifyGridBalanceEvConflict = classifyGridBalanceEvConflict;
+function formatPriceCt(priceNowCt) {
+    return priceNowCt != null && Number.isFinite(priceNowCt) ? priceNowCt.toFixed(1) : "?";
+}
 function formatGridBalanceExplain(input) {
     const reason = input.blockReason;
     if (!input.enabled || reason === "disabled") {
         return "grid_balance=blocked, reason=disabled";
     }
-    if (reason === "price_above_limit") {
-        const price = input.priceNowCt != null && Number.isFinite(input.priceNowCt) ? input.priceNowCt.toFixed(1) : "?";
-        return `grid_balance=blocked, price=${price}ct, limit=${input.priceLimitCt.toFixed(1)}ct`;
+    if (reason === "price_below_minimum") {
+        return `grid_balance=blocked, price=${formatPriceCt(input.priceNowCt)}ct, minimum=${input.priceMinCt.toFixed(1)}ct`;
     }
     if (reason) {
         return `grid_balance=blocked, reason=${reason}`;
     }
     const importW = Number.isFinite(input.gridImportW) ? Math.round(input.gridImportW) : 0;
-    return `grid_balance=ready, grid_import=${importW}W`;
+    return `grid_balance=ready, price=${formatPriceCt(input.priceNowCt)}ct, minimum=${input.priceMinCt.toFixed(1)}ct, grid_import=${importW}W`;
 }
 exports.formatGridBalanceExplain = formatGridBalanceExplain;
 function firstBlock(input) {
@@ -113,8 +125,8 @@ function firstBlock(input) {
     const priceKnown = input.priceNowCt != null && Number.isFinite(input.priceNowCt);
     if (!priceKnown)
         return { reason: "price_unknown", authority: "grid_balance" };
-    if (input.priceNowCt > input.priceLimitCt) {
-        return { reason: "price_above_limit", authority: "grid_balance" };
+    if (input.priceNowCt < input.priceMinCt) {
+        return { reason: "price_below_minimum", authority: "grid_balance" };
     }
     return { reason: "", authority: "grid_balance" };
 }
@@ -124,7 +136,7 @@ function evaluateGridBalanceSafety(input) {
     const { reason, authority } = firstBlock(input);
     const enabled = input.adminEnabled;
     const priceKnown = input.priceNowCt != null && Number.isFinite(input.priceNowCt);
-    const priceAllowed = priceKnown && input.priceNowCt <= input.priceLimitCt;
+    const priceAllowed = priceKnown && input.priceNowCt >= input.priceMinCt;
     const policyAllowed = reason === "";
     const ready = policyAllowed;
     const executionReleased = exports.GRID_BALANCE_EXECUTION_ENABLED || input.liveTestPermit === true;
@@ -133,7 +145,7 @@ function evaluateGridBalanceSafety(input) {
         enabled,
         blockReason: reason,
         priceNowCt: input.priceNowCt,
-        priceLimitCt: input.priceLimitCt,
+        priceMinCt: input.priceMinCt,
         gridImportW: 0,
     });
     return {
@@ -151,14 +163,14 @@ function evaluateGridBalanceSafety(input) {
     };
 }
 exports.evaluateGridBalanceSafety = evaluateGridBalanceSafety;
-function withGridImportExplain(result, gridImportW, priceNowCt, priceLimitCt) {
+function withGridImportExplain(result, gridImportW, priceNowCt, priceMinCt) {
     return {
         ...result,
         explain: formatGridBalanceExplain({
             enabled: result.enabled,
             blockReason: result.blockReason,
             priceNowCt,
-            priceLimitCt,
+            priceMinCt,
             gridImportW,
         }),
     };

@@ -1,6 +1,6 @@
 import { hardwareLimitsFromConfig } from "./core/limits";
 import type { BatteryHardwareLimits, BatteryProfileId, CapacitySource, PowerSignConvention } from "./core/types";
-import { parseGridBalanceMaxPriceCt } from "./grid_balance_contract";
+import { parseGridBalanceMinPriceCt } from "./grid_balance_contract";
 import {
 	GRID_BALANCE_DEADBAND_DEFAULT_W,
 	GRID_BALANCE_MIN_DURATION_DEFAULT_S,
@@ -75,9 +75,7 @@ export interface GridBalanceConfig {
 	minChangeW: number;
 	maxTargetW: number;
 	updateIntervalSec: number;
-	priceGateEnabled: boolean;
-	maxPriceCtPerKwh: number;
-	priceMedianFactor: number;
+	minPriceCtPerKwh: number;
 	deadbandW: number;
 	minDurationSec: number;
 }
@@ -97,10 +95,12 @@ export interface BatteryConfig {
 	gridBalance: GridBalanceConfig;
 }
 
-function floatIn(c: Record<string, unknown>, key: string, def: number, min: number, max: number): number {
-	const n = num(c, key);
-	if (n === null) return def;
-	return Math.min(max, Math.max(min, n));
+function migrateGridBalanceMinPriceCt(c: Record<string, unknown>): number {
+	const neu = c.bat_grid_balance_min_price_ct_per_kwh;
+	if (neu !== undefined && neu !== null && neu !== "") {
+		return parseGridBalanceMinPriceCt(neu);
+	}
+	return parseGridBalanceMinPriceCt(c.bat_grid_balance_max_price_ct_per_kwh);
 }
 
 export function batteryConfigFromAdapter(config: unknown): BatteryConfig {
@@ -147,9 +147,7 @@ export function batteryConfigFromAdapter(config: unknown): BatteryConfig {
 			minChangeW: intIn(c, "bat_grid_balance_min_change_w", 50, 0, 5000),
 			maxTargetW: intIn(c, "bat_grid_balance_max_w", 5000, 0, 50_000),
 			updateIntervalSec: intIn(c, "bat_grid_balance_update_interval_sec", 5, 3, 15),
-			priceGateEnabled: bool(c, "bat_grid_balance_price_gate_enabled", true),
-			maxPriceCtPerKwh: parseGridBalanceMaxPriceCt(c.bat_grid_balance_max_price_ct_per_kwh),
-			priceMedianFactor: floatIn(c, "bat_grid_balance_price_median_factor", 1.05, 0, 3),
+			minPriceCtPerKwh: migrateGridBalanceMinPriceCt(c),
 			deadbandW: intIn(c, "bat_grid_balance_deadband_w", GRID_BALANCE_DEADBAND_DEFAULT_W, 0, 5000),
 			minDurationSec: intIn(c, "bat_grid_balance_min_duration_s", GRID_BALANCE_MIN_DURATION_DEFAULT_S, 0, 120),
 		},

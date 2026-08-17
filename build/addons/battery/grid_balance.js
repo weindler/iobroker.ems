@@ -1,64 +1,25 @@
 "use strict";
 /** Netzausgleich-Logik — rein, ohne ioBroker. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveController = exports.computeGridBalanceTarget = exports.evaluateGridBalancePriceGate = exports.medianCtFromPriceSlots = void 0;
-function medianCtFromPriceSlots(slots) {
-    if (slots.length === 0)
-        return null;
-    const sorted = [...slots].map((s) => s.priceCtPerKwh).sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    if (sorted.length % 2 === 1) {
-        return sorted[mid];
-    }
-    return (sorted[mid - 1] + sorted[mid]) / 2;
-}
-exports.medianCtFromPriceSlots = medianCtFromPriceSlots;
-function evaluateGridBalancePriceGate(params) {
-    if (!params.gate.enabled) {
-        return { passed: true, reasonDe: "Preisgate deaktiviert" };
-    }
+exports.resolveController = exports.computeGridBalanceTarget = exports.evaluateGridBalanceMinPrice = void 0;
+/** price_allowed = current >= configured minimum. No median, no second switch. */
+function evaluateGridBalanceMinPrice(params) {
     const price = params.priceNowCt;
     if (price === null || !Number.isFinite(price)) {
         return { passed: false, reasonDe: "Strompreis unbekannt — Netzausgleich pausiert" };
     }
-    const hasMax = params.gate.maxPriceCtPerKwh != null && params.gate.maxPriceCtPerKwh > 0;
-    const hasMedian = params.gate.medianFactor > 0 &&
-        params.referenceMedianCt != null &&
-        Number.isFinite(params.referenceMedianCt);
-    if (!hasMax && !hasMedian) {
-        return { passed: true, reasonDe: "Preisgate ohne Schwellen — durchgelassen" };
-    }
-    if (hasMax && price > params.gate.maxPriceCtPerKwh) {
+    if (price < params.minPriceCtPerKwh) {
         return {
             passed: false,
-            reasonDe: `Preis ${price.toFixed(1)} ct/kWh zu hoch (>${params.gate.maxPriceCtPerKwh} ct/kWh)`,
+            reasonDe: `Preis ${price.toFixed(1)} ct/kWh unter Mindestpreis (${params.minPriceCtPerKwh.toFixed(1)} ct/kWh)`,
         };
     }
-    if (hasMedian) {
-        const limit = params.referenceMedianCt * params.gate.medianFactor;
-        if (price > limit) {
-            return {
-                passed: false,
-                reasonDe: `Preis ${price.toFixed(1)} ct/kWh zu hoch (>${limit.toFixed(1)} ct/kWh, Median×${params.gate.medianFactor})`,
-            };
-        }
-    }
-    if (hasMax) {
-        return {
-            passed: true,
-            reasonDe: `Preis ${price.toFixed(1)} ct/kWh ≤ ${params.gate.maxPriceCtPerKwh} ct/kWh`,
-        };
-    }
-    if (hasMedian) {
-        const limit = params.referenceMedianCt * params.gate.medianFactor;
-        return {
-            passed: true,
-            reasonDe: `Preis ${price.toFixed(1)} ct/kWh ≤ Median×${params.gate.medianFactor} (${limit.toFixed(1)} ct/kWh)`,
-        };
-    }
-    return { passed: true, reasonDe: "Preisgate ohne Schwellen — durchgelassen" };
+    return {
+        passed: true,
+        reasonDe: `Preis ${price.toFixed(1)} ct/kWh ≥ ${params.minPriceCtPerKwh.toFixed(1)} ct/kWh`,
+    };
 }
-exports.evaluateGridBalancePriceGate = evaluateGridBalancePriceGate;
+exports.evaluateGridBalanceMinPrice = evaluateGridBalanceMinPrice;
 function computeGridBalanceTarget(inputs) {
     const checksPassed = [];
     const checksFailed = [];
@@ -125,16 +86,15 @@ function computeGridBalanceTarget(inputs) {
         return inactive("adjusted_consumption_w <= pv_ac_power_w", checksPassed, checksFailed);
     }
     checksPassed.push("consumption_gt_pv");
-    const priceCheck = evaluateGridBalancePriceGate({
-        gate: inputs.priceGate,
+    const priceCheck = evaluateGridBalanceMinPrice({
+        minPriceCtPerKwh: inputs.minPriceCtPerKwh,
         priceNowCt: inputs.priceNowCt,
-        referenceMedianCt: inputs.priceMedianCt,
     });
     if (!priceCheck.passed) {
-        checksFailed.push("price_gate");
+        checksFailed.push("price_below_minimum");
         return inactive(priceCheck.reasonDe, checksPassed, checksFailed);
     }
-    checksPassed.push("price_gate");
+    checksPassed.push("price_minimum");
     const offset = inputs.socPct != null && inputs.socPct > inputs.socThresholdPct
         ? inputs.offsetHighSocW
         : inputs.offsetLowSocW;

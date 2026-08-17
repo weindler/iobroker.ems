@@ -20,7 +20,6 @@ const barrier_1 = require("../../restore/barrier");
 const ensure_evcc_states_1 = require("../wallbox/ensure_evcc_states");
 const states_1 = require("../wallbox/runtime/states");
 const ensure_states_2 = require("../wallbox/ev_foundation/ensure_states");
-const battery_winter_price_inputs_1 = require("../../planner/battery_winter_price_inputs");
 const mapping_1 = require("./mapping");
 const registry_1 = require("./profiles/registry");
 const fsm_1 = require("./runtime/fsm");
@@ -667,9 +666,6 @@ async function controlTickInner(host) {
     const capacityWh = (snapshot.capacity.effectiveKwh ?? 0) * 1000;
     const restKwh = (await readRelNumber(host, ems_mirror_1.EMS_MIRROR_BATTERY.effectivePvRestOfDayKwh)) ?? 0;
     const snow = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.snowCoverSuspected);
-    const priceSlots = config.gridBalance.priceGateEnabled && config.gridBalance.priceMedianFactor > 0
-        ? await (0, battery_winter_price_inputs_1.readTibber15MinPriceSlots)({ ...host, config: host.config, getForeignStateAsync: (id) => host.getForeignStateAsync(id) }, new Date(nowMs))
-        : [];
     const offset = snapshot.telemetry.socPct != null && snapshot.telemetry.socPct > config.gridBalance.socThresholdPct
         ? config.gridBalance.offsetHighSocW
         : config.gridBalance.offsetLowSocW;
@@ -693,8 +689,7 @@ async function controlTickInner(host) {
         mode1Active: false,
         dailyPlanAuthoritative: false,
         priceNowCt,
-        priceMedianCt: (0, grid_balance_1.medianCtFromPriceSlots)(priceSlots),
-        priceGate: { enabled: false, maxPriceCtPerKwh: null, medianFactor: 0 },
+        minPriceCtPerKwh: config.gridBalance.minPriceCtPerKwh,
     });
     let forecastBlockReason = "";
     if (forecastProbe.checksFailed.includes("snow_cover_suspected"))
@@ -724,8 +719,7 @@ async function controlTickInner(host) {
         dailyPlanAuthoritative,
         mode1Active: runtime.ownership.active,
         priceNowCt,
-        priceLimitCt: config.gridBalance.maxPriceCtPerKwh,
-        priceGateEnabled: config.gridBalance.priceGateEnabled,
+        priceMinCt: config.gridBalance.minPriceCtPerKwh,
         evConflictKind: evConflict.kind,
         externalEvAuthority: (evAuthority ?? "").toLowerCase() === "external",
     };
@@ -859,7 +853,7 @@ async function controlTickInner(host) {
         dailyPlan: dailyPlanContext,
         decisionSource: runtimeDecisionSource,
         priceNowCt,
-        priceLimitCt: config.gridBalance.maxPriceCtPerKwh,
+        priceMinCt: config.gridBalance.minPriceCtPerKwh,
     });
 }
 async function persist(host, s, x) {
@@ -1014,7 +1008,8 @@ async function persist(host, s, x) {
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.ready, d.ready);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.blockReason, d.blockReason);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.currentPriceCtKwh, x.priceNowCt);
-    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.priceLimitCtKwh, x.priceLimitCt);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.priceMinCtKwh, x.priceMinCt);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.priceLimitCtKwh, x.priceMinCt);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.priceAllowed, d.priceAllowed);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.gridPowerW, d.rawGridDeltaW);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.rawConsumptionW, d.rawConsumptionW);

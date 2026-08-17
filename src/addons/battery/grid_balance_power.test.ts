@@ -49,9 +49,8 @@ function safety(over: Partial<GridBalanceSafetyInput> = {}): GridBalanceSafetyIn
 		ownershipActive: false,
 		dailyPlanAuthoritative: false,
 		mode1Active: false,
-		priceNowCt: 22,
-		priceLimitCt: 30,
-		priceGateEnabled: true,
+		priceNowCt: 50,
+		priceMinCt: 30,
 		evConflictKind: "",
 		externalEvAuthority: false,
 		liveTestPermit: true,
@@ -102,11 +101,11 @@ describe("grid balance live hardening v0.1.284", () => {
 		assert.equal(d.blockReason, "disabled");
 	});
 
-	it("L2: Preis > limit → block, kein Median-Bypass", () => {
-		const d = evaluateGridBalanceTick(tick({ safety: safety({ priceNowCt: 42, priceLimitCt: 30 }) }));
+	it("L2: Preis unter Mindestpreis → block", () => {
+		const d = evaluateGridBalanceTick(tick({ safety: safety({ priceNowCt: 20, priceMinCt: 30 }) }));
 		assert.equal(d.shouldWrite, false);
 		assert.equal(d.priceAllowed, false);
-		assert.equal(d.blockReason, "price_above_limit");
+		assert.equal(d.blockReason, "price_below_minimum");
 	});
 
 	it("L3: Hold planned → block", () => {
@@ -314,10 +313,10 @@ describe("grid balance live hardening v0.1.284", () => {
 		assert.equal(/go-e\.|fordpass\.|tibber\.|evcc\./.test(src), false);
 	});
 
-	it("L21: 30-ct-Limit nicht umgehbar", () => {
-		const d = evaluateGridBalanceTick(tick({ safety: safety({ priceNowCt: 30.1, priceLimitCt: 30 }) }));
-		assert.equal(d.blockReason, "price_above_limit");
-		assert.equal(batteryConfigFromAdapter({}).gridBalance.maxPriceCtPerKwh, 30);
+	it("L21: 30-ct-Mindestpreis nicht unterschreitbar", () => {
+		const d = evaluateGridBalanceTick(tick({ safety: safety({ priceNowCt: 29.99, priceMinCt: 30 }) }));
+		assert.equal(d.blockReason, "price_below_minimum");
+		assert.equal(batteryConfigFromAdapter({}).gridBalance.minPriceCtPerKwh, 30);
 	});
 
 	it("L22: Mirror/Admin-Gate konsistent — nur Admin zählt", () => {

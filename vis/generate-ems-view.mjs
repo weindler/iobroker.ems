@@ -271,7 +271,7 @@ function planBoardIframeHtml() {
 }
 
 // --- Layout coordinates (must fit 1276 × 637) ---
-// y=0-20 header | briefing | live cards | Plan-Übersicht (iframe)
+// y=0-20 header | briefing | operations iframe
 
 widgets[wid()] = {
 	tpl: "i-vis-image-new",
@@ -295,7 +295,7 @@ widgets[wid()] = stringWidget(oid("system.version"), "v", {
 	left: `${VIEW_W - 72}px`, top: "5px", width: "64px", height: "16px", "font-size": FS.tiny, color: C.textMuted,
 });
 
-// Briefing (Operator Daily-Plan-Zusammenfassung, 2 Zeilen — Roadmap Block 3.3)
+// Briefing (Operator Daily-Plan-Zusammenfassung, 2 Zeilen)
 widgets[wid()] = cardPanel(M, BRIEF_Y, VIEW_W - 2 * M, BRIEF_H);
 widgets[wid()] = textBlockWidget(oid("operator.briefing_de"), "", {
 	left: `${M + 6}px`,
@@ -306,52 +306,12 @@ widgets[wid()] = textBlockWidget(oid("operator.briefing_de"), "", {
 	color: C.text,
 });
 
-// Live-Leiste kompakt — Detail + KI steckt im iframe (ems-charts.html)
-const cardY = BRIEF_Y + BRIEF_H + 4;
-const cardH = 64;
-const energyW = Math.floor((VIEW_W - 2 * M - 3 * GAP) * 0.34);
-const smallW = Math.floor((VIEW_W - 2 * M - 3 * GAP - energyW) / 3);
-
-for (const c of /** @type {CardDef[]} */ ([
-	{
-		x: M, y: cardY, w: energyW, h: cardH, title: "Energie", color: C.pv,
-		rows: [
-			{ type: "f", oid: "live.pv.power_w", label: "PV ", digits: "0", unit: " W", em: true, color: C.pv },
-			{ type: "f", oid: "operator.diagnostics.surplus_w", label: "Üss ", digits: "0", unit: " W", em: true, color: C.surplus },
-			{ type: "f", oid: "live.price.now_ct_per_kwh", label: "Preis ", digits: "2", unit: " ct" },
-		],
-	},
-	{
-		x: M + energyW + GAP, y: cardY, w: smallW, h: cardH, title: "Heizstab", color: C.ih,
-		rows: [
-			{ type: "f", oid: "addons.immersion_heater.runtime.buffer_temperature_c", label: "Puffer ", digits: "1", unit: "°", em: true, color: C.ih },
-			{ type: "f", oid: "addons.immersion_heater.runtime.commanded_power_w", label: "Jetzt ", digits: "0", unit: " W", color: C.ih },
-		],
-	},
-	{
-		x: M + energyW + GAP + (smallW + GAP), y: cardY, w: smallW, h: cardH, title: "Wallbox", color: C.wb,
-		rows: [
-			{ type: "f", oid: "live.wallbox.charge_power_w", label: "Jetzt ", digits: "0", unit: " W", em: true, color: C.wb },
-			{ type: "f", oid: "live.wallbox.vehicle_soc_pct", label: "Auto ", digits: "0", unit: " %" },
-		],
-	},
-	{
-		x: M + energyW + GAP + 2 * (smallW + GAP), y: cardY, w: smallW, h: cardH, title: "Batterie", color: C.accent,
-		rows: [
-			{ type: "f", oid: "live.battery.soc_pct", label: "SOC ", digits: "0", unit: " %", em: true, color: C.accent },
-			{ type: "f", oid: "addons.battery.runtime.allocated_charge_power_w", label: "Laden ", digits: "0", unit: " W" },
-		],
-	},
-])) {
-	buildCard(c);
-}
-
-// Energie-Übersicht (Alltag + optionale Diagnose im iframe)
-const boardY = cardY + cardH + GAP;
+// Energie-Übersicht (Live-Leiste, Tibber-Preisachse, Geräte) im iframe
+const boardY = BRIEF_Y + BRIEF_H + GAP;
 const boardH = VIEW_H - boardY - M;
 
 widgets[wid()] = cardPanel(M, boardY, VIEW_W - 2 * M, boardH);
-widgets[wid()] = sectionTitle("Geräte & Demnächst", M + 6, boardY + 4, 220, C.text);
+widgets[wid()] = sectionTitle("Betrieb", M + 6, boardY + 4, 220, C.text);
 widgets[wid()] = htmlWidget(planBoardIframeHtml(), {
 	left: `${M + 2}px`,
 	top: `${boardY + 16}px`,

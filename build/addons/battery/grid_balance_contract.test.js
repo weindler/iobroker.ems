@@ -9,8 +9,10 @@ const node_fs_1 = require("node:fs");
 const node_path_1 = require("node:path");
 const config_js_1 = require("./config.js");
 const grid_balance_js_1 = require("./grid_balance.js");
+const write_allowlist_js_1 = require("../wallbox/ev_foundation/write_allowlist.js");
 const grid_balance_contract_js_1 = require("./grid_balance_contract.js");
 const SRC = (0, node_path_1.join)(__dirname, "..", "..", "..", "src", "addons", "battery");
+const ADMIN_JSON = (0, node_path_1.join)(__dirname, "..", "..", "..", "admin", "jsonConfig.json");
 function baseSafety(over = {}) {
     return {
         adminEnabled: true,
@@ -31,9 +33,8 @@ function baseSafety(over = {}) {
         ownershipActive: false,
         dailyPlanAuthoritative: false,
         mode1Active: false,
-        priceNowCt: 22,
-        priceLimitCt: 30,
-        priceGateEnabled: true,
+        priceNowCt: 50,
+        priceMinCt: 30,
         evConflictKind: "",
         externalEvAuthority: false,
         ...over,
@@ -44,43 +45,71 @@ function baseSafety(over = {}) {
         const c = (0, config_js_1.batteryConfigFromAdapter)({});
         strict_1.default.equal(c.gridBalance.enabled, false);
         strict_1.default.equal(grid_balance_contract_js_1.GRID_BALANCE_EXECUTION_ENABLED, false);
+        strict_1.default.equal(write_allowlist_js_1.EV_EXECUTION_PHASE5_ENABLED, false);
     });
     (0, node_test_1.it)("L2: Admin switch is activatable", () => {
         const c = (0, config_js_1.batteryConfigFromAdapter)({ bat_feature_grid_balance_enabled: true });
         strict_1.default.equal(c.gridBalance.enabled, true);
     });
-    (0, node_test_1.it)("L3: price limit default = 30 ct/kWh", () => {
+    (0, node_test_1.it)("L3: min price default = 30 ct/kWh", () => {
         const c = (0, config_js_1.batteryConfigFromAdapter)({});
-        strict_1.default.equal(c.gridBalance.maxPriceCtPerKwh, grid_balance_contract_js_1.GRID_BALANCE_MAX_PRICE_DEFAULT_CT);
-        strict_1.default.equal(grid_balance_contract_js_1.GRID_BALANCE_MAX_PRICE_DEFAULT_CT, 30);
+        strict_1.default.equal(c.gridBalance.minPriceCtPerKwh, grid_balance_contract_js_1.GRID_BALANCE_MIN_PRICE_DEFAULT_CT);
+        strict_1.default.equal(grid_balance_contract_js_1.GRID_BALANCE_MIN_PRICE_DEFAULT_CT, 30);
     });
-    (0, node_test_1.it)("L4: price limit is configurable", () => {
-        const c = (0, config_js_1.batteryConfigFromAdapter)({ bat_grid_balance_max_price_ct_per_kwh: 18.5 });
-        strict_1.default.equal(c.gridBalance.maxPriceCtPerKwh, 18.5);
+    (0, node_test_1.it)("L4: min price is configurable", () => {
+        const c = (0, config_js_1.batteryConfigFromAdapter)({ bat_grid_balance_min_price_ct_per_kwh: 18.5 });
+        strict_1.default.equal(c.gridBalance.minPriceCtPerKwh, 18.5);
     });
     (0, node_test_1.it)("L5: negative/invalid price values are rejected", () => {
-        strict_1.default.equal((0, grid_balance_contract_js_1.parseGridBalanceMaxPriceCt)(-5), 30);
-        strict_1.default.equal((0, grid_balance_contract_js_1.parseGridBalanceMaxPriceCt)(Number.NaN), 30);
-        strict_1.default.equal((0, grid_balance_contract_js_1.parseGridBalanceMaxPriceCt)("abc"), 30);
-        strict_1.default.equal((0, grid_balance_contract_js_1.parseGridBalanceMaxPriceCt)(""), 30);
-        strict_1.default.equal((0, grid_balance_contract_js_1.parseGridBalanceMaxPriceCt)(null), 30);
-        strict_1.default.equal((0, config_js_1.batteryConfigFromAdapter)({ bat_grid_balance_max_price_ct_per_kwh: -10 }).gridBalance.maxPriceCtPerKwh, 30);
+        strict_1.default.equal((0, grid_balance_contract_js_1.parseGridBalanceMinPriceCt)(-5), 30);
+        strict_1.default.equal((0, grid_balance_contract_js_1.parseGridBalanceMinPriceCt)(Number.NaN), 30);
+        strict_1.default.equal((0, grid_balance_contract_js_1.parseGridBalanceMinPriceCt)("abc"), 30);
+        strict_1.default.equal((0, grid_balance_contract_js_1.parseGridBalanceMinPriceCt)(""), 30);
+        strict_1.default.equal((0, grid_balance_contract_js_1.parseGridBalanceMinPriceCt)(null), 30);
+        strict_1.default.equal((0, config_js_1.batteryConfigFromAdapter)({ bat_grid_balance_min_price_ct_per_kwh: -10 }).gridBalance.minPriceCtPerKwh, 30);
     });
-    (0, node_test_1.it)("L6: price > limit → blocked", () => {
-        const r = (0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ priceNowCt: 42.1, priceLimitCt: 30 }));
-        strict_1.default.equal(r.policyAllowed, false);
+    (0, node_test_1.it)("20 ct → price_allowed=false", () => {
+        const r = (0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ priceNowCt: 20, priceMinCt: 30 }));
         strict_1.default.equal(r.priceAllowed, false);
-        strict_1.default.equal(r.blockReason, "price_above_limit");
-        strict_1.default.equal(r.explain, "grid_balance=blocked, price=42.1ct, limit=30.0ct");
+        strict_1.default.equal(r.policyAllowed, false);
+        strict_1.default.equal(r.blockReason, "price_below_minimum");
+        strict_1.default.equal(r.explain, "grid_balance=blocked, price=20.0ct, minimum=30.0ct");
         strict_1.default.equal(r.writeAllowed, false);
     });
-    (0, node_test_1.it)("L7: price <= limit → price allowed", () => {
-        const r = (0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ priceNowCt: 30, priceLimitCt: 30 }));
+    (0, node_test_1.it)("29.99 ct → price_allowed=false", () => {
+        const r = (0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ priceNowCt: 29.99, priceMinCt: 30 }));
+        strict_1.default.equal(r.priceAllowed, false);
+        strict_1.default.equal(r.blockReason, "price_below_minimum");
+    });
+    (0, node_test_1.it)("30.0 ct → price_allowed=true", () => {
+        const r = (0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ priceNowCt: 30, priceMinCt: 30 }));
         strict_1.default.equal(r.priceAllowed, true);
         strict_1.default.equal(r.policyAllowed, true);
         strict_1.default.equal(r.blockReason, "");
     });
-    (0, node_test_1.it)("L8: hold planned → blocked", () => {
+    (0, node_test_1.it)("36.7 ct → price_allowed=true", () => {
+        const r = (0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ priceNowCt: 36.7, priceMinCt: 30 }));
+        strict_1.default.equal(r.priceAllowed, true);
+        strict_1.default.equal(r.policyAllowed, true);
+        strict_1.default.match(r.explain, /grid_balance=ready, price=36\.7ct, minimum=30\.0ct/);
+    });
+    (0, node_test_1.it)("50 ct → price_allowed=true", () => {
+        const r = (0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ priceNowCt: 50, priceMinCt: 30 }));
+        strict_1.default.equal(r.priceAllowed, true);
+        strict_1.default.equal(r.blockReason, "");
+    });
+    (0, node_test_1.it)("legacy max-price key 30 migrates to min-price 30", () => {
+        const c = (0, config_js_1.batteryConfigFromAdapter)({ bat_grid_balance_max_price_ct_per_kwh: 30 });
+        strict_1.default.equal(c.gridBalance.minPriceCtPerKwh, 30);
+    });
+    (0, node_test_1.it)("new min-price key wins over legacy max-price key", () => {
+        const c = (0, config_js_1.batteryConfigFromAdapter)({
+            bat_grid_balance_max_price_ct_per_kwh: 18,
+            bat_grid_balance_min_price_ct_per_kwh: 40,
+        });
+        strict_1.default.equal(c.gridBalance.minPriceCtPerKwh, 40);
+    });
+    (0, node_test_1.it)("L8: hold planned → blocked even at 50 ct", () => {
         const r = (0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ holdPlanned: true }));
         strict_1.default.equal(r.policyAllowed, false);
         strict_1.default.equal(r.holdDetected, true);
@@ -93,7 +122,7 @@ function baseSafety(over = {}) {
         strict_1.default.equal(r.holdDetected, true);
         strict_1.default.equal((0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ evccBatteryModeHold: true })).blockReason, "battery_hold");
     });
-    (0, node_test_1.it)("L10: external EV authority → blocked", () => {
+    (0, node_test_1.it)("L10: external EV authority → blocked even at 50 ct", () => {
         const r = (0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ externalEvAuthority: true, evConflictKind: "ev_external" }));
         strict_1.default.equal(r.blockReason, "external_ev_authority");
         strict_1.default.equal(r.authority, "external_ev");
@@ -152,6 +181,7 @@ function baseSafety(over = {}) {
             strict_1.default.equal(/go-e\.|fordpass\.|tibber\.|evcc\./.test(src), false);
         }
         strict_1.default.equal(grid_balance_contract_js_1.GRID_BALANCE_EXECUTION_ENABLED, false);
+        strict_1.default.equal(write_allowlist_js_1.EV_EXECUTION_PHASE5_ENABLED, false);
     });
     (0, node_test_1.it)("L18: execution stays locked even when policy would allow", () => {
         const r = (0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety());
@@ -172,21 +202,44 @@ function baseSafety(over = {}) {
         strict_1.default.equal(r.blockReason, "");
         strict_1.default.equal(r.policyAllowed, true);
     });
-    (0, node_test_1.it)("absolute max price cannot be bypassed by median", () => {
-        const r = (0, grid_balance_js_1.evaluateGridBalancePriceGate)({
-            gate: { enabled: true, maxPriceCtPerKwh: 30, medianFactor: 1.05 },
-            priceNowCt: 42,
-            referenceMedianCt: 50,
-        });
-        strict_1.default.equal(r.passed, false);
+    (0, node_test_1.it)("no median / relative price gate in grid-balance contract", () => {
+        const contractSrc = (0, node_fs_1.readFileSync)((0, node_path_1.join)(SRC, "grid_balance_contract.ts"), "utf8");
+        const gbSrc = (0, node_fs_1.readFileSync)((0, node_path_1.join)(SRC, "grid_balance.ts"), "utf8");
+        const cfgSrc = (0, node_fs_1.readFileSync)((0, node_path_1.join)(SRC, "config.ts"), "utf8");
+        for (const src of [contractSrc, gbSrc, cfgSrc]) {
+            strict_1.default.equal(/priceMedianFactor|medianFactor|Median×|price_median_factor/.test(src), false);
+            strict_1.default.equal(/price_above_limit/.test(src), false);
+            strict_1.default.equal(/bat_grid_balance_price_gate_enabled/.test(src), false);
+        }
+        const r = (0, grid_balance_js_1.evaluateGridBalanceMinPrice)({ minPriceCtPerKwh: 30, priceNowCt: 42 });
+        strict_1.default.equal(r.passed, true);
     });
-    (0, node_test_1.it)("explain ready includes grid import", () => {
+    (0, node_test_1.it)("explain ready includes price, minimum and grid import", () => {
         strict_1.default.equal((0, grid_balance_contract_js_1.formatGridBalanceExplain)({
             enabled: true,
             blockReason: "",
-            priceNowCt: 22,
-            priceLimitCt: 30,
+            priceNowCt: 36.7,
+            priceMinCt: 30,
             gridImportW: 850,
-        }), "grid_balance=ready, grid_import=850W");
+        }), "grid_balance=ready, price=36.7ct, minimum=30.0ct, grid_import=850W");
+    });
+    (0, node_test_1.it)("admin jsonConfig has min price and dropped price-gate/median fields", () => {
+        const cfg = (0, node_fs_1.readFileSync)(ADMIN_JSON, "utf8");
+        strict_1.default.equal(/bat_grid_balance_price_gate_enabled/.test(cfg), false);
+        strict_1.default.equal(/bat_grid_balance_price_median_factor/.test(cfg), false);
+        strict_1.default.equal(/Preisgate aktiv/.test(cfg), false);
+        strict_1.default.equal(/Preis relativ/.test(cfg), false);
+        strict_1.default.equal(/bat_grid_balance_max_price_ct_per_kwh/.test(cfg), false);
+        strict_1.default.match(cfg, /bat_grid_balance_min_price_ct_per_kwh/);
+        strict_1.default.match(cfg, /Mindeststrompreis für Netzausgleich/);
+        strict_1.default.match(cfg, /bat_feature_grid_balance_enabled/);
+        strict_1.default.match(cfg, /bat_offset_soc_threshold_pct/);
+        strict_1.default.match(cfg, /bat_offset_high_soc_w/);
+        strict_1.default.match(cfg, /bat_offset_low_soc_w/);
+        strict_1.default.match(cfg, /bat_grid_balance_min_change_w/);
+        strict_1.default.match(cfg, /bat_grid_balance_deadband_w/);
+        strict_1.default.match(cfg, /bat_grid_balance_min_duration_s/);
+        strict_1.default.match(cfg, /bat_grid_balance_max_w/);
+        strict_1.default.match(cfg, /bat_grid_balance_update_interval_sec/);
     });
 });

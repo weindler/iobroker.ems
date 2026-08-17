@@ -17,8 +17,27 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:6
 .ems-ai-line{font-size:12px;font-weight:700;margin-top:2px}
 .ems-ai-line.yes{color:#3fb950}.ems-ai-line.no{color:#8b949e}.ems-ai-line.warn{color:#f0883e}.ems-ai-line.ok{color:#58a6ff}
 .ems-ai-reason{font-size:10px;color:#c9d1d9;line-height:1.3;margin-top:3px;max-height:3.9em;overflow:hidden}
-.ems-main{display:grid;grid-template-columns:minmax(0,2fr) minmax(200px,1fr);gap:6px;align-items:stretch;min-height:300px}
-.ems-tiles{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto auto;gap:6px;min-height:0}
+.ems-alerts{background:#3d1114;border:1px solid #f85149;border-radius:6px;padding:6px 8px;margin-bottom:6px;font-size:11px;color:#ffb1af;line-height:1.35}
+.ems-live{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
+.ems-chip{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:5px 8px;min-width:88px;flex:1 1 92px}
+.ems-chip .ems-k{margin-bottom:1px}
+.ems-chip .ems-chip-v{font-size:13px;font-weight:700;line-height:1.2;color:#e6edf3}
+.ems-chip .ems-chip-s{font-size:9px;color:#8b949e;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ems-chip.warn{border-color:#f85149}
+.ems-chip.on{border-color:#3fb95066}
+.ems-chip.price{flex:1.4 1 140px}
+.ems-chip.gb{flex:1.3 1 130px}
+.ems-price{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 8px 4px;margin-bottom:6px}
+.ems-price-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.ems-price-meta{font-size:10px;color:#c9d1d9;line-height:1.3}
+.ems-price-svg{width:100%;height:84px;display:block}
+.ems-price-legend{display:flex;flex-wrap:wrap;gap:8px;font-size:9px;color:#8b949e;margin-top:3px}
+.ems-price-legend span{display:inline-flex;align-items:center;gap:4px}
+.ems-sw{width:8px;height:8px;border-radius:2px;display:inline-block}
+.ems-ai-compact{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:4px 8px;margin-bottom:6px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.ems-ai-compact .ems-ai-toggle{margin:0}
+.ems-main{display:grid;grid-template-columns:minmax(0,2fr) minmax(200px,1fr);gap:6px;align-items:stretch;min-height:240px}
+.ems-tiles{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto;gap:6px;min-height:0}
 .ems-card{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:7px 8px;min-height:0}
 .ems-card-empty{background:transparent;border:1px dashed #30363d55;border-radius:6px;min-height:48px}
 .ems-card-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;gap:6px}
@@ -33,6 +52,14 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:6
 .ems-badge.plan{background:#1f6feb33;color:#58a6ff;border:1px solid #1f6feb66}
 .ems-badge.fault{background:#da3633;color:#fff}
 .ems-badge.lockout{background:#cf222e;color:#fff;border:1px solid #ff7b72}
+.ems-badge.hvac-dry{background:#1f6feb;color:#fff}
+.ems-badge.hvac-cool{background:#0969da;color:#fff}
+.ems-badge.hvac-heat{background:#bf4b00;color:#fff}
+.ems-badge.hvac-fan{background:#6e7681;color:#fff}
+.ems-badge.gb-off{background:#30363d;color:#8b949e}
+.ems-badge.gb-block{background:#9e6a03;color:#fff}
+.ems-badge.gb-ready{background:#1f6feb;color:#fff}
+.ems-badge.gb-on{background:#238636;color:#fff}
 .ems-badges{display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .ems-rows{display:grid;grid-template-columns:78px 1fr;gap:1px 6px;font-size:11px}
 .ems-rows .l{color:#8b949e}.ems-rows .r{color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -69,6 +96,7 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:6
 	.ems-main{grid-template-columns:1fr;min-height:0}
 	.ems-timeline{max-height:220px}
 	.ems-ai{grid-template-columns:1fr}
+	.ems-price-svg{height:72px}
 }
 @media (max-width:560px){.ems-tiles{grid-template-columns:1fr}}
 </style>
@@ -76,10 +104,10 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:6
 <body>
 <div id="ems-status" class="ems-status">Verbinde…</div>
 <div id="ems-content" style="display:none">
-	<div class="ems-top">
-		<div class="ems-box" id="ems-now"></div>
-		<div class="ems-box" id="ems-ai-summary"></div>
-	</div>
+	<div id="ems-alerts" class="ems-alerts" style="display:none"></div>
+	<div class="ems-live" id="ems-now"></div>
+	<div class="ems-price" id="ems-price"></div>
+	<div class="ems-ai-compact" id="ems-ai-summary"></div>
 	<div class="ems-main">
 		<div class="ems-tiles" id="ems-stack"></div>
 		<aside class="ems-timeline" id="ems-next"></aside>
@@ -101,6 +129,7 @@ var ON_W=50;
 var SLOT_MS=15*60*1000;
 var stateIds=[
 	INST+".operator.vis.show_diagnostics",
+	INST+".operator.vis.price_timeline_json",
 	INST+".operator.diagnostics.surplus_w",
 	INST+".operator.diagnostics.deficit_w",
 	INST+".operator.diagnostics.slot_start_iso",
@@ -117,6 +146,25 @@ var stateIds=[
 	INST+".live.wallbox.vehicle_soc_pct",
 	INST+".live.wallbox.charging",
 	INST+".addons.battery.telemetry.charging_power_w",
+	INST+".addons.battery.telemetry.discharging_power_w",
+	INST+".addons.battery.telemetry.power_w",
+	INST+".addons.battery.telemetry.operating_mode",
+	INST+".addons.battery.telemetry.stale",
+	INST+".addons.battery.status.fault",
+	INST+".addons.battery.status.lockout",
+	INST+".addons.battery.runtime.battery_setpoint_owner",
+	INST+".addons.battery.runtime.battery_setpoint_w",
+	INST+".addons.battery.runtime.action",
+	INST+".addons.battery.grid_balance.enabled",
+	INST+".addons.battery.grid_balance.active",
+	INST+".addons.battery.grid_balance.ready",
+	INST+".addons.battery.grid_balance.block_reason",
+	INST+".addons.battery.grid_balance.price_allowed",
+	INST+".addons.battery.grid_balance.price_min_ct_kwh",
+	INST+".addons.battery.grid_balance.current_price_ct_kwh",
+	INST+".addons.battery.grid_balance.grid_power_w",
+	INST+".addons.battery.grid_balance.hold_detected",
+	INST+".addons.battery.grid_balance.last_action",
 	INST+".compare.plan_a.chart_json",
 	INST+".compare.plan_b.chart_json",
 	INST+".compare.delta_summary_json",
@@ -148,6 +196,7 @@ var stateIds=[
 	INST+".planner.intent.allocation.air_conditioning.reason_de",
 	INST+".planner.intent.allocation.air_conditioning.plan_json",
 	INST+".planner.intent.contributions.air_conditioning.contributions_json",
+	INST+".planner.intent.contributions.immersion_heater.contributions_json",
 	INST+".operator.plan.strategy_json",
 	INST+".operator.plan.battery_strategy_de",
 	INST+".operator.plan.wallbox_strategy_de",
@@ -174,6 +223,7 @@ var stateIds=[
 	INST+".addons.immersion_heater.runtime.fault_message",
 	INST+".addons.immersion_heater.runtime.fault_reset",
 	INST+".addons.immersion_heater.runtime.commanded_stage",
+	INST+".addons.immersion_heater.runtime.temperature_status",
 	INST+".live.thermal.boiler_temp_c",
 	INST+".live.thermal.buffer_temp_c",
 	INST+".addons.battery.runtime.decision_source",
@@ -187,33 +237,49 @@ var stateIds=[
 	INST+".addons.wallbox.runtime.reason_de",
 	INST+".addons.wallbox.runtime.dispatch_status",
 	INST+".addons.wallbox.runtime.plan_execution_status",
+	INST+".addons.wallbox.runtime.connected",
+	INST+".addons.wallbox.runtime.fault_active",
+	INST+".addons.wallbox.runtime.first_planned_slot",
+	INST+".addons.wallbox.runtime.tibber_grid_rewards_active",
+	INST+".addons.wallbox.runtime.external_vehicle_charge_active",
+	INST+".addons.wallbox.status.evcc.connected",
 	INST+".addons.wallbox.status.evcc.loadpoint_mode",
 	INST+".addons.wallbox.status.evcc.charge_remaining_energy_kwh",
 	INST+".addons.wallbox.status.evcc.effective_limit_soc_pct",
 	INST+".addons.wallbox.status.evcc.vehicle_soc_pct",
+	INST+".addons.wallbox.status.ev_foundation.ev_execution_authority",
+	INST+".addons.wallbox.status.ev_foundation.external_authority_state",
 	INST+".addons.air_conditioning.units.unit_1.name",
 	INST+".addons.air_conditioning.units.unit_1.decision_source",
 	INST+".addons.air_conditioning.units.unit_1.daily_plan_status",
 	INST+".addons.air_conditioning.units.unit_1.allocated_power_w",
+	INST+".addons.air_conditioning.units.unit_1.expected_power_w",
+	INST+".addons.air_conditioning.units.unit_1.estimated_power_w",
 	INST+".addons.air_conditioning.units.unit_1.allocation_reason_de",
 	INST+".addons.air_conditioning.units.unit_1.reason_de",
 	INST+".addons.air_conditioning.units.unit_1.running",
 	INST+".addons.air_conditioning.units.unit_1.room_temp_c",
+	INST+".addons.air_conditioning.units.unit_1.mode_purpose",
 	INST+".addons.air_conditioning.units.unit_2.name",
 	INST+".addons.air_conditioning.units.unit_2.decision_source",
 	INST+".addons.air_conditioning.units.unit_2.daily_plan_status",
 	INST+".addons.air_conditioning.units.unit_2.allocated_power_w",
+	INST+".addons.air_conditioning.units.unit_2.expected_power_w",
+	INST+".addons.air_conditioning.units.unit_2.estimated_power_w",
 	INST+".addons.air_conditioning.units.unit_2.allocation_reason_de",
 	INST+".addons.air_conditioning.units.unit_2.reason_de",
 	INST+".addons.air_conditioning.units.unit_2.running",
 	INST+".addons.air_conditioning.units.unit_2.room_temp_c",
+	INST+".addons.air_conditioning.units.unit_2.mode_purpose",
 	INST+".addons.air_conditioning.runtime.reason_de",
 	INST+".learning.thermal_runtime.estimated_remaining_hours",
 	INST+".learning.thermal_runtime.estimated_empty_at",
 	INST+".learning.thermal_boiler.estimated_remaining_hours",
 	INST+".learning.thermal_boiler.estimated_empty_at",
 	INST+".learning.thermal_boiler.reason_de",
-	INST+".learning.thermal_boiler.status"
+	INST+".learning.thermal_boiler.status",
+	INST+".learning.thermal_boiler.model",
+	INST+".learning.thermal_boiler.quality"
 ];
 var cache={},bound=false,socketBound=false;
 
@@ -882,6 +948,7 @@ function card(title,color,badge,rows,note,actionsHtml){
 		badgesHtml='<div class="ems-badges">'
 			+'<div class="ems-badge '+badge.exec.cls+'">'+esc(badge.exec.label)+'</div>'
 			+(badge.op?'<div class="ems-badge '+badge.op.cls+'">'+esc(badge.op.label)+'</div>':"")
+			+(badge.hvac?'<div class="ems-badge '+badge.hvac.cls+'">'+esc(badge.hvac.label)+'</div>':"")
 			+"</div>";
 	}else{
 		badgesHtml='<div class="ems-badge '+badge.cls+'">'+esc(badge.label)+'</div>';
@@ -991,47 +1058,281 @@ function aiVerdict(){
 	};
 }
 
-function renderNow(){
-	var el=document.getElementById("ems-now");
+function fmtCt(v){
+	var n=num(v);
+	return n===null?"—":n.toFixed(1).replace(".",",")+" ct/kWh";
+}
+function chip(label,value,sub,extraCls){
+	return '<div class="ems-chip'+(extraCls?" "+extraCls:"")+'"><div class="ems-k">'+esc(label)+'</div><div class="ems-chip-v">'+esc(value)+'</div>'
+		+(sub?'<div class="ems-chip-s">'+esc(sub)+"</div>":"")+"</div>";
+}
+function batteryMotion(){
+	if(isOn(g("addons.battery.grid_balance.hold_detected")))return{label:"HOLD",cls:"warn"};
+	var ch=num(g("addons.battery.telemetry.charging_power_w"));
+	var dis=num(g("addons.battery.telemetry.discharging_power_w"));
+	if(isPowerOn(ch))return{label:"LÄDT",cls:"on"};
+	if(isPowerOn(dis))return{label:"ENTLÄDT",cls:"on"};
+	return{label:"IDLE",cls:""};
+}
+function batteryPowerW(){
+	var p=num(g("addons.battery.telemetry.power_w"));
+	if(p!==null)return p;
+	var ch=num(g("addons.battery.telemetry.charging_power_w"));
+	var dis=num(g("addons.battery.telemetry.discharging_power_w"));
+	if(isPowerOn(ch))return ch;
+	if(isPowerOn(dis))return dis!==null?-dis:null;
+	return ch!==null?ch:(dis!==null?dis:null);
+}
+function batteryOwnerLabel(){
+	var owner=txt(g("addons.battery.runtime.battery_setpoint_owner"),"");
+	if(owner&&owner!=="—"&&owner!=="none")return owner;
+	var action=txt(g("addons.battery.runtime.action"),"");
+	if(action&&action!=="—"&&action!=="none")return action;
+	var last=txt(g("addons.battery.grid_balance.last_action"),"");
+	if(last&&last!=="—"&&last!=="none")return last;
+	return "self-consumption";
+}
+function gbBlockReasonDe(code){
+	var c=String(code||"").trim();
+	var map={
+		disabled:"AUS",
+		price_below_minimum:"Preis unter Schwelle",
+		battery_hold:"Batterie-Hold",
+		planned_battery_action:"geplante Batterieaktion",
+		external_ev_authority:"externe EV-Hoheit",
+		ev_now_grid_charge:"EV lädt vom Netz",
+		ev_conflict:"EV-Konflikt",
+		fault_lockout:"Störung",
+		global_dryrun:"Global Dryrun",
+		addon_dryrun:"Batterie Dryrun",
+		source_stale:"Quelle veraltet",
+		source_offline:"Quelle offline",
+		governance:"Governance",
+		addon_disabled:"Add-on aus",
+		restore_in_progress:"Restore",
+		price_unknown:"Preis unbekannt"
+	};
+	return map[c]||(c||"");
+}
+function gbStatus(){
+	var enabled=isOn(g("addons.battery.grid_balance.enabled"));
+	var active=isOn(g("addons.battery.grid_balance.active"));
+	var ready=isOn(g("addons.battery.grid_balance.ready"));
+	var reason=txt(g("addons.battery.grid_balance.block_reason"),"");
+	if(reason==="—")reason="";
+	if(!enabled||reason==="disabled")return{label:"AUS",cls:"gb-off",reason:reason==="disabled"?"":gbBlockReasonDe(reason)};
+	if(active)return{label:"AKTIV",cls:"gb-on",reason:gbBlockReasonDe(reason)};
+	if(ready)return{label:"BEREIT",cls:"gb-ready",reason:""};
+	return{label:"BLOCKIERT",cls:"gb-block",reason:gbBlockReasonDe(reason)};
+}
+function gridFlowLine(){
+	var grid=num(g("addons.battery.grid_balance.grid_power_w"));
+	if(grid!==null){
+		if(grid>50)return{v:Math.round(grid)+" W Bezug",cls:"warn"};
+		if(grid<-50)return{v:Math.round(Math.abs(grid))+" W Einsp.",cls:"on"};
+		return{v:"~0 W",cls:""};
+	}
 	var surplus=num(g("operator.diagnostics.surplus_w"));
+	var deficit=num(g("operator.diagnostics.deficit_w"));
+	if(surplus!==null&&surplus>50)return{v:"~"+Math.round(surplus)+" W Einsp.",cls:"on"};
+	if(deficit!==null&&deficit>50)return{v:"~"+Math.round(deficit)+" W Bezug",cls:"warn"};
+	if(surplus===null&&deficit===null)return{v:"—",cls:""};
+	return{v:"~0 W",cls:""};
+}
+function climateHvacBadge(unitIndex){
+	var p=String(g("addons.air_conditioning.units.unit_"+unitIndex+".mode_purpose")||"").toLowerCase();
+	if(p==="dehumidify")return{cls:"hvac-dry",label:"DRY"};
+	if(p==="cooling")return{cls:"hvac-cool",label:"COOL"};
+	if(p==="heating")return{cls:"hvac-heat",label:"HEAT"};
+	if(p==="fan_only")return{cls:"hvac-fan",label:"FAN"};
+	return{cls:"idle",label:"—"};
+}
+function climateDeviceBadge(running){
+	return running?{cls:"on",label:"LÄUFT"}:{cls:"idle",label:"AUS"};
+}
+function boilerLearningCompact(){
+	var quality=String(g("learning.thermal_boiler.quality")||"").toLowerCase();
+	var model=String(g("learning.thermal_boiler.model")||"").toLowerCase();
+	var emptyAt=fmtEmptyAt(g("learning.thermal_boiler.estimated_empty_at"));
+	if(emptyAt&&quality!=="insufficient_data"&&quality!=="no_source")return"belastbar";
+	if(model==="newton"||model==="cycle"||quality==="newton_fallback"||quality==="cycle")return"Newton";
+	return"sammelt Daten";
+}
+function ihEnergyNeedLine(){
+	var arr=parseArr(g("planner.intent.contributions.immersion_heater.contributions_json"));
+	var mand=null,flex=null,i;
+	for(i=0;i<arr.length;i++){
+		var c=arr[i];if(!c)continue;
+		var id=String(c.contributionId||"");
+		var k=c.details&&num(c.details.requiredEnergyKwh);
+		if(id.indexOf("mandatory")>=0)mand=k;
+		if(id.indexOf("flexible")>=0)flex=k;
+	}
+	var bits=[];
+	if(mand!==null)bits.push("Hart "+mand.toFixed(1).replace(".",",")+" kWh");
+	if(flex!==null)bits.push("Flex "+flex.toFixed(1).replace(".",",")+" kWh");
+	return bits.length?bits.join(" · "):"—";
+}
+function wallboxAuthorityLine(){
+	if(isOn(g("addons.wallbox.runtime.tibber_grid_rewards_active")))return"Tibber";
+	if(isOn(g("addons.wallbox.runtime.external_vehicle_charge_active")))return"External";
+	var auth=String(g("addons.wallbox.status.ev_foundation.ev_execution_authority")||"").toLowerCase();
+	if(auth==="external")return"External";
+	if(auth==="ems")return"EMS";
+	var ext=String(g("addons.wallbox.status.ev_foundation.external_authority_state")||"").toLowerCase();
+	if(ext&&ext!=="inactive"&&ext!=="none"&&ext!=="unavailable")return"External";
+	return "—";
+}
+function wallboxConnected(){
+	if(g("addons.wallbox.runtime.connected")!=null)return isOn(g("addons.wallbox.runtime.connected"));
+	return isOn(g("addons.wallbox.status.evcc.connected"));
+}
+function collectActionAlerts(){
+	var alerts=[];
+	if(immersionFaultActive())alerts.push(immersionFaultIsLockout()?"Heizstab gesperrt (Lockout)":"Heizstab FEHLER");
+	var tempSt=String(g("addons.immersion_heater.runtime.temperature_status")||"");
+	if(tempSt==="missing"||tempSt==="stale")alerts.push(tempSt==="missing"?"Puffertemperatur fehlt":"Puffertemperatur veraltet");
+	if(isOn(g("addons.battery.status.fault"))||isOn(g("addons.battery.status.lockout")))alerts.push("Batterie Störung/Lockout");
+	if(isOn(g("addons.battery.telemetry.stale")))alerts.push("Batterie-Telemetrie veraltet");
+	if(isOn(g("addons.wallbox.runtime.fault_active")))alerts.push("Wallbox Störung");
+	return alerts;
+}
+function priceBoard(){
+	var o=parseObj(g("operator.vis.price_timeline_json"));
+	if(!o||!Array.isArray(o.slots))return{slots:[],meta:o||{}};
+	return{slots:o.slots,meta:o};
+}
+function renderAlerts(){
+	var el=document.getElementById("ems-alerts");
+	if(!el)return;
+	var alerts=collectActionAlerts();
+	if(!alerts.length){el.style.display="none";el.innerHTML="";return;}
+	el.style.display="block";
+	el.textContent=alerts.join(" · ");
+}
+
+function renderPriceBoard(){
+	var el=document.getElementById("ems-price");
+	if(!el)return;
+	var board=priceBoard();
+	var slots=board.slots||[];
+	var meta=board.meta||{};
+	var gbMin=num(meta.gbMinPriceCt);
+	if(gbMin===null)gbMin=num(g("addons.battery.grid_balance.price_min_ct_kwh"));
+	var nowPrice=num(meta.currentPriceCt);
+	if(nowPrice===null)nowPrice=num(g("live.price.now_ct_per_kwh"));
+	var gbAllowed=meta.gbPriceAllowed;
+	if(gbAllowed!==true&&gbAllowed!==false)gbAllowed=g("addons.battery.grid_balance.price_allowed");
+	var gateLine="";
+	if(nowPrice!==null&&gbMin!==null){
+		var allowed=gbAllowed===true||(gbAllowed!==false&&nowPrice>=gbMin);
+		gateLine=nowPrice.toFixed(1).replace(".",",")+" ct → GB preislich "+(allowed?"erlaubt":"gesperrt");
+	}
+	var min=meta.dayMin,max=meta.dayMax;
+	var minLine=min&&num(min.priceCt)!==null?("Min "+Number(min.priceCt).toFixed(1).replace(".",",")+" ct · "+fmtSmartTime(min.startIso)):"Min —";
+	var maxLine=max&&num(max.priceCt)!==null?("Max "+Number(max.priceCt).toFixed(1).replace(".",",")+" ct · "+fmtSmartTime(max.startIso)):"Max —";
+	var thrLine=gbMin!==null?("Netzausgleich ab "+Number(gbMin).toFixed(1).replace(".",",")+" ct/kWh"):"";
+	if(!slots.length){
+		el.innerHTML='<div class="ems-price-head"><div class="ems-k">Tibber-Preis</div><div class="ems-price-meta">'+esc(gateLine||"keine belastbare Preiskurve")+'</div></div>'
+			+'<div class="ems-muted">Preisachse wartet auf Grid-Supply / Daily Plan.</div>';
+		return;
+	}
+	var prices=[];
+	var i;
+	for(i=0;i<slots.length;i++){var p=num(slots[i].priceCt);if(p!==null)prices.push(p);}
+	var pMin=prices.length?Math.min.apply(null,prices):0;
+	var pMax=prices.length?Math.max.apply(null,prices):1;
+	if(gbMin!==null){pMin=Math.min(pMin,gbMin);pMax=Math.max(pMax,gbMin);}
+	if(pMax<=pMin)pMax=pMin+1;
+	var padL=28,padR=6,padT=6,padB=18;
+	var W=640,H=84;
+	var innerW=W-padL-padR,innerH=H-padT-padB;
+	function yOf(ct){return padT+innerH-((ct-pMin)/(pMax-pMin))*innerH;}
+	function xOf(idx){return padL+(idx+0.5)*(innerW/slots.length);}
+	var bars="",acts="",labels="",j;
+	var lastHour="";
+	for(j=0;j<slots.length;j++){
+		var s=slots[j];
+		var ct=num(s.priceCt);
+		var x=padL+j*(innerW/slots.length);
+		var bw=Math.max(1.2,innerW/slots.length-0.6);
+		var h=ct===null?0:((ct-pMin)/(pMax-pMin))*innerH;
+		var y=padT+innerH-h;
+		var fill=s.currentHour?"#58a6ff":(s.gbPriceOk?"#3fb95099":"#8b949e99");
+		if(s.current)fill="#f0b429";
+		bars+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0,h).toFixed(1)+'" rx="1" fill="'+fill+'"/>';
+		if(s.actions&&s.actions.length){
+			var ax=x+bw/2,k;
+			for(k=0;k<s.actions.length;k++){
+				var col=s.actions[k]==="battery_grid"?"#58a6ff":(s.actions[k]==="ev"?"#d2a8ff":(s.actions[k]==="immersion"?"#ffa657":"#79c0ff"));
+				acts+='<circle cx="'+ax.toFixed(1)+'" cy="'+(padT+innerH+6+k*4).toFixed(1)+'" r="2" fill="'+col+'"/>';
+			}
+		}
+		try{
+			var hour=new Date(s.startIso).toLocaleTimeString("de-DE",{hour:"2-digit"});
+			if(hour!==lastHour&&(j===0||j===slots.length-1||s.currentHour||j%8===0)){
+				labels+='<text x="'+xOf(j).toFixed(1)+'" y="'+(H-2)+'" text-anchor="middle" fill="#8b949e" font-size="8">'+esc(hour)+"</text>";
+				lastHour=hour;
+			}
+		}catch(eLab){}
+	}
+	var thr="";
+	if(gbMin!==null){
+		var ty=yOf(gbMin);
+		thr='<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+ty.toFixed(1)+'" y2="'+ty.toFixed(1)+'" stroke="#f85149" stroke-dasharray="3 3" stroke-width="1"/>'
+			+'<text x="'+(W-padR)+'" y="'+(ty-2).toFixed(1)+'" text-anchor="end" fill="#f85149" font-size="8">'+esc(Number(gbMin).toFixed(1).replace(".",","))+"</text>";
+	}
+	var yLab='<text x="2" y="'+(padT+8)+'" fill="#8b949e" font-size="8">'+esc(pMax.toFixed(0))+'</text>'
+		+'<text x="2" y="'+(padT+innerH)+'" fill="#8b949e" font-size="8">'+esc(pMin.toFixed(0))+"</text>";
+	el.innerHTML='<div class="ems-price-head"><div class="ems-k">Tibber-Preis</div><div class="ems-price-meta">'
+		+esc([gateLine,thrLine,minLine,maxLine].filter(Boolean).join(" · "))
+		+"</div></div>"
+		+'<svg class="ems-price-svg" viewBox="0 0 '+W+" "+H+'" preserveAspectRatio="none" role="img" aria-label="Tibber-Preisachse">'
+		+yLab+bars+thr+acts+labels+"</svg>"
+		+'<div class="ems-price-legend">'
+		+'<span><i class="ems-sw" style="background:#f0b429"></i>jetzt</span>'
+		+'<span><i class="ems-sw" style="background:#58a6ff"></i>aktuelle Stunde</span>'
+		+'<span><i class="ems-sw" style="background:#3fb950"></i>GB preislich ok</span>'
+		+'<span><i class="ems-sw" style="background:#58a6ff"></i>Batterie Netz</span>'
+		+'<span><i class="ems-sw" style="background:#d2a8ff"></i>Wallbox</span>'
+		+'<span><i class="ems-sw" style="background:#ffa657"></i>Heizstab</span>'
+		+'<span><i class="ems-sw" style="background:#79c0ff"></i>Klima</span>'
+		+"</div>";
+}
+
+function renderNow(){
+	renderAlerts();
+	renderLiveStrip();
+}
+
+function renderLiveStrip(){
+	var el=document.getElementById("ems-now");
+	if(!el)return;
 	var pv=num(g("live.pv.power_w"));
 	var load=num(g("live.battery.house_load_w"));
 	var price=num(g("live.price.now_ct_per_kwh"));
-	var ihLiveOk=effectiveLiveWrite("immersion_heater");
-	var ihHw=immersionHardwareActive(ihLiveOk);
-	var ihAlloc=num(g("addons.immersion_heater.runtime.allocated_power_w"));
-	var ihBuf=fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c"));
-	var remH=num(g("learning.thermal_runtime.estimated_remaining_hours"));
-	var wbP=num(g("live.wallbox.charge_power_w"));
-	var wbLiveOk=effectiveLiveWrite("wallbox");
-	var wbHw=isOn(g("live.wallbox.charging"))||(wbP!==null&&wbP>=ON_W);
-	var batSoc=fmtPct(g("live.battery.soc_pct"));
-	var acLiveOk=effectiveLiveWrite("air_conditioning");
-	var ac1=isOn(g("addons.air_conditioning.units.unit_1.running"));
-	var ac2=isOn(g("addons.air_conditioning.units.unit_2.running"));
-
-	var bits=[];
-	if(surplus!==null&&surplus>200)bits.push("PV-Überschuss ca. "+Math.round(surplus)+" W");
-	else if(surplus!==null&&surplus<=0)bits.push("kein PV-Überschuss");
-	else if(pv!==null)bits.push("PV "+Math.round(pv)+" W");
-	if(immersionFaultActive())bits.push(immersionFaultIsLockout()?"Heizstab gesperrt (Lockout)":"Heizstab FEHLER");
-	else if(ihLiveOk&&ihHw)bits.push("Heizstab an");
-	else if(isPowerOn(ihAlloc)&&!ihLiveOk)bits.push("Heizstab Dryrun");
-	else bits.push("Heizstab aus");
-	if(wbLiveOk&&wbHw)bits.push("Auto lädt");
-	else if(isPowerOn(num(g("addons.wallbox.runtime.allocated_power_w")))&&!wbLiveOk)bits.push("Auto Dryrun");
-	else bits.push("Auto lädt nicht");
-	if(acLiveOk&&(ac1||ac2))bits.push("Klima läuft");
-	else if(!acLiveOk&&(isPowerOn(num(g("addons.air_conditioning.units.unit_1.allocated_power_w")))||isPowerOn(num(g("addons.air_conditioning.units.unit_2.allocated_power_w")))))bits.push("Klima Dryrun");
-	var line=bits.length?bits.join(" · "):"Keine Live-Daten";
-
-	var meta=[];
-	if(load!==null)meta.push("Hauslast "+Math.round(load)+" W");
-	if(price!==null)meta.push(price.toFixed(2).replace(".",",")+" ct/kWh");
-	meta.push("Batterie "+batSoc);
-	meta.push("Puffer "+ihBuf+(remH!==null?" · noch ~"+remH.toFixed(1).replace(".",",")+" h":""));
-	el.innerHTML='<div class="ems-k">Jetzt</div><div class="ems-now-line">'+esc(line)+'</div>'
-		+'<div class="ems-now-meta">'+esc(meta.join(" · "))+'</div>';
+	if(price===null)price=num(g("addons.battery.grid_balance.current_price_ct_kwh"));
+	var soc=fmtPct(g("live.battery.soc_pct"));
+	var motion=batteryMotion();
+	var batP=batteryPowerW();
+	var owner=batteryOwnerLabel();
+	var gb=gbStatus();
+	var grid=gridFlowLine();
+	var gbMin=num(g("addons.battery.grid_balance.price_min_ct_kwh"));
+	var gbAllowed=g("addons.battery.grid_balance.price_allowed");
+	var priceGate="";
+	if(price!==null&&gbMin!==null){
+		priceGate=gbAllowed===true?"preislich erlaubt":(gbAllowed===false?"preislich gesperrt":(price>=gbMin?"preislich erlaubt":"preislich gesperrt"));
+	}
+	el.innerHTML=
+		chip("PV",pv===null?"—":Math.round(pv)+" W","","")
+		+chip("Haus",load===null?"—":Math.round(load)+" W","","")
+		+chip("Netz",grid.v,"",grid.cls)
+		+chip("Tibber jetzt",price===null?"—":price.toFixed(1).replace(".",",")+" ct","","price")
+		+chip("Batterie SOC",soc,"","")
+		+chip("Batterie",motion.label,batP===null?"—":Math.round(Math.abs(batP))+" W",motion.cls)
+		+chip("Owner / Aktion",owner,"","")
+		+chip("Netzausgleich",gb.label,(gb.reason?gb.reason+(priceGate?" · ":""):"")+priceGate,"gb");
 }
 
 function renderAiSummary(){
@@ -1058,13 +1359,7 @@ function renderAiSummary(){
 		+(v.compareLabel?'<div class="ems-ai-line '+(v.prefersB?"warn":"no")+'">'+esc(v.compareLabel)+'</div>':"")
 		+'<div class="ems-ai-reason">'
 		+esc(callsLine)+esc(costLine)+esc(runLine)
-		+"</div>"
-		+(v.deltaCompareLine?'<div class="ems-ai-reason">'+esc(v.deltaCompareLine)+"</div>":"")
-		+'<div class="ems-ai-reason">'
-		+esc(v.shiftLabel)
-		+(v.decisionLine?" · "+esc(v.decisionLine):"")
-		+"</div>"
-		+'<div class="ems-ai-reason" title="'+esc(v.reason)+'">'+esc(shortNote(v.reason,140))+'</div>';
+		+"</div>";
 }
 
 function renderNext(){
@@ -1095,88 +1390,46 @@ function renderNext(){
 
 function renderStack(){
 	var el=document.getElementById("ems-stack");
-	var ihP=num(g("addons.immersion_heater.runtime.allocated_power_w"));
-	var ihCmd=num(g("addons.immersion_heater.runtime.commanded_power_w"));
-	var ihFb=num(g("addons.immersion_heater.runtime.feedback_stage"))||0;
-	var ihMeas=num(g("addons.immersion_heater.runtime.measured_power_w"));
 	var ihLive=effectiveLiveWrite("immersion_heater");
 	var ihHw=immersionHardwareActive(ihLive);
 	var ihFault=immersionFaultActive();
 	var ihPlanJson=g("planner.intent.allocation.immersion_heater.plan_json");
 	var ihSched=immersionScheduleRow(ihPlanJson);
-	var ihHasWindow=ihSched.value!=="keines";
-	var ihPhase=resolveExecPhase(isPowerOn(ihP),ihHasWindow,ihLive,ihHw);
-	var ihHwLabel=ihHw?(isPowerOn(ihMeas)?("an · "+fmtW(ihMeas)):(ihFb>0?("Stufe "+ihFb+(isPowerOn(ihCmd)?(" · "+fmtW(ihCmd)):"")):"an")):"unverändert";
-	if(ihHw&&ihLive&&isPowerOn(ihCmd)&&!isPowerOn(ihMeas)&&ihFb<=0)ihHwLabel="an · "+fmtW(ihCmd);
-	var ihNote=shortNote(g("addons.immersion_heater.runtime.plan_target_reason_de")||g("addons.immersion_heater.runtime.allocation_reason_de"),110);
-	var ihOpBadge=ihHw
-		?{cls:"on",label:"Läuft"}
-		:(isPowerOn(ihP)||ihHasWindow?{cls:"plan",label:"Geplant"}:{cls:"idle",label:"Aus"});
+	var ihOpBadge=ihHw?{cls:"on",label:"LÄUFT"}:{cls:"idle",label:"AUS"};
+	var boilerTemp=fmtTemp(g("addons.immersion_heater.runtime.boiler_temperature_c")!=null?g("addons.immersion_heater.runtime.boiler_temperature_c"):g("live.thermal.boiler_temp_c"));
+	var bufferTemp=fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c")!=null?g("addons.immersion_heater.runtime.buffer_temperature_c"):g("live.thermal.buffer_temp_c"));
 	var ihRows=[
-		["Jetzt",execNowLine(ihPhase,ihP,ihHwLabel)],
-		["Boiler",fmtTemp(g("addons.immersion_heater.runtime.boiler_temperature_c")!=null?g("addons.immersion_heater.runtime.boiler_temperature_c"):g("live.thermal.boiler_temp_c"))],
-		["Puffer",fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c")!=null?g("addons.immersion_heater.runtime.buffer_temperature_c"):g("live.thermal.buffer_temp_c"))],
+		["Boiler",boilerTemp],
+		["Puffer",bufferTemp],
 		["Soft-Ziel",fmtTemp(g("addons.immersion_heater.runtime.plan_target_temp_c"))],
 		["Puffer-Max",fmtTemp(g("addons.immersion_heater.runtime.planning_max_temp_c"))],
-		["Boiler reicht bis",null],
-		[ihSched.label,ihSched.value]
+		["Bedarf",ihEnergyNeedLine()],
+		[ihSched.label,ihSched.value],
+		["Boiler-Learning",boilerLearningCompact()]
 	];
+	var ihNote="";
 	if(ihFault){
 		ihOpBadge=immersionFaultOpBadge();
-		ihHwLabel=immersionFaultNowLine();
 		ihNote=shortNote(immersionFaultLabelDe(immersionFaultCode())+" — "+immersionFaultStatusDe(),140);
 		ihRows=[
-			["Jetzt",ihHwLabel],
-			["Boiler",fmtTemp(g("addons.immersion_heater.runtime.boiler_temperature_c")!=null?g("addons.immersion_heater.runtime.boiler_temperature_c"):g("live.thermal.boiler_temp_c"))],
-			["Puffer",fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c")!=null?g("addons.immersion_heater.runtime.buffer_temperature_c"):g("live.thermal.buffer_temp_c"))],
+			["Boiler",boilerTemp],
+			["Puffer",bufferTemp],
 			["Fehler",immersionFaultLabelDe(immersionFaultCode())],
 			["Status",immersionFaultStatusDe()],
 			[ihSched.label,ihSched.value]
 		];
 	}
 	var ihBadges={exec:execAuthorityBadge("immersion_heater"),op:ihOpBadge};
-	var boilerEmptyAt=fmtEmptyAt(g("learning.thermal_boiler.estimated_empty_at"));
-	var boilerRemH=num(g("learning.thermal_boiler.estimated_remaining_hours"));
-	var boilerLearnReason=String(g("learning.thermal_boiler.reason_de")||"");
-	var reichtBis=boilerEmptyAt
-		?(boilerEmptyAt+(boilerRemH!==null?" · ~"+boilerRemH.toFixed(1).replace(".",",")+" h":""))
-		:(boilerLearnReason?shortNote(boilerLearnReason,80):(boilerRemH!==null?"noch ~"+boilerRemH.toFixed(1).replace(".",",")+" h":"lernt / keine belastbare Reichweite"));
-	if(!ihFault){
-		for(var ihRi=0;ihRi<ihRows.length;ihRi++){
-			if(ihRows[ihRi][0]==="Boiler reicht bis")ihRows[ihRi][1]=reichtBis;
-		}
-	}
-
-	var strat=strategyObj();
-	var batStrat=strat.battery||{};
-	var wbStrat=strat.wallbox||{};
 
 	var wbLiveP=num(g("live.wallbox.charge_power_w"));
-	var wbPlan=num(g("addons.wallbox.runtime.allocated_power_w"));
-	var wbLiveOk=effectiveLiveWrite("wallbox");
 	var wbHw=isOn(g("live.wallbox.charging"))||isPowerOn(wbLiveP);
 	var wbNext=firstWindow(g("planner.intent.allocation.wallbox.plan_json"),ON_W);
-	var wbHwLabel=wbHw?("lädt · "+fmtW(wbLiveP)):"lädt nicht";
-	var wbStratDe=txt(g("operator.plan.wallbox_strategy_de"),wbStrat.summaryDe||"");
-	var wbNote=shortNote(wbStratDe||g("addons.wallbox.runtime.reason_de"),120);
-	var wbOpLine=wbStrat.summaryDe||(wbNext?(fmtSmartTime(wbNext.t)+" · "+Math.round(wbNext.w)+" W"):"kein Ladeplan");
-	var wbBadges={exec:execAuthorityBadge("wallbox"),op:opBadgeFromStrategy("wallbox",wbStrat.status,wbHw)};
-
-	var batP=num(g("addons.battery.runtime.allocated_charge_power_w"));
-	var batCharge=num(g("addons.battery.telemetry.charging_power_w"));
-	var batLiveOk=effectiveLiveWrite("battery");
-	var batHw=isPowerOn(batCharge);
-	var batNext=firstWindow(g("planner.intent.allocation.battery.plan_json"),ON_W);
-	var batHwLabel=batHw?fmtW(batCharge):"unverändert";
-	var batStratDe=txt(g("operator.plan.battery_strategy_de"),batStrat.summaryDe||"");
-	var batNote=shortNote(batStratDe||g("addons.battery.runtime.reason_de"),120);
-	var batOpLine=batStrat.summaryDe||(batNext?(fmtSmartTime(batNext.t)+" · "+Math.round(batNext.w)+" W"):"keine Ladeaktion");
-	var batLoadLine=batHw
-		?batHwLabel
-		:(isPowerOn(batP)
-			?(batLiveOk?("geplant "+Math.round(batP)+" W · Hardware: "+batHwLabel):("Planner: "+Math.round(batP)+" W · Hardware: "+batHwLabel))
-			:batOpLine);
-	var batBadges={exec:execAuthorityBadge("battery"),op:opBadgeFromStrategy("battery",batStrat.status,batHw)};
+	var wbConnected=wallboxConnected();
+	var wbMode=wallboxModeLabel(g("addons.wallbox.status.evcc.loadpoint_mode"))||"—";
+	var wbSoc=fmtPct(g("live.wallbox.vehicle_soc_pct")!=null?g("live.wallbox.vehicle_soc_pct"):g("addons.wallbox.status.evcc.vehicle_soc_pct"));
+	var wbOpBadge=wbHw?{cls:"on",label:"LÄUFT"}:{cls:"idle",label:"AUS"};
+	var wbBadges={exec:execAuthorityBadge("wallbox"),op:wbOpBadge};
+	var wbNextLine=wbNext?(fmtSmartTime(wbNext.t)+" · "+Math.round(wbNext.w)+" W"):(txt(g("addons.wallbox.runtime.first_planned_slot"),"")&&txt(g("addons.wallbox.runtime.first_planned_slot"),"")!=="—"?fmtSmartTime(g("addons.wallbox.runtime.first_planned_slot")):"keines");
 
 	function acCard(unitIndex){
 		var base="addons.air_conditioning.units.unit_"+unitIndex;
@@ -1184,32 +1437,32 @@ function renderStack(){
 		if(!name&&!g(base+".room_temp_c")&&!g(base+".running"))return'<div class="ems-card-empty"></div>';
 		var title=name?("Klima · "+name):("Klima "+unitIndex);
 		var d=resolveClimateUnitDisplay(unitIndex);
-		return card(title,"#79c0ff",d.badge,[
+		var running=isOn(g(base+".running"));
+		var badges={exec:execAuthorityBadge("air_conditioning"),op:climateDeviceBadge(running),hvac:climateHvacBadge(unitIndex)};
+		var meas=num(g(base+".estimated_power_w"));
+		var exp=num(g(base+".expected_power_w"));
+		var alloc=num(g(base+".allocated_power_w"));
+		var pNow=running?(meas!==null?meas:alloc):alloc;
+		var pLine=(pNow!==null?Math.round(pNow)+" W":"—")+(exp!==null&&exp!==pNow?(" / erw. "+Math.round(exp)+" W"):"");
+		return card(title,"#79c0ff",badges,[
 			["Raum",fmtTemp(g(base+".room_temp_c"))],
-			["Operation",d.operationLine],
-			["Plan",d.planLine],
-			["Nächstes",d.nextLine],
+			["Leistung",pLine],
 			["Heute",d.heuteLine],
-			["Jetzt",d.nowLine]
-		],d.note);
+			["Nächstes",d.nextLine]
+		],shortNote(g(base+".reason_de")||d.note,90));
 	}
 
 	el.innerHTML=
-		card("Batterie","#58a6ff",batBadges,[
-			["SOC",fmtPct(g("live.battery.soc_pct"))],
-			["Strategie",batOpLine],
-			["Laden",batLoadLine],
-			["Nächstes",batNext?(fmtSmartTime(batNext.t)+" · "+Math.round(batNext.w)+" W"):"keines"]
-		],batNote||"Batterie folgt dem Hausplan.")
+		card("Heizstab","#ffa657",ihBadges,ihRows,ihNote,immersionFaultResetActionsHtml())
 		+card("Wallbox / Auto","#d2a8ff",wbBadges,[
-			["Strategie",wbOpLine],
-			["Jetzt",wbHw?wbHwLabel:(isPowerOn(wbPlan)?(wbLiveOk?("geplant "+Math.round(wbPlan)+" W"):("Planner: "+Math.round(wbPlan)+" W · Hardware: "+wbHwLabel)):wbHwLabel)],
-			["Fahrzeug",fmtPct(g("live.wallbox.vehicle_soc_pct"))],
-			["Nächstes",wbNext?(fmtSmartTime(wbNext.t)+" · "+Math.round(wbNext.w)+" W"):"keines"]
-		],wbNote)
-		+card("Heizstab","#ffa657",ihBadges,ihRows,ihNote,immersionFaultResetActionsHtml())
+			["Fahrzeug",wbConnected?"verbunden":"getrennt"],
+			["SOC",wbSoc],
+			["EVCC",wbMode],
+			["Laden",fmtW(wbLiveP)],
+			["Hoheit",wallboxAuthorityLine()],
+			["Nächstes",wbNextLine]
+		],"")
 		+acCard(1)
-		+'<div class="ems-card-empty" aria-hidden="true"></div>'
 		+acCard(2);
 }
 
@@ -1252,6 +1505,7 @@ function render(){
 	showContent();
 	bindUiActions();
 	renderNow();
+	renderPriceBoard();
 	renderAiSummary();
 	renderStack();
 	renderNext();

@@ -31,9 +31,8 @@ function safety(over = {}) {
         ownershipActive: false,
         dailyPlanAuthoritative: false,
         mode1Active: false,
-        priceNowCt: 22,
-        priceLimitCt: 30,
-        priceGateEnabled: true,
+        priceNowCt: 50,
+        priceMinCt: 30,
         evConflictKind: "",
         externalEvAuthority: false,
         liveTestPermit: true,
@@ -80,11 +79,11 @@ function tick(over = {}) {
         strict_1.default.equal(d.shouldWrite, false);
         strict_1.default.equal(d.blockReason, "disabled");
     });
-    (0, node_test_1.it)("L2: Preis > limit → block, kein Median-Bypass", () => {
-        const d = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({ safety: safety({ priceNowCt: 42, priceLimitCt: 30 }) }));
+    (0, node_test_1.it)("L2: Preis unter Mindestpreis → block", () => {
+        const d = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({ safety: safety({ priceNowCt: 20, priceMinCt: 30 }) }));
         strict_1.default.equal(d.shouldWrite, false);
         strict_1.default.equal(d.priceAllowed, false);
-        strict_1.default.equal(d.blockReason, "price_above_limit");
+        strict_1.default.equal(d.blockReason, "price_below_minimum");
     });
     (0, node_test_1.it)("L3: Hold planned → block", () => {
         const d = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({ safety: safety({ holdPlanned: true }) }));
@@ -250,10 +249,10 @@ function tick(over = {}) {
         strict_1.default.equal(/setForeignStateAsync/.test(src), false);
         strict_1.default.equal(/go-e\.|fordpass\.|tibber\.|evcc\./.test(src), false);
     });
-    (0, node_test_1.it)("L21: 30-ct-Limit nicht umgehbar", () => {
-        const d = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({ safety: safety({ priceNowCt: 30.1, priceLimitCt: 30 }) }));
-        strict_1.default.equal(d.blockReason, "price_above_limit");
-        strict_1.default.equal((0, config_js_1.batteryConfigFromAdapter)({}).gridBalance.maxPriceCtPerKwh, 30);
+    (0, node_test_1.it)("L21: 30-ct-Mindestpreis nicht unterschreitbar", () => {
+        const d = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({ safety: safety({ priceNowCt: 29.99, priceMinCt: 30 }) }));
+        strict_1.default.equal(d.blockReason, "price_below_minimum");
+        strict_1.default.equal((0, config_js_1.batteryConfigFromAdapter)({}).gridBalance.minPriceCtPerKwh, 30);
     });
     (0, node_test_1.it)("L22: Mirror/Admin-Gate konsistent — nur Admin zählt", () => {
         const r = (0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(safety({ adminEnabled: true, emsMirrorEnabled: false, liveTestPermit: true }));

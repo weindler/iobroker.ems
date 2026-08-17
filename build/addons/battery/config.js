@@ -49,11 +49,12 @@ function batteryProfileIdFromConfig(config) {
     return raw === "" ? "sonnen_em" : "generic_readonly";
 }
 exports.batteryProfileIdFromConfig = batteryProfileIdFromConfig;
-function floatIn(c, key, def, min, max) {
-    const n = num(c, key);
-    if (n === null)
-        return def;
-    return Math.min(max, Math.max(min, n));
+function migrateGridBalanceMinPriceCt(c) {
+    const neu = c.bat_grid_balance_min_price_ct_per_kwh;
+    if (neu !== undefined && neu !== null && neu !== "") {
+        return (0, grid_balance_contract_1.parseGridBalanceMinPriceCt)(neu);
+    }
+    return (0, grid_balance_contract_1.parseGridBalanceMinPriceCt)(c.bat_grid_balance_max_price_ct_per_kwh);
 }
 function batteryConfigFromAdapter(config) {
     const c = rec(config);
@@ -94,9 +95,7 @@ function batteryConfigFromAdapter(config) {
             minChangeW: intIn(c, "bat_grid_balance_min_change_w", 50, 0, 5000),
             maxTargetW: intIn(c, "bat_grid_balance_max_w", 5000, 0, 50_000),
             updateIntervalSec: intIn(c, "bat_grid_balance_update_interval_sec", 5, 3, 15),
-            priceGateEnabled: bool(c, "bat_grid_balance_price_gate_enabled", true),
-            maxPriceCtPerKwh: (0, grid_balance_contract_1.parseGridBalanceMaxPriceCt)(c.bat_grid_balance_max_price_ct_per_kwh),
-            priceMedianFactor: floatIn(c, "bat_grid_balance_price_median_factor", 1.05, 0, 3),
+            minPriceCtPerKwh: migrateGridBalanceMinPriceCt(c),
             deadbandW: intIn(c, "bat_grid_balance_deadband_w", grid_balance_power_1.GRID_BALANCE_DEADBAND_DEFAULT_W, 0, 5000),
             minDurationSec: intIn(c, "bat_grid_balance_min_duration_s", grid_balance_power_1.GRID_BALANCE_MIN_DURATION_DEFAULT_S, 0, 120),
         },

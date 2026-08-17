@@ -135,6 +135,13 @@ async function runEmsLightPhase1Tick(host) {
             }
         }
     }
+    try {
+        const { publishVisPriceTimeline } = await import("../operator/vis/publish.js");
+        await publishVisPriceTimeline(host);
+    }
+    catch (e) {
+        hints.push(`vis_price_timeline: ${String(e)}`);
+    }
     const health = (0, live_cache_1.deriveHealth)(liveResult, !hints.some((h) => h.includes("global.execution_mode nicht")));
     const summaryParts = [
         `Phase 1 read-only. Modus=${executionMode}.`,

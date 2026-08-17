@@ -151,6 +151,7 @@ build/operator/contributions/flexible/battery_pv_cover.test.js
 build/operator/contributions/flexible/battery_charge_logic.test.js
 build/operator/forecast/build.test.js
 build/operator/time.test.js
+build/operator/vis/price_timeline.test.js
 build/operator/daily_plan/daily_plan.test.js
 build/operator/daily_plan/briefing.test.js
 build/operator/daily_plan/live_surplus.test.js
@@ -218,3 +219,4 @@ build/beta/beta_gate.test.js
 build/ai/compare/index.test.js
 vis/immersion_fault_labels.test.mjs
 vis/ai_vis_semantics.test.mjs
+vis/dashboard_ops.test.mjs

@@ -2,8 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
 	computeGridBalanceTarget,
-	evaluateGridBalancePriceGate,
-	medianCtFromPriceSlots,
+	evaluateGridBalanceMinPrice,
 	resolveController,
 } from "./grid_balance.js";
 
@@ -26,9 +25,8 @@ describe("grid balance", () => {
 		winterGridPlanActive: false,
 		mode1Active: false,
 		dailyPlanAuthoritative: false,
-		priceNowCt: 22,
-		priceMedianCt: 28,
-		priceGate: { enabled: true, maxPriceCtPerKwh: null as number | null, medianFactor: 1.05 },
+		priceNowCt: 36.7,
+		minPriceCtPerKwh: 30,
 	};
 
 	it("resolves controller to idle when suppressed", () => {
@@ -57,47 +55,31 @@ describe("grid balance", () => {
 		assert.match(r.reasonDe, /Daily Plan/);
 	});
 
-	it("passes price gate on absolute threshold", () => {
-		const r = evaluateGridBalancePriceGate({
-			gate: { enabled: true, maxPriceCtPerKwh: 30, medianFactor: 0 },
-			priceNowCt: 22,
-			referenceMedianCt: 40,
-		});
-		assert.equal(r.passed, true);
+	it("allows price at and above the minimum", () => {
+		assert.equal(evaluateGridBalanceMinPrice({ minPriceCtPerKwh: 30, priceNowCt: 30 }).passed, true);
+		assert.equal(evaluateGridBalanceMinPrice({ minPriceCtPerKwh: 30, priceNowCt: 36.7 }).passed, true);
+		assert.equal(evaluateGridBalanceMinPrice({ minPriceCtPerKwh: 30, priceNowCt: 50 }).passed, true);
 	});
 
-	it("passes price gate on median factor", () => {
-		const r = evaluateGridBalancePriceGate({
-			gate: { enabled: true, maxPriceCtPerKwh: null, medianFactor: 1.05 },
-			priceNowCt: 29,
-			referenceMedianCt: 28,
-		});
-		assert.equal(r.passed, true);
+	it("blocks price below the minimum", () => {
+		assert.equal(evaluateGridBalanceMinPrice({ minPriceCtPerKwh: 30, priceNowCt: 20 }).passed, false);
+		assert.equal(evaluateGridBalanceMinPrice({ minPriceCtPerKwh: 30, priceNowCt: 29.99 }).passed, false);
 	});
 
-	it("rejects expensive price when gate enabled", () => {
+	it("rejects cheap price when computing target", () => {
 		const r = computeGridBalanceTarget({
 			...baseInputs,
-			priceNowCt: 45,
-			priceMedianCt: 30,
-			priceGate: { enabled: true, maxPriceCtPerKwh: 30, medianFactor: 1.0 },
+			priceNowCt: 20,
+			minPriceCtPerKwh: 30,
 		});
 		assert.equal(r.gatePassed, false);
-		assert.match(r.reasonDe, /Preis/);
+		assert.match(r.reasonDe, /Mindestpreis/);
+		assert.ok(r.checksFailed.includes("price_below_minimum"));
 	});
 
 	it("computes target when all gates pass", () => {
 		const r = computeGridBalanceTarget(baseInputs);
 		assert.equal(r.gatePassed, true);
 		assert.ok(r.targetBatteryChargingW > 0);
-	});
-
-	it("computes median from slots", () => {
-		const m = medianCtFromPriceSlots([
-			{ slotStartMs: 0, priceCtPerKwh: 20 },
-			{ slotStartMs: 1, priceCtPerKwh: 30 },
-			{ slotStartMs: 2, priceCtPerKwh: 40 },
-		]);
-		assert.equal(m, 30);
 	});
 });

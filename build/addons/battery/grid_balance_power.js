@@ -272,7 +272,7 @@ function evaluateGridBalanceTick(input) {
         enabled: safety.enabled,
         blockReason,
         priceNowCt: input.safety.priceNowCt,
-        priceLimitCt: input.safety.priceLimitCt,
+        priceMinCt: input.safety.priceMinCt,
         gridImportW: rawGridDeltaW,
     });
     return {
@@ -281,7 +281,7 @@ function evaluateGridBalanceTick(input) {
         ready,
         blockReason,
         currentPriceCt: input.safety.priceNowCt,
-        priceLimitCt: input.safety.priceLimitCt,
+        priceMinCt: input.safety.priceMinCt,
         priceAllowed: safety.priceAllowed,
         authority: safety.authority,
         holdDetected: safety.holdDetected,

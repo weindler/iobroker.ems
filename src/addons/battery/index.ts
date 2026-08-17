@@ -22,7 +22,7 @@ import type { BatteryAction, BatteryDeviceIntent, BatteryOperatingMode } from ".
 import { assembleBatterySnapshot, type BatterySnapshot } from "./diagnostics";
 import { BAT, ensureBatteryArchitectureStates } from "./ensure_states";
 import { ensureBatteryEmsMirrorStates, EMS_MIRROR_BATTERY, EMS_MIRROR_BATTERY_IDS } from "./ems_mirror";
-import { computeGridBalanceTarget, medianCtFromPriceSlots, resolveController } from "./grid_balance";
+import { computeGridBalanceTarget, resolveController } from "./grid_balance";
 import {
 	GRID_BALANCE_EXECUTION_ENABLED,
 	classifyGridBalanceEvConflict,
@@ -43,7 +43,6 @@ import { isRestoreInProgress } from "../../restore/barrier";
 import { WALLBOX_EVCC_STATES } from "../wallbox/ensure_evcc_states";
 import { WALLBOX_RUNTIME_STATES } from "../wallbox/runtime/states";
 import { WALLBOX_EV_FOUNDATION_STATES } from "../wallbox/ev_foundation/ensure_states";
-import { readTibber15MinPriceSlots } from "../../planner/battery_winter_price_inputs";
 import {
 	batteryMappingFromConfig,
 	batteryMappingCommandsForEnsure,
@@ -856,13 +855,6 @@ async function controlTickInner(host: Host): Promise<void> {
 	const capacityWh = (snapshot.capacity.effectiveKwh ?? 0) * 1000;
 	const restKwh = (await readRelNumber(host, EMS_MIRROR_BATTERY.effectivePvRestOfDayKwh)) ?? 0;
 	const snow = await readRelBool(host, EMS_MIRROR_BATTERY.snowCoverSuspected);
-	const priceSlots =
-		config.gridBalance.priceGateEnabled && config.gridBalance.priceMedianFactor > 0
-			? await readTibber15MinPriceSlots(
-					{ ...host, config: host.config, getForeignStateAsync: (id) => host.getForeignStateAsync(id) },
-					new Date(nowMs),
-				)
-			: [];
 	const offset =
 		snapshot.telemetry.socPct != null && snapshot.telemetry.socPct > config.gridBalance.socThresholdPct
 			? config.gridBalance.offsetHighSocW
@@ -887,8 +879,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		mode1Active: false,
 		dailyPlanAuthoritative: false,
 		priceNowCt,
-		priceMedianCt: medianCtFromPriceSlots(priceSlots),
-		priceGate: { enabled: false, maxPriceCtPerKwh: null, medianFactor: 0 },
+		minPriceCtPerKwh: config.gridBalance.minPriceCtPerKwh,
 	});
 	let forecastBlockReason = "";
 	if (forecastProbe.checksFailed.includes("snow_cover_suspected")) forecastBlockReason = "snow_cover_suspected";
@@ -917,8 +908,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		dailyPlanAuthoritative,
 		mode1Active: runtime.ownership.active,
 		priceNowCt,
-		priceLimitCt: config.gridBalance.maxPriceCtPerKwh,
-		priceGateEnabled: config.gridBalance.priceGateEnabled,
+		priceMinCt: config.gridBalance.minPriceCtPerKwh,
 		evConflictKind: evConflict.kind,
 		externalEvAuthority: (evAuthority ?? "").toLowerCase() === "external",
 	};
@@ -1068,7 +1058,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		dailyPlan: dailyPlanContext,
 		decisionSource: runtimeDecisionSource,
 		priceNowCt,
-		priceLimitCt: config.gridBalance.maxPriceCtPerKwh,
+		priceMinCt: config.gridBalance.minPriceCtPerKwh,
 	});
 }
 
@@ -1096,7 +1086,7 @@ interface PersistExtra {
 	dailyPlan: BatteryDailyPlanRuntimeContext;
 	decisionSource: BatteryDecisionSource;
 	priceNowCt: number | null;
-	priceLimitCt: number;
+	priceMinCt: number;
 }
 
 async function persist(host: Host, s: BatterySnapshot, x: PersistExtra): Promise<void> {
@@ -1259,7 +1249,8 @@ async function persist(host: Host, s: BatterySnapshot, x: PersistExtra): Promise
 	await setStateIfChanged(host, BAT.gridBalance.ready, d.ready);
 	await setStateIfChanged(host, BAT.gridBalance.blockReason, d.blockReason);
 	await setStateIfChanged(host, BAT.gridBalance.currentPriceCtKwh, x.priceNowCt);
-	await setStateIfChanged(host, BAT.gridBalance.priceLimitCtKwh, x.priceLimitCt);
+	await setStateIfChanged(host, BAT.gridBalance.priceMinCtKwh, x.priceMinCt);
+	await setStateIfChanged(host, BAT.gridBalance.priceLimitCtKwh, x.priceMinCt);
 	await setStateIfChanged(host, BAT.gridBalance.priceAllowed, d.priceAllowed);
 	await setStateIfChanged(host, BAT.gridBalance.gridPowerW, d.rawGridDeltaW);
 	await setStateIfChanged(host, BAT.gridBalance.rawConsumptionW, d.rawConsumptionW);

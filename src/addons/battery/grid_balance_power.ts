@@ -272,7 +272,7 @@ export type GridBalanceTickDecision = GridBalancePowerSnapshot & {
 	ready: boolean;
 	blockReason: string;
 	currentPriceCt: number | null;
-	priceLimitCt: number;
+	priceMinCt: number;
 	priceAllowed: boolean;
 	authority: GridBalanceAuthority;
 	holdDetected: boolean;
@@ -397,7 +397,7 @@ export function evaluateGridBalanceTick(input: GridBalanceTickInput): GridBalanc
 		enabled: safety.enabled,
 		blockReason,
 		priceNowCt: input.safety.priceNowCt,
-		priceLimitCt: input.safety.priceLimitCt,
+		priceMinCt: input.safety.priceMinCt,
 		gridImportW: rawGridDeltaW,
 	});
 
@@ -407,7 +407,7 @@ export function evaluateGridBalanceTick(input: GridBalanceTickInput): GridBalanc
 		ready,
 		blockReason,
 		currentPriceCt: input.safety.priceNowCt,
-		priceLimitCt: input.safety.priceLimitCt,
+		priceMinCt: input.safety.priceMinCt,
 		priceAllowed: safety.priceAllowed,
 		authority: safety.authority,
 		holdDetected: safety.holdDetected,

@@ -250,6 +250,14 @@ async function readRelBool(host, id) {
     const st = await host.getStateAsync(id);
     return st?.val === true;
 }
+async function readRelOptionalBool(host, id) {
+    const st = await host.getStateAsync(id);
+    if (st?.val === true)
+        return true;
+    if (st?.val === false)
+        return false;
+    return null;
+}
 async function detectForeignOwnershipOnStart(host) {
     const config = (0, config_1.batteryConfigFromAdapter)(host.config);
     if (config.profile !== "sonnen_em")
@@ -472,13 +480,14 @@ async function controlTickInner(host) {
     const emsMirrorIntentActive = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.batteryIntentActive);
     const dailyPlanDriven = deviceIntent.source === "daily_plan";
     const dailyPlanAuthoritative = (0, daily_plan_1.isBatteryDailyPlanAuthoritative)(dailyPlanContext);
-    const [batteryHoldConstraintSt, wallboxBatteryHold, priceNowCt, evccLoadpointMode, evccChargingFlag, evccChargePowerW, evccBatteryMode, evccBatteryBoost, evccSmartCostActive, evAuthority, wallboxEnergySource, wallboxAllocatedGridW, globalModeRaw, addonModeRaw,] = await Promise.all([
+    const [batteryHoldConstraintSt, wallboxBatteryHold, priceNowCt, evccLoadpointMode, evccChargingFlag, evccChargePowerW, evccConnectedFlag, evccBatteryMode, evccBatteryBoost, evccSmartCostActive, evAuthority, wallboxEnergySource, wallboxAllocatedGridW, globalModeRaw, addonModeRaw,] = await Promise.all([
         host.getStateAsync("planner.constraints.battery_hold_active"),
         readRelBool(host, states_1.WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge),
         readRelNumber(host, "live.price.now_ct_per_kwh"),
         readRelString(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.loadpointMode),
         readRelBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.charging),
         readRelNumber(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW),
+        readRelOptionalBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.connected),
         readRelString(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryMode),
         readRelBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryBoost),
         readRelBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.smartCostActive),
@@ -490,11 +499,12 @@ async function controlTickInner(host) {
     ]);
     const globalLive = (0, execution_mode_1.parseGlobalMode)(globalModeRaw?.val) === "live";
     const addonLive = (0, execution_mode_1.parseAddonMode)(addonModeRaw?.val) === "live";
+    const evChargeHold = evccConnectedFlag === false ? false : wallboxBatteryHold;
     const holdSignals = (0, hold_freshness_1.resolveGridBalanceHoldSignals)({
         nowMs,
         constraintHoldState: batteryHoldConstraintSt,
         deviceIntentHold: deviceIntent.action === "hold",
-        batteryHoldForEvCharge: wallboxBatteryHold,
+        batteryHoldForEvCharge: evChargeHold,
         evccBatteryMode,
     });
     const evccBatteryModeHold = holdSignals.evccBatteryModeHold;
@@ -513,6 +523,7 @@ async function controlTickInner(host) {
         tibberRewardsActive: evccSmartCostActive,
         wallboxEnergySource,
         wallboxAllocatedGridW,
+        vehicleConnected: evccConnectedFlag,
     });
     const gridBalanceSuppressed = holdActive ||
         holdPlanned ||
@@ -781,6 +792,7 @@ async function controlTickInner(host) {
         charging: evccChargingFlag,
         chargePowerW: evPower.val ?? evccChargePowerW,
         chargePowerAgeMs: evPower.ageMs,
+        vehicleConnected: evccConnectedFlag,
         deadbandW: config.gridBalance.deadbandW,
         offsetW: offset,
         configuredMaxW: config.gridBalance.maxTargetW,

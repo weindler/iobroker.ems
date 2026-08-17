@@ -524,9 +524,9 @@ function resolveVehicleNeedKwh(input: UnifiedDayPlannerInput): number | null {
 }
 
 function wallboxImmediate(wb: NonNullable<UnifiedDayPlannerInput["wallbox"]>): boolean {
-	if (wb.batteryHoldRequested === true) return true;
-	/** Nur Schnell/immediate → Batterie-Hold; min+PV ist PV-orientiert. */
-	return wb.evccChargeMode === "now";
+	if (wb.connectedNow !== true) return false;
+	/** Nur expliziter Hold-Request (Runtime-Authority), nie leftover EVCC now. */
+	return wb.batteryHoldRequested === true;
 }
 
 function applyExternalEvReservations(

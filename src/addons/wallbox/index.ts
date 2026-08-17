@@ -404,6 +404,9 @@ async function publishWallboxBatteryHoldRuntime(
 				: null;
 
 	const hold = resolveWallboxBatteryHold({
+		vehicleConnected: snap.connected.status === "valid" ? snap.connected.value : null,
+		charging: snap.charging.status === "valid" ? snap.charging.value : null,
+		chargePowerW: snap.charge_power_w.status === "valid" ? snap.charge_power_w.value : null,
 		batteryBoost: snap.battery_boost.status === "valid" ? snap.battery_boost.value : null,
 		loadpointMode: snap.loadpoint_mode.status === "valid" ? snap.loadpoint_mode.value : null,
 		externalVehicleChargeRaw:
@@ -417,7 +420,6 @@ async function publishWallboxBatteryHoldRuntime(
 
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge, hold.hold);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.batteryHoldReasonDe, hold.reasonDe);
-	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.chargeBoostActive, hold.boostActive);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.externalVehicleChargeActive, hold.externalActive);
 	await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.tibberGridRewardsActive, hold.tibberRewardsActive);
 }

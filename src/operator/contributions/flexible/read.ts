@@ -448,6 +448,10 @@ export async function collectFlexibleContributions(
 		externalSmartPlanJson,
 		externalPlanQuality,
 		externalMinSocPct,
+		evccChargePowerW,
+		evccLoadpointMode,
+		evccBatteryBoost,
+		tibberRewardsRuntime,
 	] = await Promise.all([
 		readNum(host, WALLBOX_EV_FOUNDATION_STATES.energyToTargetKwh),
 		readNum(host, WALLBOX_EV_FOUNDATION_STATES.energyToDepartureMinimumKwh),
@@ -456,6 +460,10 @@ export async function collectFlexibleContributions(
 		readStr(host, WALLBOX_EV_FOUNDATION_STATES.externalSmartPlanJson),
 		readStr(host, WALLBOX_EV_FOUNDATION_STATES.externalSourceQuality),
 		readNum(host, WALLBOX_EV_FOUNDATION_STATES.externalMinSocPct),
+		readNum(host, WALLBOX_EVCC_STATES.chargePowerW),
+		readStr(host, WALLBOX_EVCC_STATES.loadpointMode),
+		readBool(host, WALLBOX_EVCC_STATES.batteryBoost),
+		readBool(host, WALLBOX_RUNTIME_STATES.tibberGridRewardsActive),
 	]);
 
 	let remainingEnergyKwh: number | null =
@@ -630,6 +638,10 @@ export async function collectFlexibleContributions(
 			takeoverSeverity,
 			externalSmartPlanJson,
 			externalPlanQuality,
+			loadpointMode: evccLoadpointMode,
+			batteryBoost: evccBatteryBoost,
+			chargePowerW: evccChargePowerW,
+			tibberGridRewardsActive: tibberRewardsRuntime,
 		},
 		immersion: {
 			now,

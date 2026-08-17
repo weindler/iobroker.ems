@@ -42,6 +42,7 @@ export function adjustConsumptionForEv(input: {
 	chargePowerW: number | null;
 	chargePowerAgeMs: number | null;
 	maxAgeMs?: number;
+	vehicleConnected?: boolean | null;
 }): EvHouseLoadAdjustment {
 	const consumptionW = Number.isFinite(input.consumptionW) ? Math.max(0, input.consumptionW) : 0;
 	const power = input.chargePowerW != null && Number.isFinite(input.chargePowerW) ? input.chargePowerW : null;
@@ -50,7 +51,9 @@ export function adjustConsumptionForEv(input: {
 		input.chargePowerAgeMs != null && Number.isFinite(input.chargePowerAgeMs) && input.chargePowerAgeMs >= 0 &&
 		input.chargePowerAgeMs <= maxAge;
 	const powerPositive = power != null && power > 0;
-	const evActive = input.charging === true || (power != null && power >= GRID_BALANCE_EV_ACTIVE_MIN_W);
+	const vehiclePresent = input.vehicleConnected !== false;
+	const evActive =
+		vehiclePresent && (input.charging === true || (power != null && power >= GRID_BALANCE_EV_ACTIVE_MIN_W));
 	if (!evActive) {
 		return {
 			evActive: false,
@@ -228,6 +231,8 @@ export type GridBalanceTickInput = {
 	charging: boolean;
 	chargePowerW: number | null;
 	chargePowerAgeMs: number | null;
+	/** false → leftover EVCC charging/power is not house-load EV subtraction. */
+	vehicleConnected?: boolean | null;
 	deadbandW: number;
 	offsetW: number;
 	configuredMaxW: number;
@@ -286,6 +291,7 @@ export function evaluateGridBalanceTick(input: GridBalanceTickInput): GridBalanc
 		charging: input.charging,
 		chargePowerW: input.chargePowerW,
 		chargePowerAgeMs: input.chargePowerAgeMs,
+		vehicleConnected: input.vehicleConnected,
 	});
 	const pvPowerW = Number.isFinite(input.pvAcPowerW) ? Math.max(0, input.pvAcPowerW) : 0;
 	const rawGridDeltaW = roundW(ev.adjustedConsumptionW - pvPowerW);

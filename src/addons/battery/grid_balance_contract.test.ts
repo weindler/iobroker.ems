@@ -169,6 +169,23 @@ describe("grid balance safety contract v0.1.284", () => {
 		assert.equal(r.writeAllowed, false);
 	});
 
+	it("L11b: disconnected leftover now is not an EV conflict", () => {
+		const leftover = classifyGridBalanceEvConflict({
+			loadpointMode: "now",
+			charging: false,
+			chargePowerW: 0,
+			wallboxHold: true,
+			batteryBoost: true,
+			externalAuthority: false,
+			tibberRewardsActive: false,
+			wallboxEnergySource: "none",
+			wallboxAllocatedGridW: 0,
+			vehicleConnected: false,
+		});
+		assert.equal(leftover.conflict, false);
+		assert.equal(leftover.kind, "");
+	});
+
 	it("L12: planned battery action has priority", () => {
 		const r = evaluateGridBalanceSafety(baseSafety({ plannedBatteryAction: true }));
 		assert.equal(r.blockReason, "planned_battery_action");

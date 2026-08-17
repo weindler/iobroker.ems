@@ -154,6 +154,7 @@ build/operator/forecast/build.test.js
 build/operator/time.test.js
 build/operator/vis/price_timeline.test.js
 build/operator/daily_plan/daily_plan.test.js
+build/operator/decision_chain.integration.test.js
 build/operator/daily_plan/briefing.test.js
 build/operator/daily_plan/live_surplus.test.js
 build/operator/daily_plan/beta_befund_002.test.js

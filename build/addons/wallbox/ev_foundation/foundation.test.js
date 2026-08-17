@@ -278,6 +278,8 @@ async function modelFrom(admin, foreign) {
             "external_unavailable",
         ]);
         strict_1.default.equal((0, model_1.derivePreparedEvModuleState)("now"), "planned_now");
+        strict_1.default.equal((0, model_1.derivePreparedEvModuleState)("now", true), "planned_now");
+        strict_1.default.equal((0, model_1.derivePreparedEvModuleState)("now", false), "idle");
         strict_1.default.equal((0, model_1.derivePreparedEvModuleState)("off"), "idle");
         strict_1.default.ok(!["external", "ems_takeover", "manual_override"].includes((0, model_1.derivePreparedEvModuleState)("now")));
     });

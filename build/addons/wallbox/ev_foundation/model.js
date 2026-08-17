@@ -18,7 +18,9 @@ function fieldQuality(field) {
  * Read-only mapping of EVCC loadpoint mode → prepared EV module state.
  * Does not implement transitions into external / ems_takeover / manual_override.
  */
-function derivePreparedEvModuleState(evccMode) {
+function derivePreparedEvModuleState(evccMode, vehicleConnected) {
+    if (vehicleConnected === false)
+        return "idle";
     const mode = (evccMode ?? "").trim().toLowerCase();
     if (mode === "pv" || mode === "solar")
         return "pv";
@@ -92,8 +94,8 @@ function buildEvModelV1(input) {
         externalSourceHealthy: external?.externalSourceHealthy ?? true,
         manualOverrideActive: null,
         emsTakeoverActive: false,
-        preparedEvState: derivePreparedEvModuleState(evccMode),
-        recommendedEvState: derivePreparedEvModuleState(evccMode),
+        preparedEvState: derivePreparedEvModuleState(evccMode, pick(snap.connected)),
+        recommendedEvState: derivePreparedEvModuleState(evccMode, pick(snap.connected)),
         externalAuthorityState: "unknown",
         takeoverSeverity: "none",
         takeoverRecommended: false,

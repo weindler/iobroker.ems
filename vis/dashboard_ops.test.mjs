@@ -249,6 +249,24 @@ describe("VIS battery / grid / GB presentation", () => {
 		);
 	});
 
+	it("does not invent EV-Schnellladen from leftover now/hold without a connected vehicle", () => {
+		assert.equal(
+			ops.visEmsAction(
+				snap({ vehicleConnected: false, batteryHoldForEv: true, tibber: true, externalEv: true }),
+			),
+			"keine",
+		);
+		assert.equal(ops.visEmsAction(snap({ evccBatteryMode: "hold" })), "keine");
+		assert.equal(
+			ops.visEmsAction(snap({ vehicleConnected: true, batteryHoldForEv: true })),
+			"EV-Schnellladen",
+		);
+		assert.equal(
+			ops.visTargetedHold(snap({ vehicleConnected: false, batteryHoldForEv: true, evccBatteryMode: "normal" })),
+			false,
+		);
+	});
+
 	it("maps actual charge / discharge / idle", () => {
 		assert.equal(
 			ops.visBatteryMotion(

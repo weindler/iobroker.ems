@@ -27,7 +27,8 @@ function adjustConsumptionForEv(input) {
     const ageOk = input.chargePowerAgeMs != null && Number.isFinite(input.chargePowerAgeMs) && input.chargePowerAgeMs >= 0 &&
         input.chargePowerAgeMs <= maxAge;
     const powerPositive = power != null && power > 0;
-    const evActive = input.charging === true || (power != null && power >= exports.GRID_BALANCE_EV_ACTIVE_MIN_W);
+    const vehiclePresent = input.vehicleConnected !== false;
+    const evActive = vehiclePresent && (input.charging === true || (power != null && power >= exports.GRID_BALANCE_EV_ACTIVE_MIN_W));
     if (!evActive) {
         return {
             evActive: false,
@@ -153,6 +154,7 @@ function evaluateGridBalanceTick(input) {
         charging: input.charging,
         chargePowerW: input.chargePowerW,
         chargePowerAgeMs: input.chargePowerAgeMs,
+        vehicleConnected: input.vehicleConnected,
     });
     const pvPowerW = Number.isFinite(input.pvAcPowerW) ? Math.max(0, input.pvAcPowerW) : 0;
     const rawGridDeltaW = roundW(ev.adjustedConsumptionW - pvPowerW);

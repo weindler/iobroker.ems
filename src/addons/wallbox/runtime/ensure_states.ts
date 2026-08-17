@@ -121,7 +121,6 @@ export async function ensureWallboxRuntimeStates(host: StateHost): Promise<void>
 			false,
 		),
 		strState(WALLBOX_RUNTIME_STATES.batteryHoldReasonDe, "Wallbox Batterie-Hold Begründung (DE)"),
-		boolState(WALLBOX_RUNTIME_STATES.chargeBoostActive, "Wallbox Lade-Boost aktiv", false),
 		boolState(
 			WALLBOX_RUNTIME_STATES.externalVehicleChargeActive,
 			"Wallbox externes Fahrzeugladen aktiv",

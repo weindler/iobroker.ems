@@ -1,11 +1,24 @@
 /**
- * Hausbatterie-Hold für Wallbox/EV: nur bei Boost/Fast oder externem Fahrzeugladen
- * (oder explizit aktivem Tibber Grid Rewards Signal) — nicht bei MinPV/PV.
+ * Einzige Authority: Hausbatterie-Hold wegen einer realen EV-Aktion.
+ *
+ * Kein nachgelagerter Pfad (Planner-Constraints, Grid-Balance, VIS) darf aus
+ * EVCC-Rohsignalen (z. B. mode=now bei getrenntem Fahrzeug) eine EV-Aktion
+ * oder einen Batterie-Hold rekonstruieren.
+ *
+ * Hold nur wenn das Fahrzeug verbunden ist UND eine nachweisbare EV-Ladung
+ * bzw. eine explizite externe Hoheit (Tibber Rewards) vorliegt.
+ * Leftover EVCC now / Boost ohne Verbindung oder ohne Ladung ist kein Hold.
  */
 
+export const EV_CHARGE_ACTION_MIN_W = 50;
+
 export interface WallboxBatteryHoldInput {
+	/** EVCC/Runtime: Fahrzeug an der Wallbox. false → niemals Hold/EV-Aktion. */
+	vehicleConnected: boolean | null;
+	charging: boolean | null;
+	chargePowerW: number | null;
 	batteryBoost: boolean | null;
-	/** Loadpoint-Modus, z. B. "now" / "pv" / "minpv" — "now" gilt als Boost. */
+	/** Loadpoint-Modus, z. B. "now" / "pv" / "minpv". */
 	loadpointMode: string | null;
 	/** HA Ford `elvehcharging` o. ä. — string oder bool. */
 	externalVehicleChargeRaw: string | boolean | null;
@@ -19,6 +32,21 @@ export interface WallboxBatteryHoldResult {
 	externalActive: boolean;
 	tibberRewardsActive: boolean;
 	reasonDe: string;
+}
+
+export function isEvVehiclePresent(connected: boolean | null | undefined): boolean {
+	return connected === true;
+}
+
+export function isEvActuallyCharging(input: {
+	charging?: boolean | null;
+	chargePowerW?: number | null;
+	minW?: number;
+}): boolean {
+	if (input.charging === true) return true;
+	const p = input.chargePowerW;
+	const min = input.minW ?? EV_CHARGE_ACTION_MIN_W;
+	return p != null && Number.isFinite(p) && p >= min;
 }
 
 /** Interpretiert HA-/Fremd-Ladestatus konservativ (unbekannt → nicht aktiv). */
@@ -49,24 +77,46 @@ function isPvSurplusLoadpointMode(mode: string): boolean {
 	return mode === "pv" || mode === "minpv" || mode === "min+pv" || mode === "solar";
 }
 
+function normalizeLoadpointMode(raw: string | null | undefined): string {
+	return String(raw ?? "")
+		.trim()
+		.toLowerCase()
+		.replace(/\s+/g, "");
+}
+
 export function resolveWallboxBatteryHold(input: WallboxBatteryHoldInput): WallboxBatteryHoldResult {
-	const mode = (input.loadpointMode ?? "").trim().toLowerCase();
-	const boostActive = input.batteryBoost === true || mode === "now";
-	// External nur wenn Fahrzeug lädt UND Mode das nicht als MinPV/PV erklärt (sonst False-Positive).
-	// Tibber-während-MinPV braucht das explizite Rewards-Flag (vorbereitet).
+	const none = (reasonDe: string): WallboxBatteryHoldResult => ({
+		hold: false,
+		boostActive: false,
+		externalActive: false,
+		tibberRewardsActive: false,
+		reasonDe,
+	});
+
+	if (!isEvVehiclePresent(input.vehicleConnected)) {
+		return none("Kein Fahrzeug verbunden — kein EV-Batterie-Hold (EVCC-Modus allein ist keine EV-Aktion).");
+	}
+
+	const mode = normalizeLoadpointMode(input.loadpointMode);
+	const actuallyCharging = isEvActuallyCharging({
+		charging: input.charging,
+		chargePowerW: input.chargePowerW,
+	});
+	const boostMode = input.batteryBoost === true || mode === "now";
+	const boostActive = boostMode && actuallyCharging;
 	const externalRawActive = interpretExternalVehicleCharge(input.externalVehicleChargeRaw);
-	const externalActive = externalRawActive && !isPvSurplusLoadpointMode(mode);
+	const externalActive = externalRawActive && actuallyCharging && !isPvSurplusLoadpointMode(mode);
 	const tibberRewardsActive = input.tibberGridRewardsActive === true;
 	const hold = boostActive || externalActive || tibberRewardsActive;
 
 	const parts: string[] = [];
 	if (boostActive) {
 		if (input.batteryBoost === true && mode === "now") {
-			parts.push("EVCC Boost/Sofortladen (batteryBoost + mode=now)");
+			parts.push("EVCC Boost/Sofortladen (batteryBoost + mode=now, Fahrzeug lädt)");
 		} else if (input.batteryBoost === true) {
-			parts.push("EVCC batteryBoost aktiv");
+			parts.push("EVCC batteryBoost aktiv (Fahrzeug lädt)");
 		} else {
-			parts.push("EVCC Loadpoint-Modus now (Sofortladen)");
+			parts.push("EVCC Loadpoint-Modus now bei verbundener Ladung");
 		}
 	}
 	if (externalActive) parts.push("externes Fahrzeugladen aktiv");
@@ -79,6 +129,6 @@ export function resolveWallboxBatteryHold(input: WallboxBatteryHoldInput): Wallb
 		tibberRewardsActive,
 		reasonDe: hold
 			? `Hausbatterie-Hold für EV-Laden: ${parts.join(", ")}.`
-			: "Kein Wallbox-Batterie-Hold (MinPV/PV oder kein Boost/externes Laden).",
+			: "Kein Wallbox-Batterie-Hold (kein verbundenes Laden / keine externe Hoheit).",
 	};
 }

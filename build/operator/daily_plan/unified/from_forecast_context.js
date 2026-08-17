@@ -18,6 +18,7 @@ const vehicle_availability_1 = require("./vehicle_availability");
 const ev_energy_1 = require("./ev_energy");
 const live_surplus_1 = require("../live_surplus");
 const thermal_cooling_rate_1 = require("../../contributions/flexible/thermal_cooling_rate");
+const charge_hold_1 = require("../../../addons/wallbox/charge_hold");
 function num(d, key) {
     if (!d)
         return null;
@@ -521,6 +522,16 @@ function mapWallbox(wbC, wbD, nowIso, slots, _currentSlotStart, ctx) {
     draft.managementMode = (0, ev_energy_1.evManagementFromWallbox)(draft);
     const classes = (0, ev_energy_1.resolveEvEnergyClasses)(draft);
     draft.energyGoalHard = classes.energyGoalHard;
+    const observedHold = (0, charge_hold_1.resolveWallboxBatteryHold)({
+        vehicleConnected: connectedNow,
+        charging: bool(wbD, "charging"),
+        chargePowerW: num(wbD, "chargePowerW"),
+        batteryBoost: bool(wbD, "batteryBoost"),
+        loadpointMode: str(wbD, "loadpointMode"),
+        externalVehicleChargeRaw: null,
+        tibberGridRewardsActive: bool(wbD, "tibberGridRewardsActive"),
+    });
+    draft.batteryHoldRequested = observedHold.hold;
     return draft;
 }
 function parseExplicitWindows(wbD) {

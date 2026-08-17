@@ -306,7 +306,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     const evccCfg = (0, evcc_config_1.wallboxEvccTelemetryConfigFromAdapter)(config);
     const evccConfigured = evccCfg.enabledStateId.trim().length > 0;
     const evFoundation = (0, config_2.evFoundationConfigFromAdapter)(config);
-    const [energyToTargetKwh, energyToDepartureMinimumKwh, externalAuthorityState, takeoverSeverity, externalSmartPlanJson, externalPlanQuality, externalMinSocPct,] = await Promise.all([
+    const [energyToTargetKwh, energyToDepartureMinimumKwh, externalAuthorityState, takeoverSeverity, externalSmartPlanJson, externalPlanQuality, externalMinSocPct, evccChargePowerW, evccLoadpointMode, evccBatteryBoost, tibberRewardsRuntime,] = await Promise.all([
         readNum(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.energyToTargetKwh),
         readNum(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.energyToDepartureMinimumKwh),
         readStr(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.externalAuthorityState),
@@ -314,6 +314,10 @@ async function collectFlexibleContributions(host, now, gridForecast) {
         readStr(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.externalSmartPlanJson),
         readStr(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.externalSourceQuality),
         readNum(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.externalMinSocPct),
+        readNum(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW),
+        readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.loadpointMode),
+        readBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryBoost),
+        readBool(host, states_1.WALLBOX_RUNTIME_STATES.tibberGridRewardsActive),
     ]);
     let remainingEnergyKwh = chargeRemainingKwh !== null && Number.isFinite(chargeRemainingKwh)
         ? Math.max(0, chargeRemainingKwh)
@@ -468,6 +472,10 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             takeoverSeverity,
             externalSmartPlanJson,
             externalPlanQuality,
+            loadpointMode: evccLoadpointMode,
+            batteryBoost: evccBatteryBoost,
+            chargePowerW: evccChargePowerW,
+            tibberGridRewardsActive: tibberRewardsRuntime,
         },
         immersion: {
             now,

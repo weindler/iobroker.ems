@@ -325,6 +325,11 @@ async function runDailyPlanTick(host, forecastPlan) {
     const batteryBoostRaw = await host.getStateAsync(ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryBoost);
     const batteryBoost = batteryBoostRaw?.val === true ? true : batteryBoostRaw?.val === false ? false : null;
     const loadpointMode = await readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.loadpointMode);
+    const evccConnectedRaw = await host.getStateAsync(ensure_evcc_states_1.WALLBOX_EVCC_STATES.connected);
+    const evccConnectedNow = evccConnectedRaw?.val === true ? true : evccConnectedRaw?.val === false ? false : null;
+    const evccChargingRaw = await host.getStateAsync(ensure_evcc_states_1.WALLBOX_EVCC_STATES.charging);
+    const evccChargingNow = evccChargingRaw?.val === true ? true : evccChargingRaw?.val === false ? false : null;
+    const evccChargePowerNow = (0, state_util_1.asNum)((await host.getStateAsync(ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW))?.val);
     const holdSignals = (0, evcc_config_1.wallboxHoldSignalConfigFromAdapter)(host.config);
     let externalVehicleChargeRaw = null;
     if (holdSignals.externalVehicleChargeStateId) {
@@ -351,6 +356,9 @@ async function runDailyPlanTick(host, forecastPlan) {
         }
     }
     const wallboxHold = (0, charge_hold_1.resolveWallboxBatteryHold)({
+        vehicleConnected: evccConnectedNow,
+        charging: evccChargingNow,
+        chargePowerW: evccChargePowerNow,
         batteryBoost,
         loadpointMode,
         externalVehicleChargeRaw,
@@ -359,7 +367,6 @@ async function runDailyPlanTick(host, forecastPlan) {
     try {
         await (0, state_write_1.setStateIfChanged)(host, states_2.WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge, wallboxHold.hold);
         await (0, state_write_1.setStateIfChanged)(host, states_2.WALLBOX_RUNTIME_STATES.batteryHoldReasonDe, wallboxHold.reasonDe);
-        await (0, state_write_1.setStateIfChanged)(host, states_2.WALLBOX_RUNTIME_STATES.chargeBoostActive, wallboxHold.boostActive);
         await (0, state_write_1.setStateIfChanged)(host, states_2.WALLBOX_RUNTIME_STATES.externalVehicleChargeActive, wallboxHold.externalActive);
         await (0, state_write_1.setStateIfChanged)(host, states_2.WALLBOX_RUNTIME_STATES.tibberGridRewardsActive, wallboxHold.tibberRewardsActive);
     }

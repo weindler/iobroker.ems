@@ -136,6 +136,7 @@ async function tickEvExecution(host, input) {
         decisionSource: input.planDecision.decisionSource,
         planValid: input.planDecision.planValid,
         useDailyPlan: input.planDecision.useDailyPlan,
+        vehicleConnected: input.planDecision.connected,
     });
     const snapMode = input.snap.loadpoint_mode.status === "valid" ? input.snap.loadpoint_mode.value : null;
     const fb = await readModeFeedback(host, contract.modeFeedbackStateId, snapMode);

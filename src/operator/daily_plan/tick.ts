@@ -354,6 +354,13 @@ export async function runDailyPlanTick(
 	const batteryBoost =
 		batteryBoostRaw?.val === true ? true : batteryBoostRaw?.val === false ? false : null;
 	const loadpointMode = await readStr(host, WALLBOX_EVCC_STATES.loadpointMode);
+	const evccConnectedRaw = await host.getStateAsync(WALLBOX_EVCC_STATES.connected);
+	const evccConnectedNow =
+		evccConnectedRaw?.val === true ? true : evccConnectedRaw?.val === false ? false : null;
+	const evccChargingRaw = await host.getStateAsync(WALLBOX_EVCC_STATES.charging);
+	const evccChargingNow =
+		evccChargingRaw?.val === true ? true : evccChargingRaw?.val === false ? false : null;
+	const evccChargePowerNow = asNum((await host.getStateAsync(WALLBOX_EVCC_STATES.chargePowerW))?.val);
 	const holdSignals = wallboxHoldSignalConfigFromAdapter(host.config);
 	let externalVehicleChargeRaw: string | boolean | null = null;
 	if (holdSignals.externalVehicleChargeStateId) {
@@ -378,6 +385,9 @@ export async function runDailyPlanTick(
 		}
 	}
 	const wallboxHold = resolveWallboxBatteryHold({
+		vehicleConnected: evccConnectedNow,
+		charging: evccChargingNow,
+		chargePowerW: evccChargePowerNow,
 		batteryBoost,
 		loadpointMode,
 		externalVehicleChargeRaw,
@@ -386,7 +396,6 @@ export async function runDailyPlanTick(
 	try {
 		await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge, wallboxHold.hold);
 		await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.batteryHoldReasonDe, wallboxHold.reasonDe);
-		await setStateIfChanged(host, WALLBOX_RUNTIME_STATES.chargeBoostActive, wallboxHold.boostActive);
 		await setStateIfChanged(
 			host,
 			WALLBOX_RUNTIME_STATES.externalVehicleChargeActive,

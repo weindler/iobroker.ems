@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.291",
+		"version": "0.1.292",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.292": {
+				"en": "One decision chain: leftover EVCC now with a disconnected vehicle no longer invents EV fast-charge, battery Hold, or grid-balance EV conflict. Planner/Daily Plan remains the device authority; Hold is only observed real charging (or Tibber Rewards). VIS EV-Schnellladen follows that Hold, not EVCC battery_mode. Removed unused wallbox.runtime.charge_boost_active. Productive GB/EV Dauerbetrieb stay off.",
+				"de": "Eine Entscheidungskette: Übrig gebliebenes EVCC now bei getrenntem Fahrzeug erzeugt kein EV-Schnellladen, keinen Batterie-Hold und keinen Netzausgleich-EV-Konflikt. Planner/Daily Plan bleibt Geräte-Authority; Hold nur bei nachweisbarer Ladung (oder Tibber Rewards). VIS EV-Schnellladen folgt diesem Hold, nicht EVCC battery_mode. Ungenutzter State wallbox.runtime.charge_boost_active entfernt. Produktiver GB-/EV-Dauerbetrieb bleibt aus."
+			},
 			"0.1.291": {
 				"en": "Grid-balance Hold: EVCC battery_discharge_control=true alone is no longer treated as battery Hold. hold_detected and planner.constraints.battery_hold_active follow real Hold signals (battery_mode hold/holdcharge, EV-charge hold, DeviceIntent hold). Productive GB/EV Dauerbetrieb stay off.",
 				"de": "Netzausgleich-Hold: EVCC battery_discharge_control=true allein gilt nicht mehr als Batterie-Hold. hold_detected und planner.constraints.battery_hold_active folgen echten Hold-Signalen (battery_mode hold/holdcharge, EV-Lade-Hold, DeviceIntent hold). Produktiver GB-/EV-Dauerbetrieb bleibt aus."

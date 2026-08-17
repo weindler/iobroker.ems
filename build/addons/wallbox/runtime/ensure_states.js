@@ -112,7 +112,6 @@ async function ensureWallboxRuntimeStates(host) {
         strState(states_1.WALLBOX_RUNTIME_STATES.detailJson, "Wallbox Detail-Diagnose (JSON, für Support-Paket)", "{}"),
         boolState(states_1.WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge, "Wallbox Hausbatterie-Hold für EV-Laden", false),
         strState(states_1.WALLBOX_RUNTIME_STATES.batteryHoldReasonDe, "Wallbox Batterie-Hold Begründung (DE)"),
-        boolState(states_1.WALLBOX_RUNTIME_STATES.chargeBoostActive, "Wallbox Lade-Boost aktiv", false),
         boolState(states_1.WALLBOX_RUNTIME_STATES.externalVehicleChargeActive, "Wallbox externes Fahrzeugladen aktiv", false),
         boolState(states_1.WALLBOX_RUNTIME_STATES.tibberGridRewardsActive, "Wallbox Tibber Grid Rewards aktiv", false),
     ];

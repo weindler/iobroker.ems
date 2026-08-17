@@ -352,10 +352,10 @@ function resolveVehicleNeedKwh(input) {
     return (0, ev_energy_1.totalEvAcNeedKwh)((0, ev_energy_1.resolveEvEnergyClasses)(wb));
 }
 function wallboxImmediate(wb) {
-    if (wb.batteryHoldRequested === true)
-        return true;
-    /** Nur Schnell/immediate → Batterie-Hold; min+PV ist PV-orientiert. */
-    return wb.evccChargeMode === "now";
+    if (wb.connectedNow !== true)
+        return false;
+    /** Nur expliziter Hold-Request (Runtime-Authority), nie leftover EVCC now. */
+    return wb.batteryHoldRequested === true;
 }
 function applyExternalEvReservations(input, slots, reasonCodes) {
     const wb = input.wallbox;

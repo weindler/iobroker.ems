@@ -297,9 +297,8 @@ export function buildAddonStrategicPlanSnapshot(input: {
 }): AddonStrategicPlanSnapshot {
 	const bat = input.plannerInput.battery;
 	const wb = input.plannerInput.wallbox;
-	/** Gleiche Hold-Semantik wie Score-Allocator (kein neuer Write-Pfad). */
-	const batteryHold =
-		wb?.batteryHoldRequested === true || wb?.evccChargeMode === "now";
+	/** Gleiche Hold-Semantik wie Score-Allocator: nur expliziter Hold bei verbundenem Fahrzeug. */
+	const batteryHold = wb?.connectedNow === true && wb?.batteryHoldRequested === true;
 
 	const hasHardFuture = (wb?.presenceWindows ?? []).some(
 		(w) =>

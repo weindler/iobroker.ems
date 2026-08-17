@@ -22,6 +22,7 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.withGridImportExplain = exports.evaluateGridBalanceSafety = exports.formatGridBalanceExplain = exports.classifyGridBalanceEvConflict = exports.normalizeLoadpointMode = exports.parseGridBalanceMaxPriceCt = exports.parseGridBalanceMinPriceCt = exports.GRID_BALANCE_MAX_PRICE_DEFAULT_CT = exports.GRID_BALANCE_MIN_PRICE_MAX_CT = exports.GRID_BALANCE_MIN_PRICE_MIN_CT = exports.GRID_BALANCE_MIN_PRICE_DEFAULT_CT = exports.GRID_BALANCE_EXECUTION_ENABLED = void 0;
+const charge_hold_1 = require("../wallbox/charge_hold");
 exports.GRID_BALANCE_EXECUTION_ENABLED = false;
 exports.GRID_BALANCE_MIN_PRICE_DEFAULT_CT = 30;
 exports.GRID_BALANCE_MIN_PRICE_MIN_CT = 0;
@@ -52,11 +53,18 @@ function normalizeLoadpointMode(raw) {
 }
 exports.normalizeLoadpointMode = normalizeLoadpointMode;
 function classifyGridBalanceEvConflict(input) {
+    if (input.vehicleConnected === false) {
+        return { conflict: false, kind: "" };
+    }
     if (input.externalAuthority || input.tibberRewardsActive) {
         return { conflict: true, kind: "ev_external" };
     }
+    const actuallyCharging = (0, charge_hold_1.isEvActuallyCharging)({
+        charging: input.charging,
+        chargePowerW: input.chargePowerW,
+    });
     const mode = normalizeLoadpointMode(input.loadpointMode);
-    if (input.batteryBoost || mode === "now" || input.wallboxHold) {
+    if (input.wallboxHold || (actuallyCharging && (input.batteryBoost || mode === "now"))) {
         return { conflict: true, kind: "ev_now" };
     }
     const energy = String(input.wallboxEnergySource ?? "")

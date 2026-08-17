@@ -32,6 +32,7 @@ import {
 } from "./ev_energy";
 import { isLiveNowTelemetryUsable } from "../live_surplus";
 import { effectiveCoolingRateCPerH } from "../../contributions/flexible/thermal_cooling_rate";
+import { resolveWallboxBatteryHold } from "../../../addons/wallbox/charge_hold";
 
 function num(d: Record<string, unknown> | null | undefined, key: string): number | null {
 	if (!d) return null;
@@ -672,6 +673,16 @@ function mapWallbox(
 	draft.managementMode = evManagementFromWallbox(draft);
 	const classes = resolveEvEnergyClasses(draft);
 	draft.energyGoalHard = classes.energyGoalHard;
+	const observedHold = resolveWallboxBatteryHold({
+		vehicleConnected: connectedNow,
+		charging: bool(wbD, "charging"),
+		chargePowerW: num(wbD, "chargePowerW"),
+		batteryBoost: bool(wbD, "batteryBoost"),
+		loadpointMode: str(wbD, "loadpointMode"),
+		externalVehicleChargeRaw: null,
+		tibberGridRewardsActive: bool(wbD, "tibberGridRewardsActive"),
+	});
+	draft.batteryHoldRequested = observedHold.hold;
 	return draft;
 }
 

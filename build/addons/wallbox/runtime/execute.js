@@ -7,6 +7,7 @@ const feedback_1 = require("./feedback");
 const feedback_config_1 = require("./feedback_config");
 const barrier_1 = require("../../../restore/barrier");
 const device_write_1 = require("../../../device_write");
+const write_allowlist_1 = require("../ev_foundation/write_allowlist");
 /**
  * Release-Freigabe für reale Wallbox-/EVCC-Writes — Master-Kill-Switch.
  * v0.1.176: kontrolliert geöffnet, nachdem echte Writes, Feedback-Loop und
@@ -175,13 +176,18 @@ async function runWallboxLiveFoundation(host, input) {
     });
     let writeResult = null;
     if (phase === "live") {
-        writeResult = await executeWallboxWrite(host, {
-            candidate,
-            writePlan,
-            phase,
-            liveRequested: input.liveRequested,
-            faultActive: input.faultActive,
-        });
+        if (write_allowlist_1.EV_EXECUTION_PHASE5_ENABLED) {
+            writeResult = blockedResult("ev_execution_owns_writes");
+        }
+        else {
+            writeResult = await executeWallboxWrite(host, {
+                candidate,
+                writePlan,
+                phase,
+                liveRequested: input.liveRequested,
+                faultActive: input.faultActive,
+            });
+        }
     }
     return {
         phase,

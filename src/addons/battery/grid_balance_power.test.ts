@@ -179,6 +179,31 @@ describe("grid balance live hardening v0.1.289", () => {
 		assert.equal(d.writeKind, "discharge");
 	});
 
+	it("L8b: disconnected leftover charging/power is not house-load EV", () => {
+		const ev = adjustConsumptionForEv({
+			consumptionW: 4000,
+			charging: true,
+			chargePowerW: 3500,
+			chargePowerAgeMs: 2000,
+			vehicleConnected: false,
+		});
+		assert.equal(ev.evActive, false);
+		assert.equal(ev.adjustedConsumptionW, 4000);
+		assert.equal(ev.blockReason, "");
+		const d = evaluateGridBalanceTick(
+			tick({
+				consumptionW: 4000,
+				pvAcPowerW: 0,
+				charging: true,
+				chargePowerW: 3500,
+				chargePowerAgeMs: 2000,
+				vehicleConnected: false,
+			}),
+		);
+		assert.equal(d.adjustedConsumptionW, 4000);
+		assert.notEqual(d.blockReason, "ev_power_unknown");
+	});
+
 	it("L9: EV charging + stale chargePower → block", () => {
 		const ev = adjustConsumptionForEv({
 			consumptionW: 4000,

@@ -147,6 +147,22 @@ function baseSafety(over = {}) {
         strict_1.default.equal(r.evConflict, true);
         strict_1.default.equal(r.writeAllowed, false);
     });
+    (0, node_test_1.it)("L11b: disconnected leftover now is not an EV conflict", () => {
+        const leftover = (0, grid_balance_contract_js_1.classifyGridBalanceEvConflict)({
+            loadpointMode: "now",
+            charging: false,
+            chargePowerW: 0,
+            wallboxHold: true,
+            batteryBoost: true,
+            externalAuthority: false,
+            tibberRewardsActive: false,
+            wallboxEnergySource: "none",
+            wallboxAllocatedGridW: 0,
+            vehicleConnected: false,
+        });
+        strict_1.default.equal(leftover.conflict, false);
+        strict_1.default.equal(leftover.kind, "");
+    });
     (0, node_test_1.it)("L12: planned battery action has priority", () => {
         const r = (0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ plannedBatteryAction: true }));
         strict_1.default.equal(r.blockReason, "planned_battery_action");

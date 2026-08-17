@@ -146,6 +146,28 @@ function tick(over = {}) {
         strict_1.default.equal(d.shouldWrite, true);
         strict_1.default.equal(d.writeKind, "discharge");
     });
+    (0, node_test_1.it)("L8b: disconnected leftover charging/power is not house-load EV", () => {
+        const ev = (0, grid_balance_power_js_1.adjustConsumptionForEv)({
+            consumptionW: 4000,
+            charging: true,
+            chargePowerW: 3500,
+            chargePowerAgeMs: 2000,
+            vehicleConnected: false,
+        });
+        strict_1.default.equal(ev.evActive, false);
+        strict_1.default.equal(ev.adjustedConsumptionW, 4000);
+        strict_1.default.equal(ev.blockReason, "");
+        const d = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({
+            consumptionW: 4000,
+            pvAcPowerW: 0,
+            charging: true,
+            chargePowerW: 3500,
+            chargePowerAgeMs: 2000,
+            vehicleConnected: false,
+        }));
+        strict_1.default.equal(d.adjustedConsumptionW, 4000);
+        strict_1.default.notEqual(d.blockReason, "ev_power_unknown");
+    });
     (0, node_test_1.it)("L9: EV charging + stale chargePower → block", () => {
         const ev = (0, grid_balance_power_js_1.adjustConsumptionForEv)({
             consumptionW: 4000,

@@ -20,6 +20,8 @@
  * `runtime/setpoint_session.ts` (kind=discharge vs kind=charge).
  */
 
+import { isEvActuallyCharging } from "../wallbox/charge_hold";
+
 export const GRID_BALANCE_EXECUTION_ENABLED = false;
 
 export const GRID_BALANCE_MIN_PRICE_DEFAULT_CT = 30;
@@ -113,12 +115,21 @@ export function classifyGridBalanceEvConflict(input: {
 	tibberRewardsActive: boolean;
 	wallboxEnergySource: unknown;
 	wallboxAllocatedGridW: number | null;
+	/** false → leftover EVCC now/boost is not an EV conflict. */
+	vehicleConnected?: boolean | null;
 }): { conflict: boolean; kind: GridBalanceEvConflictKind } {
+	if (input.vehicleConnected === false) {
+		return { conflict: false, kind: "" };
+	}
 	if (input.externalAuthority || input.tibberRewardsActive) {
 		return { conflict: true, kind: "ev_external" };
 	}
+	const actuallyCharging = isEvActuallyCharging({
+		charging: input.charging,
+		chargePowerW: input.chargePowerW,
+	});
 	const mode = normalizeLoadpointMode(input.loadpointMode);
-	if (input.batteryBoost || mode === "now" || input.wallboxHold) {
+	if (input.wallboxHold || (actuallyCharging && (input.batteryBoost || mode === "now"))) {
 		return { conflict: true, kind: "ev_now" };
 	}
 	const energy = String(input.wallboxEnergySource ?? "")

@@ -79,6 +79,11 @@ function buildWallboxEvSessionContribution(input) {
             reasonDe: "Fahrzeug nicht verbunden — keine EV-Lade-Contribution.",
             details: {
                 connected: false,
+                charging: input.charging,
+                chargePowerW: input.chargePowerW ?? null,
+                loadpointMode: input.loadpointMode ?? null,
+                batteryBoost: input.batteryBoost ?? null,
+                tibberGridRewardsActive: input.tibberGridRewardsActive ?? null,
                 vehicleSocPct: input.vehicleSocPct,
                 runtimeControlAvailable: false,
                 minimumDepartureSocPct: input.minimumDepartureSocPct ?? null,
@@ -145,6 +150,10 @@ function buildWallboxEvSessionContribution(input) {
         details: {
             connected: input.connected,
             charging: input.charging,
+            chargePowerW: input.chargePowerW ?? null,
+            loadpointMode: input.loadpointMode ?? null,
+            batteryBoost: input.batteryBoost ?? null,
+            tibberGridRewardsActive: input.tibberGridRewardsActive ?? null,
             vehicleSocPct: input.vehicleSocPct,
             planSocPct: input.planSocPct,
             planActive: input.planActive,

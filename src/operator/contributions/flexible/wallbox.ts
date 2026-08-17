@@ -43,6 +43,10 @@ export interface WallboxContributionBuildInput {
 	takeoverSeverity?: string | null;
 	externalSmartPlanJson?: string | null;
 	externalPlanQuality?: string | null;
+	loadpointMode?: string | null;
+	batteryBoost?: boolean | null;
+	chargePowerW?: number | null;
+	tibberGridRewardsActive?: boolean | null;
 }
 
 /** Ziel-SOC nur bei aktivem Plan mit positivem planSoc, sonst effectiveLimit/fallback. */
@@ -133,6 +137,11 @@ export function buildWallboxEvSessionContribution(input: WallboxContributionBuil
 				reasonDe: "Fahrzeug nicht verbunden — keine EV-Lade-Contribution.",
 				details: {
 					connected: false,
+					charging: input.charging,
+					chargePowerW: input.chargePowerW ?? null,
+					loadpointMode: input.loadpointMode ?? null,
+					batteryBoost: input.batteryBoost ?? null,
+					tibberGridRewardsActive: input.tibberGridRewardsActive ?? null,
 					vehicleSocPct: input.vehicleSocPct,
 					runtimeControlAvailable: false,
 					minimumDepartureSocPct: input.minimumDepartureSocPct ?? null,
@@ -210,6 +219,10 @@ export function buildWallboxEvSessionContribution(input: WallboxContributionBuil
 			details: {
 				connected: input.connected,
 				charging: input.charging,
+				chargePowerW: input.chargePowerW ?? null,
+				loadpointMode: input.loadpointMode ?? null,
+				batteryBoost: input.batteryBoost ?? null,
+				tibberGridRewardsActive: input.tibberGridRewardsActive ?? null,
 				vehicleSocPct: input.vehicleSocPct,
 				planSocPct: input.planSocPct,
 				planActive: input.planActive,

@@ -7,6 +7,7 @@ import { buildWallboxFeedbackContract, type WallboxFeedbackContract } from "./fe
 import { wallboxFeedbackConfigFromAdapter } from "./feedback_config";
 import { isRestoreInProgress } from "../../../restore/barrier";
 import { writeForeignIfChanged, type DeviceWriteHost } from "../../../device_write";
+import { EV_EXECUTION_PHASE5_ENABLED } from "../ev_foundation/write_allowlist";
 
 /**
  * Release-Freigabe für reale Wallbox-/EVCC-Writes — Master-Kill-Switch.
@@ -289,13 +290,17 @@ export async function runWallboxLiveFoundation(
 
 	let writeResult: WallboxWriteResult | null = null;
 	if (phase === "live") {
-		writeResult = await executeWallboxWrite(host, {
-			candidate,
-			writePlan,
-			phase,
-			liveRequested: input.liveRequested,
-			faultActive: input.faultActive,
-		});
+		if (EV_EXECUTION_PHASE5_ENABLED) {
+			writeResult = blockedResult("ev_execution_owns_writes");
+		} else {
+			writeResult = await executeWallboxWrite(host, {
+				candidate,
+				writePlan,
+				phase,
+				liveRequested: input.liveRequested,
+				faultActive: input.faultActive,
+			});
+		}
 	}
 
 	return {

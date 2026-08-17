@@ -339,6 +339,13 @@ async function readRelBool(host: Host, id: string): Promise<boolean> {
 	return st?.val === true;
 }
 
+async function readRelOptionalBool(host: Host, id: string): Promise<boolean | null> {
+	const st = await host.getStateAsync(id);
+	if (st?.val === true) return true;
+	if (st?.val === false) return false;
+	return null;
+}
+
 async function detectForeignOwnershipOnStart(host: Host): Promise<void> {
 	const config = batteryConfigFromAdapter(host.config);
 	if (config.profile !== "sonnen_em") return;
@@ -609,6 +616,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		evccLoadpointMode,
 		evccChargingFlag,
 		evccChargePowerW,
+		evccConnectedFlag,
 		evccBatteryMode,
 		evccBatteryBoost,
 		evccSmartCostActive,
@@ -624,6 +632,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		readRelString(host, WALLBOX_EVCC_STATES.loadpointMode),
 		readRelBool(host, WALLBOX_EVCC_STATES.charging),
 		readRelNumber(host, WALLBOX_EVCC_STATES.chargePowerW),
+		readRelOptionalBool(host, WALLBOX_EVCC_STATES.connected),
 		readRelString(host, WALLBOX_EVCC_STATES.batteryMode),
 		readRelBool(host, WALLBOX_EVCC_STATES.batteryBoost),
 		readRelBool(host, WALLBOX_EVCC_STATES.smartCostActive),
@@ -635,11 +644,13 @@ async function controlTickInner(host: Host): Promise<void> {
 	]);
 	const globalLive = parseGlobalMode(globalModeRaw?.val) === "live";
 	const addonLive = parseAddonMode(addonModeRaw?.val) === "live";
+	const evChargeHold =
+		evccConnectedFlag === false ? false : wallboxBatteryHold;
 	const holdSignals = resolveGridBalanceHoldSignals({
 		nowMs,
 		constraintHoldState: batteryHoldConstraintSt,
 		deviceIntentHold: deviceIntent.action === "hold",
-		batteryHoldForEvCharge: wallboxBatteryHold,
+		batteryHoldForEvCharge: evChargeHold,
 		evccBatteryMode,
 	});
 	const evccBatteryModeHold = holdSignals.evccBatteryModeHold;
@@ -658,6 +669,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		tibberRewardsActive: evccSmartCostActive,
 		wallboxEnergySource,
 		wallboxAllocatedGridW,
+		vehicleConnected: evccConnectedFlag,
 	});
 	const gridBalanceSuppressed =
 		holdActive ||
@@ -970,6 +982,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		charging: evccChargingFlag,
 		chargePowerW: evPower.val ?? evccChargePowerW,
 		chargePowerAgeMs: evPower.ageMs,
+		vehicleConnected: evccConnectedFlag,
 		deadbandW: config.gridBalance.deadbandW,
 		offsetW: offset,
 		configuredMaxW: config.gridBalance.maxTargetW,

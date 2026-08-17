@@ -306,6 +306,26 @@ describe("battery setpoint release safety", () => {
 		assert.equal(a.rel.get(BAT.gridBalance.holdDetected), true);
 	});
 
+	it("leftover EVCC now with disconnected vehicle does not invent EV hold/conflict", async () => {
+		__resetBatteryRuntimeForTest();
+		const a = setupCharge("live", true, "live");
+		a.rel.set("planner.constraints.battery_hold_active", false);
+		a.rel.set(WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge, true);
+		a.rel.set(WALLBOX_RUNTIME_STATES.tibberGridRewardsActive, false);
+		a.rel.set(WALLBOX_RUNTIME_STATES.externalVehicleChargeActive, false);
+		a.rel.set(WALLBOX_EVCC_STATES.batteryDischargeControl, false);
+		a.rel.set(WALLBOX_EVCC_STATES.batteryMode, "normal");
+		a.rel.set(WALLBOX_EVCC_STATES.loadpointMode, "now");
+		a.rel.set(WALLBOX_EVCC_STATES.connected, false);
+		a.rel.set(WALLBOX_EVCC_STATES.charging, false);
+		a.rel.set(WALLBOX_EVCC_STATES.chargePowerW, 0);
+		a.rel.set(WALLBOX_EVCC_STATES.smartCostActive, false);
+		a.rel.set(WALLBOX_EV_FOUNDATION_STATES.evExecutionAuthority, "none");
+		await runBatteryControlTick(a as unknown as ioBroker.Adapter & { config: unknown });
+		assert.equal(a.rel.get(BAT.gridBalance.holdDetected), false);
+		assert.equal(a.rel.get(BAT.gridBalance.evConflict), false);
+	});
+
 	it("grid_charge/hold: no competing 0 W against Hold", async () => {
 		__resetBatteryRuntimeForTest();
 		const a = setupCharge("live", true, "live");

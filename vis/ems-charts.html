@@ -1063,6 +1063,7 @@ function visTargetedHold(s){
 	var action=visNorm(s.action);
 	if(mode==="hold")return true;
 	if(evcc==="hold"||evcc==="holdcharge")return true;
+	if(s.vehicleConnected===false)return false;
 	if(s.batteryHoldForEv)return true;
 	if(s.tibber||s.externalEv)return true;
 	if(action==="hold")return true;
@@ -1080,8 +1081,7 @@ function visBatteryMotion(s,onW){
 	return{label:"RUHE",cls:""};
 }
 function visEmsAction(s){
-	var evcc=visNorm(s.evccBatteryMode);
-	if(s.tibber||s.externalEv||s.batteryHoldForEv||evcc==="hold"||evcc==="holdcharge")return"EV-Schnellladen";
+	if(s.vehicleConnected!==false&&(s.tibber||s.externalEv||s.batteryHoldForEv))return"EV-Schnellladen";
 	var owner=visNorm(s.owner);
 	var action=visNorm(s.action);
 	if(s.gbActive||owner==="grid_balance"||action==="grid_balance")return"Netzausgleich";
@@ -1359,6 +1359,7 @@ function visLiveSnap(){
 		owner:txt(g("addons.battery.runtime.battery_setpoint_owner"),""),
 		evccBatteryMode:txt(g("addons.wallbox.status.evcc.battery_mode"),""),
 		batteryHoldForEv:isOn(g("addons.wallbox.runtime.battery_hold_for_ev_charge")),
+		vehicleConnected:wallboxConnected(),
 		tibber:isOn(g("addons.wallbox.runtime.tibber_grid_rewards_active")),
 		externalEv:isOn(g("addons.wallbox.runtime.external_vehicle_charge_active")),
 		gbActive:isOn(g("addons.battery.grid_balance.active")),

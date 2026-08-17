@@ -838,7 +838,6 @@ describe("Phase 5B preflight: noop vs OFF and source freshness", () => {
 			energySource: "none",
 			chargingAllowed: false,
 			allocatedPowerW: null,
-			decisionSource: "vehicle_disconnected",
 		});
 		assert.equal(p.desired, "noop");
 		assert.equal(p.reason, "no_wallbox_action");
@@ -855,6 +854,19 @@ describe("Phase 5B preflight: noop vs OFF and source freshness", () => {
 		assert.equal(stepped.writeMode, null);
 		assert.equal(stepped.session.pendingMode, null);
 		assert.equal(stepped.session.lastResult, "noop");
+	});
+
+	it("P3b: disconnected vehicle → No-Op even with leftover charge intent / now", () => {
+		const p = projectDesiredEvccMode({
+			intentAction: "charge",
+			energySource: "grid",
+			chargingAllowed: true,
+			allocatedPowerW: 11000,
+			vehicleConnected: false,
+			decisionSource: "vehicle_disconnected",
+		});
+		assert.equal(p.desired, "noop");
+		assert.equal(p.reason, "vehicle_disconnected");
 	});
 
 	it("P4: no allocation → no automatic OFF", () => {

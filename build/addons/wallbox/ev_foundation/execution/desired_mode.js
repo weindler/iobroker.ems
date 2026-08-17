@@ -26,6 +26,9 @@ function chargeMode(energySource) {
  * none is always "EMS has nothing to execute" → No-Op.
  */
 function projectDesiredEvccMode(input) {
+    if (input.vehicleConnected === false || input.decisionSource === "vehicle_disconnected") {
+        return { desired: "noop", reason: "vehicle_disconnected" };
+    }
     if (input.intentAction === "none") {
         return { desired: "noop", reason: "no_wallbox_action" };
     }

@@ -730,7 +730,6 @@ function tickHost(opts) {
             energySource: "none",
             chargingAllowed: false,
             allocatedPowerW: null,
-            decisionSource: "vehicle_disconnected",
         });
         strict_1.default.equal(p.desired, "noop");
         strict_1.default.equal(p.reason, "no_wallbox_action");
@@ -747,6 +746,18 @@ function tickHost(opts) {
         strict_1.default.equal(stepped.writeMode, null);
         strict_1.default.equal(stepped.session.pendingMode, null);
         strict_1.default.equal(stepped.session.lastResult, "noop");
+    });
+    (0, node_test_1.it)("P3b: disconnected vehicle → No-Op even with leftover charge intent / now", () => {
+        const p = (0, index_1.projectDesiredEvccMode)({
+            intentAction: "charge",
+            energySource: "grid",
+            chargingAllowed: true,
+            allocatedPowerW: 11000,
+            vehicleConnected: false,
+            decisionSource: "vehicle_disconnected",
+        });
+        strict_1.default.equal(p.desired, "noop");
+        strict_1.default.equal(p.reason, "vehicle_disconnected");
     });
     (0, node_test_1.it)("P4: no allocation → no automatic OFF", () => {
         const p = (0, index_1.projectDesiredEvccMode)({

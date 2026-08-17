@@ -306,6 +306,8 @@ describe("EV foundation helpers", () => {
 			"external_unavailable",
 		]);
 		assert.equal(derivePreparedEvModuleState("now"), "planned_now");
+		assert.equal(derivePreparedEvModuleState("now", true), "planned_now");
+		assert.equal(derivePreparedEvModuleState("now", false), "idle");
 		assert.equal(derivePreparedEvModuleState("off"), "idle");
 		assert.ok(!["external", "ems_takeover", "manual_override"].includes(derivePreparedEvModuleState("now")));
 	});

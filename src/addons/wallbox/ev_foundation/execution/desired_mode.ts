@@ -25,6 +25,8 @@ export interface ProjectDesiredEvccModeInput {
 	decisionSource?: WallboxDecisionSource;
 	planValid?: boolean;
 	useDailyPlan?: boolean;
+	/** false → never invent an EVCC charge mode from leftover now. */
+	vehicleConnected?: boolean | null;
 }
 
 function chargeMode(
@@ -45,6 +47,9 @@ function chargeMode(
  * none is always "EMS has nothing to execute" → No-Op.
  */
 export function projectDesiredEvccMode(input: ProjectDesiredEvccModeInput): DesiredEvccModeProjection {
+	if (input.vehicleConnected === false || input.decisionSource === "vehicle_disconnected") {
+		return { desired: "noop", reason: "vehicle_disconnected" };
+	}
 	if (input.intentAction === "none") {
 		return { desired: "noop", reason: "no_wallbox_action" };
 	}

@@ -25,7 +25,7 @@ function loadOpsDisplay(html) {
 	assert.ok(start >= 0 && end > start, "vis-ops-display markers required");
 	const code = html.slice(start, end);
 	return new Function(
-		`${code}; return { visBatteryMotion, visEmsAction, visGbStatus, visGridFlow, visTargetedHold, visPriceBand, visPriceAxisRange, visClimateNote, visAcConfiguredName };`,
+		`${code}; return { visBatteryMotion, visEmsAction, visGbStatus, visGridFlow, visTargetedHold, visPriceBand, visPriceAxisRange, visClimateNote, visAcConfiguredName, visClimateHvacBadge, visHvacPurposeLabel, visFmtDurationSec, visFmtKwh, visCheapPhaseLabel, visPriceHeadSummary, visIdleFacts, visNowSummary, visRowValueOk };`,
 	)();
 }
 
@@ -87,6 +87,9 @@ const REQUIRED_STATE_PATHS = [
 	"learning.thermal_boiler.model",
 	"learning.thermal_boiler.quality",
 	"addons.air_conditioning.units.unit_1.mode_purpose",
+	"addons.air_conditioning.units.unit_1.room_humidity_pct",
+	"addons.air_conditioning.units.unit_1.stats.today_runtime_sec",
+	"addons.air_conditioning.units.unit_1.stats.today_energy_kwh",
 	"addons.air_conditioning.units.unit_2.mode_purpose",
 	"addons.air_conditioning.units.unit_1.expected_power_w",
 	"addons.wallbox.runtime.connected",
@@ -131,8 +134,9 @@ describe("VIS operations dashboard", () => {
 		assert.match(visHtml, /\["Puffer",bufferTemp\]/);
 	});
 
-	it("shows climate as LIVE / LÄUFT / DRY|COOL|HEAT|FAN from existing states", () => {
+	it("shows climate HVAC badges only while the device is running", () => {
 		assert.match(visHtml, /function climateHvacBadge/);
+		assert.match(visHtml, /function visClimateHvacBadge/);
 		assert.match(visHtml, /label:"DRY"/);
 		assert.match(visHtml, /label:"COOL"/);
 		assert.match(visHtml, /label:"HEAT"/);
@@ -140,6 +144,8 @@ describe("VIS operations dashboard", () => {
 		assert.match(visHtml, /label:"LÄUFT"/);
 		assert.match(visHtml, /mode_purpose/);
 		assert.match(visHtml, /badge\.hvac/);
+		assert.match(visHtml, /Zielmodus/);
+		assert.equal(visHtml.includes('return{cls:"idle",label:"—"}'), false);
 	});
 
 	it("renders a Tibber price axis from operator.vis.price_timeline_json", () => {
@@ -157,7 +163,7 @@ describe("VIS operations dashboard", () => {
 		assert.equal(visHtml.includes("GB preislich ok"), false);
 		assert.equal(visHtml.includes(">normal</"), false);
 		assert.match(visHtml, /function visPriceBand/);
-		assert.match(visHtml, /grid-template-columns:minmax\(0,1fr\) 148px/);
+		assert.match(visHtml, /grid-template-columns:minmax\(0,1fr\) 188px/);
 		assert.match(visHtml, /html,body\{height:100%;overflow:hidden\}/);
 		assert.match(visHtml, /\.ems-price-svg\{width:100%;height:84px/);
 		assert.match(visHtml, /var W=640,H=84/);
@@ -183,13 +189,20 @@ describe("VIS operations dashboard", () => {
 		assert.match(visHtml, /operator\.briefing_de/);
 	});
 
-	it("Demnächst uses Daily Plan allocations only, not chart_json merge", () => {
+	it("Nächste Aktionen uses Daily Plan allocations only, not chart_json merge", () => {
 		assert.match(visHtml, /kein Chart-Merge/);
 		assert.match(visHtml, /Batterie-Netzladung/);
 		assert.match(visHtml, /name:"Wallbox"/);
 		assert.match(visHtml, /acUnitLabel/);
 		assert.equal(visHtml.includes("slotsFromChart"), false);
 		assert.match(visHtml, /addon:"wallbox".*name:"Wallbox"/);
+		assert.match(visHtml, /EMS – Nächste Aktionen/);
+		assert.match(visHtml, /Keine Aktion geplant/);
+		assert.equal(visHtml.includes("Demnächst (48 h)"), false);
+		assert.equal(visHtml.includes("Keine Fenster geplant."), false);
+		assert.match(visHtml, /visIdleFacts/);
+		assert.match(visHtml, /visCheapPhaseLabel/);
+		assert.match(visHtml, /PREIS FREI/);
 	});
 });
 
@@ -410,5 +423,87 @@ describe("VIS battery / grid / GB presentation", () => {
 		assert.equal(visHtml.includes("Klima · —"), false);
 		assert.match(visHtml, /acCard\(5\)/);
 		assert.match(visHtml, /ems-tiles-dense/);
+		assert.match(visHtml, /room_humidity_pct/);
+		assert.match(visHtml, /stats\.today_runtime_sec/);
+		assert.match(visHtml, /visRowValueOk/);
+	});
+
+	it("hides HVAC mode badges when climate is off; shows them only while running", () => {
+		assert.equal(ops.visClimateHvacBadge("cooling", false), null);
+		assert.equal(ops.visClimateHvacBadge("dehumidify", false), null);
+		assert.deepEqual(ops.visClimateHvacBadge("cooling", true), { cls: "hvac-cool", label: "COOL" });
+		assert.deepEqual(ops.visClimateHvacBadge("dehumidify", true), { cls: "hvac-dry", label: "DRY" });
+		assert.deepEqual(ops.visClimateHvacBadge("heating", true), { cls: "hvac-heat", label: "HEAT" });
+		assert.equal(ops.visHvacPurposeLabel("cooling"), "COOL");
+		assert.match(visHtml, /if\(!running&&purpose\)rows\.push\(\["Zielmodus",purpose\]\)/);
+		assert.match(visHtml, /execAuthorityBadge\("air_conditioning"\)/);
+		assert.match(visHtml, /climateDeviceBadge\(running\)/);
+	});
+
+	it("formats climate runtime and energy for humans", () => {
+		assert.equal(ops.visFmtDurationSec(9170), "2 h 33 min");
+		assert.equal(ops.visFmtDurationSec(37 * 60), "37 min");
+		assert.equal(ops.visFmtDurationSec(0), null);
+		assert.equal(ops.visFmtKwh(0.42), "0,42 kWh");
+		assert.equal(ops.visFmtKwh(3.7), "3,7 kWh");
+		assert.equal(ops.visFmtKwh(307.5), "307,5 kWh");
+		assert.equal(ops.visRowValueOk("—"), false);
+		assert.equal(ops.visRowValueOk("25,4 °C"), true);
+	});
+
+	it("summarizes the next cheap phase from visible slots only", () => {
+		const slots = [
+			{ startIso: "2026-08-17T22:00:00.000Z", endIso: "2026-08-17T22:15:00.000Z", priceCt: 40 },
+			{ startIso: "2026-08-17T22:15:00.000Z", endIso: "2026-08-17T22:30:00.000Z", priceCt: 12 },
+			{ startIso: "2026-08-17T22:30:00.000Z", endIso: "2026-08-17T22:45:00.000Z", priceCt: 11 },
+			{ startIso: "2026-08-17T22:45:00.000Z", endIso: "2026-08-17T23:00:00.000Z", priceCt: 38 },
+		];
+		const label = ops.visCheapPhaseLabel(slots, Date.parse("2026-08-17T21:00:00.000Z"));
+		assert.equal(typeof label, "string");
+		assert.match(label, /–/);
+		assert.equal(ops.visCheapPhaseLabel(slots.map((s) => ({ ...s, priceCt: 24 })), Date.parse("2026-08-17T21:00:00.000Z")), null);
+		assert.equal(
+			ops.visPriceHeadSummary(31.6, "00:00–05:00", 30, true),
+			"Jetzt 31,6 ct | nächste günstige Phase 00:00–05:00 | GB ab 30,0 ct → PREIS FREI",
+		);
+		assert.equal(
+			ops.visPriceHeadSummary(24.3, null, 30, false),
+			"Jetzt 24,3 ct | GB ab 30,0 ct → PREIS GESPERRT",
+		);
+	});
+
+	it("idle next-actions facts stay strictly factual", () => {
+		assert.deepEqual(
+			ops.visIdleFacts({
+				pvW: 4500,
+				houseW: 220,
+				surplusW: 4280,
+				deficitW: 0,
+				socPct: 100,
+				batLabel: "EIGENVERBRAUCH",
+				boilerC: 59,
+				boilerMinC: 48,
+				wbConnected: false,
+			}),
+			[
+				"Haus aktuell aus PV versorgt",
+				"Batterie 100 % · EIGENVERBRAUCH",
+				"Boiler 59,0 °C · kein akuter Bedarf",
+				"Wallbox · Fahrzeug getrennt",
+			],
+		);
+		assert.equal(
+			ops.visIdleFacts({
+				pvW: 200,
+				houseW: 800,
+				surplusW: 0,
+				deficitW: 600,
+				socPct: 40,
+				batLabel: "ENTLADEN",
+			}).includes("Haus aktuell aus PV versorgt"),
+			false,
+		);
+		assert.equal(ops.visNowSummary({ batLabel: "EIGENVERBRAUCH", surplusW: 3200 }).title, "Batterie · EIGENVERBRAUCH");
+		assert.match(ops.visNowSummary({ batLabel: "EIGENVERBRAUCH", surplusW: 3200 }).meta, /PV-Überschuss 3,2 kW/);
 	});
 });

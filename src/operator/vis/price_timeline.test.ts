@@ -45,8 +45,8 @@ function alloc(
 }
 
 describe("buildVisPriceTimeline (read-only reshape)", () => {
-	it("keeps last 4h and at least next 12h from existing grid slots", () => {
-		const grid = hoursAround(NOW, 8, 20, () => 24.3);
+	it("keeps last 6h and about next 18h from existing grid slots", () => {
+		const grid = hoursAround(NOW, 10, 40, () => 24.3);
 		const board = buildVisPriceTimeline({
 			now: NOW,
 			currentPriceCt: 24.3,
@@ -61,7 +61,9 @@ describe("buildVisPriceTimeline (read-only reshape)", () => {
 		const first = Date.parse(board.slots[0].startIso);
 		const last = Date.parse(board.slots[board.slots.length - 1].endIso);
 		assert.ok(NOW.getTime() - first >= (VIS_PRICE_LOOKBACK_HOURS - 0.3) * 3600_000);
+		assert.ok(NOW.getTime() - first <= (VIS_PRICE_LOOKBACK_HOURS + 0.3) * 3600_000);
 		assert.ok(last - NOW.getTime() >= VIS_PRICE_MIN_AHEAD_HOURS * 3600_000 - 15 * 60_000);
+		assert.ok(last - NOW.getTime() <= (VIS_PRICE_MIN_AHEAD_HOURS + 0.5) * 3600_000);
 		assert.equal(board.slots.every((s) => s.priceCt === 24.3), true);
 	});
 

@@ -38,6 +38,7 @@ import {
 	type GridBalanceLiveTestState,
 	type GridBalanceTickDecision,
 } from "./grid_balance_power";
+import { resolveGridBalanceHoldSignals } from "./hold_freshness";
 import { isRestoreInProgress } from "../../restore/barrier";
 import { WALLBOX_EVCC_STATES } from "../wallbox/ensure_evcc_states";
 import { WALLBOX_RUNTIME_STATES } from "../wallbox/runtime/states";
@@ -602,7 +603,7 @@ async function controlTickInner(host: Host): Promise<void> {
 	const dailyPlanDriven = deviceIntent.source === "daily_plan";
 	const dailyPlanAuthoritative = isBatteryDailyPlanAuthoritative(dailyPlanContext);
 	const [
-		batteryHoldActive,
+		batteryHoldConstraintSt,
 		wallboxBatteryHold,
 		priceNowCt,
 		evccLoadpointMode,
@@ -618,7 +619,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		globalModeRaw,
 		addonModeRaw,
 	] = await Promise.all([
-		readRelBool(host, "planner.constraints.battery_hold_active"),
+		host.getStateAsync("planner.constraints.battery_hold_active"),
 		readRelBool(host, WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge),
 		readRelNumber(host, "live.price.now_ct_per_kwh"),
 		readRelString(host, WALLBOX_EVCC_STATES.loadpointMode),
@@ -636,9 +637,17 @@ async function controlTickInner(host: Host): Promise<void> {
 	]);
 	const globalLive = parseGlobalMode(globalModeRaw?.val) === "live";
 	const addonLive = parseAddonMode(addonModeRaw?.val) === "live";
-	const evccBatteryModeHold = (evccBatteryMode ?? "").toLowerCase() === "hold";
-	const holdPlanned = deviceIntent.action === "hold";
-	const holdActive = batteryHoldActive || wallboxBatteryHold || evccBatteryModeHold || evccDischargeControl;
+	const holdSignals = resolveGridBalanceHoldSignals({
+		nowMs,
+		constraintHoldState: batteryHoldConstraintSt,
+		deviceIntentHold: deviceIntent.action === "hold",
+		batteryHoldForEvCharge: wallboxBatteryHold,
+		evccBatteryMode,
+		evccDischargeControl,
+	});
+	const evccBatteryModeHold = holdSignals.evccBatteryModeHold;
+	const holdPlanned = holdSignals.holdPlanned;
+	const holdActive = holdSignals.holdActive;
 	if (holdPlanned || holdActive || (evAuthority ?? "").toLowerCase() === "external") {
 		wantsCharge = false;
 	}

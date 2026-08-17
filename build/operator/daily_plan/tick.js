@@ -385,8 +385,17 @@ async function runDailyPlanTick(host, forecastPlan) {
         wallboxChargeHoldReasonDe: wallboxHold.reasonDe,
     });
     try {
-        await (0, state_write_1.setStateIfChanged)(host, "planner.constraints.evcc_battery_hold", hold.evcc_battery_hold);
-        await (0, state_write_1.setStateIfChanged)(host, "planner.constraints.battery_hold_active", hold.battery_hold_active);
+        // Always write true/false so `ts` stays current. setStateIfChanged would keep
+        // months-old true values when the computed hold did not flip, and Grid Balance
+        // must not treat those as a live Hold.
+        await host.setStateAsync("planner.constraints.evcc_battery_hold", {
+            val: hold.evcc_battery_hold,
+            ack: true,
+        });
+        await host.setStateAsync("planner.constraints.battery_hold_active", {
+            val: hold.battery_hold_active,
+            ack: true,
+        });
     }
     catch {
         // constraint publish best-effort

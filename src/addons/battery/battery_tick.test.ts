@@ -27,6 +27,7 @@ const CONFIG = {
 
 class MockAdapter {
 	rel = new Map<string, ioBroker.StateValue>();
+	relTs = new Map<string, number>();
 	foreign = new Map<string, ioBroker.StateValue>();
 	foreignWrites: Array<{ id: string; val: ioBroker.StateValue }> = [];
 	namespace = "ems.0";
@@ -44,7 +45,12 @@ class MockAdapter {
 		this.config = config;
 	}
 	async getStateAsync(id: string): Promise<ioBroker.State | null> {
-		return this.rel.has(id) ? ({ val: this.rel.get(id) ?? null, ack: true } as ioBroker.State) : null;
+		if (!this.rel.has(id)) return null;
+		return {
+			val: this.rel.get(id) ?? null,
+			ack: true,
+			ts: this.relTs.get(id) ?? Date.now(),
+		} as ioBroker.State;
 	}
 	async setStateAsync(id: string, st: ioBroker.SettableState): Promise<void> {
 		this.rel.set(id, st.val ?? null);
@@ -228,6 +234,30 @@ describe("battery setpoint release safety", () => {
 		assert.equal(a.rel.get(BAT.runtime.batterySetpointW), 0);
 		assert.equal(a.rel.get(BAT.runtime.batteryReleasePending), false);
 		assert.ok(String(a.rel.get(BAT.runtime.batteryLastReleaseAt) ?? "").length > 0);
+	});
+
+	it("stale planner Hold constraint does not set hold_detected", async () => {
+		__resetBatteryRuntimeForTest();
+		const a = setupCharge("live", true, "live");
+		const staleTs = Date.now() - 40 * 24 * 3600_000;
+		a.rel.set("planner.constraints.battery_hold_active", true);
+		a.relTs.set("planner.constraints.battery_hold_active", staleTs);
+		a.rel.set("planner.constraints.evcc_battery_hold", true);
+		a.relTs.set("planner.constraints.evcc_battery_hold", staleTs);
+		a.rel.set("addons.wallbox.runtime.battery_hold_for_ev_charge", false);
+		a.rel.set("addons.wallbox.runtime.tibber_grid_rewards_active", false);
+		a.rel.set("addons.wallbox.runtime.external_vehicle_charge_active", false);
+		await runBatteryControlTick(a as unknown as ioBroker.Adapter & { config: unknown });
+		assert.equal(a.rel.get(BAT.gridBalance.holdDetected), false);
+	});
+
+	it("current EV-charge Hold sets hold_detected", async () => {
+		__resetBatteryRuntimeForTest();
+		const a = setupCharge("live", true, "live");
+		a.rel.set("planner.constraints.battery_hold_active", false);
+		a.rel.set("addons.wallbox.runtime.battery_hold_for_ev_charge", true);
+		await runBatteryControlTick(a as unknown as ioBroker.Adapter & { config: unknown });
+		assert.equal(a.rel.get(BAT.gridBalance.holdDetected), true);
 	});
 
 	it("grid_charge/hold: no competing 0 W against Hold", async () => {

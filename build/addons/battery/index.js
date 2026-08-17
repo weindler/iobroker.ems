@@ -16,6 +16,7 @@ const ems_mirror_1 = require("./ems_mirror");
 const grid_balance_1 = require("./grid_balance");
 const grid_balance_contract_1 = require("./grid_balance_contract");
 const grid_balance_power_1 = require("./grid_balance_power");
+const hold_freshness_1 = require("./hold_freshness");
 const barrier_1 = require("../../restore/barrier");
 const ensure_evcc_states_1 = require("../wallbox/ensure_evcc_states");
 const states_1 = require("../wallbox/runtime/states");
@@ -471,8 +472,8 @@ async function controlTickInner(host) {
     const emsMirrorIntentActive = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.batteryIntentActive);
     const dailyPlanDriven = deviceIntent.source === "daily_plan";
     const dailyPlanAuthoritative = (0, daily_plan_1.isBatteryDailyPlanAuthoritative)(dailyPlanContext);
-    const [batteryHoldActive, wallboxBatteryHold, priceNowCt, evccLoadpointMode, evccChargingFlag, evccChargePowerW, evccBatteryMode, evccDischargeControl, evccBatteryBoost, evccSmartCostActive, evAuthority, wallboxEnergySource, wallboxAllocatedGridW, globalModeRaw, addonModeRaw,] = await Promise.all([
-        readRelBool(host, "planner.constraints.battery_hold_active"),
+    const [batteryHoldConstraintSt, wallboxBatteryHold, priceNowCt, evccLoadpointMode, evccChargingFlag, evccChargePowerW, evccBatteryMode, evccDischargeControl, evccBatteryBoost, evccSmartCostActive, evAuthority, wallboxEnergySource, wallboxAllocatedGridW, globalModeRaw, addonModeRaw,] = await Promise.all([
+        host.getStateAsync("planner.constraints.battery_hold_active"),
         readRelBool(host, states_1.WALLBOX_RUNTIME_STATES.batteryHoldForEvCharge),
         readRelNumber(host, "live.price.now_ct_per_kwh"),
         readRelString(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.loadpointMode),
@@ -490,9 +491,17 @@ async function controlTickInner(host) {
     ]);
     const globalLive = (0, execution_mode_1.parseGlobalMode)(globalModeRaw?.val) === "live";
     const addonLive = (0, execution_mode_1.parseAddonMode)(addonModeRaw?.val) === "live";
-    const evccBatteryModeHold = (evccBatteryMode ?? "").toLowerCase() === "hold";
-    const holdPlanned = deviceIntent.action === "hold";
-    const holdActive = batteryHoldActive || wallboxBatteryHold || evccBatteryModeHold || evccDischargeControl;
+    const holdSignals = (0, hold_freshness_1.resolveGridBalanceHoldSignals)({
+        nowMs,
+        constraintHoldState: batteryHoldConstraintSt,
+        deviceIntentHold: deviceIntent.action === "hold",
+        batteryHoldForEvCharge: wallboxBatteryHold,
+        evccBatteryMode,
+        evccDischargeControl,
+    });
+    const evccBatteryModeHold = holdSignals.evccBatteryModeHold;
+    const holdPlanned = holdSignals.holdPlanned;
+    const holdActive = holdSignals.holdActive;
     if (holdPlanned || holdActive || (evAuthority ?? "").toLowerCase() === "external") {
         wantsCharge = false;
     }

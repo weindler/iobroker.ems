@@ -42,7 +42,7 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-sw{width:7px;height:7px;border-radius:2px;display:inline-block}
 .ems-ai-compact{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:2px 6px;margin-bottom:4px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;flex:0 0 auto}
 .ems-ai-compact .ems-ai-toggle{margin:0}
-.ems-main{display:grid;grid-template-columns:minmax(0,1fr) 148px;gap:4px;align-items:stretch;flex:1 1 auto;min-height:0;overflow:hidden}
+.ems-main{display:grid;grid-template-columns:minmax(0,1fr) 188px;gap:4px;align-items:stretch;flex:1 1 auto;min-height:0;overflow:hidden}
 .ems-tiles{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(0,1fr);gap:4px;min-height:0;height:100%;overflow:hidden}
 .ems-tiles.ems-tiles-dense{grid-template-columns:1fr 1fr 1fr}
 .ems-card{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:4px 6px;min-height:0;overflow:hidden;display:flex;flex-direction:column}
@@ -68,12 +68,15 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-badge.gb-ready{background:#1f6feb;color:#fff}
 .ems-badge.gb-on{background:#238636;color:#fff}
 .ems-badges{display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
-.ems-rows{display:grid;grid-template-columns:68px 1fr;gap:0 6px;font-size:10px;flex:1 1 auto;min-height:0;align-content:start}
+.ems-rows{display:grid;grid-template-columns:78px 1fr;gap:0 6px;font-size:10px;flex:1 1 auto;min-height:0;align-content:start}
 .ems-rows .l{color:#8b949e}.ems-rows .r{color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ems-note{margin-top:2px;font-size:9px;color:#c9d1d9;line-height:1.25;max-height:1.3em;overflow:hidden;flex:0 0 auto}
 .ems-timeline{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:4px 5px;display:flex;flex-direction:column;min-height:0;max-height:100%;overflow:hidden;min-width:0}
 .ems-timeline .ems-k{flex:0 0 auto}
-.ems-next-list{list-style:none;font-size:9px;line-height:1.25;flex:1 1 auto;overflow:auto;margin-top:2px;padding-right:2px}
+.ems-next-sec{font-size:8px;color:#8b949e;text-transform:uppercase;letter-spacing:.04em;margin:5px 0 2px}
+.ems-next-idle{font-size:10px;color:#c9d1d9;line-height:1.35;margin-top:4px}
+.ems-next-idle div{margin-bottom:3px}
+.ems-next-list{list-style:none;font-size:9px;line-height:1.25;flex:1 1 auto;overflow:hidden;margin-top:2px;padding-right:2px}
 .ems-next-list li{padding:3px 4px 3px 5px;margin-bottom:2px;border-radius:4px;background:#161b22;border:1px solid #30363d;border-left-width:3px}
 .ems-next-t{font-weight:700;margin-right:3px;white-space:nowrap;color:#e6edf3}
 .ems-next-name{font-weight:600}
@@ -274,6 +277,11 @@ var stateIds=[
 	INST+".addons.air_conditioning.units.unit_1.mode_purpose",
 	INST+".addons.air_conditioning.units.unit_1.cleaning_active",
 	INST+".addons.air_conditioning.units.unit_1.governance_allowed",
+	INST+".addons.air_conditioning.units.unit_1.room_humidity_pct",
+	INST+".addons.air_conditioning.units.unit_1.stats.today_runtime_sec",
+	INST+".addons.air_conditioning.units.unit_1.stats.today_energy_kwh",
+	INST+".addons.air_conditioning.units.unit_1.stats.total_runtime_sec",
+	INST+".addons.air_conditioning.units.unit_1.stats.total_energy_kwh",
 	INST+".addons.air_conditioning.units.unit_2.name",
 	INST+".addons.air_conditioning.units.unit_2.decision_source",
 	INST+".addons.air_conditioning.units.unit_2.daily_plan_status",
@@ -297,6 +305,25 @@ var stateIds=[
 	INST+".learning.thermal_boiler.model",
 	INST+".learning.thermal_boiler.quality"
 ];
+(function(){
+	var u,i,f,fields,b,extra;
+	for(u=1;u<=5;u++){
+		b=INST+".addons.air_conditioning.units.unit_"+u;
+		fields=["name","decision_source","daily_plan_status","allocated_power_w","expected_power_w","estimated_power_w","allocation_reason_de","reason_de","running","room_temp_c","room_humidity_pct","mode_purpose","cleaning_active","governance_allowed","stats.today_runtime_sec","stats.today_energy_kwh","stats.total_runtime_sec","stats.total_energy_kwh","stats.session_runtime_sec","stats.session_energy_kwh","stats.last_session_runtime_sec","stats.last_session_energy_kwh"];
+		for(i=0;i<fields.length;i++){
+			f=b+"."+fields[i];
+			if(stateIds.indexOf(f)<0)stateIds.push(f);
+		}
+	}
+	extra=[
+		INST+".addons.immersion_heater.runtime.reason",
+		INST+".addons.wallbox.status.ev_foundation.energy_to_target_kwh",
+		INST+".addons.wallbox.status.ev_foundation.grid_rewards_active"
+	];
+	for(i=0;i<extra.length;i++){
+		if(stateIds.indexOf(extra[i])<0)stateIds.push(extra[i]);
+	}
+})();
 var cache={},bound=false,socketBound=false;
 
 function setStatus(msg,isErr){var el=document.getElementById("ems-status");if(!el)return;el.textContent=msg;el.className="ems-status"+(isErr?" err":"");}
@@ -310,6 +337,7 @@ function txt(v,fb){if(v===null||v===undefined||v==="")return fb||"—";return St
 function fmtW(v){var n=num(v);return n===null?"—":Math.round(n)+" W";}
 function fmtPct(v){var n=num(v);return n===null?"—":Math.round(n)+" %";}
 function fmtTemp(v){var n=num(v);return n===null?"—":n.toFixed(1)+" °C";}
+function fmtHumidity(v){var n=num(v);return n===null?"—":Math.round(n)+" %";}
 function fmtTime(iso){try{return new Date(iso).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});}catch(e){return"—";}}
 function fmtDayTime(iso){try{return new Date(iso).toLocaleString("de-DE",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});}catch(e){return fmtTime(iso);}}
 function sameLocalDay(iso,ref){
@@ -862,7 +890,8 @@ function buildTimelineRanges(horizonMs){
 		});
 	});
 
-	[1,2].forEach(function(unitIndex){
+	[1,2,3,4,5].forEach(function(unitIndex){
+		if(!visAcConfiguredName(g("addons.air_conditioning.units.unit_"+unitIndex+".name")))return;
 		var wins=authoritativeClimateWindows(unitIndex);
 		var disp=resolveClimateUnitDisplay(unitIndex);
 		var alloc=num(g("addons.air_conditioning.units.unit_"+unitIndex+".allocated_power_w"));
@@ -910,6 +939,7 @@ function card(title,color,badge,rows,note,actionsHtml){
 		+'<div class="ems-card-title" style="color:'+color+'">'+esc(title)+'</div>'
 		+badgesHtml+'</div><div class="ems-rows">';
 	for(var i=0;i<rows.length;i++){
+		if(!visRowValueOk(rows[i][1]))continue;
 		html+='<div class="l">'+esc(rows[i][0])+'</div><div class="r" title="'+esc(rows[i][1])+'">'+esc(rows[i][1])+'</div>';
 	}
 	html+='</div>';
@@ -1188,6 +1218,132 @@ function visAcConfiguredName(raw){
 	if(!s||s==="—"||s==="-"||s==="–")return"";
 	return s;
 }
+function visRowValueOk(v){
+	if(v==null||v===undefined)return false;
+	var s=String(v).trim();
+	return s!==""&&s!=="—";
+}
+function visFmtDurationSec(sec){
+	if(sec==null||!isFinite(sec)||sec<=0)return null;
+	var m=Math.round(sec/60);
+	if(m<1)return"< 1 min";
+	if(m<60)return m+" min";
+	var h=Math.floor(m/60);
+	m=m%60;
+	if(m===0)return h+" h";
+	return h+" h "+m+" min";
+}
+function visFmtTotalHours(sec){
+	if(sec==null||!isFinite(sec)||sec<=0)return null;
+	return(Math.round((sec/3600)*10)/10).toFixed(1).replace(".",",")+" h";
+}
+function visFmtKwh(k){
+	if(k==null||!isFinite(k)||k<0)return null;
+	if(k<0.005)return null;
+	if(k<1)return k.toFixed(2).replace(".",",")+" kWh";
+	return k.toFixed(1).replace(".",",")+" kWh";
+}
+function visJoinDurEnergy(sec,kwh,totalHours){
+	var bits=[];
+	var d=totalHours?visFmtTotalHours(sec):visFmtDurationSec(sec);
+	var e=visFmtKwh(kwh);
+	if(d)bits.push(d);
+	if(e)bits.push(e);
+	return bits.length?bits.join(" · "):null;
+}
+function visHvacPurposeLabel(p){
+	p=String(p||"").trim().toLowerCase();
+	if(p==="dehumidify")return"DRY";
+	if(p==="cooling")return"COOL";
+	if(p==="heating")return"HEAT";
+	if(p==="fan_only")return"FAN";
+	return"";
+}
+function visClimateHvacBadge(purpose,running){
+	if(!running)return null;
+	var label=visHvacPurposeLabel(purpose);
+	if(!label)return null;
+	if(label==="DRY")return{cls:"hvac-dry",label:"DRY"};
+	if(label==="COOL")return{cls:"hvac-cool",label:"COOL"};
+	if(label==="HEAT")return{cls:"hvac-heat",label:"HEAT"};
+	if(label==="FAN")return{cls:"hvac-fan",label:"FAN"};
+	return null;
+}
+function visCheapPhaseLabel(slots,nowMs){
+	if(!slots||!slots.length)return null;
+	var prices=[],i;
+	for(i=0;i<slots.length;i++){
+		var p=slots[i].priceCt;
+		if(p!=null&&isFinite(p))prices.push(Number(p));
+	}
+	if(!prices.length)return null;
+	var lo=Math.min.apply(null,prices),hi=Math.max.apply(null,prices);
+	var cheap=[];
+	for(i=0;i<slots.length;i++){
+		var s=slots[i];
+		if(visPriceBand(s.priceCt,lo,hi)!=="cheap")continue;
+		var start=Date.parse(s.startIso),end=Date.parse(s.endIso);
+		if(!isFinite(start)||!isFinite(end))continue;
+		cheap.push({start:start,end:end,startIso:s.startIso,endIso:s.endIso});
+	}
+	if(!cheap.length)return null;
+	var runs=[],run=null;
+	for(i=0;i<cheap.length;i++){
+		var c=cheap[i];
+		if(!run||c.start>run.end+60000){
+			if(run)runs.push(run);
+			run={start:c.start,end:c.end,startIso:c.startIso,endIso:c.endIso};
+		}else{
+			run.end=c.end;run.endIso=c.endIso;
+		}
+	}
+	if(run)runs.push(run);
+	var pick=null;
+	for(i=0;i<runs.length;i++){
+		if(runs[i].end>nowMs){pick=runs[i];break;}
+	}
+	if(!pick)return null;
+	function hm(iso){
+		try{return new Date(iso).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});}catch(e){return null;}
+	}
+	var a=hm(pick.startIso),b=hm(pick.endIso);
+	if(!a||!b)return null;
+	return a+"–"+b;
+}
+function visPriceHeadSummary(nowCt,cheapLabel,gbMin,gbAllowed){
+	var bits=[];
+	if(nowCt!=null&&isFinite(nowCt))bits.push("Jetzt "+Number(nowCt).toFixed(1).replace(".",",")+" ct");
+	if(cheapLabel)bits.push("nächste günstige Phase "+cheapLabel);
+	if(gbMin!=null&&isFinite(gbMin)){
+		var frei=gbAllowed===true||(gbAllowed!==false&&nowCt!=null&&nowCt>=gbMin);
+		bits.push("GB ab "+Number(gbMin).toFixed(1).replace(".",",")+" ct → "+(frei?"PREIS FREI":"PREIS GESPERRT"));
+	}
+	return bits.join(" | ");
+}
+function visIdleFacts(s){
+	var lines=[];
+	if(s.pvW!=null&&s.houseW!=null&&s.surplusW!=null&&s.surplusW>0&&(s.deficitW==null||s.deficitW<=0)&&s.pvW>=s.houseW){
+		lines.push("Haus aktuell aus PV versorgt");
+	}
+	if(s.socPct!=null&&s.batLabel)lines.push("Batterie "+Math.round(s.socPct)+" % · "+s.batLabel);
+	else if(s.socPct!=null)lines.push("Batterie "+Math.round(s.socPct)+" %");
+	else if(s.batLabel)lines.push("Batterie · "+s.batLabel);
+	if(s.boilerC!=null&&isFinite(s.boilerC)){
+		var b="Boiler "+Number(s.boilerC).toFixed(1).replace(".",",")+" °C";
+		if(s.boilerMinC!=null&&isFinite(s.boilerMinC)&&s.boilerC>=s.boilerMinC)b+=" · kein akuter Bedarf";
+		lines.push(b);
+	}
+	if(s.wbConnected===true)lines.push("Wallbox · Fahrzeug verbunden");
+	else if(s.wbConnected===false)lines.push("Wallbox · Fahrzeug getrennt");
+	return lines;
+}
+function visNowSummary(s){
+	var title="Batterie · "+(s.batLabel||"RUHE");
+	var meta="";
+	if(s.surplusW!=null&&s.surplusW>=50)meta="PV-Überschuss "+(s.surplusW/1000).toFixed(1).replace(".",",")+" kW";
+	else if(s.deficitW!=null&&s.deficitW>=50)meta="Netzbezug "+(s.deficitW/1000).toFixed(1).replace(".",",")+" kW";
+	return{title:title,meta:meta};
+}
 /* /vis-ops-display */
 function chip(label,value,sub,extraCls){
 	return '<div class="ems-chip'+(extraCls?" "+extraCls:"")+'"><div class="ems-k">'+esc(label)+'</div><div class="ems-chip-v">'+esc(value)+'</div>'
@@ -1253,12 +1409,8 @@ function climateCardNote(unitIndex){
 	});
 }
 function climateHvacBadge(unitIndex){
-	var p=String(g("addons.air_conditioning.units.unit_"+unitIndex+".mode_purpose")||"").toLowerCase();
-	if(p==="dehumidify")return{cls:"hvac-dry",label:"DRY"};
-	if(p==="cooling")return{cls:"hvac-cool",label:"COOL"};
-	if(p==="heating")return{cls:"hvac-heat",label:"HEAT"};
-	if(p==="fan_only")return{cls:"hvac-fan",label:"FAN"};
-	return{cls:"idle",label:"—"};
+	var running=isOn(g("addons.air_conditioning.units.unit_"+unitIndex+".running"));
+	return visClimateHvacBadge(g("addons.air_conditioning.units.unit_"+unitIndex+".mode_purpose"),running);
 }
 function climateDeviceBadge(running){
 	return running?{cls:"on",label:"LÄUFT"}:{cls:"idle",label:"AUS"};
@@ -1345,8 +1497,10 @@ function renderPriceBoard(){
 	var minLine=min&&num(min.priceCt)!==null?("Min "+Number(min.priceCt).toFixed(1).replace(".",",")+" ct · "+fmtSmartTime(min.startIso)):"Min —";
 	var maxLine=max&&num(max.priceCt)!==null?("Max "+Number(max.priceCt).toFixed(1).replace(".",",")+" ct · "+fmtSmartTime(max.startIso)):"Max —";
 	var thrLine=gbMin!==null?("Netzausgleich ab "+Number(gbMin).toFixed(1).replace(".",",")+" ct/kWh"):"";
+	var cheapLabel=visCheapPhaseLabel(slots,Date.now());
+	var headLine=visPriceHeadSummary(nowPrice,cheapLabel,gbMin,gbAllowed);
 	if(!slots.length){
-		el.innerHTML='<div class="ems-price-head"><div class="ems-k">Tibber-Preis</div><div class="ems-price-meta">'+esc(gateLine||"keine belastbare Preiskurve")+'</div></div>'
+		el.innerHTML='<div class="ems-price-head"><div class="ems-k">Tibber-Preis</div><div class="ems-price-meta">'+esc(headLine||gateLine||"keine belastbare Preiskurve")+'</div></div>'
 			+'<div class="ems-muted">Preisachse wartet auf Grid-Supply / Daily Plan.</div>';
 		return;
 	}
@@ -1427,7 +1581,7 @@ function renderPriceBoard(){
 	var yLab='<text x="2" y="'+(padT+8)+'" fill="#8b949e" font-size="8">'+esc(pMax.toFixed(0))+'</text>'
 		+'<text x="2" y="'+(padT+innerH)+'" fill="#8b949e" font-size="8">'+esc(pMin.toFixed(0))+"</text>";
 	el.innerHTML='<div class="ems-price-head"><div class="ems-k">Tibber-Preis</div><div class="ems-price-meta">'
-		+esc([gateLine,thrLine,minLine,maxLine].filter(Boolean).join(" · "))
+		+esc(headLine||[gateLine,thrLine].filter(Boolean).join(" · "))
 		+"</div></div>"
 		+'<svg class="ems-price-svg" viewBox="0 0 '+W+" "+H+'" preserveAspectRatio="none" role="img" aria-label="Tibber-Preisachse">'
 		+zones+hourBg+currentBg+yLab+bars+thr+gbMarks+acts+labels+"</svg>"
@@ -1502,28 +1656,69 @@ function renderAiSummary(){
 		+"</div>";
 }
 
+function nextActionItemHtml(it){
+	var stLabel=it.status==="on"?"läuft":(it.status==="fault"?"fehler":(it.status==="dryrun"?"dryrun":(it.status==="soon"?"jetzt":(it.status==="est"?"geschätzt":"geplant"))));
+	var stCls=it.status==="on"?"on":(it.status==="fault"?"fault":(it.status==="dryrun"?"dryrun":(it.status==="soon"?"soon":(it.status==="est"?"est":"plan"))));
+	return '<li style="border-left-color:'+it.color+'">'
+		+'<span class="ems-next-t">'+esc(fmtRange(it.startMs,it.endMs))+'</span>'
+		+'<span class="ems-next-name" style="color:'+it.color+'">'+esc(it.name)+'</span>'
+		+' <span class="ems-next-st '+stCls+'">'+esc(stLabel)+'</span>'
+		+(it.meta?'<span class="ems-next-meta">'+esc(it.meta)+'</span>':'')
+		+'</li>';
+}
 function renderNext(){
 	var el=document.getElementById("ems-next");
-	var horizonMs=Date.now()+48*3600*1000;
+	if(!el)return;
+	var now=Date.now();
+	var horizonMs=now+24*3600*1000;
 	var items=buildTimelineRanges(horizonMs);
-	var html='<div class="ems-k">Demnächst (48 h)</div>';
-	if(!items.length){
-		html+='<div class="ems-muted">Keine Fenster geplant.</div>';
+	var current=[],future=[],i;
+	for(i=0;i<items.length;i++){
+		var it=items[i];
+		if(it.endMs<=now)continue;
+		if(it.startMs<=now)current.push(it);
+		else future.push(it);
+	}
+	var html='<div class="ems-k">EMS – Nächste Aktionen</div>';
+	var snap=visLiveSnap();
+	var motion=visBatteryMotion(snap,ON_W);
+	var nowSum=visNowSummary({
+		batLabel:motion.label,
+		surplusW:snap.surplusW,
+		deficitW:snap.deficitW
+	});
+	if(current.length){
+		html+='<div class="ems-next-sec">Jetzt</div><ul class="ems-next-list">'+nextActionItemHtml(current[0])+"</ul>";
 	}else{
-		html+='<ul class="ems-next-list">';
-		for(var i=0;i<Math.min(24,items.length);i++){
-			var it=items[i];
-			var stLabel=it.status==="on"?"läuft":(it.status==="fault"?"fehler":(it.status==="dryrun"?"dryrun":(it.status==="soon"?"jetzt":(it.status==="est"?"geschätzt":"geplant"))));
-			var stCls=it.status==="on"?"on":(it.status==="fault"?"fault":(it.status==="dryrun"?"dryrun":(it.status==="soon"?"soon":(it.status==="est"?"est":"plan"))));
-			html+='<li style="border-left-color:'+it.color+'">'
-				+'<span class="ems-next-t">'+esc(fmtRange(it.startMs,it.endMs))+'</span>'
-				+'<span class="ems-next-name" style="color:'+it.color+'">'+esc(it.name)+'</span>'
-				+' <span class="ems-next-st '+stCls+'">'+esc(stLabel)+'</span>'
-				+(it.meta?'<span class="ems-next-meta">'+esc(it.meta)+'</span>':'')
-				+'</li>';
+		html+='<div class="ems-next-sec">Jetzt</div><ul class="ems-next-list"><li style="border-left-color:#58a6ff">'
+			+'<span class="ems-next-name">'+esc(nowSum.title)+"</span>"
+			+(nowSum.meta?'<span class="ems-next-meta">'+esc(nowSum.meta)+"</span>":"")
+			+"</li></ul>";
+	}
+	if(future.length){
+		html+='<div class="ems-next-sec">Nächste Aktion</div><ul class="ems-next-list">'+nextActionItemHtml(future[0])+"</ul>";
+		if(future[1])html+='<div class="ems-next-sec">Danach</div><ul class="ems-next-list">'+nextActionItemHtml(future[1])+"</ul>";
+	}else if(!current.length){
+		var boilerRaw=g("addons.immersion_heater.runtime.boiler_temperature_c");
+		if(boilerRaw==null)boilerRaw=g("live.thermal.boiler_temp_c");
+		var facts=visIdleFacts({
+			pvW:num(g("live.pv.power_w")),
+			houseW:num(g("live.battery.house_load_w")),
+			surplusW:snap.surplusW,
+			deficitW:snap.deficitW,
+			socPct:num(g("live.battery.soc_pct")),
+			batLabel:motion.label,
+			boilerC:num(boilerRaw),
+			boilerMinC:num(g("addons.immersion_heater.runtime.boiler_min_temp_c")),
+			wbConnected:g("addons.wallbox.runtime.connected")!=null||g("addons.wallbox.status.evcc.connected")!=null?wallboxConnected():null
+		});
+		html+='<div class="ems-next-sec">Keine Aktion geplant</div><div class="ems-next-idle">';
+		if(facts.length){
+			for(i=0;i<facts.length;i++)html+="<div>"+esc(facts[i])+"</div>";
+		}else{
+			html+="<div>Aktuell keine geplante EMS-Aktion.</div>";
 		}
-		if(items.length>24)html+='<li class="ems-muted" style="border:none;background:transparent">+'+(items.length-24)+' weitere …</li>';
-		html+='</ul>';
+		html+="</div>";
 	}
 	el.innerHTML=html;
 }
@@ -1538,14 +1733,22 @@ function renderStack(){
 	var ihOpBadge=ihHw?{cls:"on",label:"LÄUFT"}:{cls:"idle",label:"AUS"};
 	var boilerTemp=fmtTemp(g("addons.immersion_heater.runtime.boiler_temperature_c")!=null?g("addons.immersion_heater.runtime.boiler_temperature_c"):g("live.thermal.boiler_temp_c"));
 	var bufferTemp=fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c")!=null?g("addons.immersion_heater.runtime.buffer_temperature_c"):g("live.thermal.buffer_temp_c"));
+	var remH=num(g("learning.thermal_boiler.estimated_remaining_hours"));
+	if(remH===null)remH=num(g("learning.thermal_runtime.estimated_remaining_hours"));
+	var emptyAt=fmtEmptyAt(g("learning.thermal_boiler.estimated_empty_at"))||fmtEmptyAt(g("learning.thermal_runtime.estimated_empty_at"));
+	var hyg=txt(g("addons.immersion_heater.runtime.hygiene_status_de"),"");
+	if(hyg==="—")hyg="";
 	var ihRows=[
 		["Boiler",boilerTemp],
 		["Puffer",bufferTemp],
 		["Soft-Ziel",fmtTemp(g("addons.immersion_heater.runtime.plan_target_temp_c"))],
 		["Puffer-Max",fmtTemp(g("addons.immersion_heater.runtime.planning_max_temp_c"))],
 		["Bedarf",ihEnergyNeedLine()],
+		["Restzeit",(remH!==null&&remH>0)?(remH.toFixed(1).replace(".",",")+" h"):"—"],
+		["Leer ca.",emptyAt||"—"],
 		[ihSched.label,ihSched.value],
-		["Boiler-Learning",boilerLearningCompact()]
+		["Boiler-Learning",boilerLearningCompact()],
+		["Hygiene",(hyg&&/fällig|aktiv|nötig|blockiert/i.test(hyg))?shortNote(hyg,80):"—"]
 	];
 	var ihNote="";
 	if(ihFault){
@@ -1558,6 +1761,11 @@ function renderStack(){
 			["Status",immersionFaultStatusDe()],
 			[ihSched.label,ihSched.value]
 		];
+	}else{
+		var ihReason=txt(g("addons.immersion_heater.runtime.reason"),"");
+		if(ihReason==="—")ihReason="";
+		if(/cooling_k_per_h|newton/i.test(ihReason))ihReason="";
+		ihNote=shortNote(ihReason,90);
 	}
 	var ihBadges={exec:execAuthorityBadge("immersion_heater"),op:ihOpBadge};
 
@@ -1567,9 +1775,16 @@ function renderStack(){
 	var wbConnected=wallboxConnected();
 	var wbMode=wallboxModeLabel(g("addons.wallbox.status.evcc.loadpoint_mode"))||"—";
 	var wbSoc=fmtPct(g("live.wallbox.vehicle_soc_pct")!=null?g("live.wallbox.vehicle_soc_pct"):g("addons.wallbox.status.evcc.vehicle_soc_pct"));
+	var wbTarget=fmtPct(g("addons.wallbox.status.evcc.effective_limit_soc_pct"));
+	var wbRemain=num(g("addons.wallbox.status.evcc.charge_remaining_energy_kwh"));
+	if(wbRemain===null)wbRemain=num(g("addons.wallbox.status.ev_foundation.energy_to_target_kwh"));
+	var wbRewards=isOn(g("addons.wallbox.runtime.tibber_grid_rewards_active"))||isOn(g("addons.wallbox.status.ev_foundation.grid_rewards_active"));
 	var wbOpBadge=wbHw?{cls:"on",label:"LÄUFT"}:{cls:"idle",label:"AUS"};
 	var wbBadges={exec:execAuthorityBadge("wallbox"),op:wbOpBadge};
 	var wbNextLine=wbNext?(fmtSmartTime(wbNext.t)+" · "+Math.round(wbNext.w)+" W"):(txt(g("addons.wallbox.runtime.first_planned_slot"),"")&&txt(g("addons.wallbox.runtime.first_planned_slot"),"")!=="—"?fmtSmartTime(g("addons.wallbox.runtime.first_planned_slot")):"keines");
+	var wbReason=txt(g("addons.wallbox.runtime.reason_de"),"");
+	if(wbReason==="—")wbReason="";
+	if(/ev_execution|ev_foundation|decision_source/i.test(wbReason))wbReason="";
 
 	function acCard(unitIndex){
 		var base="addons.air_conditioning.units.unit_"+unitIndex;
@@ -1582,14 +1797,32 @@ function renderStack(){
 		var meas=num(g(base+".estimated_power_w"));
 		var exp=num(g(base+".expected_power_w"));
 		var alloc=num(g(base+".allocated_power_w"));
-		var pNow=running?(meas!==null?meas:alloc):alloc;
-		var pLine=(pNow!==null?Math.round(pNow)+" W":"—")+(exp!==null&&exp!==pNow?(" / erw. "+Math.round(exp)+" W"):"");
-		return card(title,"#79c0ff",badges,[
-			["Raum",fmtTemp(g(base+".room_temp_c"))],
-			["Leistung",pLine],
-			["Heute",d.heuteLine],
-			["Nächstes",d.nextLine]
-		],climateCardNote(unitIndex));
+		var purpose=visHvacPurposeLabel(g(base+".mode_purpose"));
+		var stats=base+".stats";
+		var rows=[["Raum",fmtTemp(g(base+".room_temp_c"))],["Feuchte",fmtHumidity(g(base+".room_humidity_pct"))]];
+		if(!running&&purpose)rows.push(["Zielmodus",purpose]);
+		if(running){
+			var pNow=meas!==null?meas:alloc;
+			var pLine=(pNow!==null?Math.round(pNow)+" W":"—")+(exp!==null&&exp!==pNow?(" / erw. "+Math.round(exp)+" W"):"");
+			rows.push(["Leistung",pLine]);
+		}else if(exp!==null){
+			rows.push(["Erw. Leistung",Math.round(exp)+" W"]);
+		}
+		var today=visJoinDurEnergy(num(g(stats+".today_runtime_sec")),num(g(stats+".today_energy_kwh")));
+		if(today)rows.push(["Heute",today]);
+		if(running){
+			var sess=visJoinDurEnergy(num(g(stats+".session_runtime_sec")),num(g(stats+".session_energy_kwh")));
+			if(sess)rows.push(["Session",sess]);
+		}else{
+			var last=visJoinDurEnergy(num(g(stats+".last_session_runtime_sec")),num(g(stats+".last_session_energy_kwh")));
+			if(last)rows.push(["Letzte Session",last]);
+		}
+		var tot=visJoinDurEnergy(num(g(stats+".total_runtime_sec")),num(g(stats+".total_energy_kwh")),true);
+		if(tot)rows.push(["Gesamt",tot]);
+		var nextLine=d.nextLine||"keines";
+		if(nextLine.indexOf("nächstes ")===0)nextLine=nextLine.slice(9);
+		rows.push(["Nächstes",nextLine]);
+		return card(title,"#79c0ff",badges,rows,climateCardNote(unitIndex));
 	}
 
 	el.innerHTML=
@@ -1599,9 +1832,12 @@ function renderStack(){
 			["SOC",wbSoc],
 			["EVCC",wbMode],
 			["Laden",fmtW(wbLiveP)],
+			["Ziel-SOC",wbTarget],
+			["Restenergie",visFmtKwh(wbRemain)||"—"],
 			["Hoheit",wallboxAuthorityLine()],
+			["Grid Rewards",wbRewards?"aktiv":"—"],
 			["Nächstes",wbNextLine]
-		],"")
+		],shortNote(wbReason,90))
 		+acCard(1)
 		+acCard(2)
 		+acCard(3)

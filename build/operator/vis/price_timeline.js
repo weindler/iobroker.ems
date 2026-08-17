@@ -9,9 +9,9 @@ const contribution_ids_1 = require("../contribution_ids");
 const time_1 = require("../time");
 const addon_plan_publish_1 = require("../daily_plan/addon_plan_publish");
 exports.VIS_PRICE_TIMELINE_STATE_ID = "operator.vis.price_timeline_json";
-exports.VIS_PRICE_LOOKBACK_HOURS = 4;
-exports.VIS_PRICE_MIN_AHEAD_HOURS = 12;
-exports.VIS_PRICE_MAX_AHEAD_HOURS = 36;
+exports.VIS_PRICE_LOOKBACK_HOURS = 6;
+exports.VIS_PRICE_MIN_AHEAD_HOURS = 18;
+exports.VIS_PRICE_MAX_AHEAD_HOURS = 18;
 exports.VIS_PRICE_TIMEZONE = "Europe/Berlin";
 function finitePrice(v) {
     if (v === null || v === undefined || v === "")
@@ -131,9 +131,8 @@ function buildVisPriceTimeline(input) {
         });
     }
     priced.sort((a, b) => a.startMs - b.startMs);
-    const lastPricedMs = priced.reduce((acc, s) => (s.priceCt !== null ? Math.max(acc, s.endMs) : acc), nowMs);
     const windowStartMs = nowMs - lookbackMs;
-    const windowEndMs = Math.min(Math.max(nowMs + minAheadMs, lastPricedMs), nowMs + maxAheadMs);
+    const windowEndMs = nowMs + Math.min(minAheadMs, maxAheadMs);
     const todayKey = (0, time_1.localDateKeyInTimezone)(input.now, timezone);
     const nowHourKey = hourKeyLocal(nowMs, timezone);
     const gbMin = finitePrice(input.gbMinPriceCt);

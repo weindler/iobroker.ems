@@ -9,9 +9,9 @@ import { RUNNABLE_ALLOCATION_FLOOR_W } from "../daily_plan/addon_plan_publish";
 
 export const VIS_PRICE_TIMELINE_STATE_ID = "operator.vis.price_timeline_json";
 
-export const VIS_PRICE_LOOKBACK_HOURS = 4;
-export const VIS_PRICE_MIN_AHEAD_HOURS = 12;
-export const VIS_PRICE_MAX_AHEAD_HOURS = 36;
+export const VIS_PRICE_LOOKBACK_HOURS = 6;
+export const VIS_PRICE_MIN_AHEAD_HOURS = 18;
+export const VIS_PRICE_MAX_AHEAD_HOURS = 18;
 export const VIS_PRICE_TIMEZONE = "Europe/Berlin";
 
 export type VisPriceActionKind = "battery_grid" | "ev" | "immersion" | "climate";
@@ -192,9 +192,8 @@ export function buildVisPriceTimeline(input: BuildVisPriceTimelineInput): VisPri
 	}
 	priced.sort((a, b) => a.startMs - b.startMs);
 
-	const lastPricedMs = priced.reduce((acc, s) => (s.priceCt !== null ? Math.max(acc, s.endMs) : acc), nowMs);
 	const windowStartMs = nowMs - lookbackMs;
-	const windowEndMs = Math.min(Math.max(nowMs + minAheadMs, lastPricedMs), nowMs + maxAheadMs);
+	const windowEndMs = nowMs + Math.min(minAheadMs, maxAheadMs);
 
 	const todayKey = localDateKeyInTimezone(input.now, timezone);
 	const nowHourKey = hourKeyLocal(nowMs, timezone);

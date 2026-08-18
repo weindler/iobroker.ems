@@ -112,17 +112,10 @@ function gridBalanceExecutionReleased(liveTest) {
     return gridBalanceSetpointPermit(liveTest);
 }
 exports.gridBalanceExecutionReleased = gridBalanceExecutionReleased;
-/** Cleanup/0-Write nur wenn GB den Setpoint besitzt und keine höhere Authority kontert. */
+/** GB beendet sich selbst mit discharge=0, auch wenn Hold/Boost/Netzladung übernehmen. */
 function gridBalanceCleanupAllowed(input) {
     if (!input.ownsSetpoint)
         return false;
-    if (input.holdDetected)
-        return false;
-    if (input.authority === "battery_hold" ||
-        input.authority === "external_ev" ||
-        input.authority === "planned_battery") {
-        return false;
-    }
     if (input.authority === "safety") {
         const reason = input.blockReason ?? "";
         if (reason === "restore_in_progress" || reason === "fault_lockout")
@@ -134,7 +127,8 @@ function gridBalanceCleanupAllowed(input) {
 exports.gridBalanceCleanupAllowed = gridBalanceCleanupAllowed;
 /**
  * Session-0-Release: unabhängig von One-Shot `consumed`.
- * Hold / External / Planned / Safety: kein Cleanup-Write, Ownership fällt.
+ * Hold / Boost / geplante Netzladung: GB schreibt zuerst discharge=0, danach Mode-Wechsel.
+ * Restore/Fault: kein konkurrierendes Cleanup.
  */
 function gridBalanceSessionReleasePermit(input) {
     if (!gridBalanceCleanupAllowed(input))
@@ -173,8 +167,6 @@ function evaluateGridBalanceTick(input) {
         blockReason = "mode_not_self_consumption";
     if (!blockReason && ev.blockReason)
         blockReason = ev.blockReason;
-    if (!blockReason && input.forecastBlockReason)
-        blockReason = input.forecastBlockReason;
     if (!blockReason && !exceeds)
         blockReason = "inside_deadband";
     if (!blockReason && max.effectiveMaxW <= 0)
@@ -215,7 +207,6 @@ function evaluateGridBalanceTick(input) {
     if (!safety.policyAllowed ||
         !input.mode2Confirmed ||
         ev.blockReason ||
-        input.forecastBlockReason ||
         !input.controllerIsGridBalance) {
         if (releasePermit) {
             shouldRelease = true;

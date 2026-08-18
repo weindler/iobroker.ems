@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.295",
+		"version": "0.1.296",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.296": {
+				"en": "Grid balance writes (house load − PV + SOC offset) to control.discharge when the price is at/above the minimum; remaining daily PV vs. battery capacity is not a gate. Hold, EVCC battery boost, and planned grid charge end grid balance first (discharge=0), then the mode may change. One-shot test and no productive Dauerbetrieb unchanged.",
+				"de": "Netzausgleich schreibt (Hauslast − PV + SOC-Offset) auf control.discharge, sobald der Preis auf/über der Mindestgrenze liegt; Rest-PV vs. Batteriekapazität ist kein Gate. Hold, EVCC-Batterie-Boost und geplante Netzladung beenden den Netzausgleich zuerst (discharge=0), danach erst Mode-Wechsel. One-Shot-Test und kein produktiver Dauerbetrieb unverändert."
+			},
 			"0.1.295": {
 				"en": "Grid balance no longer blocks on an authoritative 0 W / self-consumption Daily Plan (planned_battery_action only for a real EMS battery action). VIS NETZ shows connection-point import/export, not battery discharge. PV tile shows today's expected kWh; one PV-Lage line adds tomorrow, later-days outlook, learned forecast bias in plain language, and today's temperature range. No new states. Reload VIS after update.",
 				"de": "Netzausgleich blockiert nicht mehr wegen eines autoritativen 0-W-/Eigenverbrauchs-Daily-Plans (planned_battery_action nur bei echter EMS-Batterieaktion). VIS NETZ zeigt Anschluss-Bezug/Einspeisung, nicht Batterieentladung. PV-Kachel zeigt die erwarteten kWh heute; eine PV-Lage-Zeile ergänzt morgen, Horizon-Tendenz, Forecast-Bias in Alltagssprache und die Tagestemperatur. Keine neuen States. VIS nach Update neu laden."

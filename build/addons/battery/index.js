@@ -710,42 +710,9 @@ async function controlTickInner(host) {
             ack: true,
         });
     }
-    const capacityWh = (snapshot.capacity.effectiveKwh ?? 0) * 1000;
-    const restKwh = (await readRelNumber(host, ems_mirror_1.EMS_MIRROR_BATTERY.effectivePvRestOfDayKwh)) ?? 0;
-    const snow = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.snowCoverSuspected);
     const offset = snapshot.telemetry.socPct != null && snapshot.telemetry.socPct > config.gridBalance.socThresholdPct
         ? config.gridBalance.offsetHighSocW
         : config.gridBalance.offsetLowSocW;
-    const forecastProbe = (0, grid_balance_1.computeGridBalanceTarget)({
-        effectiveRestOfDayKwh: restKwh,
-        capacityWh,
-        snowCoverSuspected: snow,
-        consumptionW: consumption,
-        adjustedConsumptionW: consumption,
-        pvAcPowerW: pv,
-        socPct: snapshot.telemetry.socPct,
-        emsGridBalanceEnabled: config.gridBalance.enabled,
-        adapterFeatureEnabled: adapterFeature,
-        controller: "grid_balance",
-        offsetHighSocW: config.gridBalance.offsetHighSocW,
-        offsetLowSocW: config.gridBalance.offsetLowSocW,
-        socThresholdPct: config.gridBalance.socThresholdPct,
-        evccCharging: false,
-        batteryHoldActive: false,
-        winterGridPlanActive: false,
-        mode1Active: false,
-        dailyPlanAuthoritative: false,
-        priceNowCt,
-        minPriceCtPerKwh: config.gridBalance.minPriceCtPerKwh,
-    });
-    let forecastBlockReason = "";
-    if (forecastProbe.checksFailed.includes("snow_cover_suspected"))
-        forecastBlockReason = "snow_cover_suspected";
-    else if (forecastProbe.checksFailed.includes("capacity_missing"))
-        forecastBlockReason = "capacity_missing";
-    else if (forecastProbe.checksFailed.includes("pv_forecast_below_capacity")) {
-        forecastBlockReason = "pv_forecast_below_capacity";
-    }
     const safetyInput = {
         adminEnabled: config.gridBalance.enabled,
         emsMirrorEnabled: config.gridBalance.enabled,
@@ -798,7 +765,6 @@ async function controlTickInner(host) {
         controllerIsGridBalance: controller === "grid_balance" && !gridBalancePausedByFsm && !executionOff,
         mode2Confirmed,
         keepaliveMaxMs: grid_balance_power_1.GRID_BALANCE_KEEPALIVE_MAX_MS,
-        forecastBlockReason,
         leavingLiveWithOwnership,
     });
     gridBalanceLiveTest = gbDecision.liveTestNext;

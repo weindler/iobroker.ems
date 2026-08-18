@@ -73,4 +73,30 @@ const grid_balance_js_1 = require("./grid_balance.js");
         strict_1.default.equal(r.gatePassed, true);
         strict_1.default.ok(r.targetDischargeW > 0);
     });
+    (0, node_test_1.it)("does not require rest-of-day PV ≥ battery capacity", () => {
+        const r = (0, grid_balance_js_1.computeGridBalanceTarget)({
+            ...baseInputs,
+            effectiveRestOfDayKwh: 2,
+            capacityWh: 10_000,
+        });
+        strict_1.default.equal(r.gatePassed, true);
+        strict_1.default.equal(r.checksFailed.includes("pv_forecast_below_capacity"), false);
+        strict_1.default.ok(r.targetDischargeW > 0);
+    });
+    (0, node_test_1.it)("does not block on snow-cover suspected", () => {
+        const r = (0, grid_balance_js_1.computeGridBalanceTarget)({ ...baseInputs, snowCoverSuspected: true, capacityWh: 0 });
+        strict_1.default.equal(r.gatePassed, true);
+        strict_1.default.equal(r.checksFailed.includes("snow_cover_suspected"), false);
+        strict_1.default.equal(r.checksFailed.includes("capacity_missing"), false);
+    });
+    (0, node_test_1.it)("targets house load minus PV, not leftover smart-meter watts", () => {
+        const r = (0, grid_balance_js_1.computeGridBalanceTarget)({
+            ...baseInputs,
+            consumptionW: 200,
+            pvAcPowerW: 0,
+            socPct: 50,
+        });
+        strict_1.default.equal(r.gatePassed, true);
+        strict_1.default.equal(r.targetDischargeW, 225);
+    });
 });

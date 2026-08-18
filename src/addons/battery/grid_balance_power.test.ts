@@ -88,7 +88,6 @@ function tick(over: Partial<GridBalanceTickInput> = {}): GridBalanceTickInput {
 		controllerIsGridBalance: true,
 		mode2Confirmed: true,
 		keepaliveMaxMs: GRID_BALANCE_KEEPALIVE_MAX_MS,
-		forecastBlockReason: "",
 		...over,
 	};
 }
@@ -295,7 +294,7 @@ describe("grid balance live hardening v0.1.289", () => {
 		assert.equal(ok.ownsSetpointNext, false);
 	});
 
-	it("L18: Hold während GB aktiv → keine Keepalives, kein konkurrierendes 0", () => {
+	it("L18: Hold während GB aktiv → sofort discharge=0, keine Keepalives", () => {
 		const d = evaluateGridBalanceTick(
 			tick({
 				ownsSetpoint: true,
@@ -305,16 +304,18 @@ describe("grid balance live hardening v0.1.289", () => {
 			}),
 		);
 		assert.equal(d.shouldWrite, false);
-		assert.equal(d.shouldRelease, false);
+		assert.equal(d.shouldRelease, true);
+		assert.equal(d.writePowerW, 0);
+		assert.equal(d.ownsSetpointNext, false);
 		assert.equal(d.keepaliveDue, false);
 		assert.equal(d.blockReason, "battery_hold");
 		assert.equal(
 			gridBalanceCleanupAllowed({ ownsSetpoint: true, holdDetected: true, authority: "battery_hold" }),
-			false,
+			true,
 		);
 	});
 
-	it("L19: External übernimmt → kein Cleanup gegen External", () => {
+	it("L19: External übernimmt → GB endet mit discharge=0, danach Mode-Wechsel", () => {
 		const d = evaluateGridBalanceTick(
 			tick({
 				ownsSetpoint: true,
@@ -322,7 +323,8 @@ describe("grid balance live hardening v0.1.289", () => {
 				safety: safety({ externalEvAuthority: true, evConflictKind: "ev_external" }),
 			}),
 		);
-		assert.equal(d.shouldRelease, false);
+		assert.equal(d.shouldRelease, true);
+		assert.equal(d.writePowerW, 0);
 		assert.equal(d.shouldWrite, false);
 		assert.equal(d.keepaliveDue, false);
 		assert.equal(d.authority, "external_ev");
@@ -495,7 +497,7 @@ describe("grid balance live hardening v0.1.289", () => {
 		assert.equal(d.ownsSetpointNext, false);
 	});
 
-	it("Live→Dryrun + Hold: no competing 0-write", () => {
+	it("Live→Dryrun + Hold: GB endet mit discharge=0", () => {
 		const d = evaluateGridBalanceTick(
 			tick({
 				ownsSetpoint: true,
@@ -504,12 +506,13 @@ describe("grid balance live hardening v0.1.289", () => {
 				safety: safety({ globalLive: false, holdActive: true, liveTestPermit: false }),
 			}),
 		);
-		assert.equal(d.shouldRelease, false);
+		assert.equal(d.shouldRelease, true);
+		assert.equal(d.writePowerW, 0);
 		assert.equal(d.shouldWrite, false);
 		assert.equal(d.ownsSetpointNext, false);
 	});
 
-	it("one-shot session: Hold/External/Planned drop ownership without 0-write", () => {
+	it("one-shot session: Hold/External/Planned end GB with discharge=0 before mode switch", () => {
 		const consumed = consumedLiveTest();
 		const hold = evaluateGridBalanceTick(
 			tick({
@@ -519,7 +522,8 @@ describe("grid balance live hardening v0.1.289", () => {
 				safety: safety({ holdActive: true, liveTestPermit: false }),
 			}),
 		);
-		assert.equal(hold.shouldRelease, false);
+		assert.equal(hold.shouldRelease, true);
+		assert.equal(hold.writePowerW, 0);
 		assert.equal(hold.shouldWrite, false);
 		assert.equal(hold.ownsSetpointNext, false);
 
@@ -531,7 +535,8 @@ describe("grid balance live hardening v0.1.289", () => {
 				safety: safety({ externalEvAuthority: true, evConflictKind: "ev_external", liveTestPermit: false }),
 			}),
 		);
-		assert.equal(ext.shouldRelease, false);
+		assert.equal(ext.shouldRelease, true);
+		assert.equal(ext.writePowerW, 0);
 		assert.equal(ext.ownsSetpointNext, false);
 
 		const planned = evaluateGridBalanceTick(
@@ -542,7 +547,8 @@ describe("grid balance live hardening v0.1.289", () => {
 				safety: safety({ plannedBatteryAction: true, liveTestPermit: false }),
 			}),
 		);
-		assert.equal(planned.shouldRelease, false);
+		assert.equal(planned.shouldRelease, true);
+		assert.equal(planned.writePowerW, 0);
 		assert.equal(planned.ownsSetpointNext, false);
 		assert.equal(planned.authority, "planned_battery");
 	});
@@ -650,6 +656,36 @@ describe("grid balance Mode-2 discharge contract v0.1.289", () => {
 		const d = evaluateGridBalanceTick(tick({ mode2Confirmed: false, consumptionW: 2000, pvAcPowerW: 0 }));
 		assert.equal(d.shouldWrite, false);
 		assert.equal(d.blockReason, "mode_not_self_consumption");
+	});
+
+	it("Haus 200 W / PV 0 → Entladeziel 200 W (nicht 30 W Smartmeter-Rest)", () => {
+		const d = evaluateGridBalanceTick(tick({ consumptionW: 200, pvAcPowerW: 0, offsetW: 0 }));
+		assert.equal(d.rawGridDeltaW, 200);
+		assert.equal(d.requestedPowerW, 200);
+		assert.equal(d.shouldWrite, true);
+		assert.equal(d.writePowerW, 200);
+		assert.equal(d.writeKind, "discharge");
+	});
+
+	it("Restore/Fault: kein GB-0 gegen Safety", () => {
+		assert.equal(
+			gridBalanceCleanupAllowed({
+				ownsSetpoint: true,
+				holdDetected: false,
+				authority: "safety",
+				blockReason: "restore_in_progress",
+			}),
+			false,
+		);
+		assert.equal(
+			gridBalanceCleanupAllowed({
+				ownsSetpoint: true,
+				holdDetected: false,
+				authority: "safety",
+				blockReason: "fault_lockout",
+			}),
+			false,
+		);
 	});
 
 	it("power module has no 8 s stabilization", () => {

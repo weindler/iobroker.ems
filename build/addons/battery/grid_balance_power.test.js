@@ -70,7 +70,6 @@ function tick(over = {}) {
         controllerIsGridBalance: true,
         mode2Confirmed: true,
         keepaliveMaxMs: grid_balance_power_js_1.GRID_BALANCE_KEEPALIVE_MAX_MS,
-        forecastBlockReason: "",
         ...over,
     };
 }
@@ -243,7 +242,7 @@ function tick(over = {}) {
         strict_1.default.equal(ok.writeKind, "discharge");
         strict_1.default.equal(ok.ownsSetpointNext, false);
     });
-    (0, node_test_1.it)("L18: Hold während GB aktiv → keine Keepalives, kein konkurrierendes 0", () => {
+    (0, node_test_1.it)("L18: Hold während GB aktiv → sofort discharge=0, keine Keepalives", () => {
         const d = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({
             ownsSetpoint: true,
             lastWrittenW: 800,
@@ -251,18 +250,21 @@ function tick(over = {}) {
             safety: safety({ holdActive: true, liveTestPermit: true }),
         }));
         strict_1.default.equal(d.shouldWrite, false);
-        strict_1.default.equal(d.shouldRelease, false);
+        strict_1.default.equal(d.shouldRelease, true);
+        strict_1.default.equal(d.writePowerW, 0);
+        strict_1.default.equal(d.ownsSetpointNext, false);
         strict_1.default.equal(d.keepaliveDue, false);
         strict_1.default.equal(d.blockReason, "battery_hold");
-        strict_1.default.equal((0, grid_balance_power_js_1.gridBalanceCleanupAllowed)({ ownsSetpoint: true, holdDetected: true, authority: "battery_hold" }), false);
+        strict_1.default.equal((0, grid_balance_power_js_1.gridBalanceCleanupAllowed)({ ownsSetpoint: true, holdDetected: true, authority: "battery_hold" }), true);
     });
-    (0, node_test_1.it)("L19: External übernimmt → kein Cleanup gegen External", () => {
+    (0, node_test_1.it)("L19: External übernimmt → GB endet mit discharge=0, danach Mode-Wechsel", () => {
         const d = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({
             ownsSetpoint: true,
             lastWrittenW: 800,
             safety: safety({ externalEvAuthority: true, evConflictKind: "ev_external" }),
         }));
-        strict_1.default.equal(d.shouldRelease, false);
+        strict_1.default.equal(d.shouldRelease, true);
+        strict_1.default.equal(d.writePowerW, 0);
         strict_1.default.equal(d.shouldWrite, false);
         strict_1.default.equal(d.keepaliveDue, false);
         strict_1.default.equal(d.authority, "external_ev");
@@ -408,18 +410,19 @@ function tick(over = {}) {
         strict_1.default.equal(d.writePowerW, 0);
         strict_1.default.equal(d.ownsSetpointNext, false);
     });
-    (0, node_test_1.it)("Live→Dryrun + Hold: no competing 0-write", () => {
+    (0, node_test_1.it)("Live→Dryrun + Hold: GB endet mit discharge=0", () => {
         const d = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({
             ownsSetpoint: true,
             lastWrittenW: 800,
             leavingLiveWithOwnership: true,
             safety: safety({ globalLive: false, holdActive: true, liveTestPermit: false }),
         }));
-        strict_1.default.equal(d.shouldRelease, false);
+        strict_1.default.equal(d.shouldRelease, true);
+        strict_1.default.equal(d.writePowerW, 0);
         strict_1.default.equal(d.shouldWrite, false);
         strict_1.default.equal(d.ownsSetpointNext, false);
     });
-    (0, node_test_1.it)("one-shot session: Hold/External/Planned drop ownership without 0-write", () => {
+    (0, node_test_1.it)("one-shot session: Hold/External/Planned end GB with discharge=0 before mode switch", () => {
         const consumed = consumedLiveTest();
         const hold = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({
             liveTest: consumed,
@@ -427,7 +430,8 @@ function tick(over = {}) {
             lastWrittenW: 800,
             safety: safety({ holdActive: true, liveTestPermit: false }),
         }));
-        strict_1.default.equal(hold.shouldRelease, false);
+        strict_1.default.equal(hold.shouldRelease, true);
+        strict_1.default.equal(hold.writePowerW, 0);
         strict_1.default.equal(hold.shouldWrite, false);
         strict_1.default.equal(hold.ownsSetpointNext, false);
         const ext = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({
@@ -436,7 +440,8 @@ function tick(over = {}) {
             lastWrittenW: 800,
             safety: safety({ externalEvAuthority: true, evConflictKind: "ev_external", liveTestPermit: false }),
         }));
-        strict_1.default.equal(ext.shouldRelease, false);
+        strict_1.default.equal(ext.shouldRelease, true);
+        strict_1.default.equal(ext.writePowerW, 0);
         strict_1.default.equal(ext.ownsSetpointNext, false);
         const planned = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({
             liveTest: consumed,
@@ -444,7 +449,8 @@ function tick(over = {}) {
             lastWrittenW: 800,
             safety: safety({ plannedBatteryAction: true, liveTestPermit: false }),
         }));
-        strict_1.default.equal(planned.shouldRelease, false);
+        strict_1.default.equal(planned.shouldRelease, true);
+        strict_1.default.equal(planned.writePowerW, 0);
         strict_1.default.equal(planned.ownsSetpointNext, false);
         strict_1.default.equal(planned.authority, "planned_battery");
     });
@@ -536,6 +542,28 @@ function tick(over = {}) {
         const d = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({ mode2Confirmed: false, consumptionW: 2000, pvAcPowerW: 0 }));
         strict_1.default.equal(d.shouldWrite, false);
         strict_1.default.equal(d.blockReason, "mode_not_self_consumption");
+    });
+    (0, node_test_1.it)("Haus 200 W / PV 0 → Entladeziel 200 W (nicht 30 W Smartmeter-Rest)", () => {
+        const d = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({ consumptionW: 200, pvAcPowerW: 0, offsetW: 0 }));
+        strict_1.default.equal(d.rawGridDeltaW, 200);
+        strict_1.default.equal(d.requestedPowerW, 200);
+        strict_1.default.equal(d.shouldWrite, true);
+        strict_1.default.equal(d.writePowerW, 200);
+        strict_1.default.equal(d.writeKind, "discharge");
+    });
+    (0, node_test_1.it)("Restore/Fault: kein GB-0 gegen Safety", () => {
+        strict_1.default.equal((0, grid_balance_power_js_1.gridBalanceCleanupAllowed)({
+            ownsSetpoint: true,
+            holdDetected: false,
+            authority: "safety",
+            blockReason: "restore_in_progress",
+        }), false);
+        strict_1.default.equal((0, grid_balance_power_js_1.gridBalanceCleanupAllowed)({
+            ownsSetpoint: true,
+            holdDetected: false,
+            authority: "safety",
+            blockReason: "fault_lockout",
+        }), false);
     });
     (0, node_test_1.it)("power module has no 8 s stabilization", () => {
         const src = (0, node_fs_1.readFileSync)((0, node_path_1.join)(SRC, "grid_balance_power.ts"), "utf8");

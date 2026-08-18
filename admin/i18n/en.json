@@ -44,7 +44,7 @@
 	"Netzausgleich aktiviert": "Grid balance enabled",
 	"Netzausgleich aktiv": "Grid balance active",
 	"Mindeststrompreis für Netzausgleich (ct/kWh)": "Minimum electricity price for grid balance (ct/kWh)",
-	"Unterhalb dieses Strompreises wird die Batterie nicht für den kurzfristigen Netzausgleich verwendet. Ab dieser Preisgrenze darf der Netzausgleich arbeiten, sofern alle weiteren Bedingungen erfüllt sind.": "Below this electricity price the battery is not used for short-term grid balance. From this threshold upward, grid balance may run if all other conditions are met.",
+	"Unterhalb dieses Strompreises wird die Batterie nicht für den kurzfristigen Netzausgleich verwendet. Ab dieser Preisgrenze darf der Netzausgleich (Hauslast minus PV plus SOC-Offset) auf control.discharge schreiben. Rest-PV-Prognose und Batteriekapazität sind kein Gate.": "Below this electricity price the battery is not used for short-term grid balance. From this threshold upward, grid balance may write (house load minus PV plus SOC offset) to control.discharge. Remaining PV forecast and battery capacity are not a gate.",
 	"SOC-Schwelle (%)": "SOC threshold (%)",
 	"Maximale Sollleistung (W)": "Maximum setpoint power (W)",
 	"Aktualisierungsintervall (s)": "Update interval (s)",

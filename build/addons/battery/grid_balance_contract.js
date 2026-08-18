@@ -6,13 +6,14 @@
  * No median / relative factor, no second price-gate switch.
  *
  * Existing path (do not replace with a second optimiser):
- *   src/addons/battery/grid_balance.ts  — formula + legacy gates
+ *   src/addons/battery/grid_balance.ts  — house−PV residual in Mode 2; no rest-PV/capacity gate
  *   src/addons/battery/grid_balance_power.ts — EV-Abzug, Deadband 0, Mode-2 keepalive ≤8 s, Clamp, Ownership
  *   src/addons/battery/index.ts         — Sonnen Mode-2 control.discharge writes (never Mode 1 / charge)
  *   src/addons/battery/runtime/grid_balance_watch.ts — on-change 500 ms + keepalive ≤ 8 s
  *
  * Authority (lowest wins last): Safety/Fault/Restore → External EV → Battery Hold
  * → planned EMS battery action → grid balance.
+ * Hold / EVCC Boost / geplante Netzladung: GB schreibt zuerst discharge=0, danach Mode-Wechsel.
  *
  * GRID_BALANCE_EXECUTION_ENABLED stays false: no Dauerbetrieb. Productive writes
  * only via one-shot `grid_balance.live_test_armed` (ack:false) after all gates.

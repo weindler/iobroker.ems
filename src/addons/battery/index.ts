@@ -21,7 +21,7 @@ import type { BatteryAction, BatteryDeviceIntent, BatteryOperatingMode } from ".
 import { assembleBatterySnapshot, type BatterySnapshot } from "./diagnostics";
 import { BAT, ensureBatteryArchitectureStates } from "./ensure_states";
 import { ensureBatteryEmsMirrorStates, EMS_MIRROR_BATTERY, EMS_MIRROR_BATTERY_IDS } from "./ems_mirror";
-import { computeGridBalanceTarget, resolveController } from "./grid_balance";
+import { resolveController } from "./grid_balance";
 import {
 	GRID_BALANCE_EXECUTION_ENABLED,
 	classifyGridBalanceEvConflict,
@@ -892,41 +892,10 @@ async function controlTickInner(host: Host): Promise<void> {
 		});
 	}
 
-	const capacityWh = (snapshot.capacity.effectiveKwh ?? 0) * 1000;
-	const restKwh = (await readRelNumber(host, EMS_MIRROR_BATTERY.effectivePvRestOfDayKwh)) ?? 0;
-	const snow = await readRelBool(host, EMS_MIRROR_BATTERY.snowCoverSuspected);
 	const offset =
 		snapshot.telemetry.socPct != null && snapshot.telemetry.socPct > config.gridBalance.socThresholdPct
 			? config.gridBalance.offsetHighSocW
 			: config.gridBalance.offsetLowSocW;
-	const forecastProbe = computeGridBalanceTarget({
-		effectiveRestOfDayKwh: restKwh,
-		capacityWh,
-		snowCoverSuspected: snow,
-		consumptionW: consumption,
-		adjustedConsumptionW: consumption,
-		pvAcPowerW: pv,
-		socPct: snapshot.telemetry.socPct,
-		emsGridBalanceEnabled: config.gridBalance.enabled,
-		adapterFeatureEnabled: adapterFeature,
-		controller: "grid_balance",
-		offsetHighSocW: config.gridBalance.offsetHighSocW,
-		offsetLowSocW: config.gridBalance.offsetLowSocW,
-		socThresholdPct: config.gridBalance.socThresholdPct,
-		evccCharging: false,
-		batteryHoldActive: false,
-		winterGridPlanActive: false,
-		mode1Active: false,
-		dailyPlanAuthoritative: false,
-		priceNowCt,
-		minPriceCtPerKwh: config.gridBalance.minPriceCtPerKwh,
-	});
-	let forecastBlockReason = "";
-	if (forecastProbe.checksFailed.includes("snow_cover_suspected")) forecastBlockReason = "snow_cover_suspected";
-	else if (forecastProbe.checksFailed.includes("capacity_missing")) forecastBlockReason = "capacity_missing";
-	else if (forecastProbe.checksFailed.includes("pv_forecast_below_capacity")) {
-		forecastBlockReason = "pv_forecast_below_capacity";
-	}
 
 	const safetyInput: GridBalanceSafetyInput = {
 		adminEnabled: config.gridBalance.enabled,
@@ -981,7 +950,6 @@ async function controlTickInner(host: Host): Promise<void> {
 		controllerIsGridBalance: controller === "grid_balance" && !gridBalancePausedByFsm && !executionOff,
 		mode2Confirmed,
 		keepaliveMaxMs: GRID_BALANCE_KEEPALIVE_MAX_MS,
-		forecastBlockReason,
 		leavingLiveWithOwnership,
 	});
 	gridBalanceLiveTest = gbDecision.liveTestNext;

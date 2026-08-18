@@ -43,13 +43,8 @@ function computeGridBalanceTarget(inputs) {
         return inactive("EVCC lädt — Netzausgleich pausiert", checksPassed, checksFailed);
     }
     checksPassed.push("no_evcc_charging");
-    // Authoritative Daily Plan (incl. 0 W / self_consumption) is not a competing EMS action.
-    // Competing charge/ownership is gated in evaluateGridBalanceSafety.
-    if (inputs.winterGridPlanActive) {
-        checksFailed.push("winter_grid_plan");
-        return inactive("Winter-Netzplan aktiv — Netzausgleich pausiert", checksPassed, checksFailed);
-    }
-    checksPassed.push("no_winter_grid");
+    // Rest-PV vs. Kapazität / Schnee / Winterplan sind kein GB-Gate.
+    // GB deckt teuren Restnetzbezug (Haus−PV) in Mode 2; Nachladen entscheidet der Daily Plan.
     if (!inputs.adapterFeatureEnabled) {
         checksFailed.push("adapter_feature_disabled");
         return inactive("Netzausgleich im Adapter deaktiviert", checksPassed, checksFailed);
@@ -60,23 +55,6 @@ function computeGridBalanceTarget(inputs) {
         return inactive("EMS: grid_balance_enabled=false", checksPassed, checksFailed);
     }
     checksPassed.push("ems_grid_balance_enabled");
-    if (inputs.snowCoverSuspected) {
-        checksFailed.push("snow_cover_suspected");
-        return inactive("Schnee-/Ertrags-Verdacht (EMS)", checksPassed, checksFailed);
-    }
-    checksPassed.push("no_snow");
-    const cap = inputs.capacityWh;
-    if (!(cap > 0)) {
-        checksFailed.push("capacity_missing");
-        return inactive("ems_mirror.capacity_wh fehlt", checksPassed, checksFailed);
-    }
-    checksPassed.push("capacity_ok");
-    const restWh = inputs.effectiveRestOfDayKwh * 1000;
-    if (!(restWh >= cap)) {
-        checksFailed.push("pv_forecast_below_capacity");
-        return inactive(`Rest-PV ${inputs.effectiveRestOfDayKwh.toFixed(2)} kWh < Kapazität ${(cap / 1000).toFixed(2)} kWh`, checksPassed, checksFailed);
-    }
-    checksPassed.push("pv_forecast_gate");
     const loadW = inputs.adjustedConsumptionW ?? inputs.consumptionW;
     if (!(loadW > inputs.pvAcPowerW)) {
         checksFailed.push("no_grid_import");

@@ -161,7 +161,7 @@ export function gridBalanceExecutionReleased(liveTest: GridBalanceLiveTestState)
 	return gridBalanceSetpointPermit(liveTest);
 }
 
-/** Cleanup/0-Write nur wenn GB den Setpoint besitzt und keine höhere Authority kontert. */
+/** GB beendet sich selbst mit discharge=0, auch wenn Hold/Boost/Netzladung übernehmen. */
 export function gridBalanceCleanupAllowed(input: {
 	ownsSetpoint: boolean;
 	holdDetected: boolean;
@@ -169,14 +169,6 @@ export function gridBalanceCleanupAllowed(input: {
 	blockReason?: string;
 }): boolean {
 	if (!input.ownsSetpoint) return false;
-	if (input.holdDetected) return false;
-	if (
-		input.authority === "battery_hold" ||
-		input.authority === "external_ev" ||
-		input.authority === "planned_battery"
-	) {
-		return false;
-	}
 	if (input.authority === "safety") {
 		const reason = input.blockReason ?? "";
 		if (reason === "restore_in_progress" || reason === "fault_lockout") return false;
@@ -187,7 +179,8 @@ export function gridBalanceCleanupAllowed(input: {
 
 /**
  * Session-0-Release: unabhängig von One-Shot `consumed`.
- * Hold / External / Planned / Safety: kein Cleanup-Write, Ownership fällt.
+ * Hold / Boost / geplante Netzladung: GB schreibt zuerst discharge=0, danach Mode-Wechsel.
+ * Restore/Fault: kein konkurrierendes Cleanup.
  */
 export function gridBalanceSessionReleasePermit(input: {
 	ownsSetpoint: boolean;
@@ -247,8 +240,6 @@ export type GridBalanceTickInput = {
 	/** Sonnen Mode 2 / self_consumption confirmed from telemetry. */
 	mode2Confirmed: boolean;
 	keepaliveMaxMs?: number;
-	/** Empty if PV-forecast / snow / capacity gates passed. */
-	forecastBlockReason: string;
 	/** Global Live → Dryrun while this GB session still owns a live setpoint. */
 	leavingLiveWithOwnership?: boolean;
 };
@@ -309,7 +300,6 @@ export function evaluateGridBalanceTick(input: GridBalanceTickInput): GridBalanc
 	let blockReason = safety.blockReason;
 	if (!blockReason && !input.mode2Confirmed) blockReason = "mode_not_self_consumption";
 	if (!blockReason && ev.blockReason) blockReason = ev.blockReason;
-	if (!blockReason && input.forecastBlockReason) blockReason = input.forecastBlockReason;
 	if (!blockReason && !exceeds) blockReason = "inside_deadband";
 	if (!blockReason && max.effectiveMaxW <= 0) blockReason = "no_hardware_headroom";
 	if (!blockReason && minBenefitW > 0 && requestedPowerW < minBenefitW) blockReason = "below_min_benefit";
@@ -354,7 +344,6 @@ export function evaluateGridBalanceTick(input: GridBalanceTickInput): GridBalanc
 		!safety.policyAllowed ||
 		!input.mode2Confirmed ||
 		ev.blockReason ||
-		input.forecastBlockReason ||
 		!input.controllerIsGridBalance
 	) {
 		if (releasePermit) {

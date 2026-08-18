@@ -45,7 +45,7 @@
 	"Netzausgleich aktiviert": "Netzausgleich aktiviert",
 	"Netzausgleich aktiv": "Netzausgleich aktiv",
 	"Mindeststrompreis für Netzausgleich (ct/kWh)": "Mindeststrompreis für Netzausgleich (ct/kWh)",
-	"Unterhalb dieses Strompreises wird die Batterie nicht für den kurzfristigen Netzausgleich verwendet. Ab dieser Preisgrenze darf der Netzausgleich arbeiten, sofern alle weiteren Bedingungen erfüllt sind.": "Unterhalb dieses Strompreises wird die Batterie nicht für den kurzfristigen Netzausgleich verwendet. Ab dieser Preisgrenze darf der Netzausgleich arbeiten, sofern alle weiteren Bedingungen erfüllt sind.",
+	"Unterhalb dieses Strompreises wird die Batterie nicht für den kurzfristigen Netzausgleich verwendet. Ab dieser Preisgrenze darf der Netzausgleich (Hauslast minus PV plus SOC-Offset) auf control.discharge schreiben. Rest-PV-Prognose und Batteriekapazität sind kein Gate.": "Unterhalb dieses Strompreises wird die Batterie nicht für den kurzfristigen Netzausgleich verwendet. Ab dieser Preisgrenze darf der Netzausgleich (Hauslast minus PV plus SOC-Offset) auf control.discharge schreiben. Rest-PV-Prognose und Batteriekapazität sind kein Gate.",
 	"SOC-Schwelle (%)": "SOC-Schwelle (%)",
 	"Maximale Sollleistung (W)": "Maximale Sollleistung (W)",
 	"Aktualisierungsintervall (s)": "Aktualisierungsintervall (s)",

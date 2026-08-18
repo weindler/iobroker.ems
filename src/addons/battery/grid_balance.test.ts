@@ -83,4 +83,33 @@ describe("grid balance", () => {
 		assert.equal(r.gatePassed, true);
 		assert.ok(r.targetDischargeW > 0);
 	});
+
+	it("does not require rest-of-day PV ≥ battery capacity", () => {
+		const r = computeGridBalanceTarget({
+			...baseInputs,
+			effectiveRestOfDayKwh: 2,
+			capacityWh: 10_000,
+		});
+		assert.equal(r.gatePassed, true);
+		assert.equal(r.checksFailed.includes("pv_forecast_below_capacity"), false);
+		assert.ok(r.targetDischargeW > 0);
+	});
+
+	it("does not block on snow-cover suspected", () => {
+		const r = computeGridBalanceTarget({ ...baseInputs, snowCoverSuspected: true, capacityWh: 0 });
+		assert.equal(r.gatePassed, true);
+		assert.equal(r.checksFailed.includes("snow_cover_suspected"), false);
+		assert.equal(r.checksFailed.includes("capacity_missing"), false);
+	});
+
+	it("targets house load minus PV, not leftover smart-meter watts", () => {
+		const r = computeGridBalanceTarget({
+			...baseInputs,
+			consumptionW: 200,
+			pvAcPowerW: 0,
+			socPct: 50,
+		});
+		assert.equal(r.gatePassed, true);
+		assert.equal(r.targetDischargeW, 225);
+	});
 });

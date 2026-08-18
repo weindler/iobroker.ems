@@ -43,11 +43,8 @@ function computeGridBalanceTarget(inputs) {
         return inactive("EVCC lädt — Netzausgleich pausiert", checksPassed, checksFailed);
     }
     checksPassed.push("no_evcc_charging");
-    if (inputs.dailyPlanAuthoritative) {
-        checksFailed.push("daily_plan_authoritative");
-        return inactive("Daily Plan autoritativ — Netzausgleich pausiert", checksPassed, checksFailed);
-    }
-    checksPassed.push("no_daily_plan_authority");
+    // Authoritative Daily Plan (incl. 0 W / self_consumption) is not a competing EMS action.
+    // Competing charge/ownership is gated in evaluateGridBalanceSafety.
     if (inputs.winterGridPlanActive) {
         checksFailed.push("winter_grid_plan");
         return inactive("Winter-Netzplan aktiv — Netzausgleich pausiert", checksPassed, checksFailed);

@@ -11,6 +11,7 @@ import {
 	classifyGridBalanceEvConflict,
 	evaluateGridBalanceSafety,
 	formatGridBalanceExplain,
+	isCompetingEmsBatteryAction,
 	parseGridBalanceMinPriceCt,
 	type GridBalanceSafetyInput,
 } from "./grid_balance_contract.js";
@@ -190,6 +191,35 @@ describe("grid balance safety contract v0.1.284", () => {
 		const r = evaluateGridBalanceSafety(baseSafety({ plannedBatteryAction: true }));
 		assert.equal(r.blockReason, "planned_battery_action");
 		assert.equal(r.authority, "planned_battery");
+	});
+
+	it("authoritative 0 W Daily Plan is not a competing battery action", () => {
+		const r = evaluateGridBalanceSafety(
+			baseSafety({
+				dailyPlanAuthoritative: true,
+				plannedBatteryAction: false,
+				ownershipActive: false,
+				mode1Active: false,
+			}),
+		);
+		assert.equal(isCompetingEmsBatteryAction(baseSafety({ dailyPlanAuthoritative: true })), false);
+		assert.equal(r.blockReason, "");
+		assert.notEqual(r.blockReason, "planned_battery_action");
+		assert.equal(r.holdDetected, false);
+		assert.equal(r.evConflict, false);
+		assert.equal(r.priceAllowed, true);
+		assert.equal(r.policyAllowed, true);
+	});
+
+	it("real EMS ownership / charge setpoint still blocks as planned_battery_action", () => {
+		assert.equal(
+			evaluateGridBalanceSafety(baseSafety({ plannedBatteryAction: true, ownershipActive: true })).blockReason,
+			"planned_battery_action",
+		);
+		assert.equal(evaluateGridBalanceSafety(baseSafety({ ownershipActive: true })).blockReason, "planned_battery_action");
+		assert.equal(evaluateGridBalanceSafety(baseSafety({ mode1Active: true })).blockReason, "planned_battery_action");
+		assert.equal(isCompetingEmsBatteryAction(baseSafety({ plannedBatteryAction: true })), true);
+		assert.equal(isCompetingEmsBatteryAction(baseSafety({ ownershipActive: true })), true);
 	});
 
 	it("L13: fault/restore has priority", () => {

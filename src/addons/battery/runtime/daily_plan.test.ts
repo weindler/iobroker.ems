@@ -7,6 +7,7 @@ import { slotStartIsoFloored, DAILY_PLAN_SLOT_MS } from "../../../operator/daily
 import { isoFromMs } from "../../../operator/time";
 import { getBatteryProfile } from "../profiles/registry.js";
 import {
+	dailyPlanCompetesWithGridBalance,
 	deviceIntentFromDailyPlan,
 	isBatteryDailyPlanAuthoritative,
 	mergeBatteryChargeSlotAllocation,
@@ -115,7 +116,8 @@ describe("battery daily plan reader", () => {
 		assert.equal(r.dailyPlanAuthoritative, true);
 		assert.equal(r.chargingAllowed, false);
 		assert.equal(r.legacyFallbackActive, false);
-		assert.equal(r.dailyPlanBlocksGridBalance, true);
+		assert.equal(r.dailyPlanBlocksGridBalance, false);
+		assert.equal(dailyPlanCompetesWithGridBalance(r), false);
 		assert.equal(isBatteryDailyPlanAuthoritative(r), true);
 	});
 
@@ -130,6 +132,8 @@ describe("battery daily plan reader", () => {
 		assert.equal(r.chargingAllowed, true);
 		assert.equal(r.effectiveChargePowerW, 3000);
 		assert.equal(r.decisionSource, "daily_plan");
+		assert.equal(r.dailyPlanBlocksGridBalance, true);
+		assert.equal(dailyPlanCompetesWithGridBalance(r), true);
 	});
 
 	it("caps allocation above hardware max", () => {
@@ -172,7 +176,8 @@ describe("battery daily plan priority signals", () => {
 	it("authoritative plan blocks legacy fallback flag", () => {
 		const r = resolve([allocationEntry(0)]);
 		assert.equal(r.legacyFallbackActive, false);
-		assert.equal(r.dailyPlanBlocksGridBalance, true);
+		assert.equal(r.dailyPlanBlocksGridBalance, false);
+		assert.equal(dailyPlanCompetesWithGridBalance(r), false);
 	});
 
 	it("invalid plan enables legacy fallback", () => {

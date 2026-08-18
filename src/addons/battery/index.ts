@@ -661,8 +661,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		holdActive ||
 		holdPlanned ||
 		evConflict.conflict ||
-		runtime.ownership.active ||
-		dailyPlanAuthoritative;
+		runtime.ownership.active;
 	const emsBatteryIntentActive = Boolean(
 		fromManual
 			? wantsCharge

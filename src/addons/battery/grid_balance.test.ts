@@ -49,10 +49,11 @@ describe("grid balance", () => {
 		assert.match(r.reasonDe, /EVCC/);
 	});
 
-	it("blocks when daily plan is authoritative", () => {
+	it("does not treat an authoritative Daily Plan as a competing battery action", () => {
 		const r = computeGridBalanceTarget({ ...baseInputs, dailyPlanAuthoritative: true });
-		assert.equal(r.gatePassed, false);
-		assert.match(r.reasonDe, /Daily Plan/);
+		assert.equal(r.gatePassed, true);
+		assert.ok(r.targetDischargeW > 0);
+		assert.equal(r.checksFailed.includes("daily_plan_authoritative"), false);
 	});
 
 	it("allows price at and above the minimum", () => {

@@ -61,6 +61,7 @@ export interface GridBalanceSafetyInput {
 	evccBatteryModeHold: boolean;
 	plannedBatteryAction: boolean;
 	ownershipActive: boolean;
+	/** Authoritative Daily Plan present — not by itself a competing EMS battery action. */
 	dailyPlanAuthoritative: boolean;
 	mode1Active: boolean;
 	priceNowCt: number | null;
@@ -170,6 +171,19 @@ export function formatGridBalanceExplain(input: {
 	return `grid_balance=ready, price=${formatPriceCt(input.priceNowCt)}ct, minimum=${input.priceMinCt.toFixed(1)}ct, grid_import=${importW}W`;
 }
 
+/**
+ * Competing EMS battery action that Grid Balance must yield to.
+ *
+ * True: active EMS charge/discharge intent, competing ownership, or Mode-1 control.
+ * False: authoritative Daily Plan alone (incl. 0 W / self_consumption / action none).
+ * Real Sonnen self-consumption discharge without an EMS setpoint is not competing.
+ */
+export function isCompetingEmsBatteryAction(
+	input: Pick<GridBalanceSafetyInput, "plannedBatteryAction" | "ownershipActive" | "mode1Active">,
+): boolean {
+	return Boolean(input.plannedBatteryAction || input.ownershipActive || input.mode1Active);
+}
+
 function firstBlock(input: GridBalanceSafetyInput): { reason: string; authority: GridBalanceAuthority } {
 	if (input.restoreInProgress) return { reason: "restore_in_progress", authority: "safety" };
 	if (input.faultActive || input.lockoutActive) return { reason: "fault_lockout", authority: "safety" };
@@ -192,7 +206,7 @@ function firstBlock(input: GridBalanceSafetyInput): { reason: string; authority:
 	if (input.evConflictKind) {
 		return { reason: "ev_conflict", authority: "external_ev" };
 	}
-	if (input.plannedBatteryAction || input.ownershipActive || input.dailyPlanAuthoritative || input.mode1Active) {
+	if (isCompetingEmsBatteryAction(input)) {
 		return { reason: "planned_battery_action", authority: "planned_battery" };
 	}
 

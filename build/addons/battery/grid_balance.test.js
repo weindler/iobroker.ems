@@ -43,10 +43,11 @@ const grid_balance_js_1 = require("./grid_balance.js");
         strict_1.default.equal(r.gatePassed, false);
         strict_1.default.match(r.reasonDe, /EVCC/);
     });
-    (0, node_test_1.it)("blocks when daily plan is authoritative", () => {
+    (0, node_test_1.it)("does not treat an authoritative Daily Plan as a competing battery action", () => {
         const r = (0, grid_balance_js_1.computeGridBalanceTarget)({ ...baseInputs, dailyPlanAuthoritative: true });
-        strict_1.default.equal(r.gatePassed, false);
-        strict_1.default.match(r.reasonDe, /Daily Plan/);
+        strict_1.default.equal(r.gatePassed, true);
+        strict_1.default.ok(r.targetDischargeW > 0);
+        strict_1.default.equal(r.checksFailed.includes("daily_plan_authoritative"), false);
     });
     (0, node_test_1.it)("allows price at and above the minimum", () => {
         strict_1.default.equal((0, grid_balance_js_1.evaluateGridBalanceMinPrice)({ minPriceCtPerKwh: 30, priceNowCt: 30 }).passed, true);

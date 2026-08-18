@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isChargingDeviceIntent = exports.dailyPlanWantsCharge = exports.resolveBatteryDailyPlanAllocation = exports.deviceIntentFromDailyPlan = exports.resolveBatteryDailyPlanFromData = exports.mergeBatteryChargeSlotAllocation = exports.parseDailyAllocationEntries = exports.isBatteryDailyPlanAuthoritative = exports.resetBatteryDailyPlanCache = void 0;
+exports.isChargingDeviceIntent = exports.dailyPlanWantsCharge = exports.resolveBatteryDailyPlanAllocation = exports.deviceIntentFromDailyPlan = exports.resolveBatteryDailyPlanFromData = exports.mergeBatteryChargeSlotAllocation = exports.parseDailyAllocationEntries = exports.dailyPlanCompetesWithGridBalance = exports.isBatteryDailyPlanAuthoritative = exports.resetBatteryDailyPlanCache = void 0;
 const config_1 = require("../../../intent/config");
 const contribution_ids_1 = require("../../../operator/contribution_ids");
 const states_1 = require("../../../operator/daily_plan/states");
@@ -20,6 +20,11 @@ function isBatteryDailyPlanAuthoritative(ctx) {
     return ctx.dailyPlanAuthoritative;
 }
 exports.isBatteryDailyPlanAuthoritative = isBatteryDailyPlanAuthoritative;
+/** Competing EMS charge from the Daily Plan — not 0 W / self_consumption. */
+function dailyPlanCompetesWithGridBalance(ctx) {
+    return Boolean(ctx.chargingAllowed && (ctx.effectiveChargePowerW ?? 0) > 0);
+}
+exports.dailyPlanCompetesWithGridBalance = dailyPlanCompetesWithGridBalance;
 function isValidTimezone(timezone) {
     if (!timezone.trim())
         return false;
@@ -339,7 +344,7 @@ function resolveBatteryDailyPlanFromData(input) {
         legacyFallbackActive: false,
         legacyFallbackSource: "",
         legacyFallbackReasonDe: "",
-        dailyPlanBlocksGridBalance: true,
+        dailyPlanBlocksGridBalance: false,
         runtimeControlAvailable: profile.supportsLive,
         dischargeIgnored: dischargePresent,
     });

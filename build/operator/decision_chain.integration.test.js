@@ -352,5 +352,60 @@ function gbSafetyInput(over = {}) {
         strict_1.default.equal(intent.action, "self_consumption");
         strict_1.default.notEqual(intent.action, "hold");
         strict_1.default.equal(intent.maxChargeW, 0);
+        const gb = (0, grid_balance_contract_1.evaluateGridBalanceSafety)(gbSafetyInput({
+            dailyPlanAuthoritative: true,
+            plannedBatteryAction: false,
+            ownershipActive: false,
+            mode1Active: false,
+            priceNowCt: 36.7,
+            priceMinCt: 30,
+        }));
+        strict_1.default.equal(gb.blockReason, "");
+        strict_1.default.notEqual(gb.blockReason, "planned_battery_action");
+        strict_1.default.equal(gb.holdDetected, false);
+        strict_1.default.equal(gb.evConflict, false);
+        strict_1.default.equal(gb.priceAllowed, true);
+    });
+    (0, node_test_1.it)("Batterie: echte EMS-Ladung / Ownership blockiert Grid Balance weiter als planned_battery_action", () => {
+        const ctx = {
+            useDailyPlan: true,
+            dailyPlanAuthoritative: true,
+            dailyPlanStatus: "daily_plan_valid",
+            decisionSource: "daily_plan",
+            dailyPlanRevision: 2,
+            slotStartIso: SLOT_START,
+            slotEndIso: SLOT_END,
+            allocationStatus: "allocated",
+            allocatedChargePowerW: 2500,
+            effectiveChargePowerW: 2500,
+            requestedChargePowerW: 2500,
+            allocatedEnergyKwh: 0.625,
+            pvPowerW: 0,
+            gridPowerW: 2500,
+            energySource: "grid",
+            estimatedCostCt: null,
+            chargePowerCapped: false,
+            targetSocPct: 90,
+            topOffActive: false,
+            chargingAllowed: true,
+            allocationReasonDe: "Daily Plan sieht 2500 W Batterieladung vor (grid).",
+            legacyFallbackActive: false,
+            legacyFallbackSource: "",
+            legacyFallbackReasonDe: "",
+            dailyPlanBlocksGridBalance: true,
+            runtimeControlAvailable: true,
+            dischargeIgnored: false,
+        };
+        const intent = (0, daily_plan_3.deviceIntentFromDailyPlan)(ctx, NOW.getTime());
+        strict_1.default.equal(intent.action, "grid_charge");
+        strict_1.default.equal(intent.maxChargeW, 2500);
+        const gb = (0, grid_balance_contract_1.evaluateGridBalanceSafety)(gbSafetyInput({
+            dailyPlanAuthoritative: true,
+            plannedBatteryAction: true,
+            ownershipActive: true,
+            mode1Active: true,
+        }));
+        strict_1.default.equal(gb.blockReason, "planned_battery_action");
+        strict_1.default.equal(gb.authority, "planned_battery");
     });
 });

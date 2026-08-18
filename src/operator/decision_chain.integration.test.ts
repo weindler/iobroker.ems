@@ -378,5 +378,65 @@ describe("decision chain — Klima / Heizstab / Batterie follow Daily Plan", () 
 		assert.equal(intent.action, "self_consumption");
 		assert.notEqual(intent.action, "hold");
 		assert.equal(intent.maxChargeW, 0);
+		const gb = evaluateGridBalanceSafety(
+			gbSafetyInput({
+				dailyPlanAuthoritative: true,
+				plannedBatteryAction: false,
+				ownershipActive: false,
+				mode1Active: false,
+				priceNowCt: 36.7,
+				priceMinCt: 30,
+			}),
+		);
+		assert.equal(gb.blockReason, "");
+		assert.notEqual(gb.blockReason, "planned_battery_action");
+		assert.equal(gb.holdDetected, false);
+		assert.equal(gb.evConflict, false);
+		assert.equal(gb.priceAllowed, true);
+	});
+
+	it("Batterie: echte EMS-Ladung / Ownership blockiert Grid Balance weiter als planned_battery_action", () => {
+		const ctx: BatteryDailyPlanRuntimeContext = {
+			useDailyPlan: true,
+			dailyPlanAuthoritative: true,
+			dailyPlanStatus: "daily_plan_valid",
+			decisionSource: "daily_plan",
+			dailyPlanRevision: 2,
+			slotStartIso: SLOT_START,
+			slotEndIso: SLOT_END,
+			allocationStatus: "allocated",
+			allocatedChargePowerW: 2500,
+			effectiveChargePowerW: 2500,
+			requestedChargePowerW: 2500,
+			allocatedEnergyKwh: 0.625,
+			pvPowerW: 0,
+			gridPowerW: 2500,
+			energySource: "grid",
+			estimatedCostCt: null,
+			chargePowerCapped: false,
+			targetSocPct: 90,
+			topOffActive: false,
+			chargingAllowed: true,
+			allocationReasonDe: "Daily Plan sieht 2500 W Batterieladung vor (grid).",
+			legacyFallbackActive: false,
+			legacyFallbackSource: "",
+			legacyFallbackReasonDe: "",
+			dailyPlanBlocksGridBalance: true,
+			runtimeControlAvailable: true,
+			dischargeIgnored: false,
+		};
+		const intent = deviceIntentFromDailyPlan(ctx, NOW.getTime());
+		assert.equal(intent.action, "grid_charge");
+		assert.equal(intent.maxChargeW, 2500);
+		const gb = evaluateGridBalanceSafety(
+			gbSafetyInput({
+				dailyPlanAuthoritative: true,
+				plannedBatteryAction: true,
+				ownershipActive: true,
+				mode1Active: true,
+			}),
+		);
+		assert.equal(gb.blockReason, "planned_battery_action");
+		assert.equal(gb.authority, "planned_battery");
 	});
 });

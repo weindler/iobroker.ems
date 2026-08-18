@@ -21,7 +21,7 @@
  * `runtime/setpoint_session.ts` (kind=discharge vs kind=charge).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.withGridImportExplain = exports.evaluateGridBalanceSafety = exports.formatGridBalanceExplain = exports.classifyGridBalanceEvConflict = exports.normalizeLoadpointMode = exports.parseGridBalanceMaxPriceCt = exports.parseGridBalanceMinPriceCt = exports.GRID_BALANCE_MAX_PRICE_DEFAULT_CT = exports.GRID_BALANCE_MIN_PRICE_MAX_CT = exports.GRID_BALANCE_MIN_PRICE_MIN_CT = exports.GRID_BALANCE_MIN_PRICE_DEFAULT_CT = exports.GRID_BALANCE_EXECUTION_ENABLED = void 0;
+exports.withGridImportExplain = exports.evaluateGridBalanceSafety = exports.isCompetingEmsBatteryAction = exports.formatGridBalanceExplain = exports.classifyGridBalanceEvConflict = exports.normalizeLoadpointMode = exports.parseGridBalanceMaxPriceCt = exports.parseGridBalanceMinPriceCt = exports.GRID_BALANCE_MAX_PRICE_DEFAULT_CT = exports.GRID_BALANCE_MIN_PRICE_MAX_CT = exports.GRID_BALANCE_MIN_PRICE_MIN_CT = exports.GRID_BALANCE_MIN_PRICE_DEFAULT_CT = exports.GRID_BALANCE_EXECUTION_ENABLED = void 0;
 const charge_hold_1 = require("../wallbox/charge_hold");
 exports.GRID_BALANCE_EXECUTION_ENABLED = false;
 exports.GRID_BALANCE_MIN_PRICE_DEFAULT_CT = 30;
@@ -95,6 +95,17 @@ function formatGridBalanceExplain(input) {
     return `grid_balance=ready, price=${formatPriceCt(input.priceNowCt)}ct, minimum=${input.priceMinCt.toFixed(1)}ct, grid_import=${importW}W`;
 }
 exports.formatGridBalanceExplain = formatGridBalanceExplain;
+/**
+ * Competing EMS battery action that Grid Balance must yield to.
+ *
+ * True: active EMS charge/discharge intent, competing ownership, or Mode-1 control.
+ * False: authoritative Daily Plan alone (incl. 0 W / self_consumption / action none).
+ * Real Sonnen self-consumption discharge without an EMS setpoint is not competing.
+ */
+function isCompetingEmsBatteryAction(input) {
+    return Boolean(input.plannedBatteryAction || input.ownershipActive || input.mode1Active);
+}
+exports.isCompetingEmsBatteryAction = isCompetingEmsBatteryAction;
 function firstBlock(input) {
     if (input.restoreInProgress)
         return { reason: "restore_in_progress", authority: "safety" };
@@ -126,7 +137,7 @@ function firstBlock(input) {
     if (input.evConflictKind) {
         return { reason: "ev_conflict", authority: "external_ev" };
     }
-    if (input.plannedBatteryAction || input.ownershipActive || input.dailyPlanAuthoritative || input.mode1Active) {
+    if (isCompetingEmsBatteryAction(input)) {
         return { reason: "planned_battery_action", authority: "planned_battery" };
     }
     const priceKnown = input.priceNowCt != null && Number.isFinite(input.priceNowCt);

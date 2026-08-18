@@ -521,8 +521,7 @@ async function controlTickInner(host) {
     const gridBalanceSuppressed = holdActive ||
         holdPlanned ||
         evConflict.conflict ||
-        runtime.ownership.active ||
-        dailyPlanAuthoritative;
+        runtime.ownership.active;
     const emsBatteryIntentActive = Boolean(fromManual
         ? wantsCharge
         : dailyPlanDriven

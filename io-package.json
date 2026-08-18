@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.293",
+		"version": "0.1.295",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,14 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.295": {
+				"en": "Operator VIS: PV tile shows today's expected kWh. A single PV-Lage line adds tomorrow, later-days outlook, learned forecast bias in plain language, and today's temperature range. No new states. Reload VIS after update.",
+				"de": "Betriebs-VIS: PV-Kachel zeigt die erwarteten kWh heute. Eine Zeile PV-Lage ergänzt morgen, die weitere Horizon-Tendenz, den gelernten Forecast-Bias in Alltagssprache und die Tagestemperatur. Keine neuen States. VIS nach Update neu laden."
+			},
+			"0.1.294": {
+				"en": "Grid balance no longer blocks on an authoritative 0 W / self-consumption Daily Plan (planned_battery_action only for a real EMS battery action). VIS NETZ shows connection-point power (import/export), not battery discharge as grid import. Battery tile stays telemetry; EMS action stays separate. Reload VIS after update.",
+				"de": "Netzausgleich blockiert nicht mehr wegen eines autoritativen 0-W-/Eigenverbrauchs-Daily-Plans (planned_battery_action nur bei echter EMS-Batterieaktion). VIS NETZ zeigt die Leistung am Netzanschluss (Bezug/Einspeisung), nicht Batterieentladung als Netzbezug. Batterie-Kachel bleibt Telemetrie; EMS-Aktion bleibt getrennt. VIS nach Update neu laden."
+			},
 			"0.1.293": {
 				"en": "Production state surface cut: empty-config ~500 states (was ~1036). Mapping is adapter config only. EV telemetry is addons.wallbox.status.evcc; EMS decision/safety stays on wallbox.runtime. Planner/learning no longer publish large JSON/history mirrors. Startup cleanup removes the old object tree. Decision chain unchanged (vehicleConnected=false + EVCC now → no EV action, no battery Hold). Reload VIS after update.",
 				"de": "Produktive State-Fläche geschnitten: Leerkonfig ca. 500 States (vorher ca. 1036). Mapping nur noch Adapter-Konfiguration. EV-Telemetrie ist addons.wallbox.status.evcc; EMS-Entscheidung/Safety bleibt auf wallbox.runtime. Planner/Learning veröffentlichen keine großen JSON-/History-Spiegel mehr. Startup räumt den alten Objektbaum auf. Entscheidungskette unverändert (vehicleConnected=false + EVCC now → keine EV-Aktion, kein Batterie-Hold). VIS nach Update neu laden."

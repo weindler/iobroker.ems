@@ -25,7 +25,7 @@ function loadOpsDisplay(html) {
 	assert.ok(start >= 0 && end > start, "vis-ops-display markers required");
 	const code = html.slice(start, end);
 	return new Function(
-		`${code}; return { visBatteryMotion, visEmsAction, visGbStatus, visGridFlow, visTargetedHold, visPriceBand, visPriceAxisRange, visClimateNote, visAcConfiguredName, visClimateHvacBadge, visHvacPurposeLabel, visFmtDurationSec, visFmtKwh, visCheapPhaseLabel, visPriceHeadSummary, visIdleFacts, visNowSummary, visRowValueOk };`,
+		`${code}; return { visBatteryMotion, visEmsAction, visGbStatus, visGridMeterW, visGridFlow, visTargetedHold, visPriceBand, visPriceAxisRange, visClimateNote, visAcConfiguredName, visClimateHvacBadge, visHvacPurposeLabel, visFmtDurationSec, visFmtKwh, visPvBiasPhrase, visPvChipSub, visHorizonOutlook, visLageLine, visCheapPhaseLabel, visPriceHeadSummary, visIdleFacts, visNowSummary, visRowValueOk };`,
 	)();
 }
 
@@ -86,6 +86,11 @@ const REQUIRED_STATE_PATHS = [
 	"addons.immersion_heater.runtime.planning_max_temp_c",
 	"learning.thermal_boiler.model",
 	"learning.thermal_boiler.quality",
+	"learning.pv_bias.corrected_today_kwh",
+	"learning.pv_bias.corrected_tomorrow_kwh",
+	"learning.pv_bias.bias_7d_pct",
+	"learning.pv_horizon.day3.corrected_kwh",
+	"learning.weather.horizon.day1.min_temp_c",
 	"addons.air_conditioning.units.unit_1.mode_purpose",
 	"addons.air_conditioning.units.unit_1.room_humidity_pct",
 	"addons.air_conditioning.units.unit_1.stats.today_runtime_sec",
@@ -315,13 +320,68 @@ describe("VIS battery / grid / GB presentation", () => {
 		assert.equal(active.reason, "850 W");
 	});
 
-	it("Netz chip uses surplus/deficit, not GB grid_power_w", () => {
-		const start = visHtml.indexOf("function visGridFlow");
-		const end = visHtml.indexOf("/* /vis-ops-display */");
+	it("Netz chip uses connection-point power, not surplus/deficit or GB grid_power_w", () => {
+		const start = visHtml.indexOf("function visGridMeterW");
+		const end = visHtml.indexOf("function visPriceBand");
 		const body = visHtml.slice(start, end);
 		assert.equal(body.includes("grid_power_w"), false);
-		assert.equal(ops.visGridFlow(snap({ surplusW: 2795, deficitW: 0 }), 50).v, "EINSPEISUNG 2795 W");
-		assert.equal(ops.visGridFlow(snap({ surplusW: 0, deficitW: 400 }), 50).v, "BEZUG 400 W");
+		assert.equal(body.includes("surplusW"), false);
+		assert.equal(body.includes("deficitW"), false);
+		assert.equal(ops.visGridFlow(snap({ surplusW: 2795, deficitW: 0 }), 50).v, "—");
+		assert.equal(ops.visGridFlow(snap({ surplusW: 0, deficitW: 400 }), 50).v, "—");
+		assert.equal(ops.visGridFlow(snap({ gridW: 2795 }), 50).v, "BEZUG 2795 W");
+		assert.equal(ops.visGridFlow(snap({ gridW: -2795 }), 50).v, "EINSPEISUNG 2795 W");
+		assert.equal(
+			ops.visGridFlow(snap({ houseW: 200, pvW: 2995, chargingW: 0, dischargingW: 0, powerW: 0 }), 50).v,
+			"EINSPEISUNG 2795 W",
+		);
+	});
+
+	it("TEST C: grid import 30 W stays NETZ BEZUG while battery discharges 1450 W", () => {
+		const live = snap({
+			houseW: 1480,
+			pvW: 0,
+			dischargingW: 1450,
+			powerW: -1450,
+			surplusW: 0,
+			deficitW: 1480,
+			gbEffectiveW: 1480,
+			operatingMode: "self_consumption",
+			owner: "none",
+			action: "self_consumption",
+		});
+		assert.equal(ops.visGridMeterW(live), 30);
+		assert.equal(ops.visGridFlow(live, 50).v, "BEZUG 30 W");
+		assert.equal(ops.visGridFlow(snap({ gridW: 30, dischargingW: 1450, powerW: -1450, deficitW: 1480 }), 50).v, "BEZUG 30 W");
+		assert.equal(ops.visBatteryMotion(live, 50).label, "ENTLADEN");
+	});
+
+	it("TEST D: grid export 800 W is NETZ EINSPEISUNG, battery independent", () => {
+		assert.equal(ops.visGridFlow(snap({ gridW: -800, dischargingW: 0, chargingW: 0 }), 50).v, "EINSPEISUNG 800 W");
+		assert.equal(
+			ops.visGridFlow(
+				snap({ houseW: 200, pvW: 1000, chargingW: 0, dischargingW: 0, powerW: 0, surplusW: 800 }),
+				50,
+			).v,
+			"EINSPEISUNG 800 W",
+		);
+		assert.equal(
+			ops.visBatteryMotion(snap({ operatingMode: "self_consumption", chargingW: 2, powerW: 2 }), 50).label,
+			"EIGENVERBRAUCH",
+		);
+	});
+
+	it("TEST E: real discharge without EMS setpoint shows ENTLADEN and EMS-Aktion keine", () => {
+		const live = snap({
+			operatingMode: "self_consumption",
+			dischargingW: 1450,
+			powerW: -1450,
+			owner: "none",
+			action: "self_consumption",
+			gbActive: false,
+		});
+		assert.equal(ops.visBatteryMotion(live, 50).label, "ENTLADEN");
+		assert.equal(ops.visEmsAction(live), "keine");
 	});
 
 	it("colors price bars by günstig/mittel/teuer/sehr teuer, not gbPriceOk", () => {
@@ -523,5 +583,36 @@ describe("VIS battery / grid / GB presentation", () => {
 		);
 		assert.equal(ops.visNowSummary({ batLabel: "EIGENVERBRAUCH", surplusW: 3200 }).title, "Batterie · EIGENVERBRAUCH");
 		assert.match(ops.visNowSummary({ batLabel: "EIGENVERBRAUCH", surplusW: 3200 }).meta, /PV-Überschuss 3,2 kW/);
+	});
+
+	it("PV chip and Lage line show bias-corrected horizon in everyday language", () => {
+		assert.equal(ops.visPvChipSub({ todayKwh: 18.2 }), "heute 18 kWh");
+		assert.equal(ops.visPvBiasPhrase(-14, "ready"), "Forecast bisher zu hoch");
+		assert.equal(ops.visPvBiasPhrase(-8, "ready"), "etwas schwächer als Forecast");
+		assert.equal(ops.visPvBiasPhrase(14, "ready"), "Forecast bisher zu niedrig");
+		assert.equal(ops.visPvBiasPhrase(-20, "insufficient_data"), "");
+		assert.equal(ops.visPvBiasPhrase(-2, "ready"), "");
+		assert.equal(ops.visHorizonOutlook(18, 8), "danach schwächer");
+		assert.equal(ops.visHorizonOutlook(12, 22), "danach kräftiger");
+		assert.equal(ops.visHorizonOutlook(18, 19), "danach ähnlich");
+		assert.equal(
+			ops.visLageLine({
+				todayKwh: 18.2,
+				tomorrowKwh: 31.4,
+				laterKwhs: [8, 7, 6, 9, 8],
+				bias7dPct: -14,
+				status: "ready",
+				minC: 14.2,
+				maxC: 22.4,
+			}),
+			"Heute 18 kWh · Morgen 31 kWh · danach schwächer · Forecast bisher zu hoch · 14–22 °C",
+		);
+		assert.equal(ops.visLageLine({}), "");
+		assert.match(visHtml, /id="ems-lage"/);
+		assert.match(visHtml, /function visLageLine/);
+		assert.match(visHtml, /chip\("PV"/);
+		assert.equal(visHtml.includes("bias_today_pct"), false);
+		assert.equal(visHtml.includes("sample_days_30d"), false);
+		assert.equal(visHtml.includes("forecast_plan.days_json"), false);
 	});
 });

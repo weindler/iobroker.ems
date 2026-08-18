@@ -113,6 +113,11 @@ export function isBatteryDailyPlanAuthoritative(ctx: BatteryDailyPlanRuntimeCont
 	return ctx.dailyPlanAuthoritative;
 }
 
+/** Competing EMS charge from the Daily Plan — not 0 W / self_consumption. */
+export function dailyPlanCompetesWithGridBalance(ctx: BatteryDailyPlanRuntimeContext): boolean {
+	return Boolean(ctx.chargingAllowed && (ctx.effectiveChargePowerW ?? 0) > 0);
+}
+
 function isValidTimezone(timezone: string): boolean {
 	if (!timezone.trim()) return false;
 	try {
@@ -462,7 +467,7 @@ export function resolveBatteryDailyPlanFromData(input: ResolveBatteryDailyPlanIn
 		legacyFallbackActive: false,
 		legacyFallbackSource: "",
 		legacyFallbackReasonDe: "",
-		dailyPlanBlocksGridBalance: true,
+		dailyPlanBlocksGridBalance: false,
 		runtimeControlAvailable: profile.supportsLive,
 		dischargeIgnored: dischargePresent,
 	});

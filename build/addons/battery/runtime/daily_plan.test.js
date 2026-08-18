@@ -94,7 +94,8 @@ function resolve(entries, over = {}) {
         strict_1.default.equal(r.dailyPlanAuthoritative, true);
         strict_1.default.equal(r.chargingAllowed, false);
         strict_1.default.equal(r.legacyFallbackActive, false);
-        strict_1.default.equal(r.dailyPlanBlocksGridBalance, true);
+        strict_1.default.equal(r.dailyPlanBlocksGridBalance, false);
+        strict_1.default.equal((0, daily_plan_js_1.dailyPlanCompetesWithGridBalance)(r), false);
         strict_1.default.equal((0, daily_plan_js_1.isBatteryDailyPlanAuthoritative)(r), true);
     });
     (0, node_test_1.it)("unallocated status yields no charge", () => {
@@ -107,6 +108,8 @@ function resolve(entries, over = {}) {
         strict_1.default.equal(r.chargingAllowed, true);
         strict_1.default.equal(r.effectiveChargePowerW, 3000);
         strict_1.default.equal(r.decisionSource, "daily_plan");
+        strict_1.default.equal(r.dailyPlanBlocksGridBalance, true);
+        strict_1.default.equal((0, daily_plan_js_1.dailyPlanCompetesWithGridBalance)(r), true);
     });
     (0, node_test_1.it)("caps allocation above hardware max", () => {
         const r = resolve([allocationEntry(8000)]);
@@ -143,7 +146,8 @@ function resolve(entries, over = {}) {
     (0, node_test_1.it)("authoritative plan blocks legacy fallback flag", () => {
         const r = resolve([allocationEntry(0)]);
         strict_1.default.equal(r.legacyFallbackActive, false);
-        strict_1.default.equal(r.dailyPlanBlocksGridBalance, true);
+        strict_1.default.equal(r.dailyPlanBlocksGridBalance, false);
+        strict_1.default.equal((0, daily_plan_js_1.dailyPlanCompetesWithGridBalance)(r), false);
     });
     (0, node_test_1.it)("invalid plan enables legacy fallback", () => {
         const r = resolve([allocationEntry(3000)], {

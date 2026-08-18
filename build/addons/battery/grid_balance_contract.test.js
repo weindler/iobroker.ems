@@ -168,6 +168,28 @@ function baseSafety(over = {}) {
         strict_1.default.equal(r.blockReason, "planned_battery_action");
         strict_1.default.equal(r.authority, "planned_battery");
     });
+    (0, node_test_1.it)("authoritative 0 W Daily Plan is not a competing battery action", () => {
+        const r = (0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({
+            dailyPlanAuthoritative: true,
+            plannedBatteryAction: false,
+            ownershipActive: false,
+            mode1Active: false,
+        }));
+        strict_1.default.equal((0, grid_balance_contract_js_1.isCompetingEmsBatteryAction)(baseSafety({ dailyPlanAuthoritative: true })), false);
+        strict_1.default.equal(r.blockReason, "");
+        strict_1.default.notEqual(r.blockReason, "planned_battery_action");
+        strict_1.default.equal(r.holdDetected, false);
+        strict_1.default.equal(r.evConflict, false);
+        strict_1.default.equal(r.priceAllowed, true);
+        strict_1.default.equal(r.policyAllowed, true);
+    });
+    (0, node_test_1.it)("real EMS ownership / charge setpoint still blocks as planned_battery_action", () => {
+        strict_1.default.equal((0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ plannedBatteryAction: true, ownershipActive: true })).blockReason, "planned_battery_action");
+        strict_1.default.equal((0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ ownershipActive: true })).blockReason, "planned_battery_action");
+        strict_1.default.equal((0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ mode1Active: true })).blockReason, "planned_battery_action");
+        strict_1.default.equal((0, grid_balance_contract_js_1.isCompetingEmsBatteryAction)(baseSafety({ plannedBatteryAction: true })), true);
+        strict_1.default.equal((0, grid_balance_contract_js_1.isCompetingEmsBatteryAction)(baseSafety({ ownershipActive: true })), true);
+    });
     (0, node_test_1.it)("L13: fault/restore has priority", () => {
         strict_1.default.equal((0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ restoreInProgress: true })).blockReason, "restore_in_progress");
         strict_1.default.equal((0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ faultActive: true })).blockReason, "fault_lockout");

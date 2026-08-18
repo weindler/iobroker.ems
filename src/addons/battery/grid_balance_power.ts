@@ -148,7 +148,7 @@ export function consumeGridBalanceLiveTest(
 	};
 }
 
-/** Regulärer GB-Discharge-Setpoint (≠ 0) und Mode-2-Keepalive derselben Session. */
+/** Dauerbetrieb oder One-Shot-Session: regulärer Discharge-Setpoint und Mode-2-Keepalive. */
 export function gridBalanceSetpointPermit(
 	liveTest: GridBalanceLiveTestState,
 	ownsSetpoint = false,

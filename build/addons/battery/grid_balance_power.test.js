@@ -317,13 +317,14 @@ function tick(over = {}) {
         });
         strict_1.default.equal(min.conflict, false);
     });
-    (0, node_test_1.it)("execution stays locked without one-shot", () => {
-        strict_1.default.equal(grid_balance_contract_js_1.GRID_BALANCE_EXECUTION_ENABLED, false);
-        const locked = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({ liveTest: (0, grid_balance_power_js_1.emptyGridBalanceLiveTest)(), safety: safety({ liveTestPermit: false }) }));
-        strict_1.default.equal(locked.shouldWrite, false);
-        strict_1.default.equal(locked.lastAction, "diagnosis_only");
+    (0, node_test_1.it)("Dauerbetrieb writes without one-shot", () => {
+        strict_1.default.equal(grid_balance_contract_js_1.GRID_BALANCE_EXECUTION_ENABLED, true);
+        const d = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({ liveTest: (0, grid_balance_power_js_1.emptyGridBalanceLiveTest)(), safety: safety({ liveTestPermit: false }) }));
+        strict_1.default.equal(d.shouldWrite, true);
+        strict_1.default.equal(d.lastAction, "written");
+        strict_1.default.equal(d.writeKind, "discharge");
     });
-    (0, node_test_1.it)("one-shot session: keepalive after consume allowed, new session blocked, 0-release allowed", () => {
+    (0, node_test_1.it)("one-shot session: keepalive and 0-release still work under Dauerbetrieb", () => {
         const armed = (0, grid_balance_power_js_1.applyGridBalanceLiveTestPulse)((0, grid_balance_power_js_1.emptyGridBalanceLiveTest)(), true, false, 1);
         strict_1.default.equal((0, grid_balance_power_js_1.gridBalanceSetpointPermit)(armed), true);
         const first = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({ liveTest: armed, consumptionW: 2000, pvAcPowerW: 0 }));
@@ -332,7 +333,7 @@ function tick(over = {}) {
         strict_1.default.equal(first.ownsSetpointNext, true);
         strict_1.default.equal(first.writeKind, "discharge");
         const consumed = (0, grid_balance_power_js_1.consumeGridBalanceLiveTest)(armed, 2);
-        strict_1.default.equal((0, grid_balance_power_js_1.gridBalanceSetpointPermit)(consumed), false);
+        strict_1.default.equal((0, grid_balance_power_js_1.gridBalanceSetpointPermit)(consumed), true);
         strict_1.default.equal((0, grid_balance_power_js_1.gridBalanceSetpointPermit)(consumed, true), true);
         strict_1.default.equal(consumed.consumed, true);
         const sameWIdle = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({

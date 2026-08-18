@@ -168,6 +168,7 @@ build/operator/planning/thermal_forecast.test.js
 build/operator/daily_plan/unified/climate_slot_consistency.test.js
 build/operator/contributions/flexible/thermal_cooling_rate.test.js
 build/ems_light/economics_feed_in.test.js
+build/ems_light/live_cache.test.js
 build/operator/daily_plan/unified/passive_battery_energy.test.js
 build/operator/daily_plan/invalidate_addon_off.test.js
 build/operator/daily_plan/unified/joint_optimize.test.js

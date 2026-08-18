@@ -14,16 +14,17 @@
  * → planned EMS battery action → grid balance.
  * Hold / EVCC Boost / geplante Netzladung: GB schreibt zuerst discharge=0, danach Mode-Wechsel.
  *
- * GRID_BALANCE_EXECUTION_ENABLED stays false: no Dauerbetrieb. Productive writes
- * only via one-shot `grid_balance.live_test_armed` (ack:false) after all gates.
- * One-shot is a session: first regular discharge setpoint, Mode-2 keepalives of
- * that session, then matching discharge=0. Unified with planned/grid_charge via
- * `runtime/setpoint_session.ts` (kind=discharge vs kind=charge).
+ * GRID_BALANCE_EXECUTION_ENABLED is true after a successful live one-shot:
+ * productive Dauerbetrieb (Mode-2 control.discharge) whenever Admin, Live,
+ * price and the other safety gates allow it. One-shot `live_test_armed` remains
+ * as optional diagnosis, not a nightly arming step.
+ * Unified with planned/grid_charge via `runtime/setpoint_session.ts`
+ * (kind=discharge vs kind=charge).
  */
 
 import { isEvActuallyCharging } from "../wallbox/charge_hold";
 
-export const GRID_BALANCE_EXECUTION_ENABLED = false;
+export const GRID_BALANCE_EXECUTION_ENABLED = true;
 
 export const GRID_BALANCE_MIN_PRICE_DEFAULT_CT = 30;
 export const GRID_BALANCE_MIN_PRICE_MIN_CT = 0;

@@ -15,16 +15,17 @@
  * → planned EMS battery action → grid balance.
  * Hold / EVCC Boost / geplante Netzladung: GB schreibt zuerst discharge=0, danach Mode-Wechsel.
  *
- * GRID_BALANCE_EXECUTION_ENABLED stays false: no Dauerbetrieb. Productive writes
- * only via one-shot `grid_balance.live_test_armed` (ack:false) after all gates.
- * One-shot is a session: first regular discharge setpoint, Mode-2 keepalives of
- * that session, then matching discharge=0. Unified with planned/grid_charge via
- * `runtime/setpoint_session.ts` (kind=discharge vs kind=charge).
+ * GRID_BALANCE_EXECUTION_ENABLED is true after a successful live one-shot:
+ * productive Dauerbetrieb (Mode-2 control.discharge) whenever Admin, Live,
+ * price and the other safety gates allow it. One-shot `live_test_armed` remains
+ * as optional diagnosis, not a nightly arming step.
+ * Unified with planned/grid_charge via `runtime/setpoint_session.ts`
+ * (kind=discharge vs kind=charge).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.withGridImportExplain = exports.evaluateGridBalanceSafety = exports.isCompetingEmsBatteryAction = exports.formatGridBalanceExplain = exports.classifyGridBalanceEvConflict = exports.normalizeLoadpointMode = exports.parseGridBalanceMaxPriceCt = exports.parseGridBalanceMinPriceCt = exports.GRID_BALANCE_MAX_PRICE_DEFAULT_CT = exports.GRID_BALANCE_MIN_PRICE_MAX_CT = exports.GRID_BALANCE_MIN_PRICE_MIN_CT = exports.GRID_BALANCE_MIN_PRICE_DEFAULT_CT = exports.GRID_BALANCE_EXECUTION_ENABLED = void 0;
 const charge_hold_1 = require("../wallbox/charge_hold");
-exports.GRID_BALANCE_EXECUTION_ENABLED = false;
+exports.GRID_BALANCE_EXECUTION_ENABLED = true;
 exports.GRID_BALANCE_MIN_PRICE_DEFAULT_CT = 30;
 exports.GRID_BALANCE_MIN_PRICE_MIN_CT = 0;
 exports.GRID_BALANCE_MIN_PRICE_MAX_CT = 200;

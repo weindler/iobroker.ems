@@ -2769,7 +2769,7 @@
 				},
 				"batGridBalancePriceHint": {
 					"type": "staticText",
-					"text": "Admin-Schalter ist die einzige Feature-Freigabe (ems_mirror.grid_balance_enabled folgt ihm). Netzausgleich bleibt in Sonnen Mode 2 (Eigenverbrauch) und schreibt nur control.discharge als temporären Override (Keepalive ≤ 8 s), Ziel Hauslast minus PV plus SOC-Offset — nicht der 20–30 W Smartmeter-Rest. Kein Mode 1, kein control.charge, kein Rest-PV-/Kapazitäts-Gate. Unterhalb des Mindestpreises keine Netzausgleich-Aktion. Hold, EVCC-Boost und geplante Netzladung beenden den Netzausgleich zuerst (discharge=0), danach erst Mode-Wechsel. Produktiver Dauerbetrieb bleibt aus (GRID_BALANCE_EXECUTION_ENABLED=false). Einmal-Test: addons.battery.grid_balance.live_test_armed = true mit ack:false.",
+					"text": "Admin-Schalter ist die einzige Feature-Freigabe (ems_mirror.grid_balance_enabled folgt ihm). Netzausgleich bleibt in Sonnen Mode 2 (Eigenverbrauch) und schreibt nur control.discharge als temporären Override (Keepalive ≤ 8 s), Ziel Hauslast minus PV plus SOC-Offset — nicht der 20–30 W Smartmeter-Rest. Kein Mode 1, kein control.charge, kein Rest-PV-/Kapazitäts-Gate. Unterhalb des Mindestpreises keine Netzausgleich-Aktion. Hold, EVCC-Boost und geplante Netzladung beenden den Netzausgleich zuerst (discharge=0), danach erst Mode-Wechsel. Produktiver Dauerbetrieb ist frei (GRID_BALANCE_EXECUTION_ENABLED=true) — kein nächtliches One-Shot-Arming. live_test_armed bleibt nur optionale Diagnose.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,

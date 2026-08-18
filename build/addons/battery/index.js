@@ -32,6 +32,7 @@ const grid_balance_watch_1 = require("./runtime/grid_balance_watch");
 const states_2 = require("../../operator/daily_plan/states");
 const daily_plan_1 = require("./runtime/daily_plan");
 const state_write_1 = require("../../policy/core/state_write");
+const live_cache_1 = require("../../ems_light/live_cache");
 exports.BATTERY_ADDON_ID = "battery";
 function batteryControlIntervalMs(config) {
     const sec = config.gridBalance.updateIntervalSec;
@@ -286,6 +287,12 @@ function buildReading(host, table, config, profileNormalizeMode, raw) {
     };
 }
 async function runBatteryControlTick(host) {
+    try {
+        await (0, live_cache_1.refreshLivePowerStrip)(host);
+    }
+    catch (e) {
+        host.log.warn(`live power strip: ${e}`);
+    }
     if (ticking)
         return;
     ticking = true;
@@ -698,7 +705,7 @@ async function controlTickInner(host) {
     if (!runtime.ownership.active) {
         ownershipLive = false;
     }
-    // Grid balance: safety + EV-Abzug + Deadband; Writes nur One-Shot oder EXECUTION-Flag.
+    // Grid balance: safety + EV-Abzug + Deadband; Writes bei Dauerbetrieb oder Rest-One-Shot.
     const consumption = (await readMappedNumber(host, table, "consumption_w")).val ?? 0;
     const pv = (await readMappedNumber(host, table, "pv_ac_power_w")).val ?? 0;
     const evPower = await readRelNumberTs(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW, nowMs);

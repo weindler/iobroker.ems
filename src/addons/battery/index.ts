@@ -92,6 +92,7 @@ import {
 	type BatteryDecisionSource,
 } from "./runtime/daily_plan";
 import { setStateIfChanged } from "../../policy/core/state_write";
+import { refreshLivePowerStrip } from "../../ems_light/live_cache";
 import type { RawBatteryReading } from "./core/telemetry";
 
 export const BATTERY_ADDON_ID = "battery";
@@ -387,6 +388,11 @@ function buildReading(
 }
 
 export async function runBatteryControlTick(host: Host): Promise<void> {
+	try {
+		await refreshLivePowerStrip(host);
+	} catch (e) {
+		host.log.warn(`live power strip: ${e}`);
+	}
 	if (ticking) return;
 	ticking = true;
 	try {
@@ -874,7 +880,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		ownershipLive = false;
 	}
 
-	// Grid balance: safety + EV-Abzug + Deadband; Writes nur One-Shot oder EXECUTION-Flag.
+	// Grid balance: safety + EV-Abzug + Deadband; Writes bei Dauerbetrieb oder Rest-One-Shot.
 	const consumption = (await readMappedNumber(host, table, "consumption_w")).val ?? 0;
 	const pv = (await readMappedNumber(host, table, "pv_ac_power_w")).val ?? 0;
 	const evPower = await readRelNumberTs(host, WALLBOX_EVCC_STATES.chargePowerW, nowMs);

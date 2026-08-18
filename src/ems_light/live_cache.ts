@@ -102,10 +102,32 @@ function normalizeLiveValue(liveId: string, raw: unknown): ioBroker.StateValue |
 	return n;
 }
 
+async function writeLiveValue(
+	host: LiveCacheHost,
+	liveId: string,
+	val: ioBroker.StateValue,
+	result: LiveCacheResult,
+	ifChanged: boolean,
+): Promise<void> {
+	try {
+		if (ifChanged) {
+			const cur = await host.getStateAsync(liveId);
+			if (cur?.val === val) {
+				return;
+			}
+		}
+		await host.setStateAsync(liveId, { val, ack: true });
+		result.updated.push(liveId);
+	} catch (e) {
+		result.errors.push(`${liveId}: ${String(e)}`);
+	}
+}
+
 async function applySlot(
 	host: LiveCacheHost,
 	slot: MappingSlot,
 	result: LiveCacheResult,
+	ifChanged = false,
 ): Promise<void> {
 	const mapped = await readMappedForeign(host, slot.addonId, slot.role);
 	if (!mapped) {
@@ -117,26 +139,44 @@ async function applySlot(
 		result.missing.push(`${slot.labelDe} (${mapped.target}: kein Wert)`);
 		return;
 	}
-	try {
-		await host.setStateAsync(slot.liveId, { val: normalized, ack: true });
-		result.updated.push(slot.liveId);
-	} catch (e) {
-		result.errors.push(`${slot.liveId}: ${String(e)}`);
-	}
+	await writeLiveValue(host, slot.liveId, normalized, result, ifChanged);
 }
 
 /** PV-Leistung zusätzlich unter live.pv.power_w (gleiche Quelle wie battery.pv_ac_power_w). */
-async function mirrorPvPower(host: LiveCacheHost, result: LiveCacheResult): Promise<void> {
+async function mirrorPvPower(
+	host: LiveCacheHost,
+	result: LiveCacheResult,
+	ifChanged = false,
+): Promise<void> {
 	const pv = await host.getStateAsync("live.battery.pv_ac_power_w");
 	if (pv?.val == null || pv.val === "") {
 		return;
 	}
-	try {
-		await host.setStateAsync("live.pv.power_w", { val: pv.val, ack: true });
-		result.updated.push("live.pv.power_w");
-	} catch (e) {
-		result.errors.push(`live.pv.power_w: ${String(e)}`);
+	await writeLiveValue(host, "live.pv.power_w", pv.val, result, ifChanged);
+}
+
+const POWER_STRIP_ROLES = new Set(["soc_pct", "pv_ac_power_w", "consumption_w"]);
+
+/**
+ * PV / Haus / SOC / Preis für die VIS-Kopfzeile.
+ * Läuft auf dem Batterie-Tick (ca. 5 s + on-change), nicht erst auf dem 60 s Phase-1-Tick.
+ * Thermal und Kapazität bleiben auf dem langsamen Tick.
+ */
+export async function refreshLivePowerStrip(host: LiveCacheHost): Promise<LiveCacheResult> {
+	const result: LiveCacheResult = { updated: [], missing: [], errors: [] };
+
+	for (const slot of BATTERY_SLOTS) {
+		if (!POWER_STRIP_ROLES.has(slot.role)) {
+			continue;
+		}
+		await applySlot(host, slot, result, true);
 	}
+	for (const slot of TARIFF_SLOTS) {
+		await applySlot(host, slot, result, true);
+	}
+	await mirrorPvPower(host, result, true);
+
+	return result;
 }
 
 export async function refreshLiveCache(host: LiveCacheHost): Promise<LiveCacheResult> {

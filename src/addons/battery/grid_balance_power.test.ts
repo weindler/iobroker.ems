@@ -382,16 +382,17 @@ describe("grid balance live hardening v0.1.289", () => {
 		assert.equal(min.conflict, false);
 	});
 
-	it("execution stays locked without one-shot", () => {
-		assert.equal(GRID_BALANCE_EXECUTION_ENABLED, false);
-		const locked = evaluateGridBalanceTick(
+	it("Dauerbetrieb writes without one-shot", () => {
+		assert.equal(GRID_BALANCE_EXECUTION_ENABLED, true);
+		const d = evaluateGridBalanceTick(
 			tick({ liveTest: emptyGridBalanceLiveTest(), safety: safety({ liveTestPermit: false }) }),
 		);
-		assert.equal(locked.shouldWrite, false);
-		assert.equal(locked.lastAction, "diagnosis_only");
+		assert.equal(d.shouldWrite, true);
+		assert.equal(d.lastAction, "written");
+		assert.equal(d.writeKind, "discharge");
 	});
 
-	it("one-shot session: keepalive after consume allowed, new session blocked, 0-release allowed", () => {
+	it("one-shot session: keepalive and 0-release still work under Dauerbetrieb", () => {
 		const armed = applyGridBalanceLiveTestPulse(emptyGridBalanceLiveTest(), true, false, 1);
 		assert.equal(gridBalanceSetpointPermit(armed), true);
 		const first = evaluateGridBalanceTick(tick({ liveTest: armed, consumptionW: 2000, pvAcPowerW: 0 }));
@@ -400,7 +401,7 @@ describe("grid balance live hardening v0.1.289", () => {
 		assert.equal(first.ownsSetpointNext, true);
 		assert.equal(first.writeKind, "discharge");
 		const consumed = consumeGridBalanceLiveTest(armed, 2);
-		assert.equal(gridBalanceSetpointPermit(consumed), false);
+		assert.equal(gridBalanceSetpointPermit(consumed), true);
 		assert.equal(gridBalanceSetpointPermit(consumed, true), true);
 		assert.equal(consumed.consumed, true);
 

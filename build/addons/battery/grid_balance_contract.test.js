@@ -41,10 +41,10 @@ function baseSafety(over = {}) {
     };
 }
 (0, node_test_1.describe)("grid balance safety contract v0.1.284", () => {
-    (0, node_test_1.it)("L1: Netzausgleich default = aus", () => {
+    (0, node_test_1.it)("L1: Netzausgleich Admin-Default = aus; Dauerbetrieb-Flag an; EV bleibt aus", () => {
         const c = (0, config_js_1.batteryConfigFromAdapter)({});
         strict_1.default.equal(c.gridBalance.enabled, false);
-        strict_1.default.equal(grid_balance_contract_js_1.GRID_BALANCE_EXECUTION_ENABLED, false);
+        strict_1.default.equal(grid_balance_contract_js_1.GRID_BALANCE_EXECUTION_ENABLED, true);
         strict_1.default.equal(write_allowlist_js_1.EV_EXECUTION_PHASE5_ENABLED, false);
     });
     (0, node_test_1.it)("L2: Admin switch is activatable", () => {
@@ -218,20 +218,19 @@ function baseSafety(over = {}) {
             strict_1.default.equal(/setForeignStateAsync/.test(src), false);
             strict_1.default.equal(/go-e\.|fordpass\.|tibber\.|evcc\./.test(src), false);
         }
-        strict_1.default.equal(grid_balance_contract_js_1.GRID_BALANCE_EXECUTION_ENABLED, false);
+        strict_1.default.equal(grid_balance_contract_js_1.GRID_BALANCE_EXECUTION_ENABLED, true);
         strict_1.default.equal(write_allowlist_js_1.EV_EXECUTION_PHASE5_ENABLED, false);
     });
-    (0, node_test_1.it)("L18: execution stays locked even when policy would allow", () => {
-        const r = (0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety());
+    (0, node_test_1.it)("L18: Dauerbetrieb releases writes when policy allows, without one-shot", () => {
+        const r = (0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ liveTestPermit: false }));
         strict_1.default.equal(r.policyAllowed, true);
         strict_1.default.equal(r.ready, true);
-        strict_1.default.equal(r.writeAllowed, false);
-        strict_1.default.equal(grid_balance_contract_js_1.GRID_BALANCE_EXECUTION_ENABLED, false);
+        strict_1.default.equal(r.writeAllowed, true);
+        strict_1.default.equal(grid_balance_contract_js_1.GRID_BALANCE_EXECUTION_ENABLED, true);
         strict_1.default.match(r.explain, /grid_balance=ready/);
     });
-    (0, node_test_1.it)("one-shot permit unlocks writes without Dauerbetrieb flag", () => {
+    (0, node_test_1.it)("one-shot permit remains a valid extra unlock", () => {
         const r = (0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ liveTestPermit: true }));
-        strict_1.default.equal(grid_balance_contract_js_1.GRID_BALANCE_EXECUTION_ENABLED, false);
         strict_1.default.equal(r.policyAllowed, true);
         strict_1.default.equal(r.writeAllowed, true);
     });
@@ -301,5 +300,7 @@ function baseSafety(over = {}) {
         strict_1.default.match(cfg, /"bat_grid_balance_deadband_w"[\s\S]*?"default": 0/);
         strict_1.default.match(cfg, /bat_grid_balance_max_w/);
         strict_1.default.match(cfg, /bat_grid_balance_update_interval_sec/);
+        strict_1.default.match(cfg, /GRID_BALANCE_EXECUTION_ENABLED=true/);
+        strict_1.default.equal(/GRID_BALANCE_EXECUTION_ENABLED=false/.test(cfg), false);
     });
 });

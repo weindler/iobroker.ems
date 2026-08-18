@@ -31,6 +31,7 @@ function buildRollupHost(adapter) {
         log: adapter.log,
         getHistoryAsync: adapter.getHistoryAsync.bind(adapter),
         getStateAsync: adapter.getStateAsync.bind(adapter),
+        setStateAsync: adapter.setStateAsync.bind(adapter),
         getForeignStateAsync: adapter.getForeignStateAsync.bind(adapter),
         getObjectAsync: adapter.getObjectAsync.bind(adapter),
         subscribeForeignStatesAsync: typeof adapterAny.subscribeForeignStatesAsync === "function"

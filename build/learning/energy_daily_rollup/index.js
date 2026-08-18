@@ -100,6 +100,7 @@ async function processSample(host, source, ts, rawKwh) {
         runtime.buffer = (0, buffer_1.emptyDayBuffer)(newDateKey);
     }
     runtime.buffer = (0, buffer_1.ingestDailyKwhSample)(runtime.buffer, ts, rawKwh);
+    await publishPvActualToday(host, source.sourceKey, rawKwh);
 }
 function syncSources(host, persist) {
     const sources = (0, registry_1.resolveDailyEnergySources)(host.config);
@@ -122,6 +123,23 @@ function syncSources(host, persist) {
         }
     }
     return sources;
+}
+async function publishPvActualToday(host, sourceKey, kwh) {
+    if (sourceKey !== "pv.day_energy")
+        return;
+    if (typeof host.setStateAsync !== "function")
+        return;
+    if (!Number.isFinite(kwh) || kwh < 0)
+        return;
+    try {
+        await host.setStateAsync("learning.pv_bias.actual_today_kwh", {
+            val: Math.round(kwh * 1000) / 1000,
+            ack: true,
+        });
+    }
+    catch {
+        // pv_bias states may not be ensured yet at first rollup tick
+    }
 }
 async function refreshSubscriptions(host, sources) {
     const needed = new Set(sources.map((s) => s.stateId));

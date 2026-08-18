@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.297",
+		"version": "0.1.298",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.298": {
+				"en": "Grid balance Dauerbetrieb is on: Mode-2 control.discharge runs when Admin, live, and price ≥ minimum allow it — no nightly one-shot arming. Dashboard PV/house/grid/price/SOC tiles refresh with the battery tick (~5 s / on change), not only every 60 s. EV Dauerbetrieb stays off. Restart the adapter and reload VIS.",
+				"de": "Netzausgleich-Dauerbetrieb ist an: Mode-2 control.discharge läuft, wenn Admin, Live und Preis ≥ Mindestgrenze es erlauben — kein nächtliches One-Shot-Arming. Dashboard-Kacheln PV/Haus/Netz/Preis/SOC folgen dem Batterie-Tick (ca. 5 s / bei Änderung), nicht erst alle 60 s. EV-Dauerbetrieb bleibt aus. Adapter neu starten und VIS neu laden."
+			},
 			"0.1.297": {
 				"en": "PV tile and PV-Lage show how today's number is built: raw forecast, 7-day bias, actual yield so far, deviation vs plan, and whether today is further off than recent days. Reload VIS after update.",
 				"de": "PV-Kachel und PV-Lage zeigen die Rechnung: Rohforecast, 7-Tage-Bias, bisheriger Ist-Ertrag, Abweichung zum Plan und ob heute stärker daneben liegt als die letzten Tage. VIS nach Update neu laden."

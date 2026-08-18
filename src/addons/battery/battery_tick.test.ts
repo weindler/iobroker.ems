@@ -400,3 +400,27 @@ describe("battery setpoint release safety", () => {
 		assert.equal(a.rel.get(BAT.runtime.ownershipActive), false);
 	});
 });
+
+describe("battery control tick — live power strip", () => {
+	it("publishes mapped PV/house/SOC onto live.* for the dashboard", async () => {
+		__resetBatteryRuntimeForTest();
+		const a = new MockAdapter({
+			...CONFIG,
+			bat_consumption_target: "dev.house",
+			bat_pv_ac_target: "dev.pv",
+		});
+		a.rel.set("global.execution_mode", "dryrun");
+		a.rel.set("addons.battery.mode", "dryrun");
+		a.rel.set("addons.battery.governance.enabled", true);
+		a.foreign.set("dev.soc", 99);
+		a.foreign.set("dev.power", 0);
+		a.foreign.set("dev.mode", 2);
+		a.foreign.set("dev.house", 1931);
+		a.foreign.set("dev.pv", 1331);
+		await runBatteryControlTick(a as unknown as ioBroker.Adapter & { config: unknown });
+		assert.equal(a.rel.get("live.battery.house_load_w"), 1931);
+		assert.equal(a.rel.get("live.battery.pv_ac_power_w"), 1331);
+		assert.equal(a.rel.get("live.pv.power_w"), 1331);
+		assert.equal(a.rel.get("live.battery.soc_pct"), 99);
+	});
+});

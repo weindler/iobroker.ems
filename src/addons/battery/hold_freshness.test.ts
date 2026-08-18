@@ -149,7 +149,7 @@ describe("grid balance hold freshness", () => {
 		const idx = readFileSync(join(SRC, "index.ts"), "utf8");
 		assert.match(idx, /resolveGridBalanceHoldSignals/);
 		assert.match(idx, /constraintHoldState/);
-		assert.equal(GRID_BALANCE_EXECUTION_ENABLED, false);
+		assert.equal(GRID_BALANCE_EXECUTION_ENABLED, true);
 		assert.equal(EV_EXECUTION_PHASE5_ENABLED, false);
 	});
 });

@@ -406,7 +406,7 @@ function batteryStateDefs() {
         {
             id: exports.BAT.gridBalance.liveTestArmed,
             common: {
-                name: "Netzausgleich Live-Test einmalig armen (ack:false)",
+                name: "Netzausgleich Live-Test (optional; Dauerbetrieb braucht ihn nicht)",
                 type: "boolean",
                 role: "switch",
                 read: true,

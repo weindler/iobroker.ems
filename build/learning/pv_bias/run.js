@@ -23,7 +23,7 @@ async function setNumIfValid(host, id, value) {
         await host.setStateAsync(id, { val: Math.round(value * 1000) / 1000, ack: true });
     }
 }
-async function writePvBiasResult(host, result) {
+async function writePvBiasResult(host, result, actualTodayKwh) {
     await setNumIfValid(host, "learning.pv_bias.bias_today_pct", result.biasTodayPct);
     await setNumIfValid(host, "learning.pv_bias.bias_7d_pct", result.bias7dPct);
     await setNumIfValid(host, "learning.pv_bias.bias_30d_pct", result.bias30dPct);
@@ -32,6 +32,7 @@ async function writePvBiasResult(host, result) {
     await setNumIfValid(host, "learning.pv_bias.confidence_pct", result.confidencePct);
     await setNumIfValid(host, "learning.pv_bias.raw_today_kwh", result.rawTodayKwh);
     await setNumIfValid(host, "learning.pv_bias.raw_tomorrow_kwh", result.rawTomorrowKwh);
+    await setNumIfValid(host, "learning.pv_bias.actual_today_kwh", actualTodayKwh);
     await setNumIfValid(host, "learning.pv_bias.sample_days_30d", result.sampleDays30d);
     await host.setStateAsync("learning.pv_bias.last_update_ts", {
         val: new Date().toISOString(),
@@ -87,9 +88,9 @@ async function runPvBiasLearning(host) {
             host.log.warn(`PV-Bias: nur ${pairs.length} Paar(e) — ${thinSide}.`);
         }
         if (pairs.length === 0) {
-            const todayActual = await (0, history_1.readStateNum)(host, cfg.historyActualStateId);
+            const liveActual = await (0, history_1.readStateNum)(host, cfg.historyActualStateId);
             const todayForecast = await (0, history_1.readStateNum)(host, forecastHistoryStateId);
-            host.log.warn(`PV-Bias: no pairs — today live actual=${todayActual ?? "—"} forecast=${todayForecast ?? "—"} (Historie am Alias + Provider-Forecast empfohlen)`);
+            host.log.warn(`PV-Bias: no pairs — today live actual=${liveActual ?? "—"} forecast=${todayForecast ?? "—"} (Historie am Alias + Provider-Forecast empfohlen)`);
         }
         const forecastForCorrection = cfg.freezeEnabled
             ? { today: frozen.today, tomorrow: frozen.tomorrow }
@@ -101,7 +102,9 @@ async function runPvBiasLearning(host) {
             result.status = "insufficient_data";
             result.reason = "Eingefrorener Forecast fehlt — Bias/Korrektur warten auf Freeze-Snapshot.";
         }
-        await writePvBiasResult(host, result);
+        const todayActual = pairs.find((p) => p.dayOffset === 0)?.actualKwh ??
+            (await (0, history_1.readStateNum)(host, cfg.historyActualStateId));
+        await writePvBiasResult(host, result, todayActual);
         host.log.debug?.(`PV-Bias: 7d=${result.bias7dPct ?? "—"}% 30d=${result.bias30dPct ?? "—"}% conf=${result.confidencePct}% samples=${result.sampleDays30d} freeze=${cfg.freezeEnabled}`);
     }
     catch (e) {

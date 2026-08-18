@@ -121,7 +121,7 @@ function signals(overrides = {}) {
         const idx = (0, node_fs_1.readFileSync)((0, node_path_1.join)(SRC, "index.ts"), "utf8");
         strict_1.default.match(idx, /resolveGridBalanceHoldSignals/);
         strict_1.default.match(idx, /constraintHoldState/);
-        strict_1.default.equal(grid_balance_contract_js_1.GRID_BALANCE_EXECUTION_ENABLED, false);
+        strict_1.default.equal(grid_balance_contract_js_1.GRID_BALANCE_EXECUTION_ENABLED, true);
         strict_1.default.equal(write_allowlist_js_1.EV_EXECUTION_PHASE5_ENABLED, false);
     });
 });

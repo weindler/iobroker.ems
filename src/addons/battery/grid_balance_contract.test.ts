@@ -48,10 +48,10 @@ function baseSafety(over: Partial<GridBalanceSafetyInput> = {}): GridBalanceSafe
 }
 
 describe("grid balance safety contract v0.1.284", () => {
-	it("L1: Netzausgleich default = aus", () => {
+	it("L1: Netzausgleich Admin-Default = aus; Dauerbetrieb-Flag an; EV bleibt aus", () => {
 		const c = batteryConfigFromAdapter({});
 		assert.equal(c.gridBalance.enabled, false);
-		assert.equal(GRID_BALANCE_EXECUTION_ENABLED, false);
+		assert.equal(GRID_BALANCE_EXECUTION_ENABLED, true);
 		assert.equal(EV_EXECUTION_PHASE5_ENABLED, false);
 	});
 
@@ -254,22 +254,21 @@ describe("grid balance safety contract v0.1.284", () => {
 			assert.equal(/setForeignStateAsync/.test(src), false);
 			assert.equal(/go-e\.|fordpass\.|tibber\.|evcc\./.test(src), false);
 		}
-		assert.equal(GRID_BALANCE_EXECUTION_ENABLED, false);
+		assert.equal(GRID_BALANCE_EXECUTION_ENABLED, true);
 		assert.equal(EV_EXECUTION_PHASE5_ENABLED, false);
 	});
 
-	it("L18: execution stays locked even when policy would allow", () => {
-		const r = evaluateGridBalanceSafety(baseSafety());
+	it("L18: Dauerbetrieb releases writes when policy allows, without one-shot", () => {
+		const r = evaluateGridBalanceSafety(baseSafety({ liveTestPermit: false }));
 		assert.equal(r.policyAllowed, true);
 		assert.equal(r.ready, true);
-		assert.equal(r.writeAllowed, false);
-		assert.equal(GRID_BALANCE_EXECUTION_ENABLED, false);
+		assert.equal(r.writeAllowed, true);
+		assert.equal(GRID_BALANCE_EXECUTION_ENABLED, true);
 		assert.match(r.explain, /grid_balance=ready/);
 	});
 
-	it("one-shot permit unlocks writes without Dauerbetrieb flag", () => {
+	it("one-shot permit remains a valid extra unlock", () => {
 		const r = evaluateGridBalanceSafety(baseSafety({ liveTestPermit: true }));
-		assert.equal(GRID_BALANCE_EXECUTION_ENABLED, false);
 		assert.equal(r.policyAllowed, true);
 		assert.equal(r.writeAllowed, true);
 	});
@@ -353,5 +352,7 @@ describe("grid balance safety contract v0.1.284", () => {
 		assert.match(cfg, /"bat_grid_balance_deadband_w"[\s\S]*?"default": 0/);
 		assert.match(cfg, /bat_grid_balance_max_w/);
 		assert.match(cfg, /bat_grid_balance_update_interval_sec/);
+		assert.match(cfg, /GRID_BALANCE_EXECUTION_ENABLED=true/);
+		assert.equal(/GRID_BALANCE_EXECUTION_ENABLED=false/.test(cfg), false);
 	});
 });

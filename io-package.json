@@ -11,8 +11,8 @@
 		],
 		"news": {
 			"0.1.295": {
-				"en": "Operator VIS: PV tile shows today's expected kWh. A single PV-Lage line adds tomorrow, later-days outlook, learned forecast bias in plain language, and today's temperature range. No new states. Reload VIS after update.",
-				"de": "Betriebs-VIS: PV-Kachel zeigt die erwarteten kWh heute. Eine Zeile PV-Lage ergänzt morgen, die weitere Horizon-Tendenz, den gelernten Forecast-Bias in Alltagssprache und die Tagestemperatur. Keine neuen States. VIS nach Update neu laden."
+				"en": "Grid balance no longer blocks on an authoritative 0 W / self-consumption Daily Plan (planned_battery_action only for a real EMS battery action). VIS NETZ shows connection-point import/export, not battery discharge. PV tile shows today's expected kWh; one PV-Lage line adds tomorrow, later-days outlook, learned forecast bias in plain language, and today's temperature range. No new states. Reload VIS after update.",
+				"de": "Netzausgleich blockiert nicht mehr wegen eines autoritativen 0-W-/Eigenverbrauchs-Daily-Plans (planned_battery_action nur bei echter EMS-Batterieaktion). VIS NETZ zeigt Anschluss-Bezug/Einspeisung, nicht Batterieentladung. PV-Kachel zeigt die erwarteten kWh heute; eine PV-Lage-Zeile ergänzt morgen, Horizon-Tendenz, Forecast-Bias in Alltagssprache und die Tagestemperatur. Keine neuen States. VIS nach Update neu laden."
 			},
 			"0.1.294": {
 				"en": "Grid balance no longer blocks on an authoritative 0 W / self-consumption Daily Plan (planned_battery_action only for a real EMS battery action). VIS NETZ shows connection-point power (import/export), not battery discharge as grid import. Battery tile stays telemetry; EMS action stays separate. Reload VIS after update.",

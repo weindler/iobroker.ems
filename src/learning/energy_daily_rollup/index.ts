@@ -19,6 +19,7 @@ export type EnergyDailyRollupHost = EnergyDailyBackfillHost & {
 	config: unknown;
 	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
 	getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
+	setStateAsync?: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
 	subscribeForeignStatesAsync?: (pattern: string) => Promise<void>;
 	unsubscribeForeignStatesAsync?: (pattern: string) => Promise<void>;
 };
@@ -142,6 +143,7 @@ async function processSample(
 	}
 
 	runtime.buffer = ingestDailyKwhSample(runtime.buffer, ts, rawKwh);
+	await publishPvActualToday(host, source.sourceKey, rawKwh);
 }
 
 function syncSources(host: EnergyDailyRollupHost, persist: EnergyDailyPersist): ResolvedDailyEnergySource[] {
@@ -167,6 +169,24 @@ function syncSources(host: EnergyDailyRollupHost, persist: EnergyDailyPersist): 
 	}
 
 	return sources;
+}
+
+async function publishPvActualToday(
+	host: EnergyDailyRollupHost,
+	sourceKey: string,
+	kwh: number,
+): Promise<void> {
+	if (sourceKey !== "pv.day_energy") return;
+	if (typeof host.setStateAsync !== "function") return;
+	if (!Number.isFinite(kwh) || kwh < 0) return;
+	try {
+		await host.setStateAsync("learning.pv_bias.actual_today_kwh", {
+			val: Math.round(kwh * 1000) / 1000,
+			ack: true,
+		});
+	} catch {
+		// pv_bias states may not be ensured yet at first rollup tick
+	}
 }
 
 async function refreshSubscriptions(host: EnergyDailyRollupHost, sources: ResolvedDailyEnergySource[]): Promise<void> {

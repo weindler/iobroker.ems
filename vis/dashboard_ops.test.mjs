@@ -25,7 +25,7 @@ function loadOpsDisplay(html) {
 	assert.ok(start >= 0 && end > start, "vis-ops-display markers required");
 	const code = html.slice(start, end);
 	return new Function(
-		`${code}; return { visBatteryMotion, visEmsAction, visGbStatus, visGridMeterW, visGridFlow, visTargetedHold, visPriceBand, visPriceAxisRange, visClimateNote, visAcConfiguredName, visClimateHvacBadge, visHvacPurposeLabel, visFmtDurationSec, visFmtKwh, visPvBiasPhrase, visPvChipSub, visHorizonOutlook, visLageLine, visCheapPhaseLabel, visPriceHeadSummary, visIdleFacts, visNowSummary, visRowValueOk };`,
+		`${code}; return { visBatteryMotion, visEmsAction, visGbStatus, visGridMeterW, visGridFlow, visTargetedHold, visPriceBand, visPriceAxisRange, visClimateNote, visAcConfiguredName, visClimateHvacBadge, visHvacPurposeLabel, visFmtDurationSec, visFmtKwh, visPvBiasPhrase, visPvChipSub, visHorizonOutlook, visLageLine, visLageFacts, visPvIstKwh, visTodayDeviationPct, visDeviationVsRecent, visCheapPhaseLabel, visPriceHeadSummary, visIdleFacts, visNowSummary, visRowValueOk };`,
 	)();
 }
 
@@ -88,6 +88,9 @@ const REQUIRED_STATE_PATHS = [
 	"learning.thermal_boiler.quality",
 	"learning.pv_bias.corrected_today_kwh",
 	"learning.pv_bias.corrected_tomorrow_kwh",
+	"learning.pv_bias.raw_today_kwh",
+	"learning.pv_bias.actual_today_kwh",
+	"learning.pv_bias.bias_today_pct",
 	"learning.pv_bias.bias_7d_pct",
 	"learning.pv_horizon.day3.corrected_kwh",
 	"learning.weather.horizon.day1.min_temp_c",
@@ -587,6 +590,7 @@ describe("VIS battery / grid / GB presentation", () => {
 
 	it("PV chip and Lage line show bias-corrected horizon in everyday language", () => {
 		assert.equal(ops.visPvChipSub({ todayKwh: 18.2 }), "heute 18 kWh");
+		assert.equal(ops.visPvChipSub({ todayKwh: 14, actualKwh: 8 }), "Ist 8,0 / 14 kWh");
 		assert.equal(ops.visPvBiasPhrase(-14, "ready"), "Forecast bisher zu hoch");
 		assert.equal(ops.visPvBiasPhrase(-8, "ready"), "etwas schwächer als Forecast");
 		assert.equal(ops.visPvBiasPhrase(14, "ready"), "Forecast bisher zu niedrig");
@@ -595,6 +599,20 @@ describe("VIS battery / grid / GB presentation", () => {
 		assert.equal(ops.visHorizonOutlook(18, 8), "danach schwächer");
 		assert.equal(ops.visHorizonOutlook(12, 22), "danach kräftiger");
 		assert.equal(ops.visHorizonOutlook(18, 19), "danach ähnlich");
+		assert.equal(ops.visPvIstKwh({ actualKwh: 8.1 }), 8.1);
+		assert.equal(Math.round(ops.visTodayDeviationPct({ todayKwh: 14, actualKwh: 8 })), -43);
+		assert.equal(ops.visDeviationVsRecent(-43, -1), "stärker daneben als letzte Tage");
+		assert.equal(ops.visDeviationVsRecent(-2, -20), "näher am Forecast als letzte Tage");
+		assert.equal(ops.visDeviationVsRecent(-5, -4), "ähnlich den letzten Tagen");
+		assert.equal(
+			ops.visLageFacts({
+				rawTodayKwh: 14.2,
+				todayKwh: 14,
+				actualKwh: 8,
+				bias7dPct: -1.2,
+			}),
+			"Roh 14 kWh · Bias -1,2 % · Ist 8,0 kWh · Abweichung -43 % · stärker daneben als letzte Tage",
+		);
 		assert.equal(
 			ops.visLageLine({
 				todayKwh: 18.2,
@@ -605,13 +623,14 @@ describe("VIS battery / grid / GB presentation", () => {
 				minC: 14.2,
 				maxC: 22.4,
 			}),
-			"Heute 18 kWh · Morgen 31 kWh · danach schwächer · Forecast bisher zu hoch · 14–22 °C",
+			"Heute 18 kWh · Morgen 31 kWh · danach schwächer · 14–22 °C · Bias -14 %",
 		);
 		assert.equal(ops.visLageLine({}), "");
 		assert.match(visHtml, /id="ems-lage"/);
 		assert.match(visHtml, /function visLageLine/);
 		assert.match(visHtml, /chip\("PV"/);
-		assert.equal(visHtml.includes("bias_today_pct"), false);
+		assert.match(visHtml, /learning\.pv_bias\.actual_today_kwh/);
+		assert.match(visHtml, /learning\.pv_bias\.raw_today_kwh/);
 		assert.equal(visHtml.includes("sample_days_30d"), false);
 		assert.equal(visHtml.includes("forecast_plan.days_json"), false);
 	});

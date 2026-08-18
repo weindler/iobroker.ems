@@ -35,6 +35,7 @@ export async function ensurePvBiasStates(host: StateHost): Promise<void> {
 		numState("learning.pv_bias.confidence_pct", "PV-Bias Confidence", "%"),
 		numState("learning.pv_bias.raw_today_kwh", "PV Rohforecast heute", "kWh"),
 		numState("learning.pv_bias.raw_tomorrow_kwh", "PV Rohforecast morgen", "kWh"),
+		numState("learning.pv_bias.actual_today_kwh", "PV Ist-Ertrag heute", "kWh"),
 		numState("learning.pv_bias.sample_days_30d", "PV-Bias gültige Tage 30d"),
 		strState("learning.pv_bias.last_update_ts", "PV-Bias letztes Update (ISO)"),
 		strState("learning.pv_bias.status", "Learning PV-Bias Status", "not_initialized"),

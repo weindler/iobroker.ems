@@ -23,7 +23,7 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-live{display:flex;flex-wrap:nowrap;gap:4px;margin-bottom:4px;flex:0 0 auto;overflow:hidden}
 .ems-lage{display:flex;align-items:baseline;gap:8px;background:#21262d;border:1px solid #30363d;border-radius:6px;padding:3px 8px;margin-bottom:4px;flex:0 0 auto;min-width:0}
 .ems-lage-k{font-size:8px;color:#8b949e;text-transform:uppercase;letter-spacing:.04em;flex:0 0 auto}
-.ems-lage-v{font-size:10px;color:#c9d1d9;line-height:1.25;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ems-lage-v{font-size:10px;color:#c9d1d9;line-height:1.25;flex:1 1 auto;min-width:0}
 .ems-chip{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:3px 6px;min-width:0;flex:1 1 0}
 .ems-chip .ems-k{margin-bottom:0}
 .ems-chip .ems-chip-v{font-size:12px;font-weight:700;line-height:1.15;color:#e6edf3}
@@ -305,6 +305,10 @@ var stateIds=[
 	INST+".learning.thermal_boiler.quality",
 	INST+".learning.pv_bias.corrected_today_kwh",
 	INST+".learning.pv_bias.corrected_tomorrow_kwh",
+	INST+".learning.pv_bias.raw_today_kwh",
+	INST+".learning.pv_bias.actual_today_kwh",
+	INST+".learning.pv_bias.frozen_today_kwh",
+	INST+".learning.pv_bias.bias_today_pct",
 	INST+".learning.pv_bias.bias_7d_pct",
 	INST+".learning.pv_bias.status",
 	INST+".learning.pv_horizon.day3.corrected_kwh",
@@ -1259,6 +1263,35 @@ function visFmtKwhShort(v){
 	if(n>=9.5)return String(Math.round(n));
 	return n.toFixed(1).replace(".",",");
 }
+function visFmtSignedPct(v){
+	if(v==null||!isFinite(v))return null;
+	var n=Number(v);
+	var t=Math.abs(n)>=9.5?String(Math.round(n)):n.toFixed(1).replace(".",",");
+	if(n>0)t="+"+t;
+	return t+" %";
+}
+function visPvIstKwh(s){
+	s=s||{};
+	if(s.actualKwh!=null&&isFinite(s.actualKwh)&&s.actualKwh>=0)return s.actualKwh;
+	var fc=s.frozenTodayKwh!=null&&s.frozenTodayKwh>0?s.frozenTodayKwh:s.rawTodayKwh;
+	if(fc!=null&&isFinite(fc)&&fc>0&&s.biasTodayPct!=null&&isFinite(s.biasTodayPct))
+		return Math.max(0,fc*(1+s.biasTodayPct/100));
+	return null;
+}
+function visTodayDeviationPct(s){
+	s=s||{};
+	var ist=visPvIstKwh(s);
+	var plan=s.todayKwh;
+	if(ist==null||plan==null||!isFinite(ist)||!isFinite(plan)||!(plan>0))return null;
+	return ((ist-plan)/plan)*100;
+}
+function visDeviationVsRecent(todayPct,bias7dPct){
+	if(todayPct==null||!isFinite(todayPct)||bias7dPct==null||!isFinite(bias7dPct))return"";
+	var d=Math.abs(todayPct)-Math.abs(bias7dPct);
+	if(d>=8)return"stärker daneben als letzte Tage";
+	if(d<=-8)return"näher am Forecast als letzte Tage";
+	return"ähnlich den letzten Tagen";
+}
 function visPvBiasPhrase(biasPct,status){
 	var st=String(status||"").toLowerCase();
 	if(st==="insufficient_data"||st==="no_config"||st==="error"||st==="not_initialized")return"";
@@ -1270,8 +1303,13 @@ function visPvBiasPhrase(biasPct,status){
 	return"";
 }
 function visPvChipSub(s){
-	var today=visFmtKwhShort(s&&s.todayKwh);
-	return today?("heute "+today+" kWh"):"";
+	s=s||{};
+	var plan=visFmtKwhShort(s.todayKwh);
+	var ist=visFmtKwhShort(visPvIstKwh(s));
+	if(ist&&plan)return"Ist "+ist+" / "+plan+" kWh";
+	if(plan)return"heute "+plan+" kWh";
+	if(ist)return"Ist "+ist+" kWh";
+	return"";
 }
 function visHorizonOutlook(todayKwh,laterAvgKwh){
 	if(todayKwh==null||laterAvgKwh==null||!isFinite(todayKwh)||!isFinite(laterAvgKwh)||todayKwh<0.4)return"";
@@ -1279,6 +1317,20 @@ function visHorizonOutlook(todayKwh,laterAvgKwh){
 	if(r<0.7)return"danach schwächer";
 	if(r>1.3)return"danach kräftiger";
 	return"danach ähnlich";
+}
+function visLageFacts(s){
+	s=s||{};
+	var bits=[],raw=visFmtKwhShort(s.rawTodayKwh);
+	if(raw)bits.push("Roh "+raw+" kWh");
+	var bias=visFmtSignedPct(s.bias7dPct);
+	if(bias)bits.push("Bias "+bias);
+	var ist=visFmtKwhShort(visPvIstKwh(s));
+	if(ist)bits.push("Ist "+ist+" kWh");
+	var dev=visFmtSignedPct(visTodayDeviationPct(s));
+	if(dev)bits.push("Abweichung "+dev);
+	var vs=visDeviationVsRecent(visTodayDeviationPct(s),s.bias7dPct);
+	if(vs)bits.push(vs);
+	return bits.join(" · ");
 }
 function visLageLine(s){
 	s=s||{};
@@ -1291,11 +1343,11 @@ function visLageLine(s){
 	}
 	var outlook=visHorizonOutlook(s.todayKwh,n?sum/n:null);
 	if(outlook)bits.push(outlook);
-	var bias=visPvBiasPhrase(s.bias7dPct,s.status);
-	if(bias)bits.push(bias);
 	if(s.minC!=null&&s.maxC!=null&&isFinite(s.minC)&&isFinite(s.maxC)){
 		bits.push(Math.round(s.minC)+"–"+Math.round(s.maxC)+" °C");
 	}
+	var facts=visLageFacts(s);
+	if(facts)bits.push(facts);
 	return bits.join(" · ");
 }
 function visJoinDurEnergy(sec,kwh,totalHours){
@@ -1671,7 +1723,11 @@ function visLageSnap(){
 	return{
 		todayKwh:num(g("learning.pv_bias.corrected_today_kwh")),
 		tomorrowKwh:num(g("learning.pv_bias.corrected_tomorrow_kwh")),
+		rawTodayKwh:num(g("learning.pv_bias.raw_today_kwh")),
+		actualKwh:num(g("learning.pv_bias.actual_today_kwh")),
+		frozenTodayKwh:num(g("learning.pv_bias.frozen_today_kwh")),
 		laterKwhs:later,
+		biasTodayPct:num(g("learning.pv_bias.bias_today_pct")),
 		bias7dPct:num(g("learning.pv_bias.bias_7d_pct")),
 		status:txt(g("learning.pv_bias.status"),""),
 		minC:num(g("learning.weather.horizon.day1.min_temp_c")),

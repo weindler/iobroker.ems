@@ -45,7 +45,11 @@ async function setNumIfValid(host: PvBiasRunHost, id: string, value: number | nu
 	}
 }
 
-async function writePvBiasResult(host: PvBiasRunHost, result: PvBiasComputeResult): Promise<void> {
+async function writePvBiasResult(
+	host: PvBiasRunHost,
+	result: PvBiasComputeResult,
+	actualTodayKwh: number | null,
+): Promise<void> {
 	await setNumIfValid(host, "learning.pv_bias.bias_today_pct", result.biasTodayPct);
 	await setNumIfValid(host, "learning.pv_bias.bias_7d_pct", result.bias7dPct);
 	await setNumIfValid(host, "learning.pv_bias.bias_30d_pct", result.bias30dPct);
@@ -54,6 +58,7 @@ async function writePvBiasResult(host: PvBiasRunHost, result: PvBiasComputeResul
 	await setNumIfValid(host, "learning.pv_bias.confidence_pct", result.confidencePct);
 	await setNumIfValid(host, "learning.pv_bias.raw_today_kwh", result.rawTodayKwh);
 	await setNumIfValid(host, "learning.pv_bias.raw_tomorrow_kwh", result.rawTomorrowKwh);
+	await setNumIfValid(host, "learning.pv_bias.actual_today_kwh", actualTodayKwh);
 	await setNumIfValid(host, "learning.pv_bias.sample_days_30d", result.sampleDays30d);
 	await host.setStateAsync("learning.pv_bias.last_update_ts", {
 		val: new Date().toISOString(),
@@ -131,10 +136,10 @@ export async function runPvBiasLearning(host: PvBiasRunHost): Promise<void> {
 			host.log.warn(`PV-Bias: nur ${pairs.length} Paar(e) — ${thinSide}.`);
 		}
 		if (pairs.length === 0) {
-			const todayActual = await readStateNum(host, cfg.historyActualStateId);
+			const liveActual = await readStateNum(host, cfg.historyActualStateId);
 			const todayForecast = await readStateNum(host, forecastHistoryStateId);
 			host.log.warn(
-				`PV-Bias: no pairs — today live actual=${todayActual ?? "—"} forecast=${todayForecast ?? "—"} (Historie am Alias + Provider-Forecast empfohlen)`,
+				`PV-Bias: no pairs — today live actual=${liveActual ?? "—"} forecast=${todayForecast ?? "—"} (Historie am Alias + Provider-Forecast empfohlen)`,
 			);
 		}
 
@@ -150,7 +155,10 @@ export async function runPvBiasLearning(host: PvBiasRunHost): Promise<void> {
 			result.reason = "Eingefrorener Forecast fehlt — Bias/Korrektur warten auf Freeze-Snapshot.";
 		}
 
-		await writePvBiasResult(host, result);
+		const todayActual =
+			pairs.find((p) => p.dayOffset === 0)?.actualKwh ??
+			(await readStateNum(host, cfg.historyActualStateId));
+		await writePvBiasResult(host, result, todayActual);
 		host.log.debug?.(
 			`PV-Bias: 7d=${result.bias7dPct ?? "—"}% 30d=${result.bias30dPct ?? "—"}% conf=${result.confidencePct}% samples=${result.sampleDays30d} freeze=${cfg.freezeEnabled}`,
 		);

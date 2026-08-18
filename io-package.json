@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.296",
+		"version": "0.1.297",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.297": {
+				"en": "PV tile and PV-Lage show how today's number is built: raw forecast, 7-day bias, actual yield so far, deviation vs plan, and whether today is further off than recent days. Reload VIS after update.",
+				"de": "PV-Kachel und PV-Lage zeigen die Rechnung: Rohforecast, 7-Tage-Bias, bisheriger Ist-Ertrag, Abweichung zum Plan und ob heute stärker daneben liegt als die letzten Tage. VIS nach Update neu laden."
+			},
 			"0.1.296": {
 				"en": "Grid balance writes (house load − PV + SOC offset) to control.discharge when the price is at/above the minimum; remaining daily PV vs. battery capacity is not a gate. Hold, EVCC battery boost, and planned grid charge end grid balance first (discharge=0), then the mode may change. One-shot test and no productive Dauerbetrieb unchanged.",
 				"de": "Netzausgleich schreibt (Hauslast − PV + SOC-Offset) auf control.discharge, sobald der Preis auf/über der Mindestgrenze liegt; Rest-PV vs. Batteriekapazität ist kein Gate. Hold, EVCC-Batterie-Boost und geplante Netzladung beenden den Netzausgleich zuerst (discharge=0), danach erst Mode-Wechsel. One-Shot-Test und kein produktiver Dauerbetrieb unverändert."

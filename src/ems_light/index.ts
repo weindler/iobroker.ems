@@ -50,6 +50,7 @@ function buildRollupHost(adapter: ioBroker.Adapter): PowerRollupHost & EnergyDai
 		log: adapter.log,
 		getHistoryAsync: adapter.getHistoryAsync.bind(adapter),
 		getStateAsync: adapter.getStateAsync.bind(adapter),
+		setStateAsync: adapter.setStateAsync.bind(adapter),
 		getForeignStateAsync: adapter.getForeignStateAsync.bind(adapter),
 		getObjectAsync: adapter.getObjectAsync.bind(adapter),
 		subscribeForeignStatesAsync:

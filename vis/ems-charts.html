@@ -240,6 +240,7 @@ var stateIds=[
 	INST+".addons.immersion_heater.runtime.boiler_temperature_c",
 	INST+".addons.immersion_heater.runtime.boiler_min_temp_c",
 	INST+".addons.immersion_heater.runtime.hygiene_status_de",
+	INST+".addons.immersion_heater.runtime.hygiene_json",
 	INST+".addons.immersion_heater.runtime.plan_target_temp_c",
 	INST+".addons.immersion_heater.runtime.plan_target_reason_de",
 	INST+".addons.immersion_heater.runtime.forecast_target_temp_c",
@@ -310,6 +311,8 @@ var stateIds=[
 	INST+".addons.air_conditioning.runtime.reason_de",
 	INST+".learning.thermal_boiler.estimated_remaining_hours",
 	INST+".learning.thermal_boiler.estimated_empty_at",
+	INST+".learning.thermal_runtime.estimated_remaining_hours",
+	INST+".learning.thermal_runtime.estimated_empty_at",
 	INST+".learning.thermal_boiler.reason_de",
 	INST+".learning.thermal_boiler.status",
 	INST+".learning.thermal_boiler.model",
@@ -1721,6 +1724,42 @@ function boilerLearningCompact(){
 	if(model==="newton"||quality==="newton_fallback")return"Newton";
 	return"sammelt Daten";
 }
+function boilerMinForecastLine(){
+	var rem=num(g("learning.thermal_runtime.estimated_remaining_hours"));
+	if(rem==null)rem=num(g("learning.thermal_boiler.estimated_remaining_hours"));
+	var empty=txt(g("learning.thermal_runtime.estimated_empty_at"),"");
+	if(!empty||empty==="—")empty=txt(g("learning.thermal_boiler.estimated_empty_at"),"");
+	var bits=[];
+	if(rem!=null&&rem>=0){
+		bits.push("in "+Number(rem).toFixed(1).replace(".",",")+" h");
+	}
+	var at=fmtEmptyAt(empty);
+	if(at)bits.push(at);
+	return bits.length?bits.join(" · "):"—";
+}
+function hygieneWeekPlanLine(){
+	var raw=txt(g("addons.immersion_heater.runtime.hygiene_json"),"");
+	var p=parseObj(raw);
+	var last=typeof p.lastBoilerHygieneAtIso==="string"?p.lastBoilerHygieneAtIso:"";
+	var now=Date.now();
+	if(!last){
+		return"7 Tage: heute fällig (kein letzter Nachweis)";
+	}
+	var lastMs=Date.parse(last);
+	if(!isFinite(lastMs)){
+		return"7 Tage: Hygiene-Daten ungültig";
+	}
+	var dueMs=lastMs+7*24*3600*1000;
+	var dueIso=new Date(dueMs).toISOString();
+	var dueLabel=fmtDayTime(dueIso);
+	if(dueMs<=now){
+		return"7 Tage: überfällig seit "+dueLabel;
+	}
+	if(dueMs<=now+7*24*3600*1000){
+		return"7 Tage: fällig am "+dueLabel;
+	}
+	return"7 Tage: keine fällige Aufheizung";
+}
 function ihEnergyNeedLine(){
 	var arr=parseArr(g("planner.intent.contributions.immersion_heater.contributions_json"));
 	var mand=null,flex=null,minW=null,i;
@@ -2227,9 +2266,11 @@ function renderStack(){
 		["Puffer",bufferTemp],
 		["Ziel",zielLine],
 		["Bedarf",ihEnergyNeedLine()],
+		["Boiler min",boilerMinForecastLine()],
 		[ihSched.label,ihSched.value],
 		["Boiler-Learning",boilerLearningCompact()],
-		["Hygiene",(hyg&&/fällig|aktiv|nötig|blockiert/i.test(hyg))?shortNote(hyg,80):"—"]
+		["Hygiene",(hyg&&/fällig|aktiv|nötig|blockiert/i.test(hyg))?shortNote(hyg,80):"—"],
+		["Legionellen",hygieneWeekPlanLine()]
 	];
 	var ihNote="";
 	if(ihFault){

@@ -193,10 +193,12 @@ describe("VIS operations dashboard", () => {
 		assert.equal(visHtml.includes("Owner / Aktion"), false);
 	});
 
-	it("Boiler-Learning compact is cycle-only; Restzeit not from Puffer-Learning", () => {
+it("Boiler-Learning compact is cycle-only; Restzeit bevorzugt thermal_runtime mit Fallback", () => {
 		assert.match(visHtml, /if\(quality==="cycle"\)return"belastbar"/);
-		assert.equal(visHtml.includes("learning.thermal_runtime.estimated_remaining_hours"), false);
-		assert.equal(visHtml.includes("learning.thermal_runtime.estimated_empty_at"), false);
+	assert.equal(visHtml.includes("learning.thermal_runtime.estimated_remaining_hours"), true);
+	assert.equal(visHtml.includes("learning.thermal_runtime.estimated_empty_at"), true);
+	assert.equal(visHtml.includes("learning.thermal_boiler.estimated_remaining_hours"), true);
+	assert.equal(visHtml.includes("learning.thermal_boiler.estimated_empty_at"), true);
 	});
 
 	it("outer VIS view is compact: no briefing, no ENERGIE cards", () => {

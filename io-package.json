@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.307",
+		"version": "0.1.308",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.308": {
+				"en": "Heater diagnostics expanded: dashboard now shows estimated time until boiler minimum (remaining hours + timestamp) and a 7-day legionella due line. Also fixed a soft-heating planning bug where battery support was still blocked, which could prevent drivable immersion-heater windows despite full battery.",
+				"de": "Heizstab-Diagnose erweitert: Dashboard zeigt jetzt die geschätzte Zeit bis zur Boiler-Mindesttemperatur (Reststunden + Uhrzeit) sowie eine 7-Tage-Legionellen-Zeile. Zusätzlich wurde ein Planungsbug im Soft-Heizen behoben, bei dem Batterie-Support noch blockiert war und trotz voller Batterie fahrbare Heizstab-Fenster verhindern konnte."
+			},
 			"0.1.307": {
 				"en": "Dashboard: added estimated remaining runtime for immersion heater (e.g. 'Flex 6.8 kWh (approx. 4h 00m)'). Also improved planner to more reliably show 'drivable windows' when battery is currently full, regardless of future SOC forecasts.",
 				"de": "Dashboard: Geschätzte Restlaufzeit für den Heizstab hinzugefügt (z.B. 'Flex 6,8 kWh (ca. 4h 00m)'). Zudem Planer verbessert, um 'fahrbare Fenster' zuverlässiger anzuzeigen, wenn die Batterie aktuell voll ist, ungeachtet zukünftiger SOC-Prognosen."

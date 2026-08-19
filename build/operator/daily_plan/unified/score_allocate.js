@@ -562,6 +562,14 @@ function buildConsumerStates(input, slots) {
             });
         }
         if (softKwh > exports.EPS) {
+            const socNow = input.battery.socPct;
+            const maxSoc = input.battery.maxSocPct;
+            const reqCharge = input.battery.requiredChargeEnergyKwh;
+            const batteryNearFull = socNow != null &&
+                Number.isFinite(socNow) &&
+                ((maxSoc != null && Number.isFinite(maxSoc) && socNow + 0.5 >= maxSoc) ||
+                    socNow >= 95 ||
+                    ((reqCharge == null || !(reqCharge > 0.15)) && socNow >= 90));
             out.push({
                 consumerId: exports.IMMERSION_SOFT_CONSUMER_ID,
                 kind: "immersion_heater",
@@ -572,7 +580,11 @@ function buildConsumerStates(input, slots) {
                 mandatory: false,
                 gridEligible: false,
                 pvFirst: true,
-                batteryEligible: false,
+                /*
+                 * Soft bleibt PV-first. Batterie-Support wird nur aktiviert, wenn
+                 * die Batterie bereits (nahe) voll ist und kein sinnvoller Ladebedarf besteht.
+                 */
+                batteryEligible: batteryNearFull,
                 energyGoalHard: false,
                 maxShiftHours: null,
                 earliestSlotIdx: 0,

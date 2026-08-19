@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.314",
+		"version": "0.1.315",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.315": {
+				"en": "Fix mandatory thermal allocation: when boiler is at/near minimum, battery support for the current slot is no longer suppressed by 'PV before deadline' heuristics, so the planner can allocate a drivable immersion-heater stage immediately.",
+				"de": "Fix für Pflicht-Thermal-Allocation: Liegt der Boiler am/nahe Minimum, wird Batterie-Support im aktuellen Slot nicht mehr durch die Heuristik 'PV bis Deadline' unterdrückt, sodass der Planer sofort eine fahrbare Heizstab-Stufe zuteilen kann."
+			},
 			"0.1.314": {
 				"en": "Planner guard for boiler minimum: when boiler temperature is at/near minimum, at least one drivable immersion-heater stage is enforced as mandatory demand so the plan cannot fall back to zero allocation.",
 				"de": "Planner-Guard für Boiler-Minimum: Liegt die Boiler-Temperatur am/nahe Mindestwert, wird mindestens eine fahrbare Heizstab-Stufe als Pflichtbedarf erzwungen, damit die Planung nicht auf null Allocation fällt."

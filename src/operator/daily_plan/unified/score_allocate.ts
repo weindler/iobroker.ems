@@ -1722,6 +1722,17 @@ function generateCandidatesForConsumer(
 			usableBat + EPS >= Math.max(minE, EPS) &&
 			slot.remainPvKwh + EPS < Math.max(minE, EPS);
 		/*
+		 * Hard-Min-Guard: Boiler ist am/nahe Mindesttemperatur.
+		 * Auch wenn PV "bis Deadline" rechnerisch reichen würde, muss die Mindeststufe
+		 * jetzt fahrbar sein (PV+Battery), damit der Pflichtfall nicht auf später driftet.
+		 */
+		const hardNeedsBatteryNow =
+			consumer.mandatory &&
+			consumer.thermalBeforeDeadline &&
+			usableBat + EPS >= Math.max(minE, EPS) &&
+			slot.remainPvKwh + EPS < Math.max(minE, EPS) &&
+			slot.remainPvKwh + usableBat + EPS >= Math.max(minE, EPS);
+		/*
 		 * Soft-IH (PV-first) darf bei knapper PV im Slot mit Batterie-Top-up die
 		 * Mindeststufe erreichen, wenn die Batterie dafür freigegeben ist.
 		 * Bedingung: Es gibt realen PV-Surplus im Slot und PV + Batterie schaffen zusammen minE.
@@ -1733,7 +1744,7 @@ function generateCandidatesForConsumer(
 			slot.remainPvKwh + EPS < Math.max(minE, EPS) &&
 			slot.remainPvKwh + usableBat + EPS >= Math.max(minE, EPS);
 		immersionSoftTopUpWithBattery = softCanTopUpWithBattery;
-		if (thermalNeedsBattery || softCanTopUpWithBattery) sources.push("battery");
+		if (thermalNeedsBattery || hardNeedsBatteryNow || softCanTopUpWithBattery) sources.push("battery");
 	}
 
 	if (consumer.kind === "battery_charge") {

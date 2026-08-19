@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.305",
+		"version": "0.1.306",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.306": {
+				"en": "Updated Cursor rule for model selection: Sonnet 5 High (API) is now explicitly allowed alongside Grok 4.5 and Composer 2.5 for coding tasks, giving users the choice between Cursor pools and API usage.",
+				"de": "Cursor-Regel zur Modellwahl aktualisiert: Sonnet 5 High (API) ist nun explizit neben Grok 4.5 und Composer 2.5 für Coding-Aufgaben erlaubt, sodass der Nutzer zwischen Cursor-Pools und API-Nutzung wählen kann."
+			},
 			"0.1.305": {
 				"en": "Optimization: when battery is full, the immersion heater now proactively starts even if PV surplus alone is slightly below the 1700W threshold (up to 800W battery support). This prevents grid feed-in and uses available energy for thermal buffering instead. Also updated planner to consider battery as a valid source for soft heating when SOC is high.",
 				"de": "Optimierung: Wenn die Batterie voll ist, startet der Heizstab jetzt proaktiv auch dann, wenn der PV-Überschuss allein knapp unter 1700W liegt (bis zu 800W Unterstützung aus der Batterie). Dies verhindert Einspeisung und nutzt Energie für den thermischen Puffer. Der Planer berücksichtigt die Batterie nun ebenfalls als Quelle für wirtschaftliches Vorheizen bei hohem SOC."

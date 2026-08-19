@@ -183,35 +183,6 @@ export function immersionRuntimeWatchedForeignIds(
 	return [...ids];
 }
 
-/**
- * Lokaler Sicherheits-Default wenn Daily Plan nicht verwendbar.
- * Hard nur bei Boiler unter Min und gültigem Puffer unter Max — nie allein wegen kaltem Puffer.
- */
-function safeDefaultAutoTarget(
-	config: ImmersionDeviceConfig,
-	opts: {
-		boilerTempC: number | null;
-		bufferTempC: number | null;
-		bufferTempOk: boolean;
-	},
-): { stage: number; targetTempC: number } {
-	if (!opts.bufferTempOk || opts.bufferTempC === null) {
-		return { stage: 0, targetTempC: config.planningMaxTempC };
-	}
-	if (opts.bufferTempC >= config.planningMaxTempC - 0.05) {
-		return { stage: 0, targetTempC: config.planningMaxTempC };
-	}
-	const boilerHard =
-		opts.boilerTempC !== null && opts.boilerTempC < config.boilerMinTempC - 0.05;
-	if (boilerHard) {
-		return {
-			stage: config.forceDefaultStage,
-			targetTempC: config.planningMaxTempC,
-		};
-	}
-	return { stage: 0, targetTempC: opts.bufferTempC };
-}
-
 function readHygienePersist(raw: string | null): HygienePersist {
 	if (!raw) return emptyHygienePersist();
 	try {
@@ -507,13 +478,6 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 		forceTarget,
 	);
 
-	const bufferTempOk = temperature.status === "valid";
-	const safeDefault = safeDefaultAutoTarget(config, {
-		boilerTempC,
-		bufferTempC: temperature.valueC,
-		bufferTempOk,
-	});
-
 	if (executionOff) {
 		plannerCommandedStage = 0;
 		autoDecisionSource = "safe_default";
@@ -525,8 +489,8 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 			plannerCommandedStage = dailyPlanContext.commandedStage;
 			autoDecisionSource = "daily_plan";
 		} else {
-			// Daily Plan nicht verwendbar — Boiler-Hard-Default, kein Puffer-Hard.
-			plannerCommandedStage = safeDefault.stage;
+			// One-Plan: ohne gültigen Daily Plan kein lokales Heizen.
+			plannerCommandedStage = 0;
 			autoDecisionSource = "thermal_fallback";
 		}
 	}
@@ -545,10 +509,7 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 		forecastReasonDe: forecastPlanTarget.reasonDe,
 	});
 
-	let plannerTargetTempC = authority.authoritativeTargetTempC;
-	if (resolvedMode === "auto" && autoDecisionSource === "thermal_fallback") {
-		plannerTargetTempC = safeDefault.targetTempC;
-	}
+	const plannerTargetTempC = authority.authoritativeTargetTempC;
 
 	const fsm = runImmersionFsm({
 		nowMs,
@@ -687,7 +648,7 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 		plan_target_temp_c: plannerTargetTempC,
 		plan_target_reason_de:
 			resolvedMode === "auto" && autoDecisionSource === "thermal_fallback"
-				? `Sicherheits-Default ${plannerTargetTempC ?? config.planningMinTempC} °C (Daily Plan nicht nutzbar).`
+				? "One-Plan-Fallback: Daily Plan nicht nutzbar, daher kein lokaler Heiz-Start."
 				: authority.reasonDe,
 		forecast_target_temp_c: authority.forecastTargetTempC,
 		force_target_temp_c: forceTarget,

@@ -196,7 +196,7 @@ function fsmDemandStart() {
         strict_1.default.equal(perm.allowStart, true);
         strict_1.default.equal(perm.decisionSource, "daily_plan");
     });
-    (0, node_test_1.it)("C4: falls back when plan not applicable (wrong date)", () => {
+    (0, node_test_1.it)("C4: wrong date -> kein lokaler Klima-Start ohne Plan", () => {
         const expected = (0, daily_plan_js_1.resolveUnitExpectedPower)(UNIT, undefined, NOW.getTime());
         const r = (0, daily_plan_js_1.resolveAcUnitDailyPlanFromData)({
             unitIndex: 1,
@@ -218,7 +218,7 @@ function fsmDemandStart() {
             startRetryReady: true,
             stopRetryReady: true,
         });
-        strict_1.default.equal(perm.allowStart, true);
+        strict_1.default.equal(perm.allowStart, false);
         strict_1.default.equal(perm.decisionSource, "climate_fallback");
     });
     (0, node_test_1.it)("C5: cleaning remains independent of planner comfort authority", () => {
@@ -393,7 +393,7 @@ function fsmDemandStart() {
         strict_1.default.equal(perm.allowStop, true);
         strict_1.default.equal(perm.decisionSource, "daily_plan");
     });
-    (0, node_test_1.it)("C3: climate fallback when plan missing", () => {
+    (0, node_test_1.it)("C3: plan missing -> kein lokaler Klima-Start", () => {
         const fsm = fsmDemandStart();
         const expected = (0, daily_plan_js_1.resolveUnitExpectedPower)(UNIT, undefined, NOW.getTime());
         const dailyPlan = (0, daily_plan_js_1.resolveAcUnitDailyPlanFromData)({
@@ -415,7 +415,7 @@ function fsmDemandStart() {
             startRetryReady: true,
             stopRetryReady: true,
         });
-        strict_1.default.equal(perm.allowStart, true);
+        strict_1.default.equal(perm.allowStart, false);
         strict_1.default.equal(perm.decisionSource, "climate_fallback");
     });
     (0, node_test_1.it)("temperature no demand with positive allocation", () => {

@@ -129,15 +129,15 @@ async function decisionState(host, id) {
         strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 0);
         strict_1.default.notEqual(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), LEGACY_PLANNER_STAGE);
     });
-    (0, node_test_1.it)("daily_plan_missing: Boiler unter Min → Sicherheits-Default heizt (nicht Legacy-Planner)", async () => {
+    (0, node_test_1.it)("daily_plan_missing: Boiler unter Min → ohne Plan kein lokales Heizen", async () => {
         const host = baseHost(40, 48);
         host.set(states_js_1.DAILY_PLAN_STATE_IDS.status, "");
         await (0, engine_js_1.runImmersionRuntimeTick)(host);
         strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.decisionSource), "thermal_fallback");
-        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 1);
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 0);
         strict_1.default.notEqual(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), LEGACY_PLANNER_STAGE);
     });
-    (0, node_test_1.it)("daily_plan_expired: Boiler unter Min → Sicherheits-Default, Legacy-Planner ignoriert", async () => {
+    (0, node_test_1.it)("daily_plan_expired: Boiler unter Min → ohne Plan kein lokales Heizen", async () => {
         const now = realNow();
         const host = baseHost(40, 48);
         host.set(states_js_1.DAILY_PLAN_STATE_IDS.status, "ready");
@@ -147,7 +147,7 @@ async function decisionState(host, id) {
         await (0, engine_js_1.runImmersionRuntimeTick)(host);
         strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.dailyPlanStatus), "daily_plan_expired");
         strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.decisionSource), "thermal_fallback");
-        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 1);
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 0);
     });
     (0, node_test_1.it)("daily_plan_zero_allocation (gültiger Plan, 0 W im Slot) -> Plan aus, kein Sicherheits-Default-Heizen", async () => {
         const now = realNow();

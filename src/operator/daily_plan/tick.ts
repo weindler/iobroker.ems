@@ -18,7 +18,6 @@ import {
 	resolveAllBatteryConsumerAccess,
 } from "../../policy/battery_consumers";
 import {
-	activeStages,
 	immersionDeviceConfigFromAdapter,
 } from "../../addons/immersion_heater/device_config";
 import { IMMERSION_RUNTIME_STATES } from "../../addons/immersion_heater/runtime/types";
@@ -97,10 +96,6 @@ import type { ExecutionModeAddonId } from "../../execution_mode";
 import { stripAddonFromDailyPlan, stripAddonFromUnifiedPlan } from "./invalidate_addon_off";
 import { batteryConfigFromAdapter } from "../../addons/battery/config";
 import { resolvePassiveBatteryEnergyAvailable } from "./unified/passive_battery_energy";
-import { evaluateLiveThermalSurplusReplan } from "./unified/live_thermal_surplus_replan";
-import { computeHigherPriorityLiveDemandW } from "./unified/higher_priority_live_demand";
-import { isLiveWriteAllowed } from "../../execution_mode";
-import { isAddonGovernanceEnabledFromState } from "../../addons/governance/ensure_states";
 
 let lastRevisionPayload = "";
 let revision = 0;
@@ -115,17 +110,8 @@ let replanCountToday = 0;
 let replanCountDate = "";
 /** Befund 005: Mode-Wechsel erzwingt frischen Replan (keine stale Allocation). */
 let forcedReplanReasons: string[] = [];
-/** B1: Entprellung Live-Überschuss → IH-NOW-Replan. */
-let thermalSurplusQualifySinceMs: number | null = null;
-let lastThermalSurplusReplanAtMs: number | null = null;
-let preferImmersionLiveSurplusNow = false;
-/**
- * Einmalige Startup-Ausnahme für die 90-s-Stabilität: bleibt verfügbar bis
- * `startupStabilityBypassApplied` einmal true war — nicht schon beim ersten
- * Hard-Replan mit unvollständigen Gates (baseline wird trotzdem gesetzt).
- * Danach normale 90-s-Entprellung.
- */
-let startupLiveSurplusPreferUsed = false;
+/** One-Plan: kein separater LIVE-IH-Seitenkanal. */
+const preferImmersionLiveSurplusNow = false;
 
 /**
  * Nach OFF↔DRYRUN/LIVE: Baseline/Cache verwerfen und nächsten Tick material replanen.
@@ -246,17 +232,13 @@ export function resetDailyPlanRevisionForTest(): void {
 	replanCountToday = 0;
 	replanCountDate = "";
 	forcedReplanReasons = [];
-	thermalSurplusQualifySinceMs = null;
-	lastThermalSurplusReplanAtMs = null;
-	preferImmersionLiveSurplusNow = false;
-	startupLiveSurplusPreferUsed = false;
 	resetDayPlanSessionForTest();
 	lastNotifyCandidates = [];
 }
 
 /** Test-Hook: Startup-One-Shot noch verfügbar? */
 export function startupLiveSurplusPreferAvailableForTest(): boolean {
-	return !startupLiveSurplusPreferUsed;
+	return false;
 }
 
 /**
@@ -264,9 +246,7 @@ export function startupLiveSurplusPreferAvailableForTest(): boolean {
  * Production: identisch zu `if (surplusReplan.startupStabilityBypassApplied)`.
  */
 export function noteStartupLiveSurplusPreferResultForTest(startupStabilityBypassApplied: boolean): void {
-	if (startupStabilityBypassApplied) {
-		startupLiveSurplusPreferUsed = true;
-	}
+	void startupStabilityBypassApplied;
 }
 
 /** Deduplizierte Notification-Candidates des laufenden Tages (kein Push). */
@@ -655,65 +635,6 @@ export async function runDailyPlanTick(
 		cadenceDigest,
 	};
 
-	const ihStages = activeStages(immersionCfg);
-	const ihMinPowerW =
-		probeInput.thermal?.minPowerW ??
-		(ihStages.length > 0
-			? Math.min(...ihStages.map((s) => s.nominalPowerW).filter((w) => w > 0))
-			: null);
-	const ihAllocatedNow = asNum((await host.getStateAsync(IMMERSION_RUNTIME_STATES.allocatedPowerW))?.val);
-	const ihAutoTargetReached =
-		(await host.getStateAsync(IMMERSION_RUNTIME_STATES.autoTargetReached))?.val === true;
-	const ihLiveWriteAllowed = await isLiveWriteAllowed(
-		(id) => host.getStateAsync(id),
-		"immersion_heater",
-	);
-	const ihGovernanceEnabled = await isAddonGovernanceEnabledFromState(
-		(id) => host.getStateAsync(id),
-		"immersion_heater",
-	);
-
-	const wbLiveWriteAllowed = await isLiveWriteAllowed((id) => host.getStateAsync(id), "wallbox");
-	const acLiveWriteAllowed = await isLiveWriteAllowed(
-		(id) => host.getStateAsync(id),
-		"air_conditioning",
-	);
-	const higherPriorityLiveDemandW = computeHigherPriorityLiveDemandW({
-		wbLiveWriteAllowed,
-		wbConnected,
-		wallbox: probeInput.wallbox,
-		evccChargePowerNow,
-		acLiveWriteAllowed,
-		climate: probeInput.climate,
-	});
-
-	/*
-	 * Startup: 90-s-Stabilität einmal überspringen, solange der One-Shot noch nicht
-	 * erfolgreich angewendet wurde — alle übrigen B1-Gates bleiben Pflicht.
-	 * Nicht an baseline==null koppeln: der erste Hard-Replan setzt die Baseline oft
-	 * schon bevor SOC/Surplus/Headroom bereit sind.
-	 */
-	const allowStartupStabilityBypass = !startupLiveSurplusPreferUsed;
-	const surplusReplan = evaluateLiveThermalSurplusReplan({
-		nowMs: now.getTime(),
-		liveSurplusW: liveSurplusEarly.surplusW,
-		ihMinPowerW: ihMinPowerW != null && Number.isFinite(ihMinPowerW) ? ihMinPowerW : null,
-		thermalHeadroomKwh: probeInput.thermal?.headroomEnergyKwh ?? null,
-		currentIhAllocatedW: ihAllocatedNow,
-		batterySocPct: probeInput.battery.socPct,
-		batteryMaxSocPct: probeInput.battery.maxSocPct ?? hw.maxSocPct,
-		batteryRequiredChargeKwh: probeInput.battery.requiredChargeEnergyKwh,
-		ihLiveWriteAllowed,
-		ihGovernanceEnabled,
-		ihRuntimeWriteBlocked: ihAutoTargetReached || probeInput.thermal?.reheatHysteresisActive === true,
-		higherPriorityLiveDemandW,
-		surplusQualifySinceMs: thermalSurplusQualifySinceMs,
-		lastThermalSurplusReplanAtMs,
-		bypassStabilityMs: allowStartupStabilityBypass,
-	});
-	thermalSurplusQualifySinceMs = surplusReplan.nextSurplusQualifySinceMs;
-	preferImmersionLiveSurplusNow = surplusReplan.preferImmersionNow;
-
 	let decision = evaluateMaterialReplan(lastBaseline, actualSample, {
 		lastReplanAtMs,
 	});
@@ -726,24 +647,6 @@ export async function runDailyPlanTick(
 			reasons: [REASON.REPLAN_ADDON_EXECUTION_MODE, ...forced, ...decision.reasons],
 		};
 	}
-	if (surplusReplan.shouldReplan) {
-		decision = {
-			shouldReplan: true,
-			hard: true,
-			reasons: [REASON.REPLAN_LIVE_THERMAL_SURPLUS, ...decision.reasons],
-		};
-		lastThermalSurplusReplanAtMs = now.getTime();
-	}
-
-	/*
-	 * One-shot erst verbrauchen, wenn der Startup-Stability-Bypass wirklich Prefer gesetzt hat.
-	 * Fehlgeschlagene erste Hard-Replans (SOC/Surplus/Headroom noch missing) lassen
-	 * die Ausnahme für den nächsten geeigneten Tick verfügbar.
-	 */
-	if (surplusReplan.startupStabilityBypassApplied) {
-		startupLiveSurplusPreferUsed = true;
-	}
-
 	if (!decision.shouldReplan) {
 		return plan;
 	}

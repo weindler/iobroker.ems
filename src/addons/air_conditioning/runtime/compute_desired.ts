@@ -202,11 +202,11 @@ export function computeAcCoolingDesired(input: ComputeAcCoolingDesiredInput): Ac
 		}
 		return {
 			...base,
-			desired: "on",
-			allowStart: deviceWritesAllowed,
+			desired: "idle",
+			allowStart: false,
 			allowStop: false,
 			decisionSource: "climate_fallback",
-			reasonDe: `${fsm.reasonDe} ${dailyPlan.allocationReasonDe}`.trim(),
+			reasonDe: "One-Plan-Fallback: Daily Plan nicht nutzbar, daher kein lokaler Klima-Start.",
 		};
 	}
 

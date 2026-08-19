@@ -231,7 +231,7 @@ describe("ac daily plan reader", () => {
 		assert.equal(perm.decisionSource, "daily_plan");
 	});
 
-	it("C4: falls back when plan not applicable (wrong date)", () => {
+	it("C4: wrong date -> kein lokaler Klima-Start ohne Plan", () => {
 		const expected = resolveUnitExpectedPower(UNIT, undefined, NOW.getTime());
 		const r = resolveAcUnitDailyPlanFromData({
 			unitIndex: 1,
@@ -253,7 +253,7 @@ describe("ac daily plan reader", () => {
 			startRetryReady: true,
 			stopRetryReady: true,
 		});
-		assert.equal(perm.allowStart, true);
+		assert.equal(perm.allowStart, false);
 		assert.equal(perm.decisionSource, "climate_fallback");
 	});
 
@@ -436,7 +436,7 @@ describe("ac cooling permission", () => {
 		assert.equal(perm.decisionSource, "daily_plan");
 	});
 
-	it("C3: climate fallback when plan missing", () => {
+	it("C3: plan missing -> kein lokaler Klima-Start", () => {
 		const fsm = fsmDemandStart();
 		const expected = resolveUnitExpectedPower(UNIT, undefined, NOW.getTime());
 		const dailyPlan = resolveAcUnitDailyPlanFromData({
@@ -458,7 +458,7 @@ describe("ac cooling permission", () => {
 			startRetryReady: true,
 			stopRetryReady: true,
 		});
-		assert.equal(perm.allowStart, true);
+		assert.equal(perm.allowStart, false);
 		assert.equal(perm.decisionSource, "climate_fallback");
 	});
 

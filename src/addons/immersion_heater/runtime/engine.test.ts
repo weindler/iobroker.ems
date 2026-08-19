@@ -147,18 +147,18 @@ describe("immersion runtime engine — Daily Plan vs. Sicherheits-Default (Roadm
 		assert.notEqual(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), LEGACY_PLANNER_STAGE);
 	});
 
-	it("daily_plan_missing: Boiler unter Min → Sicherheits-Default heizt (nicht Legacy-Planner)", async () => {
+	it("daily_plan_missing: Boiler unter Min → ohne Plan kein lokales Heizen", async () => {
 		const host = baseHost(40, 48);
 		host.set(DAILY_PLAN_STATE_IDS.status, "");
 
 		await runImmersionRuntimeTick(host);
 
 		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.decisionSource), "thermal_fallback");
-		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), 1);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), 0);
 		assert.notEqual(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), LEGACY_PLANNER_STAGE);
 	});
 
-	it("daily_plan_expired: Boiler unter Min → Sicherheits-Default, Legacy-Planner ignoriert", async () => {
+	it("daily_plan_expired: Boiler unter Min → ohne Plan kein lokales Heizen", async () => {
 		const now = realNow();
 		const host = baseHost(40, 48);
 		host.set(DAILY_PLAN_STATE_IDS.status, "ready");
@@ -170,7 +170,7 @@ describe("immersion runtime engine — Daily Plan vs. Sicherheits-Default (Roadm
 
 		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.dailyPlanStatus), "daily_plan_expired");
 		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.decisionSource), "thermal_fallback");
-		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), 1);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), 0);
 	});
 
 	it("daily_plan_zero_allocation (gültiger Plan, 0 W im Slot) -> Plan aus, kein Sicherheits-Default-Heizen", async () => {

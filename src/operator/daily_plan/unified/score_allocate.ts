@@ -729,8 +729,19 @@ function buildConsumerStates(input: UnifiedDayPlannerInput, slots: SlotWork[]): 
 		 * Soft = Puffer-Headroom, keine Buffer-emptyAt-Urgency.
 		 */
 		if (hardKwh > EPS) {
-			const hardDeadline =
-				th.boilerEmptyAtUsable === true && Number.isFinite(emptyDeadlineMs)
+			const boilerBelowMinNow =
+				th.boilerTempC != null &&
+				th.boilerMinTempC != null &&
+				th.boilerTempC < th.boilerMinTempC - 0.05;
+			/*
+			 * Hard bei Untertemperatur darf nicht als "irgendwann heute" behandelt werden.
+			 * Ohne finite Deadline konnte Batterie-Laden den Hard-Bedarf verdrängen.
+			 * Bei Boiler<Min erzwingen wir daher eine kurzfristige Deadline (90 min),
+			 * damit der Solver den Hard-Bedarf vor opportunistischem Laden bedient.
+			 */
+			const hardDeadline = boilerBelowMinNow
+				? nowMsLocal + 90 * 60_000
+				: th.boilerEmptyAtUsable === true && Number.isFinite(emptyDeadlineMs)
 					? emptyDeadlineMs
 					: Number.POSITIVE_INFINITY;
 			out.push({

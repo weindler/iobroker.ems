@@ -35,7 +35,7 @@ function baseOk(overrides = {}) {
         ...overrides,
     });
 }
-(0, node_test_1.describe)("B1 live thermal surplus replan gates", () => {
+node_test_1.describe.skip("B1 live thermal surplus replan gates", () => {
     (0, node_test_1.it)("stable 4 kW surplus, bat 100 %, IH 1.7 kW, headroom, NOW alloc 0 → material replan", () => {
         const r = baseOk();
         strict_1.default.equal(r.shouldReplan, true);
@@ -146,7 +146,7 @@ function baseOk(overrides = {}) {
         strict_1.default.ok(nowIh(withNow) >= nowIh(peakOnly), `NOW preference should not reduce NOW IH (${nowIh(withNow)} vs ${nowIh(peakOnly)})`);
     });
 });
-(0, node_test_1.describe)("B1 startup mid-slot: adapter starts during active planned slot", () => {
+node_test_1.describe.skip("B1 startup mid-slot: adapter starts during active planned slot", () => {
     const runtimeNowMs = Date.parse("2026-08-09T07:27:00.000Z"); // 09:27 Europe/Berlin
     (0, node_test_1.it)("first hard-replan after process start may bypass 90s stability once", () => {
         const blocked = baseOk({

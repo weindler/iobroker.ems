@@ -540,9 +540,20 @@ function buildConsumerStates(input, slots) {
          * Soft = Puffer-Headroom, keine Buffer-emptyAt-Urgency.
          */
         if (hardKwh > exports.EPS) {
-            const hardDeadline = th.boilerEmptyAtUsable === true && Number.isFinite(emptyDeadlineMs)
-                ? emptyDeadlineMs
-                : Number.POSITIVE_INFINITY;
+            const boilerBelowMinNow = th.boilerTempC != null &&
+                th.boilerMinTempC != null &&
+                th.boilerTempC < th.boilerMinTempC - 0.05;
+            /*
+             * Hard bei Untertemperatur darf nicht als "irgendwann heute" behandelt werden.
+             * Ohne finite Deadline konnte Batterie-Laden den Hard-Bedarf verdrängen.
+             * Bei Boiler<Min erzwingen wir daher eine kurzfristige Deadline (90 min),
+             * damit der Solver den Hard-Bedarf vor opportunistischem Laden bedient.
+             */
+            const hardDeadline = boilerBelowMinNow
+                ? nowMsLocal + 90 * 60_000
+                : th.boilerEmptyAtUsable === true && Number.isFinite(emptyDeadlineMs)
+                    ? emptyDeadlineMs
+                    : Number.POSITIVE_INFINITY;
             out.push({
                 consumerId: exports.IMMERSION_HARD_CONSUMER_ID,
                 kind: "immersion_heater",

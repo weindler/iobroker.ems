@@ -118,26 +118,6 @@ function immersionRuntimeWatchedForeignIds(config) {
     return [...ids];
 }
 exports.immersionRuntimeWatchedForeignIds = immersionRuntimeWatchedForeignIds;
-/**
- * Lokaler Sicherheits-Default wenn Daily Plan nicht verwendbar.
- * Hard nur bei Boiler unter Min und gültigem Puffer unter Max — nie allein wegen kaltem Puffer.
- */
-function safeDefaultAutoTarget(config, opts) {
-    if (!opts.bufferTempOk || opts.bufferTempC === null) {
-        return { stage: 0, targetTempC: config.planningMaxTempC };
-    }
-    if (opts.bufferTempC >= config.planningMaxTempC - 0.05) {
-        return { stage: 0, targetTempC: config.planningMaxTempC };
-    }
-    const boilerHard = opts.boilerTempC !== null && opts.boilerTempC < config.boilerMinTempC - 0.05;
-    if (boilerHard) {
-        return {
-            stage: config.forceDefaultStage,
-            targetTempC: config.planningMaxTempC,
-        };
-    }
-    return { stage: 0, targetTempC: opts.bufferTempC };
-}
 function readHygienePersist(raw) {
     if (!raw)
         return (0, hygiene_1.emptyHygienePersist)();
@@ -387,12 +367,6 @@ async function runImmersionRuntimeTick(host) {
     let dailyPlanContext = null;
     let plannerCommandedStage = 0;
     const forecastPlanTarget = await resolveImmersionPlanTarget(host, config, temperature.valueC, resolvedMode, forceTarget);
-    const bufferTempOk = temperature.status === "valid";
-    const safeDefault = safeDefaultAutoTarget(config, {
-        boilerTempC,
-        bufferTempC: temperature.valueC,
-        bufferTempOk,
-    });
     if (executionOff) {
         plannerCommandedStage = 0;
         autoDecisionSource = "safe_default";
@@ -406,8 +380,8 @@ async function runImmersionRuntimeTick(host) {
             autoDecisionSource = "daily_plan";
         }
         else {
-            // Daily Plan nicht verwendbar — Boiler-Hard-Default, kein Puffer-Hard.
-            plannerCommandedStage = safeDefault.stage;
+            // One-Plan: ohne gültigen Daily Plan kein lokales Heizen.
+            plannerCommandedStage = 0;
             autoDecisionSource = "thermal_fallback";
         }
     }
@@ -424,10 +398,7 @@ async function runImmersionRuntimeTick(host) {
         planTargetReasonDe: dailyPlanContext?.targetReasonDe ?? null,
         forecastReasonDe: forecastPlanTarget.reasonDe,
     });
-    let plannerTargetTempC = authority.authoritativeTargetTempC;
-    if (resolvedMode === "auto" && autoDecisionSource === "thermal_fallback") {
-        plannerTargetTempC = safeDefault.targetTempC;
-    }
+    const plannerTargetTempC = authority.authoritativeTargetTempC;
     const fsm = (0, fsm_1.runImmersionFsm)({
         nowMs,
         addonEnabled: controlEnabled,
@@ -546,7 +517,7 @@ async function runImmersionRuntimeTick(host) {
         planning_max_temp_c: config.planningMaxTempC,
         plan_target_temp_c: plannerTargetTempC,
         plan_target_reason_de: resolvedMode === "auto" && autoDecisionSource === "thermal_fallback"
-            ? `Sicherheits-Default ${plannerTargetTempC ?? config.planningMinTempC} °C (Daily Plan nicht nutzbar).`
+            ? "One-Plan-Fallback: Daily Plan nicht nutzbar, daher kein lokaler Heiz-Start."
             : authority.reasonDe,
         forecast_target_temp_c: authority.forecastTargetTempC,
         force_target_temp_c: forceTarget,

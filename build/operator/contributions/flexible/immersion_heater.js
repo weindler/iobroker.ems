@@ -300,10 +300,9 @@ function buildImmersionFlexibleContribution(input) {
         input.bufferTempC !== null;
     const quality = (0, quality_1.operatorQuality)(status, reasonDe);
     /*
-     * Soft-Beitrag: keine Hard-Deadline.
-     * Buffer-emptyAt / Nachtbrücke dürfen Soft-Ziel anheben, aber NICHT
-     * immersion_heater Hard-Deadline setzen (I4).
-     * Boiler-emptyAt nur in Details → Unified Hard-Consumer.
+     * Soft-Beitrag: keine Hard-Deadline aus dem Flex-Beitrag.
+     * Nachtbrücke darf das Soft-Ziel anheben, setzt aber keine Hard-Deadline.
+     * Boiler-emptyAt nur bei Cycle-Learning in Details → Unified Hard-Consumer.
      */
     const boilerLearning = input.boilerLearning ?? null;
     const boilerEmptyUsable = (0, thermal_empty_at_1.thermalEmptyAtUsableForPlanning)(boilerLearning) && (0, thermal_empty_at_1.hasCycleCoolingModel)(boilerLearning);

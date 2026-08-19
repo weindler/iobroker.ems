@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.303",
+		"version": "0.1.304",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.304": {
+				"en": "Fix: live-surplus reservation for wallbox/climate no longer double-counts power already running (already inside the whole-house meter). Only the gap to target power is reserved now, so the immersion heater's live-surplus takeover (battery full) no longer gets blocked by a climate/wallbox device that is already running.",
+				"de": "Fix: Die Live-Überschuss-Reservierung für Wallbox/Klima zieht laufenden Verbrauch nicht mehr doppelt ab (der steckt schon im Ganzhausmesser). Reserviert wird jetzt nur noch die Differenz zur Zielleistung — dadurch blockiert eine bereits laufende Klimaanlage/Wallbox den Heizstab-Live-Überschuss-Einsprung (Batterie voll) nicht mehr unnötig."
+			},
 			"0.1.303": {
 				"en": "Admin battery-for-consumers checkboxes now update planner.constraints.battery_consumer_*_allowed / reason_de every tick (fresh timestamp). Also planner.status and last_run_at. After restart check those states match the saved instance config.",
 				"de": "Admin-Häkchen „Batterie für Verbraucher“ schreiben jetzt jeden Tick planner.constraints.battery_consumer_*_allowed / reason_de (frischer Zeitstempel). Zusätzlich planner.status und last_run_at. Nach Neustart prüfen, ob die States zur gespeicherten Instanz passen."

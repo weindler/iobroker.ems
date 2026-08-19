@@ -84,6 +84,7 @@ const invalidate_addon_off_1 = require("./invalidate_addon_off");
 const config_4 = require("../../addons/battery/config");
 const passive_battery_energy_1 = require("./unified/passive_battery_energy");
 const live_thermal_surplus_replan_1 = require("./unified/live_thermal_surplus_replan");
+const higher_priority_live_demand_1 = require("./unified/higher_priority_live_demand");
 const execution_mode_1 = require("../../execution_mode");
 const ensure_states_4 = require("../../addons/governance/ensure_states");
 let lastRevisionPayload = "";
@@ -594,33 +595,16 @@ async function runDailyPlanTick(host, forecastPlan) {
     const ihAutoTargetReached = (await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.autoTargetReached))?.val === true;
     const ihLiveWriteAllowed = await (0, execution_mode_1.isLiveWriteAllowed)((id) => host.getStateAsync(id), "immersion_heater");
     const ihGovernanceEnabled = await (0, ensure_states_4.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "immersion_heater");
-    let higherPriorityLiveDemandW = 0;
     const wbLiveWriteAllowed = await (0, execution_mode_1.isLiveWriteAllowed)((id) => host.getStateAsync(id), "wallbox");
-    if (wbLiveWriteAllowed && wbConnected === true) {
-        const need = probeInput.wallbox?.requiredEnergyKwh;
-        if (need != null && need > 0.5) {
-            const maxW = probeInput.wallbox?.maxChargePowerW;
-            const minW = probeInput.wallbox?.minChargePowerW;
-            let reserve = 3500;
-            if (minW != null && minW > 0)
-                reserve = Math.max(reserve, minW);
-            if (maxW != null && maxW > 0)
-                reserve = Math.min(reserve, maxW);
-            higherPriorityLiveDemandW += reserve;
-        }
-    }
     const acLiveWriteAllowed = await (0, execution_mode_1.isLiveWriteAllowed)((id) => host.getStateAsync(id), "air_conditioning");
-    if (acLiveWriteAllowed && probeInput.climate) {
-        for (const u of probeInput.climate.units) {
-            if (!u.mandatoryComfort)
-                continue;
-            if (u.roomTempC == null || u.comfortMaxC == null)
-                continue;
-            if (u.roomTempC <= u.comfortMaxC)
-                continue;
-            higherPriorityLiveDemandW += Math.max(u.typicalPowerW ?? 700, 500);
-        }
-    }
+    const higherPriorityLiveDemandW = (0, higher_priority_live_demand_1.computeHigherPriorityLiveDemandW)({
+        wbLiveWriteAllowed,
+        wbConnected,
+        wallbox: probeInput.wallbox,
+        evccChargePowerNow,
+        acLiveWriteAllowed,
+        climate: probeInput.climate,
+    });
     /*
      * Startup: 90-s-Stabilität einmal überspringen, solange der One-Shot noch nicht
      * erfolgreich angewendet wurde — alle übrigen B1-Gates bleiben Pflicht.

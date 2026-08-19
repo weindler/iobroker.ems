@@ -1,0 +1,25 @@
+---
+description: Antworten und Zwischenschritte nur auf Deutsch
+alwaysApply: true
+---
+
+# Sprache: Deutsch
+
+Der Nutzer kommuniziert auf Deutsch. Alle Ausgaben des Agents in diesem Projekt
+sind **ausschließlich auf Deutsch**:
+
+- Chat-Antworten an den Nutzer.
+- Zwischenschritte/Status-Texte (z. B. "Lese Datei X", "Prüfe Tests", kurze
+  Beschreibungen vor/nach Tool-Aufrufen).
+- Zusammenfassungen, Erklärungen, Rückfragen.
+
+**Ausnahmen (bleiben unverändert, nicht übersetzen):**
+
+- Code, Code-Kommentare im Code-Stil des Projekts (dort ohnehin meist Deutsch),
+  Dateipfade, Variablen-/Funktionsnamen, Commit-Messages im Projektstil.
+- Zitate aus Logs, Fehlermeldungen, Terminal-Output oder Original-Doku, die auf
+  Englisch vorliegen — diese unverändert zitieren, aber die Erklärung dazu auf Deutsch geben.
+- Technische Fachbegriffe ohne gängige deutsche Übersetzung (z. B. „Battery Hold",
+  „Daily Plan") dürfen im Original stehen bleiben.
+
+Kein Wechsel ins Englische, auch nicht bei kurzen Zwischenmeldungen oder Tool-Beschreibungen.

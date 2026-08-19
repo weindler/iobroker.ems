@@ -98,6 +98,7 @@ import { stripAddonFromDailyPlan, stripAddonFromUnifiedPlan } from "./invalidate
 import { batteryConfigFromAdapter } from "../../addons/battery/config";
 import { resolvePassiveBatteryEnergyAvailable } from "./unified/passive_battery_energy";
 import { evaluateLiveThermalSurplusReplan } from "./unified/live_thermal_surplus_replan";
+import { computeHigherPriorityLiveDemandW } from "./unified/higher_priority_live_demand";
 import { isLiveWriteAllowed } from "../../execution_mode";
 import { isAddonGovernanceEnabledFromState } from "../../addons/governance/ensure_states";
 
@@ -672,31 +673,19 @@ export async function runDailyPlanTick(
 		"immersion_heater",
 	);
 
-	let higherPriorityLiveDemandW = 0;
 	const wbLiveWriteAllowed = await isLiveWriteAllowed((id) => host.getStateAsync(id), "wallbox");
-	if (wbLiveWriteAllowed && wbConnected === true) {
-		const need = probeInput.wallbox?.requiredEnergyKwh;
-		if (need != null && need > 0.5) {
-			const maxW = probeInput.wallbox?.maxChargePowerW;
-			const minW = probeInput.wallbox?.minChargePowerW;
-			let reserve = 3500;
-			if (minW != null && minW > 0) reserve = Math.max(reserve, minW);
-			if (maxW != null && maxW > 0) reserve = Math.min(reserve, maxW);
-			higherPriorityLiveDemandW += reserve;
-		}
-	}
 	const acLiveWriteAllowed = await isLiveWriteAllowed(
 		(id) => host.getStateAsync(id),
 		"air_conditioning",
 	);
-	if (acLiveWriteAllowed && probeInput.climate) {
-		for (const u of probeInput.climate.units) {
-			if (!u.mandatoryComfort) continue;
-			if (u.roomTempC == null || u.comfortMaxC == null) continue;
-			if (u.roomTempC <= u.comfortMaxC) continue;
-			higherPriorityLiveDemandW += Math.max(u.typicalPowerW ?? 700, 500);
-		}
-	}
+	const higherPriorityLiveDemandW = computeHigherPriorityLiveDemandW({
+		wbLiveWriteAllowed,
+		wbConnected,
+		wallbox: probeInput.wallbox,
+		evccChargePowerNow,
+		acLiveWriteAllowed,
+		climate: probeInput.climate,
+	});
 
 	/*
 	 * Startup: 90-s-Stabilität einmal überspringen, solange der One-Shot noch nicht

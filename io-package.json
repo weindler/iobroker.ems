@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.312",
+		"version": "0.1.313",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.313": {
+				"en": "Planner now treats boiler empty-at as mandatory planning signal more robustly, so upcoming boiler-minimum underruns are planned in advance instead of being deferred despite available midday surplus.",
+				"de": "Der Planer behandelt Boiler-emptyAt jetzt robuster als Pflichtsignal, sodass absehbare Boiler-Minimum-Unterschreitungen frühzeitig eingeplant werden statt trotz verfügbarem Mittagsüberschuss verschoben zu werden."
+			},
 			"0.1.312": {
 				"en": "Immersion heater planning now allows PV+battery top-up in the same slot to reach the 1700W minimum stage instead of dropping the slot to zero when PV alone is slightly below threshold.",
 				"de": "Heizstab-Planung erlaubt jetzt PV+Batterie-Top-up im selben Slot, um die 1700W-Mindeststufe zu erreichen, statt den Slot auf null zu verwerfen, wenn PV allein knapp unter der Schwelle liegt."

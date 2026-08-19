@@ -395,8 +395,17 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 	 * Boiler-emptyAt nur bei Cycle-Learning in Details → Unified Hard-Consumer.
 	 */
 	const boilerLearning = input.boilerLearning ?? null;
+	/*
+	 * Hard-Bridge braucht ein nutzbares Boiler-emptyAt auch dann, wenn der Cycle-Status
+	 * noch nicht "valid" ist. Sonst wird ein klarer Min-Fall (z. B. "unter 50 °C um 18:24")
+	 * im Planner ignoriert. Night-Bridge bleibt weiterhin strikt cycle-basiert.
+	 */
 	const boilerEmptyUsable =
-		thermalEmptyAtUsableForPlanning(boilerLearning) && hasCycleCoolingModel(boilerLearning);
+		(thermalEmptyAtUsableForPlanning(boilerLearning) ||
+			(Boolean(boilerLearning?.estimatedEmptyAt) &&
+				(hasNewtonEmptyAtModel(boilerLearning) ||
+					((boilerLearning?.estimatedRemainingHours ?? 0) > 0)))) &&
+		Boolean(boilerLearning?.estimatedEmptyAt);
 	const boilerEstimatedEmptyAt = boilerEmptyUsable ? boilerLearning!.estimatedEmptyAt : null;
 	const boilerEmptyAtSource = boilerEmptyUsable ? emptyAtSourceOf(boilerLearning) : null;
 

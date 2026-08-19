@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.300",
+		"version": "0.1.301",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.301": {
+				"en": "Morning dashboard: smaller device tiles (same font), EMS–Today with battery path / car even when unplugged / heater / climate why, and a coarse Tomorrow+days column. Plan panels no longer rebuild every 5 s. Reload VIS after update.",
+				"de": "Morgen-Dashboard: kleinere Gerätekacheln (gleiche Schrift), EMS–Heute mit Batterie-Pfad / Auto auch getrennt / Heizstab / Klima-Warum, plus grobe Spalte Morgen/Tage. Plan-Spalten zeichnen nicht mehr alle 5 s neu. Nach Update VIS neu laden."
+			},
 			"0.1.300": {
 				"en": "Operator dashboard: heater/EV/climate tiles are denser; the right column is wider and shows today's booked Daily Plan windows (SOC path, PV vs grid, heater demand without inventing a clock). Reload VIS after update.",
 				"de": "Betriebsdashboard: Heizstab-/EV-/Klima-Kacheln kompakter; rechte Spalte breiter und zeigt die gebuchten Daily-Plan-Fenster von heute (SOC-Pfad, PV vs. Netz, Heizstab-Bedarf ohne erfundene Uhrzeit). Nach Update VIS neu laden."

@@ -45,14 +45,14 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-sw{width:7px;height:7px;border-radius:2px;display:inline-block}
 .ems-ai-compact{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:2px 6px;margin-bottom:4px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;flex:0 0 auto}
 .ems-ai-compact .ems-ai-toggle{margin:0}
-.ems-main{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:4px;align-items:stretch;flex:1 1 auto;min-height:0;overflow:hidden}
-.ems-tiles{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(0,1fr);gap:3px;min-height:0;height:100%;overflow:hidden}
-.ems-tiles.ems-tiles-dense{grid-template-columns:1fr 1fr 1fr}
-.ems-card{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:3px 5px;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.ems-main{display:grid;grid-template-columns:minmax(210px,24%) minmax(280px,1fr) minmax(220px,28%);gap:4px;align-items:stretch;flex:1 1 auto;min-height:0;overflow:hidden}
+.ems-tiles{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:auto;align-content:start;gap:4px;min-height:0;height:auto;max-height:100%;overflow:auto}
+.ems-tiles.ems-tiles-dense{grid-template-columns:1fr 1fr}
+.ems-card{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:4px 6px;min-height:0;overflow:hidden;display:flex;flex-direction:column}
 .ems-card-empty{display:none}
-.ems-card-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1px;gap:4px;flex:0 0 auto}
-.ems-card-title{font-size:10px;font-weight:700}
-.ems-badge{font-size:7px;font-weight:700;padding:1px 4px;border-radius:4px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
+.ems-card-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;gap:6px;flex:0 0 auto}
+.ems-card-title{font-size:11px;font-weight:700}
+.ems-badge{font-size:8px;font-weight:700;padding:1px 5px;border-radius:4px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
 .ems-badge.on{background:#238636;color:#fff}
 .ems-badge.off{background:#30363d;color:#8b949e}
 .ems-badge.soon{background:#9e6a03;color:#fff}
@@ -71,18 +71,22 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-badge.gb-ready{background:#1f6feb;color:#fff}
 .ems-badge.gb-on{background:#238636;color:#fff}
 .ems-badges{display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
-.ems-rows{display:grid;grid-template-columns:64px 1fr;gap:0 4px;font-size:9px;flex:1 1 auto;min-height:0;align-content:start}
+.ems-rows{display:grid;grid-template-columns:72px 1fr;gap:0 6px;font-size:10px;flex:0 0 auto;min-height:0;align-content:start}
 .ems-rows .l{color:#8b949e}.ems-rows .r{color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ems-note{margin-top:1px;font-size:8px;color:#c9d1d9;line-height:1.2;max-height:1.2em;overflow:hidden;flex:0 0 auto}
+.ems-note{margin-top:2px;font-size:9px;color:#c9d1d9;line-height:1.25;max-height:2.6em;overflow:hidden;flex:0 0 auto}
 .ems-timeline{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 8px;display:flex;flex-direction:column;min-height:0;max-height:100%;overflow:hidden;min-width:0}
 .ems-timeline .ems-k{flex:0 0 auto;font-size:9px}
+.ems-next-body{flex:1 1 auto;min-height:0;overflow:auto;padding-right:2px}
+.ems-story{font-size:11px;color:#c9d1d9;line-height:1.35;margin:6px 0;padding:6px 7px;background:#161b22;border:1px solid #30363d;border-radius:4px}
+.ems-story-h{font-size:8px;color:#8b949e;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.ems-story div+div{margin-top:2px}
 .ems-next-lage{font-size:11px;font-weight:600;color:#e6edf3;line-height:1.3;margin:3px 0 4px}
 .ems-next-lage-meta{display:block;font-size:9px;font-weight:400;color:#c9d1d9;margin-top:2px}
 .ems-next-sec{font-size:8px;color:#8b949e;text-transform:uppercase;letter-spacing:.04em;margin:6px 0 3px}
 .ems-next-idle{font-size:11px;color:#c9d1d9;line-height:1.4;margin-top:4px}
 .ems-next-idle div{margin-bottom:4px}
 .ems-next-fact{font-size:10px;color:#c9d1d9;line-height:1.35;margin:4px 0;padding:5px 6px;background:#161b22;border:1px dashed #30363d;border-radius:4px}
-.ems-next-list{list-style:none;font-size:11px;line-height:1.3;flex:1 1 auto;overflow:auto;margin-top:2px;padding-right:2px;min-height:0}
+.ems-next-list{list-style:none;font-size:11px;line-height:1.3;overflow:visible;margin-top:2px;padding-right:0;min-height:0}
 .ems-next-list li{padding:5px 6px 5px 7px;margin-bottom:4px;border-radius:4px;background:#161b22;border:1px solid #30363d;border-left-width:3px}
 .ems-next-t{font-weight:700;margin-right:4px;white-space:nowrap;color:#e6edf3}
 .ems-next-name{font-weight:600}
@@ -129,6 +133,7 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 	<div class="ems-main">
 		<div class="ems-tiles" id="ems-stack"></div>
 		<aside class="ems-timeline" id="ems-next"></aside>
+		<aside class="ems-timeline" id="ems-horizon"></aside>
 	</div>
 	<div class="ems-diag" id="ems-diag" style="display:none">
 		<div class="ems-diag-h">Diagnose / Begründungen</div>
@@ -160,7 +165,11 @@ var stateIds=[
 	INST+".live.pv.power_w",
 	INST+".live.battery.house_load_w",
 	INST+".live.battery.soc_pct",
+	INST+".live.battery.capacity_kwh",
 	INST+".addons.battery.runtime.target_soc_pct",
+	INST+".addons.battery.telemetry.capacity_effective_kwh",
+	INST+".addons.battery.limits.hardware_min_soc_pct",
+	INST+".addons.battery.identity.capacity_net_kwh",
 	INST+".live.price.now_ct_per_kwh",
 	INST+".addons.wallbox.status.evcc.charge_power_w",
 	INST+".addons.wallbox.status.evcc.vehicle_soc_pct",
@@ -314,13 +323,26 @@ var stateIds=[
 	INST+".learning.pv_bias.bias_today_pct",
 	INST+".learning.pv_bias.bias_7d_pct",
 	INST+".learning.pv_bias.status",
+	INST+".learning.pv_horizon.day2.corrected_kwh",
 	INST+".learning.pv_horizon.day3.corrected_kwh",
 	INST+".learning.pv_horizon.day4.corrected_kwh",
 	INST+".learning.pv_horizon.day5.corrected_kwh",
 	INST+".learning.pv_horizon.day6.corrected_kwh",
 	INST+".learning.pv_horizon.day7.corrected_kwh",
 	INST+".learning.weather.horizon.day1.min_temp_c",
-	INST+".learning.weather.horizon.day1.max_temp_c"
+	INST+".learning.weather.horizon.day1.max_temp_c",
+	INST+".learning.weather.horizon.day2.min_temp_c",
+	INST+".learning.weather.horizon.day2.max_temp_c",
+	INST+".learning.weather.horizon.day3.min_temp_c",
+	INST+".learning.weather.horizon.day3.max_temp_c",
+	INST+".learning.weather.horizon.day4.min_temp_c",
+	INST+".learning.weather.horizon.day4.max_temp_c",
+	INST+".learning.weather.horizon.day5.min_temp_c",
+	INST+".learning.weather.horizon.day5.max_temp_c",
+	INST+".learning.weather.horizon.day6.min_temp_c",
+	INST+".learning.weather.horizon.day6.max_temp_c",
+	INST+".learning.weather.horizon.day7.min_temp_c",
+	INST+".learning.weather.horizon.day7.max_temp_c"
 ];
 (function(){
 	var u,i,f,fields,b,extra;
@@ -1222,13 +1244,22 @@ function visClimateNote(s){
 	var reason=String(s.reasonDe||"");
 	var alloc=String(s.allocationReasonDe||"");
 	var combined=reason+" "+alloc;
+	var dry=/Entfeucht|dehumidify|\bdry\b|Feuchte[^\n]{0,32}≥|Feuchte[^\n]{0,32}>=/i.test(combined)
+		||visNorm(s.purpose)==="dehumidify";
 	if(s.cleaningActive||src==="cleaning"||/Reinigung|cleaning/i.test(combined))return"Reinigung aktiv";
 	if(s.modeOff||s.governanceAllowed===false||/Governance deaktiviert|Add-on deaktiviert|Innengerät deaktiviert/i.test(combined))return"Durch EMS gesperrt";
-	if(s.outsideWindow||/Außerhalb Zeitfenster|Hard-Off/i.test(combined))return"Durch EMS gesperrt";
+	if(s.outsideWindow||/Außerhalb Zeitfenster|Hard-Off/i.test(combined)){
+		return dry?"Entfeuchten — außerhalb Zeitfenster":"Durch EMS gesperrt";
+	}
 	if(s.running){
+		if(dry)return"Entfeuchtet";
 		if(s.demand==="hold"||/Hysterese|läuft weiter|Mindes|Restlauf|halten \(kein Planner|NOW-Allocation/i.test(reason))return"Läuft weiter bis Abschaltgrenze";
 		if(s.demand==="active"||/Einschalten|Kühlbedarf|Läuft\s*\(/i.test(reason))return"Kühlbedarf vorhanden";
 		return"Läuft weiter bis Abschaltgrenze";
+	}
+	if(dry){
+		if(s.hasFuture&&!s.allocOn)return"Entfeuchten geplant";
+		return"Entfeuchten nötig";
 	}
 	if(s.hasFuture&&!s.allocOn)return"Wartet auf geplanten Slot";
 	if(s.demand==="active")return"Kühlbedarf vorhanden";
@@ -1528,6 +1559,67 @@ function visImmersionWaitNote(reason){
 	if(r==="auto_ready_zero_plan_allocation")return"Wartet auf geplanten Slot";
 	return r;
 }
+function visBatteryRemainKwh(socPct,capacityKwh,targetSocPct){
+	if(socPct==null||!isFinite(socPct)||capacityKwh==null||!isFinite(capacityKwh)||capacityKwh<=0)return null;
+	var tgt=targetSocPct!=null&&isFinite(targetSocPct)?Number(targetSocPct):100;
+	var d=tgt-Number(socPct);
+	if(d<=0.5)return 0;
+	return capacityKwh*d/100;
+}
+function visBatteryDayLines(s){
+	s=s||{};
+	var lines=[],head=visBatteryPlanLine(s);
+	if(head)lines.push(head);
+	var remain=visBatteryRemainKwh(s.socPct,s.capacityKwh,s.targetSocPct);
+	if(remain!=null&&remain>0.05){
+		var tgt=s.targetSocPct!=null&&isFinite(s.targetSocPct)?Math.round(s.targetSocPct)+" %":"100 %";
+		var ek=visFmtKwh(remain);
+		if(ek)lines.push("noch "+ek+" bis "+tgt);
+	}else if(remain===0){
+		lines.push("Ziel erreicht");
+	}
+	if(s.minSocPct!=null&&isFinite(s.minSocPct))lines.push("Reserve ab "+Math.round(s.minSocPct)+" %");
+	var strat=String(s.strategyDe==null?"":s.strategyDe).trim();
+	if(strat&&strat!=="—")lines.push(strat);
+	if(s.gridWindowLabel)lines.push("Netzladung "+s.gridWindowLabel);
+	else if(s.hasPvChargeWindow)lines.push("PV-Ladung im Plan");
+	else if(s.chargingNow&&!s.emsChargeAction)lines.push("lädt gerade ohne EMS-Fenster");
+	return lines;
+}
+function visCarDayLines(s){
+	s=s||{};
+	var lines=[],bits=[];
+	if(s.connected===true)bits.push("verbunden");
+	else if(s.connected===false)bits.push("nicht angesteckt");
+	else bits.push("Anwesenheit unbekannt");
+	if(s.socPct!=null&&isFinite(s.socPct))bits.push(Math.round(s.socPct)+" %");
+	if(s.targetSocPct!=null&&isFinite(s.targetSocPct))bits.push("Ziel "+Math.round(s.targetSocPct)+" %");
+	lines.push("Auto "+bits.join(" · "));
+	var strat=String(s.strategyDe==null?"":s.strategyDe).trim();
+	if(strat&&strat!=="—")lines.push(strat);
+	if(s.connected!==true){
+		lines.push("kein Ladeplan und keine Grid Rewards, solange das Auto nicht hängt");
+	}else if(!s.hasWindow){
+		lines.push("kein Ladeplan");
+	}
+	return lines;
+}
+function visHorizonDayLabel(nowMs,dayIndex){
+	if(dayIndex===1)return"Heute";
+	if(dayIndex===2)return"Morgen";
+	var d=new Date(nowMs);
+	d.setHours(12,0,0,0);
+	d.setDate(d.getDate()+(dayIndex-1));
+	try{return d.toLocaleDateString("de-DE",{weekday:"short",day:"2-digit",month:"2-digit"});}catch(e){return"Tag "+dayIndex;}
+}
+function visHorizonDayLine(label,kwh,minC,maxC){
+	var bits=[label];
+	var e=visFmtKwhShort(kwh);
+	if(e)bits.push(e+" kWh");
+	if(minC!=null&&maxC!=null&&isFinite(minC)&&isFinite(maxC))bits.push(Math.round(minC)+"–"+Math.round(maxC)+" °C");
+	else if(maxC!=null&&isFinite(maxC))bits.push("bis "+Math.round(maxC)+" °C");
+	return bits.length>1?bits.join(" · "):null;
+}
 /* /vis-ops-display */
 function chip(label,value,sub,extraCls){
 	return '<div class="ems-chip'+(extraCls?" "+extraCls:"")+'"><div class="ems-k">'+esc(label)+'</div><div class="ems-chip-v">'+esc(value)+'</div>'
@@ -1592,7 +1684,8 @@ function climateCardNote(unitIndex){
 		outsideWindow:isOutsideClockWindowReason(reasonDe),
 		demand:d?d.demand:"none",
 		hasFuture:!!next,
-		allocOn:isPowerOn(num(g(base+".allocated_power_w")))
+		allocOn:isPowerOn(num(g(base+".allocated_power_w"))),
+		purpose:g(base+".mode_purpose")
 	});
 }
 function climateHvacBadge(unitIndex){
@@ -1896,80 +1989,189 @@ function ihDemandFromContributions(){
 	}
 	return{requiredKwh:req>0?req:null,minPowerW:minW};
 }
+function storyBlock(title,lines){
+	if(!lines||!lines.length)return"";
+	var html='<div class="ems-story"><div class="ems-story-h">'+esc(title)+"</div>",i;
+	for(i=0;i<lines.length;i++){
+		if(visRowValueOk(lines[i]))html+="<div>"+esc(lines[i])+"</div>";
+	}
+	return html+"</div>";
+}
+function batteryCapKwh(){
+	return num(g("addons.battery.telemetry.capacity_effective_kwh"))
+		||num(g("live.battery.capacity_kwh"))
+		||num(g("addons.battery.identity.capacity_net_kwh"));
+}
+function batteryTodayWindowLabel(wantGrid){
+	var wins=collapseAllocWindows(collectWindows(g("planner.intent.allocation.battery.plan_json"),ON_W,""));
+	var now=Date.now(),dayEnd=visLocalDayEndMs(now),parts=[],i;
+	for(i=0;i<wins.length;i++){
+		var w=wins[i];
+		if(w.endMs<=now||w.startMs>=dayEnd)continue;
+		if(wantGrid&&!w.isGrid)continue;
+		if(!wantGrid&&w.isGrid)continue;
+		parts.push(fmtRange(w.startMs,w.endMs));
+	}
+	return parts.length?parts.slice(0,3).join(", "):"";
+}
+function climateTodayLines(){
+	var lines=[],u;
+	for(u=1;u<=5;u++){
+		var name=visAcConfiguredName(g("addons.air_conditioning.units.unit_"+u+".name"));
+		if(!name)continue;
+		var base="addons.air_conditioning.units.unit_"+u;
+		var d=resolveClimateUnitDisplay(u);
+		var hum=num(g(base+".room_humidity_pct"));
+		var purpose=visHvacPurposeLabel(g(base+".mode_purpose"));
+		var note=climateCardNote(u);
+		var bits=[name];
+		if(isOn(g(base+".running")))bits.push("läuft");
+		if(purpose)bits.push(purpose);
+		if(hum!=null)bits.push(Math.round(hum)+" % Feuchte");
+		if(d.nextLine&&d.nextLine!=="keines")bits.push(d.nextLine.replace(/^nächstes /,""));
+		var line=bits.join(" · ");
+		if(note)line+=" — "+note;
+		lines.push(line);
+	}
+	return lines;
+}
+var paintedHtml={next:"",horizon:"",stack:""};
+function paintEl(el,key,html){
+	if(!el)return;
+	if(paintedHtml[key]===html)return;
+	var sc=el.querySelector("[data-scroll]");
+	var y=sc?sc.scrollTop:0;
+	paintedHtml[key]=html;
+	el.innerHTML=html;
+	sc=el.querySelector("[data-scroll]");
+	if(sc)sc.scrollTop=y;
+}
 function renderNext(){
 	var el=document.getElementById("ems-next");
 	if(!el)return;
 	var now=Date.now();
-	var horizonMs=now+24*3600*1000;
-	var buckets=visAgendaBuckets(buildTimelineRanges(horizonMs),now,10,2);
-	var current=buckets.current,today=buckets.today,later=buckets.later,i;
-	var html='<div class="ems-k">EMS – Heute</div>';
+	var buckets=visAgendaBuckets(buildTimelineRanges(now+24*3600*1000),now,10,2);
+	var current=buckets.current,today=buckets.today;
 	var snap=visLiveSnap();
-	var motion=visBatteryMotion(snap,ON_W);
-	var nowSum=visNowSummary({
-		batLabel:motion.label,
-		surplusW:snap.surplusW,
-		deficitW:snap.deficitW,
-		houseW:snap.houseW,
-		pvW:snap.pvW,
-		chargingW:snap.chargingW,
-		dischargingW:snap.dischargingW,
-		powerW:snap.powerW
+	var soc=num(g("live.battery.soc_pct"));
+	if(soc!=null)soc=Math.round(soc);
+	var tgt=num(g("addons.battery.runtime.target_soc_pct"));
+	var batWins=collapseAllocWindows(collectWindows(g("planner.intent.allocation.battery.plan_json"),ON_W,""));
+	var hasPv=false,b;
+	for(b=0;b<batWins.length;b++){
+		if(batWins[b].endMs<=now)continue;
+		if(!batWins[b].isGrid)hasPv=true;
+	}
+	var emsAct=visEmsAction(snap);
+	var batLines=visBatteryDayLines({
+		socPct:soc,
+		targetSocPct:tgt,
+		capacityKwh:batteryCapKwh(),
+		minSocPct:num(g("addons.battery.limits.hardware_min_soc_pct")),
+		strategyDe:txt(g("operator.plan.battery_strategy_de"),""),
+		gridWindowLabel:batteryTodayWindowLabel(true),
+		hasPvChargeWindow:hasPv,
+		chargingNow:visChargeW(snap)>=ON_W,
+		emsChargeAction:emsAct==="Batterie-Ladung"||emsAct==="Batterie-Netzladung"
 	});
-	var batPlan=visBatteryPlanLine({
-		socPct:num(g("live.battery.soc_pct")),
-		targetSocPct:num(g("addons.battery.runtime.target_soc_pct"))
+	var carSoc=num(g("addons.wallbox.status.evcc.vehicle_soc_pct"));
+	if(carSoc!=null)carSoc=Math.round(carSoc);
+	var carLines=visCarDayLines({
+		connected:g("addons.wallbox.status.evcc.connected")!=null?wallboxConnected():null,
+		socPct:carSoc,
+		targetSocPct:num(g("addons.wallbox.status.evcc.effective_limit_soc_pct")),
+		strategyDe:txt(g("operator.plan.wallbox_strategy_de"),""),
+		hasWindow:!!firstWindow(g("planner.intent.allocation.wallbox.plan_json"),ON_W)
 	});
-	var lageLine=batPlan||nowSum.title;
-	var lageMeta=current.length?"":nowSum.meta;
-	html+='<div class="ems-next-lage">'+esc(lageLine)
-		+(lageMeta?'<span class="ems-next-lage-meta">'+esc(lageMeta)+"</span>":"")
-		+"</div>";
+	var ihDem=ihDemandFromContributions();
+	var ihHasWin=current.concat(today).some(function(it){return it.addon==="immersion";})
+		||authoritativeImmersionWindows(g("planner.intent.allocation.immersion_heater.plan_json")).length>0;
+	var ihFact=visImmersionDemandFact({
+		requiredKwh:ihDem.requiredKwh,
+		minPowerW:ihDem.minPowerW,
+		hasWindow:ihHasWin
+	});
+	var ihLines=[];
+	var boilerRaw=g("addons.immersion_heater.runtime.boiler_temperature_c");
+	if(boilerRaw==null)boilerRaw=g("live.thermal.boiler_temp_c");
+	var boilerC=num(boilerRaw),bufC=num(g("addons.immersion_heater.runtime.buffer_temperature_c"));
+	if(bufC==null)bufC=num(g("live.thermal.buffer_temp_c"));
+	if(boilerC!=null)ihLines.push("Boiler "+boilerC.toFixed(1).replace(".",",")+" °C");
+	if(bufC!=null)ihLines.push("Puffer "+bufC.toFixed(1).replace(".",",")+" °C");
+	var softT=fmtTemp(g("addons.immersion_heater.runtime.plan_target_temp_c"));
+	if(visRowValueOk(softT))ihLines.push("Ziel "+softT);
+	var need=ihEnergyNeedLine();
+	if(visRowValueOk(need))ihLines.push("Bedarf "+need);
+	if(ihFact)ihLines.push(ihFact);
+	else{
+		var ihSched=immersionScheduleRow(g("planner.intent.allocation.immersion_heater.plan_json"));
+		if(ihSched.value&&ihSched.value!=="keines")ihLines.push(ihSched.label+" "+ihSched.value);
+	}
+	var html='<div class="ems-k">EMS – Heute</div><div class="ems-next-body" data-scroll="1">';
+	html+=storyBlock("Batterie",batLines);
+	html+=storyBlock("Auto",carLines);
+	html+=storyBlock("Heizstab",ihLines);
+	html+=storyBlock("Klima",climateTodayLines());
 	if(current.length){
 		html+='<div class="ems-next-sec">Jetzt</div>'+nextActionListHtml(current);
 	}
 	if(today.length){
-		html+='<div class="ems-next-sec">Heute</div>'+nextActionListHtml(today);
+		html+='<div class="ems-next-sec">Fenster heute</div>'+nextActionListHtml(today);
 		if(buckets.todayMore)html+='<div class="ems-next-idle"><div>+'+buckets.todayMore+" weitere heute</div></div>";
 	}
-	var ihDem=ihDemandFromContributions();
-	var ihFact=visImmersionDemandFact({
-		requiredKwh:ihDem.requiredKwh,
-		minPowerW:ihDem.minPowerW,
-		hasWindow:current.concat(today,later).some(function(it){return it.addon==="immersion";})
-			||authoritativeImmersionWindows(g("planner.intent.allocation.immersion_heater.plan_json")).length>0
-	});
-	if(ihFact)html+='<div class="ems-next-fact">'+esc(ihFact)+"</div>";
+	if(!current.length&&!today.length){
+		html+='<div class="ems-next-sec">Keine Aktion geplant</div><div class="ems-next-idle"><div>Aktuell kein gebuchtes EMS-Fenster für den Rest des Tages.</div></div>';
+	}
+	html+="</div>";
+	paintEl(el,"next",html);
+}
+function renderHorizon(){
+	var el=document.getElementById("ems-horizon");
+	if(!el)return;
+	var now=Date.now();
+	var later=visAgendaBuckets(buildTimelineRanges(now+7*24*3600*1000),now,0,6).later;
+	var html='<div class="ems-k">EMS – Morgen / Tage</div><div class="ems-next-body" data-scroll="1">';
+	var tomKwh=num(g("learning.pv_bias.corrected_tomorrow_kwh"));
+	if(tomKwh==null)tomKwh=num(g("learning.pv_horizon.day2.corrected_kwh"));
+	var tomLine=visHorizonDayLine(
+		visHorizonDayLabel(now,2),
+		tomKwh,
+		num(g("learning.weather.horizon.day2.min_temp_c")),
+		num(g("learning.weather.horizon.day2.max_temp_c"))
+	);
+	var dayLines=[];
+	if(tomLine)dayLines.push(tomLine);
 	if(later.length){
-		html+='<div class="ems-next-sec">Morgen</div>'+nextActionListHtml(later);
-		if(buckets.laterMore)html+='<div class="ems-next-idle"><div>+'+buckets.laterMore+" weitere danach</div></div>";
+		var i,bits=[];
+		for(i=0;i<later.length;i++)bits.push(fmtRange(later[i].startMs,later[i].endMs)+" "+later[i].name);
+		dayLines.push("geplante Fenster: "+bits.join("; "));
+	}else{
+		dayLines.push("keine gebuchten Fenster über Mitternacht hinaus");
 	}
-	if(!current.length&&!today.length&&!later.length){
-		var boilerRaw=g("addons.immersion_heater.runtime.boiler_temperature_c");
-		if(boilerRaw==null)boilerRaw=g("live.thermal.boiler_temp_c");
-		var facts=visIdleFacts({
-			pvW:num(g("live.pv.power_w")),
-			houseW:num(g("live.battery.house_load_w")),
-			surplusW:snap.surplusW,
-			deficitW:snap.deficitW,
-			socPct:num(g("live.battery.soc_pct")),
-			batLabel:motion.label,
-			boilerC:num(boilerRaw),
-			boilerMinC:num(g("addons.immersion_heater.runtime.boiler_min_temp_c")),
-			wbConnected:g("addons.wallbox.status.evcc.connected")!=null?wallboxConnected():null
-		});
-		if(batPlan){
-			facts=facts.filter(function(line){return line.indexOf("Batterie ")!==0;});
-		}
-		html+='<div class="ems-next-sec">Keine Aktion geplant</div><div class="ems-next-idle">';
-		if(facts.length){
-			for(i=0;i<facts.length;i++)html+="<div>"+esc(facts[i])+"</div>";
-		}else{
-			html+="<div>Aktuell keine geplante EMS-Aktion.</div>";
-		}
-		html+="</div>";
+	html+=storyBlock("Morgen",dayLines);
+	var rest=[],d,line,kwh;
+	for(d=3;d<=7;d++){
+		kwh=num(g("learning.pv_horizon.day"+d+".corrected_kwh"));
+		line=visHorizonDayLine(
+			visHorizonDayLabel(now,d),
+			kwh,
+			num(g("learning.weather.horizon.day"+d+".min_temp_c")),
+			num(g("learning.weather.horizon.day"+d+".max_temp_c"))
+		);
+		if(line)rest.push(line);
 	}
-	el.innerHTML=html;
+	var todayKwh=num(g("learning.pv_bias.corrected_today_kwh"));
+	var laterAvg=null,sum=0,n=0;
+	for(d=3;d<=7;d++){
+		kwh=num(g("learning.pv_horizon.day"+d+".corrected_kwh"));
+		if(kwh!=null&&kwh>=0){sum+=kwh;n++;}
+	}
+	if(n)laterAvg=sum/n;
+	var outlook=visHorizonOutlook(todayKwh,laterAvg);
+	if(outlook)rest.unshift(outlook);
+	html+=storyBlock("Nächste Tage",rest);
+	html+="</div>";
+	paintEl(el,"horizon",html);
 }
 
 function renderStack(){
@@ -2072,14 +2274,14 @@ function renderStack(){
 		return card(title,"#79c0ff",badges,rows,climateCardNote(unitIndex));
 	}
 
-	el.innerHTML=
+	paintEl(el,"stack",
 		card("Heizstab","#ffa657",ihBadges,ihRows,ihNote,immersionFaultResetActionsHtml())
 		+card("Wallbox / Auto","#d2a8ff",wbBadges,wbRows,shortNote(wbReason,90))
 		+acCard(1)
 		+acCard(2)
 		+acCard(3)
 		+acCard(4)
-		+acCard(5);
+		+acCard(5));
 	el.className="ems-tiles"+(el.querySelectorAll(".ems-card").length>4?" ems-tiles-dense":"");
 }
 
@@ -2145,6 +2347,7 @@ function render(){
 	renderAiSummary();
 	renderStack();
 	renderNext();
+	renderHorizon();
 	var diag=document.getElementById("ems-diag");
 	if(diag){
 		if(showDiagnostics()){

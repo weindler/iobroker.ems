@@ -1688,10 +1688,13 @@ function generateCandidatesForConsumer(
 		sources.push("battery");
 	}
 
+	let immersionMinE = 0;
+	let immersionSoftTopUpWithBattery = false;
 	if (consumer.kind === "immersion_heater") {
 		sources.length = 0;
 		const minE =
 			consumer.minPowerW && consumer.minPowerW > 0 ? energyFromPowerW(consumer.minPowerW) : 0;
+		immersionMinE = minE;
 		// Keine Teil-Slots unter Mindeststufe (sonst Runtime stage 0).
 		if (slot.remainPvKwh + EPS >= Math.max(minE, EPS)) sources.push("pv_surplus");
 		const pvBeforeDl = pvBeforeDeadlineKwh(state, consumer.deadlineMs, consumer.slotAllowed);
@@ -1700,7 +1703,19 @@ function generateCandidatesForConsumer(
 			pvBeforeDl + EPS < consumer.remainingKwh &&
 			usableBat + EPS >= Math.max(minE, EPS) &&
 			slot.remainPvKwh + EPS < Math.max(minE, EPS);
-		if (thermalNeedsBattery) sources.push("battery");
+		/*
+		 * Soft-IH (PV-first) darf bei knapper PV im Slot mit Batterie-Top-up die
+		 * Mindeststufe erreichen, wenn die Batterie dafür freigegeben ist.
+		 * Bedingung: Es gibt realen PV-Surplus im Slot und PV + Batterie schaffen zusammen minE.
+		 */
+		const softCanTopUpWithBattery =
+			consumer.thermalSoftOnly &&
+			consumer.batteryEligible &&
+			slot.surplusKwh > EPS &&
+			slot.remainPvKwh + EPS < Math.max(minE, EPS) &&
+			slot.remainPvKwh + usableBat + EPS >= Math.max(minE, EPS);
+		immersionSoftTopUpWithBattery = softCanTopUpWithBattery;
+		if (thermalNeedsBattery || softCanTopUpWithBattery) sources.push("battery");
 	}
 
 	if (consumer.kind === "battery_charge") {
@@ -1724,7 +1739,19 @@ function generateCandidatesForConsumer(
 			take = applyMinPower(take, consumer.minPowerW, slot.remainPvKwh, consumer.remainingKwh);
 		} else if (source === "battery") {
 			take = Math.min(take, usableBat);
-			take = applyMinPower(take, consumer.minPowerW, take, consumer.remainingKwh);
+			if (consumer.kind === "immersion_heater" && immersionMinE > EPS) {
+				const needed = Math.min(consumer.remainingKwh, immersionMinE);
+				if (usableBat + EPS < needed) continue;
+				/*
+				 * Fahrbare IH-Stufe erzwingen: mindestens minE allokieren.
+				 * Bei Soft-Top-up darf vorhandener PV-Rest die Mindeststufe mittragen.
+				 */
+				take = Math.max(take, needed);
+				const availableForMin = immersionSoftTopUpWithBattery ? take + slot.remainPvKwh : take;
+				take = applyMinPower(take, consumer.minPowerW, availableForMin, consumer.remainingKwh);
+			} else {
+				take = applyMinPower(take, consumer.minPowerW, take, consumer.remainingKwh);
+			}
 		} else {
 			take = applyMinPower(take, consumer.minPowerW, take, consumer.remainingKwh);
 		}

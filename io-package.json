@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.311",
+		"version": "0.1.312",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.312": {
+				"en": "Immersion heater planning now allows PV+battery top-up in the same slot to reach the 1700W minimum stage instead of dropping the slot to zero when PV alone is slightly below threshold.",
+				"de": "Heizstab-Planung erlaubt jetzt PV+Batterie-Top-up im selben Slot, um die 1700W-Mindeststufe zu erreichen, statt den Slot auf null zu verwerfen, wenn PV allein knapp unter der Schwelle liegt."
+			},
 			"0.1.311": {
 				"en": "Planner now correctly allocates immersion heater before climate when total PV surplus is sufficient for both. Previously, climate was allocated first, leaving less than 1700W for the heater.",
 				"de": "Planer teilt den Heizstab jetzt korrekt vor der Klima-Anlage zu, wenn der PV-Gesamtüberschuss für beide reicht. Zuvor wurde Klima zuerst zugeteilt, sodass weniger als 1700W für den Heizstab übrig blieben."

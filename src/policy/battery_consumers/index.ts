@@ -14,3 +14,7 @@ export {
 	resolveAllBatteryConsumerAccess,
 	immersionCriticalNow,
 } from "./resolve";
+export {
+	BATTERY_CONSUMER_CONSTRAINT_STATES,
+	batteryConsumerConstraintStateWrites,
+} from "./publish";

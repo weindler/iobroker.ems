@@ -116,6 +116,7 @@ function signals(overrides = {}) {
         const tick = (0, node_fs_1.readFileSync)(TICK_SRC, "utf8");
         strict_1.default.match(tick, /host\.setStateAsync\(\s*"planner\.constraints\.battery_hold_active"/);
         strict_1.default.match(tick, /host\.setStateAsync\(\s*"planner\.constraints\.evcc_battery_hold"/);
+        strict_1.default.match(tick, /batteryConsumerConstraintStateWrites/);
         strict_1.default.equal(tick.includes('setStateIfChanged(host, "planner.constraints.battery_hold_active"'), false);
         strict_1.default.equal(tick.includes('setStateIfChanged(host, "planner.constraints.evcc_battery_hold"'), false);
         const idx = (0, node_fs_1.readFileSync)((0, node_path_1.join)(SRC, "index.ts"), "utf8");

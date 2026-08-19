@@ -143,6 +143,7 @@ describe("grid balance hold freshness", () => {
 		const tick = readFileSync(TICK_SRC, "utf8");
 		assert.match(tick, /host\.setStateAsync\(\s*"planner\.constraints\.battery_hold_active"/);
 		assert.match(tick, /host\.setStateAsync\(\s*"planner\.constraints\.evcc_battery_hold"/);
+		assert.match(tick, /batteryConsumerConstraintStateWrites/);
 		assert.equal(tick.includes('setStateIfChanged(host, "planner.constraints.battery_hold_active"'), false);
 		assert.equal(tick.includes('setStateIfChanged(host, "planner.constraints.evcc_battery_hold"'), false);
 

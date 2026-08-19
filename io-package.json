@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.302",
+		"version": "0.1.303",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.303": {
+				"en": "Admin battery-for-consumers checkboxes now update planner.constraints.battery_consumer_*_allowed / reason_de every tick (fresh timestamp). Also planner.status and last_run_at. After restart check those states match the saved instance config.",
+				"de": "Admin-Häkchen „Batterie für Verbraucher“ schreiben jetzt jeden Tick planner.constraints.battery_consumer_*_allowed / reason_de (frischer Zeitstempel). Zusätzlich planner.status und last_run_at. Nach Neustart prüfen, ob die States zur gespeicherten Instanz passen."
+			},
 			"0.1.302": {
 				"en": "Dashboard: left device tiles ~100 px wider so values are not clipped; EMS–Today is narrower but scrollable, with climate first. Reload VIS after update.",
 				"de": "Dashboard: linke Gerätekacheln ca. 100 px breiter, damit Werte nicht abschneiden; EMS–Heute schmaler aber scrollbar, Klima zuerst. Nach Update VIS neu laden."

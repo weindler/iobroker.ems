@@ -13,6 +13,7 @@ import type { DailyPlan } from "./types";
 import type { ContributionsReadHost } from "../contributions/read";
 import {
 	batteryConsumersConfigFromAdapter,
+	batteryConsumerConstraintStateWrites,
 	immersionCriticalNow,
 	resolveAllBatteryConsumerAccess,
 } from "../../policy/battery_consumers";
@@ -424,21 +425,6 @@ export async function runDailyPlanTick(
 		wallboxChargeHold: wallboxHold.hold,
 		wallboxChargeHoldReasonDe: wallboxHold.reasonDe,
 	});
-	try {
-		// Always write true/false so `ts` stays current. setStateIfChanged would keep
-		// months-old true values when the computed hold did not flip, and Grid Balance
-		// must not treat those as a live Hold.
-		await host.setStateAsync("planner.constraints.evcc_battery_hold", {
-			val: hold.evcc_battery_hold,
-			ack: true,
-		});
-		await host.setStateAsync("planner.constraints.battery_hold_active", {
-			val: hold.battery_hold_active,
-			ack: true,
-		});
-	} catch {
-		// constraint publish best-effort
-	}
 	const batCfgModes = batteryConfigFromAdapter(host.config);
 	const batOperatingMode = asNum((await host.getStateAsync(BAT.telemetry.operatingMode))?.val);
 	const batOwnershipActive = (await host.getStateAsync(BAT.runtime.ownershipActive))?.val === true;
@@ -464,6 +450,38 @@ export async function runDailyPlanTick(
 			wallbox: false,
 		},
 	});
+	try {
+		/*
+		 * Always write so `ts` stays current. setStateIfChanged would keep months-old
+		 * values when the computed flag did not flip — Admin-Häkchen und Diagnose
+		 * wären dann unsichtbar. Gleiches Muster wie Batterie-Hold.
+		 */
+		await host.setStateAsync("planner.constraints.evcc_battery_hold", {
+			val: hold.evcc_battery_hold,
+			ack: true,
+		});
+		await host.setStateAsync("planner.constraints.battery_hold_active", {
+			val: hold.battery_hold_active,
+			ack: true,
+		});
+		for (const w of batteryConsumerConstraintStateWrites(consumerAccess)) {
+			await host.setStateAsync(w.id, { val: w.val, ack: true });
+		}
+		await host.setStateAsync("planner.global_mode.active", {
+			val: modePolicy.mode,
+			ack: true,
+		});
+		await host.setStateAsync("planner.last_run_at", {
+			val: now.toISOString(),
+			ack: true,
+		});
+		await host.setStateAsync("planner.status", {
+			val: "running",
+			ack: true,
+		});
+	} catch {
+		// constraint publish best-effort
+	}
 
 	const pvStateEarly = await host.getStateAsync("live.pv.power_w");
 	const pvBatStateEarly = await host.getStateAsync("live.battery.pv_ac_power_w");

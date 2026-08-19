@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.304",
+		"version": "0.1.305",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.305": {
+				"en": "Optimization: when battery is full, the immersion heater now proactively starts even if PV surplus alone is slightly below the 1700W threshold (up to 800W battery support). This prevents grid feed-in and uses available energy for thermal buffering instead. Also updated planner to consider battery as a valid source for soft heating when SOC is high.",
+				"de": "Optimierung: Wenn die Batterie voll ist, startet der Heizstab jetzt proaktiv auch dann, wenn der PV-Überschuss allein knapp unter 1700W liegt (bis zu 800W Unterstützung aus der Batterie). Dies verhindert Einspeisung und nutzt Energie für den thermischen Puffer. Der Planer berücksichtigt die Batterie nun ebenfalls als Quelle für wirtschaftliches Vorheizen bei hohem SOC."
+			},
 			"0.1.304": {
 				"en": "Fix: live-surplus reservation for wallbox/climate no longer double-counts power already running (already inside the whole-house meter). Only the gap to target power is reserved now, so the immersion heater's live-surplus takeover (battery full) no longer gets blocked by a climate/wallbox device that is already running.",
 				"de": "Fix: Die Live-Überschuss-Reservierung für Wallbox/Klima zieht laufenden Verbrauch nicht mehr doppelt ab (der steckt schon im Ganzhausmesser). Reserviert wird jetzt nur noch die Differenz zur Zielleistung — dadurch blockiert eine bereits laufende Klimaanlage/Wallbox den Heizstab-Live-Überschuss-Einsprung (Batterie voll) nicht mehr unnötig."

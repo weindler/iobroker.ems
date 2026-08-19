@@ -80,9 +80,24 @@ describe("B1 live thermal surplus replan gates", () => {
 	});
 
 	it("higher-priority LIVE wallbox demand blocks IH surplus replan", () => {
-		const r = baseOk({ higherPriorityLiveDemandW: 3500 });
+		const r = baseOk({
+			higherPriorityLiveDemandW: 3500,
+			batterySocPct: 80, // Nicht voll -> harte Schwelle
+		});
 		assert.equal(r.shouldReplan, false);
 		assert.match(r.blockReasonDe ?? "", /Vorrang|reicht nicht/);
+	});
+
+	it("battery near full allows IH start even if PV surplus is slightly below min (800W support)", () => {
+		const r = baseOk({
+			higherPriorityLiveDemandW: 0,
+			liveSurplusW: 1000, // Nur 1000W PV
+			ihMinPowerW: 1700,
+			batterySocPct: 100, // Aber Batterie voll
+		});
+		assert.equal(r.shouldReplan, true);
+		assert.equal(r.preferImmersionNow, true);
+		assert.match(r.reasonDe, /Batterie nahe voll/);
 	});
 
 	it("preferImmersionLiveSurplusNow shifts allocation into current slot vs peak-only", () => {

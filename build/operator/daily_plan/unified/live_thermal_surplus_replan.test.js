@@ -69,9 +69,23 @@ function baseOk(overrides = {}) {
         strict_1.default.match(r.blockReasonDe ?? "", /Cooldown/);
     });
     (0, node_test_1.it)("higher-priority LIVE wallbox demand blocks IH surplus replan", () => {
-        const r = baseOk({ higherPriorityLiveDemandW: 3500 });
+        const r = baseOk({
+            higherPriorityLiveDemandW: 3500,
+            batterySocPct: 80, // Nicht voll -> harte Schwelle
+        });
         strict_1.default.equal(r.shouldReplan, false);
         strict_1.default.match(r.blockReasonDe ?? "", /Vorrang|reicht nicht/);
+    });
+    (0, node_test_1.it)("battery near full allows IH start even if PV surplus is slightly below min (800W support)", () => {
+        const r = baseOk({
+            higherPriorityLiveDemandW: 0,
+            liveSurplusW: 1000, // Nur 1000W PV
+            ihMinPowerW: 1700,
+            batterySocPct: 100, // Aber Batterie voll
+        });
+        strict_1.default.equal(r.shouldReplan, true);
+        strict_1.default.equal(r.preferImmersionNow, true);
+        strict_1.default.match(r.reasonDe, /Batterie nahe voll/);
     });
     (0, node_test_1.it)("preferImmersionLiveSurplusNow shifts allocation into current slot vs peak-only", () => {
         const slots = (0, fixtures_2.buildSlots)("2026-08-09T09:00:00.000Z", 4);

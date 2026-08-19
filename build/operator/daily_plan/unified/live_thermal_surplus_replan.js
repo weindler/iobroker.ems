@@ -64,10 +64,19 @@ function evaluateLiveThermalSurplusReplan(input) {
     }
     const reserved = Math.max(0, input.higherPriorityLiveDemandW);
     const available = surplus - reserved;
-    if (available + 1 < ihMin) {
-        return fail(reserved > 0
+    /*
+     * B1-Erweiterung: Wenn die Batterie voll ist, darf sie den Heizstab-Start unterstützen.
+     * Wir erlauben bis zu 800 W Entnahme aus der vollen Batterie, um den Heizstab-Start
+     * (z. B. 1700 W) auch bei Wolken/Klima-Last (z. B. 1000 W PV-Rest) zu ermöglichen,
+     * statt den Überschuss ins Netz einzuspeisen.
+     */
+    const isBatFull = batteryNearFullOrNoUptake(input);
+    const batSupportW = isBatFull ? 800 : 0;
+    if (available + batSupportW + 1 < ihMin) {
+        const msg = reserved > 0
             ? `Überschuss nach LIVE-Vorrang (${Math.round(reserved)} W) reicht nicht für IH`
-            : "Überschuss unter IH-Min-Stufe", null);
+            : `Überschuss (${Math.round(available)} W) unter IH-Min-Stufe`;
+        return fail(isBatFull ? `${msg} (trotz 800 W Batterie-Support bei SOC 100 %)` : msg, null);
     }
     const qualifySince = input.surplusQualifySinceMs !== null && Number.isFinite(input.surplusQualifySinceMs)
         ? input.surplusQualifySinceMs

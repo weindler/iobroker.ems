@@ -1,0 +1,16 @@
+---
+description: Modellwahl für Coding-Aufgaben (First-Party vs. Chat)
+alwaysApply: true
+---
+
+# Modellwahl für Coding
+
+In diesem Projekt gilt für alle **Coding-Aufgaben** (Dateien schreiben, Refactoring, komplexe Fehlerbehebung):
+
+1. **First-Party-Modelle nutzen**: Für tatsächliche Code-Änderungen sind ausschließlich **Grok 4.5** oder **Composer 2.5** (aus dem Cursor Models Pool) zu verwenden.
+2. **Keine Chat-Only-Modelle für Code**: Modelle wie GPT-5 Mini oder Sonnet 5 High (im API-Modus) sollen primär für Diskussionen, Planung oder Recherche genutzt werden, wenn das Kontingent knapp ist. Sobald es an die Umsetzung geht, muss auf die leistungsfähigeren First-Party-Coding-Modelle gewechselt werden.
+3. **Subagenten**: Auch Subagenten (`Task`-Tool) müssen mit First-Party-Modellen gestartet werden (`cursor-grok-4.5-high-fast` oder `composer-2.5-fast`).
+
+**Grund**: Coding-Modelle haben ein besseres Verständnis für die Projektarchitektur und führen zu weniger Fehlern bei der Implementierung.
+
+Wenn der Agent feststellt, dass für eine Code-Änderung ein weniger geeignetes Modell aktiv ist, soll er den Nutzer kurz bitten, auf Grok 4.5 oder Composer 2.5 umzustellen, bevor er fortfährt.

@@ -1293,10 +1293,19 @@ export function scoreCandidate(
 			 * für Target-Fill; lang (z. B. Leerung abends nach Morgen-PV) → Speichern sinnvoll.
 			 * Opportunity vs. PV→Batterie über gemeinsamen Peak-/SOC-Wert — kein Hardcode.
 			 */
-			if (candidate.source !== "pv_surplus") return -Infinity;
+			const socAt = projectedSocAt(state, candidate.slotIdx);
+			const isHighSoc = socAt >= state.batteryTargetKwh - EPS;
+			
+			/*
+			 * Soft-IH ist PV-fokussiert. Aber: Wenn die Batterie voll ist, darf sie
+			 * unterstützen, um Einspeisung zu vermeiden (One-Plan-Strategie).
+			 */
+			if (candidate.source !== "pv_surplus" && !(candidate.source === "battery" && isHighSoc)) {
+				return -Infinity;
+			}
+
 			score -= e * priority * 0.38;
 			const peakEur = peakFutureImportCt(state, candidate.slotIdx) * 0.01;
-			const socAt = projectedSocAt(state, candidate.slotIdx);
 			const batRoom = Math.max(
 				0,
 				Math.min(state.capacityKwh - socAt, state.batteryTargetKwh - socAt),

@@ -1725,10 +1725,15 @@ function boilerLearningCompact(){
 	return"sammelt Daten";
 }
 function boilerMinForecastLine(){
-	var rem=num(g("learning.thermal_runtime.estimated_remaining_hours"));
-	if(rem==null)rem=num(g("learning.thermal_boiler.estimated_remaining_hours"));
-	var empty=txt(g("learning.thermal_runtime.estimated_empty_at"),"");
-	if(!empty||empty==="—")empty=txt(g("learning.thermal_boiler.estimated_empty_at"),"");
+	/*
+	 * "Boiler min" muss vom Boiler-Modell kommen (Warmwasser-Hard-Authority),
+	 * nicht vom Puffer (thermal_runtime = Soft/Safety-Cap). Puffer nur als
+	 * Fallback, wenn das Boiler-Modell selbst keine Werte liefert.
+	 */
+	var rem=num(g("learning.thermal_boiler.estimated_remaining_hours"));
+	if(rem==null)rem=num(g("learning.thermal_runtime.estimated_remaining_hours"));
+	var empty=txt(g("learning.thermal_boiler.estimated_empty_at"),"");
+	if(!empty||empty==="—")empty=txt(g("learning.thermal_runtime.estimated_empty_at"),"");
 	var bits=[];
 	if(rem!=null&&rem>=0){
 		bits.push("in "+Number(rem).toFixed(1).replace(".",",")+" h");

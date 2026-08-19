@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.316",
+		"version": "0.1.317",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.317": {
+				"en": "Dashboard 'Boiler min' countdown was reading the buffer (thermal_runtime, soft/comfort) model first and the actual boiler (thermal_boiler, hard mandatory minimum) only as a fallback. Fixed the priority so the displayed countdown/empty-at now reflects the real boiler minimum, not the unrelated buffer temperature.",
+				"de": "Die Dashboard-Zeile 'Boiler min' hat zuerst den Puffer (thermal_runtime, Soft/Komfort) gelesen und den echten Boiler (thermal_boiler, Hard-Pflichtminimum) nur als Fallback. Priorität korrigiert, sodass die angezeigte Restzeit/empty-at jetzt den echten Boiler-Minimum-Wert zeigt, nicht die unabhängige Puffertemperatur."
+			},
 			"0.1.316": {
 				"en": "Boiler thermal learning no longer discards a freshly overdue empty-at estimate (Newton-only model, no completed cycles) as if it were unknown — it is now treated as an acute mandatory need (or, if genuinely stale for >12h, still dropped). The boiler-minimum mandatory contribution now also fires when the boiler is exactly at minimum (not only strictly below), and the planner's hard deadline for boiler-at-minimum no longer falls back to an unbounded/past deadline that let climate/battery starve the immersion heater.",
 				"de": "Das Boiler-Thermal-Learning verwirft eine frisch überfällige empty-at-Schätzung (nur Newton-Modell, keine abgeschlossenen Zyklen) nicht mehr als 'unbekannt', sondern behandelt sie als akuten Pflichtbedarf (nur wirklich alte Schätzungen >12h bleiben verworfen). Die Boiler-Minimum-Pflicht-Contribution greift jetzt auch exakt am Minimum (nicht erst deutlich darunter), und die Planner-Deadline für Boiler-am-Minimum fällt nicht mehr auf eine unbegrenzte/vergangene Deadline zurück, die Klima/Batterie den Heizstab aushungern ließ."

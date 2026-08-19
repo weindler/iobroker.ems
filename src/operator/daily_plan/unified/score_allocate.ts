@@ -1450,21 +1450,20 @@ export function scoreCandidate(
 		}
 		/**
 		 * Surplus-Konkurrenz-Boost: Wenn der Gesamt-PV-Surplus (surplusKwh, vor allen Allocations)
-		 * für IH + alle parallel laufenden Klima-Einheiten reicht, bekommt der IH einen Score-Bonus
-		 * damit er VOR Klima allokiert wird. Ohne diesen Boost würde Klima (höherer Komfort-Priority)
+		 * ausreicht für den IH allein (≥ minPowerW), bekommt der IH einen Score-Bonus damit er
+		 * VOR Klima allokiert wird. Ohne diesen Boost würde Klima (höherer Komfort-Priority)
 		 * zuerst zugeteilt, danach bleibt remainPvKwh unter 1700W und der IH findet keinen Slot.
 		 *
-		 * Bedingung: surplusKwh ≥ minPowerW(IH) + gesamte Klima-typicalPower im selben Slot.
-		 * Dann: Boost so dass IH-Score > mandatory-Klima-Score → IH wird zuerst allokiert.
+		 * Beispiel: 2711W PV − 373W Hauslast = 2338W Surplus ≥ 1700W IH → Boost aktiv.
+		 * IH belegt 1700W, verbleibend 638W → Klima (700W) findet nicht mehr rein.
+		 * Das ist korrekt: bei 2338W Surplus hat IH Vorrang vor Komfort-Kühlung.
+		 * Bei 2411W Surplus (≥ 1700 + 700 + Margin) könnten beide laufen — dann soll
+		 * der Allocator nach der IH-Allocation auch Klima noch bedienen.
 		 */
 		if (candidate.source === "pv_surplus") {
 			const minE = consumer.minPowerW && consumer.minPowerW > 0 ? energyFromPowerW(consumer.minPowerW) : 0;
-			const totalClimateW = state.consumers
-				.filter((c) => c.kind === "climate")
-				.reduce((sum, c) => sum + (c.maxPowerW ?? 0), 0);
-			const combinedMinE = minE + energyFromPowerW(totalClimateW);
-			if (minE > 0 && slot.surplusKwh + EPS >= combinedMinE) {
-				// Genug Gesamt-PV für IH + Klima: IH soll zuerst allokiert werden.
+			if (minE > 0 && slot.surplusKwh + EPS >= minE) {
+				// Gesamt-PV (vor jeder Allocation) reicht für IH: Vorrang vor Klima.
 				score += e * weights.flexShiftWeight * 2.8 + 0.6;
 			}
 		}

@@ -25,7 +25,7 @@ function loadOpsDisplay(html) {
 	assert.ok(start >= 0 && end > start, "vis-ops-display markers required");
 	const code = html.slice(start, end);
 	return new Function(
-		`${code}; return { visBatteryMotion, visEmsAction, visGbStatus, visGridMeterW, visGridFlow, visTargetedHold, visPriceBand, visPriceAxisRange, visClimateNote, visAcConfiguredName, visClimateHvacBadge, visHvacPurposeLabel, visFmtDurationSec, visFmtKwh, visPvBiasPhrase, visPvChipSub, visHorizonOutlook, visLageLine, visLageFacts, visPvIstKwh, visTodayDeviationPct, visDeviationVsRecent, visCheapPhaseLabel, visPriceHeadSummary, visIdleFacts, visNowSummary, visRowValueOk };`,
+		`${code}; return { visBatteryMotion, visEmsAction, visGbStatus, visGridMeterW, visGridFlow, visTargetedHold, visPriceBand, visPriceAxisRange, visClimateNote, visAcConfiguredName, visClimateHvacBadge, visHvacPurposeLabel, visFmtDurationSec, visFmtKwh, visPvBiasPhrase, visPvChipSub, visHorizonOutlook, visLageLine, visLageFacts, visPvIstKwh, visTodayDeviationPct, visDeviationVsRecent, visCheapPhaseLabel, visPriceHeadSummary, visIdleFacts, visNowSummary, visRowValueOk, visBatteryPlanLine, visEnergySourceLabel, visWindowEnergyKwh, visImmersionDemandFact, visImmersionWaitNote, visAgendaBuckets, visLocalDayEndMs };`,
 	)();
 }
 
@@ -63,6 +63,7 @@ const REQUIRED_STATE_PATHS = [
 	"live.pv.power_w",
 	"live.battery.house_load_w",
 	"live.battery.soc_pct",
+	"addons.battery.runtime.target_soc_pct",
 	"live.price.now_ct_per_kwh",
 	"addons.battery.telemetry.charging_power_w",
 	"addons.battery.telemetry.discharging_power_w",
@@ -172,7 +173,7 @@ describe("VIS operations dashboard", () => {
 		assert.equal(visHtml.includes("GB preislich ok"), false);
 		assert.equal(visHtml.includes(">normal</"), false);
 		assert.match(visHtml, /function visPriceBand/);
-		assert.match(visHtml, /grid-template-columns:minmax\(0,1fr\) 188px/);
+		assert.match(visHtml, /grid-template-columns:minmax\(0,1fr\) 300px/);
 		assert.match(visHtml, /html,body\{height:100%;overflow:hidden\}/);
 		assert.match(visHtml, /\.ems-price-svg\{width:100%;height:84px/);
 		assert.match(visHtml, /var W=640,H=84/);
@@ -211,11 +212,13 @@ describe("VIS operations dashboard", () => {
 		assert.match(visHtml, /acUnitLabel/);
 		assert.equal(visHtml.includes("slotsFromChart"), false);
 		assert.match(visHtml, /addon:"wallbox".*name:"Wallbox"/);
-		assert.match(visHtml, /EMS – Nächste Aktionen/);
+		assert.match(visHtml, /EMS – Heute/);
 		assert.match(visHtml, /Keine Aktion geplant/);
 		assert.equal(visHtml.includes("Demnächst (48 h)"), false);
 		assert.equal(visHtml.includes("Keine Fenster geplant."), false);
 		assert.match(visHtml, /visIdleFacts/);
+		assert.match(visHtml, /visAgendaBuckets/);
+		assert.match(visHtml, /visBatteryPlanLine/);
 		assert.match(visHtml, /visCheapPhaseLabel/);
 		assert.match(visHtml, /PREIS FREI/);
 	});
@@ -593,6 +596,38 @@ describe("VIS battery / grid / GB presentation", () => {
 		);
 		assert.equal(ops.visNowSummary({ batLabel: "EIGENVERBRAUCH", surplusW: 3200 }).title, "Batterie · EIGENVERBRAUCH");
 		assert.match(ops.visNowSummary({ batLabel: "EIGENVERBRAUCH", surplusW: 3200 }).meta, /PV-Überschuss 3,2 kW/);
+	});
+
+	it("today agenda shows SOC path, PV/Netz and heater demand from the existing plan", () => {
+		assert.equal(ops.visBatteryPlanLine({ socPct: 52, targetSocPct: 60 }), "Batterie 52 % → Plan 60 %");
+		assert.equal(ops.visBatteryPlanLine({ socPct: 60, targetSocPct: 60 }), "Batterie 60 % · Plan-Ziel 60 % erreicht");
+		assert.equal(ops.visBatteryPlanLine({ socPct: 48 }), "Batterie 48 %");
+		assert.equal(ops.visEnergySourceLabel(false), "PV");
+		assert.equal(ops.visEnergySourceLabel(true), "Netz");
+		assert.equal(ops.visWindowEnergyKwh(1700, 0, 3600000), "1,7 kWh");
+		assert.equal(
+			ops.visImmersionDemandFact({ requiredKwh: 6.5, minPowerW: 1700, hasWindow: false }),
+			"Heizstab Bedarf 6,5 kWh — noch kein fahrbares Fenster (≥ 1700 W)",
+		);
+		assert.equal(ops.visImmersionDemandFact({ requiredKwh: 6.5, hasWindow: true }), null);
+		assert.equal(ops.visImmersionWaitNote("auto_ready_zero_plan_allocation"), "Wartet auf geplanten Slot");
+		const noon = Date.parse("2026-08-19T10:00:00");
+		const dayEnd = ops.visLocalDayEndMs(noon);
+		const buckets = ops.visAgendaBuckets(
+			[
+				{ name: "Klima", startMs: noon + 5 * 3600000, endMs: noon + 6 * 3600000 },
+				{ name: "Heizstab", startMs: noon - 600000, endMs: noon + 600000 },
+				{ name: "Morgen", startMs: dayEnd + 3600000, endMs: dayEnd + 7200000 },
+			],
+			noon,
+			10,
+			2,
+		);
+		assert.equal(buckets.current[0].name, "Heizstab");
+		assert.equal(buckets.today[0].name, "Klima");
+		assert.equal(buckets.later[0].name, "Morgen");
+		assert.equal(visHtml.includes('["Restzeit"'), false);
+		assert.equal(visHtml.includes('["Leer ca."'), false);
 	});
 
 	it("PV chip and Lage line show bias-corrected horizon in everyday language", () => {

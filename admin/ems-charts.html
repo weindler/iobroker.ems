@@ -45,14 +45,14 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-sw{width:7px;height:7px;border-radius:2px;display:inline-block}
 .ems-ai-compact{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:2px 6px;margin-bottom:4px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;flex:0 0 auto}
 .ems-ai-compact .ems-ai-toggle{margin:0}
-.ems-main{display:grid;grid-template-columns:minmax(0,1fr) 188px;gap:4px;align-items:stretch;flex:1 1 auto;min-height:0;overflow:hidden}
-.ems-tiles{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(0,1fr);gap:4px;min-height:0;height:100%;overflow:hidden}
+.ems-main{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:4px;align-items:stretch;flex:1 1 auto;min-height:0;overflow:hidden}
+.ems-tiles{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(0,1fr);gap:3px;min-height:0;height:100%;overflow:hidden}
 .ems-tiles.ems-tiles-dense{grid-template-columns:1fr 1fr 1fr}
-.ems-card{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:4px 6px;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.ems-card{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:3px 5px;min-height:0;overflow:hidden;display:flex;flex-direction:column}
 .ems-card-empty{display:none}
-.ems-card-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;gap:6px;flex:0 0 auto}
-.ems-card-title{font-size:11px;font-weight:700}
-.ems-badge{font-size:8px;font-weight:700;padding:1px 5px;border-radius:4px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
+.ems-card-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1px;gap:4px;flex:0 0 auto}
+.ems-card-title{font-size:10px;font-weight:700}
+.ems-badge{font-size:7px;font-weight:700;padding:1px 4px;border-radius:4px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
 .ems-badge.on{background:#238636;color:#fff}
 .ems-badge.off{background:#30363d;color:#8b949e}
 .ems-badge.soon{background:#9e6a03;color:#fff}
@@ -71,19 +71,22 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-badge.gb-ready{background:#1f6feb;color:#fff}
 .ems-badge.gb-on{background:#238636;color:#fff}
 .ems-badges{display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
-.ems-rows{display:grid;grid-template-columns:78px 1fr;gap:0 6px;font-size:10px;flex:1 1 auto;min-height:0;align-content:start}
+.ems-rows{display:grid;grid-template-columns:64px 1fr;gap:0 4px;font-size:9px;flex:1 1 auto;min-height:0;align-content:start}
 .ems-rows .l{color:#8b949e}.ems-rows .r{color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ems-note{margin-top:2px;font-size:9px;color:#c9d1d9;line-height:1.25;max-height:1.3em;overflow:hidden;flex:0 0 auto}
-.ems-timeline{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:4px 5px;display:flex;flex-direction:column;min-height:0;max-height:100%;overflow:hidden;min-width:0}
-.ems-timeline .ems-k{flex:0 0 auto}
-.ems-next-sec{font-size:8px;color:#8b949e;text-transform:uppercase;letter-spacing:.04em;margin:5px 0 2px}
-.ems-next-idle{font-size:10px;color:#c9d1d9;line-height:1.35;margin-top:4px}
-.ems-next-idle div{margin-bottom:3px}
-.ems-next-list{list-style:none;font-size:9px;line-height:1.25;flex:1 1 auto;overflow:hidden;margin-top:2px;padding-right:2px}
-.ems-next-list li{padding:3px 4px 3px 5px;margin-bottom:2px;border-radius:4px;background:#161b22;border:1px solid #30363d;border-left-width:3px}
-.ems-next-t{font-weight:700;margin-right:3px;white-space:nowrap;color:#e6edf3}
+.ems-note{margin-top:1px;font-size:8px;color:#c9d1d9;line-height:1.2;max-height:1.2em;overflow:hidden;flex:0 0 auto}
+.ems-timeline{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 8px;display:flex;flex-direction:column;min-height:0;max-height:100%;overflow:hidden;min-width:0}
+.ems-timeline .ems-k{flex:0 0 auto;font-size:9px}
+.ems-next-lage{font-size:11px;font-weight:600;color:#e6edf3;line-height:1.3;margin:3px 0 4px}
+.ems-next-lage-meta{display:block;font-size:9px;font-weight:400;color:#c9d1d9;margin-top:2px}
+.ems-next-sec{font-size:8px;color:#8b949e;text-transform:uppercase;letter-spacing:.04em;margin:6px 0 3px}
+.ems-next-idle{font-size:11px;color:#c9d1d9;line-height:1.4;margin-top:4px}
+.ems-next-idle div{margin-bottom:4px}
+.ems-next-fact{font-size:10px;color:#c9d1d9;line-height:1.35;margin:4px 0;padding:5px 6px;background:#161b22;border:1px dashed #30363d;border-radius:4px}
+.ems-next-list{list-style:none;font-size:11px;line-height:1.3;flex:1 1 auto;overflow:auto;margin-top:2px;padding-right:2px;min-height:0}
+.ems-next-list li{padding:5px 6px 5px 7px;margin-bottom:4px;border-radius:4px;background:#161b22;border:1px solid #30363d;border-left-width:3px}
+.ems-next-t{font-weight:700;margin-right:4px;white-space:nowrap;color:#e6edf3}
 .ems-next-name{font-weight:600}
-.ems-next-meta{display:block;font-size:8px;color:#c9d1d9;margin-top:1px;line-height:1.2}
+.ems-next-meta{display:block;font-size:9px;color:#c9d1d9;margin-top:2px;line-height:1.25}
 .ems-next-st{font-size:8px;font-weight:700;text-transform:uppercase;margin-left:3px;letter-spacing:.03em}
 .ems-next-st.on{color:#3fb950}.ems-next-st.plan{color:#8b949e}.ems-next-st.soon{color:#f0883e}.ems-next-st.dryrun{color:#a371f7}.ems-next-st.est{color:#8b949e}.ems-next-st.fault{color:#f85149}
 .ems-diag{flex:0 1 auto;max-height:32%;overflow:auto;margin-top:4px;padding-top:4px;border-top:1px dashed #30363d}
@@ -107,7 +110,7 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 @media (max-width:900px){
 	.ems-top{grid-template-columns:1fr}
 	.ems-main{grid-template-columns:1fr;min-height:0}
-	.ems-timeline{max-height:220px}
+	.ems-timeline{max-height:280px}
 	.ems-ai{grid-template-columns:1fr}
 	.ems-price-svg{height:84px}
 	.ems-live{flex-wrap:wrap}
@@ -157,6 +160,7 @@ var stateIds=[
 	INST+".live.pv.power_w",
 	INST+".live.battery.house_load_w",
 	INST+".live.battery.soc_pct",
+	INST+".addons.battery.runtime.target_soc_pct",
 	INST+".live.price.now_ct_per_kwh",
 	INST+".addons.wallbox.status.evcc.charge_power_w",
 	INST+".addons.wallbox.status.evcc.vehicle_soc_pct",
@@ -829,6 +833,7 @@ function buildTimelineRanges(horizonMs){
 			metaBits.push("Heizstab wegen Gerätestörung gesperrt");
 			ihFaultHintAdded=true;
 		}
+		metaBits=metaBits.concat(visPlanWindowExtras(windowW,r.startMs,r.endMs,r.isGrid));
 		items.push({
 			addon:"immersion",color:ADDON_COLORS.immersion,name:"Heizstab",
 			startMs:r.startMs,endMs:r.endMs,
@@ -846,8 +851,9 @@ function buildTimelineRanges(horizonMs){
 	var remKwh=num(g("addons.wallbox.status.evcc.charge_remaining_energy_kwh"));
 	var limSoc=num(g("addons.wallbox.status.evcc.effective_limit_soc_pct"));
 	var vehSoc=num(g("addons.wallbox.status.evcc.vehicle_soc_pct"));
-	function wbMeta(status,phase,windowW){
+	function wbMeta(status,phase,win){
 		var bits=[];
+		var windowW=win&&win.powerW;
 		if(status==="dryrun"){
 			var dm=execAgendaMeta(phase,isPowerOn(wbAlloc)?wbAlloc:windowW);
 			if(dm)bits.push(dm);
@@ -858,6 +864,7 @@ function buildTimelineRanges(horizonMs){
 		if(limSoc!==null)bits.push("bis "+Math.round(limSoc)+" % SOC");
 		else if(vehSoc!==null)bits.push("Auto "+Math.round(vehSoc)+" %");
 		if(windowW)bits.push(Math.round(windowW)+" W");
+		if(win)bits=bits.concat(visPlanWindowExtras(windowW,win.startMs,win.endMs,win.isGrid));
 		return bits.length?bits.join(" · "):null;
 	}
 	wbWindows.forEach(function(r){
@@ -869,7 +876,7 @@ function buildTimelineRanges(horizonMs){
 			addon:"wallbox",color:ADDON_COLORS.wallbox,name:"Wallbox",
 			startMs:r.startMs,endMs:r.endMs,
 			status:st,
-			meta:wbMeta(st,phase,r.powerW)
+			meta:wbMeta(st,phase,r)
 		});
 	});
 
@@ -888,6 +895,7 @@ function buildTimelineRanges(horizonMs){
 			if(bm)metaBits.push(bm);
 		}
 		if(r.powerW)metaBits.push(Math.round(r.powerW)+" W");
+		metaBits=metaBits.concat(visPlanWindowExtras(r.powerW,r.startMs,r.endMs,r.isGrid));
 		items.push({
 			addon:"battery",color:ADDON_COLORS.battery,name:r.isGrid?"Batterie-Netzladung":"Batterie laden",
 			startMs:r.startMs,endMs:r.endMs,
@@ -914,6 +922,7 @@ function buildTimelineRanges(horizonMs){
 				if(cm)bits.push(cm);
 			}
 			bits.push(Math.round(cr.powerW)+" W");
+			bits=bits.concat(visPlanWindowExtras(cr.powerW,cr.startMs,cr.endMs,cr.isGrid));
 			items.push({
 				addon:"climate"+unitIndex,
 				color:unitIndex===1?ADDON_COLORS.climate1:ADDON_COLORS.climate2,
@@ -1452,6 +1461,73 @@ function visNowSummary(s){
 	else if(s.surplusW!=null&&s.surplusW>=50)meta="PV-Überschuss "+(s.surplusW/1000).toFixed(1).replace(".",",")+" kW";
 	return{title:title,meta:meta};
 }
+function visLocalDayEndMs(nowMs){
+	var d=new Date(nowMs);
+	return new Date(d.getFullYear(),d.getMonth(),d.getDate()+1).getTime();
+}
+function visAgendaBuckets(items,nowMs,todayCap,laterCap){
+	todayCap=todayCap==null?10:todayCap;
+	laterCap=laterCap==null?2:laterCap;
+	var current=[],today=[],later=[],i;
+	var dayEnd=visLocalDayEndMs(nowMs);
+	var list=(items||[]).slice().sort(function(a,b){
+		return (a.startMs||0)-(b.startMs||0)||String(a.name||"").localeCompare(String(b.name||""));
+	});
+	for(i=0;i<list.length;i++){
+		var it=list[i];
+		if(!it||!(it.endMs>nowMs))continue;
+		if(it.startMs<=nowMs)current.push(it);
+		else if(it.startMs<dayEnd)today.push(it);
+		else later.push(it);
+	}
+	return{
+		current:current,
+		today:today.slice(0,todayCap),
+		later:later.slice(0,laterCap),
+		todayMore:Math.max(0,today.length-todayCap),
+		laterMore:Math.max(0,later.length-laterCap)
+	};
+}
+function visBatteryPlanLine(s){
+	s=s||{};
+	var soc=s.socPct,tgt=s.targetSocPct;
+	function pct(v){return Math.round(Number(v))+" %";}
+	if(soc==null||!isFinite(soc))soc=null;
+	if(tgt==null||!isFinite(tgt))tgt=null;
+	if(soc==null&&tgt==null)return null;
+	if(soc!=null&&tgt!=null){
+		if(soc+0.5>=tgt)return"Batterie "+pct(soc)+" · Plan-Ziel "+pct(tgt)+" erreicht";
+		return"Batterie "+pct(soc)+" → Plan "+pct(tgt);
+	}
+	if(soc!=null)return"Batterie "+pct(soc);
+	return"Plan-Ziel "+pct(tgt);
+}
+function visEnergySourceLabel(isGrid){return isGrid?"Netz":"PV";}
+function visWindowEnergyKwh(powerW,startMs,endMs){
+	if(powerW==null||!isFinite(powerW)||powerW<=0)return null;
+	if(startMs==null||endMs==null||!isFinite(startMs)||!isFinite(endMs)||endMs<=startMs)return null;
+	return visFmtKwh((powerW/1000)*((endMs-startMs)/3600000));
+}
+function visPlanWindowExtras(powerW,startMs,endMs,isGrid){
+	var bits=[visEnergySourceLabel(!!isGrid)];
+	var ek=visWindowEnergyKwh(powerW,startMs,endMs);
+	if(ek)bits.push(ek);
+	return bits;
+}
+function visImmersionDemandFact(s){
+	s=s||{};
+	var k=s.requiredKwh;
+	if(k==null||!isFinite(k)||k<=0.05)return null;
+	if(s.hasWindow)return null;
+	var line="Heizstab Bedarf "+Number(k).toFixed(1).replace(".",",")+" kWh — noch kein fahrbares Fenster";
+	if(s.minPowerW!=null&&isFinite(s.minPowerW)&&s.minPowerW>0)line+=" (≥ "+Math.round(s.minPowerW)+" W)";
+	return line;
+}
+function visImmersionWaitNote(reason){
+	var r=String(reason==null?"":reason);
+	if(r==="auto_ready_zero_plan_allocation")return"Wartet auf geplanten Slot";
+	return r;
+}
 /* /vis-ops-display */
 function chip(label,value,sub,extraCls){
 	return '<div class="ems-chip'+(extraCls?" "+extraCls:"")+'"><div class="ems-k">'+esc(label)+'</div><div class="ems-chip-v">'+esc(value)+'</div>'
@@ -1803,20 +1879,31 @@ function nextActionItemHtml(it){
 		+(it.meta?'<span class="ems-next-meta">'+esc(it.meta)+'</span>':'')
 		+'</li>';
 }
+function nextActionListHtml(items){
+	var html='<ul class="ems-next-list">',i;
+	for(i=0;i<items.length;i++)html+=nextActionItemHtml(items[i]);
+	return html+"</ul>";
+}
+function ihDemandFromContributions(){
+	var arr=parseArr(g("planner.intent.contributions.immersion_heater.contributions_json"));
+	var req=0,minW=null,i;
+	for(i=0;i<arr.length;i++){
+		var c=arr[i];if(!c||!c.details)continue;
+		var k=num(c.details.requiredEnergyKwh);
+		if(k!=null&&k>0)req+=k;
+		var m=num(c.details.minPowerW);
+		if(m!=null&&m>0)minW=minW==null?m:Math.min(minW,m);
+	}
+	return{requiredKwh:req>0?req:null,minPowerW:minW};
+}
 function renderNext(){
 	var el=document.getElementById("ems-next");
 	if(!el)return;
 	var now=Date.now();
 	var horizonMs=now+24*3600*1000;
-	var items=buildTimelineRanges(horizonMs);
-	var current=[],future=[],i;
-	for(i=0;i<items.length;i++){
-		var it=items[i];
-		if(it.endMs<=now)continue;
-		if(it.startMs<=now)current.push(it);
-		else future.push(it);
-	}
-	var html='<div class="ems-k">EMS – Nächste Aktionen</div>';
+	var buckets=visAgendaBuckets(buildTimelineRanges(horizonMs),now,10,2);
+	var current=buckets.current,today=buckets.today,later=buckets.later,i;
+	var html='<div class="ems-k">EMS – Heute</div>';
 	var snap=visLiveSnap();
 	var motion=visBatteryMotion(snap,ON_W);
 	var nowSum=visNowSummary({
@@ -1829,18 +1916,35 @@ function renderNext(){
 		dischargingW:snap.dischargingW,
 		powerW:snap.powerW
 	});
+	var batPlan=visBatteryPlanLine({
+		socPct:num(g("live.battery.soc_pct")),
+		targetSocPct:num(g("addons.battery.runtime.target_soc_pct"))
+	});
+	var lageLine=batPlan||nowSum.title;
+	var lageMeta=current.length?"":nowSum.meta;
+	html+='<div class="ems-next-lage">'+esc(lageLine)
+		+(lageMeta?'<span class="ems-next-lage-meta">'+esc(lageMeta)+"</span>":"")
+		+"</div>";
 	if(current.length){
-		html+='<div class="ems-next-sec">Jetzt</div><ul class="ems-next-list">'+nextActionItemHtml(current[0])+"</ul>";
-	}else{
-		html+='<div class="ems-next-sec">Jetzt</div><ul class="ems-next-list"><li style="border-left-color:#58a6ff">'
-			+'<span class="ems-next-name">'+esc(nowSum.title)+"</span>"
-			+(nowSum.meta?'<span class="ems-next-meta">'+esc(nowSum.meta)+"</span>":"")
-			+"</li></ul>";
+		html+='<div class="ems-next-sec">Jetzt</div>'+nextActionListHtml(current);
 	}
-	if(future.length){
-		html+='<div class="ems-next-sec">Nächste Aktion</div><ul class="ems-next-list">'+nextActionItemHtml(future[0])+"</ul>";
-		if(future[1])html+='<div class="ems-next-sec">Danach</div><ul class="ems-next-list">'+nextActionItemHtml(future[1])+"</ul>";
-	}else if(!current.length){
+	if(today.length){
+		html+='<div class="ems-next-sec">Heute</div>'+nextActionListHtml(today);
+		if(buckets.todayMore)html+='<div class="ems-next-idle"><div>+'+buckets.todayMore+" weitere heute</div></div>";
+	}
+	var ihDem=ihDemandFromContributions();
+	var ihFact=visImmersionDemandFact({
+		requiredKwh:ihDem.requiredKwh,
+		minPowerW:ihDem.minPowerW,
+		hasWindow:current.concat(today,later).some(function(it){return it.addon==="immersion";})
+			||authoritativeImmersionWindows(g("planner.intent.allocation.immersion_heater.plan_json")).length>0
+	});
+	if(ihFact)html+='<div class="ems-next-fact">'+esc(ihFact)+"</div>";
+	if(later.length){
+		html+='<div class="ems-next-sec">Morgen</div>'+nextActionListHtml(later);
+		if(buckets.laterMore)html+='<div class="ems-next-idle"><div>+'+buckets.laterMore+" weitere danach</div></div>";
+	}
+	if(!current.length&&!today.length&&!later.length){
 		var boilerRaw=g("addons.immersion_heater.runtime.boiler_temperature_c");
 		if(boilerRaw==null)boilerRaw=g("live.thermal.boiler_temp_c");
 		var facts=visIdleFacts({
@@ -1854,6 +1958,9 @@ function renderNext(){
 			boilerMinC:num(g("addons.immersion_heater.runtime.boiler_min_temp_c")),
 			wbConnected:g("addons.wallbox.status.evcc.connected")!=null?wallboxConnected():null
 		});
+		if(batPlan){
+			facts=facts.filter(function(line){return line.indexOf("Batterie ")!==0;});
+		}
 		html+='<div class="ems-next-sec">Keine Aktion geplant</div><div class="ems-next-idle">';
 		if(facts.length){
 			for(i=0;i<facts.length;i++)html+="<div>"+esc(facts[i])+"</div>";
@@ -1875,18 +1982,17 @@ function renderStack(){
 	var ihOpBadge=ihHw?{cls:"on",label:"LÄUFT"}:{cls:"idle",label:"AUS"};
 	var boilerTemp=fmtTemp(g("addons.immersion_heater.runtime.boiler_temperature_c")!=null?g("addons.immersion_heater.runtime.boiler_temperature_c"):g("live.thermal.boiler_temp_c"));
 	var bufferTemp=fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c")!=null?g("addons.immersion_heater.runtime.buffer_temperature_c"):g("live.thermal.buffer_temp_c"));
-	var remH=num(g("learning.thermal_boiler.estimated_remaining_hours"));
-	var emptyAt=fmtEmptyAt(g("learning.thermal_boiler.estimated_empty_at"));
 	var hyg=txt(g("addons.immersion_heater.runtime.hygiene_status_de"),"");
 	if(hyg==="—")hyg="";
+	var softT=fmtTemp(g("addons.immersion_heater.runtime.plan_target_temp_c"));
+	var maxT=fmtTemp(g("addons.immersion_heater.runtime.planning_max_temp_c"));
+	var zielLine=softT;
+	if(visRowValueOk(maxT))zielLine=visRowValueOk(softT)?(softT.replace(" °C","")+" / max "+maxT):("max "+maxT);
 	var ihRows=[
 		["Boiler",boilerTemp],
 		["Puffer",bufferTemp],
-		["Soft-Ziel",fmtTemp(g("addons.immersion_heater.runtime.plan_target_temp_c"))],
-		["Puffer-Max",fmtTemp(g("addons.immersion_heater.runtime.planning_max_temp_c"))],
+		["Ziel",zielLine],
 		["Bedarf",ihEnergyNeedLine()],
-		["Restzeit",(remH!==null&&remH>0)?(remH.toFixed(1).replace(".",",")+" h"):"—"],
-		["Leer ca.",emptyAt||"—"],
 		[ihSched.label,ihSched.value],
 		["Boiler-Learning",boilerLearningCompact()],
 		["Hygiene",(hyg&&/fällig|aktiv|nötig|blockiert/i.test(hyg))?shortNote(hyg,80):"—"]
@@ -1906,7 +2012,7 @@ function renderStack(){
 		var ihReason=txt(g("addons.immersion_heater.runtime.reason"),"");
 		if(ihReason==="—")ihReason="";
 		if(/cooling_k_per_h|newton/i.test(ihReason))ihReason="";
-		ihNote=shortNote(ihReason,90);
+		ihNote=shortNote(visImmersionWaitNote(ihReason),90);
 	}
 	var ihBadges={exec:execAuthorityBadge("immersion_heater"),op:ihOpBadge};
 
@@ -1917,7 +2023,6 @@ function renderStack(){
 	var wbMode=wallboxModeLabel(g("addons.wallbox.status.evcc.loadpoint_mode"))||"—";
 	var wbSoc=fmtPct(g("addons.wallbox.status.evcc.vehicle_soc_pct"));
 	var wbTarget=fmtPct(g("addons.wallbox.status.evcc.effective_limit_soc_pct"));
-	var wbRemain=num(g("addons.wallbox.status.evcc.charge_remaining_energy_kwh"));
 	var wbRewards=isOn(g("addons.wallbox.runtime.tibber_grid_rewards_active"));
 	var wbOpBadge=wbHw?{cls:"on",label:"LÄUFT"}:{cls:"idle",label:"AUS"};
 	var wbBadges={exec:execAuthorityBadge("wallbox"),op:wbOpBadge};
@@ -1925,6 +2030,15 @@ function renderStack(){
 	var wbReason=txt(g("addons.wallbox.runtime.reason_de"),"");
 	if(wbReason==="—")wbReason="";
 	if(/ev_execution|ev_foundation|decision_source/i.test(wbReason))wbReason="";
+	var wbRows=[
+		["Fahrzeug",wbConnected?"verbunden":"getrennt"],
+		["SOC",wbSoc],
+		["EVCC",wbMode]
+	];
+	if(wbHw||isPowerOn(wbLiveP))wbRows.push(["Laden",fmtW(wbLiveP)]);
+	if(visRowValueOk(wbTarget))wbRows.push(["Ziel-SOC",wbTarget]);
+	if(wbRewards)wbRows.push(["Grid Rewards","aktiv"]);
+	wbRows.push(["Nächstes",wbNextLine]);
 
 	function acCard(unitIndex){
 		var base="addons.air_conditioning.units.unit_"+unitIndex;
@@ -1945,20 +2059,13 @@ function renderStack(){
 			var pNow=meas!==null?meas:alloc;
 			var pLine=(pNow!==null?Math.round(pNow)+" W":"—")+(exp!==null&&exp!==pNow?(" / erw. "+Math.round(exp)+" W"):"");
 			rows.push(["Leistung",pLine]);
-		}else if(exp!==null){
-			rows.push(["Erw. Leistung",Math.round(exp)+" W"]);
 		}
 		var today=visJoinDurEnergy(num(g(stats+".today_runtime_sec")),num(g(stats+".today_energy_kwh")));
 		if(today)rows.push(["Heute",today]);
 		if(running){
 			var sess=visJoinDurEnergy(num(g(stats+".session_runtime_sec")),num(g(stats+".session_energy_kwh")));
 			if(sess)rows.push(["Session",sess]);
-		}else{
-			var last=visJoinDurEnergy(num(g(stats+".last_session_runtime_sec")),num(g(stats+".last_session_energy_kwh")));
-			if(last)rows.push(["Letzte Session",last]);
 		}
-		var tot=visJoinDurEnergy(num(g(stats+".total_runtime_sec")),num(g(stats+".total_energy_kwh")),true);
-		if(tot)rows.push(["Gesamt",tot]);
 		var nextLine=d.nextLine||"keines";
 		if(nextLine.indexOf("nächstes ")===0)nextLine=nextLine.slice(9);
 		rows.push(["Nächstes",nextLine]);
@@ -1967,17 +2074,7 @@ function renderStack(){
 
 	el.innerHTML=
 		card("Heizstab","#ffa657",ihBadges,ihRows,ihNote,immersionFaultResetActionsHtml())
-		+card("Wallbox / Auto","#d2a8ff",wbBadges,[
-			["Fahrzeug",wbConnected?"verbunden":"getrennt"],
-			["SOC",wbSoc],
-			["EVCC",wbMode],
-			["Laden",fmtW(wbLiveP)],
-			["Ziel-SOC",wbTarget],
-			["Restenergie",visFmtKwh(wbRemain)||"—"],
-			["Hoheit",wallboxAuthorityLine()],
-			["Grid Rewards",wbRewards?"aktiv":"—"],
-			["Nächstes",wbNextLine]
-		],shortNote(wbReason,90))
+		+card("Wallbox / Auto","#d2a8ff",wbBadges,wbRows,shortNote(wbReason,90))
 		+acCard(1)
 		+acCard(2)
 		+acCard(3)

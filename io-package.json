@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.299",
+		"version": "0.1.300",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.300": {
+				"en": "Operator dashboard: heater/EV/climate tiles are denser; the right column is wider and shows today's booked Daily Plan windows (SOC path, PV vs grid, heater demand without inventing a clock). Reload VIS after update.",
+				"de": "Betriebsdashboard: Heizstab-/EV-/Klima-Kacheln kompakter; rechte Spalte breiter und zeigt die gebuchten Daily-Plan-Fenster von heute (SOC-Pfad, PV vs. Netz, Heizstab-Bedarf ohne erfundene Uhrzeit). Nach Update VIS neu laden."
+			},
 			"0.1.299": {
 				"en": "Grid balance: last_action_at is written on tick; leftover AI Optimize-now is cleared without a run; inside_deadband is ready (not blocked); prices show one decimal. Daily Plan and VIS follow boiler cycles, not buffer Newton — live buffer temp is only the 63 °C rod cap. Reload VIS after restart.",
 				"de": "Netzausgleich: last_action_at wird mitgeschrieben; hängender KI-Jetzt-optimieren-Button wird ohne Lauf geleert; inside_deadband ist ready (nicht blocked); Preise mit einer Nachkommastelle. Daily Plan und VIS folgen Boiler-Zyklen, nicht Puffer-Newton — Puffer live nur als 63-°C-Stab-Cap. Nach Neustart VIS neu laden."

@@ -45,8 +45,8 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-sw{width:7px;height:7px;border-radius:2px;display:inline-block}
 .ems-ai-compact{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:2px 6px;margin-bottom:4px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;flex:0 0 auto}
 .ems-ai-compact .ems-ai-toggle{margin:0}
-.ems-main{display:grid;grid-template-columns:minmax(210px,24%) minmax(280px,1fr) minmax(220px,28%);gap:4px;align-items:stretch;flex:1 1 auto;min-height:0;overflow:hidden}
-.ems-tiles{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:auto;align-content:start;gap:4px;min-height:0;height:auto;max-height:100%;overflow:auto}
+.ems-main{display:grid;grid-template-columns:minmax(310px,410px) minmax(200px,1fr) minmax(220px,28%);gap:4px;align-items:stretch;flex:1 1 auto;min-height:0;overflow:hidden}
+.ems-tiles{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(min-content,1fr);align-content:stretch;gap:4px;min-height:0;height:100%;overflow:auto}
 .ems-tiles.ems-tiles-dense{grid-template-columns:1fr 1fr}
 .ems-card{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:4px 6px;min-height:0;overflow:hidden;display:flex;flex-direction:column}
 .ems-card-empty{display:none}
@@ -72,14 +72,14 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-badge.gb-on{background:#238636;color:#fff}
 .ems-badges{display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .ems-rows{display:grid;grid-template-columns:72px 1fr;gap:0 6px;font-size:10px;flex:0 0 auto;min-height:0;align-content:start}
-.ems-rows .l{color:#8b949e}.ems-rows .r{color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ems-note{margin-top:2px;font-size:9px;color:#c9d1d9;line-height:1.25;max-height:2.6em;overflow:hidden;flex:0 0 auto}
+.ems-rows .l{color:#8b949e}.ems-rows .r{color:#e6edf3;overflow:visible;white-space:normal;word-break:break-word}
+.ems-note{margin-top:2px;font-size:9px;color:#c9d1d9;line-height:1.25;max-height:none;overflow:visible;flex:0 0 auto}
 .ems-timeline{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 8px;display:flex;flex-direction:column;min-height:0;max-height:100%;overflow:hidden;min-width:0}
 .ems-timeline .ems-k{flex:0 0 auto;font-size:9px}
 .ems-next-body{flex:1 1 auto;min-height:0;overflow:auto;padding-right:2px}
-.ems-story{font-size:11px;color:#c9d1d9;line-height:1.35;margin:6px 0;padding:6px 7px;background:#161b22;border:1px solid #30363d;border-radius:4px}
-.ems-story-h{font-size:8px;color:#8b949e;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
-.ems-story div+div{margin-top:2px}
+.ems-story{font-size:11px;color:#e6edf3;line-height:1.3;margin:4px 0;padding:5px 6px;background:#161b22;border:1px solid #30363d;border-radius:4px}
+.ems-story-h{font-size:8px;color:#8b949e;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+.ems-story div+div{margin-top:1px}
 .ems-next-lage{font-size:11px;font-weight:600;color:#e6edf3;line-height:1.3;margin:3px 0 4px}
 .ems-next-lage-meta{display:block;font-size:9px;font-weight:400;color:#c9d1d9;margin-top:2px}
 .ems-next-sec{font-size:8px;color:#8b949e;text-transform:uppercase;letter-spacing:.04em;margin:6px 0 3px}
@@ -1566,21 +1566,32 @@ function visBatteryRemainKwh(socPct,capacityKwh,targetSocPct){
 	if(d<=0.5)return 0;
 	return capacityKwh*d/100;
 }
+function visFirstSentence(s){
+	var t=String(s==null?"":s).trim();
+	if(!t||t==="—")return"";
+	var m=t.match(/^(.+?[.!?])(?:\s|$)/);
+	return m?m[1].trim():t;
+}
 function visBatteryDayLines(s){
 	s=s||{};
 	var lines=[],head=visBatteryPlanLine(s);
-	if(head)lines.push(head);
 	var remain=visBatteryRemainKwh(s.socPct,s.capacityKwh,s.targetSocPct);
-	if(remain!=null&&remain>0.05){
-		var tgt=s.targetSocPct!=null&&isFinite(s.targetSocPct)?Math.round(s.targetSocPct)+" %":"100 %";
-		var ek=visFmtKwh(remain);
-		if(ek)lines.push("noch "+ek+" bis "+tgt);
-	}else if(remain===0){
-		lines.push("Ziel erreicht");
+	if(head){
+		if(remain!=null&&remain>0.05){
+			var tgt=s.targetSocPct!=null&&isFinite(s.targetSocPct)?Math.round(s.targetSocPct)+" %":"100 %";
+			var ek=visFmtKwh(remain);
+			if(ek)head+=" · noch "+ek+" bis "+tgt;
+		}else if(remain===0)head+=" · Ziel erreicht";
+		lines.push(head);
+	}else if(remain!=null&&remain>0.05){
+		var ek2=visFmtKwh(remain);
+		if(ek2)lines.push("noch "+ek2);
 	}
-	if(s.minSocPct!=null&&isFinite(s.minSocPct))lines.push("Reserve ab "+Math.round(s.minSocPct)+" %");
-	var strat=String(s.strategyDe==null?"":s.strategyDe).trim();
-	if(strat&&strat!=="—")lines.push(strat);
+	var strat=visFirstSentence(s.strategyDe);
+	if(strat)lines.push(strat);
+	if(s.minSocPct!=null&&isFinite(s.minSocPct)&&!/Reserve|Nachtreserve/i.test(strat)){
+		lines.push("Reserve ab "+Math.round(s.minSocPct)+" %");
+	}
 	if(s.gridWindowLabel)lines.push("Netzladung "+s.gridWindowLabel);
 	else if(s.hasPvChargeWindow)lines.push("PV-Ladung im Plan");
 	else if(s.chargingNow&&!s.emsChargeAction)lines.push("lädt gerade ohne EMS-Fenster");
@@ -1595,14 +1606,22 @@ function visCarDayLines(s){
 	if(s.socPct!=null&&isFinite(s.socPct))bits.push(Math.round(s.socPct)+" %");
 	if(s.targetSocPct!=null&&isFinite(s.targetSocPct))bits.push("Ziel "+Math.round(s.targetSocPct)+" %");
 	lines.push("Auto "+bits.join(" · "));
-	var strat=String(s.strategyDe==null?"":s.strategyDe).trim();
-	if(strat&&strat!=="—")lines.push(strat);
-	if(s.connected!==true){
+	var strat=visFirstSentence(s.strategyDe);
+	if(strat)lines.push(strat);
+	if(s.connected!==true&&!/ladeplan|nicht verfügbar|hängt/i.test(strat+" "+String(s.strategyDe||""))){
 		lines.push("kein Ladeplan und keine Grid Rewards, solange das Auto nicht hängt");
-	}else if(!s.hasWindow){
+	}else if(s.connected===true&&!s.hasWindow&&!/ladeplan/i.test(strat)){
 		lines.push("kein Ladeplan");
 	}
 	return lines;
+}
+function visClockRange(startMs,endMs){
+	function hm(ms){
+		try{return new Date(ms).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});}catch(e){return"";}
+	}
+	var a=hm(startMs),b=hm(endMs);
+	if(!a||!b)return"";
+	return a+"–"+b;
 }
 function visHorizonDayLabel(nowMs,dayIndex){
 	if(dayIndex===1)return"Heute";
@@ -2096,25 +2115,28 @@ function renderNext(){
 	if(boilerRaw==null)boilerRaw=g("live.thermal.boiler_temp_c");
 	var boilerC=num(boilerRaw),bufC=num(g("addons.immersion_heater.runtime.buffer_temperature_c"));
 	if(bufC==null)bufC=num(g("live.thermal.buffer_temp_c"));
-	if(boilerC!=null)ihLines.push("Boiler "+boilerC.toFixed(1).replace(".",",")+" °C");
-	if(bufC!=null)ihLines.push("Puffer "+bufC.toFixed(1).replace(".",",")+" °C");
+	if(boilerC!=null&&bufC!=null)ihLines.push("Boiler "+boilerC.toFixed(1).replace(".",",")+" / Puffer "+bufC.toFixed(1).replace(".",",")+" °C");
+	else if(boilerC!=null)ihLines.push("Boiler "+boilerC.toFixed(1).replace(".",",")+" °C");
+	else if(bufC!=null)ihLines.push("Puffer "+bufC.toFixed(1).replace(".",",")+" °C");
 	var softT=fmtTemp(g("addons.immersion_heater.runtime.plan_target_temp_c"));
-	if(visRowValueOk(softT))ihLines.push("Ziel "+softT);
 	var need=ihEnergyNeedLine();
-	if(visRowValueOk(need))ihLines.push("Bedarf "+need);
+	var zielNeed=[];
+	if(visRowValueOk(softT))zielNeed.push("Ziel "+softT);
+	if(visRowValueOk(need))zielNeed.push("Bedarf "+need);
+	if(zielNeed.length)ihLines.push(zielNeed.join(" · "));
 	if(ihFact)ihLines.push(ihFact);
 	else{
 		var ihSched=immersionScheduleRow(g("planner.intent.allocation.immersion_heater.plan_json"));
 		if(ihSched.value&&ihSched.value!=="keines")ihLines.push(ihSched.label+" "+ihSched.value);
 	}
 	var html='<div class="ems-k">EMS – Heute</div><div class="ems-next-body" data-scroll="1">';
-	html+=storyBlock("Batterie",batLines);
-	html+=storyBlock("Auto",carLines);
-	html+=storyBlock("Heizstab",ihLines);
-	html+=storyBlock("Klima",climateTodayLines());
 	if(current.length){
 		html+='<div class="ems-next-sec">Jetzt</div>'+nextActionListHtml(current);
 	}
+	html+=storyBlock("Klima",climateTodayLines());
+	html+=storyBlock("Batterie",batLines);
+	html+=storyBlock("Auto",carLines);
+	html+=storyBlock("Heizstab",ihLines);
 	if(today.length){
 		html+='<div class="ems-next-sec">Fenster heute</div>'+nextActionListHtml(today);
 		if(buckets.todayMore)html+='<div class="ems-next-idle"><div>+'+buckets.todayMore+" weitere heute</div></div>";
@@ -2143,7 +2165,7 @@ function renderHorizon(){
 	if(tomLine)dayLines.push(tomLine);
 	if(later.length){
 		var i,bits=[];
-		for(i=0;i<later.length;i++)bits.push(fmtRange(later[i].startMs,later[i].endMs)+" "+later[i].name);
+		for(i=0;i<later.length;i++)bits.push(visClockRange(later[i].startMs,later[i].endMs)+" "+later[i].name);
 		dayLines.push("geplante Fenster: "+bits.join("; "));
 	}else{
 		dayLines.push("keine gebuchten Fenster über Mitternacht hinaus");

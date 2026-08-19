@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.301",
+		"version": "0.1.302",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.302": {
+				"en": "Dashboard: left device tiles ~100 px wider so values are not clipped; EMS–Today is narrower but scrollable, with climate first. Reload VIS after update.",
+				"de": "Dashboard: linke Gerätekacheln ca. 100 px breiter, damit Werte nicht abschneiden; EMS–Heute schmaler aber scrollbar, Klima zuerst. Nach Update VIS neu laden."
+			},
 			"0.1.301": {
 				"en": "Morning dashboard: smaller device tiles (same font), EMS–Today with battery path / car even when unplugged / heater / climate why, and a coarse Tomorrow+days column. Plan panels no longer rebuild every 5 s. Reload VIS after update.",
 				"de": "Morgen-Dashboard: kleinere Gerätekacheln (gleiche Schrift), EMS–Heute mit Batterie-Pfad / Auto auch getrennt / Heizstab / Klima-Warum, plus grobe Spalte Morgen/Tage. Plan-Spalten zeichnen nicht mehr alle 5 s neu. Nach Update VIS neu laden."

@@ -722,8 +722,26 @@ function buildConsumerStates(input: UnifiedDayPlannerInput, slots: SlotWork[]): 
 			currentWindowEndMs,
 			pvConfidence01: conf,
 		});
-		const hardKwh = bridge.mandatoryEnergyKwh;
+		let hardKwh = bridge.mandatoryEnergyKwh;
 		const softKwh = bridge.economicHeadroomKwh;
+		const minStageE =
+			th.minPowerW && th.minPowerW > 0
+				? energyFromPowerW(th.minPowerW)
+				: th.availablePowerW && th.availablePowerW > 0
+					? energyFromPowerW(th.availablePowerW)
+					: 0;
+		const boilerAtOrNearMinNow =
+			th.boilerTempC != null &&
+			th.boilerMinTempC != null &&
+			th.boilerTempC <= th.boilerMinTempC + 0.05;
+		/*
+		 * Contract-Guard: Boiler-Minimum ist Pflichtbedarf.
+		 * Wenn der Boiler bereits am Mindestwert liegt, darf Hard nicht auf 0 fallen,
+		 * sonst plant der Solver gar keinen fahrbaren Slot und der Kessel springt später an.
+		 */
+		if (boilerAtOrNearMinNow && minStageE > EPS && hardKwh + EPS < minStageE) {
+			hardKwh = minStageE;
+		}
 		/*
 		 * Hard = Boiler (+ Hygiene), Deadline nur Boiler-emptyAt wenn usable.
 		 * Soft = Puffer-Headroom, keine Buffer-emptyAt-Urgency.

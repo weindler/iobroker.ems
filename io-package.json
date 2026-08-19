@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.313",
+		"version": "0.1.314",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.314": {
+				"en": "Planner guard for boiler minimum: when boiler temperature is at/near minimum, at least one drivable immersion-heater stage is enforced as mandatory demand so the plan cannot fall back to zero allocation.",
+				"de": "Planner-Guard für Boiler-Minimum: Liegt die Boiler-Temperatur am/nahe Mindestwert, wird mindestens eine fahrbare Heizstab-Stufe als Pflichtbedarf erzwungen, damit die Planung nicht auf null Allocation fällt."
+			},
 			"0.1.313": {
 				"en": "Planner now treats boiler empty-at as mandatory planning signal more robustly, so upcoming boiler-minimum underruns are planned in advance instead of being deferred despite available midday surplus.",
 				"de": "Der Planer behandelt Boiler-emptyAt jetzt robuster als Pflichtsignal, sodass absehbare Boiler-Minimum-Unterschreitungen frühzeitig eingeplant werden statt trotz verfügbarem Mittagsüberschuss verschoben zu werden."

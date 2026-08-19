@@ -1723,18 +1723,28 @@ function boilerLearningCompact(){
 }
 function ihEnergyNeedLine(){
 	var arr=parseArr(g("planner.intent.contributions.immersion_heater.contributions_json"));
-	var mand=null,flex=null,i;
+	var mand=null,flex=null,minW=null,i;
 	for(i=0;i<arr.length;i++){
 		var c=arr[i];if(!c)continue;
 		var id=String(c.contributionId||"");
 		var k=c.details&&num(c.details.requiredEnergyKwh);
 		if(id.indexOf("mandatory")>=0)mand=k;
 		if(id.indexOf("flexible")>=0)flex=k;
+		var m=c.details&&num(c.details.minPowerW);
+		if(m!=null&&m>0)minW=minW==null?m:Math.min(minW,m);
 	}
-	var bits=[];
-	if(mand!==null)bits.push("Hart "+mand.toFixed(1).replace(".",",")+" kWh");
-	if(flex!==null)bits.push("Flex "+flex.toFixed(1).replace(".",",")+" kWh");
-	return bits.length?bits.join(" · "):"—";
+	var bits=[],totalKwh=0;
+	if(mand!==null){bits.push("Hart "+mand.toFixed(1).replace(".",",")+" kWh");totalKwh+=mand;}
+	if(flex!==null){bits.push("Flex "+flex.toFixed(1).replace(".",",")+" kWh");totalKwh+=flex;}
+	var line=bits.length?bits.join(" · "):"—";
+	if(totalKwh>0.05&&minW!=null&&minW>0){
+		var hours=totalKwh/(minW/1000);
+		var h=Math.floor(hours),m=Math.round((hours-h)*60);
+		if(m>=60){h++;m=0;}
+		var dur=h>0?h+"h "+(m<10?"0"+m:m)+"m":m+"m";
+		line+=" (ca. "+dur+")";
+	}
+	return line;
 }
 function wallboxAuthorityLine(){
 	if(isOn(g("addons.wallbox.runtime.tibber_grid_rewards_active")))return"Tibber";

@@ -1082,7 +1082,12 @@ function scoreCandidate(input, state, candidate, weights) {
              * Opportunity vs. PV→Batterie über gemeinsamen Peak-/SOC-Wert — kein Hardcode.
              */
             const socAt = projectedSocAt(state, candidate.slotIdx);
-            const isHighSoc = socAt >= state.batteryTargetKwh - exports.EPS;
+            /*
+             * One-Plan: Wenn die Batterie JETZT voll ist oder im Slot voll sein wird,
+             * darf sie den Heizstab unterstützen.
+             */
+            const isNowSlot = candidate.slotIdx === 0;
+            const isHighSoc = socAt >= state.batteryTargetKwh - exports.EPS || (isNowSlot && state.socKwh >= state.batteryTargetKwh - exports.EPS);
             /*
              * Soft-IH ist PV-fokussiert. Aber: Wenn die Batterie voll ist, darf sie
              * unterstützen, um Einspeisung zu vermeiden (One-Plan-Strategie).

@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.306",
+		"version": "0.1.307",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.307": {
+				"en": "Dashboard: added estimated remaining runtime for immersion heater (e.g. 'Flex 6.8 kWh (approx. 4h 00m)'). Also improved planner to more reliably show 'drivable windows' when battery is currently full, regardless of future SOC forecasts.",
+				"de": "Dashboard: Geschätzte Restlaufzeit für den Heizstab hinzugefügt (z.B. 'Flex 6,8 kWh (ca. 4h 00m)'). Zudem Planer verbessert, um 'fahrbare Fenster' zuverlässiger anzuzeigen, wenn die Batterie aktuell voll ist, ungeachtet zukünftiger SOC-Prognosen."
+			},
 			"0.1.306": {
 				"en": "Updated Cursor rule for model selection: Sonnet 5 High (API) is now explicitly allowed alongside Grok 4.5 and Composer 2.5 for coding tasks, giving users the choice between Cursor pools and API usage.",
 				"de": "Cursor-Regel zur Modellwahl aktualisiert: Sonnet 5 High (API) ist nun explizit neben Grok 4.5 und Composer 2.5 für Coding-Aufgaben erlaubt, sodass der Nutzer zwischen Cursor-Pools und API-Nutzung wählen kann."

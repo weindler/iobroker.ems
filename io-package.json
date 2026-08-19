@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.310",
+		"version": "0.1.311",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.311": {
+				"en": "Planner now correctly allocates immersion heater before climate when total PV surplus is sufficient for both. Previously, climate was allocated first, leaving less than 1700W for the heater.",
+				"de": "Planer teilt den Heizstab jetzt korrekt vor der Klima-Anlage zu, wenn der PV-Gesamtüberschuss für beide reicht. Zuvor wurde Klima zuerst zugeteilt, sodass weniger als 1700W für den Heizstab übrig blieben."
+			},
 			"0.1.310": {
 				"en": "Planner now recalculates every minute during daytime (06–21h local) and every 5 minutes at night. This replaces the removed live-surplus side-channel and ensures the planner reacts quickly to live PV surplus.",
 				"de": "Planer berechnet tagsüber (06–21 Uhr lokal) jede Minute neu und nachts alle 5 Minuten. Dies ersetzt den entfernten Live-Surplus-Seitenkanal und stellt sicher, dass der Planer schnell auf Live-PV-Überschuss reagiert."

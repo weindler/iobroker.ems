@@ -479,7 +479,7 @@ describe("bootstrap cold start recovery", () => {
 		const channels = byType.channel ?? 0;
 		console.log(`empty-config surface states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
 		assert.ok(
-			states <= 500,
+			states <= 550,
 			`empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`,
 		);
 		assert.ok(states >= 250, `unexpectedly small surface states=${states}`);

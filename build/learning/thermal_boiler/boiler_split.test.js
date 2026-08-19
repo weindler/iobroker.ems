@@ -444,11 +444,12 @@ function immersionBase() {
         });
         strict_1.default.equal(flex.deadlineIso, null);
         strict_1.default.equal(flex.details.emptyAtPlanningUsable, false);
-        strict_1.default.equal(flex.details.bufferEstimatedEmptyAt, "2026-08-15T12:00:00.000Z");
+        strict_1.default.equal(flex.details.bufferEstimatedEmptyAt, null);
         strict_1.default.equal(flex.details.boilerEstimatedEmptyAt, null);
         strict_1.default.equal(flex.details.hardThermalSource, "boiler");
-        strict_1.default.equal(flex.details.softThermalSource, "buffer");
-        strict_1.default.equal(flex.details.thermalLearningModel, "newton");
+        strict_1.default.equal(flex.details.softThermalSource, "buffer_cap");
+        strict_1.default.equal(flex.details.thermalLearningModel, "none");
+        strict_1.default.equal(flex.details.bufferLearningModel, "unused");
         strict_1.default.equal(flex.details.boilerLearningModel, "none");
     });
     (0, node_test_1.it)("T9: hygiene >60 °C is boiler-based", () => {

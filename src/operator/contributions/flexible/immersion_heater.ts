@@ -44,7 +44,7 @@ export interface ImmersionContributionBuildInput {
 	pvBiasStatus: string | null;
 	forecastModeEnabled: boolean;
 	aiOptimizationAllowed: boolean;
-	/** Puffer-Learning (`learning.thermal_runtime.*`) — nur Soft/Precharge, nie Hard-Deadline. */
+	/** Puffer-Learning — nicht mehr planungswirksam (Stab-Cap ist live planningMax). */
 	thermalLearning?: ThermalLearningSignal | null;
 	/** Boiler-Learning (`learning.thermal_boiler.*`) — Hard-Deadline nur wenn valid/usable. */
 	boilerLearning?: ThermalLearningSignal | null;
@@ -72,10 +72,10 @@ export interface ImmersionContributionBuildInput {
 }
 
 function learningMargin(input: ImmersionContributionBuildInput): ImmersionLearningMargin | null {
-	if (!input.thermalLearning) return null;
+	if (!input.boilerLearning) return null;
 	return {
-		status: input.thermalLearning.status,
-		coolingRateCPerHAvg: input.thermalLearning.coolingRateCPerHAvg,
+		status: input.boilerLearning.status,
+		coolingRateCPerHAvg: input.boilerLearning.coolingRateCPerHAvg,
 	};
 }
 
@@ -92,30 +92,23 @@ function emptyAtSourceOf(
 	return null;
 }
 
-/** Puffer-Learning-Details — keine Hard-Deadline-Felder (estimatedEmptyAt / emptyAtPlanningUsable). */
+/** Boiler-Learning für Daily-Plan-Status; Puffer-Learner nicht mehr als degrade-Quelle. */
 function thermalLearningDetails(input: ImmersionContributionBuildInput): Record<string, unknown> {
-	const learning = input.thermalLearning ?? null;
+	const boiler = input.boilerLearning ?? null;
+	const cycle = hasCycleCoolingModel(boiler);
 	return {
-		thermalLearningStatus: learning?.status ?? "missing",
-		thermalLearningHealth: learning?.health ?? null,
-		thermalLearningSamples: learning?.samples ?? null,
-		coolingRateCPerHAvg: learning?.coolingRateCPerHAvg ?? null,
-		coolingConstantPerH: learning?.coolingConstantPerH ?? null,
-		coolingAsymptoteC: learning?.coolingAsymptoteC ?? null,
-		estimatedRemainingHours: learning?.estimatedRemainingHours ?? null,
-		bufferEstimatedEmptyAt: learning?.estimatedEmptyAt ?? null,
-		thermalLearningModel: hasCycleCoolingModel(learning)
-			? "cycle"
-			: hasNewtonEmptyAtModel(learning)
-				? "newton"
-				: "none",
-		bufferLearningModel: hasCycleCoolingModel(learning)
-			? "cycle"
-			: hasNewtonEmptyAtModel(learning)
-				? "newton"
-				: "none",
-		thermalLearningDegradedCauseDe: thermalLearningDegradedCauseDe(learning),
-		learnedDayTypeRuntimeHoursMedian: learning?.currentDayTypeRuntimeHoursMedian ?? null,
+		thermalLearningStatus: cycle ? (boiler?.status ?? "missing") : "missing",
+		thermalLearningHealth: boiler?.health ?? null,
+		thermalLearningSamples: boiler?.samples ?? null,
+		coolingRateCPerHAvg: boiler?.coolingRateCPerHAvg ?? null,
+		coolingConstantPerH: boiler?.coolingConstantPerH ?? null,
+		coolingAsymptoteC: boiler?.coolingAsymptoteC ?? null,
+		estimatedRemainingHours: boiler?.estimatedRemainingHours ?? null,
+		bufferEstimatedEmptyAt: null,
+		thermalLearningModel: cycle ? "cycle" : hasNewtonEmptyAtModel(boiler) ? "newton" : "none",
+		bufferLearningModel: "unused",
+		thermalLearningDegradedCauseDe: cycle ? thermalLearningDegradedCauseDe(boiler) : null,
+		learnedDayTypeRuntimeHoursMedian: boiler?.currentDayTypeRuntimeHoursMedian ?? null,
 	};
 }
 
@@ -275,26 +268,21 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 	const minW = minStagePowerW(input.config);
 
 	/*
-	 * Nachtbrücke: empty_at vor nächstem Morgen → Ziel anheben + Deadline.
-	 * Auch degraded Learning (mit empty_at) — Qualität steht in emptyAtSource/thermalLearningStatus;
-	 * Unified gewichtet Deadline danach (valid stärker als estimated).
-	 */
-	/*
-	 * Nachtbrücke braucht lineare Cycle-Rate. Newton-empty_at allein setzt Deadline (unten),
-	 * ohne Nachtbrücken-Zielanhebung — Semantik getrennt (A1).
+	 * Nachtbrücke nur aus Boiler-Zyklen (nicht Puffer-Newton).
+	 * Puffer-Temperatur bleibt der 63-°C-Safety-Cap, kein Kühlmodell.
 	 */
 	const nightBridge =
-		input.bufferTempC !== null &&
-		thermalEmptyAtUsableForPlanning(input.thermalLearning) &&
-		hasCycleCoolingModel(input.thermalLearning)
+		input.boilerTempC != null &&
+		thermalEmptyAtUsableForPlanning(input.boilerLearning) &&
+		hasCycleCoolingModel(input.boilerLearning)
 			? resolveImmersionNightBridge({
 					now: input.now,
-					bufferTempC: input.bufferTempC,
-					planningMinTempC: input.config.planningMinTempC,
+					bufferTempC: input.boilerTempC,
+					planningMinTempC: input.config.boilerMinTempC,
 					planningMaxTempC: input.config.planningMaxTempC,
 					forecastTargetTempC: target.targetTempC,
-					coolingRateCPerHAvg: input.thermalLearning!.coolingRateCPerHAvg!,
-					estimatedEmptyAtIso: input.thermalLearning!.estimatedEmptyAt!,
+					coolingRateCPerHAvg: input.boilerLearning!.coolingRateCPerHAvg!,
+					estimatedEmptyAtIso: input.boilerLearning!.estimatedEmptyAt!,
 					timezone: input.timezone,
 				})
 			: null;
@@ -304,13 +292,15 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 		: target.targetTempC;
 
 	/*
-	 * Puffer als Flexspeicher: Vorladung auch ohne emptyAt, wenn PV-Überschuss
-	 * und Batterie-Kontext vorliegen. emptyAt bleibt Reichweiten-Info.
+	 * PV-Vorladung: Puffer live nur als Stab-Cap (planningMax, typ. 63 °C).
+	 * Reichweite/emptyAt kommt vom Boiler, nicht vom Puffer-Learner.
 	 */
+	const boilerCycleUsable =
+		thermalEmptyAtUsableForPlanning(input.boilerLearning) &&
+		hasCycleCoolingModel(input.boilerLearning);
 	const canConsiderPrecharge =
 		input.bufferTempC !== null &&
-		(thermalEmptyAtUsableForPlanning(input.thermalLearning) ||
-			(input.todayPvSurplusKwh != null && input.todayPvSurplusKwh >= 3));
+		(boilerCycleUsable || (input.todayPvSurplusKwh != null && input.todayPvSurplusKwh >= 3));
 	const pvPrecharge = canConsiderPrecharge
 		? resolveThermalPvPrecharge({
 				now: input.now,
@@ -318,8 +308,10 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 				planningMinTempC: input.config.planningMinTempC,
 				planningMaxTempC: input.config.planningMaxTempC,
 				baseTargetTempC: afterBridgeTempC,
-				coolingRateCPerHAvg: input.thermalLearning?.coolingRateCPerHAvg ?? null,
-				estimatedEmptyAtIso: input.thermalLearning?.estimatedEmptyAt ?? null,
+				coolingRateCPerHAvg: boilerCycleUsable
+					? input.boilerLearning!.coolingRateCPerHAvg
+					: null,
+				estimatedEmptyAtIso: boilerCycleUsable ? input.boilerLearning!.estimatedEmptyAt : null,
 				nextPvHeatOpportunityIso: input.nextPvHeatOpportunityIso ?? null,
 				pvTodayKwh: input.pvTodayKwh,
 				pvTomorrowKwh: input.pvTomorrowKwh,
@@ -385,13 +377,6 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 			const reheatAt = round3(target.targetTempC - Math.max(0, input.config.temperatureHysteresisK));
 			reasonDe = `${reasonDe} Runtime-Hysterese aktiv (Write erst unter ${reheatAt} °C) — Planung bleibt.`;
 		}
-		if (input.thermalLearning?.status === "degraded") {
-			status = "degraded";
-			const cause = thermalLearningDegradedCauseDe(input.thermalLearning);
-			reasonDe = cause
-				? `${reasonDe} degraded: ${cause}.`
-				: `${reasonDe} Thermal Learning degraded — empty_at geschätzt.`;
-		}
 	} else if (!participation.allowed) {
 		status = participation.status;
 		reasonDe = participation.reasonDe;
@@ -405,19 +390,16 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 	const quality = operatorQuality(status, reasonDe);
 
 	/*
-	 * Soft-Beitrag: keine Hard-Deadline.
-	 * Buffer-emptyAt / Nachtbrücke dürfen Soft-Ziel anheben, aber NICHT
-	 * immersion_heater Hard-Deadline setzen (I4).
-	 * Boiler-emptyAt nur in Details → Unified Hard-Consumer.
+	 * Soft-Beitrag: keine Hard-Deadline aus dem Flex-Beitrag.
+	 * Nachtbrücke darf das Soft-Ziel anheben, setzt aber keine Hard-Deadline.
+	 * Boiler-emptyAt nur bei Cycle-Learning in Details → Unified Hard-Consumer.
 	 */
 	const boilerLearning = input.boilerLearning ?? null;
-	const boilerEmptyUsable = thermalEmptyAtUsableForPlanning(boilerLearning);
+	const boilerEmptyUsable =
+		thermalEmptyAtUsableForPlanning(boilerLearning) && hasCycleCoolingModel(boilerLearning);
 	const boilerEstimatedEmptyAt = boilerEmptyUsable ? boilerLearning!.estimatedEmptyAt : null;
-	const boilerEmptyAtSource = emptyAtSourceOf(boilerLearning);
+	const boilerEmptyAtSource = boilerEmptyUsable ? emptyAtSourceOf(boilerLearning) : null;
 
-	if (enabled && input.thermalLearning?.estimatedEmptyAt) {
-		reasonDe = `${reasonDe} Puffer-Learning nur Soft (kein Hard-Deadline).`;
-	}
 	if (boilerEstimatedEmptyAt) {
 		reasonDe = `${reasonDe} Boiler-Reichweite ${boilerEstimatedEmptyAt} (${boilerEmptyAtSource ?? "unknown"}).`;
 	}
@@ -453,8 +435,9 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 				hygieneDue: input.hygieneDue === true,
 				hygieneMandatoryKwh: input.hygieneMandatoryKwh ?? null,
 				hygieneReasonDe: input.hygieneReasonDe ?? null,
-				/** Buffer-emptyAt nur Explain — nie Hard. */
-				bufferEstimatedEmptyAt: input.thermalLearning?.estimatedEmptyAt ?? null,
+				/** Puffer-emptyAt wird nicht mehr geplant — Stab-Cap bleibt planningMaxTempC. */
+				bufferEstimatedEmptyAt: null,
+				softThermalSource: "buffer_cap",
 				/** Boiler-emptyAt für Hard-Deadline (nur wenn usable). */
 				boilerEstimatedEmptyAt,
 				estimatedEmptyAt: boilerEstimatedEmptyAt,
@@ -470,7 +453,6 @@ export function buildImmersionFlexibleContribution(input: ImmersionContributionB
 						: "none",
 				boilerLearningSamples: boilerLearning?.samples ?? null,
 				hardThermalSource: "boiler",
-				softThermalSource: "buffer",
 				targetReasonDe: [
 					target.targetReasonDe,
 					nightBridge?.active ? nightBridge.reasonDe : null,

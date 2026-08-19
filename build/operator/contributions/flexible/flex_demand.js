@@ -8,7 +8,7 @@ const MAX_HEATING_HOURS_PER_DAY = 18;
 /**
  * Sicherheitsmarge gegen gelernten Wärmeverlust (ein Daily-Plan-Slot = 15 min), bis die
  * Allocation den Heizstab tatsächlich einschalten kann. Nur genutzt, wenn Thermal-Runtime-Learning
- * (`learning.thermal_runtime.*`) ein belastbares Modell liefert (`status === "valid"`).
+ * (`learning.thermal_boiler.*`) ein belastbares Zyklus-Modell liefert (`status === "valid"`).
  */
 const LEARNED_LOSS_MARGIN_HOURS = 0.25;
 function estimateImmersionRequiredEnergyKwh(bufferTempC, targetTempC, maxPowerW, learning) {

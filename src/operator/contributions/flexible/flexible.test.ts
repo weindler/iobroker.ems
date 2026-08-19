@@ -702,7 +702,7 @@ describe("immersion heater contributions", () => {
 		assert.equal(flexible.deadlineIso, null);
 	});
 
-	it("buffer empty_at is soft-only — no flexible Hard-Deadline", () => {
+	it("buffer empty_at is ignored — no flexible Hard-Deadline, no Daily-Plan degrade", () => {
 		const [, flexible] = buildImmersionHeaterContributions(
 			immersionInput({
 				bufferTempC: 49,
@@ -722,12 +722,14 @@ describe("immersion heater contributions", () => {
 		);
 		assert.equal(flexible.enabled, true);
 		assert.equal(flexible.deadlineIso, null);
-		assert.equal(flexible.details.bufferEstimatedEmptyAt, "2026-07-26T14:00:00.000Z");
+		assert.equal(flexible.details.bufferEstimatedEmptyAt, null);
 		assert.equal(flexible.details.emptyAtPlanningUsable, false);
-		assert.equal(flexible.quality.status, "degraded");
+		assert.equal(flexible.quality.status, "valid");
+		assert.equal(flexible.details.thermalLearningStatus, "missing");
+		assert.equal(flexible.details.bufferLearningModel, "unused");
 	});
 
-	it("A1: Newton buffer empty_at supports soft precharge, not Hard-Deadline", () => {
+	it("A1: Newton buffer empty_at is unused; Daily Plan does not degrade", () => {
 		const [, flexible] = buildImmersionHeaterContributions(
 			immersionInput({
 				bufferTempC: 49,
@@ -747,14 +749,14 @@ describe("immersion heater contributions", () => {
 		);
 		assert.equal(flexible.enabled, true);
 		assert.equal(flexible.deadlineIso, null);
-		assert.equal(flexible.details.bufferEstimatedEmptyAt, "2026-07-26T14:00:00.000Z");
-		assert.equal(flexible.details.thermalLearningModel, "newton");
-		assert.equal(flexible.details.bufferLearningModel, "newton");
+		assert.equal(flexible.details.bufferEstimatedEmptyAt, null);
+		assert.equal(flexible.details.thermalLearningModel, "none");
+		assert.equal(flexible.details.bufferLearningModel, "unused");
 		assert.equal(flexible.details.hardThermalSource, "boiler");
-		assert.equal(flexible.details.softThermalSource, "buffer");
-		assert.equal(flexible.quality.status, "degraded");
-		assert.notEqual(flexible.details.thermalLearningStatus, "valid");
-		assert.match(String(flexible.details.thermalLearningDegradedCauseDe ?? ""), /Newton estimate/);
+		assert.equal(flexible.details.softThermalSource, "buffer_cap");
+		assert.equal(flexible.quality.status, "valid");
+		assert.equal(flexible.details.thermalLearningStatus, "missing");
+		assert.equal(flexible.details.thermalLearningDegradedCauseDe, null);
 	});
 
 	it("boiler empty_at usable sets Hard-Deadline fields; flexible deadline stays null", () => {
@@ -792,7 +794,7 @@ describe("immersion heater contributions", () => {
 		assert.equal(flexible.details.estimatedEmptyAt, "2026-07-26T14:00:00.000Z");
 		assert.equal(flexible.details.emptyAtSource, "learned");
 		assert.equal(flexible.details.emptyAtPlanningUsable, true);
-		assert.equal(flexible.details.bufferEstimatedEmptyAt, "2026-07-26T18:00:00.000Z");
+		assert.equal(flexible.details.bufferEstimatedEmptyAt, null);
 	});
 
 	it("soft preload remains without Hard-Deadline when buffer learning valid", () => {
@@ -815,15 +817,44 @@ describe("immersion heater contributions", () => {
 		);
 		assert.equal(flexible.enabled, true);
 		assert.equal(flexible.deadlineIso, null);
-		assert.equal(flexible.details.bufferEstimatedEmptyAt, "2026-07-26T14:00:00.000Z");
+		assert.equal(flexible.details.bufferEstimatedEmptyAt, null);
 	});
 
-	it("night bridge raises soft target; no Hard-Deadline from buffer empty_at", () => {
+	it("boiler Newton without cycles is not Hard-usable and does not degrade Daily Plan", () => {
+		const [, flexible] = buildImmersionHeaterContributions(
+			immersionInput({
+				bufferTempC: 49,
+				boilerLearning: {
+					status: "degraded",
+					health: "degraded",
+					samples: 0,
+					coolingRateCPerHAvg: null,
+					coolingConstantPerH: 0.09,
+					coolingAsymptoteC: 40,
+					estimatedRemainingHours: 18,
+					estimatedEmptyAt: "2026-07-26T08:46:00.000Z",
+					currentDayTypeRuntimeHoursMedian: null,
+					reasonDe: "Newton-Fallback",
+				},
+			}),
+		);
+		assert.equal(flexible.enabled, true);
+		assert.equal(flexible.deadlineIso, null);
+		assert.equal(flexible.quality.status, "valid");
+		assert.equal(flexible.details.thermalLearningStatus, "missing");
+		assert.equal(flexible.details.thermalLearningDegradedCauseDe, null);
+		assert.equal(flexible.details.boilerLearningModel, "newton");
+		assert.equal(flexible.details.emptyAtPlanningUsable, false);
+		assert.equal(flexible.details.boilerEstimatedEmptyAt, null);
+	});
+
+	it("night bridge raises soft target from boiler cycles; no Hard-Deadline", () => {
 		const now = new Date("2026-08-04T12:00:00.000Z"); // 14:00 CEST
 		const [, flexible] = buildImmersionHeaterContributions(
 			immersionInput({
 				now,
 				bufferTempC: 47,
+				boilerTempC: 47,
 				timezone: "Europe/Berlin",
 				config: immersionDeviceConfigFromAdapter({
 					ih_stage_count: 1,
@@ -833,8 +864,9 @@ describe("immersion heater contributions", () => {
 					ih_buffer_temp_c_enabled: true,
 					ih_planning_min_temp_c: 44,
 					ih_planning_max_temp_c: 63,
+					ih_boiler_min_temp_c: 50,
 				}),
-				thermalLearning: {
+				boilerLearning: {
 					status: "valid",
 					health: "ok",
 					samples: 12,
@@ -842,9 +874,9 @@ describe("immersion heater contributions", () => {
 					coolingConstantPerH: 0.04,
 					coolingAsymptoteC: 18,
 					estimatedRemainingHours: 3.5,
-					estimatedEmptyAt: "2026-08-04T18:26:00.000Z", // 20:26 CEST
+					estimatedEmptyAt: "2026-08-04T18:26:00.000Z",
 					currentDayTypeRuntimeHoursMedian: 12,
-					reasonDe: "belastbares Modell",
+					reasonDe: "belastbares Boiler-Modell",
 				},
 			}),
 		);

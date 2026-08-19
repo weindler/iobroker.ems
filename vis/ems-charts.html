@@ -295,14 +295,13 @@ var stateIds=[
 	INST+".addons.air_conditioning.units.unit_2.cleaning_active",
 	INST+".addons.air_conditioning.units.unit_2.governance_allowed",
 	INST+".addons.air_conditioning.runtime.reason_de",
-	INST+".learning.thermal_runtime.estimated_remaining_hours",
-	INST+".learning.thermal_runtime.estimated_empty_at",
 	INST+".learning.thermal_boiler.estimated_remaining_hours",
 	INST+".learning.thermal_boiler.estimated_empty_at",
 	INST+".learning.thermal_boiler.reason_de",
 	INST+".learning.thermal_boiler.status",
 	INST+".learning.thermal_boiler.model",
 	INST+".learning.thermal_boiler.quality",
+	INST+".learning.thermal_boiler.samples",
 	INST+".learning.pv_bias.corrected_today_kwh",
 	INST+".learning.pv_bias.corrected_tomorrow_kwh",
 	INST+".learning.pv_bias.raw_today_kwh",
@@ -1530,9 +1529,8 @@ function climateDeviceBadge(running){
 function boilerLearningCompact(){
 	var quality=String(g("learning.thermal_boiler.quality")||"").toLowerCase();
 	var model=String(g("learning.thermal_boiler.model")||"").toLowerCase();
-	var emptyAt=fmtEmptyAt(g("learning.thermal_boiler.estimated_empty_at"));
-	if(emptyAt&&quality!=="insufficient_data"&&quality!=="no_source")return"belastbar";
-	if(model==="newton"||model==="cycle"||quality==="newton_fallback"||quality==="cycle")return"Newton";
+	if(quality==="cycle")return"belastbar";
+	if(model==="newton"||quality==="newton_fallback")return"Newton";
 	return"sammelt Daten";
 }
 function ihEnergyNeedLine(){
@@ -1878,8 +1876,7 @@ function renderStack(){
 	var boilerTemp=fmtTemp(g("addons.immersion_heater.runtime.boiler_temperature_c")!=null?g("addons.immersion_heater.runtime.boiler_temperature_c"):g("live.thermal.boiler_temp_c"));
 	var bufferTemp=fmtTemp(g("addons.immersion_heater.runtime.buffer_temperature_c")!=null?g("addons.immersion_heater.runtime.buffer_temperature_c"):g("live.thermal.buffer_temp_c"));
 	var remH=num(g("learning.thermal_boiler.estimated_remaining_hours"));
-	if(remH===null)remH=num(g("learning.thermal_runtime.estimated_remaining_hours"));
-	var emptyAt=fmtEmptyAt(g("learning.thermal_boiler.estimated_empty_at"))||fmtEmptyAt(g("learning.thermal_runtime.estimated_empty_at"));
+	var emptyAt=fmtEmptyAt(g("learning.thermal_boiler.estimated_empty_at"));
 	var hyg=txt(g("addons.immersion_heater.runtime.hygiene_status_de"),"");
 	if(hyg==="—")hyg="";
 	var ihRows=[

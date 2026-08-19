@@ -352,7 +352,7 @@ function scenarioAInput(overrides = {}) {
         strict_1.default.equal(flex.enabled, true);
         strict_1.default.ok(flex.details.requiredEnergyKwh > 0);
         strict_1.default.equal(flex.deadlineIso, null);
-        strict_1.default.equal(flex.details.bufferEstimatedEmptyAt, "2026-08-08T15:25:00.000Z");
+        strict_1.default.equal(flex.details.bufferEstimatedEmptyAt, null);
         strict_1.default.equal(flex.details.emptyAtPlanningUsable, false);
         strict_1.default.equal(flex.details.reheatHysteresisRuntimeOnly, true);
     });

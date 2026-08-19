@@ -324,7 +324,7 @@ function buildUnifiedDayAgendaDe(plan, execution, strategy) {
     if (thermalDeadline?.ref) {
         const clock = fmtClock(thermalDeadline.ref, tz);
         if (clock)
-            lines.push(`Puffer leer voraussichtlich ~${clock}`);
+            lines.push(`Boiler leer voraussichtlich ~${clock}`);
     }
     return lines;
 }

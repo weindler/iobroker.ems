@@ -331,6 +331,19 @@ describe("grid balance safety contract v0.1.284", () => {
 		);
 	});
 
+	it("inside_deadband is ready, not blocked", () => {
+		assert.equal(
+			formatGridBalanceExplain({
+				enabled: true,
+				blockReason: "inside_deadband",
+				priceNowCt: 33.050000000000004,
+				priceMinCt: 30,
+				gridImportW: 0,
+			}),
+			"grid_balance=ready, reason=inside_deadband, price=33.1ct, minimum=30.0ct, grid_import=0W",
+		);
+	});
+
 	it("admin jsonConfig has min price and dropped price-gate/median fields", () => {
 		const cfg = readFileSync(ADMIN_JSON, "utf8");
 		assert.equal(/bat_grid_balance_price_gate_enabled/.test(cfg), false);

@@ -61,6 +61,9 @@ function seededHost() {
         strict_1.default.equal(host.states.get("live.pv.power_w"), 1331);
         strict_1.default.equal(host.states.get("live.battery.soc_pct"), 99);
         strict_1.default.equal(host.states.get("live.price.now_ct_per_kwh"), 32);
+        host.foreign.set("tibber.price", 0.3305);
+        await (0, live_cache_1.refreshLivePowerStrip)(host);
+        strict_1.default.equal(host.states.get("live.price.now_ct_per_kwh"), 33.1);
         strict_1.default.equal(host.states.has("live.battery.capacity_kwh"), false);
         strict_1.default.equal(host.states.has("live.thermal.buffer_temp_c"), false);
         strict_1.default.ok(result.updated.includes("live.pv.power_w"));

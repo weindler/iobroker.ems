@@ -130,6 +130,8 @@ let lastGridBalanceWriteW: number | null = null;
 let lastGridBalanceWriteAtMs: number | null = null;
 let lastGridBalanceAction = "";
 let lastGridBalanceActionAt = "";
+/** Nach Restart einmal schreiben, auch wenn last_action schon derselbe String ist (sonst bleibt ein alter Timestamp stehen). */
+let gridBalanceLastActionAtSynced = false;
 let gridBalanceOwnsSetpoint = false;
 let gridBalanceLiveTest: GridBalanceLiveTestState = emptyGridBalanceLiveTest();
 let gbKeepaliveTimer: NodeJS.Timeout | null = null;
@@ -150,6 +152,7 @@ export function __resetBatteryRuntimeForTest(now = Date.now()): void {
 	lastGridBalanceWriteAtMs = null;
 	lastGridBalanceAction = "";
 	lastGridBalanceActionAt = "";
+	gridBalanceLastActionAtSynced = false;
 	gridBalanceOwnsSetpoint = false;
 	gridBalanceLiveTest = emptyGridBalanceLiveTest();
 	clearGridBalanceKeepalive();
@@ -171,6 +174,7 @@ export async function startBatteryModuleRuntime(adapter: ioBroker.Adapter): Prom
 	lastGridBalanceWriteAtMs = null;
 	lastGridBalanceAction = "";
 	lastGridBalanceActionAt = "";
+	gridBalanceLastActionAtSynced = false;
 	gridBalanceOwnsSetpoint = false;
 	gridBalanceLiveTest = emptyGridBalanceLiveTest();
 	clearGridBalanceKeepalive();
@@ -1218,14 +1222,28 @@ async function persist(host: Host, s: BatterySnapshot, x: PersistExtra): Promise
 	await setStateIfChanged(host, BAT.gridBalance.active, d.active);
 	await setStateIfChanged(host, BAT.gridBalance.ready, d.ready);
 	await setStateIfChanged(host, BAT.gridBalance.blockReason, d.blockReason);
-	await setStateIfChanged(host, BAT.gridBalance.currentPriceCtKwh, x.priceNowCt);
+	await setStateIfChanged(
+		host,
+		BAT.gridBalance.currentPriceCtKwh,
+		x.priceNowCt != null && Number.isFinite(x.priceNowCt) ? Math.round(x.priceNowCt * 10) / 10 : x.priceNowCt,
+	);
 	await setStateIfChanged(host, BAT.gridBalance.priceMinCtKwh, x.priceMinCt);
 	await setStateIfChanged(host, BAT.gridBalance.priceAllowed, d.priceAllowed);
 	await setStateIfChanged(host, BAT.gridBalance.gridPowerW, d.rawGridDeltaW);
 	await setStateIfChanged(host, BAT.gridBalance.effectivePowerW, d.effectivePowerW);
 	await setStateIfChanged(host, BAT.gridBalance.holdDetected, d.holdDetected);
 	await setStateIfChanged(host, BAT.gridBalance.evConflict, d.evConflict);
-	await setStateIfChanged(host, BAT.gridBalance.lastAction, lastGridBalanceAction);
+	const actionChanged = await setStateIfChanged(host, BAT.gridBalance.lastAction, lastGridBalanceAction);
+	if (actionChanged || !gridBalanceLastActionAtSynced) {
+		await host.setStateAsync(BAT.gridBalance.lastActionAt, { val: lastGridBalanceActionAt, ack: true });
+		gridBalanceLastActionAtSynced = true;
+	} else {
+		const at = await host.getStateAsync(BAT.gridBalance.lastActionAt);
+		const atVal = at?.val != null ? String(at.val).trim() : "";
+		if (!atVal) {
+			await host.setStateAsync(BAT.gridBalance.lastActionAt, { val: lastGridBalanceActionAt, ack: true });
+		}
+	}
 	await setStateIfChanged(host, BAT.gridBalance.explain, d.explain);
 	await setStateIfChanged(host, BAT.gridBalance.liveTestArmed, gridBalanceLiveTest.armed);
 	await setStateIfChanged(

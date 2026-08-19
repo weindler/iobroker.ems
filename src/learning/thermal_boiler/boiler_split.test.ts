@@ -472,11 +472,12 @@ describe("boiler learning A vs buffer learning B", () => {
 		});
 		assert.equal(flex.deadlineIso, null);
 		assert.equal(flex.details.emptyAtPlanningUsable, false);
-		assert.equal(flex.details.bufferEstimatedEmptyAt, "2026-08-15T12:00:00.000Z");
+		assert.equal(flex.details.bufferEstimatedEmptyAt, null);
 		assert.equal(flex.details.boilerEstimatedEmptyAt, null);
 		assert.equal(flex.details.hardThermalSource, "boiler");
-		assert.equal(flex.details.softThermalSource, "buffer");
-		assert.equal(flex.details.thermalLearningModel, "newton");
+		assert.equal(flex.details.softThermalSource, "buffer_cap");
+		assert.equal(flex.details.thermalLearningModel, "none");
+		assert.equal(flex.details.bufferLearningModel, "unused");
 		assert.equal(flex.details.boilerLearningModel, "none");
 	});
 

@@ -95,8 +95,8 @@ function normalizeLiveValue(liveId: string, raw: unknown): ioBroker.StateValue |
 		if (eurPerKwh === null) {
 			return null;
 		}
-		// Quelle z. B. Tibber: €/kWh (0.1576) → EMS-Light ct/kWh (15.76)
-		return eurPerKwh * 100;
+		// Quelle z. B. Tibber: €/kWh (0.1576) → EMS-Light ct/kWh (15.8)
+		return Math.round(eurPerKwh * 1000) / 10;
 	}
 	const n = asNum(raw);
 	return n;

@@ -86,6 +86,7 @@ const REQUIRED_STATE_PATHS = [
 	"addons.immersion_heater.runtime.planning_max_temp_c",
 	"learning.thermal_boiler.model",
 	"learning.thermal_boiler.quality",
+	"learning.thermal_boiler.samples",
 	"learning.pv_bias.corrected_today_kwh",
 	"learning.pv_bias.corrected_tomorrow_kwh",
 	"learning.pv_bias.raw_today_kwh",
@@ -186,6 +187,12 @@ describe("VIS operations dashboard", () => {
 		assert.match(visHtml, /belastbar/);
 		assert.match(visHtml, /chip\("EMS-Aktion"/);
 		assert.equal(visHtml.includes("Owner / Aktion"), false);
+	});
+
+	it("Boiler-Learning compact is cycle-only; Restzeit not from Puffer-Learning", () => {
+		assert.match(visHtml, /if\(quality==="cycle"\)return"belastbar"/);
+		assert.equal(visHtml.includes("learning.thermal_runtime.estimated_remaining_hours"), false);
+		assert.equal(visHtml.includes("learning.thermal_runtime.estimated_empty_at"), false);
 	});
 
 	it("outer VIS view is compact: no briefing, no ENERGIE cards", () => {

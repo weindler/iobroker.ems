@@ -63,6 +63,9 @@ describe("refreshLivePowerStrip", () => {
 		assert.equal(host.states.get("live.pv.power_w"), 1331);
 		assert.equal(host.states.get("live.battery.soc_pct"), 99);
 		assert.equal(host.states.get("live.price.now_ct_per_kwh"), 32);
+		host.foreign.set("tibber.price", 0.3305);
+		await refreshLivePowerStrip(host);
+		assert.equal(host.states.get("live.price.now_ct_per_kwh"), 33.1);
 		assert.equal(host.states.has("live.battery.capacity_kwh"), false);
 		assert.equal(host.states.has("live.thermal.buffer_temp_c"), false);
 		assert.ok(result.updated.includes("live.pv.power_w"));

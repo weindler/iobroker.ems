@@ -54,6 +54,22 @@ const states_js_1 = require("../operator/daily_plan/states.js");
         // no daily plan present in the mock host → runAiOptimizationManual resolves without throwing
         strict_1.default.equal(store.get(states_js_1.DAILY_PLAN_STATE_IDS.planJson), undefined);
     });
+    (0, node_test_1.it)("clears a leftover optimize_now_request=true without running", async () => {
+        const store = new Map();
+        store.set(ensure_states_js_1.AI_STATES.optimizeNowRequest, true);
+        const host = {
+            async getStateAsync(id) {
+                const v = store.get(id);
+                return v === undefined ? null : { val: v, ack: false };
+            },
+            async setStateAsync(id, state) {
+                store.set(id, state.val);
+            },
+        };
+        const cleared = await (0, index_js_1.clearStaleAiOptimizeNowRequest)(host);
+        strict_1.default.equal(cleared, true);
+        strict_1.default.equal(store.get(ensure_states_js_1.AI_STATES.optimizeNowRequest), false);
+    });
 });
 function minimalPlan(overrides = {}) {
     return {

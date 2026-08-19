@@ -121,7 +121,7 @@ export function resolveThermalPvPrecharge(input: ThermalPvPrechargeInput): Therm
 	const batteryCompetes = batSoc != null && batTarget != null && batSoc + 5 < batTarget;
 
 	/*
-	 * Puffer hält bis zur nächsten belastbaren PV-Gelegenheit über planningMin:
+	 * Boiler hält bis zur nächsten belastbaren PV-Gelegenheit über planningMin:
 	 * kein Target-/Max-Precharge — nur noch wirtschaftlich wenn Batterie satt + starker Surplus.
 	 */
 	const rateEarly = input.coolingRateCPerHAvg;
@@ -143,7 +143,7 @@ export function resolveThermalPvPrecharge(input: ThermalPvPrechargeInput): Therm
 					targetTempC: base,
 					prechargeExtraK: 0,
 					reasonDe:
-						"Puffer reicht bis nächster belastbarer PV — kein wirtschaftliches Target-Precharge.",
+						"Boiler reicht bis nächster belastbarer PV — kein wirtschaftliches Target-Precharge.",
 				};
 			}
 		}

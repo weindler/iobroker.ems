@@ -58,7 +58,9 @@ export async function ensureAiStateTree(
 		typeof host.setStateAsync === "function" &&
 		"config" in host
 	) {
-		await migrateAiUserEnabledOnce(host as Parameters<typeof migrateAiUserEnabledOnce>[0]);
+		const aiHost = host as Parameters<typeof migrateAiUserEnabledOnce>[0];
+		await migrateAiUserEnabledOnce(aiHost);
+		await clearStaleAiOptimizeNowRequest(aiHost);
 	}
 }
 
@@ -145,6 +147,19 @@ export async function maybeTriggerAiOptimizationOnDailyPlanChange(
 
 const AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX = "ai.optimize_now_request";
 const AI_USER_ENABLED_ID_SUFFIX = "ai.user_enabled";
+
+/** Hängenden Button (true, oft ack:false) nach Restart/KI-aus leeren — kein stiller Lauf. */
+export async function clearStaleAiOptimizeNowRequest(host: {
+	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
+	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
+}): Promise<boolean> {
+	const st = await host.getStateAsync(AI_STATES.optimizeNowRequest);
+	if (st?.val !== true) {
+		return false;
+	}
+	await host.setStateAsync(AI_STATES.optimizeNowRequest, { val: false, ack: true });
+	return true;
+}
 
 /** Erlaubt Runtime-Toggle und "Jetzt optimieren" direkt über den Objektbaum. */
 export function isAiRelatedState(relativeId: string): boolean {

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runAiOptimizationManual = exports.handleAiStateChange = exports.isAiRelatedState = exports.maybeTriggerAiOptimizationOnDailyPlanChange = exports.syncAiDailyCounters = exports.ensureAiStateTree = exports.resetAiPipelineHookForTest = exports.resetAiEnableEpochForTest = exports.isAiPublishAllowed = exports.bumpAiEnableEpoch = exports.currentAiEnableEpoch = exports.applyAiUserEnabledToggle = exports.readAiUserEnabled = exports.migrateAiUserEnabledOnce = exports.aiTriggerDigestPayload = exports.resolveAllowedAddonIds = exports.AI_DEFAULT_MIN_INTERVAL_MINUTES = exports.AI_DEFAULT_MAX_CALLS_PER_DAY = exports.AI_DEFAULT_MODEL = exports.AI_ALLOWED_MODELS = exports.aiConfigFromAdapter = exports.AI_STATES = exports.ensureAiStates = void 0;
+exports.runAiOptimizationManual = exports.handleAiStateChange = exports.isAiRelatedState = exports.clearStaleAiOptimizeNowRequest = exports.maybeTriggerAiOptimizationOnDailyPlanChange = exports.syncAiDailyCounters = exports.ensureAiStateTree = exports.resetAiPipelineHookForTest = exports.resetAiEnableEpochForTest = exports.isAiPublishAllowed = exports.bumpAiEnableEpoch = exports.currentAiEnableEpoch = exports.applyAiUserEnabledToggle = exports.readAiUserEnabled = exports.migrateAiUserEnabledOnce = exports.aiTriggerDigestPayload = exports.resolveAllowedAddonIds = exports.AI_DEFAULT_MIN_INTERVAL_MINUTES = exports.AI_DEFAULT_MAX_CALLS_PER_DAY = exports.AI_DEFAULT_MODEL = exports.AI_ALLOWED_MODELS = exports.aiConfigFromAdapter = exports.AI_STATES = exports.ensureAiStates = void 0;
 const states_1 = require("../operator/daily_plan/states");
 const state_util_1 = require("../ems_light/state_util");
 const config_1 = require("./config");
@@ -44,7 +44,9 @@ async function ensureAiStateTree(host) {
     if (typeof host.getStateAsync === "function" &&
         typeof host.setStateAsync === "function" &&
         "config" in host) {
-        await (0, user_enabled_1.migrateAiUserEnabledOnce)(host);
+        const aiHost = host;
+        await (0, user_enabled_1.migrateAiUserEnabledOnce)(aiHost);
+        await clearStaleAiOptimizeNowRequest(aiHost);
     }
 }
 exports.ensureAiStateTree = ensureAiStateTree;
@@ -118,6 +120,16 @@ async function maybeTriggerAiOptimizationOnDailyPlanChange(host, plan, now = new
 exports.maybeTriggerAiOptimizationOnDailyPlanChange = maybeTriggerAiOptimizationOnDailyPlanChange;
 const AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX = "ai.optimize_now_request";
 const AI_USER_ENABLED_ID_SUFFIX = "ai.user_enabled";
+/** Hängenden Button (true, oft ack:false) nach Restart/KI-aus leeren — kein stiller Lauf. */
+async function clearStaleAiOptimizeNowRequest(host) {
+    const st = await host.getStateAsync(ensure_states_1.AI_STATES.optimizeNowRequest);
+    if (st?.val !== true) {
+        return false;
+    }
+    await host.setStateAsync(ensure_states_1.AI_STATES.optimizeNowRequest, { val: false, ack: true });
+    return true;
+}
+exports.clearStaleAiOptimizeNowRequest = clearStaleAiOptimizeNowRequest;
 /** Erlaubt Runtime-Toggle und "Jetzt optimieren" direkt über den Objektbaum. */
 function isAiRelatedState(relativeId) {
     return relativeId === AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX || relativeId === AI_USER_ENABLED_ID_SUFFIX;

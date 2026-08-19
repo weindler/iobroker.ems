@@ -82,10 +82,16 @@ exports.classifyGridBalanceEvConflict = classifyGridBalanceEvConflict;
 function formatPriceCt(priceNowCt) {
     return priceNowCt != null && Number.isFinite(priceNowCt) ? priceNowCt.toFixed(1) : "?";
 }
+/** Surplus / zu kleiner Restbezug — kein Safety-Block, Netzausgleich darf bereit bleiben. */
+const GRID_BALANCE_READY_REASONS = new Set(["inside_deadband", "below_min_benefit"]);
 function formatGridBalanceExplain(input) {
     const reason = input.blockReason;
     if (!input.enabled || reason === "disabled") {
         return "grid_balance=blocked, reason=disabled";
+    }
+    if (GRID_BALANCE_READY_REASONS.has(reason)) {
+        const importW = Number.isFinite(input.gridImportW) ? Math.round(input.gridImportW) : 0;
+        return `grid_balance=ready, reason=${reason}, price=${formatPriceCt(input.priceNowCt)}ct, minimum=${input.priceMinCt.toFixed(1)}ct, grid_import=${importW}W`;
     }
     if (reason) {
         return `grid_balance=blocked, reason=${reason}`;

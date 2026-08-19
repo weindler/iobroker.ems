@@ -378,7 +378,7 @@ describe("JOINT contribution: hysteresis must not zero planning demand", () => {
 		assert.equal(flex.enabled, true);
 		assert.ok((flex.details.requiredEnergyKwh as number) > 0);
 		assert.equal(flex.deadlineIso, null);
-		assert.equal(flex.details.bufferEstimatedEmptyAt, "2026-08-08T15:25:00.000Z");
+		assert.equal(flex.details.bufferEstimatedEmptyAt, null);
 		assert.equal(flex.details.emptyAtPlanningUsable, false);
 		assert.equal(flex.details.reheatHysteresisRuntimeOnly, true);
 	});

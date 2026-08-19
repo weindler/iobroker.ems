@@ -77,7 +77,7 @@ function resolveImmersionNightBridge(input) {
             bridgeTargetTempC,
             effectiveTargetTempC: forecast,
             deadlineIso: null,
-            reasonDe: "Nachtbrücke: Puffer reicht rechnerisch — kein Zusatzheizen.",
+            reasonDe: "Nachtbrücke: Boiler reicht rechnerisch — kein Zusatzheizen.",
         };
     }
     return {

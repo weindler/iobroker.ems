@@ -422,7 +422,7 @@ export function buildUnifiedDayAgendaDe(
 	const thermalDeadline = plan.constraints.find((c) => c.id === "thermal.deadline");
 	if (thermalDeadline?.ref) {
 		const clock = fmtClock(thermalDeadline.ref, tz);
-		if (clock) lines.push(`Puffer leer voraussichtlich ~${clock}`);
+		if (clock) lines.push(`Boiler leer voraussichtlich ~${clock}`);
 	}
 
 	return lines;

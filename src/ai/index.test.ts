@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+	clearStaleAiOptimizeNowRequest,
 	handleAiStateChange,
 	isAiRelatedState,
 	maybeTriggerAiOptimizationOnDailyPlanChange,
@@ -59,6 +60,23 @@ describe("ai state change routing", () => {
 		assert.equal(store.get(AI_STATES.optimizeNowRequest), false);
 		// no daily plan present in the mock host → runAiOptimizationManual resolves without throwing
 		assert.equal(store.get(DAILY_PLAN_STATE_IDS.planJson), undefined);
+	});
+
+	it("clears a leftover optimize_now_request=true without running", async () => {
+		const store = new Map<string, ioBroker.StateValue>();
+		store.set(AI_STATES.optimizeNowRequest, true);
+		const host = {
+			async getStateAsync(id: string) {
+				const v = store.get(id);
+				return v === undefined ? null : ({ val: v, ack: false } as ioBroker.State);
+			},
+			async setStateAsync(id: string, state: ioBroker.SettableState) {
+				store.set(id, state.val as ioBroker.StateValue);
+			},
+		};
+		const cleared = await clearStaleAiOptimizeNowRequest(host);
+		assert.equal(cleared, true);
+		assert.equal(store.get(AI_STATES.optimizeNowRequest), false);
 	});
 });
 

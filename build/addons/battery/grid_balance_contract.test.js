@@ -279,6 +279,15 @@ function baseSafety(over = {}) {
             gridImportW: 850,
         }), "grid_balance=ready, price=36.7ct, minimum=30.0ct, grid_import=850W");
     });
+    (0, node_test_1.it)("inside_deadband is ready, not blocked", () => {
+        strict_1.default.equal((0, grid_balance_contract_js_1.formatGridBalanceExplain)({
+            enabled: true,
+            blockReason: "inside_deadband",
+            priceNowCt: 33.050000000000004,
+            priceMinCt: 30,
+            gridImportW: 0,
+        }), "grid_balance=ready, reason=inside_deadband, price=33.1ct, minimum=30.0ct, grid_import=0W");
+    });
     (0, node_test_1.it)("admin jsonConfig has min price and dropped price-gate/median fields", () => {
         const cfg = (0, node_fs_1.readFileSync)(ADMIN_JSON, "utf8");
         strict_1.default.equal(/bat_grid_balance_price_gate_enabled/.test(cfg), false);

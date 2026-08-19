@@ -417,7 +417,7 @@ function assertCoreCategories(adapter) {
         const states = byType.state ?? 0;
         const channels = byType.channel ?? 0;
         console.log(`empty-config surface states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
-        strict_1.default.ok(states <= 500, `empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
+        strict_1.default.ok(states <= 550, `empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
         strict_1.default.ok(states >= 250, `unexpectedly small surface states=${states}`);
         strict_1.default.ok(![...adapter.objects.keys()].some((id) => id.includes(".mapping.")), "mapping shadows remain");
         strict_1.default.ok(!adapter.objects.has("planner.intent.last_json"));

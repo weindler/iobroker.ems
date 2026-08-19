@@ -533,23 +533,47 @@ function buildConsumerStates(input, slots) {
             currentWindowEndMs,
             pvConfidence01: conf,
         });
-        const hardKwh = bridge.mandatoryEnergyKwh;
+        let hardKwh = bridge.mandatoryEnergyKwh;
         const softKwh = bridge.economicHeadroomKwh;
+        const minStageE = th.minPowerW && th.minPowerW > 0
+            ? energyFromPowerW(th.minPowerW)
+            : th.availablePowerW && th.availablePowerW > 0
+                ? energyFromPowerW(th.availablePowerW)
+                : 0;
+        const boilerAtOrNearMinNow = th.boilerTempC != null &&
+            th.boilerMinTempC != null &&
+            th.boilerTempC <= th.boilerMinTempC + 0.05;
+        /*
+         * Contract-Guard: Boiler-Minimum ist Pflichtbedarf.
+         * Wenn der Boiler bereits am Mindestwert liegt, darf Hard nicht auf 0 fallen,
+         * sonst plant der Solver gar keinen fahrbaren Slot und der Kessel springt später an.
+         */
+        if (boilerAtOrNearMinNow && minStageE > exports.EPS && hardKwh + exports.EPS < minStageE) {
+            hardKwh = minStageE;
+        }
         /*
          * Hard = Boiler (+ Hygiene), Deadline nur Boiler-emptyAt wenn usable.
          * Soft = Puffer-Headroom, keine Buffer-emptyAt-Urgency.
          */
         if (hardKwh > exports.EPS) {
-            const boilerBelowMinNow = th.boilerTempC != null &&
-                th.boilerMinTempC != null &&
-                th.boilerTempC < th.boilerMinTempC - 0.05;
             /*
-             * Hard bei Untertemperatur darf nicht als "irgendwann heute" behandelt werden.
-             * Ohne finite Deadline konnte Batterie-Laden den Hard-Bedarf verdrängen.
-             * Bei Boiler<Min erzwingen wir daher eine kurzfristige Deadline (90 min),
-             * damit der Solver den Hard-Bedarf vor opportunistischem Laden bedient.
+             * emptyAt kann jetzt auch überfällig (ms <= now) aus frischem Newton-Learning
+             * kommen (Boiler erreicht Minimum gerade jetzt) statt nur als Fake-Zukunft.
+             * Eine bereits erreichte/überschrittene Deadline darf dem Solver nicht als
+             * Vergangenheit übergeben werden (kein Slot davor planbar) — stattdessen
+             * dieselbe kurzfristige Dringlichkeit wie "Boiler unter Min".
              */
-            const hardDeadline = boilerBelowMinNow
+            const emptyAtOverdue = th.boilerEmptyAtUsable === true &&
+                Number.isFinite(emptyDeadlineMs) &&
+                emptyDeadlineMs <= nowMsLocal;
+            /*
+             * Hard bei Boiler am/unter Min darf nicht als "irgendwann heute" behandelt werden.
+             * Ohne finite Deadline konnte Batterie-Laden/Klima den Hard-Bedarf verdrängen.
+             * Bei Boiler ≤ Min (oder überfälligem emptyAt) erzwingen wir daher eine
+             * kurzfristige Deadline (90 min), damit der Solver den Hard-Bedarf vor
+             * opportunistischem Laden/Klima bedient — konsistent mit dem Hard-Guard oben.
+             */
+            const hardDeadline = boilerAtOrNearMinNow || emptyAtOverdue
                 ? nowMsLocal + 90 * 60_000
                 : th.boilerEmptyAtUsable === true && Number.isFinite(emptyDeadlineMs)
                     ? emptyDeadlineMs
@@ -1226,14 +1250,23 @@ function scoreCandidate(input, state, candidate, weights) {
                 }
             }
         }
-        /** Live-NOW-Boost auch für Soft-Precharge (B1) — kein emptyAt-Deadline-Druck. */
+        /**
+         * Surplus-Konkurrenz-Boost: Wenn der Gesamt-PV-Surplus (surplusKwh, vor allen Allocations)
+         * ausreicht für den IH allein (≥ minPowerW), bekommt der IH einen Score-Bonus damit er
+         * VOR Klima allokiert wird. Ohne diesen Boost würde Klima (höherer Komfort-Priority)
+         * zuerst zugeteilt, danach bleibt remainPvKwh unter 1700W und der IH findet keinen Slot.
+         *
+         * Beispiel: 2711W PV − 373W Hauslast = 2338W Surplus ≥ 1700W IH → Boost aktiv.
+         * IH belegt 1700W, verbleibend 638W → Klima (700W) findet nicht mehr rein.
+         * Das ist korrekt: bei 2338W Surplus hat IH Vorrang vor Komfort-Kühlung.
+         * Bei 2411W Surplus (≥ 1700 + 700 + Margin) könnten beide laufen — dann soll
+         * der Allocator nach der IH-Allocation auch Klima noch bedienen.
+         */
         if (candidate.source === "pv_surplus") {
-            const slotEndMs = Date.parse(slot.endIso);
-            if (input.preferImmersionLiveSurplusNow === true &&
-                Number.isFinite(slotEndMs) &&
-                slotMs <= state.nowMs &&
-                state.nowMs < slotEndMs) {
-                score += e * weights.flexShiftWeight * 2.4 + 0.55;
+            const minE = consumer.minPowerW && consumer.minPowerW > 0 ? energyFromPowerW(consumer.minPowerW) : 0;
+            if (minE > 0 && slot.surplusKwh + exports.EPS >= minE) {
+                // Gesamt-PV (vor jeder Allocation) reicht für IH: Vorrang vor Klima.
+                score += e * weights.flexShiftWeight * 2.8 + 0.6;
             }
         }
     }
@@ -1424,9 +1457,12 @@ function generateCandidatesForConsumer(input, state, consumer, slotIdx, wbPresen
         slot.remainPvKwh + exports.EPS < Math.min(chunk, consumer.remainingKwh)) {
         sources.push("battery");
     }
+    let immersionMinE = 0;
+    let immersionSoftTopUpWithBattery = false;
     if (consumer.kind === "immersion_heater") {
         sources.length = 0;
         const minE = consumer.minPowerW && consumer.minPowerW > 0 ? energyFromPowerW(consumer.minPowerW) : 0;
+        immersionMinE = minE;
         // Keine Teil-Slots unter Mindeststufe (sonst Runtime stage 0).
         if (slot.remainPvKwh + exports.EPS >= Math.max(minE, exports.EPS))
             sources.push("pv_surplus");
@@ -1435,7 +1471,28 @@ function generateCandidatesForConsumer(input, state, consumer, slotIdx, wbPresen
             pvBeforeDl + exports.EPS < consumer.remainingKwh &&
             usableBat + exports.EPS >= Math.max(minE, exports.EPS) &&
             slot.remainPvKwh + exports.EPS < Math.max(minE, exports.EPS);
-        if (thermalNeedsBattery)
+        /*
+         * Hard-Min-Guard: Boiler ist am/nahe Mindesttemperatur.
+         * Auch wenn PV "bis Deadline" rechnerisch reichen würde, muss die Mindeststufe
+         * jetzt fahrbar sein (PV+Battery), damit der Pflichtfall nicht auf später driftet.
+         */
+        const hardNeedsBatteryNow = consumer.mandatory &&
+            consumer.thermalBeforeDeadline &&
+            usableBat + exports.EPS >= Math.max(minE, exports.EPS) &&
+            slot.remainPvKwh + exports.EPS < Math.max(minE, exports.EPS) &&
+            slot.remainPvKwh + usableBat + exports.EPS >= Math.max(minE, exports.EPS);
+        /*
+         * Soft-IH (PV-first) darf bei knapper PV im Slot mit Batterie-Top-up die
+         * Mindeststufe erreichen, wenn die Batterie dafür freigegeben ist.
+         * Bedingung: Es gibt realen PV-Surplus im Slot und PV + Batterie schaffen zusammen minE.
+         */
+        const softCanTopUpWithBattery = consumer.thermalSoftOnly &&
+            consumer.batteryEligible &&
+            slot.surplusKwh > exports.EPS &&
+            slot.remainPvKwh + exports.EPS < Math.max(minE, exports.EPS) &&
+            slot.remainPvKwh + usableBat + exports.EPS >= Math.max(minE, exports.EPS);
+        immersionSoftTopUpWithBattery = softCanTopUpWithBattery;
+        if (thermalNeedsBattery || hardNeedsBatteryNow || softCanTopUpWithBattery)
             sources.push("battery");
     }
     if (consumer.kind === "battery_charge") {
@@ -1458,7 +1515,21 @@ function generateCandidatesForConsumer(input, state, consumer, slotIdx, wbPresen
         }
         else if (source === "battery") {
             take = Math.min(take, usableBat);
-            take = applyMinPower(take, consumer.minPowerW, take, consumer.remainingKwh);
+            if (consumer.kind === "immersion_heater" && immersionMinE > exports.EPS) {
+                const needed = Math.min(consumer.remainingKwh, immersionMinE);
+                if (usableBat + exports.EPS < needed)
+                    continue;
+                /*
+                 * Fahrbare IH-Stufe erzwingen: mindestens minE allokieren.
+                 * Bei Soft-Top-up darf vorhandener PV-Rest die Mindeststufe mittragen.
+                 */
+                take = Math.max(take, needed);
+                const availableForMin = immersionSoftTopUpWithBattery ? take + slot.remainPvKwh : take;
+                take = applyMinPower(take, consumer.minPowerW, availableForMin, consumer.remainingKwh);
+            }
+            else {
+                take = applyMinPower(take, consumer.minPowerW, take, consumer.remainingKwh);
+            }
         }
         else {
             take = applyMinPower(take, consumer.minPowerW, take, consumer.remainingKwh);

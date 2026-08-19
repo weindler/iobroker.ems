@@ -612,6 +612,29 @@ describe("immersion heater contributions", () => {
 		assert.equal(mandatory.enabled, false);
 	});
 
+	it("boiler exactly at minimum is mandatory (Lastenheft §5.4 — Boiler-Minimum ist Pflichtbedarf)", () => {
+		const [mandatory] = buildImmersionHeaterContributions(
+			immersionInput({ bufferTempC: 50, boilerTempC: 50, thermalMode: "auto" }),
+		);
+		assert.equal(mandatory.enabled, true);
+		assert.equal(mandatory.details.mandatory, true);
+		assert.match(mandatory.reasonDe, /Pflichtbedarf/);
+	});
+
+	it("boiler a hair above minimum (sensor jitter) is still mandatory", () => {
+		const [mandatory] = buildImmersionHeaterContributions(
+			immersionInput({ bufferTempC: 50, boilerTempC: 50.02, thermalMode: "auto" }),
+		);
+		assert.equal(mandatory.enabled, true);
+	});
+
+	it("boiler clearly above minimum is not mandatory", () => {
+		const [mandatory] = buildImmersionHeaterContributions(
+			immersionInput({ bufferTempC: 55, boilerTempC: 55, thermalMode: "auto" }),
+		);
+		assert.equal(mandatory.enabled, false);
+	});
+
 	it("flexible demand in auto mode", () => {
 		const [, flexible] = buildImmersionHeaterContributions(immersionInput());
 		assert.equal(flexible.contributionId, CONTRIBUTION_IDS.IMMERSION_FLEXIBLE);
@@ -820,7 +843,13 @@ describe("immersion heater contributions", () => {
 		assert.equal(flexible.details.bufferEstimatedEmptyAt, null);
 	});
 
-	it("boiler Newton without cycles is not Hard-usable and does not degrade Daily Plan", () => {
+	it("boiler Newton without cycles IS Hard-usable (degraded, not cycle-valid) — A1", () => {
+		/*
+		 * A1 (thermal_empty_at.ts): Newton-k + zukünftige empty_at darf planungswirksam sein,
+		 * auch ohne abgeschlossene Peak→Floor-Zyklen (samples=0) — nur "cycle-valid" ist es nicht.
+		 * Vorher fälschlich als "nicht usable" erwartet — genau das blockierte die Vorplanung,
+		 * wenn nur ein Newton-Modell (keine Zyklen) vorliegt.
+		 */
 		const [, flexible] = buildImmersionHeaterContributions(
 			immersionInput({
 				bufferTempC: 49,
@@ -844,8 +873,9 @@ describe("immersion heater contributions", () => {
 		assert.equal(flexible.details.thermalLearningStatus, "missing");
 		assert.equal(flexible.details.thermalLearningDegradedCauseDe, null);
 		assert.equal(flexible.details.boilerLearningModel, "newton");
-		assert.equal(flexible.details.emptyAtPlanningUsable, false);
-		assert.equal(flexible.details.boilerEstimatedEmptyAt, null);
+		assert.equal(flexible.details.emptyAtPlanningUsable, true);
+		assert.equal(flexible.details.boilerEstimatedEmptyAt, "2026-07-26T08:46:00.000Z");
+		assert.equal(flexible.details.emptyAtSource, "estimated");
 	});
 
 	it("night bridge raises soft target from boiler cycles; no Hard-Deadline", () => {

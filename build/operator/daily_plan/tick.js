@@ -567,8 +567,15 @@ async function runDailyPlanTick(host, forecastPlan) {
         thermalBlocked: probeInput.thermal?.uncertainty.status === "blocked",
         cadenceDigest,
     };
+    /*
+     * Timezone-Offset für tageszeitabhängigen Cooldown: tagsüber (06–21 Uhr) 1 Min,
+     * nachts 5 Min. Näherung: UTC-Offset aus now vs. lokalem Datum (kein DST-Problem,
+     * da nur für Cooldown-Schwelle verwendet).
+     */
+    const localOffsetMinutes = -now.getTimezoneOffset();
     let decision = (0, materiality_1.evaluateMaterialReplan)(lastBaseline, actualSample, {
         lastReplanAtMs,
+        timezoneOffsetMinutes: localOffsetMinutes,
     });
     if (forcedReplanReasons.length > 0) {
         const forced = forcedReplanReasons.slice();

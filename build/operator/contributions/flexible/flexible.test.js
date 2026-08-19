@@ -515,6 +515,20 @@ function acInput(overrides = {}) {
         const [mandatory] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({ bufferTempC: 40, boilerTempC: 58, thermalMode: "auto" }));
         strict_1.default.equal(mandatory.enabled, false);
     });
+    (0, node_test_1.it)("boiler exactly at minimum is mandatory (Lastenheft §5.4 — Boiler-Minimum ist Pflichtbedarf)", () => {
+        const [mandatory] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({ bufferTempC: 50, boilerTempC: 50, thermalMode: "auto" }));
+        strict_1.default.equal(mandatory.enabled, true);
+        strict_1.default.equal(mandatory.details.mandatory, true);
+        strict_1.default.match(mandatory.reasonDe, /Pflichtbedarf/);
+    });
+    (0, node_test_1.it)("boiler a hair above minimum (sensor jitter) is still mandatory", () => {
+        const [mandatory] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({ bufferTempC: 50, boilerTempC: 50.02, thermalMode: "auto" }));
+        strict_1.default.equal(mandatory.enabled, true);
+    });
+    (0, node_test_1.it)("boiler clearly above minimum is not mandatory", () => {
+        const [mandatory] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({ bufferTempC: 55, boilerTempC: 55, thermalMode: "auto" }));
+        strict_1.default.equal(mandatory.enabled, false);
+    });
     (0, node_test_1.it)("flexible demand in auto mode", () => {
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput());
         strict_1.default.equal(flexible.contributionId, contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE);
@@ -695,7 +709,13 @@ function acInput(overrides = {}) {
         strict_1.default.equal(flexible.deadlineIso, null);
         strict_1.default.equal(flexible.details.bufferEstimatedEmptyAt, null);
     });
-    (0, node_test_1.it)("boiler Newton without cycles is not Hard-usable and does not degrade Daily Plan", () => {
+    (0, node_test_1.it)("boiler Newton without cycles IS Hard-usable (degraded, not cycle-valid) — A1", () => {
+        /*
+         * A1 (thermal_empty_at.ts): Newton-k + zukünftige empty_at darf planungswirksam sein,
+         * auch ohne abgeschlossene Peak→Floor-Zyklen (samples=0) — nur "cycle-valid" ist es nicht.
+         * Vorher fälschlich als "nicht usable" erwartet — genau das blockierte die Vorplanung,
+         * wenn nur ein Newton-Modell (keine Zyklen) vorliegt.
+         */
         const [, flexible] = (0, immersion_heater_1.buildImmersionHeaterContributions)(immersionInput({
             bufferTempC: 49,
             boilerLearning: {
@@ -717,8 +737,9 @@ function acInput(overrides = {}) {
         strict_1.default.equal(flexible.details.thermalLearningStatus, "missing");
         strict_1.default.equal(flexible.details.thermalLearningDegradedCauseDe, null);
         strict_1.default.equal(flexible.details.boilerLearningModel, "newton");
-        strict_1.default.equal(flexible.details.emptyAtPlanningUsable, false);
-        strict_1.default.equal(flexible.details.boilerEstimatedEmptyAt, null);
+        strict_1.default.equal(flexible.details.emptyAtPlanningUsable, true);
+        strict_1.default.equal(flexible.details.boilerEstimatedEmptyAt, "2026-07-26T08:46:00.000Z");
+        strict_1.default.equal(flexible.details.emptyAtSource, "estimated");
     });
     (0, node_test_1.it)("night bridge raises soft target from boiler cycles; no Hard-Deadline", () => {
         const now = new Date("2026-08-04T12:00:00.000Z"); // 14:00 CEST

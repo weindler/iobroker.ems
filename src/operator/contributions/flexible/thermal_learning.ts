@@ -1,5 +1,5 @@
 import { dayTypeFromWeekday, weekdayFromDate } from "../../../learning/house_load/time";
-import { MIN_CYCLES_OK } from "../../../learning/thermal_runtime/constants";
+import { MIN_CYCLES_OK, MS_PER_HOUR } from "../../../learning/thermal_runtime/constants";
 import { liveRemainingHoursFromEmptyAt } from "../../../learning/thermal_runtime/math";
 import { formatLocalDateTimeDe } from "../../time";
 
@@ -64,12 +64,20 @@ function reasonDeForStatus(
 	estimatedEmptyAt: string | null,
 	timezone: string,
 	vessel: "buffer" | "boiler",
+	overdueNowMs?: number | null,
 ): string {
 	const label = vessel === "boiler" ? "Boiler-Learning" : "Puffer-Learning";
 	const reach = vessel === "boiler" ? "Boiler" : "Puffer";
+	const isOverdue =
+		estimatedEmptyAt !== null &&
+		overdueNowMs != null &&
+		Date.parse(estimatedEmptyAt) <= overdueNowMs;
 	if (status === "valid") {
 		const local =
 			estimatedEmptyAt !== null ? formatLocalDateTimeDe(estimatedEmptyAt, timezone) : null;
+		if (local && isOverdue) {
+			return `${label} aktiv (${samples ?? 0} Zyklen) — ${reach} Mindesttemperatur bereits erreicht (seit ${local}).`;
+		}
 		return local
 			? `${label} aktiv (${samples ?? 0} Zyklen) — ${reach} voraussichtlich leer um ${local}.`
 			: `${label} aktiv (${samples ?? 0} Zyklen).`;
@@ -77,6 +85,10 @@ function reasonDeForStatus(
 	if (status === "degraded") {
 		const n = samples ?? 0;
 		if (n === 0 && estimatedEmptyAt) {
+			const local = formatLocalDateTimeDe(estimatedEmptyAt, timezone);
+			if (isOverdue) {
+				return `${label}: Newton-Schätzung — ${reach} Mindesttemperatur bereits erreicht (seit ${local}), ${n} abgeschlossene Abkühlzyklen — Status degraded (nicht cycle-valid).`;
+			}
 			return `${label}: Newton-Schätzung nutzbar, ${n} abgeschlossene Abkühlzyklen — Status degraded (nicht cycle-valid).`;
 		}
 		return `${label} mit wenigen Zyklen (${n}) — eingeschränkt belastbar.`;
@@ -103,12 +115,23 @@ export function buildThermalLearningSignal(input: {
 	const status = deriveStatus(input.rawStatus, input.rawHealth, input.samples);
 	const timezone = input.timezone?.trim() || "Europe/Berlin";
 	const vessel = input.vessel === "boiler" ? "boiler" : "buffer";
+	const nowMs = input.now.getTime();
 
+	/*
+	 * Überfällig ≠ veraltet: Ein frisch gelerntes empty_at, das gerade erreicht wird
+	 * (Boiler jetzt am Minimum), ist die akute Pflichtinformation, die der Planner
+	 * braucht — nicht verwerfen. Nur wirklich alte Schätzungen (Learning lief lange
+	 * nicht neu) gelten als stale und werden verworfen (kein ewiger Fake-Alarm).
+	 */
+	const MAX_OVERDUE_HOURS = 12;
 	let estimatedEmptyAt: string | null = null;
 	if (input.estimatedEmptyAtRaw) {
 		const ms = Date.parse(input.estimatedEmptyAtRaw);
-		if (Number.isFinite(ms) && ms > input.now.getTime()) {
-			estimatedEmptyAt = new Date(ms).toISOString();
+		if (Number.isFinite(ms)) {
+			const overdueHours = (nowMs - ms) / MS_PER_HOUR;
+			if (overdueHours <= MAX_OVERDUE_HOURS) {
+				estimatedEmptyAt = new Date(ms).toISOString();
+			}
 		}
 	}
 
@@ -118,7 +141,7 @@ export function buildThermalLearningSignal(input: {
 		liveRemaining !== null
 			? liveRemaining
 			: estimatedEmptyAt === null && input.estimatedEmptyAtRaw
-				? 0 // empty_at in der Vergangenheit / verworfen
+				? 0 // empty_at verworfen (ungültig oder zu lange überfällig/stale)
 				: input.estimatedRemainingHours;
 
 	const byDayType = parseByDayTypeJson(input.byDayTypeJsonRaw);
@@ -154,6 +177,6 @@ export function buildThermalLearningSignal(input: {
 		estimatedRemainingHours,
 		estimatedEmptyAt,
 		currentDayTypeRuntimeHoursMedian,
-		reasonDe: reasonDeForStatus(status, input.samples, estimatedEmptyAt, timezone, vessel),
+		reasonDe: reasonDeForStatus(status, input.samples, estimatedEmptyAt, timezone, vessel, nowMs),
 	};
 }

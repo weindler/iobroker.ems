@@ -114,7 +114,7 @@ describe("thermal learning signal", () => {
 		assert.equal(signal.estimatedRemainingHours, 2.5);
 	});
 
-	it("drops estimated_empty_at when it lies in the past (stale data)", () => {
+	it("drops estimated_empty_at when it is truly stale (>12h overdue, no fresh learning run)", () => {
 		const signal = buildThermalLearningSignal({
 			now: NOW,
 			rawStatus: "ready",
@@ -124,10 +124,56 @@ describe("thermal learning signal", () => {
 			coolingConstantPerH: 0.05,
 			coolingAsymptoteC: 18,
 			estimatedRemainingHours: 0,
-			estimatedEmptyAtRaw: "2026-07-25T08:00:00.000Z",
+			estimatedEmptyAtRaw: "2026-07-25T08:00:00.000Z", // ~26h vor NOW
 			byDayTypeJsonRaw: null,
 		});
 		assert.equal(signal.status, "valid");
+		assert.equal(signal.estimatedEmptyAt, null);
+		assert.equal(signal.estimatedRemainingHours, 0);
+	});
+
+	it("keeps a recently overdue estimated_empty_at as acute (Boiler jetzt am Minimum) — not discarded", () => {
+		/*
+		 * Kernfall (One-Plan): Boiler erreicht laut frischem Learning gerade jetzt das
+		 * Minimum. Vorher wurde das als "veraltet" verworfen → Planner sah keinen
+		 * Pflichtbedarf, obwohl der Boiler exakt am Minimum steht. Überfällig um wenige
+		 * Minuten ist akut, nicht stale.
+		 */
+		const overdueBy5Min = new Date(NOW.getTime() + 5 * 60_000);
+		const signal = buildThermalLearningSignal({
+			now: overdueBy5Min,
+			rawStatus: "ready",
+			rawHealth: "ok",
+			samples: 0,
+			coolingRateCPerHAvg: null,
+			coolingConstantPerH: 0.00477,
+			coolingAsymptoteC: 18,
+			estimatedRemainingHours: 0,
+			estimatedEmptyAtRaw: NOW.toISOString(),
+			byDayTypeJsonRaw: null,
+			vessel: "boiler",
+		});
+		assert.equal(signal.status, "degraded");
+		assert.equal(signal.estimatedEmptyAt, NOW.toISOString());
+		assert.equal(signal.estimatedRemainingHours, 0);
+		assert.match(signal.reasonDe, /bereits erreicht/);
+	});
+
+	it("still drops a Newton estimate overdue by more than 12h (stale, not acute)", () => {
+		const overdueBy20h = new Date(NOW.getTime() + 20 * 3_600_000);
+		const signal = buildThermalLearningSignal({
+			now: overdueBy20h,
+			rawStatus: "ready",
+			rawHealth: "ok",
+			samples: 0,
+			coolingRateCPerHAvg: null,
+			coolingConstantPerH: 0.00477,
+			coolingAsymptoteC: 18,
+			estimatedRemainingHours: 0,
+			estimatedEmptyAtRaw: NOW.toISOString(),
+			byDayTypeJsonRaw: null,
+			vessel: "boiler",
+		});
 		assert.equal(signal.estimatedEmptyAt, null);
 		assert.equal(signal.estimatedRemainingHours, 0);
 	});

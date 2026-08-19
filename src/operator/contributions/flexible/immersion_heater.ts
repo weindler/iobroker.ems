@@ -133,6 +133,12 @@ function minStagePowerW(config: ImmersionDeviceConfig): number | null {
 	return Math.min(...stages.map((s) => s.nominalPowerW));
 }
 
+/**
+ * Boiler-Minimum ist Pflichtbedarf (Lastenheft §5.4) — nicht erst "deutlich darunter".
+ * Kleine Sensor-Toleranz, damit exakt-am-Minimum nicht als "kein Pflichtbedarf" gilt.
+ */
+const BOILER_MIN_TOLERANCE_C = 0.05;
+
 export function buildImmersionMandatoryContribution(input: ImmersionContributionBuildInput): PlanContribution {
 	const generatedAt = input.now.toISOString();
 	const target = resolveThermalForecastTarget({
@@ -153,8 +159,10 @@ export function buildImmersionMandatoryContribution(input: ImmersionContribution
 			? "Betreiberbefehl force — Pflichtbedarf."
 			: hygieneDue
 				? input.hygieneReasonDe ?? "Hygiene-Pflicht (Boiler)."
-				: boilerTemp !== null && boilerTemp < boilerMin
-					? `Boiler ${round3(boilerTemp)} °C unter Mindesttemperatur ${boilerMin} °C.`
+				: boilerTemp !== null && boilerTemp <= boilerMin + BOILER_MIN_TOLERANCE_C
+					? boilerTemp < boilerMin
+						? `Boiler ${round3(boilerTemp)} °C unter Mindesttemperatur ${boilerMin} °C.`
+						: `Boiler ${round3(boilerTemp)} °C auf Mindesttemperatur ${boilerMin} °C — Pflichtbedarf.`
 					: null;
 
 	const participation = evaluateParticipation({

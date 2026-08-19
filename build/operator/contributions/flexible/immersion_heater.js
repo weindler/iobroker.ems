@@ -73,6 +73,11 @@ function minStagePowerW(config) {
         return null;
     return Math.min(...stages.map((s) => s.nominalPowerW));
 }
+/**
+ * Boiler-Minimum ist Pflichtbedarf (Lastenheft §5.4) — nicht erst "deutlich darunter".
+ * Kleine Sensor-Toleranz, damit exakt-am-Minimum nicht als "kein Pflichtbedarf" gilt.
+ */
+const BOILER_MIN_TOLERANCE_C = 0.05;
 function buildImmersionMandatoryContribution(input) {
     const generatedAt = input.now.toISOString();
     const target = (0, thermal_forecast_1.resolveThermalForecastTarget)({
@@ -91,8 +96,10 @@ function buildImmersionMandatoryContribution(input) {
         ? "Betreiberbefehl force — Pflichtbedarf."
         : hygieneDue
             ? input.hygieneReasonDe ?? "Hygiene-Pflicht (Boiler)."
-            : boilerTemp !== null && boilerTemp < boilerMin
-                ? `Boiler ${(0, types_2.round3)(boilerTemp)} °C unter Mindesttemperatur ${boilerMin} °C.`
+            : boilerTemp !== null && boilerTemp <= boilerMin + BOILER_MIN_TOLERANCE_C
+                ? boilerTemp < boilerMin
+                    ? `Boiler ${(0, types_2.round3)(boilerTemp)} °C unter Mindesttemperatur ${boilerMin} °C.`
+                    : `Boiler ${(0, types_2.round3)(boilerTemp)} °C auf Mindesttemperatur ${boilerMin} °C — Pflichtbedarf.`
                 : null;
     const participation = (0, types_2.evaluateParticipation)({
         addonEnabled: input.addonEnabled,
@@ -305,7 +312,16 @@ function buildImmersionFlexibleContribution(input) {
      * Boiler-emptyAt nur bei Cycle-Learning in Details → Unified Hard-Consumer.
      */
     const boilerLearning = input.boilerLearning ?? null;
-    const boilerEmptyUsable = (0, thermal_empty_at_1.thermalEmptyAtUsableForPlanning)(boilerLearning) && (0, thermal_empty_at_1.hasCycleCoolingModel)(boilerLearning);
+    /*
+     * Hard-Bridge braucht ein nutzbares Boiler-emptyAt auch dann, wenn der Cycle-Status
+     * noch nicht "valid" ist. Sonst wird ein klarer Min-Fall (z. B. "unter 50 °C um 18:24")
+     * im Planner ignoriert. Night-Bridge bleibt weiterhin strikt cycle-basiert.
+     */
+    const boilerEmptyUsable = ((0, thermal_empty_at_1.thermalEmptyAtUsableForPlanning)(boilerLearning) ||
+        (Boolean(boilerLearning?.estimatedEmptyAt) &&
+            ((0, thermal_empty_at_1.hasNewtonEmptyAtModel)(boilerLearning) ||
+                ((boilerLearning?.estimatedRemainingHours ?? 0) > 0)))) &&
+        Boolean(boilerLearning?.estimatedEmptyAt);
     const boilerEstimatedEmptyAt = boilerEmptyUsable ? boilerLearning.estimatedEmptyAt : null;
     const boilerEmptyAtSource = boilerEmptyUsable ? emptyAtSourceOf(boilerLearning) : null;
     if (boilerEstimatedEmptyAt) {

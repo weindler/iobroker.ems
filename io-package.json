@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.315",
+		"version": "0.1.316",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.316": {
+				"en": "Boiler thermal learning no longer discards a freshly overdue empty-at estimate (Newton-only model, no completed cycles) as if it were unknown — it is now treated as an acute mandatory need (or, if genuinely stale for >12h, still dropped). The boiler-minimum mandatory contribution now also fires when the boiler is exactly at minimum (not only strictly below), and the planner's hard deadline for boiler-at-minimum no longer falls back to an unbounded/past deadline that let climate/battery starve the immersion heater.",
+				"de": "Das Boiler-Thermal-Learning verwirft eine frisch überfällige empty-at-Schätzung (nur Newton-Modell, keine abgeschlossenen Zyklen) nicht mehr als 'unbekannt', sondern behandelt sie als akuten Pflichtbedarf (nur wirklich alte Schätzungen >12h bleiben verworfen). Die Boiler-Minimum-Pflicht-Contribution greift jetzt auch exakt am Minimum (nicht erst deutlich darunter), und die Planner-Deadline für Boiler-am-Minimum fällt nicht mehr auf eine unbegrenzte/vergangene Deadline zurück, die Klima/Batterie den Heizstab aushungern ließ."
+			},
 			"0.1.315": {
 				"en": "Fix mandatory thermal allocation: when boiler is at/near minimum, battery support for the current slot is no longer suppressed by 'PV before deadline' heuristics, so the planner can allocate a drivable immersion-heater stage immediately.",
 				"de": "Fix für Pflicht-Thermal-Allocation: Liegt der Boiler am/nahe Minimum, wird Batterie-Support im aktuellen Slot nicht mehr durch die Heuristik 'PV bis Deadline' unterdrückt, sodass der Planer sofort eine fahrbare Heizstab-Stufe zuteilen kann."

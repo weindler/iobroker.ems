@@ -4,7 +4,7 @@
  * Wiederverwendet die AI-Digest-Bucket-Größen wo sinnvoll (PV 2 kWh, Preis 5 ct).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluateMaterialReplan = exports.pvRevisionContext = exports.REPLAN_COOLDOWN_MS = exports.MATERIAL_VEHICLE_ENERGY_KWH = exports.MATERIAL_THERMAL_TEMP_K = exports.MATERIAL_THERMAL_HEADROOM_KWH = exports.MATERIAL_BATTERY_SOC_PP = exports.MATERIAL_HOUSE_LOAD_KWH = void 0;
+exports.evaluateMaterialReplan = exports.pvRevisionContext = exports.replanCooldownMs = exports.REPLAN_COOLDOWN_MS = exports.REPLAN_COOLDOWN_DAY_MS = exports.REPLAN_COOLDOWN_NIGHT_MS = exports.MATERIAL_VEHICLE_ENERGY_KWH = exports.MATERIAL_THERMAL_TEMP_K = exports.MATERIAL_THERMAL_HEADROOM_KWH = exports.MATERIAL_BATTERY_SOC_PP = exports.MATERIAL_HOUSE_LOAD_KWH = void 0;
 const trigger_digest_1 = require("../../../ai/trigger_digest");
 const reason_codes_1 = require("./reason_codes");
 /** Hauslast-Tagesabweichung / kumuliert — grober als AI-Flex-Bucket. */
@@ -17,8 +17,25 @@ exports.MATERIAL_THERMAL_HEADROOM_KWH = 0.5;
 exports.MATERIAL_THERMAL_TEMP_K = 2;
 /** Fahrzeug-Energiebedarf-Änderung (kWh). */
 exports.MATERIAL_VEHICLE_ENERGY_KWH = 1;
-/** Anti-Chatter-Cooldown nach Replan (ms). */
-exports.REPLAN_COOLDOWN_MS = 5 * 60_000;
+/** Anti-Chatter-Cooldown nachts (21–06 Uhr lokal). */
+exports.REPLAN_COOLDOWN_NIGHT_MS = 5 * 60_000;
+/** Anti-Chatter-Cooldown tagsüber (06–21 Uhr lokal) — häufiger für Live-PV-Reaktion. */
+exports.REPLAN_COOLDOWN_DAY_MS = 60_000;
+/** @deprecated Verwende REPLAN_COOLDOWN_DAY_MS / REPLAN_COOLDOWN_NIGHT_MS. */
+exports.REPLAN_COOLDOWN_MS = exports.REPLAN_COOLDOWN_DAY_MS;
+/** Lokale Stunde aus UTC-Timestamp + Offset-Minuten (Fallback ohne Timezone-Lib). */
+function localHourFromMs(nowMs, offsetMinutes) {
+    return new Date(nowMs + offsetMinutes * 60_000).getUTCHours();
+}
+/**
+ * Gibt den passenden Cooldown zurück: tagsüber (06–21 lokal) 1 Minute, nachts 5 Minuten.
+ * offsetMinutes: Offset der lokalen Zeitzone in Minuten (z. B. 120 für CEST).
+ */
+function replanCooldownMs(nowMs, timezoneOffsetMinutes) {
+    const localHour = localHourFromMs(nowMs, timezoneOffsetMinutes);
+    return localHour >= 6 && localHour < 21 ? exports.REPLAN_COOLDOWN_DAY_MS : exports.REPLAN_COOLDOWN_NIGHT_MS;
+}
+exports.replanCooldownMs = replanCooldownMs;
 function absDiff(a, b) {
     if (a === null || b === null || !Number.isFinite(a) || !Number.isFinite(b))
         return null;
@@ -182,12 +199,13 @@ function evaluateMaterialReplan(baseline, actual, opts) {
         unique.includes(reason_codes_1.REASON.REPLAN_PRICE_REVISION) ||
         unique.includes(reason_codes_1.REASON.REPLAN_HOUSE_LOAD_DEVIATION);
     const lastReplan = opts?.lastReplanAtMs ?? null;
+    const cooldownMs = replanCooldownMs(actual.nowMs, opts?.timezoneOffsetMinutes ?? 0);
     // Anti-Chatter: Cooldown nur für weiche Plan-vs-Actual-Abweichungen.
     // Cadence-/Forecast-Revision und harte Events (Vehicle, Tag, Komfort) immer erlaubt.
     if (!hard &&
         !forecastRevision &&
         lastReplan !== null &&
-        actual.nowMs - lastReplan < exports.REPLAN_COOLDOWN_MS) {
+        actual.nowMs - lastReplan < cooldownMs) {
         return { shouldReplan: false, reasons: unique, hard: false };
     }
     return { shouldReplan: true, reasons: unique, hard };

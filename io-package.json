@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.309",
+		"version": "0.1.310",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.310": {
+				"en": "Planner now recalculates every minute during daytime (06–21h local) and every 5 minutes at night. This replaces the removed live-surplus side-channel and ensures the planner reacts quickly to live PV surplus.",
+				"de": "Planer berechnet tagsüber (06–21 Uhr lokal) jede Minute neu und nachts alle 5 Minuten. Dies ersetzt den entfernten Live-Surplus-Seitenkanal und stellt sicher, dass der Planer schnell auf Live-PV-Überschuss reagiert."
+			},
 			"0.1.309": {
 			"en": "One-Plan: removed side-channel logic for IH and climate. Without a valid Daily Plan, immersion heater and climate no longer start locally. Removed live thermal surplus replan side channel from tick — all decisions now go through the unified planner only.",
 			"de": "One-Plan: Seitenkanal-Logik für Heizstab und Klima entfernt. Ohne gültigen Daily Plan starten Heizstab und Klima nicht mehr lokal. Live-Thermal-Surplus-Replan-Seitenkanal aus dem Tick entfernt — alle Entscheidungen laufen nun ausschließlich über den Unified Planner."

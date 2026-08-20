@@ -45,6 +45,18 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-sw{width:7px;height:7px;border-radius:2px;display:inline-block}
 .ems-ai-compact{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:2px 6px;margin-bottom:4px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;flex:0 0 auto}
 .ems-ai-compact .ems-ai-toggle{margin:0}
+.ems-view-tabs{display:flex;gap:4px;margin-bottom:4px;flex:0 0 auto}
+.ems-view-tab{background:#21262d;border:1px solid #30363d;color:#8b949e;border-radius:6px;padding:3px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
+.ems-view-tab.on{background:#1f6feb33;border-color:#1f6feb66;color:#58a6ff}
+#ems-view-ops{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden}
+.ems-stats{display:none;flex-direction:column;gap:4px;flex:1 1 auto;min-height:0;overflow:auto}
+.ems-stats.on{display:flex}
+.ems-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;align-content:start}
+.ems-stats .ems-card{min-height:120px}
+.ems-stats-hero{font-size:22px;font-weight:700;line-height:1.2;margin:4px 0}
+.ems-stats-hero.pos{color:#3fb950}.ems-stats-hero.neg{color:#f85149}.ems-stats-hero.neu{color:#8b949e}
+.ems-stats-pending{border-color:#f0883e66}
+@media(max-width:900px){.ems-stats-grid{grid-template-columns:1fr}}
 .ems-main{display:grid;grid-template-columns:minmax(310px,410px) minmax(200px,1fr) minmax(220px,28%);gap:4px;align-items:stretch;flex:1 1 auto;min-height:0;overflow:hidden}
 .ems-tiles{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(min-content,1fr);align-content:stretch;gap:4px;min-height:0;height:100%;overflow:auto}
 .ems-tiles.ems-tiles-dense{grid-template-columns:1fr 1fr}
@@ -126,6 +138,11 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 <div id="ems-status" class="ems-status">Verbinde…</div>
 <div id="ems-content" style="display:none">
 	<div id="ems-alerts" class="ems-alerts" style="display:none"></div>
+	<div class="ems-view-tabs" id="ems-view-tabs">
+		<button type="button" class="ems-view-tab on" data-ems-view="ops">Betrieb</button>
+		<button type="button" class="ems-view-tab" data-ems-view="stats">Statistik</button>
+	</div>
+	<div id="ems-view-ops">
 	<div class="ems-live" id="ems-now"></div>
 	<div class="ems-lage" id="ems-lage" style="display:none"></div>
 	<div class="ems-price" id="ems-price"></div>
@@ -140,6 +157,11 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 		<div class="ems-ai" id="ems-ai"></div>
 		<div class="ems-daily" id="ems-daily"></div>
 		<div class="ems-hint">Technische Details. Alltag bleibt oben — dieser Block nur bei Admin-Haken „VIS Diagnose anzeigen“.</div>
+	</div>
+	</div>
+	<div id="ems-view-stats" class="ems-stats">
+		<div class="ems-stats-grid" id="ems-stats-grid"></div>
+		<div class="ems-note" id="ems-stats-reason" style="margin-top:4px"></div>
 	</div>
 </div>
 <script>
@@ -210,6 +232,18 @@ var stateIds=[
 	INST+".ai.calls_limit",
 	INST+".ai.cost_estimate_today_eur",
 	INST+".ai.limit_warning",
+	INST+".statistics.enabled",
+	INST+".statistics.reason_de",
+	INST+".statistics.home.today_json",
+	INST+".statistics.home.month_json",
+	INST+".statistics.mobility.today_json",
+	INST+".statistics.mobility.month_json",
+	INST+".statistics.home.today_savings_vs_fixed_eur",
+	INST+".statistics.home.month_savings_vs_fixed_eur",
+	INST+".statistics.mobility.today_savings_vs_ice_eur",
+	INST+".statistics.mobility.month_savings_vs_ice_eur",
+	INST+".statistics.public_charge.pending_json",
+	INST+".statistics.public_charge.submit_ack_de",
 	INST+".planner.intent.daily_plan.status",
 	INST+".planner.intent.daily_plan.reason_de",
 	INST+".planner.intent.daily_plan.valid_until",
@@ -2416,10 +2450,114 @@ function renderDaily(){
 		+"</div>";
 }
 
+function fmtEur(v){
+	if(v===null||v===undefined||!isFinite(Number(v)))return "—";
+	return Number(v).toFixed(2).replace(".",",")+" €";
+}
+function fmtKwhStats(v){
+	if(v===null||v===undefined||!isFinite(Number(v)))return "—";
+	return Number(v).toFixed(1).replace(".",",")+" kWh";
+}
+function savingsHero(v){
+	if(v===null||v===undefined||!isFinite(Number(v)))return {cls:"neu",txt:"—"};
+	var n=Number(v);
+	if(n>0.005)return {cls:"pos",txt:"+"+fmtEur(n)};
+	if(n<-0.005)return {cls:"neg",txt:fmtEur(n)};
+	return {cls:"neu",txt:fmtEur(0)};
+}
+function statsCard(title,hero,rows,note,extraCls){
+	var html='<div class="ems-card'+(extraCls?" "+extraCls:"")+'"><div class="ems-card-h"><span class="ems-card-title">'+esc(title)+'</span></div>';
+	html+='<div class="ems-stats-hero '+hero.cls+'">'+esc(hero.txt)+'</div>';
+	html+='<div class="ems-rows">';
+	for(var i=0;i<rows.length;i++){
+		html+='<div class="l">'+esc(rows[i][0])+'</div><div class="r">'+esc(rows[i][1])+'</div>';
+	}
+	html+="</div>";
+	if(note)html+='<div class="ems-note">'+esc(note)+"</div>";
+	return html+"</div>";
+}
+function renderStatistics(){
+	var grid=document.getElementById("ems-stats-grid");
+	var reasonEl=document.getElementById("ems-stats-reason");
+	if(!grid)return;
+	var homeT=parseObj(g("statistics.home.today_json"));
+	var homeM=parseObj(g("statistics.home.month_json"));
+	var mobT=parseObj(g("statistics.mobility.today_json"));
+	var mobM=parseObj(g("statistics.mobility.month_json"));
+	var pending=parseArr(g("statistics.public_charge.pending_json"));
+	var hT=savingsHero(num(g("statistics.home.today_savings_vs_fixed_eur"))!=null?num(g("statistics.home.today_savings_vs_fixed_eur")):num(homeT.savingsVsFixedEur));
+	var hM=savingsHero(num(g("statistics.home.month_savings_vs_fixed_eur"))!=null?num(g("statistics.home.month_savings_vs_fixed_eur")):num(homeM.savingsVsFixedEur));
+	var mT=savingsHero(num(g("statistics.mobility.today_savings_vs_ice_eur"))!=null?num(g("statistics.mobility.today_savings_vs_ice_eur")):num(mobT.savingsVsIceEur));
+	var mM=savingsHero(num(g("statistics.mobility.month_savings_vs_ice_eur"))!=null?num(g("statistics.mobility.month_savings_vs_ice_eur")):num(mobM.savingsVsIceEur));
+	var pendingNote=pending.length
+		? (pending.length+" offene Schnellader-Session(s) — Rechnung unter statistics.public_charge.submit_request (JSON: kwh, eur).")
+		: "Keine offenen Schnellader-Sessions.";
+	grid.innerHTML=
+		statsCard("Haus heute · vs. Festtarif",hT,[
+			["Netzbezug",fmtKwhStats(homeT.gridImportKwh)],
+			["Dynamisch",fmtEur(homeT.dynamicCostEur)],
+			["Festtarif",fmtEur(homeT.fixedTariffCostEur)],
+			["Rewards",fmtEur(homeT.gridRewardsCreditEur)]
+		],txt(homeT.reasonDe,""))
+		+statsCard("Haus Monat · vs. Festtarif",hM,[
+			["Netzbezug",fmtKwhStats(homeM.gridImportKwh)],
+			["Dynamisch",fmtEur(homeM.dynamicCostEur)],
+			["Festtarif",fmtEur(homeM.fixedTariffCostEur)],
+			["Rewards",fmtEur(homeM.gridRewardsCreditEur)]
+		],txt(homeM.reasonDe,""))
+		+statsCard("Mobilität heute · vs. Verbrenner",mT,[
+			["Heim PV",fmtKwhStats(mobT.homePvKwh)],
+			["Heim Netz",fmtKwhStats(mobT.homeGridKwh)],
+			["Schnellader (bezahlt)",fmtKwhStats(mobT.publicInvoicedKwh)],
+			["km ≈",mobT.estimatedKm!=null?String(mobT.estimatedKm).replace(".",","):"—"],
+			["E-Auto",fmtEur(mobT.evTotalCostEur)],
+			["Verbrenner",fmtEur(mobT.iceCostEur)],
+			["Sprit €/l",mobT.fuelPriceEurPerL!=null?Number(mobT.fuelPriceEurPerL).toFixed(3).replace(".",","):"—"]
+		],txt(mobT.reasonDe,""))
+		+statsCard("Mobilität Monat · vs. Verbrenner",mM,[
+			["Heim PV",fmtKwhStats(mobM.homePvKwh)],
+			["Heim Netz",fmtKwhStats(mobM.homeGridKwh)],
+			["Schnellader (bezahlt)",fmtKwhStats(mobM.publicInvoicedKwh)],
+			["km ≈",mobM.estimatedKm!=null?String(mobM.estimatedKm).replace(".",","):"—"],
+			["E-Auto",fmtEur(mobM.evTotalCostEur)],
+			["Verbrenner",fmtEur(mobM.iceCostEur)]
+		],txt(mobM.reasonDe,""))
+		+statsCard("Schnellader",{cls:pending.length?"warn":"neu",txt:pending.length?String(pending.length)+" offen":"keine"},[
+			["Pending kWh",fmtKwhStats(mobT.publicPendingKwh)],
+			["Ack",txt(g("statistics.public_charge.submit_ack_de"),"—")]
+		],pendingNote,"ems-stats-pending");
+	if(reasonEl)reasonEl.textContent=txt(g("statistics.reason_de"),"Statistik: Mappings im Admin-Tab „Statistik“ setzen.");
+}
+
+var emsViewMode="ops";
+function setEmsView(mode){
+	emsViewMode=mode==="stats"?"stats":"ops";
+	var ops=document.getElementById("ems-view-ops");
+	var stats=document.getElementById("ems-view-stats");
+	var tabs=document.getElementById("ems-view-tabs");
+	if(ops)ops.style.display=emsViewMode==="ops"?"":"none";
+	if(stats){
+		if(emsViewMode==="stats")stats.classList.add("on");
+		else stats.classList.remove("on");
+	}
+	if(tabs){
+		var btns=tabs.querySelectorAll(".ems-view-tab");
+		for(var i=0;i<btns.length;i++){
+			var on=btns[i].getAttribute("data-ems-view")===emsViewMode;
+			if(on)btns[i].classList.add("on");else btns[i].classList.remove("on");
+		}
+	}
+	if(emsViewMode==="stats")renderStatistics();
+}
+
 function render(){
 	if(!bound&&g("planner.intent.daily_plan.status")==null&&g("live.pv.power_w")==null)return;
 	showContent();
 	bindUiActions();
+	if(emsViewMode==="stats"){
+		renderStatistics();
+		return;
+	}
 	renderNow();
 	renderPriceBoard();
 	renderAiSummary();
@@ -2471,6 +2609,21 @@ function setAiUserEnabled(on){
 }
 
 function bindUiActions(){
+	var tabs=document.getElementById("ems-view-tabs");
+	if(tabs&&tabs.getAttribute("data-ems-actions")!=="1"){
+		tabs.setAttribute("data-ems-actions","1");
+		tabs.addEventListener("click",function(ev){
+			var t=ev.target;
+			while(t&&t!==tabs){
+				if(t.getAttribute&&t.getAttribute("data-ems-view")){
+					ev.preventDefault();
+					setEmsView(t.getAttribute("data-ems-view"));
+					return;
+				}
+				t=t.parentNode;
+			}
+		});
+	}
 	var stack=document.getElementById("ems-stack");
 	if(stack&&stack.getAttribute("data-ems-actions")!=="1"){
 		stack.setAttribute("data-ems-actions","1");

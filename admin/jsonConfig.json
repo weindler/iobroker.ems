@@ -7731,6 +7731,230 @@
 				}
 			}
 		},
+		"statisticsTab": {
+			"type": "panel",
+			"label": "Statistik",
+			"items": {
+				"statsIntro": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Reporting-Addon oben drauf — ändert keine EMS-Steuerung. Haus: Tibber/dynamisch vs. Festtarif (Verivox-Stil, gleiche kWh). Mobilität: E-Auto vs. Verbrenner; Spritpreis z. B. Tankerkönig; Schnellader nur mit manueller Rechnung. Alles gemappt (objectId), nichts hardcodiert."
+				},
+				"statistics_enabled": {
+					"type": "checkbox",
+					"label": "Statistik aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"hStatsHouse": {
+					"type": "header",
+					"size": 2,
+					"text": "Haus — Tarifvergleich",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"statistics_compare_tariff_ct_per_kwh": {
+					"type": "number",
+					"label": "Vergleichstarif (Festpreis)",
+					"help": "Arbeitspreis des Alternativtarifs in ct/kWh (wie Verivox).",
+					"min": 0,
+					"max": 200,
+					"step": 0.1,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"statistics_compare_tariff_monthly_base_eur": {
+					"type": "number",
+					"label": "Vergleichstarif Grundpreis / Monat",
+					"help": "€/Monat; anteilig auf den Tag umgelegt.",
+					"min": 0,
+					"max": 100,
+					"step": 0.01,
+					"default": 0,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"statistics_grid_import_energy_kwh_state": {
+					"type": "objectId",
+					"label": "Netzbezug Energie (kWh, Zähler)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"statistics_grid_export_energy_kwh_state": {
+					"type": "objectId",
+					"label": "Einspeisung Energie (kWh, optional)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"statistics_grid_import_power_w_state": {
+					"type": "objectId",
+					"label": "Netzbezug Leistung (W, für Kosten-Integration)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"statistics_dynamic_cost_today_eur_state": {
+					"type": "objectId",
+					"label": "Dynamische Tageskosten EUR (optional, z. B. Tibber)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"statistics_grid_rewards_credit_eur_state": {
+					"type": "objectId",
+					"label": "Tibber Grid Rewards Gutschrift EUR",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"hStatsMobility": {
+					"type": "header",
+					"size": 2,
+					"text": "Mobilität — E-Auto vs. Verbrenner",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"statistics_ice_fuel_type": {
+					"type": "select",
+					"label": "Verbrenner Kraftstoff",
+					"default": "e5",
+					"options": [
+						{ "label": "Super E5", "value": "e5" },
+						{ "label": "Super E10", "value": "e10" },
+						{ "label": "Diesel", "value": "diesel" }
+					],
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"statistics_ice_l_per_100km": {
+					"type": "number",
+					"label": "Verbrenner Verbrauch (l/100 km)",
+					"min": 0,
+					"max": 40,
+					"step": 0.1,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"statistics_fuel_price_eur_per_l_state": {
+					"type": "objectId",
+					"label": "Spritpreis €/l (z. B. Tankerkönig)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"statistics_fuel_price_fallback_eur_per_l": {
+					"type": "number",
+					"label": "Spritpreis Fallback €/l",
+					"help": "Nur wenn Tankerkönig-Mapping fehlt.",
+					"min": 0,
+					"max": 5,
+					"step": 0.001,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"statistics_ev_consumption_kwh_per_100_state": {
+					"type": "objectId",
+					"label": "E-Auto Verbrauch kWh/100 km (Ford Pass / Trip Log)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"statistics_ev_consumption_fallback_kwh_per_100": {
+					"type": "number",
+					"label": "E-Auto Verbrauch Fallback kWh/100 km",
+					"min": 0,
+					"max": 50,
+					"step": 0.1,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"hStatsWb": {
+					"type": "header",
+					"size": 2,
+					"text": "Wallbox / Session (optional — sonst bestehende EVCC-Mappings)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"statistics_wallbox_session_energy_kwh_state": {
+					"type": "objectId",
+					"label": "Session Energie kWh (Override)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"statistics_wallbox_session_price_per_kwh_state": {
+					"type": "objectId",
+					"label": "Session Preis €/kWh (Override, z. B. evcc)",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				}
+			}
+		},
 		"emsLightLearningTab": {
 			"type": "panel",
 			"label": "Learning",

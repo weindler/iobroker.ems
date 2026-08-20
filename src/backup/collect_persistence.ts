@@ -29,6 +29,7 @@ export const SELECTED_STATE_DATA_ARTIFACTS: Array<{ category: string; fileName: 
 	{ category: "learning/energy_daily_rollup", fileName: "energy_daily_v1.json" },
 	{ category: "learning/consumer_stats", fileName: "consumer_stats_v1.json" },
 	{ category: "learning/day_evaluation", fileName: "day_evaluation_v1.json" },
+	{ category: "statistics", fileName: "statistics_v1.json" },
 	{ category: "learning/vehicle_presence", fileName: "vehicle_presence_learning_v1.json" },
 ];
 

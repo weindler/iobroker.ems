@@ -121,7 +121,41 @@ describe("ai buildAiOptimizationContext", () => {
 		assert.equal(ctx.situation.live.houseLoadW, null);
 		assert.equal(ctx.situation.live.deficitW, null);
 		assert.equal(ctx.situation.immersion.bufferTempC, null);
+		assert.equal(ctx.situation.immersion.boilerTempC, null);
 		assert.equal(ctx.situation.priceNowCt, null);
+	});
+
+	it("uses boiler empty-at for thermalEstimated* — never the buffer tree", async () => {
+		const host = {
+			config: {},
+			async getStateAsync(id: string) {
+				if (id === "learning.thermal_runtime.estimated_empty_at") {
+					return { val: "2026-08-20T08:40:00.000Z", ack: true } as ioBroker.State;
+				}
+				if (id === "learning.thermal_runtime.status") {
+					return { val: "ready", ack: true } as ioBroker.State;
+				}
+				if (id === "learning.thermal_boiler.estimated_empty_at") {
+					return { val: "2026-08-21T00:40:00.000Z", ack: true } as ioBroker.State;
+				}
+				if (id === "learning.thermal_boiler.status") {
+					return { val: "ready", ack: true } as ioBroker.State;
+				}
+				if (id === "live.thermal.buffer_temp_c") return { val: 46, ack: true } as ioBroker.State;
+				if (id === "live.thermal.boiler_temp_c") return { val: 52, ack: true } as ioBroker.State;
+				return null;
+			},
+		};
+		const ctx = await buildAiOptimizationContext(host, minimalPlan(), "x");
+		assert.equal(ctx.learning.thermalEstimatedEmptyAt, "2026-08-21T00:40:00.000Z");
+		assert.equal(ctx.learning.thermalBoilerEstimatedEmptyAt, "2026-08-21T00:40:00.000Z");
+		assert.equal(ctx.learning.thermalBufferEstimatedEmptyAt, "2026-08-20T08:40:00.000Z");
+		assert.equal(ctx.situation.immersion.thermalEstimatedEmptyAt, "2026-08-21T00:40:00.000Z");
+		assert.equal(ctx.situation.immersion.boilerEstimatedEmptyAt, "2026-08-21T00:40:00.000Z");
+		assert.equal(ctx.situation.immersion.bufferEstimatedEmptyAt, "2026-08-20T08:40:00.000Z");
+		assert.equal(ctx.situation.immersion.boilerTempC, 52);
+		assert.equal(ctx.situation.immersion.bufferTempC, 46);
+		assert.notEqual(ctx.situation.immersion.thermalEstimatedEmptyAt, ctx.situation.immersion.bufferEstimatedEmptyAt);
 	});
 
 	it("missing/invalid policy state → empty highlights, never throws", async () => {

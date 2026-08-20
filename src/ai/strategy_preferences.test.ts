@@ -225,6 +225,13 @@ describe("normalizeAddonDecisions", () => {
 		},
 		immersion: {
 			bufferTempC: 45,
+			boilerTempC: 52,
+			bufferEstimatedEmptyAt: null,
+			bufferEstimatedEmptyAtLocalDe: null,
+			bufferEstimatedRemainingHours: null,
+			boilerEstimatedEmptyAt: null,
+			boilerEstimatedEmptyAtLocalDe: null,
+			boilerEstimatedRemainingHours: null,
 			thermalEstimatedEmptyAt: null,
 			thermalEstimatedEmptyAtLocalDe: null,
 			thermalEstimatedRemainingHours: null,

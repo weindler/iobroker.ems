@@ -35,12 +35,23 @@ export interface AiLearningDigest {
 	pvCorrectedTomorrowKwh: number | null;
 	/** PV-Horizon Tag 1–7 (corrected_kwh), fehlende Tage als null. */
 	pvHorizonDays: Array<{ day: number; correctedKwh: number | null }>;
+	/** Puffer-Learning (`learning.thermal_runtime`) — Soft/Komfort, nicht Pflicht. */
 	thermalRuntimeStatus: string | null;
-	/** ISO/UTC — Maschinenwert. */
+	thermalBufferStatus: string | null;
+	thermalBufferEstimatedEmptyAt: string | null;
+	thermalBufferEstimatedEmptyAtLocalDe: string | null;
+	thermalBufferEstimatedRemainingHours: number | null;
+	/** Boiler-Learning (`learning.thermal_boiler`) — Hard/Pflicht Warmwasser. */
+	thermalBoilerStatus: string | null;
+	thermalBoilerEstimatedEmptyAt: string | null;
+	thermalBoilerEstimatedEmptyAtLocalDe: string | null;
+	thermalBoilerEstimatedRemainingHours: number | null;
+	/**
+	 * Alias von Boiler (Hard). Historisch war das der Puffer-Baum — KI darf das nicht
+	 * wieder mit Puffer-empty-at verwechseln.
+	 */
 	thermalEstimatedEmptyAt: string | null;
-	/** Ortszeit Europe/Berlin (oder Plan-TZ) für deutsche Prosa — nicht die UTC-Ziffern aus ISO. */
 	thermalEstimatedEmptyAtLocalDe: string | null;
-	/** Live-Countdown aus empty_at − now (h), nie eingefrorener Snapshot. */
 	thermalEstimatedRemainingHours: number | null;
 	batteryRuntimeStatus: string | null;
 	batteryTopOffIntervalDays: number | null;
@@ -70,6 +81,16 @@ export interface AiSituationBrief {
 	};
 	immersion: {
 		bufferTempC: number | null;
+		boilerTempC: number | null;
+		/** Puffer Soft/Komfort (`learning.thermal_runtime`). */
+		bufferEstimatedEmptyAt: string | null;
+		bufferEstimatedEmptyAtLocalDe: string | null;
+		bufferEstimatedRemainingHours: number | null;
+		/** Boiler Hard/Pflicht (`learning.thermal_boiler`). */
+		boilerEstimatedEmptyAt: string | null;
+		boilerEstimatedEmptyAtLocalDe: string | null;
+		boilerEstimatedRemainingHours: number | null;
+		/** Alias von Boiler — nie Puffer. */
 		thermalEstimatedEmptyAt: string | null;
 		thermalEstimatedEmptyAtLocalDe: string | null;
 		thermalEstimatedRemainingHours: number | null;

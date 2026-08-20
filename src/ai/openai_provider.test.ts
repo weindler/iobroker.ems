@@ -18,6 +18,13 @@ function emptySituation(): AiOptimizationRequestContext["situation"] {
 		},
 		immersion: {
 			bufferTempC: null,
+			boilerTempC: null,
+			bufferEstimatedEmptyAt: null,
+			bufferEstimatedEmptyAtLocalDe: null,
+			bufferEstimatedRemainingHours: null,
+			boilerEstimatedEmptyAt: null,
+			boilerEstimatedEmptyAtLocalDe: null,
+			boilerEstimatedRemainingHours: null,
 			thermalEstimatedEmptyAt: null,
 			thermalEstimatedEmptyAtLocalDe: null,
 			thermalEstimatedRemainingHours: null,
@@ -101,6 +108,14 @@ function baseRequest(): AiOptimizationRequestContext {
 			pvCorrectedTomorrowKwh: null,
 			pvHorizonDays: [],
 			thermalRuntimeStatus: null,
+			thermalBufferStatus: null,
+			thermalBufferEstimatedEmptyAt: null,
+			thermalBufferEstimatedEmptyAtLocalDe: null,
+			thermalBufferEstimatedRemainingHours: null,
+			thermalBoilerStatus: null,
+			thermalBoilerEstimatedEmptyAt: null,
+			thermalBoilerEstimatedEmptyAtLocalDe: null,
+			thermalBoilerEstimatedRemainingHours: null,
 			thermalEstimatedEmptyAt: null,
 			thermalEstimatedEmptyAtLocalDe: null,
 			thermalEstimatedRemainingHours: null,
@@ -313,6 +328,36 @@ describe("openai provider", () => {
 		assert.equal(res.ok, true);
 		assert.equal(res.thinkingDe, "");
 		assert.deepEqual(res.decisions, []);
+	});
+
+	it("thinking prompt tells the model boiler is hard and buffer must not trigger heat_today", async () => {
+		let system = "";
+		const fetchImpl = (async (_url: string, init?: RequestInit) => {
+			const body = JSON.parse(String(init?.body ?? "{}")) as {
+				messages?: Array<{ role?: string; content?: string }>;
+			};
+			system = body.messages?.find((m) => m.role === "system")?.content ?? "";
+			return {
+				ok: true,
+				status: 200,
+				json: async () => ({
+					choices: [{ message: { content: JSON.stringify({ proposals: [], reason_de: "ok" }) } }],
+					usage: { prompt_tokens: 1, completion_tokens: 1 },
+				}),
+				text: async () => "",
+			} as unknown as Response;
+		}) as unknown as typeof fetch;
+		const provider = createOpenAiProvider(fetchImpl);
+		await provider.optimize(baseRequest(), {
+			apiKey: "sk-test",
+			model: "gpt-4.1-mini",
+			timeoutMs: 1000,
+			thinkingMode: true,
+		});
+		assert.match(system, /TWO tanks/i);
+		assert.match(system, /heat_today ONLY if boiler/i);
+		assert.match(system, /MUST NOT choose heat_today from buffer/i);
+		assert.doesNotMatch(system, /heat_today if buffer risk/i);
 	});
 
 	it("network error rejects gracefully with ok=false", async () => {

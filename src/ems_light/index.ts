@@ -13,6 +13,10 @@ import {
 	type EnergyDailyRollupHost,
 } from "../learning/energy_daily_rollup";
 import {
+	tickStatistics,
+	type StatisticsHost,
+} from "../statistics";
+import {
 	initPowerRollup,
 	stopPowerRollup,
 	tickPowerRollup,
@@ -39,6 +43,7 @@ let tickTimer: NodeJS.Timeout | null = null;
 let policyAdapter: ioBroker.Adapter | null = null;
 let powerRollupHost: PowerRollupHost | null = null;
 let energyDailyRollupHost: EnergyDailyRollupHost | null = null;
+let statisticsHost: StatisticsHost | null = null;
 
 function buildRollupHost(adapter: ioBroker.Adapter): PowerRollupHost & EnergyDailyRollupHost {
 	const adapterAny = adapter as unknown as Record<string, unknown>;
@@ -138,6 +143,8 @@ export async function ensureEmsLightStateTree(adapter: ioBroker.Adapter): Promis
 	const version = String(adapter.common?.version ?? "0.0.0");
 	const host = adapter as unknown as LiveCacheHost;
 	await ensureEmsLightStates(host, version);
+	const { ensureStatisticsStateTree } = await import("../statistics/index.js");
+	await ensureStatisticsStateTree(host);
 	await ensurePlannerStateTree(host as unknown as PlannerHost & LiveCacheHost);
 	const policyHost = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & PolicyEngineHost);
 	await ensurePolicyStateTree(policyHost);
@@ -171,6 +178,7 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 	const host = adapter as unknown as LiveCacheHost;
 	energyDailyRollupHost = buildRollupHost(adapter);
 	powerRollupHost = energyDailyRollupHost;
+	statisticsHost = energyDailyRollupHost as unknown as StatisticsHost;
 	await initEnergyDailyRollup(energyDailyRollupHost);
 	await initPowerRollup(powerRollupHost);
 	if (learningHost) {
@@ -199,6 +207,7 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 	try {
 		await adapter.subscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE);
 		await adapter.subscribeStatesAsync(INTENT_WALLBOX_REQUEST_STATE);
+		await adapter.subscribeStatesAsync("statistics.public_charge.submit_request");
 	} catch (e) {
 		adapter.log.warn(`EMS-Light state subscribe: ${e}`);
 	}
@@ -209,11 +218,17 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 	if (powerRollupHost) {
 		await tickPowerRollup(powerRollupHost);
 	}
+	if (statisticsHost) {
+		await tickStatistics(statisticsHost).catch((e) => {
+			adapter.log.warn(`statistics tick: ${e}`);
+		});
+	}
 
 	const sec = tickIntervalSec(adapter.config);
 	stopEmsLightTick();
 	const dailyHostForTick = energyDailyRollupHost;
 	const powerHostForTick = powerRollupHost;
+	const statisticsHostForTick = statisticsHost;
 	tickTimer = setInterval(() => {
 		void runEmsLightPhase1Tick(host).catch((e) => {
 			adapter.log.error(`EMS-Light tick: ${e}`);
@@ -226,6 +241,11 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 		if (powerHostForTick) {
 			void tickPowerRollup(powerHostForTick).catch((e) => {
 				adapter.log.error(`Power-Rollup tick: ${e}`);
+			});
+		}
+		if (statisticsHostForTick) {
+			void tickStatistics(statisticsHostForTick).catch((e) => {
+				adapter.log.error(`Statistics tick: ${e}`);
 			});
 		}
 	}, sec * 1000);
@@ -267,6 +287,7 @@ export async function stopEmsLightPhase1(): Promise<void> {
 	stopPlanner();
 	powerRollupHost = null;
 	energyDailyRollupHost = null;
+	statisticsHost = null;
 	learningHost = null;
 	stopEmsLightTick();
 }

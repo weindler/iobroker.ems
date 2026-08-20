@@ -677,10 +677,13 @@ function buildConsumerStates(input: UnifiedDayPlannerInput, slots: SlotWork[]): 
 			th.boilerTempC != null ||
 			th.hygieneDue === true)
 	) {
-		const emptyDeadlineMs =
-			th.boilerEmptyAtUsable === true && th.estimatedEmptyAtIso
-				? Date.parse(th.estimatedEmptyAtIso)
-				: Number.NaN;
+		/*
+		 * Soft-Deadline aus Boiler-emptyAt-Zeitpunkt (ISO), nicht nur Hard-usable-Flag.
+		 * Hard-Bridge bleibt an boilerEmptyAtUsable gebunden (s. bridge unten).
+		 */
+		const emptyDeadlineMs = th.estimatedEmptyAtIso
+			? Date.parse(th.estimatedEmptyAtIso)
+			: Number.NaN;
 		const nowMsLocal = Date.parse(input.time.nowIso);
 		const fromIdx = Math.max(
 			0,
@@ -799,14 +802,12 @@ function buildConsumerStates(input: UnifiedDayPlannerInput, slots: SlotWork[]): 
 					socNow >= 95 ||
 					((reqCharge == null || !(reqCharge > 0.15)) && socNow >= 90));
 			/*
-			 * Soft ohne usable emptyAt: opportunistisch bestes PV im Horizont.
-			 * Soft mit usable Boiler-emptyAt: vor Leerung vorplanen — sonst wandern Slots
-			 * auf Wochenend-PV obwohl emptyAt heute Abend ist (One-Plan, kein Abends-Flicken).
+			 * Soft ohne Boiler-emptyAt: opportunistisch bestes PV im Horizont.
+			 * Soft mit emptyAt-Zeitpunkt: Deadline = emptyAt — sonst wandern Slots auf
+			 * Wochenend-PV obwohl Leerung heute Abend (Export: Surplus heute frei, Plan Sa/So).
 			 */
 			const softEmptyDeadline =
-				th.boilerEmptyAtUsable === true &&
-				Number.isFinite(emptyDeadlineMs) &&
-				emptyDeadlineMs > nowMsLocal
+				Number.isFinite(emptyDeadlineMs) && emptyDeadlineMs > nowMsLocal
 					? emptyDeadlineMs
 					: Number.POSITIVE_INFINITY;
 			out.push({
@@ -1409,6 +1410,25 @@ export function scoreCandidate(
 			} else if (batRoom <= 0.4 && !batStillWants && needScale > 0.2) {
 				/** Batterie satt + Speichernutzen: Soft belohnen (skaliert). */
 				score += e * weights.flexShiftWeight * 0.42 * needScale;
+			}
+			/*
+			 * Soft mit emptyAt-Deadline: zusätzlich Earliness/Pressure wie Hard —
+			 * sonst gewinnt Wochenend-PV im Soft-Score trotz gefilterter Deadline-Slots
+			 * nicht ausreichend gegen Klima um heutige Surplus-Fenster.
+			 */
+			if (Number.isFinite(consumer.deadlineMs) && slotMs < consumer.deadlineMs) {
+				const feas = thermalFeasibility(state, consumer);
+				const pressure = Math.max(0, feas.pressure);
+				const tightWeight = pressure / (1 + pressure);
+				const horizonToDeadlineMs = Math.max(
+					SLOT_H * 3600_000,
+					consumer.deadlineMs - state.nowMs,
+				);
+				const earliness = Math.max(0, 1 - (slotMs - state.nowMs) / horizonToDeadlineMs);
+				score +=
+					e *
+					weights.thermalDeadlineWeight *
+					(0.35 * tightWeight * Math.min(2.0, pressure) + 0.55 * earliness + 0.25 * needScale);
 			}
 		} else if (consumer.thermalBeforeDeadline && slotMs < consumer.deadlineMs) {
 			score += e * weights.thermalDeadlineWeight * 0.42;

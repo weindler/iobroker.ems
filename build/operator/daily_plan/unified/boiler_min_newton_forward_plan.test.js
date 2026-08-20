@@ -340,4 +340,160 @@ function sumIhKwh(plan) {
         const first = Date.parse(ih[0].slot.startIso);
         strict_1.default.ok(first < Date.parse("2026-08-21T00:00:00.000Z"), `first IH must be Thursday, got ${ih[0].slot.startIso}`);
     });
+    (0, node_test_1.it)("emptyAt-ISO ohne usable-Flag: Soft-Deadline trotzdem (kein Samstag)", () => {
+        const ctx = weekendTemptationContext();
+        const flex = ctx.forecastPlan.contributions.find((c) => c.contributionId === contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE);
+        flex.details.emptyAtPlanningUsable = false;
+        const input = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(ctx);
+        strict_1.default.equal(input.thermal?.boilerEmptyAtUsable, false);
+        strict_1.default.equal(input.thermal?.estimatedEmptyAtIso, EMPTY_AT);
+        const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);
+        const ih = plan.allocations.filter((a) => a.kind === "immersion_heater");
+        strict_1.default.ok(ih.length > 0, "soft must still allocate before emptyAt");
+        const emptyMs = Date.parse(EMPTY_AT);
+        strict_1.default.equal(ih.filter((a) => Date.parse(a.slot.startIso) >= emptyMs).length, 0, `no IH after emptyAt without usable flag, starts=${ih.map((a) => a.slot.startIso).join(",")}`);
+    });
+    (0, node_test_1.it)("Export-Fall: Klima Vormittag + freier Surplus Mittag + starkes Sa-PV → IH vor emptyAt", () => {
+        const EMPTY = "2026-08-20T19:01:00.000Z";
+        const now = new Date("2026-08-20T08:26:00.000Z");
+        const slots = [];
+        const start = now.getTime();
+        for (let i = 0; i < 288; i++) {
+            const a = new Date(start + i * 15 * 60_000).toISOString();
+            const b = new Date(start + (i + 1) * 15 * 60_000).toISOString();
+            const day = new Date(a).getUTCDay();
+            const h = new Date(a).getUTCHours();
+            let pv = 0;
+            let house = 400;
+            if (day === 4 && h >= 8 && h < 12) {
+                pv = 2900;
+                house = 1400; // nach Klima-Last bleibt oft <1700 — wie Export
+            }
+            else if (day === 4 && h >= 12 && h < 16) {
+                pv = 3400;
+                house = 1100; // freier Surplus ≥1700
+            }
+            else if (day === 6 && h >= 10 && h < 16) {
+                pv = 7000;
+                house = 500;
+            }
+            slots.push({
+                slot: { startIso: a, endIso: b },
+                pvPowerW: pv,
+                houseLoadPowerW: house,
+                fixedBalancePowerW: pv - house,
+                gridPriceCtPerKwh: 25,
+                gridImportAllowed: true,
+                gridMaxImportPowerW: 30000,
+                outdoorTempC: null,
+                quality: Q,
+                reasonDe: "",
+            });
+        }
+        const ctx = {
+            now,
+            timezone: TZ,
+            globalMode: "balanced",
+            forecastPlan: {
+                generatedAt: now.toISOString(),
+                validUntil: new Date(start + 72 * 3600_000).toISOString(),
+                revision: 1,
+                timezone: TZ,
+                horizonStart: now.toISOString(),
+                horizonEnd: slots[slots.length - 1].slot.endIso,
+                slotMinutes: 15,
+                status: "ready",
+                reasonDe: "export-replay",
+                quality: Q,
+                days: [
+                    {
+                        date: "2026-08-20",
+                        pvEnergyKwh: 33.7,
+                        houseLoadEnergyKwh: 15.5,
+                        renewableBalanceKwh: 18,
+                        weatherMinTempC: null,
+                        weatherMaxTempC: null,
+                        quality: Q,
+                        reasonDe: "test",
+                    },
+                ],
+                slots,
+                contributions: [
+                    contrib(contribution_ids_1.CONTRIBUTION_IDS.PV_SUPPLY, { correctedTodayKwh: 33.7, rawTodayKwh: 33.7 }, now),
+                    contrib(contribution_ids_1.CONTRIBUTION_IDS.HOUSE_LOAD_FIXED, {}, now),
+                    contrib(contribution_ids_1.CONTRIBUTION_IDS.GRID_SUPPLY, {}, now),
+                    contrib(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, {
+                        bufferTempC: 46,
+                        boilerTempC: 52,
+                        boilerMinTempC: 50,
+                        targetTempC: 63,
+                        forecastTargetTempC: 63,
+                        planningMaxTempC: 63,
+                        requiredEnergyKwh: 6.46,
+                        maxPowerW: 1700,
+                        minPowerW: 1700,
+                        pvPrechargeActive: true,
+                        boilerCoolingConstantPerH: 0.00573,
+                        boilerCoolingAsymptoteC: 18,
+                        boilerEstimatedEmptyAt: EMPTY,
+                        estimatedEmptyAt: EMPTY,
+                        emptyAtSource: "estimated",
+                        emptyAtPlanningUsable: true,
+                        boilerSensorDegraded: false,
+                        thermalLearningStatus: "degraded",
+                        thermalLearningModel: "newton",
+                    }, now),
+                    contrib(contribution_ids_1.CONTRIBUTION_IDS.AC_UNIT(1), {
+                        name: "unit_1",
+                        roomTempC: 27,
+                        onTempC: 26,
+                        offTempC: 24,
+                        estimatedPowerW: 850,
+                        expectedKwhToday: 3,
+                    }, now),
+                    contrib(contribution_ids_1.CONTRIBUTION_IDS.AC_UNIT(2), {
+                        name: "unit_2",
+                        roomTempC: 27,
+                        onTempC: 26,
+                        offTempC: 24,
+                        estimatedPowerW: 700,
+                        expectedKwhToday: 2,
+                    }, now),
+                ],
+                activeContributors: [],
+                excludedContributors: [],
+            },
+            observedPvPowerW: 3800,
+            observedHouseLoadPowerW: 190,
+            observedPvAgeSec: 5,
+            observedHouseAgeSec: 5,
+            feedInCtPerKwh: 9.3,
+            preferImmersionLiveSurplusNow: false,
+            passiveBatteryEnergyAvailable: true,
+        };
+        const input = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(ctx);
+        input.battery = {
+            ...input.battery,
+            socPct: 100,
+            usableCapacityKwh: 18,
+            minSocPct: 10,
+            maxSocPct: 100,
+            endSocTargetPct: 100,
+            requiredChargeEnergyKwh: 0,
+            passiveBatteryEnergyAvailable: true,
+            allowedModes: input.battery.allowedModes ?? ["pv"],
+            uncertainty: Q,
+            freshness: {
+                observedAtIso: input.time.nowIso,
+                ageSec: 0,
+                quality: Q,
+            },
+        };
+        const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);
+        const ih = plan.allocations.filter((a) => a.kind === "immersion_heater");
+        const emptyMs = Date.parse(EMPTY);
+        strict_1.default.ok(ih.length > 0, `expected IH, got none; climate=${plan.allocations.filter((a) => a.kind === "climate").length}`);
+        strict_1.default.equal(ih.filter((a) => Date.parse(a.slot.startIso) >= emptyMs).length, 0, `Export-Regression: keine IH nach emptyAt, starts=${ih.map((a) => a.slot.startIso).join(",")}`);
+        strict_1.default.ok(ih.some((a) => a.slot.startIso.startsWith("2026-08-20")), `Export-Regression: IH muss Donnerstag vorplanen, starts=${ih.map((a) => a.slot.startIso).join(",")}`);
+    });
 });

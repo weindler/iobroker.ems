@@ -341,8 +341,15 @@ function buildUnifiedInputFromForecastContext(ctx) {
                 const boilerMinTempC = num(ihD, "boilerMinTempC") ?? num(ihD, "mandatoryMinTempC");
                 const boilerTempC = num(ihD, "boilerTempC");
                 const estimatedEmptyAtIso = str(ihD, "boilerEstimatedEmptyAt") ?? str(ihD, "estimatedEmptyAt");
+                /*
+                 * Hard-Bridge: nur mit Contribution-Flag (belastbares Learning).
+                 * Soft-Deadline: Boiler-emptyAt-Zeitpunkt trotzdem durchreichen, wenn gesetzt —
+                 * sonst wandert Soft auf Wochenend-PV obwohl VIS emptyAt heute Abend zeigt
+                 * (Export 2026-08-20: usable=true im Contribution-State, Plan trotzdem Sa/So).
+                 */
                 const emptyUsable = bool(ihD, "emptyAtPlanningUsable") === true;
-                const emptyMs = emptyUsable && estimatedEmptyAtIso ? Date.parse(estimatedEmptyAtIso) : Number.NaN;
+                const emptyAtIsoForSoft = estimatedEmptyAtIso;
+                const emptyMsForRate = estimatedEmptyAtIso != null ? Date.parse(estimatedEmptyAtIso) : Number.NaN;
                 const coolingRateCPerH = (0, thermal_cooling_rate_1.effectiveCoolingRateCPerH)({
                     coolingRateCPerHAvg: num(ihD, "boilerCoolingRateCPerHAvg"),
                     coolingConstantPerH: num(ihD, "boilerCoolingConstantPerH"),
@@ -350,17 +357,17 @@ function buildUnifiedInputFromForecastContext(ctx) {
                     currentTempC: boilerTempC,
                     bufferTempC: boilerTempC,
                     minTempC: boilerMinTempC,
-                    estimatedEmptyAtMs: Number.isFinite(emptyMs) ? emptyMs : null,
+                    estimatedEmptyAtMs: emptyUsable && Number.isFinite(emptyMsForRate) ? emptyMsForRate : null,
                     nowMs,
                 });
                 const forecastTargetTempC = num(ihD, "forecastTargetTempC");
                 const emptyAtSource = (() => {
                     const s = str(ihD, "emptyAtSource");
-                    if (!emptyUsable || !estimatedEmptyAtIso)
+                    if (!estimatedEmptyAtIso)
                         return null;
                     if (s === "learned" || s === "estimated")
                         return s;
-                    return null;
+                    return emptyUsable ? null : "estimated";
                 })();
                 return {
                     bufferTempC,
@@ -374,8 +381,8 @@ function buildUnifiedInputFromForecastContext(ctx) {
                     availablePowerW: maxPowerW,
                     minPowerW: minPowerW,
                     headroomEnergyKwh: headroom,
-                    estimatedEmptyAtIso: emptyUsable ? estimatedEmptyAtIso : null,
-                    deadlineIso: emptyUsable ? estimatedEmptyAtIso : null,
+                    estimatedEmptyAtIso: emptyAtIsoForSoft,
+                    deadlineIso: emptyUsable ? estimatedEmptyAtIso : emptyAtIsoForSoft,
                     emptyAtSource,
                     boilerEmptyAtUsable: emptyUsable,
                     boilerSensorDegraded: bool(ihD, "boilerSensorDegraded") === true || boilerTempC === null,

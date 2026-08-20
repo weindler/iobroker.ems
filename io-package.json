@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.319",
+		"version": "0.1.320",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.320": {
+				"en": "Soft immersion heater: boiler empty-at timestamp always drives the soft deadline (even if the hard-usable flag flickers), with stronger pre-deadline scoring vs climate/weekend PV — no Saturday slots when empty-at is tonight.",
+				"de": "Heizstab Soft: Boiler-emptyAt-Zeitpunkt steuert die Soft-Deadline immer (auch wenn das Hard-usable-Flag flackert), mit stärkerem Scoring vor der Deadline gegen Klima/Wochenend-PV — keine Samstags-Slots bei emptyAt heute Abend."
+			},
 			"0.1.319": {
 				"en": "Immersion soft planning with usable boiler empty-at now schedules before empty-at (not weekend PV). Hard cover uses next reliable PV when empty-at falls in the overnight gap after today's surplus window.",
 				"de": "Heizstab Soft mit usable Boiler-emptyAt plant jetzt vor der Leerung (nicht erst Wochenend-PV). Hard-Cover nutzt den nächsten verlässlichen PV-Slot, wenn emptyAt in der Overnight-Lücke nach dem heutigen Surplus-Fenster liegt."

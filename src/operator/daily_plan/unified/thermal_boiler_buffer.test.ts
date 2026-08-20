@@ -268,4 +268,28 @@ describe("boiler/puffer invariants", () => {
 		});
 		assert.ok(r.mandatoryEnergyKwh < 0.05);
 	});
+
+	it("Overnight-Lücke: emptyAt nach Fensterende vor nextPv → Cover bis nextPv, Hard > 0", () => {
+		const emptyAt = Date.parse("2026-08-11T18:30:00.000Z"); // nach COVER 16:00, vor NEXT_PV 06:00
+		const r = resolveBoilerBufferThermalEnergy({
+			nowMs: NOW,
+			boilerTempC: 52,
+			boilerMinTempC: 50,
+			bufferTempC: 46,
+			bufferMaxTempC: 63,
+			softHeadroomEnergyKwh: 6.5,
+			boilerCoolingRateCPerH: 0.2,
+			boilerEstimatedEmptyAtMs: emptyAt,
+			boilerEmptyAtUsable: true,
+			nextReliablePvMs: NEXT_PV,
+			currentWindowEndMs: COVER,
+			pvConfidence01: 0.85,
+		});
+		assert.equal(r.coverUntilMs, NEXT_PV);
+		assert.ok(
+			r.mandatoryEnergyKwh > 0.2,
+			`expected overnight hard bridge, hard=${r.mandatoryEnergyKwh} reason=${r.reasonDe}`,
+		);
+		assert.ok(r.economicHeadroomKwh > 1, `soft must remain, soft=${r.economicHeadroomKwh}`);
+	});
 });

@@ -299,6 +299,7 @@ export function thermalHardCoverUntilMs(input: {
 	nowMs: number;
 	nextReliablePvMs: number | null;
 	currentWindowEndMs?: number | null;
+	boilerEstimatedEmptyAtMs?: number | null;
 }): number | null {
 	return thermalHardCoverUntilMsImpl(input);
 }

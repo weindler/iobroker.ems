@@ -124,7 +124,42 @@ function minimalPlan(overrides = {}) {
         strict_1.default.equal(ctx.situation.live.houseLoadW, null);
         strict_1.default.equal(ctx.situation.live.deficitW, null);
         strict_1.default.equal(ctx.situation.immersion.bufferTempC, null);
+        strict_1.default.equal(ctx.situation.immersion.boilerTempC, null);
         strict_1.default.equal(ctx.situation.priceNowCt, null);
+    });
+    (0, node_test_1.it)("uses boiler empty-at for thermalEstimated* — never the buffer tree", async () => {
+        const host = {
+            config: {},
+            async getStateAsync(id) {
+                if (id === "learning.thermal_runtime.estimated_empty_at") {
+                    return { val: "2026-08-20T08:40:00.000Z", ack: true };
+                }
+                if (id === "learning.thermal_runtime.status") {
+                    return { val: "ready", ack: true };
+                }
+                if (id === "learning.thermal_boiler.estimated_empty_at") {
+                    return { val: "2026-08-21T00:40:00.000Z", ack: true };
+                }
+                if (id === "learning.thermal_boiler.status") {
+                    return { val: "ready", ack: true };
+                }
+                if (id === "live.thermal.buffer_temp_c")
+                    return { val: 46, ack: true };
+                if (id === "live.thermal.boiler_temp_c")
+                    return { val: 52, ack: true };
+                return null;
+            },
+        };
+        const ctx = await (0, context_js_1.buildAiOptimizationContext)(host, minimalPlan(), "x");
+        strict_1.default.equal(ctx.learning.thermalEstimatedEmptyAt, "2026-08-21T00:40:00.000Z");
+        strict_1.default.equal(ctx.learning.thermalBoilerEstimatedEmptyAt, "2026-08-21T00:40:00.000Z");
+        strict_1.default.equal(ctx.learning.thermalBufferEstimatedEmptyAt, "2026-08-20T08:40:00.000Z");
+        strict_1.default.equal(ctx.situation.immersion.thermalEstimatedEmptyAt, "2026-08-21T00:40:00.000Z");
+        strict_1.default.equal(ctx.situation.immersion.boilerEstimatedEmptyAt, "2026-08-21T00:40:00.000Z");
+        strict_1.default.equal(ctx.situation.immersion.bufferEstimatedEmptyAt, "2026-08-20T08:40:00.000Z");
+        strict_1.default.equal(ctx.situation.immersion.boilerTempC, 52);
+        strict_1.default.equal(ctx.situation.immersion.bufferTempC, 46);
+        strict_1.default.notEqual(ctx.situation.immersion.thermalEstimatedEmptyAt, ctx.situation.immersion.bufferEstimatedEmptyAt);
     });
     (0, node_test_1.it)("missing/invalid policy state → empty highlights, never throws", async () => {
         const host = { config: {}, async getStateAsync() { return null; } };

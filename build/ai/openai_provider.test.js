@@ -21,6 +21,13 @@ function emptySituation() {
         },
         immersion: {
             bufferTempC: null,
+            boilerTempC: null,
+            bufferEstimatedEmptyAt: null,
+            bufferEstimatedEmptyAtLocalDe: null,
+            bufferEstimatedRemainingHours: null,
+            boilerEstimatedEmptyAt: null,
+            boilerEstimatedEmptyAtLocalDe: null,
+            boilerEstimatedRemainingHours: null,
             thermalEstimatedEmptyAt: null,
             thermalEstimatedEmptyAtLocalDe: null,
             thermalEstimatedRemainingHours: null,
@@ -103,6 +110,14 @@ function baseRequest() {
             pvCorrectedTomorrowKwh: null,
             pvHorizonDays: [],
             thermalRuntimeStatus: null,
+            thermalBufferStatus: null,
+            thermalBufferEstimatedEmptyAt: null,
+            thermalBufferEstimatedEmptyAtLocalDe: null,
+            thermalBufferEstimatedRemainingHours: null,
+            thermalBoilerStatus: null,
+            thermalBoilerEstimatedEmptyAt: null,
+            thermalBoilerEstimatedEmptyAtLocalDe: null,
+            thermalBoilerEstimatedRemainingHours: null,
             thermalEstimatedEmptyAt: null,
             thermalEstimatedEmptyAtLocalDe: null,
             thermalEstimatedRemainingHours: null,
@@ -305,6 +320,33 @@ function fakeFetch(response, status = 200) {
         strict_1.default.equal(res.ok, true);
         strict_1.default.equal(res.thinkingDe, "");
         strict_1.default.deepEqual(res.decisions, []);
+    });
+    (0, node_test_1.it)("thinking prompt tells the model boiler is hard and buffer must not trigger heat_today", async () => {
+        let system = "";
+        const fetchImpl = (async (_url, init) => {
+            const body = JSON.parse(String(init?.body ?? "{}"));
+            system = body.messages?.find((m) => m.role === "system")?.content ?? "";
+            return {
+                ok: true,
+                status: 200,
+                json: async () => ({
+                    choices: [{ message: { content: JSON.stringify({ proposals: [], reason_de: "ok" }) } }],
+                    usage: { prompt_tokens: 1, completion_tokens: 1 },
+                }),
+                text: async () => "",
+            };
+        });
+        const provider = (0, openai_provider_js_1.createOpenAiProvider)(fetchImpl);
+        await provider.optimize(baseRequest(), {
+            apiKey: "sk-test",
+            model: "gpt-4.1-mini",
+            timeoutMs: 1000,
+            thinkingMode: true,
+        });
+        strict_1.default.match(system, /TWO tanks/i);
+        strict_1.default.match(system, /heat_today ONLY if boiler/i);
+        strict_1.default.match(system, /MUST NOT choose heat_today from buffer/i);
+        strict_1.default.doesNotMatch(system, /heat_today if buffer risk/i);
     });
     (0, node_test_1.it)("network error rejects gracefully with ok=false", async () => {
         const provider = (0, openai_provider_js_1.createOpenAiProvider)((async () => {

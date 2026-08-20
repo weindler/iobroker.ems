@@ -199,12 +199,15 @@ async function readPvHorizonDays(host) {
 }
 /** Kuratierter Learning-Digest — Skalare aus Learning-States, keine History-Dumps. */
 async function buildLearningDigest(host, timezone = "Europe/Berlin") {
-    const [pvBiasStatus, pvToday, pvTomorrow, thermalStatus, thermalEmpty, batteryStatus, priceStatus, priceAvg, houseStatus, pvHorizonDays,] = await Promise.all([
+    const now = new Date();
+    const [pvBiasStatus, pvToday, pvTomorrow, bufferStatus, bufferEmpty, boilerStatus, boilerEmpty, batteryStatus, priceStatus, priceAvg, houseStatus, pvHorizonDays,] = await Promise.all([
         readStr(host, "learning.pv_bias.status"),
         readNum(host, "learning.pv_bias.corrected_today_kwh"),
         readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
         readStr(host, "learning.thermal_runtime.status"),
         readStr(host, "learning.thermal_runtime.estimated_empty_at"),
+        readStr(host, "learning.thermal_boiler.status"),
+        readStr(host, "learning.thermal_boiler.estimated_empty_at"),
         readStr(host, "learning.battery_runtime.status"),
         readStr(host, "learning.price_learning.status"),
         readNum(host, "learning.price_learning.avg_price_7d"),
@@ -212,17 +215,27 @@ async function buildLearningDigest(host, timezone = "Europe/Berlin") {
         readPvHorizonDays(host),
     ]);
     const topOffDays = (0, config_2.batteryRuntimeConfigFromAdapter)(host.config).topoffIntervalDays;
+    const bufferLocalDe = bufferEmpty ? (0, time_1.formatLocalDateTimeDe)(bufferEmpty, timezone) : null;
+    const bufferHours = (0, math_1.liveRemainingHoursFromEmptyAt)(bufferEmpty, now);
+    const boilerLocalDe = boilerEmpty ? (0, time_1.formatLocalDateTimeDe)(boilerEmpty, timezone) : null;
+    const boilerHours = (0, math_1.liveRemainingHoursFromEmptyAt)(boilerEmpty, now);
     return {
         pvBiasStatus,
         pvCorrectedTodayKwh: pvToday,
         pvCorrectedTomorrowKwh: pvTomorrow,
         pvHorizonDays,
-        thermalRuntimeStatus: thermalStatus,
-        thermalEstimatedEmptyAt: thermalEmpty,
-        thermalEstimatedEmptyAtLocalDe: thermalEmpty
-            ? (0, time_1.formatLocalDateTimeDe)(thermalEmpty, timezone)
-            : null,
-        thermalEstimatedRemainingHours: (0, math_1.liveRemainingHoursFromEmptyAt)(thermalEmpty, new Date()),
+        thermalRuntimeStatus: bufferStatus,
+        thermalBufferStatus: bufferStatus,
+        thermalBufferEstimatedEmptyAt: bufferEmpty,
+        thermalBufferEstimatedEmptyAtLocalDe: bufferLocalDe,
+        thermalBufferEstimatedRemainingHours: bufferHours,
+        thermalBoilerStatus: boilerStatus,
+        thermalBoilerEstimatedEmptyAt: boilerEmpty,
+        thermalBoilerEstimatedEmptyAtLocalDe: boilerLocalDe,
+        thermalBoilerEstimatedRemainingHours: boilerHours,
+        thermalEstimatedEmptyAt: boilerEmpty,
+        thermalEstimatedEmptyAtLocalDe: boilerLocalDe,
+        thermalEstimatedRemainingHours: boilerHours,
         batteryRuntimeStatus: batteryStatus,
         batteryTopOffIntervalDays: topOffDays,
         priceLearningStatus: priceStatus,
@@ -233,7 +246,7 @@ async function buildLearningDigest(host, timezone = "Europe/Berlin") {
 exports.buildLearningDigest = buildLearningDigest;
 /** Live + Horizont-Situation — fehlende Werte bleiben null (nie erfundene 0). */
 async function buildSituationBrief(host, plan, learning) {
-    const [pvPowerW, houseLoadW, surplusW, deficitW, wbConnected, wbCharging, wbMode, wbSoc, wbRemaining, wbLimitSoc, wbPlanActive, wbDeadlineRaw, bufferTempLive, bufferTempRuntime, climate1Running, climate1Temp, climate2Running, climate2Temp, priceNowCt,] = await Promise.all([
+    const [pvPowerW, houseLoadW, surplusW, deficitW, wbConnected, wbCharging, wbMode, wbSoc, wbRemaining, wbLimitSoc, wbPlanActive, wbDeadlineRaw, bufferTempLive, bufferTempRuntime, boilerTempLive, boilerTempRuntime, climate1Running, climate1Temp, climate2Running, climate2Temp, priceNowCt,] = await Promise.all([
         readNum(host, "live.pv.power_w"),
         readNum(host, "live.battery.house_load_w"),
         readNum(host, "operator.diagnostics.surplus_w"),
@@ -248,6 +261,8 @@ async function buildSituationBrief(host, plan, learning) {
         readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.effectivePlanTime),
         readNum(host, "live.thermal.buffer_temp_c"),
         readNum(host, types_1.IMMERSION_RUNTIME_STATES.bufferTemperatureC),
+        readNum(host, "live.thermal.boiler_temp_c"),
+        readNum(host, types_1.IMMERSION_RUNTIME_STATES.boilerTemperatureC),
         readBool(host, (0, ensure_states_1.acUnitRuntimeStates)(1).running),
         readNum(host, (0, ensure_states_1.acUnitRuntimeStates)(1).roomTempC),
         readBool(host, (0, ensure_states_1.acUnitRuntimeStates)(2).running),
@@ -274,6 +289,13 @@ async function buildSituationBrief(host, plan, learning) {
         },
         immersion: {
             bufferTempC: bufferTempLive ?? bufferTempRuntime,
+            boilerTempC: boilerTempLive ?? boilerTempRuntime,
+            bufferEstimatedEmptyAt: learning.thermalBufferEstimatedEmptyAt,
+            bufferEstimatedEmptyAtLocalDe: learning.thermalBufferEstimatedEmptyAtLocalDe,
+            bufferEstimatedRemainingHours: learning.thermalBufferEstimatedRemainingHours,
+            boilerEstimatedEmptyAt: learning.thermalBoilerEstimatedEmptyAt,
+            boilerEstimatedEmptyAtLocalDe: learning.thermalBoilerEstimatedEmptyAtLocalDe,
+            boilerEstimatedRemainingHours: learning.thermalBoilerEstimatedRemainingHours,
             thermalEstimatedEmptyAt: learning.thermalEstimatedEmptyAt,
             thermalEstimatedEmptyAtLocalDe: learning.thermalEstimatedEmptyAtLocalDe,
             thermalEstimatedRemainingHours: learning.thermalEstimatedRemainingHours,

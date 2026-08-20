@@ -13,11 +13,24 @@ function round3(n) {
 }
 function thermalHardCoverUntilMs(input) {
     const windowEnd = input.currentWindowEndMs;
-    if (windowEnd != null && Number.isFinite(windowEnd) && windowEnd > input.nowMs + 60_000) {
+    const nextPv = input.nextReliablePvMs;
+    const emptyAt = input.boilerEstimatedEmptyAtMs;
+    const windowOk = windowEnd != null && Number.isFinite(windowEnd) && windowEnd > input.nowMs + 60_000;
+    const nextOk = nextPv != null && Number.isFinite(nextPv);
+    const emptyOk = emptyAt != null && Number.isFinite(emptyAt) && emptyAt > input.nowMs + 60_000;
+    /*
+     * Overnight-Lücke: emptyAt nach aktuellem Surplus-Fenster, aber vor nächstem PV.
+     * Cover nur bis Fensterende würde Hard=0 setzen („hält bis Cover“), obwohl die Nacht
+     * bis zum nächsten PV leer geht — Soft wandert dann auf Wochenend-PV.
+     */
+    if (windowOk && nextOk && emptyOk && emptyAt > windowEnd && emptyAt < nextPv) {
+        return nextPv;
+    }
+    if (windowOk) {
         return windowEnd;
     }
-    if (input.nextReliablePvMs != null && Number.isFinite(input.nextReliablePvMs)) {
-        return input.nextReliablePvMs;
+    if (nextOk) {
+        return nextPv;
     }
     return null;
 }
@@ -76,7 +89,12 @@ function resolveBoilerBufferThermalEnergy(input) {
             hardFromBoiler: false,
         };
     }
-    const coverUntilMs = thermalHardCoverUntilMs(input);
+    const coverUntilMs = thermalHardCoverUntilMs({
+        nowMs: input.nowMs,
+        nextReliablePvMs: input.nextReliablePvMs,
+        currentWindowEndMs: input.currentWindowEndMs,
+        boilerEstimatedEmptyAtMs: input.boilerEmptyAtUsable === true ? input.boilerEstimatedEmptyAtMs : null,
+    });
     let hard = 0;
     let covers = true;
     let reasonDe = "";

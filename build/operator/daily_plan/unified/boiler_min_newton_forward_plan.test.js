@@ -24,7 +24,7 @@ const Q = (0, quality_1.operatorQuality)("valid", "test", 80);
 const TZ = "Europe/Berlin";
 /** 16:00 Ortszeit (CEST, UTC+2) — genau der Nutzer-Realfall. */
 const NOW = new Date("2026-08-19T14:00:00.000Z");
-function contrib(id, details) {
+function contrib(id, details, at = NOW) {
     const contributor = id.startsWith("immersion")
         ? (0, contributor_1.addonContributorRef)("immersion_heater")
         : id.startsWith("air_conditioning")
@@ -35,7 +35,7 @@ function contrib(id, details) {
                     ? (0, contributor_1.systemContributorRef)("house_load")
                     : (0, contributor_1.systemContributorRef)("grid_supply");
     return (0, types_1.baseContribution)(id, contributor, "consume", ["demand_flex"], {
-        generatedAt: NOW.toISOString(),
+        generatedAt: at.toISOString(),
         validUntil: null,
         revision: 1,
         enabled: true,
@@ -211,5 +211,133 @@ function sumIhKwh(plan) {
             .filter((a) => a.kind === "climate")
             .reduce((s, a) => s + a.allocatedEnergyKwh, 0);
         strict_1.default.ok(ihKwh > 0, `Boiler-Minimum ist Pflichtbedarf (Lastenheft §5.4) — darf nicht auf 0 fallen, nur weil Klima gleichzeitig will (AC=${acKwh} kWh, IH=${ihKwh} kWh)`);
+    });
+});
+/**
+ * Realfall 2026-08-20: Boiler 52 °C > Min, Soft-Ziel 63 °C, emptyAt heute Abend,
+ * Surplus heute — aber ohne Soft-Deadline wanderte die Allokation auf Samstags-PV.
+ */
+(0, node_test_1.describe)("Soft emptyAt-heute vs. Wochenend-PV (One-Plan Vorplanen)", () => {
+    const THU = new Date("2026-08-20T08:00:00.000Z");
+    const EMPTY_AT = "2026-08-20T18:27:00.000Z";
+    function weekendTemptationContext() {
+        const slots = [];
+        const start = THU.getTime();
+        /** ~3 Tage Horizont: Do Surplus, Fr schwach, Sa starkes PV (Verlockung). */
+        for (let i = 0; i < 288; i++) {
+            const a = new Date(start + i * 15 * 60_000).toISOString();
+            const b = new Date(start + (i + 1) * 15 * 60_000).toISOString();
+            const t = Date.parse(a);
+            const day = new Date(a).getUTCDay(); // 4=Do, 5=Fr, 6=Sa
+            const h = new Date(a).getUTCHours();
+            let pv = 0;
+            if (day === 4 && h >= 8 && h < 17)
+                pv = 4500; // heute Surplus
+            else if (day === 5 && h >= 9 && h < 15)
+                pv = 1200; // Freitag schwach
+            else if (day === 6 && h >= 10 && h < 16)
+                pv = 7000; // Samstag stark
+            const house = 500;
+            slots.push({
+                slot: { startIso: a, endIso: b },
+                pvPowerW: pv,
+                houseLoadPowerW: house,
+                fixedBalancePowerW: pv - house,
+                gridPriceCtPerKwh: 25,
+                gridImportAllowed: true,
+                gridMaxImportPowerW: 30000,
+                outdoorTempC: null,
+                quality: Q,
+                reasonDe: "",
+            });
+            void t;
+        }
+        return {
+            now: THU,
+            timezone: TZ,
+            globalMode: "balanced",
+            forecastPlan: {
+                generatedAt: THU.toISOString(),
+                validUntil: new Date(start + 72 * 3600_000).toISOString(),
+                revision: 1,
+                timezone: TZ,
+                horizonStart: THU.toISOString(),
+                horizonEnd: slots[slots.length - 1].slot.endIso,
+                slotMinutes: 15,
+                status: "ready",
+                reasonDe: "test",
+                quality: Q,
+                days: [
+                    {
+                        date: "2026-08-20",
+                        pvEnergyKwh: 33.7,
+                        houseLoadEnergyKwh: 13,
+                        renewableBalanceKwh: 20,
+                        weatherMinTempC: null,
+                        weatherMaxTempC: null,
+                        quality: Q,
+                        reasonDe: "test",
+                    },
+                ],
+                slots,
+                contributions: [
+                    contrib(contribution_ids_1.CONTRIBUTION_IDS.PV_SUPPLY, { correctedTodayKwh: 33.7, rawTodayKwh: 33.7 }, THU),
+                    contrib(contribution_ids_1.CONTRIBUTION_IDS.HOUSE_LOAD_FIXED, {}, THU),
+                    contrib(contribution_ids_1.CONTRIBUTION_IDS.GRID_SUPPLY, {}, THU),
+                    contrib(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, {
+                        bufferTempC: 46,
+                        boilerTempC: 52,
+                        boilerMinTempC: 50,
+                        targetTempC: 63,
+                        forecastTargetTempC: 63,
+                        planningMinTempC: 44,
+                        mandatoryMinTempC: 50,
+                        planningMaxTempC: 63,
+                        requiredEnergyKwh: 6.46,
+                        maxPowerW: 1700,
+                        minPowerW: 1700,
+                        pvPrechargeActive: true,
+                        coolingRateCPerHAvg: null,
+                        coolingConstantPerH: 0.00588,
+                        coolingAsymptoteC: 18,
+                        boilerCoolingConstantPerH: 0.00588,
+                        boilerCoolingAsymptoteC: 18,
+                        bufferEstimatedEmptyAt: null,
+                        boilerEstimatedEmptyAt: EMPTY_AT,
+                        estimatedEmptyAt: EMPTY_AT,
+                        emptyAtSource: "estimated",
+                        emptyAtPlanningUsable: true,
+                        boilerSensorDegraded: false,
+                        thermalLearningStatus: "valid",
+                        thermalLearningModel: "newton",
+                        nightBridgeActive: false,
+                    }, THU),
+                ],
+                activeContributors: [],
+                excludedContributors: [],
+            },
+            observedPvPowerW: 4500,
+            observedHouseLoadPowerW: 500,
+            observedPvAgeSec: 5,
+            observedHouseAgeSec: 5,
+            feedInCtPerKwh: 9.3,
+            preferImmersionLiveSurplusNow: false,
+            passiveBatteryEnergyAvailable: true,
+        };
+    }
+    (0, node_test_1.it)("usable emptyAt heute Abend: Soft-IH vor emptyAt, nicht erst Samstag", () => {
+        const input = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(weekendTemptationContext());
+        strict_1.default.equal(input.thermal?.boilerEmptyAtUsable, true);
+        strict_1.default.ok((input.thermal?.headroomEnergyKwh ?? 0) > 1);
+        const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);
+        const ih = plan.allocations.filter((a) => a.kind === "immersion_heater");
+        strict_1.default.ok(ih.length > 0, "expected immersion allocations");
+        const emptyMs = Date.parse(EMPTY_AT);
+        const afterEmpty = ih.filter((a) => Date.parse(a.slot.startIso) >= emptyMs);
+        const beforeEmpty = ih.filter((a) => Date.parse(a.slot.startIso) < emptyMs);
+        strict_1.default.equal(afterEmpty.length, 0, `no IH after emptyAt, got ${afterEmpty.map((a) => a.slot.startIso).join(",")}`);
+        strict_1.default.ok(beforeEmpty.length > 0, `expected IH before emptyAt today, starts=${ih.map((a) => a.slot.startIso).join(",")}`);
+        const first = Date.parse(ih[0].slot.startIso);
+        strict_1.default.ok(first < Date.parse("2026-08-21T00:00:00.000Z"), `first IH must be Thursday, got ${ih[0].slot.startIso}`);
     });
 });

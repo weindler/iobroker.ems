@@ -798,13 +798,24 @@ function buildConsumerStates(input: UnifiedDayPlannerInput, slots: SlotWork[]): 
 				((maxSoc != null && Number.isFinite(maxSoc) && socNow + 0.5 >= maxSoc) ||
 					socNow >= 95 ||
 					((reqCharge == null || !(reqCharge > 0.15)) && socNow >= 90));
+			/*
+			 * Soft ohne usable emptyAt: opportunistisch bestes PV im Horizont.
+			 * Soft mit usable Boiler-emptyAt: vor Leerung vorplanen — sonst wandern Slots
+			 * auf Wochenend-PV obwohl emptyAt heute Abend ist (One-Plan, kein Abends-Flicken).
+			 */
+			const softEmptyDeadline =
+				th.boilerEmptyAtUsable === true &&
+				Number.isFinite(emptyDeadlineMs) &&
+				emptyDeadlineMs > nowMsLocal
+					? emptyDeadlineMs
+					: Number.POSITIVE_INFINITY;
 			out.push({
 				consumerId: IMMERSION_SOFT_CONSUMER_ID,
 				kind: "immersion_heater",
 				remainingKwh: softKwh,
 				maxPowerW: th.availablePowerW,
 				minPowerW: th.minPowerW ?? th.availablePowerW,
-				deadlineMs: Number.POSITIVE_INFINITY,
+				deadlineMs: softEmptyDeadline,
 				mandatory: false,
 				gridEligible: false,
 				pvFirst: true,
@@ -816,7 +827,7 @@ function buildConsumerStates(input: UnifiedDayPlannerInput, slots: SlotWork[]): 
 				energyGoalHard: false,
 				maxShiftHours: null,
 				earliestSlotIdx: 0,
-				thermalBeforeDeadline: false,
+				thermalBeforeDeadline: Number.isFinite(softEmptyDeadline),
 				thermalSoftOnly: true,
 			});
 		}

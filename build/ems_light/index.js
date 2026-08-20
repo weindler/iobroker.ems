@@ -5,6 +5,7 @@ const pv_bias_1 = require("../learning/pv_bias");
 const weather_1 = require("../learning/weather");
 const data_dir_1 = require("../learning/data_dir");
 const energy_daily_rollup_1 = require("../learning/energy_daily_rollup");
+const statistics_1 = require("../statistics");
 const power_rollup_1 = require("../learning/power_rollup");
 const policy_1 = require("../policy");
 const intent_1 = require("../intent");
@@ -22,6 +23,7 @@ let tickTimer = null;
 let policyAdapter = null;
 let powerRollupHost = null;
 let energyDailyRollupHost = null;
+let statisticsHost = null;
 function buildRollupHost(adapter) {
     const adapterAny = adapter;
     const base = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
@@ -107,6 +109,8 @@ async function ensureEmsLightStateTree(adapter) {
     const version = String(adapter.common?.version ?? "0.0.0");
     const host = adapter;
     await (0, ensure_states_1.ensureEmsLightStates)(host, version);
+    const { ensureStatisticsStateTree } = await import("../statistics/index.js");
+    await ensureStatisticsStateTree(host);
     await (0, planner_1.ensurePlannerStateTree)(host);
     const policyHost = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
     await (0, policy_1.ensurePolicyStateTree)(policyHost);
@@ -137,6 +141,7 @@ async function startEmsLightPhase1Runtime(adapter) {
     const host = adapter;
     energyDailyRollupHost = buildRollupHost(adapter);
     powerRollupHost = energyDailyRollupHost;
+    statisticsHost = energyDailyRollupHost;
     await (0, energy_daily_rollup_1.initEnergyDailyRollup)(energyDailyRollupHost);
     await (0, power_rollup_1.initPowerRollup)(powerRollupHost);
     if (learningHost) {
@@ -165,6 +170,7 @@ async function startEmsLightPhase1Runtime(adapter) {
     try {
         await adapter.subscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE);
         await adapter.subscribeStatesAsync(INTENT_WALLBOX_REQUEST_STATE);
+        await adapter.subscribeStatesAsync("statistics.public_charge.submit_request");
     }
     catch (e) {
         adapter.log.warn(`EMS-Light state subscribe: ${e}`);
@@ -176,10 +182,16 @@ async function startEmsLightPhase1Runtime(adapter) {
     if (powerRollupHost) {
         await (0, power_rollup_1.tickPowerRollup)(powerRollupHost);
     }
+    if (statisticsHost) {
+        await (0, statistics_1.tickStatistics)(statisticsHost).catch((e) => {
+            adapter.log.warn(`statistics tick: ${e}`);
+        });
+    }
     const sec = tickIntervalSec(adapter.config);
     stopEmsLightTick();
     const dailyHostForTick = energyDailyRollupHost;
     const powerHostForTick = powerRollupHost;
+    const statisticsHostForTick = statisticsHost;
     tickTimer = setInterval(() => {
         void (0, tick_2.runEmsLightPhase1Tick)(host).catch((e) => {
             adapter.log.error(`EMS-Light tick: ${e}`);
@@ -192,6 +204,11 @@ async function startEmsLightPhase1Runtime(adapter) {
         if (powerHostForTick) {
             void (0, power_rollup_1.tickPowerRollup)(powerHostForTick).catch((e) => {
                 adapter.log.error(`Power-Rollup tick: ${e}`);
+            });
+        }
+        if (statisticsHostForTick) {
+            void (0, statistics_1.tickStatistics)(statisticsHostForTick).catch((e) => {
+                adapter.log.error(`Statistics tick: ${e}`);
             });
         }
     }, sec * 1000);
@@ -227,6 +244,7 @@ async function stopEmsLightPhase1() {
     (0, planner_1.stopPlanner)();
     powerRollupHost = null;
     energyDailyRollupHost = null;
+    statisticsHost = null;
     learningHost = null;
     stopEmsLightTick();
 }

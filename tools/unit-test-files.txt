@@ -165,6 +165,7 @@ build/operator/daily_plan/unified/battery_reserve_floor.test.js
 build/operator/daily_plan/unified/horizon_causality.test.js
 build/operator/daily_plan/unified/thermal_boiler_buffer.test.js
 build/operator/daily_plan/unified/thermal_bridge_soft_fix.test.js
+build/operator/daily_plan/unified/boiler_min_newton_forward_plan.test.js
 build/operator/planning/thermal_forecast.test.js
 build/operator/daily_plan/unified/climate_slot_consistency.test.js
 build/operator/contributions/flexible/thermal_cooling_rate.test.js

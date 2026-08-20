@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.318",
+		"version": "0.1.319",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.319": {
+				"en": "Immersion soft planning with usable boiler empty-at now schedules before empty-at (not weekend PV). Hard cover uses next reliable PV when empty-at falls in the overnight gap after today's surplus window.",
+				"de": "Heizstab Soft mit usable Boiler-emptyAt plant jetzt vor der Leerung (nicht erst Wochenend-PV). Hard-Cover nutzt den nächsten verlässlichen PV-Slot, wenn emptyAt in der Overnight-Lücke nach dem heutigen Surplus-Fenster liegt."
+			},
 			"0.1.318": {
 				"en": "New optional Statistics sidecar (VIS tab Betrieb/Statistik): home Tibber vs fixed compare tariff, EV vs ICE with Tankerkönig/Ford mappings, public DC charge pending manual invoice — read-only, no planner/runtime change. AI context now uses boiler (hard) empty-at separately from buffer (soft); heat_today must not be driven by buffer alone.",
 				"de": "Neues optionales Statistik-Sidecar (VIS-Tabs Betrieb/Statistik): Haus Tibber vs. Festtarif, E-Auto vs. Verbrenner mit Tankerkönig-/Ford-Mappings, Schnellader erst nach manueller Rechnung — nur lesen, keine Planner-/Runtime-Änderung. KI-Kontext trennt Boiler (Hard) und Puffer (Soft); heat_today nicht mehr allein aus Puffer-empty-at."

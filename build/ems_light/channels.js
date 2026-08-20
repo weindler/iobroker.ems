@@ -20,6 +20,7 @@ exports.EMS_LIGHT_CHANNEL_IDS = [
     { id: "execution.safety", nameDe: "EMS-Light Execution Safety" },
     { id: "system", nameDe: "EMS-Light System" },
     { id: "economics", nameDe: "EMS-Light Economics (Reporting)" },
+    { id: "statistics", nameDe: "EMS-Light Statistik (Addon Reporting)" },
     { id: "global_modes", nameDe: "EMS-Light Global Modes" },
     { id: "policy", nameDe: "EMS-Light Policy" },
     { id: "user_intent", nameDe: "EMS-Light User Intent" },

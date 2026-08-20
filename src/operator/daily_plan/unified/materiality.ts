@@ -52,6 +52,8 @@ export type PlanBaseline = {
 	batterySocPct: number | null;
 	thermalHeadroomKwh: number | null;
 	bufferTempC: number | null;
+	/** Boiler-emptyAt ISO — Replan wenn neu oder stark verschoben. */
+	thermalEmptyAtIso: string | null;
 	acMandatoryAny: boolean;
 	vehicleConnected: boolean | null;
 	vehicleRequiredEnergyKwh: number | null;
@@ -76,6 +78,8 @@ export type PlanActualSample = {
 	batterySocPct: number | null;
 	thermalHeadroomKwh: number | null;
 	bufferTempC: number | null;
+	/** Boiler-emptyAt ISO — Replan wenn neu oder stark verschoben. */
+	thermalEmptyAtIso: string | null;
 	acMandatoryAny: boolean;
 	vehicleConnected: boolean | null;
 	vehicleRequiredEnergyKwh: number | null;
@@ -95,6 +99,14 @@ export type MaterialReplanDecision = {
 	/** Harte Events umgehen Cooldown. */
 	hard: boolean;
 };
+
+/** emptyAt auf 2h-Bucket — Minuten-Drift aus Newton nicht jeden Tick replanen. */
+export function thermalEmptyAtBucket(iso: string | null | undefined): string {
+	if (!iso || !iso.trim()) return "";
+	const ms = Date.parse(iso);
+	if (!Number.isFinite(ms)) return "";
+	return String(Math.floor(ms / (2 * 3600_000)));
+}
 
 function absDiff(a: number | null, b: number | null): number | null {
 	if (a === null || b === null || !Number.isFinite(a) || !Number.isFinite(b)) return null;
@@ -126,7 +138,12 @@ export function pvRevisionContext(baseline: PlanBaseline, actual: PlanActualSamp
 export function evaluateMaterialReplan(
 	baseline: PlanBaseline | null,
 	actual: PlanActualSample,
-	opts?: { lastReplanAtMs?: number | null; timezoneOffsetMinutes?: number | null },
+	opts?: {
+		lastReplanAtMs?: number | null;
+		timezoneOffsetMinutes?: number | null;
+		/** Frühester zukünftiger Soft-IH-Slot (ms) — hinter emptyAt → hart replanen. */
+		immersionFirstFutureStartMs?: number | null;
+	},
 ): MaterialReplanDecision {
 	const reasons: string[] = [];
 	let hard = false;
@@ -261,6 +278,33 @@ export function evaluateMaterialReplan(
 		if (!reasons.includes(REASON.REPLAN_THERMAL_DEVIATION)) {
 			reasons.push(REASON.REPLAN_THERMAL_DEVIATION);
 		}
+	}
+
+	/*
+	 * emptyAt neu (Contribution/Learning nach Plan) oder stark verschoben → Soft-Deadline
+	 * muss neu gelten (Export: Plan 10:31 ohne Deadline → Sa-Slots, emptyAt 10:33).
+	 */
+	const emptyBucketChanged =
+		thermalEmptyAtBucket(baseline.thermalEmptyAtIso) !==
+		thermalEmptyAtBucket(actual.thermalEmptyAtIso);
+	const emptyAppeared =
+		!(baseline.thermalEmptyAtIso ?? "").trim() && !!(actual.thermalEmptyAtIso ?? "").trim();
+	if (emptyAppeared || emptyBucketChanged) {
+		reasons.push(REASON.REPLAN_THERMAL_EMPTY_AT_CHANGED);
+		hard = true;
+	}
+	const emptyMs = actual.thermalEmptyAtIso ? Date.parse(actual.thermalEmptyAtIso) : Number.NaN;
+	const firstIh = opts?.immersionFirstFutureStartMs;
+	if (
+		Number.isFinite(emptyMs) &&
+		firstIh != null &&
+		Number.isFinite(firstIh) &&
+		firstIh >= emptyMs - 60_000
+	) {
+		if (!reasons.includes(REASON.REPLAN_THERMAL_EMPTY_AT_CHANGED)) {
+			reasons.push(REASON.REPLAN_THERMAL_EMPTY_AT_CHANGED);
+		}
+		hard = true;
 	}
 
 	if (baseline.acMandatoryAny !== actual.acMandatoryAny) {

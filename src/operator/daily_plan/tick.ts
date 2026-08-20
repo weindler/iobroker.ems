@@ -110,8 +110,20 @@ let replanCountToday = 0;
 let replanCountDate = "";
 /** Befund 005: Mode-Wechsel erzwingt frischen Replan (keine stale Allocation). */
 let forcedReplanReasons: string[] = [];
-/** One-Plan: kein separater LIVE-IH-Seitenkanal. */
-const preferImmersionLiveSurplusNow = false;
+/** One-Plan: Live-Surplus nur als Allocator-Hinweis (NOW-Slot), kein Runtime-Seitenkanal. */
+function preferImmersionLiveSurplusNowFrom(input: {
+	livePvPowerW: number | null;
+	liveHouseLoadW: number | null;
+	thermalHeadroomKwh: number | null;
+	minPowerW: number | null;
+	socPct: number | null;
+}): boolean {
+	const minW = input.minPowerW != null && input.minPowerW > 0 ? input.minPowerW : 1700;
+	const surplus = (input.livePvPowerW ?? 0) - (input.liveHouseLoadW ?? 0);
+	const head = input.thermalHeadroomKwh ?? 0;
+	const soc = input.socPct ?? 0;
+	return head > 0.25 && surplus + 1 >= minW * 0.95 && soc >= 90;
+}
 
 /**
  * Nach OFF↔DRYRUN/LIVE: Baseline/Cache verwerfen und nächsten Tick material replanen.
@@ -586,6 +598,12 @@ export async function runDailyPlanTick(
 	const feedInCtPerKwh = normalizeFeedInCtPerKwh(
 		asNum((await host.getStateAsync("economics.config.feed_in_ct_per_kwh"))?.val),
 	);
+	const learningEmptyAtRaw = await host.getStateAsync("learning.thermal_boiler.estimated_empty_at");
+	const learningEmptyAtIso =
+		typeof learningEmptyAtRaw?.val === "string" && learningEmptyAtRaw.val.trim()
+			? learningEmptyAtRaw.val.trim()
+			: null;
+	const ihCfg = immersionDeviceConfigFromAdapter(host.config);
 	const probeInput = buildUnifiedInputFromForecastContext({
 		now,
 		timezone,
@@ -612,6 +630,15 @@ export async function runDailyPlanTick(
 		connectedNowOverride: wbConnected,
 		passiveBatteryEnergyAvailable: passiveBatteryEnergy.available,
 		feedInCtPerKwh,
+		boilerEstimatedEmptyAtOverride: learningEmptyAtIso,
+		preferImmersionLiveSurplusNow: false,
+	});
+	const preferLiveIh = preferImmersionLiveSurplusNowFrom({
+		livePvPowerW: livePvPowerW,
+		liveHouseLoadW: liveHouseLoadW,
+		thermalHeadroomKwh: probeInput.thermal?.headroomEnergyKwh ?? null,
+		minPowerW: probeInput.thermal?.minPowerW ?? ihCfg.stages[0]?.nominalPowerW ?? 1700,
+		socPct: probeInput.battery.socPct,
 	});
 
 	const actualSample: PlanActualSample = {
@@ -623,6 +650,7 @@ export async function runDailyPlanTick(
 		batterySocPct: probeInput.battery.socPct,
 		thermalHeadroomKwh: probeInput.thermal?.headroomEnergyKwh ?? null,
 		bufferTempC: probeInput.thermal?.bufferTempC ?? null,
+		thermalEmptyAtIso: probeInput.thermal?.estimatedEmptyAtIso ?? learningEmptyAtIso,
 		acMandatoryAny: probeInput.climate?.units.some((u) => u.mandatoryComfort) === true,
 		vehicleConnected: probeInput.wallbox?.connectedNow ?? wbConnected,
 		vehicleRequiredEnergyKwh: probeInput.wallbox?.requiredEnergyKwh ?? null,
@@ -635,6 +663,19 @@ export async function runDailyPlanTick(
 		cadenceDigest,
 	};
 
+	const immersionFirstFutureStartMs = (() => {
+		if (!lastUnifiedPlan) return null;
+		const nowMs = now.getTime();
+		let best: number | null = null;
+		for (const a of lastUnifiedPlan.allocations) {
+			if (a.kind !== "immersion_heater") continue;
+			const t = Date.parse(a.slot.startIso);
+			if (!Number.isFinite(t) || t + 15 * 60_000 <= nowMs) continue;
+			if (best === null || t < best) best = t;
+		}
+		return best;
+	})();
+
 	/*
 	 * Timezone-Offset für tageszeitabhängigen Cooldown: tagsüber (06–21 Uhr) 1 Min,
 	 * nachts 5 Min. Näherung: UTC-Offset aus now vs. lokalem Datum (kein DST-Problem,
@@ -644,6 +685,7 @@ export async function runDailyPlanTick(
 	let decision = evaluateMaterialReplan(lastBaseline, actualSample, {
 		lastReplanAtMs,
 		timezoneOffsetMinutes: localOffsetMinutes,
+		immersionFirstFutureStartMs,
 	});
 	if (forcedReplanReasons.length > 0) {
 		const forced = forcedReplanReasons.slice();
@@ -711,7 +753,8 @@ export async function runDailyPlanTick(
 				vehiclePresenceVehicleKey: presenceVehicleKey,
 				connectedNowOverride: wbConnected,
 				passiveBatteryEnergyAvailable: passiveBatteryEnergy.available,
-				preferImmersionLiveSurplusNow,
+				preferImmersionLiveSurplusNow: preferLiveIh,
+				boilerEstimatedEmptyAtOverride: learningEmptyAtIso,
 				feedInCtPerKwh,
 			});
 
@@ -747,6 +790,7 @@ export async function runDailyPlanTick(
 				batterySocPct: unifiedInputFinal.battery.socPct,
 				thermalHeadroomKwh: unifiedInputFinal.thermal?.headroomEnergyKwh ?? null,
 				bufferTempC: unifiedInputFinal.thermal?.bufferTempC ?? null,
+				thermalEmptyAtIso: unifiedInputFinal.thermal?.estimatedEmptyAtIso ?? learningEmptyAtIso,
 				acMandatoryAny: unifiedInputFinal.climate?.units.some((u) => u.mandatoryComfort) === true,
 				vehicleConnected: unifiedInputFinal.wallbox?.connectedNow ?? null,
 				vehicleRequiredEnergyKwh: unifiedInputFinal.wallbox?.requiredEnergyKwh ?? null,

@@ -173,6 +173,7 @@ describe("BETA-GATE-006 planner failure defined failsafe", () => {
 				batterySocPct: 40,
 				thermalHeadroomKwh: null,
 				bufferTempC: null,
+				thermalEmptyAtIso: null,
 				acMandatoryAny: false,
 				vehicleConnected: null,
 				vehicleRequiredEnergyKwh: null,

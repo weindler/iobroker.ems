@@ -340,7 +340,13 @@ function buildUnifiedInputFromForecastContext(ctx) {
             ? (() => {
                 const boilerMinTempC = num(ihD, "boilerMinTempC") ?? num(ihD, "mandatoryMinTempC");
                 const boilerTempC = num(ihD, "boilerTempC");
-                const estimatedEmptyAtIso = str(ihD, "boilerEstimatedEmptyAt") ?? str(ihD, "estimatedEmptyAt");
+                const fromOverride = typeof ctx.boilerEstimatedEmptyAtOverride === "string" &&
+                    ctx.boilerEstimatedEmptyAtOverride.trim()
+                    ? ctx.boilerEstimatedEmptyAtOverride.trim()
+                    : null;
+                const estimatedEmptyAtIso = fromOverride ??
+                    str(ihD, "boilerEstimatedEmptyAt") ??
+                    str(ihD, "estimatedEmptyAt");
                 /*
                  * Hard-Bridge: nur mit Contribution-Flag (belastbares Learning).
                  * Soft-Deadline: Boiler-emptyAt-Zeitpunkt trotzdem durchreichen, wenn gesetzt —

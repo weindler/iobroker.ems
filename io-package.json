@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.320",
+		"version": "0.1.321",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.321": {
+				"en": "Hard replan when boiler empty-at appears or moves, or when the next immersion slot is after empty-at (fixes stale Saturday plan after late empty-at). Learning empty-at feeds the unified plan; live surplus + full battery can prefer the current immersion slot.",
+				"de": "Hard-Replan wenn Boiler-emptyAt neu erscheint/sich verschiebt oder der nächste Heizstab-Slot hinter emptyAt liegt (behebt hängenden Samstags-Plan nach spätem emptyAt). Learning-emptyAt geht in den Unified-Plan; bei Live-Surplus und voller Batterie darf der aktuelle Heizstab-Slot bevorzugt werden."
+			},
 			"0.1.320": {
 				"en": "Soft immersion heater: boiler empty-at timestamp always drives the soft deadline (even if the hard-usable flag flickers), with stronger pre-deadline scoring vs climate/weekend PV — no Saturday slots when empty-at is tonight.",
 				"de": "Heizstab Soft: Boiler-emptyAt-Zeitpunkt steuert die Soft-Deadline immer (auch wenn das Hard-usable-Flag flackert), mit stärkerem Scoring vor der Deadline gegen Klima/Wochenend-PV — keine Samstags-Slots bei emptyAt heute Abend."

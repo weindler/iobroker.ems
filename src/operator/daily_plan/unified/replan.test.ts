@@ -39,6 +39,7 @@ function baseline(overrides: Partial<PlanBaseline> = {}): PlanBaseline {
 		batterySocPct: 40,
 		thermalHeadroomKwh: 4,
 		bufferTempC: 48,
+		thermalEmptyAtIso: null,
 		acMandatoryAny: false,
 		vehicleConnected: false,
 		vehicleRequiredEnergyKwh: null,
@@ -62,6 +63,7 @@ function actual(overrides: Partial<PlanActualSample> = {}): PlanActualSample {
 		batterySocPct: 40.5,
 		thermalHeadroomKwh: 3.9,
 		bufferTempC: 48.2,
+		thermalEmptyAtIso: null,
 		acMandatoryAny: false,
 		vehicleConnected: false,
 		vehicleRequiredEnergyKwh: null,
@@ -217,6 +219,31 @@ describe("REPLAN-005 thermal target reached early", () => {
 	});
 });
 
+describe("REPLAN-005b thermal emptyAt appears / IH after emptyAt", () => {
+	it("emptyAt appears after plan → hard replan", () => {
+		const d = evaluateMaterialReplan(
+			baseline({ thermalEmptyAtIso: null }),
+			actual({ thermalEmptyAtIso: "2026-08-21T03:27:20.478Z" }),
+		);
+		assert.equal(d.shouldReplan, true);
+		assert.equal(d.hard, true);
+		assert.ok(d.reasons.includes(REASON.REPLAN_THERMAL_EMPTY_AT_CHANGED));
+	});
+
+	it("first future IH slot at/after emptyAt → hard replan", () => {
+		const emptyAt = "2026-08-21T03:27:20.478Z";
+		const emptyMs = Date.parse(emptyAt);
+		const d = evaluateMaterialReplan(
+			baseline({ thermalEmptyAtIso: emptyAt }),
+			actual({ thermalEmptyAtIso: emptyAt }),
+			{ immersionFirstFutureStartMs: emptyMs + 36 * 3600_000 },
+		);
+		assert.equal(d.shouldReplan, true);
+		assert.equal(d.hard, true);
+		assert.ok(d.reasons.includes(REASON.REPLAN_THERMAL_EMPTY_AT_CHANGED));
+	});
+});
+
 describe("REPLAN-006 vehicle disconnect", () => {
 	it("disconnect → replan; future wallbox allocation gone", () => {
 		const d = evaluateMaterialReplan(
@@ -322,7 +349,7 @@ describe("REPLAN-009 anti-chatter", () => {
 		const d = evaluateMaterialReplan(
 			baseline({ batterySocPct: 40, createdAtMs: last }),
 			actual({
-				nowMs: last + 60_000,
+				nowMs: last + 30_000,
 				batterySocPct: 46, // material, but soft + cooldown
 			}),
 			{ lastReplanAtMs: last },
@@ -470,15 +497,15 @@ describe("REPLAN-FAIL-001 stale IH after failed replan", () => {
 			unified.allocations.some(
 				(a) =>
 					a.kind === "immersion_heater" &&
-					Date.parse(a.slot.endIso) > Date.parse("2026-08-04T10:00:00.000Z"),
+					Date.parse(a.slot.endIso) > Date.parse("2026-08-04T07:00:00.000Z"),
 			),
 			"fixture needs future IH slice at assessment time",
 		);
 		const disp = assessUnifiedReplanFailure({
-			nowMs: Date.parse("2026-08-04T10:00:00.000Z"),
+			nowMs: Date.parse("2026-08-04T07:00:00.000Z"),
 			lastUnifiedPlan: unified,
 			actual: actual({
-				nowMs: Date.parse("2026-08-04T10:00:00.000Z"),
+				nowMs: Date.parse("2026-08-04T07:00:00.000Z"),
 				thermalHeadroomKwh: 0,
 				bufferTempC: 56,
 				forecastPvDayKwh: 8,

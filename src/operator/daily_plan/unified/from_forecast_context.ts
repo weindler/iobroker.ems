@@ -136,6 +136,11 @@ export type UnifiedForecastContext = {
 	/** B1: IH-NOW bei stabilem Live-Überschuss bevorzugen. */
 	preferImmersionLiveSurplusNow?: boolean | null;
 	/**
+	 * Boiler-emptyAt aus Learning-State — falls Contribution den Wert noch nicht hat
+	 * (Race: Plan vor Contribution-Refresh).
+	 */
+	boilerEstimatedEmptyAtOverride?: string | null;
+	/**
 	 * Einspeisevergütung aus `economics.config.feed_in_ct_per_kwh` (ct/kWh).
 	 * null/ungültig → exportCtPerKwh bleibt null (Scorer-Fallback 6 ct).
 	 */
@@ -447,8 +452,15 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 					const boilerMinTempC =
 						num(ihD, "boilerMinTempC") ?? num(ihD, "mandatoryMinTempC");
 					const boilerTempC = num(ihD, "boilerTempC");
+					const fromOverride =
+						typeof ctx.boilerEstimatedEmptyAtOverride === "string" &&
+						ctx.boilerEstimatedEmptyAtOverride.trim()
+							? ctx.boilerEstimatedEmptyAtOverride.trim()
+							: null;
 					const estimatedEmptyAtIso =
-						str(ihD, "boilerEstimatedEmptyAt") ?? str(ihD, "estimatedEmptyAt");
+						fromOverride ??
+						str(ihD, "boilerEstimatedEmptyAt") ??
+						str(ihD, "estimatedEmptyAt");
 					/*
 					 * Hard-Bridge: nur mit Contribution-Flag (belastbares Learning).
 					 * Soft-Deadline: Boiler-emptyAt-Zeitpunkt trotzdem durchreichen, wenn gesetzt —

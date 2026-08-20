@@ -88,6 +88,7 @@ function actualSample(over: Partial<PlanActualSample> = {}): PlanActualSample {
 		batterySocPct: 40,
 		thermalHeadroomKwh: 2,
 		bufferTempC: 50,
+		thermalEmptyAtIso: null,
 		acMandatoryAny: false,
 		vehicleConnected: null,
 		vehicleRequiredEnergyKwh: null,

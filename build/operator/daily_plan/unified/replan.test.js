@@ -31,6 +31,7 @@ function baseline(overrides = {}) {
         batterySocPct: 40,
         thermalHeadroomKwh: 4,
         bufferTempC: 48,
+        thermalEmptyAtIso: null,
         acMandatoryAny: false,
         vehicleConnected: false,
         vehicleRequiredEnergyKwh: null,
@@ -53,6 +54,7 @@ function actual(overrides = {}) {
         batterySocPct: 40.5,
         thermalHeadroomKwh: 3.9,
         bufferTempC: 48.2,
+        thermalEmptyAtIso: null,
         acMandatoryAny: false,
         vehicleConnected: false,
         vehicleRequiredEnergyKwh: null,
@@ -177,6 +179,22 @@ function actual(overrides = {}) {
         strict_1.default.ok(futureIh < 0.2, `future IH should be cleared, got ${futureIh}`);
     });
 });
+(0, node_test_1.describe)("REPLAN-005b thermal emptyAt appears / IH after emptyAt", () => {
+    (0, node_test_1.it)("emptyAt appears after plan → hard replan", () => {
+        const d = (0, materiality_1.evaluateMaterialReplan)(baseline({ thermalEmptyAtIso: null }), actual({ thermalEmptyAtIso: "2026-08-21T03:27:20.478Z" }));
+        strict_1.default.equal(d.shouldReplan, true);
+        strict_1.default.equal(d.hard, true);
+        strict_1.default.ok(d.reasons.includes(reason_codes_1.REASON.REPLAN_THERMAL_EMPTY_AT_CHANGED));
+    });
+    (0, node_test_1.it)("first future IH slot at/after emptyAt → hard replan", () => {
+        const emptyAt = "2026-08-21T03:27:20.478Z";
+        const emptyMs = Date.parse(emptyAt);
+        const d = (0, materiality_1.evaluateMaterialReplan)(baseline({ thermalEmptyAtIso: emptyAt }), actual({ thermalEmptyAtIso: emptyAt }), { immersionFirstFutureStartMs: emptyMs + 36 * 3600_000 });
+        strict_1.default.equal(d.shouldReplan, true);
+        strict_1.default.equal(d.hard, true);
+        strict_1.default.ok(d.reasons.includes(reason_codes_1.REASON.REPLAN_THERMAL_EMPTY_AT_CHANGED));
+    });
+});
 (0, node_test_1.describe)("REPLAN-006 vehicle disconnect", () => {
     (0, node_test_1.it)("disconnect → replan; future wallbox allocation gone", () => {
         const d = (0, materiality_1.evaluateMaterialReplan)(baseline({ vehicleConnected: true, vehicleRequiredEnergyKwh: 18 }), actual({ vehicleConnected: false, vehicleRequiredEnergyKwh: 18 }));
@@ -262,7 +280,7 @@ function actual(overrides = {}) {
     (0, node_test_1.it)("after replan, soft wobble within cooldown does not replan", () => {
         const last = Date.parse("2026-08-07T10:00:00.000Z");
         const d = (0, materiality_1.evaluateMaterialReplan)(baseline({ batterySocPct: 40, createdAtMs: last }), actual({
-            nowMs: last + 60_000,
+            nowMs: last + 30_000,
             batterySocPct: 46, // material, but soft + cooldown
         }), { lastReplanAtMs: last });
         strict_1.default.equal(d.shouldReplan, false);
@@ -379,12 +397,12 @@ function stubDailyPlan() {
         const unified = (0, allocate_1.allocateUnifiedDayPlan)(input);
         strict_1.default.ok(unified.allocations.some((a) => a.kind === "immersion_heater"));
         strict_1.default.ok(unified.allocations.some((a) => a.kind === "immersion_heater" &&
-            Date.parse(a.slot.endIso) > Date.parse("2026-08-04T10:00:00.000Z")), "fixture needs future IH slice at assessment time");
+            Date.parse(a.slot.endIso) > Date.parse("2026-08-04T07:00:00.000Z")), "fixture needs future IH slice at assessment time");
         const disp = (0, replan_failure_1.assessUnifiedReplanFailure)({
-            nowMs: Date.parse("2026-08-04T10:00:00.000Z"),
+            nowMs: Date.parse("2026-08-04T07:00:00.000Z"),
             lastUnifiedPlan: unified,
             actual: actual({
-                nowMs: Date.parse("2026-08-04T10:00:00.000Z"),
+                nowMs: Date.parse("2026-08-04T07:00:00.000Z"),
                 thermalHeadroomKwh: 0,
                 bufferTempC: 56,
                 forecastPvDayKwh: 8,

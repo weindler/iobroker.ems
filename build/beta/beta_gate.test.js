@@ -162,6 +162,7 @@ function stubDailyPlan() {
                 batterySocPct: 40,
                 thermalHeadroomKwh: null,
                 bufferTempC: null,
+                thermalEmptyAtIso: null,
                 acMandatoryAny: false,
                 vehicleConnected: null,
                 vehicleRequiredEnergyKwh: null,

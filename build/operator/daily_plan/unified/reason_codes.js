@@ -55,6 +55,8 @@ exports.REASON = {
     REPLAN_HOUSE_LOAD_DEVIATION: "replan_house_load_deviation",
     REPLAN_BATTERY_SOC_DEVIATION: "replan_battery_soc_deviation",
     REPLAN_THERMAL_DEVIATION: "replan_thermal_deviation",
+    /** Boiler-emptyAt neu/verschoben oder Soft-IH hinter emptyAt geplant. */
+    REPLAN_THERMAL_EMPTY_AT_CHANGED: "replan_thermal_empty_at_changed",
     REPLAN_AC_COMFORT_CHANGE: "replan_ac_comfort_change",
     REPLAN_VEHICLE_CONNECTED: "replan_vehicle_connected",
     REPLAN_VEHICLE_DISCONNECTED: "replan_vehicle_disconnected",

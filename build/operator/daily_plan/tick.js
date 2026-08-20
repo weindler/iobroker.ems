@@ -96,8 +96,14 @@ let replanCountToday = 0;
 let replanCountDate = "";
 /** Befund 005: Mode-Wechsel erzwingt frischen Replan (keine stale Allocation). */
 let forcedReplanReasons = [];
-/** One-Plan: kein separater LIVE-IH-Seitenkanal. */
-const preferImmersionLiveSurplusNow = false;
+/** One-Plan: Live-Surplus nur als Allocator-Hinweis (NOW-Slot), kein Runtime-Seitenkanal. */
+function preferImmersionLiveSurplusNowFrom(input) {
+    const minW = input.minPowerW != null && input.minPowerW > 0 ? input.minPowerW : 1700;
+    const surplus = (input.livePvPowerW ?? 0) - (input.liveHouseLoadW ?? 0);
+    const head = input.thermalHeadroomKwh ?? 0;
+    const soc = input.socPct ?? 0;
+    return head > 0.25 && surplus + 1 >= minW * 0.95 && soc >= 90;
+}
 /**
  * Nach OFF↔DRYRUN/LIVE: Baseline/Cache verwerfen und nächsten Tick material replanen.
  */
@@ -520,6 +526,11 @@ async function runDailyPlanTick(host, forecastPlan) {
         });
     }
     const feedInCtPerKwh = (0, from_forecast_context_1.normalizeFeedInCtPerKwh)((0, state_util_1.asNum)((await host.getStateAsync("economics.config.feed_in_ct_per_kwh"))?.val));
+    const learningEmptyAtRaw = await host.getStateAsync("learning.thermal_boiler.estimated_empty_at");
+    const learningEmptyAtIso = typeof learningEmptyAtRaw?.val === "string" && learningEmptyAtRaw.val.trim()
+        ? learningEmptyAtRaw.val.trim()
+        : null;
+    const ihCfg = (0, device_config_1.immersionDeviceConfigFromAdapter)(host.config);
     const probeInput = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)({
         now,
         timezone,
@@ -546,6 +557,15 @@ async function runDailyPlanTick(host, forecastPlan) {
         connectedNowOverride: wbConnected,
         passiveBatteryEnergyAvailable: passiveBatteryEnergy.available,
         feedInCtPerKwh,
+        boilerEstimatedEmptyAtOverride: learningEmptyAtIso,
+        preferImmersionLiveSurplusNow: false,
+    });
+    const preferLiveIh = preferImmersionLiveSurplusNowFrom({
+        livePvPowerW: livePvPowerW,
+        liveHouseLoadW: liveHouseLoadW,
+        thermalHeadroomKwh: probeInput.thermal?.headroomEnergyKwh ?? null,
+        minPowerW: probeInput.thermal?.minPowerW ?? ihCfg.stages[0]?.nominalPowerW ?? 1700,
+        socPct: probeInput.battery.socPct,
     });
     const actualSample = {
         date: plan.date,
@@ -556,6 +576,7 @@ async function runDailyPlanTick(host, forecastPlan) {
         batterySocPct: probeInput.battery.socPct,
         thermalHeadroomKwh: probeInput.thermal?.headroomEnergyKwh ?? null,
         bufferTempC: probeInput.thermal?.bufferTempC ?? null,
+        thermalEmptyAtIso: probeInput.thermal?.estimatedEmptyAtIso ?? learningEmptyAtIso,
         acMandatoryAny: probeInput.climate?.units.some((u) => u.mandatoryComfort) === true,
         vehicleConnected: probeInput.wallbox?.connectedNow ?? wbConnected,
         vehicleRequiredEnergyKwh: probeInput.wallbox?.requiredEnergyKwh ?? null,
@@ -567,6 +588,22 @@ async function runDailyPlanTick(host, forecastPlan) {
         thermalBlocked: probeInput.thermal?.uncertainty.status === "blocked",
         cadenceDigest,
     };
+    const immersionFirstFutureStartMs = (() => {
+        if (!lastUnifiedPlan)
+            return null;
+        const nowMs = now.getTime();
+        let best = null;
+        for (const a of lastUnifiedPlan.allocations) {
+            if (a.kind !== "immersion_heater")
+                continue;
+            const t = Date.parse(a.slot.startIso);
+            if (!Number.isFinite(t) || t + 15 * 60_000 <= nowMs)
+                continue;
+            if (best === null || t < best)
+                best = t;
+        }
+        return best;
+    })();
     /*
      * Timezone-Offset für tageszeitabhängigen Cooldown: tagsüber (06–21 Uhr) 1 Min,
      * nachts 5 Min. Näherung: UTC-Offset aus now vs. lokalem Datum (kein DST-Problem,
@@ -576,6 +613,7 @@ async function runDailyPlanTick(host, forecastPlan) {
     let decision = (0, materiality_1.evaluateMaterialReplan)(lastBaseline, actualSample, {
         lastReplanAtMs,
         timezoneOffsetMinutes: localOffsetMinutes,
+        immersionFirstFutureStartMs,
     });
     if (forcedReplanReasons.length > 0) {
         const forced = forcedReplanReasons.slice();
@@ -637,7 +675,8 @@ async function runDailyPlanTick(host, forecastPlan) {
                 vehiclePresenceVehicleKey: presenceVehicleKey,
                 connectedNowOverride: wbConnected,
                 passiveBatteryEnergyAvailable: passiveBatteryEnergy.available,
-                preferImmersionLiveSurplusNow,
+                preferImmersionLiveSurplusNow: preferLiveIh,
+                boilerEstimatedEmptyAtOverride: learningEmptyAtIso,
                 feedInCtPerKwh,
             });
             const nextGen = (lastUnifiedPlan?.generation ?? 0) + 1;
@@ -673,6 +712,7 @@ async function runDailyPlanTick(host, forecastPlan) {
                 batterySocPct: unifiedInputFinal.battery.socPct,
                 thermalHeadroomKwh: unifiedInputFinal.thermal?.headroomEnergyKwh ?? null,
                 bufferTempC: unifiedInputFinal.thermal?.bufferTempC ?? null,
+                thermalEmptyAtIso: unifiedInputFinal.thermal?.estimatedEmptyAtIso ?? learningEmptyAtIso,
                 acMandatoryAny: unifiedInputFinal.climate?.units.some((u) => u.mandatoryComfort) === true,
                 vehicleConnected: unifiedInputFinal.wallbox?.connectedNow ?? null,
                 vehicleRequiredEnergyKwh: unifiedInputFinal.wallbox?.requiredEnergyKwh ?? null,

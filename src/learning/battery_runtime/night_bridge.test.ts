@@ -97,4 +97,28 @@ describe("night_bridge PV/Haus", () => {
 		assert.ok(bridges.length >= 1, `hourly bridges ${bridges.length}`);
 		assert.equal(bridges[0]!.method, "pv_house");
 	});
+
+	it("onchange-PV mit 0 W + dichter Hauslast → Brücke (Last-Known)", () => {
+		const day0 = Date.parse("2026-08-20T00:00:00.000Z");
+		const house: PowerPoint[] = [];
+		for (let h = 0; h < 36; h++) {
+			house.push({ ts: day0 + h * 3_600_000, powerW: 400 });
+		}
+		/** Sparse onchange: Tag → 0 am Abend → wieder PV am Morgen. */
+		const pv: PowerPoint[] = [
+			{ ts: day0 + 10 * 3_600_000, powerW: 3000 },
+			{ ts: day0 + 14 * 3_600_000, powerW: 2500 },
+			{ ts: day0 + 19 * 3_600_000, powerW: 0 },
+			{ ts: day0 + 31 * 3_600_000, powerW: 2000 },
+		];
+		const net = buildPvHouseNetSeries(pv, house);
+		assert.ok(net.length >= 10, `net ${net.length}`);
+		const bridges = findPvHouseNightBridges(net, {
+			flutterMs: 3_600_000,
+			bucketMs: 3_600_000,
+			deficitW: 100,
+		});
+		assert.ok(bridges.length >= 1, `bridges ${bridges.length}`);
+		assert.equal(bridges[0]!.method, "pv_house");
+	});
 });

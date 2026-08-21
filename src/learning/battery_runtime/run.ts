@@ -54,6 +54,7 @@ async function writeResult(
 	host: BatteryRuntimeRunHost,
 	result: BatteryRuntimeComputeResult,
 	lastRun: string,
+	diag?: { pvPoints: number; housePoints: number },
 ): Promise<void> {
 	await host.setStateAsync("learning.battery_runtime.status", { val: result.status, ack: true });
 	await host.setStateAsync("learning.battery_runtime.last_run", { val: lastRun, ack: true });
@@ -65,6 +66,10 @@ async function writeResult(
 		val: result.nightBridgeMethod,
 		ack: true,
 	});
+	if (diag) {
+		await setNumIfValid(host, "learning.battery_runtime.night_bridge_pv_points", diag.pvPoints);
+		await setNumIfValid(host, "learning.battery_runtime.night_bridge_house_points", diag.housePoints);
+	}
 	await setNumIfValid(host, "learning.battery_runtime.avg_charge_power_w", result.avgChargePowerW);
 	await setNumIfValid(host, "learning.battery_runtime.max_charge_power_w", result.maxChargePowerW);
 	await host.setStateAsync("learning.battery_runtime.last_full_charge", {
@@ -165,7 +170,10 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 			);
 		}
 
-		await writeResult(host, result, lastRun);
+		await writeResult(host, result, lastRun, {
+			pvPoints: pvPowerPoints.length,
+			housePoints: housePowerPoints.length,
+		});
 
 		host.log.info(
 			`Battery-Runtime-Learning: status=${result.status} method=${result.nightBridgeMethod} nights=${result.avgNightDischargePct ?? "n/a"}% kwh=${result.avgNightDischargeKwh ?? "n/a"} bridgeH=${result.avgNightBridgeHours ?? "n/a"} samples=${result.sampleDays} pvPts=${pvPowerPoints.length} housePts=${housePowerPoints.length} pvSrc=${sourceLabelFromStateId(sources.pvAcPowerStateId)} houseSrc=${sourceLabelFromStateId(sources.consumptionStateId)}`,

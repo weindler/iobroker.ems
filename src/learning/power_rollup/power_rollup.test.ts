@@ -7,7 +7,7 @@ import {
 	ingestUnidirectionalAvgSample,
 } from "./buffer";
 import { localHourKey } from "./hour";
-import { rollupSourceToHouseLoadSamples, rollupSourceToPowerPoints } from "./rollup_points";
+import { rollupSourceToHouseLoadSamples, rollupSourceToPowerPoints, rollupSourceToUnidirectionalPowerPoints } from "./rollup_points";
 import type { PowerSourcePersist } from "./types";
 
 describe("power rollup", () => {
@@ -104,5 +104,47 @@ describe("power rollup", () => {
 		assert.equal(samples.length, 1);
 		assert.equal(samples[0].powerW, 1500);
 		assert.equal(stats.historySource, "ems_rollup");
+	});
+
+	it("keeps 0 W unidirectional hours for night bridge", () => {
+		const source: PowerSourcePersist = {
+			sourceKey: "battery.pv_ac_power_w",
+			stateId: "alias.0.Sonnen.Status.production",
+			rollupMode: "unidirectional_avg",
+			powerInvert: false,
+			powerUnit: "W",
+			backfillDone: true,
+			hours: {
+				"2026-06-30T14": {
+					hourKey: "2026-06-30T14",
+					sampleCount: 4,
+					lastSampleTs: Date.parse("2026-06-30T14:55:00"),
+					chargeSamples: 0,
+					dischargeSamples: 0,
+					maxChargeW: null,
+					maxDischargeW: null,
+					sumPowerW: 8000,
+					avgPowerW: 2000,
+				},
+				"2026-06-30T22": {
+					hourKey: "2026-06-30T22",
+					sampleCount: 4,
+					lastSampleTs: Date.parse("2026-06-30T22:10:00"),
+					chargeSamples: 0,
+					dischargeSamples: 0,
+					maxChargeW: null,
+					maxDischargeW: null,
+					sumPowerW: 0,
+					avgPowerW: 0,
+				},
+			},
+		};
+		const { points } = rollupSourceToUnidirectionalPowerPoints(
+			source,
+			90,
+			Date.parse("2026-07-01T00:00:00"),
+		);
+		assert.equal(points.length, 2);
+		assert.ok(points.some((p) => p.powerW === 0));
 	});
 });

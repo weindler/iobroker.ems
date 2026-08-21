@@ -88,4 +88,41 @@ const rollup_points_1 = require("./rollup_points");
         strict_1.default.equal(samples[0].powerW, 1500);
         strict_1.default.equal(stats.historySource, "ems_rollup");
     });
+    (0, node_test_1.it)("keeps 0 W unidirectional hours for night bridge", () => {
+        const source = {
+            sourceKey: "battery.pv_ac_power_w",
+            stateId: "alias.0.Sonnen.Status.production",
+            rollupMode: "unidirectional_avg",
+            powerInvert: false,
+            powerUnit: "W",
+            backfillDone: true,
+            hours: {
+                "2026-06-30T14": {
+                    hourKey: "2026-06-30T14",
+                    sampleCount: 4,
+                    lastSampleTs: Date.parse("2026-06-30T14:55:00"),
+                    chargeSamples: 0,
+                    dischargeSamples: 0,
+                    maxChargeW: null,
+                    maxDischargeW: null,
+                    sumPowerW: 8000,
+                    avgPowerW: 2000,
+                },
+                "2026-06-30T22": {
+                    hourKey: "2026-06-30T22",
+                    sampleCount: 4,
+                    lastSampleTs: Date.parse("2026-06-30T22:10:00"),
+                    chargeSamples: 0,
+                    dischargeSamples: 0,
+                    maxChargeW: null,
+                    maxDischargeW: null,
+                    sumPowerW: 0,
+                    avgPowerW: 0,
+                },
+            },
+        };
+        const { points } = (0, rollup_points_1.rollupSourceToUnidirectionalPowerPoints)(source, 90, Date.parse("2026-07-01T00:00:00"));
+        strict_1.default.equal(points.length, 2);
+        strict_1.default.ok(points.some((p) => p.powerW === 0));
+    });
 });

@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.325",
+		"version": "0.1.326",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.326": {
+				"en": "Night bridge: keep PV 0 W in history/rollup, hourly aggregates, house-led join with last-known PV — enables pv_house instead of battery_discharge fallback. Diagnostic point counts.",
+				"de": "Nachtbrücke: PV-0‑W in Historie/Rollup behalten, Stunden-Aggregate, Hauslast-Join mit Last-Known-PV — damit greift pv_house statt battery_discharge. Diagnose-Punktzahlen."
+			},
 			"0.1.325": {
 				"en": "Battery night bridge learning: PV AC + house load via power rollup/history (kW/W), hourly join, stronger recency — targets pv_house method for winter night length.",
 				"de": "Batterie-Nachtbrücke: PV-AC + Hauslast über Power-Rollup/Historie (kW/W), stündlicher Join, stärkere Recency — Zielmethode pv_house für Winter-Nachtlänge."
@@ -75,10 +79,10 @@
 				"de": "Planer berechnet tagsüber (06–21 Uhr lokal) jede Minute neu und nachts alle 5 Minuten. Dies ersetzt den entfernten Live-Surplus-Seitenkanal und stellt sicher, dass der Planer schnell auf Live-PV-Überschuss reagiert."
 			},
 			"0.1.309": {
-			"en": "One-Plan: removed side-channel logic for IH and climate. Without a valid Daily Plan, immersion heater and climate no longer start locally. Removed live thermal surplus replan side channel from tick — all decisions now go through the unified planner only.",
-			"de": "One-Plan: Seitenkanal-Logik für Heizstab und Klima entfernt. Ohne gültigen Daily Plan starten Heizstab und Klima nicht mehr lokal. Live-Thermal-Surplus-Replan-Seitenkanal aus dem Tick entfernt — alle Entscheidungen laufen nun ausschließlich über den Unified Planner."
-		},
-		"0.1.308": {
+				"en": "One-Plan: removed side-channel logic for IH and climate. Without a valid Daily Plan, immersion heater and climate no longer start locally. Removed live thermal surplus replan side channel from tick — all decisions now go through the unified planner only.",
+				"de": "One-Plan: Seitenkanal-Logik für Heizstab und Klima entfernt. Ohne gültigen Daily Plan starten Heizstab und Klima nicht mehr lokal. Live-Thermal-Surplus-Replan-Seitenkanal aus dem Tick entfernt — alle Entscheidungen laufen nun ausschließlich über den Unified Planner."
+			},
+			"0.1.308": {
 				"en": "Heater diagnostics expanded: dashboard now shows estimated time until boiler minimum (remaining hours + timestamp) and a 7-day legionella due line. Also fixed a soft-heating planning bug where battery support was still blocked, which could prevent drivable immersion-heater windows despite full battery.",
 				"de": "Heizstab-Diagnose erweitert: Dashboard zeigt jetzt die geschätzte Zeit bis zur Boiler-Mindesttemperatur (Reststunden + Uhrzeit) sowie eine 7-Tage-Legionellen-Zeile. Zusätzlich wurde ein Planungsbug im Soft-Heizen behoben, bei dem Batterie-Support noch blockiert war und trotz voller Batterie fahrbare Heizstab-Fenster verhindern konnte."
 			},

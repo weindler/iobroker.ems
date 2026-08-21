@@ -11,7 +11,7 @@ async function setNumIfValid(host, id, value) {
         await host.setStateAsync(id, { val: value, ack: true });
     }
 }
-async function writeResult(host, result, lastRun) {
+async function writeResult(host, result, lastRun, diag) {
     await host.setStateAsync("learning.battery_runtime.status", { val: result.status, ack: true });
     await host.setStateAsync("learning.battery_runtime.last_run", { val: lastRun, ack: true });
     await setNumIfValid(host, "learning.battery_runtime.sample_days", result.sampleDays);
@@ -22,6 +22,10 @@ async function writeResult(host, result, lastRun) {
         val: result.nightBridgeMethod,
         ack: true,
     });
+    if (diag) {
+        await setNumIfValid(host, "learning.battery_runtime.night_bridge_pv_points", diag.pvPoints);
+        await setNumIfValid(host, "learning.battery_runtime.night_bridge_house_points", diag.housePoints);
+    }
     await setNumIfValid(host, "learning.battery_runtime.avg_charge_power_w", result.avgChargePowerW);
     await setNumIfValid(host, "learning.battery_runtime.max_charge_power_w", result.maxChargePowerW);
     await host.setStateAsync("learning.battery_runtime.last_full_charge", {
@@ -101,7 +105,10 @@ async function runBatteryRuntimeLearning(host) {
         if (host.getAbsolutePath) {
             await (0, persist_1.writeBatteryRuntimePersist)(host.getAbsolutePath("learning/battery_runtime"), result, lastRun);
         }
-        await writeResult(host, result, lastRun);
+        await writeResult(host, result, lastRun, {
+            pvPoints: pvPowerPoints.length,
+            housePoints: housePowerPoints.length,
+        });
         host.log.info(`Battery-Runtime-Learning: status=${result.status} method=${result.nightBridgeMethod} nights=${result.avgNightDischargePct ?? "n/a"}% kwh=${result.avgNightDischargeKwh ?? "n/a"} bridgeH=${result.avgNightBridgeHours ?? "n/a"} samples=${result.sampleDays} pvPts=${pvPowerPoints.length} housePts=${housePowerPoints.length} pvSrc=${(0, config_1.sourceLabelFromStateId)(sources.pvAcPowerStateId)} houseSrc=${(0, config_1.sourceLabelFromStateId)(sources.consumptionStateId)}`);
         host.log.debug?.(`Battery-Runtime-Learning detail: full_src=${result.fullChargeSource ?? "—"} sec_since_full=${result.secondsSinceFullCharge ?? "—"} days_since_full=${result.daysSinceFull ?? "—"} soc=${(0, config_1.sourceLabelFromStateId)(sources.socStateId)} power=${(0, config_1.sourceLabelFromStateId)(sources.powerStateId)} invert=${result.powerInvertApplied === null ? "—" : result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? "(auto)" : ""}`);
         if (result.nightBridgeMethod !== "pv_house" &&

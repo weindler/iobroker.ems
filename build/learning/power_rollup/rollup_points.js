@@ -144,7 +144,8 @@ function rollupSourceToUnidirectionalPowerPoints(source, lookbackDays, nowMs = D
         if (ts < cutoff)
             continue;
         const avg = rec.avgPowerW;
-        if (avg === null || avg === undefined || !(avg > 0))
+        /** 0 W nachts behalten — sonst keine PV/Haus-Nachtbrücke (nur Tages-Spitzen). */
+        if (avg === null || avg === undefined || !(avg >= 0) || !Number.isFinite(avg))
             continue;
         const sampleTs = rec.lastSampleTs > ts ? rec.lastSampleTs : ts + constants_1.MS_PER_HOUR / 2;
         points.push({ ts: sampleTs, powerW: avg });

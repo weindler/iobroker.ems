@@ -58,7 +58,8 @@ export function bucketPowerSeries(
 
 /**
  * Netto = PV − Hauslast. Negativ = Defizit (Batterie hilft).
- * Fehlende Seite → null (kein Fake-0). Join toleriert versetzte Samples (Stunden-Rollup).
+ * Hauslast führt das Raster (dicht); PV per Bucket / Nachbar / Last-Known (onchange hält Wert).
+ * Kein Fake-0 ohne gemessenen PV-Wert — nur Weiterreichen des letzten bekannten PV.
  */
 export function buildPvHouseNetSeries(
 	pvPoints: PowerPoint[],
@@ -70,21 +71,32 @@ export function buildPvHouseNetSeries(
 	const house = bucketPowerSeries(housePoints, effectiveBucket);
 	if (pv.length === 0 || house.length === 0) return [];
 
-	const houseByBucket = new Map<number, number>();
-	for (const h of house) {
-		houseByBucket.set(Math.floor(h.ts / effectiveBucket) * effectiveBucket, h.powerW);
+	const pvByBucket = new Map<number, number>();
+	for (const p of pv) {
+		pvByBucket.set(Math.floor(p.ts / effectiveBucket) * effectiveBucket, p.powerW);
 	}
 
+	const pvSorted = [...pv].sort((a, b) => a.ts - b.ts);
+	let pvIdx = 0;
+	let lastPv: number | null = null;
 	const out: NightBridgeSeriesPoint[] = [];
-	for (const p of pv) {
-		const b = Math.floor(p.ts / effectiveBucket) * effectiveBucket;
-		let hw = houseByBucket.get(b);
-		if (hw === undefined) {
-			/** Nachbar-Bucket (±1) — PV/Haus oft nicht exakt gleiches Sample-Raster. */
-			hw = houseByBucket.get(b - effectiveBucket) ?? houseByBucket.get(b + effectiveBucket);
+
+	for (const h of [...house].sort((a, b) => a.ts - b.ts)) {
+		const b = Math.floor(h.ts / effectiveBucket) * effectiveBucket;
+		while (pvIdx < pvSorted.length && pvSorted[pvIdx]!.ts <= h.ts + effectiveBucket / 2) {
+			lastPv = pvSorted[pvIdx]!.powerW;
+			pvIdx += 1;
 		}
-		if (hw === undefined) continue;
-		out.push({ ts: p.ts, netW: p.powerW - hw });
+		let pw = pvByBucket.get(b);
+		if (pw === undefined) {
+			pw = pvByBucket.get(b - effectiveBucket) ?? pvByBucket.get(b + effectiveBucket);
+		}
+		if (pw === undefined) {
+			/** onchange: letzter bekannter PV-Wert (auch 0 W nach Sonnenuntergang). */
+			if (lastPv === null) continue;
+			pw = lastPv;
+		}
+		out.push({ ts: h.ts, netW: pw - h.powerW });
 	}
 	return out;
 }

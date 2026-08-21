@@ -222,37 +222,61 @@ function aggregatePowerPointsByHour(rows, powerInvert) {
     };
 }
 exports.aggregatePowerPointsByHour = aggregatePowerPointsByHour;
+function rowsToSitePowerPoints(rows, powerUnit) {
+    const points = [];
+    for (const row of rows) {
+        const ts = typeof row?.ts === "number" ? row.ts : null;
+        const n = (0, state_util_1.asNum)(row?.val);
+        if (ts === null || n === null || !Number.isFinite(n) || n < 0)
+            continue;
+        let w = powerUnit === "kW" ? n * 1000 : n;
+        /** Auto-kW wenn kleine Rohwerte (wie House-Load / Rollup-Backfill). */
+        if (powerUnit === "W" && w > 0 && w < 100) {
+            w = n * 1000;
+        }
+        if (!Number.isFinite(w) || w < 0 || w > constants_1.PLAUSIBLE_POWER_W_MAX)
+            continue;
+        /** 0 W behalten — Nachtbrücke braucht PV=0; Deadband nur für Batterie-Leistung. */
+        points.push({ ts, powerW: Math.round(w) });
+    }
+    points.sort((a, b) => a.ts - b.ts);
+    return points;
+}
 /**
  * Unidirektionale Standort-Leistung (PV oder Hauslast) für Nachtbrücke.
- * 1) EMS-Stunden-Rollup  2) history.0 mit kW/W-Erkennung.
+ * 1) EMS-Stunden-Rollup (inkl. 0 W)  2) history.0 Stunden-Mittel  3) Roh-Lookback.
  */
 async function fetchSitePowerSeries(host, stateId, lookbackDays) {
     if (!stateId)
         return [];
     const fromRollup = await (0, power_rollup_1.fetchRollupUnidirectionalPowerPoints)(host, stateId, lookbackDays);
     if (fromRollup && fromRollup.points.length > 0) {
-        return fromRollup.points;
+        /** Alter Rollup ohne Nacht-0 W → Aggregate bevorzugen (sonst greift pv_house nie). */
+        const hasNightish = fromRollup.points.some((p) => p.powerW < 80);
+        if (hasNightish) {
+            return fromRollup.points;
+        }
     }
     const powerUnit = host.getObjectAsync
         ? await (0, history_1.resolveHouseLoadPowerUnit)(host, stateId)
         : (0, history_1.detectPowerUnit)(stateId);
-    const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, stateId, lookbackDays, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
-    const points = [];
-    for (const row of rows) {
-        const ts = typeof row?.ts === "number" ? row.ts : null;
-        const n = (0, state_util_1.asNum)(row?.val);
-        if (ts === null || n === null || !Number.isFinite(n))
-            continue;
-        let w = powerUnit === "kW" ? n * 1000 : n;
-        w = Math.abs(w);
-        if (!(w > 0) || w > constants_1.PLAUSIBLE_POWER_W_MAX)
-            continue;
-        if (w < constants_1.POWER_DEADBAND_W)
-            continue;
-        points.push({ ts, powerW: Math.round(w) });
+    const endMs = Date.now();
+    const startMs = endMs - lookbackDays * constants_1.MS_PER_DAY;
+    const aggregateRows = await (0, history_query_1.fetchHistoryRowsAggregated)(host, stateId, startMs, endMs, lookbackDays * 24 + 48, history_query_1.HISTORY_CHUNK_TIMEOUT_MS, "average", constants_1.MS_PER_HOUR);
+    const fromAggregate = rowsToSitePowerPoints(aggregateRows, powerUnit);
+    if (fromAggregate.length >= Math.min(lookbackDays, 7) * 8) {
+        return fromAggregate;
     }
-    points.sort((a, b) => a.ts - b.ts);
-    return points;
+    const rawRows = await (0, history_query_1.fetchHistoryRowsLookback)(host, stateId, lookbackDays, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
+    const fromRaw = rowsToSitePowerPoints(rawRows, powerUnit);
+    if (fromRaw.length > fromAggregate.length) {
+        return fromRaw;
+    }
+    if (fromAggregate.length > 0) {
+        return fromAggregate;
+    }
+    /** Letzter Fallback: Tages-only-Rollup besser als leer. */
+    return fromRollup?.points ?? [];
 }
 exports.fetchSitePowerSeries = fetchSitePowerSeries;
 async function fetchPowerHistory(host, stateId, lookbackDays, powerInvert = false) {

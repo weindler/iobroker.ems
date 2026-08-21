@@ -1381,7 +1381,18 @@ export function scoreCandidate(
 			 */
 			const storeEur = peakEur * weights.costWeight * (0.85 * needScale - 0.05);
 			score += e * storeEur;
-			if (batRoom > 0.4 || batStillWants) {
+			/*
+			 * Live-Surplus jetzt (PV−Haus ≥ Min-Stufe, SOC hoch, Soft-Headroom): Soft im
+			 * NOW-Slot vor Batterie-Nachladen und vor Wochenend-PV — sonst bleibt der Plan
+			 * auf Samstag während tagsüber eingespeist wird (Dashboard 0.1.322).
+			 */
+			const liveNow =
+				input.preferImmersionLiveSurplusNow === true &&
+				(candidate.slotIdx === 0 ||
+					(slot.startMs <= state.nowMs && Date.parse(slot.endIso) > state.nowMs));
+			if (liveNow) {
+				score += e * weights.flexShiftWeight * 3.5 + 1.2;
+			} else if (batRoom > 0.4 || batStillWants) {
 				/** Bei Overnight-Lücke (needScale hoch) Soft weniger gegen Batterie abstrafen. */
 				const batPen = 0.65 * (1 - 0.55 * needScale);
 				score -= e * peakEur * weights.costWeight * weights.socTargetWeight * batPen;

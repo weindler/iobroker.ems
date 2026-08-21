@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.322",
+		"version": "0.1.323",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.323": {
+				"en": "With live PV surplus, soft immersion heater headroom and high SOC, the daily plan replans and prefers the current slot instead of waiting for a weekend window while exporting.",
+				"de": "Bei Live-PV-Surplus, Soft-Heizstab-Bedarf und hohem SOC: Daily Plan plant neu und bevorzugt den aktuellen Slot — statt bei Einspeisung auf ein Wochenend-Fenster zu warten."
+			},
 			"0.1.322": {
 				"en": "Soft immersion heater uses PV surplus only — never drains the house battery when SOC is high/evening PV is gone (hard/min boiler still may use battery). Immersion min runtime/pause follow Admin; climate schedule shows the current window.",
 				"de": "Heizstab Soft nur noch aus PV-Surplus — leert den Hausspeicher abends nicht mehr bei vollem SOC ohne PV (Hard/Boiler-Min darf weiter Batterie nutzen). Heizstab Min-Laufzeit/Pause folgen dem Admin; Klima-Fahrplan zeigt das aktuelle Fenster."

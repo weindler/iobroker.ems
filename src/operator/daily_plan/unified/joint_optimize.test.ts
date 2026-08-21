@@ -358,6 +358,100 @@ describe("JOINT-E2 soft IH never drains house battery (evening / full SOC)", () 
 	});
 });
 
+describe("JOINT-E3 live surplus: Soft jetzt, nicht erst Wochenende", () => {
+	it("preferLive + SOC≥90 + Soft-Headroom → IH im heutigen NOW-Fenster", () => {
+		const nowIso = "2026-08-21T07:30:00.000Z"; // 09:30 CEST Freitag
+		const slots = buildSlots(nowIso, 96); // bis Sonntag
+		const input = scenarioAInput();
+		input.time = {
+			...input.time,
+			nowIso,
+			slots,
+			horizonStartIso: slots[0]!.startIso,
+			horizonEndIso: slots[slots.length - 1]!.endIso,
+		};
+		input.preferImmersionLiveSurplusNow = true;
+		input.battery = {
+			...input.battery,
+			socPct: 91,
+			minSocPct: 10,
+			reserveSocPct: 90,
+			endSocTargetPct: 100,
+			requiredChargeEnergyKwh: 0.9,
+			usableCapacityKwh: 10,
+			nightReserveKwh: 1.0,
+		};
+		input.thermal = {
+			...input.thermal!,
+			headroomEnergyKwh: 2.0,
+			boilerTempC: 59,
+			boilerMinTempC: 50,
+			dayTargetTempC: 55,
+			maxTempC: 63,
+			availablePowerW: 1700,
+			minPowerW: 1700,
+			boilerEmptyAtUsable: false,
+			estimatedEmptyAtIso: "2026-08-23T12:00:00.000Z",
+			deadlineIso: "2026-08-23T12:00:00.000Z",
+			emptyAtSource: "estimated",
+		};
+		input.pv = {
+			...input.pv,
+			slots: slots.map((s) => {
+				const day = s.startIso.slice(0, 10);
+				const h = new Date(s.startIso).getUTCHours();
+				let power = 0;
+				if (day === "2026-08-21" && h >= 7 && h < 16) power = 4500;
+				else if (day === "2026-08-22" && h >= 10 && h < 16) power = 5500; // Samstag stärker
+				else if (day === "2026-08-23" && h >= 10 && h < 16) power = 5500;
+				return {
+					slot: s,
+					forecastPowerW: power,
+					observedPowerW: day === "2026-08-21" && h === 7 ? 5600 : null,
+					energyKwh: (power / 1000) * 0.25,
+				};
+			}),
+			expectedDayEnergyKwh: 25,
+		};
+		input.houseLoad = {
+			...input.houseLoad,
+			slots: slots.map((s) => ({
+				slot: s,
+				forecastPowerW: 400,
+				observedPowerW: null,
+				energyKwh: 0.1,
+			})),
+		};
+		input.prices = {
+			...input.prices,
+			slots: slots.map((s) => ({
+				slot: s,
+				importCtPerKwh: 34,
+				exportCtPerKwh: 8,
+				gridImportAllowed: true,
+			})),
+		};
+		const plan = allocateUnifiedDayPlan(input);
+		const nowMs = Date.parse(nowIso);
+		const todayEnd = Date.parse("2026-08-21T22:00:00.000Z");
+		const ihToday = plan.allocations
+			.filter(
+				(a) =>
+					a.kind === "immersion_heater" &&
+					Date.parse(a.slot.startIso) >= nowMs - 15 * 60_000 &&
+					Date.parse(a.slot.startIso) < todayEnd,
+			)
+			.reduce((s, a) => s + a.allocatedEnergyKwh, 0);
+		assert.ok(ihToday > 0.3, `Soft bei Live-Surplus heute, got heute=${ihToday}`);
+		const batIh = sumKind(
+			plan,
+			"immersion_heater",
+			(a) => a.energySource === "battery" || a.energySource === "mixed",
+		);
+		assert.equal(batIh, 0);
+	});
+});
+
 describe("JOINT-F battery full + high PV surplus → thermal absorbs", () => {
 	it("routes surplus to thermal when battery near full", () => {
 		const input = scenarioAInput();

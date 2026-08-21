@@ -670,6 +670,24 @@ export async function runDailyPlanTick(
 		socPct: probeInput.battery.socPct,
 	});
 
+	const immersionNearMs = (() => {
+		if (!lastUnifiedPlan) return null;
+		const nowMs = now.getTime();
+		const horizon = nowMs + 45 * 60_000;
+		let best: number | null = null;
+		for (const a of lastUnifiedPlan.allocations) {
+			if (a.kind !== "immersion_heater") continue;
+			if (!(a.allocatedPowerW >= 50)) continue;
+			const s = Date.parse(a.slot.startIso);
+			const e = Date.parse(a.slot.endIso);
+			if (!Number.isFinite(s) || !Number.isFinite(e)) continue;
+			if (e <= nowMs) continue;
+			if (s > horizon) continue;
+			if (best === null || s < best) best = s;
+		}
+		return best;
+	})();
+
 	const actualSample: PlanActualSample = {
 		date: plan.date,
 		nowMs: now.getTime(),
@@ -723,6 +741,17 @@ export async function runDailyPlanTick(
 			shouldReplan: true,
 			hard: true,
 			reasons: [REASON.REPLAN_ADDON_EXECUTION_MODE, ...forced, ...decision.reasons],
+		};
+	}
+	/*
+	 * Live-Surplus + Soft-Bedarf, aber kein Heizstab-Fenster in ~45 Min (z. B. nur Sa):
+	 * hart replanen, damit preferLive den NOW-Slot neu bewerten kann.
+	 */
+	if (preferLiveIh && immersionNearMs === null) {
+		decision = {
+			shouldReplan: true,
+			hard: true,
+			reasons: [REASON.REPLAN_IMMERSION_LIVE_SURPLUS, ...decision.reasons],
 		};
 	}
 	if (!decision.shouldReplan) {

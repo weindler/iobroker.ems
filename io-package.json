@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.328",
+		"version": "0.1.329",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.329": {
+				"en": "Admin: bold history.0 hint for bat_pv_ac (PV-AC night bridge); Battery Runtime lookback as 30/60/90/120/180/365-day select with retention note.",
+				"de": "Admin: fetter history.0-Hinweis für bat_pv_ac (PV-AC-Nachtbrücke); Battery-Runtime-Lookback als Auswahl 30/60/90/120/180/365 Tage inkl. Retention-Hinweis."
+			},
 			"0.1.328": {
 				"en": "Night bridge: evaluate pv_house and battery_discharge; keep the method with enough valid SOC nights — thin day-energy pv_house no longer overwrites solid discharge averages.",
 				"de": "Nachtbrücke: pv_house und battery_discharge beide bewerten; Methode mit genug gültigen SOC-Nächten behalten — dünnes day_energy-pv_house überschreibt keine belastbaren Entlade-Mittelwerte mehr."

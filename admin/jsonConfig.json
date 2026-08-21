@@ -2260,6 +2260,15 @@
 					"lg": 3,
 					"xl": 3
 				},
+				"batPvAcHistoryHint": {
+					"type": "staticText",
+					"text": "<b>WICHTIG — history.0 für PV-AC:</b> Der State unter <b>PV-AC-Leistung (bat_pv_ac)</b> muss in <b>history.0</b> aufgenommen werden (onChange oder periodisch). Ohne diese History kann die Nachtbrücke nicht per PV vs. Hauslast lernen (<code>pv_house</code>) und bleibt bei Batterie-Entladung. <b>Speichertiefe in history.0</b> mindestens so lang wie der Lookback im Battery-Runtime-Learning (empfohlen <b>90 Tage</b>, Winter besser <b>90–180</b>). Hausverbrauch (consumption_w) braucht dasselbe, falls dort noch keine History läuft.",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
 				"hBatLimits": {
 					"type": "header",
 					"size": 2,
@@ -8929,7 +8938,7 @@
 				},
 				"hBatteryRuntimeLearningHelp": {
 					"type": "staticText",
-					"text": "Lernt Nachtentladung, Lade-/Entladeraten und Vollladung. SOC und Astro: history.0 onChange empfohlen. Batterieleistung (pacTotal): EMS sammelt stündliche Maxima selbst (60s-Tick + onChange) — history.0 für Leistung nicht nötig. Vollladung/Top-Off: mapping.seconds_since_full_charge. Bei Sonnen pacTotal „Leistung invertieren“. Diagnose: learning.battery_runtime.power_history_mode = ems_rollup. Read-only.",
+					"text": "Lernt Nachtentladung, Lade-/Entladeraten und Vollladung. <b>Nachtbrücke PV vs. Hauslast:</b> braucht History auf dem gemappten State <b>bat_pv_ac</b> (PV-AC-Leistung) — siehe Hinweis beim Batterie-Mapping. Diagnose: <code>night_bridge_method</code>, <code>night_bridge_pv_origin</code>, <code>night_bridge_valid_nights</code>. SOC: history.0 onChange empfohlen. Batterieleistung (pacTotal): EMS-Stunden-Rollup (history.0 dafür nicht nötig). Vollladung/Top-Off: mapping.seconds_since_full_charge. Bei Sonnen pacTotal „Leistung invertieren“. Read-only.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -8947,16 +8956,31 @@
 					"xl": 4
 				},
 				"learning_battery_runtime_lookback_days": {
-					"type": "number",
-					"label": "Lookback (Tage)",
-					"min": 7,
-					"max": 365,
+					"type": "select",
+					"label": "Lookback / History-Tiefe lesen (Tage) — history.0 Retention ≥ diesen Wert",
 					"default": 90,
+					"options": [
+						{ "label": "30 Tage", "value": 30 },
+						{ "label": "60 Tage", "value": 60 },
+						{ "label": "90 Tage (empfohlen)", "value": 90 },
+						{ "label": "120 Tage", "value": 120 },
+						{ "label": "180 Tage (Winter)", "value": 180 },
+						{ "label": "365 Tage", "value": 365 }
+					],
 					"xs": 12,
 					"sm": 6,
 					"md": 4,
 					"lg": 4,
 					"xl": 4
+				},
+				"hBatteryRuntimeHistoryRetentionHelp": {
+					"type": "staticText",
+					"text": "<b>history.0 konfigurieren:</b> Im History-Adapter denselben State wie <b>bat_pv_ac</b> (und ggf. consumption_w) aktivieren und die <b>Retention</b> mindestens auf den Lookback oben setzen (z. B. Lookback 90 → history mind. 90 Tage speichern). EMS kann die History-Retention nicht selbst setzen — nur wie weit zurück gelesen wird.",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
 				"learning_battery_runtime_soc_state": {
 					"type": "objectId",

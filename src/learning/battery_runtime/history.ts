@@ -5,7 +5,8 @@ import {
 	HISTORY_CHUNK_TIMEOUT_MS,
 	HISTORY_ROWS_PER_DAY,
 } from "../history_query";
-import { fetchRollupPowerHistory } from "../power_rollup";
+import { fetchRollupPowerHistory, fetchRollupUnidirectionalPowerPoints } from "../power_rollup";
+import { detectPowerUnit, resolveHouseLoadPowerUnit } from "../house_load/history";
 import {
 	MS_PER_HOUR,
 	PLAUSIBLE_POWER_W_MAX,
@@ -300,12 +301,28 @@ export function aggregatePowerPointsByHour(
 	};
 }
 
+/**
+ * Unidirektionale Standort-Leistung (PV oder Hauslast) für Nachtbrücke.
+ * 1) EMS-Stunden-Rollup  2) history.0 mit kW/W-Erkennung.
+ */
 export async function fetchSitePowerSeries(
-	host: BatteryHistoryHost,
+	host: BatteryHistoryHost & {
+		getObjectAsync?: (id: string) => Promise<ioBroker.Object | null | undefined>;
+	},
 	stateId: string,
 	lookbackDays: number,
 ): Promise<PowerPoint[]> {
 	if (!stateId) return [];
+
+	const fromRollup = await fetchRollupUnidirectionalPowerPoints(host, stateId, lookbackDays);
+	if (fromRollup && fromRollup.points.length > 0) {
+		return fromRollup.points;
+	}
+
+	const powerUnit = host.getObjectAsync
+		? await resolveHouseLoadPowerUnit(host, stateId)
+		: detectPowerUnit(stateId);
+
 	const rows = await fetchHistoryRowsLookback(
 		host,
 		stateId,
@@ -318,8 +335,10 @@ export async function fetchSitePowerSeries(
 		const ts = typeof row?.ts === "number" ? row.ts : null;
 		const n = asNum(row?.val);
 		if (ts === null || n === null || !Number.isFinite(n)) continue;
-		const w = Math.abs(n) > PLAUSIBLE_POWER_W_MAX ? null : Math.max(0, n);
-		if (w === null || w < POWER_DEADBAND_W) continue;
+		let w = powerUnit === "kW" ? n * 1000 : n;
+		w = Math.abs(w);
+		if (!(w > 0) || w > PLAUSIBLE_POWER_W_MAX) continue;
+		if (w < POWER_DEADBAND_W) continue;
 		points.push({ ts, powerW: Math.round(w) });
 	}
 	points.sort((a, b) => a.ts - b.ts);

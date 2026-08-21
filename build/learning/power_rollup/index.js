@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopPowerRollup = exports.fetchRollupHouseLoadSamples = exports.fetchRollupPowerHistory = exports.ensurePowerRollupForLearning = exports.handlePowerRollupStateChange = exports.tickPowerRollup = exports.initPowerRollup = void 0;
+exports.stopPowerRollup = exports.fetchRollupUnidirectionalPowerPoints = exports.fetchRollupHouseLoadSamples = exports.fetchRollupPowerHistory = exports.ensurePowerRollupForLearning = exports.handlePowerRollupStateChange = exports.tickPowerRollup = exports.initPowerRollup = void 0;
 const state_util_1 = require("../../ems_light/state_util");
 const backfill_1 = require("./backfill");
 const buffer_1 = require("./buffer");
@@ -8,6 +8,7 @@ const hour_1 = require("./hour");
 const persist_1 = require("./persist");
 const registry_1 = require("./registry");
 const rollup_points_1 = require("./rollup_points");
+const types_1 = require("./types");
 const PERSIST_CATEGORY = "learning/power_rollup";
 let rollupHost = null;
 let persistCache = null;
@@ -300,6 +301,24 @@ async function fetchRollupHouseLoadSamples(host, stateId, lookbackDays) {
     return result;
 }
 exports.fetchRollupHouseLoadSamples = fetchRollupHouseLoadSamples;
+/** Unidirektionale Leistung (PV / Hauslast) aus EMS-Stunden-Rollup. */
+async function fetchRollupUnidirectionalPowerPoints(host, stateId, lookbackDays) {
+    const dir = host.getAbsolutePath?.(PERSIST_CATEGORY);
+    if (!dir || !stateId) {
+        return null;
+    }
+    const persist = await (0, persist_1.readPowerHourlyPersist)(dir);
+    const source = (0, rollup_points_1.findSourceByStateId)(persist, stateId);
+    if (!source || (0, types_1.effectiveRollupMode)(source) !== "unidirectional_avg") {
+        return null;
+    }
+    const result = (0, rollup_points_1.rollupSourceToUnidirectionalPowerPoints)(source, lookbackDays);
+    if (result.points.length === 0) {
+        return null;
+    }
+    return result;
+}
+exports.fetchRollupUnidirectionalPowerPoints = fetchRollupUnidirectionalPowerPoints;
 function stopPowerRollup() {
     rollupHost = null;
     persistCache = null;

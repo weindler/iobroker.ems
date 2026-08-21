@@ -57,7 +57,28 @@ function computeNightDischarges(params) {
     const house = params.housePowerPoints ?? [];
     if (pv.length > 0 && house.length > 0) {
         const net = (0, night_bridge_1.buildPvHouseNetSeries)(pv, house);
-        windows = (0, night_bridge_1.findPvHouseNightBridges)(net, { flutterMs, method: "pv_house" });
+        /*
+         * Bei Stunden-Rollup: Flattern = 1 h (ein Bucket), sonst 10 Min.
+         * Sonst findet die PV-Haus-Brücke bei stündlichen Punkten keine stabile Phase.
+         */
+        const medianGap = (() => {
+            const ts = net.map((p) => p.ts).sort((a, b) => a - b);
+            const gaps = [];
+            for (let i = 1; i < Math.min(ts.length, 40); i++)
+                gaps.push(ts[i] - ts[i - 1]);
+            if (gaps.length === 0)
+                return 0;
+            gaps.sort((a, b) => a - b);
+            return gaps[Math.floor(gaps.length / 2)];
+        })();
+        const flutterMs = medianGap >= 40 * 60_000
+            ? constants_1.MS_PER_HOUR
+            : (params.flutterMs ?? night_bridge_1.DEFAULT_NIGHT_BRIDGE_FLUTTER_MS);
+        windows = (0, night_bridge_1.findPvHouseNightBridges)(net, {
+            flutterMs,
+            method: "pv_house",
+            bucketMs: medianGap >= 40 * 60_000 ? constants_1.MS_PER_HOUR : undefined,
+        });
         if (windows.length > 0)
             method = "pv_house";
     }

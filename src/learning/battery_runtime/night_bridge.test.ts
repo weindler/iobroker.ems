@@ -69,9 +69,32 @@ describe("night_bridge PV/Haus", () => {
 	});
 
 	it("Recency: jüngere Nächte stärker", () => {
-		assert.ok(recencyWeight(0) > recencyWeight(14));
-		assert.ok(recencyWeight(14) > recencyWeight(28));
+		assert.ok(recencyWeight(0) > recencyWeight(10));
+		assert.ok(recencyWeight(10) > recencyWeight(20));
 		const avg = weightedAverage([10, 40], [1, 0.01]);
 		assert.ok(avg !== null && avg < 15, `recent-weighted avg=${avg}`);
+	});
+
+	it("stündliche PV/Haus-Serien joinen trotz versetzter Timestamps", () => {
+		const day0 = Date.parse("2026-01-15T00:00:00.000Z");
+		const pv: PowerPoint[] = [];
+		const house: PowerPoint[] = [];
+		for (let h = 0; h < 48; h++) {
+			const ts = day0 + h * 3_600_000;
+			let pvW = 0;
+			if (h >= 9 && h < 16) pvW = 4000;
+			if (h >= 32 && h < 40) pvW = 3500;
+			pv.push({ ts: ts + 120_000, powerW: pvW });
+			house.push({ ts: ts + 480_000, powerW: 500 });
+		}
+		const net = buildPvHouseNetSeries(pv, house);
+		assert.ok(net.length >= 20, `net points ${net.length}`);
+		const bridges = findPvHouseNightBridges(net, {
+			flutterMs: 3_600_000,
+			bucketMs: 3_600_000,
+			deficitW: 100,
+		});
+		assert.ok(bridges.length >= 1, `hourly bridges ${bridges.length}`);
+		assert.equal(bridges[0]!.method, "pv_house");
 	});
 });

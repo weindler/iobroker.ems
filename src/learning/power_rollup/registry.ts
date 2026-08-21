@@ -15,6 +15,12 @@ export const DENSE_POWER_SOURCES: readonly DensePowerSourceDef[] = [
 		role: "consumption_w",
 		rollupMode: "unidirectional_avg",
 	},
+	{
+		sourceKey: "battery.pv_ac_power_w",
+		addonId: "battery",
+		role: "pv_ac_power_w",
+		rollupMode: "unidirectional_avg",
+	},
 ] as const;
 
 export type PowerRollupRegistryHost = {

@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.324",
+		"version": "0.1.325",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.325": {
+				"en": "Battery night bridge learning: PV AC + house load via power rollup/history (kW/W), hourly join, stronger recency — targets pv_house method for winter night length.",
+				"de": "Batterie-Nachtbrücke: PV-AC + Hauslast über Power-Rollup/Historie (kW/W), stündlicher Join, stärkere Recency — Zielmethode pv_house für Winter-Nachtlänge."
+			},
 			"0.1.324": {
 				"en": "Battery night learning uses PV vs house load (when battery must help / when PV covers again) with 10-minute flutter and recency weighting — fixed 22:00–06:00 is only a fallback.",
 				"de": "Batterie-Nachtlernen: PV vs. Hauslast (wann Batterie helfen muss / wann PV wieder reicht), 10‑Min-Flattern und jüngere Nächte stärker — feste 22:00–06:00 nur noch Fallback."

@@ -16,6 +16,12 @@ exports.DENSE_POWER_SOURCES = [
         role: "consumption_w",
         rollupMode: "unidirectional_avg",
     },
+    {
+        sourceKey: "battery.pv_ac_power_w",
+        addonId: "battery",
+        role: "pv_ac_power_w",
+        rollupMode: "unidirectional_avg",
+    },
 ];
 function mappedTarget(host, addonId, role) {
     const mapped = (0, mapping_resolve_1.resolveMappingTargetFromConfig)(host.config, addonId, role);

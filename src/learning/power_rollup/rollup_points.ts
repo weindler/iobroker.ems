@@ -173,6 +173,29 @@ export function rollupSourceToHouseLoadSamples(
 	};
 }
 
+export function rollupSourceToUnidirectionalPowerPoints(
+	source: PowerSourcePersist,
+	lookbackDays: number,
+	nowMs = Date.now(),
+): { points: PowerPoint[]; lastValidTs: number | null } {
+	const cutoff = nowMs - lookbackDays * MS_PER_DAY;
+	const points: PowerPoint[] = [];
+	let lastValidTs: number | null = null;
+	const hourKeys = Object.keys(source.hours).sort();
+	for (const hourKey of hourKeys) {
+		const rec = source.hours[hourKey];
+		const ts = hourKeyToStartTs(hourKey);
+		if (ts < cutoff) continue;
+		const avg = rec.avgPowerW;
+		if (avg === null || avg === undefined || !(avg > 0)) continue;
+		const sampleTs = rec.lastSampleTs > ts ? rec.lastSampleTs : ts + MS_PER_HOUR / 2;
+		points.push({ ts: sampleTs, powerW: avg });
+		if (lastValidTs === null || sampleTs > lastValidTs) lastValidTs = sampleTs;
+	}
+	points.sort((a, b) => a.ts - b.ts);
+	return { points, lastValidTs };
+}
+
 export function isBidirectionalRollupSource(source: PowerSourcePersist): boolean {
 	return effectiveRollupMode(source) === "bidirectional_max";
 }

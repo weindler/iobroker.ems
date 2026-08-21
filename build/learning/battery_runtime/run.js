@@ -102,12 +102,14 @@ async function runBatteryRuntimeLearning(host) {
             await (0, persist_1.writeBatteryRuntimePersist)(host.getAbsolutePath("learning/battery_runtime"), result, lastRun);
         }
         await writeResult(host, result, lastRun);
-        host.log.debug?.(`Battery-Runtime-Learning: status=${result.status} nights=${result.avgNightDischargePct ?? "n/a"}% kwh=${result.avgNightDischargeKwh ?? "n/a"} bridge=${result.nightBridgeMethod}/${result.avgNightBridgeHours ?? "n/a"}h samples=${result.sampleDays} full_src=${result.fullChargeSource ?? "—"} sec_since_full=${result.secondsSinceFullCharge ?? "—"} days_since_full=${result.daysSinceFull ?? "—"} soc=${(0, config_1.sourceLabelFromStateId)(sources.socStateId)} power=${(0, config_1.sourceLabelFromStateId)(sources.powerStateId)} invert=${result.powerInvertApplied === null ? "—" : result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? "(auto)" : ""} pwr_raw=${result.powerRawChargeSamples ?? "—"}/${result.powerRawDischargeSamples ?? "—"} pwr_hr=${result.powerHourlyChargePoints ?? "—"}/${result.powerHourlyDischargePoints ?? "—"} avg_chg_w=${result.avgChargePowerW ?? "—"}`);
-        if (sources.powerStateId &&
-            result.powerRawChargeSamples === 0 &&
-            result.powerRawDischargeSamples !== null &&
-            result.powerRawDischargeSamples > 0) {
-            host.log.warn(`Battery Runtime Learning: keine Lade-Samples in Leistungs-History (raw_charge=0, raw_discharge=${result.powerRawDischargeSamples}, invert=${result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? " auto" : ""}) — pacTotal-History prüfen (negative Werte beim Laden?)`);
+        host.log.info(`Battery-Runtime-Learning: status=${result.status} method=${result.nightBridgeMethod} nights=${result.avgNightDischargePct ?? "n/a"}% kwh=${result.avgNightDischargeKwh ?? "n/a"} bridgeH=${result.avgNightBridgeHours ?? "n/a"} samples=${result.sampleDays} pvPts=${pvPowerPoints.length} housePts=${housePowerPoints.length} pvSrc=${(0, config_1.sourceLabelFromStateId)(sources.pvAcPowerStateId)} houseSrc=${(0, config_1.sourceLabelFromStateId)(sources.consumptionStateId)}`);
+        host.log.debug?.(`Battery-Runtime-Learning detail: full_src=${result.fullChargeSource ?? "—"} sec_since_full=${result.secondsSinceFullCharge ?? "—"} days_since_full=${result.daysSinceFull ?? "—"} soc=${(0, config_1.sourceLabelFromStateId)(sources.socStateId)} power=${(0, config_1.sourceLabelFromStateId)(sources.powerStateId)} invert=${result.powerInvertApplied === null ? "—" : result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? "(auto)" : ""}`);
+        if (result.nightBridgeMethod !== "pv_house" &&
+            (!sources.pvAcPowerStateId || !sources.consumptionStateId)) {
+            host.log.warn(`Battery-Runtime-Learning: PV/Hauslast-Nachtbrücke nicht möglich — Mapping fehlt (pv=${sources.pvAcPowerStateId || "—"}; house=${sources.consumptionStateId || "—"}). Fallback=${result.nightBridgeMethod}.`);
+        }
+        else if (result.nightBridgeMethod !== "pv_house" && (pvPowerPoints.length < 24 || housePowerPoints.length < 24)) {
+            host.log.warn(`Battery-Runtime-Learning: PV/Hauslast-Historie zu dünn für Nachtbrücke (pv=${pvPowerPoints.length}, house=${housePowerPoints.length}) — Fallback=${result.nightBridgeMethod}. Power-Rollup/History für bat_pv_ac / consumption prüfen.`);
         }
         if (result.status === "insufficient_data") {
             host.log.warn(`Battery Runtime Learning: ungenügende Historie (sample_days=${result.sampleDays}, soc_points=${socHist.points.length})`);

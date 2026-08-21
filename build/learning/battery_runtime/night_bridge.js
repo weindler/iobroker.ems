@@ -42,21 +42,26 @@ function bucketPowerSeries(points, bucketMs = exports.NIGHT_BRIDGE_BUCKET_MS) {
 exports.bucketPowerSeries = bucketPowerSeries;
 /**
  * Netto = PV − Hauslast. Negativ = Defizit (Batterie hilft).
- * Fehlende Seite → null (kein Fake-0).
+ * Fehlende Seite → null (kein Fake-0). Join toleriert versetzte Samples (Stunden-Rollup).
  */
 function buildPvHouseNetSeries(pvPoints, housePoints, bucketMs = exports.NIGHT_BRIDGE_BUCKET_MS) {
-    const pv = bucketPowerSeries(pvPoints, bucketMs);
-    const house = bucketPowerSeries(housePoints, bucketMs);
+    const effectiveBucket = inferBucketMs(pvPoints, housePoints, bucketMs);
+    const pv = bucketPowerSeries(pvPoints, effectiveBucket);
+    const house = bucketPowerSeries(housePoints, effectiveBucket);
     if (pv.length === 0 || house.length === 0)
         return [];
     const houseByBucket = new Map();
     for (const h of house) {
-        houseByBucket.set(Math.floor(h.ts / bucketMs) * bucketMs, h.powerW);
+        houseByBucket.set(Math.floor(h.ts / effectiveBucket) * effectiveBucket, h.powerW);
     }
     const out = [];
     for (const p of pv) {
-        const b = Math.floor(p.ts / bucketMs) * bucketMs;
-        const hw = houseByBucket.get(b);
+        const b = Math.floor(p.ts / effectiveBucket) * effectiveBucket;
+        let hw = houseByBucket.get(b);
+        if (hw === undefined) {
+            /** Nachbar-Bucket (±1) — PV/Haus oft nicht exakt gleiches Sample-Raster. */
+            hw = houseByBucket.get(b - effectiveBucket) ?? houseByBucket.get(b + effectiveBucket);
+        }
         if (hw === undefined)
             continue;
         out.push({ ts: p.ts, netW: p.powerW - hw });
@@ -64,6 +69,25 @@ function buildPvHouseNetSeries(pvPoints, housePoints, bucketMs = exports.NIGHT_B
     return out;
 }
 exports.buildPvHouseNetSeries = buildPvHouseNetSeries;
+function inferBucketMs(a, b, preferred) {
+    const pts = [...a, ...b].sort((x, y) => x.ts - y.ts);
+    if (pts.length < 4)
+        return preferred;
+    const gaps = [];
+    for (let i = 1; i < Math.min(pts.length, 80); i++) {
+        const g = pts[i].ts - pts[i - 1].ts;
+        if (g > 60_000)
+            gaps.push(g);
+    }
+    if (gaps.length === 0)
+        return preferred;
+    gaps.sort((x, y) => x - y);
+    const median = gaps[Math.floor(gaps.length / 2)];
+    /** Stunden-Rollup → 1‑h-Buckets, Flattern = 1 Stunde. */
+    if (median >= 40 * 60_000)
+        return constants_1.MS_PER_HOUR;
+    return preferred;
+}
 /** Batterie-Leistung: negativ = Entladen → Defizit-Proxy. */
 function buildBatteryDeficitSeries(batteryPoints, bucketMs = exports.NIGHT_BRIDGE_BUCKET_MS) {
     return bucketPowerSeries(batteryPoints, bucketMs).map((p) => ({
@@ -221,7 +245,7 @@ exports.findNearestSoc = findNearestSoc;
  * Gewichtetes Mittel: jüngere Nächte stärker (Halbwertszeit ~14 Tage).
  * Sonst bleibt der Sommer-Schnitt bei längeren Herbst-/Winternächten hängen.
  */
-function recencyWeight(ageDays, halfLifeDays = 14) {
+function recencyWeight(ageDays, halfLifeDays = 10) {
     if (!(ageDays >= 0) || !Number.isFinite(ageDays))
         return 0;
     return Math.exp((-Math.LN2 * ageDays) / Math.max(1, halfLifeDays));

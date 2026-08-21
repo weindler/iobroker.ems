@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isBidirectionalRollupSource = exports.rollupSourceToHouseLoadSamples = exports.rollupSourceToPowerPoints = exports.findSourceByStateId = void 0;
+exports.isBidirectionalRollupSource = exports.rollupSourceToUnidirectionalPowerPoints = exports.rollupSourceToHouseLoadSamples = exports.rollupSourceToPowerPoints = exports.findSourceByStateId = void 0;
 const constants_1 = require("../house_load/constants");
 const time_1 = require("../house_load/time");
 const constants_2 = require("../battery_runtime/constants");
@@ -133,6 +133,28 @@ function rollupSourceToHouseLoadSamples(source, lookbackDays, nowMs = Date.now()
     };
 }
 exports.rollupSourceToHouseLoadSamples = rollupSourceToHouseLoadSamples;
+function rollupSourceToUnidirectionalPowerPoints(source, lookbackDays, nowMs = Date.now()) {
+    const cutoff = nowMs - lookbackDays * constants_1.MS_PER_DAY;
+    const points = [];
+    let lastValidTs = null;
+    const hourKeys = Object.keys(source.hours).sort();
+    for (const hourKey of hourKeys) {
+        const rec = source.hours[hourKey];
+        const ts = (0, hour_1.hourKeyToStartTs)(hourKey);
+        if (ts < cutoff)
+            continue;
+        const avg = rec.avgPowerW;
+        if (avg === null || avg === undefined || !(avg > 0))
+            continue;
+        const sampleTs = rec.lastSampleTs > ts ? rec.lastSampleTs : ts + constants_1.MS_PER_HOUR / 2;
+        points.push({ ts: sampleTs, powerW: avg });
+        if (lastValidTs === null || sampleTs > lastValidTs)
+            lastValidTs = sampleTs;
+    }
+    points.sort((a, b) => a.ts - b.ts);
+    return { points, lastValidTs };
+}
+exports.rollupSourceToUnidirectionalPowerPoints = rollupSourceToUnidirectionalPowerPoints;
 function isBidirectionalRollupSource(source) {
     return (0, types_1.effectiveRollupMode)(source) === "bidirectional_max";
 }

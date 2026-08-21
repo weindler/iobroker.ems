@@ -19,8 +19,10 @@ import {
 	isBidirectionalRollupSource,
 	rollupSourceToHouseLoadSamples,
 	rollupSourceToPowerPoints,
+	rollupSourceToUnidirectionalPowerPoints,
 } from "./rollup_points";
 import type { HourBuffer, PowerHourlyPersist, ResolvedDensePowerSource } from "./types";
+import { effectiveRollupMode } from "./types";
 
 const PERSIST_CATEGORY = "learning/power_rollup";
 
@@ -381,6 +383,28 @@ export async function fetchRollupHouseLoadSamples(
 	}
 	const result = rollupSourceToHouseLoadSamples(source, lookbackDays);
 	if (result.samples.length === 0) {
+		return null;
+	}
+	return result;
+}
+
+/** Unidirektionale Leistung (PV / Hauslast) aus EMS-Stunden-Rollup. */
+export async function fetchRollupUnidirectionalPowerPoints(
+	host: { getAbsolutePath?: (category?: string) => string },
+	stateId: string,
+	lookbackDays: number,
+): Promise<{ points: import("../battery_runtime/types").PowerPoint[]; lastValidTs: number | null } | null> {
+	const dir = host.getAbsolutePath?.(PERSIST_CATEGORY);
+	if (!dir || !stateId) {
+		return null;
+	}
+	const persist = await readPowerHourlyPersist(dir);
+	const source = findSourceByStateId(persist, stateId);
+	if (!source || effectiveRollupMode(source) !== "unidirectional_avg") {
+		return null;
+	}
+	const result = rollupSourceToUnidirectionalPowerPoints(source, lookbackDays);
+	if (result.points.length === 0) {
 		return null;
 	}
 	return result;

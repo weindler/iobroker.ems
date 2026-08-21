@@ -4,6 +4,7 @@ exports.distinctSocSampleDays = exports.readSecondsSinceFullCharge = exports.rea
 const state_util_1 = require("../../ems_light/state_util");
 const history_query_1 = require("../history_query");
 const power_rollup_1 = require("../power_rollup");
+const history_1 = require("../house_load/history");
 const constants_1 = require("./constants");
 const time_1 = require("./time");
 function parseAstroTimeValue(raw) {
@@ -221,9 +222,20 @@ function aggregatePowerPointsByHour(rows, powerInvert) {
     };
 }
 exports.aggregatePowerPointsByHour = aggregatePowerPointsByHour;
+/**
+ * Unidirektionale Standort-Leistung (PV oder Hauslast) für Nachtbrücke.
+ * 1) EMS-Stunden-Rollup  2) history.0 mit kW/W-Erkennung.
+ */
 async function fetchSitePowerSeries(host, stateId, lookbackDays) {
     if (!stateId)
         return [];
+    const fromRollup = await (0, power_rollup_1.fetchRollupUnidirectionalPowerPoints)(host, stateId, lookbackDays);
+    if (fromRollup && fromRollup.points.length > 0) {
+        return fromRollup.points;
+    }
+    const powerUnit = host.getObjectAsync
+        ? await (0, history_1.resolveHouseLoadPowerUnit)(host, stateId)
+        : (0, history_1.detectPowerUnit)(stateId);
     const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, stateId, lookbackDays, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
     const points = [];
     for (const row of rows) {
@@ -231,8 +243,11 @@ async function fetchSitePowerSeries(host, stateId, lookbackDays) {
         const n = (0, state_util_1.asNum)(row?.val);
         if (ts === null || n === null || !Number.isFinite(n))
             continue;
-        const w = Math.abs(n) > constants_1.PLAUSIBLE_POWER_W_MAX ? null : Math.max(0, n);
-        if (w === null || w < constants_1.POWER_DEADBAND_W)
+        let w = powerUnit === "kW" ? n * 1000 : n;
+        w = Math.abs(w);
+        if (!(w > 0) || w > constants_1.PLAUSIBLE_POWER_W_MAX)
+            continue;
+        if (w < constants_1.POWER_DEADBAND_W)
             continue;
         points.push({ ts, powerW: Math.round(w) });
     }

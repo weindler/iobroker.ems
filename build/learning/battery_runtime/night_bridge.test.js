@@ -63,9 +63,33 @@ function seriesFromHours(dayStartMs, hours) {
         strict_1.default.equal(start, null);
     });
     (0, node_test_1.it)("Recency: jüngere Nächte stärker", () => {
-        strict_1.default.ok((0, night_bridge_1.recencyWeight)(0) > (0, night_bridge_1.recencyWeight)(14));
-        strict_1.default.ok((0, night_bridge_1.recencyWeight)(14) > (0, night_bridge_1.recencyWeight)(28));
+        strict_1.default.ok((0, night_bridge_1.recencyWeight)(0) > (0, night_bridge_1.recencyWeight)(10));
+        strict_1.default.ok((0, night_bridge_1.recencyWeight)(10) > (0, night_bridge_1.recencyWeight)(20));
         const avg = (0, night_bridge_1.weightedAverage)([10, 40], [1, 0.01]);
         strict_1.default.ok(avg !== null && avg < 15, `recent-weighted avg=${avg}`);
+    });
+    (0, node_test_1.it)("stündliche PV/Haus-Serien joinen trotz versetzter Timestamps", () => {
+        const day0 = Date.parse("2026-01-15T00:00:00.000Z");
+        const pv = [];
+        const house = [];
+        for (let h = 0; h < 48; h++) {
+            const ts = day0 + h * 3_600_000;
+            let pvW = 0;
+            if (h >= 9 && h < 16)
+                pvW = 4000;
+            if (h >= 32 && h < 40)
+                pvW = 3500;
+            pv.push({ ts: ts + 120_000, powerW: pvW });
+            house.push({ ts: ts + 480_000, powerW: 500 });
+        }
+        const net = (0, night_bridge_1.buildPvHouseNetSeries)(pv, house);
+        strict_1.default.ok(net.length >= 20, `net points ${net.length}`);
+        const bridges = (0, night_bridge_1.findPvHouseNightBridges)(net, {
+            flutterMs: 3_600_000,
+            bucketMs: 3_600_000,
+            deficitW: 100,
+        });
+        strict_1.default.ok(bridges.length >= 1, `hourly bridges ${bridges.length}`);
+        strict_1.default.equal(bridges[0].method, "pv_house");
     });
 });

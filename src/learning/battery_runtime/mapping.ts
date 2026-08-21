@@ -1,4 +1,5 @@
 import { resolveMappingTargetFromConfig } from "../../mapping_resolve";
+import { houseLoadConfigFromAdapter } from "../house_load/config";
 
 export type BatteryMappingHost = {
 	config?: unknown;
@@ -31,6 +32,8 @@ export async function resolveBatteryRuntimeSources(
 		secondsSinceFullStateId: string;
 	},
 ): Promise<ResolvedBatterySources> {
+	const houseLearning = houseLoadConfigFromAdapter(host.config);
+	const consumptionMapped = mappedTarget(host, "consumption_w");
 	return {
 		socStateId: configured.socStateId || mappedTarget(host, "soc_pct"),
 		capacityStateId: configured.capacityStateId || mappedTarget(host, "capacity_kwh"),
@@ -38,6 +41,7 @@ export async function resolveBatteryRuntimeSources(
 			configured.secondsSinceFullStateId || mappedTarget(host, "seconds_since_full_charge"),
 		powerStateId: configured.powerStateId || mappedTarget(host, "power_w"),
 		pvAcPowerStateId: mappedTarget(host, "pv_ac_power_w"),
-		consumptionStateId: mappedTarget(host, "consumption_w"),
+		/** House-Load-Learning-State hat Vorrang, sonst Batterie-Mapping consumption_w. */
+		consumptionStateId: houseLearning.powerStateId || consumptionMapped,
 	};
 }

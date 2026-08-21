@@ -6,10 +6,12 @@ import {
 import {
 	fetchAstroTimeHistory,
 	fetchPowerHistory,
+	fetchSitePowerFromEnergyCounter,
 	fetchSitePowerSeries,
 	fetchSocHistory,
 	fetchSocHistoryRaw,
 	mergeDailyAstroTimes,
+	MIN_NIGHT_BRIDGE_SITE_POINTS,
 	readLiveCapacityKwh,
 	readLiveSoc,
 	readSecondsSinceFullCharge,
@@ -25,6 +27,7 @@ import {
 } from "./math";
 import { writeBatteryRuntimePersist } from "./persist";
 import type { BatteryRuntimeComputeResult } from "./types";
+import { pvBiasConfigFromAdapter } from "../pv_bias/config";
 
 export type BatteryRuntimeRunHost = {
 	config: unknown;
@@ -54,7 +57,7 @@ async function writeResult(
 	host: BatteryRuntimeRunHost,
 	result: BatteryRuntimeComputeResult,
 	lastRun: string,
-	diag?: { pvPoints: number; housePoints: number },
+	diag?: { pvPoints: number; housePoints: number; pvOrigin?: string },
 ): Promise<void> {
 	await host.setStateAsync("learning.battery_runtime.status", { val: result.status, ack: true });
 	await host.setStateAsync("learning.battery_runtime.last_run", { val: lastRun, ack: true });
@@ -69,6 +72,12 @@ async function writeResult(
 	if (diag) {
 		await setNumIfValid(host, "learning.battery_runtime.night_bridge_pv_points", diag.pvPoints);
 		await setNumIfValid(host, "learning.battery_runtime.night_bridge_house_points", diag.housePoints);
+		if (diag.pvOrigin) {
+			await host.setStateAsync("learning.battery_runtime.night_bridge_pv_origin", {
+				val: diag.pvOrigin,
+				ack: true,
+			});
+		}
 	}
 	await setNumIfValid(host, "learning.battery_runtime.avg_charge_power_w", result.avgChargePowerW);
 	await setNumIfValid(host, "learning.battery_runtime.max_charge_power_w", result.maxChargePowerW);
@@ -126,7 +135,7 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 		const powerHist = sources.powerStateId
 			? await fetchPowerHistory(host, sources.powerStateId, cfg.lookbackDays, cfg.powerInvert)
 			: { points: [], lastValidTs: null, meta: null };
-		const [pvPowerPoints, housePowerPoints] = await Promise.all([
+		const [pvDirect, housePowerPoints] = await Promise.all([
 			sources.pvAcPowerStateId
 				? fetchSitePowerSeries(host, sources.pvAcPowerStateId, cfg.lookbackDays)
 				: Promise.resolve([] as { ts: number; powerW: number }[]),
@@ -134,6 +143,30 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 				? fetchSitePowerSeries(host, sources.consumptionStateId, cfg.lookbackDays)
 				: Promise.resolve([] as { ts: number; powerW: number }[]),
 		]);
+		let pvPowerPoints = pvDirect;
+		let pvOrigin =
+			pvDirect.length >= MIN_NIGHT_BRIDGE_SITE_POINTS
+				? "pv_ac"
+				: pvDirect.length > 0
+					? "pv_ac_thin"
+					: "none";
+		if (pvPowerPoints.length < MIN_NIGHT_BRIDGE_SITE_POINTS) {
+			const energyId = pvBiasConfigFromAdapter(host.config).historyActualStateId;
+			if (energyId) {
+				const fromEnergy = await fetchSitePowerFromEnergyCounter(
+					host,
+					energyId,
+					cfg.lookbackDays,
+				);
+				if (fromEnergy.length > pvPowerPoints.length) {
+					pvPowerPoints = fromEnergy;
+					pvOrigin = "day_energy";
+					host.log.info(
+						`Battery-Runtime-Learning: PV-AC-Historie dünn (${pvDirect.length}) — Leistung aus Energiezähler ${sourceLabelFromStateId(energyId)} (${fromEnergy.length} Punkte).`,
+					);
+				}
+			}
+		}
 		const astroDaily = nightAstroConfigReady(cfg)
 			? mergeDailyAstroTimes(
 					await fetchAstroTimeHistory(host, cfg.nightStartStateId, cfg.lookbackDays),
@@ -173,10 +206,11 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 		await writeResult(host, result, lastRun, {
 			pvPoints: pvPowerPoints.length,
 			housePoints: housePowerPoints.length,
+			pvOrigin,
 		});
 
 		host.log.info(
-			`Battery-Runtime-Learning: status=${result.status} method=${result.nightBridgeMethod} nights=${result.avgNightDischargePct ?? "n/a"}% kwh=${result.avgNightDischargeKwh ?? "n/a"} bridgeH=${result.avgNightBridgeHours ?? "n/a"} samples=${result.sampleDays} pvPts=${pvPowerPoints.length} housePts=${housePowerPoints.length} pvSrc=${sourceLabelFromStateId(sources.pvAcPowerStateId)} houseSrc=${sourceLabelFromStateId(sources.consumptionStateId)}`,
+			`Battery-Runtime-Learning: status=${result.status} method=${result.nightBridgeMethod} nights=${result.avgNightDischargePct ?? "n/a"}% kwh=${result.avgNightDischargeKwh ?? "n/a"} bridgeH=${result.avgNightBridgeHours ?? "n/a"} samples=${result.sampleDays} pvPts=${pvPowerPoints.length} housePts=${housePowerPoints.length} pvOrigin=${pvOrigin} pvSrc=${sourceLabelFromStateId(sources.pvAcPowerStateId)} houseSrc=${sourceLabelFromStateId(sources.consumptionStateId)}`,
 		);
 		host.log.debug?.(
 			`Battery-Runtime-Learning detail: full_src=${result.fullChargeSource ?? "—"} sec_since_full=${result.secondsSinceFullCharge ?? "—"} days_since_full=${result.daysSinceFull ?? "—"} soc=${sourceLabelFromStateId(sources.socStateId)} power=${sourceLabelFromStateId(sources.powerStateId)} invert=${result.powerInvertApplied === null ? "—" : result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? "(auto)" : ""}`,

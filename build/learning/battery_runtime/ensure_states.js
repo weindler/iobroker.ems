@@ -36,6 +36,7 @@ async function ensureBatteryRuntimeLearningStates(host) {
         strState("learning.battery_runtime.night_bridge_method", "Battery-Runtime Nachtbrücken-Methode", "none"),
         numState("learning.battery_runtime.night_bridge_pv_points", "Battery-Runtime PV-Punkte für Nachtbrücke"),
         numState("learning.battery_runtime.night_bridge_house_points", "Battery-Runtime Hauslast-Punkte für Nachtbrücke"),
+        strState("learning.battery_runtime.night_bridge_pv_origin", "Battery-Runtime PV-Quellenart", "none"),
         numState("learning.battery_runtime.avg_charge_power_w", "Battery-Runtime Ø Ladeleistung", "W"),
         numState("learning.battery_runtime.max_charge_power_w", "Battery-Runtime max. Ladeleistung (Ist)", "W"),
         strState("learning.battery_runtime.last_full_charge", "Battery-Runtime letzte Vollladung (ISO)"),

@@ -54,4 +54,20 @@ const constants_1 = require("./constants");
         strict_1.default.equal(stats.maxDischargePowerW, 80);
         strict_1.default.notEqual(bucket, 0);
     });
+    (0, node_test_1.it)("derives hourly PV power from energy counter including night ~0 W", () => {
+        const day0 = Date.parse("2026-08-20T00:00:00.000Z");
+        const samples = [
+            { ts: day0 + 10 * constants_1.MS_PER_HOUR, kwh: 10 },
+            { ts: day0 + 11 * constants_1.MS_PER_HOUR, kwh: 12 },
+            { ts: day0 + 19 * constants_1.MS_PER_HOUR, kwh: 20 },
+            { ts: day0 + 31 * constants_1.MS_PER_HOUR, kwh: 20.05 },
+            { ts: day0 + 32 * constants_1.MS_PER_HOUR, kwh: 22 },
+        ];
+        const points = (0, history_1.energyKwhSeriesToHourlyPowerW)(samples);
+        strict_1.default.ok(points.length >= 4, `points ${points.length}`);
+        const dayPeak = points.find((p) => p.ts >= day0 + 10 * constants_1.MS_PER_HOUR && p.ts < day0 + 12 * constants_1.MS_PER_HOUR);
+        strict_1.default.ok(dayPeak && dayPeak.powerW >= 1500, `day ${dayPeak?.powerW}`);
+        const night = points.find((p) => p.ts >= day0 + 20 * constants_1.MS_PER_HOUR && p.ts < day0 + 30 * constants_1.MS_PER_HOUR);
+        strict_1.default.ok(night && night.powerW < 100, `night ${night?.powerW}`);
+    });
 });

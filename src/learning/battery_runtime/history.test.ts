@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
 	aggregatePowerPointsByHour,
+	energyKwhSeriesToHourlyPowerW,
 	normalizeBatteryPowerW,
 	resolveEffectivePowerInvert,
 } from "./history";
@@ -56,5 +57,22 @@ describe("battery runtime power history", () => {
 		assert.equal(stats.maxChargePowerW, null);
 		assert.equal(stats.maxDischargePowerW, 80);
 		assert.notEqual(bucket, 0);
+	});
+
+	it("derives hourly PV power from energy counter including night ~0 W", () => {
+		const day0 = Date.parse("2026-08-20T00:00:00.000Z");
+		const samples = [
+			{ ts: day0 + 10 * MS_PER_HOUR, kwh: 10 },
+			{ ts: day0 + 11 * MS_PER_HOUR, kwh: 12 },
+			{ ts: day0 + 19 * MS_PER_HOUR, kwh: 20 },
+			{ ts: day0 + 31 * MS_PER_HOUR, kwh: 20.05 },
+			{ ts: day0 + 32 * MS_PER_HOUR, kwh: 22 },
+		];
+		const points = energyKwhSeriesToHourlyPowerW(samples);
+		assert.ok(points.length >= 4, `points ${points.length}`);
+		const dayPeak = points.find((p) => p.ts >= day0 + 10 * MS_PER_HOUR && p.ts < day0 + 12 * MS_PER_HOUR);
+		assert.ok(dayPeak && dayPeak.powerW >= 1500, `day ${dayPeak?.powerW}`);
+		const night = points.find((p) => p.ts >= day0 + 20 * MS_PER_HOUR && p.ts < day0 + 30 * MS_PER_HOUR);
+		assert.ok(night && night.powerW < 100, `night ${night?.powerW}`);
 	});
 });

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.distinctSocSampleDays = exports.readSecondsSinceFullCharge = exports.readLiveSoc = exports.readLiveCapacityKwh = exports.fetchPowerHistory = exports.fetchSitePowerSeries = exports.aggregatePowerPointsByHour = exports.resolveEffectivePowerInvert = exports.fetchSocHistoryRaw = exports.fetchSocHistory = exports.normalizeBatteryPowerW = exports.isValidCapacityKwh = exports.isValidSoc = exports.mergeDailyAstroTimes = exports.buildDailyAstroTimes = exports.fetchAstroTimeHistory = exports.parseAstroTimeValue = void 0;
+exports.distinctSocSampleDays = exports.readSecondsSinceFullCharge = exports.readLiveSoc = exports.readLiveCapacityKwh = exports.fetchPowerHistory = exports.fetchSitePowerFromEnergyCounter = exports.energyKwhSeriesToHourlyPowerW = exports.MIN_NIGHT_BRIDGE_SITE_POINTS = exports.fetchSitePowerSeries = exports.aggregatePowerPointsByHour = exports.resolveEffectivePowerInvert = exports.fetchSocHistoryRaw = exports.fetchSocHistory = exports.normalizeBatteryPowerW = exports.isValidCapacityKwh = exports.isValidSoc = exports.mergeDailyAstroTimes = exports.buildDailyAstroTimes = exports.fetchAstroTimeHistory = exports.parseAstroTimeValue = void 0;
 const state_util_1 = require("../../ems_light/state_util");
 const history_query_1 = require("../history_query");
 const power_rollup_1 = require("../power_rollup");
@@ -279,6 +279,77 @@ async function fetchSitePowerSeries(host, stateId, lookbackDays) {
     return fromRollup?.points ?? [];
 }
 exports.fetchSitePowerSeries = fetchSitePowerSeries;
+/** Mindestpunkte für belastbare PV/Haus-Nachtbrücke (≈ 2 Tage à 12 h). */
+exports.MIN_NIGHT_BRIDGE_SITE_POINTS = 48;
+/**
+ * Tages-/Lebensenergie-Zähler → stündliche Leistung (W).
+ * Nachts stagniert der Zähler → ~0 W — genau das braucht die PV/Haus-Brücke,
+ * wenn bat_pv_ac keine History hat.
+ */
+function energyKwhSeriesToHourlyPowerW(samples) {
+    if (samples.length < 2)
+        return [];
+    const sorted = [...samples].sort((a, b) => a.ts - b.ts);
+    const byHour = new Map();
+    for (let i = 1; i < sorted.length; i++) {
+        const prev = sorted[i - 1];
+        const cur = sorted[i];
+        const dKwh = cur.kwh - prev.kwh;
+        const dtMs = cur.ts - prev.ts;
+        if (!(dtMs > 60_000) || dKwh < -0.001)
+            continue;
+        const avgW = Math.min(constants_1.PLAUSIBLE_POWER_W_MAX, Math.max(0, (dKwh * 3_600_000_000) / dtMs));
+        const startBucket = Math.floor(prev.ts / constants_1.MS_PER_HOUR) * constants_1.MS_PER_HOUR;
+        const endBucket = Math.floor(cur.ts / constants_1.MS_PER_HOUR) * constants_1.MS_PER_HOUR;
+        for (let b = startBucket; b <= endBucket; b += constants_1.MS_PER_HOUR) {
+            const curBucket = byHour.get(b) ?? { sumW: 0, n: 0 };
+            curBucket.sumW += avgW;
+            curBucket.n += 1;
+            byHour.set(b, curBucket);
+        }
+    }
+    return [...byHour.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([b, v]) => ({
+        ts: b + constants_1.MS_PER_HOUR / 2,
+        powerW: Math.round(v.sumW / Math.max(1, v.n)),
+    }));
+}
+exports.energyKwhSeriesToHourlyPowerW = energyKwhSeriesToHourlyPowerW;
+function detectEnergyUnitIsWh(values) {
+    const positive = values.filter((v) => v > 0);
+    if (positive.length < 4)
+        return false;
+    const sorted = [...positive].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    /** Typische Tageszähler < 200 kWh; Wh-Zähler oft Tausende. */
+    return median >= 500;
+}
+/**
+ * PV-Leistung aus Energiezähler-Historie (PV-Bias Ist-State), wenn PV-AC-History fehlt.
+ */
+async function fetchSitePowerFromEnergyCounter(host, energyStateId, lookbackDays) {
+    if (!energyStateId || lookbackDays <= 0)
+        return [];
+    const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, energyStateId, lookbackDays, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
+    const rawVals = [];
+    for (const row of rows) {
+        const n = (0, state_util_1.asNum)(row?.val);
+        if (n !== null && Number.isFinite(n) && n >= 0)
+            rawVals.push(n);
+    }
+    const asWh = detectEnergyUnitIsWh(rawVals);
+    const samples = [];
+    for (const row of rows) {
+        const ts = typeof row?.ts === "number" ? row.ts : null;
+        const n = (0, state_util_1.asNum)(row?.val);
+        if (ts === null || n === null || !Number.isFinite(n) || n < 0)
+            continue;
+        samples.push({ ts, kwh: asWh ? n / 1000 : n });
+    }
+    return energyKwhSeriesToHourlyPowerW(samples);
+}
+exports.fetchSitePowerFromEnergyCounter = fetchSitePowerFromEnergyCounter;
 async function fetchPowerHistory(host, stateId, lookbackDays, powerInvert = false) {
     const rollup = await (0, power_rollup_1.fetchRollupPowerHistory)(host, stateId, lookbackDays);
     if (rollup) {

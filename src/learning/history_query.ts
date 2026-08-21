@@ -294,24 +294,37 @@ export async function fetchHistoryRowsAggregated(
 		return [];
 	}
 
-	const { rows, timedOut, error } = await invokeGetHistory(
-		host,
-		stateId,
-		{
-			...HISTORY_QUERY_OPTIONS,
-			aggregate,
-			step: stepMs,
-			start: startMs,
-			end: endMs,
-			count,
-		},
-		timeoutMs,
-	);
+	const candidates = await historyStateCandidates(host, stateId);
+	for (let i = 0; i < candidates.length; i++) {
+		const candidateId = candidates[i]!;
+		const { rows, timedOut, error } = await invokeGetHistory(
+			host,
+			candidateId,
+			{
+				...HISTORY_QUERY_OPTIONS,
+				aggregate,
+				step: stepMs,
+				start: startMs,
+				end: endMs,
+				count,
+			},
+			timeoutMs,
+		);
 
-	if (timedOut || error) {
-		return [];
+		if (timedOut || error) {
+			continue;
+		}
+		const normalized = normalizeHistoryRows(rows);
+		if (normalized.length > 0) {
+			if (i > 0 && host.log?.warn) {
+				host.log.warn(
+					`History aggregate: Daten über Fallback-State ${candidateId} (${normalized.length} Zeilen, konfiguriert: ${stateId})`,
+				);
+			}
+			return normalized;
+		}
 	}
-	return normalizeHistoryRows(rows);
+	return [];
 }
 
 function bulkCountForDays(days: number): number {

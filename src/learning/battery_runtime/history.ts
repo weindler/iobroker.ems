@@ -386,6 +386,90 @@ export async function fetchSitePowerSeries(
 	return fromRollup?.points ?? [];
 }
 
+/** Mindestpunkte für belastbare PV/Haus-Nachtbrücke (≈ 2 Tage à 12 h). */
+export const MIN_NIGHT_BRIDGE_SITE_POINTS = 48;
+
+type EnergySample = { ts: number; kwh: number };
+
+/**
+ * Tages-/Lebensenergie-Zähler → stündliche Leistung (W).
+ * Nachts stagniert der Zähler → ~0 W — genau das braucht die PV/Haus-Brücke,
+ * wenn bat_pv_ac keine History hat.
+ */
+export function energyKwhSeriesToHourlyPowerW(samples: EnergySample[]): PowerPoint[] {
+	if (samples.length < 2) return [];
+	const sorted = [...samples].sort((a, b) => a.ts - b.ts);
+	const byHour = new Map<number, { sumW: number; n: number }>();
+
+	for (let i = 1; i < sorted.length; i++) {
+		const prev = sorted[i - 1]!;
+		const cur = sorted[i]!;
+		const dKwh = cur.kwh - prev.kwh;
+		const dtMs = cur.ts - prev.ts;
+		if (!(dtMs > 60_000) || dKwh < -0.001) continue;
+		const avgW = Math.min(PLAUSIBLE_POWER_W_MAX, Math.max(0, (dKwh * 3_600_000_000) / dtMs));
+		const startBucket = Math.floor(prev.ts / MS_PER_HOUR) * MS_PER_HOUR;
+		const endBucket = Math.floor(cur.ts / MS_PER_HOUR) * MS_PER_HOUR;
+		for (let b = startBucket; b <= endBucket; b += MS_PER_HOUR) {
+			const curBucket = byHour.get(b) ?? { sumW: 0, n: 0 };
+			curBucket.sumW += avgW;
+			curBucket.n += 1;
+			byHour.set(b, curBucket);
+		}
+	}
+
+	return [...byHour.entries()]
+		.sort((a, b) => a[0] - b[0])
+		.map(([b, v]) => ({
+			ts: b + MS_PER_HOUR / 2,
+			powerW: Math.round(v.sumW / Math.max(1, v.n)),
+		}));
+}
+
+function detectEnergyUnitIsWh(values: number[]): boolean {
+	const positive = values.filter((v) => v > 0);
+	if (positive.length < 4) return false;
+	const sorted = [...positive].sort((a, b) => a - b);
+	const median = sorted[Math.floor(sorted.length / 2)]!;
+	/** Typische Tageszähler < 200 kWh; Wh-Zähler oft Tausende. */
+	return median >= 500;
+}
+
+/**
+ * PV-Leistung aus Energiezähler-Historie (PV-Bias Ist-State), wenn PV-AC-History fehlt.
+ */
+export async function fetchSitePowerFromEnergyCounter(
+	host: BatteryHistoryHost & {
+		getObjectAsync?: (id: string) => Promise<ioBroker.Object | null | undefined>;
+	},
+	energyStateId: string,
+	lookbackDays: number,
+): Promise<PowerPoint[]> {
+	if (!energyStateId || lookbackDays <= 0) return [];
+
+	const rows = await fetchHistoryRowsLookback(
+		host,
+		energyStateId,
+		lookbackDays,
+		HISTORY_ROWS_PER_DAY,
+		HISTORY_CHUNK_TIMEOUT_MS,
+	);
+	const rawVals: number[] = [];
+	for (const row of rows) {
+		const n = asNum(row?.val);
+		if (n !== null && Number.isFinite(n) && n >= 0) rawVals.push(n);
+	}
+	const asWh = detectEnergyUnitIsWh(rawVals);
+	const samples: EnergySample[] = [];
+	for (const row of rows) {
+		const ts = typeof row?.ts === "number" ? row.ts : null;
+		const n = asNum(row?.val);
+		if (ts === null || n === null || !Number.isFinite(n) || n < 0) continue;
+		samples.push({ ts, kwh: asWh ? n / 1000 : n });
+	}
+	return energyKwhSeriesToHourlyPowerW(samples);
+}
+
 export async function fetchPowerHistory(
 	host: BatteryHistoryHost,
 	stateId: string,

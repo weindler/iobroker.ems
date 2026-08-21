@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.326",
+		"version": "0.1.327",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.327": {
+				"en": "Night bridge: if PV AC history is empty, derive hourly PV power from PV day-energy counter (same as PV-Bias). History aggregates also follow alias→native. Shows night_bridge_pv_origin.",
+				"de": "Nachtbrücke: Wenn PV-AC-Historie fehlt, stündliche PV-Leistung aus dem PV-Tagesenergie-Zähler (wie PV-Bias). History-Aggregate folgen Alias→Native. Zeigt night_bridge_pv_origin."
+			},
 			"0.1.326": {
 				"en": "Night bridge: keep PV 0 W in history/rollup, hourly aggregates, house-led join with last-known PV — enables pv_house instead of battery_discharge fallback. Diagnostic point counts.",
 				"de": "Nachtbrücke: PV-0‑W in Historie/Rollup behalten, Stunden-Aggregate, Hauslast-Join mit Last-Known-PV — damit greift pv_house statt battery_discharge. Diagnose-Punktzahlen."

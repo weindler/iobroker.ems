@@ -201,6 +201,39 @@ async function decisionState(host, id) {
         strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 0);
         strict_1.default.equal((0, engine_js_1.getImmersionPersistForTest)().commandedStage, 0);
     });
+    (0, node_test_1.it)("Admin Mindestpause (ih_minimum_pause_sec) bleibt nach Aus-Schalt erhalten", async () => {
+        const now = realNow();
+        const slotStartIso = (0, slots_js_1.slotStartIsoFloored)(now, TZ);
+        const slotEndIso = new Date(Date.parse(slotStartIso) + slots_js_1.DAILY_PLAN_SLOT_MS).toISOString();
+        const host = baseHost(40);
+        host.config = {
+            ...CONFIG,
+            ih_minimum_runtime_sec: 1,
+            ih_minimum_pause_sec: 600,
+        };
+        host.set("global.execution_mode", "live");
+        host.set("addons.immersion_heater.mode", "live");
+        host.set("addons.immersion_heater.governance.enabled", true);
+        host.set("immersion.stage1", false);
+        host.set(states_js_1.DAILY_PLAN_STATE_IDS.status, "ready");
+        host.set(states_js_1.DAILY_PLAN_STATE_IDS.date, (0, time_js_1.localDateKeyInTimezone)(now, TZ));
+        host.set(states_js_1.DAILY_PLAN_STATE_IDS.revision, 1);
+        host.set(states_js_1.DAILY_PLAN_STATE_IDS.validUntil, "");
+        host.set(states_js_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson, JSON.stringify([allocationEntry(slotStartIso, slotEndIso, 2000)]));
+        await (0, engine_js_1.runImmersionRuntimeTick)(host);
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 1);
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.configMinimumPauseSec), 600);
+        // Mindestlaufzeit ablaufen lassen, damit Plan-OFF die Pause setzt (nicht weiter hält).
+        (0, engine_js_1.getImmersionPersistForTest)().minRuntimeUntilMs = Date.now() - 1;
+        host.set(states_js_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.status, "ready");
+        host.set(states_js_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson, "[]");
+        await (0, engine_js_1.runImmersionRuntimeTick)(host);
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 0);
+        const pauseUntil = (0, engine_js_1.getImmersionPersistForTest)().pauseUntilMs;
+        strict_1.default.ok(pauseUntil != null, "pauseUntilMs gesetzt");
+        const remSec = Math.ceil((pauseUntil - Date.now()) / 1000);
+        strict_1.default.ok(remSec >= 590 && remSec <= 600, `Admin-Pause ~600s erwartet, got ${remSec}`);
+    });
 });
 (0, node_test_1.describe)("immersion runtime — BETA-GATE-003 effective live reconcile", () => {
     (0, node_test_1.beforeEach)(() => {

@@ -181,6 +181,33 @@ describe("immersion daily plan reader", () => {
 		assert.doesNotMatch(r.allocationReasonDe, /Thermal-Fallback/);
 	});
 
+	it("continueHeating bridges zero NOW-slot to next allocated slot (anti chatter)", () => {
+		const next: DailyAllocationEntry = {
+			...allocationEntry(CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, 1700),
+			slot: { startIso: SLOT_END, endIso: "2026-07-11T10:30:00.000Z" },
+		};
+		const off = resolveImmersionDailyPlanFromData({
+			now: NOW,
+			timezone: TZ,
+			meta: { status: "ready", date: "2026-07-11", revision: 1, validUntil: null, timezone: TZ },
+			entries: [next],
+			config: MULTI_STAGE_CFG,
+			continueHeating: false,
+		});
+		assert.equal(off.commandedStage, 0);
+		const hold = resolveImmersionDailyPlanFromData({
+			now: NOW,
+			timezone: TZ,
+			meta: { status: "ready", date: "2026-07-11", revision: 1, validUntil: null, timezone: TZ },
+			entries: [next],
+			config: MULTI_STAGE_CFG,
+			continueHeating: true,
+		});
+		assert.equal(hold.commandedStage, 1);
+		assert.equal(hold.dailyPlanStatus, "daily_plan_valid");
+		assert.match(hold.allocationReasonDe, /Slot-Brücke|Anti-Takten/);
+	});
+
 	it("allocation below smallest stage is Daily Plan off (not thermal fallback)", () => {
 		const r = resolveImmersionDailyPlanFromData({
 			now: NOW,

@@ -287,6 +287,77 @@ describe("JOINT-E battery nearly empty — no thermal from battery", () => {
 	});
 });
 
+describe("JOINT-E2 soft IH never drains house battery (evening / full SOC)", () => {
+	it("SOC 100% + Soft-Headroom + kaum PV → kein Soft-IH aus Batterie", () => {
+		const nowIso = "2026-08-09T15:15:00.000Z"; // 17:15 CEST
+		const slots = buildSlots(nowIso, 12);
+		const input = scenarioAInput();
+		input.time = {
+			...input.time,
+			nowIso,
+			slots,
+			horizonStartIso: slots[0]!.startIso,
+			horizonEndIso: slots[slots.length - 1]!.endIso,
+		};
+		input.battery = {
+			...input.battery,
+			socPct: 100,
+			minSocPct: 80,
+			reserveSocPct: 80,
+			nightReserveKwh: 2.0,
+			endSocTargetPct: 100,
+			requiredChargeEnergyKwh: 0,
+			usableCapacityKwh: 10,
+		};
+		input.thermal = {
+			...input.thermal!,
+			headroomEnergyKwh: 4,
+			boilerTempC: 54,
+			boilerMinTempC: 50,
+			boilerEmptyAtUsable: false,
+			estimatedEmptyAtIso: null,
+			deadlineIso: null,
+			emptyAtSource: null,
+		};
+		/* Abend: kaum PV, Hauslast höher als PV → kein Surplus. */
+		input.pv = {
+			...input.pv,
+			slots: slots.map((s) => ({
+				slot: s,
+				forecastPowerW: 100,
+				observedPowerW: null,
+				energyKwh: 0.025,
+			})),
+			expectedDayEnergyKwh: 2,
+		};
+		input.houseLoad = {
+			...input.houseLoad,
+			slots: slots.map((s) => ({
+				slot: s,
+				forecastPowerW: 600,
+				observedPowerW: null,
+				energyKwh: 0.15,
+			})),
+		};
+		input.prices = {
+			...input.prices,
+			slots: slots.map((s) => ({
+				slot: s,
+				importCtPerKwh: 28,
+				exportCtPerKwh: 8,
+				gridImportAllowed: true,
+			})),
+		};
+		const plan = allocateUnifiedDayPlan(input);
+		const batIh = sumKind(
+			plan,
+			"immersion_heater",
+			(a) => a.energySource === "battery" || a.energySource === "mixed",
+		);
+		assert.equal(batIh, 0, `Soft-IH darf Batterie nicht nutzen, got ${batIh} kWh`);
+	});
+});
+
 describe("JOINT-F battery full + high PV surplus → thermal absorbs", () => {
 	it("routes surplus to thermal when battery near full", () => {
 		const input = scenarioAInput();

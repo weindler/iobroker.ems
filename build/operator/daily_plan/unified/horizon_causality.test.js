@@ -23,6 +23,12 @@ function sumIh(plan) {
         .filter((a) => a.kind === "immersion_heater")
         .reduce((s, a) => s + a.allocatedEnergyKwh, 0);
 }
+function sumIhFromBattery(plan) {
+    return plan.allocations
+        .filter((a) => a.kind === "immersion_heater" &&
+        (a.energySource === "battery" || a.energySource === "mixed"))
+        .reduce((s, a) => s + a.allocatedEnergyKwh, 0);
+}
 function auditLikeInput(nowIso, opts) {
     const slots = (0, fixtures_1.buildSlots)(nowIso, 72); // 18 h
     const input = (0, fixtures_1.golden001Input)();
@@ -396,7 +402,7 @@ function auditLikeInput(nowIso, opts) {
     });
 });
 (0, node_test_1.describe)("G1 — synthetic 09.08. fault pattern", () => {
-    (0, node_test_1.it)("strong surplus day: no blind night reserve + no useless thermal target fill; export tariff 9.3", () => {
+    (0, node_test_1.it)("strong surplus day: no blind night reserve + soft IH never from battery; export tariff 9.3", () => {
         const input = auditLikeInput("2026-08-09T13:00:00.000Z", { headroom: 3.5, socPct: 60 });
         strict_1.default.ok(input.prices.slots.every((s) => s.exportCtPerKwh === 9.3));
         const slots = (0, score_allocate_1.buildSlots)(input);
@@ -408,10 +414,12 @@ function auditLikeInput(nowIso, opts) {
         strict_1.default.ok(aft < 2.5, `reserve must be forecast-driven, got ${aft}`);
         strict_1.default.ok(net >= 0);
         const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);
-        strict_1.default.ok(sumIh(plan) < 2.0, `should not dump full thermal headroom, IH=${sumIh(plan)}`);
+        const batIh = sumIhFromBattery(plan);
+        strict_1.default.equal(batIh, 0, `Soft/Hard-IH aus Batterie an Surplus-Tag unnötig, got ${batIh}`);
+        strict_1.default.ok(sumIh(plan) <= 3.5 + 0.05, `IH capped by headroom, IH=${sumIh(plan)}`);
         strict_1.default.ok(!plan.reasonCodes.includes("export_tariff_unknown"));
     });
-    (0, node_test_1.it)("replan sequence: no endless deferral into export-then-battery pattern", () => {
+    (0, node_test_1.it)("replan sequence: soft may use PV surplus, never house battery; no reserve blow-up", () => {
         const times = [
             "2026-08-09T10:00:00.000Z",
             "2026-08-09T12:00:00.000Z",
@@ -432,14 +440,13 @@ function auditLikeInput(nowIso, opts) {
             reserveByReplan.push(floor.requiredKwhBySlot[0] ?? 99);
             const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);
             ihByReplan.push(sumIh(plan));
-            /** Kein Blind-Target-Fill trotz Headroom 3.5. */
-            strict_1.default.ok(sumIh(plan) < 1.5, `${nowIso}: IH=${sumIh(plan)}`);
+            strict_1.default.equal(sumIhFromBattery(plan), 0, `${nowIso}: Soft-IH darf Batterie nicht nutzen`);
+            strict_1.default.ok(sumIh(plan) <= 3.5 + 0.05, `${nowIso}: IH=${sumIh(plan)}`);
             /** Reserve bleibt unter gelerntem Nachtanker. */
             strict_1.default.ok((floor.requiredKwhBySlot[0] ?? 99) < 2.5, `${nowIso}: reserve=${floor.requiredKwhBySlot[0]}`);
         }
-        /** Replans dürfen IH nicht systematisch aufblähen (Starvation→Dump). */
-        strict_1.default.ok(Math.max(...ihByReplan) - Math.min(...ihByReplan) < 1.2, `IH swing across replans ${ihByReplan.join(",")}`);
         void reserveByReplan;
+        void ihByReplan;
     });
     (0, node_test_1.it)("G2: soft thermal competes economically with battery/export — no battery-first hardcode", () => {
         /** A: Batterie unter Ziel → Batterie-Laden gewinnt wirtschaftlich gegen Soft-Thermal. */

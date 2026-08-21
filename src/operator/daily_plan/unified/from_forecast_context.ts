@@ -135,6 +135,8 @@ export type UnifiedForecastContext = {
 	passiveBatteryEnergyAvailable?: boolean | null;
 	/** B1: IH-NOW bei stabilem Live-Überschuss bevorzugen. */
 	preferImmersionLiveSurplusNow?: boolean | null;
+	/** Soft-IH im angebrochenen Slot fortsetzen (Anti-Relais-Takten). */
+	continueImmersionSoftCurrentSlot?: boolean | null;
 	/**
 	 * Boiler-emptyAt aus Learning-State — falls Contribution den Wert noch nicht hat
 	 * (Race: Plan vor Contribution-Refresh).
@@ -523,6 +525,7 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 		contributionRevision: ctx.contributionRevision ?? 1,
 		globalMode: ctx.globalMode,
 		preferImmersionLiveSurplusNow: ctx.preferImmersionLiveSurplusNow === true,
+		continueImmersionSoftCurrentSlot: ctx.continueImmersionSoftCurrentSlot === true,
 	};
 }
 

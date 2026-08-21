@@ -335,6 +335,11 @@ export interface ResolveDailyPlanInput {
 	entries: DailyAllocationEntry[];
 	config: ImmersionDeviceConfig;
 	thermalTarget?: ImmersionPlanThermalTarget | null;
+	/**
+	 * Heizstab lief bereits: bei 0 W im NOW-Slot Folgeslot halten (Anti-Relais-Takten),
+	 * wenn dort weiterhin Allocation liegt.
+	 */
+	continueHeating?: boolean;
 }
 
 function attachThermalTarget(
@@ -360,6 +365,7 @@ export function resolveImmersionDailyPlanFromData(input: ResolveDailyPlanInput):
 	const { now, timezone, meta, entries, config } = input;
 	const nowMs = now.getTime();
 	const thermal = input.thermalTarget ?? null;
+	const continueHeating = input.continueHeating === true;
 
 	const base: ImmersionDailyPlanResolution = attachThermalTarget(
 		{
@@ -455,8 +461,25 @@ export function resolveImmersionDailyPlanFromData(input: ResolveDailyPlanInput):
 	}
 
 	const techMax = maxTechnicalPowerW(config);
-	const cappedPowerW = techMax > 0 ? Math.min(merge.totalPowerW, techMax) : merge.totalPowerW;
-	const stagePick = stageIndexForMaxPowerW(config, cappedPowerW);
+	let cappedPowerW = techMax > 0 ? Math.min(merge.totalPowerW, techMax) : merge.totalPowerW;
+	let stagePick = stageIndexForMaxPowerW(config, cappedPowerW);
+	let allocationBridgeDe: string | null = null;
+
+	if (continueHeating && stagePick.stageIndex <= 0) {
+		const nextStartIso = slotEndIso;
+		const nextEndIso = isoFromMs(slotEndMs + DAILY_PLAN_SLOT_MS);
+		const nextMerge = mergeSlotAllocations(entries, nextStartIso, nextEndIso);
+		if (nextMerge.valid && nextMerge.totalPowerW > 0) {
+			const nextCap = techMax > 0 ? Math.min(nextMerge.totalPowerW, techMax) : nextMerge.totalPowerW;
+			const nextPick = stageIndexForMaxPowerW(config, nextCap);
+			if (nextPick.stageIndex > 0) {
+				cappedPowerW = nextCap;
+				stagePick = nextPick;
+				allocationBridgeDe = `Slot-Brücke (Anti-Takten): Folgeslot ${nextPick.reasonDe}`;
+			}
+		}
+	}
+
 	const executableStage = stagePick.stageIndex > 0;
 
 	// Nutzbarer Daily Plan + aufgelöster Slot: Plan besitzt die Steuerung.
@@ -467,7 +490,7 @@ export function resolveImmersionDailyPlanFromData(input: ResolveDailyPlanInput):
 
 	let allocationReasonDe: string;
 	if (executableStage) {
-		allocationReasonDe = stagePick.reasonDe;
+		allocationReasonDe = allocationBridgeDe ?? stagePick.reasonDe;
 	} else if (cappedPowerW <= 0) {
 		allocationReasonDe = `${merge.reasonDe} Daily Plan aktiv — Slot ohne Heizstab-Leistung (aus).`;
 	} else {
@@ -525,16 +548,19 @@ async function loadPlanData(host: DailyPlanReadHost): Promise<{
 	const meta: DailyPlanMeta = { status, date, revision, validUntil, timezone };
 	const thermalTarget = await loadThermalTarget(host);
 
-	if (planCache && planCache.revision === revision) {
-		return { meta, entries: planCache.entries, fullPlan: planCache.fullPlan, thermalTarget };
-	}
-
 	const allocationStatus = (await readStr(host, ALLOCATION_ADDON_STATE_IDS.immersion_heater.status)) ?? "";
 	const allocationRaw = parseJson(await readStr(host, ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson));
 	const allocationEntries = parseDailyAllocationEntries(allocationRaw);
 
-	const fullPlanRaw = parseJson(await readStr(host, DAILY_PLAN_STATE_IDS.planJson));
-	const fullPlan = parseFullDailyPlan(fullPlanRaw);
+	/*
+	 * Allocation-Slice immer frisch lesen — plan_json kann sich ohne Daily-Plan-Revision ändern
+	 * (Publish/Replan-Authority). Full-Plan nur bei Revisionswechsel neu parsen.
+	 */
+	let fullPlan: DailyPlan | null = planCache?.revision === revision ? planCache.fullPlan : null;
+	if (planCache?.revision !== revision) {
+		const fullPlanRaw = parseJson(await readStr(host, DAILY_PLAN_STATE_IDS.planJson));
+		fullPlan = parseFullDailyPlan(fullPlanRaw);
+	}
 
 	// ready/idle = Addon-Slice besitzt die Steuerung (auch bei [] = bewusst aus).
 	// Sonst Fallback auf fullPlan-Merge (Legacy / fehlende Slice-Publish).
@@ -548,6 +574,7 @@ export async function resolveImmersionDailyPlanAllocation(
 	host: DailyPlanReadHost,
 	config: ImmersionDeviceConfig,
 	now: Date,
+	opts?: { continueHeating?: boolean },
 ): Promise<ImmersionDailyPlanResolution> {
 	const { meta, entries, thermalTarget } = await loadPlanData(host);
 
@@ -582,6 +609,7 @@ export async function resolveImmersionDailyPlanAllocation(
 		entries,
 		config,
 		thermalTarget,
+		continueHeating: opts?.continueHeating === true,
 	});
 }
 

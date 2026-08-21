@@ -482,7 +482,9 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 		plannerCommandedStage = 0;
 		autoDecisionSource = "safe_default";
 	} else if (resolvedMode === "auto") {
-		dailyPlanContext = await resolveImmersionDailyPlanAllocation(host, config, now);
+		dailyPlanContext = await resolveImmersionDailyPlanAllocation(host, config, now, {
+			continueHeating: persist.commandedStage > 0 || lastCommandedStage > 0,
+		});
 		lastDailyPlanContext = dailyPlanContext;
 		if (dailyPlanContext.useDailyPlan) {
 			// Daily Plan besitzt den Slot: Stufe aus Allocation (0 = absichtlich aus).
@@ -546,6 +548,8 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 	// lastCommandedStage / emsOnWriteAtMs nur nach bestätigtem Apply (Write oder Readback),
 	// sonst Retry im nächsten normalen Runtime-Tick (kein Spam-Loop).
 	const stageChanged = effectiveStage !== lastCommandedStage;
+	/** Admin-Mindestpause (`ih_minimum_pause_sec`) — nicht vom FSM-Persist-Altzustand überschreiben. */
+	let pauseSetOnOffMs: number | null = null;
 	if (stageChanged || liveEdge) {
 		if (liveEdge && !stageChanged) {
 			host.log.info?.(
@@ -557,7 +561,8 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 			if (stageChanged) {
 				if (effectiveStage === 0) {
 					persist.lastOffAtMs = nowMs;
-					persist.pauseUntilMs = nowMs + config.minimumPauseSec * 1000;
+					pauseSetOnOffMs = nowMs + Math.max(0, config.minimumPauseSec) * 1000;
+					persist.pauseUntilMs = pauseSetOnOffMs;
 				} else {
 					persist.lastSwitchAtMs = nowMs;
 				}
@@ -621,7 +626,7 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 	persist.forceTargetTempC = forceTarget;
 	persist.forceUntil = forceUntil;
 	persist.minRuntimeUntilMs = fsm.minRuntimeUntilMs;
-	persist.pauseUntilMs = fsm.pauseUntilMs;
+	persist.pauseUntilMs = pauseSetOnOffMs !== null ? pauseSetOnOffMs : fsm.pauseUntilMs;
 	persist.autoTargetReached = fsm.autoTargetReached;
 
 	const minRuntimeRem = persist.minRuntimeUntilMs ? Math.max(0, Math.ceil((persist.minRuntimeUntilMs - nowMs) / 1000)) : 0;
@@ -671,6 +676,8 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 	};
 
 	await publishRuntime(host, snapshot, decisionSource, dailyPlanContext);
+	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.configMinimumRuntimeSec, config.minimumRuntimeSec);
+	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.configMinimumPauseSec, config.minimumPauseSec);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.boilerTemperatureC, boilerTempC);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.boilerMinTempC, config.boilerMinTempC);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.hygieneJson, JSON.stringify(hygienePersist));
@@ -721,6 +728,8 @@ async function publishRuntime(
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.feedbackStage, s.feedback_stage);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.measuredPowerW, s.measured_power_w ?? null);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.powerVerificationStatus, s.power_verification_status);
+	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.minRuntimeRemainingSec, s.minimum_runtime_remaining_sec);
+	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.minPauseRemainingSec, s.minimum_pause_remaining_sec);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.faultActive, s.fault_active);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.faultCode, s.fault_code);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.faultSince, s.fault_since ?? "");

@@ -177,6 +177,10 @@ export const IMMERSION_RUNTIME_STATES = {
 	powerVerificationStatus: `${IMMERSION_RUNTIME_BASE}.power_verification_status`,
 	minRuntimeRemainingSec: `${IMMERSION_RUNTIME_BASE}.minimum_runtime_remaining_sec`,
 	minPauseRemainingSec: `${IMMERSION_RUNTIME_BASE}.minimum_pause_remaining_sec`,
+	/** Wirksam aus Admin `ih_minimum_runtime_sec` (Fallback nur wenn Feld fehlt). */
+	configMinimumRuntimeSec: `${IMMERSION_RUNTIME_BASE}.config_minimum_runtime_sec`,
+	/** Wirksam aus Admin `ih_minimum_pause_sec`. */
+	configMinimumPauseSec: `${IMMERSION_RUNTIME_BASE}.config_minimum_pause_sec`,
 	lastSwitchAt: `${IMMERSION_RUNTIME_BASE}.last_switch_at`,
 	faultActive: `${IMMERSION_RUNTIME_BASE}.fault_active`,
 	faultCode: `${IMMERSION_RUNTIME_BASE}.fault_code`,

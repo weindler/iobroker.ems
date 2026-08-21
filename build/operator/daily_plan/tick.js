@@ -99,10 +99,28 @@ let forcedReplanReasons = [];
 /** One-Plan: Live-Surplus nur als Allocator-Hinweis (NOW-Slot), kein Runtime-Seitenkanal. */
 function preferImmersionLiveSurplusNowFrom(input) {
     const minW = input.minPowerW != null && input.minPowerW > 0 ? input.minPowerW : 1700;
-    const surplus = (input.livePvPowerW ?? 0) - (input.liveHouseLoadW ?? 0);
+    const ih = Math.max(0, input.immersionOnPowerW ?? 0);
+    const surplus = (input.livePvPowerW ?? 0) - (input.liveHouseLoadW ?? 0) + ih;
     const head = input.thermalHeadroomKwh ?? 0;
     const soc = input.socPct ?? 0;
     return head > 0.25 && surplus + 1 >= minW * 0.95 && soc >= 90;
+}
+function immersionSoftActiveInCurrentSlot(plan, nowMs) {
+    if (!plan)
+        return false;
+    for (const a of plan.allocations) {
+        if (a.kind !== "immersion_heater")
+            continue;
+        if (!(a.allocatedPowerW >= 50))
+            continue;
+        const s = Date.parse(a.slot.startIso);
+        const e = Date.parse(a.slot.endIso);
+        if (!Number.isFinite(s) || !Number.isFinite(e))
+            continue;
+        if (s < nowMs && e > nowMs)
+            return true;
+    }
+    return false;
 }
 /**
  * Nach OFF↔DRYRUN/LIVE: Baseline/Cache verwerfen und nächsten Tick material replanen.
@@ -560,9 +578,18 @@ async function runDailyPlanTick(host, forecastPlan) {
         boilerEstimatedEmptyAtOverride: learningEmptyAtIso,
         preferImmersionLiveSurplusNow: false,
     });
+    const ihMeasuredW = (0, state_util_1.asNum)((await host.getStateAsync("addons.immersion_heater.runtime.measured_power_w"))?.val);
+    const ihCommandedW = (0, state_util_1.asNum)((await host.getStateAsync("addons.immersion_heater.runtime.commanded_power_w"))?.val);
+    const ihOnPowerW = ihMeasuredW != null && ihMeasuredW > 50
+        ? ihMeasuredW
+        : ihCommandedW != null && ihCommandedW > 50
+            ? ihCommandedW
+            : 0;
+    const continueSoftIh = immersionSoftActiveInCurrentSlot(lastUnifiedPlan, now.getTime());
     const preferLiveIh = preferImmersionLiveSurplusNowFrom({
         livePvPowerW: livePvPowerW,
         liveHouseLoadW: liveHouseLoadW,
+        immersionOnPowerW: ihOnPowerW,
         thermalHeadroomKwh: probeInput.thermal?.headroomEnergyKwh ?? null,
         minPowerW: probeInput.thermal?.minPowerW ?? ihCfg.stages[0]?.nominalPowerW ?? 1700,
         socPct: probeInput.battery.socPct,
@@ -676,6 +703,7 @@ async function runDailyPlanTick(host, forecastPlan) {
                 connectedNowOverride: wbConnected,
                 passiveBatteryEnergyAvailable: passiveBatteryEnergy.available,
                 preferImmersionLiveSurplusNow: preferLiveIh,
+                continueImmersionSoftCurrentSlot: continueSoftIh,
                 boilerEstimatedEmptyAtOverride: learningEmptyAtIso,
                 feedInCtPerKwh,
             });

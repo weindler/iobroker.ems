@@ -792,19 +792,14 @@ function buildConsumerStates(input: UnifiedDayPlannerInput, slots: SlotWork[]): 
 			});
 		}
 		if (softKwh > EPS) {
-			const socNow = input.battery.socPct;
-			const maxSoc = input.battery.maxSocPct;
-			const reqCharge = input.battery.requiredChargeEnergyKwh;
-			const batteryNearFull =
-				socNow != null &&
-				Number.isFinite(socNow) &&
-				((maxSoc != null && Number.isFinite(maxSoc) && socNow + 0.5 >= maxSoc) ||
-					socNow >= 95 ||
-					((reqCharge == null || !(reqCharge > 0.15)) && socNow >= 90));
 			/*
 			 * Soft ohne Boiler-emptyAt: opportunistisch bestes PV im Horizont.
 			 * Soft mit emptyAt-Zeitpunkt: Deadline = emptyAt — sonst wandern Slots auf
 			 * Wochenend-PV obwohl Leerung heute Abend (Export: Surplus heute frei, Plan Sa/So).
+			 *
+			 * Soft-IH NIEMALS aus der Hausbatterie — auch nicht bei SOC 100 %.
+			 * Sonst: abends nach PV-Ende Speichernutzung bis Reserve (Export: 100→80 %).
+			 * Batterie-Support bleibt Hard/Pflicht (Boiler-Min) vorbehalten.
 			 */
 			const softEmptyDeadline =
 				Number.isFinite(emptyDeadlineMs) && emptyDeadlineMs > nowMsLocal
@@ -820,11 +815,7 @@ function buildConsumerStates(input: UnifiedDayPlannerInput, slots: SlotWork[]): 
 				mandatory: false,
 				gridEligible: false,
 				pvFirst: true,
-				/*
-				 * Soft bleibt PV-first. Batterie-Support wird nur aktiviert, wenn
-				 * die Batterie bereits (nahe) voll ist und kein sinnvoller Ladebedarf besteht.
-				 */
-				batteryEligible: batteryNearFull,
+				batteryEligible: false,
 				energyGoalHard: false,
 				maxShiftHours: null,
 				earliestSlotIdx: 0,
@@ -1350,29 +1341,16 @@ export function scoreCandidate(
 	if (candidate.kind === "immersion_heater") {
 		if (consumer.thermalSoftOnly) {
 			/*
-			 * Optionale Wärme (Bridge bis next-PV bereits gedeckt): kein Basis-Prioritäts-Push.
-			 * Wert skaliert mit post-PV-Kühlbrücke (emptyAt − Recovery): kurz → wenig Nutzen
-			 * für Target-Fill; lang (z. B. Leerung abends nach Morgen-PV) → Speichern sinnvoll.
-			 * Opportunity vs. PV→Batterie über gemeinsamen Peak-/SOC-Wert — kein Hardcode.
+			 * Soft-IH: ausschließlich PV-Surplus. Kein Batterie-/Netz-Komfortladen —
+			 * Hausspeicher bleibt Reserve/Nacht/Fahrzeug, nicht optionaler Puffer-Nachheizer.
 			 */
-			const socAt = projectedSocAt(state, candidate.slotIdx);
-			/*
-			 * One-Plan: Wenn die Batterie JETZT voll ist oder im Slot voll sein wird,
-			 * darf sie den Heizstab unterstützen.
-			 */
-			const isNowSlot = candidate.slotIdx === 0;
-			const isHighSoc = socAt >= state.batteryTargetKwh - EPS || (isNowSlot && state.socKwh >= state.batteryTargetKwh - EPS);
-			
-			/*
-			 * Soft-IH ist PV-fokussiert. Aber: Wenn die Batterie voll ist, darf sie
-			 * unterstützen, um Einspeisung zu vermeiden (One-Plan-Strategie).
-			 */
-			if (candidate.source !== "pv_surplus" && !(candidate.source === "battery" && isHighSoc)) {
+			if (candidate.source !== "pv_surplus") {
 				return -Infinity;
 			}
 
 			score -= e * priority * 0.38;
 			const peakEur = peakFutureImportCt(state, candidate.slotIdx) * 0.01;
+			const socAt = projectedSocAt(state, candidate.slotIdx);
 			const batRoom = Math.max(
 				0,
 				Math.min(state.capacityKwh - socAt, state.batteryTargetKwh - socAt),
@@ -1690,14 +1668,16 @@ function generateCandidatesForConsumer(
 	if (slotIdx < consumer.earliestSlotIdx) return [];
 
 	/*
-	 * Soft-Precharge: laufenden Slot ohne Live-Prefer nicht anbrechen
-	 * (Mid-Slot-Restart / B1 — Prefer setzt den NOW-Boost bewusst).
+	 * Soft-Precharge: laufenden Slot ohne Live-Prefer nicht neu anbrechen
+	 * (Mid-Slot-Restart). Ausnahme: Prefer ODER Fortsetzen aus vorherigem Plan —
+	 * sonst Relais-Takten (aus → Pause → wieder an) bei jedem Replan.
 	 */
 	if (
 		consumer.kind === "immersion_heater" &&
 		consumer.thermalSoftOnly &&
 		slot.startMs < state.nowMs &&
-		input.preferImmersionLiveSurplusNow !== true
+		input.preferImmersionLiveSurplusNow !== true &&
+		input.continueImmersionSoftCurrentSlot !== true
 	) {
 		return [];
 	}
@@ -1746,7 +1726,6 @@ function generateCandidatesForConsumer(
 	}
 
 	let immersionMinE = 0;
-	let immersionSoftTopUpWithBattery = false;
 	if (consumer.kind === "immersion_heater") {
 		sources.length = 0;
 		const minE =
@@ -1755,7 +1734,12 @@ function generateCandidatesForConsumer(
 		// Keine Teil-Slots unter Mindeststufe (sonst Runtime stage 0).
 		if (slot.remainPvKwh + EPS >= Math.max(minE, EPS)) sources.push("pv_surplus");
 		const pvBeforeDl = pvBeforeDeadlineKwh(state, consumer.deadlineMs, consumer.slotAllowed);
+		/*
+		 * Batterie nur Hard/Pflicht (nicht Soft) — auch nicht bei Soft-emptyAt-Deadline.
+		 * Soft-emptyAt steuert nur die PV-Fensterwahl, nie Speicherentladung.
+		 */
 		const thermalNeedsBattery =
+			!consumer.thermalSoftOnly &&
 			consumer.thermalBeforeDeadline &&
 			pvBeforeDl + EPS < consumer.remainingKwh &&
 			usableBat + EPS >= Math.max(minE, EPS) &&
@@ -1772,18 +1756,10 @@ function generateCandidatesForConsumer(
 			slot.remainPvKwh + EPS < Math.max(minE, EPS) &&
 			slot.remainPvKwh + usableBat + EPS >= Math.max(minE, EPS);
 		/*
-		 * Soft-IH (PV-first) darf bei knapper PV im Slot mit Batterie-Top-up die
-		 * Mindeststufe erreichen, wenn die Batterie dafür freigegeben ist.
-		 * Bedingung: Es gibt realen PV-Surplus im Slot und PV + Batterie schaffen zusammen minE.
+		 * Soft-IH: kein Batterie-Top-up — auch nicht bei knapper PV / voller Batterie.
+		 * Mindeststufe nur aus PV (oder gar nicht in diesem Slot).
 		 */
-		const softCanTopUpWithBattery =
-			consumer.thermalSoftOnly &&
-			consumer.batteryEligible &&
-			slot.surplusKwh > EPS &&
-			slot.remainPvKwh + EPS < Math.max(minE, EPS) &&
-			slot.remainPvKwh + usableBat + EPS >= Math.max(minE, EPS);
-		immersionSoftTopUpWithBattery = softCanTopUpWithBattery;
-		if (thermalNeedsBattery || hardNeedsBatteryNow || softCanTopUpWithBattery) sources.push("battery");
+		if (thermalNeedsBattery || hardNeedsBatteryNow) sources.push("battery");
 	}
 
 	if (consumer.kind === "battery_charge") {
@@ -1811,12 +1787,10 @@ function generateCandidatesForConsumer(
 				const needed = Math.min(consumer.remainingKwh, immersionMinE);
 				if (usableBat + EPS < needed) continue;
 				/*
-				 * Fahrbare IH-Stufe erzwingen: mindestens minE allokieren.
-				 * Bei Soft-Top-up darf vorhandener PV-Rest die Mindeststufe mittragen.
+				 * Fahrbare IH-Stufe erzwingen: mindestens minE allokieren (Hard/Batterie).
 				 */
 				take = Math.max(take, needed);
-				const availableForMin = immersionSoftTopUpWithBattery ? take + slot.remainPvKwh : take;
-				take = applyMinPower(take, consumer.minPowerW, availableForMin, consumer.remainingKwh);
+				take = applyMinPower(take, consumer.minPowerW, take, consumer.remainingKwh);
 			} else {
 				take = applyMinPower(take, consumer.minPowerW, take, consumer.remainingKwh);
 			}

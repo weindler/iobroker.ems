@@ -132,6 +132,32 @@ function allocationEntry(contributionId, allocatedPowerW, status = "allocated") 
         strict_1.default.match(r.allocationReasonDe, /ohne Heizstab-Leistung/);
         strict_1.default.doesNotMatch(r.allocationReasonDe, /Thermal-Fallback/);
     });
+    (0, node_test_1.it)("continueHeating bridges zero NOW-slot to next allocated slot (anti chatter)", () => {
+        const next = {
+            ...allocationEntry(contribution_ids_1.CONTRIBUTION_IDS.IMMERSION_FLEXIBLE, 1700),
+            slot: { startIso: SLOT_END, endIso: "2026-07-11T10:30:00.000Z" },
+        };
+        const off = (0, daily_plan_js_1.resolveImmersionDailyPlanFromData)({
+            now: NOW,
+            timezone: TZ,
+            meta: { status: "ready", date: "2026-07-11", revision: 1, validUntil: null, timezone: TZ },
+            entries: [next],
+            config: MULTI_STAGE_CFG,
+            continueHeating: false,
+        });
+        strict_1.default.equal(off.commandedStage, 0);
+        const hold = (0, daily_plan_js_1.resolveImmersionDailyPlanFromData)({
+            now: NOW,
+            timezone: TZ,
+            meta: { status: "ready", date: "2026-07-11", revision: 1, validUntil: null, timezone: TZ },
+            entries: [next],
+            config: MULTI_STAGE_CFG,
+            continueHeating: true,
+        });
+        strict_1.default.equal(hold.commandedStage, 1);
+        strict_1.default.equal(hold.dailyPlanStatus, "daily_plan_valid");
+        strict_1.default.match(hold.allocationReasonDe, /Slot-Brücke|Anti-Takten/);
+    });
     (0, node_test_1.it)("allocation below smallest stage is Daily Plan off (not thermal fallback)", () => {
         const r = (0, daily_plan_js_1.resolveImmersionDailyPlanFromData)({
             now: NOW,

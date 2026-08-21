@@ -28,6 +28,10 @@ exports.IMMERSION_RUNTIME_STATES = {
     powerVerificationStatus: `${exports.IMMERSION_RUNTIME_BASE}.power_verification_status`,
     minRuntimeRemainingSec: `${exports.IMMERSION_RUNTIME_BASE}.minimum_runtime_remaining_sec`,
     minPauseRemainingSec: `${exports.IMMERSION_RUNTIME_BASE}.minimum_pause_remaining_sec`,
+    /** Wirksam aus Admin `ih_minimum_runtime_sec` (Fallback nur wenn Feld fehlt). */
+    configMinimumRuntimeSec: `${exports.IMMERSION_RUNTIME_BASE}.config_minimum_runtime_sec`,
+    /** Wirksam aus Admin `ih_minimum_pause_sec`. */
+    configMinimumPauseSec: `${exports.IMMERSION_RUNTIME_BASE}.config_minimum_pause_sec`,
     lastSwitchAt: `${exports.IMMERSION_RUNTIME_BASE}.last_switch_at`,
     faultActive: `${exports.IMMERSION_RUNTIME_BASE}.fault_active`,
     faultCode: `${exports.IMMERSION_RUNTIME_BASE}.fault_code`,

@@ -408,6 +408,11 @@ export type UnifiedDayPlannerInput = {
 	 * (gegenüber reinem Forecast-Peak). Kein EV-Fake-Bedarf.
 	 */
 	preferImmersionLiveSurplusNow?: boolean;
+	/**
+	 * Soft-IH im aktuellen (bereits angebrochenen) Slot fortsetzen —
+	 * verhindert Relais-Takten wenn Prefer kurz ausfällt und Mid-Slot-Skip sonst 0 W setzt.
+	 */
+	continueImmersionSoftCurrentSlot?: boolean;
 };
 
 /** Prioritätsordnung — Vertrag + Tests; noch kein Solver. */

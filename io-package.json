@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.321",
+		"version": "0.1.322",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.322": {
+				"en": "Soft immersion heater uses PV surplus only — never drains the house battery when SOC is high/evening PV is gone (hard/min boiler still may use battery). Immersion min runtime/pause follow Admin; climate schedule shows the current window.",
+				"de": "Heizstab Soft nur noch aus PV-Surplus — leert den Hausspeicher abends nicht mehr bei vollem SOC ohne PV (Hard/Boiler-Min darf weiter Batterie nutzen). Heizstab Min-Laufzeit/Pause folgen dem Admin; Klima-Fahrplan zeigt das aktuelle Fenster."
+			},
 			"0.1.321": {
 				"en": "Hard replan when boiler empty-at appears or moves, or when the next immersion slot is after empty-at (fixes stale Saturday plan after late empty-at). Learning empty-at feeds the unified plan; live surplus + full battery can prefer the current immersion slot.",
 				"de": "Hard-Replan wenn Boiler-emptyAt neu erscheint/sich verschiebt oder der nächste Heizstab-Slot hinter emptyAt liegt (behebt hängenden Samstags-Plan nach spätem emptyAt). Learning-emptyAt geht in den Unified-Plan; bei Live-Surplus und voller Batterie darf der aktuelle Heizstab-Slot bevorzugt werden."

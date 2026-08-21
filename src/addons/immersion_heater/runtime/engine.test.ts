@@ -242,6 +242,44 @@ describe("immersion runtime engine — Daily Plan vs. Sicherheits-Default (Roadm
 		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), 0);
 		assert.equal(getImmersionPersistForTest().commandedStage, 0);
 	});
+	it("Admin Mindestpause (ih_minimum_pause_sec) bleibt nach Aus-Schalt erhalten", async () => {
+		const now = realNow();
+		const slotStartIso = slotStartIsoFloored(now, TZ);
+		const slotEndIso = new Date(Date.parse(slotStartIso) + DAILY_PLAN_SLOT_MS).toISOString();
+		const host = baseHost(40);
+		host.config = {
+			...CONFIG,
+			ih_minimum_runtime_sec: 1,
+			ih_minimum_pause_sec: 600,
+		};
+		host.set("global.execution_mode", "live");
+		host.set("addons.immersion_heater.mode", "live");
+		host.set("addons.immersion_heater.governance.enabled", true);
+		host.set("immersion.stage1", false);
+		host.set(DAILY_PLAN_STATE_IDS.status, "ready");
+		host.set(DAILY_PLAN_STATE_IDS.date, localDateKeyInTimezone(now, TZ));
+		host.set(DAILY_PLAN_STATE_IDS.revision, 1);
+		host.set(DAILY_PLAN_STATE_IDS.validUntil, "");
+		host.set(
+			ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson,
+			JSON.stringify([allocationEntry(slotStartIso, slotEndIso, 2000)]),
+		);
+
+		await runImmersionRuntimeTick(host);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), 1);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.configMinimumPauseSec), 600);
+
+		// Mindestlaufzeit ablaufen lassen, damit Plan-OFF die Pause setzt (nicht weiter hält).
+		getImmersionPersistForTest().minRuntimeUntilMs = Date.now() - 1;
+		host.set(ALLOCATION_ADDON_STATE_IDS.immersion_heater.status, "ready");
+		host.set(ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson, "[]");
+		await runImmersionRuntimeTick(host);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), 0);
+		const pauseUntil = getImmersionPersistForTest().pauseUntilMs;
+		assert.ok(pauseUntil != null, "pauseUntilMs gesetzt");
+		const remSec = Math.ceil((pauseUntil! - Date.now()) / 1000);
+		assert.ok(remSec >= 590 && remSec <= 600, `Admin-Pause ~600s erwartet, got ${remSec}`);
+	});
 });
 
 describe("immersion runtime — BETA-GATE-003 effective live reconcile", () => {

@@ -543,11 +543,34 @@ function authoritativeClimateWindows(unitIndex){
 	);
 }
 
+/** Nächstes Fenster mit Start strikt nach now — laufendes Fenster bewusst ausgeschlossen. */
 function nextFutureWindow(windows){
 	var now=Date.now(),list=[],i;
 	for(i=0;i<windows.length;i++)if(windows[i].startMs>now)list.push(windows[i]);
 	list.sort(function(a,b){return a.startMs-b.startMs;});
 	return list.length?list[0]:null;
+}
+
+/** Klima-Zeile: aktuelles Planfenster als „Jetzt bis …“, sonst „Nächstes …“ (wie Heizstab). */
+function climateScheduleRow(unitIndex){
+	var parts=splitCurrentFutureWindows(authoritativeClimateWindows(unitIndex));
+	if(parts.current){
+		return{
+			label:"Jetzt bis",
+			value:fmtSmartTime(new Date(parts.current.endMs).toISOString())+" · "+Math.round(parts.current.powerW)+" W",
+			current:parts.current,
+			future:parts.future
+		};
+	}
+	if(parts.future){
+		return{
+			label:"Nächstes",
+			value:fmtSmartTime(parts.future.startIso||new Date(parts.future.startMs).toISOString())+" · "+Math.round(parts.future.powerW)+" W",
+			current:null,
+			future:parts.future
+		};
+	}
+	return{label:"Nächstes",value:"keines",current:null,future:null};
 }
 
 function isOutsideClockWindowReason(reason){
@@ -693,9 +716,12 @@ function acHeuteLine(unitIndex,hasPlanToday){
 	return"heute keine geplante Klimaaktion";
 }
 
-function acPlanLineFromWindows(allocW,nextWin){
+function acPlanLineFromWindows(allocW,win,isCurrent){
 	if(isPowerOn(allocW))return"Budget "+Math.round(allocW)+" W";
-	if(nextWin)return"nächstes "+fmtRange(nextWin.startMs,nextWin.endMs)+" · "+Math.round(nextWin.powerW)+" W";
+	if(win){
+		var range=fmtRange(win.startMs,win.endMs);
+		return (isCurrent?"Jetzt ":"nächstes ")+range+" · "+Math.round(win.powerW)+" W";
+	}
 	return"kein Budget";
 }
 
@@ -732,14 +758,18 @@ function resolveClimateUnitDisplay(unitIndex){
 	var likely=d.likelyActive===true;
 	var modeOff=String(g("addons.air_conditioning.mode")||"").toLowerCase()==="off";
 	var wins=modeOff?[]:authoritativeClimateWindows(unitIndex);
-	var nextWin=nextFutureWindow(wins);
-	var hasFuture=!!nextWin;
+	var winParts=splitCurrentFutureWindows(wins);
+	var currentWin=winParts.current;
+	var nextWin=winParts.future;
+	var hasFuture=!!(currentWin||nextWin);
 	var hasPlanToday=!modeOff&&(isPowerOn(alloc)||hasFuture);
 	var liveOk=effectiveLiveWrite("air_conditioning");
 	var demand=classifyClimateDemand(running,decisionSource,reasonDe);
 	var heute=modeOff?"EMS-Steuerung deaktiviert":acHeuteLine(unitIndex,hasPlanToday);
-	var plan=modeOff?"kein Plan":acPlanLineFromWindows(alloc,isPowerOn(alloc)?null:nextWin);
-	var nextLine=modeOff?"keines":(nextWin?("nächstes "+fmtRange(nextWin.startMs,nextWin.endMs)+" · "+Math.round(nextWin.powerW)+" W"):"keines");
+	var plan=modeOff?"kein Plan":acPlanLineFromWindows(alloc,currentWin||nextWin,!!currentWin);
+	var nextLine=modeOff?"keines":(currentWin
+		?("Jetzt bis "+fmtSmartTime(new Date(currentWin.endMs).toISOString())+" · "+Math.round(currentWin.powerW)+" W")
+		:(nextWin?("nächstes "+fmtRange(nextWin.startMs,nextWin.endMs)+" · "+Math.round(nextWin.powerW)+" W"):"keines"));
 	var outside=isOutsideClockWindowReason(reasonDe);
 	var execBadgeObj=execAuthorityBadge("air_conditioning");
 	if(modeOff){
@@ -752,7 +782,7 @@ function resolveClimateUnitDisplay(unitIndex){
 		};
 	}
 	if(!liveOk){
-		var phase=resolveExecPhase(isPowerOn(alloc),hasFuture||likely,false,false);
+		var phase=resolveExecPhase(isPowerOn(alloc)||!!currentWin,hasFuture||likely,false,false);
 		var badge=execBadge(phase);
 		var opLabel=outside?"Gesperrt · außerhalb Zeitfenster":badge.label;
 		return{
@@ -1728,7 +1758,9 @@ function climateCardNote(unitIndex){
 	var reasonDe=txt(g(base+".reason_de"),"");
 	if(reasonDe==="—")reasonDe="";
 	var d=resolveClimateUnitDisplay(unitIndex);
-	var next=d&&d.nextLine&&d.nextLine!=="keines";
+	var sched=climateScheduleRow(unitIndex);
+	var inPlanWindow=!!(sched&&sched.current);
+	var hasFuture=!!(sched&&(sched.current||sched.future));
 	return visClimateNote({
 		running:running,
 		cleaningActive:isOn(g(base+".cleaning_active")),
@@ -1739,8 +1771,9 @@ function climateCardNote(unitIndex){
 		governanceAllowed:g(base+".governance_allowed"),
 		outsideWindow:isOutsideClockWindowReason(reasonDe),
 		demand:d?d.demand:"none",
-		hasFuture:!!next,
-		allocOn:isPowerOn(num(g(base+".allocated_power_w"))),
+		hasFuture:hasFuture,
+		/** Im laufenden Planfenster nicht „wartet auf Slot“ — Budget/Bedarf steuern die Note. */
+		allocOn:isPowerOn(num(g(base+".allocated_power_w")))||inPlanWindow,
 		purpose:g(base+".mode_purpose")
 	});
 }
@@ -2380,9 +2413,8 @@ function renderStack(){
 			var sess=visJoinDurEnergy(num(g(stats+".session_runtime_sec")),num(g(stats+".session_energy_kwh")));
 			if(sess)rows.push(["Session",sess]);
 		}
-		var nextLine=d.nextLine||"keines";
-		if(nextLine.indexOf("nächstes ")===0)nextLine=nextLine.slice(9);
-		rows.push(["Nächstes",nextLine]);
+		var acSched=climateScheduleRow(unitIndex);
+		rows.push([acSched.label,acSched.value]);
 		return card(title,"#79c0ff",badges,rows,climateCardNote(unitIndex));
 	}
 

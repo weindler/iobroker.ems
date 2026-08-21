@@ -16,6 +16,8 @@ async function resolveBatteryRuntimeSources(host, configured) {
         capacityStateId: configured.capacityStateId || mappedTarget(host, "capacity_kwh"),
         secondsSinceFullStateId: configured.secondsSinceFullStateId || mappedTarget(host, "seconds_since_full_charge"),
         powerStateId: configured.powerStateId || mappedTarget(host, "power_w"),
+        pvAcPowerStateId: mappedTarget(host, "pv_ac_power_w"),
+        consumptionStateId: mappedTarget(host, "consumption_w"),
     };
 }
 exports.resolveBatteryRuntimeSources = resolveBatteryRuntimeSources;

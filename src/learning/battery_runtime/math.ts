@@ -1,5 +1,15 @@
 import { MS_PER_DAY, MS_PER_HOUR, MIN_RATE_SAMPLES, MIN_VALID_NIGHTS } from "./constants";
 import type { PowerHistoryMeta } from "./history";
+import {
+	buildBatteryDeficitSeries,
+	buildPvHouseNetSeries,
+	DEFAULT_NIGHT_BRIDGE_FLUTTER_MS,
+	findNearestSoc as findNearestSocBridge,
+	findPvHouseNightBridges,
+	recencyWeight,
+	weightedAverage,
+	type NightBridgeWindow,
+} from "./night_bridge";
 import { parseTimeHHMM, timestampAtLocalTime, localDateKey } from "./time";
 import type {
 	BatteryRuntimeComputeResult,
@@ -23,63 +33,131 @@ function average(values: number[]): number | null {
 }
 
 function findNearestSoc(points: SocPoint[], targetTs: number, maxDeltaMs: number): number | null {
-	let best: SocPoint | null = null;
-	let bestDelta = Infinity;
-	for (const p of points) {
-		const delta = Math.abs(p.ts - targetTs);
-		if (delta <= maxDeltaMs && delta < bestDelta) {
-			best = p;
-			bestDelta = delta;
-		}
-	}
-	return best?.socPct ?? null;
+	return findNearestSocBridge(points, targetTs, maxDeltaMs);
 }
 
-/** Nachtentladung: SOC-Abfall zwischen nightStart (Tag D) und nightEnd (Tag D+1). */
+function clockAstroWindows(
+	socPoints: SocPoint[],
+	nightStart: string,
+	nightEnd: string,
+	astroDaily: DailyAstroTimes | null | undefined,
+): NightBridgeWindow[] {
+	const fixedStart = parseTimeHHMM(nightStart);
+	const fixedEnd = parseTimeHHMM(nightEnd);
+	if (!fixedStart || !fixedEnd || socPoints.length === 0) return [];
+
+	const dateKeys = [...new Set(socPoints.map((p) => localDateKey(new Date(p.ts))))].sort();
+	const out: NightBridgeWindow[] = [];
+	for (let i = 0; i < dateKeys.length - 1; i++) {
+		const dayKey = dateKeys[i]!;
+		const nextKey = dateKeys[i + 1]!;
+		const startTime = astroDaily?.startByDate.get(dayKey) ?? fixedStart;
+		const endTime = astroDaily?.endByDate.get(nextKey) ?? fixedEnd;
+		const startTs = timestampAtLocalTime(dayKey, startTime.hour, startTime.minute);
+		const endTs = timestampAtLocalTime(nextKey, endTime.hour, endTime.minute);
+		if (endTs <= startTs) continue;
+		out.push({
+			startTs,
+			endTs,
+			eveningDateKey: dayKey,
+			method: astroDaily?.startByDate.has(dayKey) ? "astro" : "fixed_clock",
+		});
+	}
+	return out;
+}
+
+/**
+ * Nachtentladung über Brückenfenster (PV/Haus, Batterie, Astro oder feste Uhr).
+ * Jüngere Nächte stärker gewichtet — sonst bleibt Sommer-Ø bei längeren Nächten hängen.
+ */
 export function computeNightDischarges(params: {
 	socPoints: SocPoint[];
 	nightStart: string;
 	nightEnd: string;
 	astroDaily?: DailyAstroTimes | null;
 	capacityKwh: number | null;
-}): { avgPct: number | null; avgKwh: number | null; validNights: number } {
-	const fixedStart = parseTimeHHMM(params.nightStart);
-	const fixedEnd = parseTimeHHMM(params.nightEnd);
-	if (!fixedStart || !fixedEnd || params.socPoints.length === 0) {
-		return { avgPct: null, avgKwh: null, validNights: 0 };
+	/** PV-AC-Leistung (W), optional. */
+	pvPowerPoints?: PowerPoint[] | null;
+	/** Hausverbrauch (W), optional. */
+	housePowerPoints?: PowerPoint[] | null;
+	/** Batterieleistung (+ laden / − entladen), Fallback-Brücke. */
+	batteryPowerPoints?: PowerPoint[] | null;
+	flutterMs?: number;
+	nowMs?: number;
+}): {
+	avgPct: number | null;
+	avgKwh: number | null;
+	validNights: number;
+	method: NightBridgeWindow["method"] | "none";
+	avgBridgeHours: number | null;
+} {
+	const maxDelta = 2 * MS_PER_HOUR;
+	const flutterMs = params.flutterMs ?? DEFAULT_NIGHT_BRIDGE_FLUTTER_MS;
+	const nowMs = params.nowMs ?? Date.now();
+
+	let windows: NightBridgeWindow[] = [];
+	let method: NightBridgeWindow["method"] | "none" = "none";
+
+	const pv = params.pvPowerPoints ?? [];
+	const house = params.housePowerPoints ?? [];
+	if (pv.length > 0 && house.length > 0) {
+		const net = buildPvHouseNetSeries(pv, house);
+		windows = findPvHouseNightBridges(net, { flutterMs, method: "pv_house" });
+		if (windows.length > 0) method = "pv_house";
+	}
+	if (windows.length === 0 && (params.batteryPowerPoints?.length ?? 0) > 0) {
+		const net = buildBatteryDeficitSeries(params.batteryPowerPoints!);
+		windows = findPvHouseNightBridges(net, { flutterMs, method: "battery_discharge" });
+		if (windows.length > 0) method = "battery_discharge";
+	}
+	if (windows.length === 0) {
+		windows = clockAstroWindows(
+			params.socPoints,
+			params.nightStart,
+			params.nightEnd,
+			params.astroDaily,
+		);
+		if (windows.length > 0) {
+			method = windows[0]!.method;
+		}
 	}
 
-	const dateKeys = [...new Set(params.socPoints.map((p) => localDateKey(new Date(p.ts))))].sort();
 	const pctDischarges: number[] = [];
 	const kwhDischarges: number[] = [];
-	const maxDelta = 2 * MS_PER_HOUR;
+	const weights: number[] = [];
+	const bridgeHours: number[] = [];
 
-	for (let i = 0; i < dateKeys.length - 1; i++) {
-		const dayKey = dateKeys[i];
-		const nextKey = dateKeys[i + 1];
-		const startTime = params.astroDaily?.startByDate.get(dayKey) ?? fixedStart;
-		const endTime = params.astroDaily?.endByDate.get(nextKey) ?? fixedEnd;
-		const startTs = timestampAtLocalTime(dayKey, startTime.hour, startTime.minute);
-		const endTs = timestampAtLocalTime(nextKey, endTime.hour, endTime.minute);
-		if (endTs <= startTs) continue;
-
-		const socStart = findNearestSoc(params.socPoints, startTs, maxDelta);
-		const socEnd = findNearestSoc(params.socPoints, endTs, maxDelta);
+	for (const w of windows) {
+		const socStart = findNearestSoc(params.socPoints, w.startTs, maxDelta);
+		const socEnd = findNearestSoc(params.socPoints, w.endTs, maxDelta);
 		if (socStart === null || socEnd === null) continue;
 
 		const dischargePct = socStart - socEnd;
-		if (dischargePct <= 0 || dischargePct > 50) continue;
+		/** Winter-Brücken können >40 % gehen — 50 war zu eng. */
+		if (dischargePct <= 0 || dischargePct > 65) continue;
 
+		const ageDays = Math.max(0, (nowMs - w.endTs) / MS_PER_DAY);
+		const weight = recencyWeight(ageDays);
 		pctDischarges.push(round2(dischargePct));
+		weights.push(weight);
+		bridgeHours.push((w.endTs - w.startTs) / MS_PER_HOUR);
 		if (params.capacityKwh !== null) {
 			kwhDischarges.push(round3((dischargePct / 100) * params.capacityKwh));
 		}
 	}
 
+	const avgPct = weightedAverage(pctDischarges, weights);
+	const avgKwh =
+		params.capacityKwh !== null && kwhDischarges.length === weights.length
+			? weightedAverage(kwhDischarges, weights)
+			: null;
+
 	return {
-		avgPct: average(pctDischarges),
-		avgKwh: params.capacityKwh !== null ? average(kwhDischarges) : null,
+		avgPct,
+		avgKwh,
 		validNights: pctDischarges.length,
+		method,
+		avgBridgeHours: average(bridgeHours),
 	};
 }
 
@@ -240,6 +318,8 @@ export function computeBatteryRuntimeLearning(params: {
 	/** Sekunden seit Vollladung vom Gerät (Sonnen) — hat Vorrang vor SOC-History. */
 	secondsSinceFull: number | null;
 	powerPoints: PowerPoint[];
+	pvPowerPoints?: PowerPoint[] | null;
+	housePowerPoints?: PowerPoint[] | null;
 	capacityKwh: number | null;
 	currentSocPct: number | null;
 	cfg: BatteryRuntimeConfig;
@@ -255,6 +335,10 @@ export function computeBatteryRuntimeLearning(params: {
 		nightEnd: params.cfg.nightEnd,
 		astroDaily: params.astroDaily,
 		capacityKwh: params.capacityKwh,
+		pvPowerPoints: params.pvPowerPoints,
+		housePowerPoints: params.housePowerPoints,
+		batteryPowerPoints: params.powerPoints,
+		nowMs: params.now.getTime(),
 	});
 	const rates = computeSocRates(params.socPoints);
 	const powerStats =
@@ -334,6 +418,8 @@ export function computeBatteryRuntimeLearning(params: {
 		powerInvertApplied: null,
 		powerInvertAuto: null,
 		powerHistoryMode: "",
+		nightBridgeMethod: night.method,
+		avgNightBridgeHours: night.avgBridgeHours,
 	};
 }
 
@@ -347,6 +433,8 @@ const EMPTY_POWER_DIAGNOSTICS = {
 	powerInvertApplied: null,
 	powerInvertAuto: null,
 	powerHistoryMode: "",
+	nightBridgeMethod: "none",
+	avgNightBridgeHours: null,
 } as const;
 
 export function withPowerDiagnostics(

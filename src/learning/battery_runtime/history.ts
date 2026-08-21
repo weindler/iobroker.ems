@@ -300,6 +300,32 @@ export function aggregatePowerPointsByHour(
 	};
 }
 
+export async function fetchSitePowerSeries(
+	host: BatteryHistoryHost,
+	stateId: string,
+	lookbackDays: number,
+): Promise<PowerPoint[]> {
+	if (!stateId) return [];
+	const rows = await fetchHistoryRowsLookback(
+		host,
+		stateId,
+		lookbackDays,
+		HISTORY_ROWS_PER_DAY,
+		HISTORY_CHUNK_TIMEOUT_MS,
+	);
+	const points: PowerPoint[] = [];
+	for (const row of rows) {
+		const ts = typeof row?.ts === "number" ? row.ts : null;
+		const n = asNum(row?.val);
+		if (ts === null || n === null || !Number.isFinite(n)) continue;
+		const w = Math.abs(n) > PLAUSIBLE_POWER_W_MAX ? null : Math.max(0, n);
+		if (w === null || w < POWER_DEADBAND_W) continue;
+		points.push({ ts, powerW: Math.round(w) });
+	}
+	points.sort((a, b) => a.ts - b.ts);
+	return points;
+}
+
 export async function fetchPowerHistory(
 	host: BatteryHistoryHost,
 	stateId: string,

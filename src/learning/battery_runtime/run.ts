@@ -4,15 +4,16 @@ import {
 	sourceLabelFromStateId,
 } from "./config";
 import {
-	distinctSocSampleDays,
 	fetchAstroTimeHistory,
 	fetchPowerHistory,
+	fetchSitePowerSeries,
 	fetchSocHistory,
 	fetchSocHistoryRaw,
 	mergeDailyAstroTimes,
 	readLiveCapacityKwh,
 	readLiveSoc,
 	readSecondsSinceFullCharge,
+	distinctSocSampleDays,
 } from "./history";
 import { resolveBatteryRuntimeSources } from "./mapping";
 import {
@@ -58,6 +59,12 @@ async function writeResult(
 	await host.setStateAsync("learning.battery_runtime.last_run", { val: lastRun, ack: true });
 	await setNumIfValid(host, "learning.battery_runtime.sample_days", result.sampleDays);
 	await setNumIfValid(host, "learning.battery_runtime.avg_night_discharge_kwh", result.avgNightDischargeKwh);
+	await setNumIfValid(host, "learning.battery_runtime.avg_night_discharge_pct", result.avgNightDischargePct);
+	await setNumIfValid(host, "learning.battery_runtime.avg_night_bridge_hours", result.avgNightBridgeHours);
+	await host.setStateAsync("learning.battery_runtime.night_bridge_method", {
+		val: result.nightBridgeMethod,
+		ack: true,
+	});
 	await setNumIfValid(host, "learning.battery_runtime.avg_charge_power_w", result.avgChargePowerW);
 	await setNumIfValid(host, "learning.battery_runtime.max_charge_power_w", result.maxChargePowerW);
 	await host.setStateAsync("learning.battery_runtime.last_full_charge", {
@@ -114,6 +121,14 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 		const powerHist = sources.powerStateId
 			? await fetchPowerHistory(host, sources.powerStateId, cfg.lookbackDays, cfg.powerInvert)
 			: { points: [], lastValidTs: null, meta: null };
+		const [pvPowerPoints, housePowerPoints] = await Promise.all([
+			sources.pvAcPowerStateId
+				? fetchSitePowerSeries(host, sources.pvAcPowerStateId, cfg.lookbackDays)
+				: Promise.resolve([] as { ts: number; powerW: number }[]),
+			sources.consumptionStateId
+				? fetchSitePowerSeries(host, sources.consumptionStateId, cfg.lookbackDays)
+				: Promise.resolve([] as { ts: number; powerW: number }[]),
+		]);
 		const astroDaily = nightAstroConfigReady(cfg)
 			? mergeDailyAstroTimes(
 					await fetchAstroTimeHistory(host, cfg.nightStartStateId, cfg.lookbackDays),
@@ -128,6 +143,8 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 				socPointsForFullCharge: socRaw,
 				secondsSinceFull,
 				powerPoints: powerHist.points,
+				pvPowerPoints,
+				housePowerPoints,
 				capacityKwh,
 				currentSocPct,
 				cfg,
@@ -151,7 +168,7 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 		await writeResult(host, result, lastRun);
 
 		host.log.debug?.(
-			`Battery-Runtime-Learning: status=${result.status} nights=${result.avgNightDischargePct ?? "n/a"}% samples=${result.sampleDays} full_src=${result.fullChargeSource ?? "—"} sec_since_full=${result.secondsSinceFullCharge ?? "—"} days_since_full=${result.daysSinceFull ?? "—"} last_full=${result.lastFullCharge ?? "—"} soc=${sourceLabelFromStateId(sources.socStateId)} power=${sourceLabelFromStateId(sources.powerStateId)} invert=${result.powerInvertApplied === null ? "—" : result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? "(auto)" : ""} pwr_raw=${result.powerRawChargeSamples ?? "—"}/${result.powerRawDischargeSamples ?? "—"} pwr_hr=${result.powerHourlyChargePoints ?? "—"}/${result.powerHourlyDischargePoints ?? "—"} avg_chg_w=${result.avgChargePowerW ?? "—"}`,
+			`Battery-Runtime-Learning: status=${result.status} nights=${result.avgNightDischargePct ?? "n/a"}% kwh=${result.avgNightDischargeKwh ?? "n/a"} bridge=${result.nightBridgeMethod}/${result.avgNightBridgeHours ?? "n/a"}h samples=${result.sampleDays} full_src=${result.fullChargeSource ?? "—"} sec_since_full=${result.secondsSinceFullCharge ?? "—"} days_since_full=${result.daysSinceFull ?? "—"} soc=${sourceLabelFromStateId(sources.socStateId)} power=${sourceLabelFromStateId(sources.powerStateId)} invert=${result.powerInvertApplied === null ? "—" : result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? "(auto)" : ""} pwr_raw=${result.powerRawChargeSamples ?? "—"}/${result.powerRawDischargeSamples ?? "—"} pwr_hr=${result.powerHourlyChargePoints ?? "—"}/${result.powerHourlyDischargePoints ?? "—"} avg_chg_w=${result.avgChargePowerW ?? "—"}`,
 		);
 
 		if (

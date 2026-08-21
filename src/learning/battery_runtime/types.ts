@@ -90,6 +90,10 @@ export type BatteryRuntimeComputeResult = {
 	powerInvertAuto: boolean | null;
 	/** Diagnose: ems_rollup oder history_fallback. */
 	powerHistoryMode: string;
+	/** pv_house | battery_discharge | astro | fixed_clock | none */
+	nightBridgeMethod: string;
+	/** Ø Dauer der gelernten Nachtbrücke (h). */
+	avgNightBridgeHours: number | null;
 };
 
 export type BatteryRuntimePersist = {

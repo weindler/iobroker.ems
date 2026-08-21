@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.distinctSocSampleDays = exports.readSecondsSinceFullCharge = exports.readLiveSoc = exports.readLiveCapacityKwh = exports.fetchPowerHistory = exports.aggregatePowerPointsByHour = exports.resolveEffectivePowerInvert = exports.fetchSocHistoryRaw = exports.fetchSocHistory = exports.normalizeBatteryPowerW = exports.isValidCapacityKwh = exports.isValidSoc = exports.mergeDailyAstroTimes = exports.buildDailyAstroTimes = exports.fetchAstroTimeHistory = exports.parseAstroTimeValue = void 0;
+exports.distinctSocSampleDays = exports.readSecondsSinceFullCharge = exports.readLiveSoc = exports.readLiveCapacityKwh = exports.fetchPowerHistory = exports.fetchSitePowerSeries = exports.aggregatePowerPointsByHour = exports.resolveEffectivePowerInvert = exports.fetchSocHistoryRaw = exports.fetchSocHistory = exports.normalizeBatteryPowerW = exports.isValidCapacityKwh = exports.isValidSoc = exports.mergeDailyAstroTimes = exports.buildDailyAstroTimes = exports.fetchAstroTimeHistory = exports.parseAstroTimeValue = void 0;
 const state_util_1 = require("../../ems_light/state_util");
 const history_query_1 = require("../history_query");
 const power_rollup_1 = require("../power_rollup");
@@ -221,6 +221,25 @@ function aggregatePowerPointsByHour(rows, powerInvert) {
     };
 }
 exports.aggregatePowerPointsByHour = aggregatePowerPointsByHour;
+async function fetchSitePowerSeries(host, stateId, lookbackDays) {
+    if (!stateId)
+        return [];
+    const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, stateId, lookbackDays, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
+    const points = [];
+    for (const row of rows) {
+        const ts = typeof row?.ts === "number" ? row.ts : null;
+        const n = (0, state_util_1.asNum)(row?.val);
+        if (ts === null || n === null || !Number.isFinite(n))
+            continue;
+        const w = Math.abs(n) > constants_1.PLAUSIBLE_POWER_W_MAX ? null : Math.max(0, n);
+        if (w === null || w < constants_1.POWER_DEADBAND_W)
+            continue;
+        points.push({ ts, powerW: Math.round(w) });
+    }
+    points.sort((a, b) => a.ts - b.ts);
+    return points;
+}
+exports.fetchSitePowerSeries = fetchSitePowerSeries;
 async function fetchPowerHistory(host, stateId, lookbackDays, powerInvert = false) {
     const rollup = await (0, power_rollup_1.fetchRollupPowerHistory)(host, stateId, lookbackDays);
     if (rollup) {

@@ -9,6 +9,8 @@ export type ResolvedBatterySources = {
 	powerStateId: string;
 	capacityStateId: string;
 	secondsSinceFullStateId: string;
+	pvAcPowerStateId: string;
+	consumptionStateId: string;
 };
 
 function mappedTarget(host: BatteryMappingHost, role: string): string {
@@ -35,5 +37,7 @@ export async function resolveBatteryRuntimeSources(
 		secondsSinceFullStateId:
 			configured.secondsSinceFullStateId || mappedTarget(host, "seconds_since_full_charge"),
 		powerStateId: configured.powerStateId || mappedTarget(host, "power_w"),
+		pvAcPowerStateId: mappedTarget(host, "pv_ac_power_w"),
+		consumptionStateId: mappedTarget(host, "consumption_w"),
 	};
 }

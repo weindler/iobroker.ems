@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.323",
+		"version": "0.1.324",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.324": {
+				"en": "Battery night learning uses PV vs house load (when battery must help / when PV covers again) with 10-minute flutter and recency weighting — fixed 22:00–06:00 is only a fallback.",
+				"de": "Batterie-Nachtlernen: PV vs. Hauslast (wann Batterie helfen muss / wann PV wieder reicht), 10‑Min-Flattern und jüngere Nächte stärker — feste 22:00–06:00 nur noch Fallback."
+			},
 			"0.1.323": {
 				"en": "With live PV surplus, soft immersion heater headroom and high SOC, the daily plan replans and prefers the current slot instead of waiting for a weekend window while exporting.",
 				"de": "Bei Live-PV-Surplus, Soft-Heizstab-Bedarf und hohem SOC: Daily Plan plant neu und bevorzugt den aktuellen Slot — statt bei Einspeisung auf ein Wochenend-Fenster zu warten."

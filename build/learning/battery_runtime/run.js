@@ -33,6 +33,7 @@ async function writeResult(host, result, lastRun, diag) {
             });
         }
     }
+    await setNumIfValid(host, "learning.battery_runtime.night_bridge_valid_nights", result.nightBridgeValidNights);
     await setNumIfValid(host, "learning.battery_runtime.avg_charge_power_w", result.avgChargePowerW);
     await setNumIfValid(host, "learning.battery_runtime.max_charge_power_w", result.maxChargePowerW);
     await host.setStateAsync("learning.battery_runtime.last_full_charge", {
@@ -134,7 +135,7 @@ async function runBatteryRuntimeLearning(host) {
             housePoints: housePowerPoints.length,
             pvOrigin,
         });
-        host.log.info(`Battery-Runtime-Learning: status=${result.status} method=${result.nightBridgeMethod} nights=${result.avgNightDischargePct ?? "n/a"}% kwh=${result.avgNightDischargeKwh ?? "n/a"} bridgeH=${result.avgNightBridgeHours ?? "n/a"} samples=${result.sampleDays} pvPts=${pvPowerPoints.length} housePts=${housePowerPoints.length} pvOrigin=${pvOrigin} pvSrc=${(0, config_1.sourceLabelFromStateId)(sources.pvAcPowerStateId)} houseSrc=${(0, config_1.sourceLabelFromStateId)(sources.consumptionStateId)}`);
+        host.log.info(`Battery-Runtime-Learning: status=${result.status} method=${result.nightBridgeMethod} validNights=${result.nightBridgeValidNights} nights=${result.avgNightDischargePct ?? "n/a"}% kwh=${result.avgNightDischargeKwh ?? "n/a"} bridgeH=${result.avgNightBridgeHours ?? "n/a"} samples=${result.sampleDays} pvPts=${pvPowerPoints.length} housePts=${housePowerPoints.length} pvOrigin=${pvOrigin} pvSrc=${(0, config_1.sourceLabelFromStateId)(sources.pvAcPowerStateId)} houseSrc=${(0, config_1.sourceLabelFromStateId)(sources.consumptionStateId)}`);
         host.log.debug?.(`Battery-Runtime-Learning detail: full_src=${result.fullChargeSource ?? "—"} sec_since_full=${result.secondsSinceFullCharge ?? "—"} days_since_full=${result.daysSinceFull ?? "—"} soc=${(0, config_1.sourceLabelFromStateId)(sources.socStateId)} power=${(0, config_1.sourceLabelFromStateId)(sources.powerStateId)} invert=${result.powerInvertApplied === null ? "—" : result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? "(auto)" : ""}`);
         if (result.nightBridgeMethod !== "pv_house" &&
             (!sources.pvAcPowerStateId || !sources.consumptionStateId)) {

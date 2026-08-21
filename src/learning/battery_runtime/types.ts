@@ -94,6 +94,8 @@ export type BatteryRuntimeComputeResult = {
 	nightBridgeMethod: string;
 	/** Ø Dauer der gelernten Nachtbrücke (h). */
 	avgNightBridgeHours: number | null;
+	/** Nächte mit gültiger SOC-Entladung in der gewählten Methode. */
+	nightBridgeValidNights: number;
 };
 
 export type BatteryRuntimePersist = {
@@ -102,6 +104,9 @@ export type BatteryRuntimePersist = {
 	sample_days: number;
 	avg_night_discharge_pct: number | null;
 	avg_night_discharge_kwh: number | null;
+	night_bridge_method?: string;
+	night_bridge_valid_nights?: number;
+	avg_night_bridge_hours?: number | null;
 	avg_charge_rate_pct_h: number | null;
 	avg_discharge_rate_pct_h: number | null;
 	avg_charge_power_w: number | null;

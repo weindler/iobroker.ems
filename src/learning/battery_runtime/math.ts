@@ -68,7 +68,8 @@ function clockAstroWindows(
 
 /**
  * Nachtentladung über Brückenfenster (PV/Haus, Batterie, Astro oder feste Uhr).
- * Jüngere Nächte stärker gewichtet — sonst bleibt Sommer-Ø bei längeren Nächten hängen.
+ * Alle Kandidaten werden bewertet — dünnes pv_house (1 Nacht / 1 kWh) darf die
+ * belastbare battery_discharge-Serie nicht überschreiben.
  */
 export function computeNightDischarges(params: {
 	socPoints: SocPoint[];
@@ -91,21 +92,20 @@ export function computeNightDischarges(params: {
 	method: NightBridgeWindow["method"] | "none";
 	avgBridgeHours: number | null;
 } {
-	const maxDelta = 2 * MS_PER_HOUR;
+	const maxDelta = 3 * MS_PER_HOUR;
 	const flutterMs = params.flutterMs ?? DEFAULT_NIGHT_BRIDGE_FLUTTER_MS;
 	const nowMs = params.nowMs ?? Date.now();
 
-	let windows: NightBridgeWindow[] = [];
-	let method: NightBridgeWindow["method"] | "none" = "none";
+	type Candidate = {
+		method: NightBridgeWindow["method"];
+		windows: NightBridgeWindow[];
+	};
+	const candidates: Candidate[] = [];
 
 	const pv = params.pvPowerPoints ?? [];
 	const house = params.housePowerPoints ?? [];
 	if (pv.length > 0 && house.length > 0) {
 		const net = buildPvHouseNetSeries(pv, house);
-		/*
-		 * Bei Stunden-Rollup: Flattern = 1 h (ein Bucket), sonst 10 Min.
-		 * Sonst findet die PV-Haus-Brücke bei stündlichen Punkten keine stabile Phase.
-		 */
 		const medianGap = (() => {
 			const ts = net.map((p) => p.ts).sort((a, b) => a - b);
 			const gaps: number[] = [];
@@ -114,70 +114,133 @@ export function computeNightDischarges(params: {
 			gaps.sort((a, b) => a - b);
 			return gaps[Math.floor(gaps.length / 2)]!;
 		})();
-		const flutterMs =
-			medianGap >= 40 * 60_000
-				? MS_PER_HOUR
-				: (params.flutterMs ?? DEFAULT_NIGHT_BRIDGE_FLUTTER_MS);
-		windows = findPvHouseNightBridges(net, {
-			flutterMs,
+		const pvFlutter =
+			medianGap >= 40 * 60_000 ? MS_PER_HOUR : flutterMs;
+		const windows = findPvHouseNightBridges(net, {
+			flutterMs: pvFlutter,
 			method: "pv_house",
 			bucketMs: medianGap >= 40 * 60_000 ? MS_PER_HOUR : undefined,
 		});
-		if (windows.length > 0) method = "pv_house";
+		if (windows.length > 0) {
+			candidates.push({ method: "pv_house", windows });
+		}
 	}
-	if (windows.length === 0 && (params.batteryPowerPoints?.length ?? 0) > 0) {
+	if ((params.batteryPowerPoints?.length ?? 0) > 0) {
 		const net = buildBatteryDeficitSeries(params.batteryPowerPoints!);
-		windows = findPvHouseNightBridges(net, { flutterMs, method: "battery_discharge" });
-		if (windows.length > 0) method = "battery_discharge";
+		const windows = findPvHouseNightBridges(net, {
+			flutterMs,
+			method: "battery_discharge",
+		});
+		if (windows.length > 0) {
+			candidates.push({ method: "battery_discharge", windows });
+		}
 	}
-	if (windows.length === 0) {
-		windows = clockAstroWindows(
+	{
+		const windows = clockAstroWindows(
 			params.socPoints,
 			params.nightStart,
 			params.nightEnd,
 			params.astroDaily,
 		);
 		if (windows.length > 0) {
-			method = windows[0]!.method;
+			candidates.push({ method: windows[0]!.method, windows });
 		}
 	}
 
-	const pctDischarges: number[] = [];
-	const kwhDischarges: number[] = [];
-	const weights: number[] = [];
-	const bridgeHours: number[] = [];
+	function scoreWindows(windows: NightBridgeWindow[]): {
+		avgPct: number | null;
+		avgKwh: number | null;
+		validNights: number;
+		avgBridgeHours: number | null;
+	} {
+		const pctDischarges: number[] = [];
+		const kwhDischarges: number[] = [];
+		const weights: number[] = [];
+		const bridgeHours: number[] = [];
 
-	for (const w of windows) {
-		const socStart = findNearestSoc(params.socPoints, w.startTs, maxDelta);
-		const socEnd = findNearestSoc(params.socPoints, w.endTs, maxDelta);
-		if (socStart === null || socEnd === null) continue;
+		for (const w of windows) {
+			const socStart = findNearestSoc(params.socPoints, w.startTs, maxDelta);
+			const socEnd = findNearestSoc(params.socPoints, w.endTs, maxDelta);
+			if (socStart === null || socEnd === null) continue;
 
-		const dischargePct = socStart - socEnd;
-		/** Winter-Brücken können >40 % gehen — 50 war zu eng. */
-		if (dischargePct <= 0 || dischargePct > 65) continue;
+			const dischargePct = socStart - socEnd;
+			if (dischargePct <= 0 || dischargePct > 65) continue;
 
-		const ageDays = Math.max(0, (nowMs - w.endTs) / MS_PER_DAY);
-		const weight = recencyWeight(ageDays);
-		pctDischarges.push(round2(dischargePct));
-		weights.push(weight);
-		bridgeHours.push((w.endTs - w.startTs) / MS_PER_HOUR);
-		if (params.capacityKwh !== null) {
-			kwhDischarges.push(round3((dischargePct / 100) * params.capacityKwh));
+			const ageDays = Math.max(0, (nowMs - w.endTs) / MS_PER_DAY);
+			const weight = recencyWeight(ageDays);
+			pctDischarges.push(round2(dischargePct));
+			weights.push(weight);
+			bridgeHours.push((w.endTs - w.startTs) / MS_PER_HOUR);
+			if (params.capacityKwh !== null) {
+				kwhDischarges.push(round3((dischargePct / 100) * params.capacityKwh));
+			}
+		}
+
+		return {
+			avgPct: weightedAverage(pctDischarges, weights),
+			avgKwh:
+				params.capacityKwh !== null && kwhDischarges.length === weights.length
+					? weightedAverage(kwhDischarges, weights)
+					: null,
+			validNights: pctDischarges.length,
+			avgBridgeHours: average(bridgeHours),
+		};
+	}
+
+	function methodRank(m: NightBridgeWindow["method"]): number {
+		switch (m) {
+			case "pv_house":
+				return 0;
+			case "battery_discharge":
+				return 1;
+			case "astro":
+				return 2;
+			default:
+				return 3;
 		}
 	}
 
-	const avgPct = weightedAverage(pctDischarges, weights);
-	const avgKwh =
-		params.capacityKwh !== null && kwhDischarges.length === weights.length
-			? weightedAverage(kwhDischarges, weights)
-			: null;
+	/** belastbar bevorzugen; bei Gleichstand pv_house vor battery_discharge. */
+	function prefer(
+		a: ReturnType<typeof scoreWindows> & { method: NightBridgeWindow["method"] },
+		b: ReturnType<typeof scoreWindows> & { method: NightBridgeWindow["method"] },
+	): boolean {
+		const aOk = a.validNights >= MIN_VALID_NIGHTS;
+		const bOk = b.validNights >= MIN_VALID_NIGHTS;
+		if (aOk && bOk) {
+			if (a.method !== b.method) return methodRank(a.method) < methodRank(b.method);
+			return a.validNights >= b.validNights;
+		}
+		if (aOk !== bOk) return aOk;
+		if (a.validNights !== b.validNights) return a.validNights > b.validNights;
+		return methodRank(a.method) < methodRank(b.method);
+	}
+
+	let best: (ReturnType<typeof scoreWindows> & { method: NightBridgeWindow["method"] }) | null =
+		null;
+	for (const c of candidates) {
+		const scored = { ...scoreWindows(c.windows), method: c.method };
+		if (!best || prefer(scored, best)) {
+			best = scored;
+		}
+	}
+
+	if (!best) {
+		return {
+			avgPct: null,
+			avgKwh: null,
+			validNights: 0,
+			method: "none",
+			avgBridgeHours: null,
+		};
+	}
 
 	return {
-		avgPct,
-		avgKwh,
-		validNights: pctDischarges.length,
-		method,
-		avgBridgeHours: average(bridgeHours),
+		avgPct: best.avgPct,
+		avgKwh: best.avgKwh,
+		validNights: best.validNights,
+		method: best.method,
+		avgBridgeHours: best.avgBridgeHours,
 	};
 }
 
@@ -440,6 +503,7 @@ export function computeBatteryRuntimeLearning(params: {
 		powerHistoryMode: "",
 		nightBridgeMethod: night.method,
 		avgNightBridgeHours: night.avgBridgeHours,
+		nightBridgeValidNights: night.validNights,
 	};
 }
 
@@ -455,6 +519,7 @@ const EMPTY_POWER_DIAGNOSTICS = {
 	powerHistoryMode: "",
 	nightBridgeMethod: "none",
 	avgNightBridgeHours: null,
+	nightBridgeValidNights: 0,
 } as const;
 
 export function withPowerDiagnostics(

@@ -79,6 +79,11 @@ async function writeResult(
 			});
 		}
 	}
+	await setNumIfValid(
+		host,
+		"learning.battery_runtime.night_bridge_valid_nights",
+		result.nightBridgeValidNights,
+	);
 	await setNumIfValid(host, "learning.battery_runtime.avg_charge_power_w", result.avgChargePowerW);
 	await setNumIfValid(host, "learning.battery_runtime.max_charge_power_w", result.maxChargePowerW);
 	await host.setStateAsync("learning.battery_runtime.last_full_charge", {
@@ -210,7 +215,7 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 		});
 
 		host.log.info(
-			`Battery-Runtime-Learning: status=${result.status} method=${result.nightBridgeMethod} nights=${result.avgNightDischargePct ?? "n/a"}% kwh=${result.avgNightDischargeKwh ?? "n/a"} bridgeH=${result.avgNightBridgeHours ?? "n/a"} samples=${result.sampleDays} pvPts=${pvPowerPoints.length} housePts=${housePowerPoints.length} pvOrigin=${pvOrigin} pvSrc=${sourceLabelFromStateId(sources.pvAcPowerStateId)} houseSrc=${sourceLabelFromStateId(sources.consumptionStateId)}`,
+			`Battery-Runtime-Learning: status=${result.status} method=${result.nightBridgeMethod} validNights=${result.nightBridgeValidNights} nights=${result.avgNightDischargePct ?? "n/a"}% kwh=${result.avgNightDischargeKwh ?? "n/a"} bridgeH=${result.avgNightBridgeHours ?? "n/a"} samples=${result.sampleDays} pvPts=${pvPowerPoints.length} housePts=${housePowerPoints.length} pvOrigin=${pvOrigin} pvSrc=${sourceLabelFromStateId(sources.pvAcPowerStateId)} houseSrc=${sourceLabelFromStateId(sources.consumptionStateId)}`,
 		);
 		host.log.debug?.(
 			`Battery-Runtime-Learning detail: full_src=${result.fullChargeSource ?? "—"} sec_since_full=${result.secondsSinceFullCharge ?? "—"} days_since_full=${result.daysSinceFull ?? "—"} soc=${sourceLabelFromStateId(sources.socStateId)} power=${sourceLabelFromStateId(sources.powerStateId)} invert=${result.powerInvertApplied === null ? "—" : result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? "(auto)" : ""}`,

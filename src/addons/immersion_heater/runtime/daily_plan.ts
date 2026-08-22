@@ -8,6 +8,7 @@ import { slotStartIsoFloored, slotKey, DAILY_PLAN_SLOT_MS } from "../../../opera
 import { isoFromMs, isValidIsoTimestamp, localDateKeyInTimezone } from "../../../operator/time";
 import type { DailyAllocationEntry, DailyPlan, DailyPlanStatus, AllocationStatus } from "../../../operator/daily_plan/types";
 import type { ImmersionDeviceConfig } from "./types";
+import type { ImmersionLiveSurplusHoldResult } from "./live_surplus_hold";
 
 const ACTIVE_ALLOCATION_STATUSES = new Set<AllocationStatus>(["allocated", "partially_allocated"]);
 
@@ -340,6 +341,8 @@ export interface ResolveDailyPlanInput {
 	 * wenn dort weiterhin Allocation liegt.
 	 */
 	continueHeating?: boolean;
+	/** Anhaltender Live-PV-Überschuss — Durchlauf über 0-W-Slots (Anti-Relais-Takten). */
+	liveSurplusHold?: ImmersionLiveSurplusHoldResult | null;
 }
 
 function attachThermalTarget(
@@ -480,6 +483,22 @@ export function resolveImmersionDailyPlanFromData(input: ResolveDailyPlanInput):
 		}
 	}
 
+	if (
+		continueHeating &&
+		stagePick.stageIndex <= 0 &&
+		input.liveSurplusHold?.active === true &&
+		input.liveSurplusHold.stageIndex != null &&
+		input.liveSurplusHold.stagePowerW != null &&
+		input.liveSurplusHold.stagePowerW > 0
+	) {
+		cappedPowerW = input.liveSurplusHold.stagePowerW;
+		stagePick = {
+			stageIndex: input.liveSurplusHold.stageIndex,
+			reasonDe: input.liveSurplusHold.reasonDe,
+		};
+		allocationBridgeDe = input.liveSurplusHold.reasonDe;
+	}
+
 	const executableStage = stagePick.stageIndex > 0;
 
 	// Nutzbarer Daily Plan + aufgelöster Slot: Plan besitzt die Steuerung.
@@ -574,7 +593,7 @@ export async function resolveImmersionDailyPlanAllocation(
 	host: DailyPlanReadHost,
 	config: ImmersionDeviceConfig,
 	now: Date,
-	opts?: { continueHeating?: boolean },
+	opts?: { continueHeating?: boolean; liveSurplusHold?: ImmersionLiveSurplusHoldResult | null },
 ): Promise<ImmersionDailyPlanResolution> {
 	const { meta, entries, thermalTarget } = await loadPlanData(host);
 
@@ -610,6 +629,7 @@ export async function resolveImmersionDailyPlanAllocation(
 		config,
 		thermalTarget,
 		continueHeating: opts?.continueHeating === true,
+		liveSurplusHold: opts?.liveSurplusHold ?? null,
 	});
 }
 

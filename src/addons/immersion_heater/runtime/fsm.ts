@@ -29,6 +29,8 @@ export interface FsmInput {
 	config: ImmersionDeviceConfig;
 	faultLockout: boolean;
 	faultCode: ImmersionFaultCode;
+	/** Live-PV-Überschuss hält Heizstab — Mindestpause nicht blockieren. */
+	liveSurplusHoldActive?: boolean;
 }
 
 export interface FsmOutput {
@@ -67,6 +69,7 @@ export function runImmersionFsm(input: FsmInput): FsmOutput {
 		config,
 		faultLockout,
 		faultCode,
+		liveSurplusHoldActive,
 	} = input;
 
 	const base: FsmOutput = {
@@ -241,7 +244,12 @@ export function runImmersionFsm(input: FsmInput): FsmOutput {
 		const desiredCfg = config.stages.find((s) => s.index === desiredStage && s.enabled);
 
 		if (desiredStage > 0 && desiredCfg && desiredCfg.nominalPowerW > 0 && desiredCfg.setStateId) {
-			if (persist.commandedStage <= 0 && persist.pauseUntilMs !== null && nowMs < persist.pauseUntilMs) {
+			if (
+				persist.commandedStage <= 0 &&
+				persist.pauseUntilMs !== null &&
+				nowMs < persist.pauseUntilMs &&
+				liveSurplusHoldActive !== true
+			) {
 				return {
 					...base,
 					state: "auto_ready",

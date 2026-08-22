@@ -52,6 +52,7 @@ import {
 	type ImmersionDecisionSource,
 } from "./daily_plan";
 import { resolveAuthoritativeThermalTarget } from "./thermal_target_authority";
+import { computeImmersionLiveSurplusHold } from "./live_surplus_hold";
 import { DAILY_PLAN_STATE_IDS, ALLOCATION_ADDON_STATE_IDS } from "../../../operator/daily_plan/states";
 import {
 	forceTargetFromIntent,
@@ -470,6 +471,7 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 	let autoDecisionSource: ImmersionDecisionSource = "thermal_fallback";
 	let dailyPlanContext: ImmersionDailyPlanResolution | null = null;
 	let plannerCommandedStage = 0;
+	let liveSurplusHoldActive = false;
 	const forecastPlanTarget = await resolveImmersionPlanTarget(
 		host,
 		config,
@@ -482,14 +484,46 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 		plannerCommandedStage = 0;
 		autoDecisionSource = "safe_default";
 	} else if (resolvedMode === "auto") {
+		const continueHeating = persist.commandedStage > 0 || lastCommandedStage > 0;
+		const pvPowerW =
+			(await readLocalNum(host, "live.pv.power_w")) ??
+			(await readLocalNum(host, "live.battery.pv_ac_power_w"));
+		const houseLoadW = await readLocalNum(host, "live.battery.house_load_w");
+		const activeStageNominalW =
+			config.stages.find((s) => s.index === persist.commandedStage && s.enabled)?.nominalPowerW ??
+			config.stages.find((s) => s.index === lastCommandedStage && s.enabled)?.nominalPowerW ??
+			0;
+		const ihOnPowerW =
+			measuredPower !== null && measuredPower > config.powerOnThresholdW
+				? measuredPower
+				: continueHeating && activeStageNominalW > 0
+					? activeStageNominalW
+					: null;
+		const liveSurplusHold = computeImmersionLiveSurplusHold({
+			pvPowerW,
+			houseLoadW,
+			immersionOnPowerW: ihOnPowerW,
+			bufferTempC: temperature.valueC,
+			targetTempC: forecastPlanTarget.targetTempC,
+			planningMaxTempC: config.planningMaxTempC,
+			continueHeating,
+			config,
+		});
+		if (liveSurplusHold.active && persist.pauseUntilMs !== null) {
+			persist.pauseUntilMs = null;
+		}
+
 		dailyPlanContext = await resolveImmersionDailyPlanAllocation(host, config, now, {
-			continueHeating: persist.commandedStage > 0 || lastCommandedStage > 0,
+			continueHeating,
+			liveSurplusHold,
 		});
 		lastDailyPlanContext = dailyPlanContext;
 		if (dailyPlanContext.useDailyPlan) {
 			// Daily Plan besitzt den Slot: Stufe aus Allocation (0 = absichtlich aus).
 			plannerCommandedStage = dailyPlanContext.commandedStage;
 			autoDecisionSource = "daily_plan";
+			liveSurplusHoldActive =
+				liveSurplusHold.active && liveSurplusHold.stageIndex === dailyPlanContext.commandedStage;
 		} else {
 			// One-Plan: ohne gültigen Daily Plan kein lokales Heizen.
 			plannerCommandedStage = 0;
@@ -532,6 +566,7 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 		config,
 		faultLockout: persist.faultLockout,
 		faultCode: persist.faultCode,
+		liveSurplusHoldActive,
 	});
 
 	if (fsm.autoRevertToAuto) {
@@ -561,8 +596,12 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 			if (stageChanged) {
 				if (effectiveStage === 0) {
 					persist.lastOffAtMs = nowMs;
-					pauseSetOnOffMs = nowMs + Math.max(0, config.minimumPauseSec) * 1000;
-					persist.pauseUntilMs = pauseSetOnOffMs;
+					if (!liveSurplusHoldActive) {
+						pauseSetOnOffMs = nowMs + Math.max(0, config.minimumPauseSec) * 1000;
+						persist.pauseUntilMs = pauseSetOnOffMs;
+					} else {
+						persist.pauseUntilMs = null;
+					}
 				} else {
 					persist.lastSwitchAtMs = nowMs;
 				}

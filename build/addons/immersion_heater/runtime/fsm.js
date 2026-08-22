@@ -4,7 +4,7 @@ exports.controlModeToOperatingRequest = exports.operatingRequestToControlMode = 
 const device_config_1 = require("../device_config");
 const reheat_hysteresis_1 = require("./reheat_hysteresis");
 function runImmersionFsm(input) {
-    const { nowMs, addonEnabled, addonAvailable, configValid, failsafeActive, resolvedMode, forceTargetTempC, forceUntilMs, plannerCommandedStage, plannerTargetTempC, temperature, measuredPowerW, hasPowerMeasurement, persist, config, faultLockout, faultCode, } = input;
+    const { nowMs, addonEnabled, addonAvailable, configValid, failsafeActive, resolvedMode, forceTargetTempC, forceUntilMs, plannerCommandedStage, plannerTargetTempC, temperature, measuredPowerW, hasPowerMeasurement, persist, config, faultLockout, faultCode, liveSurplusHoldActive, } = input;
     const base = {
         state: "off",
         available: false,
@@ -152,7 +152,10 @@ function runImmersionFsm(input) {
         }
         const desiredCfg = config.stages.find((s) => s.index === desiredStage && s.enabled);
         if (desiredStage > 0 && desiredCfg && desiredCfg.nominalPowerW > 0 && desiredCfg.setStateId) {
-            if (persist.commandedStage <= 0 && persist.pauseUntilMs !== null && nowMs < persist.pauseUntilMs) {
+            if (persist.commandedStage <= 0 &&
+                persist.pauseUntilMs !== null &&
+                nowMs < persist.pauseUntilMs &&
+                liveSurplusHoldActive !== true) {
                 return {
                     ...base,
                     state: "auto_ready",

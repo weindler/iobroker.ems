@@ -136,6 +136,32 @@ const CFG = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({
         strict_1.default.equal(r.commandedStage, 1);
         strict_1.default.equal(r.commandedPowerW, 3000);
     });
+    (0, node_test_1.it)("auto live surplus hold bypasses minimum pause when planner wants heat", () => {
+        const r = (0, fsm_js_1.runImmersionFsm)({
+            nowMs: NOW,
+            addonEnabled: true,
+            addonAvailable: true,
+            configValid: true,
+            executionLive: false,
+            failsafeActive: false,
+            resolvedMode: "auto",
+            forceTargetTempC: null,
+            forceUntilMs: null,
+            plannerCommandedStage: 1,
+            plannerTargetTempC: 58,
+            temperature: { valueC: 50, status: "valid", observedAtMs: NOW },
+            measuredPowerW: 0,
+            hasPowerMeasurement: false,
+            persist: { ...(0, persist_js_1.emptyPersist)(), pauseUntilMs: NOW + 120_000 },
+            config: CFG,
+            faultLockout: false,
+            faultCode: "none",
+            liveSurplusHoldActive: true,
+        });
+        strict_1.default.equal(r.state, "auto_heating");
+        strict_1.default.equal(r.commandedStage, 1);
+        strict_1.default.notEqual(r.reason, "auto_minimum_pause");
+    });
     (0, node_test_1.it)("auto planner target stops heating below hard max", () => {
         const r = (0, fsm_js_1.runImmersionFsm)({
             nowMs: NOW,

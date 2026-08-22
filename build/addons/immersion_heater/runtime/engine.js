@@ -25,6 +25,7 @@ const types_1 = require("./types");
 const persist_1 = require("./persist");
 const daily_plan_1 = require("./daily_plan");
 const thermal_target_authority_1 = require("./thermal_target_authority");
+const live_surplus_hold_1 = require("./live_surplus_hold");
 const states_1 = require("../../../operator/daily_plan/states");
 const intent_read_1 = require("./intent_read");
 const feedback_1 = require("./feedback");
@@ -366,20 +367,49 @@ async function runImmersionRuntimeTick(host) {
     let autoDecisionSource = "thermal_fallback";
     let dailyPlanContext = null;
     let plannerCommandedStage = 0;
+    let liveSurplusHoldActive = false;
     const forecastPlanTarget = await resolveImmersionPlanTarget(host, config, temperature.valueC, resolvedMode, forceTarget);
     if (executionOff) {
         plannerCommandedStage = 0;
         autoDecisionSource = "safe_default";
     }
     else if (resolvedMode === "auto") {
+        const continueHeating = persist.commandedStage > 0 || lastCommandedStage > 0;
+        const pvPowerW = (await readLocalNum(host, "live.pv.power_w")) ??
+            (await readLocalNum(host, "live.battery.pv_ac_power_w"));
+        const houseLoadW = await readLocalNum(host, "live.battery.house_load_w");
+        const activeStageNominalW = config.stages.find((s) => s.index === persist.commandedStage && s.enabled)?.nominalPowerW ??
+            config.stages.find((s) => s.index === lastCommandedStage && s.enabled)?.nominalPowerW ??
+            0;
+        const ihOnPowerW = measuredPower !== null && measuredPower > config.powerOnThresholdW
+            ? measuredPower
+            : continueHeating && activeStageNominalW > 0
+                ? activeStageNominalW
+                : null;
+        const liveSurplusHold = (0, live_surplus_hold_1.computeImmersionLiveSurplusHold)({
+            pvPowerW,
+            houseLoadW,
+            immersionOnPowerW: ihOnPowerW,
+            bufferTempC: temperature.valueC,
+            targetTempC: forecastPlanTarget.targetTempC,
+            planningMaxTempC: config.planningMaxTempC,
+            continueHeating,
+            config,
+        });
+        if (liveSurplusHold.active && persist.pauseUntilMs !== null) {
+            persist.pauseUntilMs = null;
+        }
         dailyPlanContext = await (0, daily_plan_1.resolveImmersionDailyPlanAllocation)(host, config, now, {
-            continueHeating: persist.commandedStage > 0 || lastCommandedStage > 0,
+            continueHeating,
+            liveSurplusHold,
         });
         lastDailyPlanContext = dailyPlanContext;
         if (dailyPlanContext.useDailyPlan) {
             // Daily Plan besitzt den Slot: Stufe aus Allocation (0 = absichtlich aus).
             plannerCommandedStage = dailyPlanContext.commandedStage;
             autoDecisionSource = "daily_plan";
+            liveSurplusHoldActive =
+                liveSurplusHold.active && liveSurplusHold.stageIndex === dailyPlanContext.commandedStage;
         }
         else {
             // One-Plan: ohne gültigen Daily Plan kein lokales Heizen.
@@ -420,6 +450,7 @@ async function runImmersionRuntimeTick(host) {
         config,
         faultLockout: persist.faultLockout,
         faultCode: persist.faultCode,
+        liveSurplusHoldActive,
     });
     if (fsm.autoRevertToAuto) {
         resolvedMode = "auto";
@@ -444,8 +475,13 @@ async function runImmersionRuntimeTick(host) {
             if (stageChanged) {
                 if (effectiveStage === 0) {
                     persist.lastOffAtMs = nowMs;
-                    pauseSetOnOffMs = nowMs + Math.max(0, config.minimumPauseSec) * 1000;
-                    persist.pauseUntilMs = pauseSetOnOffMs;
+                    if (!liveSurplusHoldActive) {
+                        pauseSetOnOffMs = nowMs + Math.max(0, config.minimumPauseSec) * 1000;
+                        persist.pauseUntilMs = pauseSetOnOffMs;
+                    }
+                    else {
+                        persist.pauseUntilMs = null;
+                    }
                 }
                 else {
                     persist.lastSwitchAtMs = nowMs;

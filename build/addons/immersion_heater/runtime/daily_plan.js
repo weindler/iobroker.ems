@@ -351,6 +351,19 @@ function resolveImmersionDailyPlanFromData(input) {
             }
         }
     }
+    if (continueHeating &&
+        stagePick.stageIndex <= 0 &&
+        input.liveSurplusHold?.active === true &&
+        input.liveSurplusHold.stageIndex != null &&
+        input.liveSurplusHold.stagePowerW != null &&
+        input.liveSurplusHold.stagePowerW > 0) {
+        cappedPowerW = input.liveSurplusHold.stagePowerW;
+        stagePick = {
+            stageIndex: input.liveSurplusHold.stageIndex,
+            reasonDe: input.liveSurplusHold.reasonDe,
+        };
+        allocationBridgeDe = input.liveSurplusHold.reasonDe;
+    }
     const executableStage = stagePick.stageIndex > 0;
     // Nutzbarer Daily Plan + aufgelöster Slot: Plan besitzt die Steuerung.
     // 0 W oder Leistung unter der kleinsten Stufe = absichtlich aus — kein Thermal-Fallback.
@@ -455,6 +468,7 @@ async function resolveImmersionDailyPlanAllocation(host, config, now, opts) {
         config,
         thermalTarget,
         continueHeating: opts?.continueHeating === true,
+        liveSurplusHold: opts?.liveSurplusHold ?? null,
     });
 }
 exports.resolveImmersionDailyPlanAllocation = resolveImmersionDailyPlanAllocation;

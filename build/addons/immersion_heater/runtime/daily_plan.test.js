@@ -10,6 +10,7 @@ const contributor_1 = require("../../../operator/contributor");
 const slots_1 = require("../../../operator/daily_plan/slots");
 const device_config_js_1 = require("../device_config.js");
 const daily_plan_js_1 = require("./daily_plan.js");
+const live_surplus_hold_js_1 = require("./live_surplus_hold.js");
 const TZ = "UTC";
 const NOW = new Date("2026-07-11T10:07:00.000Z");
 const SLOT_START = (0, slots_1.slotStartIsoFloored)(NOW, TZ);
@@ -157,6 +158,31 @@ function allocationEntry(contributionId, allocatedPowerW, status = "allocated") 
         strict_1.default.equal(hold.commandedStage, 1);
         strict_1.default.equal(hold.dailyPlanStatus, "daily_plan_valid");
         strict_1.default.match(hold.allocationReasonDe, /Slot-Brücke|Anti-Takten/);
+    });
+    (0, node_test_1.it)("liveSurplusHold bridges zero NOW-slot when surplus persists (no next slot allocation)", () => {
+        const holdInput = (0, live_surplus_hold_js_1.computeImmersionLiveSurplusHold)({
+            pvPowerW: 5000,
+            houseLoadW: 3000,
+            immersionOnPowerW: 1700,
+            bufferTempC: 45,
+            targetTempC: 58,
+            planningMaxTempC: 65,
+            continueHeating: true,
+            config: MULTI_STAGE_CFG,
+        });
+        strict_1.default.equal(holdInput.active, true);
+        const off = (0, daily_plan_js_1.resolveImmersionDailyPlanFromData)({
+            now: NOW,
+            timezone: TZ,
+            meta: { status: "ready", date: "2026-07-11", revision: 1, validUntil: null, timezone: TZ },
+            entries: [],
+            config: MULTI_STAGE_CFG,
+            continueHeating: true,
+            liveSurplusHold: holdInput,
+        });
+        strict_1.default.equal(off.commandedStage, 1);
+        strict_1.default.equal(off.dailyPlanStatus, "daily_plan_valid");
+        strict_1.default.match(off.allocationReasonDe, /Live-PV-Überschuss|Durchlauf/);
     });
     (0, node_test_1.it)("allocation below smallest stage is Daily Plan off (not thermal fallback)", () => {
         const r = (0, daily_plan_js_1.resolveImmersionDailyPlanFromData)({

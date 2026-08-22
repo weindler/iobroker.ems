@@ -13,6 +13,7 @@ import {
 	stageIndexForMaxPowerW,
 	resetImmersionDailyPlanCache,
 } from "./daily_plan.js";
+import { computeImmersionLiveSurplusHold } from "./live_surplus_hold.js";
 
 const TZ = "UTC";
 const NOW = new Date("2026-07-11T10:07:00.000Z");
@@ -206,6 +207,32 @@ describe("immersion daily plan reader", () => {
 		assert.equal(hold.commandedStage, 1);
 		assert.equal(hold.dailyPlanStatus, "daily_plan_valid");
 		assert.match(hold.allocationReasonDe, /Slot-Brücke|Anti-Takten/);
+	});
+
+	it("liveSurplusHold bridges zero NOW-slot when surplus persists (no next slot allocation)", () => {
+		const holdInput = computeImmersionLiveSurplusHold({
+			pvPowerW: 5000,
+			houseLoadW: 3000,
+			immersionOnPowerW: 1700,
+			bufferTempC: 45,
+			targetTempC: 58,
+			planningMaxTempC: 65,
+			continueHeating: true,
+			config: MULTI_STAGE_CFG,
+		});
+		assert.equal(holdInput.active, true);
+		const off = resolveImmersionDailyPlanFromData({
+			now: NOW,
+			timezone: TZ,
+			meta: { status: "ready", date: "2026-07-11", revision: 1, validUntil: null, timezone: TZ },
+			entries: [],
+			config: MULTI_STAGE_CFG,
+			continueHeating: true,
+			liveSurplusHold: holdInput,
+		});
+		assert.equal(off.commandedStage, 1);
+		assert.equal(off.dailyPlanStatus, "daily_plan_valid");
+		assert.match(off.allocationReasonDe, /Live-PV-Überschuss|Durchlauf/);
 	});
 
 	it("allocation below smallest stage is Daily Plan off (not thermal fallback)", () => {

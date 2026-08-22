@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.329",
+		"version": "0.1.330",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.330": {
+				"en": "Immersion heater: while live PV surplus persists, runtime holds heating through 0 W plan slots — avoids ~10 min relay on/off cycles from min runtime and pause.",
+				"de": "Heizstab: bei anhaltendem Live-PV-Überschuss Durchlauf über 0-W-Plan-Slots — kein Relais-Takten alle ~10 Min durch Mindestlaufzeit und Pause."
+			},
 			"0.1.329": {
 				"en": "Admin: bold history.0 hint for bat_pv_ac (PV-AC night bridge); Battery Runtime lookback as 30/60/90/120/180/365-day select with retention note.",
 				"de": "Admin: fetter history.0-Hinweis für bat_pv_ac (PV-AC-Nachtbrücke); Battery-Runtime-Lookback als Auswahl 30/60/90/120/180/365 Tage inkl. Retention-Hinweis."

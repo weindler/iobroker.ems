@@ -209,6 +209,23 @@ function hassTable() {
         strict_1.default.match(String(merged.ac_u1_cmd_set_cool_setpoint_target), /set_temperature/);
         strict_1.default.equal(merged.ac_u1_cmd_cleaning_off_enabled, true);
     });
+    (0, node_test_1.it)("scheduleLocalthingsPrefillPersist does not call updateConfig before bootstrap complete", async () => {
+        const { resetBootstrapBarrierForTest, markBootstrapComplete } = await import("../../../bootstrap/barrier.js");
+        const { scheduleLocalthingsPrefillPersist, clearLocalthingsPrefillPersistTimer } = await import("../profiles/localthings_prefill.js");
+        resetBootstrapBarrierForTest();
+        clearLocalthingsPrefillPersistTimer();
+        let calls = 0;
+        scheduleLocalthingsPrefillPersist({
+            log: { info: () => undefined, warn: () => undefined },
+            updateConfig: async () => {
+                calls += 1;
+            },
+        }, { ac_u1_profile: "samsung_localthings_hass" });
+        await new Promise((r) => setTimeout(r, 50));
+        strict_1.default.equal(calls, 0, "kein updateConfig während Bootstrap");
+        clearLocalthingsPrefillPersistTimer();
+        markBootstrapComplete();
+    });
     (0, node_test_1.it)("derive mappings from climate entity base", () => {
         const d = (0, localthings_presets_js_1.deriveLocalthingsMappingsFromClimateBase)("hass.0.entities.climate.foo_bar.state");
         strict_1.default.equal(d.cmd_switch_on, "hass.0.entities.climate.foo_bar.turn_on");

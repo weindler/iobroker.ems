@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.331",
+		"version": "0.1.332",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.332": {
+				"en": "Fix: LocalThings AC prefill no longer calls updateConfig during bootstrap (avoid Redis DB closed / null host crash). Prefill applies in-memory then persists after bootstrap.",
+				"de": "Fix: LocalThings-AC-Prefill ruft updateConfig nicht mehr während des Bootstraps auf (kein Redis-DB-closed-/Null-Host-Crash). Prefill zuerst im Speicher, Persist erst nach Bootstrap."
+			},
 			"0.1.331": {
 				"en": "AC: new device profile Samsung LocalThings (Home Assistant) with hass.0 JSON writes, optional filter/power/auto-clean mappings, site prefill for existing units; SmartThings unchanged. Battery learning: stop writing ballast avg_night_discharge_pct (log warning).",
 				"de": "Klima: neues Geräteprofil Samsung LocalThings (Home Assistant) mit hass.0-JSON-Writes, optionalen Filter-/Leistungs-/Auto-Clean-Mappings, Prefill für bestehende Geräte; SmartThings unverändert. Battery-Learning: Ballast avg_night_discharge_pct nicht mehr schreiben (Log-Warnung)."

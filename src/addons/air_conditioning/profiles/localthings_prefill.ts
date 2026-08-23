@@ -1,4 +1,5 @@
 import { AC_UNIT_COUNT, acMappingFlatPrefix, type AcMappingRole, type AcProfileId } from "../constants";
+import { isBootstrapComplete } from "../../../bootstrap/barrier";
 import { isLocalthingsHassProfile } from "./registry";
 import {
 	deriveLocalthingsMappingsFromClimateBase,
@@ -100,6 +101,54 @@ export function mergeLocalthingsPrefillIntoConfig(config: unknown): Record<strin
 	const patch = buildLocalthingsPrefillPatch(c);
 	if (!patch) return c;
 	return { ...c, ...patch };
+}
+
+export type PrefillPersistHost = {
+	log: { info: (msg: string) => void; warn: (msg: string) => void };
+	updateConfig?: (newConfig: Record<string, unknown>) => Promise<unknown>;
+};
+
+let prefillPersistTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Tests / Stop: ausstehenden Prefill-Persist abbrechen. */
+export function clearLocalthingsPrefillPersistTimer(): void {
+	if (prefillPersistTimer) {
+		clearTimeout(prefillPersistTimer);
+		prefillPersistTimer = null;
+	}
+}
+
+/**
+ * updateConfig erst NACH Bootstrap — sonst stirbt die Instanz mitten in ems-light runtime
+ * (Redis „DB closed“, Host null).
+ */
+export function scheduleLocalthingsPrefillPersist(
+	host: PrefillPersistHost,
+	mergedConfig: Record<string, unknown>,
+): void {
+	if (typeof host.updateConfig !== "function") return;
+	clearLocalthingsPrefillPersistTimer();
+	const attempt = (): void => {
+		prefillPersistTimer = null;
+		if (!isBootstrapComplete()) {
+			prefillPersistTimer = setTimeout(attempt, 1_000);
+			return;
+		}
+		void host
+			.updateConfig!(mergedConfig)
+			.then(() => {
+				host.log.info(
+					"air_conditioning: LocalThings Prefill in Admin-Config gespeichert (Instanz startet neu)",
+				);
+			})
+			.catch((e) => {
+				host.log.warn(
+					`air_conditioning: LocalThings Prefill speichern fehlgeschlagen: ${e instanceof Error ? e.message : e}`,
+				);
+			});
+	};
+	// Kurze Pause nach Bootstrap-Ende, damit post-bootstrap fertig werden kann.
+	prefillPersistTimer = setTimeout(attempt, 2_000);
 }
 
 export type PrefillProfileId = AcProfileId;

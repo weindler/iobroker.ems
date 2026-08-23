@@ -47,7 +47,8 @@ const sourceRuntimes = new Map<string, SourceRuntime>();
 const subscribedStateIds = new Set<string>();
 let persistDirty = false;
 
-function baseDir(host: { getAbsolutePath?: (category?: string) => string }): string | undefined {
+function baseDir(host: { getAbsolutePath?: (category?: string) => string } | null | undefined): string | undefined {
+	if (!host) return undefined;
 	return host.getAbsolutePath?.(PERSIST_CATEGORY);
 }
 
@@ -247,6 +248,9 @@ async function syncSources(host: PowerRollupHost): Promise<ResolvedDensePowerSou
 }
 
 export async function initPowerRollup(host: PowerRollupHost): Promise<void> {
+	if (!host) {
+		return;
+	}
 	rollupHost = host;
 	persistCache = null;
 	sourceRuntimes.clear();

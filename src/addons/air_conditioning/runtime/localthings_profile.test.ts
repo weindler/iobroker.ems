@@ -242,6 +242,31 @@ describe("AC LocalThings / SmartThings profile abstraction", () => {
 		assert.equal(merged.ac_u1_cmd_cleaning_off_enabled, true);
 	});
 
+	it("scheduleLocalthingsPrefillPersist does not call updateConfig before bootstrap complete", async () => {
+		const { resetBootstrapBarrierForTest, markBootstrapComplete } = await import(
+			"../../../bootstrap/barrier.js"
+		);
+		const { scheduleLocalthingsPrefillPersist, clearLocalthingsPrefillPersistTimer } = await import(
+			"../profiles/localthings_prefill.js"
+		);
+		resetBootstrapBarrierForTest();
+		clearLocalthingsPrefillPersistTimer();
+		let calls = 0;
+		scheduleLocalthingsPrefillPersist(
+			{
+				log: { info: () => undefined, warn: () => undefined },
+				updateConfig: async () => {
+					calls += 1;
+				},
+			},
+			{ ac_u1_profile: "samsung_localthings_hass" },
+		);
+		await new Promise((r) => setTimeout(r, 50));
+		assert.equal(calls, 0, "kein updateConfig während Bootstrap");
+		clearLocalthingsPrefillPersistTimer();
+		markBootstrapComplete();
+	});
+
 	it("derive mappings from climate entity base", () => {
 		const d = deriveLocalthingsMappingsFromClimateBase(
 			"hass.0.entities.climate.foo_bar.state",

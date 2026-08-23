@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.mergeLocalthingsPrefillIntoConfig = exports.buildLocalthingsPrefillPatch = void 0;
+exports.scheduleLocalthingsPrefillPersist = exports.clearLocalthingsPrefillPersistTimer = exports.mergeLocalthingsPrefillIntoConfig = exports.buildLocalthingsPrefillPatch = void 0;
 const constants_1 = require("../constants");
+const barrier_1 = require("../../../bootstrap/barrier");
 const registry_1 = require("./registry");
 const localthings_presets_1 = require("./localthings_presets");
 function configRecord(config) {
@@ -90,3 +91,39 @@ function mergeLocalthingsPrefillIntoConfig(config) {
     return { ...c, ...patch };
 }
 exports.mergeLocalthingsPrefillIntoConfig = mergeLocalthingsPrefillIntoConfig;
+let prefillPersistTimer = null;
+/** Tests / Stop: ausstehenden Prefill-Persist abbrechen. */
+function clearLocalthingsPrefillPersistTimer() {
+    if (prefillPersistTimer) {
+        clearTimeout(prefillPersistTimer);
+        prefillPersistTimer = null;
+    }
+}
+exports.clearLocalthingsPrefillPersistTimer = clearLocalthingsPrefillPersistTimer;
+/**
+ * updateConfig erst NACH Bootstrap — sonst stirbt die Instanz mitten in ems-light runtime
+ * (Redis „DB closed“, Host null).
+ */
+function scheduleLocalthingsPrefillPersist(host, mergedConfig) {
+    if (typeof host.updateConfig !== "function")
+        return;
+    clearLocalthingsPrefillPersistTimer();
+    const attempt = () => {
+        prefillPersistTimer = null;
+        if (!(0, barrier_1.isBootstrapComplete)()) {
+            prefillPersistTimer = setTimeout(attempt, 1_000);
+            return;
+        }
+        void host
+            .updateConfig(mergedConfig)
+            .then(() => {
+            host.log.info("air_conditioning: LocalThings Prefill in Admin-Config gespeichert (Instanz startet neu)");
+        })
+            .catch((e) => {
+            host.log.warn(`air_conditioning: LocalThings Prefill speichern fehlgeschlagen: ${e instanceof Error ? e.message : e}`);
+        });
+    };
+    // Kurze Pause nach Bootstrap-Ende, damit post-bootstrap fertig werden kann.
+    prefillPersistTimer = setTimeout(attempt, 2_000);
+}
+exports.scheduleLocalthingsPrefillPersist = scheduleLocalthingsPrefillPersist;

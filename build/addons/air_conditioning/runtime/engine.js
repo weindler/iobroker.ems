@@ -789,15 +789,9 @@ async function initAcRuntimeEngine(host) {
     if (prefill) {
         const merged = { ...configRecord, ...prefill };
         const nTargets = Object.keys(prefill).filter((k) => k.endsWith("_target")).length;
-        host.log.info(`air_conditioning: LocalThings Prefill — ${nTargets} Mapping-Felder (leere/SmartThings → hass.0)`);
-        if (typeof host.updateConfig === "function") {
-            await host.updateConfig(merged);
-            // updateConfig startet typischerweise die Instanz neu — Engine hier beenden.
-            engineActive = false;
-            hostRef = null;
-            return;
-        }
         host.config = merged;
+        host.log.info(`air_conditioning: LocalThings Prefill (Speicher) — ${nTargets} Mapping-Felder; Persist nach Bootstrap`);
+        (0, localthings_prefill_1.scheduleLocalthingsPrefillPersist)(host, merged);
     }
     await (0, ensure_states_1.ensureAcRuntimeStates)(host);
     for (const i of (0, configured_1.configuredAcUnitIndexes)(host.config)) {
@@ -845,6 +839,7 @@ async function initAcRuntimeEngine(host) {
 }
 exports.initAcRuntimeEngine = initAcRuntimeEngine;
 function stopAcRuntimeEngine() {
+    (0, localthings_prefill_1.clearLocalthingsPrefillPersistTimer)();
     const host = hostRef;
     clearTick();
     if (host) {

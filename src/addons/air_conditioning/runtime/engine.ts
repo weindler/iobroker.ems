@@ -35,7 +35,7 @@ import { configuredAcUnitIndexes } from "../configured";
 import { acCleaningAfterPurpose, acEstimatedPowerForPurpose, acGlobalConfigFromAdapter, acModeCommandEnabled } from "../config";
 import type { AcUnitConfig } from "../types";
 import { getAcProfile, isLocalthingsHassProfile } from "../profiles/registry";
-import { buildLocalthingsPrefillPatch } from "../profiles/localthings_prefill";
+import { buildLocalthingsPrefillPatch, scheduleLocalthingsPrefillPersist, clearLocalthingsPrefillPersistTimer } from "../profiles/localthings_prefill";
 import { resolveLocalthingsMeasuredPowerW } from "../profiles/localthings_power";
 import { modeStringsForPurpose, optionalStep } from "../profiles/types";
 import type { AcUnitModePurpose } from "../types";
@@ -1124,17 +1124,11 @@ export async function initAcRuntimeEngine(host: AcRuntimeHost): Promise<void> {
 	if (prefill) {
 		const merged = { ...configRecord, ...prefill };
 		const nTargets = Object.keys(prefill).filter((k) => k.endsWith("_target")).length;
-		host.log.info(
-			`air_conditioning: LocalThings Prefill — ${nTargets} Mapping-Felder (leere/SmartThings → hass.0)`,
-		);
-		if (typeof host.updateConfig === "function") {
-			await host.updateConfig(merged);
-			// updateConfig startet typischerweise die Instanz neu — Engine hier beenden.
-			engineActive = false;
-			hostRef = null;
-			return;
-		}
 		host.config = merged;
+		host.log.info(
+			`air_conditioning: LocalThings Prefill (Speicher) — ${nTargets} Mapping-Felder; Persist nach Bootstrap`,
+		);
+		scheduleLocalthingsPrefillPersist(host, merged);
 	}
 
 	await ensureAcRuntimeStates(host);
@@ -1180,6 +1174,7 @@ export async function initAcRuntimeEngine(host: AcRuntimeHost): Promise<void> {
 }
 
 export function stopAcRuntimeEngine(): void {
+	clearLocalthingsPrefillPersistTimer();
 	const host = hostRef;
 	clearTick();
 	if (host) {

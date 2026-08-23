@@ -16,6 +16,8 @@ const sourceRuntimes = new Map();
 const subscribedStateIds = new Set();
 let persistDirty = false;
 function baseDir(host) {
+    if (!host)
+        return undefined;
     return host.getAbsolutePath?.(PERSIST_CATEGORY);
 }
 async function loadPersist(host) {
@@ -182,6 +184,9 @@ async function syncSources(host) {
     return sources;
 }
 async function initPowerRollup(host) {
+    if (!host) {
+        return;
+    }
     rollupHost = host;
     persistCache = null;
     sourceRuntimes.clear();

@@ -613,6 +613,11 @@ describe("VIS battery / grid / GB presentation", () => {
 		assert.match(visHtml, /stats\.today_energy_kwh/);
 		assert.match(visHtml, /ems-rows-ac/);
 		assert.match(visHtml, /setpoint_temp_c/);
+		// Neue Unit-States müssen in der Subscribe-Liste stehen, sonst bleibt die Kachel leer.
+		assert.match(
+			visHtml,
+			/fields=\[[^\]]*setpoint_temp_c[^\]]*measured_power_w[^\]]*power_display_kind[^\]]*filter_status[^\]]*filter_status_label_de[^\]]*filter_usage_pct[^\]]*filter_usage_hours/,
+		);
 		assert.equal(visHtml.includes("hass.0.entities"), false);
 	});
 

@@ -391,7 +391,7 @@ var stateIds=[
 	var u,i,f,fields,b,extra;
 	for(u=1;u<=5;u++){
 		b=INST+".addons.air_conditioning.units.unit_"+u;
-		fields=["name","decision_source","daily_plan_status","allocated_power_w","expected_power_w","estimated_power_w","allocation_reason_de","reason_de","running","room_temp_c","room_humidity_pct","mode_purpose","cleaning_active","governance_allowed","stats.today_runtime_sec","stats.today_energy_kwh","stats.total_runtime_sec","stats.total_energy_kwh","stats.session_runtime_sec","stats.session_energy_kwh","stats.last_session_runtime_sec","stats.last_session_energy_kwh"];
+		fields=["name","decision_source","daily_plan_status","allocated_power_w","expected_power_w","estimated_power_w","allocation_reason_de","reason_de","running","room_temp_c","room_humidity_pct","mode_purpose","cleaning_active","governance_allowed","setpoint_temp_c","measured_power_w","power_display_kind","filter_status","filter_status_label_de","filter_usage_pct","filter_usage_hours","stats.today_runtime_sec","stats.today_energy_kwh","stats.total_runtime_sec","stats.total_energy_kwh","stats.session_runtime_sec","stats.session_energy_kwh","stats.last_session_runtime_sec","stats.last_session_energy_kwh"];
 		for(i=0;i<fields.length;i++){
 			f=b+"."+fields[i];
 			if(stateIds.indexOf(f)<0)stateIds.push(f);

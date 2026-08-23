@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.333",
+		"version": "0.1.334",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.334": {
+				"en": "Fix: VIS climate tiles now subscribe to LocalThings setpoint/power/filter unit states (were rendered but never loaded).",
+				"de": "Fix: VIS Klima-Kacheln abonnieren jetzt LocalThings Soll/Leistung/Filter Unit-States (waren gerendert, aber nie geladen)."
+			},
 			"0.1.333": {
 				"en": "VIS climate tiles: LocalThings power (measured/~estimated), filter status/hours/%, auto-clean progress when active; EMS publishes normalized unit states. Today energy stays consumer-stats (no cumulative meter).",
 				"de": "VIS Klima-Kacheln: LocalThings Leistung (Messung/~Schätzung), Filterstatus/Stunden/%, Auto-Clean-Fortschritt wenn aktiv; EMS veröffentlicht normalisierte Unit-States. Tagesenergie bleibt Consumer-Stats (kein Zähler-Gesamtwert)."

@@ -14,6 +14,8 @@ const constants_1 = require("../constants");
 const configured_1 = require("../configured");
 const config_1 = require("../config");
 const registry_1 = require("../profiles/registry");
+const localthings_prefill_1 = require("../profiles/localthings_prefill");
+const localthings_power_1 = require("../profiles/localthings_power");
 const types_1 = require("../profiles/types");
 const ensure_states_1 = require("./ensure_states");
 const daily_plan_1 = require("./daily_plan");
@@ -135,6 +137,21 @@ async function waitForFeedbackOn(host, fbId) {
     }
     const fb = await readForeign(host, fbId);
     return { on: (0, time_1.switchIsOn)(fb.value), value: fb.value };
+}
+/** LocalThings: gemessene Leistung nur wenn plausibel; sonst null → Learned/Config-Fallback. */
+async function resolveAcMeasuredPowerForStats(host, unit, table, acConfirmedOn) {
+    const powerId = (0, sequences_1.resolveAcMappingTarget)(table, unit.index, "power_w");
+    if (!powerId)
+        return null;
+    const raw = await readForeign(host, powerId);
+    if (!(0, registry_1.isLocalthingsHassProfile)(unit.profileId)) {
+        return raw.num != null && Number.isFinite(raw.num) && raw.num > 0 ? Math.round(raw.num) : null;
+    }
+    const decision = (0, localthings_power_1.resolveLocalthingsMeasuredPowerW)({
+        rawPowerW: raw.num,
+        acConfirmedOn,
+    });
+    return decision.useMeasured ? decision.powerW : null;
 }
 async function stopUnit(host, unit, table, live, up) {
     const profile = (0, registry_1.getAcProfile)(unit.profileId);
@@ -663,12 +680,13 @@ async function runAcRuntimeTickBody(host) {
         await (0, state_write_1.setStateIfChanged)(host, ids.allocationStatus, dailyPlan.allocationStatus);
         await (0, state_write_1.setStateIfChanged)(host, ids.allocationReasonDe, dailyPlan.allocationReasonDe);
         await (0, state_write_1.setStateIfChanged)(host, ids.governanceAllowed, governanceEnabled);
+        const measuredPowerW = await resolveAcMeasuredPowerForStats(host, unit, mappingTable, deviceActive);
         await (0, consumer_stats_1.tickConsumerStats)(host, {
             consumerKey: (0, constants_1.acUnitConsumerKey)(unit.index),
             nowMs,
             deviceActive,
             countable: deviceActive,
-            measuredPowerW: null,
+            measuredPowerW,
             commandedPowerW: estPower,
         });
         if (deviceActive || up.cleaningActive || up.running || (0, time_1.switchIsOn)(fb.value)) {
@@ -766,14 +784,29 @@ async function initAcRuntimeEngine(host) {
         return;
     engineActive = true;
     hostRef = host;
+    const configRecord = host.config && typeof host.config === "object" ? host.config : {};
+    const prefill = (0, localthings_prefill_1.buildLocalthingsPrefillPatch)(configRecord);
+    if (prefill) {
+        const merged = { ...configRecord, ...prefill };
+        const nTargets = Object.keys(prefill).filter((k) => k.endsWith("_target")).length;
+        host.log.info(`air_conditioning: LocalThings Prefill — ${nTargets} Mapping-Felder (leere/SmartThings → hass.0)`);
+        if (typeof host.updateConfig === "function") {
+            await host.updateConfig(merged);
+            // updateConfig startet typischerweise die Instanz neu — Engine hier beenden.
+            engineActive = false;
+            hostRef = null;
+            return;
+        }
+        host.config = merged;
+    }
     await (0, ensure_states_1.ensureAcRuntimeStates)(host);
     for (const i of (0, configured_1.configuredAcUnitIndexes)(host.config)) {
         await (0, consumer_stats_1.initConsumerStatsForKey)(host, (0, constants_1.acUnitConsumerKey)(i));
     }
     await hydrateAcRuntimePersist(host);
     const cfg = (0, config_1.acGlobalConfigFromAdapter)(host.config);
-    const configRecord = host.config && typeof host.config === "object" ? host.config : {};
-    const mappingTable = (0, sequences_1.buildAcMappingTableFromConfig)(configRecord);
+    const configRecordAfter = host.config && typeof host.config === "object" ? host.config : {};
+    const mappingTable = (0, sequences_1.buildAcMappingTableFromConfig)(configRecordAfter);
     const subs = new Set([
         (0, tree_paths_1.addonEnabled)(constants_1.AC_ADDON_ID),
         (0, tree_paths_1.addonAvailable)(constants_1.AC_ADDON_ID),

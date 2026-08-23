@@ -34,7 +34,9 @@ import {
 import { configuredAcUnitIndexes } from "../configured";
 import { acCleaningAfterPurpose, acEstimatedPowerForPurpose, acGlobalConfigFromAdapter, acModeCommandEnabled } from "../config";
 import type { AcUnitConfig } from "../types";
-import { getAcProfile } from "../profiles/registry";
+import { getAcProfile, isLocalthingsHassProfile } from "../profiles/registry";
+import { buildLocalthingsPrefillPatch } from "../profiles/localthings_prefill";
+import { resolveLocalthingsMeasuredPowerW } from "../profiles/localthings_power";
 import { modeStringsForPurpose, optionalStep } from "../profiles/types";
 import type { AcUnitModePurpose } from "../types";
 import { acUnitRuntimeStates, AC_RUNTIME_BASE, AC_RUNTIME_SUMMARY_STATES, ensureAcRuntimeStates } from "./ensure_states";
@@ -220,6 +222,26 @@ async function waitForFeedbackOn(
 	}
 	const fb = await readForeign(host, fbId);
 	return { on: switchIsOn(fb.value), value: fb.value };
+}
+
+/** LocalThings: gemessene Leistung nur wenn plausibel; sonst null → Learned/Config-Fallback. */
+async function resolveAcMeasuredPowerForStats(
+	host: AcRuntimeHost,
+	unit: AcUnitConfig,
+	table: AcMappingTable,
+	acConfirmedOn: boolean,
+): Promise<number | null> {
+	const powerId = resolveAcMappingTarget(table, unit.index, "power_w");
+	if (!powerId) return null;
+	const raw = await readForeign(host, powerId);
+	if (!isLocalthingsHassProfile(unit.profileId)) {
+		return raw.num != null && Number.isFinite(raw.num) && raw.num > 0 ? Math.round(raw.num) : null;
+	}
+	const decision = resolveLocalthingsMeasuredPowerW({
+		rawPowerW: raw.num,
+		acConfirmedOn,
+	});
+	return decision.useMeasured ? decision.powerW : null;
 }
 
 async function stopUnit(
@@ -987,12 +1009,13 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		await setStateIfChanged(host, ids.allocationReasonDe, dailyPlan.allocationReasonDe);
 		await setStateIfChanged(host, ids.governanceAllowed, governanceEnabled);
 
+		const measuredPowerW = await resolveAcMeasuredPowerForStats(host, unit, mappingTable, deviceActive);
 		await tickConsumerStats(host, {
 			consumerKey: acUnitConsumerKey(unit.index),
 			nowMs,
 			deviceActive,
 			countable: deviceActive,
-			measuredPowerW: null,
+			measuredPowerW,
 			commandedPowerW: estPower,
 		});
 
@@ -1094,14 +1117,35 @@ export async function initAcRuntimeEngine(host: AcRuntimeHost): Promise<void> {
 	if (engineActive && hostRef === host) return;
 	engineActive = true;
 	hostRef = host;
+
+	const configRecord =
+		host.config && typeof host.config === "object" ? (host.config as Record<string, unknown>) : {};
+	const prefill = buildLocalthingsPrefillPatch(configRecord);
+	if (prefill) {
+		const merged = { ...configRecord, ...prefill };
+		const nTargets = Object.keys(prefill).filter((k) => k.endsWith("_target")).length;
+		host.log.info(
+			`air_conditioning: LocalThings Prefill — ${nTargets} Mapping-Felder (leere/SmartThings → hass.0)`,
+		);
+		if (typeof host.updateConfig === "function") {
+			await host.updateConfig(merged);
+			// updateConfig startet typischerweise die Instanz neu — Engine hier beenden.
+			engineActive = false;
+			hostRef = null;
+			return;
+		}
+		host.config = merged;
+	}
+
 	await ensureAcRuntimeStates(host);
 	for (const i of configuredAcUnitIndexes(host.config)) {
 		await initConsumerStatsForKey(host, acUnitConsumerKey(i));
 	}
 	await hydrateAcRuntimePersist(host);
 	const cfg = acGlobalConfigFromAdapter(host.config);
-	const configRecord = host.config && typeof host.config === "object" ? (host.config as Record<string, unknown>) : {};
-	const mappingTable = buildAcMappingTableFromConfig(configRecord);
+	const configRecordAfter =
+		host.config && typeof host.config === "object" ? (host.config as Record<string, unknown>) : {};
+	const mappingTable = buildAcMappingTableFromConfig(configRecordAfter);
 	const subs = new Set<string>([
 		addonEnabled(AC_ADDON_ID),
 		addonAvailable(AC_ADDON_ID),

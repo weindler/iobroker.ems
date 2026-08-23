@@ -162,11 +162,27 @@ export async function executeAcWriteSteps(
 			continue;
 		}
 		if (!live) {
-			log?.debug?.(`ac dryrun unit ${unitIndex}: ${step.kind} ${role} → ${stateId}`);
+			if (step.kind === "set_json") {
+				log?.debug?.(
+					`ac dryrun unit ${unitIndex}: set_json ${role} ${JSON.stringify(step.payload)} → ${stateId}`,
+				);
+			} else {
+				log?.debug?.(`ac dryrun unit ${unitIndex}: ${step.kind} ${role} → ${stateId}`);
+			}
 			continue;
 		}
 		if (step.kind === "toggle") {
 			await pulseSmartThingsToggle(host, unitIndex, role, stateId);
+			continue;
+		}
+		if (step.kind === "set_json") {
+			const json = JSON.stringify(step.payload);
+			await writeForeignIfChanged(host, {
+				stateId,
+				value: json,
+				reason: `ac unit ${unitIndex} ${role} json`,
+				force: true,
+			});
 			continue;
 		}
 		await writeForeignIfChanged(host, {

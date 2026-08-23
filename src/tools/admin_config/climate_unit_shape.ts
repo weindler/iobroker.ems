@@ -66,6 +66,10 @@ export const CLIMATE_UNIT_SHAPE: ClimateUnitShapeEntry[] = [
     {
      "label": "Samsung SmartThings",
      "value": "samsung_smartthings"
+    },
+    {
+     "label": "Samsung LocalThings (Home Assistant)",
+     "value": "samsung_localthings_hass"
     }
    ],
    "default": "samsung_smartthings",
@@ -73,7 +77,8 @@ export const CLIMATE_UNIT_SHAPE: ClimateUnitShapeEntry[] = [
    "sm": 6,
    "md": 4,
    "lg": 4,
-   "xl": 4
+   "xl": 4,
+   "help": "SmartThings = Cloud. LocalThings = Home Assistant (hass.0). Beim Wechsel auf LocalThings werden leere/SmartThings-Mappings einmalig vorausgefüllt, vorhandene hass-Mappings bleiben."
   }
  ],
  [
@@ -1040,7 +1045,9 @@ export const CLIMATE_UNIT_SHAPE: ClimateUnitShapeEntry[] = [
    "sm": 4,
    "md": 3,
    "lg": 3,
-   "xl": 3
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile === 'samsung_localthings_hass'",
+   "help": "Nur SmartThings/Cloud — bei LocalThings nicht nötig."
   }
  ],
  [
@@ -1058,7 +1065,612 @@ export const CLIMATE_UNIT_SHAPE: ClimateUnitShapeEntry[] = [
    "xl": 9,
    "types": [
     "state"
-   ]
+   ],
+   "hidden": "data.ac_u{N}_profile === 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "hAcU{N}LtMaint",
+  {
+   "type": "header",
+   "size": 3,
+   "text": "Innengerät {N} — LocalThings Wartung / Diagnose (optional)",
+   "xs": 12,
+   "sm": 12,
+   "md": 12,
+   "lg": 12,
+   "xl": 12,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_cmd_cleaning_off_enabled",
+  {
+   "type": "checkbox",
+   "label": "Auto-Clean AUS aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_cmd_cleaning_off_target",
+  {
+   "type": "objectId",
+   "label": "Auto-Clean AUS (turn_off)",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_feedback_setpoint_enabled",
+  {
+   "type": "checkbox",
+   "label": "Solltemperatur-Feedback aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_feedback_setpoint_target",
+  {
+   "type": "objectId",
+   "label": "Solltemperatur-Feedback",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_power_w_enabled",
+  {
+   "type": "checkbox",
+   "label": "Leistung W aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'",
+   "help": "0 W bei laufender AC ist oft ungültig — EMS nutzt dann gelernte/geschätzte Leistung."
+  }
+ ],
+ [
+  "ac_u{N}_power_w_target",
+  {
+   "type": "objectId",
+   "label": "Leistung W",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_energy_kwh_enabled",
+  {
+   "type": "checkbox",
+   "label": "Energie kWh aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_energy_kwh_target",
+  {
+   "type": "objectId",
+   "label": "Energie kWh",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_filter_usage_pct_enabled",
+  {
+   "type": "checkbox",
+   "label": "Filternutzung % aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_filter_usage_pct_target",
+  {
+   "type": "objectId",
+   "label": "Filternutzung %",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_filter_usage_hours_enabled",
+  {
+   "type": "checkbox",
+   "label": "Filternutzungsstunden aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_filter_usage_hours_target",
+  {
+   "type": "objectId",
+   "label": "Filternutzungsstunden",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_filter_status_enabled",
+  {
+   "type": "checkbox",
+   "label": "Filterstatus aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'",
+   "help": "Gerätewert normal/wash/replace — keine Ableitung aus Stunden."
+  }
+ ],
+ [
+  "ac_u{N}_filter_status_target",
+  {
+   "type": "objectId",
+   "label": "Filterstatus",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_diagnosis_status_enabled",
+  {
+   "type": "checkbox",
+   "label": "Diagnosestatus aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_diagnosis_status_target",
+  {
+   "type": "objectId",
+   "label": "Diagnosestatus",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_cmd_diagnosis_start_enabled",
+  {
+   "type": "checkbox",
+   "label": "Diagnose starten aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_cmd_diagnosis_start_target",
+  {
+   "type": "objectId",
+   "label": "Diagnose starten (press)",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_firmware_update_enabled",
+  {
+   "type": "checkbox",
+   "label": "Firmware-Update verfügbar aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_firmware_update_target",
+  {
+   "type": "objectId",
+   "label": "Firmware-Update verfügbar",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_display_light_enabled",
+  {
+   "type": "checkbox",
+   "label": "Displaybeleuchtung-Feedback aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_display_light_target",
+  {
+   "type": "objectId",
+   "label": "Displaybeleuchtung Feedback",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_cmd_display_on_enabled",
+  {
+   "type": "checkbox",
+   "label": "Display EIN aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_cmd_display_on_target",
+  {
+   "type": "objectId",
+   "label": "Display EIN",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_cmd_display_off_enabled",
+  {
+   "type": "checkbox",
+   "label": "Display AUS aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_cmd_display_off_target",
+  {
+   "type": "objectId",
+   "label": "Display AUS",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_sound_enabled",
+  {
+   "type": "checkbox",
+   "label": "Signalton-Feedback aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_sound_target",
+  {
+   "type": "objectId",
+   "label": "Signalton Feedback",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_cmd_sound_on_enabled",
+  {
+   "type": "checkbox",
+   "label": "Signalton EIN aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_cmd_sound_on_target",
+  {
+   "type": "objectId",
+   "label": "Signalton EIN",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_cmd_sound_off_enabled",
+  {
+   "type": "checkbox",
+   "label": "Signalton AUS aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_cmd_sound_off_target",
+  {
+   "type": "objectId",
+   "label": "Signalton AUS",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_cmd_mute_once_enabled",
+  {
+   "type": "checkbox",
+   "label": "Einmal stummschalten aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_cmd_mute_once_target",
+  {
+   "type": "objectId",
+   "label": "Einmal stummschalten",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_cmd_set_preset_mode_enabled",
+  {
+   "type": "checkbox",
+   "label": "Preset schreiben aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_cmd_set_preset_mode_target",
+  {
+   "type": "objectId",
+   "label": "Preset schreiben (set_preset_mode)",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_feedback_preset_mode_enabled",
+  {
+   "type": "checkbox",
+   "label": "Preset-Feedback aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_feedback_preset_mode_target",
+  {
+   "type": "objectId",
+   "label": "Preset-Feedback",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_cmd_set_swing_mode_enabled",
+  {
+   "type": "checkbox",
+   "label": "Swing schreiben aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_cmd_set_swing_mode_target",
+  {
+   "type": "objectId",
+   "label": "Swing schreiben",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_feedback_swing_mode_enabled",
+  {
+   "type": "checkbox",
+   "label": "Swing-Feedback aktiv",
+   "default": false,
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3,
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
+  }
+ ],
+ [
+  "ac_u{N}_feedback_swing_mode_target",
+  {
+   "type": "objectId",
+   "label": "Swing-Feedback",
+   "xs": 12,
+   "sm": 8,
+   "md": 9,
+   "lg": 9,
+   "xl": 9,
+   "types": ["state"],
+   "hidden": "data.ac_u{N}_profile !== 'samsung_localthings_hass'"
   }
  ]
 ];

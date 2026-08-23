@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.330",
+		"version": "0.1.331",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.331": {
+				"en": "AC: new device profile Samsung LocalThings (Home Assistant) with hass.0 JSON writes, optional filter/power/auto-clean mappings, site prefill for existing units; SmartThings unchanged. Battery learning: stop writing ballast avg_night_discharge_pct (log warning).",
+				"de": "Klima: neues Geräteprofil Samsung LocalThings (Home Assistant) mit hass.0-JSON-Writes, optionalen Filter-/Leistungs-/Auto-Clean-Mappings, Prefill für bestehende Geräte; SmartThings unverändert. Battery-Learning: Ballast avg_night_discharge_pct nicht mehr schreiben (Log-Warnung)."
+			},
 			"0.1.330": {
 				"en": "Immersion heater: while live PV surplus persists, runtime holds heating through 0 W plan slots — avoids ~10 min relay on/off cycles from min runtime and pause.",
 				"de": "Heizstab: bei anhaltendem Live-PV-Überschuss Durchlauf über 0-W-Plan-Slots — kein Relais-Takten alle ~10 Min durch Mindestlaufzeit und Pause."

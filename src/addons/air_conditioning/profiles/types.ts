@@ -3,6 +3,8 @@ import type { AcUnitConfig, AcUnitModePurpose } from "../types";
 
 export type AcWriteStep =
 	| { kind: "set"; role: AcMappingRole; value: string | number | boolean }
+	/** hass.0 Climate-Aktionen: stringified JSON, nie boolean/true. */
+	| { kind: "set_json"; role: AcMappingRole; payload: Record<string, unknown> }
 	| { kind: "toggle"; role: AcMappingRole }
 	| { kind: "switch_off" }
 	| { kind: "delay_ms"; ms: number };

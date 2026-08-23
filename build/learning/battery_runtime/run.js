@@ -17,7 +17,7 @@ async function writeResult(host, result, lastRun, diag) {
     await host.setStateAsync("learning.battery_runtime.last_run", { val: lastRun, ack: true });
     await setNumIfValid(host, "learning.battery_runtime.sample_days", result.sampleDays);
     await setNumIfValid(host, "learning.battery_runtime.avg_night_discharge_kwh", result.avgNightDischargeKwh);
-    await setNumIfValid(host, "learning.battery_runtime.avg_night_discharge_pct", result.avgNightDischargePct);
+    // avg_night_discharge_pct: Surface-Cleanup löscht den State als Ballast — nicht mehr schreiben (Wert in Persist/Log).
     await setNumIfValid(host, "learning.battery_runtime.avg_night_bridge_hours", result.avgNightBridgeHours);
     await host.setStateAsync("learning.battery_runtime.night_bridge_method", {
         val: result.nightBridgeMethod,

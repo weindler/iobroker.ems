@@ -28,12 +28,13 @@ exports.AC_HUMIDITY_OFF_HYSTERESIS_PCT_DEFAULT = 3;
  * (z. B. Stop fehlgeschlagen, Gerät lief weiter — sonst Deadlock: cleaning sperrt Stop).
  */
 exports.AC_CLEANING_STUCK_ABORT_SEC = 180;
-exports.AC_PROFILE_IDS = ["generic", "samsung_smartthings"];
+exports.AC_PROFILE_IDS = ["generic", "samsung_smartthings", "samsung_localthings_hass"];
 exports.AC_MAPPING_ROLES = [
     "room_temp",
     "room_humidity",
     "feedback_switch",
     "feedback_mode",
+    "feedback_setpoint",
     "feedback_cleaning_state",
     "feedback_cleaning_mode",
     "feedback_cleaning_progress",
@@ -44,9 +45,30 @@ exports.AC_MAPPING_ROLES = [
     "cmd_set_fan_speed",
     "cmd_set_cool_setpoint",
     "cmd_set_heat_setpoint",
+    "cmd_set_preset_mode",
+    "feedback_preset_mode",
+    "cmd_set_swing_mode",
+    "feedback_swing_mode",
     "cmd_cleaning_start",
+    "cmd_cleaning_off",
     "cmd_cleaning_mode",
     "cmd_refresh",
+    "power_w",
+    "energy_kwh",
+    "filter_usage_pct",
+    "filter_usage_hours",
+    "filter_status",
+    "diagnosis_status",
+    "alarm_code",
+    "firmware_update",
+    "cmd_diagnosis_start",
+    "display_light",
+    "cmd_display_on",
+    "cmd_display_off",
+    "sound",
+    "cmd_sound_on",
+    "cmd_sound_off",
+    "cmd_mute_once",
 ];
 /** Fremde States, deren Änderung einen Tick auslöst (keine Schreib-/Impuls-States). */
 exports.AC_WATCH_MAPPING_ROLES = [
@@ -54,9 +76,12 @@ exports.AC_WATCH_MAPPING_ROLES = [
     "room_humidity",
     "feedback_switch",
     "feedback_mode",
+    "feedback_setpoint",
     "feedback_cleaning_state",
     "feedback_cleaning_mode",
     "feedback_cleaning_progress",
+    "power_w",
+    "filter_status",
 ];
 function acUnitMappingCommand(unitIndex, role) {
     return `unit_${unitIndex}_${role}`;

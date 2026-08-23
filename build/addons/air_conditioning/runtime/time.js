@@ -36,11 +36,24 @@ function isHardOffTime(nowMin, hardOffRaw) {
 }
 exports.isHardOffTime = isHardOffTime;
 function switchIsOn(raw) {
+    if (typeof raw === "boolean")
+        return raw;
+    if (typeof raw === "number")
+        return raw !== 0;
     const s = String(raw ?? "").trim().toLowerCase();
-    return s === "on" || s === "true" || s === "1";
+    if (s === "on" || s === "true" || s === "1")
+        return true;
+    if (s === "off" || s === "false" || s === "0" || s === "")
+        return false;
+    // LocalThings climate.state: HVAC-Modi = Gerät an
+    return s === "cool" || s === "heat" || s === "dry" || s === "fan_only" || s === "auto";
 }
 exports.switchIsOn = switchIsOn;
 function switchIsOff(raw) {
+    if (typeof raw === "boolean")
+        return !raw;
+    if (typeof raw === "number")
+        return raw === 0;
     const s = String(raw ?? "").trim().toLowerCase();
     return s === "off" || s === "false" || s === "0" || s === "";
 }

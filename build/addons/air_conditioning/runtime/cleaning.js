@@ -18,7 +18,13 @@ function normalizeCleaningProgressPct(raw) {
 }
 exports.normalizeCleaningProgressPct = normalizeCleaningProgressPct;
 function isCleaningOperatingActive(raw) {
+    if (typeof raw === "boolean")
+        return raw;
+    if (typeof raw === "number")
+        return raw !== 0;
     const token = normalizeCleaningToken(raw);
+    if (token === "true" || token === "1" || token === "on")
+        return true;
     return exports.CLEANING_RUNNING_OPERATING.includes(token);
 }
 exports.isCleaningOperatingActive = isCleaningOperatingActive;
@@ -50,7 +56,10 @@ function isCleaningFinishedByFeedback(input) {
     }
     const op = normalizeCleaningToken(input.operatingStateRaw);
     const mode = normalizeCleaningToken(input.modeRaw);
-    if (mode === "off") {
+    if (mode === "off" || mode === "false" || mode === "0" || mode === "") {
+        return true;
+    }
+    if (op === "false" || op === "0" || op === "off") {
         return true;
     }
     if (op === "ready" && input.elapsedSec >= constants_1.AC_CLEANING_FEEDBACK_MIN_RUNTIME_SEC) {

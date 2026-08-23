@@ -31,7 +31,6 @@ async function ensureBatteryRuntimeLearningStates(host) {
         strState("learning.battery_runtime.last_run", "Battery-Runtime letzter Lauf (ISO)"),
         numState("learning.battery_runtime.sample_days", "Battery-Runtime Sample-Tage"),
         numState("learning.battery_runtime.avg_night_discharge_kwh", "Battery-Runtime Ø Nachtentladung", "kWh"),
-        numState("learning.battery_runtime.avg_night_discharge_pct", "Battery-Runtime Ø Nachtentladung", "%"),
         numState("learning.battery_runtime.avg_night_bridge_hours", "Battery-Runtime Ø Nachtbrücken-Dauer", "h"),
         strState("learning.battery_runtime.night_bridge_method", "Battery-Runtime Nachtbrücken-Methode", "none"),
         numState("learning.battery_runtime.night_bridge_pv_points", "Battery-Runtime PV-Punkte für Nachtbrücke"),

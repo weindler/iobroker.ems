@@ -3,7 +3,7 @@
  * Normalisierte AC-Werte für VIS (Power-Anzeige, Filter) — keine Write-Logik.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveAcFilterVis = exports.acFilterStatusLabelShortDe = exports.resolveAcPowerDisplay = void 0;
+exports.resolveAcFilterVis = exports.acFilterStatusCode = exports.acFilterStatusLabelShortDe = exports.resolveAcPowerDisplay = void 0;
 const localthings_filter_1 = require("../profiles/localthings_filter");
 /**
  * Messwert nur wenn bereits plausibel gefiltert (nicht 0 W bei AC an).
@@ -37,6 +37,23 @@ function acFilterStatusLabelShortDe(status) {
     }
 }
 exports.acFilterStatusLabelShortDe = acFilterStatusLabelShortDe;
+/**
+ * Numerischer Filtercode für VIS/Diagnose (keine Regelung).
+ * normal→0, wash→1, replace→2, sonst/fehlend→-1.
+ */
+function acFilterStatusCode(status) {
+    const s = String(status ?? "")
+        .trim()
+        .toLowerCase();
+    if (s === "normal")
+        return 0;
+    if (s === "wash")
+        return 1;
+    if (s === "replace")
+        return 2;
+    return -1;
+}
+exports.acFilterStatusCode = acFilterStatusCode;
 function resolveAcFilterVis(input) {
     const hasAny = (input.statusRaw != null && String(input.statusRaw).trim() !== "") ||
         (input.usagePct != null && Number.isFinite(input.usagePct)) ||

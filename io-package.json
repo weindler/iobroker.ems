@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.335",
+		"version": "0.1.336",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.336": {
+				"en": "AC units: add read-only filter_status_code (0=normal, 1=wash, 2=replace, -1=unknown) for VIS/diagnostics on all unit_N.",
+				"de": "Klima-Units: read-only filter_status_code (0=normal, 1=wash, 2=replace, -1=unbekannt) für VIS/Diagnose an allen unit_N."
+			},
 			"0.1.335": {
 				"en": "Fix LocalThings AC: treat climate.state (cool/heat/…) as on/off when state_boolean stays false — restores running badge, stats hours, and stops start-retry loops for all units.",
 				"de": "Fix LocalThings-Klima: climate.state (cool/heat/…) als An/Aus, wenn state_boolean falsch false bleibt — Kachel LÄUFT, Betriebsstunden und keine Start-Retry-Schleifen; für alle Units."

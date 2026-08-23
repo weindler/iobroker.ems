@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
 const vis_telemetry_js_1 = require("./vis_telemetry.js");
+const ensure_states_js_1 = require("./ensure_states.js");
 (0, node_test_1.describe)("AC VIS telemetry", () => {
     (0, node_test_1.it)("1) measured power >0", () => {
         const d = (0, vis_telemetry_js_1.resolveAcPowerDisplay)({ measuredPowerW: 727, estimatedPowerW: 700, running: true });
@@ -26,16 +27,19 @@ const vis_telemetry_js_1 = require("./vis_telemetry.js");
         strict_1.default.equal(f.status, "normal");
         strict_1.default.equal(f.labelDe, "Normal");
         strict_1.default.equal(f.warnDe, "");
+        strict_1.default.equal((0, vis_telemetry_js_1.acFilterStatusCode)(f.status), 0);
     });
     (0, node_test_1.it)("5) filter wash → Reinigen + warn", () => {
         const f = (0, vis_telemetry_js_1.resolveAcFilterVis)({ statusRaw: "wash", usagePct: 90, usageHours: 400 });
         strict_1.default.equal(f.labelDe, "Reinigen");
         strict_1.default.equal(f.warnDe, "FILTER REINIGEN");
+        strict_1.default.equal((0, vis_telemetry_js_1.acFilterStatusCode)(f.status), 1);
     });
     (0, node_test_1.it)("6) filter replace → Ersetzen", () => {
         const f = (0, vis_telemetry_js_1.resolveAcFilterVis)({ statusRaw: "replace", usagePct: null, usageHours: null });
         strict_1.default.equal(f.labelDe, "Ersetzen");
         strict_1.default.equal(f.warnDe, "FILTER ERSETZEN");
+        strict_1.default.equal((0, vis_telemetry_js_1.acFilterStatusCode)(f.status), 2);
     });
     (0, node_test_1.it)("7) filter hours and pct", () => {
         const f = (0, vis_telemetry_js_1.resolveAcFilterVis)({ statusRaw: "normal", usagePct: 75.4, usageHours: 375.2 });
@@ -47,6 +51,30 @@ const vis_telemetry_js_1 = require("./vis_telemetry.js");
         strict_1.default.equal(f.status, "");
         strict_1.default.equal(f.labelDe, "");
         strict_1.default.equal(f.warnDe, "");
+        strict_1.default.equal((0, vis_telemetry_js_1.acFilterStatusCode)(f.status), -1);
+    });
+    (0, node_test_1.it)("filter_status_code mapping", () => {
+        strict_1.default.equal((0, vis_telemetry_js_1.acFilterStatusCode)("normal"), 0);
+        strict_1.default.equal((0, vis_telemetry_js_1.acFilterStatusCode)("wash"), 1);
+        strict_1.default.equal((0, vis_telemetry_js_1.acFilterStatusCode)("replace"), 2);
+        strict_1.default.equal((0, vis_telemetry_js_1.acFilterStatusCode)("unknown"), -1);
+        strict_1.default.equal((0, vis_telemetry_js_1.acFilterStatusCode)(""), -1);
+        strict_1.default.equal((0, vis_telemetry_js_1.acFilterStatusCode)(null), -1);
+        strict_1.default.equal((0, vis_telemetry_js_1.acFilterStatusCode)(undefined), -1);
+        strict_1.default.equal((0, vis_telemetry_js_1.acFilterStatusCode)("weird"), -1);
+        const fromVis = (0, vis_telemetry_js_1.resolveAcFilterVis)({ statusRaw: "garbage", usagePct: 10, usageHours: null });
+        strict_1.default.equal((0, vis_telemetry_js_1.acFilterStatusCode)(fromVis.status), -1);
+    });
+    (0, node_test_1.it)("filter_status_code paths independent per unit index", () => {
+        const u1 = (0, ensure_states_js_1.acUnitRuntimeStates)(1);
+        const u3 = (0, ensure_states_js_1.acUnitRuntimeStates)(3);
+        const u5 = (0, ensure_states_js_1.acUnitRuntimeStates)(5);
+        strict_1.default.equal(u1.filterStatusCode, "addons.air_conditioning.units.unit_1.filter_status_code");
+        strict_1.default.equal(u3.filterStatusCode, "addons.air_conditioning.units.unit_3.filter_status_code");
+        strict_1.default.equal(u5.filterStatusCode, "addons.air_conditioning.units.unit_5.filter_status_code");
+        strict_1.default.notEqual(u1.filterStatusCode, u3.filterStatusCode);
+        strict_1.default.equal((0, vis_telemetry_js_1.acFilterStatusCode)("wash"), 1);
+        strict_1.default.equal((0, vis_telemetry_js_1.acFilterStatusCode)("normal"), 0);
     });
     (0, node_test_1.it)("off without power → none", () => {
         const d = (0, vis_telemetry_js_1.resolveAcPowerDisplay)({ measuredPowerW: null, estimatedPowerW: 700, running: false });

@@ -52,6 +52,20 @@ export function acFilterStatusLabelShortDe(status: LocalthingsFilterStatus): str
 	}
 }
 
+/**
+ * Numerischer Filtercode für VIS/Diagnose (keine Regelung).
+ * normal→0, wash→1, replace→2, sonst/fehlend→-1.
+ */
+export function acFilterStatusCode(status: LocalthingsFilterStatus | "" | string | null | undefined): number {
+	const s = String(status ?? "")
+		.trim()
+		.toLowerCase();
+	if (s === "normal") return 0;
+	if (s === "wash") return 1;
+	if (s === "replace") return 2;
+	return -1;
+}
+
 export function resolveAcFilterVis(input: {
 	statusRaw: unknown;
 	usagePct: number | null;

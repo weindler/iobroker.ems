@@ -64,7 +64,7 @@ import {
 	writeAcUnitSwitchOff,
 	type AcMappingTable,
 } from "./sequences";
-import { resolveAcPowerDisplay, resolveAcFilterVis } from "./vis_telemetry";
+import { resolveAcPowerDisplay, resolveAcFilterVis, acFilterStatusCode } from "./vis_telemetry";
 import { resolveAcDevicePowered, resolveAcFeedbackModeTarget } from "./feedback_on";
 import { acStatsDeviceActive, closeAcUnitStatsSession } from "./stats_active";
 import {
@@ -1065,6 +1065,7 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		});
 		await setStateIfChanged(host, ids.filterStatus, filterVis.status);
 		await setStateIfChanged(host, ids.filterStatusLabelDe, filterVis.labelDe);
+		await setStateIfChanged(host, ids.filterStatusCode, acFilterStatusCode(filterVis.status));
 		await setStateIfChanged(host, ids.filterUsagePct, filterVis.usagePct);
 		await setStateIfChanged(host, ids.filterUsageHours, filterVis.usageHours);
 

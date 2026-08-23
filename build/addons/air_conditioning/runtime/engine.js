@@ -713,6 +713,7 @@ async function runAcRuntimeTickBody(host) {
         });
         await (0, state_write_1.setStateIfChanged)(host, ids.filterStatus, filterVis.status);
         await (0, state_write_1.setStateIfChanged)(host, ids.filterStatusLabelDe, filterVis.labelDe);
+        await (0, state_write_1.setStateIfChanged)(host, ids.filterStatusCode, (0, vis_telemetry_1.acFilterStatusCode)(filterVis.status));
         await (0, state_write_1.setStateIfChanged)(host, ids.filterUsagePct, filterVis.usagePct);
         await (0, state_write_1.setStateIfChanged)(host, ids.filterUsageHours, filterVis.usageHours);
         await (0, state_write_1.setStateIfChanged)(host, ids.decisionSource, permission.decisionSource);

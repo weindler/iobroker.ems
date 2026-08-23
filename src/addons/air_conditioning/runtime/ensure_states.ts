@@ -30,6 +30,8 @@ export function acUnitRuntimeStates(unitIndex: number): Record<string, string> {
 		setpointTempC: `${base}.setpoint_temp_c`,
 		filterStatus: `${base}.filter_status`,
 		filterStatusLabelDe: `${base}.filter_status_label_de`,
+		/** 0=normal, 1=wash, 2=replace, -1=fehlend/unbekannt — nur VIS/Diagnose. */
+		filterStatusCode: `${base}.filter_status_code`,
 		filterUsagePct: `${base}.filter_usage_pct`,
 		filterUsageHours: `${base}.filter_usage_hours`,
 		decisionSource: `${base}.decision_source`,
@@ -161,6 +163,17 @@ export async function ensureAcRuntimeStates(
 			{
 				id: ids.filterStatusLabelDe,
 				common: { name: `Klima ${label} Filterstatus Label`, type: "string", role: "text", read: true, write: false, def: "" },
+			},
+			{
+				id: ids.filterStatusCode,
+				common: {
+					name: `Klima ${label} Filterstatus Code (0=normal,1=wash,2=replace,-1=unbekannt)`,
+					type: "number",
+					role: "value",
+					read: true,
+					write: false,
+					def: -1,
+				},
 			},
 			{ id: ids.filterUsagePct, common: { name: `Klima ${label} Filternutzung %`, type: "number", role: "value", read: true, write: false } },
 			{ id: ids.filterUsageHours, common: { name: `Klima ${label} Filternutzungsstunden`, type: "number", role: "value", read: true, write: false } },

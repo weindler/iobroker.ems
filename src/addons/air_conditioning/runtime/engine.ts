@@ -64,6 +64,7 @@ import {
 	writeAcUnitSwitchOff,
 	type AcMappingTable,
 } from "./sequences";
+import { resolveAcPowerDisplay, resolveAcFilterVis } from "./vis_telemetry";
 import { acStatsDeviceActive, closeAcUnitStatsSession } from "./stats_active";
 import {
 	isCleaningFinishedByFeedback,
@@ -997,6 +998,43 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		await setStateIfChanged(host, ids.feedbackCleaningProgressPct, cleaningProgress.num ?? null);
 		await setStateIfChanged(host, ids.modePurpose, fsm.modePurpose);
 		await setStateIfChanged(host, ids.estimatedPowerW, estPower);
+		const measuredPowerW = await resolveAcMeasuredPowerForStats(host, unit, mappingTable, deviceActive);
+		const powerDisp = resolveAcPowerDisplay({
+			measuredPowerW,
+			estimatedPowerW: estPower > 0 ? estPower : unit.estimatedPowerW,
+			running: fbOn || deviceActive,
+		});
+		await setStateIfChanged(host, ids.measuredPowerW, powerDisp.measuredPowerW);
+		await setStateIfChanged(host, ids.powerDisplayKind, powerDisp.kind);
+
+		const setpointRead = await readForeign(
+			host,
+			resolveAcMappingTarget(mappingTable, unit.index, "feedback_setpoint"),
+		);
+		await setStateIfChanged(host, ids.setpointTempC, setpointRead.num ?? null);
+
+		const filterStatusRaw = await readForeign(
+			host,
+			resolveAcMappingTarget(mappingTable, unit.index, "filter_status"),
+		);
+		const filterPctRead = await readForeign(
+			host,
+			resolveAcMappingTarget(mappingTable, unit.index, "filter_usage_pct"),
+		);
+		const filterHoursRead = await readForeign(
+			host,
+			resolveAcMappingTarget(mappingTable, unit.index, "filter_usage_hours"),
+		);
+		const filterVis = resolveAcFilterVis({
+			statusRaw: filterStatusRaw.value,
+			usagePct: filterPctRead.num,
+			usageHours: filterHoursRead.num,
+		});
+		await setStateIfChanged(host, ids.filterStatus, filterVis.status);
+		await setStateIfChanged(host, ids.filterStatusLabelDe, filterVis.labelDe);
+		await setStateIfChanged(host, ids.filterUsagePct, filterVis.usagePct);
+		await setStateIfChanged(host, ids.filterUsageHours, filterVis.usageHours);
+
 		await setStateIfChanged(host, ids.decisionSource, permission.decisionSource);
 		await setStateIfChanged(host, ids.dailyPlanStatus, dailyPlan.dailyPlanStatus);
 		await setStateIfChanged(host, ids.dailyPlanRevision, dailyPlan.dailyPlanRevision ?? 0);
@@ -1009,7 +1047,6 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		await setStateIfChanged(host, ids.allocationReasonDe, dailyPlan.allocationReasonDe);
 		await setStateIfChanged(host, ids.governanceAllowed, governanceEnabled);
 
-		const measuredPowerW = await resolveAcMeasuredPowerForStats(host, unit, mappingTable, deviceActive);
 		await tickConsumerStats(host, {
 			consumerKey: acUnitConsumerKey(unit.index),
 			nowMs,

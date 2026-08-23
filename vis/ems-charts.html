@@ -85,6 +85,12 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-badges{display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .ems-rows{display:grid;grid-template-columns:72px 1fr;gap:0 6px;font-size:10px;flex:0 0 auto;min-height:0;align-content:start}
 .ems-rows .l{color:#8b949e}.ems-rows .r{color:#e6edf3;overflow:visible;white-space:normal;word-break:break-word}
+.ems-rows-ac{grid-template-columns:48px minmax(0,1.1fr) 48px minmax(0,1fr);column-gap:4px;row-gap:1px}
+.ems-rows-ac .r.span{grid-column:2/-1}
+.ems-rows-ac .r.warn{color:#f0883e;font-weight:700}
+.ems-rows-ac .r.danger{color:#f85149;font-weight:700}
+.ems-note.warn{color:#f0883e}
+.ems-note.danger{color:#f85149}
 .ems-note{margin-top:2px;font-size:9px;color:#c9d1d9;line-height:1.25;max-height:none;overflow:visible;flex:0 0 auto}
 .ems-timeline{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 8px;display:flex;flex-direction:column;min-height:0;max-height:100%;overflow:hidden;min-width:0}
 .ems-timeline .ems-k{flex:0 0 auto;font-size:9px}
@@ -1027,7 +1033,7 @@ function buildTimelineRanges(horizonMs){
 	return items;
 }
 
-function card(title,color,badge,rows,note,actionsHtml){
+function card(title,color,badge,rows,note,actionsHtml,layout){
 	/** badge: single {cls,label} oder {exec,op} für Execution+Operation (Befund 003). */
 	var badgesHtml="";
 	if(badge&&badge.exec){
@@ -1039,15 +1045,34 @@ function card(title,color,badge,rows,note,actionsHtml){
 	}else{
 		badgesHtml='<div class="ems-badge '+badge.cls+'">'+esc(badge.label)+'</div>';
 	}
+	var rowsClass=layout==="ac"?"ems-rows ems-rows-ac":"ems-rows";
 	var html='<div class="ems-card" style="border-color:'+color+'44"><div class="ems-card-h">'
 		+'<div class="ems-card-title" style="color:'+color+'">'+esc(title)+'</div>'
-		+badgesHtml+'</div><div class="ems-rows">';
+		+badgesHtml+'</div><div class="'+rowsClass+'">';
 	for(var i=0;i<rows.length;i++){
-		if(!visRowValueOk(rows[i][1]))continue;
-		html+='<div class="l">'+esc(rows[i][0])+'</div><div class="r" title="'+esc(rows[i][1])+'">'+esc(rows[i][1])+'</div>';
+		var row=rows[i];
+		if(!row||!row.length)continue;
+		if(row.length>=4){
+			if(!visRowValueOk(row[1])&&!visRowValueOk(row[3]))continue;
+			html+='<div class="l">'+esc(row[0]||"")+'</div><div class="r'+(row[4]?" "+row[4]:"")+'">'
+				+esc(visRowValueOk(row[1])?row[1]:"—")+'</div>';
+			html+='<div class="l">'+esc(row[2]||"")+'</div><div class="r'+(row[5]?" "+row[5]:"")+'">'
+				+esc(visRowValueOk(row[3])?row[3]:"—")+'</div>';
+			continue;
+		}
+		if(!visRowValueOk(row[1]))continue;
+		var rCls=row[2]?" r "+row[2]:" r";
+		if(layout==="ac")rCls+=" span";
+		html+='<div class="l">'+esc(row[0])+'</div><div class="'+rCls.trim()+'" title="'+esc(row[1])+'">'+esc(row[1])+'</div>';
 	}
 	html+='</div>';
-	if(note)html+='<div class="ems-note" title="'+esc(note)+'">'+esc(note)+'</div>';
+	var noteCls="ems-note";
+	var noteText=note;
+	if(note&&typeof note==="object"){
+		if(note.cls)noteCls+=" "+note.cls;
+		noteText=note.text||"";
+	}
+	if(noteText)html+='<div class="'+noteCls+'" title="'+esc(noteText)+'">'+esc(noteText)+'</div>';
 	if(actionsHtml)html+=actionsHtml;
 	return html+'</div>';
 }
@@ -1313,7 +1338,11 @@ function visClimateNote(s){
 	var combined=reason+" "+alloc;
 	var dry=/Entfeucht|dehumidify|\bdry\b|Feuchte[^\n]{0,32}≥|Feuchte[^\n]{0,32}>=/i.test(combined)
 		||visNorm(s.purpose)==="dehumidify";
-	if(s.cleaningActive||src==="cleaning"||/Reinigung|cleaning/i.test(combined))return"Reinigung aktiv";
+	if(s.cleaningActive||src==="cleaning"||/Reinigung|cleaning/i.test(combined)){
+		var prog=s.cleaningProgressPct;
+		if(prog!=null&&isFinite(prog)&&prog>=0)return"Reinigung läuft · "+Math.round(prog)+" %";
+		return"Reinigung aktiv";
+	}
 	if(s.modeOff||s.governanceAllowed===false||/Governance deaktiviert|Add-on deaktiviert|Innengerät deaktiviert/i.test(combined))return"Durch EMS gesperrt";
 	if(s.outsideWindow||/Außerhalb Zeitfenster|Hard-Off/i.test(combined)){
 		return dry?"Entfeuchten — außerhalb Zeitfenster":"Durch EMS gesperrt";
@@ -1455,6 +1484,22 @@ function visLageLine(s){
 	var facts=visLageFacts(s);
 	if(facts)bits.push(facts);
 	return bits.join(" · ");
+}
+function visAcPowerDisplayLine(kind,powerW){
+	if(kind==="measured"&&powerW!=null&&isFinite(powerW)&&powerW>0)return Math.round(powerW)+" W";
+	if(kind==="estimated"&&powerW!=null&&isFinite(powerW)&&powerW>0)return"~"+Math.round(powerW)+" W";
+	return"";
+}
+function visAcFilterWarn(status){
+	var s=String(status||"").trim().toLowerCase();
+	if(s==="wash")return{text:"FILTER REINIGEN",cls:"warn"};
+	if(s==="replace")return{text:"FILTER ERSETZEN",cls:"danger"};
+	return null;
+}
+function visAcTodayEnergyLine(runtimeSec,energyKwh){
+	var d=visFmtDurationSec(runtimeSec);
+	var e=visFmtKwh(energyKwh);
+	return{dur:d||"",energy:e||""};
 }
 function visJoinDurEnergy(sec,kwh,totalHours){
 	var bits=[];
@@ -1761,9 +1806,11 @@ function climateCardNote(unitIndex){
 	var sched=climateScheduleRow(unitIndex);
 	var inPlanWindow=!!(sched&&sched.current);
 	var hasFuture=!!(sched&&(sched.current||sched.future));
-	return visClimateNote({
+	var progress=num(g(base+".feedback_cleaning_progress_pct"));
+	var statusNote=visClimateNote({
 		running:running,
 		cleaningActive:isOn(g(base+".cleaning_active")),
+		cleaningProgressPct:progress,
 		decisionSource:txt(g(base+".decision_source"),""),
 		reasonDe:reasonDe,
 		allocationReasonDe:txt(g(base+".allocation_reason_de"),""),
@@ -1776,6 +1823,11 @@ function climateCardNote(unitIndex){
 		allocOn:isPowerOn(num(g(base+".allocated_power_w")))||inPlanWindow,
 		purpose:g(base+".mode_purpose")
 	});
+	var fw=visAcFilterWarn(g(base+".filter_status"));
+	if(fw){
+		return{text:fw.text+(statusNote?" · "+statusNote:""),cls:fw.cls};
+	}
+	return statusNote;
 }
 function climateHvacBadge(unitIndex){
 	var running=isOn(g("addons.air_conditioning.units.unit_"+unitIndex+".running"));
@@ -2392,30 +2444,54 @@ function renderStack(){
 		var name=visAcConfiguredName(g(base+".name"));
 		if(!name)return"";
 		var title="Klima · "+name;
-		var d=resolveClimateUnitDisplay(unitIndex);
 		var running=isOn(g(base+".running"));
 		var badges={exec:execAuthorityBadge("air_conditioning"),op:climateDeviceBadge(running),hvac:climateHvacBadge(unitIndex)};
-		var meas=num(g(base+".estimated_power_w"));
-		var exp=num(g(base+".expected_power_w"));
-		var alloc=num(g(base+".allocated_power_w"));
 		var purpose=visHvacPurposeLabel(g(base+".mode_purpose"));
 		var stats=base+".stats";
-		var rows=[["Raum",fmtTemp(g(base+".room_temp_c"))],["Feuchte",fmtHumidity(g(base+".room_humidity_pct"))]];
-		if(!running&&purpose)rows.push(["Zielmodus",purpose]);
-		if(running){
-			var pNow=meas!==null?meas:alloc;
-			var pLine=(pNow!==null?Math.round(pNow)+" W":"—")+(exp!==null&&exp!==pNow?(" / erw. "+Math.round(exp)+" W"):"");
-			rows.push(["Leistung",pLine]);
+		var modeLabel=purpose||"";
+		var setpoint=fmtTemp(g(base+".setpoint_temp_c"));
+		var rows=[
+			["Raum",fmtTemp(g(base+".room_temp_c")),"Feuchte",fmtHumidity(g(base+".room_humidity_pct"))]
+		];
+		if(modeLabel||visRowValueOk(setpoint)){
+			rows.push(["Modus",modeLabel||"—","Soll",visRowValueOk(setpoint)?setpoint:"—"]);
 		}
-		var today=visJoinDurEnergy(num(g(stats+".today_runtime_sec")),num(g(stats+".today_energy_kwh")));
-		if(today)rows.push(["Heute",today]);
+		var todayBits=visAcTodayEnergyLine(num(g(stats+".today_runtime_sec")),num(g(stats+".today_energy_kwh")));
+		if(todayBits.dur||todayBits.energy){
+			rows.push(["Heute",todayBits.dur||"—","Energie",todayBits.energy||"—"]);
+		}
+		var pKind=String(g(base+".power_display_kind")||"none").trim();
+		var pW=null;
+		if(pKind==="measured")pW=num(g(base+".measured_power_w"));
+		else if(pKind==="estimated")pW=num(g(base+".estimated_power_w"));
+		var pLine=visAcPowerDisplayLine(pKind,pW);
+		if(!pLine&&running)pLine="—";
+		var filterLabel=txt(g(base+".filter_status_label_de"),"");
+		if(filterLabel==="—")filterLabel="";
+		var filterPct=num(g(base+".filter_usage_pct"));
+		var filterHours=num(g(base+".filter_usage_hours"));
+		var filterCls="";
+		var fStat=String(g(base+".filter_status")||"").toLowerCase();
+		if(fStat==="wash")filterCls="warn";
+		if(fStat==="replace")filterCls="danger";
+		if(pLine||filterLabel){
+			rows.push(["Leistung",pLine||"—","Filter",filterLabel||"—","",filterCls]);
+		}
+		if(filterHours!=null||filterPct!=null){
+			rows.push([
+				"Filterzeit",
+				filterHours!=null?(Math.round(filterHours)+" h"):"—",
+				"Nutzung",
+				filterPct!=null?(Math.round(filterPct)+" %"):"—"
+			]);
+		}
 		if(running){
 			var sess=visJoinDurEnergy(num(g(stats+".session_runtime_sec")),num(g(stats+".session_energy_kwh")));
 			if(sess)rows.push(["Session",sess]);
 		}
 		var acSched=climateScheduleRow(unitIndex);
 		rows.push([acSched.label,acSched.value]);
-		return card(title,"#79c0ff",badges,rows,climateCardNote(unitIndex));
+		return card(title,"#79c0ff",badges,rows,climateCardNote(unitIndex),null,"ac");
 	}
 
 	paintEl(el,"stack",

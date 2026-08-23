@@ -20,9 +20,9 @@ export function localthingsFilterStatusLabelDe(status: LocalthingsFilterStatus):
 		case "normal":
 			return "Normal";
 		case "wash":
-			return "Reinigung erforderlich";
+			return "Reinigen";
 		case "replace":
-			return "Filter ersetzen";
+			return "Ersetzen";
 		default:
 			return "Unbekannt";
 	}

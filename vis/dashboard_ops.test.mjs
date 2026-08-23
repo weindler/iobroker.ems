@@ -25,7 +25,7 @@ function loadOpsDisplay(html) {
 	assert.ok(start >= 0 && end > start, "vis-ops-display markers required");
 	const code = html.slice(start, end);
 	return new Function(
-		`${code}; return { visBatteryMotion, visEmsAction, visGbStatus, visGridMeterW, visGridFlow, visTargetedHold, visPriceBand, visPriceAxisRange, visClimateNote, visAcConfiguredName, visClimateHvacBadge, visHvacPurposeLabel, visFmtDurationSec, visFmtKwh, visPvBiasPhrase, visPvChipSub, visHorizonOutlook, visLageLine, visLageFacts, visPvIstKwh, visTodayDeviationPct, visDeviationVsRecent, visCheapPhaseLabel, visPriceHeadSummary, visIdleFacts, visNowSummary, visRowValueOk, visBatteryPlanLine, visEnergySourceLabel, visWindowEnergyKwh, visImmersionDemandFact, visImmersionWaitNote, visAgendaBuckets, visLocalDayEndMs, visBatteryRemainKwh, visBatteryDayLines, visCarDayLines, visHorizonDayLabel, visHorizonDayLine, visFirstSentence, visClockRange };`,
+		`${code}; return { visBatteryMotion, visEmsAction, visGbStatus, visGridMeterW, visGridFlow, visTargetedHold, visPriceBand, visPriceAxisRange, visClimateNote, visAcConfiguredName, visClimateHvacBadge, visHvacPurposeLabel, visFmtDurationSec, visFmtKwh, visJoinDurEnergy, visAcPowerDisplayLine, visAcFilterWarn, visAcTodayEnergyLine, visPvBiasPhrase, visPvChipSub, visHorizonOutlook, visLageLine, visLageFacts, visPvIstKwh, visTodayDeviationPct, visDeviationVsRecent, visCheapPhaseLabel, visPriceHeadSummary, visIdleFacts, visNowSummary, visRowValueOk, visBatteryPlanLine, visEnergySourceLabel, visWindowEnergyKwh, visImmersionDemandFact, visImmersionWaitNote, visAgendaBuckets, visLocalDayEndMs, visBatteryRemainKwh, visBatteryDayLines, visCarDayLines, visHorizonDayLabel, visHorizonDayLine, visFirstSentence, visClockRange };`,
 	)();
 }
 
@@ -157,7 +157,7 @@ describe("VIS operations dashboard", () => {
 		assert.match(visHtml, /label:"LÄUFT"/);
 		assert.match(visHtml, /mode_purpose/);
 		assert.match(visHtml, /badge\.hvac/);
-		assert.match(visHtml, /Zielmodus/);
+		assert.match(visHtml, /\["Modus"/);
 		assert.equal(visHtml.includes('return{cls:"idle",label:"—"}'), false);
 	});
 
@@ -561,7 +561,7 @@ describe("VIS battery / grid / GB presentation", () => {
 		assert.deepEqual(ops.visClimateHvacBadge("dehumidify", true), { cls: "hvac-dry", label: "DRY" });
 		assert.deepEqual(ops.visClimateHvacBadge("heating", true), { cls: "hvac-heat", label: "HEAT" });
 		assert.equal(ops.visHvacPurposeLabel("cooling"), "COOL");
-		assert.match(visHtml, /if\(!running&&purpose\)rows\.push\(\["Zielmodus",purpose\]\)/);
+		assert.match(visHtml, /visHvacPurposeLabel\(g\(base\+"\.mode_purpose"\)\)/);
 		assert.match(visHtml, /execAuthorityBadge\("air_conditioning"\)/);
 		assert.match(visHtml, /climateDeviceBadge\(running\)/);
 	});
@@ -575,6 +575,45 @@ describe("VIS battery / grid / GB presentation", () => {
 		assert.equal(ops.visFmtKwh(307.5), "307,5 kWh");
 		assert.equal(ops.visRowValueOk("—"), false);
 		assert.equal(ops.visRowValueOk("25,4 °C"), true);
+	});
+
+	it("AC LocalThings VIS power/filter/auto-clean helpers", () => {
+		assert.equal(ops.visAcPowerDisplayLine("measured", 727), "727 W");
+		assert.equal(ops.visAcPowerDisplayLine("estimated", 700), "~700 W");
+		assert.equal(ops.visAcPowerDisplayLine("none", 0), "");
+		assert.equal(ops.visAcPowerDisplayLine("measured", 0), "");
+		assert.deepEqual(ops.visAcFilterWarn("wash"), { text: "FILTER REINIGEN", cls: "warn" });
+		assert.deepEqual(ops.visAcFilterWarn("replace"), { text: "FILTER ERSETZEN", cls: "danger" });
+		assert.equal(ops.visAcFilterWarn("normal"), null);
+		assert.equal(ops.visAcFilterWarn(""), null);
+		const today = ops.visAcTodayEnergyLine(4200, 0.84);
+		assert.equal(today.dur, "1 h 10 min");
+		assert.equal(today.energy, "0,84 kWh");
+		assert.equal(
+			ops.visClimateNote({
+				running: false,
+				cleaningActive: true,
+				cleaningProgressPct: 42,
+				decisionSource: "cleaning",
+			}),
+			"Reinigung läuft · 42 %",
+		);
+		assert.equal(
+			ops.visClimateNote({
+				running: false,
+				cleaningActive: false,
+				decisionSource: "thermal_fallback",
+				reasonDe: "",
+				demand: "none",
+			}),
+			"Keine Kühlung erforderlich",
+		);
+		assert.match(visHtml, /power_display_kind/);
+		assert.match(visHtml, /filter_status_label_de/);
+		assert.match(visHtml, /stats\.today_energy_kwh/);
+		assert.match(visHtml, /ems-rows-ac/);
+		assert.match(visHtml, /setpoint_temp_c/);
+		assert.equal(visHtml.includes("hass.0.entities"), false);
 	});
 
 	it("summarizes the next cheap phase from visible slots only", () => {

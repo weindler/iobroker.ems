@@ -165,7 +165,7 @@ function hassTable() {
         strict_1.default.equal((0, localthings_filter_js_1.parseLocalthingsFilterStatus)("wash"), "wash");
         strict_1.default.equal((0, localthings_filter_js_1.parseLocalthingsFilterStatus)("replace"), "replace");
         strict_1.default.match((0, localthings_filter_js_1.formatLocalthingsFilterSummary)({ usagePct: 75, usageHours: 375, statusRaw: "normal" }), /75 %/);
-        strict_1.default.match((0, localthings_filter_js_1.formatLocalthingsFilterSummary)({ usagePct: 75, usageHours: 375, statusRaw: "wash" }), /Reinigung/);
+        strict_1.default.match((0, localthings_filter_js_1.formatLocalthingsFilterSummary)({ usagePct: 75, usageHours: 375, statusRaw: "wash" }), /Reinigen/);
     });
     (0, node_test_1.it)("14) Prefill does not overwrite existing hass user config", () => {
         const cfg = {

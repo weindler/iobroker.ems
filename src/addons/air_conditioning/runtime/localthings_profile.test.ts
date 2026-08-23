@@ -193,7 +193,7 @@ describe("AC LocalThings / SmartThings profile abstraction", () => {
 		assert.equal(parseLocalthingsFilterStatus("wash"), "wash");
 		assert.equal(parseLocalthingsFilterStatus("replace"), "replace");
 		assert.match(formatLocalthingsFilterSummary({ usagePct: 75, usageHours: 375, statusRaw: "normal" }), /75 %/);
-		assert.match(formatLocalthingsFilterSummary({ usagePct: 75, usageHours: 375, statusRaw: "wash" }), /Reinigung/);
+		assert.match(formatLocalthingsFilterSummary({ usagePct: 75, usageHours: 375, statusRaw: "wash" }), /Reinigen/);
 	});
 
 	it("14) Prefill does not overwrite existing hass user config", () => {

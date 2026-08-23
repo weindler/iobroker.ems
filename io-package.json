@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.334",
+		"version": "0.1.335",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.335": {
+				"en": "Fix LocalThings AC: treat climate.state (cool/heat/…) as on/off when state_boolean stays false — restores running badge, stats hours, and stops start-retry loops for all units.",
+				"de": "Fix LocalThings-Klima: climate.state (cool/heat/…) als An/Aus, wenn state_boolean falsch false bleibt — Kachel LÄUFT, Betriebsstunden und keine Start-Retry-Schleifen; für alle Units."
+			},
 			"0.1.334": {
 				"en": "Fix: VIS climate tiles now subscribe to LocalThings setpoint/power/filter unit states (were rendered but never loaded).",
 				"de": "Fix: VIS Klima-Kacheln abonnieren jetzt LocalThings Soll/Leistung/Filter Unit-States (waren gerendert, aber nie geladen)."

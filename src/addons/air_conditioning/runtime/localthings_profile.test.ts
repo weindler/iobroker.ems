@@ -200,12 +200,31 @@ describe("AC LocalThings / SmartThings profile abstraction", () => {
 		const cfg = {
 			ac_u1_profile: "samsung_localthings_hass",
 			ac_u1_enabled: true,
-			ac_u1_feedback_switch_target: "hass.0.entities.climate.custom.state_boolean",
+			ac_u1_feedback_switch_target: "hass.0.entities.climate.custom.state",
 			ac_u1_cmd_switch_on_target: "hass.0.entities.climate.custom.turn_on",
 			ac_u1_cmd_set_mode_target: "hass.0.entities.climate.custom.set_hvac_mode",
 			ac_u1_cmd_set_cool_setpoint_target: "hass.0.entities.climate.custom.set_temperature",
 		};
 		assert.equal(buildLocalthingsPrefillPatch(cfg), null);
+	});
+
+	it("14b) Prefill migrates state_boolean feedback → climate.state", () => {
+		const cfg = {
+			ac_u2_profile: "samsung_localthings_hass",
+			ac_u2_enabled: true,
+			ac_u2_feedback_switch_target:
+				"hass.0.entities.climate.josef_zimmer_josef_klimaanlage.state_boolean",
+			ac_u2_cmd_switch_on_target: "hass.0.entities.climate.josef_zimmer_josef_klimaanlage.turn_on",
+			ac_u2_cmd_set_mode_target: "hass.0.entities.climate.josef_zimmer_josef_klimaanlage.set_hvac_mode",
+			ac_u2_cmd_set_cool_setpoint_target:
+				"hass.0.entities.climate.josef_zimmer_josef_klimaanlage.set_temperature",
+		};
+		const patch = buildLocalthingsPrefillPatch(cfg);
+		assert.ok(patch);
+		assert.equal(
+			patch!.ac_u2_feedback_switch_target,
+			"hass.0.entities.climate.josef_zimmer_josef_klimaanlage.state",
+		);
 	});
 
 	it("15) Switching back to SmartThings restores SmartThings write contract", () => {

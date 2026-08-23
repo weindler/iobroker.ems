@@ -27,9 +27,9 @@ const compute_desired_1 = require("./compute_desired");
 const diag_trace_1 = require("./diag_trace");
 const sequences_1 = require("./sequences");
 const vis_telemetry_1 = require("./vis_telemetry");
+const feedback_on_1 = require("./feedback_on");
 const stats_active_1 = require("./stats_active");
 const cleaning_1 = require("./cleaning");
-const time_1 = require("./time");
 const power_reconcile_1 = require("./power_reconcile");
 let engineActive = false;
 let hostRef = null;
@@ -57,6 +57,25 @@ function scheduleTick(delayMs = constants_1.AC_TICK_MS) {
 /** Nach Hardware-Aktion: neuer Reconcile mit frischen Inputs, kein Weiterrechnen mit Pre-await-Snapshot. */
 function scheduleImmediateReconcile() {
     scheduleTick(50);
+}
+/** LocalThings: On/Off aus feedback_switch und ggf. climate.state (state_boolean oft falsch). */
+async function readUnitDevicePowered(host, unit, table) {
+    const fbId = (0, sequences_1.resolveAcMappingTarget)(table, unit.index, "feedback_switch");
+    const modeId = (0, feedback_on_1.resolveAcFeedbackModeTarget)(table, unit, fbId);
+    const sw = await readForeign(host, fbId);
+    const mode = modeId ? await readForeign(host, modeId) : { value: null, num: null };
+    const r = (0, feedback_on_1.resolveAcDevicePowered)({
+        switchRaw: sw.value,
+        modeRaw: mode.value,
+        useModeFallback: Boolean(modeId),
+    });
+    return {
+        on: r.on,
+        value: r.effectiveRaw,
+        switchRaw: sw.value,
+        modeRaw: mode.value,
+        via: r.via,
+    };
 }
 async function readForeign(host, id) {
     if (!id)
@@ -111,33 +130,35 @@ function scheduleCleaningAfterStop(host, unit, up, nowMs, purpose) {
     const why = purpose ?? "unknown";
     host.log.info(`ac unit ${unit.index}: cleaning scheduled in ${unit.cleaningDelayMin} min (at ~${at}, after ${why})`);
 }
-async function waitForFeedbackOff(host, fbId) {
-    if (!fbId) {
+async function waitForFeedbackOff(host, unit, table) {
+    const fbId = (0, sequences_1.resolveAcMappingTarget)(table, unit.index, "feedback_switch");
+    if (!fbId && !(0, feedback_on_1.resolveAcFeedbackModeTarget)(table, unit, fbId)) {
         return { off: false, value: null };
     }
     for (let attempt = 0; attempt < constants_1.AC_FEEDBACK_POLL_ATTEMPTS; attempt++) {
         await new Promise((resolve) => setTimeout(resolve, constants_1.AC_FEEDBACK_POLL_MS));
-        const fb = await readForeign(host, fbId);
-        if ((0, time_1.switchIsOff)(fb.value)) {
-            return { off: true, value: fb.value };
+        const powered = await readUnitDevicePowered(host, unit, table);
+        if (!powered.on) {
+            return { off: true, value: powered.value };
         }
     }
-    const fb = await readForeign(host, fbId);
-    return { off: (0, time_1.switchIsOff)(fb.value), value: fb.value };
+    const powered = await readUnitDevicePowered(host, unit, table);
+    return { off: !powered.on, value: powered.value };
 }
-async function waitForFeedbackOn(host, fbId) {
-    if (!fbId) {
-        return { on: false, value: null };
+async function waitForFeedbackOn(host, unit, table) {
+    const fbId = (0, sequences_1.resolveAcMappingTarget)(table, unit.index, "feedback_switch");
+    if (!fbId && !(0, feedback_on_1.resolveAcFeedbackModeTarget)(table, unit, fbId)) {
+        return { on: false, value: null, via: "none" };
     }
     for (let attempt = 0; attempt < constants_1.AC_FEEDBACK_POLL_ATTEMPTS; attempt++) {
         await new Promise((resolve) => setTimeout(resolve, constants_1.AC_FEEDBACK_POLL_MS));
-        const fb = await readForeign(host, fbId);
-        if ((0, time_1.switchIsOn)(fb.value)) {
-            return { on: true, value: fb.value };
+        const powered = await readUnitDevicePowered(host, unit, table);
+        if (powered.on) {
+            return { on: true, value: powered.value, via: powered.via };
         }
     }
-    const fb = await readForeign(host, fbId);
-    return { on: (0, time_1.switchIsOn)(fb.value), value: fb.value };
+    const powered = await readUnitDevicePowered(host, unit, table);
+    return { on: powered.on, value: powered.value, via: powered.via };
 }
 /** LocalThings: gemessene Leistung nur wenn plausibel; sonst null → Learned/Config-Fallback. */
 async function resolveAcMeasuredPowerForStats(host, unit, table, acConfirmedOn) {
@@ -167,31 +188,35 @@ async function stopUnit(host, unit, table, live, up) {
         up.lastModePurpose = null;
         return;
     }
-    const fbId = (0, sequences_1.resolveAcMappingTarget)(table, unit.index, "feedback_switch");
     // Sofort prüfen, dann kurze Poll-Schleife; bei Bedarf zweite Off-Welle.
-    let fbValue = fbId ? (await readForeign(host, fbId)).value : null;
-    if (fbId && (0, time_1.switchIsOn)(fbValue)) {
-        fbValue = (await waitForFeedbackOff(host, fbId)).value;
+    let powered = await readUnitDevicePowered(host, unit, table);
+    let fbValue = powered.value;
+    if (powered.on) {
+        const waited = await waitForFeedbackOff(host, unit, table);
+        fbValue = waited.value;
+        powered = { ...powered, on: !waited.off, value: waited.value };
     }
-    if (fbId && (0, time_1.switchIsOn)(fbValue)) {
+    if (powered.on) {
         host.log.warn(`ac unit ${unit.index}: still on after first stop — retry switch_off`);
         await (0, sequences_1.writeAcUnitSwitchOff)(host, unit.index, table, true, host.log);
         const refreshId = (0, sequences_1.resolveAcMappingTarget)(table, unit.index, "cmd_refresh");
         if (refreshId) {
             await (0, sequences_1.executeAcWriteSteps)(host, unit.index, table, [{ kind: "toggle", role: "cmd_refresh" }], true, host.log);
         }
-        fbValue = (await waitForFeedbackOff(host, fbId)).value;
+        const waited = await waitForFeedbackOff(host, unit, table);
+        fbValue = waited.value;
+        powered = { ...powered, on: !waited.off, value: waited.value };
     }
-    if (!fbId || (0, time_1.switchIsOff)(fbValue)) {
+    if (!powered.on) {
         up.running = false;
-        host.log.info(`ac unit ${unit.index}: stop (live) — feedback ${fbId ? `off (${String(fbValue ?? "")})` : "unmapped"}`);
+        host.log.info(`ac unit ${unit.index}: stop (live) — feedback off (${String(fbValue ?? "")})`);
         const purpose = up.lastModePurpose;
         scheduleCleaningAfterStop(host, unit, up, up.lastStopAtMs, purpose);
         up.lastModePurpose = null;
     }
     else {
         up.running = true;
-        host.log.warn(`ac unit ${unit.index}: stop sent but feedback still on (last=${String(fbValue ?? "")}) — check mapping cmd_switch_off/on → SmartThings switch; cleaning not scheduled`);
+        host.log.warn(`ac unit ${unit.index}: stop sent but feedback still on (last=${String(fbValue ?? "")}) — check mapping cmd_switch_off/on; cleaning not scheduled`);
     }
 }
 async function applyModePurposeWhileRunning(host, unit, table, live, up, modePurpose) {
@@ -253,11 +278,10 @@ async function startUnit(host, unit, table, live, up, modePurpose) {
         up.running = true;
         return "dryrun";
     }
-    const fbId = (0, sequences_1.resolveAcMappingTarget)(table, unit.index, "feedback_switch");
-    const fb = await waitForFeedbackOn(host, fbId);
+    const fb = await waitForFeedbackOn(host, unit, table);
     if (fb.on) {
         up.running = true;
-        host.log.info(`ac unit ${unit.index}: started — feedback on`);
+        host.log.info(`ac unit ${unit.index}: started — feedback on (${String(fb.value ?? "")}${fb.via === "mode" ? ", via climate.state" : ""})`);
         return "feedback_on";
     }
     up.running = false;
@@ -425,12 +449,11 @@ async function runAcRuntimeTickBody(host) {
             continue;
         }
         const up = unitPersist(unit.index);
-        const fbId = (0, sequences_1.resolveAcMappingTarget)(mappingTable, unit.index, "feedback_switch");
-        const fb = await readForeign(host, fbId);
+        const powered = await readUnitDevicePowered(host, unit, mappingTable);
         if ((0, stats_active_1.closeAcUnitStatsSession)(up, nowMs)) {
             host.log.debug?.(`ac unit ${unit.index}: stats session closed (unit disabled in config)`);
         }
-        if ((0, time_1.switchIsOn)(fb.value) && stopRetryReady(up, nowMs)) {
+        if (powered.on && stopRetryReady(up, nowMs)) {
             await stopUnit(host, unit, mappingTable, live, up);
         }
         await (0, consumer_stats_1.tickConsumerStats)(host, {
@@ -456,29 +479,30 @@ async function runAcRuntimeTickBody(host) {
     for (const unit of activeUnits) {
         const tempId = (0, sequences_1.resolveAcMappingTarget)(mappingTable, unit.index, "room_temp");
         const humId = (0, sequences_1.resolveAcMappingTarget)(mappingTable, unit.index, "room_humidity");
-        const fbId = (0, sequences_1.resolveAcMappingTarget)(mappingTable, unit.index, "feedback_switch");
         const cleaningStateId = (0, sequences_1.resolveAcMappingTarget)(mappingTable, unit.index, "feedback_cleaning_state");
         const cleaningModeId = (0, sequences_1.resolveAcMappingTarget)(mappingTable, unit.index, "feedback_cleaning_mode");
         const cleaningProgressId = (0, sequences_1.resolveAcMappingTarget)(mappingTable, unit.index, "feedback_cleaning_progress");
         const temp = await readForeign(host, tempId);
         const hum = await readForeign(host, humId);
-        let fb = await readForeign(host, fbId);
+        let powered = await readUnitDevicePowered(host, unit, mappingTable);
+        let fb = { value: powered.value, num: null };
+        let feedbackOn = powered.on;
         const cleaningState = await readForeign(host, cleaningStateId);
         const cleaningMode = await readForeign(host, cleaningModeId);
         const cleaningProgress = await readForeign(host, cleaningProgressId);
         const up = unitPersist(unit.index);
-        if ((0, time_1.switchIsOn)(fb.value))
+        if (feedbackOn)
             runningCount += 1;
         // Dryrun darf lastStartAtMs/running setzen ohne Hardware —
         // effective live false→true gibt Start sofort frei (kein 120s-Retry-Stau).
-        if (liveEdge && (0, time_1.switchIsOff)(fb.value) && (up.running || up.lastStartAtMs != null)) {
+        if (liveEdge && !feedbackOn && (up.running || up.lastStartAtMs != null)) {
             up.lastStartAtMs = null;
             host.log.info?.(`ac unit ${unit.index}: effective live authority gained — allow immediate start (hardware still off)`);
         }
-        await tickCleaning(host, unit, mappingTable, live, up, nowMs, cleaningState.value, cleaningMode.value, cleaningProgress.num, allowNewCleaning, (0, time_1.switchIsOn)(fb.value));
+        await tickCleaning(host, unit, mappingTable, live, up, nowMs, cleaningState.value, cleaningMode.value, cleaningProgress.num, allowNewCleaning, feedbackOn);
         // Cleaning-Flag sperrt FSM-Stop — Gerät trotzdem ausschalten, sonst Deadlock.
         if (up.cleaningActive &&
-            (0, time_1.switchIsOn)(fb.value) &&
+            feedbackOn &&
             stopRetryReady(up, nowMs) &&
             writeLive &&
             governanceEnabled &&
@@ -486,7 +510,7 @@ async function runAcRuntimeTickBody(host) {
             host.log.info(`ac unit ${unit.index}: stop while cleaning flag set (device still on)`);
             await stopUnit(host, unit, mappingTable, true, up);
         }
-        if (!addonEnabledVal && (0, time_1.switchIsOn)(fb.value) && stopRetryReady(up, nowMs)) {
+        if (!addonEnabledVal && feedbackOn && stopRetryReady(up, nowMs)) {
             await stopUnit(host, unit, mappingTable, writeLive, up);
         }
         const fsm = (0, fsm_1.evaluateAcUnitFsm)({
@@ -507,7 +531,6 @@ async function runAcRuntimeTickBody(host) {
             }
         }
         const startRetryReady = !up.lastStartAtMs || nowMs - up.lastStartAtMs >= constants_1.AC_START_RETRY_MS;
-        let feedbackOn = (0, time_1.switchIsOn)(fb.value);
         let control = (0, compute_desired_1.computeAcCoolingDesired)({
             unitEnabled: unit.enabled,
             governanceEnabled,
@@ -545,9 +568,9 @@ async function runAcRuntimeTickBody(host) {
             emitAcCoolingDiag(host, "switch_off", unit.index, Date.now(), up, dailyPlan, desired, permission, feedbackOn ? "on" : "off", fsm.demandStop);
             await stopUnit(host, unit, mappingTable, writeLive && permission.deviceWritesAllowed, up);
             hardwareActionTaken = true;
-            const fbAfter = await readForeign(host, fbId);
-            fb = fbAfter;
-            feedbackOn = (0, time_1.switchIsOn)(fbAfter.value);
+            powered = await readUnitDevicePowered(host, unit, mappingTable);
+            fb = { value: powered.value, num: null };
+            feedbackOn = powered.on;
             up.running = feedbackOn;
         }
         else if (!feedbackOn && permission.allowStop) {
@@ -566,9 +589,9 @@ async function runAcRuntimeTickBody(host) {
                      * Frische States nach await — Pre-START-Snapshot verwerfen (I3).
                      * Kein running=false aus altem fb=OFF.
                      */
-                    const fbAfter = await readForeign(host, fbId);
-                    fb = fbAfter;
-                    feedbackOn = (0, time_1.switchIsOn)(fbAfter.value);
+                    powered = await readUnitDevicePowered(host, unit, mappingTable);
+                    fb = { value: powered.value, num: null };
+                    feedbackOn = powered.on;
                     up.running = feedbackOn || startOutcome === "feedback_on" || startOutcome === "dryrun";
                     const planAfter = await (0, daily_plan_1.resolveAcUnitDailyPlanAllocation)(host, unit, consumerStats, new Date());
                     const fsmAfter = (0, fsm_1.evaluateAcUnitFsm)({
@@ -711,7 +734,7 @@ async function runAcRuntimeTickBody(host) {
             measuredPowerW,
             commandedPowerW: estPower,
         });
-        if (deviceActive || up.cleaningActive || up.running || (0, time_1.switchIsOn)(fb.value)) {
+        if (deviceActive || up.cleaningActive || up.running || feedbackOn) {
             acDeviceBusy = true;
         }
         /*

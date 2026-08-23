@@ -80,6 +80,17 @@ function buildLocalthingsPrefillPatch(config) {
             applyMappingPatch(patch, i, derived, true, c);
         }
     }
+    // Bekannter Prefill-Fehler: state_boolean bleibt oft false bei laufendem Gerät → .state
+    for (let i = 1; i <= constants_1.AC_UNIT_COUNT; i++) {
+        if (!(0, registry_1.isLocalthingsHassProfile)(readProfile(c, i)))
+            continue;
+        const fbKey = `${(0, constants_1.acMappingFlatPrefix)(i, "feedback_switch")}_target`;
+        const existing = typeof patch[fbKey] === "string" ? String(patch[fbKey]) : readTarget(c, i, "feedback_switch");
+        if (existing.endsWith(".state_boolean")) {
+            patch[fbKey] = `${existing.slice(0, -".state_boolean".length)}.state`;
+            patch[`${(0, constants_1.acMappingFlatPrefix)(i, "feedback_switch")}_enabled`] = true;
+        }
+    }
     return Object.keys(patch).length > 0 ? patch : null;
 }
 exports.buildLocalthingsPrefillPatch = buildLocalthingsPrefillPatch;

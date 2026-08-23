@@ -15,7 +15,8 @@ const JOSEF = "josef_zimmer_josef_klimaanlage";
 function climateMaps(entity: string): Partial<Record<AcMappingRole, string>> {
 	const c = `hass.0.entities.climate.${entity}`;
 	return {
-		feedback_switch: `${c}.state_boolean`,
+		/** HVAC-Modus-String (cool/off/…) — state_boolean ist bei LocalThings oft falsch false. */
+		feedback_switch: `${c}.state`,
 		feedback_mode: `${c}.state`,
 		feedback_setpoint: `${c}.temperature`,
 		room_temp: `${c}.current_temperature`,

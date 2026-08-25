@@ -7,6 +7,7 @@ import { startWallboxModuleRuntime } from "../addons/wallbox";
 import { syncAddonGovernanceFromConfig } from "../addons/governance";
 import { startEmsLightPhase1Runtime } from "../ems_light";
 import { migrateAndSyncEconomicsFeedInFromConfig } from "../ems_light/economics_feed_in";
+import { syncEconomicsTariffFeesFromConfig } from "../ems_light/economics_tariff_fees";
 import { startFailsafeRunner } from "../failsafe_runner";
 import {
 	EXECUTION_MODE_ADDON_IDS,
@@ -140,6 +141,16 @@ export async function runAdapterBootstrap(
 			log: host.log,
 		});
 	});
+	await step("sync economics tariff fees", () =>
+		syncEconomicsTariffFeesFromConfig({
+			setObjectNotExistsAsync: host.setObjectNotExistsAsync.bind(host),
+			getStateAsync: host.getStateAsync.bind(host),
+			setStateAsync: host.setStateAsync.bind(host),
+			extendObjectAsync: host.extendObjectAsync?.bind(host),
+			config: adapterConfig,
+			log: host.log,
+		}),
+	);
 
 	if (bootstrapFailurePhase()) {
 		host.log.error(`Bootstrap abgebrochen vor Runtime (${bootstrapFailurePhase()})`);

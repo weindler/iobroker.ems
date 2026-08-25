@@ -30,6 +30,28 @@ export function fixedTariffCostEur(input: {
 	return round2(energyEur + base);
 }
 
+/** Tagesanteil einer Monatsgebühr (€). */
+export function dailyBaseShareEur(monthlyEur: number | null, monthFraction: number): number {
+	if (monthlyEur === null || !(monthlyEur > 0) || !(monthFraction > 0)) return 0;
+	return round2(monthlyEur * monthFraction);
+}
+
+/** Tibber-Tageskosten: Live-Wert + anteilige Monatsgebühren (Grundpreis + Netzentgelt). */
+export function tibberDayCostEur(input: {
+	accumulatedCostEur: number | null;
+	monthlyBaseEur: number | null;
+	monthlyGridFeeEur: number | null;
+	monthFraction: number;
+}): number | null {
+	if (input.accumulatedCostEur === null || !(input.accumulatedCostEur >= 0)) {
+		return null;
+	}
+	const fees =
+		dailyBaseShareEur(input.monthlyBaseEur, input.monthFraction) +
+		dailyBaseShareEur(input.monthlyGridFeeEur, input.monthFraction);
+	return round2(input.accumulatedCostEur + fees);
+}
+
 export function savingsVsFixedEur(
 	fixedTariffCostEurVal: number | null,
 	dynamicCostEur: number | null,

@@ -2601,15 +2601,15 @@ function renderStatistics(){
 		? (pending.length+" offene Schnellader-Session(s) — Rechnung unter statistics.public_charge.submit_request (JSON: kwh, eur).")
 		: "Keine offenen Schnellader-Sessions.";
 	grid.innerHTML=
-		statsCard("Haus heute · vs. Festtarif",hT,[
+		statsCard("Haus heute · Tibber vs. Festtarif",hT,[
 			["Netzbezug",fmtKwhStats(homeT.gridImportKwh)],
-			["Dynamisch",fmtEur(homeT.dynamicCostEur)],
+			["Tibber",fmtEur(homeT.dynamicCostEur)],
 			["Festtarif",fmtEur(homeT.fixedTariffCostEur)],
 			["Rewards",fmtEur(homeT.gridRewardsCreditEur)]
 		],txt(homeT.reasonDe,""))
-		+statsCard("Haus Monat · vs. Festtarif",hM,[
+		+statsCard("Haus Monat · Tibber vs. Festtarif",hM,[
 			["Netzbezug",fmtKwhStats(homeM.gridImportKwh)],
-			["Dynamisch",fmtEur(homeM.dynamicCostEur)],
+			["Tibber",fmtEur(homeM.dynamicCostEur)],
 			["Festtarif",fmtEur(homeM.fixedTariffCostEur)],
 			["Rewards",fmtEur(homeM.gridRewardsCreditEur)]
 		],txt(homeM.reasonDe,""))

@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.336",
+		"version": "0.1.337",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.337": {
+				"en": "Tariff tab: Tibber monthly base fee and grid fee (€/month); statistics adds their daily share to Tibber cost. Verivox/fixed tariff unchanged (all-in).",
+				"de": "Tarif-Tab: Tibber Grundpreis und Netzentgelt monatlich (€/Monat); Statistik rechnet Tagesanteile zur Tibber-Seite. Verivox/Festtarif unverändert (alles inbegriffen)."
+			},
 			"0.1.336": {
 				"en": "AC units: add read-only filter_status_code (0=normal, 1=wash, 2=replace, -1=unknown) for VIS/diagnostics on all unit_N.",
 				"de": "Klima-Units: read-only filter_status_code (0=normal, 1=wash, 2=replace, -1=unbekannt) für VIS/Diagnose an allen unit_N."

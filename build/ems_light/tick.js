@@ -48,9 +48,10 @@ async function runEmsLightPhase1Tick(host) {
     }
     try {
         const { syncEconomicsFeedInFromConfig } = await import("./economics_feed_in.js");
+        const { syncEconomicsTariffFeesFromConfig } = await import("./economics_tariff_fees.js");
         const feedHost = host;
         if (typeof feedHost.setObjectNotExistsAsync === "function") {
-            await syncEconomicsFeedInFromConfig({
+            const econHost = {
                 setObjectNotExistsAsync: feedHost.setObjectNotExistsAsync.bind(feedHost),
                 getStateAsync: host.getStateAsync.bind(host),
                 setStateAsync: host.setStateAsync.bind(host),
@@ -60,11 +61,13 @@ async function runEmsLightPhase1Tick(host) {
                     ? feedHost.updateConfig.bind(feedHost)
                     : undefined,
                 log: feedHost.log,
-            });
+            };
+            await syncEconomicsFeedInFromConfig(econHost);
+            await syncEconomicsTariffFeesFromConfig(econHost);
         }
     }
     catch (e) {
-        hints.push(`economics.feed_in: ${String(e)}`);
+        hints.push(`economics.tariff: ${String(e)}`);
     }
     let liveResult = { updated: [], missing: [], errors: [] };
     try {

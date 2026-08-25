@@ -5,7 +5,9 @@ import {
 	energyCounterDeltaKwh,
 	estimateKwhFromSocRise,
 	estimateKmFromEvKwh,
+	dailyBaseShareEur,
 	fixedTariffCostEur,
+	tibberDayCostEur,
 	iceCostForKm,
 	integrateImportCostEur,
 	localDateKey,
@@ -283,34 +285,50 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 		}
 	}
 
-	// Dynamische Kosten: Mapping bevorzugt, sonst Leistungsintegration
+	// Tibber: Mapping accumulatedCost + anteilige Monatsgebühren aus Tarif-Tab
+	// (Grundpreis + Netzentgelt). Verivox-Festtarif unverändert (alles im Statistik-Tab).
+	const monthFrac = 1 / daysInMonth(dateKey);
+	const tibberMonthlyFees =
+		dailyBaseShareEur(cfg.tibberMonthlyBaseEur, monthFrac) +
+		dailyBaseShareEur(cfg.tibberMonthlyGridFeeEur, monthFrac);
+	let dynamicFromTibber = false;
 	if (dynamicCostMapped !== null && dynamicCostMapped >= 0) {
-		day.home.dynamicCostEur = Math.round(dynamicCostMapped * 100) / 100;
+		day.home.dynamicCostEur = tibberDayCostEur({
+			accumulatedCostEur: dynamicCostMapped,
+			monthlyBaseEur: cfg.tibberMonthlyBaseEur,
+			monthlyGridFeeEur: cfg.tibberMonthlyGridFeeEur,
+			monthFraction: monthFrac,
+		});
+		dynamicFromTibber = true;
 	} else if (dtSec > 0) {
 		const integ = integrateImportCostEur({
 			importPowerW: gridImportPowerW,
 			priceCtPerKwh: priceNowCt,
 			dtSec,
 		});
-		if (integ.costEur > 0) {
-			rt.integratedDynamicCostEur += integ.costEur;
-			rt.integratedGridImportKwhFromPower += integ.kwh;
-			day.home.dynamicCostEur = Math.round(rt.integratedDynamicCostEur * 100) / 100;
-			if (!cfg.gridImportEnergyKwhStateId && integ.kwh > 0) {
-				importKwhToday =
-					Math.round((rt.integratedGridImportKwhFromPower) * 1000) / 1000;
+		if (integ.costEur > 0 || rt.integratedDynamicCostEur > 0) {
+			if (integ.costEur > 0) {
+				rt.integratedDynamicCostEur += integ.costEur;
+				rt.integratedGridImportKwhFromPower += integ.kwh;
+			}
+			day.home.dynamicCostEur =
+				Math.round((rt.integratedDynamicCostEur + tibberMonthlyFees) * 100) / 100;
+			if (!cfg.gridImportEnergyKwhStateId && rt.integratedGridImportKwhFromPower > 0) {
+				importKwhToday = Math.round(rt.integratedGridImportKwhFromPower * 1000) / 1000;
 				haveImport = true;
 			}
 		} else if (!cfg.gridImportPowerWStateId && !cfg.dynamicCostTodayEurStateId) {
-			reasonsHome.push("Keine dynamischen Kosten (Mapping oder Netzleistung×Tibber).");
+			reasonsHome.push("Keine Tibber-Tageskosten (Mapping accumulatedCost) und kein Netzleistung×Preis.");
 		}
+	}
+	if (!dynamicFromTibber && day.home.dynamicCostEur === null && cfg.dynamicCostTodayEurStateId) {
+		reasonsHome.push("Tibber-Tageskosten-Mapping gesetzt, aber noch kein Wert.");
 	}
 
 	if (haveImport) {
 		day.home.gridImportKwh = importKwhToday;
 	}
 
-	const monthFrac = 1 / daysInMonth(dateKey);
 	day.home.fixedTariffCostEur = fixedTariffCostEur({
 		gridImportKwh: day.home.gridImportKwh,
 		compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
@@ -487,6 +505,8 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 		enabled: cfg.enabled,
 		compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
 		compareTariffMonthlyBaseEur: cfg.compareTariffMonthlyBaseEur,
+		tibberMonthlyBaseEur: cfg.tibberMonthlyBaseEur,
+		tibberMonthlyGridFeeEur: cfg.tibberMonthlyGridFeeEur,
 		iceFuelType: cfg.iceFuelType,
 		iceLPer100Km: cfg.iceLPer100Km,
 	};
@@ -511,7 +531,7 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 	const reason =
 		[
 			homeTodaySum.savingsVsFixedEur !== null
-				? `Haus heute vs. Festtarif: ${homeTodaySum.savingsVsFixedEur.toFixed(2)} €.`
+				? `Haus heute Tibber vs. Festtarif: ${homeTodaySum.savingsVsFixedEur.toFixed(2)} €.`
 				: reasonsHome[0] ?? "Haus: Daten unvollständig.",
 			mobTodaySum.savingsVsIceEur !== null
 				? `Mobilität heute vs. Verbrenner: ${mobTodaySum.savingsVsIceEur.toFixed(2)} €.`

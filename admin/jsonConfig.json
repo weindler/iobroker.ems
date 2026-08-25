@@ -10366,6 +10366,51 @@
 					"md": 4,
 					"lg": 4,
 					"xl": 4
+				},
+				"hTariffFees": {
+					"type": "header",
+					"size": 2,
+					"text": "Tibber — monatliche Gebühren (Brutto)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"tariffFeesIntro": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Nur Tibber: Grundpreis und Netzentgelt als €/Monat. Statistik rechnet den Tagesanteil (1/TageImMonat) zur Tibber-Tageskosten-Summe (Mapping accumulatedCost). Wenn eine Gebühr schon in accumulatedCost steckt → 0 lassen. Verivox/Festtarif bleibt unverändert im Statistik-Tab (dort alles inbegriffen)."
+				},
+				"tariff_monthly_base_eur": {
+					"type": "number",
+					"label": "Tibber Grundpreis / Monat",
+					"help": "€/Monat brutto (z. B. Tibber-Abo). Tagesanteil = Betrag / Tage im Monat.",
+					"min": 0,
+					"max": 100,
+					"step": 0.01,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"tariff_grid_fee_monthly_eur": {
+					"type": "number",
+					"label": "Tibber Netzentgelt / Monat",
+					"help": "€/Monat brutto. Tagesanteil wie beim Grundpreis. Nicht ct/kWh.",
+					"min": 0,
+					"max": 100,
+					"step": 0.01,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				}
 			}
 		},
@@ -10380,7 +10425,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Reporting-Addon oben drauf — ändert keine EMS-Steuerung. Haus: Tibber/dynamisch vs. Festtarif (Verivox-Stil, gleiche kWh). Mobilität: E-Auto vs. Verbrenner; Spritpreis z. B. Tankerkönig; Schnellader nur mit manueller Rechnung. Alles gemappt (objectId), nichts hardcodiert."
+					"text": "Reporting — keine Steuerung. Haus: Tibber-Tageskosten (Mapping + optionale Monatsgebühren aus Tarif-Tab) vs. Festtarif/Verivox (Arbeitspreis + Grundpreis hier — alles inbegriffen, nichts umbauen). Mobilität: E-Auto vs. Verbrenner."
 				},
 				"statistics_enabled": {
 					"type": "checkbox",
@@ -10395,7 +10440,7 @@
 				"hStatsHouse": {
 					"type": "header",
 					"size": 2,
-					"text": "Haus — Tarifvergleich",
+					"text": "Haus — Tibber vs. Festtarif",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -10405,7 +10450,7 @@
 				"statistics_compare_tariff_ct_per_kwh": {
 					"type": "number",
 					"label": "Vergleichstarif (Festpreis)",
-					"help": "Arbeitspreis des Alternativtarifs in ct/kWh (wie Verivox).",
+					"help": "Arbeitspreis des Alternativtarifs in ct/kWh (wie Verivox, alles inbegriffen).",
 					"min": 0,
 					"max": 200,
 					"step": 0.1,
@@ -10428,6 +10473,28 @@
 					"md": 4,
 					"lg": 4,
 					"xl": 4
+				},
+				"statistics_dynamic_cost_today_eur_state": {
+					"type": "objectId",
+					"label": "Tibber Tageskosten EUR (empfohlen)",
+					"help": "z. B. tibberlink.…LiveMeasurement.accumulatedCost — Kosten seit Mitternacht.",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"statistics_grid_rewards_credit_eur_state": {
+					"type": "objectId",
+					"label": "Tibber Grid Rewards Gutschrift EUR",
+					"help": "optional, z. B. …LiveMeasurement.accumulatedReward",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
 				},
 				"statistics_grid_import_energy_kwh_state": {
 					"type": "objectId",
@@ -10452,26 +10519,6 @@
 				"statistics_grid_import_power_w_state": {
 					"type": "objectId",
 					"label": "Netzbezug Leistung (W, für Kosten-Integration)",
-					"types": ["state"],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"statistics_dynamic_cost_today_eur_state": {
-					"type": "objectId",
-					"label": "Dynamische Tageskosten EUR (optional, z. B. Tibber)",
-					"types": ["state"],
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"statistics_grid_rewards_credit_eur_state": {
-					"type": "objectId",
-					"label": "Tibber Grid Rewards Gutschrift EUR",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,

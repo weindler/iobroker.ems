@@ -8,6 +8,7 @@ const wallbox_1 = require("../addons/wallbox");
 const governance_1 = require("../addons/governance");
 const ems_light_1 = require("../ems_light");
 const economics_feed_in_1 = require("../ems_light/economics_feed_in");
+const economics_tariff_fees_1 = require("../ems_light/economics_tariff_fees");
 const failsafe_runner_1 = require("../failsafe_runner");
 const execution_mode_1 = require("../execution_mode");
 const dryrun_context_1 = require("../restore/dryrun_context");
@@ -85,6 +86,14 @@ async function runAdapterBootstrap(host, step, options = {}) {
             log: host.log,
         });
     });
+    await step("sync economics tariff fees", () => (0, economics_tariff_fees_1.syncEconomicsTariffFeesFromConfig)({
+        setObjectNotExistsAsync: host.setObjectNotExistsAsync.bind(host),
+        getStateAsync: host.getStateAsync.bind(host),
+        setStateAsync: host.setStateAsync.bind(host),
+        extendObjectAsync: host.extendObjectAsync?.bind(host),
+        config: adapterConfig,
+        log: host.log,
+    }));
     if ((0, barrier_1.bootstrapFailurePhase)()) {
         host.log.error(`Bootstrap abgebrochen vor Runtime (${(0, barrier_1.bootstrapFailurePhase)()})`);
         (0, context_1.endBootstrapRun)();

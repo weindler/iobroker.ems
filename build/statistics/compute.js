@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sumMobilityDays = exports.sumHomeDays = exports.emptyMobilityDay = exports.emptyHomeDay = exports.estimateKwhFromSocRise = exports.iceCostForKm = exports.estimateKmFromEvKwh = exports.resolveFuelPriceEurPerL = exports.resolveEvKwhPer100 = exports.localDateKey = exports.daysInMonth = exports.integrateImportCostEur = exports.energyCounterDeltaKwh = exports.savingsVsFixedEur = exports.fixedTariffCostEur = void 0;
+exports.sumMobilityDays = exports.sumHomeDays = exports.emptyMobilityDay = exports.emptyHomeDay = exports.estimateKwhFromSocRise = exports.iceCostForKm = exports.estimateKmFromEvKwh = exports.resolveFuelPriceEurPerL = exports.resolveEvKwhPer100 = exports.localDateKey = exports.daysInMonth = exports.integrateImportCostEur = exports.energyCounterDeltaKwh = exports.savingsVsFixedEur = exports.tibberDayCostEur = exports.dailyBaseShareEur = exports.fixedTariffCostEur = void 0;
 function round3(n) {
     return Math.round(n * 1000) / 1000;
 }
@@ -22,6 +22,23 @@ function fixedTariffCostEur(input) {
     return round2(energyEur + base);
 }
 exports.fixedTariffCostEur = fixedTariffCostEur;
+/** Tagesanteil einer Monatsgebühr (€). */
+function dailyBaseShareEur(monthlyEur, monthFraction) {
+    if (monthlyEur === null || !(monthlyEur > 0) || !(monthFraction > 0))
+        return 0;
+    return round2(monthlyEur * monthFraction);
+}
+exports.dailyBaseShareEur = dailyBaseShareEur;
+/** Tibber-Tageskosten: Live-Wert + anteilige Monatsgebühren (Grundpreis + Netzentgelt). */
+function tibberDayCostEur(input) {
+    if (input.accumulatedCostEur === null || !(input.accumulatedCostEur >= 0)) {
+        return null;
+    }
+    const fees = dailyBaseShareEur(input.monthlyBaseEur, input.monthFraction) +
+        dailyBaseShareEur(input.monthlyGridFeeEur, input.monthFraction);
+    return round2(input.accumulatedCostEur + fees);
+}
+exports.tibberDayCostEur = tibberDayCostEur;
 function savingsVsFixedEur(fixedTariffCostEurVal, dynamicCostEur, rewardsCreditEur) {
     if (fixedTariffCostEurVal === null || dynamicCostEur === null) {
         return null;

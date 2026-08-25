@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const strict_1 = __importDefault(require("node:assert/strict"));
 const node_test_1 = require("node:test");
 const compute_js_1 = require("./compute.js");
+const config_js_1 = require("./config.js");
 const public_charge_js_1 = require("./public_charge.js");
 (0, node_test_1.describe)("statistics compute", () => {
     (0, node_test_1.it)("fixed tariff cost matches Verivox-style energy + base share", () => {
@@ -16,6 +17,27 @@ const public_charge_js_1 = require("./public_charge.js");
             monthFraction: 1 / 30,
         });
         strict_1.default.equal(cost, 3.33);
+    });
+    (0, node_test_1.it)("Tibber day cost adds monthly Grundpreis + Netzentgelt as daily share", () => {
+        const cost = (0, compute_js_1.tibberDayCostEur)({
+            accumulatedCostEur: 0.1,
+            monthlyBaseEur: 15.5,
+            monthlyGridFeeEur: 15.5,
+            monthFraction: 1 / 31,
+        });
+        // 0.1 + 15.5/31 + 15.5/31 ≈ 0.1 + 0.5 + 0.5 = 1.1
+        strict_1.default.equal(cost, 1.1);
+    });
+    (0, node_test_1.it)("Tibber monthly fees come from Tarif-Tab natives; Verivox base stays in Statistik", () => {
+        const cfg = (0, config_js_1.statisticsConfigFromAdapter)({
+            statistics_compare_tariff_ct_per_kwh: 28,
+            statistics_compare_tariff_monthly_base_eur: 12,
+            tariff_monthly_base_eur: 5,
+            tariff_grid_fee_monthly_eur: 8,
+        });
+        strict_1.default.equal(cfg.compareTariffMonthlyBaseEur, 12);
+        strict_1.default.equal(cfg.tibberMonthlyBaseEur, 5);
+        strict_1.default.equal(cfg.tibberMonthlyGridFeeEur, 8);
     });
     (0, node_test_1.it)("savings = fixed − (dynamic − rewards)", () => {
         strict_1.default.equal((0, compute_js_1.savingsVsFixedEur)(5, 3, 0.5), 2.5);

@@ -7,7 +7,9 @@ import {
 	integrateImportCostEur,
 	resolveEvKwhPer100,
 	savingsVsFixedEur,
+	tibberDayCostEur,
 } from "./compute.js";
+import { statisticsConfigFromAdapter } from "./config.js";
 import { applyPublicInvoice, openPublicChargeSession, parsePublicInvoiceSubmit } from "./public_charge.js";
 
 describe("statistics compute", () => {
@@ -19,6 +21,29 @@ describe("statistics compute", () => {
 			monthFraction: 1 / 30,
 		});
 		assert.equal(cost, 3.33);
+	});
+
+	it("Tibber day cost adds monthly Grundpreis + Netzentgelt as daily share", () => {
+		const cost = tibberDayCostEur({
+			accumulatedCostEur: 0.1,
+			monthlyBaseEur: 15.5,
+			monthlyGridFeeEur: 15.5,
+			monthFraction: 1 / 31,
+		});
+		// 0.1 + 15.5/31 + 15.5/31 ≈ 0.1 + 0.5 + 0.5 = 1.1
+		assert.equal(cost, 1.1);
+	});
+
+	it("Tibber monthly fees come from Tarif-Tab natives; Verivox base stays in Statistik", () => {
+		const cfg = statisticsConfigFromAdapter({
+			statistics_compare_tariff_ct_per_kwh: 28,
+			statistics_compare_tariff_monthly_base_eur: 12,
+			tariff_monthly_base_eur: 5,
+			tariff_grid_fee_monthly_eur: 8,
+		});
+		assert.equal(cfg.compareTariffMonthlyBaseEur, 12);
+		assert.equal(cfg.tibberMonthlyBaseEur, 5);
+		assert.equal(cfg.tibberMonthlyGridFeeEur, 8);
 	});
 
 	it("savings = fixed − (dynamic − rewards)", () => {

@@ -29,9 +29,13 @@ function fuelType(raw: string): IceFuelType {
 
 export interface StatisticsAdminConfig {
 	enabled: boolean;
-	/** Vergleichstarif (Verivox-Stil) ct/kWh. */
+	/** Vergleichstarif (Verivox-Stil) ct/kWh — alles inbegriffen. */
 	compareTariffCtPerKwh: number | null;
 	compareTariffMonthlyBaseEur: number | null;
+	/** Tibber Tarif-Tab: monatliche Grundgebühr € (Tagesanteil zur Tibber-Seite). */
+	tibberMonthlyBaseEur: number | null;
+	/** Tibber Tarif-Tab: monatliches Netzentgelt € (Tagesanteil zur Tibber-Seite). */
+	tibberMonthlyGridFeeEur: number | null;
 	/** Optional: Einspeisevergütung für Gutschrift — fallback feed_in_ct_per_kwh. */
 	feedInCtPerKwh: number | null;
 	/** Cumulative or daily energy counters (foreign). */
@@ -66,6 +70,8 @@ export function statisticsConfigFromAdapter(config: unknown): StatisticsAdminCon
 		enabled: boolField(c, "statistics_enabled", true),
 		compareTariffCtPerKwh: numField(c, "statistics_compare_tariff_ct_per_kwh", null),
 		compareTariffMonthlyBaseEur: numField(c, "statistics_compare_tariff_monthly_base_eur", 0),
+		tibberMonthlyBaseEur: numField(c, "tariff_monthly_base_eur", null),
+		tibberMonthlyGridFeeEur: numField(c, "tariff_grid_fee_monthly_eur", null),
 		feedInCtPerKwh: numField(c, "statistics_feed_in_ct_per_kwh", feedIn),
 		gridImportEnergyKwhStateId: strField(c, "statistics_grid_import_energy_kwh_state"),
 		gridExportEnergyKwhStateId: strField(c, "statistics_grid_export_energy_kwh_state"),

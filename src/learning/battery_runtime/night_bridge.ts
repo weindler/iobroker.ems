@@ -289,8 +289,45 @@ export function findNearestSoc(points: SocPoint[], targetTs: number, maxDeltaMs:
 	return best.socPct;
 }
 
+/** Letzter SOC ≤ targetTs (innerhalb maxDelta) — Abend-Start ohne schon entladenen Nachbarpunkt. */
+export function findSocAtOrBefore(
+	points: SocPoint[],
+	targetTs: number,
+	maxDeltaMs: number,
+): number | null {
+	let best: SocPoint | null = null;
+	let bestDelta = Number.POSITIVE_INFINITY;
+	for (const p of points) {
+		if (p.ts > targetTs) continue;
+		const d = targetTs - p.ts;
+		if (d <= maxDeltaMs && d < bestDelta) {
+			bestDelta = d;
+			best = p;
+		}
+	}
+	return best ? best.socPct : null;
+}
+
 /**
- * Gewichtetes Mittel: jüngere Nächte stärker (Halbwertszeit ~14 Tage).
+ * Tiefster SOC im Brückenfenster — verhindert Unterschätzung, wenn das Fensterende
+ * schon in die Morgenladung fällt und „nächster SOC“ wieder höher ist.
+ */
+export function findMinSocInRange(
+	points: SocPoint[],
+	startTs: number,
+	endTs: number,
+): number | null {
+	if (!(endTs > startTs) || points.length === 0) return null;
+	let min: number | null = null;
+	for (const p of points) {
+		if (p.ts < startTs || p.ts > endTs) continue;
+		if (min === null || p.socPct < min) min = p.socPct;
+	}
+	return min;
+}
+
+/**
+ * Gewichtetes Mittel: jüngere Nächte stärker (Halbwertszeit ~10 Tage).
  * Sonst bleibt der Sommer-Schnitt bei längeren Herbst-/Winternächten hängen.
  */
 export function recencyWeight(ageDays: number, halfLifeDays = 10): number {

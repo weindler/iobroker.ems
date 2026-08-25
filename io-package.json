@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.338",
+		"version": "0.1.339",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.339": {
+				"en": "Battery night discharge: use overnight SOC low (not nearest morning sample after recharge) so avg kWh matches real discharge.",
+				"de": "Battery-Nachtentladung: Tiefst-SOC in der Nacht (nicht nächster Morgen-SOC nach Ladebeginn) — Ø-kWh entspricht der realen Entladung."
+			},
 			"0.1.338": {
 				"en": "Battery runtime learning: thin PV/house night bridges no longer override denser battery/astro series — fixes unrealistically low avg night discharge kWh.",
 				"de": "Battery-Runtime-Learning: Dünne PV/Haus-Nachtbrücken überschreiben keine dichtere Batterie-/Astro-Serie mehr — behebt unrealistisch niedrige Ø-Nachtentladung kWh."

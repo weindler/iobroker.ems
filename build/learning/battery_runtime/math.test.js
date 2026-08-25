@@ -106,6 +106,25 @@ function socAt(dateKey, hour, socPct) {
         });
         strict_1.default.equal(r.avgKwh, 1);
     });
+    (0, node_test_1.it)("uses overnight SOC low, not morning recharge nearest sample (≈3.5 kWh)", () => {
+        /** Fenster 22–07; Tief 65 % um 05:00; um 07:00 schon wieder 80 % — nearest würde unterschätzen. */
+        const points = [
+            socAt("2026-08-20", 22, 100),
+            socAt("2026-08-21", 2, 78),
+            socAt("2026-08-21", 5, 65),
+            socAt("2026-08-21", 7, 80),
+        ];
+        const r = (0, math_1.computeNightDischarges)({
+            socPoints: points,
+            nightStart: "22:00",
+            nightEnd: "07:00",
+            capacityKwh: 10,
+            nowMs: Date.parse("2026-08-21T12:00:00"),
+        });
+        strict_1.default.equal(r.validNights, 1);
+        strict_1.default.equal(r.avgPct, 35);
+        strict_1.default.equal(r.avgKwh, 3.5);
+    });
     (0, node_test_1.it)("does not treat missing kwh as zero without capacity", () => {
         const r = (0, math_1.computeNightDischarges)({
             socPoints: [socAt("2026-01-05", 22, 80), socAt("2026-01-06", 6, 70)],

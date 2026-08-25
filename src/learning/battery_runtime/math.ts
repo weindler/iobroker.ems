@@ -4,7 +4,9 @@ import {
 	buildBatteryDeficitSeries,
 	buildPvHouseNetSeries,
 	DEFAULT_NIGHT_BRIDGE_FLUTTER_MS,
+	findMinSocInRange,
 	findNearestSoc as findNearestSocBridge,
+	findSocAtOrBefore,
 	findPvHouseNightBridges,
 	recencyWeight,
 	weightedAverage,
@@ -159,8 +161,14 @@ export function computeNightDischarges(params: {
 		const bridgeHours: number[] = [];
 
 		for (const w of windows) {
-			const socStart = findNearestSoc(params.socPoints, w.startTs, maxDelta);
-			const socEnd = findNearestSoc(params.socPoints, w.endTs, maxDelta);
+			/** Abend: SOC bei/vor Brückenstart; Morgen: Tiefstwert im Fenster (nicht SOC nach Ladebeginn). */
+			const socStart =
+				findSocAtOrBefore(params.socPoints, w.startTs, maxDelta) ??
+				findNearestSoc(params.socPoints, w.startTs, maxDelta);
+			const socEnd =
+				findMinSocInRange(params.socPoints, w.startTs, w.endTs) ??
+				findSocAtOrBefore(params.socPoints, w.endTs, maxDelta) ??
+				findNearestSoc(params.socPoints, w.endTs, maxDelta);
 			if (socStart === null || socEnd === null) continue;
 
 			const dischargePct = socStart - socEnd;

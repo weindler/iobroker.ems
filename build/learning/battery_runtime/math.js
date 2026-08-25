@@ -99,8 +99,12 @@ function computeNightDischarges(params) {
         const weights = [];
         const bridgeHours = [];
         for (const w of windows) {
-            const socStart = findNearestSoc(params.socPoints, w.startTs, maxDelta);
-            const socEnd = findNearestSoc(params.socPoints, w.endTs, maxDelta);
+            /** Abend: SOC bei/vor Brückenstart; Morgen: Tiefstwert im Fenster (nicht SOC nach Ladebeginn). */
+            const socStart = (0, night_bridge_1.findSocAtOrBefore)(params.socPoints, w.startTs, maxDelta) ??
+                findNearestSoc(params.socPoints, w.startTs, maxDelta);
+            const socEnd = (0, night_bridge_1.findMinSocInRange)(params.socPoints, w.startTs, w.endTs) ??
+                (0, night_bridge_1.findSocAtOrBefore)(params.socPoints, w.endTs, maxDelta) ??
+                findNearestSoc(params.socPoints, w.endTs, maxDelta);
             if (socStart === null || socEnd === null)
                 continue;
             const dischargePct = socStart - socEnd;

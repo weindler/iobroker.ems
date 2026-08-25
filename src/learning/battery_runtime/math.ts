@@ -200,7 +200,12 @@ export function computeNightDischarges(params: {
 		}
 	}
 
-	/** belastbar bevorzugen; bei Gleichstand pv_house vor battery_discharge. */
+	/**
+	 * Belastbar bevorzugen: deutlich mehr gültige Nächte schlägt Methodenrang.
+	 * Sonst Gleichstand → pv_house vor battery_discharge (Kommentar / Tests).
+	 * Verhindert, dass dünnes pv_house (z. B. 4 Nächte bei spärlicher PV-Historie)
+	 * eine dichte battery_discharge-/Astro-Serie überschreibt.
+	 */
 	function prefer(
 		a: ReturnType<typeof scoreWindows> & { method: NightBridgeWindow["method"] },
 		b: ReturnType<typeof scoreWindows> & { method: NightBridgeWindow["method"] },
@@ -208,6 +213,11 @@ export function computeNightDischarges(params: {
 		const aOk = a.validNights >= MIN_VALID_NIGHTS;
 		const bOk = b.validNights >= MIN_VALID_NIGHTS;
 		if (aOk && bOk) {
+			const aDominates =
+				a.validNights >= b.validNights * 2 && a.validNights >= b.validNights + 3;
+			const bDominates =
+				b.validNights >= a.validNights * 2 && b.validNights >= a.validNights + 3;
+			if (aDominates !== bDominates) return aDominates;
 			if (a.method !== b.method) return methodRank(a.method) < methodRank(b.method);
 			return a.validNights >= b.validNights;
 		}

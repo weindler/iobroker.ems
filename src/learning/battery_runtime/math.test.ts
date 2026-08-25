@@ -167,6 +167,45 @@ describe("battery runtime night discharge", () => {
 		assert.ok(r.validNights >= 3, `validNights=${r.validNights}`);
 		assert.ok((r.avgKwh ?? 0) >= 2, `avgKwh=${r.avgKwh}`);
 	});
+
+	it("prefers denser battery_discharge over barely-ok pv_house (≥ MIN_VALID_NIGHTS)", () => {
+		const MS = 3_600_000;
+		const day0 = Date.parse("2026-08-01T00:00:00.000Z");
+		const socPoints: SocPoint[] = [];
+		const battery: PowerPoint[] = [];
+		const house: PowerPoint[] = [];
+		const pv: PowerPoint[] = [];
+
+		/** 10 Nächte Batterie −25 %; nur 4 Nächte mit PV-Defizit (≥3, aber dünn). */
+		for (let d = 0; d < 10; d++) {
+			const evening = day0 + d * 86_400_000 + 20 * MS;
+			const morning = day0 + (d + 1) * 86_400_000 + 6 * MS;
+			socPoints.push({ ts: evening, socPct: 90 });
+			socPoints.push({ ts: morning, socPct: 65 });
+			for (let h = 0; h < 24; h++) {
+				const ts = day0 + d * 86_400_000 + h * MS;
+				const discharging = h >= 20 || h < 6;
+				battery.push({ ts, powerW: discharging ? -400 : 500 });
+				house.push({ ts, powerW: 400 });
+				const pvDeficit = d < 4 && (h >= 19 || h < 7);
+				pv.push({ ts, powerW: pvDeficit ? 0 : 3000 });
+			}
+		}
+
+		const r = computeNightDischarges({
+			socPoints,
+			nightStart: "22:00",
+			nightEnd: "06:00",
+			capacityKwh: 10,
+			pvPowerPoints: pv,
+			housePowerPoints: house,
+			batteryPowerPoints: battery,
+			nowMs: day0 + 11 * 86_400_000,
+		});
+		assert.equal(r.method, "battery_discharge");
+		assert.ok(r.validNights >= 7, `validNights=${r.validNights}`);
+		assert.ok((r.avgKwh ?? 0) >= 2, `avgKwh=${r.avgKwh}`);
+	});
 });
 
 describe("battery runtime astro parse", () => {

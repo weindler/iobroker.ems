@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.337",
+		"version": "0.1.338",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.338": {
+				"en": "Battery runtime learning: thin PV/house night bridges no longer override denser battery/astro series — fixes unrealistically low avg night discharge kWh.",
+				"de": "Battery-Runtime-Learning: Dünne PV/Haus-Nachtbrücken überschreiben keine dichtere Batterie-/Astro-Serie mehr — behebt unrealistisch niedrige Ø-Nachtentladung kWh."
+			},
 			"0.1.337": {
 				"en": "Tariff tab: Tibber monthly base fee and grid fee (€/month); statistics adds their daily share to Tibber cost. Verivox/fixed tariff unchanged (all-in).",
 				"de": "Tarif-Tab: Tibber Grundpreis und Netzentgelt monatlich (€/Monat); Statistik rechnet Tagesanteile zur Tibber-Seite. Verivox/Festtarif unverändert (alles inbegriffen)."

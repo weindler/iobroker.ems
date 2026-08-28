@@ -15,6 +15,7 @@ import {
 	normalizeWallboxSessionEnergyKwh,
 	resolveEvKwhPer100,
 	resolveFuelPriceEurPerL,
+	resolveSeedFuelPriceEurPerL,
 	savingsVsFixedEur,
 	sumHomeDays,
 	sumMobilityDays,
@@ -219,16 +220,13 @@ async function handleAdjustSubmit(
 		const dateKey = submit.date ?? localDateKey(now);
 		const day = persist.days[dateKey];
 		if (day) {
-			const [evConsMapped, fuelMapped] = await Promise.all([
-				readForeignNum(host, cfg.evConsumptionKwhPer100StateId),
-				readForeignNum(host, cfg.fuelPriceEurPerLStateId),
-			]);
+			const evConsMapped = await readForeignNum(host, cfg.evConsumptionKwhPer100StateId);
 			const evCons = resolveEvKwhPer100({
 				mapped: evConsMapped,
 				fallback: cfg.evConsumptionFallbackKwhPer100,
 			});
-			const fuelPrice = resolveFuelPriceEurPerL({
-				mapped: fuelMapped,
+			const fuelPrice = resolveSeedFuelPriceEurPerL({
+				explicit: day.mobility.iceFuelPriceEurPerL,
 				fallback: cfg.fuelPriceFallbackEurPerL,
 			});
 			finalizeMobilityDayTotals(day.mobility, {

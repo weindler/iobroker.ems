@@ -6,6 +6,8 @@ import {
 	iceCostForKm,
 	integrateImportCostEur,
 	resolveEvKwhPer100,
+	resolveFuelPriceEurPerL,
+	resolveSeedFuelPriceEurPerL,
 	savingsVsFixedEur,
 	tibberDayCostEur,
 	normalizeWallboxSessionEnergyKwh,
@@ -92,6 +94,12 @@ describe("statistics compute", () => {
 			value: 20,
 			source: "admin_fallback",
 		});
+	});
+
+	it("seed fuel price uses explicit value or admin fallback only", () => {
+		assert.equal(resolveSeedFuelPriceEurPerL({ explicit: 1.82, fallback: 1.7 }), 1.82);
+		assert.equal(resolveSeedFuelPriceEurPerL({ explicit: null, fallback: 1.85 }), 1.85);
+		assert.equal(resolveSeedFuelPriceEurPerL({ explicit: null, fallback: null }), null);
 	});
 
 	it("ice cost from km × l/100 × fuel price", () => {
@@ -208,6 +216,107 @@ describe("statistics compute", () => {
 		assert.equal(month.evTotalCostEur, 2.73);
 		assert.ok((month.estimatedKm ?? 0) > 45);
 	});
+
+	it("month mobility uses per-day fuel prices for ICE cost", () => {
+		const month = sumMobilityDays(
+			[
+				{
+					dateKey: "2026-08-11",
+					homePvKwh: 1.5,
+					homeGridKwh: 0.4,
+					homePvCostEur: 0.19,
+					homeGridCostEur: 0.06,
+					gridRewardsCreditEur: null,
+					publicInvoicedKwh: null,
+					publicInvoicedEur: null,
+					publicPendingKwh: null,
+					evTotalCostEur: null,
+					evKwhPer100Km: null,
+					evKwhPer100KmSource: null,
+					estimatedKm: null,
+					iceLiters: null,
+					iceFuelPriceEurPerL: 1.75,
+					iceCostEur: null,
+					savingsVsIceEur: null,
+				},
+				{
+					dateKey: "2026-08-12",
+					homePvKwh: 0.6,
+					homeGridKwh: 8.2,
+					homePvCostEur: 0.19,
+					homeGridCostEur: 2.42,
+					gridRewardsCreditEur: null,
+					publicInvoicedKwh: null,
+					publicInvoicedEur: null,
+					publicPendingKwh: null,
+					evTotalCostEur: null,
+					evKwhPer100Km: null,
+					evKwhPer100KmSource: null,
+					estimatedKm: null,
+					iceLiters: null,
+					iceFuelPriceEurPerL: 1.9,
+					iceCostEur: null,
+					savingsVsIceEur: null,
+				},
+			],
+			{
+				evKwhPer100: 18.3,
+				fuelPriceEurPerL: 2.16,
+				iceLPer100Km: 7,
+				evKwhPer100KmSource: "ford_hass",
+			},
+		);
+		const singlePrice = sumMobilityDays(
+			[
+				{
+					dateKey: "2026-08-11",
+					homePvKwh: 1.5,
+					homeGridKwh: 0.4,
+					homePvCostEur: 0.19,
+					homeGridCostEur: 0.06,
+					gridRewardsCreditEur: null,
+					publicInvoicedKwh: null,
+					publicInvoicedEur: null,
+					publicPendingKwh: null,
+					evTotalCostEur: null,
+					evKwhPer100Km: null,
+					evKwhPer100KmSource: null,
+					estimatedKm: null,
+					iceLiters: null,
+					iceFuelPriceEurPerL: 2.16,
+					iceCostEur: null,
+					savingsVsIceEur: null,
+				},
+				{
+					dateKey: "2026-08-12",
+					homePvKwh: 0.6,
+					homeGridKwh: 8.2,
+					homePvCostEur: 0.19,
+					homeGridCostEur: 2.42,
+					gridRewardsCreditEur: null,
+					publicInvoicedKwh: null,
+					publicInvoicedEur: null,
+					publicPendingKwh: null,
+					evTotalCostEur: null,
+					evKwhPer100Km: null,
+					evKwhPer100KmSource: null,
+					estimatedKm: null,
+					iceLiters: null,
+					iceFuelPriceEurPerL: 2.16,
+					iceCostEur: null,
+					savingsVsIceEur: null,
+				},
+			],
+			{
+				evKwhPer100: 18.3,
+				fuelPriceEurPerL: 2.16,
+				iceLPer100Km: 7,
+				evKwhPer100KmSource: "ford_hass",
+			},
+		);
+		assert.notEqual(month.iceCostEur, singlePrice.iceCostEur);
+		assert.ok((month.iceCostEur ?? 0) < (singlePrice.iceCostEur ?? 0));
+	});
 });
 
 describe("statistics public charge", () => {
@@ -305,5 +414,40 @@ describe("statistics adjust", () => {
 		assert.equal(out.persist.runtime.homeGridKwh, 0.854);
 		assert.equal(out.persist.runtime.homeGridCostEur, 0.12);
 		assert.equal(out.persist.runtime.wallboxSessionEnergyBaselineKwh, null);
+	});
+
+	it("seeds mobility with optional fuel price per day", () => {
+		const now = new Date("2026-08-12T14:00:00");
+		const persist = {
+			version: 1 as const,
+			generatedAt: "",
+			days: {},
+			runtime: {
+				dateKey: "2026-08-28",
+				lastTickMs: null,
+				gridImportEnergyBaselineKwh: null,
+				gridExportEnergyBaselineKwh: null,
+				integratedDynamicCostEur: 0,
+				integratedGridImportKwhFromPower: 0,
+				wallboxSessionEnergyBaselineKwh: null,
+				homePvKwh: 0,
+				homeGridKwh: 0,
+				homePvCostEur: 0,
+				homeGridCostEur: 0,
+				lastVehicleSocPct: null,
+				lastWallboxConnected: null,
+			},
+		};
+		const submit = parseStatisticsAdjustSubmit({
+			date: "2026-08-12",
+			mobility: {
+				homeGridKwh: 8.2,
+				homeGridCostEur: 2.42,
+				iceFuelPriceEurPerL: 1.82,
+			},
+		});
+		assert.ok(submit);
+		const out = applyStatisticsAdjust(persist, submit!, now);
+		assert.equal(out.persist.days["2026-08-12"]?.mobility.iceFuelPriceEurPerL, 1.82);
 	});
 });

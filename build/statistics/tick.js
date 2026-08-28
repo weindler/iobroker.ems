@@ -155,16 +155,13 @@ async function handleAdjustSubmit(host, persist, now, cfg) {
         const dateKey = submit.date ?? (0, compute_1.localDateKey)(now);
         const day = persist.days[dateKey];
         if (day) {
-            const [evConsMapped, fuelMapped] = await Promise.all([
-                readForeignNum(host, cfg.evConsumptionKwhPer100StateId),
-                readForeignNum(host, cfg.fuelPriceEurPerLStateId),
-            ]);
+            const evConsMapped = await readForeignNum(host, cfg.evConsumptionKwhPer100StateId);
             const evCons = (0, compute_1.resolveEvKwhPer100)({
                 mapped: evConsMapped,
                 fallback: cfg.evConsumptionFallbackKwhPer100,
             });
-            const fuelPrice = (0, compute_1.resolveFuelPriceEurPerL)({
-                mapped: fuelMapped,
+            const fuelPrice = (0, compute_1.resolveSeedFuelPriceEurPerL)({
+                explicit: day.mobility.iceFuelPriceEurPerL,
                 fallback: cfg.fuelPriceFallbackEurPerL,
             });
             (0, compute_1.finalizeMobilityDayTotals)(day.mobility, {

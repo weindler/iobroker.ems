@@ -36,6 +36,7 @@ function parseStatisticsAdjustSubmit(raw) {
                 homeGridKwh: (0, state_util_1.asNum)(mobRaw.homeGridKwh),
                 homePvCostEur: (0, state_util_1.asNum)(mobRaw.homePvCostEur),
                 homeGridCostEur: (0, state_util_1.asNum)(mobRaw.homeGridCostEur),
+                iceFuelPriceEurPerL: (0, state_util_1.asNum)(mobRaw.iceFuelPriceEurPerL),
             }
             : undefined;
         return {
@@ -94,6 +95,9 @@ function mergeMobilityDay(day, patch) {
     }
     if (patch.homeGridCostEur !== null && patch.homeGridCostEur !== undefined) {
         day.mobility.homeGridCostEur = patch.homeGridCostEur;
+    }
+    if (patch.iceFuelPriceEurPerL !== null && patch.iceFuelPriceEurPerL !== undefined) {
+        day.mobility.iceFuelPriceEurPerL = patch.iceFuelPriceEurPerL;
     }
 }
 function syncRuntimeMobility(persist, patch) {

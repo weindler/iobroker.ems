@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.341",
+		"version": "0.1.342",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.342": {
+				"en": "Statistics adjust_request: optional iceFuelPriceEurPerL per seeded day; seed uses admin fallback, not live Tankerkönig.",
+				"de": "Statistik adjust_request: optional iceFuelPriceEurPerL pro Tag; Seed nutzt Admin-Fallback, nicht Live-Tankerkönig."
+			},
 			"0.1.341": {
 				"en": "Statistics month mobility: derive €/km/ICE from seeded kWh+costs; adjust_request triggers immediate tick.",
 				"de": "Statistik Mobilität Monat: €/km/Verbrenner aus geseedeten kWh+Kosten ableiten; adjust_request löst sofortigen Tick aus."

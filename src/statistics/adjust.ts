@@ -21,7 +21,10 @@ export type StatisticsAdjustSubmit = {
 		>
 	>;
 	mobility?: Partial<
-		Pick<MobilityDayTotals, "homePvKwh" | "homeGridKwh" | "homePvCostEur" | "homeGridCostEur">
+		Pick<
+			MobilityDayTotals,
+			"homePvKwh" | "homeGridKwh" | "homePvCostEur" | "homeGridCostEur" | "iceFuelPriceEurPerL"
+		>
 	>;
 	noteDe?: string;
 };
@@ -58,6 +61,7 @@ export function parseStatisticsAdjustSubmit(raw: unknown): StatisticsAdjustSubmi
 						homeGridKwh: asNum((mobRaw as Record<string, unknown>).homeGridKwh),
 						homePvCostEur: asNum((mobRaw as Record<string, unknown>).homePvCostEur),
 						homeGridCostEur: asNum((mobRaw as Record<string, unknown>).homeGridCostEur),
+						iceFuelPriceEurPerL: asNum((mobRaw as Record<string, unknown>).iceFuelPriceEurPerL),
 					}
 				: undefined;
 		return {
@@ -121,6 +125,9 @@ function mergeMobilityDay(
 	}
 	if (patch.homeGridCostEur !== null && patch.homeGridCostEur !== undefined) {
 		day.mobility.homeGridCostEur = patch.homeGridCostEur;
+	}
+	if (patch.iceFuelPriceEurPerL !== null && patch.iceFuelPriceEurPerL !== undefined) {
+		day.mobility.iceFuelPriceEurPerL = patch.iceFuelPriceEurPerL;
 	}
 }
 

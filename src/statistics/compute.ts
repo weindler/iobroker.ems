@@ -161,6 +161,18 @@ export function resolveFuelPriceEurPerL(input: {
 	return null;
 }
 
+/** Beim manuellen Seed: expliziter Tag-Preis, sonst Admin-Fallback — nicht Live-Tankerkönig. */
+export function resolveSeedFuelPriceEurPerL(input: {
+	explicit: number | null | undefined;
+	fallback: number | null;
+}): number | null {
+	if (input.explicit !== null && input.explicit !== undefined && input.explicit > 0) {
+		return input.explicit;
+	}
+	if (input.fallback !== null && input.fallback > 0) return input.fallback;
+	return null;
+}
+
 /** km aus geladener Batterie-Energie (AC→Batterie grob ohne Effizienz-Erfindung: gelieferte kWh). */
 export function estimateKmFromEvKwh(kwh: number | null, kwhPer100: number | null): number | null {
 	if (kwh === null || kwhPer100 === null || !(kwhPer100 > 0) || !(kwh >= 0)) return null;
@@ -325,14 +337,14 @@ export function sumMobilityDays(
 
 	let iceCost = sum((d) => d.iceCostEur);
 	let iceLiters = sum((d) => d.iceLiters);
-	if (iceCost === null && estimatedKm !== null && monthFinalize?.iceLPer100Km) {
-		const ice = iceCostForKm({
-			km: estimatedKm,
-			lPer100Km: monthFinalize.iceLPer100Km,
-			fuelPriceEurPerL: fuelPrice,
-		});
-		iceCost = ice.costEur;
-		iceLiters = ice.liters;
+	const iceLPer100 = monthFinalize?.iceLPer100Km ?? null;
+	if (iceLPer100 !== null) {
+		const iceParts = days.map((d) => mobilityDayIceCost(d, evKwhPer100, iceLPer100, fuelPrice));
+		const valid = iceParts.filter((p) => p.costEur !== null);
+		if (valid.length > 0) {
+			iceCost = round2(valid.reduce((a, b) => a + (b.costEur ?? 0), 0));
+			iceLiters = round3(valid.reduce((a, b) => a + (b.liters ?? 0), 0));
+		}
 	}
 
 	return {
@@ -381,6 +393,24 @@ function mobilityDayEstimatedKm(
 	if (d.estimatedKm !== null) return d.estimatedKm;
 	const charge = mobilityDayChargeKwh(d);
 	return estimateKmFromEvKwh(charge > 0 ? charge : null, evKwhPer100);
+}
+
+function mobilityDayIceCost(
+	d: MobilityDayTotals,
+	evKwhPer100: number | null,
+	iceLPer100Km: number,
+	defaultFuelPriceEurPerL: number | null,
+): { liters: number | null; costEur: number | null } {
+	if (d.iceCostEur !== null) {
+		return { liters: d.iceLiters, costEur: d.iceCostEur };
+	}
+	const km = mobilityDayEstimatedKm(d, evKwhPer100);
+	const fuelPrice = d.iceFuelPriceEurPerL ?? defaultFuelPriceEurPerL;
+	return iceCostForKm({
+		km,
+		lPer100Km: iceLPer100Km,
+		fuelPriceEurPerL: fuelPrice,
+	});
 }
 
 /** Nach manuellem Seed: €/km/Verbrenner aus kWh+Kosten ableiten. */

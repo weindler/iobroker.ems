@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.finalizeMobilityDayTotals = exports.sumMobilityDays = exports.sumHomeDays = exports.emptyMobilityDay = exports.emptyHomeDay = exports.estimateKwhFromSocRise = exports.iceCostForKm = exports.estimateKmFromEvKwh = exports.resolveFuelPriceEurPerL = exports.resolveEvKwhPer100 = exports.localDateKey = exports.daysInMonth = exports.integrateImportCostEur = exports.normalizeWallboxSessionEnergyKwh = exports.energyCounterDeltaKwh = exports.savingsVsFixedEur = exports.tibberDayCostEur = exports.dailyBaseShareEur = exports.fixedTariffCostEur = void 0;
+exports.finalizeMobilityDayTotals = exports.sumMobilityDays = exports.sumHomeDays = exports.emptyMobilityDay = exports.emptyHomeDay = exports.estimateKwhFromSocRise = exports.iceCostForKm = exports.estimateKmFromEvKwh = exports.resolveSeedFuelPriceEurPerL = exports.resolveFuelPriceEurPerL = exports.resolveEvKwhPer100 = exports.localDateKey = exports.daysInMonth = exports.integrateImportCostEur = exports.normalizeWallboxSessionEnergyKwh = exports.energyCounterDeltaKwh = exports.savingsVsFixedEur = exports.tibberDayCostEur = exports.dailyBaseShareEur = exports.fixedTariffCostEur = void 0;
 function round3(n) {
     return Math.round(n * 1000) / 1000;
 }
@@ -131,6 +131,16 @@ function resolveFuelPriceEurPerL(input) {
     return null;
 }
 exports.resolveFuelPriceEurPerL = resolveFuelPriceEurPerL;
+/** Beim manuellen Seed: expliziter Tag-Preis, sonst Admin-Fallback — nicht Live-Tankerkönig. */
+function resolveSeedFuelPriceEurPerL(input) {
+    if (input.explicit !== null && input.explicit !== undefined && input.explicit > 0) {
+        return input.explicit;
+    }
+    if (input.fallback !== null && input.fallback > 0)
+        return input.fallback;
+    return null;
+}
+exports.resolveSeedFuelPriceEurPerL = resolveSeedFuelPriceEurPerL;
 /** km aus geladener Batterie-Energie (AC→Batterie grob ohne Effizienz-Erfindung: gelieferte kWh). */
 function estimateKmFromEvKwh(kwh, kwhPer100) {
     if (kwh === null || kwhPer100 === null || !(kwhPer100 > 0) || !(kwh >= 0))
@@ -269,14 +279,14 @@ function sumMobilityDays(days, monthFinalize) {
     }
     let iceCost = sum((d) => d.iceCostEur);
     let iceLiters = sum((d) => d.iceLiters);
-    if (iceCost === null && estimatedKm !== null && monthFinalize?.iceLPer100Km) {
-        const ice = iceCostForKm({
-            km: estimatedKm,
-            lPer100Km: monthFinalize.iceLPer100Km,
-            fuelPriceEurPerL: fuelPrice,
-        });
-        iceCost = ice.costEur;
-        iceLiters = ice.liters;
+    const iceLPer100 = monthFinalize?.iceLPer100Km ?? null;
+    if (iceLPer100 !== null) {
+        const iceParts = days.map((d) => mobilityDayIceCost(d, evKwhPer100, iceLPer100, fuelPrice));
+        const valid = iceParts.filter((p) => p.costEur !== null);
+        if (valid.length > 0) {
+            iceCost = round2(valid.reduce((a, b) => a + (b.costEur ?? 0), 0));
+            iceLiters = round3(valid.reduce((a, b) => a + (b.liters ?? 0), 0));
+        }
     }
     return {
         dateKey,
@@ -318,6 +328,18 @@ function mobilityDayEstimatedKm(d, evKwhPer100) {
         return d.estimatedKm;
     const charge = mobilityDayChargeKwh(d);
     return estimateKmFromEvKwh(charge > 0 ? charge : null, evKwhPer100);
+}
+function mobilityDayIceCost(d, evKwhPer100, iceLPer100Km, defaultFuelPriceEurPerL) {
+    if (d.iceCostEur !== null) {
+        return { liters: d.iceLiters, costEur: d.iceCostEur };
+    }
+    const km = mobilityDayEstimatedKm(d, evKwhPer100);
+    const fuelPrice = d.iceFuelPriceEurPerL ?? defaultFuelPriceEurPerL;
+    return iceCostForKm({
+        km,
+        lPer100Km: iceLPer100Km,
+        fuelPriceEurPerL: fuelPrice,
+    });
 }
 /** Nach manuellem Seed: €/km/Verbrenner aus kWh+Kosten ableiten. */
 function finalizeMobilityDayTotals(mob, input) {

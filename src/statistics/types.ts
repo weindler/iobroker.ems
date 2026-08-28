@@ -101,7 +101,10 @@ export interface StatisticsPersist {
 }
 
 export interface HouseCompareSummary {
-	period: "today" | "month";
+	period: string;
+	periodLabelDe?: string;
+	fromKey?: string;
+	toKey?: string;
 	gridImportKwh: number | null;
 	dynamicCostEur: number | null;
 	fixedTariffCostEur: number | null;
@@ -112,7 +115,10 @@ export interface HouseCompareSummary {
 }
 
 export interface MobilityCompareSummary {
-	period: "today" | "month";
+	period: string;
+	periodLabelDe?: string;
+	fromKey?: string;
+	toKey?: string;
 	homePvKwh: number | null;
 	homeGridKwh: number | null;
 	homeGridCostEur: number | null;

@@ -23,6 +23,11 @@ import {
 	resolveTodayGridRewards,
 	netHomeGridCostEur,
 } from "./grid_rewards.js";
+import {
+	resolvePeriodRange,
+	listPeriodOptions,
+	fixedTariffCostForRange,
+} from "./period.js";
 import { applyStatisticsAdjust, parseStatisticsAdjustSubmit } from "./adjust.js";
 import { statisticsConfigFromAdapter } from "./config.js";
 import { applyPublicInvoice, openPublicChargeSession, parsePublicInvoiceSubmit } from "./public_charge.js";
@@ -473,6 +478,36 @@ describe("statistics compute", () => {
 		assert.equal(month.evTotalCostEur, 0.8);
 		assert.equal(netHomeGridCostEur(1.5, 0.8), 0.7);
 		assert.equal(month.homeGridCostNetEur, 0.7);
+	});
+});
+
+describe("statistics period", () => {
+	it("resolves last_7_days and this_month ranges", () => {
+		const r7 = resolvePeriodRange("last_7_days", "2026-08-28");
+		assert.equal(r7?.fromKey, "2026-08-22");
+		assert.equal(r7?.toKey, "2026-08-28");
+		const tm = resolvePeriodRange("this_month", "2026-08-28");
+		assert.equal(tm?.fromKey, "2026-08-01");
+		assert.equal(tm?.toKey, "2026-08-28");
+		const lm = resolvePeriodRange("last_month", "2026-08-28");
+		assert.equal(lm?.fromKey, "2026-07-01");
+		assert.equal(lm?.toKey, "2026-07-31");
+		const y = resolvePeriodRange("year_2025", "2026-08-28");
+		assert.equal(y?.fromKey, "2025-01-01");
+		assert.equal(y?.toKey, "2025-12-31");
+		const opts = listPeriodOptions("2026-08-28", ["2025-01-01", "2026-08-01"]);
+		assert.ok(opts.some((o) => o.id === "year_2025"));
+		assert.ok(opts.some((o) => o.id === "this_quarter"));
+		assert.equal(
+			fixedTariffCostForRange({
+				gridImportKwh: 10,
+				compareTariffCtPerKwh: 30,
+				monthlyBaseEur: 31,
+				fromKey: "2026-08-01",
+				toKey: "2026-08-10",
+			}),
+			13, // 3.0 energy + 10/31*31 = 10 → 13
+		);
 	});
 });
 

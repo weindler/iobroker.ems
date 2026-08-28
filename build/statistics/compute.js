@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.finalizeMobilityDayTotals = exports.sumMobilityDays = exports.sumHomeDays = exports.emptyMobilityDay = exports.emptyHomeDay = exports.applyMobilityGridRewards = exports.applyHomeGridRewards = exports.estimateKwhFromSocRise = exports.iceCostForKm = exports.estimateKmFromEvKwh = exports.resolveSeedFuelPriceEurPerL = exports.resolveFuelPriceEurPerL = exports.resolveEvKwhPer100 = exports.localDateKey = exports.buildHomeMonthTotals = exports.resolveHomeMonthFromTibber = exports.siblingTibberConsumptionState = exports.pickTibberJsonMonthlyForMonth = exports.sumTibberJsonDailyForMonth = exports.daysInMonth = exports.integrateImportCostEur = exports.normalizeWallboxSessionEnergyKwh = exports.energyCounterDeltaKwh = exports.savingsVsFixedEur = exports.tibberDayCostEur = exports.dailyBaseShareEur = exports.fixedTariffCostEur = void 0;
+exports.finalizeMobilityDayTotals = exports.sumMobilityDays = exports.sumHomeDays = exports.emptyMobilityDay = exports.emptyHomeDay = exports.applyMobilityGridRewards = exports.applyHomeGridRewards = exports.estimateKwhFromSocRise = exports.iceCostForKm = exports.estimateKmFromEvKwh = exports.resolveSeedFuelPriceEurPerL = exports.resolveFuelPriceEurPerL = exports.resolveEvKwhPer100 = exports.localDateKey = exports.buildHomeMonthTotals = exports.resolveHomeMonthFromTibber = exports.siblingTibberConsumptionState = exports.pickTibberJsonMonthlyForMonth = exports.sumTibberJsonDailyForRange = exports.sumTibberJsonDailyForMonth = exports.daysInMonth = exports.integrateImportCostEur = exports.normalizeWallboxSessionEnergyKwh = exports.energyCounterDeltaKwh = exports.savingsVsFixedEur = exports.tibberDayCostEur = exports.dailyBaseShareEur = exports.fixedTariffCostEur = void 0;
 const grid_rewards_1 = require("./grid_rewards");
 function round3(n) {
     return Math.round(n * 1000) / 1000;
@@ -128,11 +128,16 @@ function tibberEntryCostEur(entry) {
     return null;
 }
 function sumTibberJsonDailyForMonth(raw, dateKey) {
+    const prefix = dateKey.slice(0, 7);
+    return sumTibberJsonDailyForRange(raw, `${prefix}-01`, `${prefix}-31`);
+}
+exports.sumTibberJsonDailyForMonth = sumTibberJsonDailyForMonth;
+/** TibberLink jsonDaily — Summe für inklusives Datumsintervall. */
+function sumTibberJsonDailyForRange(raw, fromKey, toKey) {
     try {
         const arr = typeof raw === "string" ? JSON.parse(raw) : raw;
         if (!Array.isArray(arr))
             return { gridImportKwh: null, dynamicCostEur: null };
-        const prefix = dateKey.slice(0, 7);
         let kwh = 0;
         let cost = 0;
         let hits = 0;
@@ -141,7 +146,10 @@ function sumTibberJsonDailyForMonth(raw, dateKey) {
                 continue;
             const o = entry;
             const dateStr = tibberEntryDateKey(o);
-            if (!dateStr || !dateStr.startsWith(prefix))
+            if (!dateStr || dateStr.length < 10)
+                continue;
+            const key = dateStr.slice(0, 10);
+            if (key < fromKey || key > toKey)
                 continue;
             const c = tibberEntryConsumptionKwh(o);
             const t = tibberEntryCostEur(o);
@@ -159,7 +167,7 @@ function sumTibberJsonDailyForMonth(raw, dateKey) {
         return { gridImportKwh: null, dynamicCostEur: null };
     }
 }
-exports.sumTibberJsonDailyForMonth = sumTibberJsonDailyForMonth;
+exports.sumTibberJsonDailyForRange = sumTibberJsonDailyForRange;
 /** TibberLink Consumption.jsonMonthly — ein Monatseintrag (Fallback wenn jsonDaily leer). */
 function pickTibberJsonMonthlyForMonth(raw, dateKey) {
     try {

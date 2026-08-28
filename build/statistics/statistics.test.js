@@ -7,6 +7,7 @@ const strict_1 = __importDefault(require("node:assert/strict"));
 const node_test_1 = require("node:test");
 const compute_js_1 = require("./compute.js");
 const grid_rewards_js_1 = require("./grid_rewards.js");
+const period_js_1 = require("./period.js");
 const adjust_js_1 = require("./adjust.js");
 const config_js_1 = require("./config.js");
 const public_charge_js_1 = require("./public_charge.js");
@@ -407,6 +408,32 @@ const public_charge_js_1 = require("./public_charge.js");
         strict_1.default.equal(month.evTotalCostEur, 0.8);
         strict_1.default.equal((0, grid_rewards_js_1.netHomeGridCostEur)(1.5, 0.8), 0.7);
         strict_1.default.equal(month.homeGridCostNetEur, 0.7);
+    });
+});
+(0, node_test_1.describe)("statistics period", () => {
+    (0, node_test_1.it)("resolves last_7_days and this_month ranges", () => {
+        const r7 = (0, period_js_1.resolvePeriodRange)("last_7_days", "2026-08-28");
+        strict_1.default.equal(r7?.fromKey, "2026-08-22");
+        strict_1.default.equal(r7?.toKey, "2026-08-28");
+        const tm = (0, period_js_1.resolvePeriodRange)("this_month", "2026-08-28");
+        strict_1.default.equal(tm?.fromKey, "2026-08-01");
+        strict_1.default.equal(tm?.toKey, "2026-08-28");
+        const lm = (0, period_js_1.resolvePeriodRange)("last_month", "2026-08-28");
+        strict_1.default.equal(lm?.fromKey, "2026-07-01");
+        strict_1.default.equal(lm?.toKey, "2026-07-31");
+        const y = (0, period_js_1.resolvePeriodRange)("year_2025", "2026-08-28");
+        strict_1.default.equal(y?.fromKey, "2025-01-01");
+        strict_1.default.equal(y?.toKey, "2025-12-31");
+        const opts = (0, period_js_1.listPeriodOptions)("2026-08-28", ["2025-01-01", "2026-08-01"]);
+        strict_1.default.ok(opts.some((o) => o.id === "year_2025"));
+        strict_1.default.ok(opts.some((o) => o.id === "this_quarter"));
+        strict_1.default.equal((0, period_js_1.fixedTariffCostForRange)({
+            gridImportKwh: 10,
+            compareTariffCtPerKwh: 30,
+            monthlyBaseEur: 31,
+            fromKey: "2026-08-01",
+            toKey: "2026-08-10",
+        }), 13);
     });
 });
 (0, node_test_1.describe)("statistics public charge", () => {

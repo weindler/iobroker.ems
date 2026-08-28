@@ -24,11 +24,20 @@ import {
 	sumMobilityDays,
 	applyHomeGridRewards,
 	applyMobilityGridRewards,
+	sumTibberJsonDailyForRange,
 } from "./compute";
 import {
 	resolveMonthGridRewards,
 	resolveTodayGridRewards,
+	resolvePeriodGridRewards,
 } from "./grid_rewards";
+import {
+	dayKeysInRange,
+	fixedTariffCostForRange,
+	listPeriodOptions,
+	normalizePeriodId,
+	resolvePeriodRange,
+} from "./period";
 import { STATISTICS_STATES } from "./ensure_states";
 import {
 	emptyDayRecord,
@@ -139,12 +148,16 @@ function monthKeys(dateKey: string, days: Record<string, StatisticsDayRecord>): 
 }
 
 function buildHomeSummary(
-	period: "today" | "month",
+	period: string,
 	home: StatisticsDayRecord["home"],
 	reasonParts: string[],
+	meta?: { periodLabelDe?: string; fromKey?: string; toKey?: string },
 ): HouseCompareSummary {
 	return {
 		period,
+		periodLabelDe: meta?.periodLabelDe,
+		fromKey: meta?.fromKey,
+		toKey: meta?.toKey,
 		gridImportKwh: home.gridImportKwh,
 		dynamicCostEur: home.dynamicCostEur,
 		fixedTariffCostEur: home.fixedTariffCostEur,
@@ -156,13 +169,17 @@ function buildHomeSummary(
 }
 
 function buildMobilitySummary(
-	period: "today" | "month",
+	period: string,
 	mob: StatisticsDayRecord["mobility"],
 	openSessions: number,
 	reasonParts: string[],
+	meta?: { periodLabelDe?: string; fromKey?: string; toKey?: string },
 ): MobilityCompareSummary {
 	return {
 		period,
+		periodLabelDe: meta?.periodLabelDe,
+		fromKey: meta?.fromKey,
+		toKey: meta?.toKey,
 		homePvKwh: mob.homePvKwh,
 		homeGridKwh: mob.homeGridKwh,
 		homeGridCostEur: mob.homeGridCostEur,
@@ -651,14 +668,143 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 	);
 	const openSessions = day.publicSessions.filter((s) => s.status === "pending_invoice").length;
 
+	const periodIdRaw = await host.getStateAsync(STATISTICS_STATES.periodId);
+	const periodId = normalizePeriodId(periodIdRaw?.val, "this_month");
+	if (periodIdRaw?.val !== periodId) {
+		await host.setStateAsync(STATISTICS_STATES.periodId, { val: periodId, ack: true });
+	}
+	const periodRange = resolvePeriodRange(periodId, dateKey);
+	const periodOptions = listPeriodOptions(dateKey, Object.keys(persist.days));
+	const reasonsPeriod: string[] = [];
+
+	let homePeriod = homeMonth;
+	let mobPeriod = mobMonth;
+	let periodMeta = {
+		periodLabelDe: "Dieser Monat",
+		fromKey: dateKey.slice(0, 7) + "-01",
+		toKey: dateKey,
+	};
+
+	if (periodRange) {
+		periodMeta = {
+			periodLabelDe: periodRange.labelDe,
+			fromKey: periodRange.fromKey,
+			toKey: periodRange.toKey,
+		};
+		if (periodId === "this_month") {
+			homePeriod = homeMonth;
+			mobPeriod = mobMonth;
+		} else {
+			const keys = dayKeysInRange(persist.days, periodRange.fromKey, periodRange.toKey);
+			const periodHomes = keys.map((k) => persist.days[k]!.home);
+			const periodMobs = keys.map((k) => persist.days[k]!.mobility);
+			const periodRewards = resolvePeriodGridRewards({
+				enabled: cfg.gridRewardsEnabled,
+				fromKey: periodRange.fromKey,
+				toKey: periodRange.toKey,
+				todayKey: dateKey,
+				mappedMonthEur: rewardsCreditMonth,
+				monthRewardsBilling: persist.monthRewardsBilling ?? {},
+				dayCredits: keys.map((k) => ({
+					dateKey: k,
+					creditEur: persist.days[k]!.home.gridRewardsCreditEur,
+				})),
+			});
+
+			let homeAgg = sumHomeDays(periodHomes);
+			const tibberRange = jsonDailyId
+				? sumTibberJsonDailyForRange(
+						await readForeignRaw(host, jsonDailyId),
+						periodRange.fromKey,
+						periodRange.toKey,
+					)
+				: { gridImportKwh: null, dynamicCostEur: null };
+
+			if (tibberRange.gridImportKwh !== null || tibberRange.dynamicCostEur !== null) {
+				const importKwh = tibberRange.gridImportKwh ?? homeAgg.gridImportKwh;
+				const dynamic = tibberRange.dynamicCostEur ?? homeAgg.dynamicCostEur;
+				const fixed = fixedTariffCostForRange({
+					gridImportKwh: importKwh,
+					compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
+					monthlyBaseEur: cfg.compareTariffMonthlyBaseEur,
+					fromKey: periodRange.fromKey,
+					toKey: periodRange.toKey,
+				});
+				homeAgg = applyHomeGridRewards(
+					{
+						...homeAgg,
+						gridImportKwh: importKwh,
+						dynamicCostEur: dynamic,
+						fixedTariffCostEur: fixed,
+						savingsVsFixedEur: savingsVsFixedEur(
+							fixed,
+							dynamic,
+							periodRewards.source === "off" ? null : periodRewards.creditEur,
+						),
+					},
+					periodRewards,
+				);
+			} else {
+				if (!keys.length) {
+					reasonsPeriod.push(
+						`Zeitraum ${periodRange.labelDe}: keine Persistenz-Tage und kein Tibber jsonDaily in ${periodRange.fromKey}…${periodRange.toKey}.`,
+					);
+				}
+				const fixed =
+					fixedTariffCostForRange({
+						gridImportKwh: homeAgg.gridImportKwh,
+						compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
+						monthlyBaseEur: cfg.compareTariffMonthlyBaseEur,
+						fromKey: periodRange.fromKey,
+						toKey: periodRange.toKey,
+					}) ?? homeAgg.fixedTariffCostEur;
+				homeAgg = applyHomeGridRewards(
+					{
+						...homeAgg,
+						fixedTariffCostEur: fixed,
+						savingsVsFixedEur: savingsVsFixedEur(
+							fixed,
+							homeAgg.dynamicCostEur,
+							periodRewards.source === "off" ? null : periodRewards.creditEur,
+						),
+					},
+					periodRewards,
+				);
+			}
+
+			homePeriod = homeAgg;
+			mobPeriod = sumMobilityDays(
+				periodMobs,
+				{
+					evKwhPer100: evCons.value,
+					fuelPriceEurPerL: fuelPrice,
+					iceLPer100Km: cfg.iceLPer100Km,
+					evKwhPer100KmSource: evCons.source === "missing" ? null : evCons.source,
+				},
+				periodRewards,
+			);
+		}
+	}
+
 	const homeTodaySum = buildHomeSummary("today", day.home, reasonsHome);
-	const homeMonthSum = buildHomeSummary("month", homeMonth, reasonsHome);
+	const homeMonthSum = buildHomeSummary("month", homeMonth, reasonsHome, {
+		periodLabelDe: "Dieser Monat",
+		fromKey: dateKey.slice(0, 7) + "-01",
+		toKey: dateKey,
+	});
+	const homePeriodSum = buildHomeSummary(periodId, homePeriod, [...reasonsHome, ...reasonsPeriod], periodMeta);
 	const mobTodaySum = buildMobilitySummary("today", day.mobility, openSessions, reasonsMob);
-	const mobMonthSum = buildMobilitySummary(
-		"month",
-		mobMonth,
+	const mobMonthSum = buildMobilitySummary("month", mobMonth, openSessions, reasonsMob, {
+		periodLabelDe: "Dieser Monat",
+		fromKey: dateKey.slice(0, 7) + "-01",
+		toKey: dateKey,
+	});
+	const mobPeriodSum = buildMobilitySummary(
+		periodId,
+		mobPeriod,
 		openSessions,
-		reasonsMob,
+		[...reasonsMob, ...reasonsPeriod],
+		periodMeta,
 	);
 
 	const safeCfg: Partial<StatisticsAdminConfig> = {
@@ -669,19 +815,25 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 		tibberMonthlyGridFeeEur: cfg.tibberMonthlyGridFeeEur,
 		iceFuelType: cfg.iceFuelType,
 		iceLPer100Km: cfg.iceLPer100Km,
+		gridRewardsEnabled: cfg.gridRewardsEnabled,
 	};
 
 	await setIfChanged(host, STATISTICS_STATES.enabled, true);
 	await setIfChanged(host, STATISTICS_STATES.lastRunAt, now.toISOString());
 	await setIfChanged(host, STATISTICS_STATES.configJson, JSON.stringify(safeCfg));
+	await setIfChanged(host, STATISTICS_STATES.periodOptionsJson, JSON.stringify(periodOptions));
 	await setIfChanged(host, STATISTICS_STATES.homeTodayJson, JSON.stringify(homeTodaySum));
 	await setIfChanged(host, STATISTICS_STATES.homeMonthJson, JSON.stringify(homeMonthSum));
+	await setIfChanged(host, STATISTICS_STATES.homePeriodJson, JSON.stringify(homePeriodSum));
 	await setIfChanged(host, STATISTICS_STATES.mobilityTodayJson, JSON.stringify(mobTodaySum));
 	await setIfChanged(host, STATISTICS_STATES.mobilityMonthJson, JSON.stringify(mobMonthSum));
+	await setIfChanged(host, STATISTICS_STATES.mobilityPeriodJson, JSON.stringify(mobPeriodSum));
 	await setIfChanged(host, STATISTICS_STATES.homeTodaySavingsEur, day.home.savingsVsFixedEur);
 	await setIfChanged(host, STATISTICS_STATES.homeMonthSavingsEur, homeMonth.savingsVsFixedEur);
+	await setIfChanged(host, STATISTICS_STATES.homePeriodSavingsEur, homePeriod.savingsVsFixedEur);
 	await setIfChanged(host, STATISTICS_STATES.mobilityTodaySavingsEur, day.mobility.savingsVsIceEur);
 	await setIfChanged(host, STATISTICS_STATES.mobilityMonthSavingsEur, mobMonth.savingsVsIceEur);
+	await setIfChanged(host, STATISTICS_STATES.mobilityPeriodSavingsEur, mobPeriod.savingsVsIceEur);
 	await setIfChanged(
 		host,
 		STATISTICS_STATES.publicPendingJson,
@@ -693,14 +845,14 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 			homeTodaySum.savingsVsFixedEur !== null
 				? `Haus heute Tibber vs. Festtarif: ${homeTodaySum.savingsVsFixedEur.toFixed(2)} €.`
 				: reasonsHome[0] ?? "Haus: Daten unvollständig.",
-			homeMonthSum.savingsVsFixedEur !== null
-				? `Haus Monat: ${homeMonthSum.savingsVsFixedEur.toFixed(2)} €.`
-				: "",
+			homePeriodSum.savingsVsFixedEur !== null
+				? `Haus ${periodMeta.periodLabelDe}: ${homePeriodSum.savingsVsFixedEur.toFixed(2)} €.`
+				: reasonsPeriod[0] ?? "",
 			mobTodaySum.savingsVsIceEur !== null
 				? `Mobilität heute vs. Verbrenner: ${mobTodaySum.savingsVsIceEur.toFixed(2)} €.`
 				: reasonsMob[0] ?? "Mobilität: Daten unvollständig.",
-			mobMonthSum.savingsVsIceEur !== null
-				? `Mobilität Monat: ${mobMonthSum.savingsVsIceEur.toFixed(2)} €.`
+			mobPeriodSum.savingsVsIceEur !== null
+				? `Mobilität ${periodMeta.periodLabelDe}: ${mobPeriodSum.savingsVsIceEur.toFixed(2)} €.`
 				: "",
 			openSessions > 0 ? `${openSessions} Schnellader-Session(s) ohne Rechnung.` : "",
 		]
@@ -730,6 +882,12 @@ export async function handleStatisticsStateChange(
 	val: unknown,
 	ack: boolean,
 ): Promise<boolean> {
+	if (relativeId === STATISTICS_STATES.periodId && !ack) {
+		const normalized = normalizePeriodId(val, "this_month");
+		await host.setStateAsync(STATISTICS_STATES.periodId, { val: normalized, ack: true });
+		await tickStatistics(host);
+		return true;
+	}
 	if (
 		(relativeId !== STATISTICS_STATES.publicSubmitRequest &&
 			relativeId !== STATISTICS_STATES.adjustRequest) ||

@@ -5,6 +5,7 @@ const state_util_1 = require("../ems_light/state_util");
 const config_1 = require("./config");
 const compute_1 = require("./compute");
 const grid_rewards_1 = require("./grid_rewards");
+const period_1 = require("./period");
 const ensure_states_1 = require("./ensure_states");
 const persist_1 = require("./persist");
 const public_charge_1 = require("./public_charge");
@@ -81,9 +82,12 @@ function monthKeys(dateKey, days) {
         .filter((k) => k.startsWith(prefix))
         .sort();
 }
-function buildHomeSummary(period, home, reasonParts) {
+function buildHomeSummary(period, home, reasonParts, meta) {
     return {
         period,
+        periodLabelDe: meta?.periodLabelDe,
+        fromKey: meta?.fromKey,
+        toKey: meta?.toKey,
         gridImportKwh: home.gridImportKwh,
         dynamicCostEur: home.dynamicCostEur,
         fixedTariffCostEur: home.fixedTariffCostEur,
@@ -93,9 +97,12 @@ function buildHomeSummary(period, home, reasonParts) {
         reasonDe: reasonParts.join(" ") || "—",
     };
 }
-function buildMobilitySummary(period, mob, openSessions, reasonParts) {
+function buildMobilitySummary(period, mob, openSessions, reasonParts, meta) {
     return {
         period,
+        periodLabelDe: meta?.periodLabelDe,
+        fromKey: meta?.fromKey,
+        toKey: meta?.toKey,
         homePvKwh: mob.homePvKwh,
         homeGridKwh: mob.homeGridKwh,
         homeGridCostEur: mob.homeGridCostEur,
@@ -512,10 +519,109 @@ async function tickStatistics(host, now = new Date()) {
         evKwhPer100KmSource: evCons.source === "missing" ? null : evCons.source,
     }, monthRewards);
     const openSessions = day.publicSessions.filter((s) => s.status === "pending_invoice").length;
+    const periodIdRaw = await host.getStateAsync(ensure_states_1.STATISTICS_STATES.periodId);
+    const periodId = (0, period_1.normalizePeriodId)(periodIdRaw?.val, "this_month");
+    if (periodIdRaw?.val !== periodId) {
+        await host.setStateAsync(ensure_states_1.STATISTICS_STATES.periodId, { val: periodId, ack: true });
+    }
+    const periodRange = (0, period_1.resolvePeriodRange)(periodId, dateKey);
+    const periodOptions = (0, period_1.listPeriodOptions)(dateKey, Object.keys(persist.days));
+    const reasonsPeriod = [];
+    let homePeriod = homeMonth;
+    let mobPeriod = mobMonth;
+    let periodMeta = {
+        periodLabelDe: "Dieser Monat",
+        fromKey: dateKey.slice(0, 7) + "-01",
+        toKey: dateKey,
+    };
+    if (periodRange) {
+        periodMeta = {
+            periodLabelDe: periodRange.labelDe,
+            fromKey: periodRange.fromKey,
+            toKey: periodRange.toKey,
+        };
+        if (periodId === "this_month") {
+            homePeriod = homeMonth;
+            mobPeriod = mobMonth;
+        }
+        else {
+            const keys = (0, period_1.dayKeysInRange)(persist.days, periodRange.fromKey, periodRange.toKey);
+            const periodHomes = keys.map((k) => persist.days[k].home);
+            const periodMobs = keys.map((k) => persist.days[k].mobility);
+            const periodRewards = (0, grid_rewards_1.resolvePeriodGridRewards)({
+                enabled: cfg.gridRewardsEnabled,
+                fromKey: periodRange.fromKey,
+                toKey: periodRange.toKey,
+                todayKey: dateKey,
+                mappedMonthEur: rewardsCreditMonth,
+                monthRewardsBilling: persist.monthRewardsBilling ?? {},
+                dayCredits: keys.map((k) => ({
+                    dateKey: k,
+                    creditEur: persist.days[k].home.gridRewardsCreditEur,
+                })),
+            });
+            let homeAgg = (0, compute_1.sumHomeDays)(periodHomes);
+            const tibberRange = jsonDailyId
+                ? (0, compute_1.sumTibberJsonDailyForRange)(await readForeignRaw(host, jsonDailyId), periodRange.fromKey, periodRange.toKey)
+                : { gridImportKwh: null, dynamicCostEur: null };
+            if (tibberRange.gridImportKwh !== null || tibberRange.dynamicCostEur !== null) {
+                const importKwh = tibberRange.gridImportKwh ?? homeAgg.gridImportKwh;
+                const dynamic = tibberRange.dynamicCostEur ?? homeAgg.dynamicCostEur;
+                const fixed = (0, period_1.fixedTariffCostForRange)({
+                    gridImportKwh: importKwh,
+                    compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
+                    monthlyBaseEur: cfg.compareTariffMonthlyBaseEur,
+                    fromKey: periodRange.fromKey,
+                    toKey: periodRange.toKey,
+                });
+                homeAgg = (0, compute_1.applyHomeGridRewards)({
+                    ...homeAgg,
+                    gridImportKwh: importKwh,
+                    dynamicCostEur: dynamic,
+                    fixedTariffCostEur: fixed,
+                    savingsVsFixedEur: (0, compute_1.savingsVsFixedEur)(fixed, dynamic, periodRewards.source === "off" ? null : periodRewards.creditEur),
+                }, periodRewards);
+            }
+            else {
+                if (!keys.length) {
+                    reasonsPeriod.push(`Zeitraum ${periodRange.labelDe}: keine Persistenz-Tage und kein Tibber jsonDaily in ${periodRange.fromKey}…${periodRange.toKey}.`);
+                }
+                const fixed = (0, period_1.fixedTariffCostForRange)({
+                    gridImportKwh: homeAgg.gridImportKwh,
+                    compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
+                    monthlyBaseEur: cfg.compareTariffMonthlyBaseEur,
+                    fromKey: periodRange.fromKey,
+                    toKey: periodRange.toKey,
+                }) ?? homeAgg.fixedTariffCostEur;
+                homeAgg = (0, compute_1.applyHomeGridRewards)({
+                    ...homeAgg,
+                    fixedTariffCostEur: fixed,
+                    savingsVsFixedEur: (0, compute_1.savingsVsFixedEur)(fixed, homeAgg.dynamicCostEur, periodRewards.source === "off" ? null : periodRewards.creditEur),
+                }, periodRewards);
+            }
+            homePeriod = homeAgg;
+            mobPeriod = (0, compute_1.sumMobilityDays)(periodMobs, {
+                evKwhPer100: evCons.value,
+                fuelPriceEurPerL: fuelPrice,
+                iceLPer100Km: cfg.iceLPer100Km,
+                evKwhPer100KmSource: evCons.source === "missing" ? null : evCons.source,
+            }, periodRewards);
+        }
+    }
     const homeTodaySum = buildHomeSummary("today", day.home, reasonsHome);
-    const homeMonthSum = buildHomeSummary("month", homeMonth, reasonsHome);
+    const homeMonthSum = buildHomeSummary("month", homeMonth, reasonsHome, {
+        periodLabelDe: "Dieser Monat",
+        fromKey: dateKey.slice(0, 7) + "-01",
+        toKey: dateKey,
+    });
+    const homePeriodSum = buildHomeSummary(periodId, homePeriod, [...reasonsHome, ...reasonsPeriod], periodMeta);
     const mobTodaySum = buildMobilitySummary("today", day.mobility, openSessions, reasonsMob);
-    const mobMonthSum = buildMobilitySummary("month", mobMonth, openSessions, reasonsMob);
+    const mobMonthSum = buildMobilitySummary("month", mobMonth, openSessions, reasonsMob, {
+        periodLabelDe: "Dieser Monat",
+        fromKey: dateKey.slice(0, 7) + "-01",
+        toKey: dateKey,
+    });
+    const mobPeriodSum = buildMobilitySummary(periodId, mobPeriod, openSessions, [...reasonsMob, ...reasonsPeriod], periodMeta);
     const safeCfg = {
         enabled: cfg.enabled,
         compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
@@ -524,31 +630,37 @@ async function tickStatistics(host, now = new Date()) {
         tibberMonthlyGridFeeEur: cfg.tibberMonthlyGridFeeEur,
         iceFuelType: cfg.iceFuelType,
         iceLPer100Km: cfg.iceLPer100Km,
+        gridRewardsEnabled: cfg.gridRewardsEnabled,
     };
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.enabled, true);
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.lastRunAt, now.toISOString());
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.configJson, JSON.stringify(safeCfg));
+    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.periodOptionsJson, JSON.stringify(periodOptions));
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.homeTodayJson, JSON.stringify(homeTodaySum));
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.homeMonthJson, JSON.stringify(homeMonthSum));
+    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.homePeriodJson, JSON.stringify(homePeriodSum));
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityTodayJson, JSON.stringify(mobTodaySum));
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityMonthJson, JSON.stringify(mobMonthSum));
+    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityPeriodJson, JSON.stringify(mobPeriodSum));
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.homeTodaySavingsEur, day.home.savingsVsFixedEur);
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.homeMonthSavingsEur, homeMonth.savingsVsFixedEur);
+    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.homePeriodSavingsEur, homePeriod.savingsVsFixedEur);
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityTodaySavingsEur, day.mobility.savingsVsIceEur);
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityMonthSavingsEur, mobMonth.savingsVsIceEur);
+    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityPeriodSavingsEur, mobPeriod.savingsVsIceEur);
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.publicPendingJson, JSON.stringify(day.publicSessions.filter((s) => s.status === "pending_invoice")));
     const reason = [
         homeTodaySum.savingsVsFixedEur !== null
             ? `Haus heute Tibber vs. Festtarif: ${homeTodaySum.savingsVsFixedEur.toFixed(2)} €.`
             : reasonsHome[0] ?? "Haus: Daten unvollständig.",
-        homeMonthSum.savingsVsFixedEur !== null
-            ? `Haus Monat: ${homeMonthSum.savingsVsFixedEur.toFixed(2)} €.`
-            : "",
+        homePeriodSum.savingsVsFixedEur !== null
+            ? `Haus ${periodMeta.periodLabelDe}: ${homePeriodSum.savingsVsFixedEur.toFixed(2)} €.`
+            : reasonsPeriod[0] ?? "",
         mobTodaySum.savingsVsIceEur !== null
             ? `Mobilität heute vs. Verbrenner: ${mobTodaySum.savingsVsIceEur.toFixed(2)} €.`
             : reasonsMob[0] ?? "Mobilität: Daten unvollständig.",
-        mobMonthSum.savingsVsIceEur !== null
-            ? `Mobilität Monat: ${mobMonthSum.savingsVsIceEur.toFixed(2)} €.`
+        mobPeriodSum.savingsVsIceEur !== null
+            ? `Mobilität ${periodMeta.periodLabelDe}: ${mobPeriodSum.savingsVsIceEur.toFixed(2)} €.`
             : "",
         openSessions > 0 ? `${openSessions} Schnellader-Session(s) ohne Rechnung.` : "",
     ]
@@ -570,6 +682,12 @@ function isStatisticsRelatedState(relativeId) {
 }
 exports.isStatisticsRelatedState = isStatisticsRelatedState;
 async function handleStatisticsStateChange(host, relativeId, val, ack) {
+    if (relativeId === ensure_states_1.STATISTICS_STATES.periodId && !ack) {
+        const normalized = (0, period_1.normalizePeriodId)(val, "this_month");
+        await host.setStateAsync(ensure_states_1.STATISTICS_STATES.periodId, { val: normalized, ack: true });
+        await tickStatistics(host);
+        return true;
+    }
     if ((relativeId !== ensure_states_1.STATISTICS_STATES.publicSubmitRequest &&
         relativeId !== ensure_states_1.STATISTICS_STATES.adjustRequest) ||
         ack) {

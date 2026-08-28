@@ -51,6 +51,9 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 #ems-view-ops{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden}
 .ems-stats{display:none;flex-direction:column;gap:4px;flex:1 1 auto;min-height:0;overflow:auto}
 .ems-stats.on{display:flex}
+.ems-stats-period{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 4px}
+.ems-stats-period label{color:#8b949e;font-size:12px}
+.ems-stats-period select{background:#21262d;color:#e6edf3;border:1px solid #30363d;border-radius:6px;padding:4px 8px;font-size:13px}
 .ems-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;align-content:start}
 .ems-stats .ems-card{min-height:120px}
 .ems-stats-hero{font-size:22px;font-weight:700;line-height:1.2;margin:4px 0}
@@ -166,6 +169,10 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 	</div>
 	</div>
 	<div id="ems-view-stats" class="ems-stats">
+		<div class="ems-stats-period">
+			<label for="ems-stats-period-sel">Zeitraum</label>
+			<select id="ems-stats-period-sel" aria-label="Statistik Zeitraum"></select>
+		</div>
 		<div class="ems-stats-grid" id="ems-stats-grid"></div>
 		<div class="ems-note" id="ems-stats-reason" style="margin-top:4px"></div>
 	</div>
@@ -240,14 +247,20 @@ var stateIds=[
 	INST+".ai.limit_warning",
 	INST+".statistics.enabled",
 	INST+".statistics.reason_de",
+	INST+".statistics.period_id",
+	INST+".statistics.period_options_json",
 	INST+".statistics.home.today_json",
 	INST+".statistics.home.month_json",
+	INST+".statistics.home.period_json",
 	INST+".statistics.mobility.today_json",
 	INST+".statistics.mobility.month_json",
+	INST+".statistics.mobility.period_json",
 	INST+".statistics.home.today_savings_vs_fixed_eur",
 	INST+".statistics.home.month_savings_vs_fixed_eur",
+	INST+".statistics.home.period_savings_vs_fixed_eur",
 	INST+".statistics.mobility.today_savings_vs_ice_eur",
 	INST+".statistics.mobility.month_savings_vs_ice_eur",
+	INST+".statistics.mobility.period_savings_vs_ice_eur",
 	INST+".statistics.public_charge.pending_json",
 	INST+".statistics.public_charge.submit_ack_de",
 	INST+".planner.intent.daily_plan.status",
@@ -2622,41 +2635,88 @@ function statsCard(title,hero,rows,note,extraCls){
 	if(note)html+='<div class="ems-note">'+esc(note)+"</div>";
 	return html+"</div>";
 }
+function fillPeriodSelect(){
+	var sel=document.getElementById("ems-stats-period-sel");
+	if(!sel)return;
+	var opts=parseArr(g("statistics.period_options_json"));
+	if(!opts.length){
+		opts=[
+			{id:"last_7_days",labelDe:"Letzte 7 Tage"},
+			{id:"this_month",labelDe:"Dieser Monat"},
+			{id:"last_month",labelDe:"Letzter Monat"},
+			{id:"this_quarter",labelDe:"Dieses Quartal"},
+			{id:"last_quarter",labelDe:"Letztes Quartal"},
+			{id:"this_year",labelDe:"Dieses Jahr"},
+			{id:"last_year",labelDe:"Letztes Jahr"}
+		];
+	}
+	var cur=txt(g("statistics.period_id"),"this_month")||"this_month";
+	var html="";
+	for(var i=0;i<opts.length;i++){
+		var o=opts[i];
+		if(!o||!o.id)continue;
+		var lab=o.labelDe||o.id;
+		html+='<option value="'+esc(o.id)+'"'+(o.id===cur?" selected":"")+">"+esc(lab)+"</option>";
+	}
+	if(sel.innerHTML!==html)sel.innerHTML=html;
+	if(sel.value!==cur)sel.value=cur;
+}
+function bindStatsPeriodSelect(){
+	var sel=document.getElementById("ems-stats-period-sel");
+	if(!sel||sel.getAttribute("data-ems-period")==="1")return;
+	sel.setAttribute("data-ems-period","1");
+	sel.addEventListener("change",function(){
+		var id=sel.value||"this_month";
+		setVisState(INST+".statistics.period_id",id);
+	});
+}
+function periodCardTitle(prefix,sum,fallback){
+	var lab=sum&&sum.periodLabelDe?sum.periodLabelDe:fallback;
+	return prefix+" · "+lab;
+}
 function renderStatistics(){
 	var grid=document.getElementById("ems-stats-grid");
 	var reasonEl=document.getElementById("ems-stats-reason");
 	if(!grid)return;
+	fillPeriodSelect();
+	bindStatsPeriodSelect();
 	var homeT=parseObj(g("statistics.home.today_json"));
-	var homeM=parseObj(g("statistics.home.month_json"));
+	var homeP=parseObj(g("statistics.home.period_json"));
+	if(!homeP||(homeP.period==null&&homeP.gridImportKwh==null&&homeP.dynamicCostEur==null)){
+		homeP=parseObj(g("statistics.home.month_json"));
+	}
 	var mobT=parseObj(g("statistics.mobility.today_json"));
-	var mobM=parseObj(g("statistics.mobility.month_json"));
+	var mobP=parseObj(g("statistics.mobility.period_json"));
+	if(!mobP||(mobP.period==null&&mobP.homeGridKwh==null&&mobP.evTotalCostEur==null)){
+		mobP=parseObj(g("statistics.mobility.month_json"));
+	}
 	var pending=parseArr(g("statistics.public_charge.pending_json"));
 	var hT=savingsHero(num(g("statistics.home.today_savings_vs_fixed_eur"))!=null?num(g("statistics.home.today_savings_vs_fixed_eur")):num(homeT.savingsVsFixedEur));
-	var hM=savingsHero(num(g("statistics.home.month_savings_vs_fixed_eur"))!=null?num(g("statistics.home.month_savings_vs_fixed_eur")):num(homeM.savingsVsFixedEur));
+	var hP=savingsHero(num(g("statistics.home.period_savings_vs_fixed_eur"))!=null?num(g("statistics.home.period_savings_vs_fixed_eur")):(num(homeP.savingsVsFixedEur)!=null?num(homeP.savingsVsFixedEur):num(g("statistics.home.month_savings_vs_fixed_eur"))));
 	var mT=savingsHero(num(g("statistics.mobility.today_savings_vs_ice_eur"))!=null?num(g("statistics.mobility.today_savings_vs_ice_eur")):num(mobT.savingsVsIceEur));
-	var mM=savingsHero(num(g("statistics.mobility.month_savings_vs_ice_eur"))!=null?num(g("statistics.mobility.month_savings_vs_ice_eur")):num(mobM.savingsVsIceEur));
+	var mP=savingsHero(num(g("statistics.mobility.period_savings_vs_ice_eur"))!=null?num(g("statistics.mobility.period_savings_vs_ice_eur")):(num(mobP.savingsVsIceEur)!=null?num(mobP.savingsVsIceEur):num(g("statistics.mobility.month_savings_vs_ice_eur"))));
 	var pendingNote=pending.length
 		? (pending.length+" offene Schnellader-Session(s) — Rechnung unter statistics.public_charge.submit_request (JSON: kwh, eur).")
 		: "Keine offenen Schnellader-Sessions.";
-	var homeMonthNote=txt(homeM.reasonDe,"");
-	if(homeM.gridRewardsSource==="estimate_month"||homeM.gridRewardsSource==="estimate_day"){
+	var homePeriodNote=txt(homeP.reasonDe,"");
+	if(homeP.gridRewardsSource==="estimate_month"||homeP.gridRewardsSource==="estimate_day"){
 		var billHint="Abrechnung: ems.0.statistics.adjust_request → {\"date\":\"YYYY-MM-letzterTag\",\"home\":{\"gridRewardsCreditEur\":X.XX},\"noteDe\":\"Tibber-Abrechnung …\"} (ack:false). Details: Admin → Statistik.";
-		homeMonthNote=homeMonthNote&&homeMonthNote!=="—"?(homeMonthNote+" "+billHint):billHint;
-	}else if(homeM.gridRewardsSource==="billing"){
+		homePeriodNote=homePeriodNote&&homePeriodNote!=="—"?(homePeriodNote+" "+billHint):billHint;
+	}else if(homeP.gridRewardsSource==="billing"){
 		var doneHint="Rewards aus Tibber-Abrechnung (adjust_request).";
-		homeMonthNote=homeMonthNote&&homeMonthNote!=="—"?(homeMonthNote+" "+doneHint):doneHint;
+		homePeriodNote=homePeriodNote&&homePeriodNote!=="—"?(homePeriodNote+" "+doneHint):doneHint;
 	}
 	grid.innerHTML=
 		statsCard("Haus heute · Tibber vs. Festtarif",hT,homeStatsRows(homeT),txt(homeT.reasonDe,""))
-		+statsCard("Haus Monat · Tibber vs. Festtarif",hM,homeStatsRows(homeM),homeMonthNote)
+		+statsCard(periodCardTitle("Haus",homeP,"Dieser Monat")+" · Tibber vs. Festtarif",hP,homeStatsRows(homeP),homePeriodNote)
 		+statsCard("Mobilität heute · vs. Verbrenner",mT,mobStatsRows(mobT),txt(mobT.reasonDe,""))
-		+statsCard("Mobilität Monat · vs. Verbrenner",mM,mobStatsRows(mobM),txt(mobM.reasonDe,""))
+		+statsCard(periodCardTitle("Mobilität",mobP,"Dieser Monat")+" · vs. Verbrenner",mP,mobStatsRows(mobP),txt(mobP.reasonDe,""))
 		+statsCard("Schnellader",{cls:pending.length?"warn":"neu",txt:pending.length?String(pending.length)+" offen":"keine"},[
 			["Pending kWh",fmtKwhStats(mobT.publicPendingKwh)],
 			["Ack",txt(g("statistics.public_charge.submit_ack_de"),"—")]
 		],pendingNote,"ems-stats-pending");
 	var reasonBase=txt(g("statistics.reason_de"),"Statistik: Mappings im Admin-Tab „Statistik“ setzen.");
-	if(homeM.gridRewardsSource==="estimate_month"||homeM.gridRewardsSource==="estimate_day"){
+	if(homeP.gridRewardsSource==="estimate_month"||homeP.gridRewardsSource==="estimate_day"){
 		reasonBase+=" Rewards noch Schätzung — Abrechnung per statistics.adjust_request (Admin → Statistik → Manuell/Abrechnung).";
 	}
 	if(reasonEl)reasonEl.textContent=reasonBase;

@@ -158,10 +158,19 @@ export function sumTibberJsonDailyForMonth(
 	raw: unknown,
 	dateKey: string,
 ): { gridImportKwh: number | null; dynamicCostEur: number | null } {
+	const prefix = dateKey.slice(0, 7);
+	return sumTibberJsonDailyForRange(raw, `${prefix}-01`, `${prefix}-31`);
+}
+
+/** TibberLink jsonDaily — Summe für inklusives Datumsintervall. */
+export function sumTibberJsonDailyForRange(
+	raw: unknown,
+	fromKey: string,
+	toKey: string,
+): { gridImportKwh: number | null; dynamicCostEur: number | null } {
 	try {
 		const arr = typeof raw === "string" ? (JSON.parse(raw) as unknown) : raw;
 		if (!Array.isArray(arr)) return { gridImportKwh: null, dynamicCostEur: null };
-		const prefix = dateKey.slice(0, 7);
 		let kwh = 0;
 		let cost = 0;
 		let hits = 0;
@@ -169,7 +178,9 @@ export function sumTibberJsonDailyForMonth(
 			if (!entry || typeof entry !== "object") continue;
 			const o = entry as Record<string, unknown>;
 			const dateStr = tibberEntryDateKey(o);
-			if (!dateStr || !dateStr.startsWith(prefix)) continue;
+			if (!dateStr || dateStr.length < 10) continue;
+			const key = dateStr.slice(0, 10);
+			if (key < fromKey || key > toKey) continue;
 			const c = tibberEntryConsumptionKwh(o);
 			const t = tibberEntryCostEur(o);
 			if (c !== null) kwh += c;

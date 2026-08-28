@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.349",
+		"version": "0.1.350",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.350": {
+				"en": "Statistics period selector: last 7 days, months, quarters, years; VIS dropdown writes period_id.",
+				"de": "Statistik Zeitraum-Auswahl: letzte 7 Tage, Monate, Quartale, Jahre; VIS-Dropdown schreibt period_id."
+			},
 			"0.1.349": {
 				"en": "Statistics: clear Admin help for adjust_request Grid Rewards billing; VIS hint while rewards are estimate.",
 				"de": "Statistik: klare Admin-Hilfe für adjust_request Grid-Rewards-Abrechnung; VIS-Hinweis solange Rewards Schätzung."

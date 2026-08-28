@@ -2566,6 +2566,44 @@ function fmtKwhStats(v){
 	if(v===null||v===undefined||!isFinite(Number(v)))return "—";
 	return Number(v).toFixed(1).replace(".",",")+" kWh";
 }
+function fmtRewardsLabel(source){
+	if(source==="billing")return "Rewards (Abrechnung)";
+	if(source==="estimate_day"||source==="estimate_month")return "Rewards (Schätzung)";
+	return "Rewards";
+}
+function fmtHomeGridMob(mob){
+	var kwh=fmtKwhStats(mob.homeGridKwh);
+	if(mob.homeGridKwh===null||mob.homeGridKwh===undefined)return ["Heim Netz","—"];
+	if(mob.gridRewardsSource==="off"||mob.homeGridCostEur===null||mob.homeGridCostEur===undefined){
+		return ["Heim Netz",kwh];
+	}
+	var net=mob.homeGridCostNetEur!=null?mob.homeGridCostNetEur:mob.homeGridCostEur;
+	var tag=mob.gridRewardsSource==="billing"?"Abrechnung":"Grid Rewards Schätzung";
+	return ["Heim Netz",kwh+" · "+fmtEur(net)+" ("+tag+")"];
+}
+function homeStatsRows(home){
+	var rows=[
+		["Netzbezug",fmtKwhStats(home.gridImportKwh)],
+		["Tibber",fmtEur(home.dynamicCostEur)],
+		["Festtarif",fmtEur(home.fixedTariffCostEur)]
+	];
+	if(home.gridRewardsSource&&home.gridRewardsSource!=="off"){
+		rows.push([fmtRewardsLabel(home.gridRewardsSource),fmtEur(home.gridRewardsCreditEur)]);
+	}
+	return rows;
+}
+function mobStatsRows(mob){
+	var rows=[
+		["Heim PV",fmtKwhStats(mob.homePvKwh)],
+		fmtHomeGridMob(mob),
+		["Schnellader (bezahlt)",fmtKwhStats(mob.publicInvoicedKwh)],
+		["km ≈",mob.estimatedKm!=null?String(mob.estimatedKm).replace(".",","):"—"],
+		["E-Auto",fmtEur(mob.evTotalCostEur)],
+		["Verbrenner",fmtEur(mob.iceCostEur)],
+		["Sprit €/l",mob.fuelPriceEurPerL!=null?Number(mob.fuelPriceEurPerL).toFixed(3).replace(".",","):"—"]
+	];
+	return rows;
+}
 function savingsHero(v){
 	if(v===null||v===undefined||!isFinite(Number(v)))return {cls:"neu",txt:"—"};
 	var n=Number(v);
@@ -2601,36 +2639,10 @@ function renderStatistics(){
 		? (pending.length+" offene Schnellader-Session(s) — Rechnung unter statistics.public_charge.submit_request (JSON: kwh, eur).")
 		: "Keine offenen Schnellader-Sessions.";
 	grid.innerHTML=
-		statsCard("Haus heute · Tibber vs. Festtarif",hT,[
-			["Netzbezug",fmtKwhStats(homeT.gridImportKwh)],
-			["Tibber",fmtEur(homeT.dynamicCostEur)],
-			["Festtarif",fmtEur(homeT.fixedTariffCostEur)],
-			["Rewards",fmtEur(homeT.gridRewardsCreditEur)]
-		],txt(homeT.reasonDe,""))
-		+statsCard("Haus Monat · Tibber vs. Festtarif",hM,[
-			["Netzbezug",fmtKwhStats(homeM.gridImportKwh)],
-			["Tibber",fmtEur(homeM.dynamicCostEur)],
-			["Festtarif",fmtEur(homeM.fixedTariffCostEur)],
-			["Rewards",fmtEur(homeM.gridRewardsCreditEur)]
-		],txt(homeM.reasonDe,""))
-		+statsCard("Mobilität heute · vs. Verbrenner",mT,[
-			["Heim PV",fmtKwhStats(mobT.homePvKwh)],
-			["Heim Netz",fmtKwhStats(mobT.homeGridKwh)],
-			["Schnellader (bezahlt)",fmtKwhStats(mobT.publicInvoicedKwh)],
-			["km ≈",mobT.estimatedKm!=null?String(mobT.estimatedKm).replace(".",","):"—"],
-			["E-Auto",fmtEur(mobT.evTotalCostEur)],
-			["Verbrenner",fmtEur(mobT.iceCostEur)],
-			["Sprit €/l",mobT.fuelPriceEurPerL!=null?Number(mobT.fuelPriceEurPerL).toFixed(3).replace(".",","):"—"]
-		],txt(mobT.reasonDe,""))
-		+statsCard("Mobilität Monat · vs. Verbrenner",mM,[
-			["Heim PV",fmtKwhStats(mobM.homePvKwh)],
-			["Heim Netz",fmtKwhStats(mobM.homeGridKwh)],
-			["Schnellader (bezahlt)",fmtKwhStats(mobM.publicInvoicedKwh)],
-			["km ≈",mobM.estimatedKm!=null?String(mobM.estimatedKm).replace(".",","):"—"],
-			["E-Auto",fmtEur(mobM.evTotalCostEur)],
-			["Verbrenner",fmtEur(mobM.iceCostEur)],
-			["Sprit €/l",mobM.fuelPriceEurPerL!=null?Number(mobM.fuelPriceEurPerL).toFixed(3).replace(".",","):"—"]
-		],txt(mobM.reasonDe,""))
+		statsCard("Haus heute · Tibber vs. Festtarif",hT,homeStatsRows(homeT),txt(homeT.reasonDe,""))
+		+statsCard("Haus Monat · Tibber vs. Festtarif",hM,homeStatsRows(homeM),txt(homeM.reasonDe,""))
+		+statsCard("Mobilität heute · vs. Verbrenner",mT,mobStatsRows(mobT),txt(mobT.reasonDe,""))
+		+statsCard("Mobilität Monat · vs. Verbrenner",mM,mobStatsRows(mobM),txt(mobM.reasonDe,""))
 		+statsCard("Schnellader",{cls:pending.length?"warn":"neu",txt:pending.length?String(pending.length)+" offen":"keine"},[
 			["Pending kWh",fmtKwhStats(mobT.publicPendingKwh)],
 			["Ack",txt(g("statistics.public_charge.submit_ack_de"),"—")]

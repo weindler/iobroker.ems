@@ -9,6 +9,14 @@ export type IceFuelType = "e5" | "e10" | "diesel";
 
 export type ChargeSourceKind = "home_pv" | "home_grid" | "grid_rewards" | "public_dc" | "unknown";
 
+/** Quelle der Grid-Rewards-Gutschrift in der Statistik-Anzeige. */
+export type GridRewardsSource = "off" | "estimate_day" | "estimate_month" | "billing";
+
+export interface MonthRewardsBilling {
+	creditEur: number;
+	noteDe?: string;
+}
+
 export type PublicChargeSessionStatus = "pending_invoice" | "invoiced" | "discarded";
 
 export interface PublicChargeSession {
@@ -34,6 +42,7 @@ export interface HomeDayTotals {
 	/** fixed − dynamic (positiv = Tibber/EMS günstiger als Festtarif). */
 	savingsVsFixedEur: number | null;
 	gridRewardsCreditEur: number | null;
+	gridRewardsSource: GridRewardsSource;
 	feedInCreditEur: number | null;
 }
 
@@ -43,7 +52,9 @@ export interface MobilityDayTotals {
 	homeGridKwh: number | null;
 	homePvCostEur: number | null;
 	homeGridCostEur: number | null;
+	homeGridCostNetEur: number | null;
 	gridRewardsCreditEur: number | null;
+	gridRewardsSource: GridRewardsSource;
 	publicInvoicedKwh: number | null;
 	publicInvoicedEur: number | null;
 	publicPendingKwh: number | null;
@@ -69,6 +80,8 @@ export interface StatisticsPersist {
 	version: typeof STATISTICS_PERSIST_VERSION;
 	generatedAt: string;
 	days: Record<string, StatisticsDayRecord>;
+	/** Monats-Rewards aus Tibber-Abrechnung (adjust_request) — überschreibt HA-Schätzung. */
+	monthRewardsBilling: Record<string, MonthRewardsBilling>;
 	/** Laufende Integration innerhalb des Tages (nicht VIS). */
 	runtime: {
 		dateKey: string;
@@ -94,6 +107,7 @@ export interface HouseCompareSummary {
 	fixedTariffCostEur: number | null;
 	savingsVsFixedEur: number | null;
 	gridRewardsCreditEur: number | null;
+	gridRewardsSource: GridRewardsSource;
 	reasonDe: string;
 }
 
@@ -101,6 +115,9 @@ export interface MobilityCompareSummary {
 	period: "today" | "month";
 	homePvKwh: number | null;
 	homeGridKwh: number | null;
+	homeGridCostEur: number | null;
+	homeGridCostNetEur: number | null;
+	gridRewardsSource: GridRewardsSource;
 	publicInvoicedKwh: number | null;
 	publicPendingKwh: number | null;
 	evTotalCostEur: number | null;

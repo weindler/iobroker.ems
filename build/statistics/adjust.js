@@ -79,6 +79,7 @@ function mergeHome(day, patch) {
     }
     if (patch.gridRewardsCreditEur !== null && patch.gridRewardsCreditEur !== undefined) {
         day.home.gridRewardsCreditEur = patch.gridRewardsCreditEur;
+        day.home.gridRewardsSource = "billing";
     }
     if (patch.feedInCreditEur !== null && patch.feedInCreditEur !== undefined) {
         day.home.feedInCreditEur = patch.feedInCreditEur;
@@ -149,6 +150,7 @@ function applyStatisticsAdjust(persist, submit, now) {
         const fresh = (0, persist_1.emptyPersist)(now);
         persist.days = fresh.days;
         persist.runtime = fresh.runtime;
+        persist.monthRewardsBilling = fresh.monthRewardsBilling;
         persist.generatedAt = fresh.generatedAt;
         persist.version = fresh.version;
         return {
@@ -166,6 +168,9 @@ function applyStatisticsAdjust(persist, submit, now) {
         if (persist.runtime.dateKey.startsWith(prefix)) {
             persist.runtime = (0, persist_1.emptyRuntime)(todayKey);
         }
+        if (persist.monthRewardsBilling) {
+            delete persist.monthRewardsBilling[prefix];
+        }
         return {
             persist,
             ackDe: submit.noteDe || `Statistik Monat ${prefix} zurückgesetzt.`,
@@ -182,6 +187,14 @@ function applyStatisticsAdjust(persist, submit, now) {
     if (submit.home && Object.values(submit.home).some((v) => v !== null && v !== undefined)) {
         const day = ensureDay(persist, dateKey);
         mergeHome(day, submit.home);
+        if (submit.home.gridRewardsCreditEur !== null &&
+            submit.home.gridRewardsCreditEur !== undefined) {
+            persist.monthRewardsBilling = persist.monthRewardsBilling ?? {};
+            persist.monthRewardsBilling[monthPrefix(dateKey)] = {
+                creditEur: submit.home.gridRewardsCreditEur,
+                noteDe: submit.noteDe,
+            };
+        }
         parts.push("Haus");
     }
     if (submit.mobility && Object.values(submit.mobility).some((v) => v !== null && v !== undefined)) {

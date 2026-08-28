@@ -4,6 +4,7 @@ exports.handleStatisticsStateChange = exports.isStatisticsRelatedState = exports
 const state_util_1 = require("../ems_light/state_util");
 const config_1 = require("./config");
 const compute_1 = require("./compute");
+const grid_rewards_1 = require("./grid_rewards");
 const ensure_states_1 = require("./ensure_states");
 const persist_1 = require("./persist");
 const public_charge_1 = require("./public_charge");
@@ -87,7 +88,8 @@ function buildHomeSummary(period, home, reasonParts) {
         dynamicCostEur: home.dynamicCostEur,
         fixedTariffCostEur: home.fixedTariffCostEur,
         savingsVsFixedEur: home.savingsVsFixedEur,
-        gridRewardsCreditEur: home.gridRewardsCreditEur,
+        gridRewardsCreditEur: home.gridRewardsSource === "off" ? null : home.gridRewardsCreditEur,
+        gridRewardsSource: home.gridRewardsSource,
         reasonDe: reasonParts.join(" ") || "—",
     };
 }
@@ -96,6 +98,9 @@ function buildMobilitySummary(period, mob, openSessions, reasonParts) {
         period,
         homePvKwh: mob.homePvKwh,
         homeGridKwh: mob.homeGridKwh,
+        homeGridCostEur: mob.homeGridCostEur,
+        homeGridCostNetEur: mob.homeGridCostNetEur,
+        gridRewardsSource: mob.gridRewardsSource,
         publicInvoicedKwh: mob.publicInvoicedKwh,
         publicPendingKwh: mob.publicPendingKwh,
         evTotalCostEur: mob.evTotalCostEur,
@@ -231,12 +236,13 @@ async function tickStatistics(host, now = new Date()) {
     const dtSec = rt.lastTickMs !== null && nowMs > rt.lastTickMs
         ? Math.min(600, (nowMs - rt.lastTickMs) / 1000)
         : 0;
-    const [gridImportEnergy, gridExportEnergy, gridImportPowerW, dynamicCostMapped, rewardsCredit, fuelMapped, evConsMapped, sessionEnergy, sessionPricePerKwh, wbConnected, vehicleSoc, priceNowCt, capacityKwh, rewardsActive,] = await Promise.all([
+    const [gridImportEnergy, gridExportEnergy, gridImportPowerW, dynamicCostMapped, rewardsCreditDay, rewardsCreditMonth, fuelMapped, evConsMapped, sessionEnergy, sessionPricePerKwh, wbConnected, vehicleSoc, priceNowCt, capacityKwh, rewardsActive,] = await Promise.all([
         readForeignNum(host, cfg.gridImportEnergyKwhStateId),
         readForeignNum(host, cfg.gridExportEnergyKwhStateId),
         readForeignNum(host, cfg.gridImportPowerWStateId),
         readForeignNum(host, cfg.dynamicCostTodayEurStateId),
-        readForeignNum(host, cfg.gridRewardsCreditEurStateId),
+        readForeignNum(host, cfg.gridRewardsCreditDayStateId),
+        readForeignNum(host, cfg.gridRewardsCreditMonthStateId),
         readForeignNum(host, cfg.fuelPriceEurPerLStateId),
         readForeignNum(host, cfg.evConsumptionKwhPer100StateId),
         readForeignNum(host, cfg.wallboxSessionEnergyKwhStateId).then((raw) => (0, compute_1.normalizeWallboxSessionEnergyKwh)(cfg.wallboxSessionEnergyKwhStateId, raw)),
@@ -327,15 +333,18 @@ async function tickStatistics(host, now = new Date()) {
     if (cfg.compareTariffCtPerKwh === null) {
         reasonsHome.push("Vergleichstarif (ct/kWh) im Admin fehlt.");
     }
-    day.home.gridRewardsCreditEur =
-        rewardsCredit !== null && rewardsCredit >= 0 ? rewardsCredit : day.home.gridRewardsCreditEur;
+    const todayRewards = (0, grid_rewards_1.resolveTodayGridRewards)({
+        enabled: cfg.gridRewardsEnabled,
+        mappedDayEur: rewardsCreditDay,
+    });
+    day.home = (0, compute_1.applyHomeGridRewards)(day.home, todayRewards);
     if (day.home.gridExportKwh !== null &&
         cfg.feedInCtPerKwh !== null &&
         cfg.feedInCtPerKwh >= 0) {
         day.home.feedInCreditEur =
             Math.round(((day.home.gridExportKwh * cfg.feedInCtPerKwh) / 100) * 100) / 100;
     }
-    day.home.savingsVsFixedEur = (0, compute_1.savingsVsFixedEur)(day.home.fixedTariffCostEur, day.home.dynamicCostEur, day.home.gridRewardsCreditEur);
+    persistDirty = true;
     // --- Mobilität: Heimladung ---
     if (wbConnected === true && sessionEnergy !== null) {
         const d = (0, compute_1.energyCounterDeltaKwh)(rt.wallboxSessionEnergyBaselineKwh, sessionEnergy);
@@ -415,21 +424,23 @@ async function tickStatistics(host, now = new Date()) {
         lPer100Km: cfg.iceLPer100Km,
         fuelPriceEurPerL: fuelPrice,
     });
-    const rewardsMob = day.home.gridRewardsCreditEur !== null ? day.home.gridRewardsCreditEur : null;
+    const rewardsMob = todayRewards;
     const evCostRaw = rt.homePvCostEur +
         rt.homeGridCostEur +
         invoiced.eur -
-        (rewardsMob ?? 0);
-    const evCost = homeChargeKwh > 0 || invoiced.kwh > 0 || rewardsMob !== null
+        (rewardsMob.source !== "off" && rewardsMob.creditEur !== null ? rewardsMob.creditEur : 0);
+    const evCost = homeChargeKwh > 0 || invoiced.kwh > 0 || rewardsMob.creditEur !== null
         ? Math.round(Math.max(0, evCostRaw) * 100) / 100
         : null;
-    day.mobility = {
+    day.mobility = (0, compute_1.applyMobilityGridRewards)({
         dateKey,
         homePvKwh: rt.homePvKwh > 0 ? Math.round(rt.homePvKwh * 1000) / 1000 : null,
         homeGridKwh: rt.homeGridKwh > 0 ? Math.round(rt.homeGridKwh * 1000) / 1000 : null,
         homePvCostEur: rt.homePvKwh > 0 ? Math.round(rt.homePvCostEur * 100) / 100 : null,
         homeGridCostEur: rt.homeGridKwh > 0 ? Math.round(rt.homeGridCostEur * 100) / 100 : null,
-        gridRewardsCreditEur: rewardsMob,
+        homeGridCostNetEur: null,
+        gridRewardsCreditEur: null,
+        gridRewardsSource: "off",
         publicInvoicedKwh: invoiced.kwh > 0 ? invoiced.kwh : null,
         publicInvoicedEur: invoiced.eur > 0 ? invoiced.eur : null,
         publicPendingKwh: pendingKwh > 0 ? Math.round(pendingKwh * 1000) / 1000 : null,
@@ -443,8 +454,16 @@ async function tickStatistics(host, now = new Date()) {
         savingsVsIceEur: evCost !== null && ice.costEur !== null
             ? Math.round((ice.costEur - evCost) * 100) / 100
             : null,
-    };
+    }, rewardsMob);
     persistDirty = true;
+    const monthPrefixKey = dateKey.slice(0, 7);
+    const monthBilling = persist.monthRewardsBilling?.[monthPrefixKey]?.creditEur ?? null;
+    const monthRewards = (0, grid_rewards_1.resolveMonthGridRewards)({
+        enabled: cfg.gridRewardsEnabled,
+        monthPrefix: monthPrefixKey,
+        billingCreditEur: monthBilling,
+        mappedMonthEur: rewardsCreditMonth,
+    });
     const monthDayKeys = monthKeys(dateKey, persist.days);
     const monthHomes = monthDayKeys.map((k) => persist.days[k].home);
     const monthMobs = monthDayKeys.map((k) => persist.days[k].mobility);
@@ -469,7 +488,8 @@ async function tickStatistics(host, now = new Date()) {
             dateKey,
             gridImportKwh: tibberMonth.gridImportKwh ?? homeMonthPersist.gridImportKwh,
             dynamicCostEur: tibberMonth.dynamicCostEur ?? homeMonthPersist.dynamicCostEur,
-            gridRewardsCreditEur: homeMonthPersist.gridRewardsCreditEur,
+            gridRewardsCreditEur: monthRewards.source === "off" ? null : monthRewards.creditEur,
+            gridRewardsSource: monthRewards.source,
             gridExportKwh: homeMonthPersist.gridExportKwh,
             feedInCtPerKwh: cfg.feedInCtPerKwh,
             compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
@@ -479,15 +499,18 @@ async function tickStatistics(host, now = new Date()) {
             addTibberFeesToDynamic: tibberMonth.addTibberFeesToDynamic,
         });
     }
-    else if (jsonDailyId) {
-        reasonsHome.push("Haus Monat: Tibber jsonDaily leer — Tibberlink: Historische Verbrauchsdaten + Tage≥31 aktivieren.");
+    else {
+        homeMonth = (0, compute_1.applyHomeGridRewards)(homeMonthPersist, monthRewards);
+        if (jsonDailyId) {
+            reasonsHome.push("Haus Monat: Tibber jsonDaily leer — Tibberlink: Historische Verbrauchsdaten + Tage≥31 aktivieren.");
+        }
     }
     const mobMonth = (0, compute_1.sumMobilityDays)(monthMobs, {
         evKwhPer100: evCons.value,
         fuelPriceEurPerL: fuelPrice,
         iceLPer100Km: cfg.iceLPer100Km,
         evKwhPer100KmSource: evCons.source === "missing" ? null : evCons.source,
-    });
+    }, monthRewards);
     const openSessions = day.publicSessions.filter((s) => s.status === "pending_invoice").length;
     const homeTodaySum = buildHomeSummary("today", day.home, reasonsHome);
     const homeMonthSum = buildHomeSummary("month", homeMonth, reasonsHome);

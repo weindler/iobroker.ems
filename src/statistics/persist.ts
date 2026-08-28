@@ -34,6 +34,7 @@ export function emptyPersist(now = new Date()): StatisticsPersist {
 		version: STATISTICS_PERSIST_VERSION,
 		generatedAt: now.toISOString(),
 		days: {},
+		monthRewardsBilling: {},
 		runtime: emptyRuntime(dateKey),
 	};
 }
@@ -56,6 +57,9 @@ export async function readStatisticsPersist(dir: string): Promise<StatisticsPers
 		}
 		if (!parsed.runtime) {
 			parsed.runtime = emptyRuntime(localDateKey(new Date()));
+		}
+		if (!parsed.monthRewardsBilling) {
+			parsed.monthRewardsBilling = {};
 		}
 		return parsed;
 	} catch {

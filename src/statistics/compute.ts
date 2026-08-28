@@ -1,4 +1,6 @@
-import type { HomeDayTotals, MobilityDayTotals } from "./types";
+import type { GridRewardsSource, HomeDayTotals, MobilityDayTotals } from "./types";
+import type { ResolvedGridRewards } from "./grid_rewards";
+import { netHomeGridCostEur } from "./grid_rewards";
 
 function round3(n: number): number {
 	return Math.round(n * 1000) / 1000;
@@ -262,6 +264,7 @@ export function buildHomeMonthTotals(input: {
 	gridImportKwh: number | null;
 	dynamicCostEur: number | null;
 	gridRewardsCreditEur: number | null;
+	gridRewardsSource: GridRewardsSource;
 	gridExportKwh: number | null;
 	feedInCtPerKwh: number | null;
 	compareTariffCtPerKwh: number | null;
@@ -300,6 +303,7 @@ export function buildHomeMonthTotals(input: {
 		dynamicCostEur: dynamic,
 		fixedTariffCostEur: fixed,
 		gridRewardsCreditEur: input.gridRewardsCreditEur,
+		gridRewardsSource: input.gridRewardsSource,
 		feedInCreditEur: feedIn,
 		savingsVsFixedEur: savingsVsFixedEur(fixed, dynamic, input.gridRewardsCreditEur),
 	};
@@ -397,6 +401,59 @@ export function estimateKwhFromSocRise(input: {
 	return round3((rise / 100) * input.capacityKwh);
 }
 
+export function applyHomeGridRewards(
+	home: HomeDayTotals,
+	rewards: ResolvedGridRewards,
+): HomeDayTotals {
+	const credit = rewards.source === "off" ? null : rewards.creditEur;
+	return {
+		...home,
+		gridRewardsCreditEur: credit,
+		gridRewardsSource: rewards.source,
+		savingsVsFixedEur: savingsVsFixedEur(home.fixedTariffCostEur, home.dynamicCostEur, credit),
+	};
+}
+
+export function applyMobilityGridRewards(
+	mob: MobilityDayTotals,
+	rewards: ResolvedGridRewards,
+): MobilityDayTotals {
+	if (rewards.source === "off" || rewards.creditEur === null) {
+		return {
+			...mob,
+			homeGridCostNetEur: mob.homeGridCostEur,
+			gridRewardsCreditEur: null,
+			gridRewardsSource: "off",
+		};
+	}
+	const credit = rewards.creditEur;
+	const homeGridNet = netHomeGridCostEur(mob.homeGridCostEur, credit);
+	const parts = [mob.homePvCostEur, mob.homeGridCostEur, mob.publicInvoicedEur].filter(
+		(v): v is number => v !== null,
+	);
+	const chargeKwh =
+		(mob.homePvKwh ?? 0) + (mob.homeGridKwh ?? 0) + (mob.publicInvoicedKwh ?? 0);
+	let evTotalCostEur = mob.evTotalCostEur;
+	if (parts.length > 0 || credit > 0) {
+		evTotalCostEur = round2(Math.max(0, parts.reduce((a, b) => a + b, 0) - credit));
+	}
+	if (chargeKwh <= 0 && !(mob.publicInvoicedEur ?? 0) && credit <= 0) {
+		evTotalCostEur = mob.evTotalCostEur;
+	}
+	const iceCost = mob.iceCostEur;
+	return {
+		...mob,
+		homeGridCostNetEur: homeGridNet,
+		gridRewardsCreditEur: credit,
+		gridRewardsSource: rewards.source,
+		evTotalCostEur,
+		savingsVsIceEur:
+			evTotalCostEur !== null && iceCost !== null
+				? round2(iceCost - evTotalCostEur)
+				: mob.savingsVsIceEur,
+	};
+}
+
 export function emptyHomeDay(dateKey: string): HomeDayTotals {
 	return {
 		dateKey,
@@ -406,6 +463,7 @@ export function emptyHomeDay(dateKey: string): HomeDayTotals {
 		fixedTariffCostEur: null,
 		savingsVsFixedEur: null,
 		gridRewardsCreditEur: null,
+		gridRewardsSource: "off",
 		feedInCreditEur: null,
 	};
 }
@@ -417,7 +475,9 @@ export function emptyMobilityDay(dateKey: string): MobilityDayTotals {
 		homeGridKwh: null,
 		homePvCostEur: null,
 		homeGridCostEur: null,
+		homeGridCostNetEur: null,
 		gridRewardsCreditEur: null,
+		gridRewardsSource: "off",
 		publicInvoicedKwh: null,
 		publicInvoicedEur: null,
 		publicPendingKwh: null,
@@ -443,6 +503,7 @@ export function sumHomeDays(days: HomeDayTotals[]): HomeDayTotals {
 	const dynamic = sum((d) => d.dynamicCostEur);
 	const fixed = sum((d) => d.fixedTariffCostEur);
 	const rewards = sum((d) => d.gridRewardsCreditEur);
+	const billingDay = [...days].reverse().find((d) => d.gridRewardsSource === "billing");
 	return {
 		dateKey,
 		gridImportKwh: importKwh,
@@ -451,6 +512,7 @@ export function sumHomeDays(days: HomeDayTotals[]): HomeDayTotals {
 		fixedTariffCostEur: fixed,
 		savingsVsFixedEur: savingsVsFixedEur(fixed, dynamic, rewards),
 		gridRewardsCreditEur: rewards,
+		gridRewardsSource: billingDay?.gridRewardsSource ?? "estimate_day",
 		feedInCreditEur: sum((d) => d.feedInCreditEur),
 	};
 }
@@ -463,6 +525,7 @@ export function sumMobilityDays(
 		iceLPer100Km: number | null;
 		evKwhPer100KmSource: MobilityDayTotals["evKwhPer100KmSource"];
 	},
+	monthGridRewards?: ResolvedGridRewards,
 ): MobilityDayTotals {
 	const dateKey = days[0]?.dateKey ?? "";
 	const sum = (pick: (d: MobilityDayTotals) => number | null): number | null => {
@@ -490,6 +553,16 @@ export function sumMobilityDays(
 		);
 		if (parts.length > 0) {
 			evCost = round2(parts.reduce((a, b) => a + b, 0));
+		}
+	}
+	if (monthGridRewards && monthGridRewards.source !== "off" && monthGridRewards.creditEur !== null) {
+		const grossParts = [homePvCostEur, homeGridCostEur, publicInvoicedEur].filter(
+			(v): v is number => v !== null,
+		);
+		if (grossParts.length > 0 || monthGridRewards.creditEur > 0) {
+			evCost = round2(
+				Math.max(0, grossParts.reduce((a, b) => a + b, 0) - monthGridRewards.creditEur),
+			);
 		}
 	}
 
@@ -528,13 +601,25 @@ export function sumMobilityDays(
 		}
 	}
 
+	const monthRewardsCredit =
+		monthGridRewards && monthGridRewards.source !== "off"
+			? monthGridRewards.creditEur
+			: sum((d) => d.gridRewardsCreditEur);
+	const monthRewardsSource =
+		monthGridRewards && monthGridRewards.source !== "off"
+			? monthGridRewards.source
+			: [...days].reverse().find((d) => d.gridRewardsSource !== "off")?.gridRewardsSource ?? "off";
+	const homeGridNet = netHomeGridCostEur(homeGridCostEur, monthRewardsCredit);
+
 	return {
 		dateKey,
 		homePvKwh,
 		homeGridKwh,
 		homePvCostEur,
 		homeGridCostEur,
-		gridRewardsCreditEur: sum((d) => d.gridRewardsCreditEur),
+		homeGridCostNetEur: homeGridNet,
+		gridRewardsCreditEur: monthRewardsCredit,
+		gridRewardsSource: monthRewardsSource,
 		publicInvoicedKwh,
 		publicInvoicedEur,
 		publicPendingKwh: sum((d) => d.publicPendingKwh),

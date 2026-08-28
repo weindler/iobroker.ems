@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const strict_1 = __importDefault(require("node:assert/strict"));
 const node_test_1 = require("node:test");
 const compute_js_1 = require("./compute.js");
+const grid_rewards_js_1 = require("./grid_rewards.js");
 const adjust_js_1 = require("./adjust.js");
 const config_js_1 = require("./config.js");
 const public_charge_js_1 = require("./public_charge.js");
@@ -130,6 +131,7 @@ const public_charge_js_1 = require("./public_charge.js");
             gridImportKwh: 100,
             dynamicCostEur: 30,
             gridRewardsCreditEur: 0,
+            gridRewardsSource: "off",
             gridExportKwh: null,
             feedInCtPerKwh: null,
             compareTariffCtPerKwh: 30,
@@ -150,7 +152,9 @@ const public_charge_js_1 = require("./public_charge.js");
                 homeGridKwh: 0.4,
                 homePvCostEur: 0.19,
                 homeGridCostEur: 0.06,
+                homeGridCostNetEur: null,
                 gridRewardsCreditEur: null,
+                gridRewardsSource: "off",
                 publicInvoicedKwh: null,
                 publicInvoicedEur: null,
                 publicPendingKwh: null,
@@ -169,7 +173,9 @@ const public_charge_js_1 = require("./public_charge.js");
                 homeGridKwh: 8.2,
                 homePvCostEur: 0.19,
                 homeGridCostEur: 2.42,
+                homeGridCostNetEur: null,
                 gridRewardsCreditEur: null,
+                gridRewardsSource: "off",
                 publicInvoicedKwh: null,
                 publicInvoicedEur: null,
                 publicPendingKwh: null,
@@ -202,7 +208,9 @@ const public_charge_js_1 = require("./public_charge.js");
                 homeGridKwh: 8.2,
                 homePvCostEur: 0.19,
                 homeGridCostEur: 2.42,
+                homeGridCostNetEur: null,
                 gridRewardsCreditEur: null,
+                gridRewardsSource: "off",
                 publicInvoicedKwh: null,
                 publicInvoicedEur: null,
                 publicPendingKwh: null,
@@ -221,7 +229,9 @@ const public_charge_js_1 = require("./public_charge.js");
                 homeGridKwh: 0.2,
                 homePvCostEur: 0.08,
                 homeGridCostEur: 0.03,
+                homeGridCostNetEur: null,
                 gridRewardsCreditEur: null,
+                gridRewardsSource: "off",
                 publicInvoicedKwh: null,
                 publicInvoicedEur: null,
                 publicPendingKwh: null,
@@ -251,7 +261,9 @@ const public_charge_js_1 = require("./public_charge.js");
                 homeGridKwh: 0.4,
                 homePvCostEur: 0.19,
                 homeGridCostEur: 0.06,
+                homeGridCostNetEur: null,
                 gridRewardsCreditEur: null,
+                gridRewardsSource: "off",
                 publicInvoicedKwh: null,
                 publicInvoicedEur: null,
                 publicPendingKwh: null,
@@ -270,7 +282,9 @@ const public_charge_js_1 = require("./public_charge.js");
                 homeGridKwh: 8.2,
                 homePvCostEur: 0.19,
                 homeGridCostEur: 2.42,
+                homeGridCostNetEur: null,
                 gridRewardsCreditEur: null,
+                gridRewardsSource: "off",
                 publicInvoicedKwh: null,
                 publicInvoicedEur: null,
                 publicPendingKwh: null,
@@ -296,7 +310,9 @@ const public_charge_js_1 = require("./public_charge.js");
                 homeGridKwh: 0.4,
                 homePvCostEur: 0.19,
                 homeGridCostEur: 0.06,
+                homeGridCostNetEur: null,
                 gridRewardsCreditEur: null,
+                gridRewardsSource: "off",
                 publicInvoicedKwh: null,
                 publicInvoicedEur: null,
                 publicPendingKwh: null,
@@ -315,7 +331,9 @@ const public_charge_js_1 = require("./public_charge.js");
                 homeGridKwh: 8.2,
                 homePvCostEur: 0.19,
                 homeGridCostEur: 2.42,
+                homeGridCostNetEur: null,
                 gridRewardsCreditEur: null,
+                gridRewardsSource: "off",
                 publicInvoicedKwh: null,
                 publicInvoicedEur: null,
                 publicPendingKwh: null,
@@ -336,6 +354,59 @@ const public_charge_js_1 = require("./public_charge.js");
         });
         strict_1.default.notEqual(month.iceCostEur, singlePrice.iceCostEur);
         strict_1.default.ok((month.iceCostEur ?? 0) < (singlePrice.iceCostEur ?? 0));
+    });
+    (0, node_test_1.it)("grid rewards: month estimate mapping, billing overrides", () => {
+        const estimate = (0, grid_rewards_js_1.resolveMonthGridRewards)({
+            enabled: true,
+            monthPrefix: "2026-08",
+            billingCreditEur: null,
+            mappedMonthEur: 1.2,
+        });
+        strict_1.default.equal(estimate.source, "estimate_month");
+        strict_1.default.equal(estimate.creditEur, 1.2);
+        const billing = (0, grid_rewards_js_1.resolveMonthGridRewards)({
+            enabled: true,
+            monthPrefix: "2026-08",
+            billingCreditEur: 2.47,
+            mappedMonthEur: 1.2,
+        });
+        strict_1.default.equal(billing.source, "billing");
+        strict_1.default.equal(billing.creditEur, 2.47);
+        strict_1.default.equal((0, grid_rewards_js_1.resolveTodayGridRewards)({ enabled: false, mappedDayEur: 1 }).source, "off");
+    });
+    (0, node_test_1.it)("month mobility applies month rewards once from mapping", () => {
+        const month = (0, compute_js_1.sumMobilityDays)([
+            {
+                dateKey: "2026-08-11",
+                homePvKwh: 1,
+                homeGridKwh: 5,
+                homePvCostEur: 0.1,
+                homeGridCostEur: 1.5,
+                homeGridCostNetEur: null,
+                gridRewardsCreditEur: 0.2,
+                gridRewardsSource: "estimate_day",
+                publicInvoicedKwh: null,
+                publicInvoicedEur: null,
+                publicPendingKwh: null,
+                evTotalCostEur: 1.4,
+                evKwhPer100Km: null,
+                evKwhPer100KmSource: null,
+                estimatedKm: null,
+                iceLiters: null,
+                iceFuelPriceEurPerL: null,
+                iceCostEur: null,
+                savingsVsIceEur: null,
+            },
+        ], {
+            evKwhPer100: 18,
+            fuelPriceEurPerL: 2,
+            iceLPer100Km: 7,
+            evKwhPer100KmSource: "admin_fallback",
+        }, { creditEur: 0.8, source: "estimate_month" });
+        strict_1.default.equal(month.gridRewardsCreditEur, 0.8);
+        strict_1.default.equal(month.evTotalCostEur, 0.8);
+        strict_1.default.equal((0, grid_rewards_js_1.netHomeGridCostEur)(1.5, 0.8), 0.7);
+        strict_1.default.equal(month.homeGridCostNetEur, 0.7);
     });
 });
 (0, node_test_1.describe)("statistics public charge", () => {
@@ -369,6 +440,7 @@ const public_charge_js_1 = require("./public_charge.js");
         const persist = {
             version: 1,
             generatedAt: "",
+            monthRewardsBilling: {},
             days: {
                 "2026-08-28": {
                     dateKey: "2026-08-28",
@@ -405,6 +477,7 @@ const public_charge_js_1 = require("./public_charge.js");
         const persist = {
             version: 1,
             generatedAt: "",
+            monthRewardsBilling: {},
             days: {},
             runtime: {
                 dateKey: "2026-08-28",
@@ -436,6 +509,7 @@ const public_charge_js_1 = require("./public_charge.js");
         const persist = {
             version: 1,
             generatedAt: "",
+            monthRewardsBilling: {},
             days: {},
             runtime: {
                 dateKey: "2026-08-28",
@@ -470,6 +544,7 @@ const public_charge_js_1 = require("./public_charge.js");
         const persist = {
             version: 1,
             generatedAt: "",
+            monthRewardsBilling: {},
             days: {},
             runtime: {
                 dateKey: "2026-08-28",
@@ -492,5 +567,38 @@ const public_charge_js_1 = require("./public_charge.js");
         strict_1.default.equal(submit.refresh, true);
         const out = (0, adjust_js_1.applyStatisticsAdjust)(persist, submit, now);
         strict_1.default.match(out.ackDe, /neu berechnet/);
+    });
+    (0, node_test_1.it)("stores month billing rewards from adjust_request", () => {
+        const now = new Date("2026-08-31T20:00:00");
+        const persist = {
+            version: 1,
+            generatedAt: "",
+            monthRewardsBilling: {},
+            days: {},
+            runtime: {
+                dateKey: "2026-08-31",
+                lastTickMs: null,
+                gridImportEnergyBaselineKwh: null,
+                gridExportEnergyBaselineKwh: null,
+                integratedDynamicCostEur: 0,
+                integratedGridImportKwhFromPower: 0,
+                wallboxSessionEnergyBaselineKwh: null,
+                homePvKwh: 0,
+                homeGridKwh: 0,
+                homePvCostEur: 0,
+                homeGridCostEur: 0,
+                lastVehicleSocPct: null,
+                lastWallboxConnected: null,
+            },
+        };
+        const submit = (0, adjust_js_1.parseStatisticsAdjustSubmit)({
+            date: "2026-08-31",
+            home: { gridRewardsCreditEur: 2.47 },
+            noteDe: "Tibber-Abrechnung August",
+        });
+        strict_1.default.ok(submit);
+        const out = (0, adjust_js_1.applyStatisticsAdjust)(persist, submit, now);
+        strict_1.default.equal(out.persist.monthRewardsBilling["2026-08"]?.creditEur, 2.47);
+        strict_1.default.equal(out.persist.days["2026-08-31"]?.home.gridRewardsSource, "billing");
     });
 });

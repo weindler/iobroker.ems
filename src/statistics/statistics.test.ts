@@ -18,6 +18,11 @@ import {
 	siblingTibberConsumptionState,
 	buildHomeMonthTotals,
 } from "./compute.js";
+import {
+	resolveMonthGridRewards,
+	resolveTodayGridRewards,
+	netHomeGridCostEur,
+} from "./grid_rewards.js";
 import { applyStatisticsAdjust, parseStatisticsAdjustSubmit } from "./adjust.js";
 import { statisticsConfigFromAdapter } from "./config.js";
 import { applyPublicInvoice, openPublicChargeSession, parsePublicInvoiceSubmit } from "./public_charge.js";
@@ -166,6 +171,7 @@ describe("statistics compute", () => {
 			gridImportKwh: 100,
 			dynamicCostEur: 30,
 			gridRewardsCreditEur: 0,
+			gridRewardsSource: "off",
 			gridExportKwh: null,
 			feedInCtPerKwh: null,
 			compareTariffCtPerKwh: 30,
@@ -188,7 +194,9 @@ describe("statistics compute", () => {
 					homeGridKwh: 0.4,
 					homePvCostEur: 0.19,
 					homeGridCostEur: 0.06,
+					homeGridCostNetEur: null,
 					gridRewardsCreditEur: null,
+					gridRewardsSource: "off",
 					publicInvoicedKwh: null,
 					publicInvoicedEur: null,
 					publicPendingKwh: null,
@@ -207,7 +215,9 @@ describe("statistics compute", () => {
 					homeGridKwh: 8.2,
 					homePvCostEur: 0.19,
 					homeGridCostEur: 2.42,
+					homeGridCostNetEur: null,
 					gridRewardsCreditEur: null,
+					gridRewardsSource: "off",
 					publicInvoicedKwh: null,
 					publicInvoicedEur: null,
 					publicPendingKwh: null,
@@ -244,7 +254,9 @@ describe("statistics compute", () => {
 					homeGridKwh: 8.2,
 					homePvCostEur: 0.19,
 					homeGridCostEur: 2.42,
+					homeGridCostNetEur: null,
 					gridRewardsCreditEur: null,
+					gridRewardsSource: "off",
 					publicInvoicedKwh: null,
 					publicInvoicedEur: null,
 					publicPendingKwh: null,
@@ -263,7 +275,9 @@ describe("statistics compute", () => {
 					homeGridKwh: 0.2,
 					homePvCostEur: 0.08,
 					homeGridCostEur: 0.03,
+					homeGridCostNetEur: null,
 					gridRewardsCreditEur: null,
+					gridRewardsSource: "off",
 					publicInvoicedKwh: null,
 					publicInvoicedEur: null,
 					publicPendingKwh: null,
@@ -297,7 +311,9 @@ describe("statistics compute", () => {
 					homeGridKwh: 0.4,
 					homePvCostEur: 0.19,
 					homeGridCostEur: 0.06,
+					homeGridCostNetEur: null,
 					gridRewardsCreditEur: null,
+					gridRewardsSource: "off",
 					publicInvoicedKwh: null,
 					publicInvoicedEur: null,
 					publicPendingKwh: null,
@@ -316,7 +332,9 @@ describe("statistics compute", () => {
 					homeGridKwh: 8.2,
 					homePvCostEur: 0.19,
 					homeGridCostEur: 2.42,
+					homeGridCostNetEur: null,
 					gridRewardsCreditEur: null,
+					gridRewardsSource: "off",
 					publicInvoicedKwh: null,
 					publicInvoicedEur: null,
 					publicPendingKwh: null,
@@ -345,7 +363,9 @@ describe("statistics compute", () => {
 					homeGridKwh: 0.4,
 					homePvCostEur: 0.19,
 					homeGridCostEur: 0.06,
+					homeGridCostNetEur: null,
 					gridRewardsCreditEur: null,
+					gridRewardsSource: "off",
 					publicInvoicedKwh: null,
 					publicInvoicedEur: null,
 					publicPendingKwh: null,
@@ -364,7 +384,9 @@ describe("statistics compute", () => {
 					homeGridKwh: 8.2,
 					homePvCostEur: 0.19,
 					homeGridCostEur: 2.42,
+					homeGridCostNetEur: null,
 					gridRewardsCreditEur: null,
+					gridRewardsSource: "off",
 					publicInvoicedKwh: null,
 					publicInvoicedEur: null,
 					publicPendingKwh: null,
@@ -387,6 +409,70 @@ describe("statistics compute", () => {
 		);
 		assert.notEqual(month.iceCostEur, singlePrice.iceCostEur);
 		assert.ok((month.iceCostEur ?? 0) < (singlePrice.iceCostEur ?? 0));
+	});
+
+	it("grid rewards: month estimate mapping, billing overrides", () => {
+		const estimate = resolveMonthGridRewards({
+			enabled: true,
+			monthPrefix: "2026-08",
+			billingCreditEur: null,
+			mappedMonthEur: 1.2,
+		});
+		assert.equal(estimate.source, "estimate_month");
+		assert.equal(estimate.creditEur, 1.2);
+
+		const billing = resolveMonthGridRewards({
+			enabled: true,
+			monthPrefix: "2026-08",
+			billingCreditEur: 2.47,
+			mappedMonthEur: 1.2,
+		});
+		assert.equal(billing.source, "billing");
+		assert.equal(billing.creditEur, 2.47);
+
+		assert.equal(
+			resolveTodayGridRewards({ enabled: false, mappedDayEur: 1 }).source,
+			"off",
+		);
+	});
+
+	it("month mobility applies month rewards once from mapping", () => {
+		const month = sumMobilityDays(
+			[
+				{
+					dateKey: "2026-08-11",
+					homePvKwh: 1,
+					homeGridKwh: 5,
+					homePvCostEur: 0.1,
+					homeGridCostEur: 1.5,
+					homeGridCostNetEur: null,
+					gridRewardsCreditEur: 0.2,
+					gridRewardsSource: "estimate_day",
+					publicInvoicedKwh: null,
+					publicInvoicedEur: null,
+					publicPendingKwh: null,
+					evTotalCostEur: 1.4,
+					evKwhPer100Km: null,
+					evKwhPer100KmSource: null,
+					estimatedKm: null,
+					iceLiters: null,
+					iceFuelPriceEurPerL: null,
+					iceCostEur: null,
+					savingsVsIceEur: null,
+				},
+			],
+			{
+				evKwhPer100: 18,
+				fuelPriceEurPerL: 2,
+				iceLPer100Km: 7,
+				evKwhPer100KmSource: "admin_fallback",
+			},
+			{ creditEur: 0.8, source: "estimate_month" },
+		);
+		assert.equal(month.gridRewardsCreditEur, 0.8);
+		assert.equal(month.evTotalCostEur, 0.8);
+		assert.equal(netHomeGridCostEur(1.5, 0.8), 0.7);
+		assert.equal(month.homeGridCostNetEur, 0.7);
 	});
 });
 
@@ -423,6 +509,7 @@ describe("statistics adjust", () => {
 		const persist = {
 			version: 1 as const,
 			generatedAt: "",
+			monthRewardsBilling: {},
 			days: {
 				"2026-08-28": {
 					dateKey: "2026-08-28",
@@ -460,6 +547,7 @@ describe("statistics adjust", () => {
 		const persist = {
 			version: 1 as const,
 			generatedAt: "",
+			monthRewardsBilling: {},
 			days: {},
 			runtime: {
 				dateKey: "2026-08-28",
@@ -492,6 +580,7 @@ describe("statistics adjust", () => {
 		const persist = {
 			version: 1 as const,
 			generatedAt: "",
+			monthRewardsBilling: {},
 			days: {},
 			runtime: {
 				dateKey: "2026-08-28",
@@ -527,6 +616,7 @@ describe("statistics adjust", () => {
 		const persist = {
 			version: 1 as const,
 			generatedAt: "",
+			monthRewardsBilling: {},
 			days: {},
 			runtime: {
 				dateKey: "2026-08-28",
@@ -549,5 +639,39 @@ describe("statistics adjust", () => {
 		assert.equal(submit!.refresh, true);
 		const out = applyStatisticsAdjust(persist, submit!, now);
 		assert.match(out.ackDe, /neu berechnet/);
+	});
+
+	it("stores month billing rewards from adjust_request", () => {
+		const now = new Date("2026-08-31T20:00:00");
+		const persist = {
+			version: 1 as const,
+			generatedAt: "",
+			monthRewardsBilling: {},
+			days: {},
+			runtime: {
+				dateKey: "2026-08-31",
+				lastTickMs: null,
+				gridImportEnergyBaselineKwh: null,
+				gridExportEnergyBaselineKwh: null,
+				integratedDynamicCostEur: 0,
+				integratedGridImportKwhFromPower: 0,
+				wallboxSessionEnergyBaselineKwh: null,
+				homePvKwh: 0,
+				homeGridKwh: 0,
+				homePvCostEur: 0,
+				homeGridCostEur: 0,
+				lastVehicleSocPct: null,
+				lastWallboxConnected: null,
+			},
+		};
+		const submit = parseStatisticsAdjustSubmit({
+			date: "2026-08-31",
+			home: { gridRewardsCreditEur: 2.47 },
+			noteDe: "Tibber-Abrechnung August",
+		});
+		assert.ok(submit);
+		const out = applyStatisticsAdjust(persist, submit!, now);
+		assert.equal(out.persist.monthRewardsBilling["2026-08"]?.creditEur, 2.47);
+		assert.equal(out.persist.days["2026-08-31"]?.home.gridRewardsSource, "billing");
 	});
 });

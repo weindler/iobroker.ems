@@ -31,6 +31,7 @@ function emptyPersist(now = new Date()) {
         version: types_1.STATISTICS_PERSIST_VERSION,
         generatedAt: now.toISOString(),
         days: {},
+        monthRewardsBilling: {},
         runtime: emptyRuntime(dateKey),
     };
 }
@@ -53,6 +54,9 @@ async function readStatisticsPersist(dir) {
         }
         if (!parsed.runtime) {
             parsed.runtime = emptyRuntime((0, compute_1.localDateKey)(new Date()));
+        }
+        if (!parsed.monthRewardsBilling) {
+            parsed.monthRewardsBilling = {};
         }
         return parsed;
     }

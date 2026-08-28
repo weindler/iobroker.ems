@@ -43,7 +43,10 @@ function statisticsConfigFromAdapter(config) {
         tibberJsonDailyStateId: strField(c, "statistics_tibber_json_daily_state"),
         gridImportMonthKwhStateId: strField(c, "statistics_grid_import_month_kwh_state"),
         dynamicCostMonthEurStateId: strField(c, "statistics_dynamic_cost_month_eur_state"),
-        gridRewardsCreditEurStateId: strField(c, "statistics_grid_rewards_credit_eur_state"),
+        gridRewardsEnabled: boolField(c, "statistics_grid_rewards_enabled", false),
+        gridRewardsCreditDayStateId: strField(c, "statistics_grid_rewards_credit_day_state") ||
+            strField(c, "statistics_grid_rewards_credit_eur_state"),
+        gridRewardsCreditMonthStateId: strField(c, "statistics_grid_rewards_credit_month_state"),
         fuelPriceEurPerLStateId: strField(c, "statistics_fuel_price_eur_per_l_state"),
         fuelPriceFallbackEurPerL: numField(c, "statistics_fuel_price_fallback_eur_per_l", null),
         iceFuelType: fuelType(strField(c, "statistics_ice_fuel_type", "e5")),

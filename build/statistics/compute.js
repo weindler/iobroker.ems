@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.finalizeMobilityDayTotals = exports.sumMobilityDays = exports.sumHomeDays = exports.emptyMobilityDay = exports.emptyHomeDay = exports.estimateKwhFromSocRise = exports.iceCostForKm = exports.estimateKmFromEvKwh = exports.resolveSeedFuelPriceEurPerL = exports.resolveFuelPriceEurPerL = exports.resolveEvKwhPer100 = exports.localDateKey = exports.buildHomeMonthTotals = exports.resolveHomeMonthFromTibber = exports.siblingTibberConsumptionState = exports.pickTibberJsonMonthlyForMonth = exports.sumTibberJsonDailyForMonth = exports.daysInMonth = exports.integrateImportCostEur = exports.normalizeWallboxSessionEnergyKwh = exports.energyCounterDeltaKwh = exports.savingsVsFixedEur = exports.tibberDayCostEur = exports.dailyBaseShareEur = exports.fixedTariffCostEur = void 0;
+exports.finalizeMobilityDayTotals = exports.sumMobilityDays = exports.sumHomeDays = exports.emptyMobilityDay = exports.emptyHomeDay = exports.applyMobilityGridRewards = exports.applyHomeGridRewards = exports.estimateKwhFromSocRise = exports.iceCostForKm = exports.estimateKmFromEvKwh = exports.resolveSeedFuelPriceEurPerL = exports.resolveFuelPriceEurPerL = exports.resolveEvKwhPer100 = exports.localDateKey = exports.buildHomeMonthTotals = exports.resolveHomeMonthFromTibber = exports.siblingTibberConsumptionState = exports.pickTibberJsonMonthlyForMonth = exports.sumTibberJsonDailyForMonth = exports.daysInMonth = exports.integrateImportCostEur = exports.normalizeWallboxSessionEnergyKwh = exports.energyCounterDeltaKwh = exports.savingsVsFixedEur = exports.tibberDayCostEur = exports.dailyBaseShareEur = exports.fixedTariffCostEur = void 0;
+const grid_rewards_1 = require("./grid_rewards");
 function round3(n) {
     return Math.round(n * 1000) / 1000;
 }
@@ -251,6 +252,7 @@ function buildHomeMonthTotals(input) {
         dynamicCostEur: dynamic,
         fixedTariffCostEur: fixed,
         gridRewardsCreditEur: input.gridRewardsCreditEur,
+        gridRewardsSource: input.gridRewardsSource,
         feedInCreditEur: feedIn,
         savingsVsFixedEur: savingsVsFixedEur(fixed, dynamic, input.gridRewardsCreditEur),
     };
@@ -330,6 +332,49 @@ function estimateKwhFromSocRise(input) {
     return round3((rise / 100) * input.capacityKwh);
 }
 exports.estimateKwhFromSocRise = estimateKwhFromSocRise;
+function applyHomeGridRewards(home, rewards) {
+    const credit = rewards.source === "off" ? null : rewards.creditEur;
+    return {
+        ...home,
+        gridRewardsCreditEur: credit,
+        gridRewardsSource: rewards.source,
+        savingsVsFixedEur: savingsVsFixedEur(home.fixedTariffCostEur, home.dynamicCostEur, credit),
+    };
+}
+exports.applyHomeGridRewards = applyHomeGridRewards;
+function applyMobilityGridRewards(mob, rewards) {
+    if (rewards.source === "off" || rewards.creditEur === null) {
+        return {
+            ...mob,
+            homeGridCostNetEur: mob.homeGridCostEur,
+            gridRewardsCreditEur: null,
+            gridRewardsSource: "off",
+        };
+    }
+    const credit = rewards.creditEur;
+    const homeGridNet = (0, grid_rewards_1.netHomeGridCostEur)(mob.homeGridCostEur, credit);
+    const parts = [mob.homePvCostEur, mob.homeGridCostEur, mob.publicInvoicedEur].filter((v) => v !== null);
+    const chargeKwh = (mob.homePvKwh ?? 0) + (mob.homeGridKwh ?? 0) + (mob.publicInvoicedKwh ?? 0);
+    let evTotalCostEur = mob.evTotalCostEur;
+    if (parts.length > 0 || credit > 0) {
+        evTotalCostEur = round2(Math.max(0, parts.reduce((a, b) => a + b, 0) - credit));
+    }
+    if (chargeKwh <= 0 && !(mob.publicInvoicedEur ?? 0) && credit <= 0) {
+        evTotalCostEur = mob.evTotalCostEur;
+    }
+    const iceCost = mob.iceCostEur;
+    return {
+        ...mob,
+        homeGridCostNetEur: homeGridNet,
+        gridRewardsCreditEur: credit,
+        gridRewardsSource: rewards.source,
+        evTotalCostEur,
+        savingsVsIceEur: evTotalCostEur !== null && iceCost !== null
+            ? round2(iceCost - evTotalCostEur)
+            : mob.savingsVsIceEur,
+    };
+}
+exports.applyMobilityGridRewards = applyMobilityGridRewards;
 function emptyHomeDay(dateKey) {
     return {
         dateKey,
@@ -339,6 +384,7 @@ function emptyHomeDay(dateKey) {
         fixedTariffCostEur: null,
         savingsVsFixedEur: null,
         gridRewardsCreditEur: null,
+        gridRewardsSource: "off",
         feedInCreditEur: null,
     };
 }
@@ -350,7 +396,9 @@ function emptyMobilityDay(dateKey) {
         homeGridKwh: null,
         homePvCostEur: null,
         homeGridCostEur: null,
+        homeGridCostNetEur: null,
         gridRewardsCreditEur: null,
+        gridRewardsSource: "off",
         publicInvoicedKwh: null,
         publicInvoicedEur: null,
         publicPendingKwh: null,
@@ -377,6 +425,7 @@ function sumHomeDays(days) {
     const dynamic = sum((d) => d.dynamicCostEur);
     const fixed = sum((d) => d.fixedTariffCostEur);
     const rewards = sum((d) => d.gridRewardsCreditEur);
+    const billingDay = [...days].reverse().find((d) => d.gridRewardsSource === "billing");
     return {
         dateKey,
         gridImportKwh: importKwh,
@@ -385,11 +434,12 @@ function sumHomeDays(days) {
         fixedTariffCostEur: fixed,
         savingsVsFixedEur: savingsVsFixedEur(fixed, dynamic, rewards),
         gridRewardsCreditEur: rewards,
+        gridRewardsSource: billingDay?.gridRewardsSource ?? "estimate_day",
         feedInCreditEur: sum((d) => d.feedInCreditEur),
     };
 }
 exports.sumHomeDays = sumHomeDays;
-function sumMobilityDays(days, monthFinalize) {
+function sumMobilityDays(days, monthFinalize, monthGridRewards) {
     const dateKey = days[0]?.dateKey ?? "";
     const sum = (pick) => {
         const vals = days.map(pick).filter((v) => v !== null);
@@ -414,6 +464,12 @@ function sumMobilityDays(days, monthFinalize) {
         const parts = [homePvCostEur, homeGridCostEur, publicInvoicedEur].filter((v) => v !== null);
         if (parts.length > 0) {
             evCost = round2(parts.reduce((a, b) => a + b, 0));
+        }
+    }
+    if (monthGridRewards && monthGridRewards.source !== "off" && monthGridRewards.creditEur !== null) {
+        const grossParts = [homePvCostEur, homeGridCostEur, publicInvoicedEur].filter((v) => v !== null);
+        if (grossParts.length > 0 || monthGridRewards.creditEur > 0) {
+            evCost = round2(Math.max(0, grossParts.reduce((a, b) => a + b, 0) - monthGridRewards.creditEur));
         }
     }
     const totalChargeKwh = (homePvKwh ?? 0) + (homeGridKwh ?? 0) + (publicInvoicedKwh ?? 0);
@@ -441,13 +497,22 @@ function sumMobilityDays(days, monthFinalize) {
             iceLiters = round3(valid.reduce((a, b) => a + (b.liters ?? 0), 0));
         }
     }
+    const monthRewardsCredit = monthGridRewards && monthGridRewards.source !== "off"
+        ? monthGridRewards.creditEur
+        : sum((d) => d.gridRewardsCreditEur);
+    const monthRewardsSource = monthGridRewards && monthGridRewards.source !== "off"
+        ? monthGridRewards.source
+        : [...days].reverse().find((d) => d.gridRewardsSource !== "off")?.gridRewardsSource ?? "off";
+    const homeGridNet = (0, grid_rewards_1.netHomeGridCostEur)(homeGridCostEur, monthRewardsCredit);
     return {
         dateKey,
         homePvKwh,
         homeGridKwh,
         homePvCostEur,
         homeGridCostEur,
-        gridRewardsCreditEur: sum((d) => d.gridRewardsCreditEur),
+        homeGridCostNetEur: homeGridNet,
+        gridRewardsCreditEur: monthRewardsCredit,
+        gridRewardsSource: monthRewardsSource,
         publicInvoicedKwh,
         publicInvoicedEur,
         publicPendingKwh: sum((d) => d.publicPendingKwh),

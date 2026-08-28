@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.347",
+		"version": "0.1.348",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.348": {
+				"en": "Statistics Grid Rewards: optional admin toggle, day+month HA mappings (estimate), billing via adjust_request; VIS shows Schätzung/Abrechnung on home grid.",
+				"de": "Statistik Grid Rewards: optional Admin-Haken, Tag+Monat HA-Mappings (Schätzung), Abrechnung per adjust_request; VIS zeigt Schätzung/Abrechnung bei Heim Netz."
+			},
 			"0.1.347": {
 				"en": "Home month from Tibber jsonDaily: do not add tariff-tab fees twice (totalCost is complete).",
 				"de": "Haus Monat aus Tibber jsonDaily: Tarif-Tab-Gebühren nicht doppelt (totalCost ist komplett)."

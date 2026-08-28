@@ -10425,7 +10425,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Reporting — keine Steuerung. Haus: Tibber-Tageskosten (Mapping + optionale Monatsgebühren aus Tarif-Tab) vs. Festtarif/Verivox (Arbeitspreis + Grundpreis hier — alles inbegriffen, nichts umbauen). Mobilität: E-Auto vs. Verbrenner. Korrektur/Startwerte: State <code>ems.0.statistics.adjust_request</code> (JSON, ack:false) — z. B. <code>{\"resetToday\":true}</code>, <code>{\"resetMonth\":true}</code>, <code>{\"mobility\":{\"homeGridKwh\":0.854,\"homeGridCostEur\":0.12}}</code>. Antwort in <code>statistics.adjust_ack_de</code>."
+					"text": "Reporting — keine Steuerung. Haus: Tibber-Tageskosten (Mapping + optionale Monatsgebühren aus Tarif-Tab) vs. Festtarif/Verivox (Arbeitspreis + Grundpreis hier — alles inbegriffen, nichts umbauen). Mobilität: E-Auto vs. Verbrenner. Grid Rewards optional (Schätzung aus HA bis Tibber-Abrechnung). Korrektur/Startwerte: State <code>ems.0.statistics.adjust_request</code> (JSON, ack:false) — z. B. <code>{\"resetToday\":true}</code>, <code>{\"refresh\":true}</code>, <code>{\"mobility\":{\"homeGridKwh\":0.854,\"homeGridCostEur\":0.12}}</code>. Tibber-Abrechnung Rewards August: <code>{\"date\":\"2026-08-31\",\"home\":{\"gridRewardsCreditEur\":2.47},\"noteDe\":\"Tibber-Abrechnung August\"}</code>. Antwort in <code>statistics.adjust_ack_de</code>."
 				},
 				"statistics_enabled": {
 					"type": "checkbox",
@@ -10518,10 +10518,43 @@
 					"lg": 6,
 					"xl": 6
 				},
+				"statistics_grid_rewards_enabled": {
+					"type": "checkbox",
+					"label": "Grid Rewards in Statistik",
+					"help": "Optional. Schätzung aus HA-Mappings; exakt erst nach Tibber-Abrechnung per adjust_request.",
+					"default": false,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"statistics_grid_rewards_credit_day_state": {
+					"type": "objectId",
+					"label": "Grid Rewards heute EUR (Schätzung)",
+					"help": "z. B. hass.…sensor.tibber_grid_reward_grid_reward_current_day — Schätzung, erst mit Tibber-Abrechnung exakt.",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"statistics_grid_rewards_credit_month_state": {
+					"type": "objectId",
+					"label": "Grid Rewards Monat EUR (Schätzung)",
+					"help": "z. B. hass.…sensor.tibber_grid_reward_grid_reward_current_month — Monats-Schätzung bis Abrechnung.",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
 				"statistics_grid_rewards_credit_eur_state": {
 					"type": "objectId",
-					"label": "Tibber Grid Rewards Gutschrift EUR",
-					"help": "optional, z. B. …LiveMeasurement.accumulatedReward",
+					"label": "Grid Rewards EUR (Legacy, Tag)",
+					"help": "Veraltet — bitte „Grid Rewards heute EUR“ nutzen. Fallback wenn Tag-Mapping leer.",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,

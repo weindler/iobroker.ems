@@ -107,6 +107,7 @@ function mergeHome(day: StatisticsDayRecord, patch: NonNullable<StatisticsAdjust
 	}
 	if (patch.gridRewardsCreditEur !== null && patch.gridRewardsCreditEur !== undefined) {
 		day.home.gridRewardsCreditEur = patch.gridRewardsCreditEur;
+		day.home.gridRewardsSource = "billing";
 	}
 	if (patch.feedInCreditEur !== null && patch.feedInCreditEur !== undefined) {
 		day.home.feedInCreditEur = patch.feedInCreditEur;
@@ -193,6 +194,7 @@ export function applyStatisticsAdjust(
 		const fresh = emptyPersist(now);
 		persist.days = fresh.days;
 		persist.runtime = fresh.runtime;
+		persist.monthRewardsBilling = fresh.monthRewardsBilling;
 		persist.generatedAt = fresh.generatedAt;
 		persist.version = fresh.version;
 		return {
@@ -210,6 +212,9 @@ export function applyStatisticsAdjust(
 		}
 		if (persist.runtime.dateKey.startsWith(prefix)) {
 			persist.runtime = emptyRuntime(todayKey);
+		}
+		if (persist.monthRewardsBilling) {
+			delete persist.monthRewardsBilling[prefix];
 		}
 		return {
 			persist,
@@ -229,6 +234,16 @@ export function applyStatisticsAdjust(
 	if (submit.home && Object.values(submit.home).some((v) => v !== null && v !== undefined)) {
 		const day = ensureDay(persist, dateKey);
 		mergeHome(day, submit.home);
+		if (
+			submit.home.gridRewardsCreditEur !== null &&
+			submit.home.gridRewardsCreditEur !== undefined
+		) {
+			persist.monthRewardsBilling = persist.monthRewardsBilling ?? {};
+			persist.monthRewardsBilling[monthPrefix(dateKey)] = {
+				creditEur: submit.home.gridRewardsCreditEur,
+				noteDe: submit.noteDe,
+			};
+		}
 		parts.push("Haus");
 	}
 	if (submit.mobility && Object.values(submit.mobility).some((v) => v !== null && v !== undefined)) {

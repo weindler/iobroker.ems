@@ -13,6 +13,9 @@ import {
 	normalizeWallboxSessionEnergyKwh,
 	sumMobilityDays,
 	sumTibberJsonDailyForMonth,
+	pickTibberJsonMonthlyForMonth,
+	resolveHomeMonthFromTibber,
+	siblingTibberConsumptionState,
 	buildHomeMonthTotals,
 } from "./compute.js";
 import { applyStatisticsAdjust, parseStatisticsAdjustSubmit } from "./adjust.js";
@@ -113,12 +116,36 @@ describe("statistics compute", () => {
 	it("Tibber jsonDaily sums current calendar month", () => {
 		const raw = [
 			{ from: "2026-08-01T00:00:00+02:00", consumption: 10, totalCost: 2.5 },
-			{ from: "2026-08-15T00:00:00+02:00", consumption: 5.5, totalCost: 1.2 },
+			{ to: "2026-08-15T00:00:00+02:00", consumption: 5.5, cost: 1.2 },
 			{ from: "2026-07-31T00:00:00+02:00", consumption: 99, totalCost: 99 },
 		];
 		const r = sumTibberJsonDailyForMonth(raw, "2026-08-28");
 		assert.equal(r.gridImportKwh, 15.5);
 		assert.equal(r.dynamicCostEur, 3.7);
+	});
+
+	it("resolveHomeMonthFromTibber falls back jsonMonthly then currentMonthConsumption", () => {
+		const daily = resolveHomeMonthFromTibber({
+			dateKey: "2026-08-28",
+			jsonDailyRaw: [],
+			jsonMonthlyRaw: [{ from: "2026-08-01", consumption: 120, totalCost: 45 }],
+			currentMonthKwh: 130,
+			mappedMonthKwh: null,
+			mappedMonthDynamicEur: null,
+		});
+		assert.equal(daily.source, "jsonMonthly");
+		assert.equal(daily.gridImportKwh, 120);
+
+		const kwhOnly = resolveHomeMonthFromTibber({
+			dateKey: "2026-08-28",
+			jsonDailyRaw: [],
+			jsonMonthlyRaw: [],
+			currentMonthKwh: 88.5,
+			mappedMonthKwh: null,
+			mappedMonthDynamicEur: null,
+		});
+		assert.equal(kwhOnly.source, "currentMonthConsumption");
+		assert.equal(kwhOnly.gridImportKwh, 88.5);
 	});
 
 	it("buildHomeMonthTotals uses elapsed month fraction for fees", () => {

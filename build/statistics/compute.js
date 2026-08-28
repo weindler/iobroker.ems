@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.finalizeMobilityDayTotals = exports.sumMobilityDays = exports.sumHomeDays = exports.emptyMobilityDay = exports.emptyHomeDay = exports.estimateKwhFromSocRise = exports.iceCostForKm = exports.estimateKmFromEvKwh = exports.resolveSeedFuelPriceEurPerL = exports.resolveFuelPriceEurPerL = exports.resolveEvKwhPer100 = exports.localDateKey = exports.buildHomeMonthTotals = exports.sumTibberJsonDailyForMonth = exports.daysInMonth = exports.integrateImportCostEur = exports.normalizeWallboxSessionEnergyKwh = exports.energyCounterDeltaKwh = exports.savingsVsFixedEur = exports.tibberDayCostEur = exports.dailyBaseShareEur = exports.fixedTariffCostEur = void 0;
+exports.finalizeMobilityDayTotals = exports.sumMobilityDays = exports.sumHomeDays = exports.emptyMobilityDay = exports.emptyHomeDay = exports.estimateKwhFromSocRise = exports.iceCostForKm = exports.estimateKmFromEvKwh = exports.resolveSeedFuelPriceEurPerL = exports.resolveFuelPriceEurPerL = exports.resolveEvKwhPer100 = exports.localDateKey = exports.buildHomeMonthTotals = exports.resolveHomeMonthFromTibber = exports.siblingTibberConsumptionState = exports.pickTibberJsonMonthlyForMonth = exports.sumTibberJsonDailyForMonth = exports.daysInMonth = exports.integrateImportCostEur = exports.normalizeWallboxSessionEnergyKwh = exports.energyCounterDeltaKwh = exports.savingsVsFixedEur = exports.tibberDayCostEur = exports.dailyBaseShareEur = exports.fixedTariffCostEur = void 0;
 function round3(n) {
     return Math.round(n * 1000) / 1000;
 }
@@ -105,6 +105,27 @@ function daysInMonth(dateKey) {
 }
 exports.daysInMonth = daysInMonth;
 /** TibberLink Consumption.jsonDaily — Summe kWh/Kosten für den Kalendermonat von dateKey. */
+function tibberEntryDateKey(entry) {
+    const raw = entry.from ?? entry.to;
+    return typeof raw === "string" ? raw : null;
+}
+function tibberEntryConsumptionKwh(entry) {
+    const c = Number(entry.consumption);
+    return Number.isFinite(c) && c >= 0 ? c : null;
+}
+function tibberEntryCostEur(entry) {
+    const totalCost = Number(entry.totalCost);
+    if (Number.isFinite(totalCost))
+        return totalCost;
+    const cost = Number(entry.cost);
+    if (Number.isFinite(cost))
+        return cost;
+    const cons = tibberEntryConsumptionKwh(entry);
+    const unitCost = Number(entry.unitCost);
+    if (cons !== null && Number.isFinite(unitCost))
+        return cons * unitCost;
+    return null;
+}
 function sumTibberJsonDailyForMonth(raw, dateKey) {
     try {
         const arr = typeof raw === "string" ? JSON.parse(raw) : raw;
@@ -117,14 +138,15 @@ function sumTibberJsonDailyForMonth(raw, dateKey) {
         for (const entry of arr) {
             if (!entry || typeof entry !== "object")
                 continue;
-            const from = entry.from;
-            if (typeof from !== "string" || !from.startsWith(prefix))
+            const o = entry;
+            const dateStr = tibberEntryDateKey(o);
+            if (!dateStr || !dateStr.startsWith(prefix))
                 continue;
-            const c = Number(entry.consumption);
-            const t = Number(entry.totalCost);
-            if (Number.isFinite(c))
+            const c = tibberEntryConsumptionKwh(o);
+            const t = tibberEntryCostEur(o);
+            if (c !== null)
                 kwh += c;
-            if (Number.isFinite(t))
+            if (t !== null)
                 cost += t;
             hits++;
         }
@@ -137,6 +159,70 @@ function sumTibberJsonDailyForMonth(raw, dateKey) {
     }
 }
 exports.sumTibberJsonDailyForMonth = sumTibberJsonDailyForMonth;
+/** TibberLink Consumption.jsonMonthly — ein Monatseintrag (Fallback wenn jsonDaily leer). */
+function pickTibberJsonMonthlyForMonth(raw, dateKey) {
+    try {
+        const arr = typeof raw === "string" ? JSON.parse(raw) : raw;
+        if (!Array.isArray(arr))
+            return { gridImportKwh: null, dynamicCostEur: null };
+        const prefix = dateKey.slice(0, 7);
+        for (const entry of arr) {
+            if (!entry || typeof entry !== "object")
+                continue;
+            const o = entry;
+            const dateStr = tibberEntryDateKey(o);
+            if (!dateStr || !dateStr.startsWith(prefix))
+                continue;
+            return {
+                gridImportKwh: tibberEntryConsumptionKwh(o),
+                dynamicCostEur: tibberEntryCostEur(o),
+            };
+        }
+        return { gridImportKwh: null, dynamicCostEur: null };
+    }
+    catch {
+        return { gridImportKwh: null, dynamicCostEur: null };
+    }
+}
+exports.pickTibberJsonMonthlyForMonth = pickTibberJsonMonthlyForMonth;
+/** Geschwister-State im selben Tibber-Home (jsonDaily → jsonMonthly / currentMonthConsumption). */
+function siblingTibberConsumptionState(stateId, leaf) {
+    if (!stateId.endsWith("jsonDaily"))
+        return "";
+    return `${stateId.slice(0, -"jsonDaily".length)}${leaf}`;
+}
+exports.siblingTibberConsumptionState = siblingTibberConsumptionState;
+function resolveHomeMonthFromTibber(input) {
+    const fromDaily = sumTibberJsonDailyForMonth(input.jsonDailyRaw, input.dateKey);
+    if (fromDaily.gridImportKwh !== null || fromDaily.dynamicCostEur !== null) {
+        return { ...fromDaily, addTibberFeesToDynamic: fromDaily.dynamicCostEur !== null, source: "jsonDaily" };
+    }
+    const fromMonthly = pickTibberJsonMonthlyForMonth(input.jsonMonthlyRaw, input.dateKey);
+    if (fromMonthly.gridImportKwh !== null || fromMonthly.dynamicCostEur !== null) {
+        return {
+            ...fromMonthly,
+            addTibberFeesToDynamic: fromMonthly.dynamicCostEur !== null,
+            source: "jsonMonthly",
+        };
+    }
+    const kwh = input.currentMonthKwh ?? input.mappedMonthKwh;
+    const dynamic = input.mappedMonthDynamicEur;
+    if (kwh !== null || dynamic !== null) {
+        return {
+            gridImportKwh: kwh,
+            dynamicCostEur: dynamic,
+            addTibberFeesToDynamic: false,
+            source: kwh !== null && input.currentMonthKwh !== null ? "currentMonthConsumption" : "mapped",
+        };
+    }
+    return {
+        gridImportKwh: null,
+        dynamicCostEur: null,
+        addTibberFeesToDynamic: false,
+        source: null,
+    };
+}
+exports.resolveHomeMonthFromTibber = resolveHomeMonthFromTibber;
 /** Monats-Haus aus Live-Quellen (Tibber jsonDaily o. ä.) — Festtarif anteilig bis dateKey. */
 function buildHomeMonthTotals(input) {
     const dayNum = Number.parseInt(input.dateKey.slice(8, 10), 10);

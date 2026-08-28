@@ -10488,7 +10488,7 @@
 				"statistics_tibber_json_daily_state": {
 					"type": "objectId",
 					"label": "Tibber jsonDaily (Haus Monat)",
-					"help": "tibberlink.…Consumption.jsonDaily — historische Tageswerte (≥31 Tage aktivieren). Für Karte „Haus Monat“ statt nur EMS-Tagespersist.",
+					"help": "tibberlink.…Consumption.jsonDaily — Voraussetzung: Tibberlink → HomesList → „Historische Verbrauchsdaten abrufen“ (statsActive) + Spalte „Tage“ ≥31. Leer [] = Historie aus. jsonMonthly/currentMonthConsumption werden automatisch vom selben Home gelesen.",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,

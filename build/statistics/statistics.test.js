@@ -84,12 +84,34 @@ const public_charge_js_1 = require("./public_charge.js");
     (0, node_test_1.it)("Tibber jsonDaily sums current calendar month", () => {
         const raw = [
             { from: "2026-08-01T00:00:00+02:00", consumption: 10, totalCost: 2.5 },
-            { from: "2026-08-15T00:00:00+02:00", consumption: 5.5, totalCost: 1.2 },
+            { to: "2026-08-15T00:00:00+02:00", consumption: 5.5, cost: 1.2 },
             { from: "2026-07-31T00:00:00+02:00", consumption: 99, totalCost: 99 },
         ];
         const r = (0, compute_js_1.sumTibberJsonDailyForMonth)(raw, "2026-08-28");
         strict_1.default.equal(r.gridImportKwh, 15.5);
         strict_1.default.equal(r.dynamicCostEur, 3.7);
+    });
+    (0, node_test_1.it)("resolveHomeMonthFromTibber falls back jsonMonthly then currentMonthConsumption", () => {
+        const daily = (0, compute_js_1.resolveHomeMonthFromTibber)({
+            dateKey: "2026-08-28",
+            jsonDailyRaw: [],
+            jsonMonthlyRaw: [{ from: "2026-08-01", consumption: 120, totalCost: 45 }],
+            currentMonthKwh: 130,
+            mappedMonthKwh: null,
+            mappedMonthDynamicEur: null,
+        });
+        strict_1.default.equal(daily.source, "jsonMonthly");
+        strict_1.default.equal(daily.gridImportKwh, 120);
+        const kwhOnly = (0, compute_js_1.resolveHomeMonthFromTibber)({
+            dateKey: "2026-08-28",
+            jsonDailyRaw: [],
+            jsonMonthlyRaw: [],
+            currentMonthKwh: 88.5,
+            mappedMonthKwh: null,
+            mappedMonthDynamicEur: null,
+        });
+        strict_1.default.equal(kwhOnly.source, "currentMonthConsumption");
+        strict_1.default.equal(kwhOnly.gridImportKwh, 88.5);
     });
     (0, node_test_1.it)("buildHomeMonthTotals uses elapsed month fraction for fees", () => {
         const r = (0, compute_js_1.buildHomeMonthTotals)({

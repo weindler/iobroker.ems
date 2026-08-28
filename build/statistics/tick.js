@@ -449,19 +449,26 @@ async function tickStatistics(host, now = new Date()) {
     const monthHomes = monthDayKeys.map((k) => persist.days[k].home);
     const monthMobs = monthDayKeys.map((k) => persist.days[k].mobility);
     const homeMonthPersist = (0, compute_1.sumHomeDays)(monthHomes);
-    const fromJson = (0, compute_1.sumTibberJsonDailyForMonth)(cfg.tibberJsonDailyStateId
-        ? await readForeignRaw(host, cfg.tibberJsonDailyStateId)
-        : null, dateKey);
-    const monthKwhLive = fromJson.gridImportKwh ??
-        (await readForeignNum(host, cfg.gridImportMonthKwhStateId));
-    const monthDynamicLive = fromJson.dynamicCostEur ??
-        (await readForeignNum(host, cfg.dynamicCostMonthEurStateId));
+    const jsonDailyId = cfg.tibberJsonDailyStateId;
+    const jsonMonthlyId = (0, compute_1.siblingTibberConsumptionState)(jsonDailyId, "jsonMonthly");
+    const currentMonthKwhId = cfg.gridImportMonthKwhStateId ||
+        (0, compute_1.siblingTibberConsumptionState)(jsonDailyId, "currentMonthConsumption");
+    const tibberMonth = (0, compute_1.resolveHomeMonthFromTibber)({
+        dateKey,
+        jsonDailyRaw: jsonDailyId ? await readForeignRaw(host, jsonDailyId) : null,
+        jsonMonthlyRaw: jsonMonthlyId ? await readForeignRaw(host, jsonMonthlyId) : null,
+        currentMonthKwh: currentMonthKwhId ? await readForeignNum(host, currentMonthKwhId) : null,
+        mappedMonthKwh: null,
+        mappedMonthDynamicEur: cfg.dynamicCostMonthEurStateId
+            ? await readForeignNum(host, cfg.dynamicCostMonthEurStateId)
+            : null,
+    });
     let homeMonth = homeMonthPersist;
-    if (monthKwhLive !== null || monthDynamicLive !== null) {
+    if (tibberMonth.gridImportKwh !== null || tibberMonth.dynamicCostEur !== null) {
         homeMonth = (0, compute_1.buildHomeMonthTotals)({
             dateKey,
-            gridImportKwh: monthKwhLive ?? homeMonthPersist.gridImportKwh,
-            dynamicCostEur: monthDynamicLive ?? homeMonthPersist.dynamicCostEur,
+            gridImportKwh: tibberMonth.gridImportKwh ?? homeMonthPersist.gridImportKwh,
+            dynamicCostEur: tibberMonth.dynamicCostEur ?? homeMonthPersist.dynamicCostEur,
             gridRewardsCreditEur: homeMonthPersist.gridRewardsCreditEur,
             gridExportKwh: homeMonthPersist.gridExportKwh,
             feedInCtPerKwh: cfg.feedInCtPerKwh,
@@ -469,8 +476,11 @@ async function tickStatistics(host, now = new Date()) {
             compareTariffMonthlyBaseEur: cfg.compareTariffMonthlyBaseEur,
             tibberMonthlyBaseEur: cfg.tibberMonthlyBaseEur,
             tibberMonthlyGridFeeEur: cfg.tibberMonthlyGridFeeEur,
-            addTibberFeesToDynamic: fromJson.dynamicCostEur !== null,
+            addTibberFeesToDynamic: tibberMonth.addTibberFeesToDynamic,
         });
+    }
+    else if (jsonDailyId) {
+        reasonsHome.push("Haus Monat: Tibber jsonDaily leer — Tibberlink: Historische Verbrauchsdaten + Tage≥31 aktivieren.");
     }
     const mobMonth = (0, compute_1.sumMobilityDays)(monthMobs, {
         evKwhPer100: evCons.value,

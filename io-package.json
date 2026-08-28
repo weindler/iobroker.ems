@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.345",
+		"version": "0.1.346",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.346": {
+				"en": "Home month: Tibber jsonDaily empty hint; fallback jsonMonthly + currentMonthConsumption from same home path.",
+				"de": "Haus Monat: Hinweis wenn jsonDaily leer; Fallback jsonMonthly + currentMonthConsumption vom selben Home."
+			},
 			"0.1.345": {
 				"en": "Statistics home month: Tibber jsonDaily (or optional month kWh/cost mapping) instead of today-only persist after reset.",
 				"de": "Statistik Haus Monat: Tibber jsonDaily (oder optionales Monats-Mapping) statt nur heutiger Persist nach Reset."

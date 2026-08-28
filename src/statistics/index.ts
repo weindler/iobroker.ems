@@ -1,5 +1,6 @@
 export { statisticsConfigFromAdapter } from "./config";
 export { ensureStatisticsStateTree, STATISTICS_STATES } from "./ensure_states";
+export { STATISTICS_FLAT } from "./flat_states";
 export {
 	tickStatistics,
 	handleStatisticsStateChange,

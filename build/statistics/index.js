@@ -1,11 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.__resetStatisticsForTest = exports.isStatisticsRelatedState = exports.handleStatisticsStateChange = exports.tickStatistics = exports.STATISTICS_STATES = exports.ensureStatisticsStateTree = exports.statisticsConfigFromAdapter = void 0;
+exports.__resetStatisticsForTest = exports.isStatisticsRelatedState = exports.handleStatisticsStateChange = exports.tickStatistics = exports.STATISTICS_FLAT = exports.STATISTICS_STATES = exports.ensureStatisticsStateTree = exports.statisticsConfigFromAdapter = void 0;
 var config_1 = require("./config");
 Object.defineProperty(exports, "statisticsConfigFromAdapter", { enumerable: true, get: function () { return config_1.statisticsConfigFromAdapter; } });
 var ensure_states_1 = require("./ensure_states");
 Object.defineProperty(exports, "ensureStatisticsStateTree", { enumerable: true, get: function () { return ensure_states_1.ensureStatisticsStateTree; } });
 Object.defineProperty(exports, "STATISTICS_STATES", { enumerable: true, get: function () { return ensure_states_1.STATISTICS_STATES; } });
+var flat_states_1 = require("./flat_states");
+Object.defineProperty(exports, "STATISTICS_FLAT", { enumerable: true, get: function () { return flat_states_1.STATISTICS_FLAT; } });
 var tick_1 = require("./tick");
 Object.defineProperty(exports, "tickStatistics", { enumerable: true, get: function () { return tick_1.tickStatistics; } });
 Object.defineProperty(exports, "handleStatisticsStateChange", { enumerable: true, get: function () { return tick_1.handleStatisticsStateChange; } });

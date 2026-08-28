@@ -10,6 +10,7 @@ const ensure_states_1 = require("./ensure_states");
 const persist_1 = require("./persist");
 const public_charge_1 = require("./public_charge");
 const adjust_1 = require("./adjust");
+const flat_states_1 = require("./flat_states");
 async function setIfChanged(host, id, val) {
     const cur = await host.getStateAsync(id);
     if (cur?.val === val)
@@ -686,6 +687,12 @@ async function tickStatistics(host, now = new Date()) {
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityTodaySavingsEur, day.mobility.savingsVsIceEur);
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityMonthSavingsEur, mobMonth.savingsVsIceEur);
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityPeriodSavingsEur, mobPeriod.savingsVsIceEur);
+    const flatSet = (id, val) => setIfChanged(host, id, val);
+    await setIfChanged(host, flat_states_1.STATISTICS_FLAT.statisticsStartDate, statisticsStartKey ?? "");
+    await (0, flat_states_1.publishHomeFlat)(flatSet, flat_states_1.STATISTICS_FLAT.homeToday, homeTodaySum, "Heute");
+    await (0, flat_states_1.publishHomeFlat)(flatSet, flat_states_1.STATISTICS_FLAT.homePeriod, homePeriodSum, periodMeta.periodLabelDe);
+    await (0, flat_states_1.publishMobilityFlat)(flatSet, flat_states_1.STATISTICS_FLAT.mobilityToday, mobTodaySum, "Heute");
+    await (0, flat_states_1.publishMobilityFlat)(flatSet, flat_states_1.STATISTICS_FLAT.mobilityPeriod, mobPeriodSum, periodMeta.periodLabelDe);
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.publicPendingJson, JSON.stringify(day.publicSessions.filter((s) => s.status === "pending_invoice")));
     const reason = [
         homeTodaySum.savingsVsFixedEur !== null

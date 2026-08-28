@@ -10425,7 +10425,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Reporting — keine Steuerung. Haus: Tibber vs. Festtarif/Verivox. Mobilität: E-Auto vs. Verbrenner. Grid Rewards optional (Schätzung aus HA, exakt nach Tibber-Abrechnung)."
+					"text": "Reporting — keine Steuerung. Haus: Tibber vs. Festtarif/Verivox. Mobilität: E-Auto vs. Verbrenner. Grid Rewards optional. Flache States unter <code>statistics.home.today.*</code> / <code>…period.*</code> und <code>statistics.mobility.today.*</code> / <code>…period.*</code> (JSON parallel)."
 				},
 				"statistics_enabled": {
 					"type": "checkbox",

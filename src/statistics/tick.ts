@@ -60,6 +60,7 @@ import {
 	pendingPublicKwh,
 } from "./public_charge";
 import { applyStatisticsAdjust, parseStatisticsAdjustSubmit } from "./adjust";
+import { STATISTICS_FLAT, publishHomeFlat, publishMobilityFlat } from "./flat_states";
 import type {
 	HouseCompareSummary,
 	MobilityCompareSummary,
@@ -885,6 +886,14 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 	await setIfChanged(host, STATISTICS_STATES.mobilityTodaySavingsEur, day.mobility.savingsVsIceEur);
 	await setIfChanged(host, STATISTICS_STATES.mobilityMonthSavingsEur, mobMonth.savingsVsIceEur);
 	await setIfChanged(host, STATISTICS_STATES.mobilityPeriodSavingsEur, mobPeriod.savingsVsIceEur);
+
+	const flatSet = (id: string, val: ioBroker.StateValue) => setIfChanged(host, id, val);
+	await setIfChanged(host, STATISTICS_FLAT.statisticsStartDate, statisticsStartKey ?? "");
+	await publishHomeFlat(flatSet, STATISTICS_FLAT.homeToday, homeTodaySum, "Heute");
+	await publishHomeFlat(flatSet, STATISTICS_FLAT.homePeriod, homePeriodSum, periodMeta.periodLabelDe);
+	await publishMobilityFlat(flatSet, STATISTICS_FLAT.mobilityToday, mobTodaySum, "Heute");
+	await publishMobilityFlat(flatSet, STATISTICS_FLAT.mobilityPeriod, mobPeriodSum, periodMeta.periodLabelDe);
+
 	await setIfChanged(
 		host,
 		STATISTICS_STATES.publicPendingJson,

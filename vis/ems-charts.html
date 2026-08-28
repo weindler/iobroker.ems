@@ -249,6 +249,7 @@ var stateIds=[
 	INST+".statistics.reason_de",
 	INST+".statistics.period_id",
 	INST+".statistics.period_options_json",
+	INST+".statistics.statistics_start_date",
 	INST+".statistics.home.today_json",
 	INST+".statistics.home.month_json",
 	INST+".statistics.home.period_json",
@@ -261,6 +262,52 @@ var stateIds=[
 	INST+".statistics.mobility.today_savings_vs_ice_eur",
 	INST+".statistics.mobility.month_savings_vs_ice_eur",
 	INST+".statistics.mobility.period_savings_vs_ice_eur",
+	INST+".statistics.home.today.grid_import_kwh",
+	INST+".statistics.home.today.tibber_eur",
+	INST+".statistics.home.today.fixed_eur",
+	INST+".statistics.home.today.rewards_eur",
+	INST+".statistics.home.today.rewards_source",
+	INST+".statistics.home.today.savings_eur",
+	INST+".statistics.home.today.label_de",
+	INST+".statistics.home.today.from_key",
+	INST+".statistics.home.today.to_key",
+	INST+".statistics.home.period.grid_import_kwh",
+	INST+".statistics.home.period.tibber_eur",
+	INST+".statistics.home.period.fixed_eur",
+	INST+".statistics.home.period.rewards_eur",
+	INST+".statistics.home.period.rewards_source",
+	INST+".statistics.home.period.savings_eur",
+	INST+".statistics.home.period.label_de",
+	INST+".statistics.home.period.from_key",
+	INST+".statistics.home.period.to_key",
+	INST+".statistics.mobility.today.home_pv_kwh",
+	INST+".statistics.mobility.today.home_grid_kwh",
+	INST+".statistics.mobility.today.home_grid_cost_eur",
+	INST+".statistics.mobility.today.home_grid_cost_net_eur",
+	INST+".statistics.mobility.today.public_invoiced_kwh",
+	INST+".statistics.mobility.today.estimated_km",
+	INST+".statistics.mobility.today.ev_cost_eur",
+	INST+".statistics.mobility.today.ice_cost_eur",
+	INST+".statistics.mobility.today.fuel_price_eur_per_l",
+	INST+".statistics.mobility.today.savings_eur",
+	INST+".statistics.mobility.today.rewards_source",
+	INST+".statistics.mobility.today.label_de",
+	INST+".statistics.mobility.today.from_key",
+	INST+".statistics.mobility.today.to_key",
+	INST+".statistics.mobility.period.home_pv_kwh",
+	INST+".statistics.mobility.period.home_grid_kwh",
+	INST+".statistics.mobility.period.home_grid_cost_eur",
+	INST+".statistics.mobility.period.home_grid_cost_net_eur",
+	INST+".statistics.mobility.period.public_invoiced_kwh",
+	INST+".statistics.mobility.period.estimated_km",
+	INST+".statistics.mobility.period.ev_cost_eur",
+	INST+".statistics.mobility.period.ice_cost_eur",
+	INST+".statistics.mobility.period.fuel_price_eur_per_l",
+	INST+".statistics.mobility.period.savings_eur",
+	INST+".statistics.mobility.period.rewards_source",
+	INST+".statistics.mobility.period.label_de",
+	INST+".statistics.mobility.period.from_key",
+	INST+".statistics.mobility.period.to_key",
 	INST+".statistics.public_charge.pending_json",
 	INST+".statistics.public_charge.submit_ack_de",
 	INST+".planner.intent.daily_plan.status",
@@ -2676,29 +2723,60 @@ function periodCardTitle(prefix,sum,fallback){
 	var lab=sum&&sum.periodLabelDe?sum.periodLabelDe:fallback;
 	return prefix+" · "+lab;
 }
+function mergeHomeFlat(scope,json){
+	var o=Object.assign({},json&&typeof json==="object"?json:{});
+	var p="statistics.home."+scope+".";
+	var gi=num(g(p+"grid_import_kwh")); if(gi!=null)o.gridImportKwh=gi;
+	var tb=num(g(p+"tibber_eur")); if(tb!=null)o.dynamicCostEur=tb;
+	var fx=num(g(p+"fixed_eur")); if(fx!=null)o.fixedTariffCostEur=fx;
+	var rw=num(g(p+"rewards_eur")); if(rw!=null)o.gridRewardsCreditEur=rw;
+	var rs=txt(g(p+"rewards_source"),""); if(rs&&rs!=="—")o.gridRewardsSource=rs;
+	var sv=num(g(p+"savings_eur")); if(sv!=null)o.savingsVsFixedEur=sv;
+	var lb=txt(g(p+"label_de"),""); if(lb&&lb!=="—")o.periodLabelDe=lb;
+	var fk=txt(g(p+"from_key"),""); if(fk&&fk!=="—")o.fromKey=fk;
+	var tk=txt(g(p+"to_key"),""); if(tk&&tk!=="—")o.toKey=tk;
+	return o;
+}
+function mergeMobFlat(scope,json){
+	var o=Object.assign({},json&&typeof json==="object"?json:{});
+	var p="statistics.mobility."+scope+".";
+	var pv=num(g(p+"home_pv_kwh")); if(pv!=null)o.homePvKwh=pv;
+	var hg=num(g(p+"home_grid_kwh")); if(hg!=null)o.homeGridKwh=hg;
+	var hc=num(g(p+"home_grid_cost_eur")); if(hc!=null)o.homeGridCostEur=hc;
+	var hn=num(g(p+"home_grid_cost_net_eur")); if(hn!=null)o.homeGridCostNetEur=hn;
+	var pi=num(g(p+"public_invoiced_kwh")); if(pi!=null)o.publicInvoicedKwh=pi;
+	var km=num(g(p+"estimated_km")); if(km!=null)o.estimatedKm=km;
+	var ev=num(g(p+"ev_cost_eur")); if(ev!=null)o.evTotalCostEur=ev;
+	var ice=num(g(p+"ice_cost_eur")); if(ice!=null)o.iceCostEur=ice;
+	var fp=num(g(p+"fuel_price_eur_per_l")); if(fp!=null)o.fuelPriceEurPerL=fp;
+	var sv=num(g(p+"savings_eur")); if(sv!=null)o.savingsVsIceEur=sv;
+	var rs=txt(g(p+"rewards_source"),""); if(rs&&rs!=="—")o.gridRewardsSource=rs;
+	var lb=txt(g(p+"label_de"),""); if(lb&&lb!=="—")o.periodLabelDe=lb;
+	return o;
+}
 function renderStatistics(){
 	var grid=document.getElementById("ems-stats-grid");
 	var reasonEl=document.getElementById("ems-stats-reason");
 	if(!grid)return;
 	fillPeriodSelect();
 	bindStatsPeriodSelect();
-	var homeT=parseObj(g("statistics.home.today_json"));
+	var homeT=mergeHomeFlat("today",parseObj(g("statistics.home.today_json")));
 	var periodId=txt(g("statistics.period_id"),"this_month")||"this_month";
-	var homeP=parseObj(g("statistics.home.period_json"));
+	var homeP=mergeHomeFlat("period",parseObj(g("statistics.home.period_json")));
 	var homeM=parseObj(g("statistics.home.month_json"));
 	// Nur auf Monat fallen, wenn Periode wirklich dieser Monat ist oder period_json fehlt/leer.
-	if(!homeP||typeof homeP!=="object"||(Object.keys(homeP).length===0)){
-		homeP=periodId==="this_month"?homeM:homeP||{};
+	if(!homeP||typeof homeP!=="object"||(Object.keys(homeP).length===0&&num(g("statistics.home.period.savings_eur"))==null)){
+		homeP=periodId==="this_month"?mergeHomeFlat("period",homeM):homeP||{};
 	}else if(homeP.period&&homeP.period!==periodId&&periodId==="this_month"){
-		homeP=homeM;
+		homeP=mergeHomeFlat("period",homeM);
 	}
-	var mobT=parseObj(g("statistics.mobility.today_json"));
-	var mobP=parseObj(g("statistics.mobility.period_json"));
+	var mobT=mergeMobFlat("today",parseObj(g("statistics.mobility.today_json")));
+	var mobP=mergeMobFlat("period",parseObj(g("statistics.mobility.period_json")));
 	var mobM=parseObj(g("statistics.mobility.month_json"));
-	if(!mobP||typeof mobP!=="object"||(Object.keys(mobP).length===0)){
-		mobP=periodId==="this_month"?mobM:mobP||{};
+	if(!mobP||typeof mobP!=="object"||(Object.keys(mobP).length===0&&num(g("statistics.mobility.period.savings_eur"))==null)){
+		mobP=periodId==="this_month"?mergeMobFlat("period",mobM):mobP||{};
 	}else if(mobP.period&&mobP.period!==periodId&&periodId==="this_month"){
-		mobP=mobM;
+		mobP=mergeMobFlat("period",mobM);
 	}
 	// Stale: period_json noch alter Zeitraum → Titel aus period_id-Option, Daten erst nach Tick.
 	var opts=parseArr(g("statistics.period_options_json"));
@@ -2715,15 +2793,15 @@ function renderStatistics(){
 	if(!homeP.periodLabelDe)homeP.periodLabelDe=periodLabel;
 	if(!mobP.periodLabelDe)mobP.periodLabelDe=periodLabel;
 	var pending=parseArr(g("statistics.public_charge.pending_json"));
-	var periodReady=homeP&&homeP.period===periodId&&homeP.savingsVsFixedEur!=null;
-	var hT=savingsHero(num(g("statistics.home.today_savings_vs_fixed_eur"))!=null?num(g("statistics.home.today_savings_vs_fixed_eur")):num(homeT.savingsVsFixedEur));
+	var periodReady=homeP&&(homeP.period===periodId||num(g("statistics.home.period.savings_eur"))!=null)&&homeP.savingsVsFixedEur!=null;
+	var hT=savingsHero(num(g("statistics.home.today.savings_eur"))!=null?num(g("statistics.home.today.savings_eur")):(num(g("statistics.home.today_savings_vs_fixed_eur"))!=null?num(g("statistics.home.today_savings_vs_fixed_eur")):num(homeT.savingsVsFixedEur)));
 	var hP=periodReady
-		?savingsHero(num(g("statistics.home.period_savings_vs_fixed_eur"))!=null?num(g("statistics.home.period_savings_vs_fixed_eur")):num(homeP.savingsVsFixedEur))
+		?savingsHero(num(g("statistics.home.period.savings_eur"))!=null?num(g("statistics.home.period.savings_eur")):(num(g("statistics.home.period_savings_vs_fixed_eur"))!=null?num(g("statistics.home.period_savings_vs_fixed_eur")):num(homeP.savingsVsFixedEur)))
 		:savingsHero(homeP&&homeP.savingsVsFixedEur!=null?homeP.savingsVsFixedEur:null);
-	var mT=savingsHero(num(g("statistics.mobility.today_savings_vs_ice_eur"))!=null?num(g("statistics.mobility.today_savings_vs_ice_eur")):num(mobT.savingsVsIceEur));
-	var mobReady=mobP&&mobP.period===periodId&&mobP.savingsVsIceEur!=null;
+	var mT=savingsHero(num(g("statistics.mobility.today.savings_eur"))!=null?num(g("statistics.mobility.today.savings_eur")):(num(g("statistics.mobility.today_savings_vs_ice_eur"))!=null?num(g("statistics.mobility.today_savings_vs_ice_eur")):num(mobT.savingsVsIceEur)));
+	var mobReady=mobP&&(mobP.period===periodId||num(g("statistics.mobility.period.savings_eur"))!=null)&&mobP.savingsVsIceEur!=null;
 	var mP=mobReady
-		?savingsHero(num(g("statistics.mobility.period_savings_vs_ice_eur"))!=null?num(g("statistics.mobility.period_savings_vs_ice_eur")):num(mobP.savingsVsIceEur))
+		?savingsHero(num(g("statistics.mobility.period.savings_eur"))!=null?num(g("statistics.mobility.period.savings_eur")):(num(g("statistics.mobility.period_savings_vs_ice_eur"))!=null?num(g("statistics.mobility.period_savings_vs_ice_eur")):num(mobP.savingsVsIceEur)))
 		:savingsHero(mobP&&mobP.savingsVsIceEur!=null?mobP.savingsVsIceEur:null);
 	var pendingNote=pending.length
 		? (pending.length+" offene Schnellader-Session(s) — Rechnung unter statistics.public_charge.submit_request (JSON: kwh, eur).")

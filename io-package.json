@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.352",
+		"version": "0.1.353",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.353": {
+				"en": "Statistics hybrid: flat object-tree states (home/mobility today+period) alongside JSON; VIS prefers flat.",
+				"de": "Statistik Hybrid: flache Objektbaum-States (Haus/Mobilität heute+Periode) parallel zu JSON; VIS bevorzugt Flat."
+			},
 			"0.1.352": {
 				"en": "Statistics periods clipped to install/start date; empty ranges show no ghost savings; Admin statistics_start_date.",
 				"de": "Statistik-Zeiträume ab Installations-/Startdatum; leere Zeiträume ohne Geister-Ersparnis; Admin statistics_start_date."

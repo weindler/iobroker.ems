@@ -479,9 +479,10 @@ async function tickStatistics(host, now = new Date()) {
     const jsonMonthlyId = (0, compute_1.siblingTibberConsumptionState)(jsonDailyId, "jsonMonthly");
     const currentMonthKwhId = cfg.gridImportMonthKwhStateId ||
         (0, compute_1.siblingTibberConsumptionState)(jsonDailyId, "currentMonthConsumption");
+    const jsonDailyRaw = jsonDailyId ? await readForeignRaw(host, jsonDailyId) : null;
     const tibberMonth = (0, compute_1.resolveHomeMonthFromTibber)({
         dateKey,
-        jsonDailyRaw: jsonDailyId ? await readForeignRaw(host, jsonDailyId) : null,
+        jsonDailyRaw,
         jsonMonthlyRaw: jsonMonthlyId ? await readForeignRaw(host, jsonMonthlyId) : null,
         currentMonthKwh: currentMonthKwhId ? await readForeignNum(host, currentMonthKwhId) : null,
         mappedMonthKwh: null,
@@ -524,9 +525,21 @@ async function tickStatistics(host, now = new Date()) {
     if (periodIdRaw?.val !== periodId) {
         await host.setStateAsync(ensure_states_1.STATISTICS_STATES.periodId, { val: periodId, ack: true });
     }
-    const periodRange = (0, period_1.resolvePeriodRange)(periodId, dateKey);
+    const jsonDailyRawForStart = jsonDailyRaw;
+    const statisticsStartKey = (0, period_1.resolveStatisticsStartKey)({
+        adminStartKey: cfg.statisticsStartDate,
+        persistDayKeys: Object.keys(persist.days),
+        tibberEarliestKey: (0, compute_1.earliestTibberJsonDailyDateKey)(jsonDailyRawForStart),
+    });
+    const rawPeriodRange = (0, period_1.resolvePeriodRange)(periodId, dateKey);
+    const periodRange = rawPeriodRange
+        ? (0, period_1.clipPeriodRangeToStart)(rawPeriodRange, statisticsStartKey)
+        : null;
     const periodOptions = (0, period_1.listPeriodOptions)(dateKey, Object.keys(persist.days));
     const reasonsPeriod = [];
+    if (statisticsStartKey) {
+        reasonsPeriod.push(`Statistik ab ${statisticsStartKey}.`);
+    }
     let homePeriod = homeMonth;
     let mobPeriod = mobMonth;
     let periodMeta = {
@@ -534,36 +547,63 @@ async function tickStatistics(host, now = new Date()) {
         fromKey: dateKey.slice(0, 7) + "-01",
         toKey: dateKey,
     };
-    if (periodRange) {
+    if (periodRange === null && rawPeriodRange) {
+        periodMeta = {
+            periodLabelDe: rawPeriodRange.labelDe,
+            fromKey: rawPeriodRange.fromKey,
+            toKey: rawPeriodRange.toKey,
+        };
+        reasonsPeriod.push(`Zeitraum ${rawPeriodRange.labelDe} liegt vor Statistik-Start (${statisticsStartKey ?? "—"}) — keine Daten.`);
+        homePeriod = (0, compute_1.emptyHomeDay)(dateKey);
+        mobPeriod = (0, compute_1.emptyMobilityDay)(dateKey);
+    }
+    else if (periodRange) {
         periodMeta = {
             periodLabelDe: periodRange.labelDe,
             fromKey: periodRange.fromKey,
             toKey: periodRange.toKey,
         };
+        const keys = (0, period_1.dayKeysInRange)(persist.days, periodRange.fromKey, periodRange.toKey);
+        const periodHomes = keys.map((k) => persist.days[k].home);
+        const periodMobs = keys.map((k) => persist.days[k].mobility);
+        const periodRewards = (0, grid_rewards_1.resolvePeriodGridRewards)({
+            enabled: cfg.gridRewardsEnabled,
+            fromKey: periodRange.fromKey,
+            toKey: periodRange.toKey,
+            todayKey: dateKey,
+            mappedMonthEur: rewardsCreditMonth,
+            monthRewardsBilling: persist.monthRewardsBilling ?? {},
+            dayCredits: keys.map((k) => ({
+                dateKey: k,
+                creditEur: persist.days[k].home.gridRewardsCreditEur,
+            })),
+        });
+        const tibberRange = (0, compute_1.sumTibberJsonDailyForRange)(jsonDailyRawForStart, periodRange.fromKey, periodRange.toKey);
+        // dieser Monat: Tibber-Monatsauflösung behalten, Festtarif aber nur ab Statistik-Start
         if (periodId === "this_month") {
-            homePeriod = homeMonth;
-            mobPeriod = mobMonth;
-        }
-        else {
-            const keys = (0, period_1.dayKeysInRange)(persist.days, periodRange.fromKey, periodRange.toKey);
-            const periodHomes = keys.map((k) => persist.days[k].home);
-            const periodMobs = keys.map((k) => persist.days[k].mobility);
-            const periodRewards = (0, grid_rewards_1.resolvePeriodGridRewards)({
-                enabled: cfg.gridRewardsEnabled,
+            const fixedClipped = (0, period_1.fixedTariffCostForRange)({
+                gridImportKwh: homeMonth.gridImportKwh,
+                compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
+                monthlyBaseEur: cfg.compareTariffMonthlyBaseEur,
                 fromKey: periodRange.fromKey,
                 toKey: periodRange.toKey,
-                todayKey: dateKey,
-                mappedMonthEur: rewardsCreditMonth,
-                monthRewardsBilling: persist.monthRewardsBilling ?? {},
-                dayCredits: keys.map((k) => ({
-                    dateKey: k,
-                    creditEur: persist.days[k].home.gridRewardsCreditEur,
-                })),
             });
+            homePeriod = (0, compute_1.applyHomeGridRewards)({
+                ...homeMonth,
+                fixedTariffCostEur: fixedClipped ?? homeMonth.fixedTariffCostEur,
+                savingsVsFixedEur: (0, compute_1.savingsVsFixedEur)(fixedClipped ?? homeMonth.fixedTariffCostEur, homeMonth.dynamicCostEur, monthRewards.source === "off" ? null : monthRewards.creditEur),
+            }, monthRewards);
+            mobPeriod = mobMonth;
+        }
+        else if (tibberRange.gridImportKwh === null &&
+            tibberRange.dynamicCostEur === null &&
+            !keys.length) {
+            reasonsPeriod.push(`Zeitraum ${periodRange.labelDe}: keine Persistenz-Tage und kein Tibber jsonDaily in ${periodRange.fromKey}…${periodRange.toKey}.`);
+            homePeriod = (0, compute_1.emptyHomeDay)(dateKey);
+            mobPeriod = (0, compute_1.emptyMobilityDay)(dateKey);
+        }
+        else {
             let homeAgg = (0, compute_1.sumHomeDays)(periodHomes);
-            const tibberRange = jsonDailyId
-                ? (0, compute_1.sumTibberJsonDailyForRange)(await readForeignRaw(host, jsonDailyId), periodRange.fromKey, periodRange.toKey)
-                : { gridImportKwh: null, dynamicCostEur: null };
             if (tibberRange.gridImportKwh !== null || tibberRange.dynamicCostEur !== null) {
                 const importKwh = tibberRange.gridImportKwh ?? homeAgg.gridImportKwh;
                 const dynamic = tibberRange.dynamicCostEur ?? homeAgg.dynamicCostEur;
@@ -583,9 +623,6 @@ async function tickStatistics(host, now = new Date()) {
                 }, periodRewards);
             }
             else {
-                if (!keys.length) {
-                    reasonsPeriod.push(`Zeitraum ${periodRange.labelDe}: keine Persistenz-Tage und kein Tibber jsonDaily in ${periodRange.fromKey}…${periodRange.toKey}.`);
-                }
                 const fixed = (0, period_1.fixedTariffCostForRange)({
                     gridImportKwh: homeAgg.gridImportKwh,
                     compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
@@ -631,6 +668,7 @@ async function tickStatistics(host, now = new Date()) {
         iceFuelType: cfg.iceFuelType,
         iceLPer100Km: cfg.iceLPer100Km,
         gridRewardsEnabled: cfg.gridRewardsEnabled,
+        statisticsStartDate: cfg.statisticsStartDate,
     };
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.enabled, true);
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.lastRunAt, now.toISOString());

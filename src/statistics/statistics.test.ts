@@ -27,6 +27,8 @@ import {
 	resolvePeriodRange,
 	listPeriodOptions,
 	fixedTariffCostForRange,
+	clipPeriodRangeToStart,
+	resolveStatisticsStartKey,
 } from "./period.js";
 import { applyStatisticsAdjust, parseStatisticsAdjustSubmit } from "./adjust.js";
 import { statisticsConfigFromAdapter } from "./config.js";
@@ -508,6 +510,48 @@ describe("statistics period", () => {
 			}),
 			13, // 3.0 energy + 10/31*31 = 10 → 13
 		);
+	});
+
+	it("clips period to statistics start so Festtarif base is not inflated", () => {
+		const year = resolvePeriodRange("this_year", "2026-08-28");
+		assert.ok(year);
+		const clipped = clipPeriodRangeToStart(year!, "2026-08-01");
+		assert.equal(clipped?.fromKey, "2026-08-01");
+		assert.equal(clipped?.toKey, "2026-08-28");
+		assert.match(clipped?.labelDe ?? "", /ab 2026-08-01/);
+		const before = clipPeriodRangeToStart(year!, "2027-01-01");
+		assert.equal(before, null);
+		assert.equal(
+			resolveStatisticsStartKey({
+				adminStartKey: "2026-08-15",
+				persistDayKeys: ["2026-08-01"],
+				tibberEarliestKey: "2026-07-01",
+			}),
+			"2026-08-15",
+		);
+		assert.equal(
+			resolveStatisticsStartKey({
+				adminStartKey: null,
+				persistDayKeys: ["2026-08-11", "2026-08-01"],
+				tibberEarliestKey: "2026-08-05",
+			}),
+			"2026-08-01",
+		);
+		const fixedYearInflated = fixedTariffCostForRange({
+			gridImportKwh: 25.6,
+			compareTariffCtPerKwh: 30,
+			monthlyBaseEur: 12,
+			fromKey: "2026-01-01",
+			toKey: "2026-08-28",
+		});
+		const fixedFromInstall = fixedTariffCostForRange({
+			gridImportKwh: 25.6,
+			compareTariffCtPerKwh: 30,
+			monthlyBaseEur: 12,
+			fromKey: "2026-08-01",
+			toKey: "2026-08-28",
+		});
+		assert.ok((fixedYearInflated ?? 0) > (fixedFromInstall ?? 0));
 	});
 });
 

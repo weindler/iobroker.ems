@@ -1,7 +1,7 @@
 "use strict";
 /** Statistik-Zeiträume: von–bis aus Perioden-ID. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fixedTariffCostForRange = exports.dayKeysInRange = exports.listPeriodOptions = exports.resolvePeriodRange = exports.normalizePeriodId = exports.isValidPeriodId = exports.makeDateKey = exports.parseDateKey = void 0;
+exports.fixedTariffCostForRange = exports.resolveStatisticsStartKey = exports.clipPeriodRangeToStart = exports.earliestDayKey = exports.dayKeysInRange = exports.listPeriodOptions = exports.resolvePeriodRange = exports.normalizePeriodId = exports.isValidPeriodId = exports.makeDateKey = exports.parseDateKey = void 0;
 function pad2(n) {
     return n < 10 ? `0${n}` : String(n);
 }
@@ -168,6 +168,46 @@ function dayKeysInRange(days, fromKey, toKey) {
         .sort();
 }
 exports.dayKeysInRange = dayKeysInRange;
+/** Frühestes YYYY-MM-DD aus Persistenz-Tagen. */
+function earliestDayKey(dayKeys) {
+    const sorted = dayKeys.filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
+    return sorted[0] ?? null;
+}
+exports.earliestDayKey = earliestDayKey;
+/**
+ * Zeitraum nicht vor Statistik-Start (Installation) beginnen.
+ * Wenn der ganze Zeitraum vor dem Start liegt → null (keine Daten).
+ */
+function clipPeriodRangeToStart(range, statisticsStartKey) {
+    if (!statisticsStartKey || !/^\d{4}-\d{2}-\d{2}$/.test(statisticsStartKey)) {
+        return range;
+    }
+    if (range.toKey < statisticsStartKey) {
+        return null;
+    }
+    const fromKey = range.fromKey < statisticsStartKey ? statisticsStartKey : range.fromKey;
+    const clipped = fromKey !== range.fromKey;
+    return {
+        ...range,
+        fromKey,
+        labelDe: clipped ? `${range.labelDe} (ab ${statisticsStartKey})` : range.labelDe,
+    };
+}
+exports.clipPeriodRangeToStart = clipPeriodRangeToStart;
+/** Wirksamer Statistik-Start: Admin-Datum, sonst frühester Persist-/Tibber-Tag. */
+function resolveStatisticsStartKey(input) {
+    if (input.adminStartKey && /^\d{4}-\d{2}-\d{2}$/.test(input.adminStartKey)) {
+        return input.adminStartKey;
+    }
+    const candidates = [
+        earliestDayKey(input.persistDayKeys),
+        input.tibberEarliestKey,
+    ].filter((k) => !!k);
+    if (!candidates.length)
+        return null;
+    return candidates.sort()[0];
+}
+exports.resolveStatisticsStartKey = resolveStatisticsStartKey;
 /** Monatliche Grundgebühr anteilig über alle Kalendermonate in [from,to]. */
 function fixedTariffCostForRange(input) {
     if (input.gridImportKwh === null || input.compareTariffCtPerKwh === null)

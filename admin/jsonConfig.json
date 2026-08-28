@@ -10437,6 +10437,16 @@
 					"lg": 4,
 					"xl": 4
 				},
+				"statistics_start_date": {
+					"type": "text",
+					"label": "Statistik ab (Installationsdatum)",
+					"help": "YYYY-MM-DD — Zeiträume (Jahr/Quartal/…) und Festtarif-Grundgebühr erst ab diesem Tag. Leer = automatisch frühester Tag aus Persistenz oder Tibber jsonDaily.",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
 				"hStatsHouse": {
 					"type": "header",
 					"size": 2,

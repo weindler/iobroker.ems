@@ -204,6 +204,52 @@ export function dayKeysInRange(
 		.sort();
 }
 
+/** Frühestes YYYY-MM-DD aus Persistenz-Tagen. */
+export function earliestDayKey(dayKeys: string[]): string | null {
+	const sorted = dayKeys.filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
+	return sorted[0] ?? null;
+}
+
+/**
+ * Zeitraum nicht vor Statistik-Start (Installation) beginnen.
+ * Wenn der ganze Zeitraum vor dem Start liegt → null (keine Daten).
+ */
+export function clipPeriodRangeToStart(
+	range: PeriodRange,
+	statisticsStartKey: string | null,
+): PeriodRange | null {
+	if (!statisticsStartKey || !/^\d{4}-\d{2}-\d{2}$/.test(statisticsStartKey)) {
+		return range;
+	}
+	if (range.toKey < statisticsStartKey) {
+		return null;
+	}
+	const fromKey = range.fromKey < statisticsStartKey ? statisticsStartKey : range.fromKey;
+	const clipped = fromKey !== range.fromKey;
+	return {
+		...range,
+		fromKey,
+		labelDe: clipped ? `${range.labelDe} (ab ${statisticsStartKey})` : range.labelDe,
+	};
+}
+
+/** Wirksamer Statistik-Start: Admin-Datum, sonst frühester Persist-/Tibber-Tag. */
+export function resolveStatisticsStartKey(input: {
+	adminStartKey: string | null;
+	persistDayKeys: string[];
+	tibberEarliestKey: string | null;
+}): string | null {
+	if (input.adminStartKey && /^\d{4}-\d{2}-\d{2}$/.test(input.adminStartKey)) {
+		return input.adminStartKey;
+	}
+	const candidates = [
+		earliestDayKey(input.persistDayKeys),
+		input.tibberEarliestKey,
+	].filter((k): k is string => !!k);
+	if (!candidates.length) return null;
+	return candidates.sort()[0]!;
+}
+
 /** Monatliche Grundgebühr anteilig über alle Kalendermonate in [from,to]. */
 export function fixedTariffCostForRange(input: {
 	gridImportKwh: number | null;

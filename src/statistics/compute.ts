@@ -162,6 +162,26 @@ export function sumTibberJsonDailyForMonth(
 	return sumTibberJsonDailyForRange(raw, `${prefix}-01`, `${prefix}-31`);
 }
 
+/** TibberLink jsonDaily — frühestes Tagesdatum (YYYY-MM-DD). */
+export function earliestTibberJsonDailyDateKey(raw: unknown): string | null {
+	try {
+		const arr = typeof raw === "string" ? (JSON.parse(raw) as unknown) : raw;
+		if (!Array.isArray(arr)) return null;
+		let earliest: string | null = null;
+		for (const entry of arr) {
+			if (!entry || typeof entry !== "object") continue;
+			const dateStr = tibberEntryDateKey(entry as Record<string, unknown>);
+			if (!dateStr || dateStr.length < 10) continue;
+			const key = dateStr.slice(0, 10);
+			if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) continue;
+			if (earliest === null || key < earliest) earliest = key;
+		}
+		return earliest;
+	} catch {
+		return null;
+	}
+}
+
 /** TibberLink jsonDaily — Summe für inklusives Datumsintervall. */
 export function sumTibberJsonDailyForRange(
 	raw: unknown,

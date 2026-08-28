@@ -58,6 +58,11 @@ export interface StatisticsAdminConfig {
 	gridRewardsCreditDayStateId: string;
 	/** HA/Tibber Rewards Monat (current_month) — Schätzung bis Abrechnung. */
 	gridRewardsCreditMonthStateId: string;
+	/**
+	 * Statistik ab diesem Tag (YYYY-MM-DD) — typisch EMS-Installationsdatum.
+	 * Leer = automatisch frühester Persist-/Tibber-Tag.
+	 */
+	statisticsStartDate: string | null;
 	/** Tankerkönig / HA Spritpreis €/l. */
 	fuelPriceEurPerLStateId: string;
 	fuelPriceFallbackEurPerL: number | null;
@@ -97,6 +102,10 @@ export function statisticsConfigFromAdapter(config: unknown): StatisticsAdminCon
 			strField(c, "statistics_grid_rewards_credit_day_state") ||
 			strField(c, "statistics_grid_rewards_credit_eur_state"),
 		gridRewardsCreditMonthStateId: strField(c, "statistics_grid_rewards_credit_month_state"),
+		statisticsStartDate: (() => {
+			const s = strField(c, "statistics_start_date");
+			return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+		})(),
 		fuelPriceEurPerLStateId: strField(c, "statistics_fuel_price_eur_per_l_state"),
 		fuelPriceFallbackEurPerL: numField(c, "statistics_fuel_price_fallback_eur_per_l", null),
 		iceFuelType: fuelType(strField(c, "statistics_ice_fuel_type", "e5")),

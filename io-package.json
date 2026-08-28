@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.351",
+		"version": "0.1.352",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.352": {
+				"en": "Statistics periods clipped to install/start date; empty ranges show no ghost savings; Admin statistics_start_date.",
+				"de": "Statistik-Zeiträume ab Installations-/Startdatum; leere Zeiträume ohne Geister-Ersparnis; Admin statistics_start_date."
+			},
 			"0.1.351": {
 				"en": "Fix statistics period switch: period_id changes now trigger recalculation immediately.",
 				"de": "Fix Statistik-Zeitraum: period_id-Wechsel löst sofort Neuberechnung aus."

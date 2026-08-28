@@ -435,6 +435,41 @@ const public_charge_js_1 = require("./public_charge.js");
             toKey: "2026-08-10",
         }), 13);
     });
+    (0, node_test_1.it)("clips period to statistics start so Festtarif base is not inflated", () => {
+        const year = (0, period_js_1.resolvePeriodRange)("this_year", "2026-08-28");
+        strict_1.default.ok(year);
+        const clipped = (0, period_js_1.clipPeriodRangeToStart)(year, "2026-08-01");
+        strict_1.default.equal(clipped?.fromKey, "2026-08-01");
+        strict_1.default.equal(clipped?.toKey, "2026-08-28");
+        strict_1.default.match(clipped?.labelDe ?? "", /ab 2026-08-01/);
+        const before = (0, period_js_1.clipPeriodRangeToStart)(year, "2027-01-01");
+        strict_1.default.equal(before, null);
+        strict_1.default.equal((0, period_js_1.resolveStatisticsStartKey)({
+            adminStartKey: "2026-08-15",
+            persistDayKeys: ["2026-08-01"],
+            tibberEarliestKey: "2026-07-01",
+        }), "2026-08-15");
+        strict_1.default.equal((0, period_js_1.resolveStatisticsStartKey)({
+            adminStartKey: null,
+            persistDayKeys: ["2026-08-11", "2026-08-01"],
+            tibberEarliestKey: "2026-08-05",
+        }), "2026-08-01");
+        const fixedYearInflated = (0, period_js_1.fixedTariffCostForRange)({
+            gridImportKwh: 25.6,
+            compareTariffCtPerKwh: 30,
+            monthlyBaseEur: 12,
+            fromKey: "2026-01-01",
+            toKey: "2026-08-28",
+        });
+        const fixedFromInstall = (0, period_js_1.fixedTariffCostForRange)({
+            gridImportKwh: 25.6,
+            compareTariffCtPerKwh: 30,
+            monthlyBaseEur: 12,
+            fromKey: "2026-08-01",
+            toKey: "2026-08-28",
+        });
+        strict_1.default.ok((fixedYearInflated ?? 0) > (fixedFromInstall ?? 0));
+    });
 });
 (0, node_test_1.describe)("statistics public charge", () => {
     (0, node_test_1.it)("parses invoice submit and applies to latest pending", () => {

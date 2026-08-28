@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.finalizeMobilityDayTotals = exports.sumMobilityDays = exports.sumHomeDays = exports.emptyMobilityDay = exports.emptyHomeDay = exports.applyMobilityGridRewards = exports.applyHomeGridRewards = exports.estimateKwhFromSocRise = exports.iceCostForKm = exports.estimateKmFromEvKwh = exports.resolveSeedFuelPriceEurPerL = exports.resolveFuelPriceEurPerL = exports.resolveEvKwhPer100 = exports.localDateKey = exports.buildHomeMonthTotals = exports.resolveHomeMonthFromTibber = exports.siblingTibberConsumptionState = exports.pickTibberJsonMonthlyForMonth = exports.sumTibberJsonDailyForRange = exports.sumTibberJsonDailyForMonth = exports.daysInMonth = exports.integrateImportCostEur = exports.normalizeWallboxSessionEnergyKwh = exports.energyCounterDeltaKwh = exports.savingsVsFixedEur = exports.tibberDayCostEur = exports.dailyBaseShareEur = exports.fixedTariffCostEur = void 0;
+exports.finalizeMobilityDayTotals = exports.sumMobilityDays = exports.sumHomeDays = exports.emptyMobilityDay = exports.emptyHomeDay = exports.applyMobilityGridRewards = exports.applyHomeGridRewards = exports.estimateKwhFromSocRise = exports.iceCostForKm = exports.estimateKmFromEvKwh = exports.resolveSeedFuelPriceEurPerL = exports.resolveFuelPriceEurPerL = exports.resolveEvKwhPer100 = exports.localDateKey = exports.buildHomeMonthTotals = exports.resolveHomeMonthFromTibber = exports.siblingTibberConsumptionState = exports.pickTibberJsonMonthlyForMonth = exports.sumTibberJsonDailyForRange = exports.earliestTibberJsonDailyDateKey = exports.sumTibberJsonDailyForMonth = exports.daysInMonth = exports.integrateImportCostEur = exports.normalizeWallboxSessionEnergyKwh = exports.energyCounterDeltaKwh = exports.savingsVsFixedEur = exports.tibberDayCostEur = exports.dailyBaseShareEur = exports.fixedTariffCostEur = void 0;
 const grid_rewards_1 = require("./grid_rewards");
 function round3(n) {
     return Math.round(n * 1000) / 1000;
@@ -132,6 +132,32 @@ function sumTibberJsonDailyForMonth(raw, dateKey) {
     return sumTibberJsonDailyForRange(raw, `${prefix}-01`, `${prefix}-31`);
 }
 exports.sumTibberJsonDailyForMonth = sumTibberJsonDailyForMonth;
+/** TibberLink jsonDaily — frühestes Tagesdatum (YYYY-MM-DD). */
+function earliestTibberJsonDailyDateKey(raw) {
+    try {
+        const arr = typeof raw === "string" ? JSON.parse(raw) : raw;
+        if (!Array.isArray(arr))
+            return null;
+        let earliest = null;
+        for (const entry of arr) {
+            if (!entry || typeof entry !== "object")
+                continue;
+            const dateStr = tibberEntryDateKey(entry);
+            if (!dateStr || dateStr.length < 10)
+                continue;
+            const key = dateStr.slice(0, 10);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(key))
+                continue;
+            if (earliest === null || key < earliest)
+                earliest = key;
+        }
+        return earliest;
+    }
+    catch {
+        return null;
+    }
+}
+exports.earliestTibberJsonDailyDateKey = earliestTibberJsonDailyDateKey;
 /** TibberLink jsonDaily — Summe für inklusives Datumsintervall. */
 function sumTibberJsonDailyForRange(raw, fromKey, toKey) {
     try {

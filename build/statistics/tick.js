@@ -448,7 +448,30 @@ async function tickStatistics(host, now = new Date()) {
     const monthDayKeys = monthKeys(dateKey, persist.days);
     const monthHomes = monthDayKeys.map((k) => persist.days[k].home);
     const monthMobs = monthDayKeys.map((k) => persist.days[k].mobility);
-    const homeMonth = (0, compute_1.sumHomeDays)(monthHomes);
+    const homeMonthPersist = (0, compute_1.sumHomeDays)(monthHomes);
+    const fromJson = (0, compute_1.sumTibberJsonDailyForMonth)(cfg.tibberJsonDailyStateId
+        ? await readForeignRaw(host, cfg.tibberJsonDailyStateId)
+        : null, dateKey);
+    const monthKwhLive = fromJson.gridImportKwh ??
+        (await readForeignNum(host, cfg.gridImportMonthKwhStateId));
+    const monthDynamicLive = fromJson.dynamicCostEur ??
+        (await readForeignNum(host, cfg.dynamicCostMonthEurStateId));
+    let homeMonth = homeMonthPersist;
+    if (monthKwhLive !== null || monthDynamicLive !== null) {
+        homeMonth = (0, compute_1.buildHomeMonthTotals)({
+            dateKey,
+            gridImportKwh: monthKwhLive ?? homeMonthPersist.gridImportKwh,
+            dynamicCostEur: monthDynamicLive ?? homeMonthPersist.dynamicCostEur,
+            gridRewardsCreditEur: homeMonthPersist.gridRewardsCreditEur,
+            gridExportKwh: homeMonthPersist.gridExportKwh,
+            feedInCtPerKwh: cfg.feedInCtPerKwh,
+            compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
+            compareTariffMonthlyBaseEur: cfg.compareTariffMonthlyBaseEur,
+            tibberMonthlyBaseEur: cfg.tibberMonthlyBaseEur,
+            tibberMonthlyGridFeeEur: cfg.tibberMonthlyGridFeeEur,
+            addTibberFeesToDynamic: fromJson.dynamicCostEur !== null,
+        });
+    }
     const mobMonth = (0, compute_1.sumMobilityDays)(monthMobs, {
         evKwhPer100: evCons.value,
         fuelPriceEurPerL: fuelPrice,

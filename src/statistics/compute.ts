@@ -130,6 +130,84 @@ export function daysInMonth(dateKey: string): number {
 	return new Date(y, mo, 0).getDate();
 }
 
+/** TibberLink Consumption.jsonDaily — Summe kWh/Kosten für den Kalendermonat von dateKey. */
+export function sumTibberJsonDailyForMonth(
+	raw: unknown,
+	dateKey: string,
+): { gridImportKwh: number | null; dynamicCostEur: number | null } {
+	try {
+		const arr = typeof raw === "string" ? (JSON.parse(raw) as unknown) : raw;
+		if (!Array.isArray(arr)) return { gridImportKwh: null, dynamicCostEur: null };
+		const prefix = dateKey.slice(0, 7);
+		let kwh = 0;
+		let cost = 0;
+		let hits = 0;
+		for (const entry of arr) {
+			if (!entry || typeof entry !== "object") continue;
+			const from = (entry as Record<string, unknown>).from;
+			if (typeof from !== "string" || !from.startsWith(prefix)) continue;
+			const c = Number((entry as Record<string, unknown>).consumption);
+			const t = Number((entry as Record<string, unknown>).totalCost);
+			if (Number.isFinite(c)) kwh += c;
+			if (Number.isFinite(t)) cost += t;
+			hits++;
+		}
+		if (!hits) return { gridImportKwh: null, dynamicCostEur: null };
+		return { gridImportKwh: round3(kwh), dynamicCostEur: round2(cost) };
+	} catch {
+		return { gridImportKwh: null, dynamicCostEur: null };
+	}
+}
+
+/** Monats-Haus aus Live-Quellen (Tibber jsonDaily o. ä.) — Festtarif anteilig bis dateKey. */
+export function buildHomeMonthTotals(input: {
+	dateKey: string;
+	gridImportKwh: number | null;
+	dynamicCostEur: number | null;
+	gridRewardsCreditEur: number | null;
+	gridExportKwh: number | null;
+	feedInCtPerKwh: number | null;
+	compareTariffCtPerKwh: number | null;
+	compareTariffMonthlyBaseEur: number | null;
+	tibberMonthlyBaseEur: number | null;
+	tibberMonthlyGridFeeEur: number | null;
+	addTibberFeesToDynamic: boolean;
+}): HomeDayTotals {
+	const dayNum = Number.parseInt(input.dateKey.slice(8, 10), 10);
+	const monthFracElapsed = dayNum / daysInMonth(input.dateKey);
+
+	let dynamic = input.dynamicCostEur;
+	if (dynamic !== null && input.addTibberFeesToDynamic) {
+		const fees =
+			dailyBaseShareEur(input.tibberMonthlyBaseEur, monthFracElapsed) +
+			dailyBaseShareEur(input.tibberMonthlyGridFeeEur, monthFracElapsed);
+		dynamic = round2(dynamic + fees);
+	}
+
+	const fixed = fixedTariffCostEur({
+		gridImportKwh: input.gridImportKwh,
+		compareTariffCtPerKwh: input.compareTariffCtPerKwh,
+		monthlyBaseEur: input.compareTariffMonthlyBaseEur,
+		monthFraction: monthFracElapsed,
+	});
+
+	let feedIn: number | null = null;
+	if (input.gridExportKwh !== null && input.feedInCtPerKwh !== null && input.feedInCtPerKwh >= 0) {
+		feedIn = round2((input.gridExportKwh * input.feedInCtPerKwh) / 100);
+	}
+
+	return {
+		dateKey: input.dateKey,
+		gridImportKwh: input.gridImportKwh,
+		gridExportKwh: input.gridExportKwh,
+		dynamicCostEur: dynamic,
+		fixedTariffCostEur: fixed,
+		gridRewardsCreditEur: input.gridRewardsCreditEur,
+		feedInCreditEur: feedIn,
+		savingsVsFixedEur: savingsVsFixedEur(fixed, dynamic, input.gridRewardsCreditEur),
+	};
+}
+
 export function localDateKey(d: Date, timeZone = "Europe/Berlin"): string {
 	return new Intl.DateTimeFormat("en-CA", {
 		timeZone,

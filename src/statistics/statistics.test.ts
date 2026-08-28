@@ -12,6 +12,8 @@ import {
 	tibberDayCostEur,
 	normalizeWallboxSessionEnergyKwh,
 	sumMobilityDays,
+	sumTibberJsonDailyForMonth,
+	buildHomeMonthTotals,
 } from "./compute.js";
 import { applyStatisticsAdjust, parseStatisticsAdjustSubmit } from "./adjust.js";
 import { statisticsConfigFromAdapter } from "./config.js";
@@ -106,6 +108,36 @@ describe("statistics compute", () => {
 		const r = iceCostForKm({ km: 100, lPer100Km: 7, fuelPriceEurPerL: 1.8 });
 		assert.equal(r.liters, 7);
 		assert.equal(r.costEur, 12.6);
+	});
+
+	it("Tibber jsonDaily sums current calendar month", () => {
+		const raw = [
+			{ from: "2026-08-01T00:00:00+02:00", consumption: 10, totalCost: 2.5 },
+			{ from: "2026-08-15T00:00:00+02:00", consumption: 5.5, totalCost: 1.2 },
+			{ from: "2026-07-31T00:00:00+02:00", consumption: 99, totalCost: 99 },
+		];
+		const r = sumTibberJsonDailyForMonth(raw, "2026-08-28");
+		assert.equal(r.gridImportKwh, 15.5);
+		assert.equal(r.dynamicCostEur, 3.7);
+	});
+
+	it("buildHomeMonthTotals uses elapsed month fraction for fees", () => {
+		const r = buildHomeMonthTotals({
+			dateKey: "2026-08-28",
+			gridImportKwh: 100,
+			dynamicCostEur: 30,
+			gridRewardsCreditEur: 0,
+			gridExportKwh: null,
+			feedInCtPerKwh: null,
+			compareTariffCtPerKwh: 30,
+			compareTariffMonthlyBaseEur: 10,
+			tibberMonthlyBaseEur: 5,
+			tibberMonthlyGridFeeEur: 5,
+			addTibberFeesToDynamic: true,
+		});
+		assert.ok((r.dynamicCostEur ?? 0) > 30);
+		assert.ok((r.fixedTariffCostEur ?? 0) > 30);
+		assert.notEqual(r.savingsVsFixedEur, null);
 	});
 
 	it("month mobility sums kWh/costs from seeded days without evTotalCostEur", () => {

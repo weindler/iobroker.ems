@@ -46,6 +46,12 @@ export interface StatisticsAdminConfig {
 	gridImportPowerWStateId: string;
 	/** Optional Tibber/HA daily dynamic cost EUR. */
 	dynamicCostTodayEurStateId: string;
+	/** TibberLink Consumption.jsonDaily — Monats-summe für Haus Monat. */
+	tibberJsonDailyStateId: string;
+	/** Optional: Tibber currentMonthConsumption o. ä. (kWh MTD). */
+	gridImportMonthKwhStateId: string;
+	/** Optional: vorberechnete Tibber-Monatskosten EUR (Script). */
+	dynamicCostMonthEurStateId: string;
 	gridRewardsCreditEurStateId: string;
 	/** Tankerkönig / HA Spritpreis €/l. */
 	fuelPriceEurPerLStateId: string;
@@ -78,6 +84,9 @@ export function statisticsConfigFromAdapter(config: unknown): StatisticsAdminCon
 		gridExportEnergyKwhStateId: strField(c, "statistics_grid_export_energy_kwh_state"),
 		gridImportPowerWStateId: strField(c, "statistics_grid_import_power_w_state"),
 		dynamicCostTodayEurStateId: strField(c, "statistics_dynamic_cost_today_eur_state"),
+		tibberJsonDailyStateId: strField(c, "statistics_tibber_json_daily_state"),
+		gridImportMonthKwhStateId: strField(c, "statistics_grid_import_month_kwh_state"),
+		dynamicCostMonthEurStateId: strField(c, "statistics_dynamic_cost_month_eur_state"),
 		gridRewardsCreditEurStateId: strField(c, "statistics_grid_rewards_credit_eur_state"),
 		fuelPriceEurPerLStateId: strField(c, "statistics_fuel_price_eur_per_l_state"),
 		fuelPriceFallbackEurPerL: numField(c, "statistics_fuel_price_fallback_eur_per_l", null),

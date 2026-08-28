@@ -10485,6 +10485,39 @@
 					"lg": 6,
 					"xl": 6
 				},
+				"statistics_tibber_json_daily_state": {
+					"type": "objectId",
+					"label": "Tibber jsonDaily (Haus Monat)",
+					"help": "tibberlink.…Consumption.jsonDaily — historische Tageswerte (≥31 Tage aktivieren). Für Karte „Haus Monat“ statt nur EMS-Tagespersist.",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"statistics_grid_import_month_kwh_state": {
+					"type": "objectId",
+					"label": "Netzbezug Monat kWh (optional)",
+					"help": "z. B. tibberlink …Consumption.currentMonthConsumption — Alternative zu jsonDaily nur für kWh.",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"statistics_dynamic_cost_month_eur_state": {
+					"type": "objectId",
+					"label": "Tibber Monatskosten EUR (optional)",
+					"help": "Vorberechneter Monatswert (Script). jsonDaily hat Vorrang wenn gemappt.",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
 				"statistics_grid_rewards_credit_eur_state": {
 					"type": "objectId",
 					"label": "Tibber Grid Rewards Gutschrift EUR",

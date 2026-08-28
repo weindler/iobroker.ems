@@ -2667,7 +2667,9 @@ function bindStatsPeriodSelect(){
 	sel.setAttribute("data-ems-period","1");
 	sel.addEventListener("change",function(){
 		var id=sel.value||"this_month";
+		cache[INST+".statistics.period_id"]=id;
 		setVisState(INST+".statistics.period_id",id);
+		renderStatistics();
 	});
 }
 function periodCardTitle(prefix,sum,fallback){
@@ -2681,20 +2683,48 @@ function renderStatistics(){
 	fillPeriodSelect();
 	bindStatsPeriodSelect();
 	var homeT=parseObj(g("statistics.home.today_json"));
+	var periodId=txt(g("statistics.period_id"),"this_month")||"this_month";
 	var homeP=parseObj(g("statistics.home.period_json"));
-	if(!homeP||(homeP.period==null&&homeP.gridImportKwh==null&&homeP.dynamicCostEur==null)){
-		homeP=parseObj(g("statistics.home.month_json"));
+	var homeM=parseObj(g("statistics.home.month_json"));
+	// Nur auf Monat fallen, wenn Periode wirklich dieser Monat ist oder period_json fehlt/leer.
+	if(!homeP||typeof homeP!=="object"||(Object.keys(homeP).length===0)){
+		homeP=periodId==="this_month"?homeM:homeP||{};
+	}else if(homeP.period&&homeP.period!==periodId&&periodId==="this_month"){
+		homeP=homeM;
 	}
 	var mobT=parseObj(g("statistics.mobility.today_json"));
 	var mobP=parseObj(g("statistics.mobility.period_json"));
-	if(!mobP||(mobP.period==null&&mobP.homeGridKwh==null&&mobP.evTotalCostEur==null)){
-		mobP=parseObj(g("statistics.mobility.month_json"));
+	var mobM=parseObj(g("statistics.mobility.month_json"));
+	if(!mobP||typeof mobP!=="object"||(Object.keys(mobP).length===0)){
+		mobP=periodId==="this_month"?mobM:mobP||{};
+	}else if(mobP.period&&mobP.period!==periodId&&periodId==="this_month"){
+		mobP=mobM;
 	}
+	// Stale: period_json noch alter Zeitraum → Titel aus period_id-Option, Daten erst nach Tick.
+	var opts=parseArr(g("statistics.period_options_json"));
+	var periodLabel=periodId;
+	for(var oi=0;oi<opts.length;oi++){
+		if(opts[oi]&&opts[oi].id===periodId){periodLabel=opts[oi].labelDe||periodId;break;}
+	}
+	if(homeP&&homeP.period&&homeP.period!==periodId){
+		homeP={period:periodId,periodLabelDe:periodLabel,reasonDe:"Zeitraum wird berechnet…"};
+	}
+	if(mobP&&mobP.period&&mobP.period!==periodId){
+		mobP={period:periodId,periodLabelDe:periodLabel,reasonDe:"Zeitraum wird berechnet…"};
+	}
+	if(!homeP.periodLabelDe)homeP.periodLabelDe=periodLabel;
+	if(!mobP.periodLabelDe)mobP.periodLabelDe=periodLabel;
 	var pending=parseArr(g("statistics.public_charge.pending_json"));
+	var periodReady=homeP&&homeP.period===periodId&&homeP.savingsVsFixedEur!=null;
 	var hT=savingsHero(num(g("statistics.home.today_savings_vs_fixed_eur"))!=null?num(g("statistics.home.today_savings_vs_fixed_eur")):num(homeT.savingsVsFixedEur));
-	var hP=savingsHero(num(g("statistics.home.period_savings_vs_fixed_eur"))!=null?num(g("statistics.home.period_savings_vs_fixed_eur")):(num(homeP.savingsVsFixedEur)!=null?num(homeP.savingsVsFixedEur):num(g("statistics.home.month_savings_vs_fixed_eur"))));
+	var hP=periodReady
+		?savingsHero(num(g("statistics.home.period_savings_vs_fixed_eur"))!=null?num(g("statistics.home.period_savings_vs_fixed_eur")):num(homeP.savingsVsFixedEur))
+		:savingsHero(homeP&&homeP.savingsVsFixedEur!=null?homeP.savingsVsFixedEur:null);
 	var mT=savingsHero(num(g("statistics.mobility.today_savings_vs_ice_eur"))!=null?num(g("statistics.mobility.today_savings_vs_ice_eur")):num(mobT.savingsVsIceEur));
-	var mP=savingsHero(num(g("statistics.mobility.period_savings_vs_ice_eur"))!=null?num(g("statistics.mobility.period_savings_vs_ice_eur")):(num(mobP.savingsVsIceEur)!=null?num(mobP.savingsVsIceEur):num(g("statistics.mobility.month_savings_vs_ice_eur"))));
+	var mobReady=mobP&&mobP.period===periodId&&mobP.savingsVsIceEur!=null;
+	var mP=mobReady
+		?savingsHero(num(g("statistics.mobility.period_savings_vs_ice_eur"))!=null?num(g("statistics.mobility.period_savings_vs_ice_eur")):num(mobP.savingsVsIceEur))
+		:savingsHero(mobP&&mobP.savingsVsIceEur!=null?mobP.savingsVsIceEur:null);
 	var pendingNote=pending.length
 		? (pending.length+" offene Schnellader-Session(s) — Rechnung unter statistics.public_charge.submit_request (JSON: kwh, eur).")
 		: "Keine offenen Schnellader-Sessions.";
@@ -2778,7 +2808,8 @@ function setVisState(id,val){
 	try{
 		var v=findVis();
 		if(v&&v.conn&&typeof v.conn.setState==="function"){
-			v.conn.setState(id,val);
+			try{v.conn.setState(id,{val:val,ack:false});}
+			catch(e0){v.conn.setState(id,val);}
 			return true;
 		}
 	}catch(e1){}

@@ -682,9 +682,13 @@ function isStatisticsRelatedState(relativeId) {
 }
 exports.isStatisticsRelatedState = isStatisticsRelatedState;
 async function handleStatisticsStateChange(host, relativeId, val, ack) {
-    if (relativeId === ensure_states_1.STATISTICS_STATES.periodId && !ack) {
+    // period_id: VIS kann mit ack:true schreiben — trotzdem neu rechnen.
+    if (relativeId === ensure_states_1.STATISTICS_STATES.periodId) {
         const normalized = (0, period_1.normalizePeriodId)(val, "this_month");
-        await host.setStateAsync(ensure_states_1.STATISTICS_STATES.periodId, { val: normalized, ack: true });
+        const cur = await host.getStateAsync(ensure_states_1.STATISTICS_STATES.periodId);
+        if (cur?.val !== normalized || cur?.ack !== true) {
+            await host.setStateAsync(ensure_states_1.STATISTICS_STATES.periodId, { val: normalized, ack: true });
+        }
         await tickStatistics(host);
         return true;
     }

@@ -674,7 +674,12 @@ class Ems extends utils.Adapter {
 				return;
 			}
 			const { isStatisticsRelatedState, handleStatisticsStateChange } = await import("./statistics/index.js");
-			if (isStatisticsRelatedState(rel) && (rel.endsWith("public_charge.submit_request") || rel.endsWith("adjust_request"))) {
+			if (
+				isStatisticsRelatedState(rel) &&
+				(rel.endsWith("public_charge.submit_request") ||
+					rel.endsWith("adjust_request") ||
+					rel === "statistics.period_id")
+			) {
 				await handleStatisticsStateChange(
 					this as unknown as Parameters<typeof handleStatisticsStateChange>[0],
 					rel,

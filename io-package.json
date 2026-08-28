@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.350",
+		"version": "0.1.351",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.351": {
+				"en": "Fix statistics period switch: period_id changes now trigger recalculation immediately.",
+				"de": "Fix Statistik-Zeitraum: period_id-Wechsel löst sofort Neuberechnung aus."
+			},
 			"0.1.350": {
 				"en": "Statistics period selector: last 7 days, months, quarters, years; VIS dropdown writes period_id.",
 				"de": "Statistik Zeitraum-Auswahl: letzte 7 Tage, Monate, Quartale, Jahre; VIS-Dropdown schreibt period_id."

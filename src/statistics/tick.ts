@@ -882,9 +882,13 @@ export async function handleStatisticsStateChange(
 	val: unknown,
 	ack: boolean,
 ): Promise<boolean> {
-	if (relativeId === STATISTICS_STATES.periodId && !ack) {
+	// period_id: VIS kann mit ack:true schreiben — trotzdem neu rechnen.
+	if (relativeId === STATISTICS_STATES.periodId) {
 		const normalized = normalizePeriodId(val, "this_month");
-		await host.setStateAsync(STATISTICS_STATES.periodId, { val: normalized, ack: true });
+		const cur = await host.getStateAsync(STATISTICS_STATES.periodId);
+		if (cur?.val !== normalized || cur?.ack !== true) {
+			await host.setStateAsync(STATISTICS_STATES.periodId, { val: normalized, ack: true });
+		}
 		await tickStatistics(host);
 		return true;
 	}

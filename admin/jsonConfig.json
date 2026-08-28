@@ -897,7 +897,7 @@
 				},
 				"wb_evcc_session_energy_kwh_state": {
 					"type": "objectId",
-					"label": "Geladene Energie der Sitzung (kWh)",
+					"label": "Geladene Energie der Sitzung (EVCC liefert Wh — EMS spiegelt kWh)",
 					"types": [
 						"state"
 					],
@@ -10425,7 +10425,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Reporting — keine Steuerung. Haus: Tibber-Tageskosten (Mapping + optionale Monatsgebühren aus Tarif-Tab) vs. Festtarif/Verivox (Arbeitspreis + Grundpreis hier — alles inbegriffen, nichts umbauen). Mobilität: E-Auto vs. Verbrenner."
+					"text": "Reporting — keine Steuerung. Haus: Tibber-Tageskosten (Mapping + optionale Monatsgebühren aus Tarif-Tab) vs. Festtarif/Verivox (Arbeitspreis + Grundpreis hier — alles inbegriffen, nichts umbauen). Mobilität: E-Auto vs. Verbrenner. Korrektur/Startwerte: State <code>ems.0.statistics.adjust_request</code> (JSON, ack:false) — z. B. <code>{\"resetToday\":true}</code>, <code>{\"resetMonth\":true}</code>, <code>{\"mobility\":{\"homeGridKwh\":0.854,\"homeGridCostEur\":0.12}}</code>. Antwort in <code>statistics.adjust_ack_de</code>."
 				},
 				"statistics_enabled": {
 					"type": "checkbox",
@@ -10620,7 +10620,7 @@
 				},
 				"statistics_wallbox_session_energy_kwh_state": {
 					"type": "objectId",
-					"label": "Session Energie kWh (Override)",
+					"label": "Session Energie kWh (Override — leer = EMS EVCC-Spiegel)",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,

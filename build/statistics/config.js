@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.statisticsConfigFromAdapter = void 0;
+const ensure_evcc_states_1 = require("../addons/wallbox/ensure_evcc_states");
 const state_util_1 = require("../ems_light/state_util");
 function configRecord(config) {
     return config && typeof config === "object" ? config : {};
@@ -46,7 +47,9 @@ function statisticsConfigFromAdapter(config) {
         iceLPer100Km: numField(c, "statistics_ice_l_per_100km", null),
         evConsumptionKwhPer100StateId: strField(c, "statistics_ev_consumption_kwh_per_100_state"),
         evConsumptionFallbackKwhPer100: numField(c, "statistics_ev_consumption_fallback_kwh_per_100", null),
-        wallboxSessionEnergyKwhStateId: strField(c, "statistics_wallbox_session_energy_kwh_state", strField(c, "wb_evcc_session_energy_kwh_state")),
+        wallboxSessionEnergyKwhStateId: strField(c, "statistics_wallbox_session_energy_kwh_state") ||
+            ensure_evcc_states_1.WALLBOX_EVCC_STATES.sessionEnergyKwh ||
+            strField(c, "wb_evcc_session_energy_kwh_state"),
         wallboxSessionPricePerKwhStateId: strField(c, "statistics_wallbox_session_price_per_kwh_state", strField(c, "wb_evcc_session_price_per_kwh_state")),
         wallboxConnectedStateId: strField(c, "statistics_wallbox_connected_state", strField(c, "wb_evcc_connected_state")),
         vehicleSocPctStateId: strField(c, "statistics_vehicle_soc_pct_state", strField(c, "wb_evcc_vehicle_soc_pct_state")),

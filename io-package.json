@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.339",
+		"version": "0.1.340",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.340": {
+				"en": "Statistics: fix EVCC session energy Wh→kWh; new statistics.adjust_request state to reset or seed today/month values (JSON ack:false).",
+				"de": "Statistik: EVCC Session Wh→kWh korrigiert; neuer State statistics.adjust_request zum Zurücksetzen oder Startwerte setzen (JSON ack:false)."
+			},
 			"0.1.339": {
 				"en": "Battery night discharge: use overnight SOC low (not nearest morning sample after recharge) so avg kWh matches real discharge.",
 				"de": "Battery-Nachtentladung: Tiefst-SOC in der Nacht (nicht nächster Morgen-SOC nach Ladebeginn) — Ø-kWh entspricht der realen Entladung."

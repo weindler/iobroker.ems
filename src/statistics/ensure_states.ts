@@ -18,6 +18,8 @@ export const STATISTICS_STATES = {
 	publicPendingJson: `${STATISTICS_BASE}.public_charge.pending_json`,
 	publicSubmitRequest: `${STATISTICS_BASE}.public_charge.submit_request`,
 	publicSubmitAckDe: `${STATISTICS_BASE}.public_charge.submit_ack_de`,
+	adjustRequest: `${STATISTICS_BASE}.adjust_request`,
+	adjustAckDe: `${STATISTICS_BASE}.adjust_ack_de`,
 } as const;
 
 function numState(id: string, name: string, unit?: string) {
@@ -103,5 +105,19 @@ export async function ensureStatisticsStateTree(host: StateHost): Promise<void> 
 			setDefaultIfEmpty: true,
 		},
 		strState(STATISTICS_STATES.publicSubmitAckDe, "Schnellader-Rechnung Bestätigung (DE)"),
+		{
+			id: STATISTICS_STATES.adjustRequest,
+			common: {
+				name: "Statistik korrigieren / Startwerte (JSON ack:false)",
+				type: "string",
+				role: "text",
+				read: true,
+				write: true,
+				def: "",
+			},
+			defaultVal: "",
+			setDefaultIfEmpty: true,
+		},
+		strState(STATISTICS_STATES.adjustAckDe, "Statistik Korrektur Bestätigung (DE)"),
 	]);
 }

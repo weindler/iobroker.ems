@@ -82,6 +82,26 @@ export function energyCounterDeltaKwh(
 	return { deltaKwh: round3(current - previous), newBaseline: current };
 }
 
+/**
+ * EVCC status.sessionEnergy = Wh; EMS addons.wallbox.evcc.session_energy_kwh = kWh.
+ * Statistik muss Wh→kWh, wenn direkt auf EVCC gemappt wird.
+ */
+export function normalizeWallboxSessionEnergyKwh(
+	stateId: string,
+	raw: number | null,
+): number | null {
+	if (raw === null || !Number.isFinite(raw)) return null;
+	const id = stateId.trim();
+	if (!id) return round3(raw);
+	if (/session_energy_kwh/i.test(id)) {
+		return round3(raw);
+	}
+	if (/sessionenergy/i.test(id)) {
+		return round3(raw / 1000);
+	}
+	return round3(raw);
+}
+
 /** Leistung × Preis über dt → Kostenanteil. priceCtPerKwh, powerW Import. */
 export function integrateImportCostEur(input: {
 	importPowerW: number | null;

@@ -8,7 +8,9 @@ import {
 	resolveEvKwhPer100,
 	savingsVsFixedEur,
 	tibberDayCostEur,
+	normalizeWallboxSessionEnergyKwh,
 } from "./compute.js";
+import { applyStatisticsAdjust, parseStatisticsAdjustSubmit } from "./adjust.js";
 import { statisticsConfigFromAdapter } from "./config.js";
 import { applyPublicInvoice, openPublicChargeSession, parsePublicInvoiceSubmit } from "./public_charge.js";
 
@@ -54,6 +56,20 @@ describe("statistics compute", () => {
 		const d = energyCounterDeltaKwh(100, 2);
 		assert.equal(d.deltaKwh, 0);
 		assert.equal(d.newBaseline, 2);
+	});
+
+	it("converts EVCC sessionEnergy Wh to kWh for statistics", () => {
+		assert.equal(
+			normalizeWallboxSessionEnergyKwh("evcc.0.status.sessionEnergy", 854),
+			0.854,
+		);
+		assert.equal(
+			normalizeWallboxSessionEnergyKwh(
+				"ems.0.addons.wallbox.evcc.session_energy_kwh",
+				0.854,
+			),
+			0.854,
+		);
 	});
 
 	it("integrates import cost from power × Tibber", () => {
@@ -108,5 +124,76 @@ describe("statistics public charge", () => {
 		const out = applyPublicInvoice([s], { kwh: 40 }, "2026-08-20T12:00:00.000Z");
 		assert.match(out.ackDe, /unvollständig/);
 		assert.equal(out.sessions[0]!.status, "pending_invoice");
+	});
+});
+
+describe("statistics adjust", () => {
+	it("resetToday clears day and runtime", () => {
+		const now = new Date("2026-08-28T14:00:00");
+		const persist = {
+			version: 1 as const,
+			generatedAt: "",
+			days: {
+				"2026-08-28": {
+					dateKey: "2026-08-28",
+					home: { dateKey: "2026-08-28", gridImportKwh: 999 } as never,
+					mobility: { dateKey: "2026-08-28", homeGridKwh: 853 } as never,
+					publicSessions: [],
+				},
+			},
+			runtime: {
+				dateKey: "2026-08-28",
+				lastTickMs: 1,
+				gridImportEnergyBaselineKwh: 1,
+				gridExportEnergyBaselineKwh: null,
+				integratedDynamicCostEur: 0,
+				integratedGridImportKwhFromPower: 0,
+				wallboxSessionEnergyBaselineKwh: 853,
+				homePvKwh: 0,
+				homeGridKwh: 853,
+				homePvCostEur: 0,
+				homeGridCostEur: 100,
+				lastVehicleSocPct: null,
+				lastWallboxConnected: null,
+			},
+		};
+		const submit = parseStatisticsAdjustSubmit({ resetToday: true });
+		assert.ok(submit);
+		const out = applyStatisticsAdjust(persist, submit!, now);
+		assert.equal(out.persist.days["2026-08-28"], undefined);
+		assert.equal(out.persist.runtime.homeGridKwh, 0);
+		assert.match(out.ackDe, /zurückgesetzt/);
+	});
+
+	it("seeds mobility start values for today", () => {
+		const now = new Date("2026-08-28T14:00:00");
+		const persist = {
+			version: 1 as const,
+			generatedAt: "",
+			days: {},
+			runtime: {
+				dateKey: "2026-08-28",
+				lastTickMs: null,
+				gridImportEnergyBaselineKwh: null,
+				gridExportEnergyBaselineKwh: null,
+				integratedDynamicCostEur: 0,
+				integratedGridImportKwhFromPower: 0,
+				wallboxSessionEnergyBaselineKwh: 853,
+				homePvKwh: 0,
+				homeGridKwh: 853,
+				homePvCostEur: 0,
+				homeGridCostEur: 100,
+				lastVehicleSocPct: null,
+				lastWallboxConnected: null,
+			},
+		};
+		const submit = parseStatisticsAdjustSubmit({
+			mobility: { homeGridKwh: 0.854, homeGridCostEur: 0.12 },
+		});
+		assert.ok(submit);
+		const out = applyStatisticsAdjust(persist, submit!, now);
+		assert.equal(out.persist.runtime.homeGridKwh, 0.854);
+		assert.equal(out.persist.runtime.homeGridCostEur, 0.12);
+		assert.equal(out.persist.runtime.wallboxSessionEnergyBaselineKwh, null);
 	});
 });

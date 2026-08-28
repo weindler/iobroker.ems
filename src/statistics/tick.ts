@@ -11,6 +11,7 @@ import {
 	iceCostForKm,
 	integrateImportCostEur,
 	localDateKey,
+	normalizeWallboxSessionEnergyKwh,
 	resolveEvKwhPer100,
 	resolveFuelPriceEurPerL,
 	savingsVsFixedEur,
@@ -33,6 +34,7 @@ import {
 	parsePublicInvoiceSubmit,
 	pendingPublicKwh,
 } from "./public_charge";
+import { applyStatisticsAdjust, parseStatisticsAdjustSubmit } from "./adjust";
 import type {
 	HouseCompareSummary,
 	MobilityCompareSummary,
@@ -197,6 +199,21 @@ async function handlePublicSubmit(host: StatisticsHost, persist: StatisticsPersi
 	host.log?.info?.(`statistics public charge: ${result.ackDe}`);
 }
 
+async function handleAdjustSubmit(host: StatisticsHost, persist: StatisticsPersist, now: Date): Promise<void> {
+	const st = await host.getStateAsync(STATISTICS_STATES.adjustRequest);
+	if (!st || st.ack === true) return;
+	const submit = parseStatisticsAdjustSubmit(st.val);
+	await host.setStateAsync(STATISTICS_STATES.adjustRequest, { val: "", ack: true });
+	if (!submit) {
+		await setIfChanged(host, STATISTICS_STATES.adjustAckDe, "Ungültiges JSON.");
+		return;
+	}
+	const result = applyStatisticsAdjust(persist, submit, now);
+	persistDirty = true;
+	await setIfChanged(host, STATISTICS_STATES.adjustAckDe, result.ackDe);
+	host.log?.info?.(`statistics adjust: ${result.ackDe}`);
+}
+
 /**
  * Ein Statistik-Tick — nur Reporting. Keine Gerätewrites, kein Planner-Eingriff.
  */
@@ -207,6 +224,7 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 	rolloverRuntimeIfNeeded(persist, dateKey);
 
 	await handlePublicSubmit(host, persist, now);
+	await handleAdjustSubmit(host, persist, now);
 
 	if (!cfg.enabled) {
 		await setIfChanged(host, STATISTICS_STATES.enabled, false);
@@ -248,7 +266,9 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 		readForeignNum(host, cfg.gridRewardsCreditEurStateId),
 		readForeignNum(host, cfg.fuelPriceEurPerLStateId),
 		readForeignNum(host, cfg.evConsumptionKwhPer100StateId),
-		readForeignNum(host, cfg.wallboxSessionEnergyKwhStateId),
+		readForeignNum(host, cfg.wallboxSessionEnergyKwhStateId).then((raw) =>
+			normalizeWallboxSessionEnergyKwh(cfg.wallboxSessionEnergyKwhStateId, raw),
+		),
 		readForeignNum(host, cfg.wallboxSessionPricePerKwhStateId),
 		readForeignBool(host, cfg.wallboxConnectedStateId),
 		readForeignNum(host, cfg.vehicleSocPctStateId),
@@ -551,7 +571,11 @@ export function __resetStatisticsForTest(): void {
 }
 
 export function isStatisticsRelatedState(relativeId: string): boolean {
-	return relativeId === STATISTICS_STATES.publicSubmitRequest || relativeId.startsWith("statistics.");
+	return (
+		relativeId === STATISTICS_STATES.publicSubmitRequest ||
+		relativeId === STATISTICS_STATES.adjustRequest ||
+		relativeId.startsWith("statistics.")
+	);
 }
 
 export async function handleStatisticsStateChange(
@@ -560,7 +584,11 @@ export async function handleStatisticsStateChange(
 	val: unknown,
 	ack: boolean,
 ): Promise<boolean> {
-	if (relativeId !== STATISTICS_STATES.publicSubmitRequest || ack) {
+	if (
+		(relativeId !== STATISTICS_STATES.publicSubmitRequest &&
+			relativeId !== STATISTICS_STATES.adjustRequest) ||
+		ack
+	) {
 		return relativeId.startsWith("statistics.");
 	}
 	void val;

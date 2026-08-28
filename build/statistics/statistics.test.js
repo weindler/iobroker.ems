@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const strict_1 = __importDefault(require("node:assert/strict"));
 const node_test_1 = require("node:test");
 const compute_js_1 = require("./compute.js");
+const adjust_js_1 = require("./adjust.js");
 const config_js_1 = require("./config.js");
 const public_charge_js_1 = require("./public_charge.js");
 (0, node_test_1.describe)("statistics compute", () => {
@@ -46,6 +47,10 @@ const public_charge_js_1 = require("./public_charge.js");
         const d = (0, compute_js_1.energyCounterDeltaKwh)(100, 2);
         strict_1.default.equal(d.deltaKwh, 0);
         strict_1.default.equal(d.newBaseline, 2);
+    });
+    (0, node_test_1.it)("converts EVCC sessionEnergy Wh to kWh for statistics", () => {
+        strict_1.default.equal((0, compute_js_1.normalizeWallboxSessionEnergyKwh)("evcc.0.status.sessionEnergy", 854), 0.854);
+        strict_1.default.equal((0, compute_js_1.normalizeWallboxSessionEnergyKwh)("ems.0.addons.wallbox.evcc.session_energy_kwh", 0.854), 0.854);
     });
     (0, node_test_1.it)("integrates import cost from power × Tibber", () => {
         const r = (0, compute_js_1.integrateImportCostEur)({
@@ -95,5 +100,74 @@ const public_charge_js_1 = require("./public_charge.js");
         const out = (0, public_charge_js_1.applyPublicInvoice)([s], { kwh: 40 }, "2026-08-20T12:00:00.000Z");
         strict_1.default.match(out.ackDe, /unvollständig/);
         strict_1.default.equal(out.sessions[0].status, "pending_invoice");
+    });
+});
+(0, node_test_1.describe)("statistics adjust", () => {
+    (0, node_test_1.it)("resetToday clears day and runtime", () => {
+        const now = new Date("2026-08-28T14:00:00");
+        const persist = {
+            version: 1,
+            generatedAt: "",
+            days: {
+                "2026-08-28": {
+                    dateKey: "2026-08-28",
+                    home: { dateKey: "2026-08-28", gridImportKwh: 999 },
+                    mobility: { dateKey: "2026-08-28", homeGridKwh: 853 },
+                    publicSessions: [],
+                },
+            },
+            runtime: {
+                dateKey: "2026-08-28",
+                lastTickMs: 1,
+                gridImportEnergyBaselineKwh: 1,
+                gridExportEnergyBaselineKwh: null,
+                integratedDynamicCostEur: 0,
+                integratedGridImportKwhFromPower: 0,
+                wallboxSessionEnergyBaselineKwh: 853,
+                homePvKwh: 0,
+                homeGridKwh: 853,
+                homePvCostEur: 0,
+                homeGridCostEur: 100,
+                lastVehicleSocPct: null,
+                lastWallboxConnected: null,
+            },
+        };
+        const submit = (0, adjust_js_1.parseStatisticsAdjustSubmit)({ resetToday: true });
+        strict_1.default.ok(submit);
+        const out = (0, adjust_js_1.applyStatisticsAdjust)(persist, submit, now);
+        strict_1.default.equal(out.persist.days["2026-08-28"], undefined);
+        strict_1.default.equal(out.persist.runtime.homeGridKwh, 0);
+        strict_1.default.match(out.ackDe, /zurückgesetzt/);
+    });
+    (0, node_test_1.it)("seeds mobility start values for today", () => {
+        const now = new Date("2026-08-28T14:00:00");
+        const persist = {
+            version: 1,
+            generatedAt: "",
+            days: {},
+            runtime: {
+                dateKey: "2026-08-28",
+                lastTickMs: null,
+                gridImportEnergyBaselineKwh: null,
+                gridExportEnergyBaselineKwh: null,
+                integratedDynamicCostEur: 0,
+                integratedGridImportKwhFromPower: 0,
+                wallboxSessionEnergyBaselineKwh: 853,
+                homePvKwh: 0,
+                homeGridKwh: 853,
+                homePvCostEur: 0,
+                homeGridCostEur: 100,
+                lastVehicleSocPct: null,
+                lastWallboxConnected: null,
+            },
+        };
+        const submit = (0, adjust_js_1.parseStatisticsAdjustSubmit)({
+            mobility: { homeGridKwh: 0.854, homeGridCostEur: 0.12 },
+        });
+        strict_1.default.ok(submit);
+        const out = (0, adjust_js_1.applyStatisticsAdjust)(persist, submit, now);
+        strict_1.default.equal(out.persist.runtime.homeGridKwh, 0.854);
+        strict_1.default.equal(out.persist.runtime.homeGridCostEur, 0.12);
+        strict_1.default.equal(out.persist.runtime.wallboxSessionEnergyBaselineKwh, null);
     });
 });

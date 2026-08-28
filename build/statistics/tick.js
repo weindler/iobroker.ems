@@ -7,6 +7,7 @@ const compute_1 = require("./compute");
 const ensure_states_1 = require("./ensure_states");
 const persist_1 = require("./persist");
 const public_charge_1 = require("./public_charge");
+const adjust_1 = require("./adjust");
 async function setIfChanged(host, id, val) {
     const cur = await host.getStateAsync(id);
     if (cur?.val === val)
@@ -139,6 +140,21 @@ async function handlePublicSubmit(host, persist, now) {
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.publicSubmitAckDe, result.ackDe);
     host.log?.info?.(`statistics public charge: ${result.ackDe}`);
 }
+async function handleAdjustSubmit(host, persist, now) {
+    const st = await host.getStateAsync(ensure_states_1.STATISTICS_STATES.adjustRequest);
+    if (!st || st.ack === true)
+        return;
+    const submit = (0, adjust_1.parseStatisticsAdjustSubmit)(st.val);
+    await host.setStateAsync(ensure_states_1.STATISTICS_STATES.adjustRequest, { val: "", ack: true });
+    if (!submit) {
+        await setIfChanged(host, ensure_states_1.STATISTICS_STATES.adjustAckDe, "Ungültiges JSON.");
+        return;
+    }
+    const result = (0, adjust_1.applyStatisticsAdjust)(persist, submit, now);
+    persistDirty = true;
+    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.adjustAckDe, result.ackDe);
+    host.log?.info?.(`statistics adjust: ${result.ackDe}`);
+}
 /**
  * Ein Statistik-Tick — nur Reporting. Keine Gerätewrites, kein Planner-Eingriff.
  */
@@ -148,6 +164,7 @@ async function tickStatistics(host, now = new Date()) {
     const persist = await loadPersist(host);
     rolloverRuntimeIfNeeded(persist, dateKey);
     await handlePublicSubmit(host, persist, now);
+    await handleAdjustSubmit(host, persist, now);
     if (!cfg.enabled) {
         await setIfChanged(host, ensure_states_1.STATISTICS_STATES.enabled, false);
         await setIfChanged(host, ensure_states_1.STATISTICS_STATES.reasonDe, "Statistik deaktiviert (Admin).");
@@ -170,7 +187,7 @@ async function tickStatistics(host, now = new Date()) {
         readForeignNum(host, cfg.gridRewardsCreditEurStateId),
         readForeignNum(host, cfg.fuelPriceEurPerLStateId),
         readForeignNum(host, cfg.evConsumptionKwhPer100StateId),
-        readForeignNum(host, cfg.wallboxSessionEnergyKwhStateId),
+        readForeignNum(host, cfg.wallboxSessionEnergyKwhStateId).then((raw) => (0, compute_1.normalizeWallboxSessionEnergyKwh)(cfg.wallboxSessionEnergyKwhStateId, raw)),
         readForeignNum(host, cfg.wallboxSessionPricePerKwhStateId),
         readForeignBool(host, cfg.wallboxConnectedStateId),
         readForeignNum(host, cfg.vehicleSocPctStateId),
@@ -428,11 +445,15 @@ function __resetStatisticsForTest() {
 }
 exports.__resetStatisticsForTest = __resetStatisticsForTest;
 function isStatisticsRelatedState(relativeId) {
-    return relativeId === ensure_states_1.STATISTICS_STATES.publicSubmitRequest || relativeId.startsWith("statistics.");
+    return (relativeId === ensure_states_1.STATISTICS_STATES.publicSubmitRequest ||
+        relativeId === ensure_states_1.STATISTICS_STATES.adjustRequest ||
+        relativeId.startsWith("statistics."));
 }
 exports.isStatisticsRelatedState = isStatisticsRelatedState;
 async function handleStatisticsStateChange(host, relativeId, val, ack) {
-    if (relativeId !== ensure_states_1.STATISTICS_STATES.publicSubmitRequest || ack) {
+    if ((relativeId !== ensure_states_1.STATISTICS_STATES.publicSubmitRequest &&
+        relativeId !== ensure_states_1.STATISTICS_STATES.adjustRequest) ||
+        ack) {
         return relativeId.startsWith("statistics.");
     }
     void val;

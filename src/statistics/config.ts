@@ -1,3 +1,4 @@
+import { WALLBOX_EVCC_STATES } from "../addons/wallbox/ensure_evcc_states";
 import { asBool, asNum } from "../ems_light/state_util";
 import type { IceFuelType } from "./types";
 
@@ -84,11 +85,10 @@ export function statisticsConfigFromAdapter(config: unknown): StatisticsAdminCon
 		iceLPer100Km: numField(c, "statistics_ice_l_per_100km", null),
 		evConsumptionKwhPer100StateId: strField(c, "statistics_ev_consumption_kwh_per_100_state"),
 		evConsumptionFallbackKwhPer100: numField(c, "statistics_ev_consumption_fallback_kwh_per_100", null),
-		wallboxSessionEnergyKwhStateId: strField(
-			c,
-			"statistics_wallbox_session_energy_kwh_state",
+		wallboxSessionEnergyKwhStateId:
+			strField(c, "statistics_wallbox_session_energy_kwh_state") ||
+			WALLBOX_EVCC_STATES.sessionEnergyKwh ||
 			strField(c, "wb_evcc_session_energy_kwh_state"),
-		),
 		wallboxSessionPricePerKwhStateId: strField(
 			c,
 			"statistics_wallbox_session_price_per_kwh_state",

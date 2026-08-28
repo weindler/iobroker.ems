@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sumMobilityDays = exports.sumHomeDays = exports.emptyMobilityDay = exports.emptyHomeDay = exports.estimateKwhFromSocRise = exports.iceCostForKm = exports.estimateKmFromEvKwh = exports.resolveFuelPriceEurPerL = exports.resolveEvKwhPer100 = exports.localDateKey = exports.daysInMonth = exports.integrateImportCostEur = exports.energyCounterDeltaKwh = exports.savingsVsFixedEur = exports.tibberDayCostEur = exports.dailyBaseShareEur = exports.fixedTariffCostEur = void 0;
+exports.sumMobilityDays = exports.sumHomeDays = exports.emptyMobilityDay = exports.emptyHomeDay = exports.estimateKwhFromSocRise = exports.iceCostForKm = exports.estimateKmFromEvKwh = exports.resolveFuelPriceEurPerL = exports.resolveEvKwhPer100 = exports.localDateKey = exports.daysInMonth = exports.integrateImportCostEur = exports.normalizeWallboxSessionEnergyKwh = exports.energyCounterDeltaKwh = exports.savingsVsFixedEur = exports.tibberDayCostEur = exports.dailyBaseShareEur = exports.fixedTariffCostEur = void 0;
 function round3(n) {
     return Math.round(n * 1000) / 1000;
 }
@@ -62,6 +62,25 @@ function energyCounterDeltaKwh(previous, current) {
     return { deltaKwh: round3(current - previous), newBaseline: current };
 }
 exports.energyCounterDeltaKwh = energyCounterDeltaKwh;
+/**
+ * EVCC status.sessionEnergy = Wh; EMS addons.wallbox.evcc.session_energy_kwh = kWh.
+ * Statistik muss Wh→kWh, wenn direkt auf EVCC gemappt wird.
+ */
+function normalizeWallboxSessionEnergyKwh(stateId, raw) {
+    if (raw === null || !Number.isFinite(raw))
+        return null;
+    const id = stateId.trim();
+    if (!id)
+        return round3(raw);
+    if (/session_energy_kwh/i.test(id)) {
+        return round3(raw);
+    }
+    if (/sessionenergy/i.test(id)) {
+        return round3(raw / 1000);
+    }
+    return round3(raw);
+}
+exports.normalizeWallboxSessionEnergyKwh = normalizeWallboxSessionEnergyKwh;
 /** Leistung × Preis über dt → Kostenanteil. priceCtPerKwh, powerW Import. */
 function integrateImportCostEur(input) {
     if (input.importPowerW === null ||

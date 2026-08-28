@@ -2638,16 +2638,28 @@ function renderStatistics(){
 	var pendingNote=pending.length
 		? (pending.length+" offene Schnellader-Session(s) — Rechnung unter statistics.public_charge.submit_request (JSON: kwh, eur).")
 		: "Keine offenen Schnellader-Sessions.";
+	var homeMonthNote=txt(homeM.reasonDe,"");
+	if(homeM.gridRewardsSource==="estimate_month"||homeM.gridRewardsSource==="estimate_day"){
+		var billHint="Abrechnung: ems.0.statistics.adjust_request → {\"date\":\"YYYY-MM-letzterTag\",\"home\":{\"gridRewardsCreditEur\":X.XX},\"noteDe\":\"Tibber-Abrechnung …\"} (ack:false). Details: Admin → Statistik.";
+		homeMonthNote=homeMonthNote&&homeMonthNote!=="—"?(homeMonthNote+" "+billHint):billHint;
+	}else if(homeM.gridRewardsSource==="billing"){
+		var doneHint="Rewards aus Tibber-Abrechnung (adjust_request).";
+		homeMonthNote=homeMonthNote&&homeMonthNote!=="—"?(homeMonthNote+" "+doneHint):doneHint;
+	}
 	grid.innerHTML=
 		statsCard("Haus heute · Tibber vs. Festtarif",hT,homeStatsRows(homeT),txt(homeT.reasonDe,""))
-		+statsCard("Haus Monat · Tibber vs. Festtarif",hM,homeStatsRows(homeM),txt(homeM.reasonDe,""))
+		+statsCard("Haus Monat · Tibber vs. Festtarif",hM,homeStatsRows(homeM),homeMonthNote)
 		+statsCard("Mobilität heute · vs. Verbrenner",mT,mobStatsRows(mobT),txt(mobT.reasonDe,""))
 		+statsCard("Mobilität Monat · vs. Verbrenner",mM,mobStatsRows(mobM),txt(mobM.reasonDe,""))
 		+statsCard("Schnellader",{cls:pending.length?"warn":"neu",txt:pending.length?String(pending.length)+" offen":"keine"},[
 			["Pending kWh",fmtKwhStats(mobT.publicPendingKwh)],
 			["Ack",txt(g("statistics.public_charge.submit_ack_de"),"—")]
 		],pendingNote,"ems-stats-pending");
-	if(reasonEl)reasonEl.textContent=txt(g("statistics.reason_de"),"Statistik: Mappings im Admin-Tab „Statistik“ setzen.");
+	var reasonBase=txt(g("statistics.reason_de"),"Statistik: Mappings im Admin-Tab „Statistik“ setzen.");
+	if(homeM.gridRewardsSource==="estimate_month"||homeM.gridRewardsSource==="estimate_day"){
+		reasonBase+=" Rewards noch Schätzung — Abrechnung per statistics.adjust_request (Admin → Statistik → Manuell/Abrechnung).";
+	}
+	if(reasonEl)reasonEl.textContent=reasonBase;
 }
 
 var emsViewMode="ops";

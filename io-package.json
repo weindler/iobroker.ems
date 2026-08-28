@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.348",
+		"version": "0.1.349",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.349": {
+				"en": "Statistics: clear Admin help for adjust_request Grid Rewards billing; VIS hint while rewards are estimate.",
+				"de": "Statistik: klare Admin-Hilfe für adjust_request Grid-Rewards-Abrechnung; VIS-Hinweis solange Rewards Schätzung."
+			},
 			"0.1.348": {
 				"en": "Statistics Grid Rewards: optional admin toggle, day+month HA mappings (estimate), billing via adjust_request; VIS shows Schätzung/Abrechnung on home grid.",
 				"de": "Statistik Grid Rewards: optional Admin-Haken, Tag+Monat HA-Mappings (Schätzung), Abrechnung per adjust_request; VIS zeigt Schätzung/Abrechnung bei Heim Netz."

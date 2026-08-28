@@ -195,13 +195,14 @@ exports.siblingTibberConsumptionState = siblingTibberConsumptionState;
 function resolveHomeMonthFromTibber(input) {
     const fromDaily = sumTibberJsonDailyForMonth(input.jsonDailyRaw, input.dateKey);
     if (fromDaily.gridImportKwh !== null || fromDaily.dynamicCostEur !== null) {
-        return { ...fromDaily, addTibberFeesToDynamic: fromDaily.dynamicCostEur !== null, source: "jsonDaily" };
+        // totalCost aus Tibber enthält bereits Tages-/Monatsanteile — nicht noch Tarif-Tab addieren.
+        return { ...fromDaily, addTibberFeesToDynamic: false, source: "jsonDaily" };
     }
     const fromMonthly = pickTibberJsonMonthlyForMonth(input.jsonMonthlyRaw, input.dateKey);
     if (fromMonthly.gridImportKwh !== null || fromMonthly.dynamicCostEur !== null) {
         return {
             ...fromMonthly,
-            addTibberFeesToDynamic: fromMonthly.dynamicCostEur !== null,
+            addTibberFeesToDynamic: false,
             source: "jsonMonthly",
         };
     }

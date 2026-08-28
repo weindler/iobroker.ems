@@ -10488,7 +10488,7 @@
 				"statistics_tibber_json_daily_state": {
 					"type": "objectId",
 					"label": "Tibber jsonDaily (Haus Monat)",
-					"help": "tibberlink.…Consumption.jsonDaily — Voraussetzung: Tibberlink → HomesList → „Historische Verbrauchsdaten abrufen“ (statsActive) + Spalte „Tage“ ≥31. Leer [] = Historie aus. jsonMonthly/currentMonthConsumption werden automatisch vom selben Home gelesen.",
+					"help": "tibberlink.…Consumption.jsonDaily — totalCost ist komplett (inkl. Gebühren). Tarif-Tab-Gebühren werden dafür nicht nochmal addiert. Voraussetzung: Historische Verbrauchsdaten + Tage≥31.",
 					"types": ["state"],
 					"xs": 12,
 					"sm": 12,

@@ -102,6 +102,17 @@ const public_charge_js_1 = require("./public_charge.js");
         });
         strict_1.default.equal(daily.source, "jsonMonthly");
         strict_1.default.equal(daily.gridImportKwh, 120);
+        strict_1.default.equal(daily.addTibberFeesToDynamic, false);
+        const fromJsonDaily = (0, compute_js_1.resolveHomeMonthFromTibber)({
+            dateKey: "2026-08-28",
+            jsonDailyRaw: [{ from: "2026-08-01", consumption: 1, totalCost: 0.5 }],
+            jsonMonthlyRaw: [],
+            currentMonthKwh: null,
+            mappedMonthKwh: null,
+            mappedMonthDynamicEur: null,
+        });
+        strict_1.default.equal(fromJsonDaily.addTibberFeesToDynamic, false);
+        strict_1.default.equal(fromJsonDaily.dynamicCostEur, 0.5);
         const kwhOnly = (0, compute_js_1.resolveHomeMonthFromTibber)({
             dateKey: "2026-08-28",
             jsonDailyRaw: [],

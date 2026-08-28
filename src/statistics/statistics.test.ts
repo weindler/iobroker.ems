@@ -135,6 +135,18 @@ describe("statistics compute", () => {
 		});
 		assert.equal(daily.source, "jsonMonthly");
 		assert.equal(daily.gridImportKwh, 120);
+		assert.equal(daily.addTibberFeesToDynamic, false);
+
+		const fromJsonDaily = resolveHomeMonthFromTibber({
+			dateKey: "2026-08-28",
+			jsonDailyRaw: [{ from: "2026-08-01", consumption: 1, totalCost: 0.5 }],
+			jsonMonthlyRaw: [],
+			currentMonthKwh: null,
+			mappedMonthKwh: null,
+			mappedMonthDynamicEur: null,
+		});
+		assert.equal(fromJsonDaily.addTibberFeesToDynamic, false);
+		assert.equal(fromJsonDaily.dynamicCostEur, 0.5);
 
 		const kwhOnly = resolveHomeMonthFromTibber({
 			dateKey: "2026-08-28",

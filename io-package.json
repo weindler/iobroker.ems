@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.346",
+		"version": "0.1.347",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.347": {
+				"en": "Home month from Tibber jsonDaily: do not add tariff-tab fees twice (totalCost is complete).",
+				"de": "Haus Monat aus Tibber jsonDaily: Tarif-Tab-Gebühren nicht doppelt (totalCost ist komplett)."
+			},
 			"0.1.346": {
 				"en": "Home month: Tibber jsonDaily empty hint; fallback jsonMonthly + currentMonthConsumption from same home path.",
 				"de": "Haus Monat: Hinweis wenn jsonDaily leer; Fallback jsonMonthly + currentMonthConsumption vom selben Home."

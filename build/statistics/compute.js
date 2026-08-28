@@ -277,6 +277,7 @@ function sumMobilityDays(days, monthFinalize) {
     else if (totalChargeKwh > 0 && evKwhPer100) {
         estimatedKm = estimateKmFromEvKwh(totalChargeKwh, evKwhPer100);
     }
+    const displayFuelPrice = monthRepresentativeFuelPriceEurPerL(days, evKwhPer100, fuelPrice);
     let iceCost = sum((d) => d.iceCostEur);
     let iceLiters = sum((d) => d.iceLiters);
     const iceLPer100 = monthFinalize?.iceLPer100Km ?? null;
@@ -303,7 +304,7 @@ function sumMobilityDays(days, monthFinalize) {
         evKwhPer100KmSource: monthFinalize?.evKwhPer100KmSource ?? lastWithSrc?.evKwhPer100KmSource ?? null,
         estimatedKm,
         iceLiters,
-        iceFuelPriceEurPerL: fuelPrice,
+        iceFuelPriceEurPerL: displayFuelPrice,
         iceCostEur: iceCost,
         savingsVsIceEur: evCost !== null && iceCost !== null ? round2(iceCost - evCost) : null,
     };
@@ -328,6 +329,21 @@ function mobilityDayEstimatedKm(d, evKwhPer100) {
         return d.estimatedKm;
     const charge = mobilityDayChargeKwh(d);
     return estimateKmFromEvKwh(charge > 0 ? charge : null, evKwhPer100);
+}
+function monthRepresentativeFuelPriceEurPerL(days, evKwhPer100, defaultFuelPriceEurPerL) {
+    let weightedSum = 0;
+    let totalKm = 0;
+    for (const d of days) {
+        const fp = d.iceFuelPriceEurPerL ?? defaultFuelPriceEurPerL;
+        const km = mobilityDayEstimatedKm(d, evKwhPer100);
+        if (fp !== null && fp > 0 && km !== null && km > 0) {
+            weightedSum += fp * km;
+            totalKm += km;
+        }
+    }
+    if (totalKm > 0)
+        return round3(weightedSum / totalKm);
+    return defaultFuelPriceEurPerL ?? [...days].reverse().find((d) => d.iceFuelPriceEurPerL)?.iceFuelPriceEurPerL ?? null;
 }
 function mobilityDayIceCost(d, evKwhPer100, iceLPer100Km, defaultFuelPriceEurPerL) {
     if (d.iceCostEur !== null) {

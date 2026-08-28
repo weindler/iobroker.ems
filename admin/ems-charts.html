@@ -2628,7 +2628,8 @@ function renderStatistics(){
 			["Schnellader (bezahlt)",fmtKwhStats(mobM.publicInvoicedKwh)],
 			["km ≈",mobM.estimatedKm!=null?String(mobM.estimatedKm).replace(".",","):"—"],
 			["E-Auto",fmtEur(mobM.evTotalCostEur)],
-			["Verbrenner",fmtEur(mobM.iceCostEur)]
+			["Verbrenner",fmtEur(mobM.iceCostEur)],
+			["Sprit €/l",mobM.fuelPriceEurPerL!=null?Number(mobM.fuelPriceEurPerL).toFixed(3).replace(".",","):"—"]
 		],txt(mobM.reasonDe,""))
 		+statsCard("Schnellader",{cls:pending.length?"warn":"neu",txt:pending.length?String(pending.length)+" offen":"keine"},[
 			["Pending kWh",fmtKwhStats(mobT.publicPendingKwh)],

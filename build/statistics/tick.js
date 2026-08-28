@@ -485,9 +485,15 @@ async function tickStatistics(host, now = new Date()) {
         homeTodaySum.savingsVsFixedEur !== null
             ? `Haus heute Tibber vs. Festtarif: ${homeTodaySum.savingsVsFixedEur.toFixed(2)} €.`
             : reasonsHome[0] ?? "Haus: Daten unvollständig.",
+        homeMonthSum.savingsVsFixedEur !== null
+            ? `Haus Monat: ${homeMonthSum.savingsVsFixedEur.toFixed(2)} €.`
+            : "",
         mobTodaySum.savingsVsIceEur !== null
             ? `Mobilität heute vs. Verbrenner: ${mobTodaySum.savingsVsIceEur.toFixed(2)} €.`
             : reasonsMob[0] ?? "Mobilität: Daten unvollständig.",
+        mobMonthSum.savingsVsIceEur !== null
+            ? `Mobilität Monat: ${mobMonthSum.savingsVsIceEur.toFixed(2)} €.`
+            : "",
         openSessions > 0 ? `${openSessions} Schnellader-Session(s) ohne Rechnung.` : "",
     ]
         .filter(Boolean)

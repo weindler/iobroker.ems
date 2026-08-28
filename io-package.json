@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.343",
+		"version": "0.1.344",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.344": {
+				"en": "Statistics VIS: month mobility card shows fuel €/l; summary line includes month savings.",
+				"de": "Statistik VIS: Monatskarte Mobilität zeigt Sprit €/l; Zusammenfassung enthält Monats-Ersparnis."
+			},
 			"0.1.343": {
 				"en": "Statistics adjust_request: {\"refresh\":true} recalculates month mobility without empty/invalid JSON.",
 				"de": "Statistik adjust_request: {\"refresh\":true} berechnet Monats-Mobilität neu — kein leeres JSON nötig."

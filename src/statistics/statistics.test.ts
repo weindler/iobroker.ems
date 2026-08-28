@@ -9,6 +9,7 @@ import {
 	savingsVsFixedEur,
 	tibberDayCostEur,
 	normalizeWallboxSessionEnergyKwh,
+	sumMobilityDays,
 } from "./compute.js";
 import { applyStatisticsAdjust, parseStatisticsAdjustSubmit } from "./adjust.js";
 import { statisticsConfigFromAdapter } from "./config.js";
@@ -97,6 +98,115 @@ describe("statistics compute", () => {
 		const r = iceCostForKm({ km: 100, lPer100Km: 7, fuelPriceEurPerL: 1.8 });
 		assert.equal(r.liters, 7);
 		assert.equal(r.costEur, 12.6);
+	});
+
+	it("month mobility sums kWh/costs from seeded days without evTotalCostEur", () => {
+		const month = sumMobilityDays(
+			[
+				{
+					dateKey: "2026-08-11",
+					homePvKwh: 1.5,
+					homeGridKwh: 0.4,
+					homePvCostEur: 0.19,
+					homeGridCostEur: 0.06,
+					gridRewardsCreditEur: null,
+					publicInvoicedKwh: null,
+					publicInvoicedEur: null,
+					publicPendingKwh: null,
+					evTotalCostEur: null,
+					evKwhPer100Km: null,
+					evKwhPer100KmSource: null,
+					estimatedKm: null,
+					iceLiters: null,
+					iceFuelPriceEurPerL: null,
+					iceCostEur: null,
+					savingsVsIceEur: null,
+				},
+				{
+					dateKey: "2026-08-12",
+					homePvKwh: 0.6,
+					homeGridKwh: 8.2,
+					homePvCostEur: 0.19,
+					homeGridCostEur: 2.42,
+					gridRewardsCreditEur: null,
+					publicInvoicedKwh: null,
+					publicInvoicedEur: null,
+					publicPendingKwh: null,
+					evTotalCostEur: null,
+					evKwhPer100Km: null,
+					evKwhPer100KmSource: null,
+					estimatedKm: null,
+					iceLiters: null,
+					iceFuelPriceEurPerL: null,
+					iceCostEur: null,
+					savingsVsIceEur: null,
+				},
+			],
+			{
+				evKwhPer100: 18.3,
+				fuelPriceEurPerL: 2.16,
+				iceLPer100Km: 7,
+				evKwhPer100KmSource: "ford_hass",
+			},
+		);
+		assert.equal(month.homeGridKwh, 8.6);
+		assert.equal(month.evTotalCostEur, 2.86);
+		assert.ok((month.estimatedKm ?? 0) > 50);
+		assert.ok((month.iceCostEur ?? 0) > 5);
+		assert.ok((month.savingsVsIceEur ?? 0) > 0);
+	});
+
+	it("month mobility mixes live day with evTotalCostEur and seeded days without", () => {
+		const month = sumMobilityDays(
+			[
+				{
+					dateKey: "2026-08-12",
+					homePvKwh: 0.6,
+					homeGridKwh: 8.2,
+					homePvCostEur: 0.19,
+					homeGridCostEur: 2.42,
+					gridRewardsCreditEur: null,
+					publicInvoicedKwh: null,
+					publicInvoicedEur: null,
+					publicPendingKwh: null,
+					evTotalCostEur: null,
+					evKwhPer100Km: null,
+					evKwhPer100KmSource: null,
+					estimatedKm: null,
+					iceLiters: null,
+					iceFuelPriceEurPerL: null,
+					iceCostEur: null,
+					savingsVsIceEur: null,
+				},
+				{
+					dateKey: "2026-08-28",
+					homePvKwh: 0.6,
+					homeGridKwh: 0.2,
+					homePvCostEur: 0.08,
+					homeGridCostEur: 0.03,
+					gridRewardsCreditEur: null,
+					publicInvoicedKwh: null,
+					publicInvoicedEur: null,
+					publicPendingKwh: null,
+					evTotalCostEur: 0.12,
+					evKwhPer100Km: 18.3,
+					evKwhPer100KmSource: "ford_hass",
+					estimatedKm: 4.7,
+					iceLiters: 0.33,
+					iceFuelPriceEurPerL: 2.16,
+					iceCostEur: 0.61,
+					savingsVsIceEur: 0.49,
+				},
+			],
+			{
+				evKwhPer100: 18.3,
+				fuelPriceEurPerL: 2.16,
+				iceLPer100Km: 7,
+				evKwhPer100KmSource: "ford_hass",
+			},
+		);
+		assert.equal(month.evTotalCostEur, 2.73);
+		assert.ok((month.estimatedKm ?? 0) > 45);
 	});
 });
 

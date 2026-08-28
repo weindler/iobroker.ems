@@ -76,6 +76,107 @@ const public_charge_js_1 = require("./public_charge.js");
         strict_1.default.equal(r.liters, 7);
         strict_1.default.equal(r.costEur, 12.6);
     });
+    (0, node_test_1.it)("month mobility sums kWh/costs from seeded days without evTotalCostEur", () => {
+        const month = (0, compute_js_1.sumMobilityDays)([
+            {
+                dateKey: "2026-08-11",
+                homePvKwh: 1.5,
+                homeGridKwh: 0.4,
+                homePvCostEur: 0.19,
+                homeGridCostEur: 0.06,
+                gridRewardsCreditEur: null,
+                publicInvoicedKwh: null,
+                publicInvoicedEur: null,
+                publicPendingKwh: null,
+                evTotalCostEur: null,
+                evKwhPer100Km: null,
+                evKwhPer100KmSource: null,
+                estimatedKm: null,
+                iceLiters: null,
+                iceFuelPriceEurPerL: null,
+                iceCostEur: null,
+                savingsVsIceEur: null,
+            },
+            {
+                dateKey: "2026-08-12",
+                homePvKwh: 0.6,
+                homeGridKwh: 8.2,
+                homePvCostEur: 0.19,
+                homeGridCostEur: 2.42,
+                gridRewardsCreditEur: null,
+                publicInvoicedKwh: null,
+                publicInvoicedEur: null,
+                publicPendingKwh: null,
+                evTotalCostEur: null,
+                evKwhPer100Km: null,
+                evKwhPer100KmSource: null,
+                estimatedKm: null,
+                iceLiters: null,
+                iceFuelPriceEurPerL: null,
+                iceCostEur: null,
+                savingsVsIceEur: null,
+            },
+        ], {
+            evKwhPer100: 18.3,
+            fuelPriceEurPerL: 2.16,
+            iceLPer100Km: 7,
+            evKwhPer100KmSource: "ford_hass",
+        });
+        strict_1.default.equal(month.homeGridKwh, 8.6);
+        strict_1.default.equal(month.evTotalCostEur, 2.86);
+        strict_1.default.ok((month.estimatedKm ?? 0) > 50);
+        strict_1.default.ok((month.iceCostEur ?? 0) > 5);
+        strict_1.default.ok((month.savingsVsIceEur ?? 0) > 0);
+    });
+    (0, node_test_1.it)("month mobility mixes live day with evTotalCostEur and seeded days without", () => {
+        const month = (0, compute_js_1.sumMobilityDays)([
+            {
+                dateKey: "2026-08-12",
+                homePvKwh: 0.6,
+                homeGridKwh: 8.2,
+                homePvCostEur: 0.19,
+                homeGridCostEur: 2.42,
+                gridRewardsCreditEur: null,
+                publicInvoicedKwh: null,
+                publicInvoicedEur: null,
+                publicPendingKwh: null,
+                evTotalCostEur: null,
+                evKwhPer100Km: null,
+                evKwhPer100KmSource: null,
+                estimatedKm: null,
+                iceLiters: null,
+                iceFuelPriceEurPerL: null,
+                iceCostEur: null,
+                savingsVsIceEur: null,
+            },
+            {
+                dateKey: "2026-08-28",
+                homePvKwh: 0.6,
+                homeGridKwh: 0.2,
+                homePvCostEur: 0.08,
+                homeGridCostEur: 0.03,
+                gridRewardsCreditEur: null,
+                publicInvoicedKwh: null,
+                publicInvoicedEur: null,
+                publicPendingKwh: null,
+                evTotalCostEur: 0.12,
+                evKwhPer100Km: 18.3,
+                evKwhPer100KmSource: "ford_hass",
+                estimatedKm: 4.7,
+                iceLiters: 0.33,
+                iceFuelPriceEurPerL: 2.16,
+                iceCostEur: 0.61,
+                savingsVsIceEur: 0.49,
+            },
+        ], {
+            evKwhPer100: 18.3,
+            fuelPriceEurPerL: 2.16,
+            iceLPer100Km: 7,
+            evKwhPer100KmSource: "ford_hass",
+        });
+        strict_1.default.equal(month.evTotalCostEur, 2.73);
+        strict_1.default.ok((month.estimatedKm ?? 0) > 45);
+    });
 });
 (0, node_test_1.describe)("statistics public charge", () => {
     (0, node_test_1.it)("parses invoice submit and applies to latest pending", () => {

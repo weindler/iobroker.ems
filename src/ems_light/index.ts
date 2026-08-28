@@ -208,6 +208,7 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 		await adapter.subscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE);
 		await adapter.subscribeStatesAsync(INTENT_WALLBOX_REQUEST_STATE);
 		await adapter.subscribeStatesAsync("statistics.public_charge.submit_request");
+		await adapter.subscribeStatesAsync("statistics.adjust_request");
 	} catch (e) {
 		adapter.log.warn(`EMS-Light state subscribe: ${e}`);
 	}

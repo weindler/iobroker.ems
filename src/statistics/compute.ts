@@ -268,34 +268,159 @@ export function sumHomeDays(days: HomeDayTotals[]): HomeDayTotals {
 	};
 }
 
-export function sumMobilityDays(days: MobilityDayTotals[]): MobilityDayTotals {
+export function sumMobilityDays(
+	days: MobilityDayTotals[],
+	monthFinalize?: {
+		evKwhPer100: number | null;
+		fuelPriceEurPerL: number | null;
+		iceLPer100Km: number | null;
+		evKwhPer100KmSource: MobilityDayTotals["evKwhPer100KmSource"];
+	},
+): MobilityDayTotals {
 	const dateKey = days[0]?.dateKey ?? "";
 	const sum = (pick: (d: MobilityDayTotals) => number | null): number | null => {
 		const vals = days.map(pick).filter((v): v is number => v !== null);
 		if (!vals.length) return null;
 		return round3(vals.reduce((a, b) => a + b, 0));
 	};
-	const evCost = sum((d) => d.evTotalCostEur);
-	const iceCost = sum((d) => d.iceCostEur);
+	const homePvKwh = sum((d) => d.homePvKwh);
+	const homeGridKwh = sum((d) => d.homeGridKwh);
+	const homePvCostEur = sum((d) => d.homePvCostEur);
+	const homeGridCostEur = sum((d) => d.homeGridCostEur);
+	const publicInvoicedKwh = sum((d) => d.publicInvoicedKwh);
+	const publicInvoicedEur = sum((d) => d.publicInvoicedEur);
 	const lastWithSrc = [...days].reverse().find((d) => d.evKwhPer100KmSource);
+
+	const evCostParts = days
+		.map((d) => mobilityDayEvCostEur(d))
+		.filter((v): v is number => v !== null);
+	let evCost = evCostParts.length
+		? round2(evCostParts.reduce((a, b) => a + b, 0))
+		: null;
+	if (evCost === null) {
+		const parts = [homePvCostEur, homeGridCostEur, publicInvoicedEur].filter(
+			(v): v is number => v !== null,
+		);
+		if (parts.length > 0) {
+			evCost = round2(parts.reduce((a, b) => a + b, 0));
+		}
+	}
+
+	const totalChargeKwh =
+		(homePvKwh ?? 0) + (homeGridKwh ?? 0) + (publicInvoicedKwh ?? 0);
+	const evKwhPer100 =
+		monthFinalize?.evKwhPer100 ?? lastWithSrc?.evKwhPer100Km ?? null;
+	const fuelPrice =
+		monthFinalize?.fuelPriceEurPerL ?? lastWithSrc?.iceFuelPriceEurPerL ?? null;
+
+	let estimatedKm: number | null = null;
+	const kmParts = days
+		.map((d) => mobilityDayEstimatedKm(d, evKwhPer100))
+		.filter((v): v is number => v !== null);
+	if (kmParts.length > 0) {
+		estimatedKm = round3(kmParts.reduce((a, b) => a + b, 0));
+	} else if (totalChargeKwh > 0 && evKwhPer100) {
+		estimatedKm = estimateKmFromEvKwh(totalChargeKwh, evKwhPer100);
+	}
+
+	let iceCost = sum((d) => d.iceCostEur);
+	let iceLiters = sum((d) => d.iceLiters);
+	if (iceCost === null && estimatedKm !== null && monthFinalize?.iceLPer100Km) {
+		const ice = iceCostForKm({
+			km: estimatedKm,
+			lPer100Km: monthFinalize.iceLPer100Km,
+			fuelPriceEurPerL: fuelPrice,
+		});
+		iceCost = ice.costEur;
+		iceLiters = ice.liters;
+	}
+
 	return {
 		dateKey,
-		homePvKwh: sum((d) => d.homePvKwh),
-		homeGridKwh: sum((d) => d.homeGridKwh),
-		homePvCostEur: sum((d) => d.homePvCostEur),
-		homeGridCostEur: sum((d) => d.homeGridCostEur),
+		homePvKwh,
+		homeGridKwh,
+		homePvCostEur,
+		homeGridCostEur,
 		gridRewardsCreditEur: sum((d) => d.gridRewardsCreditEur),
-		publicInvoicedKwh: sum((d) => d.publicInvoicedKwh),
-		publicInvoicedEur: sum((d) => d.publicInvoicedEur),
+		publicInvoicedKwh,
+		publicInvoicedEur,
 		publicPendingKwh: sum((d) => d.publicPendingKwh),
 		evTotalCostEur: evCost,
-		evKwhPer100Km: lastWithSrc?.evKwhPer100Km ?? null,
-		evKwhPer100KmSource: lastWithSrc?.evKwhPer100KmSource ?? null,
-		estimatedKm: sum((d) => d.estimatedKm),
-		iceLiters: sum((d) => d.iceLiters),
-		iceFuelPriceEurPerL: lastWithSrc?.iceFuelPriceEurPerL ?? null,
+		evKwhPer100Km: evKwhPer100,
+		evKwhPer100KmSource:
+			monthFinalize?.evKwhPer100KmSource ?? lastWithSrc?.evKwhPer100KmSource ?? null,
+		estimatedKm,
+		iceLiters,
+		iceFuelPriceEurPerL: fuelPrice,
 		iceCostEur: iceCost,
 		savingsVsIceEur:
 			evCost !== null && iceCost !== null ? round2(iceCost - evCost) : null,
 	};
+}
+
+function mobilityDayChargeKwh(d: MobilityDayTotals): number {
+	return (d.homePvKwh ?? 0) + (d.homeGridKwh ?? 0) + (d.publicInvoicedKwh ?? 0);
+}
+
+function mobilityDayEvCostEur(d: MobilityDayTotals): number | null {
+	if (d.evTotalCostEur !== null) return d.evTotalCostEur;
+	const parts = [d.homePvCostEur, d.homeGridCostEur, d.publicInvoicedEur].filter(
+		(v): v is number => v !== null,
+	);
+	if (!parts.length) return null;
+	const raw =
+		parts.reduce((a, b) => a + b, 0) - (d.gridRewardsCreditEur ?? 0);
+	if (mobilityDayChargeKwh(d) <= 0 && (d.publicInvoicedEur ?? 0) <= 0) return null;
+	return round2(Math.max(0, raw));
+}
+
+function mobilityDayEstimatedKm(
+	d: MobilityDayTotals,
+	evKwhPer100: number | null,
+): number | null {
+	if (d.estimatedKm !== null) return d.estimatedKm;
+	const charge = mobilityDayChargeKwh(d);
+	return estimateKmFromEvKwh(charge > 0 ? charge : null, evKwhPer100);
+}
+
+/** Nach manuellem Seed: €/km/Verbrenner aus kWh+Kosten ableiten. */
+export function finalizeMobilityDayTotals(
+	mob: MobilityDayTotals,
+	input: {
+		evKwhPer100: number | null;
+		fuelPriceEurPerL: number | null;
+		iceLPer100Km: number | null;
+		evKwhPer100KmSource?: MobilityDayTotals["evKwhPer100KmSource"];
+	},
+): void {
+	const totalChargeKwh =
+		(mob.homePvKwh ?? 0) + (mob.homeGridKwh ?? 0) + (mob.publicInvoicedKwh ?? 0);
+	const evCostRaw =
+		(mob.homePvCostEur ?? 0) +
+		(mob.homeGridCostEur ?? 0) +
+		(mob.publicInvoicedEur ?? 0) -
+		(mob.gridRewardsCreditEur ?? 0);
+	if (totalChargeKwh > 0 || (mob.publicInvoicedEur ?? 0) > 0) {
+		mob.evTotalCostEur = round2(Math.max(0, evCostRaw));
+	} else {
+		mob.evTotalCostEur = null;
+	}
+	mob.evKwhPer100Km = input.evKwhPer100;
+	mob.evKwhPer100KmSource = input.evKwhPer100KmSource ?? null;
+	mob.estimatedKm = estimateKmFromEvKwh(
+		totalChargeKwh > 0 ? totalChargeKwh : null,
+		input.evKwhPer100,
+	);
+	const ice = iceCostForKm({
+		km: mob.estimatedKm,
+		lPer100Km: input.iceLPer100Km,
+		fuelPriceEurPerL: input.fuelPriceEurPerL,
+	});
+	mob.iceLiters = ice.liters;
+	mob.iceCostEur = ice.costEur;
+	mob.iceFuelPriceEurPerL = input.fuelPriceEurPerL;
+	mob.savingsVsIceEur =
+		mob.evTotalCostEur !== null && ice.costEur !== null
+			? round2(ice.costEur - mob.evTotalCostEur)
+			: null;
 }

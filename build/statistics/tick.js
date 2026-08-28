@@ -140,7 +140,7 @@ async function handlePublicSubmit(host, persist, now) {
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.publicSubmitAckDe, result.ackDe);
     host.log?.info?.(`statistics public charge: ${result.ackDe}`);
 }
-async function handleAdjustSubmit(host, persist, now) {
+async function handleAdjustSubmit(host, persist, now, cfg) {
     const st = await host.getStateAsync(ensure_states_1.STATISTICS_STATES.adjustRequest);
     if (!st || st.ack === true)
         return;
@@ -151,7 +151,32 @@ async function handleAdjustSubmit(host, persist, now) {
         return;
     }
     const result = (0, adjust_1.applyStatisticsAdjust)(persist, submit, now);
+    if (submit.mobility) {
+        const dateKey = submit.date ?? (0, compute_1.localDateKey)(now);
+        const day = persist.days[dateKey];
+        if (day) {
+            const [evConsMapped, fuelMapped] = await Promise.all([
+                readForeignNum(host, cfg.evConsumptionKwhPer100StateId),
+                readForeignNum(host, cfg.fuelPriceEurPerLStateId),
+            ]);
+            const evCons = (0, compute_1.resolveEvKwhPer100)({
+                mapped: evConsMapped,
+                fallback: cfg.evConsumptionFallbackKwhPer100,
+            });
+            const fuelPrice = (0, compute_1.resolveFuelPriceEurPerL)({
+                mapped: fuelMapped,
+                fallback: cfg.fuelPriceFallbackEurPerL,
+            });
+            (0, compute_1.finalizeMobilityDayTotals)(day.mobility, {
+                evKwhPer100: evCons.value,
+                fuelPriceEurPerL: fuelPrice,
+                iceLPer100Km: cfg.iceLPer100Km,
+                evKwhPer100KmSource: evCons.source === "missing" ? null : evCons.source,
+            });
+        }
+    }
     persistDirty = true;
+    await flushPersist(host);
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.adjustAckDe, result.ackDe);
     host.log?.info?.(`statistics adjust: ${result.ackDe}`);
 }
@@ -164,7 +189,7 @@ async function tickStatistics(host, now = new Date()) {
     const persist = await loadPersist(host);
     rolloverRuntimeIfNeeded(persist, dateKey);
     await handlePublicSubmit(host, persist, now);
-    await handleAdjustSubmit(host, persist, now);
+    await handleAdjustSubmit(host, persist, now, cfg);
     if (!cfg.enabled) {
         await setIfChanged(host, ensure_states_1.STATISTICS_STATES.enabled, false);
         await setIfChanged(host, ensure_states_1.STATISTICS_STATES.reasonDe, "Statistik deaktiviert (Admin).");
@@ -397,7 +422,12 @@ async function tickStatistics(host, now = new Date()) {
     const monthHomes = monthDayKeys.map((k) => persist.days[k].home);
     const monthMobs = monthDayKeys.map((k) => persist.days[k].mobility);
     const homeMonth = (0, compute_1.sumHomeDays)(monthHomes);
-    const mobMonth = (0, compute_1.sumMobilityDays)(monthMobs);
+    const mobMonth = (0, compute_1.sumMobilityDays)(monthMobs, {
+        evKwhPer100: evCons.value,
+        fuelPriceEurPerL: fuelPrice,
+        iceLPer100Km: cfg.iceLPer100Km,
+        evKwhPer100KmSource: evCons.source === "missing" ? null : evCons.source,
+    });
     const openSessions = day.publicSessions.filter((s) => s.status === "pending_invoice").length;
     const homeTodaySum = buildHomeSummary("today", day.home, reasonsHome);
     const homeMonthSum = buildHomeSummary("month", homeMonth, reasonsHome);

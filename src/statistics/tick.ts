@@ -7,6 +7,7 @@ import {
 	estimateKmFromEvKwh,
 	dailyBaseShareEur,
 	fixedTariffCostEur,
+	finalizeMobilityDayTotals,
 	tibberDayCostEur,
 	iceCostForKm,
 	integrateImportCostEur,
@@ -199,7 +200,12 @@ async function handlePublicSubmit(host: StatisticsHost, persist: StatisticsPersi
 	host.log?.info?.(`statistics public charge: ${result.ackDe}`);
 }
 
-async function handleAdjustSubmit(host: StatisticsHost, persist: StatisticsPersist, now: Date): Promise<void> {
+async function handleAdjustSubmit(
+	host: StatisticsHost,
+	persist: StatisticsPersist,
+	now: Date,
+	cfg: StatisticsAdminConfig,
+): Promise<void> {
 	const st = await host.getStateAsync(STATISTICS_STATES.adjustRequest);
 	if (!st || st.ack === true) return;
 	const submit = parseStatisticsAdjustSubmit(st.val);
@@ -209,7 +215,32 @@ async function handleAdjustSubmit(host: StatisticsHost, persist: StatisticsPersi
 		return;
 	}
 	const result = applyStatisticsAdjust(persist, submit, now);
+	if (submit.mobility) {
+		const dateKey = submit.date ?? localDateKey(now);
+		const day = persist.days[dateKey];
+		if (day) {
+			const [evConsMapped, fuelMapped] = await Promise.all([
+				readForeignNum(host, cfg.evConsumptionKwhPer100StateId),
+				readForeignNum(host, cfg.fuelPriceEurPerLStateId),
+			]);
+			const evCons = resolveEvKwhPer100({
+				mapped: evConsMapped,
+				fallback: cfg.evConsumptionFallbackKwhPer100,
+			});
+			const fuelPrice = resolveFuelPriceEurPerL({
+				mapped: fuelMapped,
+				fallback: cfg.fuelPriceFallbackEurPerL,
+			});
+			finalizeMobilityDayTotals(day.mobility, {
+				evKwhPer100: evCons.value,
+				fuelPriceEurPerL: fuelPrice,
+				iceLPer100Km: cfg.iceLPer100Km,
+				evKwhPer100KmSource: evCons.source === "missing" ? null : evCons.source,
+			});
+		}
+	}
 	persistDirty = true;
+	await flushPersist(host);
 	await setIfChanged(host, STATISTICS_STATES.adjustAckDe, result.ackDe);
 	host.log?.info?.(`statistics adjust: ${result.ackDe}`);
 }
@@ -224,7 +255,7 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 	rolloverRuntimeIfNeeded(persist, dateKey);
 
 	await handlePublicSubmit(host, persist, now);
-	await handleAdjustSubmit(host, persist, now);
+	await handleAdjustSubmit(host, persist, now, cfg);
 
 	if (!cfg.enabled) {
 		await setIfChanged(host, STATISTICS_STATES.enabled, false);
@@ -508,7 +539,12 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 	const monthHomes = monthDayKeys.map((k) => persist.days[k]!.home);
 	const monthMobs = monthDayKeys.map((k) => persist.days[k]!.mobility);
 	const homeMonth = sumHomeDays(monthHomes);
-	const mobMonth = sumMobilityDays(monthMobs);
+	const mobMonth = sumMobilityDays(monthMobs, {
+		evKwhPer100: evCons.value,
+		fuelPriceEurPerL: fuelPrice,
+		iceLPer100Km: cfg.iceLPer100Km,
+		evKwhPer100KmSource: evCons.source === "missing" ? null : evCons.source,
+	});
 	const openSessions = day.publicSessions.filter((s) => s.status === "pending_invoice").length;
 
 	const homeTodaySum = buildHomeSummary("today", day.home, reasonsHome);

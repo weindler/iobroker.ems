@@ -44,6 +44,7 @@ function parseStatisticsAdjustSubmit(raw) {
             resetToday: o.resetToday === true,
             resetMonth: o.resetMonth === true,
             resetAll: o.resetAll === true,
+            refresh: o.refresh === true,
             home,
             mobility,
             noteDe: typeof o.noteDe === "string" ? o.noteDe.trim().slice(0, 200) : undefined,
@@ -123,10 +124,27 @@ function resetDay(persist, dateKey) {
         persist.runtime = (0, persist_1.emptyRuntime)(dateKey);
     }
 }
+function hasAdjustData(submit) {
+    if (submit.resetToday || submit.resetMonth || submit.resetAll)
+        return true;
+    if (submit.home && Object.values(submit.home).some((v) => v !== null && v !== undefined)) {
+        return true;
+    }
+    if (submit.mobility && Object.values(submit.mobility).some((v) => v !== null && v !== undefined)) {
+        return true;
+    }
+    return false;
+}
 /** Wendet manuelle Korrektur / Startwerte an — gibt neues Persist-Objekt bei resetAll. */
 function applyStatisticsAdjust(persist, submit, now) {
     const todayKey = (0, compute_1.localDateKey)(now);
     const dateKey = submit.date ?? todayKey;
+    if (submit.refresh && !hasAdjustData(submit)) {
+        return {
+            persist,
+            ackDe: submit.noteDe || "Statistik neu berechnet.",
+        };
+    }
     if (submit.resetAll) {
         const fresh = (0, persist_1.emptyPersist)(now);
         persist.days = fresh.days;

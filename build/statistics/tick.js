@@ -140,6 +140,33 @@ async function handlePublicSubmit(host, persist, now) {
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.publicSubmitAckDe, result.ackDe);
     host.log?.info?.(`statistics public charge: ${result.ackDe}`);
 }
+async function recalculateMonthMobilityDays(host, persist, now, cfg, refDateKey) {
+    const refKey = refDateKey ?? (0, compute_1.localDateKey)(now);
+    const evConsMapped = await readForeignNum(host, cfg.evConsumptionKwhPer100StateId);
+    const evCons = (0, compute_1.resolveEvKwhPer100)({
+        mapped: evConsMapped,
+        fallback: cfg.evConsumptionFallbackKwhPer100,
+    });
+    for (const key of monthKeys(refKey, persist.days)) {
+        const day = persist.days[key];
+        if (!day)
+            continue;
+        const mob = day.mobility;
+        const chargeKwh = (mob.homePvKwh ?? 0) + (mob.homeGridKwh ?? 0) + (mob.publicInvoicedKwh ?? 0);
+        if (chargeKwh <= 0 && !(mob.publicInvoicedEur ?? 0))
+            continue;
+        const fuelPrice = (0, compute_1.resolveSeedFuelPriceEurPerL)({
+            explicit: mob.iceFuelPriceEurPerL,
+            fallback: cfg.fuelPriceFallbackEurPerL,
+        });
+        (0, compute_1.finalizeMobilityDayTotals)(mob, {
+            evKwhPer100: evCons.value,
+            fuelPriceEurPerL: fuelPrice,
+            iceLPer100Km: cfg.iceLPer100Km,
+            evKwhPer100KmSource: evCons.source === "missing" ? null : evCons.source,
+        });
+    }
+}
 async function handleAdjustSubmit(host, persist, now, cfg) {
     const st = await host.getStateAsync(ensure_states_1.STATISTICS_STATES.adjustRequest);
     if (!st || st.ack === true)
@@ -151,8 +178,11 @@ async function handleAdjustSubmit(host, persist, now, cfg) {
         return;
     }
     const result = (0, adjust_1.applyStatisticsAdjust)(persist, submit, now);
-    if (submit.mobility) {
-        const dateKey = submit.date ?? (0, compute_1.localDateKey)(now);
+    const dateKey = submit.date ?? (0, compute_1.localDateKey)(now);
+    if (submit.refresh) {
+        await recalculateMonthMobilityDays(host, persist, now, cfg, dateKey);
+    }
+    else if (submit.mobility) {
         const day = persist.days[dateKey];
         if (day) {
             const evConsMapped = await readForeignNum(host, cfg.evConsumptionKwhPer100StateId);

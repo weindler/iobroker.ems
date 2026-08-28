@@ -201,6 +201,39 @@ async function handlePublicSubmit(host: StatisticsHost, persist: StatisticsPersi
 	host.log?.info?.(`statistics public charge: ${result.ackDe}`);
 }
 
+async function recalculateMonthMobilityDays(
+	host: StatisticsHost,
+	persist: StatisticsPersist,
+	now: Date,
+	cfg: StatisticsAdminConfig,
+	refDateKey?: string,
+): Promise<void> {
+	const refKey = refDateKey ?? localDateKey(now);
+	const evConsMapped = await readForeignNum(host, cfg.evConsumptionKwhPer100StateId);
+	const evCons = resolveEvKwhPer100({
+		mapped: evConsMapped,
+		fallback: cfg.evConsumptionFallbackKwhPer100,
+	});
+	for (const key of monthKeys(refKey, persist.days)) {
+		const day = persist.days[key];
+		if (!day) continue;
+		const mob = day.mobility;
+		const chargeKwh =
+			(mob.homePvKwh ?? 0) + (mob.homeGridKwh ?? 0) + (mob.publicInvoicedKwh ?? 0);
+		if (chargeKwh <= 0 && !(mob.publicInvoicedEur ?? 0)) continue;
+		const fuelPrice = resolveSeedFuelPriceEurPerL({
+			explicit: mob.iceFuelPriceEurPerL,
+			fallback: cfg.fuelPriceFallbackEurPerL,
+		});
+		finalizeMobilityDayTotals(mob, {
+			evKwhPer100: evCons.value,
+			fuelPriceEurPerL: fuelPrice,
+			iceLPer100Km: cfg.iceLPer100Km,
+			evKwhPer100KmSource: evCons.source === "missing" ? null : evCons.source,
+		});
+	}
+}
+
 async function handleAdjustSubmit(
 	host: StatisticsHost,
 	persist: StatisticsPersist,
@@ -216,8 +249,10 @@ async function handleAdjustSubmit(
 		return;
 	}
 	const result = applyStatisticsAdjust(persist, submit, now);
-	if (submit.mobility) {
-		const dateKey = submit.date ?? localDateKey(now);
+	const dateKey = submit.date ?? localDateKey(now);
+	if (submit.refresh) {
+		await recalculateMonthMobilityDays(host, persist, now, cfg, dateKey);
+	} else if (submit.mobility) {
 		const day = persist.days[dateKey];
 		if (day) {
 			const evConsMapped = await readForeignNum(host, cfg.evConsumptionKwhPer100StateId);

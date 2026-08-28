@@ -27,6 +27,8 @@ export type StatisticsAdjustSubmit = {
 		>
 	>;
 	noteDe?: string;
+	/** Nur neu berechnen (Monats-Mobilität aus gespeicherten Tagen) — kein Reset/Seed. */
+	refresh?: boolean;
 };
 
 function parseDateKey(raw: unknown): string | null {
@@ -69,6 +71,7 @@ export function parseStatisticsAdjustSubmit(raw: unknown): StatisticsAdjustSubmi
 			resetToday: o.resetToday === true,
 			resetMonth: o.resetMonth === true,
 			resetAll: o.resetAll === true,
+			refresh: o.refresh === true,
 			home,
 			mobility,
 			noteDe: typeof o.noteDe === "string" ? o.noteDe.trim().slice(0, 200) : undefined,
@@ -159,6 +162,17 @@ function resetDay(persist: StatisticsPersist, dateKey: string): void {
 	}
 }
 
+function hasAdjustData(submit: StatisticsAdjustSubmit): boolean {
+	if (submit.resetToday || submit.resetMonth || submit.resetAll) return true;
+	if (submit.home && Object.values(submit.home).some((v) => v !== null && v !== undefined)) {
+		return true;
+	}
+	if (submit.mobility && Object.values(submit.mobility).some((v) => v !== null && v !== undefined)) {
+		return true;
+	}
+	return false;
+}
+
 /** Wendet manuelle Korrektur / Startwerte an — gibt neues Persist-Objekt bei resetAll. */
 export function applyStatisticsAdjust(
 	persist: StatisticsPersist,
@@ -167,6 +181,13 @@ export function applyStatisticsAdjust(
 ): { persist: StatisticsPersist; ackDe: string } {
 	const todayKey = localDateKey(now);
 	const dateKey = submit.date ?? todayKey;
+
+	if (submit.refresh && !hasAdjustData(submit)) {
+		return {
+			persist,
+			ackDe: submit.noteDe || "Statistik neu berechnet.",
+		};
+	}
 
 	if (submit.resetAll) {
 		const fresh = emptyPersist(now);

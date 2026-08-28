@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.1.342",
+		"version": "0.1.343",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.1.343": {
+				"en": "Statistics adjust_request: {\"refresh\":true} recalculates month mobility without empty/invalid JSON.",
+				"de": "Statistik adjust_request: {\"refresh\":true} berechnet Monats-Mobilität neu — kein leeres JSON nötig."
+			},
 			"0.1.342": {
 				"en": "Statistics adjust_request: optional iceFuelPriceEurPerL per seeded day; seed uses admin fallback, not live Tankerkönig.",
 				"de": "Statistik adjust_request: optional iceFuelPriceEurPerL pro Tag; Seed nutzt Admin-Fallback, nicht Live-Tankerkönig."

@@ -450,4 +450,33 @@ describe("statistics adjust", () => {
 		const out = applyStatisticsAdjust(persist, submit!, now);
 		assert.equal(out.persist.days["2026-08-12"]?.mobility.iceFuelPriceEurPerL, 1.82);
 	});
+
+	it("refresh triggers recalculate without data change", () => {
+		const now = new Date("2026-08-28T14:00:00");
+		const persist = {
+			version: 1 as const,
+			generatedAt: "",
+			days: {},
+			runtime: {
+				dateKey: "2026-08-28",
+				lastTickMs: null,
+				gridImportEnergyBaselineKwh: null,
+				gridExportEnergyBaselineKwh: null,
+				integratedDynamicCostEur: 0,
+				integratedGridImportKwhFromPower: 0,
+				wallboxSessionEnergyBaselineKwh: null,
+				homePvKwh: 0,
+				homeGridKwh: 0,
+				homePvCostEur: 0,
+				homeGridCostEur: 0,
+				lastVehicleSocPct: null,
+				lastWallboxConnected: null,
+			},
+		};
+		const submit = parseStatisticsAdjustSubmit({ refresh: true });
+		assert.ok(submit);
+		assert.equal(submit!.refresh, true);
+		const out = applyStatisticsAdjust(persist, submit!, now);
+		assert.match(out.ackDe, /neu berechnet/);
+	});
 });

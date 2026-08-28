@@ -404,4 +404,32 @@ const public_charge_js_1 = require("./public_charge.js");
         const out = (0, adjust_js_1.applyStatisticsAdjust)(persist, submit, now);
         strict_1.default.equal(out.persist.days["2026-08-12"]?.mobility.iceFuelPriceEurPerL, 1.82);
     });
+    (0, node_test_1.it)("refresh triggers recalculate without data change", () => {
+        const now = new Date("2026-08-28T14:00:00");
+        const persist = {
+            version: 1,
+            generatedAt: "",
+            days: {},
+            runtime: {
+                dateKey: "2026-08-28",
+                lastTickMs: null,
+                gridImportEnergyBaselineKwh: null,
+                gridExportEnergyBaselineKwh: null,
+                integratedDynamicCostEur: 0,
+                integratedGridImportKwhFromPower: 0,
+                wallboxSessionEnergyBaselineKwh: null,
+                homePvKwh: 0,
+                homeGridKwh: 0,
+                homePvCostEur: 0,
+                homeGridCostEur: 0,
+                lastVehicleSocPct: null,
+                lastWallboxConnected: null,
+            },
+        };
+        const submit = (0, adjust_js_1.parseStatisticsAdjustSubmit)({ refresh: true });
+        strict_1.default.ok(submit);
+        strict_1.default.equal(submit.refresh, true);
+        const out = (0, adjust_js_1.applyStatisticsAdjust)(persist, submit, now);
+        strict_1.default.match(out.ackDe, /neu berechnet/);
+    });
 });

@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.2.3] – 2026-08-29
+
+### Fixed
+
+- **Admin-Konfiguration leer:** Verschachtelte Tabs (Allgemein/Geräte/EMS) rendern in ioBroker jsonConfig keinen Inhalt — wieder flache Top-Level-Tabs; `tabsStyle.flexWrap` bleibt für Umbruch bei vielen Tabs.
+
+---
+
 ## [0.2.2] – 2026-08-29
 
 ### Fixed

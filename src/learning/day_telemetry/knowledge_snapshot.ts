@@ -1,0 +1,105 @@
+/**
+ * Kompakter PlannerKnowledgeSnapshot + Content-Hash Dedup.
+ * Bewusst kleiner als voller UnifiedDayPlannerInput.
+ */
+
+import { createHash } from "node:crypto";
+import type { UnifiedDayPlannerInput } from "../../operator/daily_plan/unified/types";
+import { localDateKeyInTimezone } from "../../operator/time";
+import type { PlannerKnowledgeSnapshot } from "./types";
+
+function digestPresence(windows: Array<{ available: boolean; startIso: string; endIso: string }> | undefined): string | null {
+	if (!windows?.length) return null;
+	return windows
+		.map((w) => `${w.available ? 1 : 0}:${w.startIso}:${w.endIso}`)
+		.join("|")
+		.slice(0, 512);
+}
+
+/** Extrahiert minimalen Wissens-Snapshot aus Planner-Input. */
+export function buildPlannerKnowledgeSnapshot(
+	input: UnifiedDayPlannerInput,
+	tsIso: string,
+): Omit<PlannerKnowledgeSnapshot, "id"> {
+	const timezone = input.time?.timezone?.trim() || "Europe/Berlin";
+	const nowMs = Date.parse(input.time?.nowIso ?? tsIso);
+	const date =
+		Number.isFinite(nowMs) ? localDateKeyInTimezone(new Date(nowMs), timezone) : "";
+
+	const priceSlots: Array<[number, number]> = [];
+	for (const s of input.prices?.slots ?? []) {
+		const startMs = Date.parse(s.slot.startIso);
+		const ct = s.importCtPerKwh;
+		if (!Number.isFinite(startMs) || ct == null || !Number.isFinite(ct)) continue;
+		priceSlots.push([startMs, ct]);
+	}
+
+	const pvSlotKwh: Array<[number, number]> = [];
+	for (const s of input.pv?.slots ?? []) {
+		const startMs = Date.parse(s.slot.startIso);
+		const kwh = s.energyKwh;
+		if (!Number.isFinite(startMs) || kwh == null || !Number.isFinite(kwh)) continue;
+		pvSlotKwh.push([startMs, kwh]);
+	}
+
+	const climateUnits =
+		input.climate?.units.map((u) => ({
+			consumerId: u.unitId,
+			sharedPowerGroupId: u.sharedPowerGroupId?.trim() || null,
+			mandatory: u.mandatoryComfort === true,
+			mode: null as string | null,
+		})) ?? [];
+
+	return {
+		tsIso,
+		date,
+		timezone,
+		globalMode: input.globalMode ?? "",
+		contributionRevision: input.contributionRevision ?? null,
+		pvExpectedDayKwh: input.pv?.expectedDayEnergyKwh ?? null,
+		houseLoadExpectedDayKwh: input.houseLoad?.expectedDayEnergyKwh ?? null,
+		batterySocPct: input.battery?.socPct ?? null,
+		batteryCapacityKwh: input.battery?.usableCapacityKwh ?? null,
+		batteryNightReserveKwh: input.battery?.nightReserveKwh ?? null,
+		priceSlots,
+		pvSlotKwh,
+		wallboxRequiredEnergyKwh: input.wallbox?.requiredEnergyKwh ?? null,
+		wallboxDeadlineIso: input.wallbox?.deadlineIso ?? null,
+		wallboxConnected: input.wallbox?.connectedNow ?? null,
+		wallboxPresenceDigest: digestPresence(input.wallbox?.presenceWindows),
+		thermalBufferTempC: input.thermal?.bufferTempC ?? null,
+		thermalEmptyAtIso: input.thermal?.estimatedEmptyAtIso ?? null,
+		thermalHeadroomKwh: input.thermal?.headroomEnergyKwh ?? null,
+		climateUnits,
+	};
+}
+
+/** Content-Hash über Snapshot ohne id/tsIso (tsIso ändert sich bei gleichem Inhalt). */
+export function hashPlannerKnowledgeContent(
+	snap: Omit<PlannerKnowledgeSnapshot, "id" | "tsIso"> & { tsIso?: string },
+): string {
+	const { tsIso: _t, ...rest } = snap as PlannerKnowledgeSnapshot;
+	const payload = JSON.stringify(rest);
+	return createHash("sha256").update(payload).digest("hex").slice(0, 16);
+}
+
+export function withSnapshotId(
+	snap: Omit<PlannerKnowledgeSnapshot, "id">,
+): PlannerKnowledgeSnapshot {
+	return { ...snap, id: hashPlannerKnowledgeContent(snap) };
+}
+
+/**
+ * Fügt Snapshot nur hinzu, wenn Inhalt neu ist.
+ * Returns snapshotId (neu oder bestehend).
+ */
+export function upsertForecastSnapshot(
+	list: PlannerKnowledgeSnapshot[],
+	snap: PlannerKnowledgeSnapshot,
+): { list: PlannerKnowledgeSnapshot[]; snapshotId: string; inserted: boolean } {
+	const existing = list.find((s) => s.id === snap.id);
+	if (existing) {
+		return { list, snapshotId: existing.id, inserted: false };
+	}
+	return { list: [...list, snap], snapshotId: snap.id, inserted: true };
+}

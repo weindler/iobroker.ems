@@ -959,6 +959,21 @@ export async function runDailyPlanTick(
 					immersionTargetTempC: unifiedInputFinal.thermal?.dayTargetTempC ?? null,
 					replanReasons: decision.reasons,
 				});
+				try {
+					const { noteDayTelemetryPlanPublished } = await import(
+						"../../learning/day_telemetry/record.js"
+					);
+					await noteDayTelemetryPlanPublished({
+						host: host as unknown as Parameters<typeof noteDayTelemetryPlanPublished>[0]["host"],
+						now,
+						timezone,
+						plan: unifiedPlan,
+						plannerInput: unifiedInputFinal,
+						replanReasons: decision.reasons,
+					});
+				} catch (te) {
+					host.log?.warn?.(`day_telemetry plan note: ${String(te)}`);
+				}
 				const dayEvalDir =
 					typeof absPath === "function" ? absPath("learning/day_evaluation") : null;
 				const pvBiasDir = typeof absPath === "function" ? absPath("learning/pv_bias") : null;

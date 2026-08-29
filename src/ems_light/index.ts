@@ -22,6 +22,7 @@ import {
 	tickPowerRollup,
 	type PowerRollupHost,
 } from "../learning/power_rollup";
+import { tickDayTelemetry, type DayTelemetryHost } from "../learning/day_telemetry";
 import { ensurePolicyStateTree, initPolicyEngine, stopPolicyEngine, type PolicyEngineHost } from "../policy";
 import { ensureIntentStates, initIntentEngine, stopIntentEngine, type IntentEngineHost } from "../intent";
 import { ensurePlannerStateTree, stopPlanner, type PlannerHost } from "../planner";
@@ -241,6 +242,11 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 			adapter.log.warn(`statistics tick: ${e}`);
 		});
 	}
+	if (energyDailyRollupHost) {
+		await tickDayTelemetry(energyDailyRollupHost as unknown as DayTelemetryHost).catch((e) => {
+			adapter.log.warn(`day_telemetry tick: ${e}`);
+		});
+	}
 
 	const sec = tickIntervalSec(adapter.config);
 	stopEmsLightTick();
@@ -264,6 +270,11 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 		if (statisticsHostForTick) {
 			void tickStatistics(statisticsHostForTick).catch((e) => {
 				adapter.log.error(`Statistics tick: ${e}`);
+			});
+		}
+		if (dailyHostForTick) {
+			void tickDayTelemetry(dailyHostForTick as unknown as DayTelemetryHost).catch((e) => {
+				adapter.log.error(`day_telemetry tick: ${e}`);
 			});
 		}
 	}, sec * 1000);

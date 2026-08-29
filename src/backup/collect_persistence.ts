@@ -16,7 +16,11 @@ const LEARNING_MIRROR_KEYS = [
 	"energy_daily_json",
 ] as const;
 
-/** Exakt erlaubte Top-Level-Keys in persistence/selected_state_data.json (nur Learning-Dateien). */
+/**
+ * Exakt erlaubte Top-Level-Keys in persistence/selected_state_data.json.
+ * Langfristige Learning-Dateien plus Statistik-Persistenz (`statistics_v1.json`) —
+ * keine Runtime-/Intent-/Mode-States.
+ */
 export const SELECTED_STATE_DATA_ARTIFACTS: Array<{ category: string; fileName: string }> = [
 	{ category: "learning/battery_runtime", fileName: "battery_runtime_learning_v1.json" },
 	{ category: "learning/house_load", fileName: "house_load_learning_v1.json" },
@@ -80,7 +84,7 @@ export async function collectLearningPersistence(host: ExportServiceHost): Promi
 	return out;
 }
 
-/** Nur langfristige Learning-Persistenz für persistence/selected_state_data.json. */
+/** Langfristige Learning-/Statistik-Persistenz für persistence/selected_state_data.json. */
 export async function collectSelectedStateData(host: ExportServiceHost): Promise<Record<string, unknown>> {
 	const adapter = host as ioBroker.Adapter;
 	const out: Record<string, unknown> = {};

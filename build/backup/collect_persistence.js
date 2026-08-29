@@ -39,7 +39,11 @@ const LEARNING_MIRROR_KEYS = [
     "power_hourly_json",
     "energy_daily_json",
 ];
-/** Exakt erlaubte Top-Level-Keys in persistence/selected_state_data.json (nur Learning-Dateien). */
+/**
+ * Exakt erlaubte Top-Level-Keys in persistence/selected_state_data.json.
+ * Langfristige Learning-Dateien plus Statistik-Persistenz (`statistics_v1.json`) —
+ * keine Runtime-/Intent-/Mode-States.
+ */
 exports.SELECTED_STATE_DATA_ARTIFACTS = [
     { category: "learning/battery_runtime", fileName: "battery_runtime_learning_v1.json" },
     { category: "learning/house_load", fileName: "house_load_learning_v1.json" },
@@ -100,7 +104,7 @@ async function collectLearningPersistence(host) {
     return out;
 }
 exports.collectLearningPersistence = collectLearningPersistence;
-/** Nur langfristige Learning-Persistenz für persistence/selected_state_data.json. */
+/** Langfristige Learning-/Statistik-Persistenz für persistence/selected_state_data.json. */
 async function collectSelectedStateData(host) {
     const adapter = host;
     const out = {};

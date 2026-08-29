@@ -410,7 +410,7 @@ describe("backup export v0.1.141", () => {
 		assert.ok(inv.sources.some((s) => s.id === "global_modes" && s.category === "transient"));
 	});
 
-	it("selected_state_data contains only learning file keys", () => {
+	it("selected_state_data contains only allowlisted learning/statistics file keys", () => {
 		assert.deepEqual(SELECTED_STATE_DATA_KEYS, [
 			"battery_runtime_learning_v1.json",
 			"house_load_learning_v1.json",
@@ -423,6 +423,7 @@ describe("backup export v0.1.141", () => {
 			"energy_daily_v1.json",
 			"consumer_stats_v1.json",
 			"day_evaluation_v1.json",
+			"statistics_v1.json",
 			"vehicle_presence_learning_v1.json",
 		]);
 	});

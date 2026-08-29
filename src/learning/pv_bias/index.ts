@@ -10,6 +10,7 @@ import { ensureBatteryRuntimeLearningStates, runBatteryRuntimeLearning } from ".
 import { ensureEnergyDailyRollupForLearning } from "../energy_daily_rollup";
 import { ensurePowerRollupForLearning } from "../power_rollup";
 import { ensurePvHorizonLearningStates, runPvHorizon } from "../pv_horizon";
+import { ensureDayTelemetryStates } from "../day_telemetry";
 import { withLearningDataPath } from "../data_dir";
 import { withHistoryBridge } from "../history_bridge";
 import {
@@ -39,6 +40,7 @@ export async function ensureLearningStateTree(adapter: ioBroker.Adapter): Promis
 	await ensureThermalRuntimeLearningStates(host);
 	await ensureThermalBoilerLearningStates(host);
 	await ensureBatteryRuntimeLearningStates(host);
+	await ensureDayTelemetryStates(host);
 	await ensureLearningPersistenceStates(host);
 	return host;
 }

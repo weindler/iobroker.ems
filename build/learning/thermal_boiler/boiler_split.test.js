@@ -346,7 +346,8 @@ function immersionBase() {
         const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-"));
         const boilerPts = linearCurve(NOW - 20 * MS_H, 64, 61, 20);
         const host = mockBoilerHost({ tmp, currentTemp: 61, history: boilerPts });
-        await (0, run_1.runThermalBoilerLearning)(host);
+        // nowMs=NOW: History liegt um den Test-Anker; Wall-Clock würde 7-Tage-Lookback trimmen.
+        await (0, run_1.runThermalBoilerLearning)(host, { nowMs: NOW });
         strict_1.default.equal(host.states["learning.thermal_boiler.model"], "newton");
         strict_1.default.equal(host.states["learning.thermal_boiler.samples"], 0);
         strict_1.default.ok(Number(host.states["learning.thermal_boiler.cooling_k_per_h"]) > 0);

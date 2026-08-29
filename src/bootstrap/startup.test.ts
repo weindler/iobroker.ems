@@ -463,7 +463,7 @@ describe("bootstrap cold start recovery", () => {
 		assert.equal(dupes.length, 0, "no duplicate subscriptions");
 	});
 
-	it("productive surface stays within 350–550 states (empty config)", async () => {
+	it("productive surface stays within budget (empty config)", async () => {
 		const adapter = new FakeBootstrapAdapter(tmp);
 		await ensureStaticStateTree(adapter as unknown as ioBroker.Adapter);
 		await cleanupDynamicPlaceholders(adapter as unknown as ioBroker.Adapter);
@@ -480,11 +480,21 @@ describe("bootstrap cold start recovery", () => {
 		const states = byType.state ?? 0;
 		const channels = byType.channel ?? 0;
 		console.log(`empty-config surface states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
+		/*
+		 * Historisch 350–550. Stand Aug 2026 (leere Config): ~604 States —
+		 * Wachstum durch Statistik-Objektbaum, Planner-Diagnostik, Ownership/Reserve,
+		 * AI/Backup — nicht durch Measured-Consumer-Leer-Slots.
+		 * Obergrenze 650: knappe Kopfreserve (~7 %), State-Explosionen bleiben sichtbar.
+		 */
 		assert.ok(
-			states <= 550,
+			states <= 650,
 			`empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`,
 		);
 		assert.ok(states >= 250, `unexpectedly small surface states=${states}`);
+		assert.ok(
+			![...adapter.objects.keys()].some((id) => id.includes("addons.measured_consumers")),
+			"empty measured_consumers config must not create consumer/aggregate states",
+		);
 		assert.ok(![...adapter.objects.keys()].some((id) => id.includes(".mapping.")), "mapping shadows remain");
 		assert.ok(!adapter.objects.has("planner.intent.last_json"));
 		assert.ok(!adapter.objects.has("addons.wallbox.runtime.connected"));

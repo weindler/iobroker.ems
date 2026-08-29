@@ -13,6 +13,7 @@ const battery_runtime_1 = require("../battery_runtime");
 const energy_daily_rollup_1 = require("../energy_daily_rollup");
 const power_rollup_1 = require("../power_rollup");
 const pv_horizon_1 = require("../pv_horizon");
+const day_telemetry_1 = require("../day_telemetry");
 const data_dir_1 = require("../data_dir");
 const history_bridge_1 = require("../history_bridge");
 const persistence_mirror_1 = require("../persistence_mirror");
@@ -29,6 +30,7 @@ async function ensureLearningStateTree(adapter) {
     await (0, thermal_runtime_1.ensureThermalRuntimeLearningStates)(host);
     await (0, thermal_boiler_1.ensureThermalBoilerLearningStates)(host);
     await (0, battery_runtime_1.ensureBatteryRuntimeLearningStates)(host);
+    await (0, day_telemetry_1.ensureDayTelemetryStates)(host);
     await (0, persistence_mirror_1.ensureLearningPersistenceStates)(host);
     return host;
 }

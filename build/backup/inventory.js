@@ -81,6 +81,13 @@ exports.PERSISTENCE_INVENTORY = [
         description: "Klima-Runtime-Persistenz",
     },
     {
+        id: "day_telemetry",
+        category: "support_only",
+        fileCategory: "learning/day_telemetry",
+        fileName: "day_telemetry_v1.json",
+        description: "Roh-Tagestelemetrie (Detailhistorie, nicht restore-kritisch)",
+    },
+    {
         id: "command_inbox",
         category: "transient",
         description: "Command Inbox",

@@ -371,7 +371,8 @@ describe("boiler learning A vs buffer learning B", () => {
 		const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-boiler-"));
 		const boilerPts = linearCurve(NOW - 20 * MS_H, 64, 61, 20);
 		const host = mockBoilerHost({ tmp, currentTemp: 61, history: boilerPts });
-		await runThermalBoilerLearning(host);
+		// nowMs=NOW: History liegt um den Test-Anker; Wall-Clock würde 7-Tage-Lookback trimmen.
+		await runThermalBoilerLearning(host, { nowMs: NOW });
 		assert.equal(host.states["learning.thermal_boiler.model"], "newton");
 		assert.equal(host.states["learning.thermal_boiler.samples"], 0);
 		assert.ok(Number(host.states["learning.thermal_boiler.cooling_k_per_h"]) > 0);

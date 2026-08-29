@@ -6,6 +6,23 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.2.4] – 2026-08-29
+
+### Added
+
+- **Day Telemetry Phase 1:** DST-sichere 15-Minuten-Buckets (92/96/100), 90-Tage Rolling-Historie (`day_telemetry_v1.json`, `support_only`), Frozen Plan-/Replan-Historie, kompakte Planner-Knowledge-Snapshots, Climate Run Segments, Domain-Quality-Maske, präzise Energie-Integration über Slotgrenzen.
+- **Telemetrie-Preisquelle:** realer Tarif aus Grid-Supply-Slots / `live.price.now_ct_per_kwh` — unabhängig vom Daily-Plan-`plan_json`.
+- **Shared-AC-Gruppen:** unbekannte `sharedPowerGroupId` bleiben `null` (kein `"default"`-Merge für Learning).
+
+### Fixed / Maintenance
+
+- Backup/Bootstrap/Boiler-Tests an legitimen Ist-Stand angepasst (u. a. Statistik in `selected_state_data`, State-Surface-Budget, Boiler-Learning `nowMs`).
+- Day-Telemetry in Unit-Test-Allowlist und Persistenz-Inventar aufgenommen.
+
+Hinweis: Shared-AC-Planner, Measured Consumers inkl. Energy-State-Delta-Fix und Admin-Tab-Fixes sind bereits in 0.2.2/0.2.3 enthalten; 0.2.4 bündelt die Telemetrie-Schicht und Rest-Wartung.
+
+---
+
 ## [0.2.3] – 2026-08-29
 
 ### Fixed

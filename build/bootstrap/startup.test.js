@@ -402,7 +402,7 @@ function assertCoreCategories(adapter) {
         const dupes = adapter.subscriptions.filter((s, i) => adapter.subscriptions.indexOf(s) !== i);
         strict_1.default.equal(dupes.length, 0, "no duplicate subscriptions");
     });
-    (0, node_test_1.it)("productive surface stays within 350–550 states (empty config)", async () => {
+    (0, node_test_1.it)("productive surface stays within budget (empty config)", async () => {
         const adapter = new FakeBootstrapAdapter(tmp);
         await (0, ensure_static_tree_js_1.ensureStaticStateTree)(adapter);
         await (0, ensure_static_tree_js_1.cleanupDynamicPlaceholders)(adapter);
@@ -419,8 +419,15 @@ function assertCoreCategories(adapter) {
         const states = byType.state ?? 0;
         const channels = byType.channel ?? 0;
         console.log(`empty-config surface states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
-        strict_1.default.ok(states <= 550, `empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
+        /*
+         * Historisch 350–550. Stand Aug 2026 (leere Config): ~604 States —
+         * Wachstum durch Statistik-Objektbaum, Planner-Diagnostik, Ownership/Reserve,
+         * AI/Backup — nicht durch Measured-Consumer-Leer-Slots.
+         * Obergrenze 650: knappe Kopfreserve (~7 %), State-Explosionen bleiben sichtbar.
+         */
+        strict_1.default.ok(states <= 650, `empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
         strict_1.default.ok(states >= 250, `unexpectedly small surface states=${states}`);
+        strict_1.default.ok(![...adapter.objects.keys()].some((id) => id.includes("addons.measured_consumers")), "empty measured_consumers config must not create consumer/aggregate states");
         strict_1.default.ok(![...adapter.objects.keys()].some((id) => id.includes(".mapping.")), "mapping shadows remain");
         strict_1.default.ok(!adapter.objects.has("planner.intent.last_json"));
         strict_1.default.ok(!adapter.objects.has("addons.wallbox.runtime.connected"));

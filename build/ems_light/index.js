@@ -7,6 +7,7 @@ const data_dir_1 = require("../learning/data_dir");
 const energy_daily_rollup_1 = require("../learning/energy_daily_rollup");
 const statistics_1 = require("../statistics");
 const power_rollup_1 = require("../learning/power_rollup");
+const day_telemetry_1 = require("../learning/day_telemetry");
 const policy_1 = require("../policy");
 const intent_1 = require("../intent");
 const planner_1 = require("../planner");
@@ -206,6 +207,11 @@ async function startEmsLightPhase1Runtime(adapter) {
             adapter.log.warn(`statistics tick: ${e}`);
         });
     }
+    if (energyDailyRollupHost) {
+        await (0, day_telemetry_1.tickDayTelemetry)(energyDailyRollupHost).catch((e) => {
+            adapter.log.warn(`day_telemetry tick: ${e}`);
+        });
+    }
     const sec = tickIntervalSec(adapter.config);
     stopEmsLightTick();
     const dailyHostForTick = energyDailyRollupHost;
@@ -228,6 +234,11 @@ async function startEmsLightPhase1Runtime(adapter) {
         if (statisticsHostForTick) {
             void (0, statistics_1.tickStatistics)(statisticsHostForTick).catch((e) => {
                 adapter.log.error(`Statistics tick: ${e}`);
+            });
+        }
+        if (dailyHostForTick) {
+            void (0, day_telemetry_1.tickDayTelemetry)(dailyHostForTick).catch((e) => {
+                adapter.log.error(`day_telemetry tick: ${e}`);
             });
         }
     }, sec * 1000);

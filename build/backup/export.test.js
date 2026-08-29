@@ -365,7 +365,7 @@ class ExportTestHost {
         strict_1.default.ok(inv.sources.some((s) => s.id === "intent_persist" && s.category === "transient"));
         strict_1.default.ok(inv.sources.some((s) => s.id === "global_modes" && s.category === "transient"));
     });
-    (0, node_test_1.it)("selected_state_data contains only learning file keys", () => {
+    (0, node_test_1.it)("selected_state_data contains only allowlisted learning/statistics file keys", () => {
         strict_1.default.deepEqual(collect_persistence_js_1.SELECTED_STATE_DATA_KEYS, [
             "battery_runtime_learning_v1.json",
             "house_load_learning_v1.json",
@@ -378,6 +378,7 @@ class ExportTestHost {
             "energy_daily_v1.json",
             "consumer_stats_v1.json",
             "day_evaluation_v1.json",
+            "statistics_v1.json",
             "vehicle_presence_learning_v1.json",
         ]);
     });

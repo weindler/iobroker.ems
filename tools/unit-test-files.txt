@@ -206,6 +206,16 @@ build/operator/daily_plan/unified/presence.test.js
 build/operator/daily_plan/unified/live_battery_evcc.test.js
 build/operator/daily_plan/unified/economics.test.js
 build/learning/day_evaluation/day_evaluation.test.js
+build/learning/day_telemetry/slots.test.js
+build/learning/day_telemetry/energy_integrate.test.js
+build/learning/day_telemetry/quality_mask.test.js
+build/learning/day_telemetry/planned_freeze.test.js
+build/learning/day_telemetry/knowledge_snapshot.test.js
+build/learning/day_telemetry/persist.test.js
+build/learning/day_telemetry/freeze_immutability.test.js
+build/learning/day_telemetry/size.test.js
+build/learning/day_telemetry/price_source.test.js
+build/learning/day_telemetry/shared_group.test.js
 build/ai/explanation/explanation.test.js
 build/learning/vehicle_presence/math.test.js
 build/ems_light/off_legacy_lazy.test.js

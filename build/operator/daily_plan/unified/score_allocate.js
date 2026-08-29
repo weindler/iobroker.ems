@@ -3,7 +3,7 @@
  * Score-basierte iterative Unified-Allocation — kein fester Add-on-Phasen-Order.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runScoreBasedAllocation = exports.scoreCandidate = exports.hardPvConsumersFromInput = exports.takePv = exports.pushAlloc = exports.wallboxAllocatedInSlotKwh = exports.immersionAllocatedInSlotKwh = exports.allocatedInSlotKwh = exports.buildSlots = exports.powerFromEnergyKwh = exports.energyFromPowerW = exports.projectedSocAt = exports.EPS = exports.SLOT_H = exports.IMMERSION_HARD_CONSUMER_ID = exports.IMMERSION_SOFT_CONSUMER_ID = void 0;
+exports.runScoreBasedAllocation = exports.scoreCandidate = exports.hardPvConsumersFromInput = exports.takePv = exports.pushAlloc = exports.climateSharedGroupElectricalKwh = exports.wallboxAllocatedInSlotKwh = exports.immersionAllocatedInSlotKwh = exports.allocatedInSlotKwh = exports.buildSlots = exports.powerFromEnergyKwh = exports.energyFromPowerW = exports.projectedSocAt = exports.EPS = exports.SLOT_H = exports.IMMERSION_HARD_CONSUMER_ID = exports.IMMERSION_SOFT_CONSUMER_ID = void 0;
 const mode_policy_1 = require("../../../planner/mode_policy");
 const battery_reserve_floor_1 = require("./battery_reserve_floor");
 const next_reliable_pv_1 = require("./next_reliable_pv");
@@ -101,6 +101,7 @@ function emptySlotWork(startIso, endIso) {
         remainPvKwh: 0,
         reservedEvKwh: 0,
         evGridReserved: false,
+        sharedClimateElecKwh: {},
     };
 }
 /**
@@ -219,13 +220,27 @@ function buildSlots(input) {
     const nowMs = Date.parse(input.time.nowIso);
     const nowSlot = slots.find((s) => nowMs >= s.startMs && nowMs < Date.parse(s.endIso));
     if (nowSlot && input.climate && !nowUsesLive.has(nowSlot.startIso)) {
+        const holdByGroup = new Map();
+        let standaloneHoldW = 0;
         for (const u of input.climate.units) {
             if (!u.runtimeHold)
                 continue;
             const holdW = u.holdPowerW ?? u.typicalPowerW;
             if (holdW == null || !(holdW > 0))
                 continue;
-            const e = energyFromPowerW(holdW);
+            const g = u.sharedPowerGroupId?.trim() || null;
+            if (g) {
+                holdByGroup.set(g, Math.max(holdByGroup.get(g) ?? 0, holdW));
+            }
+            else {
+                standaloneHoldW += holdW;
+            }
+        }
+        let holdTotalW = standaloneHoldW;
+        for (const w of holdByGroup.values())
+            holdTotalW += w;
+        if (holdTotalW > 0) {
+            const e = energyFromPowerW(holdTotalW);
             nowSlot.houseKwh += e;
             nowSlot.surplusKwh = Math.max(0, nowSlot.pvKwh - nowSlot.houseKwh);
             nowSlot.remainPvKwh = nowSlot.surplusKwh;
@@ -283,6 +298,33 @@ function batteryGridInSlotKwh(out, slotStartIso) {
         }
     }
     return sum;
+}
+/**
+ * Elektrische Klima-Last einer Shared-Power-Gruppe in einem Slot = max(Unit-Allokationen),
+ * nie Summe (gemeinsames Außengerät).
+ */
+function climateSharedGroupElectricalKwh(out, consumers, slotStartIso, groupId) {
+    let maxE = 0;
+    for (const a of out) {
+        if (a.kind !== "climate" || a.slot.startIso !== slotStartIso)
+            continue;
+        const c = consumers.find((x) => x.consumerId === a.consumerId);
+        if (!c || c.sharedPowerGroupId !== groupId)
+            continue;
+        maxE = Math.max(maxE, a.allocatedEnergyKwh);
+    }
+    return maxE;
+}
+exports.climateSharedGroupElectricalKwh = climateSharedGroupElectricalKwh;
+function sharedClimateGroupCapKwh(consumers, groupId) {
+    let maxW = 0;
+    for (const c of consumers) {
+        if (c.kind !== "climate" || c.sharedPowerGroupId !== groupId)
+            continue;
+        if (c.maxPowerW != null && c.maxPowerW > 0)
+            maxW = Math.max(maxW, c.maxPowerW);
+    }
+    return maxW > 0 ? energyFromPowerW(maxW) : 0;
 }
 function alreadyAllocatedForConsumer(out, consumer, slotStartIso) {
     if (consumer.kind === "immersion_heater")
@@ -420,6 +462,11 @@ function hardPvConsumersFromInput(input) {
     }
     const cl = input.climate;
     if (cl) {
+        /*
+         * Shared Outdoor Unit: Hard-PV-Bound zählt jede Gruppe elektrisch einmal
+         * (max Power / max expected energy), Units ohne Gruppe wie bisher einzeln.
+         */
+        const groupBest = new Map();
         for (const u of cl.units) {
             if (u.mandatoryComfort !== true)
                 continue;
@@ -429,9 +476,27 @@ function hardPvConsumersFromInput(input) {
             const need = u.expectedEnergyKwh ?? energyFromPowerW(maxW) * 4;
             if (!(need > exports.EPS))
                 continue;
+            const g = u.sharedPowerGroupId?.trim() || null;
+            if (g) {
+                const prev = groupBest.get(g);
+                if (!prev)
+                    groupBest.set(g, { maxW, need });
+                else {
+                    prev.maxW = Math.max(prev.maxW, maxW);
+                    prev.need = Math.max(prev.need, need);
+                }
+                continue;
+            }
             out.push({
                 remainingKwh: need,
                 maxPowerW: maxW,
+                deadlineMs: Number.POSITIVE_INFINITY,
+            });
+        }
+        for (const g of groupBest.values()) {
+            out.push({
+                remainingKwh: g.need,
+                maxPowerW: g.maxW,
                 deadlineMs: Number.POSITIVE_INFINITY,
             });
         }
@@ -669,6 +734,7 @@ function buildConsumerStates(input, slots) {
                 earliestSlotIdx: 0,
                 thermalBeforeDeadline: false,
                 thermalSoftOnly: false,
+                sharedPowerGroupId: u.sharedPowerGroupId?.trim() || null,
                 slotAllowed: u.runtimeHold === true && nowSlotStart
                     ? (slotStartIso) => slotStartIso !== nowSlotStart
                     : undefined,
@@ -1002,8 +1068,18 @@ function scoreCandidate(input, state, candidate, weights) {
             return -Infinity;
     }
     if (candidate.source === "pv_surplus") {
-        if (slot.remainPvKwh + exports.EPS < candidate.energyKwh)
+        const shared = consumer.kind === "climate" ? consumer.sharedPowerGroupId ?? null : null;
+        if (shared) {
+            const groupCap = sharedClimateGroupCapKwh(state.consumers, shared);
+            const already = slot.sharedClimateElecKwh[shared] ?? 0;
+            const incremental = Math.max(0, Math.min(candidate.energyKwh, groupCap - already));
+            if (incremental > exports.EPS && slot.remainPvKwh + exports.EPS < incremental)
+                return -Infinity;
+            /* incremental≈0: Gruppe elektrisch gedeckt — Komfort-Freigabe ohne PV-Last erlaubt. */
+        }
+        else if (slot.remainPvKwh + exports.EPS < candidate.energyKwh) {
             return -Infinity;
+        }
         if (candidate.kind === "battery_charge" && !weights.allowPvCharge)
             return -Infinity;
     }
@@ -1014,27 +1090,52 @@ function scoreCandidate(input, state, candidate, weights) {
             return -Infinity;
         if (!weights.allowOptimization)
             return -Infinity;
-        const floor = dischargeFloorKwh(state, candidate.slotIdx);
-        const draw = candidate.energyKwh / Math.max(state.dischargeEff, 0.1);
-        const socAt = projectedSocAt(state, candidate.slotIdx);
-        if (socAt - draw < floor - exports.EPS)
-            return -Infinity;
-        const usable = (0, battery_reserve_floor_1.usableBatteryEnergyKwh)(socAt, floor, state.dischargeEff);
-        if (usable + exports.EPS < candidate.energyKwh)
-            return -Infinity;
-        /*
-         * Keine Batterie-Entladung solange derselbe Slot noch PV-Surplus hat —
-         * sonst entsteht künstliche Export-Arbitrage (PV einspeisen, Klima aus Batterie).
-         */
-        const need = Math.min(candidate.energyKwh, consumer.remainingKwh);
-        if (slot.remainPvKwh + exports.EPS >= need)
-            return -Infinity;
-        /*
-         * Wallbox: in PV-Surplus-Slots nicht aus Batterie (auch wenn remainPv schon
-         * von battery_charge verbraucht wurde — sonst Roundtrip statt Direktladung).
-         */
-        if (candidate.kind === "wallbox" && slot.surplusKwh > 0.05)
-            return -Infinity;
+        const shared = consumer.kind === "climate" ? consumer.sharedPowerGroupId ?? null : null;
+        let drawNeed = candidate.energyKwh;
+        if (shared) {
+            const groupCap = sharedClimateGroupCapKwh(state.consumers, shared);
+            const already = slot.sharedClimateElecKwh[shared] ?? 0;
+            drawNeed = Math.max(0, Math.min(candidate.energyKwh, groupCap - already));
+            if (drawNeed <= exports.EPS) {
+                /* Gruppe elektrisch gedeckt — Komfort ohne Batteriezugriff. */
+            }
+            else {
+                const floor = dischargeFloorKwh(state, candidate.slotIdx);
+                const draw = drawNeed / Math.max(state.dischargeEff, 0.1);
+                const socAt = projectedSocAt(state, candidate.slotIdx);
+                if (socAt - draw < floor - exports.EPS)
+                    return -Infinity;
+                const usable = (0, battery_reserve_floor_1.usableBatteryEnergyKwh)(socAt, floor, state.dischargeEff);
+                if (usable + exports.EPS < drawNeed)
+                    return -Infinity;
+                const need = Math.min(drawNeed, consumer.remainingKwh);
+                if (slot.remainPvKwh + exports.EPS >= need)
+                    return -Infinity;
+            }
+        }
+        else {
+            const floor = dischargeFloorKwh(state, candidate.slotIdx);
+            const draw = candidate.energyKwh / Math.max(state.dischargeEff, 0.1);
+            const socAt = projectedSocAt(state, candidate.slotIdx);
+            if (socAt - draw < floor - exports.EPS)
+                return -Infinity;
+            const usable = (0, battery_reserve_floor_1.usableBatteryEnergyKwh)(socAt, floor, state.dischargeEff);
+            if (usable + exports.EPS < candidate.energyKwh)
+                return -Infinity;
+            /*
+             * Keine Batterie-Entladung solange derselbe Slot noch PV-Surplus hat —
+             * sonst entsteht künstliche Export-Arbitrage (PV einspeisen, Klima aus Batterie).
+             */
+            const need = Math.min(candidate.energyKwh, consumer.remainingKwh);
+            if (slot.remainPvKwh + exports.EPS >= need)
+                return -Infinity;
+            /*
+             * Wallbox: in PV-Surplus-Slots nicht aus Batterie (auch wenn remainPv schon
+             * von battery_charge verbraucht wurde — sonst Roundtrip statt Direktladung).
+             */
+            if (candidate.kind === "wallbox" && slot.surplusKwh > 0.05)
+                return -Infinity;
+        }
     }
     if (state.batteryHold && candidate.kind === "battery_charge")
         return -Infinity;
@@ -1466,6 +1567,16 @@ function generateCandidatesForConsumer(input, state, consumer, slotIdx, wbPresen
      */
     if (slot.remainPvKwh > exports.EPS)
         sources.push("pv_surplus");
+    /*
+     * Shared-AC: zweite Unit derselben Gruppe darf auch bei remainPv≈0 noch einen
+     * pv_surplus-Kandidaten bekommen (elektrische Last bereits von der ersten Unit gedeckt).
+     */
+    if (consumer.kind === "climate" &&
+        consumer.sharedPowerGroupId &&
+        (slot.sharedClimateElecKwh[consumer.sharedPowerGroupId] ?? 0) > exports.EPS &&
+        !sources.includes("pv_surplus")) {
+        sources.push("pv_surplus");
+    }
     if (consumer.gridEligible && slot.gridAllowed && slot.importCt !== null) {
         const mutexBattery = consumer.kind === "wallbox" && batteryGridInSlotKwh(allocations, slot.startIso) > exports.EPS;
         const mutexEv = consumer.kind === "battery_charge" &&
@@ -1531,8 +1642,27 @@ function generateCandidatesForConsumer(input, state, consumer, slotIdx, wbPresen
     for (const source of sources) {
         let take = chunk;
         if (source === "pv_surplus") {
-            take = Math.min(take, slot.remainPvKwh);
-            take = applyMinPower(take, consumer.minPowerW, slot.remainPvKwh, consumer.remainingKwh);
+            const shared = consumer.kind === "climate" ? consumer.sharedPowerGroupId ?? null : null;
+            if (shared) {
+                const groupCap = sharedClimateGroupCapKwh(state.consumers, shared);
+                const already = slot.sharedClimateElecKwh[shared] ?? 0;
+                const room = Math.max(0, groupCap - already);
+                /*
+                 * Elektrisch nur room aus PV; Komfort-Chunk trotzdem bis maxPower —
+                 * applyCandidate verbucht Unit-Allokation und belastet PV nur incremental.
+                 */
+                if (room <= exports.EPS) {
+                    take = Math.min(take, consumer.remainingKwh);
+                }
+                else {
+                    take = Math.min(take, Math.max(room, energyFromPowerW(consumer.maxPowerW ?? 0)));
+                    take = Math.min(take, Math.max(slot.remainPvKwh, room));
+                }
+            }
+            else {
+                take = Math.min(take, slot.remainPvKwh);
+            }
+            take = applyMinPower(take, consumer.minPowerW, take, consumer.remainingKwh);
         }
         else if (source === "battery") {
             take = Math.min(take, usableBat);
@@ -1608,18 +1738,53 @@ function applyCandidate(state, candidate, allocations) {
         e + exports.EPS < energyFromPowerW(consumer.minPowerW)) {
         return false;
     }
+    /*
+     * Shared Outdoor Unit: elektrische PV-/Batterie-Last pro Gruppe nur einmal.
+     * Komfort-Allocation (pushAlloc / remainingKwh) bleibt pro Unit — Runtime braucht
+     * allocatedPowerW > 0 je Innengerät. Incremental = max(0, groupCap - alreadyGroup).
+     */
+    const sharedGroup = consumer.kind === "climate" ? consumer.sharedPowerGroupId ?? null : null;
+    let electricalE = e;
+    if (sharedGroup && (candidate.source === "pv_surplus" || candidate.source === "battery")) {
+        const groupCap = sharedClimateGroupCapKwh(state.consumers, sharedGroup);
+        const alreadyGroup = slot.sharedClimateElecKwh[sharedGroup] ?? 0;
+        const room = Math.max(0, groupCap - alreadyGroup);
+        electricalE = Math.min(e, room);
+    }
     if (candidate.source === "pv_surplus") {
-        e = takePv(slot, e);
+        if (sharedGroup && electricalE <= exports.EPS) {
+            /* Gruppe elektrisch schon gedeckt — Unit trotzdem freigeben, ohne PV zu belasten. */
+        }
+        else {
+            const taken = takePv(slot, electricalE);
+            if (sharedGroup) {
+                if (taken + exports.EPS < electricalE)
+                    return false;
+            }
+            else {
+                e = taken;
+                electricalE = taken;
+            }
+        }
     }
     else if (candidate.source === "battery") {
-        const draw = e / Math.max(state.dischargeEff, 0.1);
-        const floor = dischargeFloorKwh(state, candidate.slotIdx);
-        const socAt = projectedSocAt(state, candidate.slotIdx);
-        if (socAt - draw < floor - exports.EPS)
-            return false;
-        state.socDeltaBySlot[candidate.slotIdx] =
-            (state.socDeltaBySlot[candidate.slotIdx] ?? 0) - draw;
-        syncFinalSoc(state);
+        const drawE = sharedGroup ? electricalE : e;
+        if (sharedGroup && drawE <= exports.EPS) {
+            /* analog PV: keine zusätzliche Batterieentnahme */
+        }
+        else {
+            const draw = drawE / Math.max(state.dischargeEff, 0.1);
+            const floor = dischargeFloorKwh(state, candidate.slotIdx);
+            const socAt = projectedSocAt(state, candidate.slotIdx);
+            if (socAt - draw < floor - exports.EPS)
+                return false;
+            state.socDeltaBySlot[candidate.slotIdx] =
+                (state.socDeltaBySlot[candidate.slotIdx] ?? 0) - draw;
+            syncFinalSoc(state);
+            if (!sharedGroup) {
+                e = drawE;
+            }
+        }
     }
     else if (candidate.source === "grid") {
         if (candidate.kind === "wallbox" && batteryGridInSlotKwh(allocations, slot.startIso) > exports.EPS) {
@@ -1636,20 +1801,26 @@ function applyCandidate(state, candidate, allocations) {
         consumer.minPowerW > 0 &&
         already <= exports.EPS &&
         e + exports.EPS < energyFromPowerW(consumer.minPowerW)) {
-        if (candidate.source === "pv_surplus")
-            slot.remainPvKwh += e;
+        if (candidate.source === "pv_surplus" && electricalE > exports.EPS) {
+            slot.remainPvKwh += electricalE;
+        }
         return false;
     }
     const booked = pushAlloc(allocations, slot, candidate.consumerId, candidate.kind, e, candidate.source, candidate.constraintIds, candidate.reasonCodes, candidate.maxPowerW);
     if (booked <= exports.EPS) {
-        if (candidate.source === "pv_surplus")
-            slot.remainPvKwh += e;
+        if (candidate.source === "pv_surplus" && electricalE > exports.EPS) {
+            slot.remainPvKwh += electricalE;
+        }
         return false;
     }
-    if (booked + exports.EPS < e && candidate.source === "pv_surplus") {
+    if (candidate.source === "pv_surplus" && !sharedGroup && booked + exports.EPS < e) {
         slot.remainPvKwh += e - booked;
     }
     e = booked;
+    if (sharedGroup) {
+        const prev = slot.sharedClimateElecKwh[sharedGroup] ?? 0;
+        slot.sharedClimateElecKwh[sharedGroup] = Math.max(prev, e);
+    }
     if (candidate.kind === "battery_charge") {
         const stored = e * state.chargeEff;
         const socBefore = projectedSocAt(state, candidate.slotIdx);

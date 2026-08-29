@@ -50,8 +50,53 @@ describe("measured_consumers/math", () => {
 		const slot = emptyMeasuredConsumerSlotPersist();
 		applyEnergyStateSample(slot, 12.0, 500, "2026-03-01"); // Rohzähler 12.0, Nutzer will 500 als EMS-Gesamt
 		assert.equal(slot.totalKwh, 500);
+		assert.equal(slot.days["2026-03-01"], undefined, "Startwert zählt nicht als heutiger Verbrauch");
 		applyEnergyStateSample(slot, 12.5, 500, "2026-03-01");
 		assert.equal(slot.totalKwh, 500.5);
+		assert.equal(slot.days["2026-03-01"], 0.5);
+	});
+
+	it("energy_state 100.0 → 100.2: total +0.2 und today +0.2", () => {
+		const slot = emptyMeasuredConsumerSlotPersist();
+		applyEnergyStateSample(slot, 100.0, null, "2026-08-29");
+		applyEnergyStateSample(slot, 100.2, null, "2026-08-29");
+		const p = resolveSlotPeriods(slot, "2026-08-29", "2026-08-28");
+		assert.equal(p.totalKwh, 100.2);
+		assert.equal(p.todayKwh, 0.2);
+	});
+
+	it("initial_energy_kwh: erster Sample erzeugt today = 0", () => {
+		const slot = emptyMeasuredConsumerSlotPersist();
+		applyEnergyStateSample(slot, 542.224, 542.224, "2026-08-29");
+		const p = resolveSlotPeriods(slot, "2026-08-29", "2026-08-28");
+		assert.equal(p.totalKwh, 542.224);
+		assert.equal(p.todayKwh, 0);
+	});
+
+	it("sub-threshold Inkremente akkumulieren bis today steigt (kein Baseline-Creep)", () => {
+		const slot = emptyMeasuredConsumerSlotPersist();
+		applyEnergyStateSample(slot, 100.0, null, "2026-08-29");
+		// Viele winzige Updates unter round3-Schwelle (< 0.0005) — Baseline darf nicht voraneilen
+		applyEnergyStateSample(slot, 100.0002, null, "2026-08-29");
+		applyEnergyStateSample(slot, 100.0003, null, "2026-08-29");
+		applyEnergyStateSample(slot, 100.0004, null, "2026-08-29");
+		assert.equal(slot.totalKwh, 100, "noch kein buchbares Delta");
+		assert.equal(slot.rawEnergyBaselineKwh, 100, "Baseline bleibt bis sichtbares Delta");
+		applyEnergyStateSample(slot, 100.0012, null, "2026-08-29");
+		assert.equal(slot.totalKwh, 100.001);
+		assert.equal(slot.days["2026-08-29"], 0.001);
+	});
+
+	it("Tageswechsel: alter today → yesterday, neuer today mit neuem Delta", () => {
+		const slot = emptyMeasuredConsumerSlotPersist();
+		applyEnergyStateSample(slot, 10, null, "2026-08-28");
+		applyEnergyStateSample(slot, 10.5, null, "2026-08-28");
+		applyEnergyStateSample(slot, 10.8, null, "2026-08-29");
+		const p = resolveSlotPeriods(slot, "2026-08-29", "2026-08-28");
+		assert.equal(p.yesterdayKwh, 0.5);
+		assert.equal(p.todayKwh, 0.3);
+		assert.equal(p.monthKwh, 0.8);
+		assert.equal(p.yearKwh, 0.8);
 	});
 
 	it("E) Counter-Reset: 500 kWh -> 0 -> 1 kWh ergibt fortlaufenden Gesamtstand, keinen Rücksprung", () => {
@@ -62,9 +107,11 @@ describe("measured_consumers/math", () => {
 		applyEnergyStateSample(slot, 0, null, "2026-03-02");
 		assert.equal(slot.totalKwh, 512.3, "kein Rücksprung/Phantomverbrauch beim Reset selbst");
 		assert.equal(slot.rawEnergyBaselineKwh, 0);
+		assert.equal(slot.days["2026-03-02"], undefined, "Reset selbst schreibt keinen Tagesverbrauch");
 		// danach 0.4 kWh Rohverbrauch seit Reset
 		applyEnergyStateSample(slot, 0.4, null, "2026-03-02");
 		assert.equal(slot.totalKwh, 512.7);
+		assert.equal(slot.days["2026-03-02"], 0.4, "nur echter Verbrauch nach Reset fließt in today");
 	});
 
 	it("E2) Reset ohne Zwischenschritt (0 direkt übersprungen, Rohwert springt auf kleineren Wert)", () => {

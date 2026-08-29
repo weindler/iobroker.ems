@@ -23,28 +23,45 @@ exports.padSlotIndex = padSlotIndex;
 function addDayDelta(slot, dateKey, deltaKwh) {
     if (!(deltaKwh > 0))
         return;
+    if (!slot.days || typeof slot.days !== "object") {
+        slot.days = {};
+    }
     slot.days[dateKey] = round3((slot.days[dateKey] ?? 0) + deltaKwh);
 }
 /**
  * Fall A: kumulativer Energiezähler vorhanden.
  * - Erstes Sample: übernimmt initialEnergyKwh als gewünschten EMS-Gesamtstand
- *   (bzw. den Rohzähler direkt, wenn kein Startwert vorgegeben ist).
- * - Danach: nur das Delta zum vorherigen Rohwert wird addiert. Ein Zählerreset
- *   (neuer Rohwert deutlich kleiner) setzt lediglich die Basis neu — der bisherige
- *   EMS-Gesamtstand bleibt unangetastet, kein Phantomverbrauch, kein Rücksprung.
+ *   (bzw. den Rohzähler direkt, wenn kein Startwert vorgegeben ist) — kein Tagesverbrauch.
+ * - Danach: nur das Delta zum vorherigen Rohwert wird zu total + days addiert.
+ * - Sub-Schwellwert-Inkremente (round3 → 0, z. B. < 0.0005 kWh): Baseline NICHT
+ *   fortschreiben, sonst gehen viele winzige Zähler-Updates verloren und today bleibt 0.
+ * - Zählerreset (neuer Rohwert deutlich kleiner): nur Basis neu, kein Phantomverbrauch.
  */
 function applyEnergyStateSample(slot, rawKwh, initialEnergyKwh, dateKey) {
+    if (!slot.days || typeof slot.days !== "object") {
+        slot.days = {};
+    }
     if (!slot.initialized) {
         slot.totalKwh = round3(initialEnergyKwh !== null ? initialEnergyKwh : rawKwh);
         slot.rawEnergyBaselineKwh = rawKwh;
         slot.initialized = true;
         return;
     }
-    const d = (0, compute_1.energyCounterDeltaKwh)(slot.rawEnergyBaselineKwh, rawKwh);
-    slot.rawEnergyBaselineKwh = d.newBaseline;
+    const previous = slot.rawEnergyBaselineKwh;
+    const d = (0, compute_1.energyCounterDeltaKwh)(previous, rawKwh);
     if (d.deltaKwh !== null && d.deltaKwh > 0) {
         slot.totalKwh = round3(slot.totalKwh + d.deltaKwh);
         addDayDelta(slot, dateKey, d.deltaKwh);
+        slot.rawEnergyBaselineKwh = d.newBaseline;
+        return;
+    }
+    /*
+     * Reset: Rohwert deutlich kleiner → Basis übernehmen, keinen Verbrauch buchen.
+     * Gleicher Stand oder sub-threshold-Zuwachs: Baseline unverändert lassen, damit
+     * sich winzige Inkremente bis zur nächsten sichtbaren 0.001-kWh-Stufe aufsummieren.
+     */
+    if (previous !== null && rawKwh + 0.05 < previous) {
+        slot.rawEnergyBaselineKwh = rawKwh;
     }
 }
 exports.applyEnergyStateSample = applyEnergyStateSample;

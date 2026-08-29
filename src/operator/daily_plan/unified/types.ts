@@ -360,6 +360,12 @@ export type UnifiedClimateUnitInput = {
 	hardStopMs?: number | null;
 	/** Geschätzte Hold-Leistung für Forecast-NOW-Reserve (wenn Live-HL die AC nicht enthält). */
 	holdPowerW?: number | null;
+	/**
+	 * Gemeinsames Außengerät (Admin `shared_power_group_id`).
+	 * Units mit gleicher ID bilden EIN elektrisches System — Planner darf ihre Leistungen
+	 * nicht als unabhängige Lasten addieren. null = eigenständige Unit.
+	 */
+	sharedPowerGroupId?: string | null;
 };
 
 export type UnifiedClimateInput = {

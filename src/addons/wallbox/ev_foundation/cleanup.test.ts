@@ -103,12 +103,23 @@ async function load(admin: Record<string, unknown>, foreign: Record<string, unkn
 }
 
 function jsonConfigItems(): Record<string, { empty?: boolean; type?: string; validator?: string }> {
+	type Item = { empty?: boolean; type?: string; validator?: string };
 	const raw = JSON.parse(readFileSync(ADMIN_JSON, "utf8")) as {
-		items?: {
-			wallboxTab?: { items?: Record<string, { empty?: boolean; type?: string; validator?: string }> };
-		};
+		items?: Record<string, unknown>;
 	};
-	return raw.items?.wallboxTab?.items ?? {};
+	const find = (items: Record<string, unknown> | undefined): Record<string, Item> | null => {
+		if (!items) return null;
+		const direct = items.wallboxTab as { items?: Record<string, Item> } | undefined;
+		if (direct?.items) return direct.items;
+		for (const v of Object.values(items)) {
+			if (!v || typeof v !== "object") continue;
+			const nested = (v as { items?: Record<string, unknown> }).items;
+			const found = find(nested);
+			if (found) return found;
+		}
+		return null;
+	};
+	return find(raw.items) ?? {};
 }
 
 function evalJsonConfigValidator(expr: string, data: Record<string, unknown>): boolean {

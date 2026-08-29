@@ -91,6 +91,7 @@ build/addons/air_conditioning/runtime/sequences.test.js
 build/addons/air_conditioning/runtime/live_edge.test.js
 build/addons/air_conditioning/runtime/hard_off_worth_it.test.js
 build/addons/air_conditioning/shared_power.test.js
+build/operator/daily_plan/unified/climate_shared_power_allocate.test.js
 build/addons/measured_consumers/math.test.js
 build/addons/measured_consumers/config.test.js
 build/addons/measured_consumers/runtime/engine.test.js

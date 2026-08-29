@@ -205,13 +205,39 @@ async function val(host, id) {
             await (0, engine_1.runMeasuredConsumersTick)(host1);
             const ids = (0, state_ids_1.measuredConsumerSlotStateIds)(1);
             strict_1.default.equal(await val(host1, ids.energyTotalKwh), 500, "erstes Sample übernimmt initial_energy_kwh als Gesamtstand");
+            strict_1.default.equal(await val(host1, ids.energyTodayKwh), 0, "erster Sample: today = 0");
             // Simulierter Adapter-Neustart: Engine-Singleton zurücksetzen, neue Host-Instanz
             (0, engine_1.resetMeasuredConsumersEngineForTest)();
             const host2 = new FakeHost(config, tmpDir);
             host2.set("sensor.p", 10);
-            host2.set("sensor.e", 1.3);
+            host2.set("sensor.e", 1.0);
             await (0, engine_1.runMeasuredConsumersTick)(host2);
-            strict_1.default.equal(await val(host2, ids.energyTotalKwh), 500.3, "initial_energy_kwh darf nach Neustart nicht erneut angewendet werden — nur das Delta (0.3) kommt hinzu");
+            strict_1.default.equal(await val(host2, ids.energyTotalKwh), 500, "unveränderter Rohzähler: kein zusätzlicher Verbrauch");
+            strict_1.default.equal(await val(host2, ids.energyTodayKwh), 0, "unveränderter Rohzähler: today bleibt 0");
+            host2.set("sensor.e", 1.1);
+            await (0, engine_1.runMeasuredConsumersTick)(host2);
+            strict_1.default.equal(await val(host2, ids.energyTotalKwh), 500.1);
+            strict_1.default.equal(await val(host2, ids.energyTodayKwh), 0.1, "nach Neustart +0.1 → today exakt +0.1");
+        });
+        (0, node_test_1.it)("energy_state 100→100.2 schreibt today und Monat/Jahr", async () => {
+            const config = {
+                [constants_1.MEASURED_CONSUMERS_CONFIG_KEY]: [
+                    row({ name: "PC", power_state_id: "sensor.p", energy_state_id: "sensor.e" }),
+                ],
+            };
+            const host = new FakeHost(config, tmpDir);
+            host.set("sensor.p", 123);
+            host.set("sensor.e", 100.0);
+            await (0, engine_1.runMeasuredConsumersTick)(host);
+            const ids = (0, state_ids_1.measuredConsumerSlotStateIds)(1);
+            strict_1.default.equal(await val(host, ids.energyTodayKwh), 0);
+            host.set("sensor.e", 100.2);
+            await (0, engine_1.runMeasuredConsumersTick)(host);
+            strict_1.default.equal(await val(host, ids.energyTotalKwh), 100.2);
+            strict_1.default.equal(await val(host, ids.energyTodayKwh), 0.2);
+            strict_1.default.equal(await val(host, ids.energyMonthKwh), 0.2);
+            strict_1.default.equal(await val(host, ids.energyYearKwh), 0.2);
+            strict_1.default.equal(await val(host, state_ids_1.MEASURED_CONSUMERS_AGGREGATE_STATES.totalEnergyTodayKwh), 0.2);
         });
     });
 });

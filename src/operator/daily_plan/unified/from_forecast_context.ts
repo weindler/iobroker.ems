@@ -374,6 +374,8 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 		const nowMinLocal = nowDate.getHours() * 60 + nowDate.getMinutes();
 		const minsToHardOff = hardOffAtRaw ? minutesUntilHardOff(nowMinLocal, hardOffAtRaw) : null;
 		const hardStopMs = minsToHardOff !== null ? nowMs + minsToHardOff * 60_000 : null;
+		const sharedRaw = str(d, "sharedPowerGroupId");
+		const sharedPowerGroupId = sharedRaw && sharedRaw.trim() ? sharedRaw.trim() : null;
 		climateUnits.push({
 			unitId: CONTRIBUTION_IDS.AC_UNIT(u),
 			label: str(d, "name") ?? `unit_${u}`,
@@ -390,7 +392,24 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 			runtimeHold,
 			holdPowerW,
 			hardStopMs,
+			sharedPowerGroupId,
 		});
+	}
+	/*
+	 * Shared Outdoor Unit: typische elektrische Leistung je Gruppe = max(Unit-Schätzungen),
+	 * damit score_allocate / Hard-PV-Bound dieselbe Obergrenze sieht (nie Summe).
+	 */
+	const groupMaxW = new Map<string, number>();
+	for (const u of climateUnits) {
+		const g = u.sharedPowerGroupId;
+		if (!g || u.typicalPowerW == null || !(u.typicalPowerW > 0)) continue;
+		groupMaxW.set(g, Math.max(groupMaxW.get(g) ?? 0, u.typicalPowerW));
+	}
+	for (const u of climateUnits) {
+		const g = u.sharedPowerGroupId;
+		if (!g) continue;
+		const maxW = groupMaxW.get(g);
+		if (maxW != null && maxW > 0) u.typicalPowerW = maxW;
 	}
 	const climateFresh = freshnessFrom(
 		nowMs,

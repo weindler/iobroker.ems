@@ -6,6 +6,17 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.2.2] – 2026-08-29
+
+### Fixed
+
+- **AC Shared Power im Unified Planner:** Units mit gleicher `sharedPowerGroupId` belasten PV/Batterie elektrisch nur einmal (`max` der Schätzungen bzw. eine Systemmessung) — keine Summe 850+700.
+- **Admin-Tabs:** Gruppierung Allgemein / Geräte / EMS plus `tabsStyle` mit Wrap — nutzbar bei 100 % Zoom.
+- **Policy Engine Startup:** Timeout nach 8 s als `info` (Init läuft asynchron weiter), Abschluss wird nachgeloggt — keine irreführende Warnung mehr.
+- **Measured Consumers Periodenstatistik:** Bei `source_mode=energy_state` werden positive Rohzähler-Deltas wieder in die Tages-Map gebucht (kein Baseline-Creep unter der round3-Schwelle) — `energy_today/month/year/yesterday_kwh` bleiben nicht mehr bei 0.
+
+---
+
 ## [0.2.1] – 2026-08-29
 
 ### Fixed

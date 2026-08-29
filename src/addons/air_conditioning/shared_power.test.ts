@@ -71,13 +71,28 @@ describe("resolveAcSystemPower — gemeinsame Außengeräte-Leistung", () => {
 		assert.deepEqual(results[0]!.activeUnitIndexes, []);
 	});
 
-	it("Gruppe ohne reale Messung fällt konservativ auf Schätzsumme zurück (kein Fake-Sensor-Wert)", () => {
+	it("Gruppe ohne reale Messung fällt konservativ auf max(Schätzung) zurück — keine Summe", () => {
 		const results = resolveAcSystemPower([
 			wohnzimmer({ running: true, estimatedPowerW: 900 }),
 			josef({ running: true, estimatedPowerW: 700, measuredPowerW: null }),
 		]);
 		assert.equal(results[0]!.sharedMeasurementUsed, false);
-		assert.equal(results[0]!.totalPowerW, 1600);
+		assert.equal(results[0]!.totalPowerW, 900, "max(900,700) — nie 1600");
+	});
+
+	it("verschiedene sharedPowerGroupId bleiben elektrisch getrennt (Summe erlaubt)", () => {
+		const results = resolveAcSystemPower([
+			wohnzimmer({ running: true, estimatedPowerW: 850, measuredPowerW: null }),
+			{
+				unitIndex: 3,
+				sharedPowerGroupId: "outdoor_2",
+				running: true,
+				measuredPowerW: null,
+				estimatedPowerW: 600,
+			},
+		]);
+		assert.equal(results.length, 2);
+		assert.equal(totalAcSystemPowerW(results), 850 + 600);
 	});
 
 	it("Units ohne sharedPowerGroupId bleiben unverändert eigenständig (Rückwärtskompatibilität)", () => {

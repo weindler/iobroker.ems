@@ -91,8 +91,15 @@ export function resolveAcSystemPower(units: AcUnitLiveState[]): AcGroupPowerResu
 				measurementUnitIndex: measuredMember.unitIndex,
 			});
 		} else {
-			// Keine reale Messung in der Gruppe — konservative Schätzsumme, kein Fake-Sensor-Wert.
-			const estimatedTotal = activeMembers.reduce((sum, m) => sum + m.estimatedPowerW, 0);
+			/*
+			 * Keine reale Messung in der Gruppe — konservative Gruppenschätzung.
+			 * max() statt Summe: ein Außengerät zieht nicht die Summe der Unit-Schätzwerte;
+			 * die größte Unit-Schätzung ist die belastbarste Näherung ohne Kennlinie.
+			 */
+			const estimatedTotal = activeMembers.reduce(
+				(max, m) => Math.max(max, m.estimatedPowerW),
+				0,
+			);
 			results.push({
 				groupId,
 				totalPowerW: Math.round(estimatedTotal),
@@ -109,4 +116,28 @@ export function resolveAcSystemPower(units: AcUnitLiveState[]): AcGroupPowerResu
 /** Gesamtsystemleistung über alle Gruppen/Standalone-Units (für Diagnose/Statistik). */
 export function totalAcSystemPowerW(results: AcGroupPowerResult[]): number {
 	return Math.round(results.reduce((sum, r) => sum + r.totalPowerW, 0));
+}
+
+/**
+ * Planner-/Forecast-Helfer: elektrische Gruppenleistung aus Unit-Schätzungen ohne Live-Running.
+ * Units mit gleicher `sharedPowerGroupId` → max(estimated); ohne Gruppe → eigene Schätzung.
+ * Reale Messung (falls bekannt) überschreibt die Gruppenschätzung (einmalig).
+ */
+export function estimateAcGroupElectricalPowerW(
+	units: Array<{
+		sharedPowerGroupId: string | null;
+		estimatedPowerW: number;
+		measuredPowerW?: number | null;
+		/** Wenn gesetzt: nur aktive Units zählen (Runtime). Ohne Flag: alle Units der Gruppe. */
+		active?: boolean;
+	}>,
+): number {
+	const live: AcUnitLiveState[] = units.map((u, i) => ({
+		unitIndex: i + 1,
+		sharedPowerGroupId: u.sharedPowerGroupId,
+		running: u.active !== false,
+		measuredPowerW: u.measuredPowerW ?? null,
+		estimatedPowerW: u.estimatedPowerW,
+	}));
+	return totalAcSystemPowerW(resolveAcSystemPower(live));
 }

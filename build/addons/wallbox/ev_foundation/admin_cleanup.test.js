@@ -22,7 +22,25 @@ const ADMIN_JSON = (0, node_path_1.join)(ROOT, "admin", "jsonConfig.json");
 const LP = "evcc.0.loadpoint.1";
 function wallboxItems() {
     const cfg = JSON.parse((0, node_fs_1.readFileSync)(ADMIN_JSON, "utf8"));
-    return cfg.items.wallboxTab.items;
+    const find = (items) => {
+        if (!items)
+            return null;
+        const direct = items.wallboxTab;
+        if (direct?.items)
+            return direct.items;
+        for (const v of Object.values(items)) {
+            if (!v || typeof v !== "object")
+                continue;
+            const nested = v.items;
+            const found = find(nested);
+            if (found)
+                return found;
+        }
+        return null;
+    };
+    const items = find(cfg.items);
+    strict_1.default.ok(items, "wallboxTab.items not found in admin/jsonConfig.json");
+    return items;
 }
 function isHidden(item, data) {
     if (!item || typeof item.hidden !== "string" || !item.hidden.trim())

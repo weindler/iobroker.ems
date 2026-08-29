@@ -24,9 +24,23 @@ type AdminItem = { hidden?: string; label?: string; text?: string };
 
 function wallboxItems(): Record<string, AdminItem> {
 	const cfg = JSON.parse(readFileSync(ADMIN_JSON, "utf8")) as {
-		items: { wallboxTab: { items: Record<string, AdminItem> } };
+		items: Record<string, unknown>;
 	};
-	return cfg.items.wallboxTab.items;
+	const find = (items: Record<string, unknown> | undefined): Record<string, AdminItem> | null => {
+		if (!items) return null;
+		const direct = items.wallboxTab as { items?: Record<string, AdminItem> } | undefined;
+		if (direct?.items) return direct.items;
+		for (const v of Object.values(items)) {
+			if (!v || typeof v !== "object") continue;
+			const nested = (v as { items?: Record<string, unknown> }).items;
+			const found = find(nested);
+			if (found) return found;
+		}
+		return null;
+	};
+	const items = find(cfg.items);
+	assert.ok(items, "wallboxTab.items not found in admin/jsonConfig.json");
+	return items;
 }
 
 function isHidden(item: AdminItem | undefined, data: Record<string, unknown>): boolean {

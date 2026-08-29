@@ -11,7 +11,28 @@ export async function readMeasuredConsumersPersist(baseDir: string): Promise<Mea
 		const raw = await fs.readFile(path.join(baseDir, MEASURED_CONSUMERS_RUNTIME_FILENAME), "utf8");
 		const parsed = JSON.parse(raw) as MeasuredConsumersPersist;
 		if (parsed?.version === 1 && parsed.slots && typeof parsed.slots === "object") {
-			return parsed;
+			const slots: MeasuredConsumersPersist["slots"] = {};
+			for (const [key, slot] of Object.entries(parsed.slots)) {
+				if (!slot || typeof slot !== "object") continue;
+				slots[key] = {
+					initialized: Boolean(slot.initialized),
+					rawEnergyBaselineKwh:
+						typeof slot.rawEnergyBaselineKwh === "number" && Number.isFinite(slot.rawEnergyBaselineKwh)
+							? slot.rawEnergyBaselineKwh
+							: null,
+					lastPowerTsMs:
+						typeof slot.lastPowerTsMs === "number" && Number.isFinite(slot.lastPowerTsMs)
+							? slot.lastPowerTsMs
+							: null,
+					totalKwh:
+						typeof slot.totalKwh === "number" && Number.isFinite(slot.totalKwh) ? slot.totalKwh : 0,
+					days:
+						slot.days && typeof slot.days === "object" && !Array.isArray(slot.days)
+							? { ...(slot.days as Record<string, number>) }
+							: {},
+				};
+			}
+			return { version: 1, slots };
 		}
 	} catch {
 		// neu / noch keine Persistenz vorhanden

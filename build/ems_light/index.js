@@ -153,11 +153,28 @@ async function startEmsLightPhase1Runtime(adapter) {
     }
     await (0, weather_1.initWeatherLearning)(adapter);
     const policyHost = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
-    const policyInit = (0, policy_1.initPolicyEngine)(policyHost).catch((e) => {
+    let policyInitTimedOut = false;
+    const policyInitStartedMs = Date.now();
+    const policyInit = (0, policy_1.initPolicyEngine)(policyHost)
+        .then(() => {
+        const ms = Date.now() - policyInitStartedMs;
+        if (policyInitTimedOut) {
+            adapter.log.info(`Policy Engine init completed after ${ms}ms (startup continued asynchronously)`);
+        }
+        else {
+            adapter.log.debug?.(`Policy Engine init completed in ${ms}ms`);
+        }
+    })
+        .catch((e) => {
         adapter.log.error(`Policy Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
     });
     await waitWithStartupTimeout(policyInit, POLICY_STARTUP_TIMEOUT_MS, () => {
-        adapter.log.warn(`Policy Engine init still running after ${POLICY_STARTUP_TIMEOUT_MS}ms; continuing adapter startup`);
+        policyInitTimedOut = true;
+        /*
+         * Init läuft bewusst im Hintergrund weiter (Phase-B ensure ist bereits durch).
+         * Kein Fehler — nur Hinweis, damit Adapter-Ready nicht blockiert wird.
+         */
+        adapter.log.info(`Policy Engine init still running after ${POLICY_STARTUP_TIMEOUT_MS}ms; continuing adapter startup (completion will be logged)`);
     });
     const intentHost = buildIntentHost(adapter);
     try {

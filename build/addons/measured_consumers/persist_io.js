@@ -32,7 +32,25 @@ async function readMeasuredConsumersPersist(baseDir) {
         const raw = await fs.readFile(path.join(baseDir, persist_1.MEASURED_CONSUMERS_RUNTIME_FILENAME), "utf8");
         const parsed = JSON.parse(raw);
         if (parsed?.version === 1 && parsed.slots && typeof parsed.slots === "object") {
-            return parsed;
+            const slots = {};
+            for (const [key, slot] of Object.entries(parsed.slots)) {
+                if (!slot || typeof slot !== "object")
+                    continue;
+                slots[key] = {
+                    initialized: Boolean(slot.initialized),
+                    rawEnergyBaselineKwh: typeof slot.rawEnergyBaselineKwh === "number" && Number.isFinite(slot.rawEnergyBaselineKwh)
+                        ? slot.rawEnergyBaselineKwh
+                        : null,
+                    lastPowerTsMs: typeof slot.lastPowerTsMs === "number" && Number.isFinite(slot.lastPowerTsMs)
+                        ? slot.lastPowerTsMs
+                        : null,
+                    totalKwh: typeof slot.totalKwh === "number" && Number.isFinite(slot.totalKwh) ? slot.totalKwh : 0,
+                    days: slot.days && typeof slot.days === "object" && !Array.isArray(slot.days)
+                        ? { ...slot.days }
+                        : {},
+                };
+            }
+            return { version: 1, slots };
         }
     }
     catch {

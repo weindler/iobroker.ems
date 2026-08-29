@@ -90,7 +90,23 @@ async function load(admin, foreign, ts = NOW.getTime()) {
 }
 function jsonConfigItems() {
     const raw = JSON.parse((0, node_fs_1.readFileSync)(ADMIN_JSON, "utf8"));
-    return raw.items?.wallboxTab?.items ?? {};
+    const find = (items) => {
+        if (!items)
+            return null;
+        const direct = items.wallboxTab;
+        if (direct?.items)
+            return direct.items;
+        for (const v of Object.values(items)) {
+            if (!v || typeof v !== "object")
+                continue;
+            const nested = v.items;
+            const found = find(nested);
+            if (found)
+                return found;
+        }
+        return null;
+    };
+    return find(raw.items) ?? {};
 }
 function evalJsonConfigValidator(expr, data) {
     return Boolean(new Function("data", `"use strict"; return (${expr});`)(data));

@@ -146,13 +146,32 @@ function findObjectValueSpan(text: string, keyLiteral: string, fromIndex: number
 	return { openIdx, closeIdx };
 }
 
+/** Klima-Tab auch in verschachtelten Admin-Gruppen (Allgemein/Geräte/EMS) finden. */
+function findClimateTabPanel(
+	items: Record<string, unknown> | undefined,
+): { items: Record<string, unknown> } | null {
+	if (!items || typeof items !== "object") return null;
+	const direct = items.climateTab;
+	if (direct && typeof direct === "object" && direct !== null) {
+		const panel = direct as { items?: Record<string, unknown> };
+		if (panel.items && typeof panel.items === "object") return { items: panel.items };
+	}
+	for (const v of Object.values(items)) {
+		if (!v || typeof v !== "object") continue;
+		const nested = (v as { items?: Record<string, unknown> }).items;
+		const found = findClimateTabPanel(nested);
+		if (found) return found;
+	}
+	return null;
+}
+
 function main(): void {
 	const checkOnly = process.argv.includes("--check");
 	const filePath = jsonConfigPath();
 	const raw = fs.readFileSync(filePath, "utf8");
-	const cfg = JSON.parse(raw) as { items: Record<string, { items: Record<string, unknown> }> };
-	const climateTab = cfg.items.climateTab;
-	if (!climateTab || typeof climateTab.items !== "object") {
+	const cfg = JSON.parse(raw) as { items: Record<string, unknown> };
+	const climateTab = findClimateTabPanel(cfg.items);
+	if (!climateTab) {
 		throw new Error("admin_config generator: climateTab.items not found in jsonConfig.json");
 	}
 

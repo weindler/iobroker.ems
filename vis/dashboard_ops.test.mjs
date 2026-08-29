@@ -579,7 +579,7 @@ describe("VIS battery / grid / GB presentation", () => {
 
 	it("AC LocalThings VIS power/filter/auto-clean helpers", () => {
 		assert.equal(ops.visAcPowerDisplayLine("measured", 727), "727 W");
-		assert.equal(ops.visAcPowerDisplayLine("estimated", 700), "~700 W");
+		assert.equal(ops.visAcPowerDisplayLine("estimated", 700), "~700 W (Unit-Schätzung)");
 		assert.equal(ops.visAcPowerDisplayLine("none", 0), "");
 		assert.equal(ops.visAcPowerDisplayLine("measured", 0), "");
 		assert.deepEqual(ops.visAcFilterWarn("wash"), { text: "FILTER REINIGEN", cls: "warn" });

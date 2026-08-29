@@ -12,7 +12,7 @@
  * verhalten sich unverändert wie bisher (volle Rückwärtskompatibilität, kein Sonderfall nötig).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.totalAcSystemPowerW = exports.resolveAcSystemPower = void 0;
+exports.estimateAcGroupElectricalPowerW = exports.totalAcSystemPowerW = exports.resolveAcSystemPower = void 0;
 /**
  * Ein Ergebnis pro Gruppe (`sharedPowerGroupId`) bzw. pro eigenständiger Unit (`groupId: null`,
  * ein Ergebnis je Unit). Reine Funktion, kein State/IO.
@@ -69,8 +69,12 @@ function resolveAcSystemPower(units) {
             });
         }
         else {
-            // Keine reale Messung in der Gruppe — konservative Schätzsumme, kein Fake-Sensor-Wert.
-            const estimatedTotal = activeMembers.reduce((sum, m) => sum + m.estimatedPowerW, 0);
+            /*
+             * Keine reale Messung in der Gruppe — konservative Gruppenschätzung.
+             * max() statt Summe: ein Außengerät zieht nicht die Summe der Unit-Schätzwerte;
+             * die größte Unit-Schätzung ist die belastbarste Näherung ohne Kennlinie.
+             */
+            const estimatedTotal = activeMembers.reduce((max, m) => Math.max(max, m.estimatedPowerW), 0);
             results.push({
                 groupId,
                 totalPowerW: Math.round(estimatedTotal),
@@ -88,3 +92,19 @@ function totalAcSystemPowerW(results) {
     return Math.round(results.reduce((sum, r) => sum + r.totalPowerW, 0));
 }
 exports.totalAcSystemPowerW = totalAcSystemPowerW;
+/**
+ * Planner-/Forecast-Helfer: elektrische Gruppenleistung aus Unit-Schätzungen ohne Live-Running.
+ * Units mit gleicher `sharedPowerGroupId` → max(estimated); ohne Gruppe → eigene Schätzung.
+ * Reale Messung (falls bekannt) überschreibt die Gruppenschätzung (einmalig).
+ */
+function estimateAcGroupElectricalPowerW(units) {
+    const live = units.map((u, i) => ({
+        unitIndex: i + 1,
+        sharedPowerGroupId: u.sharedPowerGroupId,
+        running: u.active !== false,
+        measuredPowerW: u.measuredPowerW ?? null,
+        estimatedPowerW: u.estimatedPowerW,
+    }));
+    return totalAcSystemPowerW(resolveAcSystemPower(live));
+}
+exports.estimateAcGroupElectricalPowerW = estimateAcGroupElectricalPowerW;

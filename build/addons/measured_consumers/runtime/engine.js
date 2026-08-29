@@ -55,7 +55,10 @@ async function readForeignNum(host, id) {
         const st = await reader(id);
         if (!st || st.val === null || st.val === undefined)
             return null;
-        const n = typeof st.val === "number" ? st.val : parseFloat(String(st.val));
+        if (typeof st.val === "number")
+            return Number.isFinite(st.val) ? st.val : null;
+        // Komma-Dezimal (DE) und Einheiten-Suffixe robust parsen
+        const n = parseFloat(String(st.val).trim().replace(",", "."));
         return Number.isFinite(n) ? n : null;
     }
     catch {

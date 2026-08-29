@@ -1547,7 +1547,7 @@ function visLageLine(s){
 }
 function visAcPowerDisplayLine(kind,powerW){
 	if(kind==="measured"&&powerW!=null&&isFinite(powerW)&&powerW>0)return Math.round(powerW)+" W";
-	if(kind==="estimated"&&powerW!=null&&isFinite(powerW)&&powerW>0)return"~"+Math.round(powerW)+" W";
+	if(kind==="estimated"&&powerW!=null&&isFinite(powerW)&&powerW>0)return"~"+Math.round(powerW)+" W (Unit-Schätzung)";
 	return"";
 }
 function visAcFilterWarn(status){
@@ -2526,6 +2526,12 @@ function renderStack(){
 		else if(pKind==="estimated")pW=num(g(base+".estimated_power_w"));
 		var pLine=visAcPowerDisplayLine(pKind,pW);
 		if(!pLine&&running)pLine="—";
+		var sysW=num(g("addons.air_conditioning.runtime.system_power_w"));
+		var sysShared=g("addons.air_conditioning.runtime.system_shared_power_used");
+		var sysLine="";
+		if(sysW!=null&&isFinite(sysW)&&sysW>0){
+			sysLine=Math.round(sysW)+" W System"+(sysShared===true||sysShared==="true"?" (geteilt)":"");
+		}
 		var filterLabel=txt(g(base+".filter_status_label_de"),"");
 		if(filterLabel==="—")filterLabel="";
 		var filterPct=num(g(base+".filter_usage_pct"));
@@ -2536,6 +2542,9 @@ function renderStack(){
 		if(fStat==="replace")filterCls="danger";
 		if(pLine||filterLabel){
 			rows.push(["Leistung",pLine||"—","Filter",filterLabel||"—","",filterCls]);
+		}
+		if(sysLine){
+			rows.push(["Außengerät",sysLine]);
 		}
 		if(filterHours!=null||filterPct!=null){
 			rows.push([

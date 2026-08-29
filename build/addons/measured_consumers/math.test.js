@@ -43,8 +43,49 @@ const persist_1 = require("./persist");
         const slot = (0, persist_1.emptyMeasuredConsumerSlotPersist)();
         (0, math_1.applyEnergyStateSample)(slot, 12.0, 500, "2026-03-01"); // Rohzähler 12.0, Nutzer will 500 als EMS-Gesamt
         strict_1.default.equal(slot.totalKwh, 500);
+        strict_1.default.equal(slot.days["2026-03-01"], undefined, "Startwert zählt nicht als heutiger Verbrauch");
         (0, math_1.applyEnergyStateSample)(slot, 12.5, 500, "2026-03-01");
         strict_1.default.equal(slot.totalKwh, 500.5);
+        strict_1.default.equal(slot.days["2026-03-01"], 0.5);
+    });
+    (0, node_test_1.it)("energy_state 100.0 → 100.2: total +0.2 und today +0.2", () => {
+        const slot = (0, persist_1.emptyMeasuredConsumerSlotPersist)();
+        (0, math_1.applyEnergyStateSample)(slot, 100.0, null, "2026-08-29");
+        (0, math_1.applyEnergyStateSample)(slot, 100.2, null, "2026-08-29");
+        const p = (0, math_1.resolveSlotPeriods)(slot, "2026-08-29", "2026-08-28");
+        strict_1.default.equal(p.totalKwh, 100.2);
+        strict_1.default.equal(p.todayKwh, 0.2);
+    });
+    (0, node_test_1.it)("initial_energy_kwh: erster Sample erzeugt today = 0", () => {
+        const slot = (0, persist_1.emptyMeasuredConsumerSlotPersist)();
+        (0, math_1.applyEnergyStateSample)(slot, 542.224, 542.224, "2026-08-29");
+        const p = (0, math_1.resolveSlotPeriods)(slot, "2026-08-29", "2026-08-28");
+        strict_1.default.equal(p.totalKwh, 542.224);
+        strict_1.default.equal(p.todayKwh, 0);
+    });
+    (0, node_test_1.it)("sub-threshold Inkremente akkumulieren bis today steigt (kein Baseline-Creep)", () => {
+        const slot = (0, persist_1.emptyMeasuredConsumerSlotPersist)();
+        (0, math_1.applyEnergyStateSample)(slot, 100.0, null, "2026-08-29");
+        // Viele winzige Updates unter round3-Schwelle (< 0.0005) — Baseline darf nicht voraneilen
+        (0, math_1.applyEnergyStateSample)(slot, 100.0002, null, "2026-08-29");
+        (0, math_1.applyEnergyStateSample)(slot, 100.0003, null, "2026-08-29");
+        (0, math_1.applyEnergyStateSample)(slot, 100.0004, null, "2026-08-29");
+        strict_1.default.equal(slot.totalKwh, 100, "noch kein buchbares Delta");
+        strict_1.default.equal(slot.rawEnergyBaselineKwh, 100, "Baseline bleibt bis sichtbares Delta");
+        (0, math_1.applyEnergyStateSample)(slot, 100.0012, null, "2026-08-29");
+        strict_1.default.equal(slot.totalKwh, 100.001);
+        strict_1.default.equal(slot.days["2026-08-29"], 0.001);
+    });
+    (0, node_test_1.it)("Tageswechsel: alter today → yesterday, neuer today mit neuem Delta", () => {
+        const slot = (0, persist_1.emptyMeasuredConsumerSlotPersist)();
+        (0, math_1.applyEnergyStateSample)(slot, 10, null, "2026-08-28");
+        (0, math_1.applyEnergyStateSample)(slot, 10.5, null, "2026-08-28");
+        (0, math_1.applyEnergyStateSample)(slot, 10.8, null, "2026-08-29");
+        const p = (0, math_1.resolveSlotPeriods)(slot, "2026-08-29", "2026-08-28");
+        strict_1.default.equal(p.yesterdayKwh, 0.5);
+        strict_1.default.equal(p.todayKwh, 0.3);
+        strict_1.default.equal(p.monthKwh, 0.8);
+        strict_1.default.equal(p.yearKwh, 0.8);
     });
     (0, node_test_1.it)("E) Counter-Reset: 500 kWh -> 0 -> 1 kWh ergibt fortlaufenden Gesamtstand, keinen Rücksprung", () => {
         const slot = (0, persist_1.emptyMeasuredConsumerSlotPersist)();
@@ -54,9 +95,11 @@ const persist_1 = require("./persist");
         (0, math_1.applyEnergyStateSample)(slot, 0, null, "2026-03-02");
         strict_1.default.equal(slot.totalKwh, 512.3, "kein Rücksprung/Phantomverbrauch beim Reset selbst");
         strict_1.default.equal(slot.rawEnergyBaselineKwh, 0);
+        strict_1.default.equal(slot.days["2026-03-02"], undefined, "Reset selbst schreibt keinen Tagesverbrauch");
         // danach 0.4 kWh Rohverbrauch seit Reset
         (0, math_1.applyEnergyStateSample)(slot, 0.4, null, "2026-03-02");
         strict_1.default.equal(slot.totalKwh, 512.7);
+        strict_1.default.equal(slot.days["2026-03-02"], 0.4, "nur echter Verbrauch nach Reset fließt in today");
     });
     (0, node_test_1.it)("E2) Reset ohne Zwischenschritt (0 direkt übersprungen, Rohwert springt auf kleineren Wert)", () => {
         const slot = (0, persist_1.emptyMeasuredConsumerSlotPersist)();

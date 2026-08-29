@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.1",
+		"version": "0.2.2",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.2": {
+				"en": "Fix AC shared outdoor power in Unified Planner (no 850+700); Admin tabs grouped; Policy Engine startup timeout is info; measured_consumers energy_state period stats (today/month/year) accumulate correctly.",
+				"de": "Fix: gemeinsame AC-Außengeräte-Leistung im Unified Planner (keine Doppelzählung); Admin-Tabs gruppiert; Policy-Engine-Startup als Info; measured_consumers energy_state Periodenstatistik (heute/Monat/Jahr) akkumuliert korrekt."
+			},
 			"0.2.1": {
 				"en": "Fix: grid_balance policy_excluded_* states no longer deleted by surface cleanup after ensure (removes 'has no existing object' warnings).",
 				"de": "Fix: grid_balance policy_excluded_* States werden nach ensure nicht mehr vom Surface-Cleanup gelöscht (Warnung „has no existing object“ behoben)."

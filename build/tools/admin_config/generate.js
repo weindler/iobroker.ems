@@ -168,13 +168,33 @@ function findObjectValueSpan(text, keyLiteral, fromIndex) {
     const closeIdx = findMatchingBrace(text, openIdx);
     return { openIdx, closeIdx };
 }
+/** Klima-Tab auch in verschachtelten Admin-Gruppen (Allgemein/Geräte/EMS) finden. */
+function findClimateTabPanel(items) {
+    if (!items || typeof items !== "object")
+        return null;
+    const direct = items.climateTab;
+    if (direct && typeof direct === "object" && direct !== null) {
+        const panel = direct;
+        if (panel.items && typeof panel.items === "object")
+            return { items: panel.items };
+    }
+    for (const v of Object.values(items)) {
+        if (!v || typeof v !== "object")
+            continue;
+        const nested = v.items;
+        const found = findClimateTabPanel(nested);
+        if (found)
+            return found;
+    }
+    return null;
+}
 function main() {
     const checkOnly = process.argv.includes("--check");
     const filePath = jsonConfigPath();
     const raw = fs.readFileSync(filePath, "utf8");
     const cfg = JSON.parse(raw);
-    const climateTab = cfg.items.climateTab;
-    if (!climateTab || typeof climateTab.items !== "object") {
+    const climateTab = findClimateTabPanel(cfg.items);
+    if (!climateTab) {
         throw new Error("admin_config generator: climateTab.items not found in jsonConfig.json");
     }
     const generatedClimateItems = buildClimateTabItems(climateTab.items);

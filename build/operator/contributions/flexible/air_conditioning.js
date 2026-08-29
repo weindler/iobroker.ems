@@ -87,6 +87,8 @@ function buildUnitContribution(input, unitInput, forecast) {
             governanceEnabled: input.governanceEnabled,
             /** Klima-/Ownership-Block: erreicht den Unified Planner (hardStopMs in from_forecast_context.ts). */
             hardOffAt: unit.hardOffAt,
+            /** Gemeinsames Außengerät — elektrische Planner-Last einmal pro Gruppe. */
+            sharedPowerGroupId: unit.sharedPowerGroupId,
         },
         slots: [],
     });

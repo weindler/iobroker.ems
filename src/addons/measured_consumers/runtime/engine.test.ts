@@ -216,18 +216,43 @@ describe("measured_consumers/runtime/engine", () => {
 			await runMeasuredConsumersTick(host1);
 			const ids = measuredConsumerSlotStateIds(1);
 			assert.equal(await val(host1, ids.energyTotalKwh), 500, "erstes Sample übernimmt initial_energy_kwh als Gesamtstand");
+			assert.equal(await val(host1, ids.energyTodayKwh), 0, "erster Sample: today = 0");
 
 			// Simulierter Adapter-Neustart: Engine-Singleton zurücksetzen, neue Host-Instanz
 			resetMeasuredConsumersEngineForTest();
 			const host2 = new FakeHost(config, tmpDir);
 			host2.set("sensor.p", 10);
-			host2.set("sensor.e", 1.3);
+			host2.set("sensor.e", 1.0);
 			await runMeasuredConsumersTick(host2);
-			assert.equal(
-				await val(host2, ids.energyTotalKwh),
-				500.3,
-				"initial_energy_kwh darf nach Neustart nicht erneut angewendet werden — nur das Delta (0.3) kommt hinzu",
-			);
+			assert.equal(await val(host2, ids.energyTotalKwh), 500, "unveränderter Rohzähler: kein zusätzlicher Verbrauch");
+			assert.equal(await val(host2, ids.energyTodayKwh), 0, "unveränderter Rohzähler: today bleibt 0");
+
+			host2.set("sensor.e", 1.1);
+			await runMeasuredConsumersTick(host2);
+			assert.equal(await val(host2, ids.energyTotalKwh), 500.1);
+			assert.equal(await val(host2, ids.energyTodayKwh), 0.1, "nach Neustart +0.1 → today exakt +0.1");
+		});
+
+		it("energy_state 100→100.2 schreibt today und Monat/Jahr", async () => {
+			const config = {
+				[MEASURED_CONSUMERS_CONFIG_KEY]: [
+					row({ name: "PC", power_state_id: "sensor.p", energy_state_id: "sensor.e" }),
+				],
+			};
+			const host = new FakeHost(config, tmpDir);
+			host.set("sensor.p", 123);
+			host.set("sensor.e", 100.0);
+			await runMeasuredConsumersTick(host);
+			const ids = measuredConsumerSlotStateIds(1);
+			assert.equal(await val(host, ids.energyTodayKwh), 0);
+
+			host.set("sensor.e", 100.2);
+			await runMeasuredConsumersTick(host);
+			assert.equal(await val(host, ids.energyTotalKwh), 100.2);
+			assert.equal(await val(host, ids.energyTodayKwh), 0.2);
+			assert.equal(await val(host, ids.energyMonthKwh), 0.2);
+			assert.equal(await val(host, ids.energyYearKwh), 0.2);
+			assert.equal(await val(host, MEASURED_CONSUMERS_AGGREGATE_STATES.totalEnergyTodayKwh), 0.2);
 		});
 	});
 });

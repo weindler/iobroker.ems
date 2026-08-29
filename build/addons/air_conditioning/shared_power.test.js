@@ -69,13 +69,27 @@ function josef(over = {}) {
         strict_1.default.equal(results[0].totalPowerW, 0);
         strict_1.default.deepEqual(results[0].activeUnitIndexes, []);
     });
-    (0, node_test_1.it)("Gruppe ohne reale Messung fällt konservativ auf Schätzsumme zurück (kein Fake-Sensor-Wert)", () => {
+    (0, node_test_1.it)("Gruppe ohne reale Messung fällt konservativ auf max(Schätzung) zurück — keine Summe", () => {
         const results = (0, shared_power_js_1.resolveAcSystemPower)([
             wohnzimmer({ running: true, estimatedPowerW: 900 }),
             josef({ running: true, estimatedPowerW: 700, measuredPowerW: null }),
         ]);
         strict_1.default.equal(results[0].sharedMeasurementUsed, false);
-        strict_1.default.equal(results[0].totalPowerW, 1600);
+        strict_1.default.equal(results[0].totalPowerW, 900, "max(900,700) — nie 1600");
+    });
+    (0, node_test_1.it)("verschiedene sharedPowerGroupId bleiben elektrisch getrennt (Summe erlaubt)", () => {
+        const results = (0, shared_power_js_1.resolveAcSystemPower)([
+            wohnzimmer({ running: true, estimatedPowerW: 850, measuredPowerW: null }),
+            {
+                unitIndex: 3,
+                sharedPowerGroupId: "outdoor_2",
+                running: true,
+                measuredPowerW: null,
+                estimatedPowerW: 600,
+            },
+        ]);
+        strict_1.default.equal(results.length, 2);
+        strict_1.default.equal((0, shared_power_js_1.totalAcSystemPowerW)(results), 850 + 600);
     });
     (0, node_test_1.it)("Units ohne sharedPowerGroupId bleiben unverändert eigenständig (Rückwärtskompatibilität)", () => {
         const results = (0, shared_power_js_1.resolveAcSystemPower)([

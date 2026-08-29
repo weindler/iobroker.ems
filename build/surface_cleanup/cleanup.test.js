@@ -60,6 +60,14 @@ class FakeCleanupHost {
     }
 }
 (0, node_test_1.describe)("surface cleanup allowlist", () => {
+    (0, node_test_1.it)("keeps public grid_balance policy_excluded states (not cleanup ballast)", () => {
+        // Regression: ensureBatteryArchitectureStates creates these via BATTERY_PUBLIC_STATE_IDS;
+        // Phase-C2 surface cleanup must not delete them before the first grid_balance setState.
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.battery.grid_balance.policy_excluded_load_w"), false);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.battery.grid_balance.policy_excluded_reason_de"), false);
+        // Ballast sibling under grid_balance remains purgeable.
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.battery.grid_balance.mirror_follows_admin"), true);
+    });
     (0, node_test_1.it)("allows AC/vehicle roots and lean planner purge roots", () => {
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.air_conditioning.units.unit_3"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.air_conditioning.mapping.unit_2_cmd_switch_on"), true);
@@ -305,5 +313,17 @@ class FakeCleanupHost {
         strict_1.default.equal(host.objects.has("planner.intent.daily_plan.status"), true);
         strict_1.default.equal(host.objects.has("planner.intent.allocation.status"), true);
         strict_1.default.equal(host.objects.has("planner.intent.supply.grid.price_now"), true);
+    });
+    (0, node_test_1.it)("keeps grid_balance policy_excluded states after ensure + surface cleanup", async () => {
+        const { ensureBatteryArchitectureStates } = await import("../addons/battery/ensure_states.js");
+        const host = new FakeCleanupHost({});
+        await ensureBatteryArchitectureStates(host);
+        strict_1.default.equal(host.objects.has("addons.battery.grid_balance.policy_excluded_load_w"), true);
+        strict_1.default.equal(host.objects.has("addons.battery.grid_balance.policy_excluded_reason_de"), true);
+        await (0, cleanup_js_1.runDynamicSurfaceCleanup)(host);
+        strict_1.default.equal(host.objects.has("addons.battery.grid_balance.policy_excluded_load_w"), true, "policy_excluded_load_w must survive Phase-C2 cleanup");
+        strict_1.default.equal(host.objects.has("addons.battery.grid_balance.policy_excluded_reason_de"), true, "policy_excluded_reason_de must survive Phase-C2 cleanup");
+        strict_1.default.equal(host.deleted.includes("addons.battery.grid_balance.policy_excluded_load_w"), false);
+        strict_1.default.equal(host.deleted.includes("addons.battery.grid_balance.policy_excluded_reason_de"), false);
     });
 });

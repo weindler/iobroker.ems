@@ -65,6 +65,24 @@ class FakeCleanupHost implements SurfaceCleanupHost {
 }
 
 describe("surface cleanup allowlist", () => {
+	it("keeps public grid_balance policy_excluded states (not cleanup ballast)", () => {
+		// Regression: ensureBatteryArchitectureStates creates these via BATTERY_PUBLIC_STATE_IDS;
+		// Phase-C2 surface cleanup must not delete them before the first grid_balance setState.
+		assert.equal(
+			isAllowlistedCleanupRelativeId("addons.battery.grid_balance.policy_excluded_load_w"),
+			false,
+		);
+		assert.equal(
+			isAllowlistedCleanupRelativeId("addons.battery.grid_balance.policy_excluded_reason_de"),
+			false,
+		);
+		// Ballast sibling under grid_balance remains purgeable.
+		assert.equal(
+			isAllowlistedCleanupRelativeId("addons.battery.grid_balance.mirror_follows_admin"),
+			true,
+		);
+	});
+
 	it("allows AC/vehicle roots and lean planner purge roots", () => {
 		assert.equal(isAllowlistedCleanupRelativeId("addons.air_conditioning.units.unit_3"), true);
 		assert.equal(
@@ -361,5 +379,33 @@ describe("dynamic surface ensure + cleanup", () => {
 		assert.equal(host.objects.has("planner.intent.daily_plan.status"), true);
 		assert.equal(host.objects.has("planner.intent.allocation.status"), true);
 		assert.equal(host.objects.has("planner.intent.supply.grid.price_now"), true);
+	});
+
+	it("keeps grid_balance policy_excluded states after ensure + surface cleanup", async () => {
+		const { ensureBatteryArchitectureStates } = await import("../addons/battery/ensure_states.js");
+		const host = new FakeCleanupHost({});
+		await ensureBatteryArchitectureStates(host as unknown as ioBroker.Adapter);
+		assert.equal(host.objects.has("addons.battery.grid_balance.policy_excluded_load_w"), true);
+		assert.equal(host.objects.has("addons.battery.grid_balance.policy_excluded_reason_de"), true);
+
+		await runDynamicSurfaceCleanup(host);
+		assert.equal(
+			host.objects.has("addons.battery.grid_balance.policy_excluded_load_w"),
+			true,
+			"policy_excluded_load_w must survive Phase-C2 cleanup",
+		);
+		assert.equal(
+			host.objects.has("addons.battery.grid_balance.policy_excluded_reason_de"),
+			true,
+			"policy_excluded_reason_de must survive Phase-C2 cleanup",
+		);
+		assert.equal(
+			host.deleted.includes("addons.battery.grid_balance.policy_excluded_load_w"),
+			false,
+		);
+		assert.equal(
+			host.deleted.includes("addons.battery.grid_balance.policy_excluded_reason_de"),
+			false,
+		);
 	});
 });

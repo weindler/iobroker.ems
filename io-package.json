@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.0",
+		"version": "0.2.1",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.1": {
+				"en": "Fix: grid_balance policy_excluded_* states no longer deleted by surface cleanup after ensure (removes 'has no existing object' warnings).",
+				"de": "Fix: grid_balance policy_excluded_* States werden nach ensure nicht mehr vom Surface-Cleanup gelöscht (Warnung „has no existing object“ behoben)."
+			},
 			"0.2.0": {
 				"en": "Release 0.2.0 — Unified battery discharge authority + dynamic reserve (night-load learning, required SOC at PV end, empty/charge-time diagnostics) replace the fixed 50% policy; AC hard-off now reaches the Unified Planner with runtime/comfort-aware start decisions; shared outdoor-unit power model (Wohnzimmer+Josef counted once); Device Ownership/Manual Override for AC and immersion heater (temporary user control without EMS fighting back); new read-only Measured Consumers block (up to 20 configurable power/energy sensors, counter-reset safe, today/month/year/total stats, known-vs-unknown house load) — never switched by EMS, never added to house load. Check after install: battery reserve behaviour, AC/heater manual overrides, and the new Admin tab \"Gemessene Verbraucher\".",
 				"de": "Release 0.2.0 — Zentrale Battery-Discharge-Authority + dynamische Reserve (Nachtverbrauchs-Learning, Required-SOC-at-PV-End, Empty-/Charge-Time-Diagnostik) ersetzen die feste 50%-Policy; Klima-Hard-Off wirkt jetzt bis in den Unified Planner mit restlaufzeit-/komfortabhängiger Start-Entscheidung; gemeinsames Außengeräte-Leistungsmodell (Wohnzimmer+Josef nur einmal gezählt); Device Ownership/Manual Override für Klima und Heizstab (temporäre Nutzer-Freigabe, EMS schaltet nicht sofort zurück); neuer rein messender Verbraucherblock (bis zu 20 konfigurierbare Leistungs-/Energie-Datenpunkte, zählerreset-sicher, Tages-/Monats-/Jahres-/Gesamtstatistik, bekannte vs. unbekannte Restlast) — wird von EMS nie geschaltet, nie zum Hausverbrauch addiert. Nach dem Update prüfen: Batterie-Reserve-Verhalten, Klima-/Heizstab-Manual-Override, neuer Admin-Tab „Gemessene Verbraucher“."

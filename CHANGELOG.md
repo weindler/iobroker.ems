@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.2.1] – 2026-08-29
+
+### Fixed
+
+- **Grid-Balance Diagnose-States:** `policy_excluded_load_w` / `policy_excluded_reason_de` werden nach `ensure` nicht mehr vom Surface-Cleanup als Ballast gelöscht (ioBroker-Warnung „has no existing object“).
+
+---
+
 ## [0.2.0] – 2026-08-29
 
 Konsolidiert die Unified-Energy-Planning-Arbeit seit 0.1.119 (Batterie, Klima, Ownership, gemessene Verbraucher). Details je Zwischenversion siehe Git-Historie/`io-package.json` News.

@@ -156,7 +156,7 @@ const WALLBOX_FOUNDATION_KEEP = new Set([
 	"ev_execution_live_test_block_reason",
 ]);
 const BATTERY_KEEP_RE =
-	/^addons\.battery\.(identity|telemetry|status\.(telemetry_ready|effective_execution_mode|state|reason|fault|lockout)|runtime\.(action|state|ownership_active|decision_source|reason_de|daily_plan_status|daily_plan_valid|daily_plan_revision|allocated_charge_power_w|energy_source|battery_setpoint_owner|battery_setpoint_kind|battery_setpoint_w)|diagnostics\.(fault_code|fault_reason)|grid_balance\.(enabled|active|ready|block_reason|current_price_ct_kwh|price_min_ct_kwh|price_allowed|grid_power_w|effective_power_w|hold_detected|ev_conflict|last_action|explain|live_test_armed|live_test_armed_at|live_test_result)|control\.fault_reset|failsafe\.)/;
+	/^addons\.battery\.(identity|telemetry|status\.(telemetry_ready|effective_execution_mode|state|reason|fault|lockout)|runtime\.(action|state|ownership_active|decision_source|reason_de|daily_plan_status|daily_plan_valid|daily_plan_revision|allocated_charge_power_w|energy_source|battery_setpoint_owner|battery_setpoint_kind|battery_setpoint_w)|diagnostics\.(fault_code|fault_reason)|grid_balance\.(enabled|active|ready|block_reason|current_price_ct_kwh|price_min_ct_kwh|price_allowed|grid_power_w|effective_power_w|hold_detected|ev_conflict|last_action|explain|live_test_armed|live_test_armed_at|live_test_result|policy_excluded_load_w|policy_excluded_reason_de)|control\.fault_reset|failsafe\.)/;
 const BATTERY_TREE_RE =
 	/^addons\.battery\.(capabilities|limits|dryrun|status\.(profile|profile_loaded|control_ready|dryrun_ready|live_ready)|runtime\.|diagnostics\.|grid_balance\.)/;
 

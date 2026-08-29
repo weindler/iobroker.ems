@@ -21,6 +21,9 @@ const ensure_states_1 = require("./ensure_states");
 const daily_plan_1 = require("./daily_plan");
 const fsm_1 = require("./fsm");
 const persist_1 = require("./persist");
+const hard_off_worth_it_1 = require("./hard_off_worth_it");
+const device_ownership_1 = require("../../../ems_light/device_ownership");
+const shared_power_1 = require("../shared_power");
 const persist_io_1 = require("./persist_io");
 const stop_intent_1 = require("./stop_intent");
 const compute_desired_1 = require("./compute_desired");
@@ -476,6 +479,8 @@ async function runAcRuntimeTickBody(host) {
     let anyTelemetryReady = false;
     let anyFault = false;
     let anyLockout = false;
+    /** Klima-/Ownership-Block: gemeinsame Außengeräte-Leistung — je Unit ein Eintrag. */
+    const acLiveStates = [];
     for (const unit of activeUnits) {
         const tempId = (0, sequences_1.resolveAcMappingTarget)(mappingTable, unit.index, "room_temp");
         const humId = (0, sequences_1.resolveAcMappingTarget)(mappingTable, unit.index, "room_humidity");
@@ -531,6 +536,35 @@ async function runAcRuntimeTickBody(host) {
             }
         }
         const startRetryReady = !up.lastStartAtMs || nowMs - up.lastStartAtMs >= constants_1.AC_START_RETRY_MS;
+        /*
+         * Klima-/Ownership-Block: Manual-Override erkennen — Ist-Zustand widerspricht dem, was
+         * EMS im vorigen Zyklus wollte (`up.lastDesired`, vor dem heutigen advanceCoolingDesired-
+         * Update), UND das ist nicht durch einen soeben erst ausgeführten eigenen EMS-Start/Stop
+         * erklärbar (Feedback-Verzögerung, AC_OWNERSHIP_SETTLE_MS).
+         */
+        const emsRecentlyActed = (up.lastStartAtMs != null && nowMs - up.lastStartAtMs < constants_1.AC_OWNERSHIP_SETTLE_MS) ||
+            (up.lastStopAtMs != null && nowMs - up.lastStopAtMs < constants_1.AC_OWNERSHIP_SETTLE_MS);
+        const emsWantedOn = up.lastDesired === "on" || up.lastDesired === "hold";
+        const emsWantedOff = up.lastDesired === "off" || up.lastDesired === "idle";
+        const rawMismatchOn = emsWantedOff && feedbackOn;
+        const rawMismatchOff = emsWantedOn && !feedbackOn;
+        const mismatchDetected = !emsRecentlyActed && (rawMismatchOn || rawMismatchOff);
+        const mismatchKind = rawMismatchOn
+            ? "manual_on"
+            : rawMismatchOff
+                ? "manual_off"
+                : "";
+        const ownership = (0, device_ownership_1.evaluateDeviceOwnership)({
+            nowMs,
+            mismatchDetected,
+            mismatchKind,
+            previous: up.ownership ?? (0, device_ownership_1.emptyDeviceOwnershipState)(),
+            overrideDurationMs: constants_1.AC_MANUAL_OVERRIDE_DURATION_MS_DEFAULT,
+            safetyOverride: false,
+        });
+        up.ownership = ownership;
+        const ownershipOverrideActive = (0, device_ownership_1.isOwnershipOverrideActive)(ownership, nowMs);
+        const remainingMinutesUntilHardOff = (0, hard_off_worth_it_1.minutesUntilHardOff)(now.getHours() * 60 + now.getMinutes(), unit.hardOffAt);
         let control = (0, compute_desired_1.computeAcCoolingDesired)({
             unitEnabled: unit.enabled,
             governanceEnabled,
@@ -540,6 +574,9 @@ async function runAcRuntimeTickBody(host) {
             dailyPlan,
             feedbackOn,
             startRetryReady,
+            ownershipOverrideActive,
+            ownershipReasonDe: ownership.reasonDe,
+            remainingMinutesUntilHardOff,
         });
         let permission = (0, compute_desired_1.controlToPermission)(control);
         let desired = control.desired;
@@ -701,6 +738,17 @@ async function runAcRuntimeTickBody(host) {
         });
         await (0, state_write_1.setStateIfChanged)(host, ids.measuredPowerW, powerDisp.measuredPowerW);
         await (0, state_write_1.setStateIfChanged)(host, ids.powerDisplayKind, powerDisp.kind);
+        acLiveStates.push({
+            unitIndex: unit.index,
+            sharedPowerGroupId: unit.sharedPowerGroupId ?? null,
+            running: fbOn || deviceActive,
+            measuredPowerW,
+            estimatedPowerW: estPower > 0 ? estPower : unit.estimatedPowerW,
+        });
+        await (0, state_write_1.setStateIfChanged)(host, ids.ownershipOwner, ownership.owner);
+        await (0, state_write_1.setStateIfChanged)(host, ids.ownershipOverrideUntilIso, ownership.overrideUntilIso ?? "");
+        await (0, state_write_1.setStateIfChanged)(host, ids.ownershipReasonDe, ownership.reasonDe);
+        await (0, state_write_1.setStateIfChanged)(host, ids.hardOffRemainingMin, remainingMinutesUntilHardOff === null ? null : remainingMinutesUntilHardOff);
         const setpointRead = await readForeign(host, (0, sequences_1.resolveAcMappingTarget)(mappingTable, unit.index, "feedback_setpoint"));
         await (0, state_write_1.setStateIfChanged)(host, ids.setpointTempC, setpointRead.num ?? null);
         const filterStatusRaw = await readForeign(host, (0, sequences_1.resolveAcMappingTarget)(mappingTable, unit.index, "filter_status"));
@@ -759,6 +807,15 @@ async function runAcRuntimeTickBody(host) {
         nowMs,
         devicesBusy: acDeviceBusy,
     });
+    /*
+     * Klima-/Ownership-Block: gemeinsame Außengeräte-Leistung — Komfort bleibt pro Unit, die
+     * elektrische Leistung wird pro Gruppe (sharedPowerGroupId) genau einmal gezählt.
+     */
+    const acPowerGroups = (0, shared_power_1.resolveAcSystemPower)(acLiveStates);
+    const acSystemActiveUnitIndexes = [...new Set(acPowerGroups.flatMap((g) => g.activeUnitIndexes))].sort((a, b) => a - b);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.AC_RUNTIME_SUMMARY_STATES.systemPowerW, (0, shared_power_1.totalAcSystemPowerW)(acPowerGroups));
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.AC_RUNTIME_SUMMARY_STATES.systemActiveUnitIndexes, acSystemActiveUnitIndexes.join(","));
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.AC_RUNTIME_SUMMARY_STATES.systemSharedPowerUsed, acPowerGroups.some((g) => g.sharedMeasurementUsed));
     await (0, state_write_1.setStateIfChanged)(host, `${ensure_states_1.AC_RUNTIME_BASE}.outdoor_allocated_power_w`, config.outdoorMaxPowerW);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.AC_RUNTIME_SUMMARY_STATES.governanceAllowed, governanceEnabled);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.AC_RUNTIME_SUMMARY_STATES.dailyPlanActive, anyDailyPlanActive);

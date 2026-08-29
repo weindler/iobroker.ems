@@ -61,3 +61,27 @@ export function externalOnStatus(params: {
 	if (params.powerActive) return "unexpected_external_on";
 	return null;
 }
+
+/** Klima-/Ownership-Block: Manual-Override zeitbegrenzt, bevor EMS erneut selbst greift. */
+export const IMMERSION_MANUAL_OVERRIDE_DURATION_MS_DEFAULT = 30 * 60_000;
+/** Kein Mismatch-Alarm kurz nach einem eigenen EMS-Stufenwechsel (Relais-/Feedback-Verzögerung). */
+export const IMMERSION_OWNERSHIP_SETTLE_MS = 2 * 60_000;
+
+export type ImmersionMismatchKind = "manual_on" | "manual_off" | "";
+
+/**
+ * Symmetrische Erweiterung von `externalOnStatus` für den Ownership-Block: erkennt sowohl
+ * „EMS wollte AUS, Gerät läuft" (manual_on) als auch „EMS wollte AN, Gerät ist aus" (manual_off).
+ * Nutzt bewusst das Feedback/Stage des VORIGEN Takts (vor dem heutigen Write), damit kein
+ * eigener, noch nicht bestätigter EMS-Write fälschlich als Fremdeingriff gilt.
+ */
+export function detectImmersionManualMismatch(params: {
+	prevCommandedStage: number;
+	prevFeedbackActive: boolean | null;
+}): ImmersionMismatchKind {
+	if (params.prevFeedbackActive === null) return "";
+	const emsWantedOn = params.prevCommandedStage > 0;
+	if (!emsWantedOn && params.prevFeedbackActive) return "manual_on";
+	if (emsWantedOn && !params.prevFeedbackActive) return "manual_off";
+	return "";
+}

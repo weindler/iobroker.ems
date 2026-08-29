@@ -4,6 +4,7 @@ exports.runPostBootstrapReconciliation = void 0;
 const air_conditioning_1 = require("../addons/air_conditioning");
 const battery_1 = require("../addons/battery");
 const immersion_heater_1 = require("../addons/immersion_heater");
+const measured_consumers_1 = require("../addons/measured_consumers");
 const wallbox_1 = require("../addons/wallbox");
 /**
  * Nach Öffnung der Bootstrap-Barriere: aktuelle Fremdeingänge erneut einlesen.
@@ -14,5 +15,6 @@ async function runPostBootstrapReconciliation(host) {
     await (0, battery_1.runBatteryControlTick)(host);
     await (0, immersion_heater_1.refreshImmersionHeaterRuntime)(host);
     await (0, air_conditioning_1.refreshAirConditioningRuntime)(host);
+    await (0, measured_consumers_1.refreshMeasuredConsumersRuntime)(host);
 }
 exports.runPostBootstrapReconciliation = runPostBootstrapReconciliation;

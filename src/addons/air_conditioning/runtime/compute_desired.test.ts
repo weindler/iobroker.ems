@@ -195,4 +195,88 @@ describe("computeAcCoolingDesired — single authority", () => {
 		assert.equal(d.allowStop, false);
 		assert.equal(d.decisionSource, "cleaning");
 	});
+
+	describe("Klima-/Ownership-Block: Hard-Off-Restzeit vs. Komfortbedarf", () => {
+		it("19:15 bei Hard-Off 20:00 (45 Min Restzeit), geringer Komfortbedarf → kein unsinniger Neustart", () => {
+			const d = computeAcCoolingDesired({
+				...base,
+				fsm: fsm({ demandStart: true, demandUrgency01: 0.1, reasonDe: "Temp knapp über Schwelle." }),
+				dailyPlan: plan(),
+				feedbackOn: false,
+				remainingMinutesUntilHardOff: 45,
+				minWorthwhileRuntimeMin: 60,
+			});
+			assert.equal(d.allowStart, false);
+			assert.equal(d.desired, "idle");
+			assert.equal(d.decisionSource, "hard_off_not_worthwhile");
+			assert.match(d.reasonDe, /Hard-Off in 45 Min/);
+		});
+
+		it("gleicher Zeitpunkt, hoher Komfortbedarf → Start weiterhin möglich", () => {
+			const d = computeAcCoolingDesired({
+				...base,
+				fsm: fsm({ demandStart: true, demandUrgency01: 0.95, reasonDe: "Temp deutlich über Schwelle." }),
+				dailyPlan: plan(),
+				feedbackOn: false,
+				remainingMinutesUntilHardOff: 45,
+				minWorthwhileRuntimeMin: 60,
+			});
+			assert.equal(d.allowStart, true);
+			assert.equal(d.desired, "on");
+		});
+
+		it("ohne konfigurierten Hard-Off bleibt der Start unbeeinflusst", () => {
+			const d = computeAcCoolingDesired({
+				...base,
+				fsm: fsm({ demandStart: true, demandUrgency01: 0, reasonDe: "Temp hoch." }),
+				dailyPlan: plan(),
+				feedbackOn: false,
+				remainingMinutesUntilHardOff: null,
+			});
+			assert.equal(d.allowStart, true);
+		});
+	});
+
+	describe("Klima-/Ownership-Block: Manual Override", () => {
+		it("manuelles Einschalten Klima → EMS schaltet nicht sofort wieder aus", () => {
+			const d = computeAcCoolingDesired({
+				...base,
+				fsm: fsm({ state: "running", demandStop: false }),
+				dailyPlan: plan({ allocatedPowerW: 0, allocationStatus: "allocated" }), // Planner-OFF
+				feedbackOn: true,
+				ownershipOverrideActive: true,
+				ownershipReasonDe: "Manuelles Einschalten erkannt — EMS-Steuerung pausiert bis 2026-08-28T19:45:00.000Z.",
+			});
+			assert.equal(d.allowStop, false);
+			assert.equal(d.allowStart, false);
+			assert.equal(d.desired, "hold");
+			assert.equal(d.decisionSource, "manual_override");
+		});
+
+		it("manuelles Ausschalten Klima → EMS schaltet nicht sofort wieder ein", () => {
+			const d = computeAcCoolingDesired({
+				...base,
+				fsm: fsm({ demandStart: true, reasonDe: "Temp hoch." }),
+				dailyPlan: plan(),
+				feedbackOn: false,
+				ownershipOverrideActive: true,
+				ownershipReasonDe: "Manuelles Ausschalten erkannt — EMS-Steuerung pausiert bis 2026-08-28T19:45:00.000Z.",
+			});
+			assert.equal(d.allowStart, false);
+			assert.equal(d.desired, "idle");
+			assert.equal(d.decisionSource, "manual_override");
+		});
+
+		it("Override endet automatisch — normale Planner-/Demand-Logik greift danach wieder", () => {
+			const d = computeAcCoolingDesired({
+				...base,
+				fsm: fsm({ demandStart: true, reasonDe: "Temp hoch." }),
+				dailyPlan: plan(),
+				feedbackOn: false,
+				ownershipOverrideActive: false,
+			});
+			assert.equal(d.allowStart, true);
+			assert.equal(d.decisionSource, "daily_plan");
+		});
+	});
 });

@@ -215,6 +215,25 @@ function tick(over = {}) {
         strict_1.default.equal(d.requestedPowerW, 2800);
         strict_1.default.equal(d.writeKind, "discharge");
     });
+    (0, node_test_1.it)("Phase 1c: configuredMaxW=0 durch Planner meldet planner_budget_zero, nicht no_hardware_headroom", () => {
+        const d = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({
+            consumptionW: 2000,
+            pvAcPowerW: 0,
+            configuredMaxW: 0,
+            configuredMaxWZeroFromPlanner: true,
+        }));
+        strict_1.default.equal(d.effectiveMaxW, 0);
+        strict_1.default.equal(d.blockReason, "planner_budget_zero");
+    });
+    (0, node_test_1.it)("Phase 1c: configuredMaxW=0 ohne Planner-Flag bleibt no_hardware_headroom (unverändertes Altverhalten)", () => {
+        const d = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({
+            consumptionW: 2000,
+            pvAcPowerW: 0,
+            configuredMaxW: 0,
+        }));
+        strict_1.default.equal(d.effectiveMaxW, 0);
+        strict_1.default.equal(d.blockReason, "no_hardware_headroom");
+    });
     (0, node_test_1.it)("L15: GB Ownership entsteht nur nach eigenem Write", () => {
         const idle = (0, grid_balance_power_js_1.evaluateGridBalanceTick)(tick({ ownsSetpoint: false, consumptionW: 100, pvAcPowerW: 100, offsetW: 0 }));
         strict_1.default.equal(idle.ownsSetpointNext, false);

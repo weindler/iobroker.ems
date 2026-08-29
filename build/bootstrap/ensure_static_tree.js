@@ -4,6 +4,7 @@ exports.syncAllMappingsFromConfig = exports.cleanupDynamicPlaceholders = exports
 const air_conditioning_1 = require("../addons/air_conditioning");
 const battery_1 = require("../addons/battery");
 const immersion_heater_1 = require("../addons/immersion_heater");
+const measured_consumers_1 = require("../addons/measured_consumers");
 const wallbox_1 = require("../addons/wallbox");
 const governance_1 = require("../addons/governance");
 const runtime_surface_1 = require("../addons/runtime_surface");
@@ -29,6 +30,7 @@ async function ensureStaticStateTree(host) {
     await (0, battery_1.ensureBatteryStateTree)(host);
     await (0, immersion_heater_1.ensureImmersionHeaterStateTree)(host);
     await (0, air_conditioning_1.ensureAirConditioningStateTree)(host);
+    await (0, measured_consumers_1.ensureMeasuredConsumersStateTree)(host);
 }
 exports.ensureStaticStateTree = ensureStaticStateTree;
 /** Phase C — no-op since v0.1.227 (fat vehicle profile trees removed; see `wb_vehicle_map`). */

@@ -120,6 +120,8 @@ function buildUnitContribution(
 			/** Klima plant Energie/Laufzeit, keine 15-Min-Zeitslots (Runtime steuert hysteresebasiert). */
 			timeAllocation: false,
 			governanceEnabled: input.governanceEnabled,
+			/** Klima-/Ownership-Block: erreicht den Unified Planner (hardStopMs in from_forecast_context.ts). */
+			hardOffAt: unit.hardOffAt,
 		},
 		slots: [],
 	});

@@ -125,6 +125,22 @@ export const CLIMATE_UNIT_SHAPE: ClimateUnitShapeEntry[] = [
   }
  ],
  [
+  "ac_u{N}_shared_power_group_id",
+  {
+   "type": "text",
+   "label": "Gemeinsame Außengerät-Gruppe (optional)",
+   "help": "Nur setzen, wenn dieses Innengerät sich ein Außengerät (und damit dieselbe Leistungs-/Energiemessung) mit einem anderen Innengerät teilt — z. B. \"outdoor_1\" bei beiden. Leer = eigenständige Messung (Standard).",
+   "default": {
+    "__override__": "shared_power_group_id"
+   },
+   "xs": 12,
+   "sm": 4,
+   "md": 3,
+   "lg": 3,
+   "xl": 3
+  }
+ ],
+ [
   "ac_u{N}_estimated_power_w",
   {
    "type": "number",

@@ -4,6 +4,7 @@ exports.getBootstrapRunContext = exports.resetBootstrapBarrierForTest = exports.
 const air_conditioning_1 = require("../addons/air_conditioning");
 const battery_1 = require("../addons/battery");
 const immersion_heater_1 = require("../addons/immersion_heater");
+const measured_consumers_1 = require("../addons/measured_consumers");
 const wallbox_1 = require("../addons/wallbox");
 const governance_1 = require("../addons/governance");
 const ems_light_1 = require("../ems_light");
@@ -104,6 +105,7 @@ async function runAdapterBootstrap(host, step, options = {}) {
     await step("battery runtime", () => (0, battery_1.startBatteryModuleRuntime)(host));
     await step("immersion runtime", () => (0, immersion_heater_1.startImmersionHeaterModuleRuntime)(host));
     await step("air conditioning runtime", () => (0, air_conditioning_1.startAirConditioningModuleRuntime)(host));
+    await step("measured consumers runtime", () => (0, measured_consumers_1.startMeasuredConsumersModuleRuntime)(host));
     trace?.("F", "runtime");
     await step("failsafe runner", async () => (0, failsafe_runner_1.startFailsafeRunner)(host));
     await step("ems-light runtime", () => (0, ems_light_1.startEmsLightPhase1Runtime)(host), 45_000);

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.externalOnStatus = exports.feedbackStageFromReadings = exports.normalizeFeedbackActive = void 0;
+exports.detectImmersionManualMismatch = exports.IMMERSION_OWNERSHIP_SETTLE_MS = exports.IMMERSION_MANUAL_OVERRIDE_DURATION_MS_DEFAULT = exports.externalOnStatus = exports.feedbackStageFromReadings = exports.normalizeFeedbackActive = void 0;
 /**
  * Normalisiert einen Stage-Feedback-Wert auf aktiv/inaktiv.
  *
@@ -63,3 +63,24 @@ function externalOnStatus(params) {
     return null;
 }
 exports.externalOnStatus = externalOnStatus;
+/** Klima-/Ownership-Block: Manual-Override zeitbegrenzt, bevor EMS erneut selbst greift. */
+exports.IMMERSION_MANUAL_OVERRIDE_DURATION_MS_DEFAULT = 30 * 60_000;
+/** Kein Mismatch-Alarm kurz nach einem eigenen EMS-Stufenwechsel (Relais-/Feedback-Verzögerung). */
+exports.IMMERSION_OWNERSHIP_SETTLE_MS = 2 * 60_000;
+/**
+ * Symmetrische Erweiterung von `externalOnStatus` für den Ownership-Block: erkennt sowohl
+ * „EMS wollte AUS, Gerät läuft" (manual_on) als auch „EMS wollte AN, Gerät ist aus" (manual_off).
+ * Nutzt bewusst das Feedback/Stage des VORIGEN Takts (vor dem heutigen Write), damit kein
+ * eigener, noch nicht bestätigter EMS-Write fälschlich als Fremdeingriff gilt.
+ */
+function detectImmersionManualMismatch(params) {
+    if (params.prevFeedbackActive === null)
+        return "";
+    const emsWantedOn = params.prevCommandedStage > 0;
+    if (!emsWantedOn && params.prevFeedbackActive)
+        return "manual_on";
+    if (emsWantedOn && !params.prevFeedbackActive)
+        return "manual_off";
+    return "";
+}
+exports.detectImmersionManualMismatch = detectImmersionManualMismatch;

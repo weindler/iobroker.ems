@@ -7,6 +7,10 @@ export const AC_WRITE_REFRESH_DELAY_MS = 5_000;
 export const AC_START_RETRY_MS = 120_000;
 /** Live: volle Stop-Sequenz frühestens wieder nach … ms, wenn Feedback noch on. */
 export const AC_STOP_RETRY_MS = 60_000;
+/** Klima-/Ownership-Block: erkannter Manual-Override pausiert EMS-Steuerung für diese Dauer. */
+export const AC_MANUAL_OVERRIDE_DURATION_MS_DEFAULT = 30 * 60_000;
+/** Kein Mismatch-Alarm kurz nach einem eigenen EMS-Start/Stop (Feedback-Verzögerung). */
+export const AC_OWNERSHIP_SETTLE_MS = 2 * 60_000;
 /** Nach Startsequenz kurz warten, bis SmartThings feedback_switch aktualisiert. */
 export const AC_FEEDBACK_POLL_MS = 3_000;
 export const AC_FEEDBACK_POLL_ATTEMPTS = 6;

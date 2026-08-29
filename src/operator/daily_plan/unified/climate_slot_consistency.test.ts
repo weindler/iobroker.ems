@@ -457,6 +457,31 @@ describe("climate slot consistency — T8 replan geometry", () => {
 	});
 });
 
+describe("climate slot consistency — Klima-/Ownership-Block: Hard-Off reicht bis in den Unified Planner", () => {
+	it("hardStopMs (echte Hard-Off-Zeit) verhindert Allocation an/nach der Zwangsabschaltung", () => {
+		const input = realCaseInput(NOW_1033);
+		// Hard-Off um 09:15Z (11:15 lokal) — mitten im geplanten Horizont (06:00–14:15Z).
+		const hardStopIso = "2026-08-11T09:15:00.000Z";
+		const withHardOff: UnifiedDayPlannerInput = {
+			...input,
+			climate: {
+				...input.climate!,
+				units: input.climate!.units.map((u) => ({ ...u, hardStopMs: Date.parse(hardStopIso) })),
+			},
+		};
+		const plan = allocateUnifiedDayPlan(withHardOff);
+		const climate = plan.allocations.filter((a) => a.kind === "climate");
+		const afterHardOff = climate.find(
+			(a) => Date.parse(a.slot.startIso) >= Date.parse(hardStopIso) && (a.allocatedPowerW ?? 0) > 0,
+		);
+		assert.equal(afterHardOff, undefined, "keine Allocation an/nach der konfigurierten Hard-Off-Zeit");
+		assert.ok(
+			climate.some((a) => Date.parse(a.slot.startIso) < Date.parse(hardStopIso) && (a.allocatedPowerW ?? 0) > 0),
+			"vor Hard-Off bleibt Allocation weiterhin möglich",
+		);
+	});
+});
+
 describe("climate slot consistency — E2E system invariant", () => {
 	it("Forecast segment mix → Unified quarters → Dispatch → Runtime match at 10:33", () => {
 		const input = realCaseInput(NOW_1033);

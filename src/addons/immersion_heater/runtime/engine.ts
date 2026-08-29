@@ -61,11 +61,19 @@ import {
 	resolvedModeFromIntent,
 } from "./intent_read";
 import {
+	detectImmersionManualMismatch,
 	externalOnStatus,
 	feedbackStageFromReadings,
+	IMMERSION_MANUAL_OVERRIDE_DURATION_MS_DEFAULT,
+	IMMERSION_OWNERSHIP_SETTLE_MS,
 	normalizeFeedbackActive,
 	type StageFeedbackReading,
 } from "./feedback";
+import {
+	emptyDeviceOwnershipState,
+	evaluateDeviceOwnership,
+	isOwnershipOverrideActive,
+} from "../../../ems_light/device_ownership";
 import {
 	flushConsumerStatsPersist,
 	initConsumerStatsForAddon,
@@ -578,6 +586,35 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 	const effectiveStage = persist.faultLockout || failsafeActive || resolvedMode === "off" ? 0 : commandedStage;
 	const commandedOn = effectiveStage > 0;
 
+	/*
+	 * Klima-/Ownership-Block: Manual-Override erkennen, BEVOR der heutige Write erfolgt.
+	 * Nutzt bewusst persist.commandedStage/lastFeedbackActive VOM VORTAKT (noch nicht
+	 * überschrieben) — kein Reordering der Feedback-I/O nötig. Dadurch reagiert die
+	 * Erkennung mit einem Takt Verzögerung (ein manueller Eingriff muss einen vollen Tick
+	 * überstehen, bevor EMS pausiert) — bewusst konservativ, kein Overreacting auf
+	 * kurzzeitige Ausreißer. Safety/Fault übersteuert einen laufenden Override sofort
+	 * (siehe evaluateDeviceOwnership).
+	 */
+	const emsRecentlyActedImmersion =
+		(persist.lastSwitchAtMs != null && nowMs - persist.lastSwitchAtMs < IMMERSION_OWNERSHIP_SETTLE_MS) ||
+		(persist.lastOffAtMs != null && nowMs - persist.lastOffAtMs < IMMERSION_OWNERSHIP_SETTLE_MS);
+	const immersionMismatchKind = emsRecentlyActedImmersion
+		? ""
+		: detectImmersionManualMismatch({
+				prevCommandedStage: persist.commandedStage,
+				prevFeedbackActive: persist.lastFeedbackActive,
+			});
+	const ownership = evaluateDeviceOwnership({
+		nowMs,
+		mismatchDetected: immersionMismatchKind !== "",
+		mismatchKind: immersionMismatchKind,
+		previous: persist.ownership ?? emptyDeviceOwnershipState(),
+		overrideDurationMs: IMMERSION_MANUAL_OVERRIDE_DURATION_MS_DEFAULT,
+		safetyOverride: persist.faultLockout || failsafeActive,
+	});
+	persist.ownership = ownership;
+	const ownershipOverrideActive = isOwnershipOverrideActive(ownership, nowMs);
+
 	// Stage-Wechsel oder effectiveLive false→true: gewünschten Soll physisch anwenden.
 	// Solange nicht (global∧addon) live, besitzt EMS keine Hardware-Authority.
 	// lastCommandedStage / emsOnWriteAtMs nur nach bestätigtem Apply (Write oder Readback),
@@ -585,7 +622,11 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 	const stageChanged = effectiveStage !== lastCommandedStage;
 	/** Admin-Mindestpause (`ih_minimum_pause_sec`) — nicht vom FSM-Persist-Altzustand überschreiben. */
 	let pauseSetOnOffMs: number | null = null;
-	if (stageChanged || liveEdge) {
+	if ((stageChanged || liveEdge) && ownershipOverrideActive) {
+		host.log.info?.(
+			`immersion: manual override active (${ownership.reasonDe}) — EMS-Write ausgesetzt (wollte Stufe ${effectiveStage})`,
+		);
+	} else if (stageChanged || liveEdge) {
 		if (liveEdge && !stageChanged) {
 			host.log.info?.(
 				`immersion: effective live authority gained — reconcile stage ${effectiveStage} (desired unchanged)`,
@@ -630,6 +671,7 @@ export async function runImmersionRuntimeTick(host: ImmersionRuntimeHost): Promi
 	const hasFeedbackConfig = config.stages.some((s) => Boolean(s.feedbackStateId));
 	const feedbackStage = hasFeedbackConfig ? feedbackStageFromReadings(feedbackReadings) : effectiveStage;
 	const feedbackActive = feedbackStage > 0;
+	persist.lastFeedbackActive = feedbackActive;
 	const powerActive = hasPower && measuredPower !== null && measuredPower > config.powerOnThresholdW;
 
 	const powerCheck = checkPowerFault({
@@ -787,6 +829,13 @@ async function publishRuntime(
 	);
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.allocationReasonDe, dailyPlan?.allocationReasonDe ?? "");
 	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.autoTargetReached, persist.autoTargetReached);
+	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.ownershipOwner, persist.ownership.owner);
+	await setStateIfChanged(
+		host,
+		IMMERSION_RUNTIME_STATES.ownershipOverrideUntilIso,
+		persist.ownership.overrideUntilIso ?? "",
+	);
+	await setStateIfChanged(host, IMMERSION_RUNTIME_STATES.ownershipReasonDe, persist.ownership.reasonDe);
 
 	const governanceOn = await isAddonGovernanceEnabledFromState(
 		(id) => host.getStateAsync(id),

@@ -8,6 +8,7 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.controlToPermission = exports.computeAcCoolingDesired = exports.isSlotBudgetMissing = exports.isPlannerBudgetOn = exports.isExplicitPlannerOff = void 0;
+const hard_off_worth_it_1 = require("./hard_off_worth_it");
 /** Expliziter 0-W-Eintrag (nicht: fehlender Slot-Eintrag). */
 function isExplicitPlannerOff(dailyPlan) {
     if (!dailyPlan.useDailyPlan)
@@ -95,6 +96,17 @@ function computeAcCoolingDesired(input) {
             reasonDe: fsm.reasonDe,
         };
     }
+    // --- Manual Override (Klima-/Ownership-Block): EMS greift nicht ein, bis Override abläuft ---
+    if (input.ownershipOverrideActive === true) {
+        return {
+            ...base,
+            desired: feedbackOn ? "hold" : "idle",
+            allowStart: false,
+            allowStop: false,
+            decisionSource: "manual_override",
+            reasonDe: input.ownershipReasonDe || "Manueller Eingriff erkannt — EMS pausiert.",
+        };
+    }
     // --- Explizites Planner-OFF: Desired OFF (Demand darf das nicht zu HOLD umbiegen) ---
     if (plannerOff) {
         return {
@@ -127,6 +139,24 @@ function computeAcCoolingDesired(input) {
             decisionSource: "rate_limited",
             reasonDe: "Start-Rate-Limit aktiv.",
         };
+    }
+    // --- Hard-Off-Restzeit vs. Komfortbedarf: kein blindes Starten, aber keine starre Grenze ---
+    if (fsm.demandStart && !feedbackOn) {
+        const hardOffCheck = (0, hard_off_worth_it_1.isHardOffStartWorthwhile)({
+            remainingMinutesUntilHardOff: input.remainingMinutesUntilHardOff ?? null,
+            demandUrgency01: fsm.demandUrgency01 ?? 0,
+            minWorthwhileRuntimeMin: input.minWorthwhileRuntimeMin,
+        });
+        if (!hardOffCheck.worthwhile) {
+            return {
+                ...base,
+                desired: "idle",
+                allowStart: false,
+                allowStop: false,
+                decisionSource: "hard_off_not_worthwhile",
+                reasonDe: hardOffCheck.reasonDe,
+            };
+        }
     }
     // --- Planner-Budget oder Fallback: Start ---
     if (fsm.demandStart && !feedbackOn) {

@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+	detectImmersionManualMismatch,
 	externalOnStatus,
 	feedbackStageFromReadings,
 	normalizeFeedbackActive,
@@ -86,6 +87,31 @@ describe("immersion external-on classification", () => {
 			externalOnStatus({ commandedStage: 0, feedbackActive: false, powerActive: false }),
 			null,
 		);
+	});
+});
+
+describe("Klima-/Ownership-Block: detectImmersionManualMismatch", () => {
+	it("EMS wollte AUS, Feedback AN → manual_on", () => {
+		assert.equal(
+			detectImmersionManualMismatch({ prevCommandedStage: 0, prevFeedbackActive: true }),
+			"manual_on",
+		);
+	});
+
+	it("EMS wollte AN, Feedback AUS → manual_off", () => {
+		assert.equal(
+			detectImmersionManualMismatch({ prevCommandedStage: 1, prevFeedbackActive: false }),
+			"manual_off",
+		);
+	});
+
+	it("übereinstimmend (an/an, aus/aus) → kein Mismatch", () => {
+		assert.equal(detectImmersionManualMismatch({ prevCommandedStage: 1, prevFeedbackActive: true }), "");
+		assert.equal(detectImmersionManualMismatch({ prevCommandedStage: 0, prevFeedbackActive: false }), "");
+	});
+
+	it("Feedback noch unbekannt (erster Takt) → kein Mismatch", () => {
+		assert.equal(detectImmersionManualMismatch({ prevCommandedStage: 0, prevFeedbackActive: null }), "");
 	});
 });
 

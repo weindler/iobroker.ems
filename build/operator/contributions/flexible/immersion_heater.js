@@ -10,6 +10,7 @@ const types_1 = require("../types");
 const flex_demand_1 = require("./flex_demand");
 const immersion_night_bridge_1 = require("./immersion_night_bridge");
 const thermal_pv_precharge_1 = require("./thermal_pv_precharge");
+const thermal_reserve_evaluation_1 = require("./thermal_reserve_evaluation");
 const thermal_empty_at_1 = require("./thermal_empty_at");
 const types_2 = require("./types");
 var thermal_empty_at_2 = require("./thermal_empty_at");
@@ -224,6 +225,23 @@ function buildImmersionFlexibleContribution(input) {
         (0, thermal_empty_at_1.hasCycleCoolingModel)(input.boilerLearning);
     const canConsiderPrecharge = input.bufferTempC !== null &&
         (boilerCycleUsable || (input.todayPvSurplusKwh != null && input.todayPvSurplusKwh >= 3));
+    /*
+     * Gemeinsame Bewertung statt blinder Vorstufe: reales „nächstes PV-Fenster“ (mehrtägiges
+     * PV-Defizit-Ende bevorzugt, sonst nächster Morgen) und Batterie-Signale, die die Policy
+     * (mayUseBatteryForImmersion) tatsächlich erlaubt — nicht mehr immer `null`/roh.
+     */
+    const resolvedNextPvHeatOpportunityIso = (0, thermal_reserve_evaluation_1.resolveNextPvHeatOpportunityIso)({
+        explicitIso: input.nextPvHeatOpportunityIso ?? null,
+        pvDeficitBridgeUntilIso: input.pvDeficitBridgeUntilIso ?? null,
+        now: input.now,
+        timezone: input.timezone,
+    });
+    const batteryGate = (0, thermal_reserve_evaluation_1.gateBatteryInputsForThermalPrecharge)({
+        mayUseBatteryForImmersion: input.mayUseBatteryForImmersion ?? null,
+        batterySocPct: input.batterySocPct ?? null,
+        centralBatteryReserveRequiredSocAtPvEndPct: input.centralBatteryReserveRequiredSocAtPvEndPct ?? null,
+        legacyBatteryEndSocTargetPct: input.batteryEndSocTargetPct ?? null,
+    });
     const pvPrecharge = canConsiderPrecharge
         ? (0, thermal_pv_precharge_1.resolveThermalPvPrecharge)({
             now: input.now,
@@ -235,12 +253,12 @@ function buildImmersionFlexibleContribution(input) {
                 ? input.boilerLearning.coolingRateCPerHAvg
                 : null,
             estimatedEmptyAtIso: boilerCycleUsable ? input.boilerLearning.estimatedEmptyAt : null,
-            nextPvHeatOpportunityIso: input.nextPvHeatOpportunityIso ?? null,
+            nextPvHeatOpportunityIso: resolvedNextPvHeatOpportunityIso,
             pvTodayKwh: input.pvTodayKwh,
             pvTomorrowKwh: input.pvTomorrowKwh,
             todayPvSurplusKwh: input.todayPvSurplusKwh ?? null,
-            batterySocPct: input.batterySocPct ?? null,
-            batteryEndSocTargetPct: input.batteryEndSocTargetPct ?? null,
+            batterySocPct: batteryGate.batterySocPct,
+            batteryEndSocTargetPct: batteryGate.batteryEndSocTargetPct,
             vehicleUrgentEnergyKwh: input.vehicleUrgentEnergyKwh ?? null,
             exportTariffCtPerKwh: input.exportTariffCtPerKwh ?? null,
             importTariffCtPerKwh: input.importTariffCtPerKwh ?? null,
@@ -248,6 +266,15 @@ function buildImmersionFlexibleContribution(input) {
             globalMode: input.modePolicy.mode,
         })
         : null;
+    const thermalReserveDiagnostics = (0, thermal_reserve_evaluation_1.evaluateThermalReserveDiagnostics)({
+        nowMs: input.now.getTime(),
+        estimatedRemainingHours: boilerCycleUsable ? input.boilerLearning.estimatedRemainingHours : null,
+        estimatedEmptyAtIso: boilerCycleUsable ? input.boilerLearning.estimatedEmptyAt : null,
+        nextPvHeatOpportunityIso: resolvedNextPvHeatOpportunityIso,
+        mayUseBatteryForImmersion: input.mayUseBatteryForImmersion ?? null,
+        precharge: pvPrecharge,
+        nightBridgeActive: nightBridge?.active === true,
+    });
     const effectiveTargetTempC = pvPrecharge?.active === true ? pvPrecharge.targetTempC : afterBridgeTempC;
     const hysteresisActive = (0, reheat_hysteresis_1.isImmersionReheatHysteresisActive)({
         bufferTempC: input.bufferTempC,
@@ -395,6 +422,20 @@ function buildImmersionFlexibleContribution(input) {
             nightBridgeShortfallHours: nightBridge?.shortfallHours ?? null,
             pvPrechargeActive: pvPrecharge?.active === true,
             pvPrechargeExtraK: pvPrecharge?.prechargeExtraK ?? null,
+            /*
+             * Gemeinsame Reserve-/Vorladungs-Diagnose (Heizstab-/Thermal-Block) — reine
+             * Zusammenführung bestehender Signale, siehe thermal_reserve_evaluation.ts.
+             */
+            thermalEstimatedRemainingHours: thermalReserveDiagnostics.estimatedRemainingHours,
+            thermalEstimatedEmptyAtIso: thermalReserveDiagnostics.estimatedEmptyAtIso,
+            nextPvHeatOpportunityIso: thermalReserveDiagnostics.nextPvHeatOpportunityIso,
+            hoursUntilNextPvHeatOpportunity: thermalReserveDiagnostics.hoursUntilNextPvHeatOpportunity,
+            thermalPrechargeNeeded: thermalReserveDiagnostics.prechargeNeeded,
+            thermalEnergySourceClass: thermalReserveDiagnostics.energySourceClass,
+            thermalReserveReasonDe: thermalReserveDiagnostics.reasonDe,
+            mayUseBatteryForImmersion: input.mayUseBatteryForImmersion ?? null,
+            batteryGateReasonDe: batteryGate.reasonDe,
+            centralBatteryReserveRequiredSocAtPvEndPct: input.centralBatteryReserveRequiredSocAtPvEndPct ?? null,
         },
         slots: (0, flex_demand_1.buildFlexibleDemandSlot)({
             generatedAt,

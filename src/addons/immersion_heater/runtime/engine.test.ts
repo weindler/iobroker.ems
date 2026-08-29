@@ -555,3 +555,84 @@ describe("immersion runtime — Root Cause A write apply confirmation", () => {
 		assert.equal(fault.lockout, true);
 	});
 });
+
+describe("immersion runtime — Klima-/Ownership-Block: Manual Override", () => {
+	beforeEach(() => {
+		resetImmersionRuntimeForTest();
+	});
+
+	function liveHostNoDemand(): FakeHost {
+		// Warmer Puffer/Boiler + kein Daily Plan → EMS will Stufe 0 (kein Heizbedarf).
+		const host = baseHost(58, 58);
+		host.set("global.execution_mode", "live");
+		host.set("addons.immersion_heater.mode", "live");
+		host.set("addons.immersion_heater.governance.enabled", true);
+		host.set(DAILY_PLAN_STATE_IDS.status, "");
+		// Feedback = dieselbe State-ID wie set_state (kombiniertes Relais mit Rückmeldung).
+		host.config = { ...CONFIG, ih_stage_1_feedback_state: "immersion.stage1" };
+		host.set("immersion.stage1", false);
+		return host;
+	}
+
+	function trackForeignWrites(host: FakeHost): Array<{ id: string; val: unknown }> {
+		const writes: Array<{ id: string; val: unknown }> = [];
+		const orig = host.setForeignStateAsync;
+		host.setForeignStateAsync = async (id, state) => {
+			const val = state && typeof state === "object" && "val" in state ? (state as { val: unknown }).val : state;
+			writes.push({ id, val });
+			return orig(id, state);
+		};
+		return writes;
+	}
+
+	it("manueller Heizstab-Eingriff (Relais manuell EIN) → EMS respektiert Override, kein sofortiges Zurückschalten", async () => {
+		const host = liveHostNoDemand();
+
+		// Takt 1: Baseline — EMS will 0, Relais startet false → kein Mismatch, kein Override.
+		await runImmersionRuntimeTick(host);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), 0);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOwner), "ems");
+		// Settle-Fenster (IMMERSION_OWNERSHIP_SETTLE_MS) simuliert verstrichen — sonst blockiert
+		// der Eigen-Write-Schutz aus Takt 1 die Erkennung in den folgenden (im Test sehr schnellen) Takten.
+		getImmersionPersistForTest().lastOffAtMs = Date.now() - 5 * 60_000;
+		getImmersionPersistForTest().lastSwitchAtMs = Date.now() - 5 * 60_000;
+
+		// Manueller Eingriff zwischen den Takten: Relais wird von Hand eingeschaltet.
+		host.set("immersion.stage1", true);
+		await runImmersionRuntimeTick(host); // Takt 2: Mismatch wird erkannt (Erkennung mit 1 Takt Verzögerung)
+
+		const writes = trackForeignWrites(host);
+		await runImmersionRuntimeTick(host); // Takt 3: Override sollte jetzt aktiv sein
+
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOwner), "user");
+		assert.ok(
+			(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOverrideUntilIso)) !== "",
+			"Override-Frist muss gesetzt sein",
+		);
+		// EMS darf das manuell eingeschaltete Relais während des Overrides NICHT zurückschalten.
+		assert.equal(
+			writes.some((w) => w.id === "immersion.stage1"),
+			false,
+			"EMS darf während Manual-Override nicht auf das Relais schreiben",
+		);
+	});
+
+	it("Safety/kritischer Zustand (Fault-Lockout) übersteuert einen aktiven Manual Override", async () => {
+		const host = liveHostNoDemand();
+		await runImmersionRuntimeTick(host);
+		getImmersionPersistForTest().lastOffAtMs = Date.now() - 5 * 60_000;
+		getImmersionPersistForTest().lastSwitchAtMs = Date.now() - 5 * 60_000;
+		host.set("immersion.stage1", true);
+		await runImmersionRuntimeTick(host);
+		await runImmersionRuntimeTick(host);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOwner), "user");
+
+		// Fault-Lockout auslösen (Safety) — muss den Override sofort beenden.
+		getImmersionPersistForTest().faultLockout = true;
+		getImmersionPersistForTest().faultCode = "relay_chatter";
+		await runImmersionRuntimeTick(host);
+
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOwner), "ems");
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOverrideUntilIso), "");
+	});
+});

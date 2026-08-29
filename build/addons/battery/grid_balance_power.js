@@ -169,8 +169,12 @@ function evaluateGridBalanceTick(input) {
         blockReason = ev.blockReason;
     if (!blockReason && !exceeds)
         blockReason = "inside_deadband";
-    if (!blockReason && max.effectiveMaxW <= 0)
-        blockReason = "no_hardware_headroom";
+    if (!blockReason && max.effectiveMaxW <= 0) {
+        blockReason =
+            input.configuredMaxWZeroFromPlanner === true && input.configuredMaxW <= 0
+                ? "planner_budget_zero"
+                : "no_hardware_headroom";
+    }
     if (!blockReason && minBenefitW > 0 && requestedPowerW < minBenefitW)
         blockReason = "below_min_benefit";
     if (!blockReason && !input.controllerIsGridBalance)

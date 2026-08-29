@@ -34,8 +34,9 @@ const path = __importStar(require("node:path"));
 const index_js_1 = require("../addons/battery/index.js");
 const index_js_2 = require("../addons/air_conditioning/index.js");
 const index_js_3 = require("../addons/immersion_heater/index.js");
-const index_js_4 = require("../addons/wallbox/index.js");
-const index_js_5 = require("../ems_light/index.js");
+const index_js_4 = require("../addons/measured_consumers/index.js");
+const index_js_5 = require("../addons/wallbox/index.js");
+const index_js_6 = require("../ems_light/index.js");
 const failsafe_runner_js_1 = require("../failsafe_runner.js");
 const execute_js_1 = require("../addons/wallbox/runtime/execute.js");
 const baseline_js_1 = require("../addons/wallbox/vehicles/baseline.js");
@@ -197,11 +198,12 @@ async function strictStep(_label, fn) {
     await fn();
 }
 async function stopAllRuntime() {
-    await (0, index_js_5.stopEmsLightPhase1)();
-    (0, index_js_4.stopWallboxModule)();
+    await (0, index_js_6.stopEmsLightPhase1)();
+    (0, index_js_5.stopWallboxModule)();
     (0, index_js_1.stopBatteryModule)(null);
     (0, index_js_3.stopImmersionHeaterModule)();
     (0, index_js_2.stopAirConditioningModule)();
+    (0, index_js_4.stopMeasuredConsumersModule)();
     (0, failsafe_runner_js_1.stopFailsafeRunner)();
     (0, startup_js_1.resetBootstrapBarrierForTest)();
     (0, context_js_1.endBootstrapRun)();

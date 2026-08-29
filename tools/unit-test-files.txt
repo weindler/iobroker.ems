@@ -89,6 +89,12 @@ build/addons/air_conditioning/runtime/power_reconcile.test.js
 build/addons/air_conditioning/runtime/cleaning.test.js
 build/addons/air_conditioning/runtime/sequences.test.js
 build/addons/air_conditioning/runtime/live_edge.test.js
+build/addons/air_conditioning/runtime/hard_off_worth_it.test.js
+build/addons/air_conditioning/shared_power.test.js
+build/addons/measured_consumers/math.test.js
+build/addons/measured_consumers/config.test.js
+build/addons/measured_consumers/runtime/engine.test.js
+build/ems_light/device_ownership.test.js
 build/pipeline.test.js
 build/device_write.test.js
 build/execution_mode.test.js
@@ -122,6 +128,8 @@ build/learning/thermal_boiler/boiler_split.test.js
 build/learning/thermal_boiler/schedule.test.js
 build/learning/battery_runtime/math.test.js
 build/learning/battery_runtime/history.test.js
+build/learning/battery_runtime/night_bridge.test.js
+build/learning/battery_runtime/reserve.test.js
 build/learning/power_rollup/power_rollup.test.js
 build/learning/energy_daily_rollup/energy_daily.test.js
 build/learning/consumer_stats/consumer_stats.test.js
@@ -144,6 +152,9 @@ build/operator/contributions/weather.test.js
 build/operator/contributions/constraints.test.js
 build/operator/contributions/flexible/flex_demand.test.js
 build/operator/contributions/flexible/flexible.test.js
+build/operator/contributions/flexible/thermal_reserve_evaluation.test.js
+build/operator/contributions/flexible/immersion_night_bridge.test.js
+build/operator/contributions/flexible/thermal_pv_precharge.test.js
 build/operator/contributions/flexible/beta_befund_004.test.js
 build/operator/contributions/flexible/thermal_learning.test.js
 build/operator/contributions/flexible/thermal_empty_at.test.js
@@ -157,6 +168,9 @@ build/operator/daily_plan/daily_plan.test.js
 build/operator/decision_chain.integration.test.js
 build/operator/daily_plan/briefing.test.js
 build/operator/daily_plan/constraint_publish.test.js
+build/operator/daily_plan/battery_discharge_authority.test.js
+build/operator/daily_plan/battery_reserve_target.test.js
+build/operator/daily_plan/forecast_reserve_slots.test.js
 build/operator/daily_plan/live_surplus.test.js
 build/operator/daily_plan/beta_befund_002.test.js
 build/operator/daily_plan/unified/golden.test.js
@@ -199,6 +213,7 @@ build/planner/mode_policy.test.js
 build/addons/battery/grid_balance.test.js
 build/addons/battery/grid_balance_contract.test.js
 build/addons/battery/grid_balance_power.test.js
+build/addons/battery/grid_balance_policy.test.js
 build/addons/battery/runtime/daily_plan.test.js
 build/addons/battery/runtime/winter_intent.test.js
 build/ai/config.test.js

@@ -1,10 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.batteryConsumerConstraintStateWrites = exports.BATTERY_CONSUMER_CONSTRAINT_STATES = exports.immersionCriticalNow = exports.resolveAllBatteryConsumerAccess = exports.resolveBatteryConsumerAccess = exports.batteryConsumerIdFromAddon = exports.batteryConsumerRule = exports.batteryConsumersConfigFromAdapter = void 0;
+exports.batteryConsumerConstraintStateWrites = exports.BATTERY_CONSUMER_CONSTRAINT_STATES = exports.immersionCriticalNow = exports.resolveAllBatteryConsumerAccess = exports.resolveBatteryConsumerAccess = exports.DEFAULT_MIN_SOC = exports.batteryConsumerIdFromAddon = exports.batteryConsumerRule = exports.batteryConsumersConfigFromAdapter = void 0;
 var config_1 = require("./config");
 Object.defineProperty(exports, "batteryConsumersConfigFromAdapter", { enumerable: true, get: function () { return config_1.batteryConsumersConfigFromAdapter; } });
 Object.defineProperty(exports, "batteryConsumerRule", { enumerable: true, get: function () { return config_1.batteryConsumerRule; } });
 Object.defineProperty(exports, "batteryConsumerIdFromAddon", { enumerable: true, get: function () { return config_1.batteryConsumerIdFromAddon; } });
+Object.defineProperty(exports, "DEFAULT_MIN_SOC", { enumerable: true, get: function () { return config_1.DEFAULT_MIN_SOC; } });
 var resolve_1 = require("./resolve");
 Object.defineProperty(exports, "resolveBatteryConsumerAccess", { enumerable: true, get: function () { return resolve_1.resolveBatteryConsumerAccess; } });
 Object.defineProperty(exports, "resolveAllBatteryConsumerAccess", { enumerable: true, get: function () { return resolve_1.resolveAllBatteryConsumerAccess; } });

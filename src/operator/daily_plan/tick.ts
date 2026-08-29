@@ -17,6 +17,9 @@ import {
 	immersionCriticalNow,
 	resolveAllBatteryConsumerAccess,
 } from "../../policy/battery_consumers";
+import { resolveBatteryDischargeAuthorization } from "./battery_discharge_authority";
+import { resolveCentralBatteryReserveTarget } from "./battery_reserve_target";
+import { buildReserveFloorSlotsFromForecastPlan } from "./forecast_reserve_slots";
 import {
 	immersionDeviceConfigFromAdapter,
 } from "../../addons/immersion_heater/device_config";
@@ -462,6 +465,50 @@ export async function runDailyPlanTick(
 			wallbox: false,
 		},
 	});
+
+	/*
+	 * Zentrale Batterie-Reserve (führt bestehende Wege zusammen, siehe battery_reserve_target.ts):
+	 * learning/battery_runtime liefert die reale Verbrauchsbasis, next_reliable_pv.ts (unverändert)
+	 * den Forecast-Zeitpunkt/Bedarf, die battery.charge-Contribution (unverändert) ihr bereits
+	 * kombiniertes Lade-/Reserveziel. Ergebnis ist EIN requiredSocAtPvEndPct für Lade- UND
+	 * Entladeplanung — kein zweiter, unabhängig gepflegter Zielwert mehr.
+	 */
+	const priceNowCt = asNum((await host.getStateAsync("live.price.now_ct_per_kwh"))?.val);
+	const reserveCapacityKwh = asNum((await host.getStateAsync(BAT.telemetry.capacityEffectiveKwh))?.val);
+	const pvConfidencePct = asNum((await host.getStateAsync("learning.pv_bias.confidence_pct"))?.val);
+	const pvConfidence01 = pvConfidencePct === null ? null : Math.max(0.2, Math.min(1, pvConfidencePct / 100));
+	const predictedNightConsumptionKwh = asNum(
+		(await host.getStateAsync("learning.battery_runtime.predicted_night_consumption_kwh"))?.val,
+	);
+	const avgChargePowerW = asNum(
+		(await host.getStateAsync("learning.battery_runtime.avg_charge_power_w"))?.val,
+	);
+	const batteryChargeContribution = forecastPlan.contributions.find(
+		(c) => c.contributionId === CONTRIBUTION_IDS.BATTERY_CHARGE,
+	);
+	const contributionTargetSocPct = (() => {
+		const d = (batteryChargeContribution?.details ?? null) as Record<string, unknown> | null;
+		const v = d ? d["targetSocPct"] : null;
+		return typeof v === "number" && Number.isFinite(v) ? v : null;
+	})();
+	const reserveSlots = buildReserveFloorSlotsFromForecastPlan(forecastPlan);
+	const centralReserve = resolveCentralBatteryReserveTarget({
+		nowMs: now.getTime(),
+		slots: reserveSlots,
+		pvConfidence01,
+		socPct,
+		usableCapacityKwh: reserveCapacityKwh,
+		predictedNightConsumptionKwh,
+		avgChargePowerW,
+		contributionTargetSocPct,
+	});
+	const batteryDischargeAuthorization = resolveBatteryDischargeAuthorization({
+		priceNowCt,
+		minPriceCtPerKwh: batCfgModes.gridBalance.minPriceCtPerKwh,
+		socPct,
+		requiredSocAtPvEndPct: centralReserve.requiredSocAtPvEndPct,
+		configuredMaxDischargeW: batCfgModes.gridBalance.maxTargetW,
+	});
 	try {
 		/*
 		 * Always write so `ts` stays current. setStateIfChanged would keep months-old
@@ -479,6 +526,46 @@ export async function runDailyPlanTick(
 		for (const w of batteryConsumerConstraintStateWrites(consumerAccess)) {
 			await host.setStateAsync(w.id, { val: w.val, ack: true });
 		}
+		await host.setStateAsync("planner.battery_discharge.allowed", {
+			val: batteryDischargeAuthorization.allowed,
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_discharge.max_discharge_w", {
+			val: batteryDischargeAuthorization.maxDischargeW,
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_discharge.reason_de", {
+			val: batteryDischargeAuthorization.reasonDe,
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_reserve.required_soc_at_pv_end_pct", {
+			val: centralReserve.requiredSocAtPvEndPct,
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_reserve.predicted_consumption_until_next_pv_kwh", {
+			val: centralReserve.predictedConsumptionUntilNextPvKwh,
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_reserve.next_reliable_pv_iso", {
+			val: centralReserve.nextReliablePvIso ?? "",
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_reserve.estimated_battery_empty_at_iso", {
+			val: centralReserve.estimatedBatteryEmptyAtIso ?? "",
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_reserve.energy_to_target_kwh", {
+			val: centralReserve.energyToTargetKwh,
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_reserve.estimated_charge_time_to_target_hours", {
+			val: centralReserve.estimatedChargeTimeToTargetHours,
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_reserve.reason_de", {
+			val: centralReserve.reasonDe,
+			ack: true,
+		});
 		await host.setStateAsync("planner.global_mode.active", {
 			val: modePolicy.mode,
 			ack: true,

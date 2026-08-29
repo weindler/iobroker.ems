@@ -13,6 +13,7 @@ import type { OperatorDataQuality, PlanContribution } from "../../types";
 import { CONTRIBUTION_IDS } from "../../contribution_ids";
 import { operatorQuality } from "../../quality";
 import { estimateImmersionRequiredEnergyKwh } from "../../contributions/flexible/flex_demand";
+import { minutesUntilHardOff } from "../../../addons/air_conditioning/runtime/hard_off_worth_it";
 import type {
 	UnifiedClimateUnitInput,
 	UnifiedDataFreshness,
@@ -364,6 +365,15 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 		const allocW = rt?.allocatedPowerW;
 		const holdPowerW =
 			rt?.estimatedPowerW ?? typical ?? (allocW != null && allocW > 0 ? allocW : null);
+		/*
+		 * Klima-/Ownership-Block: nächstes Hard-Off ab jetzt (über Mitternacht gewickelt) —
+		 * harte Planner-Deadline, kein künstliches Zeitfenster (siehe score_allocate.ts).
+		 */
+		const hardOffAtRaw = str(d, "hardOffAt");
+		const nowDate = new Date(nowMs);
+		const nowMinLocal = nowDate.getHours() * 60 + nowDate.getMinutes();
+		const minsToHardOff = hardOffAtRaw ? minutesUntilHardOff(nowMinLocal, hardOffAtRaw) : null;
+		const hardStopMs = minsToHardOff !== null ? nowMs + minsToHardOff * 60_000 : null;
 		climateUnits.push({
 			unitId: CONTRIBUTION_IDS.AC_UNIT(u),
 			label: str(d, "name") ?? `unit_${u}`,
@@ -379,6 +389,7 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 			hardwareRunning,
 			runtimeHold,
 			holdPowerW,
+			hardStopMs,
 		});
 	}
 	const climateFresh = freshnessFrom(

@@ -8,11 +8,13 @@ import {
 	findNearestSoc as findNearestSocBridge,
 	findSocAtOrBefore,
 	findPvHouseNightBridges,
+	integratePowerKwh,
 	recencyWeight,
 	weightedAverage,
 	type NightBridgeWindow,
 } from "./night_bridge";
 import { parseTimeHHMM, timestampAtLocalTime, localDateKey } from "./time";
+import { resolveRequiredSocAtPvEndPct } from "./reserve";
 import type {
 	BatteryRuntimeComputeResult,
 	BatteryRuntimeConfig,
@@ -93,6 +95,8 @@ export function computeNightDischarges(params: {
 	validNights: number;
 	method: NightBridgeWindow["method"] | "none";
 	avgBridgeHours: number | null;
+	/** Gewinnende Fenster — Basis für Nachtverbrauchs-Integration (dieselbe Nacht-Abgrenzung). */
+	windows: NightBridgeWindow[];
 } {
 	const maxDelta = 3 * MS_PER_HOUR;
 	const flutterMs = params.flutterMs ?? DEFAULT_NIGHT_BRIDGE_FLUTTER_MS;
@@ -250,15 +254,48 @@ export function computeNightDischarges(params: {
 			validNights: 0,
 			method: "none",
 			avgBridgeHours: null,
+			windows: [],
 		};
 	}
 
+	const bestWindows = candidates.find((c) => c.method === best!.method)?.windows ?? [];
 	return {
 		avgPct: best.avgPct,
 		avgKwh: best.avgKwh,
 		validNights: best.validNights,
 		method: best.method,
 		avgBridgeHours: best.avgBridgeHours,
+		windows: bestWindows,
+	};
+}
+
+/**
+ * Nachtverbrauch (Hausverbrauch, kWh) über exakt dieselben Nachtfenster, die bereits für die
+ * Batterie-Entladung ermittelt wurden (`computeNightDischarges(...).windows`) — kein zweites,
+ * unabhängig gepflegtes Nachtfenster. Gewichtung wie Entladung (recencyWeight) — ältere Nächte
+ * zählen weniger, Saisonwechsel (Nachtlänge!) schlagen sich automatisch nieder.
+ */
+export function computeNightConsumption(params: {
+	windows: NightBridgeWindow[];
+	housePowerPoints: PowerPoint[];
+	nowMs?: number;
+}): { avgKwh: number | null; validNights: number } {
+	if (params.windows.length === 0 || params.housePowerPoints.length === 0) {
+		return { avgKwh: null, validNights: 0 };
+	}
+	const nowMs = params.nowMs ?? Date.now();
+	const kwhValues: number[] = [];
+	const weights: number[] = [];
+	for (const w of params.windows) {
+		const kwh = integratePowerKwh(params.housePowerPoints, w.startTs, w.endTs);
+		if (kwh === null || kwh <= 0) continue;
+		const ageDays = Math.max(0, (nowMs - w.endTs) / MS_PER_DAY);
+		kwhValues.push(kwh);
+		weights.push(recencyWeight(ageDays));
+	}
+	return {
+		avgKwh: weightedAverage(kwhValues, weights),
+		validNights: kwhValues.length,
 	};
 }
 
@@ -441,6 +478,28 @@ export function computeBatteryRuntimeLearning(params: {
 		batteryPowerPoints: params.powerPoints,
 		nowMs: params.now.getTime(),
 	});
+	const nightConsumption = computeNightConsumption({
+		windows: night.windows,
+		housePowerPoints: params.housePowerPoints ?? [],
+		nowMs: params.now.getTime(),
+	});
+	const predictedNightConsumptionKwh = nightConsumption.avgKwh;
+	/*
+	 * Netzbezug in der Nacht = Hausverbrauch minus dem, was die Batterie davon deckte — abgeleitet
+	 * aus den zwei ohnehin gelernten Größen, keine dritte, separat zu pflegende Messreihe.
+	 */
+	const predictedNightGridImportKwh =
+		predictedNightConsumptionKwh !== null && night.avgKwh !== null
+			? round3(Math.max(0, predictedNightConsumptionKwh - night.avgKwh))
+			: null;
+	const avgNightLoadW =
+		predictedNightConsumptionKwh !== null && night.avgBridgeHours !== null && night.avgBridgeHours > 0
+			? round2((predictedNightConsumptionKwh / night.avgBridgeHours) * 1000)
+			: null;
+	const reserve = resolveRequiredSocAtPvEndPct({
+		predictedNightConsumptionKwh,
+		usableCapacityKwh: params.capacityKwh,
+	});
 	const rates = computeSocRates(params.socPoints);
 	const powerStats =
 		params.powerPoints.length > 0
@@ -522,6 +581,13 @@ export function computeBatteryRuntimeLearning(params: {
 		nightBridgeMethod: night.method,
 		avgNightBridgeHours: night.avgBridgeHours,
 		nightBridgeValidNights: night.validNights,
+		predictedNightConsumptionKwh,
+		nightConsumptionValidNights: nightConsumption.validNights,
+		predictedNightGridImportKwh,
+		avgNightLoadW,
+		requiredSocAtPvEndPct: reserve.requiredSocAtPvEndPct,
+		requiredNightReserveKwh: reserve.requiredReserveKwh,
+		nightReserveReasonDe: reserve.reasonDe,
 	};
 }
 
@@ -565,6 +631,13 @@ export function noSourceResult(cfg: BatteryRuntimeConfig): BatteryRuntimeCompute
 		sampleDays: 0,
 		avgNightDischargePct: null,
 		avgNightDischargeKwh: null,
+		predictedNightConsumptionKwh: null,
+		nightConsumptionValidNights: 0,
+		predictedNightGridImportKwh: null,
+		avgNightLoadW: null,
+		requiredSocAtPvEndPct: null,
+		requiredNightReserveKwh: null,
+		nightReserveReasonDe: "Keine Datenquelle — Reserve nicht berechenbar.",
 		avgChargeRatePctH: null,
 		avgDischargeRatePctH: null,
 		avgChargePowerW: null,

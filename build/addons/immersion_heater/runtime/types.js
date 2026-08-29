@@ -51,4 +51,8 @@ exports.IMMERSION_RUNTIME_STATES = {
     allocationStatus: `${exports.IMMERSION_RUNTIME_BASE}.allocation_status`,
     allocationReasonDe: `${exports.IMMERSION_RUNTIME_BASE}.allocation_reason_de`,
     autoTargetReached: `${exports.IMMERSION_RUNTIME_BASE}.auto_target_reached`,
+    /** Klima-/Ownership-Block. */
+    ownershipOwner: `${exports.IMMERSION_RUNTIME_BASE}.ownership_owner`,
+    ownershipOverrideUntilIso: `${exports.IMMERSION_RUNTIME_BASE}.ownership_override_until_iso`,
+    ownershipReasonDe: `${exports.IMMERSION_RUNTIME_BASE}.ownership_reason_de`,
 };

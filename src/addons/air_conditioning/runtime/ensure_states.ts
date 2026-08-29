@@ -45,6 +45,11 @@ export function acUnitRuntimeStates(unitIndex: number): Record<string, string> {
 		allocationStatus: `${base}.allocation_status`,
 		allocationReasonDe: `${base}.allocation_reason_de`,
 		governanceAllowed: `${base}.governance_allowed`,
+		/** Klima-/Ownership-Block. */
+		ownershipOwner: `${base}.ownership_owner`,
+		ownershipOverrideUntilIso: `${base}.ownership_override_until_iso`,
+		ownershipReasonDe: `${base}.ownership_reason_de`,
+		hardOffRemainingMin: `${base}.hard_off_remaining_min`,
 	};
 }
 
@@ -53,6 +58,10 @@ export const AC_RUNTIME_SUMMARY_STATES = {
 	dailyPlanActive: `${AC_RUNTIME_BASE}.daily_plan_active`,
 	dailyPlanRevision: `${AC_RUNTIME_BASE}.daily_plan_revision`,
 	reasonDe: `${AC_RUNTIME_BASE}.reason_de`,
+	/** Klima-/Ownership-Block: gemeinsame Außengeräte-Leistung, systemweit einmal gezählt. */
+	systemPowerW: `${AC_RUNTIME_BASE}.system_power_w`,
+	systemActiveUnitIndexes: `${AC_RUNTIME_BASE}.system_active_unit_indexes`,
+	systemSharedPowerUsed: `${AC_RUNTIME_BASE}.system_shared_power_used`,
 } as const;
 
 export async function ensureAcRuntimeStates(
@@ -102,6 +111,40 @@ export async function ensureAcRuntimeStates(
 		{
 			id: AC_RUNTIME_SUMMARY_STATES.reasonDe,
 			common: { name: "Klima Runtime Begründung", type: "string", role: "text", read: true, write: false, def: "" },
+		},
+		{
+			id: AC_RUNTIME_SUMMARY_STATES.systemPowerW,
+			common: {
+				name: "Klima Systemleistung gesamt W (Shared-Power dedupliziert)",
+				type: "number",
+				role: "value",
+				read: true,
+				write: false,
+				def: 0,
+				unit: "W",
+			},
+		},
+		{
+			id: AC_RUNTIME_SUMMARY_STATES.systemActiveUnitIndexes,
+			common: {
+				name: "Klima aktuell aktive Innengeräte (Indizes, Komma-getrennt)",
+				type: "string",
+				role: "text",
+				read: true,
+				write: false,
+				def: "",
+			},
+		},
+		{
+			id: AC_RUNTIME_SUMMARY_STATES.systemSharedPowerUsed,
+			common: {
+				name: "Klima Shared-Power-Messung aktuell verwendet",
+				type: "boolean",
+				role: "indicator",
+				read: true,
+				write: false,
+				def: false,
+			},
 		},
 	];
 	for (const def of summaryDefs) {
@@ -188,6 +231,22 @@ export async function ensureAcRuntimeStates(
 			{ id: ids.allocationStatus, common: { name: `Klima ${label} Allocation-Status`, type: "string", role: "text", read: true, write: false, def: "unknown" } },
 			{ id: ids.allocationReasonDe, common: { name: `Klima ${label} Allocation-Begründung`, type: "string", role: "text", read: true, write: false, def: "" } },
 			{ id: ids.governanceAllowed, common: { name: `Klima ${label} Governance erlaubt`, type: "boolean", role: "switch", read: true, write: false, def: false } },
+			{
+				id: ids.ownershipOwner,
+				common: { name: `Klima ${label} Ownership (ems/user/external)`, type: "string", role: "text", read: true, write: false, def: "ems" },
+			},
+			{
+				id: ids.ownershipOverrideUntilIso,
+				common: { name: `Klima ${label} Manual-Override bis (ISO)`, type: "string", role: "text", read: true, write: false, def: "" },
+			},
+			{
+				id: ids.ownershipReasonDe,
+				common: { name: `Klima ${label} Ownership-Begründung`, type: "string", role: "text", read: true, write: false, def: "" },
+			},
+			{
+				id: ids.hardOffRemainingMin,
+				common: { name: `Klima ${label} Restzeit bis Hard-Off (Min)`, type: "number", role: "value", read: true, write: false, unit: "min" },
+			},
 		];
 		for (const def of defs) {
 			await host.setObjectNotExistsAsync(def.id, {

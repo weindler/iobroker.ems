@@ -26,6 +26,8 @@ import {
 	AC_CLEANING_REFRESH_MS,
 	AC_FEEDBACK_POLL_ATTEMPTS,
 	AC_FEEDBACK_POLL_MS,
+	AC_MANUAL_OVERRIDE_DURATION_MS_DEFAULT,
+	AC_OWNERSHIP_SETTLE_MS,
 	AC_START_RETRY_MS,
 	AC_STOP_RETRY_MS,
 	AC_TICK_MS,
@@ -47,6 +49,13 @@ import {
 } from "./daily_plan";
 import { evaluateAcUnitFsm } from "./fsm";
 import { emptyUnitPersist, type AcRuntimePersist, type AcUnitPersist } from "./persist";
+import { minutesUntilHardOff } from "./hard_off_worth_it";
+import {
+	emptyDeviceOwnershipState,
+	evaluateDeviceOwnership,
+	isOwnershipOverrideActive,
+} from "../../../ems_light/device_ownership";
+import { resolveAcSystemPower, totalAcSystemPowerW, type AcUnitLiveState } from "../shared_power";
 import { readAcRuntimePersist, writeAcRuntimePersist } from "./persist_io";
 import {
 	advanceCoolingDesired,
@@ -711,6 +720,8 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 	let anyTelemetryReady = false;
 	let anyFault = false;
 	let anyLockout = false;
+	/** Klima-/Ownership-Block: gemeinsame Außengeräte-Leistung — je Unit ein Eintrag. */
+	const acLiveStates: AcUnitLiveState[] = [];
 
 	for (const unit of activeUnits) {
 		const tempId = resolveAcMappingTarget(mappingTable, unit.index, "room_temp");
@@ -794,6 +805,41 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		}
 
 		const startRetryReady = !up.lastStartAtMs || nowMs - up.lastStartAtMs >= AC_START_RETRY_MS;
+
+		/*
+		 * Klima-/Ownership-Block: Manual-Override erkennen — Ist-Zustand widerspricht dem, was
+		 * EMS im vorigen Zyklus wollte (`up.lastDesired`, vor dem heutigen advanceCoolingDesired-
+		 * Update), UND das ist nicht durch einen soeben erst ausgeführten eigenen EMS-Start/Stop
+		 * erklärbar (Feedback-Verzögerung, AC_OWNERSHIP_SETTLE_MS).
+		 */
+		const emsRecentlyActed =
+			(up.lastStartAtMs != null && nowMs - up.lastStartAtMs < AC_OWNERSHIP_SETTLE_MS) ||
+			(up.lastStopAtMs != null && nowMs - up.lastStopAtMs < AC_OWNERSHIP_SETTLE_MS);
+		const emsWantedOn = up.lastDesired === "on" || up.lastDesired === "hold";
+		const emsWantedOff = up.lastDesired === "off" || up.lastDesired === "idle";
+		const rawMismatchOn = emsWantedOff && feedbackOn;
+		const rawMismatchOff = emsWantedOn && !feedbackOn;
+		const mismatchDetected = !emsRecentlyActed && (rawMismatchOn || rawMismatchOff);
+		const mismatchKind: "manual_on" | "manual_off" | "" = rawMismatchOn
+			? "manual_on"
+			: rawMismatchOff
+				? "manual_off"
+				: "";
+		const ownership = evaluateDeviceOwnership({
+			nowMs,
+			mismatchDetected,
+			mismatchKind,
+			previous: up.ownership ?? emptyDeviceOwnershipState(),
+			overrideDurationMs: AC_MANUAL_OVERRIDE_DURATION_MS_DEFAULT,
+			safetyOverride: false,
+		});
+		up.ownership = ownership;
+		const ownershipOverrideActive = isOwnershipOverrideActive(ownership, nowMs);
+		const remainingMinutesUntilHardOff = minutesUntilHardOff(
+			now.getHours() * 60 + now.getMinutes(),
+			unit.hardOffAt,
+		);
+
 		let control = computeAcCoolingDesired({
 			unitEnabled: unit.enabled,
 			governanceEnabled,
@@ -803,6 +849,9 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 			dailyPlan,
 			feedbackOn,
 			startRetryReady,
+			ownershipOverrideActive,
+			ownershipReasonDe: ownership.reasonDe,
+			remainingMinutesUntilHardOff,
 		});
 		let permission = controlToPermission(control);
 		let desired = control.desired;
@@ -1039,6 +1088,21 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		});
 		await setStateIfChanged(host, ids.measuredPowerW, powerDisp.measuredPowerW);
 		await setStateIfChanged(host, ids.powerDisplayKind, powerDisp.kind);
+		acLiveStates.push({
+			unitIndex: unit.index,
+			sharedPowerGroupId: unit.sharedPowerGroupId ?? null,
+			running: fbOn || deviceActive,
+			measuredPowerW,
+			estimatedPowerW: estPower > 0 ? estPower : unit.estimatedPowerW,
+		});
+		await setStateIfChanged(host, ids.ownershipOwner, ownership.owner);
+		await setStateIfChanged(host, ids.ownershipOverrideUntilIso, ownership.overrideUntilIso ?? "");
+		await setStateIfChanged(host, ids.ownershipReasonDe, ownership.reasonDe);
+		await setStateIfChanged(
+			host,
+			ids.hardOffRemainingMin,
+			remainingMinutesUntilHardOff === null ? null : remainingMinutesUntilHardOff,
+		);
 
 		const setpointRead = await readForeign(
 			host,
@@ -1116,6 +1180,26 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		nowMs,
 		devicesBusy: acDeviceBusy,
 	});
+
+	/*
+	 * Klima-/Ownership-Block: gemeinsame Außengeräte-Leistung — Komfort bleibt pro Unit, die
+	 * elektrische Leistung wird pro Gruppe (sharedPowerGroupId) genau einmal gezählt.
+	 */
+	const acPowerGroups = resolveAcSystemPower(acLiveStates);
+	const acSystemActiveUnitIndexes = [...new Set(acPowerGroups.flatMap((g) => g.activeUnitIndexes))].sort(
+		(a, b) => a - b,
+	);
+	await setStateIfChanged(host, AC_RUNTIME_SUMMARY_STATES.systemPowerW, totalAcSystemPowerW(acPowerGroups));
+	await setStateIfChanged(
+		host,
+		AC_RUNTIME_SUMMARY_STATES.systemActiveUnitIndexes,
+		acSystemActiveUnitIndexes.join(","),
+	);
+	await setStateIfChanged(
+		host,
+		AC_RUNTIME_SUMMARY_STATES.systemSharedPowerUsed,
+		acPowerGroups.some((g) => g.sharedMeasurementUsed),
+	);
 
 	await setStateIfChanged(host, `${AC_RUNTIME_BASE}.outdoor_allocated_power_w`, config.outdoorMaxPowerW);
 	await setStateIfChanged(host, AC_RUNTIME_SUMMARY_STATES.governanceAllowed, governanceEnabled);

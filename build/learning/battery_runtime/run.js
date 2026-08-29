@@ -19,6 +19,16 @@ async function writeResult(host, result, lastRun, diag) {
     await setNumIfValid(host, "learning.battery_runtime.avg_night_discharge_kwh", result.avgNightDischargeKwh);
     // avg_night_discharge_pct: Surface-Cleanup löscht den State als Ballast — nicht mehr schreiben (Wert in Persist/Log).
     await setNumIfValid(host, "learning.battery_runtime.avg_night_bridge_hours", result.avgNightBridgeHours);
+    await setNumIfValid(host, "learning.battery_runtime.predicted_night_consumption_kwh", result.predictedNightConsumptionKwh);
+    await setNumIfValid(host, "learning.battery_runtime.night_consumption_valid_nights", result.nightConsumptionValidNights);
+    await setNumIfValid(host, "learning.battery_runtime.predicted_night_grid_import_kwh", result.predictedNightGridImportKwh);
+    await setNumIfValid(host, "learning.battery_runtime.avg_night_load_w", result.avgNightLoadW);
+    await setNumIfValid(host, "learning.battery_runtime.required_soc_at_pv_end_pct", result.requiredSocAtPvEndPct);
+    await setNumIfValid(host, "learning.battery_runtime.required_night_reserve_kwh", result.requiredNightReserveKwh);
+    await host.setStateAsync("learning.battery_runtime.night_reserve_reason_de", {
+        val: result.nightReserveReasonDe,
+        ack: true,
+    });
     await host.setStateAsync("learning.battery_runtime.night_bridge_method", {
         val: result.nightBridgeMethod,
         ack: true,

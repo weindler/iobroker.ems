@@ -38,6 +38,8 @@ export type AcDecisionSource =
 	| "governance_disabled"
 	| "manual_off"
 	| "manual_force"
+	| "manual_override"
+	| "hard_off_not_worthwhile"
 	| "daily_plan"
 	| "climate_fallback"
 	| "temperature_no_demand"

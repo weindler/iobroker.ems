@@ -51,6 +51,18 @@ export type BatteryRuntimeComputeResult = {
 	sampleDays: number;
 	avgNightDischargePct: number | null;
 	avgNightDischargeKwh: number | null;
+	/** Ø Hausverbrauch über die gelernten Nachtfenster (kWh) — dieselbe Nachtabgrenzung wie Entladung. */
+	predictedNightConsumptionKwh: number | null;
+	/** Nächte mit belastbarer Hausverbrauchs-Integration (kann von nightBridgeValidNights abweichen). */
+	nightConsumptionValidNights: number;
+	/** Abgeleitet: Nachtverbrauch minus dem, was die Batterie deckte. */
+	predictedNightGridImportKwh: number | null;
+	/** Abgeleitet: Ø Nachtverbrauch (kWh) / Ø Nachtbrücken-Dauer (h) × 1000. */
+	avgNightLoadW: number | null;
+	/** Dynamische Reserve (Phase 1d) — ersetzt feste 50-%-Schwelle; null = noch nicht berechenbar. */
+	requiredSocAtPvEndPct: number | null;
+	requiredNightReserveKwh: number | null;
+	nightReserveReasonDe: string;
 	avgChargeRatePctH: number | null;
 	avgDischargeRatePctH: number | null;
 	avgChargePowerW: number | null;
@@ -104,6 +116,12 @@ export type BatteryRuntimePersist = {
 	sample_days: number;
 	avg_night_discharge_pct: number | null;
 	avg_night_discharge_kwh: number | null;
+	predicted_night_consumption_kwh?: number | null;
+	night_consumption_valid_nights?: number;
+	predicted_night_grid_import_kwh?: number | null;
+	avg_night_load_w?: number | null;
+	required_soc_at_pv_end_pct?: number | null;
+	required_night_reserve_kwh?: number | null;
 	night_bridge_method?: string;
 	night_bridge_valid_nights?: number;
 	avg_night_bridge_hours?: number | null;

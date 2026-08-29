@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.emptyAcRuntimePersist = exports.emptyUnitPersist = exports.AC_RUNTIME_FILENAME = void 0;
+const device_ownership_1 = require("../../../ems_light/device_ownership");
 exports.AC_RUNTIME_FILENAME = "air_conditioning_runtime_v1.json";
 function emptyUnitPersist(index) {
     return {
@@ -19,6 +20,7 @@ function emptyUnitPersist(index) {
         commandGeneration: 0,
         stopArmedGeneration: null,
         lastDesired: null,
+        ownership: (0, device_ownership_1.emptyDeviceOwnershipState)(),
     };
 }
 exports.emptyUnitPersist = emptyUnitPersist;

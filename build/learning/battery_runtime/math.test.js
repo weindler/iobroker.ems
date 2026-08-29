@@ -224,6 +224,103 @@ function socAt(dateKey, hour, socPct) {
         strict_1.default.ok((r.avgKwh ?? 0) >= 2, `avgKwh=${r.avgKwh}`);
     });
 });
+(0, node_test_1.describe)("battery runtime night consumption + dynamic reserve (Phase 1d)", () => {
+    function buildTenNightPvHouseScenario() {
+        const MS = 3_600_000;
+        const day0 = Date.parse("2026-01-10T00:00:00.000Z");
+        const socPoints = [];
+        const battery = [];
+        const house = [];
+        const pv = [];
+        /** 10 gleiche Nächte: 20–06 Uhr (10 h) PV=0, Haus 500 W konstant, Batterie deckt das Defizit. */
+        for (let d = 0; d < 10; d++) {
+            const evening = day0 + d * 86_400_000 + 20 * MS;
+            const morning = day0 + (d + 1) * 86_400_000 + 6 * MS;
+            socPoints.push({ ts: evening, socPct: 90 });
+            socPoints.push({ ts: morning, socPct: 65 });
+            for (let h = 0; h < 24; h++) {
+                const ts = day0 + d * 86_400_000 + h * MS;
+                const isNight = h >= 20 || h < 6;
+                battery.push({ ts, powerW: isNight ? -500 : 300 });
+                house.push({ ts, powerW: 500 });
+                pv.push({ ts, powerW: isNight ? 0 : 3000 });
+            }
+        }
+        return { socPoints, battery, house, pv, day0 };
+    }
+    (0, node_test_1.it)("computeNightConsumption integriert Hauslast über dieselben Fenster wie die Entladung", () => {
+        const { socPoints, battery, house, pv, day0 } = buildTenNightPvHouseScenario();
+        const nowMs = day0 + 11 * 86_400_000;
+        const discharge = (0, math_1.computeNightDischarges)({
+            socPoints,
+            nightStart: "22:00",
+            nightEnd: "06:00",
+            capacityKwh: 20,
+            pvPowerPoints: pv,
+            housePowerPoints: house,
+            batteryPowerPoints: battery,
+            nowMs,
+        });
+        strict_1.default.equal(discharge.method, "pv_house");
+        strict_1.default.ok(discharge.windows.length >= 8, `windows=${discharge.windows.length}`);
+        const consumption = (0, math_1.computeNightConsumption)({
+            windows: discharge.windows,
+            housePowerPoints: house,
+            nowMs,
+        });
+        // 500 W über ~10 h Nachtfenster ≈ 5 kWh/Nacht.
+        strict_1.default.ok(consumption.avgKwh !== null && consumption.avgKwh > 4.5 && consumption.avgKwh < 5.5, `avgKwh=${consumption.avgKwh}`);
+        strict_1.default.ok(consumption.validNights >= 8, `validNights=${consumption.validNights}`);
+    });
+    (0, node_test_1.it)("computeBatteryRuntimeLearning veröffentlicht predictedNightConsumptionKwh, avgNightLoadW und dynamische Reserve", () => {
+        const { socPoints, battery, house, pv, day0 } = buildTenNightPvHouseScenario();
+        const nowMs = day0 + 11 * 86_400_000;
+        const r = (0, math_1.computeBatteryRuntimeLearning)({
+            socPoints,
+            secondsSinceFull: null,
+            powerPoints: battery,
+            pvPowerPoints: pv,
+            housePowerPoints: house,
+            capacityKwh: 20,
+            currentSocPct: 80,
+            cfg: cfg(),
+            sourceSocStateId: "x",
+            sourcePowerStateId: "y",
+            now: new Date(nowMs),
+            sampleDays: 11,
+        });
+        strict_1.default.ok(r.predictedNightConsumptionKwh !== null && r.predictedNightConsumptionKwh > 4.5, `predictedNightConsumptionKwh=${r.predictedNightConsumptionKwh}`);
+        // Batterie deckt fast die gesamte Nachtlast → Netzbezug nahe 0.
+        strict_1.default.ok((r.predictedNightGridImportKwh ?? 0) < 1, `predictedNightGridImportKwh=${r.predictedNightGridImportKwh}`);
+        // avgNightLoadW muss ~500 W ergeben (Hauslast-Eingabe), keine Verzerrung durch falsche Stundenbasis.
+        strict_1.default.ok(r.avgNightLoadW !== null && r.avgNightLoadW > 400 && r.avgNightLoadW < 600, `avgNightLoadW=${r.avgNightLoadW}`);
+        // Reserve: predictedNightConsumptionKwh(~5) * 1.2 / capacityKwh(20) * 100 ≈ 30 %.
+        strict_1.default.ok(r.requiredSocAtPvEndPct !== null && r.requiredSocAtPvEndPct > 20 && r.requiredSocAtPvEndPct < 40, `requiredSocAtPvEndPct=${r.requiredSocAtPvEndPct}`);
+        strict_1.default.ok(r.nightReserveReasonDe.length > 0);
+    });
+    (0, node_test_1.it)("liefert null statt eines versteckten Fallback-Werts, wenn Hausverbrauch fehlt", () => {
+        const { socPoints, battery, pv } = buildTenNightPvHouseScenario();
+        const r = (0, math_1.computeBatteryRuntimeLearning)({
+            socPoints,
+            secondsSinceFull: null,
+            powerPoints: battery,
+            pvPowerPoints: pv,
+            housePowerPoints: [],
+            capacityKwh: 20,
+            currentSocPct: 80,
+            cfg: cfg(),
+            sourceSocStateId: "x",
+            sourcePowerStateId: "y",
+            now: new Date(),
+            sampleDays: 11,
+        });
+        strict_1.default.equal(r.predictedNightConsumptionKwh, null);
+        strict_1.default.equal(r.predictedNightGridImportKwh, null);
+        strict_1.default.equal(r.avgNightLoadW, null);
+        strict_1.default.equal(r.requiredSocAtPvEndPct, null);
+        strict_1.default.match(r.nightReserveReasonDe, /Nachtverbrauch/);
+    });
+});
 (0, node_test_1.describe)("battery runtime astro parse", () => {
     (0, node_test_1.it)("parses HH:MM:SS astro strings", () => {
         strict_1.default.deepEqual((0, history_1.parseAstroTimeValue)("22:03:12"), { hour: 22, minute: 3 });

@@ -143,6 +143,16 @@ class ExportTestHost {
         strict_1.default.equal(out.password, undefined);
         strict_1.default.equal(out.random_unknown_field, undefined);
     });
+    (0, node_test_1.it)("allowlist includes measured_consumers table via ems_ prefix (no separate registration needed)", () => {
+        const rows = [{ enabled: true, name: "TV", power_state_id: "sensor.tv_power" }];
+        const out = (0, collect_config_js_1.filterAllowlistedConfig)({
+            ems_measured_consumers_map: rows,
+            global_execution_mode: "dryrun",
+        });
+        strict_1.default.deepEqual(out.ems_measured_consumers_map, rows);
+        const exported = (0, collect_config_js_1.collectAdapterConfigExport)({ ems_measured_consumers_map: rows });
+        strict_1.default.deepEqual(exported.allowed_native.ems_measured_consumers_map, rows);
+    });
     (0, node_test_1.it)("allowlist keeps non-secret ai_ config but drops the OpenAI token", () => {
         const out = (0, collect_config_js_1.filterAllowlistedConfig)({
             ai_enabled: true,

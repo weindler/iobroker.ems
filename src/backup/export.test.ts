@@ -167,6 +167,17 @@ describe("backup export v0.1.141", () => {
 		assert.equal(out.random_unknown_field, undefined);
 	});
 
+	it("allowlist includes measured_consumers table via ems_ prefix (no separate registration needed)", () => {
+		const rows = [{ enabled: true, name: "TV", power_state_id: "sensor.tv_power" }];
+		const out = filterAllowlistedConfig({
+			ems_measured_consumers_map: rows,
+			global_execution_mode: "dryrun",
+		});
+		assert.deepEqual(out.ems_measured_consumers_map, rows);
+		const exported = collectAdapterConfigExport({ ems_measured_consumers_map: rows });
+		assert.deepEqual((exported.allowed_native as Record<string, unknown>).ems_measured_consumers_map, rows);
+	});
+
 	it("allowlist keeps non-secret ai_ config but drops the OpenAI token", () => {
 		const out = filterAllowlistedConfig({
 			ai_enabled: true,

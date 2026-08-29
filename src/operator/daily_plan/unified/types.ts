@@ -352,6 +352,12 @@ export type UnifiedClimateUnitInput = {
 	 * ohne Plan-Allocation — reale Last, keine neue Flex-Allocation im NOW-Slot.
 	 */
 	runtimeHold?: boolean;
+	/**
+	 * Klima-/Ownership-Block: nächste Hard-Off-Zeit (ms epoch, nächstes Vorkommen ab jetzt,
+	 * über Mitternacht gewickelt) — harte Planner-Deadline, kein künstliches Zeitfenster.
+	 * null = kein Hard-Off konfiguriert.
+	 */
+	hardStopMs?: number | null;
 	/** Geschätzte Hold-Leistung für Forecast-NOW-Reserve (wenn Live-HL die AC nicht enthält). */
 	holdPowerW?: number | null;
 };

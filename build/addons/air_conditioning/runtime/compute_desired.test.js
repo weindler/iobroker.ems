@@ -180,4 +180,82 @@ const base = {
         strict_1.default.equal(d.allowStop, false);
         strict_1.default.equal(d.decisionSource, "cleaning");
     });
+    (0, node_test_1.describe)("Klima-/Ownership-Block: Hard-Off-Restzeit vs. Komfortbedarf", () => {
+        (0, node_test_1.it)("19:15 bei Hard-Off 20:00 (45 Min Restzeit), geringer Komfortbedarf → kein unsinniger Neustart", () => {
+            const d = (0, compute_desired_1.computeAcCoolingDesired)({
+                ...base,
+                fsm: fsm({ demandStart: true, demandUrgency01: 0.1, reasonDe: "Temp knapp über Schwelle." }),
+                dailyPlan: plan(),
+                feedbackOn: false,
+                remainingMinutesUntilHardOff: 45,
+                minWorthwhileRuntimeMin: 60,
+            });
+            strict_1.default.equal(d.allowStart, false);
+            strict_1.default.equal(d.desired, "idle");
+            strict_1.default.equal(d.decisionSource, "hard_off_not_worthwhile");
+            strict_1.default.match(d.reasonDe, /Hard-Off in 45 Min/);
+        });
+        (0, node_test_1.it)("gleicher Zeitpunkt, hoher Komfortbedarf → Start weiterhin möglich", () => {
+            const d = (0, compute_desired_1.computeAcCoolingDesired)({
+                ...base,
+                fsm: fsm({ demandStart: true, demandUrgency01: 0.95, reasonDe: "Temp deutlich über Schwelle." }),
+                dailyPlan: plan(),
+                feedbackOn: false,
+                remainingMinutesUntilHardOff: 45,
+                minWorthwhileRuntimeMin: 60,
+            });
+            strict_1.default.equal(d.allowStart, true);
+            strict_1.default.equal(d.desired, "on");
+        });
+        (0, node_test_1.it)("ohne konfigurierten Hard-Off bleibt der Start unbeeinflusst", () => {
+            const d = (0, compute_desired_1.computeAcCoolingDesired)({
+                ...base,
+                fsm: fsm({ demandStart: true, demandUrgency01: 0, reasonDe: "Temp hoch." }),
+                dailyPlan: plan(),
+                feedbackOn: false,
+                remainingMinutesUntilHardOff: null,
+            });
+            strict_1.default.equal(d.allowStart, true);
+        });
+    });
+    (0, node_test_1.describe)("Klima-/Ownership-Block: Manual Override", () => {
+        (0, node_test_1.it)("manuelles Einschalten Klima → EMS schaltet nicht sofort wieder aus", () => {
+            const d = (0, compute_desired_1.computeAcCoolingDesired)({
+                ...base,
+                fsm: fsm({ state: "running", demandStop: false }),
+                dailyPlan: plan({ allocatedPowerW: 0, allocationStatus: "allocated" }), // Planner-OFF
+                feedbackOn: true,
+                ownershipOverrideActive: true,
+                ownershipReasonDe: "Manuelles Einschalten erkannt — EMS-Steuerung pausiert bis 2026-08-28T19:45:00.000Z.",
+            });
+            strict_1.default.equal(d.allowStop, false);
+            strict_1.default.equal(d.allowStart, false);
+            strict_1.default.equal(d.desired, "hold");
+            strict_1.default.equal(d.decisionSource, "manual_override");
+        });
+        (0, node_test_1.it)("manuelles Ausschalten Klima → EMS schaltet nicht sofort wieder ein", () => {
+            const d = (0, compute_desired_1.computeAcCoolingDesired)({
+                ...base,
+                fsm: fsm({ demandStart: true, reasonDe: "Temp hoch." }),
+                dailyPlan: plan(),
+                feedbackOn: false,
+                ownershipOverrideActive: true,
+                ownershipReasonDe: "Manuelles Ausschalten erkannt — EMS-Steuerung pausiert bis 2026-08-28T19:45:00.000Z.",
+            });
+            strict_1.default.equal(d.allowStart, false);
+            strict_1.default.equal(d.desired, "idle");
+            strict_1.default.equal(d.decisionSource, "manual_override");
+        });
+        (0, node_test_1.it)("Override endet automatisch — normale Planner-/Demand-Logik greift danach wieder", () => {
+            const d = (0, compute_desired_1.computeAcCoolingDesired)({
+                ...base,
+                fsm: fsm({ demandStart: true, reasonDe: "Temp hoch." }),
+                dailyPlan: plan(),
+                feedbackOn: false,
+                ownershipOverrideActive: false,
+            });
+            strict_1.default.equal(d.allowStart, true);
+            strict_1.default.equal(d.decisionSource, "daily_plan");
+        });
+    });
 });

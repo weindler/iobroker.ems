@@ -40,6 +40,7 @@ const battery_charge_logic_config_1 = require("./battery_charge_logic_config");
 const battery_pv_cover_1 = require("./battery_pv_cover");
 const battery_learning_1 = require("./battery_learning");
 const thermal_learning_1 = require("./thermal_learning");
+const battery_consumers_1 = require("../../../policy/battery_consumers");
 async function readNum(host, relId) {
     try {
         const st = await host.getStateAsync(relId);
@@ -376,6 +377,14 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     });
     const batteryLearning = await readBatteryLearningSignal(host);
     const chargeLogic = await readBatteryChargeLogicDecision(host, now, socPct, batteryGov, modePolicy);
+    /*
+     * Heizstab-/Thermal-Block: reale Inputs statt immer-null für die gemeinsame Reserve-Bewertung
+     * (thermal_reserve_evaluation.ts) — Policy-Zugriff (Phase 1a) und zentrale Batterie-Reserve
+     * (Batterie-Block), beide bereits an anderer Stelle berechnet/veröffentlicht.
+     */
+    const mayUseBatteryForImmersion = await readBool(host, battery_consumers_1.BATTERY_CONSUMER_CONSTRAINT_STATES.immersion_heater.allowed);
+    const centralBatteryReserveRequiredSocAtPvEndPct = await readNum(host, "planner.battery_reserve.required_soc_at_pv_end_pct");
+    const importTariffCtPerKwh = await readNum(host, "live.price.now_ct_per_kwh");
     const houseLoadTodayKwh = (0, house_load_1.dailyKwhFromHouseLoadDayForecast)((0, read_1.parseHouseLoadForecastJson)(houseLoadTodayRaw));
     const batteryTodayPvSurplusKwh = (0, battery_pv_cover_1.todayPvSurplusKwh)(pvToday, houseLoadTodayKwh);
     // Technische Hardwaregrenze aus Admin-Config (`bat_hw_max_charge_w`) — nie Runtime-Befehl
@@ -502,6 +511,10 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             hygieneReasonDe: hygiene.reasonDe,
             autoTargetReached: autoTargetReached === true,
             timezone,
+            pvDeficitBridgeUntilIso: chargeLogic.active ? chargeLogic.bridgeUntilIso : null,
+            mayUseBatteryForImmersion,
+            centralBatteryReserveRequiredSocAtPvEndPct,
+            importTariffCtPerKwh,
         },
         airConditioning: {
             now,

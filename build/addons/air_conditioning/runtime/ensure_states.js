@@ -46,6 +46,11 @@ function acUnitRuntimeStates(unitIndex) {
         allocationStatus: `${base}.allocation_status`,
         allocationReasonDe: `${base}.allocation_reason_de`,
         governanceAllowed: `${base}.governance_allowed`,
+        /** Klima-/Ownership-Block. */
+        ownershipOwner: `${base}.ownership_owner`,
+        ownershipOverrideUntilIso: `${base}.ownership_override_until_iso`,
+        ownershipReasonDe: `${base}.ownership_reason_de`,
+        hardOffRemainingMin: `${base}.hard_off_remaining_min`,
     };
 }
 exports.acUnitRuntimeStates = acUnitRuntimeStates;
@@ -54,6 +59,10 @@ exports.AC_RUNTIME_SUMMARY_STATES = {
     dailyPlanActive: `${exports.AC_RUNTIME_BASE}.daily_plan_active`,
     dailyPlanRevision: `${exports.AC_RUNTIME_BASE}.daily_plan_revision`,
     reasonDe: `${exports.AC_RUNTIME_BASE}.reason_de`,
+    /** Klima-/Ownership-Block: gemeinsame Außengeräte-Leistung, systemweit einmal gezählt. */
+    systemPowerW: `${exports.AC_RUNTIME_BASE}.system_power_w`,
+    systemActiveUnitIndexes: `${exports.AC_RUNTIME_BASE}.system_active_unit_indexes`,
+    systemSharedPowerUsed: `${exports.AC_RUNTIME_BASE}.system_shared_power_used`,
 };
 async function ensureAcRuntimeStates(host, options) {
     await host.setObjectNotExistsAsync(`${(0, tree_paths_1.addonBase)("air_conditioning")}.units`, {
@@ -94,6 +103,40 @@ async function ensureAcRuntimeStates(host, options) {
         {
             id: exports.AC_RUNTIME_SUMMARY_STATES.reasonDe,
             common: { name: "Klima Runtime Begründung", type: "string", role: "text", read: true, write: false, def: "" },
+        },
+        {
+            id: exports.AC_RUNTIME_SUMMARY_STATES.systemPowerW,
+            common: {
+                name: "Klima Systemleistung gesamt W (Shared-Power dedupliziert)",
+                type: "number",
+                role: "value",
+                read: true,
+                write: false,
+                def: 0,
+                unit: "W",
+            },
+        },
+        {
+            id: exports.AC_RUNTIME_SUMMARY_STATES.systemActiveUnitIndexes,
+            common: {
+                name: "Klima aktuell aktive Innengeräte (Indizes, Komma-getrennt)",
+                type: "string",
+                role: "text",
+                read: true,
+                write: false,
+                def: "",
+            },
+        },
+        {
+            id: exports.AC_RUNTIME_SUMMARY_STATES.systemSharedPowerUsed,
+            common: {
+                name: "Klima Shared-Power-Messung aktuell verwendet",
+                type: "boolean",
+                role: "indicator",
+                read: true,
+                write: false,
+                def: false,
+            },
         },
     ];
     for (const def of summaryDefs) {
@@ -176,6 +219,22 @@ async function ensureAcRuntimeStates(host, options) {
             { id: ids.allocationStatus, common: { name: `Klima ${label} Allocation-Status`, type: "string", role: "text", read: true, write: false, def: "unknown" } },
             { id: ids.allocationReasonDe, common: { name: `Klima ${label} Allocation-Begründung`, type: "string", role: "text", read: true, write: false, def: "" } },
             { id: ids.governanceAllowed, common: { name: `Klima ${label} Governance erlaubt`, type: "boolean", role: "switch", read: true, write: false, def: false } },
+            {
+                id: ids.ownershipOwner,
+                common: { name: `Klima ${label} Ownership (ems/user/external)`, type: "string", role: "text", read: true, write: false, def: "ems" },
+            },
+            {
+                id: ids.ownershipOverrideUntilIso,
+                common: { name: `Klima ${label} Manual-Override bis (ISO)`, type: "string", role: "text", read: true, write: false, def: "" },
+            },
+            {
+                id: ids.ownershipReasonDe,
+                common: { name: `Klima ${label} Ownership-Begründung`, type: "string", role: "text", read: true, write: false, def: "" },
+            },
+            {
+                id: ids.hardOffRemainingMin,
+                common: { name: `Klima ${label} Restzeit bis Hard-Off (Min)`, type: "number", role: "value", read: true, write: false, unit: "min" },
+            },
         ];
         for (const def of defs) {
             await host.setObjectNotExistsAsync(def.id, {

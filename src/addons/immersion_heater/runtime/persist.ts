@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import type { ImmersionFaultCode, RuntimePersistData, ThermalControlMode } from "./types";
+import { emptyDeviceOwnershipState } from "../../../ems_light/device_ownership";
 
 const FILE = "immersion_heater_runtime_v1.json";
 
@@ -18,6 +19,8 @@ export function emptyPersist(): RuntimePersistData {
 		minRuntimeUntilMs: null,
 		pauseUntilMs: null,
 		autoTargetReached: false,
+		ownership: emptyDeviceOwnershipState(),
+		lastFeedbackActive: null,
 	};
 }
 

@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.evaluateAcUnitFsm = void 0;
 const config_1 = require("../config");
 const time_1 = require("./time");
+const hard_off_worth_it_1 = require("./hard_off_worth_it");
 function evaluateAcUnitFsm(input) {
     const { unit } = input;
     const none = (state, reasonDe) => ({
@@ -11,6 +12,7 @@ function evaluateAcUnitFsm(input) {
         demandStop: false,
         modePurpose: "cooling",
         reasonDe,
+        demandUrgency01: 0,
     });
     if (!input.addonEnabled || !unit.enabled) {
         return none("disabled", "Add-on oder Innengerät deaktiviert.");
@@ -27,6 +29,7 @@ function evaluateAcUnitFsm(input) {
                 demandStop: true,
                 modePurpose: "cooling",
                 reasonDe: `Hard-Off ${unit.hardOffAt} — Abschaltung.`,
+                demandUrgency01: 0,
             };
         }
         return none("idle", `Hard-Off ${unit.hardOffAt} — außerhalb Betrieb.`);
@@ -39,6 +42,7 @@ function evaluateAcUnitFsm(input) {
                 demandStop: true,
                 modePurpose: "cooling",
                 reasonDe: `Außerhalb Zeitfenster ${unit.activeFrom}–${unit.activeUntil}.`,
+                demandUrgency01: 0,
             };
         }
         return none("idle", `Außerhalb Zeitfenster ${unit.activeFrom}–${unit.activeUntil}.`);
@@ -64,6 +68,12 @@ function evaluateAcUnitFsm(input) {
     const needDry = dryEnabled && humidityHigh;
     // Heating path reserved: only when mode string set (FSM demand not wired yet).
     void heatEnabled;
+    /** Für die Hard-Off-Abwägung (compute_desired.ts) — 0, wenn aktuell kein Start-Bedarf besteht. */
+    const demandUrgency01 = needCool
+        ? (0, hard_off_worth_it_1.coolingDemandUrgency01)(temp, unit.onTempC)
+        : needDry
+            ? (0, hard_off_worth_it_1.dehumidifyDemandUrgency01)(humidity, unit.maxHumidityPct)
+            : 0;
     if (!coolEnabled && !dryEnabled) {
         if ((0, time_1.switchIsOn)(input.feedbackSwitchRaw)) {
             return {
@@ -72,6 +82,7 @@ function evaluateAcUnitFsm(input) {
                 demandStop: true,
                 modePurpose: "cooling",
                 reasonDe: "Kein Modus konfiguriert (cool/dry leer) — Abschalten.",
+                demandUrgency01,
             };
         }
         return none("idle", "Kein Modus konfiguriert (cool/dry leer).");
@@ -89,6 +100,7 @@ function evaluateAcUnitFsm(input) {
                 demandStop: false,
                 modePurpose,
                 reasonDe: `Läuft (${why}).`,
+                demandUrgency01,
             };
         }
         /*
@@ -104,6 +116,7 @@ function evaluateAcUnitFsm(input) {
                     demandStop: true,
                     modePurpose: "cooling",
                     reasonDe: `Temp ${temp.toFixed(1)} °C ≤ ${unit.offTempC} °C — Abschalten.`,
+                    demandUrgency01,
                 };
             }
             return {
@@ -112,6 +125,7 @@ function evaluateAcUnitFsm(input) {
                 demandStop: false,
                 modePurpose: "cooling",
                 reasonDe: `Temp ${temp.toFixed(1)} °C im Hysterese-Bereich — läuft weiter.`,
+                demandUrgency01,
             };
         }
         if (humidityLow) {
@@ -121,6 +135,7 @@ function evaluateAcUnitFsm(input) {
                 demandStop: true,
                 modePurpose: "dehumidify",
                 reasonDe: `Feuchte ${humidity.toFixed(0)} % ≤ ${humidityOffPct} % — Entfeuchten fertig.`,
+                demandUrgency01,
             };
         }
         // Dry-only: hold while humidity still above off-hysteresis.
@@ -131,6 +146,7 @@ function evaluateAcUnitFsm(input) {
                 demandStop: false,
                 modePurpose: "dehumidify",
                 reasonDe: `Feuchte im Hysterese-Bereich — dry läuft weiter.`,
+                demandUrgency01,
             };
         }
         return {
@@ -139,6 +155,7 @@ function evaluateAcUnitFsm(input) {
             demandStop: true,
             modePurpose: "cooling",
             reasonDe: "Kein cool/dry-Bedarf — Abschalten.",
+            demandUrgency01,
         };
     }
     // Switch off: start for cool and/or dry (dry may start even below cool off-temp).
@@ -152,6 +169,7 @@ function evaluateAcUnitFsm(input) {
             demandStop: false,
             modePurpose,
             reasonDe: `${why} — Einschalten.`,
+            demandUrgency01,
         };
     }
     if (!coolEnabled && dryEnabled && !humidityHigh) {

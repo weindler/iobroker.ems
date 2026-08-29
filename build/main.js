@@ -27,6 +27,7 @@ const utils = __importStar(require("@iobroker/adapter-core"));
 const battery_1 = require("./addons/battery");
 const air_conditioning_1 = require("./addons/air_conditioning");
 const immersion_heater_1 = require("./addons/immersion_heater");
+const measured_consumers_1 = require("./addons/measured_consumers");
 const failsafe_1 = require("./addons/wallbox/failsafe");
 const wallbox_1 = require("./addons/wallbox");
 const ems_activity_1 = require("./ems_activity");
@@ -564,6 +565,7 @@ class Ems extends utils.Adapter {
         (0, battery_1.stopBatteryModule)(null);
         (0, immersion_heater_1.stopImmersionHeaterModule)();
         (0, air_conditioning_1.stopAirConditioningModule)();
+        (0, measured_consumers_1.stopMeasuredConsumersModule)();
         (0, wallbox_1.stopWallboxModule)();
         (0, failsafe_runner_1.stopFailsafeRunner)();
         callback();

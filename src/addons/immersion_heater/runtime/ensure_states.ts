@@ -67,6 +67,9 @@ export async function ensureImmersionRuntimeStates(host: StateHost): Promise<voi
 		numState(IMMERSION_RUNTIME_STATES.allocatedPowerW, "Daily-Plan Allocation W"),
 		strState(IMMERSION_RUNTIME_STATES.allocationReasonDe, "Allocation-Begründung (DE)", ""),
 		boolState(IMMERSION_RUNTIME_STATES.autoTargetReached, "Tagesziel erreicht (Hysterese-Flag)", false),
+		strState(IMMERSION_RUNTIME_STATES.ownershipOwner, "Ownership (ems/user/external)", "ems"),
+		strState(IMMERSION_RUNTIME_STATES.ownershipOverrideUntilIso, "Manual-Override bis (ISO)", ""),
+		strState(IMMERSION_RUNTIME_STATES.ownershipReasonDe, "Ownership-Begründung", ""),
 	];
 	await ensureStates(host, defs);
 }

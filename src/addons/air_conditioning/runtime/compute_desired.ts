@@ -9,6 +9,7 @@
 import type { AcDecisionSource, AcUnitDailyPlanResolution } from "./daily_plan";
 import type { AcUnitFsmResult } from "./fsm";
 import type { AcCoolingDesired } from "./stop_intent";
+import { isHardOffStartWorthwhile } from "./hard_off_worth_it";
 
 export interface ComputeAcCoolingDesiredInput {
 	unitEnabled: boolean;
@@ -19,6 +20,16 @@ export interface ComputeAcCoolingDesiredInput {
 	dailyPlan: AcUnitDailyPlanResolution;
 	feedbackOn: boolean;
 	startRetryReady: boolean;
+	/**
+	 * Manual-Override aktiv (Klima-/Ownership-Block): erkannter manueller Eingriff, EMS pausiert
+	 * zeitbegrenzt jede eigene Start-/Stopp-Aktion. Safety/kritische Zustände bleiben davon
+	 * unberührt, weil sie strukturell vor dieser Prüfung laufen (governance/addon/cleaning).
+	 */
+	ownershipOverrideActive?: boolean;
+	ownershipReasonDe?: string;
+	/** Minuten bis Hard-Off; null = kein Hard-Off relevant. */
+	remainingMinutesUntilHardOff?: number | null;
+	minWorthwhileRuntimeMin?: number;
 }
 
 export interface AcCoolingControlDecision {
@@ -141,6 +152,18 @@ export function computeAcCoolingDesired(input: ComputeAcCoolingDesiredInput): Ac
 		};
 	}
 
+	// --- Manual Override (Klima-/Ownership-Block): EMS greift nicht ein, bis Override abläuft ---
+	if (input.ownershipOverrideActive === true) {
+		return {
+			...base,
+			desired: feedbackOn ? "hold" : "idle",
+			allowStart: false,
+			allowStop: false,
+			decisionSource: "manual_override",
+			reasonDe: input.ownershipReasonDe || "Manueller Eingriff erkannt — EMS pausiert.",
+		};
+	}
+
 	// --- Explizites Planner-OFF: Desired OFF (Demand darf das nicht zu HOLD umbiegen) ---
 	if (plannerOff) {
 		return {
@@ -175,6 +198,25 @@ export function computeAcCoolingDesired(input: ComputeAcCoolingDesiredInput): Ac
 			decisionSource: "rate_limited",
 			reasonDe: "Start-Rate-Limit aktiv.",
 		};
+	}
+
+	// --- Hard-Off-Restzeit vs. Komfortbedarf: kein blindes Starten, aber keine starre Grenze ---
+	if (fsm.demandStart && !feedbackOn) {
+		const hardOffCheck = isHardOffStartWorthwhile({
+			remainingMinutesUntilHardOff: input.remainingMinutesUntilHardOff ?? null,
+			demandUrgency01: fsm.demandUrgency01 ?? 0,
+			minWorthwhileRuntimeMin: input.minWorthwhileRuntimeMin,
+		});
+		if (!hardOffCheck.worthwhile) {
+			return {
+				...base,
+				desired: "idle",
+				allowStart: false,
+				allowStop: false,
+				decisionSource: "hard_off_not_worthwhile",
+				reasonDe: hardOffCheck.reasonDe,
+			};
+		}
 	}
 
 	// --- Planner-Budget oder Fallback: Start ---

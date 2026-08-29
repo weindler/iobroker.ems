@@ -27,6 +27,12 @@ export type AcUnitConfig = {
 	activeUntil: string;
 	hardOffAt: string;
 	estimatedPowerW: number;
+	/**
+	 * Klima-/Ownership-Block: Units mit derselben (nicht-leeren) Gruppen-ID teilen sich EINE
+	 * elektrische Messung (z. B. gemeinsames Außengerät bei Multi-Split). Leer = eigenständig,
+	 * unverändertes bisheriges Verhalten.
+	 */
+	sharedPowerGroupId: string | null;
 	/** @deprecated prefer cleaningAfterCooling/Dehumidify/Heating */
 	cleaningAfterRun: boolean;
 	cleaningAfterCooling: boolean;

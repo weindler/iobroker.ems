@@ -63,6 +63,21 @@ const device_config_js_1 = require("../device_config.js");
         strict_1.default.equal((0, feedback_js_1.externalOnStatus)({ commandedStage: 0, feedbackActive: false, powerActive: false }), null);
     });
 });
+(0, node_test_1.describe)("Klima-/Ownership-Block: detectImmersionManualMismatch", () => {
+    (0, node_test_1.it)("EMS wollte AUS, Feedback AN → manual_on", () => {
+        strict_1.default.equal((0, feedback_js_1.detectImmersionManualMismatch)({ prevCommandedStage: 0, prevFeedbackActive: true }), "manual_on");
+    });
+    (0, node_test_1.it)("EMS wollte AN, Feedback AUS → manual_off", () => {
+        strict_1.default.equal((0, feedback_js_1.detectImmersionManualMismatch)({ prevCommandedStage: 1, prevFeedbackActive: false }), "manual_off");
+    });
+    (0, node_test_1.it)("übereinstimmend (an/an, aus/aus) → kein Mismatch", () => {
+        strict_1.default.equal((0, feedback_js_1.detectImmersionManualMismatch)({ prevCommandedStage: 1, prevFeedbackActive: true }), "");
+        strict_1.default.equal((0, feedback_js_1.detectImmersionManualMismatch)({ prevCommandedStage: 0, prevFeedbackActive: false }), "");
+    });
+    (0, node_test_1.it)("Feedback noch unbekannt (erster Takt) → kein Mismatch", () => {
+        strict_1.default.equal((0, feedback_js_1.detectImmersionManualMismatch)({ prevCommandedStage: 0, prevFeedbackActive: null }), "");
+    });
+});
 (0, node_test_1.describe)("immersion watched foreign ids", () => {
     (0, node_test_1.it)("deduplicates identical set/feedback states (subscribe once)", () => {
         const config = (0, device_config_js_1.immersionDeviceConfigFromAdapter)({

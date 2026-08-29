@@ -3836,6 +3836,17 @@
 					"lg": 3,
 					"xl": 3
 				},
+				"ac_u1_shared_power_group_id": {
+					"type": "text",
+					"label": "Gemeinsame Außengerät-Gruppe (optional)",
+					"help": "Nur setzen, wenn dieses Innengerät sich ein Außengerät (und damit dieselbe Leistungs-/Energiemessung) mit einem anderen Innengerät teilt — z. B. \"outdoor_1\" bei beiden. Leer = eigenständige Messung (Standard).",
+					"default": "outdoor_1",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
 				"ac_u1_estimated_power_w": {
 					"type": "number",
 					"label": "Geschätzte Leistung Kühlen (W)",
@@ -5144,6 +5155,17 @@
 					"type": "text",
 					"label": "Hard-Off (HH:MM)",
 					"default": "19:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u2_shared_power_group_id": {
+					"type": "text",
+					"label": "Gemeinsame Außengerät-Gruppe (optional)",
+					"help": "Nur setzen, wenn dieses Innengerät sich ein Außengerät (und damit dieselbe Leistungs-/Energiemessung) mit einem anderen Innengerät teilt — z. B. \"outdoor_1\" bei beiden. Leer = eigenständige Messung (Standard).",
+					"default": "outdoor_1",
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
@@ -6464,6 +6486,17 @@
 					"lg": 3,
 					"xl": 3
 				},
+				"ac_u3_shared_power_group_id": {
+					"type": "text",
+					"label": "Gemeinsame Außengerät-Gruppe (optional)",
+					"help": "Nur setzen, wenn dieses Innengerät sich ein Außengerät (und damit dieselbe Leistungs-/Energiemessung) mit einem anderen Innengerät teilt — z. B. \"outdoor_1\" bei beiden. Leer = eigenständige Messung (Standard).",
+					"default": "",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
 				"ac_u3_estimated_power_w": {
 					"type": "number",
 					"label": "Geschätzte Leistung Kühlen (W)",
@@ -7761,6 +7794,17 @@
 					"type": "text",
 					"label": "Hard-Off (HH:MM)",
 					"default": "19:00",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ac_u4_shared_power_group_id": {
+					"type": "text",
+					"label": "Gemeinsame Außengerät-Gruppe (optional)",
+					"help": "Nur setzen, wenn dieses Innengerät sich ein Außengerät (und damit dieselbe Leistungs-/Energiemessung) mit einem anderen Innengerät teilt — z. B. \"outdoor_1\" bei beiden. Leer = eigenständige Messung (Standard).",
+					"default": "",
 					"xs": 12,
 					"sm": 4,
 					"md": 3,
@@ -9070,6 +9114,17 @@
 					"lg": 3,
 					"xl": 3
 				},
+				"ac_u5_shared_power_group_id": {
+					"type": "text",
+					"label": "Gemeinsame Außengerät-Gruppe (optional)",
+					"help": "Nur setzen, wenn dieses Innengerät sich ein Außengerät (und damit dieselbe Leistungs-/Energiemessung) mit einem anderen Innengerät teilt — z. B. \"outdoor_1\" bei beiden. Leer = eigenständige Messung (Standard).",
+					"default": "",
+					"xs": 12,
+					"sm": 4,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
 				"ac_u5_estimated_power_w": {
 					"type": "number",
 					"label": "Geschätzte Leistung Kühlen (W)",
@@ -10287,6 +10342,114 @@
 						"state"
 					],
 					"hidden": "data.ac_u5_profile !== 'samsung_localthings_hass'"
+				}
+			}
+		},
+		"measuredConsumersTab": {
+			"type": "panel",
+			"label": "Gemessene Verbraucher",
+			"items": {
+				"introMeasuredConsumers": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Bis zu 20 rein messende Verbraucher (z. B. TV/Receiver, Multimedia, Mikrowelle, weitere Zigbee-/WLAN-Steckdosen mit Lastmessung). Diese dienen ausschließlich Anzeige, Statistik und späterem Learning — EMS schaltet sie NIE. Leistungs-Datenpunkt liefert die aktuelle Leistung in W. Energie-Datenpunkt (optional) liefert einen kumulativen kWh-Zähler; ohne diesen wird die Energie aus der Leistung zeitbasiert berechnet. Start-/Übernahmewert kWh = gewünschter EMS-Gesamtstand beim ersten Aktivieren des Slots (z. B. vorhandener Zählerstand) — kein zusätzlicher Offset."
+				},
+				"measuredConsumersHint": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Diese Verbraucher sind Unterverbraucher des bereits gemessenen Gesamt-Hausverbrauchs und werden diesem NICHT hinzugerechnet. „Unbekannte Restlast“ (addons.measured_consumers.unknown_house_load_w) = Hausverbrauch minus Summe aller aktiven, gültigen gemessenen Verbraucher."
+				},
+				"ems_measured_consumers_map": {
+					"type": "table",
+					"label": "Gemessene Verbraucher (max. 20)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"default": [],
+					"uniqueColumns": [],
+					"titleAttribute": "name",
+					"useCardFor": [
+						"sm",
+						"md"
+					],
+					"items": [
+						{
+							"type": "checkbox",
+							"attr": "enabled",
+							"title": {
+								"de": "Aktiv",
+								"en": "Active"
+							},
+							"width": "70px",
+							"filter": true,
+							"sort": true,
+							"default": true
+						},
+						{
+							"type": "text",
+							"attr": "name",
+							"title": {
+								"de": "Name",
+								"en": "Name"
+							},
+							"width": "180px",
+							"filter": true,
+							"sort": true,
+							"default": ""
+						},
+						{
+							"type": "objectId",
+							"attr": "power_state_id",
+							"types": [
+								"state"
+							],
+							"title": {
+								"de": "Leistungs-Datenpunkt (W)",
+								"en": "Power datapoint (W)"
+							},
+							"width": "260px",
+							"filter": true,
+							"sort": true,
+							"default": ""
+						},
+						{
+							"type": "objectId",
+							"attr": "energy_state_id",
+							"types": [
+								"state"
+							],
+							"title": {
+								"de": "Energie-Datenpunkt (kWh, optional)",
+								"en": "Energy datapoint (kWh, optional)"
+							},
+							"width": "260px",
+							"filter": true,
+							"sort": true,
+							"default": ""
+						},
+						{
+							"type": "text",
+							"attr": "initial_energy_kwh",
+							"title": {
+								"de": "Start-/Übernahmewert kWh",
+								"en": "Start/take-over value kWh"
+							},
+							"width": "160px",
+							"filter": false,
+							"sort": false,
+							"default": ""
+						}
+					]
 				}
 			}
 		},

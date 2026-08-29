@@ -349,4 +349,41 @@ export function weightedAverage(values: number[], weights: number[]): number | n
 	return round2(sx / sw);
 }
 
+/**
+ * Integriert eine Leistungsserie (W) über [startTs, endTs] zu kWh. Jeder Punkt repräsentiert
+ * den Zeitraum bis zur Mitte zum Nachbarn (funktioniert für dichte 10-Min- wie für sparsame
+ * Stunden-Serien, ohne festen Bucket anzunehmen). Damit wird Hausverbrauch über exakt dasselbe
+ * (dynamisch erkannte) Fenster integriert, das auch die Batterie-Entladung bewertet — kein
+ * zweites, unabhängiges Zeitfenster oder eine zweite Annahme über die Abtastrate.
+ */
+export function integratePowerKwh(
+	points: PowerPoint[],
+	startTs: number,
+	endTs: number,
+): number | null {
+	if (!(endTs > startTs) || points.length === 0) return null;
+	const sorted = points
+		.filter((p) => Number.isFinite(p.ts) && Number.isFinite(p.powerW))
+		.sort((a, b) => a.ts - b.ts);
+	if (sorted.length === 0) return null;
+
+	let kwh = 0;
+	let coveredMs = 0;
+	for (let i = 0; i < sorted.length; i++) {
+		const cur = sorted[i]!;
+		if (cur.ts < startTs - MS_PER_HOUR || cur.ts > endTs + MS_PER_HOUR) continue;
+		const prevTs = i > 0 ? sorted[i - 1]!.ts : cur.ts;
+		const nextTs = i < sorted.length - 1 ? sorted[i + 1]!.ts : cur.ts;
+		const segStart = Math.max(startTs, cur.ts - (cur.ts - prevTs) / 2);
+		const segEnd = Math.min(endTs, cur.ts + (nextTs - cur.ts) / 2);
+		const segMs = segEnd - segStart;
+		if (segMs <= 0) continue;
+		kwh += (cur.powerW * segMs) / 3_600_000_000;
+		coveredMs += segMs;
+	}
+	/** Zu lückenhafte Abdeckung (< 50 % des Fensters) → kein belastbarer Wert. */
+	if (coveredMs < (endTs - startTs) * 0.5) return null;
+	return round2(kwh);
+}
+
 export { average };

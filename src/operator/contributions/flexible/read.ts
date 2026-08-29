@@ -48,6 +48,7 @@ import { batteryChargeLogicConfigFromAdapter } from "./battery_charge_logic_conf
 import { todayPvSurplusKwh } from "./battery_pv_cover";
 import { buildBatteryLearningSignal, type BatteryLearningSignal } from "./battery_learning";
 import { buildThermalLearningSignal, type ThermalLearningSignal } from "./thermal_learning";
+import { BATTERY_CONSUMER_CONSTRAINT_STATES } from "../../../policy/battery_consumers";
 
 export type FlexibleContributionsReadHost = ContributionsReadHost & {
 	getAbsolutePath?: (rel: string) => string;
@@ -525,6 +526,20 @@ export async function collectFlexibleContributions(
 	});
 	const batteryLearning = await readBatteryLearningSignal(host);
 	const chargeLogic = await readBatteryChargeLogicDecision(host, now, socPct, batteryGov, modePolicy);
+	/*
+	 * Heizstab-/Thermal-Block: reale Inputs statt immer-null für die gemeinsame Reserve-Bewertung
+	 * (thermal_reserve_evaluation.ts) — Policy-Zugriff (Phase 1a) und zentrale Batterie-Reserve
+	 * (Batterie-Block), beide bereits an anderer Stelle berechnet/veröffentlicht.
+	 */
+	const mayUseBatteryForImmersion = await readBool(
+		host,
+		BATTERY_CONSUMER_CONSTRAINT_STATES.immersion_heater.allowed,
+	);
+	const centralBatteryReserveRequiredSocAtPvEndPct = await readNum(
+		host,
+		"planner.battery_reserve.required_soc_at_pv_end_pct",
+	);
+	const importTariffCtPerKwh = await readNum(host, "live.price.now_ct_per_kwh");
 
 	const houseLoadTodayKwh = dailyKwhFromHouseLoadDayForecast(parseHouseLoadForecastJson(houseLoadTodayRaw));
 	const batteryTodayPvSurplusKwh = todayPvSurplusKwh(pvToday, houseLoadTodayKwh);
@@ -658,6 +673,10 @@ export async function collectFlexibleContributions(
 			hygieneReasonDe: hygiene.reasonDe,
 			autoTargetReached: autoTargetReached === true,
 			timezone,
+			pvDeficitBridgeUntilIso: chargeLogic.active ? chargeLogic.bridgeUntilIso : null,
+			mayUseBatteryForImmersion,
+			centralBatteryReserveRequiredSocAtPvEndPct,
+			importTariffCtPerKwh,
 		},
 		airConditioning: {
 			now,

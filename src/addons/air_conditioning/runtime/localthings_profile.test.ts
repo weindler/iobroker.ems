@@ -37,6 +37,7 @@ const UNIT: AcUnitConfig = {
 	activeFrom: "08:00",
 	activeUntil: "20:00",
 	hardOffAt: "20:00",
+	sharedPowerGroupId: null,
 	estimatedPowerW: 800,
 	onTempC: 26,
 	offTempC: 24,

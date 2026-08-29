@@ -1,6 +1,7 @@
 import type { AcUnitConfig, AcUnitModePurpose } from "../types";
 import { acModeCommandEnabled } from "../config";
 import { isHardOffTime, isWithinClockWindow, switchIsOff, switchIsOn } from "./time";
+import { coolingDemandUrgency01, dehumidifyDemandUrgency01 } from "./hard_off_worth_it";
 
 export type AcUnitFsmState =
 	| "disabled"
@@ -25,6 +26,11 @@ export type AcUnitFsmResult = {
 	demandStop: boolean;
 	modePurpose: AcUnitModePurpose;
 	reasonDe: string;
+	/**
+	 * 0..1 — aktuelle Komfort-Dringlichkeit (Temp-/Feuchte-Überschreitung), für Hard-Off-Abwägung.
+	 * Optional für Rückwärtskompatibilität mit bestehenden Fixtures/Tests; fehlend = 0 (neutral).
+	 */
+	demandUrgency01?: number;
 };
 
 export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
@@ -35,6 +41,7 @@ export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
 		demandStop: false,
 		modePurpose: "cooling",
 		reasonDe,
+		demandUrgency01: 0,
 	});
 
 	if (!input.addonEnabled || !unit.enabled) {
@@ -53,6 +60,7 @@ export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
 				demandStop: true,
 				modePurpose: "cooling",
 				reasonDe: `Hard-Off ${unit.hardOffAt} — Abschaltung.`,
+				demandUrgency01: 0,
 			};
 		}
 		return none("idle", `Hard-Off ${unit.hardOffAt} — außerhalb Betrieb.`);
@@ -66,6 +74,7 @@ export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
 				demandStop: true,
 				modePurpose: "cooling",
 				reasonDe: `Außerhalb Zeitfenster ${unit.activeFrom}–${unit.activeUntil}.`,
+				demandUrgency01: 0,
 			};
 		}
 		return none("idle", `Außerhalb Zeitfenster ${unit.activeFrom}–${unit.activeUntil}.`);
@@ -99,6 +108,13 @@ export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
 	// Heating path reserved: only when mode string set (FSM demand not wired yet).
 	void heatEnabled;
 
+	/** Für die Hard-Off-Abwägung (compute_desired.ts) — 0, wenn aktuell kein Start-Bedarf besteht. */
+	const demandUrgency01 = needCool
+		? coolingDemandUrgency01(temp, unit.onTempC)
+		: needDry
+			? dehumidifyDemandUrgency01(humidity, unit.maxHumidityPct)
+			: 0;
+
 	if (!coolEnabled && !dryEnabled) {
 		if (switchIsOn(input.feedbackSwitchRaw)) {
 			return {
@@ -107,6 +123,7 @@ export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
 				demandStop: true,
 				modePurpose: "cooling",
 				reasonDe: "Kein Modus konfiguriert (cool/dry leer) — Abschalten.",
+				demandUrgency01,
 			};
 		}
 		return none("idle", "Kein Modus konfiguriert (cool/dry leer).");
@@ -126,6 +143,7 @@ export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
 				demandStop: false,
 				modePurpose,
 				reasonDe: `Läuft (${why}).`,
+				demandUrgency01,
 			};
 		}
 		/*
@@ -141,6 +159,7 @@ export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
 					demandStop: true,
 					modePurpose: "cooling",
 					reasonDe: `Temp ${temp.toFixed(1)} °C ≤ ${unit.offTempC} °C — Abschalten.`,
+					demandUrgency01,
 				};
 			}
 			return {
@@ -149,6 +168,7 @@ export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
 				demandStop: false,
 				modePurpose: "cooling",
 				reasonDe: `Temp ${temp.toFixed(1)} °C im Hysterese-Bereich — läuft weiter.`,
+				demandUrgency01,
 			};
 		}
 		if (humidityLow) {
@@ -158,6 +178,7 @@ export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
 				demandStop: true,
 				modePurpose: "dehumidify",
 				reasonDe: `Feuchte ${humidity!.toFixed(0)} % ≤ ${humidityOffPct} % — Entfeuchten fertig.`,
+				demandUrgency01,
 			};
 		}
 		// Dry-only: hold while humidity still above off-hysteresis.
@@ -168,6 +189,7 @@ export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
 				demandStop: false,
 				modePurpose: "dehumidify",
 				reasonDe: `Feuchte im Hysterese-Bereich — dry läuft weiter.`,
+				demandUrgency01,
 			};
 		}
 		return {
@@ -176,6 +198,7 @@ export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
 			demandStop: true,
 			modePurpose: "cooling",
 			reasonDe: "Kein cool/dry-Bedarf — Abschalten.",
+			demandUrgency01,
 		};
 	}
 
@@ -190,6 +213,7 @@ export function evaluateAcUnitFsm(input: AcUnitFsmInput): AcUnitFsmResult {
 			demandStop: false,
 			modePurpose,
 			reasonDe: `${why} — Einschalten.`,
+			demandUrgency01,
 		};
 	}
 

@@ -6,6 +6,31 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.2.0] – 2026-08-29
+
+Konsolidiert die Unified-Energy-Planning-Arbeit seit 0.1.119 (Batterie, Klima, Ownership, gemessene Verbraucher). Details je Zwischenversion siehe Git-Historie/`io-package.json` News.
+
+### Added
+
+- **Battery Discharge Authority (zentral):** Der Unified Planner entscheidet, ob/wie viel Batterieentladung wirtschaftlich zulässig ist (`allowed`, `maxDischargeW`, Reason/Diagnostics); `grid_balance.ts` führt nur noch aus und begrenzt nie mehr, als der Planner erlaubt.
+- **Dynamische Batterie-Reserve:** `predictedNightConsumptionKwh` (gelernt aus Nachtlänge + realem Verbrauch/SOC-Verlauf) und daraus abgeleitetes `requiredSocAtPvEndPct` ersetzen die feste 50 %-Policy-Grenze; konservativer Fallback bei fehlenden Lerndaten.
+- **Batterie-Diagnostik:** `estimatedBatteryEmptyAtIso`, `energyToTargetKwh`/`estimatedChargeTimeToTarget` für Restlaufzeit- und Ladezeit-Transparenz.
+- **Thermal-/Immersion-PV-Precharge:** reale Reichweiten-/PV-Betrachtung (`nextPvHeatOpportunityIso`, Reserve-Diagnostik) statt starrer Zeitfenster.
+- **AC Hard-Off im Unified Planner:** `hardStopMs` je Klima-Unit fließt in die Slot-Allokation ein; `hard_off_worth_it` bewertet Start-Sinnhaftigkeit anhand Restlaufzeit und Komfort-Dringlichkeit (`demandUrgency01`) statt starrer Minutengrenze.
+- **Shared AC Outdoor Unit Power:** gemeinsames Außengerät (Wohnzimmer + Josef Zimmer) wird als eine Systemleistung modelliert — keine Doppelzählung, wenn beide Innengeräte laufen.
+- **Device Ownership / Manual Override:** generisches Modell (`ems`/`user`/`external`) für Klima und Heizstab; manuelle Bedienung erzeugt einen zeitlich begrenzten Override, EMS schreibt währenddessen nicht zurück; Safety/Fault übersteuert den Override immer.
+- **Measured Consumers (neu, rein messend):** bis zu 20 konfigurierbare Verbraucher (Admin-Tabelle `ems_measured_consumers_map`) für Anzeige/Statistik/Learning-Vorbereitung — werden von EMS **nie** geschaltet und **nie** zum Hausverbrauch addiert. Leistungs-/Energie-Datenpunkt-Mapping, Start-/Übernahmewert, zählerreset-sicherer Gesamtstand, Tages-/Monats-/Jahres-/Gesamt-Statistik, `unknown_house_load_w` (bekannte vs. unbekannte Restlast), generische `consumers_json` als Vorbereitung für künftige ems-charts-Visualisierung.
+
+### Changed
+
+- Battery-Consumer-Policies (`mayUseBattery`, `onlyWhenCritical`) wirken jetzt auch gegen indirekte Batterienutzung über Netzausgleich.
+
+### Known limitations
+
+- Vorbestehend, nicht Teil dieses Releases: Backup-Export-Testfall `selected_state_data`/`v0.1.141`, Objekt-Oberflächen-Budget-Test (leere Config über 550 States), Boiler-Learning-Testfall (`runThermalBoilerLearning`).
+
+---
+
 ## [0.1.119] – 2026-07-05
 
 ### Added

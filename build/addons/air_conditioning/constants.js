@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.acUnitConsumerKey = exports.acUnitMappingCommands = exports.acMappingFlatPrefix = exports.acUnitMappingCommand = exports.AC_WATCH_MAPPING_ROLES = exports.AC_MAPPING_ROLES = exports.AC_PROFILE_IDS = exports.AC_CLEANING_STUCK_ABORT_SEC = exports.AC_HUMIDITY_OFF_HYSTERESIS_PCT_DEFAULT = exports.AC_CLEANING_MIN_COOL_RUNTIME_MS = exports.AC_CLEANING_FEEDBACK_MIN_RUNTIME_SEC = exports.AC_CLEANING_ACTIVE_CONFIRM_SEC = exports.AC_CLEANING_REFRESH_MS = exports.AC_FEEDBACK_POLL_ATTEMPTS = exports.AC_FEEDBACK_POLL_MS = exports.AC_STOP_RETRY_MS = exports.AC_START_RETRY_MS = exports.AC_WRITE_REFRESH_DELAY_MS = exports.AC_WRITE_SETPOINT_DELAY_MS = exports.AC_TICK_MS = exports.AC_UNIT_COUNT = exports.AC_ADDON_ID = void 0;
+exports.acUnitConsumerKey = exports.acUnitMappingCommands = exports.acMappingFlatPrefix = exports.acUnitMappingCommand = exports.AC_WATCH_MAPPING_ROLES = exports.AC_MAPPING_ROLES = exports.AC_PROFILE_IDS = exports.AC_CLEANING_STUCK_ABORT_SEC = exports.AC_HUMIDITY_OFF_HYSTERESIS_PCT_DEFAULT = exports.AC_CLEANING_MIN_COOL_RUNTIME_MS = exports.AC_CLEANING_FEEDBACK_MIN_RUNTIME_SEC = exports.AC_CLEANING_ACTIVE_CONFIRM_SEC = exports.AC_CLEANING_REFRESH_MS = exports.AC_FEEDBACK_POLL_ATTEMPTS = exports.AC_FEEDBACK_POLL_MS = exports.AC_OWNERSHIP_SETTLE_MS = exports.AC_MANUAL_OVERRIDE_DURATION_MS_DEFAULT = exports.AC_STOP_RETRY_MS = exports.AC_START_RETRY_MS = exports.AC_WRITE_REFRESH_DELAY_MS = exports.AC_WRITE_SETPOINT_DELAY_MS = exports.AC_TICK_MS = exports.AC_UNIT_COUNT = exports.AC_ADDON_ID = void 0;
 exports.AC_ADDON_ID = "air_conditioning";
 exports.AC_UNIT_COUNT = 5;
 exports.AC_TICK_MS = 10_000;
@@ -10,6 +10,10 @@ exports.AC_WRITE_REFRESH_DELAY_MS = 5_000;
 exports.AC_START_RETRY_MS = 120_000;
 /** Live: volle Stop-Sequenz frühestens wieder nach … ms, wenn Feedback noch on. */
 exports.AC_STOP_RETRY_MS = 60_000;
+/** Klima-/Ownership-Block: erkannter Manual-Override pausiert EMS-Steuerung für diese Dauer. */
+exports.AC_MANUAL_OVERRIDE_DURATION_MS_DEFAULT = 30 * 60_000;
+/** Kein Mismatch-Alarm kurz nach einem eigenen EMS-Start/Stop (Feedback-Verzögerung). */
+exports.AC_OWNERSHIP_SETTLE_MS = 2 * 60_000;
 /** Nach Startsequenz kurz warten, bis SmartThings feedback_switch aktualisiert. */
 exports.AC_FEEDBACK_POLL_MS = 3_000;
 exports.AC_FEEDBACK_POLL_ATTEMPTS = 6;

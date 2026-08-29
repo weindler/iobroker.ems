@@ -13,6 +13,7 @@ exports.summarizeUnifiedDayPlanForReason = exports.buildUnifiedInputFromForecast
 const contribution_ids_1 = require("../../contribution_ids");
 const quality_1 = require("../../quality");
 const flex_demand_1 = require("../../contributions/flexible/flex_demand");
+const hard_off_worth_it_1 = require("../../../addons/air_conditioning/runtime/hard_off_worth_it");
 const constants_1 = require("../../../addons/air_conditioning/constants");
 const vehicle_availability_1 = require("./vehicle_availability");
 const ev_energy_1 = require("./ev_energy");
@@ -258,6 +259,15 @@ function buildUnifiedInputFromForecastContext(ctx) {
         const runtimeHold = hardwareRunning && noNewDemand;
         const allocW = rt?.allocatedPowerW;
         const holdPowerW = rt?.estimatedPowerW ?? typical ?? (allocW != null && allocW > 0 ? allocW : null);
+        /*
+         * Klima-/Ownership-Block: nächstes Hard-Off ab jetzt (über Mitternacht gewickelt) —
+         * harte Planner-Deadline, kein künstliches Zeitfenster (siehe score_allocate.ts).
+         */
+        const hardOffAtRaw = str(d, "hardOffAt");
+        const nowDate = new Date(nowMs);
+        const nowMinLocal = nowDate.getHours() * 60 + nowDate.getMinutes();
+        const minsToHardOff = hardOffAtRaw ? (0, hard_off_worth_it_1.minutesUntilHardOff)(nowMinLocal, hardOffAtRaw) : null;
+        const hardStopMs = minsToHardOff !== null ? nowMs + minsToHardOff * 60_000 : null;
         climateUnits.push({
             unitId: contribution_ids_1.CONTRIBUTION_IDS.AC_UNIT(u),
             label: str(d, "name") ?? `unit_${u}`,
@@ -273,6 +283,7 @@ function buildUnifiedInputFromForecastContext(ctx) {
             hardwareRunning,
             runtimeHold,
             holdPowerW,
+            hardStopMs,
         });
     }
     const climateFresh = freshnessFrom(nowMs, nowIso, climateUnits[0]?.uncertainty ?? (0, quality_1.operatorQuality)("missing", "Keine Klima-Units.", null));

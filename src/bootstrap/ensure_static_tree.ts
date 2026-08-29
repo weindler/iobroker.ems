@@ -1,6 +1,7 @@
 import { ensureAirConditioningStateTree } from "../addons/air_conditioning";
 import { ensureBatteryStateTree } from "../addons/battery";
 import { ensureImmersionHeaterStateTree } from "../addons/immersion_heater";
+import { ensureMeasuredConsumersStateTree } from "../addons/measured_consumers";
 import { ensureWallboxStaticStateTree, ensureWallboxDynamicVehicleProfiles } from "../addons/wallbox";
 import { ensureAddonGovernanceStates } from "../addons/governance";
 import { ensureAddonRuntimeSurfaceStates } from "../addons/runtime_surface";
@@ -35,6 +36,7 @@ export async function ensureStaticStateTree(host: StaticStateTreeHost): Promise<
 	await ensureBatteryStateTree(host);
 	await ensureImmersionHeaterStateTree(host);
 	await ensureAirConditioningStateTree(host);
+	await ensureMeasuredConsumersStateTree(host);
 }
 
 /** Phase C — no-op since v0.1.227 (fat vehicle profile trees removed; see `wb_vehicle_map`). */

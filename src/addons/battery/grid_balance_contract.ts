@@ -23,6 +23,7 @@
  */
 
 import { isEvActuallyCharging } from "../wallbox/charge_hold";
+import { evaluateGridBalanceMinPrice } from "./grid_balance";
 
 export const GRID_BALANCE_EXECUTION_ENABLED = true;
 
@@ -221,7 +222,11 @@ function firstBlock(input: GridBalanceSafetyInput): { reason: string; authority:
 
 	const priceKnown = input.priceNowCt != null && Number.isFinite(input.priceNowCt);
 	if (!priceKnown) return { reason: "price_unknown", authority: "grid_balance" };
-	if (input.priceNowCt! < input.priceMinCt) {
+	/*
+	 * Dieselbe Preisregel wie `battery_discharge_authority.ts` (Unified Planner) — keine
+	 * zweite, unabhängig gepflegte Schwelle. `evaluateGridBalanceMinPrice` in grid_balance.ts.
+	 */
+	if (!evaluateGridBalanceMinPrice({ minPriceCtPerKwh: input.priceMinCt, priceNowCt: input.priceNowCt }).passed) {
 		return { reason: "price_below_minimum", authority: "grid_balance" };
 	}
 

@@ -1,6 +1,7 @@
 import { refreshAirConditioningRuntime } from "../addons/air_conditioning";
 import { runBatteryControlTick } from "../addons/battery";
 import { refreshImmersionHeaterRuntime } from "../addons/immersion_heater";
+import { refreshMeasuredConsumersRuntime } from "../addons/measured_consumers";
 import { refreshWallboxEvccTelemetry } from "../addons/wallbox";
 import type { StaticStateTreeHost } from "./ensure_static_tree";
 
@@ -15,4 +16,5 @@ export async function runPostBootstrapReconciliation(host: ReconcileHost): Promi
 	await runBatteryControlTick(host);
 	await refreshImmersionHeaterRuntime(host);
 	await refreshAirConditioningRuntime(host);
+	await refreshMeasuredConsumersRuntime(host);
 }

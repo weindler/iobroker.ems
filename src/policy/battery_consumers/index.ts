@@ -8,6 +8,7 @@ export {
 	batteryConsumersConfigFromAdapter,
 	batteryConsumerRule,
 	batteryConsumerIdFromAddon,
+	DEFAULT_MIN_SOC,
 } from "./config";
 export {
 	resolveBatteryConsumerAccess,

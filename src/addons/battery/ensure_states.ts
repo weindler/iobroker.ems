@@ -163,6 +163,14 @@ export const BAT = {
 		liveTestArmedAt: `${BATTERY_BASE}.grid_balance.live_test_armed_at`,
 		liveTestResult: `${BATTERY_BASE}.grid_balance.live_test_result`,
 		mirrorFollowsAdmin: `${BATTERY_BASE}.grid_balance.mirror_follows_admin`,
+		/**
+		 * Phase 1 (Unified-Planner-Entscheidungshoheit über Batterie-Entladung):
+		 * Leistung, die vom Netzausgleichs-Restlast-Bezug abgezogen wurde, weil die
+		 * Planner-Policy (`policy/battery_consumers`) diesem Verbraucher die Batterie
+		 * gerade nicht erlaubt (siehe `grid_balance_policy.ts`).
+		 */
+		policyExcludedLoadW: `${BATTERY_BASE}.grid_balance.policy_excluded_load_w`,
+		policyExcludedReasonDe: `${BATTERY_BASE}.grid_balance.policy_excluded_reason_de`,
 	},
 	control: {
 		faultReset: `${BATTERY_BASE}.control.fault_reset`,
@@ -229,6 +237,8 @@ export const BATTERY_PUBLIC_STATE_IDS = new Set<string>([
 	BAT.gridBalance.liveTestArmed,
 	BAT.gridBalance.liveTestArmedAt,
 	BAT.gridBalance.liveTestResult,
+	BAT.gridBalance.policyExcludedLoadW,
+	BAT.gridBalance.policyExcludedReasonDe,
 	BAT.control.faultReset,
 	BAT.failsafe.emsReachable,
 	BAT.failsafe.wouldTrip,
@@ -431,6 +441,16 @@ function batteryStateDefs(): Def[] {
 		{ id: BAT.gridBalance.liveTestArmedAt, common: txt("Netzausgleich Live-Test armiert um"), defVal: "" },
 		{ id: BAT.gridBalance.liveTestResult, common: txt("Netzausgleich Live-Test Ergebnis"), defVal: "" },
 		{ id: BAT.gridBalance.mirrorFollowsAdmin, common: bool("ems_mirror.grid_balance_enabled folgt Admin") },
+		{
+			id: BAT.gridBalance.policyExcludedLoadW,
+			common: numS("Netzausgleich Policy-Ausschluss Leistung", "W"),
+			defVal: 0,
+		},
+		{
+			id: BAT.gridBalance.policyExcludedReasonDe,
+			common: txt("Netzausgleich Policy-Ausschluss Begründung"),
+			defVal: "",
+		},
 
 		{
 			id: BAT.control.faultReset,

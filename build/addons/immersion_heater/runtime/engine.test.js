@@ -467,3 +467,66 @@ async function decisionState(host, id) {
         strict_1.default.equal(fault.lockout, true);
     });
 });
+(0, node_test_1.describe)("immersion runtime — Klima-/Ownership-Block: Manual Override", () => {
+    (0, node_test_1.beforeEach)(() => {
+        (0, engine_js_1.resetImmersionRuntimeForTest)();
+    });
+    function liveHostNoDemand() {
+        // Warmer Puffer/Boiler + kein Daily Plan → EMS will Stufe 0 (kein Heizbedarf).
+        const host = baseHost(58, 58);
+        host.set("global.execution_mode", "live");
+        host.set("addons.immersion_heater.mode", "live");
+        host.set("addons.immersion_heater.governance.enabled", true);
+        host.set(states_js_1.DAILY_PLAN_STATE_IDS.status, "");
+        // Feedback = dieselbe State-ID wie set_state (kombiniertes Relais mit Rückmeldung).
+        host.config = { ...CONFIG, ih_stage_1_feedback_state: "immersion.stage1" };
+        host.set("immersion.stage1", false);
+        return host;
+    }
+    function trackForeignWrites(host) {
+        const writes = [];
+        const orig = host.setForeignStateAsync;
+        host.setForeignStateAsync = async (id, state) => {
+            const val = state && typeof state === "object" && "val" in state ? state.val : state;
+            writes.push({ id, val });
+            return orig(id, state);
+        };
+        return writes;
+    }
+    (0, node_test_1.it)("manueller Heizstab-Eingriff (Relais manuell EIN) → EMS respektiert Override, kein sofortiges Zurückschalten", async () => {
+        const host = liveHostNoDemand();
+        // Takt 1: Baseline — EMS will 0, Relais startet false → kein Mismatch, kein Override.
+        await (0, engine_js_1.runImmersionRuntimeTick)(host);
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.commandedStage), 0);
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.ownershipOwner), "ems");
+        // Settle-Fenster (IMMERSION_OWNERSHIP_SETTLE_MS) simuliert verstrichen — sonst blockiert
+        // der Eigen-Write-Schutz aus Takt 1 die Erkennung in den folgenden (im Test sehr schnellen) Takten.
+        (0, engine_js_1.getImmersionPersistForTest)().lastOffAtMs = Date.now() - 5 * 60_000;
+        (0, engine_js_1.getImmersionPersistForTest)().lastSwitchAtMs = Date.now() - 5 * 60_000;
+        // Manueller Eingriff zwischen den Takten: Relais wird von Hand eingeschaltet.
+        host.set("immersion.stage1", true);
+        await (0, engine_js_1.runImmersionRuntimeTick)(host); // Takt 2: Mismatch wird erkannt (Erkennung mit 1 Takt Verzögerung)
+        const writes = trackForeignWrites(host);
+        await (0, engine_js_1.runImmersionRuntimeTick)(host); // Takt 3: Override sollte jetzt aktiv sein
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.ownershipOwner), "user");
+        strict_1.default.ok((await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.ownershipOverrideUntilIso)) !== "", "Override-Frist muss gesetzt sein");
+        // EMS darf das manuell eingeschaltete Relais während des Overrides NICHT zurückschalten.
+        strict_1.default.equal(writes.some((w) => w.id === "immersion.stage1"), false, "EMS darf während Manual-Override nicht auf das Relais schreiben");
+    });
+    (0, node_test_1.it)("Safety/kritischer Zustand (Fault-Lockout) übersteuert einen aktiven Manual Override", async () => {
+        const host = liveHostNoDemand();
+        await (0, engine_js_1.runImmersionRuntimeTick)(host);
+        (0, engine_js_1.getImmersionPersistForTest)().lastOffAtMs = Date.now() - 5 * 60_000;
+        (0, engine_js_1.getImmersionPersistForTest)().lastSwitchAtMs = Date.now() - 5 * 60_000;
+        host.set("immersion.stage1", true);
+        await (0, engine_js_1.runImmersionRuntimeTick)(host);
+        await (0, engine_js_1.runImmersionRuntimeTick)(host);
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.ownershipOwner), "user");
+        // Fault-Lockout auslösen (Safety) — muss den Override sofort beenden.
+        (0, engine_js_1.getImmersionPersistForTest)().faultLockout = true;
+        (0, engine_js_1.getImmersionPersistForTest)().faultCode = "relay_chatter";
+        await (0, engine_js_1.runImmersionRuntimeTick)(host);
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.ownershipOwner), "ems");
+        strict_1.default.equal(await decisionState(host, types_js_1.IMMERSION_RUNTIME_STATES.ownershipOverrideUntilIso), "");
+    });
+});

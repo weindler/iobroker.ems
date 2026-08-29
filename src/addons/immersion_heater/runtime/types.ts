@@ -1,5 +1,7 @@
 /** Immersion heater runtime — Phase 3C.1 */
 
+import type { DeviceOwnershipState } from "../../../ems_light/device_ownership";
+
 export type ThermalControlMode = "off" | "auto" | "force";
 
 export type ImmersionRuntimeState =
@@ -114,6 +116,10 @@ export interface RuntimePersistData {
 	pauseUntilMs: number | null;
 	/** Auto-Modus: Tagesziel seit dem letzten vollständigen Abkühlen unter die Wiedereinschalt-Hysterese schon erreicht? */
 	autoTargetReached: boolean;
+	/** Klima-/Ownership-Block: erkannter Manual-Override (ems/user), zeitbegrenzt. */
+	ownership: DeviceOwnershipState;
+	/** Feedback des Vortakts — Referenz für Mismatch-Erkennung ohne Reordering der I/O-Reads. */
+	lastFeedbackActive: boolean | null;
 }
 
 export interface RuntimeSnapshot {
@@ -200,4 +206,8 @@ export const IMMERSION_RUNTIME_STATES = {
 	allocationStatus: `${IMMERSION_RUNTIME_BASE}.allocation_status`,
 	allocationReasonDe: `${IMMERSION_RUNTIME_BASE}.allocation_reason_de`,
 	autoTargetReached: `${IMMERSION_RUNTIME_BASE}.auto_target_reached`,
+	/** Klima-/Ownership-Block. */
+	ownershipOwner: `${IMMERSION_RUNTIME_BASE}.ownership_owner`,
+	ownershipOverrideUntilIso: `${IMMERSION_RUNTIME_BASE}.ownership_override_until_iso`,
+	ownershipReasonDe: `${IMMERSION_RUNTIME_BASE}.ownership_reason_de`,
 } as const;

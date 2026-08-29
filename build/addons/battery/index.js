@@ -15,6 +15,10 @@ const ems_mirror_1 = require("./ems_mirror");
 const grid_balance_1 = require("./grid_balance");
 const grid_balance_contract_1 = require("./grid_balance_contract");
 const grid_balance_power_1 = require("./grid_balance_power");
+const grid_balance_policy_1 = require("./grid_balance_policy");
+const battery_consumers_1 = require("../../policy/battery_consumers");
+const types_1 = require("../immersion_heater/runtime/types");
+const state_util_1 = require("../../ems_light/state_util");
 const hold_freshness_1 = require("./hold_freshness");
 const barrier_1 = require("../../restore/barrier");
 const ensure_evcc_states_1 = require("../wallbox/ensure_evcc_states");
@@ -712,6 +716,27 @@ async function controlTickInner(host) {
     // Grid balance: safety + EV-Abzug + Deadband; Writes bei Dauerbetrieb oder Rest-One-Shot.
     const consumption = (await readMappedNumber(host, table, "consumption_w")).val ?? 0;
     const pv = (await readMappedNumber(host, table, "pv_ac_power_w")).val ?? 0;
+    /*
+     * Phase 1 — Batterie-Entladung trifft keine eigene wirtschaftliche Entscheidung mehr:
+     * Verbraucher, dem der Unified-Planner-Tick (`policy/battery_consumers`) die Batterie
+     * aktuell NICHT erlaubt (z. B. Heizstab bei mayUseBattery=false), darf nicht indirekt über
+     * den Netzausgleichs-Restlast-Bezug Batterieleistung erhalten. Die Erlaubnis selbst wird
+     * hier nicht neu entschieden — nur die bereits vom Planner veröffentlichte Entscheidung
+     * (`planner.constraints.battery_consumer_immersion_allowed`) umgesetzt.
+     */
+    const ihBatteryAllowedSt = await host.getStateAsync(battery_consumers_1.BATTERY_CONSUMER_CONSTRAINT_STATES.immersion_heater.allowed);
+    const ihCommandedPowerSt = await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.commandedPowerW);
+    const gridBalancePolicyAdjustment = (0, grid_balance_policy_1.resolveGridBalancePolicyLoadAdjustment)({
+        rawConsumptionW: consumption,
+        excludedConsumers: [
+            {
+                id: "immersion_heater",
+                // Unbekannt (State noch nicht geschrieben) → nicht einschränken (fail-open).
+                allowedOnBattery: ihBatteryAllowedSt?.val !== false,
+                commandedPowerW: (0, state_util_1.asNum)(ihCommandedPowerSt?.val),
+            },
+        ],
+    });
     const evPower = await readRelNumberTs(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW, nowMs);
     const armedSt = await host.getStateAsync(ensure_states_1.BAT.gridBalance.liveTestArmed);
     gridBalanceLiveTest = (0, grid_balance_power_1.applyGridBalanceLiveTestPulse)(gridBalanceLiveTest, armedSt?.val, armedSt?.ack, nowMs);
@@ -754,10 +779,23 @@ async function controlTickInner(host) {
         gbSession.wroteLive &&
         !liveWriteAllowed;
     const mode2Confirmed = snapshot.telemetry.operatingMode === "self_consumption";
+    /*
+     * Phase 1b: Der Unified Planner (operator/daily_plan/tick.ts) entscheidet, ob Entladung
+     * wirtschaftlich zulässig ist und welches Budget gilt. grid_balance übernimmt das nur als
+     * zusätzliche Obergrenze — Hardware-/Ownership-/Kommunikationsschutz (weiter unten:
+     * hardwareMaxDischargeW, Safety-Gates) bleiben unverändert lokal und begrenzen weiter.
+     * Kein Planner-Wert (State noch nicht geschrieben) → sicher geschlossen (0 W), nicht offen.
+     */
+    const plannerDischargeAllowedSt = await host.getStateAsync("planner.battery_discharge.allowed");
+    const plannerMaxDischargeWSt = await host.getStateAsync("planner.battery_discharge.max_discharge_w");
+    const plannerDischargeAllowed = plannerDischargeAllowedSt?.val === true;
+    const plannerMaxDischargeW = Math.max(0, (0, state_util_1.asNum)(plannerMaxDischargeWSt?.val) ?? 0);
+    const plannerAdmittedMaxW = plannerDischargeAllowed ? plannerMaxDischargeW : 0;
+    const gbConfiguredMaxW = Math.min(config.gridBalance.maxTargetW, plannerAdmittedMaxW);
     const gbDecision = (0, grid_balance_power_1.evaluateGridBalanceTick)({
         nowMs,
         safety: safetyInput,
-        consumptionW: consumption,
+        consumptionW: gridBalancePolicyAdjustment.policyAdjustedConsumptionW,
         pvAcPowerW: pv,
         charging: evccChargingFlag,
         chargePowerW: evPower.val ?? evccChargePowerW,
@@ -765,7 +803,8 @@ async function controlTickInner(host) {
         vehicleConnected: evccConnectedFlag,
         deadbandW: config.gridBalance.deadbandW,
         offsetW: offset,
-        configuredMaxW: config.gridBalance.maxTargetW,
+        configuredMaxW: gbConfiguredMaxW,
+        configuredMaxWZeroFromPlanner: plannerAdmittedMaxW <= 0,
         hardwareMaxChargeW: snapshot.limits.maxChargeW,
         hardwareMaxDischargeW: snapshot.limits.maxDischargeW,
         minChangeW: config.gridBalance.minChangeW,
@@ -894,6 +933,8 @@ async function controlTickInner(host) {
             importW: gbDecision.rawGridDeltaW,
             safety: gbSafety,
             decision: gbDecision,
+            policyExcludedLoadW: gridBalancePolicyAdjustment.excludedLoadW,
+            policyExcludedReasonDe: gridBalancePolicyAdjustment.reasonDe,
         },
         clamps: validation.clamps,
         requestedPowerW: deviceIntent.maxChargeW ?? 0,
@@ -994,6 +1035,8 @@ async function persist(host, s, x) {
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.priceMinCtKwh, x.priceMinCt);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.priceAllowed, d.priceAllowed);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.gridPowerW, d.rawGridDeltaW);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.policyExcludedLoadW, x.gb.policyExcludedLoadW);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.policyExcludedReasonDe, x.gb.policyExcludedReasonDe);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.effectivePowerW, d.effectivePowerW);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.holdDetected, d.holdDetected);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.evConflict, d.evConflict);

@@ -25,6 +25,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.withGridImportExplain = exports.evaluateGridBalanceSafety = exports.isCompetingEmsBatteryAction = exports.formatGridBalanceExplain = exports.classifyGridBalanceEvConflict = exports.normalizeLoadpointMode = exports.parseGridBalanceMaxPriceCt = exports.parseGridBalanceMinPriceCt = exports.GRID_BALANCE_MAX_PRICE_DEFAULT_CT = exports.GRID_BALANCE_MIN_PRICE_MAX_CT = exports.GRID_BALANCE_MIN_PRICE_MIN_CT = exports.GRID_BALANCE_MIN_PRICE_DEFAULT_CT = exports.GRID_BALANCE_EXECUTION_ENABLED = void 0;
 const charge_hold_1 = require("../wallbox/charge_hold");
+const grid_balance_1 = require("./grid_balance");
 exports.GRID_BALANCE_EXECUTION_ENABLED = true;
 exports.GRID_BALANCE_MIN_PRICE_DEFAULT_CT = 30;
 exports.GRID_BALANCE_MIN_PRICE_MIN_CT = 0;
@@ -151,7 +152,11 @@ function firstBlock(input) {
     const priceKnown = input.priceNowCt != null && Number.isFinite(input.priceNowCt);
     if (!priceKnown)
         return { reason: "price_unknown", authority: "grid_balance" };
-    if (input.priceNowCt < input.priceMinCt) {
+    /*
+     * Dieselbe Preisregel wie `battery_discharge_authority.ts` (Unified Planner) — keine
+     * zweite, unabhängig gepflegte Schwelle. `evaluateGridBalanceMinPrice` in grid_balance.ts.
+     */
+    if (!(0, grid_balance_1.evaluateGridBalanceMinPrice)({ minPriceCtPerKwh: input.priceMinCt, priceNowCt: input.priceNowCt }).passed) {
         return { reason: "price_below_minimum", authority: "grid_balance" };
     }
     return { reason: "", authority: "grid_balance" };

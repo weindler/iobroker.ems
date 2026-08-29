@@ -648,6 +648,9 @@ function buildConsumerStates(input, slots) {
              * Pflicht-Komfort: kein künstliches now+2h-Deadline-Hard-Cutoff
              * (sonst 00:05-Plan mit Slots ab 06:00 → 0 Klima). Urgency nur über Score.
              * Runtime-Hold: keine zusätzliche Flex-Allocation im NOW-Slot.
+             * hardStopMs (Klima-/Ownership-Block) ist KEIN künstliches Fenster, sondern die
+             * echte konfigurierte Hard-Off-Zeit — als Deadline zulässig (kein blindes Allozieren
+             * über die Zwangsabschaltung hinaus).
              */
             out.push({
                 consumerId: u.unitId,
@@ -655,7 +658,7 @@ function buildConsumerStates(input, slots) {
                 remainingKwh: need,
                 maxPowerW: maxW,
                 minPowerW: null,
-                deadlineMs: Number.POSITIVE_INFINITY,
+                deadlineMs: u.hardStopMs ?? Number.POSITIVE_INFINITY,
                 mandatory: isMandatory,
                 gridEligible: isMandatory,
                 pvFirst: !isMandatory,

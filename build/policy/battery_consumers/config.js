@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.batteryConsumerIdFromAddon = exports.batteryConsumerRule = exports.batteryConsumersConfigFromAdapter = void 0;
+exports.batteryConsumerIdFromAddon = exports.batteryConsumerRule = exports.batteryConsumersConfigFromAdapter = exports.DEFAULT_MIN_SOC = void 0;
 const state_util_1 = require("../../ems_light/state_util");
 function boolField(c, key, def) {
     const v = c[key];
@@ -29,26 +29,31 @@ function ruleFromConfig(c, prefix, defaults) {
         criticalMarginK: defaults.marginK === null ? null : (numOrNull(c, `${prefix}_critical_margin_k`) ?? defaults.marginK),
     };
 }
-const DEFAULT_MIN_SOC = 50;
+/**
+ * Geteilter Policy-Reserve-Boden (auch für Netzausgleich-Entladung wiederverwendet,
+ * siehe `operator/daily_plan/battery_discharge_authority.ts`) — kein zweiter, separat
+ * gepflegter Schwellwert.
+ */
+exports.DEFAULT_MIN_SOC = 50;
 function batteryConsumersConfigFromAdapter(config) {
     const c = (config && typeof config === "object" ? config : {});
     return {
         immersion_heater: ruleFromConfig(c, "bat_consumer_immersion", {
             mayUse: false,
             onlyCritical: true,
-            minSoc: DEFAULT_MIN_SOC,
+            minSoc: exports.DEFAULT_MIN_SOC,
             marginK: 2,
         }),
         air_conditioning: ruleFromConfig(c, "bat_consumer_climate", {
             mayUse: false,
             onlyCritical: true,
-            minSoc: DEFAULT_MIN_SOC,
+            minSoc: exports.DEFAULT_MIN_SOC,
             marginK: null,
         }),
         wallbox: ruleFromConfig(c, "bat_consumer_wallbox", {
             mayUse: false,
             onlyCritical: false,
-            minSoc: DEFAULT_MIN_SOC,
+            minSoc: exports.DEFAULT_MIN_SOC,
             marginK: null,
         }),
         maxDischargePowerW: numOrNull(c, "bat_consumer_max_discharge_w"),

@@ -26,6 +26,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.isLockingFault = exports.normalizePersistMode = exports.isForceExpired = exports.writeRuntimePersist = exports.readRuntimePersist = exports.emptyPersist = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
+const device_ownership_1 = require("../../../ems_light/device_ownership");
 const FILE = "immersion_heater_runtime_v1.json";
 function emptyPersist() {
     return {
@@ -41,6 +42,8 @@ function emptyPersist() {
         minRuntimeUntilMs: null,
         pauseUntilMs: null,
         autoTargetReached: false,
+        ownership: (0, device_ownership_1.emptyDeviceOwnershipState)(),
+        lastFeedbackActive: null,
     };
 }
 exports.emptyPersist = emptyPersist;

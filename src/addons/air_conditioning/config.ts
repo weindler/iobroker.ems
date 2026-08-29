@@ -116,6 +116,7 @@ export function acUnitConfigFromAdapter(config: unknown, index: number): AcUnitC
 		activeUntil: strField(c, `${p}active_until`, "20:00"),
 		hardOffAt: strField(c, `${p}hard_off_at`, "20:00"),
 		estimatedPowerW: effectiveEstimatedPowerW(c, `${p}estimated_power_w`, 700),
+		sharedPowerGroupId: strField(c, `${p}shared_power_group_id`, "").trim() || null,
 		cleaningAfterRun: legacyCleaning,
 		cleaningAfterCooling: boolField(c, `${p}cleaning_after_cooling`, legacyCleaning),
 		cleaningAfterDehumidify: boolField(c, `${p}cleaning_after_dehumidify`, legacyCleaning),

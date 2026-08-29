@@ -29,6 +29,7 @@ const live_surplus_hold_1 = require("./live_surplus_hold");
 const states_1 = require("../../../operator/daily_plan/states");
 const intent_read_1 = require("./intent_read");
 const feedback_1 = require("./feedback");
+const device_ownership_1 = require("../../../ems_light/device_ownership");
 const consumer_stats_1 = require("../../../learning/consumer_stats");
 let engineActive = false;
 let hostRef = null;
@@ -459,6 +460,33 @@ async function runImmersionRuntimeTick(host) {
     const commandedStage = fsm.faultLockout ? 0 : fsm.commandedStage;
     const effectiveStage = persist.faultLockout || failsafeActive || resolvedMode === "off" ? 0 : commandedStage;
     const commandedOn = effectiveStage > 0;
+    /*
+     * Klima-/Ownership-Block: Manual-Override erkennen, BEVOR der heutige Write erfolgt.
+     * Nutzt bewusst persist.commandedStage/lastFeedbackActive VOM VORTAKT (noch nicht
+     * überschrieben) — kein Reordering der Feedback-I/O nötig. Dadurch reagiert die
+     * Erkennung mit einem Takt Verzögerung (ein manueller Eingriff muss einen vollen Tick
+     * überstehen, bevor EMS pausiert) — bewusst konservativ, kein Overreacting auf
+     * kurzzeitige Ausreißer. Safety/Fault übersteuert einen laufenden Override sofort
+     * (siehe evaluateDeviceOwnership).
+     */
+    const emsRecentlyActedImmersion = (persist.lastSwitchAtMs != null && nowMs - persist.lastSwitchAtMs < feedback_1.IMMERSION_OWNERSHIP_SETTLE_MS) ||
+        (persist.lastOffAtMs != null && nowMs - persist.lastOffAtMs < feedback_1.IMMERSION_OWNERSHIP_SETTLE_MS);
+    const immersionMismatchKind = emsRecentlyActedImmersion
+        ? ""
+        : (0, feedback_1.detectImmersionManualMismatch)({
+            prevCommandedStage: persist.commandedStage,
+            prevFeedbackActive: persist.lastFeedbackActive,
+        });
+    const ownership = (0, device_ownership_1.evaluateDeviceOwnership)({
+        nowMs,
+        mismatchDetected: immersionMismatchKind !== "",
+        mismatchKind: immersionMismatchKind,
+        previous: persist.ownership ?? (0, device_ownership_1.emptyDeviceOwnershipState)(),
+        overrideDurationMs: feedback_1.IMMERSION_MANUAL_OVERRIDE_DURATION_MS_DEFAULT,
+        safetyOverride: persist.faultLockout || failsafeActive,
+    });
+    persist.ownership = ownership;
+    const ownershipOverrideActive = (0, device_ownership_1.isOwnershipOverrideActive)(ownership, nowMs);
     // Stage-Wechsel oder effectiveLive false→true: gewünschten Soll physisch anwenden.
     // Solange nicht (global∧addon) live, besitzt EMS keine Hardware-Authority.
     // lastCommandedStage / emsOnWriteAtMs nur nach bestätigtem Apply (Write oder Readback),
@@ -466,7 +494,10 @@ async function runImmersionRuntimeTick(host) {
     const stageChanged = effectiveStage !== lastCommandedStage;
     /** Admin-Mindestpause (`ih_minimum_pause_sec`) — nicht vom FSM-Persist-Altzustand überschreiben. */
     let pauseSetOnOffMs = null;
-    if (stageChanged || liveEdge) {
+    if ((stageChanged || liveEdge) && ownershipOverrideActive) {
+        host.log.info?.(`immersion: manual override active (${ownership.reasonDe}) — EMS-Write ausgesetzt (wollte Stufe ${effectiveStage})`);
+    }
+    else if (stageChanged || liveEdge) {
         if (liveEdge && !stageChanged) {
             host.log.info?.(`immersion: effective live authority gained — reconcile stage ${effectiveStage} (desired unchanged)`);
         }
@@ -509,6 +540,7 @@ async function runImmersionRuntimeTick(host) {
     const hasFeedbackConfig = config.stages.some((s) => Boolean(s.feedbackStateId));
     const feedbackStage = hasFeedbackConfig ? (0, feedback_1.feedbackStageFromReadings)(feedbackReadings) : effectiveStage;
     const feedbackActive = feedbackStage > 0;
+    persist.lastFeedbackActive = feedbackActive;
     const powerActive = hasPower && measuredPower !== null && measuredPower > config.powerOnThresholdW;
     const powerCheck = (0, safety_1.checkPowerFault)({
         nowMs,
@@ -632,6 +664,9 @@ async function publishRuntime(host, s, decisionSource, dailyPlan) {
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.allocatedPowerW, dailyPlan?.allocatedPowerW ?? null);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.allocationReasonDe, dailyPlan?.allocationReasonDe ?? "");
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.autoTargetReached, persist.autoTargetReached);
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.ownershipOwner, persist.ownership.owner);
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.ownershipOverrideUntilIso, persist.ownership.overrideUntilIso ?? "");
+    await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.ownershipReasonDe, persist.ownership.reasonDe);
     const governanceOn = await (0, governance_1.isAddonGovernanceEnabledFromState)((id) => host.getStateAsync(id), "immersion_heater");
     const lockout = s.state === "fault_lockout" || decisionSource === "lockout";
     let intentStatus = "idle";

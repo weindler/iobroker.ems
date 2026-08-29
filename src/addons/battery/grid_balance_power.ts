@@ -229,6 +229,12 @@ export type GridBalanceTickInput = {
 	deadbandW: number;
 	offsetW: number;
 	configuredMaxW: number;
+	/**
+	 * Phase 1c: true, wenn `configuredMaxW` durch das Planner-Entladebudget (Phase 1b) auf 0
+	 * begrenzt wurde, nicht durch Hardware/Admin-Konfiguration. Sorgt für einen eindeutigen
+	 * `blockReason` statt des irreführenden „no_hardware_headroom“.
+	 */
+	configuredMaxWZeroFromPlanner?: boolean;
 	hardwareMaxChargeW: number | null;
 	hardwareMaxDischargeW: number | null;
 	minChangeW: number;
@@ -301,7 +307,12 @@ export function evaluateGridBalanceTick(input: GridBalanceTickInput): GridBalanc
 	if (!blockReason && !input.mode2Confirmed) blockReason = "mode_not_self_consumption";
 	if (!blockReason && ev.blockReason) blockReason = ev.blockReason;
 	if (!blockReason && !exceeds) blockReason = "inside_deadband";
-	if (!blockReason && max.effectiveMaxW <= 0) blockReason = "no_hardware_headroom";
+	if (!blockReason && max.effectiveMaxW <= 0) {
+		blockReason =
+			input.configuredMaxWZeroFromPlanner === true && input.configuredMaxW <= 0
+				? "planner_budget_zero"
+				: "no_hardware_headroom";
+	}
 	if (!blockReason && minBenefitW > 0 && requestedPowerW < minBenefitW) blockReason = "below_min_benefit";
 	if (!blockReason && !input.controllerIsGridBalance) blockReason = "controller_not_grid_balance";
 

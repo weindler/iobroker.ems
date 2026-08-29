@@ -32,7 +32,12 @@ function ruleFromConfig(
 	};
 }
 
-const DEFAULT_MIN_SOC = 50;
+/**
+ * Geteilter Policy-Reserve-Boden (auch für Netzausgleich-Entladung wiederverwendet,
+ * siehe `operator/daily_plan/battery_discharge_authority.ts`) — kein zweiter, separat
+ * gepflegter Schwellwert.
+ */
+export const DEFAULT_MIN_SOC = 50;
 
 export function batteryConsumersConfigFromAdapter(config: unknown): BatteryConsumersConfig {
 	const c = (config && typeof config === "object" ? config : {}) as Record<string, unknown>;

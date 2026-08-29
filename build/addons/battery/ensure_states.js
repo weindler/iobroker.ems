@@ -164,6 +164,14 @@ exports.BAT = {
         liveTestArmedAt: `${exports.BATTERY_BASE}.grid_balance.live_test_armed_at`,
         liveTestResult: `${exports.BATTERY_BASE}.grid_balance.live_test_result`,
         mirrorFollowsAdmin: `${exports.BATTERY_BASE}.grid_balance.mirror_follows_admin`,
+        /**
+         * Phase 1 (Unified-Planner-Entscheidungshoheit über Batterie-Entladung):
+         * Leistung, die vom Netzausgleichs-Restlast-Bezug abgezogen wurde, weil die
+         * Planner-Policy (`policy/battery_consumers`) diesem Verbraucher die Batterie
+         * gerade nicht erlaubt (siehe `grid_balance_policy.ts`).
+         */
+        policyExcludedLoadW: `${exports.BATTERY_BASE}.grid_balance.policy_excluded_load_w`,
+        policyExcludedReasonDe: `${exports.BATTERY_BASE}.grid_balance.policy_excluded_reason_de`,
     },
     control: {
         faultReset: `${exports.BATTERY_BASE}.control.fault_reset`,
@@ -229,6 +237,8 @@ exports.BATTERY_PUBLIC_STATE_IDS = new Set([
     exports.BAT.gridBalance.liveTestArmed,
     exports.BAT.gridBalance.liveTestArmedAt,
     exports.BAT.gridBalance.liveTestResult,
+    exports.BAT.gridBalance.policyExcludedLoadW,
+    exports.BAT.gridBalance.policyExcludedReasonDe,
     exports.BAT.control.faultReset,
     exports.BAT.failsafe.emsReachable,
     exports.BAT.failsafe.wouldTrip,
@@ -418,6 +428,16 @@ function batteryStateDefs() {
         { id: exports.BAT.gridBalance.liveTestArmedAt, common: txt("Netzausgleich Live-Test armiert um"), defVal: "" },
         { id: exports.BAT.gridBalance.liveTestResult, common: txt("Netzausgleich Live-Test Ergebnis"), defVal: "" },
         { id: exports.BAT.gridBalance.mirrorFollowsAdmin, common: bool("ems_mirror.grid_balance_enabled folgt Admin") },
+        {
+            id: exports.BAT.gridBalance.policyExcludedLoadW,
+            common: numS("Netzausgleich Policy-Ausschluss Leistung", "W"),
+            defVal: 0,
+        },
+        {
+            id: exports.BAT.gridBalance.policyExcludedReasonDe,
+            common: txt("Netzausgleich Policy-Ausschluss Begründung"),
+            defVal: "",
+        },
         {
             id: exports.BAT.control.faultReset,
             common: {

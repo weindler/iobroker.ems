@@ -1,4 +1,5 @@
 import type { AcUnitModePurpose } from "../types";
+import { emptyDeviceOwnershipState, type DeviceOwnershipState } from "../../../ems_light/device_ownership";
 
 /** Spiegel von stop_intent.AcCoolingDesired — hier lokal, kein Import-Zyklus. */
 export type AcPersistCoolingDesired = "on" | "off" | "hold" | "idle";
@@ -23,6 +24,8 @@ export type AcUnitPersist = {
 	stopArmedGeneration: number | null;
 	/** Letztes aufgelöstes Desired (für Generation-Bump). */
 	lastDesired: AcPersistCoolingDesired | null;
+	/** Klima-/Ownership-Block: erkannter Manual-Override (ems/user), zeitbegrenzt. */
+	ownership: DeviceOwnershipState;
 };
 
 export type AcRuntimePersist = {
@@ -49,6 +52,7 @@ export function emptyUnitPersist(index: number): AcUnitPersist {
 		commandGeneration: 0,
 		stopArmedGeneration: null,
 		lastDesired: null,
+		ownership: emptyDeviceOwnershipState(),
 	};
 }
 

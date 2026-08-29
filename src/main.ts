@@ -13,6 +13,7 @@ import {
 	handleImmersionHeaterStateChange,
 	stopImmersionHeaterModule,
 } from "./addons/immersion_heater";
+import { stopMeasuredConsumersModule } from "./addons/measured_consumers";
 import { recordWallboxPipelineResult } from "./addons/wallbox/failsafe";
 import {
 	handleWallboxForeignStateChange,
@@ -649,6 +650,7 @@ class Ems extends utils.Adapter {
 		stopBatteryModule(null);
 		stopImmersionHeaterModule();
 		stopAirConditioningModule();
+		stopMeasuredConsumersModule();
 		stopWallboxModule();
 		stopFailsafeRunner();
 		callback();

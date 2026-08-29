@@ -6,6 +6,7 @@ import * as path from "node:path";
 import { stopBatteryModule } from "../addons/battery/index.js";
 import { stopAirConditioningModule } from "../addons/air_conditioning/index.js";
 import { stopImmersionHeaterModule } from "../addons/immersion_heater/index.js";
+import { stopMeasuredConsumersModule } from "../addons/measured_consumers/index.js";
 import { stopWallboxModule } from "../addons/wallbox/index.js";
 import { stopEmsLightPhase1 } from "../ems_light/index.js";
 import { stopFailsafeRunner } from "../failsafe_runner.js";
@@ -214,6 +215,7 @@ async function stopAllRuntime(): Promise<void> {
 	stopBatteryModule(null);
 	stopImmersionHeaterModule();
 	stopAirConditioningModule();
+	stopMeasuredConsumersModule();
 	stopFailsafeRunner();
 	resetBootstrapBarrierForTest();
 	endBootstrapRun();

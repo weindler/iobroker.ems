@@ -66,6 +66,9 @@ async function ensureImmersionRuntimeStates(host) {
         numState(types_1.IMMERSION_RUNTIME_STATES.allocatedPowerW, "Daily-Plan Allocation W"),
         strState(types_1.IMMERSION_RUNTIME_STATES.allocationReasonDe, "Allocation-Begründung (DE)", ""),
         boolState(types_1.IMMERSION_RUNTIME_STATES.autoTargetReached, "Tagesziel erreicht (Hysterese-Flag)", false),
+        strState(types_1.IMMERSION_RUNTIME_STATES.ownershipOwner, "Ownership (ems/user/external)", "ems"),
+        strState(types_1.IMMERSION_RUNTIME_STATES.ownershipOverrideUntilIso, "Manual-Override bis (ISO)", ""),
+        strState(types_1.IMMERSION_RUNTIME_STATES.ownershipReasonDe, "Ownership-Begründung", ""),
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }

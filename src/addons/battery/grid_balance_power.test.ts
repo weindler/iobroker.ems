@@ -260,6 +260,31 @@ describe("grid balance live hardening v0.1.289", () => {
 		assert.equal(d.writeKind, "discharge");
 	});
 
+	it("Phase 1c: configuredMaxW=0 durch Planner meldet planner_budget_zero, nicht no_hardware_headroom", () => {
+		const d = evaluateGridBalanceTick(
+			tick({
+				consumptionW: 2000,
+				pvAcPowerW: 0,
+				configuredMaxW: 0,
+				configuredMaxWZeroFromPlanner: true,
+			}),
+		);
+		assert.equal(d.effectiveMaxW, 0);
+		assert.equal(d.blockReason, "planner_budget_zero");
+	});
+
+	it("Phase 1c: configuredMaxW=0 ohne Planner-Flag bleibt no_hardware_headroom (unverändertes Altverhalten)", () => {
+		const d = evaluateGridBalanceTick(
+			tick({
+				consumptionW: 2000,
+				pvAcPowerW: 0,
+				configuredMaxW: 0,
+			}),
+		);
+		assert.equal(d.effectiveMaxW, 0);
+		assert.equal(d.blockReason, "no_hardware_headroom");
+	});
+
 	it("L15: GB Ownership entsteht nur nach eigenem Write", () => {
 		const idle = evaluateGridBalanceTick(tick({ ownsSetpoint: false, consumptionW: 100, pvAcPowerW: 100, offsetW: 0 }));
 		assert.equal(idle.ownsSetpointNext, false);

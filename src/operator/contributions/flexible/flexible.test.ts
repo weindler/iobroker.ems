@@ -945,6 +945,141 @@ describe("immersion heater contributions", () => {
 		assert.equal(mandatory.details.thermalLearningStatus, "missing");
 		assert.equal(flexible.details.thermalLearningStatus, "missing");
 	});
+
+	describe("thermal reserve / precharge joint evaluation (Heizstab-/Thermal-Block)", () => {
+		function goodBoilerLearning(overrides: Record<string, unknown> = {}) {
+			return {
+				status: "valid" as const,
+				health: "ok",
+				samples: 12,
+				coolingRateCPerHAvg: 0.2,
+				coolingConstantPerH: 0.04,
+				coolingAsymptoteC: 18,
+				estimatedRemainingHours: 62,
+				estimatedEmptyAt: new Date(NOW.getTime() + 62 * 3_600_000).toISOString(),
+				currentDayTypeRuntimeHoursMedian: 12,
+				reasonDe: "belastbares Boiler-Modell",
+				...overrides,
+			};
+		}
+
+		it("kritischer Boilerzustand → harte Pflicht-Contribution gewinnt, unabhängig von der Vorladungs-Diagnose", () => {
+			const [mandatory, flexible] = buildImmersionHeaterContributions(
+				immersionInput({
+					bufferTempC: 55,
+					boilerTempC: 45, // unter boilerMinTempC (50) → kritisch/Pflichtbedarf
+					thermalMode: "auto",
+					boilerLearning: goodBoilerLearning({ estimatedRemainingHours: 62 }),
+					pvTomorrowKwh: 40, // "gutes Fenster morgen" — dürfte die harte Regel nicht aufweichen
+				}),
+			);
+			assert.equal(mandatory.enabled, true);
+			assert.equal(mandatory.details.mandatory, true);
+			assert.match(mandatory.reasonDe, /Mindesttemperatur/);
+			// Die weiche Vorladungs-Diagnose darf die Pflicht-Contribution nicht beeinflussen.
+			assert.equal(flexible.details.mandatory, undefined);
+		});
+
+		it("Hygiene-Deadline fällig → harte Pflicht-Contribution gewinnt, unabhängig vom PV-Fenster", () => {
+			const [mandatory] = buildImmersionHeaterContributions(
+				immersionInput({
+					bufferTempC: 60,
+					boilerTempC: 58,
+					thermalMode: "auto",
+					hygieneDue: true,
+					hygieneMandatoryKwh: 1.2,
+					hygieneReasonDe: "Legionellenschutz fällig — 70 °C nötig.",
+					boilerLearning: goodBoilerLearning(),
+					pvTomorrowKwh: 40,
+				}),
+			);
+			assert.equal(mandatory.enabled, true);
+			assert.equal(mandatory.details.mandatory, true);
+			assert.equal(mandatory.details.hygieneDue, true);
+			assert.match(mandatory.reasonDe, /Legionellenschutz/);
+		});
+
+		it("Beispiel aus der Aufgabe: 62 h Reichweite + gutes PV-Fenster morgen → keine abendliche Vorladung", () => {
+			const [, flexible] = buildImmersionHeaterContributions(
+				immersionInput({
+					now: NOW,
+					bufferTempC: 63,
+					boilerTempC: 58,
+					thermalMode: "auto",
+					todayPvSurplusKwh: 0, // abends: kein nennenswerter PV-Überschuss mehr
+					pvTomorrowKwh: 32.8,
+					pvTodayKwh: 37.6,
+					boilerLearning: goodBoilerLearning(),
+					timezone: "Europe/Berlin",
+				}),
+			);
+			assert.equal(flexible.details.thermalPrechargeNeeded, false);
+			assert.equal(flexible.details.thermalEnergySourceClass, "sufficient_no_precharge");
+		});
+
+		it("geringe Reichweite → Vorladung als nötig diagnostiziert", () => {
+			const [, flexible] = buildImmersionHeaterContributions(
+				immersionInput({
+					now: NOW,
+					bufferTempC: 52,
+					boilerTempC: 58,
+					thermalMode: "auto",
+					todayPvSurplusKwh: 8,
+					pvTomorrowKwh: 15,
+					pvTodayKwh: 20,
+					boilerLearning: goodBoilerLearning({
+						estimatedRemainingHours: 3,
+						estimatedEmptyAt: new Date(NOW.getTime() + 3 * 3_600_000).toISOString(),
+						coolingRateCPerHAvg: 1.2,
+					}),
+				}),
+			);
+			assert.equal(flexible.details.thermalPrechargeNeeded, true);
+			// Bei knapper Reichweite hebt oft schon die bestehende Nachtbrücke das Ziel an
+			// (Ziel bereits am Maximum) — die eigentliche Precharge-Funktion bleibt dann korrekt
+			// inaktiv; die Diagnose klassifiziert das treffend als "reserve_at_risk".
+			assert.equal(flexible.details.thermalEnergySourceClass, "reserve_at_risk");
+		});
+
+		it("Batterie nicht für Heizstab erlaubt → Batteriesignal fließt nicht in die Vorladung ein", () => {
+			const [, flexible] = buildImmersionHeaterContributions(
+				immersionInput({
+					now: NOW,
+					bufferTempC: 58,
+					boilerTempC: 58,
+					thermalMode: "auto",
+					todayPvSurplusKwh: 0,
+					pvTomorrowKwh: 32.8,
+					pvTodayKwh: 37.6,
+					boilerLearning: goodBoilerLearning(),
+					mayUseBatteryForImmersion: false,
+					batterySocPct: 100,
+					centralBatteryReserveRequiredSocAtPvEndPct: 30,
+				}),
+			);
+			assert.equal(flexible.details.mayUseBatteryForImmersion, false);
+			assert.match(flexible.details.batteryGateReasonDe as string, /nicht erlaubt/);
+		});
+
+		it("fehlende Forecast-/Learning-Daten → konservative Diagnose ohne erfundene Reichweite", () => {
+			const [, flexible] = buildImmersionHeaterContributions(
+				immersionInput({
+					now: NOW,
+					bufferTempC: 55,
+					boilerTempC: 58,
+					thermalMode: "auto",
+					todayPvSurplusKwh: null,
+					pvTomorrowKwh: null,
+					pvTodayKwh: null,
+					boilerLearning: null,
+				}),
+			);
+			assert.equal(flexible.details.thermalEstimatedRemainingHours, null);
+			// Ohne Boiler-Zyklus-Learning bleibt nextPvHeatOpportunityIso trotzdem gesetzt (Uhrzeit-Anker) —
+			// aber ohne Reichweite kann daraus kein "ausreichend" abgeleitet werden.
+			assert.notEqual(flexible.details.thermalEnergySourceClass, "sufficient_no_precharge");
+		});
+	});
 });
 
 describe("air conditioning contributions", () => {

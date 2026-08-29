@@ -2,7 +2,7 @@
 
 Eigenständiger ioBroker-Adapter für sicheres Energiemanagement — ohne Abhängigkeit von einem externen EMS-Server.
 
-**Aktuelle Version:** v0.1.174
+**Aktuelle Version:** v0.2.0
 
 ---
 
@@ -25,8 +25,12 @@ Planung läuft über den **General Operator** (Forecast Plan → Daily Plan → 
 | Learning (PV-Bias, Horizon, Wetter, Preis, Hauslast, …) | implementiert |
 | Forecast Plan + Daily Plan + Allocation | implementiert |
 | Wallbox via EVCC (Telemetrie + Write/Feedback-Pfad) | implementiert (Live freigeben nach Dryrun) |
-| Heizstab / Klima | Runtime + Daily Plan |
-| Batterie (`generic_readonly`, `sonnen_em`) | Laden über Daily Plan; Entladung noch eingeschränkt |
+| Heizstab / Klima | Runtime + Daily Plan; Klima-Hard-Off bis in den Unified Planner (restlaufzeit-/komfortabhängig) |
+| Batterie (`generic_readonly`, `sonnen_em`) | Laden über Daily Plan; Entladung über zentrale Discharge Authority im Unified Planner geplant — Live-Freigabe für Entladung in der Beta eingeschränkt |
+| Batterie-Reserve | dynamisch aus gelerntem Nachtverbrauch + `requiredSocAtPvEndPct` — kein fester 50 %-Policywert mehr |
+| AC Shared Outdoor Unit Power | gemeinsame Außengeräte-Leistung wird nur einmal gezählt (keine Doppelzählung bei mehreren Innengeräten) |
+| Device Ownership / Manual Override (Klima, Heizstab) | manuelle Bedienung erzeugt zeitlich begrenzte Freigabe für Nutzer-/Fremdsteuerung; EMS schreibt währenddessen nicht zurück (Safety/Fault übersteuert immer) |
+| Measured Consumers (bis zu 20 Verbraucher) | rein messend/Statistik — EMS schaltet diese Geräte **nie** und rechnet sie **nie** zum Hausverbrauch hinzu |
 | Backup / Support / Restore / Diagnosemodus | implementiert |
 | Add-on-Governance (aktiv + KI-Freigabe) | implementiert (KI noch ohne Aufruf) |
 | KI-Optimierung | *geplant* |

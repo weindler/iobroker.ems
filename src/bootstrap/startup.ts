@@ -3,6 +3,7 @@ import {
 } from "../addons/air_conditioning";
 import { startBatteryModuleRuntime } from "../addons/battery";
 import { startImmersionHeaterModuleRuntime } from "../addons/immersion_heater";
+import { startMeasuredConsumersModuleRuntime } from "../addons/measured_consumers";
 import { startWallboxModuleRuntime } from "../addons/wallbox";
 import { syncAddonGovernanceFromConfig } from "../addons/governance";
 import { startEmsLightPhase1Runtime } from "../ems_light";
@@ -163,6 +164,7 @@ export async function runAdapterBootstrap(
 	await step("battery runtime", () => startBatteryModuleRuntime(host));
 	await step("immersion runtime", () => startImmersionHeaterModuleRuntime(host));
 	await step("air conditioning runtime", () => startAirConditioningModuleRuntime(host));
+	await step("measured consumers runtime", () => startMeasuredConsumersModuleRuntime(host));
 
 	trace?.("F", "runtime");
 	await step("failsafe runner", async () => startFailsafeRunner(host));

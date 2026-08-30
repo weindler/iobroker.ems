@@ -176,7 +176,7 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 		}
 		requestForcedUnifiedReplan(reason);
 	});
-	const host = adapter as unknown as LiveCacheHost;
+	const host = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost);
 	energyDailyRollupHost = buildRollupHost(adapter);
 	powerRollupHost = energyDailyRollupHost;
 	statisticsHost = energyDailyRollupHost as unknown as StatisticsHost;

@@ -60,7 +60,8 @@ describe("day_telemetry persist retention", () => {
 			const loaded = await readDayTelemetryPersist(dir);
 			assert.ok(loaded);
 			assert.equal(loaded!.days["2026-06-15"].slotCount, 96);
-			const st = await fs.stat(dayTelemetryPersistPath(dir));
+			const dayFile = path.join(dir, "2026-06-15.json");
+			const st = await fs.stat(dayFile);
 			assert.ok(st.size > 100);
 		} finally {
 			await fs.rm(dir, { recursive: true, force: true });

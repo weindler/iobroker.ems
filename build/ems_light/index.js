@@ -139,7 +139,7 @@ async function startEmsLightPhase1Runtime(adapter) {
         }
         (0, tick_1.requestForcedUnifiedReplan)(reason);
     });
-    const host = adapter;
+    const host = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
     energyDailyRollupHost = buildRollupHost(adapter);
     powerRollupHost = energyDailyRollupHost;
     statisticsHost = energyDailyRollupHost;

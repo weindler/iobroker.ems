@@ -4,7 +4,7 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { addDaysToDateKey } from "../../operator/time.js";
-import { writeDayTelemetryPersist, dayTelemetryPersistPath } from "./persist.js";
+import { writeDayTelemetryPersist } from "./persist.js";
 import { buildDaySlotLayout } from "./slots.js";
 import { emptyDayRecord, emptyDayTelemetryStore, type PlannerKnowledgeSnapshot } from "./types.js";
 import { DOMAIN_QUALITY, TELEMETRY_DOMAIN, encodeDomainQuality } from "./quality_mask.js";
@@ -128,8 +128,8 @@ describe("day_telemetry 90-day size budget", () => {
 				b.otherMeasuredConsumersKwh[i] = 0.03;
 				b.plannedConsumersRef[i] = i % 2;
 				b.snapshotIdRef[i] = `snap-${dk}-${i % 3}`;
-				let mask = 0;
-				mask = encodeDomainQuality(mask, TELEMETRY_DOMAIN.PV, DOMAIN_QUALITY.ok);
+				let mask: number | null = null;
+				mask = encodeDomainQuality(0, TELEMETRY_DOMAIN.PV, DOMAIN_QUALITY.ok);
 				mask = encodeDomainQuality(mask, TELEMETRY_DOMAIN.HOUSE, DOMAIN_QUALITY.ok);
 				mask = encodeDomainQuality(mask, TELEMETRY_DOMAIN.GRID, DOMAIN_QUALITY.ok);
 				mask = encodeDomainQuality(mask, TELEMETRY_DOMAIN.BATTERY, DOMAIN_QUALITY.ok);
@@ -144,17 +144,21 @@ describe("day_telemetry 90-day size budget", () => {
 		const dir = await fs.mkdtemp(path.join(os.tmpdir(), "daytel-size-"));
 		try {
 			await writeDayTelemetryPersist(dir, store);
-			const st = await fs.stat(dayTelemetryPersistPath(dir));
-			const mb = st.size / (1024 * 1024);
+			const names = await fs.readdir(dir);
+			let total = 0;
+			for (const n of names) {
+				if (!n.endsWith(".json")) continue;
+				total += (await fs.stat(path.join(dir, n))).size;
+			}
+			const mb = total / (1024 * 1024);
 			console.log(
-				`day_telemetry 90-day synthetic size: ${st.size} bytes (${mb.toFixed(3)} MiB)`,
+				`day_telemetry 90-day synthetic size: ${total} bytes (${mb.toFixed(3)} MiB)`,
 			);
-			/* Hartes Budget: Warnung wenn > 2 MiB, Test failt erst > 4 MiB (Kompaktierungs-Spielraum) */
 			assert.ok(
-				st.size < 4 * 1024 * 1024,
-				`90-Tage-Datei zu groß: ${st.size} bytes (${mb.toFixed(3)} MiB)`,
+				total < 4 * 1024 * 1024,
+				`90-Tage-Dateien zu groß: ${total} bytes (${mb.toFixed(3)} MiB)`,
 			);
-			if (st.size >= 2 * 1024 * 1024) {
+			if (total >= 2 * 1024 * 1024) {
 				console.warn(
 					`WARN: 90-Tage-Größe ${mb.toFixed(3)} MiB ≥ 2 MiB Ziel — Schema weiter verdichten`,
 				);

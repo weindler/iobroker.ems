@@ -147,8 +147,8 @@ function round4(n) {
                 b.otherMeasuredConsumersKwh[i] = 0.03;
                 b.plannedConsumersRef[i] = i % 2;
                 b.snapshotIdRef[i] = `snap-${dk}-${i % 3}`;
-                let mask = 0;
-                mask = (0, quality_mask_js_1.encodeDomainQuality)(mask, quality_mask_js_1.TELEMETRY_DOMAIN.PV, quality_mask_js_1.DOMAIN_QUALITY.ok);
+                let mask = null;
+                mask = (0, quality_mask_js_1.encodeDomainQuality)(0, quality_mask_js_1.TELEMETRY_DOMAIN.PV, quality_mask_js_1.DOMAIN_QUALITY.ok);
                 mask = (0, quality_mask_js_1.encodeDomainQuality)(mask, quality_mask_js_1.TELEMETRY_DOMAIN.HOUSE, quality_mask_js_1.DOMAIN_QUALITY.ok);
                 mask = (0, quality_mask_js_1.encodeDomainQuality)(mask, quality_mask_js_1.TELEMETRY_DOMAIN.GRID, quality_mask_js_1.DOMAIN_QUALITY.ok);
                 mask = (0, quality_mask_js_1.encodeDomainQuality)(mask, quality_mask_js_1.TELEMETRY_DOMAIN.BATTERY, quality_mask_js_1.DOMAIN_QUALITY.ok);
@@ -161,12 +161,17 @@ function round4(n) {
         const dir = await fs.mkdtemp(path.join(os.tmpdir(), "daytel-size-"));
         try {
             await (0, persist_js_1.writeDayTelemetryPersist)(dir, store);
-            const st = await fs.stat((0, persist_js_1.dayTelemetryPersistPath)(dir));
-            const mb = st.size / (1024 * 1024);
-            console.log(`day_telemetry 90-day synthetic size: ${st.size} bytes (${mb.toFixed(3)} MiB)`);
-            /* Hartes Budget: Warnung wenn > 2 MiB, Test failt erst > 4 MiB (Kompaktierungs-Spielraum) */
-            strict_1.default.ok(st.size < 4 * 1024 * 1024, `90-Tage-Datei zu groß: ${st.size} bytes (${mb.toFixed(3)} MiB)`);
-            if (st.size >= 2 * 1024 * 1024) {
+            const names = await fs.readdir(dir);
+            let total = 0;
+            for (const n of names) {
+                if (!n.endsWith(".json"))
+                    continue;
+                total += (await fs.stat(path.join(dir, n))).size;
+            }
+            const mb = total / (1024 * 1024);
+            console.log(`day_telemetry 90-day synthetic size: ${total} bytes (${mb.toFixed(3)} MiB)`);
+            strict_1.default.ok(total < 4 * 1024 * 1024, `90-Tage-Dateien zu groß: ${total} bytes (${mb.toFixed(3)} MiB)`);
+            if (total >= 2 * 1024 * 1024) {
                 console.warn(`WARN: 90-Tage-Größe ${mb.toFixed(3)} MiB ≥ 2 MiB Ziel — Schema weiter verdichten`);
             }
         }

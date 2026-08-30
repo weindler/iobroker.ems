@@ -2,10 +2,12 @@ export {
 	DAY_TELEMETRY_MODULE,
 	DAY_TELEMETRY_SCHEMA,
 	DAY_TELEMETRY_PERSIST_FILE,
+	DAY_TELEMETRY_LEGACY_MONOLITH_FILE,
 	DAY_TELEMETRY_CATEGORY,
 	DAY_TELEMETRY_RETENTION_DAYS,
 	DAY_TELEMETRY_SLOT_MS,
 	DAY_TELEMETRY_MAX_GAP_MS,
+	DAY_TELEMETRY_EVALUABLE_COVERAGE_PCT,
 	DAY_TELEMETRY_STATES,
 } from "./constants";
 
@@ -59,10 +61,15 @@ export {
 
 export {
 	pruneDayTelemetryStore,
+	pruneDayTelemetryFiles,
 	writeDayTelemetryPersist,
+	writeDayTelemetryDay,
 	readDayTelemetryPersist,
+	readDayTelemetryDay,
 	loadOrEmptyDayTelemetryStore,
+	migrateMonolithToDayFiles,
 	dayTelemetryPersistPath,
+	dayTelemetryDayPath,
 } from "./persist";
 
 export {
@@ -85,4 +92,10 @@ export type {
 	DayTelemetryReplanEvent,
 } from "./types";
 
-export { emptyDayRecord, emptyBuckets, emptyDayTelemetryStore } from "./types";
+export {
+	emptyDayRecord,
+	emptyBuckets,
+	emptyDayTelemetryStore,
+	refreshDayCoverage,
+	noteSampleTimestamps,
+} from "./types";

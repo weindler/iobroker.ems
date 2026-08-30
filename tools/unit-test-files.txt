@@ -95,6 +95,7 @@ build/operator/daily_plan/unified/climate_shared_power_allocate.test.js
 build/addons/measured_consumers/math.test.js
 build/addons/measured_consumers/config.test.js
 build/addons/measured_consumers/runtime/engine.test.js
+build/addons/measured_consumers/phase1_fixes.test.js
 build/ems_light/device_ownership.test.js
 build/pipeline.test.js
 build/device_write.test.js
@@ -216,6 +217,7 @@ build/learning/day_telemetry/freeze_immutability.test.js
 build/learning/day_telemetry/size.test.js
 build/learning/day_telemetry/price_source.test.js
 build/learning/day_telemetry/shared_group.test.js
+build/learning/day_telemetry/phase1_fixes.test.js
 build/ai/explanation/explanation.test.js
 build/learning/vehicle_presence/math.test.js
 build/ems_light/off_legacy_lazy.test.js

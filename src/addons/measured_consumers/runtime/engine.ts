@@ -25,8 +25,16 @@ import {
 	pruneOldDays,
 	round1,
 } from "../math";
-import { emptyMeasuredConsumerSlotPersist, emptyMeasuredConsumersPersist, type MeasuredConsumersPersist } from "../persist";
-import { readMeasuredConsumersPersist, writeMeasuredConsumersPersist } from "../persist_io";
+import {
+	emptyMeasuredConsumerSlotPersist,
+	emptyMeasuredConsumersPersist,
+	type MeasuredConsumersPersist,
+} from "../persist";
+import {
+	readMeasuredConsumersPersist,
+	writeMeasuredConsumersPersist,
+	type MeasuredConsumersPersistV1,
+} from "../persist_io";
 import { ensureMeasuredConsumersStates } from "./ensure_states";
 import { MEASURED_CONSUMERS_AGGREGATE_STATES, measuredConsumerSlotStateIds } from "./state_ids";
 
@@ -34,12 +42,14 @@ export type MeasuredConsumersRuntimeHost = StateHost & {
 	config?: unknown;
 	getAbsolutePath?: (category?: string) => string;
 	getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
+	getForeignObjectAsync?: (id: string) => Promise<ioBroker.Object | null | undefined>;
+	getObjectAsync?: (id: string) => Promise<ioBroker.Object | null | undefined>;
 	log: { info: (m: string) => void; warn: (m: string) => void; debug?: (m: string) => void; error?: (m: string) => void };
 };
 
 let engineActive = false;
 let hostRef: MeasuredConsumersRuntimeHost | null = null;
-let persist: MeasuredConsumersPersist = emptyMeasuredConsumersPersist();
+let persist: MeasuredConsumersPersistV1 = emptyMeasuredConsumersPersist() as MeasuredConsumersPersistV1;
 let persistHydrated = false;
 let tickTimer: ReturnType<typeof setTimeout> | null = null;
 let overflowWarned = false;
@@ -79,11 +89,52 @@ async function readForeignNum(
 		const st = await reader(id);
 		if (!st || st.val === null || st.val === undefined) return null;
 		if (typeof st.val === "number") return Number.isFinite(st.val) ? st.val : null;
-		// Komma-Dezimal (DE) und Einheiten-Suffixe robust parsen
 		const n = parseFloat(String(st.val).trim().replace(",", "."));
 		return Number.isFinite(n) ? n : null;
 	} catch {
 		return null;
+	}
+}
+
+/** Adapter-lokale States (z. B. live.battery.house_load_w) — nie getForeignStateAsync. */
+async function readLocalNum(
+	host: MeasuredConsumersRuntimeHost,
+	id: string | null,
+): Promise<number | null> {
+	if (!id) return null;
+	try {
+		const st = await host.getStateAsync(id);
+		if (!st || st.val === null || st.val === undefined) return null;
+		if (typeof st.val === "number") return Number.isFinite(st.val) ? st.val : null;
+		const n = parseFloat(String(st.val).trim().replace(",", "."));
+		return Number.isFinite(n) ? n : null;
+	} catch {
+		return null;
+	}
+}
+
+async function readEnergyUnitHint(
+	host: MeasuredConsumersRuntimeHost,
+	energyStateId: string,
+): Promise<string | null> {
+	const reader = host.getForeignObjectAsync ?? host.getObjectAsync;
+	if (!reader) return null;
+	try {
+		const obj = await reader(energyStateId);
+		const unit = obj?.common && typeof (obj.common as { unit?: unknown }).unit === "string"
+			? String((obj.common as { unit: string }).unit).trim()
+			: "";
+		if (!unit) {
+			return "Hinweis: Energy-DP ohne common.unit — erwartet wird kWh (keine automatische Umrechnung)";
+		}
+		const u = unit.toLowerCase();
+		if (u === "kwh" || u === "kw·h" || u === "kw.h") return null;
+		if (u === "wh") {
+			return "WARNUNG: Energy-DP Einheit ist Wh — Admin erwartet kWh (keine automatische Umrechnung)";
+		}
+		return `Hinweis: Energy-DP Einheit „${unit}“ — erwartet wird kWh (keine automatische Umrechnung)`;
+	} catch {
+		return "Hinweis: Energy-DP-Objekt nicht lesbar — Einheit unbekannt, erwartet wird kWh";
 	}
 }
 
@@ -156,6 +207,12 @@ async function processSlot(
 		} else {
 			valid = false;
 			reasonDe = reasonDe || "Energie-Datenpunkt nicht verfügbar — Zähler pausiert";
+		}
+		const unitHint = await readEnergyUnitHint(host, slot.energyStateId);
+		if (unitHint && !reasonDe) {
+			reasonDe = unitHint;
+		} else if (unitHint && reasonDe && !reasonDe.includes("WARNUNG") && !reasonDe.includes("Hinweis")) {
+			reasonDe = `${reasonDe}; ${unitHint}`;
 		}
 	} else if (powerW !== null && valid) {
 		sourceMode = "power_integration";
@@ -248,7 +305,7 @@ export async function runMeasuredConsumersTick(host: MeasuredConsumersRuntimeHos
 		}
 	}
 
-	const houseLoadW = await readForeignNum(host, MEASURED_CONSUMERS_HOUSE_LOAD_STATE_ID);
+	const houseLoadW = await readLocalNum(host, MEASURED_CONSUMERS_HOUSE_LOAD_STATE_ID);
 	const unknownHouseLoadW = computeUnknownHouseLoadW(houseLoadW, totalPowerW);
 
 	const s = MEASURED_CONSUMERS_AGGREGATE_STATES;

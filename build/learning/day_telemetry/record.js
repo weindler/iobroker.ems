@@ -67,13 +67,22 @@ async function loadStore(host) {
     storeCache = await (0, persist_1.loadOrEmptyDayTelemetryStore)(dir);
     return storeCache;
 }
-async function persistStore(host, store, dateKey) {
+async function persistDayAndMaybeYesterday(host, store, dateKey, yesterdayKey, yesterdayJustCompleted) {
     const dir = baseDir(host);
     if (!dir)
         return;
     const pruned = (0, persist_1.pruneDayTelemetryStore)(store, constants_1.DAY_TELEMETRY_RETENTION_DAYS, dateKey);
     pruned.updatedAtIso = new Date().toISOString();
-    await (0, persist_1.writeDayTelemetryPersist)(dir, pruned);
+    const day = pruned.days[dateKey];
+    if (day) {
+        (0, types_2.refreshDayCoverage)(day);
+        await (0, persist_1.writeDayTelemetryDay)(dir, day);
+    }
+    if (yesterdayJustCompleted && yesterdayKey && pruned.days[yesterdayKey]) {
+        (0, types_2.refreshDayCoverage)(pruned.days[yesterdayKey]);
+        await (0, persist_1.writeDayTelemetryDay)(dir, pruned.days[yesterdayKey]);
+    }
+    await (0, persist_1.pruneDayTelemetryFiles)(dir, constants_1.DAY_TELEMETRY_RETENTION_DAYS, dateKey);
     storeCache = pruned;
     mem.dirty = false;
 }
@@ -89,9 +98,18 @@ function ensureDay(store, dateKey, timezone) {
     }
     return { store, day, layout };
 }
+/** Alle Domänen = n/a — Ausgangsmaske für neu beobachtete Slots (nicht ok=0). */
+function blankObservedMask() {
+    let m = 0;
+    for (let d = 0; d < quality_mask_1.TELEMETRY_DOMAIN_COUNT; d++) {
+        m = (0, quality_mask_1.encodeDomainQuality)(m, d, quality_mask_1.DOMAIN_QUALITY.na);
+    }
+    return m;
+}
 function markDomain(day, slotIndex, domain, quality) {
-    const prev = day.buckets.qualityMask[slotIndex] ?? 0;
-    day.buckets.qualityMask[slotIndex] = (0, quality_mask_1.encodeDomainQuality)(prev, domain, quality);
+    const prev = day.buckets.qualityMask[slotIndex];
+    const base = prev == null ? blankObservedMask() : prev;
+    day.buckets.qualityMask[slotIndex] = (0, quality_mask_1.encodeDomainQuality)(base, domain, quality);
 }
 function setLastValue(arr, index, v) {
     if (index < 0 || index >= arr.length)
@@ -129,13 +147,15 @@ function integratePowerDomain(day, layout, fromMs, toMs, powerW, bucket, domain)
     if (powerW === null || !Number.isFinite(powerW)) {
         const idxs = overlappingSlotIndicesSafe(layout, fromMs, toMs);
         for (const i of idxs) {
-            const q = (0, quality_mask_1.decodeDomainQuality)(day.buckets.qualityMask[i] ?? 0, domain);
-            if (bucket[i] === null && q !== quality_mask_1.DOMAIN_QUALITY.ok) {
-                markDomain(day, i, domain, quality_mask_1.DOMAIN_QUALITY.missing);
-            }
+            const mask = day.buckets.qualityMask[i];
+            const q = mask == null ? quality_mask_1.DOMAIN_QUALITY.na : (0, quality_mask_1.decodeDomainQuality)(mask, domain);
+            if (q === quality_mask_1.DOMAIN_QUALITY.ok)
+                continue;
+            markDomain(day, i, domain, quality_mask_1.DOMAIN_QUALITY.missing);
         }
         return;
     }
+    /* 0 W ist gültig → ok + Integration (Energieanteil 0). */
     const shares = (0, energy_integrate_1.integratePowerAcrossSlots)(layout, fromMs, toMs, powerW);
     (0, energy_integrate_1.applySharesToBucket)(bucket, shares);
     for (const s of shares) {
@@ -156,7 +176,8 @@ function markGapMissing(day, layout, fromMs, toMs) {
         for (const d of Object.values(quality_mask_1.TELEMETRY_DOMAIN)) {
             if (d === quality_mask_1.TELEMETRY_DOMAIN.PLANNER || d === quality_mask_1.TELEMETRY_DOMAIN.PRICE)
                 continue;
-            const q = (0, quality_mask_1.decodeDomainQuality)(day.buckets.qualityMask[i] ?? 0, d);
+            const mask = day.buckets.qualityMask[i];
+            const q = mask == null ? quality_mask_1.DOMAIN_QUALITY.missing : (0, quality_mask_1.decodeDomainQuality)(mask, d);
             if (q === quality_mask_1.DOMAIN_QUALITY.ok)
                 continue;
             markDomain(day, i, d, quality_mask_1.DOMAIN_QUALITY.missing);
@@ -182,11 +203,13 @@ async function tickDayTelemetryInner(host, now) {
     const nowMs = now.getTime();
     const dateKey = (0, time_1.localDateKeyInTimezone)(now, timezone);
     let store = await loadStore(host);
-    /* Gestern als complete markieren wenn über Mitternacht */
+    /* Gestern als complete markieren wenn über Mitternacht (Kalender, nicht Coverage) */
     const yesterday = (0, time_1.addDaysToDateKey)(dateKey, -1);
+    let yesterdayJustCompleted = false;
     if (store.days[yesterday] && !store.days[yesterday].complete) {
         store.days[yesterday] = { ...store.days[yesterday], complete: true };
         mem.dirty = true;
+        yesterdayJustCompleted = true;
     }
     const ensured = ensureDay(store, dateKey, timezone);
     store = ensured.store;
@@ -195,6 +218,7 @@ async function tickDayTelemetryInner(host, now) {
     const sample = await (0, sources_1.readLiveTelemetrySample)(host, nowMs);
     const immersionCmd = (0, state_util_1.asNum)((await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.commandedPowerW))?.val);
     sample.immersionRuntimeOn = (0, sources_1.immersionOnFromPowers)(sample.immersionPowerW, immersionCmd);
+    (0, types_2.noteSampleTimestamps)(day, nowMs);
     const curSlot = (0, slots_1.slotIndexForMs)(layout, nowMs);
     if (curSlot != null) {
         freezeSlotIfNeeded(day, layout, curSlot);
@@ -240,12 +264,10 @@ async function tickDayTelemetryInner(host, now) {
             }
         }
         integratePowerDomain(day, layout, fromMs, toMs, sample.climateSystemPowerW, day.buckets.climateKwh, quality_mask_1.TELEMETRY_DOMAIN.CLIMATE);
-        /* Shared electric: nur wenn Shared-Power aktiv / Systemleistung */
         if (sample.climateSharedPowerUsed === true || sample.climateSystemPowerW != null) {
             integratePowerDomain(day, layout, fromMs, toMs, sample.climateSystemPowerW, day.buckets.climateElecSharedKwh, quality_mask_1.TELEMETRY_DOMAIN.CLIMATE);
         }
         integratePowerDomain(day, layout, fromMs, toMs, sample.otherMeasuredConsumersPowerW, day.buckets.otherMeasuredConsumersKwh, quality_mask_1.TELEMETRY_DOMAIN.MEASURED_CONSUMERS);
-        /* Grid energy counters — präzises Delta + Split */
         const imp = (0, energy_integrate_1.energyCounterDeltaPreciseKwh)(mem.baselines.gridImport, sample.gridImportEnergyKwh);
         mem.baselines.gridImport = imp.newBaseline;
         if (imp.deltaKwh != null && imp.deltaKwh > 0 && !imp.reset) {
@@ -265,7 +287,6 @@ async function tickDayTelemetryInner(host, now) {
                 markDomain(day, s.slotIndex, quality_mask_1.TELEMETRY_DOMAIN.GRID, quality_mask_1.DOMAIN_QUALITY.ok);
             }
         }
-        /* Climate run segments — nie sharedPowerGroupId="default" erfinden */
         const fromSample = (0, sources_1.resolveActiveSharedPowerGroupId)(sample.climateUnitActive, host.config, mem.sharedGroupMap);
         const sharedGroup = fromSample.groupId;
         const combo = (0, sources_1.activeUnitCombinationKey)(sample.climateUnitActive);
@@ -297,7 +318,6 @@ async function tickDayTelemetryInner(host, now) {
         if (sample.gridExportEnergyKwh != null)
             mem.baselines.gridExport = sample.gridExportEnergyKwh;
     }
-    /* Status events: EV connect/disconnect */
     if (sample.evConnected != null && mem.lastEvConnected != null && sample.evConnected !== mem.lastEvConnected) {
         day.statusEvents.push({
             tsIso: now.toISOString(),
@@ -309,14 +329,14 @@ async function tickDayTelemetryInner(host, now) {
         mem.lastEvConnected = sample.evConnected;
     mem.lastSampleTs = nowMs;
     mem.dirty = true;
-    /* Round buckets lightly for persist stability (after accumulation) */
     roundDayBuckets(day);
+    (0, types_2.refreshDayCoverage)(day);
     store = {
         ...store,
         days: { ...store.days, [dateKey]: day },
         updatedAtIso: now.toISOString(),
     };
-    await persistStore(host, store, dateKey);
+    await persistDayAndMaybeYesterday(host, store, dateKey, yesterday, yesterdayJustCompleted);
     await publishStatus(host, constants_1.DAY_TELEMETRY_STATES.status, "ok");
     if (curSlot != null) {
         const slot = layout.slots[curSlot];
@@ -397,5 +417,5 @@ async function notePlanInner(input) {
         days: { ...store.days, [dateKey]: day },
         updatedAtIso: now.toISOString(),
     };
-    await persistStore(host, store, dateKey);
+    await persistDayAndMaybeYesterday(host, store, dateKey, null, false);
 }

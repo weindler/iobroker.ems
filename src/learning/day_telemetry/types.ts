@@ -2,6 +2,7 @@ import {
 	DAY_TELEMETRY_MODULE,
 	DAY_TELEMETRY_SCHEMA,
 	DAY_TELEMETRY_SLOT_MS,
+	DAY_TELEMETRY_EVALUABLE_COVERAGE_PCT,
 } from "./constants";
 
 /** Kompakte Frozen Allocation pro Slot-Eintrag. */
@@ -19,28 +20,20 @@ export type PlannerKnowledgeSnapshot = {
 	timezone: string;
 	globalMode: string;
 	contributionRevision: number | null;
-	/** Erwartete PV-Tagesenergie zum Entscheidungszeitpunkt. */
 	pvExpectedDayKwh: number | null;
-	/** Erwartete Hauslast-Tagesenergie. */
 	houseLoadExpectedDayKwh: number | null;
-	/** Batterie-SOC zum Entscheidungszeitpunkt. */
 	batterySocPct: number | null;
 	batteryCapacityKwh: number | null;
 	batteryNightReserveKwh: number | null;
-	/** Preis-Slots: [startMs, ct/kWh] — kompakt. */
 	priceSlots: Array<[number, number]>;
-	/** PV-Slot-Energien: [startMs, kWh]. */
 	pvSlotKwh: Array<[number, number]>;
-	/** Wallbox-Zielenergie / Deadline / Presence-Digest. */
 	wallboxRequiredEnergyKwh: number | null;
 	wallboxDeadlineIso: string | null;
 	wallboxConnected: boolean | null;
 	wallboxPresenceDigest: string | null;
-	/** Thermal. */
 	thermalBufferTempC: number | null;
 	thermalEmptyAtIso: string | null;
 	thermalHeadroomKwh: number | null;
-	/** Klima: Unit-IDs + shared groups + mandatory flags. */
 	climateUnits: Array<{
 		consumerId: string;
 		sharedPowerGroupId: string | null;
@@ -62,7 +55,6 @@ export type DayTelemetryReplanEvent = {
 export type ClimateRunSegment = {
 	startTs: number;
 	endTs: number;
-	/** null = unknown — nicht unter "default" zusammenfassen. */
 	sharedPowerGroupId: string | null;
 	mode: string;
 	activeUnitCombination: string;
@@ -81,6 +73,7 @@ export type DayTelemetryStatusEvent = {
 /**
  * Struct-of-Arrays Slot-Buckets.
  * Länge = slotCount (92/96/100). Null = missing, nie erfundene 0.
+ * qualityMask: null = Slot nie beobachtet (≠ ok=0).
  */
 export type DayTelemetryBuckets = {
 	pvKwh: Array<number | null>;
@@ -99,12 +92,10 @@ export type DayTelemetryBuckets = {
 	climateKwh: Array<number | null>;
 	climateElecSharedKwh: Array<number | null>;
 	otherMeasuredConsumersKwh: Array<number | null>;
-	/** Index in plannedConsumers[] — null wenn noch nicht eingefroren. */
 	plannedConsumersRef: Array<number | null>;
-	/** Snapshot-ID zum Slotstart (string-Hash). */
 	snapshotIdRef: Array<string | null>;
-	/** Bitmask 2 Bit × 10 Domänen. */
-	qualityMask: number[];
+	/** null = unobserved; Zahl = Bitmaske (0 = alle bewerteten Domänen ok). */
+	qualityMask: Array<number | null>;
 };
 
 export type DayTelemetryDayRecord = {
@@ -112,11 +103,24 @@ export type DayTelemetryDayRecord = {
 	timezone: string;
 	slotWidthMs: typeof DAY_TELEMETRY_SLOT_MS;
 	slotCount: number;
-	/** Absoluter UTC-Start von Slot 0. */
 	startMs: number;
-	/** Absoluter UTC-Ende des Tages (Slot slotCount). */
 	endMs: number;
+	/** Kalendertag abgeschlossen (Mitternacht), unabhängig von Daten-Coverage. */
 	complete: boolean;
+	/** Erste echte Messprobe (ms / ISO) — null wenn noch keine. */
+	firstSampleMs: number | null;
+	firstSampleIso: string | null;
+	lastSampleMs: number | null;
+	lastSampleIso: string | null;
+	/** Anzahl Slots mit qualityMask !== null. */
+	observedSlotCount: number;
+	/** observedSlotCount / slotCount × 100. */
+	coveragePct: number;
+	/**
+	 * Phase-2-Bewertbarkeit: Coverage ≥ Schwellwert.
+	 * Unabhängig von complete (Kalender).
+	 */
+	evaluable: boolean;
 	buckets: DayTelemetryBuckets;
 	plannedConsumers: FrozenPlannedConsumer[][];
 	forecastSnapshots: PlannerKnowledgeSnapshot[];
@@ -125,6 +129,7 @@ export type DayTelemetryDayRecord = {
 	statusEvents: DayTelemetryStatusEvent[];
 };
 
+/** In-Memory-Cache mehrerer Tage (Tick/Note); Persistenz = Tagesdateien. */
 export type DayTelemetryStore = {
 	module: typeof DAY_TELEMETRY_MODULE;
 	schemaVersion: typeof DAY_TELEMETRY_SCHEMA;
@@ -133,9 +138,8 @@ export type DayTelemetryStore = {
 };
 
 export function emptyBuckets(slotCount: number): DayTelemetryBuckets {
-	const n = (fill: null | number = null): Array<number | null> =>
-		Array.from({ length: slotCount }, () => fill);
-	const nNum = (): number[] => Array.from({ length: slotCount }, () => 0);
+	const n = (): Array<number | null> => Array.from({ length: slotCount }, () => null);
+	const nMask = (): Array<number | null> => Array.from({ length: slotCount }, () => null);
 	const nStr = (): Array<string | null> => Array.from({ length: slotCount }, () => null);
 	return {
 		pvKwh: n(),
@@ -156,7 +160,7 @@ export function emptyBuckets(slotCount: number): DayTelemetryBuckets {
 		otherMeasuredConsumersKwh: n(),
 		plannedConsumersRef: n(),
 		snapshotIdRef: nStr(),
-		qualityMask: nNum(),
+		qualityMask: nMask(),
 	};
 }
 
@@ -175,6 +179,13 @@ export function emptyDayRecord(
 		startMs,
 		endMs,
 		complete: false,
+		firstSampleMs: null,
+		firstSampleIso: null,
+		lastSampleMs: null,
+		lastSampleIso: null,
+		observedSlotCount: 0,
+		coveragePct: 0,
+		evaluable: false,
 		buckets: emptyBuckets(slotCount),
 		plannedConsumers: [],
 		forecastSnapshots: [],
@@ -191,4 +202,26 @@ export function emptyDayTelemetryStore(): DayTelemetryStore {
 		updatedAtIso: new Date().toISOString(),
 		days: {},
 	};
+}
+
+/** Coverage-Metadaten aus qualityMask neu berechnen (keine erfundenen Messwerte). */
+export function refreshDayCoverage(day: DayTelemetryDayRecord): void {
+	let observed = 0;
+	for (const m of day.buckets.qualityMask) {
+		if (m !== null) observed++;
+	}
+	day.observedSlotCount = observed;
+	day.coveragePct =
+		day.slotCount > 0 ? Math.round((observed / day.slotCount) * 1000) / 10 : 0;
+	day.evaluable = day.coveragePct >= DAY_TELEMETRY_EVALUABLE_COVERAGE_PCT;
+}
+
+export function noteSampleTimestamps(day: DayTelemetryDayRecord, nowMs: number): void {
+	const iso = new Date(nowMs).toISOString();
+	if (day.firstSampleMs == null) {
+		day.firstSampleMs = nowMs;
+		day.firstSampleIso = iso;
+	}
+	day.lastSampleMs = nowMs;
+	day.lastSampleIso = iso;
 }

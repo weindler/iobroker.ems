@@ -5,6 +5,9 @@
 
 import { BAT } from "../../addons/battery/ensure_states";
 import { IMMERSION_RUNTIME_STATES } from "../../addons/immersion_heater/runtime/types";
+/** Live-PV (gepflegt vom Live-Cache) — nicht grid_balance.pv_power_w (ungeschrieben). */
+const LIVE_PV_POWER_W = "live.battery.pv_ac_power_w";
+const LIVE_PV_POWER_W_MIRROR = "live.pv.power_w";
 import {
 	AC_RUNTIME_SUMMARY_STATES,
 	acUnitRuntimeStates,
@@ -188,9 +191,12 @@ export async function readLiveTelemetrySample(
 	const sharedUsed = await readBool(host, AC_RUNTIME_SUMMARY_STATES.systemSharedPowerUsed);
 	const systemPower = await readNum(host, AC_RUNTIME_SUMMARY_STATES.systemPowerW);
 
+	const pvLive =
+		(await readNum(host, LIVE_PV_POWER_W)) ?? (await readNum(host, LIVE_PV_POWER_W_MIRROR));
+
 	return {
 		tsMs: nowMs,
-		pvPowerW: await readNum(host, BAT.gridBalance.pvPowerW),
+		pvPowerW: pvLive,
 		houseTotalPowerW: houseSrc.stateId ? await readNum(host, houseSrc.stateId) : null,
 		immersionPowerW: await readNum(host, IMMERSION_RUNTIME_STATES.measuredPowerW),
 		wallboxChargePowerW: await readNum(host, WALLBOX_EV_FOUNDATION_STATES.chargePowerW),

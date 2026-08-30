@@ -68,7 +68,8 @@ const types_js_1 = require("./types.js");
             const loaded = await (0, persist_js_1.readDayTelemetryPersist)(dir);
             strict_1.default.ok(loaded);
             strict_1.default.equal(loaded.days["2026-06-15"].slotCount, 96);
-            const st = await fs.stat((0, persist_js_1.dayTelemetryPersistPath)(dir));
+            const dayFile = path.join(dir, "2026-06-15.json");
+            const st = await fs.stat(dayFile);
             strict_1.default.ok(st.size > 100);
         }
         finally {

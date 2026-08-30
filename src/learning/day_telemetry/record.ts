@@ -39,12 +39,14 @@ import {
 } from "./planned_freeze";
 import {
 	loadOrEmptyDayTelemetryStore,
+	pruneDayTelemetryFiles,
 	pruneDayTelemetryStore,
-	writeDayTelemetryPersist,
+	writeDayTelemetryDay,
 } from "./persist";
 import {
 	DOMAIN_QUALITY,
 	TELEMETRY_DOMAIN,
+	TELEMETRY_DOMAIN_COUNT,
 	encodeDomainQuality,
 	decodeDomainQuality,
 	type TelemetryDomain,
@@ -59,6 +61,8 @@ import {
 } from "./sources";
 import {
 	emptyDayRecord,
+	noteSampleTimestamps,
+	refreshDayCoverage,
 	type DayTelemetryDayRecord,
 	type DayTelemetryStore,
 } from "./types";
@@ -138,12 +142,27 @@ async function loadStore(host: DayTelemetryHost): Promise<DayTelemetryStore> {
 	return storeCache;
 }
 
-async function persistStore(host: DayTelemetryHost, store: DayTelemetryStore, dateKey: string): Promise<void> {
+async function persistDayAndMaybeYesterday(
+	host: DayTelemetryHost,
+	store: DayTelemetryStore,
+	dateKey: string,
+	yesterdayKey: string | null,
+	yesterdayJustCompleted: boolean,
+): Promise<void> {
 	const dir = baseDir(host);
 	if (!dir) return;
 	const pruned = pruneDayTelemetryStore(store, DAY_TELEMETRY_RETENTION_DAYS, dateKey);
 	pruned.updatedAtIso = new Date().toISOString();
-	await writeDayTelemetryPersist(dir, pruned);
+	const day = pruned.days[dateKey];
+	if (day) {
+		refreshDayCoverage(day);
+		await writeDayTelemetryDay(dir, day);
+	}
+	if (yesterdayJustCompleted && yesterdayKey && pruned.days[yesterdayKey]) {
+		refreshDayCoverage(pruned.days[yesterdayKey]);
+		await writeDayTelemetryDay(dir, pruned.days[yesterdayKey]);
+	}
+	await pruneDayTelemetryFiles(dir, DAY_TELEMETRY_RETENTION_DAYS, dateKey);
 	storeCache = pruned;
 	mem.dirty = false;
 }
@@ -165,14 +184,24 @@ function ensureDay(
 	return { store, day, layout };
 }
 
+/** Alle Domänen = n/a — Ausgangsmaske für neu beobachtete Slots (nicht ok=0). */
+function blankObservedMask(): number {
+	let m = 0;
+	for (let d = 0; d < TELEMETRY_DOMAIN_COUNT; d++) {
+		m = encodeDomainQuality(m, d as TelemetryDomain, DOMAIN_QUALITY.na);
+	}
+	return m;
+}
+
 function markDomain(
 	day: DayTelemetryDayRecord,
 	slotIndex: number,
 	domain: TelemetryDomain,
 	quality: 0 | 1 | 2 | 3,
 ): void {
-	const prev = day.buckets.qualityMask[slotIndex] ?? 0;
-	day.buckets.qualityMask[slotIndex] = encodeDomainQuality(prev, domain, quality);
+	const prev = day.buckets.qualityMask[slotIndex];
+	const base = prev == null ? blankObservedMask() : prev;
+	day.buckets.qualityMask[slotIndex] = encodeDomainQuality(base, domain, quality);
 }
 
 function setLastValue(arr: Array<number | null>, index: number, v: number | null): void {
@@ -225,13 +254,15 @@ function integratePowerDomain(
 	if (powerW === null || !Number.isFinite(powerW)) {
 		const idxs = overlappingSlotIndicesSafe(layout, fromMs, toMs);
 		for (const i of idxs) {
-			const q = decodeDomainQuality(day.buckets.qualityMask[i] ?? 0, domain);
-			if (bucket[i] === null && q !== DOMAIN_QUALITY.ok) {
-				markDomain(day, i, domain, DOMAIN_QUALITY.missing);
-			}
+			const mask = day.buckets.qualityMask[i];
+			const q =
+				mask == null ? DOMAIN_QUALITY.na : decodeDomainQuality(mask, domain);
+			if (q === DOMAIN_QUALITY.ok) continue;
+			markDomain(day, i, domain, DOMAIN_QUALITY.missing);
 		}
 		return;
 	}
+	/* 0 W ist gültig → ok + Integration (Energieanteil 0). */
 	const shares = integratePowerAcrossSlots(layout, fromMs, toMs, powerW);
 	applySharesToBucket(bucket, shares);
 	for (const s of shares) {
@@ -252,7 +283,8 @@ function markGapMissing(day: DayTelemetryDayRecord, layout: DaySlotLayout, fromM
 	for (const i of overlappingSlotIndicesSafe(layout, fromMs, toMs)) {
 		for (const d of Object.values(TELEMETRY_DOMAIN)) {
 			if (d === TELEMETRY_DOMAIN.PLANNER || d === TELEMETRY_DOMAIN.PRICE) continue;
-			const q = decodeDomainQuality(day.buckets.qualityMask[i] ?? 0, d);
+			const mask = day.buckets.qualityMask[i];
+			const q = mask == null ? DOMAIN_QUALITY.missing : decodeDomainQuality(mask, d);
 			if (q === DOMAIN_QUALITY.ok) continue;
 			markDomain(day, i, d, DOMAIN_QUALITY.missing);
 		}
@@ -278,11 +310,13 @@ async function tickDayTelemetryInner(host: DayTelemetryHost, now: Date): Promise
 	const dateKey = localDateKeyInTimezone(now, timezone);
 	let store = await loadStore(host);
 
-	/* Gestern als complete markieren wenn über Mitternacht */
+	/* Gestern als complete markieren wenn über Mitternacht (Kalender, nicht Coverage) */
 	const yesterday = addDaysToDateKey(dateKey, -1);
+	let yesterdayJustCompleted = false;
 	if (store.days[yesterday] && !store.days[yesterday].complete) {
 		store.days[yesterday] = { ...store.days[yesterday], complete: true };
 		mem.dirty = true;
+		yesterdayJustCompleted = true;
 	}
 
 	const ensured = ensureDay(store, dateKey, timezone);
@@ -293,6 +327,8 @@ async function tickDayTelemetryInner(host: DayTelemetryHost, now: Date): Promise
 	const sample = await readLiveTelemetrySample(host, nowMs);
 	const immersionCmd = asNum((await host.getStateAsync(IMMERSION_RUNTIME_STATES.commandedPowerW))?.val);
 	sample.immersionRuntimeOn = immersionOnFromPowers(sample.immersionPowerW, immersionCmd);
+
+	noteSampleTimestamps(day, nowMs);
 
 	const curSlot = slotIndexForMs(layout, nowMs);
 	if (curSlot != null) {
@@ -383,7 +419,6 @@ async function tickDayTelemetryInner(host: DayTelemetryHost, now: Date): Promise
 			day.buckets.climateKwh,
 			TELEMETRY_DOMAIN.CLIMATE,
 		);
-		/* Shared electric: nur wenn Shared-Power aktiv / Systemleistung */
 		if (sample.climateSharedPowerUsed === true || sample.climateSystemPowerW != null) {
 			integratePowerDomain(
 				day,
@@ -405,7 +440,6 @@ async function tickDayTelemetryInner(host: DayTelemetryHost, now: Date): Promise
 			TELEMETRY_DOMAIN.MEASURED_CONSUMERS,
 		);
 
-		/* Grid energy counters — präzises Delta + Split */
 		const imp = energyCounterDeltaPreciseKwh(mem.baselines.gridImport, sample.gridImportEnergyKwh);
 		mem.baselines.gridImport = imp.newBaseline;
 		if (imp.deltaKwh != null && imp.deltaKwh > 0 && !imp.reset) {
@@ -434,7 +468,6 @@ async function tickDayTelemetryInner(host: DayTelemetryHost, now: Date): Promise
 			}
 		}
 
-		/* Climate run segments — nie sharedPowerGroupId="default" erfinden */
 		const fromSample = resolveActiveSharedPowerGroupId(
 			sample.climateUnitActive,
 			host.config,
@@ -478,7 +511,6 @@ async function tickDayTelemetryInner(host: DayTelemetryHost, now: Date): Promise
 		if (sample.gridExportEnergyKwh != null) mem.baselines.gridExport = sample.gridExportEnergyKwh;
 	}
 
-	/* Status events: EV connect/disconnect */
 	if (sample.evConnected != null && mem.lastEvConnected != null && sample.evConnected !== mem.lastEvConnected) {
 		day.statusEvents.push({
 			tsIso: now.toISOString(),
@@ -491,15 +523,15 @@ async function tickDayTelemetryInner(host: DayTelemetryHost, now: Date): Promise
 	mem.lastSampleTs = nowMs;
 	mem.dirty = true;
 
-	/* Round buckets lightly for persist stability (after accumulation) */
 	roundDayBuckets(day);
+	refreshDayCoverage(day);
 
 	store = {
 		...store,
 		days: { ...store.days, [dateKey]: day },
 		updatedAtIso: now.toISOString(),
 	};
-	await persistStore(host, store, dateKey);
+	await persistDayAndMaybeYesterday(host, store, dateKey, yesterday, yesterdayJustCompleted);
 
 	await publishStatus(host, DAY_TELEMETRY_STATES.status, "ok");
 	if (curSlot != null) {
@@ -607,7 +639,7 @@ async function notePlanInner(input: {
 		days: { ...store.days, [dateKey]: day },
 		updatedAtIso: now.toISOString(),
 	};
-	await persistStore(host, store, dateKey);
+	await persistDayAndMaybeYesterday(host, store, dateKey, null, false);
 }
 
 export { DAY_TELEMETRY_CATEGORY as DAY_TELEMETRY_PERSIST_CATEGORY };

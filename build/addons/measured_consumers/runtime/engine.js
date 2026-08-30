@@ -57,12 +57,52 @@ async function readForeignNum(host, id) {
             return null;
         if (typeof st.val === "number")
             return Number.isFinite(st.val) ? st.val : null;
-        // Komma-Dezimal (DE) und Einheiten-Suffixe robust parsen
         const n = parseFloat(String(st.val).trim().replace(",", "."));
         return Number.isFinite(n) ? n : null;
     }
     catch {
         return null;
+    }
+}
+/** Adapter-lokale States (z. B. live.battery.house_load_w) — nie getForeignStateAsync. */
+async function readLocalNum(host, id) {
+    if (!id)
+        return null;
+    try {
+        const st = await host.getStateAsync(id);
+        if (!st || st.val === null || st.val === undefined)
+            return null;
+        if (typeof st.val === "number")
+            return Number.isFinite(st.val) ? st.val : null;
+        const n = parseFloat(String(st.val).trim().replace(",", "."));
+        return Number.isFinite(n) ? n : null;
+    }
+    catch {
+        return null;
+    }
+}
+async function readEnergyUnitHint(host, energyStateId) {
+    const reader = host.getForeignObjectAsync ?? host.getObjectAsync;
+    if (!reader)
+        return null;
+    try {
+        const obj = await reader(energyStateId);
+        const unit = obj?.common && typeof obj.common.unit === "string"
+            ? String(obj.common.unit).trim()
+            : "";
+        if (!unit) {
+            return "Hinweis: Energy-DP ohne common.unit — erwartet wird kWh (keine automatische Umrechnung)";
+        }
+        const u = unit.toLowerCase();
+        if (u === "kwh" || u === "kw·h" || u === "kw.h")
+            return null;
+        if (u === "wh") {
+            return "WARNUNG: Energy-DP Einheit ist Wh — Admin erwartet kWh (keine automatische Umrechnung)";
+        }
+        return `Hinweis: Energy-DP Einheit „${unit}“ — erwartet wird kWh (keine automatische Umrechnung)`;
+    }
+    catch {
+        return "Hinweis: Energy-DP-Objekt nicht lesbar — Einheit unbekannt, erwartet wird kWh";
     }
 }
 async function processSlot(host, slot, nowMs, todayKey, yesterdayKey) {
@@ -116,6 +156,13 @@ async function processSlot(host, slot, nowMs, todayKey, yesterdayKey) {
         else {
             valid = false;
             reasonDe = reasonDe || "Energie-Datenpunkt nicht verfügbar — Zähler pausiert";
+        }
+        const unitHint = await readEnergyUnitHint(host, slot.energyStateId);
+        if (unitHint && !reasonDe) {
+            reasonDe = unitHint;
+        }
+        else if (unitHint && reasonDe && !reasonDe.includes("WARNUNG") && !reasonDe.includes("Hinweis")) {
+            reasonDe = `${reasonDe}; ${unitHint}`;
         }
     }
     else if (powerW !== null && valid) {
@@ -193,7 +240,7 @@ async function runMeasuredConsumersTick(host) {
             totalTotalKwh += result.totals.totalKwh;
         }
     }
-    const houseLoadW = await readForeignNum(host, constants_1.MEASURED_CONSUMERS_HOUSE_LOAD_STATE_ID);
+    const houseLoadW = await readLocalNum(host, constants_1.MEASURED_CONSUMERS_HOUSE_LOAD_STATE_ID);
     const unknownHouseLoadW = (0, math_1.computeUnknownHouseLoadW)(houseLoadW, totalPowerW);
     const s = state_ids_1.MEASURED_CONSUMERS_AGGREGATE_STATES;
     await (0, state_write_1.setOptionalNumberIfChanged)(host, s.totalPowerW, (0, math_1.round1)(totalPowerW));

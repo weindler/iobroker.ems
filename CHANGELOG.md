@@ -6,6 +6,21 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.2.5] – 2026-08-30
+
+### Fixed
+
+- **Day Telemetry PV:** liest `live.battery.pv_ac_power_w` / `live.pv.power_w` (nicht ungeschriebenes `grid_balance.pv_power_w`).
+- **Quality/Coverage:** unobserved Slots = `qualityMask: null`; neu beobachtete Slots starten mit Domänen `n/a`; Missing bei fehlendem Eingang; `complete` (Kalender) getrennt von `coveragePct` / `evaluable`.
+- **Plan-Snapshots/Replans:** Phase-1-Tick-Host mit `getAbsolutePath` — `forecastSnapshots` und `replanEvents` persistieren; `snapshotIdRef` auflösbar.
+- **Measured Consumers:** Hauslast über lokalen `getStateAsync`; Tauchpumpe-Persistenz (Wh-Fehlbuchung) einmalig zurücksetzen; Admin-Beschriftung + Wh-Einheiten-Warnung (keine stille Umrechnung).
+
+### Changed
+
+- **Tagesdateien:** `learning/day_telemetry/YYYY-MM-DD.json` statt Monolith; Einmalmigration aus `day_telemetry_v1.json`; 90-Tage-Retention; atomische Writes mit Mode `0644`.
+
+---
+
 ## [0.2.4] – 2026-08-29
 
 ### Added

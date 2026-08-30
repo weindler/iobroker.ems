@@ -18,6 +18,8 @@ function runtimeHost(adapter: ioBroker.Adapter): MeasuredConsumersRuntimeHost {
 		extendObjectAsync: (id, obj) => adapter.extendObjectAsync(id, obj),
 		getStateAsync: (id) => adapter.getStateAsync(id),
 		getForeignStateAsync: (id) => adapter.getForeignStateAsync(id),
+		getForeignObjectAsync: (id) => adapter.getForeignObjectAsync(id),
+		getObjectAsync: (id) => adapter.getObjectAsync(id),
 		setStateAsync: (id, st) => adapter.setStateAsync(id, st),
 	};
 	return withLearningDataPath(adapter, base);

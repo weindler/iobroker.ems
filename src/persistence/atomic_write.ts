@@ -4,6 +4,10 @@ import { randomUUID } from "node:crypto";
 
 export const ATOMIC_TMP_PREFIX = ".tmp-";
 
+/** Diagnose-Dateien: Owner rw, Gruppe/Andere r — kein World-Write. */
+export const DIAGNOSTIC_FILE_MODE = 0o644;
+export const DIAGNOSTIC_DIR_MODE = 0o755;
+
 export function isAtomicTempFileName(name: string): boolean {
 	return name.startsWith(ATOMIC_TMP_PREFIX);
 }
@@ -26,14 +30,20 @@ export async function atomicWriteFile(
 	options: { mode?: number; validate?: () => void } = {},
 ): Promise<void> {
 	const dir = path.dirname(targetPath);
-	await fs.mkdir(dir, { recursive: true, mode: 0o700 });
-	const tmp = path.join(dir, `${ATOMIC_TMP_PREFIX}${path.basename(targetPath)}.${process.pid}.${randomUUID().slice(0, 8)}`);
+	const fileMode = options.mode ?? DIAGNOSTIC_FILE_MODE;
+	await fs.mkdir(dir, { recursive: true, mode: DIAGNOSTIC_DIR_MODE });
+	const tmp = path.join(
+		dir,
+		`${ATOMIC_TMP_PREFIX}${path.basename(targetPath)}.${process.pid}.${randomUUID().slice(0, 8)}`,
+	);
 	try {
-		await fs.writeFile(tmp, content, { mode: options.mode ?? 0o600 });
+		await fs.writeFile(tmp, content, { mode: fileMode });
 		if (options.validate) {
 			options.validate();
 		}
 		await fs.rename(tmp, targetPath);
+		/* rename behält Mode der Temp-Datei; zusätzlich absichern falls umask/FS abweicht */
+		await fs.chmod(targetPath, fileMode).catch(() => undefined);
 	} catch (e) {
 		await fs.unlink(tmp).catch(() => undefined);
 		throw e;

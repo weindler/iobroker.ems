@@ -10365,7 +10365,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Diese Verbraucher sind Unterverbraucher des bereits gemessenen Gesamt-Hausverbrauchs und werden diesem NICHT hinzugerechnet. „Unbekannte Restlast“ (addons.measured_consumers.unknown_house_load_w) = Hausverbrauch minus Summe aller aktiven, gültigen gemessenen Verbraucher."
+					"text": "Diese Verbraucher sind Unterverbraucher des bereits gemessenen Gesamt-Hausverbrauchs und werden diesem NICHT hinzugerechnet. „Unbekannte Restlast“ (addons.measured_consumers.unknown_house_load_w) = Hausverbrauch minus Summe aller aktiven, gültigen gemessenen Verbraucher. Der Energie-Datenpunkt muss in kWh geliefert werden (nicht Wh). Bei Wh bitte Alias mit /1000 und Einheit kWh verwenden — EMS rechnet nicht automatisch um."
 				},
 				"ems_measured_consumers_map": {
 					"type": "table",
@@ -10435,19 +10435,27 @@
 							"width": "260px",
 							"filter": true,
 							"sort": true,
-							"default": ""
+							"default": "",
+							"help": {
+								"de": "Erwartet kumulative kWh. Einheit Wh führt zu falschen Statistiken — bitte Alias mit /1000 und common.unit=kWh.",
+								"en": "Expects cumulative kWh. Wh units skew statistics — use an alias with /1000 and common.unit=kWh."
+							}
 						},
 						{
 							"type": "text",
 							"attr": "initial_energy_kwh",
 							"title": {
-								"de": "Start-/Übernahmewert kWh",
-								"en": "Start/take-over value kWh"
+								"de": "Historischer Gesamtverbrauch bei Aufnahme (kWh)",
+								"en": "Historical total at onboarding (kWh)"
 							},
-							"width": "160px",
+							"width": "200px",
 							"filter": false,
 							"sort": false,
-							"default": ""
+							"default": "",
+							"help": {
+								"de": "Optionaler bisheriger Gesamtverbrauch. Wird einmalig übernommen und anschließend mit neu gemessenen Verbräuchen fortgeführt. Leer oder 0 = Zählung beginnt mit Aufnahme in EMS.",
+								"en": "Optional prior total energy. Taken once, then continued with newly measured usage. Empty or 0 = counting starts at EMS onboarding."
+							}
 						}
 					]
 				}

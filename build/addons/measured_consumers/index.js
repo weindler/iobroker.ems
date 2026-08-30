@@ -14,6 +14,8 @@ function runtimeHost(adapter) {
         extendObjectAsync: (id, obj) => adapter.extendObjectAsync(id, obj),
         getStateAsync: (id) => adapter.getStateAsync(id),
         getForeignStateAsync: (id) => adapter.getForeignStateAsync(id),
+        getForeignObjectAsync: (id) => adapter.getForeignObjectAsync(id),
+        getObjectAsync: (id) => adapter.getObjectAsync(id),
         setStateAsync: (id, st) => adapter.setStateAsync(id, st),
     };
     return (0, data_dir_1.withLearningDataPath)(adapter, base);

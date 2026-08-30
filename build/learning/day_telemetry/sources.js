@@ -7,6 +7,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.activeUnitCombinationKey = exports.immersionOnFromPowers = exports.readLiveTelemetrySample = exports.resolveActiveSharedPowerGroupId = exports.resolveTelemetryPriceCtPerKwh = void 0;
 const ensure_states_1 = require("../../addons/battery/ensure_states");
 const types_1 = require("../../addons/immersion_heater/runtime/types");
+/** Live-PV (gepflegt vom Live-Cache) — nicht grid_balance.pv_power_w (ungeschrieben). */
+const LIVE_PV_POWER_W = "live.battery.pv_ac_power_w";
+const LIVE_PV_POWER_W_MIRROR = "live.pv.power_w";
 const ensure_states_2 = require("../../addons/air_conditioning/runtime/ensure_states");
 const constants_1 = require("../../addons/air_conditioning/constants");
 const config_1 = require("../../addons/air_conditioning/config");
@@ -141,9 +144,10 @@ async function readLiveTelemetrySample(host, nowMs = Date.now()) {
     }
     const sharedUsed = await readBool(host, ensure_states_2.AC_RUNTIME_SUMMARY_STATES.systemSharedPowerUsed);
     const systemPower = await readNum(host, ensure_states_2.AC_RUNTIME_SUMMARY_STATES.systemPowerW);
+    const pvLive = (await readNum(host, LIVE_PV_POWER_W)) ?? (await readNum(host, LIVE_PV_POWER_W_MIRROR));
     return {
         tsMs: nowMs,
-        pvPowerW: await readNum(host, ensure_states_1.BAT.gridBalance.pvPowerW),
+        pvPowerW: pvLive,
         houseTotalPowerW: houseSrc.stateId ? await readNum(host, houseSrc.stateId) : null,
         immersionPowerW: await readNum(host, types_1.IMMERSION_RUNTIME_STATES.measuredPowerW),
         wallboxChargePowerW: await readNum(host, ensure_states_3.WALLBOX_EV_FOUNDATION_STATES.chargePowerW),

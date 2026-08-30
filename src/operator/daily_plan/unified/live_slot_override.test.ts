@@ -256,8 +256,18 @@ describe("live slot override (PV/HL)", () => {
 		});
 		assert.equal(without.pv.slots.length, withLive.pv.slots.length);
 		assert.ok(without.pv.slots.length >= 48 * 4, `Horizont-Slots=${without.pv.slots.length}`);
-		const horizonMs =
-			Date.parse(withLive.time.horizonEndIso) - Date.parse(withLive.time.horizonStartIso);
-		assert.ok(horizonMs >= 48 * 3_600_000);
+
+		const fifteen = withLive.pv.slots.filter(
+			(s) => Date.parse(s.slot.endIso) - Date.parse(s.slot.startIso) === OPERATOR_MS_PER_15MIN,
+		);
+		const starts = fifteen.map((s) => Date.parse(s.slot.startIso));
+		const ends = fifteen.map((s) => Date.parse(s.slot.endIso));
+		const spanMs = Math.max(...ends) - Math.min(...starts);
+		assert.ok(spanMs >= 48 * 3_600_000, `15-Min-PV-Span=${spanMs}`);
+		assert.equal(
+			fifteen.filter((s) => s.observedPowerW != null).length,
+			1,
+			"nur ein Live-PV-Override trotz Mehr-Tages-Horizont",
+		);
 	});
 });

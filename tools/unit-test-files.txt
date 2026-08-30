@@ -202,6 +202,7 @@ build/operator/daily_plan/unified/live_dispatch.test.js
 build/operator/daily_plan/unified/authority.test.js
 build/operator/daily_plan/unified/cadence.test.js
 build/operator/daily_plan/unified/real_bridge.test.js
+build/operator/daily_plan/unified/live_slot_override.test.js
 build/operator/daily_plan/unified/replan.test.js
 build/operator/daily_plan/unified/presence.test.js
 build/operator/daily_plan/unified/live_battery_evcc.test.js

@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.6",
+		"version": "0.2.7",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.7": {
+				"en": "Fix: Live PV/house-load override applies only to the exact current slot (15-min for PV; house-load segment without startIso smear). Prevents duplicate forecastSnapshots.pvSlotKwh timestamps. Check day_telemetry YYYY-MM-DD.json after update.",
+				"de": "Fix: Live-PV-/Hauslast-Override nur auf den exakten aktuellen Slot (PV: 15 Min; Hauslast-Segment ohne startIso-Smear). Verhindert doppelte forecastSnapshots.pvSlotKwh-Timestamps. Nach Update day_telemetry YYYY-MM-DD.json prüfen."
+			},
 			"0.2.6": {
 				"en": "Fix: Measured Consumers Tauchpumpe Wh-corruption migration now persists atomically on startup (tauchpumpe_wh_reset_v1). Check measured_consumers_runtime_v1.json after update.",
 				"de": "Fix: Measured-Consumers-Tauchpumpen-Migration (Wh-Fehlbuchung) schreibt beim Start atomar auf Disk (tauchpumpe_wh_reset_v1). Nach Update measured_consumers_runtime_v1.json prüfen."

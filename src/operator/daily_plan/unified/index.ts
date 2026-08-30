@@ -28,6 +28,8 @@ export {
 } from "./authority";
 export {
 	buildUnifiedInputFromForecastContext,
+	findCurrentFifteenMinuteSlot,
+	findCurrentHouseLoadSlot,
 	normalizeFeedInCtPerKwh,
 	summarizeUnifiedDayPlanForReason,
 } from "./from_forecast_context";

@@ -34,6 +34,49 @@ import {
 import { isLiveNowTelemetryUsable } from "../live_surplus";
 import { effectiveCoolingRateCPerH } from "../../contributions/flexible/thermal_cooling_rate";
 import { resolveWallboxBatteryHold } from "../../../addons/wallbox/charge_hold";
+import { OPERATOR_MS_PER_15MIN } from "../../time";
+
+type SlotWindow = { startIso: string; endIso: string };
+
+/**
+ * Aktueller 15-Min-Slot für Live-PV: now im Fenster und exakt 900000 ms Dauer.
+ * Mehrstunden-Segmente (Hauslast/Wetter) werden bewusst ausgeschlossen.
+ */
+export function findCurrentFifteenMinuteSlot(
+	slots: SlotWindow[],
+	nowMs: number,
+): SlotWindow | null {
+	for (const s of slots) {
+		const start = Date.parse(s.startIso);
+		const end = Date.parse(s.endIso);
+		if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+		if (end - start !== OPERATOR_MS_PER_15MIN) continue;
+		if (nowMs >= start && nowMs < end) return s;
+	}
+	return null;
+}
+
+/**
+ * Aktuelles Hauslast-Fenster: now im Slot und Slot trägt Hauslast-Leistung.
+ * Segment-Auflösung bleibt unverändert (Mehrstunden ok); kein smearing per startIso.
+ */
+export function findCurrentHouseLoadSlot(
+	slots: Array<{ slot: SlotWindow; houseLoadPowerW: number | null }>,
+	nowMs: number,
+): SlotWindow | null {
+	for (const s of slots) {
+		if (s.houseLoadPowerW == null) continue;
+		const start = Date.parse(s.slot.startIso);
+		const end = Date.parse(s.slot.endIso);
+		if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+		if (nowMs >= start && nowMs < end) return s.slot;
+	}
+	return null;
+}
+
+function slotWindowsEqual(a: SlotWindow, b: SlotWindow): boolean {
+	return a.startIso === b.startIso && a.endIso === b.endIso;
+}
 
 function num(d: Record<string, unknown> | null | undefined, key: string): number | null {
 	if (!d) return null;
@@ -184,23 +227,21 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 	const wbD = (wbC?.details ?? null) as Record<string, unknown> | null;
 
 	const day0 = ctx.forecastPlan.days[0];
-	const currentSlotStart = slots.find((s) => {
-		const a = Date.parse(s.startIso);
-		const b = Date.parse(s.endIso);
-		return Number.isFinite(a) && Number.isFinite(b) && nowMs >= a && nowMs < b;
-	})?.startIso;
-
 	const liveNowUsable = isLiveNowTelemetryUsable({
 		pvPowerW: ctx.observedPvPowerW ?? null,
 		houseLoadW: ctx.observedHouseLoadPowerW ?? null,
 		pvAgeSec: ctx.observedPvAgeSec,
 		houseAgeSec: ctx.observedHouseAgeSec,
 	});
+	const currentPvSlot = liveNowUsable ? findCurrentFifteenMinuteSlot(slots, nowMs) : null;
+	const currentHouseLoadSlot = liveNowUsable
+		? findCurrentHouseLoadSlot(ctx.forecastPlan.slots, nowMs)
+		: null;
 
 	const pvSlots = ctx.forecastPlan.slots.map((s) => {
 		const power = s.pvPowerW;
 		const observed =
-			liveNowUsable && currentSlotStart && s.slot.startIso === currentSlotStart
+			liveNowUsable && currentPvSlot && slotWindowsEqual(s.slot, currentPvSlot)
 				? (ctx.observedPvPowerW ?? null)
 				: null;
 		const effective = observed ?? power;
@@ -214,7 +255,9 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 	const loadSlots = ctx.forecastPlan.slots.map((s) => {
 		const power = s.houseLoadPowerW;
 		const observed =
-			liveNowUsable && currentSlotStart && s.slot.startIso === currentSlotStart
+			liveNowUsable &&
+			currentHouseLoadSlot &&
+			slotWindowsEqual(s.slot, currentHouseLoadSlot)
 				? (ctx.observedHouseLoadPowerW ?? null)
 				: null;
 		const effective = observed ?? power;
@@ -292,7 +335,7 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 	}
 
 	// --- Wallbox (Unified Live via EVCC-Runtime; Presence: live > explicit > predicted > unknown) ---
-	const wallbox = mapWallbox(wbC, wbD, nowIso, slots, currentSlotStart, ctx);
+	const wallbox = mapWallbox(wbC, wbD, nowIso, slots, ctx);
 
 	// --- Thermal ---
 	const bufferTempC = ctx.bufferTempC !== undefined ? ctx.bufferTempC : num(ihD, "bufferTempC");
@@ -585,7 +628,6 @@ function mapWallbox(
 	wbD: Record<string, unknown> | null,
 	nowIso: string,
 	slots: Array<{ startIso: string; endIso: string }>,
-	_currentSlotStart: string | undefined,
 	ctx: UnifiedForecastContext,
 ): UnifiedWallboxInput | null {
 	if (!wbC && !wbD) {

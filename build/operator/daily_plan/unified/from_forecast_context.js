@@ -9,7 +9,7 @@
  * Wallbox/Battery: Planung/Simulation — kein Unified-Live-Takeover.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.summarizeUnifiedDayPlanForReason = exports.buildUnifiedInputFromForecastContext = exports.normalizeFeedInCtPerKwh = void 0;
+exports.summarizeUnifiedDayPlanForReason = exports.buildUnifiedInputFromForecastContext = exports.normalizeFeedInCtPerKwh = exports.findCurrentHouseLoadSlot = exports.findCurrentFifteenMinuteSlot = void 0;
 const contribution_ids_1 = require("../../contribution_ids");
 const quality_1 = require("../../quality");
 const flex_demand_1 = require("../../contributions/flexible/flex_demand");
@@ -20,6 +20,46 @@ const ev_energy_1 = require("./ev_energy");
 const live_surplus_1 = require("../live_surplus");
 const thermal_cooling_rate_1 = require("../../contributions/flexible/thermal_cooling_rate");
 const charge_hold_1 = require("../../../addons/wallbox/charge_hold");
+const time_1 = require("../../time");
+/**
+ * Aktueller 15-Min-Slot für Live-PV: now im Fenster und exakt 900000 ms Dauer.
+ * Mehrstunden-Segmente (Hauslast/Wetter) werden bewusst ausgeschlossen.
+ */
+function findCurrentFifteenMinuteSlot(slots, nowMs) {
+    for (const s of slots) {
+        const start = Date.parse(s.startIso);
+        const end = Date.parse(s.endIso);
+        if (!Number.isFinite(start) || !Number.isFinite(end))
+            continue;
+        if (end - start !== time_1.OPERATOR_MS_PER_15MIN)
+            continue;
+        if (nowMs >= start && nowMs < end)
+            return s;
+    }
+    return null;
+}
+exports.findCurrentFifteenMinuteSlot = findCurrentFifteenMinuteSlot;
+/**
+ * Aktuelles Hauslast-Fenster: now im Slot und Slot trägt Hauslast-Leistung.
+ * Segment-Auflösung bleibt unverändert (Mehrstunden ok); kein smearing per startIso.
+ */
+function findCurrentHouseLoadSlot(slots, nowMs) {
+    for (const s of slots) {
+        if (s.houseLoadPowerW == null)
+            continue;
+        const start = Date.parse(s.slot.startIso);
+        const end = Date.parse(s.slot.endIso);
+        if (!Number.isFinite(start) || !Number.isFinite(end))
+            continue;
+        if (nowMs >= start && nowMs < end)
+            return s.slot;
+    }
+    return null;
+}
+exports.findCurrentHouseLoadSlot = findCurrentHouseLoadSlot;
+function slotWindowsEqual(a, b) {
+    return a.startIso === b.startIso && a.endIso === b.endIso;
+}
 function num(d, key) {
     if (!d)
         return null;
@@ -99,20 +139,19 @@ function buildUnifiedInputFromForecastContext(ctx) {
     const resD = (batReserve?.details ?? null);
     const wbD = (wbC?.details ?? null);
     const day0 = ctx.forecastPlan.days[0];
-    const currentSlotStart = slots.find((s) => {
-        const a = Date.parse(s.startIso);
-        const b = Date.parse(s.endIso);
-        return Number.isFinite(a) && Number.isFinite(b) && nowMs >= a && nowMs < b;
-    })?.startIso;
     const liveNowUsable = (0, live_surplus_1.isLiveNowTelemetryUsable)({
         pvPowerW: ctx.observedPvPowerW ?? null,
         houseLoadW: ctx.observedHouseLoadPowerW ?? null,
         pvAgeSec: ctx.observedPvAgeSec,
         houseAgeSec: ctx.observedHouseAgeSec,
     });
+    const currentPvSlot = liveNowUsable ? findCurrentFifteenMinuteSlot(slots, nowMs) : null;
+    const currentHouseLoadSlot = liveNowUsable
+        ? findCurrentHouseLoadSlot(ctx.forecastPlan.slots, nowMs)
+        : null;
     const pvSlots = ctx.forecastPlan.slots.map((s) => {
         const power = s.pvPowerW;
-        const observed = liveNowUsable && currentSlotStart && s.slot.startIso === currentSlotStart
+        const observed = liveNowUsable && currentPvSlot && slotWindowsEqual(s.slot, currentPvSlot)
             ? (ctx.observedPvPowerW ?? null)
             : null;
         const effective = observed ?? power;
@@ -125,7 +164,9 @@ function buildUnifiedInputFromForecastContext(ctx) {
     });
     const loadSlots = ctx.forecastPlan.slots.map((s) => {
         const power = s.houseLoadPowerW;
-        const observed = liveNowUsable && currentSlotStart && s.slot.startIso === currentSlotStart
+        const observed = liveNowUsable &&
+            currentHouseLoadSlot &&
+            slotWindowsEqual(s.slot, currentHouseLoadSlot)
             ? (ctx.observedHouseLoadPowerW ?? null)
             : null;
         const effective = observed ?? power;
@@ -191,7 +232,7 @@ function buildUnifiedInputFromForecastContext(ctx) {
         allowedModes.push("discharge");
     }
     // --- Wallbox (Unified Live via EVCC-Runtime; Presence: live > explicit > predicted > unknown) ---
-    const wallbox = mapWallbox(wbC, wbD, nowIso, slots, currentSlotStart, ctx);
+    const wallbox = mapWallbox(wbC, wbD, nowIso, slots, ctx);
     // --- Thermal ---
     const bufferTempC = ctx.bufferTempC !== undefined ? ctx.bufferTempC : num(ihD, "bufferTempC");
     const targetTempC = num(ihD, "targetTempC");
@@ -467,7 +508,7 @@ function mergeWorstQuality(list) {
  * Fahrzeug-Presence: live (aktueller Slot) > explicit > predicted Learning > unknown.
  * Keine erfundenen Anwesenheitszeiten.
  */
-function mapWallbox(wbC, wbD, nowIso, slots, _currentSlotStart, ctx) {
+function mapWallbox(wbC, wbD, nowIso, slots, ctx) {
     if (!wbC && !wbD) {
         return null;
     }

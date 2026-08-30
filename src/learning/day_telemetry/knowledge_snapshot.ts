@@ -98,6 +98,10 @@ export function buildPlannerKnowledgeSnapshot(
 			sharedPowerGroupId: u.sharedPowerGroupId?.trim() || null,
 			mandatory: u.mandatoryComfort === true,
 			mode: null as string | null,
+			hardOffAtIso:
+				u.hardStopMs != null && Number.isFinite(u.hardStopMs)
+					? new Date(u.hardStopMs).toISOString()
+					: null,
 		})) ?? [];
 
 	return {

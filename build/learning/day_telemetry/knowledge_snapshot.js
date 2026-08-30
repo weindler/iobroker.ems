@@ -77,6 +77,9 @@ function buildPlannerKnowledgeSnapshot(input, tsIso, extra) {
         sharedPowerGroupId: u.sharedPowerGroupId?.trim() || null,
         mandatory: u.mandatoryComfort === true,
         mode: null,
+        hardOffAtIso: u.hardStopMs != null && Number.isFinite(u.hardStopMs)
+            ? new Date(u.hardStopMs).toISOString()
+            : null,
     })) ?? [];
     return {
         tsIso,

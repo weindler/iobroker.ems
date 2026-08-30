@@ -39,6 +39,13 @@ export type PlannerKnowledgeSnapshot = {
 		sharedPowerGroupId: string | null;
 		mandatory: boolean;
 		mode: string | null;
+		/**
+		 * Additiv (Block A, Abnahme-Korrektur): zum Entscheidungszeitpunkt gültige Hard-Off-Deadline
+		 * dieser Unit — 1:1 aus `UnifiedClimateUnitInput.hardStopMs` (dieselbe Deadline, die der
+		 * Unified Planner für die Allokation nutzt, siehe score_allocate.ts `deadlineMs`), keine neue
+		 * Berechnung. `null` wenn zu diesem Zeitpunkt kein Hard-Off konfiguriert/berechenbar war.
+		 */
+		hardOffAtIso: string | null;
 	}>;
 	/**
 	 * Additiv (Block A): tatsächlich verwendeter Wallbox-Ziel-Kontext zum Snapshot-Zeitpunkt.

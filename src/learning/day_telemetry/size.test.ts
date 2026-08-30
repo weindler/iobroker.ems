@@ -58,8 +58,20 @@ describe("day_telemetry 90-day size budget", () => {
 					thermalEmptyAtIso: null,
 					thermalHeadroomKwh: 3,
 					climateUnits: [
-						{ consumerId: "u1", sharedPowerGroupId: "outdoor_1", mandatory: false, mode: "cool" },
-						{ consumerId: "u2", sharedPowerGroupId: "outdoor_1", mandatory: true, mode: "cool" },
+						{
+							consumerId: "u1",
+							sharedPowerGroupId: "outdoor_1",
+							mandatory: false,
+							mode: "cool",
+							hardOffAtIso: new Date(layout.startMs + 20 * 3600_000).toISOString(),
+						},
+						{
+							consumerId: "u2",
+							sharedPowerGroupId: "outdoor_1",
+							mandatory: true,
+							mode: "cool",
+							hardOffAtIso: new Date(layout.startMs + 20 * 3600_000).toISOString(),
+						},
 					],
 					wallboxTargetSocPct: 80,
 					wallboxMinimumDepartureSocPct: 60,

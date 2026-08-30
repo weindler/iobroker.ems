@@ -25,6 +25,13 @@ export const IMMERSION_HARD_CONSUMER_ID = "immersion_heater";
 import { optimizeWeightsFromInput, type UnifiedOptimizeWeights } from "./optimize_weights";
 import { REASON } from "./reason_codes";
 import {
+	evaluateThermalDeferOpportunity,
+	THERMAL_OPPORTUNITY_DEFER_SCORE_WEIGHT,
+	toThermalLearningExplanation,
+	type ThermalOpportunityGateResult,
+} from "./thermal_opportunity_gate";
+import type { PlannerLearningExplanation } from "./learning_explanation";
+import {
 	collectPresenceReasonCodes,
 	evaluateVehicleGoalFeasibility,
 	vehicleSlotAllocatable,
@@ -163,6 +170,17 @@ export type AllocationState = {
 	modeDischargeMinKwh: number;
 	/** Nächste belastbare PV nach Pflichtbindung — Soft-Thermal-Ökonomie. */
 	nextReliablePvMs: number | null;
+	/**
+	 * BLOCK B (Explainability, additiv): wird true, sobald `evaluateThermalDeferOpportunity`
+	 * während des Scorings mindestens einmal `defer=true` liefert — unabhängig davon, ob der
+	 * betroffene Slot am Ende gewählt wurde. Reine Diagnose (siehe `reasonCodes` unten), kein
+	 * Rückkanal in die Allokationsentscheidung selbst.
+	 */
+	thermalOpportunityDeferSeen?: boolean;
+	/** BLOCK B (Explainability): true, sobald irgendein Kandidat tatsächlich durch die Block-A-Kalibrierung anders (defer) entschieden wurde als ohne. */
+	thermalOpportunityChangedByLearning?: boolean;
+	/** BLOCK B (Explainability): letztes ausgewertetes Ergebnis (bevorzugt eines mit usable Learning) — für kompakte Diagnose-States. */
+	thermalOpportunityLastExplanation?: ThermalOpportunityGateResult;
 };
 
 /** SOC am Ende von slotIdx nach chronologischer Propagation der gebuchten Deltas. */
@@ -213,6 +231,8 @@ export type ScoreAllocationResult = {
 	goals: UnifiedGoalStatus[];
 	reasonCodes: string[];
 	finalSocKwh: number;
+	/** BLOCK B (Explainability, additiv): letzte Thermal-Opportunity-Auswertung dieses Laufs. */
+	thermalLearningExplanation?: PlannerLearningExplanation<boolean> | null;
 };
 
 function round3(n: number): number {
@@ -1455,6 +1475,33 @@ export function scoreCandidate(
 				return -Infinity;
 			}
 
+			/*
+			 * BLOCK B — Thermal Opportunity Gate: additiver Score-Malus (kein Veto), wenn vor
+			 * thermalEmptyAtIso ein deutlich besseres PV-Fenster existiert als am aktuellen
+			 * Kandidaten-Slot ("muss jetzt laufen oder kann sicher warten?"). Fällt bei fehlender
+			 * Deadline, fehlender/niedriger PV-Forecast-Confidence (Learning Gate) oder zu wenigen
+			 * PV-Slots automatisch auf bisheriges Scoring zurück (defer=false → kein Effekt).
+			 */
+			const thermalOpportunity = evaluateThermalDeferOpportunity({
+				candidateSlotStartMs: slot.startMs,
+				thermalEmptyAtMs: input.thermal?.estimatedEmptyAtIso
+					? Date.parse(input.thermal.estimatedEmptyAtIso)
+					: null,
+				pvSlots: input.pv.slots,
+				pvForecastConfidence01: state.pvConfidence,
+				learnedPriceTimingScore: input.thermal?.learnedPriceTimingScore ?? null,
+			});
+			if (thermalOpportunity.defer) {
+				score -= e * weights.costWeight * THERMAL_OPPORTUNITY_DEFER_SCORE_WEIGHT;
+				state.thermalOpportunityDeferSeen = true;
+			}
+			if (thermalOpportunity.changedByLearning) {
+				state.thermalOpportunityChangedByLearning = true;
+			}
+			if (state.thermalOpportunityLastExplanation === undefined || thermalOpportunity.learning.usable) {
+				state.thermalOpportunityLastExplanation = thermalOpportunity;
+			}
+
 			score -= e * priority * 0.38;
 			const peakEur = peakFutureImportCt(state, candidate.slotIdx) * 0.01;
 			const socAt = projectedSocAt(state, candidate.slotIdx);
@@ -2598,6 +2645,12 @@ export function runScoreBasedAllocation(
 	) {
 		reasonCodes.push(REASON.VEHICLE_GRID_MUTEX_BATTERY);
 	}
+	if (state.thermalOpportunityDeferSeen) {
+		reasonCodes.push(REASON.THERMAL_OPPORTUNITY_DEFERRED);
+	}
+	if (state.thermalOpportunityChangedByLearning) {
+		reasonCodes.push(REASON.THERMAL_OPPORTUNITY_LEARNING_APPLIED);
+	}
 
 	const goals = buildGoals(input, state, reasonCodes);
 
@@ -2606,5 +2659,6 @@ export function runScoreBasedAllocation(
 		goals,
 		reasonCodes,
 		finalSocKwh: state.socKwh,
+		thermalLearningExplanation: toThermalLearningExplanation(state.thermalOpportunityLastExplanation),
 	};
 }

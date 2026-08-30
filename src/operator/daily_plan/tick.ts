@@ -17,7 +17,16 @@ import {
 	immersionCriticalNow,
 	resolveAllBatteryConsumerAccess,
 } from "../../policy/battery_consumers";
-import { resolveBatteryDischargeAuthorization } from "./battery_discharge_authority";
+import {
+	resolveBatteryDischargeAuthorization,
+	DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH,
+} from "./battery_discharge_authority";
+import { evaluateBatteryOpportunityCost } from "./battery_opportunity_cost";
+import { loadBlockALearningSnapshot } from "./block_a_learning_bridge";
+import {
+	calibrateBatteryOpportunityMargin,
+	toBatteryReserveLearningExplanation,
+} from "./battery_reserve_learning";
 import { resolveCentralBatteryReserveTarget } from "./battery_reserve_target";
 import { buildReserveFloorSlotsFromForecastPlan } from "./forecast_reserve_slots";
 import {
@@ -343,6 +352,15 @@ export async function runDailyPlanTick(
 	forecastPlan: ForecastPlan,
 ): Promise<DailyPlan> {
 	const now = new Date();
+	/*
+	 * BLOCK B — Learned Planner: Read-Only-Bridge zum eingefrorenen Block-A-Learning-State
+	 * (`learning/daily_evaluator/learning_state_v1.json`). Wird NIE geschrieben/verändert.
+	 * Fehlt/kaputt/Host ohne Pfad-Unterstützung → leerer Snapshot (usable=false in jedem
+	 * nachgelagerten Learning Gate, exakt bisheriges Planner-Verhalten).
+	 */
+	const blockALearning = await loadBlockALearningSnapshot(
+		host as unknown as { getAbsolutePath?: (c?: string) => string },
+	);
 	const adminCfg = intentAdminConfigFromAdapter(host.config);
 	const timezone = adminCfg.timezone || "Europe/Berlin";
 	const globalModeRaw = (await readStr(host, "global_modes.active")) ?? "balanced";
@@ -502,13 +520,75 @@ export async function runDailyPlanTick(
 		avgChargePowerW,
 		contributionTargetSocPct,
 	});
-	const batteryDischargeAuthorization = resolveBatteryDischargeAuthorization({
+
+	/*
+	 * BLOCK B — Battery Opportunity Cost (additiv, optional). Nutzt ausschließlich bereits
+	 * berechnete Werte (reserveSlots, centralReserve, socPct, reserveCapacityKwh) und die
+	 * ebenfalls bereits im Forecast Plan vorhandenen Flex-Contributions — keine neuen IO-Reads,
+	 * kein zweites Preismodell. Bei fehlenden Eingaben liefert die Funktion selbst den
+	 * konservativen Fallback (usable=false, Cost=0) — kein zusätzlicher Sonderpfad hier nötig.
+	 */
+	const headroomAboveReserveKwh =
+		socPct !== null &&
+		Number.isFinite(socPct) &&
+		centralReserve.requiredSocAtPvEndPct !== null &&
+		reserveCapacityKwh !== null &&
+		Number.isFinite(reserveCapacityKwh)
+			? ((socPct - centralReserve.requiredSocAtPvEndPct) / 100) * reserveCapacityKwh
+			: null;
+	const pvRemainingTodayKwh = reserveSlots
+		.filter((s) => s.startMs > now.getTime())
+		.reduce((sum, s) => sum + s.pvKwh, 0);
+	const immersionFlexContribution = forecastPlan.contributions.find(
+		(c) => c.contributionId === CONTRIBUTION_IDS.IMMERSION_FLEXIBLE,
+	);
+	const wallboxContribution = forecastPlan.contributions.find(
+		(c) => c.contributionId === CONTRIBUTION_IDS.WALLBOX_EV_SESSION,
+	);
+	const laterDemandFromContribution = (contribution: typeof immersionFlexContribution): number => {
+		const d = (contribution?.details ?? null) as Record<string, unknown> | null;
+		const v = d ? d["requiredEnergyKwh"] : null;
+		return typeof v === "number" && Number.isFinite(v) ? Math.max(0, v) : 0;
+	};
+	const plannedLaterDemandKwh =
+		laterDemandFromContribution(immersionFlexContribution) + laterDemandFromContribution(wallboxContribution);
+	const batteryOpportunity = evaluateBatteryOpportunityCost({
+		nowMs: now.getTime(),
+		priceSlots: reserveSlots.map((s) => ({ startMs: s.startMs, importCtPerKwh: s.importCt })),
+		headroomAboveReserveKwh,
+		pvRemainingTodayKwh,
+		plannedLaterDemandKwh,
+	});
+
+	/*
+	 * BLOCK B — Battery Learned Opportunity (additiv). Nutzt die tatsächliche
+	 * Block-A-Metrik `batteryReserveAccuracyPct` über das zentrale Learning Gate, um die
+	 * Opportunity-Margen-Schwelle AUSSCHLIESSLICH zu erhöhen (nie zu senken) — siehe
+	 * `battery_reserve_learning.ts`. `baselineAuthorization` (feste Basis-Marge) wird nur für
+	 * Explainability berechnet, nie für eine echte Steuerentscheidung verwendet.
+	 */
+	const batteryReserveLearning = calibrateBatteryOpportunityMargin(blockALearning.batteryReserveAccuracyPct);
+	const batteryDischargeAuthorizationInputBase = {
 		priceNowCt,
 		minPriceCtPerKwh: batCfgModes.gridBalance.minPriceCtPerKwh,
 		socPct,
 		requiredSocAtPvEndPct: centralReserve.requiredSocAtPvEndPct,
 		configuredMaxDischargeW: batCfgModes.gridBalance.maxTargetW,
+		opportunityCostCtPerKwh: batteryOpportunity.usable ? batteryOpportunity.opportunityCostCtPerKwh : null,
+	};
+	const baselineBatteryDischargeAuthorization = resolveBatteryDischargeAuthorization(
+		batteryDischargeAuthorizationInputBase,
+	);
+	const batteryDischargeAuthorization = resolveBatteryDischargeAuthorization({
+		...batteryDischargeAuthorizationInputBase,
+		opportunityMarginCtPerKwh:
+			DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH + batteryReserveLearning.extraMarginCtPerKwh,
 	});
+	const batteryLearningExplanation = toBatteryReserveLearningExplanation(
+		batteryReserveLearning,
+		baselineBatteryDischargeAuthorization.opportunityAllowed,
+		batteryDischargeAuthorization.opportunityAllowed,
+	);
 	try {
 		/*
 		 * Always write so `ts` stays current. setStateIfChanged would keep months-old
@@ -536,6 +616,18 @@ export async function runDailyPlanTick(
 		});
 		await host.setStateAsync("planner.battery_discharge.reason_de", {
 			val: batteryDischargeAuthorization.reasonDe,
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_discharge.opportunity_cost_ct_per_kwh", {
+			val: batteryOpportunity.usable ? batteryOpportunity.opportunityCostCtPerKwh : null,
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_discharge.opportunity_allowed", {
+			val: batteryDischargeAuthorization.opportunityAllowed,
+			ack: true,
+		});
+		await host.setStateAsync("planner.learning.battery_explanation", {
+			val: JSON.stringify(batteryLearningExplanation),
 			ack: true,
 		});
 		await host.setStateAsync("planner.battery_reserve.required_soc_at_pv_end_pct", {
@@ -738,6 +830,7 @@ export async function runDailyPlanTick(
 		feedInCtPerKwh,
 		boilerEstimatedEmptyAtOverride: learningEmptyAtIso,
 		preferImmersionLiveSurplusNow: false,
+		thermalLearnedPriceTimingScore: blockALearning.thermalPriceTimingScore,
 	});
 	const ihMeasuredW = asNum((await host.getStateAsync("addons.immersion_heater.runtime.measured_power_w"))?.val);
 	const ihCommandedW = asNum((await host.getStateAsync("addons.immersion_heater.runtime.commanded_power_w"))?.val);
@@ -775,6 +868,17 @@ export async function runDailyPlanTick(
 		return best;
 	})();
 
+	/*
+	 * BLOCK B — User-Override-Digest (Intent Engine, additiv). Nur die drei bereits
+	 * bestehenden Manual-Override-Flags — keine neue Override-Logik, keine Bewertung, reine
+	 * Zustands-Zusammenfassung als Replan-Trigger (siehe materiality.ts).
+	 */
+	const userOverrideDigest = [
+		"b:" + ((await host.getStateAsync("user_intent.battery.manual_override_active"))?.val === true ? "1" : "0"),
+		"t:" + ((await host.getStateAsync("user_intent.thermal.manual_override_active"))?.val === true ? "1" : "0"),
+		"w:" + ((await host.getStateAsync("user_intent.wallbox.manual_override_active"))?.val === true ? "1" : "0"),
+	].join("|");
+
 	const actualSample: PlanActualSample = {
 		date: plan.date,
 		nowMs: now.getTime(),
@@ -795,6 +899,7 @@ export async function runDailyPlanTick(
 		presenceDigest: presenceDigest(probeInput.wallbox?.presenceWindows ?? []),
 		thermalBlocked: probeInput.thermal?.uncertainty.status === "blocked",
 		cadenceDigest,
+		userOverrideDigest,
 	};
 
 	const immersionFirstFutureStartMs = (() => {
@@ -902,6 +1007,7 @@ export async function runDailyPlanTick(
 				continueImmersionSoftCurrentSlot: continueSoftIh,
 				boilerEstimatedEmptyAtOverride: learningEmptyAtIso,
 				feedInCtPerKwh,
+				thermalLearnedPriceTimingScore: blockALearning.thermalPriceTimingScore,
 			});
 
 			const nextGen = (lastUnifiedPlan?.generation ?? 0) + 1;
@@ -914,6 +1020,14 @@ export async function runDailyPlanTick(
 				await publishEvPlannerDiagnosis(host, unifiedPlan.evPlanner);
 			} catch (e) {
 				host.log?.warn?.(`ev planner diagnosis publish: ${String(e)}`);
+			}
+			try {
+				await host.setStateAsync("planner.learning.thermal_explanation", {
+					val: JSON.stringify(unifiedPlan.thermalLearningExplanation ?? null),
+					ack: true,
+				});
+			} catch (e) {
+				host.log?.warn?.(`thermal learning explanation publish: ${String(e)}`);
 			}
 			unifiedGeneration += 1;
 			lastUnifiedPlanId = unifiedPlan.planId;
@@ -946,6 +1060,7 @@ export async function runDailyPlanTick(
 				priceStructureDigest: priceStructureDigestFromPlan(plan),
 				presenceDigest: presenceDigest(unifiedInputFinal.wallbox?.presenceWindows ?? []),
 				cadenceDigest,
+				userOverrideDigest,
 			};
 
 			/* Schritt 7: Day-Session + optionaler Tagesabschluss (Fehler isoliert). */

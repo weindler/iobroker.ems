@@ -299,6 +299,30 @@ function actual(overrides = {}) {
         strict_1.default.equal(d.hard, true);
     });
 });
+(0, node_test_1.describe)("REPLAN-B-011 user override changed (Block B)", () => {
+    (0, node_test_1.it)("override neu aktiviert (battery) → harter Replan", () => {
+        const d = (0, materiality_1.evaluateMaterialReplan)(baseline({ userOverrideDigest: "b:0|t:0|w:0" }), actual({ userOverrideDigest: "b:1|t:0|w:0" }));
+        strict_1.default.equal(d.shouldReplan, true);
+        strict_1.default.equal(d.hard, true);
+        strict_1.default.ok(d.reasons.includes(reason_codes_1.REASON.REPLAN_USER_OVERRIDE_CHANGED));
+    });
+    (0, node_test_1.it)("override aufgehoben (thermal) → harter Replan, bypassed Cooldown", () => {
+        const last = Date.parse("2026-08-07T10:00:00.000Z");
+        const d = (0, materiality_1.evaluateMaterialReplan)(baseline({ userOverrideDigest: "b:0|t:1|w:0", createdAtMs: last }), actual({ userOverrideDigest: "b:0|t:0|w:0", nowMs: last + 5_000 }), { lastReplanAtMs: last });
+        strict_1.default.equal(d.shouldReplan, true);
+        strict_1.default.equal(d.hard, true);
+        strict_1.default.ok(d.reasons.includes(reason_codes_1.REASON.REPLAN_USER_OVERRIDE_CHANGED));
+    });
+    (0, node_test_1.it)("unverändertes Override-Digest (beide Seiten identisch) → kein Replan-Grund dafür", () => {
+        const d = (0, materiality_1.evaluateMaterialReplan)(baseline({ userOverrideDigest: "b:0|t:0|w:1" }), actual({ userOverrideDigest: "b:0|t:0|w:1" }));
+        strict_1.default.ok(!d.reasons.includes(reason_codes_1.REASON.REPLAN_USER_OVERRIDE_CHANGED));
+    });
+    (0, node_test_1.it)("fehlendes Digest auf beiden Seiten (Fallback \"\") → exakt bisheriges Verhalten, kein Replan", () => {
+        const d = (0, materiality_1.evaluateMaterialReplan)(baseline({}), actual({}));
+        strict_1.default.equal(d.shouldReplan, false);
+        strict_1.default.ok(!d.reasons.includes(reason_codes_1.REASON.REPLAN_USER_OVERRIDE_CHANGED));
+    });
+});
 (0, node_test_1.describe)("REPLAN-010 past stays past", () => {
     (0, node_test_1.it)("replan at 14:00 only reallocates remaining horizon", () => {
         const input = (0, alloc_fixtures_1.alloc001Input)();

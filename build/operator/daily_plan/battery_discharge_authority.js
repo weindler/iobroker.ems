@@ -25,8 +25,9 @@
  * Bewusst NICHT Teil dieses Blocks: Klima, Heizstab-Planung, Wallbox, Ownership-Umbau.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveBatteryDischargeAuthorization = void 0;
+exports.resolveBatteryDischargeAuthorization = exports.DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH = void 0;
 const grid_balance_1 = require("../../addons/battery/grid_balance");
+exports.DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH = 3;
 function resolveBatteryDischargeAuthorization(input) {
     const socKnownForDiagnostics = input.socPct !== null &&
         Number.isFinite(input.socPct) &&
@@ -42,6 +43,7 @@ function resolveBatteryDischargeAuthorization(input) {
             maxDischargeW: 0,
             priceAllowed: false,
             socAllowed: socKnownForDiagnostics,
+            opportunityAllowed: true,
             reasonDe: priceCheck.reasonDe,
         };
     }
@@ -51,6 +53,7 @@ function resolveBatteryDischargeAuthorization(input) {
             maxDischargeW: 0,
             priceAllowed: true,
             socAllowed: false,
+            opportunityAllowed: true,
             reasonDe: "Nacht-Reserve noch nicht ausreichend gelernt (predictedNightConsumptionKwh unbekannt) — Batterieentladung konservativ gesperrt.",
         };
     }
@@ -61,6 +64,7 @@ function resolveBatteryDischargeAuthorization(input) {
             maxDischargeW: 0,
             priceAllowed: true,
             socAllowed: false,
+            opportunityAllowed: true,
             reasonDe: "SOC unbekannt — Batterieentladung wirtschaftlich gesperrt.",
         };
     }
@@ -71,14 +75,36 @@ function resolveBatteryDischargeAuthorization(input) {
             maxDischargeW: 0,
             priceAllowed: true,
             socAllowed: false,
+            opportunityAllowed: true,
             reasonDe: `SOC ${input.socPct.toFixed(0)} % ≤ dynamische Reserve ${input.requiredSocAtPvEndPct} % — Batterieentladung wirtschaftlich gesperrt.`,
         };
+    }
+    /*
+     * BLOCK B — Opportunity-Cost-Zusatzgate (additiv, nie lockernd). Nur wirksam, wenn der
+     * Aufrufer eine Opportunity-Cost übergibt (sonst identisch zum bisherigen Verhalten).
+     * Reserve/Preis/SOC-Gates oben bleiben unverändert vorrangig — dieses Gate kann nur
+     * zusätzlich EINSCHRÄNKEN, nie eine sonst gesperrte Entladung freigeben.
+     */
+    if (input.opportunityCostCtPerKwh != null && Number.isFinite(input.opportunityCostCtPerKwh)) {
+        const margin = input.opportunityMarginCtPerKwh ?? exports.DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH;
+        const priceNow = input.priceNowCt ?? 0;
+        if (priceNow < input.opportunityCostCtPerKwh + margin) {
+            return {
+                allowed: false,
+                maxDischargeW: 0,
+                priceAllowed: true,
+                socAllowed: true,
+                opportunityAllowed: false,
+                reasonDe: `Preis jetzt ${priceNow.toFixed(1)} ct/kWh liegt nicht ausreichend über der geschätzten Opportunity-Cost ${input.opportunityCostCtPerKwh.toFixed(1)} ct/kWh — Netzausgleich zurückgestellt (Batterie später voraussichtlich wertvoller).`,
+            };
+        }
     }
     return {
         allowed: true,
         maxDischargeW: Math.max(0, Math.round(input.configuredMaxDischargeW)),
         priceAllowed: true,
         socAllowed: true,
+        opportunityAllowed: true,
         reasonDe: `${priceCheck.reasonDe}; SOC ${input.socPct.toFixed(0)} % > dynamische Reserve ${input.requiredSocAtPvEndPct} %.`,
     };
 }

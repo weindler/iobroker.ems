@@ -64,6 +64,20 @@ export const REASON = {
 	REPLAN_PRICE_REVISION: "replan_price_revision",
 	/** Add-on execution mode off|dryrun|live geändert — frische Participation/Allocation. */
 	REPLAN_ADDON_EXECUTION_MODE: "replan_addon_execution_mode",
+	/** BLOCK B: User/External Manual-Override (Intent Engine) aktiviert/deaktiviert/gewechselt. */
+	REPLAN_USER_OVERRIDE_CHANGED: "replan_user_override_changed",
+	/**
+	 * BLOCK B (Explainability): Thermal Opportunity Gate hat mindestens einmal ein deutlich
+	 * besseres PV-Fenster vor `thermalEmptyAtIso` erkannt (Score-Malus angewendet) — reine
+	 * Diagnose auf Plan-Ebene, siehe `thermal_opportunity_gate.ts`.
+	 */
+	THERMAL_OPPORTUNITY_DEFERRED: "thermal_opportunity_deferred",
+	/**
+	 * BLOCK B (Explainability, Learned Planner): die Block-A-Metrik `thermalPriceTimingScore`
+	 * war usable UND hat die tatsächliche Defer-Entscheidung gegenüber der Baseline
+	 * (fester 0.3-Gap) real verändert — siehe `calibrateThermalOpportunityGap`.
+	 */
+	THERMAL_OPPORTUNITY_LEARNING_APPLIED: "thermal_opportunity_learning_applied",
 } as const;
 
 export type UnifiedReasonCode = (typeof REASON)[keyof typeof REASON];

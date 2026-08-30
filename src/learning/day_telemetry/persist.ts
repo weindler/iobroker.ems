@@ -25,6 +25,7 @@ import {
 	type DayTelemetryDayRecord,
 	type DayTelemetryStore,
 } from "./types";
+import { compactForecastSnapshotsForPersist, rehydrateForecastRevisions } from "./forecast_horizon";
 
 export { DAY_TELEMETRY_CATEGORY };
 
@@ -94,6 +95,8 @@ export function normalizeDayRecord(raw: unknown, fallbackDateKey?: string): DayT
 	if (!day.slotWidthMs) day.slotWidthMs = DAY_TELEMETRY_SLOT_MS;
 	if (!day.buckets) return null;
 	if (!Array.isArray(day.forecastSnapshots)) day.forecastSnapshots = [];
+	if (!Array.isArray(day.forecastRevisions)) day.forecastRevisions = [];
+	rehydrateForecastRevisions(day);
 	if (!Array.isArray(day.replanEvents)) day.replanEvents = [];
 	if (!Array.isArray(day.climateRunSegments)) day.climateRunSegments = [];
 	if (!Array.isArray(day.immersionRunSegments)) day.immersionRunSegments = [];
@@ -126,11 +129,17 @@ export async function writeDayTelemetryDay(
 	day: DayTelemetryDayRecord,
 ): Promise<void> {
 	refreshDayCoverage(day);
+	/*
+	 * Speicher-Kompaktierung (siehe forecast_horizon.ts): dedupliziert Preis-/PV-Horizonte
+	 * über forecastSnapshots hinweg vor dem Serialisieren. `day` selbst (In-Memory-Dedup-Cache
+	 * in record.ts) bleibt unverändert — compact() liefert ein neues Objekt.
+	 */
+	const compacted = compactForecastSnapshotsForPersist(day);
 	const payload = {
 		module: DAY_TELEMETRY_MODULE,
 		schemaVersion: DAY_TELEMETRY_SCHEMA,
 		updatedAtIso: new Date().toISOString(),
-		day,
+		day: compacted,
 	};
 	await atomicWriteFile(
 		dayTelemetryDayPath(baseDir, day.dateKey),

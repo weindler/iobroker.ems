@@ -76,4 +76,50 @@ describe("battery discharge authority (Phase 1b/1d)", () => {
 		assert.equal(r.allowed, true);
 		assert.equal(r.maxDischargeW, 0);
 	});
+
+	describe("Block B — Opportunity-Cost-Zusatzgate (additiv)", () => {
+		it("ohne opportunityCostCtPerKwh: exakt bisheriges Verhalten (Fallback)", () => {
+			const r = resolveBatteryDischargeAuthorization(base);
+			assert.equal(r.allowed, true);
+			assert.equal(r.opportunityAllowed, true);
+		});
+
+		it("Preis jetzt klar über Opportunity-Cost + Marge → weiterhin erlaubt", () => {
+			const r = resolveBatteryDischargeAuthorization({ ...base, opportunityCostCtPerKwh: 20 });
+			assert.equal(r.allowed, true);
+			assert.equal(r.opportunityAllowed, true);
+		});
+
+		it("Preis jetzt nicht ausreichend über Opportunity-Cost → Netzausgleich zurückgestellt", () => {
+			const r = resolveBatteryDischargeAuthorization({ ...base, opportunityCostCtPerKwh: 35 });
+			assert.equal(r.allowed, false);
+			assert.equal(r.opportunityAllowed, false);
+			assert.equal(r.priceAllowed, true);
+			assert.equal(r.socAllowed, true);
+			assert.match(r.reasonDe, /Opportunity-Cost/);
+		});
+
+		it("Opportunity-Cost kann eine bereits gesperrte Entladung nicht freigeben (Preis-Gate bleibt vorrangig)", () => {
+			const r = resolveBatteryDischargeAuthorization({ ...base, priceNowCt: 16.5, opportunityCostCtPerKwh: 0 });
+			assert.equal(r.allowed, false);
+			assert.equal(r.priceAllowed, false);
+		});
+
+		it("Opportunity-Cost kann Reserve-Sperre nicht aushebeln", () => {
+			const r = resolveBatteryDischargeAuthorization({ ...base, socPct: 30, opportunityCostCtPerKwh: 0 });
+			assert.equal(r.allowed, false);
+			assert.equal(r.socAllowed, false);
+		});
+
+		it("eigene Margin-Konfiguration wird respektiert", () => {
+			const r = resolveBatteryDischargeAuthorization({
+				...base,
+				opportunityCostCtPerKwh: 30,
+				opportunityMarginCtPerKwh: 10,
+			});
+			// priceNowCt=36.7, opportunity=30, margin=10 → 36.7 < 40 → zurückgestellt
+			assert.equal(r.allowed, false);
+			assert.equal(r.opportunityAllowed, false);
+		});
+	});
 });

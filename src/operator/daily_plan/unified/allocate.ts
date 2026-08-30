@@ -234,7 +234,13 @@ export function allocateUnifiedDayPlan(
 	const goalDeadline = trimmed.wallbox?.deadlineIso ?? null;
 	const pvToGoal = sumEnergyToDeadline(input.pv.slots, goalDeadline);
 
-	const { allocations, goals, reasonCodes: allocReasons, finalSocKwh } = runScoreBasedAllocation(
+	const {
+		allocations,
+		goals,
+		reasonCodes: allocReasons,
+		finalSocKwh,
+		thermalLearningExplanation,
+	} = runScoreBasedAllocation(
 		trimmed,
 		slots,
 		{
@@ -327,6 +333,7 @@ export function allocateUnifiedDayPlan(
 		evPlanner,
 		totals: null,
 		legacyDailyPlan: null,
+		thermalLearningExplanation: thermalLearningExplanation ?? null,
 	};
 }
 

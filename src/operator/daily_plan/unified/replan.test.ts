@@ -381,6 +381,44 @@ describe("REPLAN-009 anti-chatter", () => {
 	});
 });
 
+describe("REPLAN-B-011 user override changed (Block B)", () => {
+	it("override neu aktiviert (battery) → harter Replan", () => {
+		const d = evaluateMaterialReplan(
+			baseline({ userOverrideDigest: "b:0|t:0|w:0" }),
+			actual({ userOverrideDigest: "b:1|t:0|w:0" }),
+		);
+		assert.equal(d.shouldReplan, true);
+		assert.equal(d.hard, true);
+		assert.ok(d.reasons.includes(REASON.REPLAN_USER_OVERRIDE_CHANGED));
+	});
+
+	it("override aufgehoben (thermal) → harter Replan, bypassed Cooldown", () => {
+		const last = Date.parse("2026-08-07T10:00:00.000Z");
+		const d = evaluateMaterialReplan(
+			baseline({ userOverrideDigest: "b:0|t:1|w:0", createdAtMs: last }),
+			actual({ userOverrideDigest: "b:0|t:0|w:0", nowMs: last + 5_000 }),
+			{ lastReplanAtMs: last },
+		);
+		assert.equal(d.shouldReplan, true);
+		assert.equal(d.hard, true);
+		assert.ok(d.reasons.includes(REASON.REPLAN_USER_OVERRIDE_CHANGED));
+	});
+
+	it("unverändertes Override-Digest (beide Seiten identisch) → kein Replan-Grund dafür", () => {
+		const d = evaluateMaterialReplan(
+			baseline({ userOverrideDigest: "b:0|t:0|w:1" }),
+			actual({ userOverrideDigest: "b:0|t:0|w:1" }),
+		);
+		assert.ok(!d.reasons.includes(REASON.REPLAN_USER_OVERRIDE_CHANGED));
+	});
+
+	it("fehlendes Digest auf beiden Seiten (Fallback \"\") → exakt bisheriges Verhalten, kein Replan", () => {
+		const d = evaluateMaterialReplan(baseline({}), actual({}));
+		assert.equal(d.shouldReplan, false);
+		assert.ok(!d.reasons.includes(REASON.REPLAN_USER_OVERRIDE_CHANGED));
+	});
+});
+
 describe("REPLAN-010 past stays past", () => {
 	it("replan at 14:00 only reallocates remaining horizon", () => {
 		const input = alloc001Input();

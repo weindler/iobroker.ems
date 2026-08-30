@@ -87,6 +87,33 @@ export type PlannerKnowledgeSnapshot = {
 			| "soc_unknown"
 			| "soc_below_reserve";
 	} | null;
+	/**
+	 * Speicher-Kompaktierung (additiv, optional, siehe `forecast_horizon.ts`): NUR auf der
+	 * Festplatten-Repräsentation gesetzt — sobald ein Tag über `readDayTelemetryDay`/
+	 * `normalizeDayRecord` eingelesen wird, sind `priceSlots`/`pvSlotKwh` bereits wieder
+	 * vollständig rekonstruiert und dieses Feld ist rein informativ (welche Basisrevision
+	 * referenziert wurde). In frisch im Prozess erzeugten Snapshots (vor dem ersten Schreiben)
+	 * ist es `undefined`.
+	 */
+	forecastRevisionId?: string;
+	/** [Index in `ForecastHorizonRevision.priceSlots`, importCtPerKwh] — nur geänderte Slots. */
+	forecastPriceDelta?: Array<[number, number]>;
+	/** [Index in `ForecastHorizonRevision.pvSlotKwh`, energyKwh] — nur geänderte Slots. */
+	forecastPvDelta?: Array<[number, number]>;
+};
+
+/**
+ * Speicher-Kompaktierung (siehe `forecast_horizon.ts`): EIN vollständiger Preis-/PV-Horizont,
+ * den mehrere `forecastSnapshots`-Einträge per `forecastRevisionId` referenzieren, statt ihn
+ * jeweils vollständig zu duplizieren. Nur bei materiell abweichendem Horizont entsteht eine
+ * neue Revision — kleine Abweichungen (typ. der laufend live-aktualisierte aktuelle Slot)
+ * werden stattdessen als Delta auf dem jeweiligen Snapshot gespeichert.
+ */
+export type ForecastHorizonRevision = {
+	id: string;
+	tsIso: string;
+	priceSlots: Array<[number, number]>;
+	pvSlotKwh: Array<[number, number]>;
 };
 
 export type DayTelemetryReplanEvent = {
@@ -194,6 +221,13 @@ export type DayTelemetryDayRecord = {
 	buckets: DayTelemetryBuckets;
 	plannedConsumers: FrozenPlannedConsumer[][];
 	forecastSnapshots: PlannerKnowledgeSnapshot[];
+	/**
+	 * Speicher-Kompaktierung (additiv, optional — siehe `forecast_horizon.ts`): deduplizierte
+	 * Preis-/PV-Basisrevisionen, die `forecastSnapshots[].forecastRevisionId` referenzieren.
+	 * Fehlt bei älteren Tagesdateien (vor dieser Erweiterung) — dort tragen die Snapshots ihre
+	 * Preis-/PV-Arrays noch vollständig inline, was weiterhin unterstützt wird.
+	 */
+	forecastRevisions?: ForecastHorizonRevision[];
 	replanEvents: DayTelemetryReplanEvent[];
 	climateRunSegments: ClimateRunSegment[];
 	/** Additiv (Block A) — siehe ImmersionRunSegment. */
@@ -261,6 +295,7 @@ export function emptyDayRecord(
 		buckets: emptyBuckets(slotCount),
 		plannedConsumers: [],
 		forecastSnapshots: [],
+		forecastRevisions: [],
 		replanEvents: [],
 		climateRunSegments: [],
 		immersionRunSegments: [],

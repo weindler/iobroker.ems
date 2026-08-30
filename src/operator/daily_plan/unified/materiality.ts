@@ -65,6 +65,14 @@ export type PlanBaseline = {
 	/** Future Presence Digest (Status/Quellen der Fenster). */
 	presenceDigest: string;
 	cadenceDigest: string;
+	/**
+	 * BLOCK B (additiv, optional): Digest der Intent-Engine Manual-Override-Flags
+	 * (battery/thermal/wallbox). Änderung (User/External greift ein oder gibt frei) → harter
+	 * Replan, damit der Plan die reale Kontrolle widerspiegelt, statt gegen den Override zu
+	 * planen. Reine Zustands-Zusammenfassung, keine Kontrolllogik hier. Optional, damit
+	 * bestehende Aufrufer/Tests ohne diesen Wert unverändert funktionieren (Fallback "").
+	 */
+	userOverrideDigest?: string;
 };
 
 export type PlanActualSample = {
@@ -91,6 +99,8 @@ export type PlanActualSample = {
 	/** Thermal/AC Safety — Headroom bewusst 0 / blocked. */
 	thermalBlocked: boolean;
 	cadenceDigest: string;
+	/** BLOCK B (additiv, optional): siehe `PlanBaseline.userOverrideDigest`. */
+	userOverrideDigest?: string;
 };
 
 export type MaterialReplanDecision = {
@@ -304,6 +314,17 @@ export function evaluateMaterialReplan(
 		if (!reasons.includes(REASON.REPLAN_THERMAL_EMPTY_AT_CHANGED)) {
 			reasons.push(REASON.REPLAN_THERMAL_EMPTY_AT_CHANGED);
 		}
+		hard = true;
+	}
+
+	/*
+	 * BLOCK B: User/External Manual-Override geändert (Intent Engine, battery/thermal/wallbox).
+	 * Hart, wie Vehicle connect/disconnect — der Plan muss sofort auf reale Kontrollhoheit
+	 * reagieren (weder gegen einen neu aktiven Override planen noch einen aufgehobenen
+	 * Override unnötig lange nachwirken lassen).
+	 */
+	if ((baseline.userOverrideDigest ?? "") !== (actual.userOverrideDigest ?? "")) {
+		reasons.push(REASON.REPLAN_USER_OVERRIDE_CHANGED);
 		hard = true;
 	}
 

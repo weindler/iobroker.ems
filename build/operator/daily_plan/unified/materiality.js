@@ -193,6 +193,16 @@ function evaluateMaterialReplan(baseline, actual, opts) {
         }
         hard = true;
     }
+    /*
+     * BLOCK B: User/External Manual-Override geändert (Intent Engine, battery/thermal/wallbox).
+     * Hart, wie Vehicle connect/disconnect — der Plan muss sofort auf reale Kontrollhoheit
+     * reagieren (weder gegen einen neu aktiven Override planen noch einen aufgehobenen
+     * Override unnötig lange nachwirken lassen).
+     */
+    if ((baseline.userOverrideDigest ?? "") !== (actual.userOverrideDigest ?? "")) {
+        reasons.push(reason_codes_1.REASON.REPLAN_USER_OVERRIDE_CHANGED);
+        hard = true;
+    }
     if (baseline.acMandatoryAny !== actual.acMandatoryAny) {
         reasons.push(reason_codes_1.REASON.REPLAN_AC_COMFORT_CHANGE);
         hard = true;

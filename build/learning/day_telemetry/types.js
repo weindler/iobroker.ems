@@ -48,6 +48,7 @@ function emptyDayRecord(dateKey, timezone, startMs, endMs, slotCount) {
         buckets: emptyBuckets(slotCount),
         plannedConsumers: [],
         forecastSnapshots: [],
+        forecastRevisions: [],
         replanEvents: [],
         climateRunSegments: [],
         immersionRunSegments: [],

@@ -72,4 +72,44 @@ const battery_discharge_authority_js_1 = require("./battery_discharge_authority.
         strict_1.default.equal(r.allowed, true);
         strict_1.default.equal(r.maxDischargeW, 0);
     });
+    (0, node_test_1.describe)("Block B — Opportunity-Cost-Zusatzgate (additiv)", () => {
+        (0, node_test_1.it)("ohne opportunityCostCtPerKwh: exakt bisheriges Verhalten (Fallback)", () => {
+            const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)(base);
+            strict_1.default.equal(r.allowed, true);
+            strict_1.default.equal(r.opportunityAllowed, true);
+        });
+        (0, node_test_1.it)("Preis jetzt klar über Opportunity-Cost + Marge → weiterhin erlaubt", () => {
+            const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({ ...base, opportunityCostCtPerKwh: 20 });
+            strict_1.default.equal(r.allowed, true);
+            strict_1.default.equal(r.opportunityAllowed, true);
+        });
+        (0, node_test_1.it)("Preis jetzt nicht ausreichend über Opportunity-Cost → Netzausgleich zurückgestellt", () => {
+            const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({ ...base, opportunityCostCtPerKwh: 35 });
+            strict_1.default.equal(r.allowed, false);
+            strict_1.default.equal(r.opportunityAllowed, false);
+            strict_1.default.equal(r.priceAllowed, true);
+            strict_1.default.equal(r.socAllowed, true);
+            strict_1.default.match(r.reasonDe, /Opportunity-Cost/);
+        });
+        (0, node_test_1.it)("Opportunity-Cost kann eine bereits gesperrte Entladung nicht freigeben (Preis-Gate bleibt vorrangig)", () => {
+            const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({ ...base, priceNowCt: 16.5, opportunityCostCtPerKwh: 0 });
+            strict_1.default.equal(r.allowed, false);
+            strict_1.default.equal(r.priceAllowed, false);
+        });
+        (0, node_test_1.it)("Opportunity-Cost kann Reserve-Sperre nicht aushebeln", () => {
+            const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({ ...base, socPct: 30, opportunityCostCtPerKwh: 0 });
+            strict_1.default.equal(r.allowed, false);
+            strict_1.default.equal(r.socAllowed, false);
+        });
+        (0, node_test_1.it)("eigene Margin-Konfiguration wird respektiert", () => {
+            const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({
+                ...base,
+                opportunityCostCtPerKwh: 30,
+                opportunityMarginCtPerKwh: 10,
+            });
+            // priceNowCt=36.7, opportunity=30, margin=10 → 36.7 < 40 → zurückgestellt
+            strict_1.default.equal(r.allowed, false);
+            strict_1.default.equal(r.opportunityAllowed, false);
+        });
+    });
 });

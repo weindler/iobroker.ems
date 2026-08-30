@@ -191,6 +191,17 @@ export type UnifiedForecastContext = {
 	 * null/ungültig → exportCtPerKwh bleibt null (Scorer-Fallback 6 ct).
 	 */
 	feedInCtPerKwh?: number | null;
+	/**
+	 * BLOCK B (Learned Planner, additiv/optional): tatsächliche Block-A-Metrik
+	 * `thermalPriceTimingScore` aus `learning/daily_evaluator/learning_state_v1.json`
+	 * (Read-Only-Bridge, siehe `../block_a_learning_bridge.ts`). `undefined`/`null` = kein
+	 * Learning verfügbar → exakt bisheriges Verhalten (siehe `thermal_opportunity_gate.ts`).
+	 */
+	thermalLearnedPriceTimingScore?: {
+		value: number | null;
+		sampleCount: number | null;
+		confidencePct: number | null;
+	} | null;
 };
 
 /** ct/kWh → Planner; ungültig/negativ → null (kein NaN in Allocation). */
@@ -598,6 +609,7 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 						reheatHysteresisActive: bool(ihD, "reheatHysteresisActive") === true,
 						uncertainty: thermalQuality,
 						freshness: thermalFresh,
+						learnedPriceTimingScore: ctx.thermalLearnedPriceTimingScore ?? null,
 					};
 				})()
 			: null,

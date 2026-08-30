@@ -38,6 +38,16 @@ export type BatteryDischargeAuthorizationInput = {
 	requiredSocAtPvEndPct: number | null;
 	/** Bestehende Admin-Konfigurationsobergrenze für Netzausgleich (W). */
 	configuredMaxDischargeW: number;
+	/**
+	 * BLOCK B (additiv, optional): Opportunity-Cost dieser Batterie-kWh (ct/kWh), z. B. aus
+	 * `battery_opportunity_cost.ts`. Wird NICHT übergeben (`undefined`/`null`) → exakt bisheriges
+	 * Verhalten (Preis-/SOC-Gate wie vorher, kein dritter Gate). Wird übergeben und liegt der
+	 * aktuelle Preis nicht klar über der Opportunity-Cost, wird die Freigabe zusätzlich
+	 * eingeschränkt (nie erweitert) — Hold/Reserve/Preis-Gate bleiben unverändert vorrangig.
+	 */
+	opportunityCostCtPerKwh?: number | null;
+	/** Mindestmarge (ct/kWh) über der Opportunity-Cost, ab der Netzausgleich noch lohnt. Default 3. */
+	opportunityMarginCtPerKwh?: number;
 };
 
 export type BatteryDischargeAuthorization = {
@@ -46,8 +56,12 @@ export type BatteryDischargeAuthorization = {
 	maxDischargeW: number;
 	priceAllowed: boolean;
 	socAllowed: boolean;
+	/** BLOCK B: true, wenn keine Opportunity-Cost übergeben wurde ODER sie die Freigabe nicht einschränkt. */
+	opportunityAllowed: boolean;
 	reasonDe: string;
 };
+
+export const DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH = 3;
 
 export function resolveBatteryDischargeAuthorization(
 	input: BatteryDischargeAuthorizationInput,
@@ -68,6 +82,7 @@ export function resolveBatteryDischargeAuthorization(
 			maxDischargeW: 0,
 			priceAllowed: false,
 			socAllowed: socKnownForDiagnostics,
+			opportunityAllowed: true,
 			reasonDe: priceCheck.reasonDe,
 		};
 	}
@@ -78,6 +93,7 @@ export function resolveBatteryDischargeAuthorization(
 			maxDischargeW: 0,
 			priceAllowed: true,
 			socAllowed: false,
+			opportunityAllowed: true,
 			reasonDe:
 				"Nacht-Reserve noch nicht ausreichend gelernt (predictedNightConsumptionKwh unbekannt) — Batterieentladung konservativ gesperrt.",
 		};
@@ -90,6 +106,7 @@ export function resolveBatteryDischargeAuthorization(
 			maxDischargeW: 0,
 			priceAllowed: true,
 			socAllowed: false,
+			opportunityAllowed: true,
 			reasonDe: "SOC unbekannt — Batterieentladung wirtschaftlich gesperrt.",
 		};
 	}
@@ -100,8 +117,30 @@ export function resolveBatteryDischargeAuthorization(
 			maxDischargeW: 0,
 			priceAllowed: true,
 			socAllowed: false,
+			opportunityAllowed: true,
 			reasonDe: `SOC ${input.socPct!.toFixed(0)} % ≤ dynamische Reserve ${input.requiredSocAtPvEndPct} % — Batterieentladung wirtschaftlich gesperrt.`,
 		};
+	}
+
+	/*
+	 * BLOCK B — Opportunity-Cost-Zusatzgate (additiv, nie lockernd). Nur wirksam, wenn der
+	 * Aufrufer eine Opportunity-Cost übergibt (sonst identisch zum bisherigen Verhalten).
+	 * Reserve/Preis/SOC-Gates oben bleiben unverändert vorrangig — dieses Gate kann nur
+	 * zusätzlich EINSCHRÄNKEN, nie eine sonst gesperrte Entladung freigeben.
+	 */
+	if (input.opportunityCostCtPerKwh != null && Number.isFinite(input.opportunityCostCtPerKwh)) {
+		const margin = input.opportunityMarginCtPerKwh ?? DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH;
+		const priceNow = input.priceNowCt ?? 0;
+		if (priceNow < input.opportunityCostCtPerKwh + margin) {
+			return {
+				allowed: false,
+				maxDischargeW: 0,
+				priceAllowed: true,
+				socAllowed: true,
+				opportunityAllowed: false,
+				reasonDe: `Preis jetzt ${priceNow.toFixed(1)} ct/kWh liegt nicht ausreichend über der geschätzten Opportunity-Cost ${input.opportunityCostCtPerKwh.toFixed(1)} ct/kWh — Netzausgleich zurückgestellt (Batterie später voraussichtlich wertvoller).`,
+			};
+		}
 	}
 
 	return {
@@ -109,6 +148,7 @@ export function resolveBatteryDischargeAuthorization(
 		maxDischargeW: Math.max(0, Math.round(input.configuredMaxDischargeW)),
 		priceAllowed: true,
 		socAllowed: true,
+		opportunityAllowed: true,
 		reasonDe: `${priceCheck.reasonDe}; SOC ${input.socPct!.toFixed(0)} % > dynamische Reserve ${input.requiredSocAtPvEndPct} %.`,
 	};
 }

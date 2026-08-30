@@ -17,6 +17,15 @@ function boolState(id, name, def) {
         defaultVal: def,
     };
 }
+/** BLOCK B — kompakter Explainability-State (siehe `PlannerLearningExplanation`), rein diagnostisch. */
+function jsonState(id, name) {
+    return {
+        id,
+        common: { name, type: "string", role: "json", read: true, write: false, def: "null" },
+        defaultVal: "null",
+        setDefaultIfEmpty: true,
+    };
+}
 /**
  * Planner-/Constraint-Hülle ohne Legacy Realtime-Intent-Bäume (Block 5).
  * Forecast/Daily/Allocation werden separat via Operator ensure_* angelegt.
@@ -49,6 +58,26 @@ async function ensurePlannerStates(host, _options) {
             defaultVal: 0,
         },
         strState("planner.battery_discharge.reason_de", "Batterie-Entladebudget Begründung", ""),
+        /*
+         * BLOCK B — Battery Opportunity Cost (Explainability, additiv). Rein informativ;
+         * steuert nichts direkt, siehe `battery_opportunity_cost.ts`/`battery_discharge_authority.ts`.
+         */
+        {
+            id: "planner.battery_discharge.opportunity_cost_ct_per_kwh",
+            common: { name: "Batterie Opportunity-Cost (ct/kWh, Block B)", type: "number", role: "value", read: true, write: false, def: null, unit: "ct/kWh" },
+            defaultVal: null,
+            setDefaultIfEmpty: true,
+        },
+        boolState("planner.battery_discharge.opportunity_allowed", "Netzausgleich trotz Opportunity-Cost weiterhin erlaubt (Block B)", true),
+        /*
+         * BLOCK B — Learned Planner Explainability (kompakt, JSON, rein diagnostisch).
+         * baselineDecision/adjustedDecision/changedByLearning/reasonCodes/confidencePct/
+         * learningMetrics — siehe `operator/daily_plan/unified/learning_explanation.ts`.
+         * Keine Steuerwirkung; nur Nachvollziehbarkeit, ob/warum Block-A-Learning eine reale
+         * Entscheidung verändert hat.
+         */
+        jsonState("planner.learning.thermal_explanation", "Thermal Opportunity — Learned-Planner-Explainability (Block B, JSON)"),
+        jsonState("planner.learning.battery_explanation", "Battery Opportunity — Learned-Planner-Explainability (Block B, JSON)"),
         /*
          * Zentrale Batterie-Reserve — führt learning/battery_runtime (reale Historie),
          * next_reliable_pv.ts (Forecast) und die battery.charge-Contribution (bestehendes

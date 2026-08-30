@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.7",
+		"version": "0.2.8",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.8": {
+				"en": "Block A Daily Evaluator (diagnostic scores/learning_state_v1) + Block B Learned Planner (thermal/battery via Learning Gate, explainability states). Day telemetry forecastSnapshots compacted (base revision + deltas; point-in-time rehydrate). Check learning/daily_evaluator/*, planner.learning.*_explanation, day_telemetry size after update.",
+				"de": "Block A Daily Evaluator (diagnostische Scores/learning_state_v1) + Block B Learned Planner (Thermal/Batterie über Learning Gate, Explainability-States). Day-Telemetry forecastSnapshots kompakt (Basis-Revision + Deltas; Point-in-Time-Rehydrate). Nach Update learning/daily_evaluator/*, planner.learning.*_explanation und day_telemetry-Größe prüfen."
+			},
 			"0.2.7": {
 				"en": "Fix: Live PV/house-load override applies only to the exact current slot (15-min for PV; house-load segment without startIso smear). Prevents duplicate forecastSnapshots.pvSlotKwh timestamps. Check day_telemetry YYYY-MM-DD.json after update.",
 				"de": "Fix: Live-PV-/Hauslast-Override nur auf den exakten aktuellen Slot (PV: 15 Min; Hauslast-Segment ohne startIso-Smear). Verhindert doppelte forecastSnapshots.pvSlotKwh-Timestamps. Nach Update day_telemetry YYYY-MM-DD.json prüfen."

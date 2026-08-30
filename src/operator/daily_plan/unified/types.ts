@@ -9,6 +9,7 @@
 
 import type { OperatorDataQuality, OperatorTimeSlot } from "../../types";
 import type { DailyPlan, DailyPlanTotals } from "../types";
+import type { PlannerLearningExplanation } from "./learning_explanation";
 
 /** Slotlänge — kompatibel zum bestehenden Daily Plan. */
 export type UnifiedSlotMinutes = 15;
@@ -329,6 +330,19 @@ export type UnifiedThermalInput = {
 	reheatHysteresisActive: boolean;
 	uncertainty: OperatorDataQuality;
 	freshness: UnifiedDataFreshness;
+	/**
+	 * BLOCK B (Learned Planner, additiv/optional): tatsächliche Block-A-Metrik
+	 * `thermalPriceTimingScore` (diagnostischer Rückblick-Score früherer preis-/PV-getimter
+	 * Heizstab-Entscheidungen, `learning/daily_evaluator/learning_state_v1.json`). Kalibriert
+	 * NUR den Opportunity-Perzentil-Schwellenwert (siehe `thermal_opportunity_gate.ts`) — nie
+	 * Safety/Hygiene/thermalEmptyAtIso. `undefined`/`null` = kein Learning verfügbar → exakt
+	 * bisheriges Verhalten.
+	 */
+	learnedPriceTimingScore?: {
+		value: number | null;
+		sampleCount: number | null;
+		confidencePct: number | null;
+	} | null;
 };
 
 export type UnifiedClimateUnitInput = {
@@ -610,6 +624,12 @@ export type UnifiedDayPlan = {
 	totals: DailyPlanTotals | null;
 	/** Optionaler Link zum bestehenden DailyPlan-Objekt (gleiche Generation). */
 	legacyDailyPlan: DailyPlan | null;
+	/**
+	 * BLOCK B (Learned Planner, Explainability): Thermal-Opportunity-Kalibrierung anhand der
+	 * Block-A-Metrik `thermalPriceTimingScore` dieses Planungslaufs — null, wenn dabei kein
+	 * Kandidat bewertet wurde (z. B. kein Soft-Heizstab-Bedarf).
+	 */
+	thermalLearningExplanation?: PlannerLearningExplanation<boolean> | null;
 };
 
 export type UnifiedReplanTriggerId =

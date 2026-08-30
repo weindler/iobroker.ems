@@ -37,6 +37,7 @@ const constants_1 = require("./constants");
 Object.defineProperty(exports, "DAY_TELEMETRY_CATEGORY", { enumerable: true, get: function () { return constants_1.DAY_TELEMETRY_CATEGORY; } });
 Object.defineProperty(exports, "DAY_TELEMETRY_EVALUABLE_COVERAGE_PCT", { enumerable: true, get: function () { return constants_1.DAY_TELEMETRY_EVALUABLE_COVERAGE_PCT; } });
 const types_1 = require("./types");
+const forecast_horizon_1 = require("./forecast_horizon");
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 function dayTelemetryDayFileName(dateKey) {
     return `${dateKey}.json`;
@@ -112,6 +113,9 @@ function normalizeDayRecord(raw, fallbackDateKey) {
         return null;
     if (!Array.isArray(day.forecastSnapshots))
         day.forecastSnapshots = [];
+    if (!Array.isArray(day.forecastRevisions))
+        day.forecastRevisions = [];
+    (0, forecast_horizon_1.rehydrateForecastRevisions)(day);
     if (!Array.isArray(day.replanEvents))
         day.replanEvents = [];
     if (!Array.isArray(day.climateRunSegments))
@@ -144,11 +148,17 @@ async function readDayTelemetryDay(baseDir, dateKey) {
 exports.readDayTelemetryDay = readDayTelemetryDay;
 async function writeDayTelemetryDay(baseDir, day) {
     (0, types_1.refreshDayCoverage)(day);
+    /*
+     * Speicher-Kompaktierung (siehe forecast_horizon.ts): dedupliziert Preis-/PV-Horizonte
+     * über forecastSnapshots hinweg vor dem Serialisieren. `day` selbst (In-Memory-Dedup-Cache
+     * in record.ts) bleibt unverändert — compact() liefert ein neues Objekt.
+     */
+    const compacted = (0, forecast_horizon_1.compactForecastSnapshotsForPersist)(day);
     const payload = {
         module: constants_1.DAY_TELEMETRY_MODULE,
         schemaVersion: constants_1.DAY_TELEMETRY_SCHEMA,
         updatedAtIso: new Date().toISOString(),
-        day,
+        day: compacted,
     };
     await (0, atomic_write_1.atomicWriteFile)(dayTelemetryDayPath(baseDir, day.dateKey), `${JSON.stringify(payload)}\n`, { mode: atomic_write_1.DIAGNOSTIC_FILE_MODE });
 }

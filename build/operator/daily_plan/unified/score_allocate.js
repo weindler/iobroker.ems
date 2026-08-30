@@ -12,6 +12,7 @@ exports.IMMERSION_SOFT_CONSUMER_ID = "immersion_heater_soft";
 exports.IMMERSION_HARD_CONSUMER_ID = "immersion_heater";
 const optimize_weights_1 = require("./optimize_weights");
 const reason_codes_1 = require("./reason_codes");
+const thermal_opportunity_gate_1 = require("./thermal_opportunity_gate");
 const vehicle_availability_1 = require("./vehicle_availability");
 const ev_energy_1 = require("./ev_energy");
 const slot_geometry_1 = require("./slot_geometry");
@@ -1237,6 +1238,32 @@ function scoreCandidate(input, state, candidate, weights) {
             if (candidate.source !== "pv_surplus") {
                 return -Infinity;
             }
+            /*
+             * BLOCK B — Thermal Opportunity Gate: additiver Score-Malus (kein Veto), wenn vor
+             * thermalEmptyAtIso ein deutlich besseres PV-Fenster existiert als am aktuellen
+             * Kandidaten-Slot ("muss jetzt laufen oder kann sicher warten?"). Fällt bei fehlender
+             * Deadline, fehlender/niedriger PV-Forecast-Confidence (Learning Gate) oder zu wenigen
+             * PV-Slots automatisch auf bisheriges Scoring zurück (defer=false → kein Effekt).
+             */
+            const thermalOpportunity = (0, thermal_opportunity_gate_1.evaluateThermalDeferOpportunity)({
+                candidateSlotStartMs: slot.startMs,
+                thermalEmptyAtMs: input.thermal?.estimatedEmptyAtIso
+                    ? Date.parse(input.thermal.estimatedEmptyAtIso)
+                    : null,
+                pvSlots: input.pv.slots,
+                pvForecastConfidence01: state.pvConfidence,
+                learnedPriceTimingScore: input.thermal?.learnedPriceTimingScore ?? null,
+            });
+            if (thermalOpportunity.defer) {
+                score -= e * weights.costWeight * thermal_opportunity_gate_1.THERMAL_OPPORTUNITY_DEFER_SCORE_WEIGHT;
+                state.thermalOpportunityDeferSeen = true;
+            }
+            if (thermalOpportunity.changedByLearning) {
+                state.thermalOpportunityChangedByLearning = true;
+            }
+            if (state.thermalOpportunityLastExplanation === undefined || thermalOpportunity.learning.usable) {
+                state.thermalOpportunityLastExplanation = thermalOpportunity;
+            }
             score -= e * priority * 0.38;
             const peakEur = peakFutureImportCt(state, candidate.slotIdx) * 0.01;
             const socAt = projectedSocAt(state, candidate.slotIdx);
@@ -2231,12 +2258,19 @@ function runScoreBasedAllocation(input, slots, opts) {
         slots.some((s) => s.evGridReserved)) {
         reasonCodes.push(reason_codes_1.REASON.VEHICLE_GRID_MUTEX_BATTERY);
     }
+    if (state.thermalOpportunityDeferSeen) {
+        reasonCodes.push(reason_codes_1.REASON.THERMAL_OPPORTUNITY_DEFERRED);
+    }
+    if (state.thermalOpportunityChangedByLearning) {
+        reasonCodes.push(reason_codes_1.REASON.THERMAL_OPPORTUNITY_LEARNING_APPLIED);
+    }
     const goals = buildGoals(input, state, reasonCodes);
     return {
         allocations,
         goals,
         reasonCodes,
         finalSocKwh: state.socKwh,
+        thermalLearningExplanation: (0, thermal_opportunity_gate_1.toThermalLearningExplanation)(state.thermalOpportunityLastExplanation),
     };
 }
 exports.runScoreBasedAllocation = runScoreBasedAllocation;

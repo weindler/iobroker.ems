@@ -483,6 +483,7 @@ function buildUnifiedInputFromForecastContext(ctx) {
                     reheatHysteresisActive: bool(ihD, "reheatHysteresisActive") === true,
                     uncertainty: thermalQuality,
                     freshness: thermalFresh,
+                    learnedPriceTimingScore: ctx.thermalLearnedPriceTimingScore ?? null,
                 };
             })()
             : null,

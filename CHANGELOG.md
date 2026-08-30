@@ -6,6 +6,27 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.2.8] – 2026-08-30
+
+### Added
+
+- **Block A — Daily Evaluator:** retrospektive Findings/Scores je Domäne, diagnostischer `learning_state_v1.json` (u. a. `thermalPriceTimingScore`, `batteryReserveAccuracyPct`); Backup-Inventar; Learning-Tick-Verdrahtung.
+- **Block B — Learned Planner:** zentrales Learning Gate; Thermal-Opportunity-Kalibrierung und restriktivere Battery-Opportunity-Marge aus Block-A-Metriken; Explainability-States `planner.learning.thermal_explanation` / `battery_explanation` (`baselineDecision` / `adjustedDecision` / `changedByLearning`).
+
+### Changed
+
+- **Day Telemetry Persistenz:** `forecastSnapshots` speichern Preis-/PV-Horizonte als Basis-Revisionen + kleine Deltas (`forecastRevisions`); Rehydrate beim Lesen für Point-in-Time; alte Tagesdateien weiterhin lesbar. Deutlich kleinere Tagesdateien bei realistischer Replan-Last.
+
+---
+
+## [0.2.7] – 2026-08-30
+
+### Fixed
+
+- **Live-Slot-Override:** Live-PV-/Hauslast-Override nur auf den exakten aktuellen Slot (kein Timestamp-Doppel in `forecastSnapshots.pvSlotKwh`).
+
+---
+
 ## [0.2.6] – 2026-08-30
 
 ### Fixed

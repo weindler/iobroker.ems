@@ -366,6 +366,15 @@ export type UnifiedClimateUnitInput = {
 	 * nicht als unabhängige Lasten addieren. null = eigenständige Unit.
 	 */
 	sharedPowerGroupId?: string | null;
+	/**
+	 * Additiv (Block A, Abnahme-Korrektur #2b): aktuelle Raumfeuchte bzw. konfigurierte
+	 * Dehumidify-Zielfeuchte — rein deskriptiv für day_telemetry-Historisierung, keine
+	 * Auswirkung auf Planner-Scoring/Allocation. `roomTempC`/`targetTempC` existieren bereits
+	 * oben; diese beiden ergänzen sie um die Feuchte-Seite derselben Urgency-Formel
+	 * (hard_off_worth_it.ts).
+	 */
+	roomHumidityPct?: number | null;
+	maxHumidityPct?: number | null;
 };
 
 export type UnifiedClimateInput = {

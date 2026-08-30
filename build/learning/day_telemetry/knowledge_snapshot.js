@@ -80,6 +80,10 @@ function buildPlannerKnowledgeSnapshot(input, tsIso, extra) {
         hardOffAtIso: u.hardStopMs != null && Number.isFinite(u.hardStopMs)
             ? new Date(u.hardStopMs).toISOString()
             : null,
+        roomTempC: u.roomTempC ?? null,
+        targetTempC: u.targetTempC ?? null,
+        roomHumidityPct: u.roomHumidityPct ?? null,
+        maxHumidityPct: u.maxHumidityPct ?? null,
     })) ?? [];
     return {
         tsIso,

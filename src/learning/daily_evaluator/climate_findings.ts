@@ -6,19 +6,48 @@
  * auf Mandatory-Flag + Preis-Timing beschränkt, kein erfundener Komfort-Score.
  */
 
-import type { ClimateRunSegment, DayTelemetryDayRecord } from "../day_telemetry/types";
+import type { ClimateRunSegment, DayTelemetryDayRecord, PlannerKnowledgeSnapshot } from "../day_telemetry/types";
 import { buildDaySlotLayout, slotIndexForMs } from "../day_telemetry/slots";
 import { priceRankPercentileAtDecisionTime, resolveKnowledgeSnapshotAt, resolveKnownPriceAtSlotStart } from "./knowledge_time";
 import type { EvaluatorFinding, FindingClassification } from "./types";
-// Abnahme-Korrektur #2: bereits vorhandene, fachlich begründete AC-Mindestlaufzeit-Konstante
-// wiederverwenden (Referenz-Wert bei neutralem Komfortbedarf, siehe hard_off_worth_it.ts) —
-// keine neue Komfortformel. Der Urgency-adjustierte Anteil (demandUrgency01) ist zum
-// Snapshot-Zeitpunkt nicht historisiert (nur AC-Engine-intern) und wird daher NICHT genutzt;
-// 20 Minuten ist die Obergrenze der bestehenden Regel (worst case bei Urgency=0).
-import { AC_MIN_WORTHWHILE_RUNTIME_MIN_DEFAULT } from "../../addons/air_conditioning/runtime/hard_off_worth_it";
+// Abnahme-Korrektur #2b: dieselbe fachliche Funktion wie die Runtime (`isHardOffStartWorthwhile`)
+// mit den zum Entscheidungszeitpunkt tatsächlich bekannten Rohgrößen — keine neue Komfortformel,
+// keine pauschale Urgency=0-Annahme. Die Urgency wird aus historisierten roomTempC/targetTempC
+// (cool) bzw. roomHumidityPct/maxHumidityPct (dry) über dieselben Formeln nachgerechnet, die die
+// Engine live nutzt (coolingDemandUrgency01/dehumidifyDemandUrgency01); der tatsächliche
+// FSM-Modus (`seg.mode`, real historisiert) entscheidet, welche Formel greift.
+import {
+	AC_MIN_WORTHWHILE_RUNTIME_MIN_DEFAULT,
+	coolingDemandUrgency01,
+	dehumidifyDemandUrgency01,
+	isHardOffStartWorthwhile,
+} from "../../addons/air_conditioning/runtime/hard_off_worth_it";
 
 const LATE_START_REASON_CODE = "late_start_near_hard_off";
 const HARD_OFF_CONTEXT_UNKNOWN_REASON_CODE = "hard_off_context_unknown";
+const HARD_OFF_URGENCY_UNKNOWN_REASON_CODE = "hard_off_urgency_context_unknown";
+
+/**
+ * Rekonstruiert `demandUrgency01` aus den zum Entscheidungszeitpunkt historisierten Rohgrößen —
+ * dieselben Formeln wie die FSM (fsm.ts), gesteuert vom real beobachteten `seg.mode`
+ * ("cooling"/"dehumidify", 1:1 aus dem Runtime-State zum Laufzeitpunkt). `null` = Rohgrößen
+ * fehlen oder Modus nicht eindeutig zuordenbar → nicht raten.
+ */
+function resolveHistoricalDemandUrgency01(
+	seg: ClimateRunSegment,
+	unitSnap: PlannerKnowledgeSnapshot["climateUnits"][number] | null,
+): number | null {
+	if (!unitSnap) return null;
+	if (seg.mode === "cooling") {
+		if (unitSnap.roomTempC == null || unitSnap.targetTempC == null) return null;
+		return coolingDemandUrgency01(unitSnap.roomTempC, unitSnap.targetTempC);
+	}
+	if (seg.mode === "dehumidify") {
+		if (unitSnap.roomHumidityPct == null || unitSnap.maxHumidityPct == null) return null;
+		return dehumidifyDemandUrgency01(unitSnap.roomHumidityPct, unitSnap.maxHumidityPct);
+	}
+	return null;
+}
 
 function actualPriceRankPercentile(day: DayTelemetryDayRecord, priceCtPerKwh: number | null): number | null {
 	if (priceCtPerKwh == null || !Number.isFinite(priceCtPerKwh)) return null;
@@ -67,6 +96,7 @@ export function evaluateClimateFindings(day: DayTelemetryDayRecord): EvaluatorFi
 		let outcomeQuality: FindingClassification;
 		const reasonCodes: string[] = [];
 		let insufficientData = false;
+		let demandUrgency01Resolved: number | null = null;
 
 		// Abnahme-Korrektur #2: historischer Hard-Off-Kontext dieser Unit zum Entscheidungszeitpunkt
 		// (nie aktuelle Config) — additiv aus climateUnits[].hardOffAtIso.
@@ -92,22 +122,40 @@ export function evaluateClimateFindings(day: DayTelemetryDayRecord): EvaluatorFi
 			reasonCodes.push(HARD_OFF_CONTEXT_UNKNOWN_REASON_CODE);
 			insufficientData = true;
 		} else {
-			if (
+			const demandUrgency01 = resolveHistoricalDemandUrgency01(seg, unitSnap);
+			demandUrgency01Resolved = demandUrgency01;
+			const urgencyMattersHere =
 				remainingMinutesUntilHardOff != null &&
 				remainingMinutesUntilHardOff >= 0 &&
-				remainingMinutesUntilHardOff < AC_MIN_WORTHWHILE_RUNTIME_MIN_DEFAULT
-			) {
-				// Start mit weniger Restzeit als die bestehende, bereits produktiv genutzte
-				// Referenz-Mindestlaufzeit (neutraler Komfortbedarf) — belastbar aus historisiertem
-				// hardStopMs ableitbar, ohne Urgency-Wert konservativ (Worst-Case) bewertet.
-				decisionQuality = "avoidable";
-				outcomeQuality = "avoidable";
-				reasonCodes.push(LATE_START_REASON_CODE);
+				remainingMinutesUntilHardOff < AC_MIN_WORTHWHILE_RUNTIME_MIN_DEFAULT;
+
+			if (urgencyMattersHere && demandUrgency01 == null) {
+				// Restzeit liegt in der Zone, in der die Dringlichkeit das Ergebnis ändern könnte
+				// (siehe isHardOffStartWorthwhile), aber die zum Entscheidungszeitpunkt bekannten
+				// Rohgrößen (roomTempC/targetTempC bzw. roomHumidityPct/maxHumidityPct) fehlen im
+				// Snapshot (nicht persistiert oder Alt-Daten vor dieser Erweiterung) — nicht raten.
+				decisionQuality = "unknown";
+				outcomeQuality = "unknown";
+				reasonCodes.push(HARD_OFF_URGENCY_UNKNOWN_REASON_CODE);
+				insufficientData = true;
 			} else {
-				decisionQuality = classifyByPricePercentile(decisionPercentile);
-				outcomeQuality = classifyByPricePercentile(actualPercentile);
-				reasonCodes.push(decisionPercentile == null ? "decision_price_unknown" : "price_timed");
-				insufficientData = decisionPercentile == null;
+				// demandUrgency01 unbekannt außerhalb der Zone: wirkungslos für das Ergebnis
+				// (requiredMinutes <= AC_MIN_WORTHWHILE_RUNTIME_MIN_DEFAULT <= remaining), daher
+				// 0 (Worst-Case) unschädlich als Platzhalter — dieselbe Funktion wie die Runtime.
+				const worthIt = isHardOffStartWorthwhile({
+					remainingMinutesUntilHardOff,
+					demandUrgency01: demandUrgency01 ?? 0,
+				});
+				if (!worthIt.worthwhile) {
+					decisionQuality = "avoidable";
+					outcomeQuality = "avoidable";
+					reasonCodes.push(LATE_START_REASON_CODE);
+				} else {
+					decisionQuality = classifyByPricePercentile(decisionPercentile);
+					outcomeQuality = classifyByPricePercentile(actualPercentile);
+					reasonCodes.push(decisionPercentile == null ? "decision_price_unknown" : "price_timed");
+					insufficientData = decisionPercentile == null;
+				}
 			}
 		}
 
@@ -130,12 +178,19 @@ export function evaluateClimateFindings(day: DayTelemetryDayRecord): EvaluatorFi
 				decisionPricePercentile: decisionPercentile,
 				actualPricePercentile: actualPercentile,
 				remainingMinutesUntilHardOff,
+				demandUrgency01: demandUrgency01Resolved,
 			},
 			energyImpactKwh: seg.energyKwh,
 			costImpactCt:
 				actualPriceCtPerKwh != null ? Math.round(seg.energyKwh * actualPriceCtPerKwh * 100) / 100 : null,
 			reasonCodes,
-			explanationDe: buildClimateExplanation(seg, decisionQuality, reasonCodes, remainingMinutesUntilHardOff),
+			explanationDe: buildClimateExplanation(
+				seg,
+				decisionQuality,
+				reasonCodes,
+				remainingMinutesUntilHardOff,
+				demandUrgency01Resolved,
+			),
 			insufficientData,
 			notApplicable: false,
 			userOverride: false,
@@ -150,13 +205,18 @@ function buildClimateExplanation(
 	decisionQuality: FindingClassification,
 	reasonCodes: string[],
 	remainingMinutesUntilHardOff: number | null,
+	demandUrgency01: number | null,
 ): string {
 	const base = `Klima-Lauf (${seg.mode}, ${seg.activeUnitCombination}) ${Math.round(seg.runtimeSec / 60)} min, ${seg.energyKwh.toFixed(2)} kWh`;
 	if (reasonCodes.includes(HARD_OFF_CONTEXT_UNKNOWN_REASON_CODE)) {
 		return `${base} — historischer Hard-Off-Kontext zum Entscheidungszeitpunkt nicht persistiert (insufficient_data).`;
 	}
+	if (reasonCodes.includes(HARD_OFF_URGENCY_UNKNOWN_REASON_CODE)) {
+		return `${base} — Restzeit ${Math.round(remainingMinutesUntilHardOff ?? 0)} min vor Hard-Off, aber historischer Komfortbedarf (roomTemp/roomHumidity zum Entscheidungszeitpunkt) nicht persistiert (insufficient_data).`;
+	}
 	if (reasonCodes.includes(LATE_START_REASON_CODE)) {
-		return `${base} — Start ${Math.round(remainingMinutesUntilHardOff ?? 0)} min vor Hard-Off, unter Referenz-Mindestlaufzeit (${AC_MIN_WORTHWHILE_RUNTIME_MIN_DEFAULT} min bei neutralem Komfortbedarf).`;
+		const urgencyPct = demandUrgency01 != null ? Math.round(demandUrgency01 * 100) : 0;
+		return `${base} — Start ${Math.round(remainingMinutesUntilHardOff ?? 0)} min vor Hard-Off, bei damaligem Komfortbedarf (${urgencyPct} %) unter Mindestlaufzeit laut isHardOffStartWorthwhile.`;
 	}
 	return `${base} — decisionQuality=${decisionQuality}.`;
 }

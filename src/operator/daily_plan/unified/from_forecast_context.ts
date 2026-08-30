@@ -419,6 +419,12 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 		const hardStopMs = minsToHardOff !== null ? nowMs + minsToHardOff * 60_000 : null;
 		const sharedRaw = str(d, "sharedPowerGroupId");
 		const sharedPowerGroupId = sharedRaw && sharedRaw.trim() ? sharedRaw.trim() : null;
+		/**
+		 * Additiv (Block A, Abnahme-Korrektur #2b): Feuchte-Seite derselben Urgency-Formel
+		 * (hard_off_worth_it.ts) — rein deskriptiv, keine Auswirkung auf Scoring/Allocation.
+		 */
+		const roomHumidityPct = num(d, "roomHumidityPct");
+		const maxHumidityPct = num(d, "maxHumidityPct");
 		climateUnits.push({
 			unitId: CONTRIBUTION_IDS.AC_UNIT(u),
 			label: str(d, "name") ?? `unit_${u}`,
@@ -436,6 +442,8 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 			holdPowerW,
 			hardStopMs,
 			sharedPowerGroupId,
+			roomHumidityPct,
+			maxHumidityPct,
 		});
 	}
 	/*

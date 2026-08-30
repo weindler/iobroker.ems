@@ -46,6 +46,18 @@ export type PlannerKnowledgeSnapshot = {
 		 * Berechnung. `null` wenn zu diesem Zeitpunkt kein Hard-Off konfiguriert/berechenbar war.
 		 */
 		hardOffAtIso: string | null;
+		/**
+		 * Additiv (Block A, Abnahme-Korrektur #2b): zum Entscheidungszeitpunkt bekannte Rohgrößen für
+		 * die bestehende Urgency-Formel (`coolingDemandUrgency01`/`dehumidifyDemandUrgency01` in
+		 * hard_off_worth_it.ts) — 1:1 aus `UnifiedClimateUnitInput`, keine neue Berechnung. Optional:
+		 * ältere, vor dieser Erweiterung geschriebene Snapshots haben diese Felder nicht (undefined),
+		 * das ist von `null` (Wert war bekannt und leer) zu unterscheiden — beides bedeutet für die
+		 * Auswertung "nicht belastbar bekannt".
+		 */
+		roomTempC?: number | null;
+		targetTempC?: number | null;
+		roomHumidityPct?: number | null;
+		maxHumidityPct?: number | null;
 	}>;
 	/**
 	 * Additiv (Block A): tatsächlich verwendeter Wallbox-Ziel-Kontext zum Snapshot-Zeitpunkt.

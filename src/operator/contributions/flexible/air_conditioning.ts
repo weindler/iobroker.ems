@@ -105,6 +105,13 @@ function buildUnitContribution(
 			roomHumidityPct: unitInput.roomHumidityPct ?? null,
 			onTempC: unit.onTempC,
 			offTempC: unit.offTempC,
+			/**
+			 * Additiv (Block A, Abnahme-Korrektur #2b): Dehumidify-Zielfeuchte — rein deskriptiv,
+			 * erreicht den Unified Planner (roomHumidityPct/maxHumidityPct in from_forecast_context.ts)
+			 * für die Historisierung der bestehenden Urgency-Formel, keine Auswirkung auf diese
+			 * Contribution selbst.
+			 */
+			maxHumidityPct: unit.maxHumidityPct,
 			expectedKwhToday: round3(forecast.expectedKwh),
 			expectedHoursToday: forecast.expectedHours,
 			coolingHours: forecast.coolingHours,

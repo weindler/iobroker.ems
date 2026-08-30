@@ -2,7 +2,7 @@
 
 Eigenständiger ioBroker-Adapter für sicheres Energiemanagement — ohne Abhängigkeit von einem externen EMS-Server.
 
-**Aktuelle Version:** v0.2.5
+**Aktuelle Version:** v0.2.6
 
 ---
 

@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.2.6] – 2026-08-30
+
+### Fixed
+
+- **Measured Consumers Tauchpumpe-Migration:** `tauchpumpe_wh_reset_v1` entfernt den fehlerhaften Persist-Slot und schreibt den Stand **sofort atomar** beim Hydrate (nicht erst beim 20‑s-Tick). Marker nur nach erfolgreichem Write; andere Slots unverändert.
+
+---
+
 ## [0.2.5] – 2026-08-30
 
 ### Fixed

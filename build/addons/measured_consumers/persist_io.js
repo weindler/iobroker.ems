@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.writeMeasuredConsumersPersist = exports.readMeasuredConsumersPersist = exports.applyTauchpumpeWhResetMigration = exports.TAUCHPUMPE_WH_RESET_MIGRATION_ID = exports.TAUCHPUMPE_MEASURED_CONSUMER_POWER_KEY = void 0;
+exports.persistTauchpumpeWhResetMigrationIfNeeded = exports.writeMeasuredConsumersPersist = exports.readMeasuredConsumersPersist = exports.applyTauchpumpeWhResetMigration = exports.TAUCHPUMPE_WH_RESET_MIGRATION_ID = exports.TAUCHPUMPE_MEASURED_CONSUMER_POWER_KEY = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const atomic_write_1 = require("../../persistence/atomic_write");
@@ -33,19 +33,34 @@ exports.TAUCHPUMPE_MEASURED_CONSUMER_POWER_KEY = "alias.0.Garten.Sensoren.Tauchp
 exports.TAUCHPUMPE_WH_RESET_MIGRATION_ID = "tauchpumpe_wh_reset_v1";
 /**
  * Einmal-Reset nur für die Tauchpumpe nach Wh→kWh-Alias-Korrektur.
- * Verwirft falsche days/total/baseline; nächstes Sample initialisiert neu mit initial_energy_kwh.
+ * Entfernt den Slot komplett — nächstes Sample initialisiert neu mit initial_energy_kwh.
+ *
+ * Marker wird nur gesetzt, wenn:
+ * - Slot gefunden und entfernt, oder
+ * - Slot bewusst nicht vorhanden (nichts zu migrieren).
  */
 function applyTauchpumpeWhResetMigration(persist) {
     const applied = new Set(persist.migrationsApplied ?? []);
     if (applied.has(exports.TAUCHPUMPE_WH_RESET_MIGRATION_ID)) {
-        return { persist, reset: false };
+        return {
+            persist,
+            changed: false,
+            matched: false,
+            alreadyApplied: true,
+            previousRawEnergyBaselineKwh: null,
+        };
     }
     const key = exports.TAUCHPUMPE_MEASURED_CONSUMER_POWER_KEY;
     const nextSlots = { ...persist.slots };
-    let reset = false;
-    if (nextSlots[key]) {
-        nextSlots[key] = (0, persist_1.emptyMeasuredConsumerSlotPersist)();
-        reset = true;
+    const existing = nextSlots[key];
+    const matched = existing !== undefined;
+    let previousRawEnergyBaselineKwh = null;
+    if (matched) {
+        previousRawEnergyBaselineKwh =
+            typeof existing.rawEnergyBaselineKwh === "number" && Number.isFinite(existing.rawEnergyBaselineKwh)
+                ? existing.rawEnergyBaselineKwh
+                : null;
+        delete nextSlots[key];
     }
     applied.add(exports.TAUCHPUMPE_WH_RESET_MIGRATION_ID);
     return {
@@ -54,10 +69,14 @@ function applyTauchpumpeWhResetMigration(persist) {
             slots: nextSlots,
             migrationsApplied: [...applied],
         },
-        reset,
+        changed: true,
+        matched,
+        alreadyApplied: false,
+        previousRawEnergyBaselineKwh,
     };
 }
 exports.applyTauchpumpeWhResetMigration = applyTauchpumpeWhResetMigration;
+/** Reiner Dateileser — ohne Migration (Migration läuft in hydrate + sofortigem Write). */
 async function readMeasuredConsumersPersist(baseDir) {
     try {
         const raw = await fs.readFile(path.join(baseDir, persist_1.MEASURED_CONSUMERS_RUNTIME_FILENAME), "utf8");
@@ -81,22 +100,19 @@ async function readMeasuredConsumersPersist(baseDir) {
                         : {},
                 };
             }
-            const base = {
+            return {
                 version: 1,
                 slots,
                 migrationsApplied: Array.isArray(parsed.migrationsApplied)
                     ? parsed.migrationsApplied.filter((x) => typeof x === "string")
                     : [],
             };
-            return applyTauchpumpeWhResetMigration(base).persist;
         }
     }
     catch {
         // neu / noch keine Persistenz vorhanden
     }
-    const empty = (0, persist_1.emptyMeasuredConsumersPersist)();
-    empty.migrationsApplied = [exports.TAUCHPUMPE_WH_RESET_MIGRATION_ID];
-    return empty;
+    return (0, persist_1.emptyMeasuredConsumersPersist)();
 }
 exports.readMeasuredConsumersPersist = readMeasuredConsumersPersist;
 async function writeMeasuredConsumersPersist(baseDir, persist) {
@@ -104,3 +120,31 @@ async function writeMeasuredConsumersPersist(baseDir, persist) {
     await (0, atomic_write_1.atomicWriteFile)(path.join(baseDir, persist_1.MEASURED_CONSUMERS_RUNTIME_FILENAME), `${JSON.stringify(persist, null, 2)}\n`, { mode: atomic_write_1.DIAGNOSTIC_FILE_MODE });
 }
 exports.writeMeasuredConsumersPersist = writeMeasuredConsumersPersist;
+/**
+ * Wendet Tauchpumpen-Migration an und schreibt bei Änderung sofort atomar.
+ * Bei Write-Fehler: Marker/Reset gelten als nicht abgeschlossen (unveränderter Stand bleibt).
+ */
+async function persistTauchpumpeWhResetMigrationIfNeeded(baseDir, current, host) {
+    const result = applyTauchpumpeWhResetMigration(current);
+    if (!result.changed) {
+        return result.persist;
+    }
+    try {
+        await writeMeasuredConsumersPersist(baseDir, result.persist);
+    }
+    catch (e) {
+        host?.log?.warn?.(`measured_consumers migration ${exports.TAUCHPUMPE_WH_RESET_MIGRATION_ID} write failed — not marked applied: ${e instanceof Error ? e.message : String(e)}`);
+        return current;
+    }
+    if (result.matched) {
+        const prev = result.previousRawEnergyBaselineKwh != null
+            ? ` (previous rawEnergyBaselineKwh=${result.previousRawEnergyBaselineKwh})`
+            : "";
+        host?.log?.info?.(`Measured Consumers migration ${exports.TAUCHPUMPE_WH_RESET_MIGRATION_ID} applied and persisted${prev}`);
+    }
+    else {
+        host?.log?.info?.(`Measured Consumers migration ${exports.TAUCHPUMPE_WH_RESET_MIGRATION_ID} marked applied (no target slot) and persisted`);
+    }
+    return result.persist;
+}
+exports.persistTauchpumpeWhResetMigrationIfNeeded = persistTauchpumpeWhResetMigrationIfNeeded;

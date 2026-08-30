@@ -4,9 +4,7 @@ import { atomicWriteFile, DIAGNOSTIC_FILE_MODE } from "../../persistence/atomic_
 import {
 	MEASURED_CONSUMERS_RUNTIME_FILENAME,
 	emptyMeasuredConsumersPersist,
-	emptyMeasuredConsumerSlotPersist,
 	type MeasuredConsumersPersist,
-	type MeasuredConsumerSlotPersist,
 } from "./persist";
 
 /** Exakter Persist-Key der Tauchpumpe (Wh-Alias-Fehlbuchung vor Korrektur). */
@@ -19,24 +17,53 @@ export type MeasuredConsumersPersistV1 = MeasuredConsumersPersist & {
 	migrationsApplied?: string[];
 };
 
+export type TauchpumpeWhResetResult = {
+	persist: MeasuredConsumersPersistV1;
+	/** Persistenzinhalt muss geschrieben werden (Reset und/oder Marker). */
+	changed: boolean;
+	/** Zielslot war vorhanden und wurde entfernt. */
+	matched: boolean;
+	/** Migration war bereits als angewendet markiert — No-op. */
+	alreadyApplied: boolean;
+	/** Alter Roh-Baseline vor Reset (nur bei matched). */
+	previousRawEnergyBaselineKwh: number | null;
+};
+
 /**
  * Einmal-Reset nur für die Tauchpumpe nach Wh→kWh-Alias-Korrektur.
- * Verwirft falsche days/total/baseline; nächstes Sample initialisiert neu mit initial_energy_kwh.
+ * Entfernt den Slot komplett — nächstes Sample initialisiert neu mit initial_energy_kwh.
+ *
+ * Marker wird nur gesetzt, wenn:
+ * - Slot gefunden und entfernt, oder
+ * - Slot bewusst nicht vorhanden (nichts zu migrieren).
  */
 export function applyTauchpumpeWhResetMigration(
 	persist: MeasuredConsumersPersistV1,
-): { persist: MeasuredConsumersPersistV1; reset: boolean } {
+): TauchpumpeWhResetResult {
 	const applied = new Set(persist.migrationsApplied ?? []);
 	if (applied.has(TAUCHPUMPE_WH_RESET_MIGRATION_ID)) {
-		return { persist, reset: false };
+		return {
+			persist,
+			changed: false,
+			matched: false,
+			alreadyApplied: true,
+			previousRawEnergyBaselineKwh: null,
+		};
 	}
+
 	const key = TAUCHPUMPE_MEASURED_CONSUMER_POWER_KEY;
-	const nextSlots: Record<string, MeasuredConsumerSlotPersist> = { ...persist.slots };
-	let reset = false;
-	if (nextSlots[key]) {
-		nextSlots[key] = emptyMeasuredConsumerSlotPersist();
-		reset = true;
+	const nextSlots = { ...persist.slots };
+	const existing = nextSlots[key];
+	const matched = existing !== undefined;
+	let previousRawEnergyBaselineKwh: number | null = null;
+	if (matched) {
+		previousRawEnergyBaselineKwh =
+			typeof existing.rawEnergyBaselineKwh === "number" && Number.isFinite(existing.rawEnergyBaselineKwh)
+				? existing.rawEnergyBaselineKwh
+				: null;
+		delete nextSlots[key];
 	}
+
 	applied.add(TAUCHPUMPE_WH_RESET_MIGRATION_ID);
 	return {
 		persist: {
@@ -44,10 +71,14 @@ export function applyTauchpumpeWhResetMigration(
 			slots: nextSlots,
 			migrationsApplied: [...applied],
 		},
-		reset,
+		changed: true,
+		matched,
+		alreadyApplied: false,
+		previousRawEnergyBaselineKwh,
 	};
 }
 
+/** Reiner Dateileser — ohne Migration (Migration läuft in hydrate + sofortigem Write). */
 export async function readMeasuredConsumersPersist(baseDir: string): Promise<MeasuredConsumersPersistV1> {
 	try {
 		const raw = await fs.readFile(path.join(baseDir, MEASURED_CONSUMERS_RUNTIME_FILENAME), "utf8");
@@ -74,21 +105,18 @@ export async function readMeasuredConsumersPersist(baseDir: string): Promise<Mea
 							: {},
 				};
 			}
-			const base: MeasuredConsumersPersistV1 = {
+			return {
 				version: 1,
 				slots,
 				migrationsApplied: Array.isArray(parsed.migrationsApplied)
 					? parsed.migrationsApplied.filter((x): x is string => typeof x === "string")
 					: [],
 			};
-			return applyTauchpumpeWhResetMigration(base).persist;
 		}
 	} catch {
 		// neu / noch keine Persistenz vorhanden
 	}
-	const empty = emptyMeasuredConsumersPersist() as MeasuredConsumersPersistV1;
-	empty.migrationsApplied = [TAUCHPUMPE_WH_RESET_MIGRATION_ID];
-	return empty;
+	return emptyMeasuredConsumersPersist() as MeasuredConsumersPersistV1;
 }
 
 export async function writeMeasuredConsumersPersist(
@@ -101,4 +129,45 @@ export async function writeMeasuredConsumersPersist(
 		`${JSON.stringify(persist, null, 2)}\n`,
 		{ mode: DIAGNOSTIC_FILE_MODE },
 	);
+}
+
+export type TauchpumpeMigrationPersistHost = {
+	log?: { info?: (m: string) => void; warn?: (m: string) => void; debug?: (m: string) => void };
+};
+
+/**
+ * Wendet Tauchpumpen-Migration an und schreibt bei Änderung sofort atomar.
+ * Bei Write-Fehler: Marker/Reset gelten als nicht abgeschlossen (unveränderter Stand bleibt).
+ */
+export async function persistTauchpumpeWhResetMigrationIfNeeded(
+	baseDir: string,
+	current: MeasuredConsumersPersistV1,
+	host?: TauchpumpeMigrationPersistHost,
+): Promise<MeasuredConsumersPersistV1> {
+	const result = applyTauchpumpeWhResetMigration(current);
+	if (!result.changed) {
+		return result.persist;
+	}
+	try {
+		await writeMeasuredConsumersPersist(baseDir, result.persist);
+	} catch (e) {
+		host?.log?.warn?.(
+			`measured_consumers migration ${TAUCHPUMPE_WH_RESET_MIGRATION_ID} write failed — not marked applied: ${e instanceof Error ? e.message : String(e)}`,
+		);
+		return current;
+	}
+	if (result.matched) {
+		const prev =
+			result.previousRawEnergyBaselineKwh != null
+				? ` (previous rawEnergyBaselineKwh=${result.previousRawEnergyBaselineKwh})`
+				: "";
+		host?.log?.info?.(
+			`Measured Consumers migration ${TAUCHPUMPE_WH_RESET_MIGRATION_ID} applied and persisted${prev}`,
+		);
+	} else {
+		host?.log?.info?.(
+			`Measured Consumers migration ${TAUCHPUMPE_WH_RESET_MIGRATION_ID} marked applied (no target slot) and persisted`,
+		);
+	}
+	return result.persist;
 }

@@ -33,6 +33,7 @@ import {
 import {
 	readMeasuredConsumersPersist,
 	writeMeasuredConsumersPersist,
+	persistTauchpumpeWhResetMigrationIfNeeded,
 	type MeasuredConsumersPersistV1,
 } from "../persist_io";
 import { ensureMeasuredConsumersStates } from "./ensure_states";
@@ -339,7 +340,8 @@ export async function hydrateMeasuredConsumersPersist(host: MeasuredConsumersRun
 	if (persistHydrated) return;
 	const dataDir = host.getAbsolutePath?.("measured_consumers");
 	if (dataDir) {
-		persist = await readMeasuredConsumersPersist(dataDir);
+		const loaded = await readMeasuredConsumersPersist(dataDir);
+		persist = await persistTauchpumpeWhResetMigrationIfNeeded(dataDir, loaded, host);
 	}
 	persistHydrated = true;
 }

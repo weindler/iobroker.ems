@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.5",
+		"version": "0.2.6",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.6": {
+				"en": "Fix: Measured Consumers Tauchpumpe Wh-corruption migration now persists atomically on startup (tauchpumpe_wh_reset_v1). Check measured_consumers_runtime_v1.json after update.",
+				"de": "Fix: Measured-Consumers-Tauchpumpen-Migration (Wh-Fehlbuchung) schreibt beim Start atomar auf Disk (tauchpumpe_wh_reset_v1). Nach Update measured_consumers_runtime_v1.json prüfen."
+			},
 			"0.2.5": {
 				"en": "Phase-1 telemetry fixes: live PV source, quality/coverage vs complete, day files (YYYY-MM-DD.json) + monolith migration, plan snapshots/replans persist, measured consumers house_load local read + Tauchpumpe Wh reset + Admin kWh labels/warnings, diagnostic files mode 0644. Check learning/day_telemetry/*.json and measured_consumers after update.",
 				"de": "Phase-1-Telemetrie-Fixes: Live-PV-Quelle, Quality/Coverage vs. complete, Tagesdateien (YYYY-MM-DD.json) + Monolith-Migration, Plan-Snapshots/Replans persistieren, Measured Consumers Hauslast lokal + Tauchpumpe-Wh-Reset + Admin-kWh-Hinweise, Diagnose-Dateien Mode 0644. Nach Update learning/day_telemetry/*.json und measured_consumers prüfen."

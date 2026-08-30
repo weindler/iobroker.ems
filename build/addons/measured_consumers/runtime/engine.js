@@ -267,7 +267,8 @@ async function hydrateMeasuredConsumersPersist(host) {
         return;
     const dataDir = host.getAbsolutePath?.("measured_consumers");
     if (dataDir) {
-        persist = await (0, persist_io_1.readMeasuredConsumersPersist)(dataDir);
+        const loaded = await (0, persist_io_1.readMeasuredConsumersPersist)(dataDir);
+        persist = await (0, persist_io_1.persistTauchpumpeWhResetMigrationIfNeeded)(dataDir, loaded, host);
     }
     persistHydrated = true;
 }

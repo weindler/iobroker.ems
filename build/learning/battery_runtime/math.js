@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.errorResult = exports.disabledResult = exports.noSourceResult = exports.withPowerDiagnostics = exports.computeBatteryRuntimeLearning = exports.estimateRuntimeDays = exports.computeTopoffStatus = exports.calendarDaysSince = exports.findLastFullCharge = exports.resolveLastFullCharge = exports.fullChargeFromSecondsSince = exports.computePowerStats = exports.computeSocRates = exports.computeNightConsumption = exports.computeNightDischarges = void 0;
+exports.errorResult = exports.disabledResult = exports.noSourceResult = exports.withPowerDiagnostics = exports.computeBatteryRuntimeLearning = exports.estimateRuntimeDays = exports.computeTopoffStatus = exports.calendarDaysSince = exports.findLastFullCharge = exports.resolveLastFullCharge = exports.fullChargeFromSecondsSince = exports.computePowerStats = exports.computeSocRates = exports.computeNightConsumption = exports.computeNightDischarges = exports.expandBridgeWithClockEnvelope = void 0;
 const constants_1 = require("./constants");
 const night_bridge_1 = require("./night_bridge");
 const time_1 = require("./time");
@@ -44,6 +44,45 @@ function clockAstroWindows(socPoints, nightStart, nightEnd, astroDaily) {
     }
     return out;
 }
+/**
+ * Uhr-/Astro-Hülle für denselben Abendtag — erweitert dynamische PV-/Batterie-Brücken
+ * für Energie-/SOC-Messung, damit Abend vor Defizit-Erkennung und Morgen nach erstem
+ * Surplus nicht systematisch abgeschnitten werden.
+ */
+function clockEnvelopeForEvening(eveningDateKey, nightStart, nightEnd, astroDaily) {
+    const fixedStart = (0, time_1.parseTimeHHMM)(nightStart);
+    const fixedEnd = (0, time_1.parseTimeHHMM)(nightEnd);
+    if (!fixedStart || !fixedEnd)
+        return null;
+    const parts = eveningDateKey.split("-").map((x) => parseInt(x, 10));
+    if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n)))
+        return null;
+    const [y, m, d] = parts;
+    const next = new Date(y, m - 1, d + 1);
+    const nextKey = (0, time_1.localDateKey)(next);
+    const startTime = astroDaily?.startByDate.get(eveningDateKey) ?? fixedStart;
+    const endTime = astroDaily?.endByDate.get(nextKey) ?? fixedEnd;
+    const startTs = (0, time_1.timestampAtLocalTime)(eveningDateKey, startTime.hour, startTime.minute);
+    const endTs = (0, time_1.timestampAtLocalTime)(nextKey, endTime.hour, endTime.minute);
+    if (!(endTs > startTs))
+        return null;
+    return { startTs, endTs };
+}
+/** Beobachtungsfenster = dynamische Brücke ∪ Uhr-/Astro-Hülle (längere Nacht abbilden). */
+function expandBridgeWithClockEnvelope(bridge, nightStart, nightEnd, astroDaily) {
+    const clock = clockEnvelopeForEvening(bridge.eveningDateKey, nightStart, nightEnd, astroDaily);
+    if (!clock)
+        return { startTs: bridge.startTs, endTs: bridge.endTs };
+    const startTs = Math.min(bridge.startTs, clock.startTs);
+    const endTs = Math.max(bridge.endTs, clock.endTs);
+    if (!(endTs > startTs))
+        return { startTs: bridge.startTs, endTs: bridge.endTs };
+    const durH = (endTs - startTs) / constants_1.MS_PER_HOUR;
+    if (durH < 4 || durH > 20)
+        return { startTs: bridge.startTs, endTs: bridge.endTs };
+    return { startTs, endTs };
+}
+exports.expandBridgeWithClockEnvelope = expandBridgeWithClockEnvelope;
 /**
  * Nachtentladung über Brückenfenster (PV/Haus, Batterie, Astro oder feste Uhr).
  * Alle Kandidaten werden bewertet — dünnes pv_house (1 Nacht / 1 kWh) darf die
@@ -100,12 +139,13 @@ function computeNightDischarges(params) {
         const weights = [];
         const bridgeHours = [];
         for (const w of windows) {
-            /** Abend: SOC bei/vor Brückenstart; Morgen: Tiefstwert im Fenster (nicht SOC nach Ladebeginn). */
-            const socStart = (0, night_bridge_1.findSocAtOrBefore)(params.socPoints, w.startTs, maxDelta) ??
-                findNearestSoc(params.socPoints, w.startTs, maxDelta);
-            const socEnd = (0, night_bridge_1.findMinSocInRange)(params.socPoints, w.startTs, w.endTs) ??
-                (0, night_bridge_1.findSocAtOrBefore)(params.socPoints, w.endTs, maxDelta) ??
-                findNearestSoc(params.socPoints, w.endTs, maxDelta);
+            const obs = expandBridgeWithClockEnvelope(w, params.nightStart, params.nightEnd, params.astroDaily);
+            /** Abend: SOC bei/vor Beobachtungsstart; Morgen: Tiefstwert im erweiterten Fenster. */
+            const socStart = (0, night_bridge_1.findSocAtOrBefore)(params.socPoints, obs.startTs, maxDelta) ??
+                findNearestSoc(params.socPoints, obs.startTs, maxDelta);
+            const socEnd = (0, night_bridge_1.findMinSocInRange)(params.socPoints, obs.startTs, obs.endTs) ??
+                (0, night_bridge_1.findSocAtOrBefore)(params.socPoints, obs.endTs, maxDelta) ??
+                findNearestSoc(params.socPoints, obs.endTs, maxDelta);
             if (socStart === null || socEnd === null)
                 continue;
             const dischargePct = socStart - socEnd;
@@ -115,6 +155,7 @@ function computeNightDischarges(params) {
             const weight = (0, night_bridge_1.recencyWeight)(ageDays);
             pctDischarges.push(round2(dischargePct));
             weights.push(weight);
+            /** Brückendauer bleibt die dynamische Erkennung (Diagnose), nicht die Uhr-Hülle. */
             bridgeHours.push((w.endTs - w.startTs) / constants_1.MS_PER_HOUR);
             if (params.capacityKwh !== null) {
                 kwhDischarges.push(round3((dischargePct / 100) * params.capacityKwh));
@@ -194,32 +235,135 @@ function computeNightDischarges(params) {
 }
 exports.computeNightDischarges = computeNightDischarges;
 /**
- * Nachtverbrauch (Hausverbrauch, kWh) über exakt dieselben Nachtfenster, die bereits für die
- * Batterie-Entladung ermittelt wurden (`computeNightDischarges(...).windows`) — kein zweites,
- * unabhängig gepflegtes Nachtfenster. Gewichtung wie Entladung (recencyWeight) — ältere Nächte
- * zählen weniger, Saisonwechsel (Nachtlänge!) schlagen sich automatisch nieder.
+ * Nachtenergie-Bedarf für die dynamische Reserve.
+ *
+ * Pro Brückenfenster (dieselbe Abgrenzung wie Entladung), Beobachtung erweitert um
+ * Uhr-/Astro-Hülle:
+ *   houseKwh           — Hauslast-Integration
+ *   batteryDischargeKwh — integrierte Batterie-Entladeleistung
+ *   socDeltaKwh        — SOC-Start − SOC-Tief × Kapazität
+ *
+ * Maßgeblich: max der verfügbaren Signale (keine systematische Unterschätzung durch
+ * Haus-only). Sondernächte:
+ * - SOC steigt (Netz-/PV-Ladung) → ausgeschlossen
+ * - SOC-Abfall > 65 % → ausgeschlossen (Ausreißer)
+ * - Hauslast >> Batterie-/SOC-Signale (EV/Heizstab aus Netz) → Batteriebedarf, nicht Haus
+ * - nach Aggregation: Werte > 2.5× Median werden verworfen
+ *
+ * `houseAvgKwh` bleibt separat für avg_night_load_w / Grid-Import-Diagnose.
  */
 function computeNightConsumption(params) {
-    if (params.windows.length === 0 || params.housePowerPoints.length === 0) {
-        return { avgKwh: null, validNights: 0 };
+    if (params.windows.length === 0) {
+        return { avgKwh: null, houseAvgKwh: null, validNights: 0 };
     }
     const nowMs = params.nowMs ?? Date.now();
-    const kwhValues = [];
-    const weights = [];
+    const maxDelta = 3 * constants_1.MS_PER_HOUR;
+    const housePoints = params.housePowerPoints ?? [];
+    const batteryPoints = params.batteryPowerPoints ?? [];
+    const socPoints = params.socPoints ?? [];
+    const capacity = params.capacityKwh ?? null;
+    const nightStart = params.nightStart ?? "22:00";
+    const nightEnd = params.nightEnd ?? "06:00";
+    const needValues = [];
+    const houseValues = [];
+    const needWeights = [];
+    const houseWeights = [];
     for (const w of params.windows) {
-        const kwh = (0, night_bridge_1.integratePowerKwh)(params.housePowerPoints, w.startTs, w.endTs);
-        if (kwh === null || kwh <= 0)
-            continue;
+        const obs = expandBridgeWithClockEnvelope(w, nightStart, nightEnd, params.astroDaily);
         const ageDays = Math.max(0, (nowMs - w.endTs) / constants_1.MS_PER_DAY);
-        kwhValues.push(kwh);
-        weights.push((0, night_bridge_1.recencyWeight)(ageDays));
+        const weight = (0, night_bridge_1.recencyWeight)(ageDays);
+        const houseKwh = housePoints.length > 0 ? (0, night_bridge_1.integratePowerKwh)(housePoints, obs.startTs, obs.endTs) : null;
+        const batKwh = batteryPoints.length > 0
+            ? (0, night_bridge_1.integrateDischargeKwh)(batteryPoints, obs.startTs, obs.endTs)
+            : null;
+        let socDeltaKwh = null;
+        let dischargePct = null;
+        if (socPoints.length > 0 && capacity !== null && capacity > 0) {
+            const socStart = (0, night_bridge_1.findSocAtOrBefore)(socPoints, obs.startTs, maxDelta) ??
+                findNearestSoc(socPoints, obs.startTs, maxDelta);
+            const socEnd = (0, night_bridge_1.findMinSocInRange)(socPoints, obs.startTs, obs.endTs) ??
+                (0, night_bridge_1.findSocAtOrBefore)(socPoints, obs.endTs, maxDelta) ??
+                findNearestSoc(socPoints, obs.endTs, maxDelta);
+            if (socStart !== null && socEnd !== null) {
+                dischargePct = socStart - socEnd;
+                if (dischargePct > 0 && dischargePct <= 65) {
+                    socDeltaKwh = round3((dischargePct / 100) * capacity);
+                }
+            }
+        }
+        if (houseKwh !== null && houseKwh > 0) {
+            houseValues.push(houseKwh);
+            houseWeights.push(weight);
+        }
+        /*
+         * Sondernacht: Batterie wurde geladen (SOC steigt) und keine nennenswerte Entladung —
+         * keine Reserve-Lernprobe (Netzladung / PV-Rest).
+         */
+        const batteryDelivered = (socDeltaKwh !== null && socDeltaKwh > 0) || (batKwh !== null && batKwh > 0.05);
+        if (dischargePct !== null && dischargePct <= 0 && !batteryDelivered) {
+            continue;
+        }
+        if (dischargePct !== null && dischargePct > 65) {
+            continue;
+        }
+        const batterySignals = [];
+        if (socDeltaKwh !== null && socDeltaKwh > 0)
+            batterySignals.push(socDeltaKwh);
+        if (batKwh !== null && batKwh > 0)
+            batterySignals.push(batKwh);
+        const batteryNeed = batterySignals.length > 0 ? Math.max(...batterySignals) : null;
+        let nightNeed = null;
+        if (batteryNeed !== null && houseKwh !== null && houseKwh > 0) {
+            /*
+             * EV/Heizstab/Klima aus dem Netz blähen die Hauslast auf, ohne Batteriereserve zu
+             * brauchen — dann Batteriebedarf, nicht Hauslast.
+             */
+            if (houseKwh > batteryNeed * 1.75) {
+                nightNeed = batteryNeed;
+            }
+            else {
+                nightNeed = Math.max(batteryNeed, houseKwh);
+            }
+        }
+        else if (batteryNeed !== null) {
+            nightNeed = batteryNeed;
+        }
+        else if (houseKwh !== null && houseKwh > 0) {
+            nightNeed = houseKwh;
+        }
+        if (nightNeed === null || !(nightNeed > 0))
+            continue;
+        needValues.push(round3(nightNeed));
+        needWeights.push(weight);
     }
+    const filtered = trimNightNeedOutliers(needValues, needWeights);
     return {
-        avgKwh: (0, night_bridge_1.weightedAverage)(kwhValues, weights),
-        validNights: kwhValues.length,
+        avgKwh: (0, night_bridge_1.weightedAverage)(filtered.values, filtered.weights),
+        houseAvgKwh: (0, night_bridge_1.weightedAverage)(houseValues, houseWeights),
+        validNights: filtered.values.length,
     };
 }
 exports.computeNightConsumption = computeNightConsumption;
+/** Verwirft Ausreißer oberhalb von 2.5× Median (Sondernächte mit extremem Verbrauch). */
+function trimNightNeedOutliers(values, weights) {
+    if (values.length < 4)
+        return { values, weights };
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+    if (!(median > 0))
+        return { values, weights };
+    const cap = median * 2.5;
+    const outV = [];
+    const outW = [];
+    for (let i = 0; i < values.length; i++) {
+        if (values[i] <= cap) {
+            outV.push(values[i]);
+            outW.push(weights[i]);
+        }
+    }
+    return outV.length > 0 ? { values: outV, weights: outW } : { values, weights };
+}
 function computeSocRates(socPoints) {
     const chargeRates = [];
     const dischargeRates = [];
@@ -348,19 +492,35 @@ function computeBatteryRuntimeLearning(params) {
     const nightConsumption = computeNightConsumption({
         windows: night.windows,
         housePowerPoints: params.housePowerPoints ?? [],
+        batteryPowerPoints: params.powerPoints,
+        socPoints: params.socPoints,
+        capacityKwh: params.capacityKwh,
+        nightStart: params.cfg.nightStart,
+        nightEnd: params.cfg.nightEnd,
+        astroDaily: params.astroDaily,
         nowMs: params.now.getTime(),
     });
-    const predictedNightConsumptionKwh = nightConsumption.avgKwh;
     /*
-     * Netzbezug in der Nacht = Hausverbrauch minus dem, was die Batterie davon deckte — abgeleitet
-     * aus den zwei ohnehin gelernten Größen, keine dritte, separat zu pflegende Messreihe.
+     * predictedNightConsumptionKwh = einheitlicher Nachtenergie-Bedarf (max aus Haus /
+     * Batterie-Entladung / SOC-Delta) — führende Learning-Basis für die Planner-Reserve.
+     * houseAvgKwh bleibt Diagnose für Last/W und Netzbezug-Schätzung.
      */
-    const predictedNightGridImportKwh = predictedNightConsumptionKwh !== null && night.avgKwh !== null
-        ? round3(Math.max(0, predictedNightConsumptionKwh - night.avgKwh))
+    const predictedNightConsumptionKwh = nightConsumption.avgKwh;
+    const houseAvgKwh = nightConsumption.houseAvgKwh;
+    /*
+     * Netzbezug in der Nacht ≈ Hausverbrauch minus dem, was die Batterie davon deckte —
+     * Diagnose, keine dritte Messreihe.
+     */
+    const predictedNightGridImportKwh = houseAvgKwh !== null && night.avgKwh !== null
+        ? round3(Math.max(0, houseAvgKwh - night.avgKwh))
         : null;
-    const avgNightLoadW = predictedNightConsumptionKwh !== null && night.avgBridgeHours !== null && night.avgBridgeHours > 0
-        ? round2((predictedNightConsumptionKwh / night.avgBridgeHours) * 1000)
-        : null;
+    const avgNightLoadW = houseAvgKwh !== null && night.avgBridgeHours !== null && night.avgBridgeHours > 0
+        ? round2((houseAvgKwh / night.avgBridgeHours) * 1000)
+        : predictedNightConsumptionKwh !== null &&
+            night.avgBridgeHours !== null &&
+            night.avgBridgeHours > 0
+            ? round2((predictedNightConsumptionKwh / night.avgBridgeHours) * 1000)
+            : null;
     const reserve = (0, reserve_1.resolveRequiredSocAtPvEndPct)({
         predictedNightConsumptionKwh,
         usableCapacityKwh: params.capacityKwh,

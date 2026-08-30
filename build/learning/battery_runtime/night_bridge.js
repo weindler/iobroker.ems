@@ -5,7 +5,7 @@
  * Feste Uhrzeiten nur Fallback — Winter/Sommer verschieben die Brücke um Stunden.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.average = exports.integratePowerKwh = exports.weightedAverage = exports.recencyWeight = exports.findMinSocInRange = exports.findSocAtOrBefore = exports.findNearestSoc = exports.findPvHouseNightBridges = exports.findSustainedNonDeficitStart = exports.findSustainedSurplusStart = exports.findSustainedDeficitStart = exports.buildBatteryDeficitSeries = exports.buildPvHouseNetSeries = exports.bucketPowerSeries = exports.NIGHT_BRIDGE_DEFICIT_W = exports.NIGHT_BRIDGE_BUCKET_MS = exports.DEFAULT_NIGHT_BRIDGE_FLUTTER_MS = void 0;
+exports.average = exports.integrateDischargeKwh = exports.integratePowerKwh = exports.weightedAverage = exports.recencyWeight = exports.findMinSocInRange = exports.findSocAtOrBefore = exports.findNearestSoc = exports.findPvHouseNightBridges = exports.findSustainedNonDeficitStart = exports.findSustainedSurplusStart = exports.findSustainedDeficitStart = exports.buildBatteryDeficitSeries = exports.buildPvHouseNetSeries = exports.bucketPowerSeries = exports.NIGHT_BRIDGE_DEFICIT_W = exports.NIGHT_BRIDGE_BUCKET_MS = exports.DEFAULT_NIGHT_BRIDGE_FLUTTER_MS = void 0;
 const constants_1 = require("./constants");
 const time_1 = require("./time");
 exports.DEFAULT_NIGHT_BRIDGE_FLUTTER_MS = 10 * 60_000;
@@ -320,6 +320,18 @@ exports.weightedAverage = weightedAverage;
  * zweites, unabhängiges Zeitfenster oder eine zweite Annahme über die Abtastrate.
  */
 function integratePowerKwh(points, startTs, endTs) {
+    return integrateSignedPowerKwh(points, startTs, endTs, "all");
+}
+exports.integratePowerKwh = integratePowerKwh;
+/**
+ * Integriert nur Batterie-Entladung (powerW < 0) als positive kWh über [startTs, endTs].
+ * Unabhängig von stündlichem SOC-Dedup und Kapazitäts-Mapping — direkte Energiebilanz.
+ */
+function integrateDischargeKwh(points, startTs, endTs) {
+    return integrateSignedPowerKwh(points, startTs, endTs, "discharge");
+}
+exports.integrateDischargeKwh = integrateDischargeKwh;
+function integrateSignedPowerKwh(points, startTs, endTs, mode) {
     if (!(endTs > startTs) || points.length === 0)
         return null;
     const sorted = points
@@ -340,7 +352,8 @@ function integratePowerKwh(points, startTs, endTs) {
         const segMs = segEnd - segStart;
         if (segMs <= 0)
             continue;
-        kwh += (cur.powerW * segMs) / 3_600_000_000;
+        const power = mode === "discharge" ? (cur.powerW < 0 ? Math.abs(cur.powerW) : 0) : cur.powerW;
+        kwh += (power * segMs) / 3_600_000_000;
         coveredMs += segMs;
     }
     /** Zu lückenhafte Abdeckung (< 50 % des Fensters) → kein belastbarer Wert. */
@@ -348,4 +361,3 @@ function integratePowerKwh(points, startTs, endTs) {
         return null;
     return round2(kwh);
 }
-exports.integratePowerKwh = integratePowerKwh;

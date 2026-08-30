@@ -361,6 +361,27 @@ export function integratePowerKwh(
 	startTs: number,
 	endTs: number,
 ): number | null {
+	return integrateSignedPowerKwh(points, startTs, endTs, "all");
+}
+
+/**
+ * Integriert nur Batterie-Entladung (powerW < 0) als positive kWh über [startTs, endTs].
+ * Unabhängig von stündlichem SOC-Dedup und Kapazitäts-Mapping — direkte Energiebilanz.
+ */
+export function integrateDischargeKwh(
+	points: PowerPoint[],
+	startTs: number,
+	endTs: number,
+): number | null {
+	return integrateSignedPowerKwh(points, startTs, endTs, "discharge");
+}
+
+function integrateSignedPowerKwh(
+	points: PowerPoint[],
+	startTs: number,
+	endTs: number,
+	mode: "all" | "discharge",
+): number | null {
 	if (!(endTs > startTs) || points.length === 0) return null;
 	const sorted = points
 		.filter((p) => Number.isFinite(p.ts) && Number.isFinite(p.powerW))
@@ -378,7 +399,9 @@ export function integratePowerKwh(
 		const segEnd = Math.min(endTs, cur.ts + (nextTs - cur.ts) / 2);
 		const segMs = segEnd - segStart;
 		if (segMs <= 0) continue;
-		kwh += (cur.powerW * segMs) / 3_600_000_000;
+		const power =
+			mode === "discharge" ? (cur.powerW < 0 ? Math.abs(cur.powerW) : 0) : cur.powerW;
+		kwh += (power * segMs) / 3_600_000_000;
 		coveredMs += segMs;
 	}
 	/** Zu lückenhafte Abdeckung (< 50 % des Fensters) → kein belastbarer Wert. */

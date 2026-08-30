@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.2.9] – 2026-08-30
+
+### Fixed
+
+- **Nachtreserve-Learning:** `predicted_night_consumption_kwh` (Planner-Boden) nicht mehr nur Hauslast-Integration — pro Nachtfenster `max(Hauslast, Batterie-Entladeintegration, SOC-Delta×Kapazität)`, Beobachtung erweitert um Uhr-/Astro-Hülle. Ladenächte (SOC steigt) und extreme EV-/Sonderlasten werden ausgefiltert bzw. auf den Batteriebedarf begrenzt. Kein neuer pauschaler Sicherheitsaufschlag.
+
+---
+
 ## [0.2.8] – 2026-08-30
 
 ### Added

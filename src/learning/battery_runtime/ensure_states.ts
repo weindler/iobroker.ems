@@ -39,7 +39,7 @@ export async function ensureBatteryRuntimeLearningStates(host: StateHost): Promi
 		 */
 		numState(
 			"learning.battery_runtime.predicted_night_consumption_kwh",
-			"Battery-Runtime Ø Nachtverbrauch (Hauslast)",
+			"Battery-Runtime Ø Nachtenergiebedarf (Reserve-Basis)",
 			"kWh",
 		),
 		numState(

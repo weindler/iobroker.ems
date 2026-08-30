@@ -266,9 +266,14 @@ function socAt(dateKey, hour, socPct) {
         const consumption = (0, math_1.computeNightConsumption)({
             windows: discharge.windows,
             housePowerPoints: house,
+            batteryPowerPoints: battery,
+            socPoints,
+            capacityKwh: 20,
+            nightStart: "22:00",
+            nightEnd: "06:00",
             nowMs,
         });
-        // 500 W über ~10 h Nachtfenster ≈ 5 kWh/Nacht.
+        // 500 W über ~10 h Nachtfenster ≈ 5 kWh/Nacht; SOC/Batterie decken dasselbe.
         strict_1.default.ok(consumption.avgKwh !== null && consumption.avgKwh > 4.5 && consumption.avgKwh < 5.5, `avgKwh=${consumption.avgKwh}`);
         strict_1.default.ok(consumption.validNights >= 8, `validNights=${consumption.validNights}`);
     });
@@ -298,8 +303,9 @@ function socAt(dateKey, hour, socPct) {
         strict_1.default.ok(r.requiredSocAtPvEndPct !== null && r.requiredSocAtPvEndPct > 20 && r.requiredSocAtPvEndPct < 40, `requiredSocAtPvEndPct=${r.requiredSocAtPvEndPct}`);
         strict_1.default.ok(r.nightReserveReasonDe.length > 0);
     });
-    (0, node_test_1.it)("liefert null statt eines versteckten Fallback-Werts, wenn Hausverbrauch fehlt", () => {
-        const { socPoints, battery, pv } = buildTenNightPvHouseScenario();
+    (0, node_test_1.it)("nutzt SOC-/Batterie-Nachtenergie wenn Hausverbrauch fehlt (kein versteckter Fallback-Prozent)", () => {
+        const { socPoints, battery, pv, day0 } = buildTenNightPvHouseScenario();
+        const nowMs = day0 + 11 * 86_400_000;
         const r = (0, math_1.computeBatteryRuntimeLearning)({
             socPoints,
             secondsSinceFull: null,
@@ -311,14 +317,154 @@ function socAt(dateKey, hour, socPct) {
             cfg: cfg(),
             sourceSocStateId: "x",
             sourcePowerStateId: "y",
-            now: new Date(),
+            now: new Date(nowMs),
             sampleDays: 11,
         });
+        // SOC 90→65 auf 20 kWh = 5 kWh; Batterie −500 W × ~10 h ≈ 5 kWh.
+        strict_1.default.ok(r.predictedNightConsumptionKwh !== null && r.predictedNightConsumptionKwh > 4, `predictedNightConsumptionKwh=${r.predictedNightConsumptionKwh}`);
+        strict_1.default.ok(r.requiredSocAtPvEndPct !== null && r.requiredSocAtPvEndPct > 20, `requiredSocAtPvEndPct=${r.requiredSocAtPvEndPct}`);
+    });
+    (0, node_test_1.it)("liefert null wenn weder Haus- noch Batterie-/SOC-Nachtenergie belastbar ist", () => {
+        const r = (0, math_1.computeBatteryRuntimeLearning)({
+            socPoints: [],
+            secondsSinceFull: null,
+            powerPoints: [],
+            pvPowerPoints: [],
+            housePowerPoints: [],
+            capacityKwh: 20,
+            currentSocPct: 80,
+            cfg: cfg(),
+            sourceSocStateId: "x",
+            sourcePowerStateId: "y",
+            now: new Date(),
+            sampleDays: 0,
+        });
         strict_1.default.equal(r.predictedNightConsumptionKwh, null);
-        strict_1.default.equal(r.predictedNightGridImportKwh, null);
-        strict_1.default.equal(r.avgNightLoadW, null);
         strict_1.default.equal(r.requiredSocAtPvEndPct, null);
         strict_1.default.match(r.nightReserveReasonDe, /Nachtverbrauch/);
+    });
+    (0, node_test_1.it)("predictedNightConsumptionKwh nimmt max(Haus, SOC, Batterie) — keine Haus-only-Unterschätzung", () => {
+        const MS = 3_600_000;
+        const day0 = Date.parse("2026-01-10T00:00:00.000Z");
+        const socPoints = [];
+        const battery = [];
+        const house = [];
+        const pv = [];
+        /*
+         * Hauslast-Historie unterschätzt (lückenhafte/niedrige Werte ~200 W),
+         * reale Batterie entlädt ~400 W, SOC 100→63 auf 10 kWh ≈ 3.7 kWh.
+         * Dynamische Brücke startet erst 22 Uhr, Uhr-Hülle 22–06 bleibt deckungsgleich;
+         * SOC-/Batterie-Signal muss die Reserve-Basis tragen.
+         */
+        for (let d = 0; d < 10; d++) {
+            const evening = day0 + d * 86_400_000 + 20 * MS;
+            const morning = day0 + (d + 1) * 86_400_000 + 6 * MS;
+            socPoints.push({ ts: evening, socPct: 100 });
+            socPoints.push({ ts: morning, socPct: 63 });
+            for (let h = 0; h < 24; h++) {
+                const ts = day0 + d * 86_400_000 + h * MS;
+                const isNight = h >= 20 || h < 6;
+                battery.push({ ts, powerW: isNight ? -400 : 300 });
+                house.push({ ts, powerW: isNight ? 200 : 400 });
+                pv.push({ ts, powerW: isNight ? 0 : 3000 });
+            }
+        }
+        const r = (0, math_1.computeBatteryRuntimeLearning)({
+            socPoints,
+            secondsSinceFull: null,
+            powerPoints: battery,
+            pvPowerPoints: pv,
+            housePowerPoints: house,
+            capacityKwh: 10,
+            currentSocPct: 80,
+            cfg: cfg(),
+            sourceSocStateId: "x",
+            sourcePowerStateId: "y",
+            now: new Date(day0 + 11 * 86_400_000),
+            sampleDays: 11,
+        });
+        // Haus allein ≈ 2.0 kWh; SOC ≈ 3.7; Batterie ≈ 4.0 — Reserve-Basis muss ≥ SOC sein.
+        strict_1.default.ok(r.predictedNightConsumptionKwh !== null && r.predictedNightConsumptionKwh >= 3.5, `predictedNightConsumptionKwh=${r.predictedNightConsumptionKwh} (Haus-only wäre ~2)`);
+        strict_1.default.ok((r.avgNightLoadW ?? 0) < 300, `avgNightLoadW bleibt Haus-Diagnose: ${r.avgNightLoadW}`);
+        strict_1.default.ok(r.requiredNightReserveKwh !== null && r.requiredNightReserveKwh >= 3.5 * 1.2 - 0.05, `requiredNightReserveKwh=${r.requiredNightReserveKwh}`);
+    });
+    (0, node_test_1.it)("Sondernacht mit Netzladung (SOC steigt) fließt nicht in die Reserve-Basis", () => {
+        const MS = 3_600_000;
+        const day0 = Date.parse("2026-01-10T00:00:00.000Z");
+        const socPoints = [];
+        const battery = [];
+        const house = [];
+        const pv = [];
+        for (let d = 0; d < 10; d++) {
+            const evening = day0 + d * 86_400_000 + 20 * MS;
+            const morning = day0 + (d + 1) * 86_400_000 + 6 * MS;
+            const chargeNight = d === 5;
+            socPoints.push({ ts: evening, socPct: chargeNight ? 40 : 90 });
+            socPoints.push({ ts: morning, socPct: chargeNight ? 80 : 65 });
+            for (let h = 0; h < 24; h++) {
+                const ts = day0 + d * 86_400_000 + h * MS;
+                const isNight = h >= 20 || h < 6;
+                battery.push({ ts, powerW: isNight ? (chargeNight ? 1500 : -500) : 300 });
+                house.push({ ts, powerW: 500 });
+                pv.push({ ts, powerW: isNight ? 0 : 3000 });
+            }
+        }
+        const r = (0, math_1.computeBatteryRuntimeLearning)({
+            socPoints,
+            secondsSinceFull: null,
+            powerPoints: battery,
+            pvPowerPoints: pv,
+            housePowerPoints: house,
+            capacityKwh: 20,
+            currentSocPct: 80,
+            cfg: cfg(),
+            sourceSocStateId: "x",
+            sourcePowerStateId: "y",
+            now: new Date(day0 + 11 * 86_400_000),
+            sampleDays: 11,
+        });
+        // Ohne die Ladenacht bleibt ~5 kWh; die Ladenacht darf nicht nach unten/oben verzerren.
+        strict_1.default.ok(r.predictedNightConsumptionKwh !== null &&
+            r.predictedNightConsumptionKwh > 4.5 &&
+            r.predictedNightConsumptionKwh < 5.5, `predictedNightConsumptionKwh=${r.predictedNightConsumptionKwh}`);
+    });
+    (0, node_test_1.it)("extrem hohe Hauslast (EV) ohne Batterie-Entladung wird nicht als Reserve übernommen", () => {
+        const MS = 3_600_000;
+        const day0 = Date.parse("2026-01-10T00:00:00.000Z");
+        const socPoints = [];
+        const battery = [];
+        const house = [];
+        const pv = [];
+        for (let d = 0; d < 10; d++) {
+            const evening = day0 + d * 86_400_000 + 20 * MS;
+            const morning = day0 + (d + 1) * 86_400_000 + 6 * MS;
+            const evNight = d === 3;
+            socPoints.push({ ts: evening, socPct: 90 });
+            socPoints.push({ ts: morning, socPct: 65 });
+            for (let h = 0; h < 24; h++) {
+                const ts = day0 + d * 86_400_000 + h * MS;
+                const isNight = h >= 20 || h < 6;
+                battery.push({ ts, powerW: isNight ? -500 : 300 });
+                house.push({ ts, powerW: isNight ? (evNight ? 7000 : 500) : 400 });
+                pv.push({ ts, powerW: isNight ? 0 : 3000 });
+            }
+        }
+        const r = (0, math_1.computeBatteryRuntimeLearning)({
+            socPoints,
+            secondsSinceFull: null,
+            powerPoints: battery,
+            pvPowerPoints: pv,
+            housePowerPoints: house,
+            capacityKwh: 20,
+            currentSocPct: 80,
+            cfg: cfg(),
+            sourceSocStateId: "x",
+            sourcePowerStateId: "y",
+            now: new Date(day0 + 11 * 86_400_000),
+            sampleDays: 11,
+        });
+        // EV-Nacht ~70 kWh Haus darf den Ø nicht auf >10 kWh ziehen.
+        strict_1.default.ok(r.predictedNightConsumptionKwh !== null && r.predictedNightConsumptionKwh < 8, `predictedNightConsumptionKwh=${r.predictedNightConsumptionKwh}`);
     });
 });
 (0, node_test_1.describe)("battery runtime astro parse", () => {

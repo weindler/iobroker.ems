@@ -36,7 +36,7 @@ async function ensureBatteryRuntimeLearningStates(host) {
          * Phase 1d — dynamische Nachtverbrauchs-Erfassung/-Prognose und daraus abgeleitete
          * Batterie-Reserve (ersetzt feste 50-%-Schwelle im Planner-Netzausgleich-Budget).
          */
-        numState("learning.battery_runtime.predicted_night_consumption_kwh", "Battery-Runtime Ø Nachtverbrauch (Hauslast)", "kWh"),
+        numState("learning.battery_runtime.predicted_night_consumption_kwh", "Battery-Runtime Ø Nachtenergiebedarf (Reserve-Basis)", "kWh"),
         numState("learning.battery_runtime.night_consumption_valid_nights", "Battery-Runtime gültige Nächte (Verbrauch)"),
         numState("learning.battery_runtime.predicted_night_grid_import_kwh", "Battery-Runtime Ø Nacht-Netzbezug (abgeleitet)", "kWh"),
         numState("learning.battery_runtime.avg_night_load_w", "Battery-Runtime Ø Nachtlast", "W"),

@@ -51,13 +51,13 @@ export type BatteryRuntimeComputeResult = {
 	sampleDays: number;
 	avgNightDischargePct: number | null;
 	avgNightDischargeKwh: number | null;
-	/** Ø Hausverbrauch über die gelernten Nachtfenster (kWh) — dieselbe Nachtabgrenzung wie Entladung. */
+	/** Einheitlicher Ø-Nachtenergiebedarf (kWh) für Reserve: max(Haus, Batterie-Entladung, SOC-Delta). */
 	predictedNightConsumptionKwh: number | null;
-	/** Nächte mit belastbarer Hausverbrauchs-Integration (kann von nightBridgeValidNights abweichen). */
+	/** Nächte mit belastbarem Nachtenergie-Bedarf (kann von nightBridgeValidNights abweichen). */
 	nightConsumptionValidNights: number;
-	/** Abgeleitet: Nachtverbrauch minus dem, was die Batterie deckte. */
+	/** Abgeleitet: Ø Hauslast-Nachtverbrauch minus SOC-Entladung (Diagnose). */
 	predictedNightGridImportKwh: number | null;
-	/** Abgeleitet: Ø Nachtverbrauch (kWh) / Ø Nachtbrücken-Dauer (h) × 1000. */
+	/** Abgeleitet: Ø Hauslast-Nachtverbrauch (kWh) / Ø Nachtbrücken-Dauer (h) × 1000. */
 	avgNightLoadW: number | null;
 	/** Dynamische Reserve (Phase 1d) — ersetzt feste 50-%-Schwelle; null = noch nicht berechenbar. */
 	requiredSocAtPvEndPct: number | null;

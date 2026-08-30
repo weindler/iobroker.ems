@@ -14,6 +14,7 @@ Object.defineProperty(exports, "DAY_TELEMETRY_PERSIST_CATEGORY", { enumerable: t
 const energy_integrate_1 = require("./energy_integrate");
 const knowledge_snapshot_1 = require("./knowledge_snapshot");
 const climate_segments_1 = require("./climate_segments");
+const immersion_segments_1 = require("./immersion_segments");
 const planned_freeze_1 = require("./planned_freeze");
 const persist_1 = require("./persist");
 const quality_mask_1 = require("./quality_mask");
@@ -28,6 +29,7 @@ function emptyMem() {
         lastSampleTs: null,
         baselines: { gridImport: null, gridExport: null },
         openClimate: null,
+        openImmersion: null,
         currentPlan: null,
         currentInput: null,
         sharedGroupMap: null,
@@ -263,6 +265,17 @@ async function tickDayTelemetryInner(host, now) {
                     addRuntimeSec(day.buckets.immersionRuntimeSec, i, overlap / 1000);
             }
         }
+        const immersionSegDeltaKwh = sample.immersionPowerW != null && Number.isFinite(sample.immersionPowerW)
+            ? (sample.immersionPowerW * (dtSec / 3600)) / 1000
+            : 0;
+        const immersionSeg = (0, immersion_segments_1.advanceImmersionSegment)(mem.openImmersion, nowMs, sample.immersionRuntimeOn === true, immersionSegDeltaKwh, sample.immersionRuntimeOn === true ? dtSec : 0, {
+            decisionSource: sample.immersionDecisionSource,
+            forcedMode: sample.immersionResolvedMode === null ? null : sample.immersionResolvedMode === "force",
+            hygieneStatusDe: sample.immersionHygieneStatusDe,
+            ownershipOwner: sample.immersionOwnershipOwner,
+        }, day.immersionRunSegments);
+        mem.openImmersion = immersionSeg.open;
+        day.immersionRunSegments = immersionSeg.list;
         integratePowerDomain(day, layout, fromMs, toMs, sample.climateSystemPowerW, day.buckets.climateKwh, quality_mask_1.TELEMETRY_DOMAIN.CLIMATE);
         if (sample.climateSharedPowerUsed === true || sample.climateSystemPowerW != null) {
             integratePowerDomain(day, layout, fromMs, toMs, sample.climateSystemPowerW, day.buckets.climateElecSharedKwh, quality_mask_1.TELEMETRY_DOMAIN.CLIMATE);
@@ -380,7 +393,7 @@ async function noteDayTelemetryPlanPublished(input) {
 }
 exports.noteDayTelemetryPlanPublished = noteDayTelemetryPlanPublished;
 async function notePlanInner(input) {
-    const { host, now, timezone, plan, plannerInput, replanReasons } = input;
+    const { host, now, timezone, plan, plannerInput, replanReasons, batteryDecision } = input;
     const dateKey = (0, time_1.localDateKeyInTimezone)(now, timezone);
     let store = await loadStore(host);
     const ensured = ensureDay(store, dateKey, timezone);
@@ -390,7 +403,9 @@ async function notePlanInner(input) {
     mem.currentPlan = plan;
     mem.currentInput = plannerInput;
     mem.sharedGroupMap = (0, planned_freeze_1.sharedGroupMapFromClimateUnits)(plannerInput.climate?.units ?? []);
-    const snapBody = (0, knowledge_snapshot_1.buildPlannerKnowledgeSnapshot)(plannerInput, now.toISOString());
+    const snapBody = (0, knowledge_snapshot_1.buildPlannerKnowledgeSnapshot)(plannerInput, now.toISOString(), {
+        batteryDecision,
+    });
     const snap = (0, knowledge_snapshot_1.withSnapshotId)(snapBody);
     const up = (0, knowledge_snapshot_1.upsertForecastSnapshot)(day.forecastSnapshots, snap);
     day.forecastSnapshots = up.list;

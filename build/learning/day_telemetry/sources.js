@@ -177,6 +177,10 @@ async function readLiveTelemetrySample(host, nowMs = Date.now()) {
             (await readNum(host, types_1.IMMERSION_RUNTIME_STATES.bufferTemperatureC)),
         otherMeasuredConsumersPowerW: await readNum(host, state_ids_1.MEASURED_CONSUMERS_AGGREGATE_STATES.totalPowerW),
         ownershipActive: null,
+        immersionDecisionSource: await readStr(host, types_1.IMMERSION_RUNTIME_STATES.decisionSource),
+        immersionResolvedMode: await readStr(host, types_1.IMMERSION_RUNTIME_STATES.resolvedMode),
+        immersionHygieneStatusDe: await readStr(host, types_1.IMMERSION_RUNTIME_STATES.hygieneStatusDe),
+        immersionOwnershipOwner: await readStr(host, types_1.IMMERSION_RUNTIME_STATES.ownershipOwner),
     };
 }
 exports.readLiveTelemetrySample = readLiveTelemetrySample;

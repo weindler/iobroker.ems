@@ -40,6 +40,34 @@ export type PlannerKnowledgeSnapshot = {
 		mandatory: boolean;
 		mode: string | null;
 	}>;
+	/**
+	 * Additiv (Block A): tatsächlich verwendeter Wallbox-Ziel-Kontext zum Snapshot-Zeitpunkt.
+	 * Werte kommen unverändert aus UnifiedWallboxInput — keine neue Berechnung, kein Control-Effekt.
+	 */
+	wallboxTargetSocPct: number | null;
+	wallboxMinimumDepartureSocPct: number | null;
+	wallboxEnergyGoalHard: boolean | null;
+	wallboxManagementMode: string | null;
+	/**
+	 * Additiv (Block A): tatsächlich verwendeter Battery-Discharge-/Reserve-Kontext zum
+	 * Snapshot-Zeitpunkt — Werte kommen 1:1 aus dem bestehenden Decision-Pfad
+	 * (`resolveBatteryDischargeAuthorization` + `resolveCentralBatteryReserveTarget` +
+	 * `battery_hold_active`), keine neue Logik, kein Control-Effekt. `null` wenn der
+	 * Aufrufer den Kontext nicht mitgegeben hat (z. B. ältere Tests).
+	 */
+	batteryDecision: {
+		action: "hold" | "discharge_allowed" | "discharge_blocked";
+		dischargeAllowed: boolean;
+		requiredSocAtPvEndPct: number | null;
+		holdActive: boolean;
+		reasonCode:
+			| "battery_hold_active"
+			| "price_and_reserve_ok"
+			| "reserve_unknown"
+			| "price_blocked"
+			| "soc_unknown"
+			| "soc_below_reserve";
+	} | null;
 };
 
 export type DayTelemetryReplanEvent = {
@@ -62,6 +90,29 @@ export type ClimateRunSegment = {
 	runtimeSec: number;
 	valid: boolean;
 	rejectReason: string | null;
+};
+
+/**
+ * Additiv (Block A): echte Heizstab-Lauf-Segmente analog ClimateRunSegment.
+ * Kontext-Felder sind Live-Mirror bereits vorhandener Runtime-States zum Laufzeitpunkt
+ * (kein Recompute, keine rückwirkende Rekonstruktion) — null wenn zu diesem Zeitpunkt
+ * nicht verfügbar.
+ */
+export type ImmersionRunSegment = {
+	startTs: number;
+	endTs: number;
+	energyKwh: number;
+	runtimeSec: number;
+	valid: boolean;
+	rejectReason: string | null;
+	/** Live-Mirror `IMMERSION_RUNTIME_STATES.decisionSource` bei Laufbeginn (z. B. "daily_plan", "thermal_fallback"). */
+	decisionSource: string | null;
+	/** Live-Mirror `resolved_mode === "force"` bei Laufbeginn. */
+	forcedMode: boolean | null;
+	/** Live-Mirror `hygiene_status_de` bei Laufbeginn (Rohtext, kein Recompute). */
+	hygieneStatusDe: string | null;
+	/** Live-Mirror `ownership_owner` bei Laufbeginn. */
+	ownershipOwner: string | null;
 };
 
 export type DayTelemetryStatusEvent = {
@@ -126,6 +177,8 @@ export type DayTelemetryDayRecord = {
 	forecastSnapshots: PlannerKnowledgeSnapshot[];
 	replanEvents: DayTelemetryReplanEvent[];
 	climateRunSegments: ClimateRunSegment[];
+	/** Additiv (Block A) — siehe ImmersionRunSegment. */
+	immersionRunSegments: ImmersionRunSegment[];
 	statusEvents: DayTelemetryStatusEvent[];
 };
 
@@ -191,6 +244,7 @@ export function emptyDayRecord(
 		forecastSnapshots: [],
 		replanEvents: [],
 		climateRunSegments: [],
+		immersionRunSegments: [],
 		statusEvents: [],
 	};
 }

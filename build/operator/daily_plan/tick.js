@@ -886,6 +886,17 @@ async function runDailyPlanTick(host, forecastPlan) {
                         plan: unifiedPlan,
                         plannerInput: unifiedInputFinal,
                         replanReasons: decision.reasons,
+                        /*
+                         * Additiv (Block A): 1:1 aus dem bereits berechneten Decision-Pfad dieses Ticks
+                         * (Zeilen oben) — keine neue Berechnung, kein Control-Effekt.
+                         */
+                        batteryDecision: {
+                            dischargeAllowed: batteryDischargeAuthorization.allowed,
+                            priceAllowed: batteryDischargeAuthorization.priceAllowed,
+                            socAllowed: batteryDischargeAuthorization.socAllowed,
+                            requiredSocAtPvEndPct: centralReserve.requiredSocAtPvEndPct,
+                            holdActive: hold.battery_hold_active,
+                        },
                     });
                 }
                 catch (te) {

@@ -57,6 +57,14 @@ export type LiveTelemetrySample = {
 	boilerTempC: number | null;
 	otherMeasuredConsumersPowerW: number | null;
 	ownershipActive: boolean | null;
+	/**
+	 * Additiv (Block A): Live-Mirror bestehender Immersion-Runtime-States — kein Recompute,
+	 * keine neue Logik. `null` wenn zu diesem Zeitpunkt nicht verfügbar.
+	 */
+	immersionDecisionSource: string | null;
+	immersionResolvedMode: string | null;
+	immersionHygieneStatusDe: string | null;
+	immersionOwnershipOwner: string | null;
 };
 
 async function readNum(host: TelemetrySampleHost, id: string): Promise<number | null> {
@@ -230,6 +238,10 @@ export async function readLiveTelemetrySample(
 			MEASURED_CONSUMERS_AGGREGATE_STATES.totalPowerW,
 		),
 		ownershipActive: null,
+		immersionDecisionSource: await readStr(host, IMMERSION_RUNTIME_STATES.decisionSource),
+		immersionResolvedMode: await readStr(host, IMMERSION_RUNTIME_STATES.resolvedMode),
+		immersionHygieneStatusDe: await readStr(host, IMMERSION_RUNTIME_STATES.hygieneStatusDe),
+		immersionOwnershipOwner: await readStr(host, IMMERSION_RUNTIME_STATES.ownershipOwner),
 	};
 }
 

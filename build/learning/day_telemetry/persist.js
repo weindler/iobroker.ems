@@ -28,7 +28,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DAY_TELEMETRY_EVALUABLE_COVERAGE_PCT = exports.normalizeDayTelemetryStore = exports.assertDayRecordSlotWidth = exports.pruneDayTelemetryStore = exports.readDayTelemetryPersist = exports.writeDayTelemetryPersist = exports.loadOrEmptyDayTelemetryStore = exports.pruneDayTelemetryFiles = exports.migrateMonolithToDayFiles = exports.writeDayTelemetryDay = exports.readDayTelemetryDay = exports.normalizeDayRecord = exports.dayTelemetryPersistPath = exports.dayTelemetryDayPath = exports.dayTelemetryDayFileName = exports.DAY_TELEMETRY_CATEGORY = void 0;
+exports.DAY_TELEMETRY_EVALUABLE_COVERAGE_PCT = exports.normalizeDayTelemetryStore = exports.assertDayRecordSlotWidth = exports.pruneDayTelemetryStore = exports.readDayTelemetryPersist = exports.writeDayTelemetryPersist = exports.loadOrEmptyDayTelemetryStore = exports.pruneDayTelemetryFiles = exports.migrateMonolithToDayFiles = exports.listDayTelemetryDateKeys = exports.writeDayTelemetryDay = exports.readDayTelemetryDay = exports.normalizeDayRecord = exports.dayTelemetryPersistPath = exports.dayTelemetryDayPath = exports.dayTelemetryDayFileName = exports.DAY_TELEMETRY_CATEGORY = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const atomic_write_1 = require("../../persistence/atomic_write");
@@ -116,6 +116,8 @@ function normalizeDayRecord(raw, fallbackDateKey) {
         day.replanEvents = [];
     if (!Array.isArray(day.climateRunSegments))
         day.climateRunSegments = [];
+    if (!Array.isArray(day.immersionRunSegments))
+        day.immersionRunSegments = [];
     if (!Array.isArray(day.statusEvents))
         day.statusEvents = [];
     if (!Array.isArray(day.plannedConsumers))
@@ -151,6 +153,11 @@ async function writeDayTelemetryDay(baseDir, day) {
     await (0, atomic_write_1.atomicWriteFile)(dayTelemetryDayPath(baseDir, day.dateKey), `${JSON.stringify(payload)}\n`, { mode: atomic_write_1.DIAGNOSTIC_FILE_MODE });
 }
 exports.writeDayTelemetryDay = writeDayTelemetryDay;
+/** Additiv (Block A): Liste vorhandener Tagesdateien — rein lesend, keine Migration. */
+async function listDayTelemetryDateKeys(baseDir) {
+    return listDayKeysOnDisk(baseDir);
+}
+exports.listDayTelemetryDateKeys = listDayTelemetryDateKeys;
 async function listDayKeysOnDisk(baseDir) {
     try {
         const names = await fs.readdir(baseDir);

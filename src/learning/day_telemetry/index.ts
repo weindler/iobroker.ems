@@ -70,6 +70,7 @@ export {
 	migrateMonolithToDayFiles,
 	dayTelemetryPersistPath,
 	dayTelemetryDayPath,
+	listDayTelemetryDateKeys,
 } from "./persist";
 
 export {
@@ -82,6 +83,10 @@ export {
 	advanceClimateSegment,
 	closeClimateSegment,
 } from "./climate_segments";
+export {
+	advanceImmersionSegment,
+	closeImmersionSegment,
+} from "./immersion_segments";
 export type {
 	DayTelemetryStore,
 	DayTelemetryDayRecord,
@@ -89,6 +94,7 @@ export type {
 	FrozenPlannedConsumer,
 	PlannerKnowledgeSnapshot,
 	ClimateRunSegment,
+	ImmersionRunSegment,
 	DayTelemetryReplanEvent,
 } from "./types";
 

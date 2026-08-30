@@ -16,10 +16,60 @@ function digestPresence(windows: Array<{ available: boolean; startIso: string; e
 		.slice(0, 512);
 }
 
+/**
+ * Additiv (Block A): tatsächlich verwendeter Battery-Discharge-/Reserve-Kontext, 1:1 aus dem
+ * bestehenden Decision-Pfad übernommen (resolveBatteryDischargeAuthorization +
+ * resolveCentralBatteryReserveTarget + battery_hold_active). Keine neue Berechnung hier.
+ */
+export type BatteryDecisionSnapshotInput = {
+	dischargeAllowed: boolean;
+	priceAllowed: boolean;
+	socAllowed: boolean;
+	requiredSocAtPvEndPct: number | null;
+	holdActive: boolean;
+};
+
+function deriveBatteryDecisionSnapshot(
+	ctx: BatteryDecisionSnapshotInput | null | undefined,
+): PlannerKnowledgeSnapshot["batteryDecision"] {
+	if (!ctx) return null;
+	if (ctx.holdActive) {
+		return {
+			action: "hold",
+			dischargeAllowed: ctx.dischargeAllowed,
+			requiredSocAtPvEndPct: ctx.requiredSocAtPvEndPct,
+			holdActive: true,
+			reasonCode: "battery_hold_active",
+		};
+	}
+	if (ctx.dischargeAllowed) {
+		return {
+			action: "discharge_allowed",
+			dischargeAllowed: true,
+			requiredSocAtPvEndPct: ctx.requiredSocAtPvEndPct,
+			holdActive: false,
+			reasonCode: "price_and_reserve_ok",
+		};
+	}
+	let reasonCode: NonNullable<PlannerKnowledgeSnapshot["batteryDecision"]>["reasonCode"] =
+		"soc_below_reserve";
+	if (ctx.requiredSocAtPvEndPct === null) reasonCode = "reserve_unknown";
+	else if (!ctx.priceAllowed) reasonCode = "price_blocked";
+	else if (!ctx.socAllowed) reasonCode = "soc_unknown";
+	return {
+		action: "discharge_blocked",
+		dischargeAllowed: false,
+		requiredSocAtPvEndPct: ctx.requiredSocAtPvEndPct,
+		holdActive: false,
+		reasonCode,
+	};
+}
+
 /** Extrahiert minimalen Wissens-Snapshot aus Planner-Input. */
 export function buildPlannerKnowledgeSnapshot(
 	input: UnifiedDayPlannerInput,
 	tsIso: string,
+	extra?: { batteryDecision?: BatteryDecisionSnapshotInput | null },
 ): Omit<PlannerKnowledgeSnapshot, "id"> {
 	const timezone = input.time?.timezone?.trim() || "Europe/Berlin";
 	const nowMs = Date.parse(input.time?.nowIso ?? tsIso);
@@ -71,6 +121,11 @@ export function buildPlannerKnowledgeSnapshot(
 		thermalEmptyAtIso: input.thermal?.estimatedEmptyAtIso ?? null,
 		thermalHeadroomKwh: input.thermal?.headroomEnergyKwh ?? null,
 		climateUnits,
+		wallboxTargetSocPct: input.wallbox?.targetSocPct ?? null,
+		wallboxMinimumDepartureSocPct: input.wallbox?.minimumDepartureSocPct ?? null,
+		wallboxEnergyGoalHard: input.wallbox?.energyGoalHard ?? null,
+		wallboxManagementMode: input.wallbox?.managementMode ?? null,
+		batteryDecision: deriveBatteryDecisionSnapshot(extra?.batteryDecision),
 	};
 }
 

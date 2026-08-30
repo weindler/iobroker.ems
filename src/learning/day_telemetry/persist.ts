@@ -96,6 +96,7 @@ export function normalizeDayRecord(raw: unknown, fallbackDateKey?: string): DayT
 	if (!Array.isArray(day.forecastSnapshots)) day.forecastSnapshots = [];
 	if (!Array.isArray(day.replanEvents)) day.replanEvents = [];
 	if (!Array.isArray(day.climateRunSegments)) day.climateRunSegments = [];
+	if (!Array.isArray(day.immersionRunSegments)) day.immersionRunSegments = [];
 	if (!Array.isArray(day.statusEvents)) day.statusEvents = [];
 	if (!Array.isArray(day.plannedConsumers)) day.plannedConsumers = [];
 	if (typeof day.complete !== "boolean") day.complete = false;
@@ -136,6 +137,11 @@ export async function writeDayTelemetryDay(
 		`${JSON.stringify(payload)}\n`,
 		{ mode: DIAGNOSTIC_FILE_MODE },
 	);
+}
+
+/** Additiv (Block A): Liste vorhandener Tagesdateien — rein lesend, keine Migration. */
+export async function listDayTelemetryDateKeys(baseDir: string): Promise<string[]> {
+	return listDayKeysOnDisk(baseDir);
 }
 
 async function listDayKeysOnDisk(baseDir: string): Promise<string[]> {

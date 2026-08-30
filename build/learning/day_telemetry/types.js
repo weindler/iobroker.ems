@@ -50,6 +50,7 @@ function emptyDayRecord(dateKey, timezone, startMs, endMs, slotCount) {
         forecastSnapshots: [],
         replanEvents: [],
         climateRunSegments: [],
+        immersionRunSegments: [],
         statusEvents: [],
     };
 }

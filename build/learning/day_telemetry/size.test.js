@@ -85,6 +85,17 @@ function round4(n) {
                         { consumerId: "u1", sharedPowerGroupId: "outdoor_1", mandatory: false, mode: "cool" },
                         { consumerId: "u2", sharedPowerGroupId: "outdoor_1", mandatory: true, mode: "cool" },
                     ],
+                    wallboxTargetSocPct: 80,
+                    wallboxMinimumDepartureSocPct: 60,
+                    wallboxEnergyGoalHard: false,
+                    wallboxManagementMode: "ems_candidate",
+                    batteryDecision: {
+                        action: "discharge_allowed",
+                        dischargeAllowed: true,
+                        requiredSocAtPvEndPct: 35,
+                        holdActive: false,
+                        reasonCode: "price_and_reserve_ok",
+                    },
                 };
                 day.forecastSnapshots.push(snap);
             }

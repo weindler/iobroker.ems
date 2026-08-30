@@ -26,11 +26,16 @@ import {
 	buildPlannerKnowledgeSnapshot,
 	upsertForecastSnapshot,
 	withSnapshotId,
+	type BatteryDecisionSnapshotInput,
 } from "./knowledge_snapshot";
 import {
 	advanceClimateSegment,
 	type OpenClimateSegment,
 } from "./climate_segments";
+import {
+	advanceImmersionSegment,
+	type OpenImmersionSegment,
+} from "./immersion_segments";
 import {
 	dedupePlannedConsumers,
 	freezePlannedConsumersForSlot,
@@ -82,6 +87,7 @@ type RuntimeMem = {
 	lastSampleTs: number | null;
 	baselines: CounterBaselines;
 	openClimate: OpenClimateSegment | null;
+	openImmersion: OpenImmersionSegment | null;
 	currentPlan: UnifiedDayPlan | null;
 	currentInput: UnifiedDayPlannerInput | null;
 	sharedGroupMap: SharedGroupMap | null;
@@ -99,6 +105,7 @@ function emptyMem(): RuntimeMem {
 		lastSampleTs: null,
 		baselines: { gridImport: null, gridExport: null },
 		openClimate: null,
+		openImmersion: null,
 		currentPlan: null,
 		currentInput: null,
 		sharedGroupMap: null,
@@ -410,6 +417,26 @@ async function tickDayTelemetryInner(host: DayTelemetryHost, now: Date): Promise
 				if (overlap > 0) addRuntimeSec(day.buckets.immersionRuntimeSec, i, overlap / 1000);
 			}
 		}
+		const immersionSegDeltaKwh =
+			sample.immersionPowerW != null && Number.isFinite(sample.immersionPowerW)
+				? (sample.immersionPowerW * (dtSec / 3600)) / 1000
+				: 0;
+		const immersionSeg = advanceImmersionSegment(
+			mem.openImmersion,
+			nowMs,
+			sample.immersionRuntimeOn === true,
+			immersionSegDeltaKwh,
+			sample.immersionRuntimeOn === true ? dtSec : 0,
+			{
+				decisionSource: sample.immersionDecisionSource,
+				forcedMode: sample.immersionResolvedMode === null ? null : sample.immersionResolvedMode === "force",
+				hygieneStatusDe: sample.immersionHygieneStatusDe,
+				ownershipOwner: sample.immersionOwnershipOwner,
+			},
+			day.immersionRunSegments,
+		);
+		mem.openImmersion = immersionSeg.open;
+		day.immersionRunSegments = immersionSeg.list;
 		integratePowerDomain(
 			day,
 			layout,
@@ -578,6 +605,12 @@ export async function noteDayTelemetryPlanPublished(input: {
 	plan: UnifiedDayPlan;
 	plannerInput: UnifiedDayPlannerInput;
 	replanReasons: string[];
+	/**
+	 * Additiv (Block A): tatsächlich verwendeter Battery-Discharge-/Reserve-Kontext aus dem
+	 * bestehenden Decision-Pfad im Tick — optional, `undefined`/`null` bleibt exakt heutiges
+	 * Verhalten (batteryDecision = null im Snapshot).
+	 */
+	batteryDecision?: BatteryDecisionSnapshotInput | null;
 }): Promise<void> {
 	try {
 		await notePlanInner(input);
@@ -595,8 +628,9 @@ async function notePlanInner(input: {
 	plan: UnifiedDayPlan;
 	plannerInput: UnifiedDayPlannerInput;
 	replanReasons: string[];
+	batteryDecision?: BatteryDecisionSnapshotInput | null;
 }): Promise<void> {
-	const { host, now, timezone, plan, plannerInput, replanReasons } = input;
+	const { host, now, timezone, plan, plannerInput, replanReasons, batteryDecision } = input;
 	const dateKey = localDateKeyInTimezone(now, timezone);
 	let store = await loadStore(host);
 	const ensured = ensureDay(store, dateKey, timezone);
@@ -608,7 +642,9 @@ async function notePlanInner(input: {
 	mem.currentInput = plannerInput;
 	mem.sharedGroupMap = sharedGroupMapFromClimateUnits(plannerInput.climate?.units ?? []);
 
-	const snapBody = buildPlannerKnowledgeSnapshot(plannerInput, now.toISOString());
+	const snapBody = buildPlannerKnowledgeSnapshot(plannerInput, now.toISOString(), {
+		batteryDecision,
+	});
 	const snap = withSnapshotId(snapBody);
 	const up = upsertForecastSnapshot(day.forecastSnapshots, snap);
 	day.forecastSnapshots = up.list;

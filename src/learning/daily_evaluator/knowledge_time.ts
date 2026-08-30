@@ -60,3 +60,38 @@ export function priceRankPercentileAtDecisionTime(
 	for (const v of sorted) if (v < priceCtPerKwh) below++;
 	return below / sorted.length;
 }
+
+/**
+ * Zum Entscheidungszeitpunkt bekannte erwartete PV-Energie für einen Slot-Start (kWh) — aus
+ * snapshot.pvSlotKwh (Forecast zum Zeitpunkt der Entscheidung), NICHT die tatsächliche PV.
+ * Exaktes Slot-Start-Match; kein Interpolieren. Analog `resolveKnownPriceAtSlotStart`.
+ */
+export function resolveKnownPvAtSlotStart(
+	snapshot: PlannerKnowledgeSnapshot | null,
+	slotStartMs: number,
+): number | null {
+	if (!snapshot) return null;
+	for (const [startMs, kwh] of snapshot.pvSlotKwh) {
+		if (startMs === slotStartMs) return kwh;
+	}
+	return null;
+}
+
+/**
+ * Perzentil (0–1) eines PV-Werts innerhalb der zum Entscheidungszeitpunkt bekannten PV-Reihe
+ * (pvSlotKwh desselben Snapshots) — 0 = am wenigsten erwartete PV, 1 = am meisten. null wenn
+ * PV-Reihe zu kurz (< 4 Slots). Analog `priceRankPercentileAtDecisionTime`, dieselbe Methode,
+ * nur auf die zweite bereits im Snapshot vorhandene Forecast-Reihe angewandt.
+ */
+export function pvRankPercentileAtDecisionTime(
+	snapshot: PlannerKnowledgeSnapshot | null,
+	pvKwh: number | null,
+): number | null {
+	if (!snapshot || pvKwh == null || !Number.isFinite(pvKwh)) return null;
+	const values = snapshot.pvSlotKwh.map(([, kwh]) => kwh).filter((v) => Number.isFinite(v));
+	if (values.length < 4) return null;
+	const sorted = [...values].sort((a, b) => a - b);
+	let below = 0;
+	for (const v of sorted) if (v < pvKwh) below++;
+	return below / sorted.length;
+}

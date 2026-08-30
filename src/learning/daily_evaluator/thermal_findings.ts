@@ -7,10 +7,31 @@
  * Preisverteilung des Tages — nie ein fester Cent-Schwellwert.
  */
 
-import type { DayTelemetryDayRecord, ImmersionRunSegment } from "../day_telemetry/types";
+import type { DayTelemetryDayRecord, ImmersionRunSegment, PlannerKnowledgeSnapshot } from "../day_telemetry/types";
 import { buildDaySlotLayout, slotIndexForMs } from "../day_telemetry/slots";
-import { priceRankPercentileAtDecisionTime, resolveKnowledgeSnapshotAt, resolveKnownPriceAtSlotStart } from "./knowledge_time";
+import {
+	priceRankPercentileAtDecisionTime,
+	pvRankPercentileAtDecisionTime,
+	resolveKnowledgeSnapshotAt,
+	resolveKnownPriceAtSlotStart,
+	resolveKnownPvAtSlotStart,
+} from "./knowledge_time";
 import type { EvaluatorFinding, FindingClassification } from "./types";
+
+/**
+ * Abnahme-Korrektur #1: "besseres Fenster vor thermalEmptyAtIso". Ein reiner Vergleich gegen
+ * die absoluten Block-A-Bucket-Grenzen (0.35/0.65/0.85 aus `classifyByPricePercentile`) wäre
+ * hier redundant: ein Run gilt schon dann als "avoidable"/"wasteful", wenn sein eigenes
+ * Preis-Perzentil > 0.65 liegt — unabhängig davon, ob später ein Fenster existierte. Die
+ * Opportunity-Prüfung braucht daher einen RELATIVEN Mindestabstand zwischen Run-Perzentil und
+ * Kandidaten-Perzentil, um "deutlich günstiger"/"sinnvoll mehr PV" von einem bloß leicht
+ * besseren Fenster zu unterscheiden. Lokal begründeter Schwellwert: 0.30 — dieselbe
+ * Größenordnung wie der breiteste bereits bestehende Bucket-Abstand (0.65−0.35=0.30) in
+ * `classifyByPricePercentile`, keine neu erfundene Zahl auf einer anderen Skala. Wird unten in
+ * dedizierten Tests abgedeckt.
+ */
+const SIGNIFICANT_PERCENTILE_GAP = 0.3;
+const BETTER_WINDOW_REASON_CODE = "better_window_available_before_thermal_empty";
 
 function actualPriceRankPercentile(day: DayTelemetryDayRecord, priceCtPerKwh: number | null): number | null {
 	if (priceCtPerKwh == null || !Number.isFinite(priceCtPerKwh)) return null;
@@ -33,6 +54,49 @@ function classifyByPricePercentile(percentile: number | null): FindingClassifica
 function isHygieneDue(hygieneStatusDe: string | null): boolean {
 	if (!hygieneStatusDe) return false;
 	return hygieneStatusDe.toLowerCase().includes("fällig");
+}
+
+/**
+ * Gab es zwischen Run-Start (exklusiv) und thermalEmptyAtIso (exklusiv) im DAMALS bekannten
+ * Snapshot einen Preis-Slot, der um mindestens SIGNIFICANT_PERCENTILE_GAP günstiger war als der
+ * Run selbst (auf derselben Perzentil-Skala wie `priceRankPercentileAtDecisionTime`)? Nutzt
+ * ausschließlich snapshot.priceSlots (Forecast zum Entscheidungszeitpunkt) — nie reale spätere
+ * Preise.
+ */
+function hasCheaperWindowBeforeEmpty(
+	snapshot: PlannerKnowledgeSnapshot,
+	runStartMs: number,
+	thermalEmptyAtMs: number,
+	currentPricePercentile: number | null,
+): boolean {
+	if (currentPricePercentile == null) return false;
+	for (const [startMs, ct] of snapshot.priceSlots) {
+		if (!(startMs > runStartMs) || !(startMs < thermalEmptyAtMs)) continue;
+		const pct = priceRankPercentileAtDecisionTime(snapshot, ct);
+		if (pct != null && currentPricePercentile - pct >= SIGNIFICANT_PERCENTILE_GAP) return true;
+	}
+	return false;
+}
+
+/**
+ * Gab es zwischen Run-Start (exklusiv) und thermalEmptyAtIso (exklusiv) im DAMALS bekannten
+ * Snapshot einen PV-Slot mit um mindestens SIGNIFICANT_PERCENTILE_GAP mehr erwarteter PV als
+ * der Run selbst (dieselbe Perzentil-Methode wie beim Preis, nur auf pvSlotKwh angewandt)?
+ * Nutzt ausschließlich snapshot.pvSlotKwh (Forecast zum Entscheidungszeitpunkt) — nie reale PV.
+ */
+function hasMorePvWindowBeforeEmpty(
+	snapshot: PlannerKnowledgeSnapshot,
+	runStartMs: number,
+	thermalEmptyAtMs: number,
+	currentPvPercentile: number | null,
+): boolean {
+	if (currentPvPercentile == null) return false;
+	for (const [startMs, kwh] of snapshot.pvSlotKwh) {
+		if (!(startMs > runStartMs) || !(startMs < thermalEmptyAtMs)) continue;
+		const pct = pvRankPercentileAtDecisionTime(snapshot, kwh);
+		if (pct != null && pct - currentPvPercentile >= SIGNIFICANT_PERCENTILE_GAP) return true;
+	}
+	return false;
 }
 
 export function evaluateThermalFindings(day: DayTelemetryDayRecord): EvaluatorFinding[] {
@@ -68,6 +132,38 @@ export function evaluateThermalFindings(day: DayTelemetryDayRecord): EvaluatorFi
 			outcomeQuality = classifyByPricePercentile(actualPercentile);
 			reasonCodes.push(decisionPercentile == null ? "decision_price_unknown" : "daily_plan_price_timed");
 			insufficientData = decisionPercentile == null;
+
+			// Abnahme-Korrektur #1: Opportunity-Check gegen thermalEmptyAtIso — nur wenn Preis zum
+			// Entscheidungszeitpunkt bekannt war und der Lauf nicht forciert ist (Forced schlägt
+			// Opportunity-Bewertung). Wirkt ausschließlich auf decisionQuality — outcomeQuality bleibt
+			// unverändert auf tatsächlichen Werten (siehe Modul-Kommentar).
+			if (!insufficientData && seg.forcedMode !== true && snapshot?.thermalEmptyAtIso) {
+				const thermalEmptyAtMs = Date.parse(snapshot.thermalEmptyAtIso);
+				if (Number.isFinite(thermalEmptyAtMs) && thermalEmptyAtMs > seg.startTs) {
+					const currentPvKwh = slotStartMs != null ? resolveKnownPvAtSlotStart(snapshot, slotStartMs) : null;
+					const currentPvPercentile = pvRankPercentileAtDecisionTime(snapshot, currentPvKwh);
+					const cheaperLater = hasCheaperWindowBeforeEmpty(
+						snapshot,
+						seg.startTs,
+						thermalEmptyAtMs,
+						decisionPercentile,
+					);
+					const morePvLater = hasMorePvWindowBeforeEmpty(
+						snapshot,
+						seg.startTs,
+						thermalEmptyAtMs,
+						currentPvPercentile,
+					);
+					if (cheaperLater || morePvLater) {
+						reasonCodes.push(BETTER_WINDOW_REASON_CODE);
+						if (cheaperLater && (decisionQuality === "reasonable" || decisionQuality === "early")) {
+							decisionQuality = "avoidable";
+						} else if (!cheaperLater && morePvLater && decisionQuality === "reasonable") {
+							decisionQuality = "early";
+						}
+					}
+				}
+			}
 		} else {
 			decisionQuality = "unknown";
 			outcomeQuality = "unknown";
@@ -102,7 +198,7 @@ export function evaluateThermalFindings(day: DayTelemetryDayRecord): EvaluatorFi
 			costImpactCt:
 				actualPriceCtPerKwh != null ? Math.round(seg.energyKwh * actualPriceCtPerKwh * 100) / 100 : null,
 			reasonCodes,
-			explanationDe: buildExplanation(seg, decisionQuality, outcomeQuality),
+			explanationDe: buildExplanation(seg, decisionQuality, outcomeQuality, reasonCodes),
 			insufficientData,
 			notApplicable: false,
 			userOverride: seg.forcedMode === true,
@@ -116,11 +212,15 @@ function buildExplanation(
 	seg: ImmersionRunSegment,
 	decisionQuality: FindingClassification,
 	outcomeQuality: FindingClassification,
+	reasonCodes: string[],
 ): string {
 	const runtimeMin = Math.round(seg.runtimeSec / 60);
 	const base = `Heizstab-Lauf ${runtimeMin} min, ${seg.energyKwh.toFixed(2)} kWh`;
 	if (decisionQuality === "mandatory") return `${base} — Hygiene-Pflicht fällig, Preis irrelevant.`;
 	if (decisionQuality === "necessary") return `${base} — thermischer Sicherheits-Fallback.`;
 	if (decisionQuality === "unknown") return `${base} — Entscheidungsquelle zum Laufzeitpunkt nicht verfügbar (insufficient_data).`;
-	return `${base} — Tagesplan-Lauf, decisionQuality=${decisionQuality}, outcomeQuality=${outcomeQuality}.`;
+	const opportunitySuffix = reasonCodes.includes(BETTER_WINDOW_REASON_CODE)
+		? " Laut damaligem Snapshot gab es vor thermalEmptyAtIso ein objektiv besseres PV-/Preisfenster."
+		: "";
+	return `${base} — Tagesplan-Lauf, decisionQuality=${decisionQuality}, outcomeQuality=${outcomeQuality}.${opportunitySuffix}`;
 }

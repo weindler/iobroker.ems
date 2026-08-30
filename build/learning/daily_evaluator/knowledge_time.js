@@ -8,7 +8,7 @@
  * Zeitpunkt kein Snapshot existiert, ist decisionQuality für diesen Zeitpunkt insufficient_data.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.priceRankPercentileAtDecisionTime = exports.resolveKnownPriceAtSlotStart = exports.resolveKnowledgeSnapshotAt = void 0;
+exports.pvRankPercentileAtDecisionTime = exports.resolveKnownPvAtSlotStart = exports.priceRankPercentileAtDecisionTime = exports.resolveKnownPriceAtSlotStart = exports.resolveKnowledgeSnapshotAt = void 0;
 /** Letzter Snapshot mit tsIso <= atMs — null wenn keiner existiert (kein Fallback auf später/früher erfinden). */
 function resolveKnowledgeSnapshotAt(day, atMs) {
     let best = null;
@@ -59,3 +59,38 @@ function priceRankPercentileAtDecisionTime(snapshot, priceCtPerKwh) {
     return below / sorted.length;
 }
 exports.priceRankPercentileAtDecisionTime = priceRankPercentileAtDecisionTime;
+/**
+ * Zum Entscheidungszeitpunkt bekannte erwartete PV-Energie für einen Slot-Start (kWh) — aus
+ * snapshot.pvSlotKwh (Forecast zum Zeitpunkt der Entscheidung), NICHT die tatsächliche PV.
+ * Exaktes Slot-Start-Match; kein Interpolieren. Analog `resolveKnownPriceAtSlotStart`.
+ */
+function resolveKnownPvAtSlotStart(snapshot, slotStartMs) {
+    if (!snapshot)
+        return null;
+    for (const [startMs, kwh] of snapshot.pvSlotKwh) {
+        if (startMs === slotStartMs)
+            return kwh;
+    }
+    return null;
+}
+exports.resolveKnownPvAtSlotStart = resolveKnownPvAtSlotStart;
+/**
+ * Perzentil (0–1) eines PV-Werts innerhalb der zum Entscheidungszeitpunkt bekannten PV-Reihe
+ * (pvSlotKwh desselben Snapshots) — 0 = am wenigsten erwartete PV, 1 = am meisten. null wenn
+ * PV-Reihe zu kurz (< 4 Slots). Analog `priceRankPercentileAtDecisionTime`, dieselbe Methode,
+ * nur auf die zweite bereits im Snapshot vorhandene Forecast-Reihe angewandt.
+ */
+function pvRankPercentileAtDecisionTime(snapshot, pvKwh) {
+    if (!snapshot || pvKwh == null || !Number.isFinite(pvKwh))
+        return null;
+    const values = snapshot.pvSlotKwh.map(([, kwh]) => kwh).filter((v) => Number.isFinite(v));
+    if (values.length < 4)
+        return null;
+    const sorted = [...values].sort((a, b) => a - b);
+    let below = 0;
+    for (const v of sorted)
+        if (v < pvKwh)
+            below++;
+    return below / sorted.length;
+}
+exports.pvRankPercentileAtDecisionTime = pvRankPercentileAtDecisionTime;

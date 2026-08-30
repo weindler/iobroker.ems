@@ -51,7 +51,7 @@ export async function ensureBatteryRuntimeLearningStates(host: StateHost): Promi
 			"Battery-Runtime Ø Nacht-Netzbezug (abgeleitet)",
 			"kWh",
 		),
-		numState("learning.battery_runtime.avg_night_load_w", "Battery-Runtime Ø Nachtlast", "W"),
+		numState("learning.battery_runtime.avg_night_load_w", "Battery-Runtime Ø effektive Nachtlast (aus Reserve-Basis)", "W"),
 		numState(
 			"learning.battery_runtime.required_soc_at_pv_end_pct",
 			"Battery-Runtime Reserve bei PV-Ende (nur aus Historie — Diagnose)",

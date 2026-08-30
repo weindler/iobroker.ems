@@ -32,6 +32,7 @@ const history_1 = require("./history");
 const math_1 = require("./math");
 const persist_1 = require("./persist");
 const time_1 = require("./time");
+const constants_1 = require("./constants");
 const fs = __importStar(require("node:fs/promises"));
 const os = __importStar(require("node:os"));
 const path = __importStar(require("node:path"));
@@ -223,6 +224,45 @@ function socAt(dateKey, hour, socPct) {
         strict_1.default.ok(r.validNights >= 7, `validNights=${r.validNights}`);
         strict_1.default.ok((r.avgKwh ?? 0) >= 2, `avgKwh=${r.avgKwh}`);
     });
+    (0, node_test_1.it)("fixed_clock gewinnt nie gegen belastbares pv_house (auch bei mehr Uhr-Nächten)", () => {
+        const MS = 3_600_000;
+        const day0 = Date.parse("2026-06-01T00:00:00.000Z");
+        const socPoints = [];
+        const battery = [];
+        const house = [];
+        const pv = [];
+        /*
+         * 30 SOC-Nächte (fixed_clock hätte 29 Fenster), aber PV/Haus-Defizit nur in den
+         * letzten 8 Nächten — früher hätte Dominanz fixed_clock gewählt.
+         */
+        for (let d = 0; d < 30; d++) {
+            const evening = day0 + d * 86_400_000 + 20 * MS;
+            const morning = day0 + (d + 1) * 86_400_000 + 6 * MS;
+            socPoints.push({ ts: evening, socPct: 90 });
+            socPoints.push({ ts: morning, socPct: 70 });
+            for (let h = 0; h < 24; h++) {
+                const ts = day0 + d * 86_400_000 + h * MS;
+                const isNight = h >= 20 || h < 6;
+                battery.push({ ts, powerW: isNight ? -300 : 400 });
+                house.push({ ts, powerW: 300 });
+                const pvDeficit = d >= 22 && isNight;
+                pv.push({ ts, powerW: pvDeficit ? 0 : 2500 });
+            }
+        }
+        const r = (0, math_1.computeNightDischarges)({
+            socPoints,
+            nightStart: "22:00",
+            nightEnd: "06:00",
+            capacityKwh: 10,
+            pvPowerPoints: pv,
+            housePowerPoints: house,
+            batteryPowerPoints: battery,
+            nowMs: day0 + 31 * 86_400_000,
+        });
+        strict_1.default.notEqual(r.method, "fixed_clock");
+        strict_1.default.ok(r.method === "pv_house" || r.method === "battery_discharge", `method=${r.method}`);
+        strict_1.default.ok(r.validNights >= constants_1.MIN_VALID_NIGHTS, `validNights=${r.validNights}`);
+    });
 });
 (0, node_test_1.describe)("battery runtime night consumption + dynamic reserve (Phase 1d)", () => {
     function buildTenNightPvHouseScenario() {
@@ -385,7 +425,9 @@ function socAt(dateKey, hour, socPct) {
         });
         // Haus allein ≈ 2.0 kWh; SOC ≈ 3.7; Batterie ≈ 4.0 — Reserve-Basis muss ≥ SOC sein.
         strict_1.default.ok(r.predictedNightConsumptionKwh !== null && r.predictedNightConsumptionKwh >= 3.5, `predictedNightConsumptionKwh=${r.predictedNightConsumptionKwh} (Haus-only wäre ~2)`);
-        strict_1.default.ok((r.avgNightLoadW ?? 0) < 300, `avgNightLoadW bleibt Haus-Diagnose: ${r.avgNightLoadW}`);
+        // avgNightLoadW = predicted / bridgeHours — konsistent zur Reserve-Basis, nicht mehr Haus-only.
+        strict_1.default.ok(r.avgNightLoadW !== null && r.avgNightLoadW > 300, `avgNightLoadW=${r.avgNightLoadW}`);
+        strict_1.default.equal(r.nightBridgeMethod, "pv_house");
         strict_1.default.ok(r.requiredNightReserveKwh !== null && r.requiredNightReserveKwh >= 3.5 * 1.2 - 0.05, `requiredNightReserveKwh=${r.requiredNightReserveKwh}`);
     });
     (0, node_test_1.it)("Sondernacht mit Netzladung (SOC steigt) fließt nicht in die Reserve-Basis", () => {

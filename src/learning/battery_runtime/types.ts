@@ -57,7 +57,7 @@ export type BatteryRuntimeComputeResult = {
 	nightConsumptionValidNights: number;
 	/** Abgeleitet: Ø Hauslast-Nachtverbrauch minus SOC-Entladung (Diagnose). */
 	predictedNightGridImportKwh: number | null;
-	/** Abgeleitet: Ø Hauslast-Nachtverbrauch (kWh) / Ø Nachtbrücken-Dauer (h) × 1000. */
+	/** Abgeleitet: predictedNightConsumptionKwh / avgNightBridgeHours × 1000 (konsistent zur Reserve-Basis). */
 	avgNightLoadW: number | null;
 	/** Dynamische Reserve (Phase 1d) — ersetzt feste 50-%-Schwelle; null = noch nicht berechenbar. */
 	requiredSocAtPvEndPct: number | null;

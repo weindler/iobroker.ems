@@ -6,6 +6,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [0.2.10] – 2026-08-30
+
+### Fixed
+
+- **Nachtbrücke-Methode:** `fixed_clock` / Astro nur noch Fallback, wenn PV-/Batterie-Brücken keine belastbaren Nächte liefern — nie mehr über Nachtanzahl-Dominanz. Keine feste 22–06-Erweiterung mehr (nur Astro, falls aktiv). `avg_night_load_w` aus `predicted_night_consumption_kwh / bridge_hours` abgeleitet.
+
+---
+
 ## [0.2.9] – 2026-08-30
 
 ### Fixed

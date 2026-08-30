@@ -17,6 +17,7 @@ import {
 import { readBatteryRuntimePersist, writeBatteryRuntimePersist } from "./persist";
 import { timestampAtLocalTime } from "./time";
 import type { PowerPoint, SocPoint } from "./types";
+import { MIN_VALID_NIGHTS } from "./constants";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -227,6 +228,51 @@ describe("battery runtime night discharge", () => {
 		assert.ok(r.validNights >= 7, `validNights=${r.validNights}`);
 		assert.ok((r.avgKwh ?? 0) >= 2, `avgKwh=${r.avgKwh}`);
 	});
+
+	it("fixed_clock gewinnt nie gegen belastbares pv_house (auch bei mehr Uhr-Nächten)", () => {
+		const MS = 3_600_000;
+		const day0 = Date.parse("2026-06-01T00:00:00.000Z");
+		const socPoints: SocPoint[] = [];
+		const battery: PowerPoint[] = [];
+		const house: PowerPoint[] = [];
+		const pv: PowerPoint[] = [];
+
+		/*
+		 * 30 SOC-Nächte (fixed_clock hätte 29 Fenster), aber PV/Haus-Defizit nur in den
+		 * letzten 8 Nächten — früher hätte Dominanz fixed_clock gewählt.
+		 */
+		for (let d = 0; d < 30; d++) {
+			const evening = day0 + d * 86_400_000 + 20 * MS;
+			const morning = day0 + (d + 1) * 86_400_000 + 6 * MS;
+			socPoints.push({ ts: evening, socPct: 90 });
+			socPoints.push({ ts: morning, socPct: 70 });
+			for (let h = 0; h < 24; h++) {
+				const ts = day0 + d * 86_400_000 + h * MS;
+				const isNight = h >= 20 || h < 6;
+				battery.push({ ts, powerW: isNight ? -300 : 400 });
+				house.push({ ts, powerW: 300 });
+				const pvDeficit = d >= 22 && isNight;
+				pv.push({ ts, powerW: pvDeficit ? 0 : 2500 });
+			}
+		}
+
+		const r = computeNightDischarges({
+			socPoints,
+			nightStart: "22:00",
+			nightEnd: "06:00",
+			capacityKwh: 10,
+			pvPowerPoints: pv,
+			housePowerPoints: house,
+			batteryPowerPoints: battery,
+			nowMs: day0 + 31 * 86_400_000,
+		});
+		assert.notEqual(r.method, "fixed_clock");
+		assert.ok(
+			r.method === "pv_house" || r.method === "battery_discharge",
+			`method=${r.method}`,
+		);
+		assert.ok(r.validNights >= MIN_VALID_NIGHTS, `validNights=${r.validNights}`);
+	});
 });
 
 describe("battery runtime night consumption + dynamic reserve (Phase 1d)", () => {
@@ -404,7 +450,12 @@ describe("battery runtime night consumption + dynamic reserve (Phase 1d)", () =>
 			r.predictedNightConsumptionKwh !== null && r.predictedNightConsumptionKwh >= 3.5,
 			`predictedNightConsumptionKwh=${r.predictedNightConsumptionKwh} (Haus-only wäre ~2)`,
 		);
-		assert.ok((r.avgNightLoadW ?? 0) < 300, `avgNightLoadW bleibt Haus-Diagnose: ${r.avgNightLoadW}`);
+		// avgNightLoadW = predicted / bridgeHours — konsistent zur Reserve-Basis, nicht mehr Haus-only.
+		assert.ok(
+			r.avgNightLoadW !== null && r.avgNightLoadW > 300,
+			`avgNightLoadW=${r.avgNightLoadW}`,
+		);
+		assert.equal(r.nightBridgeMethod, "pv_house");
 		assert.ok(
 			r.requiredNightReserveKwh !== null && r.requiredNightReserveKwh >= 3.5 * 1.2 - 0.05,
 			`requiredNightReserveKwh=${r.requiredNightReserveKwh}`,

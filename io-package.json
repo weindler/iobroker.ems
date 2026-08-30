@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.9",
+		"version": "0.2.10",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.10": {
+				"en": "Fix: night bridge never prefers fixed_clock over PV/battery windows (seasonal). avg_night_load_w derived from predicted_night_consumption_kwh. Check night_bridge_method after next battery_runtime learning run.",
+				"de": "Fix: Nachtbrücke bevorzugt nie mehr fixed_clock gegenüber PV-/Batterie-Fenstern (saisonal). avg_night_load_w aus predicted_night_consumption_kwh. Nach nächstem battery_runtime-Lauf night_bridge_method prüfen."
+			},
 			"0.2.9": {
 				"en": "Fix: night reserve learning no longer underestimates — predicted_night_consumption_kwh is now max(house, battery discharge, SOC delta) over bridge∪clock window; charge nights / EV outliers filtered. Check learning.battery_runtime.predicted_night_consumption_kwh and planner.battery_reserve.* after update.",
 				"de": "Fix: Nachtreserve unterschätzt nicht mehr — predicted_night_consumption_kwh = max(Haus, Batterie-Entladung, SOC-Delta) über Brücke∪Uhr-Fenster; Ladenächte/EV-Ausreißer gefiltert. Nach Update learning.battery_runtime.predicted_night_consumption_kwh und planner.battery_reserve.* prüfen."

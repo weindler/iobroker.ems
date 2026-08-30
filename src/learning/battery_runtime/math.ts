@@ -72,33 +72,31 @@ function clockAstroWindows(
 }
 
 /**
- * Uhr-/Astro-Hülle für denselben Abendtag — erweitert dynamische PV-/Batterie-Brücken
- * für Energie-/SOC-Messung, damit Abend vor Defizit-Erkennung und Morgen nach erstem
- * Surplus nicht systematisch abgeschnitten werden.
+ * Uhr-/Astro-Hülle nur bei echten Astro-Zeiten (Sonnenuntergang/-aufgang).
+ * Feste 22–06 werden bewusst NICHT verwendet — Sommer-/Winterdifferenz wäre zu groß
+ * und würde die dynamische PV-/Batterie-Brücke verfälschen.
  */
 function clockEnvelopeForEvening(
 	eveningDateKey: string,
-	nightStart: string,
-	nightEnd: string,
+	_nightStart: string,
+	_nightEnd: string,
 	astroDaily: DailyAstroTimes | null | undefined,
 ): { startTs: number; endTs: number } | null {
-	const fixedStart = parseTimeHHMM(nightStart);
-	const fixedEnd = parseTimeHHMM(nightEnd);
-	if (!fixedStart || !fixedEnd) return null;
+	if (!astroDaily?.startByDate.has(eveningDateKey)) return null;
+	const startTime = astroDaily.startByDate.get(eveningDateKey)!;
 	const parts = eveningDateKey.split("-").map((x) => parseInt(x, 10));
 	if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return null;
 	const [y, m, d] = parts as [number, number, number];
-	const next = new Date(y, m - 1, d + 1);
-	const nextKey = localDateKey(next);
-	const startTime = astroDaily?.startByDate.get(eveningDateKey) ?? fixedStart;
-	const endTime = astroDaily?.endByDate.get(nextKey) ?? fixedEnd;
+	const nextKey = localDateKey(new Date(y, m - 1, d + 1));
+	const endTime = astroDaily.endByDate.get(nextKey) ?? astroDaily.startByDate.get(nextKey);
+	if (!endTime) return null;
 	const startTs = timestampAtLocalTime(eveningDateKey, startTime.hour, startTime.minute);
 	const endTs = timestampAtLocalTime(nextKey, endTime.hour, endTime.minute);
 	if (!(endTs > startTs)) return null;
 	return { startTs, endTs };
 }
 
-/** Beobachtungsfenster = dynamische Brücke ∪ Uhr-/Astro-Hülle (längere Nacht abbilden). */
+/** Beobachtungsfenster = dynamische Brücke ∪ Astro-Hülle (nur wenn Astro konfiguriert). */
 export function expandBridgeWithClockEnvelope(
 	bridge: NightBridgeWindow,
 	nightStart: string,
@@ -186,17 +184,6 @@ export function computeNightDischarges(params: {
 			candidates.push({ method: "battery_discharge", windows });
 		}
 	}
-	{
-		const windows = clockAstroWindows(
-			params.socPoints,
-			params.nightStart,
-			params.nightEnd,
-			params.astroDaily,
-		);
-		if (windows.length > 0) {
-			candidates.push({ method: windows[0]!.method, windows });
-		}
-	}
 
 	function scoreWindows(windows: NightBridgeWindow[]): {
 		avgPct: number | null;
@@ -251,6 +238,10 @@ export function computeNightDischarges(params: {
 		};
 	}
 
+	function isDynamicMethod(m: NightBridgeWindow["method"]): boolean {
+		return m === "pv_house" || m === "battery_discharge";
+	}
+
 	function methodRank(m: NightBridgeWindow["method"]): number {
 		switch (m) {
 			case "pv_house":
@@ -265,23 +256,33 @@ export function computeNightDischarges(params: {
 	}
 
 	/**
-	 * Belastbar bevorzugen: deutlich mehr gültige Nächte schlägt Methodenrang.
-	 * Sonst Gleichstand → pv_house vor battery_discharge (Kommentar / Tests).
-	 * Verhindert, dass dünnes pv_house (z. B. 4 Nächte bei spärlicher PV-Historie)
-	 * eine dichte battery_discharge-/Astro-Serie überschreibt.
+	 * Dynamische Brücken (PV/Haus, Batterie) haben absolute Priorität vor Astro/fixed_clock.
+	 * Night-Count-Dominanz gilt nur innerhalb derselben Klasse — sonst überschreibt
+	 * fixed_clock (jede SOC-Nacht 22–06) jede saisonale PV-Brücke.
 	 */
 	function prefer(
 		a: ReturnType<typeof scoreWindows> & { method: NightBridgeWindow["method"] },
 		b: ReturnType<typeof scoreWindows> & { method: NightBridgeWindow["method"] },
 	): boolean {
+		const aDyn = isDynamicMethod(a.method);
+		const bDyn = isDynamicMethod(b.method);
 		const aOk = a.validNights >= MIN_VALID_NIGHTS;
 		const bOk = b.validNights >= MIN_VALID_NIGHTS;
+
+		if (aDyn !== bDyn) {
+			if (aDyn && aOk) return true;
+			if (bDyn && bOk) return false;
+			if (aDyn !== bDyn) return aDyn;
+		}
+
 		if (aOk && bOk) {
-			const aDominates =
-				a.validNights >= b.validNights * 2 && a.validNights >= b.validNights + 3;
-			const bDominates =
-				b.validNights >= a.validNights * 2 && b.validNights >= a.validNights + 3;
-			if (aDominates !== bDominates) return aDominates;
+			if (aDyn && bDyn) {
+				const aDominates =
+					a.validNights >= b.validNights * 2 && a.validNights >= b.validNights + 3;
+				const bDominates =
+					b.validNights >= a.validNights * 2 && b.validNights >= a.validNights + 3;
+				if (aDominates !== bDominates) return aDominates;
+			}
 			if (a.method !== b.method) return methodRank(a.method) < methodRank(b.method);
 			return a.validNights >= b.validNights;
 		}
@@ -290,12 +291,43 @@ export function computeNightDischarges(params: {
 		return methodRank(a.method) < methodRank(b.method);
 	}
 
-	let best: (ReturnType<typeof scoreWindows> & { method: NightBridgeWindow["method"] }) | null =
-		null;
-	for (const c of candidates) {
-		const scored = { ...scoreWindows(c.windows), method: c.method };
-		if (!best || prefer(scored, best)) {
-			best = scored;
+	function pickBest(
+		list: Candidate[],
+	): (ReturnType<typeof scoreWindows> & { method: NightBridgeWindow["method"] }) | null {
+		let best: (ReturnType<typeof scoreWindows> & { method: NightBridgeWindow["method"] }) | null =
+			null;
+		for (const c of list) {
+			const scored = { ...scoreWindows(c.windows), method: c.method };
+			if (!best || prefer(scored, best)) best = scored;
+		}
+		return best;
+	}
+
+	/*
+	 * Phase 1: nur dynamische Kandidaten. Feste Uhr / Astro erst, wenn keine dynamische
+	 * Methode ≥ MIN_VALID_NIGHTS liefert — nie als Konkurrent um Nachtanzahl.
+	 */
+	let best = pickBest(candidates);
+	if (!best || best.validNights < MIN_VALID_NIGHTS) {
+		const clockWindows = clockAstroWindows(
+			params.socPoints,
+			params.nightStart,
+			params.nightEnd,
+			params.astroDaily,
+		);
+		if (clockWindows.length > 0) {
+			const clockCandidate: Candidate = {
+				method: clockWindows[0]!.method,
+				windows: clockWindows,
+			};
+			const withClock = [...candidates, clockCandidate];
+			const clockBest = pickBest(withClock);
+			if (clockBest && (!best || prefer(clockBest, best))) {
+				best = clockBest;
+				if (!candidates.some((c) => c.method === clockCandidate.method)) {
+					candidates.push(clockCandidate);
+				}
+			}
 		}
 	}
 
@@ -324,8 +356,8 @@ export function computeNightDischarges(params: {
 /**
  * Nachtenergie-Bedarf für die dynamische Reserve.
  *
- * Pro Brückenfenster (dieselbe Abgrenzung wie Entladung), Beobachtung erweitert um
- * Uhr-/Astro-Hülle:
+ * Pro Brückenfenster (dieselbe Abgrenzung wie Entladung); Beobachtung nur bei
+ * konfiguriertem Astro um Sonnenuntergang/-aufgang erweitert — nie feste 22–06.
  *   houseKwh           — Hauslast-Integration
  *   batteryDischargeKwh — integrierte Batterie-Entladeleistung
  *   socDeltaKwh        — SOC-Start − SOC-Tief × Kapazität
@@ -337,7 +369,7 @@ export function computeNightDischarges(params: {
  * - Hauslast >> Batterie-/SOC-Signale (EV/Heizstab aus Netz) → Batteriebedarf, nicht Haus
  * - nach Aggregation: Werte > 2.5× Median werden verworfen
  *
- * `houseAvgKwh` bleibt separat für avg_night_load_w / Grid-Import-Diagnose.
+ * `houseAvgKwh` bleibt separat für Grid-Import-Diagnose.
  */
 export function computeNightConsumption(params: {
 	windows: NightBridgeWindow[];
@@ -666,7 +698,9 @@ export function computeBatteryRuntimeLearning(params: {
 	/*
 	 * predictedNightConsumptionKwh = einheitlicher Nachtenergie-Bedarf (max aus Haus /
 	 * Batterie-Entladung / SOC-Delta) — führende Learning-Basis für die Planner-Reserve.
-	 * houseAvgKwh bleibt Diagnose für Last/W und Netzbezug-Schätzung.
+	 * avg_night_load_w wird daraus abgeleitet (predicted / bridgeHours), damit die drei
+	 * Nacht-Kennzahlen (Stunden × Last ≈ Bedarf) algebraisch zusammenpassen.
+	 * houseAvgKwh bleibt nur für die Netzbezug-Diagnose.
 	 */
 	const predictedNightConsumptionKwh = nightConsumption.avgKwh;
 	const houseAvgKwh = nightConsumption.houseAvgKwh;
@@ -679,13 +713,11 @@ export function computeBatteryRuntimeLearning(params: {
 			? round3(Math.max(0, houseAvgKwh - night.avgKwh))
 			: null;
 	const avgNightLoadW =
-		houseAvgKwh !== null && night.avgBridgeHours !== null && night.avgBridgeHours > 0
-			? round2((houseAvgKwh / night.avgBridgeHours) * 1000)
-			: predictedNightConsumptionKwh !== null &&
-				  night.avgBridgeHours !== null &&
-				  night.avgBridgeHours > 0
-				? round2((predictedNightConsumptionKwh / night.avgBridgeHours) * 1000)
-				: null;
+		predictedNightConsumptionKwh !== null &&
+		night.avgBridgeHours !== null &&
+		night.avgBridgeHours > 0
+			? round2((predictedNightConsumptionKwh / night.avgBridgeHours) * 1000)
+			: null;
 	const reserve = resolveRequiredSocAtPvEndPct({
 		predictedNightConsumptionKwh,
 		usableCapacityKwh: params.capacityKwh,

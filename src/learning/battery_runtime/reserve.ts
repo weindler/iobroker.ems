@@ -57,13 +57,19 @@ export function resolveRequiredSocAtPvEndPct(
 		};
 	}
 
-	const requiredReserveKwh = Math.round(input.predictedNightConsumptionKwh * (1 + margin) * 1000) / 1000;
+	const rawReserveKwh =
+		Math.round(input.predictedNightConsumptionKwh * (1 + margin) * 1000) / 1000;
+	/** Physikalisch: Reserve kann die nutzbare Kapazität nicht überschreiten. */
+	const requiredReserveKwh = Math.min(rawReserveKwh, input.usableCapacityKwh);
 	const pct = (requiredReserveKwh / input.usableCapacityKwh) * 100;
 	const requiredSocAtPvEndPct = round1(Math.min(100, Math.max(0, pct)));
 
+	const capped = requiredReserveKwh < rawReserveKwh - 0.0005;
 	return {
 		requiredSocAtPvEndPct,
 		requiredReserveKwh,
-		reasonDe: `Reserve ${requiredReserveKwh.toFixed(1)} kWh (${requiredSocAtPvEndPct.toFixed(0)} %) aus gelerntem Nachtverbrauch ${input.predictedNightConsumptionKwh.toFixed(1)} kWh + ${Math.round(margin * 100)} % Sicherheitsaufschlag.`,
+		reasonDe: capped
+			? `Reserve ${requiredReserveKwh.toFixed(1)} kWh (${requiredSocAtPvEndPct.toFixed(0)} %) — gelernt ${input.predictedNightConsumptionKwh.toFixed(1)} kWh + ${Math.round(margin * 100)} % Aufschlag würde ${rawReserveKwh.toFixed(1)} kWh ergeben, auf nutzbare Kapazität ${input.usableCapacityKwh.toFixed(1)} kWh begrenzt.`
+			: `Reserve ${requiredReserveKwh.toFixed(1)} kWh (${requiredSocAtPvEndPct.toFixed(0)} %) aus gelerntem Nachtverbrauch ${input.predictedNightConsumptionKwh.toFixed(1)} kWh + ${Math.round(margin * 100)} % Sicherheitsaufschlag.`,
 	};
 }

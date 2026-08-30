@@ -33,6 +33,8 @@ const reserve_js_1 = require("./reserve.js");
             usableCapacityKwh: 10,
         });
         strict_1.default.equal(r.requiredSocAtPvEndPct, 100);
+        strict_1.default.equal(r.requiredReserveKwh, 10);
+        strict_1.default.match(r.reasonDe, /Kapazität/);
     });
     (0, node_test_1.it)("returns null (no hidden fixed fallback) when night consumption is unknown", () => {
         const r = (0, reserve_js_1.resolveRequiredSocAtPvEndPct)({

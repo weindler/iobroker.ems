@@ -34,6 +34,8 @@ describe("dynamic battery reserve (Phase 1d)", () => {
 			usableCapacityKwh: 10,
 		});
 		assert.equal(r.requiredSocAtPvEndPct, 100);
+		assert.equal(r.requiredReserveKwh, 10);
+		assert.match(r.reasonDe, /Kapazität/);
 	});
 
 	it("returns null (no hidden fixed fallback) when night consumption is unknown", () => {

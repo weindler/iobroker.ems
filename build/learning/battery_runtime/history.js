@@ -160,6 +160,11 @@ exports.resolveEffectivePowerInvert = resolveEffectivePowerInvert;
 /**
  * Pro Stunde max. Lade- und max. Entladeleistung behalten (nicht nur letzter Wert).
  * Kurze PV-Ladespitzen gehen sonst verloren, wenn die Stunde mit Standby/Entladen endet.
+ *
+ * Diese Serie ist für Peak-KPIs (maxChargePowerW / maxDischargePowerW) und grobe
+ * Entlade-Fenstererkennung — NICHT für kWh-Integration. Peak × Stundenbreite überschätzt
+ * die Energie massiv; die Nachtreserve nutzt deshalb ausschließlich SOC-Delta
+ * (siehe `computeNightDischarges` in math.ts).
  */
 function aggregatePowerPointsByHour(rows, powerInvert) {
     const byHour = new Map();

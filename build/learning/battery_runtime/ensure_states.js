@@ -36,9 +36,9 @@ async function ensureBatteryRuntimeLearningStates(host) {
          * Phase 1d — dynamische Nachtverbrauchs-Erfassung/-Prognose und daraus abgeleitete
          * Batterie-Reserve (ersetzt feste 50-%-Schwelle im Planner-Netzausgleich-Budget).
          */
-        numState("learning.battery_runtime.predicted_night_consumption_kwh", "Battery-Runtime Ø Nachtenergiebedarf (Reserve-Basis)", "kWh"),
-        numState("learning.battery_runtime.night_consumption_valid_nights", "Battery-Runtime gültige Nächte (Verbrauch)"),
-        numState("learning.battery_runtime.predicted_night_grid_import_kwh", "Battery-Runtime Ø Nacht-Netzbezug (abgeleitet)", "kWh"),
+        numState("learning.battery_runtime.predicted_night_consumption_kwh", "Battery-Runtime Reserve-Basis (= Ø Nachtentladung, SOC-basiert)", "kWh"),
+        numState("learning.battery_runtime.night_consumption_valid_nights", "Battery-Runtime Nächte mit Hauslast-Diagnose (nicht Reserve-relevant)"),
+        numState("learning.battery_runtime.predicted_night_grid_import_kwh", "Battery-Runtime Ø Nacht-Netzbezug (Diagnose, keine Reserve-Größe)", "kWh"),
         numState("learning.battery_runtime.avg_night_load_w", "Battery-Runtime Ø effektive Nachtlast (aus Reserve-Basis)", "W"),
         numState("learning.battery_runtime.required_soc_at_pv_end_pct", "Battery-Runtime Reserve bei PV-Ende (nur aus Historie — Diagnose)", "%"),
         numState("learning.battery_runtime.required_night_reserve_kwh", "Battery-Runtime dynamische Reserve bei PV-Ende", "kWh"),

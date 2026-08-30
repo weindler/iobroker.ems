@@ -4,7 +4,8 @@
  *
  * Führt bestehende Wege ZUSAMMEN, statt eine dritte Reserve-Logik einzuführen:
  * - `learning/battery_runtime` liefert die reale, historisch gelernte Verbrauchsbasis
- *   (`predictedNightConsumptionKwh` = max aus Haus-/Batterie-/SOC-Nachtenergie,
+ *   (`predictedNightConsumptionKwh` = ausschließlich SOC-Delta × Kapazität über die gelernte
+ *   Nachtbrücke, identisch zu `avgNightDischargeKwh` — Hauslast ist dort nur Diagnose,
  *   `avgChargePowerW`) — unverändert die „Ist“-Quelle für den Learning-Boden.
  * - `operator/daily_plan/unified/next_reliable_pv.ts` (unverändert) liefert Zeitpunkt/Netto-
  *   Bedarf bis zum nächsten verlässlichen PV-Fenster aus dem PV-/Hauslast-Forecast.

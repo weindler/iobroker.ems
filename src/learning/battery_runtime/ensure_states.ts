@@ -39,16 +39,16 @@ export async function ensureBatteryRuntimeLearningStates(host: StateHost): Promi
 		 */
 		numState(
 			"learning.battery_runtime.predicted_night_consumption_kwh",
-			"Battery-Runtime Ø Nachtenergiebedarf (Reserve-Basis)",
+			"Battery-Runtime Reserve-Basis (= Ø Nachtentladung, SOC-basiert)",
 			"kWh",
 		),
 		numState(
 			"learning.battery_runtime.night_consumption_valid_nights",
-			"Battery-Runtime gültige Nächte (Verbrauch)",
+			"Battery-Runtime Nächte mit Hauslast-Diagnose (nicht Reserve-relevant)",
 		),
 		numState(
 			"learning.battery_runtime.predicted_night_grid_import_kwh",
-			"Battery-Runtime Ø Nacht-Netzbezug (abgeleitet)",
+			"Battery-Runtime Ø Nacht-Netzbezug (Diagnose, keine Reserve-Größe)",
 			"kWh",
 		),
 		numState("learning.battery_runtime.avg_night_load_w", "Battery-Runtime Ø effektive Nachtlast (aus Reserve-Basis)", "W"),

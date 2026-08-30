@@ -5,7 +5,7 @@
  * Feste Uhrzeiten nur Fallback — Winter/Sommer verschieben die Brücke um Stunden.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.average = exports.integrateDischargeKwh = exports.integratePowerKwh = exports.weightedAverage = exports.recencyWeight = exports.findMinSocInRange = exports.findSocAtOrBefore = exports.findNearestSoc = exports.findPvHouseNightBridges = exports.findSustainedNonDeficitStart = exports.findSustainedSurplusStart = exports.findSustainedDeficitStart = exports.buildBatteryDeficitSeries = exports.buildPvHouseNetSeries = exports.bucketPowerSeries = exports.NIGHT_BRIDGE_DEFICIT_W = exports.NIGHT_BRIDGE_BUCKET_MS = exports.DEFAULT_NIGHT_BRIDGE_FLUTTER_MS = void 0;
+exports.average = exports.integratePowerKwh = exports.weightedAverage = exports.recencyWeight = exports.hasInterimRecharge = exports.findMinSocInRange = exports.findMinSocPointInRange = exports.findSocAtOrBefore = exports.findNearestSoc = exports.findPvHouseNightBridges = exports.findSustainedNonDeficitStart = exports.findSustainedSurplusStart = exports.findSustainedDeficitStart = exports.buildBatteryDeficitSeries = exports.buildPvHouseNetSeries = exports.bucketPowerSeries = exports.NIGHT_BRIDGE_DEFICIT_W = exports.NIGHT_BRIDGE_BUCKET_MS = exports.DEFAULT_NIGHT_BRIDGE_FLUTTER_MS = void 0;
 const constants_1 = require("./constants");
 const time_1 = require("./time");
 exports.DEFAULT_NIGHT_BRIDGE_FLUTTER_MS = 10 * 60_000;
@@ -269,22 +269,47 @@ function findSocAtOrBefore(points, targetTs, maxDeltaMs) {
 }
 exports.findSocAtOrBefore = findSocAtOrBefore;
 /**
- * Tiefster SOC im Brückenfenster — verhindert Unterschätzung, wenn das Fensterende
- * schon in die Morgenladung fällt und „nächster SOC“ wieder höher ist.
+ * Tiefster SOC-Punkt im Brückenfenster (mit Zeitstempel) — verhindert Unterschätzung, wenn das
+ * Fensterende schon in die Morgenladung fällt und „nächster SOC“ wieder höher ist. Der Zeitstempel
+ * wird von `hasInterimRecharge` gebraucht, um Zwischenladung vor dem Tiefpunkt zu erkennen.
  */
-function findMinSocInRange(points, startTs, endTs) {
+function findMinSocPointInRange(points, startTs, endTs) {
     if (!(endTs > startTs) || points.length === 0)
         return null;
     let min = null;
     for (const p of points) {
         if (p.ts < startTs || p.ts > endTs)
             continue;
-        if (min === null || p.socPct < min)
-            min = p.socPct;
+        if (min === null || p.socPct < min.socPct)
+            min = p;
     }
     return min;
 }
+exports.findMinSocPointInRange = findMinSocPointInRange;
+/** Tiefster SOC im Brückenfenster (nur Wert) — dünner Wrapper um `findMinSocPointInRange`. */
+function findMinSocInRange(points, startTs, endTs) {
+    return findMinSocPointInRange(points, startTs, endTs)?.socPct ?? null;
+}
 exports.findMinSocInRange = findMinSocInRange;
+/**
+ * Zwischenladung erkannt: Summe der SOC-Anstiege zwischen Fensterstart und dem Tiefpunkt
+ * überschreitet die Rauschschwelle. Ein Anstieg NACH dem Tiefpunkt (normale Morgen-/
+ * Astro-Erholung) zählt bewusst nicht — nur ein Wiederaufladen VOR dem tiefsten Punkt verfälscht
+ * den gemessenen Nachtbedarf (die Batterie hätte ohne die Zwischenladung tiefer entladen).
+ */
+function hasInterimRecharge(points, startTs, minPointTs, thresholdPct = 3) {
+    const inWindow = points
+        .filter((p) => p.ts >= startTs && p.ts <= minPointTs)
+        .sort((a, b) => a.ts - b.ts);
+    let recharge = 0;
+    for (let i = 1; i < inWindow.length; i++) {
+        const d = inWindow[i].socPct - inWindow[i - 1].socPct;
+        if (d > 0)
+            recharge += d;
+    }
+    return recharge >= thresholdPct;
+}
+exports.hasInterimRecharge = hasInterimRecharge;
 /**
  * Gewichtetes Mittel: jüngere Nächte stärker (Halbwertszeit ~10 Tage).
  * Sonst bleibt der Sommer-Schnitt bei längeren Herbst-/Winternächten hängen.
@@ -316,22 +341,18 @@ exports.weightedAverage = weightedAverage;
  * Integriert eine Leistungsserie (W) über [startTs, endTs] zu kWh. Jeder Punkt repräsentiert
  * den Zeitraum bis zur Mitte zum Nachbarn (funktioniert für dichte 10-Min- wie für sparsame
  * Stunden-Serien, ohne festen Bucket anzunehmen). Damit wird Hausverbrauch über exakt dasselbe
- * (dynamisch erkannte) Fenster integriert, das auch die Batterie-Entladung bewertet — kein
- * zweites, unabhängiges Zeitfenster oder eine zweite Annahme über die Abtastrate.
+ * (dynamisch erkannte) Fenster integriert, das auch die Batterie-Entladung bewertet.
+ *
+ * NUR für Diagnose (Netzbezug-Schätzung) verwenden — NIE als Batterie-Reserve-Basis. Die
+ * Reserve kommt ausschließlich aus dem realen SOC-Delta (`computeNightDischarges`).
+ *
+ * WICHTIG: Nur mit energieerhaltender Leistungsserie füttern (Stundenmittel / echte
+ * Abtastwerte). Die EMS-Batterie-Historie (`bidirectional_max` / aggregatePowerPointsByHour)
+ * speichert Stunden-PEAKS — Spitzen als Dauerleistung zu integrieren überschätzt die kWh
+ * massiv (z. B. 3 kW-Spike → ~3 kWh/h). Peak-Serien werden daher nirgends mehr integriert;
+ * es gibt keine `integrateDischargeKwh`-Funktion mehr.
  */
 function integratePowerKwh(points, startTs, endTs) {
-    return integrateSignedPowerKwh(points, startTs, endTs, "all");
-}
-exports.integratePowerKwh = integratePowerKwh;
-/**
- * Integriert nur Batterie-Entladung (powerW < 0) als positive kWh über [startTs, endTs].
- * Unabhängig von stündlichem SOC-Dedup und Kapazitäts-Mapping — direkte Energiebilanz.
- */
-function integrateDischargeKwh(points, startTs, endTs) {
-    return integrateSignedPowerKwh(points, startTs, endTs, "discharge");
-}
-exports.integrateDischargeKwh = integrateDischargeKwh;
-function integrateSignedPowerKwh(points, startTs, endTs, mode) {
     if (!(endTs > startTs) || points.length === 0)
         return null;
     const sorted = points
@@ -352,8 +373,7 @@ function integrateSignedPowerKwh(points, startTs, endTs, mode) {
         const segMs = segEnd - segStart;
         if (segMs <= 0)
             continue;
-        const power = mode === "discharge" ? (cur.powerW < 0 ? Math.abs(cur.powerW) : 0) : cur.powerW;
-        kwh += (power * segMs) / 3_600_000_000;
+        kwh += (cur.powerW * segMs) / 3_600_000_000;
         coveredMs += segMs;
     }
     /** Zu lückenhafte Abdeckung (< 50 % des Fensters) → kein belastbarer Wert. */
@@ -361,3 +381,4 @@ function integrateSignedPowerKwh(points, startTs, endTs, mode) {
         return null;
     return round2(kwh);
 }
+exports.integratePowerKwh = integratePowerKwh;

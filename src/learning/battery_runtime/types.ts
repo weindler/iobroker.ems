@@ -50,14 +50,23 @@ export type BatteryRuntimeComputeResult = {
 		| "error";
 	sampleDays: number;
 	avgNightDischargePct: number | null;
+	/**
+	 * DIE führende, gelernte Nachtenergie-Größe — SOC-Delta × Kapazität über die gültige
+	 * Nachtbrücke (Zwischenladung und Extrem-Ausreißer bereits ausgeschlossen, siehe
+	 * `computeNightDischarges`). Einzige Quelle für die Planner-Reserve.
+	 */
 	avgNightDischargeKwh: number | null;
-	/** Einheitlicher Ø-Nachtenergiebedarf (kWh) für Reserve: max(Haus, Batterie-Entladung, SOC-Delta). */
+	/**
+	 * Identisch zu `avgNightDischargeKwh` — kein zweiter Rechenweg. Bleibt als eigener
+	 * State-/Feldname nur aus Planner-Kompatibilität bestehen (battery_reserve_target.ts,
+	 * learning/battery_runtime/reserve.ts erwarten diesen Namen als Reserve-Eingabe).
+	 */
 	predictedNightConsumptionKwh: number | null;
-	/** Nächte mit belastbarem Nachtenergie-Bedarf (kann von nightBridgeValidNights abweichen). */
+	/** Diagnose: Nächte mit integrierbarer Hauslast (Netzbezug-Schätzung) — unabhängig von der Reserve. */
 	nightConsumptionValidNights: number;
-	/** Abgeleitet: Ø Hauslast-Nachtverbrauch minus SOC-Entladung (Diagnose). */
+	/** Diagnose: Ø Hauslast-Nachtverbrauch minus gelernte SOC-Entladung — beeinflusst die Reserve nicht. */
 	predictedNightGridImportKwh: number | null;
-	/** Abgeleitet: predictedNightConsumptionKwh / avgNightBridgeHours × 1000 (konsistent zur Reserve-Basis). */
+	/** Abgeleitet: avgNightDischargeKwh / avgNightBridgeHours × 1000 (konsistent zur Reserve-Basis). */
 	avgNightLoadW: number | null;
 	/** Dynamische Reserve (Phase 1d) — ersetzt feste 50-%-Schwelle; null = noch nicht berechenbar. */
 	requiredSocAtPvEndPct: number | null;

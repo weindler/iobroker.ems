@@ -14,6 +14,8 @@ const energy_daily_rollup_1 = require("../energy_daily_rollup");
 const power_rollup_1 = require("../power_rollup");
 const pv_horizon_1 = require("../pv_horizon");
 const day_telemetry_1 = require("../day_telemetry");
+const daily_evaluator_1 = require("../daily_evaluator");
+const config_2 = require("../../intent/config");
 const data_dir_1 = require("../data_dir");
 const history_bridge_1 = require("../history_bridge");
 const persistence_mirror_1 = require("../persistence_mirror");
@@ -31,6 +33,7 @@ async function ensureLearningStateTree(adapter) {
     await (0, thermal_boiler_1.ensureThermalBoilerLearningStates)(host);
     await (0, battery_runtime_1.ensureBatteryRuntimeLearningStates)(host);
     await (0, day_telemetry_1.ensureDayTelemetryStates)(host);
+    await (0, daily_evaluator_1.ensureDailyEvaluatorStates)(host);
     await (0, persistence_mirror_1.ensureLearningPersistenceStates)(host);
     return host;
 }
@@ -77,6 +80,21 @@ async function runLearningTick(host, trigger = "interval") {
         await (0, battery_runtime_1.runBatteryRuntimeLearning)(host);
         await (0, price_forecast_1.runPriceForecastLearning)(host);
         await (0, persistence_mirror_1.mirrorLearningPersistenceToStates)(host);
+        /*
+         * BLOCK A — Daily Evaluator (rein additiv/diagnostisch). Liest nur day_telemetry,
+         * schreibt ausschließlich in sein eigenes findings/scores/learning_state_v1 —
+         * nie in die aktiven Learning-Module oberhalb und nie ins reale Planner-/
+         * Control-Verhalten. Läuft bewusst im selben (langsamen) Lern-Intervall statt
+         * im schnellen EMS-Tick, da day_telemetry-Tage ohnehin nur einmal täglich
+         * abschließen.
+         */
+        try {
+            const timezone = (0, config_2.intentAdminConfigFromAdapter)(host.config).timezone || "Europe/Berlin";
+            await (0, daily_evaluator_1.runDailyEvaluatorBatch)(host, { timezone });
+        }
+        catch (e) {
+            host.log.error(`daily_evaluator batch: ${e instanceof Error ? e.message : String(e)}`);
+        }
     }
     finally {
         learningTickInFlight = false;

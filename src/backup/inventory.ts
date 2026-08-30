@@ -98,6 +98,27 @@ export const PERSISTENCE_INVENTORY: readonly PersistenceSourceDef[] = [
 		description: "Roh-Tagestelemetrie als Tagesdateien (Detailhistorie, nicht restore-kritisch)",
 	},
 	{
+		id: "daily_evaluator_findings",
+		category: "support_only",
+		fileCategory: "learning/daily_evaluator/findings",
+		fileName: "YYYY-MM-DD.json",
+		description: "Block A Daily-Evaluator Findings pro Tag — rebuildable aus day_telemetry",
+	},
+	{
+		id: "daily_evaluator_scores",
+		category: "support_only",
+		fileCategory: "learning/daily_evaluator/scores",
+		fileName: "YYYY-MM-DD.json",
+		description: "Block A Daily-Evaluator Domain-/GlobalScores pro Tag — rebuildable aus day_telemetry",
+	},
+	{
+		id: "daily_evaluator_learning_state",
+		category: "restorable",
+		fileCategory: "learning/daily_evaluator",
+		fileName: "learning_state_v1.json",
+		description: "Block A diagnostischer Learning-State (eigenständig, kein Einfluss auf reales Planner-/Control-Verhalten)",
+	},
+	{
 		id: "command_inbox",
 		category: "transient",
 		description: "Command Inbox",

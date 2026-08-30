@@ -11,6 +11,8 @@ import { ensureEnergyDailyRollupForLearning } from "../energy_daily_rollup";
 import { ensurePowerRollupForLearning } from "../power_rollup";
 import { ensurePvHorizonLearningStates, runPvHorizon } from "../pv_horizon";
 import { ensureDayTelemetryStates } from "../day_telemetry";
+import { ensureDailyEvaluatorStates, runDailyEvaluatorBatch, type DailyEvaluatorHost } from "../daily_evaluator";
+import { intentAdminConfigFromAdapter } from "../../intent/config";
 import { withLearningDataPath } from "../data_dir";
 import { withHistoryBridge } from "../history_bridge";
 import {
@@ -41,6 +43,7 @@ export async function ensureLearningStateTree(adapter: ioBroker.Adapter): Promis
 	await ensureThermalBoilerLearningStates(host);
 	await ensureBatteryRuntimeLearningStates(host);
 	await ensureDayTelemetryStates(host);
+	await ensureDailyEvaluatorStates(host);
 	await ensureLearningPersistenceStates(host);
 	return host;
 }
@@ -96,6 +99,20 @@ async function runLearningTick(
 		await runBatteryRuntimeLearning(host);
 		await runPriceForecastLearning(host);
 		await mirrorLearningPersistenceToStates(host as unknown as PersistenceMirrorHost);
+		/*
+		 * BLOCK A — Daily Evaluator (rein additiv/diagnostisch). Liest nur day_telemetry,
+		 * schreibt ausschließlich in sein eigenes findings/scores/learning_state_v1 —
+		 * nie in die aktiven Learning-Module oberhalb und nie ins reale Planner-/
+		 * Control-Verhalten. Läuft bewusst im selben (langsamen) Lern-Intervall statt
+		 * im schnellen EMS-Tick, da day_telemetry-Tage ohnehin nur einmal täglich
+		 * abschließen.
+		 */
+		try {
+			const timezone = intentAdminConfigFromAdapter(host.config).timezone || "Europe/Berlin";
+			await runDailyEvaluatorBatch(host as unknown as DailyEvaluatorHost, { timezone });
+		} catch (e) {
+			host.log.error(`daily_evaluator batch: ${e instanceof Error ? e.message : String(e)}`);
+		}
 	} finally {
 		learningTickInFlight = false;
 	}

@@ -8,13 +8,14 @@
  * dieses Modul liefert dann nur `status:"disabled"`/`"no_token"`, wirft nie.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runDailyAnalystManual = exports.handleDailyAnalystRunNowRequest = exports.runDailyAnalystFromAdminButton = exports.formatAiDailyAnalystAdminHint = exports.maybeRunDailyAnalystAutomatically = exports.runDailyAnalystForDate = void 0;
+exports.runDailyAnalystManual = exports.handleDailyAnalystRunNowRequest = exports.runDailyAnalystFromAdminButton = exports.formatAiDailyAnalystAdminHint = exports.maybeRunDailyAnalystAutomatically = exports.runDailyAnalystForDate = exports.asDailyAnalystAdapterHost = void 0;
 const time_1 = require("../../operator/time");
 const constants_1 = require("../../learning/daily_evaluator/constants");
 const persist_1 = require("../../learning/daily_evaluator/persist");
 const persist_2 = require("../../economics/persist");
 const constants_2 = require("../../learning/shadow_engine/constants");
 const persist_3 = require("../../learning/shadow_engine/persist");
+const data_dir_1 = require("../../learning/data_dir");
 const context_1 = require("./context");
 const config_1 = require("./config");
 const provider_1 = require("./provider");
@@ -22,6 +23,17 @@ const ingest_1 = require("../override/ingest");
 const tick_1 = require("../override/tick");
 const persist_4 = require("./persist");
 const ensure_states_1 = require("./ensure_states");
+/**
+ * ioBroker-Adapter hat kein `getAbsolutePath` — dieselbe Wrapper-Logik wie Learning-Ticks
+ * (`withLearningDataPath`). Kein zweiter Datenpfad.
+ */
+function asDailyAnalystAdapterHost(adapter) {
+    return (0, data_dir_1.withLearningDataPath)(adapter, adapter);
+}
+exports.asDailyAnalystAdapterHost = asDailyAnalystAdapterHost;
+function hostHasDataPath(host) {
+    return typeof host.getAbsolutePath === "function";
+}
 async function publish(host, id, val) {
     try {
         await host.setStateAsync(id, { val, ack: true });
@@ -206,6 +218,11 @@ async function runDailyAnalystFromAdminButton(host, now = new Date(), provider) 
         const hint = formatAiDailyAnalystAdminHint(emptyManualResult("disabled", "Daily Analyst ist deaktiviert"));
         return { result: "error", status: "disabled", hint, text: hint };
     }
+    if (!hostHasDataPath(host)) {
+        const hint = "Daily Analyst: Datenpfad nicht verfügbar";
+        host.log?.error?.(hint);
+        return { result: "error", status: "error", hint, text: hint };
+    }
     try {
         // ack:true — kein zweites onStateChange; der Trigger bleibt im Objektbaum sichtbar.
         await host.setStateAsync(ensure_states_1.AI_ANALYST_STATES.runNowRequest, { val: true, ack: true });
@@ -228,6 +245,11 @@ async function handleDailyAnalystRunNowRequest(host, now = new Date(), provider)
     }
     catch {
         /* Reset ist best-effort */
+    }
+    if (!hostHasDataPath(host)) {
+        const outcome = emptyManualResult("error", "Daily Analyst: Datenpfad nicht verfügbar");
+        host.log?.error?.(outcome.reasonDe);
+        return outcome;
     }
     return runDailyAnalystManual(host, now, provider);
 }

@@ -254,6 +254,33 @@ function makeHost(config, dir) {
         const ledger = await (0, persist_2.readOverrideLedgerStore)(host.getAbsolutePath(persist_2.AI_OVERRIDE_LEDGER_CATEGORY));
         strict_1.default.equal(ledger.overrides.length, 0);
     });
+    (0, node_test_1.it)("sendTo-Pfad: Adapter ohne getAbsolutePath nach asDailyAnalystAdapterHost kein TypeError", async () => {
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-adapter-"));
+        const raw = makeHost({ ai_analyst_mode: "manual", ai_openai_api_key: "sk-test", timezone: "Europe/Berlin" }, dir);
+        const adapterLike = Object.assign(raw, {
+            namespace: "ems.0",
+            getAbsoluteInstanceDataDir: () => dir,
+        });
+        delete adapterLike.getAbsolutePath;
+        strict_1.default.equal(typeof adapterLike.getAbsolutePath, "undefined", "Roh-Adapter hat kein getAbsolutePath — Produktionsfall");
+        const host = (0, run_1.asDailyAnalystAdapterHost)(adapterLike);
+        strict_1.default.equal(typeof host.getAbsolutePath, "function");
+        const admin = await (0, run_1.runDailyAnalystFromAdminButton)(host, NOW, silentProvider());
+        strict_1.default.notEqual(admin.hint, "host.getAbsolutePath is not a function");
+        strict_1.default.equal(raw.writes.some((w) => w.id === ensure_states_1.AI_ANALYST_STATES.runNowRequest && w.val === true), true);
+        strict_1.default.equal(admin.status, "no_data");
+        strict_1.default.equal(admin.result, "ok");
+    });
+    (0, node_test_1.it)("fehlendes getAbsolutePath ohne Wrap wirft nicht, sondern liefert sauberen Fehler", async () => {
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-nopath-"));
+        const host = makeHost({ ai_analyst_mode: "manual", ai_openai_api_key: "sk-test" }, dir);
+        delete host.getAbsolutePath;
+        const admin = await (0, run_1.runDailyAnalystFromAdminButton)(host, NOW, silentProvider());
+        strict_1.default.equal(admin.result, "error");
+        strict_1.default.equal(admin.status, "error");
+        strict_1.default.match(admin.hint, /Datenpfad/);
+        strict_1.default.equal(String(admin.hint).includes("is not a function"), false);
+    });
 });
 (0, node_test_1.describe)("formatAiDailyAnalystAdminHint", () => {
     (0, node_test_1.it)("mappt die Admin-Kurzmeldungen ohne JSON-Dump", () => {

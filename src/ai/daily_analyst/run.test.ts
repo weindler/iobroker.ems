@@ -9,6 +9,7 @@ import {
 	runDailyAnalystForDate,
 	runDailyAnalystFromAdminButton,
 	runDailyAnalystManual,
+	asDailyAnalystAdapterHost,
 	type AiDailyAnalystHost,
 } from "./run";
 import { AI_ANALYST_STATES, ensureAiDailyAnalystStates, syncAiDailyAnalystRuntimeFromConfig } from "./ensure_states";
@@ -290,6 +291,45 @@ describe("Jetzt analysieren / run_now_request", () => {
 		assert.equal(r.findings.length, 1);
 		const ledger = await readOverrideLedgerStore(host.getAbsolutePath(AI_OVERRIDE_LEDGER_CATEGORY));
 		assert.equal(ledger.overrides.length, 0);
+	});
+
+	it("sendTo-Pfad: Adapter ohne getAbsolutePath nach asDailyAnalystAdapterHost kein TypeError", async () => {
+		const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-adapter-"));
+		const raw = makeHost(
+			{ ai_analyst_mode: "manual", ai_openai_api_key: "sk-test", timezone: "Europe/Berlin" },
+			dir,
+		);
+		const adapterLike = Object.assign(raw, {
+			namespace: "ems.0",
+			getAbsoluteInstanceDataDir: () => dir,
+		});
+		delete (adapterLike as { getAbsolutePath?: unknown }).getAbsolutePath;
+		assert.equal(
+			typeof (adapterLike as { getAbsolutePath?: unknown }).getAbsolutePath,
+			"undefined",
+			"Roh-Adapter hat kein getAbsolutePath — Produktionsfall",
+		);
+		const host = asDailyAnalystAdapterHost(adapterLike as unknown as ioBroker.Adapter);
+		assert.equal(typeof host.getAbsolutePath, "function");
+		const admin = await runDailyAnalystFromAdminButton(host, NOW, silentProvider());
+		assert.notEqual(admin.hint, "host.getAbsolutePath is not a function");
+		assert.equal(
+			raw.writes.some((w) => w.id === AI_ANALYST_STATES.runNowRequest && w.val === true),
+			true,
+		);
+		assert.equal(admin.status, "no_data");
+		assert.equal(admin.result, "ok");
+	});
+
+	it("fehlendes getAbsolutePath ohne Wrap wirft nicht, sondern liefert sauberen Fehler", async () => {
+		const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-nopath-"));
+		const host = makeHost({ ai_analyst_mode: "manual", ai_openai_api_key: "sk-test" }, dir);
+		delete (host as { getAbsolutePath?: unknown }).getAbsolutePath;
+		const admin = await runDailyAnalystFromAdminButton(host, NOW, silentProvider());
+		assert.equal(admin.result, "error");
+		assert.equal(admin.status, "error");
+		assert.match(admin.hint, /Datenpfad/);
+		assert.equal(String(admin.hint).includes("is not a function"), false);
 	});
 });
 

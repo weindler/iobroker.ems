@@ -440,10 +440,10 @@ class Ems extends utils.Adapter {
 		if (obj.command === "aiDailyAnalystNow") {
 			void (async () => {
 				try {
-					const { runDailyAnalystFromAdminButton } = await import("./ai/daily_analyst/index.js");
-					const payload = await runDailyAnalystFromAdminButton(
-						this as unknown as Parameters<typeof runDailyAnalystFromAdminButton>[0],
+					const { runDailyAnalystFromAdminButton, asDailyAnalystAdapterHost } = await import(
+						"./ai/daily_analyst/index.js"
 					);
+					const payload = await runDailyAnalystFromAdminButton(asDailyAnalystAdapterHost(this));
 					if (obj.callback) {
 						this.sendTo(obj.from, obj.command, payload, obj.callback);
 					}
@@ -451,7 +451,12 @@ class Ems extends utils.Adapter {
 					const error = e instanceof Error ? e.message : String(e);
 					this.log.error(`aiDailyAnalystNow: ${error}`);
 					if (obj.callback) {
-						this.sendTo(obj.from, obj.command, { result: "error", error, hint: "Fehler" }, obj.callback);
+						this.sendTo(
+							obj.from,
+							obj.command,
+							{ result: "error", error, hint: "Fehler" },
+							obj.callback,
+						);
 					}
 				}
 			})();
@@ -696,9 +701,11 @@ class Ems extends utils.Adapter {
 				return;
 			}
 			if (rel === "ai.daily_analyst.run_now_request" && !state.ack && state.val === true) {
-				const { handleDailyAnalystRunNowRequest } = await import("./ai/daily_analyst/index.js");
+				const { handleDailyAnalystRunNowRequest, asDailyAnalystAdapterHost } = await import(
+					"./ai/daily_analyst/index.js"
+				);
 				try {
-					await handleDailyAnalystRunNowRequest(this as unknown as Parameters<typeof handleDailyAnalystRunNowRequest>[0]);
+					await handleDailyAnalystRunNowRequest(asDailyAnalystAdapterHost(this));
 				} catch (e) {
 					this.log.error(`ai_daily_analyst run_now_request: ${e instanceof Error ? e.message : String(e)}`);
 				}

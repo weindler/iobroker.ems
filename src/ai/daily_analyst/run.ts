@@ -13,6 +13,7 @@ import { readFindingsDay, readScoresDay } from "../../learning/daily_evaluator/p
 import { ECONOMICS_PERSIST_CATEGORY, readEconomicsPersist } from "../../economics/persist";
 import { SHADOW_ENGINE_RESULTS_CATEGORY } from "../../learning/shadow_engine/constants";
 import { readShadowDayRecord } from "../../learning/shadow_engine/persist";
+import { withLearningDataPath } from "../../learning/data_dir";
 import { buildAiAnalystContext } from "./context";
 import { AI_ANALYST_TIMEOUT_MS } from "./config";
 import { createOpenAiAnalystProvider, type AiAnalystProvider } from "./provider";
@@ -30,6 +31,18 @@ export type AiDailyAnalystHost = {
 	config?: unknown;
 	log?: { warn?: (m: string) => void; debug?: (m: string) => void; error?: (m: string) => void };
 };
+
+/**
+ * ioBroker-Adapter hat kein `getAbsolutePath` — dieselbe Wrapper-Logik wie Learning-Ticks
+ * (`withLearningDataPath`). Kein zweiter Datenpfad.
+ */
+export function asDailyAnalystAdapterHost(adapter: ioBroker.Adapter): AiDailyAnalystHost {
+	return withLearningDataPath(adapter, adapter as unknown as AiDailyAnalystHost);
+}
+
+function hostHasDataPath(host: { getAbsolutePath?: unknown }): boolean {
+	return typeof host.getAbsolutePath === "function";
+}
 
 async function publish(host: AiDailyAnalystHost, id: string, val: ioBroker.StateValue): Promise<void> {
 	try {
@@ -257,6 +270,11 @@ export async function runDailyAnalystFromAdminButton(
 		);
 		return { result: "error", status: "disabled", hint, text: hint };
 	}
+	if (!hostHasDataPath(host)) {
+		const hint = "Daily Analyst: Datenpfad nicht verfügbar";
+		host.log?.error?.(hint);
+		return { result: "error", status: "error", hint, text: hint };
+	}
 	try {
 		// ack:true — kein zweites onStateChange; der Trigger bleibt im Objektbaum sichtbar.
 		await host.setStateAsync(AI_ANALYST_STATES.runNowRequest, { val: true, ack: true });
@@ -282,6 +300,11 @@ export async function handleDailyAnalystRunNowRequest(
 		await host.setStateAsync(AI_ANALYST_STATES.runNowRequest, { val: false, ack: true });
 	} catch {
 		/* Reset ist best-effort */
+	}
+	if (!hostHasDataPath(host)) {
+		const outcome = emptyManualResult("error", "Daily Analyst: Datenpfad nicht verfügbar");
+		host.log?.error?.(outcome.reasonDe);
+		return outcome;
 	}
 	return runDailyAnalystManual(host, now, provider);
 }

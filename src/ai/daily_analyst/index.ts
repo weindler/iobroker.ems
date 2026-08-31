@@ -30,6 +30,7 @@ export {
 	runDailyAnalystManual,
 	runDailyAnalystFromAdminButton,
 	handleDailyAnalystRunNowRequest,
+	asDailyAnalystAdapterHost,
 	formatAiDailyAnalystAdminHint,
 	type AiDailyAnalystHost,
 	type AiDailyAnalystAdminButtonResult,

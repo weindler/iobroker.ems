@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.12",
+		"version": "0.2.13",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.13": {
+				"en": "Fix: KI Daily Analyst Admin mode now syncs to runtime states after save/restart (manual/daily_auto no longer stay disabled). New Admin button Analyze now uses ai.daily_analyst.run_now_request. Check ai.daily_analyst.enabled / mode_effective after setting the mode.",
+				"de": "Fix: KI-Daily-Analyst-Modus aus dem Admin steht nach Speichern/Neustart in den Runtime-States (manual/daily_auto bleiben nicht mehr disabled). Neuer Admin-Button „Jetzt analysieren“ nutzt ai.daily_analyst.run_now_request. Nach dem Setzen des Modus ai.daily_analyst.enabled / mode_effective prüfen."
+			},
 			"0.2.12": {
 				"en": "EMS-Light 7-phase complete: SOC night reserve without grid-balance inflation; grid balance budget at high SOC; compact forecast deltas; climate shared-power learning; optional daily AI analyst + validator overrides; shadow/economics (tariff vs EMS vs KI, grid rewards separate). Check VIS Betrieb/Statistik, learning.battery_runtime.*, economics.*, ai.daily_analyst.* after update.",
 				"de": "EMS-Light 7-Phasen fertig: SOC-Nachtreserve ohne Netzausgleich-Aufblähung; Netzausgleich-Budget bei hohem SOC; kompakte Forecast-Deltas; Klima-Shared-Power-Learning; optionaler KI Daily Analyst + Validator-Overrides; Shadow/Wirtschaftlichkeit (Tarif/EMS/KI getrennt, Grid Rewards separat). Nach Update VIS Betrieb/Statistik, learning.battery_runtime.*, economics.*, ai.daily_analyst.* prüfen."

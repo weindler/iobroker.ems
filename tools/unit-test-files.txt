@@ -276,6 +276,7 @@ build/ai/compare/index.test.js
 build/ai/daily_analyst/validate_response.test.js
 build/ai/daily_analyst/provider.test.js
 build/ai/daily_analyst/run.test.js
+build/ai/daily_analyst/config.test.js
 build/ai/override/validate.test.js
 build/ai/override/ingest.test.js
 build/economics/compute.test.js

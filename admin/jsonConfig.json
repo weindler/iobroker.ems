@@ -298,6 +298,29 @@
 					"lg": 6,
 					"xl": 6
 				},
+				"aiAnalystRunNowBtn": {
+					"type": "sendTo",
+					"command": "aiDailyAnalystNow",
+					"jsonData": "{}",
+					"label": "Jetzt analysieren",
+					"help": "Analysiert den zuletzt vom Daily Evaluator bewerteten Tag. Nutzt denselben Trigger wie ai.daily_analyst.run_now_request. Schaltet keine Planner-Overrides ein.",
+					"showProcess": true,
+					"timeout": 45000,
+					"variant": "contained",
+					"color": "secondary",
+					"icon": "send",
+					"disabled": "data.ai_analyst_mode === 'disabled'",
+					"alsoDependsOn": ["ai_analyst_mode"],
+					"result": {
+						"ok": "Daily Analyst: siehe Hinweis unter dem Button bzw. ai.daily_analyst.status",
+						"error": "Daily Analyst ist deaktiviert oder der Lauf ist fehlgeschlagen — Details unter ai.daily_analyst.status"
+					},
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
 				"aiAnalystRunNowHint": {
 					"type": "staticText",
 					"xs": 12,
@@ -305,7 +328,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Manueller Lauf über den Runtime-State <code>ai.daily_analyst.run_now_request</code> (VIS/Objektbaum) — analysiert den zuletzt vom Daily Evaluator bewerteten Tag neu."
+					"text": "Status nach dem Lauf steht unter ai.daily_analyst (status, last_error, last_run_at, findings_count, top_finding_de) — keine JSON-Ausgabe hier. Overrides bleiben eine getrennte Option."
 				},
 				"hGlobalFailsafe": {
 					"type": "header",

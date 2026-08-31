@@ -1,4 +1,5 @@
 import { ensureChannel, ensureStates, type StateDef, type StateHost } from "../../ems_light/state_util";
+import { aiAnalystConfigFromAdapter, type AiAnalystAdminConfig } from "./config";
 
 function strState(id: string, name: string, def?: string): StateDef {
 	return {
@@ -60,4 +61,62 @@ export async function ensureAiDailyAnalystStates(host: StateHost): Promise<void>
 		}),
 	];
 	await ensureStates(host, defs);
+}
+
+async function publish(host: StateHost, id: string, val: ioBroker.StateValue): Promise<void> {
+	try {
+		await host.setStateAsync(id, { val, ack: true });
+	} catch {
+		/* Status-States sind best-effort */
+	}
+}
+
+function idleReasonDe(mode: AiAnalystAdminConfig["mode"]): string {
+	if (mode === "manual") {
+		return "Bereit — manueller Lauf über „Jetzt analysieren“.";
+	}
+	if (mode === "daily_auto") {
+		return "Bereit — automatische Tagesanalyse aktiv.";
+	}
+	return "KI Daily Analyst deaktiviert.";
+}
+
+/**
+ * Schreibt enabled/mode_effective (und status, falls er zum Admin-Modus nicht passt)
+ * aus der nativen Adapter-Config. Ohne diesen Schritt bleiben die Ensure-Defaults
+ * (`disabled`/`false`) nach Speichern/Neustart stehen, weil kein Analyst-Lauf nötig war.
+ */
+export async function syncAiDailyAnalystRuntimeFromConfig(
+	host: StateHost & { config?: unknown },
+): Promise<AiAnalystAdminConfig> {
+	await ensureAiDailyAnalystStates(host);
+	const cfg = aiAnalystConfigFromAdapter(host.config);
+	await publish(host, AI_ANALYST_STATES.modeEffective, cfg.mode);
+	await publish(host, AI_ANALYST_STATES.enabled, cfg.mode !== "disabled");
+
+	const curStatus = String((await host.getStateAsync(AI_ANALYST_STATES.status))?.val ?? "");
+	if (cfg.mode === "disabled") {
+		await publish(host, AI_ANALYST_STATES.status, "disabled");
+		const curReason = String((await host.getStateAsync(AI_ANALYST_STATES.reasonDe))?.val ?? "");
+		if (curStatus !== "disabled" || !curReason) {
+			await publish(host, AI_ANALYST_STATES.reasonDe, idleReasonDe("disabled"));
+		}
+	} else if (curStatus === "disabled" || curStatus === "") {
+		await publish(host, AI_ANALYST_STATES.status, "idle");
+		await publish(host, AI_ANALYST_STATES.reasonDe, idleReasonDe(cfg.mode));
+	}
+	return cfg;
+}
+
+/** Hängenden Button (true) nach Restart leeren — kein stiller Lauf. */
+export async function clearStaleDailyAnalystRunNowRequest(host: {
+	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
+	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
+}): Promise<boolean> {
+	const st = await host.getStateAsync(AI_ANALYST_STATES.runNowRequest);
+	if (st?.val !== true) {
+		return false;
+	}
+	await host.setStateAsync(AI_ANALYST_STATES.runNowRequest, { val: false, ack: true });
+	return true;
 }

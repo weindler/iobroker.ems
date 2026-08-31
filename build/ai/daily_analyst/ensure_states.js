@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureAiDailyAnalystStates = exports.AI_ANALYST_STATES = void 0;
+exports.clearStaleDailyAnalystRunNowRequest = exports.syncAiDailyAnalystRuntimeFromConfig = exports.ensureAiDailyAnalystStates = exports.AI_ANALYST_STATES = void 0;
 const state_util_1 = require("../../ems_light/state_util");
+const config_1 = require("./config");
 function strState(id, name, def) {
     return {
         id,
@@ -61,3 +62,55 @@ async function ensureAiDailyAnalystStates(host) {
     await (0, state_util_1.ensureStates)(host, defs);
 }
 exports.ensureAiDailyAnalystStates = ensureAiDailyAnalystStates;
+async function publish(host, id, val) {
+    try {
+        await host.setStateAsync(id, { val, ack: true });
+    }
+    catch {
+        /* Status-States sind best-effort */
+    }
+}
+function idleReasonDe(mode) {
+    if (mode === "manual") {
+        return "Bereit — manueller Lauf über „Jetzt analysieren“.";
+    }
+    if (mode === "daily_auto") {
+        return "Bereit — automatische Tagesanalyse aktiv.";
+    }
+    return "KI Daily Analyst deaktiviert.";
+}
+/**
+ * Schreibt enabled/mode_effective (und status, falls er zum Admin-Modus nicht passt)
+ * aus der nativen Adapter-Config. Ohne diesen Schritt bleiben die Ensure-Defaults
+ * (`disabled`/`false`) nach Speichern/Neustart stehen, weil kein Analyst-Lauf nötig war.
+ */
+async function syncAiDailyAnalystRuntimeFromConfig(host) {
+    await ensureAiDailyAnalystStates(host);
+    const cfg = (0, config_1.aiAnalystConfigFromAdapter)(host.config);
+    await publish(host, exports.AI_ANALYST_STATES.modeEffective, cfg.mode);
+    await publish(host, exports.AI_ANALYST_STATES.enabled, cfg.mode !== "disabled");
+    const curStatus = String((await host.getStateAsync(exports.AI_ANALYST_STATES.status))?.val ?? "");
+    if (cfg.mode === "disabled") {
+        await publish(host, exports.AI_ANALYST_STATES.status, "disabled");
+        const curReason = String((await host.getStateAsync(exports.AI_ANALYST_STATES.reasonDe))?.val ?? "");
+        if (curStatus !== "disabled" || !curReason) {
+            await publish(host, exports.AI_ANALYST_STATES.reasonDe, idleReasonDe("disabled"));
+        }
+    }
+    else if (curStatus === "disabled" || curStatus === "") {
+        await publish(host, exports.AI_ANALYST_STATES.status, "idle");
+        await publish(host, exports.AI_ANALYST_STATES.reasonDe, idleReasonDe(cfg.mode));
+    }
+    return cfg;
+}
+exports.syncAiDailyAnalystRuntimeFromConfig = syncAiDailyAnalystRuntimeFromConfig;
+/** Hängenden Button (true) nach Restart leeren — kein stiller Lauf. */
+async function clearStaleDailyAnalystRunNowRequest(host) {
+    const st = await host.getStateAsync(exports.AI_ANALYST_STATES.runNowRequest);
+    if (st?.val !== true) {
+        return false;
+    }
+    await host.setStateAsync(exports.AI_ANALYST_STATES.runNowRequest, { val: false, ack: true });
+    return true;
+}
+exports.clearStaleDailyAnalystRunNowRequest = clearStaleDailyAnalystRunNowRequest;

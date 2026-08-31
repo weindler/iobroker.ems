@@ -388,6 +388,25 @@ class Ems extends utils.Adapter {
             })();
             return;
         }
+        if (obj.command === "aiDailyAnalystNow") {
+            void (async () => {
+                try {
+                    const { runDailyAnalystFromAdminButton } = await import("./ai/daily_analyst/index.js");
+                    const payload = await runDailyAnalystFromAdminButton(this);
+                    if (obj.callback) {
+                        this.sendTo(obj.from, obj.command, payload, obj.callback);
+                    }
+                }
+                catch (e) {
+                    const error = e instanceof Error ? e.message : String(e);
+                    this.log.error(`aiDailyAnalystNow: ${error}`);
+                    if (obj.callback) {
+                        this.sendTo(obj.from, obj.command, { result: "error", error, hint: "Fehler" }, obj.callback);
+                    }
+                }
+            })();
+            return;
+        }
         if (obj.command === "getPlanCompareStatus") {
             void (async () => {
                 try {
@@ -590,10 +609,9 @@ class Ems extends utils.Adapter {
                 return;
             }
             if (rel === "ai.daily_analyst.run_now_request" && !state.ack && state.val === true) {
-                await this.setStateAsync(rel, { val: false, ack: true });
-                const { runDailyAnalystManual } = await import("./ai/daily_analyst/index.js");
+                const { handleDailyAnalystRunNowRequest } = await import("./ai/daily_analyst/index.js");
                 try {
-                    await runDailyAnalystManual(this);
+                    await handleDailyAnalystRunNowRequest(this);
                 }
                 catch (e) {
                     this.log.error(`ai_daily_analyst run_now_request: ${e instanceof Error ? e.message : String(e)}`);

@@ -15,6 +15,11 @@ function isAllowedMode(v: unknown): v is AiAnalystMode {
 	return typeof v === "string" && (AI_ANALYST_ALLOWED_MODES as readonly string[]).includes(v);
 }
 
+function modeFromNative(raw: unknown): AiAnalystMode {
+	const trimmed = typeof raw === "string" ? raw.trim() : raw;
+	return isAllowedMode(trimmed) ? trimmed : "disabled";
+}
+
 export interface AiAnalystAdminConfig {
 	/** disabled: nie aufrufen. manual: nur per Button. daily_auto: einmal/Tag automatisch nach Tagesabschluss. */
 	mode: AiAnalystMode;
@@ -37,7 +42,7 @@ export interface AiAnalystAdminConfig {
  */
 export function aiAnalystConfigFromAdapter(config: unknown): AiAnalystAdminConfig {
 	const c = config && typeof config === "object" ? (config as Record<string, unknown>) : {};
-	const mode = isAllowedMode(c.ai_analyst_mode) ? c.ai_analyst_mode : "disabled";
+	const mode = modeFromNative(c.ai_analyst_mode);
 	const model = isAllowedModel(c.ai_analyst_model) ? c.ai_analyst_model : AI_ANALYST_DEFAULT_MODEL;
 	const apiKeyRaw = c.ai_openai_api_key;
 	const apiKey = typeof apiKeyRaw === "string" ? apiKeyRaw.trim() : "";

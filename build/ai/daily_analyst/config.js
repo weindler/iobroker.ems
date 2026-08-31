@@ -13,6 +13,10 @@ function isAllowedModel(v) {
 function isAllowedMode(v) {
     return typeof v === "string" && exports.AI_ANALYST_ALLOWED_MODES.includes(v);
 }
+function modeFromNative(raw) {
+    const trimmed = typeof raw === "string" ? raw.trim() : raw;
+    return isAllowedMode(trimmed) ? trimmed : "disabled";
+}
 /**
  * Der Daily Analyst nutzt bewusst denselben API-Token wie der Optimizer (ein OpenAI-Zugang pro
  * Adapter-Instanz) — separater Admin-Schalter `ai_analyst_mode` bestimmt aber unabhängig, ob/wie
@@ -20,7 +24,7 @@ function isAllowedMode(v) {
  */
 function aiAnalystConfigFromAdapter(config) {
     const c = config && typeof config === "object" ? config : {};
-    const mode = isAllowedMode(c.ai_analyst_mode) ? c.ai_analyst_mode : "disabled";
+    const mode = modeFromNative(c.ai_analyst_mode);
     const model = isAllowedModel(c.ai_analyst_model) ? c.ai_analyst_model : exports.AI_ANALYST_DEFAULT_MODEL;
     const apiKeyRaw = c.ai_openai_api_key;
     const apiKey = typeof apiKeyRaw === "string" ? apiKeyRaw.trim() : "";

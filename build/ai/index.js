@@ -51,6 +51,8 @@ async function ensureAiStateTree(host) {
         const aiHost = host;
         await (0, user_enabled_1.migrateAiUserEnabledOnce)(aiHost);
         await clearStaleAiOptimizeNowRequest(aiHost);
+        await (0, ensure_states_3.syncAiDailyAnalystRuntimeFromConfig)(host);
+        await (0, ensure_states_3.clearStaleDailyAnalystRunNowRequest)(aiHost);
     }
 }
 exports.ensureAiStateTree = ensureAiStateTree;

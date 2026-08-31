@@ -14,12 +14,12 @@ import { ECONOMICS_PERSIST_CATEGORY, readEconomicsPersist } from "../../economic
 import { SHADOW_ENGINE_RESULTS_CATEGORY } from "../../learning/shadow_engine/constants";
 import { readShadowDayRecord } from "../../learning/shadow_engine/persist";
 import { buildAiAnalystContext } from "./context";
-import { aiAnalystConfigFromAdapter, AI_ANALYST_TIMEOUT_MS } from "./config";
+import { AI_ANALYST_TIMEOUT_MS } from "./config";
 import { createOpenAiAnalystProvider, type AiAnalystProvider } from "./provider";
 import { ingestAnalystFindingsAsOverrides } from "../override/ingest";
 import { syncAiValidatorStates, type AiValidatorTickHost } from "../override/tick";
 import { AI_ANALYST_FINDINGS_CATEGORY, pruneAiAnalystFindings, readAiAnalystDay, writeAiAnalystDay } from "./persist";
-import { AI_ANALYST_STATES, ensureAiDailyAnalystStates } from "./ensure_states";
+import { AI_ANALYST_STATES, syncAiDailyAnalystRuntimeFromConfig } from "./ensure_states";
 import type { StateHost } from "../../ems_light/state_util";
 import type { AiAnalystRunResult } from "./types";
 
@@ -57,9 +57,7 @@ export async function runDailyAnalystForDate(
 	dateKey: string,
 	provider: AiAnalystProvider = createOpenAiAnalystProvider(),
 ): Promise<AiAnalystRunResult> {
-	await ensureAiDailyAnalystStates(host as unknown as StateHost);
-	const cfg = aiAnalystConfigFromAdapter(host.config);
-	await publish(host, AI_ANALYST_STATES.modeEffective, cfg.mode);
+	const cfg = await syncAiDailyAnalystRuntimeFromConfig(host as unknown as StateHost & { config?: unknown });
 
 	const result = async (): Promise<AiAnalystRunResult> => {
 		if (cfg.mode === "disabled") {
@@ -103,6 +101,7 @@ export async function runDailyAnalystForDate(
 		const shadow = await readShadowDayRecord(host.getAbsolutePath(SHADOW_ENGINE_RESULTS_CATEGORY), dateKey);
 
 		const context = buildAiAnalystContext({ dateKey, record, findings, economics, shadow });
+		await publish(host, AI_ANALYST_STATES.status, "running");
 		const providerResult = await provider.analyze(context, {
 			apiKey: cfg.apiKey,
 			model: cfg.model,
@@ -185,7 +184,7 @@ export async function maybeRunDailyAnalystAutomatically(
 	now: Date = new Date(),
 	provider?: AiAnalystProvider,
 ): Promise<AiAnalystRunResult | null> {
-	const cfg = aiAnalystConfigFromAdapter(host.config);
+	const cfg = await syncAiDailyAnalystRuntimeFromConfig(host as unknown as StateHost & { config?: unknown });
 	if (cfg.mode !== "daily_auto") return null;
 
 	const timezone = timezoneFromConfig(host.config);
@@ -198,14 +197,136 @@ export async function maybeRunDailyAnalystAutomatically(
 	return runDailyAnalystForDate(host, yesterdayKey, provider);
 }
 
-/** Für den manuellen Button: analysiert den zuletzt vom Daily Evaluator bewerteten Tag neu. */
+function emptyManualResult(
+	status: AiAnalystRunResult["status"],
+	reasonDe: string,
+	dateKey: string | null = null,
+): AiAnalystRunResult {
+	return {
+		ran: false,
+		status,
+		dateKey,
+		findings: [],
+		reasonDe,
+		usage: { promptTokens: null, completionTokens: null },
+	};
+}
+
+/**
+ * Kurztext für den Admin-sendTo-Dialog — kein JSON-Dump, nur der effektive Ausgang.
+ */
+export function formatAiDailyAnalystAdminHint(outcome: AiAnalystRunResult): string {
+	switch (outcome.status) {
+		case "disabled":
+			return "Daily Analyst ist deaktiviert";
+		case "no_token":
+			return "no_token";
+		case "no_data":
+			return "kein evaluierter Tag verfügbar";
+		case "ok":
+			return "abgeschlossen";
+		case "error":
+		case "invalid_response":
+			return outcome.error ? `Fehler: ${outcome.error}` : "Fehler";
+		default:
+			return outcome.reasonDe || outcome.status;
+	}
+}
+
+export type AiDailyAnalystAdminButtonResult = {
+	result: "ok" | "error";
+	status: string;
+	hint: string;
+	text: string;
+};
+
+/**
+ * Admin-„Jetzt analysieren“: setzt denselben Runtime-Trigger wie der Objektbaum
+ * (`ai.daily_analyst.run_now_request`) und führt denselben Manual-Pfad aus.
+ * Overrides werden dadurch nicht eingeschaltet.
+ */
+export async function runDailyAnalystFromAdminButton(
+	host: AiDailyAnalystHost,
+	now: Date = new Date(),
+	provider?: AiAnalystProvider,
+): Promise<AiDailyAnalystAdminButtonResult> {
+	const cfg = await syncAiDailyAnalystRuntimeFromConfig(host as unknown as StateHost & { config?: unknown });
+	if (cfg.mode === "disabled") {
+		const hint = formatAiDailyAnalystAdminHint(
+			emptyManualResult("disabled", "Daily Analyst ist deaktiviert"),
+		);
+		return { result: "error", status: "disabled", hint, text: hint };
+	}
+	try {
+		// ack:true — kein zweites onStateChange; der Trigger bleibt im Objektbaum sichtbar.
+		await host.setStateAsync(AI_ANALYST_STATES.runNowRequest, { val: true, ack: true });
+	} catch {
+		/* Trigger-State ist best-effort; der Lauf folgt trotzdem über denselben Manual-Pfad. */
+	}
+	const outcome = await handleDailyAnalystRunNowRequest(host, now, provider);
+	const hint = formatAiDailyAnalystAdminHint(outcome);
+	const result: "ok" | "error" =
+		outcome.status === "disabled" || outcome.status === "error" || outcome.status === "invalid_response"
+			? "error"
+			: "ok";
+	return { result, status: outcome.status, hint, text: hint };
+}
+
+/** Gemeinsamer Handler für Objektbaum-Button und Admin-sendTo. */
+export async function handleDailyAnalystRunNowRequest(
+	host: AiDailyAnalystHost,
+	now: Date = new Date(),
+	provider?: AiAnalystProvider,
+): Promise<AiAnalystRunResult> {
+	try {
+		await host.setStateAsync(AI_ANALYST_STATES.runNowRequest, { val: false, ack: true });
+	} catch {
+		/* Reset ist best-effort */
+	}
+	return runDailyAnalystManual(host, now, provider);
+}
+
+/**
+ * Für den manuellen Button: analysiert den zuletzt vom Daily Evaluator bewerteten Tag.
+ * `manual`: immer (erneut). `daily_auto`: nur wenn der Tag noch nicht persistiert ist
+ * (bestehende Auto-Deduplizierung). `disabled`: kein Lauf.
+ */
 export async function runDailyAnalystManual(
 	host: AiDailyAnalystHost,
 	now: Date = new Date(),
 	provider?: AiAnalystProvider,
 ): Promise<AiAnalystRunResult> {
+	const cfg = await syncAiDailyAnalystRuntimeFromConfig(host as unknown as StateHost & { config?: unknown });
+	if (cfg.mode === "disabled") {
+		return emptyManualResult("disabled", "Daily Analyst ist deaktiviert");
+	}
+
 	const timezone = timezoneFromConfig(host.config);
 	const todayKey = localDateKeyInTimezone(now, timezone);
 	const yesterdayKey = addDaysToDateKey(todayKey, -1);
+
+	if (cfg.mode === "daily_auto") {
+		const already = await readAiAnalystDay(host.getAbsolutePath(AI_ANALYST_FINDINGS_CATEGORY), yesterdayKey);
+		if (already) {
+			await publish(host, AI_ANALYST_STATES.status, already.status);
+			await publish(host, AI_ANALYST_STATES.reasonDe, already.reasonDe);
+			await publish(host, AI_ANALYST_STATES.findingsCount, already.findings.length);
+			const top = [...already.findings].sort((a, b) => b.confidencePct - a.confidencePct)[0];
+			await publish(
+				host,
+				AI_ANALYST_STATES.topFindingDe,
+				top ? `${top.observedBehaviorDe} → ${top.suggestedImprovementDe}` : "",
+			);
+			return {
+				ran: false,
+				status: already.status,
+				dateKey: yesterdayKey,
+				findings: already.findings,
+				reasonDe: already.reasonDe || "bereits analysiert (1×/Tag)",
+				usage: { promptTokens: null, completionTokens: null },
+			};
+		}
+	}
+
 	return runDailyAnalystForDate(host, yesterdayKey, provider);
 }

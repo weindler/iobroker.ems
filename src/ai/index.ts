@@ -15,7 +15,7 @@ import {
 } from "./user_enabled";
 import { isAiAutoSuspended } from "./writeback";
 import { ensureAiValidatorStates } from "./override/ensure_states";
-import { ensureAiDailyAnalystStates } from "./daily_analyst/ensure_states";
+import { ensureAiDailyAnalystStates, syncAiDailyAnalystRuntimeFromConfig, clearStaleDailyAnalystRunNowRequest } from "./daily_analyst/ensure_states";
 
 export { ensureAiStates } from "./ensure_states";
 export { AI_STATES } from "./ensure_states";
@@ -65,6 +65,8 @@ export async function ensureAiStateTree(
 		const aiHost = host as Parameters<typeof migrateAiUserEnabledOnce>[0];
 		await migrateAiUserEnabledOnce(aiHost);
 		await clearStaleAiOptimizeNowRequest(aiHost);
+		await syncAiDailyAnalystRuntimeFromConfig(host as Parameters<typeof syncAiDailyAnalystRuntimeFromConfig>[0]);
+		await clearStaleDailyAnalystRunNowRequest(aiHost);
 	}
 }
 

@@ -23,10 +23,14 @@ export {
 	readAiAnalystDay,
 	pruneAiAnalystFindings,
 } from "./persist";
-export { AI_ANALYST_STATES, ensureAiDailyAnalystStates } from "./ensure_states";
+export { AI_ANALYST_STATES, ensureAiDailyAnalystStates, syncAiDailyAnalystRuntimeFromConfig, clearStaleDailyAnalystRunNowRequest } from "./ensure_states";
 export {
 	runDailyAnalystForDate,
 	maybeRunDailyAnalystAutomatically,
 	runDailyAnalystManual,
+	runDailyAnalystFromAdminButton,
+	handleDailyAnalystRunNowRequest,
+	formatAiDailyAnalystAdminHint,
 	type AiDailyAnalystHost,
+	type AiDailyAnalystAdminButtonResult,
 } from "./run";

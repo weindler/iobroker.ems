@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runDailyAnalystManual = exports.maybeRunDailyAnalystAutomatically = exports.runDailyAnalystForDate = exports.ensureAiDailyAnalystStates = exports.AI_ANALYST_STATES = exports.pruneAiAnalystFindings = exports.readAiAnalystDay = exports.writeAiAnalystDay = exports.AI_ANALYST_FINDINGS_CATEGORY = exports.validateAiAnalystResponse = exports.createOpenAiAnalystProvider = exports.AI_ANALYST_TIMEOUT_MS = exports.AI_ANALYST_DEFAULT_MODEL = exports.AI_ANALYST_ALLOWED_MODES = exports.aiAnalystConfigFromAdapter = exports.buildAiAnalystContext = exports.AI_ANALYST_ALLOWED_DIRECTIONS = exports.AI_ANALYST_ALLOWED_SEVERITIES = exports.AI_ANALYST_ALLOWED_DOMAINS = void 0;
+exports.formatAiDailyAnalystAdminHint = exports.handleDailyAnalystRunNowRequest = exports.runDailyAnalystFromAdminButton = exports.runDailyAnalystManual = exports.maybeRunDailyAnalystAutomatically = exports.runDailyAnalystForDate = exports.clearStaleDailyAnalystRunNowRequest = exports.syncAiDailyAnalystRuntimeFromConfig = exports.ensureAiDailyAnalystStates = exports.AI_ANALYST_STATES = exports.pruneAiAnalystFindings = exports.readAiAnalystDay = exports.writeAiAnalystDay = exports.AI_ANALYST_FINDINGS_CATEGORY = exports.validateAiAnalystResponse = exports.createOpenAiAnalystProvider = exports.AI_ANALYST_TIMEOUT_MS = exports.AI_ANALYST_DEFAULT_MODEL = exports.AI_ANALYST_ALLOWED_MODES = exports.aiAnalystConfigFromAdapter = exports.buildAiAnalystContext = exports.AI_ANALYST_ALLOWED_DIRECTIONS = exports.AI_ANALYST_ALLOWED_SEVERITIES = exports.AI_ANALYST_ALLOWED_DOMAINS = void 0;
 var types_1 = require("./types");
 Object.defineProperty(exports, "AI_ANALYST_ALLOWED_DOMAINS", { enumerable: true, get: function () { return types_1.AI_ANALYST_ALLOWED_DOMAINS; } });
 Object.defineProperty(exports, "AI_ANALYST_ALLOWED_SEVERITIES", { enumerable: true, get: function () { return types_1.AI_ANALYST_ALLOWED_SEVERITIES; } });
@@ -24,7 +24,12 @@ Object.defineProperty(exports, "pruneAiAnalystFindings", { enumerable: true, get
 var ensure_states_1 = require("./ensure_states");
 Object.defineProperty(exports, "AI_ANALYST_STATES", { enumerable: true, get: function () { return ensure_states_1.AI_ANALYST_STATES; } });
 Object.defineProperty(exports, "ensureAiDailyAnalystStates", { enumerable: true, get: function () { return ensure_states_1.ensureAiDailyAnalystStates; } });
+Object.defineProperty(exports, "syncAiDailyAnalystRuntimeFromConfig", { enumerable: true, get: function () { return ensure_states_1.syncAiDailyAnalystRuntimeFromConfig; } });
+Object.defineProperty(exports, "clearStaleDailyAnalystRunNowRequest", { enumerable: true, get: function () { return ensure_states_1.clearStaleDailyAnalystRunNowRequest; } });
 var run_1 = require("./run");
 Object.defineProperty(exports, "runDailyAnalystForDate", { enumerable: true, get: function () { return run_1.runDailyAnalystForDate; } });
 Object.defineProperty(exports, "maybeRunDailyAnalystAutomatically", { enumerable: true, get: function () { return run_1.maybeRunDailyAnalystAutomatically; } });
 Object.defineProperty(exports, "runDailyAnalystManual", { enumerable: true, get: function () { return run_1.runDailyAnalystManual; } });
+Object.defineProperty(exports, "runDailyAnalystFromAdminButton", { enumerable: true, get: function () { return run_1.runDailyAnalystFromAdminButton; } });
+Object.defineProperty(exports, "handleDailyAnalystRunNowRequest", { enumerable: true, get: function () { return run_1.handleDailyAnalystRunNowRequest; } });
+Object.defineProperty(exports, "formatAiDailyAnalystAdminHint", { enumerable: true, get: function () { return run_1.formatAiDailyAnalystAdminHint; } });

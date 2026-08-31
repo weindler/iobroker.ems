@@ -13,6 +13,7 @@ const user_enabled_1 = require("./user_enabled");
 const writeback_1 = require("./writeback");
 const ensure_states_2 = require("./override/ensure_states");
 const ensure_states_3 = require("./daily_analyst/ensure_states");
+const run_2 = require("./daily_analyst/run");
 var ensure_states_4 = require("./ensure_states");
 Object.defineProperty(exports, "ensureAiStates", { enumerable: true, get: function () { return ensure_states_4.ensureAiStates; } });
 var ensure_states_5 = require("./ensure_states");
@@ -39,6 +40,7 @@ let lastTriggerDigestPayload = "";
 function resetAiPipelineHookForTest() {
     lastTriggerDigestPayload = "";
     (0, user_enabled_1.resetAiEnableEpochForTest)();
+    (0, run_1.resetAiOptimizationInFlightForTest)();
 }
 exports.resetAiPipelineHookForTest = resetAiPipelineHookForTest;
 async function ensureAiStateTree(host) {
@@ -109,6 +111,10 @@ async function maybeTriggerAiOptimizationOnDailyPlanChange(host, plan, now = new
     if (digestPayload === lastTriggerDigestPayload) {
         return null;
     }
+    if ((0, run_1.isAiOptimizationInFlight)()) {
+        // Digest nicht verbrauchen — der laufende Versuch hat einen älteren Plan.
+        return null;
+    }
     if (cfg.minIntervalMinutes > 0) {
         const lastTriggerMs = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_1.AI_STATES.lastAutoTriggerAtMs))?.val) ?? 0;
         const elapsedMs = now.getTime() - lastTriggerMs;
@@ -126,6 +132,7 @@ async function maybeTriggerAiOptimizationOnDailyPlanChange(host, plan, now = new
 exports.maybeTriggerAiOptimizationOnDailyPlanChange = maybeTriggerAiOptimizationOnDailyPlanChange;
 const AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX = "ai.optimize_now_request";
 const AI_USER_ENABLED_ID_SUFFIX = "ai.user_enabled";
+const AI_DAILY_ANALYST_RUN_NOW_ID_SUFFIX = ensure_states_3.AI_ANALYST_STATES.runNowRequest;
 /** Hängenden Button (true, oft ack:false) nach Restart/KI-aus leeren — kein stiller Lauf. */
 async function clearStaleAiOptimizeNowRequest(host) {
     const st = await host.getStateAsync(ensure_states_1.AI_STATES.optimizeNowRequest);
@@ -136,9 +143,11 @@ async function clearStaleAiOptimizeNowRequest(host) {
     return true;
 }
 exports.clearStaleAiOptimizeNowRequest = clearStaleAiOptimizeNowRequest;
-/** Erlaubt Runtime-Toggle und "Jetzt optimieren" direkt über den Objektbaum. */
+/** Erlaubt Runtime-Toggle, "Jetzt optimieren" und Daily-Analyst-Button direkt über den Objektbaum. */
 function isAiRelatedState(relativeId) {
-    return relativeId === AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX || relativeId === AI_USER_ENABLED_ID_SUFFIX;
+    return (relativeId === AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX ||
+        relativeId === AI_USER_ENABLED_ID_SUFFIX ||
+        relativeId === AI_DAILY_ANALYST_RUN_NOW_ID_SUFFIX);
 }
 exports.isAiRelatedState = isAiRelatedState;
 async function handleAiStateChange(host, relativeId, val, ack) {
@@ -150,6 +159,20 @@ async function handleAiStateChange(host, relativeId, val, ack) {
         }
         catch (e) {
             host.log?.error?.(`ai user_enabled: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        return true;
+    }
+    if (relativeId === AI_DAILY_ANALYST_RUN_NOW_ID_SUFFIX) {
+        if (val !== true)
+            return true;
+        try {
+            const analystHost = typeof host.getAbsolutePath === "function"
+                ? host
+                : (0, run_2.asDailyAnalystAdapterHost)(host);
+            await (0, run_2.handleDailyAnalystRunNowRequest)(analystHost);
+        }
+        catch (e) {
+            host.log?.error?.(`ai_daily_analyst run_now_request: ${e instanceof Error ? e.message : String(e)}`);
         }
         return true;
     }

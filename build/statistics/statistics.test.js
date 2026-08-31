@@ -42,8 +42,34 @@ const public_charge_js_1 = require("./public_charge.js");
         strict_1.default.equal(cfg.tibberMonthlyBaseEur, 5);
         strict_1.default.equal(cfg.tibberMonthlyGridFeeEur, 8);
     });
-    (0, node_test_1.it)("savings = fixed − (dynamic − rewards)", () => {
-        strict_1.default.equal((0, compute_js_1.savingsVsFixedEur)(5, 3, 0.5), 2.5);
+    (0, node_test_1.it)("Tarifvorteil = Festtarif − Tibber, ohne Grid Rewards", () => {
+        strict_1.default.equal((0, compute_js_1.savingsVsFixedEur)(5, 3, 0.5), 2);
+        strict_1.default.equal((0, compute_js_1.savingsVsFixedEur)(0.6, 0.59, 1.21), 0.01);
+        const estimated = (0, compute_js_1.applyHomeGridRewards)({
+            ...(0, compute_js_1.emptyHomeDay)("2026-08-31"),
+            gridImportKwh: 0.5,
+            dynamicCostEur: 0.59,
+            fixedTariffCostEur: 0.6,
+        }, { creditEur: 1.21, source: "estimate_day" });
+        strict_1.default.equal(estimated.savingsVsFixedEur, 0.01);
+        strict_1.default.equal(estimated.gridRewardsCreditEur, 1.21);
+        strict_1.default.equal(estimated.gridRewardsSource, "estimate_day");
+        strict_1.default.equal((0, grid_rewards_js_1.gridRewardsShowEuroRow)(estimated.gridRewardsSource, estimated.gridRewardsCreditEur), false);
+        strict_1.default.equal((0, grid_rewards_js_1.gridRewardsPendingHintDe)(estimated.gridRewardsSource, estimated.gridRewardsCreditEur), "Grid Rewards: noch nicht abgerechnet");
+        const settled = (0, compute_js_1.applyHomeGridRewards)({
+            ...(0, compute_js_1.emptyHomeDay)("2026-08-31"),
+            dynamicCostEur: 0.59,
+            fixedTariffCostEur: 0.6,
+        }, { creditEur: 1.21, source: "billing" });
+        strict_1.default.equal(settled.savingsVsFixedEur, 0.01);
+        strict_1.default.equal((0, grid_rewards_js_1.gridRewardsShowEuroRow)(settled.gridRewardsSource, settled.gridRewardsCreditEur), true);
+        const settledZero = (0, compute_js_1.applyHomeGridRewards)((0, compute_js_1.emptyHomeDay)("2026-08-31"), { creditEur: 0, source: "billing" });
+        strict_1.default.equal((0, grid_rewards_js_1.gridRewardsShowEuroRow)(settledZero.gridRewardsSource, settledZero.gridRewardsCreditEur), true);
+        strict_1.default.equal(settledZero.gridRewardsCreditEur, 0);
+        const missing = (0, compute_js_1.applyHomeGridRewards)((0, compute_js_1.emptyHomeDay)("2026-08-31"), { creditEur: null, source: "off" });
+        strict_1.default.equal((0, grid_rewards_js_1.gridRewardsShowEuroRow)(missing.gridRewardsSource, missing.gridRewardsCreditEur), false);
+        strict_1.default.equal(missing.gridRewardsCreditEur, null);
+        strict_1.default.equal((0, grid_rewards_js_1.gridRewardsPendingHintDe)(missing.gridRewardsSource, missing.gridRewardsCreditEur), null);
     });
     (0, node_test_1.it)("energy counter reset does not invent negative kWh", () => {
         const d = (0, compute_js_1.energyCounterDeltaKwh)(100, 2);
@@ -380,6 +406,9 @@ const public_charge_js_1 = require("./public_charge.js");
         strict_1.default.equal((0, grid_rewards_js_1.gridRewardsCreditIsPresent)("estimate_day", 1.21), true);
         strict_1.default.equal((0, grid_rewards_js_1.gridRewardsCreditIsPresent)("billing", 0), true);
         strict_1.default.equal((0, grid_rewards_js_1.gridRewardsCreditIsPresent)("off", 0), false);
+        strict_1.default.equal((0, grid_rewards_js_1.gridRewardsShowEuroRow)("estimate_day", 1.21), false);
+        strict_1.default.equal((0, grid_rewards_js_1.gridRewardsShowEuroRow)("billing", 0), true);
+        strict_1.default.equal((0, grid_rewards_js_1.gridRewardsShowEuroRow)("off", null), false);
         const monthZero = (0, grid_rewards_js_1.resolveMonthGridRewards)({
             enabled: true,
             monthPrefix: "2026-08",
@@ -417,7 +446,7 @@ const public_charge_js_1 = require("./public_charge.js");
         strict_1.default.equal(summed.gridRewardsSource, "off");
         strict_1.default.equal((0, grid_rewards_js_1.gridRewardsCreditIsPresent)(summed.gridRewardsSource, summed.gridRewardsCreditEur), false);
     });
-    (0, node_test_1.it)("month mobility applies month rewards once from mapping", () => {
+    (0, node_test_1.it)("month mobility speichert Schätzung, zieht sie aber nicht von EV-Kosten ab", () => {
         const month = (0, compute_js_1.sumMobilityDays)([
             {
                 dateKey: "2026-08-11",
@@ -447,9 +476,44 @@ const public_charge_js_1 = require("./public_charge.js");
             evKwhPer100KmSource: "admin_fallback",
         }, { creditEur: 0.8, source: "estimate_month" });
         strict_1.default.equal(month.gridRewardsCreditEur, 0.8);
+        strict_1.default.equal(month.evTotalCostEur, 1.4);
+        strict_1.default.equal(month.homeGridCostNetEur, 1.5);
+        strict_1.default.equal((0, grid_rewards_js_1.gridRewardsShowEuroRow)(month.gridRewardsSource, month.gridRewardsCreditEur), false);
+    });
+    (0, node_test_1.it)("month mobility zieht nur abgerechnete Grid Rewards von EV-Kosten ab", () => {
+        const month = (0, compute_js_1.sumMobilityDays)([
+            {
+                dateKey: "2026-08-11",
+                homePvKwh: 1,
+                homeGridKwh: 5,
+                homePvCostEur: 0.1,
+                homeGridCostEur: 1.5,
+                homeGridCostNetEur: null,
+                gridRewardsCreditEur: 0.2,
+                gridRewardsSource: "estimate_day",
+                publicInvoicedKwh: null,
+                publicInvoicedEur: null,
+                publicPendingKwh: null,
+                evTotalCostEur: 1.4,
+                evKwhPer100Km: null,
+                evKwhPer100KmSource: null,
+                estimatedKm: null,
+                iceLiters: null,
+                iceFuelPriceEurPerL: null,
+                iceCostEur: null,
+                savingsVsIceEur: null,
+            },
+        ], {
+            evKwhPer100: 18,
+            fuelPriceEurPerL: 2,
+            iceLPer100Km: 7,
+            evKwhPer100KmSource: "admin_fallback",
+        }, { creditEur: 0.8, source: "billing" });
+        strict_1.default.equal(month.gridRewardsCreditEur, 0.8);
         strict_1.default.equal(month.evTotalCostEur, 0.8);
         strict_1.default.equal((0, grid_rewards_js_1.netHomeGridCostEur)(1.5, 0.8), 0.7);
         strict_1.default.equal(month.homeGridCostNetEur, 0.7);
+        strict_1.default.equal((0, grid_rewards_js_1.gridRewardsShowEuroRow)(month.gridRewardsSource, month.gridRewardsCreditEur), true);
     });
 });
 (0, node_test_1.describe)("statistics period", () => {

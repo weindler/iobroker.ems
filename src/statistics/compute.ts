@@ -1,6 +1,6 @@
 import type { GridRewardsSource, HomeDayTotals, MobilityDayTotals } from "./types";
 import type { ResolvedGridRewards } from "./grid_rewards";
-import { gridRewardsCreditIsPresent, netHomeGridCostEur } from "./grid_rewards";
+import { gridRewardsCreditIsPresent, gridRewardsIsSettled, netHomeGridCostEur } from "./grid_rewards";
 
 function round3(n: number): number {
 	return Math.round(n * 1000) / 1000;
@@ -54,16 +54,19 @@ export function tibberDayCostEur(input: {
 	return round2(input.accumulatedCostEur + fees);
 }
 
+/**
+ * Tarifvorteil = Festtarif − Tibber. Grid Rewards gehören nicht in diese Größe.
+ * Dritter Parameter bleibt aus Kompatibilität ignoriert (nie einrechnen).
+ */
 export function savingsVsFixedEur(
 	fixedTariffCostEurVal: number | null,
 	dynamicCostEur: number | null,
-	rewardsCreditEur: number | null,
+	_rewardsCreditEur?: number | null,
 ): number | null {
 	if (fixedTariffCostEurVal === null || dynamicCostEur === null) {
 		return null;
 	}
-	const netDynamic = dynamicCostEur - (rewardsCreditEur ?? 0);
-	return round2(fixedTariffCostEurVal - netDynamic);
+	return round2(fixedTariffCostEurVal - dynamicCostEur);
 }
 
 /** Energie-Delta aus Zählerständen; Reset (neuer Tag / kleiner) → null (kein negativer Sprung). */
@@ -336,7 +339,7 @@ export function buildHomeMonthTotals(input: {
 		gridRewardsCreditEur: input.gridRewardsCreditEur,
 		gridRewardsSource: input.gridRewardsSource,
 		feedInCreditEur: feedIn,
-		savingsVsFixedEur: savingsVsFixedEur(fixed, dynamic, input.gridRewardsCreditEur),
+		savingsVsFixedEur: savingsVsFixedEur(fixed, dynamic),
 	};
 }
 
@@ -442,7 +445,7 @@ export function applyHomeGridRewards(
 		...home,
 		gridRewardsCreditEur: credit,
 		gridRewardsSource: present ? rewards.source : "off",
-		savingsVsFixedEur: savingsVsFixedEur(home.fixedTariffCostEur, home.dynamicCostEur, credit),
+		savingsVsFixedEur: savingsVsFixedEur(home.fixedTariffCostEur, home.dynamicCostEur),
 	};
 }
 
@@ -459,6 +462,15 @@ export function applyMobilityGridRewards(
 		};
 	}
 	const credit = rewards.creditEur;
+	const settled = rewards.source === "billing";
+	if (!settled) {
+		return {
+			...mob,
+			homeGridCostNetEur: mob.homeGridCostEur,
+			gridRewardsCreditEur: credit,
+			gridRewardsSource: rewards.source,
+		};
+	}
 	const homeGridNet = netHomeGridCostEur(mob.homeGridCostEur, credit);
 	const parts = [mob.homePvCostEur, mob.homeGridCostEur, mob.publicInvoicedEur].filter(
 		(v): v is number => v !== null,
@@ -550,7 +562,7 @@ export function sumHomeDays(days: HomeDayTotals[]): HomeDayTotals {
 		gridExportKwh: sum((d) => d.gridExportKwh),
 		dynamicCostEur: dynamic,
 		fixedTariffCostEur: fixed,
-		savingsVsFixedEur: savingsVsFixedEur(fixed, dynamic, rewards),
+		savingsVsFixedEur: savingsVsFixedEur(fixed, dynamic),
 		gridRewardsCreditEur: rewards,
 		gridRewardsSource: billingDay?.gridRewardsSource ?? estimateDay?.gridRewardsSource ?? "off",
 		feedInCreditEur: sum((d) => d.feedInCreditEur),
@@ -595,7 +607,11 @@ export function sumMobilityDays(
 			evCost = round2(parts.reduce((a, b) => a + b, 0));
 		}
 	}
-	if (monthGridRewards && monthGridRewards.source !== "off" && monthGridRewards.creditEur !== null) {
+	if (
+		monthGridRewards &&
+		gridRewardsIsSettled(monthGridRewards.source) &&
+		monthGridRewards.creditEur !== null
+	) {
 		const grossParts = [homePvCostEur, homeGridCostEur, publicInvoicedEur].filter(
 			(v): v is number => v !== null,
 		);
@@ -649,7 +665,9 @@ export function sumMobilityDays(
 		monthGridRewards && monthGridRewards.source !== "off"
 			? monthGridRewards.source
 			: [...days].reverse().find((d) => d.gridRewardsSource !== "off")?.gridRewardsSource ?? "off";
-	const homeGridNet = netHomeGridCostEur(homeGridCostEur, monthRewardsCredit);
+	const homeGridNet = gridRewardsIsSettled(monthRewardsSource)
+		? netHomeGridCostEur(homeGridCostEur, monthRewardsCredit)
+		: homeGridCostEur;
 
 	return {
 		dateKey,
@@ -686,8 +704,8 @@ function mobilityDayEvCostEur(d: MobilityDayTotals): number | null {
 		(v): v is number => v !== null,
 	);
 	if (!parts.length) return null;
-	const raw =
-		parts.reduce((a, b) => a + b, 0) - (d.gridRewardsCreditEur ?? 0);
+	const rewardDeduct = gridRewardsIsSettled(d.gridRewardsSource) ? (d.gridRewardsCreditEur ?? 0) : 0;
+	const raw = parts.reduce((a, b) => a + b, 0) - rewardDeduct;
 	if (mobilityDayChargeKwh(d) <= 0 && (d.publicInvoicedEur ?? 0) <= 0) return null;
 	return round2(Math.max(0, raw));
 }
@@ -750,11 +768,9 @@ export function finalizeMobilityDayTotals(
 ): void {
 	const totalChargeKwh =
 		(mob.homePvKwh ?? 0) + (mob.homeGridKwh ?? 0) + (mob.publicInvoicedKwh ?? 0);
+	const rewardDeduct = gridRewardsIsSettled(mob.gridRewardsSource) ? (mob.gridRewardsCreditEur ?? 0) : 0;
 	const evCostRaw =
-		(mob.homePvCostEur ?? 0) +
-		(mob.homeGridCostEur ?? 0) +
-		(mob.publicInvoicedEur ?? 0) -
-		(mob.gridRewardsCreditEur ?? 0);
+		(mob.homePvCostEur ?? 0) + (mob.homeGridCostEur ?? 0) + (mob.publicInvoicedEur ?? 0) - rewardDeduct;
 	if (totalChargeKwh > 0 || (mob.publicInvoicedEur ?? 0) > 0) {
 		mob.evTotalCostEur = round2(Math.max(0, evCostRaw));
 	} else {

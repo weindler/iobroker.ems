@@ -5,7 +5,7 @@ import { aiConfigFromAdapter } from "./config";
 import { AI_STATES, ensureAiStates } from "./ensure_states";
 import { readAndRolloverDailyCalls, type DailyLimitState } from "./limiter";
 import { createOpenAiProvider } from "./openai_provider";
-import { runAiOptimizationNow, type AiRunHost, type AiRunOutcome } from "./run";
+import { runAiOptimizationNow, isAiOptimizationInFlight, resetAiOptimizationInFlightForTest, type AiRunHost, type AiRunOutcome } from "./run";
 import { aiTriggerDigestPayload } from "./trigger_digest";
 import {
 	applyAiUserEnabledToggle,
@@ -15,7 +15,8 @@ import {
 } from "./user_enabled";
 import { isAiAutoSuspended } from "./writeback";
 import { ensureAiValidatorStates } from "./override/ensure_states";
-import { ensureAiDailyAnalystStates, syncAiDailyAnalystRuntimeFromConfig, clearStaleDailyAnalystRunNowRequest } from "./daily_analyst/ensure_states";
+import { AI_ANALYST_STATES, ensureAiDailyAnalystStates, syncAiDailyAnalystRuntimeFromConfig, clearStaleDailyAnalystRunNowRequest } from "./daily_analyst/ensure_states";
+import { asDailyAnalystAdapterHost, handleDailyAnalystRunNowRequest } from "./daily_analyst/run";
 
 export { ensureAiStates } from "./ensure_states";
 export { AI_STATES } from "./ensure_states";
@@ -44,6 +45,7 @@ let lastTriggerDigestPayload = "";
 export function resetAiPipelineHookForTest(): void {
 	lastTriggerDigestPayload = "";
 	resetAiEnableEpochForTest();
+	resetAiOptimizationInFlightForTest();
 }
 
 export async function ensureAiStateTree(
@@ -136,6 +138,10 @@ export async function maybeTriggerAiOptimizationOnDailyPlanChange(
 	if (digestPayload === lastTriggerDigestPayload) {
 		return null;
 	}
+	if (isAiOptimizationInFlight()) {
+		// Digest nicht verbrauchen — der laufende Versuch hat einen älteren Plan.
+		return null;
+	}
 	if (cfg.minIntervalMinutes > 0) {
 		const lastTriggerMs = asNum((await host.getStateAsync(AI_STATES.lastAutoTriggerAtMs))?.val) ?? 0;
 		const elapsedMs = now.getTime() - lastTriggerMs;
@@ -153,6 +159,7 @@ export async function maybeTriggerAiOptimizationOnDailyPlanChange(
 
 const AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX = "ai.optimize_now_request";
 const AI_USER_ENABLED_ID_SUFFIX = "ai.user_enabled";
+const AI_DAILY_ANALYST_RUN_NOW_ID_SUFFIX = AI_ANALYST_STATES.runNowRequest;
 
 /** Hängenden Button (true, oft ack:false) nach Restart/KI-aus leeren — kein stiller Lauf. */
 export async function clearStaleAiOptimizeNowRequest(host: {
@@ -167,9 +174,13 @@ export async function clearStaleAiOptimizeNowRequest(host: {
 	return true;
 }
 
-/** Erlaubt Runtime-Toggle und "Jetzt optimieren" direkt über den Objektbaum. */
+/** Erlaubt Runtime-Toggle, "Jetzt optimieren" und Daily-Analyst-Button direkt über den Objektbaum. */
 export function isAiRelatedState(relativeId: string): boolean {
-	return relativeId === AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX || relativeId === AI_USER_ENABLED_ID_SUFFIX;
+	return (
+		relativeId === AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX ||
+		relativeId === AI_USER_ENABLED_ID_SUFFIX ||
+		relativeId === AI_DAILY_ANALYST_RUN_NOW_ID_SUFFIX
+	);
 }
 
 export type AiStateChangeHost = AiRunHost & {
@@ -189,6 +200,19 @@ export async function handleAiStateChange(
 			await applyAiUserEnabledToggle(host, val === true);
 		} catch (e) {
 			host.log?.error?.(`ai user_enabled: ${e instanceof Error ? e.message : String(e)}`);
+		}
+		return true;
+	}
+	if (relativeId === AI_DAILY_ANALYST_RUN_NOW_ID_SUFFIX) {
+		if (val !== true) return true;
+		try {
+			const analystHost =
+				typeof (host as { getAbsolutePath?: unknown }).getAbsolutePath === "function"
+					? (host as unknown as Parameters<typeof handleDailyAnalystRunNowRequest>[0])
+					: asDailyAnalystAdapterHost(host as unknown as ioBroker.Adapter);
+			await handleDailyAnalystRunNowRequest(analystHost);
+		} catch (e) {
+			host.log?.error?.(`ai_daily_analyst run_now_request: ${e instanceof Error ? e.message : String(e)}`);
 		}
 		return true;
 	}

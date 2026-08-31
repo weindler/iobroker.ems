@@ -1,12 +1,39 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.gridRewardsLabelDe = exports.resolvePeriodGridRewards = exports.resolveMonthGridRewards = exports.resolveTodayGridRewards = exports.netHomeGridCostEur = exports.gridRewardsCreditIsPresent = void 0;
+exports.gridRewardsLabelDe = exports.resolvePeriodGridRewards = exports.resolveMonthGridRewards = exports.resolveTodayGridRewards = exports.netHomeGridCostEur = exports.gridRewardsCreditIsPresent = exports.gridRewardsPendingHintDe = exports.gridRewardsShowEuroRow = exports.gridRewardsIsEstimated = exports.gridRewardsIsSettled = void 0;
 function round2(n) {
     return Math.round(n * 100) / 100;
 }
+function gridRewardsIsSettled(source) {
+    return source === "billing";
+}
+exports.gridRewardsIsSettled = gridRewardsIsSettled;
+function gridRewardsIsEstimated(source) {
+    return source === "estimate_day" || source === "estimate_month";
+}
+exports.gridRewardsIsEstimated = gridRewardsIsEstimated;
+/** Euro-Zeile nur bei belastbarer Abrechnung — auch echter 0,00 €. Schätzung nie. */
+function gridRewardsShowEuroRow(source, creditEur) {
+    if (!gridRewardsIsSettled(source))
+        return false;
+    if (creditEur === null || creditEur === undefined || !Number.isFinite(creditEur))
+        return false;
+    return creditEur >= 0;
+}
+exports.gridRewardsShowEuroRow = gridRewardsShowEuroRow;
+/** Dezenter Hinweis statt Reward-Euro, wenn nur eine Schätzung vorliegt. */
+function gridRewardsPendingHintDe(source, creditEur) {
+    if (!gridRewardsIsEstimated(source))
+        return null;
+    if (creditEur === null || creditEur === undefined || !Number.isFinite(creditEur) || !(creditEur > 0)) {
+        return null;
+    }
+    return "Grid Rewards: noch nicht abgerechnet";
+}
+exports.gridRewardsPendingHintDe = gridRewardsPendingHintDe;
 /**
- * Vorhandener/belastbarer Reward-Wert — nicht dasselbe wie „0,00 € erfunden“.
- * Schätzung 0 = nicht aufgelaufen / nicht anzeigen. Abrechnung 0 = echter vorhandener Wert.
+ * Vorhandener Reward-Datensatz (Schätzung oder Abrechnung) — nicht „0,00 € erfunden“.
+ * Euro-Anzeige als realisierter Vorteil nur über `gridRewardsShowEuroRow`.
  */
 function gridRewardsCreditIsPresent(source, creditEur) {
     if (!source || source === "off")

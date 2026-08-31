@@ -244,3 +244,43 @@ const emptyOk = {
         strict_1.default.equal(host.store.get(ensure_states_js_1.AI_STATES.callsToday), 1);
     });
 });
+(0, node_test_1.describe)("runAiOptimizationNow — in-flight", () => {
+    (0, node_test_1.it)("ein zweiter Trigger während des Laufs erzeugt keinen zweiten HTTP-Call", async () => {
+        (0, run_js_1.resetAiOptimizationInFlightForTest)();
+        const host = mockHost(ALLOWED_CONFIG);
+        let release;
+        const gate = new Promise((r) => {
+            release = r;
+        });
+        const calls = { n: 0 };
+        const slow = {
+            id: "openai",
+            async optimize() {
+                calls.n += 1;
+                await gate;
+                return { ...emptyOk };
+            },
+        };
+        const firstP = (0, run_js_1.runAiOptimizationNow)(host, minimalPlan(), "manual", slow);
+        const waitStart = Date.now();
+        while (calls.n === 0 && Date.now() - waitStart < 2000) {
+            await new Promise((r) => setImmediate(r));
+        }
+        strict_1.default.equal(calls.n, 1);
+        try {
+            const second = await (0, run_js_1.runAiOptimizationNow)(host, minimalPlan(), "manual", slow);
+            strict_1.default.equal(second.ran, false);
+            strict_1.default.match(second.reasonDe, /läuft bereits/);
+            strict_1.default.equal(calls.n, 1);
+            strict_1.default.equal(host.store.get(ensure_states_js_1.AI_STATES.callsToday), 0);
+        }
+        finally {
+            release();
+            const first = await firstP;
+            strict_1.default.equal(first.status, "ready");
+            strict_1.default.equal(calls.n, 1);
+            strict_1.default.equal(host.store.get(ensure_states_js_1.AI_STATES.callsToday), 1);
+            (0, run_js_1.resetAiOptimizationInFlightForTest)();
+        }
+    });
+});

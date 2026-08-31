@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runAiOptimizationNow = void 0;
+exports.runAiOptimizationNow = exports.resetAiOptimizationInFlightForTest = exports.isAiOptimizationInFlight = void 0;
 const config_1 = require("./config");
 const context_1 = require("./context");
 const ensure_states_1 = require("./ensure_states");
@@ -17,6 +17,16 @@ async function persistThinkingStates(host, thinkingDe, decisionsJson, thinkingMo
     await host.setStateAsync(ensure_states_1.AI_STATES.lastDecisionsJson, { val: decisionsJson, ack: true });
     await host.setStateAsync(ensure_states_1.AI_STATES.lastThinkingMode, { val: thinkingMode, ack: true });
 }
+let aiOptimizationInFlight = false;
+function isAiOptimizationInFlight() {
+    return aiOptimizationInFlight;
+}
+exports.isAiOptimizationInFlight = isAiOptimizationInFlight;
+/** Nur Tests: In-Flight-Sperre zurücksetzen. */
+function resetAiOptimizationInFlightForTest() {
+    aiOptimizationInFlight = false;
+}
+exports.resetAiOptimizationInFlightForTest = resetAiOptimizationInFlightForTest;
 /**
  * Orchestriert genau einen KI-Optimierungsversuch (Roadmap Block 6 / denkende KI).
  * Fail-closed: ohne messbaren Plan-B-Vorteil kein Write-back, Auto-Trigger gesperrt
@@ -24,6 +34,23 @@ async function persistThinkingStates(host, thinkingDe, decisionsJson, thinkingMo
  * Write-back geht nur über Daily-Plan-Allocation — nie direkt auf Geräte.
  */
 async function runAiOptimizationNow(host, plan, triggerReason, provider) {
+    if (aiOptimizationInFlight) {
+        return {
+            ran: false,
+            status: "error",
+            reasonDe: "KI-Optimierung läuft bereits.",
+        };
+    }
+    aiOptimizationInFlight = true;
+    try {
+        return await runAiOptimizationNowUnlocked(host, plan, triggerReason, provider);
+    }
+    finally {
+        aiOptimizationInFlight = false;
+    }
+}
+exports.runAiOptimizationNow = runAiOptimizationNow;
+async function runAiOptimizationNowUnlocked(host, plan, triggerReason, provider) {
     const cfg = (0, config_1.aiConfigFromAdapter)(host.config);
     const requestEpoch = (0, user_enabled_1.currentAiEnableEpoch)();
     if (!(await (0, user_enabled_1.readAiUserEnabled)(host))) {
@@ -159,4 +186,3 @@ async function runAiOptimizationNow(host, plan, triggerReason, provider) {
         reasonDe,
     };
 }
-exports.runAiOptimizationNow = runAiOptimizationNow;

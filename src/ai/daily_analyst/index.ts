@@ -32,6 +32,7 @@ export {
 	handleDailyAnalystRunNowRequest,
 	asDailyAnalystAdapterHost,
 	formatAiDailyAnalystAdminHint,
+	resetDailyAnalystInFlightForTest,
 	type AiDailyAnalystHost,
 	type AiDailyAnalystAdminButtonResult,
 } from "./run";

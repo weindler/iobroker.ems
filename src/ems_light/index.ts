@@ -33,12 +33,11 @@ import {
 	requestForcedUnifiedReplan,
 } from "../operator/daily_plan/tick";
 import { ensureEmsLightStates } from "./ensure_states";
+import { EMS_LIGHT_OWN_STATE_SUBSCRIPTIONS } from "./runtime_subscriptions";
 import { runEmsLightPhase1Tick } from "./tick";
 import type { LiveCacheHost } from "./live_cache";
 
 const DEFAULT_TICK_SEC = 60;
-const GLOBAL_MODES_REQUESTED_STATE = "global_modes.requested";
-const INTENT_WALLBOX_REQUEST_STATE = "user_intent.inputs.iobroker.wallbox.request_json";
 const POLICY_STARTUP_TIMEOUT_MS = 8000;
 let tickTimer: NodeJS.Timeout | null = null;
 let policyAdapter: ioBroker.Adapter | null = null;
@@ -222,11 +221,9 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 	}
 	policyAdapter = adapter;
 	try {
-		await adapter.subscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE);
-		await adapter.subscribeStatesAsync(INTENT_WALLBOX_REQUEST_STATE);
-		await adapter.subscribeStatesAsync("statistics.public_charge.submit_request");
-		await adapter.subscribeStatesAsync("statistics.adjust_request");
-		await adapter.subscribeStatesAsync("statistics.period_id");
+		for (const id of EMS_LIGHT_OWN_STATE_SUBSCRIPTIONS) {
+			await adapter.subscribeStatesAsync(id);
+		}
 	} catch (e) {
 		adapter.log.warn(`EMS-Light state subscribe: ${e}`);
 	}
@@ -299,12 +296,11 @@ export async function stopEmsLightPhase1(): Promise<void> {
 	if (policyAdapter) {
 		const adapter = policyAdapter;
 		policyAdapter = null;
-		void Promise.resolve(adapter.unsubscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE)).catch((e) =>
-			adapter.log.debug?.(`global_modes.requested unsubscribe: ${e}`),
-		);
-		void Promise.resolve(adapter.unsubscribeStatesAsync(INTENT_WALLBOX_REQUEST_STATE)).catch((e) =>
-			adapter.log.debug?.(`intent wallbox request unsubscribe: ${e}`),
-		);
+		for (const id of EMS_LIGHT_OWN_STATE_SUBSCRIPTIONS) {
+			void Promise.resolve(adapter.unsubscribeStatesAsync(id)).catch((e) =>
+				adapter.log.debug?.(`unsubscribe ${id}: ${e}`),
+			);
+		}
 	}
 	stopIntentEngine();
 	stopPolicyEngine();

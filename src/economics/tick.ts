@@ -107,12 +107,9 @@ export async function tickEconomics(host: EconomicsHost, now: Date = new Date())
 	await setIfChanged(host, ECONOMICS_FLAT.todayEmsVorteilEur, todayRecord.emsVorteilEur);
 	await setIfChanged(host, ECONOMICS_FLAT.todayKiMehrwertEur, todayRecord.kiMehrwertEur);
 	const todayRewardsPresent =
-		todayRecord.gridRewardsSource === "billing"
-			? todayRecord.gridRewardsCreditEur !== null && todayRecord.gridRewardsCreditEur >= 0
-			: todayRecord.gridRewardsCreditEur !== null &&
-				todayRecord.gridRewardsCreditEur > 0 &&
-				!!todayRecord.gridRewardsSource &&
-				todayRecord.gridRewardsSource !== "off";
+		todayRecord.gridRewardsSource === "billing" &&
+		todayRecord.gridRewardsCreditEur !== null &&
+		todayRecord.gridRewardsCreditEur >= 0;
 	await setIfChanged(
 		host,
 		ECONOMICS_FLAT.todayGridRewardsEur,

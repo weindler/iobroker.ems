@@ -98,6 +98,7 @@ build/addons/measured_consumers/config.test.js
 build/addons/measured_consumers/runtime/engine.test.js
 build/addons/measured_consumers/phase1_fixes.test.js
 build/ems_light/device_ownership.test.js
+build/ems_light/runtime_subscriptions.test.js
 build/pipeline.test.js
 build/device_write.test.js
 build/execution_mode.test.js
@@ -283,6 +284,7 @@ build/ai/daily_analyst/config.test.js
 build/ai/override/validate.test.js
 build/ai/override/ingest.test.js
 build/economics/compute.test.js
+build/statistics/statistics.test.js
 build/learning/shadow_engine/simulate.test.js
 build/learning/shadow_engine/battery_model.test.js
 build/learning/shadow_engine/exogenous_load.test.js

@@ -169,7 +169,7 @@ function shadowFixture(overrides = {}) {
         strict_1.default.equal(sum.daysTarifvorteilEvaluable, 1);
         strict_1.default.equal(sum.tarifvorteilEur, 1);
         strict_1.default.equal(sum.daysEmsVorteilEvaluable, 1);
-        strict_1.default.equal(sum.gridRewardsCreditEur, 0.5);
+        strict_1.default.equal(sum.gridRewardsCreditEur, null);
     });
     (0, node_test_1.it)("zählt Schätzung 0 nicht als vorhandenen Reward, Abrechnung 0 schon", () => {
         const estimateZero = (0, compute_1.buildEconomicsDayRecord)({

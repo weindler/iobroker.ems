@@ -88,12 +88,9 @@ async function tickEconomics(host, now = new Date()) {
     await setIfChanged(host, ensure_states_2.ECONOMICS_FLAT.todayTarifvorteilEur, todayRecord.tarifvorteilEur);
     await setIfChanged(host, ensure_states_2.ECONOMICS_FLAT.todayEmsVorteilEur, todayRecord.emsVorteilEur);
     await setIfChanged(host, ensure_states_2.ECONOMICS_FLAT.todayKiMehrwertEur, todayRecord.kiMehrwertEur);
-    const todayRewardsPresent = todayRecord.gridRewardsSource === "billing"
-        ? todayRecord.gridRewardsCreditEur !== null && todayRecord.gridRewardsCreditEur >= 0
-        : todayRecord.gridRewardsCreditEur !== null &&
-            todayRecord.gridRewardsCreditEur > 0 &&
-            !!todayRecord.gridRewardsSource &&
-            todayRecord.gridRewardsSource !== "off";
+    const todayRewardsPresent = todayRecord.gridRewardsSource === "billing" &&
+        todayRecord.gridRewardsCreditEur !== null &&
+        todayRecord.gridRewardsCreditEur >= 0;
     await setIfChanged(host, ensure_states_2.ECONOMICS_FLAT.todayGridRewardsEur, todayRewardsPresent ? todayRecord.gridRewardsCreditEur : null);
     // --- Zeitraum-Aggregation (analog Statistik-Perioden) ---
     const dayKeysAll = Object.keys(econPersist.days);

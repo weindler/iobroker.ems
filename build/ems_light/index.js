@@ -15,10 +15,9 @@ const global_modes_1 = require("../global_modes");
 const execution_mode_1 = require("../execution_mode");
 const tick_1 = require("../operator/daily_plan/tick");
 const ensure_states_1 = require("./ensure_states");
+const runtime_subscriptions_1 = require("./runtime_subscriptions");
 const tick_2 = require("./tick");
 const DEFAULT_TICK_SEC = 60;
-const GLOBAL_MODES_REQUESTED_STATE = "global_modes.requested";
-const INTENT_WALLBOX_REQUEST_STATE = "user_intent.inputs.iobroker.wallbox.request_json";
 const POLICY_STARTUP_TIMEOUT_MS = 8000;
 let tickTimer = null;
 let policyAdapter = null;
@@ -186,11 +185,9 @@ async function startEmsLightPhase1Runtime(adapter) {
     }
     policyAdapter = adapter;
     try {
-        await adapter.subscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE);
-        await adapter.subscribeStatesAsync(INTENT_WALLBOX_REQUEST_STATE);
-        await adapter.subscribeStatesAsync("statistics.public_charge.submit_request");
-        await adapter.subscribeStatesAsync("statistics.adjust_request");
-        await adapter.subscribeStatesAsync("statistics.period_id");
+        for (const id of runtime_subscriptions_1.EMS_LIGHT_OWN_STATE_SUBSCRIPTIONS) {
+            await adapter.subscribeStatesAsync(id);
+        }
     }
     catch (e) {
         adapter.log.warn(`EMS-Light state subscribe: ${e}`);
@@ -261,8 +258,9 @@ async function stopEmsLightPhase1() {
     if (policyAdapter) {
         const adapter = policyAdapter;
         policyAdapter = null;
-        void Promise.resolve(adapter.unsubscribeStatesAsync(GLOBAL_MODES_REQUESTED_STATE)).catch((e) => adapter.log.debug?.(`global_modes.requested unsubscribe: ${e}`));
-        void Promise.resolve(adapter.unsubscribeStatesAsync(INTENT_WALLBOX_REQUEST_STATE)).catch((e) => adapter.log.debug?.(`intent wallbox request unsubscribe: ${e}`));
+        for (const id of runtime_subscriptions_1.EMS_LIGHT_OWN_STATE_SUBSCRIPTIONS) {
+            void Promise.resolve(adapter.unsubscribeStatesAsync(id)).catch((e) => adapter.log.debug?.(`unsubscribe ${id}: ${e}`));
+        }
     }
     (0, intent_1.stopIntentEngine)();
     (0, policy_1.stopPolicyEngine)();

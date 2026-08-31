@@ -128,6 +128,9 @@ function makeHost(config, dir) {
     };
     return host;
 }
+(0, node_test_1.afterEach)(() => {
+    (0, run_1.resetDailyAnalystInFlightForTest)();
+});
 (0, node_test_1.describe)("runDailyAnalystForDate — EMS läuft ohne KI weiter", () => {
     (0, node_test_1.it)("status=disabled ohne Provider-Aufruf, wenn Admin-Modus disabled", async () => {
         const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-"));
@@ -205,7 +208,7 @@ function makeHost(config, dir) {
         const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-"));
         const host = makeHost({ ai_analyst_mode: "manual", ai_openai_api_key: "sk-test" }, dir);
         const admin = await (0, run_1.runDailyAnalystFromAdminButton)(host, NOW, silentProvider());
-        strict_1.default.equal(host.writes.some((w) => w.id === ensure_states_1.AI_ANALYST_STATES.runNowRequest && w.val === true), true);
+        strict_1.default.equal(host.writes.some((w) => w.id === ensure_states_1.AI_ANALYST_STATES.runNowRequest && w.val === true), false);
         strict_1.default.equal(host.states.get(ensure_states_1.AI_ANALYST_STATES.runNowRequest), false);
         strict_1.default.equal(admin.status, "no_data");
         strict_1.default.equal(admin.hint, "kein evaluierter Tag verfügbar");
@@ -274,7 +277,7 @@ function makeHost(config, dir) {
         strict_1.default.equal(typeof host.getAbsolutePath, "function");
         const admin = await (0, run_1.runDailyAnalystFromAdminButton)(host, NOW, silentProvider());
         strict_1.default.notEqual(admin.hint, "host.getAbsolutePath is not a function");
-        strict_1.default.equal(raw.writes.some((w) => w.id === ensure_states_1.AI_ANALYST_STATES.runNowRequest && w.val === true), true);
+        strict_1.default.equal(raw.writes.some((w) => w.id === ensure_states_1.AI_ANALYST_STATES.runNowRequest && w.val === true), false);
         strict_1.default.equal(admin.status, "no_data");
         strict_1.default.equal(admin.result, "ok");
     });
@@ -287,6 +290,60 @@ function makeHost(config, dir) {
         strict_1.default.equal(admin.status, "error");
         strict_1.default.match(admin.hint, /Datenpfad/);
         strict_1.default.equal(String(admin.hint).includes("is not a function"), false);
+    });
+    (0, node_test_1.it)("Objektbaum-Handler und Admin nutzen denselben Manual-Pfad", async () => {
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-same-"));
+        const cfg = { ai_analyst_mode: "manual", ai_openai_api_key: "sk-test", timezone: "Europe/Berlin" };
+        const hostAdmin = makeHost(cfg, dir);
+        const hostTree = makeHost(cfg, dir);
+        const admin = await (0, run_1.runDailyAnalystFromAdminButton)(hostAdmin, NOW, silentProvider());
+        const tree = await (0, run_1.handleDailyAnalystRunNowRequest)(hostTree, NOW, silentProvider());
+        strict_1.default.equal(admin.status, "no_data");
+        strict_1.default.equal(tree.status, "no_data");
+        strict_1.default.equal(tree.ran, false);
+        strict_1.default.equal(hostTree.states.get(ensure_states_1.AI_ANALYST_STATES.runNowRequest), false);
+    });
+    (0, node_test_1.it)("ein zweiter Trigger während des Laufs erzeugt keinen zweiten HTTP-Call", async () => {
+        (0, run_1.resetDailyAnalystInFlightForTest)();
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-inflight-"));
+        const host = makeHost({ ai_analyst_mode: "manual", ai_openai_api_key: "sk-test", timezone: "Europe/Berlin" }, dir);
+        await (0, persist_1.writeScoresDay)(host.getAbsolutePath(constants_1.DAILY_EVALUATOR_SCORES_CATEGORY), scoresRecord(YESTERDAY));
+        let release;
+        const gate = new Promise((r) => {
+            release = r;
+        });
+        const calls = { n: 0 };
+        const slow = {
+            analyze: async () => {
+                calls.n += 1;
+                await gate;
+                return {
+                    ok: true,
+                    findings: [],
+                    reasonDe: "ok",
+                    usage: { promptTokens: 1, completionTokens: 1 },
+                };
+            },
+        };
+        const firstP = (0, run_1.handleDailyAnalystRunNowRequest)(host, NOW, slow);
+        const waitStart = Date.now();
+        while (calls.n === 0 && Date.now() - waitStart < 2000) {
+            await new Promise((r) => setImmediate(r));
+        }
+        strict_1.default.equal(calls.n, 1);
+        try {
+            const second = await (0, run_1.handleDailyAnalystRunNowRequest)(host, NOW, slow);
+            strict_1.default.equal(second.error, "already_running");
+            strict_1.default.equal(second.ran, false);
+            strict_1.default.equal(calls.n, 1);
+        }
+        finally {
+            release();
+            const first = await firstP;
+            strict_1.default.equal(first.status, "ok");
+            strict_1.default.equal(calls.n, 1);
+            (0, run_1.resetDailyAnalystInFlightForTest)();
+        }
     });
 });
 (0, node_test_1.describe)("formatAiDailyAnalystAdminHint", () => {
@@ -312,13 +369,13 @@ function makeHost(config, dir) {
 function thermalDupFindings() {
     return [
         {
-            findingType: "thermal_optimization",
+            findingType: "avoidable",
             domain: "thermal",
             severity: "notice",
             confidencePct: 70,
-            evidence: ["Heizstab 10 min / 0,29 kWh."],
-            observedBehaviorDe: "Heizstab 10 min / 0,29 kWh, decisionQuality=avoidable, besseres PV-/Preisfenster verfügbar.",
-            suggestedImprovementDe: "Heizstab in das günstigere PV-/Preisfenster legen.",
+            evidence: [],
+            observedBehaviorDe: "Der Heizstab lief 10 Minuten und verbrauchte 0,29 kWh, obwohl ein günstigeres Zeitfenster verfügbar war.",
+            suggestedImprovementDe: "Heizstab-Läufe sollten besser auf günstigere PV-/Preisfenster abgestimmt werden, um Kosten zu senken.",
             affectedParameter: null,
             proposedNumericValue: null,
             expectedDirection: "cost_down",
@@ -326,13 +383,13 @@ function thermalDupFindings() {
             dateKey: YESTERDAY,
         },
         {
-            findingType: "thermal_optimization",
+            findingType: "early",
             domain: "thermal",
             severity: "info",
             confidencePct: 70,
-            evidence: ["Heizstab 10 min / 0,29 kWh."],
-            observedBehaviorDe: "Heizstab 10 min / 0,29 kWh, decisionQuality=early, besseres PV-/Preisfenster verfügbar.",
-            suggestedImprovementDe: "Heizstab in das günstigere PV-/Preisfenster legen.",
+            evidence: [],
+            observedBehaviorDe: "Der Heizstab wurde frühzeitig aktiviert, was zu moderaten Kosten führte.",
+            suggestedImprovementDe: "Eine spätere Aktivierung im besseren PV-/Preisfenster könnte die Wirtschaftlichkeit verbessern.",
             affectedParameter: null,
             proposedNumericValue: null,
             expectedDirection: "cost_down",

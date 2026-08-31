@@ -700,17 +700,6 @@ class Ems extends utils.Adapter {
 				await handleAiStateChange(this as unknown as Parameters<typeof handleAiStateChange>[0], rel, state.val, state.ack);
 				return;
 			}
-			if (rel === "ai.daily_analyst.run_now_request" && !state.ack && state.val === true) {
-				const { handleDailyAnalystRunNowRequest, asDailyAnalystAdapterHost } = await import(
-					"./ai/daily_analyst/index.js"
-				);
-				try {
-					await handleDailyAnalystRunNowRequest(asDailyAnalystAdapterHost(this));
-				} catch (e) {
-					this.log.error(`ai_daily_analyst run_now_request: ${e instanceof Error ? e.message : String(e)}`);
-				}
-				return;
-			}
 			const { isStatisticsRelatedState, handleStatisticsStateChange } = await import("./statistics/index.js");
 			if (
 				isStatisticsRelatedState(rel) &&

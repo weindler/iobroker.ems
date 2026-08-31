@@ -759,7 +759,6 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 					savingsVsFixedEur: savingsVsFixedEur(
 						fixedClipped ?? homeMonth.fixedTariffCostEur,
 						homeMonth.dynamicCostEur,
-						monthRewards.source === "off" ? null : monthRewards.creditEur,
 					),
 				},
 				monthRewards,
@@ -796,7 +795,6 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 						savingsVsFixedEur: savingsVsFixedEur(
 							fixed,
 							dynamic,
-							periodRewards.source === "off" ? null : periodRewards.creditEur,
 						),
 					},
 					periodRewards,
@@ -817,7 +815,6 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 						savingsVsFixedEur: savingsVsFixedEur(
 							fixed,
 							homeAgg.dynamicCostEur,
-							periodRewards.source === "off" ? null : periodRewards.creditEur,
 						),
 					},
 					periodRewards,

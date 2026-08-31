@@ -24,6 +24,26 @@ function finding(overrides = {}) {
     };
 }
 (0, node_test_1.describe)("dedupeAnalystFindings", () => {
+    (0, node_test_1.it)("Produktionsfall: zwei Heizstab-Texte desselben Laufs → 1 Finding (notice bleibt)", () => {
+        const notice = finding({
+            severity: "notice",
+            findingType: "avoidable",
+            observedBehaviorDe: "Der Heizstab lief 10 Minuten und verbrauchte 0,29 kWh, obwohl ein günstigeres Zeitfenster verfügbar war.",
+            suggestedImprovementDe: "Heizstab-Läufe sollten besser auf günstigere PV-/Preisfenster abgestimmt werden, um Kosten zu senken.",
+            evidence: [],
+        });
+        const info = finding({
+            severity: "info",
+            findingType: "early",
+            observedBehaviorDe: "Der Heizstab wurde frühzeitig aktiviert, was zu moderaten Kosten führte.",
+            suggestedImprovementDe: "Eine spätere Aktivierung im besseren PV-/Preisfenster könnte die Wirtschaftlichkeit verbessern.",
+            evidence: [],
+        });
+        const out = (0, dedupe_findings_1.dedupeAnalystFindings)([notice, info]);
+        strict_1.default.equal(out.length, 1);
+        strict_1.default.equal(out[0]?.severity, "notice");
+        strict_1.default.match(out[0]?.observedBehaviorDe ?? "", /10 Minuten/);
+    });
     (0, node_test_1.it)("führt zwei semantisch gleiche Heizstab-Findings desselben Laufs zu einem zusammen", () => {
         const avoidable = finding({
             severity: "notice",
@@ -39,6 +59,20 @@ function finding(overrides = {}) {
         strict_1.default.equal(out[0]?.severity, "notice");
         strict_1.default.match(out[0]?.observedBehaviorDe ?? "", /avoidable/);
     });
+    (0, node_test_1.it)("gleicher Lauf, andere Formulierung ohne Mengen → 1 Finding", () => {
+        const withQty = finding({
+            severity: "notice",
+            observedBehaviorDe: "Heizstab 10 min / 0,29 kWh zu früh, besseres PV-Fenster.",
+        });
+        const prose = finding({
+            severity: "info",
+            findingType: "early_activation",
+            observedBehaviorDe: "Der Heizstab wurde frühzeitig aktiviert.",
+            suggestedImprovementDe: "Später im günstigeren Preisfenster aktivieren.",
+            evidence: [],
+        });
+        strict_1.default.equal((0, dedupe_findings_1.dedupeAnalystFindings)([withQty, prose]).length, 1);
+    });
     (0, node_test_1.it)("lässt unterschiedliche echte Probleme getrennt", () => {
         const thermal = finding();
         const battery = finding({
@@ -50,6 +84,15 @@ function finding(overrides = {}) {
         });
         const out = (0, dedupe_findings_1.dedupeAnalystFindings)([thermal, battery]);
         strict_1.default.equal(out.length, 2);
+    });
+    (0, node_test_1.it)("zwei unterschiedliche Heizstab-Läufe bleiben getrennt", () => {
+        const runA = finding({
+            observedBehaviorDe: "Heizstab 10 min / 0,29 kWh zu früh, besseres PV-Fenster.",
+        });
+        const runB = finding({
+            observedBehaviorDe: "Heizstab 25 min / 1,10 kWh zu früh, besseres PV-Fenster.",
+        });
+        strict_1.default.equal((0, dedupe_findings_1.dedupeAnalystFindings)([runA, runB]).length, 2);
     });
     (0, node_test_1.it)("behält die stärkere Severity und vereinigt Evidence", () => {
         const weak = finding({

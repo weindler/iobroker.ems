@@ -14,9 +14,10 @@ import type { AiRunHost } from "./run.js";
 import type { DailyPlan } from "../operator/daily_plan/types.js";
 
 describe("ai state change routing", () => {
-	it("isAiRelatedState matches optimize-now and user_enabled", () => {
+	it("isAiRelatedState matches optimize-now, user_enabled and daily-analyst run_now", () => {
 		assert.equal(isAiRelatedState(AI_STATES.optimizeNowRequest), true);
 		assert.equal(isAiRelatedState(AI_STATES.userEnabled), true);
+		assert.equal(isAiRelatedState("ai.daily_analyst.run_now_request"), true);
 		assert.equal(isAiRelatedState("ai.status"), false);
 		assert.equal(isAiRelatedState("backup.export_request"), false);
 	});
@@ -77,6 +78,28 @@ describe("ai state change routing", () => {
 		const cleared = await clearStaleAiOptimizeNowRequest(host);
 		assert.equal(cleared, true);
 		assert.equal(store.get(AI_STATES.optimizeNowRequest), false);
+	});
+
+	it("daily_analyst.run_now_request val=true mit ack=true oder ack=false wird behandelt", async () => {
+		const store = new Map<string, ioBroker.StateValue>();
+		const host: AiStateChangeHost & { getAbsolutePath: (c?: string) => string } = {
+			config: { ai_analyst_mode: "disabled" },
+			log: { debug() {}, warn() {}, error() {} },
+			getAbsolutePath: () => "/tmp/ems-analyst-state-test",
+			async getStateAsync(id: string) {
+				const v = store.get(id);
+				return v === undefined ? null : ({ val: v, ack: true } as ioBroker.State);
+			},
+			async setStateAsync(id: string, state: ioBroker.SettableState) {
+				store.set(id, state.val as ioBroker.StateValue);
+			},
+		};
+		const handledAckFalse = await handleAiStateChange(host, "ai.daily_analyst.run_now_request", true, false);
+		assert.equal(handledAckFalse, true);
+		const handledAckTrue = await handleAiStateChange(host, "ai.daily_analyst.run_now_request", true, true);
+		assert.equal(handledAckTrue, true);
+		const handledReset = await handleAiStateChange(host, "ai.daily_analyst.run_now_request", false, true);
+		assert.equal(handledReset, true);
 	});
 });
 

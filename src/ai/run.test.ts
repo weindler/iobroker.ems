@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { runAiOptimizationNow, type AiRunHost } from "./run.js";
+import { runAiOptimizationNow, resetAiOptimizationInFlightForTest, type AiRunHost } from "./run.js";
 import { AI_STATES } from "./ensure_states.js";
 import type { AiProvider, AiOptimizationResult } from "./types.js";
 import type { DailyPlan } from "../operator/daily_plan/types.js";
@@ -254,5 +254,45 @@ describe("runAiOptimizationNow — successful/failed calls", () => {
 		const outcome = await runAiOptimizationNow(host, minimalPlan(), "manual", provider);
 		assert.equal(outcome.status, "error");
 		assert.equal(host.store.get(AI_STATES.callsToday), 1);
+	});
+});
+
+describe("runAiOptimizationNow — in-flight", () => {
+	it("ein zweiter Trigger während des Laufs erzeugt keinen zweiten HTTP-Call", async () => {
+		resetAiOptimizationInFlightForTest();
+		const host = mockHost(ALLOWED_CONFIG);
+		let release!: () => void;
+		const gate = new Promise<void>((r) => {
+			release = r;
+		});
+		const calls = { n: 0 };
+		const slow: AiProvider = {
+			id: "openai",
+			async optimize() {
+				calls.n += 1;
+				await gate;
+				return { ...emptyOk };
+			},
+		};
+		const firstP = runAiOptimizationNow(host, minimalPlan(), "manual", slow);
+		const waitStart = Date.now();
+		while (calls.n === 0 && Date.now() - waitStart < 2000) {
+			await new Promise((r) => setImmediate(r));
+		}
+		assert.equal(calls.n, 1);
+		try {
+			const second = await runAiOptimizationNow(host, minimalPlan(), "manual", slow);
+			assert.equal(second.ran, false);
+			assert.match(second.reasonDe, /läuft bereits/);
+			assert.equal(calls.n, 1);
+			assert.equal(host.store.get(AI_STATES.callsToday), 0);
+		} finally {
+			release();
+			const first = await firstP;
+			assert.equal(first.status, "ready");
+			assert.equal(calls.n, 1);
+			assert.equal(host.store.get(AI_STATES.callsToday), 1);
+			resetAiOptimizationInFlightForTest();
+		}
 	});
 });

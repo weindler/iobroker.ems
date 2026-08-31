@@ -40,12 +40,15 @@ function tibberDayCostEur(input) {
     return round2(input.accumulatedCostEur + fees);
 }
 exports.tibberDayCostEur = tibberDayCostEur;
-function savingsVsFixedEur(fixedTariffCostEurVal, dynamicCostEur, rewardsCreditEur) {
+/**
+ * Tarifvorteil = Festtarif − Tibber. Grid Rewards gehören nicht in diese Größe.
+ * Dritter Parameter bleibt aus Kompatibilität ignoriert (nie einrechnen).
+ */
+function savingsVsFixedEur(fixedTariffCostEurVal, dynamicCostEur, _rewardsCreditEur) {
     if (fixedTariffCostEurVal === null || dynamicCostEur === null) {
         return null;
     }
-    const netDynamic = dynamicCostEur - (rewardsCreditEur ?? 0);
-    return round2(fixedTariffCostEurVal - netDynamic);
+    return round2(fixedTariffCostEurVal - dynamicCostEur);
 }
 exports.savingsVsFixedEur = savingsVsFixedEur;
 /** Energie-Delta aus Zählerständen; Reset (neuer Tag / kleiner) → null (kein negativer Sprung). */
@@ -288,7 +291,7 @@ function buildHomeMonthTotals(input) {
         gridRewardsCreditEur: input.gridRewardsCreditEur,
         gridRewardsSource: input.gridRewardsSource,
         feedInCreditEur: feedIn,
-        savingsVsFixedEur: savingsVsFixedEur(fixed, dynamic, input.gridRewardsCreditEur),
+        savingsVsFixedEur: savingsVsFixedEur(fixed, dynamic),
     };
 }
 exports.buildHomeMonthTotals = buildHomeMonthTotals;
@@ -373,7 +376,7 @@ function applyHomeGridRewards(home, rewards) {
         ...home,
         gridRewardsCreditEur: credit,
         gridRewardsSource: present ? rewards.source : "off",
-        savingsVsFixedEur: savingsVsFixedEur(home.fixedTariffCostEur, home.dynamicCostEur, credit),
+        savingsVsFixedEur: savingsVsFixedEur(home.fixedTariffCostEur, home.dynamicCostEur),
     };
 }
 exports.applyHomeGridRewards = applyHomeGridRewards;
@@ -387,6 +390,15 @@ function applyMobilityGridRewards(mob, rewards) {
         };
     }
     const credit = rewards.creditEur;
+    const settled = rewards.source === "billing";
+    if (!settled) {
+        return {
+            ...mob,
+            homeGridCostNetEur: mob.homeGridCostEur,
+            gridRewardsCreditEur: credit,
+            gridRewardsSource: rewards.source,
+        };
+    }
     const homeGridNet = (0, grid_rewards_1.netHomeGridCostEur)(mob.homeGridCostEur, credit);
     const parts = [mob.homePvCostEur, mob.homeGridCostEur, mob.publicInvoicedEur].filter((v) => v !== null);
     const chargeKwh = (mob.homePvKwh ?? 0) + (mob.homeGridKwh ?? 0) + (mob.publicInvoicedKwh ?? 0);
@@ -471,7 +483,7 @@ function sumHomeDays(days) {
         gridExportKwh: sum((d) => d.gridExportKwh),
         dynamicCostEur: dynamic,
         fixedTariffCostEur: fixed,
-        savingsVsFixedEur: savingsVsFixedEur(fixed, dynamic, rewards),
+        savingsVsFixedEur: savingsVsFixedEur(fixed, dynamic),
         gridRewardsCreditEur: rewards,
         gridRewardsSource: billingDay?.gridRewardsSource ?? estimateDay?.gridRewardsSource ?? "off",
         feedInCreditEur: sum((d) => d.feedInCreditEur),
@@ -505,7 +517,9 @@ function sumMobilityDays(days, monthFinalize, monthGridRewards) {
             evCost = round2(parts.reduce((a, b) => a + b, 0));
         }
     }
-    if (monthGridRewards && monthGridRewards.source !== "off" && monthGridRewards.creditEur !== null) {
+    if (monthGridRewards &&
+        (0, grid_rewards_1.gridRewardsIsSettled)(monthGridRewards.source) &&
+        monthGridRewards.creditEur !== null) {
         const grossParts = [homePvCostEur, homeGridCostEur, publicInvoicedEur].filter((v) => v !== null);
         if (grossParts.length > 0 || monthGridRewards.creditEur > 0) {
             evCost = round2(Math.max(0, grossParts.reduce((a, b) => a + b, 0) - monthGridRewards.creditEur));
@@ -542,7 +556,9 @@ function sumMobilityDays(days, monthFinalize, monthGridRewards) {
     const monthRewardsSource = monthGridRewards && monthGridRewards.source !== "off"
         ? monthGridRewards.source
         : [...days].reverse().find((d) => d.gridRewardsSource !== "off")?.gridRewardsSource ?? "off";
-    const homeGridNet = (0, grid_rewards_1.netHomeGridCostEur)(homeGridCostEur, monthRewardsCredit);
+    const homeGridNet = (0, grid_rewards_1.gridRewardsIsSettled)(monthRewardsSource)
+        ? (0, grid_rewards_1.netHomeGridCostEur)(homeGridCostEur, monthRewardsCredit)
+        : homeGridCostEur;
     return {
         dateKey,
         homePvKwh,
@@ -575,7 +591,8 @@ function mobilityDayEvCostEur(d) {
     const parts = [d.homePvCostEur, d.homeGridCostEur, d.publicInvoicedEur].filter((v) => v !== null);
     if (!parts.length)
         return null;
-    const raw = parts.reduce((a, b) => a + b, 0) - (d.gridRewardsCreditEur ?? 0);
+    const rewardDeduct = (0, grid_rewards_1.gridRewardsIsSettled)(d.gridRewardsSource) ? (d.gridRewardsCreditEur ?? 0) : 0;
+    const raw = parts.reduce((a, b) => a + b, 0) - rewardDeduct;
     if (mobilityDayChargeKwh(d) <= 0 && (d.publicInvoicedEur ?? 0) <= 0)
         return null;
     return round2(Math.max(0, raw));
@@ -616,10 +633,8 @@ function mobilityDayIceCost(d, evKwhPer100, iceLPer100Km, defaultFuelPriceEurPer
 /** Nach manuellem Seed: €/km/Verbrenner aus kWh+Kosten ableiten. */
 function finalizeMobilityDayTotals(mob, input) {
     const totalChargeKwh = (mob.homePvKwh ?? 0) + (mob.homeGridKwh ?? 0) + (mob.publicInvoicedKwh ?? 0);
-    const evCostRaw = (mob.homePvCostEur ?? 0) +
-        (mob.homeGridCostEur ?? 0) +
-        (mob.publicInvoicedEur ?? 0) -
-        (mob.gridRewardsCreditEur ?? 0);
+    const rewardDeduct = (0, grid_rewards_1.gridRewardsIsSettled)(mob.gridRewardsSource) ? (mob.gridRewardsCreditEur ?? 0) : 0;
+    const evCostRaw = (mob.homePvCostEur ?? 0) + (mob.homeGridCostEur ?? 0) + (mob.publicInvoicedEur ?? 0) - rewardDeduct;
     if (totalChargeKwh > 0 || (mob.publicInvoicedEur ?? 0) > 0) {
         mob.evTotalCostEur = round2(Math.max(0, evCostRaw));
     }

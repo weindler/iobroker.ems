@@ -1,6 +1,6 @@
 /**
- * Semantische Deduplizierung der Daily-Analyst-Findings: dasselbe reale Ereignis
- * (Domain, Lauf/Zeitfenster, Optimierungsproblem) nur einmal behalten.
+ * Eventbezogene Deduplizierung der Daily-Analyst-Findings: dasselbe reale Ereignis
+ * (Verbraucher, Laufmengen, Optimierungsursache) nur einmal behalten.
  * Unterschiedliche echte Probleme bleiben getrennt — keine aggressive Fusion.
  */
 
@@ -12,7 +12,9 @@ const SEVERITY_RANK: Record<AiAnalystSeverity, number> = {
 	warning: 3,
 };
 
-const QUALITY_WORDS_RE = /\b(avoidable|early|late|too_early|too_late|decisionquality)\b/gi;
+function allText(f: AiAnalystFinding): string {
+	return `${f.observedBehaviorDe} ${f.suggestedImprovementDe} ${f.evidence.join(" ")}`;
+}
 
 function extractQuantities(text: string): string {
 	const t = text.toLowerCase().replace(/,/g, ".");
@@ -23,25 +25,50 @@ function extractQuantities(text: string): string {
 	return [...kwh, ...mins].join("|");
 }
 
-function qualityNormalized(text: string): string {
-	return text
-		.toLowerCase()
-		.replace(/decisionquality\s*=\s*\w+/gi, " ")
-		.replace(QUALITY_WORDS_RE, " ")
-		.replace(/\s+/g, " ")
-		.trim();
+/** Verbraucherfamilie aus Text, sonst Domain — unabhängig von Quality-Labels. */
+function consumerFamily(f: AiAnalystFinding): string {
+	const t = allText(f).toLowerCase();
+	if (/\bheizstab\b|\bimmersion\b/.test(t)) return "heater";
+	if (/\bbatterie\b|\bnetzausgleich\b|\bsoc\b/.test(t)) return "battery";
+	if (/\bklima\b|\bclimate\b/.test(t)) return "climate";
+	if (/\bwallbox\b|\be-auto\b|\bschnellader\b/.test(t)) return "ev";
+	return f.domain;
 }
 
-/** Ereignis-/Problem-Schlüssel: Domain + Typ + Parameter + Richtung + Laufmengen bzw. normalisierter Text. */
+function sameWindowCause(a: AiAnalystFinding, b: AiAnalystFinding): boolean {
+	const re = /pv|preis|fenster|zeitfenster|günstig|früh|spät|aktivier/;
+	return re.test(allText(a).toLowerCase()) && re.test(allText(b).toLowerCase());
+}
+
+/** Event-Schlüssel nur für Tests/Diagnose — Merge nutzt `findingsAreSameEvent`. */
 export function analystFindingEventKey(f: AiAnalystFinding): string {
-	const blob = `${f.observedBehaviorDe} ${f.evidence.join(" ")}`;
-	const qty = extractQuantities(blob);
-	const event = qty || qualityNormalized(`${f.observedBehaviorDe} ${f.suggestedImprovementDe}`).slice(0, 96);
-	return [f.domain, f.findingType, f.affectedParameter ?? "", f.expectedDirection, event].join("::");
+	const qty = extractQuantities(allText(f));
+	return [consumerFamily(f), f.expectedDirection, qty || f.findingType].join("::");
 }
 
-function mentionsAvoidable(f: AiAnalystFinding): boolean {
-	return /avoidable/i.test(`${f.observedBehaviorDe} ${f.evidence.join(" ")}`);
+export function findingsAreSameEvent(a: AiAnalystFinding, b: AiAnalystFinding): boolean {
+	if (a.dateKey && b.dateKey && a.dateKey !== b.dateKey) return false;
+	const fa = consumerFamily(a);
+	const fb = consumerFamily(b);
+	if (fa !== fb) return false;
+	if (
+		a.expectedDirection !== b.expectedDirection &&
+		a.expectedDirection !== "unclear" &&
+		b.expectedDirection !== "unclear"
+	) {
+		return false;
+	}
+	const qa = extractQuantities(allText(a));
+	const qb = extractQuantities(allText(b));
+	if (qa && qb) return qa === qb;
+	if ((qa && !qb) || (!qa && qb)) return sameWindowCause(a, b);
+	return a.findingType === b.findingType && sameWindowCause(a, b);
+}
+
+function observationPrecision(f: AiAnalystFinding): number {
+	const t = f.observedBehaviorDe;
+	const digits = (t.match(/\d/g) ?? []).length;
+	return digits * 10 + t.length;
 }
 
 function preferFinding(a: AiAnalystFinding, b: AiAnalystFinding): AiAnalystFinding {
@@ -49,10 +76,7 @@ function preferFinding(a: AiAnalystFinding, b: AiAnalystFinding): AiAnalystFindi
 	const sb = SEVERITY_RANK[b.severity] ?? 0;
 	if (sa !== sb) return sa > sb ? a : b;
 	if (a.confidencePct !== b.confidencePct) return a.confidencePct >= b.confidencePct ? a : b;
-	const aAv = mentionsAvoidable(a);
-	const bAv = mentionsAvoidable(b);
-	if (aAv !== bAv) return aAv ? a : b;
-	return a;
+	return observationPrecision(a) >= observationPrecision(b) ? a : b;
 }
 
 function uniqueStrings(values: string[]): string[] {
@@ -72,8 +96,13 @@ function uniqueStrings(values: string[]): string[] {
 function mergePair(a: AiAnalystFinding, b: AiAnalystFinding): AiAnalystFinding {
 	const winner = preferFinding(a, b);
 	const loser = winner === a ? b : a;
+	const suggestion =
+		winner.suggestedImprovementDe.length >= loser.suggestedImprovementDe.length
+			? winner.suggestedImprovementDe
+			: loser.suggestedImprovementDe;
 	return {
 		...winner,
+		suggestedImprovementDe: suggestion,
 		evidence: uniqueStrings([...winner.evidence, ...loser.evidence]),
 		proposedNumericValue: winner.proposedNumericValue ?? loser.proposedNumericValue,
 		affectedParameter: winner.affectedParameter ?? loser.affectedParameter,
@@ -83,19 +112,19 @@ function mergePair(a: AiAnalystFinding, b: AiAnalystFinding): AiAnalystFinding {
 
 /** Führt semantisch gleiche Findings desselben Events zusammen; Reihenfolge der Erstvorkommen bleibt. */
 export function dedupeAnalystFindings(findings: AiAnalystFinding[]): AiAnalystFinding[] {
-	const byKey = new Map<string, AiAnalystFinding>();
-	const order: string[] = [];
+	const clusters: AiAnalystFinding[] = [];
 	for (const f of findings) {
-		const key = analystFindingEventKey(f);
-		const existing = byKey.get(key);
-		if (!existing) {
-			byKey.set(key, f);
-			order.push(key);
-			continue;
+		let merged = false;
+		for (let i = 0; i < clusters.length; i++) {
+			if (findingsAreSameEvent(clusters[i]!, f)) {
+				clusters[i] = mergePair(clusters[i]!, f);
+				merged = true;
+				break;
+			}
 		}
-		byKey.set(key, mergePair(existing, f));
+		if (!merged) clusters.push(f);
 	}
-	return order.map((k) => byKey.get(k)!);
+	return clusters;
 }
 
 /** Kompakte nummerierte VIS-/State-Darstellung — kein JSON-Dump. */

@@ -1,4 +1,4 @@
-import { describe, it } from "node:test";
+import { describe, it, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
@@ -10,6 +10,8 @@ import {
 	runDailyAnalystFromAdminButton,
 	runDailyAnalystManual,
 	asDailyAnalystAdapterHost,
+	handleDailyAnalystRunNowRequest,
+	resetDailyAnalystInFlightForTest,
 	type AiDailyAnalystHost,
 } from "./run";
 import { AI_ANALYST_STATES, ensureAiDailyAnalystStates, syncAiDailyAnalystRuntimeFromConfig } from "./ensure_states";
@@ -126,6 +128,10 @@ function makeHost(config: Record<string, unknown>, dir: string): TestHost {
 	return host;
 }
 
+afterEach(() => {
+	resetDailyAnalystInFlightForTest();
+});
+
 describe("runDailyAnalystForDate — EMS läuft ohne KI weiter", () => {
 	it("status=disabled ohne Provider-Aufruf, wenn Admin-Modus disabled", async () => {
 		const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-"));
@@ -230,7 +236,7 @@ describe("Jetzt analysieren / run_now_request", () => {
 		const admin = await runDailyAnalystFromAdminButton(host, NOW, silentProvider());
 		assert.equal(
 			host.writes.some((w) => w.id === AI_ANALYST_STATES.runNowRequest && w.val === true),
-			true,
+			false,
 		);
 		assert.equal(host.states.get(AI_ANALYST_STATES.runNowRequest), false);
 		assert.equal(admin.status, "no_data");
@@ -325,7 +331,7 @@ describe("Jetzt analysieren / run_now_request", () => {
 		assert.notEqual(admin.hint, "host.getAbsolutePath is not a function");
 		assert.equal(
 			raw.writes.some((w) => w.id === AI_ANALYST_STATES.runNowRequest && w.val === true),
-			true,
+			false,
 		);
 		assert.equal(admin.status, "no_data");
 		assert.equal(admin.result, "ok");
@@ -340,6 +346,64 @@ describe("Jetzt analysieren / run_now_request", () => {
 		assert.equal(admin.status, "error");
 		assert.match(admin.hint, /Datenpfad/);
 		assert.equal(String(admin.hint).includes("is not a function"), false);
+	});
+
+	it("Objektbaum-Handler und Admin nutzen denselben Manual-Pfad", async () => {
+		const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-same-"));
+		const cfg = { ai_analyst_mode: "manual", ai_openai_api_key: "sk-test", timezone: "Europe/Berlin" };
+		const hostAdmin = makeHost(cfg, dir);
+		const hostTree = makeHost(cfg, dir);
+		const admin = await runDailyAnalystFromAdminButton(hostAdmin, NOW, silentProvider());
+		const tree = await handleDailyAnalystRunNowRequest(hostTree, NOW, silentProvider());
+		assert.equal(admin.status, "no_data");
+		assert.equal(tree.status, "no_data");
+		assert.equal(tree.ran, false);
+		assert.equal(hostTree.states.get(AI_ANALYST_STATES.runNowRequest), false);
+	});
+
+	it("ein zweiter Trigger während des Laufs erzeugt keinen zweiten HTTP-Call", async () => {
+		resetDailyAnalystInFlightForTest();
+		const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-inflight-"));
+		const host = makeHost(
+			{ ai_analyst_mode: "manual", ai_openai_api_key: "sk-test", timezone: "Europe/Berlin" },
+			dir,
+		);
+		await writeScoresDay(host.getAbsolutePath(DAILY_EVALUATOR_SCORES_CATEGORY), scoresRecord(YESTERDAY));
+		let release!: () => void;
+		const gate = new Promise<void>((r) => {
+			release = r;
+		});
+		const calls = { n: 0 };
+		const slow: AiAnalystProvider = {
+			analyze: async () => {
+				calls.n += 1;
+				await gate;
+				return {
+					ok: true,
+					findings: [],
+					reasonDe: "ok",
+					usage: { promptTokens: 1, completionTokens: 1 },
+				};
+			},
+		};
+		const firstP = handleDailyAnalystRunNowRequest(host, NOW, slow);
+		const waitStart = Date.now();
+		while (calls.n === 0 && Date.now() - waitStart < 2000) {
+			await new Promise((r) => setImmediate(r));
+		}
+		assert.equal(calls.n, 1);
+		try {
+			const second = await handleDailyAnalystRunNowRequest(host, NOW, slow);
+			assert.equal(second.error, "already_running");
+			assert.equal(second.ran, false);
+			assert.equal(calls.n, 1);
+		} finally {
+			release();
+			const first = await firstP;
+			assert.equal(first.status, "ok");
+			assert.equal(calls.n, 1);
+			resetDailyAnalystInFlightForTest();
+		}
 	});
 });
 
@@ -373,14 +437,15 @@ describe("formatAiDailyAnalystAdminHint", () => {
 function thermalDupFindings(): AiAnalystFinding[] {
 	return [
 		{
-			findingType: "thermal_optimization",
+			findingType: "avoidable",
 			domain: "thermal",
 			severity: "notice",
 			confidencePct: 70,
-			evidence: ["Heizstab 10 min / 0,29 kWh."],
+			evidence: [],
 			observedBehaviorDe:
-				"Heizstab 10 min / 0,29 kWh, decisionQuality=avoidable, besseres PV-/Preisfenster verfügbar.",
-			suggestedImprovementDe: "Heizstab in das günstigere PV-/Preisfenster legen.",
+				"Der Heizstab lief 10 Minuten und verbrauchte 0,29 kWh, obwohl ein günstigeres Zeitfenster verfügbar war.",
+			suggestedImprovementDe:
+				"Heizstab-Läufe sollten besser auf günstigere PV-/Preisfenster abgestimmt werden, um Kosten zu senken.",
 			affectedParameter: null,
 			proposedNumericValue: null,
 			expectedDirection: "cost_down",
@@ -388,14 +453,14 @@ function thermalDupFindings(): AiAnalystFinding[] {
 			dateKey: YESTERDAY,
 		},
 		{
-			findingType: "thermal_optimization",
+			findingType: "early",
 			domain: "thermal",
 			severity: "info",
 			confidencePct: 70,
-			evidence: ["Heizstab 10 min / 0,29 kWh."],
-			observedBehaviorDe:
-				"Heizstab 10 min / 0,29 kWh, decisionQuality=early, besseres PV-/Preisfenster verfügbar.",
-			suggestedImprovementDe: "Heizstab in das günstigere PV-/Preisfenster legen.",
+			evidence: [],
+			observedBehaviorDe: "Der Heizstab wurde frühzeitig aktiviert, was zu moderaten Kosten führte.",
+			suggestedImprovementDe:
+				"Eine spätere Aktivierung im besseren PV-/Preisfenster könnte die Wirtschaftlichkeit verbessern.",
 			affectedParameter: null,
 			proposedNumericValue: null,
 			expectedDirection: "cost_down",

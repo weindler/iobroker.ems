@@ -9,9 +9,10 @@ const index_js_1 = require("./index.js");
 const ensure_states_js_1 = require("./ensure_states.js");
 const states_js_1 = require("../operator/daily_plan/states.js");
 (0, node_test_1.describe)("ai state change routing", () => {
-    (0, node_test_1.it)("isAiRelatedState matches optimize-now and user_enabled", () => {
+    (0, node_test_1.it)("isAiRelatedState matches optimize-now, user_enabled and daily-analyst run_now", () => {
         strict_1.default.equal((0, index_js_1.isAiRelatedState)(ensure_states_js_1.AI_STATES.optimizeNowRequest), true);
         strict_1.default.equal((0, index_js_1.isAiRelatedState)(ensure_states_js_1.AI_STATES.userEnabled), true);
+        strict_1.default.equal((0, index_js_1.isAiRelatedState)("ai.daily_analyst.run_now_request"), true);
         strict_1.default.equal((0, index_js_1.isAiRelatedState)("ai.status"), false);
         strict_1.default.equal((0, index_js_1.isAiRelatedState)("backup.export_request"), false);
     });
@@ -69,6 +70,27 @@ const states_js_1 = require("../operator/daily_plan/states.js");
         const cleared = await (0, index_js_1.clearStaleAiOptimizeNowRequest)(host);
         strict_1.default.equal(cleared, true);
         strict_1.default.equal(store.get(ensure_states_js_1.AI_STATES.optimizeNowRequest), false);
+    });
+    (0, node_test_1.it)("daily_analyst.run_now_request val=true mit ack=true oder ack=false wird behandelt", async () => {
+        const store = new Map();
+        const host = {
+            config: { ai_analyst_mode: "disabled" },
+            log: { debug() { }, warn() { }, error() { } },
+            getAbsolutePath: () => "/tmp/ems-analyst-state-test",
+            async getStateAsync(id) {
+                const v = store.get(id);
+                return v === undefined ? null : { val: v, ack: true };
+            },
+            async setStateAsync(id, state) {
+                store.set(id, state.val);
+            },
+        };
+        const handledAckFalse = await (0, index_js_1.handleAiStateChange)(host, "ai.daily_analyst.run_now_request", true, false);
+        strict_1.default.equal(handledAckFalse, true);
+        const handledAckTrue = await (0, index_js_1.handleAiStateChange)(host, "ai.daily_analyst.run_now_request", true, true);
+        strict_1.default.equal(handledAckTrue, true);
+        const handledReset = await (0, index_js_1.handleAiStateChange)(host, "ai.daily_analyst.run_now_request", false, true);
+        strict_1.default.equal(handledReset, true);
     });
 });
 function minimalPlan(overrides = {}) {

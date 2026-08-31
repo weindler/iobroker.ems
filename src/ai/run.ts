@@ -49,6 +49,17 @@ async function persistThinkingStates(
 	await host.setStateAsync(AI_STATES.lastThinkingMode, { val: thinkingMode, ack: true });
 }
 
+let aiOptimizationInFlight = false;
+
+export function isAiOptimizationInFlight(): boolean {
+	return aiOptimizationInFlight;
+}
+
+/** Nur Tests: In-Flight-Sperre zurücksetzen. */
+export function resetAiOptimizationInFlightForTest(): void {
+	aiOptimizationInFlight = false;
+}
+
 /**
  * Orchestriert genau einen KI-Optimierungsversuch (Roadmap Block 6 / denkende KI).
  * Fail-closed: ohne messbaren Plan-B-Vorteil kein Write-back, Auto-Trigger gesperrt
@@ -56,6 +67,27 @@ async function persistThinkingStates(
  * Write-back geht nur über Daily-Plan-Allocation — nie direkt auf Geräte.
  */
 export async function runAiOptimizationNow(
+	host: AiRunHost,
+	plan: DailyPlan,
+	triggerReason: string,
+	provider: AiProvider,
+): Promise<AiRunOutcome> {
+	if (aiOptimizationInFlight) {
+		return {
+			ran: false,
+			status: "error",
+			reasonDe: "KI-Optimierung läuft bereits.",
+		};
+	}
+	aiOptimizationInFlight = true;
+	try {
+		return await runAiOptimizationNowUnlocked(host, plan, triggerReason, provider);
+	} finally {
+		aiOptimizationInFlight = false;
+	}
+}
+
+async function runAiOptimizationNowUnlocked(
 	host: AiRunHost,
 	plan: DailyPlan,
 	triggerReason: string,

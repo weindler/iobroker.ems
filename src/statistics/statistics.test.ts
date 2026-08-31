@@ -19,6 +19,7 @@ import {
 	buildHomeMonthTotals,
 	sumHomeDays,
 	emptyHomeDay,
+	applyHomeGridRewards,
 } from "./compute.js";
 import {
 	resolveMonthGridRewards,
@@ -26,6 +27,8 @@ import {
 	resolvePeriodGridRewards,
 	netHomeGridCostEur,
 	gridRewardsCreditIsPresent,
+	gridRewardsShowEuroRow,
+	gridRewardsPendingHintDe,
 } from "./grid_rewards.js";
 import {
 	resolvePeriodRange,
@@ -74,8 +77,43 @@ describe("statistics compute", () => {
 		assert.equal(cfg.tibberMonthlyGridFeeEur, 8);
 	});
 
-	it("savings = fixed − (dynamic − rewards)", () => {
-		assert.equal(savingsVsFixedEur(5, 3, 0.5), 2.5);
+	it("Tarifvorteil = Festtarif − Tibber, ohne Grid Rewards", () => {
+		assert.equal(savingsVsFixedEur(5, 3, 0.5), 2);
+		assert.equal(savingsVsFixedEur(0.6, 0.59, 1.21), 0.01);
+		const estimated = applyHomeGridRewards(
+			{
+				...emptyHomeDay("2026-08-31"),
+				gridImportKwh: 0.5,
+				dynamicCostEur: 0.59,
+				fixedTariffCostEur: 0.6,
+			},
+			{ creditEur: 1.21, source: "estimate_day" },
+		);
+		assert.equal(estimated.savingsVsFixedEur, 0.01);
+		assert.equal(estimated.gridRewardsCreditEur, 1.21);
+		assert.equal(estimated.gridRewardsSource, "estimate_day");
+		assert.equal(gridRewardsShowEuroRow(estimated.gridRewardsSource, estimated.gridRewardsCreditEur), false);
+		assert.equal(gridRewardsPendingHintDe(estimated.gridRewardsSource, estimated.gridRewardsCreditEur), "Grid Rewards: noch nicht abgerechnet");
+
+		const settled = applyHomeGridRewards(
+			{
+				...emptyHomeDay("2026-08-31"),
+				dynamicCostEur: 0.59,
+				fixedTariffCostEur: 0.6,
+			},
+			{ creditEur: 1.21, source: "billing" },
+		);
+		assert.equal(settled.savingsVsFixedEur, 0.01);
+		assert.equal(gridRewardsShowEuroRow(settled.gridRewardsSource, settled.gridRewardsCreditEur), true);
+
+		const settledZero = applyHomeGridRewards(emptyHomeDay("2026-08-31"), { creditEur: 0, source: "billing" });
+		assert.equal(gridRewardsShowEuroRow(settledZero.gridRewardsSource, settledZero.gridRewardsCreditEur), true);
+		assert.equal(settledZero.gridRewardsCreditEur, 0);
+
+		const missing = applyHomeGridRewards(emptyHomeDay("2026-08-31"), { creditEur: null, source: "off" });
+		assert.equal(gridRewardsShowEuroRow(missing.gridRewardsSource, missing.gridRewardsCreditEur), false);
+		assert.equal(missing.gridRewardsCreditEur, null);
+		assert.equal(gridRewardsPendingHintDe(missing.gridRewardsSource, missing.gridRewardsCreditEur), null);
 	});
 
 	it("energy counter reset does not invent negative kWh", () => {
@@ -454,6 +492,9 @@ describe("statistics compute", () => {
 		assert.equal(gridRewardsCreditIsPresent("estimate_day", 1.21), true);
 		assert.equal(gridRewardsCreditIsPresent("billing", 0), true);
 		assert.equal(gridRewardsCreditIsPresent("off", 0), false);
+		assert.equal(gridRewardsShowEuroRow("estimate_day", 1.21), false);
+		assert.equal(gridRewardsShowEuroRow("billing", 0), true);
+		assert.equal(gridRewardsShowEuroRow("off", null), false);
 
 		const monthZero = resolveMonthGridRewards({
 			enabled: true,
@@ -496,7 +537,7 @@ describe("statistics compute", () => {
 		assert.equal(gridRewardsCreditIsPresent(summed.gridRewardsSource, summed.gridRewardsCreditEur), false);
 	});
 
-	it("month mobility applies month rewards once from mapping", () => {
+	it("month mobility speichert Schätzung, zieht sie aber nicht von EV-Kosten ab", () => {
 		const month = sumMobilityDays(
 			[
 				{
@@ -530,9 +571,49 @@ describe("statistics compute", () => {
 			{ creditEur: 0.8, source: "estimate_month" },
 		);
 		assert.equal(month.gridRewardsCreditEur, 0.8);
+		assert.equal(month.evTotalCostEur, 1.4);
+		assert.equal(month.homeGridCostNetEur, 1.5);
+		assert.equal(gridRewardsShowEuroRow(month.gridRewardsSource, month.gridRewardsCreditEur), false);
+	});
+
+	it("month mobility zieht nur abgerechnete Grid Rewards von EV-Kosten ab", () => {
+		const month = sumMobilityDays(
+			[
+				{
+					dateKey: "2026-08-11",
+					homePvKwh: 1,
+					homeGridKwh: 5,
+					homePvCostEur: 0.1,
+					homeGridCostEur: 1.5,
+					homeGridCostNetEur: null,
+					gridRewardsCreditEur: 0.2,
+					gridRewardsSource: "estimate_day",
+					publicInvoicedKwh: null,
+					publicInvoicedEur: null,
+					publicPendingKwh: null,
+					evTotalCostEur: 1.4,
+					evKwhPer100Km: null,
+					evKwhPer100KmSource: null,
+					estimatedKm: null,
+					iceLiters: null,
+					iceFuelPriceEurPerL: null,
+					iceCostEur: null,
+					savingsVsIceEur: null,
+				},
+			],
+			{
+				evKwhPer100: 18,
+				fuelPriceEurPerL: 2,
+				iceLPer100Km: 7,
+				evKwhPer100KmSource: "admin_fallback",
+			},
+			{ creditEur: 0.8, source: "billing" },
+		);
+		assert.equal(month.gridRewardsCreditEur, 0.8);
 		assert.equal(month.evTotalCostEur, 0.8);
 		assert.equal(netHomeGridCostEur(1.5, 0.8), 0.7);
 		assert.equal(month.homeGridCostNetEur, 0.7);
+		assert.equal(gridRewardsShowEuroRow(month.gridRewardsSource, month.gridRewardsCreditEur), true);
 	});
 });
 

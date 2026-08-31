@@ -592,7 +592,7 @@ async function tickStatistics(host, now = new Date()) {
             homePeriod = (0, compute_1.applyHomeGridRewards)({
                 ...homeMonth,
                 fixedTariffCostEur: fixedClipped ?? homeMonth.fixedTariffCostEur,
-                savingsVsFixedEur: (0, compute_1.savingsVsFixedEur)(fixedClipped ?? homeMonth.fixedTariffCostEur, homeMonth.dynamicCostEur, monthRewards.source === "off" ? null : monthRewards.creditEur),
+                savingsVsFixedEur: (0, compute_1.savingsVsFixedEur)(fixedClipped ?? homeMonth.fixedTariffCostEur, homeMonth.dynamicCostEur),
             }, monthRewards);
             mobPeriod = mobMonth;
         }
@@ -620,7 +620,7 @@ async function tickStatistics(host, now = new Date()) {
                     gridImportKwh: importKwh,
                     dynamicCostEur: dynamic,
                     fixedTariffCostEur: fixed,
-                    savingsVsFixedEur: (0, compute_1.savingsVsFixedEur)(fixed, dynamic, periodRewards.source === "off" ? null : periodRewards.creditEur),
+                    savingsVsFixedEur: (0, compute_1.savingsVsFixedEur)(fixed, dynamic),
                 }, periodRewards);
             }
             else {
@@ -634,7 +634,7 @@ async function tickStatistics(host, now = new Date()) {
                 homeAgg = (0, compute_1.applyHomeGridRewards)({
                     ...homeAgg,
                     fixedTariffCostEur: fixed,
-                    savingsVsFixedEur: (0, compute_1.savingsVsFixedEur)(fixed, homeAgg.dynamicCostEur, periodRewards.source === "off" ? null : periodRewards.creditEur),
+                    savingsVsFixedEur: (0, compute_1.savingsVsFixedEur)(fixed, homeAgg.dynamicCostEur),
                 }, periodRewards);
             }
             homePeriod = homeAgg;

@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.17",
+		"version": "0.2.18",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.18": {
+				"en": "Fix: VIS KI toggle, object-tree Optimize now and backup/restore buttons are subscribed (same handlers as Admin). Planner KI in-flight guard (no double HTTP). KI Analyst card no longer shows validator rejects. Tariff advantage excludes Grid Rewards; euro line only settled billing. After update: VIS KI benutzen, Admin Optimize now, Statistik KI Analyst / Wirtschaftlichkeit.",
+				"de": "Fix: VIS-Schalter „KI benutzen“, Objektbaum „Jetzt optimieren“ und Backup/Restore-Buttons sind verdrahtet (dieselben Handler wie Admin). Planner-KI mit In-Flight-Sperre (kein Doppel-HTTP). KI-Analyst-Karte zeigt keine Validator-Rejects. Tarifvorteil ohne Grid Rewards; Euro-Zeile nur Abrechnung. Nach Update: VIS KI benutzen, Admin Jetzt optimieren, Statistik KI Analyst / Wirtschaftlichkeit."
+			},
 			"0.2.17": {
 				"en": "Fix: Daily Analyst OpenAI calls now count in the same ai.calls_today / cost_estimate_* ledger as planner KI (same day/month limits). Duplicate thermal findings merge to one; VIS KI Analyst card lists all findings via ai.daily_analyst.findings_de. Grid Rewards rows only when a real credit exists (no fake 0.00 €). Check ai.calls_today after manual analyst run; Statistik KI Analyst / Validator; Haus cards without Rewards when none.",
 				"de": "Fix: Daily-Analyst-OpenAI-Aufrufe zählen jetzt in derselben ai.calls_today-/cost_estimate_*-Buchhaltung wie Planner-KI (gleiche Tages-/Monatslimits). Doppelte Thermal-Findings werden zusammengeführt; VIS-Kachel KI Analyst listet alle Findings über ai.daily_analyst.findings_de. Grid-Rewards-Zeile nur bei echtem Gutschrift-Wert (kein erfundenes 0,00 €). Nach Update manuellen Analyst-Lauf → ai.calls_today; Statistik KI Analyst / Validator; Haus-Karten ohne Rewards wenn keine."

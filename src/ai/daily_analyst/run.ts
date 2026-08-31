@@ -75,6 +75,13 @@ async function publishFindingsStates(host: AiDailyAnalystHost, findings: AiAnaly
 	await publish(host, AI_ANALYST_STATES.findingsDe, formatAnalystFindingsDe(findings));
 }
 
+let dailyAnalystInFlight = false;
+
+/** Nur Tests: In-Flight-Sperre zurücksetzen. */
+export function resetDailyAnalystInFlightForTest(): void {
+	dailyAnalystInFlight = false;
+}
+
 /**
  * Führt den Analysten für genau einen bereits vom Daily Evaluator abgeschlossenen Tag aus.
  * Persistiert das Ergebnis (auch `disabled`/`no_token`/Fehler — damit ist der Tag "erledigt"
@@ -88,6 +95,31 @@ export async function runDailyAnalystForDate(
 	dateKey: string,
 	provider: AiAnalystProvider = createOpenAiAnalystProvider(),
 	now: Date = new Date(),
+): Promise<AiAnalystRunResult> {
+	if (dailyAnalystInFlight) {
+		return {
+			ran: false,
+			status: "error",
+			dateKey,
+			findings: [],
+			reasonDe: "Daily Analyst läuft bereits.",
+			usage: { promptTokens: null, completionTokens: null },
+			error: "already_running",
+		};
+	}
+	dailyAnalystInFlight = true;
+	try {
+		return await runDailyAnalystForDateUnlocked(host, dateKey, provider, now);
+	} finally {
+		dailyAnalystInFlight = false;
+	}
+}
+
+async function runDailyAnalystForDateUnlocked(
+	host: AiDailyAnalystHost,
+	dateKey: string,
+	provider: AiAnalystProvider,
+	now: Date,
 ): Promise<AiAnalystRunResult> {
 	const cfg = await syncAiDailyAnalystRuntimeFromConfig(host as unknown as StateHost & { config?: unknown });
 	const aiCfg = aiConfigFromAdapter(host.config);
@@ -314,9 +346,8 @@ export type AiDailyAnalystAdminButtonResult = {
 };
 
 /**
- * Admin-„Jetzt analysieren“: setzt denselben Runtime-Trigger wie der Objektbaum
- * (`ai.daily_analyst.run_now_request`) und führt denselben Manual-Pfad aus.
- * Overrides werden dadurch nicht eingeschaltet.
+ * Admin-„Jetzt analysieren“: derselbe Manual-Pfad wie der Objektbaum-Button
+ * (`handleDailyAnalystRunNowRequest`). Overrides werden dadurch nicht eingeschaltet.
  */
 export async function runDailyAnalystFromAdminButton(
 	host: AiDailyAnalystHost,
@@ -334,12 +365,6 @@ export async function runDailyAnalystFromAdminButton(
 		const hint = "Daily Analyst: Datenpfad nicht verfügbar";
 		host.log?.error?.(hint);
 		return { result: "error", status: "error", hint, text: hint };
-	}
-	try {
-		// ack:true — kein zweites onStateChange; der Trigger bleibt im Objektbaum sichtbar.
-		await host.setStateAsync(AI_ANALYST_STATES.runNowRequest, { val: true, ack: true });
-	} catch {
-		/* Trigger-State ist best-effort; der Lauf folgt trotzdem über denselben Manual-Pfad. */
 	}
 	const outcome = await handleDailyAnalystRunNowRequest(host, now, provider);
 	const hint = formatAiDailyAnalystAdminHint(outcome);

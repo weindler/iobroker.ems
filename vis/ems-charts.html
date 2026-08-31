@@ -2726,15 +2726,32 @@ function fmtKwhStats(v){
 	return Number(v).toFixed(1).replace(".",",")+" kWh";
 }
 function fmtRewardsLabel(source){
-	if(source==="billing")return "Rewards (Abrechnung)";
-	if(source==="estimate_day"||source==="estimate_month")return "Rewards (Schätzung)";
-	return "Rewards";
+	if(source==="billing")return "Grid Rewards";
+	if(source==="estimate_day"||source==="estimate_month")return "Grid Rewards (Schätzung)";
+	return "Grid Rewards";
 }
 function gridRewardsPresent(source,credit){
 	if(!source||source==="off")return false;
 	if(credit==null||!isFinite(Number(credit)))return false;
 	if(source==="billing")return Number(credit)>=0;
 	return Number(credit)>0;
+}
+function gridRewardsShowEuro(source,credit){
+	return source==="billing"&&credit!=null&&isFinite(Number(credit))&&Number(credit)>=0;
+}
+function gridRewardsPendingHint(source,credit){
+	if((source==="estimate_day"||source==="estimate_month")&&credit!=null&&isFinite(Number(credit))&&Number(credit)>0){
+		return "Grid Rewards: noch nicht abgerechnet";
+	}
+	return "";
+}
+function joinNotes(){
+	var parts=[];
+	for(var i=0;i<arguments.length;i++){
+		var s=arguments[i];
+		if(s&&s!=="—")parts.push(s);
+	}
+	return parts.join(" ");
 }
 function econAdvantageRows(tarifId,emsId,kiId,rewardsId){
 	var rows=[
@@ -2749,12 +2766,11 @@ function econAdvantageRows(tarifId,emsId,kiId,rewardsId){
 function fmtHomeGridMob(mob){
 	var kwh=fmtKwhStats(mob.homeGridKwh);
 	if(mob.homeGridKwh===null||mob.homeGridKwh===undefined)return ["Heim Netz","—"];
-	if(mob.gridRewardsSource==="off"||mob.homeGridCostEur===null||mob.homeGridCostEur===undefined){
+	if(!gridRewardsShowEuro(mob.gridRewardsSource,mob.gridRewardsCreditEur)||mob.homeGridCostEur===null||mob.homeGridCostEur===undefined){
 		return ["Heim Netz",kwh];
 	}
 	var net=mob.homeGridCostNetEur!=null?mob.homeGridCostNetEur:mob.homeGridCostEur;
-	var tag=mob.gridRewardsSource==="billing"?"Abrechnung":"Grid Rewards Schätzung";
-	return ["Heim Netz",kwh+" · "+fmtEur(net)+" ("+tag+")"];
+	return ["Heim Netz",kwh+" · "+fmtEur(net)+" (Abrechnung)"];
 }
 function homeStatsRows(home){
 	var rows=[
@@ -2762,7 +2778,7 @@ function homeStatsRows(home){
 		["Tibber",fmtEur(home.dynamicCostEur)],
 		["Festtarif",fmtEur(home.fixedTariffCostEur)]
 	];
-	if(gridRewardsPresent(home.gridRewardsSource,home.gridRewardsCreditEur)){
+	if(gridRewardsShowEuro(home.gridRewardsSource,home.gridRewardsCreditEur)){
 		rows.push([fmtRewardsLabel(home.gridRewardsSource),fmtEur(home.gridRewardsCreditEur)]);
 	}
 	return rows;
@@ -2840,6 +2856,15 @@ function periodCardTitle(prefix,sum,fallback){
 	var lab=sum&&sum.periodLabelDe?sum.periodLabelDe:fallback;
 	return prefix+" · "+lab;
 }
+function fmtDateKeyDe(key){
+	var s=String(key||"");
+	if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return "";
+	return s.slice(8,10)+"."+s.slice(5,7)+".";
+}
+function retrospectiveCardTitle(kind,dateKey){
+	var d=fmtDateKeyDe(dateKey);
+	return d?kind+" · "+d:kind+" · letzter abgeschlossener Tag";
+}
 function mergeHomeFlat(scope,json){
 	var o=Object.assign({},json&&typeof json==="object"?json:{});
 	var p="statistics.home."+scope+".";
@@ -2909,23 +2934,6 @@ function renderStatistics(){
 	}
 	if(!homeP.periodLabelDe)homeP.periodLabelDe=periodLabel;
 	if(!mobP.periodLabelDe)mobP.periodLabelDe=periodLabel;
-	var selectedDayKey=null;
-	if(periodId==="today"||periodId==="yesterday"){
-		var todayKey=txt(g("statistics.home.today.from_key"),"");
-		if(!/^\d{4}-\d{2}-\d{2}$/.test(todayKey))todayKey=txt(g("statistics.home.today.to_key"),"");
-		if(/^\d{4}-\d{2}-\d{2}$/.test(todayKey)){
-			if(periodId==="today")selectedDayKey=todayKey;
-			else{
-				var dt=new Date(Date.UTC(+todayKey.slice(0,4), +todayKey.slice(5,7)-1, +todayKey.slice(8,10)));
-				dt.setUTCDate(dt.getUTCDate()-1);
-				selectedDayKey=dt.toISOString().slice(0,10);
-			}
-		}
-	}
-	function visIfSelectedDay(dateKey,val){
-		if(!selectedDayKey)return val;
-		return txt(dateKey,"")===selectedDayKey?val:null;
-	}
 	var pending=parseArr(g("statistics.public_charge.pending_json"));
 	var periodReady=homeP&&(homeP.period===periodId||num(g("statistics.home.period.savings_eur"))!=null)&&homeP.savingsVsFixedEur!=null;
 	var hT=savingsHero(num(g("statistics.home.today.savings_eur"))!=null?num(g("statistics.home.today.savings_eur")):(num(g("statistics.home.today_savings_vs_fixed_eur"))!=null?num(g("statistics.home.today_savings_vs_fixed_eur")):num(homeT.savingsVsFixedEur)));
@@ -2940,16 +2948,24 @@ function renderStatistics(){
 	var pendingNote=pending.length
 		? (pending.length+" offene Schnellader-Session(s) — Rechnung unter statistics.public_charge.submit_request (JSON: kwh, eur).")
 		: "Keine offenen Schnellader-Sessions.";
-	var homePeriodNote=txt(homeP.reasonDe,"");
-	if(gridRewardsPresent(homeP.gridRewardsSource,homeP.gridRewardsCreditEur)&&(homeP.gridRewardsSource==="estimate_month"||homeP.gridRewardsSource==="estimate_day")){
-		var billHint="Abrechnung: ems.0.statistics.adjust_request → {\"date\":\"YYYY-MM-letzterTag\",\"home\":{\"gridRewardsCreditEur\":X.XX},\"noteDe\":\"Tibber-Abrechnung …\"} (ack:false). Details: Admin → Statistik.";
-		homePeriodNote=homePeriodNote&&homePeriodNote!=="—"?(homePeriodNote+" "+billHint):billHint;
-	}else if(gridRewardsPresent(homeP.gridRewardsSource,homeP.gridRewardsCreditEur)&&homeP.gridRewardsSource==="billing"){
-		var doneHint="Rewards aus Tibber-Abrechnung (adjust_request).";
-		homePeriodNote=homePeriodNote&&homePeriodNote!=="—"?(homePeriodNote+" "+doneHint):doneHint;
+	var homePeriodNote=joinNotes(txt(homeP.reasonDe,""),gridRewardsPendingHint(homeP.gridRewardsSource,homeP.gridRewardsCreditEur));
+	if(gridRewardsShowEuro(homeP.gridRewardsSource,homeP.gridRewardsCreditEur)){
+		homePeriodNote=joinNotes(homePeriodNote,"Grid Rewards aus Tibber-Abrechnung.");
+	}
+	var homeTodayNote=joinNotes(txt(homeT.reasonDe,""),gridRewardsPendingHint(homeT.gridRewardsSource,homeT.gridRewardsCreditEur));
+	var evalKey=txt(g("learning.daily_evaluator.last_evaluated_date_key"),"");
+	var shadowKey=txt(g("learning.shadow_engine.last_evaluated_date_key"),"");
+	var aiKey=txt(g("ai.daily_analyst.last_run_date_key"),"");
+	var evalFindings=txt(g("learning.daily_evaluator.last_day_findings_count"),"—");
+	var aiFindingRows=[
+		["KI-Findings",txt(g("ai.daily_analyst.findings_count"),"—")],
+		["Overrides",txt(g("ai.validator.active_overrides_count"),"0")]
+	];
+	if(evalKey&&aiKey&&evalKey===aiKey&&evalFindings&&evalFindings!=="—"){
+		aiFindingRows.push(["Basis",evalFindings+" Evaluator-Findings"]);
 	}
 	grid.innerHTML=
-		statsCard("Haus heute · Tibber vs. Festtarif",hT,homeStatsRows(homeT),txt(homeT.reasonDe,""))
+		statsCard("Haus heute · Tibber vs. Festtarif",hT,homeStatsRows(homeT),homeTodayNote)
 		+statsCard(periodCardTitle("Haus",homeP,"Dieser Monat")+" · Tibber vs. Festtarif",hP,homeStatsRows(homeP),homePeriodNote)
 		+statsCard("Mobilität heute · vs. Verbrenner",mT,mobStatsRows(mobT),txt(mobT.reasonDe,""))
 		+statsCard(periodCardTitle("Mobilität",mobP,"Dieser Monat")+" · vs. Verbrenner",mP,mobStatsRows(mobP),txt(mobP.reasonDe,""))
@@ -2957,31 +2973,25 @@ function renderStatistics(){
 			["Pending kWh",fmtKwhStats(mobT.publicPendingKwh)],
 			["Ack",txt(g("statistics.public_charge.submit_ack_de"),"—")]
 		],pendingNote,"ems-stats-pending")
-		+statsCard("Wirtschaftlichkeit heute",savingsHero(num(g("economics.today.ems_vorteil_eur"))),econAdvantageRows("economics.today.tarifvorteil_eur","economics.today.ems_vorteil_eur","economics.today.ki_mehrwert_eur","economics.today.grid_rewards_eur"),txt(g("economics.reason_de"),""))
-		+statsCard("Wirtschaftlichkeit "+(txt(g("economics.period.label_de"),"Zeitraum")||"Zeitraum"),savingsHero(num(g("economics.period.ems_vorteil_eur"))),econAdvantageRows("economics.period.tarifvorteil_eur","economics.period.ems_vorteil_eur","economics.period.ki_mehrwert_eur","economics.period.grid_rewards_eur"),"Grid Rewards getrennt, kein Schönrechnen.")
-		+statsCard("Wirtschaftlichkeit kumuliert",savingsHero(num(g("economics.cumulative.ems_vorteil_eur"))),econAdvantageRows("economics.cumulative.tarifvorteil_eur","economics.cumulative.ems_vorteil_eur","economics.cumulative.ki_mehrwert_eur","economics.cumulative.grid_rewards_eur"),"Seit Statistik-Start, kein Schönrechnen.")
-		+statsCard("Tagesbewertung",{cls:"neu",txt:fmtScoreStats(visIfSelectedDay(txt(g("learning.daily_evaluator.last_evaluated_date_key"),""),num(g("learning.daily_evaluator.last_day_global_score"))))},[
-			["Tag",selectedDayKey&&txt(g("learning.daily_evaluator.last_evaluated_date_key"),"")!==selectedDayKey?"—":txt(g("learning.daily_evaluator.last_evaluated_date_key"),"—")],
-			["Findings",selectedDayKey&&txt(g("learning.daily_evaluator.last_evaluated_date_key"),"")!==selectedDayKey?"—":txt(g("learning.daily_evaluator.last_day_findings_count"),"—")]
-		],selectedDayKey&&txt(g("learning.daily_evaluator.last_evaluated_date_key"),"")!==selectedDayKey?"nicht verfügbar":txt(g("learning.daily_evaluator.last_day_top_finding_de"),""))
-		+statsCard(periodId==="today"?"Shadow Heute":periodId==="yesterday"?"Shadow Gestern":"Shadow gestern",{cls:"neu",txt:fmtEur(visIfSelectedDay(txt(g("learning.shadow_engine.last_evaluated_date_key"),""),num(g("learning.shadow_engine.yesterday_real_net_cost_eur"))))},[
-			["Real",fmtEur(visIfSelectedDay(txt(g("learning.shadow_engine.last_evaluated_date_key"),""),num(g("learning.shadow_engine.yesterday_real_net_cost_eur"))))],
-			["ohne EMS",fmtEur(visIfSelectedDay(txt(g("learning.shadow_engine.last_evaluated_date_key"),""),num(g("learning.shadow_engine.yesterday_reference_no_ems_net_cost_eur"))))],
-			["EMS ohne KI",fmtEur(visIfSelectedDay(txt(g("learning.shadow_engine.last_evaluated_date_key"),""),num(g("learning.shadow_engine.yesterday_ems_without_ai_net_cost_eur"))))]
-		],selectedDayKey&&txt(g("learning.shadow_engine.last_evaluated_date_key"),"")!==selectedDayKey?"nicht verfügbar":"Point-in-time, keine rückblickende Optimierung.")
-		+statsCard("KI Analyst / Validator",{cls:"neu",txt:selectedDayKey&&txt(g("ai.daily_analyst.last_run_date_key"),"")!==selectedDayKey?"—":(txt(g("ai.daily_analyst.status"),"disabled")||"disabled")},[
-			["Findings",selectedDayKey&&txt(g("ai.daily_analyst.last_run_date_key"),"")!==selectedDayKey?"—":txt(g("ai.daily_analyst.findings_count"),"—")],
-			["Overrides",txt(g("ai.validator.active_overrides_count"),"0")]
-		],(function(){
-			if(selectedDayKey&&txt(g("ai.daily_analyst.last_run_date_key"),"")!==selectedDayKey)return "nicht verfügbar";
+		+statsCard("Wirtschaftlichkeit heute",savingsHero(num(g("economics.today.ems_vorteil_eur"))),econAdvantageRows("economics.today.tarifvorteil_eur","economics.today.ems_vorteil_eur","economics.today.ki_mehrwert_eur","economics.today.grid_rewards_eur"),joinNotes(txt(g("economics.reason_de"),""),gridRewardsPendingHint(homeT.gridRewardsSource,homeT.gridRewardsCreditEur)))
+		+statsCard("Wirtschaftlichkeit "+(txt(g("economics.period.label_de"),"Zeitraum")||"Zeitraum"),savingsHero(num(g("economics.period.ems_vorteil_eur"))),econAdvantageRows("economics.period.tarifvorteil_eur","economics.period.ems_vorteil_eur","economics.period.ki_mehrwert_eur","economics.period.grid_rewards_eur"),"Grid Rewards getrennt, nur Abrechnung in der Euro-Zeile.")
+		+statsCard("Wirtschaftlichkeit kumuliert",savingsHero(num(g("economics.cumulative.ems_vorteil_eur"))),econAdvantageRows("economics.cumulative.tarifvorteil_eur","economics.cumulative.ems_vorteil_eur","economics.cumulative.ki_mehrwert_eur","economics.cumulative.grid_rewards_eur"),"Seit Statistik-Start. Grid Rewards nur abgerechnet, nie in Tarif-/EMS-/KI-Vorteil.")
+		+statsCard(retrospectiveCardTitle("Tagesbewertung",evalKey),{cls:"neu",txt:fmtScoreStats(num(g("learning.daily_evaluator.last_day_global_score")))},[
+			["Evaluator-Findings",evalFindings]
+		],txt(g("learning.daily_evaluator.last_day_top_finding_de"),""))
+		+statsCard(retrospectiveCardTitle("Shadow",shadowKey),{cls:"neu",txt:fmtEur(num(g("learning.shadow_engine.yesterday_real_net_cost_eur")))},[
+			["Real",fmtEur(num(g("learning.shadow_engine.yesterday_real_net_cost_eur")))],
+			["ohne EMS",fmtEur(num(g("learning.shadow_engine.yesterday_reference_no_ems_net_cost_eur")))],
+			["EMS ohne KI",fmtEur(num(g("learning.shadow_engine.yesterday_ems_without_ai_net_cost_eur")))]
+		],"Letzter abgeschlossener Tag — nicht der laufende Zeitraum.")
+		+statsCard(retrospectiveCardTitle("KI Analyst",aiKey),{cls:"neu",txt:txt(g("ai.daily_analyst.status"),"disabled")||"disabled"},aiFindingRows,(function(){
 			var listed=txt(g("ai.daily_analyst.findings_de"),"");
 			if(listed&&listed!=="—")return listed;
-			return txt(g("ai.daily_analyst.top_finding_de"),"")||txt(g("ai.validator.last_reject_reason_de"),"");
+			return txt(g("ai.daily_analyst.top_finding_de"),"");
 		})(),"ems-stats-findings");
 	var reasonBase=txt(g("statistics.reason_de"),"Statistik: Mappings im Admin-Tab „Statistik“ setzen.");
-	if(gridRewardsPresent(homeP.gridRewardsSource,homeP.gridRewardsCreditEur)&&(homeP.gridRewardsSource==="estimate_month"||homeP.gridRewardsSource==="estimate_day")){
-		reasonBase+=" Rewards noch Schätzung — Abrechnung per statistics.adjust_request (Admin → Statistik → Manuell/Abrechnung).";
-	}
+	var pendingHint=gridRewardsPendingHint(homeP.gridRewardsSource,homeP.gridRewardsCreditEur)||gridRewardsPendingHint(homeT.gridRewardsSource,homeT.gridRewardsCreditEur);
+	if(pendingHint)reasonBase=joinNotes(reasonBase,pendingHint);
 	if(reasonEl)reasonEl.textContent=reasonBase;
 }
 

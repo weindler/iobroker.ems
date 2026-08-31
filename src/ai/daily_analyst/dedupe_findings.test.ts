@@ -22,6 +22,30 @@ function finding(overrides: Partial<AiAnalystFinding> = {}): AiAnalystFinding {
 }
 
 describe("dedupeAnalystFindings", () => {
+	it("Produktionsfall: zwei Heizstab-Texte desselben Laufs → 1 Finding (notice bleibt)", () => {
+		const notice = finding({
+			severity: "notice",
+			findingType: "avoidable",
+			observedBehaviorDe:
+				"Der Heizstab lief 10 Minuten und verbrauchte 0,29 kWh, obwohl ein günstigeres Zeitfenster verfügbar war.",
+			suggestedImprovementDe:
+				"Heizstab-Läufe sollten besser auf günstigere PV-/Preisfenster abgestimmt werden, um Kosten zu senken.",
+			evidence: [],
+		});
+		const info = finding({
+			severity: "info",
+			findingType: "early",
+			observedBehaviorDe: "Der Heizstab wurde frühzeitig aktiviert, was zu moderaten Kosten führte.",
+			suggestedImprovementDe:
+				"Eine spätere Aktivierung im besseren PV-/Preisfenster könnte die Wirtschaftlichkeit verbessern.",
+			evidence: [],
+		});
+		const out = dedupeAnalystFindings([notice, info]);
+		assert.equal(out.length, 1);
+		assert.equal(out[0]?.severity, "notice");
+		assert.match(out[0]?.observedBehaviorDe ?? "", /10 Minuten/);
+	});
+
 	it("führt zwei semantisch gleiche Heizstab-Findings desselben Laufs zu einem zusammen", () => {
 		const avoidable = finding({
 			severity: "notice",
@@ -40,6 +64,21 @@ describe("dedupeAnalystFindings", () => {
 		assert.match(out[0]?.observedBehaviorDe ?? "", /avoidable/);
 	});
 
+	it("gleicher Lauf, andere Formulierung ohne Mengen → 1 Finding", () => {
+		const withQty = finding({
+			severity: "notice",
+			observedBehaviorDe: "Heizstab 10 min / 0,29 kWh zu früh, besseres PV-Fenster.",
+		});
+		const prose = finding({
+			severity: "info",
+			findingType: "early_activation",
+			observedBehaviorDe: "Der Heizstab wurde frühzeitig aktiviert.",
+			suggestedImprovementDe: "Später im günstigeren Preisfenster aktivieren.",
+			evidence: [],
+		});
+		assert.equal(dedupeAnalystFindings([withQty, prose]).length, 1);
+	});
+
 	it("lässt unterschiedliche echte Probleme getrennt", () => {
 		const thermal = finding();
 		const battery = finding({
@@ -51,6 +90,16 @@ describe("dedupeAnalystFindings", () => {
 		});
 		const out = dedupeAnalystFindings([thermal, battery]);
 		assert.equal(out.length, 2);
+	});
+
+	it("zwei unterschiedliche Heizstab-Läufe bleiben getrennt", () => {
+		const runA = finding({
+			observedBehaviorDe: "Heizstab 10 min / 0,29 kWh zu früh, besseres PV-Fenster.",
+		});
+		const runB = finding({
+			observedBehaviorDe: "Heizstab 25 min / 1,10 kWh zu früh, besseres PV-Fenster.",
+		});
+		assert.equal(dedupeAnalystFindings([runA, runB]).length, 2);
 	});
 
 	it("behält die stärkere Severity und vereinigt Evidence", () => {

@@ -9,9 +9,39 @@ export interface ResolvedGridRewards {
 	source: GridRewardsSource;
 }
 
+export function gridRewardsIsSettled(source: GridRewardsSource | string | null | undefined): boolean {
+	return source === "billing";
+}
+
+export function gridRewardsIsEstimated(source: GridRewardsSource | string | null | undefined): boolean {
+	return source === "estimate_day" || source === "estimate_month";
+}
+
+/** Euro-Zeile nur bei belastbarer Abrechnung — auch echter 0,00 €. Schätzung nie. */
+export function gridRewardsShowEuroRow(
+	source: GridRewardsSource | string | null | undefined,
+	creditEur: number | null | undefined,
+): boolean {
+	if (!gridRewardsIsSettled(source)) return false;
+	if (creditEur === null || creditEur === undefined || !Number.isFinite(creditEur)) return false;
+	return creditEur >= 0;
+}
+
+/** Dezenter Hinweis statt Reward-Euro, wenn nur eine Schätzung vorliegt. */
+export function gridRewardsPendingHintDe(
+	source: GridRewardsSource | string | null | undefined,
+	creditEur: number | null | undefined,
+): string | null {
+	if (!gridRewardsIsEstimated(source)) return null;
+	if (creditEur === null || creditEur === undefined || !Number.isFinite(creditEur) || !(creditEur > 0)) {
+		return null;
+	}
+	return "Grid Rewards: noch nicht abgerechnet";
+}
+
 /**
- * Vorhandener/belastbarer Reward-Wert — nicht dasselbe wie „0,00 € erfunden“.
- * Schätzung 0 = nicht aufgelaufen / nicht anzeigen. Abrechnung 0 = echter vorhandener Wert.
+ * Vorhandener Reward-Datensatz (Schätzung oder Abrechnung) — nicht „0,00 € erfunden“.
+ * Euro-Anzeige als realisierter Vorteil nur über `gridRewardsShowEuroRow`.
  */
 export function gridRewardsCreditIsPresent(
 	source: GridRewardsSource | string | null | undefined,

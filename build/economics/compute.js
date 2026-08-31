@@ -79,14 +79,9 @@ function sumEconomicsDays(days, meta) {
             ki += d.kiMehrwertEur;
             kiN += 1;
         }
-        if (d.gridRewardsCreditEur !== null && d.gridRewardsSource && d.gridRewardsSource !== "off") {
-            const present = d.gridRewardsSource === "billing"
-                ? d.gridRewardsCreditEur >= 0
-                : d.gridRewardsCreditEur > 0;
-            if (present) {
-                rewards += d.gridRewardsCreditEur;
-                rewardsN += 1;
-            }
+        if (d.gridRewardsCreditEur !== null && d.gridRewardsSource === "billing" && d.gridRewardsCreditEur >= 0) {
+            rewards += d.gridRewardsCreditEur;
+            rewardsN += 1;
         }
     }
     const reasonParts = [];

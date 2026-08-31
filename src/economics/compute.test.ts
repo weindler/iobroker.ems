@@ -171,7 +171,7 @@ describe("sumEconomicsDays", () => {
 		assert.equal(sum.daysTarifvorteilEvaluable, 1);
 		assert.equal(sum.tarifvorteilEur, 1);
 		assert.equal(sum.daysEmsVorteilEvaluable, 1);
-		assert.equal(sum.gridRewardsCreditEur, 0.5);
+		assert.equal(sum.gridRewardsCreditEur, null);
 	});
 
 	it("zählt Schätzung 0 nicht als vorhandenen Reward, Abrechnung 0 schon", () => {

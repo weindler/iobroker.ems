@@ -802,22 +802,32 @@ describe("VIS battery / grid / GB presentation", () => {
 		assert.equal(visHtml.includes("forecast_plan.days_json"), false);
 	});
 
-	it("hides Grid Rewards unless a present value exists; lists all Daily-Analyst findings", () => {
+	it("hides Grid Rewards euro unless settled; lists all Daily-Analyst findings; labels retrospective day", () => {
 		assert.match(visHtml, /function gridRewardsPresent/);
+		assert.match(visHtml, /function gridRewardsShowEuro/);
 		assert.match(visHtml, /function econAdvantageRows/);
 		assert.match(visHtml, /ai\.daily_analyst\.findings_de/);
 		assert.match(visHtml, /ems-stats-findings/);
 		assert.match(visHtml, /economics\.today\.grid_rewards_eur/);
 		assert.match(visHtml, /economics\.cumulative\.grid_rewards_eur/);
-		function gridRewardsPresent(source, credit) {
-			if (!source || source === "off") return false;
-			if (credit == null || !isFinite(Number(credit))) return false;
-			if (source === "billing") return Number(credit) >= 0;
-			return Number(credit) > 0;
+		assert.match(visHtml, /Grid Rewards: noch nicht abgerechnet/);
+		assert.match(visHtml, /Evaluator-Findings/);
+		assert.match(visHtml, /KI-Findings/);
+		assert.match(visHtml, /function retrospectiveCardTitle/);
+		assert.match(visHtml, /function fmtDateKeyDe/);
+		assert.equal(visHtml.includes("Shadow Heute"), false);
+		assert.equal(visHtml.includes("Rewards noch Schätzung"), false);
+		assert.equal(
+			visHtml.includes('txt(g("ai.daily_analyst.top_finding_de"),"")||txt(g("ai.validator.last_reject_reason_de")'),
+			false,
+			"KI-Analyst-Karte darf Validator-Reject nicht als Finding anzeigen",
+		);
+		function gridRewardsShowEuro(source, credit) {
+			return source === "billing" && credit != null && isFinite(Number(credit)) && Number(credit) >= 0;
 		}
-		assert.equal(gridRewardsPresent("estimate_day", 0), false);
-		assert.equal(gridRewardsPresent("off", null), false);
-		assert.equal(gridRewardsPresent("estimate_day", 1.21), true);
-		assert.equal(gridRewardsPresent("billing", 0), true);
+		assert.equal(gridRewardsShowEuro("estimate_day", 1.21), false);
+		assert.equal(gridRewardsShowEuro("off", null), false);
+		assert.equal(gridRewardsShowEuro("billing", 0), true);
+		assert.equal(gridRewardsShowEuro("billing", 1.21), true);
 	});
 });

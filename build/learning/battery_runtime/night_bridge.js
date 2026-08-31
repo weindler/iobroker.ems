@@ -5,7 +5,7 @@
  * Feste Uhrzeiten nur Fallback — Winter/Sommer verschieben die Brücke um Stunden.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.average = exports.integratePowerKwh = exports.weightedAverage = exports.recencyWeight = exports.hasInterimRecharge = exports.findMinSocInRange = exports.findMinSocPointInRange = exports.findSocAtOrBefore = exports.findNearestSoc = exports.findPvHouseNightBridges = exports.findSustainedNonDeficitStart = exports.findSustainedSurplusStart = exports.findSustainedDeficitStart = exports.buildBatteryDeficitSeries = exports.buildPvHouseNetSeries = exports.bucketPowerSeries = exports.NIGHT_BRIDGE_DEFICIT_W = exports.NIGHT_BRIDGE_BUCKET_MS = exports.DEFAULT_NIGHT_BRIDGE_FLUTTER_MS = void 0;
+exports.average = exports.integratePowerKwh = exports.gridBalanceHasSamplesInWindow = exports.weightedAverage = exports.recencyWeight = exports.hasInterimRecharge = exports.findMinSocInRange = exports.findMinSocPointInRange = exports.findSocAtOrBefore = exports.findNearestSoc = exports.findPvHouseNightBridges = exports.findSustainedNonDeficitStart = exports.findSustainedSurplusStart = exports.findSustainedDeficitStart = exports.buildBatteryDeficitSeries = exports.buildPvHouseNetSeries = exports.bucketPowerSeries = exports.NIGHT_BRIDGE_DEFICIT_W = exports.NIGHT_BRIDGE_BUCKET_MS = exports.DEFAULT_NIGHT_BRIDGE_FLUTTER_MS = void 0;
 const constants_1 = require("./constants");
 const time_1 = require("./time");
 exports.DEFAULT_NIGHT_BRIDGE_FLUTTER_MS = 10 * 60_000;
@@ -354,6 +354,19 @@ exports.weightedAverage = weightedAverage;
  * massiv (z. B. 3 kW-Spike → ~3 kWh/h). Peak-Serien werden daher nirgends mehr integriert;
  * es gibt keine `integrateDischargeKwh`-Funktion mehr.
  */
+/** True, wenn mindestens ein GB-Punkt in der ±1h-Hülle von `integratePowerKwh` liegt. */
+function gridBalanceHasSamplesInWindow(points, startTs, endTs) {
+    if (!(endTs > startTs) || points.length === 0)
+        return false;
+    const lo = startTs - constants_1.MS_PER_HOUR;
+    const hi = endTs + constants_1.MS_PER_HOUR;
+    for (const p of points) {
+        if (Number.isFinite(p.ts) && p.ts >= lo && p.ts <= hi)
+            return true;
+    }
+    return false;
+}
+exports.gridBalanceHasSamplesInWindow = gridBalanceHasSamplesInWindow;
 function integratePowerKwh(points, startTs, endTs) {
     if (!(endTs > startTs) || points.length === 0)
         return null;

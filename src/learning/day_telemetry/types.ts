@@ -199,6 +199,12 @@ export type DayTelemetryBuckets = {
 	batterySocEndPct: Array<number | null>;
 	batteryChargedKwh: Array<number | null>;
 	batteryDischargedKwh: Array<number | null>;
+	/**
+	 * EMS-eigene Netzausgleichs-Entladung (kWh/Slot) aus `addons.battery.grid_balance.effective_power_w`.
+	 * null = missing (alte Dateien ohne Feld, oder Slot unbeobachtet) — nie erfundene 0.
+	 * 0 = gemessen aus, belastbar.
+	 */
+	gridBalanceDischargeKwh: Array<number | null>;
 	evChargedKwh: Array<number | null>;
 	evSocEndPct: Array<number | null>;
 	immersionKwh: Array<number | null>;
@@ -274,6 +280,7 @@ export function emptyBuckets(slotCount: number): DayTelemetryBuckets {
 		batterySocEndPct: n(),
 		batteryChargedKwh: n(),
 		batteryDischargedKwh: n(),
+		gridBalanceDischargeKwh: n(),
 		evChargedKwh: n(),
 		evSocEndPct: n(),
 		immersionKwh: n(),

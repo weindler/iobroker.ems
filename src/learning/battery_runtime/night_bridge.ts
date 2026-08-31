@@ -399,6 +399,22 @@ export function weightedAverage(values: number[], weights: number[]): number | n
  * massiv (z. B. 3 kW-Spike → ~3 kWh/h). Peak-Serien werden daher nirgends mehr integriert;
  * es gibt keine `integrateDischargeKwh`-Funktion mehr.
  */
+
+/** True, wenn mindestens ein GB-Punkt in der ±1h-Hülle von `integratePowerKwh` liegt. */
+export function gridBalanceHasSamplesInWindow(
+	points: PowerPoint[],
+	startTs: number,
+	endTs: number,
+): boolean {
+	if (!(endTs > startTs) || points.length === 0) return false;
+	const lo = startTs - MS_PER_HOUR;
+	const hi = endTs + MS_PER_HOUR;
+	for (const p of points) {
+		if (Number.isFinite(p.ts) && p.ts >= lo && p.ts <= hi) return true;
+	}
+	return false;
+}
+
 export function integratePowerKwh(
 	points: PowerPoint[],
 	startTs: number,

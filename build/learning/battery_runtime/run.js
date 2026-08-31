@@ -8,6 +8,8 @@ const math_1 = require("./math");
 const persist_1 = require("./persist");
 const config_2 = require("../pv_bias/config");
 const ensure_states_1 = require("../../addons/battery/ensure_states");
+const config_3 = require("../../intent/config");
+const grid_balance_from_telemetry_1 = require("./grid_balance_from_telemetry");
 async function setNumIfValid(host, id, value) {
     if (value !== null && Number.isFinite(value)) {
         await host.setStateAsync(id, { val: value, ack: true });
@@ -96,12 +98,18 @@ async function runBatteryRuntimeLearning(host) {
             ? await (0, history_1.fetchPowerHistory)(host, sources.powerStateId, cfg.lookbackDays, cfg.powerInvert)
             : { points: [], lastValidTs: null, meta: null };
         /*
-         * PFLICHT-FIX 1 Korrektur: eigene Netzausgleichs-Entladehistorie, um sie aus dem
-         * SOC-basierten Nachtbedarf herauszurechnen (Attribution, keine zweite Reserve-Quelle).
-         * Fester interner State (kein Admin-Mapping nötig) — leeres Ergebnis (kein History-Log
-         * für diesen State) lässt das Verhalten unverändert.
+         * Netzausgleich-Attribution: zuerst EMS-Day-Telemetry, History nur Legacy-Fallback
+         * mit begrenzter Probe (kein 90×2-Leer-Sturm).
          */
-        const gridBalancePowerPoints = await (0, history_1.fetchGridBalanceDischargePowerHistory)(host, ensure_states_1.BAT.gridBalance.effectivePowerW, cfg.lookbackDays);
+        const timezone = (0, config_3.intentAdminConfigFromAdapter)(host.config).timezone || "Europe/Berlin";
+        const fromTelemetry = await (0, grid_balance_from_telemetry_1.loadGridBalancePowerFromDayTelemetry)((0, grid_balance_from_telemetry_1.dayTelemetryDirFromHost)(host.getAbsolutePath), cfg.lookbackDays, now, timezone);
+        let gridBalancePowerPoints = fromTelemetry.points;
+        if (fromTelemetry.observedDayCount === 0) {
+            gridBalancePowerPoints = await (0, history_1.fetchGridBalanceDischargePowerHistory)(host, ensure_states_1.BAT.gridBalance.effectivePowerW, cfg.lookbackDays);
+        }
+        else {
+            host.log.debug?.(`Battery-Runtime-Learning: Netzausgleich aus Day-Telemetry (${fromTelemetry.observedDayCount} Tage, ${fromTelemetry.points.length} Punkte) — keine History-Abfrage.`);
+        }
         const [pvDirect, housePowerPoints] = await Promise.all([
             sources.pvAcPowerStateId
                 ? (0, history_1.fetchSitePowerSeries)(host, sources.pvAcPowerStateId, cfg.lookbackDays)

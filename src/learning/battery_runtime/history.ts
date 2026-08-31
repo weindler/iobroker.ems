@@ -5,6 +5,7 @@ import {
 	fetchHistoryRowsLookback,
 	HISTORY_CHUNK_TIMEOUT_MS,
 	HISTORY_ROWS_PER_DAY,
+	type FetchHistoryLookbackOptions,
 } from "../history_query";
 import { fetchRollupPowerHistory, fetchRollupUnidirectionalPowerPoints } from "../power_rollup";
 import { detectPowerUnit, resolveHouseLoadPowerUnit } from "../house_load/history";
@@ -87,6 +88,13 @@ export type BatteryHistoryHost = {
 	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
 	getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
 	getAbsolutePath?: (category?: string) => string;
+	getObjectAsync?: (id: string) => Promise<ioBroker.Object | null | undefined>;
+	sendToAsync?: (
+		instanceName: string,
+		command: string,
+		message: unknown,
+	) => Promise<unknown>;
+	log?: { info?: (msg: string) => void; warn?: (msg: string) => void; debug?: (msg: string) => void };
 };
 
 function hourBucket(ts: number): number {
@@ -487,6 +495,7 @@ export async function fetchGridBalanceDischargePowerHistory(
 	host: BatteryHistoryHost,
 	stateId: string,
 	lookbackDays: number,
+	lookbackOptions: FetchHistoryLookbackOptions = { abortWhenEmpty: true, probeDays: 2 },
 ): Promise<PowerPoint[]> {
 	if (!stateId) return [];
 	const rows = await fetchHistoryRowsLookback(
@@ -495,6 +504,7 @@ export async function fetchGridBalanceDischargePowerHistory(
 		lookbackDays,
 		HISTORY_ROWS_PER_DAY,
 		HISTORY_CHUNK_TIMEOUT_MS,
+		lookbackOptions,
 	);
 	const points: PowerPoint[] = [];
 	for (const row of rows) {

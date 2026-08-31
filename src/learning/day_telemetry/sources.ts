@@ -39,6 +39,8 @@ export type LiveTelemetrySample = {
 	wallboxChargePowerW: number | null;
 	batteryChargePowerW: number | null;
 	batteryDischargePowerW: number | null;
+	/** EMS-Netzausgleichs-Entladeleistung ≥ 0 W; null = missing. */
+	gridBalanceDischargePowerW: number | null;
 	climateSystemPowerW: number | null;
 	climateSharedPowerUsed: boolean | null;
 	climateUnitActive: boolean[];
@@ -210,6 +212,7 @@ export async function readLiveTelemetrySample(
 		wallboxChargePowerW: await readNum(host, WALLBOX_EV_FOUNDATION_STATES.chargePowerW),
 		batteryChargePowerW: chargeW,
 		batteryDischargePowerW: dischargeW,
+		gridBalanceDischargePowerW: await readNum(host, BAT.gridBalance.effectivePowerW),
 		climateSystemPowerW: systemPower,
 		climateSharedPowerUsed: sharedUsed,
 		climateUnitActive,

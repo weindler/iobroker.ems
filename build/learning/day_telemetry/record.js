@@ -255,6 +255,14 @@ async function tickDayTelemetryInner(host, now) {
         integratePowerDomain(day, layout, fromMs, toMs, sample.houseTotalPowerW, day.buckets.houseTotalKwh, quality_mask_1.TELEMETRY_DOMAIN.HOUSE);
         integratePowerDomain(day, layout, fromMs, toMs, sample.batteryChargePowerW, day.buckets.batteryChargedKwh, quality_mask_1.TELEMETRY_DOMAIN.BATTERY);
         integratePowerDomain(day, layout, fromMs, toMs, sample.batteryDischargePowerW, day.buckets.batteryDischargedKwh, quality_mask_1.TELEMETRY_DOMAIN.BATTERY);
+        /*
+         * Netzausgleich: eigene Slot-Energie, ohne die Battery-Quality-Maske bei missing zu
+         * überschreiben. 0 W ist gültig (aus). Negative Werte werden nicht integriert.
+         */
+        const gbW = sample.gridBalanceDischargePowerW;
+        if (gbW != null && Number.isFinite(gbW) && gbW >= 0) {
+            integratePowerDomain(day, layout, fromMs, toMs, gbW, day.buckets.gridBalanceDischargeKwh, quality_mask_1.TELEMETRY_DOMAIN.BATTERY);
+        }
         integratePowerDomain(day, layout, fromMs, toMs, sample.evChargePowerW, day.buckets.evChargedKwh, quality_mask_1.TELEMETRY_DOMAIN.EV);
         integratePowerDomain(day, layout, fromMs, toMs, sample.immersionPowerW, day.buckets.immersionKwh, quality_mask_1.TELEMETRY_DOMAIN.THERMAL);
         if (sample.immersionRuntimeOn === true) {
@@ -365,6 +373,7 @@ function roundDayBuckets(day) {
         "gridExportKwh",
         "batteryChargedKwh",
         "batteryDischargedKwh",
+        "gridBalanceDischargeKwh",
         "evChargedKwh",
         "immersionKwh",
         "climateKwh",

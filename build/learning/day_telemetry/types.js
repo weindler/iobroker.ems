@@ -15,6 +15,7 @@ function emptyBuckets(slotCount) {
         batterySocEndPct: n(),
         batteryChargedKwh: n(),
         batteryDischargedKwh: n(),
+        gridBalanceDischargeKwh: n(),
         evChargedKwh: n(),
         evSocEndPct: n(),
         immersionKwh: n(),

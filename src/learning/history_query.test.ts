@@ -181,4 +181,48 @@ describe("history_query", () => {
 		assert.ok(dayCalls >= 90);
 		assert.ok(rows.some((r) => typeof r.val === "number" && r.val < 0));
 	});
+
+	it("abortWhenEmpty: 90d ohne History macht keine 180 leeren Queries", async () => {
+		resetHistoryQueryQueueForTests();
+		let calls = 0;
+		const warns: string[] = [];
+		const host: HistoryQueryHost = {
+			getHistoryAsync: async () => {
+				calls++;
+				return { result: [] };
+			},
+			log: {
+				warn: (msg: string) => {
+					warns.push(msg);
+				},
+			},
+		};
+		const rows = await fetchHistoryRowsLookback(host, "addons.battery.grid_balance.effective_power_w", 90, 500, 45_000, {
+			abortWhenEmpty: true,
+			probeDays: 2,
+		});
+		assert.equal(rows.length, 0);
+		assert.ok(calls <= 8, `expected ≤8 probe queries, got ${calls}`);
+		assert.ok(calls < 180);
+		assert.equal(warns.length, 1);
+		assert.match(warns[0]!, /history unavailable/);
+	});
+
+	it("abortWhenEmpty: Objekt ohne History-Adapter → 0 Queries", async () => {
+		resetHistoryQueryQueueForTests();
+		let calls = 0;
+		const host: HistoryQueryHost = {
+			getObjectAsync: async () => ({ common: {} }) as ioBroker.Object,
+			getHistoryAsync: async () => {
+				calls++;
+				return { result: [] };
+			},
+			log: { warn: () => undefined },
+		};
+		const rows = await fetchHistoryRowsLookback(host, "addons.battery.grid_balance.effective_power_w", 90, 500, 45_000, {
+			abortWhenEmpty: true,
+		});
+		assert.equal(rows.length, 0);
+		assert.equal(calls, 0);
+	});
 });

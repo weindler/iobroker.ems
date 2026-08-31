@@ -29,6 +29,18 @@ export const HISTORY_AGGREGATES = ["none", "onchange"] as const;
 export type HistoryAggregate = (typeof HISTORY_AGGREGATES)[number];
 export type HistoryStepAggregate = "average" | "max" | "min" | "minmax";
 
+/** Leere History: so viele Kalendertage als Probe, dann Abbruch. */
+export const HISTORY_EMPTY_PROBE_DAYS = 2;
+
+export type FetchHistoryLookbackOptions = {
+	/**
+	 * Wenn die Probe leer ist (oder History am Objekt nicht aktiv ist), nicht den vollen
+	 * Lookback ablaufen — vermeidet 90×2 leere Queries.
+	 */
+	abortWhenEmpty?: boolean;
+	probeDays?: number;
+};
+
 /** Tages-Fenster: älteste Einträge zuerst (history.0 liefert sonst leere Tagesfenster). */
 export const HISTORY_QUERY_PER_DAY_OPTIONS: ioBroker.GetHistoryOptions = {
 	ignoreNull: true,
@@ -253,9 +265,38 @@ function enqueueHistoryQuery<T>(fn: () => Promise<T>): Promise<T> {
 	return run;
 }
 
-/** Nur für Tests: Warteschlange zurücksetzen. */
+/** Nur für Tests: Warteschlange und Unavailable-Cache zurücksetzen. */
 export function resetHistoryQueryQueueForTests(): void {
 	historyQueryChain = Promise.resolve();
+	historyUnavailableWarned.clear();
+}
+
+const historyUnavailableWarned = new Set<string>();
+
+export function historyCustomEnabled(obj: ioBroker.Object | null | undefined): boolean | null {
+	if (obj == null) return null;
+	const custom = (obj.common as { custom?: Record<string, { enabled?: boolean } | undefined> } | undefined)
+		?.custom;
+	if (!custom || typeof custom !== "object") return false;
+	for (const cfg of Object.values(custom)) {
+		if (cfg && typeof cfg === "object" && cfg.enabled === true) return true;
+	}
+	return false;
+}
+
+function warnHistoryUnavailableOnce(host: HistoryQueryHost, stateId: string, detail: string): void {
+	if (historyUnavailableWarned.has(stateId)) return;
+	historyUnavailableWarned.add(stateId);
+	host.log?.warn?.(`History query: history unavailable for ${stateId} (${detail})`);
+}
+
+async function stateHistoryEnabled(host: HistoryQueryHost, stateId: string): Promise<boolean | null> {
+	if (!host.getObjectAsync) return null;
+	try {
+		return historyCustomEnabled(await host.getObjectAsync(stateId));
+	} catch {
+		return null;
+	}
 }
 
 export async function fetchHistoryRowsInRange(
@@ -515,9 +556,21 @@ export async function fetchHistoryRowsLookback(
 	lookbackDays: number,
 	countPerDay = HISTORY_ROWS_PER_DAY,
 	timeoutMs = HISTORY_CHUNK_TIMEOUT_MS,
+	options?: FetchHistoryLookbackOptions,
 ): Promise<ioBroker.GetHistoryResult> {
 	if (!stateId || lookbackDays <= 0) {
 		return [];
+	}
+
+	const abortWhenEmpty = options?.abortWhenEmpty === true;
+	const probeDays = Math.max(1, options?.probeDays ?? HISTORY_EMPTY_PROBE_DAYS);
+
+	if (abortWhenEmpty) {
+		const enabled = await stateHistoryEnabled(host, stateId);
+		if (enabled === false) {
+			warnHistoryUnavailableOnce(host, stateId, "not enabled on object");
+			return [];
+		}
 	}
 
 	const candidates = await historyStateCandidates(host, stateId);
@@ -525,6 +578,41 @@ export async function fetchHistoryRowsLookback(
 
 	for (let i = 0; i < candidates.length; i++) {
 		const candidateId = candidates[i];
+
+		if (abortWhenEmpty) {
+			const probeLookback = Math.min(probeDays, lookbackDays);
+			const probe = await fetchHistoryPerDayForId(
+				host,
+				candidateId,
+				probeLookback,
+				countPerDay,
+				timeoutMs,
+			);
+			combinedStats = mergeStats(combinedStats, probe.stats);
+			if (probe.rows.length === 0) {
+				continue;
+			}
+			if (lookbackDays <= probeLookback) {
+				if (i > 0 && host.log?.warn) {
+					host.log.warn(
+						`History query: Daten über Fallback-State ${candidateId} (${probe.rows.length} Zeilen, konfiguriert: ${stateId})`,
+					);
+				}
+				return probe.rows;
+			}
+			const full = await fetchHistoryRowsLookbackForId(
+				host,
+				candidateId,
+				lookbackDays,
+				countPerDay,
+				timeoutMs,
+			);
+			combinedStats = mergeStats(combinedStats, full.stats);
+			if (full.rows.length > 0) {
+				return full.rows;
+			}
+			return probe.rows;
+		}
 
 		const attempt = await fetchHistoryRowsLookbackForId(
 			host,
@@ -545,6 +633,15 @@ export async function fetchHistoryRowsLookback(
 			}
 			return attempt.rows;
 		}
+	}
+
+	if (abortWhenEmpty) {
+		warnHistoryUnavailableOnce(
+			host,
+			stateId,
+			`${Math.min(probeDays, lookbackDays)}d probe empty`,
+		);
+		return [];
 	}
 
 	if (host.log?.warn) {

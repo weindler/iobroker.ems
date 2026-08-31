@@ -310,7 +310,6 @@
 					"color": "secondary",
 					"icon": "send",
 					"disabled": "data.ai_analyst_mode === 'disabled'",
-					"alsoDependsOn": ["ai_analyst_mode"],
 					"result": {
 						"ok": "Daily Analyst: siehe Hinweis unter dem Button bzw. ai.daily_analyst.status",
 						"error": "Daily Analyst ist deaktiviert oder der Lauf ist fehlgeschlagen — Details unter ai.daily_analyst.status"

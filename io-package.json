@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.14",
+		"version": "0.2.15",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.15": {
+				"en": "Fix: Admin jsonConfig valid again (Analyze now button). Night-reserve grid-balance energy comes from EMS day telemetry, not 180 empty history queries. Check Admin Global tab opens without schema error; learning.battery_runtime.grid_balance_* after a learning run.",
+				"de": "Fix: Admin-jsonConfig wieder gültig (Button „Jetzt analysieren“). Nachtreserve-Netzausgleich kommt aus EMS-Day-Telemetry, nicht aus 180 leeren History-Abfragen. Nach Update Admin-Tab Global ohne Schemafehler prüfen; nach Learning-Lauf learning.battery_runtime.grid_balance_*."
+			},
 			"0.2.14": {
 				"en": "Fix: statistics period dropdown again includes Today and Yesterday (before Last 7 days). Empty day ranges show — / unavailable, no fallback to another period. Check VIS Statistik period selector, economics.period.*, house/mobility period cards.",
 				"de": "Fix: Statistik-Zeitraum-Dropdown enthält wieder Heute und Gestern (vor Letzte 7 Tage). Leere Tagesbereiche zeigen — / nicht verfügbar, kein Rückfall auf einen anderen Zeitraum. Nach Update VIS-Statistik-Auswahl, economics.period.*, Haus-/Mobilitäts-Periodenkarten prüfen."

@@ -363,10 +363,10 @@ exports.fetchSitePowerFromEnergyCounter = fetchSitePowerFromEnergyCounter;
  * innerhalb des SOC-basierten Nachtsamples (PFLICHT-FIX 1 Korrektur) — ersetzt nie die
  * SOC-basierte Reserve-Wahrheit selbst.
  */
-async function fetchGridBalanceDischargePowerHistory(host, stateId, lookbackDays) {
+async function fetchGridBalanceDischargePowerHistory(host, stateId, lookbackDays, lookbackOptions = { abortWhenEmpty: true, probeDays: 2 }) {
     if (!stateId)
         return [];
-    const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, stateId, lookbackDays, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
+    const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, stateId, lookbackDays, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS, lookbackOptions);
     const points = [];
     for (const row of rows) {
         const ts = typeof row?.ts === "number" ? row.ts : null;

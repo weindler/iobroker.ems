@@ -79,6 +79,7 @@ function asCoverageFields(day) {
                     day.buckets.gridExportKwh[i] != null ||
                     day.buckets.otherMeasuredConsumersKwh[i] != null ||
                     day.buckets.batteryChargedKwh[i] != null ||
+                    day.buckets.gridBalanceDischargeKwh?.[i] != null ||
                     day.buckets.priceCtPerKwh[i] != null;
                 if (!anyEnergy) {
                     qm[i] = null;
@@ -111,6 +112,10 @@ function normalizeDayRecord(raw, fallbackDateKey) {
         day.slotWidthMs = constants_1.DAY_TELEMETRY_SLOT_MS;
     if (!day.buckets)
         return null;
+    const slotCount = day.slotCount;
+    if (!Array.isArray(day.buckets.gridBalanceDischargeKwh) || day.buckets.gridBalanceDischargeKwh.length !== slotCount) {
+        day.buckets.gridBalanceDischargeKwh = Array.from({ length: slotCount }, () => null);
+    }
     if (!Array.isArray(day.forecastSnapshots))
         day.forecastSnapshots = [];
     if (!Array.isArray(day.forecastRevisions))

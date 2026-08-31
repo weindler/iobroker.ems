@@ -1,4 +1,5 @@
 build/tools/admin_config/generate.test.js
+build/tools/admin_config/json_config_schema.test.js
 build/addons/air_conditioning/configured.test.js
 build/surface_cleanup/cleanup.test.js
 build/audit/analyze_object_dump.test.js
@@ -129,6 +130,7 @@ build/learning/thermal_runtime/math.test.js
 build/learning/thermal_boiler/boiler_split.test.js
 build/learning/thermal_boiler/schedule.test.js
 build/learning/battery_runtime/math.test.js
+build/learning/battery_runtime/grid_balance_from_telemetry.test.js
 build/learning/battery_runtime/history.test.js
 build/learning/battery_runtime/night_bridge.test.js
 build/learning/battery_runtime/reserve.test.js

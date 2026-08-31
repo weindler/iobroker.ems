@@ -166,4 +166,46 @@ const history_query_1 = require("./history_query");
         strict_1.default.ok(dayCalls >= 90);
         strict_1.default.ok(rows.some((r) => typeof r.val === "number" && r.val < 0));
     });
+    (0, node_test_1.it)("abortWhenEmpty: 90d ohne History macht keine 180 leeren Queries", async () => {
+        (0, history_query_1.resetHistoryQueryQueueForTests)();
+        let calls = 0;
+        const warns = [];
+        const host = {
+            getHistoryAsync: async () => {
+                calls++;
+                return { result: [] };
+            },
+            log: {
+                warn: (msg) => {
+                    warns.push(msg);
+                },
+            },
+        };
+        const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, "addons.battery.grid_balance.effective_power_w", 90, 500, 45_000, {
+            abortWhenEmpty: true,
+            probeDays: 2,
+        });
+        strict_1.default.equal(rows.length, 0);
+        strict_1.default.ok(calls <= 8, `expected ≤8 probe queries, got ${calls}`);
+        strict_1.default.ok(calls < 180);
+        strict_1.default.equal(warns.length, 1);
+        strict_1.default.match(warns[0], /history unavailable/);
+    });
+    (0, node_test_1.it)("abortWhenEmpty: Objekt ohne History-Adapter → 0 Queries", async () => {
+        (0, history_query_1.resetHistoryQueryQueueForTests)();
+        let calls = 0;
+        const host = {
+            getObjectAsync: async () => ({ common: {} }),
+            getHistoryAsync: async () => {
+                calls++;
+                return { result: [] };
+            },
+            log: { warn: () => undefined },
+        };
+        const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, "addons.battery.grid_balance.effective_power_w", 90, 500, 45_000, {
+            abortWhenEmpty: true,
+        });
+        strict_1.default.equal(rows.length, 0);
+        strict_1.default.equal(calls, 0);
+    });
 });

@@ -726,26 +726,52 @@ describe("battery runtime night consumption + dynamic reserve (konsolidiert, SOC
 		assert.equal(withEmptyGb.avgKwh, baseline.avgKwh);
 	});
 
-	it("PFLICHT-FIX 1 Korrektur: nicht belastbar bestimmbarer Netzausgleichs-Anteil einer einzelnen Nacht schließt genau diese Nacht aus, statt zu schätzen", () => {
+	it("PFLICHT-FIX 1: keine GB-Punkte in/nahe dem Nachtfenster → SOC-Sample behalten, nicht schätzen, nicht ausschließen", () => {
 		const { socPoints, battery, house, pv, day0 } = buildTenNightPvHouseScenario();
-		/*
-		 * `integratePowerKwh` überbrückt kleine Lücken über die nächsten Nachbarpunkte
-		 * (energieerhaltende Interpolation) — die Lücke muss daher so breit sein, dass auch
-		 * die Nachbarpunkte außerhalb der ±1h-Toleranz um das Fenster liegen, sonst würde die
-		 * Coverage-Prüfung fälschlich "0 W durchgehend" statt "unbekannt" ergeben.
-		 */
 		const gapStart = day0 + 3 * 86_400_000 + 17 * MS_H;
 		const gapEnd = day0 + 4 * 86_400_000 + 9 * MS_H;
 		const gridBalance: PowerPoint[] = [];
 		for (let d = 0; d < 10; d++) {
 			for (let h = 0; h < 24; h++) {
 				const ts = day0 + d * 86_400_000 + h * MS_H;
-				// Lücke: für exakt EIN Fenster (Abend Tag 3 → Morgen Tag 4) liegt keine
-				// Netzausgleichs-Historie vor — nicht raten, Sample ausschließen.
 				if (ts >= gapStart && ts < gapEnd) continue;
 				gridBalance.push({ ts, powerW: 0 });
 			}
 		}
+		const nowMs = day0 + 11 * 86_400_000;
+		const baseline = computeNightDischarges({
+			socPoints,
+			nightStart: "22:00",
+			nightEnd: "06:00",
+			capacityKwh: 20,
+			pvPowerPoints: pv,
+			housePowerPoints: house,
+			batteryPowerPoints: battery,
+			nowMs,
+		});
+		const withGb = computeNightDischarges({
+			socPoints,
+			nightStart: "22:00",
+			nightEnd: "06:00",
+			capacityKwh: 20,
+			pvPowerPoints: pv,
+			housePowerPoints: house,
+			batteryPowerPoints: battery,
+			gridBalancePowerPoints: gridBalance,
+			nowMs,
+		});
+		assert.equal(withGb.validNights, baseline.validNights);
+		assert.equal(withGb.gridBalanceExcludedNights, 0);
+		assert.equal(withGb.avgKwh, baseline.avgKwh);
+	});
+
+	it("PFLICHT-FIX 1: lückenhafte GB-Punkte INNERHALB des Fensters schließen die Nacht aus, statt zu schätzen", () => {
+		const { socPoints, battery, house, pv, day0 } = buildTenNightPvHouseScenario();
+		const holeEvening = day0 + 3 * 86_400_000 + 22 * MS_H;
+		const gridBalance: PowerPoint[] = [
+			{ ts: holeEvening, powerW: 200 },
+			{ ts: holeEvening + 10 * 60 * 1000, powerW: 200 },
+		];
 		const nowMs = day0 + 11 * 86_400_000;
 		const baseline = computeNightDischarges({
 			socPoints,
@@ -774,6 +800,51 @@ describe("battery runtime night consumption + dynamic reserve (konsolidiert, SOC
 			`withGb=${withGb.validNights} baseline=${baseline.validNights}`,
 		);
 		assert.ok(withGb.gridBalanceExcludedNights >= 1, `excluded=${withGb.gridBalanceExcludedNights}`);
+	});
+
+	it("PFLICHT-FIX 1: GB nur für jüngste Nächte (Telemetrie) lässt ältere SOC-Nächte unverändert", () => {
+		const { socPoints, battery, house, pv, day0 } = buildTenNightPvHouseScenario();
+		const gridBalance: PowerPoint[] = [];
+		/* Nur die letzten 3 Kalendertage haben GB-Messungen (200 W nachts). */
+		for (let d = 7; d < 10; d++) {
+			for (let h = 0; h < 24; h++) {
+				const ts = day0 + d * 86_400_000 + h * MS_H;
+				const isNight = h >= 20 || h < 6;
+				gridBalance.push({ ts, powerW: isNight ? 200 : 0 });
+			}
+		}
+		const nowMs = day0 + 11 * 86_400_000;
+		const baseline = computeNightDischarges({
+			socPoints,
+			nightStart: "22:00",
+			nightEnd: "06:00",
+			capacityKwh: 20,
+			pvPowerPoints: pv,
+			housePowerPoints: house,
+			batteryPowerPoints: battery,
+			nowMs,
+		});
+		const withGb = computeNightDischarges({
+			socPoints,
+			nightStart: "22:00",
+			nightEnd: "06:00",
+			capacityKwh: 20,
+			pvPowerPoints: pv,
+			housePowerPoints: house,
+			batteryPowerPoints: battery,
+			gridBalancePowerPoints: gridBalance,
+			nowMs,
+		});
+		assert.equal(withGb.validNights, baseline.validNights);
+		assert.equal(withGb.gridBalanceExcludedNights, 0);
+		assert.ok(withGb.gridBalanceAttributedNights >= 1);
+		assert.ok(
+			withGb.avgKwh !== null &&
+				baseline.avgKwh !== null &&
+				withGb.avgKwh < baseline.avgKwh &&
+				withGb.avgKwh > baseline.avgKwh - 2,
+			`withGb=${withGb.avgKwh} baseline=${baseline.avgKwh}`,
+		);
 	});
 });
 

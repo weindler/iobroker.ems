@@ -153,6 +153,7 @@ async function readLiveTelemetrySample(host, nowMs = Date.now()) {
         wallboxChargePowerW: await readNum(host, ensure_states_3.WALLBOX_EV_FOUNDATION_STATES.chargePowerW),
         batteryChargePowerW: chargeW,
         batteryDischargePowerW: dischargeW,
+        gridBalanceDischargePowerW: await readNum(host, ensure_states_1.BAT.gridBalance.effectivePowerW),
         climateSystemPowerW: systemPower,
         climateSharedPowerUsed: sharedUsed,
         climateUnitActive,

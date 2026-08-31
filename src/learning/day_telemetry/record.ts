@@ -392,6 +392,22 @@ async function tickDayTelemetryInner(host: DayTelemetryHost, now: Date): Promise
 			day.buckets.batteryDischargedKwh,
 			TELEMETRY_DOMAIN.BATTERY,
 		);
+		/*
+		 * Netzausgleich: eigene Slot-Energie, ohne die Battery-Quality-Maske bei missing zu
+		 * überschreiben. 0 W ist gültig (aus). Negative Werte werden nicht integriert.
+		 */
+		const gbW = sample.gridBalanceDischargePowerW;
+		if (gbW != null && Number.isFinite(gbW) && gbW >= 0) {
+			integratePowerDomain(
+				day,
+				layout,
+				fromMs,
+				toMs,
+				gbW,
+				day.buckets.gridBalanceDischargeKwh,
+				TELEMETRY_DOMAIN.BATTERY,
+			);
+		}
 		integratePowerDomain(
 			day,
 			layout,
@@ -580,6 +596,7 @@ function roundDayBuckets(day: DayTelemetryDayRecord): void {
 		"gridExportKwh",
 		"batteryChargedKwh",
 		"batteryDischargedKwh",
+		"gridBalanceDischargeKwh",
 		"evChargedKwh",
 		"immersionKwh",
 		"climateKwh",

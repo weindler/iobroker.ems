@@ -9,6 +9,7 @@ import {
 	findSocAtOrBefore,
 	findPvHouseNightBridges,
 	hasInterimRecharge,
+	gridBalanceHasSamplesInWindow,
 	integratePowerKwh,
 	recencyWeight,
 	weightedAverage,
@@ -244,24 +245,26 @@ export function computeNightDischarges(params: {
 			let nightKwh = params.capacityKwh !== null ? (dischargePct / 100) * params.capacityKwh : null;
 
 			/*
-			 * PFLICHT-FIX 1 Korrektur: EMS-eigene Netzausgleichs-Entladung darf den realen
-			 * SOC-Abfall nicht als normalen Nachtgrundbedarf lernen lassen. Nur abziehen, wenn
-			 * für GENAU dieses Fenster eine belastbare Leistungsserie vorliegt (≥ 50 % Abdeckung,
-			 * siehe `integratePowerKwh`) — sonst Sample ausschließen statt zu schätzen. Ohne
-			 * jegliche Netzausgleichs-Historie (leeres Array) bleibt das Verhalten unverändert.
+			 * PFLICHT-FIX 1: SOC bleibt die führende Nachtenergie. Netzausgleich nur abziehen,
+			 * wenn für GENAU dieses Fenster Messpunkte vorliegen und die Coverage ≥ 50 % ist
+			 * (`integratePowerKwh`). Keine Punkte in/nahe dem Fenster (alte Telemetrie ohne
+			 * GB-Bucket, History unavailable) → Sample behalten, nicht schätzen, nicht
+			 * ausschließen. Punkte vorhanden, aber Coverage lückenhaft → ausschließen.
 			 */
 			if (gridBalancePoints.length > 0 && nightKwh !== null) {
-				const gbKwh = integratePowerKwh(gridBalancePoints, obs.startTs, obs.endTs);
-				if (gbKwh === null) {
-					gridBalanceExcludedNights++;
-					continue;
-				}
-				if (gbKwh > 0.01) {
-					const netKwh = Math.max(0, nightKwh - gbKwh);
-					nightPct =
-						params.capacityKwh! > 0 ? Math.max(0, (netKwh / params.capacityKwh!) * 100) : nightPct;
-					nightKwh = netKwh;
-					gridBalanceAttributedNights++;
+				if (gridBalanceHasSamplesInWindow(gridBalancePoints, obs.startTs, obs.endTs)) {
+					const gbKwh = integratePowerKwh(gridBalancePoints, obs.startTs, obs.endTs);
+					if (gbKwh === null) {
+						gridBalanceExcludedNights++;
+						continue;
+					}
+					if (gbKwh > 0.01) {
+						const netKwh = Math.max(0, nightKwh - gbKwh);
+						nightPct =
+							params.capacityKwh! > 0 ? Math.max(0, (netKwh / params.capacityKwh!) * 100) : nightPct;
+						nightKwh = netKwh;
+						gridBalanceAttributedNights++;
+					}
 				}
 			}
 

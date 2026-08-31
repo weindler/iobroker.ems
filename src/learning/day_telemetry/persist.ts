@@ -65,6 +65,7 @@ function asCoverageFields(day: DayTelemetryDayRecord): DayTelemetryDayRecord {
 					day.buckets.gridExportKwh[i] != null ||
 					day.buckets.otherMeasuredConsumersKwh[i] != null ||
 					day.buckets.batteryChargedKwh[i] != null ||
+					day.buckets.gridBalanceDischargeKwh?.[i] != null ||
 					day.buckets.priceCtPerKwh[i] != null;
 				if (!anyEnergy) {
 					qm[i] = null;
@@ -94,6 +95,10 @@ export function normalizeDayRecord(raw: unknown, fallbackDateKey?: string): DayT
 	if (!day.timezone) day.timezone = "Europe/Berlin";
 	if (!day.slotWidthMs) day.slotWidthMs = DAY_TELEMETRY_SLOT_MS;
 	if (!day.buckets) return null;
+	const slotCount = day.slotCount;
+	if (!Array.isArray(day.buckets.gridBalanceDischargeKwh) || day.buckets.gridBalanceDischargeKwh.length !== slotCount) {
+		day.buckets.gridBalanceDischargeKwh = Array.from({ length: slotCount }, () => null);
+	}
 	if (!Array.isArray(day.forecastSnapshots)) day.forecastSnapshots = [];
 	if (!Array.isArray(day.forecastRevisions)) day.forecastRevisions = [];
 	rehydrateForecastRevisions(day);

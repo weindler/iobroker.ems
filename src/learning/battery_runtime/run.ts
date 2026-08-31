@@ -30,6 +30,11 @@ import { writeBatteryRuntimePersist } from "./persist";
 import type { BatteryRuntimeComputeResult } from "./types";
 import { pvBiasConfigFromAdapter } from "../pv_bias/config";
 import { BAT } from "../../addons/battery/ensure_states";
+import { intentAdminConfigFromAdapter } from "../../intent/config";
+import {
+	dayTelemetryDirFromHost,
+	loadGridBalancePowerFromDayTelemetry,
+} from "./grid_balance_from_telemetry";
 
 export type BatteryRuntimeRunHost = {
 	config: unknown;
@@ -41,6 +46,12 @@ export type BatteryRuntimeRunHost = {
 	getForeignStateAsync?: (id: string) => Promise<ioBroker.State | null | undefined>;
 	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
 	getAbsolutePath?: (category?: string) => string;
+	getObjectAsync?: (id: string) => Promise<ioBroker.Object | null | undefined>;
+	sendToAsync?: (
+		instanceName: string,
+		command: string,
+		message: unknown,
+	) => Promise<unknown>;
 	log: { info: (msg: string) => void;
 		debug?: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
 };
@@ -183,16 +194,28 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 			? await fetchPowerHistory(host, sources.powerStateId, cfg.lookbackDays, cfg.powerInvert)
 			: { points: [], lastValidTs: null, meta: null };
 		/*
-		 * PFLICHT-FIX 1 Korrektur: eigene Netzausgleichs-Entladehistorie, um sie aus dem
-		 * SOC-basierten Nachtbedarf herauszurechnen (Attribution, keine zweite Reserve-Quelle).
-		 * Fester interner State (kein Admin-Mapping nötig) — leeres Ergebnis (kein History-Log
-		 * für diesen State) lässt das Verhalten unverändert.
+		 * Netzausgleich-Attribution: zuerst EMS-Day-Telemetry, History nur Legacy-Fallback
+		 * mit begrenzter Probe (kein 90×2-Leer-Sturm).
 		 */
-		const gridBalancePowerPoints = await fetchGridBalanceDischargePowerHistory(
-			host,
-			BAT.gridBalance.effectivePowerW,
+		const timezone = intentAdminConfigFromAdapter(host.config).timezone || "Europe/Berlin";
+		const fromTelemetry = await loadGridBalancePowerFromDayTelemetry(
+			dayTelemetryDirFromHost(host.getAbsolutePath),
 			cfg.lookbackDays,
+			now,
+			timezone,
 		);
+		let gridBalancePowerPoints = fromTelemetry.points;
+		if (fromTelemetry.observedDayCount === 0) {
+			gridBalancePowerPoints = await fetchGridBalanceDischargePowerHistory(
+				host,
+				BAT.gridBalance.effectivePowerW,
+				cfg.lookbackDays,
+			);
+		} else {
+			host.log.debug?.(
+				`Battery-Runtime-Learning: Netzausgleich aus Day-Telemetry (${fromTelemetry.observedDayCount} Tage, ${fromTelemetry.points.length} Punkte) — keine History-Abfrage.`,
+			);
+		}
 		const [pvDirect, housePowerPoints] = await Promise.all([
 			sources.pvAcPowerStateId
 				? fetchSitePowerSeries(host, sources.pvAcPowerStateId, cfg.lookbackDays)

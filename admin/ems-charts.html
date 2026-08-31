@@ -244,6 +244,7 @@ var stateIds=[
 	INST+".ai.daily_analyst.top_finding_de",
 	INST+".ai.daily_analyst.findings_count",
 	INST+".ai.daily_analyst.last_run_at",
+	INST+".ai.daily_analyst.last_run_date_key",
 	INST+".ai.daily_analyst.reason_de",
 	INST+".ai.validator.active_overrides_count",
 	INST+".ai.validator.last_reject_reason_de",
@@ -252,6 +253,7 @@ var stateIds=[
 	INST+".learning.daily_evaluator.last_day_findings_count",
 	INST+".learning.daily_evaluator.last_day_top_finding_de",
 	INST+".learning.daily_evaluator.last_evaluated_date_key",
+	INST+".learning.shadow_engine.last_evaluated_date_key",
 	INST+".learning.shadow_engine.yesterday_real_net_cost_eur",
 	INST+".learning.shadow_engine.yesterday_reference_no_ems_net_cost_eur",
 	INST+".learning.shadow_engine.yesterday_ems_without_ai_net_cost_eur",
@@ -2774,6 +2776,8 @@ function fillPeriodSelect(){
 	var opts=parseArr(g("statistics.period_options_json"));
 	if(!opts.length){
 		opts=[
+			{id:"today",labelDe:"Heute"},
+			{id:"yesterday",labelDe:"Gestern"},
 			{id:"last_7_days",labelDe:"Letzte 7 Tage"},
 			{id:"this_month",labelDe:"Dieser Monat"},
 			{id:"last_month",labelDe:"Letzter Monat"},
@@ -2878,6 +2882,23 @@ function renderStatistics(){
 	}
 	if(!homeP.periodLabelDe)homeP.periodLabelDe=periodLabel;
 	if(!mobP.periodLabelDe)mobP.periodLabelDe=periodLabel;
+	var selectedDayKey=null;
+	if(periodId==="today"||periodId==="yesterday"){
+		var todayKey=txt(g("statistics.home.today.from_key"),"");
+		if(!/^\d{4}-\d{2}-\d{2}$/.test(todayKey))todayKey=txt(g("statistics.home.today.to_key"),"");
+		if(/^\d{4}-\d{2}-\d{2}$/.test(todayKey)){
+			if(periodId==="today")selectedDayKey=todayKey;
+			else{
+				var dt=new Date(Date.UTC(+todayKey.slice(0,4), +todayKey.slice(5,7)-1, +todayKey.slice(8,10)));
+				dt.setUTCDate(dt.getUTCDate()-1);
+				selectedDayKey=dt.toISOString().slice(0,10);
+			}
+		}
+	}
+	function visIfSelectedDay(dateKey,val){
+		if(!selectedDayKey)return val;
+		return txt(dateKey,"")===selectedDayKey?val:null;
+	}
 	var pending=parseArr(g("statistics.public_charge.pending_json"));
 	var periodReady=homeP&&(homeP.period===periodId||num(g("statistics.home.period.savings_eur"))!=null)&&homeP.savingsVsFixedEur!=null;
 	var hT=savingsHero(num(g("statistics.home.today.savings_eur"))!=null?num(g("statistics.home.today.savings_eur")):(num(g("statistics.home.today_savings_vs_fixed_eur"))!=null?num(g("statistics.home.today_savings_vs_fixed_eur")):num(homeT.savingsVsFixedEur)));
@@ -2925,19 +2946,19 @@ function renderStatistics(){
 			["EMS-Vorteil",fmtEur(num(g("economics.cumulative.ems_vorteil_eur")))],
 			["KI-Mehrwert",fmtEur(num(g("economics.cumulative.ki_mehrwert_eur")))]
 		],"Seit Statistik-Start, kein Schönrechnen.")
-		+statsCard("Tagesbewertung",{cls:"neu",txt:fmtScoreStats(num(g("learning.daily_evaluator.last_day_global_score")))},[
-			["Tag",txt(g("learning.daily_evaluator.last_evaluated_date_key"),"—")],
-			["Findings",txt(g("learning.daily_evaluator.last_day_findings_count"),"—")]
-		],txt(g("learning.daily_evaluator.last_day_top_finding_de"),""))
-		+statsCard("Shadow gestern",{cls:"neu",txt:fmtEur(num(g("learning.shadow_engine.yesterday_real_net_cost_eur")))},[
-			["Real",fmtEur(num(g("learning.shadow_engine.yesterday_real_net_cost_eur")))],
-			["ohne EMS",fmtEur(num(g("learning.shadow_engine.yesterday_reference_no_ems_net_cost_eur")))],
-			["EMS ohne KI",fmtEur(num(g("learning.shadow_engine.yesterday_ems_without_ai_net_cost_eur")))]
-		],"Point-in-time, keine rückblickende Optimierung.")
-		+statsCard("KI Analyst / Validator",{cls:"neu",txt:txt(g("ai.daily_analyst.status"),"disabled")||"disabled"},[
-			["Findings",txt(g("ai.daily_analyst.findings_count"),"—")],
+		+statsCard("Tagesbewertung",{cls:"neu",txt:fmtScoreStats(visIfSelectedDay(txt(g("learning.daily_evaluator.last_evaluated_date_key"),""),num(g("learning.daily_evaluator.last_day_global_score"))))},[
+			["Tag",selectedDayKey&&txt(g("learning.daily_evaluator.last_evaluated_date_key"),"")!==selectedDayKey?"—":txt(g("learning.daily_evaluator.last_evaluated_date_key"),"—")],
+			["Findings",selectedDayKey&&txt(g("learning.daily_evaluator.last_evaluated_date_key"),"")!==selectedDayKey?"—":txt(g("learning.daily_evaluator.last_day_findings_count"),"—")]
+		],selectedDayKey&&txt(g("learning.daily_evaluator.last_evaluated_date_key"),"")!==selectedDayKey?"nicht verfügbar":txt(g("learning.daily_evaluator.last_day_top_finding_de"),""))
+		+statsCard(periodId==="today"?"Shadow Heute":periodId==="yesterday"?"Shadow Gestern":"Shadow gestern",{cls:"neu",txt:fmtEur(visIfSelectedDay(txt(g("learning.shadow_engine.last_evaluated_date_key"),""),num(g("learning.shadow_engine.yesterday_real_net_cost_eur"))))},[
+			["Real",fmtEur(visIfSelectedDay(txt(g("learning.shadow_engine.last_evaluated_date_key"),""),num(g("learning.shadow_engine.yesterday_real_net_cost_eur"))))],
+			["ohne EMS",fmtEur(visIfSelectedDay(txt(g("learning.shadow_engine.last_evaluated_date_key"),""),num(g("learning.shadow_engine.yesterday_reference_no_ems_net_cost_eur"))))],
+			["EMS ohne KI",fmtEur(visIfSelectedDay(txt(g("learning.shadow_engine.last_evaluated_date_key"),""),num(g("learning.shadow_engine.yesterday_ems_without_ai_net_cost_eur"))))]
+		],selectedDayKey&&txt(g("learning.shadow_engine.last_evaluated_date_key"),"")!==selectedDayKey?"nicht verfügbar":"Point-in-time, keine rückblickende Optimierung.")
+		+statsCard("KI Analyst / Validator",{cls:"neu",txt:selectedDayKey&&txt(g("ai.daily_analyst.last_run_date_key"),"")!==selectedDayKey?"—":(txt(g("ai.daily_analyst.status"),"disabled")||"disabled")},[
+			["Findings",selectedDayKey&&txt(g("ai.daily_analyst.last_run_date_key"),"")!==selectedDayKey?"—":txt(g("ai.daily_analyst.findings_count"),"—")],
 			["Overrides",txt(g("ai.validator.active_overrides_count"),"0")]
-		],txt(g("ai.daily_analyst.top_finding_de"),"")||txt(g("ai.validator.last_reject_reason_de"),""));
+		],selectedDayKey&&txt(g("ai.daily_analyst.last_run_date_key"),"")!==selectedDayKey?"nicht verfügbar":(txt(g("ai.daily_analyst.top_finding_de"),"")||txt(g("ai.validator.last_reject_reason_de"),"")));
 	var reasonBase=txt(g("statistics.reason_de"),"Statistik: Mappings im Admin-Tab „Statistik“ setzen.");
 	if(homeP.gridRewardsSource==="estimate_month"||homeP.gridRewardsSource==="estimate_day"){
 		reasonBase+=" Rewards noch Schätzung — Abrechnung per statistics.adjust_request (Admin → Statistik → Manuell/Abrechnung).";

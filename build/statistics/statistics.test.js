@@ -427,6 +427,9 @@ const public_charge_js_1 = require("./public_charge.js");
         const opts = (0, period_js_1.listPeriodOptions)("2026-08-28", ["2025-01-01", "2026-08-01"]);
         strict_1.default.ok(opts.some((o) => o.id === "year_2025"));
         strict_1.default.ok(opts.some((o) => o.id === "this_quarter"));
+        strict_1.default.deepEqual(opts.slice(0, 4).map((o) => o.id), ["today", "yesterday", "last_7_days", "this_month"]);
+        strict_1.default.equal(opts[0]?.labelDe, "Heute");
+        strict_1.default.equal(opts[1]?.labelDe, "Gestern");
         strict_1.default.equal((0, period_js_1.fixedTariffCostForRange)({
             gridImportKwh: 10,
             compareTariffCtPerKwh: 30,
@@ -434,6 +437,25 @@ const public_charge_js_1 = require("./public_charge.js");
             fromKey: "2026-08-01",
             toKey: "2026-08-10",
         }), 13);
+    });
+    (0, node_test_1.it)("resolves today and yesterday as single-day ranges and does not fall back to this_month", () => {
+        const today = (0, period_js_1.resolvePeriodRange)("today", "2026-08-28");
+        strict_1.default.equal(today?.fromKey, "2026-08-28");
+        strict_1.default.equal(today?.toKey, "2026-08-28");
+        strict_1.default.equal(today?.labelDe, "Heute");
+        const yesterday = (0, period_js_1.resolvePeriodRange)("yesterday", "2026-08-28");
+        strict_1.default.equal(yesterday?.fromKey, "2026-08-27");
+        strict_1.default.equal(yesterday?.toKey, "2026-08-27");
+        strict_1.default.equal(yesterday?.labelDe, "Gestern");
+        const nye = (0, period_js_1.resolvePeriodRange)("yesterday", "2026-01-01");
+        strict_1.default.equal(nye?.fromKey, "2025-12-31");
+        strict_1.default.equal((0, period_js_1.isValidPeriodId)("today"), true);
+        strict_1.default.equal((0, period_js_1.isValidPeriodId)("yesterday"), true);
+        strict_1.default.equal((0, period_js_1.normalizePeriodId)("today"), "today");
+        strict_1.default.equal((0, period_js_1.normalizePeriodId)("yesterday"), "yesterday");
+        strict_1.default.notEqual((0, period_js_1.normalizePeriodId)("today"), "this_month");
+        const beforeStart = (0, period_js_1.clipPeriodRangeToStart)(yesterday, "2026-08-28");
+        strict_1.default.equal(beforeStart, null, "Gestern vor Statistik-Start bleibt leer, kein anderer Zeitraum");
     });
     (0, node_test_1.it)("clips period to statistics start so Festtarif base is not inflated", () => {
         const year = (0, period_js_1.resolvePeriodRange)("this_year", "2026-08-28");

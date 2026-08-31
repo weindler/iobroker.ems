@@ -31,7 +31,9 @@ function quarterStartMonth(m) {
     return Math.floor((m - 1) / 3) * 3 + 1;
 }
 function isValidPeriodId(id) {
-    if (id === "last_7_days" ||
+    if (id === "today" ||
+        id === "yesterday" ||
+        id === "last_7_days" ||
         id === "this_month" ||
         id === "last_month" ||
         id === "this_quarter" ||
@@ -53,6 +55,23 @@ function resolvePeriodRange(periodId, todayKey) {
     if (!today)
         return null;
     const id = normalizePeriodId(periodId);
+    if (id === "today") {
+        return {
+            id,
+            labelDe: "Heute",
+            fromKey: todayKey,
+            toKey: todayKey,
+        };
+    }
+    if (id === "yesterday") {
+        const yKey = addDays(todayKey, -1);
+        return {
+            id,
+            labelDe: "Gestern",
+            fromKey: yKey,
+            toKey: yKey,
+        };
+    }
     if (id === "last_7_days") {
         return {
             id,
@@ -139,6 +158,8 @@ exports.resolvePeriodRange = resolvePeriodRange;
 /** Feste Perioden + Jahre aus Persistenz (älteste zuerst). */
 function listPeriodOptions(todayKey, dayKeys) {
     const fixed = [
+        { id: "today", labelDe: "Heute" },
+        { id: "yesterday", labelDe: "Gestern" },
         { id: "last_7_days", labelDe: "Letzte 7 Tage" },
         { id: "this_month", labelDe: "Dieser Monat" },
         { id: "last_month", labelDe: "Letzter Monat" },

@@ -1,6 +1,8 @@
 /** Statistik-Zeiträume: von–bis aus Perioden-ID. */
 
 export type StatisticsPeriodId =
+	| "today"
+	| "yesterday"
 	| "last_7_days"
 	| "this_month"
 	| "last_month"
@@ -56,6 +58,8 @@ function quarterStartMonth(m: number): number {
 
 export function isValidPeriodId(id: string): boolean {
 	if (
+		id === "today" ||
+		id === "yesterday" ||
 		id === "last_7_days" ||
 		id === "this_month" ||
 		id === "last_month" ||
@@ -78,6 +82,25 @@ export function resolvePeriodRange(periodId: string, todayKey: string): PeriodRa
 	const today = parseDateKey(todayKey);
 	if (!today) return null;
 	const id = normalizePeriodId(periodId);
+
+	if (id === "today") {
+		return {
+			id,
+			labelDe: "Heute",
+			fromKey: todayKey,
+			toKey: todayKey,
+		};
+	}
+
+	if (id === "yesterday") {
+		const yKey = addDays(todayKey, -1);
+		return {
+			id,
+			labelDe: "Gestern",
+			fromKey: yKey,
+			toKey: yKey,
+		};
+	}
 
 	if (id === "last_7_days") {
 		return {
@@ -173,6 +196,8 @@ export function resolvePeriodRange(periodId: string, todayKey: string): PeriodRa
 /** Feste Perioden + Jahre aus Persistenz (älteste zuerst). */
 export function listPeriodOptions(todayKey: string, dayKeys: string[]): PeriodOption[] {
 	const fixed: PeriodOption[] = [
+		{ id: "today", labelDe: "Heute" },
+		{ id: "yesterday", labelDe: "Gestern" },
 		{ id: "last_7_days", labelDe: "Letzte 7 Tage" },
 		{ id: "this_month", labelDe: "Dieser Monat" },
 		{ id: "last_month", labelDe: "Letzter Monat" },

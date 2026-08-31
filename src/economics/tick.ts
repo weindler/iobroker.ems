@@ -11,9 +11,11 @@ import { readStatisticsPersist, STATISTICS_PERSIST_CATEGORY } from "../statistic
 import {
 	clipPeriodRangeToStart,
 	dayKeysInRange,
+	normalizePeriodId,
 	resolvePeriodRange,
 	resolveStatisticsStartKey,
 } from "../statistics/period";
+import { STATISTICS_STATES } from "../statistics/ensure_states";
 import { statisticsConfigFromAdapter } from "../statistics/config";
 import { SHADOW_ENGINE_RESULTS_CATEGORY } from "../learning/shadow_engine";
 import { readShadowDayRecord } from "../learning/shadow_engine/persist";
@@ -113,9 +115,10 @@ export async function tickEconomics(host: EconomicsHost, now: Date = new Date())
 		tibberEarliestKey: null,
 	});
 
-	const periodIdSt = await host.getStateAsync(ECONOMICS_STATES.periodId);
-	const periodId = typeof periodIdSt?.val === "string" && periodIdSt.val ? periodIdSt.val : "this_month";
-	if (periodIdSt?.val !== periodId) {
+	const periodIdSt = await host.getStateAsync(STATISTICS_STATES.periodId);
+	const periodIdFallback = await host.getStateAsync(ECONOMICS_STATES.periodId);
+	const periodId = normalizePeriodId(periodIdSt?.val ?? periodIdFallback?.val, "this_month");
+	if (periodIdFallback?.val !== periodId) {
 		await host.setStateAsync(ECONOMICS_STATES.periodId, { val: periodId, ack: true });
 	}
 

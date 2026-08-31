@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.13",
+		"version": "0.2.14",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.14": {
+				"en": "Fix: statistics period dropdown again includes Today and Yesterday (before Last 7 days). Empty day ranges show — / unavailable, no fallback to another period. Check VIS Statistik period selector, economics.period.*, house/mobility period cards.",
+				"de": "Fix: Statistik-Zeitraum-Dropdown enthält wieder Heute und Gestern (vor Letzte 7 Tage). Leere Tagesbereiche zeigen — / nicht verfügbar, kein Rückfall auf einen anderen Zeitraum. Nach Update VIS-Statistik-Auswahl, economics.period.*, Haus-/Mobilitäts-Periodenkarten prüfen."
+			},
 			"0.2.13": {
 				"en": "Fix: KI Daily Analyst Admin mode now syncs to runtime states after save/restart (manual/daily_auto no longer stay disabled). New Admin button Analyze now uses ai.daily_analyst.run_now_request. Check ai.daily_analyst.enabled / mode_effective after setting the mode.",
 				"de": "Fix: KI-Daily-Analyst-Modus aus dem Admin steht nach Speichern/Neustart in den Runtime-States (manual/daily_auto bleiben nicht mehr disabled). Neuer Admin-Button „Jetzt analysieren“ nutzt ai.daily_analyst.run_now_request. Nach dem Setzen des Modus ai.daily_analyst.enabled / mode_effective prüfen."

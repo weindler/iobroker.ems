@@ -11,11 +11,12 @@ exports.tickEconomics = void 0;
 const time_1 = require("../operator/time");
 const persist_1 = require("../statistics/persist");
 const period_1 = require("../statistics/period");
+const ensure_states_1 = require("../statistics/ensure_states");
 const config_1 = require("../statistics/config");
 const shadow_engine_1 = require("../learning/shadow_engine");
 const persist_2 = require("../learning/shadow_engine/persist");
 const compute_1 = require("./compute");
-const ensure_states_1 = require("./ensure_states");
+const ensure_states_2 = require("./ensure_states");
 const persist_3 = require("./persist");
 async function setIfChanged(host, id, val) {
     const cur = await host.getStateAsync(id);
@@ -30,11 +31,11 @@ function timezoneFromConfig(config) {
     return tz || "Europe/Berlin";
 }
 async function tickEconomics(host, now = new Date()) {
-    await (0, ensure_states_1.ensureEconomicsStates)(host);
+    await (0, ensure_states_2.ensureEconomicsStates)(host);
     const statsCfg = (0, config_1.statisticsConfigFromAdapter)(host.config);
     if (!statsCfg.enabled) {
-        await setIfChanged(host, ensure_states_1.ECONOMICS_STATES.enabled, false);
-        await setIfChanged(host, ensure_states_1.ECONOMICS_STATES.reasonDe, "Wirtschaftlichkeit inaktiv (Statistik im Admin deaktiviert).");
+        await setIfChanged(host, ensure_states_2.ECONOMICS_STATES.enabled, false);
+        await setIfChanged(host, ensure_states_2.ECONOMICS_STATES.reasonDe, "Wirtschaftlichkeit inaktiv (Statistik im Admin deaktiviert).");
         return;
     }
     const timezone = timezoneFromConfig(host.config);
@@ -84,9 +85,9 @@ async function tickEconomics(host, now = new Date()) {
         shadow: null,
         now,
     });
-    await setIfChanged(host, ensure_states_1.ECONOMICS_FLAT.todayTarifvorteilEur, todayRecord.tarifvorteilEur);
-    await setIfChanged(host, ensure_states_1.ECONOMICS_FLAT.todayEmsVorteilEur, todayRecord.emsVorteilEur);
-    await setIfChanged(host, ensure_states_1.ECONOMICS_FLAT.todayKiMehrwertEur, todayRecord.kiMehrwertEur);
+    await setIfChanged(host, ensure_states_2.ECONOMICS_FLAT.todayTarifvorteilEur, todayRecord.tarifvorteilEur);
+    await setIfChanged(host, ensure_states_2.ECONOMICS_FLAT.todayEmsVorteilEur, todayRecord.emsVorteilEur);
+    await setIfChanged(host, ensure_states_2.ECONOMICS_FLAT.todayKiMehrwertEur, todayRecord.kiMehrwertEur);
     // --- Zeitraum-Aggregation (analog Statistik-Perioden) ---
     const dayKeysAll = Object.keys(econPersist.days);
     const statisticsStartKey = (0, period_1.resolveStatisticsStartKey)({
@@ -94,10 +95,11 @@ async function tickEconomics(host, now = new Date()) {
         persistDayKeys: dayKeysAll,
         tibberEarliestKey: null,
     });
-    const periodIdSt = await host.getStateAsync(ensure_states_1.ECONOMICS_STATES.periodId);
-    const periodId = typeof periodIdSt?.val === "string" && periodIdSt.val ? periodIdSt.val : "this_month";
-    if (periodIdSt?.val !== periodId) {
-        await host.setStateAsync(ensure_states_1.ECONOMICS_STATES.periodId, { val: periodId, ack: true });
+    const periodIdSt = await host.getStateAsync(ensure_states_1.STATISTICS_STATES.periodId);
+    const periodIdFallback = await host.getStateAsync(ensure_states_2.ECONOMICS_STATES.periodId);
+    const periodId = (0, period_1.normalizePeriodId)(periodIdSt?.val ?? periodIdFallback?.val, "this_month");
+    if (periodIdFallback?.val !== periodId) {
+        await host.setStateAsync(ensure_states_2.ECONOMICS_STATES.periodId, { val: periodId, ack: true });
     }
     function summaryForPeriod(id) {
         const raw = (0, period_1.resolvePeriodRange)(id, todayKey);
@@ -128,17 +130,17 @@ async function tickEconomics(host, now = new Date()) {
         toKey: todayKey,
     });
     if (periodSummary) {
-        await setIfChanged(host, ensure_states_1.ECONOMICS_FLAT.periodTarifvorteilEur, periodSummary.tarifvorteilEur);
-        await setIfChanged(host, ensure_states_1.ECONOMICS_FLAT.periodEmsVorteilEur, periodSummary.emsVorteilEur);
-        await setIfChanged(host, ensure_states_1.ECONOMICS_FLAT.periodKiMehrwertEur, periodSummary.kiMehrwertEur);
-        await setIfChanged(host, ensure_states_1.ECONOMICS_FLAT.periodGridRewardsEur, periodSummary.gridRewardsCreditEur);
-        await setIfChanged(host, ensure_states_1.ECONOMICS_FLAT.periodLabelDe, periodSummary.periodLabelDe);
+        await setIfChanged(host, ensure_states_2.ECONOMICS_FLAT.periodTarifvorteilEur, periodSummary.tarifvorteilEur);
+        await setIfChanged(host, ensure_states_2.ECONOMICS_FLAT.periodEmsVorteilEur, periodSummary.emsVorteilEur);
+        await setIfChanged(host, ensure_states_2.ECONOMICS_FLAT.periodKiMehrwertEur, periodSummary.kiMehrwertEur);
+        await setIfChanged(host, ensure_states_2.ECONOMICS_FLAT.periodGridRewardsEur, periodSummary.gridRewardsCreditEur);
+        await setIfChanged(host, ensure_states_2.ECONOMICS_FLAT.periodLabelDe, periodSummary.periodLabelDe);
     }
-    await setIfChanged(host, ensure_states_1.ECONOMICS_FLAT.cumulativeTarifvorteilEur, cumulativeSummary.tarifvorteilEur);
-    await setIfChanged(host, ensure_states_1.ECONOMICS_FLAT.cumulativeEmsVorteilEur, cumulativeSummary.emsVorteilEur);
-    await setIfChanged(host, ensure_states_1.ECONOMICS_FLAT.cumulativeKiMehrwertEur, cumulativeSummary.kiMehrwertEur);
-    await setIfChanged(host, ensure_states_1.ECONOMICS_STATES.enabled, true);
-    await setIfChanged(host, ensure_states_1.ECONOMICS_STATES.lastRunAt, now.toISOString());
-    await setIfChanged(host, ensure_states_1.ECONOMICS_STATES.reasonDe, `Tarifvorteil ${periodSummary?.periodLabelDe ?? ""}: ${periodSummary?.tarifvorteilEur ?? "—"} €, EMS-Vorteil: ${periodSummary?.emsVorteilEur ?? "—"} €, KI-Mehrwert: ${periodSummary?.kiMehrwertEur ?? "—"} €.`);
+    await setIfChanged(host, ensure_states_2.ECONOMICS_FLAT.cumulativeTarifvorteilEur, cumulativeSummary.tarifvorteilEur);
+    await setIfChanged(host, ensure_states_2.ECONOMICS_FLAT.cumulativeEmsVorteilEur, cumulativeSummary.emsVorteilEur);
+    await setIfChanged(host, ensure_states_2.ECONOMICS_FLAT.cumulativeKiMehrwertEur, cumulativeSummary.kiMehrwertEur);
+    await setIfChanged(host, ensure_states_2.ECONOMICS_STATES.enabled, true);
+    await setIfChanged(host, ensure_states_2.ECONOMICS_STATES.lastRunAt, now.toISOString());
+    await setIfChanged(host, ensure_states_2.ECONOMICS_STATES.reasonDe, `Tarifvorteil ${periodSummary?.periodLabelDe ?? ""}: ${periodSummary?.tarifvorteilEur ?? "—"} €, EMS-Vorteil: ${periodSummary?.emsVorteilEur ?? "—"} €, KI-Mehrwert: ${periodSummary?.kiMehrwertEur ?? "—"} €.`);
 }
 exports.tickEconomics = tickEconomics;

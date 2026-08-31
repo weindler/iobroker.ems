@@ -29,6 +29,8 @@ import {
 	fixedTariffCostForRange,
 	clipPeriodRangeToStart,
 	resolveStatisticsStartKey,
+	isValidPeriodId,
+	normalizePeriodId,
 } from "./period.js";
 import { applyStatisticsAdjust, parseStatisticsAdjustSubmit } from "./adjust.js";
 import { statisticsConfigFromAdapter } from "./config.js";
@@ -500,6 +502,12 @@ describe("statistics period", () => {
 		const opts = listPeriodOptions("2026-08-28", ["2025-01-01", "2026-08-01"]);
 		assert.ok(opts.some((o) => o.id === "year_2025"));
 		assert.ok(opts.some((o) => o.id === "this_quarter"));
+		assert.deepEqual(
+			opts.slice(0, 4).map((o) => o.id),
+			["today", "yesterday", "last_7_days", "this_month"],
+		);
+		assert.equal(opts[0]?.labelDe, "Heute");
+		assert.equal(opts[1]?.labelDe, "Gestern");
 		assert.equal(
 			fixedTariffCostForRange({
 				gridImportKwh: 10,
@@ -510,6 +518,26 @@ describe("statistics period", () => {
 			}),
 			13, // 3.0 energy + 10/31*31 = 10 → 13
 		);
+	});
+
+	it("resolves today and yesterday as single-day ranges and does not fall back to this_month", () => {
+		const today = resolvePeriodRange("today", "2026-08-28");
+		assert.equal(today?.fromKey, "2026-08-28");
+		assert.equal(today?.toKey, "2026-08-28");
+		assert.equal(today?.labelDe, "Heute");
+		const yesterday = resolvePeriodRange("yesterday", "2026-08-28");
+		assert.equal(yesterday?.fromKey, "2026-08-27");
+		assert.equal(yesterday?.toKey, "2026-08-27");
+		assert.equal(yesterday?.labelDe, "Gestern");
+		const nye = resolvePeriodRange("yesterday", "2026-01-01");
+		assert.equal(nye?.fromKey, "2025-12-31");
+		assert.equal(isValidPeriodId("today"), true);
+		assert.equal(isValidPeriodId("yesterday"), true);
+		assert.equal(normalizePeriodId("today"), "today");
+		assert.equal(normalizePeriodId("yesterday"), "yesterday");
+		assert.notEqual(normalizePeriodId("today"), "this_month");
+		const beforeStart = clipPeriodRangeToStart(yesterday!, "2026-08-28");
+		assert.equal(beforeStart, null, "Gestern vor Statistik-Start bleibt leer, kein anderer Zeitraum");
 	});
 
 	it("clips period to statistics start so Festtarif base is not inflated", () => {

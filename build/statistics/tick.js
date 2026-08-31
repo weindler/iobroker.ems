@@ -735,6 +735,15 @@ async function handleStatisticsStateChange(host, relativeId, val, ack) {
             await host.setStateAsync(ensure_states_1.STATISTICS_STATES.periodId, { val: normalized, ack: true });
         }
         await tickStatistics(host);
+        try {
+            if (typeof host.getAbsolutePath === "function") {
+                const { tickEconomics } = await import("../economics/tick.js");
+                await tickEconomics(host);
+            }
+        }
+        catch {
+            /* Economics folgt demselben Zeitraum; Fehler hier dürfen die Statistik nicht blockieren. */
+        }
         return true;
     }
     if ((relativeId !== ensure_states_1.STATISTICS_STATES.publicSubmitRequest &&

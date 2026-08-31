@@ -128,6 +128,16 @@ describe("VIS operations dashboard", () => {
 		assert.equal(visHtml, adminHtml);
 	});
 
+	it("statistics period dropdown lists Heute and Gestern before Letzte 7 Tage", () => {
+		const fallback = visHtml.match(/opts=\[([\s\S]*?)\{id:"last_year"/);
+		assert.ok(fallback, "fallback period options present");
+		const block = fallback[1];
+		assert.match(block, /id:"today",labelDe:"Heute"/);
+		assert.match(block, /id:"yesterday",labelDe:"Gestern"/);
+		assert.ok(block.indexOf('id:"today"') < block.indexOf('id:"yesterday"'));
+		assert.ok(block.indexOf('id:"yesterday"') < block.indexOf('id:"last_7_days"'));
+	});
+
 	it("ems-charts.html script parses", () => {
 		assert.doesNotThrow(() => new Function(extractScript(visHtml)));
 	});

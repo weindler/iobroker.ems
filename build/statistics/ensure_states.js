@@ -140,7 +140,7 @@ async function ensureStatisticsStateTree(host) {
         {
             id: exports.STATISTICS_STATES.periodId,
             common: {
-                name: "Statistik Zeitraum (z. B. this_month, last_7_days)",
+                name: "Statistik Zeitraum (today, yesterday, last_7_days, this_month, …)",
                 type: "string",
                 role: "text",
                 read: true,

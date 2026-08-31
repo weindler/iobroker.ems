@@ -113,6 +113,50 @@ describe("Klima-/Ownership-Block: detectImmersionManualMismatch", () => {
 	it("Feedback noch unbekannt (erster Takt) → kein Mismatch", () => {
 		assert.equal(detectImmersionManualMismatch({ prevCommandedStage: 0, prevFeedbackActive: null }), "");
 	});
+
+	it("gehaltenes ON (keine Flanke) ist kein neues manual_on", () => {
+		assert.equal(
+			detectImmersionManualMismatch({
+				prevCommandedStage: 0,
+				prevFeedbackActive: true,
+				feedbackActiveBeforePrev: true,
+			}),
+			"",
+		);
+	});
+
+	it("OFF→ON bei EMS-Soll AUS → genau ein manual_on", () => {
+		assert.equal(
+			detectImmersionManualMismatch({
+				prevCommandedStage: 0,
+				prevFeedbackActive: true,
+				feedbackActiveBeforePrev: false,
+			}),
+			"manual_on",
+		);
+	});
+
+	it("gehaltenes OFF bei EMS-Soll AN ist kein neues manual_off", () => {
+		assert.equal(
+			detectImmersionManualMismatch({
+				prevCommandedStage: 1,
+				prevFeedbackActive: false,
+				feedbackActiveBeforePrev: false,
+			}),
+			"",
+		);
+	});
+
+	it("ON→OFF bei EMS-Soll AN → manual_off", () => {
+		assert.equal(
+			detectImmersionManualMismatch({
+				prevCommandedStage: 1,
+				prevFeedbackActive: false,
+				feedbackActiveBeforePrev: true,
+			}),
+			"manual_off",
+		);
+	});
 });
 
 describe("immersion watched foreign ids", () => {

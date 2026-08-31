@@ -114,7 +114,7 @@ describe("generic device ownership / manual override", () => {
 		assert.match(overridden.reasonDe, /Safety/);
 	});
 
-	it("ein neuer Mismatch während eines laufenden Overrides verlängert die Frist, behält aber triggeredAt", () => {
+	it("derselbe fortlaufende Mismatch während eines Overrides verlängert die Frist nicht", () => {
 		const first = evaluateDeviceOwnership({
 			nowMs: NOW,
 			mismatchDetected: true,
@@ -123,15 +123,166 @@ describe("generic device ownership / manual override", () => {
 			overrideDurationMs: 30 * 60_000,
 			safetyOverride: false,
 		});
-		const renewed = evaluateDeviceOwnership({
-			nowMs: NOW + 10 * 60_000,
+		let current = first;
+		for (let i = 1; i <= 100; i++) {
+			current = evaluateDeviceOwnership({
+				nowMs: NOW + i * 5_000,
+				mismatchDetected: true,
+				mismatchKind: "manual_on",
+				previous: current,
+				overrideDurationMs: 30 * 60_000,
+				safetyOverride: false,
+			});
+			assert.equal(current.overrideUntilIso, first.overrideUntilIso, `Tick ${i}: paused_until darf nicht wandern`);
+			assert.equal(current.triggeredAtIso, first.triggeredAtIso);
+			assert.equal(current.owner, "user");
+		}
+	});
+
+	it("nach Ablauf startet unveränderter Mismatch keinen neuen Override", () => {
+		const first = evaluateDeviceOwnership({
+			nowMs: NOW,
+			mismatchDetected: true,
+			mismatchKind: "manual_on",
+			previous: emptyDeviceOwnershipState(),
+			overrideDurationMs: 30 * 60_000,
+			safetyOverride: false,
+		});
+		const after = evaluateDeviceOwnership({
+			nowMs: NOW + 31 * 60_000,
 			mismatchDetected: true,
 			mismatchKind: "manual_on",
 			previous: first,
 			overrideDurationMs: 30 * 60_000,
 			safetyOverride: false,
 		});
+		assert.equal(after.owner, "ems");
+		assert.equal(after.overrideUntilIso, null);
+		assert.match(after.reasonDe, /abgelaufen/);
+
+		const stillOn = evaluateDeviceOwnership({
+			nowMs: NOW + 31 * 60_000 + 5_000,
+			mismatchDetected: true,
+			mismatchKind: "manual_on",
+			previous: after,
+			overrideDurationMs: 30 * 60_000,
+			safetyOverride: false,
+		});
+		assert.equal(stillOn.owner, "ems");
+		assert.equal(stillOn.overrideUntilIso, null);
+	});
+
+	it("Lücke im Mismatch während aktivem Override (ON→OFF→ON) darf einen neuen Override setzen", () => {
+		const first = evaluateDeviceOwnership({
+			nowMs: NOW,
+			mismatchDetected: true,
+			mismatchKind: "manual_on",
+			previous: emptyDeviceOwnershipState(),
+			overrideDurationMs: 30 * 60_000,
+			safetyOverride: false,
+		});
+		const gap = evaluateDeviceOwnership({
+			nowMs: NOW + 5 * 60_000,
+			mismatchDetected: false,
+			previous: first,
+			overrideDurationMs: 30 * 60_000,
+			safetyOverride: false,
+		});
+		assert.equal(gap.owner, "user");
+		assert.equal(gap.lastMismatchKind, "");
+		const renewed = evaluateDeviceOwnership({
+			nowMs: NOW + 6 * 60_000,
+			mismatchDetected: true,
+			mismatchKind: "manual_on",
+			previous: gap,
+			overrideDurationMs: 30 * 60_000,
+			safetyOverride: false,
+		});
+		assert.equal(renewed.owner, "user");
 		assert.ok(Date.parse(renewed.overrideUntilIso!) > Date.parse(first.overrideUntilIso!));
-		assert.equal(renewed.triggeredAtIso, first.triggeredAtIso);
+		assert.equal(renewed.triggeredAtIso, new Date(NOW + 6 * 60_000).toISOString());
+	});
+
+	it("anderes Mismatch-Kind während aktivem Override (manual_on → manual_off) setzt neu", () => {
+		const first = evaluateDeviceOwnership({
+			nowMs: NOW,
+			mismatchDetected: true,
+			mismatchKind: "manual_on",
+			previous: emptyDeviceOwnershipState(),
+			overrideDurationMs: 30 * 60_000,
+			safetyOverride: false,
+		});
+		const flipped = evaluateDeviceOwnership({
+			nowMs: NOW + 5 * 60_000,
+			mismatchDetected: true,
+			mismatchKind: "manual_off",
+			previous: first,
+			overrideDurationMs: 30 * 60_000,
+			safetyOverride: false,
+		});
+		assert.equal(flipped.owner, "user");
+		assert.ok(Date.parse(flipped.overrideUntilIso!) > Date.parse(first.overrideUntilIso!));
+		assert.equal(flipped.lastMismatchKind, "manual_off");
+	});
+
+	it("Alt-Persist ohne lastMismatchKind verlängert einen laufenden Override nicht", () => {
+		const first = evaluateDeviceOwnership({
+			nowMs: NOW,
+			mismatchDetected: true,
+			mismatchKind: "manual_on",
+			previous: emptyDeviceOwnershipState(),
+			overrideDurationMs: 30 * 60_000,
+			safetyOverride: false,
+		});
+		const legacy = { ...first };
+		delete legacy.lastMismatchKind;
+		const held = evaluateDeviceOwnership({
+			nowMs: NOW + 10 * 60_000,
+			mismatchDetected: true,
+			mismatchKind: "manual_on",
+			previous: legacy,
+			overrideDurationMs: 30 * 60_000,
+			safetyOverride: false,
+		});
+		assert.equal(held.overrideUntilIso, first.overrideUntilIso);
+		assert.equal(held.owner, "user");
+	});
+
+	it("nach Ablauf und verschwundenem Mismatch darf ein neues Event erneut starten", () => {
+		const first = evaluateDeviceOwnership({
+			nowMs: NOW,
+			mismatchDetected: true,
+			mismatchKind: "manual_on",
+			previous: emptyDeviceOwnershipState(),
+			overrideDurationMs: 30 * 60_000,
+			safetyOverride: false,
+		});
+		const expired = evaluateDeviceOwnership({
+			nowMs: NOW + 31 * 60_000,
+			mismatchDetected: true,
+			mismatchKind: "manual_on",
+			previous: first,
+			overrideDurationMs: 30 * 60_000,
+			safetyOverride: false,
+		});
+		assert.equal(expired.owner, "ems");
+		const cleared = evaluateDeviceOwnership({
+			nowMs: NOW + 32 * 60_000,
+			mismatchDetected: false,
+			previous: expired,
+			overrideDurationMs: 30 * 60_000,
+			safetyOverride: false,
+		});
+		assert.equal(cleared.lastMismatchKind, "");
+		const again = evaluateDeviceOwnership({
+			nowMs: NOW + 33 * 60_000,
+			mismatchDetected: true,
+			mismatchKind: "manual_on",
+			previous: cleared,
+			overrideDurationMs: 30 * 60_000,
+			safetyOverride: false,
+		});
+		assert.equal(again.owner, "user");
+		assert.ok(again.overrideUntilIso);
 	});
 });

@@ -120,6 +120,8 @@ export interface RuntimePersistData {
 	ownership: DeviceOwnershipState;
 	/** Feedback des Vortakts — Referenz für Mismatch-Erkennung ohne Reordering der I/O-Reads. */
 	lastFeedbackActive: boolean | null;
+	/** Feedback zwei Takte zuvor — nur Flanken (OFF→ON / ON→OFF) zählen als Manual-Event. */
+	lastFeedbackActiveBeforePrev: boolean | null;
 }
 
 export interface RuntimeSnapshot {

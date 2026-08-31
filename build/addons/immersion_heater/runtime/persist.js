@@ -44,6 +44,7 @@ function emptyPersist() {
         autoTargetReached: false,
         ownership: (0, device_ownership_1.emptyDeviceOwnershipState)(),
         lastFeedbackActive: null,
+        lastFeedbackActiveBeforePrev: null,
     };
 }
 exports.emptyPersist = emptyPersist;

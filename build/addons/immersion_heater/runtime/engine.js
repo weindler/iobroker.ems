@@ -468,6 +468,9 @@ async function runImmersionRuntimeTick(host) {
      * überstehen, bevor EMS pausiert) — bewusst konservativ, kein Overreacting auf
      * kurzzeitige Ausreißer. Safety/Fault übersteuert einen laufenden Override sofort
      * (siehe evaluateDeviceOwnership).
+     *
+     * Event = Flanke OFF→ON / ON→OFF, die EMS nicht selbst geschrieben hat (Settle-Fenster).
+     * Unverändertes Feedback verlängert den Timer nicht; nach Ablauf kein Sofort-Retrigger.
      */
     const emsRecentlyActedImmersion = (persist.lastSwitchAtMs != null && nowMs - persist.lastSwitchAtMs < feedback_1.IMMERSION_OWNERSHIP_SETTLE_MS) ||
         (persist.lastOffAtMs != null && nowMs - persist.lastOffAtMs < feedback_1.IMMERSION_OWNERSHIP_SETTLE_MS);
@@ -476,29 +479,37 @@ async function runImmersionRuntimeTick(host) {
         : (0, feedback_1.detectImmersionManualMismatch)({
             prevCommandedStage: persist.commandedStage,
             prevFeedbackActive: persist.lastFeedbackActive,
+            feedbackActiveBeforePrev: persist.lastFeedbackActiveBeforePrev,
         });
+    const previousOwnership = persist.ownership ?? (0, device_ownership_1.emptyDeviceOwnershipState)();
+    const prevOverrideActive = (0, device_ownership_1.isOwnershipOverrideActive)(previousOwnership, nowMs);
+    const prevHadUserOverride = previousOwnership.owner === "user" && previousOwnership.overrideUntilIso != null;
     const ownership = (0, device_ownership_1.evaluateDeviceOwnership)({
         nowMs,
         mismatchDetected: immersionMismatchKind !== "",
         mismatchKind: immersionMismatchKind,
-        previous: persist.ownership ?? (0, device_ownership_1.emptyDeviceOwnershipState)(),
+        previous: previousOwnership,
         overrideDurationMs: feedback_1.IMMERSION_MANUAL_OVERRIDE_DURATION_MS_DEFAULT,
         safetyOverride: persist.faultLockout || failsafeActive,
     });
     persist.ownership = ownership;
     const ownershipOverrideActive = (0, device_ownership_1.isOwnershipOverrideActive)(ownership, nowMs);
-    // Stage-Wechsel oder effectiveLive false→true: gewünschten Soll physisch anwenden.
+    const overrideJustExpired = prevHadUserOverride && !ownershipOverrideActive;
+    if (ownershipOverrideActive && !prevOverrideActive) {
+        host.log.info?.(`immersion: manual override detected (${ownership.reasonDe})`);
+    }
+    else if (overrideJustExpired && !persist.faultLockout && !failsafeActive) {
+        host.log.info?.("immersion: manual override expired — EMS control resumed");
+    }
+    // Stage-Wechsel, Live-Kante oder Override-Ablauf: gewünschten Soll physisch anwenden.
     // Solange nicht (global∧addon) live, besitzt EMS keine Hardware-Authority.
     // lastCommandedStage / emsOnWriteAtMs nur nach bestätigtem Apply (Write oder Readback),
     // sonst Retry im nächsten normalen Runtime-Tick (kein Spam-Loop).
     const stageChanged = effectiveStage !== lastCommandedStage;
     /** Admin-Mindestpause (`ih_minimum_pause_sec`) — nicht vom FSM-Persist-Altzustand überschreiben. */
     let pauseSetOnOffMs = null;
-    if ((stageChanged || liveEdge) && ownershipOverrideActive) {
-        host.log.info?.(`immersion: manual override active (${ownership.reasonDe}) — EMS-Write ausgesetzt (wollte Stufe ${effectiveStage})`);
-    }
-    else if (stageChanged || liveEdge) {
-        if (liveEdge && !stageChanged) {
+    if (!ownershipOverrideActive && (stageChanged || liveEdge || overrideJustExpired)) {
+        if (liveEdge && !stageChanged && !overrideJustExpired) {
             host.log.info?.(`immersion: effective live authority gained — reconcile stage ${effectiveStage} (desired unchanged)`);
         }
         const applyResult = await applyStageWrites(host, effectiveStage, live);
@@ -518,6 +529,12 @@ async function runImmersionRuntimeTick(host) {
                     persist.lastSwitchAtMs = nowMs;
                 }
                 chatter = (0, safety_1.recordChatterEvent)(chatter, nowMs, config.relayChatterWindowSec);
+            }
+            else if (overrideJustExpired) {
+                if (effectiveStage === 0)
+                    persist.lastOffAtMs = nowMs;
+                else
+                    persist.lastSwitchAtMs = nowMs;
             }
             if (effectiveStage === 0) {
                 emsOffWriteAtMs = nowMs;
@@ -540,6 +557,7 @@ async function runImmersionRuntimeTick(host) {
     const hasFeedbackConfig = config.stages.some((s) => Boolean(s.feedbackStateId));
     const feedbackStage = hasFeedbackConfig ? (0, feedback_1.feedbackStageFromReadings)(feedbackReadings) : effectiveStage;
     const feedbackActive = feedbackStage > 0;
+    persist.lastFeedbackActiveBeforePrev = persist.lastFeedbackActive;
     persist.lastFeedbackActive = feedbackActive;
     const powerActive = hasPower && measuredPower !== null && measuredPower > config.powerOnThresholdW;
     const powerCheck = (0, safety_1.checkPowerFault)({

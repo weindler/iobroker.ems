@@ -21,6 +21,7 @@ export function emptyPersist(): RuntimePersistData {
 		autoTargetReached: false,
 		ownership: emptyDeviceOwnershipState(),
 		lastFeedbackActive: null,
+		lastFeedbackActiveBeforePrev: null,
 	};
 }
 

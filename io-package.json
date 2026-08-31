@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.18",
+		"version": "0.2.19",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.19": {
+				"en": "Fix: immersion manual override is event-based (OFF→ON once). paused_until no longer extends every poll; no 5s log spam. After update: one manual heater ON should pause EMS until a fixed time; logs show manual override detected once, then expired.",
+				"de": "Fix: Heizstab-Manual-Override ist ereignisbasiert (OFF→ON einmal). paused_until wandert nicht mehr jeden Poll; kein 5s-Log-Spam. Nach Update: einmal manuell EIN pausiert EMS bis zu einer festen Zeit; Log zeigt manual override detected einmal, später expired."
+			},
 			"0.2.18": {
 				"en": "Fix: VIS KI toggle, object-tree Optimize now and backup/restore buttons are subscribed (same handlers as Admin). Planner KI in-flight guard (no double HTTP). KI Analyst card no longer shows validator rejects. Tariff advantage excludes Grid Rewards; euro line only settled billing. After update: VIS KI benutzen, Admin Optimize now, Statistik KI Analyst / Wirtschaftlichkeit.",
 				"de": "Fix: VIS-Schalter „KI benutzen“, Objektbaum „Jetzt optimieren“ und Backup/Restore-Buttons sind verdrahtet (dieselben Handler wie Admin). Planner-KI mit In-Flight-Sperre (kein Doppel-HTTP). KI-Analyst-Karte zeigt keine Validator-Rejects. Tarifvorteil ohne Grid Rewards; Euro-Zeile nur Abrechnung. Nach Update: VIS KI benutzen, Admin Jetzt optimieren, Statistik KI Analyst / Wirtschaftlichkeit."

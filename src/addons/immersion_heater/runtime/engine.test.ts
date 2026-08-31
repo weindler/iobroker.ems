@@ -19,6 +19,7 @@ import type { DailyAllocationEntry } from "../../../operator/daily_plan/types.js
 import { checkPowerFault } from "./safety.js";
 import { immersionDeviceConfigFromAdapter } from "../device_config.js";
 import { resetRestoreBarrierForTest, setRestoreInProgress } from "../../../restore/barrier.js";
+import { IMMERSION_MANUAL_OVERRIDE_DURATION_MS_DEFAULT } from "./feedback.js";
 
 /**
  * Roadmap Block 3.1: `runImmersionRuntimeTick` darf im Auto-Modus nur noch den Daily Plan oder
@@ -81,7 +82,12 @@ function allocationEntry(slotStartIso: string, slotEndIso: string, allocatedPowe
  */
 class FakeHost implements ImmersionRuntimeHost {
 	config: unknown = CONFIG;
-	log = { info: () => undefined, warn: () => undefined, debug: () => undefined, error: () => undefined };
+	log: ImmersionRuntimeHost["log"] = {
+		info: () => undefined,
+		warn: () => undefined,
+		debug: () => undefined,
+		error: () => undefined,
+	};
 	private states = new Map<string, ioBroker.State>();
 
 	set = (id: string, val: ioBroker.StateValue): void => {
@@ -634,5 +640,190 @@ describe("immersion runtime — Klima-/Ownership-Block: Manual Override", () => 
 
 		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOwner), "ems");
 		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOverrideUntilIso), "");
+	});
+
+	function expireSettle(): void {
+		getImmersionPersistForTest().lastOffAtMs = Date.now() - 5 * 60_000;
+		getImmersionPersistForTest().lastSwitchAtMs = Date.now() - 5 * 60_000;
+	}
+
+	function captureInfo(host: FakeHost): string[] {
+		const lines: string[] = [];
+		host.log.info = (msg: string) => {
+			lines.push(msg);
+		};
+		return lines;
+	}
+
+	function liveHostNoDemandSplitFeedback(): FakeHost {
+		const host = liveHostNoDemand();
+		host.config = { ...CONFIG, ih_stage_1_feedback_state: "immersion.fb" };
+		host.set("immersion.stage1", false);
+		host.set("immersion.fb", false);
+		return host;
+	}
+
+	async function reachManualOnOverride(host: FakeHost, feedbackId = "immersion.stage1"): Promise<void> {
+		await runImmersionRuntimeTick(host);
+		expireSettle();
+		host.set("immersion.stage1", true);
+		if (feedbackId !== "immersion.stage1") host.set(feedbackId, true);
+		await runImmersionRuntimeTick(host);
+		await runImmersionRuntimeTick(host);
+	}
+
+	it("extern OFF→ON: genau ein Override, paused_until = now + konfigurierte Dauer", async () => {
+		const host = liveHostNoDemand();
+		await reachManualOnOverride(host);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOwner), "user");
+		const untilIso = String(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOverrideUntilIso));
+		const delta = Date.parse(untilIso) - Date.now();
+		assert.ok(
+			delta > IMMERSION_MANUAL_OVERRIDE_DURATION_MS_DEFAULT - 15_000,
+			`paused_until zu früh: delta=${delta}`,
+		);
+		assert.ok(
+			delta <= IMMERSION_MANUAL_OVERRIDE_DURATION_MS_DEFAULT + 5_000,
+			`paused_until zu weit: delta=${delta}`,
+		);
+	});
+
+	it("100 Polls mit unverändertem ON verlängern paused_until nicht", async () => {
+		const host = liveHostNoDemand();
+		await reachManualOnOverride(host);
+		const untilIso = await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOverrideUntilIso);
+		for (let i = 0; i < 100; i++) {
+			await runImmersionRuntimeTick(host);
+			assert.equal(
+				await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOverrideUntilIso),
+				untilIso,
+				`Poll ${i + 1}: paused_until darf nicht wandern`,
+			);
+			assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOwner), "user");
+		}
+	});
+
+	it("EMS selbst schaltet ON → kein Manual Override", async () => {
+		const now = realNow();
+		const slotStartIso = slotStartIsoFloored(now, TZ);
+		const slotEndIso = new Date(Date.parse(slotStartIso) + DAILY_PLAN_SLOT_MS).toISOString();
+		const host = baseHost(40);
+		host.config = { ...CONFIG, ih_stage_1_feedback_state: "immersion.stage1" };
+		host.set("global.execution_mode", "live");
+		host.set("addons.immersion_heater.mode", "live");
+		host.set("addons.immersion_heater.governance.enabled", true);
+		host.set("immersion.stage1", false);
+		host.set(DAILY_PLAN_STATE_IDS.status, "ready");
+		host.set(DAILY_PLAN_STATE_IDS.date, localDateKeyInTimezone(now, TZ));
+		host.set(DAILY_PLAN_STATE_IDS.revision, 1);
+		host.set(DAILY_PLAN_STATE_IDS.validUntil, "");
+		host.set(
+			ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson,
+			JSON.stringify([allocationEntry(slotStartIso, slotEndIso, 2000)]),
+		);
+
+		await runImmersionRuntimeTick(host);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), 1);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOwner), "ems");
+
+		expireSettle();
+		for (let i = 0; i < 5; i++) {
+			await runImmersionRuntimeTick(host);
+			assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOwner), "ems");
+			assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOverrideUntilIso), "");
+		}
+	});
+
+	it("Override aktiv, Planner will OFF: Write blockiert, Timer unverändert", async () => {
+		const host = liveHostNoDemand();
+		await reachManualOnOverride(host);
+		const untilIso = await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOverrideUntilIso);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.commandedStage), 0);
+
+		const writes = trackForeignWrites(host);
+		await runImmersionRuntimeTick(host);
+		assert.equal(
+			writes.some((w) => w.id === "immersion.stage1"),
+			false,
+			"EMS-Write bleibt bis Ablauf blockiert",
+		);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOverrideUntilIso), untilIso);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOwner), "user");
+	});
+
+	it("Override läuft ab, Feedback noch ON → kein Sofort-Retrigger, EMS übernimmt", async () => {
+		const host = liveHostNoDemandSplitFeedback();
+		await reachManualOnOverride(host, "immersion.fb");
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOwner), "user");
+
+		getImmersionPersistForTest().ownership = {
+			...getImmersionPersistForTest().ownership,
+			overrideUntilIso: new Date(Date.now() - 1000).toISOString(),
+		};
+
+		const writes = trackForeignWrites(host);
+		await runImmersionRuntimeTick(host);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOwner), "ems");
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOverrideUntilIso), "");
+		assert.ok(
+			writes.some((w) => w.id === "immersion.stage1"),
+			"EMS darf nach Ablauf wieder schreiben",
+		);
+
+		expireSettle();
+		host.set("immersion.fb", true);
+		for (let i = 0; i < 5; i++) {
+			await runImmersionRuntimeTick(host);
+			assert.equal(
+				await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOwner),
+				"ems",
+				`Poll ${i + 1} nach Ablauf: kein neuer Override nur wegen gehaltenem ON`,
+			);
+		}
+	});
+
+	it("echtes neues manuelles OFF→ON nach Ablauf startet neuen Override", async () => {
+		const host = liveHostNoDemandSplitFeedback();
+		await reachManualOnOverride(host, "immersion.fb");
+		getImmersionPersistForTest().ownership = {
+			...getImmersionPersistForTest().ownership,
+			overrideUntilIso: new Date(Date.now() - 1000).toISOString(),
+		};
+		await runImmersionRuntimeTick(host);
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOwner), "ems");
+
+		expireSettle();
+		host.set("immersion.fb", false);
+		await runImmersionRuntimeTick(host);
+		host.set("immersion.fb", true);
+		await runImmersionRuntimeTick(host);
+		await runImmersionRuntimeTick(host);
+
+		assert.equal(await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOwner), "user");
+		assert.ok((await decisionState(host, IMMERSION_RUNTIME_STATES.ownershipOverrideUntilIso)) !== "");
+	});
+
+	it("identischer aktiver Override erzeugt keinen Info-Log-Spam", async () => {
+		const host = liveHostNoDemand();
+		const info = captureInfo(host);
+		await reachManualOnOverride(host);
+		const detected = info.filter((l) => l.includes("manual override detected"));
+		assert.equal(detected.length, 1, "genau eine Detected-Zeile");
+		assert.equal(
+			info.filter((l) => l.includes("manual override active")).length,
+			0,
+			"kein altes Active-Spam-Log",
+		);
+
+		const before = info.length;
+		for (let i = 0; i < 20; i++) {
+			await runImmersionRuntimeTick(host);
+		}
+		const added = info.slice(before);
+		assert.equal(
+			added.filter((l) => l.includes("manual override")).length,
+			0,
+			"kein Override-Info bei unverändertem Override",
+		);
 	});
 });

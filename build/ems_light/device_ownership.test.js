@@ -107,7 +107,7 @@ const NOW = Date.parse("2026-08-28T19:15:00.000Z");
         strict_1.default.equal(overridden.overrideUntilIso, null);
         strict_1.default.match(overridden.reasonDe, /Safety/);
     });
-    (0, node_test_1.it)("ein neuer Mismatch während eines laufenden Overrides verlängert die Frist, behält aber triggeredAt", () => {
+    (0, node_test_1.it)("derselbe fortlaufende Mismatch während eines Overrides verlängert die Frist nicht", () => {
         const first = (0, device_ownership_js_1.evaluateDeviceOwnership)({
             nowMs: NOW,
             mismatchDetected: true,
@@ -116,15 +116,160 @@ const NOW = Date.parse("2026-08-28T19:15:00.000Z");
             overrideDurationMs: 30 * 60_000,
             safetyOverride: false,
         });
-        const renewed = (0, device_ownership_js_1.evaluateDeviceOwnership)({
-            nowMs: NOW + 10 * 60_000,
+        let current = first;
+        for (let i = 1; i <= 100; i++) {
+            current = (0, device_ownership_js_1.evaluateDeviceOwnership)({
+                nowMs: NOW + i * 5_000,
+                mismatchDetected: true,
+                mismatchKind: "manual_on",
+                previous: current,
+                overrideDurationMs: 30 * 60_000,
+                safetyOverride: false,
+            });
+            strict_1.default.equal(current.overrideUntilIso, first.overrideUntilIso, `Tick ${i}: paused_until darf nicht wandern`);
+            strict_1.default.equal(current.triggeredAtIso, first.triggeredAtIso);
+            strict_1.default.equal(current.owner, "user");
+        }
+    });
+    (0, node_test_1.it)("nach Ablauf startet unveränderter Mismatch keinen neuen Override", () => {
+        const first = (0, device_ownership_js_1.evaluateDeviceOwnership)({
+            nowMs: NOW,
+            mismatchDetected: true,
+            mismatchKind: "manual_on",
+            previous: (0, device_ownership_js_1.emptyDeviceOwnershipState)(),
+            overrideDurationMs: 30 * 60_000,
+            safetyOverride: false,
+        });
+        const after = (0, device_ownership_js_1.evaluateDeviceOwnership)({
+            nowMs: NOW + 31 * 60_000,
             mismatchDetected: true,
             mismatchKind: "manual_on",
             previous: first,
             overrideDurationMs: 30 * 60_000,
             safetyOverride: false,
         });
+        strict_1.default.equal(after.owner, "ems");
+        strict_1.default.equal(after.overrideUntilIso, null);
+        strict_1.default.match(after.reasonDe, /abgelaufen/);
+        const stillOn = (0, device_ownership_js_1.evaluateDeviceOwnership)({
+            nowMs: NOW + 31 * 60_000 + 5_000,
+            mismatchDetected: true,
+            mismatchKind: "manual_on",
+            previous: after,
+            overrideDurationMs: 30 * 60_000,
+            safetyOverride: false,
+        });
+        strict_1.default.equal(stillOn.owner, "ems");
+        strict_1.default.equal(stillOn.overrideUntilIso, null);
+    });
+    (0, node_test_1.it)("Lücke im Mismatch während aktivem Override (ON→OFF→ON) darf einen neuen Override setzen", () => {
+        const first = (0, device_ownership_js_1.evaluateDeviceOwnership)({
+            nowMs: NOW,
+            mismatchDetected: true,
+            mismatchKind: "manual_on",
+            previous: (0, device_ownership_js_1.emptyDeviceOwnershipState)(),
+            overrideDurationMs: 30 * 60_000,
+            safetyOverride: false,
+        });
+        const gap = (0, device_ownership_js_1.evaluateDeviceOwnership)({
+            nowMs: NOW + 5 * 60_000,
+            mismatchDetected: false,
+            previous: first,
+            overrideDurationMs: 30 * 60_000,
+            safetyOverride: false,
+        });
+        strict_1.default.equal(gap.owner, "user");
+        strict_1.default.equal(gap.lastMismatchKind, "");
+        const renewed = (0, device_ownership_js_1.evaluateDeviceOwnership)({
+            nowMs: NOW + 6 * 60_000,
+            mismatchDetected: true,
+            mismatchKind: "manual_on",
+            previous: gap,
+            overrideDurationMs: 30 * 60_000,
+            safetyOverride: false,
+        });
+        strict_1.default.equal(renewed.owner, "user");
         strict_1.default.ok(Date.parse(renewed.overrideUntilIso) > Date.parse(first.overrideUntilIso));
-        strict_1.default.equal(renewed.triggeredAtIso, first.triggeredAtIso);
+        strict_1.default.equal(renewed.triggeredAtIso, new Date(NOW + 6 * 60_000).toISOString());
+    });
+    (0, node_test_1.it)("anderes Mismatch-Kind während aktivem Override (manual_on → manual_off) setzt neu", () => {
+        const first = (0, device_ownership_js_1.evaluateDeviceOwnership)({
+            nowMs: NOW,
+            mismatchDetected: true,
+            mismatchKind: "manual_on",
+            previous: (0, device_ownership_js_1.emptyDeviceOwnershipState)(),
+            overrideDurationMs: 30 * 60_000,
+            safetyOverride: false,
+        });
+        const flipped = (0, device_ownership_js_1.evaluateDeviceOwnership)({
+            nowMs: NOW + 5 * 60_000,
+            mismatchDetected: true,
+            mismatchKind: "manual_off",
+            previous: first,
+            overrideDurationMs: 30 * 60_000,
+            safetyOverride: false,
+        });
+        strict_1.default.equal(flipped.owner, "user");
+        strict_1.default.ok(Date.parse(flipped.overrideUntilIso) > Date.parse(first.overrideUntilIso));
+        strict_1.default.equal(flipped.lastMismatchKind, "manual_off");
+    });
+    (0, node_test_1.it)("Alt-Persist ohne lastMismatchKind verlängert einen laufenden Override nicht", () => {
+        const first = (0, device_ownership_js_1.evaluateDeviceOwnership)({
+            nowMs: NOW,
+            mismatchDetected: true,
+            mismatchKind: "manual_on",
+            previous: (0, device_ownership_js_1.emptyDeviceOwnershipState)(),
+            overrideDurationMs: 30 * 60_000,
+            safetyOverride: false,
+        });
+        const legacy = { ...first };
+        delete legacy.lastMismatchKind;
+        const held = (0, device_ownership_js_1.evaluateDeviceOwnership)({
+            nowMs: NOW + 10 * 60_000,
+            mismatchDetected: true,
+            mismatchKind: "manual_on",
+            previous: legacy,
+            overrideDurationMs: 30 * 60_000,
+            safetyOverride: false,
+        });
+        strict_1.default.equal(held.overrideUntilIso, first.overrideUntilIso);
+        strict_1.default.equal(held.owner, "user");
+    });
+    (0, node_test_1.it)("nach Ablauf und verschwundenem Mismatch darf ein neues Event erneut starten", () => {
+        const first = (0, device_ownership_js_1.evaluateDeviceOwnership)({
+            nowMs: NOW,
+            mismatchDetected: true,
+            mismatchKind: "manual_on",
+            previous: (0, device_ownership_js_1.emptyDeviceOwnershipState)(),
+            overrideDurationMs: 30 * 60_000,
+            safetyOverride: false,
+        });
+        const expired = (0, device_ownership_js_1.evaluateDeviceOwnership)({
+            nowMs: NOW + 31 * 60_000,
+            mismatchDetected: true,
+            mismatchKind: "manual_on",
+            previous: first,
+            overrideDurationMs: 30 * 60_000,
+            safetyOverride: false,
+        });
+        strict_1.default.equal(expired.owner, "ems");
+        const cleared = (0, device_ownership_js_1.evaluateDeviceOwnership)({
+            nowMs: NOW + 32 * 60_000,
+            mismatchDetected: false,
+            previous: expired,
+            overrideDurationMs: 30 * 60_000,
+            safetyOverride: false,
+        });
+        strict_1.default.equal(cleared.lastMismatchKind, "");
+        const again = (0, device_ownership_js_1.evaluateDeviceOwnership)({
+            nowMs: NOW + 33 * 60_000,
+            mismatchDetected: true,
+            mismatchKind: "manual_on",
+            previous: cleared,
+            overrideDurationMs: 30 * 60_000,
+            safetyOverride: false,
+        });
+        strict_1.default.equal(again.owner, "user");
+        strict_1.default.ok(again.overrideUntilIso);
     });
 });

@@ -72,15 +72,23 @@ exports.IMMERSION_OWNERSHIP_SETTLE_MS = 2 * 60_000;
  * „EMS wollte AUS, Gerät läuft" (manual_on) als auch „EMS wollte AN, Gerät ist aus" (manual_off).
  * Nutzt bewusst das Feedback/Stage des VORIGEN Takts (vor dem heutigen Write), damit kein
  * eigener, noch nicht bestätigter EMS-Write fälschlich als Fremdeingriff gilt.
+ *
+ * Ereignisbasiert: nur die Flanke zählt (OFF→ON / ON→OFF). Ein unverändert gehaltener
+ * Ist-Zustand (Polling, Feedback bleibt ON) ist kein neues manuelles Event.
+ * `feedbackActiveBeforePrev` = Feedback zwei Takte zuvor; fehlt der Wert (erster Vergleich
+ * oder Alt-Aufruf), gilt die erste Beobachtung eines Widerspruchs als Flanke.
  */
 function detectImmersionManualMismatch(params) {
     if (params.prevFeedbackActive === null)
         return "";
     const emsWantedOn = params.prevCommandedStage > 0;
+    const before = params.feedbackActiveBeforePrev;
+    const risingOn = params.prevFeedbackActive === true && before !== true;
+    const fallingOff = params.prevFeedbackActive === false && before !== false;
     if (!emsWantedOn && params.prevFeedbackActive)
-        return "manual_on";
+        return risingOn ? "manual_on" : "";
     if (emsWantedOn && !params.prevFeedbackActive)
-        return "manual_off";
+        return fallingOff ? "manual_off" : "";
     return "";
 }
 exports.detectImmersionManualMismatch = detectImmersionManualMismatch;

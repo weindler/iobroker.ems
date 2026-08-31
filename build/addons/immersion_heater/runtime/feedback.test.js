@@ -77,6 +77,34 @@ const device_config_js_1 = require("../device_config.js");
     (0, node_test_1.it)("Feedback noch unbekannt (erster Takt) → kein Mismatch", () => {
         strict_1.default.equal((0, feedback_js_1.detectImmersionManualMismatch)({ prevCommandedStage: 0, prevFeedbackActive: null }), "");
     });
+    (0, node_test_1.it)("gehaltenes ON (keine Flanke) ist kein neues manual_on", () => {
+        strict_1.default.equal((0, feedback_js_1.detectImmersionManualMismatch)({
+            prevCommandedStage: 0,
+            prevFeedbackActive: true,
+            feedbackActiveBeforePrev: true,
+        }), "");
+    });
+    (0, node_test_1.it)("OFF→ON bei EMS-Soll AUS → genau ein manual_on", () => {
+        strict_1.default.equal((0, feedback_js_1.detectImmersionManualMismatch)({
+            prevCommandedStage: 0,
+            prevFeedbackActive: true,
+            feedbackActiveBeforePrev: false,
+        }), "manual_on");
+    });
+    (0, node_test_1.it)("gehaltenes OFF bei EMS-Soll AN ist kein neues manual_off", () => {
+        strict_1.default.equal((0, feedback_js_1.detectImmersionManualMismatch)({
+            prevCommandedStage: 1,
+            prevFeedbackActive: false,
+            feedbackActiveBeforePrev: false,
+        }), "");
+    });
+    (0, node_test_1.it)("ON→OFF bei EMS-Soll AN → manual_off", () => {
+        strict_1.default.equal((0, feedback_js_1.detectImmersionManualMismatch)({
+            prevCommandedStage: 1,
+            prevFeedbackActive: false,
+            feedbackActiveBeforePrev: true,
+        }), "manual_off");
+    });
 });
 (0, node_test_1.describe)("immersion watched foreign ids", () => {
     (0, node_test_1.it)("deduplicates identical set/feedback states (subscribe once)", () => {

@@ -136,7 +136,15 @@ export async function runAiOptimizationNow(
 			result.usage.promptTokens,
 			result.usage.completionTokens,
 		);
-		await recordDailyCall(host, cfg.maxCallsPerDay, costEurDiscard, new Date(), cfg.monthlyCostLimitEur, tz);
+		await recordDailyCall(
+			host,
+			cfg.maxCallsPerDay,
+			costEurDiscard,
+			new Date(),
+			cfg.monthlyCostLimitEur,
+			tz,
+			"planner_optimization",
+		);
 		host.log?.info?.(
 			`KI-Ergebnis verworfen (${triggerReason}): user_enabled/epoch ungültig (requestEpoch=${requestEpoch}, now=${currentAiEnableEpoch()}).`,
 		);
@@ -148,7 +156,15 @@ export async function runAiOptimizationNow(
 	}
 
 	const costEur = estimateCostEur(cfg.model, result.usage.promptTokens, result.usage.completionTokens);
-	await recordDailyCall(host, cfg.maxCallsPerDay, costEur, new Date(), cfg.monthlyCostLimitEur, tz);
+	await recordDailyCall(
+		host,
+		cfg.maxCallsPerDay,
+		costEur,
+		new Date(),
+		cfg.monthlyCostLimitEur,
+		tz,
+		"planner_optimization",
+	);
 
 	const nowIso = new Date().toISOString();
 	await host.setStateAsync(AI_STATES.lastRunAt, { val: nowIso, ack: true });

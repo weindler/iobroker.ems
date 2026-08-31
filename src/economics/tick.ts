@@ -106,6 +106,18 @@ export async function tickEconomics(host: EconomicsHost, now: Date = new Date())
 	await setIfChanged(host, ECONOMICS_FLAT.todayTarifvorteilEur, todayRecord.tarifvorteilEur);
 	await setIfChanged(host, ECONOMICS_FLAT.todayEmsVorteilEur, todayRecord.emsVorteilEur);
 	await setIfChanged(host, ECONOMICS_FLAT.todayKiMehrwertEur, todayRecord.kiMehrwertEur);
+	const todayRewardsPresent =
+		todayRecord.gridRewardsSource === "billing"
+			? todayRecord.gridRewardsCreditEur !== null && todayRecord.gridRewardsCreditEur >= 0
+			: todayRecord.gridRewardsCreditEur !== null &&
+				todayRecord.gridRewardsCreditEur > 0 &&
+				!!todayRecord.gridRewardsSource &&
+				todayRecord.gridRewardsSource !== "off";
+	await setIfChanged(
+		host,
+		ECONOMICS_FLAT.todayGridRewardsEur,
+		todayRewardsPresent ? todayRecord.gridRewardsCreditEur : null,
+	);
 
 	// --- Zeitraum-Aggregation (analog Statistik-Perioden) ---
 	const dayKeysAll = Object.keys(econPersist.days);
@@ -161,6 +173,7 @@ export async function tickEconomics(host: EconomicsHost, now: Date = new Date())
 	await setIfChanged(host, ECONOMICS_FLAT.cumulativeTarifvorteilEur, cumulativeSummary.tarifvorteilEur);
 	await setIfChanged(host, ECONOMICS_FLAT.cumulativeEmsVorteilEur, cumulativeSummary.emsVorteilEur);
 	await setIfChanged(host, ECONOMICS_FLAT.cumulativeKiMehrwertEur, cumulativeSummary.kiMehrwertEur);
+	await setIfChanged(host, ECONOMICS_FLAT.cumulativeGridRewardsEur, cumulativeSummary.gridRewardsCreditEur);
 
 	await setIfChanged(host, ECONOMICS_STATES.enabled, true);
 	await setIfChanged(host, ECONOMICS_STATES.lastRunAt, now.toISOString());

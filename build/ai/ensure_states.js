@@ -29,6 +29,8 @@ exports.AI_STATES = {
     userEnabled: `${exports.AI_BASE}.user_enabled`,
     /** Einmalige Migration von native.ai_enabled abgeschlossen. */
     userEnabledMigratedV1: `${exports.AI_BASE}.user_enabled_migrated_v1`,
+    /** Letzte API-Herkunft (planner_optimization | daily_analyst) — Gesamtsummen bleiben global. */
+    lastCallCategory: `${exports.AI_BASE}.last_call_category`,
 };
 async function ensureAiStates(host) {
     await (0, state_util_1.ensureChannel)(host, exports.AI_BASE, "EMS KI-Optimierung (optional)");
@@ -254,6 +256,17 @@ async function ensureAiStates(host) {
                 read: true,
                 write: false,
                 def: false,
+            },
+        },
+        {
+            id: exports.AI_STATES.lastCallCategory,
+            common: {
+                name: "Letzte KI-API-Herkunft (intern)",
+                type: "string",
+                role: "text",
+                read: true,
+                write: false,
+                def: "",
             },
         },
     ];

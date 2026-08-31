@@ -367,11 +367,12 @@ function estimateKwhFromSocRise(input) {
 }
 exports.estimateKwhFromSocRise = estimateKwhFromSocRise;
 function applyHomeGridRewards(home, rewards) {
-    const credit = rewards.source === "off" ? null : rewards.creditEur;
+    const present = (0, grid_rewards_1.gridRewardsCreditIsPresent)(rewards.source, rewards.creditEur);
+    const credit = present ? rewards.creditEur : null;
     return {
         ...home,
         gridRewardsCreditEur: credit,
-        gridRewardsSource: rewards.source,
+        gridRewardsSource: present ? rewards.source : "off",
         savingsVsFixedEur: savingsVsFixedEur(home.fixedTariffCostEur, home.dynamicCostEur, credit),
     };
 }
@@ -458,8 +459,12 @@ function sumHomeDays(days) {
     const importKwh = sum((d) => d.gridImportKwh);
     const dynamic = sum((d) => d.dynamicCostEur);
     const fixed = sum((d) => d.fixedTariffCostEur);
-    const rewards = sum((d) => d.gridRewardsCreditEur);
-    const billingDay = [...days].reverse().find((d) => d.gridRewardsSource === "billing");
+    const rewardsVals = days
+        .filter((d) => (0, grid_rewards_1.gridRewardsCreditIsPresent)(d.gridRewardsSource, d.gridRewardsCreditEur))
+        .map((d) => d.gridRewardsCreditEur);
+    const rewards = rewardsVals.length ? round3(rewardsVals.reduce((a, b) => a + b, 0)) : null;
+    const billingDay = [...days].reverse().find((d) => d.gridRewardsSource === "billing" && d.gridRewardsCreditEur !== null);
+    const estimateDay = [...days].reverse().find((d) => (0, grid_rewards_1.gridRewardsCreditIsPresent)(d.gridRewardsSource, d.gridRewardsCreditEur));
     return {
         dateKey,
         gridImportKwh: importKwh,
@@ -468,7 +473,7 @@ function sumHomeDays(days) {
         fixedTariffCostEur: fixed,
         savingsVsFixedEur: savingsVsFixedEur(fixed, dynamic, rewards),
         gridRewardsCreditEur: rewards,
-        gridRewardsSource: billingDay?.gridRewardsSource ?? "estimate_day",
+        gridRewardsSource: billingDay?.gridRewardsSource ?? estimateDay?.gridRewardsSource ?? "off",
         feedInCreditEur: sum((d) => d.feedInCreditEur),
     };
 }

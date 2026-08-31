@@ -9,6 +9,26 @@ export interface ResolvedGridRewards {
 	source: GridRewardsSource;
 }
 
+/**
+ * Vorhandener/belastbarer Reward-Wert — nicht dasselbe wie „0,00 € erfunden“.
+ * Schätzung 0 = nicht aufgelaufen / nicht anzeigen. Abrechnung 0 = echter vorhandener Wert.
+ */
+export function gridRewardsCreditIsPresent(
+	source: GridRewardsSource | string | null | undefined,
+	creditEur: number | null | undefined,
+): boolean {
+	if (!source || source === "off") return false;
+	if (creditEur === null || creditEur === undefined || !Number.isFinite(creditEur)) return false;
+	if (source === "billing") return creditEur >= 0;
+	return creditEur > 0;
+}
+
+function positiveCredit(n: number | null): number | null {
+	if (n === null || !Number.isFinite(n)) return null;
+	const r = round2(n);
+	return r > 0 ? r : null;
+}
+
 /** Netto-Heim-Netz € nach Rewards-Gutschrift (nur Anzeige; max. Brutto-Netz). */
 export function netHomeGridCostEur(
 	homeGridCostEur: number | null,
@@ -27,7 +47,10 @@ export function resolveTodayGridRewards(input: {
 		return { creditEur: null, source: "off" };
 	}
 	if (input.mappedDayEur !== null && input.mappedDayEur >= 0) {
-		return { creditEur: round2(input.mappedDayEur), source: "estimate_day" };
+		const credit = positiveCredit(input.mappedDayEur);
+		if (credit !== null) {
+			return { creditEur: credit, source: "estimate_day" };
+		}
 	}
 	return { creditEur: null, source: "off" };
 }
@@ -45,7 +68,10 @@ export function resolveMonthGridRewards(input: {
 		return { creditEur: round2(input.billingCreditEur), source: "billing" };
 	}
 	if (input.mappedMonthEur !== null && input.mappedMonthEur >= 0) {
-		return { creditEur: round2(input.mappedMonthEur), source: "estimate_month" };
+		const credit = positiveCredit(input.mappedMonthEur);
+		if (credit !== null) {
+			return { creditEur: credit, source: "estimate_month" };
+		}
 	}
 	return { creditEur: null, source: "off" };
 }
@@ -99,10 +125,13 @@ export function resolvePeriodGridRewards(input: {
 			continue;
 		}
 		if (prefix === currentPrefix && input.mappedMonthEur !== null && input.mappedMonthEur >= 0) {
-			total += input.mappedMonthEur;
-			hits++;
-			anyEstimate = true;
-			continue;
+			const mapped = positiveCredit(input.mappedMonthEur);
+			if (mapped !== null) {
+				total += mapped;
+				hits++;
+				anyEstimate = true;
+				continue;
+			}
 		}
 		const daySum = input.dayCredits
 			.filter((d) => d.dateKey.startsWith(prefix) && d.dateKey >= input.fromKey && d.dateKey <= input.toKey)

@@ -23,6 +23,10 @@ const ingest_1 = require("../override/ingest");
 const tick_1 = require("../override/tick");
 const persist_4 = require("./persist");
 const ensure_states_1 = require("./ensure_states");
+const config_2 = require("../config");
+const limiter_1 = require("../limiter");
+const pricing_1 = require("../pricing");
+const dedupe_findings_1 = require("./dedupe_findings");
 /**
  * ioBroker-Adapter hat kein `getAbsolutePath` — dieselbe Wrapper-Logik wie Learning-Ticks
  * (`withLearningDataPath`). Kein zweiter Datenpfad.
@@ -48,13 +52,24 @@ function timezoneFromConfig(config) {
         : "";
     return tz || "Europe/Berlin";
 }
+async function publishFindingsStates(host, findings) {
+    await publish(host, ensure_states_1.AI_ANALYST_STATES.findingsCount, findings.length);
+    const top = [...findings].sort((a, b) => b.confidencePct - a.confidencePct)[0];
+    await publish(host, ensure_states_1.AI_ANALYST_STATES.topFindingDe, top ? `${top.observedBehaviorDe} → ${top.suggestedImprovementDe}` : "");
+    await publish(host, ensure_states_1.AI_ANALYST_STATES.findingsDe, (0, dedupe_findings_1.formatAnalystFindingsDe)(findings));
+}
 /**
  * Führt den Analysten für genau einen bereits vom Daily Evaluator abgeschlossenen Tag aus.
  * Persistiert das Ergebnis (auch `disabled`/`no_token`/Fehler — damit ist der Tag "erledigt"
  * und wird nicht endlos wiederholt) und aktualisiert die Status-States.
+ *
+ * Echte OpenAI-Aufrufe laufen über dieselbe zentrale KI-Buchhaltung wie die Planner-KI
+ * (`ai.calls_today` / Kostenschätzung / Tages- und Monatslimit).
  */
-async function runDailyAnalystForDate(host, dateKey, provider = (0, provider_1.createOpenAiAnalystProvider)()) {
+async function runDailyAnalystForDate(host, dateKey, provider = (0, provider_1.createOpenAiAnalystProvider)(), now = new Date()) {
     const cfg = await (0, ensure_states_1.syncAiDailyAnalystRuntimeFromConfig)(host);
+    const aiCfg = (0, config_2.aiConfigFromAdapter)(host.config);
+    const tz = timezoneFromConfig(host.config);
     const result = async () => {
         if (cfg.mode === "disabled") {
             return {
@@ -94,12 +109,41 @@ async function runDailyAnalystForDate(host, dateKey, provider = (0, provider_1.c
         const economics = econPersist.days[dateKey] ?? null;
         const shadow = await (0, persist_3.readShadowDayRecord)(host.getAbsolutePath(constants_2.SHADOW_ENGINE_RESULTS_CATEGORY), dateKey);
         const context = (0, context_1.buildAiAnalystContext)({ dateKey, record, findings, economics, shadow });
+        const limitState = await (0, limiter_1.readAndRolloverDailyCalls)(host, aiCfg.maxCallsPerDay, now, aiCfg.monthlyCostLimitEur, tz);
+        if (limitState.limitReached) {
+            const reasonDe = limitState.monthlyLimitReached
+                ? `Monatslimit erreicht (${limitState.costMonthEur.toFixed(3)}/${limitState.monthlyLimitEur} EUR) — Daily Analyst nicht ausgeführt.`
+                : `Tageslimit erreicht (${limitState.callsToday}/${limitState.limit}) — Daily Analyst nicht ausgeführt.`;
+            return {
+                ran: false,
+                status: "error",
+                dateKey,
+                findings: [],
+                reasonDe,
+                usage: { promptTokens: null, completionTokens: null },
+                error: "limit_reached",
+            };
+        }
         await publish(host, ensure_states_1.AI_ANALYST_STATES.status, "running");
-        const providerResult = await provider.analyze(context, {
-            apiKey: cfg.apiKey,
-            model: cfg.model,
-            timeoutMs: config_1.AI_ANALYST_TIMEOUT_MS,
-        });
+        let providerResult;
+        try {
+            providerResult = await provider.analyze(context, {
+                apiKey: cfg.apiKey,
+                model: cfg.model,
+                timeoutMs: config_1.AI_ANALYST_TIMEOUT_MS,
+            });
+        }
+        catch (e) {
+            providerResult = {
+                ok: false,
+                findings: [],
+                reasonDe: "Unerwarteter Fehler beim Daily-Analyst-Aufruf.",
+                usage: { promptTokens: null, completionTokens: null },
+                error: String(e instanceof Error ? e.message : e),
+            };
+        }
+        const costEur = (0, pricing_1.estimateCostEur)(cfg.model, providerResult.usage.promptTokens, providerResult.usage.completionTokens);
+        await (0, limiter_1.recordDailyCall)(host, aiCfg.maxCallsPerDay, costEur, now, aiCfg.monthlyCostLimitEur, tz, "daily_analyst");
         if (!providerResult.ok) {
             const status = providerResult.error === "invalid_json" || providerResult.error?.startsWith("invalid_structure")
                 ? "invalid_response"
@@ -118,7 +162,7 @@ async function runDailyAnalystForDate(host, dateKey, provider = (0, provider_1.c
             ran: true,
             status: "ok",
             dateKey,
-            findings: providerResult.findings,
+            findings: (0, dedupe_findings_1.dedupeAnalystFindings)(providerResult.findings),
             reasonDe: providerResult.reasonDe,
             usage: providerResult.usage,
         };
@@ -131,7 +175,7 @@ async function runDailyAnalystForDate(host, dateKey, provider = (0, provider_1.c
             model: cfg.model,
             findings: outcome.findings,
         });
-        const todayKey = (0, time_1.localDateKeyInTimezone)(new Date(), timezoneFromConfig(host.config));
+        const todayKey = (0, time_1.localDateKeyInTimezone)(now, tz);
         await (0, persist_4.pruneAiAnalystFindings)(host.getAbsolutePath(persist_4.AI_ANALYST_FINDINGS_CATEGORY), cfg.retainedDays, todayKey);
     }
     catch (e) {
@@ -139,13 +183,11 @@ async function runDailyAnalystForDate(host, dateKey, provider = (0, provider_1.c
     }
     await publish(host, ensure_states_1.AI_ANALYST_STATES.enabled, cfg.mode !== "disabled");
     await publish(host, ensure_states_1.AI_ANALYST_STATES.status, outcome.status);
-    await publish(host, ensure_states_1.AI_ANALYST_STATES.lastRunAtIso, new Date().toISOString());
+    await publish(host, ensure_states_1.AI_ANALYST_STATES.lastRunAtIso, now.toISOString());
     await publish(host, ensure_states_1.AI_ANALYST_STATES.lastRunDateKey, dateKey);
     await publish(host, ensure_states_1.AI_ANALYST_STATES.reasonDe, outcome.reasonDe);
     await publish(host, ensure_states_1.AI_ANALYST_STATES.lastError, outcome.error ?? "");
-    await publish(host, ensure_states_1.AI_ANALYST_STATES.findingsCount, outcome.findings.length);
-    const top = [...outcome.findings].sort((a, b) => b.confidencePct - a.confidencePct)[0];
-    await publish(host, ensure_states_1.AI_ANALYST_STATES.topFindingDe, top ? `${top.observedBehaviorDe} → ${top.suggestedImprovementDe}` : "");
+    await publishFindingsStates(host, outcome.findings);
     if (outcome.status === "ok" && cfg.overrideEnabled && outcome.findings.length > 0 && dateKey) {
         try {
             await (0, ingest_1.ingestAnalystFindingsAsOverrides)(host, outcome.findings, dateKey);
@@ -173,7 +215,7 @@ async function maybeRunDailyAnalystAutomatically(host, now = new Date(), provide
     const already = await (0, persist_4.readAiAnalystDay)(host.getAbsolutePath(persist_4.AI_ANALYST_FINDINGS_CATEGORY), yesterdayKey);
     if (already)
         return null; // bereits verarbeitet (auch disabled/no_token/error zählt als "erledigt" für diesen Tag)
-    return runDailyAnalystForDate(host, yesterdayKey, provider);
+    return runDailyAnalystForDate(host, yesterdayKey, provider, now);
 }
 exports.maybeRunDailyAnalystAutomatically = maybeRunDailyAnalystAutomatically;
 function emptyManualResult(status, reasonDe, dateKey = null) {
@@ -272,9 +314,7 @@ async function runDailyAnalystManual(host, now = new Date(), provider) {
         if (already) {
             await publish(host, ensure_states_1.AI_ANALYST_STATES.status, already.status);
             await publish(host, ensure_states_1.AI_ANALYST_STATES.reasonDe, already.reasonDe);
-            await publish(host, ensure_states_1.AI_ANALYST_STATES.findingsCount, already.findings.length);
-            const top = [...already.findings].sort((a, b) => b.confidencePct - a.confidencePct)[0];
-            await publish(host, ensure_states_1.AI_ANALYST_STATES.topFindingDe, top ? `${top.observedBehaviorDe} → ${top.suggestedImprovementDe}` : "");
+            await publishFindingsStates(host, already.findings);
             return {
                 ran: false,
                 status: already.status,
@@ -285,6 +325,6 @@ async function runDailyAnalystManual(host, now = new Date(), provider) {
             };
         }
     }
-    return runDailyAnalystForDate(host, yesterdayKey, provider);
+    return runDailyAnalystForDate(host, yesterdayKey, provider, now);
 }
 exports.runDailyAnalystManual = runDailyAnalystManual;

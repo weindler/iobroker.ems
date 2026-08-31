@@ -171,6 +171,40 @@ function shadowFixture(overrides = {}) {
         strict_1.default.equal(sum.daysEmsVorteilEvaluable, 1);
         strict_1.default.equal(sum.gridRewardsCreditEur, 0.5);
     });
+    (0, node_test_1.it)("zählt Schätzung 0 nicht als vorhandenen Reward, Abrechnung 0 schon", () => {
+        const estimateZero = (0, compute_1.buildEconomicsDayRecord)({
+            dateKey: "2026-08-28",
+            final: true,
+            tarifvorteilEur: 1,
+            gridRewardsCreditEur: 0,
+            gridRewardsSource: "estimate_day",
+            shadow: shadowFixture(),
+            now: NOW,
+        });
+        const billingZero = (0, compute_1.buildEconomicsDayRecord)({
+            dateKey: "2026-08-29",
+            final: true,
+            tarifvorteilEur: 1,
+            gridRewardsCreditEur: 0,
+            gridRewardsSource: "billing",
+            shadow: shadowFixture(),
+            now: NOW,
+        });
+        const none = (0, compute_1.sumEconomicsDays)([estimateZero], {
+            period: "test",
+            periodLabelDe: "Test",
+            fromKey: "2026-08-28",
+            toKey: "2026-08-28",
+        });
+        strict_1.default.equal(none.gridRewardsCreditEur, null);
+        const billed = (0, compute_1.sumEconomicsDays)([billingZero], {
+            period: "test",
+            periodLabelDe: "Test",
+            fromKey: "2026-08-29",
+            toKey: "2026-08-29",
+        });
+        strict_1.default.equal(billed.gridRewardsCreditEur, 0);
+    });
     (0, node_test_1.it)("liefert null (nicht 0) wenn kein Tag bewertbar ist", () => {
         const sum = (0, compute_1.sumEconomicsDays)([], { period: "x", periodLabelDe: "x", fromKey: "a", toKey: "b" });
         strict_1.default.equal(sum.tarifvorteilEur, null);

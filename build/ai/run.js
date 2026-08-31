@@ -81,7 +81,7 @@ async function runAiOptimizationNow(host, plan, triggerReason, provider) {
     // Publish-Guard: Toggle während Request → Ergebnis verwerfen (auch nach erneutem ON).
     if (!(await (0, user_enabled_1.isAiPublishAllowed)(host, requestEpoch))) {
         const costEurDiscard = (0, pricing_1.estimateCostEur)(cfg.model, result.usage.promptTokens, result.usage.completionTokens);
-        await (0, limiter_1.recordDailyCall)(host, cfg.maxCallsPerDay, costEurDiscard, new Date(), cfg.monthlyCostLimitEur, tz);
+        await (0, limiter_1.recordDailyCall)(host, cfg.maxCallsPerDay, costEurDiscard, new Date(), cfg.monthlyCostLimitEur, tz, "planner_optimization");
         host.log?.info?.(`KI-Ergebnis verworfen (${triggerReason}): user_enabled/epoch ungültig (requestEpoch=${requestEpoch}, now=${(0, user_enabled_1.currentAiEnableEpoch)()}).`);
         return {
             ran: false,
@@ -90,7 +90,7 @@ async function runAiOptimizationNow(host, plan, triggerReason, provider) {
         };
     }
     const costEur = (0, pricing_1.estimateCostEur)(cfg.model, result.usage.promptTokens, result.usage.completionTokens);
-    await (0, limiter_1.recordDailyCall)(host, cfg.maxCallsPerDay, costEur, new Date(), cfg.monthlyCostLimitEur, tz);
+    await (0, limiter_1.recordDailyCall)(host, cfg.maxCallsPerDay, costEur, new Date(), cfg.monthlyCostLimitEur, tz, "planner_optimization");
     const nowIso = new Date().toISOString();
     await host.setStateAsync(ensure_states_1.AI_STATES.lastRunAt, { val: nowIso, ack: true });
     await host.setStateAsync(ensure_states_1.AI_STATES.lastReasonDe, { val: result.reasonDe.slice(0, 480), ack: true });

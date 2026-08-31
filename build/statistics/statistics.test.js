@@ -374,6 +374,48 @@ const public_charge_js_1 = require("./public_charge.js");
         strict_1.default.equal(billing.source, "billing");
         strict_1.default.equal(billing.creditEur, 2.47);
         strict_1.default.equal((0, grid_rewards_js_1.resolveTodayGridRewards)({ enabled: false, mappedDayEur: 1 }).source, "off");
+        strict_1.default.equal((0, grid_rewards_js_1.resolveTodayGridRewards)({ enabled: true, mappedDayEur: 0 }).source, "off");
+        strict_1.default.equal((0, grid_rewards_js_1.resolveTodayGridRewards)({ enabled: true, mappedDayEur: null }).source, "off");
+        strict_1.default.equal((0, grid_rewards_js_1.gridRewardsCreditIsPresent)("estimate_day", 0), false);
+        strict_1.default.equal((0, grid_rewards_js_1.gridRewardsCreditIsPresent)("estimate_day", 1.21), true);
+        strict_1.default.equal((0, grid_rewards_js_1.gridRewardsCreditIsPresent)("billing", 0), true);
+        strict_1.default.equal((0, grid_rewards_js_1.gridRewardsCreditIsPresent)("off", 0), false);
+        const monthZero = (0, grid_rewards_js_1.resolveMonthGridRewards)({
+            enabled: true,
+            monthPrefix: "2026-08",
+            billingCreditEur: null,
+            mappedMonthEur: 0,
+        });
+        strict_1.default.equal(monthZero.source, "off");
+        strict_1.default.equal(monthZero.creditEur, null);
+        const billingZero = (0, grid_rewards_js_1.resolveMonthGridRewards)({
+            enabled: true,
+            monthPrefix: "2026-08",
+            billingCreditEur: 0,
+            mappedMonthEur: 1.2,
+        });
+        strict_1.default.equal(billingZero.source, "billing");
+        strict_1.default.equal(billingZero.creditEur, 0);
+        const periodNone = (0, grid_rewards_js_1.resolvePeriodGridRewards)({
+            enabled: true,
+            fromKey: "2026-08-01",
+            toKey: "2026-08-31",
+            todayKey: "2026-08-31",
+            mappedMonthEur: 0,
+            monthRewardsBilling: {},
+            dayCredits: [{ dateKey: "2026-08-31", creditEur: null }],
+        });
+        strict_1.default.equal(periodNone.source, "off");
+        strict_1.default.equal(periodNone.creditEur, null);
+    });
+    (0, node_test_1.it)("sumHomeDays setzt source=off wenn keine Rewards vorhanden sind (kein erfundenes estimate_day)", () => {
+        const summed = (0, compute_js_1.sumHomeDays)([
+            { ...(0, compute_js_1.emptyHomeDay)("2026-08-30"), gridImportKwh: 0.4, dynamicCostEur: 0.59, fixedTariffCostEur: 0.59 },
+            { ...(0, compute_js_1.emptyHomeDay)("2026-08-31"), gridImportKwh: 0.2, dynamicCostEur: 0.3, fixedTariffCostEur: 0.3 },
+        ]);
+        strict_1.default.equal(summed.gridRewardsCreditEur, null);
+        strict_1.default.equal(summed.gridRewardsSource, "off");
+        strict_1.default.equal((0, grid_rewards_js_1.gridRewardsCreditIsPresent)(summed.gridRewardsSource, summed.gridRewardsCreditEur), false);
     });
     (0, node_test_1.it)("month mobility applies month rewards once from mapping", () => {
         const month = (0, compute_js_1.sumMobilityDays)([

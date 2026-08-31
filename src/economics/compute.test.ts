@@ -174,6 +174,41 @@ describe("sumEconomicsDays", () => {
 		assert.equal(sum.gridRewardsCreditEur, 0.5);
 	});
 
+	it("zählt Schätzung 0 nicht als vorhandenen Reward, Abrechnung 0 schon", () => {
+		const estimateZero = buildEconomicsDayRecord({
+			dateKey: "2026-08-28",
+			final: true,
+			tarifvorteilEur: 1,
+			gridRewardsCreditEur: 0,
+			gridRewardsSource: "estimate_day",
+			shadow: shadowFixture(),
+			now: NOW,
+		});
+		const billingZero = buildEconomicsDayRecord({
+			dateKey: "2026-08-29",
+			final: true,
+			tarifvorteilEur: 1,
+			gridRewardsCreditEur: 0,
+			gridRewardsSource: "billing",
+			shadow: shadowFixture(),
+			now: NOW,
+		});
+		const none = sumEconomicsDays([estimateZero], {
+			period: "test",
+			periodLabelDe: "Test",
+			fromKey: "2026-08-28",
+			toKey: "2026-08-28",
+		});
+		assert.equal(none.gridRewardsCreditEur, null);
+		const billed = sumEconomicsDays([billingZero], {
+			period: "test",
+			periodLabelDe: "Test",
+			fromKey: "2026-08-29",
+			toKey: "2026-08-29",
+		});
+		assert.equal(billed.gridRewardsCreditEur, 0);
+	});
+
 	it("liefert null (nicht 0) wenn kein Tag bewertbar ist", () => {
 		const sum = sumEconomicsDays([], { period: "x", periodLabelDe: "x", fromKey: "a", toKey: "b" });
 		assert.equal(sum.tarifvorteilEur, null);

@@ -1,6 +1,6 @@
 import type { GridRewardsSource, HomeDayTotals, MobilityDayTotals } from "./types";
 import type { ResolvedGridRewards } from "./grid_rewards";
-import { netHomeGridCostEur } from "./grid_rewards";
+import { gridRewardsCreditIsPresent, netHomeGridCostEur } from "./grid_rewards";
 
 function round3(n: number): number {
 	return Math.round(n * 1000) / 1000;
@@ -436,11 +436,12 @@ export function applyHomeGridRewards(
 	home: HomeDayTotals,
 	rewards: ResolvedGridRewards,
 ): HomeDayTotals {
-	const credit = rewards.source === "off" ? null : rewards.creditEur;
+	const present = gridRewardsCreditIsPresent(rewards.source, rewards.creditEur);
+	const credit = present ? rewards.creditEur : null;
 	return {
 		...home,
 		gridRewardsCreditEur: credit,
-		gridRewardsSource: rewards.source,
+		gridRewardsSource: present ? rewards.source : "off",
 		savingsVsFixedEur: savingsVsFixedEur(home.fixedTariffCostEur, home.dynamicCostEur, credit),
 	};
 }
@@ -533,8 +534,16 @@ export function sumHomeDays(days: HomeDayTotals[]): HomeDayTotals {
 	const importKwh = sum((d) => d.gridImportKwh);
 	const dynamic = sum((d) => d.dynamicCostEur);
 	const fixed = sum((d) => d.fixedTariffCostEur);
-	const rewards = sum((d) => d.gridRewardsCreditEur);
-	const billingDay = [...days].reverse().find((d) => d.gridRewardsSource === "billing");
+	const rewardsVals = days
+		.filter((d) => gridRewardsCreditIsPresent(d.gridRewardsSource, d.gridRewardsCreditEur))
+		.map((d) => d.gridRewardsCreditEur as number);
+	const rewards = rewardsVals.length ? round3(rewardsVals.reduce((a, b) => a + b, 0)) : null;
+	const billingDay = [...days].reverse().find(
+		(d) => d.gridRewardsSource === "billing" && d.gridRewardsCreditEur !== null,
+	);
+	const estimateDay = [...days].reverse().find((d) =>
+		gridRewardsCreditIsPresent(d.gridRewardsSource, d.gridRewardsCreditEur),
+	);
 	return {
 		dateKey,
 		gridImportKwh: importKwh,
@@ -543,7 +552,7 @@ export function sumHomeDays(days: HomeDayTotals[]): HomeDayTotals {
 		fixedTariffCostEur: fixed,
 		savingsVsFixedEur: savingsVsFixedEur(fixed, dynamic, rewards),
 		gridRewardsCreditEur: rewards,
-		gridRewardsSource: billingDay?.gridRewardsSource ?? "estimate_day",
+		gridRewardsSource: billingDay?.gridRewardsSource ?? estimateDay?.gridRewardsSource ?? "off",
 		feedInCreditEur: sum((d) => d.feedInCreditEur),
 	};
 }

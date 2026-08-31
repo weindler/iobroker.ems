@@ -40,6 +40,8 @@ exports.AI_ANALYST_STATES = {
     lastError: `${BASE}.last_error`,
     findingsCount: `${BASE}.findings_count`,
     topFindingDe: `${BASE}.top_finding_de`,
+    /** Nummerierte Findings des letzten Laufs (Klartext, kein JSON-Dump). */
+    findingsDe: `${BASE}.findings_de`,
     runNowRequest: `${BASE}.run_now_request`,
 };
 async function ensureAiDailyAnalystStates(host) {
@@ -54,6 +56,7 @@ async function ensureAiDailyAnalystStates(host) {
         strState(exports.AI_ANALYST_STATES.lastError, "KI Daily Analyst letzter Fehler", ""),
         numState(exports.AI_ANALYST_STATES.findingsCount, "KI Daily Analyst Findings letzter Tag"),
         strState(exports.AI_ANALYST_STATES.topFindingDe, "KI Daily Analyst wichtigstes Finding", ""),
+        strState(exports.AI_ANALYST_STATES.findingsDe, "KI Daily Analyst Findings (nummeriert)", ""),
         boolState(exports.AI_ANALYST_STATES.runNowRequest, "KI Daily Analyst jetzt analysieren (manuell)", {
             write: true,
             role: "button",

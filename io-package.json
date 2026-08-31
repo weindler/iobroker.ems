@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.16",
+		"version": "0.2.17",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.17": {
+				"en": "Fix: Daily Analyst OpenAI calls now count in the same ai.calls_today / cost_estimate_* ledger as planner KI (same day/month limits). Duplicate thermal findings merge to one; VIS KI Analyst card lists all findings via ai.daily_analyst.findings_de. Grid Rewards rows only when a real credit exists (no fake 0.00 €). Check ai.calls_today after manual analyst run; Statistik KI Analyst / Validator; Haus cards without Rewards when none.",
+				"de": "Fix: Daily-Analyst-OpenAI-Aufrufe zählen jetzt in derselben ai.calls_today-/cost_estimate_*-Buchhaltung wie Planner-KI (gleiche Tages-/Monatslimits). Doppelte Thermal-Findings werden zusammengeführt; VIS-Kachel KI Analyst listet alle Findings über ai.daily_analyst.findings_de. Grid-Rewards-Zeile nur bei echtem Gutschrift-Wert (kein erfundenes 0,00 €). Nach Update manuellen Analyst-Lauf → ai.calls_today; Statistik KI Analyst / Validator; Haus-Karten ohne Rewards wenn keine."
+			},
 			"0.2.16": {
 				"en": "Fix: Admin button Analyze now no longer fails with host.getAbsolutePath is not a function. Uses the same adapter data-path wrapper as learning ticks. Check KI Daily Analyst → Analyze now in manual mode; ai.daily_analyst.status / last_error.",
 				"de": "Fix: Admin-Button „Jetzt analysieren“ bricht nicht mehr mit host.getAbsolutePath is not a function ab. Nutzt denselben Datenpfad-Wrapper wie die Learning-Ticks. Nach Update KI Daily Analyst → Jetzt analysieren im Modus „Nur manuell“ prüfen; ai.daily_analyst.status / last_error."

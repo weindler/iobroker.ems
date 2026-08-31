@@ -37,6 +37,10 @@ const constants_1 = require("../../learning/daily_evaluator/constants");
 const persist_1 = require("../../learning/daily_evaluator/persist");
 const persist_2 = require("../override/persist");
 const allowlist_1 = require("../override/allowlist");
+const ensure_states_2 = require("../ensure_states");
+const pricing_1 = require("../pricing");
+const limiter_1 = require("../limiter");
+const persist_3 = require("./persist");
 const NOW = new Date("2026-08-31T10:00:00+02:00");
 const YESTERDAY = "2026-08-30";
 function silentProvider() {
@@ -46,7 +50,10 @@ function silentProvider() {
         },
     };
 }
-function countingProvider(findings = []) {
+function countingProvider(findings = [], usage = {
+    promptTokens: 8_000,
+    completionTokens: 400,
+}) {
     const calls = { n: 0 };
     return {
         calls,
@@ -57,7 +64,7 @@ function countingProvider(findings = []) {
                     ok: true,
                     findings,
                     reasonDe: "Analyse ok.",
-                    usage: { promptTokens: 1, completionTokens: 1 },
+                    usage,
                 };
             },
         },
@@ -300,5 +307,168 @@ function makeHost(config, dir) {
             reasonDe: "lang",
             usage: { promptTokens: 1, completionTokens: 1 },
         }), "abgeschlossen");
+    });
+});
+function thermalDupFindings() {
+    return [
+        {
+            findingType: "thermal_optimization",
+            domain: "thermal",
+            severity: "notice",
+            confidencePct: 70,
+            evidence: ["Heizstab 10 min / 0,29 kWh."],
+            observedBehaviorDe: "Heizstab 10 min / 0,29 kWh, decisionQuality=avoidable, besseres PV-/Preisfenster verfügbar.",
+            suggestedImprovementDe: "Heizstab in das günstigere PV-/Preisfenster legen.",
+            affectedParameter: null,
+            proposedNumericValue: null,
+            expectedDirection: "cost_down",
+            uncertaintyDe: "Nur ein Lauf.",
+            dateKey: YESTERDAY,
+        },
+        {
+            findingType: "thermal_optimization",
+            domain: "thermal",
+            severity: "info",
+            confidencePct: 70,
+            evidence: ["Heizstab 10 min / 0,29 kWh."],
+            observedBehaviorDe: "Heizstab 10 min / 0,29 kWh, decisionQuality=early, besseres PV-/Preisfenster verfügbar.",
+            suggestedImprovementDe: "Heizstab in das günstigere PV-/Preisfenster legen.",
+            affectedParameter: null,
+            proposedNumericValue: null,
+            expectedDirection: "cost_down",
+            uncertaintyDe: "Nur ein Lauf.",
+            dateKey: YESTERDAY,
+        },
+    ];
+}
+(0, node_test_1.describe)("Daily Analyst — zentrale KI-Kostenbuchhaltung", () => {
+    (0, node_test_1.it)("manueller Daily Analyst zählt als API-Aufruf in ai.calls_today / Kosten", async () => {
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-cost-"));
+        const host = makeHost({ ai_analyst_mode: "manual", ai_openai_api_key: "sk-test", timezone: "Europe/Berlin" }, dir);
+        await (0, persist_1.writeScoresDay)(host.getAbsolutePath(constants_1.DAILY_EVALUATOR_SCORES_CATEGORY), scoresRecord(YESTERDAY));
+        const counted = countingProvider();
+        const r = await (0, run_1.runDailyAnalystManual)(host, NOW, counted.provider);
+        strict_1.default.equal(r.status, "ok");
+        strict_1.default.equal(counted.calls.n, 1);
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.callsToday), 1);
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.callsTodayDate), "2026-08-31");
+        const expected = (0, pricing_1.estimateCostEur)("gpt-4.1-mini", 8_000, 400);
+        strict_1.default.ok(expected > 0);
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.costEstimateTodayEur), expected);
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.costEstimateMonthEur), expected);
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.costMonthKey), "2026-08");
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.lastCallCategory), "daily_analyst");
+    });
+    (0, node_test_1.it)("kein API-Aufruf (no_data) → keine Kostenbuchung", async () => {
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-nodata-"));
+        const host = makeHost({ ai_analyst_mode: "manual", ai_openai_api_key: "sk-test", timezone: "Europe/Berlin" }, dir);
+        const r = await (0, run_1.runDailyAnalystManual)(host, NOW, silentProvider());
+        strict_1.default.equal(r.status, "no_data");
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.callsToday) ?? 0, 0);
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.costEstimateTodayEur) ?? 0, 0);
+    });
+    (0, node_test_1.it)("fehlgeschlagener Request zählt trotzdem als Call (bestehende Semantik)", async () => {
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-fail-"));
+        const host = makeHost({ ai_analyst_mode: "manual", ai_openai_api_key: "sk-test", timezone: "Europe/Berlin" }, dir);
+        await (0, persist_1.writeScoresDay)(host.getAbsolutePath(constants_1.DAILY_EVALUATOR_SCORES_CATEGORY), scoresRecord(YESTERDAY));
+        const fail = {
+            analyze: async () => ({
+                ok: false,
+                findings: [],
+                reasonDe: "OpenAI-Fehler (500).",
+                usage: { promptTokens: 20, completionTokens: 0 },
+                error: "http_500",
+            }),
+        };
+        const r = await (0, run_1.runDailyAnalystManual)(host, NOW, fail);
+        strict_1.default.equal(r.status, "error");
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.callsToday), 1);
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.costEstimateTodayEur), (0, pricing_1.estimateCostEur)("gpt-4.1-mini", 20, 0));
+    });
+    (0, node_test_1.it)("operativer KI-Aufruf + Daily Analyst werden gemeinsam gezählt", async () => {
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-share-"));
+        const host = makeHost({ ai_analyst_mode: "manual", ai_openai_api_key: "sk-test", timezone: "Europe/Berlin" }, dir);
+        await (0, limiter_1.recordDailyCall)(host, 20, 0.01, NOW, 0, "Europe/Berlin", "planner_optimization");
+        await (0, persist_1.writeScoresDay)(host.getAbsolutePath(constants_1.DAILY_EVALUATOR_SCORES_CATEGORY), scoresRecord(YESTERDAY));
+        await (0, run_1.runDailyAnalystManual)(host, NOW, countingProvider().provider);
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.callsToday), 2);
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.lastCallCategory), "daily_analyst");
+        const analystCost = (0, pricing_1.estimateCostEur)("gpt-4.1-mini", 8_000, 400);
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.costEstimateTodayEur), Math.round((0.01 + analystCost) * 100_000) / 100_000);
+    });
+    (0, node_test_1.it)("bestehendes Call-Limit kann vom Daily Analyst nicht umgangen werden", async () => {
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-limit-"));
+        const host = makeHost({
+            ai_analyst_mode: "manual",
+            ai_openai_api_key: "sk-test",
+            ai_max_calls_per_day: 1,
+            timezone: "Europe/Berlin",
+        }, dir);
+        await (0, limiter_1.recordDailyCall)(host, 1, 0.01, NOW, 0, "Europe/Berlin", "planner_optimization");
+        await (0, persist_1.writeScoresDay)(host.getAbsolutePath(constants_1.DAILY_EVALUATOR_SCORES_CATEGORY), scoresRecord(YESTERDAY));
+        const counted = countingProvider();
+        const r = await (0, run_1.runDailyAnalystManual)(host, NOW, counted.provider);
+        strict_1.default.equal(counted.calls.n, 0);
+        strict_1.default.equal(r.status, "error");
+        strict_1.default.equal(r.error, "limit_reached");
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.callsToday), 1);
+    });
+    (0, node_test_1.it)("bestehendes Monatslimit kann vom Daily Analyst nicht umgangen werden", async () => {
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-month-"));
+        const host = makeHost({
+            ai_analyst_mode: "manual",
+            ai_openai_api_key: "sk-test",
+            ai_monthly_cost_limit_eur: 0.05,
+            timezone: "Europe/Berlin",
+        }, dir);
+        host.states.set(ensure_states_2.AI_STATES.costMonthKey, "2026-08");
+        host.states.set(ensure_states_2.AI_STATES.costEstimateMonthEur, 0.05);
+        host.states.set(ensure_states_2.AI_STATES.callsTodayDate, "2026-08-31");
+        await (0, persist_1.writeScoresDay)(host.getAbsolutePath(constants_1.DAILY_EVALUATOR_SCORES_CATEGORY), scoresRecord(YESTERDAY));
+        const counted = countingProvider();
+        const r = await (0, run_1.runDailyAnalystManual)(host, NOW, counted.provider);
+        strict_1.default.equal(counted.calls.n, 0);
+        strict_1.default.equal(r.error, "limit_reached");
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.callsToday) ?? 0, 0);
+    });
+    (0, node_test_1.it)("Tageswechsel setzt calls_today zurück, Monat bleibt", async () => {
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-dayroll-"));
+        const host = makeHost({ ai_analyst_mode: "manual", ai_openai_api_key: "sk-test", timezone: "Europe/Berlin" }, dir);
+        await (0, persist_1.writeScoresDay)(host.getAbsolutePath(constants_1.DAILY_EVALUATOR_SCORES_CATEGORY), scoresRecord("2026-08-29"));
+        await (0, run_1.runDailyAnalystForDate)(host, "2026-08-29", countingProvider().provider, new Date("2026-08-30T22:00:00+02:00"));
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.callsToday), 1);
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.callsTodayDate), "2026-08-30");
+        const monthBefore = host.states.get(ensure_states_2.AI_STATES.costEstimateMonthEur);
+        await (0, persist_1.writeScoresDay)(host.getAbsolutePath(constants_1.DAILY_EVALUATOR_SCORES_CATEGORY), scoresRecord(YESTERDAY));
+        await (0, run_1.runDailyAnalystForDate)(host, YESTERDAY, countingProvider().provider, NOW);
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.callsToday), 1);
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.callsTodayDate), "2026-08-31");
+        strict_1.default.ok(Number(host.states.get(ensure_states_2.AI_STATES.costEstimateMonthEur)) > Number(monthBefore));
+    });
+    (0, node_test_1.it)("Monatswechsel setzt cost_estimate_month_eur zurück", async () => {
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-monthroll-"));
+        const host = makeHost({ ai_analyst_mode: "manual", ai_openai_api_key: "sk-test", timezone: "Europe/Berlin" }, dir);
+        host.states.set(ensure_states_2.AI_STATES.costMonthKey, "2026-07");
+        host.states.set(ensure_states_2.AI_STATES.costEstimateMonthEur, 0.5);
+        await (0, persist_1.writeScoresDay)(host.getAbsolutePath(constants_1.DAILY_EVALUATOR_SCORES_CATEGORY), scoresRecord(YESTERDAY));
+        await (0, run_1.runDailyAnalystManual)(host, NOW, countingProvider().provider);
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.costMonthKey), "2026-08");
+        strict_1.default.equal(host.states.get(ensure_states_2.AI_STATES.costEstimateMonthEur), (0, pricing_1.estimateCostEur)("gpt-4.1-mini", 8_000, 400));
+    });
+});
+(0, node_test_1.describe)("Daily Analyst — Findings Dedup + VIS-Text", () => {
+    (0, node_test_1.it)("persistiert nach Dedup ein Finding und schreibt findings_de mit allen Einträgen", async () => {
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), "analyst-dedupe-"));
+        const host = makeHost({ ai_analyst_mode: "manual", ai_openai_api_key: "sk-test", timezone: "Europe/Berlin" }, dir);
+        await (0, persist_1.writeScoresDay)(host.getAbsolutePath(constants_1.DAILY_EVALUATOR_SCORES_CATEGORY), scoresRecord(YESTERDAY));
+        const r = await (0, run_1.runDailyAnalystManual)(host, NOW, countingProvider(thermalDupFindings()).provider);
+        strict_1.default.equal(r.findings.length, 1);
+        strict_1.default.equal(host.states.get(ensure_states_1.AI_ANALYST_STATES.findingsCount), 1);
+        const listed = String(host.states.get(ensure_states_1.AI_ANALYST_STATES.findingsDe) ?? "");
+        strict_1.default.match(listed, /^1\. /);
+        strict_1.default.equal(listed.includes("\n2. "), false);
+        const persisted = await (0, persist_3.readAiAnalystDay)(host.getAbsolutePath(persist_3.AI_ANALYST_FINDINGS_CATEGORY), YESTERDAY);
+        strict_1.default.equal(persisted?.findings.length, 1);
+        strict_1.default.equal(persisted?.findings.length, host.states.get(ensure_states_1.AI_ANALYST_STATES.findingsCount));
     });
 });

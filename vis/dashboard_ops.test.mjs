@@ -114,6 +114,7 @@ const REQUIRED_STATE_PATHS = [
 	"learning.battery_runtime.predicted_night_consumption_kwh",
 	"planner.battery_discharge.reason_de",
 	"ai.daily_analyst.status",
+	"ai.daily_analyst.findings_de",
 	"ai.validator.active_overrides_count",
 	"learning.daily_evaluator.last_day_global_score",
 	"learning.shadow_engine.yesterday_real_net_cost_eur",
@@ -799,5 +800,24 @@ describe("VIS battery / grid / GB presentation", () => {
 		assert.match(visHtml, /learning\.pv_bias\.raw_today_kwh/);
 		assert.equal(visHtml.includes("sample_days_30d"), false);
 		assert.equal(visHtml.includes("forecast_plan.days_json"), false);
+	});
+
+	it("hides Grid Rewards unless a present value exists; lists all Daily-Analyst findings", () => {
+		assert.match(visHtml, /function gridRewardsPresent/);
+		assert.match(visHtml, /function econAdvantageRows/);
+		assert.match(visHtml, /ai\.daily_analyst\.findings_de/);
+		assert.match(visHtml, /ems-stats-findings/);
+		assert.match(visHtml, /economics\.today\.grid_rewards_eur/);
+		assert.match(visHtml, /economics\.cumulative\.grid_rewards_eur/);
+		function gridRewardsPresent(source, credit) {
+			if (!source || source === "off") return false;
+			if (credit == null || !isFinite(Number(credit))) return false;
+			if (source === "billing") return Number(credit) >= 0;
+			return Number(credit) > 0;
+		}
+		assert.equal(gridRewardsPresent("estimate_day", 0), false);
+		assert.equal(gridRewardsPresent("off", null), false);
+		assert.equal(gridRewardsPresent("estimate_day", 1.21), true);
+		assert.equal(gridRewardsPresent("billing", 0), true);
 	});
 });

@@ -97,4 +97,15 @@ function mockHost(initial = {}) {
         strict_1.default.equal((await host.getStateAsync(ensure_states_js_1.AI_STATES.callsLimit))?.val, 20);
         strict_1.default.equal((await host.getStateAsync(ensure_states_js_1.AI_STATES.limitWarning))?.val, false);
     });
+    (0, node_test_1.it)("resets month cost on a new local month and records call category", async () => {
+        const host = mockHost({
+            [ensure_states_js_1.AI_STATES.costMonthKey]: "2026-06",
+            [ensure_states_js_1.AI_STATES.costEstimateMonthEur]: 1.5,
+        });
+        const now = new Date("2026-07-02T10:00:00+02:00");
+        const s = await (0, limiter_js_1.recordDailyCall)(host, 20, 0.02, now, 0, "Europe/Berlin", "daily_analyst");
+        strict_1.default.equal(s.costMonthEur, 0.02);
+        strict_1.default.equal((await host.getStateAsync(ensure_states_js_1.AI_STATES.costMonthKey))?.val, "2026-07");
+        strict_1.default.equal((await host.getStateAsync(ensure_states_js_1.AI_STATES.lastCallCategory))?.val, "daily_analyst");
+    });
 });

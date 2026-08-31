@@ -99,4 +99,16 @@ describe("ai limiter", () => {
 		assert.equal((await host.getStateAsync(AI_STATES.callsLimit))?.val, 20);
 		assert.equal((await host.getStateAsync(AI_STATES.limitWarning))?.val, false);
 	});
+
+	it("resets month cost on a new local month and records call category", async () => {
+		const host = mockHost({
+			[AI_STATES.costMonthKey]: "2026-06",
+			[AI_STATES.costEstimateMonthEur]: 1.5,
+		});
+		const now = new Date("2026-07-02T10:00:00+02:00");
+		const s = await recordDailyCall(host, 20, 0.02, now, 0, "Europe/Berlin", "daily_analyst");
+		assert.equal(s.costMonthEur, 0.02);
+		assert.equal((await host.getStateAsync(AI_STATES.costMonthKey))?.val, "2026-07");
+		assert.equal((await host.getStateAsync(AI_STATES.lastCallCategory))?.val, "daily_analyst");
+	});
 });

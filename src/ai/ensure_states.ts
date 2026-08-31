@@ -28,6 +28,8 @@ export const AI_STATES = {
 	userEnabled: `${AI_BASE}.user_enabled`,
 	/** Einmalige Migration von native.ai_enabled abgeschlossen. */
 	userEnabledMigratedV1: `${AI_BASE}.user_enabled_migrated_v1`,
+	/** Letzte API-Herkunft (planner_optimization | daily_analyst) — Gesamtsummen bleiben global. */
+	lastCallCategory: `${AI_BASE}.last_call_category`,
 } as const;
 
 export async function ensureAiStates(host: StateHost): Promise<void> {
@@ -255,6 +257,17 @@ export async function ensureAiStates(host: StateHost): Promise<void> {
 				read: true,
 				write: false,
 				def: false,
+			},
+		},
+		{
+			id: AI_STATES.lastCallCategory,
+			common: {
+				name: "Letzte KI-API-Herkunft (intern)",
+				type: "string",
+				role: "text",
+				read: true,
+				write: false,
+				def: "",
 			},
 		},
 	];

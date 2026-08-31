@@ -26,8 +26,9 @@ const SYSTEM_PROMPT = [
 	"proposed_numeric_value nur setzen, wenn affected_parameter genau battery.opportunity_margin_ct",
 	"ist und ein belastbarer Zahlenvorschlag (ct/kWh, 0..10) aus den Daten folgt — sonst null.",
 	"Niemals Safety-/Hardlimit-Parameter vorschlagen.",
-	"Maximal 10 Findings, nur die relevantesten. Leeres findings-Array ist ok, wenn der Tag",
-	"unauffällig war. observed_behavior_de/suggested_improvement_de/uncertainty_de sind kurze",
+	"Maximal 10 Findings, nur die relevantesten. Keine doppelten Findings zum selben Ereignis",
+	"(gleicher Lauf, gleiches Zeitfenster, gleiches Optimierungsproblem). Leeres findings-Array",
+	"ist ok, wenn der Tag unauffällig war. observed_behavior_de/suggested_improvement_de/uncertainty_de sind kurze",
 	"deutsche Sätze, die sich ausschließlich auf die übergebenen Daten stützen.",
 ].join(" ");
 

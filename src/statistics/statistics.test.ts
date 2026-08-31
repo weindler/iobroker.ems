@@ -17,11 +17,15 @@ import {
 	resolveHomeMonthFromTibber,
 	siblingTibberConsumptionState,
 	buildHomeMonthTotals,
+	sumHomeDays,
+	emptyHomeDay,
 } from "./compute.js";
 import {
 	resolveMonthGridRewards,
 	resolveTodayGridRewards,
+	resolvePeriodGridRewards,
 	netHomeGridCostEur,
+	gridRewardsCreditIsPresent,
 } from "./grid_rewards.js";
 import {
 	resolvePeriodRange,
@@ -443,6 +447,53 @@ describe("statistics compute", () => {
 			resolveTodayGridRewards({ enabled: false, mappedDayEur: 1 }).source,
 			"off",
 		);
+
+		assert.equal(resolveTodayGridRewards({ enabled: true, mappedDayEur: 0 }).source, "off");
+		assert.equal(resolveTodayGridRewards({ enabled: true, mappedDayEur: null }).source, "off");
+		assert.equal(gridRewardsCreditIsPresent("estimate_day", 0), false);
+		assert.equal(gridRewardsCreditIsPresent("estimate_day", 1.21), true);
+		assert.equal(gridRewardsCreditIsPresent("billing", 0), true);
+		assert.equal(gridRewardsCreditIsPresent("off", 0), false);
+
+		const monthZero = resolveMonthGridRewards({
+			enabled: true,
+			monthPrefix: "2026-08",
+			billingCreditEur: null,
+			mappedMonthEur: 0,
+		});
+		assert.equal(monthZero.source, "off");
+		assert.equal(monthZero.creditEur, null);
+
+		const billingZero = resolveMonthGridRewards({
+			enabled: true,
+			monthPrefix: "2026-08",
+			billingCreditEur: 0,
+			mappedMonthEur: 1.2,
+		});
+		assert.equal(billingZero.source, "billing");
+		assert.equal(billingZero.creditEur, 0);
+
+		const periodNone = resolvePeriodGridRewards({
+			enabled: true,
+			fromKey: "2026-08-01",
+			toKey: "2026-08-31",
+			todayKey: "2026-08-31",
+			mappedMonthEur: 0,
+			monthRewardsBilling: {},
+			dayCredits: [{ dateKey: "2026-08-31", creditEur: null }],
+		});
+		assert.equal(periodNone.source, "off");
+		assert.equal(periodNone.creditEur, null);
+	});
+
+	it("sumHomeDays setzt source=off wenn keine Rewards vorhanden sind (kein erfundenes estimate_day)", () => {
+		const summed = sumHomeDays([
+			{ ...emptyHomeDay("2026-08-30"), gridImportKwh: 0.4, dynamicCostEur: 0.59, fixedTariffCostEur: 0.59 },
+			{ ...emptyHomeDay("2026-08-31"), gridImportKwh: 0.2, dynamicCostEur: 0.3, fixedTariffCostEur: 0.3 },
+		]);
+		assert.equal(summed.gridRewardsCreditEur, null);
+		assert.equal(summed.gridRewardsSource, "off");
+		assert.equal(gridRewardsCreditIsPresent(summed.gridRewardsSource, summed.gridRewardsCreditEur), false);
 	});
 
 	it("month mobility applies month rewards once from mapping", () => {

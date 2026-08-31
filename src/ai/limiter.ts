@@ -7,6 +7,9 @@ export type LimiterHost = {
 	setStateAsync: (id: string, state: ioBroker.SettableState) => Promise<unknown>;
 };
 
+/** Interne Herkunft eines echten API-Aufrufs — Gesamtsummen bleiben global. */
+export type AiCallCategory = "planner_optimization" | "daily_analyst";
+
 /** Kalendertag in Hauszeitzone (Default Europe/Berlin) — YYYY-MM-DD. */
 export function localDateKey(now: Date, timeZone = "Europe/Berlin"): string {
 	try {
@@ -128,6 +131,7 @@ export async function recordDailyCall(
 	now: Date = new Date(),
 	monthlyCostLimitEur = 0,
 	timeZone = "Europe/Berlin",
+	category?: AiCallCategory,
 ): Promise<DailyLimitState> {
 	const state = await readAndRolloverDailyCalls(host, maxCallsPerDay, now, monthlyCostLimitEur, timeZone);
 	const callsToday = state.callsToday + 1;
@@ -136,6 +140,9 @@ export async function recordDailyCall(
 	await host.setStateAsync(AI_STATES.callsToday, { val: callsToday, ack: true });
 	await host.setStateAsync(AI_STATES.costEstimateTodayEur, { val: costTodayEur, ack: true });
 	await host.setStateAsync(AI_STATES.costEstimateMonthEur, { val: costMonthEur, ack: true });
+	if (category) {
+		await host.setStateAsync(AI_STATES.lastCallCategory, { val: category, ack: true });
+	}
 	const monthlyLimitEur = monthlyCostLimitEur > 0 ? monthlyCostLimitEur : 0;
 	const monthlyLimitReached = monthlyLimitEur > 0 && costMonthEur >= monthlyLimitEur;
 	const limitReached = callsToday >= maxCallsPerDay || monthlyLimitReached;

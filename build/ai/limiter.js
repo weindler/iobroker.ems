@@ -90,7 +90,7 @@ async function readAndRolloverDailyCalls(host, maxCallsPerDay, now = new Date(),
 }
 exports.readAndRolloverDailyCalls = readAndRolloverDailyCalls;
 /** Zählt einen tatsächlich durchgeführten KI-Call + addiert Kostenschätzung (Tag + Monat). */
-async function recordDailyCall(host, maxCallsPerDay, addCostEur, now = new Date(), monthlyCostLimitEur = 0, timeZone = "Europe/Berlin") {
+async function recordDailyCall(host, maxCallsPerDay, addCostEur, now = new Date(), monthlyCostLimitEur = 0, timeZone = "Europe/Berlin", category) {
     const state = await readAndRolloverDailyCalls(host, maxCallsPerDay, now, monthlyCostLimitEur, timeZone);
     const callsToday = state.callsToday + 1;
     const costTodayEur = Math.round((state.costTodayEur + addCostEur) * 100_000) / 100_000;
@@ -98,6 +98,9 @@ async function recordDailyCall(host, maxCallsPerDay, addCostEur, now = new Date(
     await host.setStateAsync(ensure_states_1.AI_STATES.callsToday, { val: callsToday, ack: true });
     await host.setStateAsync(ensure_states_1.AI_STATES.costEstimateTodayEur, { val: costTodayEur, ack: true });
     await host.setStateAsync(ensure_states_1.AI_STATES.costEstimateMonthEur, { val: costMonthEur, ack: true });
+    if (category) {
+        await host.setStateAsync(ensure_states_1.AI_STATES.lastCallCategory, { val: category, ack: true });
+    }
     const monthlyLimitEur = monthlyCostLimitEur > 0 ? monthlyCostLimitEur : 0;
     const monthlyLimitReached = monthlyLimitEur > 0 && costMonthEur >= monthlyLimitEur;
     const limitReached = callsToday >= maxCallsPerDay || monthlyLimitReached;

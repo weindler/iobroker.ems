@@ -40,6 +40,8 @@ export const AI_ANALYST_STATES = {
 	lastError: `${BASE}.last_error`,
 	findingsCount: `${BASE}.findings_count`,
 	topFindingDe: `${BASE}.top_finding_de`,
+	/** Nummerierte Findings des letzten Laufs (Klartext, kein JSON-Dump). */
+	findingsDe: `${BASE}.findings_de`,
 	runNowRequest: `${BASE}.run_now_request`,
 } as const;
 
@@ -55,6 +57,7 @@ export async function ensureAiDailyAnalystStates(host: StateHost): Promise<void>
 		strState(AI_ANALYST_STATES.lastError, "KI Daily Analyst letzter Fehler", ""),
 		numState(AI_ANALYST_STATES.findingsCount, "KI Daily Analyst Findings letzter Tag"),
 		strState(AI_ANALYST_STATES.topFindingDe, "KI Daily Analyst wichtigstes Finding", ""),
+		strState(AI_ANALYST_STATES.findingsDe, "KI Daily Analyst Findings (nummeriert)", ""),
 		boolState(AI_ANALYST_STATES.runNowRequest, "KI Daily Analyst jetzt analysieren (manuell)", {
 			write: true,
 			role: "button",

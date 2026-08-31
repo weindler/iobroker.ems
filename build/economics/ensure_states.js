@@ -32,6 +32,7 @@ exports.ECONOMICS_FLAT = {
     todayTarifvorteilEur: "economics.today.tarifvorteil_eur",
     todayEmsVorteilEur: "economics.today.ems_vorteil_eur",
     todayKiMehrwertEur: "economics.today.ki_mehrwert_eur",
+    todayGridRewardsEur: "economics.today.grid_rewards_eur",
     periodTarifvorteilEur: "economics.period.tarifvorteil_eur",
     periodEmsVorteilEur: "economics.period.ems_vorteil_eur",
     periodKiMehrwertEur: "economics.period.ki_mehrwert_eur",
@@ -40,6 +41,7 @@ exports.ECONOMICS_FLAT = {
     cumulativeTarifvorteilEur: "economics.cumulative.tarifvorteil_eur",
     cumulativeEmsVorteilEur: "economics.cumulative.ems_vorteil_eur",
     cumulativeKiMehrwertEur: "economics.cumulative.ki_mehrwert_eur",
+    cumulativeGridRewardsEur: "economics.cumulative.grid_rewards_eur",
 };
 async function ensureEconomicsStates(host) {
     await (0, state_util_1.ensureChannel)(host, "economics", "EMS-Light Wirtschaftlichkeit (Phase 7)");
@@ -54,6 +56,7 @@ async function ensureEconomicsStates(host) {
         numState(exports.ECONOMICS_FLAT.todayTarifvorteilEur, "Tarifvorteil heute", "EUR"),
         numState(exports.ECONOMICS_FLAT.todayEmsVorteilEur, "EMS-Vorteil heute", "EUR"),
         numState(exports.ECONOMICS_FLAT.todayKiMehrwertEur, "KI-Mehrwert heute", "EUR"),
+        numState(exports.ECONOMICS_FLAT.todayGridRewardsEur, "Grid Rewards heute", "EUR"),
         numState(exports.ECONOMICS_FLAT.periodTarifvorteilEur, "Tarifvorteil Zeitraum", "EUR"),
         numState(exports.ECONOMICS_FLAT.periodEmsVorteilEur, "EMS-Vorteil Zeitraum", "EUR"),
         numState(exports.ECONOMICS_FLAT.periodKiMehrwertEur, "KI-Mehrwert Zeitraum", "EUR"),
@@ -62,6 +65,7 @@ async function ensureEconomicsStates(host) {
         numState(exports.ECONOMICS_FLAT.cumulativeTarifvorteilEur, "Tarifvorteil kumuliert", "EUR"),
         numState(exports.ECONOMICS_FLAT.cumulativeEmsVorteilEur, "EMS-Vorteil kumuliert", "EUR"),
         numState(exports.ECONOMICS_FLAT.cumulativeKiMehrwertEur, "KI-Mehrwert kumuliert", "EUR"),
+        numState(exports.ECONOMICS_FLAT.cumulativeGridRewardsEur, "Grid Rewards kumuliert", "EUR"),
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }

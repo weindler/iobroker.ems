@@ -230,6 +230,44 @@ var stateIds=[
 	INST+".addons.battery.grid_balance.effective_power_w",
 	INST+".addons.battery.grid_balance.hold_detected",
 	INST+".addons.battery.grid_balance.last_action",
+	INST+".learning.battery_runtime.predicted_night_consumption_kwh",
+	INST+".learning.battery_runtime.required_night_reserve_kwh",
+	INST+".learning.battery_runtime.avg_night_discharge_kwh",
+	INST+".learning.battery_runtime.night_reserve_reason_de",
+	INST+".planner.battery_discharge.reason_de",
+	INST+".planner.battery_discharge.allowed",
+	INST+".planner.battery_discharge.max_discharge_w",
+	INST+".planner.battery_reserve.required_soc_at_pv_end_pct",
+	INST+".planner.battery_reserve.reason_de",
+	INST+".ai.daily_analyst.status",
+	INST+".ai.daily_analyst.mode_effective",
+	INST+".ai.daily_analyst.top_finding_de",
+	INST+".ai.daily_analyst.findings_count",
+	INST+".ai.daily_analyst.last_run_at",
+	INST+".ai.daily_analyst.reason_de",
+	INST+".ai.validator.active_overrides_count",
+	INST+".ai.validator.last_reject_reason_de",
+	INST+".ai.validator.last_accepted_parameter",
+	INST+".learning.daily_evaluator.last_day_global_score",
+	INST+".learning.daily_evaluator.last_day_findings_count",
+	INST+".learning.daily_evaluator.last_day_top_finding_de",
+	INST+".learning.daily_evaluator.last_evaluated_date_key",
+	INST+".learning.shadow_engine.yesterday_real_net_cost_eur",
+	INST+".learning.shadow_engine.yesterday_reference_no_ems_net_cost_eur",
+	INST+".learning.shadow_engine.yesterday_ems_without_ai_net_cost_eur",
+	INST+".learning.climate_shared_power.summary_de",
+	INST+".economics.today.tarifvorteil_eur",
+	INST+".economics.today.ems_vorteil_eur",
+	INST+".economics.today.ki_mehrwert_eur",
+	INST+".economics.period.tarifvorteil_eur",
+	INST+".economics.period.ems_vorteil_eur",
+	INST+".economics.period.ki_mehrwert_eur",
+	INST+".economics.period.grid_rewards_eur",
+	INST+".economics.period.label_de",
+	INST+".economics.cumulative.tarifvorteil_eur",
+	INST+".economics.cumulative.ems_vorteil_eur",
+	INST+".economics.cumulative.ki_mehrwert_eur",
+	INST+".economics.reason_de",
 	INST+".compare.plan_a.chart_json",
 	INST+".compare.plan_b.chart_json",
 	INST+".compare.delta_summary_json",
@@ -1283,6 +1321,8 @@ function visGbBlockReasonDe(code){
 	var map={
 		disabled:"AUS",
 		price_below_minimum:"Preis unter Schwelle",
+		planner_budget_zero:"Kein Entladebudget",
+		no_hardware_headroom:"Keine Hardware-Reserve",
 		battery_hold:"Batterie-Hold",
 		planned_battery_action:"geplante Batterieaktion",
 		external_ev_authority:"externe EV-Hoheit",
@@ -1323,6 +1363,10 @@ function visGbStatus(s){
 	if(reason==="price_below_minimum"){
 		var p=visFmtCtNum(s.gbPrice),m=visFmtCtNum(s.gbMin);
 		if(p&&m)reasonDe="Preis "+p+" < "+m+" ct";
+	}
+	if(reason==="planner_budget_zero"){
+		reasonDe="Netzausgleich blockiert, weil der Planner aktuell kein zusätzliches Batterie-Entladebudget freigibt.";
+		if(s.dischargeReasonDe)reasonDe=s.dischargeReasonDe;
 	}
 	return{label:"BLOCKIERT",cls:"gb-block",reason:reasonDe};
 }
@@ -1767,6 +1811,14 @@ function visBatteryDayLines(s){
 	if(s.gridWindowLabel)lines.push("Netzladung "+s.gridWindowLabel);
 	else if(s.hasPvChargeWindow)lines.push("PV-Ladung im Plan");
 	else if(s.chargingNow&&!s.emsChargeAction)lines.push("lädt gerade ohne EMS-Fenster");
+	if(s.nightNeedKwh!=null&&isFinite(s.nightNeedKwh)&&s.nightNeedKwh>0){
+		var nk=visFmtKwh(s.nightNeedKwh);
+		if(nk)lines.push("gelernter Nachtbedarf "+nk);
+	}
+	if(s.nightReserveKwh!=null&&isFinite(s.nightReserveKwh)&&s.nightReserveKwh>0){
+		var rk=visFmtKwh(s.nightReserveKwh);
+		if(rk)lines.push("Reserve "+rk);
+	}
 	return lines;
 }
 function visCarDayLines(s){
@@ -1837,6 +1889,7 @@ function visLiveSnap(){
 		gbPrice:num(g("addons.battery.grid_balance.current_price_ct_kwh")),
 		gbMin:num(g("addons.battery.grid_balance.price_min_ct_kwh")),
 		gbEffectiveW:num(g("addons.battery.grid_balance.effective_power_w")),
+		dischargeReasonDe:txt(g("planner.battery_discharge.reason_de"),""),
 		surplusW:num(g("operator.diagnostics.surplus_w")),
 		deficitW:num(g("operator.diagnostics.deficit_w")),
 		pvW:num(g("live.pv.power_w")),
@@ -2202,6 +2255,16 @@ function renderAiSummary(){
 	else if(calls!==null)callsLine="Abrufe heute "+Math.round(calls);
 	var costLine=cost!==null&&cost>0?" · ~"+cost.toFixed(3).replace(".",",")+" €":"";
 	var runLine=lastRun?(" · zuletzt "+fmtSmartTime(lastRun)):"";
+	var analystStatus=txt(g("ai.daily_analyst.status"),"");
+	var analystTop=txt(g("ai.daily_analyst.top_finding_de"),"");
+	var analystCount=num(g("ai.daily_analyst.findings_count"));
+	var overrides=num(g("ai.validator.active_overrides_count"));
+	var analystLine="";
+	if(analystStatus&&analystStatus!=="—"){
+		analystLine="Analyst: "+analystStatus;
+		if(analystCount!=null)analystLine+=" · "+Math.round(analystCount)+" Finding(s)";
+		if(overrides!=null&&overrides>0)analystLine+=" · Override aktiv";
+	}
 	el.innerHTML='<div class="ems-k">KI</div>'
 		+'<label class="ems-ai-toggle"><input type="checkbox" data-ems-action="ai-user-enabled"'
 		+(v.userEnabled?" checked":"")
@@ -2211,7 +2274,9 @@ function renderAiSummary(){
 		+(v.compareLabel?'<div class="ems-ai-line '+(v.prefersB?"warn":"no")+'">'+esc(v.compareLabel)+'</div>':"")
 		+'<div class="ems-ai-reason">'
 		+esc(callsLine)+esc(costLine)+esc(runLine)
-		+"</div>";
+		+"</div>"
+		+(analystLine?'<div class="ems-ai-reason">'+esc(analystLine)+"</div>":"")
+		+(analystTop&&analystTop!=="—"?'<div class="ems-ai-reason">'+esc(analystTop)+"</div>":"");
 }
 
 function nextActionItemHtml(it){
@@ -2285,6 +2350,8 @@ function climateTodayLines(){
 		if(note)line+=" — "+note;
 		lines.push(line);
 	}
+	var sp=txt(g("learning.climate_shared_power.summary_de"),"");
+	if(sp&&sp!=="—")lines.push("Shared-Power "+sp);
 	return lines;
 }
 var paintedHtml={next:"",horizon:"",stack:""};
@@ -2322,6 +2389,8 @@ function renderNext(){
 		minSocPct:num(g("addons.battery.limits.hardware_min_soc_pct")),
 		strategyDe:txt(g("operator.plan.battery_strategy_de"),""),
 		gridWindowLabel:batteryTodayWindowLabel(true),
+		nightNeedKwh:num(g("learning.battery_runtime.predicted_night_consumption_kwh")),
+		nightReserveKwh:num(g("learning.battery_runtime.required_night_reserve_kwh")),
 		hasPvChargeWindow:hasPv,
 		chargingNow:visChargeW(snap)>=ON_W,
 		emsChargeAction:emsAct==="Batterie-Ladung"||emsAct==="Batterie-Netzladung"
@@ -2560,6 +2629,10 @@ function renderStack(){
 		}
 		var acSched=climateScheduleRow(unitIndex);
 		rows.push([acSched.label,acSched.value]);
+		if(unitIndex===1){
+			var sp=txt(g("learning.climate_shared_power.summary_de"),"");
+			if(sp&&sp!=="—")rows.push(["Shared-Power",shortNote(sp,90)]);
+		}
 		return card(title,"#79c0ff",badges,rows,climateCardNote(unitIndex),null,"ac");
 	}
 
@@ -2630,6 +2703,10 @@ function renderDaily(){
 function fmtEur(v){
 	if(v===null||v===undefined||!isFinite(Number(v)))return "—";
 	return Number(v).toFixed(2).replace(".",",")+" €";
+}
+function fmtScoreStats(v){
+	if(v===null||v===undefined||!isFinite(Number(v)))return "—";
+	return Math.round(Number(v))+" %";
 }
 function fmtKwhStats(v){
 	if(v===null||v===undefined||!isFinite(Number(v)))return "—";
@@ -2831,7 +2908,36 @@ function renderStatistics(){
 		+statsCard("Schnellader",{cls:pending.length?"warn":"neu",txt:pending.length?String(pending.length)+" offen":"keine"},[
 			["Pending kWh",fmtKwhStats(mobT.publicPendingKwh)],
 			["Ack",txt(g("statistics.public_charge.submit_ack_de"),"—")]
-		],pendingNote,"ems-stats-pending");
+		],pendingNote,"ems-stats-pending")
+		+statsCard("Wirtschaftlichkeit heute",savingsHero(num(g("economics.today.ems_vorteil_eur"))),[
+			["Tarifvorteil",fmtEur(num(g("economics.today.tarifvorteil_eur")))],
+			["EMS-Vorteil",fmtEur(num(g("economics.today.ems_vorteil_eur")))],
+			["KI-Mehrwert",fmtEur(num(g("economics.today.ki_mehrwert_eur")))]
+		],txt(g("economics.reason_de"),""))
+		+statsCard("Wirtschaftlichkeit "+(txt(g("economics.period.label_de"),"Zeitraum")||"Zeitraum"),savingsHero(num(g("economics.period.ems_vorteil_eur"))),[
+			["Tarifvorteil",fmtEur(num(g("economics.period.tarifvorteil_eur")))],
+			["EMS-Vorteil",fmtEur(num(g("economics.period.ems_vorteil_eur")))],
+			["KI-Mehrwert",fmtEur(num(g("economics.period.ki_mehrwert_eur")))],
+			["Grid Rewards",fmtEur(num(g("economics.period.grid_rewards_eur")))]
+		],"Grid Rewards getrennt, kein Schönrechnen.")
+		+statsCard("Wirtschaftlichkeit kumuliert",savingsHero(num(g("economics.cumulative.ems_vorteil_eur"))),[
+			["Tarifvorteil",fmtEur(num(g("economics.cumulative.tarifvorteil_eur")))],
+			["EMS-Vorteil",fmtEur(num(g("economics.cumulative.ems_vorteil_eur")))],
+			["KI-Mehrwert",fmtEur(num(g("economics.cumulative.ki_mehrwert_eur")))]
+		],"Seit Statistik-Start, kein Schönrechnen.")
+		+statsCard("Tagesbewertung",{cls:"neu",txt:fmtScoreStats(num(g("learning.daily_evaluator.last_day_global_score")))},[
+			["Tag",txt(g("learning.daily_evaluator.last_evaluated_date_key"),"—")],
+			["Findings",txt(g("learning.daily_evaluator.last_day_findings_count"),"—")]
+		],txt(g("learning.daily_evaluator.last_day_top_finding_de"),""))
+		+statsCard("Shadow gestern",{cls:"neu",txt:fmtEur(num(g("learning.shadow_engine.yesterday_real_net_cost_eur")))},[
+			["Real",fmtEur(num(g("learning.shadow_engine.yesterday_real_net_cost_eur")))],
+			["ohne EMS",fmtEur(num(g("learning.shadow_engine.yesterday_reference_no_ems_net_cost_eur")))],
+			["EMS ohne KI",fmtEur(num(g("learning.shadow_engine.yesterday_ems_without_ai_net_cost_eur")))]
+		],"Point-in-time, keine rückblickende Optimierung.")
+		+statsCard("KI Analyst / Validator",{cls:"neu",txt:txt(g("ai.daily_analyst.status"),"disabled")||"disabled"},[
+			["Findings",txt(g("ai.daily_analyst.findings_count"),"—")],
+			["Overrides",txt(g("ai.validator.active_overrides_count"),"0")]
+		],txt(g("ai.daily_analyst.top_finding_de"),"")||txt(g("ai.validator.last_reject_reason_de"),""));
 	var reasonBase=txt(g("statistics.reason_de"),"Statistik: Mappings im Admin-Tab „Statistik“ setzen.");
 	if(homeP.gridRewardsSource==="estimate_month"||homeP.gridRewardsSource==="estimate_day"){
 		reasonBase+=" Rewards noch Schätzung — Abrechnung per statistics.adjust_request (Admin → Statistik → Manuell/Abrechnung).";

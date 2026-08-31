@@ -38,5 +38,6 @@ exports.DAILY_EVALUATOR_STATES = {
     lastDayEvaluable: "learning.daily_evaluator.last_day_evaluable",
     lastDayGlobalScore: "learning.daily_evaluator.last_day_global_score",
     lastDayFindingsCount: "learning.daily_evaluator.last_day_findings_count",
+    lastDayTopFindingDe: "learning.daily_evaluator.last_day_top_finding_de",
     learningSampleCountJson: "learning.daily_evaluator.learning_sample_count_json",
 };

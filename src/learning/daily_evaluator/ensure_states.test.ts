@@ -17,7 +17,7 @@ function makeFakeHost(): StateHost & { objects: Set<string> } {
 
 describe("daily_evaluator ensure_states", () => {
 	it("nur minimale, rein lesende Admin-/Visibility-States", () => {
-		assert.equal(DAILY_EVALUATOR_STATE_IDS.length, 9);
+		assert.equal(DAILY_EVALUATOR_STATE_IDS.length, 10);
 		assert.ok(DAILY_EVALUATOR_STATE_IDS.every((id) => id.startsWith("learning.daily_evaluator.")));
 	});
 

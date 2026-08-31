@@ -58,6 +58,10 @@ exports.SELECTED_STATE_DATA_ARTIFACTS = [
     { category: "learning/day_evaluation", fileName: "day_evaluation_v1.json" },
     { category: "statistics", fileName: "statistics_v1.json" },
     { category: "learning/vehicle_presence", fileName: "vehicle_presence_learning_v1.json" },
+    { category: "learning/climate_shared_power", fileName: "climate_shared_power_v1.json" },
+    { category: "learning/daily_evaluator", fileName: "learning_state_v1.json" },
+    { category: "economics", fileName: "economics_v1.json" },
+    { category: "ai/override_ledger", fileName: "override_ledger_v1.json" },
 ];
 exports.SELECTED_STATE_DATA_KEYS = exports.SELECTED_STATE_DATA_ARTIFACTS.map((a) => a.fileName);
 const LEARNING_FILE_ARTIFACTS = exports.SELECTED_STATE_DATA_ARTIFACTS;

@@ -108,4 +108,54 @@ describe("Block B — battery opportunity cost", () => {
 		assert.equal(r.usable, true);
 		assert.equal(r.headroomAboveReserveKwh, null);
 	});
+
+	describe("PFLICHT-FIX 2 — reichliches Headroom darf keinen Peak-Preis irgendwo im Horizont zum Vollpreis machen", () => {
+		it("hoher SOC/reichliches Headroom + kleiner bekannter späterer Bedarf → deutlich abgeschlagen", () => {
+			const r = evaluateBatteryOpportunityCost({
+				nowMs: NOW,
+				priceSlots: [slot(20, 45)],
+				// z. B. SOC 91 % bei 10 kWh, Reserve ~42 % → Headroom ≈ 4.9 kWh.
+				headroomAboveReserveKwh: 4.9,
+				pvRemainingTodayKwh: 0,
+				plannedLaterDemandKwh: 2,
+			});
+			assert.equal(r.usable, true);
+			assert.ok(r.opportunityCostCtPerKwh < 45, `sollte abgeschlagen sein, got ${r.opportunityCostCtPerKwh}`);
+			assert.ok(r.reasonCodes.includes("battery_opportunity_headroom_exceeds_later_demand"));
+		});
+
+		it("knappes Headroom relativ zum bekannten späteren Bedarf → voller Preis bleibt (Knappheit nicht aufgeweicht)", () => {
+			const r = evaluateBatteryOpportunityCost({
+				nowMs: NOW,
+				priceSlots: [slot(20, 45)],
+				headroomAboveReserveKwh: 2,
+				pvRemainingTodayKwh: 0,
+				plannedLaterDemandKwh: 2,
+			});
+			assert.equal(r.opportunityCostCtPerKwh, 45);
+			assert.ok(!r.reasonCodes.includes("battery_opportunity_headroom_exceeds_later_demand"));
+		});
+
+		it("PV deckt den späteren Bedarf bereits vollständig ab (Netto-Bedarf ≈ 0) → auch bei knappem Headroom abgeschlagen", () => {
+			const r = evaluateBatteryOpportunityCost({
+				nowMs: NOW,
+				priceSlots: [slot(20, 45)],
+				headroomAboveReserveKwh: 0.5,
+				pvRemainingTodayKwh: 3,
+				plannedLaterDemandKwh: 2,
+			});
+			assert.ok(r.opportunityCostCtPerKwh < 45, `sollte abgeschlagen sein, got ${r.opportunityCostCtPerKwh}`);
+		});
+
+		it("Rest-PV-allein-Fall bleibt unverändert voller Wert (keine Regression durch den neuen Abschlag)", () => {
+			const r = evaluateBatteryOpportunityCost({
+				nowMs: NOW,
+				priceSlots: [slot(1, 30)],
+				headroomAboveReserveKwh: 1,
+				pvRemainingTodayKwh: 5,
+				plannedLaterDemandKwh: 0,
+			});
+			assert.equal(r.opportunityCostCtPerKwh, 30);
+		});
+	});
 });

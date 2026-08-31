@@ -224,6 +224,89 @@
 					"lg": 3,
 					"xl": 3
 				},
+				"hAiDailyAnalyst": {
+					"type": "header",
+					"size": 2,
+					"text": "KI Daily Analyst (optional, standardmäßig aus)",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"aiDailyAnalystIntro": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Reine Rückblick-Analyse abgeschlossener Tage (Daily Evaluator + Shadow/Economics). Standard: kein Regler. Optional können validierte, zeitlich begrenzte Planner-Overrides eingeschaltet werden (Phase 6) — niemals Geräte-Direktsteuerung, niemals Safety-Grenzen. Nutzt denselben OpenAI-Token wie oben. Höchstens 1 Aufruf/Kalendertag im Modus „automatisch täglich“."
+				},
+				"ai_analyst_mode": {
+					"type": "select",
+					"label": "Modus",
+					"default": "disabled",
+					"options": [
+						{ "label": "Deaktiviert", "value": "disabled" },
+						{ "label": "Nur manuell (Knopf)", "value": "manual" },
+						{ "label": "Automatisch 1×/Tag", "value": "daily_auto" }
+					],
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ai_analyst_model": {
+					"type": "select",
+					"label": "Modell",
+					"default": "gpt-4.1-mini",
+					"options": [
+						{ "label": "GPT-4.1 mini (günstig, empfohlen)", "value": "gpt-4.1-mini" },
+						{ "label": "GPT-4o mini (günstig)", "value": "gpt-4o-mini" },
+						{ "label": "GPT-5 mini", "value": "gpt-5-mini" },
+						{ "label": "GPT-4.1", "value": "gpt-4.1" }
+					],
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ai_analyst_retained_days": {
+					"type": "number",
+					"label": "Findings-Historie (Tage)",
+					"default": 120,
+					"min": 7,
+					"max": 365,
+					"help": "Rebuildable/support_only — kein Backup-Anspruch. Alte Tagesdateien werden nach dieser Zeit gelöscht.",
+					"xs": 12,
+					"sm": 6,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
+				"ai_override_enabled": {
+					"type": "checkbox",
+					"label": "Validierte temporäre Planner-Overrides erlauben (Phase 6)",
+					"default": false,
+					"help": "Nur Findings mit numerischem Vorschlag und Validator-Freigabe. Safety-/Hardlimits nie veränderbar. Overrides laufen nach 24 h automatisch aus. Standard: aus — KI bleibt Analyst.",
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"aiAnalystRunNowHint": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Manueller Lauf über den Runtime-State <code>ai.daily_analyst.run_now_request</code> (VIS/Objektbaum) — analysiert den zuletzt vom Daily Evaluator bewerteten Tag neu."
+				},
 				"hGlobalFailsafe": {
 					"type": "header",
 					"size": 2,

@@ -117,6 +117,19 @@ export type BatteryRuntimeComputeResult = {
 	avgNightBridgeHours: number | null;
 	/** Nächte mit gültiger SOC-Entladung in der gewählten Methode. */
 	nightBridgeValidNights: number;
+	/**
+	 * PFLICHT-FIX 1 Korrektur: Nächte, in denen belastbar zurechenbare Netzausgleichs-
+	 * Batterieenergie vom SOC-basierten Nachtbedarf abgezogen wurde (Attribution, keine
+	 * zweite Reserve-Quelle). 0 = keine Netzausgleichs-Historie verfügbar oder keine Nacht
+	 * betroffen.
+	 */
+	gridBalanceAttributedNights: number;
+	/**
+	 * PFLICHT-FIX 1 Korrektur: Nächte, die ausgeschlossen wurden, weil der Netzausgleichs-
+	 * Anteil zwar grundsätzlich vorhanden, aber für dieses Fenster nicht belastbar bestimmbar
+	 * war (keine Schätzung statt Messung).
+	 */
+	gridBalanceExcludedNights: number;
 };
 
 export type BatteryRuntimePersist = {
@@ -134,6 +147,8 @@ export type BatteryRuntimePersist = {
 	night_bridge_method?: string;
 	night_bridge_valid_nights?: number;
 	avg_night_bridge_hours?: number | null;
+	grid_balance_attributed_nights?: number;
+	grid_balance_excluded_nights?: number;
 	avg_charge_rate_pct_h: number | null;
 	avg_discharge_rate_pct_h: number | null;
 	avg_charge_power_w: number | null;

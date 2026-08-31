@@ -15,6 +15,14 @@ const power_rollup_1 = require("../power_rollup");
 const pv_horizon_1 = require("../pv_horizon");
 const day_telemetry_1 = require("../day_telemetry");
 const daily_evaluator_1 = require("../daily_evaluator");
+const climate_shared_power_1 = require("../climate_shared_power");
+const ensure_states_2 = require("../climate_shared_power/ensure_states");
+const shadow_engine_1 = require("../shadow_engine");
+const economics_1 = require("../../economics");
+const ensure_states_3 = require("../../ai/override/ensure_states");
+const tick_1 = require("../../ai/override/tick");
+const ensure_states_4 = require("../../ai/daily_analyst/ensure_states");
+const run_2 = require("../../ai/daily_analyst/run");
 const config_2 = require("../../intent/config");
 const data_dir_1 = require("../data_dir");
 const history_bridge_1 = require("../history_bridge");
@@ -34,6 +42,11 @@ async function ensureLearningStateTree(adapter) {
     await (0, battery_runtime_1.ensureBatteryRuntimeLearningStates)(host);
     await (0, day_telemetry_1.ensureDayTelemetryStates)(host);
     await (0, daily_evaluator_1.ensureDailyEvaluatorStates)(host);
+    await (0, ensure_states_2.ensureClimateSharedPowerRootStates)(host);
+    await (0, shadow_engine_1.ensureShadowEngineStates)(host);
+    await (0, economics_1.ensureEconomicsStates)(host);
+    await (0, ensure_states_3.ensureAiValidatorStates)(host);
+    await (0, ensure_states_4.ensureAiDailyAnalystStates)(host);
     await (0, persistence_mirror_1.ensureLearningPersistenceStates)(host);
     return host;
 }
@@ -94,6 +107,63 @@ async function runLearningTick(host, trigger = "interval") {
         }
         catch (e) {
             host.log.error(`daily_evaluator batch: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        /*
+         * PHASE 3 — Shared-Power/Climate Learning. Liest nur day_telemetry (ClimateRunSegments),
+         * schreibt ausschließlich in seine eigene Persistenz/States — keine Fremd-Writes, kein
+         * Einfluss auf andere Learning-Module. Läuft im selben langsamen Lern-Intervall.
+         */
+        try {
+            await (0, climate_shared_power_1.runClimateSharedPowerLearning)(host);
+        }
+        catch (e) {
+            host.log.error(`climate_shared_power learning: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        /*
+         * PHASE 5 — Shadow/Counterfactual-Engine. Rein additiv/diagnostisch, liest nur
+         * day_telemetry + Config, schreibt ausschließlich in seine eigene Persistenz. Läuft
+         * batch-weise (wie Daily Evaluator) im selben langsamen Lern-Intervall — kein
+         * täglicher 90-Tage-Replay, nur der jeweils neue Backlog.
+         */
+        try {
+            const timezone = (0, config_2.intentAdminConfigFromAdapter)(host.config).timezone || "Europe/Berlin";
+            await (0, shadow_engine_1.runShadowEngineBatch)(host, { timezone });
+        }
+        catch (e) {
+            host.log.error(`shadow_engine batch: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        /*
+         * PHASE 7 — Wirtschaftlichkeit. Bucht abgeschlossene Tage einmalig (Tarifvorteil aus
+         * Statistik, EMS-Vorteil/KI-Mehrwert aus der Shadow-Engine oben), aktualisiert die
+         * Zeitraum-Aggregation. Kein Fremd-Write, reines Reporting.
+         */
+        try {
+            await (0, economics_1.tickEconomics)(host);
+        }
+        catch (e) {
+            host.log.error(`economics tick: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        /*
+         * PHASE 6 — KI-Validator TTL-Sweep (rein deterministisch, kein LLM-Aufruf). Läuft
+         * unabhängig davon, ob aktuell überhaupt Overrides existieren.
+         */
+        try {
+            await (0, tick_1.syncAiValidatorStates)(host);
+        }
+        catch (e) {
+            host.log.error(`ai validator sweep: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        /*
+         * PHASE 4 — KI Daily Analyst. Höchstens ein LLM-Aufruf pro Kalendertag (idempotent
+         * über die persistierte Findings-Datei des Vortags) — kein Hot-Path-Aufruf. Ohne
+         * konfiguriertes Token/Mode bleibt dies ein reiner No-Op (status "disabled"/"no_token"),
+         * das EMS läuft unverändert weiter.
+         */
+        try {
+            await (0, run_2.maybeRunDailyAnalystAutomatically)(host);
+        }
+        catch (e) {
+            host.log.error(`ai_daily_analyst auto run: ${e instanceof Error ? e.message : String(e)}`);
         }
     }
     finally {

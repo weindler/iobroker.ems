@@ -130,6 +130,14 @@ export function computeNightDischarges(params: {
 	housePowerPoints?: PowerPoint[] | null;
 	/** Batterieleistung (+ laden / − entladen), Fallback-Brücke. */
 	batteryPowerPoints?: PowerPoint[] | null;
+	/**
+	 * PFLICHT-FIX 1 Korrektur: EMS-eigene Netzausgleichs-Entladeleistung (≥ 0 W,
+	 * `addons.battery.grid_balance.effective_power_w`). Wird — falls für die jeweilige Nacht
+	 * belastbar bestimmbar — vom SOC-basierten Nachtbedarf abgezogen, damit EMS seinen eigenen
+	 * zusätzlichen Batterieeinsatz nicht als normalen Nachtgrundbedarf lernt. Leeres Array =
+	 * keine Netzausgleichs-Historie verfügbar → Verhalten unverändert (keine Attribution nötig).
+	 */
+	gridBalancePowerPoints?: PowerPoint[] | null;
 	flutterMs?: number;
 	nowMs?: number;
 }): {
@@ -140,6 +148,10 @@ export function computeNightDischarges(params: {
 	avgBridgeHours: number | null;
 	/** Gewinnende Fenster — Basis für Nachtverbrauchs-Integration (dieselbe Nacht-Abgrenzung). */
 	windows: NightBridgeWindow[];
+	/** Diagnose: Nächte mit tatsächlich abgezogener Netzausgleichs-Energie (PFLICHT-FIX 1). */
+	gridBalanceAttributedNights: number;
+	/** Diagnose: Nächte ausgeschlossen, weil Netzausgleichs-Anteil nicht belastbar bestimmbar war. */
+	gridBalanceExcludedNights: number;
 } {
 	const maxDelta = 3 * MS_PER_HOUR;
 	const flutterMs = params.flutterMs ?? DEFAULT_NIGHT_BRIDGE_FLUTTER_MS;
@@ -185,14 +197,20 @@ export function computeNightDischarges(params: {
 		}
 	}
 
+	const gridBalancePoints = params.gridBalancePowerPoints ?? [];
+
 	function scoreWindows(windows: NightBridgeWindow[]): {
 		avgPct: number | null;
 		avgKwh: number | null;
 		validNights: number;
 		avgBridgeHours: number | null;
+		gridBalanceAttributedNights: number;
+		gridBalanceExcludedNights: number;
 	} {
 		type NightRecord = { pct: number; kwh: number | null; weight: number; bridgeHours: number };
 		const nights: NightRecord[] = [];
+		let gridBalanceAttributedNights = 0;
+		let gridBalanceExcludedNights = 0;
 
 		for (const w of windows) {
 			const obs = expandBridgeWithClockEnvelope(
@@ -222,10 +240,35 @@ export function computeNightDischarges(params: {
 			 */
 			if (minPoint && hasInterimRecharge(params.socPoints, obs.startTs, minPoint.ts)) continue;
 
+			let nightPct = dischargePct;
+			let nightKwh = params.capacityKwh !== null ? (dischargePct / 100) * params.capacityKwh : null;
+
+			/*
+			 * PFLICHT-FIX 1 Korrektur: EMS-eigene Netzausgleichs-Entladung darf den realen
+			 * SOC-Abfall nicht als normalen Nachtgrundbedarf lernen lassen. Nur abziehen, wenn
+			 * für GENAU dieses Fenster eine belastbare Leistungsserie vorliegt (≥ 50 % Abdeckung,
+			 * siehe `integratePowerKwh`) — sonst Sample ausschließen statt zu schätzen. Ohne
+			 * jegliche Netzausgleichs-Historie (leeres Array) bleibt das Verhalten unverändert.
+			 */
+			if (gridBalancePoints.length > 0 && nightKwh !== null) {
+				const gbKwh = integratePowerKwh(gridBalancePoints, obs.startTs, obs.endTs);
+				if (gbKwh === null) {
+					gridBalanceExcludedNights++;
+					continue;
+				}
+				if (gbKwh > 0.01) {
+					const netKwh = Math.max(0, nightKwh - gbKwh);
+					nightPct =
+						params.capacityKwh! > 0 ? Math.max(0, (netKwh / params.capacityKwh!) * 100) : nightPct;
+					nightKwh = netKwh;
+					gridBalanceAttributedNights++;
+				}
+			}
+
 			const ageDays = Math.max(0, (nowMs - w.endTs) / MS_PER_DAY);
 			nights.push({
-				pct: round2(dischargePct),
-				kwh: params.capacityKwh !== null ? round3((dischargePct / 100) * params.capacityKwh) : null,
+				pct: round2(nightPct),
+				kwh: nightKwh !== null ? round3(nightKwh) : null,
 				weight: recencyWeight(ageDays),
 				/** Brückendauer bleibt die dynamische Erkennung (Diagnose), nicht die Uhr-Hülle. */
 				bridgeHours: (w.endTs - w.startTs) / MS_PER_HOUR,
@@ -244,6 +287,8 @@ export function computeNightDischarges(params: {
 					: null,
 			validNights: trimmed.length,
 			avgBridgeHours: average(trimmed.map((n) => n.bridgeHours)),
+			gridBalanceAttributedNights,
+			gridBalanceExcludedNights,
 		};
 	}
 
@@ -348,6 +393,8 @@ export function computeNightDischarges(params: {
 			method: "none",
 			avgBridgeHours: null,
 			windows: [],
+			gridBalanceAttributedNights: 0,
+			gridBalanceExcludedNights: 0,
 		};
 	}
 
@@ -359,6 +406,8 @@ export function computeNightDischarges(params: {
 		method: best.method,
 		avgBridgeHours: best.avgBridgeHours,
 		windows: bestWindows,
+		gridBalanceAttributedNights: best.gridBalanceAttributedNights,
+		gridBalanceExcludedNights: best.gridBalanceExcludedNights,
 	};
 }
 
@@ -567,6 +616,8 @@ export function computeBatteryRuntimeLearning(params: {
 	powerPoints: PowerPoint[];
 	pvPowerPoints?: PowerPoint[] | null;
 	housePowerPoints?: PowerPoint[] | null;
+	/** PFLICHT-FIX 1 Korrektur — siehe `computeNightDischarges`. */
+	gridBalancePowerPoints?: PowerPoint[] | null;
 	capacityKwh: number | null;
 	currentSocPct: number | null;
 	cfg: BatteryRuntimeConfig;
@@ -585,6 +636,7 @@ export function computeBatteryRuntimeLearning(params: {
 		pvPowerPoints: params.pvPowerPoints,
 		housePowerPoints: params.housePowerPoints,
 		batteryPowerPoints: params.powerPoints,
+		gridBalancePowerPoints: params.gridBalancePowerPoints,
 		nowMs: params.now.getTime(),
 	});
 	const houseLoad = computeNightHouseLoadDiagnostic({
@@ -711,6 +763,8 @@ export function computeBatteryRuntimeLearning(params: {
 		requiredSocAtPvEndPct: reserve.requiredSocAtPvEndPct,
 		requiredNightReserveKwh: reserve.requiredReserveKwh,
 		nightReserveReasonDe: reserve.reasonDe,
+		gridBalanceAttributedNights: night.gridBalanceAttributedNights,
+		gridBalanceExcludedNights: night.gridBalanceExcludedNights,
 	};
 }
 
@@ -727,6 +781,8 @@ const EMPTY_POWER_DIAGNOSTICS = {
 	nightBridgeMethod: "none",
 	avgNightBridgeHours: null,
 	nightBridgeValidNights: 0,
+	gridBalanceAttributedNights: 0,
+	gridBalanceExcludedNights: 0,
 } as const;
 
 export function withPowerDiagnostics(

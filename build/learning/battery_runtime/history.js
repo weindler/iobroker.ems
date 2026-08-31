@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.distinctSocSampleDays = exports.readSecondsSinceFullCharge = exports.readLiveSoc = exports.readLiveCapacityKwh = exports.fetchPowerHistory = exports.fetchSitePowerFromEnergyCounter = exports.energyKwhSeriesToHourlyPowerW = exports.MIN_NIGHT_BRIDGE_SITE_POINTS = exports.fetchSitePowerSeries = exports.aggregatePowerPointsByHour = exports.resolveEffectivePowerInvert = exports.fetchSocHistoryRaw = exports.fetchSocHistory = exports.normalizeBatteryPowerW = exports.isValidCapacityKwh = exports.isValidSoc = exports.mergeDailyAstroTimes = exports.buildDailyAstroTimes = exports.fetchAstroTimeHistory = exports.parseAstroTimeValue = void 0;
+exports.distinctSocSampleDays = exports.readSecondsSinceFullCharge = exports.readLiveSoc = exports.readLiveCapacityKwh = exports.fetchPowerHistory = exports.fetchGridBalanceDischargePowerHistory = exports.fetchSitePowerFromEnergyCounter = exports.energyKwhSeriesToHourlyPowerW = exports.MIN_NIGHT_BRIDGE_SITE_POINTS = exports.fetchSitePowerSeries = exports.aggregatePowerPointsByHour = exports.resolveEffectivePowerInvert = exports.fetchSocHistoryRaw = exports.fetchSocHistory = exports.normalizeBatteryPowerW = exports.isValidCapacityKwh = exports.isValidSoc = exports.mergeDailyAstroTimes = exports.buildDailyAstroTimes = exports.fetchAstroTimeHistory = exports.parseAstroTimeValue = void 0;
 const state_util_1 = require("../../ems_light/state_util");
 const history_query_1 = require("../history_query");
 const power_rollup_1 = require("../power_rollup");
@@ -355,6 +355,30 @@ async function fetchSitePowerFromEnergyCounter(host, energyStateId, lookbackDays
     return energyKwhSeriesToHourlyPowerW(samples);
 }
 exports.fetchSitePowerFromEnergyCounter = fetchSitePowerFromEnergyCounter;
+/**
+ * Rohe, ungeglättete Historie der Netzausgleichs-Entladeleistung (`addons.battery.grid_balance.
+ * effective_power_w`, ≥ 0 W) — EMS-eigener, bereits berechneter Steuerwert, kein Hardware-Peak.
+ * Bewusst OHNE Stunden-Peak-Aggregation (anders als `fetchPowerHistory`/`aggregatePowerPointsByHour`),
+ * damit `integratePowerKwh` energieerhaltend bleibt. Dient ausschließlich der Attribution
+ * innerhalb des SOC-basierten Nachtsamples (PFLICHT-FIX 1 Korrektur) — ersetzt nie die
+ * SOC-basierte Reserve-Wahrheit selbst.
+ */
+async function fetchGridBalanceDischargePowerHistory(host, stateId, lookbackDays) {
+    if (!stateId)
+        return [];
+    const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, stateId, lookbackDays, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
+    const points = [];
+    for (const row of rows) {
+        const ts = typeof row?.ts === "number" ? row.ts : null;
+        const n = (0, state_util_1.asNum)(row?.val);
+        if (ts === null || n === null || !Number.isFinite(n) || n < 0 || n > constants_1.PLAUSIBLE_POWER_W_MAX)
+            continue;
+        points.push({ ts, powerW: Math.round(n) });
+    }
+    points.sort((a, b) => a.ts - b.ts);
+    return points;
+}
+exports.fetchGridBalanceDischargePowerHistory = fetchGridBalanceDischargePowerHistory;
 async function fetchPowerHistory(host, stateId, lookbackDays, powerInvert = false) {
     const rollup = await (0, power_rollup_1.fetchRollupPowerHistory)(host, stateId, lookbackDays);
     if (rollup) {

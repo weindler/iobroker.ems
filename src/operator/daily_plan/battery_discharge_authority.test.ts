@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { resolveBatteryDischargeAuthorization } from "./battery_discharge_authority.js";
+import { evaluateBatteryOpportunityCost } from "./battery_opportunity_cost.js";
 
 describe("battery discharge authority (Phase 1b/1d)", () => {
 	const base = {
@@ -120,6 +121,58 @@ describe("battery discharge authority (Phase 1b/1d)", () => {
 			// priceNowCt=36.7, opportunity=30, margin=10 → 36.7 < 40 → zurückgestellt
 			assert.equal(r.allowed, false);
 			assert.equal(r.opportunityAllowed, false);
+		});
+	});
+
+	describe("PFLICHT-FIX 2 — Produktions-Regressionsfall (30.08.2026, planner_budget_zero trotz Preis/SOC/Reserve ok)", () => {
+		it("hoher SOC (91 %), Preis über Schwelle, reichlich Headroom + kleiner später Bedarf → Netzausgleich bleibt zugelassen", () => {
+			const opportunity = evaluateBatteryOpportunityCost({
+				nowMs: Date.parse("2026-08-30T21:13:00.000Z"),
+				priceSlots: [{ startMs: Date.parse("2026-08-31T18:00:00.000Z"), importCtPerKwh: 45 }],
+				// SOC 91 % bei 10 kWh, Reserve ≈ 42 % (≈ 3.5 kWh × 1.2) → Headroom ≈ 4.9 kWh.
+				headroomAboveReserveKwh: 4.9,
+				pvRemainingTodayKwh: 0,
+				plannedLaterDemandKwh: 2,
+			});
+			assert.ok(opportunity.opportunityCostCtPerKwh < 45, `opportunity=${opportunity.opportunityCostCtPerKwh}`);
+
+			const r = resolveBatteryDischargeAuthorization({
+				priceNowCt: 39.6,
+				minPriceCtPerKwh: 30,
+				socPct: 91,
+				requiredSocAtPvEndPct: 42,
+				configuredMaxDischargeW: 3000,
+				opportunityCostCtPerKwh: opportunity.opportunityCostCtPerKwh,
+			});
+			assert.equal(r.allowed, true, r.reasonDe);
+			assert.equal(r.opportunityAllowed, true);
+			assert.equal(r.maxDischargeW, 3000);
+		});
+
+		it("Netzausgleich bleibt trotz reichlichem Headroom gesperrt, wenn Hold/Reserve/Safety greifen", () => {
+			// SOC unterhalb der Reserve — Opportunity-Discount darf das nie aushebeln.
+			const rReserve = resolveBatteryDischargeAuthorization({
+				priceNowCt: 39.6,
+				minPriceCtPerKwh: 30,
+				socPct: 35,
+				requiredSocAtPvEndPct: 42,
+				configuredMaxDischargeW: 3000,
+				opportunityCostCtPerKwh: 5,
+			});
+			assert.equal(rReserve.allowed, false);
+			assert.equal(rReserve.socAllowed, false);
+
+			// Preis unter Mindestpreis — bleibt vorrangig vor jedem Opportunity-Abschlag.
+			const rPrice = resolveBatteryDischargeAuthorization({
+				priceNowCt: 20,
+				minPriceCtPerKwh: 30,
+				socPct: 91,
+				requiredSocAtPvEndPct: 42,
+				configuredMaxDischargeW: 3000,
+				opportunityCostCtPerKwh: 5,
+			});
+			assert.equal(rPrice.allowed, false);
+			assert.equal(rPrice.priceAllowed, false);
 		});
 	});
 });

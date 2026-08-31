@@ -58,19 +58,30 @@ const REVISION_EVERY_N_REPLANS = 40;
 function round4(n) {
     return Math.round(n * 10000) / 10000;
 }
+/*
+ * WICHTIG: Kurve ist Funktion der ABSOLUTEN Uhrzeit (`tsMs`), nicht des Array-Index `i`.
+ * Ein realer Day-Ahead-Preis für z. B. 14:00 ändert sich nicht dadurch, dass der Horizont
+ * zwischenzeitlich einen Slot weitergerückt ist (nur eine echte Preisrevision ändert ihn,
+ * gesteuert über `revisionSeed`). Würde die Kurve stattdessen vom Index abhängen, wäre bei
+ * jeder Horizontverschiebung (Rolling Window) praktisch der GESAMTE Array "anders", weil
+ * derselbe Zeitstempel dann in unterschiedlichen Aufrufen unterschiedliche Indizes hätte —
+ * das würde die Timestamp-Delta-Kompaktierung genauso wirkungslos wie im Produktionsbefund.
+ */
 function realisticPriceSlots(horizonStartMs, revisionSeed) {
     return Array.from({ length: HORIZON_SLOTS }, (_, i) => {
-        const hourOfDay = (i / 4) % 24;
+        const tsMs = horizonStartMs + i * HORIZON_SLOT_MS;
+        const hourOfDay = (tsMs / 3600_000) % 24;
         const curve = 18 + 9 * Math.sin((hourOfDay / 24) * Math.PI * 2 - 1) + revisionSeed * 6;
-        return [horizonStartMs + i * HORIZON_SLOT_MS, Math.round(curve * 10) / 10];
+        return [tsMs, Math.round(curve * 10) / 10];
     });
 }
 function realisticPvSlots(horizonStartMs, revisionSeed) {
     return Array.from({ length: HORIZON_SLOTS }, (_, i) => {
-        const hourOfDay = (i / 4) % 24;
+        const tsMs = horizonStartMs + i * HORIZON_SLOT_MS;
+        const hourOfDay = (tsMs / 3600_000) % 24;
         const daylight = Math.max(0, Math.sin(((hourOfDay - 6) / 12) * Math.PI));
         const kwh = round4(daylight * (2.4 + revisionSeed * 0.15));
-        return [horizonStartMs + i * HORIZON_SLOT_MS, kwh];
+        return [tsMs, kwh];
     });
 }
 /** Baut einen realistischen Tag: HORIZON_SLOTS-Forecast, REPLANS_PER_DAY Snapshots/Replans. */
@@ -83,13 +94,20 @@ function buildRealisticDay(dateKey, tz) {
     for (let r = 0; r < REPLANS_PER_DAY; r++) {
         const tsMs = dayStartActiveMs + r * stepMs;
         const revisionSeed = Math.floor(r / REVISION_EVERY_N_REPLANS);
-        const price = realisticPriceSlots(layout.startMs, revisionSeed);
-        const pv = realisticPvSlots(layout.startMs, revisionSeed);
-        /* Live-PV-Override im jeweils aktuellen Slot — der dominante Änderungstreiber. */
-        const curIdx = Math.min(HORIZON_SLOTS - 1, Math.floor((tsMs - layout.startMs) / HORIZON_SLOT_MS));
-        if (curIdx >= 0) {
-            pv[curIdx] = [pv[curIdx][0], round4(pv[curIdx][1] + (r % 7) * 0.03)];
-        }
+        /*
+         * ROLLIERENDER Horizont wie in Produktion: der Preis-/PV-Forecast beginnt beim
+         * aktuellen 15-Min-Slot, nicht am Tagesbeginn — bei jedem Replan rutscht die
+         * gesamte Timeline einen Slot weiter (ältester Slot fällt raus, neuer kommt hinten
+         * dazu). Genau dieses Verhalten hat den ursprünglichen Index-basierten Delta-
+         * Vergleich (`sameTimeline`/`diffSlots` per Array-Position) unwirksam gemacht und
+         * zu ~1,6 MB/Tag trotz Kompaktierung geführt (Produktionsbefund 30.08.2026).
+         */
+        const horizonStartMs = Math.floor(tsMs / HORIZON_SLOT_MS) * HORIZON_SLOT_MS;
+        const price = realisticPriceSlots(horizonStartMs, revisionSeed);
+        const pv = realisticPvSlots(horizonStartMs, revisionSeed);
+        /* Live-PV-Override im jeweils aktuellen (=ersten) Slot — der dominante Änderungstreiber. */
+        const curIdx = 0;
+        pv[curIdx] = [pv[curIdx][0], round4(pv[curIdx][1] + (r % 7) * 0.03)];
         const snap = {
             id: `snap-${dateKey}-${r}`,
             tsIso: new Date(tsMs).toISOString(),

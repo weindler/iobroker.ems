@@ -36,7 +36,9 @@ const states_1 = require("./states");
 const battery_consumers_1 = require("../../policy/battery_consumers");
 const battery_discharge_authority_1 = require("./battery_discharge_authority");
 const battery_opportunity_cost_1 = require("./battery_opportunity_cost");
-const block_a_learning_bridge_1 = require("./block_a_learning_bridge");
+const override_ledger_1 = require("../../ai/override_ledger");
+const allowlist_1 = require("../../ai/override/allowlist");
+const validate_1 = require("../../ai/override/validate");
 const battery_reserve_learning_1 = require("./battery_reserve_learning");
 const battery_reserve_target_1 = require("./battery_reserve_target");
 const forecast_reserve_slots_1 = require("./forecast_reserve_slots");
@@ -89,6 +91,7 @@ const path = __importStar(require("node:path"));
 const invalidate_addon_off_1 = require("./invalidate_addon_off");
 const config_4 = require("../../addons/battery/config");
 const passive_battery_energy_1 = require("./unified/passive_battery_energy");
+const block_a_learning_bridge_1 = require("./block_a_learning_bridge");
 let lastRevisionPayload = "";
 let revision = 0;
 /** Material-Cadence: ohne relevanten Grund kein neuer Unified-/Tagesplan-Publish. */
@@ -507,9 +510,19 @@ async function runDailyPlanTick(host, forecastPlan) {
         opportunityCostCtPerKwh: batteryOpportunity.usable ? batteryOpportunity.opportunityCostCtPerKwh : null,
     };
     const baselineBatteryDischargeAuthorization = (0, battery_discharge_authority_1.resolveBatteryDischargeAuthorization)(batteryDischargeAuthorizationInputBase);
+    const learnedOpportunityMarginCt = battery_discharge_authority_1.DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH + batteryReserveLearning.extraMarginCtPerKwh;
+    let opportunityMarginOverride = null;
+    try {
+        const activeOverrides = await (0, override_ledger_1.listActiveOverrides)(host);
+        opportunityMarginOverride = (0, validate_1.resolveActiveOverrideValue)(activeOverrides, allowlist_1.AI_OVERRIDE_PARAM_BATTERY_OPPORTUNITY_MARGIN_CT, now);
+    }
+    catch {
+        opportunityMarginOverride = null;
+    }
+    const opportunityMarginCtPerKwh = (0, allowlist_1.mergeOpportunityMarginWithOverride)(learnedOpportunityMarginCt, opportunityMarginOverride);
     const batteryDischargeAuthorization = (0, battery_discharge_authority_1.resolveBatteryDischargeAuthorization)({
         ...batteryDischargeAuthorizationInputBase,
-        opportunityMarginCtPerKwh: battery_discharge_authority_1.DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH + batteryReserveLearning.extraMarginCtPerKwh,
+        opportunityMarginCtPerKwh,
     });
     const batteryLearningExplanation = (0, battery_reserve_learning_1.toBatteryReserveLearningExplanation)(batteryReserveLearning, baselineBatteryDischargeAuthorization.opportunityAllowed, batteryDischargeAuthorization.opportunityAllowed);
     try {

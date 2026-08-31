@@ -343,8 +343,10 @@ exports.weightedAverage = weightedAverage;
  * Stunden-Serien, ohne festen Bucket anzunehmen). Damit wird Hausverbrauch über exakt dasselbe
  * (dynamisch erkannte) Fenster integriert, das auch die Batterie-Entladung bewertet.
  *
- * NUR für Diagnose (Netzbezug-Schätzung) verwenden — NIE als Batterie-Reserve-Basis. Die
- * Reserve kommt ausschließlich aus dem realen SOC-Delta (`computeNightDischarges`).
+ * NUR für Diagnose (Netzbezug-Schätzung) verwenden — NIE als eigenständige Batterie-Reserve-Basis.
+ * Die Reserve kommt ausschließlich aus dem realen SOC-Delta (`computeNightDischarges`). Erlaubte
+ * Ausnahme (PFLICHT-FIX 1 Korrektur): Attribution EMS-eigener Netzausgleichs-Entladung *innerhalb*
+ * desselben SOC-basierten Samples (Abzug, keine zweite Wahrheit) — siehe `computeNightDischarges`.
  *
  * WICHTIG: Nur mit energieerhaltender Leistungsserie füttern (Stundenmittel / echte
  * Abtastwerte). Die EMS-Batterie-Historie (`bidirectional_max` / aggregatePowerPointsByHour)

@@ -481,13 +481,13 @@ describe("bootstrap cold start recovery", () => {
 		const channels = byType.channel ?? 0;
 		console.log(`empty-config surface states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
 		/*
-		 * Historisch 350–550. Stand Aug 2026 (leere Config): ~604 States —
-		 * Wachstum durch Statistik-Objektbaum, Planner-Diagnostik, Ownership/Reserve,
-		 * AI/Backup — nicht durch Measured-Consumer-Leer-Slots.
-		 * Obergrenze 650: knappe Kopfreserve (~7 %), State-Explosionen bleiben sichtbar.
+		 * Historisch 350–550. Stand Aug 2026 (leere Config): ~604 States.
+		 * Phasen 4–7 (KI Analyst/Validator, Shadow, Economics, Climate Shared-Power)
+		 * addieren schlanke Transparenz-States; JSON-Dumps bleiben in Dateien.
+		 * Obergrenze 680: knappe Kopfreserve, State-Explosionen bleiben sichtbar.
 		 */
 		assert.ok(
-			states <= 650,
+			states <= 680,
 			`empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`,
 		);
 		assert.ok(states >= 250, `unexpectedly small surface states=${states}`);

@@ -116,6 +116,7 @@ function buildAirConditioningContributions(input) {
         outdoorTempC: input.outdoorTempC,
         outdoorForecastMaxC: input.outdoorForecastMaxC ?? null,
         units: unitInputs,
+        sharedPowerStats: input.sharedPowerStats,
     });
     const byIndex = new Map(cooling.units.map((u) => [u.unitIndex, u]));
     const contributions = [];
@@ -128,6 +129,7 @@ function buildAirConditioningContributions(input) {
             name: unitInput.unit.name,
             powerW: unitInput.unit.estimatedPowerW,
             powerSource: "config",
+            powerPurpose: null,
             likelyActive: false,
             expectedHours: 0,
             expectedKwh: 0,

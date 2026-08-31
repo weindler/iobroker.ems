@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.11",
+		"version": "0.2.12",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.12": {
+				"en": "EMS-Light 7-phase complete: SOC night reserve without grid-balance inflation; grid balance budget at high SOC; compact forecast deltas; climate shared-power learning; optional daily AI analyst + validator overrides; shadow/economics (tariff vs EMS vs KI, grid rewards separate). Check VIS Betrieb/Statistik, learning.battery_runtime.*, economics.*, ai.daily_analyst.* after update.",
+				"de": "EMS-Light 7-Phasen fertig: SOC-Nachtreserve ohne Netzausgleich-Aufblähung; Netzausgleich-Budget bei hohem SOC; kompakte Forecast-Deltas; Klima-Shared-Power-Learning; optionaler KI Daily Analyst + Validator-Overrides; Shadow/Wirtschaftlichkeit (Tarif/EMS/KI getrennt, Grid Rewards separat). Nach Update VIS Betrieb/Statistik, learning.battery_runtime.*, economics.*, ai.daily_analyst.* prüfen."
+			},
 			"0.2.11": {
 				"en": "Fix: night reserve now uses exactly one source of truth (real SOC drop over the night bridge), not two competing calculations. Grid-charging nights mid-night are detected and excluded; house load/peak power are diagnostics only and never inflate the reserve.",
 				"de": "Fix: Nachtreserve nutzt jetzt genau eine führende Größe (reale SOC-Abnahme über die Nachtbrücke) statt zwei widersprüchlicher Berechnungen. Nächte mit Netzladung mittendrin werden erkannt und ausgeschlossen; Hauslast/Peak-Leistung sind reine Diagnose und treiben die Reserve nicht mehr hoch."

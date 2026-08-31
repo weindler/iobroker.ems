@@ -669,6 +669,112 @@ describe("battery runtime night consumption + dynamic reserve (konsolidiert, SOC
 			`predictedNightConsumptionKwh=${r.predictedNightConsumptionKwh} (erwartet ≈5, unbeeinflusst von EV-Haus)`,
 		);
 	});
+
+	it("PFLICHT-FIX 1 Korrektur: belastbar zurechenbare Netzausgleichs-Energie wird von der SOC-basierten Nachtentladung abgezogen", () => {
+		const { socPoints, battery, house, pv, day0 } = buildTenNightPvHouseScenario();
+		const gridBalance: PowerPoint[] = [];
+		for (let d = 0; d < 10; d++) {
+			for (let h = 0; h < 24; h++) {
+				const ts = day0 + d * 86_400_000 + h * MS_H;
+				const isNight = h >= 20 || h < 6;
+				// EMS zieht während der gesamten Nachtbrücke zusätzlich 200 W für Netzausgleich.
+				gridBalance.push({ ts, powerW: isNight ? 200 : 0 });
+			}
+		}
+		const nowMs = day0 + 11 * 86_400_000;
+		const baseline = computeNightDischarges({
+			socPoints,
+			nightStart: "22:00",
+			nightEnd: "06:00",
+			capacityKwh: 20,
+			pvPowerPoints: pv,
+			housePowerPoints: house,
+			batteryPowerPoints: battery,
+			nowMs,
+		});
+		const withGb = computeNightDischarges({
+			socPoints,
+			nightStart: "22:00",
+			nightEnd: "06:00",
+			capacityKwh: 20,
+			pvPowerPoints: pv,
+			housePowerPoints: house,
+			batteryPowerPoints: battery,
+			gridBalancePowerPoints: gridBalance,
+			nowMs,
+		});
+		assert.ok(baseline.avgKwh !== null && withGb.avgKwh !== null);
+		// ~10 h × 200 W ≈ 2 kWh Netzausgleichs-Anteil muss klar unterhalb des Baseline-Werts liegen.
+		assert.ok(
+			withGb.avgKwh! < baseline.avgKwh! - 1,
+			`withGb=${withGb.avgKwh} baseline=${baseline.avgKwh}`,
+		);
+		assert.ok(withGb.gridBalanceAttributedNights > 0, `attributed=${withGb.gridBalanceAttributedNights}`);
+		assert.equal(withGb.gridBalanceExcludedNights, 0);
+		// Ohne jegliche Netzausgleichs-Historie (leeres Array) bleibt das Verhalten unverändert.
+		const withEmptyGb = computeNightDischarges({
+			socPoints,
+			nightStart: "22:00",
+			nightEnd: "06:00",
+			capacityKwh: 20,
+			pvPowerPoints: pv,
+			housePowerPoints: house,
+			batteryPowerPoints: battery,
+			gridBalancePowerPoints: [],
+			nowMs,
+		});
+		assert.equal(withEmptyGb.avgKwh, baseline.avgKwh);
+	});
+
+	it("PFLICHT-FIX 1 Korrektur: nicht belastbar bestimmbarer Netzausgleichs-Anteil einer einzelnen Nacht schließt genau diese Nacht aus, statt zu schätzen", () => {
+		const { socPoints, battery, house, pv, day0 } = buildTenNightPvHouseScenario();
+		/*
+		 * `integratePowerKwh` überbrückt kleine Lücken über die nächsten Nachbarpunkte
+		 * (energieerhaltende Interpolation) — die Lücke muss daher so breit sein, dass auch
+		 * die Nachbarpunkte außerhalb der ±1h-Toleranz um das Fenster liegen, sonst würde die
+		 * Coverage-Prüfung fälschlich "0 W durchgehend" statt "unbekannt" ergeben.
+		 */
+		const gapStart = day0 + 3 * 86_400_000 + 17 * MS_H;
+		const gapEnd = day0 + 4 * 86_400_000 + 9 * MS_H;
+		const gridBalance: PowerPoint[] = [];
+		for (let d = 0; d < 10; d++) {
+			for (let h = 0; h < 24; h++) {
+				const ts = day0 + d * 86_400_000 + h * MS_H;
+				// Lücke: für exakt EIN Fenster (Abend Tag 3 → Morgen Tag 4) liegt keine
+				// Netzausgleichs-Historie vor — nicht raten, Sample ausschließen.
+				if (ts >= gapStart && ts < gapEnd) continue;
+				gridBalance.push({ ts, powerW: 0 });
+			}
+		}
+		const nowMs = day0 + 11 * 86_400_000;
+		const baseline = computeNightDischarges({
+			socPoints,
+			nightStart: "22:00",
+			nightEnd: "06:00",
+			capacityKwh: 20,
+			pvPowerPoints: pv,
+			housePowerPoints: house,
+			batteryPowerPoints: battery,
+			nowMs,
+		});
+		const withGb = computeNightDischarges({
+			socPoints,
+			nightStart: "22:00",
+			nightEnd: "06:00",
+			capacityKwh: 20,
+			pvPowerPoints: pv,
+			housePowerPoints: house,
+			batteryPowerPoints: battery,
+			gridBalancePowerPoints: gridBalance,
+			nowMs,
+		});
+		assert.equal(
+			withGb.validNights,
+			baseline.validNights - 1,
+			`withGb=${withGb.validNights} baseline=${baseline.validNights}`,
+		);
+		assert.ok(withGb.gridBalanceExcludedNights >= 1, `excluded=${withGb.gridBalanceExcludedNights}`);
+	});
 });
 
 describe("battery runtime astro parse", () => {

@@ -2,6 +2,7 @@ import { AC_UNIT_COUNT } from "../../../addons/air_conditioning/constants";
 import type { AcGlobalConfig, AcUnitConfig } from "../../../addons/air_conditioning/types";
 import type { ConsumerPersistEntry } from "../../../learning/consumer_stats/types";
 import { planCooling, type CoolingUnitPlanInput } from "../../planning/cooling";
+import type { ClimateSharedPowerStat } from "../../../learning/climate_shared_power/types";
 import type { PlannerModePolicy } from "../../../planner/mode_policy";
 import { acUnitContributionId } from "../../contribution_ids";
 import type { PlanContribution } from "../../types";
@@ -33,6 +34,8 @@ export interface AirConditioningContributionBuildInput {
 	/** Wetter-Horizon Tag-1 Max (°C), optional. */
 	outdoorForecastMaxC?: number | null;
 	units: AcUnitContributionBuildInput[];
+	/** PHASE 3 — Shared-Power/Climate Learning: siehe `CoolingPlanInput.sharedPowerStats`. */
+	sharedPowerStats?: Record<string, ClimateSharedPowerStat>;
 }
 
 function buildUnitContribution(
@@ -153,6 +156,7 @@ export function buildAirConditioningContributions(input: AirConditioningContribu
 		outdoorTempC: input.outdoorTempC,
 		outdoorForecastMaxC: input.outdoorForecastMaxC ?? null,
 		units: unitInputs,
+		sharedPowerStats: input.sharedPowerStats,
 	});
 
 	const byIndex = new Map(cooling.units.map((u) => [u.unitIndex, u]));
@@ -166,6 +170,7 @@ export function buildAirConditioningContributions(input: AirConditioningContribu
 			name: unitInput.unit.name,
 			powerW: unitInput.unit.estimatedPowerW,
 			powerSource: "config" as const,
+			powerPurpose: null,
 			likelyActive: false,
 			expectedHours: 0,
 			expectedKwh: 0,

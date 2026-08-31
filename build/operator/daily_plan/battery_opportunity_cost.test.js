@@ -99,4 +99,50 @@ function slot(hOffset, ct) {
         strict_1.default.equal(r.usable, true);
         strict_1.default.equal(r.headroomAboveReserveKwh, null);
     });
+    (0, node_test_1.describe)("PFLICHT-FIX 2 — reichliches Headroom darf keinen Peak-Preis irgendwo im Horizont zum Vollpreis machen", () => {
+        (0, node_test_1.it)("hoher SOC/reichliches Headroom + kleiner bekannter späterer Bedarf → deutlich abgeschlagen", () => {
+            const r = (0, battery_opportunity_cost_js_1.evaluateBatteryOpportunityCost)({
+                nowMs: NOW,
+                priceSlots: [slot(20, 45)],
+                // z. B. SOC 91 % bei 10 kWh, Reserve ~42 % → Headroom ≈ 4.9 kWh.
+                headroomAboveReserveKwh: 4.9,
+                pvRemainingTodayKwh: 0,
+                plannedLaterDemandKwh: 2,
+            });
+            strict_1.default.equal(r.usable, true);
+            strict_1.default.ok(r.opportunityCostCtPerKwh < 45, `sollte abgeschlagen sein, got ${r.opportunityCostCtPerKwh}`);
+            strict_1.default.ok(r.reasonCodes.includes("battery_opportunity_headroom_exceeds_later_demand"));
+        });
+        (0, node_test_1.it)("knappes Headroom relativ zum bekannten späteren Bedarf → voller Preis bleibt (Knappheit nicht aufgeweicht)", () => {
+            const r = (0, battery_opportunity_cost_js_1.evaluateBatteryOpportunityCost)({
+                nowMs: NOW,
+                priceSlots: [slot(20, 45)],
+                headroomAboveReserveKwh: 2,
+                pvRemainingTodayKwh: 0,
+                plannedLaterDemandKwh: 2,
+            });
+            strict_1.default.equal(r.opportunityCostCtPerKwh, 45);
+            strict_1.default.ok(!r.reasonCodes.includes("battery_opportunity_headroom_exceeds_later_demand"));
+        });
+        (0, node_test_1.it)("PV deckt den späteren Bedarf bereits vollständig ab (Netto-Bedarf ≈ 0) → auch bei knappem Headroom abgeschlagen", () => {
+            const r = (0, battery_opportunity_cost_js_1.evaluateBatteryOpportunityCost)({
+                nowMs: NOW,
+                priceSlots: [slot(20, 45)],
+                headroomAboveReserveKwh: 0.5,
+                pvRemainingTodayKwh: 3,
+                plannedLaterDemandKwh: 2,
+            });
+            strict_1.default.ok(r.opportunityCostCtPerKwh < 45, `sollte abgeschlagen sein, got ${r.opportunityCostCtPerKwh}`);
+        });
+        (0, node_test_1.it)("Rest-PV-allein-Fall bleibt unverändert voller Wert (keine Regression durch den neuen Abschlag)", () => {
+            const r = (0, battery_opportunity_cost_js_1.evaluateBatteryOpportunityCost)({
+                nowMs: NOW,
+                priceSlots: [slot(1, 30)],
+                headroomAboveReserveKwh: 1,
+                pvRemainingTodayKwh: 5,
+                plannedLaterDemandKwh: 0,
+            });
+            strict_1.default.equal(r.opportunityCostCtPerKwh, 30);
+        });
+    });
 });

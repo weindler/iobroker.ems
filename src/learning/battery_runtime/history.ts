@@ -475,6 +475,38 @@ export async function fetchSitePowerFromEnergyCounter(
 	return energyKwhSeriesToHourlyPowerW(samples);
 }
 
+/**
+ * Rohe, ungeglättete Historie der Netzausgleichs-Entladeleistung (`addons.battery.grid_balance.
+ * effective_power_w`, ≥ 0 W) — EMS-eigener, bereits berechneter Steuerwert, kein Hardware-Peak.
+ * Bewusst OHNE Stunden-Peak-Aggregation (anders als `fetchPowerHistory`/`aggregatePowerPointsByHour`),
+ * damit `integratePowerKwh` energieerhaltend bleibt. Dient ausschließlich der Attribution
+ * innerhalb des SOC-basierten Nachtsamples (PFLICHT-FIX 1 Korrektur) — ersetzt nie die
+ * SOC-basierte Reserve-Wahrheit selbst.
+ */
+export async function fetchGridBalanceDischargePowerHistory(
+	host: BatteryHistoryHost,
+	stateId: string,
+	lookbackDays: number,
+): Promise<PowerPoint[]> {
+	if (!stateId) return [];
+	const rows = await fetchHistoryRowsLookback(
+		host,
+		stateId,
+		lookbackDays,
+		HISTORY_ROWS_PER_DAY,
+		HISTORY_CHUNK_TIMEOUT_MS,
+	);
+	const points: PowerPoint[] = [];
+	for (const row of rows) {
+		const ts = typeof row?.ts === "number" ? row.ts : null;
+		const n = asNum(row?.val);
+		if (ts === null || n === null || !Number.isFinite(n) || n < 0 || n > PLAUSIBLE_POWER_W_MAX) continue;
+		points.push({ ts, powerW: Math.round(n) });
+	}
+	points.sort((a, b) => a.ts - b.ts);
+	return points;
+}
+
 export async function fetchPowerHistory(
 	host: BatteryHistoryHost,
 	stateId: string,

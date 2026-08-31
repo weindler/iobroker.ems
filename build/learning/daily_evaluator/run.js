@@ -90,6 +90,8 @@ async function runDailyEvaluatorBatch(host, opts = {}) {
                 await publishStatus(host, constants_2.DAILY_EVALUATOR_STATES.lastDayEvaluable, day.evaluable);
                 await publishStatus(host, constants_2.DAILY_EVALUATOR_STATES.lastDayGlobalScore, record.globalScore);
                 await publishStatus(host, constants_2.DAILY_EVALUATOR_STATES.lastDayFindingsCount, record.findingsCount);
+                const topFinding = findings.find((f) => !f.insufficientData && !f.notApplicable && f.explanationDe);
+                await publishStatus(host, constants_2.DAILY_EVALUATOR_STATES.lastDayTopFindingDe, topFinding?.explanationDe.slice(0, 240) ?? "");
             }
             catch (e) {
                 result.errors.push({ dateKey, error: e instanceof Error ? e.message : String(e) });

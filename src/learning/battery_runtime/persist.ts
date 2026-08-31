@@ -25,6 +25,8 @@ export async function writeBatteryRuntimePersist(
 		night_bridge_method: result.nightBridgeMethod,
 		night_bridge_valid_nights: result.nightBridgeValidNights,
 		avg_night_bridge_hours: result.avgNightBridgeHours,
+		grid_balance_attributed_nights: result.gridBalanceAttributedNights,
+		grid_balance_excluded_nights: result.gridBalanceExcludedNights,
 		avg_charge_rate_pct_h: result.avgChargeRatePctH,
 		avg_discharge_rate_pct_h: result.avgDischargeRatePctH,
 		avg_charge_power_w: result.avgChargePowerW,

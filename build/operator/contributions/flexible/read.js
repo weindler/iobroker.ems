@@ -25,6 +25,7 @@ const ensure_states_4 = require("../../../addons/governance/ensure_states");
 const config_5 = require("../../../learning/weather/config");
 const consumer_stats_1 = require("../../../learning/consumer_stats");
 const persist_1 = require("../../../learning/consumer_stats/persist");
+const climate_shared_power_1 = require("../../../learning/climate_shared_power");
 const constants_2 = require("../../../learning/pv_horizon/constants");
 const tree_paths_1 = require("../../../tree_paths");
 const execution_mode_1 = require("../../../execution_mode");
@@ -85,6 +86,21 @@ async function readConsumerStats(host) {
     }
     catch {
         return null;
+    }
+}
+/** PHASE 3 — Shared-Power/Climate Learning: Reliability-Gate-Basis für `planCooling`. */
+async function readClimateSharedPowerStats(host) {
+    const getAbsolutePath = host.getAbsolutePath;
+    if (!getAbsolutePath)
+        return undefined;
+    try {
+        const persist = await (0, climate_shared_power_1.loadClimateSharedPowerStats)({
+            getAbsolutePath: (category) => getAbsolutePath(category ?? ""),
+        });
+        return persist.stats;
+    }
+    catch {
+        return undefined;
     }
 }
 async function readOutdoorTempC(host) {
@@ -348,6 +364,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     }
     const acConfig = (0, config_4.acGlobalConfigFromAdapter)(config);
     const stats = await readConsumerStats(host);
+    const climateSharedPowerStats = await readClimateSharedPowerStats(host);
     const thermalLearning = await readThermalLearningSignal(host, now);
     const boilerLearning = await readBoilerLearningSignal(host, now);
     const boilerTempLive = await readNum(host, "live.thermal.boiler_temp_c");
@@ -527,6 +544,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             outdoorTempC: outdoorTemp,
             outdoorForecastMaxC,
             units: acUnits,
+            sharedPowerStats: climateSharedPowerStats,
         },
     });
     return { contributions };

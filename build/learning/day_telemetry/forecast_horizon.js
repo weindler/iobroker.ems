@@ -19,15 +19,30 @@
  * wird eine neue vollständige Basisrevision angelegt — genau die vom Nutzer geforderte
  * "nur bei materieller Forecast-Änderung ein neuer vollständiger Snapshot"-Semantik.
  *
+ * PFLICHT-FIX (Produktionsbefund 30.08.2026, ~1,6 MB/Tag trotz Kompaktierung): der Preis-/
+ * PV-Horizont ist ein ROLLIERENDES Fenster ab „jetzt" — bei jedem 15-Min-Slotwechsel rutschen
+ * ALLE Start-Zeitstempel um einen Slot weiter (ältester Slot fällt raus, ein neuer kommt hinten
+ * dazu). Ein reiner Index-Vergleich (`a[i][0] !== b[i][0]`, altes `sameTimeline`) hält das für
+ * eine „andere Timeline" und erzwingt dadurch alle 15 Minuten eine neue Vollbasis — obwohl sich
+ * der eigentliche Forecast-Inhalt kaum geändert hat. Der Abgleich erfolgt deshalb jetzt per
+ * Timestamp (Map von Start-ms → Wert), nicht per Array-Position: ein Slot gilt als „von der
+ * Basis übernehmbar", wenn sein Start-ms in der Basis existiert UND der Wert gleich ist —
+ * unabhängig davon, an welcher Array-Position er in Basis/Snapshot steht. Neue Slots am Ende
+ * des rollierenden Fensters (kein Basis-Treffer) werden wie echte Änderungen im Delta
+ * mitgeführt. Die eigene Timeline (Start-ms + Slot-Anzahl, 15-Min-Takt) wird dafür kompakt
+ * mitgespeichert (siehe `PlannerKnowledgeSnapshot.forecastPriceTimelineStartMs` etc.).
+ *
  * Verlustfrei: `rehydrateForecastRevisions` rekonstruiert exakt die zum Snapshot-Zeitpunkt
  * bekannten Arrays (Basis + Delta angewendet) — keine Rundung, keine Interpolation, keine
  * Näherung. In-Memory (nach dem Lesen) ist ein Snapshot ununterscheidbar von einem, der nie
  * kompaktiert wurde — jeder bestehende Leser (Daily Evaluator, `record.ts`-Dedup,
- * `knowledge_time.ts`, Tests) funktioniert unverändert.
+ * `knowledge_time.ts`, Tests) funktioniert unverändert. Alt-Format (Index-Delta gegen die
+ * Basis-Arrayposition, vor diesem Fix persistiert) bleibt beim Lesen weiterhin unterstützt.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.rehydrateForecastRevisions = exports.compactForecastSnapshotsForPersist = exports.FORECAST_HORIZON_DELTA_MIN_ABS = exports.FORECAST_HORIZON_DELTA_MAX_RATIO = void 0;
 const node_crypto_1 = require("node:crypto");
+const constants_1 = require("./constants");
 /**
  * Ab diesem Anteil unterschiedlicher Slots (ggü. der aktuellen Basisrevision) gilt der
  * Forecast als materiell geändert → neue vollständige Basisrevision statt Delta.
@@ -39,24 +54,35 @@ function hashHorizon(priceSlots, pvSlotKwh) {
     const payload = JSON.stringify({ priceSlots, pvSlotKwh });
     return (0, node_crypto_1.createHash)("sha256").update(payload).digest("hex").slice(0, 16);
 }
-/** Gleiche Timeline = gleiche Länge UND gleiche Slot-Startzeiten an jeder Position. */
-function sameTimeline(a, b) {
-    if (a.length !== b.length)
-        return false;
-    for (let i = 0; i < a.length; i++) {
-        if (a[i][0] !== b[i][0])
+function toTsValueMap(slots) {
+    const m = new Map();
+    for (const [ts, v] of slots)
+        m.set(ts, v);
+    return m;
+}
+/** Regulärer, lückenloser 15-Min-Takt — Voraussetzung für die kompakte Start+Anzahl-Timeline. */
+function isRegularContiguous(slots) {
+    for (let i = 1; i < slots.length; i++) {
+        if (slots[i][0] - slots[i - 1][0] !== constants_1.DAY_TELEMETRY_SLOT_MS)
             return false;
     }
     return true;
 }
-/** null = Timeline weicht ab (Länge/Startzeiten) → kein Delta möglich, neue Basis nötig. */
-function diffSlots(base, next) {
-    if (!sameTimeline(base, next))
+/**
+ * Delta gegenüber der Basis PER TIMESTAMP (nicht per Array-Index) — überlebt einen seit der
+ * Basisrevision weitergerückten rollierenden Horizont. `null` = `next` nicht regulär/lückenlos
+ * 15-Min-getaktet → kein Timestamp-Delta möglich, Aufrufer muss auf Vollbasis ausweichen.
+ */
+function diffSlotsByTimestamp(baseMap, next) {
+    if (!isRegularContiguous(next))
         return null;
     const delta = [];
     for (let i = 0; i < next.length; i++) {
-        if (base[i][1] !== next[i][1])
-            delta.push([i, next[i][1]]);
+        const ts = next[i][0];
+        const v = next[i][1];
+        const baseV = baseMap.get(ts);
+        if (baseV === undefined || baseV !== v)
+            delta.push([i, v]);
     }
     return delta;
 }
@@ -66,13 +92,33 @@ function deltaWithinBudget(deltaLen, totalLen) {
     const budget = Math.max(exports.FORECAST_HORIZON_DELTA_MIN_ABS, Math.ceil(totalLen * exports.FORECAST_HORIZON_DELTA_MAX_RATIO));
     return deltaLen <= budget;
 }
-function applyDelta(base, delta) {
+/** Alt-Format (vor dem Timestamp-Fix): Index in der Basis-Arrayposition. Weiterhin lesbar. */
+function applyDeltaByIndex(base, delta) {
     const out = base.map((e) => [e[0], e[1]]);
     if (!delta?.length)
         return out;
     for (const [idx, val] of delta) {
         if (idx >= 0 && idx < out.length)
             out[idx] = [out[idx][0], val];
+    }
+    return out;
+}
+/**
+ * Neues Format: rekonstruiert die EIGENE Timeline des Snapshots (Start-ms + Anzahl, 15-Min-
+ * Takt) und übernimmt je Slot entweder den Basis-Wert (per Timestamp-Treffer) oder den
+ * Delta-Wert (Index innerhalb dieser eigenen Timeline). Ein Slot ohne Basis-Treffer MUSS im
+ * Delta stehen (das garantiert die Kompaktierung) — fehlt er trotzdem (beschädigte/alte Daten),
+ * wird er ausgelassen statt einen Wert zu erfinden.
+ */
+function applyDeltaByTimestamp(baseMap, startMs, count, delta) {
+    const deltaByIdx = new Map(delta ?? []);
+    const out = [];
+    for (let i = 0; i < count; i++) {
+        const ts = startMs + i * constants_1.DAY_TELEMETRY_SLOT_MS;
+        const v = deltaByIdx.has(i) ? deltaByIdx.get(i) : baseMap.get(ts);
+        if (v === undefined)
+            continue;
+        out.push([ts, v]);
     }
     return out;
 }
@@ -89,20 +135,26 @@ function compactForecastSnapshotsForPersist(day) {
         return day;
     const revisions = [];
     let currentBase = null;
+    let currentBasePriceMap = null;
+    let currentBasePvMap = null;
     const compactSnapshots = day.forecastSnapshots.map((snap) => {
-        const priceDelta = currentBase ? diffSlots(currentBase.priceSlots, snap.priceSlots) : null;
-        const pvDelta = currentBase ? diffSlots(currentBase.pvSlotKwh, snap.pvSlotKwh) : null;
+        const priceDelta = currentBasePriceMap ? diffSlotsByTimestamp(currentBasePriceMap, snap.priceSlots) : null;
+        const pvDelta = currentBasePvMap ? diffSlotsByTimestamp(currentBasePvMap, snap.pvSlotKwh) : null;
         const canDelta = currentBase != null &&
             priceDelta != null &&
             pvDelta != null &&
-            deltaWithinBudget(priceDelta.length, currentBase.priceSlots.length) &&
-            deltaWithinBudget(pvDelta.length, currentBase.pvSlotKwh.length);
+            deltaWithinBudget(priceDelta.length, snap.priceSlots.length) &&
+            deltaWithinBudget(pvDelta.length, snap.pvSlotKwh.length);
         if (canDelta && currentBase && priceDelta && pvDelta) {
             return {
                 ...snap,
                 priceSlots: [],
                 pvSlotKwh: [],
                 forecastRevisionId: currentBase.id,
+                forecastPriceTimelineStartMs: snap.priceSlots[0]?.[0],
+                forecastPriceSlotCount: snap.priceSlots.length,
+                forecastPvTimelineStartMs: snap.pvSlotKwh[0]?.[0],
+                forecastPvSlotCount: snap.pvSlotKwh.length,
                 forecastPriceDelta: priceDelta.length ? priceDelta : undefined,
                 forecastPvDelta: pvDelta.length ? pvDelta : undefined,
             };
@@ -114,11 +166,17 @@ function compactForecastSnapshotsForPersist(day) {
         if (!existing)
             revisions.push(rev);
         currentBase = rev;
+        currentBasePriceMap = toTsValueMap(rev.priceSlots);
+        currentBasePvMap = toTsValueMap(rev.pvSlotKwh);
         return {
             ...snap,
             priceSlots: [],
             pvSlotKwh: [],
             forecastRevisionId: rev.id,
+            forecastPriceTimelineStartMs: undefined,
+            forecastPriceSlotCount: undefined,
+            forecastPvTimelineStartMs: undefined,
+            forecastPvSlotCount: undefined,
             forecastPriceDelta: undefined,
             forecastPvDelta: undefined,
         };
@@ -146,8 +204,18 @@ function rehydrateForecastRevisions(day) {
         const rev = byId.get(revId);
         if (!rev)
             continue;
-        snap.priceSlots = applyDelta(rev.priceSlots, snap.forecastPriceDelta);
-        snap.pvSlotKwh = applyDelta(rev.pvSlotKwh, snap.forecastPvDelta);
+        if (snap.forecastPriceTimelineStartMs != null && snap.forecastPriceSlotCount != null) {
+            snap.priceSlots = applyDeltaByTimestamp(toTsValueMap(rev.priceSlots), snap.forecastPriceTimelineStartMs, snap.forecastPriceSlotCount, snap.forecastPriceDelta);
+        }
+        else {
+            snap.priceSlots = applyDeltaByIndex(rev.priceSlots, snap.forecastPriceDelta);
+        }
+        if (snap.forecastPvTimelineStartMs != null && snap.forecastPvSlotCount != null) {
+            snap.pvSlotKwh = applyDeltaByTimestamp(toTsValueMap(rev.pvSlotKwh), snap.forecastPvTimelineStartMs, snap.forecastPvSlotCount, snap.forecastPvDelta);
+        }
+        else {
+            snap.pvSlotKwh = applyDeltaByIndex(rev.pvSlotKwh, snap.forecastPvDelta);
+        }
     }
 }
 exports.rehydrateForecastRevisions = rehydrateForecastRevisions;

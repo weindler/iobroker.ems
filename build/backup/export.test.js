@@ -380,6 +380,10 @@ class ExportTestHost {
             "day_evaluation_v1.json",
             "statistics_v1.json",
             "vehicle_presence_learning_v1.json",
+            "climate_shared_power_v1.json",
+            "learning_state_v1.json",
+            "economics_v1.json",
+            "override_ledger_v1.json",
         ]);
     });
     (0, node_test_1.it)("excludes active runtime state from restore files", async () => {

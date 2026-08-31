@@ -96,9 +96,27 @@ export type PlannerKnowledgeSnapshot = {
 	 * ist es `undefined`.
 	 */
 	forecastRevisionId?: string;
-	/** [Index in `ForecastHorizonRevision.priceSlots`, importCtPerKwh] — nur geänderte Slots. */
+	/**
+	 * Eigene Preis-Timeline dieses Snapshots bei Delta-Kompaktierung (Start-Slot-ms + Anzahl,
+	 * 15-Min-Takt — siehe `DAY_TELEMETRY_SLOT_MS`). Nötig, weil der rollierende Forecast-
+	 * Horizont ständig weiterrückt: Basisrevision und Snapshot können unterschiedliche
+	 * Zeitfenster abdecken, der Abgleich erfolgt daher per Timestamp, nicht per Array-Index.
+	 * Nur gesetzt, wenn per Timestamp-Delta kompaktiert wurde (neues Format). Fehlt dieses Feld,
+	 * aber ist `forecastPriceDelta` gesetzt, ist es Alt-Format (Index in
+	 * `ForecastHorizonRevision.priceSlots`) — weiterhin unterstützt.
+	 */
+	forecastPriceTimelineStartMs?: number;
+	forecastPriceSlotCount?: number;
+	forecastPvTimelineStartMs?: number;
+	forecastPvSlotCount?: number;
+	/**
+	 * Neues Format: [Index INNERHALB der eigenen Timeline dieses Snapshots (siehe
+	 * `forecastPriceTimelineStartMs`/`forecastPriceSlotCount`), importCtPerKwh] — nur Slots ohne
+	 * (oder mit abweichendem) Treffer in der Basisrevision (per Timestamp). Alt-Format (ohne
+	 * `forecastPriceTimelineStartMs`): Index in `ForecastHorizonRevision.priceSlots`.
+	 */
 	forecastPriceDelta?: Array<[number, number]>;
-	/** [Index in `ForecastHorizonRevision.pvSlotKwh`, energyKwh] — nur geänderte Slots. */
+	/** Analog zu `forecastPriceDelta`, für `pvSlotKwh`/`forecastPvTimelineStartMs`. */
 	forecastPvDelta?: Array<[number, number]>;
 };
 

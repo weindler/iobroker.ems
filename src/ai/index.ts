@@ -14,6 +14,8 @@ import {
 	resetAiEnableEpochForTest,
 } from "./user_enabled";
 import { isAiAutoSuspended } from "./writeback";
+import { ensureAiValidatorStates } from "./override/ensure_states";
+import { ensureAiDailyAnalystStates } from "./daily_analyst/ensure_states";
 
 export { ensureAiStates } from "./ensure_states";
 export { AI_STATES } from "./ensure_states";
@@ -53,6 +55,8 @@ export async function ensureAiStateTree(
 	},
 ): Promise<void> {
 	await ensureAiStates(host);
+	await ensureAiValidatorStates(host);
+	await ensureAiDailyAnalystStates(host);
 	if (
 		typeof host.getStateAsync === "function" &&
 		typeof host.setStateAsync === "function" &&

@@ -126,8 +126,11 @@ function computeNightDischarges(params) {
             candidates.push({ method: "battery_discharge", windows });
         }
     }
+    const gridBalancePoints = params.gridBalancePowerPoints ?? [];
     function scoreWindows(windows) {
         const nights = [];
+        let gridBalanceAttributedNights = 0;
+        let gridBalanceExcludedNights = 0;
         for (const w of windows) {
             const obs = expandBridgeWithClockEnvelope(w, params.nightStart, params.nightEnd, params.astroDaily);
             /** Abend: SOC bei/vor Beobachtungsstart; Morgen: Tiefstwert im erweiterten Fenster. */
@@ -149,10 +152,33 @@ function computeNightDischarges(params) {
              */
             if (minPoint && (0, night_bridge_1.hasInterimRecharge)(params.socPoints, obs.startTs, minPoint.ts))
                 continue;
+            let nightPct = dischargePct;
+            let nightKwh = params.capacityKwh !== null ? (dischargePct / 100) * params.capacityKwh : null;
+            /*
+             * PFLICHT-FIX 1 Korrektur: EMS-eigene Netzausgleichs-Entladung darf den realen
+             * SOC-Abfall nicht als normalen Nachtgrundbedarf lernen lassen. Nur abziehen, wenn
+             * für GENAU dieses Fenster eine belastbare Leistungsserie vorliegt (≥ 50 % Abdeckung,
+             * siehe `integratePowerKwh`) — sonst Sample ausschließen statt zu schätzen. Ohne
+             * jegliche Netzausgleichs-Historie (leeres Array) bleibt das Verhalten unverändert.
+             */
+            if (gridBalancePoints.length > 0 && nightKwh !== null) {
+                const gbKwh = (0, night_bridge_1.integratePowerKwh)(gridBalancePoints, obs.startTs, obs.endTs);
+                if (gbKwh === null) {
+                    gridBalanceExcludedNights++;
+                    continue;
+                }
+                if (gbKwh > 0.01) {
+                    const netKwh = Math.max(0, nightKwh - gbKwh);
+                    nightPct =
+                        params.capacityKwh > 0 ? Math.max(0, (netKwh / params.capacityKwh) * 100) : nightPct;
+                    nightKwh = netKwh;
+                    gridBalanceAttributedNights++;
+                }
+            }
             const ageDays = Math.max(0, (nowMs - w.endTs) / constants_1.MS_PER_DAY);
             nights.push({
-                pct: round2(dischargePct),
-                kwh: params.capacityKwh !== null ? round3((dischargePct / 100) * params.capacityKwh) : null,
+                pct: round2(nightPct),
+                kwh: nightKwh !== null ? round3(nightKwh) : null,
                 weight: (0, night_bridge_1.recencyWeight)(ageDays),
                 /** Brückendauer bleibt die dynamische Erkennung (Diagnose), nicht die Uhr-Hülle. */
                 bridgeHours: (w.endTs - w.startTs) / constants_1.MS_PER_HOUR,
@@ -168,6 +194,8 @@ function computeNightDischarges(params) {
                 : null,
             validNights: trimmed.length,
             avgBridgeHours: average(trimmed.map((n) => n.bridgeHours)),
+            gridBalanceAttributedNights,
+            gridBalanceExcludedNights,
         };
     }
     function isDynamicMethod(m) {
@@ -259,6 +287,8 @@ function computeNightDischarges(params) {
             method: "none",
             avgBridgeHours: null,
             windows: [],
+            gridBalanceAttributedNights: 0,
+            gridBalanceExcludedNights: 0,
         };
     }
     const bestWindows = candidates.find((c) => c.method === best.method)?.windows ?? [];
@@ -269,6 +299,8 @@ function computeNightDischarges(params) {
         method: best.method,
         avgBridgeHours: best.avgBridgeHours,
         windows: bestWindows,
+        gridBalanceAttributedNights: best.gridBalanceAttributedNights,
+        gridBalanceExcludedNights: best.gridBalanceExcludedNights,
     };
 }
 exports.computeNightDischarges = computeNightDischarges;
@@ -435,6 +467,7 @@ function computeBatteryRuntimeLearning(params) {
         pvPowerPoints: params.pvPowerPoints,
         housePowerPoints: params.housePowerPoints,
         batteryPowerPoints: params.powerPoints,
+        gridBalancePowerPoints: params.gridBalancePowerPoints,
         nowMs: params.now.getTime(),
     });
     const houseLoad = computeNightHouseLoadDiagnostic({
@@ -549,6 +582,8 @@ function computeBatteryRuntimeLearning(params) {
         requiredSocAtPvEndPct: reserve.requiredSocAtPvEndPct,
         requiredNightReserveKwh: reserve.requiredReserveKwh,
         nightReserveReasonDe: reserve.reasonDe,
+        gridBalanceAttributedNights: night.gridBalanceAttributedNights,
+        gridBalanceExcludedNights: night.gridBalanceExcludedNights,
     };
 }
 exports.computeBatteryRuntimeLearning = computeBatteryRuntimeLearning;
@@ -565,6 +600,8 @@ const EMPTY_POWER_DIAGNOSTICS = {
     nightBridgeMethod: "none",
     avgNightBridgeHours: null,
     nightBridgeValidNights: 0,
+    gridBalanceAttributedNights: 0,
+    gridBalanceExcludedNights: 0,
 };
 function withPowerDiagnostics(result, meta) {
     if (!meta)

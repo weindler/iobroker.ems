@@ -42,6 +42,7 @@ export async function ensureDailyEvaluatorStates(host: StateHost): Promise<void>
 		boolState(DAILY_EVALUATOR_STATES.lastDayEvaluable, "Letzter Tag global evaluable"),
 		numState(DAILY_EVALUATOR_STATES.lastDayGlobalScore, "Letzter Tag GlobalScore", "%"),
 		numState(DAILY_EVALUATOR_STATES.lastDayFindingsCount, "Letzter Tag Findings-Anzahl"),
+		strState(DAILY_EVALUATOR_STATES.lastDayTopFindingDe, "Letzter Tag wichtigstes Finding", ""),
 		strState(DAILY_EVALUATOR_STATES.learningSampleCountJson, "Diagnostisches Learning Sample-Counts (JSON)"),
 	];
 	await ensureStates(host, defs);

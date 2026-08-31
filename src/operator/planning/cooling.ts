@@ -5,6 +5,8 @@ import { resolveConsumerEffectivePowerW } from "../../learning/consumer_stats/le
 import type { PlannerCoolingDecision } from "../../planner/types";
 import { sumAllocatedConsumerPeakW } from "../../planner/consumer_allocate";
 import { estimateCoolingHours, estimateDehumidifyHours } from "./climate_energy";
+import { climateSharedPowerKey, resolveClimateSharedPowerW } from "../../learning/climate_shared_power/math";
+import type { ClimateSharedPowerStat } from "../../learning/climate_shared_power/types";
 
 export type CoolingUnitPlanInput = {
 	unit: AcUnitConfig;
@@ -22,13 +24,21 @@ export type CoolingPlanInput = {
 	/** Wetter-Horizon Tag-1 korrigiertes Max — bevorzugte Planungsgröße. */
 	outdoorForecastMaxC?: number | null;
 	units: CoolingUnitPlanInput[];
+	/**
+	 * PHASE 3 — Shared-Power/Climate Learning (`learning/climate_shared_power`). Key =
+	 * `climateSharedPowerKey(groupId, mode, combo)`. Optional — ohne Stats (z. B. Kaltstart,
+	 * noch keine Segmente) unverändertes Verhalten über `resolveConsumerEffectivePowerW`.
+	 */
+	sharedPowerStats?: Record<string, ClimateSharedPowerStat>;
 };
 
 export type CoolingUnitForecast = {
 	unitIndex: number;
 	name: string;
 	powerW: number;
-	powerSource: "config" | "learned";
+	powerSource: "config" | "learned" | "learned_shared";
+	/** Für welche Betriebsart `powerW` bestimmt wurde — Basis für gruppenweite Peak-Dedup. */
+	powerPurpose: "cooling" | "dehumidify" | null;
 	likelyActive: boolean;
 	expectedHours: number;
 	expectedKwh: number;
@@ -70,6 +80,33 @@ function parseClockEnd(raw: string): number | null {
 	return h * 60 + min;
 }
 
+/**
+ * PHASE 3 — Shared-Power/Climate Learning: löst die elektrische Leistung DIESER Unit alleine
+ * (Solo-Kombination, `activeUnitCombinationKey` für genau einen aktiven Index) für die
+ * gegebene Betriebsart über das gruppenbewusste Learning auf. Grund: die bisherige reine
+ * Pro-Unit-`consumer_stats`-Kette speist bei geteilten Außengeräten den ROHEN (nicht
+ * deduplizierten) Sensorwert ein — Tage mit gleichzeitigem Betrieb beider Innengeräte blähen
+ * den gelernten Solo-Wert künstlich auf. Ohne Gruppe/ohne belastbares Sample: unverändertes
+ * bestehendes Verhalten (Consumer-Stats/Config-Fallback).
+ */
+function resolveGroupAwarePowerW(
+	unit: AcUnitConfig,
+	purpose: "cooling" | "dehumidify",
+	fallback: { powerW: number; source: "config" | "learned" },
+	sharedPowerStats: Record<string, ClimateSharedPowerStat> | undefined,
+): { powerW: number; source: CoolingUnitForecast["powerSource"]; noteDe: string | null } {
+	if (!unit.sharedPowerGroupId || !sharedPowerStats) {
+		return { powerW: fallback.powerW, source: fallback.source, noteDe: null };
+	}
+	const soloCombo = String(unit.index);
+	const key = climateSharedPowerKey(unit.sharedPowerGroupId, purpose, soloCombo);
+	const resolution = resolveClimateSharedPowerW(sharedPowerStats[key], fallback.powerW);
+	if (resolution.source === "learned") {
+		return { powerW: resolution.powerW, source: "learned_shared", noteDe: resolution.reasonDe };
+	}
+	return { powerW: fallback.powerW, source: fallback.source, noteDe: null };
+}
+
 function estimateUnitClimate(input: {
 	unit: AcUnitConfig;
 	roomTempC: number | null;
@@ -78,6 +115,7 @@ function estimateUnitClimate(input: {
 	outdoorLikelyTempC: number;
 	remainingHours: number;
 	consumerStats: ConsumerPersistEntry | undefined;
+	sharedPowerStats: Record<string, ClimateSharedPowerStat> | undefined;
 	nowMs: number;
 }): CoolingUnitForecast {
 	const { unit } = input;
@@ -91,6 +129,7 @@ function estimateUnitClimate(input: {
 		name: unit.name,
 		powerW: learned.powerW,
 		powerSource: learned.source,
+		powerPurpose: null,
 		likelyActive: false,
 		expectedHours: 0,
 		expectedKwh: 0,
@@ -141,9 +180,17 @@ function estimateUnitClimate(input: {
 		return none(reason);
 	}
 
-	const expectedKwh = (learned.powerW * expectedHours) / 1000;
+	// Kühlung dominiert i.d.R. (Kompressorlast); Entfeuchten nur wenn Kühlung nicht ohnehin aktiv ist.
+	const purpose: "cooling" | "dehumidify" = cooling.likelyActive ? "cooling" : "dehumidify";
+	const resolved = resolveGroupAwarePowerW(unit, purpose, learned, input.sharedPowerStats);
+
+	const expectedKwh = (resolved.powerW * expectedHours) / 1000;
 	const powerLabel =
-		learned.source === "learned" ? `${learned.powerW} W (gelernt)` : `${learned.powerW} W (Config)`;
+		resolved.source === "learned_shared"
+			? `${resolved.powerW} W (gelernt, Shared-Power)`
+			: resolved.source === "learned"
+				? `${resolved.powerW} W (gelernt)`
+				: `${resolved.powerW} W (Config)`;
 	const parts: string[] = [];
 	if (cooling.likelyActive) parts.push(`Kühl: ${cooling.reasonDe}`);
 	if (dehumidify.likelyActive) parts.push(`Entfeucht: ${dehumidify.reasonDe}`);
@@ -155,8 +202,9 @@ function estimateUnitClimate(input: {
 	return {
 		unitIndex: unit.index,
 		name: unit.name,
-		powerW: learned.powerW,
-		powerSource: learned.source,
+		powerW: resolved.powerW,
+		powerSource: resolved.source,
+		powerPurpose: purpose,
 		likelyActive: true,
 		expectedHours: Math.round(expectedHours * 100) / 100,
 		expectedKwh: Math.round(expectedKwh * 1000) / 1000,
@@ -164,6 +212,56 @@ function estimateUnitClimate(input: {
 		dehumidifyHours: dehumidify.expectedHours,
 		reasonDe: parts.join("; "),
 	};
+}
+
+/**
+ * PHASE 3 — Shared-Power/Climate Learning: verhindert additive Doppelzählung der Peak-Leistung,
+ * wenn mehrere aktive Units eines Plans dasselbe Außengerät teilen (`sharedPowerGroupId`).
+ * Bevorzugt den gelernten Kombi-Wert für genau diese Kombination (z. B. "1+2"); ohne
+ * belastbares Sample: konservativ max() statt Summe — dieselbe Fallback-Logik wie die
+ * bestehende Live-Deduplizierung (`addons/air_conditioning/shared_power.ts`), NICHT
+ * 700 W + 700 W für ein Außengerät, das real nur einmal zieht.
+ */
+function dedupSharedGroupPeakPowers(
+	activeForecasts: CoolingUnitForecast[],
+	enabledUnits: CoolingUnitPlanInput[],
+	sharedPowerStats: Record<string, ClimateSharedPowerStat> | undefined,
+): number[] {
+	const unitByIndex = new Map(enabledUnits.map((r) => [r.unit.index, r.unit]));
+	const groups = new Map<string, CoolingUnitForecast[]>();
+	const standalone: number[] = [];
+
+	for (const f of activeForecasts) {
+		const groupId = unitByIndex.get(f.unitIndex)?.sharedPowerGroupId ?? null;
+		if (!groupId || !f.powerPurpose) {
+			standalone.push(f.powerW);
+			continue;
+		}
+		const gKey = `${groupId}|${f.powerPurpose}`;
+		const arr = groups.get(gKey) ?? [];
+		arr.push(f);
+		groups.set(gKey, arr);
+	}
+
+	const result = [...standalone];
+	for (const [gKey, members] of groups) {
+		if (members.length === 1) {
+			result.push(members[0].powerW);
+			continue;
+		}
+		const sep = gKey.indexOf("|");
+		const groupId = gKey.slice(0, sep);
+		const purpose = gKey.slice(sep + 1);
+		const combo = [...members]
+			.map((m) => m.unitIndex)
+			.sort((a, b) => a - b)
+			.join("+");
+		const combinedKey = climateSharedPowerKey(groupId, purpose, combo);
+		const maxSolo = Math.max(...members.map((m) => m.powerW));
+		const resolution = resolveClimateSharedPowerW(sharedPowerStats?.[combinedKey], maxSolo);
+		result.push(resolution.source === "learned" ? resolution.powerW : maxSolo);
+	}
+	return result;
 }
 
 export function planCooling(input: CoolingPlanInput): CoolingPlanResult {
@@ -203,6 +301,7 @@ export function planCooling(input: CoolingPlanInput): CoolingPlanResult {
 				name: unit.name,
 				powerW: unit.estimatedPowerW,
 				powerSource: "config",
+				powerPurpose: null,
 				likelyActive: false,
 				expectedHours: 0,
 				expectedKwh: 0,
@@ -221,6 +320,7 @@ export function planCooling(input: CoolingPlanInput): CoolingPlanResult {
 				outdoorLikelyTempC: input.acConfig.plannerOutdoorLikelyTempC,
 				remainingHours: remainingActiveHours(input.now, unit),
 				consumerStats: row.consumerStats,
+				sharedPowerStats: input.sharedPowerStats,
 				nowMs: input.now.getTime(),
 			}),
 		);
@@ -229,7 +329,7 @@ export function planCooling(input: CoolingPlanInput): CoolingPlanResult {
 	const activeForecasts = forecasts.filter((f) => f.likelyActive && f.powerW > 0);
 	const likelyActive = activeForecasts.length > 0;
 	const expectedKwh = forecasts.reduce((sum, f) => sum + f.expectedKwh, 0);
-	const peakUnitPowers = activeForecasts.map((f) => f.powerW);
+	const peakUnitPowers = dedupSharedGroupPeakPowers(activeForecasts, enabledUnits, input.sharedPowerStats);
 	const expectedPeakW = likelyActive
 		? sumAllocatedConsumerPeakW(peakUnitPowers, input.acConfig.outdoorMaxPowerW)
 		: 0;

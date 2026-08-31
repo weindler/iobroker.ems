@@ -19,7 +19,7 @@ function makeFakeHost() {
 }
 (0, node_test_1.describe)("daily_evaluator ensure_states", () => {
     (0, node_test_1.it)("nur minimale, rein lesende Admin-/Visibility-States", () => {
-        strict_1.default.equal(ensure_states_js_1.DAILY_EVALUATOR_STATE_IDS.length, 9);
+        strict_1.default.equal(ensure_states_js_1.DAILY_EVALUATOR_STATE_IDS.length, 10);
         strict_1.default.ok(ensure_states_js_1.DAILY_EVALUATOR_STATE_IDS.every((id) => id.startsWith("learning.daily_evaluator.")));
     });
     (0, node_test_1.it)("ensureDailyEvaluatorStates legt Channel + alle States ohne Fehler an", async () => {

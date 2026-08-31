@@ -5,6 +5,7 @@ import {
 } from "./config";
 import {
 	fetchAstroTimeHistory,
+	fetchGridBalanceDischargePowerHistory,
 	fetchPowerHistory,
 	fetchSitePowerFromEnergyCounter,
 	fetchSitePowerSeries,
@@ -28,6 +29,7 @@ import {
 import { writeBatteryRuntimePersist } from "./persist";
 import type { BatteryRuntimeComputeResult } from "./types";
 import { pvBiasConfigFromAdapter } from "../pv_bias/config";
+import { BAT } from "../../addons/battery/ensure_states";
 
 export type BatteryRuntimeRunHost = {
 	config: unknown;
@@ -114,6 +116,16 @@ async function writeResult(
 		"learning.battery_runtime.night_bridge_valid_nights",
 		result.nightBridgeValidNights,
 	);
+	await setNumIfValid(
+		host,
+		"learning.battery_runtime.grid_balance_attributed_nights",
+		result.gridBalanceAttributedNights,
+	);
+	await setNumIfValid(
+		host,
+		"learning.battery_runtime.grid_balance_excluded_nights",
+		result.gridBalanceExcludedNights,
+	);
 	await setNumIfValid(host, "learning.battery_runtime.avg_charge_power_w", result.avgChargePowerW);
 	await setNumIfValid(host, "learning.battery_runtime.max_charge_power_w", result.maxChargePowerW);
 	await host.setStateAsync("learning.battery_runtime.last_full_charge", {
@@ -170,6 +182,17 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 		const powerHist = sources.powerStateId
 			? await fetchPowerHistory(host, sources.powerStateId, cfg.lookbackDays, cfg.powerInvert)
 			: { points: [], lastValidTs: null, meta: null };
+		/*
+		 * PFLICHT-FIX 1 Korrektur: eigene Netzausgleichs-Entladehistorie, um sie aus dem
+		 * SOC-basierten Nachtbedarf herauszurechnen (Attribution, keine zweite Reserve-Quelle).
+		 * Fester interner State (kein Admin-Mapping nötig) — leeres Ergebnis (kein History-Log
+		 * für diesen State) lässt das Verhalten unverändert.
+		 */
+		const gridBalancePowerPoints = await fetchGridBalanceDischargePowerHistory(
+			host,
+			BAT.gridBalance.effectivePowerW,
+			cfg.lookbackDays,
+		);
 		const [pvDirect, housePowerPoints] = await Promise.all([
 			sources.pvAcPowerStateId
 				? fetchSitePowerSeries(host, sources.pvAcPowerStateId, cfg.lookbackDays)
@@ -218,6 +241,7 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 				powerPoints: powerHist.points,
 				pvPowerPoints,
 				housePowerPoints,
+				gridBalancePowerPoints,
 				capacityKwh,
 				currentSocPct,
 				cfg,

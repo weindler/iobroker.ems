@@ -22,7 +22,12 @@ import {
 	DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH,
 } from "./battery_discharge_authority";
 import { evaluateBatteryOpportunityCost } from "./battery_opportunity_cost";
-import { loadBlockALearningSnapshot } from "./block_a_learning_bridge";
+import { listActiveOverrides } from "../../ai/override_ledger";
+import {
+	mergeOpportunityMarginWithOverride,
+	AI_OVERRIDE_PARAM_BATTERY_OPPORTUNITY_MARGIN_CT,
+} from "../../ai/override/allowlist";
+import { resolveActiveOverrideValue } from "../../ai/override/validate";
 import {
 	calibrateBatteryOpportunityMargin,
 	toBatteryReserveLearningExplanation,
@@ -108,6 +113,7 @@ import type { ExecutionModeAddonId } from "../../execution_mode";
 import { stripAddonFromDailyPlan, stripAddonFromUnifiedPlan } from "./invalidate_addon_off";
 import { batteryConfigFromAdapter } from "../../addons/battery/config";
 import { resolvePassiveBatteryEnergyAvailable } from "./unified/passive_battery_energy";
+import { loadBlockALearningSnapshot } from "./block_a_learning_bridge";
 
 let lastRevisionPayload = "";
 let revision = 0;
@@ -579,10 +585,28 @@ export async function runDailyPlanTick(
 	const baselineBatteryDischargeAuthorization = resolveBatteryDischargeAuthorization(
 		batteryDischargeAuthorizationInputBase,
 	);
+	const learnedOpportunityMarginCt =
+		DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH + batteryReserveLearning.extraMarginCtPerKwh;
+	let opportunityMarginOverride: number | null = null;
+	try {
+		const activeOverrides = await listActiveOverrides(
+			host as unknown as { getAbsolutePath?: (c?: string) => string },
+		);
+		opportunityMarginOverride = resolveActiveOverrideValue(
+			activeOverrides,
+			AI_OVERRIDE_PARAM_BATTERY_OPPORTUNITY_MARGIN_CT,
+			now,
+		);
+	} catch {
+		opportunityMarginOverride = null;
+	}
+	const opportunityMarginCtPerKwh = mergeOpportunityMarginWithOverride(
+		learnedOpportunityMarginCt,
+		opportunityMarginOverride,
+	);
 	const batteryDischargeAuthorization = resolveBatteryDischargeAuthorization({
 		...batteryDischargeAuthorizationInputBase,
-		opportunityMarginCtPerKwh:
-			DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH + batteryReserveLearning.extraMarginCtPerKwh,
+		opportunityMarginCtPerKwh,
 	});
 	const batteryLearningExplanation = toBatteryReserveLearningExplanation(
 		batteryReserveLearning,

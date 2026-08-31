@@ -111,6 +111,16 @@ const REQUIRED_STATE_PATHS = [
 	"addons.wallbox.runtime.battery_hold_for_ev_charge",
 	"addons.wallbox.status.ev_foundation.ev_execution_authority",
 	"addons.wallbox.runtime.tibber_grid_rewards_active",
+	"learning.battery_runtime.predicted_night_consumption_kwh",
+	"planner.battery_discharge.reason_de",
+	"ai.daily_analyst.status",
+	"ai.validator.active_overrides_count",
+	"learning.daily_evaluator.last_day_global_score",
+	"learning.shadow_engine.yesterday_real_net_cost_eur",
+	"learning.climate_shared_power.summary_de",
+	"economics.today.ems_vorteil_eur",
+	"economics.period.grid_rewards_eur",
+	"economics.cumulative.ems_vorteil_eur",
 ];
 
 describe("VIS operations dashboard", () => {
@@ -140,6 +150,7 @@ describe("VIS operations dashboard", () => {
 		assert.match(visHtml, /GB preislich /);
 		assert.match(visHtml, /Netzausgleich ab /);
 		assert.match(visHtml, /price_below_minimum:"Preis unter Schwelle"/);
+		assert.match(visHtml, /planner_budget_zero:"Kein Entladebudget"/);
 	});
 
 	it("keeps boiler and buffer as separate rows", () => {

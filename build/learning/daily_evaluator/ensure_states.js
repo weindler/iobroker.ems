@@ -41,6 +41,7 @@ async function ensureDailyEvaluatorStates(host) {
         boolState(constants_1.DAILY_EVALUATOR_STATES.lastDayEvaluable, "Letzter Tag global evaluable"),
         numState(constants_1.DAILY_EVALUATOR_STATES.lastDayGlobalScore, "Letzter Tag GlobalScore", "%"),
         numState(constants_1.DAILY_EVALUATOR_STATES.lastDayFindingsCount, "Letzter Tag Findings-Anzahl"),
+        strState(constants_1.DAILY_EVALUATOR_STATES.lastDayTopFindingDe, "Letzter Tag wichtigstes Finding", ""),
         strState(constants_1.DAILY_EVALUATOR_STATES.learningSampleCountJson, "Diagnostisches Learning Sample-Counts (JSON)"),
     ];
     await (0, state_util_1.ensureStates)(host, defs);

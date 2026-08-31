@@ -27,6 +27,8 @@ import { weatherConfigFromAdapter } from "../../../learning/weather/config";
 import { PERSIST_CATEGORY as CONSUMER_STATS_PERSIST } from "../../../learning/consumer_stats";
 import { readConsumerStatsPersist } from "../../../learning/consumer_stats/persist";
 import type { ConsumerStatsPersist } from "../../../learning/consumer_stats/types";
+import { loadClimateSharedPowerStats } from "../../../learning/climate_shared_power";
+import type { ClimateSharedPowerStat } from "../../../learning/climate_shared_power/types";
 import { PV_HORIZON_DAY_COUNT, PV_HORIZON_EXTENDED_FIRST_DAY } from "../../../learning/pv_horizon/constants";
 import { addonEnabled, addonMode } from "../../../tree_paths";
 import { parseAddonMode } from "../../../execution_mode";
@@ -93,6 +95,22 @@ async function readConsumerStats(host: FlexibleContributionsReadHost): Promise<C
 		return await readConsumerStatsPersist(dir);
 	} catch {
 		return null;
+	}
+}
+
+/** PHASE 3 — Shared-Power/Climate Learning: Reliability-Gate-Basis für `planCooling`. */
+async function readClimateSharedPowerStats(
+	host: FlexibleContributionsReadHost,
+): Promise<Record<string, ClimateSharedPowerStat> | undefined> {
+	const getAbsolutePath = host.getAbsolutePath;
+	if (!getAbsolutePath) return undefined;
+	try {
+		const persist = await loadClimateSharedPowerStats({
+			getAbsolutePath: (category?: string) => getAbsolutePath(category ?? ""),
+		});
+		return persist.stats;
+	} catch {
+		return undefined;
 	}
 }
 
@@ -497,6 +515,7 @@ export async function collectFlexibleContributions(
 
 	const acConfig = acGlobalConfigFromAdapter(config);
 	const stats = await readConsumerStats(host);
+	const climateSharedPowerStats = await readClimateSharedPowerStats(host);
 
 	const thermalLearning = await readThermalLearningSignal(host, now);
 	const boilerLearning = await readBoilerLearningSignal(host, now);
@@ -689,6 +708,7 @@ export async function collectFlexibleContributions(
 			outdoorTempC: outdoorTemp,
 			outdoorForecastMaxC,
 			units: acUnits,
+			sharedPowerStats: climateSharedPowerStats,
 		},
 	});
 

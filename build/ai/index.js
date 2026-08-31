@@ -11,10 +11,12 @@ const run_1 = require("./run");
 const trigger_digest_1 = require("./trigger_digest");
 const user_enabled_1 = require("./user_enabled");
 const writeback_1 = require("./writeback");
-var ensure_states_2 = require("./ensure_states");
-Object.defineProperty(exports, "ensureAiStates", { enumerable: true, get: function () { return ensure_states_2.ensureAiStates; } });
-var ensure_states_3 = require("./ensure_states");
-Object.defineProperty(exports, "AI_STATES", { enumerable: true, get: function () { return ensure_states_3.AI_STATES; } });
+const ensure_states_2 = require("./override/ensure_states");
+const ensure_states_3 = require("./daily_analyst/ensure_states");
+var ensure_states_4 = require("./ensure_states");
+Object.defineProperty(exports, "ensureAiStates", { enumerable: true, get: function () { return ensure_states_4.ensureAiStates; } });
+var ensure_states_5 = require("./ensure_states");
+Object.defineProperty(exports, "AI_STATES", { enumerable: true, get: function () { return ensure_states_5.AI_STATES; } });
 var config_2 = require("./config");
 Object.defineProperty(exports, "aiConfigFromAdapter", { enumerable: true, get: function () { return config_2.aiConfigFromAdapter; } });
 Object.defineProperty(exports, "AI_ALLOWED_MODELS", { enumerable: true, get: function () { return config_2.AI_ALLOWED_MODELS; } });
@@ -41,6 +43,8 @@ function resetAiPipelineHookForTest() {
 exports.resetAiPipelineHookForTest = resetAiPipelineHookForTest;
 async function ensureAiStateTree(host) {
     await (0, ensure_states_1.ensureAiStates)(host);
+    await (0, ensure_states_2.ensureAiValidatorStates)(host);
+    await (0, ensure_states_3.ensureAiDailyAnalystStates)(host);
     if (typeof host.getStateAsync === "function" &&
         typeof host.setStateAsync === "function" &&
         "config" in host) {

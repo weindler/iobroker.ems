@@ -273,6 +273,16 @@ build/beta/beta_befund_005.test.js
 build/beta/beta_day.test.js
 build/beta/beta_gate.test.js
 build/ai/compare/index.test.js
+build/ai/daily_analyst/validate_response.test.js
+build/ai/daily_analyst/provider.test.js
+build/ai/daily_analyst/run.test.js
+build/ai/override/validate.test.js
+build/ai/override/ingest.test.js
+build/economics/compute.test.js
+build/learning/shadow_engine/simulate.test.js
+build/learning/shadow_engine/battery_model.test.js
+build/learning/shadow_engine/exogenous_load.test.js
+build/learning/climate_shared_power/math.test.js
 vis/immersion_fault_labels.test.mjs
 vis/ai_vis_semantics.test.mjs
 vis/dashboard_ops.test.mjs

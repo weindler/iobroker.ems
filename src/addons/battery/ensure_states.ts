@@ -229,6 +229,8 @@ export const BATTERY_PUBLIC_STATE_IDS = new Set<string>([
 	BAT.gridBalance.priceMinCtKwh,
 	BAT.gridBalance.priceAllowed,
 	BAT.gridBalance.gridPowerW,
+	BAT.gridBalance.requestedPowerW,
+	BAT.gridBalance.requestedDischargeW,
 	BAT.gridBalance.effectivePowerW,
 	BAT.gridBalance.holdDetected,
 	BAT.gridBalance.evConflict,

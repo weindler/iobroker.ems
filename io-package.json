@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.20",
+		"version": "0.2.21",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.21": {
+				"en": "Fix: ensure grid_balance requested_power_w and requested_discharge_w objects exist before write. After update: no startup warning about missing addons.battery.grid_balance.requested_* objects.",
+				"de": "Fix: Grid-Balance-States requested_power_w und requested_discharge_w werden vor dem Schreiben als Objekte angelegt. Nach Update: keine Start-Warnung zu fehlenden addons.battery.grid_balance.requested_*-Objekten."
+			},
 			"0.2.20": {
 				"en": "Learned Grid Balance economics (α/β, C_replace, 30 ct fallback when not usable). Check planner.battery_discharge.economics_* and learning.grid_balance_economics.*",
 				"de": "Lernende Netzausgleich-Wirtschaft (α/β, C_replace, 30-ct-Fallback wenn nicht usable). Prüfen: planner.battery_discharge.economics_* und learning.grid_balance_economics.*"

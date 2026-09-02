@@ -76,6 +76,14 @@ describe("surface cleanup allowlist", () => {
 			isAllowlistedCleanupRelativeId("addons.battery.grid_balance.policy_excluded_reason_de"),
 			false,
 		);
+		assert.equal(
+			isAllowlistedCleanupRelativeId("addons.battery.grid_balance.requested_power_w"),
+			false,
+		);
+		assert.equal(
+			isAllowlistedCleanupRelativeId("addons.battery.grid_balance.requested_discharge_w"),
+			false,
+		);
 		// Ballast sibling under grid_balance remains purgeable.
 		assert.equal(
 			isAllowlistedCleanupRelativeId("addons.battery.grid_balance.mirror_follows_admin"),
@@ -387,6 +395,8 @@ describe("dynamic surface ensure + cleanup", () => {
 		await ensureBatteryArchitectureStates(host as unknown as ioBroker.Adapter);
 		assert.equal(host.objects.has("addons.battery.grid_balance.policy_excluded_load_w"), true);
 		assert.equal(host.objects.has("addons.battery.grid_balance.policy_excluded_reason_de"), true);
+		assert.equal(host.objects.has("addons.battery.grid_balance.requested_power_w"), true);
+		assert.equal(host.objects.has("addons.battery.grid_balance.requested_discharge_w"), true);
 
 		await runDynamicSurfaceCleanup(host);
 		assert.equal(
@@ -400,6 +410,16 @@ describe("dynamic surface ensure + cleanup", () => {
 			"policy_excluded_reason_de must survive Phase-C2 cleanup",
 		);
 		assert.equal(
+			host.objects.has("addons.battery.grid_balance.requested_power_w"),
+			true,
+			"requested_power_w must survive Phase-C2 cleanup",
+		);
+		assert.equal(
+			host.objects.has("addons.battery.grid_balance.requested_discharge_w"),
+			true,
+			"requested_discharge_w must survive Phase-C2 cleanup",
+		);
+		assert.equal(
 			host.deleted.includes("addons.battery.grid_balance.policy_excluded_load_w"),
 			false,
 		);
@@ -407,5 +427,7 @@ describe("dynamic surface ensure + cleanup", () => {
 			host.deleted.includes("addons.battery.grid_balance.policy_excluded_reason_de"),
 			false,
 		);
+		assert.equal(host.deleted.includes("addons.battery.grid_balance.requested_power_w"), false);
+		assert.equal(host.deleted.includes("addons.battery.grid_balance.requested_discharge_w"), false);
 	});
 });

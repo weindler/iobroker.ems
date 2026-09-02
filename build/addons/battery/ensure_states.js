@@ -229,6 +229,8 @@ exports.BATTERY_PUBLIC_STATE_IDS = new Set([
     exports.BAT.gridBalance.priceMinCtKwh,
     exports.BAT.gridBalance.priceAllowed,
     exports.BAT.gridBalance.gridPowerW,
+    exports.BAT.gridBalance.requestedPowerW,
+    exports.BAT.gridBalance.requestedDischargeW,
     exports.BAT.gridBalance.effectivePowerW,
     exports.BAT.gridBalance.holdDetected,
     exports.BAT.gridBalance.evConflict,

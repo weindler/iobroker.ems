@@ -65,6 +65,8 @@ class FakeCleanupHost {
         // Phase-C2 surface cleanup must not delete them before the first grid_balance setState.
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.battery.grid_balance.policy_excluded_load_w"), false);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.battery.grid_balance.policy_excluded_reason_de"), false);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.battery.grid_balance.requested_power_w"), false);
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.battery.grid_balance.requested_discharge_w"), false);
         // Ballast sibling under grid_balance remains purgeable.
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.battery.grid_balance.mirror_follows_admin"), true);
     });
@@ -320,10 +322,16 @@ class FakeCleanupHost {
         await ensureBatteryArchitectureStates(host);
         strict_1.default.equal(host.objects.has("addons.battery.grid_balance.policy_excluded_load_w"), true);
         strict_1.default.equal(host.objects.has("addons.battery.grid_balance.policy_excluded_reason_de"), true);
+        strict_1.default.equal(host.objects.has("addons.battery.grid_balance.requested_power_w"), true);
+        strict_1.default.equal(host.objects.has("addons.battery.grid_balance.requested_discharge_w"), true);
         await (0, cleanup_js_1.runDynamicSurfaceCleanup)(host);
         strict_1.default.equal(host.objects.has("addons.battery.grid_balance.policy_excluded_load_w"), true, "policy_excluded_load_w must survive Phase-C2 cleanup");
         strict_1.default.equal(host.objects.has("addons.battery.grid_balance.policy_excluded_reason_de"), true, "policy_excluded_reason_de must survive Phase-C2 cleanup");
+        strict_1.default.equal(host.objects.has("addons.battery.grid_balance.requested_power_w"), true, "requested_power_w must survive Phase-C2 cleanup");
+        strict_1.default.equal(host.objects.has("addons.battery.grid_balance.requested_discharge_w"), true, "requested_discharge_w must survive Phase-C2 cleanup");
         strict_1.default.equal(host.deleted.includes("addons.battery.grid_balance.policy_excluded_load_w"), false);
         strict_1.default.equal(host.deleted.includes("addons.battery.grid_balance.policy_excluded_reason_de"), false);
+        strict_1.default.equal(host.deleted.includes("addons.battery.grid_balance.requested_power_w"), false);
+        strict_1.default.equal(host.deleted.includes("addons.battery.grid_balance.requested_discharge_w"), false);
     });
 });

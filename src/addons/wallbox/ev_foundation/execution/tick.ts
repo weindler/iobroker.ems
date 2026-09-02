@@ -39,6 +39,13 @@ import {
 	type EvExecutionSession,
 } from "./types";
 import { executeEvccButtonWrite } from "./write";
+import { evFoundationConfigFromAdapter } from "../config";
+import {
+	clampTibberNowStabilizeSeconds,
+	emptyTibberNowPrepareState,
+	evaluateTibberNowPrepare,
+	type TibberNowPrepareState,
+} from "./tibber_now_prepare";
 
 export type EvExecutionTickHost = StateHost & {
 	config?: unknown;
@@ -49,11 +56,13 @@ export type EvExecutionTickHost = StateHost & {
 
 let session: EvExecutionSession = emptyEvExecutionSession();
 let liveTest: EvLiveTestState = emptyEvLiveTestState();
+let tibberNowPrepare: TibberNowPrepareState = emptyTibberNowPrepareState();
 let booted = false;
 
 export function resetEvExecutionSession(): void {
 	session = emptyEvExecutionSession();
 	liveTest = emptyEvLiveTestState();
+	tibberNowPrepare = emptyTibberNowPrepareState();
 	booted = false;
 }
 
@@ -149,7 +158,7 @@ export interface EvExecutionTickInput {
 export async function tickEvExecution(host: EvExecutionTickHost, input: EvExecutionTickInput): Promise<EvExecutionSession> {
 	const nowMs = input.nowMs;
 	const contract = resolveEvccModeControlContract(host.config ?? {});
-	const projection = projectDesiredEvccMode({
+	let projection = projectDesiredEvccMode({
 		intentAction: input.intent.action,
 		energySource: input.intent.source !== "none" ? input.intent.source : input.planDecision.energySource,
 		chargingAllowed: input.planDecision.chargingAllowedByPlan,
@@ -163,6 +172,31 @@ export async function tickEvExecution(host: EvExecutionTickHost, input: EvExecut
 	const snapMode = input.snap.loadpoint_mode.status === "valid" ? input.snap.loadpoint_mode.value : null;
 	const fb = await readModeFeedback(host, contract.modeFeedbackStateId, snapMode);
 	const actual = normalizeEvccFeedbackMode(fb.raw);
+
+	const foundationCfg = evFoundationConfigFromAdapter(host.config ?? {});
+	const tibberEnabled =
+		foundationCfg.tibberGridRewardsViaVehicleEnabled || foundationCfg.tibberGridRewardsViaWallboxEnabled;
+	const connected =
+		input.planDecision.connected ??
+		(input.snap.connected.status === "valid" ? input.snap.connected.value : null);
+	const tibberEval = evaluateTibberNowPrepare({
+		enabled: tibberEnabled,
+		connected,
+		nowMs,
+		delayMs: clampTibberNowStabilizeSeconds(foundationCfg.tibberNowStabilizeSeconds) * 1000,
+		blocked:
+			input.faultActive ||
+			isRestoreInProgress() ||
+			!input.governanceEnabled ||
+			!input.addonEnabled,
+		plannerWantsChargeOrStop: projection.desired !== "noop",
+		alreadyNow: actual === "now",
+		prev: tibberNowPrepare,
+	});
+	tibberNowPrepare = tibberEval.next;
+	if (tibberEval.action === "set_now" && projection.desired === "noop") {
+		projection = { desired: "now", reason: tibberEval.reason };
+	}
 
 	const telCfg = wallboxEvccTelemetryConfigFromAdapter(host.config ?? {});
 	const heartbeatIds = [

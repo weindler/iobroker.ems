@@ -2,6 +2,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { realpath } from "node:fs/promises";
 import { resolveEmsPaths, type PathResolverInput } from "../backup_integration/paths";
+import { DIAGNOSTIC_DIR_MODE, DIAGNOSTIC_FILE_MODE } from "../persistence/atomic_write";
 
 export const BACKUP_RETENTION_MAX = 10;
 export const SUPPORT_RETENTION_MAX = 5;
@@ -53,8 +54,10 @@ export function resolveExportPath(baseDir: string, fileName: string): string {
 }
 
 export async function ensureExportDirs(input: PathResolverInput): Promise<void> {
-	await fs.mkdir(backupDir(input), { recursive: true, mode: 0o700 });
-	await fs.mkdir(supportDir(input), { recursive: true, mode: 0o700 });
+	await fs.mkdir(backupDir(input), { recursive: true, mode: DIAGNOSTIC_DIR_MODE });
+	await fs.mkdir(supportDir(input), { recursive: true, mode: DIAGNOSTIC_DIR_MODE });
+	await fs.chmod(backupDir(input), DIAGNOSTIC_DIR_MODE).catch(() => undefined);
+	await fs.chmod(supportDir(input), DIAGNOSTIC_DIR_MODE).catch(() => undefined);
 }
 
 export async function cleanupTempExports(input: PathResolverInput): Promise<void> {
@@ -131,17 +134,14 @@ export async function enforceRetention(input: PathResolverInput): Promise<void> 
 
 export async function writeAtomicArchive(targetPath: string, data: Buffer): Promise<void> {
 	const dir = path.dirname(targetPath);
-	await fs.mkdir(dir, { recursive: true, mode: 0o700 });
+	await fs.mkdir(dir, { recursive: true, mode: DIAGNOSTIC_DIR_MODE });
+	await fs.chmod(dir, DIAGNOSTIC_DIR_MODE).catch(() => undefined);
 	const resolved = path.resolve(targetPath);
 	await assertPathWithinExportRoot(resolved, dir);
 	const tmp = path.join(dir, `${TEMP_PREFIX}${path.basename(targetPath)}.${process.pid}`);
-	await fs.writeFile(tmp, data, { mode: 0o600 });
+	await fs.writeFile(tmp, data, { mode: DIAGNOSTIC_FILE_MODE });
 	await fs.rename(tmp, targetPath);
-	try {
-		await fs.chmod(targetPath, 0o600);
-	} catch {
-		// Plattform ohne chmod
-	}
+	await fs.chmod(targetPath, DIAGNOSTIC_FILE_MODE).catch(() => undefined);
 }
 
 export { BACKUP_EXT, SUPPORT_EXT, TEMP_PREFIX };

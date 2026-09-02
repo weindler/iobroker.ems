@@ -16,7 +16,7 @@ const states_js_1 = require("../operator/daily_plan/states.js");
         strict_1.default.equal((0, index_js_1.isAiRelatedState)("ai.status"), false);
         strict_1.default.equal((0, index_js_1.isAiRelatedState)("backup.export_request"), false);
     });
-    (0, node_test_1.it)("ignores ack=true / val!=true / unrelated ids (no run, no ack-flip)", async () => {
+    (0, node_test_1.it)("behandelt optimize_now_request bei ack=true und ack=false; val!=true ohne Lauf", async () => {
         const store = new Map();
         const host = {
             config: {},
@@ -30,9 +30,11 @@ const states_js_1 = require("../operator/daily_plan/states.js");
             },
         };
         const handledAckTrue = await (0, index_js_1.handleAiStateChange)(host, ensure_states_js_1.AI_STATES.optimizeNowRequest, true, true);
-        strict_1.default.equal(handledAckTrue, false);
+        strict_1.default.equal(handledAckTrue, true);
+        strict_1.default.equal(store.get(ensure_states_js_1.AI_STATES.optimizeNowRequest), false);
+        strict_1.default.equal(store.get(ensure_states_js_1.AI_STATES.lastReasonDe), "Kein aktueller Daily Plan vorhanden.");
         const handledFalseVal = await (0, index_js_1.handleAiStateChange)(host, ensure_states_js_1.AI_STATES.optimizeNowRequest, false, false);
-        strict_1.default.equal(handledFalseVal, false);
+        strict_1.default.equal(handledFalseVal, true);
         const handledOther = await (0, index_js_1.handleAiStateChange)(host, "ai.status", true, false);
         strict_1.default.equal(handledOther, false);
     });

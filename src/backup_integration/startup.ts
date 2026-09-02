@@ -56,9 +56,26 @@ async function ensureRuntimeDirs(layout: EmsPathLayout): Promise<void> {
 		layout.runtimeTempDir,
 		path.join(layout.durableDataDir, "migration"),
 	];
+	const readableRoots = new Set([
+		layout.runtimeExportsDir,
+		path.join(layout.runtimeExportsDir, "backup"),
+		path.join(layout.runtimeExportsDir, "support"),
+		path.join(layout.runtimeExportsDir, "support", "logs"),
+		layout.runtimeRestoreInboxDir,
+	]);
 	for (const dir of dirs) {
-		await fs.mkdir(dir, { recursive: true, mode: 0o700 });
+		const mode = readableRoots.has(dir) ? 0o755 : 0o700;
+		await fs.mkdir(dir, { recursive: true, mode });
+		if (readableRoots.has(dir)) {
+			await fs.chmod(dir, 0o755).catch(() => undefined);
+		}
 	}
+	const { applyReadableExportDirs } = await import("../backup/export_permissions.js");
+	await applyReadableExportDirs([
+		path.join(layout.runtimeExportsDir, "backup"),
+		path.join(layout.runtimeExportsDir, "support"),
+		layout.runtimeRestoreInboxDir,
+	]);
 }
 
 async function quarantineJournalDir(layout: EmsPathLayout, journalDir: string): Promise<void> {

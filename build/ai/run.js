@@ -12,6 +12,11 @@ const writeback_1 = require("./writeback");
 async function writeStatus(host, status) {
     await host.setStateAsync(ensure_states_1.AI_STATES.status, { val: status, ack: true });
 }
+async function writeSkipOutcome(host, status, reasonDe) {
+    await writeStatus(host, status);
+    await host.setStateAsync(ensure_states_1.AI_STATES.lastReasonDe, { val: reasonDe.slice(0, 480), ack: true });
+    return { ran: false, status, reasonDe };
+}
 async function persistThinkingStates(host, thinkingDe, decisionsJson, thinkingMode) {
     await host.setStateAsync(ensure_states_1.AI_STATES.lastThinkingDe, { val: thinkingDe.slice(0, 1200), ack: true });
     await host.setStateAsync(ensure_states_1.AI_STATES.lastDecisionsJson, { val: decisionsJson, ack: true });
@@ -54,17 +59,14 @@ async function runAiOptimizationNowUnlocked(host, plan, triggerReason, provider)
     const cfg = (0, config_1.aiConfigFromAdapter)(host.config);
     const requestEpoch = (0, user_enabled_1.currentAiEnableEpoch)();
     if (!(await (0, user_enabled_1.readAiUserEnabled)(host))) {
-        await writeStatus(host, "off");
-        return { ran: false, status: "off", reasonDe: "KI deaktiviert (ai.user_enabled)." };
+        return writeSkipOutcome(host, "off", "KI deaktiviert (ai.user_enabled).");
     }
     if (!cfg.apiKey) {
-        await writeStatus(host, "no_token");
-        return { ran: false, status: "no_token", reasonDe: "Kein API-Token hinterlegt." };
+        return writeSkipOutcome(host, "no_token", "Kein API-Token hinterlegt.");
     }
     const allowedAddonIds = (0, context_1.resolveAllowedAddonIds)(host.config);
     if (allowedAddonIds.length === 0) {
-        await writeStatus(host, "no_addons_allowed");
-        return { ran: false, status: "no_addons_allowed", reasonDe: "Kein Add-on hat KI-Optimierung erlaubt." };
+        return writeSkipOutcome(host, "no_addons_allowed", "Kein Add-on hat KI-Optimierung erlaubt.");
     }
     const tz = typeof host.config?.timezone === "string" &&
         host.config.timezone.trim()
@@ -76,7 +78,7 @@ async function runAiOptimizationNowUnlocked(host, plan, triggerReason, provider)
         const reason = limitState.monthlyLimitReached
             ? `Monatslimit erreicht (${limitState.costMonthEur.toFixed(3)}/${limitState.monthlyLimitEur} EUR).`
             : `Tageslimit erreicht (${limitState.callsToday}/${limitState.limit}).`;
-        return { ran: false, status: "limit_reached", reasonDe: reason };
+        return writeSkipOutcome(host, "limit_reached", reason);
     }
     // Manueller Lauf darf Auto-Suspend aufheben und erneut prüfen.
     if (triggerReason === "manual") {

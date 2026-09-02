@@ -196,7 +196,8 @@
 					"icon": "send",
 					"result": {
 						"ok": "KI-Versuch abgeschlossen — Details unter ai.* im Objektbaum",
-						"error": "KI-Versuch fehlgeschlagen — Details unter ai.last_error"
+						"error": "KI-Versuch fehlgeschlagen — Begründung in der Meldung bzw. ai.last_reason_de",
+						"skipped": "Nicht ausgeführt — Begründung in der Meldung bzw. ai.last_reason_de"
 					},
 					"xs": 12,
 					"sm": 6,
@@ -1613,6 +1614,19 @@
 					"type": "checkbox",
 					"label": "Tibber Grid Rewards über Wallbox eingerichtet",
 					"default": false,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"wb_tibber_now_stabilize_seconds": {
+					"type": "number",
+					"label": "Tibber Schnell: Wartezeit nach Anstecken (s)",
+					"default": 180,
+					"min": 30,
+					"max": 900,
+					"help": "Nur wenn Grid Rewards aktiv: nach disconnected→connected so lange warten, dann EVCC auf Schnell (now). Bricht beim Abstecken ab. Default 180 s — nicht für normales PV-Laden.",
 					"xs": 12,
 					"sm": 6,
 					"md": 4,

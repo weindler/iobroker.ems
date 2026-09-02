@@ -38,6 +38,16 @@ async function writeStatus(host: AiRunHost, status: AiStatus): Promise<void> {
 	await host.setStateAsync(AI_STATES.status, { val: status, ack: true });
 }
 
+async function writeSkipOutcome(
+	host: AiRunHost,
+	status: AiStatus,
+	reasonDe: string,
+): Promise<AiRunOutcome> {
+	await writeStatus(host, status);
+	await host.setStateAsync(AI_STATES.lastReasonDe, { val: reasonDe.slice(0, 480), ack: true });
+	return { ran: false, status, reasonDe };
+}
+
 async function persistThinkingStates(
 	host: AiRunHost,
 	thinkingDe: string,
@@ -97,19 +107,20 @@ async function runAiOptimizationNowUnlocked(
 	const requestEpoch = currentAiEnableEpoch();
 
 	if (!(await readAiUserEnabled(host))) {
-		await writeStatus(host, "off");
-		return { ran: false, status: "off", reasonDe: "KI deaktiviert (ai.user_enabled)." };
+		return writeSkipOutcome(host, "off", "KI deaktiviert (ai.user_enabled).");
 	}
 
 	if (!cfg.apiKey) {
-		await writeStatus(host, "no_token");
-		return { ran: false, status: "no_token", reasonDe: "Kein API-Token hinterlegt." };
+		return writeSkipOutcome(host, "no_token", "Kein API-Token hinterlegt.");
 	}
 
 	const allowedAddonIds = resolveAllowedAddonIds(host.config);
 	if (allowedAddonIds.length === 0) {
-		await writeStatus(host, "no_addons_allowed");
-		return { ran: false, status: "no_addons_allowed", reasonDe: "Kein Add-on hat KI-Optimierung erlaubt." };
+		return writeSkipOutcome(
+			host,
+			"no_addons_allowed",
+			"Kein Add-on hat KI-Optimierung erlaubt.",
+		);
 	}
 
 	const tz =
@@ -129,7 +140,7 @@ async function runAiOptimizationNowUnlocked(
 		const reason = limitState.monthlyLimitReached
 			? `Monatslimit erreicht (${limitState.costMonthEur.toFixed(3)}/${limitState.monthlyLimitEur} EUR).`
 			: `Tageslimit erreicht (${limitState.callsToday}/${limitState.limit}).`;
-		return { ran: false, status: "limit_reached", reasonDe: reason };
+		return writeSkipOutcome(host, "limit_reached", reason);
 	}
 
 	// Manueller Lauf darf Auto-Suspend aufheben und erneut prüfen.

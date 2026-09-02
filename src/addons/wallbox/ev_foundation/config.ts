@@ -42,6 +42,7 @@ export const WB_VEHICLE_CHARGE_PAUSE_STATE = "wb_vehicle_charge_pause_state";
 export const WB_EXTERNAL_SOURCE_STALE_AFTER_MIN = "wb_external_source_stale_after_min";
 export const WB_EXTERNAL_SOURCE_UPDATED_AT_STATE = "wb_external_source_updated_at_state";
 export const WB_EXTERNAL_SMART_CHARGING_MIN_SOC_STATE = "wb_external_smart_charging_min_soc_state";
+export const WB_TIBBER_NOW_STABILIZE_SECONDS = "wb_tibber_now_stabilize_seconds";
 
 export interface EvFoundationConfig {
 	evccIntegrationEnabled: boolean;
@@ -73,6 +74,8 @@ export interface EvFoundationConfig {
 	externalSourceUpdatedAtStateId: string;
 	externalSmartChargingMinSocStateId: string;
 	holdSignals: WallboxHoldSignalConfig;
+	/** Wartezeit nach Anstecken, bevor Tibber-Schnell (now) gesetzt wird. */
+	tibberNowStabilizeSeconds: number;
 }
 
 function strField(c: Record<string, unknown>, key: string): string {
@@ -176,6 +179,11 @@ export function evFoundationConfigFromAdapter(config: unknown): EvFoundationConf
 		externalSourceUpdatedAtStateId: strField(c, WB_EXTERNAL_SOURCE_UPDATED_AT_STATE),
 		externalSmartChargingMinSocStateId: strField(c, WB_EXTERNAL_SMART_CHARGING_MIN_SOC_STATE),
 		holdSignals: wallboxHoldSignalConfigFromAdapter(c),
+		tibberNowStabilizeSeconds: (() => {
+			const n = optionalNumber(c, WB_TIBBER_NOW_STABILIZE_SECONDS);
+			if (n === null) return 180;
+			return Math.max(30, Math.min(900, Math.round(n)));
+		})(),
 	};
 }
 

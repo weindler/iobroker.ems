@@ -230,17 +230,20 @@ class Ems extends utils.Adapter {
 						result: err ? "error" : "ok",
 						fileName: file,
 						error: err,
-						hint: "Host: exports/support/ — Download: Adapter-Dateien support/ oder data-URL (klein)",
+						hint: "Download über Adapter-Dateien support/ (Dateiname mit .emssupport)",
 					};
 					// Admin sendTo openUrl: Browser speichert/öffnet die Datei (nur wenn nicht zu groß).
-					if (dl && dl.ok && dl.sizeBytes <= 6_000_000) {
-						payload.openUrl = `data:application/octet-stream;base64,${dl.base64}`;
+					if (dl && dl.ok) {
+						payload.openUrl = dl.downloadPath;
 						payload.window = "_blank";
 						payload.downloadFileName = dl.fileName;
-						payload.base64 = dl.base64;
 						payload.mimeType = dl.mimeType;
 						payload.sizeBytes = dl.sizeBytes;
-					} else if (dl && dl.ok) {
+						if (dl.sizeBytes <= 6_000_000) {
+							payload.base64 = dl.base64;
+						}
+					}
+					if (dl && dl.ok && dl.sizeBytes > 6_000_000) {
 						payload.hint =
 							`Datei ${dl.fileName} (${dl.sizeBytes} Bytes) — zu groß für Direkt-Download; unter Adapter-Dateien → support/ herunterladen`;
 					}
@@ -416,11 +419,17 @@ class Ems extends utils.Adapter {
 					const { runAiOptimizationManual } = await import("./ai/index.js");
 					const outcome = await runAiOptimizationManual(this as unknown as Parameters<typeof runAiOptimizationManual>[0]);
 					if (obj.callback) {
+						const result =
+							outcome.ran && outcome.status === "ready"
+								? "ok"
+								: outcome.status === "error"
+									? "error"
+									: "skipped";
 						this.sendTo(
 							obj.from,
 							obj.command,
 							{
-								result: outcome.status === "ready" || outcome.status === "error" ? "ok" : "skipped",
+								result,
 								status: outcome.status,
 								hint: outcome.reasonDe,
 							},

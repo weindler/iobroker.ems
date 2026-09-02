@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { backupDir, supportDir, OWN_EXPORT_FILE_RE } from "./retention";
 import { restoreInboxDir } from "../restore/source";
 import type { PathResolverInput } from "../backup_integration/paths";
+import { EXPORT_FILE_MODE, adapterFileDownloadPath, ensureDirReadable, chmodExportPath } from "./export_permissions";
 
 export type AdapterFilesHost = PathResolverInput & {
 	namespace: string;
@@ -99,7 +100,7 @@ export async function syncAdapterRestoreInboxToHost(host: AdapterFilesHost): Pro
 		return synced;
 	}
 	const inbox = restoreInboxDir(host);
-	await fs.mkdir(inbox, { recursive: true });
+	await ensureDirReadable(inbox);
 	for (const ent of entries) {
 		if (ent.isDir) continue;
 		const rawName = path.basename(ent.file);
@@ -113,7 +114,8 @@ export async function syncAdapterRestoreInboxToHost(host: AdapterFilesHost): Pro
 			const { file } = await host.readFileAsync(host.namespace, `${ADAPTER_RESTORE_INBOX}/${rawName}`);
 			const buf = Buffer.isBuffer(file) ? file : Buffer.from(String(file), "binary");
 			if (buf.length < 32) continue;
-			await fs.writeFile(path.join(inbox, name), buf);
+			await fs.writeFile(path.join(inbox, name), buf, { mode: EXPORT_FILE_MODE });
+			await chmodExportPath(path.join(inbox, name), false);
 			synced.push(name);
 		} catch (e) {
 			host.log?.warn?.(
@@ -178,8 +180,9 @@ export async function writeRestoreUploadToInbox(
 		const ts = new Date().toISOString().replace(/[:.]/g, "-");
 		const name = `ems-light-upload-${ts}.emsbackup`;
 		const inbox = restoreInboxDir(host);
-		await fs.mkdir(inbox, { recursive: true });
-		await fs.writeFile(path.join(inbox, name), buf);
+		await ensureDirReadable(inbox);
+		await fs.writeFile(path.join(inbox, name), buf, { mode: EXPORT_FILE_MODE });
+		await chmodExportPath(path.join(inbox, name), false);
 		return { ok: true, fileName: name };
 	} catch (e) {
 		return { ok: false, error: e instanceof Error ? e.message : String(e) };
@@ -190,7 +193,7 @@ export async function readSupportFileBase64(
 	host: AdapterFilesHost,
 	fileName?: string,
 ): Promise<
-	| { ok: true; fileName: string; mimeType: string; base64: string; sizeBytes: number }
+	| { ok: true; fileName: string; mimeType: string; downloadPath: string; base64: string; sizeBytes: number }
 	| { ok: false; error: string }
 > {
 	try {
@@ -211,7 +214,8 @@ export async function readSupportFileBase64(
 		return {
 			ok: true,
 			fileName: name,
-			mimeType: "application/octet-stream",
+			mimeType: "application/zip",
+			downloadPath: adapterFileDownloadPath(host.namespace, "support", name),
 			base64: buf.toString("base64"),
 			sizeBytes: buf.length,
 		};

@@ -174,9 +174,10 @@ export async function tickEconomics(host: EconomicsHost, now: Date = new Date())
 
 	await setIfChanged(host, ECONOMICS_STATES.enabled, true);
 	await setIfChanged(host, ECONOMICS_STATES.lastRunAt, now.toISOString());
+	const { formatEmsAdvantagePhraseDe } = await import("./format.js");
 	await setIfChanged(
 		host,
 		ECONOMICS_STATES.reasonDe,
-		`Tarifvorteil ${periodSummary?.periodLabelDe ?? ""}: ${periodSummary?.tarifvorteilEur ?? "—"} €, EMS-Vorteil: ${periodSummary?.emsVorteilEur ?? "—"} €, KI-Mehrwert: ${periodSummary?.kiMehrwertEur ?? "—"} €.`,
+		`Tarifvorteil ${periodSummary?.periodLabelDe ?? ""}: ${periodSummary?.tarifvorteilEur ?? "—"} €. ${formatEmsAdvantagePhraseDe(periodSummary?.emsVorteilEur ?? null)}. KI-Mehrwert: ${periodSummary?.kiMehrwertEur ?? "—"} €.`,
 	);
 }

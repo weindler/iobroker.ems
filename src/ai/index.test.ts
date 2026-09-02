@@ -22,7 +22,7 @@ describe("ai state change routing", () => {
 		assert.equal(isAiRelatedState("backup.export_request"), false);
 	});
 
-	it("ignores ack=true / val!=true / unrelated ids (no run, no ack-flip)", async () => {
+	it("behandelt optimize_now_request bei ack=true und ack=false; val!=true ohne Lauf", async () => {
 		const store = new Map<string, ioBroker.StateValue>();
 		const host: AiStateChangeHost = {
 			config: {},
@@ -36,9 +36,11 @@ describe("ai state change routing", () => {
 			},
 		};
 		const handledAckTrue = await handleAiStateChange(host, AI_STATES.optimizeNowRequest, true, true);
-		assert.equal(handledAckTrue, false);
+		assert.equal(handledAckTrue, true);
+		assert.equal(store.get(AI_STATES.optimizeNowRequest), false);
+		assert.equal(store.get(AI_STATES.lastReasonDe), "Kein aktueller Daily Plan vorhanden.");
 		const handledFalseVal = await handleAiStateChange(host, AI_STATES.optimizeNowRequest, false, false);
-		assert.equal(handledFalseVal, false);
+		assert.equal(handledFalseVal, true);
 		const handledOther = await handleAiStateChange(host, "ai.status", true, false);
 		assert.equal(handledOther, false);
 	});

@@ -28,6 +28,7 @@ const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const retention_1 = require("./retention");
 const source_1 = require("../restore/source");
+const export_permissions_1 = require("./export_permissions");
 const ADAPTER_RESTORE_INBOX = "restore-inbox";
 /** Meta-Objekt für Admin fileSelector / Download. */
 async function ensureAdapterFilesMeta(host) {
@@ -101,7 +102,7 @@ async function syncAdapterRestoreInboxToHost(host) {
         return synced;
     }
     const inbox = (0, source_1.restoreInboxDir)(host);
-    await fs.mkdir(inbox, { recursive: true });
+    await (0, export_permissions_1.ensureDirReadable)(inbox);
     for (const ent of entries) {
         if (ent.isDir)
             continue;
@@ -118,7 +119,8 @@ async function syncAdapterRestoreInboxToHost(host) {
             const buf = Buffer.isBuffer(file) ? file : Buffer.from(String(file), "binary");
             if (buf.length < 32)
                 continue;
-            await fs.writeFile(path.join(inbox, name), buf);
+            await fs.writeFile(path.join(inbox, name), buf, { mode: export_permissions_1.EXPORT_FILE_MODE });
+            await (0, export_permissions_1.chmodExportPath)(path.join(inbox, name), false);
             synced.push(name);
         }
         catch (e) {
@@ -182,8 +184,9 @@ async function writeRestoreUploadToInbox(host, _fileName, base64OrDataUrl) {
         const ts = new Date().toISOString().replace(/[:.]/g, "-");
         const name = `ems-light-upload-${ts}.emsbackup`;
         const inbox = (0, source_1.restoreInboxDir)(host);
-        await fs.mkdir(inbox, { recursive: true });
-        await fs.writeFile(path.join(inbox, name), buf);
+        await (0, export_permissions_1.ensureDirReadable)(inbox);
+        await fs.writeFile(path.join(inbox, name), buf, { mode: export_permissions_1.EXPORT_FILE_MODE });
+        await (0, export_permissions_1.chmodExportPath)(path.join(inbox, name), false);
         return { ok: true, fileName: name };
     }
     catch (e) {
@@ -210,7 +213,8 @@ async function readSupportFileBase64(host, fileName) {
         return {
             ok: true,
             fileName: name,
-            mimeType: "application/octet-stream",
+            mimeType: "application/zip",
+            downloadPath: (0, export_permissions_1.adapterFileDownloadPath)(host.namespace, "support", name),
             base64: buf.toString("base64"),
             sizeBytes: buf.length,
         };

@@ -176,9 +176,13 @@ async function handleAiStateChange(host, relativeId, val, ack) {
         }
         return true;
     }
-    if (relativeId !== AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX || ack || val !== true) {
+    if (relativeId !== AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX) {
         return false;
     }
+    if (val !== true) {
+        return true;
+    }
+    void ack;
     await host.setStateAsync(AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX, { val: false, ack: true });
     try {
         await runAiOptimizationManual(host);
@@ -200,7 +204,10 @@ async function runAiOptimizationManual(host) {
         plan = null;
     }
     if (!plan) {
-        return { ran: false, status: "error", reasonDe: "Kein aktueller Daily Plan vorhanden." };
+        const reasonDe = "Kein aktueller Daily Plan vorhanden.";
+        await host.setStateAsync(ensure_states_1.AI_STATES.status, { val: "error", ack: true });
+        await host.setStateAsync(ensure_states_1.AI_STATES.lastReasonDe, { val: reasonDe, ack: true });
+        return { ran: false, status: "error", reasonDe };
     }
     const provider = (0, openai_provider_1.createOpenAiProvider)();
     return (0, run_1.runAiOptimizationNow)(host, plan, "manual", provider);

@@ -28,6 +28,7 @@ const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const promises_1 = require("node:fs/promises");
 const paths_1 = require("../backup_integration/paths");
+const atomic_write_1 = require("../persistence/atomic_write");
 exports.BACKUP_RETENTION_MAX = 10;
 exports.SUPPORT_RETENTION_MAX = 5;
 const BACKUP_EXT = ".emsbackup";
@@ -78,8 +79,10 @@ function resolveExportPath(baseDir, fileName) {
 }
 exports.resolveExportPath = resolveExportPath;
 async function ensureExportDirs(input) {
-    await fs.mkdir(backupDir(input), { recursive: true, mode: 0o700 });
-    await fs.mkdir(supportDir(input), { recursive: true, mode: 0o700 });
+    await fs.mkdir(backupDir(input), { recursive: true, mode: atomic_write_1.DIAGNOSTIC_DIR_MODE });
+    await fs.mkdir(supportDir(input), { recursive: true, mode: atomic_write_1.DIAGNOSTIC_DIR_MODE });
+    await fs.chmod(backupDir(input), atomic_write_1.DIAGNOSTIC_DIR_MODE).catch(() => undefined);
+    await fs.chmod(supportDir(input), atomic_write_1.DIAGNOSTIC_DIR_MODE).catch(() => undefined);
 }
 exports.ensureExportDirs = ensureExportDirs;
 async function cleanupTempExports(input) {
@@ -162,17 +165,13 @@ async function enforceRetention(input) {
 exports.enforceRetention = enforceRetention;
 async function writeAtomicArchive(targetPath, data) {
     const dir = path.dirname(targetPath);
-    await fs.mkdir(dir, { recursive: true, mode: 0o700 });
+    await fs.mkdir(dir, { recursive: true, mode: atomic_write_1.DIAGNOSTIC_DIR_MODE });
+    await fs.chmod(dir, atomic_write_1.DIAGNOSTIC_DIR_MODE).catch(() => undefined);
     const resolved = path.resolve(targetPath);
     await assertPathWithinExportRoot(resolved, dir);
     const tmp = path.join(dir, `${TEMP_PREFIX}${path.basename(targetPath)}.${process.pid}`);
-    await fs.writeFile(tmp, data, { mode: 0o600 });
+    await fs.writeFile(tmp, data, { mode: atomic_write_1.DIAGNOSTIC_FILE_MODE });
     await fs.rename(tmp, targetPath);
-    try {
-        await fs.chmod(targetPath, 0o600);
-    }
-    catch {
-        // Plattform ohne chmod
-    }
+    await fs.chmod(targetPath, atomic_write_1.DIAGNOSTIC_FILE_MODE).catch(() => undefined);
 }
 exports.writeAtomicArchive = writeAtomicArchive;

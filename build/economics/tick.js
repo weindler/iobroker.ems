@@ -146,6 +146,7 @@ async function tickEconomics(host, now = new Date()) {
     await setIfChanged(host, ensure_states_2.ECONOMICS_FLAT.cumulativeGridRewardsEur, cumulativeSummary.gridRewardsCreditEur);
     await setIfChanged(host, ensure_states_2.ECONOMICS_STATES.enabled, true);
     await setIfChanged(host, ensure_states_2.ECONOMICS_STATES.lastRunAt, now.toISOString());
-    await setIfChanged(host, ensure_states_2.ECONOMICS_STATES.reasonDe, `Tarifvorteil ${periodSummary?.periodLabelDe ?? ""}: ${periodSummary?.tarifvorteilEur ?? "—"} €, EMS-Vorteil: ${periodSummary?.emsVorteilEur ?? "—"} €, KI-Mehrwert: ${periodSummary?.kiMehrwertEur ?? "—"} €.`);
+    const { formatEmsAdvantagePhraseDe } = await import("./format.js");
+    await setIfChanged(host, ensure_states_2.ECONOMICS_STATES.reasonDe, `Tarifvorteil ${periodSummary?.periodLabelDe ?? ""}: ${periodSummary?.tarifvorteilEur ?? "—"} €. ${formatEmsAdvantagePhraseDe(periodSummary?.emsVorteilEur ?? null)}. KI-Mehrwert: ${periodSummary?.kiMehrwertEur ?? "—"} €.`);
 }
 exports.tickEconomics = tickEconomics;

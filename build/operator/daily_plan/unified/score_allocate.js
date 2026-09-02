@@ -13,6 +13,7 @@ exports.IMMERSION_HARD_CONSUMER_ID = "immersion_heater";
 const optimize_weights_1 = require("./optimize_weights");
 const reason_codes_1 = require("./reason_codes");
 const thermal_opportunity_gate_1 = require("./thermal_opportunity_gate");
+const thermal_soft_urgency_1 = require("./thermal_soft_urgency");
 const vehicle_availability_1 = require("./vehicle_availability");
 const ev_energy_1 = require("./ev_energy");
 const slot_geometry_1 = require("./slot_geometry");
@@ -1274,23 +1275,15 @@ function scoreCandidate(input, state, candidate, weights) {
             const emptyMs = input.thermal?.estimatedEmptyAtIso
                 ? Date.parse(input.thermal.estimatedEmptyAtIso)
                 : Number.NaN;
+            const softUrgency = (0, thermal_soft_urgency_1.resolveThermalSoftUrgency)({
+                nowMs: state.nowMs,
+                emptyMs: Number.isFinite(emptyMs) ? emptyMs : null,
+                nextReliablePvMs: recMs,
+            });
+            const needScale = softUrgency.needScale;
             /*
-             * Speichernutzen ohne emptyAt-Deadline-Urgency:
-             * - emptyAt nach Recovery → Kühlbrücke danach (kurz = wenig Soft-Nutzen)
-             * - emptyAt vor Recovery (typisch: reicht durch heutiges PV-Fenster, Nachtlücke)
-             *   → Overnight-Shortfall skaliert Soft-Nutzen (PV jetzt speichern sinnvoll)
-             */
-            let bridgeH = 0;
-            if (recMs != null && Number.isFinite(emptyMs)) {
-                bridgeH =
-                    emptyMs > recMs
-                        ? (emptyMs - recMs) / 3600_000
-                        : (recMs - emptyMs) / 3600_000;
-            }
-            const needScale = Math.max(0, Math.min(1, bridgeH / 10));
-            /*
-             * Kein fixer 0.25-Floor: bei needScale≈0 (Puffer hält über Recovery) kein Soft-Dump
-             * gegen Export. Bei Overnight-Lücke (needScale hoch) wirtschaftlich speichern.
+             * Kein fixer 0.25-Floor: Overnight-Lücke (needScale hoch) wirtschaftlich speichern.
+             * Mehrtägige Restreichweite → needScale≈0, kein Soft-Dump gegen Export.
              */
             const storeEur = peakEur * weights.costWeight * (0.85 * needScale - 0.05);
             score += e * storeEur;
@@ -1298,11 +1291,12 @@ function scoreCandidate(input, state, candidate, weights) {
              * Live-Surplus jetzt (PV−Haus ≥ Min-Stufe, SOC hoch, Soft-Headroom): Soft im
              * NOW-Slot vor Batterie-Nachladen und vor Wochenend-PV — sonst bleibt der Plan
              * auf Samstag während tagsüber eingespeist wird (Dashboard 0.1.322).
+             * Bei bekannter mehrtägiger Reichweite kein Live-Snack nur wegen Headroom.
              */
             const liveNow = input.preferImmersionLiveSurplusNow === true &&
                 (candidate.slotIdx === 0 ||
                     (slot.startMs <= state.nowMs && Date.parse(slot.endIso) > state.nowMs));
-            if (liveNow) {
+            if (liveNow && !softUrgency.skipWeakSoftWindows) {
                 score += e * weights.flexShiftWeight * 3.5 + 1.2;
             }
             else if (batRoom > 0.4 || batStillWants) {
@@ -1414,7 +1408,19 @@ function scoreCandidate(input, state, candidate, weights) {
          */
         if (candidate.source === "pv_surplus") {
             const minE = consumer.minPowerW && consumer.minPowerW > 0 ? energyFromPowerW(consumer.minPowerW) : 0;
-            if (minE > 0 && slot.surplusKwh + exports.EPS >= minE) {
+            const softUrgencyBoost = consumer.thermalSoftOnly
+                ? (0, thermal_soft_urgency_1.resolveThermalSoftUrgency)({
+                    nowMs: state.nowMs,
+                    emptyMs: input.thermal?.estimatedEmptyAtIso
+                        ? Date.parse(input.thermal.estimatedEmptyAtIso)
+                        : null,
+                    nextReliablePvMs: state.nextReliablePvMs,
+                })
+                : null;
+            const skipSoftCrumbBoost = softUrgencyBoost?.skipWeakSoftWindows === true &&
+                minE > 0 &&
+                slot.remainPvKwh + exports.EPS < 2 * minE;
+            if (minE > 0 && slot.surplusKwh + exports.EPS >= minE && !skipSoftCrumbBoost) {
                 // Gesamt-PV (vor jeder Allocation) reicht für IH: Vorrang vor Klima.
                 score += e * weights.flexShiftWeight * 2.8 + 0.6;
             }
@@ -1562,6 +1568,30 @@ function generateCandidatesForConsumer(input, state, consumer, slotIdx, wbPresen
         return [];
     if (slotIdx < consumer.earliestSlotIdx)
         return [];
+    if (consumer.kind === "immersion_heater" && consumer.thermalSoftOnly) {
+        const urgency = (0, thermal_soft_urgency_1.resolveThermalSoftUrgency)({
+            nowMs: state.nowMs,
+            emptyMs: input.thermal?.estimatedEmptyAtIso
+                ? Date.parse(input.thermal.estimatedEmptyAtIso)
+                : null,
+            nextReliablePvMs: state.nextReliablePvMs,
+        });
+        const minE = consumer.minPowerW && consumer.minPowerW > 0 ? energyFromPowerW(consumer.minPowerW) : 0;
+        const hoursFromNow = (slot.startMs - state.nowMs) / 3600_000;
+        const continuing = input.preferImmersionLiveSurplusNow === true ||
+            input.continueImmersionSoftCurrentSlot === true;
+        if (urgency.skipWeakSoftWindows) {
+            const strong = minE <= exports.EPS || slot.remainPvKwh + exports.EPS >= 2 * minE;
+            if ((!strong && !continuing) || (hoursFromNow > 6 && !continuing)) {
+                return [];
+            }
+        }
+        else if (urgency.requireCoherentBlock && minE > exports.EPS && !continuing) {
+            if (slot.remainPvKwh + exports.EPS < 2 * minE) {
+                return [];
+            }
+        }
+    }
     /*
      * Soft-Precharge: laufenden Slot ohne Live-Prefer nicht neu anbrechen
      * (Mid-Slot-Restart). Ausnahme: Prefer ODER Fortsetzen aus vorherigem Plan —

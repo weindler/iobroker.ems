@@ -122,6 +122,62 @@ export async function ensurePlannerStates(
 			"Netzausgleich trotz Opportunity-Cost weiterhin erlaubt (Block B)",
 			true,
 		),
+		boolState(
+			"planner.battery_discharge.economics_usable",
+			"Netzausgleich-Economics belastbar",
+			false,
+		),
+		{
+			id: "planner.battery_discharge.economics_alpha",
+			common: { name: "GB Economics α", type: "number", role: "value", read: true, write: false, def: null as unknown as number },
+			defaultVal: null as unknown as ioBroker.StateValue,
+			setDefaultIfEmpty: true,
+		},
+		{
+			id: "planner.battery_discharge.economics_beta",
+			common: { name: "GB Economics β", type: "number", role: "value", read: true, write: false, def: null as unknown as number },
+			defaultVal: null as unknown as ioBroker.StateValue,
+			setDefaultIfEmpty: true,
+		},
+		{
+			id: "planner.battery_discharge.economics_price_now_ct",
+			common: { name: "GB Economics aktueller Preis", type: "number", role: "value", read: true, write: false, unit: "ct/kWh", def: null as unknown as number },
+			defaultVal: null as unknown as ioBroker.StateValue,
+			setDefaultIfEmpty: true,
+		},
+		{
+			id: "planner.battery_discharge.economics_c_replace_ct",
+			common: { name: "GB Economics C_replace", type: "number", role: "value", read: true, write: false, unit: "ct/kWh", def: null as unknown as number },
+			defaultVal: null as unknown as ioBroker.StateValue,
+			setDefaultIfEmpty: true,
+		},
+		strState(
+			"planner.battery_discharge.economics_c_replace_path",
+			"GB Economics C_replace Pfad",
+			"",
+		),
+		{
+			id: "planner.battery_discharge.economics_confidence",
+			common: { name: "GB Economics Confidence", type: "number", role: "value", read: true, write: false, def: null as unknown as number },
+			defaultVal: null as unknown as ioBroker.StateValue,
+			setDefaultIfEmpty: true,
+		},
+		{
+			id: "planner.battery_discharge.economics_net_benefit_ct",
+			common: { name: "GB Economics Netto ct/kWh", type: "number", role: "value", read: true, write: false, unit: "ct/kWh", def: null as unknown as number },
+			defaultVal: null as unknown as ioBroker.StateValue,
+			setDefaultIfEmpty: true,
+		},
+		strState(
+			"planner.battery_discharge.economics_decision",
+			"GB Economics Entscheidung",
+			"fallback_min_price",
+		),
+		strState(
+			"planner.battery_discharge.economics_reason_de",
+			"GB Economics Begründung",
+			"",
+		),
 		/*
 		 * BLOCK B — Learned Planner Explainability (kompakt, JSON, rein diagnostisch).
 		 * baselineDecision/adjustedDecision/changedByLearning/reasonCodes/confidencePct/

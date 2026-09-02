@@ -46,6 +46,22 @@ function shadowFixture(overrides: Partial<ShadowDayRecord> = {}): ShadowDayRecor
 				exportCreditEur: 0.08,
 				netCostEur: 1.42,
 			},
+			reference_sonnen_native: {
+				strategy: "reference_sonnen_native",
+				modelVersion: "shadow_v3",
+				evaluable: true,
+				missingSlotCount: 0,
+				assumptionsDe: ["native"],
+				gridImportKwh: 5,
+				gridExportKwh: 1,
+				batteryChargeKwh: 2,
+				batteryDischargeKwh: 1,
+				socStartPct: 90,
+				socEndPct: 70,
+				importCostEur: 1.5,
+				exportCreditEur: 0.08,
+				netCostEur: 1.42,
+			},
 			ems_without_ai: {
 				strategy: "ems_without_ai",
 				modelVersion: "shadow_v1",
@@ -120,6 +136,23 @@ describe("buildEconomicsDayRecord", () => {
 		assert.equal(rec.kiMehrwertEur, -0.4); // 0.1 - 0.5 < 0 → KI hat es schlechter gemacht
 		assert.equal(rec.emsVorteilEvaluable, false);
 		assert.equal(rec.emsVorteilEur, null);
+	});
+
+	it("nutzt Ideal-Greedy nicht als EMS-Vorteil, wenn realistische Welt fehlt", () => {
+		const shadow = shadowFixture();
+		delete shadow.strategies.reference_sonnen_native;
+		const rec = buildEconomicsDayRecord({
+			dateKey: "2026-08-29",
+			final: true,
+			tarifvorteilEur: 0.5,
+			gridRewardsCreditEur: null,
+			gridRewardsSource: null,
+			shadow,
+			now: NOW,
+		});
+		assert.equal(rec.emsVorteilEvaluable, false);
+		assert.equal(rec.emsVorteilEur, null);
+		assert.equal(rec.referenceNoEmsNetCostEur, 1.42);
 	});
 
 	it("liefert null statt erfundener Werte ohne Shadow-Daten", () => {

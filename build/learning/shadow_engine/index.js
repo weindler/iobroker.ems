@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildShadowDayRecord = exports.readShadowDayResult = exports.runShadowEngineBatch = exports.ensureShadowEngineStates = exports.pruneShadowEngineFiles = exports.listShadowEvaluatedDateKeys = exports.readShadowDayRecord = exports.writeShadowDayRecord = exports.simulateEmsWithoutAi = exports.simulateReferenceNoEms = exports.computeRealDayResult = exports.splitExogenousLoad = exports.simulateGreedyBatterySelfConsumption = exports.SHADOW_STRATEGY_IDS = exports.SHADOW_ENGINE_MODEL_VERSION = exports.SHADOW_ENGINE_RETENTION_DAYS = exports.SHADOW_ENGINE_STATE_CATEGORY = exports.SHADOW_ENGINE_RESULTS_CATEGORY = exports.SHADOW_ENGINE_SCHEMA_VERSION = exports.SHADOW_ENGINE_MODULE = void 0;
+exports.buildShadowDayRecord = exports.readShadowDayResult = exports.runShadowEngineBatch = exports.ensureShadowEngineStates = exports.pruneShadowEngineFiles = exports.listShadowEvaluatedDateKeys = exports.readShadowDayRecord = exports.writeShadowDayRecord = exports.simulateEmsWithoutAi = exports.simulateReferenceSonnenNative = exports.simulateReferenceNoEms = exports.computeRealDayResult = exports.splitExogenousLoad = exports.simulateGreedyBatterySelfConsumption = exports.SHADOW_STRATEGY_IDS = exports.SHADOW_ENGINE_MODEL_VERSION = exports.SHADOW_ENGINE_RETENTION_DAYS = exports.SHADOW_ENGINE_STATE_CATEGORY = exports.SHADOW_ENGINE_RESULTS_CATEGORY = exports.SHADOW_ENGINE_SCHEMA_VERSION = exports.SHADOW_ENGINE_MODULE = void 0;
 var constants_1 = require("./constants");
 Object.defineProperty(exports, "SHADOW_ENGINE_MODULE", { enumerable: true, get: function () { return constants_1.SHADOW_ENGINE_MODULE; } });
 Object.defineProperty(exports, "SHADOW_ENGINE_SCHEMA_VERSION", { enumerable: true, get: function () { return constants_1.SHADOW_ENGINE_SCHEMA_VERSION; } });
@@ -17,6 +17,7 @@ Object.defineProperty(exports, "splitExogenousLoad", { enumerable: true, get: fu
 var simulate_1 = require("./simulate");
 Object.defineProperty(exports, "computeRealDayResult", { enumerable: true, get: function () { return simulate_1.computeRealDayResult; } });
 Object.defineProperty(exports, "simulateReferenceNoEms", { enumerable: true, get: function () { return simulate_1.simulateReferenceNoEms; } });
+Object.defineProperty(exports, "simulateReferenceSonnenNative", { enumerable: true, get: function () { return simulate_1.simulateReferenceSonnenNative; } });
 Object.defineProperty(exports, "simulateEmsWithoutAi", { enumerable: true, get: function () { return simulate_1.simulateEmsWithoutAi; } });
 var persist_1 = require("./persist");
 Object.defineProperty(exports, "writeShadowDayRecord", { enumerable: true, get: function () { return persist_1.writeShadowDayRecord; } });

@@ -37,6 +37,16 @@ import {
 	type OpenImmersionSegment,
 } from "./immersion_segments";
 import {
+	advanceGridBalanceEpisode,
+	advanceOffWindow,
+	closeGridBalanceEpisode,
+	closeOffWindow,
+	type GbEpisodeSample,
+	type OpenGridBalanceEpisode,
+	type OpenOffWindow,
+} from "./grid_balance_segments";
+import { classifyChargeSource, mergeChargeSource } from "../grid_balance_economics/charge_source";
+import {
 	dedupePlannedConsumers,
 	freezePlannedConsumersForSlot,
 	sharedGroupMapFromClimateUnits,
@@ -88,6 +98,10 @@ type RuntimeMem = {
 	baselines: CounterBaselines;
 	openClimate: OpenClimateSegment | null;
 	openImmersion: OpenImmersionSegment | null;
+	openGbEpisode: OpenGridBalanceEpisode | null;
+	openGbOff: OpenOffWindow | null;
+	gbStabilityBuf: GbEpisodeSample[];
+	gbEpisodeDateKey: string | null;
 	currentPlan: UnifiedDayPlan | null;
 	currentInput: UnifiedDayPlannerInput | null;
 	sharedGroupMap: SharedGroupMap | null;
@@ -106,6 +120,10 @@ function emptyMem(): RuntimeMem {
 		baselines: { gridImport: null, gridExport: null },
 		openClimate: null,
 		openImmersion: null,
+		openGbEpisode: null,
+		openGbOff: null,
+		gbStabilityBuf: [],
+		gbEpisodeDateKey: null,
 		currentPlan: null,
 		currentInput: null,
 		sharedGroupMap: null,
@@ -331,6 +349,26 @@ async function tickDayTelemetryInner(host: DayTelemetryHost, now: Date): Promise
 	const day = ensured.day;
 	const layout = ensured.layout;
 
+	if (mem.gbEpisodeDateKey && mem.gbEpisodeDateKey !== dateKey && store.days[mem.gbEpisodeDateKey]) {
+		const prevDay = store.days[mem.gbEpisodeDateKey];
+		prevDay.gridBalanceRunSegments = closeGridBalanceEpisode(
+			mem.openGbEpisode,
+			nowMs,
+			"day_boundary",
+			prevDay.gridBalanceRunSegments ?? [],
+		);
+		prevDay.gridBalanceOffWindows = closeOffWindow(
+			mem.openGbOff,
+			nowMs,
+			prevDay.gridBalanceOffWindows ?? [],
+		);
+		mem.openGbEpisode = null;
+		mem.openGbOff = null;
+		mem.gbStabilityBuf = [];
+		mem.dirty = true;
+	}
+	mem.gbEpisodeDateKey = dateKey;
+
 	const sample = await readLiveTelemetrySample(host, nowMs);
 	const immersionCmd = asNum((await host.getStateAsync(IMMERSION_RUNTIME_STATES.commandedPowerW))?.val);
 	sample.immersionRuntimeOn = immersionOnFromPowers(sample.immersionPowerW, immersionCmd);
@@ -453,6 +491,59 @@ async function tickDayTelemetryInner(host: DayTelemetryHost, now: Date): Promise
 		);
 		mem.openImmersion = immersionSeg.open;
 		day.immersionRunSegments = immersionSeg.list;
+
+		const emsGridCharge = (sample.batterySetpointOwner ?? "").toLowerCase() === "grid_charge";
+		const chargeSrc = classifyChargeSource({
+			chargingW: sample.batteryChargePowerW,
+			pvW: sample.pvPowerW,
+			houseW: sample.houseTotalPowerW,
+			gridImportW: sample.gridImportPowerW,
+			emsGridChargeActive: emsGridCharge,
+		});
+		if (sample.batteryChargePowerW != null && sample.batteryChargePowerW > 50) {
+			for (const i of overlappingSlotIndicesSafe(layout, fromMs, toMs)) {
+				const prev = (day.buckets.batteryChargeSource[i] as import("./types").BatteryChargeSource | null) ?? null;
+				day.buckets.batteryChargeSource[i] = mergeChargeSource(prev, chargeSrc);
+			}
+		}
+
+		const gbSample: GbEpisodeSample = {
+			ts: nowMs,
+			houseW: sample.houseTotalPowerW,
+			pvW: sample.pvPowerW,
+			gridW: sample.gridImportPowerW,
+			gbEffectiveW: sample.gridBalanceDischargePowerW,
+			gbRequestedW: sample.gridBalanceRequestedPowerW,
+			batteryDischargeW: sample.batteryDischargePowerW,
+			gridImportW: sample.gridImportPowerW,
+			socPct: sample.batterySocPct,
+			priceCt: sample.priceCtPerKwh,
+			gbActive: sample.gridBalanceActive === true,
+		};
+		const gbEpi = advanceGridBalanceEpisode(
+			mem.openGbEpisode,
+			mem.gbStabilityBuf,
+			gbSample,
+			mem.lastSampleTs,
+			day.gridBalanceRunSegments ?? [],
+		);
+		mem.openGbEpisode = gbEpi.open;
+		mem.gbStabilityBuf = gbEpi.buf;
+		day.gridBalanceRunSegments = gbEpi.list;
+		if (!gbSample.gbActive) {
+			const off = advanceOffWindow(
+				mem.openGbOff,
+				mem.gbStabilityBuf,
+				gbSample,
+				mem.lastSampleTs,
+				day.gridBalanceOffWindows ?? [],
+			);
+			mem.openGbOff = off.open;
+			day.gridBalanceOffWindows = off.list;
+		} else {
+			day.gridBalanceOffWindows = closeOffWindow(mem.openGbOff, nowMs, day.gridBalanceOffWindows ?? []);
+			mem.openGbOff = null;
+		}
 		integratePowerDomain(
 			day,
 			layout,

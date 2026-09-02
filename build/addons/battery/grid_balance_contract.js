@@ -155,8 +155,10 @@ function firstBlock(input) {
     /*
      * Dieselbe Preisregel wie `battery_discharge_authority.ts` (Unified Planner) — keine
      * zweite, unabhängig gepflegte Schwelle. `evaluateGridBalanceMinPrice` in grid_balance.ts.
+     * Bei belastbarer Economics entscheidet der Planner (kein 30-ct-Zweitgate).
      */
-    if (!(0, grid_balance_1.evaluateGridBalanceMinPrice)({ minPriceCtPerKwh: input.priceMinCt, priceNowCt: input.priceNowCt }).passed) {
+    if (!input.economicsUsable &&
+        !(0, grid_balance_1.evaluateGridBalanceMinPrice)({ minPriceCtPerKwh: input.priceMinCt, priceNowCt: input.priceNowCt }).passed) {
         return { reason: "price_below_minimum", authority: "grid_balance" };
     }
     return { reason: "", authority: "grid_balance" };
@@ -167,7 +169,9 @@ function evaluateGridBalanceSafety(input) {
     const { reason, authority } = firstBlock(input);
     const enabled = input.adminEnabled;
     const priceKnown = input.priceNowCt != null && Number.isFinite(input.priceNowCt);
-    const priceAllowed = priceKnown && input.priceNowCt >= input.priceMinCt;
+    const priceAllowed = input.economicsUsable
+        ? priceKnown
+        : priceKnown && input.priceNowCt >= input.priceMinCt;
     const policyAllowed = reason === "";
     const ready = policyAllowed;
     const executionReleased = exports.GRID_BALANCE_EXECUTION_ENABLED || input.liveTestPermit === true;

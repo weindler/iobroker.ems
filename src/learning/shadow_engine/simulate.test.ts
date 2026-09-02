@@ -1,7 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { emptyDayRecord } from "../day_telemetry/types";
-import { computeRealDayResult, simulateEmsWithoutAi, simulateReferenceNoEms } from "./simulate";
+import {
+	computeRealDayResult,
+	simulateEmsWithoutAi,
+	simulateReferenceNoEms,
+	simulateReferenceSonnenNative,
+} from "./simulate";
 
 function fixtureDay(slotCount = 4) {
 	const day = emptyDayRecord("2026-08-30", "Europe/Berlin", 0, slotCount * 15 * 60_000, slotCount);
@@ -148,5 +153,43 @@ describe("simulateEmsWithoutAi", () => {
 		const r = simulateEmsWithoutAi(real, true);
 		assert.equal(r.evaluable, false);
 		assert.equal(r.netCostEur, null);
+	});
+});
+
+describe("Shadow-Dreiteilung", () => {
+	it("reference_no_ems bleibt Ideal-Benchmark (Greedy), nicht reale Sonnen", () => {
+		const day = fixtureDay(2);
+		day.buckets.pvKwh = [0, 0];
+		day.buckets.houseTotalKwh = [1, 1];
+		day.buckets.priceCtPerKwh = [40, 40];
+		const r = simulateReferenceNoEms(
+			day,
+			{ usableCapacityKwh: 10, minSocPct: 5, maxSocPct: 100, maxChargeW: null, maxDischargeW: null, startSocPct: 80 },
+			8,
+		);
+		assert.match(r.assumptionsDe.join(" "), /IDEAL-BENCHMARK/);
+	});
+
+	it("reference_sonnen_native ist ohne α/β nicht bewertbar (kein 0 €)", () => {
+		const day = fixtureDay(2);
+		day.buckets.gridImportKwh = [0.1, 0.1];
+		day.buckets.gridBalanceDischargeKwh = [0.2, 0.2];
+		day.buckets.priceCtPerKwh = [40, 40];
+		const real = computeRealDayResult(day, 8);
+		const r = simulateReferenceSonnenNative(real, day, { usable: false, alpha: null, beta: null }, 8);
+		assert.equal(r.evaluable, false);
+		assert.equal(r.netCostEur, null);
+	});
+
+	it("reference_sonnen_native addiert α×E_gb als vermiedenen Import", () => {
+		const day = fixtureDay(2);
+		day.buckets.gridImportKwh = [0.05, 0.05];
+		day.buckets.gridBalanceDischargeKwh = [0.2, 0.1];
+		day.buckets.priceCtPerKwh = [40, 40];
+		day.buckets.batteryDischargedKwh = [0.3, 0.2];
+		const real = computeRealDayResult(day, 8);
+		const r = simulateReferenceSonnenNative(real, day, { usable: true, alpha: 0.5, beta: 1.0 }, 8);
+		assert.equal(r.evaluable, true);
+		assert.ok((r.gridImportKwh ?? 0) > (real.gridImportKwh ?? 0));
 	});
 });

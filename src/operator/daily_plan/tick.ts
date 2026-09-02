@@ -22,6 +22,9 @@ import {
 	DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH,
 } from "./battery_discharge_authority";
 import { evaluateBatteryOpportunityCost } from "./battery_opportunity_cost";
+import { evaluateBatteryReplaceCost } from "./battery_replace_cost";
+import { GRID_BALANCE_ECONOMICS_STATE_IDS } from "../../learning/grid_balance_economics/ensure_states";
+import { ETA_PATH_FALLBACK } from "../../learning/grid_balance_economics/constants";
 import { listActiveOverrides } from "../../ai/override_ledger";
 import {
 	mergeOpportunityMarginWithOverride,
@@ -566,6 +569,43 @@ export async function runDailyPlanTick(
 		plannedLaterDemandKwh,
 	});
 
+	const ecoUsable = (await host.getStateAsync(GRID_BALANCE_ECONOMICS_STATE_IDS.usable))?.val === true;
+	const ecoAlpha = asNum((await host.getStateAsync(GRID_BALANCE_ECONOMICS_STATE_IDS.alpha))?.val);
+	const ecoBeta = asNum((await host.getStateAsync(GRID_BALANCE_ECONOMICS_STATE_IDS.beta))?.val);
+	const ecoConfidence = asNum((await host.getStateAsync(GRID_BALANCE_ECONOMICS_STATE_IDS.confidence))?.val);
+	const etaPvUsable = (await host.getStateAsync(GRID_BALANCE_ECONOMICS_STATE_IDS.etaPvUsable))?.val === true;
+	const etaGridUsable = (await host.getStateAsync(GRID_BALANCE_ECONOMICS_STATE_IDS.etaGridUsable))?.val === true;
+	const etaPvLearned = asNum((await host.getStateAsync(GRID_BALANCE_ECONOMICS_STATE_IDS.etaPvPath))?.val);
+	const etaGridLearned = asNum((await host.getStateAsync(GRID_BALANCE_ECONOMICS_STATE_IDS.etaGridPath))?.val);
+	const feedInForReplace = normalizeFeedInCtPerKwh(
+		asNum((await host.getStateAsync("economics.config.feed_in_ct_per_kwh"))?.val),
+	);
+	const replaceCost = evaluateBatteryReplaceCost({
+		nowMs: now.getTime(),
+		priceSlots: reserveSlots.map((s) => ({ startMs: s.startMs, importCtPerKwh: s.importCt })),
+		headroomAboveReserveKwh,
+		pvRemainingTodayKwh,
+		plannedLaterDemandKwh,
+		predictedConsumptionUntilNextPvKwh: centralReserve.predictedConsumptionUntilNextPvKwh,
+		feedInCtPerKwh: feedInForReplace,
+		gridChargeAllowed: adminPolicy.gridImportAllowed !== false,
+		etaPvPath: etaPvUsable && etaPvLearned != null ? etaPvLearned : ETA_PATH_FALLBACK,
+		etaGridPath: etaGridUsable && etaGridLearned != null ? etaGridLearned : ETA_PATH_FALLBACK,
+		usableCapacityKwh: reserveCapacityKwh,
+		socPct,
+		maxSocPct: hardwareLimitsFromConfig(host.config).maxSocPct,
+	});
+	const economicsInput =
+		ecoUsable && replaceCost.usable
+			? {
+					usable: true,
+					alpha: ecoAlpha,
+					beta: ecoBeta,
+					cReplaceCtPerKwh: replaceCost.valueCtPerKwh,
+					marginCtPerKwh: batCfgModes.gridBalance.economicsMarginCtPerKwh,
+				}
+			: { usable: false, alpha: ecoAlpha, beta: ecoBeta, cReplaceCtPerKwh: replaceCost.valueCtPerKwh };
+
 	/*
 	 * BLOCK B — Battery Learned Opportunity (additiv). Nutzt die tatsächliche
 	 * Block-A-Metrik `batteryReserveAccuracyPct` über das zentrale Learning Gate, um die
@@ -581,6 +621,7 @@ export async function runDailyPlanTick(
 		requiredSocAtPvEndPct: centralReserve.requiredSocAtPvEndPct,
 		configuredMaxDischargeW: batCfgModes.gridBalance.maxTargetW,
 		opportunityCostCtPerKwh: batteryOpportunity.usable ? batteryOpportunity.opportunityCostCtPerKwh : null,
+		economics: economicsInput,
 	};
 	const baselineBatteryDischargeAuthorization = resolveBatteryDischargeAuthorization(
 		batteryDischargeAuthorizationInputBase,
@@ -648,6 +689,52 @@ export async function runDailyPlanTick(
 		});
 		await host.setStateAsync("planner.battery_discharge.opportunity_allowed", {
 			val: batteryDischargeAuthorization.opportunityAllowed,
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_discharge.economics_usable", {
+			val: batteryDischargeAuthorization.economicsUsable,
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_discharge.economics_alpha", {
+			val: ecoAlpha,
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_discharge.economics_beta", {
+			val: ecoBeta,
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_discharge.economics_price_now_ct", {
+			val: priceNowCt,
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_discharge.economics_c_replace_ct", {
+			val: replaceCost.valueCtPerKwh,
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_discharge.economics_c_replace_path", {
+			val: replaceCost.path ?? "",
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_discharge.economics_confidence", {
+			val: ecoConfidence,
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_discharge.economics_net_benefit_ct", {
+			val: batteryDischargeAuthorization.netBenefitCtPerKwh,
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_discharge.economics_decision", {
+			val: batteryDischargeAuthorization.economicsUsable
+				? batteryDischargeAuthorization.economicsAllowed
+					? "allow"
+					: "block"
+				: "fallback_min_price",
+			ack: true,
+		});
+		await host.setStateAsync("planner.battery_discharge.economics_reason_de", {
+			val: replaceCost.usable
+				? `${replaceCost.reasonDe} ${batteryDischargeAuthorization.reasonDe}`
+				: `${replaceCost.reasonDe} Fallback 30 ct.`,
 			ack: true,
 		});
 		await host.setStateAsync("planner.learning.battery_explanation", {

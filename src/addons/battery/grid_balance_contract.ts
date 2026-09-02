@@ -69,6 +69,8 @@ export interface GridBalanceSafetyInput {
 	mode1Active: boolean;
 	priceNowCt: number | null;
 	priceMinCt: number;
+	/** Planner-Economics usable → 30-ct-Mindestpreis hier nicht erneut anwenden. */
+	economicsUsable?: boolean;
 	evConflictKind: GridBalanceEvConflictKind;
 	externalEvAuthority: boolean;
 	/** One-shot: regular setpoint only. Session 0-release does not use this. */
@@ -225,8 +227,12 @@ function firstBlock(input: GridBalanceSafetyInput): { reason: string; authority:
 	/*
 	 * Dieselbe Preisregel wie `battery_discharge_authority.ts` (Unified Planner) — keine
 	 * zweite, unabhängig gepflegte Schwelle. `evaluateGridBalanceMinPrice` in grid_balance.ts.
+	 * Bei belastbarer Economics entscheidet der Planner (kein 30-ct-Zweitgate).
 	 */
-	if (!evaluateGridBalanceMinPrice({ minPriceCtPerKwh: input.priceMinCt, priceNowCt: input.priceNowCt }).passed) {
+	if (
+		!input.economicsUsable &&
+		!evaluateGridBalanceMinPrice({ minPriceCtPerKwh: input.priceMinCt, priceNowCt: input.priceNowCt }).passed
+	) {
 		return { reason: "price_below_minimum", authority: "grid_balance" };
 	}
 
@@ -239,7 +245,9 @@ export function evaluateGridBalanceSafety(input: GridBalanceSafetyInput): GridBa
 	const { reason, authority } = firstBlock(input);
 	const enabled = input.adminEnabled;
 	const priceKnown = input.priceNowCt != null && Number.isFinite(input.priceNowCt);
-	const priceAllowed = priceKnown && input.priceNowCt! >= input.priceMinCt;
+	const priceAllowed = input.economicsUsable
+		? priceKnown
+		: priceKnown && input.priceNowCt! >= input.priceMinCt;
 	const policyAllowed = reason === "";
 	const ready = policyAllowed;
 	const executionReleased = GRID_BALANCE_EXECUTION_ENABLED || input.liveTestPermit === true;

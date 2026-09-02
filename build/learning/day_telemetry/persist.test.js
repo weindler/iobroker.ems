@@ -58,6 +58,20 @@ const types_js_1 = require("./types.js");
         strict_1.default.equal(index_js_1.DAY_TELEMETRY_STATE_IDS.length, 3);
         strict_1.default.ok(index_js_1.DAY_TELEMETRY_STATE_IDS.every((id) => id.startsWith("learning.day_telemetry.")));
     });
+    (0, node_test_1.it)("alte Tagesdateien ohne GB-Economics-Felder bleiben lesbar (Cold Start / Migration)", async () => {
+        const layout = (0, slots_js_1.buildDaySlotLayout)("2026-06-15", "Europe/Berlin");
+        const day = (0, types_js_1.emptyDayRecord)("2026-06-15", "Europe/Berlin", layout.startMs, layout.endMs, layout.slotCount);
+        const raw = JSON.parse(JSON.stringify(day));
+        delete raw.gridBalanceRunSegments;
+        delete raw.gridBalanceOffWindows;
+        const buckets = raw.buckets;
+        delete buckets.batteryChargeSource;
+        const n = (0, persist_js_1.normalizeDayRecord)(raw, "2026-06-15");
+        strict_1.default.ok(n);
+        strict_1.default.ok(Array.isArray(n.gridBalanceRunSegments));
+        strict_1.default.ok(Array.isArray(n.gridBalanceOffWindows));
+        strict_1.default.equal(n.buckets.batteryChargeSource.length, n.slotCount);
+    });
     (0, node_test_1.it)("atomic write roundtrip", async () => {
         const dir = await fs.mkdtemp(path.join(os.tmpdir(), "daytel-"));
         try {

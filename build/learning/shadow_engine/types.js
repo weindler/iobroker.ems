@@ -1,7 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.notEvaluableStrategyResult = exports.SHADOW_STRATEGY_IDS = void 0;
-exports.SHADOW_STRATEGY_IDS = ["reference_no_ems", "ems_without_ai"];
+exports.SHADOW_STRATEGY_IDS = [
+    "reference_no_ems",
+    "reference_sonnen_native",
+    "ems_without_ai",
+];
 function notEvaluableStrategyResult(strategy, assumptionsDe, missingSlotCount = 0) {
     return {
         strategy,

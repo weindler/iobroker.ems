@@ -312,4 +312,12 @@ function baseSafety(over = {}) {
         strict_1.default.match(cfg, /GRID_BALANCE_EXECUTION_ENABLED=true/);
         strict_1.default.equal(/GRID_BALANCE_EXECUTION_ENABLED=false/.test(cfg), false);
     });
+    (0, node_test_1.it)("economicsUsable überspringt 30-ct, öffnet aber keine Hard Gates", () => {
+        const cheap = (0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ priceNowCt: 18, priceMinCt: 30, economicsUsable: true }));
+        strict_1.default.equal(cheap.blockReason, "");
+        strict_1.default.equal(cheap.priceAllowed, true);
+        const hold = (0, grid_balance_contract_js_1.evaluateGridBalanceSafety)(baseSafety({ priceNowCt: 18, priceMinCt: 30, economicsUsable: true, holdActive: true }));
+        strict_1.default.equal(hold.blockReason, "battery_hold");
+        strict_1.default.equal(hold.policyAllowed, false);
+    });
 });

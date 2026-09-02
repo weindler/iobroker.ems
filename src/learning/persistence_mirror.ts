@@ -93,6 +93,12 @@ export const LEARNING_PERSISTENCE_ARTIFACTS: readonly ArtifactDef[] = [
 		fileName: "day_evaluation_v1.json",
 		nameDe: "Tagesbewertung (Backup-Spiegel)",
 	},
+	{
+		key: "grid_balance_economics",
+		category: "learning/grid_balance_economics",
+		fileName: "grid_balance_economics_v1.json",
+		nameDe: "Grid-Balance-Economics (Backup-Spiegel)",
+	},
 ] as const;
 
 const BASE = "learning.persistence";

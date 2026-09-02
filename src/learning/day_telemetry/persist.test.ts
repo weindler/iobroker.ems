@@ -7,6 +7,7 @@ import { addDaysToDateKey } from "../../operator/time.js";
 import { DAY_TELEMETRY_RETENTION_DAYS, DAY_TELEMETRY_STATE_IDS } from "./index.js";
 import {
 	dayTelemetryPersistPath,
+	normalizeDayRecord,
 	pruneDayTelemetryStore,
 	readDayTelemetryPersist,
 	writeDayTelemetryPersist,
@@ -42,6 +43,27 @@ describe("day_telemetry persist retention", () => {
 	it("18) nur minimale neue States", () => {
 		assert.equal(DAY_TELEMETRY_STATE_IDS.length, 3);
 		assert.ok(DAY_TELEMETRY_STATE_IDS.every((id) => id.startsWith("learning.day_telemetry.")));
+	});
+
+	it("alte Tagesdateien ohne GB-Economics-Felder bleiben lesbar (Cold Start / Migration)", async () => {
+		const layout = buildDaySlotLayout("2026-06-15", "Europe/Berlin");
+		const day = emptyDayRecord(
+			"2026-06-15",
+			"Europe/Berlin",
+			layout.startMs,
+			layout.endMs,
+			layout.slotCount,
+		);
+		const raw = JSON.parse(JSON.stringify(day)) as Record<string, unknown>;
+		delete raw.gridBalanceRunSegments;
+		delete raw.gridBalanceOffWindows;
+		const buckets = raw.buckets as Record<string, unknown>;
+		delete buckets.batteryChargeSource;
+		const n = normalizeDayRecord(raw, "2026-06-15");
+		assert.ok(n);
+		assert.ok(Array.isArray(n!.gridBalanceRunSegments));
+		assert.ok(Array.isArray(n!.gridBalanceOffWindows));
+		assert.equal(n!.buckets.batteryChargeSource.length, n!.slotCount);
 	});
 
 	it("atomic write roundtrip", async () => {

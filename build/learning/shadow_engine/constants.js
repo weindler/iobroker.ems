@@ -15,7 +15,7 @@ exports.SHADOW_ENGINE_STATE_CATEGORY = "learning/shadow_engine";
 /** Gleiche Retention wie day_telemetry — Shadow-Ergebnisse sind aus Telemetrie rebuildbar. */
 exports.SHADOW_ENGINE_RETENTION_DAYS = 90;
 /** Versionierte Modellkennung für Reproduzierbarkeit (siehe Roadmap: "versioniert, reproduzierbar"). */
-exports.SHADOW_ENGINE_MODEL_VERSION = "shadow_v2";
+exports.SHADOW_ENGINE_MODEL_VERSION = "shadow_v3";
 /** Batterie-Hardware-Fallback-Grenzen, falls Admin-Konfiguration unvollständig ist. */
 exports.SHADOW_BATTERY_MIN_SOC_FALLBACK_PCT = 5;
 exports.SHADOW_BATTERY_MAX_SOC_FALLBACK_PCT = 100;

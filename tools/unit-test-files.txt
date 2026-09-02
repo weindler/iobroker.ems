@@ -186,6 +186,7 @@ build/operator/daily_plan/unified/learning_gate.test.js
 build/operator/daily_plan/unified/thermal_opportunity_gate.test.js
 build/operator/daily_plan/unified/thermal_opportunity_planner.test.js
 build/operator/daily_plan/battery_opportunity_cost.test.js
+build/operator/daily_plan/battery_replace_cost.test.js
 build/operator/daily_plan/unified/battery_reserve_floor.test.js
 build/operator/daily_plan/unified/horizon_causality.test.js
 build/operator/daily_plan/unified/thermal_boiler_buffer.test.js
@@ -224,6 +225,11 @@ build/learning/day_telemetry/planned_freeze.test.js
 build/learning/day_telemetry/knowledge_snapshot.test.js
 build/learning/day_telemetry/forecast_horizon.test.js
 build/learning/day_telemetry/persist.test.js
+build/learning/day_telemetry/grid_balance_segments.test.js
+build/learning/grid_balance_economics/stability.test.js
+build/learning/grid_balance_economics/charge_source.test.js
+build/learning/grid_balance_economics/alpha_beta.test.js
+build/learning/grid_balance_economics/eta_path.test.js
 build/learning/day_telemetry/freeze_immutability.test.js
 build/learning/day_telemetry/size.test.js
 build/learning/day_telemetry/price_source.test.js

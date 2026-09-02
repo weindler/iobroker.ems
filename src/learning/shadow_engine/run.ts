@@ -26,7 +26,13 @@ import {
 	readShadowDayRecord,
 	writeShadowDayRecord,
 } from "./persist";
-import { computeRealDayResult, simulateEmsWithoutAi, simulateReferenceNoEms } from "./simulate";
+import {
+	computeRealDayResult,
+	simulateEmsWithoutAi,
+	simulateReferenceNoEms,
+	simulateReferenceSonnenNative,
+} from "./simulate";
+import { readGridBalanceEconomicsPersist, gridBalanceEconomicsDirFromHost } from "../grid_balance_economics/persist";
 import type { ShadowDayRecord } from "./types";
 import { wasAiOverrideActiveOnDate } from "../../ai/override_ledger";
 
@@ -69,6 +75,7 @@ export function buildShadowDayRecord(
 	feedInCtPerKwh: number | null,
 	aiOverrideActiveForDay: boolean,
 	generatedAtIso: string,
+	economicsLearning?: { usable: boolean; alpha: number | null; beta: number | null } | null,
 ): ShadowDayRecord {
 	const real = computeRealDayResult(day, feedInCtPerKwh);
 	const startSocPct =
@@ -76,6 +83,12 @@ export function buildShadowDayRecord(
 	const referenceNoEms = simulateReferenceNoEms(
 		day,
 		{ ...batteryParams, startSocPct },
+		feedInCtPerKwh,
+	);
+	const referenceSonnenNative = simulateReferenceSonnenNative(
+		real,
+		day,
+		economicsLearning ?? { usable: false, alpha: null, beta: null },
 		feedInCtPerKwh,
 	);
 	const emsWithoutAi = simulateEmsWithoutAi(real, aiOverrideActiveForDay);
@@ -90,6 +103,7 @@ export function buildShadowDayRecord(
 		real,
 		strategies: {
 			reference_no_ems: referenceNoEms,
+			reference_sonnen_native: referenceSonnenNative,
 			ems_without_ai: emsWithoutAi,
 		},
 	};
@@ -137,6 +151,16 @@ export async function runShadowEngineBatch(
 			maxChargeW: limits.maxChargeW,
 			maxDischargeW: limits.maxDischargeW,
 		};
+		const ecoPersist = await readGridBalanceEconomicsPersist(
+			gridBalanceEconomicsDirFromHost(host.getAbsolutePath),
+		);
+		const economicsLearning = ecoPersist
+			? {
+					usable: ecoPersist.alphaBeta.usable,
+					alpha: ecoPersist.alphaBeta.alpha,
+					beta: ecoPersist.alphaBeta.beta,
+				}
+			: null;
 
 		let lastEvaluated: string | null = null;
 		for (const dateKey of allKeys.sort()) {
@@ -167,6 +191,7 @@ export async function runShadowEngineBatch(
 					feedInCtPerKwh,
 					aiOverrideActive,
 					now.toISOString(),
+					economicsLearning,
 				);
 				await writeShadowDayRecord(resultsDir, record);
 				result.processedDateKeys.push(dateKey);
@@ -191,6 +216,11 @@ export async function runShadowEngineBatch(
 					host,
 					"learning.shadow_engine.yesterday_reference_no_ems_net_cost_eur",
 					rec.strategies.reference_no_ems?.netCostEur ?? null,
+				);
+				await publish(
+					host,
+					"learning.shadow_engine.yesterday_reference_sonnen_native_net_cost_eur",
+					rec.strategies.reference_sonnen_native?.netCostEur ?? null,
 				);
 				await publish(
 					host,

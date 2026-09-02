@@ -15,6 +15,8 @@ const energy_integrate_1 = require("./energy_integrate");
 const knowledge_snapshot_1 = require("./knowledge_snapshot");
 const climate_segments_1 = require("./climate_segments");
 const immersion_segments_1 = require("./immersion_segments");
+const grid_balance_segments_1 = require("./grid_balance_segments");
+const charge_source_1 = require("../grid_balance_economics/charge_source");
 const planned_freeze_1 = require("./planned_freeze");
 const persist_1 = require("./persist");
 const quality_mask_1 = require("./quality_mask");
@@ -30,6 +32,10 @@ function emptyMem() {
         baselines: { gridImport: null, gridExport: null },
         openClimate: null,
         openImmersion: null,
+        openGbEpisode: null,
+        openGbOff: null,
+        gbStabilityBuf: [],
+        gbEpisodeDateKey: null,
         currentPlan: null,
         currentInput: null,
         sharedGroupMap: null,
@@ -217,6 +223,16 @@ async function tickDayTelemetryInner(host, now) {
     store = ensured.store;
     const day = ensured.day;
     const layout = ensured.layout;
+    if (mem.gbEpisodeDateKey && mem.gbEpisodeDateKey !== dateKey && store.days[mem.gbEpisodeDateKey]) {
+        const prevDay = store.days[mem.gbEpisodeDateKey];
+        prevDay.gridBalanceRunSegments = (0, grid_balance_segments_1.closeGridBalanceEpisode)(mem.openGbEpisode, nowMs, "day_boundary", prevDay.gridBalanceRunSegments ?? []);
+        prevDay.gridBalanceOffWindows = (0, grid_balance_segments_1.closeOffWindow)(mem.openGbOff, nowMs, prevDay.gridBalanceOffWindows ?? []);
+        mem.openGbEpisode = null;
+        mem.openGbOff = null;
+        mem.gbStabilityBuf = [];
+        mem.dirty = true;
+    }
+    mem.gbEpisodeDateKey = dateKey;
     const sample = await (0, sources_1.readLiveTelemetrySample)(host, nowMs);
     const immersionCmd = (0, state_util_1.asNum)((await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.commandedPowerW))?.val);
     sample.immersionRuntimeOn = (0, sources_1.immersionOnFromPowers)(sample.immersionPowerW, immersionCmd);
@@ -284,6 +300,46 @@ async function tickDayTelemetryInner(host, now) {
         }, day.immersionRunSegments);
         mem.openImmersion = immersionSeg.open;
         day.immersionRunSegments = immersionSeg.list;
+        const emsGridCharge = (sample.batterySetpointOwner ?? "").toLowerCase() === "grid_charge";
+        const chargeSrc = (0, charge_source_1.classifyChargeSource)({
+            chargingW: sample.batteryChargePowerW,
+            pvW: sample.pvPowerW,
+            houseW: sample.houseTotalPowerW,
+            gridImportW: sample.gridImportPowerW,
+            emsGridChargeActive: emsGridCharge,
+        });
+        if (sample.batteryChargePowerW != null && sample.batteryChargePowerW > 50) {
+            for (const i of overlappingSlotIndicesSafe(layout, fromMs, toMs)) {
+                const prev = day.buckets.batteryChargeSource[i] ?? null;
+                day.buckets.batteryChargeSource[i] = (0, charge_source_1.mergeChargeSource)(prev, chargeSrc);
+            }
+        }
+        const gbSample = {
+            ts: nowMs,
+            houseW: sample.houseTotalPowerW,
+            pvW: sample.pvPowerW,
+            gridW: sample.gridImportPowerW,
+            gbEffectiveW: sample.gridBalanceDischargePowerW,
+            gbRequestedW: sample.gridBalanceRequestedPowerW,
+            batteryDischargeW: sample.batteryDischargePowerW,
+            gridImportW: sample.gridImportPowerW,
+            socPct: sample.batterySocPct,
+            priceCt: sample.priceCtPerKwh,
+            gbActive: sample.gridBalanceActive === true,
+        };
+        const gbEpi = (0, grid_balance_segments_1.advanceGridBalanceEpisode)(mem.openGbEpisode, mem.gbStabilityBuf, gbSample, mem.lastSampleTs, day.gridBalanceRunSegments ?? []);
+        mem.openGbEpisode = gbEpi.open;
+        mem.gbStabilityBuf = gbEpi.buf;
+        day.gridBalanceRunSegments = gbEpi.list;
+        if (!gbSample.gbActive) {
+            const off = (0, grid_balance_segments_1.advanceOffWindow)(mem.openGbOff, mem.gbStabilityBuf, gbSample, mem.lastSampleTs, day.gridBalanceOffWindows ?? []);
+            mem.openGbOff = off.open;
+            day.gridBalanceOffWindows = off.list;
+        }
+        else {
+            day.gridBalanceOffWindows = (0, grid_balance_segments_1.closeOffWindow)(mem.openGbOff, nowMs, day.gridBalanceOffWindows ?? []);
+            mem.openGbOff = null;
+        }
         integratePowerDomain(day, layout, fromMs, toMs, sample.climateSystemPowerW, day.buckets.climateKwh, quality_mask_1.TELEMETRY_DOMAIN.CLIMATE);
         if (sample.climateSharedPowerUsed === true || sample.climateSystemPowerW != null) {
             integratePowerDomain(day, layout, fromMs, toMs, sample.climateSystemPowerW, day.buckets.climateElecSharedKwh, quality_mask_1.TELEMETRY_DOMAIN.CLIMATE);

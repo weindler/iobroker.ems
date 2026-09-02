@@ -20,6 +20,7 @@ const constants_2 = require("./constants");
 Object.defineProperty(exports, "SHADOW_ENGINE_STATE_CATEGORY", { enumerable: true, get: function () { return constants_2.SHADOW_ENGINE_STATE_CATEGORY; } });
 const persist_2 = require("./persist");
 const simulate_1 = require("./simulate");
+const persist_3 = require("../grid_balance_economics/persist");
 const override_ledger_1 = require("../../ai/override_ledger");
 async function publish(host, id, val) {
     if (!host.setStateAsync)
@@ -32,10 +33,11 @@ async function publish(host, id, val) {
     }
 }
 /** Für einen einzelnen Tag: reale + simulierte Welten berechnen (reine Funktion, kein I/O). */
-function buildShadowDayRecord(dateKey, day, previousDay, batteryParams, feedInCtPerKwh, aiOverrideActiveForDay, generatedAtIso) {
+function buildShadowDayRecord(dateKey, day, previousDay, batteryParams, feedInCtPerKwh, aiOverrideActiveForDay, generatedAtIso, economicsLearning) {
     const real = (0, simulate_1.computeRealDayResult)(day, feedInCtPerKwh);
     const startSocPct = lastNonNull(previousDay?.buckets.batterySocEndPct ?? []) ?? real.socStartPct ?? null;
     const referenceNoEms = (0, simulate_1.simulateReferenceNoEms)(day, { ...batteryParams, startSocPct }, feedInCtPerKwh);
+    const referenceSonnenNative = (0, simulate_1.simulateReferenceSonnenNative)(real, day, economicsLearning ?? { usable: false, alpha: null, beta: null }, feedInCtPerKwh);
     const emsWithoutAi = (0, simulate_1.simulateEmsWithoutAi)(real, aiOverrideActiveForDay);
     return {
         module: constants_2.SHADOW_ENGINE_MODULE,
@@ -48,6 +50,7 @@ function buildShadowDayRecord(dateKey, day, previousDay, batteryParams, feedInCt
         real,
         strategies: {
             reference_no_ems: referenceNoEms,
+            reference_sonnen_native: referenceSonnenNative,
             ems_without_ai: emsWithoutAi,
         },
     };
@@ -88,6 +91,14 @@ async function runShadowEngineBatch(host, opts = {}) {
             maxChargeW: limits.maxChargeW,
             maxDischargeW: limits.maxDischargeW,
         };
+        const ecoPersist = await (0, persist_3.readGridBalanceEconomicsPersist)((0, persist_3.gridBalanceEconomicsDirFromHost)(host.getAbsolutePath));
+        const economicsLearning = ecoPersist
+            ? {
+                usable: ecoPersist.alphaBeta.usable,
+                alpha: ecoPersist.alphaBeta.alpha,
+                beta: ecoPersist.alphaBeta.beta,
+            }
+            : null;
         let lastEvaluated = null;
         for (const dateKey of allKeys.sort()) {
             if (dateKey >= todayKey)
@@ -109,7 +120,7 @@ async function runShadowEngineBatch(host, opts = {}) {
                 const prevKey = (0, time_1.addDaysToDateKey)(dateKey, -1);
                 const previousDay = await (0, persist_1.readDayTelemetryDay)(telemetryDir, prevKey);
                 const aiOverrideActive = await (0, override_ledger_1.wasAiOverrideActiveOnDate)(host, dateKey);
-                const record = buildShadowDayRecord(dateKey, day, previousDay, batteryParams, feedInCtPerKwh, aiOverrideActive, now.toISOString());
+                const record = buildShadowDayRecord(dateKey, day, previousDay, batteryParams, feedInCtPerKwh, aiOverrideActive, now.toISOString(), economicsLearning);
                 await (0, persist_2.writeShadowDayRecord)(resultsDir, record);
                 result.processedDateKeys.push(dateKey);
                 lastEvaluated = dateKey;
@@ -125,6 +136,7 @@ async function runShadowEngineBatch(host, opts = {}) {
             if (rec) {
                 await publish(host, "learning.shadow_engine.yesterday_real_net_cost_eur", rec.real.netCostEur);
                 await publish(host, "learning.shadow_engine.yesterday_reference_no_ems_net_cost_eur", rec.strategies.reference_no_ems?.netCostEur ?? null);
+                await publish(host, "learning.shadow_engine.yesterday_reference_sonnen_native_net_cost_eur", rec.strategies.reference_sonnen_native?.netCostEur ?? null);
                 await publish(host, "learning.shadow_engine.yesterday_ems_without_ai_net_cost_eur", rec.strategies.ems_without_ai?.netCostEur ?? null);
             }
         }

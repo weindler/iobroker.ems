@@ -16,6 +16,7 @@ function emptyBuckets(slotCount) {
         batteryChargedKwh: n(),
         batteryDischargedKwh: n(),
         gridBalanceDischargeKwh: n(),
+        batteryChargeSource: nStr(),
         evChargedKwh: n(),
         evSocEndPct: n(),
         immersionKwh: n(),
@@ -53,6 +54,8 @@ function emptyDayRecord(dateKey, timezone, startMs, endMs, slotCount) {
         replanEvents: [],
         climateRunSegments: [],
         immersionRunSegments: [],
+        gridBalanceRunSegments: [],
+        gridBalanceOffWindows: [],
         statusEvents: [],
     };
 }

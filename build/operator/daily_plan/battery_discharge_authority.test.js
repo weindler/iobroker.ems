@@ -136,6 +136,64 @@ const battery_opportunity_cost_js_1 = require("./battery_opportunity_cost.js");
             strict_1.default.equal(r.opportunityAllowed, true);
             strict_1.default.equal(r.maxDischargeW, 3000);
         });
+    });
+    (0, node_test_1.describe)("Economic Grid Balance", () => {
+        const eco = {
+            usable: true,
+            alpha: 0.7,
+            beta: 1.1,
+            cReplaceCtPerKwh: 22,
+            marginCtPerKwh: 1.5,
+        };
+        (0, node_test_1.it)("Cold Start ohne Economics → 30-ct-Fallback", () => {
+            const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({ ...base, priceNowCt: 16.5 });
+            strict_1.default.equal(r.allowed, false);
+            strict_1.default.equal(r.economicsUsable, false);
+            strict_1.default.match(r.reasonDe, /Mindestpreis/);
+        });
+        (0, node_test_1.it)("usable Economics erlaubt unter 30 ct wenn Netto positiv (kein 30-ct-Zusatzgate)", () => {
+            const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({
+                ...base,
+                priceNowCt: 18,
+                economics: { ...eco, alpha: 0.9, beta: 1.0, cReplaceCtPerKwh: 12 },
+            });
+            strict_1.default.equal(r.allowed, true, r.reasonDe);
+            strict_1.default.equal(r.economicsUsable, true);
+            strict_1.default.equal(r.economicsAllowed, true);
+            strict_1.default.ok(r.netBenefitCtPerKwh != null && r.netBenefitCtPerKwh > 1.5);
+        });
+        (0, node_test_1.it)("usable Economics blockt bei negativem Netto trotz Preis > 30 ct", () => {
+            const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({
+                ...base,
+                priceNowCt: 36,
+                economics: { ...eco, alpha: 0.4, beta: 1.2, cReplaceCtPerKwh: 40 },
+            });
+            strict_1.default.equal(r.allowed, false);
+            strict_1.default.equal(r.economicsUsable, true);
+            strict_1.default.equal(r.economicsAllowed, false);
+        });
+        (0, node_test_1.it)("Economics öffnet Reserve-Sperre nicht", () => {
+            const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({
+                ...base,
+                socPct: 20,
+                priceNowCt: 50,
+                economics: eco,
+            });
+            strict_1.default.equal(r.allowed, false);
+            strict_1.default.equal(r.socAllowed, false);
+        });
+        (0, node_test_1.it)("Economics nicht mehr belastbar → automatisch 30-ct-Fallback", () => {
+            const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({
+                ...base,
+                priceNowCt: 16.5,
+                economics: { usable: false, alpha: 0.7, beta: 1.1, cReplaceCtPerKwh: 22 },
+            });
+            strict_1.default.equal(r.allowed, false);
+            strict_1.default.equal(r.economicsUsable, false);
+            strict_1.default.match(r.reasonDe, /Mindestpreis/);
+        });
+    });
+    (0, node_test_1.describe)("PFLICHT-FIX 2 leftover — Hold/Reserve/Safety", () => {
         (0, node_test_1.it)("Netzausgleich bleibt trotz reichlichem Headroom gesperrt, wenn Hold/Reserve/Safety greifen", () => {
             // SOC unterhalb der Reserve — Opportunity-Discount darf das nie aushebeln.
             const rReserve = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({

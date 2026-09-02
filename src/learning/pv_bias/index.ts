@@ -7,6 +7,10 @@ import { ensureHouseLoadLearningStates, runHouseLoadLearning } from "../house_lo
 import { ensureThermalRuntimeLearningStates, runThermalRuntimeLearning } from "../thermal_runtime";
 import { ensureThermalBoilerLearningStates, runThermalBoilerLearning } from "../thermal_boiler";
 import { ensureBatteryRuntimeLearningStates, runBatteryRuntimeLearning } from "../battery_runtime";
+import {
+	ensureGridBalanceEconomicsStates,
+	runGridBalanceEconomicsLearning,
+} from "../grid_balance_economics";
 import { ensureEnergyDailyRollupForLearning } from "../energy_daily_rollup";
 import { ensurePowerRollupForLearning } from "../power_rollup";
 import { ensurePvHorizonLearningStates, runPvHorizon } from "../pv_horizon";
@@ -50,6 +54,7 @@ export async function ensureLearningStateTree(adapter: ioBroker.Adapter): Promis
 	await ensureThermalRuntimeLearningStates(host);
 	await ensureThermalBoilerLearningStates(host);
 	await ensureBatteryRuntimeLearningStates(host);
+	await ensureGridBalanceEconomicsStates(host);
 	await ensureDayTelemetryStates(host);
 	await ensureDailyEvaluatorStates(host);
 	await ensureClimateSharedPowerRootStates(host);
@@ -110,6 +115,12 @@ async function runLearningTick(
 		await runHouseLoadLearning(host);
 		await runThermalRuntimeLearning(host);
 		await runBatteryRuntimeLearning(host);
+		try {
+			const timezone = intentAdminConfigFromAdapter(host.config).timezone || "Europe/Berlin";
+			await runGridBalanceEconomicsLearning(host, { timezone });
+		} catch (e) {
+			host.log.error(`grid_balance_economics: ${e instanceof Error ? e.message : String(e)}`);
+		}
 		await runPriceForecastLearning(host);
 		await mirrorLearningPersistenceToStates(host as unknown as PersistenceMirrorHost);
 		/*

@@ -95,6 +95,8 @@ export type {
 	PlannerKnowledgeSnapshot,
 	ClimateRunSegment,
 	ImmersionRunSegment,
+	GridBalanceRunSegment,
+	GridBalanceMatchWindow,
 	DayTelemetryReplanEvent,
 } from "./types";
 

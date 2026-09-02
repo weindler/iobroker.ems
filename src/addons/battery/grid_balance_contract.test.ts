@@ -368,4 +368,15 @@ describe("grid balance safety contract v0.1.284", () => {
 		assert.match(cfg, /GRID_BALANCE_EXECUTION_ENABLED=true/);
 		assert.equal(/GRID_BALANCE_EXECUTION_ENABLED=false/.test(cfg), false);
 	});
+
+	it("economicsUsable überspringt 30-ct, öffnet aber keine Hard Gates", () => {
+		const cheap = evaluateGridBalanceSafety(baseSafety({ priceNowCt: 18, priceMinCt: 30, economicsUsable: true }));
+		assert.equal(cheap.blockReason, "");
+		assert.equal(cheap.priceAllowed, true);
+		const hold = evaluateGridBalanceSafety(
+			baseSafety({ priceNowCt: 18, priceMinCt: 30, economicsUsable: true, holdActive: true }),
+		);
+		assert.equal(hold.blockReason, "battery_hold");
+		assert.equal(hold.policyAllowed, false);
+	});
 });

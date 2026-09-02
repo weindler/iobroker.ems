@@ -1,8 +1,12 @@
 import { SHADOW_ENGINE_MODULE, SHADOW_ENGINE_SCHEMA_VERSION } from "./constants";
 
-export type ShadowStrategyId = "reference_no_ems" | "ems_without_ai";
+export type ShadowStrategyId = "reference_no_ems" | "reference_sonnen_native" | "ems_without_ai";
 
-export const SHADOW_STRATEGY_IDS: ShadowStrategyId[] = ["reference_no_ems", "ems_without_ai"];
+export const SHADOW_STRATEGY_IDS: ShadowStrategyId[] = [
+	"reference_no_ems",
+	"reference_sonnen_native",
+	"ems_without_ai",
+];
 
 /** Gemeinsame Energie-/Kosten-Felder einer simulierten oder realen Welt. Unbekannt = null, nie erfundene 0. */
 export type ShadowWorldEnergy = {

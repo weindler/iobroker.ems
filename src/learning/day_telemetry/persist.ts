@@ -105,7 +105,12 @@ export function normalizeDayRecord(raw: unknown, fallbackDateKey?: string): DayT
 	if (!Array.isArray(day.replanEvents)) day.replanEvents = [];
 	if (!Array.isArray(day.climateRunSegments)) day.climateRunSegments = [];
 	if (!Array.isArray(day.immersionRunSegments)) day.immersionRunSegments = [];
+	if (!Array.isArray(day.gridBalanceRunSegments)) day.gridBalanceRunSegments = [];
+	if (!Array.isArray(day.gridBalanceOffWindows)) day.gridBalanceOffWindows = [];
 	if (!Array.isArray(day.statusEvents)) day.statusEvents = [];
+	if (!Array.isArray(day.buckets.batteryChargeSource) || day.buckets.batteryChargeSource.length !== slotCount) {
+		day.buckets.batteryChargeSource = Array.from({ length: slotCount }, () => null);
+	}
 	if (!Array.isArray(day.plannedConsumers)) day.plannedConsumers = [];
 	if (typeof day.complete !== "boolean") day.complete = false;
 	return asCoverageFields(day);

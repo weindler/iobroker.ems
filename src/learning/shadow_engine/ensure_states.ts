@@ -33,7 +33,12 @@ export async function ensureShadowEngineStates(host: StateHost): Promise<void> {
 		),
 		numState(
 			"learning.shadow_engine.yesterday_reference_no_ems_net_cost_eur",
-			"Shadow-Engine gestern reference_no_ems Netto-Kosten",
+			"Shadow-Engine gestern Ideal-Benchmark (Greedy) Netto-Kosten",
+			"EUR",
+		),
+		numState(
+			"learning.shadow_engine.yesterday_reference_sonnen_native_net_cost_eur",
+			"Shadow-Engine gestern realistische Sonnen-ohne-EMS Netto-Kosten",
 			"EUR",
 		),
 		numState(

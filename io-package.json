@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.19",
+		"version": "0.2.20",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.20": {
+				"en": "Learned Grid Balance economics (α/β, C_replace, 30 ct fallback when not usable). Check planner.battery_discharge.economics_* and learning.grid_balance_economics.*",
+				"de": "Lernende Netzausgleich-Wirtschaft (α/β, C_replace, 30-ct-Fallback wenn nicht usable). Prüfen: planner.battery_discharge.economics_* und learning.grid_balance_economics.*"
+			},
 			"0.2.19": {
 				"en": "Fix: immersion manual override is event-based (OFF→ON once). paused_until no longer extends every poll; no 5s log spam. After update: one manual heater ON should pause EMS until a fixed time; logs show manual override detected once, then expired.",
 				"de": "Fix: Heizstab-Manual-Override ist ereignisbasiert (OFF→ON einmal). paused_until wandert nicht mehr jeden Poll; kein 5s-Log-Spam. Nach Update: einmal manuell EIN pausiert EMS bis zu einer festen Zeit; Log zeigt manual override detected einmal, später expired."

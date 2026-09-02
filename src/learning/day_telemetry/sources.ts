@@ -41,6 +41,11 @@ export type LiveTelemetrySample = {
 	batteryDischargePowerW: number | null;
 	/** EMS-Netzausgleichs-Entladeleistung ≥ 0 W; null = missing. */
 	gridBalanceDischargePowerW: number | null;
+	/** Angefragte GB-Leistung; null = missing. */
+	gridBalanceRequestedPowerW: number | null;
+	gridBalanceActive: boolean | null;
+	/** Setpoint-Owner (grid_charge / grid_balance / …). */
+	batterySetpointOwner: string | null;
 	climateSystemPowerW: number | null;
 	climateSharedPowerUsed: boolean | null;
 	climateUnitActive: boolean[];
@@ -213,6 +218,9 @@ export async function readLiveTelemetrySample(
 		batteryChargePowerW: chargeW,
 		batteryDischargePowerW: dischargeW,
 		gridBalanceDischargePowerW: await readNum(host, BAT.gridBalance.effectivePowerW),
+		gridBalanceRequestedPowerW: await readNum(host, BAT.gridBalance.requestedPowerW),
+		gridBalanceActive: await readBool(host, BAT.gridBalance.active),
+		batterySetpointOwner: await readStr(host, BAT.runtime.batterySetpointOwner),
 		climateSystemPowerW: systemPower,
 		climateSharedPowerUsed: sharedUsed,
 		climateUnitActive,

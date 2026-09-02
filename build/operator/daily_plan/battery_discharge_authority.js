@@ -25,58 +25,97 @@
  * Bewusst NICHT Teil dieses Blocks: Klima, Heizstab-Planung, Wallbox, Ownership-Umbau.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveBatteryDischargeAuthorization = exports.DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH = void 0;
+exports.resolveBatteryDischargeAuthorization = exports.DEFAULT_ECONOMICS_DECISION_MARGIN_CT = exports.DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH = void 0;
 const grid_balance_1 = require("../../addons/battery/grid_balance");
 exports.DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH = 3;
+exports.DEFAULT_ECONOMICS_DECISION_MARGIN_CT = 1.5;
 function resolveBatteryDischargeAuthorization(input) {
     const socKnownForDiagnostics = input.socPct !== null &&
         Number.isFinite(input.socPct) &&
         input.requiredSocAtPvEndPct !== null &&
         input.socPct > input.requiredSocAtPvEndPct;
+    const economicsReady = isEconomicsReady(input);
     const priceCheck = (0, grid_balance_1.evaluateGridBalanceMinPrice)({
         minPriceCtPerKwh: input.minPriceCtPerKwh,
         priceNowCt: input.priceNowCt,
     });
-    if (!priceCheck.passed) {
+    /*
+     * Economics usable → 30-ct-Mindestpreis gilt nicht mehr als harte Untergrenze.
+     * Preis muss trotzdem bekannt sein. Economics nicht usable → bestehendes 30-ct-Fallback.
+     */
+    if (!economicsReady && !priceCheck.passed) {
         return {
             allowed: false,
             maxDischargeW: 0,
             priceAllowed: false,
             socAllowed: socKnownForDiagnostics,
             opportunityAllowed: true,
+            economicsAllowed: true,
+            economicsUsable: false,
+            netBenefitCtPerKwh: null,
             reasonDe: priceCheck.reasonDe,
         };
     }
-    if (input.requiredSocAtPvEndPct === null) {
+    if (economicsReady && (input.priceNowCt == null || !Number.isFinite(input.priceNowCt))) {
         return {
             allowed: false,
             maxDischargeW: 0,
+            priceAllowed: false,
+            socAllowed: socKnownForDiagnostics,
+            opportunityAllowed: true,
+            economicsAllowed: false,
+            economicsUsable: true,
+            netBenefitCtPerKwh: null,
+            reasonDe: "Strompreis unbekannt — Netzausgleich pausiert",
+        };
+    }
+    if (input.requiredSocAtPvEndPct === null) {
+        return blocked("Nacht-Reserve noch nicht ausreichend gelernt (predictedNightConsumptionKwh unbekannt) — Batterieentladung konservativ gesperrt.", {
             priceAllowed: true,
             socAllowed: false,
-            opportunityAllowed: true,
-            reasonDe: "Nacht-Reserve noch nicht ausreichend gelernt (predictedNightConsumptionKwh unbekannt) — Batterieentladung konservativ gesperrt.",
-        };
+            economicsReady,
+        });
     }
     const socKnown = input.socPct !== null && Number.isFinite(input.socPct);
     if (!socKnown) {
-        return {
-            allowed: false,
-            maxDischargeW: 0,
+        return blocked("SOC unbekannt — Batterieentladung wirtschaftlich gesperrt.", {
             priceAllowed: true,
             socAllowed: false,
-            opportunityAllowed: true,
-            reasonDe: "SOC unbekannt — Batterieentladung wirtschaftlich gesperrt.",
-        };
+            economicsReady,
+        });
     }
     const socAllowed = input.socPct > input.requiredSocAtPvEndPct;
     if (!socAllowed) {
+        return blocked(`SOC ${input.socPct.toFixed(0)} % ≤ dynamische Reserve ${input.requiredSocAtPvEndPct} % — Batterieentladung wirtschaftlich gesperrt.`, { priceAllowed: true, socAllowed: false, economicsReady });
+    }
+    if (economicsReady) {
+        const e = input.economics;
+        const priceNow = input.priceNowCt;
+        const net = e.alpha * priceNow - e.beta * e.cReplaceCtPerKwh;
+        const margin = e.marginCtPerKwh ?? exports.DEFAULT_ECONOMICS_DECISION_MARGIN_CT;
+        if (!(net > margin)) {
+            return {
+                allowed: false,
+                maxDischargeW: 0,
+                priceAllowed: true,
+                socAllowed: true,
+                opportunityAllowed: true,
+                economicsAllowed: false,
+                economicsUsable: true,
+                netBenefitCtPerKwh: net,
+                reasonDe: `Economics: Netto ${net.toFixed(1)} ct/kWh ≤ Marge ${margin.toFixed(1)} (α=${e.alpha.toFixed(2)} × ${priceNow.toFixed(1)} − β=${e.beta.toFixed(2)} × C_replace ${e.cReplaceCtPerKwh.toFixed(1)}) — Netzausgleich zurückgestellt.`,
+            };
+        }
         return {
-            allowed: false,
-            maxDischargeW: 0,
+            allowed: true,
+            maxDischargeW: Math.max(0, Math.round(input.configuredMaxDischargeW)),
             priceAllowed: true,
-            socAllowed: false,
+            socAllowed: true,
             opportunityAllowed: true,
-            reasonDe: `SOC ${input.socPct.toFixed(0)} % ≤ dynamische Reserve ${input.requiredSocAtPvEndPct} % — Batterieentladung wirtschaftlich gesperrt.`,
+            economicsAllowed: true,
+            economicsUsable: true,
+            netBenefitCtPerKwh: net,
+            reasonDe: `Economics: Netto ${net.toFixed(1)} ct/kWh > Marge ${margin.toFixed(1)}; SOC ${input.socPct.toFixed(0)} % > dynamische Reserve ${input.requiredSocAtPvEndPct} %.`,
         };
     }
     /*
@@ -95,6 +134,9 @@ function resolveBatteryDischargeAuthorization(input) {
                 priceAllowed: true,
                 socAllowed: true,
                 opportunityAllowed: false,
+                economicsAllowed: true,
+                economicsUsable: false,
+                netBenefitCtPerKwh: null,
                 reasonDe: `Preis jetzt ${priceNow.toFixed(1)} ct/kWh liegt nicht ausreichend über der geschätzten Opportunity-Cost ${input.opportunityCostCtPerKwh.toFixed(1)} ct/kWh — Netzausgleich zurückgestellt (Batterie später voraussichtlich wertvoller).`,
             };
         }
@@ -105,7 +147,34 @@ function resolveBatteryDischargeAuthorization(input) {
         priceAllowed: true,
         socAllowed: true,
         opportunityAllowed: true,
+        economicsAllowed: true,
+        economicsUsable: false,
+        netBenefitCtPerKwh: null,
         reasonDe: `${priceCheck.reasonDe}; SOC ${input.socPct.toFixed(0)} % > dynamische Reserve ${input.requiredSocAtPvEndPct} %.`,
     };
 }
 exports.resolveBatteryDischargeAuthorization = resolveBatteryDischargeAuthorization;
+function isEconomicsReady(input) {
+    const e = input.economics;
+    return !!(e &&
+        e.usable &&
+        e.alpha != null &&
+        Number.isFinite(e.alpha) &&
+        e.beta != null &&
+        Number.isFinite(e.beta) &&
+        e.cReplaceCtPerKwh != null &&
+        Number.isFinite(e.cReplaceCtPerKwh));
+}
+function blocked(reasonDe, flags) {
+    return {
+        allowed: false,
+        maxDischargeW: 0,
+        priceAllowed: flags.priceAllowed,
+        socAllowed: flags.socAllowed,
+        opportunityAllowed: true,
+        economicsAllowed: true,
+        economicsUsable: flags.economicsReady,
+        netBenefitCtPerKwh: null,
+        reasonDe,
+    };
+}

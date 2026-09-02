@@ -770,6 +770,7 @@ async function controlTickInner(host) {
         mode1Active: runtime.ownership.active,
         priceNowCt,
         priceMinCt: config.gridBalance.minPriceCtPerKwh,
+        economicsUsable: (await host.getStateAsync("planner.battery_discharge.economics_usable"))?.val === true,
         evConflictKind: evConflict.kind,
         externalEvAuthority: (evAuthority ?? "").toLowerCase() === "external",
     };
@@ -1035,6 +1036,8 @@ async function persist(host, s, x) {
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.priceMinCtKwh, x.priceMinCt);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.priceAllowed, d.priceAllowed);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.gridPowerW, d.rawGridDeltaW);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.requestedPowerW, d.requestedPowerW);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.requestedDischargeW, d.requestedPowerW);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.policyExcludedLoadW, x.gb.policyExcludedLoadW);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.policyExcludedReasonDe, x.gb.policyExcludedReasonDe);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.gridBalance.effectivePowerW, d.effectivePowerW);

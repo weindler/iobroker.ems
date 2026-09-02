@@ -16,7 +16,7 @@ export const SHADOW_ENGINE_STATE_CATEGORY = "learning/shadow_engine";
 export const SHADOW_ENGINE_RETENTION_DAYS = 90;
 
 /** Versionierte Modellkennung für Reproduzierbarkeit (siehe Roadmap: "versioniert, reproduzierbar"). */
-export const SHADOW_ENGINE_MODEL_VERSION = "shadow_v2";
+export const SHADOW_ENGINE_MODEL_VERSION = "shadow_v3";
 
 /** Batterie-Hardware-Fallback-Grenzen, falls Admin-Konfiguration unvollständig ist. */
 export const SHADOW_BATTERY_MIN_SOC_FALLBACK_PCT = 5;

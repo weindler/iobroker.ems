@@ -179,6 +179,51 @@ export type ImmersionRunSegment = {
 	ownershipOwner: string | null;
 };
 
+/** Ladeherkunft je Slot — unknown/mixed statt erfundener Zuordnung. */
+export type BatteryChargeSource = "pv" | "grid" | "mixed" | "unknown";
+
+/**
+ * Zusammenhängende Grid-Balance-Episode (analog ImmersionRunSegment).
+ * Learning nutzt nur stabile Abschnitte; die Regelung selbst bleibt unverändert.
+ */
+export type GridBalanceRunSegment = {
+	startTs: number;
+	endTs: number;
+	durationSec: number;
+	requestedEnergyKwh: number;
+	effectiveEnergyKwh: number;
+	stableImportKwh: number | null;
+	stableBatteryDischargeKwh: number | null;
+	socStartPct: number | null;
+	socEndPct: number | null;
+	priceMinCt: number | null;
+	priceMaxCt: number | null;
+	stableDurationSec: number;
+	unstableDurationSec: number;
+	stableHouseMeanW: number | null;
+	stablePvMeanW: number | null;
+	stableGbMeanW: number | null;
+	stableDeficitMeanW: number | null;
+	abortReason: string | null;
+	usable: boolean;
+	qualityReason: string | null;
+};
+
+/** Stabile GB-aus-Phase zum Vergleich (keine Episode). */
+export type GridBalanceMatchWindow = {
+	startTs: number;
+	endTs: number;
+	durationSec: number;
+	importKwh: number | null;
+	batteryDischargeKwh: number | null;
+	houseMeanW: number | null;
+	pvMeanW: number | null;
+	deficitMeanW: number | null;
+	socMeanPct: number | null;
+	priceMeanCt: number | null;
+	usable: boolean;
+};
+
 export type DayTelemetryStatusEvent = {
 	tsIso: string;
 	kind: string;
@@ -205,6 +250,11 @@ export type DayTelemetryBuckets = {
 	 * 0 = gemessen aus, belastbar.
 	 */
 	gridBalanceDischargeKwh: Array<number | null>;
+	/**
+	 * Ladeherkunft je Slot: pv | grid | mixed | unknown.
+	 * null = Slot unbeobachtet / keine Ladung — nie erfundene Herkunft.
+	 */
+	batteryChargeSource: Array<string | null>;
 	evChargedKwh: Array<number | null>;
 	evSocEndPct: Array<number | null>;
 	immersionKwh: Array<number | null>;
@@ -256,6 +306,10 @@ export type DayTelemetryDayRecord = {
 	climateRunSegments: ClimateRunSegment[];
 	/** Additiv (Block A) — siehe ImmersionRunSegment. */
 	immersionRunSegments: ImmersionRunSegment[];
+	/** Additiv — Grid-Balance-Episoden (stabilitätsbasiert). */
+	gridBalanceRunSegments: GridBalanceRunSegment[];
+	/** Stabile GB-aus-Fenster für α/β-Matching. */
+	gridBalanceOffWindows: GridBalanceMatchWindow[];
 	statusEvents: DayTelemetryStatusEvent[];
 };
 
@@ -281,6 +335,7 @@ export function emptyBuckets(slotCount: number): DayTelemetryBuckets {
 		batteryChargedKwh: n(),
 		batteryDischargedKwh: n(),
 		gridBalanceDischargeKwh: n(),
+		batteryChargeSource: nStr(),
 		evChargedKwh: n(),
 		evSocEndPct: n(),
 		immersionKwh: n(),
@@ -324,6 +379,8 @@ export function emptyDayRecord(
 		replanEvents: [],
 		climateRunSegments: [],
 		immersionRunSegments: [],
+		gridBalanceRunSegments: [],
+		gridBalanceOffWindows: [],
 		statusEvents: [],
 	};
 }

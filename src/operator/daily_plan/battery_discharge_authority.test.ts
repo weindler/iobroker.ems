@@ -148,7 +148,71 @@ describe("battery discharge authority (Phase 1b/1d)", () => {
 			assert.equal(r.opportunityAllowed, true);
 			assert.equal(r.maxDischargeW, 3000);
 		});
+	});
 
+	describe("Economic Grid Balance", () => {
+		const eco = {
+			usable: true,
+			alpha: 0.7,
+			beta: 1.1,
+			cReplaceCtPerKwh: 22,
+			marginCtPerKwh: 1.5,
+		};
+
+		it("Cold Start ohne Economics → 30-ct-Fallback", () => {
+			const r = resolveBatteryDischargeAuthorization({ ...base, priceNowCt: 16.5 });
+			assert.equal(r.allowed, false);
+			assert.equal(r.economicsUsable, false);
+			assert.match(r.reasonDe, /Mindestpreis/);
+		});
+
+		it("usable Economics erlaubt unter 30 ct wenn Netto positiv (kein 30-ct-Zusatzgate)", () => {
+			const r = resolveBatteryDischargeAuthorization({
+				...base,
+				priceNowCt: 18,
+				economics: { ...eco, alpha: 0.9, beta: 1.0, cReplaceCtPerKwh: 12 },
+			});
+			assert.equal(r.allowed, true, r.reasonDe);
+			assert.equal(r.economicsUsable, true);
+			assert.equal(r.economicsAllowed, true);
+			assert.ok(r.netBenefitCtPerKwh != null && r.netBenefitCtPerKwh > 1.5);
+		});
+
+		it("usable Economics blockt bei negativem Netto trotz Preis > 30 ct", () => {
+			const r = resolveBatteryDischargeAuthorization({
+				...base,
+				priceNowCt: 36,
+				economics: { ...eco, alpha: 0.4, beta: 1.2, cReplaceCtPerKwh: 40 },
+			});
+			assert.equal(r.allowed, false);
+			assert.equal(r.economicsUsable, true);
+			assert.equal(r.economicsAllowed, false);
+		});
+
+		it("Economics öffnet Reserve-Sperre nicht", () => {
+			const r = resolveBatteryDischargeAuthorization({
+				...base,
+				socPct: 20,
+				priceNowCt: 50,
+				economics: eco,
+			});
+			assert.equal(r.allowed, false);
+			assert.equal(r.socAllowed, false);
+		});
+
+		it("Economics nicht mehr belastbar → automatisch 30-ct-Fallback", () => {
+			const r = resolveBatteryDischargeAuthorization({
+				...base,
+				priceNowCt: 16.5,
+				economics: { usable: false, alpha: 0.7, beta: 1.1, cReplaceCtPerKwh: 22 },
+			});
+			assert.equal(r.allowed, false);
+			assert.equal(r.economicsUsable, false);
+			assert.match(r.reasonDe, /Mindestpreis/);
+		});
+	});
+
+	describe("PFLICHT-FIX 2 leftover — Hold/Reserve/Safety", () => {
 		it("Netzausgleich bleibt trotz reichlichem Headroom gesperrt, wenn Hold/Reserve/Safety greifen", () => {
 			// SOC unterhalb der Reserve — Opportunity-Discount darf das nie aushebeln.
 			const rReserve = resolveBatteryDischargeAuthorization({

@@ -10,6 +10,7 @@ const house_load_1 = require("../house_load");
 const thermal_runtime_1 = require("../thermal_runtime");
 const thermal_boiler_1 = require("../thermal_boiler");
 const battery_runtime_1 = require("../battery_runtime");
+const grid_balance_economics_1 = require("../grid_balance_economics");
 const energy_daily_rollup_1 = require("../energy_daily_rollup");
 const power_rollup_1 = require("../power_rollup");
 const pv_horizon_1 = require("../pv_horizon");
@@ -40,6 +41,7 @@ async function ensureLearningStateTree(adapter) {
     await (0, thermal_runtime_1.ensureThermalRuntimeLearningStates)(host);
     await (0, thermal_boiler_1.ensureThermalBoilerLearningStates)(host);
     await (0, battery_runtime_1.ensureBatteryRuntimeLearningStates)(host);
+    await (0, grid_balance_economics_1.ensureGridBalanceEconomicsStates)(host);
     await (0, day_telemetry_1.ensureDayTelemetryStates)(host);
     await (0, daily_evaluator_1.ensureDailyEvaluatorStates)(host);
     await (0, ensure_states_2.ensureClimateSharedPowerRootStates)(host);
@@ -91,6 +93,13 @@ async function runLearningTick(host, trigger = "interval") {
         await (0, house_load_1.runHouseLoadLearning)(host);
         await (0, thermal_runtime_1.runThermalRuntimeLearning)(host);
         await (0, battery_runtime_1.runBatteryRuntimeLearning)(host);
+        try {
+            const timezone = (0, config_2.intentAdminConfigFromAdapter)(host.config).timezone || "Europe/Berlin";
+            await (0, grid_balance_economics_1.runGridBalanceEconomicsLearning)(host, { timezone });
+        }
+        catch (e) {
+            host.log.error(`grid_balance_economics: ${e instanceof Error ? e.message : String(e)}`);
+        }
         await (0, price_forecast_1.runPriceForecastLearning)(host);
         await (0, persistence_mirror_1.mirrorLearningPersistenceToStates)(host);
         /*

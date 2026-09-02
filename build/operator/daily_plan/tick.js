@@ -36,6 +36,9 @@ const states_1 = require("./states");
 const battery_consumers_1 = require("../../policy/battery_consumers");
 const battery_discharge_authority_1 = require("./battery_discharge_authority");
 const battery_opportunity_cost_1 = require("./battery_opportunity_cost");
+const battery_replace_cost_1 = require("./battery_replace_cost");
+const ensure_states_1 = require("../../learning/grid_balance_economics/ensure_states");
+const constants_1 = require("../../learning/grid_balance_economics/constants");
 const override_ledger_1 = require("../../ai/override_ledger");
 const allowlist_1 = require("../../ai/override/allowlist");
 const validate_1 = require("../../ai/override/validate");
@@ -45,7 +48,7 @@ const forecast_reserve_slots_1 = require("./forecast_reserve_slots");
 const device_config_1 = require("../../addons/immersion_heater/device_config");
 const types_1 = require("../../addons/immersion_heater/runtime/types");
 const state_util_1 = require("../../ems_light/state_util");
-const ensure_states_1 = require("../../ai/ensure_states");
+const ensure_states_2 = require("../../ai/ensure_states");
 const battery_1 = require("../planning/battery");
 const ensure_evcc_states_1 = require("../../addons/wallbox/ensure_evcc_states");
 const states_2 = require("../../addons/wallbox/runtime/states");
@@ -53,9 +56,9 @@ const evcc_config_1 = require("../../addons/wallbox/evcc_config");
 const charge_hold_1 = require("../../addons/wallbox/charge_hold");
 const normalize_1 = require("../../addons/wallbox/normalize");
 const contribution_ids_1 = require("../contribution_ids");
-const ensure_states_2 = require("../../addons/battery/ensure_states");
-const ensure_states_3 = require("../../addons/air_conditioning/runtime/ensure_states");
-const constants_1 = require("../../addons/air_conditioning/constants");
+const ensure_states_3 = require("../../addons/battery/ensure_states");
+const ensure_states_4 = require("../../addons/air_conditioning/runtime/ensure_states");
+const constants_2 = require("../../addons/air_conditioning/constants");
 const allocate_1 = require("./unified/allocate");
 const authority_1 = require("./unified/authority");
 const dispatch_bridge_1 = require("./unified/dispatch_bridge");
@@ -184,14 +187,14 @@ async function invalidatePublishedPlanForAddonOff(host, addonId) {
             await setPlanState(host, types_1.IMMERSION_RUNTIME_STATES.allocatedPowerW, null);
         }
         else if (addonId === "battery") {
-            await setPlanState(host, ensure_states_2.BAT.runtime.allocatedChargePowerW, null);
+            await setPlanState(host, ensure_states_3.BAT.runtime.allocatedChargePowerW, null);
         }
         else if (addonId === "wallbox") {
             await setPlanState(host, states_2.WALLBOX_RUNTIME_STATES.allocatedPowerW, null);
         }
         else if (addonId === "air_conditioning") {
-            for (let u = 1; u <= constants_1.AC_UNIT_COUNT; u++) {
-                await setPlanState(host, (0, ensure_states_3.acUnitRuntimeStates)(u).allocatedPowerW, null);
+            for (let u = 1; u <= constants_2.AC_UNIT_COUNT; u++) {
+                await setPlanState(host, (0, ensure_states_4.acUnitRuntimeStates)(u).allocatedPowerW, null);
             }
         }
     }
@@ -412,8 +415,8 @@ async function runDailyPlanTick(host, forecastPlan) {
         wallboxChargeHoldReasonDe: wallboxHold.reasonDe,
     });
     const batCfgModes = (0, config_4.batteryConfigFromAdapter)(host.config);
-    const batOperatingMode = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_2.BAT.telemetry.operatingMode))?.val);
-    const batOwnershipActive = (await host.getStateAsync(ensure_states_2.BAT.runtime.ownershipActive))?.val === true;
+    const batOperatingMode = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_3.BAT.telemetry.operatingMode))?.val);
+    const batOwnershipActive = (await host.getStateAsync(ensure_states_3.BAT.runtime.ownershipActive))?.val === true;
     const passiveBatteryEnergy = (0, passive_battery_energy_1.resolvePassiveBatteryEnergyAvailable)({
         operatingMode: batOperatingMode,
         selfConsumptionModeValue: batCfgModes.sonnenModeValues.selfConsumption,
@@ -439,7 +442,7 @@ async function runDailyPlanTick(host, forecastPlan) {
      * Entladeplanung — kein zweiter, unabhängig gepflegter Zielwert mehr.
      */
     const priceNowCt = (0, state_util_1.asNum)((await host.getStateAsync("live.price.now_ct_per_kwh"))?.val);
-    const reserveCapacityKwh = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_2.BAT.telemetry.capacityEffectiveKwh))?.val);
+    const reserveCapacityKwh = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_3.BAT.telemetry.capacityEffectiveKwh))?.val);
     const pvConfidencePct = (0, state_util_1.asNum)((await host.getStateAsync("learning.pv_bias.confidence_pct"))?.val);
     const pvConfidence01 = pvConfidencePct === null ? null : Math.max(0.2, Math.min(1, pvConfidencePct / 100));
     const predictedNightConsumptionKwh = (0, state_util_1.asNum)((await host.getStateAsync("learning.battery_runtime.predicted_night_consumption_kwh"))?.val);
@@ -493,6 +496,39 @@ async function runDailyPlanTick(host, forecastPlan) {
         pvRemainingTodayKwh,
         plannedLaterDemandKwh,
     });
+    const ecoUsable = (await host.getStateAsync(ensure_states_1.GRID_BALANCE_ECONOMICS_STATE_IDS.usable))?.val === true;
+    const ecoAlpha = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_1.GRID_BALANCE_ECONOMICS_STATE_IDS.alpha))?.val);
+    const ecoBeta = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_1.GRID_BALANCE_ECONOMICS_STATE_IDS.beta))?.val);
+    const ecoConfidence = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_1.GRID_BALANCE_ECONOMICS_STATE_IDS.confidence))?.val);
+    const etaPvUsable = (await host.getStateAsync(ensure_states_1.GRID_BALANCE_ECONOMICS_STATE_IDS.etaPvUsable))?.val === true;
+    const etaGridUsable = (await host.getStateAsync(ensure_states_1.GRID_BALANCE_ECONOMICS_STATE_IDS.etaGridUsable))?.val === true;
+    const etaPvLearned = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_1.GRID_BALANCE_ECONOMICS_STATE_IDS.etaPvPath))?.val);
+    const etaGridLearned = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_1.GRID_BALANCE_ECONOMICS_STATE_IDS.etaGridPath))?.val);
+    const feedInForReplace = (0, from_forecast_context_1.normalizeFeedInCtPerKwh)((0, state_util_1.asNum)((await host.getStateAsync("economics.config.feed_in_ct_per_kwh"))?.val));
+    const replaceCost = (0, battery_replace_cost_1.evaluateBatteryReplaceCost)({
+        nowMs: now.getTime(),
+        priceSlots: reserveSlots.map((s) => ({ startMs: s.startMs, importCtPerKwh: s.importCt })),
+        headroomAboveReserveKwh,
+        pvRemainingTodayKwh,
+        plannedLaterDemandKwh,
+        predictedConsumptionUntilNextPvKwh: centralReserve.predictedConsumptionUntilNextPvKwh,
+        feedInCtPerKwh: feedInForReplace,
+        gridChargeAllowed: adminPolicy.gridImportAllowed !== false,
+        etaPvPath: etaPvUsable && etaPvLearned != null ? etaPvLearned : constants_1.ETA_PATH_FALLBACK,
+        etaGridPath: etaGridUsable && etaGridLearned != null ? etaGridLearned : constants_1.ETA_PATH_FALLBACK,
+        usableCapacityKwh: reserveCapacityKwh,
+        socPct,
+        maxSocPct: (0, limits_1.hardwareLimitsFromConfig)(host.config).maxSocPct,
+    });
+    const economicsInput = ecoUsable && replaceCost.usable
+        ? {
+            usable: true,
+            alpha: ecoAlpha,
+            beta: ecoBeta,
+            cReplaceCtPerKwh: replaceCost.valueCtPerKwh,
+            marginCtPerKwh: batCfgModes.gridBalance.economicsMarginCtPerKwh,
+        }
+        : { usable: false, alpha: ecoAlpha, beta: ecoBeta, cReplaceCtPerKwh: replaceCost.valueCtPerKwh };
     /*
      * BLOCK B — Battery Learned Opportunity (additiv). Nutzt die tatsächliche
      * Block-A-Metrik `batteryReserveAccuracyPct` über das zentrale Learning Gate, um die
@@ -508,6 +544,7 @@ async function runDailyPlanTick(host, forecastPlan) {
         requiredSocAtPvEndPct: centralReserve.requiredSocAtPvEndPct,
         configuredMaxDischargeW: batCfgModes.gridBalance.maxTargetW,
         opportunityCostCtPerKwh: batteryOpportunity.usable ? batteryOpportunity.opportunityCostCtPerKwh : null,
+        economics: economicsInput,
     };
     const baselineBatteryDischargeAuthorization = (0, battery_discharge_authority_1.resolveBatteryDischargeAuthorization)(batteryDischargeAuthorizationInputBase);
     const learnedOpportunityMarginCt = battery_discharge_authority_1.DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH + batteryReserveLearning.extraMarginCtPerKwh;
@@ -560,6 +597,52 @@ async function runDailyPlanTick(host, forecastPlan) {
         });
         await host.setStateAsync("planner.battery_discharge.opportunity_allowed", {
             val: batteryDischargeAuthorization.opportunityAllowed,
+            ack: true,
+        });
+        await host.setStateAsync("planner.battery_discharge.economics_usable", {
+            val: batteryDischargeAuthorization.economicsUsable,
+            ack: true,
+        });
+        await host.setStateAsync("planner.battery_discharge.economics_alpha", {
+            val: ecoAlpha,
+            ack: true,
+        });
+        await host.setStateAsync("planner.battery_discharge.economics_beta", {
+            val: ecoBeta,
+            ack: true,
+        });
+        await host.setStateAsync("planner.battery_discharge.economics_price_now_ct", {
+            val: priceNowCt,
+            ack: true,
+        });
+        await host.setStateAsync("planner.battery_discharge.economics_c_replace_ct", {
+            val: replaceCost.valueCtPerKwh,
+            ack: true,
+        });
+        await host.setStateAsync("planner.battery_discharge.economics_c_replace_path", {
+            val: replaceCost.path ?? "",
+            ack: true,
+        });
+        await host.setStateAsync("planner.battery_discharge.economics_confidence", {
+            val: ecoConfidence,
+            ack: true,
+        });
+        await host.setStateAsync("planner.battery_discharge.economics_net_benefit_ct", {
+            val: batteryDischargeAuthorization.netBenefitCtPerKwh,
+            ack: true,
+        });
+        await host.setStateAsync("planner.battery_discharge.economics_decision", {
+            val: batteryDischargeAuthorization.economicsUsable
+                ? batteryDischargeAuthorization.economicsAllowed
+                    ? "allow"
+                    : "block"
+                : "fallback_min_price",
+            ack: true,
+        });
+        await host.setStateAsync("planner.battery_discharge.economics_reason_de", {
+            val: replaceCost.usable
+                ? `${replaceCost.reasonDe} ${batteryDischargeAuthorization.reasonDe}`
+                : `${replaceCost.reasonDe} Fallback 30 ct.`,
             ack: true,
         });
         await host.setStateAsync("planner.learning.battery_explanation", {
@@ -664,12 +747,12 @@ async function runDailyPlanTick(host, forecastPlan) {
         // best-effort
     }
     const bufferSt = await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.bufferTemperatureC);
-    const batSocSt = await host.getStateAsync(ensure_states_2.BAT.telemetry.socPct);
-    const batCap = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_2.BAT.telemetry.capacityEffectiveKwh))?.val);
+    const batSocSt = await host.getStateAsync(ensure_states_3.BAT.telemetry.socPct);
+    const batCap = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_3.BAT.telemetry.capacityEffectiveKwh))?.val);
     const hw = (0, limits_1.hardwareLimitsFromConfig)(host.config);
     const roomTemps = {};
-    for (let u = 1; u <= constants_1.AC_UNIT_COUNT; u++) {
-        roomTemps[u] = (0, state_util_1.asNum)((await host.getStateAsync((0, ensure_states_3.acUnitRuntimeStates)(u).roomTempC))?.val);
+    for (let u = 1; u <= constants_2.AC_UNIT_COUNT; u++) {
+        roomTemps[u] = (0, state_util_1.asNum)((await host.getStateAsync((0, ensure_states_4.acUnitRuntimeStates)(u).roomTempC))?.val);
     }
     const realizedPv = (0, state_util_1.asNum)((await host.getStateAsync("learning.energy_daily.pv_kwh"))?.val);
     const wbConnectedRaw = await host.getStateAsync(ensure_evcc_states_1.WALLBOX_EVCC_STATES.connected);
@@ -695,8 +778,8 @@ async function runDailyPlanTick(host, forecastPlan) {
         presenceStore = nextStore;
     }
     const acRuntime = [];
-    for (let u = 1; u <= constants_1.AC_UNIT_COUNT; u++) {
-        const ids = (0, ensure_states_3.acUnitRuntimeStates)(u);
+    for (let u = 1; u <= constants_2.AC_UNIT_COUNT; u++) {
+        const ids = (0, ensure_states_4.acUnitRuntimeStates)(u);
         acRuntime.push({
             unitIndex: u,
             running: (await host.getStateAsync(ids.running))?.val === true,
@@ -1063,13 +1146,13 @@ async function runDailyPlanTick(host, forecastPlan) {
                 });
                 const globalMode = (await host.getStateAsync(tree_paths_1.GLOBAL.executionMode))?.val;
                 const ihAllocated = (0, state_util_1.asNum)((await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.allocatedPowerW))?.val);
-                const batAllocated = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_2.BAT.runtime.allocatedChargePowerW))?.val);
+                const batAllocated = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_3.BAT.runtime.allocatedChargePowerW))?.val);
                 const wbAllocated = (0, state_util_1.asNum)((await host.getStateAsync(states_2.WALLBOX_RUNTIME_STATES.allocatedPowerW))?.val);
                 let acAllocatedSum = 0;
                 let acAllocatedAny = false;
                 const acRunning = [];
-                for (let u = 1; u <= constants_1.AC_UNIT_COUNT; u++) {
-                    const ids = (0, ensure_states_3.acUnitRuntimeStates)(u);
+                for (let u = 1; u <= constants_2.AC_UNIT_COUNT; u++) {
+                    const ids = (0, ensure_states_4.acUnitRuntimeStates)(u);
                     const aw = (0, state_util_1.asNum)((await host.getStateAsync(ids.allocatedPowerW))?.val);
                     if (aw != null) {
                         acAllocatedSum += aw;
@@ -1093,7 +1176,7 @@ async function runDailyPlanTick(host, forecastPlan) {
                             allocatedPowerW: ihAllocated,
                         },
                         battery: {
-                            chargingPowerW: (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_2.BAT.telemetry.chargingPowerW))?.val),
+                            chargingPowerW: (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_3.BAT.telemetry.chargingPowerW))?.val),
                             allocatedChargePowerW: batAllocated,
                         },
                         wallbox: {
@@ -1205,7 +1288,7 @@ async function runDailyPlanTick(host, forecastPlan) {
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.planJson, JSON.stringify(plan));
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.reasonDe, publishReasonDe);
         await (0, state_write_1.setOptionalNumberIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.revision, revision);
-        const aiThinkingRaw = await host.getStateAsync(ensure_states_1.AI_STATES.lastThinkingDe);
+        const aiThinkingRaw = await host.getStateAsync(ensure_states_2.AI_STATES.lastThinkingDe);
         const aiThinkingDe = typeof aiThinkingRaw?.val === "string" && aiThinkingRaw.val.trim() ? aiThinkingRaw.val.trim() : null;
         await (0, state_write_1.setStateIfChanged)(host, "operator.briefing_de", (0, briefing_1.buildOperatorBriefingDe)(plan, now, timezone, {
             contributions: forecastPlan.contributions,

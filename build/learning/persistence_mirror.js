@@ -94,6 +94,12 @@ exports.LEARNING_PERSISTENCE_ARTIFACTS = [
         fileName: "day_evaluation_v1.json",
         nameDe: "Tagesbewertung (Backup-Spiegel)",
     },
+    {
+        key: "grid_balance_economics",
+        category: "learning/grid_balance_economics",
+        fileName: "grid_balance_economics_v1.json",
+        nameDe: "Grid-Balance-Economics (Backup-Spiegel)",
+    },
 ];
 const BASE = "learning.persistence";
 function mirrorStateId(key) {

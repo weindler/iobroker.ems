@@ -16,7 +16,12 @@ export {
 } from "./types";
 export { simulateGreedyBatterySelfConsumption } from "./battery_model";
 export { splitExogenousLoad, type ShadowLoadSplit } from "./exogenous_load";
-export { computeRealDayResult, simulateReferenceNoEms, simulateEmsWithoutAi } from "./simulate";
+export {
+	computeRealDayResult,
+	simulateReferenceNoEms,
+	simulateReferenceSonnenNative,
+	simulateEmsWithoutAi,
+} from "./simulate";
 export {
 	writeShadowDayRecord,
 	readShadowDayRecord,

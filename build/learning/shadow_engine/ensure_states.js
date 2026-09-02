@@ -28,7 +28,8 @@ async function ensureShadowEngineStates(host) {
         numState("learning.shadow_engine.pending_backlog_count", "Shadow-Engine offene Tage im Backlog"),
         strState("learning.shadow_engine.last_error", "Shadow-Engine letzter Fehler", ""),
         numState("learning.shadow_engine.yesterday_real_net_cost_eur", "Shadow-Engine gestern real Netto-Kosten", "EUR"),
-        numState("learning.shadow_engine.yesterday_reference_no_ems_net_cost_eur", "Shadow-Engine gestern reference_no_ems Netto-Kosten", "EUR"),
+        numState("learning.shadow_engine.yesterday_reference_no_ems_net_cost_eur", "Shadow-Engine gestern Ideal-Benchmark (Greedy) Netto-Kosten", "EUR"),
+        numState("learning.shadow_engine.yesterday_reference_sonnen_native_net_cost_eur", "Shadow-Engine gestern realistische Sonnen-ohne-EMS Netto-Kosten", "EUR"),
         numState("learning.shadow_engine.yesterday_ems_without_ai_net_cost_eur", "Shadow-Engine gestern ems_without_ai Netto-Kosten", "EUR"),
     ];
     await (0, state_util_1.ensureStates)(host, defs);

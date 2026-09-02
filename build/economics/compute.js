@@ -11,16 +11,21 @@ function round2(n) {
 function buildEconomicsDayRecord(input) {
     const real = input.shadow?.real ?? null;
     const noEms = input.shadow?.strategies.reference_no_ems ?? null;
+    const sonnenNative = input.shadow?.strategies.reference_sonnen_native ?? null;
     const withoutAi = input.shadow?.strategies.ems_without_ai ?? null;
     const notesDe = [];
+    /*
+     * EMS-Vorteil gegen die realistische Sonnen-ohne-EMS-Welt.
+     * Die Greedy-Idealwelt bleibt als Benchmark gespeichert, zählt aber nicht als reale Gegenwelt.
+     */
     const emsVorteilEvaluable = !!(real &&
-        noEms?.evaluable &&
+        sonnenNative?.evaluable &&
         real.netCostEur !== null &&
-        noEms.netCostEur !== null);
-    const emsVorteilEur = emsVorteilEvaluable ? round2(noEms.netCostEur - real.netCostEur) : null;
+        sonnenNative.netCostEur !== null);
+    const emsVorteilEur = emsVorteilEvaluable ? round2(sonnenNative.netCostEur - real.netCostEur) : null;
     if (!emsVorteilEvaluable) {
         notesDe.push(input.shadow
-            ? "EMS-Vorteil nicht bewertbar (Shadow-Welt reference_no_ems unvollständig/nicht bewertbar)."
+            ? "EMS-Vorteil nicht bewertbar (realistische Ohne-EMS-Welt reference_sonnen_native unvollständig/nicht bewertbar; Ideal-Greedy zählt nicht)."
             : "EMS-Vorteil nicht bewertbar (noch keine Shadow-Simulation für diesen Tag).");
     }
     const kiMehrwertEvaluable = !!(real &&
@@ -49,6 +54,7 @@ function buildEconomicsDayRecord(input) {
         gridRewardsSource: input.gridRewardsSource,
         realNetCostEur: real?.netCostEur ?? null,
         referenceNoEmsNetCostEur: noEms?.netCostEur ?? null,
+        referenceSonnenNativeNetCostEur: sonnenNative?.netCostEur ?? null,
         emsWithoutAiNetCostEur: withoutAi?.netCostEur ?? null,
         emsVorteilEvaluable,
         kiMehrwertEvaluable,

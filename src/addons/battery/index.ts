@@ -957,6 +957,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		mode1Active: runtime.ownership.active,
 		priceNowCt,
 		priceMinCt: config.gridBalance.minPriceCtPerKwh,
+		economicsUsable: (await host.getStateAsync("planner.battery_discharge.economics_usable"))?.val === true,
 		evConflictKind: evConflict.kind,
 		externalEvAuthority: (evAuthority ?? "").toLowerCase() === "external",
 	};
@@ -1279,6 +1280,8 @@ async function persist(host: Host, s: BatterySnapshot, x: PersistExtra): Promise
 	await setStateIfChanged(host, BAT.gridBalance.priceMinCtKwh, x.priceMinCt);
 	await setStateIfChanged(host, BAT.gridBalance.priceAllowed, d.priceAllowed);
 	await setStateIfChanged(host, BAT.gridBalance.gridPowerW, d.rawGridDeltaW);
+	await setStateIfChanged(host, BAT.gridBalance.requestedPowerW, d.requestedPowerW);
+	await setStateIfChanged(host, BAT.gridBalance.requestedDischargeW, d.requestedPowerW);
 	await setStateIfChanged(host, BAT.gridBalance.policyExcludedLoadW, x.gb.policyExcludedLoadW);
 	await setStateIfChanged(host, BAT.gridBalance.policyExcludedReasonDe, x.gb.policyExcludedReasonDe);
 	await setStateIfChanged(host, BAT.gridBalance.effectivePowerW, d.effectivePowerW);

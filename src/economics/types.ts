@@ -26,6 +26,8 @@ export type EconomicsDayRecord = {
 
 	realNetCostEur: number | null;
 	referenceNoEmsNetCostEur: number | null;
+	/** Realistische Sonnen-ohne-EMS; null wenn nicht bewertbar. */
+	referenceSonnenNativeNetCostEur?: number | null;
 	emsWithoutAiNetCostEur: number | null;
 
 	emsVorteilEvaluable: boolean;

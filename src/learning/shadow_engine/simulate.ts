@@ -132,10 +132,17 @@ export interface ReferenceNoEmsBatteryParams {
 }
 
 const NO_EMS_ASSUMPTIONS_DE = [
+	"IDEAL-BENCHMARK: perfekte 0-W-Eigenverbrauchsbatterie — NICHT die reale Sonnen ohne EMS.",
 	"Exogene Grundlast = reale Hauslast minus steuerbare EMS-Verbraucher (Klima Shared-Power, Heizstab, EV) — keine Doppelzählung.",
-	"Klima/Heizstab/EV laufen in reference_no_ems zeitlich wie real gemessen (kein belastbares alternatives Zeitsteuerungsmodell).",
-	"Batterie: einfache Eigenverbrauchslogik ohne EMS-Intelligenz (kein Preis-/PV-Timing, keine dynamische Nachtreserve, kein Netzausgleich).",
+	"Klima/Heizstab/EV laufen zeitlich wie real gemessen (kein belastbares alternatives Zeitsteuerungsmodell).",
+	"Batterie: naive Eigenverbrauchslogik ohne Preis-/PV-Timing, ohne Nachtreserve, ohne Netzausgleich.",
 	"PV-Erzeugung wie real gemessen — EMS beeinflusst nicht, wie viel die Anlage produziert.",
+];
+
+const SONNEN_NATIVE_ASSUMPTIONS_DE = [
+	"REALISTISCH OHNE EMS: empirisches Sonnen-Verhalten ohne Grid-Balance (α/β), keine perfekte 0-W-Batterie.",
+	"Klima/Heizstab/EV zeitlich wie real — keine erfundenen Cent-Konten.",
+	"Ohne belastbare α/β ist die GB-Wirtschaftlichkeit nicht bewertbar (null, nicht 0 €).",
 ];
 
 /** Gegenwelt "reference_no_ems": Batterie fährt naive Eigenverbrauchslogik statt EMS-Planung. */
@@ -220,6 +227,82 @@ export function simulateReferenceNoEms(
 		importCostEur: haveImportCost ? round2(importCostEur) : null,
 		exportCreditEur: haveExportCredit ? round2(exportCreditEur) : null,
 		netCostEur: haveImportCost ? round2(importCostEur - (haveExportCredit ? exportCreditEur : 0)) : null,
+	};
+}
+
+export function simulateReferenceSonnenNative(
+	real: ShadowRealResult,
+	day: DayTelemetryDayRecord,
+	learning: { usable: boolean; alpha: number | null; beta: number | null },
+	feedInCtPerKwh: number | null,
+): ShadowStrategyResult {
+	if (!learning.usable || learning.alpha == null || learning.beta == null) {
+		return notEvaluableStrategyResult("reference_sonnen_native", [
+			...SONNEN_NATIVE_ASSUMPTIONS_DE,
+			"α/β noch nicht belastbar — realistische Ohne-EMS-Welt für Grid Balance nicht bewertbar.",
+		]);
+	}
+	const b = day.buckets;
+	let extraImport = 0;
+	let extraImportCost = 0;
+	let haveGbPrice = false;
+	let gbDay = 0;
+	for (let i = 0; i < day.slotCount; i++) {
+		const gb = b.gridBalanceDischargeKwh[i];
+		const price = b.priceCtPerKwh[i];
+		if (gb == null || !(gb > 0)) continue;
+		gbDay += gb;
+		const avoided = learning.alpha * gb;
+		extraImport += avoided;
+		if (price != null) {
+			extraImportCost += (avoided * price) / 100;
+			haveGbPrice = true;
+		}
+	}
+	if (gbDay <= 0) {
+		const evaluable = real.netCostEur !== null && real.observedSlotCount > 0;
+		return {
+			strategy: "reference_sonnen_native",
+			modelVersion: SHADOW_ENGINE_MODEL_VERSION,
+			evaluable,
+			missingSlotCount: real.missingSlotCount,
+			assumptionsDe: [...SONNEN_NATIVE_ASSUMPTIONS_DE, "Kein GB an diesem Tag — real ≈ native für GB."],
+			gridImportKwh: real.gridImportKwh,
+			gridExportKwh: real.gridExportKwh,
+			batteryChargeKwh: real.batteryChargeKwh,
+			batteryDischargeKwh: real.batteryDischargeKwh,
+			socStartPct: real.socStartPct,
+			socEndPct: real.socEndPct,
+			importCostEur: real.importCostEur,
+			exportCreditEur: real.exportCreditEur,
+			netCostEur: real.netCostEur,
+		};
+	}
+	if (real.gridImportKwh == null || real.importCostEur == null || !haveGbPrice) {
+		return notEvaluableStrategyResult("reference_sonnen_native", [
+			...SONNEN_NATIVE_ASSUMPTIONS_DE,
+			"GB-Slots ohne belastbaren Preis oder Import — nicht bewertbar.",
+		]);
+	}
+	const extraBatt = learning.beta * gbDay;
+	const importCostEur = round2(real.importCostEur + extraImportCost);
+	const exportCreditEur = real.exportCreditEur;
+	return {
+		strategy: "reference_sonnen_native",
+		modelVersion: SHADOW_ENGINE_MODEL_VERSION,
+		evaluable: true,
+		missingSlotCount: real.missingSlotCount,
+		assumptionsDe: SONNEN_NATIVE_ASSUMPTIONS_DE,
+		gridImportKwh: round3(real.gridImportKwh + extraImport),
+		gridExportKwh: real.gridExportKwh,
+		batteryChargeKwh: real.batteryChargeKwh,
+		batteryDischargeKwh:
+			real.batteryDischargeKwh != null ? round3(Math.max(0, real.batteryDischargeKwh - extraBatt)) : null,
+		socStartPct: real.socStartPct,
+		socEndPct: real.socEndPct,
+		importCostEur,
+		exportCreditEur,
+		netCostEur: round2(importCostEur - (exportCreditEur ?? 0)),
 	};
 }
 

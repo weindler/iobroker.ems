@@ -30,9 +30,9 @@ exports.computeSlotWeight = computeSlotWeight;
  * den verbleibenden Slots erneut proportional verteilt — bis alles platziert ist oder keine Kapazität
  * mehr frei ist. Erhält die Gesamtenergie exakt (sofern genug Gesamtkapazität vorhanden ist).
  *
- * Falls alle positiv gewichteten Slots erschöpft sind, aber noch Energie übrig ist (z. B. weil die
- * KI einen Slot komplett meidet, ohne ein Ziel zu bevorzugen), wird der Rest sicherheitshalber
- * proportional zur verbleibenden Kapazität verteilt — Energieerhaltung geht vor Präferenz.
+ * Falls positiv gewichtete Slots erschöpft sind, bleibt Restenergie unverteilt — Slots mit
+ * Gewicht 0 (explizit gemieden, z. B. defer_tomorrow heute) bekommen keinen Fallback.
+ * Neutral/positiv gewichtete Slots dürfen den Rest weiterhin aufnehmen.
  */
 function waterFillProportional(weights, capacities, total) {
     const n = weights.length;
@@ -76,7 +76,9 @@ function waterFillProportional(weights, capacities, total) {
     };
     fillRound(weights);
     if (remainingTotal > 1e-6) {
-        const fallbackWeights = capacities.map((c, i) => Math.max(0, c - allocated[i]));
+        // Nur Slots mit positiver Präferenz: Gewicht 0 ist harter Ausschluss.
+        // Restenergie bleibt unverteilt (deferred) — nicht zurück auf gemiedene Slots.
+        const fallbackWeights = capacities.map((c, i) => (weights[i] ?? 0) > 0 ? Math.max(0, c - allocated[i]) : 0);
         fillRound(fallbackWeights);
     }
     return allocated;
@@ -120,8 +122,9 @@ function coalescePowersToMinStage(powers, capacities, minPowerW) {
 }
 exports.coalescePowersToMinStage = coalescePowersToMinStage;
 /**
- * Verteilt die von Plan A für ein Add-on zugeteilte Gesamtenergie (Summe von ownW über alle Slots)
- * gemäß KI-Multiplikatoren neu — energieerhaltend und kapazitätsbegrenzt.
+ * Verteilt die von Plan A für ein Add-on zugeteilte flexible Energie gemäß KI-Multiplikatoren neu,
+ * kapazitätsbegrenzt. Slots mit Multiplikator 0 werden nicht per Fallback wieder befüllt;
+ * nicht untergebrachte Energie bleibt unverteilt (deferred).
  * Optional: `minPowerW` verhindert Mikro-Slots nach der Umverteilung.
  */
 function redistributeAddonAcrossSlots(slots, multipliers, minPowerW) {

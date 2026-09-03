@@ -79,6 +79,7 @@ async function maybeApplyAiWritebackOnDailyPlan(host, plan) {
     const decisions = await readDecisions(host);
     const options = {
         wallboxPvOnly: (0, strategy_preferences_1.wallboxPvOnlyFromDecisions)(decisions),
+        immersionDeferTomorrow: (0, strategy_preferences_1.immersionDeferTomorrowFromDecisions)(decisions),
     };
     const allowed = (0, context_1.resolveAllowedAddonIds)(host.config);
     const { plan: next, compare, writebackApplied } = (0, apply_plan_b_1.applyAiPreferencesToDailyPlan)(plan, allowed, prefs, options);

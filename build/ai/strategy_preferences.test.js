@@ -148,14 +148,14 @@ function tinyPlan(slots) {
         const b = prefs.find((p) => p.slotStartIso === DAY1_B);
         strict_1.default.equal(b?.weight, 0.5);
     });
-    (0, node_test_1.it)("immersion defer_tomorrow lowers today", () => {
+    (0, node_test_1.it)("immersion defer_tomorrow excludes today (weight 0) and prefers tomorrow surplus", () => {
         const decisions = [
             { addonId: "immersion_heater", action: "defer_tomorrow", note: "morgen" },
         ];
         const prefs = (0, strategy_preferences_js_1.decisionsToSlotPreferences)(plan, decisions, [], NOW_MS);
         const today = prefs.find((p) => p.slotStartIso === DAY1_A);
         const tomorrow = prefs.find((p) => p.slotStartIso === DAY2_A);
-        strict_1.default.ok(today && today.weight < 1);
+        strict_1.default.equal(today?.weight, 0);
         strict_1.default.ok(tomorrow && tomorrow.weight >= 2.5);
     });
     (0, node_test_1.it)("battery hold → weight 0.1 everywhere", () => {
@@ -173,6 +173,19 @@ function tinyPlan(slots) {
     (0, node_test_1.it)("false otherwise", () => {
         strict_1.default.equal((0, strategy_preferences_js_1.wallboxPvOnlyFromDecisions)([{ addonId: "wallbox", action: "charge_cheap_grid_now", note: "" }]), false);
         strict_1.default.equal((0, strategy_preferences_js_1.wallboxPvOnlyFromDecisions)([]), false);
+    });
+});
+(0, node_test_1.describe)("immersionDeferTomorrowFromDecisions", () => {
+    (0, node_test_1.it)("true only for immersion_heater defer_tomorrow", () => {
+        strict_1.default.equal((0, strategy_preferences_js_1.immersionDeferTomorrowFromDecisions)([
+            { addonId: "immersion_heater", action: "defer_tomorrow", note: "morgen" },
+        ]), true);
+        strict_1.default.equal((0, strategy_preferences_js_1.immersionDeferTomorrowFromDecisions)([
+            { addonId: "immersion_heater", action: "heat_today", note: "heute" },
+        ]), false);
+        strict_1.default.equal((0, strategy_preferences_js_1.immersionDeferTomorrowFromDecisions)([
+            { addonId: "wallbox", action: "prefer_pv_tomorrow", note: "wb" },
+        ]), false);
     });
 });
 (0, node_test_1.describe)("normalizeAddonDecisions", () => {

@@ -6,6 +6,7 @@ import { readAndRolloverDailyCalls, recordDailyCall, type LimiterHost } from "./
 import { estimateCostEur } from "./pricing";
 import {
 	decisionsToSlotPreferences,
+	immersionDeferTomorrowFromDecisions,
 	normalizeAddonDecisions,
 	wallboxPvOnlyFromDecisions,
 } from "./strategy_preferences";
@@ -252,6 +253,7 @@ async function runAiOptimizationNowUnlocked(
 	const gate = await finalizeAiRunWithWritebackGate(host, plan, mergedPrefs, {
 		wallboxPvOnly,
 		skipAutoSuspend: cfg.thinkingMode,
+		immersionDeferTomorrow: immersionDeferTomorrowFromDecisions(decisions),
 	});
 	if (gate.suspended) {
 		await writeStatus(host, "suspended");

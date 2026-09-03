@@ -53,13 +53,10 @@ const redistribute_js_1 = require("./redistribute.js");
         strict_1.default.equal(result[0], 0);
         strict_1.default.equal(result[1], 60);
     });
-    (0, node_test_1.it)("still conserves total energy via capacity fallback when every slot has zero weight", () => {
-        // No positive weight anywhere (e.g. AI avoided everything without a clear alternative) —
-        // energy conservation must still hold, distributed by leftover capacity.
+    (0, node_test_1.it)("leaves leftover unallocated when every slot has zero weight (no fallback onto avoided slots)", () => {
         const result = (0, redistribute_js_1.waterFillProportional)([0, 0], [300, 100], 400);
-        strict_1.default.equal(result[0] + result[1], 400);
-        strict_1.default.ok(result[0] <= 300);
-        strict_1.default.ok(result[1] <= 100);
+        strict_1.default.equal(result[0], 0);
+        strict_1.default.equal(result[1], 0);
     });
 });
 (0, node_test_1.describe)("redistributeAddonAcrossSlots", () => {
@@ -81,6 +78,16 @@ const redistribute_js_1 = require("./redistribute.js");
         const result = (0, redistribute_js_1.redistributeAddonAcrossSlots)(slots, [0, 2]);
         strict_1.default.equal(result[0], 0);
         strict_1.default.equal(result[1], 400);
+    });
+    (0, node_test_1.it)("does not put leftover back onto multiplier-0 slots when preferred capacity is short", () => {
+        const slots = [
+            { ownW: 1700, capacityW: 1700 },
+            { ownW: 0, capacityW: 500 },
+        ];
+        const result = (0, redistribute_js_1.redistributeAddonAcrossSlots)(slots, [0, 3]);
+        strict_1.default.equal(result[0], 0);
+        strict_1.default.equal(result[1], 500);
+        strict_1.default.ok(result[0] + result[1] < 1700);
     });
     (0, node_test_1.it)("conserves total energy across all slots regardless of weighting", () => {
         const slots = [

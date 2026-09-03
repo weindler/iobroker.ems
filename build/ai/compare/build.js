@@ -31,9 +31,14 @@ const SURPLUS_ALIGN_REL = 0.08;
 const SURPLUS_ALIGN_ABS_WHW = 50_000;
 /** L1-Leistungsverschiebung (W über alle Slots), ab der ein Shift „echt“ ist. */
 const MEANINGFUL_SHIFT_W = 200;
+function economicsNotWorse(input) {
+    return input.deltaCostCt <= COST_EPSILON_CT && input.deltaGridKwh <= ENERGY_EPSILON_KWH;
+}
 /**
  * Plan B muss Plan A messbar schlagen (Kosten primär, sonst Netz↓ / PV↑ / Surplus-Ausrichtung).
  * Leicht teurer Plan B darf gewinnen bei klarem PV- oder Alignment-Gewinn ohne Mehr-Netz.
+ * Optional: erfülltes `defer_tomorrow` als Tie-Breaker, wenn Kosten/Netz nicht schlechter
+ * (kein pauschales „weniger Heizstab = besser“).
  */
 function planBBeatsPlanA(input) {
     if (input.deltaCostCt < -COST_EPSILON_CT)
@@ -58,9 +63,31 @@ function planBBeatsPlanA(input) {
         input.deltaGridKwh <= ENERGY_EPSILON_KWH) {
         return true;
     }
+    if (input.immersionDeferTomorrow === true &&
+        input.deferTomorrowFulfilled === true &&
+        economicsNotWorse(input)) {
+        return true;
+    }
     return false;
 }
 exports.planBBeatsPlanA = planBBeatsPlanA;
+/** Heutige Flex-IH-Leistung in Plan B messbar niedriger als in Plan A (Gewicht 0 = gemieden). */
+function immersionDeferTomorrowFulfilled(plan, slotPreferences, ihRedist) {
+    if (!ihRedist)
+        return false;
+    const avoidedIso = new Set(slotPreferences
+        .filter((p) => p.addonId === "immersion_heater" && p.weight === 0)
+        .map((p) => p.slotStartIso));
+    if (avoidedIso.size === 0)
+        return false;
+    let droppedW = 0;
+    plan.slots.forEach((slot, idx) => {
+        if (!avoidedIso.has(slot.slot.startIso))
+            return;
+        droppedW += Math.max(0, (ihRedist.ownWPerSlot[idx] ?? 0) - (ihRedist.newWPerSlot[idx] ?? 0));
+    });
+    return droppedW >= MEANINGFUL_SHIFT_W;
+}
 /** Summe |newW−ownW| über alle KI-Add-ons/Slots — 0 ≈ Identität mit Plan A. */
 function totalPowerShiftW(redistributions) {
     let sum = 0;
@@ -132,7 +159,7 @@ function buildAddonRedistribution(plan, governedId, slotPreferences, options) {
         capacityPerSlot.push(capacityW);
         multipliers.push(weightByIso.get(slot.slot.startIso) ?? 1);
     }
-    // Compare bleibt energieerhaltend (keine Stage-Coalesce) — Coalesce nur beim Write-back.
+    // Compare: keine Stage-Coalesce (das bleibt Write-back). Gewicht 0 darf Energie unverteilt lassen.
     const newWPerSlot = (0, redistribute_1.redistributeAddonAcrossSlots)(ownWPerSlot.map((ownW, i) => ({ ownW, capacityW: capacityPerSlot[i] })), multipliers);
     return { governedId, prefix, ownWPerSlot, ownPvWPerSlot, newWPerSlot };
 }
@@ -249,8 +276,18 @@ function buildCompareResult(plan, allowedAddonIds, slotPreferences, options) {
         totalsB.wbKwh += (wb.newW / 1000) * durationH;
     });
     totalsA.unallocatedKwh = plan.totals.flexibleUnallocatedEnergyKwh;
-    // Plan B verschiebt nur den Zeitpunkt, nie die Gesamtenergiemenge → identisch zu Plan A.
-    totalsB.unallocatedKwh = plan.totals.flexibleUnallocatedEnergyKwh;
+    const ihRedist = redistributions.get("immersion_heater");
+    let deferredFlexKwh = 0;
+    if (ihRedist) {
+        const ownSum = ihRedist.ownWPerSlot.reduce((s, w) => s + Math.max(0, w), 0);
+        const newSum = ihRedist.newWPerSlot.reduce((s, w) => s + Math.max(0, w), 0);
+        deferredFlexKwh = Math.max(0, (ownSum - newSum) / 1000) * durationH;
+    }
+    const baseUnalloc = plan.totals.flexibleUnallocatedEnergyKwh;
+    totalsB.unallocatedKwh =
+        deferredFlexKwh > ENERGY_EPSILON_KWH
+            ? round1((baseUnalloc ?? 0) + deferredFlexKwh)
+            : baseUnalloc;
     totalsA.costCt = round1(totalsA.costCt);
     totalsB.costCt = round1(totalsB.costCt);
     totalsA.pvKwh = round1(totalsA.pvKwh);
@@ -271,13 +308,22 @@ function buildCompareResult(plan, allowedAddonIds, slotPreferences, options) {
     const deltaSurplusAlign = surplusAlignB - surplusAlignA;
     const shiftW = totalPowerShiftW(ordered);
     const hasFlexEnergy = ordered.some((r) => r.ownWPerSlot.some((w) => w > 0));
-    const beats = planBBeatsPlanA({
+    const immersionDeferTomorrow = options?.immersionDeferTomorrow === true;
+    const deferTomorrowFulfilled = immersionDeferTomorrowFulfilled(plan, slotPreferences, ihRedist);
+    const economicInput = {
         deltaCostCt,
         deltaGridKwh,
         deltaPvKwh,
         deltaSurplusAlign,
         surplusAlignA,
+    };
+    const beatsEconomic = planBBeatsPlanA(economicInput);
+    const beats = planBBeatsPlanA({
+        ...economicInput,
+        immersionDeferTomorrow,
+        deferTomorrowFulfilled,
     });
+    const beatsViaDefer = beats && !beatsEconomic && immersionDeferTomorrow && deferTomorrowFulfilled;
     let activePlan = "a";
     let decisionReasonDe;
     if (activeGovernedIds.length === 0) {
@@ -287,14 +333,17 @@ function buildCompareResult(plan, allowedAddonIds, slotPreferences, options) {
         decisionReasonDe =
             "Keine flexible Allocation (IH/Klima/Batterie/Wallbox) zum Verschieben — Plan A unverändert.";
     }
-    else if (!isMeaningfulPowerShift(shiftW) && slotPreferences.length > 0) {
+    else if (!isMeaningfulPowerShift(shiftW) && slotPreferences.length > 0 && !beatsViaDefer) {
         decisionReasonDe =
             "Plan A entspricht bereits der KI-Strategie (keine messbare Slot-Verschiebung) — kein Write-back nötig.";
     }
     else if (beats) {
         activePlan = "b";
-        decisionReasonDe =
-            `Plan B schlägt Plan A (ΔKosten ${deltaCostCt.toFixed(1)} ct, ΔNetz ${deltaGridKwh.toFixed(2)} kWh, ` +
+        decisionReasonDe = beatsViaDefer
+            ? `Plan B erfüllt defer_tomorrow (flexibler Heizstab heute vermieden/verschoben, ` +
+                `ΔKosten ${deltaCostCt.toFixed(1)} ct, ΔNetz ${deltaGridKwh.toFixed(2)} kWh, ` +
+                `ΔPV ${deltaPvKwh.toFixed(2)} kWh) — Write-back auf Allocation wenn KI aktiv.`
+            : `Plan B schlägt Plan A (ΔKosten ${deltaCostCt.toFixed(1)} ct, ΔNetz ${deltaGridKwh.toFixed(2)} kWh, ` +
                 `ΔPV ${deltaPvKwh.toFixed(2)} kWh) — Write-back auf Allocation wenn KI aktiv.`;
     }
     else {

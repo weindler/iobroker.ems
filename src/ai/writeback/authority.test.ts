@@ -299,6 +299,51 @@ describe("AI-AUTH-004 advisory recommendation available", () => {
 		assert.equal(advisory.planBPreferred, true);
 		assert.equal(host.states.get(COMPARE_STATES.activePlan), "b");
 	});
+
+	it("defer_tomorrow economic tie keeps slot preferences (no lose-gate clear)", async () => {
+		const today = "2026-09-02T10:00:00.000Z";
+		const tomorrow = "2026-09-03T10:00:00.000Z";
+		const p = plan([
+			slot({
+				startIso: today,
+				gridPriceCtPerKwh: 12,
+				availablePvSurplusPowerW: 2000,
+				remainingPvSurplusPowerW: 0,
+				allocatedPvPowerW: 1700,
+				remainingGridImportPowerWAfterAlloc: 5000,
+				allocations: [
+					allocation({
+						contributionId: "immersion_heater.flexible",
+						slotStart: today,
+						allocatedPowerW: 1700,
+						pvPowerW: 1700,
+						gridPowerW: 0,
+						energySource: "pv_surplus",
+					}),
+				],
+			}),
+			slot({
+				startIso: tomorrow,
+				gridPriceCtPerKwh: 12,
+				availablePvSurplusPowerW: 2000,
+				remainingPvSurplusPowerW: 2000,
+				remainingGridImportPowerWAfterAlloc: 5000,
+			}),
+		]);
+		const prefs: AiSlotPreference[] = [
+			{ addonId: "immersion_heater", slotStartIso: today, weight: 0 },
+			{ addonId: "immersion_heater", slotStartIso: tomorrow, weight: 3 },
+		];
+		const host = mockHost(prefs);
+		const fin = await finalizeAiRunWithWritebackGate(host, p, prefs, {
+			skipAutoSuspend: true,
+			immersionDeferTomorrow: true,
+		});
+		assert.equal(fin.planBPreferred, true);
+		assert.equal(fin.writebackApplied, false);
+		assert.notEqual(host.states.get(AI_STATES.lastSlotPreferencesJson), "[]");
+		assert.equal(host.states.get(COMPARE_STATES.activePlan), "b");
+	});
 });
 
 describe("AI-AUTH-005 AI unavailable", () => {

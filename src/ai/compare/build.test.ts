@@ -386,4 +386,106 @@ describe("buildCompareResult", () => {
 		assert.ok(withGrid.chartB[1]!.wbW >= pvOnly.chartB[1]!.wbW);
 		assert.ok(pvOnly.chartB[1]!.wbW <= 500 + 1e-6);
 	});
+
+	it("defer_tomorrow: excludes today, moves flex IH to tomorrow, accepts B at economic tie", () => {
+		const today = "2026-09-02T10:00:00.000Z";
+		const tomorrow = "2026-09-03T10:00:00.000Z";
+		const plan = minimalPlan([
+			slot({
+				startIso: today,
+				gridPriceCtPerKwh: 12,
+				availablePvSurplusPowerW: 2000,
+				remainingPvSurplusPowerW: 0,
+				allocatedPvPowerW: 1700,
+				remainingGridImportPowerWAfterAlloc: 5000,
+				allocations: [
+					allocation({
+						contributionId: "immersion_heater.flexible",
+						slotStart: today,
+						allocatedPowerW: 1700,
+						pvPowerW: 1700,
+						gridPowerW: 0,
+						energySource: "pv_surplus",
+					}),
+				],
+			}),
+			slot({
+				startIso: tomorrow,
+				gridPriceCtPerKwh: 12,
+				availablePvSurplusPowerW: 2000,
+				remainingPvSurplusPowerW: 2000,
+				remainingGridImportPowerWAfterAlloc: 5000,
+			}),
+		]);
+		const slotPreferences: AiSlotPreference[] = [
+			{ addonId: "immersion_heater", slotStartIso: today, weight: 0 },
+			{ addonId: "immersion_heater", slotStartIso: tomorrow, weight: 3 },
+		];
+		const withoutFlag = buildCompareResult(plan, ["immersion_heater"], slotPreferences);
+		const withFlag = buildCompareResult(plan, ["immersion_heater"], slotPreferences, {
+			immersionDeferTomorrow: true,
+		});
+		assert.ok(withFlag.chartB[0]!.ihW < withFlag.chartA[0]!.ihW);
+		assert.ok(withFlag.chartB[1]!.ihW > withFlag.chartA[1]!.ihW);
+		assert.equal(withFlag.chartB[0]!.ihW, 0);
+		assert.equal(Math.abs(withFlag.delta.deltaCostCt) < 0.05, true);
+		assert.equal(withFlag.delta.activePlan, "b");
+		assert.match(withFlag.delta.decisionReasonDe, /defer_tomorrow/);
+		assert.equal(withoutFlag.delta.activePlan, "a");
+	});
+
+	it("defer_tomorrow: leftover stays unallocated, not put back on today, mandatory untouched", () => {
+		const today = "2026-09-02T10:00:00.000Z";
+		const tomorrow = "2026-09-03T10:00:00.000Z";
+		const plan = minimalPlan([
+			slot({
+				startIso: today,
+				gridPriceCtPerKwh: 12,
+				availablePvSurplusPowerW: 2000,
+				remainingPvSurplusPowerW: 0,
+				allocatedPvPowerW: 1700,
+				allocatedGridPowerW: 200,
+				remainingGridImportPowerWAfterAlloc: 5000,
+				allocations: [
+					allocation({
+						contributionId: "immersion_heater.flexible",
+						slotStart: today,
+						allocatedPowerW: 1700,
+						pvPowerW: 1700,
+						gridPowerW: 0,
+						energySource: "pv_surplus",
+					}),
+					allocation({
+						contributionId: "immersion_heater.mandatory",
+						slotStart: today,
+						allocatedPowerW: 200,
+						gridPowerW: 200,
+						mandatory: true,
+					}),
+				],
+			}),
+			slot({
+				startIso: tomorrow,
+				gridPriceCtPerKwh: 12,
+				availablePvSurplusPowerW: 0,
+				remainingPvSurplusPowerW: 0,
+				remainingGridImportPowerWAfterAlloc: 0,
+				gridImportAllowed: false,
+			}),
+		]);
+		plan.totals.flexibleUnallocatedEnergyKwh = 0;
+		const slotPreferences: AiSlotPreference[] = [
+			{ addonId: "immersion_heater", slotStartIso: today, weight: 0 },
+			{ addonId: "immersion_heater", slotStartIso: tomorrow, weight: 3 },
+		];
+		const result = buildCompareResult(plan, ["immersion_heater"], slotPreferences, {
+			immersionDeferTomorrow: true,
+		});
+		assert.equal(result.chartB[0]!.ihW, 0);
+		assert.equal(result.chartB[1]!.ihW, 0);
+		assert.ok((result.delta.planB.unallocatedKwh ?? 0) > (result.delta.planA.unallocatedKwh ?? 0));
+		assert.ok(result.delta.planB.ihKwh < result.delta.planA.ihKwh);
+		assert.equal(result.delta.activePlan, "b");
+		assert.match(result.delta.decisionReasonDe, /defer_tomorrow/);
+	});
 });

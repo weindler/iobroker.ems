@@ -373,4 +373,104 @@ function minimalPlan(slots) {
         strict_1.default.ok(withGrid.chartB[1].wbW >= pvOnly.chartB[1].wbW);
         strict_1.default.ok(pvOnly.chartB[1].wbW <= 500 + 1e-6);
     });
+    (0, node_test_1.it)("defer_tomorrow: excludes today, moves flex IH to tomorrow, accepts B at economic tie", () => {
+        const today = "2026-09-02T10:00:00.000Z";
+        const tomorrow = "2026-09-03T10:00:00.000Z";
+        const plan = minimalPlan([
+            slot({
+                startIso: today,
+                gridPriceCtPerKwh: 12,
+                availablePvSurplusPowerW: 2000,
+                remainingPvSurplusPowerW: 0,
+                allocatedPvPowerW: 1700,
+                remainingGridImportPowerWAfterAlloc: 5000,
+                allocations: [
+                    allocation({
+                        contributionId: "immersion_heater.flexible",
+                        slotStart: today,
+                        allocatedPowerW: 1700,
+                        pvPowerW: 1700,
+                        gridPowerW: 0,
+                        energySource: "pv_surplus",
+                    }),
+                ],
+            }),
+            slot({
+                startIso: tomorrow,
+                gridPriceCtPerKwh: 12,
+                availablePvSurplusPowerW: 2000,
+                remainingPvSurplusPowerW: 2000,
+                remainingGridImportPowerWAfterAlloc: 5000,
+            }),
+        ]);
+        const slotPreferences = [
+            { addonId: "immersion_heater", slotStartIso: today, weight: 0 },
+            { addonId: "immersion_heater", slotStartIso: tomorrow, weight: 3 },
+        ];
+        const withoutFlag = (0, build_js_1.buildCompareResult)(plan, ["immersion_heater"], slotPreferences);
+        const withFlag = (0, build_js_1.buildCompareResult)(plan, ["immersion_heater"], slotPreferences, {
+            immersionDeferTomorrow: true,
+        });
+        strict_1.default.ok(withFlag.chartB[0].ihW < withFlag.chartA[0].ihW);
+        strict_1.default.ok(withFlag.chartB[1].ihW > withFlag.chartA[1].ihW);
+        strict_1.default.equal(withFlag.chartB[0].ihW, 0);
+        strict_1.default.equal(Math.abs(withFlag.delta.deltaCostCt) < 0.05, true);
+        strict_1.default.equal(withFlag.delta.activePlan, "b");
+        strict_1.default.match(withFlag.delta.decisionReasonDe, /defer_tomorrow/);
+        strict_1.default.equal(withoutFlag.delta.activePlan, "a");
+    });
+    (0, node_test_1.it)("defer_tomorrow: leftover stays unallocated, not put back on today, mandatory untouched", () => {
+        const today = "2026-09-02T10:00:00.000Z";
+        const tomorrow = "2026-09-03T10:00:00.000Z";
+        const plan = minimalPlan([
+            slot({
+                startIso: today,
+                gridPriceCtPerKwh: 12,
+                availablePvSurplusPowerW: 2000,
+                remainingPvSurplusPowerW: 0,
+                allocatedPvPowerW: 1700,
+                allocatedGridPowerW: 200,
+                remainingGridImportPowerWAfterAlloc: 5000,
+                allocations: [
+                    allocation({
+                        contributionId: "immersion_heater.flexible",
+                        slotStart: today,
+                        allocatedPowerW: 1700,
+                        pvPowerW: 1700,
+                        gridPowerW: 0,
+                        energySource: "pv_surplus",
+                    }),
+                    allocation({
+                        contributionId: "immersion_heater.mandatory",
+                        slotStart: today,
+                        allocatedPowerW: 200,
+                        gridPowerW: 200,
+                        mandatory: true,
+                    }),
+                ],
+            }),
+            slot({
+                startIso: tomorrow,
+                gridPriceCtPerKwh: 12,
+                availablePvSurplusPowerW: 0,
+                remainingPvSurplusPowerW: 0,
+                remainingGridImportPowerWAfterAlloc: 0,
+                gridImportAllowed: false,
+            }),
+        ]);
+        plan.totals.flexibleUnallocatedEnergyKwh = 0;
+        const slotPreferences = [
+            { addonId: "immersion_heater", slotStartIso: today, weight: 0 },
+            { addonId: "immersion_heater", slotStartIso: tomorrow, weight: 3 },
+        ];
+        const result = (0, build_js_1.buildCompareResult)(plan, ["immersion_heater"], slotPreferences, {
+            immersionDeferTomorrow: true,
+        });
+        strict_1.default.equal(result.chartB[0].ihW, 0);
+        strict_1.default.equal(result.chartB[1].ihW, 0);
+        strict_1.default.ok((result.delta.planB.unallocatedKwh ?? 0) > (result.delta.planA.unallocatedKwh ?? 0));
+        strict_1.default.ok(result.delta.planB.ihKwh < result.delta.planA.ihKwh);
+        strict_1.default.equal(result.delta.activePlan, "b");
+        strict_1.default.match(result.delta.decisionReasonDe, /defer_tomorrow/);
+    });
 });

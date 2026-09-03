@@ -250,7 +250,8 @@ function deriveForDecision(plan: DailyPlan, decision: AiAddonDecision, nowMs: nu
 			const tomorrowSlots = allSlots.filter((s) => Number.isFinite(s.startMs) && s.startMs >= tomorrowMs);
 			const todaySlots = allSlots.filter((s) => Number.isFinite(s.startMs) && s.startMs < tomorrowMs);
 			for (const [iso, w] of surplusWeights(tomorrowSlots, HIGH_W, 1)) out.set(iso, w);
-			for (const s of todaySlots) out.set(s.startIso, LOW_W);
+			// Gewicht 0 = harter Ausschluss (kein Fallback auf heute).
+			for (const s of todaySlots) out.set(s.startIso, 0);
 			return prefsFromMap(addonId, out);
 		}
 	}
@@ -325,4 +326,9 @@ export function wallboxPvOnlyFromDecisions(decisions: AiAddonDecision[]): boolea
 			d.addonId === "wallbox" &&
 			(d.action === "prefer_pv_today" || d.action === "prefer_pv_tomorrow"),
 	);
+}
+
+/** Explizite KI-Entscheidung: flexiblen Heizstab heute meiden / auf morgen verschieben. */
+export function immersionDeferTomorrowFromDecisions(decisions: AiAddonDecision[]): boolean {
+	return decisions.some((d) => d.addonId === "immersion_heater" && d.action === "defer_tomorrow");
 }

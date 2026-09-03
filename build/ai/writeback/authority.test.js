@@ -270,6 +270,50 @@ function mockHost(prefs) {
         strict_1.default.equal(advisory.planBPreferred, true);
         strict_1.default.equal(host.states.get(ensure_states_2.COMPARE_STATES.activePlan), "b");
     });
+    (0, node_test_1.it)("defer_tomorrow economic tie keeps slot preferences (no lose-gate clear)", async () => {
+        const today = "2026-09-02T10:00:00.000Z";
+        const tomorrow = "2026-09-03T10:00:00.000Z";
+        const p = plan([
+            slot({
+                startIso: today,
+                gridPriceCtPerKwh: 12,
+                availablePvSurplusPowerW: 2000,
+                remainingPvSurplusPowerW: 0,
+                allocatedPvPowerW: 1700,
+                remainingGridImportPowerWAfterAlloc: 5000,
+                allocations: [
+                    allocation({
+                        contributionId: "immersion_heater.flexible",
+                        slotStart: today,
+                        allocatedPowerW: 1700,
+                        pvPowerW: 1700,
+                        gridPowerW: 0,
+                        energySource: "pv_surplus",
+                    }),
+                ],
+            }),
+            slot({
+                startIso: tomorrow,
+                gridPriceCtPerKwh: 12,
+                availablePvSurplusPowerW: 2000,
+                remainingPvSurplusPowerW: 2000,
+                remainingGridImportPowerWAfterAlloc: 5000,
+            }),
+        ]);
+        const prefs = [
+            { addonId: "immersion_heater", slotStartIso: today, weight: 0 },
+            { addonId: "immersion_heater", slotStartIso: tomorrow, weight: 3 },
+        ];
+        const host = mockHost(prefs);
+        const fin = await (0, index_1.finalizeAiRunWithWritebackGate)(host, p, prefs, {
+            skipAutoSuspend: true,
+            immersionDeferTomorrow: true,
+        });
+        strict_1.default.equal(fin.planBPreferred, true);
+        strict_1.default.equal(fin.writebackApplied, false);
+        strict_1.default.notEqual(host.states.get(ensure_states_1.AI_STATES.lastSlotPreferencesJson), "[]");
+        strict_1.default.equal(host.states.get(ensure_states_2.COMPARE_STATES.activePlan), "b");
+    });
 });
 (0, node_test_1.describe)("AI-AUTH-005 AI unavailable", () => {
     (0, node_test_1.it)("empty prefs → plan unchanged, no mutation", async () => {

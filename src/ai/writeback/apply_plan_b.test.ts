@@ -126,6 +126,41 @@ describe("planBBeatsPlanA", () => {
 			true,
 		);
 	});
+	it("defer_tomorrow tie-break wins when cost/grid not worse and preference fulfilled", () => {
+		assert.equal(
+			planBBeatsPlanA({
+				deltaCostCt: 0,
+				deltaGridKwh: 0,
+				deltaPvKwh: 0,
+				immersionDeferTomorrow: true,
+				deferTomorrowFulfilled: true,
+			}),
+			true,
+		);
+	});
+	it("defer_tomorrow is not a blanket less-heater win when cost/grid get worse", () => {
+		assert.equal(
+			planBBeatsPlanA({
+				deltaCostCt: 5,
+				deltaGridKwh: 1,
+				deltaPvKwh: 0,
+				immersionDeferTomorrow: true,
+				deferTomorrowFulfilled: true,
+			}),
+			false,
+		);
+	});
+	it("without defer_tomorrow flag, equal economics do not win", () => {
+		assert.equal(
+			planBBeatsPlanA({
+				deltaCostCt: 0,
+				deltaGridKwh: 0,
+				deltaPvKwh: 0,
+				deferTomorrowFulfilled: true,
+			}),
+			false,
+		);
+	});
 });
 
 describe("applyAiPreferencesToDailyPlan", () => {

@@ -119,6 +119,32 @@ function plan(slots) {
             surplusAlignA: 100_000,
         }), true);
     });
+    (0, node_test_1.it)("defer_tomorrow tie-break wins when cost/grid not worse and preference fulfilled", () => {
+        strict_1.default.equal((0, build_js_1.planBBeatsPlanA)({
+            deltaCostCt: 0,
+            deltaGridKwh: 0,
+            deltaPvKwh: 0,
+            immersionDeferTomorrow: true,
+            deferTomorrowFulfilled: true,
+        }), true);
+    });
+    (0, node_test_1.it)("defer_tomorrow is not a blanket less-heater win when cost/grid get worse", () => {
+        strict_1.default.equal((0, build_js_1.planBBeatsPlanA)({
+            deltaCostCt: 5,
+            deltaGridKwh: 1,
+            deltaPvKwh: 0,
+            immersionDeferTomorrow: true,
+            deferTomorrowFulfilled: true,
+        }), false);
+    });
+    (0, node_test_1.it)("without defer_tomorrow flag, equal economics do not win", () => {
+        strict_1.default.equal((0, build_js_1.planBBeatsPlanA)({
+            deltaCostCt: 0,
+            deltaGridKwh: 0,
+            deltaPvKwh: 0,
+            deferTomorrowFulfilled: true,
+        }), false);
+    });
 });
 (0, node_test_1.describe)("applyAiPreferencesToDailyPlan", () => {
     (0, node_test_1.it)("applies write-back when shifting load to cheaper/PV slot", () => {

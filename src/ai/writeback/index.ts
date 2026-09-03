@@ -1,7 +1,7 @@
 import type { DailyPlan } from "../../operator/daily_plan/types";
 import { resolveAllowedAddonIds } from "../context";
 import { AI_STATES } from "../ensure_states";
-import { wallboxPvOnlyFromDecisions } from "../strategy_preferences";
+import { immersionDeferTomorrowFromDecisions, wallboxPvOnlyFromDecisions } from "../strategy_preferences";
 import type { AiAddonDecision, AiSlotPreference } from "../types";
 import { COMPARE_STATES } from "../compare/ensure_states";
 import type { CompareResult } from "../compare/types";
@@ -94,6 +94,7 @@ export async function maybeApplyAiWritebackOnDailyPlan(
 	const decisions = await readDecisions(host);
 	const options: ApplyAiPreferencesOptions = {
 		wallboxPvOnly: wallboxPvOnlyFromDecisions(decisions),
+		immersionDeferTomorrow: immersionDeferTomorrowFromDecisions(decisions),
 	};
 	const allowed = resolveAllowedAddonIds(host.config);
 	const { plan: next, compare, writebackApplied } = applyAiPreferencesToDailyPlan(

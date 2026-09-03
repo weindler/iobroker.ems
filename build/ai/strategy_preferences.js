@@ -4,7 +4,7 @@
  * Reine Funktion — keine I/O, keine Geräte-Writes.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.wallboxPvOnlyFromDecisions = exports.decisionsToSlotPreferences = exports.normalizeAddonDecisions = void 0;
+exports.immersionDeferTomorrowFromDecisions = exports.wallboxPvOnlyFromDecisions = exports.decisionsToSlotPreferences = exports.normalizeAddonDecisions = void 0;
 const time_1 = require("../operator/time");
 /** Extremere Gewichte → Plan B weicht klar von Plan A ab (sonst oft Identitäts-Compare). */
 const HIGH_W = 3;
@@ -237,8 +237,9 @@ function deriveForDecision(plan, decision, nowMs) {
             const todaySlots = allSlots.filter((s) => Number.isFinite(s.startMs) && s.startMs < tomorrowMs);
             for (const [iso, w] of surplusWeights(tomorrowSlots, HIGH_W, 1))
                 out.set(iso, w);
+            // Gewicht 0 = harter Ausschluss (kein Fallback auf heute).
             for (const s of todaySlots)
-                out.set(s.startIso, LOW_W);
+                out.set(s.startIso, 0);
             return prefsFromMap(addonId, out);
         }
     }
@@ -303,3 +304,8 @@ function wallboxPvOnlyFromDecisions(decisions) {
         (d.action === "prefer_pv_today" || d.action === "prefer_pv_tomorrow"));
 }
 exports.wallboxPvOnlyFromDecisions = wallboxPvOnlyFromDecisions;
+/** Explizite KI-Entscheidung: flexiblen Heizstab heute meiden / auf morgen verschieben. */
+function immersionDeferTomorrowFromDecisions(decisions) {
+    return decisions.some((d) => d.addonId === "immersion_heater" && d.action === "defer_tomorrow");
+}
+exports.immersionDeferTomorrowFromDecisions = immersionDeferTomorrowFromDecisions;

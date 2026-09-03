@@ -157,6 +157,7 @@ async function runAiOptimizationNowUnlocked(host, plan, triggerReason, provider)
     const gate = await (0, writeback_1.finalizeAiRunWithWritebackGate)(host, plan, mergedPrefs, {
         wallboxPvOnly,
         skipAutoSuspend: cfg.thinkingMode,
+        immersionDeferTomorrow: (0, strategy_preferences_1.immersionDeferTomorrowFromDecisions)(decisions),
     });
     if (gate.suspended) {
         await writeStatus(host, "suspended");

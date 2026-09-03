@@ -58,13 +58,10 @@ describe("waterFillProportional", () => {
 		assert.equal(result[1], 60);
 	});
 
-	it("still conserves total energy via capacity fallback when every slot has zero weight", () => {
-		// No positive weight anywhere (e.g. AI avoided everything without a clear alternative) —
-		// energy conservation must still hold, distributed by leftover capacity.
+	it("leaves leftover unallocated when every slot has zero weight (no fallback onto avoided slots)", () => {
 		const result = waterFillProportional([0, 0], [300, 100], 400);
-		assert.equal(result[0] + result[1], 400);
-		assert.ok(result[0] <= 300);
-		assert.ok(result[1] <= 100);
+		assert.equal(result[0], 0);
+		assert.equal(result[1], 0);
 	});
 });
 
@@ -88,6 +85,17 @@ describe("redistributeAddonAcrossSlots", () => {
 		const result = redistributeAddonAcrossSlots(slots, [0, 2]);
 		assert.equal(result[0], 0);
 		assert.equal(result[1], 400);
+	});
+
+	it("does not put leftover back onto multiplier-0 slots when preferred capacity is short", () => {
+		const slots = [
+			{ ownW: 1700, capacityW: 1700 },
+			{ ownW: 0, capacityW: 500 },
+		];
+		const result = redistributeAddonAcrossSlots(slots, [0, 3]);
+		assert.equal(result[0], 0);
+		assert.equal(result[1], 500);
+		assert.ok(result[0] + result[1] < 1700);
 	});
 
 	it("conserves total energy across all slots regardless of weighting", () => {

@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
 	decisionsToSlotPreferences,
+	immersionDeferTomorrowFromDecisions,
 	normalizeAddonDecisions,
 	wallboxPvOnlyFromDecisions,
 } from "./strategy_preferences.js";
@@ -170,14 +171,14 @@ describe("decisionsToSlotPreferences", () => {
 		assert.equal(b?.weight, 0.5);
 	});
 
-	it("immersion defer_tomorrow lowers today", () => {
+	it("immersion defer_tomorrow excludes today (weight 0) and prefers tomorrow surplus", () => {
 		const decisions: AiAddonDecision[] = [
 			{ addonId: "immersion_heater", action: "defer_tomorrow", note: "morgen" },
 		];
 		const prefs = decisionsToSlotPreferences(plan, decisions, [], NOW_MS);
 		const today = prefs.find((p) => p.slotStartIso === DAY1_A);
 		const tomorrow = prefs.find((p) => p.slotStartIso === DAY2_A);
-		assert.ok(today && today.weight < 1);
+		assert.equal(today?.weight, 0);
 		assert.ok(tomorrow && tomorrow.weight >= 2.5);
 	});
 
@@ -207,6 +208,29 @@ describe("wallboxPvOnlyFromDecisions", () => {
 			false,
 		);
 		assert.equal(wallboxPvOnlyFromDecisions([]), false);
+	});
+});
+
+describe("immersionDeferTomorrowFromDecisions", () => {
+	it("true only for immersion_heater defer_tomorrow", () => {
+		assert.equal(
+			immersionDeferTomorrowFromDecisions([
+				{ addonId: "immersion_heater", action: "defer_tomorrow", note: "morgen" },
+			]),
+			true,
+		);
+		assert.equal(
+			immersionDeferTomorrowFromDecisions([
+				{ addonId: "immersion_heater", action: "heat_today", note: "heute" },
+			]),
+			false,
+		);
+		assert.equal(
+			immersionDeferTomorrowFromDecisions([
+				{ addonId: "wallbox", action: "prefer_pv_tomorrow", note: "wb" },
+			]),
+			false,
+		);
 	});
 });
 

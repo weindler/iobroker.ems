@@ -27,6 +27,9 @@ function emptyBuckets(slotCount) {
         otherMeasuredConsumersKwh: n(),
         plannedConsumersRef: n(),
         snapshotIdRef: nStr(),
+        outdoorTempC: n(),
+        cloudPct: n(),
+        climateUnitSlots: Array.from({ length: slotCount }, () => null),
         qualityMask: nMask(),
     };
 }

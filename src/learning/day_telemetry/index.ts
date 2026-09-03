@@ -83,6 +83,7 @@ export {
 	advanceClimateSegment,
 	closeClimateSegment,
 } from "./climate_segments";
+export { normalizeClimateModePurpose, climateSlotDemandUrgency01 } from "./climate_unit_slots";
 export {
 	advanceImmersionSegment,
 	closeImmersionSegment,
@@ -94,6 +95,9 @@ export type {
 	FrozenPlannedConsumer,
 	PlannerKnowledgeSnapshot,
 	ClimateRunSegment,
+	ClimateUnitSlotSample,
+	ClimateUnitThermalObservation,
+	ClimateModePurpose,
 	ImmersionRunSegment,
 	GridBalanceRunSegment,
 	GridBalanceMatchWindow,

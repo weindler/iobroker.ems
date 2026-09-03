@@ -18,6 +18,8 @@ import { ensureDayTelemetryStates } from "../day_telemetry";
 import { ensureDailyEvaluatorStates, runDailyEvaluatorBatch, type DailyEvaluatorHost } from "../daily_evaluator";
 import { runClimateSharedPowerLearning, type ClimateSharedPowerHost } from "../climate_shared_power";
 import { ensureClimateSharedPowerRootStates } from "../climate_shared_power/ensure_states";
+import { runClimateThermalLearning, type ClimateThermalHost } from "../climate_thermal";
+import { ensureClimateThermalRootStates } from "../climate_thermal/ensure_states";
 import { ensureShadowEngineStates, runShadowEngineBatch, type ShadowEngineHost } from "../shadow_engine";
 import { ensureEconomicsStates, tickEconomics, type EconomicsHost } from "../../economics";
 import { ensureAiValidatorStates } from "../../ai/override/ensure_states";
@@ -58,6 +60,7 @@ export async function ensureLearningStateTree(adapter: ioBroker.Adapter): Promis
 	await ensureDayTelemetryStates(host);
 	await ensureDailyEvaluatorStates(host);
 	await ensureClimateSharedPowerRootStates(host);
+	await ensureClimateThermalRootStates(host);
 	await ensureShadowEngineStates(host);
 	await ensureEconomicsStates(host);
 	await ensureAiValidatorStates(host);
@@ -146,6 +149,16 @@ async function runLearningTick(
 			await runClimateSharedPowerLearning(host as unknown as ClimateSharedPowerHost);
 		} catch (e) {
 			host.log.error(`climate_shared_power learning: ${e instanceof Error ? e.message : String(e)}`);
+		}
+		/*
+		 * Predictive Climate Foundation — Thermal Learning. Liest nur day_telemetry,
+		 * schreibt ausschließlich eigene Persistenz/States. Kein Einfluss auf
+		 * planCooling / Runtime / Unified / Shared-Power-Steuerung.
+		 */
+		try {
+			await runClimateThermalLearning(host as unknown as ClimateThermalHost);
+		} catch (e) {
+			host.log.error(`climate_thermal learning: ${e instanceof Error ? e.message : String(e)}`);
 		}
 		/*
 		 * PHASE 5 — Shadow/Counterfactual-Engine. Rein additiv/diagnostisch, liest nur

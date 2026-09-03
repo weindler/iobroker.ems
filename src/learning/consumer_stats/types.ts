@@ -8,6 +8,14 @@ export type ConsumerDayRecord = {
 	runtimeSec: number;
 	energyKwh: number;
 	lastTickMs: number;
+	/**
+	 * Additiv: echter 0-Laufzeit-Tag (Modus verfügbar, Raumdaten ok).
+	 * Fehlt bei alten Records — dann gilt nur runtime/energy > 0.
+	 */
+	zeroRuntimeEvaluable?: boolean;
+	/** Welche Climate-Modi an diesem Tag als Aktor verfügbar waren. */
+	modesAvailable?: string[] | null;
+	roomDataOk?: boolean;
 };
 
 export type ConsumerPersistEntry = {
@@ -24,6 +32,10 @@ export type ConsumerPersistEntry = {
 	lastTickMs: number;
 	wasActive: boolean;
 	days: Record<string, ConsumerDayRecord>;
+	/** Heute mindestens einmal als 0-Runtime-evaluable gesehen (Climate). */
+	todayZeroRuntimeEvaluable?: boolean;
+	todayModesAvailable?: string[] | null;
+	todayRoomDataOk?: boolean;
 };
 
 export type ConsumerStatsPersist = {
@@ -50,6 +62,13 @@ export type ConsumerStatsTickInput = {
 	measuredPowerW: number | null;
 	commandedPowerW: number;
 	powerOnThresholdW?: number;
+	/**
+	 * Climate: Tag wäre ein gültiges 0-Runtime-Sample, falls nicht gelaufen.
+	 * Nur setzen wenn Unit enabled, mindestens ein Modus verfügbar, Raumdaten ok.
+	 */
+	zeroRuntimeEvaluable?: boolean;
+	modesAvailable?: string[] | null;
+	roomDataOk?: boolean;
 };
 
 export type ConsumerStatsSnapshot = {

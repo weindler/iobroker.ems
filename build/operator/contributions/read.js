@@ -11,6 +11,7 @@ const pv_1 = require("./pv");
 const pv_shape_config_1 = require("./pv_shape_config");
 const house_load_1 = require("./house_load");
 const weather_1 = require("./weather");
+const weather_hourly_1 = require("./weather_hourly");
 const constraints_1 = require("./constraints");
 const grid_read_1 = require("../supply/grid_read");
 const grid_1 = require("../supply/grid");
@@ -258,7 +259,8 @@ async function collectContributions(host, now, gridForecast) {
         .sort()
         .at(-1);
     const weatherHorizonEnd = (farthestWeatherDay ?? (0, time_1.addDaysToDateKey)(todayKey, 1)) + "T23:59:59.999Z";
-    const hourlyPoints = [];
+    const hourlyPrefix = (0, pv_shape_config_1.pvShapeConfigFromAdapter)(host.config).brightskyHourlyPrefix;
+    const hourlyPoints = await (0, weather_hourly_1.collectWeatherHourlyPoints)(host, now, timezone, hourlyPrefix);
     const constraintInput = {
         now,
         globalMode,

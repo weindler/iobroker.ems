@@ -18,11 +18,13 @@ const day_telemetry_1 = require("../day_telemetry");
 const daily_evaluator_1 = require("../daily_evaluator");
 const climate_shared_power_1 = require("../climate_shared_power");
 const ensure_states_2 = require("../climate_shared_power/ensure_states");
+const climate_thermal_1 = require("../climate_thermal");
+const ensure_states_3 = require("../climate_thermal/ensure_states");
 const shadow_engine_1 = require("../shadow_engine");
 const economics_1 = require("../../economics");
-const ensure_states_3 = require("../../ai/override/ensure_states");
+const ensure_states_4 = require("../../ai/override/ensure_states");
 const tick_1 = require("../../ai/override/tick");
-const ensure_states_4 = require("../../ai/daily_analyst/ensure_states");
+const ensure_states_5 = require("../../ai/daily_analyst/ensure_states");
 const run_2 = require("../../ai/daily_analyst/run");
 const config_2 = require("../../intent/config");
 const data_dir_1 = require("../data_dir");
@@ -45,10 +47,11 @@ async function ensureLearningStateTree(adapter) {
     await (0, day_telemetry_1.ensureDayTelemetryStates)(host);
     await (0, daily_evaluator_1.ensureDailyEvaluatorStates)(host);
     await (0, ensure_states_2.ensureClimateSharedPowerRootStates)(host);
+    await (0, ensure_states_3.ensureClimateThermalRootStates)(host);
     await (0, shadow_engine_1.ensureShadowEngineStates)(host);
     await (0, economics_1.ensureEconomicsStates)(host);
-    await (0, ensure_states_3.ensureAiValidatorStates)(host);
-    await (0, ensure_states_4.ensureAiDailyAnalystStates)(host);
+    await (0, ensure_states_4.ensureAiValidatorStates)(host);
+    await (0, ensure_states_5.ensureAiDailyAnalystStates)(host);
     await (0, persistence_mirror_1.ensureLearningPersistenceStates)(host);
     return host;
 }
@@ -127,6 +130,17 @@ async function runLearningTick(host, trigger = "interval") {
         }
         catch (e) {
             host.log.error(`climate_shared_power learning: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        /*
+         * Predictive Climate Foundation — Thermal Learning. Liest nur day_telemetry,
+         * schreibt ausschließlich eigene Persistenz/States. Kein Einfluss auf
+         * planCooling / Runtime / Unified / Shared-Power-Steuerung.
+         */
+        try {
+            await (0, climate_thermal_1.runClimateThermalLearning)(host);
+        }
+        catch (e) {
+            host.log.error(`climate_thermal learning: ${e instanceof Error ? e.message : String(e)}`);
         }
         /*
          * PHASE 5 — Shadow/Counterfactual-Engine. Rein additiv/diagnostisch, liest nur

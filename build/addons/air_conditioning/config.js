@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.acEnabledUnits = exports.acGlobalConfigFromAdapter = exports.acUnitConfigFromAdapter = exports.acEstimatedPowerForPurpose = exports.acCleaningAfterPurpose = exports.acModeCommandEnabled = void 0;
+exports.acEnabledUnits = exports.acGlobalConfigFromAdapter = exports.acUnitConfigFromAdapter = exports.acEstimatedPowerForPurpose = exports.acCleaningAfterPurpose = exports.availableAcModePurposes = exports.acModeCommandEnabled = void 0;
 const constants_1 = require("./constants");
 function configRecord(config) {
     return config && typeof config === "object" ? config : {};
@@ -42,6 +42,21 @@ function acModeCommandEnabled(mode) {
     return mode.trim().length > 0;
 }
 exports.acModeCommandEnabled = acModeCommandEnabled;
+/**
+ * Welche Climate-Betriebsarten für diese Unit als Aktor verfügbar/gewünscht sind.
+ * Deaktiviert ≠ 0-Bedarf — nur die vorhandene Admin-Konfiguration, keine Saisonlogik.
+ */
+function availableAcModePurposes(unit) {
+    const out = [];
+    if (acModeCommandEnabled(unit.modeWhenCooling))
+        out.push("cooling");
+    if (acModeCommandEnabled(unit.modeWhenHeating))
+        out.push("heating");
+    if (acModeCommandEnabled(unit.modeWhenDehumidify))
+        out.push("dehumidify");
+    return out;
+}
+exports.availableAcModePurposes = availableAcModePurposes;
 function acCleaningAfterPurpose(unit, purpose) {
     switch (purpose) {
         case "dehumidify":

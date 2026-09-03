@@ -13,15 +13,17 @@ const LIVE_PV_POWER_W_MIRROR = "live.pv.power_w";
 const ensure_states_2 = require("../../addons/air_conditioning/runtime/ensure_states");
 const constants_1 = require("../../addons/air_conditioning/constants");
 const config_1 = require("../../addons/air_conditioning/config");
+const config_2 = require("../weather/config");
 const ensure_states_3 = require("../../addons/wallbox/ev_foundation/ensure_states");
 const state_ids_1 = require("../../addons/measured_consumers/runtime/state_ids");
 const state_util_1 = require("../../ems_light/state_util");
 const mapping_1 = require("../house_load/mapping");
-const config_2 = require("../../statistics/config");
-const config_3 = require("../house_load/config");
+const config_3 = require("../../statistics/config");
+const config_4 = require("../house_load/config");
 const constants_2 = require("../price_learning/constants");
 const grid_states_1 = require("../../operator/supply/grid_states");
 const contribution_ids_1 = require("../../operator/contribution_ids");
+const climate_unit_slots_1 = require("./climate_unit_slots");
 async function readNum(host, id) {
     if (!id)
         return null;
@@ -116,21 +118,65 @@ function resolveActiveSharedPowerGroupId(active, config, plannerGroupByConsumerI
 }
 exports.resolveActiveSharedPowerGroupId = resolveActiveSharedPowerGroupId;
 async function readLiveTelemetrySample(host, nowMs = Date.now()) {
-    const hlCfg = (0, config_3.houseLoadConfigFromAdapter)(host.config);
+    const hlCfg = (0, config_4.houseLoadConfigFromAdapter)(host.config);
     const houseSrc = await (0, mapping_1.resolveHouseLoadPowerStateId)(host, hlCfg.powerStateId);
-    const statsCfg = (0, config_2.statisticsConfigFromAdapter)(host.config);
+    const statsCfg = (0, config_3.statisticsConfigFromAdapter)(host.config);
     const climateUnitActive = [];
     let climateMode = null;
+    const climateUnits = [];
     for (let i = 1; i <= constants_1.AC_UNIT_COUNT; i++) {
         const ids = (0, ensure_states_2.acUnitRuntimeStates)(i);
+        const unitCfg = (0, config_1.acUnitConfigFromAdapter)(host.config, i);
         const running = await readBool(host, ids.running);
         const active = running === true;
         climateUnitActive.push(active);
+        const purposeRaw = await readStr(host, ids.modePurpose);
         if (active && !climateMode) {
-            climateMode = await readStr(host, ids.modePurpose);
+            climateMode = purposeRaw;
         }
+        const roomTempC = await readNum(host, ids.roomTempC);
+        const roomHumidityPct = await readNum(host, ids.roomHumidityPct);
+        const include = unitCfg.enabled || active || roomTempC != null;
+        if (!include)
+            continue;
+        const modePurpose = active ? (0, climate_unit_slots_1.normalizeClimateModePurpose)(purposeRaw) : "off";
+        const ownershipOwner = await readStr(host, ids.ownershipOwner);
+        const overrideUntilIso = await readStr(host, ids.ownershipOverrideUntilIso);
+        const overrideActive = (0, climate_unit_slots_1.climateOverrideActive)(ownershipOwner, overrideUntilIso, nowMs);
+        const targetTempC = await readNum(host, ids.setpointTempC);
+        const modesAvailable = (0, config_1.availableAcModePurposes)(unitCfg);
+        climateUnits.push({
+            unitIndex: i,
+            enabled: unitCfg.enabled,
+            roomTempC,
+            roomHumidityPct,
+            targetTempC,
+            coolingOnTempC: Number.isFinite(unitCfg.onTempC) ? unitCfg.onTempC : null,
+            coolingOffTempC: Number.isFinite(unitCfg.offTempC) ? unitCfg.offTempC : null,
+            heatingSetpointC: unitCfg.heatSetpointC,
+            maxHumidityPct: unitCfg.maxHumidityPct,
+            modesAvailable,
+            running,
+            modePurpose,
+            hardOffAt: unitCfg.hardOffAt?.trim() || null,
+            demandUrgency01: (0, climate_unit_slots_1.climateSlotDemandUrgency01)({
+                modePurpose,
+                roomTempC,
+                coolingOnTempC: unitCfg.onTempC,
+                roomHumidityPct,
+                maxHumidityPct: unitCfg.maxHumidityPct,
+            }),
+            ownershipOwner,
+            overrideActive,
+            sharedPowerGroupId: unitCfg.sharedPowerGroupId,
+        });
     }
     const sharedResolved = resolveActiveSharedPowerGroupId(climateUnitActive, host.config, null);
+    const weatherCfg = (0, config_2.weatherConfigFromAdapter)(host.config);
+    const tempMetric = weatherCfg.metrics.temp;
+    const cloudMetric = weatherCfg.metrics.cloud;
+    const outdoorTempC = tempMetric ? await readNum(host, tempMetric.actualStateId) : null;
+    const cloudPct = cloudMetric ? await readNum(host, cloudMetric.actualStateId) : null;
     const batPower = await readNum(host, ensure_states_1.BAT.telemetry.powerW);
     const batCharge = await readNum(host, ensure_states_1.BAT.telemetry.chargingPowerW);
     const batDischarge = await readNum(host, ensure_states_1.BAT.telemetry.dischargingPowerW);
@@ -185,6 +231,9 @@ async function readLiveTelemetrySample(host, nowMs = Date.now()) {
         immersionResolvedMode: await readStr(host, types_1.IMMERSION_RUNTIME_STATES.resolvedMode),
         immersionHygieneStatusDe: await readStr(host, types_1.IMMERSION_RUNTIME_STATES.hygieneStatusDe),
         immersionOwnershipOwner: await readStr(host, types_1.IMMERSION_RUNTIME_STATES.ownershipOwner),
+        outdoorTempC,
+        cloudPct,
+        climateUnits,
     };
 }
 exports.readLiveTelemetrySample = readLiveTelemetrySample;

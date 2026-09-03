@@ -34,7 +34,13 @@ import {
 	AC_WATCH_MAPPING_ROLES,
 } from "../constants";
 import { configuredAcUnitIndexes } from "../configured";
-import { acCleaningAfterPurpose, acEstimatedPowerForPurpose, acGlobalConfigFromAdapter, acModeCommandEnabled } from "../config";
+import {
+	acCleaningAfterPurpose,
+	acEstimatedPowerForPurpose,
+	acGlobalConfigFromAdapter,
+	acModeCommandEnabled,
+	availableAcModePurposes,
+} from "../config";
 import type { AcUnitConfig } from "../types";
 import { getAcProfile, isLocalthingsHassProfile } from "../profiles/registry";
 import { buildLocalthingsPrefillPatch, scheduleLocalthingsPrefillPersist, clearLocalthingsPrefillPersistTimer } from "../profiles/localthings_prefill";
@@ -706,6 +712,8 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 			countable: false,
 			measuredPowerW: null,
 			commandedPowerW: 0,
+			zeroRuntimeEvaluable: false,
+			roomDataOk: false,
 		});
 	}
 
@@ -1145,6 +1153,8 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		await setStateIfChanged(host, ids.allocationReasonDe, dailyPlan.allocationReasonDe);
 		await setStateIfChanged(host, ids.governanceAllowed, governanceEnabled);
 
+		const modesAvailable = availableAcModePurposes(unit);
+		const roomDataOk = temp.num != null && Number.isFinite(temp.num);
 		await tickConsumerStats(host, {
 			consumerKey: acUnitConsumerKey(unit.index),
 			nowMs,
@@ -1152,6 +1162,9 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 			countable: deviceActive,
 			measuredPowerW,
 			commandedPowerW: estPower,
+			zeroRuntimeEvaluable: modesAvailable.length > 0 && roomDataOk,
+			modesAvailable,
+			roomDataOk,
 		});
 
 		if (deviceActive || up.cleaningActive || up.running || feedbackOn) {

@@ -17,8 +17,8 @@ import { buildHouseLoadContribution } from "./house_load";
 import {
 	buildWeatherContribution,
 	type WeatherHorizonDayDetail,
-	type WeatherHourlyPoint,
 } from "./weather";
+import { collectWeatherHourlyPoints } from "./weather_hourly";
 import {
 	buildGlobalConstraintsContribution,
 	buildGridSupplyContribution,
@@ -344,7 +344,13 @@ export async function collectContributions(
 	const weatherHorizonEnd =
 		(farthestWeatherDay ?? addDaysToDateKey(todayKey, 1)) + "T23:59:59.999Z";
 
-	const hourlyPoints: WeatherHourlyPoint[] = [];
+	const hourlyPrefix = pvShapeConfigFromAdapter(host.config).brightskyHourlyPrefix;
+	const hourlyPoints = await collectWeatherHourlyPoints(
+		host,
+		now,
+		timezone,
+		hourlyPrefix,
+	);
 
 	const constraintInput: ConstraintContributionBuildInput = {
 		now,

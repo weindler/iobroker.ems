@@ -59,11 +59,17 @@ describe("day_telemetry persist retention", () => {
 		delete raw.gridBalanceOffWindows;
 		const buckets = raw.buckets as Record<string, unknown>;
 		delete buckets.batteryChargeSource;
+		delete buckets.outdoorTempC;
+		delete buckets.cloudPct;
+		delete buckets.climateUnitSlots;
 		const n = normalizeDayRecord(raw, "2026-06-15");
 		assert.ok(n);
 		assert.ok(Array.isArray(n!.gridBalanceRunSegments));
 		assert.ok(Array.isArray(n!.gridBalanceOffWindows));
 		assert.equal(n!.buckets.batteryChargeSource.length, n!.slotCount);
+		assert.equal(n!.buckets.outdoorTempC.length, n!.slotCount);
+		assert.equal(n!.buckets.climateUnitSlots.length, n!.slotCount);
+		assert.ok(n!.buckets.outdoorTempC.every((v) => v === null));
 	});
 
 	it("atomic write roundtrip", async () => {

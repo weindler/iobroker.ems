@@ -136,6 +136,15 @@ function normalizeDayRecord(raw, fallbackDateKey) {
     if (!Array.isArray(day.buckets.batteryChargeSource) || day.buckets.batteryChargeSource.length !== slotCount) {
         day.buckets.batteryChargeSource = Array.from({ length: slotCount }, () => null);
     }
+    if (!Array.isArray(day.buckets.outdoorTempC) || day.buckets.outdoorTempC.length !== slotCount) {
+        day.buckets.outdoorTempC = Array.from({ length: slotCount }, () => null);
+    }
+    if (!Array.isArray(day.buckets.cloudPct) || day.buckets.cloudPct.length !== slotCount) {
+        day.buckets.cloudPct = Array.from({ length: slotCount }, () => null);
+    }
+    if (!Array.isArray(day.buckets.climateUnitSlots) || day.buckets.climateUnitSlots.length !== slotCount) {
+        day.buckets.climateUnitSlots = Array.from({ length: slotCount }, () => null);
+    }
     if (!Array.isArray(day.plannedConsumers))
         day.plannedConsumers = [];
     if (typeof day.complete !== "boolean")

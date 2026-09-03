@@ -126,6 +126,13 @@ export const PERSISTENCE_INVENTORY: readonly PersistenceSourceDef[] = [
 		description: "Phase 3 gelernte Shared-Power-Klimastatistiken (Median/p75/Confidence je Gruppe×Modus×Kombination)",
 	},
 	{
+		id: "climate_thermal",
+		category: "restorable",
+		fileCategory: "learning/climate_thermal",
+		fileName: "climate_thermal_v1.json",
+		description: "Predictive-Climate-Foundation: empirische Raum-/Mode-Raten (passiv/cooling/heating/dehumidify) — Diagnose, keine Steuerung",
+	},
+	{
 		id: "shadow_engine_results",
 		category: "support_only",
 		fileCategory: "learning/shadow_engine/results",

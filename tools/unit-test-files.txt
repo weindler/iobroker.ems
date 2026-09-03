@@ -237,6 +237,11 @@ build/learning/day_telemetry/price_source.test.js
 build/learning/day_telemetry/shared_group.test.js
 build/learning/day_telemetry/phase1_fixes.test.js
 build/learning/day_telemetry/additive_block_a.test.js
+build/learning/day_telemetry/climate_foundation.test.js
+build/learning/consumer_stats/zero_runtime.test.js
+build/operator/contributions/weather_hourly.test.js
+build/learning/climate_thermal/math.test.js
+build/learning/climate_thermal/run.test.js
 build/learning/daily_evaluator/eligibility.test.js
 build/learning/daily_evaluator/knowledge_time.test.js
 build/learning/daily_evaluator/battery_findings.test.js

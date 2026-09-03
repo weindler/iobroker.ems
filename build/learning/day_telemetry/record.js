@@ -14,6 +14,7 @@ Object.defineProperty(exports, "DAY_TELEMETRY_PERSIST_CATEGORY", { enumerable: t
 const energy_integrate_1 = require("./energy_integrate");
 const knowledge_snapshot_1 = require("./knowledge_snapshot");
 const climate_segments_1 = require("./climate_segments");
+const contribution_ids_1 = require("../../operator/contribution_ids");
 const immersion_segments_1 = require("./immersion_segments");
 const grid_balance_segments_1 = require("./grid_balance_segments");
 const charge_source_1 = require("../grid_balance_economics/charge_source");
@@ -223,6 +224,11 @@ async function tickDayTelemetryInner(host, now) {
     store = ensured.store;
     const day = ensured.day;
     const layout = ensured.layout;
+    if (yesterdayJustCompleted && store.days[yesterday] && mem.openClimate) {
+        store.days[yesterday].climateRunSegments = (0, climate_segments_1.closeClimateSegment)(mem.openClimate, store.days[yesterday].endMs, store.days[yesterday].climateRunSegments);
+        mem.openClimate = null;
+        mem.dirty = true;
+    }
     if (mem.gbEpisodeDateKey && mem.gbEpisodeDateKey !== dateKey && store.days[mem.gbEpisodeDateKey]) {
         const prevDay = store.days[mem.gbEpisodeDateKey];
         prevDay.gridBalanceRunSegments = (0, grid_balance_segments_1.closeGridBalanceEpisode)(mem.openGbEpisode, nowMs, "day_boundary", prevDay.gridBalanceRunSegments ?? []);
@@ -250,6 +256,44 @@ async function tickDayTelemetryInner(host, now) {
         setLastValue(day.buckets.batterySocEndPct, curSlot, sample.batterySocPct);
         setLastValue(day.buckets.evSocEndPct, curSlot, sample.evSocPct);
         setLastValue(day.buckets.boilerTempEndC, curSlot, sample.boilerTempC);
+        if (!Array.isArray(day.buckets.outdoorTempC) || day.buckets.outdoorTempC.length !== layout.slotCount) {
+            day.buckets.outdoorTempC = Array.from({ length: layout.slotCount }, () => null);
+        }
+        if (!Array.isArray(day.buckets.cloudPct) || day.buckets.cloudPct.length !== layout.slotCount) {
+            day.buckets.cloudPct = Array.from({ length: layout.slotCount }, () => null);
+        }
+        if (!Array.isArray(day.buckets.climateUnitSlots) || day.buckets.climateUnitSlots.length !== layout.slotCount) {
+            day.buckets.climateUnitSlots = Array.from({ length: layout.slotCount }, () => null);
+        }
+        setLastValue(day.buckets.outdoorTempC, curSlot, sample.outdoorTempC);
+        setLastValue(day.buckets.cloudPct, curSlot, sample.cloudPct);
+        const combo = (0, sources_1.activeUnitCombinationKey)(sample.climateUnitActive);
+        const plannedRef = day.buckets.plannedConsumersRef[curSlot];
+        const plannedRow = plannedRef != null ? day.plannedConsumers[plannedRef] : null;
+        const unitSlots = (sample.climateUnits ?? []).map((u) => {
+            const planned = plannedRow?.find((c) => c.consumerId === contribution_ids_1.CONTRIBUTION_IDS.AC_UNIT(u.unitIndex));
+            return {
+                unitIndex: u.unitIndex,
+                roomTempC: u.roomTempC,
+                roomHumidityPct: u.roomHumidityPct,
+                targetTempC: u.targetTempC,
+                coolingOnTempC: u.coolingOnTempC,
+                coolingOffTempC: u.coolingOffTempC,
+                heatingSetpointC: u.heatingSetpointC,
+                maxHumidityPct: u.maxHumidityPct,
+                modesAvailable: [...u.modesAvailable],
+                running: u.running,
+                modePurpose: u.modePurpose,
+                hardOffAt: u.hardOffAt,
+                demandUrgency01: u.demandUrgency01,
+                ownershipOwner: u.ownershipOwner,
+                overrideActive: u.overrideActive,
+                plannedEnergyKwh: planned?.energyKwh ?? null,
+                sharedPowerGroupId: u.sharedPowerGroupId,
+                activeUnitCombination: combo === "none" ? (u.running ? combo : null) : combo,
+            };
+        });
+        day.buckets.climateUnitSlots[curSlot] = unitSlots.length > 0 ? unitSlots : null;
         if (sample.batterySocPct != null)
             markDomain(day, curSlot, quality_mask_1.TELEMETRY_DOMAIN.BATTERY, quality_mask_1.DOMAIN_QUALITY.ok);
         if (sample.boilerTempC != null)
@@ -367,25 +411,38 @@ async function tickDayTelemetryInner(host, now) {
         const fromSample = (0, sources_1.resolveActiveSharedPowerGroupId)(sample.climateUnitActive, host.config, mem.sharedGroupMap);
         const sharedGroup = fromSample.groupId;
         const combo = (0, sources_1.activeUnitCombinationKey)(sample.climateUnitActive);
-        const climateDelta = sample.climateSystemPowerW != null && Number.isFinite(sample.climateSystemPowerW)
+        const isIdle = combo === "none";
+        const climateDelta = !isIdle && sample.climateSystemPowerW != null && Number.isFinite(sample.climateSystemPowerW)
             ? (sample.climateSystemPowerW * (dtSec / 3600)) / 1000
             : 0;
         const powerOk = sample.climateSystemPowerW != null &&
             Number.isFinite(sample.climateSystemPowerW) &&
             sample.climateSystemPowerW >= 0;
         const groupOk = sharedGroup != null;
-        const climateValid = powerOk && groupOk && combo !== "none";
-        const rejectReason = !groupOk
-            ? fromSample.rejectReason ?? "shared_power_group_unknown"
-            : !powerOk
-                ? "invalid_power"
-                : null;
+        const climateValid = !isIdle && powerOk && groupOk;
+        const rejectReason = isIdle
+            ? "climate_idle"
+            : !groupOk
+                ? fromSample.rejectReason ?? "shared_power_group_unknown"
+                : !powerOk
+                    ? "invalid_power"
+                    : null;
+        const thermalSnap = {
+            outdoorTempC: sample.outdoorTempC ?? null,
+            units: (sample.climateUnits ?? []).map((u) => ({
+                unitIndex: u.unitIndex,
+                roomTempC: u.roomTempC,
+                roomHumidityPct: u.roomHumidityPct,
+                ownershipOwner: u.ownershipOwner,
+                overrideActive: u.overrideActive,
+            })),
+        };
         const seg = (0, climate_segments_1.advanceClimateSegment)(mem.openClimate, nowMs, {
             sharedPowerGroupId: sharedGroup,
-            mode: sample.climateMode ?? "unknown",
+            mode: isIdle ? "off" : (sample.climateMode ?? "unknown"),
             activeUnitCombination: combo,
             valid: climateValid,
-        }, climateDelta, combo !== "none" ? dtSec : 0, rejectReason, day.climateRunSegments);
+        }, climateDelta, dtSec, rejectReason, day.climateRunSegments, thermalSnap);
         mem.openClimate = seg.open;
         day.climateRunSegments = seg.list;
     }

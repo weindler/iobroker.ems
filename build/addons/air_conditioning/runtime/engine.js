@@ -466,6 +466,8 @@ async function runAcRuntimeTickBody(host) {
             countable: false,
             measuredPowerW: null,
             commandedPowerW: 0,
+            zeroRuntimeEvaluable: false,
+            roomDataOk: false,
         });
     }
     const activeUnits = config.units.filter((u) => u.enabled);
@@ -775,6 +777,8 @@ async function runAcRuntimeTickBody(host) {
         await (0, state_write_1.setStateIfChanged)(host, ids.allocationStatus, dailyPlan.allocationStatus);
         await (0, state_write_1.setStateIfChanged)(host, ids.allocationReasonDe, dailyPlan.allocationReasonDe);
         await (0, state_write_1.setStateIfChanged)(host, ids.governanceAllowed, governanceEnabled);
+        const modesAvailable = (0, config_1.availableAcModePurposes)(unit);
+        const roomDataOk = temp.num != null && Number.isFinite(temp.num);
         await (0, consumer_stats_1.tickConsumerStats)(host, {
             consumerKey: (0, constants_1.acUnitConsumerKey)(unit.index),
             nowMs,
@@ -782,6 +786,9 @@ async function runAcRuntimeTickBody(host) {
             countable: deviceActive,
             measuredPowerW,
             commandedPowerW: estPower,
+            zeroRuntimeEvaluable: modesAvailable.length > 0 && roomDataOk,
+            modesAvailable,
+            roomDataOk,
         });
         if (deviceActive || up.cleaningActive || up.running || feedbackOn) {
             acDeviceBusy = true;

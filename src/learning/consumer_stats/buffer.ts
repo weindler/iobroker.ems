@@ -18,7 +18,44 @@ export function emptyConsumerEntry(consumerKey: string, nowMs: number): Consumer
 		lastTickMs: nowMs,
 		wasActive: false,
 		days: {},
+		todayZeroRuntimeEvaluable: false,
+		todayModesAvailable: null,
+		todayRoomDataOk: false,
 	};
+}
+
+function mergeModesAvailable(
+	a: string[] | null | undefined,
+	b: string[] | null | undefined,
+): string[] | null {
+	if (!a?.length && !b?.length) return a ?? b ?? null;
+	return [...new Set([...(a ?? []), ...(b ?? [])])].sort();
+}
+
+function persistableDayRecord(entry: ConsumerPersistEntry): ConsumerDayRecord | null {
+	if (entry.todayRuntimeSec > 0 || entry.todayEnergyKwh > 0) {
+		return {
+			dateKey: entry.todayDateKey,
+			runtimeSec: entry.todayRuntimeSec,
+			energyKwh: entry.todayEnergyKwh,
+			lastTickMs: entry.lastTickMs,
+			zeroRuntimeEvaluable: false,
+			modesAvailable: entry.todayModesAvailable ?? null,
+			roomDataOk: entry.todayRoomDataOk === true,
+		};
+	}
+	if (entry.todayZeroRuntimeEvaluable === true && entry.todayRoomDataOk === true) {
+		return {
+			dateKey: entry.todayDateKey,
+			runtimeSec: 0,
+			energyKwh: 0,
+			lastTickMs: entry.lastTickMs,
+			zeroRuntimeEvaluable: true,
+			modesAvailable: entry.todayModesAvailable ?? null,
+			roomDataOk: true,
+		};
+	}
+	return null;
 }
 
 export function computeTickDeltaSec(nowMs: number, lastTickMs: number, maxDeltaSec = MAX_TICK_DELTA_SEC): number {
@@ -48,19 +85,18 @@ function rolloverDay(entry: ConsumerPersistEntry, dateKey: string): ConsumerPers
 		return entry;
 	}
 	const nextDays = { ...entry.days };
-	if (entry.todayRuntimeSec > 0 || entry.todayEnergyKwh > 0) {
-		nextDays[entry.todayDateKey] = {
-			dateKey: entry.todayDateKey,
-			runtimeSec: entry.todayRuntimeSec,
-			energyKwh: entry.todayEnergyKwh,
-			lastTickMs: entry.lastTickMs,
-		};
+	const rec = persistableDayRecord(entry);
+	if (rec) {
+		nextDays[rec.dateKey] = rec;
 	}
 	return {
 		...entry,
 		todayDateKey: dateKey,
 		todayRuntimeSec: 0,
 		todayEnergyKwh: 0,
+		todayZeroRuntimeEvaluable: false,
+		todayModesAvailable: null,
+		todayRoomDataOk: false,
 		days: nextDays,
 	};
 }
@@ -141,6 +177,9 @@ export function ingestConsumerStatsTick(
 		...next,
 		lastTickMs: input.nowMs,
 		wasActive: input.countable,
+		todayZeroRuntimeEvaluable: next.todayZeroRuntimeEvaluable === true || input.zeroRuntimeEvaluable === true,
+		todayModesAvailable: mergeModesAvailable(next.todayModesAvailable, input.modesAvailable),
+		todayRoomDataOk: next.todayRoomDataOk === true || input.roomDataOk === true,
 	};
 }
 
@@ -167,15 +206,7 @@ export function snapshotFromEntry(
 }
 
 export function dayRecordFromEntry(entry: ConsumerPersistEntry): ConsumerDayRecord | null {
-	if (entry.todayRuntimeSec <= 0 && entry.todayEnergyKwh <= 0) {
-		return null;
-	}
-	return {
-		dateKey: entry.todayDateKey,
-		runtimeSec: entry.todayRuntimeSec,
-		energyKwh: entry.todayEnergyKwh,
-		lastTickMs: entry.lastTickMs,
-	};
+	return persistableDayRecord(entry);
 }
 
 function roundKwh(value: number): number {

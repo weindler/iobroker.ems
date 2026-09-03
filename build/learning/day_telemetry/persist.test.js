@@ -66,11 +66,17 @@ const types_js_1 = require("./types.js");
         delete raw.gridBalanceOffWindows;
         const buckets = raw.buckets;
         delete buckets.batteryChargeSource;
+        delete buckets.outdoorTempC;
+        delete buckets.cloudPct;
+        delete buckets.climateUnitSlots;
         const n = (0, persist_js_1.normalizeDayRecord)(raw, "2026-06-15");
         strict_1.default.ok(n);
         strict_1.default.ok(Array.isArray(n.gridBalanceRunSegments));
         strict_1.default.ok(Array.isArray(n.gridBalanceOffWindows));
         strict_1.default.equal(n.buckets.batteryChargeSource.length, n.slotCount);
+        strict_1.default.equal(n.buckets.outdoorTempC.length, n.slotCount);
+        strict_1.default.equal(n.buckets.climateUnitSlots.length, n.slotCount);
+        strict_1.default.ok(n.buckets.outdoorTempC.every((v) => v === null));
     });
     (0, node_test_1.it)("atomic write roundtrip", async () => {
         const dir = await fs.mkdtemp(path.join(os.tmpdir(), "daytel-"));

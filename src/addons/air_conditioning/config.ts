@@ -47,6 +47,20 @@ export function acModeCommandEnabled(mode: string): boolean {
 	return mode.trim().length > 0;
 }
 
+/**
+ * Welche Climate-Betriebsarten für diese Unit als Aktor verfügbar/gewünscht sind.
+ * Deaktiviert ≠ 0-Bedarf — nur die vorhandene Admin-Konfiguration, keine Saisonlogik.
+ */
+export function availableAcModePurposes(
+	unit: AcUnitConfig,
+): Array<"cooling" | "heating" | "dehumidify"> {
+	const out: Array<"cooling" | "heating" | "dehumidify"> = [];
+	if (acModeCommandEnabled(unit.modeWhenCooling)) out.push("cooling");
+	if (acModeCommandEnabled(unit.modeWhenHeating)) out.push("heating");
+	if (acModeCommandEnabled(unit.modeWhenDehumidify)) out.push("dehumidify");
+	return out;
+}
+
 export function acCleaningAfterPurpose(
 	unit: AcUnitConfig,
 	purpose: AcUnitModePurpose | null,

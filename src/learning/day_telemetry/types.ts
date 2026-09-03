@@ -144,6 +144,48 @@ export type DayTelemetryReplanEvent = {
 	snapshotId: string;
 };
 
+/** Climate-Zweck in Telemetrie/Learning — nie erfunden, unknown wenn unklar. */
+export type ClimateModePurpose = "cooling" | "heating" | "dehumidify" | "off" | "unknown";
+
+/**
+ * Pro-Raum-Snapshot eines 15-Min-Slots (additiv).
+ * Fehlende Sensor-/Kontextwerte bleiben null — niemals erfundene 0.
+ * Alte Tagesdateien ohne dieses Feld bleiben lesbar.
+ */
+export type ClimateUnitSlotSample = {
+	unitIndex: number;
+	roomTempC: number | null;
+	roomHumidityPct: number | null;
+	targetTempC: number | null;
+	coolingOnTempC: number | null;
+	coolingOffTempC: number | null;
+	/** Vorhandene Heating-Schwelle (Config); kein separates On/Off in Admin. */
+	heatingSetpointC: number | null;
+	maxHumidityPct: number | null;
+	/** cooling / heating / dehumidify — nur wirklich verfügbare Modi. */
+	modesAvailable: string[];
+	running: boolean | null;
+	modePurpose: ClimateModePurpose;
+	hardOffAt: string | null;
+	demandUrgency01: number | null;
+	ownershipOwner: string | null;
+	overrideActive: boolean | null;
+	plannedEnergyKwh: number | null;
+	sharedPowerGroupId: string | null;
+	activeUnitCombination: string | null;
+};
+
+/** Thermische Start-/Endbeobachtung einer Unit in einem Climate-Segment. */
+export type ClimateUnitThermalObservation = {
+	unitIndex: number;
+	roomTempStartC: number | null;
+	roomTempEndC: number | null;
+	roomHumidityStartPct: number | null;
+	roomHumidityEndPct: number | null;
+	ownershipOwner?: string | null;
+	overrideActive?: boolean | null;
+};
+
 export type ClimateRunSegment = {
 	startTs: number;
 	endTs: number;
@@ -154,6 +196,14 @@ export type ClimateRunSegment = {
 	runtimeSec: number;
 	valid: boolean;
 	rejectReason: string | null;
+	/** Additiv — alte Segmente ohne diese Felder bleiben gültig. */
+	outdoorTempStartC?: number | null;
+	outdoorTempEndC?: number | null;
+	unitObservations?: ClimateUnitThermalObservation[];
+	ownershipOwner?: string | null;
+	overrideActive?: boolean | null;
+	thermalUsable?: boolean;
+	thermalRejectReason?: string | null;
 };
 
 /**
@@ -265,6 +315,18 @@ export type DayTelemetryBuckets = {
 	otherMeasuredConsumersKwh: Array<number | null>;
 	plannedConsumersRef: Array<number | null>;
 	snapshotIdRef: Array<string | null>;
+	/**
+	 * Außen-Ist °C je Slot (gemapptes Weather-Actual). null = missing.
+	 * Additiv — alte Dateien ohne Feld bleiben lesbar.
+	 */
+	outdoorTempC: Array<number | null>;
+	/** Bewölkung-Ist % je Slot, sofern ohne neue Wetterarchitektur vorhanden. */
+	cloudPct: Array<number | null>;
+	/**
+	 * Pro-Slot Climate-Unit-Snapshots (ein Array pro Slot, oder null = unbeobachtet).
+	 * Additiv — alte Dateien ohne Feld bleiben lesbar.
+	 */
+	climateUnitSlots: Array<ClimateUnitSlotSample[] | null>;
 	/** null = unobserved; Zahl = Bitmaske (0 = alle bewerteten Domänen ok). */
 	qualityMask: Array<number | null>;
 };
@@ -346,6 +408,9 @@ export function emptyBuckets(slotCount: number): DayTelemetryBuckets {
 		otherMeasuredConsumersKwh: n(),
 		plannedConsumersRef: n(),
 		snapshotIdRef: nStr(),
+		outdoorTempC: n(),
+		cloudPct: n(),
+		climateUnitSlots: Array.from({ length: slotCount }, () => null),
 		qualityMask: nMask(),
 	};
 }

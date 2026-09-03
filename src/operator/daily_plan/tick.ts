@@ -75,6 +75,23 @@ import {
 	type PlanBaseline,
 	type PlanActualSample,
 } from "./unified/materiality";
+import { climateDemandDigest } from "../planning/climate_predictive";
+import type { UnifiedClimateUnitInput } from "./unified/types";
+
+function acDemandDigestFromUnits(units: UnifiedClimateUnitInput[] | undefined): string {
+	if (!units?.length) return "";
+	return climateDemandDigest({
+		units: units.map((u) => {
+			const m = /unit_(\d+)/.exec(u.unitId);
+			return {
+				unitIndex: m ? Number(m[1]) : 0,
+				roomTempC: u.roomTempC,
+				expectedKwh: u.expectedEnergyKwh ?? 0,
+				demandModel: u.demandModel ?? "",
+			};
+		}),
+	});
+}
 import { REASON } from "./unified/reason_codes";
 import {
 	assessUnifiedReplanFailure,
@@ -1006,6 +1023,7 @@ export async function runDailyPlanTick(
 		bufferTempC: probeInput.thermal?.bufferTempC ?? null,
 		thermalEmptyAtIso: probeInput.thermal?.estimatedEmptyAtIso ?? learningEmptyAtIso,
 		acMandatoryAny: probeInput.climate?.units.some((u) => u.mandatoryComfort) === true,
+		acDemandDigest: acDemandDigestFromUnits(probeInput.climate?.units),
 		vehicleConnected: probeInput.wallbox?.connectedNow ?? wbConnected,
 		vehicleRequiredEnergyKwh: probeInput.wallbox?.requiredEnergyKwh ?? null,
 		vehicleDeadlineIso: probeInput.wallbox?.deadlineIso ?? null,
@@ -1177,6 +1195,7 @@ export async function runDailyPlanTick(
 				bufferTempC: unifiedInputFinal.thermal?.bufferTempC ?? null,
 				thermalEmptyAtIso: unifiedInputFinal.thermal?.estimatedEmptyAtIso ?? learningEmptyAtIso,
 				acMandatoryAny: unifiedInputFinal.climate?.units.some((u) => u.mandatoryComfort) === true,
+				acDemandDigest: acDemandDigestFromUnits(unifiedInputFinal.climate?.units),
 				vehicleConnected: unifiedInputFinal.wallbox?.connectedNow ?? null,
 				vehicleRequiredEnergyKwh: unifiedInputFinal.wallbox?.requiredEnergyKwh ?? null,
 				vehicleDeadlineIso: unifiedInputFinal.wallbox?.deadlineIso ?? null,

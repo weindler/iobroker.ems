@@ -1,6 +1,6 @@
 /**
  * Climate-Thermal-Learning: Rebuild aus Day-Telemetry (90 Tage).
- * Schreibt nur eigene Persistenz/States — kein Einfluss auf Planung oder Runtime.
+ * Schreibt eigene Persistenz/States. Operative Planung nutzt usable-Modelle über planCooling.
  */
 
 import { AC_UNIT_COUNT } from "../../addons/air_conditioning/constants";

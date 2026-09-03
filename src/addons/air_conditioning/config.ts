@@ -125,7 +125,10 @@ export function acUnitConfigFromAdapter(config: unknown, index: number): AcUnitC
 		fanModeWhenFanOnly: strField(c, `${p}fan_mode_when_fan_only`, "auto"),
 		modeWhenHeating: strField(c, `${p}mode_when_heating`, ""),
 		fanModeWhenHeating: strField(c, `${p}fan_mode_when_heating`, "auto"),
-		heatSetpointC: null,
+		heatSetpointC: (() => {
+			const heatRaw = numField(c, `${p}heat_setpoint_c`, 0);
+			return heatRaw > 0 ? heatRaw : null;
+		})(),
 		activeFrom: strField(c, `${p}active_from`, "08:00"),
 		activeUntil: strField(c, `${p}active_until`, "20:00"),
 		hardOffAt: strField(c, `${p}hard_off_at`, "20:00"),

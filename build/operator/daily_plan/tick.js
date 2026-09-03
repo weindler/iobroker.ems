@@ -68,6 +68,22 @@ const ev_planner_publish_1 = require("./unified/ev_planner_publish");
 const from_forecast_context_1 = require("./unified/from_forecast_context");
 const cadence_1 = require("./unified/cadence");
 const materiality_1 = require("./unified/materiality");
+const climate_predictive_1 = require("../planning/climate_predictive");
+function acDemandDigestFromUnits(units) {
+    if (!units?.length)
+        return "";
+    return (0, climate_predictive_1.climateDemandDigest)({
+        units: units.map((u) => {
+            const m = /unit_(\d+)/.exec(u.unitId);
+            return {
+                unitIndex: m ? Number(m[1]) : 0,
+                roomTempC: u.roomTempC,
+                expectedKwh: u.expectedEnergyKwh ?? 0,
+                demandModel: u.demandModel ?? "",
+            };
+        }),
+    });
+}
 const reason_codes_1 = require("./unified/reason_codes");
 const replan_failure_1 = require("./unified/replan_failure");
 const trigger_digest_1 = require("../../ai/trigger_digest");
@@ -887,6 +903,7 @@ async function runDailyPlanTick(host, forecastPlan) {
         bufferTempC: probeInput.thermal?.bufferTempC ?? null,
         thermalEmptyAtIso: probeInput.thermal?.estimatedEmptyAtIso ?? learningEmptyAtIso,
         acMandatoryAny: probeInput.climate?.units.some((u) => u.mandatoryComfort) === true,
+        acDemandDigest: acDemandDigestFromUnits(probeInput.climate?.units),
         vehicleConnected: probeInput.wallbox?.connectedNow ?? wbConnected,
         vehicleRequiredEnergyKwh: probeInput.wallbox?.requiredEnergyKwh ?? null,
         vehicleDeadlineIso: probeInput.wallbox?.deadlineIso ?? null,
@@ -1053,6 +1070,7 @@ async function runDailyPlanTick(host, forecastPlan) {
                 bufferTempC: unifiedInputFinal.thermal?.bufferTempC ?? null,
                 thermalEmptyAtIso: unifiedInputFinal.thermal?.estimatedEmptyAtIso ?? learningEmptyAtIso,
                 acMandatoryAny: unifiedInputFinal.climate?.units.some((u) => u.mandatoryComfort) === true,
+                acDemandDigest: acDemandDigestFromUnits(unifiedInputFinal.climate?.units),
                 vehicleConnected: unifiedInputFinal.wallbox?.connectedNow ?? null,
                 vehicleRequiredEnergyKwh: unifiedInputFinal.wallbox?.requiredEnergyKwh ?? null,
                 vehicleDeadlineIso: unifiedInputFinal.wallbox?.deadlineIso ?? null,

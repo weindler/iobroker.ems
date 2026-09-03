@@ -1,7 +1,7 @@
 "use strict";
 /**
  * Climate-Thermal-Learning: Rebuild aus Day-Telemetry (90 Tage).
- * Schreibt nur eigene Persistenz/States — kein Einfluss auf Planung oder Runtime.
+ * Schreibt eigene Persistenz/States. Operative Planung nutzt usable-Modelle über planCooling.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.loadClimateThermalPersist = exports.runClimateThermalLearning = exports.CLIMATE_THERMAL_PERSIST_CATEGORY = void 0;

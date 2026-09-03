@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { buildDaySlotLayout } from "../day_telemetry/slots.js";
 import { freshDay, makeSnapshot } from "./test_helpers.js";
-import { evaluateClimateFindings } from "./climate_findings.js";
+import { evaluateClimateFindings, evaluateClimatePredictiveDayFindings } from "./climate_findings.js";
 
 function priceAtHour(hour: number): number {
 	return 10 + hour * 1.5;
@@ -397,5 +397,48 @@ describe("daily_evaluator climate findings", () => {
 		assert.equal(findings[0].measurements.remainingMinutesUntilHardOff, 10);
 		assert.equal(findings[0].quality.decisionQuality, "avoidable");
 		assert.ok(findings[0].reasonCodes.includes("late_start_near_hard_off"));
+	});
+
+	it("alte Snapshots ohne demandModel erzeugen keine predictive-day Findings", () => {
+		const day = freshDay();
+		day.forecastSnapshots.push(
+			makeSnapshot({
+				climateUnits: [
+					{
+						consumerId: "air_conditioning.unit_1",
+						sharedPowerGroupId: null,
+						mandatory: false,
+						mode: null,
+						hardOffAtIso: null,
+					},
+				],
+			}),
+		);
+		assert.equal(evaluateClimatePredictiveDayFindings(day).length, 0);
+	});
+
+	it("demand_model im Snapshot wird als climate_predictive_day dokumentiert", () => {
+		const day = freshDay();
+		day.forecastSnapshots.push(
+			makeSnapshot({
+				climateUnits: [
+					{
+						consumerId: "air_conditioning.unit_1",
+						sharedPowerGroupId: null,
+						mandatory: false,
+						mode: null,
+						hardOffAtIso: null,
+						demandModel: "bootstrap",
+						fallbackReasonDe: "Kein Thermal-Learning — Bootstrap.",
+						expectedEnergyKwh: 0,
+						expectedRuntimeH: 0,
+					},
+				],
+			}),
+		);
+		const findings = evaluateClimatePredictiveDayFindings(day);
+		assert.equal(findings.length, 1);
+		assert.equal(findings[0].eventType, "climate_predictive_day");
+		assert.ok(findings[0].reasonCodes.includes("demand_model_bootstrap"));
 	});
 });

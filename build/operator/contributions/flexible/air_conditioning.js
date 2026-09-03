@@ -80,7 +80,18 @@ function buildUnitContribution(input, unitInput, forecast) {
             expectedKwhToday: (0, types_2.round3)(forecast.expectedKwh),
             expectedHoursToday: forecast.expectedHours,
             coolingHours: forecast.coolingHours,
+            heatingHours: forecast.heatingHours,
             dehumidifyHours: forecast.dehumidifyHours,
+            heatSetpointC: unit.heatSetpointC,
+            demand_model: forecast.demandModel,
+            demandModel: forecast.demandModel,
+            fallback_reason_de: forecast.fallbackReasonDe,
+            fallbackReasonDe: forecast.fallbackReasonDe,
+            predictive_confidence: forecast.predictiveConfidence,
+            predicted_threshold_crossing_at: forecast.predictedCrossingAtIso,
+            predicted_peak_room_temp_c: forecast.predictedPeakRoomTempC,
+            predicted_low_room_temp_c: forecast.predictedLowRoomTempC,
+            predicted_peak_humidity_pct: forecast.predictedPeakHumidityPct,
             requiredEnergyKwh,
             expectedPeakW: forecast.powerW,
             minPowerW: maxPowerW,
@@ -117,6 +128,8 @@ function buildAirConditioningContributions(input) {
         outdoorForecastMaxC: input.outdoorForecastMaxC ?? null,
         units: unitInputs,
         sharedPowerStats: input.sharedPowerStats,
+        hourlyPoints: input.hourlyPoints,
+        thermalModels: input.thermalModels,
     });
     const byIndex = new Map(cooling.units.map((u) => [u.unitIndex, u]));
     const contributions = [];
@@ -134,8 +147,16 @@ function buildAirConditioningContributions(input) {
             expectedHours: 0,
             expectedKwh: 0,
             coolingHours: 0,
+            heatingHours: 0,
             dehumidifyHours: 0,
             reasonDe: "Unit nicht im Kühlplan.",
+            demandModel: "legacy_fallback",
+            fallbackReasonDe: "Unit nicht im Kühlplan.",
+            predictiveConfidence: null,
+            predictedCrossingAtIso: null,
+            predictedPeakRoomTempC: null,
+            predictedLowRoomTempC: null,
+            predictedPeakHumidityPct: null,
         };
         contributions.push(buildUnitContribution(input, unitInput, forecast));
     }

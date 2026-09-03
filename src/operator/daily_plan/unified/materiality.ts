@@ -73,6 +73,11 @@ export type PlanBaseline = {
 	 * bestehende Aufrufer/Tests ohne diesen Wert unverändert funktionieren (Fallback "").
 	 */
 	userOverrideDigest?: string;
+	/**
+	 * Optional: Climate-Bedarfs-Digest (Raum + erwartete kWh + demand_model).
+	 * Beide Seiten gesetzt und ungleich → soft Replan. Alte Aufrufer ohne Feld bleiben unverändert.
+	 */
+	acDemandDigest?: string;
 };
 
 export type PlanActualSample = {
@@ -101,6 +106,8 @@ export type PlanActualSample = {
 	cadenceDigest: string;
 	/** BLOCK B (additiv, optional): siehe `PlanBaseline.userOverrideDigest`. */
 	userOverrideDigest?: string;
+	/** Optional: siehe `PlanBaseline.acDemandDigest`. */
+	acDemandDigest?: string;
 };
 
 export type MaterialReplanDecision = {
@@ -331,6 +338,18 @@ export function evaluateMaterialReplan(
 	if (baseline.acMandatoryAny !== actual.acMandatoryAny) {
 		reasons.push(REASON.REPLAN_AC_COMFORT_CHANGE);
 		hard = true;
+	}
+	const baseDemand = baseline.acDemandDigest;
+	const actualDemand = actual.acDemandDigest;
+	if (
+		baseDemand != null &&
+		baseDemand !== "" &&
+		actualDemand != null &&
+		actualDemand !== "" &&
+		baseDemand !== actualDemand &&
+		!reasons.includes(REASON.REPLAN_AC_COMFORT_CHANGE)
+	) {
+		reasons.push(REASON.REPLAN_AC_COMFORT_CHANGE);
 	}
 
 	if (baseline.vehicleConnected === false && actual.vehicleConnected === true) {

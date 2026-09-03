@@ -368,4 +368,41 @@ function priceSnapshot(day, overrides = {}) {
         strict_1.default.equal(findings[0].quality.decisionQuality, "avoidable");
         strict_1.default.ok(findings[0].reasonCodes.includes("late_start_near_hard_off"));
     });
+    (0, node_test_1.it)("alte Snapshots ohne demandModel erzeugen keine predictive-day Findings", () => {
+        const day = (0, test_helpers_js_1.freshDay)();
+        day.forecastSnapshots.push((0, test_helpers_js_1.makeSnapshot)({
+            climateUnits: [
+                {
+                    consumerId: "air_conditioning.unit_1",
+                    sharedPowerGroupId: null,
+                    mandatory: false,
+                    mode: null,
+                    hardOffAtIso: null,
+                },
+            ],
+        }));
+        strict_1.default.equal((0, climate_findings_js_1.evaluateClimatePredictiveDayFindings)(day).length, 0);
+    });
+    (0, node_test_1.it)("demand_model im Snapshot wird als climate_predictive_day dokumentiert", () => {
+        const day = (0, test_helpers_js_1.freshDay)();
+        day.forecastSnapshots.push((0, test_helpers_js_1.makeSnapshot)({
+            climateUnits: [
+                {
+                    consumerId: "air_conditioning.unit_1",
+                    sharedPowerGroupId: null,
+                    mandatory: false,
+                    mode: null,
+                    hardOffAtIso: null,
+                    demandModel: "bootstrap",
+                    fallbackReasonDe: "Kein Thermal-Learning — Bootstrap.",
+                    expectedEnergyKwh: 0,
+                    expectedRuntimeH: 0,
+                },
+            ],
+        }));
+        const findings = (0, climate_findings_js_1.evaluateClimatePredictiveDayFindings)(day);
+        strict_1.default.equal(findings.length, 1);
+        strict_1.default.equal(findings[0].eventType, "climate_predictive_day");
+        strict_1.default.ok(findings[0].reasonCodes.includes("demand_model_bootstrap"));
+    });
 });

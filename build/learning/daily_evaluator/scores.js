@@ -52,7 +52,7 @@ function thermalScore(findings) {
     return { topic: types_1.SCORE_TOPIC.THERMAL, value: r.value, sampleCount: r.sampleCount, basis: "outcome_classification_avg" };
 }
 function climateScore(findings) {
-    const r = avgClassificationScore(findings.filter((f) => f.domain === "climate"));
+    const r = avgClassificationScore(findings.filter((f) => f.domain === "climate" && f.eventType === "climate_run"));
     return { topic: types_1.SCORE_TOPIC.CLIMATE, value: r.value, sampleCount: r.sampleCount, basis: "outcome_classification_avg" };
 }
 function evScore(findings) {

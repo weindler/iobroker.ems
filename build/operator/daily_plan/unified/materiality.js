@@ -207,6 +207,16 @@ function evaluateMaterialReplan(baseline, actual, opts) {
         reasons.push(reason_codes_1.REASON.REPLAN_AC_COMFORT_CHANGE);
         hard = true;
     }
+    const baseDemand = baseline.acDemandDigest;
+    const actualDemand = actual.acDemandDigest;
+    if (baseDemand != null &&
+        baseDemand !== "" &&
+        actualDemand != null &&
+        actualDemand !== "" &&
+        baseDemand !== actualDemand &&
+        !reasons.includes(reason_codes_1.REASON.REPLAN_AC_COMFORT_CHANGE)) {
+        reasons.push(reason_codes_1.REASON.REPLAN_AC_COMFORT_CHANGE);
+    }
     if (baseline.vehicleConnected === false && actual.vehicleConnected === true) {
         reasons.push(reason_codes_1.REASON.REPLAN_VEHICLE_CONNECTED);
         hard = true;

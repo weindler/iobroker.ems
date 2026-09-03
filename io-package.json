@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.24",
+		"version": "0.2.25",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.25": {
+				"en": "Climate demand now works from day 1 without thermal learning (bootstrap). Usable learning switches to predictive room forecast; missing sensors/forecast fall back to the previous safe heuristic. Check contribution details demand_model (bootstrap/predictive/legacy_fallback) and reason_de.",
+				"de": "Climate-Bedarf funktioniert ab Neuinstallation ohne Thermal-Learning (Bootstrap). Usable Learning übernimmt die individuelle Raumprognose; fehlende Sensoren/Forecast fallen auf die bisherige sichere Heuristik zurück. Prüfen: Contribution-Details demand_model (bootstrap/predictive/legacy_fallback) und reason_de."
+			},
 			"0.2.24": {
 				"en": "Predictive Climate foundation: 15-min room/outdoor telemetry, thermal run segments, zero-runtime days, hourly temp forecast in planner context, and persistent thermal learning (passive/cooling/heating/dehumidify). Diagnosis only — productive Climate planning and runtime unchanged. Check learning.climate_thermal.unit_N.* after a few days.",
 				"de": "Predictive-Climate-Foundation: 15-Min-Raum-/Außen-Telemetrie, thermische Laufsegmente, 0-Laufzeit-Tage, stündlicher Temperaturforecast im Planner-Kontext und persistentes Thermal-Learning (passiv/cooling/heating/dehumidify). Nur Diagnose — produktive Climate-Planung und Runtime unverändert. Nach einigen Tagen: learning.climate_thermal.unit_N.* prüfen."

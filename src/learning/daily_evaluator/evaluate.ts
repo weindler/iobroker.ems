@@ -8,7 +8,7 @@ import { DAILY_EVALUATOR_SCHEMA_VERSION } from "./constants";
 import { evaluateAllDomainEligibility } from "./eligibility";
 import { evaluateBatteryFindings } from "./battery_findings";
 import { evaluateThermalFindings } from "./thermal_findings";
-import { evaluateClimateFindings } from "./climate_findings";
+import { evaluateClimateFindings, evaluateClimatePredictiveDayFindings } from "./climate_findings";
 import { evaluateEvFindings } from "./ev_findings";
 import { computeDomainScores, computeGlobalScore } from "./scores";
 import { EVALUATOR_DOMAIN, type DomainEligibility, type EvaluationRecord, type EvaluatorFinding } from "./types";
@@ -63,6 +63,7 @@ export function evaluateDay(input: {
 				break;
 			case EVALUATOR_DOMAIN.CLIMATE:
 				findings.push(...evaluateClimateFindings(day));
+				findings.push(...evaluateClimatePredictiveDayFindings(day));
 				break;
 			case EVALUATOR_DOMAIN.EV:
 				findings.push(...evaluateEvFindings(day));

@@ -1,6 +1,7 @@
 "use strict";
 /**
- * Persistentes Climate-Thermal-Learning — nur Diagnose, keine Steuerung.
+ * Persistentes Climate-Thermal-Learning.
+ * Operativ nur wenn usable=true (Predictive). Unusable bleibt Diagnose/Bootstrap.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.emptyPassiveStat = exports.emptyEffectStat = exports.CLIMATE_THERMAL_MODULE = exports.CLIMATE_THERMAL_FILENAME = void 0;

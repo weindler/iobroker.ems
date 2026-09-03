@@ -422,7 +422,16 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 		const onTemp = num(d, "onTempC") ?? comfortMax;
 		const typical = num(d, "estimatedPowerW") ?? num(d, "typicalPowerW") ?? num(d, "expectedPeakW");
 		const expected = num(d, "expectedKwhToday") ?? num(d, "expectedEnergyKwh");
-		const overComfort = room !== null && onTemp !== null && room >= onTemp;
+		const heatSetpoint = num(d, "heatSetpointC");
+		const roomHumidityPct = num(d, "roomHumidityPct");
+		const maxHumidityPct = num(d, "maxHumidityPct");
+		const overCool = room !== null && onTemp !== null && room >= onTemp;
+		const overHeat = room !== null && heatSetpoint !== null && room <= heatSetpoint;
+		const overHum =
+			roomHumidityPct !== null &&
+			maxHumidityPct !== null &&
+			roomHumidityPct >= maxHumidityPct;
+		const overComfort = overCool || overHeat || overHum;
 		const rt = acRtByUnit.get(u);
 		const hardwareRunning = rt?.running === true;
 		/*
@@ -448,12 +457,11 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 		const hardStopMs = minsToHardOff !== null ? nowMs + minsToHardOff * 60_000 : null;
 		const sharedRaw = str(d, "sharedPowerGroupId");
 		const sharedPowerGroupId = sharedRaw && sharedRaw.trim() ? sharedRaw.trim() : null;
-		/**
-		 * Additiv (Block A, Abnahme-Korrektur #2b): Feuchte-Seite derselben Urgency-Formel
-		 * (hard_off_worth_it.ts) — rein deskriptiv, keine Auswirkung auf Scoring/Allocation.
-		 */
-		const roomHumidityPct = num(d, "roomHumidityPct");
-		const maxHumidityPct = num(d, "maxHumidityPct");
+		const demandModelRaw = str(d, "demand_model") ?? str(d, "demandModel");
+		const demandModel =
+			demandModelRaw === "bootstrap" || demandModelRaw === "predictive" || demandModelRaw === "legacy_fallback"
+				? demandModelRaw
+				: null;
 		climateUnits.push({
 			unitId: CONTRIBUTION_IDS.AC_UNIT(u),
 			label: str(d, "name") ?? `unit_${u}`,
@@ -473,6 +481,15 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 			sharedPowerGroupId,
 			roomHumidityPct,
 			maxHumidityPct,
+			heatSetpointC: heatSetpoint,
+			demandModel,
+			fallbackReasonDe: str(d, "fallback_reason_de") ?? str(d, "fallbackReasonDe"),
+			predictiveConfidence: num(d, "predictive_confidence") ?? num(d, "predictiveConfidence"),
+			predictedCrossingAtIso: str(d, "predicted_threshold_crossing_at"),
+			predictedPeakRoomTempC: num(d, "predicted_peak_room_temp_c"),
+			predictedLowRoomTempC: num(d, "predicted_low_room_temp_c"),
+			predictedPeakHumidityPct: num(d, "predicted_peak_humidity_pct"),
+			expectedHoursToday: num(d, "expectedHoursToday"),
 		});
 	}
 	/*

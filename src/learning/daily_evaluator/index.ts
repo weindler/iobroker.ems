@@ -38,7 +38,7 @@ export {
 } from "./knowledge_time";
 export { evaluateBatteryFindings } from "./battery_findings";
 export { evaluateThermalFindings } from "./thermal_findings";
-export { evaluateClimateFindings } from "./climate_findings";
+export { evaluateClimateFindings, evaluateClimatePredictiveDayFindings } from "./climate_findings";
 export { evaluateEvFindings } from "./ev_findings";
 export { computeDomainScores, computeGlobalScore } from "./scores";
 export { evaluateDay } from "./evaluate";

@@ -389,6 +389,15 @@ export type UnifiedClimateUnitInput = {
 	 */
 	roomHumidityPct?: number | null;
 	maxHumidityPct?: number | null;
+	heatSetpointC?: number | null;
+	demandModel?: "bootstrap" | "predictive" | "legacy_fallback" | null;
+	fallbackReasonDe?: string | null;
+	predictiveConfidence?: number | null;
+	predictedCrossingAtIso?: string | null;
+	predictedPeakRoomTempC?: number | null;
+	predictedLowRoomTempC?: number | null;
+	predictedPeakHumidityPct?: number | null;
+	expectedHoursToday?: number | null;
 };
 
 export type UnifiedClimateInput = {

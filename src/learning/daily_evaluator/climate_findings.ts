@@ -200,6 +200,92 @@ export function evaluateClimateFindings(day: DayTelemetryDayRecord): EvaluatorFi
 	return findings;
 }
 
+/**
+ * Additiv: predicted vs. actual Climate-Bedarf aus Snapshots.
+ * Keine Selbstkorrektur, keine Änderung bestehender climate_run-Findings.
+ */
+export function evaluateClimatePredictiveDayFindings(day: DayTelemetryDayRecord): EvaluatorFinding[] {
+	const snaps = day.forecastSnapshots.filter((s) =>
+		s.climateUnits.some((u) => u.demandModel != null && u.demandModel !== ""),
+	);
+	if (snaps.length === 0) return [];
+
+	const first = snaps[0];
+	const findings: EvaluatorFinding[] = [];
+	for (const unit of first.climateUnits) {
+		if (!unit.demandModel) continue;
+		const plannedKwh = unit.expectedEnergyKwh ?? 0;
+		const plannedH = unit.expectedRuntimeH ?? null;
+		const unitIdx = Number((/unit_(\d+)/.exec(unit.consumerId) ?? [])[1]);
+		let comfortViolated = false;
+		for (const slots of day.buckets.climateUnitSlots ?? []) {
+			if (!slots) continue;
+			for (const s of slots) {
+				if (Number.isFinite(unitIdx) && s.unitIndex !== unitIdx) continue;
+				if (
+					s.roomTempC != null &&
+					s.coolingOnTempC != null &&
+					s.roomTempC >= s.coolingOnTempC
+				) {
+					comfortViolated = true;
+				}
+				if (
+					s.roomHumidityPct != null &&
+					s.maxHumidityPct != null &&
+					s.roomHumidityPct >= s.maxHumidityPct
+				) {
+					comfortViolated = true;
+				}
+			}
+		}
+		let actualRuntimeSec = 0;
+		for (const seg of day.climateRunSegments ?? []) {
+			if (seg.valid && seg.runtimeSec > 0) actualRuntimeSec += seg.runtimeSec;
+		}
+
+		let classification: FindingClassification = "unknown";
+		let reason = "climate_predictive_day";
+		if (plannedKwh > 0.2 && actualRuntimeSec < 300 && !comfortViolated) {
+			classification = "avoidable";
+			reason = "climate_planned_without_need";
+		} else if (plannedKwh <= 0.05 && comfortViolated && actualRuntimeSec > 600) {
+			classification = "necessary";
+			reason = "climate_runtime_caught_underplan";
+		} else if (plannedKwh > 0 && actualRuntimeSec > 0) {
+			classification = "reasonable";
+			reason = "climate_plan_and_runtime";
+		}
+
+		findings.push({
+			id: `climate-predictive-${day.dateKey}-${unit.consumerId}`,
+			dateKey: day.dateKey,
+			tsStartIso: first.tsIso,
+			tsEndIso: new Date(day.endMs).toISOString(),
+			domain: "climate",
+			assetRef: unit.consumerId,
+			eventType: "climate_predictive_day",
+			quality: { decisionQuality: classification, outcomeQuality: classification },
+			confidence: unit.predictiveConfidence ?? null,
+			snapshotIdRef: first.id,
+			measurements: {
+				plannedKwh,
+				plannedHours: plannedH,
+				actualRuntimeSec,
+			},
+			energyImpactKwh: null,
+			costImpactCt: null,
+			reasonCodes: [reason, `demand_model_${unit.demandModel}`],
+			explanationDe:
+				unit.fallbackReasonDe ||
+				`Climate demand_model=${unit.demandModel}: geplant ${plannedKwh.toFixed(2)} kWh, Runtime ${Math.round(actualRuntimeSec / 60)} min.`,
+			insufficientData: classification === "unknown",
+			notApplicable: false,
+			userOverride: false,
+		});
+	}
+	return findings;
+}
+
 function buildClimateExplanation(
 	seg: ClimateRunSegment,
 	decisionQuality: FindingClassification,

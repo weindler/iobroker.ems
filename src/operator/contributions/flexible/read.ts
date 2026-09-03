@@ -18,7 +18,10 @@ import { immersionDeviceConfigFromAdapter } from "../../../addons/immersion_heat
 import { evaluateHygieneDuty } from "../../../addons/immersion_heater/hygiene";
 import { IMMERSION_RUNTIME_STATES } from "../../../addons/immersion_heater/runtime/types";
 import { IMMERSION_DEFAULT_KWH_PER_DEGREE_C } from "./flex_demand";
-import { acGlobalConfigFromAdapter } from "../../../addons/air_conditioning/config";
+import { acGlobalConfigFromAdapter, acModeCommandEnabled } from "../../../addons/air_conditioning/config";
+import { loadClimateThermalPersist } from "../../../learning/climate_thermal";
+import { collectWeatherHourlyPoints } from "../weather_hourly";
+import { pvShapeConfigFromAdapter } from "../pv_shape_config";
 import { AC_UNIT_COUNT, acUnitConsumerKey } from "../../../addons/air_conditioning/constants";
 import { acUnitRuntimeStates } from "../../../addons/air_conditioning/runtime/ensure_states";
 import { isAddonGovernanceEnabledFromState } from "../../../addons/governance";
@@ -516,6 +519,16 @@ export async function collectFlexibleContributions(
 	const acConfig = acGlobalConfigFromAdapter(config);
 	const stats = await readConsumerStats(host);
 	const climateSharedPowerStats = await readClimateSharedPowerStats(host);
+	const hourlyPrefix = pvShapeConfigFromAdapter(config).brightskyHourlyPrefix;
+	const [hourlyPoints, thermalPersist] = await Promise.all([
+		collectWeatherHourlyPoints(host, now, timezone, hourlyPrefix).catch(() => []),
+		host.getAbsolutePath
+			? loadClimateThermalPersist({
+					getAbsolutePath: (category?: string) => host.getAbsolutePath!(category ?? ""),
+				}).catch(() => null)
+			: Promise.resolve(null),
+	]);
+	const thermalModels = thermalPersist?.units ?? undefined;
 
 	const thermalLearning = await readThermalLearningSignal(host, now);
 	const boilerLearning = await readBoilerLearningSignal(host, now);
@@ -575,15 +588,22 @@ export async function collectFlexibleContributions(
 			const index = i + 1;
 			const unit = acConfig.units.find((u) => u.index === index)!;
 			const ids = acUnitRuntimeStates(index);
-			const [roomTempC, roomHumidityPct, faultState, cleaningActive] = await Promise.all([
+			const [roomTempC, roomHumidityPct, faultState, cleaningActive, liveSetpointC] = await Promise.all([
 				readNum(host, ids.roomTempC),
 				readNum(host, ids.roomHumidityPct),
 				readStr(host, ids.state),
 				readBool(host, ids.cleaningActive),
+				readNum(host, ids.setpointTempC),
 			]);
+			const heatSetpointC =
+				unit.heatSetpointC ??
+				(acModeCommandEnabled(unit.modeWhenHeating) && liveSetpointC != null && liveSetpointC > 0
+					? liveSetpointC
+					: null);
+			const plannedUnit = heatSetpointC !== unit.heatSetpointC ? { ...unit, heatSetpointC } : unit;
 			const consumerKey = acUnitConsumerKey(index);
 			return {
-				unit,
+				unit: plannedUnit,
 				roomTempC,
 				roomHumidityPct,
 				consumerStats: stats?.consumers?.[consumerKey],
@@ -709,6 +729,8 @@ export async function collectFlexibleContributions(
 			outdoorForecastMaxC,
 			units: acUnits,
 			sharedPowerStats: climateSharedPowerStats,
+			hourlyPoints,
+			thermalModels,
 		},
 	});
 

@@ -2,11 +2,17 @@ import type { AcGlobalConfig, AcUnitConfig } from "../../addons/air_conditioning
 import { isHardOffTime, isWithinClockWindow, localMinutesNow } from "../../addons/air_conditioning/runtime/time";
 import type { ConsumerPersistEntry } from "../../learning/consumer_stats/types";
 import { resolveConsumerEffectivePowerW } from "../../learning/consumer_stats/learned_power";
+import type { ClimateThermalUnitModel } from "../../learning/climate_thermal/types";
 import type { PlannerCoolingDecision } from "../../planner/types";
 import { sumAllocatedConsumerPeakW } from "../../planner/consumer_allocate";
-import { estimateCoolingHours, estimateDehumidifyHours } from "./climate_energy";
 import { climateSharedPowerKey, resolveClimateSharedPowerW } from "../../learning/climate_shared_power/math";
 import type { ClimateSharedPowerStat } from "../../learning/climate_shared_power/types";
+import type { WeatherHourlyPoint } from "../contributions/weather";
+import {
+	climateWindowEndMs,
+	estimateClimateUnitDemand,
+	type ClimateDemandModel,
+} from "./climate_predictive";
 
 export type CoolingUnitPlanInput = {
 	unit: AcUnitConfig;
@@ -30,6 +36,10 @@ export type CoolingPlanInput = {
 	 * noch keine Segmente) unverändertes Verhalten über `resolveConsumerEffectivePowerW`.
 	 */
 	sharedPowerStats?: Record<string, ClimateSharedPowerStat>;
+	/** Stundenforecast (BrightSky) — Bootstrap/Predictive; fehlt → kein Pre-Cool aus Tagesmax. */
+	hourlyPoints?: WeatherHourlyPoint[];
+	/** Persistentes Thermal-Learning; fehlt / unusable → Bootstrap. */
+	thermalModels?: Record<string, ClimateThermalUnitModel>;
 };
 
 export type CoolingUnitForecast = {
@@ -38,13 +48,21 @@ export type CoolingUnitForecast = {
 	powerW: number;
 	powerSource: "config" | "learned" | "learned_shared";
 	/** Für welche Betriebsart `powerW` bestimmt wurde — Basis für gruppenweite Peak-Dedup. */
-	powerPurpose: "cooling" | "dehumidify" | null;
+	powerPurpose: "cooling" | "heating" | "dehumidify" | null;
 	likelyActive: boolean;
 	expectedHours: number;
 	expectedKwh: number;
 	coolingHours: number;
+	heatingHours: number;
 	dehumidifyHours: number;
 	reasonDe: string;
+	demandModel: ClimateDemandModel;
+	fallbackReasonDe: string | null;
+	predictiveConfidence: number | null;
+	predictedCrossingAtIso: string | null;
+	predictedPeakRoomTempC: number | null;
+	predictedLowRoomTempC: number | null;
+	predictedPeakHumidityPct: number | null;
 };
 
 export type CoolingPlanResult = PlannerCoolingDecision & {
@@ -91,7 +109,7 @@ function parseClockEnd(raw: string): number | null {
  */
 function resolveGroupAwarePowerW(
 	unit: AcUnitConfig,
-	purpose: "cooling" | "dehumidify",
+	purpose: "cooling" | "heating" | "dehumidify",
 	fallback: { powerW: number; source: "config" | "learned" },
 	sharedPowerStats: Record<string, ClimateSharedPowerStat> | undefined,
 ): { powerW: number; source: CoolingUnitForecast["powerSource"]; noteDe: string | null } {
@@ -111,9 +129,14 @@ function estimateUnitClimate(input: {
 	unit: AcUnitConfig;
 	roomTempC: number | null;
 	roomHumidityPct: number | null;
+	outdoorTempC: number | null;
 	outdoorMaxC: number | null;
 	outdoorLikelyTempC: number;
 	remainingHours: number;
+	windowEndMs: number;
+	now: Date;
+	hourlyPoints: WeatherHourlyPoint[];
+	thermal: ClimateThermalUnitModel | null | undefined;
 	consumerStats: ConsumerPersistEntry | undefined;
 	sharedPowerStats: Record<string, ClimateSharedPowerStat> | undefined;
 	nowMs: number;
@@ -124,7 +147,11 @@ function estimateUnitClimate(input: {
 		unit.estimatedPowerW,
 		input.nowMs,
 	);
-	const none = (reasonDe: string): CoolingUnitForecast => ({
+	const none = (
+		reasonDe: string,
+		demandModel: ClimateDemandModel = "legacy_fallback",
+		fallbackReasonDe: string | null = reasonDe,
+	): CoolingUnitForecast => ({
 		unitIndex: unit.index,
 		name: unit.name,
 		powerW: learned.powerW,
@@ -134,8 +161,16 @@ function estimateUnitClimate(input: {
 		expectedHours: 0,
 		expectedKwh: 0,
 		coolingHours: 0,
+		heatingHours: 0,
 		dehumidifyHours: 0,
 		reasonDe,
+		demandModel,
+		fallbackReasonDe,
+		predictiveConfidence: null,
+		predictedCrossingAtIso: null,
+		predictedPeakRoomTempC: null,
+		predictedLowRoomTempC: null,
+		predictedPeakHumidityPct: null,
 	});
 
 	if (input.remainingHours <= 0) {
@@ -147,41 +182,51 @@ function estimateUnitClimate(input: {
 			? learned.medianRuntimeSecPerDay / 3600
 			: null;
 
-	const cooling = estimateCoolingHours({
-		outdoorMaxC: input.outdoorMaxC,
-		outdoorLikelyTempC: input.outdoorLikelyTempC,
-		remainingHours: input.remainingHours,
-		learnedHours,
+	const demand = estimateClimateUnitDemand({
+		now: input.now,
+		unit,
 		roomTempC: input.roomTempC,
-		onTempC: unit.onTempC,
-		offTempC: unit.offTempC,
-	});
-
-	const dryConfigured =
-		Boolean(unit.modeWhenDehumidify?.trim()) && unit.maxHumidityPct !== null;
-	const dehumidify = estimateDehumidifyHours({
-		outdoorMaxC: input.outdoorMaxC,
+		roomHumidityPct: input.roomHumidityPct,
+		outdoorTempC: input.outdoorTempC,
+		outdoorForecastMaxC: input.outdoorMaxC,
 		outdoorLikelyTempC: input.outdoorLikelyTempC,
 		remainingHours: input.remainingHours,
+		windowEndMs: input.windowEndMs,
+		hourlyPoints: input.hourlyPoints,
+		thermal: input.thermal,
 		learnedHours,
-		roomHumidityPct: input.roomHumidityPct,
-		maxHumidityPct: unit.maxHumidityPct,
-		dryModeConfigured: dryConfigured,
 	});
 
-	// Kühlung und Entfeuchten teilen oft denselben Verdichter — Stunden nicht doppelt zählen.
+	const cooling = demand.cooling;
+	const heating = demand.heating;
+	const dehumidify = demand.dehumidify;
+
+	// Kühlung, Heizen und Entfeuchten teilen oft denselben Verdichter — Stunden nicht doppelt zählen.
 	const expectedHours = Math.min(
 		input.remainingHours,
-		Math.max(cooling.expectedHours, dehumidify.expectedHours),
+		Math.max(cooling.expectedHours, heating.expectedHours, dehumidify.expectedHours),
 	);
-	const likelyActive = (cooling.likelyActive || dehumidify.likelyActive) && expectedHours > 0;
+	const likelyActive =
+		(cooling.likelyActive || heating.likelyActive || dehumidify.likelyActive) && expectedHours > 0;
 	if (!likelyActive) {
-		const reason = cooling.reasonDe || dehumidify.reasonDe || "Kein Klima-Bedarf";
-		return none(reason);
+		return {
+			...none(demand.reasonDe, demand.demandModel, demand.fallbackReasonDe),
+			predictiveConfidence: demand.predictiveConfidence,
+			predictedCrossingAtIso:
+				cooling.predictedCrossingAtIso ??
+				heating.predictedCrossingAtIso ??
+				dehumidify.predictedCrossingAtIso,
+			predictedPeakRoomTempC: cooling.predictedPeak ?? heating.predictedPeak,
+			predictedLowRoomTempC: heating.predictedLow ?? cooling.predictedLow,
+			predictedPeakHumidityPct: dehumidify.predictedPeak,
+		};
 	}
 
-	// Kühlung dominiert i.d.R. (Kompressorlast); Entfeuchten nur wenn Kühlung nicht ohnehin aktiv ist.
-	const purpose: "cooling" | "dehumidify" = cooling.likelyActive ? "cooling" : "dehumidify";
+	const purpose: "cooling" | "heating" | "dehumidify" = cooling.likelyActive
+		? "cooling"
+		: heating.likelyActive
+			? "heating"
+			: "dehumidify";
 	const resolved = resolveGroupAwarePowerW(unit, purpose, learned, input.sharedPowerStats);
 
 	const expectedKwh = (resolved.powerW * expectedHours) / 1000;
@@ -191,9 +236,11 @@ function estimateUnitClimate(input: {
 			: resolved.source === "learned"
 				? `${resolved.powerW} W (gelernt)`
 				: `${resolved.powerW} W (Config)`;
-	const parts: string[] = [];
+	const parts: string[] = [`demand_model=${demand.demandModel}`];
 	if (cooling.likelyActive) parts.push(`Kühl: ${cooling.reasonDe}`);
+	if (heating.likelyActive) parts.push(`Heiz: ${heating.reasonDe}`);
 	if (dehumidify.likelyActive) parts.push(`Entfeucht: ${dehumidify.reasonDe}`);
+	if (demand.fallbackReasonDe) parts.push(demand.fallbackReasonDe);
 	if (learned.source === "learned" && learnedHours !== null) {
 		parts.push(`Ø ${Math.round(learnedHours * 10) / 10} h/Tag (${learned.sampleDays} Tage)`);
 	}
@@ -209,8 +256,19 @@ function estimateUnitClimate(input: {
 		expectedHours: Math.round(expectedHours * 100) / 100,
 		expectedKwh: Math.round(expectedKwh * 1000) / 1000,
 		coolingHours: cooling.expectedHours,
+		heatingHours: heating.expectedHours,
 		dehumidifyHours: dehumidify.expectedHours,
 		reasonDe: parts.join("; "),
+		demandModel: demand.demandModel,
+		fallbackReasonDe: demand.fallbackReasonDe,
+		predictiveConfidence: demand.predictiveConfidence,
+		predictedCrossingAtIso:
+			cooling.predictedCrossingAtIso ??
+			heating.predictedCrossingAtIso ??
+			dehumidify.predictedCrossingAtIso,
+		predictedPeakRoomTempC: cooling.predictedPeak ?? heating.predictedPeak,
+		predictedLowRoomTempC: heating.predictedLow ?? cooling.predictedLow,
+		predictedPeakHumidityPct: dehumidify.predictedPeak,
 	};
 }
 
@@ -306,19 +364,33 @@ export function planCooling(input: CoolingPlanInput): CoolingPlanResult {
 				expectedHours: 0,
 				expectedKwh: 0,
 				coolingHours: 0,
+				heatingHours: 0,
 				dehumidifyHours: 0,
 				reasonDe: "Außerhalb Betriebszeit.",
+				demandModel: "legacy_fallback",
+				fallbackReasonDe: "Außerhalb Betriebszeit.",
+				predictiveConfidence: null,
+				predictedCrossingAtIso: null,
+				predictedPeakRoomTempC: null,
+				predictedLowRoomTempC: null,
+				predictedPeakHumidityPct: null,
 			});
 			continue;
 		}
+		const remainingHours = remainingActiveHours(input.now, unit);
 		forecasts.push(
 			estimateUnitClimate({
 				unit,
 				roomTempC: row.roomTempC,
 				roomHumidityPct: row.roomHumidityPct ?? null,
+				outdoorTempC: input.outdoorTempC,
 				outdoorMaxC,
 				outdoorLikelyTempC: input.acConfig.plannerOutdoorLikelyTempC,
-				remainingHours: remainingActiveHours(input.now, unit),
+				remainingHours,
+				windowEndMs: climateWindowEndMs(input.now, remainingHours),
+				now: input.now,
+				hourlyPoints: input.hourlyPoints ?? [],
+				thermal: input.thermalModels?.[String(unit.index)],
 				consumerStats: row.consumerStats,
 				sharedPowerStats: input.sharedPowerStats,
 				nowMs: input.now.getTime(),
@@ -343,7 +415,7 @@ export function planCooling(input: CoolingPlanInput): CoolingPlanResult {
 			parts.push(`${f.name}: ${f.reasonDe}`);
 		}
 	} else {
-		parts.push("Heute voraussichtlich keine Kühlung/Entfeuchtung.");
+		parts.push("Heute voraussichtlich kein Climate-Bedarf.");
 	}
 
 	return {

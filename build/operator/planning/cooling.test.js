@@ -84,7 +84,7 @@ const NOW = new Date("2026-07-05T10:00:00");
         strict_1.default.equal(result.likely_active, true);
         strict_1.default.equal(result.expected_peak_w, 1300);
     });
-    (0, node_test_1.it)("uses outdoor forecast max for cooling when room is below on-temp", () => {
+    (0, node_test_1.it)("does not invent multi-hour cooling from day-max when room is at off-temp (fresh install)", () => {
         const unit = (0, config_1.acUnitConfigFromAdapter)({
             ac_u1_enabled: true,
             ac_u1_name: "Wohnen",
@@ -107,9 +107,9 @@ const NOW = new Date("2026-07-05T10:00:00");
             outdoorForecastMaxC: 34,
             units: [{ unit, roomTempC: 24, consumerStats: undefined }],
         });
-        strict_1.default.equal(result.likely_active, true);
-        strict_1.default.ok(result.expected_kwh_today > 0);
-        strict_1.default.ok((result.units[0]?.expectedHours ?? 0) > 0);
+        strict_1.default.equal(result.likely_active, false);
+        strict_1.default.equal(result.expected_kwh_today, 0);
+        strict_1.default.equal(result.units[0]?.demandModel, "bootstrap");
     });
     (0, node_test_1.describe)("PHASE 3 — Shared-Power/Climate Learning", () => {
         (0, node_test_1.it)("gemeinsames Außengerät ohne Learning-Sample: Peak = max() statt Summe (nie 700+700 für ein Außengerät)", () => {

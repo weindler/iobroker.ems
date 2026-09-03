@@ -58,6 +58,15 @@ export type PlannerKnowledgeSnapshot = {
 		targetTempC?: number | null;
 		roomHumidityPct?: number | null;
 		maxHumidityPct?: number | null;
+		demandModel?: string | null;
+		fallbackReasonDe?: string | null;
+		predictiveConfidence?: number | null;
+		predictedCrossingAtIso?: string | null;
+		predictedPeakRoomTempC?: number | null;
+		predictedLowRoomTempC?: number | null;
+		predictedPeakHumidityPct?: number | null;
+		expectedRuntimeH?: number | null;
+		expectedEnergyKwh?: number | null;
 	}>;
 	/**
 	 * Additiv (Block A): tatsächlich verwendeter Wallbox-Ziel-Kontext zum Snapshot-Zeitpunkt.

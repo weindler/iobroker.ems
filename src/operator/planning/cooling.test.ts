@@ -96,7 +96,7 @@ describe("planCooling", () => {
 		assert.equal(result.expected_peak_w, 1300);
 	});
 
-	it("uses outdoor forecast max for cooling when room is below on-temp", () => {
+	it("does not invent multi-hour cooling from day-max when room is at off-temp (fresh install)", () => {
 		const unit = acUnitConfigFromAdapter(
 			{
 				ac_u1_enabled: true,
@@ -122,9 +122,9 @@ describe("planCooling", () => {
 			outdoorForecastMaxC: 34,
 			units: [{ unit, roomTempC: 24, consumerStats: undefined }],
 		});
-		assert.equal(result.likely_active, true);
-		assert.ok(result.expected_kwh_today > 0);
-		assert.ok((result.units[0]?.expectedHours ?? 0) > 0);
+		assert.equal(result.likely_active, false);
+		assert.equal(result.expected_kwh_today, 0);
+		assert.equal(result.units[0]?.demandModel, "bootstrap");
 	});
 
 	describe("PHASE 3 — Shared-Power/Climate Learning", () => {

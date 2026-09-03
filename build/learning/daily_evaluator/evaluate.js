@@ -54,6 +54,7 @@ function evaluateDay(input) {
                 break;
             case types_1.EVALUATOR_DOMAIN.CLIMATE:
                 findings.push(...(0, climate_findings_1.evaluateClimateFindings)(day));
+                findings.push(...(0, climate_findings_1.evaluateClimatePredictiveDayFindings)(day));
                 break;
             case types_1.EVALUATOR_DOMAIN.EV:
                 findings.push(...(0, ev_findings_1.evaluateEvFindings)(day));

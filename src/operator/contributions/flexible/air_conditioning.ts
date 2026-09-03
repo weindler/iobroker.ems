@@ -1,6 +1,7 @@
 import { AC_UNIT_COUNT } from "../../../addons/air_conditioning/constants";
 import type { AcGlobalConfig, AcUnitConfig } from "../../../addons/air_conditioning/types";
 import type { ConsumerPersistEntry } from "../../../learning/consumer_stats/types";
+import type { ClimateThermalUnitModel } from "../../../learning/climate_thermal/types";
 import { planCooling, type CoolingUnitPlanInput } from "../../planning/cooling";
 import type { ClimateSharedPowerStat } from "../../../learning/climate_shared_power/types";
 import type { PlannerModePolicy } from "../../../planner/mode_policy";
@@ -8,6 +9,7 @@ import { acUnitContributionId } from "../../contribution_ids";
 import type { PlanContribution } from "../../types";
 import { operatorQuality } from "../../quality";
 import { addonContributorRef } from "../../contributor";
+import type { WeatherHourlyPoint } from "../weather";
 import { baseContribution } from "../types";
 import { evaluateParticipation, round3 } from "./types";
 
@@ -36,6 +38,8 @@ export interface AirConditioningContributionBuildInput {
 	units: AcUnitContributionBuildInput[];
 	/** PHASE 3 — Shared-Power/Climate Learning: siehe `CoolingPlanInput.sharedPowerStats`. */
 	sharedPowerStats?: Record<string, ClimateSharedPowerStat>;
+	hourlyPoints?: WeatherHourlyPoint[];
+	thermalModels?: Record<string, ClimateThermalUnitModel>;
 }
 
 function buildUnitContribution(
@@ -118,7 +122,18 @@ function buildUnitContribution(
 			expectedKwhToday: round3(forecast.expectedKwh),
 			expectedHoursToday: forecast.expectedHours,
 			coolingHours: forecast.coolingHours,
+			heatingHours: forecast.heatingHours,
 			dehumidifyHours: forecast.dehumidifyHours,
+			heatSetpointC: unit.heatSetpointC,
+			demand_model: forecast.demandModel,
+			demandModel: forecast.demandModel,
+			fallback_reason_de: forecast.fallbackReasonDe,
+			fallbackReasonDe: forecast.fallbackReasonDe,
+			predictive_confidence: forecast.predictiveConfidence,
+			predicted_threshold_crossing_at: forecast.predictedCrossingAtIso,
+			predicted_peak_room_temp_c: forecast.predictedPeakRoomTempC,
+			predicted_low_room_temp_c: forecast.predictedLowRoomTempC,
+			predicted_peak_humidity_pct: forecast.predictedPeakHumidityPct,
 			requiredEnergyKwh,
 			expectedPeakW: forecast.powerW,
 			minPowerW: maxPowerW,
@@ -157,6 +172,8 @@ export function buildAirConditioningContributions(input: AirConditioningContribu
 		outdoorForecastMaxC: input.outdoorForecastMaxC ?? null,
 		units: unitInputs,
 		sharedPowerStats: input.sharedPowerStats,
+		hourlyPoints: input.hourlyPoints,
+		thermalModels: input.thermalModels,
 	});
 
 	const byIndex = new Map(cooling.units.map((u) => [u.unitIndex, u]));
@@ -175,8 +192,16 @@ export function buildAirConditioningContributions(input: AirConditioningContribu
 			expectedHours: 0,
 			expectedKwh: 0,
 			coolingHours: 0,
+			heatingHours: 0,
 			dehumidifyHours: 0,
 			reasonDe: "Unit nicht im Kühlplan.",
+			demandModel: "legacy_fallback" as const,
+			fallbackReasonDe: "Unit nicht im Kühlplan.",
+			predictiveConfidence: null,
+			predictedCrossingAtIso: null,
+			predictedPeakRoomTempC: null,
+			predictedLowRoomTempC: null,
+			predictedPeakHumidityPct: null,
 		};
 		contributions.push(buildUnitContribution(input, unitInput, forecast));
 	}

@@ -106,6 +106,15 @@ export function buildPlannerKnowledgeSnapshot(
 			targetTempC: u.targetTempC ?? null,
 			roomHumidityPct: u.roomHumidityPct ?? null,
 			maxHumidityPct: u.maxHumidityPct ?? null,
+			demandModel: u.demandModel ?? null,
+			fallbackReasonDe: u.fallbackReasonDe ?? null,
+			predictiveConfidence: u.predictiveConfidence ?? null,
+			predictedCrossingAtIso: u.predictedCrossingAtIso ?? null,
+			predictedPeakRoomTempC: u.predictedPeakRoomTempC ?? null,
+			predictedLowRoomTempC: u.predictedLowRoomTempC ?? null,
+			predictedPeakHumidityPct: u.predictedPeakHumidityPct ?? null,
+			expectedRuntimeH: u.expectedHoursToday ?? null,
+			expectedEnergyKwh: u.expectedEnergyKwh ?? null,
 		})) ?? [];
 
 	return {

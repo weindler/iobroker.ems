@@ -1,5 +1,6 @@
 /**
- * Persistentes Climate-Thermal-Learning — nur Diagnose, keine Steuerung.
+ * Persistentes Climate-Thermal-Learning.
+ * Operativ nur wenn usable=true (Predictive). Unusable bleibt Diagnose/Bootstrap.
  */
 
 export const CLIMATE_THERMAL_FILENAME = "climate_thermal_v1.json";

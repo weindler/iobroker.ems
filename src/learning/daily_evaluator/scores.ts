@@ -54,7 +54,7 @@ function thermalScore(findings: EvaluatorFinding[]): DomainScore {
 }
 
 function climateScore(findings: EvaluatorFinding[]): DomainScore {
-	const r = avgClassificationScore(findings.filter((f) => f.domain === "climate"));
+	const r = avgClassificationScore(findings.filter((f) => f.domain === "climate" && f.eventType === "climate_run"));
 	return { topic: SCORE_TOPIC.CLIMATE, value: r.value, sampleCount: r.sampleCount, basis: "outcome_classification_avg" };
 }
 

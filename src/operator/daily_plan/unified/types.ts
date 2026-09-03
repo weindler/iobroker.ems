@@ -448,6 +448,11 @@ export type UnifiedDayPlannerInput = {
 	 * verhindert Relais-Takten wenn Prefer kurz ausfällt und Mid-Slot-Skip sonst 0 W setzt.
 	 */
 	continueImmersionSoftCurrentSlot?: boolean;
+	/**
+	 * Von Compare akzeptierte/retained Slot-ISOs, in denen Soft-IH nicht kandidieren darf
+	 * (`defer_tomorrow`, Gewicht 0). Nie auf den Hard-Consumer anwenden.
+	 */
+	immersionSoftDisallowedSlotIsos?: string[];
 };
 
 /** Prioritätsordnung — Vertrag + Tests; noch kein Solver. */

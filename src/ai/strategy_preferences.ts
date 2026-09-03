@@ -332,3 +332,47 @@ export function wallboxPvOnlyFromDecisions(decisions: AiAddonDecision[]): boolea
 export function immersionDeferTomorrowFromDecisions(decisions: AiAddonDecision[]): boolean {
 	return decisions.some((d) => d.addonId === "immersion_heater" && d.action === "defer_tomorrow");
 }
+
+/** Slot-ISOs mit Gewicht 0 aus retained IH-Prefs — keine Decision-JSON. */
+export function immersionSoftDisallowedSlotIsosFromRetainedPrefs(prefs: AiSlotPreference[]): string[] {
+	const out: string[] = [];
+	const seen = new Set<string>();
+	for (const p of prefs) {
+		if (!p || p.addonId !== "immersion_heater" || p.weight !== 0) continue;
+		if (typeof p.slotStartIso !== "string" || !p.slotStartIso) continue;
+		if (seen.has(p.slotStartIso)) continue;
+		seen.add(p.slotStartIso);
+		out.push(p.slotStartIso);
+	}
+	return out;
+}
+
+/**
+ * Compare-Gate: nur wenn Plan B akzeptiert wurde und retained Prefs heutige Flex-Slots
+ * mit Gewicht 0 markieren. Rohe Decisions allein reichen nicht.
+ */
+export function acceptedImmersionSoftDisallowedSlotIsos(input: {
+	activePlan: unknown;
+	prefs: AiSlotPreference[];
+}): string[] {
+	if (input.activePlan !== "b") return [];
+	return immersionSoftDisallowedSlotIsosFromRetainedPrefs(input.prefs ?? []);
+}
+
+export function parseAiSlotPreferencesJson(raw: unknown): AiSlotPreference[] {
+	if (typeof raw !== "string" || !raw) return [];
+	try {
+		const parsed = JSON.parse(raw) as unknown;
+		if (!Array.isArray(parsed)) return [];
+		return parsed.filter(
+			(p): p is AiSlotPreference =>
+				!!p &&
+				typeof p === "object" &&
+				typeof (p as AiSlotPreference).addonId === "string" &&
+				typeof (p as AiSlotPreference).slotStartIso === "string" &&
+				typeof (p as AiSlotPreference).weight === "number",
+		);
+	} catch {
+		return [];
+	}
+}

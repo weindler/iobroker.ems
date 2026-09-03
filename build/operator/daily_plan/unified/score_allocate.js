@@ -680,6 +680,7 @@ function buildConsumerStates(input, slots) {
             const softEmptyDeadline = Number.isFinite(emptyDeadlineMs) && emptyDeadlineMs > nowMsLocal
                 ? emptyDeadlineMs
                 : Number.POSITIVE_INFINITY;
+            const disallowedSoftIso = new Set(input.immersionSoftDisallowedSlotIsos ?? []);
             out.push({
                 consumerId: exports.IMMERSION_SOFT_CONSUMER_ID,
                 kind: "immersion_heater",
@@ -696,6 +697,9 @@ function buildConsumerStates(input, slots) {
                 earliestSlotIdx: 0,
                 thermalBeforeDeadline: Number.isFinite(softEmptyDeadline),
                 thermalSoftOnly: true,
+                ...(disallowedSoftIso.size > 0
+                    ? { slotAllowed: (slotStartIso) => !disallowedSoftIso.has(slotStartIso) }
+                    : {}),
             });
         }
     }

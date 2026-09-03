@@ -185,6 +185,7 @@ build/operator/daily_plan/unified/allocate.test.js
 build/operator/daily_plan/unified/learning_gate.test.js
 build/operator/daily_plan/unified/thermal_opportunity_gate.test.js
 build/operator/daily_plan/unified/thermal_opportunity_planner.test.js
+build/operator/daily_plan/unified/ai_defer_soft_slot_allowed.test.js
 build/operator/daily_plan/battery_opportunity_cost.test.js
 build/operator/daily_plan/battery_replace_cost.test.js
 build/operator/daily_plan/unified/battery_reserve_floor.test.js
@@ -269,6 +270,7 @@ build/ai/user_enabled.test.js
 build/ai/run.test.js
 build/ai/index.test.js
 build/ai/trigger_digest.test.js
+build/ai/strategy_preferences.test.js
 build/ai/compare/redistribute.test.js
 build/ai/compare/build.test.js
 build/ai/compare/ensure_states.test.js

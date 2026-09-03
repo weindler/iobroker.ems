@@ -49,6 +49,8 @@ const device_config_1 = require("../../addons/immersion_heater/device_config");
 const types_1 = require("../../addons/immersion_heater/runtime/types");
 const state_util_1 = require("../../ems_light/state_util");
 const ensure_states_2 = require("../../ai/ensure_states");
+const ensure_states_3 = require("../../ai/compare/ensure_states");
+const strategy_preferences_1 = require("../../ai/strategy_preferences");
 const battery_1 = require("../planning/battery");
 const ensure_evcc_states_1 = require("../../addons/wallbox/ensure_evcc_states");
 const states_2 = require("../../addons/wallbox/runtime/states");
@@ -56,8 +58,8 @@ const evcc_config_1 = require("../../addons/wallbox/evcc_config");
 const charge_hold_1 = require("../../addons/wallbox/charge_hold");
 const normalize_1 = require("../../addons/wallbox/normalize");
 const contribution_ids_1 = require("../contribution_ids");
-const ensure_states_3 = require("../../addons/battery/ensure_states");
-const ensure_states_4 = require("../../addons/air_conditioning/runtime/ensure_states");
+const ensure_states_4 = require("../../addons/battery/ensure_states");
+const ensure_states_5 = require("../../addons/air_conditioning/runtime/ensure_states");
 const constants_2 = require("../../addons/air_conditioning/constants");
 const allocate_1 = require("./unified/allocate");
 const authority_1 = require("./unified/authority");
@@ -187,14 +189,14 @@ async function invalidatePublishedPlanForAddonOff(host, addonId) {
             await setPlanState(host, types_1.IMMERSION_RUNTIME_STATES.allocatedPowerW, null);
         }
         else if (addonId === "battery") {
-            await setPlanState(host, ensure_states_3.BAT.runtime.allocatedChargePowerW, null);
+            await setPlanState(host, ensure_states_4.BAT.runtime.allocatedChargePowerW, null);
         }
         else if (addonId === "wallbox") {
             await setPlanState(host, states_2.WALLBOX_RUNTIME_STATES.allocatedPowerW, null);
         }
         else if (addonId === "air_conditioning") {
             for (let u = 1; u <= constants_2.AC_UNIT_COUNT; u++) {
-                await setPlanState(host, (0, ensure_states_4.acUnitRuntimeStates)(u).allocatedPowerW, null);
+                await setPlanState(host, (0, ensure_states_5.acUnitRuntimeStates)(u).allocatedPowerW, null);
             }
         }
     }
@@ -415,8 +417,8 @@ async function runDailyPlanTick(host, forecastPlan) {
         wallboxChargeHoldReasonDe: wallboxHold.reasonDe,
     });
     const batCfgModes = (0, config_4.batteryConfigFromAdapter)(host.config);
-    const batOperatingMode = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_3.BAT.telemetry.operatingMode))?.val);
-    const batOwnershipActive = (await host.getStateAsync(ensure_states_3.BAT.runtime.ownershipActive))?.val === true;
+    const batOperatingMode = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_4.BAT.telemetry.operatingMode))?.val);
+    const batOwnershipActive = (await host.getStateAsync(ensure_states_4.BAT.runtime.ownershipActive))?.val === true;
     const passiveBatteryEnergy = (0, passive_battery_energy_1.resolvePassiveBatteryEnergyAvailable)({
         operatingMode: batOperatingMode,
         selfConsumptionModeValue: batCfgModes.sonnenModeValues.selfConsumption,
@@ -442,7 +444,7 @@ async function runDailyPlanTick(host, forecastPlan) {
      * Entladeplanung — kein zweiter, unabhängig gepflegter Zielwert mehr.
      */
     const priceNowCt = (0, state_util_1.asNum)((await host.getStateAsync("live.price.now_ct_per_kwh"))?.val);
-    const reserveCapacityKwh = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_3.BAT.telemetry.capacityEffectiveKwh))?.val);
+    const reserveCapacityKwh = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_4.BAT.telemetry.capacityEffectiveKwh))?.val);
     const pvConfidencePct = (0, state_util_1.asNum)((await host.getStateAsync("learning.pv_bias.confidence_pct"))?.val);
     const pvConfidence01 = pvConfidencePct === null ? null : Math.max(0.2, Math.min(1, pvConfidencePct / 100));
     const predictedNightConsumptionKwh = (0, state_util_1.asNum)((await host.getStateAsync("learning.battery_runtime.predicted_night_consumption_kwh"))?.val);
@@ -747,12 +749,12 @@ async function runDailyPlanTick(host, forecastPlan) {
         // best-effort
     }
     const bufferSt = await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.bufferTemperatureC);
-    const batSocSt = await host.getStateAsync(ensure_states_3.BAT.telemetry.socPct);
-    const batCap = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_3.BAT.telemetry.capacityEffectiveKwh))?.val);
+    const batSocSt = await host.getStateAsync(ensure_states_4.BAT.telemetry.socPct);
+    const batCap = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_4.BAT.telemetry.capacityEffectiveKwh))?.val);
     const hw = (0, limits_1.hardwareLimitsFromConfig)(host.config);
     const roomTemps = {};
     for (let u = 1; u <= constants_2.AC_UNIT_COUNT; u++) {
-        roomTemps[u] = (0, state_util_1.asNum)((await host.getStateAsync((0, ensure_states_4.acUnitRuntimeStates)(u).roomTempC))?.val);
+        roomTemps[u] = (0, state_util_1.asNum)((await host.getStateAsync((0, ensure_states_5.acUnitRuntimeStates)(u).roomTempC))?.val);
     }
     const realizedPv = (0, state_util_1.asNum)((await host.getStateAsync("learning.energy_daily.pv_kwh"))?.val);
     const wbConnectedRaw = await host.getStateAsync(ensure_evcc_states_1.WALLBOX_EVCC_STATES.connected);
@@ -779,7 +781,7 @@ async function runDailyPlanTick(host, forecastPlan) {
     }
     const acRuntime = [];
     for (let u = 1; u <= constants_2.AC_UNIT_COUNT; u++) {
-        const ids = (0, ensure_states_4.acUnitRuntimeStates)(u);
+        const ids = (0, ensure_states_5.acUnitRuntimeStates)(u);
         acRuntime.push({
             unitIndex: u,
             running: (await host.getStateAsync(ids.running))?.val === true,
@@ -967,6 +969,12 @@ async function runDailyPlanTick(host, forecastPlan) {
             const batSocTs = typeof batSocSt?.ts === "number" && Number.isFinite(batSocSt.ts)
                 ? new Date(batSocSt.ts).toISOString()
                 : null;
+            const compareActivePlan = (await host.getStateAsync(ensure_states_3.COMPARE_STATES.activePlan))?.val;
+            const retainedPrefs = (0, strategy_preferences_1.parseAiSlotPreferencesJson)((await host.getStateAsync(ensure_states_2.AI_STATES.lastSlotPreferencesJson))?.val);
+            const immersionSoftDisallowedSlotIsos = (0, strategy_preferences_1.acceptedImmersionSoftDisallowedSlotIsos)({
+                activePlan: compareActivePlan,
+                prefs: retainedPrefs,
+            });
             const unifiedInputFinal = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)({
                 now,
                 timezone,
@@ -996,6 +1004,7 @@ async function runDailyPlanTick(host, forecastPlan) {
                 passiveBatteryEnergyAvailable: passiveBatteryEnergy.available,
                 preferImmersionLiveSurplusNow: preferLiveIh,
                 continueImmersionSoftCurrentSlot: continueSoftIh,
+                immersionSoftDisallowedSlotIsos,
                 boilerEstimatedEmptyAtOverride: learningEmptyAtIso,
                 feedInCtPerKwh,
                 thermalLearnedPriceTimingScore: blockALearning.thermalPriceTimingScore,
@@ -1146,13 +1155,13 @@ async function runDailyPlanTick(host, forecastPlan) {
                 });
                 const globalMode = (await host.getStateAsync(tree_paths_1.GLOBAL.executionMode))?.val;
                 const ihAllocated = (0, state_util_1.asNum)((await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.allocatedPowerW))?.val);
-                const batAllocated = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_3.BAT.runtime.allocatedChargePowerW))?.val);
+                const batAllocated = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_4.BAT.runtime.allocatedChargePowerW))?.val);
                 const wbAllocated = (0, state_util_1.asNum)((await host.getStateAsync(states_2.WALLBOX_RUNTIME_STATES.allocatedPowerW))?.val);
                 let acAllocatedSum = 0;
                 let acAllocatedAny = false;
                 const acRunning = [];
                 for (let u = 1; u <= constants_2.AC_UNIT_COUNT; u++) {
-                    const ids = (0, ensure_states_4.acUnitRuntimeStates)(u);
+                    const ids = (0, ensure_states_5.acUnitRuntimeStates)(u);
                     const aw = (0, state_util_1.asNum)((await host.getStateAsync(ids.allocatedPowerW))?.val);
                     if (aw != null) {
                         acAllocatedSum += aw;
@@ -1176,7 +1185,7 @@ async function runDailyPlanTick(host, forecastPlan) {
                             allocatedPowerW: ihAllocated,
                         },
                         battery: {
-                            chargingPowerW: (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_3.BAT.telemetry.chargingPowerW))?.val),
+                            chargingPowerW: (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_4.BAT.telemetry.chargingPowerW))?.val),
                             allocatedChargePowerW: batAllocated,
                         },
                         wallbox: {

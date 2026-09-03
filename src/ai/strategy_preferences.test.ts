@@ -1,9 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+	acceptedImmersionSoftDisallowedSlotIsos,
 	decisionsToSlotPreferences,
 	immersionDeferTomorrowFromDecisions,
+	immersionSoftDisallowedSlotIsosFromRetainedPrefs,
 	normalizeAddonDecisions,
+	parseAiSlotPreferencesJson,
 	wallboxPvOnlyFromDecisions,
 } from "./strategy_preferences.js";
 import type { DailyAllocationEntry, DailyPlan, DailyPlanSlot } from "../operator/daily_plan/types.js";
@@ -208,6 +211,73 @@ describe("wallboxPvOnlyFromDecisions", () => {
 			false,
 		);
 		assert.equal(wallboxPvOnlyFromDecisions([]), false);
+	});
+});
+
+describe("acceptedImmersionSoftDisallowedSlotIsos", () => {
+	const zeroToday: AiSlotPreference[] = [
+		{ addonId: "immersion_heater", slotStartIso: DAY1_A, weight: 0 },
+		{ addonId: "immersion_heater", slotStartIso: DAY2_A, weight: 3 },
+	];
+
+	it("only when Compare accepted Plan B and retained IH weight 0", () => {
+		assert.deepEqual(
+			acceptedImmersionSoftDisallowedSlotIsos({ activePlan: "b", prefs: zeroToday }),
+			[DAY1_A],
+		);
+	});
+
+	it("rejected or missing Plan B has no effect even with weight-0 prefs", () => {
+		assert.deepEqual(
+			acceptedImmersionSoftDisallowedSlotIsos({ activePlan: "a", prefs: zeroToday }),
+			[],
+		);
+		assert.deepEqual(
+			acceptedImmersionSoftDisallowedSlotIsos({ activePlan: null, prefs: zeroToday }),
+			[],
+		);
+		assert.deepEqual(
+			acceptedImmersionSoftDisallowedSlotIsos({ activePlan: "B", prefs: zeroToday }),
+			[],
+		);
+	});
+
+	it("deleted or empty retained prefs have no effect", () => {
+		assert.deepEqual(acceptedImmersionSoftDisallowedSlotIsos({ activePlan: "b", prefs: [] }), []);
+		assert.deepEqual(
+			acceptedImmersionSoftDisallowedSlotIsos({
+				activePlan: "b",
+				prefs: [{ addonId: "immersion_heater", slotStartIso: DAY1_A, weight: 0.05 }],
+			}),
+			[],
+		);
+	});
+
+	it("ignores other add-ons and duplicate ISOs", () => {
+		assert.deepEqual(
+			immersionSoftDisallowedSlotIsosFromRetainedPrefs([
+				{ addonId: "wallbox", slotStartIso: DAY1_A, weight: 0 },
+				{ addonId: "immersion_heater", slotStartIso: DAY1_A, weight: 0 },
+				{ addonId: "immersion_heater", slotStartIso: DAY1_A, weight: 0 },
+			]),
+			[DAY1_A],
+		);
+	});
+});
+
+describe("parseAiSlotPreferencesJson", () => {
+	it("parses valid array and rejects garbage", () => {
+		assert.deepEqual(
+			parseAiSlotPreferencesJson(
+				JSON.stringify([{ addonId: "immersion_heater", slotStartIso: DAY1_A, weight: 0 }]),
+			),
+			[{ addonId: "immersion_heater", slotStartIso: DAY1_A, weight: 0 }],
+		);
+		assert.deepEqual(parseAiSlotPreferencesJson("[]"), []);
+		assert.deepEqual(parseAiSlotPreferencesJson(""), []);
+		assert.deepEqual(parseAiSlotPreferencesJson("{"), []);
+		assert.deepEqual(parseAiSlotPreferencesJson(null), []);
+		assert.deepEqual(parseAiSlotPreferencesJson([{ addonId: "x" }]), []);
 	});
 });
 

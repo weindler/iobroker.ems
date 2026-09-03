@@ -175,6 +175,44 @@ function tinyPlan(slots) {
         strict_1.default.equal((0, strategy_preferences_js_1.wallboxPvOnlyFromDecisions)([]), false);
     });
 });
+(0, node_test_1.describe)("acceptedImmersionSoftDisallowedSlotIsos", () => {
+    const zeroToday = [
+        { addonId: "immersion_heater", slotStartIso: DAY1_A, weight: 0 },
+        { addonId: "immersion_heater", slotStartIso: DAY2_A, weight: 3 },
+    ];
+    (0, node_test_1.it)("only when Compare accepted Plan B and retained IH weight 0", () => {
+        strict_1.default.deepEqual((0, strategy_preferences_js_1.acceptedImmersionSoftDisallowedSlotIsos)({ activePlan: "b", prefs: zeroToday }), [DAY1_A]);
+    });
+    (0, node_test_1.it)("rejected or missing Plan B has no effect even with weight-0 prefs", () => {
+        strict_1.default.deepEqual((0, strategy_preferences_js_1.acceptedImmersionSoftDisallowedSlotIsos)({ activePlan: "a", prefs: zeroToday }), []);
+        strict_1.default.deepEqual((0, strategy_preferences_js_1.acceptedImmersionSoftDisallowedSlotIsos)({ activePlan: null, prefs: zeroToday }), []);
+        strict_1.default.deepEqual((0, strategy_preferences_js_1.acceptedImmersionSoftDisallowedSlotIsos)({ activePlan: "B", prefs: zeroToday }), []);
+    });
+    (0, node_test_1.it)("deleted or empty retained prefs have no effect", () => {
+        strict_1.default.deepEqual((0, strategy_preferences_js_1.acceptedImmersionSoftDisallowedSlotIsos)({ activePlan: "b", prefs: [] }), []);
+        strict_1.default.deepEqual((0, strategy_preferences_js_1.acceptedImmersionSoftDisallowedSlotIsos)({
+            activePlan: "b",
+            prefs: [{ addonId: "immersion_heater", slotStartIso: DAY1_A, weight: 0.05 }],
+        }), []);
+    });
+    (0, node_test_1.it)("ignores other add-ons and duplicate ISOs", () => {
+        strict_1.default.deepEqual((0, strategy_preferences_js_1.immersionSoftDisallowedSlotIsosFromRetainedPrefs)([
+            { addonId: "wallbox", slotStartIso: DAY1_A, weight: 0 },
+            { addonId: "immersion_heater", slotStartIso: DAY1_A, weight: 0 },
+            { addonId: "immersion_heater", slotStartIso: DAY1_A, weight: 0 },
+        ]), [DAY1_A]);
+    });
+});
+(0, node_test_1.describe)("parseAiSlotPreferencesJson", () => {
+    (0, node_test_1.it)("parses valid array and rejects garbage", () => {
+        strict_1.default.deepEqual((0, strategy_preferences_js_1.parseAiSlotPreferencesJson)(JSON.stringify([{ addonId: "immersion_heater", slotStartIso: DAY1_A, weight: 0 }])), [{ addonId: "immersion_heater", slotStartIso: DAY1_A, weight: 0 }]);
+        strict_1.default.deepEqual((0, strategy_preferences_js_1.parseAiSlotPreferencesJson)("[]"), []);
+        strict_1.default.deepEqual((0, strategy_preferences_js_1.parseAiSlotPreferencesJson)(""), []);
+        strict_1.default.deepEqual((0, strategy_preferences_js_1.parseAiSlotPreferencesJson)("{"), []);
+        strict_1.default.deepEqual((0, strategy_preferences_js_1.parseAiSlotPreferencesJson)(null), []);
+        strict_1.default.deepEqual((0, strategy_preferences_js_1.parseAiSlotPreferencesJson)([{ addonId: "x" }]), []);
+    });
+});
 (0, node_test_1.describe)("immersionDeferTomorrowFromDecisions", () => {
     (0, node_test_1.it)("true only for immersion_heater defer_tomorrow", () => {
         strict_1.default.equal((0, strategy_preferences_js_1.immersionDeferTomorrowFromDecisions)([

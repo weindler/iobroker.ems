@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.22",
+		"version": "0.2.23",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.23": {
+				"en": "Accepted KI defer_tomorrow now blocks today's flexible immersion (soft) slots in the Unified Planner. Hard/hygiene/forced heating is unchanged. Check compare.active_plan=b and that immersion_heater_soft is not allocated today.",
+				"de": "Akzeptiertes KI-defer_tomorrow sperrt heutige flexible Heizstab-Slots (Soft) im Unified Planner. Hard/Hygiene/Forced bleibt unverändert. Prüfen: compare.active_plan=b und heute keine immersion_heater_soft-Allokation."
+			},
 			"0.2.22": {
 				"en": "Planner KI defer_tomorrow now actually defers flexible immersion heat (no fallback onto today). Compare can accept Plan B at economic tie; slot prefs are kept. Check ai.last_slot_preferences_json and compare.active_plan after a defer_tomorrow decision.",
 				"de": "Planner-KI defer_tomorrow verschiebt/vermeidet flexiblen Heizstab wirklich (kein Fallback auf heute). Compare kann Plan B bei wirtschaftlichem Gleichstand annehmen; Slot-Prefs bleiben. Nach defer_tomorrow: ai.last_slot_preferences_json und compare.active_plan prüfen."

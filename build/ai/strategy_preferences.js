@@ -4,7 +4,7 @@
  * Reine Funktion — keine I/O, keine Geräte-Writes.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.immersionDeferTomorrowFromDecisions = exports.wallboxPvOnlyFromDecisions = exports.decisionsToSlotPreferences = exports.normalizeAddonDecisions = void 0;
+exports.parseAiSlotPreferencesJson = exports.acceptedImmersionSoftDisallowedSlotIsos = exports.immersionSoftDisallowedSlotIsosFromRetainedPrefs = exports.immersionDeferTomorrowFromDecisions = exports.wallboxPvOnlyFromDecisions = exports.decisionsToSlotPreferences = exports.normalizeAddonDecisions = void 0;
 const time_1 = require("../operator/time");
 /** Extremere Gewichte → Plan B weicht klar von Plan A ab (sonst oft Identitäts-Compare). */
 const HIGH_W = 3;
@@ -309,3 +309,48 @@ function immersionDeferTomorrowFromDecisions(decisions) {
     return decisions.some((d) => d.addonId === "immersion_heater" && d.action === "defer_tomorrow");
 }
 exports.immersionDeferTomorrowFromDecisions = immersionDeferTomorrowFromDecisions;
+/** Slot-ISOs mit Gewicht 0 aus retained IH-Prefs — keine Decision-JSON. */
+function immersionSoftDisallowedSlotIsosFromRetainedPrefs(prefs) {
+    const out = [];
+    const seen = new Set();
+    for (const p of prefs) {
+        if (!p || p.addonId !== "immersion_heater" || p.weight !== 0)
+            continue;
+        if (typeof p.slotStartIso !== "string" || !p.slotStartIso)
+            continue;
+        if (seen.has(p.slotStartIso))
+            continue;
+        seen.add(p.slotStartIso);
+        out.push(p.slotStartIso);
+    }
+    return out;
+}
+exports.immersionSoftDisallowedSlotIsosFromRetainedPrefs = immersionSoftDisallowedSlotIsosFromRetainedPrefs;
+/**
+ * Compare-Gate: nur wenn Plan B akzeptiert wurde und retained Prefs heutige Flex-Slots
+ * mit Gewicht 0 markieren. Rohe Decisions allein reichen nicht.
+ */
+function acceptedImmersionSoftDisallowedSlotIsos(input) {
+    if (input.activePlan !== "b")
+        return [];
+    return immersionSoftDisallowedSlotIsosFromRetainedPrefs(input.prefs ?? []);
+}
+exports.acceptedImmersionSoftDisallowedSlotIsos = acceptedImmersionSoftDisallowedSlotIsos;
+function parseAiSlotPreferencesJson(raw) {
+    if (typeof raw !== "string" || !raw)
+        return [];
+    try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed))
+            return [];
+        return parsed.filter((p) => !!p &&
+            typeof p === "object" &&
+            typeof p.addonId === "string" &&
+            typeof p.slotStartIso === "string" &&
+            typeof p.weight === "number");
+    }
+    catch {
+        return [];
+    }
+}
+exports.parseAiSlotPreferencesJson = parseAiSlotPreferencesJson;

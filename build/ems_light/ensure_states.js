@@ -53,6 +53,8 @@ async function ensureEmsLightStates(host, adapterVersion) {
         strState("learning.battery_runtime.status", "Learning Batterie Runtime Status", "not_initialized"),
         strState("learning.thermal_runtime.status", "Learning Thermik Runtime Status", "not_initialized"),
         strState("operator.briefing_de", "Operator Briefing (DE)", OPERATOR_BRIEFING_DEFAULT),
+        strState("operator.assessment.json", "Operative EMS-Einschätzung (JSON)", "{}"),
+        strState("operator.assessment_de", "Operative EMS-Einschätzung (DE)", "EMS-Einschätzung noch nicht gebildet."),
         strState("operator.product_summary_de", "Produkt-Tageszusammenfassung (DE, deterministisch)", "Noch kein Unified Day Plan."),
         strState("operator.plan.battery_strategy_de", "Strategischer Batterieplan (DE)", ""),
         strState("operator.plan.wallbox_strategy_de", "Strategischer Wallboxplan (DE)", ""),

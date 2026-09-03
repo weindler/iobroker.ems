@@ -24,6 +24,13 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-lage{display:flex;align-items:baseline;gap:8px;background:#21262d;border:1px solid #30363d;border-radius:6px;padding:3px 8px;margin-bottom:4px;flex:0 0 auto;min-width:0}
 .ems-lage-k{font-size:8px;color:#8b949e;text-transform:uppercase;letter-spacing:.04em;flex:0 0 auto}
 .ems-lage-v{font-size:10px;color:#c9d1d9;line-height:1.25;flex:1 1 auto;min-width:0}
+.ems-assess{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 8px;margin-bottom:4px;flex:0 0 auto;min-width:0}
+.ems-assess-h{font-size:8px;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.ems-assess-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}
+.ems-assess-row{min-width:0}
+.ems-assess-k{font-size:9px;font-weight:700;color:#58a6ff}
+.ems-assess-v{font-size:11px;color:#e6edf3;line-height:1.3}
+.ems-assess-n{font-size:10px;color:#8b949e;line-height:1.25;margin-top:1px}
 .ems-chip{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:3px 6px;min-width:0;flex:1 1 0}
 .ems-chip .ems-k{margin-bottom:0}
 .ems-chip .ems-chip-v{font-size:12px;font-weight:700;line-height:1.15;color:#e6edf3}
@@ -140,6 +147,7 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 	.ems-ai{grid-template-columns:1fr}
 	.ems-price-svg{height:84px}
 	.ems-live{flex-wrap:wrap}
+	.ems-assess-grid{grid-template-columns:1fr}
 }
 @media (max-width:560px){.ems-tiles{grid-template-columns:1fr}}
 </style>
@@ -154,6 +162,7 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 	</div>
 	<div id="ems-view-ops">
 	<div class="ems-live" id="ems-now"></div>
+	<div class="ems-assess" id="ems-assessment" style="display:none"></div>
 	<div class="ems-lage" id="ems-lage" style="display:none"></div>
 	<div class="ems-price" id="ems-price"></div>
 	<div class="ems-ai-compact" id="ems-ai-summary"></div>
@@ -190,6 +199,8 @@ var stateIds=[
 	INST+".operator.vis.show_diagnostics",
 	INST+".operator.vis.price_timeline_json",
 	INST+".operator.briefing_de",
+	INST+".operator.assessment.json",
+	INST+".operator.assessment_de",
 	INST+".operator.diagnostics.surplus_w",
 	INST+".operator.diagnostics.deficit_w",
 	INST+".operator.diagnostics.slot_start_iso",
@@ -1592,8 +1603,6 @@ function visLageLine(s){
 	if(s.minC!=null&&s.maxC!=null&&isFinite(s.minC)&&isFinite(s.maxC)){
 		bits.push(Math.round(s.minC)+"–"+Math.round(s.maxC)+" °C");
 	}
-	var facts=visLageFacts(s);
-	if(facts)bits.push(facts);
 	return bits.join(" · ");
 }
 function visAcPowerDisplayLine(kind,powerW){
@@ -1770,6 +1779,7 @@ function visPlanWindowExtras(powerW,startMs,endMs,isGrid){
 }
 function visImmersionDemandFact(s){
 	s=s||{};
+	if(s.autoTargetReached)return null;
 	var k=s.requiredKwh;
 	if(k==null||!isFinite(k)||k<=0.05)return null;
 	if(s.hasWindow)return null;
@@ -2007,6 +2017,7 @@ function hygieneWeekPlanLine(){
 function ihEnergyNeedLine(){
 	var arr=parseArr(g("planner.intent.contributions.immersion_heater.contributions_json"));
 	var mand=null,flex=null,minW=null,i;
+	var atTarget=isOn(g("addons.immersion_heater.runtime.auto_target_reached"));
 	for(i=0;i<arr.length;i++){
 		var c=arr[i];if(!c)continue;
 		var id=String(c.contributionId||"");
@@ -2016,6 +2027,8 @@ function ihEnergyNeedLine(){
 		var m=c.details&&num(c.details.minPowerW);
 		if(m!=null&&m>0)minW=minW==null?m:Math.min(minW,m);
 	}
+	if(atTarget)flex=null;
+	if(atTarget&&(mand==null||mand<=0.05))return"";
 	var bits=[],totalKwh=0;
 	if(mand!==null){bits.push("Hart "+mand.toFixed(1).replace(".",",")+" kWh");totalKwh+=mand;}
 	if(flex!==null){bits.push("Flex "+flex.toFixed(1).replace(".",",")+" kWh");totalKwh+=flex;}
@@ -2247,6 +2260,51 @@ function renderLiveStrip(){
 		+chip("Netzausgleich",gb.label,gb.reason||"","gb "+gb.cls);
 }
 
+function visAssessmentRow(label,text,next){
+	if(!text)return"";
+	return '<div class="ems-assess-row"><div class="ems-assess-k">'+esc(label)+'</div>'
+		+'<div class="ems-assess-v">'+esc(text)+'</div>'
+		+(next?'<div class="ems-assess-n">'+esc(next)+'</div>':"")
+		+"</div>";
+}
+function renderAssessment(){
+	var el=document.getElementById("ems-assessment");
+	if(!el)return;
+	var raw=txt(g("operator.assessment.json"),"");
+	var a=null;
+	if(raw&&raw!=="—"&&raw!=="{}"){
+		try{a=JSON.parse(raw);}catch(e){a=null;}
+	}
+	if(!a||!a.overall){
+		var plain=txt(g("operator.assessment_de"),"");
+		if(!plain||plain==="—"||plain.indexOf("noch nicht")>=0){el.style.display="none";el.innerHTML="";return;}
+		el.style.display="";
+		el.innerHTML='<div class="ems-assess-h">EMS-Einschätzung</div><div class="ems-assess-v">'+esc(plain)+"</div>";
+		return;
+	}
+	var html='<div class="ems-assess-h">EMS-Einschätzung</div><div class="ems-assess-grid">';
+	html+=visAssessmentRow("Auto",a.ev&&a.ev.text,a.ev&&a.ev.next);
+	html+=visAssessmentRow("Heizstab",a.immersion&&a.immersion.text,a.immersion&&a.immersion.next);
+	if(a.climate&&a.climate.units&&a.climate.units.length){
+		var i,u,clim;
+		for(i=0;i<a.climate.units.length;i++){
+			u=a.climate.units[i];
+			clim=u.cooling||"";
+			if(u.heating)clim+=(clim?" ":"")+u.heating;
+			if(u.dehumidify)clim+=(clim?" ":"")+u.dehumidify;
+			html+=visAssessmentRow("Klima "+(u.name||""),clim,u.next);
+		}
+	}else{
+		html+=visAssessmentRow("Klima",a.climate&&a.climate.text,null);
+	}
+	html+=visAssessmentRow("Batterie",a.battery&&a.battery.text,a.battery&&a.battery.next);
+	html+=visAssessmentRow("Netzausgleich",a.gridBalance&&a.gridBalance.text,a.gridBalance&&a.gridBalance.next);
+	html+="</div>";
+	if(a.forecast&&a.forecast.text)html+='<div class="ems-assess-n" style="margin-top:4px">'+esc(a.forecast.text)+"</div>";
+	el.style.display="";
+	el.innerHTML=html;
+}
+
 function renderAiSummary(){
 	var el=document.getElementById("ems-ai-summary");
 	if(!el)return;
@@ -2264,16 +2322,6 @@ function renderAiSummary(){
 	var costLine=cost!==null&&cost>0?" · ~"+cost.toFixed(3).replace(".",",")+" €":"";
 	if(costMonth!==null&&costMonth>0)costLine+=" · ~"+costMonth.toFixed(3).replace(".",",")+" € Monat";
 	var runLine=lastRun?(" · zuletzt "+fmtSmartTime(lastRun)):"";
-	var analystStatus=txt(g("ai.daily_analyst.status"),"");
-	var analystTop=txt(g("ai.daily_analyst.top_finding_de"),"");
-	var analystCount=num(g("ai.daily_analyst.findings_count"));
-	var overrides=num(g("ai.validator.active_overrides_count"));
-	var analystLine="";
-	if(analystStatus&&analystStatus!=="—"){
-		analystLine="Analyst: "+analystStatus;
-		if(analystCount!=null)analystLine+=" · "+Math.round(analystCount)+" Finding(s)";
-		if(overrides!=null&&overrides>0)analystLine+=" · Override aktiv";
-	}
 	el.innerHTML='<div class="ems-k">KI</div>'
 		+'<label class="ems-ai-toggle"><input type="checkbox" data-ems-action="ai-user-enabled"'
 		+(v.userEnabled?" checked":"")
@@ -2283,9 +2331,7 @@ function renderAiSummary(){
 		+(v.compareLabel?'<div class="ems-ai-line '+(v.prefersB?"warn":"no")+'">'+esc(v.compareLabel)+'</div>':"")
 		+'<div class="ems-ai-reason">'
 		+esc(callsLine)+esc(costLine)+esc(runLine)
-		+"</div>"
-		+(analystLine?'<div class="ems-ai-reason">'+esc(analystLine)+"</div>":"")
-		+(analystTop&&analystTop!=="—"?'<div class="ems-ai-reason">'+esc(analystTop)+"</div>":"");
+		+"</div>";
 }
 
 function nextActionItemHtml(it){
@@ -2419,7 +2465,8 @@ function renderNext(){
 	var ihFact=visImmersionDemandFact({
 		requiredKwh:ihDem.requiredKwh,
 		minPowerW:ihDem.minPowerW,
-		hasWindow:ihHasWin
+		hasWindow:ihHasWin,
+		autoTargetReached:isOn(g("addons.immersion_heater.runtime.auto_target_reached"))
 	});
 	var ihLines=[];
 	var boilerRaw=g("addons.immersion_heater.runtime.boiler_temperature_c");
@@ -3066,6 +3113,7 @@ function render(){
 		return;
 	}
 	renderNow();
+	renderAssessment();
 	renderPriceBoard();
 	renderAiSummary();
 	renderStack();

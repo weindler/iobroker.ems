@@ -76,7 +76,7 @@ import {
 	type PlanActualSample,
 } from "./unified/materiality";
 import { climateDemandDigest } from "../planning/climate_predictive";
-import type { UnifiedClimateUnitInput } from "./unified/types";
+import type { UnifiedClimateUnitInput, UnifiedDayPlan, UnifiedDayPlannerInput } from "./unified/types";
 
 function acDemandDigestFromUnits(units: UnifiedClimateUnitInput[] | undefined): string {
 	if (!units?.length) return "";
@@ -97,7 +97,6 @@ import {
 	assessUnifiedReplanFailure,
 	applyReplanFailureAuthority,
 } from "./unified/replan_failure";
-import type { UnifiedDayPlan } from "./unified/types";
 import {
 	medianGridPriceCtPerKwh,
 	priceStructureDigestFromPlan,
@@ -126,6 +125,7 @@ import { buildDeterministicDayExplanation } from "../../learning/day_evaluation/
 import { buildNotificationCandidates, mergeNotificationCandidates } from "../../learning/day_evaluation/notify";
 import { buildAiExplanationContext } from "../../ai/explanation/context";
 import { buildProductSummaryDe } from "../../beta/product_summary";
+import { publishOperationalAssessment } from "../assessment/publish";
 import { buildProductNotificationSurface } from "../../beta/notification_surface";
 import { buildEffectiveExecutionSnapshot } from "../../beta/execution_effective";
 import { addonOffSummaryDe, buildAgendaExecutionHints } from "../../beta/execution_display";
@@ -147,6 +147,7 @@ let lastCadenceDigest = "";
 let unifiedGeneration = 0;
 let lastUnifiedPlanId = "";
 let lastUnifiedPlan: UnifiedDayPlan | null = null;
+let lastUnifiedInput: UnifiedDayPlannerInput | null = null;
 let lastBaseline: PlanBaseline | null = null;
 let lastReplanAtMs: number | null = null;
 let replanCountToday = 0;
@@ -195,6 +196,7 @@ export function requestForcedUnifiedReplan(reason: string): void {
 	forcedReplanReasons.push(r);
 	lastBaseline = null;
 	lastUnifiedPlan = null;
+	lastUnifiedInput = null;
 	lastCadenceDigest = "";
 	lastRevisionPayload = "";
 }
@@ -288,6 +290,17 @@ export async function invalidatePublishedPlanForAddonOff(
 		} else {
 			await setPlanState(host, "operator.product_summary_de", `Plan: ${offReason}.`);
 		}
+		try {
+			await publishOperationalAssessment(host, {
+				now: new Date(),
+				timezone: "Europe/Berlin",
+				plan: lastUnifiedPlan,
+				plannerInput: lastUnifiedInput,
+				contributions: [],
+			});
+		} catch (e) {
+			host.log?.warn?.(`invalidate addon off (assessment): ${String(e)}`);
+		}
 		host.log?.info?.(`Add-on ${addonId} Aus — aktive Plan-Darstellung sofort invalidiert`);
 	} catch (e) {
 		host.log?.warn?.(`invalidate addon off (product summary): ${String(e)}`);
@@ -301,6 +314,7 @@ export function resetDailyPlanRevisionForTest(): void {
 	unifiedGeneration = 0;
 	lastUnifiedPlanId = "";
 	lastUnifiedPlan = null;
+	lastUnifiedInput = null;
 	lastBaseline = null;
 	lastReplanAtMs = null;
 	replanCountToday = 0;
@@ -1081,6 +1095,17 @@ export async function runDailyPlanTick(
 		};
 	}
 	if (!decision.shouldReplan) {
+		try {
+			await publishOperationalAssessment(host, {
+				now,
+				timezone,
+				plan: lastUnifiedPlan,
+				plannerInput: lastUnifiedInput,
+				contributions: forecastPlan.contributions,
+			});
+		} catch (e) {
+			host.log?.warn?.(`operator.assessment: ${String(e)}`);
+		}
 		return plan;
 	}
 
@@ -1175,6 +1200,7 @@ export async function runDailyPlanTick(
 			unifiedGeneration += 1;
 			lastUnifiedPlanId = unifiedPlan.planId;
 			lastUnifiedPlan = unifiedPlan;
+			lastUnifiedInput = unifiedInputFinal;
 			lastReplanAtMs = now.getTime();
 			lastCadenceDigest = cadenceDigest;
 			if (replanCountDate !== plan.date) {
@@ -1493,6 +1519,17 @@ export async function runDailyPlanTick(
 				aiThinkingDe,
 			}),
 		);
+		try {
+			await publishOperationalAssessment(host, {
+				now,
+				timezone,
+				plan: lastUnifiedPlan,
+				plannerInput: lastUnifiedInput,
+				contributions: forecastPlan.contributions,
+			});
+		} catch (e) {
+			host.log?.warn?.(`operator.assessment: ${String(e)}`);
+		}
 
 		try {
 			const globalMode = (await host.getStateAsync(GLOBAL.executionMode))?.val;

@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.25",
+		"version": "0.2.26",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.26": {
+				"en": "BETRIEB now shows a deterministic EMS assessment (what is sensible today, why, what next) from the real plan and live states — no AI text. Daily Analyst retrospectives stay on Statistik. Check operator.assessment_de and the EMS-Einschätzung block on Betrieb.",
+				"de": "BETRIEB zeigt eine deterministische EMS-Einschätzung (was heute sinnvoll ist, warum, was als Nächstes) aus echtem Plan und Live-Zustand — kein KI-Text. Daily-Analyst-Rückblick bleibt auf Statistik. Prüfen: operator.assessment_de und Block EMS-Einschätzung auf Betrieb."
+			},
 			"0.2.25": {
 				"en": "Climate demand now works from day 1 without thermal learning (bootstrap). Usable learning switches to predictive room forecast; missing sensors/forecast fall back to the previous safe heuristic. Check contribution details demand_model (bootstrap/predictive/legacy_fallback) and reason_de.",
 				"de": "Climate-Bedarf funktioniert ab Neuinstallation ohne Thermal-Learning (Bootstrap). Usable Learning übernimmt die individuelle Raumprognose; fehlende Sensoren/Forecast fallen auf die bisherige sichere Heuristik zurück. Prüfen: Contribution-Details demand_model (bootstrap/predictive/legacy_fallback) und reason_de."

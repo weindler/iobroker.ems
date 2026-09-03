@@ -51,8 +51,8 @@ export const STATE_SURFACE_FAMILIES: StateSurfaceFamily[] = [
 	{
 		id: "runtime_execution",
 		label: "EMS-Light live / system / economics / safety",
-		idPattern: "system.* | live.* | execution.safety.* | economics.* | operator.briefing_de | operator.diagnostics.*",
-		estimatedStaticCount: 39,
+		idPattern: "system.* | live.* | execution.safety.* | economics.* | operator.briefing_de | operator.assessment.json | operator.assessment_de | operator.diagnostics.*",
+		estimatedStaticCount: 41,
 		dataTypes: ["string", "number", "boolean"],
 		readWrite: "mostly_read",
 		producer: "ems_light/ensure_states, tick",

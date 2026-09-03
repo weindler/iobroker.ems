@@ -67,6 +67,8 @@ const REQUIRED_STATE_PATHS = [
 	"addons.battery.telemetry.capacity_effective_kwh",
 	"operator.plan.battery_strategy_de",
 	"operator.plan.wallbox_strategy_de",
+	"operator.assessment.json",
+	"operator.assessment_de",
 	"live.price.now_ct_per_kwh",
 	"addons.battery.telemetry.charging_power_w",
 	"addons.battery.telemetry.discharging_power_w",
@@ -711,6 +713,7 @@ describe("VIS battery / grid / GB presentation", () => {
 			"Heizstab Bedarf 6,5 kWh — noch kein fahrbares Fenster (≥ 1700 W)",
 		);
 		assert.equal(ops.visImmersionDemandFact({ requiredKwh: 6.5, hasWindow: true }), null);
+		assert.equal(ops.visImmersionDemandFact({ requiredKwh: 0.3, autoTargetReached: true }), null);
 		assert.equal(ops.visImmersionWaitNote("auto_ready_zero_plan_allocation"), "Wartet auf geplanten Slot");
 		const noon = Date.parse("2026-08-19T10:00:00");
 		const dayEnd = ops.visLocalDayEndMs(noon);
@@ -790,7 +793,7 @@ describe("VIS battery / grid / GB presentation", () => {
 				minC: 14.2,
 				maxC: 22.4,
 			}),
-			"Heute 18 kWh · Morgen 31 kWh · danach schwächer · 14–22 °C · Bias -14 %",
+			"Heute 18 kWh · Morgen 31 kWh · danach schwächer · 14–22 °C",
 		);
 		assert.equal(ops.visLageLine({}), "");
 		assert.match(visHtml, /id="ems-lage"/);
@@ -829,5 +832,14 @@ describe("VIS battery / grid / GB presentation", () => {
 		assert.equal(gridRewardsShowEuro("off", null), false);
 		assert.equal(gridRewardsShowEuro("billing", 0), true);
 		assert.equal(gridRewardsShowEuro("billing", 1.21), true);
+	});
+
+	it("BETRIEB zeigt EMS-Einschätzung und keinen Analysten-Rückblick", () => {
+		assert.match(visHtml, /id="ems-assessment"/);
+		assert.match(visHtml, /function renderAssessment/);
+		assert.match(visHtml, /operator\.assessment\.json/);
+		assert.match(visHtml, /EMS-Einschätzung/);
+		assert.equal(visHtml.includes("analystTop"), false);
+		assert.match(adminHtml, /id="ems-assessment"/);
 	});
 });

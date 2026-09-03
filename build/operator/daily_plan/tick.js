@@ -101,6 +101,7 @@ const explain_1 = require("../../learning/day_evaluation/explain");
 const notify_1 = require("../../learning/day_evaluation/notify");
 const context_1 = require("../../ai/explanation/context");
 const product_summary_1 = require("../../beta/product_summary");
+const publish_1 = require("../assessment/publish");
 const notification_surface_1 = require("../../beta/notification_surface");
 const execution_effective_1 = require("../../beta/execution_effective");
 const execution_display_1 = require("../../beta/execution_display");
@@ -120,6 +121,7 @@ let lastCadenceDigest = "";
 let unifiedGeneration = 0;
 let lastUnifiedPlanId = "";
 let lastUnifiedPlan = null;
+let lastUnifiedInput = null;
 let lastBaseline = null;
 let lastReplanAtMs = null;
 let replanCountToday = 0;
@@ -160,6 +162,7 @@ function requestForcedUnifiedReplan(reason) {
     forcedReplanReasons.push(r);
     lastBaseline = null;
     lastUnifiedPlan = null;
+    lastUnifiedInput = null;
     lastCadenceDigest = "";
     lastRevisionPayload = "";
 }
@@ -244,6 +247,18 @@ async function invalidatePublishedPlanForAddonOff(host, addonId) {
         else {
             await setPlanState(host, "operator.product_summary_de", `Plan: ${offReason}.`);
         }
+        try {
+            await (0, publish_1.publishOperationalAssessment)(host, {
+                now: new Date(),
+                timezone: "Europe/Berlin",
+                plan: lastUnifiedPlan,
+                plannerInput: lastUnifiedInput,
+                contributions: [],
+            });
+        }
+        catch (e) {
+            host.log?.warn?.(`invalidate addon off (assessment): ${String(e)}`);
+        }
         host.log?.info?.(`Add-on ${addonId} Aus — aktive Plan-Darstellung sofort invalidiert`);
     }
     catch (e) {
@@ -258,6 +273,7 @@ function resetDailyPlanRevisionForTest() {
     unifiedGeneration = 0;
     lastUnifiedPlanId = "";
     lastUnifiedPlan = null;
+    lastUnifiedInput = null;
     lastBaseline = null;
     lastReplanAtMs = null;
     replanCountToday = 0;
@@ -963,6 +979,18 @@ async function runDailyPlanTick(host, forecastPlan) {
         };
     }
     if (!decision.shouldReplan) {
+        try {
+            await (0, publish_1.publishOperationalAssessment)(host, {
+                now,
+                timezone,
+                plan: lastUnifiedPlan,
+                plannerInput: lastUnifiedInput,
+                contributions: forecastPlan.contributions,
+            });
+        }
+        catch (e) {
+            host.log?.warn?.(`operator.assessment: ${String(e)}`);
+        }
         return plan;
     }
     // Beta: Plan-B-Compare advisory only — keine Allocation-Mutation vor Unified Authority.
@@ -1050,6 +1078,7 @@ async function runDailyPlanTick(host, forecastPlan) {
             unifiedGeneration += 1;
             lastUnifiedPlanId = unifiedPlan.planId;
             lastUnifiedPlan = unifiedPlan;
+            lastUnifiedInput = unifiedInputFinal;
             lastReplanAtMs = now.getTime();
             lastCadenceDigest = cadenceDigest;
             if (replanCountDate !== plan.date) {
@@ -1321,6 +1350,18 @@ async function runDailyPlanTick(host, forecastPlan) {
             contributions: forecastPlan.contributions,
             aiThinkingDe,
         }));
+        try {
+            await (0, publish_1.publishOperationalAssessment)(host, {
+                now,
+                timezone,
+                plan: lastUnifiedPlan,
+                plannerInput: lastUnifiedInput,
+                contributions: forecastPlan.contributions,
+            });
+        }
+        catch (e) {
+            host.log?.warn?.(`operator.assessment: ${String(e)}`);
+        }
         try {
             const globalMode = (await host.getStateAsync(tree_paths_1.GLOBAL.executionMode))?.val;
             const eff = (0, execution_effective_1.buildEffectiveExecutionSnapshot)({

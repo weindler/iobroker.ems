@@ -65,6 +65,12 @@ export async function ensureEmsLightStates(host: StateHost, adapterVersion: stri
 		strState("learning.thermal_runtime.status", "Learning Thermik Runtime Status", "not_initialized"),
 
 		strState("operator.briefing_de", "Operator Briefing (DE)", OPERATOR_BRIEFING_DEFAULT),
+		strState("operator.assessment.json", "Operative EMS-Einschätzung (JSON)", "{}"),
+		strState(
+			"operator.assessment_de",
+			"Operative EMS-Einschätzung (DE)",
+			"EMS-Einschätzung noch nicht gebildet.",
+		),
 		strState(
 			"operator.product_summary_de",
 			"Produkt-Tageszusammenfassung (DE, deterministisch)",

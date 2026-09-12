@@ -730,6 +730,7 @@ async function tickStatistics(host, now = new Date()) {
         iceFuelType: cfg.iceFuelType,
         iceLPer100Km: cfg.iceLPer100Km,
         gridRewardsEnabled: cfg.gridRewardsEnabled,
+        feedInCtPerKwh: cfg.feedInCtPerKwh,
         statisticsStartDate: cfg.statisticsStartDate,
     };
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.enabled, true);

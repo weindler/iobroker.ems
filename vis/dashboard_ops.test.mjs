@@ -230,6 +230,22 @@ describe("VIS operations dashboard", () => {
 		assert.match(visHtml, /evFastLocalKwh/);
 	});
 
+	it("shows live source gauges, charging alternatives, refill check, recommendation and seven-day uncertainty", () => {
+		assert.match(visHtml, /function currentSupplyMix/);
+		assert.match(visHtml, /PV rechnerisch/);
+		assert.match(visHtml, /Batterie rechnerisch/);
+		assert.match(visHtml, /Netz rechnerisch/);
+		assert.match(visHtml, /function rewardsScenario/);
+		assert.match(visHtml, /Nur PV-Überschuss/);
+		assert.match(visHtml, /PV \+ Sonnen-Batterie/);
+		assert.match(visHtml, /Normaler Tibber-Strom/);
+		assert.match(visHtml, /Batterie-Wirkungsgrad/);
+		assert.match(visHtml, /Bis heute Abend frei erwartet/);
+		assert.match(visHtml, /Ladeempfehlung/);
+		assert.match(visHtml, /7-Tage-Energieausblick/);
+		assert.match(visHtml, /Tag 3–7 nutzt PV-\/Lastprognosen/);
+	});
+
 	it("shows the configured Tibber plug-in handoff separately from the current Rewards signal", () => {
 		assert.match(visHtml, /Übergabe erlaubt/);
 		assert.match(visHtml, /Tibber-Übergabe/);
@@ -965,20 +981,19 @@ describe("VIS battery / grid / GB presentation", () => {
 		assert.match(visHtml, /learning\.pv_bias\.actual_today_kwh/);
 		assert.match(visHtml, /learning\.pv_bias\.raw_today_kwh/);
 		assert.equal(visHtml.includes("sample_days_30d"), false);
-		assert.equal(visHtml.includes("forecast_plan.days_json"), false);
+		assert.equal(visHtml.includes("forecast_plan.days_json"), true);
 	});
 
-	it("hides Grid Rewards euro unless settled; lists all Daily-Analyst findings; labels retrospective day", () => {
+	it("hides Grid Rewards euro unless settled and presents deterministic retrospective in plain language", () => {
 		assert.match(visHtml, /function gridRewardsPresent/);
 		assert.match(visHtml, /function gridRewardsShowEuro/);
 		assert.match(visHtml, /function econAdvantageRows/);
-		assert.match(visHtml, /ai\.daily_analyst\.findings_de/);
-		assert.match(visHtml, /ems-stats-findings/);
+		assert.match(visHtml, /Vergleich mit Betrieb ohne EMS/);
 		assert.match(visHtml, /economics\.today\.grid_rewards_eur/);
 		assert.match(visHtml, /economics\.cumulative\.grid_rewards_eur/);
 		assert.match(visHtml, /Grid Rewards: noch nicht abgerechnet/);
-		assert.match(visHtml, /Evaluator-Findings/);
-		assert.match(visHtml, /KI-Findings/);
+		assert.match(visHtml, /Gefundene Hinweise/);
+		assert.equal(visHtml.includes('retrospectiveCardTitle("KI Analyst"'), false);
 		assert.match(visHtml, /function retrospectiveCardTitle/);
 		assert.match(visHtml, /function fmtDateKeyDe/);
 		assert.equal(visHtml.includes("Shadow Heute"), false);
